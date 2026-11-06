@@ -1104,20 +1104,28 @@ test("decorating: buy a decoration, place it, and put one in storage to place ag
       await page.waitForTimeout(150);
       await page.mouse.click(p.x, p.y);
     };
+    // The Storage tab: empty, with the Remove tool.
+    await sheet.locator('[data-tab="storage"]').click();
+    await expect(sheet).toContainText("Storage is empty");
+    await expect(sheet.locator('[data-tab="storage"]')).toHaveText("Storage");
     await sheet.locator('[data-deco="__remove"]').click();
     await expect(sheet).toContainText("It goes to storage");
     await tapSpot(80, 830);
     await expect(page.locator("#fm-log")).toContainText(
       "Put Street Lamp in storage",
     );
+    await expect(sheet.locator('[data-tab="storage"]')).toHaveText(
+      "Storage (1)",
+    );
     const lamp = sheet.locator(".item", { hasText: "Street Lamp" });
-    await expect(lamp).toContainText("1 in storage");
-    await expect(lamp).not.toContainText("unlocks at Lv");
-    await expect(lamp.locator("button")).toHaveText("Place free");
-    await expect(lamp.locator("button")).toBeEnabled();
+    await expect(lamp).toContainText("×1");
+    await expect(lamp.locator("button")).toHaveText("Place");
+    // Placing from storage: the spots glow and carry a pin.
+    await lamp.locator("button").click();
+    await expect(sheet).toContainText("Placing Street Lamp");
+    await page.evaluate(() => (window as any).__farm.look(400, 760));
     await page.waitForTimeout(400);
     await snap(page, info, "farm-decor-storage");
-    await lamp.locator("button").click();
     await tapSpot(530, 870);
     await expect
       .poll(() =>
@@ -1130,8 +1138,14 @@ test("decorating: buy a decoration, place it, and put one in storage to place ag
         { a: "decor-remove", slot: 0 },
         { a: "decor", slot: 2, item: "lamp" },
       ]);
-    await expect(lamp).not.toContainText("in storage");
-    await expect(lamp).toContainText("unlocks at Lv 12");
+    // The last stored copy is placed: placing stops (nothing is bought).
+    await expect(sheet).toContainText("Storage is empty");
+    await expect(sheet).not.toContainText("Placing");
+    await expect(sheet.locator('[data-tab="storage"]')).toHaveText("Storage");
+    await sheet.locator('[data-tab="buy"]').click();
+    await expect(
+      sheet.locator(".item", { hasText: "Street Lamp" }),
+    ).toContainText("unlocks at Lv 12");
     expect(errors).toEqual([]);
   } finally {
     await context.close();
