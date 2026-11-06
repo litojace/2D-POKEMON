@@ -219,6 +219,30 @@
   height: var(--fighter-size);
   margin: 0;
 }
+/* The stage light's glow (stage-light.ts, owner's option C) behind your
+   fighter; the podium below is its lit disc and ring. Centred where the
+   preview windows centre it (source y 92 of the tight 0 -12 200 202 frame:
+   51.5% down), 112 units across each way (112% of the box). */
+.lobby-fighter::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 51.5%;
+  width: 112%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  /* Brighter than in the preview windows, and added as light: the Lobby
+     stands on the bright Plaza map, where their dark-stage glow vanished. */
+  background: radial-gradient(
+    closest-side,
+    color-mix(in srgb, var(--element, #ffd65b) 85%, transparent),
+    color-mix(in srgb, var(--element, #ffd65b) 38%, transparent) 50%,
+    transparent
+  );
+  mix-blend-mode: screen;
+  pointer-events: none;
+}
 .lobby-fighter-art {
   position: absolute;
   inset: 0;

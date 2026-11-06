@@ -62,18 +62,19 @@ for (const size of SIZES)
       await page.click('.lobby-rail [data-lobby-action="shop"]');
       const room = page.locator(".fit-room");
       await expect(room).toBeVisible();
-      // While the live rig loads, no stand-in spotlight: its beam differs
-      // from the rig's, so it flashed and then jumped on phones (owner,
-      // 6 Nov). Checked at once, before the rig is ready.
-      expect(
-        await page.evaluate(() => {
-          const live = document.querySelector(".fit-stage .shop-live-stage");
-          const light = document.querySelector(".fit-stage .fit-light");
-          return live?.classList.contains("is-ready")
-            ? "ready"
-            : light && getComputedStyle(light).display;
-        }),
-      ).toMatch(/^(none|ready)$/);
+      // The stage light (owner's option C) is there from the first frame,
+      // the same layer under the still fighter and the live rig, and in the
+      // still fighter's frame, so its disc sits under the feet.
+      const light = await page.evaluate(() => {
+        const host = document.querySelector(".fit-stage .shop-live-stage")!;
+        const svg = host.querySelector(":scope > .stage-light");
+        const still = host.querySelector(".shop-preview-fallback > svg");
+        return {
+          shown: !!svg && getComputedStyle(svg).display !== "none",
+          same: svg?.getAttribute("viewBox") === still?.getAttribute("viewBox"),
+        };
+      });
+      expect(light).toEqual({ shown: true, same: true });
       // Inside the Lobby: the HUD and the rail stay; the rail marks the Shop.
       await expect(page.locator("#account-coins")).toBeVisible();
       await expect(
@@ -375,12 +376,8 @@ test("Low graphics: a still fighter, no live rig, and Hold to compare still work
   );
   await page.waitForTimeout(1500);
   await expect(stage.locator("canvas")).toHaveCount(0);
-  // A still fighter keeps the stand-in spotlight (there is no rig to draw one).
-  expect(
-    await page
-      .locator(".fit-stage .fit-light")
-      .evaluate((e) => getComputedStyle(e).display),
-  ).toBe("block");
+  // Low graphics draws the same stage light (gradients, no blur).
+  await expect(stage.locator(":scope > .stage-light")).toBeVisible();
   await expect(page.locator("[data-fit-play]")).toHaveCount(0);
   const compare = page.locator("[data-preview-compare]");
   const shown = stage.locator(".shop-preview-fallback").first();

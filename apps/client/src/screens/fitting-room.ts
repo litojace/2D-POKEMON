@@ -13,6 +13,7 @@ import { itemPicture } from "../shop-ui";
 import { askConfirm, openHubPanel, type HubPanel } from "../ui/hub-panel";
 import { price, rarityTag } from "../ui/components";
 import { parse, patch } from "../ui/patch";
+import { previewViewBox, SHOP_PREVIEW } from "../shop-preview-layout";
 import {
   dropUnownedTryOns,
   fitItem,
@@ -226,9 +227,32 @@ export function openFittingRoom(
     }
     old.replaceWith(now.cloneNode(true));
   }
+  /**
+   * Frame the stage light (and the still fighter) on the stage's real size,
+   * as the live rig frames its camera (shop-preview.ts resizeStage): the
+   * markup can only carry the default size, and the light, unlike the still
+   * fighter, stays in view over the rig.
+   */
+  function frameStage() {
+    const host = stageEl()?.querySelector<HTMLElement>(
+      ".shop-live-stage:not(.is-frame)",
+    );
+    if (!host) return;
+    const { width, height } = host.getBoundingClientRect();
+    if (width <= 0 || height <= 0) return;
+    const box = previewViewBox(
+      host.dataset.previewAction ?? "idle",
+      Math.max(1, Math.round((SHOP_PREVIEW.width * height) / width)),
+    );
+    host
+      .querySelectorAll(":scope > .stage-light, .shop-preview-fallback > svg")
+      .forEach((svg) => svg.setAttribute("viewBox", box));
+  }
+  const stageSize = new ResizeObserver(() => frameStage());
   function afterRender() {
     markSeen();
     syncRail();
+    frameStage();
     const stage = stageEl();
     const host = stage.querySelector(".shop-live-stage");
     if (low) return;
@@ -632,6 +656,7 @@ export function openFittingRoom(
     rail: view.mode,
     onClose: () => {
       closed = true;
+      stageSize.disconnect();
       clearInterval(clock);
       preview?.();
       preview = undefined;
@@ -649,6 +674,7 @@ export function openFittingRoom(
   // Countdowns (server time) move on while the screen is open.
   const clock = setInterval(() => render(), 30_000);
   afterRender();
+  stageSize.observe(root());
 
   return {
     show(mode, section) {
