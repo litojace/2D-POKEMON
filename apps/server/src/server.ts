@@ -52,7 +52,10 @@ import {
   type Reply,
 } from "../../../packages/shared/src/index.js";
 import { Arena } from "./simulation.js";
-import { connectionReportSchema } from "../../../packages/shared/src/connection.js";
+import {
+  battleLoadSchema,
+  connectionReportSchema,
+} from "../../../packages/shared/src/connection.js";
 import { PlazaWorld, type PlazaEvent } from "./plaza.js";
 import { PLAZA, type PlazaRecord } from "../../../packages/shared/src/plaza.js";
 import { Parties, type Party, type PartyAppearance } from "./party.js";
@@ -146,7 +149,8 @@ export function createArenaServer(
      */
     backpressure?: boolean;
     /**
-     * Where dropped-player lines go (see the "disconnect" handler). Defaults
+     * Where diagnostic lines go: dropped players ("arena-disconnect",
+     * "arena-client-drop") and battle load times ("arena-load"). Defaults
      * to console.log on a live server (autoTick), and to nothing in tests.
      */
     connectionLog?: (event: string, details: Record<string, unknown>) => void;
@@ -2220,6 +2224,24 @@ export function createArenaServer(
       socket.data.connectionReported = true;
       connectionLog("arena-client-drop", { ...result.data, account: who.id });
     });
+    socket.on("battle-loaded", (data: unknown) =>
+      withRoom(undefined, (a, id) => {
+        // One per battle renderer; a cap keeps a looping client quiet.
+        const sent = (socket.data.loadReports ?? 0) as number;
+        if (sent >= 20) return;
+        const result = battleLoadSchema.safeParse(data);
+        if (!result.success) return;
+        socket.data.loadReports = sent + 1;
+        connectionLog("arena-load", {
+          ...result.data,
+          account: account()?.id,
+          room: a.code,
+          mode: a.mode,
+          phase: a.phase,
+          character: a.players.find((p) => p.id === id)?.character,
+        });
+      }),
+    );
     socket.on("disconnect", (reason: string) => {
       // Record why a player in a room dropped: the opponent only sees
       // "Opponent disconnected", and Socket.IO's reason says whether the
