@@ -141,6 +141,68 @@
   text-align: right;
 }
 
+/* Your name: change it once every 14 days. The row and the form are one
+   height, so opening the form moves nothing below it. */
+.pf-name-row,
+.pf-name-form {
+  display: grid;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: calc(var(--ctl-s) + 16px);
+  padding: 8px 8px 8px 12px;
+  border-radius: var(--rad-md);
+  background: var(--ui-bg-1);
+  border: 1px solid var(--ui-line);
+}
+.pf-name-row {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+.pf-name-row > .ui-btn {
+  min-width: var(--act-w);
+}
+.pf-name-form {
+  grid-template-columns: minmax(0, 1fr) var(--act-s) var(--act-s);
+  border-color: #ffd65b66;
+}
+.pf-name-form > .ui-btn {
+  width: 100%;
+  min-width: 0;
+}
+:is(.pf-name-row, .pf-name-form)[hidden] {
+  display: none;
+}
+.pf-name-now {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: var(--fs-h4);
+  letter-spacing: 0.02em;
+}
+.pf-name-form > input {
+  height: var(--ctl-s);
+  min-width: 0;
+  padding: 0 10px;
+  border-radius: var(--rad-sm);
+  border: 1px solid var(--ui-line-2);
+  background: var(--ui-bg-0);
+  color: var(--ui-text);
+  font: inherit;
+  font-weight: 700;
+}
+.pf-name-form > input:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 1px;
+}
+.pf-name-message {
+  margin-top: 4px;
+}
+.pf-name-message:empty {
+  display: none;
+}
+
 /* Titles: chips that wear the title at once. */
 .pf-titles {
   display: flex;
@@ -476,6 +538,14 @@
   }
   .pf-title-chip {
     padding: 0 10px;
+  }
+  .pf-name-row,
+  .pf-name-form {
+    min-height: calc(var(--ctl-s) + 10px);
+    padding: 5px 5px 5px 10px;
+  }
+  .pf-name-row > .ui-btn {
+    min-width: var(--act-w);
   }
   .pf-mastery {
     gap: 4px;

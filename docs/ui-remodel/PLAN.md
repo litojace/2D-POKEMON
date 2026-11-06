@@ -1167,6 +1167,16 @@ see below). Not verified: a real phone, and Safari's engine.
   sheet that is leaving no longer holds the picker's place.
   `pvp-party-flow.spec.ts` checks for exactly one picker, and for Ready
   after Friends closes.
+- Ranks on the live game said "UPDATE requires a WHERE clause". Not a step 6
+  bug: Supabase refuses an `UPDATE` or `DELETE` with no `WHERE` from API
+  sessions, and migration 006's monthly rating softening had none, so it
+  failed from its first run on 1 November (and rolled back, so every later
+  call tried again), taking the leaderboard and the rating card with it.
+  006's match rating update emptied its scratch table the same way, so no
+  player-vs-player match report had ever been saved (production: 51 bot
+  matches, no PvP match, no rating). Migration 065 names the rows in both;
+  the owner ran it in the SQL Editor on 6 Nov and both functions were
+  checked on the live database afterwards.
 - The server now logs the reason when an account request fails with an
   unexpected error (`[api] GET /path failed: …`). Before, a player saw
   only "Account service failed" or "Invalid request." and the logs said
@@ -1408,6 +1418,38 @@ Before and after: [profile](images/step7/profile.webp), the
   sweeps the profile as a hub panel; `landscape-only.test.ts` now checks
   the admin dialog's size rule alone. The harness's fake API takes
   `__accountPatch` and `__progress`.
+
+### Changing your name (6 Nov 2026)
+
+Owner's request: players can change their display name every 14 days.
+
+- **Database** ([migration 066](../../supabase/migrations/066_display_name_changes.sql)):
+  `arena_profiles.name_changed_at` and two functions. `arena_change_name`
+  refuses control and invisible characters (checked before the clean-up,
+  which would turn a line break into a space), tidies spaces, keeps the
+  1–20 characters every name already had, needs a letter or a number,
+  refuses your current name, and allows the next change 14 days after the
+  last on the database's clock (the first change at any time).
+  `arena_name_status` says when. An admin's rename doesn't count. Names stay
+  non-unique, as before.
+- **Server:** `GET` / `POST /api/account/name`; after a change the player's
+  open games pick up the new name (`onPlayerChanged`, as for titles).
+  `LATEST_MIGRATION` is 066.
+- **Profile:** a Name row under the tiles with Change name, or "You can
+  change it again in 9 d 4 h" (the server's `nextAt`, counted on
+  `serverNow()`, redrawn every 30 s). The form replaces the row at the
+  same height (Cancel and Save, one size); the browser checks the name
+  with the database's rules first (`checkName` in `packages/shared`), then
+  asks once more (now, new, next change in 14 days), then shows the
+  server's answer or its reason. The card, the head and the HUD show the
+  new name. Escape closes the form before the card.
+- **Tests:** `tests/integration/display-name-changes.test.ts` (the real
+  migrations in PGlite: first change, 13 and 14 days, every refusal, an
+  admin rename, suspended and logged-out players, privacy),
+  `tests/integration/name-routes.test.ts`, the name checks in
+  `tests/unit/profile.test.ts`, and in `tests/visual/profile.spec.ts` the
+  form at the five sizes (centred, one height with the row) plus the whole
+  change, a refusal, the locked state and its countdown.
 
 ## Decisions (owner, 3 Nov 2026)
 

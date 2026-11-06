@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
-import type { Progress } from "../../packages/shared/src/accounts";
+import { checkName, type Progress } from "../../packages/shared/src/accounts";
 import type { RaidProgress } from "../../packages/shared/src/raid";
 import {
   bestMastery,
   profileMarkup,
   profileTiles,
+  nameLockedFor,
   profileView,
   rankLine,
   type ProfileData,
@@ -99,6 +100,7 @@ const data = (extra: Partial<ProfileData> = {}): ProfileData => ({
   } as unknown as ProfileData["journey"],
   progress,
   raids,
+  nameStatus: null,
   ...extra,
 });
 const html = (d = data(), v = profileView()) => profileMarkup(v, d);
@@ -234,5 +236,40 @@ describe("the rest of the profile", () => {
     const page = html(data({ progress: null, progressProblem: "Down." }));
     expect(page).toContain("data-profile-retry");
     expect(page).toContain("Down.");
+  });
+});
+
+describe("your name", () => {
+  it("is cleaned and checked like the database does", () => {
+    expect(checkName("  Nova   Star ", "tester")).toEqual({ name: "Nova Star", problem: "" });
+    expect(checkName("Bénédicte", "tester").problem).toBe("");
+    expect(checkName("", "tester").problem).toBe("A name is 1 to 20 characters.");
+    expect(checkName("   ", "tester").problem).toBe("A name is 1 to 20 characters.");
+    expect(checkName("A".repeat(21), "tester").problem).toBe("A name is 1 to 20 characters.");
+    expect(checkName("A".repeat(20), "tester").problem).toBe("");
+    expect(checkName("Ben\u200bny", "tester").problem).toBe("That name has characters that can't be shown.");
+    expect(checkName("Ben\nny", "tester").problem).toBe("That name has characters that can't be shown.");
+    expect(checkName("!!! ...", "tester").problem).toBe("Use at least one letter or number.");
+    expect(checkName(" tester ", "tester").problem).toBe("That is already your name.");
+  });
+  it("is locked until the server says, counted on the server's clock", () => {
+    const now = Date.parse("2026-11-06T12:00:00Z");
+    const status = (nextAt: string | null) => ({ changedAt: null, nextAt, now: "", days: 14 });
+    expect(nameLockedFor(null, now)).toBeNull();
+    expect(nameLockedFor(status(null), now)).toBeNull();
+    expect(nameLockedFor(status("2026-11-06T11:00:00Z"), now)).toBeNull();
+    expect(nameLockedFor(status("2026-11-16T12:00:00Z"), now)).toBe(10 * 86_400_000);
+  });
+  it("shows Change name, or when you can next", () => {
+    const open = html();
+    expect(open).toContain("You can change it once every 14 days");
+    expect(open).toMatch(/<button type="button" class="ui-btn is-s" data-profile-rename>/);
+    // The form is in the markup, hidden, with your name in it.
+    expect(open).toContain('data-profile-name-form hidden><input name="name" maxlength="20"');
+    expect(open).toContain('value="tester"');
+    const later = new Date(Date.now() + 3 * 86_400_000 + 3_600_000).toISOString();
+    const locked = html(data({ nameStatus: { changedAt: null, nextAt: later, now: "", days: 14 } }));
+    expect(locked).toMatch(/You can change it again in 3 d (0|1) h/);
+    expect(locked).toMatch(/class="ui-btn is-s" disabled data-profile-rename/);
   });
 });
