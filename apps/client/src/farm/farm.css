@@ -489,6 +489,55 @@
   width: 300px;
   animation: popin 0.18s var(--ease-out);
 }
+/* Planting and harvesting by hand: seeds in the tray and the sickle are
+   pressed and dragged across the field (no scrolling or zooming meanwhile),
+   and what you carry rides just above your finger. */
+.farm-layer .fm-pop.seedpick [data-pseed] {
+  touch-action: none;
+}
+.farm-layer .fm-sickle {
+  position: absolute;
+  z-index: 6;
+  animation: popin 0.16s var(--ease-out);
+}
+.farm-layer .fm-sickle button {
+  width: 64px;
+  height: 64px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 3px solid #ffd65b;
+  background: radial-gradient(circle at 50% 35%, #3a4a86, #172040);
+  box-shadow:
+    0 6px 16px #0008,
+    0 0 0 4px #ffd65b33;
+  cursor: grab;
+  touch-action: none;
+}
+.farm-layer .fm-sickle .ico {
+  width: 38px;
+  height: 38px;
+}
+.farm-layer .fm-ghost {
+  position: absolute;
+  z-index: 9;
+  width: 64px;
+  height: 64px;
+  margin: -78px 0 0 -32px;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  filter: drop-shadow(0 6px 8px #0009);
+}
+.farm-layer .fm-ghost img,
+.farm-layer .fm-ghost .ico {
+  width: 56px;
+  height: 56px;
+}
+.farm-layer .fm-ghost[hidden],
+.farm-layer .fm-sickle[hidden] {
+  display: none;
+}
 .farm-layer .fm-pop h6 {
   margin: 2px 4px 6px;
   font-family: var(--display);

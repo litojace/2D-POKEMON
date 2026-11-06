@@ -1584,6 +1584,150 @@ test("on a phone, the Market's Sell and All buttons line up in columns", async (
   }
 });
 
+test("on a phone, drag a seed from the tray to sow, and the sickle to harvest", async ({
+  browser,
+}, info) => {
+  const context = await browser.newContext({
+    viewport: { width: 844, height: 390 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  try {
+    const page = await context.newPage();
+    const errors = await openLobby(page);
+    await fakeFarm(page);
+    // Ripe wheat on plots 0, 3 and 4 (1 and 2 are still growing).
+    await page.evaluate(() => {
+      const f = (window as any).__fakeFarm,
+        past = new Date(Date.now() - 60_000).toISOString();
+      for (const i of [3, 4])
+        Object.assign(f.plots[i], { crop: "wheat", progress: 1, ripeAt: past });
+    });
+    await page.click('#hub-scenes [data-hub-scene="farm"]');
+    await page.waitForFunction(() => (window as any).__farm?.F?.loaded);
+    await page.waitForTimeout(400);
+    const plot = (i: number) =>
+      page.evaluate((i) => (window as any).__farm.plotClient(i), i);
+    const center = async (sel: string) => {
+      const b = (await page.locator(sel).boundingBox())!;
+      return { x: b.x + b.width / 2, y: b.y + b.height / 2 };
+    };
+    // A real finger: touch down, slide through the points, lift.
+    const cdp = await context.newCDPSession(page);
+    const swipe = async (pts: { x: number; y: number }[]) => {
+      const at = (p: { x: number; y: number }) => [
+        { x: Math.round(p.x), y: Math.round(p.y) },
+      ];
+      await cdp.send("Input.dispatchTouchEvent", {
+        type: "touchStart",
+        touchPoints: at(pts[0]),
+      });
+      for (let k = 1; k < pts.length; k++)
+        for (let s = 1; s <= 8; s++) {
+          const a = pts[k - 1],
+            b = pts[k];
+          await cdp.send("Input.dispatchTouchEvent", {
+            type: "touchMove",
+            touchPoints: at({
+              x: a.x + ((b.x - a.x) * s) / 8,
+              y: a.y + ((b.y - a.y) * s) / 8,
+            }),
+          });
+        }
+      await cdp.send("Input.dispatchTouchEvent", {
+        type: "touchEnd",
+        touchPoints: [],
+      });
+    };
+    const sent = (a: string) =>
+      page.evaluate(
+        (a) =>
+          (window as any).__farmRequests
+            .flatMap((r: any) => r.actions ?? [])
+            .filter((x: any) => x.a === a)
+            .map((x: any) => x.plot)
+            .sort((x: number, y: number) => x - y),
+        a,
+      );
+    // Sowing: tap an empty plot, then drag Breeze Wheat across the row.
+    const p11 = await plot(11);
+    await page.touchscreen.tap(p11.x, p11.y);
+    await expect(page.locator('#fm-pop [data-pseed="wheat"]')).toBeVisible();
+    await swipe([
+      await center('#fm-pop [data-pseed="wheat"]'),
+      await plot(12),
+      await plot(14),
+    ]);
+    await expect.poll(() => sent("plant")).toEqual([11, 12, 13, 14]);
+    await expect(page.locator("#fm-ghost")).toBeHidden();
+    // Harvesting: a tap on a ripe crop shows the sickle (nothing is cut yet)…
+    const p3 = await plot(3);
+    await page.touchscreen.tap(p3.x, p3.y);
+    const sickle = page.locator("#fm-sickle [data-sickle]");
+    await expect(sickle).toBeVisible();
+    await snap(page, info, "farm-sickle-844x390");
+    expect(await sent("harvest")).toEqual([]);
+    // …drag it across the row: every ripe crop it passes is harvested, the
+    // growing ones stay.
+    await swipe([
+      await center("#fm-sickle [data-sickle]"),
+      await plot(4),
+      await plot(0),
+    ]);
+    await expect.poll(() => sent("harvest")).toEqual([0, 3, 4]);
+    await expect(page.locator("#fm-sickle")).toBeHidden();
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});
+
+for (const reduced of [false, true]) {
+  test(`a storm brings lightning${reduced ? ", but not with reduced motion" : ""}`, async ({
+    browser,
+  }, info) => {
+    const context = await browser.newContext({
+      viewport: { width: 1280, height: 800 },
+      reducedMotion: reduced ? "reduce" : "no-preference",
+    });
+    try {
+      const page = await context.newPage();
+      const errors = await openLobby(page);
+      await fakeFarm(page);
+      await page.click('#hub-scenes [data-hub-scene="farm"]');
+      await page.waitForFunction(() => (window as any).__farm?.F?.loaded);
+      // The fake farm is in a storm; strike now.
+      await page.evaluate(() => {
+        const f = (window as any).__farm;
+        f.F.weather.cur = "storm";
+        f.wx.next = 0;
+      });
+      const bolt = () =>
+        page.evaluate(() => {
+          const wx = (window as any).__farm.wx;
+          return wx.bolt ? wx.bolt.main.length : 0;
+        });
+      if (reduced) {
+        // Two seconds of the farm running in the storm: no bolt, no flash.
+        const t0 = await page.evaluate(() => (window as any).__farm.time());
+        await expect
+          .poll(() => page.evaluate(() => (window as any).__farm.time()), {
+            timeout: 30_000,
+          })
+          .toBeGreaterThan(t0 + 2);
+        expect(await bolt()).toBe(0);
+      } else {
+        // A bolt from the clouds down, several segments long.
+        await expect.poll(bolt, { timeout: 30_000 }).toBeGreaterThan(4);
+        await snap(page, info, "farm-storm-1280x800");
+      }
+      expect(errors).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });
+}
+
 test("the farm rests behind Settings and wakes when it closes", async ({
   page,
 }) => {
@@ -1968,8 +2112,13 @@ for (const viewport of [
       // A tap on the plot with the bug catches the bug first…
       await tap(await plotAt(page, 30));
       await expect.poll(sent).toEqual([{ a: "catch", plot: 30 }]);
-      // …and a tap anywhere on it harvests all of it.
+      // …and a tap anywhere on it harvests all of it (on a phone the tap
+      // shows the sickle, and a tap on the sickle cuts the whole giant).
       await tap(p21);
+      if (phone) {
+        await expect.poll(sent).toEqual([{ a: "catch", plot: 30 }]);
+        await page.locator("#fm-sickle [data-sickle]").tap();
+      }
       await expect.poll(sent).toEqual([
         { a: "catch", plot: 30 },
         { a: "harvest-giant", plot: 10 },

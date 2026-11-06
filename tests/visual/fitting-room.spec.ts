@@ -150,7 +150,7 @@ for (const size of SIZES)
       await expect(page.locator(".fit-slot")).toHaveCount(6);
       await page.click('[data-fit-fighter="voltkit"]');
       await page.click('[data-fit-slot="champion"]');
-      await expect(page.locator(".fit-grid [data-ui-item]")).toHaveCount(3); // original, Midnight, Stormcrown
+      await expect(page.locator(".fit-grid [data-ui-item]")).toHaveCount(3); // original, Midnight, Storm Revenant
       await expect(page.locator(".fit-more")).toBeVisible();
       await page.click('[data-ui-item="voltkit-midnight"]');
       await expect(page.locator(".ui-panel-foot")).toContainText("1 change");

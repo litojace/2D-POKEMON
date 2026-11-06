@@ -23,7 +23,8 @@ export type FarmCue =
   | "levelup"
   | "fanfare"
   | "chirp"
-  | "cricket";
+  | "cricket"
+  | "thunder";
 
 export const FARM_CUES: readonly FarmCue[] = [
   "pop",
@@ -46,6 +47,7 @@ export const FARM_CUES: readonly FarmCue[] = [
   "fanfare",
   "chirp",
   "cricket",
+  "thunder",
 ];
 
 /** A harvest pop climbs a whole tone per crop in a swipe, up to 14 steps. */
@@ -131,6 +133,8 @@ export function playFarmCue(
       fl = ctx.createBiquadFilter(),
       g = ctx.createGain();
     s.buffer = noise;
+    // Longer than the noise (a thunder roll): loop it.
+    s.loop = dur > noise.duration - 0.1;
     fl.type = type;
     fl.frequency.setValueAtTime(f, t);
     fl.Q.value = q;
@@ -254,6 +258,12 @@ export function playFarmCue(
     case "splash":
       hiss({ dur: 0.35, vol: 0.14, f: 900, q: 0.8, f2: 400 });
       tone({ f: 600, f2: 200, dur: 0.18, vol: 0.06 });
+      break;
+    case "thunder":
+      // A crack, then a long low rumble rolling away.
+      hiss({ dur: 0.35, vol: 0.16, f: 2200, q: 0.6, f2: 600, type: "lowpass" });
+      hiss({ dur: 2.6, vol: 0.32, f: 260, q: 0.7, f2: 70, type: "lowpass" });
+      hiss({ dur: 1.8, vol: 0.18, f: 140, q: 1.1, delay: 0.35 });
       break;
     case "whoosh":
       hiss({ dur: 0.6, vol: 0.12, f: 300, q: 1.2, f2: 2400 });

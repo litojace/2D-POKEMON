@@ -543,7 +543,7 @@ describe("the Wardrobe", () => {
       data(e, { look: { skin: "candy-colours" } }),
     ).body;
     expect(body.match(/data-fit-slot="/g)).toHaveLength(6);
-    expect(body).toMatch(/data-fit-slot="champion"[\s\S]*?Stormcrown/);
+    expect(body).toMatch(/data-fit-slot="champion"[\s\S]*?Storm Revenant/);
     expect(body).toMatch(/data-fit-slot="skin"[\s\S]*?Candy colors/);
     expect(body.match(/data-fit-fighter="/g)).toHaveLength(
       Object.keys(CHARACTERS).length,
@@ -574,7 +574,7 @@ describe("the Wardrobe", () => {
     ]);
     const foot = fittingRoomParts(view, d).foot;
     expect(foot).toContain("Voltkit · 2 changes");
-    expect(foot).toContain("Skin: Stormcrown → Midnight");
+    expect(foot).toContain("Skin: Storm Revenant → Midnight");
     expect(foot).not.toMatch(
       /data-fit-save[^>]*disabled|disabled[^>]*data-fit-save/,
     );

@@ -187,6 +187,8 @@ const FARM_HTML = `<div class="fm" id="fm">
     <div class="fm-log" id="fm-log" aria-live="polite"></div>
     <div class="fm-tip glass" id="fm-tip" hidden></div>
     <div class="fm-pop glass" id="fm-pop" hidden></div>
+    <div class="fm-sickle" id="fm-sickle" hidden><button type="button" data-sickle aria-label="Harvest: tap, or drag across ripe crops">${I("sickle")}</button></div>
+    <div class="fm-ghost" id="fm-ghost" hidden aria-hidden="true"></div>
     <div class="fm-orbpop glass" id="fm-orbpop" hidden></div>
     <section class="fm-sheet glass" id="fm-sheet" hidden></section>
     <div class="fm-hint" id="fm-hint">Drag the grass to move · scroll or press +/− to zoom</div>
@@ -2356,55 +2358,353 @@ export function openFarm(options) {
         // the ground for its whole ring.
         fx = ((k * 211.7 + cyc * 157) % 1000) / 1000,
         fy = ((k * 137.3 + cyc * 89) % 1000) / 1000;
+      const sx = x0 + fx * vw,
+        sy = y0 + fy * vh;
       g.globalAlpha = 1 - ph;
       g.beginPath();
-      g.ellipse(
-        x0 + fx * vw,
-        y0 + fy * vh,
-        3 + ph * 11,
-        1.3 + ph * 3.6,
-        0,
-        0,
-        Math.PI * 2,
-      );
+      g.ellipse(sx, sy, 3 + ph * 11, 1.3 + ph * 3.6, 0, 0, Math.PI * 2);
       g.stroke();
+      // Every third drop throws up two droplets that arc back down.
+      if (k % 3 === 0 && ph < 0.5) {
+        const q = ph / 0.5,
+          up = Math.sin(q * Math.PI) * 9;
+        g.fillStyle = "rgba(225,242,255,.9)";
+        g.fillRect(sx - 3 - q * 7, sy - up, 1.6, 1.6);
+        g.fillRect(sx + 2 + q * 7, sy - up * 0.8, 1.6, 1.6);
+      }
     }
     g.restore();
   }
-  // Weather you can see at a glance: layered rain with splashes, real lightning flashes,
-  // drifting snow, a starry night with fireflies, a bright rainbow, warm sun rays.
-  const WX = { flash: 0 };
-  function drawWeather(g, time) {
-    const w = F.weather.cur;
-    if (w === "rain" || w === "storm") {
-      const heavy = w === "storm";
-      g.fillStyle = heavy ? "rgba(14,22,50,.36)" : "rgba(26,46,96,.24)";
-      g.fillRect(0, 0, VW, VH);
-      g.lineCap = "round";
-      // Low graphics: half the drops and splashes.
-      const share = low ? 0.5 : 1;
-      for (const [n, len, sp, lw, a] of [
-        [(heavy ? 240 : 170) * share, 15, 760, 1.3, 0.38],
-        [(heavy ? 160 : 110) * share, 28, 1180, 2.3, 0.72],
-      ]) {
-        g.strokeStyle = `rgba(205,228,255,${a})`;
-        g.lineWidth = lw;
-        g.beginPath();
-        for (let k = 0; k < n; k++) {
-          const x = ((k * 97.3 + time * sp * 0.32) % (VW + 220)) - 110,
-            y = ((k * 53.7 + time * sp) % (VH + 60)) - 30;
-          g.moveTo(x, y);
-          g.lineTo(x - len * 0.32, y + len);
+  /* Weather, drawn over the farm in screen space but tied to the world:
+     rain and snow fall in depth layers that shift with the camera, lean
+     with a gusting wind and never repeat in a visible grid (each drop has
+     its own length, speed and place); storms bring real lightning (a
+     branching bolt, a flicker, thunder after it; none with reduced motion);
+     the sun casts soft shafts; a rainbow is a soft spectral bow with a faint
+     second one outside it. Low graphics draws about half. */
+  const WX = { flash: 0, next: 4, boltT: -9, bolt: null, rainbow: null };
+  /** A fixed random number in [0, 1) for drop k of layer s. */
+  const wxHash = (k, s) => {
+    const x = Math.sin(k * 127.1 + s * 311.7) * 43758.5453;
+    return x - Math.floor(x);
+  };
+  /** The wind's lean (horizontal per vertical), gusting slowly. */
+  const wxWind = (w, time) =>
+    (w === "storm" ? 0.42 : w === "frost" ? 0.2 : 0.24) +
+    Math.sin(time * 0.37) * 0.08 +
+    Math.sin(time * 1.3 + 1) * 0.03;
+  /** How far a layer at `depth` (0 far … 1 near) has moved with the camera. */
+  const wxPan = (depth) => ({ x: -cam.x * Z * depth, y: -cam.y * Z * depth });
+  const wxMod = (v, m) => ((v % m) + m) % m;
+  /** A soft round flake, drawn once. */
+  let flakeSprite;
+  function flakeImg() {
+    if (flakeSprite) return flakeSprite;
+    const c = document.createElement("canvas");
+    c.width = c.height = 32;
+    const g = c.getContext("2d"),
+      gr = g.createRadialGradient(16, 16, 0, 16, 16, 16);
+    gr.addColorStop(0, "rgba(255,255,255,1)");
+    gr.addColorStop(0.45, "rgba(255,255,255,.75)");
+    gr.addColorStop(1, "rgba(255,255,255,0)");
+    g.fillStyle = gr;
+    g.fillRect(0, 0, 32, 32);
+    return (flakeSprite = c);
+  }
+  /** A jagged bolt from the clouds, with a few forks. */
+  function makeBolt() {
+    const main = [];
+    let x = VW * (0.15 + Math.random() * 0.7),
+      y = -10;
+    const end = VH * (0.42 + Math.random() * 0.3);
+    main.push([x, y]);
+    while (y < end) {
+      x += (Math.random() - 0.5) * 70;
+      y += 22 + Math.random() * 30;
+      main.push([x, y]);
+    }
+    const forks = [];
+    for (let k = 2; k < main.length - 2; k++)
+      if (Math.random() < 0.3) {
+        let [fx, fy] = main[k];
+        const dir = Math.random() < 0.5 ? -1 : 1,
+          f = [[fx, fy]];
+        for (let n = 0; n < 3 + Math.random() * 3; n++) {
+          fx += dir * (10 + Math.random() * 30);
+          fy += 14 + Math.random() * 22;
+          f.push([fx, fy]);
         }
-        g.stroke();
+        forks.push(f);
       }
-      // (The splashes are on the ground, under houses and trees: see
-      // drawRainSplashes.)
-      if (heavy && WX.flash > 0) {
-        g.fillStyle = `rgba(235,242,255,${WX.flash * 0.6})`;
-        g.fillRect(0, 0, VW, VH);
+    return { main, forks };
+  }
+  function strokePath(g, pts) {
+    g.beginPath();
+    g.moveTo(pts[0][0], pts[0][1]);
+    for (let k = 1; k < pts.length; k++) g.lineTo(pts[k][0], pts[k][1]);
+    g.stroke();
+  }
+  function drawRain(g, time, heavy) {
+    const wind = wxWind(heavy ? "storm" : "rain", time),
+      share = low ? 0.5 : 1;
+    // The cloud deck darkens the top; mist lies low over the ground.
+    const sky = g.createLinearGradient(0, 0, 0, VH);
+    sky.addColorStop(0, heavy ? "rgba(16,22,40,.66)" : "rgba(38,54,88,.42)");
+    sky.addColorStop(0.45, heavy ? "rgba(20,28,52,.36)" : "rgba(34,50,90,.2)");
+    sky.addColorStop(1, heavy ? "rgba(40,52,78,.34)" : "rgba(70,90,120,.2)");
+    g.fillStyle = sky;
+    g.fillRect(0, 0, VW, VH);
+    // Curtains of heavier rain sweep across now and then.
+    g.save();
+    g.globalCompositeOperation = "lighter";
+    for (let k = 0; k < 3; k++) {
+      const cx = wxMod(k * 520 + time * (40 + k * 12), VW + 900) - 450,
+        a = (heavy ? 0.06 : 0.04) * (0.6 + 0.4 * Math.sin(time * 0.5 + k));
+      const band = g.createLinearGradient(cx - 220, 0, cx + 220, 0);
+      band.addColorStop(0, "rgba(200,215,240,0)");
+      band.addColorStop(0.5, `rgba(200,215,240,${a})`);
+      band.addColorStop(1, "rgba(200,215,240,0)");
+      g.fillStyle = band;
+      g.beginPath();
+      g.moveTo(cx - 220, 0);
+      g.lineTo(cx + 220, 0);
+      g.lineTo(cx + 220 + VH * wind, VH);
+      g.lineTo(cx - 220 + VH * wind, VH);
+      g.fill();
+    }
+    g.restore();
+    // Three layers of drops, far to near.
+    g.lineCap = "round";
+    for (const [layer, n, len, sp, lw, a, depth] of [
+      [1, heavy ? 160 : 120, 12, 620, 1, 0.3, 0.15],
+      [2, heavy ? 130 : 95, 20, 900, 1.5, 0.5, 0.4],
+      [3, heavy ? 75 : 50, 34, 1350, 2.3, 0.62, 0.8],
+    ]) {
+      const pan = wxPan(depth),
+        span = VW + 400;
+      g.strokeStyle = `rgba(214,230,255,${a})`;
+      g.lineWidth = lw;
+      g.beginPath();
+      for (let k = 0; k < n * share; k++) {
+        const r1 = wxHash(k, layer),
+          r2 = wxHash(k, layer + 10),
+          r3 = wxHash(k, layer + 20),
+          L = len * (0.7 + r2 * 0.6),
+          fall = time * sp * (0.85 + r3 * 0.3) + r1 * 5000,
+          y = wxMod(fall + pan.y, VH + L * 2) - L,
+          x = wxMod(r1 * span + y * wind + pan.x, span) - 200;
+        g.moveTo(x, y);
+        g.lineTo(x - L * wind, y - L);
+      }
+      g.stroke();
+    }
+    if (heavy) drawLightning(g, time);
+  }
+  function drawLightning(g, time) {
+    // Spaced out and gentle; never with reduced motion (no flashing).
+    if (reduced) return;
+    if (time >= WX.next) {
+      WX.next = time + 6 + Math.random() * 9;
+      WX.boltT = time;
+      WX.bolt = makeBolt();
+      // Thunder follows, later the farther the strike.
+      setTimeout(() => sfx("thunder"), 300 + Math.random() * 1200);
+    }
+    const k = time - WX.boltT;
+    if (k > 0.6 || !WX.bolt) return;
+    // Two flickers, then a fading glow.
+    const on = k < 0.08 || (k > 0.14 && k < 0.22) ? 1 : 0.35,
+      a = (1 - k / 0.6) * on;
+    g.save();
+    g.fillStyle = `rgba(225,232,255,${0.32 * a})`;
+    g.fillRect(0, 0, VW, VH);
+    g.globalCompositeOperation = "lighter";
+    g.lineJoin = "round";
+    g.lineCap = "round";
+    for (const [lw, c] of [
+      [16, `rgba(150,180,255,${0.2 * a})`],
+      [6, `rgba(200,220,255,${0.5 * a})`],
+      [2.6, `rgba(255,255,255,${a})`],
+    ]) {
+      g.lineWidth = lw;
+      g.strokeStyle = c;
+      strokePath(g, WX.bolt.main);
+      g.lineWidth = lw * 0.6;
+      for (const f of WX.bolt.forks) strokePath(g, f);
+    }
+    g.restore();
+  }
+  function drawSnow(g, time) {
+    const wind = wxWind("frost", time),
+      share = low ? 0.5 : 1,
+      img = flakeImg();
+    // A cold, pale sky and a little haze.
+    const sky = g.createLinearGradient(0, 0, 0, VH);
+    sky.addColorStop(0, "rgba(214,232,250,.34)");
+    sky.addColorStop(0.5, "rgba(226,240,255,.1)");
+    sky.addColorStop(1, "rgba(230,244,255,.16)");
+    g.fillStyle = sky;
+    g.fillRect(0, 0, VW, VH);
+    for (const [layer, n, r, sp, a, depth] of [
+      [4, 110, 1.4, 22, 0.55, 0.15],
+      [5, 70, 2.8, 36, 0.8, 0.45],
+      [6, 24, 6.5, 62, 0.85, 0.85],
+    ]) {
+      const pan = wxPan(depth),
+        span = VW + 200;
+      for (let k = 0; k < n * share; k++) {
+        const r1 = wxHash(k, layer),
+          r2 = wxHash(k, layer + 10),
+          r3 = wxHash(k, layer + 20),
+          R = r * (0.7 + r2 * 0.6),
+          y =
+            wxMod(time * sp * (0.8 + r3 * 0.4) + r1 * 3000 + pan.y, VH + 40) -
+            20,
+          sway = Math.sin(time * (0.6 + r2) + r1 * 9) * (8 + 14 * depth),
+          x =
+            wxMod(
+              r1 * span +
+                time * wind * 40 * depth +
+                y * wind * 0.5 +
+                sway +
+                pan.x,
+              span,
+            ) - 100;
+        g.globalAlpha = a * (0.7 + 0.3 * r3);
+        g.drawImage(img, x - R * 1.6, y - R * 1.6, R * 3.2, R * 3.2);
       }
     }
+    g.globalAlpha = 1;
+    // Frost creeps in at the edges of the view.
+    const vg = g.createRadialGradient(
+      VW / 2,
+      VH / 2,
+      VH * 0.4,
+      VW / 2,
+      VH / 2,
+      VH * 1.05,
+    );
+    vg.addColorStop(0, "rgba(220,245,255,0)");
+    vg.addColorStop(1, "rgba(228,246,255,.45)");
+    g.fillStyle = vg;
+    g.fillRect(0, 0, VW, VH);
+  }
+  function drawSun(g, time) {
+    // The sun stands off the top right; its light fans out in soft shafts.
+    const sx = VW * 0.95,
+      sy = -VH * 0.28;
+    g.save();
+    g.globalCompositeOperation = "lighter";
+    const glowR = VH * 0.95,
+      gl = g.createRadialGradient(sx, sy, 0, sx, sy, glowR);
+    gl.addColorStop(0, "rgba(255,240,190,.3)");
+    gl.addColorStop(0.4, "rgba(255,230,170,.1)");
+    gl.addColorStop(1, "rgba(255,230,170,0)");
+    g.fillStyle = gl;
+    g.fillRect(0, 0, VW, VH);
+    const reach = Math.hypot(VW, VH) * 1.15;
+    for (let k = 0; k < (low ? 4 : 7); k++) {
+      const ang =
+          Math.PI * (0.6 + k * 0.055) + Math.sin(time * 0.15 + k) * 0.01,
+        wid = 0.012 + wxHash(k, 30) * 0.02,
+        a = 0.07 + 0.05 * Math.sin(time * 0.5 + k * 1.7);
+      const ex = sx + Math.cos(ang) * reach,
+        ey = sy + Math.sin(ang) * reach,
+        sh = g.createLinearGradient(sx, sy, ex, ey);
+      sh.addColorStop(0, `rgba(255,242,200,${a})`);
+      sh.addColorStop(0.55, `rgba(255,242,200,${a * 0.45})`);
+      sh.addColorStop(1, "rgba(255,242,200,0)");
+      g.fillStyle = sh;
+      g.beginPath();
+      g.moveTo(sx, sy);
+      g.lineTo(
+        sx + Math.cos(ang - wid) * reach,
+        sy + Math.sin(ang - wid) * reach,
+      );
+      g.lineTo(
+        sx + Math.cos(ang + wid) * reach,
+        sy + Math.sin(ang + wid) * reach,
+      );
+      g.fill();
+    }
+    // Dust drifting in the light.
+    const wind = 0.15 + Math.sin(time * 0.2) * 0.05;
+    for (let k = 0; k < (low ? 14 : 28); k++) {
+      const r1 = wxHash(k, 40),
+        r2 = wxHash(k, 41),
+        x = wxMod(
+          r1 * VW + time * 12 * wind * (1 + r2) + Math.sin(time * 0.5 + k) * 20,
+          VW,
+        ),
+        y = wxMod(r2 * VH + Math.sin(time * 0.3 + k * 2) * 18 - time * 3, VH),
+        a = (0.35 + 0.65 * Math.abs(Math.sin(time * 0.8 + k))) * 0.45;
+      g.fillStyle = `rgba(255,244,200,${a})`;
+      g.beginPath();
+      g.arc(x, y, 1.1 + r2 * 1.2, 0, Math.PI * 2);
+      g.fill();
+    }
+    g.restore();
+  }
+  /** The rainbow, drawn once per screen size: a soft spectral bow that fades
+   *  into the ground at both ends, and a faint second bow outside it with
+   *  its colours reversed, the sky brighter inside the main bow. */
+  function rainbowImg() {
+    const key = `${VW}x${VH}`;
+    if (WX.rainbow?.key === key) return WX.rainbow.c;
+    const c = document.createElement("canvas");
+    c.width = VW;
+    c.height = VH;
+    const g = c.getContext("2d"),
+      cx = VW * 0.5,
+      cy = VH * 1.08,
+      R = Math.min(VW * 0.56, 780),
+      cols = [
+        "255,70,70",
+        "255,150,60",
+        "255,225,90",
+        "100,210,120",
+        "80,170,255",
+        "90,110,240",
+        "160,110,240",
+      ];
+    // Brighter sky inside the bow.
+    const inside = g.createRadialGradient(cx, cy, 0, cx, cy, R);
+    inside.addColorStop(0.6, "rgba(255,255,255,0)");
+    inside.addColorStop(1, "rgba(255,255,255,.07)");
+    g.fillStyle = inside;
+    g.beginPath();
+    g.arc(cx, cy, R, Math.PI, 0);
+    g.fill();
+    const bow = (r0, band, order, alpha) => {
+      const seg = 28;
+      for (let i = 0; i < cols.length; i++) {
+        const col = cols[order ? i : cols.length - 1 - i],
+          r = r0 - i * band;
+        for (let s = 0; s < seg; s++) {
+          const a0 = Math.PI + (Math.PI * s) / seg,
+            a1 = Math.PI + (Math.PI * (s + 1)) / seg,
+            fade = Math.pow(Math.sin(((s + 0.5) / seg) * Math.PI), 0.7);
+          for (const [lw, k] of [
+            [band * 2.2, 0.35],
+            [band * 1.1, 1],
+          ]) {
+            g.strokeStyle = `rgba(${col},${alpha * fade * k})`;
+            g.lineWidth = lw;
+            g.beginPath();
+            g.arc(cx, cy, r, a0, a1 + 0.002);
+            g.stroke();
+          }
+        }
+      }
+    };
+    bow(R, 8, true, 0.3);
+    bow(R * 1.3, 9, false, 0.11);
+    WX.rainbow = { key, c };
+    return c;
+  }
+  function drawWeather(g, time) {
+    const w = F.weather.cur;
+    if (w === "rain" || w === "storm") drawRain(g, time, w === "storm");
     if (w === "moon") {
       g.save();
       g.globalCompositeOperation = "multiply";
@@ -2453,108 +2753,27 @@ export function openFarm(options) {
       }
       g.restore();
     }
-    if (w === "frost") {
-      g.fillStyle = "rgba(222,242,255,.2)";
-      g.fillRect(0, 0, VW, VH);
-      for (let k = 0; k < 170; k++) {
-        const r = 1.6 + (k % 4) * 1,
-          sp = 26 + (k % 5) * 13,
-          x =
-            ((k * 131.7 + Math.sin(time * 0.8 + k) * 40 + time * 22) %
-              (VW + 40)) -
-            20,
-          y = ((k * 71.3 + time * sp) % (VH + 20)) - 10;
-        g.fillStyle = `rgba(255,255,255,${0.65 + (k % 3) * 0.12})`;
-        g.beginPath();
-        g.arc(x, y, r, 0, 7);
-        g.fill();
-      }
-      const vg = g.createRadialGradient(
-        VW / 2,
-        VH / 2,
-        VH * 0.35,
-        VW / 2,
-        VH / 2,
-        VH,
-      );
-      vg.addColorStop(0, "rgba(220,245,255,0)");
-      vg.addColorStop(1, "rgba(225,245,255,.55)");
-      g.fillStyle = vg;
-      g.fillRect(0, 0, VW, VH);
-    }
+    if (w === "frost") drawSnow(g, time);
     if (w === "rainbow") {
-      const cx = VW / 2,
-        cy = VH + 40,
-        R = Math.min(VW * 0.62, 820);
-      g.save();
-      g.globalAlpha = 0.22;
-      g.strokeStyle = "#fff";
-      g.lineWidth = 120;
-      g.filter = "blur(18px)";
-      g.beginPath();
-      g.arc(cx, cy, R - 40, Math.PI, 0);
-      g.stroke();
-      g.restore();
-      g.save();
-      g.globalAlpha = 0.5;
-      [
-        "#ff5a5a",
-        "#ffa94d",
-        "#ffe066",
-        "#69db7c",
-        "#4dabf7",
-        "#9775fa",
-      ].forEach((c, k) => {
-        g.strokeStyle = c;
-        g.lineWidth = 16;
-        g.beginPath();
-        g.arc(cx, cy, R - k * 16, Math.PI, 0);
-        g.stroke();
-      });
-      g.restore();
+      g.drawImage(rainbowImg(), 0, 0);
+      // Drops still glinting in the air after the rain.
       g.save();
       g.globalCompositeOperation = "lighter";
-      for (let k = 0; k < 40; k++) {
-        const a = (0.5 + 0.5 * Math.sin(time * 4 + k * 1.3)) * 0.8;
+      for (let k = 0; k < (low ? 12 : 24); k++) {
+        const a = (0.5 + 0.5 * Math.sin(time * 4 + k * 1.3)) * 0.6,
+          x = wxMod(wxHash(k, 50) * VW + time * 8, VW),
+          y = wxHash(k, 51) * VH * 0.75;
         g.fillStyle = `rgba(255,250,230,${a})`;
-        const x = (k * 151.3 + time * 12) % VW,
-          y = (k * 83.7) % (VH * 0.7);
         g.beginPath();
-        g.moveTo(x, y - 5);
-        g.lineTo(x + 1.6, y);
-        g.lineTo(x, y + 5);
-        g.lineTo(x - 1.6, y);
+        g.moveTo(x, y - 4);
+        g.lineTo(x + 1.3, y);
+        g.lineTo(x, y + 4);
+        g.lineTo(x - 1.3, y);
         g.fill();
       }
       g.restore();
     }
-    if (w === "sun") {
-      g.save();
-      g.globalCompositeOperation = "lighter";
-      for (let k = 0; k < 5; k++) {
-        g.fillStyle = "rgba(255,238,170,.075)";
-        g.beginPath();
-        g.moveTo(VW - 200 + k * 46, -20);
-        g.lineTo(VW - 110 + k * 46, -20);
-        g.lineTo(VW * 0.45 + k * 130, VH);
-        g.lineTo(VW * 0.45 - 110 + k * 130, VH);
-        g.fill();
-      }
-      for (let k = 0; k < 36; k++) {
-        const a = (0.4 + 0.6 * Math.abs(Math.sin(time * 0.9 + k))) * 0.55;
-        g.fillStyle = `rgba(255,240,190,${a})`;
-        g.beginPath();
-        g.arc(
-          (k * 167.9 + Math.sin(time * 0.4 + k) * 40) % VW,
-          (k * 97.7 + time * 9) % VH,
-          1.8,
-          0,
-          7,
-        );
-        g.fill();
-      }
-      g.restore();
-    }
+    if (w === "sun") drawSun(g, time);
   }
   let hoverI = -1;
   const combo = { n: 0, x: 0, y: 0 };
@@ -4103,7 +4322,15 @@ export function openFarm(options) {
     const gi = F.giantAt[i];
     if (gi && ["hand", "seed", "shovel"].includes(F.tool)) {
       if (F.tool === "hand" && p.pests) catchAt(i);
-      else if (F.tool === "shovel") {
+      else if (
+        F.tool === "hand" &&
+        pressType !== "mouse" &&
+        !drag &&
+        !holdPaint
+      ) {
+        sicklePop(i);
+        return;
+      } else if (F.tool === "shovel") {
         if (!drag) toast("Harvest the giant crop first");
       } else harvestGiant(gi, F.tool === "seed" && drag);
       renderChips();
@@ -4117,7 +4344,9 @@ export function openFarm(options) {
           break;
         }
         if (p.crop && p.prog >= 1) {
-          harvestAt(i);
+          // A touch tap shows the sickle to drag across the field.
+          if (pressType !== "mouse" && !drag && !holdPaint) sicklePop(i);
+          else harvestAt(i);
           break;
         }
         if (!p.crop && !drag) seedPop(i);
@@ -4238,7 +4467,13 @@ export function openFarm(options) {
     pop.style.left = `${Math.max(8, Math.min(o.w - pw - 8, sp.x - pw / 2))}px`;
     const top = sp.y - pop.offsetHeight - 14;
     pop.style.top = `${top < 60 ? Math.min(o.h - pop.offsetHeight - 8, sp.y + PH * Z * K + 10) : top}px`;
+    // Press a seed and drag it across the field to sow every empty plot it
+    // passes; a tap still sows just this one.
+    pop.querySelectorAll("[data-pseed]:not([disabled])").forEach((b) => {
+      b.onpointerdown = (e) => startCarry(e, "seed", b.dataset.pseed, i);
+    });
     pop.onclick = (e) => {
+      if (carried()) return;
       const b = e.target.closest("[data-pseed]"),
         q = e.target.closest("[data-pbuy]");
       const id = b?.dataset.pseed || q?.dataset.pbuy;
@@ -4254,6 +4489,123 @@ export function openFarm(options) {
       toast(`Planting ${CROP[id].n} · drag over empty plots to keep sowing`);
     };
   }
+  /* ---------- planting and harvesting by hand, as in mobile farm games ----------
+     Tap an empty plot: the seed tray opens; press a seed and drag it across
+     the field and every empty plot it passes is sown. Tap a ripe crop (on a
+     touch screen): a sickle pops up beside it; drag it across the field and
+     every ripe crop it passes is harvested (a giant whole), or tap it for
+     just that one. The seed or sickle rides under your finger meanwhile. The
+     mouse keeps click and click-and-drag with the tool in hand. */
+  let pressType = "mouse",
+    holdPaint = false,
+    carry = null,
+    carriedAt = 0;
+  /** A carry just ended with a drag: the click that follows is not a tap. */
+  const carried = () => performance.now() - carriedAt < 400;
+  function sicklePop(i) {
+    const r = plotRect(i),
+      o = hudOff(),
+      sp0 = toScreen(r.x + PW * 0.82, r.y + PH * 0.15),
+      el = $("fm-sickle");
+    el.hidden = false;
+    el.dataset.plot = String(i);
+    el.style.left = `${Math.max(8, Math.min(o.w - 72, sp0.x - o.x - 32))}px`;
+    el.style.top = `${Math.max(56, Math.min(o.h - 72, sp0.y - o.y - 70))}px`;
+    clearTimeout(sicklePop.t);
+    sicklePop.t = setTimeout(() => (el.hidden = true), 5000);
+    const b = el.querySelector("[data-sickle]");
+    b.onpointerdown = (e) => startCarry(e, "sickle", null, i);
+    b.onclick = () => {
+      if (carried()) return;
+      el.hidden = true;
+      carryOne("sickle", null, i);
+      endDrag();
+    };
+  }
+  function startCarry(e, kind, id, from) {
+    if (e.button > 0) return;
+    carry = {
+      kind,
+      id,
+      from,
+      pid: e.pointerId,
+      x0: e.clientX,
+      y0: e.clientY,
+      moved: false,
+      done: new Set(),
+      out: false,
+    };
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {}
+  }
+  function carryOne(kind, id, i) {
+    if (i < 0 || carry?.done.has(i)) return;
+    carry?.done.add(i);
+    const p = F.plots[i];
+    if (!p || p.locked) return;
+    if (kind === "seed") {
+      if (p.crop) return;
+      if (!F.seeds[id]) {
+        if (carry && !carry.out) {
+          carry.out = true;
+          toast(`Out of ${CROP[id]?.n ?? "these"} seeds`);
+        }
+        return;
+      }
+      if (plantAt(i, id)) F.seed = id;
+      return;
+    }
+    if (p.crowAt) return shooAt(i);
+    const gi = F.giantAt[i];
+    if (gi) {
+      for (const j of gi.plots) carry?.done.add(j);
+      harvestGiant(gi, true);
+      return;
+    }
+    if (p.crop && p.prog >= 1) harvestAt(i, true);
+  }
+  function carryMove(e) {
+    if (!carry || e.pointerId !== carry.pid) return;
+    if (!carry.moved) {
+      if (Math.hypot(e.clientX - carry.x0, e.clientY - carry.y0) < 8) return;
+      carry.moved = true;
+      dragging = true;
+      $("fm-pop").hidden = true;
+      $("fm-pop").classList.remove("seedpick");
+      $("fm-sickle").hidden = true;
+      $("fm-tip").hidden = true;
+      const g = $("fm-ghost");
+      g.innerHTML =
+        carry.kind === "seed"
+          ? `<img src="${icon(carry.id)}" alt="">`
+          : I("sickle");
+      g.hidden = false;
+      // The plot it started from counts too.
+      carryOne(carry.kind, carry.id, carry.from);
+    }
+    e.preventDefault();
+    const o = hudOff(),
+      lr = layer.getBoundingClientRect(),
+      g = $("fm-ghost");
+    g.style.left = `${e.clientX - lr.left - o.x}px`;
+    g.style.top = `${e.clientY - lr.top - o.y}px`;
+    const w = toWorld(e.clientX, e.clientY);
+    carryOne(carry.kind, carry.id, plotAt(w.x, w.y));
+  }
+  function carryEnd(e) {
+    if (!carry || e.pointerId !== carry.pid) return;
+    const moved = carry.moved;
+    carry = null;
+    $("fm-ghost").hidden = true;
+    if (!moved) return; // a tap: the button's click handles it
+    carriedAt = performance.now();
+    renderTools();
+    endDrag();
+  }
+  addEventListener("pointermove", carryMove, true);
+  addEventListener("pointerup", carryEnd, true);
+  addEventListener("pointercancel", carryEnd, true);
   function landClick(i) {
     if (!buyable(i))
       return toast("You can only buy plots next to land you own");
@@ -6460,7 +6812,7 @@ export function openFarm(options) {
   // touch has no hover: tapping a growing crop with the hand shows its card for a moment
   if (matchMedia("(pointer: coarse)").matches)
     $("fm-hint").textContent =
-      "Drag to move · pinch to zoom · hold a plot to plant many";
+      "Tap a plot, then drag a seed or the sickle across the field · drag the grass to move";
 
   /* canvas pointer */
   let dragging = false,
@@ -6476,6 +6828,7 @@ export function openFarm(options) {
     if (touchPts.size >= 2) return;
     screen.focus({ preventScroll: true });
     $("fm-pop").hidden = true;
+    $("fm-sickle").hidden = true;
     try {
       cv.setPointerCapture(e.pointerId);
     } catch {}
@@ -6497,7 +6850,9 @@ export function openFarm(options) {
         if (tapG && tapG.mode === "pending") {
           tapG.mode = "paint";
           navigator.vibrate?.(12);
+          holdPaint = true;
           press(tapG.ev);
+          holdPaint = false;
         }
       }, HOLD_MS),
     };
@@ -6505,6 +6860,8 @@ export function openFarm(options) {
   function press(e) {
     screen.focus({ preventScroll: true });
     $("fm-pop").hidden = true;
+    $("fm-sickle").hidden = true;
+    pressType = e.pointerType ?? "mouse";
     const w = toWorld(e.clientX, e.clientY);
     if (F.decorPick && !V) {
       const k = DECO_SLOTS.findIndex(
@@ -6892,7 +7249,7 @@ export function openFarm(options) {
   onResize();
   if (matchMedia("(pointer: coarse)").matches)
     $("fm-hint").textContent =
-      "Drag to move · pinch to zoom · hold a plot to plant many";
+      "Tap a plot, then drag a seed or the sickle across the field · drag the grass to move";
   // The animals stand where you left them.
   if (left) {
     if (left.dog) Object.assign(dog, left.dog, { path: [], moving: false });
@@ -6940,6 +7297,9 @@ export function openFarm(options) {
       layer.focus({ preventScroll: true });
     },
     close() {
+      removeEventListener("pointermove", carryMove, true);
+      removeEventListener("pointerup", carryEnd, true);
+      removeEventListener("pointercancel", carryEnd, true);
       LEFT.set(options.owner ?? "", {
         dog: {
           x: dog.x,
@@ -6993,6 +7353,10 @@ export function openFarm(options) {
         };
       },
       well: WELL,
+      /** The weather's effects state: lightning timing (tests). */
+      wx: WX,
+      /** The farm's clock, in seconds since it opened (tests). */
+      time: () => T,
       /** Whether the Supply Balloon is drawn (tests). */
       hasBalloon: () => !!balloon?.crates,
       /** Where the scenery around the farm stands (tests: it never moves). */
