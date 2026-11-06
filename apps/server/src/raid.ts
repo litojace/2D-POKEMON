@@ -376,6 +376,8 @@ export class RaidArena extends Arena {
       this.addBossStagger(p, 3);
       return;
     }
+    // Sloth Time slows a boss like any other slow, not to a crawl.
+    if (p.raidBoss && kind === "warp") kind = "slow";
     super.status(p, kind, duration, by);
   }
   override damage(

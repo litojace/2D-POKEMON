@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Arena } from "../../apps/server/src/simulation.js";
+import { createRaidArena } from "../../apps/server/src/raid-bosses.js";
 import {
   CHARACTERS,
   MOSS,
@@ -434,5 +435,22 @@ describe("combos", () => {
       return hp - them.hp;
     };
     expect(dealt(true) / dealt(false)).toBeCloseTo(1.4, 1);
+  });
+});
+
+describe("in raids", () => {
+  it("Sloth Time slows a boss like any slow, not to a crawl", () => {
+    const a = createRaidArena("NATURE", "grumblecrag");
+    a.add("me", "Me", "mossloth");
+    a.configure(1, false);
+    a.start();
+    a.phase = "playing";
+    const me = a.players.find((p) => !p.raidBoss)!,
+      boss = a.boss()!;
+    place(me, boss.x - 300, boss.y, boss.x, boss.y);
+    a.cast(me, skill("mossloth", "sloth-time"));
+    a.tick();
+    expect(a.has(boss, "warp")).toBe(false);
+    expect(a.has(boss, "slow")).toBe(true);
   });
 });
