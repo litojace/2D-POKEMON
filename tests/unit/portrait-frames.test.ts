@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
 import { RAID_COSMETICS } from "../../packages/shared/src/raid";
 import { LOOK_ITEMS } from "../../packages/shared/src/shop";
-import { JOURNEY_ITEMS } from "../../packages/shared/src/journey";
+import { REWARD_ITEMS } from "../../packages/shared/src/journey";
 import {
   framePortrait,
   framedAvatar,
@@ -16,8 +16,12 @@ it("renders every real raid, collection and journey frame without changing the a
   const catalog = [
     ...Object.entries(RAID_COSMETICS).map(([id, item]) => ({ id, ...item })),
     ...LOOK_ITEMS,
-    ...JOURNEY_ITEMS,
+    // Journey rewards and the Void Knight and Cyber Mecha frames.
+    ...REWARD_ITEMS,
   ].filter((item) => item.slot === "frame");
+  expect(catalog.map((i) => i.id)).toEqual(
+    expect.arrayContaining(["void-frame", "cyber-frame"]),
+  );
   expect(catalog.length).toBeGreaterThan(15);
   for (const { id } of catalog) {
     const html = framePortrait('<svg data-test-avatar="original"></svg>', id);

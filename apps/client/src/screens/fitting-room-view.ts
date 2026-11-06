@@ -42,8 +42,9 @@ import {
   type RaidSlot,
 } from "../../../../packages/shared/src/raid";
 import {
-  JOURNEY_ITEMS,
+  COLLECTION_FRAMES,
   JOURNEY_ITEM_BY_ID,
+  REWARD_ITEMS,
 } from "../../../../packages/shared/src/journey";
 import {
   TIER_NAMES,
@@ -200,14 +201,18 @@ export function fitItem(id: string): FitItem | undefined {
         : "Boss reward",
     };
   const journey = JOURNEY_ITEM_BY_ID[id];
-  if (journey)
+  if (journey) {
+    const set = COLLECTION_FRAMES.find((f) => f.id === id);
     return {
       id,
       name: journey.name,
       description: journey.description,
       slot: journey.slot,
-      source: "Journey reward",
+      source: set
+        ? `Collection reward · ${COLLECTION_NAMES[set.collection]}`
+        : "Journey reward",
     };
+  }
 }
 const nameOf = (id: string) =>
   fitItem(id)?.name ?? SHOP_BUNDLES.find((b) => b.id === id)?.name ?? id;
@@ -231,8 +236,9 @@ export function ownedFor(
     ...LOOK_ITEMS.filter((i) => i.slot === slot && e.owned.includes(i.id)).map(
       (i) => i.id,
     ),
-    // Journey rewards (levels and seasons) are owned items too.
-    ...JOURNEY_ITEMS.filter(
+    // Journey rewards (levels and seasons) and collection frames are owned
+    // items too.
+    ...REWARD_ITEMS.filter(
       (i) => i.slot === slot && e.owned.includes(i.id),
     ).map((i) => i.id),
     ...RAID_REWARDS.filter((r) => r.slot === slot && earned.has(r.id)).map(
@@ -775,11 +781,26 @@ function skinsBody(view: FitView, d: FitData) {
       ownershipMatch(s.id, view, d) &&
       (view.rarity === "all" || s.rarity === view.rarity),
   );
-  return `${fighterRow(view, d, "Fighter")}${filters(view, skins.length, true, "skin")}${
+  return `${fighterRow(view, d, "Fighter")}${filters(view, skins.length, true, "skin")}${collectionReward("cyber", view, d)}${
     skins.length
       ? grid(skins.map((s) => shopTile(s.id, view, d)).join(""))
       : noMatch()
   }`;
+}
+/** A skin collection's reward frame: how close you are, with its picture. */
+function collectionReward(
+  collection: "void" | "cyber",
+  view: FitView,
+  d: FitData,
+) {
+  const e = d.economy!;
+  const frame = COLLECTION_FRAMES.find((f) => f.collection === collection)!;
+  const skins = CHAMPION_SKINS.filter((s) => s.collection === collection);
+  const have = skins.filter((s) => e.owned.includes(s.id)).length;
+  const text = e.owned.includes(frame.id)
+    ? `You own every ${esc(COLLECTION_NAMES[collection])} skin: the <b>${esc(frame.name)}</b> is yours.`
+    : `Own all ${skins.length} ${esc(COLLECTION_NAMES[collection])} skins and the <b>${esc(frame.name)}</b> is yours free (${have}/${skins.length}).`;
+  return `<div class="fit-set-reward" data-fit-reward="${frame.id}"><span class="fit-set-reward-art">${pictureOf(frame.id, view, d, `fit-reward-${collection}`)}</span><p class="ui-note">${text}</p></div>`;
 }
 function mythicBody(view: FitView, d: FitData) {
   const e = d.economy!;
@@ -789,7 +810,7 @@ function mythicBody(view: FitView, d: FitData) {
   const intro = e.mythicTesting
     ? '<p class="ui-note">Testing: Mythic Trials and Awakening stages are open.</p>'
     : `<p class="ui-note">Each fighter's Mythical opens after ${MYTHIC_TRIAL_WINS} wins against players or raid clears with that fighter. Wear it to awaken it: Stage II at ${AWAKENING.stage2Wins} wins, Stage III at ${AWAKENING.stage3Wins} wins and a raid clear.</p>`;
-  return `${intro}${filters(view, skins.length, false, "Mythical")}${
+  return `${intro}${collectionReward("void", view, d)}${filters(view, skins.length, false, "Mythical")}${
     skins.length
       ? grid(skins.map((s) => mythicTile(s.id, view, d)).join(""))
       : noMatch()

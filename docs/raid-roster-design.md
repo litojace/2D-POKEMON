@@ -1087,6 +1087,21 @@ colour. Like a Mythical it swaps the champion's own head and neck pieces
 | Wombolder | **Bulldozer** | brown / lime |
 | Shadopus | **Stealth Mk** | indigo / red |
 
+#### Collection reward frames (Void Knight, Cyber Mecha)
+
+[Migration 071](../supabase/migrations/071_collection_reward_frames.sql) gives
+each of the two skin collections its own frame, earned (never sold) by
+owning all sixteen of its skins, like the other collections' free frame:
+
+- **Void Knight frame** (Mythical): black steel with outward blades and
+  violet runes, a rune gem, and a crown of blades over crossed swords.
+- **Cyber Mecha frame** (Epic): segmented chrome plates, neon circuits and
+  status lights, HUD brackets, a core light and a V-fin on top.
+
+The Mythic Hall and the Skins tab show each frame and how many of its skins
+you own. Astrabun's mallet is re-forged with its skin, too (`SkinArt.weapon`):
+black steel in Rift Duelist, chrome in Warp Unit.
+
 #### The Void Knights (every Mythical)
 
 [Migration 067](../supabase/migrations/067_void_knight_mythicals.sql) turned
