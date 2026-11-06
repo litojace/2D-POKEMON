@@ -3026,7 +3026,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
       `<div class="bs-ring" style="--p:${Math.round((S.xp / need) * 100)}"><b>${S.level}</b>${S.stars ? `<i class="stars" title="${S.stars} star${S.stars > 1 ? "s" : ""}: +${S.stars * 10}% on every price">★${S.stars}</i>` : ""}</div>
       <strong>${esc(name.endsWith("s") ? `${name}'` : `${name}'s`)} Bistro</strong>
       ${visiting ? `<small class="likes">♥ ${fmt(visiting.likes)}</small>` : ""}
-      <div class="xpbar" title="${S.xp} / ${need} XP"><i style="width:${(S.xp / need) * 100}%"></i></div>`,
+      <div class="xpbar"><i style="width:${Math.min(100, (S.xp / need) * 100)}%"></i><span>${fmt(S.xp)} / ${fmt(need)} XP</span></div>`,
     );
     const pop = popNow().total;
     const popN = Math.round(pop);
