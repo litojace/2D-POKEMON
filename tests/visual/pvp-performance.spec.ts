@@ -128,7 +128,9 @@ test("profiles a four-player PvP snapshot/render stream", async ({
         () =>
           page.evaluate(() => {
             const w = window as any;
-            return performance.now() - Math.max(w.__t0 + 6000, w.__lastResize + 3000);
+            return (
+              performance.now() - Math.max(w.__t0 + 6000, w.__lastResize + 3000)
+            );
           }),
         { timeout: 30_000, intervals: [500] },
       )

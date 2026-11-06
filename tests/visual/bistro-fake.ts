@@ -17,6 +17,7 @@ export async function fakeBistro(page: Page) {
         special: "banhmi",
         chef: "voltkit",
         likes: 3,
+        likesWeek: 2,
         leaves: 1234,
         tradedToday: 0,
         friendGuests: [],

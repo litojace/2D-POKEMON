@@ -202,6 +202,67 @@ test("Bistro friends: visit a friend's bistro, eat there and like it", async ({
   expect(errors).toEqual([]);
 });
 
+test("Bistro: popularity sets the pace, a full room queues at the door, and Decorate grades the plan", async ({
+  page,
+}, info) => {
+  const errors = await openBistro(page);
+  // Rating 3 (18) + charm 8 (2.7) + 2 likes this week (1) = 21.7.
+  await expect(page.locator("#bs-chips .pop .pop-ring")).toHaveText("22");
+  await expect(page.locator("#bs-chips .pop")).toContainText("Busy Bistro");
+  await expect(page.locator("#bs-chips .lay")).toContainText("Grade B");
+  await page.click("#bs-chips .pop");
+  // (Guests keep coming meanwhile, and happy ones raise it.)
+  await expect(page.locator("#bs-sheet h2")).toHaveText(
+    /^Popularity 2\d · Busy Bistro$/,
+  );
+  await expect(page.locator("#bs-sheet .bs-pop-row")).toHaveCount(4);
+  await expect(page.locator("#bs-sheet .bs-pop-fx")).toContainText(
+    "can wait at the door",
+  );
+  await snap(page, info, "bistro-popularity");
+  await page.click("#bs-sheet [data-close]");
+  // Plenty of food, and more guests than the six seats.
+  await B(
+    page,
+    "srv.S.counter = [{ dish: 'goicuon', servings: 40, perfect: false }, null, null, null]; return b.load()",
+  );
+  await B(page, "for (let i = 0; i < 12; i++) { b.spawn(); b.advance(0.6); }");
+  const states = (await B(
+    page,
+    "return b.customers().map((c) => c.state)",
+  )) as string[];
+  expect(states.filter((x) => x === "queue")).toHaveLength(3);
+  expect(
+    states.filter((x) => ["enter", "seated", "eating"].includes(x)),
+  ).toHaveLength(6);
+  await B(page, "b.advance(3)");
+  await snap(page, info, "bistro-queue");
+  // A seat comes free: the head of the queue takes it.
+  const head = (await B(
+    page,
+    "return b.customers().find((c) => c.state === 'queue').id",
+  )) as number;
+  await B(
+    page,
+    "const c = b.customers().find((c) => c.state === 'seated' || c.state === 'eating'); b.sync().release(c.id); c.state = 'leave'; c.alpha = 0; b.advance(0.2)",
+  );
+  expect(
+    await B(page, `return b.customers().find((c) => c.id === ${head}).state`),
+  ).not.toBe("queue");
+  expect(
+    await B(
+      page,
+      "return b.customers().filter((c) => c.state === 'queue').length",
+    ),
+  ).toBe(2);
+  // Decorate: the plan's grade, each seat tinted by the waiter's walk.
+  await page.click('.bs-rail [data-act="decor"]');
+  await expect(page.locator("#bs-grade")).toContainText("Floor plan B");
+  await snap(page, info, "bistro-plan-heat");
+  await page.click('#bs-edit [data-ed="done"]');
+  expect(errors).toEqual([]);
+});
+
 test("Bistro: furniture in the bigger room stays through tab switches, even when one change is refused", async ({
   page,
 }) => {

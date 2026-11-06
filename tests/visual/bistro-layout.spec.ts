@@ -132,7 +132,7 @@ async function problems(page: Page, where: string, inset: Insets | null) {
       )) {
         if (!shown(e) || !e.textContent?.trim()) continue;
         const box = e.closest(
-          ".bs-dish, .bs-item, .bs-staff, .bs-slot, .bs-chip, .bs-badge, .bs-wallet, .bs-rail button, .bs-visit, .bs-edit, .bs-away-stats > div",
+          ".bs-dish, .bs-item, .bs-staff, .bs-slot, .bs-chip, .bs-badge, .bs-wallet, .bs-rail button, .bs-visit, .bs-edit, .bs-away-stats > div, .bs-pop-row, .bs-pop-fx > div, .bs-pop-plan",
         );
         if (!box) continue;
         const t = e.getBoundingClientRect(),
@@ -196,7 +196,7 @@ for (const size of SIZES)
          S.stored = { plant: 12, lamp: 3, fountain: 1, aquarium: 2, rug: 1, luckycat: 4 };
          srv.extras.leaves = 98765; srv.extras.tradedToday = 120;
          srv.friends = [
-           { id: '00000000-0000-4000-8000-000000000672', name: 'Bartholomew the Brave', fighter: 'tidefin', level: 27, rating: 4.9, likes: 1234, served: 123456, servings: 88, dined: true, liked: false },
+           { id: '00000000-0000-4000-8000-000000000672', name: 'Bartholomew the Brave', fighter: 'tidefin', level: 27, rating: 4.9, popularity: 47.6, likes: 1234, served: 123456, servings: 88, dined: true, liked: false },
            { id: '00000000-0000-4000-8000-000000000673', name: 'Cy', fighter: 'lumoth', level: 3, rating: 2.1, likes: 0, served: 4, servings: 0, dined: false, liked: true },
          ];
          return b.load();`,
@@ -221,6 +221,7 @@ for (const size of SIZES)
         ["staff", "hire"],
         ["staff", "upgrades"],
         ["friends", undefined],
+        ["popularity", undefined],
       ];
       for (const [k, a] of sheets) {
         await page.evaluate(([k, a]) => (window as any).__bistro.sheet(k, a), [
@@ -233,7 +234,7 @@ for (const size of SIZES)
         await page.evaluate(() =>
           document
             .querySelectorAll(
-              "#bs-sheet :is(.bs-dishes, .bs-items, .bs-team, .bs-bank)",
+              "#bs-sheet :is(.bs-dishes, .bs-items, .bs-team, .bs-bank, .bs-pop)",
             )
             .forEach((e) => (e.scrollTop = e.scrollHeight)),
         );

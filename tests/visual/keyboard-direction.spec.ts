@@ -3,14 +3,22 @@ import { openHub, pushUntilBattle, openPlayPanel } from "./helpers";
 
 // Opposite directions held together: the key pressed last wins. Holding A
 // and then pressing D used to cancel to a standstill until A was released.
-test("pressing the opposite direction turns at once instead of stopping", async ({ page }) => {
+test("pressing the opposite direction turns at once instead of stopping", async ({
+  page,
+}) => {
   await openHub(page);
   await page.evaluate(() => {
     const w = window as any;
     w.__events = [];
-    w.__emit = (event: string, data: unknown) => w.__events.push({ event, data });
+    w.__emit = (event: string, data: unknown) =>
+      w.__events.push({ event, data });
   });
-  await page.evaluate(() => (window as any).__room("practice", { arena: "classic", pos: [800, 760, 1300, 200] }));
+  await page.evaluate(() =>
+    (window as any).__room("practice", {
+      arena: "classic",
+      pos: [800, 760, 1300, 200],
+    }),
+  );
   await openPlayPanel(page);
   await page.click("#practice");
   await pushUntilBattle(page);
@@ -23,11 +31,15 @@ test("pressing the opposite direction turns at once instead of stopping", async 
   await page.mouse.move(700, 450);
   const sent = () =>
     page.evaluate(() =>
-      (window as any).__events.filter((e: any) => e.event === "input").map((e: any) => e.data.dx as number),
+      (window as any).__events
+        .filter((e: any) => e.event === "input")
+        .map((e: any) => e.data.dx as number),
     );
   const clear = () => page.evaluate(() => ((window as any).__events = []));
   const until = (dx: number) =>
-    expect.poll(async () => (await sent()).includes(dx), { timeout: 10_000 }).toBe(true);
+    expect
+      .poll(async () => (await sent()).includes(dx), { timeout: 10_000 })
+      .toBe(true);
 
   await page.keyboard.down("KeyA");
   await until(-1);

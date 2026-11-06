@@ -1,7 +1,19 @@
 import { expect, test } from "@playwright/test";
-import { box, inside, openHub, pushUntilBattle, snap, openPlayPanel } from "./helpers";
+import {
+  box,
+  inside,
+  openHub,
+  pushUntilBattle,
+  snap,
+  openPlayPanel,
+} from "./helpers";
 
-const COURTS = ["classic", "tide-pools", "ember-forge", "shifting-ruins"] as const;
+const COURTS = [
+  "classic",
+  "tide-pools",
+  "ember-forge",
+  "shifting-ruins",
+] as const;
 const SIZES = [
   { width: 1440, height: 900 },
   { width: 1280, height: 720 },
@@ -9,36 +21,73 @@ const SIZES = [
 
 for (const size of SIZES)
   for (const arena of COURTS)
-    test(`${arena} court fits its frame at ${size.width}×${size.height}`, async ({ page }, info) => {
+    test(`${arena} court fits its frame at ${size.width}×${size.height}`, async ({
+      page,
+    }, info) => {
       await page.setViewportSize(size);
       const errors = await openHub(page);
-      await page.evaluate((arena) => (window as any).__room("practice", { arena, pos: [535, 226, 1065, 676] }), arena);
+      await page.evaluate(
+        (arena) =>
+          (window as any).__room("practice", {
+            arena,
+            pos: [535, 226, 1065, 676],
+          }),
+        arena,
+      );
       await openPlayPanel(page);
       await page.click("#practice");
       await pushUntilBattle(page);
-      const settings = await box(page, "#battle-menu"), stage = await box(page, "#game");
+      const settings = await box(page, "#battle-menu"),
+        stage = await box(page, "#game");
       expect(settings.y).toBeGreaterThanOrEqual(stage.y);
       expect(settings.y).toBeLessThan(stage.y + 60);
-      expect(settings.x + settings.width).toBeLessThanOrEqual(stage.x + stage.width);
-      await expect(page.locator("#battle-menu")).toHaveAttribute("aria-label", "Battle settings");
+      expect(settings.x + settings.width).toBeLessThanOrEqual(
+        stage.x + stage.width,
+      );
+      await expect(page.locator("#battle-menu")).toHaveAttribute(
+        "aria-label",
+        "Battle settings",
+      );
       await expect(page.locator("body")).toHaveClass(/court-view/);
       const game = await box(page, "#game");
       const canvas = await box(page, "#game canvas");
       // The canvas fills the arena exactly: no overflow, no gap.
       expect(Math.abs(canvas.width - game.width)).toBeLessThanOrEqual(1);
       expect(Math.abs(canvas.height - game.height)).toBeLessThanOrEqual(1);
-      expect(inside(await box(page, ".arena-frame"), await box(page, ".arena-stage"))).toBe(true);
+      expect(
+        inside(
+          await box(page, ".arena-frame"),
+          await box(page, ".arena-stage"),
+        ),
+      ).toBe(true);
       // Nothing scrolls the page.
-      expect(await page.evaluate(() => document.documentElement.scrollHeight - innerHeight)).toBeLessThanOrEqual(0);
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollHeight - innerHeight,
+        ),
+      ).toBeLessThanOrEqual(0);
       await snap(page, info, `${arena}-${size.width}`);
       expect(errors).toEqual([]);
     });
 
 // Every other raid on its own painted arena, with its scenery and boss.
-for (const boss of ["tidewyrm", "gloomshade", "storm-twins", "emberwing", "prismatail", "somnara"] as const)
-  test(`${boss} raid arena loads and fits its frame`, async ({ page }, info) => {
+for (const boss of [
+  "tidewyrm",
+  "gloomshade",
+  "storm-twins",
+  "emberwing",
+  "prismatail",
+  "somnara",
+] as const)
+  test(`${boss} raid arena loads and fits its frame`, async ({
+    page,
+  }, info) => {
     const errors = await openHub(page);
-    await page.evaluate((boss) => (window as any).__room("raid", { boss, pos: [500, 450, 700, 600] }), boss);
+    await page.evaluate(
+      (boss) =>
+        (window as any).__room("raid", { boss, pos: [500, 450, 700, 600] }),
+      boss,
+    );
     await openPlayPanel(page);
     await page.click("#play-create");
     await pushUntilBattle(page);
@@ -51,9 +100,17 @@ for (const boss of ["tidewyrm", "gloomshade", "storm-twins", "emberwing", "prism
     expect(errors).toEqual([]);
   });
 
-test("Grumblecrag raid plays on the court with broken pillars", async ({ page }, info) => {
+test("Grumblecrag raid plays on the court with broken pillars", async ({
+  page,
+}, info) => {
   const errors = await openHub(page);
-  await page.evaluate(() => (window as any).__room("raid", { boss: "grumblecrag", broken: [0, 4], pos: [535, 226, 700, 700] }));
+  await page.evaluate(() =>
+    (window as any).__room("raid", {
+      boss: "grumblecrag",
+      broken: [0, 4],
+      pos: [535, 226, 700, 700],
+    }),
+  );
   await openPlayPanel(page);
   await page.click("#play-create");
   await pushUntilBattle(page);
@@ -74,7 +131,13 @@ test("a block's picture is exactly its solid area", async ({ page }, info) => {
   const shot: [number, number] = [535, 212];
   const enter = async (shots: [number, number][]) => {
     await page.evaluate(
-      (shots) => (window as any).__room("practice", { arena: "classic", character: "tidefin", pos: [300, 760, 1300, 760], shots }),
+      (shots) =>
+        (window as any).__room("practice", {
+          arena: "classic",
+          character: "tidefin",
+          pos: [300, 760, 1300, 760],
+          shots,
+        }),
       shots,
     );
   };
@@ -94,7 +157,10 @@ test("a block's picture is exactly its solid area", async ({ page }, info) => {
   });
   const stone = clip(495, 250, 575, 362);
   const behind = clip(510, 196, 560, 234);
-  const withShot = { stone: await page.screenshot({ clip: stone }), behind: await page.screenshot({ clip: behind }) };
+  const withShot = {
+    stone: await page.screenshot({ clip: stone }),
+    behind: await page.screenshot({ clip: behind }),
+  };
   await snap(page, info, "shot-behind-block");
   await enter([]);
   for (let i = 0; i < 4; i++) {
@@ -102,7 +168,10 @@ test("a block's picture is exactly its solid area", async ({ page }, info) => {
     await page.waitForTimeout(400);
   }
   await page.waitForTimeout(1200);
-  const without = { stone: await page.screenshot({ clip: stone }), behind: await page.screenshot({ clip: behind }) };
+  const without = {
+    stone: await page.screenshot({ clip: stone }),
+    behind: await page.screenshot({ clip: behind }),
+  };
   expect(withShot.behind.equals(without.behind)).toBe(false);
   expect(withShot.stone.equals(without.stone)).toBe(true);
   expect(errors).toEqual([]);

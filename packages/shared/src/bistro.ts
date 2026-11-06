@@ -946,6 +946,121 @@ export function approach(
   return best;
 }
 
+/* ───────────── the floor plan's walks ─────────────
+   Steps from the door and from the counter's pickup spots to every tile
+   (breadth-first, -1 where you can't get to). A seat's walks: the guest's
+   from the door to the chair, the waiter's there and back from the counter
+   to a free tile beside the chair or its table. They decide which seats
+   guests pick, the waiters' jobs, the plan's grade, and how fast the staff
+   serve while you are away. */
+export const WAITER_TPS = 2.8;
+export const GUEST_TPS = 2;
+/** A waiter's time at the counter and at the table, a meal (seconds). */
+export const SERVE_HANDLING = 5;
+/** Clearing a table, when the waiters do it themselves (seconds). */
+export const CLEAR_SECONDS = 1.2;
+/** A seat's turn, besides the walk in and out: ordering, waiting, eating, clearing. */
+export const SEAT_BASE = 20;
+export function distField(
+  blocked: boolean[][],
+  sources: readonly { x: number; y: number }[],
+): number[][] {
+  const z = sizeOfGrid(blocked);
+  const d = Array.from({ length: z.cols }, () =>
+    Array<number>(z.rows).fill(-1),
+  );
+  const q: [number, number][] = [];
+  for (const p of sources)
+    if (inGrid(p.x, p.y, z) && !blocked[p.x][p.y] && d[p.x][p.y] < 0) {
+      d[p.x][p.y] = 0;
+      q.push([p.x, p.y]);
+    }
+  for (let h = 0; h < q.length; h++) {
+    const [x, y] = q[h];
+    for (const [dx, dy] of N4) {
+      const nx = x + dx,
+        ny = y + dy;
+      if (!inGrid(nx, ny, z) || blocked[nx][ny] || d[nx][ny] >= 0) continue;
+      d[nx][ny] = d[x][y] + 1;
+      q.push([nx, ny]);
+    }
+  }
+  return d;
+}
+export interface SeatWalk {
+  chair: number;
+  table: number;
+  /** Steps from the door to the chair. */
+  guest: number;
+  /** Steps from the counter to the seat and back. */
+  waiter: number;
+}
+/** The nearest of a field's values on the free tiles beside `targets` (-1 if none). */
+function nearBy(
+  d: number[][],
+  blocked: boolean[][],
+  targets: readonly { x: number; y: number }[],
+): number {
+  const z = sizeOfGrid(blocked);
+  let best = -1;
+  for (const t of targets)
+    for (const [dx, dy] of N4) {
+      const nx = t.x + dx,
+        ny = t.y + dy;
+      if (!inGrid(nx, ny, z) || blocked[nx][ny] || d[nx][ny] < 0) continue;
+      if (best < 0 || d[nx][ny] < best) best = d[nx][ny];
+    }
+  return best;
+}
+/** Every seat you can get to, with its walks (in the order of `seats`). */
+export function seatWalks(items: readonly Item[], z: RoomSize): SeatWalk[] {
+  const b = blockedGrid(items, -1, z);
+  const fromDoor = distField(b, [DOOR]);
+  const fromCounter = distField(
+    b,
+    Array.from({ length: COUNTER_SLOTS }, (_, i) => pickupTile(i)),
+  );
+  const out: SeatWalk[] = [];
+  for (const st of seats(items)) {
+    const g = nearBy(fromDoor, b, [st.chair]);
+    const w = nearBy(fromCounter, b, [st.chair, st.table]);
+    if (g < 0 || w < 0) continue;
+    out.push({
+      chair: st.chair.id,
+      table: st.table.id,
+      guest: g + 1,
+      waiter: 2 * w,
+    });
+  }
+  return out;
+}
+export type LayoutGrade = "A" | "B" | "C" | "D" | "E";
+export interface LayoutStats {
+  seats: SeatWalk[];
+  /** A waiter's average time a meal (seconds), walking and handling. */
+  tMeal: number;
+  grade: LayoutGrade | null;
+}
+/** The grade's upper bounds on tMeal (seconds): A below 7, … E from 10.5. */
+export const LAYOUT_GRADES: readonly [LayoutGrade, number][] = [
+  ["A", 7],
+  ["B", 8],
+  ["C", 9],
+  ["D", 10.5],
+];
+export function layoutStats(items: readonly Item[], z: RoomSize): LayoutStats {
+  const sw = seatWalks(items, z);
+  if (!sw.length) return { seats: sw, tMeal: 0, grade: null };
+  let sum = 0;
+  for (const x of sw) sum += x.waiter;
+  const tMeal = sum / sw.length / WAITER_TPS + SERVE_HANDLING;
+  const grade = LAYOUT_GRADES.find(([, t]) => tMeal < t)?.[0] ?? "E";
+  return { seats: sw, tMeal, grade };
+}
+/** A seat's colour on the plan: green, yellow or red by the waiter's walk. */
+export const seatHeat = (waiter: number) =>
+  waiter <= 8 ? "good" : waiter <= 14 ? "fair" : "far";
+
 /** Whether an item can go on (x, y); `ignoreId` is the item being moved. */
 export function canPlace(
   items: readonly Item[],
@@ -1030,15 +1145,73 @@ export function putAway(s: BistroState, id: number): Result {
 export function charm(items: readonly Item[]): number {
   return items.reduce((n, i) => n + ITEM_BY_KIND[i.kind].charm, 0);
 }
-/** Seconds between customers: faster with stars, charm and a rush hour. */
-export function arrivalSeconds(
-  rating: number,
-  charmPts: number,
-  rush: boolean,
-): number {
-  const base = 9 - rating * 0.9 - Math.min(30, charmPts) * 0.08;
-  return Math.max(2.2, base) * (rush ? 0.45 : 1);
+/* ───────────── popularity (0..50) ─────────────
+   One number for how wanted the bistro is: how guests left (the rating),
+   the decor (charm), the menu (gourmet), friends (likes, meals) and the
+   mess. It sets how often guests come, how long a queue forms at the door
+   and how many are VIPs. The database works it out the same way. */
+export const POP_MAX = 50;
+export interface PopInput {
+  /** Likes this week (Monday on, Pacific). */
+  likesWeek?: number;
+  /** Friends who ate here today. */
+  dinedToday?: number;
+  /** Gourmet points (dish levels). */
+  gourmet?: number;
+  /** Litter on the floor. */
+  trash?: number;
+  /** Tables left dirty for more than DIRTY_SECONDS. */
+  dirty?: number;
 }
+export interface Popularity {
+  service: number;
+  decor: number;
+  gourmet: number;
+  social: number;
+  mess: number;
+  /** 0..50, not rounded (the rules use it as it is). */
+  total: number;
+}
+export const DIRTY_SECONDS = 30;
+export function popularity(
+  s: Pick<BistroState, "rating" | "items">,
+  o: PopInput = {},
+): Popularity {
+  const service = s.rating * 6;
+  const decor = Math.min(10, charm(s.items) / 3);
+  const gourmet = Math.min(6, (o.gourmet ?? 0) / 40);
+  const social = Math.min(
+    4,
+    0.5 * (o.likesWeek ?? 0) + 0.5 * (o.dinedToday ?? 0),
+  );
+  const mess = Math.min(8, (o.trash ?? 0) + 0.5 * (o.dirty ?? 0));
+  const total = Math.min(
+    POP_MAX,
+    Math.max(0, service + decor + gourmet + social - mess),
+  );
+  return { service, decor, gourmet, social, mess, total };
+}
+export const POP_TIERS = [
+  { from: 0, name: "Quiet Corner" },
+  { from: 10, name: "Local Favorite" },
+  { from: 20, name: "Busy Bistro" },
+  { from: 30, name: "Talk of the Town" },
+  { from: 40, name: "Legendary Bistro" },
+] as const;
+export const popTier = (pop: number) =>
+  [...POP_TIERS].reverse().find((t) => Math.round(pop) >= t.from)!.name;
+/** Seconds between guests: 9 s at no popularity, 2.2 s at 50; a rush hour more than doubles it. */
+export function arrivalSeconds(pop: number, rush: boolean): number {
+  return Math.max(2.2, 9 - 0.136 * pop) * (rush ? 0.45 : 1);
+}
+/** Guests who wait at the door for a seat. */
+export const queueMax = (pop: number) =>
+  Math.min(6, 1 + Math.floor(Math.max(0, pop) / 10));
+/** How long they wait there before walking off (seconds). */
+export const queuePatience = (pop: number) => 15 + 0.5 * pop;
+/** The share of guests who are VIPs. */
+export const vipShare = (pop: number, rush: boolean) =>
+  (0.06 + 0.0016 * Math.min(POP_MAX, Math.max(0, pop))) * (rush ? 1.3 : 1);
 /** How long a customer waits for food before leaving (seconds). */
 export function patienceSeconds(charmPts: number, vip: boolean): number {
   return (32 + Math.min(40, charmPts) * 0.6) * (vip ? 0.7 : 1);
@@ -1217,12 +1390,20 @@ export function autoKitchen(s: BistroState, now: number): KitchenEvent[] {
   });
   return out;
 }
-/** Guests a second the staff can serve: the arrivals, the seats and the waiters, whichever is fewer. */
-export function serviceRate(s: BistroState): number {
-  const arrivals = 1 / arrivalSeconds(s.rating, charm(s.items), false);
-  const seatRate = seats(s.items).length / 28;
-  const waiterRate =
-    staffOf(s, "waiter").reduce((n, w) => n + staffSpeed(w.level), 0) / 10;
+/**
+ * Guests a second the staff can serve: the arrivals (popularity), the seats
+ * (each turns over in SEAT_BASE plus the walk in and out) and the waiters
+ * (each meal takes the plan's tMeal plus clearing), whichever is fewer.
+ */
+export function serviceRate(s: BistroState, pop: PopInput = {}): number {
+  const arrivals = 1 / arrivalSeconds(popularity(s, pop).total, false);
+  const lay = layoutStats(s.items, sizeOf(s.sizeLv));
+  let seatRate = 0;
+  for (const x of lay.seats)
+    seatRate += 1 / (SEAT_BASE + (2 * x.guest) / GUEST_TPS);
+  let speed = 0;
+  for (const w of staffOf(s, "waiter")) speed += staffSpeed(w.level);
+  const waiterRate = lay.seats.length ? speed / (lay.tMeal + CLEAR_SECONDS) : 0;
   return Math.min(arrivals, seatRate, waiterRate);
 }
 export interface AwayReport {
@@ -1249,6 +1430,8 @@ export function simulateAway(
   to: number,
   /** Today's special (the server's pick); the local one when left out. */
   specialDish?: DishId,
+  /** What else sets the popularity (likes, friends' meals…). */
+  pop: PopInput = {},
 ): AwayReport | null {
   if (!from || to - from < AWAY_MIN_MS) return null;
   const cap = SHIFT_HOURS[s.shiftLv] * 3600_000;
@@ -1263,7 +1446,7 @@ export function simulateAway(
     batches: 0,
     levels: 0,
   };
-  const rate = serviceRate(s) * AWAY_RATE;
+  const rate = serviceRate(s, pop) * AWAY_RATE;
   const special = specialDish ?? todaySpecial(s.level, new Date(from));
   const STEP = 15_000;
   let acc = 0;

@@ -243,7 +243,7 @@ walkWaiter(s) = 2 × Dk[ô phục vụ của s]        // đi và về
 1. Đến cửa. Nếu còn ghế trống: chọn ghế có **chi phí thấp nhất**:
    `cost(s) = walkWaiter(s) + 0.5 × walkGuest(s) + random(0, 2)`
    (ngẫu nhiên nhỏ để khách không dồn một chỗ, nhưng vẫn ưu tiên ghế "đắc địa").
-2. Hết ghế: **xếp hàng ở vỉa hè** (§4.4).
+2. Hết ghế: **xếp hàng ở cửa** (§4.4).
 3. Ngồi → gọi món (giữ 1 phần trên quầy) → chờ (patience) → ăn 12 s → trả tiền → về.
 4. Có **Register** (quầy tính tiền, _mới_): khách đi qua quầy tính tiền trước khi ra cửa. Xu vào ví ngay (không cần chạm chồng xu) và **+5% tip** nếu quầy cách cửa ≤ 3 bước. Bàn chỉ còn đĩa bẩn cho lao công/phục vụ dọn. Không có Register thì giữ như cũ (chồng xu trên bàn).
 
@@ -273,8 +273,9 @@ Trong chế độ **Decorate**:
 - Thanh **Layout** (A–E) tính từ thời gian phục vụ trung bình một bữa:
 
 ```
-tMeal = trung_bình_s(walkWaiter(s)) / vWaiter + 1.5 s      // vWaiter ≈ 2.2 ô/s
-Layout: A < 4 s · B < 5.5 s · C < 7 s · D < 9 s · E ≥ 9 s
+tMeal = trung_bình_s(walkWaiter(s)) / vWaiter + 5 s      // vWaiter = 2.8 ô/s (tốc độ đi của phục vụ trong game), 5 s lấy món + đặt món
+Layout: A < 7 s · B < 8 s · C < 9 s · D < 10.5 s · E ≥ 10.5 s
+(Bố cục mặc định: trung bình 7.3 bước → tMeal 7.6 s → B.)
 ```
 
 - Đặt thử một món đồ thì thấy chỉ số đổi **trước khi** thả, để người chơi tối ưu bằng mắt.
@@ -284,12 +285,13 @@ Layout: A < 4 s · B < 5.5 s · C < 7 s · D < 9 s · E ≥ 9 s
 Thay hằng số "28 s/ghế" và "0.1 khách/s/phục vụ" bằng công thức theo bố cục:
 
 ```
-seatRate    = Σ_ghế 1 / (12 + 4 + walkGuest(s)/1.9)                  // ăn + gọi món + đi
+seatRate    = Σ_ghế 1 / (20 + 2 × walkGuest(s) / 2)                  // gọi món, chờ, ăn, dọn + đi vào và ra (2 ô/s)
 waiterRate  = Σ_waiter speed / (tMeal + (có Janitor ? 0 : 1.2))       // phải tự dọn thì chậm hơn
 serviceRate = min(arrivalRate(Popularity), seatRate, waiterRate) × 0.5 (AWAY_RATE)
 ```
 
 Như vậy một bố cục tốt kiếm nhiều hơn cả khi offline. Con số được server tính lại từ `items` (không tin client).
+Hằng số được chọn để bố cục mặc định cho kết quả gần như cũ (phục vụ 1 bữa ~8.8 s so với 10 s trước đây); bàn để sát quầy thì nhanh hơn, để xa thì chậm hơn tới ~30%.
 
 ---
 
@@ -319,12 +321,12 @@ Ví dụ nhà hàng mới (rating 3, 3 chậu cây + 1 thảm = charm 8): 18 + 2
 
 ### 4.3 Các yếu tố tăng/giảm
 
-| Tăng                              | Giảm                                                |
-| --------------------------------- | --------------------------------------------------- |
-| Khách 3 tim (kéo rating lên)      | Khách 1 tim, khách bỏ về (rating xuống)             |
-| Đặt thêm đồ trang trí (Charm)     | Rác trên sàn, bàn bẩn lâu không dọn (Mess)          |
-| Nâng cấp món (Gourmet)            | Khách xếp hàng quá lâu rồi bỏ đi (rating × 0.5 lần) |
-| Bạn bè Like (tuần) và Dine (ngày) | Nhân viên Exhausted (phục vụ chậm → ít tim)         |
+| Tăng                              | Giảm                                         |
+| --------------------------------- | -------------------------------------------- |
+| Khách 3 tim (kéo rating lên)      | Khách 1 tim, khách bỏ về (rating xuống)      |
+| Đặt thêm đồ trang trí (Charm)     | Rác trên sàn, bàn bẩn lâu không dọn (Mess)   |
+| Nâng cấp món (Gourmet)            | Khách xếp hàng quá lâu rồi bỏ đi (mất khách) |
+| Bạn bè Like (tuần) và Dine (ngày) | Nhân viên Exhausted (phục vụ chậm → ít tim)  |
 
 **Rác** _(mới)_: mỗi khách có 8% cơ hội làm rơi rác trên một ô họ đi qua. Người chơi chạm để quét, hoặc Janitor quét. Offline: rác sinh ra theo số khách × 8%, Janitor quét `30 × speed` mỗi giờ; phần còn lại nằm chờ khi bạn quay về (tối đa 10).
 
@@ -332,22 +334,22 @@ Ví dụ nhà hàng mới (rating 3, 3 chậu cây + 1 thảm = charm 8): 18 + 2
 
 | Popularity | Danh hiệu        | Khách đến mỗi | Hàng chờ tối đa | Tỉ lệ VIP |
 | ---------- | ---------------- | ------------- | --------------- | --------- |
-| 0–9        | Quiet Corner     | 9.0–7.8 s     | 1               | 6%        |
-| 10–19      | Local Favorite   | 7.6–6.4 s     | 2               | 8%        |
-| 20–29      | Busy Bistro      | 6.3–5.1 s     | 3               | 10%       |
-| 30–39      | Talk of the Town | 4.9–3.7 s     | 4               | 12%       |
-| 40–50      | Legendary Bistro | 3.6–2.2 s     | 5–6             | 14–16%    |
+| 0–9        | Quiet Corner     | 9.0–7.8 s     | 1               | 6–7%      |
+| 10–19      | Local Favorite   | 7.6–6.4 s     | 2               | 8–9%      |
+| 20–29      | Busy Bistro      | 6.3–5.1 s     | 3               | 9–11%     |
+| 30–39      | Talk of the Town | 4.9–3.7 s     | 4               | 11–12%    |
+| 40–50      | Legendary Bistro | 3.6–2.2 s     | 5–6             | 12–14%    |
 
 ```
 arrival(P)    = max(2.2, 9 − 0.136 × P) giây     (giờ cao điểm × 0.45, như cũ)
 queueMax(P)   = 1 + floor(P / 10)
 queuePatience = 15 + 0.5 × P giây
-vipShare(P)   = 0.06 + 0.002 × P
+vipShare(P)   = 0.06 + 0.0016 × P   (giờ cao điểm × 1.3)
 ```
 
 `arrival` được chọn để P = 50 cho đúng tốc độ tối đa hiện nay (2.2 s). Nhà hàng mới (P ≈ 21) có khách mỗi 6.1 s, chậm hơn một chút so với hiện nay (5.7 s), bù lại bằng hàng chờ: hiện nay khách đến lúc hết ghế là mất luôn, sau thay đổi họ đứng chờ.
 
-**Hàng chờ**: khi hết ghế, khách đứng thành hàng trên vỉa hè trước cửa. Có ghế trống thì người đầu hàng vào. Chờ quá `queuePatience` thì bỏ đi (kéo rating về 2.0). Hàng chờ dài là dấu hiệu trực quan: "cần thêm bàn ghế hoặc phục vụ".
+**Hàng chờ**: khi hết ghế, khách đứng chờ ở những ô trống gần cửa nhất (bong bóng ⌛ cho biết còn chờ được bao lâu). Có ghế trống thì người đầu hàng vào ngồi. Chờ quá `queuePatience` thì bỏ đi; họ chưa ngồi nên không trừ rating, chỉ mất một khách. Hàng chờ dài là dấu hiệu trực quan: "cần thêm bàn ghế hoặc phục vụ".
 
 ### 4.5 Hiển thị
 

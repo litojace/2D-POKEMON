@@ -1,5 +1,12 @@
 import { expect, test } from "@playwright/test";
-import { box, inside, openHub, pushUntilBattle, snap, openPlayPanel } from "./helpers";
+import {
+  box,
+  inside,
+  openHub,
+  pushUntilBattle,
+  snap,
+  openPlayPanel,
+} from "./helpers";
 
 // A short visible viewport includes Safari's expanded address/tab bars.
 for (const size of [
@@ -37,8 +44,7 @@ for (const size of [
       await expect(page.locator(".action-overlay h2")).toContainText("Victory");
       // The real XP/level-up card makes the results taller than a short phone.
       await page.evaluate(async () => {
-        const { resultXp } =
-          await import("/rooms.ts");
+        const { resultXp } = await import("/rooms.ts");
         document.querySelector(".panel-scroll")!.insertAdjacentHTML(
           "beforeend",
           resultXp(

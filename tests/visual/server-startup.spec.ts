@@ -371,7 +371,11 @@ test("the startup sigil still fits after turning the phone upright and back", as
   browser,
 }) => {
   const land = { width: 956, height: 440 };
-  const context = await browser.newContext({ viewport: land, isMobile: true, hasTouch: true });
+  const context = await browser.newContext({
+    viewport: land,
+    isMobile: true,
+    hasTouch: true,
+  });
   try {
     const page = await context.newPage();
     await coldServer(page);

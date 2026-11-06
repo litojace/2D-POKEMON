@@ -124,6 +124,18 @@ import {
   type Item,
   type ItemKind,
   type Seat,
+  DIRTY_SECONDS,
+  distField,
+  layoutStats,
+  popTier,
+  popularity,
+  queueMax,
+  queuePatience,
+  seatHeat,
+  vipShare,
+  type LayoutStats,
+  type PopInput,
+  type SeatWalk,
 } from "./bistro-model";
 import {
   carGlows,
@@ -159,6 +171,8 @@ export interface BistroFriend {
   servings: number;
   dined: boolean;
   liked: boolean;
+  /** 0..50 (migration 070; older servers leave it out). */
+  popularity?: number;
 }
 export interface BistroOptions {
   /** Whose bistro (the account id): keeps it ready this session. */
@@ -365,7 +379,8 @@ interface Walker {
   /** Happy hop, 0..1, decays. */
   hop: number;
 }
-type CustState = "enter" | "seated" | "eating" | "leave";
+/** "queue": waiting by the door for a seat (no seat yet). */
+type CustState = "queue" | "enter" | "seated" | "eating" | "leave";
 interface Customer extends Walker {
   id: number;
   state: CustState;
@@ -385,6 +400,13 @@ interface Customer extends Walker {
   angry: boolean;
   orderedAt: number;
 }
+/** A queued guest's seat until they get one. */
+const NO_ITEM: Item = { id: -1, kind: "chair", x: -9, y: -9, rot: 0 };
+const NO_SEAT: Seat = {
+  chair: NO_ITEM,
+  table: { ...NO_ITEM, kind: "table" },
+  dir: 0,
+};
 interface Waiter extends Walker {
   staff: Staff;
   task: { kind: "serve"; c: Customer } | { kind: "clear"; p: Pile } | null;
@@ -633,17 +655,50 @@ export function openBistro(o: BistroOptions): BistroHandle {
   /** Furniture shows once the server has answered (or from this session's last look). */
   const roomShown = () => sync.ready || !!cached || !!visiting;
   const rushing = () => inRush(nowS() + rushShift);
+  /** What sets the popularity now, besides the bistro itself. */
+  const popInput = (): PopInput => {
+    const ex = visiting ? visiting.extras : sync.extras;
+    return {
+      likesWeek: ex.likesWeek,
+      dinedToday: ex.friendGuests.length,
+      dirty: piles.filter((p) => T - p.t0 > DIRTY_SECONDS).length,
+    };
+  };
+  const popNow = () => popularity(S, popInput());
   // Development: start a rush hour now (shifts the rush clock only).
   let rushShift = 0;
   let blocked = blockedGrid(S.items, -1, sizeOf(S.sizeLv));
   let seatList = seats(S.items);
   let charmPts = charm(S.items);
+  /** The plan's walks (which seats are handy) and where a queue stands. */
+  let layout: LayoutStats = layoutStats(S.items, sizeOf(S.sizeLv));
+  let walkOf = new Map<number, SeatWalk>();
+  let queueTiles: Pt[] = [];
+  const measure = () => {
+    layout = layoutStats(S.items, sizeOf(S.sizeLv));
+    walkOf = new Map(layout.seats.map((w) => [w.chair, w]));
+    // The free tiles nearest the door, clear of the pickup spots.
+    const d = distField(blocked, [DOOR]);
+    const tiles: { p: Pt; d: number }[] = [];
+    for (let x = 0; x < d.length; x++)
+      for (let y = 0; y < d[x].length; y++) {
+        if (d[x][y] <= 0) continue;
+        if (y === 3 && x >= 1 && x <= 4) continue;
+        if (x === WAITER_HOME.x && y === WAITER_HOME.y) continue;
+        tiles.push({ p: { x, y }, d: d[x][y] });
+      }
+    tiles.sort((a, b) => a.d - b.d || b.p.y - a.p.y || a.p.x - b.p.x);
+    queueTiles = tiles.slice(0, 6).map((t) => t.p);
+  };
+  measure();
   const relayout = () => {
     // A bigger (or a friend's) room: the camera fits it again.
     if (setRoomSize(sizeOf(S.sizeLv))) resize();
     blocked = blockedGrid(S.items, -1, sizeOf(S.sizeLv));
     seatList = seats(S.items);
     charmPts = charm(S.items);
+    measure();
+    requeue();
     // Anyone whose next steps cross a new obstacle finds a new way.
     for (const w of [...customers, ...waiters]) {
       if (!w.path.length) continue;
@@ -946,13 +1001,55 @@ export function openBistro(o: BistroOptions): BistroHandle {
     piles.some((p) => p.chairId === chairId);
   const reservedOrders = () =>
     customers.filter((c) => c.state !== "leave" && !c.dish).length;
+  const freeSeats = () =>
+    seatList.filter((s) => walkOf.has(s.chair.id) && !seatBusy(s.chair.id));
+  /** Guests take the handiest free seat (near the counter, then the door). */
+  const pickSeat = (free: Seat[]) => {
+    let best = free[0],
+      bestCost = Infinity;
+    for (const st of free) {
+      const w = walkOf.get(st.chair.id)!;
+      const cost = w.waiter + 0.5 * w.guest + Math.random() * 2;
+      if (cost < bestCost) {
+        bestCost = cost;
+        best = st;
+      }
+    }
+    return best;
+  };
+  const queued = () => customers.filter((c) => c.state === "queue");
+  /** Everyone in the queue walks to their place in it. */
+  const requeue = () => {
+    queued().forEach((c, i) => {
+      const spot = queueTiles[i];
+      if (!spot) return;
+      const goal = c.path[c.path.length - 1];
+      if (goal && goal.x === spot.x && goal.y === spot.y) return;
+      if (
+        !c.path.length &&
+        Math.round(c.gx) === spot.x &&
+        Math.round(c.gy) === spot.y
+      )
+        return;
+      const from = { x: Math.round(c.gx), y: Math.round(c.gy) };
+      const p = inside(from) ? findPath(blocked, from, spot) : null;
+      c.path = p ? p.slice(1) : [spot];
+    });
+  };
   const spawn = () => {
-    const free = seatList.filter((s) => !seatBusy(s.chair.id));
-    if (!free.length) return false;
     // Only when there is food not yet promised to someone.
     if (servingsLeft(S) <= reservedOrders()) return false;
-    const seat = free[Math.floor(Math.random() * free.length)];
-    const vip = Math.random() < (rushing() ? 0.18 : 0.11);
+    const pop = popNow().total;
+    const free = freeSeats();
+    // No seat: wait by the door, if the queue has room.
+    const waiting = !free.length;
+    if (
+      waiting &&
+      queued().length >= Math.min(queueMax(pop), queueTiles.length)
+    )
+      return false;
+    const seat = waiting ? NO_SEAT : pickSeat(free);
+    const vip = Math.random() < vipShare(pop, rushing());
     // Guests are never your own chef or staff (they are busy).
     const pool = ROSTER.filter(
       (r) => r !== chef.char && !S.staff.some((st) => st.char === r),
@@ -961,13 +1058,13 @@ export function openBistro(o: BistroOptions): BistroHandle {
     const c: Customer = {
       ...mkWalker(char, DOOR.x - 1.2, DOOR.y, 1.9 + Math.random() * 0.4),
       id: nextId++,
-      state: "enter",
+      state: waiting ? "queue" : "enter",
       seat,
       vip,
       dish: null,
       slot: -1,
-      sat: 0,
-      patience: patienceSeconds(charmPts, vip),
+      sat: waiting ? T : 0,
+      patience: waiting ? queuePatience(pop) : patienceSeconds(charmPts, vip),
       claimed: false,
       served: false,
       eatEnd: 0,
@@ -977,12 +1074,47 @@ export function openBistro(o: BistroOptions): BistroHandle {
       angry: false,
       orderedAt: 0,
     };
-    const p = findPath(blocked, DOOR, seat.chair);
-    if (!p) return false;
-    c.path = [{ x: DOOR.x, y: DOOR.y }, ...p.slice(1)];
+    if (waiting) {
+      const spot = queueTiles[queued().length];
+      const p = findPath(blocked, DOOR, spot);
+      if (!p) return false;
+      c.path = [{ x: DOOR.x, y: DOOR.y }, ...p.slice(1)];
+    } else {
+      const p = findPath(blocked, DOOR, seat.chair);
+      if (!p) return false;
+      c.path = [{ x: DOOR.x, y: DOOR.y }, ...p.slice(1)];
+    }
     customers.push(c);
     sound("knock");
     return true;
+  };
+  /** The head of the queue takes a seat that came free. */
+  const seatFromQueue = () => {
+    const c = queued()[0];
+    if (!c) return;
+    const free = freeSeats();
+    if (!free.length) return;
+    const seat = pickSeat(free);
+    const from = { x: Math.round(c.gx), y: Math.round(c.gy) };
+    const p = inside(from) ? findPath(blocked, from, seat.chair) : null;
+    if (!p) return;
+    c.seat = seat;
+    c.state = "enter";
+    c.path = p.slice(1);
+    c.patience = patienceSeconds(charmPts, c.vip);
+    requeue();
+  };
+  /** Waited too long by the door: off they go (they never sat down). */
+  const leaveQueue = (c: Customer) => {
+    c.state = "leave";
+    c.angry = true;
+    const from = { x: Math.round(c.gx), y: Math.round(c.gy) };
+    const back = inside(from) ? (findPath(blocked, from, DOOR) ?? []) : [];
+    c.path = [...back.slice(1), { x: DOOR.x - 1.4, y: DOOR.y }];
+    const p = iso(c.gx, c.gy);
+    floatText({ x: p.x, y: p.y - 90 }, "Too long a wait…", "#ffb0a0");
+    requeue();
+    changed();
   };
   const leave = (c: Customer, angry: boolean) => {
     c.state = "leave";
@@ -1044,6 +1176,12 @@ export function openBistro(o: BistroOptions): BistroHandle {
     } else sync.release(c.id);
   };
   const updateCustomer = (c: Customer, dt: number) => {
+    if (c.state === "queue") {
+      c.alpha = Math.min(1, c.alpha + dt * 3);
+      if (step(c, dt)) c.face = "down";
+      if (T - c.sat > c.patience) leaveQueue(c);
+      return;
+    }
     if (c.state === "enter") {
       c.alpha = Math.min(1, c.alpha + dt * 3);
       if (step(c, dt)) {
@@ -1107,10 +1245,42 @@ export function openBistro(o: BistroOptions): BistroHandle {
   /* ───────────── waiters ───────────── */
   const updateWaiter = (w: Waiter, dt: number) => {
     if (!w.task) {
-      // Serve the longest-waiting order first, then clear old plates.
-      const c = customers
-        .filter((c) => c.state === "seated" && c.dish && !c.claimed)
-        .sort((a, b) => a.orderedAt - b.orderedAt)[0];
+      // The best job: serving beats clearing, a long wait counts, and so
+      // do the steps to get there (docs/bistro-gdd.md §3.4).
+      const from = { x: Math.round(w.gx), y: Math.round(w.gy) };
+      const steps = (to: Pt[]) => {
+        if (!inside(from)) return 12;
+        const p = approach(blocked, from, to);
+        return p ? p.length - 1 : 99;
+      };
+      const line = queued().length > 0;
+      let c: Customer | undefined;
+      let p: Pile | undefined;
+      let best = -Infinity;
+      for (const x of customers) {
+        if (x.state !== "seated" || !x.dish || x.claimed) continue;
+        const score =
+          30 +
+          0.6 * (T - x.orderedAt) -
+          steps([pickupTile(Math.max(0, x.slot))]);
+        if (score > best) {
+          best = score;
+          c = x;
+          p = undefined;
+        }
+      }
+      for (const x of piles) {
+        if (x.claimed || T - x.t0 <= 9) continue;
+        const near = [x.chairId, x.tableId]
+          .map((id) => S.items.find((i) => i.id === id))
+          .filter((i): i is Item => !!i);
+        const score = (line ? 25 : 10) + 0.6 * (T - x.t0 - 9) - steps(near);
+        if (score > best) {
+          best = score;
+          p = x;
+          c = undefined;
+        }
+      }
       if (c) {
         c.claimed = true;
         w.task = { kind: "serve", c };
@@ -1118,7 +1288,6 @@ export function openBistro(o: BistroOptions): BistroHandle {
         if (!pathTo(w, pickupTile(Math.max(0, c.slot)))) w.phase = "pick";
         return;
       }
-      const p = piles.find((p) => !p.claimed && T - p.t0 > 9);
       if (p) {
         p.claimed = true;
         w.task = { kind: "clear", p };
@@ -1619,6 +1788,40 @@ export function openBistro(o: BistroOptions): BistroHandle {
     renderEdit();
     hudDirty = true;
   };
+  /** The plan's grade, and what it would be with the held item where it hovers. */
+  let previewKey = "";
+  let preview: LayoutStats | null = null;
+  let previewItems: Item[] = [];
+  const gradeText = () => {
+    const now = layout.grade ?? "–";
+    const then = preview ? (preview.grade ?? "–") : null;
+    return then && then !== now
+      ? `Floor plan ${now} → <b class="${then < now ? "up" : "down"}">${then}</b>`
+      : `Floor plan <b>${now}</b>`;
+  };
+  const updatePreview = () => {
+    const key =
+      held && hover ? `${held.kind}:${hover.x},${hover.y},${held.rot}` : "";
+    if (key === previewKey) return;
+    previewKey = key;
+    preview = null;
+    if (held && hover && !ITEM_BY_KIND[held.kind].floor) {
+      const copy: BistroState = {
+        ...S,
+        items: S.items.map((i) => ({ ...i })),
+        stored: { ...S.stored, [held.kind]: (S.stored[held.kind] ?? 0) + 1 },
+      };
+      const moving = held.moving
+        ? copy.items.find((i) => i.id === held!.moving!.id)
+        : undefined;
+      if (tryPlace(copy, held.kind, hover.x, hover.y, held.rot, moving).ok) {
+        preview = layoutStats(copy.items, sizeOf(S.sizeLv));
+        previewItems = copy.items;
+      }
+    }
+    const g = editEl.querySelector("#bs-grade");
+    if (g) g.innerHTML = gradeText();
+  };
   const renderEdit = () => {
     editEl.hidden = !editing;
     if (!editing) return;
@@ -1627,7 +1830,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
       number,
     ][];
     editEl.innerHTML = `
-      <div class="bs-edit-head"><b>${held ? `Placing: ${esc(ITEM_BY_KIND[held.kind].name)}` : "Decorate"}</b><span>${held ? "Tap a floor tile to put it down" : "Tap something to move it · buy more in the Shop"}</span></div>
+      <div class="bs-edit-head"><b>${held ? `Placing: ${esc(ITEM_BY_KIND[held.kind].name)}` : "Decorate"}</b><span>${held ? "Tap a floor tile to put it down" : "Tap something to move it · tags: a waiter's steps to each seat"}</span><em class="bs-grade" id="bs-grade">${gradeText()}</em></div>
       <div class="bs-store">${stored.length ? stored.map(([k, n]) => `<button type="button" data-hold="${k}" class="${held?.kind === k && !held.moving ? "on" : ""}"><img src="${itemIconUrl(k)}" alt=""><span>${esc(ITEM_BY_KIND[k].name)}</span><i>×${n}</i></button>`).join("") : `<em>Storage is empty</em>`}</div>
       <div class="bs-edit-btns">
         ${held?.kind === "chair" ? `<button type="button" data-ed="rot">Turn</button>` : ""}
@@ -1764,6 +1967,42 @@ export function openBistro(o: BistroOptions): BistroHandle {
     if (!sheetKind) return;
     const head = (title: string, sub: string) =>
       `<header><div><h2>${title}</h2><p>${sub}</p></div><button type="button" class="x" data-close aria-label="Close">${I("close")}</button></header>`;
+    if (sheetKind === "popularity") {
+      const pi = popInput();
+      const pp = popularity(S, pi);
+      const rush = rushing();
+      const row = (
+        name: string,
+        v: number,
+        max: number,
+        note: string,
+        minus = false,
+      ) =>
+        `<div class="bs-pop-row${minus ? " minus" : ""}"><b>${name}</b><i style="--w:${clamp(v / max, 0, 1) * 100}%"></i><strong>${minus && v > 0 ? "−" : ""}${v.toFixed(1)}<small> / ${max}</small></strong><small>${note}</small></div>`;
+      const lay = layout;
+      sheet.innerHTML =
+        head(
+          `Popularity ${Math.round(pp.total)} · ${popTier(pp.total)}`,
+          "How wanted your bistro is, out of 50: it sets how often guests come, how many wait at the door and how many are VIPs.",
+        ) +
+        `<div class="bs-pop">
+          ${row("Service", pp.service, 30, `Rating ${S.rating.toFixed(1)} ★: quick, happy meals raise it`)}
+          ${row("Decor", pp.decor, 10, `Charm ${charmPts}: decorations from the Shop add charm`)}
+          ${row("Friends", pp.social, 4, `${pi.likesWeek ?? 0} likes this week · ${pi.dinedToday ?? 0} friends ate here today`)}
+          ${row("Mess", pp.mess, 8, `${pi.dirty ?? 0} tables with coins left over ${DIRTY_SECONDS} s`, true)}
+          <div class="bs-pop-fx">
+            <div><b>${arrivalSeconds(pp.total, rush).toFixed(1)} s</b><small>between guests</small></div>
+            <div><b>${Math.min(queueMax(pp.total), queueTiles.length)}</b><small>can wait at the door</small></div>
+            <div><b>${Math.round(vipShare(pp.total, rush) * 100)}%</b><small>VIP guests</small></div>
+          </div>
+          <div class="bs-pop-plan">
+            <div class="grade g-${lay.grade ?? "none"}">${lay.grade ?? "–"}</div>
+            <p><b>Floor plan</b>${lay.grade ? `A waiter takes ${lay.tMeal.toFixed(1)} s a meal on average. Seats close to the counter are served fastest (and earn more while you're away).` : "No seat can be reached yet: put chairs next to tables."}</p>
+            ${visiting ? "" : `<button type="button" class="pr" data-plan>Decorate</button>`}
+          </div>
+        </div>`;
+      return;
+    }
     if (sheetKind === "friends") {
       sheet.innerHTML =
         head(
@@ -1781,7 +2020,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
                     (f) => `<div class="bs-staff friend">
                 <img class="pt" src="${portrait(f.fighter)}" alt="">
                 <div class="who"><b>${esc(f.name)}</b><span class="role waiter">Level ${f.level}</span>
-                  <span class="lv">${"★".repeat(Math.round(f.rating))}<i>${"★".repeat(5 - Math.round(f.rating))}</i></span>
+                  ${f.popularity === undefined ? `<span class="lv">${"★".repeat(Math.round(f.rating))}<i>${"★".repeat(5 - Math.round(f.rating))}</i></span>` : `<span class="lv pop">Popularity ${Math.round(f.popularity)}</span>`}
                   <small>♥ ${fmt(f.likes)} · ${fmt(f.served)} guests served · ${f.servings ? `${f.servings} servings on the counter` : "nothing on the counter"}${f.dined ? " · you ate here today" : ""}</small>
                 </div>
                 <button type="button" class="pr" data-visit="${esc(f.id)}">Visit</button>
@@ -1978,6 +2217,10 @@ export function openBistro(o: BistroOptions): BistroHandle {
     const b = (e.target as HTMLElement).closest("button");
     if (!b || b.disabled) return;
     if (b.hasAttribute("data-close")) return closeSheet();
+    if (b.hasAttribute("data-plan")) {
+      closeSheet();
+      return setEditing(true);
+    }
     if (b.dataset.tab) {
       sheetArg = b.dataset.tab;
       sound("tick");
@@ -2127,6 +2370,13 @@ export function openBistro(o: BistroOptions): BistroHandle {
   let hudAt = 0;
   const badge = $("#bs-badge");
   const chips = $("#bs-chips");
+  let lastChips = "";
+  chips.addEventListener("click", (e) => {
+    if (!(e.target as HTMLElement).closest("[data-pop]")) return;
+    sound("tick");
+    if (sheetKind === "popularity") closeSheet();
+    else openSheet("popularity");
+  });
   const bar = $("#bs-bar");
   const renderHud = () => {
     // The wallet (yours; hidden while you visit a friend).
@@ -2149,11 +2399,18 @@ export function openBistro(o: BistroOptions): BistroHandle {
       <strong>${esc(name.endsWith("s") ? `${name}'` : `${name}'s`)} Bistro</strong>
       ${visiting ? `<small class="likes">♥ ${fmt(visiting.likes)}</small>` : ""}
       <div class="xpbar" title="${S.xp} / ${need} XP"><i style="width:${(S.xp / need) * 100}%"></i></div>`;
-    const stars = S.rating;
+    const pop = popNow().total;
+    const popN = Math.round(pop);
     const sp = DISH_BY_ID[special()];
-    chips.innerHTML = `<div class="bs-chip glass" title="Rating ${stars.toFixed(1)} of 5"><span class="stars" style="--r:${(stars / 5) * 100}%">★★★★★</span><b>${stars.toFixed(1)}</b></div>
+    const chipsHtml = `<button type="button" class="bs-chip glass pop" data-pop title="Popularity ${popN} of 50 · ${popTier(pop)}"><span class="pop-ring" style="--p:${popN * 2}"><i>${popN}</i></span><span><small>Popularity</small><b>${popTier(pop)}</b></span><b class="ph">Popularity</b></button>
       <div class="bs-chip glass special"><img src="${dishIconUrl(sp.id, 48)}" alt=""><span><small>Today's special</small><b>${esc(sp.name)}</b></span></div>
-      ${rushing() ? `<div class="bs-chip glass rush"><b>Rush hour!</b><small>Tips ×2 · ${RUSH_SECONDS - (Math.floor((nowS() + rushShift) / 1000) % RUSH_PERIOD)}s</small></div>` : `<div class="bs-chip glass soft"><small>Charm</small><b>${charmPts}</b></div>`}`;
+      ${rushing() ? `<div class="bs-chip glass rush"><b>Rush hour!</b><small>Tips ×2 · ${RUSH_SECONDS - (Math.floor((nowS() + rushShift) / 1000) % RUSH_PERIOD)}s</small></div>` : `<button type="button" class="bs-chip glass soft lay" data-pop title="How handy the seats are for the waiters"><small>Floor plan</small><b>${layout.grade ? `Grade ${layout.grade}` : "No seats"}</b></button>`}`;
+    // Only when something shows differently: a chip redrawn under a finger
+    // would swallow the tap.
+    if (chipsHtml !== lastChips) {
+      lastChips = chipsHtml;
+      chips.innerHTML = chipsHtml;
+    }
     const slots = S.counter
       .map((c) =>
         c
@@ -2189,11 +2446,11 @@ export function openBistro(o: BistroOptions): BistroHandle {
     if (spawnT <= 0 && !editing) {
       spawn();
       spawnT =
-        arrivalSeconds(S.rating, charmPts, rushing()) *
-        (0.7 + Math.random() * 0.6);
+        arrivalSeconds(popNow().total, rushing()) * (0.7 + Math.random() * 0.6);
     }
     for (const c of customers) updateCustomer(c, dt);
     customers = customers.filter((c) => !(c.state === "leave" && c.alpha <= 0));
+    if (customers.some((c) => c.state === "queue")) seatFromQueue();
     for (const w of waiters) updateWaiter(w, dt);
     updateChef(dt);
     runKitchen(dt);
@@ -2637,7 +2894,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
     }
     // People on their feet.
     for (const c of customers)
-      if (c.state === "enter" || c.state === "leave")
+      if (c.state === "enter" || c.state === "leave" || c.state === "queue")
         list.push({
           d: c.gx + c.gy + 0.3,
           f: () =>
@@ -2843,6 +3100,27 @@ export function openBistro(o: BistroOptions): BistroHandle {
         ctx.closePath();
         ctx.stroke();
       }
+    // Each seat by how far the waiters walk to it: green, yellow, red.
+    updatePreview();
+    const heat = { good: "79,210,122", fair: "255,194,61", far: "255,90,90" };
+    const plan = preview ? previewItems : S.items;
+    for (const w of (preview ?? layout).seats) {
+      const chair = plan.find((i) => i.id === w.chair);
+      if (!chair) continue;
+      const { x, y } = chair;
+      const a = iso(x - 0.42, y - 0.42),
+        b = iso(x + 0.42, y - 0.42),
+        c = iso(x + 0.42, y + 0.42),
+        d = iso(x - 0.42, y + 0.42);
+      ctx.fillStyle = `rgba(${heat[seatHeat(w.waiter)]},.42)`;
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.lineTo(c.x, c.y);
+      ctx.lineTo(d.x, d.y);
+      ctx.closePath();
+      ctx.fill();
+    }
     if (held && hover) {
       const def = ITEM_BY_KIND[held.kind];
       const ok = tryPlaceDry(held.kind, hover.x, hover.y);
@@ -2879,6 +3157,30 @@ export function openBistro(o: BistroOptions): BistroHandle {
   };
   /** Bubbles, rings, floaters and particles: always on top of the room. */
   const drawOverlay = (now: number) => {
+    // Decorating: each seat's walk for the waiters, as a coloured tag.
+    if (editing) {
+      const plan = preview ? previewItems : S.items;
+      const heat = { good: "#3fbf6e", fair: "#e8a92a", far: "#e0524f" };
+      ctx.font = "800 13px system-ui, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      for (const w of (preview ?? layout).seats) {
+        const chair = plan.find((i) => i.id === w.chair);
+        if (!chair) continue;
+        const p = iso(chair.x, chair.y);
+        const x = p.x,
+          y = p.y - 64;
+        ctx.fillStyle = heat[seatHeat(w.waiter)];
+        ctx.strokeStyle = "rgba(255,255,255,.9)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(x, y, 12, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = "#fff";
+        ctx.fillText(String(w.waiter), x, y + 0.5);
+      }
+    }
     // Perfect-moment and ready badges over the stoves.
     S.stoves.forEach((st, i) => {
       if (!st.dish) return;
@@ -2941,6 +3243,26 @@ export function openBistro(o: BistroOptions): BistroHandle {
         ctx.fillText("TAP!", x, y - 22 - pulse * 3);
       }
     });
+    // Waiting by the door: a small bubble with how long they'll wait.
+    for (const c of customers) {
+      if (c.state !== "queue" || c.path.length) continue;
+      const p = iso(c.gx, c.gy);
+      const x = p.x + 4,
+        y = p.y - 112;
+      const pat = clamp(1 - (T - c.sat) / c.patience, 0, 1);
+      bubble(x, y, 15, "#ffffff");
+      ctx.fillStyle = "#6b7280";
+      ctx.font = "800 15px system-ui, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("⌛", x, y + 1);
+      ctx.lineWidth = 2.5;
+      ctx.strokeStyle =
+        pat > 0.5 ? "#4fd27a" : pat > 0.25 ? "#ffc23d" : "#ff5a5a";
+      ctx.beginPath();
+      ctx.arc(x, y, 18, -Math.PI / 2, -Math.PI / 2 + pat * Math.PI * 2);
+      ctx.stroke();
+    }
     // Order bubbles with a patience ring.
     for (const c of customers) {
       if (c.state !== "seated") continue;

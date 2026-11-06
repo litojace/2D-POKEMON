@@ -1,13 +1,23 @@
 import { raidAttacksOf, type RaidBossId } from "../../packages/shared/src/raid";
 import { expect, test, type Page } from "@playwright/test";
 
-import { box, inside, openHub, pushUntilBattle, snap, openPlayPanel } from "./helpers";
+import {
+  box,
+  inside,
+  openHub,
+  pushUntilBattle,
+  snap,
+  openPlayPanel,
+} from "./helpers";
 
 /** Peril · NAME · Phase in one centred row, the bar below, the callout under it. */
 async function expectBossFrame(page: Page, boss: string) {
   const name = await box(page, ".raid-boss-heading > b"),
     phase = await box(page, ".raid-boss-phase"),
-    health = await box(page, boss === "storm-twins" ? ".raid-twin-health" : ".raid-boss-health"),
+    health = await box(
+      page,
+      boss === "storm-twins" ? ".raid-twin-health" : ".raid-boss-health",
+    ),
     cue = await box(page, ".raid-callout"),
     hud = await box(page, "#raid-hud");
   const mid = (b: { y: number; height: number }) => b.y + b.height / 2;
@@ -18,8 +28,12 @@ async function expectBossFrame(page: Page, boss: string) {
   expect(health.y).toBeGreaterThanOrEqual(name.y + name.height);
   expect(cue.y).toBeGreaterThanOrEqual(health.y + health.height);
   // Centred on the bar, and the bar inside the HUD.
-  expect(Math.abs(name.x + name.width / 2 - (health.x + health.width / 2))).toBeLessThanOrEqual(2);
-  expect(Math.abs(cue.x + cue.width / 2 - (health.x + health.width / 2))).toBeLessThanOrEqual(2);
+  expect(
+    Math.abs(name.x + name.width / 2 - (health.x + health.width / 2)),
+  ).toBeLessThanOrEqual(2);
+  expect(
+    Math.abs(cue.x + cue.width / 2 - (health.x + health.width / 2)),
+  ).toBeLessThanOrEqual(2);
   expect(health.x).toBeGreaterThanOrEqual(hud.x - 1);
   expect(health.x + health.width).toBeLessThanOrEqual(hud.x + hud.width + 1);
   await expect(page.locator(".raid-party-bars")).toHaveCount(0);
@@ -194,9 +208,7 @@ for (const size of [
                 game = await box(page, "#game");
               const hud = await box(page, "#raid-hud");
               const obstacles = await page
-                .locator(
-                  ".touch-buttons button, #battle-menu, .raid-elapsed",
-                )
+                .locator(".touch-buttons button, #battle-menu, .raid-elapsed")
                 .evaluateAll((items) =>
                   items.map((item) => {
                     const r = item.getBoundingClientRect();
@@ -349,7 +361,14 @@ for (const size of [
       }
       for (const offers of [
         ["shelter", "sharing", "core", "rescue", "courage", "mending"],
-        ["grounded", "fireproof", "polished", "lucid", "footing", "lamplighter"],
+        [
+          "grounded",
+          "fireproof",
+          "polished",
+          "lucid",
+          "footing",
+          "lamplighter",
+        ],
       ]) {
         await page.evaluate((offers) => {
           const w = window as any;
@@ -382,7 +401,11 @@ for (const size of [
             ),
           ).toBeLessThanOrEqual(2);
           // Very short screens keep the description in Rite details.
-          for (const child of [".raid-rite-icon", "b", ...(size.height > 350 ? ["small"] : [])]) {
+          for (const child of [
+            ".raid-rite-icon",
+            "b",
+            ...(size.height > 350 ? ["small"] : []),
+          ]) {
             expect(
               inside(
                 await box(page, `[data-raid-rite="${id}"] ${child}`),

@@ -13,8 +13,12 @@ import {
   cookMs,
   defaultState,
   payment,
+  popularity,
   sanitize,
+  seatWalks,
+  serviceRate,
   simulateAway,
+  sizeOf,
   xpToNext,
   type BistroState,
   type DishId,
@@ -369,6 +373,7 @@ describe("staff, upgrades and the time away", () => {
       lastSeen,
       lastSeen + b.away.away,
       before.special,
+      { likesWeek: before.likesWeek, dinedToday: before.friendGuests.length },
     )!;
     expect(b.away.capped).toBe(true);
     expect(b.away.worked).toBe(4 * 3600 * 1000); // shift level 1
@@ -487,5 +492,75 @@ describe("expanding the dining room", () => {
       [cal],
     );
     expect(n).toBe(7);
+  });
+});
+
+describe("popularity and the floor plan (migration 070)", () => {
+  /** The server's numbers for a bistro next to the shared rules' own. */
+  const compare = async (id: string) => {
+    const b = await open(id);
+    const local = sanitize(b);
+    const pop = { likesWeek: b.likesWeek, dinedToday: b.friendGuests.length };
+    const walks = await sql(
+      "select chair, tbl as table, guest, waiter from public.arena_bistro_walks($1)",
+      [id],
+    );
+    expect(walks).toEqual(seatWalks(local.items, sizeOf(local.sizeLv)));
+    const [{ p, r }] = await sql(
+      "select public.arena_bistro_popularity($1) p, public.arena_bistro_service_rate($1) r",
+      [id],
+    );
+    // The client sees the rating to 3 decimals.
+    expect(p).toBeCloseTo(popularity(local, pop).total, 1);
+    expect(r).toBeCloseTo(serviceRate(local, pop), 3);
+    return { b, walks, p };
+  };
+  it("measures the same walks, popularity and service rate as the client", async () => {
+    // Ana: friends ate there today and liked it this week.
+    const a = await compare(ana);
+    expect(a.b.likesWeek).toBe(1);
+    expect(a.b.friendGuests).toHaveLength(1);
+    expect(a.walks.length).toBeGreaterThan(0);
+    // Cal: the biggest room, furniture in the far corner.
+    const c = await compare(cal);
+    expect(c.b.sizeLv).toBe(3);
+    expect(c.walks.some((w: any) => w.waiter >= 20)).toBe(true);
+  });
+  it("a plan with the tables far from the counter serves fewer guests while away", async () => {
+    const [{ r: before }] = await sql(
+      "select public.arena_bistro_service_rate($1) r",
+      [cal],
+    );
+    // Every table and chair of Cal's to the far side of the room.
+    const items = await sql(
+      "select id, kind from public.arena_bistro_items where player_id = $1 and kind in ('table', 'chair') order by id",
+      [cal],
+    );
+    await sql(
+      "delete from public.arena_bistro_items where player_id = $1 and kind in ('table', 'chair')",
+      [cal],
+    );
+    const tables = items.filter((i: any) => i.kind === "table");
+    for (const [n, t] of tables.entries())
+      await sql(
+        "insert into public.arena_bistro_items(player_id, id, kind, x, y, rot) values ($1, $2, 'table', 15, $3, 0), ($1, $4, 'chair', 16, $3, 2)",
+        [cal, t.id, 1 + 2 * n, 1000 + n],
+      );
+    const [{ r: after }] = await sql(
+      "select public.arena_bistro_service_rate($1) r",
+      [cal],
+    );
+    expect(after).toBeLessThan(before);
+    await compare(cal);
+  });
+  it("friends see each other's popularity", async () => {
+    await as(ben);
+    const list = (
+      await db.query<{ f: any }>("select public.arena_bistro_friends() f")
+    ).rows[0].f;
+    const [{ p }] = await sql("select public.arena_bistro_popularity($1) p", [
+      ana,
+    ]);
+    expect(list[0].popularity).toBeCloseTo(p, 1);
   });
 });

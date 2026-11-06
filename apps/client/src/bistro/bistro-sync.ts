@@ -81,6 +81,8 @@ export interface BistroExtras {
   special: DishId;
   chef: string;
   likes: number;
+  /** Likes this week (popularity). */
+  likesWeek: number;
   leaves: number;
   tradedToday: number;
   friendGuests: FriendGuest[];
@@ -224,6 +226,7 @@ export function readServer(raw: unknown): {
       special: isDish(r.special) ? r.special : "goicuon",
       chef: typeof r.chef === "string" ? r.chef : "voltkit",
       likes: num(r.likes),
+      likesWeek: num(r.likesWeek),
       leaves: num(r.leaves),
       tradedToday: num(r.tradedToday),
       friendGuests: guests.filter((g) => g && isDish(g.dish)),
@@ -292,6 +295,7 @@ export class BistroSync {
       special: "goicuon",
       chef: "voltkit",
       likes: 0,
+      likesWeek: 0,
       leaves: 0,
       tradedToday: 0,
       friendGuests: [],

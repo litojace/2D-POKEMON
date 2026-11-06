@@ -450,3 +450,128 @@ describe("bistro: expanding the dining room", () => {
     expect(sanitize(JSON.parse(JSON.stringify(s))).items).toEqual(s.items);
   });
 });
+
+describe("bistro: popularity (docs/bistro-gdd.md §4)", () => {
+  it("adds service, decor and friends, less the mess, kept within 0..50", async () => {
+    const { popularity, charm } =
+      await import("../../packages/shared/src/bistro");
+    const s = defaultState();
+    expect(charm(s.items)).toBe(8);
+    const p = popularity(s);
+    expect(p.service).toBe(18); // rating 3 × 6
+    expect(p.decor).toBeCloseTo(8 / 3, 10);
+    expect(p.social).toBe(0);
+    expect(p.total).toBeCloseTo(18 + 8 / 3, 10);
+    const q = popularity(s, { likesWeek: 3, dinedToday: 2, dirty: 4 });
+    expect(q.social).toBe(2.5);
+    expect(q.mess).toBe(2);
+    expect(q.total).toBeCloseTo(p.total + 0.5, 10);
+    // Caps: friends 4, decor 10, mess 8, the total 0..50.
+    expect(popularity(s, { likesWeek: 40 }).social).toBe(4);
+    expect(
+      popularity(
+        { ...s, rating: 5, items: Array(30).fill(s.items[10]) },
+        {
+          likesWeek: 9,
+          gourmet: 999,
+        },
+      ).total,
+    ).toBe(50);
+    expect(popularity({ ...s, rating: 0 }, { trash: 20 }).total).toBe(0);
+  });
+  it("sets the arrivals, the queue and the VIP share", async () => {
+    const { arrivalSeconds, queueMax, queuePatience, vipShare, popTier } =
+      await import("../../packages/shared/src/bistro");
+    expect(arrivalSeconds(0, false)).toBe(9);
+    expect(arrivalSeconds(50, false)).toBeCloseTo(2.2, 10);
+    expect(arrivalSeconds(50, true)).toBeCloseTo(2.2 * 0.45, 10);
+    expect(arrivalSeconds(25, false)).toBeCloseTo(5.6, 10);
+    expect([0, 9, 10, 29, 40, 50].map(queueMax)).toEqual([1, 1, 2, 3, 5, 6]);
+    expect(queuePatience(20)).toBe(25);
+    expect(vipShare(0, false)).toBeCloseTo(0.06, 10);
+    expect(vipShare(50, false)).toBeCloseTo(0.14, 10);
+    expect(vipShare(50, true)).toBeCloseTo(0.182, 10);
+    expect([0, 9.4, 9.6, 20, 39, 50].map(popTier)).toEqual([
+      "Quiet Corner",
+      "Quiet Corner",
+      "Local Favorite",
+      "Busy Bistro",
+      "Talk of the Town",
+      "Legendary Bistro",
+    ]);
+  });
+});
+
+describe("bistro: the floor plan's walks (docs/bistro-gdd.md §3)", () => {
+  it("measures steps from the door and the counter for every seat", async () => {
+    const { seatWalks, layoutStats, distField, sizeOf } =
+      await import("../../packages/shared/src/bistro");
+    const s = defaultState();
+    const z = sizeOf(0);
+    const d = distField(blockedGrid(s.items, -1, z), [DOOR]);
+    expect(d[DOOR.x][DOOR.y]).toBe(0);
+    expect(d[1][7]).toBe(1);
+    expect(d[0][0]).toBe(-1); // the kitchen
+    expect(seatWalks(s.items, z)).toEqual([
+      { chair: 3, table: 2, guest: 5, waiter: 2 },
+      { chair: 4, table: 2, guest: 7, waiter: 2 },
+      { chair: 6, table: 5, guest: 12, waiter: 6 },
+      { chair: 7, table: 5, guest: 10, waiter: 8 },
+      { chair: 9, table: 8, guest: 7, waiter: 12 },
+      { chair: 10, table: 8, guest: 11, waiter: 14 },
+    ]);
+    const lay = layoutStats(s.items, z);
+    expect(lay.tMeal).toBeCloseTo(44 / 6 / 2.8 + 5, 10);
+    expect(lay.grade).toBe("B");
+  });
+  it("a table far from the counter grades the plan down and slows service", async () => {
+    const { layoutStats, serviceRate, sizeOf, tryPlace } =
+      await import("../../packages/shared/src/bistro");
+    const near = defaultState();
+    near.staff.push({
+      id: 9,
+      char: "pyranda",
+      role: "waiter",
+      level: 1,
+      dish: "pho",
+    });
+    const far = JSON.parse(JSON.stringify(near)) as typeof near;
+    far.level = 12;
+    far.sizeLv = 3;
+    // The table by the counter and its chairs go to the far corner.
+    const move = (id: number, x: number, y: number) =>
+      expect(
+        tryPlace(
+          far,
+          far.items.find((i) => i.id === id)!.kind,
+          x,
+          y,
+          0,
+          far.items.find((i) => i.id === id),
+        ).ok,
+      ).toBe(true);
+    move(2, 15, 10);
+    move(3, 14, 10);
+    move(4, 16, 10);
+    const a = layoutStats(near.items, sizeOf(0));
+    const b = layoutStats(far.items, sizeOf(3));
+    expect(b.seats).toHaveLength(6);
+    expect(b.tMeal).toBeGreaterThan(a.tMeal + 2);
+    expect(serviceRate(far)).toBeLessThan(serviceRate(near));
+  });
+  it("a seat nobody can reach doesn't count", async () => {
+    const { seatWalks, sizeOf } =
+      await import("../../packages/shared/src/bistro");
+    const s = defaultState();
+    // Wall the far table's chair in with plants (straight into the list:
+    // the shop's own checks would refuse this plan).
+    let id = 100;
+    for (const [x, y] of [
+      [10, 7],
+      [9, 6],
+      [9, 8],
+    ])
+      s.items.push({ id: id++, kind: "plant", x, y, rot: 0 });
+    expect(seatWalks(s.items, sizeOf(0)).map((w) => w.chair)).not.toContain(10);
+  });
+});

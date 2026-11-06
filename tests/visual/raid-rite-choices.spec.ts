@@ -1,5 +1,12 @@
 import { expect, test } from "@playwright/test";
-import { box, inside, openHub, pushUntilBattle, snap, openPlayPanel } from "./helpers";
+import {
+  box,
+  inside,
+  openHub,
+  pushUntilBattle,
+  snap,
+  openPlayPanel,
+} from "./helpers";
 
 const buffValues: Record<string, string[]> = {
   shelter: ["−25%"],
@@ -64,7 +71,14 @@ for (const size of [
       // Six rites on offer, an even 3 x 2 grid.
       for (const offers of [
         ["shelter", "sharing", "core", "rescue", "courage", "mending"],
-        ["grounded", "fireproof", "polished", "lucid", "footing", "lamplighter"],
+        [
+          "grounded",
+          "fireproof",
+          "polished",
+          "lucid",
+          "footing",
+          "lamplighter",
+        ],
       ]) {
         await page.evaluate((offers) => {
           const w = window as any;
