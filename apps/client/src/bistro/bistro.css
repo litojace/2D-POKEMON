@@ -61,7 +61,7 @@
   border-radius: 16px;
   display: grid;
   grid-template-columns: var(--hub-card-art, 38px) minmax(0, 1fr) auto;
-  grid-template-areas: "art name coins" "art xp xp";
+  grid-template-areas: "art name name" "art xp xp";
   align-items: center;
   column-gap: 8px;
   row-gap: 3px;
@@ -143,12 +143,16 @@
   pointer-events: none;
 }
 .bistro-layer .bs-chip {
+  /* Chips of one size, their content centred. */
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
+  width: 156px;
   height: 44px;
   box-sizing: border-box;
-  padding: 0 14px;
+  padding: 0 12px;
+  overflow: hidden;
   border-radius: 14px;
   white-space: nowrap;
   pointer-events: auto;
@@ -192,12 +196,16 @@
 
 /* ── The rail and zoom, right edge ── */
 .bistro-layer .bs-corner {
+  /* Bottom right, like the Farm's: the rail, the zoom buttons under it,
+     ending on the counter bar's line. */
   position: absolute;
   right: var(--bs-x-r);
-  top: calc(var(--hub-card-h, 52px) + 14px);
-  display: grid;
-  gap: 10px;
-  justify-items: end;
+  bottom: var(--bs-y-b);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  z-index: 2;
 }
 .bistro-layer .bs-rail {
   display: grid;
@@ -321,18 +329,19 @@
   height: 46px;
 }
 .bistro-layer .bs-slot b {
+  /* The count sits inside the slot's corner (nothing pokes out). */
   position: absolute;
-  right: -4px;
-  bottom: -4px;
-  min-width: 20px;
-  height: 20px;
-  padding: 0 5px;
+  right: 2px;
+  bottom: 2px;
+  min-width: 19px;
+  height: 18px;
+  padding: 0 4px;
   box-sizing: border-box;
-  border-radius: 10px;
+  border-radius: 9px;
   background: #ffd65b;
   color: #2a1a00;
   font:
-    800 12px/20px "DM Sans",
+    800 11px/18px "DM Sans",
     sans-serif;
   text-align: center;
 }
@@ -473,11 +482,19 @@
 
 /* ── Sheets: the cook menu, recipes and the shop ── */
 .bistro-layer .bs-sheet {
+  /* Between the left column (the badge) and the menu column (the rail and
+     the zoom row under it), under the top bar. */
   position: absolute;
-  right: calc(var(--bs-x-r) + 96px);
+  right: calc(var(--bs-x-r) + 128px);
   top: calc(var(--hub-card-h, 52px) + 14px);
   bottom: var(--bs-y-b);
-  width: min(560px, calc(100vw - 140px - var(--bs-x-l) - var(--bs-x-r)));
+  width: min(
+    560px,
+    calc(
+      100vw - var(--bs-x-r) - 128px - var(--bs-x-l) - var(--hub-card-w, 236px) -
+        12px
+    )
+  );
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -518,13 +535,18 @@
   cursor: pointer;
 }
 .bistro-layer .bs-tabs {
-  display: flex;
+  /* Tabs of one width, side by side. */
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
   gap: 6px;
   padding: 0 18px 10px;
-  overflow-x: auto;
 }
 .bistro-layer .bs-tabs button {
-  flex: none;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   padding: 8px 14px;
   border: 1px solid #ffffff22;
   border-radius: 999px;
@@ -719,7 +741,8 @@
   left: 50%;
   bottom: var(--bs-y-b);
   transform: translateX(-50%);
-  width: min(720px, calc(100vw - 28px - var(--bs-x-l) - var(--bs-x-r)));
+  /* Centred, clear of the menu column on the right (the same room both sides). */
+  width: min(720px, calc(100vw - 2 * (var(--bs-x-r) + 98px)));
   box-sizing: border-box;
   display: grid;
   gap: 8px;
@@ -755,12 +778,17 @@
   color: #9aa6c2;
 }
 .bistro-layer .bs-store button {
+  /* Compact tiles of one size: the item, its name, how many are stored. */
   position: relative;
   flex: none;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 12px 4px 4px;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 2px;
+  box-sizing: border-box;
+  width: 82px;
+  height: 70px;
+  padding: 4px;
   border: 1px solid #ffffff22;
   border-radius: 14px;
   background: #ffffff10;
@@ -788,7 +816,11 @@
   justify-content: flex-end;
 }
 .bistro-layer .bs-edit-btns button {
-  padding: 9px 16px;
+  /* One width for every button on the bar. */
+  flex: 0 0 96px;
+  box-sizing: border-box;
+  padding: 9px 4px;
+  text-align: center;
   border: 1px solid #ffffff2a;
   border-radius: 12px;
   background: #ffffff12;
@@ -816,13 +848,12 @@
   line-height: 15px;
 }
 .bistro-layer.phone .bs-chips {
-  top: auto;
-  left: auto;
-  right: calc(var(--bs-x-r) + 66px);
-  bottom: var(--bs-y-b);
+  /* Under the bistro's badge, on the left (the menu has the right). */
+  top: calc(var(--hub-card-h, 42px) * 2 + 18px);
+  left: var(--bs-x-l);
   transform: none;
   flex-direction: column;
-  align-items: flex-end;
+  align-items: flex-start;
   gap: 4px;
 }
 .bistro-layer.phone .bs-chip {
@@ -846,7 +877,6 @@
   font-size: 11px;
 }
 .bistro-layer.phone .bs-corner {
-  top: calc(var(--hub-card-h, 42px) + 12px);
   gap: 6px;
 }
 .bistro-layer.phone .bs-rail {
@@ -903,10 +933,16 @@
   display: none;
 }
 .bistro-layer.phone .bs-sheet {
-  top: 8px;
-  bottom: 8px;
-  right: calc(var(--bs-x-r) + 62px);
-  width: min(520px, calc(100vw - 90px - var(--bs-x-l) - var(--bs-x-r)));
+  top: calc(var(--hub-card-h, 42px) + 12px);
+  bottom: var(--bs-y-b);
+  right: calc(var(--bs-x-r) + 64px);
+  width: min(
+    520px,
+    calc(
+      100vw - var(--bs-x-r) - 64px - var(--bs-x-l) - var(--hub-card-w, 172px) -
+        8px
+    )
+  );
   z-index: 3;
 }
 .bistro-layer.phone .bs-sheet header {
@@ -1372,4 +1408,131 @@ body.hub-bistro:has(.bistro-layer.editing) #toast {
 .bistro-layer.phone .bs-visit button {
   padding: 8px 10px;
   font-size: 11.5px;
+}
+
+/* ── The wallet: bistro coins where the top bar's coin pills are ── */
+.bistro-layer .bs-wallet {
+  position: absolute;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-sizing: border-box;
+  min-width: 168px;
+  height: 42px;
+  padding: 0 18px 0 12px;
+  border: 1px solid rgba(255, 179, 107, 0.7);
+  border-radius: 999px;
+  background:
+    radial-gradient(
+      circle at 18% 50%,
+      rgba(255, 214, 91, 0.22),
+      transparent 55%
+    ),
+    rgba(14, 26, 49, 0.86);
+  backdrop-filter: blur(6px);
+  color: #ffe39a;
+  font: 800 21px/1 var(--display, "Barlow Condensed", sans-serif);
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.bistro-layer .bs-wallet[hidden] {
+  display: none;
+}
+.bistro-layer .bs-wallet .ico-wrap {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+}
+.bistro-layer .bs-wallet .ico-wrap .ico {
+  width: 26px;
+  height: 26px;
+  filter: drop-shadow(0 2px 3px #0008);
+}
+.bistro-layer .bs-wallet:hover {
+  border-color: #ffd65b;
+}
+.bistro-layer .bs-wallet.bump {
+  animation: bs-bump 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.bistro-layer.phone .bs-wallet {
+  min-width: 118px;
+  gap: 5px;
+  padding: 0 12px 0 8px;
+  font-size: 16px;
+}
+.bistro-layer.phone .bs-wallet .ico-wrap,
+.bistro-layer.phone .bs-wallet .ico-wrap .ico {
+  width: 20px;
+  height: 20px;
+}
+/* The game's coins and Gold Leaves don't belong to the Bistro: hidden here. */
+body.hub-bistro :is(#account-coins, #account-leaves) {
+  display: none !important;
+}
+
+.bistro-layer.phone .bs-edit {
+  width: min(640px, calc(100vw - 2 * (var(--bs-x-r) + 66px)));
+}
+
+.bistro-layer .bs-chip > span {
+  min-width: 0;
+}
+.bistro-layer .bs-chip b,
+.bistro-layer .bs-chip small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.bistro-layer.phone .bs-chip {
+  width: 124px;
+}
+.bistro-layer .bs-store img {
+  width: 38px;
+  height: 38px;
+}
+.bistro-layer .bs-store button span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10.5px;
+}
+.bistro-layer .bs-store i {
+  position: absolute;
+  top: 3px;
+  right: 5px;
+  font-size: 11px;
+}
+.bistro-layer.phone .bs-store button {
+  width: 64px;
+  height: 52px;
+}
+.bistro-layer.phone .bs-store img {
+  width: 26px;
+  height: 26px;
+}
+.bistro-layer.phone .bs-edit-btns button {
+  flex-basis: 78px;
+  padding: 7px 2px;
+}
+/* A card's lines never run past the card: they wrap inside it. */
+.bistro-layer :is(.bs-dish, .bs-item) > * {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.bistro-layer :is(.bs-dish, .bs-item) small {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+/* A card's column is the card's width, whatever its widest line. */
+.bistro-layer :is(.bs-dish, .bs-item) {
+  grid-template-columns: minmax(0, 1fr);
+}
+.bistro-layer .bs-item.hire button.pr {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }

@@ -115,9 +115,12 @@ test("Bistro fits a phone in landscape", async ({ page }, info) => {
   await page.setViewportSize({ width: 844, height: 390 });
   const errors = await openBistro(page);
   const nav = await page.locator("#hub-scenes").boundingBox();
-  const coins = await page.locator("#account-coins").boundingBox();
-  expect(nav && coins && nav.x + nav.width <= coins.x).toBeTruthy();
-  for (const sel of ["#bs-badge", ".bs-rail", "#bs-bar"]) {
+  // The game's coin pills are hidden here; the bistro's wallet takes their place.
+  await expect(page.locator("#account-coins")).toBeHidden();
+  await expect(page.locator("#account-leaves")).toBeHidden();
+  const wallet = await page.locator("#bs-wallet").boundingBox();
+  expect(nav && wallet && nav.x + nav.width <= wallet.x).toBeTruthy();
+  for (const sel of ["#bs-badge", ".bs-rail", "#bs-bar", "#bs-wallet"]) {
     const box = await page.locator(sel).boundingBox();
     expect(box).toBeTruthy();
     expect(box!.x).toBeGreaterThanOrEqual(0);

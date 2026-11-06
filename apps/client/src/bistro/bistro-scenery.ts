@@ -297,6 +297,10 @@ function drawGround(ctx: Ctx, l: Light) {
 
 /* ───────────── houses, trees, lamps ───────────── */
 
+/** A spot on the ground on this side of the horizon (things stand there, not in the sky). */
+export const onGround = (gx: number, gy: number, margin = 12) =>
+  iso(gx, gy).y > HORIZON + margin;
+
 function drawHouse(
   ctx: Ctx,
   x: number,
@@ -541,17 +545,18 @@ export function drawSceneryStatic(ctx: Ctx, l: Light, special: string) {
   drawFar(ctx, l);
   drawGround(ctx, l);
   // Across the road: houses with gardens between them; trees around the block.
+  // Across the road, on this side of the horizon (the far end of the road
+  // runs behind the bistro's wall to the hills).
   const across: [number, number, string, string][] = [
-    [-8.6, -3.5, "#f3d7a6", "#c4553d"],
-    [-8.6, 1, "#cfe3f0", "#3d6f9e"],
-    [-8.6, 5.6, "#f5e0e0", "#7a4a8a"],
-    [-8.6, 10.2, "#e4f0cf", "#5a8a3d"],
+    [-8.6, 3, "#f3d7a6", "#c4553d"],
+    [-8.6, 7.5, "#cfe3f0", "#3d6f9e"],
+    [-8.6, 12, "#f5e0e0", "#7a4a8a"],
+    [-8.6, 16.5, "#e4f0cf", "#5a8a3d"],
   ];
   const trees: [number, number, number, number][] = [
-    [-6.6, -1.2, 1, 0],
-    [-6.7, 3.3, 0.9, 2],
-    [-6.6, 7.9, 1.1, 0],
-    [-6.8, 12.5, 1, 1],
+    [-6.7, 5.3, 0.9, 2],
+    [-6.6, 9.8, 1.1, 0],
+    [-6.8, 14.3, 1, 1],
     [3, -3.6, 1.1, 0],
     [7.5, -3.4, 1, 1],
     [11.5, -3.2, 1.2, 0],
@@ -563,9 +568,11 @@ export function drawSceneryStatic(ctx: Ctx, l: Light, special: string) {
   type D = { d: number; f: () => void };
   const list: D[] = [];
   for (const [x, y, b, r] of across)
-    list.push({ d: x + y, f: () => drawHouse(ctx, x, y, b, r, l) });
+    if (onGround(x, y))
+      list.push({ d: x + y, f: () => drawHouse(ctx, x, y, b, r, l) });
   for (const [x, y, s, k] of trees)
-    list.push({ d: x + y, f: () => drawTree(ctx, x, y, s, k, l) });
+    if (onGround(x, y))
+      list.push({ d: x + y, f: () => drawTree(ctx, x, y, s, k, l) });
   list.sort((a, b) => a.d - b.d);
   for (const it of list) it.f();
   drawStreetProps(ctx, l);
@@ -597,11 +604,15 @@ export function updateCars(cars: Car[], dt: number, spawnRoll: number): Car[] {
   }
   return out;
 }
-/** 0 at the horizon (and beyond it), 1 once the car is well below it. */
+/** Where (screen y) a car has faded out on its way up the road. */
+const CAR_GONE = HORIZON + 50;
+/** 0 near the horizon (and beyond it), 1 once the car is well below it. */
 export function carFade(car: Car): number {
   const lane = car.v > 0 ? ROAD0 + 0.6 : ROAD1 - 0.6;
   const y = iso(lane, car.y).y;
-  return Math.max(0, Math.min(1, (y - HORIZON - 4) / 70));
+  // Gone while still behind the bistro's wall, so a car never shows in the
+  // sliver of road between the wall's top and the horizon.
+  return Math.max(0, Math.min(1, (y - CAR_GONE) / 60));
 }
 function drawCar(ctx: Ctx, car: Car, l: Light) {
   // Cars going +y keep to the far lane (nearer the houses).
@@ -699,7 +710,8 @@ export function drawSceneryLive(ctx: Ctx, l: Light, cars: Car[], low: boolean) {
       // Fireflies over the grass across the road.
       for (let i = 0; i < 18; i++) {
         const gx = -7.4 + hash(i) * 2 + Math.sin(l.t * 0.6 + i) * 0.3,
-          gy = -2 + hash(i + 50) * 16 + Math.cos(l.t * 0.5 + i * 2) * 0.3;
+          gy = 1 + hash(i + 50) * 16 + Math.cos(l.t * 0.5 + i * 2) * 0.3;
+        if (!onGround(gx, gy, 40)) continue;
         const p = iso(gx, gy);
         const a = (0.5 + 0.5 * Math.sin(l.t * 3 + i * 1.7)) * l.night;
         ctx.fillStyle = `rgba(220,255,140,${a})`;

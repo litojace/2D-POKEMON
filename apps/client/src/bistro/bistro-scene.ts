@@ -455,6 +455,7 @@ interface DishFlight {
 const HTML = `<canvas class="bs-cv" aria-label="Your bistro"></canvas>
 <div class="bs-hud">
   <div class="bs-badge glass" id="bs-badge"></div>
+  <button type="button" class="bs-wallet" id="bs-wallet" aria-label="Bistro coins: open the Bank" title="Bistro coins (the Shop's Bank trades them for Gold Leaves)"><span class="ico-wrap">${I("coin")}</span><b id="bs-coins">0</b></button>
   <div class="bs-chips" id="bs-chips"></div>
   <div class="bs-corner">
     <nav class="bs-rail glass" aria-label="Bistro menu">
@@ -872,13 +873,36 @@ export function openBistro(o: BistroOptions): BistroHandle {
       });
   };
   const coinTarget = () => {
-    const el = layer.querySelector("#bs-coins");
+    const el = layer.querySelector("#bs-wallet .ico-wrap");
     const r = el?.getBoundingClientRect();
     const b = layer.getBoundingClientRect();
-    return r
-      ? { x: r.left - b.left + 14, y: r.top - b.top + r.height / 2 }
-      : { x: 60, y: 120 };
+    return r && r.width
+      ? { x: r.left - b.left + r.width / 2, y: r.top - b.top + r.height / 2 }
+      : { x: W - 120, y: 30 };
   };
+  /*
+   * The wallet: bistro coins in the top bar's place for the coin pills (the
+   * game's coins and Gold Leaves are hidden on the Bistro), just left of the
+   * menu button, its height, wherever the bar puts it (phones, notches).
+   */
+  const wallet = $("#bs-wallet");
+  const placeWallet = () => {
+    const menu = Array.from(
+      document.querySelectorAll<HTMLElement>(".header-menu, #home-settings"),
+    )
+      .map((e) => e.getBoundingClientRect())
+      .filter((r) => r.width > 0)
+      .sort((a, b) => a.left - b.left)[0];
+    if (!menu) return;
+    const box = layer.getBoundingClientRect();
+    wallet.style.top = `${menu.top - box.top}px`;
+    wallet.style.height = `${menu.height}px`;
+    wallet.style.right = `${box.right - menu.left + 8}px`;
+  };
+  wallet.addEventListener("click", () => {
+    sound("tick");
+    openSheet("shop", "bank");
+  });
   const banner = (html: string, ms = 2200) => {
     const el = $("#bs-banner");
     el.innerHTML = html;
@@ -1837,7 +1861,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
             ? `<span class="lk">${role === "cook" ? "Cooks" : "Waiters"} full</span>`
             : S.level < step.level
               ? `<span class="lk">${I("lock")} ${role === "cook" ? "Cook" : "Waiter"} at level ${step.level}</span>`
-              : `<button type="button" class="pr ${S.coins < step.price ? "poor" : ""}" data-hire="${role}:${char}">${role === "cook" ? "Hire as cook" : "Hire as waiter"} · ${step.price ? coinTag(step.price) : "free"}</button>`;
+              : `<button type="button" class="pr ${S.coins < step.price ? "poor" : ""}" data-hire="${role}:${char}" title="${role === "cook" ? "Hire as cook" : "Hire as waiter"}">${role === "cook" ? "Cook" : "Waiter"} · ${step.price ? coinTag(step.price) : "free"}</button>`;
         body = `<div class="bs-items">${candidates(S, chef.char)
           .map(
             (c) =>
@@ -2103,6 +2127,12 @@ export function openBistro(o: BistroOptions): BistroHandle {
   const chips = $("#bs-chips");
   const bar = $("#bs-bar");
   const renderHud = () => {
+    // The wallet (yours; hidden while you visit a friend).
+    wallet.hidden = !!visiting;
+    const coinsText = fmt(shownCoins);
+    const coinsEl = wallet.querySelector("b")!;
+    if (coinsEl.textContent !== coinsText) coinsEl.textContent = coinsText;
+    placeWallet();
     hudDirty = false;
     // A dot on Staff when someone can be hired right now.
     const canHire = (["cook", "waiter"] as const).some((r) => {
@@ -2115,7 +2145,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
     const name = visiting ? visiting.name : o.playerName();
     badge.innerHTML = `<div class="bs-ring" style="--p:${Math.round((S.xp / need) * 100)}"><b>${S.level}</b></div>
       <strong>${esc(name.endsWith("s") ? `${name}'` : `${name}'s`)} Bistro</strong>
-      ${visiting ? `<small class="likes">♥ ${fmt(visiting.likes)}</small>` : `<small id="bs-coins">${I("coin")}<span>${fmt(shownCoins)}</span></small>`}
+      ${visiting ? `<small class="likes">♥ ${fmt(visiting.likes)}</small>` : ""}
       <div class="xpbar" title="${S.xp} / ${need} XP"><i style="width:${(S.xp / need) * 100}%"></i></div>`;
     const stars = S.rating;
     const sp = DISH_BY_ID[special()];
@@ -2242,10 +2272,9 @@ export function openBistro(o: BistroOptions): BistroHandle {
         f.last = false;
         shownCoins = S.coins;
         hudDirty = true;
-        const el = layer.querySelector("#bs-coins");
-        el?.classList.remove("bump");
-        void (el as HTMLElement | null)?.offsetWidth;
-        el?.classList.add("bump");
+        wallet.classList.remove("bump");
+        void wallet.offsetWidth;
+        wallet.classList.add("bump");
       }
     }
     flyers = flyers.filter((f) => f.t < f.dur);
