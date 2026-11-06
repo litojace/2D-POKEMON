@@ -1514,6 +1514,54 @@ test("the farm is kept in this browser: after a reload it draws at once", async 
   await expect(page.locator(".farm-layer")).toHaveCount(0);
 });
 
+test("on a phone, the Market's Sell and All buttons line up in columns", async ({
+  browser,
+}, info) => {
+  const context = await browser.newContext({
+    viewport: { width: 844, height: 390 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  try {
+    const page = await context.newPage();
+    const errors = await openLobby(page);
+    await fakeFarm(page);
+    // Totals of very different lengths: 2, 30-odd, a few hundred.
+    await page.evaluate(() => {
+      (window as any).__fakeFarm.barn = [
+        { crop: "wheat", mutation: "", qty: 1 },
+        { crop: "carrot", mutation: "", qty: 4 },
+        { crop: "carrot", mutation: "frost", qty: 2 },
+        { crop: "wheat", mutation: "gold", qty: 30 },
+      ];
+    });
+    await page.click('#hub-scenes [data-hub-scene="farm"]');
+    await page.waitForFunction(() => (window as any).__farm?.F?.loaded);
+    await tapPlace(page, "market");
+    const sheet = page.locator("#fm-sheet");
+    await expect(sheet.locator(".b-sellall")).toHaveCount(4);
+    await sheet.evaluate((el) =>
+      Promise.all(el.getAnimations().map((a) => a.finished)),
+    );
+    const cols = await sheet.evaluate((el) =>
+      [".b-sell1", ".b-sellall"].map((sel) =>
+        [...el.querySelectorAll(sel)].map((b) => {
+          const r = b.getBoundingClientRect();
+          return [Math.round(r.left), Math.round(r.width)];
+        }),
+      ),
+    );
+    for (const col of cols) {
+      expect(new Set(col.map(([l]) => l)).size, "one left edge").toBe(1);
+      expect(new Set(col.map(([, w]) => w)).size, "one width").toBe(1);
+    }
+    await snap(page, info, "farm-market-sell-844x390");
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});
+
 test("the farm rests behind Settings and wakes when it closes", async ({
   page,
 }) => {
