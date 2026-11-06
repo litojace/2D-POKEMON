@@ -143,3 +143,43 @@ it("marks a player pushed out by their own account signing in elsewhere", async 
     account: host.account.id,
   });
 });
+
+it("logs how long a player's device took to load the battle", async () => {
+  const { connect, accounts, log } = await setup();
+  const host = accounts.add(),
+    guest = accounts.add(),
+    outsider = accounts.add();
+  const one = await connect(host.token),
+    two = await connect(guest.token),
+    stranger = await connect(outsider.token);
+  const created = await emit(one, "create", { name: "One" });
+  await emit(two, "join", { name: "Two", code: created.code });
+  const arena = server!.rooms.get(created.code!)!;
+  arena.start();
+  const report = { ms: 8421, fighters: 2, memory: 2, cores: 8 };
+  // Outside a room, or malformed: nothing is logged.
+  stranger.emit("battle-loaded", report);
+  one.emit("battle-loaded", { ...report, ms: -1 });
+  one.emit("battle-loaded", { ...report, extra: true });
+  one.emit("battle-loaded", report);
+  await until(() => log.length === 1);
+  await wait();
+  expect(log).toEqual([
+    {
+      event: "arena-load",
+      details: {
+        ...report,
+        account: host.account.id,
+        room: created.code,
+        mode: "duel",
+        phase: arena.phase,
+        character: arena.players[0].character,
+      },
+    },
+  ]);
+  // A client stuck in a loop is capped.
+  for (let i = 0; i < 30; i++) two.emit("battle-loaded", report);
+  await until(() => log.length === 21);
+  await wait(150);
+  expect(log.length).toBe(21);
+});

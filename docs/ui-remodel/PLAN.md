@@ -1511,3 +1511,20 @@ both axes on the first Shop/Wardrobe render, with original/equipped Mythical art
 at desktop DPR 2 and landscape-phone DPR 3. Run it with the normal visual config
 for Chromium and `tests/visual/webkit.config.ts` for WebKit. These are browser
 engine checks, not a physical iOS device test.
+
+### The Lobby's backdrop is today's Plaza (6 Nov 2026)
+
+Owner's request: the Lobby's background shows the current Plaza map. The
+picture (also the dimmed backdrop behind other screens, `style.css`) was a
+capture from 3 Nov, before the TOP DASH arch, the runway spotlights, the
+fence and farm rows, and the pines. It is redrawn from the real Plaza in the
+visual-test harness by `scripts/lobby-backdrop/` (`capture.spec.ts`, then
+`encode.py`): the whole 2700×1700 map at midday, HUD hidden, no townsfolk or
+pitch bots, the player behind a house, and an empty TOP DASH board (the old
+picture carried the harness's made-up names). Saved at 1350×850.
+
+The file name carries a hash of the picture (`plaza-lobby-<hash>.webp`):
+the service worker precaches `assets/` by URL alone (vite-plugin-pwa treats
+that folder as hashed, `revision: null`), so a picture changed under the old
+name would never have reached an installed game. `encode.py` writes the new
+name, updates both CSS references and deletes the old file.

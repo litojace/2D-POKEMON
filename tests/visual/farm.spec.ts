@@ -343,12 +343,35 @@ async function fakeFarm(page: Page) {
             p.pests--;
             return { ok: true, caught: 1, xp: 1 };
           }
+          // Decor (048) with storage (065): a stored copy places free, and
+          // what it replaces, or what is put away, is stored.
+          const store = (id: string) =>
+            (farm.decorCredits[id] = (farm.decorCredits[id] ?? 0) + 1);
           if (a.a === "decor") {
+            const old = farm.decor.find((d: any) => d.slot === a.slot)?.item;
             farm.decor = farm.decor.filter((d: any) => d.slot !== a.slot);
             farm.decor.push({ slot: a.slot, item: a.item });
             farm.charm += 1;
-            farm.leaves -= 300;
-            return { ok: true, decor: a.item, slot: a.slot, cost: 300 };
+            const free = (farm.decorCredits[a.item] ?? 0) > 0;
+            if (free && !--farm.decorCredits[a.item])
+              delete farm.decorCredits[a.item];
+            if (!free) farm.leaves -= 300;
+            if (old) store(old);
+            return {
+              ok: true,
+              decor: a.item,
+              slot: a.slot,
+              cost: free ? 0 : 300,
+              ...(old ? { stored: old } : {}),
+            };
+          }
+          if (a.a === "decor-remove") {
+            const old = farm.decor.find((d: any) => d.slot === a.slot)?.item;
+            if (!old) return { ok: false, error: "Nothing there" };
+            farm.decor = farm.decor.filter((d: any) => d.slot !== a.slot);
+            farm.charm -= 1;
+            store(old);
+            return { ok: true, removed: a.slot, stored: old };
           }
           if (a.a === "farmer") {
             farm.farmer = a.id;
@@ -1024,7 +1047,7 @@ test("visiting a friend's farm: sneak a ripe crop, catch a bug, go home", async 
   }
 });
 
-test("decorating: buy a decoration and place it in a glowing spot", async ({
+test("decorating: buy a decoration, place it, and put one in storage to place again free", async ({
   browser,
 }, info) => {
   const context = await browser.newContext({
@@ -1067,6 +1090,62 @@ test("decorating: buy a decoration and place it in a glowing spot", async ({
       "Placed Mossy Rock · +1 Charm",
     );
     await expect(sheet).toContainText("Charm 3 · +1% XP");
+    // Put the Street Lamp (spot 0, at 80, 830) away: it goes to storage and
+    // places again for free, even below its level.
+    const tapSpot = async (x: number, y: number) => {
+      const p = await page.evaluate(
+        ([x, y]) => {
+          const f = (window as any).__farm;
+          f.look(x + 200, y - 100);
+          return f.worldClient(x, y);
+        },
+        [x, y],
+      );
+      await page.waitForTimeout(150);
+      await page.mouse.click(p.x, p.y);
+    };
+    // The Storage tab: empty, with the Remove tool.
+    await sheet.locator('[data-tab="storage"]').click();
+    await expect(sheet).toContainText("Storage is empty");
+    await expect(sheet.locator('[data-tab="storage"]')).toHaveText("Storage");
+    await sheet.locator('[data-deco="__remove"]').click();
+    await expect(sheet).toContainText("It goes to storage");
+    await tapSpot(80, 830);
+    await expect(page.locator("#fm-log")).toContainText(
+      "Put Street Lamp in storage",
+    );
+    await expect(sheet.locator('[data-tab="storage"]')).toHaveText(
+      "Storage (1)",
+    );
+    const lamp = sheet.locator(".item", { hasText: "Street Lamp" });
+    await expect(lamp).toContainText("×1");
+    await expect(lamp.locator("button")).toHaveText("Place");
+    // Placing from storage: the spots glow and carry a pin.
+    await lamp.locator("button").click();
+    await expect(sheet).toContainText("Placing Street Lamp");
+    await page.evaluate(() => (window as any).__farm.look(400, 760));
+    await page.waitForTimeout(400);
+    await snap(page, info, "farm-decor-storage");
+    await tapSpot(530, 870);
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          (window as any).__farmRequests.flatMap((r: any) => r.actions),
+        ),
+      )
+      .toEqual([
+        { a: "decor", slot: 1, item: "rock" },
+        { a: "decor-remove", slot: 0 },
+        { a: "decor", slot: 2, item: "lamp" },
+      ]);
+    // The last stored copy is placed: placing stops (nothing is bought).
+    await expect(sheet).toContainText("Storage is empty");
+    await expect(sheet).not.toContainText("Placing");
+    await expect(sheet.locator('[data-tab="storage"]')).toHaveText("Storage");
+    await sheet.locator('[data-tab="buy"]').click();
+    await expect(
+      sheet.locator(".item", { hasText: "Street Lamp" }),
+    ).toContainText("unlocks at Lv 12");
     expect(errors).toEqual([]);
   } finally {
     await context.close();

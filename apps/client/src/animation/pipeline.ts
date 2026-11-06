@@ -58,6 +58,18 @@ export function queueFighterAssets(
     });
   else scene.load.atlas(texture, path + pack.image, path + pack.data);
 }
+/** Every texture key queueFighterAssets loads for this fighter. */
+export function fighterTextureKeys(
+  id: CharacterId,
+  layers: RigAsset[],
+): string[] {
+  const pack = fighterPack(id),
+    texture = `frames-${id}`;
+  if (!pack || pack.kind === "layered") return layers.map((a) => a.key);
+  if (pack.kind === "frames")
+    return Object.keys(pack.files).map((name) => `${texture}-${name}`);
+  return [texture];
+}
 function animationKey(id: CharacterId, state: string, dir: string) {
   return `fighter-${id}-${state}-${dir}`;
 }

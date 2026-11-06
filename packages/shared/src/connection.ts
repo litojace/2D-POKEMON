@@ -21,3 +21,21 @@ export const connectionReportSchema = z
   })
   .strict();
 export type ConnectionReport = z.infer<typeof connectionReportSchema>;
+
+/**
+ * How long a player's device took to load the battle (renderer start until
+ * every fighter's art was ready), sent once per battle renderer as
+ * "battle-loaded" and logged by the server as "arena-load".
+ */
+export const battleLoadSchema = z
+  .object({
+    ms: z.number().int().min(0).max(600_000),
+    /** Fighters loaded for that battle. */
+    fighters: z.number().int().min(0).max(32),
+    /** navigator.deviceMemory (GB, rounded by the browser), where offered. */
+    memory: z.number().min(0).max(1024).optional(),
+    /** navigator.hardwareConcurrency, where offered. */
+    cores: z.number().int().min(1).max(1024).optional(),
+  })
+  .strict();
+export type BattleLoad = z.infer<typeof battleLoadSchema>;
