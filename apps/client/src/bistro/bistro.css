@@ -1,0 +1,961 @@
+/* Element Bistro (demo): the HUD over the restaurant canvas. Every selector
+   is scoped to .bistro-layer; the glass matches the hub's (ui/aero.css). */
+.bistro-layer {
+  --bs-x-l: max(14px, var(--safe-left, 0px));
+  --bs-x-r: max(14px, var(--safe-right, 0px));
+  --bs-y-b: max(14px, var(--safe-bottom, 0px));
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  overflow: hidden;
+  background: #2a1d2e;
+  color: #eef2ff;
+  font-family: "DM Sans", system-ui, sans-serif;
+  outline: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.bistro-layer .bs-cv {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+}
+.bistro-layer .bs-hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  font-size: 14px;
+}
+.bistro-layer .bs-hud > * {
+  pointer-events: auto;
+}
+.bistro-layer .glass {
+  background-color: var(--aero-tint, rgba(13, 20, 38, 0.62));
+  -webkit-backdrop-filter: var(--aero-blur, blur(16px) saturate(1.3));
+  backdrop-filter: var(--aero-blur, blur(16px) saturate(1.3));
+  border: 1px solid var(--aero-rim, rgba(226, 200, 140, 0.42));
+}
+.bistro-layer[data-graphics="low"] .glass {
+  background-color: var(--aero-tint-solid, rgba(12, 18, 34, 0.9));
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.bistro-layer .ico {
+  width: 1.15em;
+  height: 1.15em;
+  vertical-align: -0.2em;
+}
+
+/* ── The bistro's badge: the player card's twin, just under it ── */
+.bistro-layer .bs-badge {
+  position: absolute;
+  left: var(--bs-x-l);
+  top: calc(var(--hub-card-h, 52px) + 14px);
+  box-sizing: border-box;
+  width: var(--hub-card-w, 236px);
+  min-height: var(--hub-card-h, 52px);
+  padding: var(--hub-card-pad, 6px 14px 6px 6px);
+  border-radius: 16px;
+  display: grid;
+  grid-template-columns: var(--hub-card-art, 38px) minmax(0, 1fr) auto;
+  grid-template-areas: "art name coins" "art xp xp";
+  align-items: center;
+  column-gap: 8px;
+  row-gap: 3px;
+}
+.bistro-layer .bs-ring {
+  --p: 0;
+  grid-area: art;
+  position: relative;
+  width: var(--hub-card-art, 38px);
+  height: var(--hub-card-art, 38px);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: conic-gradient(#ffb36b calc(var(--p) * 1%), #ffffff22 0);
+}
+.bistro-layer .bs-ring::before {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #a5452c, #6a2618);
+}
+.bistro-layer .bs-ring b {
+  position: relative;
+  font: 800 1.35em/1 var(--display, "Barlow Condensed", sans-serif);
+}
+.bistro-layer .bs-badge strong {
+  grid-area: name;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 800 15px/22px var(--display, "Barlow Condensed", sans-serif);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.bistro-layer .bs-badge small {
+  grid-area: coins;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font:
+    800 13px/1 "DM Sans",
+    sans-serif;
+  color: #ffe27a;
+  white-space: nowrap;
+}
+.bistro-layer .bs-badge small.bump {
+  animation: bs-bump 0.35s var(--ease-pop, cubic-bezier(0.34, 1.56, 0.64, 1));
+}
+@keyframes bs-bump {
+  40% {
+    transform: scale(1.25);
+  }
+}
+.bistro-layer .bs-badge .xpbar {
+  grid-area: xp;
+  height: 5px;
+  border-radius: 3px;
+  background: #ffffff1f;
+  overflow: hidden;
+}
+.bistro-layer .bs-badge .xpbar i {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #ffb36b, #ffe27a);
+  transition: width 0.5s ease-out;
+}
+
+/* ── Chips under the scene switch: rating, today's special, rush ── */
+.bistro-layer .bs-chips {
+  position: absolute;
+  left: 50%;
+  top: calc(var(--hub-card-h, 52px) + 14px);
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+  pointer-events: none;
+}
+.bistro-layer .bs-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  box-sizing: border-box;
+  padding: 0 14px;
+  border-radius: 14px;
+  white-space: nowrap;
+  pointer-events: auto;
+}
+.bistro-layer .bs-chip b {
+  font: 800 16px/1 var(--display, "Barlow Condensed", sans-serif);
+  letter-spacing: 0.02em;
+}
+.bistro-layer .bs-chip small {
+  display: block;
+  font-size: 10.5px;
+  color: #cbd3e6;
+  line-height: 1.2;
+}
+.bistro-layer .bs-chip img {
+  width: 34px;
+  height: 34px;
+}
+.bistro-layer .bs-chip .stars {
+  --r: 60%;
+  font-size: 15px;
+  letter-spacing: 1px;
+  background: linear-gradient(90deg, #ffd65b var(--r), #ffffff33 var(--r));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.bistro-layer .bs-chip.special b {
+  color: #ffd65b;
+}
+.bistro-layer .bs-chip.rush {
+  border-color: #ff8a5a;
+  background-color: rgba(120, 30, 20, 0.7);
+  animation: bs-pulse 0.9s ease-in-out infinite alternate;
+}
+@keyframes bs-pulse {
+  to {
+    box-shadow: 0 0 18px rgba(255, 120, 70, 0.6);
+  }
+}
+
+/* ── The rail and zoom, right edge ── */
+.bistro-layer .bs-corner {
+  position: absolute;
+  right: var(--bs-x-r);
+  top: calc(var(--hub-card-h, 52px) + 14px);
+  display: grid;
+  gap: 10px;
+  justify-items: end;
+}
+.bistro-layer .bs-rail {
+  display: grid;
+  gap: 6px;
+  padding: 7px;
+  border-radius: 22px;
+}
+.bistro-layer .bs-rail button {
+  box-sizing: border-box;
+  width: 72px;
+  height: 66px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 5px;
+  padding: 6px 2px 5px;
+  border: 1px solid #ffffff1f;
+  border-radius: 15px;
+  background:
+    radial-gradient(circle at 50% 36%, #ffb36b44 0, transparent 60%),
+    linear-gradient(180deg, #3a2a4a, #22182e);
+  color: #fff;
+  cursor: pointer;
+  transition:
+    transform 0.12s,
+    border-color 0.15s;
+}
+.bistro-layer .bs-rail button .ico {
+  width: 1.9em;
+  height: 1.9em;
+  filter: drop-shadow(0 2px 3px #000a);
+}
+.bistro-layer .bs-rail button span {
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  color: #f2e6ff;
+}
+.bistro-layer .bs-rail button[aria-expanded="true"],
+.bistro-layer.editing .bs-rail [data-act="decor"] {
+  border-color: #ffd65b;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 214, 91, 0.35),
+    0 0 14px rgba(255, 214, 91, 0.35);
+}
+.bistro-layer .bs-rail button:active {
+  transform: scale(0.95);
+}
+.bistro-layer .bs-zoom {
+  display: flex;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 999px;
+}
+.bistro-layer .bs-zoom button {
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: #eef2ff;
+  font:
+    800 18px/1 "DM Sans",
+    sans-serif;
+  cursor: pointer;
+}
+.bistro-layer .bs-zoom button:hover {
+  background: #ffffff1a;
+}
+
+/* ── The counter bar at the bottom ── */
+.bistro-layer .bs-bar {
+  position: absolute;
+  left: 50%;
+  bottom: var(--bs-y-b);
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 14px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+.bistro-layer.editing .bs-bar {
+  display: none;
+}
+.bistro-layer .bs-bar small {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #b8c2da;
+}
+.bistro-layer .bs-slots {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.bistro-layer .bs-slots > small {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  margin-right: 2px;
+}
+.bistro-layer .bs-slot {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: radial-gradient(circle at 50% 40%, #fff3 0, #fff1 70%);
+  border: 1px solid #ffffff22;
+  display: grid;
+  place-items: center;
+}
+.bistro-layer .bs-slot.empty {
+  background: #ffffff0a;
+  border-style: dashed;
+}
+.bistro-layer .bs-slot img {
+  width: 46px;
+  height: 46px;
+}
+.bistro-layer .bs-slot b {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  box-sizing: border-box;
+  border-radius: 10px;
+  background: #ffd65b;
+  color: #2a1a00;
+  font:
+    800 12px/20px "DM Sans",
+    sans-serif;
+  text-align: center;
+}
+.bistro-layer .bs-slot.perfect {
+  border-color: #ffd65b;
+  box-shadow: 0 0 12px #ffd65b55;
+}
+.bistro-layer .bs-combo,
+.bistro-layer .bs-open {
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+  min-width: 58px;
+}
+.bistro-layer .bs-combo b,
+.bistro-layer .bs-open b {
+  font: 800 20px/1 var(--display, "Barlow Condensed", sans-serif);
+}
+.bistro-layer .bs-combo {
+  --c: 0%;
+  position: relative;
+  padding-bottom: 6px;
+}
+.bistro-layer .bs-combo::after {
+  content: "";
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 0;
+  height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #7fd8ff var(--c), #ffffff22 var(--c));
+}
+.bistro-layer .bs-combo.on b {
+  color: #9fe8ff;
+  text-shadow: 0 0 10px #4fc3ff;
+}
+.bistro-layer .bs-open b {
+  font-size: 16px;
+}
+
+/* ── Tooltip, banner and the first-visit hint ── */
+.bistro-layer .bs-tip {
+  position: absolute;
+  max-width: 240px;
+  padding: 9px 12px;
+  border-radius: 12px;
+  display: grid;
+  gap: 2px;
+  pointer-events: none;
+  animation: bs-in 0.16s ease-out;
+}
+.bistro-layer .bs-tip b {
+  font: 800 15px/1.2 var(--display, "Barlow Condensed", sans-serif);
+  letter-spacing: 0.02em;
+}
+.bistro-layer .bs-tip span {
+  font-size: 12.5px;
+  color: #dfe6f5;
+}
+.bistro-layer .bs-tip small {
+  font-size: 11px;
+  color: #ffd65b;
+}
+@keyframes bs-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+.bistro-layer .bs-banner {
+  position: absolute;
+  left: 50%;
+  top: 34%;
+  transform: translate(-50%, -50%);
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  padding: 14px 30px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #ffcf5a, #f08a3c);
+  color: #3a1600;
+  box-shadow:
+    0 10px 40px #0007,
+    inset 0 2px 0 #fff8;
+  pointer-events: none;
+  text-align: center;
+}
+.bistro-layer .bs-banner.show {
+  animation: bs-banner 2.2s ease-out both;
+}
+.bistro-layer .bs-banner b {
+  font: 900 34px/1 var(--display, "Barlow Condensed", sans-serif);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.bistro-layer .bs-banner span {
+  font-weight: 700;
+  font-size: 14px;
+}
+@keyframes bs-banner {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.6);
+  }
+  12% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.06);
+  }
+  20% {
+    transform: translate(-50%, -50%) scale(1);
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -60%) scale(1);
+  }
+}
+.bistro-layer .bs-hint {
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--bs-y-b) + 86px);
+  transform: translateX(-50%);
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: #0b1020b0;
+  color: #eef2ff;
+  font-size: 12.5px;
+  white-space: nowrap;
+  pointer-events: none;
+  transition: opacity 0.4s;
+}
+.bistro-layer .bs-hint.done {
+  opacity: 0;
+}
+
+/* ── Sheets: the cook menu, recipes and the shop ── */
+.bistro-layer .bs-sheet {
+  position: absolute;
+  right: calc(var(--bs-x-r) + 96px);
+  top: calc(var(--hub-card-h, 52px) + 14px);
+  bottom: var(--bs-y-b);
+  width: min(560px, calc(100vw - 140px - var(--bs-x-l) - var(--bs-x-r)));
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  border-radius: 22px;
+  background-color: rgba(18, 16, 34, 0.86);
+  overflow: hidden;
+  animation: bs-in 0.18s ease-out;
+}
+.bistro-layer .bs-sheet header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px 18px 10px;
+}
+.bistro-layer .bs-sheet header div {
+  flex: 1;
+  min-width: 0;
+}
+.bistro-layer .bs-sheet h2 {
+  margin: 0;
+  font: 800 24px/1.1 var(--display, "Barlow Condensed", sans-serif);
+  letter-spacing: 0.02em;
+}
+.bistro-layer .bs-sheet header p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: #c3cbe0;
+}
+.bistro-layer .bs-sheet .x {
+  width: 36px;
+  height: 36px;
+  border: 1px solid #ffffff22;
+  border-radius: 50%;
+  background: #ffffff10;
+  color: #fff;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+.bistro-layer .bs-tabs {
+  display: flex;
+  gap: 6px;
+  padding: 0 18px 10px;
+  overflow-x: auto;
+}
+.bistro-layer .bs-tabs button {
+  flex: none;
+  padding: 8px 14px;
+  border: 1px solid #ffffff22;
+  border-radius: 999px;
+  background: #ffffff0d;
+  color: #dfe6f5;
+  font:
+    700 13px/1 "DM Sans",
+    sans-serif;
+  cursor: pointer;
+}
+.bistro-layer .bs-tabs button[aria-pressed="true"] {
+  background: #ffd65b;
+  border-color: #ffd65b;
+  color: #2a1a00;
+}
+.bistro-layer :is(.bs-dishes, .bs-items) {
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 4px 18px 18px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+  align-content: start;
+}
+.bistro-layer :is(.bs-dish, .bs-item) {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  padding: 12px 10px 12px;
+  border: 1px solid #ffffff1c;
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 50% 22%, #ffb36b2e 0, transparent 55%),
+    linear-gradient(180deg, #2c2442, #1d172e);
+  color: #fff;
+  text-align: center;
+  font: inherit;
+  cursor: pointer;
+  transition:
+    transform 0.12s,
+    border-color 0.15s;
+}
+.bistro-layer :is(.bs-dish, .bs-item):not(:disabled):hover {
+  border-color: #ffd65b88;
+  transform: translateY(-2px);
+}
+.bistro-layer :is(.bs-dish, .bs-item):disabled {
+  cursor: default;
+}
+.bistro-layer .bs-dishes .bs-dish:disabled:not(.locked) {
+  opacity: 1;
+}
+.bistro-layer :is(.bs-dish, .bs-item).locked {
+  opacity: 0.55;
+  filter: saturate(0.5);
+}
+.bistro-layer :is(.bs-dish, .bs-item) img {
+  width: 76px;
+  height: 76px;
+  filter: drop-shadow(0 4px 6px #0007);
+}
+.bistro-layer .bs-item .ic {
+  width: 76px;
+  height: 76px;
+  display: grid;
+  place-items: center;
+  font-size: 40px;
+}
+.bistro-layer :is(.bs-dish, .bs-item) b {
+  font: 800 17px/1.1 var(--display, "Barlow Condensed", sans-serif);
+  letter-spacing: 0.02em;
+}
+.bistro-layer :is(.bs-dish, .bs-item) small {
+  font-size: 11.5px;
+  color: #b9c2d8;
+}
+.bistro-layer .bs-dish .st {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px;
+  margin-top: 4px;
+}
+.bistro-layer .bs-dish .st em,
+.bistro-layer .bs-item .pr {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 7px;
+  border-radius: 8px;
+  background: #ffffff12;
+  font:
+    700 11.5px/1 "DM Sans",
+    sans-serif;
+  font-style: normal;
+}
+.bistro-layer .bs-item .pr {
+  margin-top: 4px;
+  padding: 6px 12px;
+  background: #ffd65b;
+  color: #2a1a00;
+  font-size: 13px;
+}
+.bistro-layer :is(.bs-dish em, .bs-item .pr).poor {
+  background: #5a2430;
+  color: #ffb0b0;
+}
+.bistro-layer .bs-dish .pf {
+  font-size: 11px;
+  color: #9cf07f;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.bistro-layer .bs-c .ico {
+  width: 1em;
+  height: 1em;
+}
+.bistro-layer .bs-dish .lk,
+.bistro-layer .bs-item .lk {
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #c3cbe0;
+}
+.bistro-layer .bs-dish.special {
+  border-color: #ffd65b99;
+}
+.bistro-layer .bs-dish .sp {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 3px 7px;
+  border-radius: 8px;
+  background: #ffd65b;
+  color: #2a1a00;
+  font:
+    800 10px/1 "DM Sans",
+    sans-serif;
+  font-style: normal;
+}
+.bistro-layer .bs-item.on {
+  border-color: #ffd65b;
+}
+.bistro-layer .bs-item .swatch {
+  width: 76px;
+  height: 56px;
+  border-radius: 10px;
+  border: 1px solid #ffffff33;
+}
+.bistro-layer .sw-floor-checker .swatch {
+  background: repeating-conic-gradient(#f6ead2 0 25%, #d9705a 0 50%) 0 0 / 19px
+    19px;
+}
+.bistro-layer .sw-floor-wood .swatch {
+  background: repeating-linear-gradient(
+    0deg,
+    #d9a066 0 12px,
+    #9b6236 12px 13px,
+    #c88a52 13px 25px,
+    #9b6236 25px 26px
+  );
+}
+.bistro-layer .sw-floor-teal .swatch {
+  background: repeating-conic-gradient(#5fb6ad 0 25%, #e9f3ea 0 50%) 0 0 / 19px
+    19px;
+}
+.bistro-layer .sw-wall-butter .swatch {
+  background: linear-gradient(
+    180deg,
+    #f6d98c 62%,
+    #8c5a34 62% 66%,
+    #a8643c 66%
+  );
+}
+.bistro-layer .sw-wall-mint .swatch {
+  background:
+    linear-gradient(180deg, transparent 62%, #3f6f5c 62% 66%, #4f8a6f 66%),
+    repeating-linear-gradient(90deg, #bfe6cf 0 9px, #dff4e6 9px 14px);
+}
+.bistro-layer .sw-wall-brick .swatch {
+  background:
+    linear-gradient(180deg, transparent 62%, #5d3226 62% 66%, #6e3a2b 66%),
+    repeating-linear-gradient(0deg, #c4664d 0 8px, #eed7c8 8px 9px);
+}
+
+/* ── Decorate mode ── */
+.bistro-layer .bs-edit {
+  position: absolute;
+  left: 50%;
+  bottom: var(--bs-y-b);
+  transform: translateX(-50%);
+  width: min(720px, calc(100vw - 28px - var(--bs-x-l) - var(--bs-x-r)));
+  box-sizing: border-box;
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 20px;
+}
+.bistro-layer .bs-edit[hidden] {
+  display: none;
+}
+.bistro-layer .bs-edit-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.bistro-layer .bs-edit-head b {
+  font: 800 17px/1 var(--display, "Barlow Condensed", sans-serif);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+.bistro-layer .bs-edit-head span {
+  font-size: 12px;
+  color: #c3cbe0;
+}
+.bistro-layer .bs-store {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  min-height: 56px;
+  align-items: center;
+}
+.bistro-layer .bs-store em {
+  font-size: 12px;
+  color: #9aa6c2;
+}
+.bistro-layer .bs-store button {
+  position: relative;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px 4px 4px;
+  border: 1px solid #ffffff22;
+  border-radius: 14px;
+  background: #ffffff10;
+  color: #fff;
+  font:
+    700 12px/1 "DM Sans",
+    sans-serif;
+  cursor: pointer;
+}
+.bistro-layer .bs-store button.on {
+  border-color: #ffd65b;
+  background: #ffd65b22;
+}
+.bistro-layer .bs-store img {
+  width: 46px;
+  height: 46px;
+}
+.bistro-layer .bs-store i {
+  font-style: normal;
+  color: #ffd65b;
+}
+.bistro-layer .bs-edit-btns {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+.bistro-layer .bs-edit-btns button {
+  padding: 9px 16px;
+  border: 1px solid #ffffff2a;
+  border-radius: 12px;
+  background: #ffffff12;
+  color: #fff;
+  font:
+    700 13px/1 "DM Sans",
+    sans-serif;
+  cursor: pointer;
+}
+.bistro-layer .bs-edit-btns button.go {
+  background: #ffd65b;
+  border-color: #ffd65b;
+  color: #2a1a00;
+}
+
+/* ── Phones (landscape): tighter ── */
+.bistro-layer.phone .bs-hud {
+  font-size: 12px;
+}
+.bistro-layer.phone .bs-badge {
+  top: calc(var(--hub-card-h, 42px) + 12px);
+}
+.bistro-layer.phone .bs-badge strong {
+  font-size: 12.5px;
+  line-height: 15px;
+}
+.bistro-layer.phone .bs-chips {
+  top: auto;
+  left: auto;
+  right: calc(var(--bs-x-r) + 66px);
+  bottom: var(--bs-y-b);
+  transform: none;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+.bistro-layer.phone .bs-chip {
+  height: 30px;
+  padding: 0 8px;
+  gap: 5px;
+  border-radius: 10px;
+}
+.bistro-layer.phone .bs-chip.soft,
+.bistro-layer.phone .bs-chip small {
+  display: none;
+}
+.bistro-layer.phone .bs-chip b {
+  font-size: 13px;
+}
+.bistro-layer.phone .bs-chip img {
+  width: 22px;
+  height: 22px;
+}
+.bistro-layer.phone .bs-chip .stars {
+  font-size: 11px;
+}
+.bistro-layer.phone .bs-corner {
+  top: calc(var(--hub-card-h, 42px) + 12px);
+  gap: 6px;
+}
+.bistro-layer.phone .bs-rail {
+  padding: 4px;
+  gap: 4px;
+  border-radius: 16px;
+}
+.bistro-layer.phone .bs-rail button {
+  width: 52px;
+  height: 46px;
+  gap: 3px;
+  border-radius: 11px;
+}
+.bistro-layer.phone .bs-rail button .ico {
+  width: 1.5em;
+  height: 1.5em;
+}
+.bistro-layer.phone .bs-rail button span {
+  font-size: 9px;
+}
+.bistro-layer.phone .bs-zoom {
+  display: none;
+}
+.bistro-layer.phone .bs-bar {
+  left: var(--bs-x-l);
+  transform: none;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: 14px;
+}
+.bistro-layer.phone .bs-slot {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+}
+.bistro-layer.phone .bs-slot img {
+  width: 34px;
+  height: 34px;
+}
+.bistro-layer.phone .bs-slot b {
+  min-width: 16px;
+  height: 16px;
+  font-size: 10px;
+  line-height: 16px;
+}
+.bistro-layer.phone .bs-combo b,
+.bistro-layer.phone .bs-open b {
+  font-size: 15px;
+}
+.bistro-layer.phone .bs-open {
+  display: none;
+}
+.bistro-layer.phone .bs-hint {
+  display: none;
+}
+.bistro-layer.phone .bs-sheet {
+  top: 8px;
+  bottom: 8px;
+  right: calc(var(--bs-x-r) + 62px);
+  width: min(520px, calc(100vw - 90px - var(--bs-x-l) - var(--bs-x-r)));
+  z-index: 3;
+}
+.bistro-layer.phone .bs-sheet header {
+  padding: 10px 12px 6px;
+}
+.bistro-layer.phone .bs-sheet h2 {
+  font-size: 19px;
+}
+.bistro-layer.phone :is(.bs-dishes, .bs-items) {
+  grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+  padding: 4px 12px 12px;
+  gap: 8px;
+}
+.bistro-layer.phone :is(.bs-dish, .bs-item) img,
+.bistro-layer.phone .bs-item .ic,
+.bistro-layer.phone .bs-item .swatch {
+  width: 52px;
+  height: 52px;
+}
+.bistro-layer.phone .bs-banner b {
+  font-size: 24px;
+}
+.bistro-layer.phone .bs-edit {
+  padding: 6px 8px;
+  gap: 4px;
+}
+.bistro-layer.phone .bs-store {
+  min-height: 40px;
+}
+.bistro-layer.phone .bs-store img {
+  width: 32px;
+  height: 32px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .bistro-layer .bs-chip.rush,
+  .bistro-layer .bs-banner.show {
+    animation: none;
+  }
+}
+/* Toasts sit above the counter bar (or the decorate panel). */
+body.hub-bistro #toast {
+  bottom: calc(max(14px, var(--safe-bottom, 0px)) + 96px);
+  z-index: 80;
+}
+body.hub-bistro:has(.bistro-layer.editing) #toast {
+  bottom: calc(max(14px, var(--safe-bottom, 0px)) + 150px);
+}
+@media (max-height: 500px) {
+  body.hub-bistro #toast {
+    bottom: calc(max(14px, var(--safe-bottom, 0px)) + 60px);
+  }
+}

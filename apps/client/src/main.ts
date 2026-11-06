@@ -54,6 +54,7 @@ import {
   type FarmScreen,
   type FarmScreenOptions,
 } from "./farm/farm-screen";
+import { openBistro, type BistroHandle } from "./bistro/bistro-scene";
 import type {
   FarmActResult,
   FarmHere,
@@ -1653,6 +1654,7 @@ function syncHub() {
   syncParty();
   syncLobby(hub && hubScene === "lobby");
   syncFarm(hub && hubScene === "farm", hub);
+  syncBistro(hub && hubScene === "bistro");
   syncPlaza(hub && hubScene === "plaza");
 }
 /** The new Plaza (hub redesign phase 3): the server moves everyone in it. */
@@ -1813,6 +1815,31 @@ function syncLobby(want: boolean) {
     lobbyFriendsTimer = setInterval(() => void refreshLobbyFriends(), 60000);
   }
   lobby.update(lobbyView());
+}
+/** The Bistro (a restaurant demo): its state stays on this device. */
+let bistro: BistroHandle | undefined;
+function syncBistro(want: boolean) {
+  if (!want) {
+    if (bistro) {
+      bistro.close();
+      bistro = undefined;
+      document.body.classList.remove("hub-bistro");
+      if (!document.querySelector(".lobby-layer"))
+        document.body.classList.remove("hub-screen");
+    }
+    return;
+  }
+  if (bistro) return;
+  document.body.classList.add("hub-screen", "hub-bistro");
+  bistro = openBistro({
+    owner: accountsUI.account?.id,
+    playerName: () => accountsUI.account?.displayName ?? "Your",
+    character: () => selected,
+    toast,
+    sound: (cue, step) => audio.farm(cue, step),
+    reduced: reducedMotion,
+    low: lowGraphics(),
+  });
 }
 /** The Farm scene (hub redesign phase 4): server state, server time. */
 let farmScreen: FarmScreen | undefined;
