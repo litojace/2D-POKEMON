@@ -50,9 +50,10 @@ describe("main screens", () => {
   it("share one fixed size, so switching tabs never resizes the window", () => {
     const css = readFileSync("apps/client/src/style.css", "utf8");
     // Missions left for a sheet inside the Lobby (UI remodel step 4).
-    // Raids left for a panel inside the Lobby (UI remodel step 5).
+    // Raids left for a panel inside the Lobby (UI remodel step 5); Friends
+    // and Ranks for a sheet and a panel (step 6).
     const rule = css.match(/dialog:is\(:has\(\.profile-screen\)[^{]*\{[^}]*\}/)?.[0] ?? "";
-    for (const screen of [".profile-screen", ".friends-screen", "#leaderboard-body", ".admin-tabs"]) expect(rule).toContain(screen);
+    for (const screen of [".profile-screen", ".admin-tabs"]) expect(rule).toContain(screen);
     // A fixed height, not just a cap.
     expect(rule).toMatch(/\n\s*height: var\(--hub-height\);/);
   });

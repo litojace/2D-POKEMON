@@ -78,9 +78,12 @@
 .fr-kicker.is-dim .ui-kicker {
   color: var(--ui-dim);
 }
+/* A little more room on the left: a worn portrait frame's ring reaches past
+   the portrait (portraits.ts) and must not touch the row's edge. */
 .fr-row > .ui-row {
   grid-template-columns: 44px minmax(0, 1fr) auto;
   min-height: 60px;
+  padding-left: 14px;
 }
 .fr-row.is-offline > .ui-row {
   background: #121a3399;
@@ -292,6 +295,7 @@
   .fr-row > .ui-row {
     grid-template-columns: 34px minmax(0, 1fr) auto;
     min-height: 46px;
+    padding-left: 12px;
   }
   .fr-avatar {
     width: 34px;

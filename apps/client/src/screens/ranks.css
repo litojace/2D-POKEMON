@@ -338,6 +338,23 @@
   color: var(--ui-accent);
 }
 
+/* A short desktop window (720 px): the card fits whole without scrolling. */
+@media (max-height: 820px) and (min-height: 501px) {
+  .rk-card {
+    gap: 4px;
+    padding: var(--sp-3);
+  }
+  .rk-badge {
+    width: 76px;
+    height: 84px;
+  }
+  .rk-rating b {
+    font-size: 28px;
+  }
+  .rk-ladder li {
+    min-height: 22px;
+  }
+}
 /* A tall window: the card grows into its height (badge, rating, ladder),
    so the room isn't left empty under the ladder. */
 @media (min-height: 1000px) {

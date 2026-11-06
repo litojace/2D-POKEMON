@@ -365,7 +365,11 @@ for (const size of SIZES) {
       const { context, page, errors } = await start(size, browser);
       const report: Report = {};
       try {
-        for (const screen of screens) {
+        // SWEEP_ONLY=ranks,friends sweeps only screens whose names start so.
+        const only = process.env.SWEEP_ONLY?.split(",");
+        for (const screen of screens.filter(
+          (s) => !only || only.some((o) => s.name.startsWith(o)),
+        )) {
           await sweepScreens(page, [screen], report);
           print(size.name, screen.name, report[screen.name]);
         }

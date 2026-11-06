@@ -1283,7 +1283,8 @@ export class AccountUI {
   async checkFriendRequests() {
     try {
       const list = friendsSchema.parse(await this.api("/api/friends"));
-      if (list.incoming.length)
+      // Friends already shows them on top (and the toast would cover it).
+      if (list.incoming.length && !this.friendsOpen)
         this.hooks.notify(
           `${list.incoming.length === 1 ? `${list.incoming[0].name} wants` : `${list.incoming.length} players want`} to be friends. Open Friends to answer.`,
         );
