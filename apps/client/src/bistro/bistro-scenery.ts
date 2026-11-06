@@ -597,6 +597,12 @@ export function updateCars(cars: Car[], dt: number, spawnRoll: number): Car[] {
   }
   return out;
 }
+/** 0 at the horizon (and beyond it), 1 once the car is well below it. */
+export function carFade(car: Car): number {
+  const lane = car.v > 0 ? ROAD0 + 0.6 : ROAD1 - 0.6;
+  const y = iso(lane, car.y).y;
+  return Math.max(0, Math.min(1, (y - HORIZON - 4) / 70));
+}
 function drawCar(ctx: Ctx, car: Car, l: Light) {
   // Cars going +y keep to the far lane (nearer the houses).
   const lane = car.v > 0 ? ROAD0 + 0.6 : ROAD1 - 0.6;
@@ -666,7 +672,22 @@ export function drawSceneryLive(ctx: Ctx, l: Light, cars: Car[], low: boolean) {
   const list: D[] = [];
   for (const car of cars) {
     const lane = car.v > 0 ? ROAD0 + 0.6 : ROAD1 - 0.6;
-    list.push({ d: lane + car.y, f: () => drawCar(ctx, car, l) });
+    // The road runs over the horizon: cars come over it and go over it,
+    // never up into the sky (cut at the horizon, faded as they near it).
+    const fade = carFade(car);
+    if (fade <= 0) continue;
+    list.push({
+      d: lane + car.y,
+      f: () => {
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(-FAR, HORIZON, FAR * 2, FAR);
+        ctx.clip();
+        ctx.globalAlpha = fade;
+        drawCar(ctx, car, l);
+        ctx.restore();
+      },
+    });
   }
   for (const [x, y] of LAMPS)
     if (!inFront(x, y))
@@ -721,11 +742,13 @@ export function sceneryGlows(): [number, number, number, string, number][] {
 export function carGlows(
   cars: Car[],
 ): [number, number, number, string, number][] {
-  return cars.map((car) => {
-    const lane = car.v > 0 ? ROAD0 + 0.6 : ROAD1 - 0.6;
-    const p = iso(lane, car.y + Math.sign(car.v) * 1.1);
-    return [p.x, p.y - 6, 60, "255,240,200", 0.35];
-  });
+  return cars
+    .filter((car) => carFade(car) > 0)
+    .map((car) => {
+      const lane = car.v > 0 ? ROAD0 + 0.6 : ROAD1 - 0.6;
+      const p = iso(lane, car.y + Math.sign(car.v) * 1.1);
+      return [p.x, p.y - 6, 60, "255,240,200", 0.35 * carFade(car)];
+    });
 }
 
 /** The rooftop sign over the right wall: lit letters at night. */

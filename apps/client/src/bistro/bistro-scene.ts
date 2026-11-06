@@ -3252,6 +3252,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
         ((window as unknown as { __bistroTod?: number }).__bistroTod = v),
       spawn: () => spawn(),
       sync: () => sync,
+      setCars: (list: Car[]) => (cars = list),
       load: () => sync.load(),
       flush: () => sync.flush(),
       plate: (i: number) => plateStove(i),
