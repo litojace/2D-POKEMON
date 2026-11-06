@@ -2175,10 +2175,19 @@ async function cropDraws(page: Page) {
       }
       return orig.call(this, img, ...a);
     };
-    await new Promise((r) => setTimeout(r, 2500));
+    // At least 2.5s, and until a whole frame with crops in it came: this
+    // machine draws on the CPU, a frame a second or slower while it rains,
+    // with longer gaps, so a fixed wait can catch none.
+    const whole = () => frames.slice(1, -1).find((f) => f.length);
+    const t0 = performance.now();
+    while (
+      performance.now() - t0 < 2500 ||
+      (!whole() && performance.now() - t0 < 20_000)
+    )
+      await new Promise((r) => setTimeout(r, 100));
     proto.drawImage = orig;
     // A whole frame: not the first or last (they may be cut).
-    return frames.slice(1, -1).find((f) => f.length) ?? [];
+    return whole() ?? [];
   });
 }
 const plotAt = (page: Page, i: number) =>
