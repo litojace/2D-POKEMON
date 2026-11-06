@@ -461,13 +461,13 @@ test("a late answer can't reopen a closed Shop over another screen", async ({
   await page.waitForFunction(() => !!(window as any).__shop.release);
   await page.locator(".fit-room .ui-close").click();
   await page.evaluate(() => void (window as any).__account.showFriends());
-  await expect(page.locator(".friends-screen")).toBeVisible();
+  await expect(page.locator(".friends-sheet")).toBeVisible();
   await page.evaluate(async () => {
     const w = window as any;
     w.__shop.release();
     await w.__pendingShop;
   });
-  await expect(page.locator(".friends-screen")).toBeVisible();
+  await expect(page.locator(".friends-sheet")).toBeVisible();
   await expect(page.locator(".fit-room")).toHaveCount(0);
   expect(errors).toEqual([]);
 });
