@@ -187,6 +187,7 @@ const FARM_HTML = `<div class="fm" id="fm">
     <div class="fm-log" id="fm-log" aria-live="polite"></div>
     <div class="fm-tip glass" id="fm-tip" hidden></div>
     <div class="fm-pop glass" id="fm-pop" hidden></div>
+    <div class="fm-acts" id="fm-acts" hidden></div>
     <div class="fm-sickle fm-seedbub" id="fm-seed" hidden><button type="button" data-seedbub></button></div>
     <div class="fm-sickle" id="fm-sickle" hidden><button type="button" data-sickle aria-label="Harvest: tap, or drag across ripe crops">${I("sickle")}</button></div>
     <div class="fm-ghost" id="fm-ghost" hidden aria-hidden="true"></div>
@@ -4247,7 +4248,7 @@ export function openFarm(options) {
    * harvested whole, first; then the other ripe plots one by one, so a giant
    * that can't be harvested (a full barn) is never cut up plot by plot.
    */
-  function sickleAt(i) {
+  function sickleAt(i, silent = false) {
     const reach = area(i, 3),
       giants = [...new Set(reach.map((j) => F.giantAt[j]).filter(Boolean))],
       ripe = reach.filter((j) => {
@@ -4261,7 +4262,7 @@ export function openFarm(options) {
         );
       });
     if (!ripe.length && !giants.length) {
-      if (!dragging && reach.some((j) => F.pending.has(j)))
+      if (!silent && reach.some((j) => F.pending.has(j)))
         toast("Something big is growing here…");
       return false;
     }
@@ -4324,12 +4325,19 @@ export function openFarm(options) {
     switch (F.tool) {
       case "hand":
         if (p.pests) {
-          catchAt(i);
+          if (drag || holdPaint) catchAt(i);
+          else actsPop(i);
+          break;
+        }
+        if (p.crop && p.prog < 1 && !drag && !holdPaint) {
+          actsPop(i);
           break;
         }
         if (p.crop && p.prog >= 1) {
           // A touch tap shows the sickle to drag across the field.
           if (pressType !== "mouse" && !drag && !holdPaint) sicklePop(i);
+          // A click cuts a 3×3 with the Sickle you bought, else one plot.
+          else if (F.sickle && !drag) sickleAt(i);
           else harvestAt(i);
           break;
         }
@@ -4497,8 +4505,6 @@ export function openFarm(options) {
       `Sow ${CROP[id]?.n}: tap, or drag across empty plots`,
     );
     placeBubble(el, i);
-    clearTimeout(seedBubble.t);
-    seedBubble.t = setTimeout(() => (el.hidden = true), 8000);
     b.onpointerdown = (e) => startCarry(e, "seed", id, i);
     b.onclick = () => {
       if (carried()) return;
@@ -4506,12 +4512,85 @@ export function openFarm(options) {
       carryOne("seed", id, i);
     };
   }
+  /** The icon a tool shows (the can and net you own). */
+  const toolIcon = (kind, id) =>
+    kind === "can"
+      ? ["", "can", "can2", "can3"][F.can]
+      : kind === "fert"
+        ? { norm: "fert", super: "fertSuper", gold: "fertGold" }[id]
+        : kind;
+  /** Tap a growing crop: a row of bubbles with what it can use — the net
+   *  for its bugs, the can when it's dry, each fertilizer you have when it
+   *  has none, the shovel. Drag one across the field to use it on every
+   *  plot it passes (the can and the Big Net reach their own area), or tap
+   *  it for just this plot. The shovel only taps, twice, to dig up. */
+  function actsPop(i) {
+    const p = F.plots[i],
+      acts = [];
+    if (p.pests) acts.push(["net", "", "Catch the bugs"]);
+    if (p.crop && p.prog < 1) {
+      if (!wetNow(p)) acts.push(["can", "", "Water"]);
+      for (const [k, lv, n] of [
+        ["norm", 1, "Fertilizer"],
+        ["super", 6, "Super Fertilizer"],
+        ["gold", 24, "Gold Fertilizer"],
+      ])
+        if (F.ferts[k] > 0 && F.lv >= lv && (!p.fert || k === "super"))
+          acts.push(["fert", k, n]);
+      acts.push(["shovel", "", "Dig up"]);
+    }
+    if (!acts.length) return;
+    const el = $("fm-acts");
+    $("fm-sickle").hidden = true;
+    $("fm-seed").hidden = true;
+    el.innerHTML = acts
+      .map(
+        ([k, id, n]) =>
+          `<button type="button" data-act="${k}" data-id="${id}" aria-label="${n}: tap, or drag across the field" title="${n}">${I(toolIcon(k, id))}${k === "fert" ? `<b>×${F.ferts[id]}</b>` : ""}</button>`,
+      )
+      .join("");
+    const r = plotRect(i),
+      o = hudOff(),
+      sp0 = toScreen(r.x + PW / 2, r.y),
+      w = acts.length * 70;
+    el.hidden = false;
+    el.dataset.plot = String(i);
+    el.style.left = `${Math.max(8, Math.min(o.w - w - 8, sp0.x - o.x - w / 2))}px`;
+    el.style.top = `${Math.max(56, Math.min(o.h - 72, sp0.y - o.y - 74))}px`;
+    el.querySelectorAll("[data-act]").forEach((b) => {
+      const k = b.dataset.act,
+        id = b.dataset.id || null;
+      if (k !== "shovel") b.onpointerdown = (e) => startCarry(e, k, id, i);
+      b.onclick = () => {
+        if (carried()) return;
+        useAs(k, id, i, false);
+        // The shovel asks for a second tap: keep it there for that.
+        if (k === "shovel" && F.shovelArm === i) {
+          b.classList.add("armed");
+          return;
+        }
+        el.hidden = true;
+        endDrag();
+      };
+    });
+  }
+  /** Use a tool on one plot, as the tool bar's tool used to. */
+  function useAs(kind, id, i, drag) {
+    const t = F.tool,
+      f = F.fert;
+    F.tool = kind;
+    if (kind === "fert") F.fert = id;
+    try {
+      useTool(i, drag);
+    } finally {
+      F.tool = t;
+      F.fert = f;
+    }
+  }
   function sicklePop(i) {
     const el = $("fm-sickle");
     $("fm-seed").hidden = true;
     placeBubble(el, i);
-    clearTimeout(sicklePop.t);
-    sicklePop.t = setTimeout(() => (el.hidden = true), 5000);
     const b = el.querySelector("[data-sickle]");
     b.onpointerdown = (e) => startCarry(e, "sickle", null, i);
     b.onclick = () => {
@@ -4555,7 +4634,16 @@ export function openFarm(options) {
       plantAt(i, id);
       return;
     }
+    if (kind !== "sickle") {
+      if (p.crop) useAs(kind, id, i, !!carry);
+      return;
+    }
     if (p.crowAt) return shooAt(i);
+    // The Sickle you bought cuts a 3×3 at each plot it passes.
+    if (F.sickle) {
+      sickleAt(i, !!carry);
+      return;
+    }
     const gi = F.giantAt[i];
     if (gi) {
       for (const j of gi.plots) carry?.done.add(j);
@@ -4574,12 +4662,13 @@ export function openFarm(options) {
       $("fm-pop").classList.remove("seedpick");
       $("fm-sickle").hidden = true;
       $("fm-seed").hidden = true;
+      $("fm-acts").hidden = true;
       $("fm-tip").hidden = true;
       const g = $("fm-ghost");
       g.innerHTML =
         carry.kind === "seed"
           ? `<img src="${icon(carry.id)}" alt="">`
-          : I("sickle");
+          : I(toolIcon(carry.kind, carry.id));
       g.hidden = false;
       // The plot it started from counts too.
       carryOne(carry.kind, carry.id, carry.from);
@@ -5905,29 +5994,8 @@ export function openFarm(options) {
     ["net", "net", "Catch"],
     ["prank", "bug", "Prank", Math.max(0, 3 - V.today.pranks)],
   ];
-  const HOME_TOOLS = () => [
-    ["hand", "hand", "Hand"],
-    [
-      "can",
-      ["", "can", "can2", "can3"][F.can],
-      "Can",
-      null,
-      ["", "Wood", "Copper", "Gold"][F.can],
-    ],
-    [
-      "fert",
-      F.fert === "gold"
-        ? "fertGold"
-        : F.fert === "super"
-          ? "fertSuper"
-          : "fert",
-      "Fertilizer",
-      F.ferts[F.fert],
-    ],
-    ["net", "net", F.net === 2 ? "Big Net" : "Net"],
-    ...(F.sickle ? [["sickle", "sickle", "Sickle"]] : []),
-    ["shovel", "shovel", "Shovel"],
-  ];
+  /** Your own farm has no tool bar: every tool is a bubble by the plot. */
+  const HOME_TOOLS = () => [];
   /** The Tools tab: [id, icon, name, text, price, level, owned, why not yet]. */
   function toolRows() {
     const has = {
@@ -5964,6 +6032,7 @@ export function openFarm(options) {
     ];
   }
   function renderTools() {
+    $("fm-tools").hidden = !TOOLS().length;
     $("fm-tools").innerHTML = TOOLS()
       .map(
         ([id, ic, label, count, lvl], idx) =>
@@ -6785,7 +6854,7 @@ export function openFarm(options) {
   // touch has no hover: tapping a growing crop with the hand shows its card for a moment
   if (matchMedia("(pointer: coarse)").matches)
     $("fm-hint").textContent =
-      "Tap a plot, then drag a seed or the sickle across the field · drag the grass to move";
+      "Tap a plot, then drag a seed or a tool across the field · drag the grass to move";
 
   /* canvas pointer */
   let dragging = false,
@@ -6803,6 +6872,7 @@ export function openFarm(options) {
     $("fm-pop").hidden = true;
     $("fm-sickle").hidden = true;
     $("fm-seed").hidden = true;
+    $("fm-acts").hidden = true;
     try {
       cv.setPointerCapture(e.pointerId);
     } catch {}
@@ -6836,6 +6906,7 @@ export function openFarm(options) {
     $("fm-pop").hidden = true;
     $("fm-sickle").hidden = true;
     $("fm-seed").hidden = true;
+    $("fm-acts").hidden = true;
     pressType = e.pointerType ?? "mouse";
     const w = toWorld(e.clientX, e.clientY);
     if (F.decorPick && !V) {
@@ -7224,7 +7295,7 @@ export function openFarm(options) {
   onResize();
   if (matchMedia("(pointer: coarse)").matches)
     $("fm-hint").textContent =
-      "Tap a plot, then drag a seed or the sickle across the field · drag the grass to move";
+      "Tap a plot, then drag a seed or a tool across the field · drag the grass to move";
   // The animals stand where you left them.
   if (left) {
     if (left.dog) Object.assign(dog, left.dog, { path: [], moving: false });

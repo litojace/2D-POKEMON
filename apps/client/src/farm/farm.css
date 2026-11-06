@@ -514,6 +514,64 @@
   cursor: grab;
   touch-action: none;
 }
+/* A growing crop's tools: a row of the same round bubbles. */
+.farm-layer .fm-acts {
+  position: absolute;
+  z-index: 6;
+  display: flex;
+  gap: 6px;
+  animation: popin 0.16s var(--ease-out);
+}
+.farm-layer .fm-acts[hidden],
+.farm-layer .fm-tools[hidden] {
+  display: none;
+}
+.farm-layer .fm-acts button {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 3px solid #8fd8ff;
+  background: radial-gradient(circle at 50% 35%, #3a4a86, #172040);
+  box-shadow:
+    0 6px 16px #0008,
+    0 0 0 4px #8fd8ff33;
+  cursor: grab;
+  touch-action: none;
+}
+.farm-layer .fm-acts .ico {
+  width: 36px;
+  height: 36px;
+}
+.farm-layer .fm-acts button[data-act="shovel"] {
+  border-color: #ffb08a;
+  cursor: pointer;
+}
+.farm-layer .fm-acts button.armed {
+  border-color: #ff6b5a;
+  box-shadow:
+    0 6px 16px #0008,
+    0 0 0 6px #ff6b5a66;
+}
+.farm-layer .fm-acts b {
+  position: absolute;
+  right: -6px;
+  bottom: -4px;
+  min-width: 1.6em;
+  padding: 1px 6px;
+  border-radius: 99px;
+  background: #ffd65b;
+  color: #2a1a00;
+  font-size: 12px;
+  font-weight: 800;
+  box-shadow: 0 0 0 2px #0b1020;
+}
+.farm-layer.phone .fm-acts button {
+  width: 56px;
+  height: 56px;
+}
 /* The picked seed, ready to sow: its picture and how many are left. */
 .farm-layer .fm-seedbub button {
   position: relative;
