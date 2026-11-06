@@ -77,9 +77,10 @@ test("the Bistro tab opens next to the Farm and plays a full service on the serv
     /[ăâđêôơưạảấầẩẫậắằẳẵặẹẻẽếềểễệỉịọỏốồổỗộớờởỡợụủứừửữựỳỵỷỹ]/i,
   );
 
-  // Switching tabs closes the scene.
+  // Switching tabs keeps the scene behind the other tab, paused.
   await page.click('#hub-scenes [data-hub-scene="lobby"]');
-  await expect(page.locator(".bistro-layer")).toHaveCount(0);
+  await expect(page.locator(".bistro-layer")).toHaveCount(1);
+  await expect(page.locator(".bistro-layer")).toBeHidden();
   expect(errors).toEqual([]);
 });
 
@@ -196,4 +197,45 @@ test("Bistro friends: visit a friend's bistro, eat there and like it", async ({
   await expect(page.locator("#bs-visit")).toBeHidden();
   expect(await B(page, "return b.state().floor")).toBe("checker");
   expect(errors).toEqual([]);
+});
+
+test("Bistro: switching tabs keeps the guests as they were, and a reload brings them back", async ({
+  page,
+}) => {
+  const errors = await openBistro(page);
+  await B(
+    page,
+    "for (let i = 0; i < 3; i++) { b.spawn(); b.advance(1.5); } b.advance(6);",
+  );
+  const ids = (await B(
+    page,
+    "return b.customers().map((c) => c.id + ':' + c.state)",
+  )) as string[];
+  expect(ids.length).toBeGreaterThanOrEqual(2);
+  // To the Lobby and back: the same guests, where they were.
+  await page.click('#hub-scenes [data-hub-scene="lobby"]');
+  await expect(page.locator(".bistro-layer")).toBeHidden();
+  await page.click('#hub-scenes [data-hub-scene="bistro"]');
+  await expect(page.locator(".bistro-layer")).toBeVisible();
+  expect(
+    await B(page, "return b.customers().map((c) => c.id + ':' + c.state)"),
+  ).toEqual(ids);
+  await expect(page.locator("body")).toHaveClass(/hub-screen/);
+  // Reload the page: the bistro draws at once with its guests.
+  const seated = (await B(
+    page,
+    "return b.customers().filter((c) => c.state === 'seated' || c.state === 'eating').map((c) => c.id)",
+  )) as number[];
+  await page.evaluate(() => window.dispatchEvent(new Event("pagehide")));
+  const again = await openLobby(page);
+  await fakeBistro(page);
+  await page.click('#hub-scenes [data-hub-scene="bistro"]');
+  await page.waitForFunction(() => (window as any).__bistro?.customers);
+  const back = (await B(
+    page,
+    "return b.customers().map((c) => c.id)",
+  )) as number[];
+  for (const id of seated) expect(back).toContain(id);
+  expect(errors).toEqual([]);
+  expect(again).toEqual([]);
 });

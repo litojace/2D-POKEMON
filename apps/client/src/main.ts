@@ -1662,8 +1662,11 @@ function syncHub() {
   syncParty();
   syncLobby(hub && hubScene === "lobby");
   syncFarm(hub && hubScene === "farm", hub);
-  syncBistro(hub && hubScene === "bistro");
+  syncBistro(hub && hubScene === "bistro", hub);
   syncPlaza(hub && hubScene === "plaza", hub);
+  // A scene hiding after the next one showed may have taken the hub's top
+  // bar style away (each checks only some of the others): in the hub it is on.
+  if (hub) document.body.classList.add("hub-screen");
 }
 /** The new Plaza (hub redesign phase 3): the server moves everyone in it. */
 function syncPlaza(want: boolean, hub = want) {
@@ -1831,7 +1834,7 @@ function syncLobby(want: boolean) {
 /** The Bistro (migration 068): the server's restaurant, next to the Farm. */
 let bistro: BistroHandle | undefined;
 let bistroOwner: string | undefined;
-function syncBistro(want: boolean) {
+function syncBistro(want: boolean, hub = want) {
   // Another player now (or logged out): that bistro is not theirs.
   if (bistro && bistroOwner !== accountsUI?.account?.id) {
     bistro.close();
@@ -1839,16 +1842,24 @@ function syncBistro(want: boolean) {
   }
   if (!want) {
     if (bistro) {
-      bistro.close();
-      bistro = undefined;
+      // Behind another hub tab the bistro waits, paused, as it is (guests,
+      // plates, coins); out of the hub (a match) it closes.
+      if (hub) bistro.hide();
+      else {
+        bistro.close();
+        bistro = undefined;
+      }
       document.body.classList.remove("hub-bistro");
       if (!document.querySelector(".lobby-layer"))
         document.body.classList.remove("hub-screen");
     }
     return;
   }
-  if (bistro) return;
   document.body.classList.add("hub-screen", "hub-bistro");
+  if (bistro) {
+    bistro.show();
+    return;
+  }
   bistroOwner = accountsUI.account?.id;
   bistro = openBistro({
     owner: bistroOwner,

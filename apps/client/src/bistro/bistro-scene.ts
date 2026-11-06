@@ -62,6 +62,7 @@ import {
   HIRE_STEPS,
   BISTRO_TRADE,
   DINE,
+  isDish,
   RUSH_PERIOD,
   RUSH_SECONDS,
   inRush,
@@ -143,6 +144,7 @@ import {
   type BistroAction,
   type BistroApi,
   type BistroExtras,
+  type SyncSnapshot,
 } from "./bistro-sync";
 import "./bistro.css";
 
@@ -178,6 +180,8 @@ export interface BistroOptions {
   low?: boolean;
 }
 export interface BistroHandle {
+  hide(): void;
+  show(): void;
   close(): void;
 }
 
@@ -264,14 +268,70 @@ function sprite(id: CharacterId, dir: Facing, mood: Mood = "normal"): Sprite {
   return s;
 }
 
-/** Each account's bistro as last seen this session: it opens ready. */
-const lastKnown = new Map<
-  string,
-  { state: BistroState; extras: BistroExtras }
->();
+/*
+ * Each account's bistro, kept in this browser: the last state the server
+ * sent (and what the scene did on top of it), the guests on the floor and
+ * the coins on the tables, and what was still waiting to be sent. Opening
+ * the bistro draws it at once, then the server has the last word; a page
+ * closed mid-send sends the same batch again (the server applies it once).
+ * Kept until you log out or clear the browser's data.
+ */
+interface FloorSnap {
+  customers: Record<string, unknown>[];
+  piles: Record<string, unknown>[];
+  combo: number;
+  lastServeAgo: number;
+  nextId: number;
+}
+interface Kept {
+  state: BistroState;
+  extras: BistroExtras;
+  sync?: SyncSnapshot;
+  floor?: FloorSnap;
+  at: number;
+}
+const KEPT = "arena-bistro:";
+const lastKnown = new Map<string, Kept>();
+function keptFor(owner: string): Kept | null {
+  const mem = lastKnown.get(owner);
+  if (mem) return mem;
+  try {
+    const k = JSON.parse(localStorage.getItem(KEPT + owner) ?? "null");
+    if (k?.v !== 1 || !k.state || !k.extras) return null;
+    // Checked like the server's answer (an old or edited save can't break it).
+    const got = readServer({ ...k.state, ...k.extras, now: Date.now() });
+    const kept: Kept = {
+      state: got.state,
+      extras: got.extras,
+      sync: k.sync,
+      floor: k.floor,
+      at: Number(k.at) || 0,
+    };
+    lastKnown.set(owner, kept);
+    return kept;
+  } catch {
+    return null;
+  }
+}
+function keepBistro(owner: string, k: Kept) {
+  lastKnown.set(owner, k);
+  try {
+    localStorage.setItem(KEPT + owner, JSON.stringify({ v: 1, ...k }));
+  } catch {
+    /* No storage, or it is full: memory still works this session. */
+  }
+}
 /** Forget the kept bistros (sign-out). */
 export function forgetBistros() {
   lastKnown.clear();
+  try {
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const key = localStorage.key(i);
+      if (key?.startsWith(KEPT)) localStorage.removeItem(key);
+    }
+  } catch {
+    /* No storage. */
+  }
 }
 /** A creature's front view as an image URL (staff cards). */
 const portraits = new Map<string, string>();
@@ -444,7 +504,10 @@ export function openBistro(o: BistroOptions): BistroHandle {
   syncPhone();
 
   /* ───────────── state: the server's bistro (bistro-sync.ts) ───────────── */
-  const cached = o.owner ? lastKnown.get(o.owner) : undefined;
+  const kept = o.owner ? keptFor(o.owner) : null;
+  const cached = kept
+    ? { state: structuredClone(kept.state), extras: { ...kept.extras } }
+    : undefined;
   const sync = new BistroSync(
     o.api,
     {
@@ -455,6 +518,8 @@ export function openBistro(o: BistroOptions): BistroHandle {
     },
     cached,
   );
+  // What a closed page was still waiting to send goes first.
+  sync.restore(kept?.sync);
   /** The bistro on screen: yours, or a friend's while you visit. */
   let S: BistroState = sync.S;
   const nowS = () => sync.now();
@@ -463,8 +528,10 @@ export function openBistro(o: BistroOptions): BistroHandle {
   };
   // Keep "last seen" fresh while open (time away starts from it).
   const pingTimer = setInterval(() => {
-    if (!document.hidden) sync.ping();
+    if (!document.hidden && !paused) sync.ping();
   }, 10000);
+  /** Behind another hub tab: drawn as it was, nothing moves. */
+  let paused = false;
 
   /* ───────────── people ───────────── */
   const chefChar = () => asChar(o.character());
@@ -3117,11 +3184,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
       relayout();
       syncStaff();
     }
-    if (o.owner)
-      lastKnown.set(o.owner, {
-        state: structuredClone(sync.S),
-        extras: { ...sync.extras },
-      });
+    persist();
     // The head chef is your Lobby fighter (friends see them in your kitchen).
     if (!chefSent && sync.extras.chef !== chefChar()) {
       chefSent = true;
@@ -3190,13 +3253,116 @@ export function openBistro(o: BistroOptions): BistroHandle {
     });
   };
 
+  /* ───────────── kept in this browser ───────────── */
+  /** The guests and the tables' coins, with times as "seconds ago". */
+  const floorSnapshot = (): FloorSnap => ({
+    customers: customers.map((c) => ({
+      id: c.id,
+      char: c.char,
+      state: c.state,
+      chair: c.seat.chair.id,
+      vip: c.vip,
+      dish: c.dish,
+      slot: c.slot,
+      satAgo: T - c.sat,
+      patience: c.patience,
+      served: c.served,
+      eatLeft: c.eatEnd - T,
+      combo: c.combo,
+      hearts: c.hearts,
+      gx: c.gx,
+      gy: c.gy,
+      path: c.path,
+      alpha: c.alpha,
+      angry: c.angry,
+      orderedAgo: T - c.orderedAt,
+      face: c.face,
+      speed: c.speed,
+    })),
+    piles: piles.map((p) => ({
+      ...p,
+      t0: undefined,
+      ago: T - p.t0,
+      claimed: false,
+    })),
+    combo,
+    lastServeAgo: T - lastServe,
+    nextId,
+  });
+  const persist = () => {
+    if (!o.owner || (!sync.ready && !cached)) return;
+    keepBistro(o.owner, {
+      state: sync.S,
+      extras: sync.extras,
+      sync: sync.snapshot(),
+      // A friend's floor is not kept (yours was cleared when you left).
+      floor: visiting ? undefined : floorSnapshot(),
+      at: Date.now(),
+    });
+  };
+  /** Put the guests and coins back as they were (a reload, a new session). */
+  const restoreFloor = (f: FloorSnap | undefined, ageMs: number) => {
+    if (!f || !Array.isArray(f.customers) || !Array.isArray(f.piles)) return;
+    const fresh = ageMs < 5 * 60_000;
+    nextId = Math.max(nextId, Number(f.nextId) || 1);
+    for (const raw of f.piles) {
+      const p = raw as unknown as Pile & { ago: number };
+      if (!p.sale || !isDish(p.sale.dish) || !p.spot) continue;
+      const pile: Pile = { ...p, t0: T - (Number(p.ago) || 0), claimed: false };
+      piles.push(pile);
+      // Long gone: the waiter banked them meanwhile.
+      if (!fresh) collectPile(pile, false);
+    }
+    if (!fresh) return;
+    combo = Math.max(0, Math.min(COMBO_MAX, Number(f.combo) || 0));
+    lastServe = T - (Number(f.lastServeAgo) || 99);
+    for (const raw of f.customers) {
+      const c = raw as Record<string, unknown>;
+      const seat = seatList.find((x) => x.chair.id === c.chair);
+      if (!seat || !(ROSTER as string[]).includes(String(c.char))) {
+        sync.release(Number(c.id));
+        continue;
+      }
+      customers.push({
+        ...mkWalker(
+          asChar(String(c.char)),
+          Number(c.gx),
+          Number(c.gy),
+          Number(c.speed) || 2,
+        ),
+        id: Number(c.id),
+        state: c.state as CustState,
+        seat,
+        vip: c.vip === true,
+        dish: isDish(c.dish) ? c.dish : null,
+        slot: Number(c.slot),
+        sat: T - (Number(c.satAgo) || 0),
+        patience: Number(c.patience) || 30,
+        claimed: false,
+        served: c.served === true,
+        eatEnd: T + (Number(c.eatLeft) || 0),
+        combo: Number(c.combo) || 1,
+        hearts: Number(c.hearts) || 3,
+        alpha: Number(c.alpha) || 1,
+        angry: c.angry === true,
+        orderedAt: T - (Number(c.orderedAgo) || 0),
+        path: Array.isArray(c.path) ? (c.path as Pt[]) : [],
+        face: (c.face as Facing) ?? "down",
+      });
+    }
+  };
+  const persistTimer = setInterval(() => {
+    if (!paused) persist();
+  }, 5000);
+  window.addEventListener("pagehide", persist);
+
   /* ───────────── the loop ───────────── */
   let raf = 0;
   let last = performance.now();
   let acc = 0;
   let running = true;
   const frame = (ts: number) => {
-    if (!running) return;
+    if (!running || paused) return;
     raf = requestAnimationFrame(frame);
     // Up to half a second at a time (a slow device keeps the game's pace),
     // simulated in steps of at most 1/20 s.
@@ -3217,6 +3383,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
   ro.observe(layer);
   setRoomSize(sizeOf(S.sizeLv));
   resize();
+  if (kept && cached) restoreFloor(kept.floor, Date.now() - kept.at);
   raf = requestAnimationFrame(frame);
   const onVis = () => {
     // Hidden: send what is queued (the time away starts now). Back: the
@@ -3272,6 +3439,36 @@ export function openBistro(o: BistroOptions): BistroHandle {
     };
 
   return {
+    /** Behind another hub tab: kept as it is (guests, plates, coins), paused. */
+    hide() {
+      if (paused) return;
+      paused = true;
+      cancelAnimationFrame(raf);
+      tip.hidden = true;
+      persist();
+      void sync.flush();
+      layer.style.display = "none";
+    },
+    /** Back: just as you left it, then the server's word (and any time away). */
+    show() {
+      if (!paused) return;
+      paused = false;
+      layer.style.display = "";
+      resize();
+      last = performance.now();
+      raf = requestAnimationFrame(frame);
+      if (!visiting) {
+        // A new Lobby fighter takes over the kitchen.
+        if (chef.char !== chefChar()) {
+          chef.char = chefChar();
+          for (const d of ["down", "left", "right", "up"] as Facing[])
+            sprite(chef.char, d);
+          chefSent = false;
+        }
+        void sync.load().catch(() => {});
+      }
+      layer.focus({ preventScroll: true });
+    },
     close() {
       running = false;
       cancelAnimationFrame(raf);
@@ -3287,11 +3484,9 @@ export function openBistro(o: BistroOptions): BistroHandle {
       // orders not yet served stay on the counter (the server never took them).
       if (!visiting) for (const p of [...piles]) collectPile(p, false);
       sync.close();
-      if (o.owner)
-        lastKnown.set(o.owner, {
-          state: structuredClone(sync.S),
-          extras: { ...sync.extras },
-        });
+      clearInterval(persistTimer);
+      window.removeEventListener("pagehide", persist);
+      persist();
       layer.remove();
     },
   };

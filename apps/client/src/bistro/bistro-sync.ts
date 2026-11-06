@@ -86,6 +86,12 @@ export interface BistroExtras {
   friendGuests: FriendGuest[];
   dinesToday: number;
 }
+/** What a page was still waiting to send (kept in this browser). */
+export interface SyncSnapshot {
+  pending: { id: string; actions: BistroAction[] } | null;
+  outbox: BistroAction[];
+  reserved: [number, DishId][];
+}
 export interface BistroApi {
   load(): Promise<unknown>;
   act(request: string, actions: BistroAction[]): Promise<unknown>;
@@ -246,7 +252,13 @@ export class BistroSync {
   offset = 0;
   ready = false;
   private outbox: BistroAction[] = [];
-  private inflight: BistroAction[] | null = null;
+  /**
+   * The batch sent and not yet answered, with its request id. A retry sends
+   * the same id, so the server applies it once even if the first try got
+   * through (or the page closed before the answer came).
+   */
+  private pending: { id: string; actions: BistroAction[] } | null = null;
+  private sending = false;
   /** Servings guests ordered, not yet paid for: guest id → dish. */
   private reserved = new Map<number, DishId>();
   private timer: ReturnType<typeof setTimeout> | undefined;
@@ -335,28 +347,33 @@ export class BistroSync {
   }
   /** Send what is queued (one request at a time). */
   async flush() {
-    if (this.inflight || !this.outbox.length || this.closed) return;
-    const batch = this.outbox.splice(0, 40);
-    this.inflight = batch;
+    if (this.sending || this.closed) return;
+    if (!this.pending) {
+      if (!this.outbox.length) return;
+      this.pending = { id: uuid(), actions: this.outbox.splice(0, 40) };
+    }
+    const batch = this.pending;
+    this.sending = true;
     try {
-      const raw = (await this.api.act(uuid(), batch)) as {
+      const raw = (await this.api.act(batch.id, batch.actions)) as {
         bistro?: unknown;
         results?: ActResult[];
         away?: unknown;
       };
+      this.sending = false;
       if (this.closed) return;
       const errors = (raw.results ?? [])
         .map((r, i) =>
-          r && !r.ok && r.error ? { action: batch[i], error: r.error } : null,
+          r && !r.ok && r.error
+            ? { action: batch.actions[i], error: r.error }
+            : null,
         )
         .filter((e): e is { action: BistroAction; error: string } => !!e);
-      this.inflight = null;
+      this.pending = null;
       this.adopt({ ...(raw.bistro as object), away: raw.away ?? null }, errors);
     } catch (e) {
-      // Not sent: keep it for the next try (a retry is the same actions,
-      // under a new request id; the server refuses what no longer applies).
-      this.inflight = null;
-      this.outbox.unshift(...batch.filter((x) => x.a !== "sync"));
+      // Not answered: try the same batch again (same request id) shortly.
+      this.sending = false;
       this.hooks.onFail(e);
       if (!this.closed) {
         clearTimeout(this.timer);
@@ -368,6 +385,29 @@ export class BistroSync {
       return;
     }
     if (this.outbox.length) this.schedule(150);
+  }
+  /** What is waiting to reach the server: kept with the bistro in this browser. */
+  snapshot(): SyncSnapshot {
+    return {
+      pending: this.pending,
+      outbox: [...this.outbox],
+      reserved: [...this.reserved],
+    };
+  }
+  /** Take back what a closed page was still waiting to send (see snapshot). */
+  restore(snap: SyncSnapshot | undefined) {
+    if (!snap) return;
+    if (
+      snap.pending &&
+      Array.isArray(snap.pending.actions) &&
+      typeof snap.pending.id === "string"
+    )
+      this.pending = snap.pending;
+    if (Array.isArray(snap.outbox)) this.outbox.push(...snap.outbox);
+    if (Array.isArray(snap.reserved))
+      for (const [guest, dish] of snap.reserved)
+        if (isDish(dish)) this.reserved.set(guest, dish);
+    if (this.pending || this.outbox.length) this.schedule(150);
   }
   /** Take the server's bistro, then run again what it hasn't seen yet. */
   private adopt(
@@ -382,7 +422,9 @@ export class BistroSync {
       chef: this.extras.chef && this.ready ? this.extras.chef : got.extras.chef,
     };
     const now = this.now();
-    for (const x of this.outbox) applyLocal(this.S, x, now, this.extras);
+    // Sent and not yet answered, then queued: run again on top.
+    for (const x of [...(this.pending?.actions ?? []), ...this.outbox])
+      applyLocal(this.S, x, now, this.extras);
     for (const [guest, dish] of [...this.reserved])
       if (takeServing(this.S, dish) < 0) this.reserved.delete(guest);
     this.ready = true;
@@ -390,15 +432,18 @@ export class BistroSync {
   }
   /** Keep "last seen" fresh while the bistro is open. */
   ping() {
-    if (!this.outbox.length && !this.inflight) this.do({ a: "sync" });
+    if (!this.outbox.length && !this.pending) this.do({ a: "sync" });
   }
   close() {
     this.closed = true;
     clearTimeout(this.timer);
-    // Whatever is still queued goes now (paid guests, a last move).
-    if (this.outbox.length && !this.inflight) {
-      const batch = this.outbox.splice(0, 40);
-      void this.api.act(uuid(), batch).catch(() => {});
+    // Whatever is still queued goes now (paid guests, a last move); the
+    // same ids as kept in this browser, so a later retry can't double it.
+    if (!this.sending && this.pending)
+      void this.api.act(this.pending.id, this.pending.actions).catch(() => {});
+    else if (!this.sending && this.outbox.length) {
+      this.pending = { id: uuid(), actions: this.outbox.splice(0, 40) };
+      void this.api.act(this.pending.id, this.pending.actions).catch(() => {});
     }
   }
 }
