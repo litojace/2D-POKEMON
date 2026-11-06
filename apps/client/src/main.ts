@@ -55,6 +55,12 @@ import {
   type FarmScreen,
   type FarmScreenOptions,
 } from "./farm/farm-screen";
+import {
+  forgetBistros,
+  openBistro,
+  type BistroFriend,
+  type BistroHandle,
+} from "./bistro/bistro-scene";
 import type {
   FarmActResult,
   FarmHere,
@@ -1656,6 +1662,7 @@ function syncHub() {
   syncParty();
   syncLobby(hub && hubScene === "lobby");
   syncFarm(hub && hubScene === "farm", hub);
+  syncBistro(hub && hubScene === "bistro");
   syncPlaza(hub && hubScene === "plaza", hub);
 }
 /** The new Plaza (hub redesign phase 3): the server moves everyone in it. */
@@ -1820,6 +1827,54 @@ function syncLobby(want: boolean) {
     lobbyFriendsTimer = setInterval(() => void refreshLobbyFriends(), 60000);
   }
   lobby.update(lobbyView());
+}
+/** The Bistro (migration 068): the server's restaurant, next to the Farm. */
+let bistro: BistroHandle | undefined;
+let bistroOwner: string | undefined;
+function syncBistro(want: boolean) {
+  // Another player now (or logged out): that bistro is not theirs.
+  if (bistro && bistroOwner !== accountsUI?.account?.id) {
+    bistro.close();
+    bistro = undefined;
+  }
+  if (!want) {
+    if (bistro) {
+      bistro.close();
+      bistro = undefined;
+      document.body.classList.remove("hub-bistro");
+      if (!document.querySelector(".lobby-layer"))
+        document.body.classList.remove("hub-screen");
+    }
+    return;
+  }
+  if (bistro) return;
+  document.body.classList.add("hub-screen", "hub-bistro");
+  bistroOwner = accountsUI.account?.id;
+  bistro = openBistro({
+    owner: bistroOwner,
+    api: {
+      load: () => accountsUI.api("/api/bistro"),
+      act: (request, actions) =>
+        accountsUI.api("/api/bistro/act", { request, actions }),
+      friends: async () =>
+        (await accountsUI.api("/api/bistro/friends")) as BistroFriend[],
+      visit: (id) =>
+        accountsUI.api(`/api/bistro/visit/${encodeURIComponent(id)}`),
+      visitAct: (friend, kind) =>
+        accountsUI.api("/api/bistro/visit/act", {
+          request: crypto.randomUUID(),
+          friend,
+          kind,
+        }),
+    },
+    onLeaves: (balance) => accountsUI.setLeaves(balance),
+    playerName: () => accountsUI.account?.displayName ?? "Your",
+    character: () => selected,
+    toast,
+    sound: (cue, step) => audio.farm(cue, step),
+    reduced: reducedMotion,
+    low: lowGraphics(),
+  });
 }
 /** The Farm scene (hub redesign phase 4): server state, server time. */
 let farmScreen: FarmScreen | undefined;
@@ -5862,6 +5917,9 @@ accountsUI = new AccountUI({
     roomInvites.clear();
     // The farm kept in this browser is this player's: forget it.
     forgetFarms();
+    forgetBistros();
+    bistro?.close();
+    bistro = undefined;
     farmScreen?.close();
     farmScreen = undefined;
     if (plaza) {

@@ -55,7 +55,7 @@ import {
   type OnlineList,
 } from "../../../packages/shared/src/accounts.js";
 /** The newest database migration the server expects. */
-export const LATEST_MIGRATION = "066_display_name_changes.sql";
+export const LATEST_MIGRATION = "068_bistro.sql";
 /** The migration that last redefined the raid appearance functions. */
 export const RAID_FUNCTIONS_MIGRATION = "018_collection_equipping.sql";
 export interface AccountProvider {
@@ -633,6 +633,121 @@ export function installAccountRoutes(
       onPlayerChanged(account.id);
       onPlayerChanged(data.friend);
       res.json(result);
+    }),
+  );
+  // The Element Bistro (migration 068): its state at the server's time,
+  // actions, and friends' bistros.
+  const bistroId = z
+    .string()
+    .max(32)
+    .regex(/^[a-z]+$/);
+  const bistroAction = z
+    .object({
+      a: z.enum([
+        "cook",
+        "stir",
+        "plate",
+        "serve",
+        "leave",
+        "place",
+        "store",
+        "buy",
+        "style",
+        "stove",
+        "kitchen",
+        "shift",
+        "expand",
+        "hire",
+        "train",
+        "cookdish",
+        "chef",
+        "trade",
+        "sync",
+      ]),
+      stove: z.number().int().min(0).max(3).optional(),
+      dish: bistroId.optional(),
+      vip: z.boolean().optional(),
+      combo: z.number().int().min(1).max(5).optional(),
+      hearts: z.number().int().min(1).max(3).optional(),
+      quick: z.boolean().optional(),
+      kind: bistroId.optional(),
+      id: z
+        .union([
+          z.number().int().min(1).max(100000),
+          z.enum(FIGHTER_IDS),
+          bistroId,
+        ])
+        .optional(),
+      x: z.number().int().min(0).max(10).optional(),
+      y: z.number().int().min(0).max(8).optional(),
+      rot: z.number().int().min(0).max(3).optional(),
+      role: z.enum(["cook", "waiter"]).optional(),
+      char: z.enum(FIGHTER_IDS).optional(),
+      lots: z.number().int().min(1).max(15).optional(),
+    })
+    .strict();
+  app.get(
+    "/api/bistro",
+    route(false, async (_req, res, token) => {
+      res.setHeader("Cache-Control", "no-store");
+      res.json(await provider.rpc(token, "arena_bistro", {}));
+    }),
+  );
+  app.post(
+    "/api/bistro/act",
+    route(false, async (req, res, token, account) => {
+      const data = z
+        .object({
+          request: z.string().uuid(),
+          actions: z.array(bistroAction).min(1).max(40),
+        })
+        .strict()
+        .parse(req.body);
+      const result = await provider.rpc(token, "arena_bistro_act", {
+        p_request: data.request,
+        p_actions: data.actions,
+      });
+      // A trade changes the leaf wallet shown in the top bar.
+      if (data.actions.some((x) => x.a === "trade"))
+        onPlayerChanged(account.id);
+      res.json(result);
+    }),
+  );
+  app.get(
+    "/api/bistro/friends",
+    route(false, async (_req, res, token) => {
+      res.setHeader("Cache-Control", "no-store");
+      res.json(await provider.rpc(token, "arena_bistro_friends", {}));
+    }),
+  );
+  app.get(
+    "/api/bistro/visit/:id",
+    route(false, async (req, res, token) => {
+      const friend = z.string().uuid().parse(req.params.id);
+      res.setHeader("Cache-Control", "no-store");
+      res.json(
+        await provider.rpc(token, "arena_bistro_friend", { p_friend: friend }),
+      );
+    }),
+  );
+  app.post(
+    "/api/bistro/visit/act",
+    route(false, async (req, res, token) => {
+      const data = z
+        .object({
+          request: z.string().uuid(),
+          friend: z.string().uuid(),
+          kind: z.enum(["dine", "like"]),
+        })
+        .strict()
+        .parse(req.body);
+      res.json(
+        await provider.rpc(token, "arena_bistro_friend_act", {
+          p_request: data.request,
+          p_friend: data.friend,
+          p_kind: data.kind,
+        }),
+      );
     }),
   );
   // Farm gifts, friendship days and farm invites (migration 057).

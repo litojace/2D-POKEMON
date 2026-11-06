@@ -1053,7 +1053,7 @@ belong to **collections** shared across champions:
 
 #### Cyber Mecha (a second Epic for every champion)
 
-[Migration 068](../supabase/migrations/068_cyber_mecha_epics.sql) adds one
+[Migration 069](../supabase/migrations/069_cyber_mecha_epics.sql) adds one
 Epic per champion: its own paint over chrome, with neon in a contrasting
 colour. Like a Mythical it swaps the champion's own head and neck pieces
 (Halcyra keeps its head piece, which holds its beak):

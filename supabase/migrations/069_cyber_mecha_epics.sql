@@ -1,7 +1,7 @@
 -- Cyber Mecha: a second Epic for every champion (16 skins), in its own
 -- paint over chrome with neon in a contrasting colour, a mecha headset and
 -- core collar in place of its own head and neck pieces, and a jetpack.
--- With these every champion has 8 skins. Run after 067.
+-- With these every champion has 8 skins. Run after 067 (and 068, the Bistro).
 --
 -- The rows are printed from packages/shared/src/shop.ts by
 --   node --experimental-strip-types scripts/print-shop-seed.ts

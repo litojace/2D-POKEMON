@@ -200,12 +200,12 @@ it("still equips earned raid rewards alongside collection pieces", async () => {
 
 it("keeps every champion skin equippable through its separate champion slot", async () => {
   // The catalog includes the newest champions' skins, which 053 and 054
-  // seed, and the Cyber Mecha Epics (068).
+  // seed, and the Cyber Mecha Epics (069).
   await db.exec("reset role");
   for (const file of [
     "053_new_champion_skins.sql",
     "054_new_champion_mythicals.sql",
-    "068_cyber_mecha_epics.sql",
+    "069_cyber_mecha_epics.sql",
   ])
     await db.exec(await readFile(`supabase/migrations/${file}`, "utf8"));
   await login(admin);

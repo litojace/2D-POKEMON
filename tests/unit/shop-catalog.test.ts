@@ -12,12 +12,12 @@ import {
   awakeningStage,
 } from "../../packages/shared/src/shop";
 
-/** 010 seeds the first catalog; 053 and 054 add the eight newest champions' skins; 068 the Cyber Mecha Epics. */
+/** 010 seeds the first catalog; 053 and 054 add the eight newest champions' skins; 069 the Cyber Mecha Epics. */
 const migration =
   readFileSync("supabase/migrations/010_shop.sql", "utf8") +
   readFileSync("supabase/migrations/053_new_champion_skins.sql", "utf8") +
   readFileSync("supabase/migrations/054_new_champion_mythicals.sql", "utf8") +
-  readFileSync("supabase/migrations/068_cyber_mecha_epics.sql", "utf8");
+  readFileSync("supabase/migrations/069_cyber_mecha_epics.sql", "utf8");
 /** Missions are re-seeded (with the solo flag) by 014. */
 const missionMigration = readFileSync(
   "supabase/migrations/014_missions.sql",
