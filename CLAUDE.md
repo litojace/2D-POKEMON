@@ -52,7 +52,17 @@ PW_CHROMIUM=/opt/pw-browsers/chromium-1243/chrome-linux64/chrome npx playwright 
 
 **4. Long runs go in the background** (`run_in_background`, output to a log
 in the scratchpad) with a watch on the log for the `passed`/`failed`
-summary. Don't block on them. Meanwhile, the typecheck and build:
+summary. Don't block on them. The line reporter writes terminal codes at the
+start of lines, so strip them before looking for failures, or a failed test
+(`  1) tests/visual/...`) slips past the search:
+
+```bash
+sed 's/\x1b\[[0-9;]*[A-Za-z]//g' run.log | grep -E "^\s+[0-9]+\) |^\s+[0-9]+ (passed|failed|flaky)"
+```
+
+Don't edit source files while a run is going: the harness's Vite server
+reloads the page and tests fail with "Execution context was destroyed".
+Meanwhile, the typecheck and build:
 
 ```bash
 npm run -s typecheck && npm run -s build
