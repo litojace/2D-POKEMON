@@ -330,13 +330,13 @@ Ví dụ nhà hàng mới (rating 3, 3 chậu cây + 1 thảm = charm 8): 18 + 2
 
 ### 4.4 Tác động đến dòng khách và hàng chờ
 
-| Popularity | Danh hiệu        | Khách đến mỗi | Hàng chờ tối đa | Tỉ lệ VIP |
-| ---------- | ---------------- | ------------- | --------------- | --------- |
-| 0–9        | Quiet Corner     | 9.0–7.8 s     | 1               | 6–7%      |
-| 10–19      | Local Favorite   | 7.6–6.4 s     | 2               | 8–9%      |
-| 20–29      | Busy Bistro      | 6.3–5.1 s     | 3               | 9–11%     |
-| 30–39      | Talk of the Town | 4.9–3.7 s     | 4               | 11–12%    |
-| 40–50      | Legendary Bistro | 3.6–2.2 s     | 5–6             | 12–14%    |
+| Popularity | Danh hiệu  | Khách đến mỗi | Hàng chờ tối đa | Tỉ lệ VIP |
+| ---------- | ---------- | ------------- | --------------- | --------- |
+| 0–9        | Quiet      | 9.0–7.8 s     | 1               | 6–7%      |
+| 10–19      | Local Pick | 7.6–6.4 s     | 2               | 8–9%      |
+| 20–29      | Busy       | 6.3–5.1 s     | 3               | 9–11%     |
+| 30–39      | Hot Spot   | 4.9–3.7 s     | 4               | 11–12%    |
+| 40–50      | Legendary  | 3.6–2.2 s     | 5–6             | 12–14%    |
 
 ```
 arrival(P)    = max(2.2, 9 − 0.136 × P) giây     (giờ cao điểm × 0.45, như cũ)
@@ -351,7 +351,7 @@ vipShare(P)   = 0.06 + 0.0016 × P   (giờ cao điểm × 1.3)
 
 ### 4.5 Hiển thị
 
-- Ô "★ 3.0" trên HUD đổi thành **"Popularity 23 · Busy Bistro"** kèm thanh 0–50; chạm vào mở bảng phân tích 5 thành phần (Service / Decor / Gourmet / Social / Mess) để người chơi biết nên cải thiện gì.
+- Ô "★ 3.0" trên HUD đổi thành **"Popularity 23 · Busy"** kèm thanh 0–50; chạm vào mở bảng phân tích 5 thành phần (Service / Decor / Gourmet / Social / Mess) để người chơi biết nên cải thiện gì.
 - Danh sách bạn bè (Friends) hiển thị Popularity thay cho sao.
 
 ---

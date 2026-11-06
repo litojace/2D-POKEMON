@@ -1526,11 +1526,11 @@ export function popularity(
   return { service, decor, gourmet, social, mess, total };
 }
 export const POP_TIERS = [
-  { from: 0, name: "Quiet Corner" },
-  { from: 10, name: "Local Favorite" },
-  { from: 20, name: "Busy Bistro" },
-  { from: 30, name: "Talk of the Town" },
-  { from: 40, name: "Legendary Bistro" },
+  { from: 0, name: "Quiet" },
+  { from: 10, name: "Local Pick" },
+  { from: 20, name: "Busy" },
+  { from: 30, name: "Hot Spot" },
+  { from: 40, name: "Legendary" },
 ] as const;
 export const popTier = (pop: number) =>
   [...POP_TIERS].reverse().find((t) => Math.round(pop) >= t.from)!.name;

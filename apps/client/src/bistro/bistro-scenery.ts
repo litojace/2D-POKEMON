@@ -55,6 +55,14 @@ export function drawSky(ctx: Ctx, l: Light) {
   ctx.fillRect(-FAR, HORIZON - FAR, FAR * 2, FAR - 520);
   ctx.fillStyle = g;
   ctx.fillRect(-FAR, HORIZON - 521, FAR * 2, 522);
+  // A warm haze along the horizon (gold at sunset, faint by night).
+  const haze = ctx.createLinearGradient(0, HORIZON - 170, 0, HORIZON);
+  const hz =
+    l.gold > 0.2 ? `255,190,140` : l.night > 0.5 ? `90,90,150` : `255,244,220`;
+  haze.addColorStop(0, `rgba(${hz},0)`);
+  haze.addColorStop(1, `rgba(${hz},${0.55 - l.night * 0.3})`);
+  ctx.fillStyle = haze;
+  ctx.fillRect(-FAR, HORIZON - 170, FAR * 2, 171);
   // The sun by day (low and warm at golden hour), the moon and stars at night.
   const day = 1 - l.night;
   if (day > 0.05) {
@@ -142,51 +150,151 @@ export function drawClouds(ctx: Ctx, l: Light, low: boolean) {
 
 function drawFar(ctx: Ctx, l: Light) {
   const n = l.night;
-  // A far skyline, hazy blue (lit windows at night).
-  const sky = lerpRgb([176, 200, 220], [40, 42, 80], n);
-  ctx.fillStyle = sky;
-  const blds: [number, number, number][] = [];
-  for (let i = 0; i < 70; i++) {
-    const x = -2100 + i * 60 + hash(i) * 30;
-    const h = 18 + hash(i + 11) * 44 + (Math.abs(x) < 900 ? 16 : 0);
-    const w = 30 + hash(i + 23) * 34;
-    blds.push([x, w, h]);
-    ctx.fillRect(x, HORIZON - h - 14, w, h + 20);
-  }
-  if (n > 0.3)
-    for (const [x, w, h] of blds)
-      for (let wy = HORIZON - h - 6; wy < HORIZON - 8; wy += 9)
-        for (let wx = x + 4; wx < x + w - 4; wx += 7)
-          if (hash(wx * 3 + wy) > 0.6) {
-            ctx.fillStyle = `rgba(255,214,140,${(n - 0.3) * 0.9})`;
-            ctx.fillRect(wx, wy, 2.5, 3);
+  // Two rows of a far city: the farther one paler in the haze, the nearer
+  // with roof shapes, a lit edge and rows of windows (lit at night).
+  const row = (
+    count: number,
+    seed: number,
+    x0: number,
+    step: number,
+    hMin: number,
+    hVar: number,
+    day: number[],
+    dark: number[],
+    near: boolean,
+  ) => {
+    const col = lerpRgb(day, dark, n);
+    const lit = lerpRgb(
+      day.map((v) => Math.min(255, v + 22)),
+      dark.map((v) => v + 10),
+      n,
+    );
+    for (let i = 0; i < count; i++) {
+      const x = x0 + i * step + hash(i + seed) * step * 0.5;
+      const centre = Math.abs(x) < 900 ? 1 : 0.6;
+      const h = (hMin + hash(i + seed + 11) * hVar) * centre + 8;
+      const w = step * 0.55 + hash(i + seed + 23) * step * 0.5;
+      const top = HORIZON - h - 10;
+      ctx.fillStyle = col;
+      ctx.fillRect(x, top, w, h + 16);
+      // A lit side on the sun's side.
+      ctx.fillStyle = lit;
+      ctx.fillRect(x + w * 0.72, top, w * 0.28, h + 16);
+      // Roofs: a step, a spire or a water tank.
+      const k = hash(i + seed + 41);
+      ctx.fillStyle = col;
+      if (k < 0.25) ctx.fillRect(x + w * 0.2, top - 8, w * 0.5, 8);
+      else if (k < 0.37) {
+        ctx.fillRect(x + w * 0.46, top - 16, 2, 16);
+      } else if (k < 0.5) {
+        ctx.fillRect(x + w * 0.15, top - 6, 8, 6);
+      }
+      if (!near) continue;
+      // Windows: faint by day, warm at night.
+      for (let wy = top + 5; wy < HORIZON - 6; wy += 8)
+        for (let wx = x + 3; wx < x + w - 4; wx += 6) {
+          const on = hash(wx * 3.1 + wy * 1.7);
+          if (n > 0.3 ? on > 0.55 : on > 0.35) {
+            ctx.fillStyle =
+              n > 0.3
+                ? `rgba(255,214,140,${(n - 0.3) * (0.6 + on * 0.4)})`
+                : `rgba(255,255,255,${0.16 * (1 - n)})`;
+            ctx.fillRect(wx, wy, 2.5, 3.5);
           }
-  // Two layers of rolling hills.
+        }
+    }
+  };
+  row(60, 300, -2200, 74, 30, 60, [196, 214, 230], [52, 54, 96], false);
+  row(70, 0, -2100, 60, 18, 44, [164, 188, 212], [40, 42, 80], true);
+  // The haze over the city's feet.
+  const fog = ctx.createLinearGradient(0, HORIZON - 40, 0, HORIZON + 4);
+  const fc =
+    n > 0.5 ? "60,64,110" : l.gold > 0.2 ? "250,205,170" : "220,232,240";
+  fog.addColorStop(0, `rgba(${fc},0)`);
+  fog.addColorStop(1, `rgba(${fc},${0.7 - n * 0.4})`);
+  ctx.fillStyle = fog;
+  ctx.fillRect(-FAR, HORIZON - 40, FAR * 2, 44);
+  // Three layers of rolling hills, each lit along its crest, with a row of
+  // little trees along the nearest.
+  const ridge = (
+    x: number,
+    base: number,
+    amp: number,
+    freq: number,
+    seed: number,
+  ) =>
+    HORIZON -
+    base -
+    amp *
+      (0.5 + 0.5 * Math.sin(x * freq + seed)) *
+      (0.6 + 0.4 * Math.sin(x * freq * 0.37 + seed * 2));
   const hill = (
     base: number,
     amp: number,
     freq: number,
     seed: number,
-    col: string,
+    top: number[],
+    bottom: number[],
+    darkTop: number[],
+    darkBottom: number[],
   ) => {
-    ctx.fillStyle = col;
+    const g = ctx.createLinearGradient(
+      0,
+      HORIZON - base - amp,
+      0,
+      HORIZON + 20,
+    );
+    g.addColorStop(0, lerpRgb(top, darkTop, n));
+    g.addColorStop(1, lerpRgb(bottom, darkBottom, n));
+    ctx.fillStyle = g;
     ctx.beginPath();
     ctx.moveTo(-FAR, HORIZON + 40);
-    for (let x = -FAR; x <= FAR; x += 40)
-      ctx.lineTo(
-        x,
-        HORIZON -
-          base -
-          amp *
-            (0.5 + 0.5 * Math.sin(x * freq + seed)) *
-            (0.6 + 0.4 * Math.sin(x * freq * 0.37 + seed * 2)),
-      );
+    for (let x = -FAR; x <= FAR; x += 30)
+      ctx.lineTo(x, ridge(x, base, amp, freq, seed));
     ctx.lineTo(FAR, HORIZON + 40);
     ctx.closePath();
     ctx.fill();
   };
-  hill(4, 46, 0.004, 1.3, lerpRgb([126, 170, 150], [34, 44, 70], n));
-  hill(-6, 30, 0.007, 4.1, lerpRgb([102, 158, 112], [28, 40, 56], n));
+  hill(
+    14,
+    54,
+    0.003,
+    2.2,
+    [170, 200, 178],
+    [140, 178, 156],
+    [40, 50, 78],
+    [34, 44, 68],
+  );
+  hill(
+    4,
+    46,
+    0.004,
+    1.3,
+    [140, 186, 148],
+    [110, 160, 120],
+    [34, 46, 70],
+    [30, 40, 60],
+  );
+  hill(
+    -6,
+    30,
+    0.007,
+    4.1,
+    [120, 180, 110],
+    [92, 150, 88],
+    [30, 44, 56],
+    [26, 38, 48],
+  );
+  for (let x = -FAR + 20; x <= FAR; x += 26) {
+    if (hash(x * 0.37) < 0.45) continue;
+    const y = ridge(x, -6, 30, 0.007, 4.1);
+    const r = 5 + hash(x) * 5;
+    ctx.fillStyle = lerpRgb([78, 132, 72], [22, 34, 40], n);
+    ctx.beginPath();
+    ctx.arc(x, y + r * 0.4, r, 0, Math.PI * 2);
+    ctx.arc(x + r * 0.8, y + r * 0.7, r * 0.75, 0, Math.PI * 2);
+    ctx.fill();
+  }
 }
 
 /* ───────────── the ground: grass, the street, sidewalks ───────────── */
@@ -204,8 +312,30 @@ function drawGround(ctx: Ctx, l: Light) {
   g.addColorStop(1, lerpRgb([86, 156, 72], [28, 48, 38], n));
   ctx.fillStyle = g;
   ctx.fillRect(-FAR, HORIZON, FAR * 2, FAR);
+  // Mowing stripes along the grid, and soft lighter and darker patches.
+  ctx.globalAlpha = 0.07 * (1 - n * 0.7);
+  ctx.fillStyle = "#ffffff";
+  for (let k = -24; k < 40; k += 2) {
+    poly(ctx, [iso(k, -30), iso(k + 1, -30), iso(k + 1, 40), iso(k, 40)]);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  for (let i = 0; i < 70; i++) {
+    const p = iso(-16 + hash(i + 900) * 42, -12 + hash(i + 1200) * 38);
+    if (p.y < HORIZON + 10) continue;
+    const r = 60 + hash(i + 1500) * 110;
+    const lighter = hash(i + 1800) > 0.5;
+    const rg = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r);
+    const c = lighter ? "200,236,150" : "40,96,40";
+    rg.addColorStop(0, `rgba(${c},${(lighter ? 0.16 : 0.14) * (1 - n * 0.6)})`);
+    rg.addColorStop(1, `rgba(${c},0)`);
+    ctx.fillStyle = rg;
+    ctx.beginPath();
+    ctx.ellipse(p.x, p.y, r, r * 0.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
   // Tufts of grass and flowers (fixed).
-  for (let i = 0; i < 260; i++) {
+  for (let i = 0; i < 520; i++) {
     const gx = -16 + hash(i) * 40,
       gy = -12 + hash(i + 300) * 36;
     if (gx > ROAD0 - 0.5 && gx < R.cols + 1.6 && gy > -2.4 && gy < R.rows + 1.6)
@@ -245,6 +375,12 @@ function drawGround(ctx: Ctx, l: Light) {
     quad(ctx, x0, y0, x1, y1);
     ctx.fill();
   }
+  // Every other slab a shade lighter along the road.
+  ctx.fillStyle = lerpRgb([226, 218, 202], [86, 84, 98], n);
+  for (let y = -40; y < 40; y += 1.6) {
+    quad(ctx, ROAD1, y, WALK, y + 0.8);
+    ctx.fill();
+  }
   ctx.strokeStyle = seam;
   ctx.lineWidth = 1;
   ctx.beginPath();
@@ -275,9 +411,42 @@ function drawGround(ctx: Ctx, l: Light) {
   ctx.fillStyle = lerpRgb([88, 92, 102], [36, 38, 48], n);
   quad(ctx, ROAD0, -40, ROAD1, 40);
   ctx.fill();
+  // Worn tyre tracks and a speckle of grit.
+  ctx.fillStyle = lerpRgb([74, 78, 88], [30, 32, 42], n);
+  for (const tx of [ROAD0 + 0.45, ROAD0 + 0.85, ROAD1 - 0.85, ROAD1 - 0.45]) {
+    quad(ctx, tx - 0.09, -40, tx + 0.09, 40);
+    ctx.fill();
+  }
+  for (let i = 0; i < 900; i++) {
+    const p = iso(
+      ROAD0 + hash(i + 3000) * (ROAD1 - ROAD0),
+      -40 + hash(i + 4000) * 80,
+    );
+    if (p.y < HORIZON) continue;
+    ctx.fillStyle =
+      hash(i + 5000) > 0.5 ? "rgba(255,255,255,.07)" : "rgba(0,0,0,.1)";
+    ctx.fillRect(p.x, p.y, 1.6, 1.2);
+  }
+  // Manhole covers.
+  ctx.fillStyle = lerpRgb([62, 64, 72], [26, 28, 36], n);
+  for (const y of [-6, 9.5, 21]) {
+    const p = iso(ROAD0 + 0.65, y);
+    ctx.beginPath();
+    ctx.ellipse(p.x, p.y, 13, 6.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
   ctx.fillStyle = lerpRgb([236, 232, 222], [96, 96, 108], n);
   quad(ctx, ROAD1 - 0.08, -40, ROAD1, 40);
   ctx.fill();
+  // The curb's face, in its own shadow.
+  ctx.fillStyle = lerpRgb([168, 160, 146], [60, 60, 72], n);
+  for (let y = -40; y < 40; y += 2) {
+    const a = iso(ROAD1 - 0.08, y),
+      b = iso(ROAD1 - 0.08, y + 2);
+    poly(ctx, [a, b, { x: b.x, y: b.y + 4 }, { x: a.x, y: a.y + 4 }]);
+    ctx.fill();
+  }
+  ctx.fillStyle = lerpRgb([236, 232, 222], [96, 96, 108], n);
   quad(ctx, ROAD0, -40, ROAD0 + 0.08, 40);
   ctx.fill();
   ctx.fillStyle = lerpRgb([255, 226, 120], [130, 120, 80], n);
@@ -322,10 +491,29 @@ function drawHouse(
   // Windows on both faces, warm at night.
   const win =
     n > 0.4 ? `rgba(255,205,120,${0.6 + n * 0.4})` : "rgba(170,210,235,.9)";
+  const frame = dim("#fbf6ec");
   for (const f of [-0.5, 0.4]) {
     // Right face (along y at x + 1).
     const a = iso(x + 1, y + f),
       b = iso(x + 1, y + f + 0.38);
+    // A white frame and sill around each window.
+    ctx.fillStyle = frame;
+    poly(ctx, [
+      { x: a.x - 2, y: a.y - 27 },
+      { x: b.x + 2, y: b.y - 27 },
+      { x: b.x + 2, y: b.y - 59 },
+      { x: a.x - 2, y: a.y - 59 },
+    ]);
+    ctx.fill();
+    const pf = iso(x + f, y + 1),
+      qf = iso(x + f + 0.38, y + 1);
+    poly(ctx, [
+      { x: pf.x - 2, y: pf.y - 27 },
+      { x: qf.x + 2, y: qf.y - 27 },
+      { x: qf.x + 2, y: qf.y - 59 },
+      { x: pf.x - 2, y: pf.y - 59 },
+    ]);
+    ctx.fill();
     ctx.fillStyle = win;
     poly(ctx, [
       { x: a.x, y: a.y - 30 },
@@ -372,6 +560,18 @@ function drawHouse(
     r(x - 1.1, y, H + 40),
   ]);
   ctx.fill();
+  // Rows of shingles.
+  ctx.strokeStyle = dim(shade(roof, -0.22));
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let k = 1; k < 5; k++) {
+    const f = k / 5;
+    const a = r(x - 1.1, y + 1.1 - 1.1 * f, H + 40 * f),
+      b = r(x + 1.1, y + 1.1 - 1.1 * f, H + 40 * f);
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
+  }
+  ctx.stroke();
   ctx.fillStyle = dim(shade(body, -0.05));
   poly(ctx, [
     r(x + 1.1, y - 1.1, H),
@@ -399,6 +599,8 @@ function drawTree(
   softShadow(ctx, c.x + 10, c.y + 4, 46 * s, 18 * s, 0.3);
   ctx.fillStyle = shade("#7a4a2a", -0.5 * n);
   ctx.fillRect(c.x - 4 * s, c.y - 40 * s, 8 * s, 40 * s);
+  ctx.fillStyle = shade("#5a3418", -0.5 * n);
+  ctx.fillRect(c.x - 4 * s, c.y - 40 * s, 3 * s, 40 * s);
   if (kind === 1) {
     // A pine: three stacked cones.
     for (let i = 0; i < 3; i++) {
@@ -440,6 +642,20 @@ function drawTree(
     ctx.fillStyle = g;
     ctx.beginPath();
     ctx.arc(px, py, rr, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // Leafy highlights catching the light, and blossoms on the pink ones.
+  for (let i = 0; i < 14; i++) {
+    const a = hash(i + x * 13 + y * 7) * Math.PI * 2;
+    const d = hash(i + 40 + x * 3) * 34 * s;
+    const px = c.x + Math.cos(a) * d + 6 * s,
+      py = c.y - 90 * s + Math.sin(a) * d * 0.8;
+    ctx.fillStyle =
+      kind === 2
+        ? `rgba(255,236,244,${0.8 - n * 0.6})`
+        : `rgba(210,250,170,${0.45 - n * 0.35})`;
+    ctx.beginPath();
+    ctx.arc(px, py, (kind === 2 ? 2.4 : 3) * s, 0, Math.PI * 2);
     ctx.fill();
   }
 }
@@ -553,30 +769,39 @@ export function drawSceneryStatic(ctx: Ctx, l: Light, special: string) {
     [-8.6, 12, "#f5e0e0", "#7a4a8a"],
     [-8.6, 16.5, "#e4f0cf", "#5a8a3d"],
   ];
-  const trees: [number, number, number, number][] = [
-    [-6.7, 5.3, 0.9, 2],
-    [-6.6, 9.8, 1.1, 0],
-    [-6.8, 14.3, 1, 1],
-    [3, -3.6, 1.1, 0],
-    [7.5, -3.4, 1, 1],
-    [11.5, -3.2, 1.2, 0],
-    [R.cols + 2.6, 0.5, 1.1, 2],
-    [R.cols + 2.8, 4.6, 1, 0],
-    [-2.4, R.rows + 3.2, 1, 0],
-    [R.cols + 1.5, R.rows + 4.6, 1, 2],
-  ];
   type D = { d: number; f: () => void };
   const list: D[] = [];
   for (const [x, y, b, r] of across)
     if (onGround(x, y))
       list.push({ d: x + y, f: () => drawHouse(ctx, x, y, b, r, l) });
-  for (const [x, y, s, k] of trees)
-    if (onGround(x, y))
+  // Trees in front of the building come later (drawFrontTrees), over it.
+  for (const [x, y, s, k] of trees())
+    if (onGround(x, y) && !inFront(x, y))
       list.push({ d: x + y, f: () => drawTree(ctx, x, y, s, k, l) });
   list.sort((a, b) => a.d - b.d);
   for (const it of list) it.f();
   drawStreetProps(ctx, l);
   drawSignBoard(ctx, l, special);
+}
+/** Trees around the block: (grid x, grid y, size, kind). */
+const trees = (): [number, number, number, number][] => [
+  [-6.7, 5.3, 0.9, 2],
+  [-6.6, 9.8, 1.1, 0],
+  [-6.8, 14.3, 1, 1],
+  [3, -3.6, 1.1, 0],
+  [7.5, -3.4, 1, 1],
+  [11.5, -3.2, 1.2, 0],
+  [R.cols + 2.6, 0.5, 1.1, 2],
+  [R.cols + 2.8, 4.6, 1, 0],
+  [-2.4, R.rows + 3.2, 1, 0],
+  [R.cols + 1.5, R.rows + 4.6, 1, 2],
+];
+/** Trees in front of the building's base: drawn after the room, nearest last. */
+export function drawFrontTrees(ctx: Ctx, l: Light) {
+  for (const [x, y, s, k] of trees()
+    .filter(([x, y]) => inFront(x, y) && onGround(x, y))
+    .sort((a, b) => a[0] + a[1] - b[0] - b[1]))
+    drawTree(ctx, x, y, s, k, l);
 }
 
 /* ───────────── what moves: cars, lamps, birds, fireflies ───────────── */

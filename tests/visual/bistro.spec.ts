@@ -213,12 +213,12 @@ test("Bistro: popularity sets the pace, a full room queues at the door, and Deco
   const errors = await openBistro(page);
   // Rating 3 (18) + charm 8 (2.7) + 2 likes this week (1) = 21.7.
   await expect(page.locator("#bs-chips .pop .pop-ring")).toHaveText("22");
-  await expect(page.locator("#bs-chips .pop")).toContainText("Busy Bistro");
+  await expect(page.locator("#bs-chips .pop")).toContainText("Busy");
   await expect(page.locator("#bs-chips .lay")).toContainText("Grade B");
   await page.click("#bs-chips .pop");
   // (Guests keep coming meanwhile, and happy ones raise it.)
   await expect(page.locator("#bs-sheet h2")).toHaveText(
-    /^Popularity 2\d · Busy Bistro$/,
+    /^Popularity 2\d · Busy$/,
   );
   await expect(page.locator("#bs-sheet .bs-pop-row")).toHaveCount(4);
   await expect(page.locator("#bs-sheet .bs-pop-fx")).toContainText(

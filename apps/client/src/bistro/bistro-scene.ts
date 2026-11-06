@@ -166,6 +166,7 @@ import {
 import {
   carGlows,
   drawFrontLamps,
+  drawFrontTrees,
   drawRoofSign,
   drawSceneryLive,
   drawSceneryStatic,
@@ -2315,7 +2316,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
             <b>${esc(d.name)}${locked ? "" : ` <i class="dlv">Lv ${lv}</i>`}</b><small>${esc(d.blurb)}</small>
             ${locked ? `<span class="lk">${I("lock")} Level ${d.level}</span>` : `<span class="st"><em>${I("clock")} ${fmtTime(d.seconds)}</em><em>× ${servings}</em><em class="${poor ? "poor" : ""}">${coinTag(d.cost)}</em></span><span class="pf">${coinTag(price)} a plate · ~${fmt(per)}/min</span>`}
             ${!cook && !locked ? dishUpBlock(d.id) : ""}
-            ${d.id === sp ? `<i class="sp">Special ×1.5</i>` : ""}
+            ${d.id === sp ? `<i class="sp" title="Today's special: pays ×1.5">★ Special ×1.5</i>` : ""}
           </${tag}>`;
         }).join("")}</div>`;
     } else if (sheetKind === "staff") {
@@ -2786,9 +2787,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
       <div class="xpbar" title="${S.xp} / ${need} XP"><i style="width:${(S.xp / need) * 100}%"></i></div>`;
     const pop = popNow().total;
     const popN = Math.round(pop);
-    const sp = DISH_BY_ID[special()];
     const chipsHtml = `<button type="button" class="bs-chip glass pop" data-pop title="Popularity ${popN} of 50 · ${popTier(pop)}"><span class="pop-ring" style="--p:${popN * 2}"><i>${popN}</i></span><span><small>Popularity</small><b>${popTier(pop)}</b></span><b class="ph">Popularity</b></button>
-      <div class="bs-chip glass special"><img src="${dishIconUrl(sp.id, 48)}" alt=""><span><small>Today's special</small><b>${esc(sp.name)}</b></span></div>
       ${rushing() ? `<div class="bs-chip glass rush"><span><b>Rush hour!</b><small>Tips ×2 · ${RUSH_SECONDS - (Math.floor((nowS() + rushShift) / 1000) % RUSH_PERIOD)}s left</small></span></div>` : `<button type="button" class="bs-chip glass soft lay" data-pop title="How handy the seats are for the waiters"><small>Floor plan</small><b>${layout.grade ? `Grade ${layout.grade}` : "No seats"}</b></button>`}`;
     // Only when something shows differently: a chip redrawn under a finger
     // would swallow the tap.
@@ -3189,7 +3188,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
       sh.height / shellScale,
     );
     drawWindows(ctx, L, low);
-    drawDoorAndBoard(ctx, doorOpen, DISH_BY_ID[special()].name, L);
+    drawDoorAndBoard(ctx, doorOpen, DISH_BY_ID[special()].name, L, special());
     drawFestoon(ctx, L);
     drawRoofSign(ctx, L, T);
     // Sunbeams through the right wall's windows by day.
@@ -3409,6 +3408,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
       drawDish(ctx, f.dish, x, y, 13, T, false);
     }
 
+    drawFrontTrees(ctx, L);
     drawFrontLamps(ctx, L);
     drawLighting(L);
     drawOverlay(now);

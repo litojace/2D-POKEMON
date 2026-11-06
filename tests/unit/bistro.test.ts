@@ -492,12 +492,12 @@ describe("bistro: popularity (docs/bistro-gdd.md §4)", () => {
     expect(vipShare(50, false)).toBeCloseTo(0.14, 10);
     expect(vipShare(50, true)).toBeCloseTo(0.182, 10);
     expect([0, 9.4, 9.6, 20, 39, 50].map(popTier)).toEqual([
-      "Quiet Corner",
-      "Quiet Corner",
-      "Local Favorite",
-      "Busy Bistro",
-      "Talk of the Town",
-      "Legendary Bistro",
+      "Quiet",
+      "Quiet",
+      "Local Pick",
+      "Busy",
+      "Hot Spot",
+      "Legendary",
     ]);
   });
 });

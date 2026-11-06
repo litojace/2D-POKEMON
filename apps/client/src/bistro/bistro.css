@@ -2026,3 +2026,60 @@ body.hub-bistro :is(#account-coins, #account-leaves) {
   margin-left: 0;
   margin-right: 0;
 }
+
+/* ── Shorter chips (two now: popularity and the floor plan / rush) ── */
+.bistro-layer .bs-chip {
+  width: 132px;
+  padding: 0 10px;
+  gap: 7px;
+}
+.bistro-layer .bs-chip .pop-ring {
+  width: 30px;
+  height: 30px;
+}
+.bistro-layer .bs-chip .pop-ring i {
+  width: 23px;
+  height: 23px;
+  font-size: 13px;
+}
+.bistro-layer .bs-chip.pop b {
+  font-size: 13px;
+}
+.bistro-layer .bs-chip.rush span {
+  display: grid;
+  justify-items: center;
+}
+
+/* ── Today's special stands out in the Recipes and cook sheets ── */
+.bistro-layer .bs-dish.special {
+  border: 2px solid #ffd65b;
+  background:
+    radial-gradient(circle at 50% 22%, #ffd65b55 0, transparent 60%),
+    linear-gradient(180deg, #4a3a26, #2a1f1a);
+  box-shadow:
+    0 0 0 3px #ffd65b22,
+    0 0 22px #ffb84a66;
+  animation: bs-special 1.8s ease-in-out infinite alternate;
+}
+@keyframes bs-special {
+  to {
+    box-shadow:
+      0 0 0 3px #ffd65b44,
+      0 0 30px #ffb84aaa;
+  }
+}
+.bistro-layer .bs-dish .sp {
+  top: -1px;
+  right: 50%;
+  transform: translateX(50%);
+  padding: 4px 10px;
+  border-radius: 0 0 10px 10px;
+  background: linear-gradient(180deg, #ffe58a, #f0a92a);
+  white-space: nowrap;
+  box-shadow: 0 2px 6px #0006;
+}
+@media (prefers-reduced-motion: reduce) {
+  .bistro-layer .bs-dish.special {
+    animation: none;
+  }
+}
