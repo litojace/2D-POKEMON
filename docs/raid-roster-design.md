@@ -1087,6 +1087,25 @@ colour. Like a Mythical it swaps the champion's own head and neck pieces
 | Wombolder | **Bulldozer** | brown / lime |
 | Shadopus | **Stealth Mk** | indigo / red |
 
+#### Collection reward frames (Void Knight, Cyber Mecha, Arcade)
+
+[Migration 071](../supabase/migrations/071_collection_reward_frames.sql) gives
+each of the two skin collections its own frame, earned (never sold) by
+owning all sixteen of its skins, like the other collections' free frame:
+
+- **Void Knight frame** (Mythical): black steel with outward blades and
+  violet runes, a rune gem, and a crown of blades over crossed swords.
+- **Cyber Mecha frame** (Epic): segmented chrome plates, neon circuits and
+  status lights, HUD brackets, a core light and a V-fin on top.
+- **Arcade frame** (Epic, [migration 072](../supabase/migrations/072_arcade_reward_frame.sql)):
+  own all eight Arcade skins. Magenta and cyan neon tubes round a synthwave
+  grid, pixel sparkles and an arcade joystick on top. The Skins tab shows it
+  on the fighters with an Arcade skin.
+
+The Mythic Hall and the Skins tab show each frame and how many of its skins
+you own. Astrabun's mallet is re-forged with its skin, too (`SkinArt.weapon`):
+black steel in Rift Duelist, chrome in Warp Unit.
+
 #### The Void Knights (every Mythical)
 
 [Migration 067](../supabase/migrations/067_void_knight_mythicals.sql) turned
@@ -1105,6 +1124,16 @@ its beak):
   on the ground.
 - **Stage III:** four rune swords fanned behind the shoulders and a taller
   crest; void flames lick up behind it and rune shards orbit it.
+
+Every Void Knight **enters** through a void gate that opens behind it (black
+smoke swirls in, and it seals with a rune shockwave) and **wins** by planting
+a rune sword beside itself. At stage III its **ultimate** flashes a rune
+circle across the ground and lands the knight's own strike, by its crest: a
+giant sword plunges in behind it (crowns of blades, and Duskveil), lightning
+strikes (bolts), a pillar of black fire rises (flames), ice or obsidian
+spikes erupt (ice, crystals), the tide rings out (fins), a black sun flares
+(eclipse) or the ground quakes (iron helm). These stay around the fighter
+and last under a second; they change no shape, reach or timing.
 
 #### Voltkit (sugar-glider kit, Electric)
 

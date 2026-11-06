@@ -4,7 +4,7 @@ for (const size of [
   { width: 1440, height: 900 },
   { width: 844, height: 390 },
 ]) {
-  test(`skin preview light fills the stage from the upper right (${size.width}x${size.height})`, async ({
+  test(`skin preview light: a glow and a lit disc under the fighter's feet (${size.width}x${size.height})`, async ({
     browser,
   }, info) => {
     const context = await browser.newContext({
@@ -53,33 +53,45 @@ for (const size of [
           const canvas =
             el.querySelector<HTMLCanvasElement>(":scope > canvas")!;
           const box = el.getBoundingClientRect();
-          const ctx = canvas.getContext("2d")!;
-          const alpha = (x: number) =>
-            ctx.getImageData(
-              Math.round(canvas.width * x),
-              Math.round(canvas.height * 0.04),
-              1,
-              1,
-            ).data[3];
           return {
             aspect: canvas.width / canvas.height,
             expected: box.width / box.height,
-            right: alpha(0.94),
-            left: alpha(0.06),
           };
         });
+      // The light is the stage's own layer behind the canvas (owner's option
+      // C, stage-light.ts), not a beam drawn on the canvas: a glow in the
+      // element's colour and a lit disc that follows the camera, so it stays
+      // under the fighter's feet at any stage size.
+      const light = () =>
+        stage.evaluate((el) => {
+          const svg = el.querySelector(":scope > .stage-light");
+          const still = el.querySelector(".shop-preview-fallback > svg");
+          const disc = svg
+            ?.querySelector(".stage-light-disc")
+            ?.getBoundingClientRect();
+          const box = el.getBoundingClientRect();
+          const cx = disc ? disc.x + disc.width / 2 : -1,
+            cy = disc ? disc.y + disc.height / 2 : -1;
+          return {
+            shown: !!svg && getComputedStyle(svg).display !== "none",
+            follows:
+              !!svg &&
+              svg.getAttribute("viewBox") === still?.getAttribute("viewBox"),
+            // Centred across the stage, in its lower half.
+            underFeet:
+              Math.abs(cx - (box.x + box.width / 2)) < box.width * 0.1 &&
+              cy > box.y + box.height / 2 &&
+              cy < box.bottom,
+          };
+        });
+      const lit = { shown: true, follows: true, underFeet: true };
       await expect
         .poll(async () => {
           const a = await audit();
           return Math.abs(a.aspect - a.expected);
         })
         .toBeLessThan(0.01);
-      await expect
-        .poll(async () => {
-          const a = await audit();
-          return a.right - a.left;
-        })
-        .toBeGreaterThan(10);
+      await expect.poll(light).toEqual(lit);
       // Advance the real idle through its fully settled float. The software
       // renderer is too slow to wait for several seconds of animation time.
       await page.evaluate(() => {
@@ -102,12 +114,7 @@ for (const size of [
             return Math.abs(a.aspect - a.expected);
           })
           .toBeLessThan(0.01);
-        await expect
-          .poll(async () => {
-            const a = await audit();
-            return a.right - a.left;
-          })
-          .toBeGreaterThan(10);
+        await expect.poll(light).toEqual(lit);
         await snap(page, info, "shop-spotlight-tall");
         // A late resize while asleep still renders one correctly fitted frame.
         await page.emulateMedia({ reducedMotion: "reduce" });

@@ -330,6 +330,207 @@ function mythic(ctx: FxContext, art: SkinArt, stage: number) {
   }
 }
 
+/**
+ * The Void Knights' signature moments, drawn over several frames (each rig
+ * remembers when its moment began). All of them stay around the fighter:
+ *
+ *  - Entrance (every stage): a void gate opens behind the fighter, black
+ *    smoke swirls into it and it seals with a rune shockwave.
+ *  - Victory (every stage): a rune sword falls beside the fighter and plants
+ *    itself in the ground with a shockwave, then glows and fades.
+ *  - Ultimate (stage III): a rune circle flashes out on the ground and the
+ *    knight's own strike lands, by its crest: a giant sword plunges in
+ *    behind it (blades), lightning strikes (bolts), a pillar of black fire (flames),
+ *    ice or obsidian spikes erupt (ice, crystals), the tide rings out (fins),
+ *    a black sun flares (eclipse) or the ground quakes (iron).
+ */
+const VOID_MOMENTS = new WeakMap<object, { gate?: number; win?: number; ult?: number }>();
+const GATE_MS = 900,
+  WIN_MS = 1100,
+  ULT_MS = 750;
+
+/** A rune sword, tip down at (x, tipY). */
+function runeSword(g: Phaser.GameObjects.Graphics, x: number, tipY: number, len: number, sc: number, color: number, hot: number, alpha: number) {
+  const w = len * 0.07,
+    guard = tipY - len * 0.72;
+  g.fillStyle(color, 0.25 * alpha).fillTriangle(x - w * 2.4, guard, x + w * 2.4, guard, x, tipY + 4 * sc);
+  g.fillStyle(0x2c3242, alpha).fillPoints(
+    [
+      { x: x - w, y: guard },
+      { x: x + w, y: guard },
+      { x: x + w, y: tipY - len * 0.12 },
+      { x, y: tipY },
+      { x: x - w, y: tipY - len * 0.12 },
+    ],
+    true,
+  );
+  g.lineStyle(1.2 * sc, hot, 0.9 * alpha).lineBetween(x, guard - 2 * sc, x, tipY - len * 0.14);
+  g.lineStyle(3.2 * sc, 0x0a0b12, alpha).lineBetween(x - w * 3.2, guard, x + w * 3.2, guard);
+  g.lineStyle(1.6 * sc, 0x5a6478, alpha).lineBetween(x - w * 3, guard, x + w * 3, guard);
+  g.lineStyle(2.6 * sc, 0x3a2c44, alpha).lineBetween(x, guard, x, guard - len * 0.2);
+  g.fillStyle(color, alpha).fillCircle(x, guard - len * 0.22, 2 * sc);
+}
+
+/** A jagged bolt from (x, y0) down to (x, y1). */
+function bolt(g: Phaser.GameObjects.Graphics, x: number, y0: number, y1: number, sc: number, color: number, alpha: number) {
+  const pts: { x: number; y: number }[] = [];
+  const n = 6;
+  for (let i = 0; i <= n; i++) pts.push({ x: x + (i && i < n ? (Math.random() - 0.5) * 12 * sc : 0), y: y0 + ((y1 - y0) * i) / n });
+  g.lineStyle(5 * sc, color, 0.3 * alpha).strokePoints(pts);
+  g.lineStyle(1.8 * sc, 0xffffff, alpha).strokePoints(pts);
+}
+
+function voidMoments(ctx: FxContext, art: SkinArt, stage: number) {
+  const knight = art.mythic ? VOID_KNIGHTS[art.mythic] : undefined;
+  if (!knight) return;
+  const { g, under, x, y, sc, now } = ctx;
+  const color = art.skill ?? 0xffffff;
+  const hot = hexToNumber(knight.hot);
+  let m = VOID_MOMENTS.get(g);
+  if (!m) VOID_MOMENTS.set(g, (m = {}));
+  if (ctx.greeting) m.gate = now;
+  if (ctx.celebrating) m.win = now;
+  if (ctx.ultimate && stage >= 3) m.ult = now;
+  const feet = groundY(ctx),
+    flat = groundFlat(ctx);
+
+  // Entrance: the void gate.
+  if (m.gate !== undefined) {
+    const k = (now - m.gate) / GATE_MS;
+    if (k < 0 || k > 1) m.gate = undefined;
+    else {
+      const open = k < 0.3 ? k / 0.3 : k > 0.75 ? (1 - k) / 0.25 : 1;
+      const h = 44 * sc * open,
+        w = 20 * sc * open;
+      const cy = y - 18 * sc;
+      under.fillStyle(color, 0.3 * open).fillEllipse(x, cy, w * 2 + 8 * sc, h * 2 + 8 * sc);
+      under.fillStyle(0x07050c, 0.92 * open).fillEllipse(x, cy, w * 2, h * 2);
+      under.lineStyle(2 * sc, hot, 0.9 * open).strokeEllipse(x, cy, w * 2, h * 2);
+      for (let i = 0; i < 6; i++) {
+        const a = now / 300 + (i / 6) * Math.PI * 2;
+        under.fillStyle(color, 0.8 * open).fillCircle(x + Math.cos(a) * w * 0.8, cy + Math.sin(a) * h * 0.8, 1.6 * sc);
+      }
+      // Smoke spirals into the gate as it opens.
+      if (k < 0.5 && ctx.chance(40, ctx.dt)) {
+        const a = Math.random() * Math.PI * 2;
+        ctx.emit({ x: x + Math.cos(a) * 46 * sc, y: cy + Math.sin(a) * 30 * sc, vx: -Math.cos(a) * 80, vy: -Math.sin(a) * 52, life: 0.5, size: 3 * sc, color: 0x120a1e, shape: "puff", behind: true });
+      }
+      if (k >= 0.75 && k - ctx.dt * 1000 / GATE_MS < 0.75)
+        ctx.emit({ x, y: feet, vx: 0, vy: 0, life: 0.6, size: 12 * sc, color, shape: "shock" });
+    }
+  }
+
+  // Victory: a rune sword planted beside the fighter.
+  if (m.win !== undefined) {
+    const k = (now - m.win) / WIN_MS;
+    if (k < 0 || k > 1) m.win = undefined;
+    else {
+      const sx = x + 24 * sc,
+        len = 46 * sc;
+      const land = 0.22;
+      const tipY = k < land ? feet - 120 * sc + (k / land) * 120 * sc : feet;
+      const alpha = k > 0.8 ? (1 - k) / 0.2 : 1;
+      runeSword(g, sx, tipY - (k < land ? 0 : 6 * sc), len, sc, color, hot, alpha);
+      if (k >= land) {
+        const kk = (k - land) / (1 - land);
+        g.lineStyle(2 * sc, color, 0.7 * (1 - kk)).strokeEllipse(sx, feet, (16 + kk * 50) * sc, (16 + kk * 50) * sc * flat);
+        if (k - (ctx.dt * 1000) / WIN_MS < land)
+          for (let i = 0; i < 12; i++) {
+            const a = -Math.PI * (0.1 + 0.8 * Math.random());
+            ctx.emit({ x: sx, y: feet - 4 * sc, vx: Math.cos(a) * 120, vy: Math.sin(a) * 160, life: 0.6, size: 2 * sc, color: i % 2 ? color : hot, shape: "spark" });
+          }
+      }
+    }
+  }
+
+  // Ultimate (stage III): the rune circle and the knight's own strike.
+  if (m.ult !== undefined) {
+    const k = (now - m.ult) / ULT_MS;
+    if (k < 0 || k > 1) {
+      m.ult = undefined;
+      return;
+    }
+    const fade = 1 - k;
+    groundRing(ctx, (40 + k * 90) * sc, color, 0.8 * fade, 2.4 * sc);
+    groundRing(ctx, (30 + k * 60) * sc, hot, 0.5 * fade, 1.2 * sc);
+    const crest = knight.crest === "none" ? "blades" : knight.crest;
+    switch (crest) {
+      case "blades": {
+        // A giant rune sword plunges into the ground behind the knight.
+        const tipY = k < 0.2 ? feet - 160 * sc + (k / 0.2) * 150 * sc : feet - 10 * sc;
+        runeSword(under, x, tipY, 92 * sc, sc, color, hot, Math.min(1, fade * 1.6));
+        break;
+      }
+      case "bolts":
+        if (k < 0.55 && Math.floor(now / 60) % 2 === 0)
+          for (const dx of [-30, 0, 30]) bolt(g, x + dx * sc, y - 110 * sc, feet, sc, color, fade);
+        break;
+      case "flames":
+        for (let i = 0; i < 9; i++) {
+          const t = (i - 4) / 4;
+          const fx = x + t * 26 * sc,
+            h = (70 - Math.abs(t) * 30) * sc * Math.sin(Math.min(1, k * 2.2) * Math.PI * 0.5) * (0.8 + 0.2 * Math.sin(now / 50 + i)),
+            w = 6 * sc;
+          under.fillStyle(color, 0.55 * fade).fillTriangle(fx - w - 2 * sc, feet, fx + w + 2 * sc, feet, fx, feet - h - 6 * sc);
+          under.fillStyle(0x0c0614, 0.85 * fade).fillTriangle(fx - w, feet, fx + w, feet, fx, feet - h);
+        }
+        break;
+      case "ice":
+      case "crystals": {
+        const grow = Math.min(1, k / 0.25);
+        const body = crest === "ice" ? 0x1d3448 : 0x14161a;
+        for (let i = 0; i < 10; i++) {
+          const a = (i / 10) * Math.PI * 2;
+          const r = 40 * sc;
+          const px = x + Math.cos(a) * r,
+            py = feet + Math.sin(a) * r * flat;
+          const h = (18 + (i % 3) * 6) * sc * grow,
+            w = 4.5 * sc;
+          const layer = Math.sin(a) > 0 ? g : under;
+          layer.fillStyle(body, fade).fillTriangle(px - w, py, px + w, py, px + Math.cos(a) * 4 * sc, py - h);
+          layer.lineStyle(1.2 * sc, hot, 0.9 * fade).lineBetween(px, py - 2 * sc, px + Math.cos(a) * 3 * sc, py - h + 3 * sc);
+        }
+        break;
+      }
+      case "fins":
+        for (let i = 0; i < 3; i++) {
+          const kk = Math.max(0, k - i * 0.15) / (1 - i * 0.15);
+          if (kk > 0) groundRing(ctx, (30 + kk * 120) * sc, i % 2 ? hot : color, 0.7 * (1 - kk), 3 * sc);
+        }
+        if (ctx.chance(30, ctx.dt))
+          ctx.emit({ x: x + (Math.random() - 0.5) * 60 * sc, y: feet, vx: 0, vy: -70, life: 0.6, size: 2.4 * sc, color: hot, shape: "bubble" });
+        break;
+      case "eclipse": {
+        const cy = ctx.headY - 34 * sc;
+        const r = (10 + Math.min(1, k * 3) * 12) * sc;
+        g.fillStyle(color, 0.3 * fade).fillCircle(x, cy, r + 8 * sc);
+        for (let i = 0; i < 16; i++) {
+          const a = now / 400 + (i / 16) * Math.PI * 2;
+          const len = (i % 2 ? 10 : 18) * sc;
+          g.lineStyle(2 * sc, color, 0.9 * fade).lineBetween(x + Math.cos(a) * (r + 2 * sc), cy + Math.sin(a) * (r + 2 * sc), x + Math.cos(a) * (r + len), cy + Math.sin(a) * (r + len));
+        }
+        g.fillStyle(hot, fade).fillCircle(x, cy, r);
+        g.fillStyle(0x07040a, fade).fillCircle(x + 2 * sc, cy - 1 * sc, r - 3 * sc);
+        break;
+      }
+      case "iron":
+        for (let i = 0; i < 3; i++) {
+          const kk = Math.max(0, k - i * 0.12) / (1 - i * 0.12);
+          if (kk > 0) groundRing(ctx, (24 + kk * 100) * sc, color, 0.8 * (1 - kk), 3.4 * sc);
+        }
+        // Cracks radiate across the ground.
+        for (let i = 0; i < 8; i++) {
+          const a = (i / 8) * Math.PI * 2 + 0.3;
+          const r = Math.min(1, k * 3) * 52 * sc;
+          under.lineStyle(2.4 * sc, color, 0.9 * fade).lineBetween(x + Math.cos(a) * 8 * sc, feet + Math.sin(a) * 8 * sc * flat, x + Math.cos(a) * r, feet + Math.sin(a) * r * flat);
+        }
+        if (k < 0.1 && ctx.chance(60, ctx.dt))
+          ctx.emit({ x: x + (Math.random() - 0.5) * 50 * sc, y: feet, vx: (Math.random() - 0.5) * 80, vy: -160 - Math.random() * 80, life: 0.7, size: 2.6 * sc, color: 0x3a3a30, shape: "pebble" });
+        break;
+    }
+  }
+}
+
 /** Draw a skin's extras for one frame (the rig then draws all particles). */
 export function drawSkinFx(ctx: FxContext, art: SkinArt | undefined, stage: number) {
   if (!art) return;
@@ -337,7 +538,10 @@ export function drawSkinFx(ctx: FxContext, art: SkinArt | undefined, stage: numb
   moments(ctx, art, stage);
   if (ctx.defeated) return;
   detail(ctx, art);
-  if (art.mythic) mythic(ctx, art, stage);
+  if (art.mythic) {
+    mythic(ctx, art, stage);
+    voidMoments(ctx, art, stage);
+  }
 }
 
 /** One-off bursts: KO poof (Epic+), Mythical entrance, victory and ultimate. */
@@ -365,22 +569,12 @@ function moments(ctx: FxContext, art: SkinArt, stage: number) {
   // Epic and up: a custom knockout poof in the skin's colours.
   if (ctx.knockedOut) burst(14, 80, "puff", -8, 0.8);
   if (!art.mythic) return;
-  // Mythicals: their own entrance and victory. A Void Knight arrives in a
-  // rune shockwave and a plume of black smoke, and wins in a shower of sparks.
-  if (ctx.greeting) {
-    burst(16, 110, "puff", -12, 0.9);
-    burst(14, 150, "spark", -14, 0.7);
-    ctx.emit({ x: ctx.x, y: ctx.y + 4 * ctx.sc, vx: 0, vy: 0, life: 0.6, size: 10 * ctx.sc, color, shape: "shock" });
-  }
-  if (ctx.celebrating) {
-    burst(24, 150, "spark", -26, 1);
-    burst(10, 90, "star", -30, 1.1);
-  }
-  // Stage III: the full ultimate effect, a ring of the skin's colour.
-  if (ctx.ultimate && stage >= 3) {
-    burst(20, 170, "star", -10, 0.6);
-    ctx.emit({ x: ctx.x, y: ctx.y - 10 * ctx.sc, vx: 0, vy: 0, life: 0.5, size: 18 * ctx.sc, color, shape: "ring" });
-  }
+  // Mythicals: the bursts that start their entrance, victory and (stage
+  // III) ultimate; the Void Knights' gate, planted sword and signature
+  // strike follow over the next frames (voidMoments).
+  if (ctx.greeting) burst(14, 150, "spark", -14, 0.7);
+  if (ctx.celebrating) burst(10, 90, "star", -30, 1.1);
+  if (ctx.ultimate && stage >= 3) burst(20, 170, "star", -10, 0.6);
 }
 
 /** Draw one particle of a skin-only shape. Returns false for the rig's own shapes. */
