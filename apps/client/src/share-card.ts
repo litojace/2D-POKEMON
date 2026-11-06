@@ -69,7 +69,7 @@ export function shareSummary(state: Snapshot, myId: string) {
   return { won, headline, text, versus };
 }
 
-function loadImage(src: string) {
+export function loadImage(src: string) {
   return new Promise<HTMLImageElement>((resolve, reject) => {
     const img = new Image();
     img.onload = () => resolve(img);
@@ -156,7 +156,7 @@ export async function drawShareCard(
 }
 
 /** Shorten a name to fit a width. */
-function fit(g: CanvasRenderingContext2D, text: string, width: number) {
+export function fit(g: CanvasRenderingContext2D, text: string, width: number) {
   if (g.measureText(text).width <= width) return text;
   let t = text;
   while (t.length > 1 && g.measureText(`${t}…`).width > width)
@@ -175,25 +175,19 @@ function toBlob(canvas: HTMLCanvasElement) {
 }
 
 /**
- * Share the result: the phone's share sheet with the picture when it can,
- * otherwise download the picture and copy the message.
+ * Share a picture: the phone's share sheet with it when it can, otherwise
+ * download it and copy the message. `draw(withArt)` draws the canvas; it is
+ * asked again without art if the browser refuses to export the first one
+ * (some refuse a canvas with SVG drawn on it).
  */
-export async function shareResult(
-  state: Snapshot,
-  myId: string,
-  site = location.origin,
+export async function sharePicture(
+  draw: (withArt: boolean) => Promise<HTMLCanvasElement>,
+  o: { file: string; text: string; title?: string },
 ): Promise<"shared" | "downloaded" | "failed"> {
-  const { text } = shareSummary(state, myId);
-  const canvas = document.createElement("canvas");
-  await drawShareCard(canvas, state, myId, site);
-  // Some browsers refuse to export a canvas with SVG drawn on it: redraw plain.
-  let blob = await toBlob(canvas);
-  if (!blob)
-    blob = await toBlob(await drawShareCard(canvas, state, myId, site, false));
+  let blob = await toBlob(await draw(true));
+  if (!blob) blob = await toBlob(await draw(false));
   if (!blob) return "failed";
-  const file = new File([blob], "element-arena-result.png", {
-    type: "image/png",
-  });
+  const file = new File([blob], o.file, { type: "image/png" });
   const nav = navigator as Navigator & {
     canShare?: (data: ShareData) => boolean;
   };
@@ -201,8 +195,8 @@ export async function shareResult(
     try {
       await nav.share({
         files: [file],
-        text: `${text} ${site}`,
-        title: "Element Arena",
+        text: o.text,
+        title: o.title ?? "Element Arena",
       });
       return "shared";
     } catch (error) {
@@ -219,9 +213,23 @@ export async function shareResult(
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 2000);
   try {
-    await navigator.clipboard.writeText(`${text} ${site}`);
+    await navigator.clipboard.writeText(o.text);
   } catch {
     /* the picture alone is fine */
   }
   return "downloaded";
+}
+
+/** Share a match result (the results screen's Share). */
+export async function shareResult(
+  state: Snapshot,
+  myId: string,
+  site = location.origin,
+): Promise<"shared" | "downloaded" | "failed"> {
+  const { text } = shareSummary(state, myId);
+  const canvas = document.createElement("canvas");
+  return sharePicture(
+    (withArt) => drawShareCard(canvas, state, myId, site, withArt),
+    { file: "element-arena-result.png", text: `${text} ${site}` },
+  );
 }

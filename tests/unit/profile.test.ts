@@ -1,0 +1,238 @@
+import { describe, expect, it } from "vitest";
+import type { Progress } from "../../packages/shared/src/accounts";
+import type { RaidProgress } from "../../packages/shared/src/raid";
+import {
+  bestMastery,
+  profileMarkup,
+  profileTiles,
+  profileView,
+  rankLine,
+  type ProfileData,
+} from "../../apps/client/src/screens/profile-view";
+import { cardSummary } from "../../apps/client/src/screens/profile-card";
+
+// The player card and profile (UI remodel step 7). The old title picker's
+// checks (tests/unit/title-picker.test.ts) moved here: one equipped title,
+// "No title", each title's colour (bad colours never reach the style),
+// escaping, and where titles come from when there are none.
+const id = (n: number) => `00000000-0000-4000-8000-00000000000${n}`;
+const titles = [
+  {
+    id: id(1),
+    name: "Master",
+    color: "#ffbc65",
+    description: "Season rank.",
+    active: true,
+  },
+  {
+    id: id(2),
+    name: "Mountain Conqueror",
+    color: "#e8b06a",
+    description: "Clear Grumblecrag.",
+    active: true,
+  },
+  {
+    id: id(3),
+    name: "<b>Sneaky</b>",
+    color: "nope",
+    description: "",
+    active: true,
+  },
+];
+const progress: Progress = {
+  matches: 31,
+  wins: 20,
+  achievements: [
+    {
+      id: "first-win",
+      name: "First Victory",
+      description: "Won a match.",
+      earnedAt: "2026-10-01T00:00:00Z",
+    },
+    {
+      id: "wins-10",
+      name: "Seasoned Brawler",
+      description: "Won 10 matches.",
+      earnedAt: null,
+    },
+  ],
+  fighters: {
+    voltkit: { matches: 31, wins: 20 },
+    cindrake: { matches: 6, wins: 2 },
+  },
+  season: { id: "2026-11", matches: 3, wins: 1 },
+  rating: {
+    rating: 1110,
+    matches: 62,
+    peak: 1140,
+    rank: "Expert",
+    placementLeft: 0,
+    next: { name: "Candidate Master", at: 1150 },
+  },
+};
+const raids = {
+  clears: 4,
+  totalClears: 5,
+  highestPeril: 3,
+  bestSeconds: null,
+  titles: [],
+  cosmetics: [],
+  weekly: [],
+  bosses: {
+    grumblecrag: { clears: 4, highestPeril: 3, bestSeconds: 90, runs: 6 },
+    emberwing: { clears: 1, highestPeril: 3, bestSeconds: 200, runs: 2 },
+  },
+} as RaidProgress;
+const data = (extra: Partial<ProfileData> = {}): ProfileData => ({
+  name: "tester",
+  title: "Mountain Conqueror",
+  titleColor: "#e8b06a",
+  titles,
+  guest: false,
+  role: "Player",
+  email: "t@example.com",
+  fighter: "voltkit",
+  journey: {
+    xp: 2600,
+    recent: [],
+    unlocked: [],
+  } as unknown as ProfileData["journey"],
+  progress,
+  raids,
+  ...extra,
+});
+const html = (d = data(), v = profileView()) => profileMarkup(v, d);
+
+describe("the numbers", () => {
+  it("shows matches, wins, win rate and raid clears", () => {
+    expect(
+      profileTiles(progress, raids).map((t) => `${t.value} ${t.label}`),
+    ).toEqual(["31 Matches", "20 Wins", "65% Win rate", "5 Raid clears"]);
+    expect(
+      profileTiles({ ...progress, matches: 0, wins: 0 }, null).map(
+        (t) => t.value,
+      ),
+    ).toEqual(["0", "0", "0%", "–"]);
+    expect(profileTiles(null, null).map((t) => t.value)).toEqual([
+      "–",
+      "–",
+      "–",
+      "–",
+    ]);
+  });
+  it("names your best mastery and your rank", () => {
+    expect(bestMastery(progress)).toEqual({
+      id: "voltkit",
+      text: "Gold Voltkit",
+    });
+    expect(
+      bestMastery({
+        ...progress,
+        fighters: { voltkit: { matches: 2, wins: 0 } },
+      }),
+    ).toBeNull();
+    expect(rankLine(progress)).toMatchObject({ text: "Expert · 1,110" });
+    expect(
+      rankLine({
+        ...progress,
+        rating: {
+          rating: 1012,
+          matches: 2,
+          rank: "Unranked",
+          placementLeft: 3,
+        },
+      })?.text,
+    ).toBe("Unranked · 1,012");
+    expect(rankLine({ ...progress, rating: undefined })).toBeNull();
+  });
+});
+
+describe("the card", () => {
+  it("shows your fighter, title, name, level, rank and best mastery", () => {
+    const page = html();
+    expect(page).toContain('data-fighter="voltkit"');
+    expect(page).toContain(">Mountain Conqueror</small>");
+    expect(page).toContain('<b class="pf-card-name">tester</b>');
+    expect(page).toContain(">Lv 12<");
+    expect(page).toContain("Expert · 1,110");
+    expect(page).toContain(">Gold Voltkit<");
+  });
+  it("words the share message", () => {
+    expect(cardSummary(data()).text).toBe(
+      "tester, Mountain Conqueror · Level 12 · Expert · 1,110 · Gold Voltkit in Element Arena.",
+    );
+    expect(
+      cardSummary(data({ title: null, progress: null, journey: undefined }))
+        .text,
+    ).toBe("tester in Element Arena.");
+  });
+});
+
+describe("titles", () => {
+  it("are chips with No title first and only the worn one pressed", () => {
+    const page = html();
+    expect(page).toContain('data-profile-title=""');
+    for (const t of titles)
+      expect(page).toContain(`data-profile-title="${t.id}"`);
+    expect(page.match(/pf-title-chip is-on/g)).toHaveLength(1);
+    expect(page).toMatch(
+      new RegExp(`aria-pressed="true" data-profile-title="${id(2)}"`),
+    );
+    expect(html(data({ title: null }))).toMatch(
+      /aria-pressed="true" data-profile-title=""/,
+    );
+  });
+  it("wear their colour; a bad colour never reaches the style", () => {
+    const page = html();
+    expect(page).toContain("--title:#ffbc65");
+    expect(page).not.toContain("--title:nope");
+  });
+  it("escape names and descriptions", () => {
+    const page = html();
+    expect(page).not.toContain("<b>Sneaky</b>");
+    expect(page).toContain("&lt;b&gt;Sneaky&lt;/b&gt;");
+  });
+  it("say where titles come from when there are none", () => {
+    expect(html(data({ titles: [], title: null }))).toContain("Earn titles");
+  });
+  it("all wait while one is being put on", () => {
+    const page = html(data(), { ...profileView(), equipping: id(1) });
+    expect(
+      page.match(
+        /data-profile-title="[^"]*" title="[^"]*" disabled|data-profile-title="" disabled/g,
+      )?.length ?? 0,
+    ).toBeGreaterThan(0);
+    expect(page).toContain('aria-busy="true"');
+  });
+});
+
+describe("the rest of the profile", () => {
+  it("has every fighter's mastery, both summaries, every boss and the achievements", () => {
+    const page = html();
+    expect(page.match(/class="pf-mastery-chip/g)).toHaveLength(16);
+    expect(page).toContain("Voltkit: Gold mastery, 31 played, 20 won");
+    expect(page).toContain('data-profile-go="journey"');
+    expect(page).toContain("Tier ");
+    expect(page).toContain("40 more for Candidate Master");
+    expect(page.match(/data-profile-boss=/g)).toHaveLength(7);
+    expect(page).toContain("Grumblecrag: 4 clears");
+    expect(page).toContain("Emberwing: 1 clear.");
+    expect(page).toContain("1 / 2 · each one gives its title");
+    expect(page).toContain('class="is-earned"><b>First Victory');
+    for (const go of ["ranks", "journey", "raids"])
+      expect(page).toContain(`data-profile-go="${go}"`);
+    expect(page).toContain("Player · t@example.com");
+  });
+  it("asks a guest to save their account, and nobody else", () => {
+    expect(html(data({ guest: true, role: "Guest" }))).toContain(
+      "data-profile-save",
+    );
+    expect(html()).not.toContain("data-profile-save");
+  });
+  it("loads, and says why with a retry when the records can't load", () => {
+    expect(html(data({ progress: null }))).toContain("Loading…");
+    const page = html(data({ progress: null, progressProblem: "Down." }));
+    expect(page).toContain("data-profile-retry");
+    expect(page).toContain("Down.");
+  });
+});

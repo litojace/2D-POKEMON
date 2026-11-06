@@ -25,12 +25,7 @@ import {
   type RaidProgress,
   type RaidSlot,
 } from "../../../packages/shared/src/raid";
-import {
-  TITLE_PRESETS,
-  sortTitles,
-  titlePickerMarkup,
-  updateNameplate,
-} from "./player-nameplate";
+import { TITLE_PRESETS, sortTitles } from "./player-nameplate";
 import { isQuietRefresh } from "./session-refresh";
 import { waitForServer } from "./server-connection";
 import { createClient, type Session } from "@supabase/supabase-js";
@@ -54,7 +49,8 @@ import {
 } from "../../../packages/shared/src/accounts";
 import { CHARACTERS, type CharacterId } from "@arena/shared";
 import { renderOnline } from "./admin-online";
-import { progressMarkup } from "./progress-view";
+import { openProfile, type ProfileScreen } from "./screens/profile";
+import type { ProfileData } from "./screens/profile-view";
 import { openRanks, type RanksScreen } from "./screens/ranks";
 import type { RanksData } from "./screens/ranks-view";
 import {
@@ -1015,101 +1011,90 @@ export class AccountUI {
     this.missionsLoading = false;
     screen.refresh();
   }
-  /** Equip a collection piece (or clear a slot) through the raid appearance route. */
+  /** The open player card, if any (UI remodel step 7). */
+  private profileScreen?: ProfileScreen;
+  private profileData: Pick<
+    ProfileData,
+    "progress" | "progressProblem" | "raids"
+  > = { progress: null, raids: null };
+  /**
+   * The player card and profile: a panel inside the Lobby (HUD → your
+   * name). It opens at once and fills in from the server.
+   */
   async showProfile() {
     if (!this.account) return;
-    const account = this.account;
-    this.hooks.openDialog(
-      `<div class="profile-screen"><div class="eyebrow">Your player profile</div><h2>${escape(account.displayName)}</h2><p>${account.isAdmin ? "Administrator" : account.guest ? "Guest" : "Player"}${this.session?.user.email ? ` · ${escape(this.session.user.email)}` : ""}</p><div class="profile-layout"><div class="profile-customize">${account.guest ? `<form id="profile-save" class="account-form save-account"><p><b>Keep your progress.</b> Guest accounts live only on this device. Add your email to make this a full account: your records, titles and name come with you.</p><label>Email<input name="email" type="email" required autocomplete="email"></label><button class="primary">${iconLabel("save", "Save my account")}</button><p id="save-message" role="status"></p></form>` : ""}<form id="profile-title" class="account-form">${titlePickerMarkup(account.ownedTitles as Title[], account.title)}<button class="primary">${iconLabel("save", "Save title")}</button><p id="profile-message" role="status"></p></form><button class="secondary full" id="profile-leaderboard">${iconLabel("leaderboard", "Season standings")}</button><section id="profile-raid"><button class="secondary full" id="profile-raids">${iconLabel("bestiary", "Raid Hub & rewards")}</button><p id="profile-raid-stats" class="muted"></p></section></div><section id="profile-progress" class="progress"><p class="muted">Loading your progress…</p></section></div></div>`,
-    );
-    element("profile-leaderboard").onclick = () => void this.showLeaderboard();
-    element("profile-raids").onclick = () => void this.showRaids();
-    void this.api("/api/raids")
-      .then((value) => {
-        const p = value as RaidProgress,
-          box = element("profile-raid-stats");
-        if (box) box.textContent = `Boss raids: ${p.clears} clears`;
-      })
-      .catch(() => {});
-    const save = element<HTMLFormElement>("profile-save");
-    if (save)
-      save.onsubmit = async (event) => {
-        event.preventDefault();
-        if (!this.client) return;
-        const email = String(new FormData(save).get("email") ?? "").trim();
-        const status = element("save-message");
-        status.textContent = "Please wait…";
-        const site = import.meta.env.VITE_SITE_URL || location.origin;
-        const { error } = await this.client.auth.updateUser(
-          { email },
-          { emailRedirectTo: authRedirectUrl(site, "email-confirmed") },
-        );
-        status.textContent = error
-          ? error.message
-          : "Check your inbox and confirm the email. Then choose a password with “Forgot password?” on the login screen, or keep playing here.";
-      };
-    void this.api("/api/progress")
-      .then((value) => {
-        const box = element("profile-progress");
-        if (box) {
-          box.innerHTML = progressMarkup(
-            progressSchema.parse(value),
-            this.economy?.journey,
+    this.toLobbyScreen();
+    const accountId = this.account.id;
+    if (!this.profileScreen?.isOpen) {
+      this.profileData = { progress: null, raids: this.raidProgress ?? null };
+      this.profileScreen = openProfile({
+        data: () => {
+          const a = this.account!;
+          return {
+            ...this.profileData,
+            name: a.displayName,
+            title: a.title,
+            titleColor: a.titleColor,
+            titles: a.ownedTitles as Title[],
+            guest: !!a.guest,
+            role: a.isAdmin ? "Administrator" : a.guest ? "Guest" : "Player",
+            email: this.session?.user.email ?? undefined,
+            fighter: this.hooks.selectedCharacter?.() ?? "voltkit",
+            journey: this.economy?.journey,
+          };
+        },
+        equip: async (titleId) => {
+          if (this.account?.id !== accountId)
+            throw new Error("Your session changed. Reopen your card.");
+          await this.api("/api/account/title", { titleId: titleId || null });
+          // The account (and the HUD's nameplate) from the server.
+          await this.refresh();
+        },
+        save: async (email) => {
+          if (!this.client) throw new Error("Accounts are not available.");
+          const site = import.meta.env.VITE_SITE_URL || location.origin;
+          const { error } = await this.client.auth.updateUser(
+            { email },
+            { emailRedirectTo: authRedirectUrl(site, "email-confirmed") },
           );
-          const adventure =
-            box.querySelector<HTMLButtonElement>("#profile-adventure");
-          if (adventure)
-            adventure.onclick = () => void this.showJourney("levels");
-        }
-      })
-      .catch((error) => {
-        const box = element("profile-progress");
-        if (box)
-          box.innerHTML = `<p class="muted">${escape(
-            error instanceof Error &&
-              /database needs an update/.test(error.message)
-              ? "Records, achievements and mastery switch on once the database update (migration 004) has been run."
-              : "Your progress couldn’t be loaded right now.",
-          )}</p>`;
+          if (error) throw new Error(error.message);
+          return "Check your inbox and confirm the email. Then choose a password with “Forgot password?” on the login screen, or keep playing here.";
+        },
+        retry: () => this.loadProfile(accountId),
+        ranks: () => void this.showLeaderboard(),
+        journey: () => void this.showJourney(),
+        raids: (boss) =>
+          void this.showRaids(boss, boss ? "rewards" : undefined),
+        onClose: () => (this.profileScreen = undefined),
       });
-    // Live preview: the nameplate shows whichever title is picked, before saving.
-    const titleForm = element<HTMLFormElement>("profile-title");
-    const paintPreview = () => {
-      const id = String(new FormData(titleForm).get("titleId") ?? "");
-      const pick = (account.ownedTitles as Title[]).find((t) => t.id === id);
-      updateNameplate(
-        element("title-preview"),
-        account.displayName,
-        pick?.name ?? null,
-        pick?.color ?? null,
-        true,
-        matchMedia("(prefers-reduced-motion: reduce)").matches,
-      );
-      const saved =
-        (account.ownedTitles as Title[]).find((t) => t.name === account.title)
-          ?.id ?? "";
-      element("profile-message").textContent =
-        id === saved ? "" : "Press Save title to equip it.";
-    };
-    titleForm.onchange = paintPreview;
-    paintPreview();
-    element<HTMLFormElement>("profile-title").onsubmit = async (event) => {
-      event.preventDefault();
-      try {
-        const titleId = String(
-          new FormData(event.currentTarget as HTMLFormElement).get("titleId") ??
-            "",
-        );
-        await this.api("/api/account/title", { titleId: titleId || null });
-        await this.refresh();
-        // Redraw so "Equipped" moves to the new title.
-        await this.showProfile();
-        element("profile-message").textContent = "Title updated.";
-      } catch (error) {
-        element("profile-message").textContent =
-          error instanceof Error ? error.message : "Unable to update title.";
-      }
-    };
+    }
+    await this.loadProfile(accountId);
+  }
+  private async loadProfile(accountId: string) {
+    const screen = this.profileScreen;
+    const [progress, raids] = await Promise.allSettled([
+      this.api("/api/progress"),
+      this.api("/api/raids") as Promise<RaidProgress>,
+    ]);
+    if (this.account?.id !== accountId) return;
+    if (progress.status === "fulfilled")
+      this.profileData = {
+        ...this.profileData,
+        progress: progressSchema.parse(progress.value),
+        progressProblem: "",
+      };
+    else
+      this.profileData = {
+        ...this.profileData,
+        progressProblem:
+          progress.reason instanceof Error &&
+          /database needs an update/.test(progress.reason.message)
+            ? "Records, achievements and mastery switch on once the database update (migration 004) has been run."
+            : "Your records couldn't be loaded right now.",
+      };
+    if (raids.status === "fulfilled")
+      this.profileData = { ...this.profileData, raids: raids.value };
+    if (screen?.isOpen) screen.refresh();
   }
   /** The open Friends sheet, if any (UI remodel step 6). */
   private friendsScreen?: FriendsScreen;

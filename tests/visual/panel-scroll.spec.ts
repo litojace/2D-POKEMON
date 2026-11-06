@@ -186,11 +186,14 @@ const HUB_SCREENS: Screen[] = [
     },
   })),
   {
+    // A panel inside the Lobby since step 7.
     name: "profile",
-    root: "#dialog",
+    root: HUB,
     open: async (page) => {
       await page.click("#account-profile");
-      await expect(page.locator("#dialog")).toBeVisible();
+      await expect(
+        page.locator(".profile-panel .pf-tile").first(),
+      ).toBeVisible();
     },
   },
   {

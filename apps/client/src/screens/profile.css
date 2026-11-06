@@ -1,0 +1,516 @@
+/* ==========================================================================
+   The player card and profile (UI remodel step 7, docs/ui-remodel/PLAN.md).
+   Markup: screens/profile-view.ts. Layout only on top of the shared
+   components (ui/components.css). The card on the left keeps its place;
+   the column beside it scrolls.
+   ========================================================================== */
+.profile-panel .ui-panel-head > .ui-btn {
+  flex: none;
+}
+.profile-panel > .ui-panel-body.pf-body {
+  grid-template-columns: clamp(300px, 24vw, 400px) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  align-content: stretch;
+  gap: var(--sp-4);
+  overflow: hidden;
+}
+
+/* ------------------------------------------------------------ the card */
+.pf-card {
+  position: relative;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  min-height: 0;
+  border-radius: var(--rad-xl);
+  overflow: hidden;
+  border: 2px solid color-mix(in srgb, var(--el) 60%, transparent);
+  background:
+    radial-gradient(
+      ellipse 80% 50% at 50% 58%,
+      color-mix(in srgb, var(--el) 34%, transparent),
+      transparent 70%
+    ),
+    linear-gradient(180deg, var(--ui-bg-2), var(--ui-bg-0));
+}
+.pf-card-art {
+  display: grid;
+  place-items: center;
+  min-height: 0;
+  padding: var(--sp-4);
+}
+.pf-card-art > :is(svg, img) {
+  width: 100%;
+  height: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 14px 14px #0009);
+}
+.pf-card-text {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: var(--sp-3) var(--sp-4) var(--sp-4);
+  background: linear-gradient(180deg, transparent, var(--ui-bg-0));
+  text-align: center;
+  min-width: 0;
+}
+/* The title as it reads above your fighter, without its arena animation. */
+.pf-card-title.player-title {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--fs-small);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  animation: none;
+}
+.pf-card-name {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: var(--fs-h2);
+  line-height: 1.05;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+.pf-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  max-width: 100%;
+}
+.pf-card-tags > .ui-tag {
+  justify-content: center;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ------------------------------------------------------- the side column */
+.pf-main {
+  display: grid;
+  align-content: start;
+  gap: var(--sp-3);
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  /* Room for focus rings at the edges of the scrolling column. */
+  padding: 2px 4px var(--sp-2) 2px;
+}
+.pf-tiles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--sp-2);
+}
+.pf-tile {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 4px;
+  min-height: 84px;
+  padding: var(--sp-2);
+  border-radius: var(--rad-md);
+  background: var(--ui-bg-1);
+  border: 1px solid var(--ui-line);
+  text-align: center;
+}
+.pf-tile > b {
+  font-size: 34px;
+  line-height: 1;
+}
+.pf-tile > small {
+  color: var(--ui-dim);
+  font-size: var(--fs-small);
+}
+.pf-section {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  margin-top: var(--sp-1);
+}
+.pf-section > small {
+  text-align: right;
+}
+
+/* Titles: chips that wear the title at once. */
+.pf-titles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.pf-title-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--ctl-s);
+  max-width: 100%;
+  padding: 0 14px;
+  border-radius: var(--rad-pill);
+  border: 1px solid color-mix(in srgb, var(--title) 45%, var(--ui-line-2));
+  background: var(--ui-bg-1);
+  color: var(--title);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--fs-body);
+  letter-spacing: 0.04em;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.pf-title-chip > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-right: -0.04em;
+}
+.pf-title-chip.is-on {
+  border-color: var(--title);
+  background: color-mix(in srgb, var(--title) 22%, var(--ui-bg-1));
+  box-shadow: inset 0 0 0 1px var(--title);
+}
+.pf-title-chip[disabled] {
+  cursor: wait;
+}
+.pf-title-chip[aria-busy="true"] {
+  opacity: 0.6;
+}
+.pf-title-chip:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 2px;
+}
+.pf-status:empty {
+  display: none;
+}
+
+/* Mastery: every fighter, its portrait and its badge. */
+/* Sixteen fighters: two even rows of eight at every size. */
+.pf-mastery {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: var(--sp-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.pf-mastery-chip {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 4px;
+  padding: 8px 4px;
+  border-radius: var(--rad-md);
+  background: var(--ui-bg-1);
+  border: 1px solid var(--ui-line);
+}
+.pf-mastery-chip.is-none > .ui-avatar {
+  opacity: 0.6;
+}
+.pf-mastery-chip .ui-ring b {
+  font-size: 11px;
+}
+
+/* Journey and Ranked: two equal cards that open their screens. */
+.pf-minis {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-2);
+}
+.pf-mini {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 12px 14px;
+  border-radius: var(--rad-md);
+  background: var(--ui-bg-1);
+  border: 1px solid var(--ui-line);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.pf-mini:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 2px;
+}
+.pf-mini-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+.pf-mini-row > * {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pf-mini-row > b {
+  flex: none;
+  max-width: 60%;
+  font-weight: 700;
+}
+
+/* Raid trophies: each boss's picture, clears in the corner. */
+.pf-trophies {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--sp-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.pf-trophy {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 11;
+  padding: 0;
+  border-radius: var(--rad-sm);
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--boss) 50%, var(--ui-line-2));
+  background: var(--ui-bg-1);
+  cursor: pointer;
+}
+.pf-trophy > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.pf-trophy.is-none > img {
+  filter: grayscale(0.8) brightness(0.45);
+}
+.pf-trophy-name {
+  position: absolute;
+  left: 6px;
+  right: 30px;
+  bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #fff;
+  font-size: var(--fs-micro);
+  font-weight: 700;
+  text-align: left;
+  text-shadow: 0 1px 3px #000;
+}
+.pf-trophy > b {
+  position: absolute;
+  right: 6px;
+  bottom: 2px;
+  color: #fff;
+  font-size: 20px;
+  line-height: 1;
+  text-shadow: 0 2px 4px #000;
+}
+.pf-trophy:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 2px;
+}
+
+/* Achievements: each gives its title. */
+.pf-achievements {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--sp-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.pf-achievements > li {
+  display: grid;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: var(--rad-sm);
+  background: var(--ui-bg-1);
+  border: 1px solid var(--ui-line);
+  color: var(--ui-dim);
+}
+.pf-achievements > li > b {
+  color: var(--ui-text);
+  font-weight: 700;
+}
+.pf-achievements > li > small {
+  font-size: var(--fs-small);
+}
+.pf-achievements > li.is-earned {
+  border-color: #43d97166;
+  background: linear-gradient(110deg, #43d9711a, var(--ui-bg-1) 60%);
+}
+.pf-achievements > li.is-earned > b::before {
+  content: "✓ ";
+  color: var(--ui-ok);
+}
+
+/* Ranks, Journey and Raid rewards: three equal buttons. */
+.pf-links {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: var(--act-w);
+  justify-content: start;
+  gap: var(--sp-2);
+  margin-top: var(--sp-1);
+}
+.pf-links > .ui-btn {
+  width: 100%;
+  min-width: 0;
+}
+.pf-who:empty {
+  display: none;
+}
+
+/* A guest keeps their progress by adding an email. */
+.pf-save {
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: var(--rad-md);
+  border: 1px solid #ffd65b66;
+  background: linear-gradient(110deg, #ffd65b1a, var(--ui-bg-1) 60%);
+}
+.pf-save-text {
+  display: grid;
+  gap: 2px;
+}
+.pf-save-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--act-s);
+  gap: var(--sp-2);
+}
+.pf-save-row > input {
+  height: var(--ctl-s);
+  min-width: 0;
+  padding: 0 10px;
+  border-radius: var(--rad-sm);
+  border: 1px solid var(--ui-line-2);
+  background: var(--ui-bg-0);
+  color: var(--ui-text);
+  font: inherit;
+}
+.pf-save-row > input:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 1px;
+}
+.pf-save-row > .ui-btn {
+  width: 100%;
+  min-width: 0;
+}
+.pf-save-status:empty {
+  display: none;
+}
+
+/* A tall window: the numbers and the trophies grow into the room. */
+@media (min-height: 1000px) {
+  .pf-tile {
+    min-height: 110px;
+  }
+  .pf-tile > b {
+    font-size: 44px;
+  }
+  .pf-mastery-chip {
+    padding: 12px 4px;
+  }
+}
+
+/* ------------------------------------------- phones, held sideways */
+@media (max-height: 500px) {
+  .profile-panel .ui-panel-head .ui-kicker {
+    display: none;
+  }
+  .profile-panel > .ui-panel-body.pf-body {
+    grid-template-columns: 170px minmax(0, 1fr);
+    gap: var(--sp-2);
+  }
+  .pf-card {
+    border-radius: var(--rad-lg);
+  }
+  .pf-card-art {
+    padding: 6px;
+  }
+  .pf-card-text {
+    gap: 3px;
+    padding: 6px 8px 8px;
+  }
+  .pf-card-title.player-title {
+    font-size: var(--fs-micro);
+  }
+  .pf-card-name {
+    font-size: var(--fs-h4);
+  }
+  .pf-card-tags {
+    gap: 3px;
+  }
+  .pf-main {
+    gap: var(--sp-2);
+  }
+  .pf-tiles {
+    gap: 6px;
+  }
+  .pf-tile {
+    min-height: 52px;
+    padding: 4px;
+    gap: 2px;
+  }
+  .pf-tile > b {
+    font-size: 20px;
+  }
+  .pf-tile > small {
+    font-size: var(--fs-micro);
+  }
+  .pf-section {
+    margin-top: 0;
+  }
+  .pf-title-chip {
+    padding: 0 10px;
+  }
+  .pf-mastery {
+    gap: 4px;
+  }
+  .pf-mastery-chip {
+    padding: 4px 2px;
+    gap: 2px;
+  }
+  .pf-mastery-chip > .ui-avatar {
+    --size: 28px !important;
+  }
+  .pf-mastery-chip > .ui-ring {
+    --size: 22px !important;
+  }
+  .pf-mastery-chip .ui-ring b {
+    font-size: 9px;
+  }
+  .pf-mini {
+    padding: 8px 10px;
+    gap: 4px;
+  }
+  .pf-trophies {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 4px;
+  }
+  .pf-trophy > b {
+    font-size: 15px;
+  }
+  .pf-achievements {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 4px;
+  }
+  .pf-achievements > li {
+    padding: 5px 8px;
+  }
+  /* Three equal links across the column: "Raid rewards" and its icon need
+     more than the phones' 104 px action width. */
+  .pf-links {
+    grid-auto-flow: row;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+}

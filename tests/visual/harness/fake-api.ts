@@ -88,7 +88,9 @@ window.fetch = async (input, init) => {
     // economy) to give the player today's missions, and window.__friends to
     // give them friends and requests, and window.__raids for their raid
     // progress (its loadout is the equipped raid look); window.__board,
-    // __friendsBoard and __recent replace Ranks' boards and Recent players.
+    // __friendsBoard and __recent replace Ranks' boards and Recent players;
+    // __accountPatch changes the account (title, titles, guest) and
+    // __progress the records (the profile, step 7).
     const w = window as unknown as {
       __missions?: unknown[];
       __plazaProgress?: unknown;
@@ -97,6 +99,8 @@ window.fetch = async (input, init) => {
       __board?: unknown;
       __friendsBoard?: unknown;
       __recent?: unknown;
+      __accountPatch?: object;
+      __progress?: unknown;
       __serverTime?: number;
     };
     const missions = w.__missions;
@@ -109,7 +113,11 @@ window.fetch = async (input, init) => {
             ? w.__friends
             : url.pathname === "/api/raids" && w.__raids
               ? w.__raids
-              : url.pathname === "/api/leaderboard" && w.__board
+              : url.pathname === "/api/account" && w.__accountPatch
+                ? { ...(API[url.pathname] as object), ...w.__accountPatch }
+                : url.pathname === "/api/progress" && w.__progress
+                  ? w.__progress
+                  : url.pathname === "/api/leaderboard" && w.__board
                 ? w.__board
                 : url.pathname === "/api/leaderboard/friends" && w.__friendsBoard
                   ? w.__friendsBoard

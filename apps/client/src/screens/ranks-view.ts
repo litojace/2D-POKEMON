@@ -17,7 +17,6 @@ import {
   type Leaderboard,
   type Rating,
 } from "../../../../packages/shared/src/accounts";
-import { seasonName } from "../progress-view";
 import { serverNow } from "../server-clock";
 import { countdownText } from "../ui/countdown";
 import {
@@ -29,6 +28,17 @@ import {
   segmented,
   tag,
 } from "../ui/components";
+
+/** "2026-10" → "October 2026". */
+export function seasonName(id: string) {
+  const [year, month] = id.split("-").map(Number);
+  if (!year || !month) return id;
+  return new Date(Date.UTC(year, month - 1, 1)).toLocaleString("en", {
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+}
 
 export type RanksScope = "everyone" | "friends";
 export interface RanksData {

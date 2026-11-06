@@ -45,11 +45,6 @@ export function setDialogContent(dialog: HTMLDialogElement, html: string) {
       ".settings-actions",
       "#controls-reset",
       "#open-controls",
-      "#profile-save > button",
-      "#profile-title > button",
-      "#profile-leaderboard",
-      "#profile-raids",
-      "#profile-adventure",
       "#report-form > button[type=submit]",
     ].join(","),
   );
