@@ -722,7 +722,13 @@ export const CHAMPION_SKINS: ChampionSkin[] = [
   ),
 
   skin("pangrove", "autumn", "Autumn", "common", "Russet and gold leaf scales"),
-  skin("pangrove", "frostleaf", "Frostleaf", "common", "Frosted silver-blue leaves"),
+  skin(
+    "pangrove",
+    "frostleaf",
+    "Frostleaf",
+    "common",
+    "Frosted silver-blue leaves",
+  ),
   skin("pangrove", "jade", "Jade", "common", "Deep jade with a gold glow"),
   skin(
     "pangrove",

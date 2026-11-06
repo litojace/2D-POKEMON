@@ -220,7 +220,7 @@ const ROSTER: Record<
     skills: [
       ["Tongue Snag", 9],
       ["Sap Bite", 11],
-      ["Scale Curl", 14],
+      ["Scale Curl", 15],
       ["Thornwheel", 20],
     ],
   },
@@ -228,7 +228,7 @@ const ROSTER: Record<
     name: "Mossloth",
     element: "Nature",
     role: "Root controller",
-    basic: ["Seed Spit", 380],
+    basic: ["Seed Spit", 360],
     skills: [
       ["Rootsnare", 9],
       ["Thorn Volley", 10],

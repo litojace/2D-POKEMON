@@ -180,10 +180,23 @@ const E = THEMES.electric,
 
 // ── Props for the Nature champions ───────────────────────────────────────
 /** A pointed leaf (or leaf scale) centred on (x, y), with its midrib. */
-const leaf = (x: number, y: number, s: number, rot: number, fill: string, rib = "#1f4626") =>
+const leaf = (
+  x: number,
+  y: number,
+  s: number,
+  rot: number,
+  fill: string,
+  rib = "#1f4626",
+) =>
   `<g transform="translate(${x} ${y}) rotate(${rot}) scale(${s})"><path d="M0 -10 Q8 -1 0 10 Q-8 -1 0 -10Z" fill="${fill}" stroke="${rib}" stroke-width="${n(1.3 / s)}"/><path d="M0 -7 V7.5" stroke="${rib}" stroke-width="${n(1 / s)}" opacity=".5"/></g>`;
 /** A curved thorn pointing along `rot` degrees. */
-const thorn = (x: number, y: number, s: number, rot: number, fill = "#c7e88a") =>
+const thorn = (
+  x: number,
+  y: number,
+  s: number,
+  rot: number,
+  fill = "#c7e88a",
+) =>
   `<g transform="translate(${x} ${y}) rotate(${rot}) scale(${s})"><path d="M-9 -3 Q0 -2 10 0 Q0 2 -9 3 Q-11 0 -9 -3Z" fill="${fill}" stroke="#1f4626" stroke-width="${n(1.2 / s)}"/></g>`;
 /** A winding root through the points (thick, bark-brown with a lit edge). */
 const root = (pts: [number, number][], w: number) => {
@@ -2958,7 +2971,9 @@ const art: Record<string, { el: Element; draw: () => string }> = {
         [74, 42, 10],
         [96, 44, 35],
       ]
-        .map(([x, y, r], i) => leaf(x, y, 1.6 - i * 0.08, r, i % 2 ? N.accent[1] : N.accent[0]))
+        .map(([x, y, r], i) =>
+          leaf(x, y, 1.6 - i * 0.08, r, i % 2 ? N.accent[1] : N.accent[0]),
+        )
         .join("") +
       glow("M40 104 Q78 92 104 58", N.hot, 3.2, N.accent[1]) +
       glow("M52 112 Q88 100 112 70", N.hot, 2.6, N.accent[1]) +
@@ -3054,7 +3069,9 @@ const art: Record<string, { el: Element; draw: () => string }> = {
         [76, 70, 60],
         [62, 80, 180],
       ]
-        .map(([x, y, r], i) => leaf(x, y, i < 8 ? 1.5 : 1.25, r, i % 2 ? "#7fcf6a" : "#5daa4f"))
+        .map(([x, y, r], i) =>
+          leaf(x, y, i < 8 ? 1.5 : 1.25, r, i % 2 ? "#7fcf6a" : "#5daa4f"),
+        )
         .join("") +
       `<circle cx="62" cy="66" r="46" fill="none" stroke="${N.accent[2]}" stroke-width="2.6" stroke-dasharray="6 5" opacity=".8"/>` +
       glow("M120 22 L104 38", N.hot, 3, N.accent[1]) +
@@ -3093,13 +3110,24 @@ const art: Record<string, { el: Element; draw: () => string }> = {
       halo("nature", 76, 66, 46) +
       Array.from({ length: 10 }, (_, i) => {
         const a = (i * 36 * Math.PI) / 180;
-        return thorn(n(76 + Math.cos(a) * 36), n(66 + Math.sin(a) * 36), 1.1, i * 36);
+        return thorn(
+          n(76 + Math.cos(a) * 36),
+          n(66 + Math.sin(a) * 36),
+          1.1,
+          i * 36,
+        );
       }).join("") +
       `<circle cx="76" cy="66" r="32" fill="#3f8f4a" stroke="#1f4626" stroke-width="2"/>` +
       [0, 60, 120, 180, 240, 300]
         .map((d) => {
           const a = (d * Math.PI) / 180;
-          return leaf(n(76 + Math.cos(a) * 18), n(66 + Math.sin(a) * 18), 1.2, d + 90, "#7fcf6a");
+          return leaf(
+            n(76 + Math.cos(a) * 18),
+            n(66 + Math.sin(a) * 18),
+            1.2,
+            d + 90,
+            "#7fcf6a",
+          );
         })
         .join("") +
       `<circle cx="76" cy="66" r="8" fill="#ffd166" stroke="#a8741a" stroke-width="1.4"/>` +

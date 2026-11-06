@@ -250,7 +250,9 @@ export function reviewChampions(canvas = false, group?: number) {
           )
             continue;
           if (
-            (r.id === "sunbara" || r.id === "wombolder" || r.id === "mossloth") &&
+            (r.id === "sunbara" ||
+              r.id === "wombolder" ||
+              r.id === "mossloth") &&
             part === "tail"
           )
             continue;
@@ -263,7 +265,9 @@ export function reviewChampions(canvas = false, group?: number) {
           )
             continue;
           if (
-            (r.id === "astrabun" || r.id === "shadopus" || r.id === "pangrove") &&
+            (r.id === "astrabun" ||
+              r.id === "shadopus" ||
+              r.id === "pangrove") &&
             dir === "up" &&
             part === "tail"
           )

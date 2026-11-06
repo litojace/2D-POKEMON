@@ -272,7 +272,10 @@ describe("Tidewyrm tricks", () => {
       (a as any).strandedOn = 0;
       a.raid.exposedUntil = a.time + 5;
       a.raid.stagger = 0;
-      const move = [CHARACTERS.pangrove.basic, ...CHARACTERS.pangrove.skills].find((m) => m.id === id)!;
+      const move = [
+        CHARACTERS.pangrove.basic,
+        ...CHARACTERS.pangrove.skills,
+      ].find((m) => m.id === id)!;
       a.damage(boss, 10, p.id, move);
       return a.raid.stagger;
     };

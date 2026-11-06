@@ -633,7 +633,8 @@ describe("root (Nature)", () => {
     // Its basic attack still flew.
     expect(
       a.events.some(
-        (e) => e.kind === "cast" && e.owner === q.id && e.abilityId === "spark-dart",
+        (e) =>
+          e.kind === "cast" && e.owner === q.id && e.abilityId === "spark-dart",
       ),
     ).toBe(true);
   });
@@ -681,7 +682,9 @@ describe("life drain (Nature)", () => {
     expect(q.hp).toBe(full - 20);
     expect(p.hp).toBeCloseTo(112, 6);
     expect(
-      a.events.some((e) => e.kind === "heal" && e.owner === p.id && e.value === 12),
+      a.events.some(
+        (e) => e.kind === "heal" && e.owner === p.id && e.value === 12,
+      ),
     ).toBe(true);
     // The hit event keeps its details (the heal comes after it).
     const hit = a.events.find((e) => e.kind === "hit" && e.target === q.id)!;

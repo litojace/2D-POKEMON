@@ -125,17 +125,23 @@ function rootUp(
     pts = Array.from({ length: 7 }, (_, i) => {
       const t = i / 6;
       return {
-        x: x + Math.sin(t * 2.4 + lean) * lean * 10 * t + lean * h * 0.35 * t * t,
+        x:
+          x +
+          Math.sin(t * 2.4 + lean) * lean * 10 * t +
+          lean * h * 0.35 * t * t,
         y: y - h * t,
       };
     });
-  fx.solid.lineStyle(width + 3, BARK_DARK, 0.85 * alpha).strokePoints(pts, false);
+  fx.solid
+    .lineStyle(width + 3, BARK_DARK, 0.85 * alpha)
+    .strokePoints(pts, false);
   fx.solid.lineStyle(width, BARK, alpha).strokePoints(pts, false);
   fx.g
     .lineStyle(Math.max(1, width * 0.3), LEAF, 0.6 * alpha)
     .strokePoints(pts, false);
   const tip = pts[pts.length - 1];
-  if (rise > 0.6) leaf(fx.solid, tip.x, tip.y - 3, 9, -Math.PI / 2 + lean, LEAF, alpha);
+  if (rise > 0.6)
+    leaf(fx.solid, tip.x, tip.y - 3, 9, -Math.PI / 2 + lean, LEAF, alpha);
 }
 /** Roots coiled round a point on the ground (Rooted, Rootsnare's grip). */
 export function rootCoil(
@@ -170,10 +176,20 @@ function seedSpit(g: G, pr: Projectile, now: number) {
   const c = Math.cos(dir),
     s = Math.sin(dir);
   for (let i = 1; i <= 3; i++)
-    fx.soft(pr.x - c * r * i * 0.9, pr.y - s * r * i * 0.9, r * (0.8 - i * 0.15), LEAF, 0.35 - i * 0.08);
+    fx.soft(
+      pr.x - c * r * i * 0.9,
+      pr.y - s * r * i * 0.9,
+      r * (0.8 - i * 0.15),
+      LEAF,
+      0.35 - i * 0.08,
+    );
   fx.solid.fillStyle(BARK_DARK, 1).fillEllipse(pr.x, pr.y, r * 2.2, r * 1.5);
-  fx.solid.fillStyle(0xa8743e, 1).fillEllipse(pr.x - c, pr.y - s, r * 1.8, r * 1.1);
-  fx.g.fillStyle(0xffe2a8, 0.7).fillCircle(pr.x - r * 0.3, pr.y - r * 0.3, r * 0.3);
+  fx.solid
+    .fillStyle(0xa8743e, 1)
+    .fillEllipse(pr.x - c, pr.y - s, r * 1.8, r * 1.1);
+  fx.g
+    .fillStyle(0xffe2a8, 0.7)
+    .fillCircle(pr.x - r * 0.3, pr.y - r * 0.3, r * 0.3);
   void now;
 }
 /** Rootsnare: a sprouting seed trailing little roots and leaves. */
@@ -190,11 +206,24 @@ function rootsnareShot(g: G, pr: Projectile, now: number) {
     const len = r * (1.4 + hash(i) * 0.6);
     fx.solid
       .lineStyle(2.4, BARK, 0.9)
-      .lineBetween(pr.x, pr.y, pr.x + Math.cos(a) * len, pr.y + Math.sin(a) * len);
+      .lineBetween(
+        pr.x,
+        pr.y,
+        pr.x + Math.cos(a) * len,
+        pr.y + Math.sin(a) * len,
+      );
   }
   fx.solid.fillStyle(BARK_DARK, 1).fillCircle(pr.x, pr.y, r * 0.8);
   fx.solid.fillStyle(0xa8743e, 1).fillCircle(pr.x, pr.y, r * 0.62);
-  leaf(fx.solid, pr.x + Math.cos(dir) * r * 0.5, pr.y - r * 0.6, r * 1.1, dir - 0.8, LEAF, 1);
+  leaf(
+    fx.solid,
+    pr.x + Math.cos(dir) * r * 0.5,
+    pr.y - r * 0.6,
+    r * 1.1,
+    dir - 0.8,
+    LEAF,
+    1,
+  );
 }
 /** Thorn Volley: a pale green thorn. */
 function thornShot(g: G, pr: Projectile) {
@@ -208,17 +237,27 @@ function thornShot(g: G, pr: Projectile) {
     .lineStyle(r * 0.5, LEAF, 0.35)
     .lineBetween(pr.x - c * r * 3, pr.y - s * r * 3, pr.x, pr.y);
   const tip = { x: pr.x + c * r * 1.4, y: pr.y + s * r * 1.4 },
-    l = { x: pr.x - c * r * 1.2 - s * r * 0.45, y: pr.y - s * r * 1.2 + c * r * 0.45 },
-    rr = { x: pr.x - c * r * 1.2 + s * r * 0.45, y: pr.y - s * r * 1.2 - c * r * 0.45 };
-  fx.solid.fillStyle(0x1f4626, 1).fillTriangle(tip.x, tip.y, l.x, l.y, rr.x, rr.y);
-  fx.solid.fillStyle(0xc7e88a, 1).fillTriangle(
-    tip.x - c,
-    tip.y - s,
-    l.x + c * 1.2,
-    l.y + s * 1.2,
-    rr.x + c * 1.2,
-    rr.y + s * 1.2,
-  );
+    l = {
+      x: pr.x - c * r * 1.2 - s * r * 0.45,
+      y: pr.y - s * r * 1.2 + c * r * 0.45,
+    },
+    rr = {
+      x: pr.x - c * r * 1.2 + s * r * 0.45,
+      y: pr.y - s * r * 1.2 - c * r * 0.45,
+    };
+  fx.solid
+    .fillStyle(0x1f4626, 1)
+    .fillTriangle(tip.x, tip.y, l.x, l.y, rr.x, rr.y);
+  fx.solid
+    .fillStyle(0xc7e88a, 1)
+    .fillTriangle(
+      tip.x - c,
+      tip.y - s,
+      l.x + c * 1.2,
+      l.y + s * 1.2,
+      rr.x + c * 1.2,
+      rr.y + s * 1.2,
+    );
 }
 
 // ───────────── Impacts ─────────────
@@ -264,11 +303,14 @@ function snareImpact(
     r = Math.max(a.radius * 1.4, 22);
   leaves(fx, x, y, 7, [40, 140]);
   fx.decal({ kind: "crack", x, y: y + 4, r: r * 1.1, color: LEAF, life: 2 });
-  shot(fx.reduced ? 300 : Math.min(1400, (a.statusDuration ?? 1) * 900), (k) => {
-    const fade = k > 0.7 ? 1 - (k - 0.7) / 0.3 : 1;
-    rootCoil(fx, x, y + 6, r, k, fade);
-    fx.glow(x, y, r * 2, color, 0.3 * fade);
-  });
+  shot(
+    fx.reduced ? 300 : Math.min(1400, (a.statusDuration ?? 1) * 900),
+    (k) => {
+      const fade = k > 0.7 ? 1 - (k - 0.7) / 0.3 : 1;
+      rootCoil(fx, x, y + 6, r, k, fade);
+      fx.glow(x, y, r * 2, color, 0.3 * fade);
+    },
+  );
 }
 /** Thornwheel stops: a burst of thorns and a ring of roots around the target. */
 function wheelImpact(
@@ -287,7 +329,15 @@ function wheelImpact(
   fx.decal({ kind: "crack", x, y: y + 4, r: R * 0.8, color: LEAF, life: 2.5 });
   shot(fx.reduced ? 300 : 900, (k) => {
     const fade = k > 0.6 ? 1 - (k - 0.6) / 0.4 : 1;
-    fx.shockwave(x, y + 6, R * ease(Math.min(1, k * 2)), Math.min(1, k * 1.4), LEAF, 10, SQ);
+    fx.shockwave(
+      x,
+      y + 6,
+      R * ease(Math.min(1, k * 2)),
+      Math.min(1, k * 1.4),
+      LEAF,
+      10,
+      SQ,
+    );
     for (let i = 0; i < 8; i++) {
       const ang = (i * TAU) / 8 + hash(i) * 0.4,
         d = R * (0.55 + hash(i * 3) * 0.35);
@@ -329,9 +379,7 @@ function scaleSwipe(
       fade = 1 - k;
     const from = angle - spread,
       cur = from + 2 * spread * sweep;
-    fx.floor
-      .fillStyle(color, 0.14 * fade)
-      .slice(x, y, range, from, cur);
+    fx.floor.fillStyle(color, 0.14 * fade).slice(x, y, range, from, cur);
     fx.floor.fillPath();
     for (let i = 0; i < 6; i++) {
       const t = i / 5,
@@ -368,7 +416,12 @@ function sapBite(
   const origin = at?.() ?? { x: x0, y: y0 };
   const fx = fxFor(scene),
     reach = a.range * 0.7;
-  sapDrops(fx, origin.x + Math.cos(angle) * reach, origin.y - 12 + Math.sin(angle) * reach, 6);
+  sapDrops(
+    fx,
+    origin.x + Math.cos(angle) * reach,
+    origin.y - 12 + Math.sin(angle) * reach,
+    6,
+  );
   shot(fx.reduced ? 200 : 420, (k) => {
     const { x, y } = at?.() ?? origin,
       bx = x + Math.cos(angle) * reach,
@@ -401,7 +454,13 @@ function sapBite(
     for (let i = 0; i < 4; i++) {
       const t = Math.max(0, Math.min(1, k * 1.6 - i * 0.15));
       if (t <= 0 || t >= 1) continue;
-      fx.glow(bx + (x - bx) * t, by + (y - 20 - by) * t - Math.sin(t * Math.PI) * 18, 7, SAP, 0.8);
+      fx.glow(
+        bx + (x - bx) * t,
+        by + (y - 20 - by) * t - Math.sin(t * Math.PI) * 18,
+        7,
+        SAP,
+        0.8,
+      );
     }
   });
 }
@@ -459,9 +518,14 @@ function wheelCast(
       spin = k * 14,
       R = 30;
     fx.trail(`thornwheel-${Math.round(x)}`, 0.03, () =>
-      leaves(fx, p.x, p.y, 2, [10, 60], { angle: angle + Math.PI, spread: 0.5 }),
+      leaves(fx, p.x, p.y, 2, [10, 60], {
+        angle: angle + Math.PI,
+        spread: 0.5,
+      }),
     );
-    fx.floorSolid.fillStyle(BARK_DARK, 0.25).fillEllipse(p.x, p.y + 8, 64, 64 * SQ);
+    fx.floorSolid
+      .fillStyle(BARK_DARK, 0.25)
+      .fillEllipse(p.x, p.y + 8, 64, 64 * SQ);
     for (let i = 0; i < 10; i++) {
       const ang = (i * TAU) / 10 + spin;
       fx.solid
@@ -478,7 +542,15 @@ function wheelCast(
     fx.solid.fillStyle(LEAF_DEEP, 1).fillCircle(p.x, p.y - 16, R);
     for (let i = 0; i < 6; i++) {
       const ang = (i * TAU) / 6 + spin;
-      leaf(fx.solid, p.x + Math.cos(ang) * R * 0.55, p.y - 16 + Math.sin(ang) * R * 0.55, 16, ang + Math.PI / 2, LEAF, 1);
+      leaf(
+        fx.solid,
+        p.x + Math.cos(ang) * R * 0.55,
+        p.y - 16 + Math.sin(ang) * R * 0.55,
+        16,
+        ang + Math.PI / 2,
+        LEAF,
+        1,
+      );
     }
     fx.glow(p.x, p.y - 16, R * 2, color, 0.4);
   });
@@ -503,21 +575,27 @@ function wheelWindup(
     py = Math.cos(angle) * w,
     ex = x + Math.cos(angle) * len,
     ey = y + Math.sin(angle) * len;
-  fx.floor
-    .fillStyle(color, 0.08 + k * 0.14)
-    .fillPoints(
-      [
-        { x: x + px, y: y + py },
-        { x: ex + px, y: ey + py },
-        { x: ex - px, y: ey - py },
-        { x: x - px, y: y - py },
-      ],
-      true,
-    );
+  fx.floor.fillStyle(color, 0.08 + k * 0.14).fillPoints(
+    [
+      { x: x + px, y: y + py },
+      { x: ex + px, y: ey + py },
+      { x: ex - px, y: ey - py },
+      { x: x - px, y: y - py },
+    ],
+    true,
+  );
   fx.floor.lineStyle(2, color, 0.4 + k * 0.4).lineBetween(x, y, ex, ey);
   for (let i = 0; i < 8; i++) {
     const ang = (i * TAU) / 8 + now / 140;
-    leaf(fx.solid, x + Math.cos(ang) * (44 - k * 14), y - 14 + Math.sin(ang) * (36 - k * 10), 14, ang + Math.PI / 2, LEAF, 0.4 + k * 0.5);
+    leaf(
+      fx.solid,
+      x + Math.cos(ang) * (44 - k * 14),
+      y - 14 + Math.sin(ang) * (36 - k * 10),
+      14,
+      ang + Math.PI / 2,
+      LEAF,
+      0.4 + k * 0.5,
+    );
   }
 }
 /** A small puff at the mouth for Mossloth's shots. */
@@ -600,7 +678,9 @@ function bramblePatch(g: G, z: Zone, progress: number, now: number) {
       sway = Math.sin(now / 400 + i) * 0.15;
     const h = (16 + hash(i * 3) * 14) * grow;
     const ex = bx + (sway + (hash(i) - 0.5)) * 12;
-    fx.solid.lineStyle(6, BARK_DARK, 0.6 * fade).lineBetween(bx, by, ex, by - h);
+    fx.solid
+      .lineStyle(6, BARK_DARK, 0.6 * fade)
+      .lineBetween(bx, by, ex, by - h);
     fx.solid.lineStyle(4, 0x3f7a34, fade).lineBetween(bx, by, ex, by - h);
     for (let t = 1; t <= 2; t++) {
       const tx = bx + (ex - bx) * (t / 3),
@@ -672,7 +752,15 @@ function wildRoots(g: G, z: Zone, progress: number, now: number) {
       fade,
     );
   }
-  fx.shockwave(z.x, z.y, r * ease(Math.min(1, post * 2)), Math.min(1, post * 1.5), LEAF, 10, SQ);
+  fx.shockwave(
+    z.x,
+    z.y,
+    r * ease(Math.min(1, post * 2)),
+    Math.min(1, post * 1.5),
+    LEAF,
+    10,
+    SQ,
+  );
 }
 
 // ───────────── Hit ─────────────
@@ -687,7 +775,9 @@ function natureHit(
   leaves(fx, x, y, 5, [40, 150]);
   shot(200, (k) => {
     fx.glow(x, y, 26 * (1 - k * 0.5), color, 0.6 * (1 - k));
-    fx.g.lineStyle(3 * (1 - k) + 1, LEAF_LIGHT, 0.8 * (1 - k)).strokeCircle(x, y, 10 + k * 16);
+    fx.g
+      .lineStyle(3 * (1 - k) + 1, LEAF_LIGHT, 0.8 * (1 - k))
+      .strokeCircle(x, y, 10 + k * 16);
   });
 }
 

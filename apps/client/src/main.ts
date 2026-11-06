@@ -5383,14 +5383,28 @@ class ArenaScene extends Phaser.Scene {
           0.55 + Math.sin(_time / 60) * 0.25,
         ).strokeCircle(x, y - jump - 10, 40);
       // Rooted: bark roots coil up round the feet until it wears off.
-      if (serverPlayer.statuses.some((s) => s.kind === "root" && s.until > state!.time)) {
-        g.lineStyle(3, 0x7fcf6a, 0.7).strokeEllipse(x, feetY, 70, groundHeight(70));
+      if (
+        serverPlayer.statuses.some(
+          (s) => s.kind === "root" && s.until > state!.time,
+        )
+      ) {
+        g.lineStyle(3, 0x7fcf6a, 0.7).strokeEllipse(
+          x,
+          feetY,
+          70,
+          groundHeight(70),
+        );
         for (let i = 0; i < 5; i++) {
           const a = (i / 5) * Math.PI * 2 + 0.3,
             bx = x + Math.cos(a) * 30,
             by = feetY + Math.sin(a) * groundHeight(30),
             lean = -Math.cos(a) * 8;
-          g.lineStyle(5, 0x2a1a0e, 0.85).lineBetween(bx, by, bx + lean, by - 20);
+          g.lineStyle(5, 0x2a1a0e, 0.85).lineBetween(
+            bx,
+            by,
+            bx + lean,
+            by - 20,
+          );
           g.lineStyle(3, 0x8a5a30, 1).lineBetween(bx, by, bx + lean, by - 20);
           g.fillStyle(0x7fcf6a, 1).fillCircle(bx + lean, by - 21, 2.6);
         }

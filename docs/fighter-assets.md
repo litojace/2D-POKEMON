@@ -2,24 +2,24 @@
 
 ## Current roster art
 
-| Fighter   | Element  | Design                                                                                   |
-| --------- | -------- | ---------------------------------------------------------------------------------------- |
-| Voltkit   | Electric | Sugar-glider kit; spark-tipped antennae, glider membranes, striped tail                  |
-| Cindrake  | Fire     | Magma newt; living flame crest, horn nubs, glowing cracks, ember tail                    |
-| Tidefin   | Water    | Axolotl duelist; gill fronds, headband, river sash, finned tail                          |
-| Auralynx  | Aura     | Lynx monk; tufted ears, cheek ruff, crystal gauntlets, orbiting shards                   |
-| Lumoth    | Light    | Fluffy moth; fern antennae, star-dusted wings, white ruff                                |
-| Mystowl   | Psychic  | Floating owl; feather tufts, facial disc, third-eye gem, wing cloak                      |
-| Terradon  | Earth    | Boulder tortoise; mossy rock shell, sleepy lids, sprout                                  |
-| Duskveil  | Shadow   | Hooded lantern wisp; void face, ragged robe, lantern tail                                |
-| Coilemur  | Electric | Ring-tailed lemur; white face mask, copper-banded magnet tail, coil bracers, magnet clip |
-| Pyranda   | Fire     | Red panda; white-rimmed ears, flame-tipped fluffy tail, chestnut bandolier               |
-| Glacelle  | Water    | Sea angel; translucent floating body, glowing heart, frosted wing-flaps, ice horns       |
-| Halcyra   | Aura     | Kingfisher; swept crest, long crystal beak, orange chest, focusing visor                 |
-| Sunbara   | Light    | Capybara; boxy muzzle, glowing yuzu on its head, striped bath towel                      |
-| Astrabun  | Psychic  | Moon rabbit; tall ears (one folded), crescent mark, mochi mallet, cotton tail            |
-| Wombolder | Earth    | Wombat; broad nose, boulder-hard rump plate with moss, digging claws, pebble pouch       |
-| Shadopus  | Shadow   | Midnight octopus; glowing-spotted mantle, ink bandit mask, tentacles                     |
+| Fighter   | Element  | Design                                                                                    |
+| --------- | -------- | ----------------------------------------------------------------------------------------- |
+| Voltkit   | Electric | Sugar-glider kit; spark-tipped antennae, glider membranes, striped tail                   |
+| Cindrake  | Fire     | Magma newt; living flame crest, horn nubs, glowing cracks, ember tail                     |
+| Tidefin   | Water    | Axolotl duelist; gill fronds, headband, river sash, finned tail                           |
+| Auralynx  | Aura     | Lynx monk; tufted ears, cheek ruff, crystal gauntlets, orbiting shards                    |
+| Lumoth    | Light    | Fluffy moth; fern antennae, star-dusted wings, white ruff                                 |
+| Mystowl   | Psychic  | Floating owl; feather tufts, facial disc, third-eye gem, wing cloak                       |
+| Terradon  | Earth    | Boulder tortoise; mossy rock shell, sleepy lids, sprout                                   |
+| Duskveil  | Shadow   | Hooded lantern wisp; void face, ragged robe, lantern tail                                 |
+| Coilemur  | Electric | Ring-tailed lemur; white face mask, copper-banded magnet tail, coil bracers, magnet clip  |
+| Pyranda   | Fire     | Red panda; white-rimmed ears, flame-tipped fluffy tail, chestnut bandolier                |
+| Glacelle  | Water    | Sea angel; translucent floating body, glowing heart, frosted wing-flaps, ice horns        |
+| Halcyra   | Aura     | Kingfisher; swept crest, long crystal beak, orange chest, focusing visor                  |
+| Sunbara   | Light    | Capybara; boxy muzzle, glowing yuzu on its head, striped bath towel                       |
+| Astrabun  | Psychic  | Moon rabbit; tall ears (one folded), crescent mark, mochi mallet, cotton tail             |
+| Wombolder | Earth    | Wombat; broad nose, boulder-hard rump plate with moss, digging claws, pebble pouch        |
+| Shadopus  | Shadow   | Midnight octopus; glowing-spotted mantle, ink bandit mask, tentacles                      |
 | Pangrove  | Nature   | Pangolin; living leaf scales (cap, back and a curling tail), sap-gold nose, crown sprout  |
 | Mossloth  | Nature   | Three-toed sloth; dark eye stripes, moss garden with flowers on its back and crown, claws |
 

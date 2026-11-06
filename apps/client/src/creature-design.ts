@@ -1059,11 +1059,21 @@ export function creatureLayers(
     // Pangolin: a coat of living leaf scales (cap, back mantle and a long
     // curling tail), a pointed snout with a sap-gold nose, small round ears,
     // big digging claws, and a sprout growing from the crown.
-    const scale = (x: number, y: number, w: number, h: number, a = 0, fill = body) =>
+    const scale = (
+      x: number,
+      y: number,
+      w: number,
+      h: number,
+      a = 0,
+      fill = body,
+    ) =>
       `<path d="M${x} ${y - h}Q${x + w} ${y - h * 0.1} ${x} ${y + h}Q${x - w} ${y - h * 0.1} ${x} ${y - h}Z" fill="${fill}"${a ? ` transform="rotate(${a} ${x} ${y})"` : ""}/>${line(`M${x} ${y - h * 0.7}V${y + h * 0.75}`, p.dark, 1.1, 0.35).replace("/>", a ? ` transform="rotate(${a} ${x} ${y})"/>` : "/>")}`;
     const leaves = `url(#${prefix}-leaves)`;
     layers.tail =
-      tailPath("M120 150Q166 160 176 124Q184 96 162 80Q150 76 146 88Q160 94 158 112Q154 136 120 140Z", leaves) +
+      tailPath(
+        "M120 150Q166 160 176 124Q184 96 162 80Q150 76 146 88Q160 94 158 112Q154 136 120 140Z",
+        leaves,
+      ) +
       [
         [168, 92, -30],
         [174, 110, 0],
@@ -1087,7 +1097,10 @@ export function creatureLayers(
     layers.head =
       `${e(100, 90, 40, 32, face)}` +
       // The leaf-scale cap over the brow.
-      path("M62 82Q64 54 100 50Q136 54 138 82Q120 72 100 72Q80 72 62 82Z", leaves) +
+      path(
+        "M62 82Q64 54 100 50Q136 54 138 82Q120 72 100 72Q80 72 62 82Z",
+        leaves,
+      ) +
       [
         [76, 66, -35],
         [90, 59, -12],
@@ -1141,25 +1154,42 @@ export function creatureLayers(
         .join("") + e(x, y, r * 0.6, r * 0.6, "#fff2a0", ' stroke="none"');
     const shag = (d: string) => line(d, p.dark, 1.4, 0.35);
     layers.wings =
-      path("M48 150Q40 116 62 104Q80 96 100 96Q120 96 138 104Q160 116 152 150Q130 160 100 160Q70 160 48 150Z", moss) +
+      path(
+        "M48 150Q40 116 62 104Q80 96 100 96Q120 96 138 104Q160 116 152 150Q130 160 100 160Q70 160 48 150Z",
+        moss,
+      ) +
       `${bloom(56, 118, 3.4)}${bloom(146, 124, 3)}${bloom(150, 144, 2.4, "#ffffff")}` +
       line("M50 132q4 -6 8 0M144 110q3 -5 7 0", p.dark, 1.2, 0.4);
     layers.ears = `${e(62, 84, 7, 6)}${e(138, 84, 7, 6)}`;
     layers.head =
       `${e(100, 90, 41, 34, face)}` +
       // Shaggy fringe and the pale face disc.
-      path("M64 74Q74 56 100 54Q126 56 136 74Q124 66 112 70Q106 62 100 68Q92 62 88 70Q76 66 64 74Z", body) +
+      path(
+        "M64 74Q74 56 100 54Q126 56 136 74Q124 66 112 70Q106 62 100 68Q92 62 88 70Q76 66 64 74Z",
+        body,
+      ) +
       `${e(100, 96, 31, 25, p.light)}` +
       // Dark eye stripes that slope down and out: the sloth's sleepy mask.
-      path("M58 86Q68 80 84 84Q92 88 90 98Q86 106 76 104Q64 100 58 86Z", p.dark, ' opacity=".82"') +
-      path("M142 86Q132 80 116 84Q108 88 110 98Q114 106 124 104Q136 100 142 86Z", p.dark, ' opacity=".82"') +
+      path(
+        "M58 86Q68 80 84 84Q92 88 90 98Q86 106 76 104Q64 100 58 86Z",
+        p.dark,
+        ' opacity=".82"',
+      ) +
+      path(
+        "M142 86Q132 80 116 84Q108 88 110 98Q114 106 124 104Q136 100 142 86Z",
+        p.dark,
+        ' opacity=".82"',
+      ) +
       `${e(100, 104, 6.5, 4.6, "#3a2c22")}${e(98.4, 103, 2, 1.3, "#ffffff", ' opacity=".55" stroke="none"')}` +
       stroke("M92 110.5Q100 116 108 110.5", p.dark, 2) +
       shag("M70 70l-3 -5M80 64l-2 -5M120 64l2 -5M130 70l3 -5") +
       highlight(70, 76, 20);
     layers.eyes = eye(79, p.glow, 7.6, 9.4) + eye(121, p.glow, 7.6, 9.4);
     layers.flame =
-      path("M80 60Q84 48 100 48Q116 48 120 60Q110 56 100 57Q90 56 80 60Z", moss) +
+      path(
+        "M80 60Q84 48 100 48Q116 48 120 60Q110 56 100 57Q90 56 80 60Z",
+        moss,
+      ) +
       `${line("M100 50Q99 40 104 34", p.glow, 2.4)}${path("M103 37Q110 30 117 34Q111 41 103 37Z", p.glow)}${bloom(88, 54, 3)}${bloom(114, 53, 2.4, "#ffffff")}`;
     layers.body =
       `${e(100, 140, 30, 28)}${e(100, 146, 18, 18, pearl)}` +

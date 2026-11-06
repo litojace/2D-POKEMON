@@ -1934,8 +1934,8 @@ export const FFA_THREE_TUNING: Partial<Record<CharacterId, number>> = {
   astrabun: 1.106,
   wombolder: 1.161,
   shadopus: 1.144,
-  pangrove: 1,
-  mossloth: 1,
+  pangrove: 1.1,
+  mossloth: 0.89,
 };
 /**
  * A champion's strength factor in this mode (1 outside 2v2 and free-for-all).
