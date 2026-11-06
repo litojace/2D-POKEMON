@@ -157,9 +157,7 @@ for (const size of [
         ),
       ).toHaveAttribute("data-portrait-frame", "conqueror");
       await expect(
-        page.locator(
-          '.fr-row[data-friend-row="online"] [data-portrait-frame]',
-        ),
+        page.locator('.fr-row[data-friend-row="online"] [data-portrait-frame]'),
       ).toHaveAttribute("data-portrait-frame", "winter-frame");
       for (const id of ["offline", "online"]) {
         const friendAvatar = page.locator(
