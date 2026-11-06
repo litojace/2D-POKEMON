@@ -1055,7 +1055,10 @@ skins) to earn that collection's frame for free.
 
 ### 10.5.3 Shop Colors are bought per champion
 
-Since [migration 072](../supabase/migrations/072_colours_per_champion.sql), a
+(Applied to the 2D-POKEMON Supabase project; main's 072 is the Arcade reward
+frame, so this migration is 073.)
+
+Since [migration 073](../supabase/migrations/073_colours_per_champion.sql), a
 collection's Colors piece bought on its own dresses **only the champion it is
 bought for** (the one on the Shop's stage); wearing it on another champion
 means buying it again for that one, at the same price. Buying the whole
@@ -1066,7 +1069,7 @@ Journey and from raids are never sold and stay all-fighter.
   slot on that champion, and a champion skin still wins over both.
 - The confirmation says "For <champion> only"; the Wardrobe lists the Colors
   each fighter can wear.
-- Colors bought on their own before 072 became the player's Lobby fighter's
+- Colors bought on their own before 073 became the player's Lobby fighter's
   (their farmer, else their portrait champion), and stay worn there if they
   were worn; Colors that came with their set stayed all-fighter.
 

@@ -4,7 +4,7 @@ import type { Page } from "@playwright/test";
  * A small stand-in for the game server's Shop calls, on top of the harness's
  * fake API (harness/fake-api.ts): /api/economy, /api/raids, /api/shop/buy,
  * /api/shop/equip, /api/shop/colours and /api/raids/equip. Shop Colors are
- * bought for the champion sent with them (migration 072). It records every call in
+ * bought for the champion sent with them (migration 073). It records every call in
  * window.__shop.calls, and its answers are what the screen must show (the
  * server owns money). Set window.__shop.refuse to make the next purchase fail
  * with that reason, and window.__shop.delay to hold /api/economy until

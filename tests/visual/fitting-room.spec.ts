@@ -321,7 +321,7 @@ test("the Wardrobe: try several things, then Equip once or Revert", async ({
 test("Colors are bought for the fighter you dress, and worn on it only", async ({
   page,
 }, info) => {
-  // Migration 072: Shop Colors bought on their own are one champion's.
+  // Migration 073: Shop Colors bought on their own are one champion's.
   await shopServer(page, { balance: 2340, cost: 300 });
   const errors = await openLobby(page);
   await page.click("#account-coins");

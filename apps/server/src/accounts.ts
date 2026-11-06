@@ -407,7 +407,7 @@ export function installAccountRoutes(
             .min(1)
             .max(64)
             .regex(/^[a-z0-9-]+$/),
-          // Shop Colors are bought for one champion (migration 072).
+          // Shop Colors are bought for one champion (migration 073).
           champion: characterSchema.optional(),
         })
         .strict()
@@ -982,7 +982,7 @@ export function installAccountRoutes(
       res.json({ ok: true, economy });
     }),
   );
-  // Wear (or take off) Shop Colors on one champion (migration 072).
+  // Wear (or take off) Shop Colors on one champion (migration 073).
   app.post(
     "/api/shop/colours",
     route(false, async (req, res, token, account) => {

@@ -837,7 +837,7 @@ export class AccountUI {
         // A load still on its way is older than this answer: drop it.
         this.fitRequest++;
         // The server sets the price and checks the balance: its answer counts.
-        // Shop Colors are bought for one champion (migration 072).
+        // Shop Colors are bought for one champion (migration 073).
         const result = (await this.api("/api/shop/buy", {
           item,
           ...(champion ? { champion } : {}),

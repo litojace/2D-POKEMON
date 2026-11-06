@@ -684,7 +684,7 @@ describe("a fighter with no skins in the Shop yet", () => {
   );
 });
 
-describe("Colors bought for one champion (migration 072)", () => {
+describe("Colors bought for one champion (migration 073)", () => {
   it("a fighter's own Colors wear over the shared Skin slot, and only on it", async () => {
     const { lookOn } = await import("../../packages/shared/src/raid");
     const look = {

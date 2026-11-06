@@ -190,7 +190,7 @@ export function fitItem(id: string): FitItem | undefined {
       name: piece.name,
       description: piece.description,
       slot: piece.slot,
-      // Colors on their own are bought per fighter (migration 072).
+      // Colors on their own are bought per fighter (migration 073).
       source: `${COLLECTION_NAMES[piece.collection]} · ${piece.slot === "skin" ? "one fighter (the set: every fighter)" : "for every fighter"}`,
     };
   const raid = RAID_COSMETICS[id as keyof typeof RAID_COSMETICS];

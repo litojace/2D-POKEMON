@@ -1,4 +1,4 @@
--- Shop Colors are bought for one champion. Run after 071.
+-- Shop Colors are bought for one champion. Run after 072.
 --
 -- Buying a collection's Colors piece on its own now dresses only the
 -- champion you buy it for (the one shown in the Shop); to wear it on another

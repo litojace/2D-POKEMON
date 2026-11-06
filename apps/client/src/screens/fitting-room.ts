@@ -48,7 +48,7 @@ import "./fitting-room.css";
 export interface FittingRoomHooks {
   /** The player's current state (economy, raid progress, equipped looks). */
   data(): Omit<FitData, "low" | "seenDay">;
-  /** Shop Colors are bought for one champion (migration 072). */
+  /** Shop Colors are bought for one champion (migration 073). */
   buy(id: string, champion?: CharacterId): Promise<void>;
   equipSkin(
     champion: CharacterId,
@@ -122,7 +122,7 @@ export function openFittingRoom(
   let seen = seenDay();
   /**
    * The state as the fighter on the stage sees it: Colors bought for it
-   * count as owned and worn (migration 072). `everyOwned` keeps what is
+   * count as owned and worn (migration 073). `everyOwned` keeps what is
    * owned for every fighter, which is what a collection set counts.
    */
   const data = (): FitData => {

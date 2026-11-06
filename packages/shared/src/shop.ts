@@ -1355,7 +1355,7 @@ export interface Economy {
   mythicTesting?: boolean;
   owned: string[];
   /**
-   * Shop Colors bought for single champions (migration 072): item id → the
+   * Shop Colors bought for single champions (migration 073): item id → the
    * champions it was bought for. Colors in `owned` (from a collection set)
    * are for every champion.
    */

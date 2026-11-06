@@ -1098,7 +1098,7 @@ export type RaidCosmetic =
 export type AppearanceItem = RaidCosmetic | (string & {});
 export type RaidLoadout = Partial<Record<RaidSlot, AppearanceItem | null>> & {
   /**
-   * Shop Colors bought for one champion (migration 072): worn on that
+   * Shop Colors bought for one champion (migration 073): worn on that
    * champion only, in place of the Skin slot. Read a look through lookOn().
    */
   colours?: Partial<Record<CharacterId, AppearanceItem>>;

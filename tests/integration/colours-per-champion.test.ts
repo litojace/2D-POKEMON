@@ -3,7 +3,7 @@ import { readFile, readdir } from "node:fs/promises";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { LOOK_ITEM_BY_ID } from "../../packages/shared/src/shop";
 
-// Migration 072: Shop Colors are bought for one champion; a collection set
+// Migration 073: Shop Colors are bought for one champion; a collection set
 // still gives its Colors to every fighter; older lone purchases become one
 // champion's.
 const BUYER = "00000000-0000-4000-8000-000000000721";
@@ -50,8 +50,8 @@ beforeAll(async () => {
     `create role anon;create role authenticated;create role service_role;create schema auth;create table auth.users(id uuid primary key,raw_user_meta_data jsonb);create function auth.uid()returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;grant usage on schema auth,public to anon,authenticated,service_role;grant execute on function auth.uid() to anon,authenticated,service_role;`,
   );
   await db.exec("select set_config('arena.farm_bugs', 'off', false)");
-  // Everything before 072, then two players who bought Colors the old way.
-  await migrations((n) => n < 72);
+  // Everything before 073, then two players who bought Colors the old way.
+  await migrations((n) => n < 73);
   for (const id of [BUYER, SETTER, LONE, BUNDLED]) {
     await owner(
       `insert into auth.users values('${id}','{"display_name":"Colors ${id.slice(-3)}"}')`,
@@ -81,7 +81,7 @@ beforeAll(async () => {
     "select public.arena_equip_raid_slot('skin', 'galaxy-colours')",
   );
   await db.exec("reset role");
-  await migrations((n) => n >= 72);
+  await migrations((n) => n >= 73);
 }, 60000);
 afterAll(async () => db.close());
 
@@ -148,7 +148,7 @@ describe("Colors bought for one champion", () => {
     });
   });
 
-  it("bought on their own before 072 became the Lobby fighter's, still worn there", async () => {
+  it("bought on their own before 073 became the Lobby fighter's, still worn there", async () => {
     await as(LONE);
     const e = await call("select public.arena_economy() r");
     expect(e.owned).not.toContain("candy-colours");
@@ -158,7 +158,7 @@ describe("Colors bought for one champion", () => {
     expect(look.colours).toEqual({ cindrake: "candy-colours" });
   });
 
-  it("that came with their set before 072 stay for every fighter", async () => {
+  it("that came with their set before 073 stay for every fighter", async () => {
     await as(BUNDLED);
     const e = await call("select public.arena_economy() r");
     expect(e.owned).toContain("galaxy-colours");
