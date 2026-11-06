@@ -101,6 +101,9 @@ it("refuses malformed requests before the database", async () => {
     [{ a: "hire", role: "boss", char: "pyranda" }],
     [{ a: "hire", role: "cook", char: "nobody" }],
     [{ a: "trade", lots: 99 }],
+    [{ a: "place", kind: "plant", x: 17, y: 3, rot: 0 }],
+    [{ a: "place", kind: "plant", x: 3, y: 12, rot: 0 }],
+    [{ a: "place", kind: "plant", x: -1, y: 3, rot: 0 }],
     [{ a: "sync", extra: 1 }],
     Array.from({ length: 41 }, () => ({ a: "sync" })),
   ])
@@ -118,4 +121,20 @@ it("refuses malformed requests before the database", async () => {
     ).status,
   ).toBe(400);
   expect(calls).toEqual([]);
+});
+
+it("takes a place anywhere on the biggest floor (every expansion)", async () => {
+  const { token } = accounts.add(false);
+  const actions = [
+    { a: "place", kind: "table", x: 16, y: 11, rot: 0 },
+    { a: "place", kind: "chair", x: 12, y: 9, rot: 1 },
+    { a: "place", kind: "plant", x: 0, y: 0, rot: 0 },
+  ];
+  const request = randomUUID();
+  expect(
+    (await send(token, "/api/bistro/act", { request, actions })).status,
+  ).toBe(200);
+  expect(calls).toEqual([
+    ["arena_bistro_act", { p_request: request, p_actions: actions }],
+  ]);
 });

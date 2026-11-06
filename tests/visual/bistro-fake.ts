@@ -26,6 +26,7 @@ export async function fakeBistro(page: Page) {
       requests: [] as any[],
       friends: [] as any[],
       views: {} as Record<string, any>,
+      refuse: null as null | ((action: any) => boolean),
       now: () => Date.now() + server.clock,
       advance: (s: number) => (server.clock += s * 1000),
     };
@@ -68,6 +69,12 @@ export async function fakeBistro(page: Page) {
       }
       if (url.endsWith("/api/bistro/act")) {
         server.requests.push(body);
+        // A request the real server's checks turn down (400, nothing applied).
+        if (server.refuse && body.actions.some(server.refuse))
+          return new Response(JSON.stringify({ error: "Invalid request." }), {
+            status: 400,
+            headers: { "Content-Type": "application/json" },
+          });
         catchUp(R);
         const away = server.away;
         server.away = null;

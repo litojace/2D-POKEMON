@@ -202,6 +202,66 @@ test("Bistro friends: visit a friend's bistro, eat there and like it", async ({
   expect(errors).toEqual([]);
 });
 
+test("Bistro: furniture in the bigger room stays through tab switches, even when one change is refused", async ({
+  page,
+}) => {
+  const errors = await openBistro(page);
+  const idle = () =>
+    page.waitForFunction(
+      () => {
+        const s = (window as any).__bistro.sync().snapshot();
+        return !s.pending && !s.outbox.length;
+      },
+      null,
+      { timeout: 20_000 },
+    );
+  const items = (js: string) =>
+    B(
+      page,
+      `return ${js}.items.map((i) => i.kind + '@' + i.x + ',' + i.y).sort()`,
+    ) as Promise<string[]>;
+  await B(page, "srv.S.level = 12; srv.S.coins = 50000; return b.load()");
+  const before = await items("srv.S");
+  // A server that turns down the far tiles (as one did before the room grew):
+  // only that move is lost, and the rest of the batch still gets through.
+  const ok = await B(
+    page,
+    `srv.refuse = (x) => x.a === 'place' && (x.x > 10 || x.y > 8);
+     const s = b.sync();
+     return [s.do({ a: 'expand' }), s.do({ a: 'expand' }), s.do({ a: 'expand' }),
+       s.do({ a: 'buy', kind: 'plant' }), s.do({ a: 'buy', kind: 'lamp' }),
+       s.do({ a: 'place', kind: 'plant', x: 15, y: 10, rot: 0 }),
+       s.do({ a: 'place', kind: 'lamp', x: 8, y: 6, rot: 0 })].map((r) => r.ok)`,
+  );
+  expect(ok).toEqual(Array(7).fill(true));
+  await idle();
+  await expect(page.locator("#toast")).toHaveText(
+    "That change couldn't be saved.",
+  );
+  expect(await B(page, "return srv.S.sizeLv")).toBe(3);
+  expect(await B(page, "return srv.S.stored.plant")).toBe(1);
+  expect(await items("srv.S")).toEqual([...before, "lamp@8,6"].sort());
+  // The scene shows the server's room: the refused plant is back in storage.
+  expect(await items("b.state()")).toEqual(await items("srv.S"));
+  // With the server taking it, the plant goes to the far corner…
+  await B(
+    page,
+    "srv.refuse = null; b.sync().do({ a: 'place', kind: 'plant', x: 15, y: 10, rot: 0 })",
+  );
+  await idle();
+  const placed = await items("srv.S");
+  expect(placed).toContain("plant@15,10");
+  // …and the room is the same after another tab.
+  await page.click('#hub-scenes [data-hub-scene="lobby"]');
+  await expect(page.locator(".bistro-layer")).toBeHidden();
+  await page.click('#hub-scenes [data-hub-scene="bistro"]');
+  await expect(page.locator(".bistro-layer")).toBeVisible();
+  await idle();
+  expect(await items("b.state()")).toEqual(placed);
+  expect(await B(page, "return b.state().sizeLv")).toBe(3);
+  expect(errors).toEqual([]);
+});
+
 test("Bistro: switching tabs keeps the guests as they were, and a reload brings them back", async ({
   page,
 }) => {

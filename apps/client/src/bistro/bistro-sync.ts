@@ -234,6 +234,9 @@ export function readServer(raw: unknown): {
   };
 }
 
+/** Refusals of one batch before it is split (or a lone action dropped). */
+const REFUSALS = 3;
+
 const uuid = () =>
   typeof crypto !== "undefined" && "randomUUID" in crypto
     ? crypto.randomUUID()
@@ -259,6 +262,16 @@ export class BistroSync {
    */
   private pending: { id: string; actions: BistroAction[] } | null = null;
   private sending = false;
+  /**
+   * How many times the server turned the pending batch down (a 400: the
+   * request itself was refused, so nothing of it was applied). The same id
+   * is tried again first, in case the refusal was a passing fault.
+   */
+  private refused = 0;
+  /** Actions at the front of the outbox to send one per batch. */
+  private solo = 0;
+  /** Actions the server refused for good: reported with the next answer. */
+  private dropped: { action: BistroAction; error: string }[] = [];
   /** Servings guests ordered, not yet paid for: guest id → dish. */
   private reserved = new Map<number, DishId>();
   private timer: ReturnType<typeof setTimeout> | undefined;
@@ -350,7 +363,10 @@ export class BistroSync {
     if (this.sending || this.closed) return;
     if (!this.pending) {
       if (!this.outbox.length) return;
-      this.pending = { id: uuid(), actions: this.outbox.splice(0, 40) };
+      const n = this.solo > 0 ? 1 : 40;
+      if (this.solo > 0) this.solo--;
+      this.pending = { id: uuid(), actions: this.outbox.splice(0, n) };
+      this.refused = 0;
     }
     const batch = this.pending;
     this.sending = true;
@@ -370,18 +386,49 @@ export class BistroSync {
         )
         .filter((e): e is { action: BistroAction; error: string } => !!e);
       this.pending = null;
+      this.refused = 0;
+      errors.unshift(...this.dropped.splice(0));
       this.adopt({ ...(raw.bistro as object), away: raw.away ?? null }, errors);
     } catch (e) {
-      // Not answered: try the same batch again (same request id) shortly.
       this.sending = false;
       this.hooks.onFail(e);
-      if (!this.closed) {
-        clearTimeout(this.timer);
-        this.timer = setTimeout(() => {
+      if (this.closed) return;
+      const status = (e as { status?: unknown } | null)?.status;
+      if (status === 400 && ++this.refused >= REFUSALS) {
+        // Refused again and again: one bad action must not hold back the
+        // rest. A batch goes again one action at a time (new ids: nothing of
+        // it was applied); a single action is given up.
+        this.pending = null;
+        this.refused = 0;
+        if (batch.actions.length > 1) {
+          this.outbox.unshift(...batch.actions);
+          this.solo += batch.actions.length;
+        } else {
+          const [action] = batch.actions;
+          if (action.a !== "sync") {
+            this.dropped.push({
+              action,
+              error:
+                e instanceof Error && e.message !== "Invalid request."
+                  ? e.message
+                  : "That change couldn't be saved.",
+            });
+            // The next answer brings the server's bistro without it.
+            if (!this.outbox.length) this.outbox.push({ a: "sync" });
+          }
+        }
+        this.schedule(150);
+        return;
+      }
+      // Not answered: try the same batch again (same request id) shortly.
+      clearTimeout(this.timer);
+      this.timer = setTimeout(
+        () => {
           this.timer = undefined;
           void this.flush();
-        }, 4000);
-      }
+        },
+        status === 400 ? 1500 : 4000,
+      );
       return;
     }
     if (this.outbox.length) this.schedule(150);

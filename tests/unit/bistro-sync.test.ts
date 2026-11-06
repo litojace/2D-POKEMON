@@ -94,4 +94,97 @@ describe("bistro sync: a batch keeps its request id", () => {
     expect(again.S.counter[0]?.servings).toBe(5);
     expect(again.reservedCount()).toBe(1);
   });
+  it("a batch the server keeps refusing goes one by one, and only the bad action is lost", async () => {
+    vi.useFakeTimers();
+    const calls: [string, BistroAction[]][] = [];
+    const refuse = () =>
+      Object.assign(new Error("Invalid request."), { status: 400 });
+    const api = {
+      load: async () => ({ ...server(), coins: 100000 }),
+      act: async (id: string, actions: BistroAction[]) => {
+        calls.push([id, actions]);
+        if (actions.some((x) => x.a === "buy" && x.kind === "rug"))
+          throw refuse();
+        return {
+          bistro: { ...server(), coins: 100000 },
+          results: actions.map(() => ({ ok: true })),
+        };
+      },
+    };
+    const h = hooks();
+    const sync = new BistroSync(api, h);
+    await sync.load();
+    sync.do({ a: "buy", kind: "plant" });
+    sync.do({ a: "buy", kind: "rug" });
+    sync.do({ a: "buy", kind: "chair" });
+    await vi.advanceTimersByTimeAsync(200);
+    // A refusal may pass: the same batch, same id, twice more.
+    await vi.advanceTimersByTimeAsync(1600);
+    await vi.advanceTimersByTimeAsync(1600);
+    expect(calls.slice(0, 3).map((c) => c[0])).toEqual(
+      Array(3).fill(calls[0][0]),
+    );
+    // Then one action per batch, each with a new id.
+    await vi.advanceTimersByTimeAsync(10000);
+    const after = calls.slice(3);
+    expect(after.every((c) => c[1].length === 1)).toBe(true);
+    expect(new Set(after.map((c) => c[0])).has(calls[0][0])).toBe(false);
+    const kinds = after.map((c) => (c[1][0] as { kind: string }).kind);
+    expect(kinds).toEqual(["plant", "rug", "rug", "rug", "chair"]);
+    // Nothing waits any more, and the lost action was reported.
+    expect(sync.snapshot().pending).toBeNull();
+    expect(sync.snapshot().outbox).toEqual([]);
+    const errors = h.onAdopt.mock.calls.flatMap((c) => c[0].errors);
+    expect(errors).toEqual([
+      {
+        action: { a: "buy", kind: "rug" },
+        error: "That change couldn't be saved.",
+      },
+    ]);
+    vi.useRealTimers();
+  });
+  it("a lone refused action still brings the server's bistro back", async () => {
+    vi.useFakeTimers();
+    const calls: BistroAction[][] = [];
+    const api = {
+      load: async () => ({ ...server(), coins: 100000 }),
+      act: async (_id: string, actions: BistroAction[]) => {
+        calls.push(actions);
+        if (actions[0].a === "buy")
+          throw Object.assign(new Error("Invalid request."), { status: 400 });
+        return {
+          bistro: { ...server(), coins: 100000 },
+          results: actions.map(() => ({ ok: true })),
+        };
+      },
+    };
+    const sync = new BistroSync(api, hooks());
+    await sync.load();
+    sync.do({ a: "buy", kind: "plant" });
+    expect(sync.S.coins).toBeLessThan(100000);
+    await vi.advanceTimersByTimeAsync(10000);
+    expect(calls.map((c) => c[0].a)).toEqual(["buy", "buy", "buy", "sync"]);
+    expect(sync.S.coins).toBe(100000); // the server's, without the purchase
+    vi.useRealTimers();
+  });
+  it("a fault that isn't a refusal keeps trying the same batch", async () => {
+    vi.useFakeTimers();
+    const ids: string[] = [];
+    const api = {
+      load: async () => ({ ...server(), coins: 100000 }),
+      act: async (id: string) => {
+        ids.push(id);
+        throw Object.assign(new Error("Account service failed."), {
+          status: 500,
+        });
+      },
+    };
+    const sync = new BistroSync(api, hooks());
+    await sync.load();
+    sync.do({ a: "buy", kind: "plant" });
+    await vi.advanceTimersByTimeAsync(30000);
+    expect(ids.length).toBeGreaterThan(5);
+    expect(new Set(ids).size).toBe(1);
+    vi.useRealTimers();
+  });
 });

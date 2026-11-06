@@ -20,6 +20,7 @@ import {
   type ActivityReceipt,
 } from "../../../packages/shared/src/shop.js";
 import { JOURNEY_ITEM_BY_ID } from "../../../packages/shared/src/journey.js";
+import { MAX_SIZE as BISTRO_MAX_SIZE } from "../../../packages/shared/src/bistro.js";
 import { createClient } from "@supabase/supabase-js";
 import {
   buildFriendsBoard,
@@ -678,8 +679,19 @@ export function installAccountRoutes(
           bistroId,
         ])
         .optional(),
-      x: z.number().int().min(0).max(10).optional(),
-      y: z.number().int().min(0).max(8).optional(),
+      // Anywhere on the biggest floor (the room grows with expansions).
+      x: z
+        .number()
+        .int()
+        .min(0)
+        .max(BISTRO_MAX_SIZE.cols - 1)
+        .optional(),
+      y: z
+        .number()
+        .int()
+        .min(0)
+        .max(BISTRO_MAX_SIZE.rows - 1)
+        .optional(),
       rot: z.number().int().min(0).max(3).optional(),
       role: z.enum(["cook", "waiter"]).optional(),
       char: z.enum(FIGHTER_IDS).optional(),
