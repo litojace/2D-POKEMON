@@ -1624,7 +1624,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A pangolin whose scales are living leaves. Three armour plates soak up hits; it grapples in with its tongue, curls into a ball you steer, and sheds its plates as blades.",
     color: 0x7fcf6a,
-    health: 161,
+    health: 166,
     speed: 245,
     passive: "plates",
     basic: basic(
@@ -2051,8 +2051,8 @@ export const FFA_THREE_TUNING: Partial<Record<CharacterId, number>> = {
   astrabun: 1.106,
   wombolder: 1.161,
   shadopus: 1.144,
-  pangrove: 1.03,
-  mossloth: 0.98,
+  pangrove: 1.07,
+  mossloth: 0.95,
 };
 /**
  * A champion's strength factor in this mode (1 outside 2v2 and free-for-all).

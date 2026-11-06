@@ -56,7 +56,7 @@ it("pins roster health (sixteen-champion balance pass) and movement speeds", () 
     astrabun: [134, 262],
     wombolder: [173, 232],
     shadopus: [129, 278],
-    pangrove: [161, 245],
+    pangrove: [166, 245],
     mossloth: [170, 240],
   };
   for (const [id, stats] of Object.entries(baseline)) {
