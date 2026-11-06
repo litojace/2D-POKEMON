@@ -1682,6 +1682,52 @@ test("on a phone, drag a seed from the tray to sow, and the sickle to harvest", 
   }
 });
 
+for (const reduced of [false, true]) {
+  test(`a storm brings lightning${reduced ? ", but not with reduced motion" : ""}`, async ({
+    browser,
+  }, info) => {
+    const context = await browser.newContext({
+      viewport: { width: 1280, height: 800 },
+      reducedMotion: reduced ? "reduce" : "no-preference",
+    });
+    try {
+      const page = await context.newPage();
+      const errors = await openLobby(page);
+      await fakeFarm(page);
+      await page.click('#hub-scenes [data-hub-scene="farm"]');
+      await page.waitForFunction(() => (window as any).__farm?.F?.loaded);
+      // The fake farm is in a storm; strike now.
+      await page.evaluate(() => {
+        const f = (window as any).__farm;
+        f.F.weather.cur = "storm";
+        f.wx.next = 0;
+      });
+      const bolt = () =>
+        page.evaluate(() => {
+          const wx = (window as any).__farm.wx;
+          return wx.bolt ? wx.bolt.main.length : 0;
+        });
+      if (reduced) {
+        // Two seconds of the farm running in the storm: no bolt, no flash.
+        const t0 = await page.evaluate(() => (window as any).__farm.time());
+        await expect
+          .poll(() => page.evaluate(() => (window as any).__farm.time()), {
+            timeout: 30_000,
+          })
+          .toBeGreaterThan(t0 + 2);
+        expect(await bolt()).toBe(0);
+      } else {
+        // A bolt from the clouds down, several segments long.
+        await expect.poll(bolt, { timeout: 30_000 }).toBeGreaterThan(4);
+        await snap(page, info, "farm-storm-1280x800");
+      }
+      expect(errors).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });
+}
+
 test("the farm rests behind Settings and wakes when it closes", async ({
   page,
 }) => {
