@@ -3782,19 +3782,31 @@ export function openFarm(options) {
     crowsLeaving.push({ x: r.x + PW / 2, y: r.y + 20, t: 0 });
     float(r.x + PW / 2, r.y - 10, "Shoo!", "#fff");
   }
+  /** Put a decoration in storage (migration 065): it places again for free. */
+  function storeDecor(id) {
+    if (id) F.decorCredits[id] = (F.decorCredits[id] || 0) + 1;
+  }
   /** Decorating (migration 048): place the picked decoration, or put one away. */
   function placeDecor(k) {
     const pick = F.decorPick;
     if (pick === "__remove") {
       if (!F.decor[k]) return toast("Nothing to put away there");
       act({ a: "decor-remove", slot: k }, true);
-      log(`Put away <b>${DECO[F.decor[k]]?.name ?? "decor"}</b>`);
+      log(`Put <b>${DECO[F.decor[k]]?.name ?? "decor"}</b> in storage`);
+      storeDecor(F.decor[k]);
       F.decor[k] = null;
     } else {
       const d = DECO[pick];
       if (!d) return;
       if (F.decor[k] === pick) return toast("That is already there");
       act({ a: "decor", slot: k, item: pick }, true);
+      // A stored copy places first, for free; what stood there is stored.
+      if (F.decorCredits[pick] > 0) F.decorCredits[pick]--;
+      else F.leaves -= d.price;
+      if (F.decor[k]) {
+        log(`Put <b>${DECO[F.decor[k]]?.name ?? "decor"}</b> in storage`);
+        storeDecor(F.decor[k]);
+      }
       FX.push({
         puff: 1,
         x: DECO_SLOTS[k][0],
@@ -3803,8 +3815,8 @@ export function openFarm(options) {
         life: 0.6,
       });
       F.decor[k] = pick;
-      // One free (reward) decoration places once.
-      if (!F.decorCredits[pick] && F.leaves < d.price * 2) F.decorPick = null;
+      // Stop placing when nothing is left in storage and another can't be bought.
+      if (!F.decorCredits[pick] && F.leaves < d.price) F.decorPick = null;
     }
     if (sheet === "decor") renderSheet();
   }
@@ -5791,18 +5803,19 @@ export function openFarm(options) {
         head("Decorate", `Charm ${F.charm} · +${charmBonus(F.charm)}% XP`) +
         `<div class="sh-body"><p class="sh-note">${
           F.decorPick === "__remove"
-            ? "<b>Putting away:</b> tap a decoration on the farm. It is not refunded."
+            ? "<b>Putting away:</b> tap a decoration on the farm. It goes to storage and places again for free."
             : F.decorPick
-              ? `<b>Placing ${DECO[F.decorPick]?.name}:</b> tap a glowing spot on the farm. A spot that already has decor is replaced.`
+              ? `<b>Placing ${DECO[F.decorPick]?.name}:</b> tap a glowing spot on the farm. Decor already on that spot goes to storage.`
               : "Buy decor and place it in the 8 spots around the farm. Every 2 Charm gives +1% farm XP (up to 25%)."
         }</p>` +
         FARM_DECOR.map((d) => {
-          const free = F.decorCredits[d.id] > 0,
+          const stored = F.decorCredits[d.id] || 0,
+            free = stored > 0,
             lock = d.level > F.lv && !free,
             picking = F.decorPick === d.id;
-          return `<div class="item${lock ? " locked" : ""}"><span class="ic">${I(d.icon)}</span><div><b>${d.name}</b><small>+${d.charm} Charm${free ? ` · <b style="color:#7ff0a2">1 free</b>` : ""}${lock ? ` · <b style="color:#ffd65b">unlocks at Lv ${d.level}</b>` : ""}</small></div><div class="acts"><button type="button" class="btn-s${picking ? " green" : ""}" data-deco="${d.id}" ${lock || (!free && F.leaves < d.price) ? "disabled" : ""}>${picking ? "Placing…" : free ? "Free" : `${d.price.toLocaleString("en-US")} ${L}`}</button></div></div>`;
+          return `<div class="item${lock ? " locked" : ""}"><span class="ic">${I(d.icon)}</span><div><b>${d.name}</b><small>+${d.charm} Charm${free ? ` · <b style="color:#7ff0a2">${stored} in storage</b>` : ""}${lock ? ` · <b style="color:#ffd65b">unlocks at Lv ${d.level}</b>` : ""}</small></div><div class="acts"><button type="button" class="btn-s${picking ? " green" : ""}" data-deco="${d.id}" ${lock || (!free && F.leaves < d.price) ? "disabled" : ""}>${picking ? "Placing…" : free ? "Place free" : `${d.price.toLocaleString("en-US")} ${L}`}</button></div></div>`;
         }).join("") +
-        `<div class="item"><span class="ic">${I("broom")}</span><div><b>Put decor away</b><small>Tap "Remove", then a decoration on the farm</small></div><div class="acts"><button type="button" class="btn-s ghost" data-deco="__remove">${F.decorPick === "__remove" ? "Removing…" : "Remove"}</button></div></div></div>`;
+        `<div class="item"><span class="ic">${I("broom")}</span><div><b>Put decor away</b><small>Tap "Remove", then a decoration on the farm. It goes to storage.</small></div><div class="acts"><button type="button" class="btn-s ghost" data-deco="__remove">${F.decorPick === "__remove" ? "Removing…" : "Remove"}</button></div></div></div>`;
     if (sheet === "balloon")
       html =
         head(
