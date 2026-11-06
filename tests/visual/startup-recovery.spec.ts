@@ -43,9 +43,7 @@ test("an interrupted entry module automatically recovers without clearing stored
     route.fulfill({ contentType: "text/html", body: "<body></body>" }),
   );
   await page.goto("/recovery-seed");
-  await page.evaluate(() =>
-    localStorage.setItem("arena-recovery-check", "kept"),
-  );
+  await page.evaluate(() => localStorage.setItem("arena-recovery-check", "kept"));
   await page.route("**/apps/client/src/main.ts*", (route) =>
     ++requests === 1 ? route.abort("failed") : route.continue(),
   );

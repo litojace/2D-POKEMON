@@ -14,28 +14,17 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   retries: process.env.CI ? 1 : 0,
-  reporter: process.env.CI
-    ? [
-        ["list"],
-        ["html", { open: "never", outputFolder: "../../playwright-report" }],
-      ]
-    : "list",
+  reporter: process.env.CI ? [["list"], ["html", { open: "never", outputFolder: "../../playwright-report" }]] : "list",
   outputDir: "../../test-results/visual",
   use: {
     baseURL: "http://localhost:4179",
     ...devices["Desktop Chrome"],
     viewport: { width: 1440, height: 900 },
     launchOptions: {
-      args: [
-        "--use-gl=angle",
-        "--use-angle=swiftshader",
-        "--enable-unsafe-swiftshader",
-      ],
+      args: ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"],
       // PW_CHROMIUM: a Chromium already on the machine, when Playwright's own
       // download isn't installed (e.g. /opt/pw-browsers/.../chrome).
-      ...(process.env.PW_CHROMIUM
-        ? { executablePath: process.env.PW_CHROMIUM }
-        : {}),
+      ...(process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {}),
     },
   },
   webServer: {
