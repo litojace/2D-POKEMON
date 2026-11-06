@@ -432,6 +432,30 @@ test("Bistro board: deliver a catering order, a regular's visit, claim the leagu
   expect(errors).toEqual([]);
 });
 
+test("Bistro: a guest stays at the table 12 to 17 s, so a busy room fills up", async ({
+  page,
+}) => {
+  const errors = await openBistro(page);
+  await B(
+    page,
+    "srv.S.counter = [{ dish: 'goicuon', servings: 20, perfect: false }, null, null, null]; return b.load()",
+  );
+  await B(page, "b.spawn()");
+  // Seated, ordered, served: eating.
+  const served = (await B(
+    page,
+    "for (let i = 0; i < 60; i++) { if (b.customers()[0]?.state === 'eating') return true; b.advance(0.5); } return false",
+  )) as boolean;
+  expect(served).toBe(true);
+  await B(page, "b.advance(11.5)");
+  expect(await B(page, "return b.customers()[0]?.state")).toBe("eating");
+  await B(page, "b.advance(6)");
+  expect(await B(page, "return b.customers()[0]?.state ?? 'gone'")).not.toBe(
+    "eating",
+  );
+  expect(errors).toEqual([]);
+});
+
 test("Bistro: a sheet scrolled down stays there when the server answers", async ({
   page,
 }) => {
