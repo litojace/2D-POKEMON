@@ -153,23 +153,23 @@ for (const size of [
       await page.evaluate(() => (window as any).__account.showFriends());
       await expect(
         page.locator(
-          '.friend-card[data-friend-row="offline"] [data-portrait-frame]',
+          '.fr-row[data-friend-row="offline"] [data-portrait-frame]',
         ),
       ).toHaveAttribute("data-portrait-frame", "conqueror");
       await expect(
         page.locator(
-          '.friend-card[data-friend-row="online"] [data-portrait-frame]',
+          '.fr-row[data-friend-row="online"] [data-portrait-frame]',
         ),
       ).toHaveAttribute("data-portrait-frame", "winter-frame");
       for (const id of ["offline", "online"]) {
         const friendAvatar = page.locator(
-          `.friend-card[data-friend-row="${id}"] .friend-avatar`,
+          `.fr-row[data-friend-row="${id}"] .fr-avatar`,
         );
         expect(
           await friendAvatar.evaluate((el) => getComputedStyle(el).overflow),
         ).toBe("visible");
       }
-      await expect(page.locator(".friend-card").first()).toBeInViewport();
+      await expect(page.locator(".fr-row").first()).toBeInViewport();
       await page.evaluate(
         () =>
           new Promise<void>((resolve) =>
@@ -181,7 +181,9 @@ for (const size of [
         info,
         `portrait-frame-friends-${size.width}x${size.height}`,
       );
-      await closePanel(page);
+      // Friends is a sheet inside the Lobby (step 6), not a dialog.
+      await page.locator(".friends-sheet [data-ui-close]").click();
+      await expect(page.locator(".friends-sheet")).toHaveCount(0);
 
       // Take the frame off: the None tile, then Equip.
       await page.evaluate(() => (window as any).__account.showWardrobe());

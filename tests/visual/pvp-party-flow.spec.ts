@@ -49,7 +49,7 @@ test("raid room invites open Friends instead of displaying a room code", async (
     );
     await snap(page, info, "raid-friends-invite-844x390");
     await page.locator("#invite-friends").click();
-    await expect(page.locator(".friends-hub")).toBeVisible();
+    await expect(page.locator(".friends-sheet")).toBeVisible();
     expect(errors).toEqual([]);
   } finally {
     await context.close();
@@ -136,7 +136,7 @@ for (const size of [
         };
       }, pal);
       await hubMenu(page, "friends");
-      await expect(page.locator(".friends-hub")).toBeVisible();
+      await expect(page.locator(".friends-sheet")).toBeVisible();
       await page.evaluate(
         (pal) =>
           (window as any).__sock.fire("room-invite", {
@@ -154,7 +154,19 @@ for (const size of [
       expect(
         inside(await box(page, ".room-invite-notice"), { x: 0, y: 0, ...size }),
       ).toBe(true);
-      await expect(page.locator("#dialog .room-invite-notice")).toHaveCount(1);
+      // Above the Friends sheet: the notice is in the top layer (a popover).
+      expect(
+        await page.evaluate(() => {
+          const r = document
+            .querySelector(".room-invite-notice")!
+            .getBoundingClientRect();
+          const hit = document.elementFromPoint(
+            r.left + r.width / 2,
+            r.top + r.height / 2,
+          );
+          return !!hit?.closest(".room-invite-notice");
+        }),
+      ).toBe(true);
       await snap(page, info, `room-invite-${size.width}x${size.height}`);
       await notice.locator("[data-invite-join]").click();
       await expect(page.locator("#dialog")).not.toHaveAttribute("open", "");
@@ -215,12 +227,12 @@ for (const size of [
         0,
       );
       await page.locator("#invite-friends").click();
-      const invite = page.locator(`[data-friend-invite="${pal}"]`);
+      const invite = page.locator(`[data-friend-room-invite="${pal}"]`);
       await expect(invite).toBeVisible();
-      await expect(page.locator("[data-friend-invite]")).toHaveCount(1);
+      await expect(page.locator("[data-friend-room-invite]")).toHaveCount(1);
       expect(
         inside(
-          await box(page, `[data-friend-invite="${pal}"]`),
+          await box(page, `[data-friend-room-invite="${pal}"]`),
           await box(page, `[data-friend-row="${pal}"]`),
         ),
       ).toBe(true);
@@ -235,7 +247,10 @@ for (const size of [
         ),
       ).toEqual([{ event: "room-invite", data: { playerId: pal } }]);
       await snap(page, info, `invite-friends-${size.width}x${size.height}`);
-      await page.locator("#close-dialog").click();
+      // Closing Friends brings the room's picker back.
+      await page.locator(".friends-sheet [data-ui-close]").click();
+      await expect(page.locator(".friends-sheet")).toHaveCount(0);
+      await expect(page.locator("#ready")).toBeVisible();
       await page.locator("#ready").click();
       await expect(page.locator("#ready")).toContainText("Cancel ready");
       await page.evaluate(() => {

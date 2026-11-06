@@ -7,7 +7,10 @@ import {
   framedAvatar,
   portraitAvatar,
 } from "../../apps/client/src/portraits";
-import { friendsMarkup } from "../../apps/client/src/friends-view";
+import {
+  friendsMarkup,
+  friendsView,
+} from "../../apps/client/src/screens/friends-view";
 
 it("renders every real raid, collection and journey frame without changing the avatar art", () => {
   const catalog = [
@@ -50,20 +53,24 @@ it("uses the worn champion skin inside a single circular frame", () => {
   expect(framed.match(/data-portrait-frame=/g)).toHaveLength(1);
 });
 it("preserves saved frames on offline friend initials and on live champion avatars", () => {
-  const html = friendsMarkup({
-    code: "ABCDEF12",
-    friends: [
-      { id: "offline", name: "Mia", online: false, frame: "conqueror" },
-      {
-        id: "online",
-        name: "Nova",
-        online: true,
-        fighter: "auralynx",
-        frame: "galaxy-frame",
-      },
-    ],
-    incoming: [],
-    outgoing: [],
+  const html = friendsMarkup(friendsView(), {
+    list: {
+      code: "ABCDEF12",
+      friends: [
+        { id: "offline", name: "Mia", online: false, frame: "conqueror" },
+        {
+          id: "online",
+          name: "Nova",
+          online: true,
+          fighter: "auralynx",
+          frame: "galaxy-frame",
+        },
+      ],
+      incoming: [],
+      outgoing: [],
+    },
+    recent: null,
+    party: { size: 1, ids: [], leader: true },
   });
   expect(html).toContain('data-portrait-frame="conqueror"');
   expect(html).toContain('data-portrait-frame="galaxy-frame"');
@@ -108,22 +115,26 @@ it("uses earned frame stars from the same saved clear counts everywhere and boun
   );
 });
 it("shows the saved champion skin, awakening stage and evolved frame on offline friends", () => {
-  const html = friendsMarkup({
-    code: "ABCDEF12",
-    friends: [
-      {
-        id: "friend",
-        name: "Pal",
-        online: false,
-        fighter: "tidefin",
-        frame: "conqueror",
-        look: { frame: "conqueror", skin: "candy-colours" },
-        championLooks: { tidefin: { skin: "tidefin-moontide", stage: 3 } },
-        raidClears: { grumblecrag: 40 },
-      },
-    ],
-    incoming: [],
-    outgoing: [],
+  const html = friendsMarkup(friendsView(), {
+    recent: null,
+    party: { size: 1, ids: [], leader: true },
+    list: {
+      code: "ABCDEF12",
+      friends: [
+        {
+          id: "friend",
+          name: "Pal",
+          online: false,
+          fighter: "tidefin",
+          frame: "conqueror",
+          look: { frame: "conqueror", skin: "candy-colours" },
+          championLooks: { tidefin: { skin: "tidefin-moontide", stage: 3 } },
+          raidClears: { grumblecrag: 40 },
+        },
+      ],
+      incoming: [],
+      outgoing: [],
+    },
   });
   expect(html).toContain("tidefin-moontide");
   expect(html).toContain('data-frame-stars="4"');
