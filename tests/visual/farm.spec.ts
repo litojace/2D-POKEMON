@@ -644,7 +644,10 @@ test("the weather orb shows the weather now and the forecast", async ({
   await page.click('#hub-scenes [data-hub-scene="farm"]');
   const orb = page.locator('#fm-chips [data-orb="weather"]');
   await expect(orb).toBeVisible();
-  await expect(orb).toHaveAttribute("aria-label", /Thunderstorm: 25% Shocked/);
+  await expect(orb).toHaveAttribute(
+    "aria-label",
+    /Thunderstorm: Waters every plot · 25% Shocked/,
+  );
   await orb.click();
   const pop = page.locator("#fm-orbpop");
   await expect(pop).toBeVisible();
@@ -1727,6 +1730,36 @@ for (const reduced of [false, true]) {
     }
   });
 }
+
+test("rain and storms water the growing crops: the soil isn't dry while it pours", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const errors = await openLobby(page);
+  await fakeFarm(page);
+  await page.click('#hub-scenes [data-hub-scene="farm"]');
+  await page.waitForFunction(() => (window as any).__farm?.F?.loaded);
+  // Plot 2 grows wheat that nobody watered by hand.
+  const hover = async () => {
+    const p = await page.evaluate(() => (window as any).__farm.plotClient(2));
+    await page.mouse.move(p.x + 40, p.y + 40);
+    await page.mouse.move(p.x, p.y);
+    return page.locator("#fm-tip");
+  };
+  for (const [w, text] of [
+    ["storm", "watered by the rain"],
+    ["rain", "watered by the rain"],
+    ["sun", "dry"],
+  ]) {
+    await page.evaluate((w) => ((window as any).__farm.F.weather.cur = w), w);
+    const tip = await hover();
+    await expect(tip).toBeVisible();
+    await expect(tip.locator(".row", { hasText: "Water" })).toHaveText(
+      new RegExp(`Water\\s*${text}$`),
+    );
+  }
+  expect(errors).toEqual([]);
+});
 
 test("the farm rests behind Settings and wakes when it closes", async ({
   page,
