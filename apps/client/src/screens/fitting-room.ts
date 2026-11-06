@@ -2,8 +2,11 @@ import { CHARACTERS, type CharacterId } from "@arena/shared";
 import {
   CHAMPION_SKIN_BY_ID,
   SHOP_BUNDLES,
+  isChampionColours,
+  ownedOn,
 } from "../../../../packages/shared/src/shop";
 import {
+  lookOn,
   rewardBoss,
   type RaidSlot,
 } from "../../../../packages/shared/src/raid";
@@ -45,13 +48,16 @@ import "./fitting-room.css";
 export interface FittingRoomHooks {
   /** The player's current state (economy, raid progress, equipped looks). */
   data(): Omit<FitData, "low" | "seenDay">;
-  buy(id: string): Promise<void>;
+  /** Shop Colors are bought for one champion (migration 072). */
+  buy(id: string, champion?: CharacterId): Promise<void>;
   equipSkin(
     champion: CharacterId,
     skin: string | null,
     stage?: number,
   ): Promise<void>;
   equipLook(slot: RaidSlot, item: string | null): Promise<void>;
+  /** Wear (or take off, null) Shop Colors on one champion. */
+  equipColours(champion: CharacterId, item: string | null): Promise<void>;
   /** Make this fighter your Lobby fighter (Mythic Trials count its wins). */
   playAs(champion: CharacterId): void;
   /** Open daily missions (they pay coins). */
@@ -114,7 +120,41 @@ export function openFittingRoom(
   });
   const low = lowGraphics();
   let seen = seenDay();
-  const data = (): FitData => ({ ...hooks.data(), low, seenDay: seen });
+  /**
+   * The state as the fighter on the stage sees it: Colors bought for it
+   * count as owned and worn (migration 072). `everyOwned` keeps what is
+   * owned for every fighter, which is what a collection set counts.
+   */
+  const data = (): FitData => {
+    const raw = hooks.data();
+    const e = raw.economy;
+    return {
+      ...raw,
+      economy: e && {
+        ...e,
+        owned: ownedOn(e, view.champion),
+        everyOwned: e.owned,
+      },
+      look: lookOn(raw.look, view.champion),
+      low,
+      seenDay: seen,
+    };
+  };
+  /**
+   * The Skin slot on this fighter. Shop Colors bought only for it go in its
+   * own slot; anything else in the all-fighter slot, after taking off the
+   * fighter's own Colors so the new look shows on it.
+   */
+  const wearLook = async (slot: RaidSlot, id: string | null) => {
+    if (slot !== "skin") return hooks.equipLook(slot, id);
+    const raw = hooks.data();
+    const own = raw.look.colours?.[view.champion];
+    if (id && isChampionColours(id) && !raw.economy?.owned.includes(id))
+      return hooks.equipColours(view.champion, id);
+    if (own) await hooks.equipColours(view.champion, null);
+    // Taking off a fighter's own Colors leaves the all-fighter slot alone.
+    if (id || !own) await hooks.equipLook(slot, id);
+  };
   let template: HTMLElement;
   let panel: HubPanel;
   let closed = false;
@@ -397,6 +437,8 @@ export function openFittingRoom(
     const set = SHOP_BUNDLES.find((b) => b.id === id);
     const item = fitItem(id);
     const skin = CHAMPION_SKIN_BY_ID[id];
+    const colours = isChampionColours(id);
+    const who = CHARACTERS[view.champion].name;
     const art = set
       ? `<span class="fit-confirm-set">${set.items.map((i) => itemPicture(i, view.champion, `fit-confirm-${i}`)).join("")}</span>`
       : itemPicture(id, skin?.champion ?? view.champion, `fit-confirm-${id}`);
@@ -405,7 +447,9 @@ export function openFittingRoom(
       title: set?.name ?? item?.name ?? id,
       sub: set
         ? `<span class="ui-note">${set.items.length} pieces for every fighter</span>`
-        : `${rarityTag(rarityOf(id))}<span class="ui-note">${item?.source ?? ""}</span>`,
+        : colours
+          ? `${rarityTag(rarityOf(id))}<span class="ui-note">For ${who} only</span>`
+          : `${rarityTag(rarityOf(id))}<span class="ui-note">${item?.source ?? ""}</span>`,
       art,
       lines: [
         ["Price", price(p.price, p.was)],
@@ -413,8 +457,8 @@ export function openFittingRoom(
       ],
       total: ["After", p.unlimited ? "Unlimited" : price(p.after)],
       extra: set
-        ? '<p class="ui-note">20% off the pieces you don\'t own yet.</p>'
-        : `<label class="fit-wear"><input type="checkbox" data-fit-wear checked> Wear it now</label>${p.unlimited ? '<p class="ui-note">Testing: purchases don\'t spend coins.</p>' : ""}`,
+        ? '<p class="ui-note">20% off the pieces you don\'t own yet. Its Colors are for every fighter.</p>'
+        : `${colours ? `<p class="ui-note">These colors are for ${who} only: buy them again for another fighter, or get the whole set for every fighter.</p>` : ""}<label class="fit-wear"><input type="checkbox" data-fit-wear checked> Wear it now</label>${p.unlimited ? '<p class="ui-note">Testing: purchases don\'t spend coins.</p>' : ""}`,
       confirm: "Buy",
       confirmAfter: price(p.price),
     });
@@ -426,7 +470,7 @@ export function openFittingRoom(
     box?.addEventListener("change", () => (wear = box.checked));
     if (!(await answer) || closed) return;
     await work(button, async () => {
-      await hooks.buy(id);
+      await hooks.buy(id, colours ? view.champion : undefined);
       const name = set?.name ?? item?.name ?? "It";
       if (!set && item && wear) {
         try {
@@ -436,9 +480,13 @@ export function openFittingRoom(
             `${name} is yours, but it couldn't be put on: ${error instanceof Error ? error.message : "try Equip again."}`,
           );
         }
-        return `${name} is yours, and you're wearing it.`;
+        return `${name} ${colours ? `are ${who}'s` : "is yours"}, and you're wearing ${colours ? "them" : "it"}.`;
       }
-      return set ? `${name}: every piece is yours.` : `${name} is yours.`;
+      return set
+        ? `${name}: every piece is yours.`
+        : colours
+          ? `${name} are ${who}'s.`
+          : `${name} is yours.`;
     });
   };
   /** Wear one owned item now (the Shop's Equip). */
@@ -456,7 +504,7 @@ export function openFittingRoom(
         view.stage = undefined;
       }
     } else {
-      await hooks.equipLook(item.slot as RaidSlot, id);
+      await wearLook(item.slot as RaidSlot, id);
       delete view.tryOn[item.slot];
     }
   };
@@ -470,7 +518,7 @@ export function openFittingRoom(
         view.stage = undefined;
       }
     } else {
-      await hooks.equipLook(item.slot as RaidSlot, null);
+      await wearLook(item.slot as RaidSlot, null);
       delete view.tryOn[item.slot];
     }
   };
@@ -481,7 +529,7 @@ export function openFittingRoom(
     for (const c of changes) {
       if (c.slot === "champion")
         await hooks.equipSkin(view.champion, c.to, c.to ? c.stage : undefined);
-      else await hooks.equipLook(c.slot, c.to);
+      else await wearLook(c.slot as RaidSlot, c.to);
       delete view.tryOn[c.slot];
       if (c.slot === "champion") view.stage = undefined;
       saved++;
@@ -560,7 +608,7 @@ export function openFittingRoom(
       const id = d.fitEquip;
       return void work(t, async () => {
         await equip(id);
-        return `${fitItem(id)?.name ?? "It"} equipped${CHAMPION_SKIN_BY_ID[id] ? ` on ${CHARACTERS[CHAMPION_SKIN_BY_ID[id].champion].name}` : " for every fighter"}.`;
+        return `${fitItem(id)?.name ?? "It"} equipped${CHAMPION_SKIN_BY_ID[id] ? ` on ${CHARACTERS[CHAMPION_SKIN_BY_ID[id].champion].name}` : isChampionColours(id) && !hooks.data().economy?.owned.includes(id) ? ` on ${CHARACTERS[view.champion].name}` : " for every fighter"}.`;
       });
     } else if (d.fitUnequip) {
       const id = d.fitUnequip;

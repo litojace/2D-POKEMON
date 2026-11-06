@@ -1096,7 +1096,27 @@ export type RaidCosmetic =
   | "twin-spark";
 /** A raid reward or a Shop collection piece (see shop.ts LOOK_ITEMS). */
 export type AppearanceItem = RaidCosmetic | (string & {});
-export type RaidLoadout = Partial<Record<RaidSlot, AppearanceItem | null>>;
+export type RaidLoadout = Partial<Record<RaidSlot, AppearanceItem | null>> & {
+  /**
+   * Shop Colors bought for one champion (migration 072): worn on that
+   * champion only, in place of the Skin slot. Read a look through lookOn().
+   */
+  colours?: Partial<Record<CharacterId, AppearanceItem>>;
+};
+/**
+ * The look a champion wears: its own Colors (bought for it) win over the
+ * all-fighter Skin slot; the per-champion map itself is left out, so every
+ * value is an item id.
+ */
+export function lookOn(
+  look: RaidLoadout | null | undefined,
+  champion: CharacterId,
+): RaidLoadout {
+  if (!look) return {};
+  const { colours, ...rest } = look;
+  const own = colours?.[champion];
+  return own ? { ...rest, skin: own } : rest;
+}
 /**
  * How a reward is earned. The same rules are seeded into the database
  * (migration 009, `arena_raid_rewards`), which is what actually grants them;

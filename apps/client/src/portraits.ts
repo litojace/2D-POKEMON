@@ -5,6 +5,7 @@ import { colourPreview } from "./colour-preview";
 import {
   FRAME_MAX_STARS,
   frameStars,
+  lookOn,
   RAID_COSMETICS,
 } from "../../../packages/shared/src/raid";
 import { LOOK_ITEMS } from "../../../packages/shared/src/shop";
@@ -49,7 +50,9 @@ type Portrait = Pick<
  * champion skin wins over the all-fighter Skin slot (design §10.5.2). */
 export function portraitCosmetics(p: Portrait) {
   const skinned = !!wornArt(p.character, p.championLooks?.[p.character]);
-  const look = skinned ? { ...p.raidLook, skin: null } : p.raidLook;
+  // Colors bought for this champion wear over the shared Skin slot.
+  const worn = lookOn(p.raidLook, p.character);
+  const look = skinned ? { ...worn, skin: null } : worn;
   return Object.values(look ?? {})
     .filter(Boolean)
     .join(" ");
@@ -59,8 +62,9 @@ export function portraitAvatar(p: Portrait, scope: string) {
   const skin = p.championLooks?.[p.character];
   const art = fighterAvatar(p.character, scope, skin);
   // Use the same palette as the live rig; equipped champion skins take priority.
-  return !wornArt(p.character, skin) && p.raidLook?.skin
-    ? scopeIds(colourPreview(art, p.raidLook.skin), `${scope}-colors`)
+  const colours = lookOn(p.raidLook, p.character).skin;
+  return !wornArt(p.character, skin) && colours
+    ? scopeIds(colourPreview(art, colours), `${scope}-colors`)
     : art;
 }
 

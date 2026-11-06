@@ -1354,6 +1354,12 @@ export interface Economy {
   /** Database-verified admin access to Mythic Trials and all Awakening stages. */
   mythicTesting?: boolean;
   owned: string[];
+  /**
+   * Shop Colors bought for single champions (migration 072): item id → the
+   * champions it was bought for. Colors in `owned` (from a collection set)
+   * are for every champion.
+   */
+  colourUnlocks?: Record<string, CharacterId[]>;
   /** Today's Picks: item ids; `deal` is the one at a discount. */
   picks: { day: string; items: string[]; deal: string | null };
   /** Wins per champion that count for Mythic Trials. */
@@ -1417,6 +1423,26 @@ export function shopPrice(
     : LOOK_ITEM_BY_ID[id]?.price;
   if (base === undefined) return null;
   return id === deal ? round10(base * (1 - COINS.pickDiscount)) : base;
+}
+/**
+ * Shop Colors are bought for one champion (the one you're dressing), not for
+ * every fighter; a collection set still gives its Colors to every fighter.
+ * Journey and raid Colors are never sold, so they stay all-fighter.
+ */
+export const isChampionColours = (id: string) =>
+  LOOK_ITEM_BY_ID[id]?.slot === "skin";
+/** What this champion can wear: everything owned, plus Colors bought for it. */
+export function ownedOn(
+  e: Pick<Economy, "owned" | "colourUnlocks">,
+  champion: CharacterId,
+): string[] {
+  const extra = Object.entries(e.colourUnlocks ?? {})
+    .filter(
+      ([id, champions]) =>
+        champions.includes(champion) && !e.owned.includes(id),
+    )
+    .map(([id]) => id);
+  return extra.length ? [...e.owned, ...extra] : e.owned;
 }
 /** The rarity of any shop item (sets have none). */
 export function shopRarity(id: string): Rarity | null {

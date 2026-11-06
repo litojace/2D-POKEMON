@@ -15,6 +15,7 @@ import {
   RAID_BOSS_PERKS,
   type RaidBossId,
   type RaidLoadout,
+  lookOn,
 } from "../../../../packages/shared/src/raid";
 import {
   masteryTier,
@@ -208,7 +209,9 @@ const rangeTag = (c: CharacterId) =>
 /** A card's fighter as the Wardrobe dresses it: its skin, else your Colors. */
 function cardArt(c: CharacterId, d: RosterData) {
   const skin = d.looks[c];
-  const palette = !skin && d.look?.skin ? d.look.skin : "";
+  // Its skin, else its Colors (its own, else the shared ones).
+  const colours = lookOn(d.look, c).skin;
+  const palette = !skin && colours ? colours : "";
   const svg = fighterArt(c, undefined, skin);
   return palette ? scopeIds(colourPreview(svg, palette), `card-${c}`) : svg;
 }

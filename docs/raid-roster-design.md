@@ -1053,6 +1053,23 @@ skins) to earn that collection's frame for free.
   skin applies to your other champions.
 - The Shop and the Rewards tab both explain this in one line.
 
+### 10.5.3 Shop Colors are bought per champion
+
+Since [migration 072](../supabase/migrations/072_colours_per_champion.sql), a
+collection's Colors piece bought on its own dresses **only the champion it is
+bought for** (the one on the Shop's stage); wearing it on another champion
+means buying it again for that one, at the same price. Buying the whole
+collection set still gives its Colors to **every** fighter. Colors from the
+Journey and from raids are never sold and stay all-fighter.
+
+- Each champion has its own Colors slot. It wins over the all-fighter Skin
+  slot on that champion, and a champion skin still wins over both.
+- The confirmation says "For <champion> only"; the Wardrobe lists the Colors
+  each fighter can wear.
+- Colors bought on their own before 072 became the player's Lobby fighter's
+  (their farmer, else their portrait champion), and stay worn there if they
+  were worn; Colors that came with their set stayed all-fighter.
+
 ### 10.6 Champion skin catalog (144 skins)
 
 Every champion gets **3 Common, 2 Rare, 2 Epic (one of them Cyber Mecha) and 1 Mythical**. Skins also

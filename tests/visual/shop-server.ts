@@ -3,7 +3,8 @@ import type { Page } from "@playwright/test";
 /**
  * A small stand-in for the game server's Shop calls, on top of the harness's
  * fake API (harness/fake-api.ts): /api/economy, /api/raids, /api/shop/buy,
- * /api/shop/equip and /api/raids/equip. It records every call in
+ * /api/shop/equip, /api/shop/colours and /api/raids/equip. Shop Colors are
+ * bought for the champion sent with them (migration 072). It records every call in
  * window.__shop.calls, and its answers are what the screen must show (the
  * server owns money). Set window.__shop.refuse to make the next purchase fail
  * with that reason, and window.__shop.delay to hold /api/economy until
@@ -28,7 +29,7 @@ export async function shopServer(page: Page, o: ShopServer = {}) {
     await route.fulfill({
       response,
       body: `${await response.text()}
-window.__shop = Object.assign({ balance: 2340, owned: [], cost: 500, looks: {}, cleared: [], loadout: {}, calls: [], refuse: null, delay: false }, ${JSON.stringify(o)});
+window.__shop = Object.assign({ balance: 2340, owned: [], cost: 500, looks: {}, cleared: [], loadout: {}, colourUnlocks: {}, colours: {}, calls: [], refuse: null, delay: false }, ${JSON.stringify(o)});
 const shopFetch = window.fetch.bind(window);
 const shopEconomy = async () => {
   const s = window.__shop;
@@ -37,22 +38,24 @@ const shopEconomy = async () => {
   body.owned = [...new Set([...body.owned, ...s.owned])];
   Object.assign(body.looks, s.looks);
   for (const c of s.cleared) delete body.looks[c];
+  body.colourUnlocks = s.colourUnlocks;
   if (s.unlimitedCoins) body.unlimitedCoins = true;
   if (s.mythicTesting) body.mythicTesting = true;
   return body;
 };
 const shopRaids = () => {
   const s = window.__shop, r = s.raids ?? {};
-  return { v: 1, stats: {}, unlocked: [], cosmetics: r.cosmetics ?? [], earned: r.cosmetics ?? [], bosses: r.bosses ?? {}, loadout: s.loadout };
+  return { v: 1, stats: {}, unlocked: [], cosmetics: r.cosmetics ?? [], earned: r.cosmetics ?? [], bosses: r.bosses ?? {}, loadout: { ...s.loadout, colours: s.colours } };
 };
 window.fetch = async (input, init) => {
   const s = window.__shop;
   const path = new URL(typeof input === "string" ? input : input instanceof URL ? input.href : input.url, location.href).pathname;
   const body = init?.body ? JSON.parse(init.body) : undefined;
   if (path === "/api/shop/buy") {
-    s.calls.push(["buy", body.item]);
+    s.calls.push(body.champion ? ["buy", body.item, body.champion] : ["buy", body.item]);
     if (s.refuse) { const error = s.refuse; s.refuse = null; return Response.json({ error }, { status: 400 }); }
-    s.owned.push(body.item);
+    if (body.champion) (s.colourUnlocks[body.item] ??= []).push(body.champion);
+    else s.owned.push(body.item);
     if (!s.unlimitedCoins) s.balance -= s.cost;
     return Response.json({ economy: await shopEconomy() });
   }
@@ -60,6 +63,12 @@ window.fetch = async (input, init) => {
     s.calls.push(["equip", body]);
     if (body.skin) { s.looks[body.champion] = { skin: body.skin, stage: body.stage ?? 1 }; s.cleared = s.cleared.filter((c) => c !== body.champion); }
     else { delete s.looks[body.champion]; s.cleared.push(body.champion); }
+    return Response.json({ economy: await shopEconomy() });
+  }
+  if (path === "/api/shop/colours") {
+    s.calls.push(["colours", body]);
+    if (body.item) s.colours[body.champion] = body.item;
+    else delete s.colours[body.champion];
     return Response.json({ economy: await shopEconomy() });
   }
   if (path === "/api/raids/equip") {

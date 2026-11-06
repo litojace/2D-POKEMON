@@ -3,6 +3,7 @@ import {
   groundHeight,
 } from "../../../packages/shared/src/world-art";
 import { JOURNEY_ITEM_BY_ID } from "../../../packages/shared/src/journey";
+import { lookOn } from "../../../packages/shared/src/raid";
 import Phaser from "phaser";
 import { CHARACTERS, type CharacterId } from "@arena/shared";
 import {
@@ -291,7 +292,13 @@ export function mountShopPreview(
     piece = LOOK_ITEM_BY_ID[id] ?? JOURNEY_ITEM_BY_ID[id];
     look =
       selection || host.dataset.previewLook !== undefined
-        ? JSON.parse(decodeURIComponent(host.dataset.previewLook ?? "%7B%7D"))
+        ? // Colors bought for this champion wear over the shared Skin slot.
+          lookOn(
+            JSON.parse(
+              decodeURIComponent(host.dataset.previewLook ?? "%7B%7D"),
+            ),
+            champion,
+          )
         : piece
           ? { [piece.slot]: id }
           : {};

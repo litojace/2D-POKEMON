@@ -90,9 +90,12 @@ const time = (s: number) =>
     .padStart(2, "0")}`;
 /** Equipped items as a space-separated list (for data-raid-cosmetic~=...). */
 export function raidLookList(look: RaidLoadout | null | undefined) {
-  return Object.values(look ?? {})
-    .filter(Boolean)
-    .join(" ");
+  const { colours, ...slots } = look ?? {};
+  return [
+    ...Object.values(slots).filter(Boolean),
+    // The Colors each champion wears (champion:item), so a change is noticed.
+    ...Object.entries(colours ?? {}).map(([c, id]) => `${c}:${id}`),
+  ].join(" ");
 }
 export { portraitAvatar, portraitCosmetics } from "./portraits";
 /** The result whose saved progress was already fetched, per overlay. */
