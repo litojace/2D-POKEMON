@@ -18,7 +18,7 @@ games but none of their characters.
 Numbers are in `CHARACTERS` (`packages/shared/src/index.ts`); the tables
 below are the shipped values.
 
-**Pangrove** (melee) — health 161, speed 245
+**Pangrove** (melee) — health 164, speed 245
 
 | Slot     | Move           | What it does                                                                                                                                                                                                                  | Idea from                                      |
 | -------- | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
@@ -106,26 +106,47 @@ Pangrove 18.6%, Mossloth 14.7%). `duel-diag.ts` showed why: Scale Shrapnel's
 and the Mossloth bot never stood still, so its moss never grew. Changes: a
 69° fan, plates that only take hits of 10 or more and stop 60% of them, the
 bot rule above (and its fix: not while standing in an enemy's zone, which had
-left it at 8% against Pyranda's mortars), and numbers (Pangrove health 161,
+left it at 8% against Pyranda's mortars), and numbers (Pangrove health 164,
 Scale Swipe 15, Tongue Grapple 14 with a 1.2 s slow; Mossloth health 170,
 Seed Spit 9 every 345 ms, seedlings 9 / 17 / 26, Overgrowth 28). Normal bots'
 dazed share (`dazeBy`) was then calibrated so each does about as well against
 Normal bots as against Hard ones: Pangrove 0.39, Mossloth 0.485.
 
-**Duels** (fresh seeds `RR_SEED=61000`, 40 games per pairing per difficulty,
-680 duels each per difficulty; the other sixteen run 46.5–53.1%):
+**Duels** (40 games per pairing per difficulty, 680 duels each per
+difficulty; the other sixteen run 46.5–53.1%). Seedlings landing over cover
+and the last health changes moved Pangrove more than seed noise, so it was
+checked on four unused seed sets in turn; the shipped kit is the last row.
 
-| Champion | Hard  | Normal |
-| -------- | ----- | ------ |
-| Pangrove | 52.2% | 56.2%  |
-| Mossloth | 52.4% | 53.4%  |
+| Seeds (`RR_SEED`) | Pangrove health | Pangrove Hard / Normal | Mossloth Hard / Normal |
+| ----------------- | --------------- | ---------------------- | ---------------------- |
+| 61000             | 164 (\*)        | 52.2% / 56.2%          | 52.4% / 53.4%          |
+| 62000             | 161             | 44.7% / 50.9%          | 50.4% / 50.3%          |
+| 63000             | 166             | 54.4% / 55.3%          | 52.8% / 49.6%          |
+| 64000             | **164**         | **48.4% / 54.6%**      | **53.5% / 51.0%**      |
 
-(Pangrove's health was then trimmed 164 → 161.)
+(\*) Before seedlings landed over cover. One seed set swings a champion by
+about ±3 points, so 164 sits between the 161 and 166 results.
 
-**2v2 and free-for-all**: being re-tuned for the rebuilt kits. Until then
-`TEAM_TUNING`, `FFA_TUNING` and `FFA_THREE_TUNING` keep the first draft's
-factors for these two. A first 2v2 round at ×1 (2,000 random line-ups per
-difficulty) put Pangrove at 50.8% and Mossloth at 46.7%.
+**2v2** (`TEAM_TUNING`, fair is 50%): three rounds of 2,000 random line-ups per
+difficulty, fresh each round (Pangrove 50.8 → 52.8 → 47.5%, Mossloth 46.7 →
+50.1 → 49.7% as the factors moved). Shipped Pangrove ×0.98, Mossloth ×1.035;
+on unused line-ups (1,500 per difficulty) Pangrove 51.4% Hard / 50.0% Normal,
+Mossloth 57.6% / 44.9% (51.3% averaged).
+
+**Free-for-all, four players** (`FFA_TUNING`, fair is 25%): two rounds of
+1,000 per difficulty (at ×1: Pangrove 21.5%, Mossloth 32.1%), interpolated
+to Pangrove ×1.02, Mossloth ×0.94; on unused line-ups (1,200 per difficulty)
+Pangrove 24.2% and Mossloth 23.7% averaged.
+
+**Free-for-all, three players** (`FFA_THREE_TUNING`, fair is 33.3%): single
+rounds are noisy here (Pangrove 25–32% and Mossloth 34–38% over three rounds
+near ×1), but always off the same way. Shipped Pangrove ×1.07, Mossloth
+×0.95; on unused line-ups (1,500 per difficulty) Pangrove 34.4% and Mossloth
+33.1% averaged.
+
+The team and free-for-all checks ran before Pangrove's final health: at 161
+(2v2, four players) and 166 (three players) instead of 164, about a point
+either way, within their noise.
 
 **Known issues**
 

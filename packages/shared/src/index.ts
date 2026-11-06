@@ -1624,7 +1624,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A pangolin whose scales are living leaves. Three armour plates soak up hits; it grapples in with its tongue, curls into a ball you steer, and sheds its plates as blades.",
     color: 0x7fcf6a,
-    health: 166,
+    health: 164,
     speed: 245,
     passive: "plates",
     basic: basic(
