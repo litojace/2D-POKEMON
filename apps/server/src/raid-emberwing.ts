@@ -512,8 +512,13 @@ export class EmberwingArena extends RaidArena {
           if (Math.hypot(b.x - z.x, b.y - z.y) <= z.radius + E.brazierRadius)
             this.light(i, p);
         });
-      // Tidefin's Eddy and Glacelle's Frost Bloom put the fire out.
-      if (z.ability.id === "eddy" || z.ability.id === "frost-bloom")
+      // Tidefin's Eddy and Glacelle's Frost Bloom put the fire out; Mossloth's
+      // Wild Roots smother it where they burst.
+      if (
+        z.ability.id === "eddy" ||
+        z.ability.id === "frost-bloom" ||
+        z.ability.id === "wild-roots"
+      )
         this.water(z.x, z.y, z.radius);
     }
     r.emberPatches = (r.emberPatches ?? []).filter((p) => p.until > this.time);

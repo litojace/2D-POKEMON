@@ -23,8 +23,8 @@ describe("raid roster and Pacific calendar", () => {
     }
   });
 
-  it("gives all sixteen champions a trick on at least three bosses", () => {
-    expect(FIGHTER_IDS).toHaveLength(16);
+  it("gives all eighteen champions a trick on at least three bosses", () => {
+    expect(FIGHTER_IDS).toHaveLength(18);
     for (const id of FIGHTER_IDS) {
       const bosses = RAID_BOSS_ORDER.filter((b) => raidPerksOf(b)[id]);
       expect(bosses.length, id).toBeGreaterThanOrEqual(3);

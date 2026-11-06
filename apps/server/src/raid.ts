@@ -1047,6 +1047,12 @@ export class RaidArena extends Arena {
               this.event("hit", boss, 0xc9f4ff, 0, p.id);
               continue;
             }
+            if (p.character === "pangrove" && this.has(p, "shield") && !r.drill) {
+              // Pangrove curled up in its leaf scales: the stones glance off.
+              r.message = `The volley glances off ${p.name}'s scales!`;
+              this.event("hit", p, 0x7fcf6a, 0, boss.id);
+              continue;
+            }
             this.damage(p, BOSS.volley.damage, boss.id, ability);
           }
         // The final phase chains a volley straight into eruptions.
