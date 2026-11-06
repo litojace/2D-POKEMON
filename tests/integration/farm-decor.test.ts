@@ -99,23 +99,64 @@ it("sells the shared decorations at their level and price, one per spot", async 
     { slot: 1, item: "apple" },
   ]);
   expect(r.farm.charm).toBe(2 + 4);
-  // Replacing pays for the new one; the old one is gone.
+  // Replacing pays for the new one; the old one goes to storage.
   f = r.farm;
   const swap = await act([{ a: "decor", slot: 0, item: "rock" }]);
-  expect(swap.results[0]).toMatchObject({ ok: true, cost: 300 });
+  expect(swap.results[0]).toEqual({
+    ok: true,
+    decor: "rock",
+    slot: 0,
+    cost: 300,
+    stored: "lamp",
+  });
   expect(swap.farm.charm).toBe(1 + 4);
-  // Putting one away: no refund.
+  expect(swap.farm.decorCredits).toEqual({ lamp: 1 });
+  // Putting one away: no leaves back, but it goes to storage.
   const away = await act([
     { a: "decor-remove", slot: 1 },
     { a: "decor-remove", slot: 1 },
   ]);
   expect(away.results).toEqual([
-    { ok: true, removed: 1 },
+    { ok: true, removed: 1, stored: "apple" },
     { ok: false, error: "Nothing there" },
   ]);
   expect(away.farm.decor).toEqual([{ slot: 0, item: "rock" }]);
   expect(away.farm.charm).toBe(1);
   expect(away.farm.leaves).toBe(swap.farm.leaves);
+  expect(away.farm.decorCredits).toEqual({ lamp: 1, apple: 1 });
+  // A stored one places again for free, even over another (which is stored).
+  const back = await act([
+    { a: "decor", slot: 5, item: "apple" },
+    { a: "decor", slot: 0, item: "lamp" },
+  ]);
+  expect(back.results).toEqual([
+    { ok: true, decor: "apple", slot: 5, cost: 0 },
+    { ok: true, decor: "lamp", slot: 0, cost: 0, stored: "rock" },
+  ]);
+  expect(back.farm.leaves).toBe(away.farm.leaves);
+  expect(back.farm.decorCredits).toEqual({ rock: 1 });
+  expect(back.farm.charm).toBe(4 + 2);
+  // Storage lasts: a stored decoration places before its level, like a reward.
+  await owner("update public.arena_farms set level = 1 where player_id = $1", [
+    player,
+  ]);
+  await act([{ a: "decor-remove", slot: 0 }]);
+  const low = await act([{ a: "decor", slot: 3, item: "lamp" }]);
+  expect(low.results[0]).toMatchObject({ ok: true, cost: 0 });
+  expect(low.farm.decorCredits).toEqual({ rock: 1 });
+  // Clean up for the next tests.
+  await owner(
+    "delete from public.arena_farm_decor_credits where player_id = $1",
+    [player],
+  );
+  await owner(
+    "update public.arena_farm_decor set item = null where player_id = $1 and slot in (0, 3, 5)",
+    [player],
+  );
+  await owner(
+    "insert into public.arena_farm_decor(player_id, slot, item) values ($1, 0, 'rock') on conflict (player_id, slot) do update set item = 'rock'",
+    [player],
+  );
 });
 
 it("adds 1% farm XP for every 2 Charm, up to 25%", async () => {

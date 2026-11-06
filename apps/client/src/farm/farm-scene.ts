@@ -392,6 +392,7 @@ export function openFarm(options) {
     warmUntil: 0,
     log: [],
     decorPick: null,
+    decorFromStore: false,
     shovelArm: null,
     weather: { cur: null },
     visiting: null,
@@ -1597,6 +1598,98 @@ export function openFarm(options) {
     ctx.scale(1 + k, 1 - k);
     GFX.blit(ctx, spr, 0, 0);
     ctx.restore();
+  }
+  /* Placing decor: each spot you can tap glows on the ground (a pulsing light,
+     a solid ring, marching dashes and a ripple), gold to place and coral to
+     put away; a pin over it (drawn with the labels, above trees) says what a
+     tap does. Putting away marks only the spots that have decor. */
+  const decorTarget = (k) =>
+    !!F.decorPick && (F.decorPick !== "__remove" || !!F.decor[k]);
+  const decorRgb = () =>
+    F.decorPick === "__remove" ? "255,122,89" : "255,214,91";
+  function drawDecorSpot(x, y, k, time) {
+    const rgb = decorRgb(),
+      pulse = reduced ? 0.6 : 0.5 + 0.5 * Math.sin(time * 4 + k);
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(1, 0.4);
+    glow(ctx, 0, 0, 64, rgb, 0.35 + 0.3 * pulse);
+    ctx.restore();
+    ctx.save();
+    ctx.strokeStyle = `rgba(${rgb},${0.8 + 0.2 * pulse})`;
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.ellipse(x, y, 42 + 3 * pulse, 17 + 1.2 * pulse, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.strokeStyle = "rgba(255,255,255,.85)";
+    ctx.lineWidth = 2;
+    ctx.setLineDash([8, 7]);
+    ctx.lineDashOffset = reduced ? 0 : -time * 24;
+    ctx.beginPath();
+    ctx.ellipse(x, y, 52, 22, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    if (!reduced) {
+      const r = (time * 0.7 + k * 0.13) % 1;
+      ctx.strokeStyle = `rgba(${rgb},${0.6 * (1 - r)})`;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.ellipse(x, y, 44 + 34 * r, 18 + 14 * r, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+  /** The pin over a decor spot: + to place, ⟳ to swap, × to put away. */
+  function drawDecorPins(time, z) {
+    if (!F.decorPick || V) return;
+    const rm = F.decorPick === "__remove",
+      rgb = decorRgb();
+    DECO_SLOTS.forEach(([x, y], k) => {
+      if (!decorTarget(k)) return;
+      const bob = reduced ? 0 : Math.sin(time * 3 + k) * 4 * z,
+        r = 14 * z,
+        cy = y - 62 - bob;
+      ctx.save();
+      ctx.fillStyle = `rgb(${rgb})`;
+      ctx.strokeStyle = "#2a1a05";
+      ctx.lineWidth = 2.5 * z;
+      ctx.beginPath();
+      ctx.moveTo(x - 6 * z, cy + r - 2 * z);
+      ctx.lineTo(x, cy + r + 9 * z);
+      ctx.lineTo(x + 6 * z, cy + r - 2 * z);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(x, cy, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.strokeStyle = "#2a1a05";
+      ctx.lineWidth = 3 * z;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      const a = 6 * z;
+      if (rm) {
+        ctx.moveTo(x - a, cy - a);
+        ctx.lineTo(x + a, cy + a);
+        ctx.moveTo(x + a, cy - a);
+        ctx.lineTo(x - a, cy + a);
+      } else if (F.decor[k]) {
+        // Swap: a circular arrow.
+        ctx.arc(x, cy, a, -Math.PI * 0.2, Math.PI * 1.35);
+        ctx.moveTo(x + a * 0.81, cy - a * 0.59);
+        ctx.lineTo(x + a * 0.95, cy - a * 1.35);
+        ctx.moveTo(x + a * 0.81, cy - a * 0.59);
+        ctx.lineTo(x + a * 0.05, cy - a * 0.5);
+      } else {
+        ctx.moveTo(x - a, cy);
+        ctx.lineTo(x + a, cy);
+        ctx.moveTo(x, cy - a);
+        ctx.lineTo(x, cy + a);
+      }
+      ctx.stroke();
+      ctx.restore();
+    });
   }
   /* The wishing well twinkles: a shimmer on the water and stars that drift
      up out of it and fade, gold and busier while today's wish is waiting. */
@@ -3782,19 +3875,31 @@ export function openFarm(options) {
     crowsLeaving.push({ x: r.x + PW / 2, y: r.y + 20, t: 0 });
     float(r.x + PW / 2, r.y - 10, "Shoo!", "#fff");
   }
+  /** Put a decoration in storage (migration 065): it places again for free. */
+  function storeDecor(id) {
+    if (id) F.decorCredits[id] = (F.decorCredits[id] || 0) + 1;
+  }
   /** Decorating (migration 048): place the picked decoration, or put one away. */
   function placeDecor(k) {
     const pick = F.decorPick;
     if (pick === "__remove") {
       if (!F.decor[k]) return toast("Nothing to put away there");
       act({ a: "decor-remove", slot: k }, true);
-      log(`Put away <b>${DECO[F.decor[k]]?.name ?? "decor"}</b>`);
+      log(`Put <b>${DECO[F.decor[k]]?.name ?? "decor"}</b> in storage`);
+      storeDecor(F.decor[k]);
       F.decor[k] = null;
     } else {
       const d = DECO[pick];
       if (!d) return;
       if (F.decor[k] === pick) return toast("That is already there");
       act({ a: "decor", slot: k, item: pick }, true);
+      // A stored copy places first, for free; what stood there is stored.
+      if (F.decorCredits[pick] > 0) F.decorCredits[pick]--;
+      else F.leaves -= d.price;
+      if (F.decor[k]) {
+        log(`Put <b>${DECO[F.decor[k]]?.name ?? "decor"}</b> in storage`);
+        storeDecor(F.decor[k]);
+      }
       FX.push({
         puff: 1,
         x: DECO_SLOTS[k][0],
@@ -3803,8 +3908,10 @@ export function openFarm(options) {
         life: 0.6,
       });
       F.decor[k] = pick;
-      // One free (reward) decoration places once.
-      if (!F.decorCredits[pick] && F.leaves < d.price * 2) F.decorPick = null;
+      // Stop placing when nothing is left in storage and another can't (or,
+      // picked in Storage, shouldn't) be bought.
+      if (!F.decorCredits[pick] && (F.decorFromStore || F.leaves < d.price))
+        F.decorPick = null;
     }
     if (sheet === "decor") renderSheet();
   }
@@ -4311,20 +4418,10 @@ export function openFarm(options) {
           });
       });
       if (F.decorPick)
-        DECO_SLOTS.forEach(([x, y], k) =>
-          items.push({
-            y: y - 1,
-            d: () => {
-              ctx.strokeStyle = F.decor[k] ? "rgba(255,214,91,.6)" : "#ffd65b";
-              ctx.setLineDash([6, 5]);
-              ctx.lineWidth = 2.5;
-              ctx.beginPath();
-              ctx.ellipse(x, y, 40, 16, 0, 0, 7);
-              ctx.stroke();
-              ctx.setLineDash([]);
-            },
-          }),
-        );
+        DECO_SLOTS.forEach(([x, y], k) => {
+          if (decorTarget(k))
+            items.push({ y: y - 1, d: () => drawDecorSpot(x, y, k, time) });
+        });
     }
     // Tools you own stand on the farm: the Scarecrow left of the field, a
     // sprinkler at the right end of each row that has one.
@@ -4790,6 +4887,7 @@ export function openFarm(options) {
       ctx.fillText(t, x, y + 0.5);
       ctx.textBaseline = "alphabetic";
     };
+    drawDecorPins(time, z);
     tag("ORDERS", BOARDP.x, BOARDP.y - 140);
     tag("MARKET", STALL.x, STALL.y - 150);
     tag("BARN", BARN.x, BARN.y - 196);
@@ -5507,9 +5605,13 @@ export function openFarm(options) {
     sheet = name;
     sheetTab =
       tab ||
-      ({ shop: "seeds", market: "sell", book: "book", friends: "visit" }[
-        name
-      ] ??
+      ({
+        shop: "seeds",
+        market: "sell",
+        book: "book",
+        friends: "visit",
+        decor: "buy",
+      }[name] ??
         null);
     $("fm-pop").hidden = true;
     renderSheet();
@@ -5786,23 +5888,58 @@ export function openFarm(options) {
             },
           ).join("")}</div></div>`;
     }
-    if (sheet === "decor")
-      html =
-        head("Decorate", `Charm ${F.charm} · +${charmBonus(F.charm)}% XP`) +
-        `<div class="sh-body"><p class="sh-note">${
+    if (sheet === "decor") {
+      const storedN = Object.values(F.decorCredits).reduce(
+          (a, n) => a + (n > 0 ? n : 0),
+          0,
+        ),
+        placed = F.decor.filter(Boolean).length,
+        note =
           F.decorPick === "__remove"
-            ? "<b>Putting away:</b> tap a decoration on the farm. It is not refunded."
+            ? "<b>Putting away:</b> tap a decoration on the farm. It goes to storage and places again for free."
             : F.decorPick
-              ? `<b>Placing ${DECO[F.decorPick]?.name}:</b> tap a glowing spot on the farm. A spot that already has decor is replaced.`
-              : "Buy decor and place it in the 8 spots around the farm. Every 2 Charm gives +1% farm XP (up to 25%)."
-        }</p>` +
-        FARM_DECOR.map((d) => {
-          const free = F.decorCredits[d.id] > 0,
+              ? `<b>Placing ${DECO[F.decorPick]?.name}:</b> tap a glowing spot on the farm. Decor already on that spot goes to storage.`
+              : sheetTab === "storage"
+                ? `Decor you put away, or replace with another, waits here and places again for free. On the farm: ${placed}/${DECO_SLOTS.length} spots.`
+                : "Buy decor and place it in the 8 spots around the farm. Every 2 Charm gives +1% farm XP (up to 25%).";
+      const row = (d, sub, btn) =>
+        `<div class="item${d.lock ? " locked" : ""}"><span class="ic">${I(d.icon)}</span><div><b>${d.name}</b><small>${sub}</small></div><div class="acts">${btn}</div></div>`;
+      const removeRow = `<div class="item"><span class="ic">${I("broom")}</span><div><b>Put decor away</b><small>Tap "Remove", then a decoration on the farm.</small></div><div class="acts"><button type="button" class="btn-s ghost" data-deco="__remove" ${placed ? "" : "disabled"}>${F.decorPick === "__remove" ? "Removing…" : "Remove"}</button></div></div>`;
+      let body;
+      if (sheetTab === "storage") {
+        const kept = FARM_DECOR.filter((d) => F.decorCredits[d.id] > 0);
+        body =
+          removeRow +
+          (kept.length
+            ? kept
+                .map((d) => {
+                  const picking = F.decorPick === d.id;
+                  return row(
+                    d,
+                    `+${d.charm} Charm · <b style="color:#7ff0a2">×${F.decorCredits[d.id]}</b>`,
+                    `<button type="button" class="btn-s${picking ? " green" : " gold"}" data-deco="${d.id}">${picking ? "Placing…" : "Place"}</button>`,
+                  );
+                })
+                .join("")
+            : `<p class="sh-note">Storage is empty.</p>`);
+      } else
+        body = FARM_DECOR.map((d) => {
+          const stored = F.decorCredits[d.id] || 0,
+            free = stored > 0,
             lock = d.level > F.lv && !free,
             picking = F.decorPick === d.id;
-          return `<div class="item${lock ? " locked" : ""}"><span class="ic">${I(d.icon)}</span><div><b>${d.name}</b><small>+${d.charm} Charm${free ? ` · <b style="color:#7ff0a2">1 free</b>` : ""}${lock ? ` · <b style="color:#ffd65b">unlocks at Lv ${d.level}</b>` : ""}</small></div><div class="acts"><button type="button" class="btn-s${picking ? " green" : ""}" data-deco="${d.id}" ${lock || (!free && F.leaves < d.price) ? "disabled" : ""}>${picking ? "Placing…" : free ? "Free" : `${d.price.toLocaleString("en-US")} ${L}`}</button></div></div>`;
-        }).join("") +
-        `<div class="item"><span class="ic">${I("broom")}</span><div><b>Put decor away</b><small>Tap "Remove", then a decoration on the farm</small></div><div class="acts"><button type="button" class="btn-s ghost" data-deco="__remove">${F.decorPick === "__remove" ? "Removing…" : "Remove"}</button></div></div></div>`;
+          return row(
+            { ...d, lock },
+            `+${d.charm} Charm${free ? ` · <b style="color:#7ff0a2">${stored} in storage</b>` : ""}${lock ? ` · <b style="color:#ffd65b">unlocks at Lv ${d.level}</b>` : ""}`,
+            `<button type="button" class="btn-s${picking ? " green" : ""}" data-deco="${d.id}" ${lock || (!free && F.leaves < d.price) ? "disabled" : ""}>${picking ? "Placing…" : free ? "Place free" : `${d.price.toLocaleString("en-US")} ${L}`}</button>`,
+          );
+        }).join("");
+      html =
+        head("Decorate", `Charm ${F.charm} · +${charmBonus(F.charm)}% XP`, [
+          ["buy", "Shop"],
+          ["storage", `Storage${storedN ? ` (${storedN})` : ""}`],
+        ]) + `<div class="sh-body"><p class="sh-note">${note}</p>${body}</div>`;
+    }
     if (sheet === "balloon")
       html =
         head(
@@ -5959,6 +6096,8 @@ export function openFarm(options) {
     }
     if (d.deco) {
       F.decorPick = F.decorPick === d.deco ? null : d.deco;
+      // Picked in Storage: placing stops when the stored copies run out.
+      F.decorFromStore = sheetTab === "storage";
       // On a phone the sheet covers the spots: close it while placing.
       if (F.decorPick && layer.classList.contains("phone")) {
         closeSheet();
