@@ -9,8 +9,8 @@ const B = (page: Page, js: string) =>
     `(() => { const b = window.__bistro; const srv = window.__bistroServer; ${js} })()`,
   );
 async function openBistro(page: Page) {
-  await fakeBistro(page);
   const errors = await openLobby(page);
+  await fakeBistro(page);
   await page.click('#hub-scenes [data-hub-scene="bistro"]');
   await expect(page.locator(".bistro-layer .bs-cv")).toBeVisible();
   await page.waitForFunction(() => (window as any).__bistro?.sync().ready);

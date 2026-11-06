@@ -61,6 +61,7 @@ it("passes the bistro, its actions and friends' visits to the database", async (
     { a: "hire", role: "cook", char: "pyranda" },
     { a: "chef", id: "voltkit" },
     { a: "trade", lots: 2 },
+    { a: "expand" },
   ];
   expect((await send(token, "/api/bistro")).status).toBe(200);
   expect(

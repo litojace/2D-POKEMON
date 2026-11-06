@@ -7,7 +7,8 @@ import type { Page } from "@playwright/test";
  * a clock the test can move (window.__bistroServer.advance).
  */
 export async function fakeBistro(page: Page) {
-  await page.addInitScript(() => {
+  // After the harness has set up its own fetch (call it once the hub is open).
+  await page.evaluate(() => {
     const w = window as any;
     const server: any = {
       clock: 0,

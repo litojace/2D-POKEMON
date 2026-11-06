@@ -656,6 +656,7 @@ export function installAccountRoutes(
         "stove",
         "kitchen",
         "shift",
+        "expand",
         "hire",
         "train",
         "cookdish",

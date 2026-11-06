@@ -3142,7 +3142,14 @@ export function openBistro(o: BistroOptions): BistroHandle {
   document.addEventListener("visibilitychange", onVis);
   renderHud();
   if (!sync.ready) showLoading("Opening your bistro…");
-  void sync.load().catch(() => showLoading("Can't reach the bistro. Retrying…"));
+  // The first load tries again every few seconds until the server answers.
+  let retry: ReturnType<typeof setTimeout> | undefined;
+  const firstLoad = () =>
+    sync.load().catch(() => {
+      showLoading("Can't reach the bistro. Retrying…");
+      if (running) retry = setTimeout(firstLoad, 4000);
+    });
+  void firstLoad();
 
   // Visual tests and the demo's screenshots drive the scene through this.
   if (import.meta.env.DEV)
@@ -3177,6 +3184,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
       running = false;
       cancelAnimationFrame(raf);
       clearInterval(pingTimer);
+      clearTimeout(retry);
       clearInterval(warm);
       clearTimeout(bannerTimer);
       clearTimeout(tipTimer);
