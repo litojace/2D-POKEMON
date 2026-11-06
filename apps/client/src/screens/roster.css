@@ -68,6 +68,11 @@
   min-width: 0;
   overflow: hidden;
   transition: transform var(--dur-1) var(--ease-pop);
+  /* Sixteen detailed SVG fighters: the ones below the fold are laid out and
+     drawn only when scrolled to, so the panel's slide-in draws half as much
+     (owner, 6 Nov: the roster faded in unevenly). The grid sizes each card. */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 190px auto 236px;
 }
 .roster-card:hover {
   transform: translateY(-2px);

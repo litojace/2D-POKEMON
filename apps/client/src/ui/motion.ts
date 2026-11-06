@@ -150,3 +150,27 @@ export function glide(
     );
   });
 }
+
+/**
+ * Run `fn` once `el` has finished sliding in (at once if it isn't moving).
+ * A screen that redraws itself while its entry plays (fresh records that
+ * arrive right after it opens) re-reads and re-lays its whole markup in the
+ * middle of the slide, which stutters on a phone (owner, 6 Nov); it waits
+ * the few hundred milliseconds instead. Never longer than the entry itself.
+ */
+export function whenSettled(el: Element, fn: () => void) {
+  const moving =
+    typeof el.getAnimations === "function"
+      ? el.getAnimations().filter((a) => a.playState === "running")
+      : [];
+  if (!moving.length) return fn();
+  let done = false;
+  const run = () => {
+    if (done) return;
+    done = true;
+    clearTimeout(timer);
+    fn();
+  };
+  const timer = setTimeout(run, DUR.enter + 120);
+  void Promise.all(moving.map((a) => a.finished.catch(() => {}))).then(run);
+}

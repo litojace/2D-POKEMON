@@ -50,6 +50,7 @@ import {
 } from "./lobby-screen";
 import {
   openFarmScreen,
+  prefetchFarm,
   type FarmScreen,
   type FarmScreenOptions,
 } from "./farm/farm-screen";
@@ -1651,7 +1652,7 @@ function syncHub() {
   else delete document.body.dataset.hubScene;
   syncParty();
   syncLobby(hub && hubScene === "lobby");
-  syncFarm(hub && hubScene === "farm");
+  syncFarm(hub && hubScene === "farm", hub);
   syncPlaza(hub && hubScene === "plaza");
 }
 /** The new Plaza (hub redesign phase 3): the server moves everyone in it. */
@@ -1816,15 +1817,20 @@ function syncLobby(want: boolean) {
 /** The Farm scene (hub redesign phase 4): server state, server time. */
 let farmScreen: FarmScreen | undefined;
 let farmLow = false;
-function syncFarm(want: boolean) {
+const farmLoad = async () => (await accountsUI.api("/api/farm")) as FarmState;
+function syncFarm(want: boolean, hub = want) {
   if (!want) {
     farmScreen?.close();
     farmScreen = undefined;
+    // In the hub, the farm loads in the background (once) so it opens ready.
+    const owner = accountsUI?.account?.id;
+    if (hub && owner) prefetchFarm(owner, farmLoad);
     return;
   }
   if (farmScreen) return;
   farmLow = lowGraphics();
   farmScreen = openFarmScreen({
+    owner: accountsUI?.account?.id,
     reduced: reducedMotion,
     low: farmLow,
     sound: (cue, step) => audio.farm(cue, step),
@@ -1873,7 +1879,7 @@ function syncFarm(want: boolean) {
         slot,
       })) as FarmHelpResult,
     rainSound: (level) => audio.farmRainSound(level),
-    load: async () => (await accountsUI.api("/api/farm")) as FarmState,
+    load: farmLoad,
     act: async (actions) =>
       (await accountsUI.api("/api/farm/act", {
         request: crypto.randomUUID(),

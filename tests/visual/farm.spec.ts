@@ -1353,6 +1353,46 @@ for (const viewport of [
   });
 }
 
+test("the farm opens ready on every return, with the same scenery", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const errors = await openLobby(page);
+  await fakeFarm(page);
+  // The first visit loads the farm (a ripe Breeze Wheat stands on plot 0).
+  await page.click('#hub-scenes [data-hub-scene="farm"]');
+  await page.waitForFunction(() => (window as any).__farm?.F?.loaded);
+  const first = await page.evaluate(() => (window as any).__farm.scenery());
+  expect(first.length).toBeGreaterThan(40);
+  // Away in the Lobby and the Plaza: nothing loads the farm again.
+  await page.click('#hub-scenes [data-hub-scene="lobby"]');
+  const gets = await page.evaluate(() => (window as any).__farmGets);
+  await page.click('#hub-scenes [data-hub-scene="plaza"]');
+  await page.click('#hub-scenes [data-hub-scene="lobby"]');
+  await page.waitForTimeout(500);
+  expect(await page.evaluate(() => (window as any).__farmGets)).toBe(gets);
+  // Back with a slow server: the farm is ready on its first frame, and the
+  // trees and bushes stand where they stood.
+  await page.evaluate(() => ((window as any).__farmDelay = 4000));
+  for (let visit = 0; visit < 2; visit++) {
+    await page.click('#hub-scenes [data-hub-scene="farm"]');
+    const now = await page.evaluate(() => {
+      const f = (window as any).__farm;
+      return {
+        loaded: !!f.F.loaded,
+        crop: f.F.plots[0]?.crop ?? null,
+        scenery: f.scenery(),
+      };
+    });
+    expect(now.loaded).toBe(true);
+    expect(now.crop).toBe("wheat");
+    expect(now.scenery).toEqual(first);
+    await page.click('#hub-scenes [data-hub-scene="lobby"]');
+  }
+  await page.evaluate(() => ((window as any).__farmDelay = 0));
+  expect(errors).toEqual([]);
+});
+
 test("the farm rests behind Settings and wakes when it closes", async ({
   page,
 }) => {

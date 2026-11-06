@@ -51,6 +51,10 @@
   transition:
     border-color var(--dur-1),
     transform var(--dur-2);
+  /* Cards below the fold (their portrait and three fighters) are drawn only
+     when scrolled to; the grid sizes each card (see .roster-card). */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 200px auto 300px;
 }
 .rh-card:hover,
 .rh-card:focus-visible {

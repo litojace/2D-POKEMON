@@ -11,7 +11,10 @@
   container-type: size;
 }
 /* The live rig draws its own spotlight; a still fighter (Low graphics, or
-   until the rig is ready) gets this one, without blur on Low. */
+   the frame view) gets this one, without blur on Low. Not while a live rig
+   is still loading: this beam is shaped and lit differently from the rig's,
+   so on a phone (about half a second to load) it showed, then jumped to the
+   rig's (owner, 6 Nov). */
 .fit-light {
   position: absolute;
   right: -40px;
@@ -27,7 +30,8 @@
   pointer-events: none;
   z-index: -1;
 }
-.fit-stage:has(.shop-live-stage.is-ready) .fit-light {
+.fit-stage:has(.shop-live-stage.is-ready) .fit-light,
+.fit-stage:has(> .shop-live-stage:not(.is-still, .is-frame)) .fit-light {
   display: none;
 }
 .ui-panel[data-graphics="low"] .fit-light {
