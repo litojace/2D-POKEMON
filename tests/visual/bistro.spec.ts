@@ -441,10 +441,15 @@ test("Bistro: a sheet scrolled down stays there when the server answers", async 
   const y = await list.evaluate((el) => el.scrollTop);
   expect(y).toBeGreaterThan(50);
   await list.evaluate((el) => ((el as any).old = true));
+  const before = await page.locator("#bs-sheet").innerHTML();
   // The server answers with other coins (a guest paid, a level-up cost
-  // was spent): the sheet is drawn again, and the list stays put.
+  // was spent): the sheet changes in place (ui/patch.ts), the same list,
+  // and it stays put.
   await B(page, "srv.S.coins = 3; return b.load()");
-  await expect.poll(() => list.evaluate((el) => !!(el as any).old)).toBe(false);
+  await expect
+    .poll(() => page.locator("#bs-sheet").innerHTML())
+    .not.toBe(before);
+  expect(await list.evaluate((el) => !!(el as any).old)).toBe(true);
   expect(await list.evaluate((el) => el.scrollTop)).toBe(y);
   // Another tab and back starts at the top again.
   await page.click('#bs-sheet [data-rtab="pantry"]');
