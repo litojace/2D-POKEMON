@@ -83,6 +83,8 @@ export async function openPlayPanel(page: Page) {
   await page.click("#lobby-mode");
   await page.click('#lobby-mode-menu [data-lobby-action="more-play"]');
   await expect(page.locator("#practice")).toBeVisible();
+  // The mode menu closes as the play drawer opens over it.
+  await expect(page.locator("#lobby-mode-menu")).toBeHidden();
 }
 
 /** A button on the Lobby's menu rail: fighters, wardrobe, shop, raids, journey, missions, ranks, friends. */

@@ -167,6 +167,32 @@ for (const size of [
           return !!hit?.closest(".room-invite-notice");
         }),
       ).toBe(true);
+      // Its own card, not the browser's white popover: dark, pinned bottom
+      // right, Decline and Join side by side at the same size.
+      const look = await notice.evaluate((n) => {
+        const cs = getComputedStyle(n);
+        const r = n.getBoundingClientRect();
+        const [decline, join] = [
+          ...n.querySelectorAll(".room-invite-actions > button"),
+        ].map((b) => b.getBoundingClientRect());
+        return {
+          background: cs.backgroundColor,
+          right: innerWidth - r.right,
+          bottom: innerHeight - r.bottom,
+          width: r.width,
+          buttons: [decline.width, decline.height, join.width, join.height],
+          sameRow: Math.abs(decline.top - join.top) < 1,
+        };
+      });
+      expect(look.background).toBe("rgb(20, 33, 58)");
+      expect(look.right).toBeGreaterThanOrEqual(15);
+      expect(look.right).toBeLessThanOrEqual(17);
+      expect(look.bottom).toBeGreaterThanOrEqual(15);
+      expect(look.bottom).toBeLessThanOrEqual(17);
+      expect(look.width).toBeLessThanOrEqual(340);
+      expect(look.sameRow).toBe(true);
+      expect(Math.abs(look.buttons[0] - look.buttons[2])).toBeLessThan(1);
+      expect(Math.abs(look.buttons[1] - look.buttons[3])).toBeLessThan(1);
       await snap(page, info, `room-invite-${size.width}x${size.height}`);
       await notice.locator("[data-invite-join]").click();
       await expect(page.locator("#dialog")).not.toHaveAttribute("open", "");
@@ -179,6 +205,11 @@ for (const size of [
         })
         .toBe(true);
       await expect(notice).toBeHidden();
+      // One picker: joining with Friends open on the Lobby once opened two
+      // (Friends closing drew the room again while its picker was opening).
+      await expect(page.locator(".room-screen .roster-room")).toHaveCount(1);
+      await page.waitForTimeout(800);
+      await expect(page.locator(".room-screen .roster-room")).toHaveCount(1);
       await page.locator('.room-screen [data-roster-card="cindrake"]').click();
       // Delay the actual acknowledgement: never claim a selection is saved early.
       await page.evaluate(() => {

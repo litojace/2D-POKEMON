@@ -247,7 +247,7 @@ const HUB_SCREENS: Screen[] = [
     },
   },
   {
-    // More ways to play: the drawer (the mode menu stays under it, covered).
+    // More ways to play: the drawer (the mode menu closes as it opens).
     name: "play modes",
     root: "#home-play-panel",
     open: openPlayPanel,
