@@ -491,3 +491,59 @@ test("you stand still while the album is open, and the Plaza rests behind it", a
   await page.keyboard.up("a");
   expect(errors).toEqual([]);
 });
+
+// A tap on the dimmed background puts the polaroid, an album photo and the
+// album away (a photo goes back to the grid first). A drag that starts on
+// the card and ends on the background doesn't.
+test("a tap on the dim background puts the polaroid, a photo and the album away", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const errors = await openPlaza(page);
+  /** A spot on the dim background, left of a card at its middle. */
+  const beside = (card: string) =>
+    page.evaluate((card) => {
+      const r = document.querySelector(card)!.getBoundingClientRect(),
+        x = r.left - 40,
+        y = r.top + r.height / 2;
+      return { x, y, hit: document.elementFromPoint(x, y)?.id };
+    }, card);
+  const polaroid = await takePhoto(page);
+  const out = await beside("#pz-photo .polaroid");
+  expect(out.hit).toBe("pz-photo");
+  // A drag from the photo out to the background keeps it.
+  const print = await polaroid.locator("img").boundingBox();
+  await page.mouse.move(print!.x + 40, print!.y + 40);
+  await page.mouse.down();
+  await page.mouse.move(out.x, out.y, { steps: 4 });
+  await page.mouse.up();
+  await polaroid.locator("p").click();
+  await expect(polaroid).toBeVisible();
+  // Keep it in the album for the next part, then a tap beside it.
+  await polaroid.locator('[data-ph="album"]').click();
+  await expect(polaroid).toBeHidden();
+  await takePhoto(page);
+  await page.mouse.click(out.x, out.y);
+  await expect(page.locator("#pz-photo")).toBeHidden();
+
+  // The album: a photo goes back to the grid, the grid out of the album.
+  await page.click("#pz-album-btn");
+  await expect(page.locator("#pz-album")).toBeVisible();
+  await page.locator("#pz-album-grid button.slot").first().click();
+  const view = page.locator("#pz-album-view");
+  await expect(view).toBeVisible();
+  await settle(page, "#pz-album");
+  const photoOut = await beside("#pz-album-view .polaroid");
+  expect(["pz-album", "pz-album-view"]).toContain(photoOut.hit);
+  await page.mouse.click(photoOut.x, photoOut.y);
+  await expect(view).toBeHidden();
+  await expect(page.locator("#pz-album-panel")).toBeVisible();
+  const gridOut = await beside("#pz-album-panel");
+  expect(gridOut.hit).toBe("pz-album");
+  // A tap in the album itself keeps it.
+  await page.locator(".pz-album-note").click();
+  await expect(page.locator("#pz-album")).toBeVisible();
+  await page.mouse.click(gridOut.x, gridOut.y);
+  await expect(page.locator("#pz-album")).toBeHidden();
+  expect(errors).toEqual([]);
+});

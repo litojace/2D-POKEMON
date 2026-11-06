@@ -8,7 +8,8 @@
  *
  *   --players <n>    4 (default) or 3; 2 with --mode duel
  *   --mode <m>       ffa (default) or duel (same numbers in duels, to compare)
- *   --factors <f>    FFA factors JSON to measure (default: FFA_TUNING as shipped)
+ *   --factors <f>    FFA factors JSON to measure (default: FFA_TUNING, or
+ *                    FFA_THREE_TUNING with three players, as shipped)
  *   --seed <s>       FFA_SEED for the line-ups (default 4242)
  *   --shards <n>     parallel processes per difficulty (default 4)
  *   --out <dir>      where shard files and the summary go (default balance-out/ffa-measure)
@@ -20,6 +21,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   CHARACTERS,
+  FFA_THREE_TUNING,
   FFA_TUNING,
   FIGHTER_IDS,
   type CharacterId,
@@ -48,7 +50,12 @@ if (!factorsFile) {
   writeFileSync(
     factorsFile,
     JSON.stringify(
-      Object.fromEntries(FIGHTER_IDS.map((id) => [id, FFA_TUNING[id] ?? 1])),
+      Object.fromEntries(
+        FIGHTER_IDS.map((id) => [
+          id,
+          (players < 4 ? FFA_THREE_TUNING : FFA_TUNING)[id] ?? 1,
+        ]),
+      ),
     ),
   );
 }

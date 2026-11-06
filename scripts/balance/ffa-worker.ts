@@ -16,6 +16,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import {
   CHARACTERS,
+  FFA_THREE_TUNING,
   FFA_TUNING,
   FIGHTER_IDS,
   RULES,
@@ -35,7 +36,9 @@ const size = +(players ?? 4);
 const matchMode = (mode ?? "ffa") as MatchMode;
 const factors: Record<string, number> =
   factorsFile === "-" ? {} : JSON.parse(readFileSync(factorsFile, "utf8"));
-for (const id of FIGHTER_IDS) FFA_TUNING[id] = factors[id] ?? 1;
+// The factors are the table for this size: FFA_THREE_TUNING with three.
+const table = size < 4 ? FFA_THREE_TUNING : FFA_TUNING;
+for (const id of FIGHTER_IDS) table[id] = factors[id] ?? 1;
 // BOT_OVERRIDE (JSON, as in round-robin.ts) changes bot profiles for this run.
 for (const [d, o] of Object.entries(
   JSON.parse(process.env.BOT_OVERRIDE ?? "{}") as Record<string, object>,
