@@ -1260,6 +1260,12 @@ function dressLayers(
 ) {
   // The champion's own pieces a Mythical swaps for its armour.
   for (const part of art.replaces ?? []) layers[part] = "";
+  // A skin's re-forged weapon: Astrabun's mallet handle and head.
+  if (art.weapon)
+    for (const part of ["armR", "armL"] as const)
+      layers[part] = layers[part]
+        .replaceAll('fill="#b37a45"', `fill="${art.weapon.handle}"`)
+        .replaceAll('fill="#d29a5c"', `fill="${art.weapon.head}"`);
   if (art.pattern && !flat) {
     const { kind, color, color2, opacity = 0.6, parts } = art.pattern;
     const wallpaper = patternSvg(kind, color, color2, look.skin);

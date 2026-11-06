@@ -138,6 +138,11 @@ test("Bistro staff: hire a cook who cooks alone, a report after time away, and t
   await B(page, "srv.S.level = 2; srv.S.coins = 900; return b.load()");
   await page.click('.bs-rail [data-sheet="staff"]');
   await page.click('#bs-sheet [data-tab="hire"]');
+  // At level 2 the cook is the role open to hire.
+  await expect(page.locator('#bs-sheet [data-role="cook"]')).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
   await page.locator('#bs-sheet [data-hire^="cook:"]').first().click();
   await expect(page.locator("#bs-sheet .role.cook")).toHaveCount(1);
   await flush(page);
@@ -199,6 +204,128 @@ test("Bistro friends: visit a friend's bistro, eat there and like it", async ({
   await page.click('#bs-visit [data-v="home"]');
   await expect(page.locator("#bs-visit")).toBeHidden();
   expect(await B(page, "return b.state().floor")).toBe("checker");
+  expect(errors).toEqual([]);
+});
+
+test("Bistro: popularity sets the pace, a full room queues at the door, and Decorate grades the plan", async ({
+  page,
+}, info) => {
+  const errors = await openBistro(page);
+  // Rating 3 (18) + charm 8 (2.7) + 2 likes this week (1) = 21.7.
+  await expect(page.locator("#bs-chips .pop .pop-ring")).toHaveText("22");
+  await expect(page.locator("#bs-chips .pop")).toContainText("Busy Bistro");
+  await expect(page.locator("#bs-chips .lay")).toContainText("Grade B");
+  await page.click("#bs-chips .pop");
+  // (Guests keep coming meanwhile, and happy ones raise it.)
+  await expect(page.locator("#bs-sheet h2")).toHaveText(
+    /^Popularity 2\d · Busy Bistro$/,
+  );
+  await expect(page.locator("#bs-sheet .bs-pop-row")).toHaveCount(4);
+  await expect(page.locator("#bs-sheet .bs-pop-fx")).toContainText(
+    "can wait at the door",
+  );
+  await snap(page, info, "bistro-popularity");
+  await page.click("#bs-sheet [data-close]");
+  // Plenty of food, and more guests than the six seats.
+  await B(
+    page,
+    "srv.S.counter = [{ dish: 'goicuon', servings: 40, perfect: false }, null, null, null]; return b.load()",
+  );
+  await B(page, "for (let i = 0; i < 12; i++) { b.spawn(); b.advance(0.6); }");
+  const states = (await B(
+    page,
+    "return b.customers().map((c) => c.state)",
+  )) as string[];
+  expect(states.filter((x) => x === "queue")).toHaveLength(3);
+  expect(
+    states.filter((x) => ["enter", "seated", "eating"].includes(x)),
+  ).toHaveLength(6);
+  await B(page, "b.advance(3)");
+  await snap(page, info, "bistro-queue");
+  // A seat comes free: the head of the queue takes it.
+  const head = (await B(
+    page,
+    "return b.customers().find((c) => c.state === 'queue').id",
+  )) as number;
+  await B(
+    page,
+    "const c = b.customers().find((c) => c.state === 'seated' || c.state === 'eating'); b.sync().release(c.id); c.state = 'leave'; c.alpha = 0; b.advance(0.2)",
+  );
+  expect(
+    await B(page, `return b.customers().find((c) => c.id === ${head}).state`),
+  ).not.toBe("queue");
+  expect(
+    await B(
+      page,
+      "return b.customers().filter((c) => c.state === 'queue').length",
+    ),
+  ).toBe(2);
+  // Decorate: the plan's grade, each seat tinted by the waiter's walk.
+  await page.click('.bs-rail [data-act="decor"]');
+  await expect(page.locator("#bs-grade")).toContainText("Floor plan B");
+  await snap(page, info, "bistro-plan-heat");
+  await page.click('#bs-edit [data-ed="done"]');
+  expect(errors).toEqual([]);
+});
+
+test("Bistro staff: tired staff are fed, litter is swept, a janitor and a friend join the team", async ({
+  page,
+}, info) => {
+  const errors = await openBistro(page);
+  await B(
+    page,
+    `const S = srv.S; S.level = 9; S.coins = 9000; S.trash = 2;
+     S.staff[0].energy = 15;
+     S.counter = [{ dish: 'pho', servings: 10, perfect: false }, null, null, null];
+     srv.friends = [{ id: '00000000-0000-4000-8000-000000000672', name: 'Ben', fighter: 'tidefin', level: 4, rating: 3.6,
+       popularity: 31, likes: 7, served: 120, servings: 3, dined: false, liked: false }];
+     return b.load()`,
+  );
+  // The waiter is exhausted, and the server's litter is on the floor.
+  await expect.poll(() => B(page, "return b.litter().length")).toBe(2);
+  await page.click('.bs-rail [data-sheet="staff"]');
+  await expect(page.locator("#bs-sheet .bs-staff .en")).toContainText(
+    "Exhausted",
+  );
+  await snap(page, info, "bistro-staff-tired");
+  await page.click("#bs-sheet [data-feed]");
+  await expect(page.locator("#bs-sheet .bs-staff .en")).toContainText("Fresh");
+  await expect(page.locator("#bs-sheet .bs-staff .acts")).toContainText("Ate");
+  await flush(page);
+  expect(await B(page, "return srv.S.counter[0].servings")).toBe(9);
+  // Sweep a bit of litter by tapping it.
+  await page.click("#bs-sheet [data-close]");
+  const at = (await B(
+    page,
+    "const l = b.litter()[0]; return b.screen(l.x, l.y)",
+  )) as Pt;
+  await page.mouse.click(at.x, at.y);
+  await expect.poll(() => B(page, "return b.litter().length")).toBe(1);
+  await flush(page);
+  expect(await B(page, "return srv.S.trash")).toBe(1);
+  // Hire a janitor and a friend.
+  await page.click('.bs-rail [data-sheet="staff"]');
+  await page.click('#bs-sheet [data-tab="hire"]');
+  await page.click('#bs-sheet [data-role="janitor"]');
+  await page.locator("#bs-sheet [data-hire]").first().click();
+  await page.click('#bs-sheet [data-tab="hire"]');
+  await page.click('#bs-sheet [data-role="waiter"]');
+  await expect(page.locator("#bs-sheet .bs-item.friend")).toContainText("Ben");
+  await page.click("#bs-sheet [data-hirefriend]");
+  await flush(page);
+  const staff = (await B(
+    page,
+    "return srv.S.staff.map((x) => x.role + ':' + (x.friend ? x.friend.name : x.char))",
+  )) as string[];
+  expect(staff).toContain("waiter:Ben");
+  expect(staff.some((x) => x.startsWith("janitor:"))).toBe(true);
+  await page.click('#bs-sheet [data-tab="team"]');
+  await snap(page, info, "bistro-staff-team");
+  await page.click("#bs-sheet [data-close]");
+  // The janitor sweeps the litter up.
+  await B(page, "b.advance(20)");
+  await flush(page);
+  expect(await B(page, "return srv.S.trash")).toBe(0);
   expect(errors).toEqual([]);
 });
 
@@ -280,9 +407,20 @@ test("Bistro: switching tabs keeps the guests as they were, and a reload brings 
   await expect(page.locator(".bistro-layer")).toBeHidden();
   await page.click('#hub-scenes [data-hub-scene="bistro"]');
   await expect(page.locator(".bistro-layer")).toBeVisible();
-  expect(
-    await B(page, "return b.customers().map((c) => c.id + ':' + c.state)"),
-  ).toEqual(ids);
+  // (The scene keeps running up to the switch: someone walking in may
+  // have sat down meanwhile, but nobody starts over or disappears.)
+  const order = ["queue", "enter", "seated", "eating", "leave"];
+  const after = (await B(
+    page,
+    "return b.customers().map((c) => c.id + ':' + c.state)",
+  )) as string[];
+  const split = (x: string) => x.split(":") as [string, string];
+  for (const was of ids.filter((x) => !x.endsWith(":leave"))) {
+    const [id, state] = split(was);
+    const now = after.map(split).find(([i]) => i === id);
+    expect(now, `guest ${id}`).toBeTruthy();
+    expect(order.indexOf(now![1])).toBeGreaterThanOrEqual(order.indexOf(state));
+  }
   await expect(page.locator("body")).toHaveClass(/hub-screen/);
   // Reload the page: the bistro draws at once with its guests.
   const seated = (await B(

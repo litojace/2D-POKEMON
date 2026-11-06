@@ -62,6 +62,9 @@ it("passes the bistro, its actions and friends' visits to the database", async (
     { a: "chef", id: "voltkit" },
     { a: "trade", lots: 2 },
     { a: "expand" },
+    { a: "hire", role: "janitor", friend: friend },
+    { a: "feed", id: 2 },
+    { a: "sweep" },
   ];
   expect((await send(token, "/api/bistro")).status).toBe(200);
   expect(
@@ -99,6 +102,7 @@ it("refuses malformed requests before the database", async () => {
     [{ a: "cook", stove: 9, dish: "pho" }],
     [{ a: "serve", dish: "pho", combo: 6 }],
     [{ a: "hire", role: "boss", char: "pyranda" }],
+    [{ a: "hire", role: "janitor", friend: "not-a-uuid" }],
     [{ a: "hire", role: "cook", char: "nobody" }],
     [{ a: "trade", lots: 99 }],
     [{ a: "place", kind: "plant", x: 17, y: 3, rot: 0 }],

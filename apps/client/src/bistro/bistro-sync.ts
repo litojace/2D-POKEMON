@@ -15,7 +15,9 @@ import {
   buyShift,
   buyStove,
   buyStyle,
+  feedStaff,
   hire,
+  sweepTrash,
   payment,
   plate,
   putAway,
@@ -65,7 +67,9 @@ export type BistroAction =
   | { a: "kitchen" }
   | { a: "shift" }
   | { a: "expand" }
-  | { a: "hire"; role: Role; char: string }
+  | { a: "hire"; role: Role; char: string; friend?: string }
+  | { a: "feed"; id: number }
+  | { a: "sweep" }
   | { a: "train"; id: number }
   | { a: "cookdish"; id: number; dish: DishId }
   | { a: "chef"; id: string }
@@ -81,6 +85,8 @@ export interface BistroExtras {
   special: DishId;
   chef: string;
   likes: number;
+  /** Likes this week (popularity). */
+  likesWeek: number;
   leaves: number;
   tradedToday: number;
   friendGuests: FriendGuest[];
@@ -99,6 +105,14 @@ export interface BistroApi {
 export interface ActResult {
   ok: boolean;
   error?: string;
+}
+
+/** Friends' names, for a friend hired before the server answers. */
+export const friendNames = new Map<string, string>();
+/** What a friend's bistros paid you today (migration 073). */
+export interface Payday {
+  xp: number;
+  bistros: number;
 }
 
 /** Run one action on the local copy (the server runs the same rules). */
@@ -159,7 +173,20 @@ export function applyLocal(
     case "expand":
       return r(buyExpand(s));
     case "hire":
-      return r(hire(s, x.role, x.char));
+      return r(
+        hire(
+          s,
+          x.role,
+          x.char,
+          x.friend
+            ? { id: x.friend, name: friendNames.get(x.friend) ?? "Friend" }
+            : undefined,
+        ),
+      );
+    case "feed":
+      return r(feedStaff(s, x.id, now));
+    case "sweep":
+      return r(sweepTrash(s));
     case "train":
       return r(upgradeStaff(s, x.id));
     case "cookdish":
@@ -197,6 +224,7 @@ export function readServer(raw: unknown): {
   extras: BistroExtras;
   now: number;
   away: AwayReport | null;
+  payday: Payday | null;
 } {
   const r = (raw ?? {}) as Record<string, unknown>;
   const state = sanitize(r);
@@ -224,6 +252,7 @@ export function readServer(raw: unknown): {
       special: isDish(r.special) ? r.special : "goicuon",
       chef: typeof r.chef === "string" ? r.chef : "voltkit",
       likes: num(r.likes),
+      likesWeek: num(r.likesWeek),
       leaves: num(r.leaves),
       tradedToday: num(r.tradedToday),
       friendGuests: guests.filter((g) => g && isDish(g.dish)),
@@ -231,6 +260,13 @@ export function readServer(raw: unknown): {
     },
     now: num(r.now, Date.now()),
     away,
+    payday:
+      r.payday && typeof r.payday === "object"
+        ? {
+            xp: num((r.payday as Record<string, unknown>).xp),
+            bistros: num((r.payday as Record<string, unknown>).bistros),
+          }
+        : null,
   };
 }
 
@@ -282,6 +318,7 @@ export class BistroSync {
       onAdopt(info: {
         away: AwayReport | null;
         errors: { action: BistroAction; error: string }[];
+        payday?: Payday | null;
       }): void;
       onFail(error: unknown): void;
     },
@@ -292,6 +329,7 @@ export class BistroSync {
       special: "goicuon",
       chef: "voltkit",
       likes: 0,
+      likesWeek: 0,
       leaves: 0,
       tradedToday: 0,
       friendGuests: [],
@@ -475,7 +513,7 @@ export class BistroSync {
     for (const [guest, dish] of [...this.reserved])
       if (takeServing(this.S, dish) < 0) this.reserved.delete(guest);
     this.ready = true;
-    this.hooks.onAdopt({ away: got.away, errors });
+    this.hooks.onAdopt({ away: got.away, errors, payday: got.payday });
   }
   /** Keep "last seen" fresh while the bistro is open. */
   ping() {

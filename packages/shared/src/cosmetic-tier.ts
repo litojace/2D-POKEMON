@@ -1,4 +1,4 @@
-import { JOURNEY_ITEM_BY_ID, itemLevel } from "./journey.js";
+import { COLLECTION_FRAMES, JOURNEY_ITEM_BY_ID, itemLevel } from "./journey.js";
 import { RAID_REWARDS } from "./raid.js";
 import { LOOK_ITEM_BY_ID, type Rarity } from "./shop.js";
 
@@ -69,6 +69,9 @@ export function cosmeticTier(id: string | null | undefined, stars = 0): Cosmetic
         return "epic";
     }
   }
+  // Collection frames take their set's rarity: Void Knights are Mythical.
+  const setFrame = COLLECTION_FRAMES.find((f) => f.id === id);
+  if (setFrame) return setFrame.collection === "void" ? "mythic" : "epic";
   const journey = JOURNEY_ITEM_BY_ID[id];
   if (journey) {
     const level = itemLevel(id);

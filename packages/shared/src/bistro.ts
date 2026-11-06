@@ -187,6 +187,7 @@ export type ItemKind =
   | "jukebox"
   | "aquarium"
   | "fountain"
+  | "corner"
   | "rug";
 export interface ItemDef {
   kind: ItemKind;
@@ -286,6 +287,15 @@ export const ITEMS: readonly ItemDef[] = [
     charm: 10,
     group: "decor",
   },
+  {
+    // Staff rest here: each of up to two takes a quarter off the drain.
+    kind: "corner",
+    name: "Staff Corner",
+    price: 600,
+    level: 5,
+    charm: 1,
+    group: "furniture",
+  },
 ];
 export const ITEM_BY_KIND: Record<ItemKind, ItemDef> = Object.fromEntries(
   ITEMS.map((i) => [i.kind, i]),
@@ -311,15 +321,22 @@ export const STOVE_PRICES = [0, 0, 200, 450] as const;
 
 /* Staff: cooks run a stove on their own (and keep cooking while you are
    away); waiters serve and clear. Each has a level that makes them faster. */
-export type Role = "cook" | "waiter";
+export type Role = "cook" | "waiter" | "janitor";
+export const ROLES: readonly Role[] = ["cook", "waiter", "janitor"];
 export interface Staff {
   id: number;
-  /** A roster creature id. */
+  /** A roster creature id (a friend's Lobby fighter for a friend). */
   char: string;
   role: Role;
   level: number;
   /** What a cook makes (cooks only). */
   dish: DishId;
+  /** Energy as of the bistro's lastSeen (migration 073); full when left out. */
+  energy?: number;
+  /** When they last had a staff meal (ms), for the cooldown. */
+  fedAt?: number;
+  /** A friend working here (migration 073): their account and name. */
+  friend?: { id: string; name: string };
 }
 export const STAFF_MAX_LEVEL = 5;
 /** Hiring the n-th cook or waiter: the bistro level it opens at, and its price. */
@@ -330,15 +347,65 @@ export const HIRE_STEPS: Record<
   cook: [
     { level: 2, price: 250 },
     { level: 5, price: 900 },
+    { level: 9, price: 2000 },
   ],
   waiter: [
     { level: 1, price: 0 },
     { level: 3, price: 400 },
     { level: 6, price: 1000 },
   ],
+  janitor: [
+    { level: 4, price: 300 },
+    { level: 8, price: 900 },
+  ],
 };
 /** Each staff level after the first: 12% quicker. */
 export const staffSpeed = (level: number) => 1 + 0.12 * (level - 1);
+
+/* Energy (docs/bistro-gdd.md §1.4): one bar for hungry and tired. Work
+   drains it by the hour (less with Staff Corners); a tired worker is
+   slower, never stopped, so the bistro still runs while you are away. A
+   staff meal (a serving from the counter) gives some back; so does the
+   rest after a shift, and a friend's meal here fills their own bar. */
+export const ENERGY_DRAIN: Record<Role, number> = {
+  cook: 14,
+  waiter: 12,
+  janitor: 10,
+};
+/** Energy back an hour after the shift is over. */
+export const ENERGY_REST = 15;
+export const FEED_ENERGY = 50;
+export const FEED_COOLDOWN_MS = 10 * 60_000;
+/** Friends work 10% faster. */
+export const FRIEND_BONUS = 1.1;
+export const energyMax = (level: number) => 100 + 10 * (level - 1);
+export const mood = (energy: number) =>
+  energy >= 50 ? 1 : energy >= 20 ? 0.85 : 0.6;
+export const moodName = (energy: number) =>
+  energy >= 50 ? "Fresh" : energy >= 20 ? "Hungry" : "Exhausted";
+/** Staff Corners that count (each takes a quarter off the drain). */
+export const cornerCount = (items: readonly Item[]) =>
+  Math.min(2, items.filter((i) => i.kind === "corner").length);
+export const drainPerHour = (role: Role, corners: number) =>
+  ENERGY_DRAIN[role] * (1 - 0.25 * corners);
+/** Energy after `ms` of work from `e`. */
+export const afterWork = (st: Staff, e: number, ms: number, corners: number) =>
+  Math.max(0, e - (drainPerHour(st.role, corners) * ms) / 3_600_000);
+/** Energy after `ms` of rest from `e`. */
+export const afterRest = (st: Staff, e: number, ms: number) =>
+  Math.min(energyMax(st.level), e + (ENERGY_REST * ms) / 3_600_000);
+export const energyOf = (st: Staff) => st.energy ?? energyMax(st.level);
+/** Energy now, the bistro open since `s.lastSeen` (what the server works out too). */
+export const energyNow = (s: BistroState, st: Staff, now: number) =>
+  afterWork(
+    st,
+    energyOf(st),
+    Math.max(0, now - (s.lastSeen || now)),
+    cornerCount(s.items),
+  );
+/** How fast someone works with this much energy (1 is a fresh level-1 creature). */
+export const workSpeed = (st: Staff, energy: number) =>
+  staffSpeed(st.level) * (st.friend ? FRIEND_BONUS : 1) * mood(energy);
 export const staffUpgradePrice = (level: number) => 150 * level * level;
 /** Kitchen upgrades: every dish cooks 10% faster per level. */
 export const KITCHEN_PRICES = [300, 700, 1400] as const;
@@ -398,6 +465,8 @@ export interface BistroState {
   floors: FloorId[];
   walls: WallId[];
   nextId: number;
+  /** Litter left on the floor while you were away (migration 073), 0..10. */
+  trash: number;
 }
 
 export function xpToNext(level: number): number {
@@ -460,6 +529,7 @@ export function defaultState(): BistroState {
     floors: ["checker"],
     walls: ["butter"],
     nextId: id,
+    trash: 0,
   };
 }
 
@@ -482,24 +552,48 @@ export function sanitize(raw: unknown): BistroState {
   s.sizeLv = Math.floor(num(r.sizeLv, 0, 0, MAX_SIZE_LV));
   s.shiftLv = Math.floor(num(r.shiftLv, 0, 0, SHIFT_PRICES.length));
   s.lastSeen = num(r.lastSeen, 0);
+  s.trash = Math.floor(num(r.trash, 0, 0, TRASH_MAX));
   if (Array.isArray(r.staff)) {
     const staff: Staff[] = [];
     for (const st of r.staff as Record<string, unknown>[]) {
-      if (!st || (st.role !== "cook" && st.role !== "waiter")) continue;
+      if (!st || !ROLES.includes(st.role as Role)) continue;
+      const role = st.role as Role;
       if (typeof st.char !== "string" || !Object.hasOwn(CHARACTERS, st.char))
         continue;
       if (
-        staff.filter((x) => x.role === st.role).length >=
-        HIRE_STEPS[st.role].length
+        staff.filter((x) => x.role === role).length >= HIRE_STEPS[role].length
       )
         continue;
-      if (staff.some((x) => x.char === st.char)) continue;
+      const fr = st.friend as { id?: unknown; name?: unknown } | undefined;
+      const friend =
+        fr && typeof fr.id === "string" && typeof fr.name === "string"
+          ? { id: fr.id, name: fr.name }
+          : undefined;
+      if (
+        friend
+          ? staff.some((x) => x.friend?.id === friend.id)
+          : staff.some((x) => !x.friend && x.char === st.char)
+      )
+        continue;
+      const level = Math.floor(num(st.level, 1, 1, STAFF_MAX_LEVEL));
       staff.push({
         id: staff.length + 1,
         char: st.char,
-        role: st.role,
-        level: Math.floor(num(st.level, 1, 1, STAFF_MAX_LEVEL)),
+        role,
+        level,
         dish: isDish(st.dish) ? st.dish : "goicuon",
+        ...(typeof st.energy === "number" || typeof st.energy === "string"
+          ? {
+              energy: num(
+                Number(st.energy),
+                energyMax(level),
+                0,
+                energyMax(level),
+              ),
+            }
+          : {}),
+        ...(st.fedAt ? { fedAt: num(Number(st.fedAt), 0) } : {}),
+        ...(friend ? { friend } : {}),
       });
     }
     if (!staff.some((x) => x.role === "waiter"))
@@ -703,10 +797,16 @@ export function stoveMs(st: Stove): number {
       : 1;
 }
 /** How long a dish takes with this kitchen (and this cook's level, if a cook makes it). */
-export function cookMs(s: BistroState, dish: DishId, cookLevel = 1): number {
+/** `pace` is the cook's energy and friend bonus (1 for you, fresh). */
+export function cookMs(
+  s: BistroState,
+  dish: DishId,
+  cookLevel = 1,
+  pace = 1,
+): number {
   return Math.round(
     (DISH_BY_ID[dish].seconds * 1000 * (1 - 0.1 * s.kitchenLv)) /
-      staffSpeed(cookLevel),
+      (staffSpeed(cookLevel) * pace),
   );
 }
 export function inPerfectWindow(st: Stove, now: number): boolean {
@@ -722,6 +822,7 @@ export function startCooking(
   dish: DishId,
   now: number,
   cookLevel = 1,
+  pace = 1,
 ): Result {
   const st = s.stoves[stove];
   if (!st) return fail("No stove there.");
@@ -735,7 +836,7 @@ export function startCooking(
     dish,
     start: now,
     perfect: false,
-    dur: cookMs(s, dish, cookLevel),
+    dur: cookMs(s, dish, cookLevel, pace),
   };
   return { ok: true };
 }
@@ -946,6 +1047,121 @@ export function approach(
   return best;
 }
 
+/* ───────────── the floor plan's walks ─────────────
+   Steps from the door and from the counter's pickup spots to every tile
+   (breadth-first, -1 where you can't get to). A seat's walks: the guest's
+   from the door to the chair, the waiter's there and back from the counter
+   to a free tile beside the chair or its table. They decide which seats
+   guests pick, the waiters' jobs, the plan's grade, and how fast the staff
+   serve while you are away. */
+export const WAITER_TPS = 2.8;
+export const GUEST_TPS = 2;
+/** A waiter's time at the counter and at the table, a meal (seconds). */
+export const SERVE_HANDLING = 5;
+/** Clearing a table, when the waiters do it themselves (seconds). */
+export const CLEAR_SECONDS = 1.2;
+/** A seat's turn, besides the walk in and out: ordering, waiting, eating, clearing. */
+export const SEAT_BASE = 20;
+export function distField(
+  blocked: boolean[][],
+  sources: readonly { x: number; y: number }[],
+): number[][] {
+  const z = sizeOfGrid(blocked);
+  const d = Array.from({ length: z.cols }, () =>
+    Array<number>(z.rows).fill(-1),
+  );
+  const q: [number, number][] = [];
+  for (const p of sources)
+    if (inGrid(p.x, p.y, z) && !blocked[p.x][p.y] && d[p.x][p.y] < 0) {
+      d[p.x][p.y] = 0;
+      q.push([p.x, p.y]);
+    }
+  for (let h = 0; h < q.length; h++) {
+    const [x, y] = q[h];
+    for (const [dx, dy] of N4) {
+      const nx = x + dx,
+        ny = y + dy;
+      if (!inGrid(nx, ny, z) || blocked[nx][ny] || d[nx][ny] >= 0) continue;
+      d[nx][ny] = d[x][y] + 1;
+      q.push([nx, ny]);
+    }
+  }
+  return d;
+}
+export interface SeatWalk {
+  chair: number;
+  table: number;
+  /** Steps from the door to the chair. */
+  guest: number;
+  /** Steps from the counter to the seat and back. */
+  waiter: number;
+}
+/** The nearest of a field's values on the free tiles beside `targets` (-1 if none). */
+function nearBy(
+  d: number[][],
+  blocked: boolean[][],
+  targets: readonly { x: number; y: number }[],
+): number {
+  const z = sizeOfGrid(blocked);
+  let best = -1;
+  for (const t of targets)
+    for (const [dx, dy] of N4) {
+      const nx = t.x + dx,
+        ny = t.y + dy;
+      if (!inGrid(nx, ny, z) || blocked[nx][ny] || d[nx][ny] < 0) continue;
+      if (best < 0 || d[nx][ny] < best) best = d[nx][ny];
+    }
+  return best;
+}
+/** Every seat you can get to, with its walks (in the order of `seats`). */
+export function seatWalks(items: readonly Item[], z: RoomSize): SeatWalk[] {
+  const b = blockedGrid(items, -1, z);
+  const fromDoor = distField(b, [DOOR]);
+  const fromCounter = distField(
+    b,
+    Array.from({ length: COUNTER_SLOTS }, (_, i) => pickupTile(i)),
+  );
+  const out: SeatWalk[] = [];
+  for (const st of seats(items)) {
+    const g = nearBy(fromDoor, b, [st.chair]);
+    const w = nearBy(fromCounter, b, [st.chair, st.table]);
+    if (g < 0 || w < 0) continue;
+    out.push({
+      chair: st.chair.id,
+      table: st.table.id,
+      guest: g + 1,
+      waiter: 2 * w,
+    });
+  }
+  return out;
+}
+export type LayoutGrade = "A" | "B" | "C" | "D" | "E";
+export interface LayoutStats {
+  seats: SeatWalk[];
+  /** A waiter's average time a meal (seconds), walking and handling. */
+  tMeal: number;
+  grade: LayoutGrade | null;
+}
+/** The grade's upper bounds on tMeal (seconds): A below 7, … E from 10.5. */
+export const LAYOUT_GRADES: readonly [LayoutGrade, number][] = [
+  ["A", 7],
+  ["B", 8],
+  ["C", 9],
+  ["D", 10.5],
+];
+export function layoutStats(items: readonly Item[], z: RoomSize): LayoutStats {
+  const sw = seatWalks(items, z);
+  if (!sw.length) return { seats: sw, tMeal: 0, grade: null };
+  let sum = 0;
+  for (const x of sw) sum += x.waiter;
+  const tMeal = sum / sw.length / WAITER_TPS + SERVE_HANDLING;
+  const grade = LAYOUT_GRADES.find(([, t]) => tMeal < t)?.[0] ?? "E";
+  return { seats: sw, tMeal, grade };
+}
+/** A seat's colour on the plan: green, yellow or red by the waiter's walk. */
+export const seatHeat = (waiter: number) =>
+  waiter <= 8 ? "good" : waiter <= 14 ? "fair" : "far";
+
 /** Whether an item can go on (x, y); `ignoreId` is the item being moved. */
 export function canPlace(
   items: readonly Item[],
@@ -1030,15 +1246,73 @@ export function putAway(s: BistroState, id: number): Result {
 export function charm(items: readonly Item[]): number {
   return items.reduce((n, i) => n + ITEM_BY_KIND[i.kind].charm, 0);
 }
-/** Seconds between customers: faster with stars, charm and a rush hour. */
-export function arrivalSeconds(
-  rating: number,
-  charmPts: number,
-  rush: boolean,
-): number {
-  const base = 9 - rating * 0.9 - Math.min(30, charmPts) * 0.08;
-  return Math.max(2.2, base) * (rush ? 0.45 : 1);
+/* ───────────── popularity (0..50) ─────────────
+   One number for how wanted the bistro is: how guests left (the rating),
+   the decor (charm), the menu (gourmet), friends (likes, meals) and the
+   mess. It sets how often guests come, how long a queue forms at the door
+   and how many are VIPs. The database works it out the same way. */
+export const POP_MAX = 50;
+export interface PopInput {
+  /** Likes this week (Monday on, Pacific). */
+  likesWeek?: number;
+  /** Friends who ate here today. */
+  dinedToday?: number;
+  /** Gourmet points (dish levels). */
+  gourmet?: number;
+  /** Litter on the floor. */
+  trash?: number;
+  /** Tables left dirty for more than DIRTY_SECONDS. */
+  dirty?: number;
 }
+export interface Popularity {
+  service: number;
+  decor: number;
+  gourmet: number;
+  social: number;
+  mess: number;
+  /** 0..50, not rounded (the rules use it as it is). */
+  total: number;
+}
+export const DIRTY_SECONDS = 30;
+export function popularity(
+  s: Pick<BistroState, "rating" | "items">,
+  o: PopInput = {},
+): Popularity {
+  const service = s.rating * 6;
+  const decor = Math.min(10, charm(s.items) / 3);
+  const gourmet = Math.min(6, (o.gourmet ?? 0) / 40);
+  const social = Math.min(
+    4,
+    0.5 * (o.likesWeek ?? 0) + 0.5 * (o.dinedToday ?? 0),
+  );
+  const mess = Math.min(8, (o.trash ?? 0) + 0.5 * (o.dirty ?? 0));
+  const total = Math.min(
+    POP_MAX,
+    Math.max(0, service + decor + gourmet + social - mess),
+  );
+  return { service, decor, gourmet, social, mess, total };
+}
+export const POP_TIERS = [
+  { from: 0, name: "Quiet Corner" },
+  { from: 10, name: "Local Favorite" },
+  { from: 20, name: "Busy Bistro" },
+  { from: 30, name: "Talk of the Town" },
+  { from: 40, name: "Legendary Bistro" },
+] as const;
+export const popTier = (pop: number) =>
+  [...POP_TIERS].reverse().find((t) => Math.round(pop) >= t.from)!.name;
+/** Seconds between guests: 9 s at no popularity, 2.2 s at 50; a rush hour more than doubles it. */
+export function arrivalSeconds(pop: number, rush: boolean): number {
+  return Math.max(2.2, 9 - 0.136 * pop) * (rush ? 0.45 : 1);
+}
+/** Guests who wait at the door for a seat. */
+export const queueMax = (pop: number) =>
+  Math.min(6, 1 + Math.floor(Math.max(0, pop) / 10));
+/** How long they wait there before walking off (seconds). */
+export const queuePatience = (pop: number) => 15 + 0.5 * pop;
+/** The share of guests who are VIPs. */
+export const vipShare = (pop: number, rush: boolean) =>
+  (0.06 + 0.0016 * Math.min(POP_MAX, Math.max(0, pop))) * (rush ? 1.3 : 1);
 /** How long a customer waits for food before leaving (seconds). */
 export function patienceSeconds(charmPts: number, vip: boolean): number {
   return (32 + Math.min(40, charmPts) * 0.6) * (vip ? 0.7 : 1);
@@ -1084,12 +1358,22 @@ export const staffOf = (s: BistroState, role: Role) =>
 export function nextHire(s: BistroState, role: Role) {
   return HIRE_STEPS[role][staffOf(s, role).length] ?? null;
 }
-export function hire(s: BistroState, role: Role, char: string): Result {
+export function hire(
+  s: BistroState,
+  role: Role,
+  char: string,
+  /** A friend (their Lobby fighter is `char`); the server checks the friendship. */
+  friend?: { id: string; name: string },
+): Result {
   const step = nextHire(s, role);
   if (!step) return fail(`You have every ${role} you can hire.`);
   if (s.level < step.level) return fail(`Hire at level ${step.level}.`);
   if (!Object.hasOwn(CHARACTERS, char)) return fail("Unknown creature.");
-  if (s.staff.some((x) => x.char === char))
+  if (
+    friend
+      ? s.staff.some((x) => x.friend?.id === friend.id)
+      : s.staff.some((x) => !x.friend && x.char === char)
+  )
     return fail("Already on your team.");
   if (s.coins < step.price) return fail(`You need ${step.price} coins.`);
   s.coins -= step.price;
@@ -1100,7 +1384,52 @@ export function hire(s: BistroState, role: Role, char: string): Result {
     role,
     level: 1,
     dish: role === "cook" ? best : "goicuon",
+    ...(friend ? { friend } : {}),
   });
+  return { ok: true };
+}
+/** The counter slot a meal comes from: the most servings, then the first. */
+export function fullestSlot(s: BistroState): number {
+  let slot = -1;
+  s.counter.forEach((c, i) => {
+    if (
+      c &&
+      c.servings > 0 &&
+      (slot < 0 || c.servings > s.counter[slot]!.servings)
+    )
+      slot = i;
+  });
+  return slot;
+}
+/** A staff meal: a serving off the counter, +50 energy, once in 10 minutes. */
+export function feedStaff(s: BistroState, id: number, now: number): Result {
+  const st = s.staff.find((x) => x.id === id);
+  if (!st) return fail("Not on your team.");
+  if (st.fedAt && now - st.fedAt < FEED_COOLDOWN_MS)
+    return fail("They just ate: try again in a few minutes.");
+  const slot = fullestSlot(s);
+  if (slot < 0) return fail("Nothing on the counter to eat.");
+  takeServing(s, s.counter[slot]!.dish);
+  const target = Math.min(
+    energyMax(st.level),
+    energyNow(s, st, now) + FEED_ENERGY,
+  );
+  // Kept as of lastSeen, like the rest (the server keeps it as of now).
+  st.energy =
+    target +
+    (drainPerHour(st.role, cornerCount(s.items)) *
+      Math.max(0, now - (s.lastSeen || now))) /
+      3_600_000;
+  st.fedAt = now;
+  return { ok: true };
+}
+/** Litter: a guest's chance to drop some, the janitors' pace, the most kept. */
+export const LITTER_RATE = 0.08;
+export const SWEEPS_PER_HOUR = 30;
+export const TRASH_MAX = 10;
+export function sweepTrash(s: BistroState): Result {
+  if (s.trash <= 0) return fail("Nothing to sweep.");
+  s.trash--;
   return { ok: true };
 }
 export function upgradeStaff(s: BistroState, id: number): Result {
@@ -1181,7 +1510,13 @@ export type KitchenEvent =
       cook: Staff;
     };
 /** The cooks' turn: plate what is done, start their dish on an empty stove. */
-export function autoKitchen(s: BistroState, now: number): KitchenEvent[] {
+export function autoKitchen(
+  s: BistroState,
+  now: number,
+  /** A cook's pace (energy, friend): by default as of now with the bistro open. */
+  paceOf: (cook: Staff) => number = (c) =>
+    (c.friend ? FRIEND_BONUS : 1) * mood(energyNow(s, c, now)),
+): KitchenEvent[] {
   const out: KitchenEvent[] = [];
   staffOf(s, "cook").forEach((cook, i) => {
     const idx = cookStove(s, i);
@@ -1211,19 +1546,57 @@ export function autoKitchen(s: BistroState, now: number): KitchenEvent[] {
       ].find(
         (d) => DISH_BY_ID[d].level <= s.level && DISH_BY_ID[d].cost <= s.coins,
       );
-      if (pick && startCooking(s, idx, pick, now, cook.level).ok)
+      if (pick && startCooking(s, idx, pick, now, cook.level, paceOf(cook)).ok)
         out.push({ kind: "start", stove: idx, dish: pick, cook });
     }
   });
   return out;
 }
-/** Guests a second the staff can serve: the arrivals, the seats and the waiters, whichever is fewer. */
-export function serviceRate(s: BistroState): number {
-  const arrivals = 1 / arrivalSeconds(s.rating, charm(s.items), false);
-  const seatRate = seats(s.items).length / 28;
-  const waiterRate =
-    staffOf(s, "waiter").reduce((n, w) => n + staffSpeed(w.level), 0) / 10;
-  return Math.min(arrivals, seatRate, waiterRate);
+/**
+ * Guests a second the staff can serve: the arrivals (popularity), the seats
+ * (each turns over in SEAT_BASE plus the walk in and out) and the waiters
+ * (each meal takes the plan's tMeal plus clearing), whichever is fewer.
+ */
+export interface ServiceParts {
+  arrivals: number;
+  seatRate: number;
+  tMeal: number;
+  seats: number;
+  /** Clearing a table, for waiters with no janitor. */
+  clear: number;
+}
+/** What doesn't change while you are away: the plan, the popularity. */
+export function serviceParts(s: BistroState, pop: PopInput = {}): ServiceParts {
+  const arrivals = 1 / arrivalSeconds(popularity(s, pop).total, false);
+  const lay = layoutStats(s.items, sizeOf(s.sizeLv));
+  let seatRate = 0;
+  for (const x of lay.seats)
+    seatRate += 1 / (SEAT_BASE + (2 * x.guest) / GUEST_TPS);
+  return {
+    arrivals,
+    seatRate,
+    tMeal: lay.tMeal,
+    seats: lay.seats.length,
+    clear: staffOf(s, "janitor").length ? 0 : CLEAR_SECONDS,
+  };
+}
+/** Guests a second, with the waiters as tired as `energyAt` says. */
+export function rateFrom(
+  s: BistroState,
+  p: ServiceParts,
+  energyAt: (st: Staff) => number = energyOf,
+): number {
+  let speed = 0;
+  for (const w of staffOf(s, "waiter")) speed += workSpeed(w, energyAt(w));
+  const waiterRate = p.seats ? speed / (p.tMeal + p.clear) : 0;
+  return Math.min(p.arrivals, p.seatRate, waiterRate);
+}
+export function serviceRate(
+  s: BistroState,
+  pop: PopInput = {},
+  energyAt: (st: Staff) => number = energyOf,
+): number {
+  return rateFrom(s, serviceParts(s, pop), energyAt);
 }
 export interface AwayReport {
   /** Time the staff worked (capped by the shift), ms. */
@@ -1249,6 +1622,8 @@ export function simulateAway(
   to: number,
   /** Today's special (the server's pick); the local one when left out. */
   specialDish?: DishId,
+  /** What else sets the popularity (likes, friends' meals…). */
+  pop: PopInput = {},
 ): AwayReport | null {
   if (!from || to - from < AWAY_MIN_MS) return null;
   const cap = SHIFT_HOURS[s.shiftLv] * 3600_000;
@@ -1263,28 +1638,34 @@ export function simulateAway(
     batches: 0,
     levels: 0,
   };
-  const rate = serviceRate(s) * AWAY_RATE;
+  const parts = serviceParts(s, { ...pop, trash: s.trash });
   const special = specialDish ?? todaySpecial(s.level, new Date(from));
+  // Energy as of `from`, worn down by the work since.
+  const corners = cornerCount(s.items);
+  const e0 = new Map(s.staff.map((st) => [st.id, energyOf(st)]));
+  const eAt = (st: Staff, t: number) =>
+    afterWork(st, e0.get(st.id) ?? energyOf(st), t - from, corners);
   const STEP = 15_000;
   let acc = 0;
+  let dirt = 0;
+  let sweep = 0;
   for (let t = from; t < end; t += STEP) {
-    for (const ev of autoKitchen(s, t)) {
+    const kitchen = autoKitchen(
+      s,
+      t,
+      (c) => (c.friend ? FRIEND_BONUS : 1) * mood(eAt(c, t)),
+    );
+    for (const ev of kitchen) {
       if (ev.kind === "plate") {
         rep.batches++;
         rep.levels += ev.levels;
       } else rep.spent += DISH_BY_ID[ev.dish].cost;
     }
-    acc += rate * (Math.min(STEP, end - t) / 1000);
+    const secs = Math.min(STEP, end - t) / 1000;
+    acc += rateFrom(s, parts, (w) => eAt(w, t)) * AWAY_RATE * secs;
+    let servedNow = 0;
     while (acc >= 1) {
-      let slot = -1;
-      s.counter.forEach((c, i) => {
-        if (
-          c &&
-          c.servings > 0 &&
-          (slot < 0 || c.servings > s.counter[slot]!.servings)
-        )
-          slot = i;
-      });
+      const slot = fullestSlot(s);
       if (slot < 0) {
         acc = Math.min(acc, 1);
         break;
@@ -1297,9 +1678,26 @@ export function simulateAway(
       rep.served++;
       s.served++;
       rep.levels += addXp(s, 1);
+      servedNow++;
       acc--;
     }
+    // Litter from the guests; the janitors sweep it up.
+    dirt += LITTER_RATE * servedNow;
+    while (dirt >= 1) {
+      s.trash = Math.min(TRASH_MAX, s.trash + 1);
+      dirt -= 1;
+    }
+    let jr = 0;
+    for (const j of staffOf(s, "janitor")) jr += workSpeed(j, eAt(j, t));
+    sweep += ((jr * SWEEPS_PER_HOUR) / 3600) * secs;
+    while (sweep >= 1 && s.trash > 0) {
+      s.trash--;
+      sweep -= 1;
+    }
+    if (s.trash === 0) sweep = Math.min(sweep, 1);
   }
+  // The shift's work, then rest for the rest of the time away.
+  for (const st of s.staff) st.energy = afterRest(st, eAt(st, end), to - end);
   return rep;
 }
 export function buyStyle(

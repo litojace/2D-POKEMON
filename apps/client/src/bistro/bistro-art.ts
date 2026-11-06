@@ -1908,7 +1908,60 @@ export function drawItem(
       return drawFountain(ctx, x, y, t);
     case "rug":
       return drawRug(ctx, x, y);
+    case "corner":
+      return drawStaffCorner(ctx, x, y, t);
   }
+}
+/** The Staff Corner: a low bench with cushions and a pot of tea. */
+export function drawStaffCorner(ctx: Ctx, x: number, y: number, t: number) {
+  const c = iso(x, y);
+  softShadow(ctx, c.x, c.y + 2, 32, 12, 0.26);
+  isoBox(ctx, x - 0.42, y - 0.32, x + 0.42, y + 0.32, 0, 16, {
+    top: "#d29458",
+    left: "#ad6f38",
+    right: "#8c5629",
+  });
+  ctx.fillStyle = "#e86a5c";
+  ellipse(ctx, c.x - 11, c.y - 19, 13, 5);
+  ctx.fill();
+  ctx.fillStyle = "#5fb3a1";
+  ellipse(ctx, c.x + 11, c.y - 19, 13, 5);
+  ctx.fill();
+  // The teapot and two cups.
+  ctx.fillStyle = "#f4efe6";
+  ellipse(ctx, c.x, c.y - 29, 9, 7.5);
+  ctx.fill();
+  ctx.fillStyle = "#d8cfc0";
+  ellipse(ctx, c.x, c.y - 36, 4.5, 2);
+  ctx.fill();
+  ctx.strokeStyle = "#f4efe6";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(c.x + 8, c.y - 30);
+  ctx.quadraticCurveTo(c.x + 15, c.y - 33, c.x + 16, c.y - 38);
+  ctx.stroke();
+  ctx.fillStyle = "#ffffff";
+  for (const dx of [-20, 21]) {
+    ellipse(ctx, c.x + dx, c.y - 22, 4.5, 2.5);
+    ctx.fill();
+  }
+  // Steam.
+  ctx.strokeStyle = "rgba(255,255,255,.55)";
+  ctx.lineWidth = 2;
+  for (let i = 0; i < 2; i++) {
+    const k = (t * 0.6 + i * 0.5) % 1;
+    ctx.globalAlpha = 1 - k;
+    ctx.beginPath();
+    ctx.moveTo(c.x + 16, c.y - 40 - k * 16);
+    ctx.quadraticCurveTo(
+      c.x + 20,
+      c.y - 46 - k * 16,
+      c.x + 16,
+      c.y - 52 - k * 16,
+    );
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
 }
 /** Light sources an item gives off at night: [dx, dy from the tile centre, radius, rgb]. */
 export function itemGlow(

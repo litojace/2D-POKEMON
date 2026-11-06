@@ -121,6 +121,12 @@ export interface SkinArt {
    * kerchief...) come off, and the skin's armour takes their place.
    */
   replaces?: CreaturePart[];
+  /**
+   * The colours of a champion's held weapon (Astrabun's mochi mallet: its
+   * wooden handle and head), so a skin re-forges it. Its band takes the
+   * palette's glow either way.
+   */
+  weapon?: { handle: string; head: string };
 }
 
 const hex = (c: string) => Number.parseInt(c.slice(1), 16);
@@ -681,6 +687,7 @@ export const SKIN_ART: Record<string, SkinArt> = {
     trail: { kind: "jet", colors: [0xff5aa8, 0xffffff] },
     skill: 0xff5aa8,
     detail: "scan",
+    weapon: { handle: "#5a6478", head: "#dfe6f0" },
   },
   "astrabun-full-moon": {
     palette: { light: "#d0c0e0", mid: "#3a3048", dark: "#0e0a16", glow: "#c86bff", accent: "#c86bff" },
@@ -690,6 +697,7 @@ export const SKIN_ART: Record<string, SkinArt> = {
     skill: 0xc86bff,
     detail: "glint",
     mythic: "rift-duelist",
+    weapon: { handle: "#15161d", head: "#3b4255" },
   },
   // -------------------------------------------------------------- Wombolder
   "wombolder-sandy": { palette: { light: "#fff6e0", mid: "#e0c890", dark: "#5a4a2a", glow: "#9bd36a", accent: "#a89a80" } },

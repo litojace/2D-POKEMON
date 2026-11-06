@@ -46,7 +46,7 @@ async function fakeFarm(page: Page) {
       barnCap: 80,
       barnUpgrades: 0,
       fertilizer: { norm: 3, super: 1, gold: 0 },
-      // Every tool bar slot in use (7 tools), a scarecrow and a sprinkler.
+      // Every tool owned (Copper Can, Sickle), a scarecrow and a sprinkler.
       tools: {
         can: 2,
         bigNet: false,
@@ -580,7 +580,8 @@ for (const viewport of [
       await expect(page.locator("#fm-chips [data-orb]")).toHaveCount(4);
       await expect(page.locator("#fm-badge")).toContainText("tester's Farm");
       await expect(page.locator("#fm-badge")).toContainText("20/");
-      await expect(page.locator("#fm-tools [data-tool]")).toHaveCount(7);
+      // No tool bar on your own farm: tools are bubbles by the plots.
+      await expect(page.locator("#fm-tools")).toBeHidden();
       await page.waitForTimeout(600);
       await snap(
         page,
@@ -610,16 +611,15 @@ for (const viewport of [
           viewport.height - bottom + 1,
         );
       }
-      // The right rail (with the zoom buttons under it on desktop) ends on
-      // the tool bar's line, and its four buttons are all there.
-      const tools = all.find((b) => b.name === "tools")!,
-        corner = all
-          .filter((b) => b.name === "rail" || b.name === "zoom")
-          .reduce((a, b) => (b.y + b.h > a.y + a.h ? b : a));
-      expect(corner.y + corner.h, "corner bottom").toBeCloseTo(
-        tools.y + tools.h,
-        0,
-      );
+      // The right rail (with the zoom buttons under it on desktop) sits at
+      // the bottom right, and its four buttons are all there.
+      const corner = all
+        .filter((b) => b.name === "rail" || b.name === "zoom")
+        .reduce((a, b) => (b.y + b.h > a.y + a.h ? b : a));
+      expect(
+        viewport.height - bottom - (corner.y + corner.h),
+        "corner bottom",
+      ).toBeLessThan(24);
       await expect(page.locator("#fm-rail [data-sheet]")).toHaveCount(4);
       const clashes = all.flatMap((a, i) =>
         all
@@ -738,7 +738,7 @@ test("tapping a ripe plot harvests it, and an empty plot opens the seed picker",
           (window as any).__farmRequests.flatMap((r: any) => r.actions),
         ),
       )
-      .toEqual([{ a: "harvest", plot: 0 }]);
+      .toEqual([{ a: "harvest", plot: 0, tool: "sickle" }]);
     const empty = await plot(3);
     await page.mouse.click(empty.x, empty.y);
     await expect(page.locator("#fm-pop")).toBeVisible();
@@ -748,27 +748,30 @@ test("tapping a ripe plot harvests it, and an empty plot opens the seed picker",
     await expect(melon).toHaveClass(/locked/);
     await expect(melon).toContainText("Lv 35");
     await expect(page.locator('#fm-pop [data-pseed="carrot"]')).toBeEnabled();
+    // No quick buy here: seeds come from the Shop.
+    await expect(page.locator("#fm-pop [data-pbuy]")).toHaveCount(0);
     await snap(page, info, "farm-seed-picker-1280x800");
+    // Picking a seed sows nothing yet: it shows the seed, ready to sow…
     await page.locator('#fm-pop [data-pseed="carrot"]').click();
-    await expect
-      .poll(() =>
-        page.evaluate(() =>
-          (window as any).__farmRequests.flatMap((r: any) => r.actions),
-        ),
-      )
-      .toContainEqual({ a: "plant", plot: 3, crop: "carrot" });
-    // The seed tool's picker greys it out too, and the seed in hand is never it.
-    expect(await page.evaluate(() => (window as any).__farm.F.seed)).not.toBe(
-      "melon",
+    await expect(page.locator("#fm-pop")).toBeHidden();
+    const bubble = page.locator("#fm-seed [data-seedbub]");
+    await expect(bubble).toBeVisible();
+    await expect(bubble).toContainText("×6");
+    const sent = () =>
+      page.evaluate(() =>
+        (window as any).__farmRequests.flatMap((r: any) => r.actions),
+      );
+    expect(await sent()).not.toContainEqual(
+      expect.objectContaining({ a: "plant" }),
     );
-    const seedTool = page.locator('#fm-tools [data-tool="seed"]');
-    await seedTool.click();
-    await seedTool.click();
-    const tMelon = page.locator('#fm-pop [data-tseed="melon"]');
-    await expect(tMelon).toBeDisabled();
-    await expect(tMelon).toContainText("Lv 35");
-    await expect(page.locator('#fm-pop [data-tseed="wheat"]')).toBeEnabled();
-    await page.keyboard.press("Escape");
+    // …and a tap on it sows the plot it was picked for.
+    await bubble.click();
+    await expect
+      .poll(sent)
+      .toContainEqual({ a: "plant", plot: 3, crop: "carrot" });
+    await expect(page.locator("#fm-seed")).toBeHidden();
+    // No seed tool on the bar any more: nothing sows a seed you didn't pick.
+    await expect(page.locator('#fm-tools [data-tool="seed"]')).toHaveCount(0);
     // The market sheet opens from the menu.
     await openSheet(page, "market");
     await expect(page.locator("#fm-sheet")).toContainText("Farmers' market");
@@ -795,21 +798,34 @@ test("a tap catches a bug, and the Tools tab sells tools", async ({
     });
     await page.click('#hub-scenes [data-hub-scene="farm"]');
     await expect(page.locator("#fm-badge")).toContainText("tester's Farm");
-    // Seven tools, the can showing the one you own.
-    await expect(page.locator("#fm-tools [data-tool]")).toHaveCount(7);
-    await expect(page.locator('#fm-tools [data-tool="can"]')).toContainText(
-      "Copper",
-    );
     await page.waitForTimeout(400);
+    // Sunny (in the rain the crop is watered, and the can stays away).
+    await page.evaluate(() => {
+      const w = window as any;
+      w.__fakeFarm.weather.now = "sun";
+      w.__farm.F.weather.cur = "sun";
+    });
+    // A tap on the plot with a bug: its tools pop up (the net first, the
+    // Copper Can you own, the shovel); the net catches it.
     const bug = await page.evaluate(() => (window as any).__farm.plotClient(2));
     await page.mouse.click(bug.x, bug.y);
+    const acts = page.locator("#fm-acts");
+    await expect(acts).toBeVisible();
+    await expect(acts.locator("[data-act]").first()).toHaveAttribute(
+      "data-act",
+      "net",
+    );
+    await expect(acts.locator('[data-act="can"]')).toBeVisible();
+    await expect(acts.locator('[data-act="shovel"]')).toBeVisible();
+    await snap(page, info, "farm-tool-bubbles-1280x800");
+    await acts.locator('[data-act="net"]').click();
     await expect
       .poll(() =>
         page.evaluate(() =>
           (window as any).__farmRequests.flatMap((r: any) => r.actions),
         ),
       )
-      .toEqual([{ a: "catch", plot: 2 }]);
+      .toEqual([{ a: "catch", plot: 2, tool: "net" }]);
     await openSheet(page, "shop");
     await page.click('#fm-sheet [data-tab="tools"]');
     const sheet = page.locator("#fm-sheet");
@@ -829,9 +845,7 @@ test("a tap catches a bug, and the Tools tab sells tools", async ({
     await expect(
       sheet.locator(".item", { hasText: "Big Net" }).locator("button"),
     ).toHaveText("Owned");
-    await expect(page.locator('#fm-tools [data-tool="net"]')).toContainText(
-      "Big Net",
-    );
+    expect(await page.evaluate(() => (window as any).__farm.F.net)).toBe(2);
     expect(errors).toEqual([]);
   } finally {
     await context.close();
@@ -1071,7 +1085,8 @@ test("visiting a friend's farm: sneak a ripe crop, catch a bug, go home", async 
     );
     await banner.locator("[data-home]").click();
     await expect(banner).toBeHidden();
-    await expect(page.locator("#fm-tools [data-tool]")).toHaveCount(7);
+    // Home again: no tool bar (the friend's tools were for the visit).
+    await expect(page.locator("#fm-tools")).toBeHidden();
     expect(errors).toEqual([]);
   } finally {
     await context.close();
@@ -1587,7 +1602,7 @@ test("on a phone, the Market's Sell and All buttons line up in columns", async (
   }
 });
 
-test("on a phone, drag a seed from the tray to sow, and the sickle to harvest", async ({
+test("on a phone, pick a seed and drag it to sow, and drag the sickle to harvest", async ({
   browser,
 }, info) => {
   const context = await browser.newContext({
@@ -1605,6 +1620,8 @@ test("on a phone, drag a seed from the tray to sow, and the sickle to harvest", 
         past = new Date(Date.now() - 60_000).toISOString();
       for (const i of [3, 4])
         Object.assign(f.plots[i], { crop: "wheat", progress: 1, ripeAt: past });
+      // No Sickle bought: the harvest bubble cuts one plot at a time.
+      f.tools.sickle = false;
     });
     await page.click('#hub-scenes [data-hub-scene="farm"]');
     await page.waitForFunction(() => (window as any).__farm?.F?.loaded);
@@ -1652,17 +1669,41 @@ test("on a phone, drag a seed from the tray to sow, and the sickle to harvest", 
             .sort((x: number, y: number) => x - y),
         a,
       );
-    // Sowing: tap an empty plot, then drag Breeze Wheat across the row.
+    // Sowing: tap an empty plot, pick Breeze Wheat, then drag the seed
+    // across the row.
     const p11 = await plot(11);
     await page.touchscreen.tap(p11.x, p11.y);
-    await expect(page.locator('#fm-pop [data-pseed="wheat"]')).toBeVisible();
+    await page.locator('#fm-pop [data-pseed="wheat"]').tap();
+    await expect(page.locator("#fm-seed [data-seedbub]")).toBeVisible();
+    await snap(page, info, "farm-seed-bubble-844x390");
     await swipe([
-      await center('#fm-pop [data-pseed="wheat"]'),
+      await center("#fm-seed [data-seedbub]"),
       await plot(12),
       await plot(14),
     ]);
     await expect.poll(() => sent("plant")).toEqual([11, 12, 13, 14]);
     await expect(page.locator("#fm-ghost")).toBeHidden();
+    // Watering works the same: tap a growing crop, drag the can across.
+    // (Sunny now: rain would water them all already.)
+    await page.evaluate(() => {
+      const w = window as any;
+      w.__fakeFarm.weather.now = "sun";
+      w.__farm.F.weather.cur = "sun";
+    });
+    const p12 = await plot(12);
+    await page.touchscreen.tap(p12.x, p12.y);
+    const can = page.locator('#fm-acts [data-act="can"]');
+    await expect(can).toBeVisible();
+    await swipe([
+      await center('#fm-acts [data-act="can"]'),
+      await plot(11),
+      await plot(14),
+    ]);
+    // The Copper Can waters three in a row, from plot 12 to 14 (the bubble
+    // floats over the row above, so the drag waters plot 1 there too).
+    await expect
+      .poll(() => sent("water"))
+      .toEqual(expect.arrayContaining([1, 12, 14]));
     // Harvesting: a tap on a ripe crop shows the sickle (nothing is cut yet)…
     const p3 = await plot(3);
     await page.touchscreen.tap(p3.x, p3.y);
@@ -2266,7 +2307,6 @@ test("the Sickle takes a giant whole, and a ripe square waits for the server's a
       );
     // The Sickle at plot 13: its 3×3 touches the giant, which goes first and
     // whole; then the other ripe plots in reach, one by one.
-    await page.click('#fm-tools [data-tool="sickle"]');
     const p13 = await plotAt(page, 13);
     await page.mouse.click(p13.x, p13.y);
     await expect.poll(sent).toEqual([
@@ -2277,7 +2317,6 @@ test("the Sickle takes a giant whole, and a ripe square waits for the server's a
     ]);
     // The second square ripens on the screen: the farm asks the server at
     // once, and holds its harvest until the answer (slowed down here) comes.
-    await page.click('#fm-tools [data-tool="hand"]');
     await page.evaluate(() => {
       const w = window as any;
       w.__farmGets = 0;
@@ -2896,9 +2935,12 @@ test("a tap on the farm closes the open sheet or orb card and does nothing else"
     await page.waitForTimeout(1200);
     expect(await actions(), "the closing tap harvested").toEqual([]);
 
-    // With nothing open, the tap harvests as always.
+    // With nothing open, the tap harvests as always (a 3×3 cut: this farm
+    // owns the Sickle).
     await page.mouse.click(ripe.x, ripe.y);
-    await expect.poll(actions).toEqual([{ a: "harvest", plot: 0 }]);
+    await expect
+      .poll(actions)
+      .toEqual([{ a: "harvest", plot: 0, tool: "sickle" }]);
 
     // The land deed: a tap beside it, on its dim background, closes it
     // (and leaves the shop open behind it).

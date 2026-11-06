@@ -175,7 +175,8 @@
     .fit-deal-art,
     .fit-slot-art,
     .fit-bundle-art > span,
-    .fit-foot-art
+    .fit-foot-art,
+    .fit-set-reward-art
   ),
 .ui-modal-art {
   container-type: size;
@@ -186,7 +187,8 @@
     .fit-deal-art,
     .fit-slot-art,
     .fit-bundle-art > span,
-    .fit-foot-art
+    .fit-foot-art,
+    .fit-set-reward-art
   )
   > img,
 .ui-modal-art > img {
@@ -205,7 +207,8 @@
     .fit-deal-art,
     .fit-slot-art,
     .fit-bundle-art > span,
-    .fit-foot-art
+    .fit-foot-art,
+    .fit-set-reward-art
   )
   > .raid-cosmetic-preview,
 .ui-modal-art > .raid-cosmetic-preview,
@@ -224,7 +227,8 @@
     .fit-deal-art,
     .fit-slot-art,
     .fit-bundle-art > span,
-    .fit-foot-art
+    .fit-foot-art,
+    .fit-set-reward-art
   )
   > .raid-cosmetic-preview:has(> .fx-live),
 .ui-modal-art > .raid-cosmetic-preview:has(> .fx-live) {
@@ -460,6 +464,22 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
+}
+/* A skin collection's reward frame, beside how many of its skins you own. */
+.fit-set-reward {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.fit-set-reward-art {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+}
+.fit-set-reward .ui-note {
+  margin: 0;
 }
 .fit-collections .ui-chip .ui-tag {
   height: 16px;
