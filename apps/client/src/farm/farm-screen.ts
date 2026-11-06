@@ -32,6 +32,10 @@ import type { FarmCue } from "./farm-sound";
  */
 export interface FarmScreenOptions {
   load(): Promise<FarmState>;
+  /** Whose farm this is (the account id): keys the ready state below. */
+  owner?: string;
+  /** The farm as last known, drawn on the first frame (set by openFarmScreen). */
+  initial?: FarmState;
   act(actions: FarmAction[]): Promise<FarmActResult>;
   /** Trade lots of 100 leaves for 5 coins each. */
   trade(lots: number): Promise<void>;
@@ -101,9 +105,60 @@ export interface FarmScreen {
   refresh(): Promise<void>;
   close(): void;
 }
+/*
+ * The farm, ready before you open it: the last state the server sent this
+ * session (from a prefetch when you reach the hub, or from the farm's own
+ * loads and actions while you play). Opening the farm draws it on the first
+ * frame, moved on by the time since it came, then refreshes from the server.
+ * Loading the farm counts as being on it (bugs and crows can come if you
+ * were there in the last 150 s), so it is fetched once a session at most
+ * unless you open the farm (a failed try is not repeated).
+ */
+let ready: { owner: string; state: FarmState; at: number } | null = null;
+const tried = new Set<string>();
+function keep(owner: string | undefined, state: FarmState | undefined) {
+  if (owner && state?.now) ready = { owner, state, at: Date.now() };
+}
+/** Fetch the farm in the background, once, so it opens ready. */
+export function prefetchFarm(
+  owner: string,
+  load: () => Promise<FarmState>,
+): void {
+  if (tried.has(owner) || ready?.owner === owner) return;
+  tried.add(owner);
+  load()
+    .then((state) => {
+      // The farm may have opened meanwhile and kept a newer state.
+      if (ready?.owner !== owner) keep(owner, state);
+    })
+    .catch(() => {});
+}
+/** The ready farm for this owner, its clock moved on to now. */
+function readyFor(owner: string | undefined): FarmState | undefined {
+  if (!owner || ready?.owner !== owner) return undefined;
+  const { state, at } = ready;
+  return {
+    ...state,
+    now: new Date(Date.parse(state.now) + (Date.now() - at)).toISOString(),
+  };
+}
 export function openFarmScreen(options: FarmScreenOptions): FarmScreen {
   document.body.classList.add("hub-screen", "hub-farm");
-  const scene = openFarm(options) as FarmScreen & { _dbg?: unknown };
+  const owner = options.owner;
+  const scene = openFarm({
+    ...options,
+    initial: readyFor(owner),
+    load: async () => {
+      const state = await options.load();
+      keep(owner, state);
+      return state;
+    },
+    act: async (actions: FarmAction[]) => {
+      const r = await options.act(actions);
+      keep(owner, r.farm);
+      return r;
+    },
+  }) as FarmScreen & { _dbg?: unknown };
   // Visual tests find plots through this (development builds only).
   if (import.meta.env.DEV)
     (window as unknown as { __farm?: unknown }).__farm = scene._dbg;
