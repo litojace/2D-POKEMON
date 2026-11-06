@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  PITCH_BOTS,
   PlazaWorld,
   TOWNSFOLK,
   townsfolkFor,
@@ -59,12 +60,17 @@ describe("the Plaza world", () => {
     expect(
       view.state.walkers.filter((w) => !(w[5] & PLAZA_FLAG.bot)),
     ).toHaveLength(1);
-    const pitchBot = (p: { name: string }) => / Bot$/.test(p.name);
+    const pitchBot = (p: { name: string }) =>
+      PITCH_BOTS.some(([name]) => name === p.name);
     expect(view.profiles.filter(pitchBot)).toHaveLength(0);
     expect(view.state.ball).toBeUndefined();
     place(world, "s2", PLAZA_PITCH.x0 - 60, 900);
     const near = world.view("s2")!;
     expect(near.profiles.filter((p) => p.bot && pitchBot(p))).toHaveLength(4);
+    // NPC names, as the townsfolk have (they were "Blue Bot" and "Red Bot",
+    // so the news read "Red Bot scored a goal"), each its own.
+    expect(PITCH_BOTS.some(([name]) => /bot/i.test(name))).toBe(false);
+    expect(new Set(PITCH_BOTS.map(([name]) => name)).size).toBe(4);
     expect(near.state.ball).toBeDefined();
     // Profiles are sent once.
     expect(world.view("s2")!.profiles).toEqual([]);

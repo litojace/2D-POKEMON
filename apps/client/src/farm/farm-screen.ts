@@ -6,8 +6,6 @@ import type {
   FarmHere,
   FarmLikeResult,
   FarmTourEntry,
-  FarmCup,
-  FarmCupResult,
   FarmStall,
   FarmStallAction,
   FarmStallResult,
@@ -84,12 +82,6 @@ export interface FarmScreenOptions {
   /** The Farm Stall and the Valley Paper (migration 059). */
   stall?(): Promise<FarmStall>;
   stallAct?(action: FarmStallAction): Promise<FarmStallResult>;
-  /** Co-ops and the weekly Valley Cup (migration 060). */
-  cup?(): Promise<FarmCup>;
-  cupAct?(
-    kind: "create" | "join" | "leave" | "take" | "drop" | "claim",
-    arg?: string,
-  ): Promise<FarmCupResult>;
   /** Live visits, Harvest Parties and farm likes (migration 061). */
   here?(owner: string | null, emote?: FarmEmote): Promise<FarmHere>;
   gone?(): Promise<void>;

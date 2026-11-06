@@ -257,13 +257,21 @@ for (const size of SIZES)
         if (size.phone) expect(f.zoom).toBeGreaterThan(1.5);
       }
       if (size.height > 1000) {
-        // A tall window: the Party tab fills most of its column.
+        // A tall window (the owner's, 4 Nov: its right side was mostly
+        // empty): the Party tab fills most of its column, and shows all of
+        // it with no scrolling. Since Next rewards left the tab (owner, 5
+        // Nov; the Rewards tab has them) the seats, friends, good picks and
+        // attacks fill about 70% of it.
         const fill = await room.locator(".rh-body").evaluate((b) => {
           const top = b.getBoundingClientRect().top;
           const last = b.lastElementChild!.getBoundingClientRect().bottom;
-          return (last - top) / b.clientHeight;
+          return {
+            share: (last - top) / b.clientHeight,
+            scrolls: b.scrollHeight > b.clientHeight + 1,
+          };
         });
-        expect(fill).toBeGreaterThan(0.75);
+        expect(fill.share).toBeGreaterThan(0.6);
+        expect(fill.scrolls, "the whole Party tab in view").toBe(false);
       }
       expect(await closeSpot(page)).toEqual([
         size.phone

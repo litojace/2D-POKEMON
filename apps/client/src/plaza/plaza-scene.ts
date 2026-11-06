@@ -1168,13 +1168,49 @@ export function openPlaza(options) {
     const w = $("pz-wheel"),
       show = on ?? w.hidden;
     w.hidden = !show;
+    // The Emote button lights up while its wheel is open (plaza.css).
+    $("pz-wheel-btn").setAttribute("aria-expanded", String(show));
     if (show) {
       const r = $("pz-wheel-btn").getBoundingClientRect(),
         sr = $("pz").querySelector(".pz-hud").getBoundingClientRect();
+      if (layer.classList.contains("phone")) {
+        // Phones: the Emote button sits in the row over Jump, right of
+        // the stage, and above it a 360-430px screen has no room for the
+        // wheel (it ran up over the coins, the gear and the clock). It
+        // opens left of that row instead, by the thumb, kept under the
+        // header's row and above the screen's bottom edge.
+        const row = layer.querySelector(".pz-left").getBoundingClientRect(),
+          rad = (220 * 0.85) / 2,
+          top =
+            document.getElementById("account-profile")?.getBoundingClientRect()
+              .bottom ?? sr.top + 52,
+          cy = row.top + row.height / 2 - sr.top;
+        w.style.left = `${row.left - sr.left - 10 - rad}px`;
+        w.style.top = `${Math.min(sr.height - 8 - rad, Math.max(top - sr.top + 10 + rad, cy))}px`;
+        return;
+      }
       w.style.left = `${Math.min(sr.width - 120, r.left + r.width / 2 - sr.left + 100)}px`;
       w.style.top = `${Math.max(120, r.top - sr.top - 90)}px`;
     }
   }
+  // A press anywhere outside the emote wheel or a player's card closes it
+  // (the Emote button toggles its own wheel). On the Plaza itself that press
+  // only closes it: it doesn't also walk you there or open another card.
+  layer.addEventListener(
+    "pointerdown",
+    (e) => {
+      const t = e.target,
+        wheel = !$("pz-wheel").hidden && !t.closest("#pz-wheel, #pz-wheel-btn"),
+        card = !$("pz-card").hidden && !t.closest("#pz-card");
+      if (wheel) toggleWheel(false);
+      if (card) hideCard();
+      if ((wheel || card) && t === cv) {
+        e.stopPropagation();
+        screen.focus({ preventScroll: true });
+      }
+    },
+    true,
+  );
   $("pz-clock").onclick = (e) => {
     e.stopPropagation();
     tod = tod > 0.3 && tod < 0.7 ? 0.86 : 0.42;
@@ -1189,7 +1225,6 @@ export function openPlaza(options) {
   cv.addEventListener("pointerdown", (e) => {
     start();
     screen.focus({ preventScroll: true });
-    toggleWheel(false);
     // Tap someone to see who they are (and befriend or invite them).
     const w = toWorld(e.clientX, e.clientY),
       who = [...others.values()].find(
@@ -1493,11 +1528,24 @@ export function openPlaza(options) {
       box.querySelector('[data-ph="close"]').onclick = closePhoto;
     }, 160);
   }
+  /** A tap on an overlay's dimmed background (pressed and let go there, not
+   * a drag out of its card) calls `back`. */
+  function onBackdrop(el, isBackdrop, back) {
+    let pressed = false;
+    el.addEventListener("pointerdown", (e) => (pressed = isBackdrop(e.target)));
+    el.addEventListener("click", (e) => {
+      const was = pressed;
+      pressed = false;
+      if (was && isBackdrop(e.target)) back();
+    });
+  }
   function closePhoto() {
     shot = null;
     $("pz-photo").hidden = true;
     screen.focus({ preventScroll: true });
   }
+  // A tap on the dimmed background around the polaroid puts it away.
+  onBackdrop($("pz-photo"), (t) => t.id === "pz-photo", closePhoto);
 
   /* the photo album: on this device only (plaza-album.ts, PLAN.md) */
   const album = openAlbum();
@@ -1665,6 +1713,13 @@ export function openPlaza(options) {
     }
     renderAlbum();
   }
+  // A tap on the dimmed background, outside the album or the photo, goes
+  // back: from a photo to the grid, from the grid out of the album.
+  onBackdrop(
+    $("pz-album"),
+    (t) => t.id === "pz-album" || t.id === "pz-album-view",
+    albumBack,
+  );
   $("pz-album").addEventListener("click", (e) => {
     const b = e.target.closest("[data-al], [data-id]");
     if (!b) return;
@@ -2568,11 +2623,14 @@ export function openPlaza(options) {
     if (b.stun > 0) rot = Math.sin(time * 30) * 0.12;
     return { bob, rot, sq };
   }
+  // The front art carries its tail, lantern or staff on its right side, so
+  // as drawn it reads as walking left: mirror it to walk right (it was
+  // mirrored to walk left, and everyone seemed to walk backwards).
   function drawSprite(g, im, x, y, s, face, rot, sq) {
     g.save();
     g.translate(x, y);
     if (rot) g.rotate(rot);
-    g.scale((face < 0 ? -1 : 1) * (1 + sq), 1 - sq);
+    g.scale((face > 0 ? -1 : 1) * (1 + sq), 1 - sq);
     g.drawImage(im, -s / 2, -s * 0.9, s, s * 1.01);
     g.restore();
   }

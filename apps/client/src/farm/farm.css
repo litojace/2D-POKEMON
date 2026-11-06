@@ -1613,10 +1613,11 @@
   height: 24px;
   filter: drop-shadow(0 1px 2px #0009);
 }
+/* The farmer's head and shoulders, whole inside the orb. */
 .farm-layer .fm-orb .ci img {
-  width: 135%;
-  height: 135%;
-  object-fit: cover;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 .farm-layer .fm-orb[aria-expanded="true"] {
   outline: 2px solid #fff;
@@ -2498,64 +2499,36 @@ body.hub-farm:has(.fm-hint:not(.done)) #toast {
   inset: 0;
 }
 
-/* ── The farm menu (phase 6 redesign) ──
-   One Menu button in the bottom-right corner: a tool-sized button in the
-   same glass box as the tool bar, on the same line (mobile farm games keep
-   their main menu where the right thumb rests), with the zoom buttons
-   beside it on desktop. It opens a 4 × 2 grid of tiles just above it. */
+/* ── The right rail ──
+   The farm's own places (orders, market, barn, balloon, wishing well) are
+   tapped on the farm itself, so the corner keeps only what has no building:
+   Shop, Friends, Decor and the Almanac, one tap away in a column on the
+   right edge where the right thumb rests (as in most mobile farm games),
+   with the zoom buttons under it on desktop. */
 .farm-layer .fm-corner {
   position: absolute;
   right: var(--hud-x-r);
   bottom: var(--hud-y-b);
   display: flex;
+  flex-direction: column;
   align-items: flex-end;
   gap: 8px;
-  /* Above an open sheet: the menu grid opens over it. */
   z-index: 7;
 }
-
 .farm-layer .fm-corner .fm-zoom {
   position: static;
+  grid-auto-flow: column;
 }
-.farm-layer .fm-menu {
+.farm-layer .fm-rail {
+  display: grid;
+  gap: 6px;
   padding: 7px;
   border-radius: 22px;
 }
-.farm-layer.phone .fm-menu {
-  padding: 5px;
-  border-radius: 14px;
-}
-.farm-layer .fm-menu-btn {
-  --ac: #c9d4ef;
-}
-.farm-layer .fm-menu-btn[data-dot]::after {
-  content: "";
-  position: absolute;
-  top: 5px;
-  right: 5px;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: #ef4f61;
-  box-shadow: 0 0 0 2px #0b1020;
-}
-.farm-layer #fm-dock {
-  position: absolute;
-  right: 0;
-  bottom: calc(100% + 8px);
-  display: grid;
-  grid-template-columns: repeat(5, 76px);
-  gap: 6px;
-  padding: 8px;
-  border-radius: 20px;
-  animation: popin 0.16s var(--ease-out);
-}
-.farm-layer #fm-dock[hidden] {
-  display: none;
-}
-.farm-layer #fm-dock button {
+.farm-layer .fm-rail button {
   position: relative;
   box-sizing: border-box;
+  width: 72px;
   height: 66px;
   display: grid;
   place-items: center;
@@ -2563,7 +2536,7 @@ body.hub-farm:has(.fm-hint:not(.done)) #toast {
   gap: 5px;
   padding: 6px 2px 5px;
   border: 1px solid #ffffff1f;
-  border-radius: 14px;
+  border-radius: 15px;
   background:
     radial-gradient(
       circle at 50% 36%,
@@ -2577,32 +2550,37 @@ body.hub-farm:has(.fm-hint:not(.done)) #toast {
     transform 0.12s var(--ease-pop),
     border-color 0.15s;
 }
-.farm-layer #fm-dock button .ico {
+.farm-layer .fm-rail button .ico {
   width: 1.9em;
   height: 1.9em;
   vertical-align: 0;
   filter: drop-shadow(0 2px 3px #000a);
 }
-.farm-layer #fm-dock button span {
+.farm-layer .fm-rail button span {
   font-size: 11px;
   font-weight: 700;
   line-height: 1;
   color: #dfe7fb;
   white-space: nowrap;
 }
-.farm-layer #fm-dock button[aria-expanded="true"] {
+/* The open sheet's button lights up gold like the Lobby's rail (rim, a
+   soft glow and its label); a second tap on it closes the sheet. */
+.farm-layer .fm-rail button[aria-expanded="true"] {
   border-color: #ffd65b;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 214, 91, 0.35),
+    0 0 14px rgba(255, 214, 91, 0.35);
 }
-.farm-layer #fm-dock button[aria-expanded="true"] span {
+.farm-layer .fm-rail button[aria-expanded="true"] span {
   color: #ffd65b;
 }
 @media (hover: hover) and (pointer: fine) {
-  .farm-layer #fm-dock button:hover {
+  .farm-layer .fm-rail button:hover {
     border-color: #ffffff55;
-    transform: translateY(-2px);
+    transform: translateX(-2px);
   }
 }
-.farm-layer #fm-dock .dot {
+.farm-layer .fm-rail .dot {
   position: absolute;
   top: 6px;
   right: 8px;
@@ -2612,67 +2590,47 @@ body.hub-farm:has(.fm-hint:not(.done)) #toast {
   background: #ef4f61;
   box-shadow: 0 0 0 2px #0b1020;
 }
-.farm-layer #fm-dock [data-sheet="shop"] {
+.farm-layer .fm-rail [data-sheet="shop"] {
   --ac: #ffd65b;
 }
-.farm-layer #fm-dock [data-sheet="orders"] {
-  --ac: #ffa94d;
-}
-.farm-layer #fm-dock [data-sheet="market"] {
-  --ac: #4fdc7c;
-}
-.farm-layer #fm-dock [data-sheet="barn"] {
-  --ac: #ff6b5a;
-}
-.farm-layer #fm-dock [data-sheet="book"] {
+.farm-layer .fm-rail [data-sheet="book"] {
   --ac: #5fb8ff;
 }
-.farm-layer #fm-dock [data-sheet="decor"] {
+.farm-layer .fm-rail [data-sheet="decor"] {
   --ac: #ff8fc8;
 }
-.farm-layer #fm-dock [data-sheet="friends"] {
+.farm-layer .fm-rail [data-sheet="friends"] {
   --ac: #6fe0ff;
 }
-.farm-layer #fm-dock [data-wish] {
-  --ac: #c9a3ff;
-}
-.farm-layer #fm-dock [data-sheet="balloon"] {
-  --ac: #ff7a59;
-}
-.farm-layer #fm-dock [data-sheet="cup"] {
-  --ac: #ffe066;
-}
-.farm-layer.phone #fm-dock {
-  bottom: calc(100% + 6px);
-  grid-template-columns: repeat(5, 62px);
+.farm-layer.phone .fm-rail {
   gap: 5px;
-  padding: 6px;
+  padding: 5px;
   border-radius: 16px;
 }
-.farm-layer.phone #fm-dock button {
-  height: 54px;
-  gap: 4px;
+.farm-layer.phone .fm-rail button {
+  width: 54px;
+  height: 50px;
+  gap: 3px;
   border-radius: 12px;
 }
-.farm-layer.phone #fm-dock button .ico {
-  width: 22px;
-  height: 22px;
+.farm-layer.phone .fm-rail button .ico {
+  width: 21px;
+  height: 21px;
 }
-.farm-layer.phone #fm-dock button span {
-  font-size: 10.5px;
+.farm-layer.phone .fm-rail button span {
+  font-size: 10px;
 }
-/* Sheets: on desktop right-aligned with the HUD, 8px below the status orbs
-   and 8px above the bottom-right corner (Menu and zoom). On phones a sheet
-   is a focused mode (the orbs and tools step aside) and ends 8px left of the
-   Menu button, which stays in reach. */
+/* Sheets: 8px left of the right rail (86px wide on desktop, 64px on
+   phones), which stays in reach; on desktop 8px below the status orbs and
+   clear of the tool bar's line. On phones a sheet is a focused mode (the
+   orbs and tools step aside). */
 .farm-layer .fm-sheet {
-  right: var(--hud-x-r);
+  right: calc(var(--hud-x-r) + 94px);
   /* 8px under the orbs (46px tall, on the badge's line). */
   top: calc(var(--hub-card-h, 52px) + 68px);
   bottom: 162px;
 }
 .farm-layer.phone .fm-sheet {
-  /* The Menu button (64px) and 8px. */
   right: calc(var(--hud-x-r) + 72px);
 }
 
@@ -2863,97 +2821,8 @@ body.hub-farm:has(.fm-hint:not(.done)) #toast {
   object-fit: contain;
   vertical-align: -0.2em;
 }
-/* The Valley Cup sheet (migration 060). */
-.farm-layer .fm-cup-form {
-  display: flex;
-  gap: 0.5em;
-  align-items: end;
-  margin-bottom: 0.6em;
-}
-.farm-layer .fm-cup-form label {
-  flex: 1;
-  display: grid;
-  gap: 0.2em;
-  font-size: 0.9em;
-}
-.farm-layer .fm-cup-form input {
-  font: inherit;
-  padding: 0.45em 0.6em;
-  border-radius: 10px;
-  border: 1px solid #ffffff33;
-  background: #0007;
-  color: #fff;
-  min-width: 0;
-}
-.farm-layer .fm-coop {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 0.6em;
-  margin-bottom: 0.4em;
-}
-.farm-layer .fm-coop > div {
-  display: grid;
-}
-.farm-layer .fm-tiers {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.4em;
-}
-.farm-layer .fm-tiers .tier {
-  display: grid;
-  justify-items: center;
-  gap: 0.2em;
-  padding: 0.5em;
-  border-radius: 10px;
-  background: #0006;
-  text-align: center;
-  font-size: 0.85em;
-}
-.farm-layer .fm-tiers .tier.got {
-  outline: 2px solid #ffd65b;
-}
-.farm-layer .fm-tiers .got,
 .farm-layer .item.mine b {
   color: #ffd65b;
-}
-.farm-layer .fm-members {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35em;
-}
-.farm-layer .fm-members .mem {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3em;
-  padding: 0.2em 0.6em 0.2em 0.2em;
-  border-radius: 999px;
-  background: #0006;
-  font-size: 0.85em;
-}
-.farm-layer .fm-members img {
-  width: 1.7em;
-  height: 1.7em;
-  border-radius: 50%;
-  object-fit: cover;
-  background: #ffffff22;
-}
-.farm-layer .fm-league {
-  display: grid;
-  gap: 0.25em;
-}
-.farm-layer .fm-league .lrow {
-  display: grid;
-  grid-template-columns: 1.6em minmax(0, 1fr) auto;
-  gap: 0.5em;
-  padding: 0.35em 0.6em;
-  border-radius: 8px;
-  background: #0006;
-  font-size: 0.9em;
-}
-.farm-layer .fm-league .lrow.me {
-  outline: 1px solid #ffd65b;
-  background: #3a3210;
 }
 /* Friends on your farm and emotes (migration 061). */
 .farm-layer .fm-here {

@@ -32,6 +32,9 @@ export interface HubPanel {
   close(): void;
 }
 
+/** What a tap outside a screen may land on and still mean itself. */
+const CONTROLS =
+  'button, a, input, select, textarea, label, summary, [role="button"], [contenteditable]';
 /** Lobby parts a full panel covers: out of the tab order while it's open. */
 const COVERED = [
   ".lobby-stage",
@@ -144,12 +147,37 @@ export function openHubPanel(html: string, o: HubPanelOptions = {}): HubPanel {
   const onClick = (event: MouseEvent) => {
     if ((event.target as Element).closest("[data-ui-close]")) close();
   };
+  // A tap on the Lobby's background, outside the screen, closes it. Not on
+  // another control (the rail, PLAY, a card, the fighter's arrows): those
+  // do what they do. Not under a confirmation or a dialog (Settings), and
+  // not for a room's picker, which stays open while you are in the room.
+  // The press must start outside too: a drag that begins in the screen (a
+  // chip row, selecting text) and ends beside it doesn't close it.
+  let pressedOutside = false;
+  const press = (event: PointerEvent) => {
+    pressedOutside = !wrap.contains(event.target as Node);
+  };
+  const outside = (event: MouseEvent) => {
+    const pressed = pressedOutside;
+    pressedOutside = false;
+    if (closed || !pressed) return;
+    const target = event.target as Element;
+    if (
+      wrap.contains(target) ||
+      target.closest(CONTROLS) ||
+      document.querySelector("[data-ui-confirm], dialog[open]")
+    )
+      return;
+    close();
+  };
   /** `replaced`: another screen opens in its place, so the Lobby stays as
    * it is and the next screen takes it from there. */
   function close(replaced = false) {
     if (closed) return;
     closed = true;
     gone?.disconnect();
+    host.removeEventListener("pointerdown", press);
+    host.removeEventListener("click", outside);
     rows();
     document.removeEventListener("keydown", onKey);
     if (replaced) handoff = covered;
@@ -203,6 +231,10 @@ export function openHubPanel(html: string, o: HubPanelOptions = {}): HubPanel {
     gone.observe(host.parentNode, { childList: true });
   railButton?.setAttribute("aria-current", "page");
   wrap.addEventListener("click", onClick);
+  if (!o.host && !o.escape) {
+    host.addEventListener("pointerdown", press);
+    host.addEventListener("click", outside);
+  }
   // Chip rows scroll sideways with a mouse too (wheel and drag).
   const rows = scrollRows(wrap);
   // Bubble phase: menus inside the Lobby close first and mark it handled.

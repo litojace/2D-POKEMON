@@ -558,3 +558,129 @@ test("the event pill shows when you arrive mid-shower", async ({ page }) => {
   await expect(page.locator("#pz-event")).toContainText("left");
   expect(errors).toEqual([]);
 });
+
+// Phones: the emote wheel ran up over the coins, the gear and the clock on
+// a 360px-tall screen, and the toast sat on the action button that grows
+// left of Dash and Jump by the Volt Boba. The wheel opens left of the
+// Emote row, under the header; the toast rises over the Dash and Jump row.
+test("on a short phone the emote wheel and a toast keep clear of the HUD", async ({
+  browser,
+}) => {
+  const context = await browser.newContext({
+    viewport: { width: 740, height: 360 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  try {
+    const page = await context.newPage();
+    const errors = await openPlaza(page);
+    const rect = (s: string) =>
+      page.evaluate((s) => {
+        const r = document.querySelector(s)!.getBoundingClientRect();
+        return { l: r.left, t: r.top, r: r.right, b: r.bottom };
+      }, s);
+    const clear = (
+      a: { l: number; t: number; r: number; b: number },
+      b: typeof a,
+    ) => a.r <= b.l + 1 || b.r <= a.l + 1 || a.b <= b.t + 1 || b.b <= a.t + 1;
+    await page.click("#pz-wheel-btn");
+    await expect(page.locator("#pz-wheel")).toBeVisible();
+    // Full size: once its pop-in (from 0.6) has finished.
+    await page
+      .locator("#pz-wheel")
+      .evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
+    const wheel = await rect("#pz-wheel");
+    for (const s of [
+      "#account-coins > *",
+      ".header-menu > summary",
+      "#pz-clock",
+      ".pz-left",
+      ".pz-actions",
+    ])
+      expect(clear(wheel, await rect(s)), `wheel clear of ${s}`).toBe(true);
+    expect(wheel.t, "wheel under the header").toBeGreaterThanOrEqual(
+      (await rect("#account-profile")).b,
+    );
+    await page.click("#pz-wheel-btn");
+    await page.evaluate(() => (window as any).__plazaPosition(1745, 520));
+    await expect(page.locator("#pz-interact")).toBeVisible({ timeout: 10_000 });
+    await page.evaluate(() => {
+      const t = document.getElementById("toast")!;
+      t.textContent = "Volt Boba: 30% faster for 30 seconds";
+      t.classList.add("show");
+    });
+    // Where it rests once it has slid in. A fixed 600 ms wasn't always
+    // enough: the CPU-drawn test browser can hold frames back for longer,
+    // and the toast was measured before its slide had started.
+    await page
+      .locator("#toast")
+      .evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
+    const toast = await rect("#toast");
+    expect(clear(toast, await rect(".pz-actions")), "toast clear").toBe(true);
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});
+
+// The Emote button lights up while its wheel is open, like the Lobby's
+// rail; a second tap on it closes the wheel. A tap on the Plaza with the
+// wheel or a player's card open only closes it: you don't walk there.
+test("the Emote button lights up, and a second tap or a tap on the Plaza closes its wheel", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const errors = await openPlaza(page);
+  const btn = page.locator("#pz-wheel-btn"),
+    wheel = page.locator("#pz-wheel");
+  const bg = () => btn.evaluate((el) => getComputedStyle(el).backgroundColor);
+  const unlit = await bg();
+  await btn.click();
+  await expect(wheel).toBeVisible();
+  await expect(btn).toHaveAttribute("aria-expanded", "true");
+  // Once its background transition has run (the CPU-drawn test browser
+  // can hold frames back for seconds while the Plaza draws).
+  await expect.poll(bg, { timeout: 20_000 }).toBe("rgba(255, 214, 91, 0.18)");
+  await btn.click();
+  await expect(wheel).toBeHidden();
+  await expect(btn).toHaveAttribute("aria-expanded", "false");
+  await expect.poll(bg, { timeout: 20_000 }).toBe(unlit);
+
+  // Open ground east of you (where the walking test goes), on the canvas.
+  const local = () =>
+    page.evaluate(() => {
+      const b = (window as any).__plazaWorld.bodyOf("local");
+      return { x: b.x, y: b.y };
+    });
+  const start = await local();
+  const spot = await page.evaluate(
+    ([x, y]) => {
+      const p = (window as any).__plaza.worldClient(x, y);
+      return { ...p, hit: document.elementFromPoint(p.x, p.y)?.id };
+    },
+    [start.x + 160, start.y],
+  );
+  expect(spot.hit).toBe("pz-cv");
+  await btn.click();
+  await expect(wheel).toBeVisible();
+  await page.mouse.click(spot.x, spot.y);
+  await expect(wheel).toBeHidden();
+  await expect(btn).toHaveAttribute("aria-expanded", "false");
+  await page.waitForTimeout(1200);
+  expect(await local(), "the tap that closed the wheel walked you").toEqual(
+    start,
+  );
+  // The next tap walks there, as always.
+  await page.mouse.click(spot.x, spot.y);
+  await expect
+    .poll(async () => (await local()).x, { timeout: 15_000 })
+    .toBeGreaterThan(start.x + 40);
+
+  // Another button closes the wheel and does its own thing.
+  await btn.click();
+  await expect(wheel).toBeVisible();
+  await page.click("#pz-album-btn");
+  await expect(wheel).toBeHidden();
+  await expect(page.locator("#pz-album")).toBeVisible();
+  expect(errors).toEqual([]);
+});

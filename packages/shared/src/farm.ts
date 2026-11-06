@@ -24,7 +24,8 @@ export interface Crop {
   rarity: CropRarity;
 }
 /** The prototype counts time in units of 4 real minutes. */
-const UNIT = 240;
+/** Grow times are in minutes: quick early crops for active play, overnight ones late. */
+const UNIT = 60;
 const rarityFor = (level: number): CropRarity =>
   level >= 60
     ? "legendary"
@@ -42,7 +43,7 @@ export const CROPS: readonly Crop[] = (
       "#f2d27a",
       "#c9952f",
       "grain",
-      15,
+      2,
       5,
       5,
       3,
@@ -55,7 +56,7 @@ export const CROPS: readonly Crop[] = (
       "#ff8a3d",
       "#c4520f",
       "root",
-      20,
+      5,
       5,
       5,
       4,
@@ -68,7 +69,7 @@ export const CROPS: readonly Crop[] = (
       "#ffd84a",
       "#e09a00",
       "berry",
-      25,
+      10,
       5,
       5,
       5,
@@ -81,7 +82,7 @@ export const CROPS: readonly Crop[] = (
       "#ff4b2b",
       "#b0180a",
       "pepper",
-      30,
+      20,
       5,
       5,
       5,
@@ -94,7 +95,7 @@ export const CROPS: readonly Crop[] = (
       "#7fe7ff",
       "#1f9fb8",
       "herb",
-      28,
+      15,
       5,
       5,
       5,
@@ -107,7 +108,7 @@ export const CROPS: readonly Crop[] = (
       "#ff9bd2",
       "#e0559a",
       "lotus",
-      35,
+      30,
       5,
       6,
       6,
@@ -120,7 +121,7 @@ export const CROPS: readonly Crop[] = (
       "#fff1a8",
       "#f2b62a",
       "flower",
-      40,
+      45,
       10,
       9,
       7,
@@ -133,7 +134,7 @@ export const CROPS: readonly Crop[] = (
       "#8a6bff",
       "#3f2aa8",
       "mushroom",
-      45,
+      60,
       10,
       9,
       7,
@@ -146,7 +147,7 @@ export const CROPS: readonly Crop[] = (
       "#c47dff",
       "#6a2fb8",
       "tree",
-      50,
+      75,
       10,
       9,
       8,
@@ -159,7 +160,7 @@ export const CROPS: readonly Crop[] = (
       "#ff8a1a",
       "#c0400a",
       "gourd",
-      60,
+      120,
       15,
       13,
       11,
@@ -172,7 +173,7 @@ export const CROPS: readonly Crop[] = (
       "#7a8cff",
       "#3340c8",
       "vine",
-      55,
+      90,
       15,
       13,
       10,
@@ -185,7 +186,7 @@ export const CROPS: readonly Crop[] = (
       "#c3adff",
       "#6f55d6",
       "crystal",
-      70,
+      180,
       15,
       14,
       12,
@@ -198,7 +199,7 @@ export const CROPS: readonly Crop[] = (
       "#ff8fb8",
       "#e04a86",
       "cactus",
-      65,
+      150,
       15,
       14,
       12,
@@ -211,7 +212,7 @@ export const CROPS: readonly Crop[] = (
       "#5ff0e0",
       "#13909a",
       "kelp",
-      60,
+      120,
       15,
       13,
       11,
@@ -224,7 +225,7 @@ export const CROPS: readonly Crop[] = (
       "#ff6fae",
       "#9b3fd8",
       "flower",
-      75,
+      210,
       15,
       14,
       13,
@@ -237,7 +238,7 @@ export const CROPS: readonly Crop[] = (
       "#57c04e",
       "#1f6b25",
       "melon",
-      90,
+      270,
       25,
       22,
       18,
@@ -250,7 +251,7 @@ export const CROPS: readonly Crop[] = (
       "#ffad1f",
       "#e0480f",
       "tree",
-      100,
+      330,
       25,
       23,
       19,
@@ -263,7 +264,7 @@ export const CROPS: readonly Crop[] = (
       "#f4f8ff",
       "#8fc4f0",
       "pod",
-      95,
+      300,
       25,
       23,
       19,
@@ -276,7 +277,7 @@ export const CROPS: readonly Crop[] = (
       "#d8ff8a",
       "#7fbf3a",
       "herb",
-      85,
+      240,
       20,
       18,
       14,
@@ -289,7 +290,7 @@ export const CROPS: readonly Crop[] = (
       "#efe8ff",
       "#8a6bff",
       "boll",
-      110,
+      360,
       25,
       24,
       21,
@@ -302,7 +303,7 @@ export const CROPS: readonly Crop[] = (
       "#f0cf9a",
       "#a8743a",
       "root",
-      120,
+      420,
       30,
       27,
       22,
@@ -315,7 +316,7 @@ export const CROPS: readonly Crop[] = (
       "#ffe27a",
       "#ff7ab8",
       "star",
-      150,
+      540,
       45,
       41,
       32,
@@ -328,7 +329,7 @@ export const CROPS: readonly Crop[] = (
       "#ffd65b",
       "#5a74ff",
       "corn",
-      140,
+      480,
       40,
       37,
       31,
@@ -341,7 +342,7 @@ export const CROPS: readonly Crop[] = (
       "#ff8a4f",
       "#ffd65b",
       "bigflower",
-      160,
+      600,
       45,
       42,
       34,
@@ -354,7 +355,7 @@ export const CROPS: readonly Crop[] = (
       "#c9a3ff",
       "#4fd6ff",
       "glowshroom",
-      180,
+      720,
       50,
       46,
       37,
@@ -766,7 +767,7 @@ export const FARM_DECOR: readonly {
 export const DECOR_SLOTS = 8;
 export const charmBonus = (charm: number) =>
   Math.min(25, Math.floor(charm / 2));
-/** The Cow Pasture (migration 049; the prototype's numbers). */
+/** The Cow Pasture (migration 049; milk times from 064). */
 export const PASTURE = {
   level: 9,
   price: 900,
@@ -775,9 +776,9 @@ export const PASTURE = {
   milkXp: 8,
   /** Storm Milk per milking, and how long the cow takes (seconds). */
   milk: 2,
-  milkSeconds: 5 * 3600 + 20 * 60,
+  milkSeconds: 2 * 3600,
   /** The first milk after the pasture opens. */
-  firstMilkSeconds: 80 * 60,
+  firstMilkSeconds: 20 * 60,
 } as const;
 /** Storm Milk: a barn good, not a crop. Its price of the day is 0.85–1.35×. */
 export const MILK = {
@@ -1360,57 +1361,6 @@ export interface FarmStallAction {
   qty?: number;
   price?: number;
   seller?: string;
-}
-
-/** The weekly Valley Cup (migration 060): what each task asks for. */
-export const CUP_TASKS: Record<
-  string,
-  { name: string; goal: number; pts: number }
-> = {
-  harvest: { name: "Harvest 30 crops", goal: 30, pts: 320 },
-  orders: { name: "Deliver 2 orders", goal: 2, pts: 300 },
-  sell: { name: "Sell 2 stall shelves to friends", goal: 2, pts: 280 },
-  crates: { name: "Fill 3 balloon crates", goal: 3, pts: 260 },
-  help: { name: "Fill a friend's balloon crate", goal: 1, pts: 220 },
-  gifts: { name: "Send 3 seed gifts", goal: 3, pts: 150 },
-};
-export const CUP = { members: 10, tasksPerWeek: 9, tierPts: 2000 } as const;
-export interface FarmCup {
-  week: string;
-  endsAt: string;
-  coop: {
-    id: string;
-    name: string;
-    code: string;
-    members: {
-      id: string;
-      name: string;
-      fighter: string | null;
-      pts: number;
-    }[];
-  } | null;
-  pts: number;
-  tiers: {
-    tier: number;
-    pts: number;
-    reward: string;
-    reached: boolean;
-    claimed: boolean;
-  }[];
-  tasks: { id: string; goal: number; pts: number }[];
-  active: { task: string; goal: number; pts: number; progress: number } | null;
-  done: number;
-  taken: number;
-  rank: number | null;
-  coops: number;
-  ranking: { rank: number; name: string; pts: number; me: boolean }[];
-}
-export interface FarmCupResult {
-  cup: FarmCup;
-  ok: boolean;
-  error?: string | null;
-  repeated?: boolean;
-  gained?: Record<string, unknown> | null;
 }
 
 /** Live visits and Harvest Parties (migration 061). */

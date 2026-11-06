@@ -1090,6 +1090,62 @@ private 1v1, 2v2 and free-for-all rooms share one frame. Before and after:
   `menu-shell` moved to the new room and the roster (the one picker); what
   they check stays.
 
+### The boss page's Party tab: no Next rewards (5 Nov 2026)
+
+The Party tab listed the next six rewards under the good picks, which the
+Rewards tab beside it already shows with every milestone. At the owner's
+request the section is gone (and `nextRewards`, which only it used): the
+Party tab is the seats, the online friends, the good picks and the boss's
+attacks. A boss's clear count stays on its Raid Hall card.
+
+### Raid windows scroll under a finger (5 Nov 2026)
+
+The owner reported that long raid panels might not scroll on a phone.
+Swiped with real touch input (CDP touch events, which obey `touch-action`
+the way a phone does; Chrome's synthetic scroll gesture does nothing in
+this headless browser, and the wheel or `scrollTop` would prove nothing),
+the Raid Hall, the four boss tabs, the room's picker and seats all scrolled
+to their end. The briefing did not: a touch battle locks zoom
+(`zoom-guard.ts` adds `html.zoom-locked`, which sets `touch-action: none`
+on everything), and its exceptions listed the old `.overlay-card` but not
+the new `.rc-card` of step 5, so the briefing (and long results) could not
+be panned. `.rc-card` and its parts are now in that list.
+
+`tests/visual/raid-touch-scroll.spec.ts` swipes every raid window to its end
+(finger on cards, art, tags and text), with the briefing's extra section
+closed and open, then again after a raid (room, Raid Hall), at 844×390,
+852×393 with the island, 667×375, 1280×720 and 1440×900 (touch). It also
+fails on text or a control cut off by a box that does not scroll. A plain
+scroll box first proves the swipe works. Not verified: a real iPhone or
+Android phone, and Safari's engine (WebKit is not installed here).
+
+### Every panel scrolls under a finger (5 Nov 2026)
+
+The owner asked for every panel in the game to scroll when its content is
+longer than it. `tests/visual/scroll-sweep.ts` does this on any screen: it
+finds each box with more content than room (up-down and sideways), brings
+it into sight, swipes it with real touch input until it reaches its end,
+and fails on a box a finger cannot reach (covered, or blocked by
+`touch-action` or a touch listener). It also fails on text or a control
+cut off by a box that does not scroll (a fixed or absolute box counts only
+against its own containing block). `panel-scroll.spec.ts` runs it on 36
+screens at 844×390, 852×393 with the island, 667×375 and 1280×720 (touch):
+the Lobby's panels (Fighters and a fighter's detail, the four Shop
+sections, the Wardrobe and three of its slots, Missions, the three Journey
+tabs, the Raid Hall and the four boss tabs), the dialogs (Ranks, Friends,
+Profile, Invite a friend, Settings, Controls, Credits, Report a player),
+the mode menu and the play drawer, the Farm rail's four sheets, and in a practice
+match the menu, the practice panel and the results.
+
+Found and fixed: the practice panel in a touch match did not pan for the
+same reason as the raid briefing (the zoom lock exempted `.practice-panel`
+but not what is inside it). Everything else reached its end. Two things
+the sweep first reported were its own mistakes and are fixed in the sweep:
+it swiped a chip row after scrolling the panel around it away, and it
+measured the mode menu while the play drawer covered it (the menu stays
+open, out of sight, under the drawer). Not verified: a real phone, and
+Safari's engine.
+
 ## Decisions (owner, 3 Nov 2026)
 
 | #   | Question                                        | Decision                                                                                                                                                         |

@@ -40,8 +40,6 @@ import {
   FARM_BONDS,
   BALLOON,
   STALL as STALL_RULES,
-  CUP,
-  CUP_TASKS,
   FARM_EMOTES,
   PARTY,
   FARM_INVITE_STEPS,
@@ -65,6 +63,7 @@ import {
   gradeView,
   isSuperSwipe,
   nightLevel,
+  star,
 } from "./farm-feel";
 import {
   FrameRateProbe,
@@ -174,19 +173,12 @@ const FARM_HTML = `<div class="fm" id="fm">
     <div class="fm-badge glass" id="fm-badge"></div>
     <div class="fm-chips" id="fm-chips"></div>
     <div class="fm-corner" id="fm-corner">
-      <nav class="fm-dock glass" id="fm-dock" aria-label="Farm menu" hidden>
-        <button type="button" data-sheet="shop">${I("shop")}<span>Shop</span></button>
-        <button type="button" data-sheet="orders">${I("orders")}<span>Orders</span><b class="dot" id="fm-ord-dot" hidden></b></button>
-        <button type="button" data-sheet="market">${I("market")}<span>Market</span></button>
-        <button type="button" data-sheet="barn">${I("barn")}<span>Barn</span></button>
-        <button type="button" data-sheet="book">${I("book")}<span>Almanac</span></button>
-        <button type="button" data-sheet="decor">${I("decor")}<span>Decor</span></button>
-        <button type="button" data-sheet="friends">${I("friends")}<span>Friends</span><b class="dot" id="fm-fr-dot" hidden></b></button>
-        <button type="button" data-wish>${I("spark")}<span>Wish</span><b class="dot" id="fm-wish-dot" hidden></b></button>
-        <button type="button" data-sheet="balloon">${I("orders")}<span>Balloon</span><b class="dot" id="fm-bal-dot" hidden></b></button>
-        <button type="button" data-sheet="cup">${I("spark")}<span>Cup</span><b class="dot" id="fm-cup-dot" hidden></b></button>
+      <nav class="fm-rail glass" id="fm-rail" aria-label="Farm menu">
+        <button type="button" data-sheet="shop" title="Shop">${I("shop")}<span>Shop</span></button>
+        <button type="button" data-sheet="friends" title="Friends">${I("friends")}<span>Friends</span><b class="dot" id="fm-fr-dot" hidden></b></button>
+        <button type="button" data-sheet="decor" title="Decorate">${I("decor")}<span>Decor</span></button>
+        <button type="button" data-sheet="book" title="Almanac">${I("book")}<span>Almanac</span></button>
       </nav>
-      <div class="fm-menu glass"><button type="button" class="fm-tool fm-menu-btn" id="fm-menu-btn" aria-expanded="false" aria-pressed="false" aria-controls="fm-dock" title="Menu (M)"><kbd>M</kbd>${I("menu")}<span>Menu</span></button></div>
       <div class="fm-zoom glass" id="fm-zoom" role="group" aria-label="Zoom"><button type="button" data-z="in" aria-label="Zoom in" title="Zoom in (+)">+</button><button type="button" data-z="out" aria-label="Zoom out" title="Zoom out (−)">−</button><button type="button" data-z="fit" aria-label="Show the whole farm" title="Show the whole farm">⤢</button></div>
     </div>
     <div class="fm-visit glass" id="fm-visit" hidden></div>
@@ -1582,6 +1574,15 @@ export function openFarm(options) {
     ph: i,
     shake: 0,
   }));
+  /** Your home. Its name is a tag above it, like every building's. */
+  const HOUSE_SPR = () =>
+    GFX.house({
+      wall: "#fff3dd",
+      roof: "#d9473f",
+      shutters: "#4fae46",
+      w: 150,
+      sd: 9,
+    });
   /** Squash-and-stretch after a tap (house, mill, barn…): 1 → 0. */
   const bounce = {};
   const squash = (k) => {
@@ -1595,6 +1596,37 @@ export function openFarm(options) {
     ctx.translate(x, y);
     ctx.scale(1 + k, 1 - k);
     GFX.blit(ctx, spr, 0, 0);
+    ctx.restore();
+  }
+  /* The wishing well twinkles: a shimmer on the water and stars that drift
+     up out of it and fade, gold and busier while today's wish is waiting. */
+  function drawWellSparkles(time) {
+    const ready = F.wishReady && !V,
+      n = ready ? 9 : 5,
+      rgb = ready ? "255,214,91" : "150,220,255";
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    // A soft light in the water, breathing slowly.
+    const sh = 0.5 + 0.5 * Math.sin(time * 2.2);
+    ctx.save();
+    ctx.translate(WELL.x, WELL.y - 30);
+    ctx.scale(1, 0.32);
+    glow(ctx, 0, 0, 44, rgb, (ready ? 0.7 : 0.4) * (0.6 + 0.4 * sh));
+    ctx.restore();
+    for (let k = 0; k < n; k++) {
+      // Each star rises 90px over its own 2.4–3.6 s, offset so they never bunch.
+      const per = 2.4 + (k % 4) * 0.4,
+        f = (time / per + k * 0.37) % 1,
+        x = WELL.x + Math.sin(k * 2.39 + time * 0.9) * (14 + (k % 3) * 9),
+        y = WELL.y - 32 - f * 90,
+        a = Math.sin(Math.PI * f),
+        sz = (ready ? 7 : 5) * (0.6 + 0.4 * a);
+      glow(ctx, x, y, sz * 2.6, rgb, 0.45 * a);
+      ctx.globalAlpha = a;
+      ctx.fillStyle = ready ? "#fff3c4" : "#eefaff";
+      star(ctx, x, y, sz);
+      ctx.globalAlpha = 1;
+    }
     ctx.restore();
   }
   function drawTreeS(tr, time, shadowK) {
@@ -2822,151 +2854,6 @@ export function openFarm(options) {
     }
     renderVisit();
   }
-  /* ---------- co-ops and the weekly Valley Cup (migration 060) ---------- */
-  let cupState = null;
-  const FLAG = { x: 802, y: 282 };
-  async function loadCup() {
-    if (!options.cup) return;
-    try {
-      cupState = await options.cup();
-    } catch {
-      return;
-    }
-    syncCupDot();
-    if (sheet === "cup") renderSheet();
-  }
-  function syncCupDot() {
-    $("fm-cup-dot").hidden = !cupState?.tiers?.some(
-      (t) => t.reached && !t.claimed && cupState.done > 0,
-    );
-    syncMenuDot();
-  }
-  async function cupAct(kind, arg) {
-    if (!options.cupAct) return;
-    try {
-      const before = cupState?.done ?? 0;
-      const r = await options.cupAct(kind, arg);
-      cupState = r.cup;
-      if (!r.ok) {
-        if (!r.repeated) toast(r.error || "That didn't work.");
-      } else if (kind === "create" || kind === "join") {
-        sfx("fanfare");
-        toast(`Welcome to ${cupState.coop?.name}!`);
-      } else if (kind === "take") {
-        sfx("tick");
-      } else if (kind === "claim") {
-        sfx("chime");
-        feel.pop(VW / 2, VH * 0.35, 70);
-        toast("Cup reward claimed!");
-        void refresh();
-      } else if (kind === "leave") toast("You left the co-op");
-      if (cupState.done > before) cupCheer();
-    } catch (e) {
-      toast(e?.message || "Couldn't reach your farm. Check your connection.");
-    }
-    syncCupDot();
-    if (sheet === "cup") renderSheet();
-  }
-  function cupCheer() {
-    sfx("fanfare");
-    feel.burst(FLAG.x + 30, FLAG.y - 100, 20, "spark", {
-      v: 220,
-      life: 0.9,
-      s: 7,
-    });
-    feel.pop(
-      (FLAG.x - cam.x) * Z + VW / 2,
-      (FLAG.y - 100 - cam.y) * Z + VH / 2,
-      50,
-    );
-    toast("Cup task done! Points for your co-op");
-  }
-  function flagHit(w) {
-    return (
-      !V &&
-      Math.abs(w.x - (FLAG.x + 30)) < 50 &&
-      w.y < FLAG.y + 10 &&
-      w.y > FLAG.y - 135
-    );
-  }
-  function drawFlag(g, time) {
-    if (V) return;
-    const x = FLAG.x,
-      y = FLAG.y,
-      sp = F.weather.cur === "storm" ? 8 : 4,
-      t = reduced ? 0 : time;
-    GFX.shadow(g, x + 4, y + 2, 12, 4);
-    g.fillStyle = "#7a5230";
-    g.fillRect(x - 3, y - 120, 6, 122);
-    g.fillStyle = "#ffd65b";
-    g.beginPath();
-    g.arc(x, y - 122, 6, 0, 7);
-    g.fill();
-    g.save();
-    g.translate(x + 3, y - 114);
-    g.beginPath();
-    g.moveTo(0, 0);
-    for (let k = 0; k <= 10; k++)
-      g.lineTo(k * 7, Math.sin(t * sp - k * 0.6) * (k * 0.5) + k * 0.6);
-    for (let k = 10; k >= 0; k--)
-      g.lineTo(k * 7, 36 + Math.sin(t * sp - k * 0.6) * (k * 0.5) - k * 1.2);
-    g.closePath();
-    const fg = g.createLinearGradient(0, 0, 70, 36);
-    fg.addColorStop(0, "#ffd65b");
-    fg.addColorStop(1, "#f2a52a");
-    g.fillStyle = fg;
-    g.fill();
-    g.strokeStyle = "#b8800f";
-    g.lineWidth = 1.5;
-    g.stroke();
-    g.fillStyle = "#5a3a00";
-    g.font = "800 16px 'Barlow Condensed', sans-serif";
-    g.textAlign = "left";
-    g.textBaseline = "middle";
-    g.fillText("CUP", 14, 18 + Math.sin(t * sp - 2) * 2);
-    g.textBaseline = "alphabetic";
-    g.restore();
-    if (cupState?.coop && cupState.rank)
-      nameTag(g, `#${cupState.rank} · ${cupState.pts} PTS`, x + 20, y + 26);
-  }
-  function cupHTML() {
-    const c = cupState;
-    if (!c) return `<div class="sh-body"><p class="sh-note">Loading…</p></div>`;
-    const ends = Math.max(
-      0,
-      (new Date(c.endsAt).getTime() - serverNow()) / 1000,
-    );
-    if (!c.coop)
-      return `<div class="sh-body"><p class="sh-note">Join a <b>co-op</b> (up to ${CUP.members} farmers) and win the weekly <b>Valley Cup</b> together: take tasks, finish them on your farm, and your co-op's points reach rewards for everyone who helped.</p><div class="fm-cup-form"><label>Make a co-op<input id="fm-cup-name" maxlength="24" placeholder="Co-op name"></label><button type="button" class="btn-s gold" data-cupcreate>Make it</button></div><div class="fm-cup-form"><label>Join with a code<input id="fm-cup-code" maxlength="6" placeholder="ABC234" autocapitalize="characters"></label><button type="button" class="btn-s green" data-cupjoin>Join</button></div><p class="sh-note">${c.coops} co-op${c.coops === 1 ? "" : "s"} in this week's Cup · ends in ${fmtDur(ends)}.</p></div>`;
-    const max = 3 * CUP.tierPts;
-    const tiers = c.tiers
-      .map(
-        (t) =>
-          `<div class="tier${t.reached ? " got" : ""}"><b>${(t.pts / 1000).toFixed(0)}k</b><small>${esc(t.reward)}</small>${t.reached && !t.claimed && c.done > 0 ? `<button type="button" class="btn-s gold" data-cupclaim="${t.tier}">Claim</button>` : t.claimed ? `<small class="got">✓ Claimed</small>` : ""}</div>`,
-      )
-      .join("");
-    const task = c.active
-      ? `<div class="item mine"><span class="ic">${I("spark")}</span><div><b>${esc(CUP_TASKS[c.active.task]?.name ?? c.active.task)}</b><small>${c.active.progress}/${c.active.goal} · +${c.active.pts} points</small><div class="cap"><i style="width:${(c.active.progress / c.active.goal) * 100}%"></i></div></div><div class="acts"><button type="button" class="btn-s ghost" data-cupdrop>Drop</button></div></div>`
-      : c.tasks
-          .map(
-            (t) =>
-              `<div class="item"><span class="ic">${I("spark")}</span><div><b>${esc(CUP_TASKS[t.id]?.name ?? t.id)}</b><small>+${t.pts} points</small></div><div class="acts"><button type="button" class="btn-s gold" data-cuptake="${t.id}" ${c.taken >= CUP.tasksPerWeek ? "disabled" : ""}>Take</button></div></div>`,
-          )
-          .join("");
-    const members = c.coop.members
-      .map(
-        (m) =>
-          `<span class="mem"><img src="${options.art(m.fighter)}" alt="">${esc(m.name)} <b>${m.pts}</b></span>`,
-      )
-      .join("");
-    const ranking = c.ranking
-      .map(
-        (r) =>
-          `<div class="lrow${r.me ? " me" : ""}"><b>${r.rank}</b><span>${esc(r.name)}</span><b>${r.pts}</b></div>`,
-      )
-      .join("");
-    return `<div class="sh-body"><div class="fm-coop"><div><b>${esc(c.coop.name)}</b><small>Code <b>${esc(c.coop.code)}</b> · ${c.coop.members.length}/${CUP.members} farmers · ends in ${fmtDur(ends)}</small></div><button type="button" class="btn-s ghost" data-cupcopy="${esc(c.coop.code)}">Copy code</button></div><div class="cap"><i style="width:${Math.min(100, (c.pts / max) * 100)}%"></i></div><p class="sh-note"><b>${c.pts} points</b> this week · #${c.rank ?? "–"} of ${c.coops}</p><div class="fm-tiers">${tiers}</div><p class="sh-note">${c.active ? "Your task" : `Take a task · ${CUP.tasksPerWeek - c.taken} left this week`} · finished ${c.done}</p>${task}<p class="sh-note">Members</p><div class="fm-members">${members}</div><p class="sh-note">This week's Cup</p><div class="fm-league">${ranking}</div><button type="button" class="btn-s ghost fm-wide" data-cupleave>Leave the co-op</button></div>`;
-  }
   /* ---------- the Farm Stall and the Valley Paper (migration 059) ---------- */
   let stall = null,
     stallSlot = null;
@@ -3127,8 +3014,6 @@ export function openFarm(options) {
       return;
     }
     if (balloon.crates && bal.mode !== "idle") bal.mode = "idle";
-    $("fm-bal-dot").hidden = !balReady();
-    syncMenuDot();
     if (sheet === "balloon") renderSheet();
   }
   async function loadHelp() {
@@ -3179,8 +3064,6 @@ export function openFarm(options) {
         closeSheet();
       }
       balloon = r.balloon;
-      $("fm-bal-dot").hidden = !balReady();
-      syncMenuDot();
       void refresh();
     } catch (e) {
       toast(e?.message || "Couldn't reach your farm. Check your connection.");
@@ -3237,13 +3120,6 @@ export function openFarm(options) {
       const left = balloon.arrivesAt
         ? (new Date(balloon.arrivesAt).getTime() - serverNow()) / 1000
         : 0;
-      if (left > 0)
-        nameTag(
-          g,
-          `BALLOON IN ${fmtSecs(left).toUpperCase()}`,
-          PEG.x,
-          PEG.y - 30,
-        );
       g.fillStyle = "#7a5230";
       g.fillRect(PEG.x - 3, PEG.y - 14, 6, 16);
       return;
@@ -3361,15 +3237,6 @@ export function openFarm(options) {
       if (im?.complete) g.drawImage(im, cx - 2, 60, 20, 23);
     });
     g.restore();
-    if (bal.mode === "idle")
-      nameTag(
-        g,
-        done === balloon.crates.length
-          ? "READY TO LAUNCH!"
-          : `SUPPLY BALLOON ${done}/6`,
-        x,
-        y + 150,
-      );
   }
   function balloonHTML() {
     if (!balloon)
@@ -3428,7 +3295,6 @@ export function openFarm(options) {
       friendsList?.some((f) => f.bugs || f.ripe) ||
       gifts?.friends?.some((f) => f.waiting > 0)
     );
-    syncMenuDot();
   }
   async function giftAct(kind, id) {
     const call = kind === "send" ? options.giftSend : options.giftOpen;
@@ -3784,14 +3650,7 @@ export function openFarm(options) {
     ) {
       bounce.house = 1;
       sfx("knock");
-      const hs = GFX.house({
-        wall: "#fff3dd",
-        roof: "#d9473f",
-        shutters: "#4fae46",
-        w: 150,
-        sd: 9,
-        sign: { t: "HOME", bg: "#7a3a1a" },
-      });
+      const hs = HOUSE_SPR();
       if (hs.chimney)
         for (let k = 0; k < 4; k++)
           FSMOKE.push({
@@ -4322,52 +4181,61 @@ export function openFarm(options) {
     ctx.scale(Z, Z);
     ctx.translate(-cam.x, -cam.y);
     ctx.drawImage(bg, WX0, WY0);
-    TREES.forEach((tr) => drawTreeS(tr, time, 0.7));
-    GFX.shadow(ctx, HOUSE.x + 30, HOUSE.y + 4, 110, 20);
-    const hs = GFX.house({
-      wall: "#fff3dd",
-      roof: "#d9473f",
-      shutters: "#4fae46",
-      w: 150,
-      sd: 9,
-      sign: { t: "HOME", bg: "#7a3a1a" },
-    });
-    blitB("house", hs, HOUSE.x, HOUSE.y);
-    const wm = GFX.windmillBody();
-    GFX.shadow(ctx, MILL.x + 20, MILL.y + 4, 60, 14);
-    blitB("mill", wm, MILL.x, MILL.y);
-    GFX.windmillSails(
-      ctx,
-      MILL.x + wm.hub[0],
-      MILL.y + wm.hub[1],
-      reduced ? 0 : millA,
-      0.82,
-    );
-    GFX.shadow(ctx, BOARDP.x + 8, BOARDP.y + 3, 70, 14);
-    blitB("board", GFX.board(), BOARDP.x, BOARDP.y);
-    GFX.shadow(ctx, STALL.x + 10, STALL.y + 4, 96, 16);
-    blitB("stall", GFX.stall(), STALL.x, STALL.y);
-    GFX.shadow(ctx, BARN.x + 20, BARN.y + 4, 130, 22);
-    blitB("barn", GFX.barn(), BARN.x, BARN.y);
-    FSMOKE.forEach((m) => {
-      ctx.fillStyle = `rgba(240,240,245,${0.5 * (1 - m.t / m.life)})`;
-      ctx.beginPath();
-      ctx.arc(m.x, m.y, 6 + m.t * 7, 0, 7);
-      ctx.fill();
-    });
-    nameTag(ctx, "MARKET", STALL.x, STALL.y - 178);
-    nameTag(ctx, "BARN", BARN.x + 10, BARN.y - 214);
-    nameTag(
-      ctx,
-      F.wishReady ? "WISHING WELL ✦" : "WISHING WELL",
-      WELL.x,
-      WELL.y - 140,
-    );
     drawFence(ctx);
     drawPastureFence(ctx, true);
     s.plots.forEach((p, i) => drawPlot(ctx, i, p, time, s));
     drawArea(ctx);
     const items = [];
+    // Trees and the back row stand in the depth order too, so nothing
+    // walking behind them is drawn over them.
+    TREES.forEach((tr) =>
+      items.push({ y: tr.y, d: () => drawTreeS(tr, time, 0.7) }),
+    );
+    items.push(
+      {
+        y: HOUSE.y,
+        d: () => {
+          GFX.shadow(ctx, HOUSE.x + 30, HOUSE.y + 4, 110, 20);
+          blitB("house", HOUSE_SPR(), HOUSE.x, HOUSE.y);
+        },
+      },
+      {
+        y: MILL.y,
+        d: () => {
+          const wm = GFX.windmillBody();
+          GFX.shadow(ctx, MILL.x + 20, MILL.y + 4, 60, 14);
+          blitB("mill", wm, MILL.x, MILL.y);
+          GFX.windmillSails(
+            ctx,
+            MILL.x + wm.hub[0],
+            MILL.y + wm.hub[1],
+            reduced ? 0 : millA,
+            0.82,
+          );
+        },
+      },
+      {
+        y: BOARDP.y,
+        d: () => {
+          GFX.shadow(ctx, BOARDP.x + 8, BOARDP.y + 3, 70, 14);
+          blitB("board", GFX.board(), BOARDP.x, BOARDP.y);
+        },
+      },
+      {
+        y: STALL.y,
+        d: () => {
+          GFX.shadow(ctx, STALL.x + 10, STALL.y + 4, 96, 16);
+          blitB("stall", GFX.stall(), STALL.x, STALL.y);
+        },
+      },
+      {
+        y: BARN.y,
+        d: () => {
+          GFX.shadow(ctx, BARN.x + 20, BARN.y + 4, 130, 22);
+          blitB("barn", GFX.barn(), BARN.x, BARN.y);
+        },
+      },
+    );
     MARGIN.forEach((m) =>
       items.push({
         y: m.y,
@@ -4380,7 +4248,6 @@ export function openFarm(options) {
         },
       }),
     );
-    items.push({ y: FLAG.y, d: () => drawFlag(ctx, time) });
     drawPresent(items, time);
     items.push({
       y: -40,
@@ -4510,6 +4377,7 @@ export function openFarm(options) {
       d: () => {
         GFX.shadow(ctx, WELL.x + 8, WELL.y + 2, 56, 12);
         blitB("well", GFX.well(), WELL.x, WELL.y);
+        drawWellSparkles(time);
       },
     });
     items.push({
@@ -4645,6 +4513,12 @@ export function openFarm(options) {
     fenceItems(items);
     items.push(...feel.groundItems(ctx));
     items.sort((a, b) => a.y - b.y).forEach((it) => it.d());
+    FSMOKE.forEach((m) => {
+      ctx.fillStyle = `rgba(240,240,245,${0.5 * (1 - m.t / m.life)})`;
+      ctx.beginPath();
+      ctx.arc(m.x, m.y, 6 + m.t * 7, 0, 7);
+      ctx.fill();
+    });
     // Crows: fly in, then peck with a bar showing the time left to shoo them.
     if (s.me) {
       const sn = serverNow();
@@ -4846,7 +4720,7 @@ export function openFarm(options) {
       golden * 0.55,
       w === "storm" ? 0.5 : w === "rain" ? 0.3 : 0,
     );
-    if (low || lit < 0.02) return;
+    if (low || lit < 0.02) return drawLabels(time);
     ctx.save();
     ctx.beginPath();
     ctx.rect(0, 0, VW, VH);
@@ -4856,14 +4730,7 @@ export function openFarm(options) {
     ctx.translate(-cam.x, -cam.y);
     ctx.globalCompositeOperation = "lighter";
     const fl = 0.92 + Math.sin(time * 9) * 0.04 + Math.sin(time * 5.3) * 0.04;
-    const hs = GFX.house({
-      wall: "#fff3dd",
-      roof: "#d9473f",
-      shutters: "#4fae46",
-      w: 150,
-      sd: 9,
-      sign: { t: "HOME", bg: "#7a3a1a" },
-    });
+    const hs = HOUSE_SPR();
     for (const [wx, wy, ww, wh] of hs.win ?? []) {
       ctx.fillStyle = `rgba(255,200,90,${0.6 * lit})`;
       ctx.fillRect(HOUSE.x + wx + 3, HOUSE.y + wy + 3, ww - 6, wh - 6);
@@ -4887,6 +4754,78 @@ export function openFarm(options) {
           b = Math.max(0, Math.sin(time * 2 * f.sp + f.ph));
         glow(ctx, x, y, 16, "210,255,120", 0.75 * n * b);
       }
+    ctx.restore();
+    drawLabels(time);
+  }
+  /**
+   * The name of every place you can use (the house opens nothing, so it has
+   * none), on a tag just above its picture, drawn last so no tree covers it
+   * and the night doesn't dim it. A building with something
+   * for you shows a badge on its tag, as in the farm games people know.
+   */
+  function drawLabels(time) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, 0, VW, VH);
+    ctx.clip();
+    ctx.translate(VW / 2, VH / 2);
+    ctx.scale(Z, Z);
+    ctx.translate(-cam.x, -cam.y);
+    const z = 1 / Math.max(0.6, Z),
+      tag = (t, x, top, accent) => nameTag(ctx, t, x, top - 20 * z, accent);
+    const bob = reduced ? 0 : Math.abs(Math.sin(time * 3)) * 4;
+    const badge = (t, x, top, bg) => {
+      const fs = 15 * z;
+      ctx.font = `800 ${fs}px 'Barlow Condensed', sans-serif`;
+      const w = Math.max(22 * z, ctx.measureText(t).width + 14 * z),
+        h = 22 * z,
+        y = top - 50 * z - bob;
+      ctx.fillStyle = bg;
+      ctx.beginPath();
+      ctx.roundRect(x - w / 2, y - h / 2, w, h, h / 2);
+      ctx.fill();
+      ctx.fillStyle = "#1a0f05";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(t, x, y + 0.5);
+      ctx.textBaseline = "alphabetic";
+    };
+    tag("ORDERS", BOARDP.x, BOARDP.y - 140);
+    tag("MARKET", STALL.x, STALL.y - 150);
+    tag("BARN", BARN.x, BARN.y - 196);
+    tag(
+      F.wishReady && !V ? "WISHING WELL ✦" : "WISHING WELL",
+      WELL.x,
+      WELL.y - 138,
+      F.wishReady && !V ? "#ffd65b" : undefined,
+    );
+    if (!V) {
+      if (F.orders.some((o) => o.items && canFill(o)))
+        badge("!", BOARDP.x + 44 * z, BOARDP.y - 140, "#ffd65b");
+      if (stall?.shelves?.some((x) => x.sold))
+        badge("SOLD!", STALL.x + 46 * z, STALL.y - 150, "#7ff0a2");
+      if (barnUsed() >= F.barnCap * 0.9)
+        badge("FULL", BARN.x + 40 * z, BARN.y - 196, "#ff8a7a");
+      if (balloon) {
+        if (balloon.crates && bal.mode === "idle") {
+          const p = balloonPos(time, performance.now()),
+            done = balloon.crates.filter((c) => c.state === "done").length,
+            ready = done === balloon.crates.length;
+          tag(
+            ready ? "READY TO LAUNCH!" : `SUPPLY BALLOON ${done}/6`,
+            p.x,
+            p.y - 118,
+            ready ? "#7ff0a2" : undefined,
+          );
+        } else if (!balloon.crates || bal.mode === "gone") {
+          const left = balloon.arrivesAt
+            ? (new Date(balloon.arrivesAt).getTime() - serverNow()) / 1000
+            : 0;
+          if (left > 0)
+            tag(`BALLOON IN ${fmtSecs(left).toUpperCase()}`, PEG.x, PEG.y - 14);
+        }
+      }
+    }
     ctx.restore();
   }
 
@@ -5235,14 +5174,7 @@ export function openFarm(options) {
       if (h.fast > 0) h.fast -= dt;
     });
     if (!reduced && Math.random() < dt * 2.5) {
-      const hs = GFX.house({
-        wall: "#fff3dd",
-        roof: "#d9473f",
-        shutters: "#4fae46",
-        w: 150,
-        sd: 9,
-        sign: { t: "HOME", bg: "#7a3a1a" },
-      });
+      const hs = HOUSE_SPR();
       if (hs.chimney)
         FSMOKE.push({
           x: HOUSE.x + hs.chimney[0],
@@ -5377,9 +5309,6 @@ export function openFarm(options) {
       }
     });
     if (orbOpen) renderOrbPop();
-    $("fm-ord-dot").hidden = !F.orders.some((o) => o.items && canFill(o));
-    $("fm-wish-dot").hidden = !F.wishReady || !!V;
-    syncMenuDot();
   }
   const canFill = (o) => o.items.every(([id, n]) => owned(id) >= n);
   const FERT_NAME = {
@@ -5584,7 +5513,7 @@ export function openFarm(options) {
         null);
     $("fm-pop").hidden = true;
     renderSheet();
-    $("fm-dock")
+    $("fm-rail")
       .querySelectorAll("[data-sheet]")
       .forEach((b) =>
         b.setAttribute("aria-expanded", String(b.dataset.sheet === name)),
@@ -5596,7 +5525,7 @@ export function openFarm(options) {
     // Closing the Decorate sheet stops placing, except on phones, where it
     // closes so the spots can be tapped (Escape stops it there).
     if (!layer.classList.contains("phone")) F.decorPick = null;
-    $("fm-dock")
+    $("fm-rail")
       .querySelectorAll("[data-sheet]")
       .forEach((b) => b.setAttribute("aria-expanded", "false"));
   }
@@ -5874,12 +5803,6 @@ export function openFarm(options) {
           return `<div class="item${lock ? " locked" : ""}"><span class="ic">${I(d.icon)}</span><div><b>${d.name}</b><small>+${d.charm} Charm${free ? ` · <b style="color:#7ff0a2">1 free</b>` : ""}${lock ? ` · <b style="color:#ffd65b">unlocks at Lv ${d.level}</b>` : ""}</small></div><div class="acts"><button type="button" class="btn-s${picking ? " green" : ""}" data-deco="${d.id}" ${lock || (!free && F.leaves < d.price) ? "disabled" : ""}>${picking ? "Placing…" : free ? "Free" : `${d.price.toLocaleString("en-US")} ${L}`}</button></div></div>`;
         }).join("") +
         `<div class="item"><span class="ic">${I("broom")}</span><div><b>Put decor away</b><small>Tap "Remove", then a decoration on the farm</small></div><div class="acts"><button type="button" class="btn-s ghost" data-deco="__remove">${F.decorPick === "__remove" ? "Removing…" : "Remove"}</button></div></div></div>`;
-    if (sheet === "cup")
-      html =
-        head(
-          "Valley Cup",
-          cupState?.coop ? esc(cupState.coop.name) : "Co-ops",
-        ) + cupHTML();
     if (sheet === "balloon")
       html =
         head(
@@ -5959,23 +5882,6 @@ export function openFarm(options) {
     if (!t) return;
     const d = t.dataset;
     if ("close" in d) return closeSheet();
-    if ("cupcreate" in d)
-      return void cupAct("create", $("fm-cup-name")?.value ?? "");
-    if ("cupjoin" in d)
-      return void cupAct("join", $("fm-cup-code")?.value ?? "");
-    if (d.cuptake) return void cupAct("take", d.cuptake);
-    if ("cupdrop" in d) return void cupAct("drop");
-    if (d.cupclaim) return void cupAct("claim", d.cupclaim);
-    if ("cupleave" in d) return void cupAct("leave");
-    if (d.cupcopy) {
-      try {
-        await navigator.clipboard.writeText(d.cupcopy);
-        toast("Co-op code copied");
-      } catch {
-        toast(`Your co-op code is ${d.cupcopy}`);
-      }
-      return;
-    }
     if (d.shelf) {
       stallSlot = stallSlot === +d.shelf ? null : +d.shelf;
       return renderSheet();
@@ -6133,25 +6039,15 @@ export function openFarm(options) {
       return renderSheet();
     }
   });
-  $("fm-dock").addEventListener("click", (e) => {
-    if (e.target.closest("[data-wish]")) {
-      menuSet(false);
-      void wishWell();
-      return;
-    }
+  $("fm-rail").addEventListener("click", (e) => {
     const b = e.target.closest("[data-sheet]");
     if (!b) return;
-    menuSet(false);
     if (b.dataset.sheet === "friends" && sheet !== "friends") {
       void loadTour();
       void loadFriends();
       void loadGifts();
       void loadHelp();
     }
-    if (b.dataset.sheet === "balloon" && sheet !== "balloon")
-      void loadBalloon();
-    if (b.dataset.sheet === "market" && sheet !== "market") void loadStall();
-    if (b.dataset.sheet === "cup" && sheet !== "cup") void loadCup();
     if (sheet === b.dataset.sheet) closeSheet();
     else openSheet(b.dataset.sheet);
   });
@@ -6194,50 +6090,39 @@ export function openFarm(options) {
     else openSheet("barn");
     renderChips();
   });
-  const closeOrb = (e) => {
-    if (orbOpen && !e.target.closest("#fm-orbpop, #fm-chips")) {
+  // A press outside a status orb's card closes it, and a press on the farm
+  // itself closes the open sheet too (the rail's lit button also does).
+  // On the farm that press only closes: it doesn't also plant, harvest or
+  // open a building. Placing decor on desktop keeps the Decorate sheet
+  // open: those taps place.
+  const closeOutside = (e) => {
+    const t = e.target,
+      orb = orbOpen && !t.closest("#fm-orbpop, #fm-chips"),
+      field = t === cv && sheet && !(sheet === "decor" && F.decorPick);
+    if (orb) {
       orbOpen = null;
       $("fm-orbpop").hidden = true;
       renderChips();
     }
-  };
-  layer.addEventListener("pointerdown", closeOrb, true);
-  /* The farm menu (phase 6): one Menu button in the bottom-right corner, the
-     size of a tool, opens a grid of tiles above it; a tile, a tap elsewhere,
-     Escape or M again folds it. */
-  const dockEl = $("fm-dock"),
-    menuBtn = $("fm-menu-btn");
-  function menuSet(open) {
-    dockEl.hidden = !open;
-    menuBtn.setAttribute("aria-expanded", String(open));
-    menuBtn.setAttribute("aria-pressed", String(open));
-    if (open) {
-      orbOpen = null;
-      $("fm-orbpop").hidden = true;
-      $("fm-pop").hidden = true;
+    if (field) closeSheet();
+    if ((orb || field) && t === cv) {
+      e.stopPropagation();
+      screen.focus({ preventScroll: true });
     }
+  };
+  layer.addEventListener("pointerdown", closeOutside, true);
+  // The deed and the level-up card: a tap on the dimmed background around
+  // them (pressed and let go there, not a drag out of the card) puts them
+  // away, like "Not now" and "Awesome!".
+  {
+    const m = $("fm-modal");
+    let pressed = false;
+    m.addEventListener("pointerdown", (e) => (pressed = e.target === m));
+    m.addEventListener("click", (e) => {
+      if (pressed && e.target === m) m.hidden = true;
+      pressed = false;
+    });
   }
-  function syncMenuDot() {
-    $("fm-menu-btn").toggleAttribute(
-      "data-dot",
-      [
-        "fm-ord-dot",
-        "fm-fr-dot",
-        "fm-wish-dot",
-        "fm-bal-dot",
-        "fm-cup-dot",
-      ].some((id) => !$(id).hidden),
-    );
-  }
-  menuBtn.addEventListener("click", () => menuSet(dockEl.hidden));
-  layer.addEventListener(
-    "pointerdown",
-    (e) => {
-      if (!dockEl.hidden && !e.target.closest("#fm-dock, #fm-menu-btn"))
-        menuSet(false);
-    },
-    true,
-  );
   $("fm-tools").addEventListener("click", (e) => {
     const b = e.target.closest("[data-tool]");
     if (!b) return;
@@ -6264,10 +6149,10 @@ export function openFarm(options) {
     pop.hidden = false;
     if (kind === "seed")
       pop.innerHTML = `<h6>Pick a seed to sow</h6><div class="grid">${
-        CROPS.filter((c) => F.seeds[c.id])
+        PCROPS.filter((c) => F.seeds[c.id])
           .map(
             (c) =>
-              `<button type="button" class="opt" data-tseed="${c.id}"><b>${F.seeds[c.id]}</b><img src="${icon(c.id)}" alt=""><span>${c.n}</span></button>`,
+              `<button type="button" class="opt" data-tseed="${c.id}"><b>${F.seeds[c.id]}</b><img src="${icon(c.id)}" alt=""><span>${esc(c.n)}</span></button>`,
           )
           .join("") || `<p class="sh-note">No seeds</p>`
       }</div>`;
@@ -6430,11 +6315,6 @@ export function openFarm(options) {
       bounce.board = 1;
       sfx("tick");
       return openSheet("orders");
-    }
-    if (flagHit(w)) {
-      sfx("tick");
-      void loadCup();
-      return openSheet("cup");
     }
     if (balloonHit(w)) {
       sfx("boing");
@@ -6631,11 +6511,6 @@ export function openFarm(options) {
         renderTools();
       }
     }
-    if (k === "m") menuSet(dockEl.hidden);
-    if (k === "escape" && !dockEl.hidden) {
-      menuSet(false);
-      return;
-    }
     if (k === "escape") {
       F.decorPick = null;
       $("fm-pop").hidden = true;
@@ -6782,7 +6657,6 @@ export function openFarm(options) {
           .catch(() => {});
     } else if (!queue.length && !sending) {
       void refresh();
-      if (cupState?.active) void loadCup();
     }
   }, 60_000);
   onResize();
@@ -6796,7 +6670,8 @@ export function openFarm(options) {
   void loadGifts();
   void loadBalloon();
   void loadHelp();
-  void loadCup();
+  // The Market tag shows SOLD! when a friend bought a shelf.
+  void loadStall();
   layer.focus({ preventScroll: true });
   return {
     refresh,
@@ -6835,6 +6710,15 @@ export function openFarm(options) {
         };
       },
       well: WELL,
+      /** A world point that opens each place on the farm when tapped (tests). */
+      place: (k) =>
+        ({
+          orders: { x: BOARDP.x, y: BOARDP.y - 70 },
+          market: { x: STALL.x, y: STALL.y - 60 },
+          barn: { x: BARN.x + 20, y: BARN.y - 60 },
+          balloon: { x: BAL.x, y: BAL.y - 30 },
+          well: { x: WELL.x, y: WELL.y - 50 },
+        })[k],
       /** Center the camera on a world point (tests). */
       look: (x, y) => {
         cam.x = x;

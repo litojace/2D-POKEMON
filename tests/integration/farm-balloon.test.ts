@@ -239,7 +239,7 @@ it("six full crates launch for leaves, XP and a Gold Fertilizer; the next comes 
   );
   b = await call(ann, "public.arena_farm_balloon()");
   expect(b.crates).toHaveLength(6);
-  // Every crate filled is logged (the Valley Cup counts them).
+  // Every crate filled is logged.
   const [{ n }] = await sql(
     "select count(*)::int n from public.arena_farm_crate_log where player_id = $1",
     [ann],
