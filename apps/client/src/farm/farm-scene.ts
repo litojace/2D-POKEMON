@@ -2328,6 +2328,46 @@ export function openFarm(options) {
     for (const j of gi.plots)
       if (s.plots[j].pests) drawBugs(g, j, s.plots[j], time);
   }
+  /* Rain splashes ring out on the ground itself, drawn before the houses,
+     trees and animals, so anything standing in front of a splash covers it
+     (they used to ring out on roofs and treetops). In world space, spread
+     over what the camera sees, the same density at any zoom. */
+  function drawRainSplashes(g, time) {
+    const w = F.weather.cur;
+    if (w !== "rain" && w !== "storm") return;
+    const heavy = w === "storm",
+      vw = VW / Z,
+      vh = VH / Z,
+      x0 = cam.x - vw / 2,
+      y0 = cam.y - vh / 2,
+      n = Math.round((heavy ? 54 : 40) * (low ? 0.5 : 1));
+    g.save();
+    // A touch stronger than the drops: the rain's tint is drawn over them.
+    g.strokeStyle = "rgba(225,242,255,.95)";
+    g.lineWidth = 1.7 / Math.max(0.6, Z);
+    for (let k = 0; k < n; k++) {
+      const c = time * 2.4 + k * 0.37,
+        ph = c % 1,
+        cyc = Math.floor(c),
+        // Spread over the view in fractions, so a splash keeps its place on
+        // the ground for its whole ring.
+        fx = ((k * 211.7 + cyc * 157) % 1000) / 1000,
+        fy = ((k * 137.3 + cyc * 89) % 1000) / 1000;
+      g.globalAlpha = 1 - ph;
+      g.beginPath();
+      g.ellipse(
+        x0 + fx * vw,
+        y0 + fy * vh,
+        3 + ph * 11,
+        1.3 + ph * 3.6,
+        0,
+        0,
+        Math.PI * 2,
+      );
+      g.stroke();
+    }
+    g.restore();
+  }
   // Weather you can see at a glance: layered rain with splashes, real lightning flashes,
   // drifting snow, a starry night with fireflies, a bright rainbow, warm sun rays.
   const WX = { flash: 0 };
@@ -2355,20 +2395,8 @@ export function openFarm(options) {
         }
         g.stroke();
       }
-      g.strokeStyle = "rgba(215,238,255,.75)";
-      g.lineWidth = 1.4;
-      for (let k = 0; k < (heavy ? 54 : 40) * share; k++) {
-        const c = time * 2.4 + k * 0.37,
-          ph = c % 1,
-          cyc = Math.floor(c),
-          x = (k * 211.7 + cyc * 157) % VW,
-          y = 110 + ((k * 137.3 + cyc * 89) % (VH - 130));
-        g.globalAlpha = 1 - ph;
-        g.beginPath();
-        g.ellipse(x, y, 3 + ph * 11, 1.3 + ph * 3.6, 0, 0, 7);
-        g.stroke();
-      }
-      g.globalAlpha = 1;
+      // (The splashes are on the ground, under houses and trees: see
+      // drawRainSplashes.)
       if (heavy && WX.flash > 0) {
         g.fillStyle = `rgba(235,242,255,${WX.flash * 0.6})`;
         g.fillRect(0, 0, VW, VH);
@@ -4321,6 +4349,7 @@ export function openFarm(options) {
     drawPastureFence(ctx, true);
     s.plots.forEach((p, i) => drawPlot(ctx, i, p, time, s));
     drawArea(ctx);
+    drawRainSplashes(ctx, time);
     const items = [];
     // Trees and the back row stand in the depth order too, so nothing
     // walking behind them is drawn over them.

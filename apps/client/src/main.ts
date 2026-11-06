@@ -238,6 +238,7 @@ import { PAD_LABELS, firstPad, readPad, type PadAction } from "./gamepad";
 import { drawPreview, previewShape } from "./skill-preview";
 import { controlsCapturing, showControlsScreen } from "./controls-screen";
 import { watchBattleZoom } from "./zoom-guard";
+import { guardTouchHold } from "./touch-hold";
 import { KO_FEEL, hitFeel, hitStrength, rumble } from "./game-feel";
 import { captureInvite, clearInvite, pendingInvite } from "./invite";
 import {
@@ -436,6 +437,7 @@ battleHudSize.observe($("hud"));
 battleHudSize.observe($("abilities"));
 // Touch battles lock zoom (pinch and double tap); menus keep it for accessibility.
 watchBattleZoom();
+guardTouchHold();
 const homeNavigation = setupHomeNavigation($("menu"), () => showSettings());
 $("home-settings").onclick = () => showSettings();
 $("hub-scenes").onclick = (event) => {
@@ -1661,12 +1663,15 @@ function syncHub() {
   syncLobby(hub && hubScene === "lobby");
   syncFarm(hub && hubScene === "farm", hub);
   syncBistro(hub && hubScene === "bistro");
-  syncPlaza(hub && hubScene === "plaza");
+  syncPlaza(hub && hubScene === "plaza", hub);
 }
 /** The new Plaza (hub redesign phase 3): the server moves everyone in it. */
-function syncPlaza(want: boolean) {
+function syncPlaza(want: boolean, hub = want) {
   if (!want) {
-    if (plaza) {
+    // Behind the Lobby or the Farm the Plaza waits, drawn and kept (you are
+    // off it on the server, which keeps your spot); out of the hub it closes.
+    if (plaza && hub) plaza.hide();
+    else if (plaza) {
       wantedPlazaClosed = true;
       plaza.close();
       wantedPlazaClosed = false;
@@ -1676,6 +1681,7 @@ function syncPlaza(want: boolean) {
   const skin = accountsUI.economy?.looks[selected] ?? null;
   const look = plazaOutfitKey(selected, skin, accountsUI.raidLook);
   if (plaza) {
+    plaza.show();
     if (look !== plazaLook) plaza.look(selected, skin);
     plazaLook = look;
     return;
@@ -5916,6 +5922,11 @@ accountsUI = new AccountUI({
     bistro = undefined;
     farmScreen?.close();
     farmScreen = undefined;
+    if (plaza) {
+      wantedPlazaClosed = true;
+      plaza.close();
+      wantedPlazaClosed = false;
+    }
     if (myId) await leave(false);
   },
   onSession: (token, accountId) => {
