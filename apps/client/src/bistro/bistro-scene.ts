@@ -791,7 +791,11 @@ export function openBistro(o: BistroOptions): BistroHandle {
     if (servingsLeft(S) <= reservedOrders()) return false;
     const seat = free[Math.floor(Math.random() * free.length)];
     const vip = Math.random() < (rushing() ? 0.18 : 0.11);
-    const char = ROSTER[Math.floor(Math.random() * ROSTER.length)];
+    // Guests are never your own chef or staff (they are busy).
+    const pool = ROSTER.filter(
+      (r) => r !== chef.char && !S.staff.some((st) => st.char === r),
+    );
+    const char = pool[Math.floor(Math.random() * pool.length)] ?? "voltkit";
     const c: Customer = {
       ...mkWalker(char, DOOR.x - 1.2, DOOR.y, 1.9 + Math.random() * 0.4),
       id: nextId++,
