@@ -151,6 +151,10 @@ After migration 006 every player has a skill rating starting at 1000. Only confi
 
 Run [065_ratings_safe_updates.sql](../supabase/migrations/065_ratings_safe_updates.sql) after 064. Supabase refuses an `UPDATE` or `DELETE` with no `WHERE` clause from API sessions, and two of 006's rating functions had one: the monthly softening (so from the first new month the leaderboard and rating card failed with "UPDATE requires a WHERE clause") and the rating update after a match (so a confirmed player-vs-player match report was refused). 065 adds the `WHERE` clauses and changes nothing else.
 
+### Changing your name
+
+Run [066_display_name_changes.sql](../supabase/migrations/066_display_name_changes.sql) after 065. Players get _Change name_ on their player card: the first change at any time, then once every 14 days on the database's clock. It adds `arena_profiles.name_changed_at` and two functions (`arena_name_status`, `arena_change_name`); an admin's rename (Admin → Players) doesn't count against the 14 days.
+
 ### Unlimited coins for admin testing
 
 Run [016_admin_shop_coins.sql](../supabase/migrations/016_admin_shop_coins.sql) after the earlier migrations. Existing non-suspended administrators see **∞ coins** and can buy Shop items and collection sets without spending their real balance. Purchases persist, can be equipped normally, and are recorded in the admin audit log. Prices, Mythic Trials, Awakening requirements and regular player spending still work as usual. Removing admin membership ends unlimited spending immediately; the saved wallet balance is unchanged.

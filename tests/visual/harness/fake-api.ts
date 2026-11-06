@@ -71,6 +71,8 @@ const API: Record<string, unknown> = {
     ],
     rating: { rating: 1110, matches: 62, peak: 1140, rank: "Expert", placementLeft: 0, next: { name: "Candidate Master", at: 1150 } },
   },
+  // Your name: never changed, so it can change now (migration 066).
+  "/api/account/name": { changedAt: null, nextAt: null, now: new Date().toISOString(), days: 14 },
   "/api/friends/recent": {
     players: [
       { id: "33333333-3333-4333-8333-333333333331", name: "Kai", fighter: "cindrake", lastPlayed: new Date(Date.now() - 2 * 3600e3).toISOString(), matches: 3, together: 0, wins: 2, losses: 1, relation: "friend", online: true },
@@ -90,7 +92,8 @@ window.fetch = async (input, init) => {
     // progress (its loadout is the equipped raid look); window.__board,
     // __friendsBoard and __recent replace Ranks' boards and Recent players;
     // __accountPatch changes the account (title, titles, guest) and
-    // __progress the records (the profile, step 7).
+    // __progress the records (the profile, step 7); __nameStatus when the
+    // name can next change.
     const w = window as unknown as {
       __missions?: unknown[];
       __plazaProgress?: unknown;
@@ -101,6 +104,7 @@ window.fetch = async (input, init) => {
       __recent?: unknown;
       __accountPatch?: object;
       __progress?: unknown;
+      __nameStatus?: unknown;
       __serverTime?: number;
     };
     const missions = w.__missions;
@@ -113,7 +117,9 @@ window.fetch = async (input, init) => {
             ? w.__friends
             : url.pathname === "/api/raids" && w.__raids
               ? w.__raids
-              : url.pathname === "/api/account" && w.__accountPatch
+              : url.pathname === "/api/account/name" && w.__nameStatus
+                ? w.__nameStatus
+                : url.pathname === "/api/account" && w.__accountPatch
                 ? { ...(API[url.pathname] as object), ...w.__accountPatch }
                 : url.pathname === "/api/progress" && w.__progress
                   ? w.__progress

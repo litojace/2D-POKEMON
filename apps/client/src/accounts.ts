@@ -40,6 +40,7 @@ import {
   leaderboardSchema,
   friendsBoardSchema,
   recentPlayersSchema,
+  nameStatusSchema,
   type RecentPlayer,
   progressSchema,
   friendsSchema,
@@ -1015,8 +1016,8 @@ export class AccountUI {
   private profileScreen?: ProfileScreen;
   private profileData: Pick<
     ProfileData,
-    "progress" | "progressProblem" | "raids"
-  > = { progress: null, raids: null };
+    "progress" | "progressProblem" | "raids" | "nameStatus"
+  > = { progress: null, raids: null, nameStatus: null };
   /**
    * The player card and profile: a panel inside the Lobby (HUD → your
    * name). It opens at once and fills in from the server.
@@ -1026,7 +1027,11 @@ export class AccountUI {
     this.toLobbyScreen();
     const accountId = this.account.id;
     if (!this.profileScreen?.isOpen) {
-      this.profileData = { progress: null, raids: this.raidProgress ?? null };
+      this.profileData = {
+        progress: null,
+        raids: this.raidProgress ?? null,
+        nameStatus: null,
+      };
       this.profileScreen = openProfile({
         data: () => {
           const a = this.account!;
@@ -1050,6 +1055,18 @@ export class AccountUI {
           // The account (and the HUD's nameplate) from the server.
           await this.refresh();
         },
+        rename: async (name) => {
+          if (this.account?.id !== accountId)
+            throw new Error("Your session changed. Reopen your card.");
+          // The database cleans the name and owns the 14 days.
+          const status = nameStatusSchema.parse(
+            await this.api("/api/account/name", { name }),
+          );
+          this.profileData = { ...this.profileData, nameStatus: status };
+          // The account (the HUD, the card) from the server.
+          await this.refresh();
+          return this.account?.displayName ?? name;
+        },
         save: async (email) => {
           if (!this.client) throw new Error("Accounts are not available.");
           const site = import.meta.env.VITE_SITE_URL || location.origin;
@@ -1072,9 +1089,10 @@ export class AccountUI {
   }
   private async loadProfile(accountId: string) {
     const screen = this.profileScreen;
-    const [progress, raids] = await Promise.allSettled([
+    const [progress, raids, name] = await Promise.allSettled([
       this.api("/api/progress"),
       this.api("/api/raids") as Promise<RaidProgress>,
+      this.api("/api/account/name"),
     ]);
     if (this.account?.id !== accountId) return;
     if (progress.status === "fulfilled")
@@ -1094,6 +1112,13 @@ export class AccountUI {
       };
     if (raids.status === "fulfilled")
       this.profileData = { ...this.profileData, raids: raids.value };
+    // Before migration 066 there is no name status: the button stays and
+    // the server explains if it can't change the name.
+    if (name.status === "fulfilled") {
+      const parsed = nameStatusSchema.safeParse(name.value);
+      if (parsed.success)
+        this.profileData = { ...this.profileData, nameStatus: parsed.data };
+    }
     if (screen?.isOpen) screen.refresh();
   }
   /** The open Friends sheet, if any (UI remodel step 6). */
