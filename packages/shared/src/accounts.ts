@@ -125,7 +125,7 @@ export const titleGrantSchema = z
 export const equipTitleSchema = z
   .object({ titleId: z.string().uuid().nullable() })
   .strict();
-/** Players change their own name once every 14 days (migration 065). */
+/** Players change their own name once every 14 days (migration 066). */
 export const NAME_CHANGE_DAYS = 14;
 export const nameChangeSchema = z
   .object({ name: z.string().max(60) })

@@ -1423,7 +1423,7 @@ Before and after: [profile](images/step7/profile.webp), the
 
 Owner's request: players can change their display name every 14 days.
 
-- **Database** ([migration 065](../../supabase/migrations/065_display_name_changes.sql)):
+- **Database** ([migration 066](../../supabase/migrations/066_display_name_changes.sql)):
   `arena_profiles.name_changed_at` and two functions. `arena_change_name`
   refuses control and invisible characters (checked before the clean-up,
   which would turn a line break into a space), tidies spaces, keeps the
@@ -1434,7 +1434,7 @@ Owner's request: players can change their display name every 14 days.
   non-unique, as before.
 - **Server:** `GET` / `POST /api/account/name`; after a change the player's
   open games pick up the new name (`onPlayerChanged`, as for titles).
-  `LATEST_MIGRATION` is 065.
+  `LATEST_MIGRATION` is 066.
 - **Profile:** a Name row under the tiles with Change name, or "You can
   change it again in 9 d 4 h" (the server's `nextAt`, counted on
   `serverNow()`, redrawn every 30 s). The form replaces the row at the

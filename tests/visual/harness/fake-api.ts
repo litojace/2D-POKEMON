@@ -71,7 +71,7 @@ const API: Record<string, unknown> = {
     ],
     rating: { rating: 1110, matches: 62, peak: 1140, rank: "Expert", placementLeft: 0, next: { name: "Candidate Master", at: 1150 } },
   },
-  // Your name: never changed, so it can change now (migration 065).
+  // Your name: never changed, so it can change now (migration 066).
   "/api/account/name": { changedAt: null, nextAt: null, now: new Date().toISOString(), days: 14 },
   "/api/friends/recent": {
     players: [

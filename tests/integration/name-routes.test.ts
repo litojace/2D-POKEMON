@@ -3,7 +3,7 @@ import { createArenaServer } from "../../apps/server/src/server";
 import { AccountError } from "../../apps/server/src/accounts";
 import { fakeAccounts } from "../helpers/accounts";
 
-// Changing your name (migration 065): the routes pass the name to the
+// Changing your name (migration 066): the routes pass the name to the
 // database, which owns the 14 days and the checks, and say its answer.
 let server: ReturnType<typeof createArenaServer>,
   accounts: ReturnType<typeof fakeAccounts>,

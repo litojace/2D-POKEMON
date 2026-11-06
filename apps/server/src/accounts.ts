@@ -55,7 +55,7 @@ import {
   type OnlineList,
 } from "../../../packages/shared/src/accounts.js";
 /** The newest database migration the server expects. */
-export const LATEST_MIGRATION = "065_display_name_changes.sql";
+export const LATEST_MIGRATION = "066_display_name_changes.sql";
 /** The migration that last redefined the raid appearance functions. */
 export const RAID_FUNCTIONS_MIGRATION = "018_collection_equipping.sql";
 export interface AccountProvider {
@@ -276,7 +276,7 @@ export function installAccountRoutes(
     }),
   );
   // Your name: when you can next change it, and the change itself
-  // (migration 065; the database owns the 14 days and the checks).
+  // (migration 066; the database owns the 14 days and the checks).
   app.get(
     "/api/account/name",
     route(false, async (_req, res, token) => {

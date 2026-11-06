@@ -1112,7 +1112,7 @@ export class AccountUI {
       };
     if (raids.status === "fulfilled")
       this.profileData = { ...this.profileData, raids: raids.value };
-    // Before migration 065 there is no name status: the button stays and
+    // Before migration 066 there is no name status: the button stays and
     // the server explains if it can't change the name.
     if (name.status === "fulfilled") {
       const parsed = nameStatusSchema.safeParse(name.value);

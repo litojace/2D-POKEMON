@@ -1,5 +1,5 @@
 -- Players change their own display name, at most once every 14 days.
--- Run after 064_farm_faster_milk.sql.
+-- Run after 065_ratings_safe_updates.sql.
 --
 -- The first change can happen at any time (many players kept the name they
 -- typed at sign-up, or "Trainer"); after that the next one opens 14 days

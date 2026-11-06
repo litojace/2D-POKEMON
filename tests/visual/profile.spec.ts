@@ -147,7 +147,7 @@ async function open(page: Page, size: Size, o: { guest?: boolean } = {}) {
           status,
           headers: { "Content-Type": "application/json" },
         });
-      // Changing your name, answered as migration 065 does.
+      // Changing your name, answered as migration 066 does.
       if (path === "/api/account/name" && init?.method === "POST") {
         const { name } = JSON.parse(String(init?.body ?? "{}"));
         w.__nameCalls.push(name);

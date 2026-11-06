@@ -2,7 +2,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { readFile } from "node:fs/promises";
 import { afterAll, beforeAll, expect, it } from "vitest";
 
-// Migration 065: players change their own name, once every 14 days.
+// Migration 066: players change their own name, once every 14 days.
 let db: PGlite;
 const ana = "00000000-0000-4000-8000-000000000001";
 const ben = "00000000-0000-4000-8000-000000000002";
@@ -57,7 +57,7 @@ beforeAll(async () => {
     "003_titles.sql",
     "004_matches_achievements.sql",
     "005_friends.sql",
-    "065_display_name_changes.sql",
+    "066_display_name_changes.sql",
   ])
     await db.exec(await readFile(`supabase/migrations/${m}`, "utf8"));
   for (const id of [ana, ben]) {
