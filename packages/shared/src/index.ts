@@ -1998,8 +1998,8 @@ export const TEAM_TUNING: Partial<Record<CharacterId, number>> = {
   astrabun: 1.008,
   wombolder: 1.006,
   shadopus: 1.047,
-  pangrove: 0.975,
-  mossloth: 0.993,
+  pangrove: 0.98,
+  mossloth: 1.035,
 };
 /**
  * Free-for-all tuning, for mode "ffa" only, in the same form as TEAM_TUNING
@@ -2026,8 +2026,8 @@ export const FFA_TUNING: Partial<Record<CharacterId, number>> = {
   astrabun: 1.026,
   wombolder: 1.11,
   shadopus: 1.089,
-  pangrove: 1.03,
-  mossloth: 0.965,
+  pangrove: 1.02,
+  mossloth: 0.94,
 };
 /**
  * The same for a free-for-all that started with three players, tuned on
@@ -2051,8 +2051,8 @@ export const FFA_THREE_TUNING: Partial<Record<CharacterId, number>> = {
   astrabun: 1.106,
   wombolder: 1.161,
   shadopus: 1.144,
-  pangrove: 1.1,
-  mossloth: 0.89,
+  pangrove: 1.03,
+  mossloth: 0.98,
 };
 /**
  * A champion's strength factor in this mode (1 outside 2v2 and free-for-all).
