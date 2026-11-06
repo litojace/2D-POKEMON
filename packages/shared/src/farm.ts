@@ -867,7 +867,7 @@ export const FARM_WEATHERS: readonly {
     name: "Thunderstorm",
     icon: "storm",
     color: "#9fd0ff",
-    text: "25% Shocked ×3",
+    text: "Waters every plot · 25% Shocked ×3",
     weight: 14,
     speed: 1,
   },

@@ -438,6 +438,10 @@ export function openFarm(options) {
       i,
     );
   const buyable = (i) => F.plots[i].locked && touching(F.plots, i);
+  /** Rain and storms water every growing crop (the server's rule, 039 and
+   *  067): show it the moment it rains, before the next update says so. */
+  const raining = () => ["rain", "storm"].includes(F.weather.cur);
+  const wetNow = (p) => !!p.wet || (!!p.crop && p.prog < 1 && raining());
   function growth(p, now) {
     if (!p.crop) return 0;
     if (p.prog0 >= 1 || !p.ripeAt || p.ripeAt <= p.at0)
@@ -2049,7 +2053,7 @@ export function openFarm(options) {
       }
       return;
     }
-    GFX.blit(g, soilArt(p.wet, p.fert), r.x, r.y);
+    GFX.blit(g, soilArt(wetNow(p), p.fert), r.x, r.y);
     // A ripe square of a giant crop waiting for the server's answer glows.
     if (s.me && F.pending.has(i)) {
       g.strokeStyle = `rgba(255,214,91,${0.45 + 0.4 * Math.sin(time * 8)})`;
@@ -2177,7 +2181,7 @@ export function openFarm(options) {
       g.beginPath();
       g.roundRect(r.x + 14, r.y + r.h - 8, r.w - 28, 5, 3);
       g.fill();
-      g.fillStyle = p.wet ? "#7fd4ff" : "#7ff0a2";
+      g.fillStyle = wetNow(p) ? "#7fd4ff" : "#7ff0a2";
       g.beginPath();
       g.roundRect(r.x + 14, r.y + r.h - 8, (r.w - 28) * p.prog, 5, 3);
       g.fill();
@@ -3744,7 +3748,7 @@ export function openFarm(options) {
         a = "sneak";
       }
     } else if (F.tool === "can") {
-      if (p.crop && p.prog < 1 && !p.wet) a = "water";
+      if (p.crop && p.prog < 1 && !wetNow(p)) a = "water";
     } else if (F.tool === "net") {
       if (p.pests) a = "catch";
     } else if (F.tool === "prank") {
@@ -4358,7 +4362,7 @@ export function openFarm(options) {
       case "can": {
         const dry = area(i, F.can).filter((j) => {
           const q = F.plots[j];
-          return !q.locked && q.crop && q.prog < 1 && !q.wet;
+          return !q.locked && q.crop && q.prog < 1 && !wetNow(q);
         });
         if (!dry.length) break;
         act({ a: "water", plot: i });
@@ -6007,7 +6011,7 @@ export function openFarm(options) {
       sp = { x: sp0.x - o.x, y: sp0.y - o.y };
     const left = p.prog < 1 && p.ripeAt ? (p.ripeAt - serverNow()) / 1000 : 0;
     tip.hidden = false;
-    tip.innerHTML = `<b>${c.n}</b><div class="bar"><i style="width:${p.prog * 100}%"></i></div><div class="row"><span>${p.prog >= 1 ? "Ready" : "Time left"}</span><span>${p.prog >= 1 ? (!V && F.pending.has(i) ? "Just a moment…" : "Harvest now") : fmtSecs(left)}</span></div><div class="row"><span>Water</span><span>${p.wet ? "watered" : "dry"}</span></div>${p.pests ? `<div class="row"><span>Bugs</span><span>${p.pests} · ${p.pests * 20}% slower</span></div>` : ""}${p.fert ? `<div class="row"><span>Fertilizer</span><span>${p.fert === "gold" ? "gold" : "regular"}</span></div>` : ""}`;
+    tip.innerHTML = `<b>${c.n}</b><div class="bar"><i style="width:${p.prog * 100}%"></i></div><div class="row"><span>${p.prog >= 1 ? "Ready" : "Time left"}</span><span>${p.prog >= 1 ? (!V && F.pending.has(i) ? "Just a moment…" : "Harvest now") : fmtSecs(left)}</span></div><div class="row"><span>Water</span><span>${p.wet ? "watered" : wetNow(p) ? "watered by the rain" : "dry"}</span></div>${p.pests ? `<div class="row"><span>Bugs</span><span>${p.pests} · ${p.pests * 20}% slower</span></div>` : ""}${p.fert ? `<div class="row"><span>Fertilizer</span><span>${p.fert === "gold" ? "gold" : "regular"}</span></div>` : ""}`;
     tip.style.left = `${Math.min(o.w - 200, sp.x + 8)}px`;
     tip.style.top = `${Math.max(60, sp.y - 10)}px`;
   }
