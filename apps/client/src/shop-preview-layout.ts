@@ -20,7 +20,10 @@ export const SELECTION_PREVIEW = {
 } as const;
 
 export function previewZoom(action: string) {
-  return action === "entrance" || action === "victory" ? 0.78 : 1;
+  // Room for what plays around the fighter (an ultimate's sword or sun).
+  return action === "entrance" || action === "victory" || action === "ultimate"
+    ? 0.78
+    : 1;
 }
 
 /** Full-height preview cameras reserve breathing room for ears and crests. */
