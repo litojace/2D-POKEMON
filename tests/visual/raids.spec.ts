@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { box, inside, openLobby, snap } from "./helpers";
 import { bossFraming } from "./raid-frames";
 import { clippedFrames } from "./ui-checks";
+import { raidPerksOf } from "../../packages/shared/src/raid";
 import {
   ISLAND,
   closeSpot,
@@ -238,7 +239,9 @@ for (const size of SIZES)
       await expect(room.locator('[aria-label="Invite Mina"]')).toBeDisabled();
       await expect(room.locator(".rh-friend")).toHaveCount(3);
       // Every fighter with a trick against Grumblecrag.
-      await expect(room.locator(".rh-pick")).toHaveCount(8);
+      await expect(room.locator(".rh-pick")).toHaveCount(
+        Object.keys(raidPerksOf("grumblecrag")).length,
+      );
       await settle(page);
       const art = room.locator(".rh-poster img");
       expect(
