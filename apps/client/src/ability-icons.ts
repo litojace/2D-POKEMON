@@ -239,6 +239,16 @@ const rosterIconSources: Record<string, string> = {
   "Ink Strike": "Shard Combination",
   "Ink Cloud": "Shadow Veil",
   "Kraken Grasp": "Hollow Echo",
+  "Scale Swipe": "Bough Bash",
+  "Tongue Snag": "Tidal Blade",
+  "Sap Bite": "Stone Knuckle",
+  "Scale Curl": "Verdant Guard",
+  Thornwheel: "Boulder Charge",
+  "Seed Spit": "Bramble Seed",
+  Rootsnare: "Root Garden",
+  "Thorn Volley": "Riptide Volley",
+  "Bramble Patch": "Wild Bloom",
+  "Wild Roots": "Faultline",
 };
 const elementColors: Record<string, string> = {
   Electric: electric,

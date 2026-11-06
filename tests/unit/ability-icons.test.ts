@@ -5,11 +5,11 @@ import {
   abilityIcon,
 } from "../../apps/client/src/ability-icons";
 import { SKILL_ART_NAMES } from "../../apps/client/src/skill-art";
-it("gives all eighty basic attacks and skills explicit artwork", () => {
+it("gives all ninety basic attacks and skills explicit artwork", () => {
   const names = Object.values(CHARACTERS).flatMap((c) =>
     [c.basic, ...c.skills].map((a) => a.name),
   );
-  expect(names).toHaveLength(80);
+  expect(names).toHaveLength(90);
   expect(new Set(names).size).toBe(names.length);
   expect(names.every((name) => !!abilityArtwork[name])).toBe(true);
   expect(
