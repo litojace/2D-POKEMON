@@ -4689,7 +4689,8 @@ export function openFarm(options) {
   }
   /** Carrying a seed or a tool to the edge of the view scrolls the farm that
    *  way, faster the closer to the edge; what slides under the finger is
-   *  sown, watered or cut as it goes. Called every frame. */
+   *  sown, watered or cut as it goes. Called every frame; it starts once the
+   *  finger has left the edges, so a drag starting there doesn't scroll. */
   function edgeScroll(dt) {
     if (!carry?.moved || carry.lx == null) return;
     const r = cv.getBoundingClientRect(),
@@ -4703,7 +4704,13 @@ export function openFarm(options) {
             : 0,
       kx = push(carry.lx, r.left, r.right, ex),
       ky = push(carry.ly, r.top, r.bottom, ey);
-    if (!kx && !ky) return;
+    // Only once the finger has been away from the edges: a bubble near the
+    // top of a phone screen doesn't scroll the farm as the drag starts.
+    if (!kx && !ky) {
+      carry.edgeOk = true;
+      return;
+    }
+    if (!carry.edgeOk) return;
     const sp = (900 * dt) / Z,
       bx = cam.x,
       by = cam.y;

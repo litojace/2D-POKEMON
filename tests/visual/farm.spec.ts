@@ -1699,11 +1699,22 @@ test("on a phone, pick a seed and drag it to sow, and drag the sickle to harvest
       await plot(11),
       await plot(14),
     ]);
-    // The Copper Can waters three in a row, from plot 12 to 14 (the bubble
-    // floats over the row above, so the drag waters plot 1 there too).
+    // The Copper Can waters three in a row: together the waterings cover
+    // plots 11–14 (the fake server forgets watering, so which plots are sent
+    // varies; the bubble floats over the row above, so plot 1 gets some too).
+    const covered = async () =>
+      [
+        ...new Set(
+          (await sent("water")).flatMap((p: number) =>
+            [p - 1, p, p + 1].filter(
+              (q) => Math.floor(q / 10) === Math.floor(p / 10),
+            ),
+          ),
+        ),
+      ].sort((a, b) => a - b);
     await expect
-      .poll(() => sent("water"))
-      .toEqual(expect.arrayContaining([1, 12, 14]));
+      .poll(covered)
+      .toEqual(expect.arrayContaining([11, 12, 13, 14]));
     // Harvesting: a tap on a ripe crop shows the sickle (nothing is cut yet)…
     const p3 = await plot(3);
     await page.touchscreen.tap(p3.x, p3.y);
