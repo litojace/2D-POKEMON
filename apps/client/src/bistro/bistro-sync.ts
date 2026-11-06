@@ -10,6 +10,7 @@
 import {
   addXp,
   buyItem,
+  buyExpand,
   buyKitchen,
   buyShift,
   buyStove,
@@ -40,15 +41,30 @@ export type BistroAction =
   | { a: "cook"; stove: number; dish: DishId }
   | { a: "stir"; stove: number }
   | { a: "plate"; stove: number }
-  | { a: "serve"; dish: DishId; vip: boolean; combo: number; hearts: number; quick: boolean }
+  | {
+      a: "serve";
+      dish: DishId;
+      vip: boolean;
+      combo: number;
+      hearts: number;
+      quick: boolean;
+    }
   | { a: "leave" }
-  | { a: "place"; kind: ItemKind; x: number; y: number; rot: number; id?: number }
+  | {
+      a: "place";
+      kind: ItemKind;
+      x: number;
+      y: number;
+      rot: number;
+      id?: number;
+    }
   | { a: "store"; id: number }
   | { a: "buy"; kind: ItemKind }
   | { a: "style"; kind: "floor" | "wall"; id: string }
   | { a: "stove" }
   | { a: "kitchen" }
   | { a: "shift" }
+  | { a: "expand" }
   | { a: "hire"; role: Role; char: string }
   | { a: "train"; id: number }
   | { a: "cookdish"; id: number; dish: DishId }
@@ -80,17 +96,26 @@ export interface ActResult {
 }
 
 /** Run one action on the local copy (the server runs the same rules). */
-export function applyLocal(s: BistroState, x: BistroAction, now: number, extras?: BistroExtras): ActResult {
-  const r = (v: { ok: boolean; error?: string }) => (v.ok ? { ok: true } : { ok: false, error: v.error });
+export function applyLocal(
+  s: BistroState,
+  x: BistroAction,
+  now: number,
+  extras?: BistroExtras,
+): ActResult {
+  const r = (v: { ok: boolean; error?: string }) =>
+    v.ok ? { ok: true } : { ok: false, error: v.error };
   switch (x.a) {
     case "cook":
       return r(startCooking(s, x.stove, x.dish, now));
     case "stir":
-      return stir(s, x.stove, now) ? { ok: true } : { ok: false, error: "Not the golden moment." };
+      return stir(s, x.stove, now)
+        ? { ok: true }
+        : { ok: false, error: "Not the golden moment." };
     case "plate":
       return r(plate(s, x.stove, now));
     case "serve": {
-      if (takeServing(s, x.dish) < 0) return { ok: false, error: "None left on the counter." };
+      if (takeServing(s, x.dish) < 0)
+        return { ok: false, error: "None left on the counter." };
       const bill = payment(x.dish, {
         vip: x.vip,
         combo: x.combo,
@@ -125,6 +150,8 @@ export function applyLocal(s: BistroState, x: BistroAction, now: number, extras?
       return r(buyKitchen(s));
     case "shift":
       return r(buyShift(s));
+    case "expand":
+      return r(buyExpand(s));
     case "hire":
       return r(hire(s, x.role, x.char));
     case "train":
@@ -136,9 +163,16 @@ export function applyLocal(s: BistroState, x: BistroAction, now: number, extras?
       return { ok: true };
     case "trade": {
       const leaves = x.lots * BISTRO_TRADE.leaves;
-      if (s.coins < x.lots * BISTRO_TRADE.coins) return { ok: false, error: `You need ${x.lots * BISTRO_TRADE.coins} coins.` };
+      if (s.coins < x.lots * BISTRO_TRADE.coins)
+        return {
+          ok: false,
+          error: `You need ${x.lots * BISTRO_TRADE.coins} coins.`,
+        };
       if (extras && extras.tradedToday + leaves > BISTRO_TRADE.dailyLeaves)
-        return { ok: false, error: `You can trade for at most ${BISTRO_TRADE.dailyLeaves} Gold Leaves a day.` };
+        return {
+          ok: false,
+          error: `You can trade for at most ${BISTRO_TRADE.dailyLeaves} Gold Leaves a day.`,
+        };
       s.coins -= x.lots * BISTRO_TRADE.coins;
       if (extras) {
         extras.leaves += leaves;
@@ -160,7 +194,12 @@ export function readServer(raw: unknown): {
 } {
   const r = (raw ?? {}) as Record<string, unknown>;
   const state = sanitize(r);
-  const num = (v: unknown, d = 0) => (typeof v === "number" ? v : typeof v === "string" && v !== "" ? Number(v) : d);
+  const num = (v: unknown, d = 0) =>
+    typeof v === "number"
+      ? v
+      : typeof v === "string" && v !== ""
+        ? Number(v)
+        : d;
   // Big integers (timestamps) may come as strings.
   if (Array.isArray(r.stoves))
     state.stoves = state.stoves.map((st, i) => {
@@ -168,8 +207,11 @@ export function readServer(raw: unknown): {
       return { ...st, start: num(src.start, st.start) };
     });
   state.lastSeen = num(r.lastSeen);
-  const guests = Array.isArray(r.friendGuests) ? (r.friendGuests as FriendGuest[]) : [];
-  const away = r.away && typeof r.away === "object" ? (r.away as AwayReport) : null;
+  const guests = Array.isArray(r.friendGuests)
+    ? (r.friendGuests as FriendGuest[])
+    : [];
+  const away =
+    r.away && typeof r.away === "object" ? (r.away as AwayReport) : null;
   return {
     state,
     extras: {
@@ -190,7 +232,7 @@ const uuid = () =>
   typeof crypto !== "undefined" && "randomUUID" in crypto
     ? crypto.randomUUID()
     : "10000000-1000-4000-8000-100000000000".replace(/[018]/g, (c) =>
-        (Number(c) ^ (Math.random() * 16) >> (Number(c) / 4)).toString(16),
+        (Number(c) ^ ((Math.random() * 16) >> (Number(c) / 4))).toString(16),
       );
 
 /**
@@ -212,7 +254,10 @@ export class BistroSync {
   constructor(
     private api: BistroApi,
     private hooks: {
-      onAdopt(info: { away: AwayReport | null; errors: { action: BistroAction; error: string }[] }): void;
+      onAdopt(info: {
+        away: AwayReport | null;
+        errors: { action: BistroAction; error: string }[];
+      }): void;
       onFail(error: unknown): void;
     },
     initial?: { state: BistroState; extras: BistroExtras },
@@ -240,7 +285,9 @@ export class BistroSync {
   do(x: BistroAction): ActResult {
     const r = applyLocal(this.S, x, this.now(), this.extras);
     if (r.ok || x.a === "serve" || x.a === "leave") this.outbox.push(x);
-    this.schedule(x.a === "serve" || x.a === "leave" || x.a === "sync" ? 800 : 150);
+    this.schedule(
+      x.a === "serve" || x.a === "leave" || x.a === "sync" ? 800 : 150,
+    );
     return r;
   }
   /** A guest's order: their serving leaves the counter until they pay or leave. */
@@ -271,7 +318,9 @@ export class BistroSync {
     if (slot < 0) slot = this.S.counter.findIndex((c) => !c);
     if (slot < 0) return;
     const c = this.S.counter[slot];
-    this.S.counter[slot] = c ? { ...c, servings: c.servings + 1 } : { dish, servings: 1, perfect: false };
+    this.S.counter[slot] = c
+      ? { ...c, servings: c.servings + 1 }
+      : { dish, servings: 1, perfect: false };
   }
   private schedule(ms: number) {
     if (this.closed) return;
@@ -290,10 +339,16 @@ export class BistroSync {
     const batch = this.outbox.splice(0, 40);
     this.inflight = batch;
     try {
-      const raw = (await this.api.act(uuid(), batch)) as { bistro?: unknown; results?: ActResult[]; away?: unknown };
+      const raw = (await this.api.act(uuid(), batch)) as {
+        bistro?: unknown;
+        results?: ActResult[];
+        away?: unknown;
+      };
       if (this.closed) return;
       const errors = (raw.results ?? [])
-        .map((r, i) => (r && !r.ok && r.error ? { action: batch[i], error: r.error } : null))
+        .map((r, i) =>
+          r && !r.ok && r.error ? { action: batch[i], error: r.error } : null,
+        )
         .filter((e): e is { action: BistroAction; error: string } => !!e);
       this.inflight = null;
       this.adopt({ ...(raw.bistro as object), away: raw.away ?? null }, errors);
@@ -315,11 +370,17 @@ export class BistroSync {
     if (this.outbox.length) this.schedule(150);
   }
   /** Take the server's bistro, then run again what it hasn't seen yet. */
-  private adopt(raw: unknown, errors: { action: BistroAction; error: string }[]) {
+  private adopt(
+    raw: unknown,
+    errors: { action: BistroAction; error: string }[],
+  ) {
     const got = readServer(raw);
     this.offset = got.now - Date.now();
     this.S = got.state;
-    this.extras = { ...got.extras, chef: this.extras.chef && this.ready ? this.extras.chef : got.extras.chef };
+    this.extras = {
+      ...got.extras,
+      chef: this.extras.chef && this.ready ? this.extras.chef : got.extras.chef,
+    };
     const now = this.now();
     for (const x of this.outbox) applyLocal(this.S, x, now, this.extras);
     for (const [guest, dish] of [...this.reserved])

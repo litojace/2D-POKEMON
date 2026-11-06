@@ -16,6 +16,9 @@ import type { FarmCue } from "../farm/farm-sound";
 import { fadeIn } from "../ui/motion";
 import {
   BOUNDS,
+  R,
+  WINDOWS,
+  setRoomSize,
   dishIconUrl,
   drawChair,
   drawCounterTile,
@@ -39,7 +42,6 @@ import {
   type Light,
 } from "./bistro-art";
 import {
-  COLS,
   COMBO_MAX,
   COMBO_SECONDS,
   COUNTER_ROW,
@@ -55,7 +57,6 @@ import {
   PERFECT_BONUS,
   PERFECT_FROM,
   PERFECT_TO,
-  ROWS,
   STOVE_TILES,
   WAITER_HOME,
   HIRE_STEPS,
@@ -93,6 +94,8 @@ import {
   buyItem,
   buyStove,
   buyStyle,
+  sizeOf,
+  EXPAND_STEPS,
   charm,
   cookProgress,
   findPath,
@@ -262,7 +265,10 @@ function sprite(id: CharacterId, dir: Facing, mood: Mood = "normal"): Sprite {
 }
 
 /** Each account's bistro as last seen this session: it opens ready. */
-const lastKnown = new Map<string, { state: BistroState; extras: BistroExtras }>();
+const lastKnown = new Map<
+  string,
+  { state: BistroState; extras: BistroExtras }
+>();
 /** Forget the kept bistros (sign-out). */
 export function forgetBistros() {
   lastKnown.clear();
@@ -485,7 +491,9 @@ export function openBistro(o: BistroOptions): BistroHandle {
   const syncStaff = () => {
     const ws = staffOf(S, "waiter");
     waiters = ws.map((st, i) => {
-      const old = waiters.find((w) => w.staff.id === st.id && w.char === st.char);
+      const old = waiters.find(
+        (w) => w.staff.id === st.id && w.char === st.char,
+      );
       if (old) {
         old.staff = st;
         old.speed = 2.8 * staffSpeed(st.level);
@@ -550,7 +558,8 @@ export function openBistro(o: BistroOptions): BistroHandle {
   let wasRush = false;
   let doorOpen = 0;
   let shownCoins = S.coins;
-  const special = (): DishId => (visiting ? visiting.extras.special : sync.extras.special);
+  const special = (): DishId =>
+    visiting ? visiting.extras.special : sync.extras.special;
   /** A friend's bistro you are visiting (their state is S meanwhile). */
   let visiting: VisitInfo | null = null;
   /** Furniture shows once the server has answered (or from this session's last look). */
@@ -558,11 +567,13 @@ export function openBistro(o: BistroOptions): BistroHandle {
   const rushing = () => inRush(nowS() + rushShift);
   // Development: start a rush hour now (shifts the rush clock only).
   let rushShift = 0;
-  let blocked = blockedGrid(S.items);
+  let blocked = blockedGrid(S.items, -1, sizeOf(S.sizeLv));
   let seatList = seats(S.items);
   let charmPts = charm(S.items);
   const relayout = () => {
-    blocked = blockedGrid(S.items);
+    // A bigger (or a friend's) room: the camera fits it again.
+    if (setRoomSize(sizeOf(S.sizeLv))) resize();
+    blocked = blockedGrid(S.items, -1, sizeOf(S.sizeLv));
     seatList = seats(S.items);
     charmPts = charm(S.items);
     // Anyone whose next steps cross a new obstacle finds a new way.
@@ -581,7 +592,8 @@ export function openBistro(o: BistroOptions): BistroHandle {
       }
     }
   };
-  const inside = (p: Pt) => p.x >= 0 && p.y >= 0 && p.x < COLS && p.y < ROWS;
+  const inside = (p: Pt) =>
+    p.x >= 0 && p.y >= 0 && p.x < R.cols && p.y < R.rows;
 
   /* ───────────── camera ───────────── */
   let W = 0,
@@ -653,7 +665,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
   const PAD = 30;
   const shellCanvas = () => {
     const sc = clamp(Math.ceil(view.s * DPR * 2) / 2, 0.5, 3);
-    const key = `${S.floor}:${S.wall}:${sc}`;
+    const key = `${S.floor}:${S.wall}:${sc}:${R.cols}x${R.rows}`;
     if (shell && key === shellKey) return shell;
     shellKey = key;
     shellScale = sc;
@@ -726,8 +738,8 @@ export function openBistro(o: BistroOptions): BistroHandle {
     return !w.path.length;
   };
   const tileOf = (w: Walker) => ({
-    x: clamp(Math.round(w.gx), 0, COLS - 1),
-    y: clamp(Math.round(w.gy), 0, ROWS - 1),
+    x: clamp(Math.round(w.gx), 0, R.cols - 1),
+    y: clamp(Math.round(w.gy), 0, R.rows - 1),
   });
   const pathTo = (w: Walker, to: Pt) => {
     const p = findPath(blocked, tileOf(w), to);
@@ -934,7 +946,9 @@ export function openBistro(o: BistroOptions): BistroHandle {
       const at = slot >= 0 ? slot : S.counter.findIndex((x) => !x);
       if (at >= 0 && c.dish) {
         const x = S.counter[at];
-        S.counter[at] = x ? { ...x, servings: x.servings + 1 } : { dish: c.dish, servings: 1, perfect: false };
+        S.counter[at] = x
+          ? { ...x, servings: x.servings + 1 }
+          : { dish: c.dish, servings: 1, perfect: false };
       }
     } else sync.release(c.id);
   };
@@ -1374,7 +1388,11 @@ export function openBistro(o: BistroOptions): BistroHandle {
     if (h.kind === "stove") {
       const st = S.stoves[h.i];
       if (visiting)
-        return showTip(sx, sy, `<b>${esc(visiting.name)}'s kitchen</b><span>Only they can cook here</span>`);
+        return showTip(
+          sx,
+          sy,
+          `<b>${esc(visiting.name)}'s kitchen</b><span>Only they can cook here</span>`,
+        );
       if (!st.dish) return openSheet("cook", h.i);
       if (inPerfectWindow(st, now) && sync.do({ a: "stir", stove: h.i }).ok) {
         const c = iso(STOVE_TILES[h.i].x, STOVE_TILES[h.i].y);
@@ -1472,7 +1490,8 @@ export function openBistro(o: BistroOptions): BistroHandle {
   const plateStove = (i: number) => {
     const st = S.stoves[i];
     const dish = st.dish!;
-    const servings = DISH_BY_ID[dish].servings + (st.perfect ? PERFECT_BONUS : 0);
+    const servings =
+      DISH_BY_ID[dish].servings + (st.perfect ? PERFECT_BONUS : 0);
     let slot = S.counter.findIndex((c) => c?.dish === dish);
     if (slot < 0) slot = S.counter.findIndex((c) => !c);
     const level = S.level;
@@ -1654,7 +1673,10 @@ export function openBistro(o: BistroOptions): BistroHandle {
       `<header><div><h2>${title}</h2><p>${sub}</p></div><button type="button" class="x" data-close aria-label="Close">${I("close")}</button></header>`;
     if (sheetKind === "friends") {
       sheet.innerHTML =
-        head("Friends' bistros", "Visit, eat there once a day (they earn the dish and a tip; you get coins and XP) and leave a like once a week.") +
+        head(
+          "Friends' bistros",
+          "Visit, eat there once a day (they earn the dish and a tip; you get coins and XP) and leave a like once a week.",
+        ) +
         (friendState === "loading"
           ? `<p class="bs-note">Looking up your friends…</p>`
           : friendState === "error"
@@ -1770,7 +1792,29 @@ export function openBistro(o: BistroOptions): BistroHandle {
           done: string,
         ) =>
           `<button type="button" class="bs-item" ${attr} ${price == null ? "disabled" : ""}><div class="ic">${I(icon)}</div><b>${title}</b><small>${sub}</small>${price == null ? `<span class="lk">${done}</span>` : `<span class="pr ${S.coins < price ? "poor" : ""}">${coinTag(price)}</span>`}</button>`;
+        const ex = EXPAND_STEPS[S.sizeLv];
+        const next = sizeOf(S.sizeLv + 1);
+        const expandCard = !ex
+          ? card(
+              "data-expand",
+              "house",
+              "Dining room",
+              `${R.cols} × ${R.rows}: the biggest it gets`,
+              null,
+              "Fully expanded",
+            )
+          : S.level < ex.level
+            ? `<button type="button" class="bs-item" disabled><div class="ic">${I("house")}</div><b>Expand the dining room</b><small>${sizeOf(S.sizeLv).cols} × ${sizeOf(S.sizeLv).rows} → ${next.cols} × ${next.rows}</small><span class="lk">${I("lock")} Level ${ex.level}</span></button>`
+            : card(
+                "data-expand",
+                "house",
+                "Expand the dining room",
+                `${sizeOf(S.sizeLv).cols} × ${sizeOf(S.sizeLv).rows} → ${next.cols} × ${next.rows}: room for more tables`,
+                ex.price,
+                "",
+              );
         body = `<div class="bs-items">
+          ${expandCard}
           ${card("data-buy-stove", "spark", "Another stove", `${S.stoves.length} of ${MAX_STOVES} in the kitchen`, sp, "All built")}
           ${card("data-kitchen", "star", `Kitchen level ${S.kitchenLv + 1}`, `Every dish cooks ${(S.kitchenLv + 1) * 10}% faster (now ${S.kitchenLv * 10}%)`, kp, "Fully upgraded")}
           ${card("data-shift", "clock", `Longer shifts`, `Open ${SHIFT_HOURS[S.shiftLv]} h while you're away${shp != null ? ` → ${SHIFT_HOURS[S.shiftLv + 1]} h` : ""}`, shp, "8 hours: the longest")}
@@ -1848,7 +1892,11 @@ export function openBistro(o: BistroOptions): BistroHandle {
     }
     if (b.dataset.dish && sheetKind === "cook") {
       const i = Number(sheetArg);
-      const r = sync.do({ a: "cook", stove: i, dish: b.dataset.dish as DishId });
+      const r = sync.do({
+        a: "cook",
+        stove: i,
+        dish: b.dataset.dish as DishId,
+      });
       if (!r.ok) return o.toast(r.error ?? "Can't cook that.");
       const c = iso(STOVE_TILES[i].x, STOVE_TILES[i].y);
       burst(c.x, c.y - 60, "spark", 8, "#ffb36b", 0.5);
@@ -1907,14 +1955,34 @@ export function openBistro(o: BistroOptions): BistroHandle {
     }
     if (b.dataset.cd) {
       const [id, dish] = b.dataset.cd.split(":");
-      const r = sync.do({ a: "cookdish", id: Number(id), dish: dish as DishId });
+      const r = sync.do({
+        a: "cookdish",
+        id: Number(id),
+        dish: dish as DishId,
+      });
       if (!r.ok) return o.toast(r.error ?? "Can't cook that.");
       sound("tick");
       changed();
       return renderSheet();
     }
+    if (b.hasAttribute("data-expand")) {
+      const r = sync.do({ a: "expand" });
+      if (!r.ok) return o.toast(r.error ?? "Can't expand now.");
+      relayout();
+      sound("fanfare");
+      const c = iso(R.cols - 2, R.rows - 2);
+      burst(c.x, c.y - 40, "confetti", low ? 30 : 80, "#ffd65b", 1.4);
+      banner(
+        `<b>A bigger bistro!</b><span>The dining room is now ${R.cols} × ${R.rows}: decorate the new space</span>`,
+        3200,
+      );
+      changed();
+      return renderSheet();
+    }
     if (b.hasAttribute("data-kitchen") || b.hasAttribute("data-shift")) {
-      const r = sync.do({ a: b.hasAttribute("data-kitchen") ? "kitchen" : "shift" });
+      const r = sync.do({
+        a: b.hasAttribute("data-kitchen") ? "kitchen" : "shift",
+      });
       if (!r.ok) return o.toast(r.error ?? "Can't upgrade that.");
       sound("fanfare");
       changed();
@@ -2010,7 +2078,9 @@ export function openBistro(o: BistroOptions): BistroHandle {
     // Rush hours come by the server's clock (35 s of every 4 minutes).
     const rushNow = rushing();
     if (rushNow && !wasRush && servingsLeft(S) > 0 && !editing && !visiting) {
-      banner(`<b>Rush hour!</b><span>Guests pour in · tips ×2 for ${RUSH_SECONDS} s</span>`);
+      banner(
+        `<b>Rush hour!</b><span>Guests pour in · tips ×2 for ${RUSH_SECONDS} s</span>`,
+      );
       sound("whoosh");
     }
     if (rushNow !== wasRush) hudDirty = true;
@@ -2243,9 +2313,13 @@ export function openBistro(o: BistroOptions): BistroHandle {
   let sceneryKey = "";
   const sceneryCanvas = (L: Light) => {
     const key = [
+      R.cols,
+      R.rows,
       view.s.toFixed(4),
       view.x.toFixed(1),
       view.y.toFixed(1),
+      R.cols,
+      R.rows,
       W,
       H,
       DPR,
@@ -2271,9 +2345,9 @@ export function openBistro(o: BistroOptions): BistroHandle {
   };
   /** The diorama's outline: the slab, the floor and the walls. */
   const roomPath = () => {
-    const l = iso(-0.5, ROWS - 0.5),
-      b = iso(COLS - 0.5, ROWS - 0.5),
-      r = iso(COLS - 0.5, -0.5),
+    const l = iso(-0.5, R.rows - 0.5),
+      b = iso(R.cols - 0.5, R.rows - 0.5),
+      r = iso(R.cols - 0.5, -0.5),
       t = iso(-0.5, -0.5);
     ctx.beginPath();
     ctx.moveTo(l.x - 16, l.y + 40);
@@ -2419,7 +2493,8 @@ export function openBistro(o: BistroOptions): BistroHandle {
     }
     const seatDir = new Map(seatList.map((s) => [s.chair.id, s.dir]));
     for (const it of S.items) {
-      if (ITEM_BY_KIND[it.kind].floor || it === held?.moving || !roomShown()) continue;
+      if (ITEM_BY_KIND[it.kind].floor || it === held?.moving || !roomShown())
+        continue;
       if (it.kind === "chair") {
         const dir = seatDir.get(it.id) ?? it.rot;
         const guest = seated.get(it.id);
@@ -2552,10 +2627,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
     if (a <= 0.01) return;
     ctx.save();
     ctx.globalCompositeOperation = "lighter";
-    for (const [g0, g1] of [
-      [6.3, 7.9],
-      [8.7, 10.3],
-    ]) {
+    for (const [g0, g1] of WINDOWS.right) {
       const w0 = iso(g0, -0.5),
         w1 = iso(g1, -0.5);
       const shift = { x: -70, y: 150 };
@@ -2654,8 +2726,8 @@ export function openBistro(o: BistroOptions): BistroHandle {
   };
   const drawEditGrid = () => {
     ctx.save();
-    for (let x = 0; x < COLS; x++)
-      for (let y = 0; y < ROWS; y++) {
+    for (let x = 0; x < R.cols; x++)
+      for (let y = 0; y < R.rows; y++) {
         const k = x <= COUNTER_X1 && y <= COUNTER_ROW;
         if (k) continue;
         const a = iso(x - 0.5, y - 0.5),
@@ -2955,7 +3027,8 @@ export function openBistro(o: BistroOptions): BistroHandle {
     resetFloor();
     S = showFriend(raw, f.id);
     chef.char = asChar(visiting!.extras.chef);
-    for (const d of ["down", "left", "right", "up"] as Facing[]) sprite(chef.char, d);
+    for (const d of ["down", "left", "right", "up"] as Facing[])
+      sprite(chef.char, d);
     relayout();
     syncStaff();
     layer.classList.add("visiting");
@@ -2995,7 +3068,10 @@ export function openBistro(o: BistroOptions): BistroHandle {
     const kind = b.dataset.v as "dine" | "like";
     b.disabled = true;
     try {
-      const r = (await o.api.visitAct(v.id, kind)) as Record<string, unknown> & { ok?: boolean; error?: string };
+      const r = (await o.api.visitAct(v.id, kind)) as Record<
+        string,
+        unknown
+      > & { ok?: boolean; error?: string };
       if (visiting !== v) return;
       const fresh = showFriend(r.bistro, v.id);
       // Keep the floor as it is; take their counter and likes.
@@ -3004,7 +3080,9 @@ export function openBistro(o: BistroOptions): BistroHandle {
         o.toast(r.error ?? "Not now.");
       } else if (kind === "dine") {
         const dish = DISH_BY_ID[r.dish as DishId];
-        banner(`<b>Delicious!</b><span>${esc(dish?.name ?? "A meal")} at ${esc(v.name)}'s · +${DINE.dinerCoins} coins, +${DINE.dinerXp} XP for you</span>`);
+        banner(
+          `<b>Delicious!</b><span>${esc(dish?.name ?? "A meal")} at ${esc(v.name)}'s · +${DINE.dinerCoins} coins, +${DINE.dinerXp} XP for you</span>`,
+        );
         sound("chime");
         const p = iso(DOOR.x + 2, DOOR.y);
         burst(p.x, p.y - 60, "heart", 8, "#ff6b8a", 0.8);
@@ -3029,14 +3107,21 @@ export function openBistro(o: BistroOptions): BistroHandle {
   let chefSent = false;
   let leavesShown = -1;
   const SILENT = new Set(["serve", "leave", "sync", "chef"]);
-  function adopted(info: { away: AwayReport | null; errors: { action: BistroAction; error: string }[] }) {
+  function adopted(info: {
+    away: AwayReport | null;
+    errors: { action: BistroAction; error: string }[];
+  }) {
     loadingEl.hidden = true;
     if (!visiting) {
       S = sync.S;
       relayout();
       syncStaff();
     }
-    if (o.owner) lastKnown.set(o.owner, { state: structuredClone(sync.S), extras: { ...sync.extras } });
+    if (o.owner)
+      lastKnown.set(o.owner, {
+        state: structuredClone(sync.S),
+        extras: { ...sync.extras },
+      });
     // The head chef is your Lobby fighter (friends see them in your kitchen).
     if (!chefSent && sync.extras.chef !== chefChar()) {
       chefSent = true;
@@ -3130,6 +3215,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
     draw();
   };
   ro.observe(layer);
+  setRoomSize(sizeOf(S.sizeLv));
   resize();
   raf = requestAnimationFrame(frame);
   const onVis = () => {
@@ -3153,7 +3239,11 @@ export function openBistro(o: BistroOptions): BistroHandle {
 
   // Visual tests and the demo's screenshots drive the scene through this.
   if (import.meta.env.DEV)
-    (window as unknown as { __bistroRules?: unknown }).__bistroRules = { ...Rules, applyLocal, readServer };
+    (window as unknown as { __bistroRules?: unknown }).__bistroRules = {
+      ...Rules,
+      applyLocal,
+      readServer,
+    };
   if (import.meta.env.DEV)
     (window as unknown as { __bistro?: unknown }).__bistro = {
       state: () => S,
@@ -3171,7 +3261,8 @@ export function openBistro(o: BistroOptions): BistroHandle {
         const p = iso(gx, gy);
         return toScreen({ x: p.x, y: p.y - lift });
       },
-      rush: () => (rushShift = RUSH_PERIOD * 1000 - (nowS() % (RUSH_PERIOD * 1000))),
+      rush: () =>
+        (rushShift = RUSH_PERIOD * 1000 - (nowS() % (RUSH_PERIOD * 1000))),
       edit: (on: boolean) => setEditing(on),
       sheet: (k: string, a?: string | number) => openSheet(k, a),
       advance: (s: number) => {
@@ -3195,7 +3286,11 @@ export function openBistro(o: BistroOptions): BistroHandle {
       // orders not yet served stay on the counter (the server never took them).
       if (!visiting) for (const p of [...piles]) collectPile(p, false);
       sync.close();
-      if (o.owner) lastKnown.set(o.owner, { state: structuredClone(sync.S), extras: { ...sync.extras } });
+      if (o.owner)
+        lastKnown.set(o.owner, {
+          state: structuredClone(sync.S),
+          extras: { ...sync.extras },
+        });
       layer.remove();
     },
   };

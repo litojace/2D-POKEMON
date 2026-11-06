@@ -1315,7 +1315,9 @@ body.hub-bistro:has(.bistro-layer.editing) #toast {
   border-radius: 12px;
   background: #ffffff14;
   color: #fff;
-  font: 800 13px/1 "DM Sans", sans-serif;
+  font:
+    800 13px/1 "DM Sans",
+    sans-serif;
   cursor: pointer;
 }
 .bistro-layer .bs-visit button:disabled {

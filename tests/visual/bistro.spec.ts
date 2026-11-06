@@ -171,7 +171,7 @@ test("Bistro friends: visit a friend's bistro, eat there and like it", async ({
   await B(
     page,
     `const R = window.__bistroRules; const v = R.defaultState();
-     v.floor = 'wood'; v.wall = 'mint'; v.level = 4;
+     v.floor = 'wood'; v.wall = 'mint'; v.floors = ['checker', 'wood']; v.walls = ['butter', 'mint']; v.level = 4;
      srv.views['${ben}'] = { ...v, special: 'pho', chef: 'tidefin', likes: 7, now: Date.now(),
        id: '${ben}', name: 'Ben', fighter: 'tidefin', dined: false, liked: false, myDines: 0 };
      srv.friends = [{ id: '${ben}', name: 'Ben', fighter: 'tidefin', level: 4, rating: 3.6, likes: 7,
@@ -188,7 +188,9 @@ test("Bistro friends: visit a friend's bistro, eat there and like it", async ({
   await expect(page.locator("#bs-banner")).toContainText("Delicious");
   await expect(page.locator('#bs-visit [data-v="dine"]')).toBeDisabled();
   await page.click('#bs-visit [data-v="like"]');
-  await expect(page.locator('#bs-visit [data-v="like"]')).toContainText("Liked");
+  await expect(page.locator('#bs-visit [data-v="like"]')).toContainText(
+    "Liked",
+  );
   await snap(page, info, "bistro-visit");
   await page.click('#bs-visit [data-v="home"]');
   await expect(page.locator("#bs-visit")).toBeHidden();

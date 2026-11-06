@@ -5,8 +5,9 @@
  * sidewalks with lamps, houses and trees across the road, and a sign on the
  * roof. World units, the same isometric grid as bistro-art.ts.
  */
-import { COLS, DOOR, ROWS } from "./bistro-model";
+import { DOOR } from "./bistro-model";
 import {
+  R,
   WALL_H,
   iso,
   isoBox,
@@ -207,7 +208,7 @@ function drawGround(ctx: Ctx, l: Light) {
   for (let i = 0; i < 260; i++) {
     const gx = -16 + hash(i) * 40,
       gy = -12 + hash(i + 300) * 36;
-    if (gx > ROAD0 - 0.5 && gx < COLS + 1.6 && gy > -2.4 && gy < ROWS + 1.6)
+    if (gx > ROAD0 - 0.5 && gx < R.cols + 1.6 && gy > -2.4 && gy < R.rows + 1.6)
       continue;
     const p = iso(gx, gy);
     if (p.y < HORIZON + 4) continue;
@@ -237,9 +238,9 @@ function drawGround(ctx: Ctx, l: Light) {
   ctx.fillStyle = paving;
   for (const [x0, y0, x1, y1] of [
     [ROAD1, -40, WALK, 40], // along the road
-    [ROAD1, ROWS - 0.5, COLS + 1.6, ROWS + 1.6], // the front
-    [COLS - 0.5, -2.4, COLS + 1.6, ROWS + 1.6], // the right side
-    [ROAD1, -2.4, COLS + 1.6, -0.5], // behind
+    [ROAD1, R.rows - 0.5, R.cols + 1.6, R.rows + 1.6], // the front
+    [R.cols - 0.5, -2.4, R.cols + 1.6, R.rows + 1.6], // the right side
+    [ROAD1, -2.4, R.cols + 1.6, -0.5], // behind
   ]) {
     quad(ctx, x0, y0, x1, y1);
     ctx.fill();
@@ -253,15 +254,15 @@ function drawGround(ctx: Ctx, l: Light) {
     ctx.moveTo(a.x, a.y);
     ctx.lineTo(b.x, b.y);
   }
-  for (let x = ROAD1; x <= COLS + 1.6; x += 0.8) {
-    const a = iso(x, ROWS - 0.5),
-      b = iso(x, ROWS + 1.6);
+  for (let x = ROAD1; x <= R.cols + 1.6; x += 0.8) {
+    const a = iso(x, R.rows - 0.5),
+      b = iso(x, R.rows + 1.6);
     ctx.moveTo(a.x, a.y);
     ctx.lineTo(b.x, b.y);
   }
-  for (let y = -2.4; y <= ROWS + 1.6; y += 0.8) {
-    const a = iso(COLS - 0.5, y),
-      b = iso(COLS + 1.6, y);
+  for (let y = -2.4; y <= R.rows + 1.6; y += 0.8) {
+    const a = iso(R.cols - 0.5, y),
+      b = iso(R.cols + 1.6, y);
     ctx.moveTo(a.x, a.y);
     ctx.lineTo(b.x, b.y);
   }
@@ -554,11 +555,10 @@ export function drawSceneryStatic(ctx: Ctx, l: Light, special: string) {
     [3, -3.6, 1.1, 0],
     [7.5, -3.4, 1, 1],
     [11.5, -3.2, 1.2, 0],
-    [COLS + 2.6, 0.5, 1.1, 2],
-    [COLS + 2.8, 4.6, 1, 0],
-    [COLS + 2.6, 8.6, 1.2, 1],
-    [-2.4, ROWS + 3.2, 1, 0],
-    [12.5, ROWS + 4.6, 1, 2],
+    [R.cols + 2.6, 0.5, 1.1, 2],
+    [R.cols + 2.8, 4.6, 1, 0],
+    [-2.4, R.rows + 3.2, 1, 0],
+    [R.cols + 1.5, R.rows + 4.6, 1, 2],
   ];
   type D = { d: number; f: () => void };
   const list: D[] = [];
@@ -704,7 +704,7 @@ export function drawSceneryLive(ctx: Ctx, l: Light, cars: Car[], low: boolean) {
   }
 }
 /** Lamps in front of the building's base: drawn after the room. */
-const inFront = (x: number, y: number) => y > ROWS - 0.5 || x > COLS - 0.5;
+const inFront = (x: number, y: number) => y > R.rows - 0.5 || x > R.cols - 0.5;
 export function drawFrontLamps(ctx: Ctx, l: Light) {
   for (const [x, y] of LAMPS) if (inFront(x, y)) drawLampPost(ctx, x, y, l);
 }

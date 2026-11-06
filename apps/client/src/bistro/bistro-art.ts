@@ -7,6 +7,7 @@
 import {
   COLS,
   ROWS,
+  type RoomSize,
   COUNTER_X0,
   COUNTER_X1,
   COUNTER_ROW,
@@ -26,18 +27,46 @@ export const iso = (gx: number, gy: number) => ({
   y: (gx + gy) * (TH / 2),
 });
 /** The room's corners on the floor. */
+/**
+ * The dining room's size being drawn (it grows when the room is expanded,
+ * and a friend's may differ): set by the scene before drawing.
+ */
+export const R: RoomSize = { cols: COLS, rows: ROWS };
+export function setRoomSize(z: RoomSize): boolean {
+  if (z.cols === R.cols && z.rows === R.rows) return false;
+  R.cols = z.cols;
+  R.rows = z.rows;
+  return true;
+}
+/** The room's corners on the floor. */
 export const ROOM = {
-  top: iso(-0.5, -0.5),
-  right: iso(COLS - 0.5, -0.5),
-  left: iso(-0.5, ROWS - 0.5),
-  bottom: iso(COLS - 0.5, ROWS - 0.5),
+  get top() {
+    return iso(-0.5, -0.5);
+  },
+  get right() {
+    return iso(R.cols - 0.5, -0.5);
+  },
+  get left() {
+    return iso(-0.5, R.rows - 0.5);
+  },
+  get bottom() {
+    return iso(R.cols - 0.5, R.rows - 0.5);
+  },
 };
 /** World bounds worth showing (the room, its walls and the base). */
 export const BOUNDS = {
-  x0: ROOM.left.x - 30,
-  x1: ROOM.right.x + 30,
-  y0: ROOM.top.y - WALL_H - 30,
-  y1: ROOM.bottom.y + 50,
+  get x0() {
+    return ROOM.left.x - 30;
+  },
+  get x1() {
+    return ROOM.right.x + 30;
+  },
+  get y0() {
+    return ROOM.top.y - WALL_H - 30;
+  },
+  get y1() {
+    return ROOM.bottom.y + 50;
+  },
 };
 
 /* ───────────── colour helpers ───────────── */
@@ -253,12 +282,20 @@ const WALL_STYLE: Record<
 
 /** Windows: on the right wall (x span) and the left wall (y span), grid units. */
 export const WINDOWS = {
-  right: [
-    [6.3, 7.9],
-    [8.7, 10.3],
-  ],
-  left: [[3.0, 4.6]],
-} as const;
+  /** Along the right wall, past the kitchen: one every 2.4 tiles. */
+  get right(): [number, number][] {
+    const out: [number, number][] = [];
+    for (let g = 6.3; g + 1.6 <= R.cols - 0.6; g += 2.4) out.push([g, g + 1.6]);
+    return out;
+  },
+  /** Along the left wall: by the counter, and past the door in a bigger room. */
+  get left(): [number, number][] {
+    const out: [number, number][] = [[3.0, 4.6]];
+    const end = Math.min(R.rows - 0.7, 9.9);
+    if (end - 8.2 >= 1) out.push([8.2, end]);
+    return out;
+  },
+};
 /** The menu board on the left wall (y span). */
 const BOARD = [5.1, 6.2] as const;
 
@@ -313,8 +350,8 @@ export function drawShell(ctx: Ctx, floor: FloorId, wall: WallId) {
 
   // The floor.
   const fs = FLOOR_STYLE[floor];
-  for (let x = 0; x < COLS; x++)
-    for (let y = 0; y < ROWS; y++) {
+  for (let x = 0; x < R.cols; x++)
+    for (let y = 0; y < R.rows; y++) {
       const a = iso(x - 0.5, y - 0.5),
         b = iso(x + 0.5, y - 0.5),
         c = iso(x + 0.5, y + 0.5),
@@ -360,15 +397,15 @@ export function drawShell(ctx: Ctx, floor: FloorId, wall: WallId) {
   ctx.globalAlpha = 0.35;
   ctx.lineWidth = 1;
   ctx.beginPath();
-  for (let x = 0; x <= COLS; x++) {
+  for (let x = 0; x <= R.cols; x++) {
     const p = iso(x - 0.5, -0.5),
-      q = iso(x - 0.5, ROWS - 0.5);
+      q = iso(x - 0.5, R.rows - 0.5);
     ctx.moveTo(p.x, p.y);
     ctx.lineTo(q.x, q.y);
   }
-  for (let y = 0; y <= ROWS; y++) {
+  for (let y = 0; y <= R.rows; y++) {
     const p = iso(-0.5, y - 0.5),
-      q = iso(COLS - 0.5, y - 0.5);
+      q = iso(R.cols - 0.5, y - 0.5);
     ctx.moveTo(p.x, p.y);
     ctx.lineTo(q.x, q.y);
   }
@@ -384,7 +421,7 @@ export function drawShell(ctx: Ctx, floor: FloorId, wall: WallId) {
     [1, "rgba(70,35,15,0)"],
   ]);
   // Along the right wall (y = -0.5): a band toward +y.
-  poly(ctx, [top, right, iso(COLS - 0.5, 0.45), iso(-0.5, 0.45)]);
+  poly(ctx, [top, right, iso(R.cols - 0.5, 0.45), iso(-0.5, 0.45)]);
   ctx.fillStyle = lin(
     ctx,
     iso(0, -0.5).x,
@@ -397,7 +434,7 @@ export function drawShell(ctx: Ctx, floor: FloorId, wall: WallId) {
     ],
   );
   ctx.fill();
-  poly(ctx, [top, iso(0.45, -0.5), iso(0.45, ROWS - 0.5), left]);
+  poly(ctx, [top, iso(0.45, -0.5), iso(0.45, R.rows - 0.5), left]);
   ctx.fillStyle = lin(
     ctx,
     iso(-0.5, 0).x,
@@ -488,7 +525,7 @@ function drawWalls(ctx: Ctx, wall: WallId) {
   // Panel grooves.
   ctx.strokeStyle = "rgba(0,0,0,.18)";
   ctx.lineWidth = 1.5;
-  for (let gx = 0; gx < COLS; gx += 1) {
+  for (let gx = 0; gx < R.cols; gx += 1) {
     const a = rightWallPt(gx - 0.1, 10),
       b = rightWallPt(gx + 0.6, 10),
       c = rightWallPt(gx + 0.6, WAIN - 10),
@@ -496,7 +533,7 @@ function drawWalls(ctx: Ctx, wall: WallId) {
     poly(ctx, [a, b, c, d]);
     ctx.stroke();
   }
-  for (let gy = 0; gy < ROWS; gy += 1) {
+  for (let gy = 0; gy < R.rows; gy += 1) {
     if (Math.abs(gy - DOOR.y) < 1) continue;
     const a = leftWallPt(gy - 0.1, 10),
       b = leftWallPt(gy + 0.6, 10),
@@ -509,9 +546,9 @@ function drawWalls(ctx: Ctx, wall: WallId) {
   ctx.strokeStyle = ws.trim;
   ctx.lineWidth = 5;
   ctx.beginPath();
-  const r0 = rightWallPt(COLS - 0.5, WAIN),
+  const r0 = rightWallPt(R.cols - 0.5, WAIN),
     r1 = rightWallPt(-0.5, WAIN),
-    l1 = leftWallPt(ROWS - 0.5, WAIN);
+    l1 = leftWallPt(R.rows - 0.5, WAIN);
   ctx.moveTo(r0.x, r0.y);
   ctx.lineTo(r1.x, r1.y);
   ctx.lineTo(l1.x, l1.y);
@@ -637,7 +674,7 @@ function drawWalls(ctx: Ctx, wall: WallId) {
 
 function wallPattern(ctx: Ctx, wall: WallId, side: "left" | "right") {
   const pt = side === "right" ? rightWallPt : leftWallPt;
-  const span = side === "right" ? COLS : ROWS;
+  const span = side === "right" ? R.cols : R.rows;
   if (wall === "mint") {
     for (let g = -0.5; g < span; g += 0.5) {
       const a = pt(g, 0),
@@ -733,7 +770,7 @@ export function drawWindows(ctx: Ctx, l: Light, low: boolean) {
         ctx.fillStyle = `rgba(255,250,220,${(0.4 + tw * 0.6) * l.night})`;
         ctx.fillRect(sx, sy, 1.6, 1.6);
       }
-      if (side === "right" && g0 === WINDOWS.right[1][0]) {
+      if (side === "right" && g0 === WINDOWS.right[1]?.[0]) {
         ctx.fillStyle = rad(ctx, cx + 10, cy - 18, 26, [
           [0, `rgba(255,248,220,${0.35 * l.night})`],
           [1, "rgba(255,248,220,0)"],
@@ -959,9 +996,9 @@ export function drawDoorAndBoard(
 /** Festoon bulbs along the top of both walls (they glow at night). */
 export function festoonPoints(): { x: number; y: number }[] {
   const pts: { x: number; y: number }[] = [];
-  for (let g = ROWS - 0.8; g > -0.5; g -= 0.55)
+  for (let g = R.rows - 0.8; g > -0.5; g -= 0.55)
     pts.push(leftWallPt(g, WALL_H - 18 - Math.abs(Math.sin(g * 2.86)) * 10));
-  for (let g = -0.2; g < COLS - 0.4; g += 0.55)
+  for (let g = -0.2; g < R.cols - 0.4; g += 0.55)
     pts.push(rightWallPt(g, WALL_H - 18 - Math.abs(Math.sin(g * 2.86)) * 10));
   return pts;
 }

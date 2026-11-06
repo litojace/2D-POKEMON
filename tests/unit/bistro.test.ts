@@ -423,3 +423,30 @@ describe("bistro: while you are away", () => {
     expect(r.served).toBe(0);
   });
 });
+
+describe("bistro: expanding the dining room", () => {
+  it("grows by level and price, and furniture may use the new tiles", async () => {
+    const { buyExpand, sizeOf, EXPAND_STEPS } =
+      await import("../../apps/client/src/bistro/bistro-model");
+    const s = defaultState();
+    s.coins = 20000;
+    s.stored = { plant: 2 };
+    expect(tryPlace(s, "plant", 12, 4, 0)).toMatchObject({ ok: false });
+    expect(buyExpand(s)).toMatchObject({ ok: false }); // level 4
+    s.level = 12;
+    for (const step of EXPAND_STEPS) {
+      const coins = s.coins;
+      expect(buyExpand(s).ok).toBe(true);
+      expect(s.coins).toBe(coins - step.price);
+    }
+    expect(buyExpand(s)).toMatchObject({ ok: false });
+    expect(sizeOf(s.sizeLv)).toEqual({ cols: 17, rows: 12 });
+    expect(tryPlace(s, "plant", 16, 11, 0).ok).toBe(true);
+    expect(tryPlace(s, "plant", 17, 11, 0)).toMatchObject({ ok: false });
+    // The far corner is reachable: a seat there works.
+    const g = blockedGrid(s.items, -1, sizeOf(s.sizeLv));
+    expect(findPath(g, DOOR, { x: 15, y: 10 })).not.toBeNull();
+    // A saved bigger room keeps its far furniture.
+    expect(sanitize(JSON.parse(JSON.stringify(s))).items).toEqual(s.items);
+  });
+});

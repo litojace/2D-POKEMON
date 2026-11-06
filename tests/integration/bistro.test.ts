@@ -457,7 +457,13 @@ describe("expanding the dining room", () => {
       { a: "expand" },
       { a: "expand" },
     ]);
-    expect(r.results.map((x: any) => x.ok)).toEqual([true, true, true, true, false]);
+    expect(r.results.map((x: any) => x.ok)).toEqual([
+      true,
+      true,
+      true,
+      true,
+      false,
+    ]);
     expect(r.results[4].error).toBe("The dining room is as big as it gets.");
     expect(r.bistro.sizeLv).toBe(3);
     expect(r.bistro.coins).toBe(20000 - 800 - 2500 - 6000);
@@ -469,7 +475,13 @@ describe("expanding the dining room", () => {
       { a: "place", kind: "chair", x: 15, y: 11, rot: 0 },
       { a: "place", kind: "chair", x: 17, y: 11, rot: 2 },
     ]);
-    expect(r.results.map((x: any) => x.ok)).toEqual([true, true, true, true, false]);
+    expect(r.results.map((x: any) => x.ok)).toEqual([
+      true,
+      true,
+      true,
+      true,
+      false,
+    ]);
     const [{ n }] = await sql(
       "select count(*)::int n from public.arena_bistro_seats($1)",
       [cal],

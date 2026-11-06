@@ -84,7 +84,14 @@ export async function fakeBistro(page: Page) {
           v.myDines++;
           const c = v.counter.find((x: any) => x && x.servings > 0);
           if (c) c.servings--;
-          return json({ bistro: v, ok: true, dish: c?.dish, paid: 6, coins: 10, xp: 5 });
+          return json({
+            bistro: v,
+            ok: true,
+            dish: c?.dish,
+            paid: 6,
+            coins: 10,
+            xp: 5,
+          });
         }
         v.liked = true;
         v.likes++;

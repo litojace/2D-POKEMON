@@ -13,12 +13,30 @@
  * customer only next to a table, tips that grow with a serving streak, VIP
  * guests, a daily special and rush hours; staff who keep it open while you
  * are away.
-*/
+ */
 
 import { CHARACTERS } from "./index.js";
 
+/** The starting dining room's grid (columns along x, rows along y). */
 export const COLS = 11;
 export const ROWS = 9;
+export interface RoomSize {
+  cols: number;
+  rows: number;
+}
+/** Expanding the dining room: each step adds two columns and a row (the kitchen and the door stay). */
+export const sizeOf = (lv: number): RoomSize => ({
+  cols: COLS + 2 * lv,
+  rows: ROWS + lv,
+});
+export const BASE_SIZE: RoomSize = sizeOf(0);
+export const EXPAND_STEPS = [
+  { level: 4, price: 800 },
+  { level: 8, price: 2500 },
+  { level: 12, price: 6000 },
+] as const;
+export const MAX_SIZE_LV = EXPAND_STEPS.length;
+export const MAX_SIZE = sizeOf(MAX_SIZE_LV);
 /** Where customers come in (a tile on the left wall's front end). */
 export const DOOR = { x: 0, y: 7 } as const;
 /** Stove slots along the back wall, the chef's lane in front of them. */
@@ -371,6 +389,8 @@ export interface BistroState {
   staff: Staff[];
   kitchenLv: number;
   shiftLv: number;
+  /** The dining room's size step (0 is 11 × 9). */
+  sizeLv: number;
   /** When the bistro was last open on this device (ms), for the time away. */
   lastSeen: number;
   floor: FloorId;
@@ -433,6 +453,7 @@ export function defaultState(): BistroState {
     ],
     kitchenLv: 0,
     shiftLv: 0,
+    sizeLv: 0,
     lastSeen: 0,
     floor: "checker",
     wall: "butter",
@@ -458,6 +479,7 @@ export function sanitize(raw: unknown): BistroState {
   s.rating = num(r.rating, 3, 0, 5);
   s.served = Math.floor(num(r.served, 0));
   s.kitchenLv = Math.floor(num(r.kitchenLv, 0, 0, KITCHEN_PRICES.length));
+  s.sizeLv = Math.floor(num(r.sizeLv, 0, 0, MAX_SIZE_LV));
   s.shiftLv = Math.floor(num(r.shiftLv, 0, 0, SHIFT_PRICES.length));
   s.lastSeen = num(r.lastSeen, 0);
   if (Array.isArray(r.staff)) {
@@ -495,8 +517,8 @@ export function sanitize(raw: unknown): BistroState {
     let maxId = 0;
     for (const it of r.items as Record<string, unknown>[]) {
       if (!it || !isItemKind(it.kind)) continue;
-      const x = Math.floor(num(it.x, -1, -1, COLS));
-      const y = Math.floor(num(it.y, -1, -1, ROWS));
+      const x = Math.floor(num(it.x, -1, -1, MAX_SIZE.cols));
+      const y = Math.floor(num(it.y, -1, -1, MAX_SIZE.rows));
       const id = Math.floor(num(it.id, 0));
       const candidate: Item = {
         id: id > 0 ? id : 0,
@@ -505,7 +527,7 @@ export function sanitize(raw: unknown): BistroState {
         y,
         rot: Math.floor(num(it.rot, 0, 0, 3)),
       };
-      if (canPlace(items, candidate.kind, x, y).ok) {
+      if (canPlace(items, candidate.kind, x, y, -1, sizeOf(s.sizeLv)).ok) {
         items.push(candidate);
         maxId = Math.max(maxId, candidate.id);
       }
@@ -611,16 +633,27 @@ export const COMBO_MAX = 5;
 /** Rush hours come by the clock, the same for everyone: 35 s of every 4 minutes. */
 export const RUSH_PERIOD = 240;
 export const RUSH_SECONDS = 35;
-export const inRush = (ms: number) => Math.floor(ms / 1000) % RUSH_PERIOD < RUSH_SECONDS;
+export const inRush = (ms: number) =>
+  Math.floor(ms / 1000) % RUSH_PERIOD < RUSH_SECONDS;
 /** Seconds until the next rush hour starts (0 while one is on). */
 export const rushIn = (ms: number) => {
   const s = Math.floor(ms / 1000) % RUSH_PERIOD;
   return s < RUSH_SECONDS ? 0 : RUSH_PERIOD - s;
 };
 /** Bistro coins for Gold Leaves: 100 coins → 20 leaves, up to 300 leaves a Pacific day. */
-export const BISTRO_TRADE = { coins: 100, leaves: 20, dailyLeaves: 300 } as const;
+export const BISTRO_TRADE = {
+  coins: 100,
+  leaves: 20,
+  dailyLeaves: 300,
+} as const;
 /** Eating at a friend's bistro: once a friend a Pacific day, up to 10 a day. */
-export const DINE = { perDay: 10, ownerXp: 2, ownerTipPct: 50, dinerXp: 5, dinerCoins: 10 } as const;
+export const DINE = {
+  perDay: 10,
+  ownerXp: 2,
+  ownerTipPct: 50,
+  dinerXp: 5,
+  dinerCoins: 10,
+} as const;
 /** A like: once a friend a week. */
 export const LIKE_XP = 2;
 /** Online sales: guests a second each seat allows, plus a small burst. */
@@ -782,8 +815,13 @@ export function pickOrder(
 
 export const inKitchen = (x: number, y: number) =>
   x <= COUNTER_X1 && y <= COUNTER_ROW;
-export const inGrid = (x: number, y: number) =>
-  x >= 0 && y >= 0 && x < COLS && y < ROWS;
+export const inGrid = (x: number, y: number, z: RoomSize = BASE_SIZE) =>
+  x >= 0 && y >= 0 && x < z.cols && y < z.rows;
+/** A grid's size, from the grid itself. */
+const sizeOfGrid = (g: boolean[][]): RoomSize => ({
+  cols: g.length,
+  rows: g[0]?.length ?? 0,
+});
 const isPickup = (x: number, y: number) =>
   y === 3 && x >= 1 && x <= COUNTER_SLOTS;
 /** Tiles the plan keeps clear: the door, its first step, the pickup spots. */
@@ -805,9 +843,10 @@ export function footprint(kind: ItemKind, x: number, y: number) {
 export function blockedGrid(
   items: readonly Item[],
   ignoreId = -1,
+  z: RoomSize = BASE_SIZE,
 ): boolean[][] {
-  const g = Array.from({ length: COLS }, () =>
-    Array<boolean>(ROWS).fill(false),
+  const g = Array.from({ length: z.cols }, () =>
+    Array<boolean>(z.rows).fill(false),
   );
   // The kitchen (stoves, the chef's lane, the counter) is the chef's alone.
   for (let x = COUNTER_X0; x <= COUNTER_X1; x++)
@@ -815,7 +854,7 @@ export function blockedGrid(
   for (const it of items) {
     if (it.id === ignoreId || ITEM_BY_KIND[it.kind].floor) continue;
     for (const t of footprint(it.kind, it.x, it.y))
-      if (inGrid(t.x, t.y)) g[t.x][t.y] = true;
+      if (inGrid(t.x, t.y, z)) g[t.x][t.y] = true;
   }
   return g;
 }
@@ -831,8 +870,10 @@ export function findPath(
   from: { x: number; y: number },
   to: { x: number; y: number },
 ): { x: number; y: number }[] | null {
-  if (!inGrid(from.x, from.y) || !inGrid(to.x, to.y)) return null;
-  const key = (x: number, y: number) => y * COLS + x;
+  const z = sizeOfGrid(blocked);
+  const W = z.cols;
+  if (!inGrid(from.x, from.y, z) || !inGrid(to.x, to.y, z)) return null;
+  const key = (x: number, y: number) => y * W + x;
   const prev = new Map<number, number>();
   const q: number[] = [key(from.x, from.y)];
   prev.set(q[0], -1);
@@ -840,12 +881,12 @@ export function findPath(
   while (q.length) {
     const k = q.shift()!;
     if (k === goal) break;
-    const x = k % COLS,
-      y = (k / COLS) | 0;
+    const x = k % W,
+      y = (k / W) | 0;
     for (const [dx, dy] of N4) {
       const nx = x + dx,
         ny = y + dy;
-      if (!inGrid(nx, ny)) continue;
+      if (!inGrid(nx, ny, z)) continue;
       const nk = key(nx, ny);
       if (prev.has(nk)) continue;
       if (blocked[nx][ny] && nk !== goal) continue;
@@ -856,7 +897,7 @@ export function findPath(
   if (!prev.has(goal)) return null;
   const path: { x: number; y: number }[] = [];
   for (let k = goal; k !== -1; k = prev.get(k)!)
-    path.push({ x: k % COLS, y: (k / COLS) | 0 });
+    path.push({ x: k % W, y: (k / W) | 0 });
   return path.reverse();
 }
 /** The facing (0 +x, 1 +y, 2 −x, 3 −y) from a tile toward a neighbour. */
@@ -898,7 +939,7 @@ export function approach(
     for (const [dx, dy] of N4) {
       const nx = t.x + dx,
         ny = t.y + dy;
-      if (!inGrid(nx, ny) || blocked[nx][ny]) continue;
+      if (!inGrid(nx, ny, sizeOfGrid(blocked)) || blocked[nx][ny]) continue;
       const p = findPath(blocked, from, { x: nx, y: ny });
       if (p && (!best || p.length < best.length)) best = p;
     }
@@ -912,10 +953,11 @@ export function canPlace(
   x: number,
   y: number,
   ignoreId = -1,
+  z: RoomSize = BASE_SIZE,
 ): Result {
   const def = ITEM_BY_KIND[kind];
   for (const t of footprint(kind, x, y)) {
-    if (!inGrid(t.x, t.y)) return fail("That's outside the restaurant.");
+    if (!inGrid(t.x, t.y, z)) return fail("That's outside the restaurant.");
     if (inKitchen(t.x, t.y)) return fail("The kitchen stays clear.");
     if (!def.floor && reservedTile(t.x, t.y))
       return fail("Keep the doorway and the counter clear.");
@@ -935,8 +977,11 @@ export function canPlace(
  * Whether the plan still works: from the door you can reach every pickup
  * spot, and every seat has a free tile next to its chair.
  */
-export function planWorks(items: readonly Item[]): Result {
-  const blocked = blockedGrid(items);
+export function planWorks(
+  items: readonly Item[],
+  z: RoomSize = BASE_SIZE,
+): Result {
+  const blocked = blockedGrid(items, -1, z);
   for (let i = 0; i < COUNTER_SLOTS; i++)
     if (!findPath(blocked, DOOR, pickupTile(i)))
       return fail("That would block the way to the counter.");
@@ -957,12 +1002,13 @@ export function tryPlace(
   rot: number,
   moving?: Item,
 ): Result {
-  const ok = canPlace(s.items, kind, x, y, moving?.id ?? -1);
+  const z = sizeOf(s.sizeLv);
+  const ok = canPlace(s.items, kind, x, y, moving?.id ?? -1, z);
   if (!ok.ok) return ok;
   const next = s.items
     .filter((i) => i.id !== moving?.id)
     .concat({ id: moving?.id ?? s.nextId, kind, x, y, rot });
-  const works = planWorks(next);
+  const works = planWorks(next, z);
   if (!works.ok) return works;
   if (!moving) {
     const left = s.stored[kind] ?? 0;
@@ -1091,6 +1137,16 @@ export function candidates(
     out.push(pool.splice(Math.abs(h) % pool.length, 1)[0]);
   }
   return out;
+}
+/** A bigger dining room (the next size step). */
+export function buyExpand(s: BistroState): Result {
+  const step = EXPAND_STEPS[s.sizeLv];
+  if (!step) return fail("The dining room is as big as it gets.");
+  if (s.level < step.level) return fail(`Expand at level ${step.level}.`);
+  if (s.coins < step.price) return fail(`You need ${step.price} coins.`);
+  s.coins -= step.price;
+  s.sizeLv++;
+  return { ok: true };
 }
 export function buyKitchen(s: BistroState): Result {
   const price = KITCHEN_PRICES[s.kitchenLv];
