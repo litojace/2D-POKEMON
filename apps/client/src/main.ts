@@ -195,7 +195,6 @@ import { waitForServer, onServerStartupRetry } from "./server-connection";
 import "./ui/tokens.css";
 import "./style.css";
 import "./ui/components.css";
-import "./friends.css";
 import "./battle-dock.css";
 import "./cosmetic-review.css";
 import "./collection-frames.css";
@@ -1028,6 +1027,8 @@ function renderRoom(watch: boolean) {
     if (watch && panel) panel.outerHTML = roomWatchMarkup(d);
   }
   if (watch) return;
+  // Friends stands in the picker's place until it closes.
+  if (!roomPicker && accountsUI.friendsOpen) return;
   if (roomPicker?.isOpen) roomPicker.refresh();
   else
     roomPicker = openRoster(
@@ -5683,7 +5684,17 @@ accountsUI = new AccountUI({
       state.players.length < ((state.mode ?? "duel") === "duel" ? 2 : 4),
   }),
   inviteFriend: (playerId) => request("room-invite", { playerId }),
-  createFriendRoom: () => homeNavigation.open("play"),
+  // In a private room Friends takes the picker's place; closing it brings
+  // the picker back (UI remodel step 6).
+  friendsHost: () =>
+    myId && !watching
+      ? ($("menu").querySelector<HTMLElement>(":scope > .room-screen") ??
+        undefined)
+      : undefined,
+  onFriendsClosed: () => {
+    if (myId && !watching && $("menu").querySelector(":scope > .room-screen"))
+      renderRoom(false);
+  },
   watchRoom: (code) => {
     if (myId) return toast("Leave your current room first.");
     void watchRoom(code);

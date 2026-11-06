@@ -9,7 +9,7 @@
   min-height: 0;
   overflow: visible;
 }
-.friend-avatar:has(> .portrait-frame),
+.fr-avatar:has(> .portrait-frame),
 .player-avatar:has(> .portrait-frame) {
   overflow: visible;
   border-color: transparent;
@@ -80,7 +80,7 @@ body.lobby-active #account-profile:has(.portrait-frame) {
   .player-avatar,
   .raid-party-avatar,
   .raid-score-avatar,
-  .friend-avatar
+  .fr-avatar
 ) {
   border-radius: 50% !important;
   overflow: visible;
@@ -93,7 +93,7 @@ body.lobby-active #account-profile:has(.portrait-frame) {
   .player-avatar,
   .raid-party-avatar,
   .raid-score-avatar,
-  .friend-avatar
+  .fr-avatar
 ):has(> .portrait-frame) {
   border-color: transparent;
   background: transparent;

@@ -30,6 +30,65 @@ const rail = (action: string) => async (page: Page) => {
 const settle = (page: Page, ms = 700) => page.waitForTimeout(ms);
 const HUB = ".ui-panel-host";
 
+/** Fifty friends, ten requests each way, thirty on the Friends board and
+ * twenty recent players: more than any panel shows at once. */
+async function crowd(page: Page) {
+  await page.evaluate(() => {
+    const w = window as any;
+    const id = (n: number) =>
+      `55555555-5555-4555-8555-${String(n).padStart(12, "0")}`;
+    const fighters = ["voltkit", "cindrake", "tidefin", "lumoth", "terradon"];
+    w.__friends = {
+      code: "a1b2c3d4",
+      friends: Array.from({ length: 50 }, (_, i) => ({
+        id: id(i),
+        name: i === 3 ? "Bartholomew-the-Magnificent" : `Friend ${i}`,
+        online: i % 4 === 0,
+        activity: i % 8 === 0 ? "match" : "menu",
+        room: i % 8 === 0 ? "ROOM01" : null,
+        fighter: fighters[i % 5],
+        lastOnline: new Date(Date.now() - (i + 1) * 3600e3).toISOString(),
+      })),
+      incoming: Array.from({ length: 10 }, (_, i) => ({
+        id: id(100 + i),
+        name: `Asker ${i}`,
+      })),
+      outgoing: Array.from({ length: 10 }, (_, i) => ({
+        id: id(200 + i),
+        name: `Asked ${i}`,
+      })),
+    };
+    w.__friendsBoard = {
+      season: new Date().toISOString().slice(0, 7),
+      rows: Array.from({ length: 31 }, (_, i) => ({
+        id: i === 7 ? "11111111-1111-4111-8111-111111111111" : id(i),
+        place: i + 1,
+        name: i === 7 ? "tester" : `Friend ${i}`,
+        rating: 1500 - i * 10,
+        rankName: "Master",
+        placementLeft: 0,
+        wins: 10,
+        matches: 20,
+        me: i === 7,
+      })),
+    };
+    w.__recent = {
+      players: Array.from({ length: 20 }, (_, i) => ({
+        id: id(300 + i),
+        name: `Rival ${i}`,
+        fighter: fighters[i % 5],
+        lastPlayed: new Date(Date.now() - (i + 1) * 3600e3).toISOString(),
+        matches: 2,
+        together: 0,
+        wins: 1,
+        losses: 1,
+        relation: i % 3 === 0 ? "friend" : "none",
+        online: i % 2 === 0,
+      })),
+    };
+  });
+}
+
 /** Screens opened from the Lobby; each starts from a fresh Lobby. */
 const HUB_SCREENS: Screen[] = [
   {
@@ -98,8 +157,34 @@ const HUB_SCREENS: Screen[] = [
       await page.click(`[data-ui-raid-tab="${tab}"]`);
     },
   })),
-  { name: "ranks", root: "#dialog", open: rail("ranks") },
-  { name: "friends", root: "#dialog", open: rail("friends") },
+  // Step 6: Ranks (both boards) and the Friends sheet (each tab), filled
+  // with more than fits: fifty friends, many requests, a long board.
+  ...(["everyone", "friends"] as const).map((scope) => ({
+    name: `ranks ${scope}`,
+    root: HUB,
+    open: async (page: Page) => {
+      await crowd(page);
+      await rail("ranks")(page);
+      await expect(page.locator(".ranks-panel .rk-row").first()).toBeVisible();
+      if (scope === "friends") {
+        await page.click('[data-ui-scope="friends"]');
+        await expect(page.locator(".rk-list .rk-row")).toHaveCount(31);
+      }
+    },
+  })),
+  ...(["friends", "requests", "recent"] as const).map((tab) => ({
+    name: `friends ${tab}`,
+    root: HUB,
+    open: async (page: Page) => {
+      await crowd(page);
+      await rail("friends")(page);
+      await expect(page.locator(".fr-row").first()).toBeVisible();
+      if (tab !== "friends") {
+        await page.click(`[data-ui-friends-tab="${tab}"]`);
+        await expect(page.locator(".fr-row").first()).toBeVisible();
+      }
+    },
+  })),
   {
     name: "profile",
     root: "#dialog",

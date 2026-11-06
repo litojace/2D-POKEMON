@@ -43,6 +43,9 @@ import {
   type ReportList,
   type OnlineList,
   leaderboardSchema,
+  friendsBoardSchema,
+  recentPlayersSchema,
+  type RecentPlayer,
   progressSchema,
   friendsSchema,
   friendCode,
@@ -51,9 +54,16 @@ import {
 } from "../../../packages/shared/src/accounts";
 import { CHARACTERS, type CharacterId } from "@arena/shared";
 import { renderOnline } from "./admin-online";
-import { leaderboardMarkup, progressMarkup, seasonName } from "./progress-view";
-import { friendsScreenMarkup, type FriendsRoom } from "./friends-view";
-import { FriendsHub } from "./friends-hub";
+import { progressMarkup } from "./progress-view";
+import { openRanks, type RanksScreen } from "./screens/ranks";
+import type { RanksData } from "./screens/ranks-view";
+import {
+  openFriends,
+  readPinnedFriends,
+  savePinnedFriends,
+  type FriendsScreen,
+} from "./screens/friends";
+import type { FriendsData, FriendsRoom } from "./screens/friends-view";
 import { noteServerTime } from "./server-clock";
 import {
   authRedirectUrl,
@@ -112,8 +122,11 @@ type Hooks = {
   joinRoom?: (code: string) => void;
   watchRoom?: (code: string) => void;
   friendsRoom?: () => FriendsRoom;
-  createFriendRoom?: () => void;
   inviteFriend?: (id: string) => Promise<{ ok: boolean; error?: string }>;
+  /** Where Friends opens while you are in a private room (its picker's place). */
+  friendsHost?: () => HTMLElement | undefined;
+  /** Friends closed (a room puts its picker back). */
+  onFriendsClosed?: () => void;
   notify: (message: string) => void;
   onChange: () => void;
   onSession: (token: string | null, accountId?: string) => void;
@@ -1098,72 +1111,173 @@ export class AccountUI {
       }
     };
   }
-  /** Friends keep one stable screen while live presence refreshes in the background. */
-  friendsOpen = false;
-  private friendsHub?: FriendsHub;
+  /** The open Friends sheet, if any (UI remodel step 6). */
+  private friendsScreen?: FriendsScreen;
+  private friendsData: Pick<
+    FriendsData,
+    "list" | "problem" | "recent" | "recentProblem"
+  > = { list: null, recent: null };
+  get friendsOpen() {
+    return !!this.friendsScreen?.isOpen;
+  }
+  /**
+   * Friends: a sheet beside the Lobby (or, in a private room, where the
+   * room's picker stands). It opens at once and fills in from the server.
+   */
   async showFriends() {
     if (!this.ensurePlayer()) return;
-    this.friendsHub?.dispose();
-    const room = this.hooks.friendsRoom?.() ?? { canCreate: false };
-    this.hooks.openDialog(
-      friendsScreenMarkup(friendCode(this.account!.id), room),
-    );
-    this.friendsOpen = true;
-    const hub = new FriendsHub(element<HTMLDialogElement>("dialog"), {
-      accountId: this.account!.id,
-      room,
-      getRoom: this.hooks.friendsRoom,
-      invite: this.hooks.inviteFriend,
-      api: (path, body) => this.api(path, body),
-      request: (body) => this.friendRequest(body),
-      notify: this.hooks.notify,
-      join: this.hooks.joinRoom,
-      watch: this.hooks.watchRoom,
-      createRoom: this.hooks.createFriendRoom,
-      onClose: () => {
-        if (this.friendsHub === hub) {
-          this.friendsOpen = false;
-          this.friendsHub = undefined;
+    const accountId = this.account!.id;
+    const host = this.hooks.friendsHost?.();
+    if (!host) this.toLobbyScreen();
+    if (this.friendsScreen?.isOpen) {
+      await this.friendsScreen.reload();
+      return;
+    }
+    this.friendsData = { list: null, recent: null };
+    const fresh = () => this.account?.id === accountId;
+    const ok = (reply: { ok: boolean; error?: string } | undefined) =>
+      reply ?? { ok: false, error: "Invites are unavailable here." };
+    this.friendsScreen = openFriends({
+      host,
+      pins: readPinnedFriends(accountId),
+      data: () => {
+        const room = host ? this.hooks.friendsRoom?.() : undefined;
+        const party = this.hooks.raidParty?.();
+        return {
+          ...this.friendsData,
+          room,
+          party: {
+            size: Math.max(1, party?.party.length ?? 1),
+            ids: party?.party.map((s) => s.id) ?? [],
+            leader: party?.leader ?? true,
+          },
+        };
+      },
+      reload: () => this.loadFriendList(accountId),
+      loadRecent: async () => {
+        this.friendsData = { ...this.friendsData, recentProblem: "" };
+        try {
+          const { players } = recentPlayersSchema.parse(
+            await this.api("/api/friends/recent"),
+          );
+          if (fresh())
+            this.friendsData = { ...this.friendsData, recent: players };
+        } catch (error) {
+          if (fresh())
+            this.friendsData = {
+              ...this.friendsData,
+              recentProblem:
+                error instanceof Error
+                  ? error.message
+                  : "Couldn't load recent players.",
+            };
         }
       },
+      respond: async (playerId, accept) => {
+        await this.api("/api/friends/respond", { playerId, accept });
+        await this.afterFriendChange(
+          accountId,
+          playerId,
+          accept ? "friend" : "none",
+        );
+      },
+      remove: async (playerId) => {
+        await this.api("/api/friends/remove", { playerId });
+        await this.afterFriendChange(accountId, playerId, "none");
+      },
+      request: async (body) => {
+        const text = await this.sendFriendRequest(body);
+        if (body.playerId)
+          await this.afterFriendChange(
+            accountId,
+            body.playerId,
+            text === "Friend request sent." ? "sent" : "friend",
+          );
+        else await this.loadFriendList(accountId);
+        return text;
+      },
+      inviteToParty: async (id) => ok(await this.hooks.inviteToParty?.(id)),
+      inviteToRoom: async (id) => ok(await this.hooks.inviteFriend?.(id)),
+      join: (code) => this.hooks.joinRoom?.(code),
+      watch: (code) => this.hooks.watchRoom?.(code),
+      savePins: (pins) => savePinnedFriends(accountId, pins),
+      onClose: () => {
+        this.friendsScreen = undefined;
+        this.hooks.onFriendsClosed?.();
+      },
     });
-    this.friendsHub = hub;
-    await hub.refresh();
+    await this.friendsScreen.reload();
+  }
+  private async loadFriendList(accountId: string) {
+    try {
+      const list = friendsSchema.parse(await this.api("/api/friends"));
+      if (this.account?.id !== accountId) return;
+      this.friendsData = { ...this.friendsData, list, problem: "" };
+    } catch (error) {
+      if (this.account?.id !== accountId) return;
+      this.friendsData = {
+        ...this.friendsData,
+        problem:
+          error instanceof Error &&
+          /database needs an update/.test(error.message)
+            ? "Friends switch on once the database update (migration 005) has been run."
+            : error instanceof Error
+              ? error.message
+              : "Couldn't load your friends.",
+      };
+    }
+  }
+  /** A request, answer or removal: the list and Recent show the new state. */
+  private async afterFriendChange(
+    accountId: string,
+    id: string,
+    relation: RecentPlayer["relation"],
+  ) {
+    const recent = this.friendsData.recent;
+    if (recent)
+      this.friendsData = {
+        ...this.friendsData,
+        recent: recent.map((p) => (p.id === id ? { ...p, relation } : p)),
+      };
+    await this.loadFriendList(accountId);
   }
   async nearbyFriends() {
     return friendsSchema.parse(await this.api("/api/friends"));
   }
-  /** Send a friend request by code or player id; says what happened. */
-  async friendRequest(body: { code?: string; playerId?: string }) {
-    const message = element("friend-message");
+  /** Send a friend request by code or player id; resolves with what happened. */
+  private async sendFriendRequest(body: { code?: string; playerId?: string }) {
     try {
       const { result } = (await this.api("/api/friends/request", body)) as {
         result: string;
       };
-      const text =
-        result === "friends"
-          ? "You're now friends."
-          : result === "already"
-            ? "You're already friends."
-            : "Friend request sent.";
-      if (message) message.textContent = text;
-      else this.hooks.notify(text);
-      if (this.friendsOpen) await this.loadFriends();
-      return true;
+      return result === "friends"
+        ? "You're now friends."
+        : result === "already"
+          ? "You're already friends."
+          : "Friend request sent.";
     } catch (error) {
-      const text =
+      throw new Error(
         error instanceof Error && /database needs an update/.test(error.message)
           ? "Friends switch on once the database update (migration 005) has been run."
           : error instanceof Error
             ? error.message
-            : "Couldn't send that request.";
-      if (message) message.textContent = text;
-      else this.hooks.notify(text);
+            : "Couldn't send that request.",
+      );
+    }
+  }
+  /** Send a friend request from elsewhere (match results, the Plaza). */
+  async friendRequest(body: { code?: string; playerId?: string }) {
+    try {
+      this.hooks.notify(await this.sendFriendRequest(body));
+      if (this.friendsOpen) await this.loadFriends();
+      return true;
+    } catch (error) {
+      this.hooks.notify((error as Error).message);
       return false;
     }
   }
   async loadFriends() {
-    await this.friendsHub?.refresh();
+    await this.friendsScreen?.reload();
   }
   /** Quick check after login: say if someone wants to be friends. */
   async checkFriendRequests() {
@@ -1178,24 +1292,68 @@ export class AccountUI {
       return undefined;
     }
   }
-  /** This month's standings: player-vs-player wins, guests and bots excluded. */
+  /** The open Ranks panel, if any (UI remodel step 6). */
+  private ranksScreen?: RanksScreen;
+  private ranksData: Omit<RanksData, "me"> = { board: null, friends: null };
+  /**
+   * Ranks: your rank and the leaderboard, a panel inside the Lobby. The
+   * Friends board loads the first time it is picked.
+   */
   async showLeaderboard() {
     if (!this.ensurePlayer()) return;
-    this.hooks.openDialog(
-      `<div class="eyebrow">Season standings</div><h2>Leaderboard</h2><div id="leaderboard-body"><p class="muted">Loading…</p></div><button class="quiet" id="leaderboard-back">${iconLabel("back", "Back to profile")}</button>`,
-    );
-    element("leaderboard-back").onclick = () => void this.showProfile();
-    try {
-      const board = leaderboardSchema.parse(await this.api("/api/leaderboard"));
-      const body = element("leaderboard-body");
-      if (body)
-        body.innerHTML = board.rating
-          ? `<p>Players ranked by skill rating · ${escape(seasonName(board.season))} season.</p>${leaderboardMarkup(board)}`
-          : `<p>${escape(seasonName(board.season))} · wins against other players. A new season starts each month.</p>${leaderboardMarkup(board)}`;
-    } catch (error) {
-      const body = element("leaderboard-body");
-      if (body)
-        body.innerHTML = `<p class="muted">${escape(error instanceof Error ? error.message : "Couldn’t load the standings.")}</p>`;
+    this.toLobbyScreen();
+    const accountId = this.account?.id;
+    if (!this.ranksScreen?.isOpen) {
+      this.ranksData = { board: null, friends: null };
+      this.ranksScreen = openRanks({
+        data: () => ({
+          ...this.ranksData,
+          me: { name: this.account?.displayName ?? "You" },
+        }),
+        load: (scope) => this.loadRanks(scope, accountId),
+        friends: () => void this.showFriends(),
+        onClose: () => (this.ranksScreen = undefined),
+      });
+    }
+    await this.loadRanks("everyone", accountId);
+    this.ranksScreen?.refresh();
+  }
+  private async loadRanks(scope: "everyone" | "friends", accountId?: string) {
+    const fresh = () => this.account?.id === accountId;
+    if (scope === "everyone") {
+      this.ranksData = { ...this.ranksData, problem: "" };
+      try {
+        const board = leaderboardSchema.parse(
+          await this.api("/api/leaderboard"),
+        );
+        if (fresh()) this.ranksData = { ...this.ranksData, board };
+      } catch (error) {
+        if (fresh())
+          this.ranksData = {
+            ...this.ranksData,
+            problem:
+              error instanceof Error
+                ? error.message
+                : "Couldn't load the standings.",
+          };
+      }
+    } else {
+      this.ranksData = { ...this.ranksData, friendsProblem: "" };
+      try {
+        const friends = friendsBoardSchema.parse(
+          await this.api("/api/leaderboard/friends"),
+        );
+        if (fresh()) this.ranksData = { ...this.ranksData, friends };
+      } catch (error) {
+        if (fresh())
+          this.ranksData = {
+            ...this.ranksData,
+            friendsProblem:
+              error instanceof Error
+                ? error.message
+                : "Couldn't load your friends' ranks.",
+          };
+      }
     }
   }
   /** Ask the admin team for help. `context` is attached automatically. */

@@ -27,7 +27,7 @@ import {
 import { raidGoals, type RaidGoal } from "../raid-presentation";
 import { raidPortraitImage, raidSplashImage } from "../raid-splash-art";
 import { fighterAvatar } from "../fighter-art";
-import { friendStatus } from "../friends-view";
+import { friendStatus } from "./friends-view";
 import { itemPicture } from "../shop-ui";
 import { menuIcon } from "../menu-icons";
 import {

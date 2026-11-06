@@ -1,0 +1,457 @@
+/* ==========================================================================
+   Ranks and the leaderboard (UI remodel step 6, docs/ui-remodel/PLAN.md).
+   Markup: screens/ranks-view.ts. Layout only on top of the shared
+   components (ui/components.css). Your rank card on the left, the board on
+   the right with your row pinned under it.
+   ========================================================================== */
+.ranks-panel .ui-panel-head > .ui-seg {
+  margin-left: auto;
+}
+.ranks-panel > .ui-panel-body {
+  grid-template-columns: 300px minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  grid-auto-rows: auto;
+  align-content: stretch;
+  overflow: hidden;
+}
+@media (min-width: 1600px) and (min-height: 501px) {
+  .ranks-panel > .ui-panel-body {
+    grid-template-columns: 340px minmax(0, 1fr);
+  }
+}
+
+/* ------------------------------------------------------- your rank card */
+.rk-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-height: 0;
+  padding: var(--sp-4);
+  border-radius: var(--rad-lg);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--rank) 14%, var(--ui-bg-1)),
+    var(--ui-bg-1) 60%
+  );
+  border: 1px solid color-mix(in srgb, var(--rank) 40%, transparent);
+  overflow: auto;
+  overscroll-behavior: contain;
+  text-align: center;
+}
+.rk-card > * {
+  flex: none;
+}
+/* Spare height splits above the badge and above the rules, so the card's
+   content sits in its middle. */
+.rk-badge {
+  margin-top: auto;
+  width: 96px;
+  height: 106px;
+  filter: drop-shadow(0 6px 10px #0008);
+}
+.rk-rank {
+  max-width: 100%;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: var(--fs-h3);
+  line-height: 1.1;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--rank);
+  overflow-wrap: anywhere;
+}
+.rk-rating {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  line-height: 1;
+}
+.rk-rating b {
+  font-size: 32px;
+}
+.rk-rating small {
+  font-size: var(--fs-small);
+  color: var(--ui-dim);
+}
+.rk-card > .ui-bar {
+  width: 100%;
+}
+.rk-line {
+  max-width: 100%;
+}
+.rk-ladder {
+  list-style: none;
+  margin: var(--sp-2) 0 0;
+  padding: 0;
+  width: 100%;
+  display: grid;
+  gap: 2px;
+  text-align: left;
+}
+.rk-ladder li {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 8px;
+  border-radius: 7px;
+  font-size: var(--fs-small);
+  color: var(--ui-dim);
+}
+.rk-ladder li > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rk-ladder li > i {
+  width: 8px;
+  height: 8px;
+  margin-left: 1px;
+  transform: rotate(45deg);
+  background: var(--rank);
+}
+.rk-ladder li > small {
+  font-size: var(--fs-small);
+  text-align: right;
+}
+.rk-ladder li.is-cur {
+  background: color-mix(in srgb, var(--rank) 20%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--rank) 55%, transparent);
+  color: var(--ui-text);
+  font-weight: 700;
+}
+/* The rules sit at the card's foot: spare height goes above them. */
+.rk-rules {
+  width: 100%;
+  margin-top: auto;
+  padding-top: var(--sp-2);
+  text-align: left;
+  font-size: var(--fs-small);
+  color: var(--ui-dim);
+}
+.rk-rules > summary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--ctl-s);
+  border-radius: var(--rad-sm);
+  border: 1px solid var(--ui-line-2);
+  background: var(--ui-bg-2);
+  color: var(--ui-text);
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: var(--fs-body);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  cursor: pointer;
+  list-style: none;
+}
+.rk-rules > summary::-webkit-details-marker {
+  display: none;
+}
+.rk-rules > summary:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 2px;
+}
+.rk-rules ul {
+  margin: var(--sp-2) 0 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 6px;
+}
+
+/* ---------------------------------------------------------- the board */
+.rk-main {
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+}
+.rk-main > .ui-empty {
+  align-self: start;
+}
+.rk-board {
+  --rk-cols: 56px 40px minmax(0, 1fr) 84px 76px;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  min-height: 0;
+  border-radius: var(--rad-lg);
+  border: 1px solid var(--ui-line);
+  background: #0b1020a0;
+  overflow: hidden;
+}
+.rk-head,
+.rk-row {
+  display: grid;
+  grid-template-columns: var(--rk-cols);
+  gap: 10px;
+  align-items: center;
+  padding: 0 14px;
+}
+.rk-head {
+  height: 34px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--fs-small);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--ui-dim);
+  background: var(--ui-bg-1);
+}
+.rk-head > span:first-child {
+  text-align: center;
+}
+.rk-head > span:nth-child(4),
+.rk-head > span:nth-child(5) {
+  text-align: right;
+}
+.rk-list,
+.rk-pin {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.rk-list {
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.rk-row {
+  height: 52px;
+  border-top: 1px solid var(--ui-line);
+}
+.rk-list > .rk-row.is-me {
+  background: #ffd65b12;
+}
+/* The place fills its cell's height; the number or medal sits in its middle. */
+.rk-place {
+  align-self: stretch;
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+  line-height: 1;
+  white-space: nowrap;
+}
+.rk-place.is-long {
+  font-size: 14px;
+}
+.rk-medal {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 16px;
+  font-style: normal;
+  line-height: 1;
+  color: #2a1a00;
+  background: radial-gradient(circle at 35% 30%, #fff6cf, #ffd65b 55%, #b8860b);
+  box-shadow: 0 2px 6px #0008;
+}
+.rk-medal.is-2 {
+  background: radial-gradient(circle at 35% 30%, #fff, #cfd8e6 55%, #8090a8);
+}
+.rk-medal.is-3 {
+  background: radial-gradient(circle at 35% 30%, #ffe0c4, #d69a6a 55%, #8a5a33);
+}
+.rk-avatar {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid var(--rank);
+  background: radial-gradient(
+    circle at 50% 30%,
+    var(--ui-bg-3),
+    var(--ui-bg-1)
+  );
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 17px;
+  line-height: 1;
+  color: var(--ui-text);
+}
+.rk-name {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+.rk-name-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.rk-name-top > b {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 700;
+}
+.rk-name-top > .ui-tag {
+  flex: none;
+}
+.rk-name > small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--fs-micro);
+  font-weight: 700;
+}
+.rk-rating-cell,
+.rk-wl {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.rk-rating-cell {
+  font-size: 20px;
+}
+.rk-wl {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: var(--fs-body);
+  color: var(--ui-dim);
+}
+.rk-wl.is-long {
+  font-size: 11px;
+}
+.rk-foot {
+  padding: 10px 14px;
+  border-top: 1px solid var(--ui-line);
+}
+.rk-empty-row {
+  padding: var(--sp-3);
+}
+/* Your row, pinned under the board wherever you stand. */
+.rk-pin > .rk-row {
+  height: 56px;
+  border-top: 2px solid var(--ui-accent);
+  background: #1d2648;
+}
+.rk-pin .rk-place {
+  color: var(--ui-accent);
+}
+
+/* A tall window: the card grows into its height (badge, rating, ladder),
+   so the room isn't left empty under the ladder. */
+@media (min-height: 1000px) {
+  .rk-card {
+    gap: 10px;
+    padding: var(--sp-5) var(--sp-4);
+  }
+  .rk-badge {
+    width: 132px;
+    height: 146px;
+  }
+  .rk-rank {
+    font-size: var(--fs-h2);
+  }
+  .rk-rating b {
+    font-size: 40px;
+  }
+  .rk-line {
+    font-size: var(--fs-body);
+  }
+  .rk-ladder {
+    gap: 4px;
+  }
+  .rk-ladder li {
+    min-height: 40px;
+    font-size: var(--fs-body);
+  }
+  .rk-ladder li > small {
+    font-size: var(--fs-body);
+  }
+  .rk-ladder li > i {
+    width: 10px;
+    height: 10px;
+  }
+  .rk-row {
+    height: 56px;
+  }
+  .rk-pin > .rk-row {
+    height: 60px;
+  }
+}
+
+/* ------------------------------------------- phones, held sideways */
+@media (max-height: 500px) {
+  .ranks-panel .ui-panel-head .ui-kicker {
+    display: none;
+  }
+  .ranks-panel > .ui-panel-body {
+    grid-template-columns: 180px minmax(0, 1fr);
+  }
+  .rk-card {
+    gap: 4px;
+    padding: var(--sp-2);
+  }
+  .rk-badge {
+    width: 52px;
+    height: 58px;
+  }
+  .rk-rank {
+    font-size: var(--fs-h4);
+  }
+  .rk-rating b {
+    font-size: 20px;
+  }
+  .rk-ladder li {
+    min-height: 22px;
+    padding: 0 6px;
+    gap: 6px;
+    font-size: var(--fs-micro);
+  }
+  .rk-ladder li > small {
+    font-size: var(--fs-micro);
+  }
+  .rk-board {
+    --rk-cols: 40px 30px minmax(0, 1fr) 46px 52px;
+  }
+  .rk-head,
+  .rk-row {
+    gap: 6px;
+    padding: 0 8px;
+  }
+  .rk-head {
+    height: 24px;
+    font-size: 10px;
+  }
+  .rk-row {
+    height: 40px;
+  }
+  .rk-pin > .rk-row {
+    height: 44px;
+  }
+  .rk-avatar {
+    width: 28px;
+    height: 28px;
+    font-size: 14px;
+  }
+  .rk-place {
+    font-size: 14px;
+  }
+  .rk-place.is-long {
+    font-size: 11px;
+  }
+  .rk-medal {
+    width: 24px;
+    height: 24px;
+    font-size: 13px;
+  }
+  .rk-rating-cell {
+    font-size: 15px;
+  }
+  .rk-wl {
+    font-size: var(--fs-micro);
+  }
+  .rk-wl.is-long {
+    font-size: 9px;
+  }
+}
