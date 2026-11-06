@@ -133,6 +133,16 @@ for (const size of SIZES)
           "aria-label",
           "Leave the room",
         );
+        // Leaving is red (owner, 6 Nov): the icon and its outline.
+        expect(
+          await picker.locator("#leave").evaluate((el) => {
+            const cs = getComputedStyle(el);
+            return [
+              getComputedStyle(el.querySelector("svg")!).color,
+              cs.borderTopColor,
+            ];
+          }),
+        ).toEqual(["rgb(255, 138, 151)", "rgba(239, 79, 97, 0.533)"]);
         await page.evaluate(() => document.fonts.ready);
         await page.waitForTimeout(500);
         expect(await closeSpot(page)).toEqual([

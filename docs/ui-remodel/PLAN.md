@@ -1177,6 +1177,15 @@ see below). Not verified: a real phone, and Safari's engine.
   matches, no PvP match, no rating). Migration 065 names the rows in both;
   the owner ran it in the SQL Editor on 6 Nov and both functions were
   checked on the live database afterwards.
+- Every way out of a room or a match is red (owner): a red outline and
+  icon, never a solid red block, as the match's leave buttons already were.
+  New: the room picker's corner Leave (`.ui-icon-btn.is-danger` in
+  components.css), Stop watching on a watched room and Return to menu on
+  the raid results (the shared `danger` button), and Back to menu after a
+  bot match. Already red: Leave room / raid / match in Settings, Exit test
+  mode, Leave practice, Stop watching on a watched match. Return to lobby
+  after a match with players stays as it is (it keeps you in the room).
+  `rooms.spec.ts` and `mobile-results.spec.ts` check the colours.
 - The server now logs the reason when an account request fails with an
   unexpected error (`[api] GET /path failed: …`). Before, a player saw
   only "Account service failed" or "Invalid request." and the logs said

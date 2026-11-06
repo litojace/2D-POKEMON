@@ -648,6 +648,27 @@
   color: #ff8a97;
   box-shadow: none;
 }
+/* Leaving a room or a match is red wherever it is (owner, 6 Nov): a red
+   outline and icon, never a solid red block (red is also boss warnings),
+   as the match's own leave buttons (.leave-button in style.css). */
+.ui-icon-btn.is-danger {
+  border-color: #ef4f6188;
+  background: #ef4f6114;
+}
+.ui-icon-btn.is-danger,
+.ui-icon-btn.is-danger svg {
+  color: #ff8a97;
+}
+:is(.ui-btn, .ui-icon-btn).is-danger:hover:not([disabled]),
+:is(.ui-btn, .ui-icon-btn).is-danger:focus-visible {
+  border-color: #ef4f61cc;
+  background: #ef4f6126;
+  color: #ffc2c8;
+}
+.ui-icon-btn.is-danger:hover svg,
+.ui-icon-btn.is-danger:focus-visible svg {
+  color: #ffc2c8;
+}
 .ui-btn[disabled] {
   opacity: 0.5;
   cursor: default;

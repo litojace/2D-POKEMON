@@ -101,6 +101,12 @@ for (const size of [
         inside(await box(page, "#return"), await box(page, ".action-overlay")),
       ).toBe(true);
       await snap(page, info, `mobile-victory-${size.width}x${size.height}`);
+      // Back to menu leaves the room: red, like every leave button.
+      expect(
+        await page
+          .locator("#return")
+          .evaluate((el) => getComputedStyle(el).color),
+      ).toBe("rgb(255, 154, 165)");
       await page.locator("#return").tap();
       await expect(page.locator("#lobby-play")).toBeVisible();
       expect(errors).toEqual([]);

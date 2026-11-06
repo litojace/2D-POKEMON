@@ -275,7 +275,7 @@ function roomButtons(c: CharacterId, d: RosterData) {
 const cornerButton = (d: RosterData) =>
   d.room
     ? iconButton("leave", "Leave the room", {
-        class: "ui-close",
+        class: "ui-close is-danger",
         id: "leave",
         "data-roster-leave": true,
       })

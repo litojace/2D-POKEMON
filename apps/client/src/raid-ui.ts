@@ -216,7 +216,11 @@ export function renderRaidUI(
     const readyCount = heroes.filter((p) => p.ready).length;
     const retryWait = me.ready || !heroes.every((p) => p.connected);
     actions = `<p class="ui-note rc-meta">${heroes.length === 1 ? "Same champion and challenge · choose fresh rites" : `${readyCount}/${heroes.length} ready · everyone confirms to run again`}</p>${uiActions(
-      uiButton("Return to menu", { icon: "home", attrs: { id: "raid-exit" } }),
+      uiButton("Return to menu", {
+        kind: "danger",
+        icon: "home",
+        attrs: { id: "raid-exit" },
+      }),
       uiButton("Change setup", {
         icon: "swap",
         attrs: {
