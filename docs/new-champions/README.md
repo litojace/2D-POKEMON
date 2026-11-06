@@ -220,8 +220,10 @@ bots.
 
 Free-for-all has its own per-champion tuning too (`FFA_TUNING` in
 `packages/shared/src/index.ts`, free-for-all only), in the same form: health
-× f and basic-attack interval ÷ √f. A three-player free-for-all applies 60%
-of each factor (`FFA_THREE_SCALE`: f becomes 1 + (f − 1) × 0.6).
+× f and basic-attack interval ÷ √f. A free-for-all that started with three
+players has its own table, `FFA_THREE_TUNING` (it used to apply 60% of each
+four-player factor, `FFA_THREE_SCALE`; see "Re-tuned for the fixed bots"
+below).
 
 Why: with the duel numbers, ranged champions won 32–40% of four-player
 free-for-alls and melee ones 5–22%, against a fair 25% (three players: 36–45%
@@ -276,6 +278,52 @@ melee/ranged gap is about 60% of the four-player one (the same 0.59–0.62 for
 melee and ranged champions). With `FFA_THREE_SCALE` = 0.6, pooled over two
 fresh sets of 1,200 matches per difficulty, every champion wins 27.0–36.9%
 (±1.6), against 12–45% before. Shadopus (27.0%) is the one clear outlier.
+
+#### Re-tuned for the fixed bots
+
+Everything above was measured with the old bots, which all fought the first
+opponent to join, so in a bot free-for-all seat 0 never won and the last
+seat won 61–78%. With the fixed bots and the re-tuned duel numbers, the old
+factors gave 10–53% with four players (against a fair 25%) and 25–41% with
+three (fair 33%). Measured again with the fixed bots, at factor 1 for
+everyone melee champions still win far less than ranged ones (four players:
+8–22% against 25–43%), so free-for-all keeps a table of its own; three
+players need a stronger correction than four, not 60% of it, and one scale
+could not fix champions one by one, so three players now have their own
+table (`FFA_THREE_TUNING`).
+
+Tuned with `npx tsx scripts/balance/tune-teams.ts --mode ffa` (four players:
+five rounds of 800 matches per difficulty on fixed line-ups, then six rounds of
+1,000 on fresh line-ups each round in two series, `FRESH_BASE` 6000 and
+6100; three players, `--players 3`: three fresh rounds of 1,200, starting
+from the four-player factors with their distance from 1 scaled by 1.4). Checked on line-ups no tuning round used
+(`FFA_SEED=31337`; four players 2,000 matches per difficulty, three players
+1,200; before is `main` with the fixed bots, 1,200 and 800):
+
+| Champion  | 4-player factor (was) | 4p before | 4p after | 3-player factor | 3p before | 3p after |
+| --------- | --------------------- | --------- | -------- | --------------- | --------- | -------- |
+| Astrabun  | ×1.008 (×1.008)       | 53.4%     | 21.8%    | ×1.106          | 36.8%     | 34.2%    |
+| Shadopus  | ×1.047 (×1.047)       | 40.9%     | 25.1%    | ×1.144          | 33.5%     | 31.6%    |
+| Coilemur  | ×1.006 (×1.006)       | 38.7%     | 25.9%    | ×1.242          | 31.5%     | 33.3%    |
+| Cindrake  | ×0.993 (×0.993)       | 36.2%     | 24.7%    | ×1.189          | 29.3%     | 35.7%    |
+| Wombolder | ×1.006 (×1.006)       | 32.8%     | 27.3%    | ×1.161          | 27.1%     | 31.5%    |
+| Auralynx  | ×0.970 (×0.970)       | 25.5%     | 25.6%    | ×1.127          | 25.1%     | 29.8%    |
+| Tidefin   | ×1.000 (×1.000)       | 24.9%     | 24.9%    | ×0.835          | 39.7%     | 33.4%    |
+| Terradon  | ×0.993 (×0.993)       | 24.2%     | 24.7%    | ×1.056          | 27.2%     | 32.8%    |
+| Mystowl   | ×1.006 (×1.006)       | 22.8%     | 21.9%    | ×0.838          | 35.0%     | 33.6%    |
+| Sunbara   | ×0.966 (×0.966)       | 22.5%     | 27.2%    | ×0.860          | 40.7%     | 33.5%    |
+| Pyranda   | ×0.915 (×0.915)       | 15.0%     | 24.8%    | ×0.852          | 39.8%     | 38.0%    |
+| Voltkit   | ×1.045 (×1.045)       | 14.8%     | 22.8%    | ×0.868          | 33.4%     | 31.8%    |
+| Glacelle  | ×0.963 (×0.963)       | 14.1%     | 24.0%    | ×0.936          | 32.3%     | 36.3%    |
+| Halcyra   | ×1.008 (×1.008)       | 12.4%     | 23.5%    | ×0.788          | 32.0%     | 31.5%    |
+| Duskveil  | ×1.025 (×1.025)       | 11.9%     | 29.9%    | ×0.864          | 31.9%     | 31.2%    |
+| Lumoth    | ×0.997 (×0.997)       | 10.5%     | 26.1%    | ×0.864          | 38.5%     | 34.2%    |
+
+Four players: 10.5–53.4% (standard deviation 12.0) before, 21.8–29.9% (2.0)
+after, standard error ±1.4 points per champion; all but Duskveil (29.9%) are
+within 3 points of 25%. Three players: 25.1–40.7% (4.7) before, 29.8–38.0%
+(2.0) after, ±2.2 points; Pyranda (38.0%) is the largest outlier. Each seat
+wins about the same now (23–26% with four players).
 
 ### Bots: Hard and Normal
 
@@ -348,13 +396,12 @@ bosses (one opponent) are unaffected.
 
 ## Known issues
 
-- Bot-measured balance has moved with the bot fixes above (duels and 2v2
-  are re-tuned, see above). Four-player free-for-all with
-  `FFA_TUNING`: 9–50% against a fair 25% (measured before the duel
-  re-tune). `FFA_TUNING` was tuned with the old bots and is re-tuned next.
-- Shadopus wins 27% of three-player free-for-alls (fair 33%) with the
-  scaled four-player factor; it is within noise of fair with four players
-  (measured with the old bots).
+- Bot free-for-alls (re-tuned above): Duskveil wins 29.9% of four-player
+  matches (fair 25%, ±1.5) and Pyranda 38.0% of three-player ones (fair 33%,
+  ±2.2). On another set of line-ups Duskveil was at 25.8%, so this is likely
+  noise; re-measure with `npx tsx scripts/balance/measure-ffa.ts`.
+- Raids use the champions' own health, which the duel re-tune changed
+  slightly; raids were not re-measured.
 
 ## Engine
 
