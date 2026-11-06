@@ -55,7 +55,12 @@ import {
   type FarmScreen,
   type FarmScreenOptions,
 } from "./farm/farm-screen";
-import { openBistro, type BistroHandle } from "./bistro/bistro-scene";
+import {
+  forgetBistros,
+  openBistro,
+  type BistroFriend,
+  type BistroHandle,
+} from "./bistro/bistro-scene";
 import type {
   FarmActResult,
   FarmHere,
@@ -1817,9 +1822,15 @@ function syncLobby(want: boolean) {
   }
   lobby.update(lobbyView());
 }
-/** The Bistro (a restaurant demo): its state stays on this device. */
+/** The Bistro (migration 067): the server's restaurant, next to the Farm. */
 let bistro: BistroHandle | undefined;
+let bistroOwner: string | undefined;
 function syncBistro(want: boolean) {
+  // Another player now (or logged out): that bistro is not theirs.
+  if (bistro && bistroOwner !== accountsUI?.account?.id) {
+    bistro.close();
+    bistro = undefined;
+  }
   if (!want) {
     if (bistro) {
       bistro.close();
@@ -1832,8 +1843,25 @@ function syncBistro(want: boolean) {
   }
   if (bistro) return;
   document.body.classList.add("hub-screen", "hub-bistro");
+  bistroOwner = accountsUI.account?.id;
   bistro = openBistro({
-    owner: accountsUI.account?.id,
+    owner: bistroOwner,
+    api: {
+      load: () => accountsUI.api("/api/bistro"),
+      act: (request, actions) =>
+        accountsUI.api("/api/bistro/act", { request, actions }),
+      friends: async () =>
+        (await accountsUI.api("/api/bistro/friends")) as BistroFriend[],
+      visit: (id) =>
+        accountsUI.api(`/api/bistro/visit/${encodeURIComponent(id)}`),
+      visitAct: (friend, kind) =>
+        accountsUI.api("/api/bistro/visit/act", {
+          request: crypto.randomUUID(),
+          friend,
+          kind,
+        }),
+    },
+    onLeaves: (balance) => accountsUI.setLeaves(balance),
     playerName: () => accountsUI.account?.displayName ?? "Your",
     character: () => selected,
     toast,
@@ -5883,6 +5911,9 @@ accountsUI = new AccountUI({
     roomInvites.clear();
     // The farm kept in this browser is this player's: forget it.
     forgetFarms();
+    forgetBistros();
+    bistro?.close();
+    bistro = undefined;
     farmScreen?.close();
     farmScreen = undefined;
     if (myId) await leave(false);

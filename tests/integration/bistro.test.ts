@@ -437,3 +437,43 @@ describe("trade and friends", () => {
     expect(r).toMatchObject({ ok: false });
   });
 });
+
+describe("expanding the dining room", () => {
+  it("grows the grid by level and price; furniture may then use the new tiles", async () => {
+    await setCoins(cal, 20000, 3);
+    await open(cal);
+    let r = await act(cal, [
+      { a: "expand" },
+      { a: "buy", kind: "plant" },
+      { a: "place", kind: "plant", x: 12, y: 4 },
+    ]);
+    expect(r.results[0].error).toBe("Expand at level 4.");
+    expect(r.results[2].error).toBe("That's outside the restaurant.");
+    await setCoins(cal, 20000, 12);
+    r = await act(cal, [
+      { a: "expand" },
+      { a: "place", kind: "plant", x: 12, y: 9 },
+      { a: "expand" },
+      { a: "expand" },
+      { a: "expand" },
+    ]);
+    expect(r.results.map((x: any) => x.ok)).toEqual([true, true, true, true, false]);
+    expect(r.results[4].error).toBe("The dining room is as big as it gets.");
+    expect(r.bistro.sizeLv).toBe(3);
+    expect(r.bistro.coins).toBe(20000 - 800 - 2500 - 6000);
+    // The far corner of the biggest room (16, 11) takes a table and chairs.
+    r = await act(cal, [
+      { a: "buy", kind: "table" },
+      { a: "buy", kind: "chair" },
+      { a: "place", kind: "table", x: 16, y: 11 },
+      { a: "place", kind: "chair", x: 15, y: 11, rot: 0 },
+      { a: "place", kind: "chair", x: 17, y: 11, rot: 2 },
+    ]);
+    expect(r.results.map((x: any) => x.ok)).toEqual([true, true, true, true, false]);
+    const [{ n }] = await sql(
+      "select count(*)::int n from public.arena_bistro_seats($1)",
+      [cal],
+    );
+    expect(n).toBe(7);
+  });
+});

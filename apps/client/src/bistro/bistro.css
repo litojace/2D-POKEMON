@@ -1252,3 +1252,122 @@ body.hub-bistro:has(.bistro-layer.editing) #toast {
 .bistro-layer.phone .bs-away-stats {
   margin: 8px 0 6px;
 }
+
+/* ── Loading, visiting a friend, the bank ── */
+.bistro-layer .bs-loading {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  transform: translate(-50%, -50%);
+  padding: 12px 22px;
+  border-radius: 999px;
+  background: rgba(14, 12, 28, 0.82);
+  font-weight: 700;
+  font-size: 14px;
+  pointer-events: none;
+}
+.bistro-layer .bs-loading[hidden] {
+  display: none;
+}
+.bistro-layer.visiting :is(.bs-rail, .bs-bar, .bs-hint) {
+  display: none;
+}
+.bistro-layer .bs-visit {
+  position: absolute;
+  left: 50%;
+  bottom: var(--bs-y-b);
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px 8px 8px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+.bistro-layer .bs-visit[hidden] {
+  display: none;
+}
+.bistro-layer .bs-visit .who {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: 6px;
+}
+.bistro-layer .bs-visit .who img {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+}
+.bistro-layer .bs-visit .who small {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #b8c2da;
+}
+.bistro-layer .bs-visit .who b {
+  font: 800 17px/1.1 var(--display, "Barlow Condensed", sans-serif);
+}
+.bistro-layer .bs-visit button {
+  padding: 11px 16px;
+  border: 1px solid #ffffff2a;
+  border-radius: 12px;
+  background: #ffffff14;
+  color: #fff;
+  font: 800 13px/1 "DM Sans", sans-serif;
+  cursor: pointer;
+}
+.bistro-layer .bs-visit button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.bistro-layer .bs-visit button.go {
+  background: #ffd65b;
+  border-color: #ffd65b;
+  color: #2a1a00;
+}
+.bistro-layer .bs-badge small.likes {
+  color: #ff9bb3;
+}
+.bistro-layer .bs-bank {
+  flex: 1;
+  overflow-y: auto;
+}
+.bistro-layer .bs-bank > p {
+  margin: 0;
+  padding: 0 18px 10px;
+  font-size: 13px;
+  color: #dfe6f5;
+}
+.bistro-layer .bs-bank-left {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 0 18px 8px;
+}
+.bistro-layer .bs-bank-left b {
+  font: 800 26px/1 var(--display, "Barlow Condensed", sans-serif);
+  color: #9cf07f;
+}
+.bistro-layer .bs-bank-left small {
+  font-size: 12px;
+  color: #b9c2d8;
+}
+.bistro-layer .bs-staff.friend button.pr {
+  padding: 10px 16px;
+}
+.bistro-layer.phone .bs-visit {
+  left: var(--bs-x-l);
+  transform: none;
+  gap: 5px;
+  padding: 5px;
+}
+.bistro-layer.phone .bs-visit .who img {
+  width: 30px;
+  height: 30px;
+}
+.bistro-layer.phone .bs-visit button {
+  padding: 8px 10px;
+  font-size: 11.5px;
+}

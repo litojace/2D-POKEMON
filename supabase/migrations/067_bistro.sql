@@ -23,7 +23,8 @@
 --    once.
 --  * The floor plan: furniture on an 11 × 9 grid, never in the kitchen,
 --    doorway or pickup spots, and every seat and pickup spot reachable from
---    the door.
+--    the door. Expanding the dining room grows it to 13 × 10, 15 × 11 and
+--    17 × 12 (the kitchen and the door stay where they are).
 --  * Bistro coins are their own currency: 100 trade for 20 Gold Leaves, up
 --    to 300 leaves a Pacific day.
 --  * Friends: eat at a friend's bistro once a day (they earn the dish and a
@@ -93,6 +94,8 @@ create table if not exists public.arena_bistros (
   floors text[] not null default array['checker'],
   walls text[] not null default array['butter'],
   kitchen_lv integer not null default 0 check (kitchen_lv between 0 and 3),
+  -- The dining room's size: 0 is 11 × 9, each step two columns and a row more.
+  size_lv integer not null default 0 check (size_lv between 0 and 3),
   shift_lv integer not null default 0 check (shift_lv between 0 and 3),
   -- The head chef shown in the kitchen (the player's Lobby fighter).
   chef text not null default 'voltkit',
@@ -111,8 +114,8 @@ create table if not exists public.arena_bistro_items (
   player_id uuid not null references public.arena_profiles(id) on delete cascade,
   id integer not null check (id > 0),
   kind text not null references public.arena_bistro_kinds(kind),
-  x integer not null check (x between 0 and 10),
-  y integer not null check (y between 0 and 8),
+  x integer not null check (x between 0 and 16),
+  y integer not null check (y between 0 and 11),
   rot integer not null default 0 check (rot between 0 and 3),
   primary key (player_id, id)
 );
@@ -240,36 +243,46 @@ revoke all on function public.arena_bistro_need(integer), public.arena_bistro_sp
 -- ───────────── the floor plan ─────────────
 
 -- Tiles that block walking (index y * 11 + x + 1): the kitchen and furniture.
+-- The grid's width and height for a size level.
+create or replace function public.arena_bistro_cols(p_size integer) returns integer
+language sql immutable set search_path = '' as $$ select 11 + 2 * p_size $$;
+create or replace function public.arena_bistro_rows(p_size integer) returns integer
+language sql immutable set search_path = '' as $$ select 9 + p_size $$;
+-- Tiles that block walking (index y * cols + x + 1): the kitchen and furniture.
 create or replace function public.arena_bistro_blocked(pid uuid) returns boolean[]
 language plpgsql stable security definer set search_path = public as $$
-declare b boolean[] = array_fill(false, array[99]); it record; x integer; y integer;
+declare w integer; h integer; b boolean[]; it record; x integer; y integer;
 begin
-  for x in 0..5 loop for y in 0..2 loop b[y * 11 + x + 1] = true; end loop; end loop;
+  select public.arena_bistro_cols(size_lv), public.arena_bistro_rows(size_lv) into w, h
+    from public.arena_bistros where player_id = pid;
+  b = array_fill(false, array[w * h]);
+  for x in 0..5 loop for y in 0..2 loop b[y * w + x + 1] = true; end loop; end loop;
   for it in select i.x, i.y from public.arena_bistro_items i
       join public.arena_bistro_kinds k on k.kind = i.kind
       where i.player_id = pid and not k.floor loop
-    b[it.y * 11 + it.x + 1] = true;
+    if it.x < w and it.y < h then b[it.y * w + it.x + 1] = true; end if;
   end loop;
   return b;
 end; $$;
 -- Breadth-first: can you walk from (fx, fy) to (tx, ty)? The target itself may be blocked (a chair).
-create or replace function public.arena_bistro_reach(b boolean[], fx integer, fy integer, tx integer, ty integer)
+create or replace function public.arena_bistro_reach(b boolean[], w integer, h integer,
+  fx integer, fy integer, tx integer, ty integer)
 returns boolean language plpgsql immutable set search_path = '' as $$
-declare seen boolean[] = array_fill(false, array[99]); q integer[]; head integer = 1;
-  k integer; x integer; y integer; nx integer; ny integer; nk integer; d integer; goal integer = ty * 11 + tx;
+declare seen boolean[] = array_fill(false, array[w * h]); q integer[]; head integer = 1;
+  k integer; x integer; y integer; nx integer; ny integer; nk integer; d integer; goal integer = ty * w + tx;
 begin
-  if fx < 0 or fy < 0 or fx > 10 or fy > 8 or tx < 0 or ty < 0 or tx > 10 or ty > 8 then return false; end if;
-  q = array[fy * 11 + fx];
-  seen[fy * 11 + fx + 1] = true;
+  if fx < 0 or fy < 0 or fx >= w or fy >= h or tx < 0 or ty < 0 or tx >= w or ty >= h then return false; end if;
+  q = array[fy * w + fx];
+  seen[fy * w + fx + 1] = true;
   while head <= array_length(q, 1) loop
     k = q[head]; head = head + 1;
     if k = goal then return true; end if;
-    x = k % 11; y = k / 11;
+    x = k % w; y = k / w;
     for d in 1..4 loop
       nx = x + (array[1, 0, -1, 0])[d];
       ny = y + (array[0, 1, 0, -1])[d];
-      if nx < 0 or ny < 0 or nx > 10 or ny > 8 then continue; end if;
-      nk = ny * 11 + nx;
+      if nx < 0 or ny < 0 or nx >= w or ny >= h then continue; end if;
+      nk = ny * w + nx;
       if seen[nk + 1] then continue; end if;
       if b[nk + 1] and nk <> goal then continue; end if;
       seen[nk + 1] = true;
@@ -295,27 +308,31 @@ $$;
 -- Whether the plan works: the door reaches every pickup spot and every seat.
 create or replace function public.arena_bistro_plan_error(pid uuid) returns text
 language plpgsql stable security definer set search_path = public as $$
-declare b boolean[] = public.arena_bistro_blocked(pid); i integer; s record;
+declare b boolean[] = public.arena_bistro_blocked(pid); i integer; s record; w integer; h integer;
 begin
+  select public.arena_bistro_cols(size_lv), public.arena_bistro_rows(size_lv) into w, h
+    from public.arena_bistros where player_id = pid;
   for i in 0..3 loop
-    if not public.arena_bistro_reach(b, 0, 7, 1 + i, 3) then return 'That would block the way to the counter.'; end if;
+    if not public.arena_bistro_reach(b, w, h, 0, 7, 1 + i, 3) then return 'That would block the way to the counter.'; end if;
   end loop;
   for s in select * from public.arena_bistro_seats(pid) loop
-    if not public.arena_bistro_reach(b, 0, 7, s.cx, s.cy) then return 'That would block a seat.'; end if;
+    if not public.arena_bistro_reach(b, w, h, 0, 7, s.cx, s.cy) then return 'That would block a seat.'; end if;
   end loop;
   return null;
 end; $$;
 -- Whether an item can stand on (x, y); p_ignore is the item being moved.
 create or replace function public.arena_bistro_place_error(pid uuid, p_kind text, px integer, py integer, p_ignore integer)
 returns text language plpgsql stable security definer set search_path = public as $$
-declare k public.arena_bistro_kinds; n integer; dx integer; dy integer; tx integer; ty integer;
+declare k public.arena_bistro_kinds; n integer; dx integer; dy integer; tx integer; ty integer; w integer; h integer;
 begin
+  select public.arena_bistro_cols(size_lv), public.arena_bistro_rows(size_lv) into w, h
+    from public.arena_bistros where player_id = pid;
   select * into k from public.arena_bistro_kinds where kind = p_kind;
   if k.kind is null then return 'Unknown item.'; end if;
   n = case when k.floor then 1 else 0 end;
   for dx in 0..n loop for dy in 0..n loop
     tx = px + dx; ty = py + dy;
-    if tx < 0 or ty < 0 or tx > 10 or ty > 8 then return 'That''s outside the restaurant.'; end if;
+    if tx < 0 or ty < 0 or tx >= w or ty >= h then return 'That''s outside the restaurant.'; end if;
     if tx <= 5 and ty <= 2 then return 'The kitchen stays clear.'; end if;
     if not k.floor and ((tx = 0 and ty = 7) or (tx = 1 and ty = 7) or (ty = 3 and tx between 1 and 4)
         or (tx = 6 and ty = 3)) then
@@ -330,8 +347,9 @@ begin
   end loop; end loop;
   return null;
 end; $$;
-revoke all on function public.arena_bistro_blocked(uuid),
-  public.arena_bistro_reach(boolean[], integer, integer, integer, integer),
+revoke all on function public.arena_bistro_cols(integer), public.arena_bistro_rows(integer),
+  public.arena_bistro_blocked(uuid),
+  public.arena_bistro_reach(boolean[], integer, integer, integer, integer, integer, integer),
   public.arena_bistro_seats(uuid), public.arena_bistro_plan_error(uuid),
   public.arena_bistro_place_error(uuid, text, integer, integer, integer)
   from public, anon, authenticated, service_role;
@@ -566,7 +584,7 @@ begin
     'coins', b.coins, 'xp', b.xp, 'level', b.level,
     'rating', round(b.rating::numeric, 3), 'served', b.served,
     'floor', b.floor, 'wall', b.wall, 'floors', to_jsonb(b.floors), 'walls', to_jsonb(b.walls),
-    'kitchenLv', b.kitchen_lv, 'shiftLv', b.shift_lv, 'chef', b.chef, 'likes', b.likes,
+    'kitchenLv', b.kitchen_lv, 'shiftLv', b.shift_lv, 'sizeLv', b.size_lv, 'chef', b.chef, 'likes', b.likes,
     'lastSeen', coalesce((extract(epoch from b.last_seen) * 1000)::bigint, 0),
     'special', public.arena_bistro_special(b.level, d),
     'items', coalesce((select jsonb_agg(jsonb_build_object('id', id, 'kind', kind, 'x', x, 'y', y, 'rot', rot) order by id)
@@ -617,7 +635,7 @@ grant execute on function public.arena_bistro() to authenticated;
 -- ───────────── actions ─────────────
 -- cook {stove, dish} · stir {stove} · plate {stove} ·
 -- serve {dish, vip, combo, hearts, quick} · leave · place {kind, x, y, rot, id?} ·
--- store {id} · buy {kind} · style {kind: floor|wall, id} · stove · kitchen · shift ·
+-- store {id} · buy {kind} · style {kind: floor|wall, id} · stove · kitchen · shift · expand ·
 -- hire {role, char} · train {id} · cookdish {id, dish} · chef {id} · trade {lots} · sync
 create or replace function public.arena_bistro_act(p_request uuid, p_actions jsonb) returns jsonb
 language plpgsql security definer set search_path = public as $$
@@ -780,6 +798,16 @@ begin
       else
         update public.arena_bistros set coins = coins - v_price where player_id = me;
         insert into public.arena_bistro_stoves(player_id, idx) values (me, n);
+      end if;
+    elsif v_kind = 'expand' then
+      -- A bigger dining room: level 4 / 800, level 8 / 2,500, level 12 / 6,000.
+      v_lv = (array[4, 8, 12])[b.size_lv + 1];
+      v_price = (array[800, 2500, 6000])[b.size_lv + 1];
+      if v_price is null then err = 'The dining room is as big as it gets.';
+      elsif b.level < v_lv then err = 'Expand at level ' || v_lv || '.';
+      elsif b.coins < v_price then err = 'You need ' || v_price || ' coins.';
+      else
+        update public.arena_bistros set coins = coins - v_price, size_lv = size_lv + 1 where player_id = me;
       end if;
     elsif v_kind in ('kitchen', 'shift') then
       v_lv = case when v_kind = 'kitchen' then b.kitchen_lv else b.shift_lv end;
