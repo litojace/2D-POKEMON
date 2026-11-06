@@ -5901,7 +5901,7 @@ export function openFarm(options) {
     const p = F.lv >= 100 ? 100 : (F.xp / need(F.lv)) * 100;
     setInner(
       $("fm-badge"),
-      `<div class="fm-ring" style="--p:${p}"><b>${F.lv}</b></div><div><strong>${esc(options.playerName())}'s Farm</strong><small class="row2"><span>${F.lv >= 100 ? "Max level" : `${F.xp}/${need(F.lv)} XP`}</span></small><div class="xpbar"><i style="width:${p}%"></i></div></div>`,
+      `<div class="fm-ring" style="--p:${p}"><b>${F.lv}</b></div><div><strong>${esc(options.playerName())}'s Farm</strong><div class="xpbar"><i style="width:${p}%"></i><span>${F.lv >= 100 ? "Max level" : `${F.xp.toLocaleString("en-US")} / ${need(F.lv).toLocaleString("en-US")} XP`}</span></div></div>`,
     );
   }
   const dogLeft = () => Math.max(0, (F.dog.until - serverNow()) / 1000),

@@ -49,11 +49,12 @@
   vertical-align: -0.2em;
 }
 
-/* ── The bistro's badge: the player card's twin, just under it ── */
+/* ── The bistro's badge: in the player card's place (the card, with the
+   account's level, is hidden here), the same box ── */
 .bistro-layer .bs-badge {
   position: absolute;
   left: var(--bs-x-l);
-  top: calc(var(--hub-card-h, 52px) + 14px);
+  top: 10px;
   box-sizing: border-box;
   width: var(--hub-card-w, 236px);
   min-height: var(--hub-card-h, 52px);
@@ -61,7 +62,9 @@
   border-radius: 16px;
   display: grid;
   grid-template-columns: var(--hub-card-art, 38px) minmax(0, 1fr) auto;
-  grid-template-areas: "art name name" "art xp xp";
+  /* The name (with a visitor's likes at its end), then a thick bar with
+     the XP written in it. */
+  grid-template-areas: "art name sub" "art xp xp";
   align-items: center;
   column-gap: 8px;
   row-gap: 3px;
@@ -99,7 +102,7 @@
   letter-spacing: 0.03em;
 }
 .bistro-layer .bs-badge small {
-  grid-area: coins;
+  grid-area: sub;
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -119,17 +122,34 @@
 }
 .bistro-layer .bs-badge .xpbar {
   grid-area: xp;
-  height: 5px;
-  border-radius: 3px;
-  background: #ffffff1f;
+  position: relative;
+  height: 15px;
+  border-radius: 8px;
+  background: #00000059;
+  box-shadow: inset 0 0 0 1px #ffffff1f;
   overflow: hidden;
 }
 .bistro-layer .bs-badge .xpbar i {
   display: block;
   height: 100%;
-  border-radius: 3px;
-  background: linear-gradient(90deg, #ffb36b, #ffe27a);
+  border-radius: 8px;
+  background: linear-gradient(90deg, #e8803f, #f5b94a);
   transition: width 0.5s ease-out;
+}
+.bistro-layer .bs-badge .xpbar span {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font:
+    800 10px/1 "DM Sans",
+    sans-serif;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  text-shadow:
+    0 1px 2px #000c,
+    0 0 3px #0008;
 }
 
 /* ── Chips under the scene switch: rating, today's special, rush ── */
@@ -840,8 +860,11 @@
 .bistro-layer.phone .bs-hud {
   font-size: 12px;
 }
-.bistro-layer.phone .bs-badge {
-  top: calc(var(--hub-card-h, 42px) + 12px);
+.bistro-layer.phone .bs-badge .xpbar {
+  height: 13px;
+}
+.bistro-layer.phone .bs-badge .xpbar span {
+  font-size: 9px;
 }
 .bistro-layer.phone .bs-badge strong {
   font-size: 12.5px;
@@ -849,7 +872,7 @@
 }
 .bistro-layer.phone .bs-chips {
   /* Under the bistro's badge, on the left (the menu has the right). */
-  top: calc(var(--hub-card-h, 42px) * 2 + 18px);
+  top: calc(var(--hub-card-h, 42px) + 14px);
   left: var(--bs-x-l);
   transform: none;
   flex-direction: column;
@@ -1472,6 +1495,12 @@ body.hub-bistro:has(.bistro-layer.editing) #toast {
 /* The game's coins and Gold Leaves don't belong to the Bistro: hidden here. */
 body.hub-bistro :is(#account-coins, #account-leaves) {
   display: none !important;
+}
+/* Nor the player card: its level is the account's, not the bistro's, and
+   the bistro's badge takes its place. Hidden, not removed, so the top bar
+   keeps its layout. */
+body.hub-bistro #account-profile {
+  visibility: hidden;
 }
 
 .bistro-layer.phone .bs-edit {
