@@ -120,8 +120,8 @@ export interface FitView {
   stage?: number;
   /** Boss frame stars shown on the stage (a preview only, never saved). */
   frameStars?: number;
-  /** The animation the stage plays. */
-  action: "idle" | "entrance" | "victory";
+  /** The animation the stage plays ("ultimate": a Mythical's, at Stage III). */
+  action: "idle" | "entrance" | "victory" | "ultimate";
   ownership: "all" | "owned" | "unowned";
   rarity: Rarity | "all";
   collection: Collection;
@@ -530,9 +530,13 @@ function stageMarkup(view: FitView, d: FitData) {
   // Top: the portrait frame you'd wear (opens the Frame slot), and the
   // animations that only play on the stage.
   const frameBadge = `<button type="button" class="fit-frame-badge" data-fit-slot="frame" aria-label="Portrait frame: ${esc(outfit.look.frame ? nameOf(outfit.look.frame) : "none")}. Choose a frame">${framedAvatar({ character: view.champion, raidLook: outfit.look, championLooks: outfit.skin ? { [view.champion]: outfit.skin } : {} }, "fit-badge", earnedStars)}<small>${outfit.look.frame ? "Portrait frame" : "No frame"}</small></button>`;
+  // A Mythical also shows its Stage III ultimate.
+  const mythicShown =
+    !!outfit.skin &&
+    CHAMPION_SKIN_BY_ID[outfit.skin.skin]?.rarity === "mythical";
   const animations =
     !frameView && !d.low
-      ? `${button("Entrance", { size: "s", icon: "enter", attrs: { "data-fit-play": "entrance", "aria-pressed": view.action === "entrance", title: "Entrance" } })}${button("Victory", { size: "s", icon: "sparkle", attrs: { "data-fit-play": "victory", "aria-pressed": view.action === "victory", title: "Victory" } })}`
+      ? `${button("Entrance", { size: "s", icon: "enter", attrs: { "data-fit-play": "entrance", "aria-pressed": String(view.action === "entrance"), title: "Entrance" } })}${button("Victory", { size: "s", icon: "sparkle", attrs: { "data-fit-play": "victory", "aria-pressed": String(view.action === "victory"), title: "Victory" } })}${mythicShown ? button("Ultimate", { size: "s", icon: "battle", attrs: { "data-fit-play": "ultimate", "aria-pressed": String(view.action === "ultimate"), title: "Ultimate (Stage III)" } }) : ""}`
       : "";
   // Back to what you wear, while something you haven't equipped is on.
   const back = trying(view)
@@ -805,7 +809,7 @@ function collectionReward(
   const skins = CHAMPION_SKINS.filter((s) => s.collection === collection);
   const have = skins.filter((s) => e.owned.includes(s.id)).length;
   const text = e.owned.includes(frame.id)
-    ? `You own every ${esc(COLLECTION_NAMES[collection])} skin: the <b>${esc(frame.name)}</b> is yours.`
+    ? `The <b>${esc(frame.name)}</b> is yours (${have}/${skins.length} ${esc(COLLECTION_NAMES[collection])} skins).`
     : `Own all ${skins.length} ${esc(COLLECTION_NAMES[collection])} skins and the <b>${esc(frame.name)}</b> is yours free (${have}/${skins.length}).`;
   return `<div class="fit-set-reward" data-fit-reward="${frame.id}"><span class="fit-set-reward-art">${pictureOf(frame.id, view, d, `fit-reward-${collection}`)}</span><p class="ui-note">${text}</p></div>`;
 }
