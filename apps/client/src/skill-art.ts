@@ -2987,156 +2987,116 @@ const art: Record<string, { el: Element; draw: () => string }> = {
         N.accent[2],
       ),
   },
-  "Tongue Snag": {
+  "Tongue Grapple": {
     el: "nature",
     draw: () =>
-      // The pangolin's snout flicks a long sticky tongue that snags a foe.
+      // The pangolin zips along its own tongue toward what it caught.
+      `<g stroke="${N.accent[2]}" stroke-width="2.6" stroke-linecap="round" opacity=".55"><path d="M2 50 H18"/><path d="M4 66 H22"/><path d="M2 82 H16"/></g>` +
       floorGlow("nature", 64, 104, 56, 12) +
-      `<path d="M2 50 Q24 34 44 46 Q56 54 54 66 Q48 80 26 80 Q8 78 2 66Z" fill="#7fcf6a" stroke="#1f4626" stroke-width="1.8"/>` +
-      leaf(14, 46, 1.1, -30, "#3f8f4a") +
-      leaf(28, 40, 1.1, 0, "#3f8f4a") +
-      `<circle cx="30" cy="56" r="4" fill="#1b1636"/><circle cx="29" cy="54.6" r="1.4" fill="#fff"/>` +
-      `<ellipse cx="54" cy="64" rx="4" ry="3" fill="${"#ffd166"}" stroke="#1f4626" stroke-width="1.2"/>` +
-      glow("M50 70 Q76 82 96 72 Q110 64 104 54", "#ff8fb0", 4.5, "#ffb3c8") +
-      `<circle cx="104" cy="66" r="15" fill="none" stroke="${N.accent[2]}" stroke-width="2.4" stroke-dasharray="4 4"/>` +
-      root(
-        [
-          [86, 100],
-          [94, 86],
-          [104, 82],
-          [114, 88],
-        ],
-        4,
-      ) +
-      root(
-        [
-          [122, 102],
-          [114, 88],
-          [100, 78],
-          [94, 66],
-        ],
-        3.4,
-      ) +
+      `<path d="M14 50 Q34 34 52 46 Q64 54 62 66 Q56 80 34 80 Q18 78 14 66Z" fill="#7fcf6a" stroke="#1f4626" stroke-width="1.8"/>` +
+      leaf(24, 46, 1.1, -30, "#3f8f4a") +
+      leaf(38, 40, 1.1, 0, "#3f8f4a") +
+      `<circle cx="40" cy="56" r="4" fill="#1b1636"/><circle cx="39" cy="54.6" r="1.4" fill="#fff"/>` +
+      glow("M60 68 Q84 78 104 66", "#ff8fb0", 4.5, "#ffb3c8") +
+      `<circle cx="108" cy="64" r="16" fill="none" stroke="${N.accent[2]}" stroke-width="2.4" stroke-dasharray="4 4"/>` +
+      `<circle cx="108" cy="64" r="6" fill="#ff8fb0" stroke="#8a2a48" stroke-width="1.6"/>` +
+      `<path d="M74 92 L92 92 M86 86 L92 92 L86 98" fill="none" stroke="${N.hot}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>` +
       sparks(
         [
           [112, 24, 1.4],
           [70, 22, 1.2],
-          [16, 104, 1.2],
+          [118, 104, 1.2],
         ],
         N.accent[2],
       ),
   },
-  "Sap Bite": {
+  "Scale Shrapnel": {
     el: "nature",
     draw: () =>
-      // Jaws snap shut; golden sap streams back as healing.
-      halo("nature", 64, 64, 46) +
-      `<path d="M18 52 Q64 18 110 52 L96 58 L88 50 L80 58 L72 50 L64 58 L56 50 L48 58 L40 50 L32 58Z" fill="#7fcf6a" stroke="#1f4626" stroke-width="2"/>` +
-      `<path d="M18 76 Q64 110 110 76 L96 70 L88 78 L80 70 L72 78 L64 70 L56 78 L48 70 L40 78 L32 70Z" fill="#5daa4f" stroke="#1f4626" stroke-width="2"/>` +
-      `<path d="M32 58 L40 50 L48 58 L56 50 L64 58 L72 50 L80 58 L88 50 L96 58" fill="none" stroke="#fffbea" stroke-width="2.4" stroke-linejoin="round"/>` +
-      `<path d="M32 70 L40 78 L48 70 L56 78 L64 70 L72 78 L80 70 L88 78 L96 70" fill="none" stroke="#fffbea" stroke-width="2.4" stroke-linejoin="round"/>` +
-      [
-        [64, 64, 5],
-        [52, 92, 3.6],
-        [78, 96, 3],
-        [40, 108, 2.6],
-      ]
-        .map(
-          ([x, y, r]) =>
-            `<path d="M${x} ${y - r * 1.6} Q${x + r} ${y - r * 0.2} ${x} ${y + r} Q${x - r} ${y - r * 0.2} ${x} ${y - r * 1.6}Z" fill="#ffd166" stroke="#a8741a" stroke-width="1.2"/>`,
-        )
-        .join("") +
-      plus(104, 100, 9, N.hot) +
-      plus(22, 24, 6, N.accent[2], 0.8),
-  },
-  "Scale Curl": {
-    el: "nature",
-    draw: () =>
-      // Curled into a ball of leaf scales; a shot glances off.
-      halo("nature", 62, 66, 52) +
-      `<circle cx="62" cy="66" r="38" fill="#3f8f4a" stroke="#1f4626" stroke-width="2"/>` +
-      [
-        [62, 34, 0],
-        [40, 44, -45],
-        [84, 44, 45],
-        [30, 66, -90],
-        [94, 66, 90],
-        [40, 88, -135],
-        [84, 88, 135],
-        [62, 98, 180],
-        [62, 58, 0],
-        [48, 70, -60],
-        [76, 70, 60],
-        [62, 80, 180],
-      ]
-        .map(([x, y, r], i) =>
-          leaf(x, y, i < 8 ? 1.5 : 1.25, r, i % 2 ? "#7fcf6a" : "#5daa4f"),
-        )
-        .join("") +
-      `<circle cx="62" cy="66" r="46" fill="none" stroke="${N.accent[2]}" stroke-width="2.6" stroke-dasharray="6 5" opacity=".8"/>` +
-      glow("M120 22 L104 38", N.hot, 3, N.accent[1]) +
-      glow("M104 38 L122 48", N.hot, 2.4, N.accent[1]) +
-      sparks(
-        [
-          [104, 38, 2.2],
-          [16, 20, 1.3],
-          [112, 110, 1.3],
-        ],
-        N.accent[2],
-      ),
-  },
-  Thornwheel: {
-    el: "nature",
-    draw: () =>
-      // A thorny wheel tearing across the ground, roots bursting behind it.
-      `<g stroke="${N.accent[2]}" stroke-width="2.6" stroke-linecap="round" opacity=".55"><path d="M4 50 H30"/><path d="M8 64 H26"/><path d="M2 78 H24"/></g>` +
-      `<path d="M0 104 H128 V128 H0Z" fill="${N.bg[2]}"/><path d="M0 104 H128" stroke="${N.accent[0]}" stroke-width="2"/>` +
-      root(
-        [
-          [10, 106],
-          [18, 92],
-          [30, 90],
-        ],
-        3.4,
-      ) +
-      root(
-        [
-          [30, 106],
-          [36, 94],
-          [44, 96],
-        ],
-        3,
-      ) +
-      halo("nature", 76, 66, 46) +
-      Array.from({ length: 10 }, (_, i) => {
-        const a = (i * 36 * Math.PI) / 180;
-        return thorn(
-          n(76 + Math.cos(a) * 36),
-          n(66 + Math.sin(a) * 36),
-          1.1,
-          i * 36,
-        );
-      }).join("") +
-      `<circle cx="76" cy="66" r="32" fill="#3f8f4a" stroke="#1f4626" stroke-width="2"/>` +
-      [0, 60, 120, 180, 240, 300]
-        .map((d) => {
-          const a = (d * Math.PI) / 180;
-          return leaf(
-            n(76 + Math.cos(a) * 18),
-            n(66 + Math.sin(a) * 18),
-            1.2,
-            d + 90,
-            "#7fcf6a",
+      // The armour plates tear off and fly out as a fan of leaf blades.
+      halo("nature", 30, 70, 30) +
+      `<circle cx="30" cy="70" r="20" fill="#3f8f4a" stroke="#1f4626" stroke-width="2"/>` +
+      leaf(24, 64, 1.1, -60, "#7fcf6a") +
+      leaf(36, 76, 1.1, 120, "#5daa4f") +
+      [-36, -18, 0, 18, 36]
+        .map((deg, i) => {
+          const a = (deg * Math.PI) / 180,
+            d = 70 + (i % 2) * 12,
+            x = n(30 + Math.cos(a) * d),
+            y = n(70 + Math.sin(a) * d);
+          return (
+            `<path d="M${n(30 + Math.cos(a) * 26)} ${n(70 + Math.sin(a) * 26)} L${n(30 + Math.cos(a) * (d - 14))} ${n(70 + Math.sin(a) * (d - 14))}" stroke="url(#sa-diag-nature)" stroke-width="3" stroke-linecap="round" opacity=".6"/>` +
+            halo("nature", x, y, 10) +
+            leaf(x, y, 1.3, deg + 90, i % 2 ? "#c7e88a" : "#7fcf6a")
           );
         })
         .join("") +
-      `<circle cx="76" cy="66" r="8" fill="#ffd166" stroke="#a8741a" stroke-width="1.4"/>` +
-      `<path d="M76 30 A36 36 0 0 1 112 66" fill="none" stroke="${N.hot}" stroke-width="3" stroke-linecap="round" opacity=".7"/>` +
       sparks(
         [
-          [118, 24, 1.4],
-          [50, 18, 1.2],
+          [112, 20, 1.4],
+          [16, 30, 1.2],
+          [114, 112, 1.3],
+        ],
+        N.accent[2],
+      ),
+  },
+  "Curl & Roll": {
+    el: "nature",
+    draw: () =>
+      // Curled into a ball of leaf plates, rolling fast; dust behind it.
+      `<path d="M0 104 H128 V128 H0Z" fill="${N.bg[2]}"/><path d="M0 104 H128" stroke="${N.accent[0]}" stroke-width="2"/>` +
+      `<g fill="${N.accent[1]}" opacity=".35"><circle cx="18" cy="98" r="9"/><circle cx="32" cy="102" r="6"/><circle cx="8" cy="90" r="5"/></g>` +
+      `<g stroke="${N.accent[2]}" stroke-width="2.6" stroke-linecap="round" opacity=".55"><path d="M4 56 H34"/><path d="M10 72 H36"/><path d="M2 86 H28"/></g>` +
+      halo("nature", 76, 66, 48) +
+      `<circle cx="76" cy="66" r="36" fill="#3f8f4a" stroke="#1f4626" stroke-width="2"/>` +
+      [
+        [76, 38, 10],
+        [54, 50, -40],
+        [98, 50, 60],
+        [50, 74, -100],
+        [102, 76, 110],
+        [64, 94, -160],
+        [90, 94, 160],
+        [76, 64, 20],
+      ]
+        .map(([x, y, r], i) =>
+          leaf(x, y, i < 7 ? 1.4 : 1.2, r, i % 2 ? "#7fcf6a" : "#c7e88a"),
+        )
+        .join("") +
+      `<path d="M76 26 A40 40 0 0 1 116 66" fill="none" stroke="${N.hot}" stroke-width="3" stroke-linecap="round" opacity=".7"/>` +
+      sparks(
+        [
+          [118, 22, 1.4],
+          [44, 18, 1.2],
           [118, 112, 1.3],
+        ],
+        N.accent[2],
+      ),
+  },
+  Pinball: {
+    el: "nature",
+    draw: () =>
+      // A ball of leaf plates ricocheting between two walls, faster each time.
+      `<path d="M2 8 H14 V120 H2Z M114 8 H126 V120 H114Z" fill="${N.bg[2]}" stroke="${N.accent[0]}" stroke-width="2"/>` +
+      glow("M24 108 L104 76 L24 44 L92 16", N.hot, 3, N.accent[1]) +
+      [
+        [104, 76],
+        [24, 44],
+      ]
+        .map(
+          ([x, y]) =>
+            `<circle cx="${x}" cy="${y}" r="7" fill="none" stroke="${N.accent[2]}" stroke-width="2.4"/>`,
+        )
+        .join("") +
+      halo("nature", 88, 22, 22) +
+      `<circle cx="88" cy="22" r="16" fill="#3f8f4a" stroke="#1f4626" stroke-width="2"/>` +
+      leaf(84, 16, 1, -30, "#c7e88a") +
+      leaf(94, 26, 1, 150, "#7fcf6a") +
+      sparks(
+        [
+          [104, 76, 2],
+          [24, 44, 2],
+          [60, 110, 1.3],
         ],
         N.accent[2],
       ),
@@ -3160,158 +3120,152 @@ const art: Record<string, { el: Element; draw: () => string }> = {
         N.accent[2],
       ),
   },
-  Rootsnare: {
+  Seedling: {
     el: "nature",
     draw: () =>
-      // The seed bursts into roots that coil round a target's feet.
-      floorGlow("nature", 64, 100, 54, 14) +
-      `<ellipse cx="64" cy="100" rx="34" ry="9" fill="none" stroke="${N.accent[1]}" stroke-width="2" stroke-dasharray="5 4"/>` +
-      root(
-        [
-          [30, 104],
-          [36, 76],
-          [58, 64],
-          [80, 72],
-          [76, 92],
-        ],
-        5,
-      ) +
-      root(
-        [
-          [98, 104],
-          [94, 80],
-          [72, 58],
-          [50, 66],
-          [48, 86],
-        ],
-        4.4,
-      ) +
-      root(
-        [
-          [64, 108],
-          [66, 84],
-          [64, 46],
-          [58, 30],
-        ],
-        4,
-      ) +
-      leaf(58, 26, 1.2, -30, N.accent[1]) +
-      leaf(72, 34, 1, 40, N.accent[1]) +
-      seed(64, 100, 1.4) +
-      sparks(
-        [
-          [110, 28, 1.4],
-          [18, 34, 1.2],
-          [112, 110, 1.3],
-        ],
-        N.accent[2],
-      ),
-  },
-  "Thorn Volley": {
-    el: "nature",
-    draw: () =>
-      // Four thorns flicked in a fan.
-      `<g fill="${N.accent[1]}" opacity=".35"><circle cx="20" cy="100" r="10"/><circle cx="32" cy="108" r="5"/></g>` +
-      [-62, -40, -18, 4]
-        .map((deg, i) => {
-          const a = (deg * Math.PI) / 180,
-            d = 80 - (i % 2) * 10,
-            x = n(20 + Math.cos(a) * d),
-            y = n(100 + Math.sin(a) * d);
-          return (
-            `<path d="M${n(20 + Math.cos(a) * 16)} ${n(100 + Math.sin(a) * 16)} L${n(20 + Math.cos(a) * (d - 16))} ${n(100 + Math.sin(a) * (d - 16))}" stroke="url(#sa-diag-nature)" stroke-width="3" stroke-linecap="round" opacity=".6"/>` +
-            halo("nature", x, y, 12) +
-            thorn(x, y, 1.5, deg)
-          );
+      // A seed grows in three stages: sprout, bud, bloom.
+      floorGlow("nature", 64, 104, 60, 12) +
+      [
+        [22, 0.7],
+        [64, 1],
+        [106, 1.3],
+      ]
+        .map(
+          ([x, k]) =>
+            `<ellipse cx="${x}" cy="104" rx="${n(14 * k)}" ry="${n(5 * k)}" fill="#6b4526" stroke="#2a1a0e" stroke-width="1.4"/>` +
+            `<path d="M${x} 102 L${x} ${n(102 - 26 * k)}" stroke="#3f7a34" stroke-width="${n(3 * k)}" stroke-linecap="round"/>`,
+        )
+        .join("") +
+      leaf(18, 88, 0.9, -50, "#7fcf6a") +
+      leaf(26, 88, 0.9, 50, "#3f8f4a") +
+      leaf(58, 84, 1.1, -50, "#7fcf6a") +
+      leaf(70, 84, 1.1, 50, "#3f8f4a") +
+      `<ellipse cx="64" cy="72" rx="5" ry="7" fill="#3f7a34"/><ellipse cx="64" cy="70" rx="3" ry="4" fill="#ff9fc4"/>` +
+      leaf(98, 82, 1.2, -50, "#7fcf6a") +
+      leaf(114, 82, 1.2, 50, "#3f8f4a") +
+      halo("nature", 106, 64, 18) +
+      [0, 72, 144, 216, 288]
+        .map((d) => {
+          const a = (d * Math.PI) / 180;
+          return `<ellipse cx="${n(106 + Math.cos(a) * 8)}" cy="${n(64 + Math.sin(a) * 7)}" rx="7" ry="5.4" fill="#ff9fc4" stroke="#b0527a" stroke-width="1"/>`;
         })
         .join("") +
+      `<circle cx="106" cy="64" r="4" fill="#ffd166"/>` +
+      `<path d="M30 30 Q46 22 58 30 M70 30 Q86 22 98 30" fill="none" stroke="${N.accent[2]}" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="3 4"/>` +
       sparks(
         [
-          [114, 28, 1.4],
-          [70, 16, 1.2],
-          [116, 100, 1.3],
+          [116, 30, 1.4],
+          [12, 40, 1.2],
         ],
         N.accent[2],
       ),
   },
-  "Bramble Patch": {
+  "Sloth Time": {
     el: "nature",
     draw: () =>
-      // A patch of thorny brambles grown up out of the ground.
-      floorGlow("nature", 64, 96, 58, 18) +
-      `<ellipse cx="64" cy="96" rx="52" ry="16" fill="${N.accent[0]}" fill-opacity=".3" stroke="${N.accent[1]}" stroke-width="2"/>` +
-      [
-        "M14 98 Q22 62 44 58 Q58 58 52 74",
-        "M114 98 Q106 62 84 58 Q70 58 76 74",
-        "M40 104 Q50 70 64 44 Q74 62 70 80",
-        "M60 106 Q70 84 96 80",
-      ]
-        .map((d) => glow(d, "#5daa4f", 4.5, N.accent[1]))
-        .join("") +
-      [
-        [28, 74, -60],
-        [40, 60, -20],
-        [100, 74, 240],
-        [88, 60, 200],
-        [58, 58, -80],
-        [70, 66, 20],
-        [84, 82, 0],
-      ]
-        .map(([x, y, r]) => thorn(x, y, 0.8, r))
-        .join("") +
-      `<g fill="#ff9fc4"><circle cx="64" cy="42" r="4"/><circle cx="44" cy="56" r="3"/></g><g fill="#fff2a0"><circle cx="64" cy="42" r="1.6"/><circle cx="44" cy="56" r="1.2"/></g>` +
+      // A bubble where time crawls: a clock face, slow ripples.
+      `<circle cx="64" cy="64" r="52" fill="#c9b6ff" fill-opacity=".18" stroke="#c9b6ff" stroke-width="3"/>` +
+      `<circle cx="64" cy="64" r="40" fill="none" stroke="#c9b6ff" stroke-width="1.6" opacity=".5"/>` +
+      `<circle cx="64" cy="64" r="28" fill="none" stroke="#c9b6ff" stroke-width="1.2" opacity=".35"/>` +
+      Array.from({ length: 12 }, (_, i) => {
+        const a = (i * 30 * Math.PI) / 180,
+          r0 = i % 3 ? 44 : 40;
+        return `<path d="M${n(64 + Math.cos(a) * r0)} ${n(64 + Math.sin(a) * r0)} L${n(64 + Math.cos(a) * 49)} ${n(64 + Math.sin(a) * 49)}" stroke="#fff" stroke-width="${i % 3 ? 2 : 3}" stroke-linecap="round" opacity=".8"/>`;
+      }).join("") +
+      `<path d="M64 64 L64 34 M64 64 L86 74" stroke="#fff" stroke-width="4" stroke-linecap="round"/>` +
+      `<circle cx="64" cy="64" r="5" fill="#9bd36a" stroke="#1f4626" stroke-width="1.6"/>` +
+      `<path d="M20 22 Q24 14 32 16 M100 110 Q108 108 110 100" fill="none" stroke="#c9b6ff" stroke-width="2.4" stroke-linecap="round"/>` +
       sparks(
         [
-          [110, 28, 1.4],
-          [18, 30, 1.2],
-          [64, 18, 1.2],
+          [112, 20, 1.4],
+          [16, 108, 1.2],
         ],
         N.accent[2],
       ),
   },
-  "Wild Roots": {
+  "Lazy Swap": {
     el: "nature",
     draw: () =>
-      // Great roots erupting out of a glowing ring in the ground.
+      // Two spots trade places along a lazy loop of leaves; a sleepy "z".
+      floorGlow("nature", 64, 104, 58, 10) +
+      `<ellipse cx="28" cy="96" rx="16" ry="5" fill="${N.accent[0]}" fill-opacity=".4"/><ellipse cx="100" cy="96" rx="16" ry="5" fill="${N.accent[0]}" fill-opacity=".4"/>` +
+      `<circle cx="28" cy="76" r="14" fill="#9bd36a" stroke="#1f4626" stroke-width="2"/>` +
+      `<circle cx="100" cy="76" r="14" fill="#c9b6ff" stroke="#4b3a7a" stroke-width="2"/>` +
+      glow("M28 56 Q64 18 100 56", N.hot, 3.4, N.accent[1]) +
+      glow("M100 98 Q64 124 28 98", "#c9b6ff", 3, "#e9d7ff") +
+      `<path d="M92 48 L100 56 L104 46" fill="none" stroke="${N.hot}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>` +
+      `<path d="M36 106 L28 98 L24 108" fill="none" stroke="#c9b6ff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>` +
+      leaf(64, 34, 1.1, 0, "#7fcf6a") +
+      `<text x="52" y="78" font-size="16" font-weight="800" fill="#fff" opacity=".85">z</text><text x="64" y="68" font-size="12" font-weight="800" fill="#fff" opacity=".6">z</text>` +
+      sparks(
+        [
+          [112, 22, 1.4],
+          [14, 26, 1.2],
+        ],
+        N.accent[2],
+      ),
+  },
+  Overgrowth: {
+    el: "nature",
+    draw: () =>
+      // Vines erupt all round in a ring, every bloom opening at once.
       floorGlow("nature", 64, 100, 60, 20) +
-      `<ellipse cx="64" cy="100" rx="54" ry="16" fill="${N.accent[0]}" fill-opacity=".35" stroke="${N.hot}" stroke-width="2.2"/>` +
-      `<path d="M20 100 l8 -6 l6 6 l8 -8 l6 8 M86 100 l8 -6 l6 6 l8 -8" fill="none" stroke="${N.accent[2]}" stroke-width="2" opacity=".7"/>` +
+      `<ellipse cx="64" cy="100" rx="56" ry="16" fill="${N.accent[0]}" fill-opacity=".35" stroke="${N.hot}" stroke-width="2.2"/>` +
       root(
         [
-          [34, 104],
-          [26, 70],
-          [38, 44],
-          [30, 24],
+          [16, 104],
+          [12, 76],
+          [24, 54],
+        ],
+        6,
+      ) +
+      root(
+        [
+          [112, 104],
+          [116, 76],
+          [104, 54],
+        ],
+        6,
+      ) +
+      root(
+        [
+          [44, 106],
+          [38, 70],
+          [50, 40],
+          [44, 22],
         ],
         7,
       ) +
       root(
         [
-          [94, 104],
-          [104, 70],
-          [90, 44],
-          [100, 22],
+          [84, 106],
+          [90, 70],
+          [78, 40],
+          [84, 20],
         ],
         7,
       ) +
-      root(
-        [
-          [64, 106],
-          [60, 72],
-          [70, 46],
-          [64, 14],
-        ],
-        8,
-      ) +
-      leaf(30, 22, 1.3, -30, N.accent[1]) +
-      leaf(100, 20, 1.3, 30, N.accent[1]) +
-      leaf(64, 12, 1.4, 0, N.accent[1]) +
-      `<g fill="${N.accent[2]}" opacity=".5"><circle cx="48" cy="110" r="5"/><circle cx="80" cy="112" r="4"/><circle cx="18" cy="108" r="3"/><circle cx="110" cy="108" r="3"/></g>` +
+      [
+        [24, 52],
+        [104, 52],
+        [44, 20],
+        [84, 18],
+      ]
+        .map(
+          ([x, y]) =>
+            [0, 72, 144, 216, 288]
+              .map((d) => {
+                const a = (d * Math.PI) / 180;
+                return `<ellipse cx="${n(x + Math.cos(a) * 5)}" cy="${n(y + Math.sin(a) * 4)}" rx="5" ry="4" fill="#ff9fc4"/>`;
+              })
+              .join("") + `<circle cx="${x}" cy="${y}" r="2.6" fill="#ffd166"/>`,
+        )
+        .join("") +
       sparks(
         [
-          [16, 40, 1.4],
-          [114, 46, 1.4],
-          [48, 24, 1.2],
+          [64, 40, 1.6],
+          [12, 30, 1.2],
+          [116, 30, 1.2],
         ],
         N.accent[2],
       ),

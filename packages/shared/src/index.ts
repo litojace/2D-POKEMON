@@ -193,6 +193,20 @@ export const ROLL = {
   /** Ramming the same enemy again waits this long. */
   rehit: 0.6,
 };
+/** The passives, as players read them (the roster's overview, the tutorial). */
+export const PASSIVES: Record<
+  NonNullable<Character["passive"]>,
+  { name: string; text: string }
+> = {
+  plates: {
+    name: "Armour Plates",
+    text: `Three leaf plates on your back. A hit of ${PLATES.minHit} damage or more breaks one, and only ${Math.round(PLATES.block * 100)}% of it gets through. After ${PLATES.regrowDelay} seconds without taking damage they grow back, one every ${PLATES.regrowEvery} seconds. Scale Shrapnel spends them.`,
+  },
+  moss: {
+    name: "Moss",
+    text: `Standing still grows moss: a stack every ${MOSS.growEvery} seconds, up to ${MOSS.max}. Each stack takes ${Math.round(MOSS.reduction * 100)}% off damage and heals ${MOSS.regen} health a second; moving sheds it. Overgrowth grows it full.`,
+  },
+};
 /** Plates a fighter has now (Pangrove starts every round with all of them). */
 export const platesOf = (p: { plates?: number }) => p.plates ?? PLATES.max;
 /** A seedling's growth stage now: 0 (sprout), 1 (bud) or 2 (bloom). */

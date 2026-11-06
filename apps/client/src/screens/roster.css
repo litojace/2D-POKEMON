@@ -471,6 +471,10 @@
   background: var(--ui-bg-1);
   border: 1px solid var(--ui-line);
 }
+/* A champion's passive (Pangrove's plates, Mossloth's moss): the full row. */
+.roster-fact.roster-passive {
+  grid-column: 1 / -1;
+}
 .roster-looks {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

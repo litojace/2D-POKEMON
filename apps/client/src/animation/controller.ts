@@ -69,6 +69,8 @@ export interface AnimationPose {
   greet?: boolean;
   /** Shell Up: pulled into the shell, so only the shell shows. */
   shell?: boolean;
+  /** Curled into a ball (Curl & Roll, Pinball): how far it has spun, and where it rolls. */
+  ball?: { spin: number; heading: number };
 }
 export function facing(angle: number): Facing {
   return Math.abs(Math.cos(angle)) > Math.abs(Math.sin(angle))

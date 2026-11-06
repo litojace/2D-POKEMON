@@ -196,8 +196,12 @@ import {
   type Zone,
   maxHealth,
   basicInterval,
+  MOSS,
+  PLATES,
+  platesOf,
 } from "../../../packages/shared/src/index";
 import { AudioManager } from "./audio";
+import { bounceFx, plateFx } from "./skill-fx-nature";
 import { InterpolationBuffer } from "./networking/interpolation";
 import { AccountUI } from "./accounts";
 import { framedAvatar } from "./portraits";
@@ -322,6 +326,17 @@ const abilityColor = new Map(
 const remoteFrames = new InterpolationBuffer();
 /** Static Glide in progress, per fighter: when it started (server time). */
 const gliding = new Map<string, { until: number; start: number }>();
+/** Curled-up balls: how far each has spun (it rolls as far as it travels). */
+const ballSpins = new Map<string, { spin: number; at: number }>();
+function ballSpin(id: string, speed: number, heading: number) {
+  const now = performance.now(),
+    last = ballSpins.get(id);
+  const dt = last ? Math.min(0.1, (now - last.at) / 1000) : 0;
+  // A ball about 30 px across turns once per ~95 px rolled.
+  const spin = (last?.spin ?? 0) + (speed * dt) / 15;
+  ballSpins.set(id, { spin, at: now });
+  return { spin, heading };
+}
 /** Adapts optional battle decoration to the device (Settings → Graphics). */
 const battleQuality = new BattleQualityGovernor();
 let battleStill: boolean | undefined;
@@ -2616,7 +2631,9 @@ function renderBattle() {
               ? `SHELL −${Math.round((1 - STATUS_RULES.shellReduction) * 100)}% DMG`
               : s.kind === "mark"
                 ? comboOf(s.by).toUpperCase()
-                : s.kind.toUpperCase(),
+                : s.kind === "warp"
+                  ? "TIME SLOWED"
+                  : s.kind.toUpperCase(),
         )
         .join(" · "),
     );
@@ -4325,7 +4342,10 @@ class ArenaScene extends Phaser.Scene {
     const c = CHARACTERS[local.character];
     const free = !!state.practice?.unlimitedCooldowns;
     // The server takes a skill over a basic in the same step.
-    if (input.skill >= 0) {
+    // Casting Curl & Roll again while rolling uncurls (the server allows it on cooldown).
+    if (input.skill >= 0 && local.roll && input.skill === local.roll.slot) {
+      // Nothing to flash: the server will uncurl.
+    } else if (input.skill >= 0) {
       const windUp = c.skills[input.skill].cast;
       // A wind-up skill shows its charging pose now (as the server's charge
       // will); its cast arrives from the server when the charge ends, so it
@@ -4480,11 +4500,14 @@ class ArenaScene extends Phaser.Scene {
         event.color,
         reducedMotion,
       );
-    // A blink's landing and a rush's contact play the move's impact effect.
+    // A blink's landing, a rush's contact, a roll's or pinball's ram, a
+    // seedling going off and a swap's landing play the move's impact effect.
     if (
       ability &&
       event.kind === "burst" &&
-      (ability.kind === "blink" || ability.kind === "rush")
+      ["blink", "rush", "roll", "pinball", "seedling", "swap"].includes(
+        ability.kind,
+      )
     )
       playImpact(this, ability, event.x, event.y, event.color, reducedMotion);
     // Novas play on their burst event; every other move plays on cast.
@@ -4497,6 +4520,13 @@ class ArenaScene extends Phaser.Scene {
       playCast(this, shown, event.x, event.y, 0, event.color, reducedMotion);
     }
     if (event.kind === "hazard") this.hazardBurst(event);
+    // Pangrove's plates break and grow back; a pinball bounces off a wall.
+    if (event.kind === "burst" && !reducedMotion) {
+      if (event.abilityId === "plate-break" || event.abilityId === "plate-grow")
+        plateFx(this, event.x, event.y, event.abilityId === "plate-grow");
+      else if (event.abilityId === "pinball-bounce")
+        bounceFx(this, event.x, event.y);
+    }
     if (event.combo && (event.kind === "burst" || event.kind === "hit"))
       this.comboText(event);
     // The first hit out of stealth, and a charge that drives into a wall.
@@ -5298,6 +5328,16 @@ class ArenaScene extends Phaser.Scene {
         shell: serverPlayer.statuses.some(
           (s) => s.kind === "shell" && s.until > serverTime,
         ),
+        // Curled into a ball (Curl & Roll, Pinball): it spins as it travels.
+        ball:
+          (serverPlayer.roll && serverPlayer.roll.until > serverTime) ||
+          (serverPlayer.pinball && serverPlayer.dashUntil > serverTime)
+            ? ballSpin(
+                p.id,
+                Math.hypot(p.vx, p.vy),
+                serverPlayer.roll?.heading ?? Math.atan2(p.vy, p.vx),
+              )
+            : undefined,
         charging: !!serverPlayer.charge,
         ultReady:
           (serverPlayer.ult ?? 0) >= RULES.ultMax && serverPlayer.hp > 0,
@@ -5558,6 +5598,7 @@ class ArenaScene extends Phaser.Scene {
           haste: 0x8ee6ad,
           stealth: 0xa98be6,
           root: 0x7fcf6a,
+          warp: 0xc9b6ff,
           mark: 0xffffff,
         };
         g.fillStyle(colors[s.kind]).fillCircle(
@@ -5565,6 +5606,40 @@ class ArenaScene extends Phaser.Scene {
           y - 60 - jump,
           4,
         );
+      }
+      // Passives everyone can read: Pangrove's plates (lit leaves, dim when
+      // broken) and Mossloth's moss (tufts, and a green ring at its feet).
+      const passive = CHARACTERS[p.character].passive;
+      // (Under the feet: the nameplate covers the space above the head.)
+      if (passive === "plates" && serverPlayer.hp > 0) {
+        const n = platesOf(serverPlayer);
+        for (let i = 0; i < PLATES.max; i++) {
+          const px = x - 14 + i * 14,
+            py = y + 42;
+          const leafPts = [
+            { x: px, y: py - 6 },
+            { x: px + 5, y: py },
+            { x: px, y: py + 6 },
+            { x: px - 5, y: py },
+          ];
+          if (i < n) g.fillStyle(0x9be37a, 1).fillPoints(leafPts, true);
+          g.lineStyle(1.5, 0x2a1a0e, i < n ? 0.9 : 0.5).strokePoints(leafPts, true);
+        }
+      } else if (passive === "moss" && serverPlayer.hp > 0) {
+        const moss = serverPlayer.moss ?? 0;
+        if (moss > 0)
+          g.lineStyle(2 + moss, 0x6fbf5a, 0.18 + 0.07 * moss).strokeEllipse(
+            x,
+            y + 26,
+            50,
+            18,
+          );
+        for (let i = 0; i < MOSS.max; i++)
+          g.fillStyle(i < moss ? 0x8fd36a : 0x2f4a2a, i < moss ? 1 : 0.6).fillCircle(
+            x - 16 + i * 8,
+            y + 42,
+            3,
+          );
       }
       let label = this.labels.get(p.id);
       if (!label) {

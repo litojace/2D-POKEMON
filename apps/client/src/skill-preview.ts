@@ -1,4 +1,4 @@
-import { RULES, blinkLanding, type Ability } from "@arena/shared";
+import { RULES, blinkLanding, blocked, type Ability } from "@arena/shared";
 
 /**
  * Aim preview: the area a skill will cover if released now, drawn on the
@@ -145,6 +145,53 @@ export function previewShape(
         r: ability.radius + RULES.radius,
       });
       break;
+    case "grapple":
+      // The tongue's lane: it catches the first enemy (or wall) along it.
+      shape.polygons.push(
+        lane(from, angle, ability.range, (ability.radius + RULES.radius) * 2),
+      );
+      break;
+    case "shrapnel":
+      shape.polygons.push(
+        sector(from, angle, ability.range, (ability.fan ?? 1.2) / 2),
+      );
+      break;
+    case "pinball": {
+      // The first stretch, to the first wall it will bounce off.
+      const wall = blinkLanding(from, angle, RULES.width * 2);
+      shape.polygons.push(
+        lane(
+          from,
+          angle,
+          Math.hypot(wall.x - from.x, wall.y - from.y),
+          (RULES.radius + 8) * 2,
+        ),
+      );
+      shape.discs.push({ ...wall, r: SELF_RING });
+      break;
+    }
+    case "seedling":
+    case "timewarp":
+    case "swap": {
+      // Where it lands (at the aim, over cover; an aim inside a wall lands
+      // just short of it, as on the server), and its reach. A swap takes
+      // whoever is nearest the aim.
+      const reach = Math.min(
+        ability.range,
+        Math.hypot(aim.x - from.x, aim.y - from.y),
+      );
+      const point = {
+        x: from.x + Math.cos(angle) * reach,
+        y: from.y + Math.sin(angle) * reach,
+      };
+      const at =
+        ability.kind !== "swap" && blocked(point.x, point.y, 6)
+          ? blinkLanding(from, angle, reach)
+          : point;
+      shape.discs.push({ ...at, r: ability.radius });
+      shape.rings.push({ x: from.x, y: from.y, r: ability.range });
+      break;
+    }
     default:
       // Clone, counter, barrier, buff, rest, veil: they act on yourself. A buff
       // with a takeoff pop (Static Glide) shows how far the pop shoves.

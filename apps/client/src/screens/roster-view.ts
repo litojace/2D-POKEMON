@@ -8,7 +8,13 @@
  * Every fighter is free (there is no fighter ownership), so a card shows
  * what does exist: element, range, role, mastery and how many looks you own.
  */
-import { CHARACTERS, COMBOS, ULT_SLOT, type CharacterId } from "@arena/shared";
+import {
+  CHARACTERS,
+  COMBOS,
+  PASSIVES,
+  ULT_SLOT,
+  type CharacterId,
+} from "@arena/shared";
 import { CHAMPION_SKINS } from "../../../../packages/shared/src/shop";
 import {
   RAID_BOSSES,
@@ -385,7 +391,7 @@ function overviewTab(view: RosterView, d: RosterData) {
   const f = CHARACTERS[c];
   const m = mastery(d.matches(c));
   // The combo is on the Skills tab, under the basic attack.
-  return `<p class="roster-bio">${esc(f.description)}</p><div class="roster-facts"><div class="roster-fact"><span class="ui-kicker">Mastery</span><b class="ui-h" style="color:${m.tier?.color ?? "var(--ui-text)"}">${esc(m.tier?.name ?? "New challenger")}</b><p class="ui-note">${d.matches(c)} matches · ${esc(m.next ? `${m.next.left} more to ${m.next.name}` : "maximum mastery")}</p>${bar(m.progress, 100, { label: "Mastery progress", color: m.next?.color ?? m.tier?.color })}</div><div class="roster-fact"><span class="ui-kicker">Basic attack</span><b class="ui-h">${esc(f.basic.name)}</b><p class="ui-note">${esc(f.basic.description)} ${rangeName(c)} · ${f.basic.damage} damage.</p></div></div><p class="ui-note roster-universal">Every fighter shares one <b>dash</b> (${esc(d.keys.dash)}) and one <b>jump</b> (${esc(d.keys.jump)}). Jump clears ground attacks.</p>`;
+  return `<p class="roster-bio">${esc(f.description)}</p><div class="roster-facts"><div class="roster-fact"><span class="ui-kicker">Mastery</span><b class="ui-h" style="color:${m.tier?.color ?? "var(--ui-text)"}">${esc(m.tier?.name ?? "New challenger")}</b><p class="ui-note">${d.matches(c)} matches · ${esc(m.next ? `${m.next.left} more to ${m.next.name}` : "maximum mastery")}</p>${bar(m.progress, 100, { label: "Mastery progress", color: m.next?.color ?? m.tier?.color })}</div><div class="roster-fact"><span class="ui-kicker">Basic attack</span><b class="ui-h">${esc(f.basic.name)}</b><p class="ui-note">${esc(f.basic.description)} ${rangeName(c)} · ${f.basic.damage} damage.</p></div>${f.passive ? `<div class="roster-fact roster-passive"><span class="ui-kicker">Passive</span><b class="ui-h">${esc(PASSIVES[f.passive].name)}</b><p class="ui-note">${esc(PASSIVES[f.passive].text)}</p></div>` : ""}</div><p class="ui-note roster-universal">Every fighter shares one <b>dash</b> (${esc(d.keys.dash)}) and one <b>jump</b> (${esc(d.keys.jump)}). Jump clears ground attacks.</p>`;
 }
 function skinsTab(view: RosterView, d: RosterData) {
   const c = view.focus;

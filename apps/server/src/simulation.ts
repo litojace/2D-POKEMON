@@ -1355,12 +1355,14 @@ export class Arena {
       this.zones.length < RULES.maxZones
     ) {
       const aim = p.lastInput;
-      // On open ground at the aim (or just short of a wall in the way).
-      const spot = blinkLanding(
-        p,
-        angle,
-        Math.min(a.range, Math.hypot(aim.aimX - p.x, aim.aimY - p.y)),
-      );
+      // At the aim, over any cover in between (like every zone); an aim
+      // inside a wall lands just short of it instead.
+      const distance = Math.min(a.range, Math.hypot(aim.aimX - p.x, aim.aimY - p.y));
+      const at = {
+        x: p.x + Math.cos(angle) * distance,
+        y: p.y + Math.sin(angle) * distance,
+      };
+      const spot = blocked(at.x, at.y, 6) ? blinkLanding(p, angle, distance) : at;
       if (a.kind === "seedling") {
         // Past the limit, the oldest seedling withers.
         const mine = this.zones
