@@ -90,6 +90,7 @@ const TRAIL_SHAPE: Record<Trail, FxShape> = {
   star: "star",
   ember: "dot",
   void: "puff",
+  jet: "spark",
 };
 /** Extra gravity per shape (px/s²); negative floats up. */
 export const FX_GRAVITY: Partial<Record<FxShape, number>> = {
@@ -180,6 +181,18 @@ function detail(ctx: FxContext, art: SkinArt) {
       for (let i = 0; i < 6; i++) {
         const a = a0 + (i / 6) * Math.PI * 2;
         g.lineBetween(cx + Math.cos(a) * r, cy + Math.sin(a) * r, cx + Math.cos(a) * (r + 2.5 * sc), cy + Math.sin(a) * (r + 2.5 * sc));
+      }
+      break;
+    }
+    case "scan": {
+      // A neon scan line sweeps down the body every 1.8 s.
+      const k = (now / 1800) % 1;
+      if (k < 0.45) {
+        const t = k / 0.45;
+        const sy = ctx.headY - 6 * sc + t * (y - ctx.headY + 4 * sc);
+        const w = (18 - Math.abs(t - 0.5) * 8) * sc;
+        g.lineStyle(4 * sc, color, 0.18 * Math.sin(t * Math.PI)).lineBetween(x - w, sy, x + w, sy);
+        g.lineStyle(1.2 * sc, color, 0.85 * Math.sin(t * Math.PI)).lineBetween(x - w, sy, x + w, sy);
       }
       break;
     }

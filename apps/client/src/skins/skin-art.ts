@@ -1,6 +1,7 @@
 import type { CharacterId } from "@arena/shared";
 import type { CreaturePart } from "../creature-design";
 import type { Facing } from "../animation/controller";
+import { mechaSvg, type MechaPiece } from "./mecha-art";
 
 /**
  * How each Shop skin looks. Skins re-draw the champion's own art with a new
@@ -35,7 +36,8 @@ export type PatternKind =
   | "drips"
   | "circuit"
   | "knit"
-  | "runes";
+  | "runes"
+  | "plating";
 export type Accessory =
   | "earmuffs"
   | "ribbon"
@@ -63,7 +65,8 @@ export type Accessory =
   | "hardhat"
   | "mask"
   | "starfish"
-  | "lure";
+  | "lure"
+  | MechaPiece;
 /** Particles left behind when dashing. */
 export type Trail =
   | "snow"
@@ -79,7 +82,8 @@ export type Trail =
   | "pixel"
   | "star"
   | "ember"
-  | "void";
+  | "void"
+  | "jet";
 /** The Void Knight Mythicals (one per champion; art in mythic-art.ts). */
 export type Mythic =
   | "storm-revenant"
@@ -108,7 +112,7 @@ export interface SkinArt {
   /** Epic and up: skill and hit-spark colour (shapes never change). */
   skill?: number;
   /** Epic and up: a small animated detail on the rig. */
-  detail?: "pulse" | "glint" | "flicker" | "shimmer" | "gears" | "frost";
+  detail?: "pulse" | "glint" | "flicker" | "shimmer" | "gears" | "frost" | "scan";
   mythic?: Mythic;
   /**
    * Mythicals: the champion's own pieces on these parts (goggles, crest,
@@ -143,6 +147,15 @@ export const SKIN_ART: Record<string, SkinArt> = {
     skill: 0xff4fd8,
     detail: "pulse",
   },
+  "voltkit-arc-unit": {
+    palette: { light: "#f4f8ff", mid: "#f2c640", dark: "#161c2a", glow: "#3ff0ff", accent: "#3ff0ff" },
+    pattern: { kind: "plating", color: "#3ff0ff", opacity: 0.8, parts: ["body", "tail", "armL", "armR", "legL", "legR", "wings"] },
+    accessories: ["mecha-helm", "mecha-core", "mecha-pack"],
+    replaces: ["flame", "scarf"],
+    trail: { kind: "jet", colors: [0x3ff0ff, 0xffffff] },
+    skill: 0x3ff0ff,
+    detail: "scan",
+  },
   "voltkit-stormcrown": {
     palette: { light: "#b9b2d8", mid: "#3d3756", dark: "#0d0a18", glow: "#b48cff", accent: "#b48cff" },
     pattern: { kind: "runes", color: "#b48cff", opacity: 0.85, parts: ["body", "tail", "armL", "armR", "legL", "legR", "wings"] },
@@ -176,6 +189,15 @@ export const SKIN_ART: Record<string, SkinArt> = {
     skill: 0xff9a2e,
     detail: "pulse",
   },
+  "cindrake-reactor": {
+    palette: { light: "#f4f8ff", mid: "#e8483a", dark: "#161c2a", glow: "#ffd23f", accent: "#ffd23f" },
+    pattern: { kind: "plating", color: "#ffd23f", opacity: 0.8, parts: ["body", "tail", "armL", "armR", "legL", "legR", "wings"] },
+    accessories: ["mecha-helm", "mecha-core", "mecha-pack"],
+    replaces: ["flame", "scarf"],
+    trail: { kind: "jet", colors: [0xffd23f, 0xffffff] },
+    skill: 0xffd23f,
+    detail: "scan",
+  },
   "cindrake-sunforged": {
     palette: { light: "#8a6f6a", mid: "#2e2226", dark: "#0c0608", glow: "#ff5a2e", accent: "#ff5a2e" },
     pattern: { kind: "runes", color: "#ff5a2e", opacity: 0.85, parts: ["body", "tail", "armL", "armR", "legL", "legR", "wings"] },
@@ -207,6 +229,15 @@ export const SKIN_ART: Record<string, SkinArt> = {
     skill: 0xbff3ff,
     detail: "frost",
   },
+  "tidefin-hydro-frame": {
+    palette: { light: "#f4f8ff", mid: "#2fb3c8", dark: "#161c2a", glow: "#ff4fd8", accent: "#ff4fd8" },
+    pattern: { kind: "plating", color: "#ff4fd8", opacity: 0.8, parts: ["body", "tail", "armL", "armR", "legL", "legR", "wings"] },
+    accessories: ["mecha-helm", "mecha-core", "mecha-pack"],
+    replaces: ["flame", "scarf"],
+    trail: { kind: "jet", colors: [0xff4fd8, 0xffffff] },
+    skill: 0xff4fd8,
+    detail: "scan",
+  },
   "tidefin-moontide": {
     palette: { light: "#8fb8b8", mid: "#1f3a40", dark: "#04100f", glow: "#2ef2d0", accent: "#2ef2d0" },
     pattern: { kind: "runes", color: "#2ef2d0", opacity: 0.85, parts: ["body", "tail", "armL", "armR", "legL", "legR", "wings"] },
@@ -236,6 +267,15 @@ export const SKIN_ART: Record<string, SkinArt> = {
     trail: { kind: "star", colors: [0xffd65b, 0xff4f6a, 0x6a8aff, 0x4fd68a] },
     skill: 0x8fb0ff,
     detail: "glint",
+  },
+  "auralynx-prism-mech": {
+    palette: { light: "#f4f8ff", mid: "#7f8cff", dark: "#161c2a", glow: "#4ff7ff", accent: "#4ff7ff" },
+    pattern: { kind: "plating", color: "#4ff7ff", opacity: 0.8, parts: ["body", "tail", "armL", "armR", "legL", "legR", "wings"] },
+    accessories: ["mecha-helm", "mecha-core", "mecha-pack"],
+    replaces: ["flame", "scarf"],
+    trail: { kind: "jet", colors: [0x4ff7ff, 0xffffff] },
+    skill: 0x4ff7ff,
+    detail: "scan",
   },
   "auralynx-celestial-sage": {
     palette: { light: "#a9b6d8", mid: "#2b3352", dark: "#070b1a", glow: "#6fb4ff", accent: "#6fb4ff" },
@@ -267,6 +307,15 @@ export const SKIN_ART: Record<string, SkinArt> = {
     skill: 0x7fffd0,
     detail: "shimmer",
   },
+  "lumoth-photon": {
+    palette: { light: "#f4f8ff", mid: "#7fe0b0", dark: "#161c2a", glow: "#fff04a", accent: "#fff04a" },
+    pattern: { kind: "plating", color: "#fff04a", opacity: 0.8, parts: ["body", "tail", "armL", "armR", "legL", "legR", "wings"] },
+    accessories: ["mecha-helm", "mecha-core", "mecha-pack"],
+    replaces: ["flame", "scarf"],
+    trail: { kind: "jet", colors: [0xfff04a, 0xffffff] },
+    skill: 0xfff04a,
+    detail: "scan",
+  },
   "lumoth-starweaver": {
     palette: { light: "#c9c2a8", mid: "#34302a", dark: "#0e0c08", glow: "#ffd95a", accent: "#ffd95a" },
     pattern: { kind: "runes", color: "#ffd95a", opacity: 0.85, parts: ["body", "tail", "armL", "armR", "legL", "legR", "wings"] },
@@ -296,6 +345,15 @@ export const SKIN_ART: Record<string, SkinArt> = {
     trail: { kind: "ember", colors: [0xffd65b, 0xc8963a] },
     skill: 0xffd65b,
     detail: "gears",
+  },
+  "mystowl-psi-core": {
+    palette: { light: "#f4f8ff", mid: "#ff7ac8", dark: "#161c2a", glow: "#5ae8ff", accent: "#ffe0f2" },
+    pattern: { kind: "plating", color: "#5ae8ff", opacity: 0.8, parts: ["body", "tail", "armL", "armR", "legL", "legR", "wings"] },
+    accessories: ["mecha-helm", "mecha-core", "mecha-pack"],
+    replaces: ["flame", "scarf"],
+    trail: { kind: "jet", colors: [0x5ae8ff, 0xffffff] },
+    skill: 0x5ae8ff,
+    detail: "scan",
   },
   "mystowl-oracle": {
     palette: { light: "#c6a8c8", mid: "#3a2440", dark: "#10061a", glow: "#ff4fd2", accent: "#e2c4de" },
@@ -332,6 +390,15 @@ export const SKIN_ART: Record<string, SkinArt> = {
     skill: 0xc86bff,
     detail: "pulse",
   },
+  "terradon-tank-mk2": {
+    palette: { light: "#f4f8ff", mid: "#8a9a5a", dark: "#161c2a", glow: "#ff9a2e", accent: "#ff9a2e" },
+    pattern: { kind: "plating", color: "#ff9a2e", opacity: 0.8, parts: ["body", "tail", "armL", "armR", "legL", "legR", "wings"] },
+    accessories: ["mecha-helm", "mecha-core", "mecha-pack"],
+    replaces: ["flame", "scarf"],
+    trail: { kind: "jet", colors: [0xff9a2e, 0xffffff] },
+    skill: 0xff9a2e,
+    detail: "scan",
+  },
   "terradon-world-shell": {
     palette: { light: "#9aa890", mid: "#2c3328", dark: "#0a0e08", glow: "#8dff5a", accent: "#8dff5a" },
     pattern: { kind: "runes", color: "#8dff5a", opacity: 0.85, parts: ["body", "tail", "armL", "armR", "legL", "legR", "wings"] },
@@ -361,6 +428,15 @@ export const SKIN_ART: Record<string, SkinArt> = {
     trail: { kind: "ember", colors: [0xffd65b, 0xfff3b0] },
     skill: 0xffd65b,
     detail: "flicker",
+  },
+  "duskveil-phantom-os": {
+    palette: { light: "#f4f8ff", mid: "#7a5ad8", dark: "#161c2a", glow: "#6aff8a", accent: "#0a0a14" },
+    pattern: { kind: "plating", color: "#6aff8a", opacity: 0.8, parts: ["body", "tail", "armL", "armR", "legL", "legR", "wings"] },
+    accessories: ["mecha-helm", "mecha-core", "mecha-pack"],
+    replaces: ["flame", "scarf"],
+    trail: { kind: "jet", colors: [0x6aff8a, 0xffffff] },
+    skill: 0x6aff8a,
+    detail: "scan",
   },
   "duskveil-eclipse": {
     palette: { light: "#5a4a52", mid: "#1e1418", dark: "#050203", glow: "#ff2d55", accent: "#0a0406" },
@@ -393,6 +469,15 @@ export const SKIN_ART: Record<string, SkinArt> = {
     skill: 0x4ff8ff,
     detail: "pulse",
   },
+  "coilemur-tesla-frame": {
+    palette: { light: "#f4f8ff", mid: "#9ab0c8", dark: "#161c2a", glow: "#ffe94a", accent: "#ffe94a" },
+    pattern: { kind: "plating", color: "#ffe94a", opacity: 0.8, parts: ["body", "tail", "armL", "armR", "legL", "legR", "wings"] },
+    accessories: ["mecha-helm", "mecha-core", "mecha-pack"],
+    replaces: ["flame", "scarf"],
+    trail: { kind: "jet", colors: [0xffe94a, 0xffffff] },
+    skill: 0xffe94a,
+    detail: "scan",
+  },
   "coilemur-cometcaller": {
     palette: { light: "#b8c8d0", mid: "#2e3a44", dark: "#081016", glow: "#4ff0ff", accent: "#4ff0ff" },
     pattern: { kind: "runes", color: "#4ff0ff", opacity: 0.85, parts: ["body", "tail", "armL", "armR", "legL", "legR", "wings"] },
@@ -424,6 +509,15 @@ export const SKIN_ART: Record<string, SkinArt> = {
     skill: 0xffb44d,
     detail: "flicker",
   },
+  "pyranda-afterburner": {
+    palette: { light: "#f4f8ff", mid: "#d8643a", dark: "#161c2a", glow: "#4ff0ff", accent: "#fff0dc" },
+    pattern: { kind: "plating", color: "#4ff0ff", opacity: 0.8, parts: ["body", "tail", "armL", "armR", "legL", "legR", "wings"] },
+    accessories: ["mecha-helm", "mecha-core", "mecha-pack"],
+    replaces: ["flame", "scarf"],
+    trail: { kind: "jet", colors: [0x4ff0ff, 0xffffff] },
+    skill: 0x4ff0ff,
+    detail: "scan",
+  },
   "pyranda-harvest-moon": {
     palette: { light: "#b09a8a", mid: "#3a2a24", dark: "#100806", glow: "#ff8a1e", accent: "#cfc4bc" },
     pattern: { kind: "runes", color: "#ff8a1e", opacity: 0.85, parts: ["body", "tail", "armL", "armR", "legL", "legR", "wings"] },
@@ -453,6 +547,15 @@ export const SKIN_ART: Record<string, SkinArt> = {
     trail: { kind: "bubble", colors: [0xff5fd8, 0x4ffff0] },
     skill: 0xff5fd8,
     detail: "shimmer",
+  },
+  "glacelle-cryo-unit": {
+    palette: { light: "#f4f8ff", mid: "#bfe8ff", dark: "#161c2a", glow: "#ff6ad5", accent: "#ff6ad5" },
+    pattern: { kind: "plating", color: "#ff6ad5", opacity: 0.8, parts: ["body", "tail", "armL", "armR", "legL", "legR", "wings"] },
+    accessories: ["mecha-helm", "mecha-core", "mecha-pack"],
+    replaces: ["flame", "scarf"],
+    trail: { kind: "jet", colors: [0xff6ad5, 0xffffff] },
+    skill: 0xff6ad5,
+    detail: "scan",
   },
   "glacelle-polaris": {
     palette: { light: "#d0e6f0", mid: "#33465a", dark: "#08121e", glow: "#7fe8ff", accent: "#7fe8ff" },
@@ -486,6 +589,15 @@ export const SKIN_ART: Record<string, SkinArt> = {
     skill: 0xff4f5a,
     detail: "glint",
   },
+  "halcyra-sniper-drone": {
+    palette: { light: "#f4f8ff", mid: "#3f6ad8", dark: "#161c2a", glow: "#ffa63a", accent: "#ffa63a" },
+    pattern: { kind: "plating", color: "#ffa63a", opacity: 0.8, parts: ["body", "tail", "armL", "armR", "legL", "legR", "wings"] },
+    accessories: ["mecha-helm", "mecha-core", "mecha-pack"],
+    replaces: ["scarf"],
+    trail: { kind: "jet", colors: [0xffa63a, 0xffffff] },
+    skill: 0xffa63a,
+    detail: "scan",
+  },
   "halcyra-starfletch": {
     palette: { light: "#b0b0d8", mid: "#2a2a4a", dark: "#08081a", glow: "#8a7cff", accent: "#8a7cff" },
     pattern: { kind: "runes", color: "#8a7cff", opacity: 0.85, parts: ["body", "tail", "armL", "armR", "legL", "legR", "wings"] },
@@ -517,6 +629,15 @@ export const SKIN_ART: Record<string, SkinArt> = {
     trail: { kind: "petal", colors: [0xffd84a, 0xffb732] },
     skill: 0xffd84a,
     detail: "glint",
+  },
+  "sunbara-solar-mech": {
+    palette: { light: "#f4f8ff", mid: "#d8a46a", dark: "#161c2a", glow: "#3ff5d0", accent: "#3ff5d0" },
+    pattern: { kind: "plating", color: "#3ff5d0", opacity: 0.8, parts: ["body", "tail", "armL", "armR", "legL", "legR", "wings"] },
+    accessories: ["mecha-helm", "mecha-core", "mecha-pack"],
+    replaces: ["flame", "scarf"],
+    trail: { kind: "jet", colors: [0x3ff5d0, 0xffffff] },
+    skill: 0x3ff5d0,
+    detail: "scan",
   },
   "sunbara-daybreak": {
     palette: { light: "#c8b49a", mid: "#3a3026", dark: "#0e0a06", glow: "#ffb02e", accent: "#ffb02e" },
@@ -550,6 +671,15 @@ export const SKIN_ART: Record<string, SkinArt> = {
     skill: 0x6ff0ff,
     detail: "glint",
   },
+  "astrabun-warp-unit": {
+    palette: { light: "#f4f8ff", mid: "#c8a0ff", dark: "#161c2a", glow: "#ff5aa8", accent: "#ff5aa8" },
+    pattern: { kind: "plating", color: "#ff5aa8", opacity: 0.8, parts: ["body", "tail", "armL", "armR", "legL", "legR", "wings"] },
+    accessories: ["mecha-helm", "mecha-core", "mecha-pack"],
+    replaces: ["flame", "scarf"],
+    trail: { kind: "jet", colors: [0xff5aa8, 0xffffff] },
+    skill: 0xff5aa8,
+    detail: "scan",
+  },
   "astrabun-full-moon": {
     palette: { light: "#d0c0e0", mid: "#3a3048", dark: "#0e0a16", glow: "#c86bff", accent: "#c86bff" },
     pattern: { kind: "runes", color: "#c86bff", opacity: 0.85, parts: ["body", "tail", "armL", "armR", "legL", "legR", "wings"] },
@@ -582,6 +712,15 @@ export const SKIN_ART: Record<string, SkinArt> = {
     skill: 0xffc93d,
     detail: "glint",
   },
+  "wombolder-bulldozer": {
+    palette: { light: "#f4f8ff", mid: "#9a7050", dark: "#161c2a", glow: "#b8ff3a", accent: "#6a6458" },
+    pattern: { kind: "plating", color: "#b8ff3a", opacity: 0.8, parts: ["body", "tail", "armL", "armR", "legL", "legR", "wings"] },
+    accessories: ["mecha-helm", "mecha-core", "mecha-pack"],
+    replaces: ["flame", "scarf"],
+    trail: { kind: "jet", colors: [0xb8ff3a, 0xffffff] },
+    skill: 0xb8ff3a,
+    detail: "scan",
+  },
   "wombolder-saturnine": {
     palette: { light: "#a8a898", mid: "#33332c", dark: "#0c0c08", glow: "#c8ff3a", accent: "#4a5530" },
     pattern: { kind: "runes", color: "#c8ff3a", opacity: 0.85, parts: ["body", "tail", "armL", "armR", "legL", "legR", "wings"] },
@@ -612,6 +751,15 @@ export const SKIN_ART: Record<string, SkinArt> = {
     trail: { kind: "bubble", colors: [0x5ff8e0, 0xc8fff4] },
     skill: 0x5ff8e0,
     detail: "flicker",
+  },
+  "shadopus-stealth-mk": {
+    palette: { light: "#f4f8ff", mid: "#5a48b8", dark: "#161c2a", glow: "#ff3a5a", accent: "#07030c" },
+    pattern: { kind: "plating", color: "#ff3a5a", opacity: 0.8, parts: ["body", "tail", "armL", "armR", "legL", "legR", "wings"] },
+    accessories: ["mecha-helm", "mecha-core", "mecha-pack"],
+    replaces: ["flame", "scarf"],
+    trail: { kind: "jet", colors: [0xff3a5a, 0xffffff] },
+    skill: 0xff3a5a,
+    detail: "scan",
   },
   "shadopus-nebula": {
     palette: { light: "#a888b8", mid: "#2a1830", dark: "#08040c", glow: "#ff3b9a", accent: "#07030c" },
@@ -777,6 +925,22 @@ export function patternSvg(kind: PatternKind, color: string, color2 = color, see
         out.push(`<path d="M${n(x - s)} ${n(y)}H${n(x + s)}M${n(x)} ${n(y - s)}V${n(y + s)}M${n(x - s * 0.7)} ${n(y - s * 0.7)}L${n(x + s * 0.7)} ${n(y + s * 0.7)}M${n(x + s * 0.7)} ${n(y - s * 0.7)}L${n(x - s * 0.7)} ${n(y + s * 0.7)}" stroke="${color}" stroke-width=".9"/>`);
       }
       break;
+    case "plating":
+      // Armour panels: seams in a staggered brick of plates, rivets at the
+      // corners, and a few neon status lights.
+      for (let y = -8, row = 0; y < 200; y += 20, row++) {
+        out.push(`<path d="M0 ${y}H200" stroke="#0a0e16" stroke-width="1.2" opacity=".45" fill="none"/>`);
+        for (let x = row % 2 ? 14 : 0; x < 210; x += 28) {
+          out.push(`<path d="M${x} ${y}V${y + 20}" stroke="#0a0e16" stroke-width="1.2" opacity=".45" fill="none"/>`);
+          out.push(`<circle cx="${x + 3}" cy="${y + 3}" r=".9" fill="#ffffff" opacity=".7"/>`);
+        }
+      }
+      for (let i = 0; i < 12; i++) {
+        const x = 10 + r() * 180,
+          y = -4 + r() * 186;
+        out.push(r() < 0.5 ? `<rect x="${n(x)}" y="${n(y)}" width="7" height="2" rx="1" fill="${color}"/>` : `<circle cx="${n(x)}" cy="${n(y)}" r="1.6" fill="${color}"/>`);
+      }
+      break;
     case "runes":
       // Glowing runes etched into black steel: a stave with angled branches,
       // over faint plate seams.
@@ -835,6 +999,7 @@ export function patternSvg(kind: PatternKind, color: string, color2 = color, see
 
 /** Accessory art for a facing, as [part layer, svg] in art units. */
 export function accessorySvg(a: Accessory, id: CharacterId, dir: Facing, p: Palette): [CreaturePart, string][] {
+  if (a.startsWith("mecha-")) return mechaSvg(a as MechaPiece, id, dir, p);
   const h = HEAD[id][dir];
   const cx = h.cx,
     top = h.top,

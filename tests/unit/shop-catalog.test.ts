@@ -12,11 +12,12 @@ import {
   awakeningStage,
 } from "../../packages/shared/src/shop";
 
-/** 010 seeds the first catalog; 053 and 054 add the eight newest champions' skins. */
+/** 010 seeds the first catalog; 053 and 054 add the eight newest champions' skins; 068 the Cyber Mecha Epics. */
 const migration =
   readFileSync("supabase/migrations/010_shop.sql", "utf8") +
   readFileSync("supabase/migrations/053_new_champion_skins.sql", "utf8") +
-  readFileSync("supabase/migrations/054_new_champion_mythicals.sql", "utf8");
+  readFileSync("supabase/migrations/054_new_champion_mythicals.sql", "utf8") +
+  readFileSync("supabase/migrations/068_cyber_mecha_epics.sql", "utf8");
 /** Missions are re-seeded (with the solo flag) by 014. */
 const missionMigration = readFileSync(
   "supabase/migrations/014_missions.sql",
@@ -149,9 +150,17 @@ describe("shop catalog", () => {
           count("mythical"),
         ],
         id,
-      ).toEqual([7, 3, 2, 1, 1]);
+      ).toEqual([8, 3, 2, 2, 1]);
     }
-    expect(CHAMPION_SKINS).toHaveLength(7 * 16);
+    expect(CHAMPION_SKINS).toHaveLength(8 * 16);
+    // Each champion has one Cyber Mecha Epic.
+    for (const id of Object.keys(CHARACTERS))
+      expect(
+        CHAMPION_SKINS.filter(
+          (s) => s.champion === id && s.collection === "cyber",
+        ),
+        id,
+      ).toHaveLength(1);
     // Every Mythical belongs to the Void Knight collection.
     for (const s of CHAMPION_SKINS.filter((s) => s.rarity === "mythical"))
       expect(s.collection, s.id).toBe("void");

@@ -1038,17 +1038,54 @@ skins) to earn that collection's frame for free.
   skin applies to your other champions.
 - The Shop and the Rewards tab both explain this in one line.
 
-### 10.6 Champion skin catalog (112 skins)
+### 10.6 Champion skin catalog (128 skins)
 
-Every champion gets **3 Common, 2 Rare, 1 Epic and 1 Mythical**. Skins also
+Every champion gets **3 Common, 2 Rare, 2 Epic (one of them Cyber Mecha) and 1 Mythical**. Skins also
 belong to **collections** shared across champions:
 
 - **Winter** (frost, snow and scarves)
 - **Festival** (lanterns, paper and ribbons)
 - **Garden** (petals, moss and blossoms)
 - **Arcade** (neon and pixels)
+- **Cyber Mecha** (a second Epic for every champion; see "Cyber Mecha" below)
 - **Void Knight** (all sixteen Mythicals: black steel, glowing runes and
   swords; see "The Void Knights" below)
+
+#### Cyber Mecha (a second Epic for every champion)
+
+[Migration 068](../supabase/migrations/068_cyber_mecha_epics.sql) adds one
+Epic per champion: its own paint over chrome, with neon in a contrasting
+colour. Like a Mythical it swaps the champion's own head and neck pieces
+(Halcyra keeps its head piece, which holds its beak):
+
+- a chrome **headset** with the champion's sensor: a V-fin (Voltkit,
+  Auralynx, Pyranda, Glacelle, Astrabun), twin antennae (Lumoth, Mystowl,
+  Duskveil, Coilemur, Shadopus), a crest fin (Cindrake, Tidefin, Wombolder)
+  or a radar dish (Terradon, Halcyra, Sunbara);
+- a segmented **collar** with a glowing core, and a **jetpack** with two
+  thrusters;
+- armour-plate panels with neon status lights; skills and hit sparks in the
+  neon colour; a neon scan line sweeps down the body (its animated
+  detail); dashing throws neon sparks.
+
+| Champion | Skin | Paint / neon |
+|---|---|---|
+| Voltkit | **Arc Unit** | gold / cyan |
+| Cindrake | **Reactor** | red / yellow |
+| Tidefin | **Hydro Frame** | teal / magenta |
+| Auralynx | **Prism Mech** | periwinkle / cyan |
+| Lumoth | **Photon** | mint / yellow |
+| Mystowl | **Psi Core** | pink / cyan |
+| Terradon | **Tank Mk II** | olive / orange |
+| Duskveil | **Phantom OS** | violet / green |
+| Coilemur | **Tesla Frame** | steel / yellow |
+| Pyranda | **Afterburner** | rust / cyan |
+| Glacelle | **Cryo Unit** | ice white / pink |
+| Halcyra | **Sniper Drone** | cobalt / orange |
+| Sunbara | **Solar Mech** | tan / teal |
+| Astrabun | **Warp Unit** | lilac / pink |
+| Wombolder | **Bulldozer** | brown / lime |
+| Shadopus | **Stealth Mk** | indigo / red |
 
 #### The Void Knights (every Mythical)
 
