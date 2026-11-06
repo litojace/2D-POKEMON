@@ -1146,6 +1146,130 @@ measured the mode menu while the play drawer covered it (the menu stays
 open, out of sight, under the drawer). Not verified: a real phone, and
 Safari's engine.
 
+### Step 6: Ranks, Leaderboard and Friends (built 6 Nov 2026)
+
+Before and after: [Ranks](images/step6/ranks.webp),
+[Friends](images/step6/friends.webp); every size and state in
+[`images/step6/`](images/step6/).
+
+- **Two read-only endpoints** (decision 4), in `apps/server/src/social.ts`
+  with the routes in `accounts.ts`:
+  - `GET /api/leaderboard/friends`: you and your friends ranked among
+    yourselves by rating (ties share a place, as the global board's
+    `rank()` does; players still in placement come after without a place),
+    each with their rank and this month's player-vs-player record, and your
+    rating card exactly as the Everyone board sends it.
+  - `GET /api/friends/recent`: the players of your last 20 matches in the
+    last 30 days, newest first: the fighter they played last time, how
+    often you met, your record against them (or Teammate), whether you are
+    friends or a request waits either way, and whether they are online.
+    Suspended players are left out.
+  - Both read existing tables (`arena_ratings`, `arena_match_players`,
+    `arena_matches`, `arena_profiles`) with the service-role key the
+    server already uses for raids and coins, page past PostgREST's 1,000
+    rows, and write nothing. No migration, no new SQL function, no economy
+    change. The friend list comes from `arena_friends` as before (your
+    login), and your own rating from `arena_my_rating`, which the profile
+    and the Everyone board already call (it applies the monthly reset
+    first, as they do). Rank names follow `arena_rank_name` (Legendary
+    needs the global #1), checked against the database in
+    `tests/integration/ratings.test.ts`.
+- **Ranks** (`screens/ranks-view.ts`, `ranks.ts`, `ranks.css`) is a panel
+  opened from the rail, the header menu and the profile's Season
+  standings. Left: your rank as a shield in its colour, the rank's name,
+  your rating, a bar to the next rank ("40 more for Candidate Master ·
+  best 1,140"; placement counts matches; past 1,550 it asks for #1), the
+  whole ladder with yours lit, and How ranks work. Right: the board with
+  medals for the top three, a monogram in the rank's colour, rating and
+  this month's W–L, and **your row pinned under it** with your place,
+  whatever it is (in the top 20 too, placing with "—"). Everyone / Friends
+  switches the board; Friends loads the first time it is picked. The
+  kicker counts down to the season's end (midnight UTC on the first, as
+  the database starts seasons) on the server's clock and drops the count
+  once a season has ended.
+- **Friends** (`screens/friends-view.ts`, `friends.ts`, `friends.css`) is a
+  sheet beside the live Lobby with Friends · Requests · Recent. Requests
+  for you sit on top of the Friends tab with Decline / Accept (the tab
+  shows their count). Online friends come first (pinned ones first among
+  them) with a status dot and **one action**: Join an open room, Watch a
+  match, or Invite to your party (the Lobby's party invite: you lead it, it
+  has room, they are free; "In party" once they are in it). Offline
+  friends say "Online 2 h ago" / "Online yesterday" on the server's clock,
+  with the exact time on a `<time>`. A row's "…" opens Pin / Remove under
+  it, and Remove asks once more. Your code sits at the bottom with Copy
+  and Share (the device's share sheet where there is one, else a copy).
+  The head's + opens "add by code"; the head counts who is online and your
+  party. Every answer is the server's (or its reason); the list refreshes
+  every 15 s and when the server says it changed.
+- **In a private room** the room's "Friends" seat button opens the same
+  sheet where the picker stands, beside the seats, and Invite sends the
+  room's invite; closing it brings the picker back (`main.ts`:
+  `friendsHost`, `onFriendsClosed`, and `renderRoom` waits while it is
+  open).
+- **Layout and alignment (owner's priority for this step)**, measured in
+  `tests/visual/ranks-friends.spec.ts` at 1720×1392, 1440×900, 1280×720,
+  844×390 and 852×393 with the island: labels centred in their boxes on
+  the pixels (`inkOffset`, 1 px) for Everyone / Friends, the medals, a
+  place number, the monograms, the You tag, How ranks work, the tabs,
+  Decline, Accept, Invite, Join, Watch, Cancel, Copy, Share, Add friend,
+  Send, the + button and the Requests badge (its digit against the dot);
+  the rank's name, rating and shield centred in their card (2 px); rows
+  with one left edge and one height; the pinned row's columns on the
+  list's; ratings and W–L on one right edge; every row action one size;
+  the status dot a round 12 px (10 px) dot at the portrait's lower right;
+  nothing spilling out of its box (a rating of 9,999, place 12,345, a
+  W–L of 9999–10000, a 20-letter name of Ws ending in an ellipsis);
+  empty states centred; `layoutProblems` and `closeSpot` everywhere.
+  What the measuring found and was fixed: the Friends count pill was too
+  faint to read as part of its tab (the label read 3.5 px left; it is a
+  visible pill now, gold on the open tab); the eye icon needs none of the
+  shared icon nudge (Watch read 1.5 px left); Add with its icon read
+  1.5 px left (it is "Add friend" now); the Requests digit sat 1.5 px low
+  on phones; row actions had four widths (Join, Invite, Watch, the
+  Requested pill), now one, with the icons dropped on phones as in the
+  rooms; a W–L of 9,999–10,000 ran into the rating on phones; the pinned
+  row said "You" instead of your name; on a tall window the rank card
+  left its lower half empty (it grows there now and its content sits in
+  its middle).
+- **Deleted:** `friends-hub.ts` (490 lines), `friends-view.ts` (285),
+  `friends.css` (745), the leaderboard and rank-help markup in
+  `progress-view.ts` (49; `ratingMarkup` and `progressMarkup` stay for the
+  profile, step 7), the Friends dialog's hooks in `dialog.ts` and
+  `home-navigation.ts`, the unused `createFriendRoom` hook, and 295 lines
+  of `style.css` (54 rules, 9 selectors trimmed): the leaderboard table,
+  ranks help and ladder, the old friend list, code row and dialog layout,
+  and `.room-code`, which nothing emits any more. As before, a script
+  removed only selectors built on classes the sources emitted before this
+  step and no longer emit (live alternatives inside `:is()` kept); the
+  profile's `.rating-card` rules stay. `.friend-avatar` became `.fr-avatar`
+  in `portrait-frames.css` and `cosmetic-fx-preview.ts`, so frames stay
+  still and borderless on the new rows.
+- **Choices made while building:** monograms rather than fighter avatars
+  on the boards (the Everyone board's rows carry no player id, so the
+  server can't say what they play; one look for both boards). The search
+  box and the Online / Pinned filters of the old Friends dialog are gone
+  (the mockup has neither; online friends come first and pins go to the
+  top), as are "Make it a party" (PLAY and the party seats do that) and
+  the friends' titles under their names. On phones the Friends head shows
+  the title alone, as in the mockup, and the code row says "Code A1B2
+  C3D4" on one line; the code is never hidden. The harness's sample board
+  is the top 20 the server sends.
+- **Tests:** `tests/unit/social.test.ts` (rank names, seasons, the friends
+  board, recent players), `tests/integration/social-routes.test.ts` (login
+  required, the two answers, a plain 503 without storage) and a check in
+  `tests/integration/ratings.test.ts` that feeds the database's own rows
+  through both builders; `tests/unit/ranks.test.ts` and
+  `tests/unit/friends.test.ts` (the old `apps/client/tests/friends*.test.ts`
+  checks moved here, where the root test run includes them);
+  `tests/visual/ranks-friends.spec.ts` (above, plus big numbers,
+  placement, your row in the top 20, no friends, fifty friends, answering,
+  removing, pinning, adding by code and its refusals, inviting and a
+  refusal, keyboard, Escape, reduced motion, Low graphics).
+  `pvp-party-flow`, `rooms`, `portrait-frames`, `portrait-frames.test.ts`
+  and `match-summary.test.ts` moved to the new screens; what they check
+  stays. `panel-scroll.spec.ts` sweeps Ranks (Everyone, Friends) and each
+  Friends tab, filled past their height, as hub panels.
+
 ## Decisions (owner, 3 Nov 2026)
 
 | #   | Question                                        | Decision                                                                                                                                                         |
