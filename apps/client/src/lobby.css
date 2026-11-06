@@ -232,12 +232,15 @@
   aspect-ratio: 1;
   transform: translate(-50%, -50%);
   border-radius: 50%;
+  /* Brighter than in the preview windows, and added as light: the Lobby
+     stands on the bright Plaza map, where their dark-stage glow vanished. */
   background: radial-gradient(
     closest-side,
-    color-mix(in srgb, var(--element, #ffd65b) 50%, transparent),
-    color-mix(in srgb, var(--element, #ffd65b) 17%, transparent) 50%,
+    color-mix(in srgb, var(--element, #ffd65b) 85%, transparent),
+    color-mix(in srgb, var(--element, #ffd65b) 38%, transparent) 50%,
     transparent
   );
+  mix-blend-mode: screen;
   pointer-events: none;
 }
 .lobby-fighter-art {

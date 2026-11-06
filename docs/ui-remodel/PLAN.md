@@ -1460,6 +1460,34 @@ Owner's request: players can change their display name every 14 days.
   form at the five sizes (centred, one height with the row) plus the whole
   change, a refusal, the locked state and its countdown.
 
+### One stage light for the preview windows: option C (6 Nov 2026)
+
+The preview windows had three different spotlights: the Shop rig drew a gold
+beam from the top right, a CSS stand-in beam showed under the still fighter
+(it flashed, then jumped to the rig's on phones), and the Fighters detail had
+its own CSS cone and pool. The owner compared five designs on real fighter
+art ([options page](spotlight/options.html)) and chose **C, element
+backlight**: no beam, a glow in the fighter's element colour behind them and
+a lit floor disc with a ring under their feet.
+
+- `stage-light.ts` draws it as an SVG in the fighter's own frame (the still
+  fighter's viewBox, which the rig keeps in step with its camera), so the
+  disc sits under the feet at any stage size, under the still fighter and the
+  live rig alike: nothing changes when the rig finishes loading. Gradients
+  only, so Low graphics draws the same light.
+- Shop and Wardrobe: the light sits in the stage behind the fighter; the
+  fitting room frames it (and the still fighter) on the stage's real size
+  after every redraw and resize, as the rig frames its camera. The rig no
+  longer draws a beam or pool, only the fighter's contact shadow.
+- Fighters detail: the light replaces the CSS cone and pool, in the same
+  480 × 500 frame as the fighter, on phones too.
+- Lobby: the podium already was the lit disc and ring; your fighter gets the
+  glow behind them, brighter and blended as light so it shows on the Plaza
+  map.
+- Checked in screenshots at 1440×900, 1280×720 and 844×390 (Shop, Wardrobe,
+  Low graphics, Fighters detail, Lobby); `fitting-room.spec.ts` checks the
+  light is there from the first frame and in the still fighter's frame.
+
 ## Decisions (owner, 3 Nov 2026)
 
 | #   | Question                                        | Decision                                                                                                                                                         |
