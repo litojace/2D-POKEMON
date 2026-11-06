@@ -1536,3 +1536,21 @@ body.hub-bistro :is(#account-coins, #account-leaves) {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* A sheet sits between the chips and the counter bar (desktop), and on
+   phones, where there is no room, the bar, the chips and the hint step
+   aside while it is open. */
+.bistro-layer .bs-sheet {
+  top: calc(var(--hub-card-h, 52px) + 14px + 44px + 10px);
+  bottom: calc(var(--bs-y-b) + 84px);
+}
+.bistro-layer.sheet-open .bs-hint {
+  display: none;
+}
+.bistro-layer.phone .bs-sheet {
+  top: calc(var(--hub-card-h, 42px) + 12px);
+  bottom: var(--bs-y-b);
+}
+.bistro-layer.phone.sheet-open :is(.bs-bar, .bs-chips) {
+  display: none;
+}

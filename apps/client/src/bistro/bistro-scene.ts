@@ -1740,6 +1740,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
   const closeSheet = () => {
     sheet.hidden = true;
     sheetKind = null;
+    layer.classList.remove("sheet-open");
     layer
       .querySelectorAll(".bs-rail [data-sheet]")
       .forEach((b) => b.setAttribute("aria-expanded", "false"));
@@ -1749,6 +1750,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
     sheetKind = kind;
     sheetArg = arg;
     sheet.hidden = false;
+    layer.classList.add("sheet-open");
     renderSheet();
     layer
       .querySelectorAll<HTMLElement>(".bs-rail [data-sheet]")

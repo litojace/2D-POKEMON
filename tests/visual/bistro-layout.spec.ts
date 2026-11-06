@@ -86,7 +86,9 @@ async function problems(page: Page, where: string, inset: Insets | null) {
               "menu",
               "profile",
               "badge",
-            ].includes(n)
+              "bar",
+              "chips",
+            ].some((k) => n.startsWith(k))
           )
             if (
               sheet.left < x.right - 0.5 &&
