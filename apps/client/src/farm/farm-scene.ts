@@ -974,10 +974,16 @@ export function openFarm(options) {
   }
 
   /* ---------- scenery (verbatim from the prototype) ---------- */
+  /* The scenery's random numbers come from sequences of its own. GFX's shared
+     one is reseeded each time a sprite is painted, and sprites are cached, so
+     scenery drawn from it moved between the first visit and the next. */
+  const seeded = (s) => {
+    let x = Math.max(1, Math.floor(s) % 2147483646);
+    return () => (x = (x * 16807) % 2147483647) / 2147483647;
+  };
   const MARGIN = [];
   (() => {
-    GFX.srand(91);
-    const r = GFX.rnd,
+    const r = seeded(91),
       kinds = [
         "round",
         "pine",
@@ -1179,8 +1185,7 @@ export function openFarm(options) {
   function paintBg() {
     const g = bg.getContext("2d");
     g.translate(-WX0, -WY0);
-    GFX.srand(77);
-    const rnd = GFX.rnd;
+    const rnd = seeded(77);
     g.fillStyle = "#7cc45e";
     g.fillRect(WX0, WY0, BW, BH);
     for (let i = 0; i < 44; i++) {
@@ -1644,6 +1649,23 @@ export function openFarm(options) {
     if (!F.decorPick || V) return;
     const rm = F.decorPick === "__remove",
       rgb = decorRgb();
+    // Night, moonlight and rain darken the ground rings with the farm: light
+    // them again on top, as strong as the dark, so they read at any hour.
+    const w = F.weather.cur,
+      dark = Math.max(
+        nightLevel(TOD),
+        w === "moon" ? 0.85 : 0,
+        w === "storm" ? 0.5 : w === "rain" ? 0.3 : 0,
+      );
+    if (dark > 0.05)
+      DECO_SLOTS.forEach(([x, y], k) => {
+        if (!decorTarget(k)) return;
+        ctx.save();
+        ctx.globalCompositeOperation = "lighter";
+        ctx.globalAlpha = Math.min(1, dark * 1.2);
+        drawDecorSpot(x, y, k, time);
+        ctx.restore();
+      });
     DECO_SLOTS.forEach(([x, y], k) => {
       if (!decorTarget(k)) return;
       const bob = reduced ? 0 : Math.sin(time * 3 + k) * 4 * z,
@@ -1852,10 +1874,10 @@ export function openFarm(options) {
       g.beginPath();
       g.roundRect(0, 0, PW, PH, 12);
       g.fill();
-      GFX.srand(i * 13 + 5);
+      const pr = seeded(i * 13 + 5);
       for (let k = 0; k < 9; k++) {
-        const x = 8 + GFX.rnd() * (PW - 16),
-          y = 10 + GFX.rnd() * (PH - 14);
+        const x = 8 + pr() * (PW - 16),
+          y = 10 + pr() * (PH - 14);
         g.strokeStyle = k % 2 ? "#4f9a3c" : "#a6e07e";
         g.lineWidth = 2;
         g.beginPath();
@@ -6802,6 +6824,12 @@ export function openFarm(options) {
   if (matchMedia("(pointer: coarse)").matches)
     $("fm-hint").textContent =
       "Drag to move · pinch to zoom · hold a plot to plant many";
+  // The farm as last known (this session): drawn at once, then refreshed.
+  if (options.initial) {
+    try {
+      applyState(options.initial);
+    } catch {}
+  }
   enter();
   void refresh();
   // The Friends button shows a dot when a friend's farm has bugs or ripe crops.
@@ -6849,6 +6877,8 @@ export function openFarm(options) {
         };
       },
       well: WELL,
+      /** Where the scenery around the farm stands (tests: it never moves). */
+      scenery: () => MARGIN.map((m) => [Math.round(m.x), Math.round(m.y)]),
       /** A world point that opens each place on the farm when tapped (tests). */
       place: (k) =>
         ({
