@@ -41,10 +41,10 @@ const open = async (id: string) => {
 const act = async (id: string, actions: object[], request = randomUUID()) => {
   await as(id);
   return (
-    await db.query<{ r: any }>("select public.arena_bistro_act($1,$2::jsonb) r", [
-      request,
-      JSON.stringify(actions),
-    ])
+    await db.query<{ r: any }>(
+      "select public.arena_bistro_act($1,$2::jsonb) r",
+      [request, JSON.stringify(actions)],
+    )
   ).rows[0].r;
 };
 const friendAct = async (id: string, friend: string, kind: string) => {
@@ -193,7 +193,10 @@ describe("cooking", () => {
     expect(r.results).toEqual([{ ok: true }]);
     expect(r.bistro.coins).toBe(490);
     expect(r.bistro.stoves[0]).toMatchObject({ dish: "goicuon", dur: 15000 });
-    r = await act(ana, [{ a: "plate", stove: 0 }, { a: "stir", stove: 0 }]);
+    r = await act(ana, [
+      { a: "plate", stove: 0 },
+      { a: "stir", stove: 0 },
+    ]);
     expect(r.results[0]).toMatchObject({ ok: false, error: "Not ready yet." });
     expect(r.results[1]).toMatchObject({ ok: false });
     await ago(ana, 12.5); // 83% done: the golden moment
@@ -256,9 +259,9 @@ describe("guests", () => {
     const r = await act(ana, sales);
     const ok = r.results.filter((x: any) => x.ok);
     expect(ok.length).toBeLessThanOrEqual(10);
-    expect(r.results.some((x: any) => x.error === "Too many guests at once.")).toBe(
-      true,
-    );
+    expect(
+      r.results.some((x: any) => x.error === "Too many guests at once."),
+    ).toBe(true);
     const vips = ok.filter((x: any) => x.vip).length;
     expect(vips).toBeLessThanOrEqual(3);
     expect(vips).toBeGreaterThanOrEqual(1);
@@ -400,10 +403,14 @@ describe("trade and friends", () => {
       db.query("select public.arena_bistro_friend($1)", [ana]),
     ).rejects.toThrow(/Only friends/);
     await as(ben);
-    const list = (await db.query<{ f: any }>("select public.arena_bistro_friends() f")).rows[0].f;
+    const list = (
+      await db.query<{ f: any }>("select public.arena_bistro_friends() f")
+    ).rows[0].f;
     expect(list.map((x: any) => x.name)).toEqual(["Ana"]);
     const view = (
-      await db.query<{ v: any }>("select public.arena_bistro_friend($1) v", [ana])
+      await db.query<{ v: any }>("select public.arena_bistro_friend($1) v", [
+        ana,
+      ])
     ).rows[0].v;
     expect(view).toMatchObject({ name: "Ana", dined: false, liked: false });
     expect(view.coins).toBeUndefined();
@@ -413,7 +420,10 @@ describe("trade and friends", () => {
     expect(r).toMatchObject({ ok: true, dish: "goicuon", paid: 6, coins: 10 });
     expect(r.bistro.dined).toBe(true);
     r = await friendAct(ben, ana, "dine");
-    expect(r).toMatchObject({ ok: false, error: "You already ate here today." });
+    expect(r).toMatchObject({
+      ok: false,
+      error: "You already ate here today.",
+    });
     const anaAfter = await open(ana);
     expect(anaAfter.coins).toBe(anaBefore + 6);
     expect(anaAfter.counter[0].servings).toBe(servings - 1);
