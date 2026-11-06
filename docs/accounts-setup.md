@@ -161,6 +161,8 @@ Run [068_bistro.sql](../supabase/migrations/068_bistro.sql) after 066 (it does n
 
 Then run [070_bistro_popularity.sql](../supabase/migrations/070_bistro_popularity.sql) (after 068). The final query should return two **true** columns. It adds the Bistro's popularity (0–50, from the rating, the decor, this week's likes and today's friends' meals: it sets how often guests come) and the floor plan's walks (`arena_bistro_walks`: steps from the door and from the counter to every seat), so the time away serves guests at the pace the floor plan allows. The rules match `packages/shared/src/bistro.ts`; see [docs/bistro-gdd.md](bistro-gdd.md).
 
+Then run [071_bistro_staff.sql](../supabase/migrations/071_bistro_staff.sql) (after 070). The final query should return two **true** columns. It adds the staff's energy (worn down by work, back with a staff meal or the rest after a shift), janitors and the litter they sweep, the Staff Corner, and friends hired as staff (`friend_id`, with a daily XP payday in `arena_bistro_paydays`).
+
 ### Unlimited coins for admin testing
 
 Run [016_admin_shop_coins.sql](../supabase/migrations/016_admin_shop_coins.sql) after the earlier migrations. Existing non-suspended administrators see **∞ coins** and can buy Shop items and collection sets without spending their real balance. Purchases persist, can be equipped normally, and are recorded in the admin audit log. Prices, Mythic Trials, Awakening requirements and regular player spending still work as usual. Removing admin membership ends unlimited spending immediately; the saved wallet balance is unchanged.

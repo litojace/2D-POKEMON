@@ -189,7 +189,11 @@ for (const size of SIZES)
         `const S = srv.S; S.level = 12; S.coins = 1234567; S.rating = 4.6; S.served = 98765;
          S.staff.push({ id: 2, char: 'pyranda', role: 'cook', level: 3, dish: 'pho' },
                       { id: 3, char: 'glacelle', role: 'waiter', level: 5, dish: 'goicuon' },
-                      { id: 4, char: 'wombolder', role: 'cook', level: 1, dish: 'lau' });
+                      { id: 4, char: 'wombolder', role: 'cook', level: 1, dish: 'lau', energy: 12 },
+                      { id: 5, char: 'tidefin', role: 'janitor', level: 2, dish: 'goicuon', energy: 35 },
+                      { id: 6, char: 'lumoth', role: 'waiter', level: 1, dish: 'goicuon', energy: 140,
+                        friend: { id: '00000000-0000-4000-8000-000000000673', name: 'Bartholomew the Brave' } });
+         S.trash = 4;
          S.stoves.push({ dish: null, start: 0, perfect: false }, { dish: null, start: 0, perfect: false });
          S.counter = [{ dish: 'lau', servings: 188, perfect: true }, { dish: 'pho', servings: 12, perfect: false },
                       { dish: 'caphe', servings: 9, perfect: false }, { dish: 'goicuon', servings: 3, perfect: false }];

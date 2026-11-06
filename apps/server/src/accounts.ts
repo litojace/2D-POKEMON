@@ -56,7 +56,7 @@ import {
   type OnlineList,
 } from "../../../packages/shared/src/accounts.js";
 /** The newest database migration the server expects. */
-export const LATEST_MIGRATION = "070_bistro_popularity.sql";
+export const LATEST_MIGRATION = "071_bistro_staff.sql";
 /** The migration that last redefined the raid appearance functions. */
 export const RAID_FUNCTIONS_MIGRATION = "018_collection_equipping.sql";
 export interface AccountProvider {
@@ -663,6 +663,8 @@ export function installAccountRoutes(
         "cookdish",
         "chef",
         "trade",
+        "feed",
+        "sweep",
         "sync",
       ]),
       stove: z.number().int().min(0).max(3).optional(),
@@ -693,7 +695,9 @@ export function installAccountRoutes(
         .max(BISTRO_MAX_SIZE.rows - 1)
         .optional(),
       rot: z.number().int().min(0).max(3).optional(),
-      role: z.enum(["cook", "waiter"]).optional(),
+      role: z.enum(["cook", "waiter", "janitor"]).optional(),
+      // Hiring a friend (migration 071): their account id.
+      friend: z.string().uuid().optional(),
       char: z.enum(FIGHTER_IDS).optional(),
       lots: z.number().int().min(1).max(15).optional(),
     })

@@ -136,6 +136,14 @@ import {
   type LayoutStats,
   type PopInput,
   type SeatWalk,
+  FEED_COOLDOWN_MS,
+  LITTER_RATE,
+  energyMax,
+  energyNow,
+  fullestSlot,
+  moodName,
+  workSpeed,
+  type Role,
 } from "./bistro-model";
 import {
   carGlows,
@@ -153,6 +161,7 @@ import {
   BistroSync,
   applyLocal,
   readServer,
+  friendNames,
   type BistroAction,
   type BistroApi,
   type BistroExtras,
@@ -202,6 +211,9 @@ export interface BistroHandle {
 const ROSTER = Object.keys(CHARACTERS) as CharacterId[];
 const asChar = (c: string): CharacterId =>
   (ROSTER as string[]).includes(c) ? (c as CharacterId) : "voltkit";
+/** A staff member's name: a friend's, or their creature's. */
+const staffName = (st: Staff) =>
+  st.friend?.name ?? CHARACTERS[asChar(st.char)].name;
 const esc = (s: string) =>
   s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 const fmtTime = (s: number) => {
@@ -409,11 +421,32 @@ const NO_SEAT: Seat = {
 };
 interface Waiter extends Walker {
   staff: Staff;
-  task: { kind: "serve"; c: Customer } | { kind: "clear"; p: Pile } | null;
+  task:
+    | { kind: "serve"; c: Customer }
+    | { kind: "clear"; p: Pile }
+    | { kind: "sweep"; t: Litter }
+    | null;
   phase: "idle" | "toCounter" | "pick" | "toTable" | "drop" | "toPile" | "home";
   carry: DishId | null;
   timer: number;
 }
+/** Litter on the floor: from guests here, or left while you were away (the server's). */
+interface Litter {
+  id: number;
+  x: number;
+  y: number;
+  server: boolean;
+  claimed: boolean;
+  look: number;
+}
+const ROLE_NAMES: Record<Role, string> = {
+  cook: "Cook",
+  waiter: "Waiter",
+  janitor: "Janitor",
+};
+const roleName = (r: Role) => ROLE_NAMES[r];
+/** Where janitors wait. */
+const JANITOR_HOME = { x: 1, y: 8 } as const;
 interface Pile {
   id: number;
   chairId: number;
@@ -579,7 +612,9 @@ export function openBistro(o: BistroOptions): BistroHandle {
   let waiters: Waiter[] = [];
   let cooks: (Walker & { staff: Staff })[] = [];
   const syncStaff = () => {
-    const ws = staffOf(S, "waiter");
+    const ws = S.staff.filter(
+      (x) => x.role === "waiter" || x.role === "janitor",
+    );
     waiters = ws.map((st, i) => {
       const old = waiters.find(
         (w) => w.staff.id === st.id && w.char === st.char,
@@ -636,6 +671,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
 
   let customers: Customer[] = [];
   let piles: Pile[] = [];
+  let litter: Litter[] = [];
   let particles: Particle[] = [];
   let floaters: Floater[] = [];
   let flyers: Flyer[] = [];
@@ -662,6 +698,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
       likesWeek: ex.likesWeek,
       dinedToday: ex.friendGuests.length,
       dirty: piles.filter((p) => T - p.t0 > DIRTY_SECONDS).length,
+      trash: visiting ? 0 : litter.length,
     };
   };
   const popNow = () => popularity(S, popInput());
@@ -1018,6 +1055,52 @@ export function openBistro(o: BistroOptions): BistroHandle {
     return best;
   };
   const queued = () => customers.filter((c) => c.state === "queue");
+  const dropLitter = (at: Pt, server: boolean) => {
+    if (litter.some((l) => l.x === at.x && l.y === at.y)) return;
+    litter.push({
+      id: nextId++,
+      x: at.x,
+      y: at.y,
+      server,
+      claimed: false,
+      look: Math.floor(Math.random() * 3),
+    });
+    hudDirty = true;
+  };
+  /** The server's litter (left while you were away) on free tiles. */
+  const syncLitter = () => {
+    const want = visiting ? 0 : S.trash;
+    const mine = litter.filter((l) => l.server);
+    if (mine.length > want) {
+      const drop = new Set(mine.slice(want));
+      litter = litter.filter((l) => !drop.has(l));
+      for (const w of waiters)
+        if (w.task?.kind === "sweep" && drop.has(w.task.t)) w.task = null;
+    }
+    for (let n = mine.length; n < want; n++) {
+      const free: Pt[] = [];
+      for (let x = 1; x < R.cols; x++)
+        for (let y = 3; y < R.rows; y++)
+          if (
+            !blocked[x]?.[y] &&
+            !(y === 3 && x <= 4) &&
+            !litter.some((l) => l.x === x && l.y === y)
+          )
+            free.push({ x, y });
+      if (!free.length) break;
+      dropLitter(free[Math.floor(Math.random() * free.length)], true);
+    }
+  };
+  const sweepLitter = (l: Litter, byTap: boolean) => {
+    litter = litter.filter((x) => x !== l);
+    for (const w of waiters)
+      if (w.task?.kind === "sweep" && w.task.t === l) w.task = null;
+    if (l.server && !visiting) sync.do({ a: "sweep" });
+    const p = iso(l.x, l.y);
+    burst(p.x, p.y - 6, "puff", 6, "#e8e2d4", 0.4);
+    if (byTap) sound("rustle");
+    hudDirty = true;
+  };
   /** Everyone in the queue walks to their place in it. */
   const requeue = () => {
     queued().forEach((c, i) => {
@@ -1122,6 +1205,9 @@ export function openBistro(o: BistroOptions): BistroHandle {
     c.claimed = false;
     // Off the chair onto a free tile next to it, then out of the door.
     const p = approach(blocked, DOOR, [c.seat.chair]);
+    // Some leave a wrapper behind.
+    if (p && !visiting && Math.random() < LITTER_RATE)
+      dropLitter(p[p.length - 1], false);
     const back = findPath(blocked, p ? p[p.length - 1] : DOOR, DOOR) ?? [];
     c.path = [
       ...(p ? [p[p.length - 1]] : []),
@@ -1244,9 +1330,13 @@ export function openBistro(o: BistroOptions): BistroHandle {
 
   /* ───────────── waiters ───────────── */
   const updateWaiter = (w: Waiter, dt: number) => {
+    // Their pace: level, a friend's bonus, how tired they are.
+    w.speed =
+      2.8 * workSpeed(w.staff, visiting ? 100 : energyNow(S, w.staff, nowS()));
     if (!w.task) {
       // The best job: serving beats clearing, a long wait counts, and so
-      // do the steps to get there (docs/bistro-gdd.md §3.4).
+      // do the steps to get there (docs/bistro-gdd.md §3.4). Janitors
+      // clear tables and sweep; with one on the team, waiters only serve.
       const from = { x: Math.round(w.gx), y: Math.round(w.gy) };
       const steps = (to: Pt[]) => {
         if (!inside(from)) return 12;
@@ -1254,10 +1344,24 @@ export function openBistro(o: BistroOptions): BistroHandle {
         return p ? p.length - 1 : 99;
       };
       const line = queued().length > 0;
+      const janitor = w.staff.role === "janitor";
+      const clears =
+        janitor || !waiters.some((x) => x.staff.role === "janitor");
       let c: Customer | undefined;
       let p: Pile | undefined;
+      let l: Litter | undefined;
       let best = -Infinity;
+      if (janitor)
+        for (const x of litter) {
+          if (x.claimed) continue;
+          const score = 8 - steps([{ x: x.x, y: x.y }]);
+          if (score > best) {
+            best = score;
+            l = x;
+          }
+        }
       for (const x of customers) {
+        if (janitor) break;
         if (x.state !== "seated" || !x.dish || x.claimed) continue;
         const score =
           30 +
@@ -1270,6 +1374,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
         }
       }
       for (const x of piles) {
+        if (!clears) break;
         if (x.claimed || T - x.t0 <= 9) continue;
         const near = [x.chairId, x.tableId]
           .map((id) => S.items.find((i) => i.id === id))
@@ -1279,7 +1384,15 @@ export function openBistro(o: BistroOptions): BistroHandle {
           best = score;
           p = x;
           c = undefined;
+          l = undefined;
         }
+      }
+      if (l && !p) {
+        l.claimed = true;
+        w.task = { kind: "sweep", t: l };
+        w.phase = "toPile";
+        pathNear(w, [{ x: l.x, y: l.y }]);
+        return;
       }
       if (c) {
         c.claimed = true;
@@ -1302,7 +1415,8 @@ export function openBistro(o: BistroOptions): BistroHandle {
       }
       if (w.phase !== "home") {
         w.phase = "home";
-        if (waiters.indexOf(w) === 0) pathTo(w, WAITER_HOME);
+        if (w.staff.role === "janitor") pathNear(w, [JANITOR_HOME]);
+        else if (waiters.indexOf(w) === 0) pathTo(w, WAITER_HOME);
         else pathNear(w, [WAITER_HOME]);
       }
       if (step(w, dt)) w.face = "down";
@@ -1335,6 +1449,16 @@ export function openBistro(o: BistroOptions): BistroHandle {
       } else if (w.phase === "drop") {
         w.timer -= dt;
         if (w.timer <= 0) serve(w, c);
+      }
+    } else if (w.task.kind === "sweep") {
+      const l = w.task.t;
+      if (!litter.includes(l)) {
+        w.task = null;
+        return;
+      }
+      if (arrived) {
+        sweepLitter(l, false);
+        w.task = null;
       }
     } else {
       const p = w.task.p;
@@ -1563,7 +1687,9 @@ export function openBistro(o: BistroOptions): BistroHandle {
     | { kind: "counter"; slot: number }
     | { kind: "customer"; c: Customer }
     | { kind: "item"; it: Item }
-    | { kind: "staff"; who: "chef" | "waiter" };
+    | { kind: "staff"; who: "chef" | "waiter" }
+    | { kind: "litter"; l: Litter }
+    | { kind: "worker"; st: Staff };
   const hit = (sx: number, sy: number): Hit | null => {
     const w = toWorld(sx, sy);
     const near = (p: Pt, r: number) =>
@@ -1572,6 +1698,10 @@ export function openBistro(o: BistroOptions): BistroHandle {
       for (const p of piles)
         if (near({ x: p.spot.x + 6, y: p.spot.y - 6 }, 22))
           return { kind: "pile", p };
+      for (const l of litter) {
+        const c = iso(l.x, l.y);
+        if (near({ x: c.x, y: c.y - 2 }, 20)) return { kind: "litter", l };
+      }
       for (let i = 0; i < MAX_STOVES; i++) {
         const c = iso(STOVE_TILES[i].x, STOVE_TILES[i].y);
         if (Math.abs(w.x - c.x) < 34 && w.y > c.y - 92 && w.y < c.y + 20)
@@ -1592,6 +1722,11 @@ export function openBistro(o: BistroOptions): BistroHandle {
       const cp = iso(chef.gx, chef.gy);
       if (Math.abs(w.x - cp.x) < 24 && w.y > cp.y - 96 && w.y < cp.y)
         return { kind: "staff", who: "chef" };
+      for (const x of [...waiters, ...cooks]) {
+        const p = iso(x.gx, x.gy);
+        if (Math.abs(w.x - p.x) < 24 && w.y > p.y - 96 && w.y < p.y + 4)
+          return { kind: "worker", st: x.staff };
+      }
     }
     // Items: the tile under the pointer, or the item's tall body above it.
     const g = toGrid(w);
@@ -1645,6 +1780,27 @@ export function openBistro(o: BistroOptions): BistroHandle {
     }
     const now = nowS();
     if (h.kind === "pile") return collectPile(h.p, true);
+    if (h.kind === "litter") {
+      if (visiting)
+        return showTip(
+          sx,
+          sy,
+          `<b>Litter</b><span>Their janitor will get it</span>`,
+        );
+      return sweepLitter(h.l, true);
+    }
+    if (h.kind === "worker") {
+      const st = h.st;
+      const e = visiting ? energyMax(st.level) : energyNow(S, st, now);
+      sound("boing");
+      showTip(
+        sx,
+        sy,
+        `<b>${esc(staffName(st))} · ${roleName(st.role)}</b><span>Energy ${Math.round(e)} of ${energyMax(st.level)} · ${moodName(e)}</span>${e < 50 && !visiting ? `<small>Feed them in Staff → Your team</small>` : ""}`,
+      );
+      if (e < 50 && !visiting) openSheet("staff", "team");
+      return;
+    }
     if (h.kind === "stove") {
       const st = S.stoves[h.i];
       if (visiting)
@@ -1939,6 +2095,9 @@ export function openBistro(o: BistroOptions): BistroHandle {
   /* ───────────── sheets ───────────── */
   const sheet = $("#bs-sheet");
   let sheetKind: string | null = null;
+  /** Staff → Hire: the role being hired for. */
+  let hireRole: Role = "waiter";
+  let hireChosen = false;
   let sheetArg: number | string | undefined;
   const closeSheet = () => {
     sheet.hidden = true;
@@ -2061,19 +2220,42 @@ export function openBistro(o: BistroOptions): BistroHandle {
       ];
       let body = "";
       if (tab === "team") {
+        const now = nowS();
+        const meal = fullestSlot(S) >= 0;
         const cards = S.staff.map((st) => {
-          const name = CHARACTERS[asChar(st.char)].name;
+          const name = staffName(st);
           const up =
             st.level < STAFF_MAX_LEVEL ? staffUpgradePrice(st.level) : null;
           const ci = staffOf(S, "cook").indexOf(st);
           const stove = st.role === "cook" ? cookStove(S, ci) : -1;
-          return `<div class="bs-staff">
+          const e = energyNow(S, st, now);
+          const max = energyMax(st.level);
+          const wait = st.fedAt ? FEED_COOLDOWN_MS - (now - st.fedAt) : 0;
+          const pace = Math.round((workSpeed(st, e) - 1) * 100);
+          const job =
+            st.role === "cook"
+              ? stove >= 0
+                ? `Runs stove ${stove + 1}`
+                : "Needs a stove: build one in Upgrades"
+              : st.role === "janitor"
+                ? "Clears tables and sweeps"
+                : waiters.some((w) => w.staff.role === "janitor")
+                  ? "Serves (the janitor clears)"
+                  : "Serves and clears";
+          const feed =
+            e >= max - 0.5
+              ? `<span class="lk">Full</span>`
+              : wait > 0
+                ? `<span class="lk">Ate ${fmtTime(Math.max(0, (FEED_COOLDOWN_MS - wait) / 1000))} ago</span>`
+                : `<button type="button" class="pr feed" data-feed="${st.id}" ${meal ? "" : "disabled"} title="${meal ? "A serving from the counter: +50 energy" : "Nothing on the counter to eat"}">Feed</button>`;
+          return `<div class="bs-staff${st.friend ? " is-friend" : ""}">
             <img class="pt" src="${portrait(st.char)}" alt="">
-            <div class="who"><b>${esc(name)}</b><span class="role ${st.role}">${st.role === "cook" ? "Cook" : "Waiter"}</span>
+            <div class="who"><b>${esc(name)}</b><span class="role ${st.role}">${roleName(st.role)}</span>${st.friend ? `<span class="role friend">Friend</span>` : ""}
               <span class="lv">${"★".repeat(st.level)}<i>${"★".repeat(STAFF_MAX_LEVEL - st.level)}</i></span>
-              <small>${st.role === "cook" ? (stove >= 0 ? `Runs stove ${stove + 1} · ${Math.round((staffSpeed(st.level) - 1) * 100)}% faster` : "Needs a stove: build one in Upgrades") : `Serves and clears · ${Math.round((staffSpeed(st.level) - 1) * 100)}% faster`}</small>
+              <small>${job} · ${pace >= 0 ? `${pace}% faster` : `${-pace}% slower`}</small>
+              <span class="en ${moodName(e).toLowerCase()}" title="Energy ${Math.round(e)} of ${max}"><i style="--e:${(e / max) * 100}%"></i><em>${moodName(e)} · ${Math.round(e)}</em></span>
             </div>
-            ${up === null ? `<span class="lk">Top level</span>` : `<button type="button" class="pr ${S.coins < up ? "poor" : ""}" data-up="${st.id}">Train ${coinTag(up)}</button>`}
+            <div class="acts">${feed}${up === null ? `<span class="lk">Top level</span>` : `<button type="button" class="pr ${S.coins < up ? "poor" : ""}" data-up="${st.id}">Train ${coinTag(up)}</button>`}</div>
             ${
               st.role === "cook"
                 ? `<div class="cookdish"><small>Cooks</small>${unlockedDishes(
@@ -2089,28 +2271,53 @@ export function openBistro(o: BistroOptions): BistroHandle {
           </div>`;
         });
         body = `<div class="bs-team">${cards.join("")}
-          <p class="bs-note">${I("clock")} While you are away your staff keep the bistro open for up to <b>${SHIFT_HOURS[S.shiftLv]} hours</b>: cooks cook their dish, waiters serve what is on the counter.${staffOf(S, "cook").length ? "" : " <b>Hire a cook</b> so food keeps coming."}</p></div>`;
+          <p class="bs-note">${I("clock")} While you are away your staff keep the bistro open for up to <b>${SHIFT_HOURS[S.shiftLv]} hours</b>: cooks cook their dish, waiters serve what is on the counter.${staffOf(S, "cook").length ? "" : " <b>Hire a cook</b> so food keeps coming."} Work tires them (tired staff are slower): feed them a serving from the counter, put a Staff Corner in the room, or let them rest after the shift.</p></div>`;
       } else if (tab === "hire") {
-        const nc = nextHire(S, "cook"),
-          nw = nextHire(S, "waiter");
-        const btn = (
-          role: "cook" | "waiter",
-          char: string,
-          step: { level: number; price: number } | null,
-        ) =>
+        if (!friendsAsked) void loadFriends();
+        // Until you pick one: a role you can hire for now.
+        const open = (r: Role) => {
+          const st = nextHire(S, r);
+          return !!st && S.level >= st.level;
+        };
+        if (!hireChosen && !open(hireRole))
+          hireRole =
+            (["cook", "waiter", "janitor"] as const).find(open) ?? hireRole;
+        const role = hireRole;
+        const step = nextHire(S, role);
+        const btn = (attr: string) =>
           !step
-            ? `<span class="lk">${role === "cook" ? "Cooks" : "Waiters"} full</span>`
+            ? `<span class="lk">${roleName(role)}s full</span>`
             : S.level < step.level
-              ? `<span class="lk">${I("lock")} ${role === "cook" ? "Cook" : "Waiter"} at level ${step.level}</span>`
-              : `<button type="button" class="pr ${S.coins < step.price ? "poor" : ""}" data-hire="${role}:${char}" title="${role === "cook" ? "Hire as cook" : "Hire as waiter"}">${role === "cook" ? "Cook" : "Waiter"} · ${step.price ? coinTag(step.price) : "free"}</button>`;
-        body = `<div class="bs-items">${candidates(S, chef.char)
+              ? `<span class="lk">${I("lock")} Level ${step.level}</span>`
+              : `<button type="button" class="pr ${S.coins < step.price ? "poor" : ""}" ${attr} title="Hire as ${roleName(role).toLowerCase()}">Hire · ${step.price ? coinTag(step.price) : "free"}</button>`;
+        const roles = (["cook", "waiter", "janitor"] as const)
+          .map(
+            (r) =>
+              `<button type="button" data-role="${r}" aria-pressed="${r === role}">${roleName(r)} ${staffOf(S, r).length}/${HIRE_STEPS[r].length}</button>`,
+          )
+          .join("");
+        const hired = new Set(S.staff.map((x) => x.friend?.id).filter(Boolean));
+        const friends =
+          friendState === "ready"
+            ? friendList
+                .filter((f) => !hired.has(f.id))
+                .map(
+                  (f) =>
+                    `<div class="bs-item hire friend"><img src="${portrait(f.fighter)}" alt=""><b>${esc(f.name)}</b><small>Your friend · works 10% faster</small>${btn(`data-hirefriend="${esc(f.id)}"`)}</div>`,
+                )
+                .join("")
+            : "";
+        body = `<nav class="bs-tabs roles">${roles}</nav><div class="bs-items">${friends}${candidates(
+          S,
+          chef.char,
+        )
           .map(
             (c) =>
-              `<div class="bs-item hire"><img src="${portrait(c)}" alt=""><b>${esc(CHARACTERS[asChar(c)].name)}</b><small>${esc(CHARACTERS[asChar(c)].element)} · looking for work</small>${btn("cook", c, nc)}${btn("waiter", c, nw)}</div>`,
+              `<div class="bs-item hire"><img src="${portrait(c)}" alt=""><b>${esc(CHARACTERS[asChar(c)].name)}</b><small>${esc(CHARACTERS[asChar(c)].element)} · looking for work</small>${btn(`data-hire="${role}:${c}"`)}</div>`,
           )
           .join(
             "",
-          )}</div><p class="bs-note">New faces come by every day. Cooks: ${staffOf(S, "cook").length} of ${HIRE_STEPS.cook.length} · Waiters: ${staffOf(S, "waiter").length} of ${HIRE_STEPS.waiter.length}</p>`;
+          )}</div><p class="bs-note">${role === "janitor" ? "Janitors clear the tables (so waiters only serve) and sweep up litter, which costs popularity." : role === "cook" ? "Cooks each run a stove on their own and keep the counter stocked." : "Waiters bring the dishes; more of them serve more guests."} New faces come by every day; friends can work for you too.</p>`;
       } else {
         const sp = nextStovePrice(S);
         const kp = KITCHEN_PRICES[S.kitchenLv];
@@ -2263,19 +2470,46 @@ export function openBistro(o: BistroOptions): BistroHandle {
       changed();
       return renderSheet();
     }
-    if (b.dataset.hire) {
-      const [role, char] = b.dataset.hire.split(":") as [
-        "cook" | "waiter",
-        string,
-      ];
-      const r = sync.do({ a: "hire", role, char });
+    if (b.dataset.role) {
+      hireRole = b.dataset.role as Role;
+      hireChosen = true;
+      sound("tick");
+      return renderSheet();
+    }
+    if (b.dataset.feed) {
+      const id = Number(b.dataset.feed);
+      const r = sync.do({ a: "feed", id });
+      if (!r.ok) return o.toast(r.error ?? "Can't feed them now.");
+      sound("chime");
+      const w = [...waiters, ...cooks].find((x) => x.staff.id === id);
+      if (w) {
+        w.hop = 1;
+        const p = iso(w.gx, w.gy);
+        burst(p.x, p.y - 80, "heart", 6, "#ff9a6b", 0.6);
+        floatText({ x: p.x, y: p.y - 100 }, "+50 energy", "#9cf07f", true);
+      }
+      changed();
+      return renderSheet();
+    }
+    if (b.dataset.hire || b.dataset.hirefriend) {
+      const f = b.dataset.hirefriend
+        ? friendList.find((x) => x.id === b.dataset.hirefriend)
+        : undefined;
+      if (b.dataset.hirefriend && !f) return;
+      const [role, char] = f
+        ? [hireRole, f.fighter]
+        : (b.dataset.hire!.split(":") as [Role, string]);
+      if (f) friendNames.set(f.id, f.name);
+      const r = sync.do(
+        f ? { a: "hire", role, char, friend: f.id } : { a: "hire", role, char },
+      );
       if (!r.ok) return o.toast(r.error ?? "Can't hire them.");
       syncStaff();
       sound("fanfare");
       const p = iso(DOOR.x, DOOR.y);
       burst(p.x, p.y - 40, "confetti", 30, "#ffd65b", 1);
       banner(
-        `<b>Welcome aboard!</b><span>${esc(CHARACTERS[asChar(char)].name)} joins as your ${role}</span>`,
+        `<b>Welcome aboard!</b><span>${esc(f ? f.name : CHARACTERS[asChar(char)].name)} joins as your ${roleName(role).toLowerCase()}</span>`,
       );
       changed();
       sheetArg = "team";
@@ -2387,7 +2621,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
     placeWallet();
     hudDirty = false;
     // A dot on Staff when someone can be hired right now.
-    const canHire = (["cook", "waiter"] as const).some((r) => {
+    const canHire = (["cook", "waiter", "janitor"] as const).some((r) => {
       const st = nextHire(S, r);
       return !!st && S.level >= st.level && S.coins >= st.price;
     });
@@ -2560,7 +2794,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
     opts: {
       sit?: boolean;
       alpha?: number;
-      hat?: "chef" | "waiter" | "vip";
+      hat?: "chef" | "waiter" | "vip" | "janitor";
       mood?: Mood;
       carry?: DishId | null;
     },
@@ -2589,6 +2823,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
       if (opts.hat === "chef")
         drawChefHat(p.x + (s.ax - s.cv.width / 2) * 0, headY + 6);
       else if (opts.hat === "waiter") drawWaiterCap(p.x, headY + 8);
+      else if (opts.hat === "janitor") drawJanitorCap(p.x, headY + 8, p);
       else if (opts.hat === "vip") drawCrown(p.x, headY + 2);
       if (opts.carry) {
         // A tray held up beside the head.
@@ -2626,6 +2861,71 @@ export function openBistro(o: BistroOptions): BistroHandle {
     ctx.fill();
     ctx.fillStyle = "rgba(0,0,0,.08)";
     ctx.fillRect(x - 13, y - 4, 26, 4);
+  };
+  /** A crumpled wrapper, a paper cup or a napkin. */
+  const drawLitter = (l: Litter) => {
+    const p = iso(l.x, l.y);
+    const x = p.x + ((l.id * 7) % 13) - 6,
+      y = p.y + ((l.id * 5) % 7) - 3;
+    softShadow(ctx, x, y + 2, 9, 4, 0.18);
+    if (l.look === 0) {
+      ctx.fillStyle = "#f3efe4";
+      ctx.beginPath();
+      ctx.moveTo(x - 7, y - 2);
+      ctx.lineTo(x - 2, y - 8);
+      ctx.lineTo(x + 6, y - 6);
+      ctx.lineTo(x + 7, y + 1);
+      ctx.lineTo(x, y + 3);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = "rgba(0,0,0,.18)";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    } else if (l.look === 1) {
+      ctx.fillStyle = "#e85d4f";
+      ctx.beginPath();
+      ctx.roundRect(x - 8, y - 5, 14, 7, 3);
+      ctx.fill();
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(x - 3, y - 5, 3, 7);
+    } else {
+      ctx.fillStyle = "#ffd65b";
+      ctx.beginPath();
+      ctx.ellipse(x, y - 2, 8, 4, 0.4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#c9952f";
+      ctx.beginPath();
+      ctx.ellipse(x + 2, y - 2, 3, 2, 0.4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  };
+  /** A green bandana, and a broom over the shoulder. */
+  const drawJanitorCap = (x: number, y: number, feet: Pt) => {
+    ctx.strokeStyle = "#8a5a2b";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(feet.x + 22, feet.y - 4);
+    ctx.lineTo(feet.x + 8, y + 18);
+    ctx.stroke();
+    ctx.fillStyle = "#e3b34a";
+    ctx.beginPath();
+    ctx.moveTo(feet.x + 16, feet.y - 2);
+    ctx.lineTo(feet.x + 30, feet.y - 2);
+    ctx.lineTo(feet.x + 26, feet.y - 14);
+    ctx.lineTo(feet.x + 19, feet.y - 14);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = "#2f9e6b";
+    ctx.beginPath();
+    ctx.ellipse(x, y - 4, 13, 7, 0, Math.PI, 0);
+    ctx.fill();
+    ctx.fillRect(x - 13, y - 5, 26, 3);
+    ctx.beginPath();
+    ctx.moveTo(x + 10, y - 3);
+    ctx.lineTo(x + 18, y + 3);
+    ctx.lineTo(x + 13, y + 4);
+    ctx.closePath();
+    ctx.fill();
   };
   const drawWaiterCap = (x: number, y: number) => {
     ctx.fillStyle = "#c2322e";
@@ -2892,6 +3192,9 @@ export function openBistro(o: BistroOptions): BistroHandle {
           f: () => drawItem(ctx, it.kind, it.x, it.y, T, it.rot),
         });
     }
+    // Litter on the floor (under whoever stands there).
+    for (const l of litter)
+      list.push({ d: l.x + l.y - 0.05, f: () => drawLitter(l) });
     // People on their feet.
     for (const c of customers)
       if (c.state === "enter" || c.state === "leave" || c.state === "queue")
@@ -2912,7 +3215,11 @@ export function openBistro(o: BistroOptions): BistroHandle {
     for (const w of waiters)
       list.push({
         d: w.gx + w.gy + 0.3,
-        f: () => drawWalker(w, { hat: "waiter", carry: w.carry }),
+        f: () =>
+          drawWalker(w, {
+            hat: w.staff.role === "janitor" ? "janitor" : "waiter",
+            carry: w.carry,
+          }),
       });
     list.push({
       d: chef.gx + chef.gy + 0.1,
@@ -3243,6 +3550,20 @@ export function openBistro(o: BistroOptions): BistroHandle {
         ctx.fillText("TAP!", x, y - 22 - pulse * 3);
       }
     });
+    // Hungry or exhausted staff say so.
+    if (!visiting)
+      for (const x of [...waiters, ...cooks]) {
+        const e = energyNow(S, x.staff, now);
+        if (e >= 50) continue;
+        const p = iso(x.gx, x.gy);
+        const bx = p.x - 16,
+          by = p.y - 118;
+        bubble(bx, by, 14, e < 20 ? "#e9e3ff" : "#fff3dc");
+        ctx.font = "15px system-ui, sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(e < 20 ? "💤" : "🍜", bx, by + 1);
+      }
     // Waiting by the door: a small bubble with how long they'll wait.
     for (const c of customers) {
       if (c.state !== "queue" || c.path.length) continue;
@@ -3392,7 +3713,9 @@ export function openBistro(o: BistroOptions): BistroHandle {
   /* ───────────── friends' bistros ───────────── */
   let friendList: BistroFriend[] = [];
   let friendState: "loading" | "error" | "ready" = "loading";
+  let friendsAsked = false;
   const loadFriends = async () => {
+    friendsAsked = true;
     friendState = "loading";
     try {
       friendList = await o.api.friends();
@@ -3400,13 +3723,15 @@ export function openBistro(o: BistroOptions): BistroHandle {
     } catch {
       friendState = "error";
     }
-    if (sheetKind === "friends") renderSheet();
+    for (const f of friendList) friendNames.set(f.id, f.name);
+    if (sheetKind === "friends" || sheetKind === "staff") renderSheet();
   };
   const visitEl = $("#bs-visit");
   /** Clear the floor: guests, plates and the staff's errands. */
   const resetFloor = () => {
     customers = [];
     piles = [];
+    litter = [];
     flights = [];
     combo = 0;
     for (const w of waiters) {
@@ -3530,13 +3855,19 @@ export function openBistro(o: BistroOptions): BistroHandle {
   function adopted(info: {
     away: AwayReport | null;
     errors: { action: BistroAction; error: string }[];
+    payday?: { xp: number; bistros: number } | null;
   }) {
     loadingEl.hidden = true;
     if (!visiting) {
       S = sync.S;
       relayout();
       syncStaff();
+      syncLitter();
     }
+    if (info.payday)
+      o.toast(
+        `Payday: +${info.payday.xp} XP for working at ${info.payday.bistros === 1 ? "a friend's bistro" : `${info.payday.bistros} friends' bistros`}`,
+      );
     persist();
     // The head chef is your Lobby fighter (friends see them in your kitchen).
     if (!chefSent && sync.extras.chef !== chefChar()) {
@@ -3593,6 +3924,8 @@ export function openBistro(o: BistroOptions): BistroHandle {
       </div>
       ${rep.levels ? `<p class="lvl">Level up! The bistro is now level ${S.level}.</p>` : ""}
       ${rep.capped && SHIFT_PRICES[S.shiftLv] != null ? `<p class="tip">Longer shifts in Staff → Upgrades keep it open longer.</p>` : ""}
+      ${S.staff.some((st) => energyNow(S, st, nowS()) < 50) ? `<p class="tip">Some of your staff are tired: feed them in Staff → Your team.</p>` : ""}
+      ${S.trash ? `<p class="tip">Guests left ${S.trash} bits of litter: tap them to sweep, or hire a janitor.</p>` : ""}
       <button type="button" class="go" data-collect>Collect</button>
     </div>`;
     modal.querySelector("[data-collect]")!.addEventListener("click", () => {
@@ -3768,6 +4101,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
     (window as unknown as { __bistro?: unknown }).__bistro = {
       state: () => S,
       customers: () => customers,
+      litter: () => litter,
       setTod: (v: number | undefined) =>
         ((window as unknown as { __bistroTod?: number }).__bistroTod = v),
       spawn: () => spawn(),

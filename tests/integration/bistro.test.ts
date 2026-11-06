@@ -179,7 +179,14 @@ describe("a new bistro", () => {
     const local = defaultState();
     expect(b.items).toEqual(local.items);
     expect(b.counter).toEqual(local.counter);
-    expect(b.staff).toEqual(local.staff);
+    // A fresh waiter, full of energy (migration 071), never fed.
+    expect(b.staff).toEqual(
+      local.staff.map((x) => ({ ...x, energy: 100, fedAt: 0 })),
+    );
+    expect(sanitize(b).staff).toEqual(
+      local.staff.map((x) => ({ ...x, energy: 100 })),
+    );
+    expect(b.trash).toBe(0);
     expect(b.coins).toBe(local.coins);
     expect(b.stoves).toHaveLength(2);
     expect(b.away).toBeNull();
@@ -562,5 +569,158 @@ describe("popularity and the floor plan (migration 070)", () => {
       ana,
     ]);
     expect(list[0].popularity).toBeCloseTo(p, 1);
+  });
+});
+
+describe("staff energy, janitors and friends (migration 071)", () => {
+  it("tired staff, litter and janitors work the time away like the shared rules", async () => {
+    await setCoins(ben, 20000, 9);
+    let r = await act(ben, [
+      { a: "hire", role: "janitor", char: "glacelle" },
+      { a: "hire", role: "cook", char: "wombolder" },
+    ]);
+    expect(r.results.map((x: any) => x.ok)).toEqual([true, true]);
+    // Worn-down staff, a clean start.
+    await sql(
+      "update public.arena_bistro_staff set energy = case role when 'waiter' then 30 else 60 end where player_id = $1",
+      [ben],
+    );
+    await sql(
+      "update public.arena_bistro_stoves set dish = null, started_at = null, dur_ms = null, perfect = false where player_id = $1",
+      [ben],
+    );
+    await sql(
+      "update public.arena_bistros set trash = 4 where player_id = $1",
+      [ben],
+    );
+    const before = await open(ben);
+    expect(before.trash).toBe(4);
+    const local = sanitize(before);
+    await ago(ben, 3 * 3600);
+    const b = await open(ben);
+    const lastSeen = Number(before.lastSeen);
+    const rep = simulateAway(
+      local,
+      lastSeen,
+      lastSeen + b.away.away,
+      before.special,
+      {
+        likesWeek: before.likesWeek,
+        dinedToday: before.friendGuests.length,
+      },
+    )!;
+    expect(b.away.served).toBe(rep.served);
+    expect(b.away.batches).toBe(rep.batches);
+    expect(b.away.coins).toBe(rep.coins);
+    expect(b.away.spent).toBe(rep.spent);
+    expect(b.trash).toBe(local.trash);
+    expect(b.away.served).toBeGreaterThan(50);
+    for (const st of b.staff)
+      expect(st.energy).toBeCloseTo(
+        local.staff.find((x) => x.id === st.id)!.energy!,
+        3,
+      );
+    // Three hours of work: the waiter (30, −12 an hour) is exhausted.
+    expect(b.staff.find((x: any) => x.role === "waiter").energy).toBeCloseTo(
+      0,
+      3,
+    );
+  });
+  it("a staff meal takes a serving and gives 50, once in 10 minutes; litter is swept", async () => {
+    await sql(
+      "update public.arena_bistro_counter set dish = case slot when 0 then 'pho' else null end, servings = case slot when 0 then 9 else 0 end where player_id = $1",
+      [ben],
+    );
+    await sql(
+      "update public.arena_bistro_staff set energy = 10, fed_at = null where player_id = $1 and role = 'waiter'",
+      [ben],
+    );
+    await sql(
+      "update public.arena_bistros set trash = 1 where player_id = $1",
+      [ben],
+    );
+    const waiter = (await open(ben)).staff.find(
+      (x: any) => x.role === "waiter",
+    );
+    let r = await act(ben, [
+      { a: "feed", id: waiter.id },
+      { a: "feed", id: waiter.id },
+      { a: "sweep" },
+      { a: "sweep" },
+    ]);
+    expect(r.results.map((x: any) => x.ok)).toEqual([true, false, true, false]);
+    expect(r.results[1].error).toMatch(/just ate/);
+    const w = r.bistro.staff.find((x: any) => x.id === waiter.id);
+    expect(w.energy).toBeCloseTo(60, 1);
+    expect(w.fedAt).toBeGreaterThan(0);
+    expect(r.bistro.counter[0].servings).toBe(8);
+    expect(r.bistro.trash).toBe(0);
+  });
+  it("friends work at your bistro: faster, paid in XP once a day, refilled by their meal there", async () => {
+    await setCoins(ana, 5000, 6);
+    let r = await act(ana, [
+      { a: "hire", role: "waiter", friend: ben },
+      { a: "hire", role: "waiter", friend: cal },
+      { a: "hire", role: "cook", friend: ben },
+    ]);
+    expect(r.results.map((x: any) => x.ok)).toEqual([true, false, false]);
+    expect(r.results[1].error).toBe("Only friends can work here.");
+    expect(r.results[2].error).toBe("Already on your team.");
+    const [{ fighter }] = await sql(
+      "select portrait_character fighter from public.arena_profiles where id = $1",
+      [ben],
+    );
+    const staff = r.bistro.staff.find((x: any) => x.friend);
+    expect(staff).toMatchObject({
+      role: "waiter",
+      char: fighter,
+      friend: { id: ben, name: "Ben" },
+    });
+    expect(sanitize(r.bistro).staff.find((x) => x.friend)?.friend).toEqual({
+      id: ben,
+      name: "Ben",
+    });
+    // Ben's payday: 3 XP for working at Ana's, once a day.
+    await sql("delete from public.arena_bistro_paydays where worker = $1", [
+      ben,
+    ]);
+    const unpaid = await sql(
+      "select xp, level from public.arena_bistros where player_id = $1",
+      [ben],
+    );
+    const paid = await open(ben);
+    expect(paid.payday).toEqual({ xp: 3, bistros: 1 });
+    if (paid.level === unpaid[0].level)
+      expect(Number(paid.xp)).toBe(Number(unpaid[0].xp) + 3);
+    expect((await open(ben)).payday).toBeNull();
+    // Ben eats at Ana's: his energy there fills up.
+    await sql(
+      "update public.arena_bistro_staff set energy = 5 where player_id = $1 and friend_id = $2",
+      [ana, ben],
+    );
+    await sql("delete from public.arena_bistro_dines where diner = $1", [ben]);
+    await sql(
+      "update public.arena_bistro_counter set dish = 'goicuon', servings = 6 where player_id = $1 and slot = 0",
+      [ana],
+    );
+    expect((await friendAct(ben, ana, "dine")).ok).toBe(true);
+    const [{ e }] = await sql(
+      "select energy e from public.arena_bistro_staff where player_id = $1 and friend_id = $2",
+      [ana, ben],
+    );
+    expect(e).toBe(100);
+    // No longer friends: he stays on as a creature.
+    await sql(
+      "delete from public.arena_friendships where (a = $1 and b = $2) or (a = $2 and b = $1)",
+      [ana, ben],
+    );
+    const after = await open(ana);
+    const was = after.staff.find((x: any) => x.id === staff.id);
+    expect(was.friend).toBeUndefined();
+    expect(was.char).toBe(fighter);
+    await sql("insert into public.arena_friendships(a, b) values ($1, $2)", [
+      ana,
+      ben,
+    ]);
   });
 });

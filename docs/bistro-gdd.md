@@ -95,12 +95,12 @@ Ví dụ: một đầu bếp đầy Energy làm liên tục khoảng **3.6 giờ
 
 **Hồi phục** (người chơi phải tương tác):
 
-| Cách                                                       | Hồi        | Chi phí / điều kiện                                                        |
-| ---------------------------------------------------------- | ---------- | -------------------------------------------------------------------------- |
-| **Staff meal**: chạm nhân viên → "Feed"                    | +50        | Lấy **1 phần ăn** từ quầy (mất doanh thu phần đó); mỗi người 1 lần/10 phút |
-| **Staff Corner** (đồ nội thất mới, 1 ô, giá 600, mở cấp 5) | +1 mỗi 6 s | Chỉ khi nhân viên rảnh và đang online; nhân viên tự đi tới ngồi            |
-| Bạn bè ghé ăn (§1.3)                                       | đầy        | Chỉ áp dụng cho nhân viên là chính người bạn đó                            |
-| Nghỉ sau ca                                                | +15 / giờ  | Sau khi ca offline hết giờ (qua đêm), tự hồi                               |
+| Cách                                                       | Hồi                                              | Chi phí / điều kiện                                                                     |
+| ---------------------------------------------------------- | ------------------------------------------------ | --------------------------------------------------------------------------------------- |
+| **Staff meal**: chạm nhân viên → "Feed"                    | +50                                              | Lấy **1 phần ăn** từ quầy (mất doanh thu phần đó); mỗi người 1 lần/10 phút              |
+| **Staff Corner** (đồ nội thất mới, 1 ô, giá 600, mở cấp 5) | giảm 25% hao Energy mỗi cái (tối đa 2 cái = 50%) | Tính cả khi online lẫn offline; server tự kiểm chứng được vì chỉ cần đếm đồ trong phòng |
+| Bạn bè ghé ăn (§1.3)                                       | đầy                                              | Chỉ áp dụng cho nhân viên là chính người bạn đó                                         |
+| Nghỉ sau ca                                                | +15 / giờ                                        | Sau khi ca offline hết giờ (qua đêm), tự hồi                                            |
 
 - Cấp nhân viên tăng Energy tối đa: `100 + 10 × (cấp − 1)` (cấp 5 = 140). Việc nâng cấp nhân viên vì thế có thêm giá trị.
 - Báo cáo khi quay lại có thêm dòng: _"Mochi worked 5 h and is Exhausted — feed them!"_
@@ -111,10 +111,10 @@ Ví dụ: một đầu bếp đầy Energy làm liên tục khoảng **3.6 giờ
 energyMax(lv)        = 100 + 10·(lv − 1)
 speed(staff)         = (1 + 0.12·(lv − 1)) · (friend ? 1.10 : 1) · mood(E)
 mood(E)              = E ≥ 50 ? 1 : E ≥ 20 ? 0.85 : 0.60
-E(t)                 = clamp(0, energyMax, E(t₀) − drain_role · giờ_làm_việc)
+E(t)                 = clamp(0, energyMax, E(t₀) − drain_role · (1 − 0.25 · số_Staff_Corner) · giờ_làm_việc)
 ```
 
-Server lưu `energy` + `energy_at` (mốc thời gian), tính lại khi có thao tác hoặc khi mô phỏng offline (bước 15 s như `simulateAway` hiện nay).
+Server lưu `energy` tính tại mốc `last_seen` của nhà hàng (không cần cột thời gian riêng): khi người chơi đang mở nhà hàng, Energy giảm theo thời gian thực; khi vắng mặt, giảm trong ca rồi hồi +15/giờ sau ca. Mô phỏng offline tính Energy ở từng bước 15 s (cùng công thức với client, có test so khớp).
 
 ---
 
@@ -261,7 +261,6 @@ Mỗi nhân viên rảnh chọn việc có **điểm cao nhất** (tham lam, m�
 | Dọn bàn có khách đang xếp hàng chờ | 25      | Janitor (hoặc Waiter nếu chưa có) |
 | Dọn bàn thường                     | 10      | Janitor (hoặc Waiter)             |
 | Quét rác                           | 8       | Janitor                           |
-| Ăn ở Staff Corner (Energy < 50)    | 5       | Bất kỳ ai rảnh                    |
 
 Nhờ hệ số `giây_đã_chờ`, khách ở xa không bị bỏ đói; nhờ `bước_đi_tới`, phục vụ không chạy chéo phòng khi có khách ngay cạnh.
 
