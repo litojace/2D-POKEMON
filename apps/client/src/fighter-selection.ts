@@ -8,7 +8,7 @@ import { CHARACTERS, type CharacterId } from "@arena/shared";
 import { fighterArt, scopeIds, withSoftGround } from "./fighter-art";
 import { CREATURE_VIEWBOX } from "./creature-design";
 import { colourPreview } from "./colour-preview";
-import { lookOn, type RaidLoadout } from "../../../packages/shared/src/raid";
+import type { RaidLoadout } from "../../../packages/shared/src/raid";
 /** Your equipped Shop skins, shown on the roster cards and detail art. */
 let worn: Partial<Record<CharacterId, { skin: string; stage: number }>> = {};
 export function setWornSkins(value: typeof worn | undefined) {
@@ -40,11 +40,9 @@ function art(
   const svg = fighterArt(id, large ? undefined : rosterPortraitFrame(id), skin);
   const framed = large ? withSoftGround(svg, id) : svg;
   const scope = scopeName ?? (large ? "detail" : "card");
-  // As the Wardrobe shows it: the fighter skin, else its Colors (its own,
-  // else the shared ones). No element aura: the Shop, Wardrobe and battle
-  // rigs don't wear one either.
-  const colours = lookOn(look, id).skin;
-  const palette = !skin && colours ? colours : "";
+  // As the Wardrobe shows it: the fighter skin, else the shared Colors. No
+  // element aura: the Shop, Wardrobe and battle rigs don't wear one either.
+  const palette = !skin && look.skin ? look.skin : "";
   return scopeIds(palette ? colourPreview(framed, palette) : framed, scope);
 }
 /**

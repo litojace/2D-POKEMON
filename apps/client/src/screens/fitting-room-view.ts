@@ -127,12 +127,8 @@ export interface FitView {
   collection: Collection;
 }
 export interface FitData {
-  /**
-   * null: not loaded (yet), or the Shop isn't available. `owned` is what the
-   * fighter on the stage can wear (Colors bought for it included);
-   * `everyOwned` what is owned for every fighter (what a set counts).
-   */
-  economy: (Economy & { everyOwned?: string[] }) | null;
+  /** null: not loaded (yet), or the Shop isn't available. */
+  economy: Economy | null;
   progress: RaidProgress | null;
   /** The equipped shared looks (Colors, aura, entrance, victory, frame). */
   look: RaidLoadout;
@@ -191,8 +187,7 @@ export function fitItem(id: string): FitItem | undefined {
       name: piece.name,
       description: piece.description,
       slot: piece.slot,
-      // Colors on their own are bought per fighter (migration 073).
-      source: `${COLLECTION_NAMES[piece.collection]} · ${piece.slot === "skin" ? "one fighter (the set: every fighter)" : "for every fighter"}`,
+      source: `${COLLECTION_NAMES[piece.collection]} · for every fighter`,
     };
   const raid = RAID_COSMETICS[id as keyof typeof RAID_COSMETICS];
   if (raid)
@@ -383,9 +378,6 @@ export function dropUnownedTryOns(view: FitView, d: FitData) {
 const n = (v: number) => v.toLocaleString("en-US");
 export const isMythic = (id: string) =>
   CHAMPION_SKIN_BY_ID[id]?.rarity === "mythical";
-/** What a collection set counts as owned: pieces for every fighter. */
-export const setOwned = (e: Economy & { everyOwned?: string[] }) =>
-  e.everyOwned ?? e.owned;
 /** Mythic Trial wins with a fighter so far. */
 export const trialWins = (e: Economy, c: CharacterId) =>
   Math.min(MYTHIC_TRIAL_WINS, e.trialWins[c] ?? 0);
@@ -404,15 +396,13 @@ export function trialLocked(id: string, e: Economy) {
  * The numbers a purchase confirmation shows. A preview only: the server
  * sets the price and checks the balance when the purchase is sent.
  */
-export function purchase(id: string, e: Economy & { everyOwned?: string[] }) {
-  const set = SHOP_BUNDLES.find((b) => b.id === id);
-  // A set gives its Colors to every fighter: Colors bought for one don't count.
-  const owned = set ? setOwned(e) : e.owned;
-  const cost = shopPrice(id, owned, e.picks.deal);
+export function purchase(id: string, e: Economy) {
+  const cost = shopPrice(id, e.owned, e.picks.deal);
   if (cost === null) return null;
+  const set = SHOP_BUNDLES.find((b) => b.id === id);
   const full = set
     ? set.items
-        .filter((i) => !owned.includes(i))
+        .filter((i) => !e.owned.includes(i))
         .reduce((s, i) => s + LOOK_ITEM_BY_ID[i].price, 0)
     : (shopPrice(id, e.owned, null) ?? cost);
   const unlimited = !!e.unlimitedCoins;
@@ -716,11 +706,11 @@ function todayBody(view: FitView, d: FitData) {
   }
   const picks = e.picks.items.filter((id) => id !== deal);
   const bundles = SHOP_BUNDLES.filter(
-    (b) => shopPrice(b.id, setOwned(e), null) !== null,
+    (b) => shopPrice(b.id, e.owned, null) !== null,
   )
     .map((b) => ({
       b,
-      have: b.items.filter((i) => setOwned(e).includes(i)).length,
+      have: b.items.filter((i) => e.owned.includes(i)).length,
     }))
     .sort((x, y) => y.have - x.have)
     .slice(0, 3);
@@ -735,7 +725,7 @@ function todayBody(view: FitView, d: FitData) {
 function bundleRow(id: string, view: FitView, d: FitData) {
   const e = d.economy!;
   const set = SHOP_BUNDLES.find((b) => b.id === id)!;
-  const have = set.items.filter((i) => setOwned(e).includes(i)).length;
+  const have = set.items.filter((i) => e.owned.includes(i)).length;
   const p = purchase(id, e);
   return `<button type="button" class="fit-bundle" data-ui-item="${esc(id)}" data-rarity="epic" aria-pressed="${view.selected === id}"><span class="fit-bundle-art">${set.items.map((i) => `<span>${pictureOf(i, view, d, `fit-set-${i}`)}</span>`).join("")}</span><span class="fit-bundle-text"><b class="ui-h">${esc(set.name)}</b><small class="ui-note">${set.items.length} pieces for every fighter · ${have} owned</small></span><span class="fit-bundle-price">${p ? price(p.price, p.was) : `<span class="ui-tag is-ok">${menuIcon("check")}Complete</span>`}</span></button>`;
 }
@@ -779,7 +769,7 @@ function skinsBody(view: FitView, d: FitData) {
   if (!CHAMPION_SKINS.some((s) => s.champion === view.champion))
     return `${fighterRow(view, d, "Fighter")}${emptyState(
       "No skins yet",
-      `${CHARACTERS[view.champion].name} has no skins in the Shop yet. Collections have Colors and effects for it.`,
+      `${CHARACTERS[view.champion].name} has no skins in the Shop yet. Colors and effects in Collections fit every fighter.`,
       button("Collections", {
         size: "s",
         attrs: { "data-ui-section": "collections" },
@@ -849,7 +839,7 @@ function collectionsBody(view: FitView, d: FitData) {
   const e = d.economy!;
   const picker = `<div class="ui-chips fit-collections" role="group" aria-label="Collection">${SHOP_BUNDLES.map(
     (b) =>
-      `<button type="button" class="ui-chip" data-fit-collection="${b.collection}" aria-pressed="${b.collection === view.collection}">${esc(COLLECTION_NAMES[b.collection])}<span class="ui-tag">${b.items.filter((i) => setOwned(e).includes(i)).length}/${b.items.length}</span></button>`,
+      `<button type="button" class="ui-chip" data-fit-collection="${b.collection}" aria-pressed="${b.collection === view.collection}">${esc(COLLECTION_NAMES[b.collection])}<span class="ui-tag">${b.items.filter((i) => e.owned.includes(i)).length}/${b.items.length}</span></button>`,
   ).join("")}</div>`;
   const set = SHOP_BUNDLES.find((b) => b.collection === view.collection)!;
   const skins = CHAMPION_SKINS.filter((c) => c.collection === set.collection);
@@ -857,7 +847,7 @@ function collectionsBody(view: FitView, d: FitData) {
   const bonus = skins.length
     ? `<p class="ui-note">Own all ${skins.length} ${esc(COLLECTION_NAMES[set.collection])} fighter skins and the frame is yours free (${have}/${skins.length}).</p>`
     : "";
-  return `<p class="ui-note">Effects for every fighter; Colors for the fighter you buy them for (the set's Colors for every fighter) · trying on ${esc(CHARACTERS[view.champion].name)}.</p>${picker}${bundleRow(set.id, view, d)}${bonus}${grid(
+  return `<p class="ui-note">Colors and effects for every fighter · trying on ${esc(CHARACTERS[view.champion].name)}.</p>${picker}${bundleRow(set.id, view, d)}${bonus}${grid(
     set.items.map((id) => shopTile(id, view, d)).join(""),
     5,
   )}`;

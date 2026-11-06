@@ -832,16 +832,12 @@ export class AccountUI {
         problem: this.fitProblem,
         loading: this.fitLoading,
       }),
-      buy: async (item: string, champion?: CharacterId) => {
+      buy: async (item: string) => {
         same();
         // A load still on its way is older than this answer: drop it.
         this.fitRequest++;
         // The server sets the price and checks the balance: its answer counts.
-        // Shop Colors are bought for one champion (migration 073).
-        const result = (await this.api("/api/shop/buy", {
-          item,
-          ...(champion ? { champion } : {}),
-        })) as {
+        const result = (await this.api("/api/shop/buy", { item })) as {
           economy: Economy;
         };
         same();
@@ -876,22 +872,6 @@ export class AccountUI {
           this.raidLook = raidLookOf(result.progress);
           this.raidClears = bossClears(result.progress);
         } else this.raidLook = { ...this.raidLook, [slot]: item };
-        changed();
-      },
-      equipColours: async (champion: CharacterId, item: string | null) => {
-        same();
-        this.fitRequest++;
-        const result = (await this.api("/api/shop/colours", {
-          champion,
-          item,
-        })) as { economy: Economy };
-        same();
-        this.economy = result.economy;
-        // The Colors each champion wears ride on the shared look.
-        const colours = { ...(this.raidLook?.colours ?? {}) };
-        if (item) colours[champion] = item;
-        else delete colours[champion];
-        this.raidLook = { ...this.raidLook, colours };
         changed();
       },
       playAs: (champion: CharacterId) => this.hooks.chooseFighter?.(champion),

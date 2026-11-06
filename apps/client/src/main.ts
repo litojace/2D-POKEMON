@@ -88,11 +88,7 @@ import {
   type HubScene,
 } from "./hub-scene";
 import { plazaOutfitKey } from "./plaza/plaza-outfit";
-import {
-  bossClears,
-  lookOn,
-  pacificDate,
-} from "../../../packages/shared/src/raid";
+import { bossClears, pacificDate } from "../../../packages/shared/src/raid";
 import { resultXp } from "./adventure-ui";
 import { arcadeWeek, ARCADE_EVENTS } from "../../../packages/shared/src/arcade";
 import { drawArcade } from "./arcade-art";
@@ -2851,9 +2847,7 @@ function renderBattle() {
       // the roster and the Lobby.
       const vsArt = (p: Fighter) => {
         const skin = skinOf(p, p.character);
-        const palette = skin
-          ? ""
-          : (lookOn(identityOf(p).raidLook, p.character).skin ?? "");
+        const palette = skin ? "" : (identityOf(p).raidLook?.skin ?? "");
         const art = fighterArt(p.character, undefined, skin);
         return palette ? colourPreview(art, palette) : art;
       };

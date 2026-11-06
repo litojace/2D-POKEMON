@@ -1,6 +1,5 @@
 import {
   RAID_SLOTS,
-  lookOn,
   type RaidLoadout,
 } from "../../../../packages/shared/src/raid";
 import type { CharacterId } from "@arena/shared";
@@ -16,6 +15,6 @@ export function plazaOutfitKey(
     character,
     skin?.skin ?? null,
     skin?.stage ?? 1,
-    RAID_SLOTS.map((slot) => lookOn(look, character)[slot] ?? null),
+    RAID_SLOTS.map((slot) => look?.[slot] ?? null),
   ]);
 }

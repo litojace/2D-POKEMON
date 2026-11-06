@@ -318,50 +318,6 @@ test("the Wardrobe: try several things, then Equip once or Revert", async ({
   expect(errors).toEqual([]);
 });
 
-test("Colors are bought for the fighter you dress, and worn on it only", async ({
-  page,
-}, info) => {
-  // Migration 073: Shop Colors bought on their own are one champion's.
-  await shopServer(page, { balance: 2340, cost: 300 });
-  const errors = await openLobby(page);
-  await page.click("#account-coins");
-  await expect(page.locator(".fit-room")).toBeVisible();
-  const champion = (await page
-    .locator(".fit-stage .shop-live-stage")
-    .getAttribute("data-preview-champion"))!;
-  const other = champion === "cindrake" ? "voltkit" : "cindrake";
-  const name = (id: string) => id[0].toUpperCase() + id.slice(1);
-  await page.click('[data-ui-section="collections"]');
-  await page.click('[data-fit-collection="candy"]');
-  await page.click('[data-ui-item="candy-colours"]');
-  await page.click("[data-fit-buy]");
-  const modal = page.locator(".ui-modal");
-  await expect(modal).toContainText(`For ${name(champion)} only`);
-  await expect(modal).toContainText("buy them again for another fighter");
-  await page.click("[data-ui-confirm-ok]");
-  await expect(page.locator("#toast")).toContainText(
-    `are ${name(champion)}'s, and you're wearing them`,
-  );
-  expect(await calls(page)).toEqual([
-    ["buy", "candy-colours", champion],
-    ["colours", { champion, item: "candy-colours" }],
-  ]);
-  await snap(page, info, "fitting-room-colours-bought");
-  // The Wardrobe: this fighter has them; another fighter doesn't.
-  await page.click('.lobby-rail [data-lobby-action="wardrobe"]');
-  await expect(page.locator(".fit-room")).toHaveAttribute(
-    "data-fit-mode",
-    "wardrobe",
-  );
-  await page.click(`[data-fit-fighter="${champion}"]`);
-  await page.click('[data-fit-slot="skin"]');
-  await expect(page.locator('[data-ui-item="candy-colours"]')).toBeVisible();
-  await page.click(`[data-fit-fighter="${other}"]`);
-  await page.click('[data-fit-slot="skin"]');
-  await expect(page.locator('[data-ui-item="candy-colours"]')).toHaveCount(0);
-  expect(errors).toEqual([]);
-});
-
 test("keyboard: tabs and grids move with the arrows, Escape leaves to the Lobby", async ({
   page,
 }) => {

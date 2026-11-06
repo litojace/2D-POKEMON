@@ -407,14 +407,11 @@ export function installAccountRoutes(
             .min(1)
             .max(64)
             .regex(/^[a-z0-9-]+$/),
-          // Shop Colors are bought for one champion (migration 073).
-          champion: characterSchema.optional(),
         })
         .strict()
         .parse(req.body);
       const economy = await provider.rpc(token, "arena_buy_item", {
         p_item: data.item,
-        p_champion: data.champion ?? null,
       });
       onPlayerChanged(account.id);
       res.json({ ok: true, economy });
@@ -982,31 +979,6 @@ export function installAccountRoutes(
         p_skin: data.skin,
         p_stage: data.stage,
       });
-      onPlayerChanged(account.id);
-      res.json({ ok: true, economy });
-    }),
-  );
-  // Wear (or take off) Shop Colors on one champion (migration 073).
-  app.post(
-    "/api/shop/colours",
-    route(false, async (req, res, token, account) => {
-      const data = z
-        .object({
-          champion: characterSchema,
-          item: z
-            .string()
-            .min(1)
-            .max(64)
-            .regex(/^[a-z0-9-]+$/)
-            .nullable(),
-        })
-        .strict()
-        .parse(req.body);
-      const economy = await provider.rpc(
-        token,
-        "arena_equip_champion_colours",
-        { p_champion: data.champion, p_item: data.item },
-      );
       onPlayerChanged(account.id);
       res.json({ ok: true, economy });
     }),

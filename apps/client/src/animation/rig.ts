@@ -8,7 +8,6 @@ import { profilePartOrder, profileEmissionPoint } from "../creature-profile";
 import { drawElementGlyph } from "../element-effects";
 import Phaser from "phaser";
 import { CHARACTERS, type CharacterId } from "@arena/shared";
-import { lookOn } from "../../../../packages/shared/src/raid";
 import { moodFor, squashFor } from "./expression";
 import {
   AnimationController,
@@ -250,17 +249,13 @@ export class FighterRig {
       image.setTexture(rigKey(this.character, this.dir, part, suffix));
   }
   render(
-    given: AnimationPose,
+    pose: AnimationPose,
     x: number,
     y: number,
     now: number,
     alpha = 1,
     reduced = false,
   ) {
-    // Colors bought for this champion wear over the all-fighter Skin slot.
-    const pose = given.look?.colours
-      ? { ...given, look: lookOn(given.look, this.character) }
-      : given;
     for (const [part, image] of this.images)
       this.previousRotations.set(
         part,
