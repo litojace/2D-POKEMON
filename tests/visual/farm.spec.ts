@@ -718,6 +718,10 @@ test("tapping a ripe plot harvests it, and an empty plot opens the seed picker",
     const page = await context.newPage();
     const errors = await openLobby(page);
     await fakeFarm(page);
+    // A Storm Melon seed from a gift: it grows at Lv 35, above this farm.
+    await page.evaluate(() => {
+      (window as any).__fakeFarm.seeds.melon = 2;
+    });
     await page.click('#hub-scenes [data-hub-scene="farm"]');
     await expect(page.locator("#fm-badge")).toContainText("tester's Farm");
     await page.waitForTimeout(400);
@@ -735,6 +739,12 @@ test("tapping a ripe plot harvests it, and an empty plot opens the seed picker",
     const empty = await plot(3);
     await page.mouse.click(empty.x, empty.y);
     await expect(page.locator("#fm-pop")).toBeVisible();
+    // The melon is greyed out and can't be picked; it says when it grows.
+    const melon = page.locator('#fm-pop [data-pseed="melon"]');
+    await expect(melon).toBeDisabled();
+    await expect(melon).toHaveClass(/locked/);
+    await expect(melon).toContainText("Lv 35");
+    await expect(page.locator('#fm-pop [data-pseed="carrot"]')).toBeEnabled();
     await snap(page, info, "farm-seed-picker-1280x800");
     await page.locator('#fm-pop [data-pseed="carrot"]').click();
     await expect
@@ -744,6 +754,18 @@ test("tapping a ripe plot harvests it, and an empty plot opens the seed picker",
         ),
       )
       .toContainEqual({ a: "plant", plot: 3, crop: "carrot" });
+    // The seed tool's picker greys it out too, and the seed in hand is never it.
+    expect(await page.evaluate(() => (window as any).__farm.F.seed)).not.toBe(
+      "melon",
+    );
+    const seedTool = page.locator('#fm-tools [data-tool="seed"]');
+    await seedTool.click();
+    await seedTool.click();
+    const tMelon = page.locator('#fm-pop [data-tseed="melon"]');
+    await expect(tMelon).toBeDisabled();
+    await expect(tMelon).toContainText("Lv 35");
+    await expect(page.locator('#fm-pop [data-tseed="wheat"]')).toBeEnabled();
+    await page.keyboard.press("Escape");
     // The market sheet opens from the menu.
     await openSheet(page, "market");
     await expect(page.locator("#fm-sheet")).toContainText("Farmers' market");
