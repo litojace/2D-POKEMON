@@ -44,6 +44,20 @@
   aspect-ratio: 1;
   background: none;
 }
+/* A frame paints its ornaments outside its ring (Element Master's crown
+   reaches 30% above it, a laurel's leaves and a prism's points ~20% to each
+   side), and the boxes clip: frames get room on every side, as in the
+   fitting room's tiles (56% keeps a crown 2 px clear in a phone's 44 px box). */
+.journey-room
+  :is(
+    .journey-tier-art,
+    .journey-lvl-art,
+    .journey-prize-art,
+    .journey-foot-art
+  )
+  > .raid-cosmetic-preview[data-frame-stars] {
+  width: 56%;
+}
 .journey-room .raid-cosmetic-preview > :is(svg, img) {
   width: 100%;
   height: 100%;

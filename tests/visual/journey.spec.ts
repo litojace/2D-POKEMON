@@ -342,3 +342,117 @@ test("the Journey with reduced motion and Low graphics", async ({
     await context.close();
   }
 });
+
+/** Frames whose picture reaches the edge of its box (the boxes clip, so a
+ * frame touching the edge has lost its ornaments). Each box is photographed
+ * with the frames shown and hidden; any frame pixel on the box's outermost
+ * ring of pixels counts. The panel redraws on its timers, so boxes are found
+ * again by index each time and frames are hidden by a style sheet (it
+ * outlives a redraw, unlike a style on the element). */
+const FRAME_BOX =
+  ".journey-room :is(.journey-tier-art, .journey-lvl-art, .journey-prize-art, .journey-foot-art):has(> [data-frame-stars])";
+async function clippedFrames(page: Page) {
+  const count = await page.locator(FRAME_BOX).count();
+  const bad: string[] = [];
+  for (let i = 0; i < count; i++) {
+    const spot = await page.evaluate(
+      ([selector, i]) => {
+        const art = document.querySelectorAll<HTMLElement>(selector)[i];
+        art.scrollIntoView({ block: "center", inline: "center" });
+        const r = art.getBoundingClientRect();
+        // Rounded inwards: the picture's outer ring is the box's own edge.
+        const x = Math.ceil(r.left),
+          y = Math.ceil(r.top);
+        return {
+          id: art
+            .querySelector("[data-frame-stars]")!
+            .getAttribute("data-cosmetic"),
+          clip: {
+            x,
+            y,
+            width: Math.floor(r.right) - x,
+            height: Math.floor(r.bottom) - y,
+          },
+        };
+      },
+      [FRAME_BOX, i] as const,
+    );
+    const shot = async () =>
+      (
+        await page.screenshot({ clip: spot.clip, animations: "disabled" })
+      ).toString("base64");
+    const on = await shot();
+    const hide = await page.addStyleTag({
+      content: "[data-frame-stars] { visibility: hidden !important; }",
+    });
+    const off = await shot();
+    await hide.evaluate((e) => e.remove());
+    const edge = await page.evaluate(
+      async ([a, b]) => {
+        const pixels = async (src: string) => {
+          const img = new Image();
+          img.src = `data:image/png;base64,${src}`;
+          await img.decode();
+          const c = document.createElement("canvas");
+          c.width = img.width;
+          c.height = img.height;
+          const g = c.getContext("2d")!;
+          g.drawImage(img, 0, 0);
+          return g.getImageData(0, 0, c.width, c.height);
+        };
+        const [p, q] = [await pixels(a), await pixels(b)];
+        let hits = 0;
+        for (let y = 0; y < p.height; y++)
+          for (let x = 0; x < p.width; x++) {
+            if (x > 0 && y > 0 && x < p.width - 1 && y < p.height - 1) continue;
+            const k = (y * p.width + x) * 4;
+            const d =
+              Math.abs(p.data[k] - q.data[k]) +
+              Math.abs(p.data[k + 1] - q.data[k + 1]) +
+              Math.abs(p.data[k + 2] - q.data[k + 2]);
+            if (d > 24) hits++;
+          }
+        return hits;
+      },
+      [on, off],
+    );
+    if (edge) bad.push(`${spot.id} (${edge} edge pixels)`);
+  }
+  return { count, bad };
+}
+
+for (const size of [SIZES[0], SIZES[3]])
+  test(`every frame on the Journey fits its box at ${size.name}`, async ({
+    browser,
+  }) => {
+    const context = await browser.newContext({
+      viewport: { width: size.width, height: size.height },
+      reducedMotion: "reduce",
+    });
+    try {
+      const page = await context.newPage();
+      const errors = await openLobby(page);
+      if (size.island) await setInsets(page, ISLAND);
+      await withJourney(page);
+      await page.click('.lobby-rail [data-lobby-action="journey"]');
+      // The Journey's data has arrived (the 30-tier season road).
+      await expect(page.locator(".journey-room .journey-tier")).toHaveCount(30);
+      const season = await clippedFrames(page);
+      await page.click('[data-ui-jtab="levels"]');
+      await expect(page.locator(".journey-room")).toHaveAttribute(
+        "data-journey-tab",
+        "levels",
+      );
+      // The level road: 21 prizes (level 100 gives a title and a frame).
+      await expect(page.locator(".journey-room .journey-prize")).toHaveCount(
+        21,
+      );
+      const levels = await clippedFrames(page);
+      // The season road's frame and the level road's five.
+      expect(season.count + levels.count).toBeGreaterThanOrEqual(6);
+      expect([...season.bad, ...levels.bad]).toEqual([]);
+      expect(errors).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });
