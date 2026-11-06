@@ -1294,6 +1294,94 @@ Before and after: [Ranks](images/step6/ranks.webp),
   sweeps just those). `landscape-only.test.ts` no longer expects the old
   Friends and leaderboard selectors in the hub dialog's size rule.
 
+### Step 7: the player card and profile (built 6 Nov 2026)
+
+Before and after: [profile](images/step7/profile.webp), the
+[share card](images/step7/share-card.webp); every size in
+[`images/step7/`](images/step7/).
+
+- `apps/client/src/screens/profile-view.ts` (markup and rules, no DOM),
+  `profile.ts` (behaviour), `profile.css` (layout only) and
+  `profile-card.ts` (the share picture). The HUD's name opens it inside
+  the Lobby as a panel (from the Plaza or the Farm it comes back to the
+  Lobby first, as every hub screen does); Escape and Close leave.
+- **The card** (left) is the card other players see: your Lobby fighter in
+  the look you wear (the roster's still art, framed on the creature so it
+  fills the card), your title in its colour, your name, and Lv, rank ·
+  rating and your best mastery ("Crystal Voltkit") as tags. It keeps its
+  place while the column beside it scrolls.
+- **Beside it:** matches, wins, win rate and raid clears as four tiles;
+  your titles as chips that **wear the title on a tap** (the existing
+  `/api/account/title`; every chip waits while one is on its way; the
+  server's answer or its reason shows, and the HUD's nameplate follows);
+  mastery for all sixteen fighters in two even rows of eight (portrait and
+  badge ring; the counts are in each chip's label); Journey (level, season
+  tier) and Ranked (rank · rating, what's next) as two cards that open
+  those screens; raid trophies per boss with clears (each opens that
+  boss's Rewards tab); achievements (each gives its title); Ranks, Journey
+  and Raid rewards as three equal buttons; who you are signed in as.
+  A guest gets "Keep your progress" with their email first.
+- **Share card** (decision 7) draws your card on a 1200×630 canvas on the
+  device, the way the match card is drawn: the fighter in your look, title,
+  name, level, rank, best mastery and the four numbers. The phone's share
+  sheet gets the picture; elsewhere it downloads and the message is
+  copied. Nothing is uploaded. `share-card.ts` now has one `sharePicture`
+  for both cards.
+- **Deleted:** `progress-view.ts` (its `seasonName` moved to
+  `ranks-view.ts`), the title picker in `player-nameplate.ts`
+  (`titlePickerMarkup`), the profile dialog in `accounts.ts`, its hooks in
+  `dialog.ts`, 280 lines of `style.css` (45 rules, 6 selectors trimmed:
+  the profile layout, title picker and options, progress totals,
+  achievements, mastery, the rating card, save-account) and 147 lines of
+  `mobile-panels.css` (38 rules: the phone profile; the file keeps the
+  header menu). As before a script removed only selectors built on
+  classes no source emits any more, plus five generic class names checked
+  by hand (`progress`, `achievements`, `mastery`, `save-account`,
+  `ranked`); `player-card.css` never existed. **Specificity kept:** two
+  trimmed `:has()` lists lost the ID that step 6 had put there; they keep
+  their ID weight with `#controls-reset` and `#admin-message`, which live
+  in the dialogs those rules still match. The Lobby, Settings, Controls,
+  Credits, Report a player, Ranks, Friends, Missions, the party invite and
+  the Play panel are pixel-identical to `main` at 1440×900 and 844×390
+  (the admin screen was not compared: the harness's player isn't an
+  admin).
+- **Choices made while building:** the old profile's season record tile
+  ("0–0 October 2026") gave way to raid clears, as planned (this month's
+  W–L is on Ranks); the live nameplate preview went (the card shows the
+  title as it reads); the achievements stay (the mockup left them out, but
+  they say how titles are earned). On phones the card is 170 px wide, the
+  trophies go four to a row and the three links share the column's width
+  ("Raid rewards" and its icon need more than the phones' 104 px). On a
+  tall window the card widens (to 30% of the window, at most 560 px) so
+  its fighter isn't small in a tall frame.
+- **Layout, measured** in `tests/visual/profile.spec.ts` at 1720×1392,
+  1440×900, 1280×720, 844×390 and 852×393 with the island: the card's
+  name, title, tags and every tile's number and label centred in their
+  boxes (2 px); Share card, No title, the worn title and the three links
+  centred on the pixels (1 px); one size each for the tiles, the mastery
+  chips, the trophies, the two summaries, the links and the title chips'
+  height; sixteen fighters in rows of 8 and 8; 9,999 matches and a long
+  title list without spilling; the column scrolls to its end with the card
+  in place; `layoutProblems` and `closeSpot`. Found by the measuring and
+  fixed: "Raid rewards" was cut off on phones; found by looking: the
+  fighter was small and low in the card (framed on the creature now), 16
+  fighters wrapped 11 + 5 (8 + 8 now), the tall-window card, and a short
+  achievement's text drifting down a taller row. The scroll sweep
+  (`SWEEP_ONLY=profile`) is clean at 844×390, 852×393 island, 667×375 and
+  1280×720.
+- **Tests:** `tests/unit/profile.test.ts` (the tiles, best mastery, rank,
+  the card, the share message, title chips: the old
+  `title-picker.test.ts` checks moved here, every fighter, every boss,
+  achievements, the guest form, loading and a retry);
+  `tests/visual/profile.spec.ts` (above, plus wearing a title, taking it
+  off, a refusal, the HUD following, keyboard, Share card's download, a
+  trophy opening that boss's rewards, a guest, Escape, reduced motion, Low
+  graphics). The asserting checks from step 6 moved to
+  `tests/visual/ui-checks.ts`, shared by both specs. `panel-scroll.spec.ts`
+  sweeps the profile as a hub panel; `landscape-only.test.ts` now checks
+  the admin dialog's size rule alone. The harness's fake API takes
+  `__accountPatch` and `__progress`.
+
 ## Decisions (owner, 3 Nov 2026)
 
 | #   | Question                                        | Decision                                                                                                                                                         |

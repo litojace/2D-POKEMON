@@ -328,6 +328,7 @@
 }
 .pf-achievements > li {
   display: grid;
+  align-content: start;
   gap: 2px;
   padding: 8px 10px;
   border-radius: var(--rad-sm);
@@ -408,8 +409,12 @@
   display: none;
 }
 
-/* A tall window: the numbers and the trophies grow into the room. */
+/* A tall window: a wider card (its fighter is as wide as the card, so a
+   narrow card left it small in a tall frame) and bigger numbers. */
 @media (min-height: 1000px) {
+  .profile-panel > .ui-panel-body.pf-body {
+    grid-template-columns: clamp(320px, 30vw, 560px) minmax(0, 1fr);
+  }
   .pf-tile {
     min-height: 110px;
   }
