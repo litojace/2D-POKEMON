@@ -81,9 +81,8 @@ for (const [skin, flat] of [
       expect(far.at(-1)!.x).toBeCloseTo(near[0].x);
     }
     expect(particles.length).toBeGreaterThan(0);
-    const rising = particles.filter(
-      (p) => p.shape === (skin.startsWith("tidefin") ? "bubble" : "dot"),
-    );
+    // The Void Knights' smoke rises behind them.
+    const rising = particles.filter((p) => p.shape === "puff");
     expect(rising.length).toBeGreaterThan(0);
     expect(rising.every((p) => p.behind)).toBe(true);
   });
