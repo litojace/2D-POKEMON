@@ -84,6 +84,7 @@ import {
 } from "./farm-icons";
 import "./farm.css";
 import { fadeIn } from "../ui/motion";
+import { setInner } from "../ui/patch";
 
 const svgUrl = (s) =>
   "data:image/svg+xml;charset=utf-8," + encodeURIComponent(s);
@@ -1186,6 +1187,7 @@ export function openFarm(options) {
       y + (m.actualBoundingBoxAscent - m.actualBoundingBoxDescent) / 2,
     );
     g.restore();
+    return { x, y, w, h };
   }
   /* ---------- background ---------- */
   const bg = document.createElement("canvas");
@@ -5417,27 +5419,64 @@ export function openFarm(options) {
     ctx.translate(-cam.x, -cam.y);
     const z = 1 / Math.max(0.6, Z),
       tag = (t, x, top, accent) => nameTag(ctx, t, x, top - 20 * z, accent);
-    const bob = reduced ? 0 : Math.abs(Math.sin(time * 3)) * 4;
-    const badge = (t, x, top, bg) => {
-      const fs = 15 * z;
-      ctx.font = `800 ${fs}px 'Barlow Condensed', sans-serif`;
-      const w = Math.max(22 * z, ctx.measureText(t).width + 14 * z),
-        h = 22 * z,
-        y = top - 50 * z - bob;
+    const bob = reduced ? 0 : Math.abs(Math.sin(time * 3)) * 2.5 * z;
+    /** A badge pinned to a tag's top-right corner, so it reads as part of
+     *  it: big, outlined, with a glow ring pulsing out to catch the eye. */
+    const badge = (box, t, bg) => {
+      const fs = 18 * z;
+      ctx.save();
+      ctx.font = `900 ${fs}px 'Barlow Condensed', sans-serif`;
+      const w = Math.max(28 * z, ctx.measureText(t).width + 16 * z),
+        h = 28 * z,
+        x = box.x + box.w / 2 - 6 * z,
+        y = box.y - box.h / 2 - 2 * z - bob;
+      if (!reduced) {
+        const k = (time * 0.9) % 1;
+        ctx.globalAlpha = 0.55 * (1 - k);
+        ctx.strokeStyle = bg;
+        ctx.lineWidth = 3 * z;
+        ctx.beginPath();
+        ctx.roundRect(
+          x - w / 2 - k * 12 * z,
+          y - h / 2 - k * 12 * z,
+          w + k * 24 * z,
+          h + k * 24 * z,
+          h / 2 + k * 12 * z,
+        );
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
       ctx.fillStyle = bg;
+      ctx.strokeStyle = "#1a0f05";
+      ctx.lineWidth = 2.5 * z;
       ctx.beginPath();
       ctx.roundRect(x - w / 2, y - h / 2, w, h, h / 2);
       ctx.fill();
+      ctx.stroke();
       ctx.fillStyle = "#1a0f05";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText(t, x, y + 0.5);
-      ctx.textBaseline = "alphabetic";
+      ctx.fillText(t, x, y + 1 * z);
+      ctx.restore();
     };
     drawDecorPins(time, z);
-    tag("ORDERS", BOARDP.x, BOARDP.y - 140);
-    tag("MARKET", STALL.x, STALL.y - 150);
-    tag("BARN", BARN.x, BARN.y - 196);
+    // A place with something for you: its tag gets a gold edge and a badge.
+    const orderReady = !V && F.orders.some((o) => o.items && canFill(o)),
+      sold = !V && stall?.shelves?.some((x) => x.sold),
+      full = !V && barnUsed() >= F.barnCap * 0.9;
+    const tOrders = tag(
+        "ORDERS",
+        BOARDP.x,
+        BOARDP.y - 140,
+        orderReady ? "#ffd65b" : undefined,
+      ),
+      tMarket = tag(
+        "MARKET",
+        STALL.x,
+        STALL.y - 150,
+        sold ? "#7ff0a2" : undefined,
+      ),
+      tBarn = tag("BARN", BARN.x, BARN.y - 196, full ? "#ff8a7a" : undefined);
     tag(
       F.wishReady && !V ? "WISHING WELL ✦" : "WISHING WELL",
       WELL.x,
@@ -5445,12 +5484,9 @@ export function openFarm(options) {
       F.wishReady && !V ? "#ffd65b" : undefined,
     );
     if (!V) {
-      if (F.orders.some((o) => o.items && canFill(o)))
-        badge("!", BOARDP.x + 44 * z, BOARDP.y - 140, "#ffd65b");
-      if (stall?.shelves?.some((x) => x.sold))
-        badge("SOLD!", STALL.x + 46 * z, STALL.y - 150, "#7ff0a2");
-      if (barnUsed() >= F.barnCap * 0.9)
-        badge("FULL", BARN.x + 40 * z, BARN.y - 196, "#ff8a7a");
+      if (orderReady) badge(tOrders, "!", "#ffd65b");
+      if (sold) badge(tMarket, "SOLD!", "#7ff0a2");
+      if (full) badge(tBarn, "FULL", "#ff8a7a");
       if (balloon) {
         if (balloon.crates && bal.mode === "idle") {
           const p = balloonPos(time, performance.now()),
@@ -5863,8 +5899,10 @@ export function openFarm(options) {
   /* ---------- HUD ---------- */
   function renderBadge() {
     const p = F.lv >= 100 ? 100 : (F.xp / need(F.lv)) * 100;
-    $("fm-badge").innerHTML =
-      `<div class="fm-ring" style="--p:${p}"><b>${F.lv}</b></div><div><strong>${esc(options.playerName())}'s Farm</strong><small class="row2"><span>${F.lv >= 100 ? "Max level" : `${F.xp}/${need(F.lv)} XP`}</span></small><div class="xpbar"><i style="width:${p}%"></i></div></div>`;
+    setInner(
+      $("fm-badge"),
+      `<div class="fm-ring" style="--p:${p}"><b>${F.lv}</b></div><div><strong>${esc(options.playerName())}'s Farm</strong><div class="xpbar"><i style="width:${p}%"></i><span>${F.lv >= 100 ? "Max level" : `${F.xp.toLocaleString("en-US")} / ${need(F.lv).toLocaleString("en-US")} XP`}</span></div></div>`,
+    );
   }
   const dogLeft = () => Math.max(0, (F.dog.until - serverNow()) / 1000),
     dogTotal = () => Math.max(1, (F.dog.until - F.dog.since) / 1000);
@@ -6073,12 +6111,15 @@ export function openFarm(options) {
   }
   function renderTools() {
     $("fm-tools").hidden = !TOOLS().length;
-    $("fm-tools").innerHTML = TOOLS()
-      .map(
-        ([id, ic, label, count, lvl], idx) =>
-          `<button type="button" class="fm-tool" data-tool="${id}" aria-pressed="${F.tool === id}" title="${label} (key ${idx + 1})"><kbd>${idx + 1}</kbd>${count != null ? `<b>${count > 99 ? "99+" : count}</b>` : ""}${I(ic)}<span>${label}</span>${lvl ? `<em>${lvl}</em>` : ""}</button>`,
-      )
-      .join("");
+    setInner(
+      $("fm-tools"),
+      TOOLS()
+        .map(
+          ([id, ic, label, count, lvl], idx) =>
+            `<button type="button" class="fm-tool" data-tool="${id}" aria-pressed="${F.tool === id}" title="${label} (key ${idx + 1})"><kbd>${idx + 1}</kbd>${count != null ? `<b>${count > 99 ? "99+" : count}</b>` : ""}${I(ic)}<span>${label}</span>${lvl ? `<em>${lvl}</em>` : ""}</button>`,
+        )
+        .join(""),
+    );
   }
   function showTip(i) {
     const p = cur().plots[i],
@@ -6214,8 +6255,14 @@ export function openFarm(options) {
       ),
     );
   };
+  let sheetView = "";
   function renderSheet() {
     const el = $("fm-sheet");
+    // Another sheet or tab (or one just opened) is drawn from scratch; the
+    // same one is patched in place (ui/patch.ts).
+    const view = `${sheet}:${sheetTab}`,
+      fresh = el.hidden || view !== sheetView;
+    sheetView = view;
     el.hidden = false;
     const top = el.querySelector(".sh-body")?.scrollTop ?? 0;
     let html = "";
@@ -6507,7 +6554,7 @@ export function openFarm(options) {
               : `<p class="sh-note">None of your friends has a farm yet. Add friends from the Lobby, or invite them from the Invite tab.</p>`) +
           `</div>`;
     }
-    el.innerHTML = html;
+    if (!setInner(el, html, fresh)) return;
     if (sheet === "market" && sheetTab === "stall") wireStallForm(el);
     el.querySelectorAll("[data-dogprev]").forEach((c) => {
       const g = c.getContext("2d");
@@ -6535,6 +6582,8 @@ export function openFarm(options) {
     for (const sel of LINE_UP) {
       const bs = [...el.querySelectorAll(`.item .acts ${sel}`)];
       if (bs.length < 2) continue;
+      // Measured at their own width (a patched sheet keeps the last one).
+      for (const x of bs) x.style.minWidth = "";
       const w = Math.max(...bs.map((x) => x.offsetWidth));
       for (const x of bs) x.style.minWidth = `${w}px`;
     }
@@ -7428,6 +7477,8 @@ export function openFarm(options) {
     /** Debug handle for tests. */
     _dbg: {
       F,
+      /** Read the farm from the server again, as the minute poll does (tests). */
+      refresh: () => refresh(),
       /** Preview a time of day (0..1), or null for the device clock (tests). */
       tod: (v) => {
         todOverride = v;

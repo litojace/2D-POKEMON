@@ -14,6 +14,7 @@ import { deviceTimeOfDay, goldenLevel, nightLevel } from "../farm/farm-feel";
 import { farmIcon as I } from "../farm/farm-icons";
 import type { FarmCue } from "../farm/farm-sound";
 import { fadeIn } from "../ui/motion";
+import { setInner } from "../ui/patch";
 import {
   BOUNDS,
   R,
@@ -2006,8 +2007,8 @@ export function openBistro(o: BistroOptions): BistroHandle {
         previewItems = copy.items;
       }
     }
-    const g = editEl.querySelector("#bs-grade");
-    if (g) g.innerHTML = gradeText();
+    const g = editEl.querySelector<HTMLElement>("#bs-grade");
+    if (g) setInner(g, gradeText());
   };
   const renderEdit = () => {
     editEl.hidden = !editing;
@@ -2016,7 +2017,9 @@ export function openBistro(o: BistroOptions): BistroHandle {
       ItemKind,
       number,
     ][];
-    editEl.innerHTML = `
+    setInner(
+      editEl,
+      `
       <div class="bs-edit-head"><b>${held ? `Placing: ${esc(ITEM_BY_KIND[held.kind].name)}` : "Decorate"}</b><span>${held ? "Tap a floor tile to put it down" : "Tap something to move it · tags: a waiter's steps to each seat"}</span><em class="bs-grade" id="bs-grade">${gradeText()}</em></div>
       <div class="bs-store">${stored.length ? stored.map(([k, n]) => `<button type="button" data-hold="${k}" class="${held?.kind === k && !held.moving ? "on" : ""}"><img src="${itemIconUrl(k)}" alt=""><span>${esc(ITEM_BY_KIND[k].name)}</span><i>×${n}</i></button>`).join("") : `<em>Storage is empty</em>`}</div>
       <div class="bs-edit-btns">
@@ -2024,7 +2027,11 @@ export function openBistro(o: BistroOptions): BistroHandle {
         ${held ? `<button type="button" data-ed="store">Put away</button><button type="button" data-ed="cancel">Cancel</button>` : ""}
         <button type="button" data-ed="shop">Shop</button>
         <button type="button" class="go" data-ed="done">Done</button>
-      </div>`;
+      </div>`,
+    );
+    // The grade also changes as a held item moves (outside this markup).
+    const g = editEl.querySelector<HTMLElement>("#bs-grade");
+    if (g) setInner(g, gradeText());
   };
   editEl.addEventListener("click", (e) => {
     const b = (e.target as HTMLElement).closest("button");
@@ -2130,8 +2137,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
   let hireRole: Role = "waiter";
   let hireChosen = false;
   let sheetArg: number | string | undefined;
-  /** The last sheet drawn: what it showed, and for which view. */
-  let drawnHtml = "";
+  /** The view (sheet and tab) the open sheet shows. */
   let drawnView = "";
   const closeSheet = () => {
     sheet.hidden = true;
@@ -2657,35 +2663,32 @@ export function openBistro(o: BistroOptions): BistroHandle {
   };
   /**
    * Redraw the open sheet. Server answers (every coin a guest pays) redraw
-   * it too, so keep it as it was: skip a redraw that changes nothing, and
-   * keep the lists scrolled where the player left them.
+   * it too, so only what changed is patched in (ui/patch.ts): lists keep
+   * their scroll, a button under the finger stays the same button and
+   * animations don't restart. Another sheet or tab is drawn from scratch.
    */
   const renderSheet = () => {
     if (!sheetKind) return;
     const out = { innerHTML: "" };
     drawSheet(out);
     const view = `${sheetKind}:${String(sheetArg ?? "")}`;
-    const same = view === drawnView;
-    if (same && out.innerHTML === drawnHtml) return;
+    const fresh = view !== drawnView;
+    drawnView = view;
+    // Where a list's rows were added or removed, that list is drawn anew:
+    // put it back where it was scrolled to.
     const scrolled: [number, string, number, number][] = [];
-    if (same)
+    if (!fresh)
       sheet.querySelectorAll<HTMLElement>("*").forEach((el, i) => {
         if (el.scrollTop > 0 || el.scrollLeft > 0)
           scrolled.push([i, el.className, el.scrollTop, el.scrollLeft]);
       });
-    const top = sheet.scrollTop;
-    sheet.innerHTML = out.innerHTML;
-    drawnHtml = out.innerHTML;
-    drawnView = view;
-    if (!same) return;
-    sheet.scrollTop = top;
-    if (!scrolled.length) return;
+    if (!setInner(sheet, out.innerHTML, fresh) || !scrolled.length) return;
     const els = sheet.querySelectorAll<HTMLElement>("*");
     for (const [i, cls, y, x] of scrolled) {
       const el = els[i];
       if (!el || el.className !== cls) continue;
-      el.scrollTop = y;
-      el.scrollLeft = x;
+      if (el.scrollTop !== y) el.scrollTop = y;
+      if (el.scrollLeft !== x) el.scrollLeft = x;
     }
   };
   sheet.addEventListener("click", (e) => {
@@ -2979,7 +2982,6 @@ export function openBistro(o: BistroOptions): BistroHandle {
   let hudAt = 0;
   const badge = $("#bs-badge");
   const chips = $("#bs-chips");
-  let lastChips = "";
   chips.addEventListener("click", (e) => {
     if (!(e.target as HTMLElement).closest("[data-pop]")) return;
     sound("tick");
@@ -3006,20 +3008,20 @@ export function openBistro(o: BistroOptions): BistroHandle {
     if (dot) dot.hidden = !canHire;
     const need = xpToNext(S.level);
     const name = visiting ? visiting.name : o.playerName();
-    badge.innerHTML = `<div class="bs-ring" style="--p:${Math.round((S.xp / need) * 100)}"><b>${S.level}</b>${S.stars ? `<i class="stars" title="${S.stars} star${S.stars > 1 ? "s" : ""}: +${S.stars * 10}% on every price">★${S.stars}</i>` : ""}</div>
+    setInner(
+      badge,
+      `<div class="bs-ring" style="--p:${Math.round((S.xp / need) * 100)}"><b>${S.level}</b>${S.stars ? `<i class="stars" title="${S.stars} star${S.stars > 1 ? "s" : ""}: +${S.stars * 10}% on every price">★${S.stars}</i>` : ""}</div>
       <strong>${esc(name.endsWith("s") ? `${name}'` : `${name}'s`)} Bistro</strong>
       ${visiting ? `<small class="likes">♥ ${fmt(visiting.likes)}</small>` : ""}
-      <div class="xpbar" title="${S.xp} / ${need} XP"><i style="width:${(S.xp / need) * 100}%"></i></div>`;
+      <div class="xpbar"><i style="width:${Math.min(100, (S.xp / need) * 100)}%"></i><span>${fmt(S.xp)} / ${fmt(need)} XP</span></div>`,
+    );
     const pop = popNow().total;
     const popN = Math.round(pop);
     const chipsHtml = `<button type="button" class="bs-chip glass pop" data-pop title="Popularity ${popN} of 50 · ${popTier(pop)}"><span class="pop-ring" style="--p:${popN * 2}"><i>${popN}</i></span><span><small>Popularity</small><b>${popTier(pop)}</b></span><b class="ph">Popularity</b></button>
       ${rushing() ? `<div class="bs-chip glass rush"><span><b>Rush hour!</b><small>Tips ×2 · ${RUSH_SECONDS - (Math.floor((nowS() + rushShift) / 1000) % RUSH_PERIOD)}s left</small></span></div>` : `<button type="button" class="bs-chip glass soft lay" data-pop title="How handy the seats are for the waiters"><small>Floor plan</small><b>${layout.grade ? `Grade ${layout.grade}` : "No seats"}</b></button>`}`;
     // Only when something shows differently: a chip redrawn under a finger
     // would swallow the tap.
-    if (chipsHtml !== lastChips) {
-      lastChips = chipsHtml;
-      chips.innerHTML = chipsHtml;
-    }
+    setInner(chips, chipsHtml);
     const slots = S.counter
       .map((c) =>
         c
@@ -3028,9 +3030,12 @@ export function openBistro(o: BistroOptions): BistroHandle {
       )
       .join("");
     const comboLeft = clamp(1 - (T - lastServe) / COMBO_SECONDS, 0, 1);
-    bar.innerHTML = `<div class="bs-slots"><small>Counter</small>${slots}</div>
+    setInner(
+      bar,
+      `<div class="bs-slots"><small>Counter</small>${slots}</div>
       <div class="bs-combo${combo >= 2 && comboLeft > 0 ? " on" : ""}" style="--c:${comboLeft * 100}%"><small>Streak</small><b>×${combo >= 2 && comboLeft > 0 ? combo : 1}</b></div>
-      <div class="bs-open"><small>${customers.filter((c) => c.state !== "leave").length} guests</small><b>${seatList.length} seats</b></div>`;
+      <div class="bs-open"><small>${customers.filter((c) => c.state !== "leave").length} guests</small><b>${seatList.length} seats</b></div>`,
+    );
   };
 
   /* ───────────── update ───────────── */
@@ -4176,10 +4181,13 @@ export function openBistro(o: BistroOptions): BistroHandle {
     visitEl.hidden = false;
     const empty = servingsLeft(S) === 0;
     const full = v.myDines >= DINE.perDay;
-    visitEl.innerHTML = `<div class="who"><img src="${portrait(v.fighter)}" alt=""><span><small>Visiting</small><b>${esc(v.name)}'s Bistro</b></span></div>
+    setInner(
+      visitEl,
+      `<div class="who"><img src="${portrait(v.fighter)}" alt=""><span><small>Visiting</small><b>${esc(v.name)}'s Bistro</b></span></div>
       <button type="button" data-v="dine" ${v.dined || empty || full ? "disabled" : ""}>${v.dined ? "Ate here today" : full ? "Full for today" : empty ? "Nothing to eat" : "Eat here"}</button>
       <button type="button" data-v="like" ${v.liked ? "disabled" : ""}>${v.liked ? "♥ Liked" : "♥ Like"}</button>
-      <button type="button" class="go" data-v="home">Back home</button>`;
+      <button type="button" class="go" data-v="home">Back home</button>`,
+    );
   };
   visitEl.addEventListener("click", async (e) => {
     const b = (e.target as HTMLElement).closest("button");

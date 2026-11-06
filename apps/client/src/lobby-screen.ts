@@ -19,6 +19,7 @@ import { elementIcon } from "./element-icons";
 import { picksCountdown } from "./shop-ui";
 import "./lobby.css";
 import { fadeIn } from "./ui/motion";
+import { setInner } from "./ui/patch";
 import { openHubPanelNow } from "./ui/hub-panel";
 
 /**
@@ -471,8 +472,10 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
         leaves === undefined
           ? "Earn Gold Leaves"
           : `${leaves.toLocaleString("en-US")} Gold Leaves`;
-      $("lobby-journey-card").innerHTML = journeyCard(view.economy?.journey);
-      $("lobby-missions-card").innerHTML = missionsCard(view.economy);
+      // In place (ui/patch.ts): updates come often (friends online, the
+      // economy) and the cards' pictures and progress bars stay as they are.
+      setInner($("lobby-journey-card"), journeyCard(view.economy?.journey));
+      setInner($("lobby-missions-card"), missionsCard(view.economy));
       $("lobby-friends-online").textContent =
         view.friendsOnline === null
           ? "Friends online"

@@ -532,7 +532,13 @@ async function hudBoxes(page: Page) {
       const el = document.querySelector(sel);
       if (!el) continue;
       const r = el.getBoundingClientRect();
-      if (r.width && r.height && getComputedStyle(el).display !== "none")
+      const cs = getComputedStyle(el);
+      if (
+        r.width &&
+        r.height &&
+        cs.display !== "none" &&
+        cs.visibility !== "hidden"
+      )
         out.push({ name, x: r.left, y: r.top, w: r.width, h: r.height });
     }
     return out;
@@ -579,7 +585,10 @@ for (const viewport of [
       await expect(page.locator(".farm-layer #fm-cv")).toBeVisible();
       await expect(page.locator("#fm-chips [data-orb]")).toHaveCount(4);
       await expect(page.locator("#fm-badge")).toContainText("tester's Farm");
-      await expect(page.locator("#fm-badge")).toContainText("20/");
+      // The XP count is written in the bar.
+      await expect(page.locator("#fm-badge .xpbar")).toContainText(
+        /^20 \/ \d+ XP$/,
+      );
       // No tool bar on your own farm: tools are bubbles by the plots.
       await expect(page.locator("#fm-tools")).toBeHidden();
       await page.waitForTimeout(600);
@@ -589,16 +598,33 @@ for (const viewport of [
         `farm-${viewport.width}x${viewport.height}${viewport.inset ? "-island" : ""}`,
       );
       const all = await hudBoxes(page);
-      // The farm badge is the player card's twin: same width, height and left edge.
-      const card = all.find((b) => b.name === "profile")!,
+      // The player card (the account's level) is hidden on the farm, and the
+      // farm badge takes its place: the same box, at the same spot.
+      expect(all.map((b) => b.name)).not.toContain("profile");
+      await expect(page.locator("#account-profile")).toHaveCSS(
+        "visibility",
+        "hidden",
+      );
+      const card = await page.locator("#account-profile").evaluate((e) => {
+          const r = e.getBoundingClientRect();
+          return { x: r.left, y: r.top, w: r.width, h: r.height };
+        }),
         badge = all.find((b) => b.name === "badge")!;
       expect(badge.w, "badge width").toBeCloseTo(card.w, 1);
       expect(badge.h, "badge height").toBeCloseTo(card.h, 1);
       expect(badge.x, "badge left edge").toBeCloseTo(card.x, 1);
-      expect(badge.y - (card.y + card.h), "gap under the card").toBeCloseTo(
-        4,
-        1,
-      );
+      expect(badge.y, "badge top").toBeCloseTo(card.y, 1);
+      // The bar is thick enough for its text, and the text fits in it.
+      const bar = await page.locator("#fm-badge .xpbar").evaluate((e) => {
+        const r = e.getBoundingClientRect();
+        return {
+          h: r.height,
+          w: r.width,
+          sw: e.querySelector("span")!.scrollWidth,
+        };
+      });
+      expect(bar.h, "bar height").toBeGreaterThanOrEqual(12);
+      expect(bar.sw, "XP text fits the bar").toBeLessThanOrEqual(bar.w);
       const left = viewport.inset?.left ?? 0,
         right = viewport.inset?.right ?? 0,
         bottom = viewport.inset?.bottom ?? 0;
@@ -3066,4 +3092,45 @@ test("a tap on the farm closes the open sheet or orb card and does nothing else"
   } finally {
     await context.close();
   }
+});
+
+test("a server answer changes the open sheet in place: same rows, same scroll", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 667, height: 375 });
+  const errors = await openLobby(page);
+  await fakeFarm(page);
+  await page.click('#hub-scenes [data-hub-scene="farm"]');
+  await page.waitForFunction(() => (window as any).__farm?.F?.loaded);
+  await openSheet(page, "shop");
+  const body = page.locator("#fm-sheet .sh-body");
+  await body.evaluate((el) => (el.scrollTop = el.scrollHeight));
+  const y = await body.evaluate((el) => el.scrollTop);
+  expect(y).toBeGreaterThan(20);
+  await page.evaluate(() =>
+    document
+      .querySelectorAll("#fm-sheet *")
+      .forEach((e: any) => (e.__kept = true)),
+  );
+  // The minute poll reads the farm again: more wheat seeds now.
+  const gets = await page.evaluate(() => (window as any).__farmGets);
+  await page.evaluate(() => {
+    const w = window as any;
+    w.__fakeFarm.seeds.wheat = 21;
+    void w.__farm.refresh();
+  });
+  await page.waitForFunction(
+    (n) => (window as any).__farmGets > n,
+    gets as number,
+  );
+  await page.waitForTimeout(200);
+  const fresh = await page.evaluate(
+    () =>
+      Array.from(document.querySelectorAll("#fm-sheet *")).filter(
+        (e: any) => !e.__kept,
+      ).length,
+  );
+  expect(fresh).toBe(0);
+  expect(await body.evaluate((el) => el.scrollTop)).toBe(y);
+  expect(errors).toEqual([]);
 });
