@@ -716,7 +716,6 @@ test("a sheet on a 667x375 phone keeps the fighter on screen and the emote tile 
         rail: r(".lobby-rail button"),
       };
     });
-    console.log("SHEETM", JSON.stringify(m));
     for (const k of ["nameplate", "fighter"] as const) {
       expect(m[k].right, `${k} on screen`).toBeLessThanOrEqual(667);
       expect(m[k].bottom, `${k} above PLAY`).toBeLessThanOrEqual(m.play.top);
@@ -734,4 +733,71 @@ test("a sheet on a 667x375 phone keeps the fighter on screen and the emote tile 
   } finally {
     await context.close();
   }
+});
+
+// A tap on the Lobby's background, outside the open screen, closes it, as
+// the lit rail button does. A tap in the screen, a drag out of it, or a
+// tap on another control (the mode button, the emotes) doesn't.
+test("a tap on the Lobby's background closes the open screen", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const errors = await openLobby(page);
+  const rail = page.locator('.lobby-rail [data-lobby-action="missions"]'),
+    sheet = page.locator(".missions-sheet");
+  await rail.click();
+  await expect(sheet).toBeVisible();
+  await sheet.evaluate((el) =>
+    Promise.all(el.getAnimations().map((a) => a.finished)),
+  );
+  // A spot on the Lobby itself: not the screen, not a control.
+  const spot = await page.evaluate(() => {
+    const controls =
+      'button, a, input, select, textarea, label, summary, [role="button"]';
+    for (let y = 860; y > 120; y -= 20)
+      for (let x = 1420; x > 400; x -= 20) {
+        const el = document.elementFromPoint(x, y);
+        if (
+          el?.closest(".lobby-layer") &&
+          !el.closest(".ui-panel-host") &&
+          !el.closest(controls)
+        )
+          return { x, y, el: el.className };
+      }
+    return null;
+  });
+  expect(spot, "a bare spot on the Lobby").not.toBeNull();
+  // In the screen, and a drag from it out to that spot: it stays.
+  const head = await sheet.locator(".ui-title").boundingBox();
+  await page.mouse.click(head!.x + 8, head!.y + head!.height / 2);
+  await page.mouse.move(head!.x + 8, head!.y + head!.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(spot!.x, spot!.y, { steps: 4 });
+  await page.mouse.up();
+  await expect(sheet).toBeVisible();
+  // Other controls do their own thing, and the screen stays.
+  await page.click("#lobby-mode");
+  await expect(page.locator("#lobby-mode-menu")).toBeVisible();
+  await page.click("#lobby-mode");
+  await expect(page.locator("#lobby-mode-menu")).toBeHidden();
+  await page.click(".lobby-emote-toggle");
+  await expect(page.locator(".lobby-emotes")).toHaveAttribute(
+    "data-open",
+    "true",
+  );
+  await expect(sheet).toBeVisible();
+  // The emote list, like the mode menu, closes on a tap anywhere else.
+  await page.mouse.click(head!.x + 8, head!.y + head!.height / 2);
+  await expect(page.locator(".lobby-emotes")).toHaveAttribute(
+    "data-open",
+    "false",
+  );
+  // The bare spot closes the screen and puts out its rail button.
+  await page.mouse.click(spot!.x, spot!.y);
+  await expect(sheet).toHaveCount(0);
+  await expect(rail).not.toHaveAttribute("aria-current", "page");
+  // And the rail opens it again.
+  await rail.click();
+  await expect(sheet).toBeVisible();
+  expect(errors).toEqual([]);
 });

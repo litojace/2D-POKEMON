@@ -313,6 +313,9 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
       target.closest<HTMLElement>("[data-lobby-emote]")?.dataset.lobbyEmote;
     if (target.closest("#lobby-mode")) return setMenu(menu.hidden);
     if (!target.closest("#lobby-mode-menu")) setMenu(false);
+    // The emotes, like the mode menu, close on a tap anywhere else.
+    if (emotes.dataset.open === "true" && !target.closest(".lobby-emotes"))
+      setEmotes(false);
     if (target.closest(".lobby-emote-toggle"))
       return setEmotes(emotes.dataset.open !== "true");
     if (pick) {

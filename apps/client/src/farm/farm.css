@@ -2563,8 +2563,13 @@ body.hub-farm:has(.fm-hint:not(.done)) #toast {
   color: #dfe7fb;
   white-space: nowrap;
 }
+/* The open sheet's button lights up gold like the Lobby's rail (rim, a
+   soft glow and its label); a second tap on it closes the sheet. */
 .farm-layer .fm-rail button[aria-expanded="true"] {
   border-color: #ffd65b;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 214, 91, 0.35),
+    0 0 14px rgba(255, 214, 91, 0.35);
 }
 .farm-layer .fm-rail button[aria-expanded="true"] span {
   color: #ffd65b;
