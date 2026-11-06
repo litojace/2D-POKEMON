@@ -193,12 +193,17 @@ async function fakeFarm(page: Page) {
             partyLeft: 3600,
           },
         );
-      if (url.endsWith("/api/farm/gone")) return json({ ok: true });
+      if (url.endsWith("/api/farm/gone")) {
+        w.__gones = (w.__gones ?? 0) + 1;
+        return json({ ok: true });
+      }
       if (url.endsWith("/api/farm/tour")) return json(w.__tour ?? []);
       if (url.endsWith("/api/farm/like"))
         return json({ ok: true, tour: w.__tour ?? [] });
       // The Supply Balloon and friends' help (migration 058).
-      if (url.endsWith("/api/farm/balloon") && !init?.body)
+      if (url.endsWith("/api/farm/balloon") && !init?.body) {
+        if (w.__balloonDelay)
+          await new Promise((r) => setTimeout(r, w.__balloonDelay));
         return json(
           w.__balloon ?? {
             crates: null,
@@ -212,6 +217,7 @@ async function fakeFarm(page: Page) {
             helpers: {},
           },
         );
+      }
       if (url.endsWith("/api/farm/balloon")) {
         const body = JSON.parse(String(init?.body));
         w.__farmRequests.push({ balloon: body.kind, slot: body.slot });
@@ -1353,7 +1359,7 @@ for (const viewport of [
   });
 }
 
-test("the farm opens ready on every return, with the same scenery", async ({
+test("the farm opens ready on every return: the same scenery, animals where they were, the balloon up", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
@@ -1364,6 +1370,33 @@ test("the farm opens ready on every return, with the same scenery", async ({
   await page.waitForFunction(() => (window as any).__farm?.F?.loaded);
   const first = await page.evaluate(() => (window as any).__farm.scenery());
   expect(first.length).toBeGreaterThan(40);
+  // A Supply Balloon is up, and the hens stand in spots of their own.
+  await page.evaluate(() => {
+    const w = window as any;
+    w.__balloon = {
+      crates: [{ crop: "wheat", qty: 3, state: "open", by: null }],
+      arrivesAt: null,
+      launches: 0,
+      leaves: 140,
+      xp: 90,
+      helperStars: 0,
+      helperLeavesToday: 0,
+      helperCap: 600,
+      helpers: {},
+    };
+  });
+  await page.click('#hub-scenes [data-hub-scene="lobby"]');
+  await page.click('#hub-scenes [data-hub-scene="farm"]');
+  await expect
+    .poll(() => page.evaluate(() => (window as any).__farm.hasBalloon()))
+    .toBe(true);
+  const spots = await page.evaluate(() =>
+    (window as any).__farm.hens.map((h: any, k: number) => {
+      Object.assign(h, { x: 340 + k * 50, y: 900, tx: null, ty: null });
+      Object.assign(h, { st: "idle", wait: 99 });
+      return [h.x, h.y];
+    }),
+  );
   // Away in the Lobby and the Plaza: nothing loads the farm again.
   await page.click('#hub-scenes [data-hub-scene="lobby"]');
   const gets = await page.evaluate(() => (window as any).__farmGets);
@@ -1371,9 +1404,13 @@ test("the farm opens ready on every return, with the same scenery", async ({
   await page.click('#hub-scenes [data-hub-scene="lobby"]');
   await page.waitForTimeout(500);
   expect(await page.evaluate(() => (window as any).__farmGets)).toBe(gets);
-  // Back with a slow server: the farm is ready on its first frame, and the
-  // trees and bushes stand where they stood.
-  await page.evaluate(() => ((window as any).__farmDelay = 4000));
+  // Back with a slow server: the farm is ready on its first frame, the
+  // trees and bushes stand where they stood, the hens where they were, and
+  // the balloon is there at once.
+  await page.evaluate(() => {
+    (window as any).__farmDelay = 4000;
+    (window as any).__balloonDelay = 4000;
+  });
   for (let visit = 0; visit < 2; visit++) {
     await page.click('#hub-scenes [data-hub-scene="farm"]');
     const now = await page.evaluate(() => {
@@ -1382,15 +1419,99 @@ test("the farm opens ready on every return, with the same scenery", async ({
         loaded: !!f.F.loaded,
         crop: f.F.plots[0]?.crop ?? null,
         scenery: f.scenery(),
+        balloon: f.hasBalloon(),
+        hens: f.hens.map((h: any) => [h.x, h.y]),
       };
     });
     expect(now.loaded).toBe(true);
     expect(now.crop).toBe("wheat");
     expect(now.scenery).toEqual(first);
+    expect(now.balloon).toBe(true);
+    now.hens.forEach(([x, y]: number[], k: number) => {
+      expect(Math.hypot(x - spots[k][0], y - spots[k][1])).toBeLessThan(25);
+    });
+    // Keep them still for the next visit.
+    await page.evaluate(() =>
+      (window as any).__farm.hens.forEach((h: any) =>
+        Object.assign(h, { tx: null, ty: null, st: "idle", wait: 99 }),
+      ),
+    );
     await page.click('#hub-scenes [data-hub-scene="lobby"]');
   }
-  await page.evaluate(() => ((window as any).__farmDelay = 0));
+  await page.evaluate(() => {
+    (window as any).__farmDelay = 0;
+    (window as any).__balloonDelay = 0;
+  });
   expect(errors).toEqual([]);
+});
+
+test("switching hub tabs keeps the same farm, paused and gone while hidden", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const errors = await openLobby(page);
+  await fakeFarm(page);
+  await page.click('#hub-scenes [data-hub-scene="farm"]');
+  await page.waitForFunction(() => (window as any).__farm?.F?.loaded);
+  // Mark this farm, then go to the Lobby.
+  await page.evaluate(() => ((window as any).__farm.F.mark = "same farm"));
+  const layer = page.locator(".farm-layer");
+  await page.click('#hub-scenes [data-hub-scene="lobby"]');
+  // Hidden and paused: not drawn, and friends see you left.
+  await expect(layer).toBeHidden();
+  await expect
+    .poll(() => page.evaluate(() => (window as any).__gones ?? 0))
+    .toBe(1);
+  // Back: the very same farm, shown at once and drawing again.
+  await page.click('#hub-scenes [data-hub-scene="farm"]');
+  await expect(layer).toBeVisible();
+  expect(await page.evaluate(() => (window as any).__farm.F.mark)).toBe(
+    "same farm",
+  );
+  await expect(page.locator("body")).toHaveClass(/hub-farm/);
+  await openSheet(page, "barn");
+  await expect(page.locator("#fm-sheet")).toContainText("Barn storage");
+  expect(errors).toEqual([]);
+});
+
+test("the farm is kept in this browser: after a reload it draws at once", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await openLobby(page);
+  await fakeFarm(page);
+  await page.click('#hub-scenes [data-hub-scene="farm"]');
+  await page.waitForFunction(() => (window as any).__farm?.F?.loaded);
+  // Kept per player, a moment after the farm loads.
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        Object.keys(localStorage).filter((k) => k.startsWith("arena-farm:")),
+      ),
+    )
+    .toHaveLength(1);
+  // A new visit: the page reloads (the farm closed, its memory gone).
+  await page.click('#hub-scenes [data-hub-scene="lobby"]');
+  await openLobby(page);
+  await fakeFarm(page);
+  await page.evaluate(() => ((window as any).__farmDelay = 4000));
+  await page.click('#hub-scenes [data-hub-scene="farm"]');
+  const now = await page.evaluate(() => {
+    const f = (window as any).__farm;
+    return { loaded: !!f.F.loaded, crop: f.F.plots[0]?.crop ?? null };
+  });
+  expect(now).toEqual({ loaded: true, crop: "wheat" });
+  await page.evaluate(() => ((window as any).__farmDelay = 0));
+  // Logging out forgets it: the next player on this browser starts clean.
+  await page.evaluate(() => document.getElementById("account-logout")!.click());
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        Object.keys(localStorage).filter((k) => k.startsWith("arena-farm:")),
+      ),
+    )
+    .toEqual([]);
+  await expect(page.locator(".farm-layer")).toHaveCount(0);
 });
 
 test("the farm rests behind Settings and wakes when it closes", async ({

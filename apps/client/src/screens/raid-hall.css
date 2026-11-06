@@ -431,12 +431,29 @@
   border-radius: var(--rad-sm);
   background: color-mix(in srgb, var(--boss) 18%, var(--ui-bg-0));
   display: grid;
+  /* One track the box's size: an auto track would grow to a picture's own
+     84 px, and the box would show only the middle of a fighter. */
+  grid-template: minmax(0, 1fr) / minmax(0, 1fr);
   place-items: center;
   overflow: hidden;
 }
-.rh-reward-art > :is(svg, img, span) {
+.rh-reward-art > :is(svg, img, span),
+.rh-reward-art .raid-cosmetic-preview > :is(svg, img) {
   width: 100%;
   height: 100%;
+}
+/* A frame paints outside its ring (Conductor's spark 33% above it, Brazier's
+   flame 25% below), and earned stars add a sunburst ~37% past every side;
+   the box clips, so frames get room on every side (56%, and 48% with stars:
+   the sunburst's tips 3 px clear in a phone's 36 px box). */
+.rh-reward-art > .raid-cosmetic-preview[data-frame-stars] {
+  width: 56%;
+  height: auto;
+  aspect-ratio: 1;
+}
+.rh-reward-art
+  > .raid-cosmetic-preview[data-frame-stars]:not([data-frame-stars="0"]) {
+  width: 48%;
 }
 .rh-title-art {
   display: grid;
