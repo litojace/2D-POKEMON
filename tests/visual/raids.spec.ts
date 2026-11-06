@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { box, inside, openLobby, snap } from "./helpers";
 import { bossFraming } from "./raid-frames";
+import { clippedFrames } from "./ui-checks";
 import {
   ISLAND,
   closeSpot,
@@ -537,3 +538,100 @@ test("phones the size of an iPhone SE keep the boss page's actions in reach", as
     await context.close();
   }
 });
+
+/* Pictures on a boss's Rewards tab are whole (the reward boxes clip): a
+   frame keeps its ornaments (drawn to the box's edge it loses a crown, a
+   tassel, leaves), and a skin or colors shows the whole fighter. Every boss,
+   with no stars and with every frame's stars earned. */
+const STARRED = {
+  ...RAIDS,
+  bosses: Object.fromEntries(
+    [
+      "grumblecrag",
+      "emberwing",
+      "tidewyrm",
+      "gloomshade",
+      "somnara",
+      "prismatail",
+      "storm-twins",
+    ].map((id) => [id, { clears: 100, highestPeril: 3 }]),
+  ),
+};
+for (const size of [SIZES[1], SIZES[4]])
+  for (const [label, raids] of [
+    ["no stars", { ...RAIDS, bosses: {} }],
+    ["every star", STARRED],
+  ] as const)
+    test(`every boss's reward pictures fit their boxes at ${size.name}, ${label}`, async ({
+      browser,
+    }) => {
+      test.setTimeout(150_000);
+      const context = await browser.newContext({
+        viewport: { width: size.width, height: size.height },
+        isMobile: size.phone,
+        hasTouch: size.phone,
+        reducedMotion: "reduce",
+      });
+      try {
+        const page = await context.newPage();
+        await withRaids(page, raids);
+        const errors = await openLobby(page);
+        if (size.island) await setInsets(page, ISLAND);
+        await page.click('.lobby-rail [data-lobby-action="raids"]');
+        const room = page.locator(".rh-room");
+        await expect(room.locator("[data-raid-card]")).toHaveCount(7);
+        const bosses = await room
+          .locator("[data-raid-card]")
+          .evaluateAll((cards) =>
+            cards.map((c) => (c as HTMLElement).dataset.raidCard!),
+          );
+        const bad: string[] = [];
+        let frames = 0;
+        for (const boss of bosses) {
+          await page.click(`.rh-room [data-raid-card="${boss}"]`);
+          await room.locator('[data-ui-raid-tab="rewards"]').click();
+          await expect(room.locator(".rh-rewards.is-all")).toBeVisible();
+          const r = await clippedFrames(
+            page,
+            ".rh-room .rh-reward-art:has(> [data-frame-stars])",
+          );
+          frames += r.count;
+          bad.push(...r.bad.map((b) => `${boss}: ${b}`));
+          // Skins, colors, auras, entrances and finales: the picture and
+          // what is drawn in it are the box's size, not a fighter's 84 px
+          // shown through a smaller window.
+          bad.push(
+            ...(
+              await room.locator(".rh-reward-art").evaluateAll((arts) =>
+                arts.flatMap((art) => {
+                  const box = art.getBoundingClientRect();
+                  return Array.from(
+                    art.querySelectorAll<HTMLElement>(
+                      ":scope > *, :scope > .raid-cosmetic-preview > :is(svg, img, canvas)",
+                    ),
+                  )
+                    .filter((e) => {
+                      const r = e.getBoundingClientRect();
+                      return (
+                        r.width > box.width + 0.5 || r.height > box.height + 0.5
+                      );
+                    })
+                    .map(
+                      (e) =>
+                        `${art.closest("[data-raid-reward]")?.getAttribute("data-raid-reward")}: ${e.tagName.toLowerCase()} ${Math.round(e.getBoundingClientRect().width)} px in a ${Math.round(box.width)} px box`,
+                    );
+                }),
+              )
+            ).map((b) => `${boss}: ${b}`),
+          );
+          await room.locator("[data-raid-back]").click();
+          await expect(room).toHaveAttribute("data-raid-mode", "hall");
+        }
+        // Each boss gives a frame.
+        expect(frames).toBeGreaterThanOrEqual(7);
+        expect(bad).toEqual([]);
+        expect(errors).toEqual([]);
+      } finally {
+        await context.close();
+      }
+    });
