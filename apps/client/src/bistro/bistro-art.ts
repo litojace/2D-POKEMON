@@ -881,6 +881,8 @@ export function drawDoorAndBoard(
   open: number,
   special: string,
   l: Light,
+  /** Today's special: drawn on the board, which glows to say so. */
+  dish?: DishId,
 ) {
   const g0 = DOOR.y - 0.42,
     g1 = DOOR.y + 0.42;
@@ -955,10 +957,27 @@ export function drawDoorAndBoard(
   ctx.closePath();
   ctx.fill();
 
-  // Menu board: a chalkboard in a wooden frame.
+  // Menu board: a chalkboard in a gilded frame that glows with today's
+  // special (the dish that pays ×1.5).
   const b = quadOnWall("left", BOARD[0], BOARD[1], 74, 140);
+  const outer = quadOnWall("left", BOARD[0] - 0.08, BOARD[1] + 0.08, 68, 146);
+  const pulse = 0.5 + 0.5 * Math.sin(l.t * 3);
+  ctx.save();
+  ctx.shadowColor = `rgba(255,200,80,${0.55 + 0.35 * pulse})`;
+  ctx.shadowBlur = 10 + 8 * pulse;
+  ctx.fillStyle = "#c98f2e";
+  poly(ctx, outer);
+  ctx.fill();
+  ctx.restore();
+  ctx.fillStyle = lin(ctx, outer[0].x, 0, outer[1].x, 0, [
+    [0, "#f6d36a"],
+    [0.5, "#c98f2e"],
+    [1, "#f6d36a"],
+  ]);
+  poly(ctx, outer);
+  ctx.fill();
   ctx.fillStyle = "#6d4025";
-  poly(ctx, quadOnWall("left", BOARD[0] - 0.06, BOARD[1] + 0.06, 70, 144));
+  poly(ctx, quadOnWall("left", BOARD[0] - 0.03, BOARD[1] + 0.03, 71, 143));
   ctx.fill();
   ctx.fillStyle = "#24362d";
   poly(ctx, b);
@@ -987,10 +1006,42 @@ export function drawDoorAndBoard(
     ctx.font = `800 ${size}px 'Barlow Condensed', sans-serif`;
   }
   ctx.fillText(special.toUpperCase(), len / 2, 36);
-  ctx.fillStyle = "rgba(255,255,255,.55)";
-  ctx.font = "600 9px 'DM Sans', sans-serif";
-  ctx.fillText("× 1.5 coins", len / 2, 52);
+  ctx.fillStyle = "rgba(255,255,255,.7)";
+  ctx.font = "700 9px 'DM Sans', sans-serif";
+  ctx.fillText("× 1.5 coins", len / 2, 50);
   ctx.restore();
+  if (!dish) return;
+  // The dish itself on a little shelf under the board, and a gold badge.
+  const shelf = leftWallPt((BOARD[0] + BOARD[1]) / 2, 70);
+  ctx.fillStyle = "#8a5530";
+  ctx.beginPath();
+  ctx.ellipse(shelf.x, shelf.y + 2, 18, 5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  drawDish(ctx, dish, shelf.x, shelf.y - 2, 13, l.t, false);
+  const top = b[3];
+  const bx = top.x + 2,
+    by = top.y - 10;
+  const s = 1 + 0.08 * pulse;
+  ctx.save();
+  ctx.translate(bx, by);
+  ctx.scale(s, s);
+  ctx.rotate(l.t * 0.6);
+  ctx.fillStyle = "#ffd65b";
+  ctx.beginPath();
+  for (let i = 0; i < 16; i++) {
+    const r = i % 2 ? 13 : 19;
+    const a = (i / 16) * Math.PI * 2;
+    ctx[i ? "lineTo" : "moveTo"](Math.cos(a) * r, Math.sin(a) * r);
+  }
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+  ctx.fillStyle = "#5a2a00";
+  ctx.font = "900 12px 'Barlow Condensed', sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("×1.5", bx, by + 0.5);
+  ctx.textBaseline = "alphabetic";
 }
 
 /** Festoon bulbs along the top of both walls (they glow at night). */

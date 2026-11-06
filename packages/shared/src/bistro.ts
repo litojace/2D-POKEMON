@@ -171,6 +171,204 @@ export const DISH_BY_ID: Record<DishId, Dish> = Object.fromEntries(
 export const isDish = (v: unknown): v is DishId =>
   typeof v === "string" && Object.hasOwn(DISH_BY_ID, v);
 
+/* ───────────── ingredients and dish levels (docs/bistro-gdd.md §2) ─────────────
+   Each dish has its own level, 1 to 10: cooking it builds mastery, and a
+   level-up takes mastery, ingredients and coins. A level raises its price
+   12% and adds a serving every three levels. Ingredients come from the
+   Market, from the Farm's barn, from meals at friends' bistros, and with
+   each bistro level. Gourmet points add up the dishes' levels. */
+export type Ingredient =
+  | "rice"
+  | "flour"
+  | "herbs"
+  | "pork"
+  | "egg"
+  | "beans"
+  | "coconut"
+  | "coffee"
+  | "milk"
+  | "chili"
+  | "spice";
+/** The ten everyday ingredients, in a fixed order (Spice is rare). */
+export const BASE_INGREDIENTS = [
+  "rice",
+  "flour",
+  "herbs",
+  "pork",
+  "egg",
+  "beans",
+  "coconut",
+  "coffee",
+  "milk",
+  "chili",
+] as const satisfies readonly Ingredient[];
+export const INGREDIENT_NAMES: Record<Ingredient, string> = {
+  rice: "Rice",
+  flour: "Flour",
+  herbs: "Herbs",
+  pork: "Pork",
+  egg: "Eggs",
+  beans: "Beans",
+  coconut: "Coconut",
+  coffee: "Coffee",
+  milk: "Milk",
+  chili: "Chili",
+  spice: "Spice",
+};
+export const isIngredient = (v: unknown): v is Ingredient =>
+  typeof v === "string" && Object.hasOwn(INGREDIENT_NAMES, v);
+export const RECIPES: Record<DishId, readonly [Ingredient, Ingredient]> = {
+  goicuon: ["rice", "herbs"],
+  banhmi: ["flour", "pork"],
+  pho: ["flour", "herbs"],
+  buncha: ["flour", "pork"],
+  comtam: ["rice", "egg"],
+  che: ["beans", "coconut"],
+  caphe: ["coffee", "milk"],
+  lau: ["chili", "beans"],
+};
+export const DISH_MAX_LEVEL = 10;
+export const PANTRY_MAX = 99;
+/** Coins for a level-up from L (× the dish's cost), and Spice, by L. */
+const DISHUP_COINS = [2, 5, 10, 16, 22, 30, 40, 50, 60] as const;
+const DISHUP_SPICE = [0, 0, 0, 0, 1, 1, 2, 2, 3] as const;
+export interface DishLevel {
+  lv: number;
+  /** Batches cooked toward the next level (a perfect one counts twice). */
+  mastery: number;
+}
+export const dishLevel = (s: BistroState, dish: DishId) =>
+  s.dishLv[dish]?.lv ?? 1;
+export const masteryNeed = (lv: number) => 5 * lv;
+/** What the next level of a dish takes (null at the top). */
+export function dishUpCost(dish: DishId, lv: number) {
+  if (lv >= DISH_MAX_LEVEL) return null;
+  const d = DISH_BY_ID[dish];
+  return {
+    mastery: masteryNeed(lv),
+    coins: d.cost * DISHUP_COINS[lv - 1],
+    each: lv,
+    spice: DISHUP_SPICE[lv - 1],
+  };
+}
+/** A plate's price at a level (before specials and tips). */
+export const priceAt = (dish: DishId, lv: number) =>
+  Math.round(DISH_BY_ID[dish].price * (1 + 0.12 * (lv - 1)));
+export const servingsAt = (dish: DishId, lv: number) =>
+  DISH_BY_ID[dish].servings + Math.floor((lv - 1) / 3);
+/** Gourmet points: each level above 1, times the level the dish opens at. */
+export const gourmetOf = (s: BistroState) =>
+  DISHES.reduce((n, d) => n + (dishLevel(s, d.id) - 1) * d.level, 0);
+export const GOURMET_RANKS = [
+  { from: 0, name: "Street Cook" },
+  { from: 20, name: "Home Chef" },
+  { from: 60, name: "Bistro Chef" },
+  { from: 120, name: "Master Chef" },
+  { from: 200, name: "Grand Gourmet" },
+] as const;
+export const gourmetRank = (g: number) =>
+  [...GOURMET_RANKS].reverse().find((r) => g >= r.from)!.name;
+export function addIngredient(s: BistroState, id: Ingredient, n: number) {
+  s.pantry[id] = Math.min(PANTRY_MAX, (s.pantry[id] ?? 0) + n);
+}
+/** A bistro level's gift: two of one ingredient and one of the next. */
+export const levelIngredients = (level: number): [Ingredient, number][] => [
+  [BASE_INGREDIENTS[(level * 3) % 10], 2],
+  [BASE_INGREDIENTS[(level * 3 + 1) % 10], 1],
+];
+export function dishUp(s: BistroState, dish: DishId): Result {
+  const d = DISH_BY_ID[dish];
+  if (!d) return fail("Unknown dish.");
+  if (d.level > s.level) return fail(`Opens at level ${d.level}.`);
+  const lv = dishLevel(s, dish);
+  const c = dishUpCost(dish, lv);
+  if (!c) return fail(`${d.name} is at the top level.`);
+  const m = s.dishLv[dish]?.mastery ?? 0;
+  if (m < c.mastery)
+    return fail(`Cook ${c.mastery - m} more batches of ${d.name} first.`);
+  for (const ing of RECIPES[dish])
+    if ((s.pantry[ing] ?? 0) < c.each)
+      return fail(`You need ${c.each} ${INGREDIENT_NAMES[ing]}.`);
+  if ((s.pantry.spice ?? 0) < c.spice)
+    return fail(`You need ${c.spice} Spice.`);
+  if (s.coins < c.coins) return fail(`You need ${c.coins} coins.`);
+  s.coins -= c.coins;
+  for (const ing of RECIPES[dish])
+    s.pantry[ing] = (s.pantry[ing] ?? 0) - c.each;
+  if (c.spice) s.pantry.spice = (s.pantry.spice ?? 0) - c.spice;
+  s.dishLv[dish] = { lv: lv + 1, mastery: 0 };
+  return { ok: true };
+}
+/* The Market: four ingredients every four hours (the same for everyone),
+   20 to 60 coins each, up to 5 of each a Pacific day. */
+export const MARKET_PERIOD_MS = 4 * 3600_000;
+export const MARKET_DAILY = 5;
+export function marketOffers(now: number): { id: Ingredient; price: number }[] {
+  const slot = Math.floor(now / MARKET_PERIOD_MS);
+  const start = slot % 10;
+  const step = [1, 3, 7, 9][Math.floor(slot / 10) % 4];
+  return [0, 1, 2, 3].map((j) => {
+    const i = (start + j * step) % 10;
+    return { id: BASE_INGREDIENTS[i], price: 20 + ((slot * 7 + i * 13) % 41) };
+  });
+}
+/** When the Market changes next (ms). */
+export const marketNext = (now: number) =>
+  (Math.floor(now / MARKET_PERIOD_MS) + 1) * MARKET_PERIOD_MS;
+/* The Farm's barn: three plain crops (or milk) make one ingredient, up to
+   30 a Pacific day; never back the other way. */
+export const FARM_TO_BISTRO: Record<string, Ingredient> = {
+  wheat: "flour",
+  mint: "herbs",
+  pepper: "chili",
+  lotus: "beans",
+  milk: "milk",
+};
+export const FARM_PER_INGREDIENT = 3;
+export const FARM_DAILY = 30;
+/** Buy at the Market: `bought` is how many of it you bought today. */
+export function buyIngredient(
+  s: BistroState,
+  id: Ingredient,
+  qty: number,
+  now: number,
+  bought: number,
+): Result {
+  const o = marketOffers(now).find((x) => x.id === id);
+  if (!o) return fail("That's not at the Market right now.");
+  if (!Number.isInteger(qty) || qty < 1 || qty > MARKET_DAILY)
+    return fail("Choose how many to buy.");
+  if (bought + qty > MARKET_DAILY)
+    return fail(`At most ${MARKET_DAILY} ${INGREDIENT_NAMES[id]} a day.`);
+  if ((s.pantry[id] ?? 0) + qty > PANTRY_MAX)
+    return fail("Your pantry can't hold more of that.");
+  if (s.coins < o.price * qty) return fail(`You need ${o.price * qty} coins.`);
+  s.coins -= o.price * qty;
+  addIngredient(s, id, qty);
+  return { ok: true };
+}
+/** Farm crops into the pantry: `have` plain ones in the barn, `sent` today. */
+export function fromFarm(
+  s: BistroState,
+  crop: string,
+  qty: number,
+  have: number,
+  sent: number,
+): Result {
+  const ing = Object.hasOwn(FARM_TO_BISTRO, crop) ? FARM_TO_BISTRO[crop] : null;
+  if (!ing) return fail("That doesn't go in the bistro.");
+  if (!Number.isInteger(qty) || qty < 1 || qty > FARM_DAILY)
+    return fail("Choose how many to bring.");
+  if (sent + qty > FARM_DAILY)
+    return fail(`At most ${FARM_DAILY} ingredients a day from the Farm.`);
+  if (have < qty * FARM_PER_INGREDIENT)
+    return fail(`You need ${qty * FARM_PER_INGREDIENT} in the Farm's barn.`);
+  if ((s.pantry[ing] ?? 0) + qty > PANTRY_MAX)
+    return fail("Your pantry can't hold more of that.");
+  addIngredient(s, ing, qty);
+  return { ok: true };
+}
+
 /** The last part of the bar where a tap cooks it to perfection. */
 export const PERFECT_FROM = 0.78;
 export const PERFECT_TO = 0.96;
@@ -467,6 +665,10 @@ export interface BistroState {
   nextId: number;
   /** Litter left on the floor while you were away (migration 073), 0..10. */
   trash: number;
+  /** Each dish's level and mastery (migration 074); level 1 when left out. */
+  dishLv: Partial<Record<DishId, DishLevel>>;
+  /** Ingredients (migration 074). */
+  pantry: Partial<Record<Ingredient, number>>;
 }
 
 export function xpToNext(level: number): number {
@@ -530,6 +732,8 @@ export function defaultState(): BistroState {
     walls: ["butter"],
     nextId: id,
     trash: 0,
+    dishLv: {},
+    pantry: {},
   };
 }
 
@@ -553,6 +757,23 @@ export function sanitize(raw: unknown): BistroState {
   s.shiftLv = Math.floor(num(r.shiftLv, 0, 0, SHIFT_PRICES.length));
   s.lastSeen = num(r.lastSeen, 0);
   s.trash = Math.floor(num(r.trash, 0, 0, TRASH_MAX));
+  s.dishLv = {};
+  if (r.dishLv && typeof r.dishLv === "object")
+    for (const [k, v] of Object.entries(r.dishLv as Record<string, unknown>)) {
+      if (!isDish(k) || !v || typeof v !== "object") continue;
+      const o = v as Record<string, unknown>;
+      s.dishLv[k] = {
+        lv: Math.floor(num(Number(o.lv), 1, 1, DISH_MAX_LEVEL)),
+        mastery: Math.floor(num(Number(o.mastery), 0, 0, 999)),
+      };
+    }
+  s.pantry = {};
+  if (r.pantry && typeof r.pantry === "object")
+    for (const [k, v] of Object.entries(r.pantry as Record<string, unknown>))
+      if (isIngredient(k)) {
+        const n = Math.floor(num(Number(v), 0, 0, PANTRY_MAX));
+        if (n > 0) s.pantry[k] = n;
+      }
   if (Array.isArray(r.staff)) {
     const staff: Staff[] = [];
     for (const st of r.staff as Record<string, unknown>[]) {
@@ -698,8 +919,10 @@ export function addXp(s: BistroState, xp: number): number {
     s.xp -= xpToNext(s.level);
     s.level++;
     gained++;
-    // A level-up gift: a little cash to spend on the new things.
+    // A level-up gift: a little cash to spend on the new things, and
+    // a few ingredients.
     s.coins += levelGift(s.level);
+    for (const [ing, n] of levelIngredients(s.level)) addIngredient(s, ing, n);
   }
   if (s.level >= MAX_LEVEL) s.xp = Math.min(s.xp, xpToNext(s.level));
   return gained;
@@ -766,10 +989,11 @@ export function payment(
     quick?: boolean;
     rush?: boolean;
     hearts?: number;
+    /** The dish's level (its price grows 12% a level). */
+    level?: number;
   },
 ): { base: number; tip: number; total: number } {
-  const d = DISH_BY_ID[dish];
-  let base = d.price;
+  let base = priceAt(dish, o.level ?? 1);
   if (o.special) base *= SPECIAL_MULT;
   if (o.vip) base *= VIP_MULT;
   base = Math.round(base);
@@ -857,7 +1081,8 @@ export function plate(
   if (!st?.dish) return fail("Nothing cooking there.");
   if (cookProgress(st, now) < 1) return fail("Not ready yet.");
   const d = DISH_BY_ID[st.dish];
-  const servings = d.servings + (st.perfect ? PERFECT_BONUS : 0);
+  const lv = dishLevel(s, st.dish);
+  const servings = servingsAt(st.dish, lv) + (st.perfect ? PERFECT_BONUS : 0);
   let slot = s.counter.findIndex((c) => c?.dish === st.dish);
   if (slot < 0) slot = s.counter.findIndex((c) => !c);
   if (slot < 0) return fail("The counter is full: serve some dishes first.");
@@ -869,6 +1094,12 @@ export function plate(
         perfect: c.perfect || st.perfect,
       }
     : { dish: st.dish, servings, perfect: st.perfect };
+  // Mastery toward the dish's next level.
+  const m = s.dishLv[d.id]?.mastery ?? 0;
+  s.dishLv[d.id] = {
+    lv,
+    mastery: Math.min(masteryNeed(lv), m + (st.perfect ? 2 : 1)),
+  };
   s.stoves[stove] = { dish: null, start: 0, perfect: false };
   const levels = addXp(s, d.xp);
   return { ok: true, slot, servings, xp: d.xp, levels };
@@ -1275,12 +1506,14 @@ export interface Popularity {
 }
 export const DIRTY_SECONDS = 30;
 export function popularity(
-  s: Pick<BistroState, "rating" | "items">,
+  s: Pick<BistroState, "rating" | "items"> &
+    Partial<Pick<BistroState, "dishLv">>,
   o: PopInput = {},
 ): Popularity {
   const service = s.rating * 6;
   const decor = Math.min(10, charm(s.items) / 3);
-  const gourmet = Math.min(6, (o.gourmet ?? 0) / 40);
+  const g = o.gourmet ?? (s.dishLv ? gourmetOf(s as BistroState) : 0);
+  const gourmet = Math.min(6, g / 40);
   const social = Math.min(
     4,
     0.5 * (o.likesWeek ?? 0) + 0.5 * (o.dinedToday ?? 0),
@@ -1293,11 +1526,11 @@ export function popularity(
   return { service, decor, gourmet, social, mess, total };
 }
 export const POP_TIERS = [
-  { from: 0, name: "Quiet Corner" },
-  { from: 10, name: "Local Favorite" },
-  { from: 20, name: "Busy Bistro" },
-  { from: 30, name: "Talk of the Town" },
-  { from: 40, name: "Legendary Bistro" },
+  { from: 0, name: "Quiet" },
+  { from: 10, name: "Local Pick" },
+  { from: 20, name: "Busy" },
+  { from: 30, name: "Hot Spot" },
+  { from: 40, name: "Legendary" },
 ] as const;
 export const popTier = (pop: number) =>
   [...POP_TIERS].reverse().find((t) => Math.round(pop) >= t.from)!.name;
@@ -1672,7 +1905,11 @@ export function simulateAway(
       }
       const dish = s.counter[slot]!.dish;
       takeServing(s, dish);
-      const bill = payment(dish, { special: dish === special, hearts: 2 });
+      const bill = payment(dish, {
+        special: dish === special,
+        hearts: 2,
+        level: dishLevel(s, dish),
+      });
       s.coins += bill.total;
       rep.coins += bill.total;
       rep.served++;

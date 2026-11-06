@@ -1802,6 +1802,82 @@ test("rain and storms water the growing crops: the soil isn't dry while it pours
   expect(errors).toEqual([]);
 });
 
+test("on a phone, carrying a seed to the edge scrolls the farm and keeps sowing", async ({
+  browser,
+}) => {
+  const context = await browser.newContext({
+    viewport: { width: 844, height: 390 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  try {
+    const page = await context.newPage();
+    const errors = await openLobby(page);
+    await fakeFarm(page);
+    // The whole second row is yours and empty; plenty of wheat seeds.
+    await page.evaluate(() => {
+      const f = (window as any).__fakeFarm;
+      for (let i = 10; i < 20; i++)
+        Object.assign(f.plots[i], { owned: true, crop: null, progress: 0 });
+      f.seeds.wheat = 20;
+    });
+    await page.click('#hub-scenes [data-hub-scene="farm"]');
+    await page.waitForFunction(() => (window as any).__farm?.F?.loaded);
+    // Zoomed in on the left of the row: its right end is off the screen.
+    await page.evaluate(() => {
+      const f = (window as any).__farm;
+      f.zoom(2.2);
+      const w = f.plotWorld(12);
+      f.look(w.x, w.y);
+    });
+    await page.waitForTimeout(400);
+    const plot = (i: number) =>
+      page.evaluate((i) => (window as any).__farm.plotClient(i), i);
+    expect((await plot(18)).x).toBeGreaterThan(844);
+    const cdp = await context.newCDPSession(page);
+    const touch = (type: string, p?: { x: number; y: number }) =>
+      cdp.send("Input.dispatchTouchEvent", {
+        type,
+        touchPoints: p ? [{ x: Math.round(p.x), y: Math.round(p.y) }] : [],
+      });
+    const p11 = await plot(11);
+    await page.touchscreen.tap(p11.x, p11.y);
+    await page.locator('#fm-pop [data-pseed="wheat"]').tap();
+    const b = (await page.locator("#fm-seed [data-seedbub]").boundingBox())!;
+    // Press the seed, drag it along the row to the right edge, and hold.
+    const p12 = await plot(12);
+    await touch("touchStart", { x: b.x + b.width / 2, y: b.y + b.height / 2 });
+    for (let s = 1; s <= 8; s++)
+      await touch("touchMove", {
+        x: b.x + b.width / 2 + ((p12.x - b.x - b.width / 2) * s) / 8,
+        y: b.y + b.height / 2 + ((p12.y - b.y - b.height / 2) * s) / 8,
+      });
+    for (let s = 1; s <= 8; s++)
+      await touch("touchMove", {
+        x: p12.x + ((836 - p12.x) * s) / 8,
+        y: p12.y,
+      });
+    const edge = { x: 836, y: p12.y };
+    for (let k = 0; k < 30; k++) {
+      await touch("touchMove", { x: edge.x, y: edge.y + (k % 2) });
+      await page.waitForTimeout(100);
+    }
+    await touch("touchEnd");
+    // The farm scrolled, and the far end of the row was sown as it came.
+    const planted = await page.evaluate(() =>
+      (window as any).__farmRequests
+        .flatMap((r: any) => r.actions ?? [])
+        .filter((x: any) => x.a === "plant")
+        .map((x: any) => x.plot),
+    );
+    expect(planted).toContain(18);
+    expect((await plot(12)).x).toBeLessThan(p12.x - 100);
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});
+
 test("the farm rests behind Settings and wakes when it closes", async ({
   page,
 }) => {

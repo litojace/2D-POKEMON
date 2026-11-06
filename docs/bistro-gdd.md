@@ -161,7 +161,6 @@ Mỗi món có **cấp riêng** (khác với cấp nhà hàng). Lên cấp cần
 ```
 giá/phần(L)   = round(price × (1 + 0.12·(L − 1)))       // L10 = ×2.08
 số phần(L)    = servings + floor((L − 1) / 3)          // L10 = +3 phần
-XP khi bày    = xp × (1 + 0.05·(L − 1))
 ```
 
 Ví dụ Pho: Lv1 = 8 xu × 10 phần = 80 xu/mẻ → Lv10 = 17 xu × 13 phần = 221 xu/mẻ (×2.8 doanh thu một mẻ, chi phí nấu giữ nguyên 40).
@@ -183,12 +182,12 @@ Ví dụ Pho: Lv1 = 8 xu × 10 phần = 80 xu/mẻ → Lv10 = 17 xu × 13 phần
 
 **Nguồn**:
 
-| Nguồn                      | Cơ chế                                                                                                                                                                           | Giới hạn                                                                                |
-| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| **Market** (Chợ)           | Mỗi 4 giờ đổi 4 mặt hàng (giống nhau cho mọi người, theo giờ như Rush Hour). Giá 20–60 xu.                                                                                       | 5 món/loại/ngày                                                                         |
-| **Farm** (tab Farm có sẵn) | Nút **"Send to Bistro"** trong kho Farm: 3 nông sản → 1 nguyên liệu. Breeze Wheat → Flour, Spirit Mint → Herbs, Ember Pepper → Chili, Tide Lotus → Beans, Storm Milk (bò) → Milk | 30 nguyên liệu/ngày; **một chiều** (Bistro không bán ngược nguyên liệu lấy Gold Leaves) |
-| **Thăm bạn**               | Mỗi lần **Dine** ở nhà bạn: +1 nguyên liệu (một trong 2 nguyên liệu của món bạn vừa ăn). Thêm 10% cơ hội ra **Spice**.                                                           | Theo giới hạn Dine hiện có (10 lần/ngày)                                                |
-| **Lên cấp nhà hàng**       | Quà lên cấp có thêm 1 hộp nguyên liệu ngẫu nhiên (3 món)                                                                                                                         | —                                                                                       |
+| Nguồn                      | Cơ chế                                                                                                                                                                                                                                             | Giới hạn                                                                                |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| **Market** (Chợ)           | Mỗi 4 giờ đổi 4 mặt hàng (giống nhau cho mọi người, theo giờ như Rush Hour). Giá 20–60 xu.                                                                                                                                                         | 5 món/loại/ngày                                                                         |
+| **Farm** (tab Farm có sẵn) | Trong Bistro → Recipes → **Pantry & Market**, mục "From your Farm": 3 nông sản thường (không đột biến) trong kho Farm → 1 nguyên liệu. Breeze Wheat → Flour, Spirit Mint → Herbs, Ember Pepper → Chili, Tide Lotus → Beans, Storm Milk (bò) → Milk | 30 nguyên liệu/ngày; **một chiều** (Bistro không bán ngược nguyên liệu lấy Gold Leaves) |
+| **Thăm bạn**               | Mỗi lần **Dine** ở nhà bạn: +1 nguyên liệu (một trong 2 nguyên liệu của món bạn vừa ăn). Thêm 10% cơ hội ra **Spice**.                                                                                                                             | Theo giới hạn Dine hiện có (10 lần/ngày)                                                |
+| **Lên cấp nhà hàng**       | Mỗi cấp mới: 2 của một loại và 1 của loại kế tiếp (theo thứ tự cố định, nên client và server tính giống nhau)                                                                                                                                      | —                                                                                       |
 
 Kho nguyên liệu (**Pantry**) chứa tối đa 99 mỗi loại.
 
@@ -200,13 +199,13 @@ Gourmet = Σ_món (L_món − 1) × cấp_mở_khóa_món
 
 Tối đa: (1+1+2+3+4+5+6+7) × 9 = **261**.
 
-| Gourmet | Danh hiệu (trong game) | Thưởng                                           |
-| ------- | ---------------------- | ------------------------------------------------ |
-| 0       | Street Cook            | —                                                |
-| 20      | Home Chef              | +1 slot quầy hiển thị đẹp, khung tên vàng        |
-| 60      | Bistro Chef            | Khách VIP có "món yêu cầu" (trả ×3 nếu đúng món) |
-| 120     | Master Chef            | Mở đồ trang trí đặc biệt trong Shop              |
-| 200     | Grand Gourmet          | Biển hiệu trên mái đổi màu vàng                  |
+| Gourmet | Danh hiệu (trong game) | Thưởng                                                               |
+| ------- | ---------------------- | -------------------------------------------------------------------- |
+| 0       | Street Cook            | —                                                                    |
+| 20      | Home Chef              | Danh hiệu (thưởng thêm: giai đoạn 4)                                 |
+| 60      | Bistro Chef            | Danh hiệu; dự kiến: khách VIP có "món yêu cầu" (trả ×3 nếu đúng món) |
+| 120     | Master Chef            | Danh hiệu; dự kiến: đồ trang trí đặc biệt trong Shop                 |
+| 200     | Grand Gourmet          | Danh hiệu; dự kiến: biển hiệu trên mái đổi màu vàng                  |
 
 Gourmet cũng là một phần của Popularity (§4).
 
@@ -331,13 +330,13 @@ Ví dụ nhà hàng mới (rating 3, 3 chậu cây + 1 thảm = charm 8): 18 + 2
 
 ### 4.4 Tác động đến dòng khách và hàng chờ
 
-| Popularity | Danh hiệu        | Khách đến mỗi | Hàng chờ tối đa | Tỉ lệ VIP |
-| ---------- | ---------------- | ------------- | --------------- | --------- |
-| 0–9        | Quiet Corner     | 9.0–7.8 s     | 1               | 6–7%      |
-| 10–19      | Local Favorite   | 7.6–6.4 s     | 2               | 8–9%      |
-| 20–29      | Busy Bistro      | 6.3–5.1 s     | 3               | 9–11%     |
-| 30–39      | Talk of the Town | 4.9–3.7 s     | 4               | 11–12%    |
-| 40–50      | Legendary Bistro | 3.6–2.2 s     | 5–6             | 12–14%    |
+| Popularity | Danh hiệu  | Khách đến mỗi | Hàng chờ tối đa | Tỉ lệ VIP |
+| ---------- | ---------- | ------------- | --------------- | --------- |
+| 0–9        | Quiet      | 9.0–7.8 s     | 1               | 6–7%      |
+| 10–19      | Local Pick | 7.6–6.4 s     | 2               | 8–9%      |
+| 20–29      | Busy       | 6.3–5.1 s     | 3               | 9–11%     |
+| 30–39      | Hot Spot   | 4.9–3.7 s     | 4               | 11–12%    |
+| 40–50      | Legendary  | 3.6–2.2 s     | 5–6             | 12–14%    |
 
 ```
 arrival(P)    = max(2.2, 9 − 0.136 × P) giây     (giờ cao điểm × 0.45, như cũ)
@@ -352,7 +351,7 @@ vipShare(P)   = 0.06 + 0.0016 × P   (giờ cao điểm × 1.3)
 
 ### 4.5 Hiển thị
 
-- Ô "★ 3.0" trên HUD đổi thành **"Popularity 23 · Busy Bistro"** kèm thanh 0–50; chạm vào mở bảng phân tích 5 thành phần (Service / Decor / Gourmet / Social / Mess) để người chơi biết nên cải thiện gì.
+- Ô "★ 3.0" trên HUD đổi thành **"Popularity 23 · Busy"** kèm thanh 0–50; chạm vào mở bảng phân tích 5 thành phần (Service / Decor / Gourmet / Social / Mess) để người chơi biết nên cải thiện gì.
 - Danh sách bạn bè (Friends) hiển thị Popularity thay cho sao.
 
 ---
@@ -393,3 +392,14 @@ Mỗi giai đoạn: một migration riêng (số tiếp theo còn trống), test
 | Thời gian từ món Lv1 → Lv10 (một món)      | 2–3 tuần chơi đều                                                                              |
 | Popularity trung vị sau 1 tuần             | 25–30                                                                                          |
 | Số lần "Feed" mỗi ngày                     | 2–6 (chăm sóc vừa phải, không phiền)                                                           |
+
+## 8. Trạng thái triển khai
+
+| Giai đoạn                                                                              | Migration                                                                     | Trạng thái |
+| -------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | ---------- |
+| 1. Popularity, hàng chờ, AI theo bản đồ khoảng cách, chỉ số Layout                     | [070_bistro_popularity.sql](../supabase/migrations/070_bistro_popularity.sql) | Đã làm     |
+| 2. Energy, Lao công + rác, Staff Corner, thuê bạn bè                                   | [073_bistro_staff.sql](../supabase/migrations/073_bistro_staff.sql)           | Đã làm     |
+| 3. Cấp món, kho nguyên liệu, Chợ, Farm → Bistro, nguyên liệu khi ăn ở nhà bạn, Gourmet | [074_bistro_dishes.sql](../supabase/migrations/074_bistro_dishes.sql)         | Đã làm     |
+| 4. Register, món yêu cầu của VIP, thưởng theo hạng Gourmet                             | —                                                                             | Chưa làm   |
+
+Khác với bản thiết kế ban đầu: Staff Corner giảm hao Energy thay vì hồi khi nhân viên rảnh (để server tính được cả khi offline); XP khi bày món không tăng theo cấp món; nút chuyển nông sản nằm trong Bistro (Pantry & Market) thay vì trong kho Farm.

@@ -144,10 +144,29 @@ import {
   moodName,
   workSpeed,
   type Role,
+  BASE_INGREDIENTS,
+  DISH_MAX_LEVEL,
+  FARM_DAILY,
+  FARM_PER_INGREDIENT,
+  FARM_TO_BISTRO,
+  INGREDIENT_NAMES,
+  MARKET_DAILY,
+  PANTRY_MAX,
+  RECIPES,
+  dishLevel,
+  dishUpCost,
+  gourmetOf,
+  gourmetRank,
+  marketNext,
+  marketOffers,
+  priceAt,
+  servingsAt,
+  type Ingredient,
 } from "./bistro-model";
 import {
   carGlows,
   drawFrontLamps,
+  drawFrontTrees,
   drawRoofSign,
   drawSceneryLive,
   drawSceneryStatic,
@@ -157,6 +176,7 @@ import {
   type Car,
 } from "./bistro-scenery";
 import * as Rules from "./bistro-model";
+import { CROP_BY_ID } from "../../../../packages/shared/src/farm";
 import {
   BistroSync,
   applyLocal,
@@ -1302,6 +1322,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
     dir === 0 ? "right" : dir === 1 ? "left" : "up";
   const pay = (c: Customer) => {
     const bill = payment(c.dish!, {
+      level: dishLevel(S, c.dish!),
       vip: c.vip,
       combo: c.combo,
       special: c.dish === special(),
@@ -1503,6 +1524,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
     }
     const quick = byTap && T - p.t0 < 5;
     const bill = payment(p.sale.dish, {
+      level: dishLevel(S, p.sale.dish),
       ...p.sale,
       quick,
       special: p.sale.dish === special(),
@@ -2122,6 +2144,77 @@ export function openBistro(o: BistroOptions): BistroHandle {
     sound("tick");
   };
   const coinTag = (n: number) => `<i class="bs-c">${I("coin")}</i>${fmt(n)}`;
+  const recipeTabs = (tab: "dishes" | "pantry") =>
+    `<nav class="bs-tabs">${[
+      ["dishes", "Dishes"],
+      ["pantry", "Pantry & Market"],
+    ]
+      .map(
+        ([id, label]) =>
+          `<button type="button" data-rtab="${id}" aria-pressed="${id === tab}">${label}</button>`,
+      )
+      .join("")}</nav>`;
+  /** A dish's next level: mastery, what it takes, the button. */
+  const dishUpBlock = (dish: DishId) => {
+    const lv = dishLevel(S, dish);
+    const c = dishUpCost(dish, lv);
+    if (!c) return `<span class="up top">Top level ★</span>`;
+    const m = S.dishLv[dish]?.mastery ?? 0;
+    const have = (ing: Ingredient) => S.pantry[ing] ?? 0;
+    const needs = [
+      ...RECIPES[dish].map((ing) => [ing, c.each] as const),
+      ...(c.spice ? [["spice", c.spice] as const] : []),
+    ];
+    const ready =
+      m >= c.mastery &&
+      needs.every(([ing, n]) => have(ing) >= n) &&
+      S.coins >= c.coins;
+    return `<span class="mast" title="Mastery: batches cooked toward the next level"><i style="--m:${(Math.min(m, c.mastery) / c.mastery) * 100}%"></i><em>${Math.min(m, c.mastery)}/${c.mastery} batches</em></span>
+      <span class="needs">${needs.map(([ing, n]) => `<em class="${have(ing) >= n ? "" : "poor"}"><i class="ing ing-${ing}"></i>${have(ing)}/${n} ${INGREDIENT_NAMES[ing]}</em>`).join("")}</span>
+      <button type="button" class="pr up${ready ? "" : " poor"}" data-dishup="${dish}">Level ${lv + 1} · ${coinTag(c.coins)}</button>`;
+  };
+  const pantryBody = () => {
+    const now = nowS();
+    const ex = sync.extras;
+    const left = Math.max(0, (marketNext(now) - now) / 1000);
+    const items = [...BASE_INGREDIENTS, "spice" as const]
+      .map(
+        (ing) =>
+          `<div class="pt-ing${S.pantry[ing] ? "" : " none"}"><i class="ing ing-${ing}"></i><b>${S.pantry[ing] ?? 0}</b><small>${INGREDIENT_NAMES[ing]}</small></div>`,
+      )
+      .join("");
+    const market = marketOffers(now)
+      .map((m) => {
+        const bought = ex.marketBought[m.id] ?? 0;
+        const off =
+          bought >= MARKET_DAILY || (S.pantry[m.id] ?? 0) >= PANTRY_MAX;
+        return `<button type="button" class="bs-item mk" data-market="${m.id}" ${off ? "disabled" : ""}><i class="ing big ing-${m.id}"></i><b>${INGREDIENT_NAMES[m.id]}</b><small>${bought}/${MARKET_DAILY} bought today · you have ${S.pantry[m.id] ?? 0}</small>${off ? `<span class="lk">Sold out for you</span>` : `<span class="pr ${S.coins < m.price ? "poor" : ""}">${coinTag(m.price)}</span>`}</button>`;
+      })
+      .join("");
+    const farm = Object.entries(FARM_TO_BISTRO)
+      .map(([crop, ing]) => {
+        const n = ex.farmCrops[crop] ?? 0;
+        const can = Math.min(
+          Math.floor(n / FARM_PER_INGREDIENT),
+          FARM_DAILY - ex.farmSent,
+          PANTRY_MAX - (S.pantry[ing] ?? 0),
+        );
+        const name =
+          crop === "milk"
+            ? "Storm Milk"
+            : (CROP_BY_ID[crop as keyof typeof CROP_BY_ID]?.name ?? crop);
+        return `<button type="button" class="bs-item mk" data-farm="${crop}" ${can > 0 ? "" : "disabled"}><i class="ing big ing-${ing}"></i><b>${INGREDIENT_NAMES[ing]}</b><small>${FARM_PER_INGREDIENT} ${esc(name)} each · ${n} in the barn</small>${can > 0 ? `<span class="pr">Bring ${can}</span>` : `<span class="lk">${n < FARM_PER_INGREDIENT ? "Grow more" : "Not today"}</span>`}</button>`;
+      })
+      .join("");
+    return `<div class="bs-pantry">
+      <div class="pt-grid">${items}</div>
+      <h3>Market <small>new stock in ${fmtDur(left * 1000)}</small></h3>
+      <div class="bs-items">${market}</div>
+      <h3>From your Farm <small>${ex.farmSent}/${FARM_DAILY} today · plain crops only</small></h3>
+      <div class="bs-items">${farm}</div>
+      <p class="bs-note">Friends' bistros give an ingredient with each meal (sometimes Spice), and every bistro level brings a few.</p>
+    </div>`;
+  };
   const renderSheet = () => {
     if (!sheetKind) return;
     const head = (title: string, sub: string) =>
@@ -2188,28 +2281,43 @@ export function openBistro(o: BistroOptions): BistroHandle {
                   .join("")}</div>`);
       return;
     }
-    if (sheetKind === "cook" || sheetKind === "menu") {
+    if (sheetKind === "menu" && sheetArg === "pantry") {
+      sheet.innerHTML =
+        head(
+          "Recipes",
+          `Ingredients level up your dishes · ${coinTag(S.coins)}`,
+        ) +
+        recipeTabs("pantry") +
+        pantryBody();
+    } else if (sheetKind === "cook" || sheetKind === "menu") {
       const cook = sheetKind === "cook";
       const sp = special();
+      const g = gourmetOf(S);
       sheet.innerHTML =
         head(
           cook ? `Stove ${Number(sheetArg) + 1}: what's cooking?` : "Recipes",
           cook
             ? "Pick a dish. Tap the pot when it glows gold for a perfect batch."
-            : "Everything your kitchen can make, and what opens next.",
+            : `Gourmet ${g} · ${gourmetRank(g)}: cook a dish to master it, then level it up with ingredients.`,
         ) +
-        `<div class="bs-dishes">${DISHES.map((d) => {
+        (cook ? "" : recipeTabs("dishes")) +
+        `<div class="bs-dishes${cook ? "" : " levels"}">${DISHES.map((d) => {
           const locked = d.level > S.level;
           const poor = S.coins < d.cost;
+          const lv = dishLevel(S, d.id);
+          const price = priceAt(d.id, lv);
+          const servings = servingsAt(d.id, lv);
           const per = Math.round(
-            (d.servings * d.price - d.cost) / (d.seconds / 60),
+            (servings * price - d.cost) / (d.seconds / 60),
           );
-          return `<button type="button" class="bs-dish${locked ? " locked" : ""}${d.id === sp ? " special" : ""}" data-dish="${d.id}" ${!cook || locked ? "disabled" : ""}>
+          const tag = `${locked ? "button" : cook ? "button" : "div"}`;
+          return `<${tag} ${tag === "button" ? 'type="button"' : ""} class="bs-dish${locked ? " locked" : ""}${d.id === sp ? " special" : ""}" data-dish="${d.id}" ${tag === "button" && (!cook || locked) ? "disabled" : ""}>
             <img src="${dishIconUrl(d.id, 96)}" alt="">
-            <b>${esc(d.name)}</b><small>${esc(d.blurb)}</small>
-            ${locked ? `<span class="lk">${I("lock")} Level ${d.level}</span>` : `<span class="st"><em>${I("clock")} ${fmtTime(d.seconds)}</em><em>× ${d.servings}</em><em class="${poor ? "poor" : ""}">${coinTag(d.cost)}</em></span><span class="pf">${coinTag(d.price)} a plate · ~${fmt(per)}/min</span>`}
-            ${d.id === sp ? `<i class="sp">Special ×1.5</i>` : ""}
-          </button>`;
+            <b>${esc(d.name)}${locked ? "" : ` <i class="dlv">Lv ${lv}</i>`}</b><small>${esc(d.blurb)}</small>
+            ${locked ? `<span class="lk">${I("lock")} Level ${d.level}</span>` : `<span class="st"><em>${I("clock")} ${fmtTime(d.seconds)}</em><em>× ${servings}</em><em class="${poor ? "poor" : ""}">${coinTag(d.cost)}</em></span><span class="pf">${coinTag(price)} a plate · ~${fmt(per)}/min</span>`}
+            ${!cook && !locked ? dishUpBlock(d.id) : ""}
+            ${d.id === sp ? `<i class="sp" title="Today's special: pays ×1.5">★ Special ×1.5</i>` : ""}
+          </${tag}>`;
         }).join("")}</div>`;
     } else if (sheetKind === "staff") {
       const tab = (sheetArg as string) || "team";
@@ -2470,6 +2578,50 @@ export function openBistro(o: BistroOptions): BistroHandle {
       changed();
       return renderSheet();
     }
+    if (b.dataset.rtab) {
+      sheetArg = b.dataset.rtab === "pantry" ? "pantry" : undefined;
+      sound("tick");
+      return renderSheet();
+    }
+    if (b.dataset.dishup) {
+      const dish = b.dataset.dishup as DishId;
+      const r = sync.do({ a: "dishup", dish });
+      if (!r.ok) return o.toast(r.error ?? "Can't level it up yet.");
+      sound("levelup");
+      banner(
+        `<b>${esc(DISH_BY_ID[dish].name)} level ${dishLevel(S, dish)}!</b><span>${coinTag(priceAt(dish, dishLevel(S, dish)))} a plate · ${servingsAt(dish, dishLevel(S, dish))} servings a batch</span>`,
+      );
+      changed();
+      return renderSheet();
+    }
+    if (b.dataset.market) {
+      const r = sync.do({
+        a: "market",
+        id: b.dataset.market as Ingredient,
+        qty: 1,
+      });
+      if (!r.ok) return o.toast(r.error ?? "Can't buy that.");
+      sound("coin");
+      changed();
+      return renderSheet();
+    }
+    if (b.dataset.farm) {
+      const crop = b.dataset.farm;
+      const ing = FARM_TO_BISTRO[crop];
+      const ex = sync.extras;
+      const qty = Math.min(
+        Math.floor((ex.farmCrops[crop] ?? 0) / FARM_PER_INGREDIENT),
+        FARM_DAILY - ex.farmSent,
+        PANTRY_MAX - (S.pantry[ing] ?? 0),
+      );
+      if (qty < 1) return;
+      const r = sync.do({ a: "farm", id: crop, qty });
+      if (!r.ok) return o.toast(r.error ?? "Can't bring that.");
+      sound("chime");
+      o.toast(`+${qty} ${INGREDIENT_NAMES[ing]} from the Farm`);
+      changed();
+      return renderSheet();
+    }
     if (b.dataset.role) {
       hireRole = b.dataset.role as Role;
       hireChosen = true;
@@ -2635,10 +2787,8 @@ export function openBistro(o: BistroOptions): BistroHandle {
       <div class="xpbar" title="${S.xp} / ${need} XP"><i style="width:${(S.xp / need) * 100}%"></i></div>`;
     const pop = popNow().total;
     const popN = Math.round(pop);
-    const sp = DISH_BY_ID[special()];
     const chipsHtml = `<button type="button" class="bs-chip glass pop" data-pop title="Popularity ${popN} of 50 · ${popTier(pop)}"><span class="pop-ring" style="--p:${popN * 2}"><i>${popN}</i></span><span><small>Popularity</small><b>${popTier(pop)}</b></span><b class="ph">Popularity</b></button>
-      <div class="bs-chip glass special"><img src="${dishIconUrl(sp.id, 48)}" alt=""><span><small>Today's special</small><b>${esc(sp.name)}</b></span></div>
-      ${rushing() ? `<div class="bs-chip glass rush"><b>Rush hour!</b><small>Tips ×2 · ${RUSH_SECONDS - (Math.floor((nowS() + rushShift) / 1000) % RUSH_PERIOD)}s</small></div>` : `<button type="button" class="bs-chip glass soft lay" data-pop title="How handy the seats are for the waiters"><small>Floor plan</small><b>${layout.grade ? `Grade ${layout.grade}` : "No seats"}</b></button>`}`;
+      ${rushing() ? `<div class="bs-chip glass rush"><span><b>Rush hour!</b><small>Tips ×2 · ${RUSH_SECONDS - (Math.floor((nowS() + rushShift) / 1000) % RUSH_PERIOD)}s left</small></span></div>` : `<button type="button" class="bs-chip glass soft lay" data-pop title="How handy the seats are for the waiters"><small>Floor plan</small><b>${layout.grade ? `Grade ${layout.grade}` : "No seats"}</b></button>`}`;
     // Only when something shows differently: a chip redrawn under a finger
     // would swallow the tap.
     if (chipsHtml !== lastChips) {
@@ -3038,7 +3188,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
       sh.height / shellScale,
     );
     drawWindows(ctx, L, low);
-    drawDoorAndBoard(ctx, doorOpen, DISH_BY_ID[special()].name, L);
+    drawDoorAndBoard(ctx, doorOpen, DISH_BY_ID[special()].name, L, special());
     drawFestoon(ctx, L);
     drawRoofSign(ctx, L, T);
     // Sunbeams through the right wall's windows by day.
@@ -3258,6 +3408,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
       drawDish(ctx, f.dish, x, y, 13, T, false);
     }
 
+    drawFrontTrees(ctx, L);
     drawFrontLamps(ctx, L);
     drawLighting(L);
     drawOverlay(now);
@@ -3826,7 +3977,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
       } else if (kind === "dine") {
         const dish = DISH_BY_ID[r.dish as DishId];
         banner(
-          `<b>Delicious!</b><span>${esc(dish?.name ?? "A meal")} at ${esc(v.name)}'s · +${DINE.dinerCoins} coins, +${DINE.dinerXp} XP for you</span>`,
+          `<b>Delicious!</b><span>${esc(dish?.name ?? "A meal")} at ${esc(v.name)}'s · +${DINE.dinerCoins} coins, +${DINE.dinerXp} XP${typeof r.ingredient === "string" && r.ingredient in INGREDIENT_NAMES ? `, +1 ${INGREDIENT_NAMES[r.ingredient as Ingredient]}` : ""} for you</span>`,
         );
         sound("chime");
         const p = iso(DOOR.x + 2, DOOR.y);

@@ -213,12 +213,12 @@ test("Bistro: popularity sets the pace, a full room queues at the door, and Deco
   const errors = await openBistro(page);
   // Rating 3 (18) + charm 8 (2.7) + 2 likes this week (1) = 21.7.
   await expect(page.locator("#bs-chips .pop .pop-ring")).toHaveText("22");
-  await expect(page.locator("#bs-chips .pop")).toContainText("Busy Bistro");
+  await expect(page.locator("#bs-chips .pop")).toContainText("Busy");
   await expect(page.locator("#bs-chips .lay")).toContainText("Grade B");
   await page.click("#bs-chips .pop");
   // (Guests keep coming meanwhile, and happy ones raise it.)
   await expect(page.locator("#bs-sheet h2")).toHaveText(
-    /^Popularity 2\d · Busy Bistro$/,
+    /^Popularity 2\d · Busy$/,
   );
   await expect(page.locator("#bs-sheet .bs-pop-row")).toHaveCount(4);
   await expect(page.locator("#bs-sheet .bs-pop-fx")).toContainText(
@@ -326,6 +326,53 @@ test("Bistro staff: tired staff are fed, litter is swept, a janitor and a friend
   await B(page, "b.advance(20)");
   await flush(page);
   expect(await B(page, "return srv.S.trash")).toBe(0);
+  expect(errors).toEqual([]);
+});
+
+test("Bistro recipes: master a dish and level it up, buy at the Market, bring crops from the Farm", async ({
+  page,
+}, info) => {
+  const errors = await openBistro(page);
+  await B(
+    page,
+    `const S = srv.S; S.level = 6; S.coins = 5000;
+     S.dishLv = { pho: { lv: 1, mastery: 5 } };
+     S.pantry = { flour: 2, herbs: 1 };
+     return b.load()`,
+  );
+  await page.click('.bs-rail [data-sheet="menu"]');
+  await expect(page.locator("#bs-sheet header p")).toContainText("Gourmet 0");
+  const pho = page.locator('#bs-sheet .bs-dish[data-dish="pho"]');
+  await expect(pho).toContainText("Lv 1");
+  await expect(pho).toContainText("5/5 batches");
+  await snap(page, info, "bistro-recipes");
+  await pho.locator("[data-dishup]").click();
+  await expect(pho).toContainText("Lv 2");
+  await flush(page);
+  expect(await B(page, "return srv.S.dishLv.pho")).toEqual({
+    lv: 2,
+    mastery: 0,
+  });
+  expect(await B(page, "return srv.S.pantry")).toEqual({ flour: 1, herbs: 0 });
+  await expect(page.locator("#bs-sheet header p")).toContainText("Gourmet 2");
+  // The pantry: buy one of the Market's first offer, bring flour from the Farm.
+  await page.click('#bs-sheet [data-rtab="pantry"]');
+  await expect(page.locator("#bs-sheet .bs-pantry")).toBeVisible();
+  const first = (await B(
+    page,
+    "return window.__bistroRules.marketOffers(b.sync().now())[0].id",
+  )) as string;
+  await page.click(`#bs-sheet [data-market="${first}"]`);
+  await page.click('#bs-sheet [data-farm="wheat"]');
+  await flush(page);
+  expect(await B(page, "return srv.extras.marketBought")).toEqual({
+    [first]: 1,
+  });
+  expect(await B(page, "return srv.extras.farmSent")).toBe(3);
+  expect(await B(page, "return srv.S.pantry.flour")).toBe(
+    first === "flour" ? 5 : 4,
+  );
+  await snap(page, info, "bistro-pantry");
   expect(errors).toEqual([]);
 });
 

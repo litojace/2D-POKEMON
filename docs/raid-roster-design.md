@@ -1142,7 +1142,9 @@ its beak):
   (Terradon's shell grows obsidian spikes instead), and a rune circle turns
   on the ground.
 - **Stage III:** four rune swords fanned behind the shoulders and a taller
-  crest; void flames lick up behind it and rune shards orbit it.
+  crest; a rune seal turns on its back (whole behind it from the front,
+  edge-on behind its back in profile, over its back from behind) and rune
+  shards orbit it.
 
 Every Void Knight **enters** through a void gate that opens behind it (black
 smoke swirls in, and it seals with a rune shockwave) and **wins** by planting
@@ -1153,6 +1155,8 @@ strikes (bolts), a pillar of black fire rises (flames), ice or obsidian
 spikes erupt (ice, crystals), the tide rings out (fins), a black sun flares
 (eclipse) or the ground quakes (iron helm). These stay around the fighter
 and last under a second; they change no shape, reach or timing.
+The Shop's stage shows all three before you buy: *Entrance*, *Victory* and
+*Ultimate* (a Mythical's stage III ultimate, cast every few seconds).
 
 #### Voltkit (sugar-glider kit, Electric)
 

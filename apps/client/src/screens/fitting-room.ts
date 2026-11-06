@@ -527,6 +527,13 @@ export function openFittingRoom(
     } else if (d.fitPlay) {
       view.action =
         view.action === d.fitPlay ? "idle" : (d.fitPlay as FitView["action"]);
+      // A Mythical's ultimate is its Stage III effect: show that stage, as
+      // the stage buttons do (Equip saves it if reached; Revert undoes it).
+      if (view.action === "ultimate") {
+        const shown = stageOutfit(view, data()).skin?.skin;
+        if (shown) view.tryOn.champion = shown;
+        view.stage = 3;
+      }
       render();
       if (view.action !== "idle") preview?.replay();
       return;
