@@ -109,9 +109,11 @@ import { setupBattleDock } from "./battle-dock";
 import {
   queueFighterAssets,
   createFighterVisual,
+  fighterTextureKeys,
   type FighterVisual,
 } from "./animation/pipeline";
 import { rigAssets } from "./animation/assets";
+import { FighterLoading, neededFighters } from "./animation/fighter-loading";
 import {
   setOverlayMarkup,
   LIVE_SECONDS,
@@ -2794,7 +2796,10 @@ function renderBattle() {
         briefKeys() +
         '<p class="mobile-howto">Joystick to move · aim follows your nearest foe</p>' +
         partyRulesNote();
-      actions = `<button class="primary btn-primary" id="instructions-ready" ${confirmed ? "disabled" : ""}>${confirmed ? "Waiting for the others…" : "I’m ready"}</button>`;
+      // Ready only once this device has the arena: the countdown starts when
+      // everyone is ready, so a slow phone would otherwise miss the start.
+      const loading = arenaLoading(state);
+      actions = `<button class="primary btn-primary" id="instructions-ready" ${confirmed || loading ? "disabled" : ""}>${confirmed ? "Waiting for the others…" : loading ? "Loading the arena…" : "I’m ready"}</button>`;
     }
     if (state.phase === "countdown") {
       heading = LIVE_COUNTDOWN;
@@ -2873,7 +2878,7 @@ function renderBattle() {
       overlay,
       markup,
       actions
-        ? `${state.code}:${state.matchId ?? ""}:${state.phase}`
+        ? `${state.code}:${state.matchId ?? ""}:${state.phase}${state.phase === "briefing" && arenaLoading(state) ? ":loading" : ""}`
         : undefined,
     );
     fillLiveSeconds(
@@ -4020,9 +4025,42 @@ class ArenaScene extends Phaser.Scene {
     super("arena");
   }
   private rigs = new Map<string, FighterVisual>();
-  private assets = Object.fromEntries(
-    (Object.keys(CHARACTERS) as CharacterId[]).map((id) => [id, rigAssets(id)]),
-  ) as Record<CharacterId, ReturnType<typeof rigAssets>>;
+  /** Only the fighters on the court are built and loaded (fighter-loading.ts). */
+  private fighters = new FighterLoading({
+    build: (id) => rigAssets(id),
+    keys: fighterTextureKeys,
+    exists: (key) => this.textures.exists(key),
+  });
+  private loadReported = false;
+  /** Every fighter in this snapshot has its textures (or gave up loading). */
+  fightersReady(s: Snapshot) {
+    return this.fighters.allReady(neededFighters(s.players));
+  }
+  /** Queue whichever of this snapshot's fighters are still missing. */
+  private requestFighters(s: Snapshot) {
+    const ids = this.fighters.toRequest(neededFighters(s.players));
+    if (!ids.length) return;
+    for (const id of ids)
+      queueFighterAssets(this, id, this.fighters.assetsFor(id));
+    // Files added mid-load join the running load and its COMPLETE.
+    if (!this.load.isLoading()) {
+      this.load.once(Phaser.Loader.Events.COMPLETE, () =>
+        this.fighters.settled(),
+      );
+      this.load.start();
+    }
+  }
+  /**
+   * Hold the scene until a snapshot's fighters are loaded: a new fighter
+   * (Fighter roulette, a new seat) pauses drawing briefly instead of
+   * showing missing art. Returns whether the scene may use the snapshot.
+   */
+  private ensureFighters(s: Snapshot) {
+    if (this.fightersReady(s)) return true;
+    this.requestFighters(s);
+    this.needsHydration = true;
+    return false;
+  }
   private animationLive = false;
   private needsHydration = true;
   private followCamera = new FollowCamera();
@@ -4038,7 +4076,11 @@ class ArenaScene extends Phaser.Scene {
       rig = undefined;
     }
     if (!rig) {
-      rig = createFighterVisual(this, character, this.assets[character]);
+      rig = createFighterVisual(
+        this,
+        character,
+        this.fighters.assetsFor(character),
+      );
       this.rigs.set(id, rig);
     }
     return rig;
@@ -4067,6 +4109,7 @@ class ArenaScene extends Phaser.Scene {
     }
   }
   observeSnapshot(next: Snapshot, previous?: Snapshot) {
+    if (!this.ensureFighters(next)) return;
     this.animationLive = !this.needsHydration && previous?.code === next.code;
     this.needsHydration = false;
     const reset = !this.animationLive || previous?.round !== next.round;
@@ -4098,8 +4141,13 @@ class ArenaScene extends Phaser.Scene {
       queueBossArt(this, state.raid.boss);
       queueBossSpellArt(this);
     }
-    for (const id of Object.keys(CHARACTERS) as CharacterId[])
-      queueFighterAssets(this, id, this.assets[id]);
+    // Only the fighters in this room: the rest load if they ever appear.
+    if (state)
+      for (const id of this.fighters.toRequest(neededFighters(state.players)))
+        queueFighterAssets(this, id, this.fighters.assetsFor(id));
+    this.load.once(Phaser.Loader.Events.COMPLETE, () =>
+      this.fighters.settled(),
+    );
   }
   create() {
     scene = this;
@@ -4249,6 +4297,8 @@ class ArenaScene extends Phaser.Scene {
     );
   }
   effect(event: Snapshot["events"][number]) {
+    // Effects can pose a fighter's rig: skip them while its art loads.
+    if (state && !this.fightersReady(state)) return;
     if (event.kind === "raid-impact") {
       const ring = this.add
         .circle(event.x, event.y, event.raidRadius ?? 90, event.color, 0.12)
@@ -4595,6 +4645,12 @@ class ArenaScene extends Phaser.Scene {
     }
   }
   update(_time: number, delta: number) {
+    // A fighter still loading: draw nothing that needs its art yet.
+    if (state && !this.ensureFighters(state)) return;
+    if (!this.loadReported && state) {
+      this.loadReported = true;
+      reportBattleLoad(neededFighters(state.players).length);
+    }
     const feelNow = performance.now();
     this.applyBattleQuality(feelNow);
     const stopped = feelNow < this.stopUntil;
@@ -5619,9 +5675,47 @@ function fitRenderer() {
   scale.setZoom(1 / dpr);
   scale.resize(width, height);
 }
+/** When this battle renderer started loading (for reportBattleLoad). */
+let battleLoadStarted = 0;
+/** Longest the briefing holds "I'm ready" back while the arena loads. */
+const ARENA_WAIT_MAX_MS = 20_000;
+let arenaWaitSince = 0;
+/**
+ * The battle renderer is still loading these fighters. Never blocks for
+ * good: no renderer (nothing to wait for) or a load past ARENA_WAIT_MAX_MS
+ * lets the player confirm anyway.
+ */
+function arenaLoading(s: Snapshot) {
+  if (!gameInstance || scene?.fightersReady(s)) {
+    arenaWaitSince = 0;
+    return false;
+  }
+  const now = performance.now();
+  if (!arenaWaitSince) arenaWaitSince = now;
+  return now - arenaWaitSince < ARENA_WAIT_MAX_MS;
+}
+/**
+ * Tell the server how long the arena took to load on this device, once per
+ * renderer, so slow phones show up in the server log ("arena-load").
+ */
+function reportBattleLoad(fighters: number) {
+  const started = battleLoadStarted;
+  battleLoadStarted = 0;
+  if (!started || !myId || !connected) return;
+  const nav = navigator as Navigator & { deviceMemory?: number };
+  socket.emit("battle-loaded", {
+    ms: Math.min(600_000, Math.round(performance.now() - started)),
+    fighters,
+    ...(typeof nav.deviceMemory === "number"
+      ? { memory: nav.deviceMemory }
+      : {}),
+    ...(nav.hardwareConcurrency ? { cores: nav.hardwareConcurrency } : {}),
+  });
+}
 function ensureBattleRenderer() {
   if (gameInstance || $("game").clientWidth < 1 || $("game").clientHeight < 1)
     return;
+  battleLoadStarted = performance.now();
   const dpr = renderScale();
   gameInstance = new Phaser.Game({
     type: Phaser.AUTO,

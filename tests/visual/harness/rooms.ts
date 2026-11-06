@@ -24,7 +24,7 @@ const w = window as unknown as Record<string, any>;
 export interface RoomOptions {
   mode?: "duel" | "teams" | "ffa";
   seats?: number;
-  phase?: "lobby" | "playing";
+  phase?: "lobby" | "playing" | "briefing";
   arena?: ArenaId;
   boss?: RaidBossId;
   broken?: number[];
