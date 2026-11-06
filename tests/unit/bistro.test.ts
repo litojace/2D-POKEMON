@@ -17,7 +17,19 @@ import {
   cookProgress,
   defaultState,
   findPath,
-  hireWaiter,
+  hire,
+  upgradeStaff,
+  setCookDish,
+  candidates,
+  autoKitchen,
+  simulateAway,
+  buyKitchen,
+  buyShift,
+  cookMs,
+  nextHire,
+  staffOf,
+  SHIFT_HOURS,
+  AWAY_MIN_MS,
   inPerfectWindow,
   payment,
   pickOrder,
@@ -264,8 +276,10 @@ describe("bistro: the shop", () => {
     expect(buyStove(s).ok).toBe(true);
     expect(buyStove(s)).toMatchObject({ ok: false });
     expect(s.stoves).toHaveLength(4);
-    expect(hireWaiter(s).ok).toBe(true);
-    expect(hireWaiter(s)).toMatchObject({ ok: false });
+    expect(buyKitchen(s).ok).toBe(true);
+    expect(cookMs(s, "pho")).toBe(54_000);
+    expect(buyShift(s).ok).toBe(true);
+    expect(SHIFT_HOURS[s.shiftLv]).toBe(4);
     expect(buyStyle(s, "floor", "wood").ok).toBe(true);
     expect(s.floor).toBe("wood");
     const left = s.coins;
@@ -302,5 +316,110 @@ describe("bistro: saved state", () => {
     expect(junk.counter.every((c) => c === null)).toBe(true);
     expect(junk.floor).toBe("checker");
     expect(sanitize(null)).toEqual(defaultState());
+  });
+});
+
+describe("bistro: staff", () => {
+  it("hires cooks and waiters by level, up to the team's size, never twice", () => {
+    const s = defaultState();
+    s.coins = 10_000;
+    expect(staffOf(s, "waiter")).toHaveLength(1);
+    expect(hire(s, "cook", "pyranda")).toMatchObject({ ok: false }); // level 2
+    s.level = 2;
+    expect(hire(s, "cook", "pyranda").ok).toBe(true);
+    expect(hire(s, "cook", "pyranda")).toMatchObject({ ok: false }); // already hired
+    expect(hire(s, "waiter", "glacelle")).toMatchObject({ ok: false }); // level 3
+    s.level = 9;
+    expect(hire(s, "waiter", "glacelle").ok).toBe(true);
+    expect(hire(s, "waiter", "lumoth").ok).toBe(true);
+    expect(nextHire(s, "waiter")).toBeNull();
+    expect(hire(s, "waiter", "mystowl")).toMatchObject({ ok: false });
+    expect(hire(s, "cook", "nobody")).toMatchObject({ ok: false });
+  });
+  it("training makes staff faster; cooks cook the dish they are given", () => {
+    const s = defaultState();
+    s.coins = 10_000;
+    s.level = 4;
+    hire(s, "cook", "pyranda");
+    const cook = staffOf(s, "cook")[0];
+    expect(upgradeStaff(s, cook.id).ok).toBe(true);
+    expect(cook.level).toBe(2);
+    expect(cookMs(s, "pho", cook.level)).toBeLessThan(cookMs(s, "pho"));
+    expect(setCookDish(s, cook.id, "lau")).toMatchObject({ ok: false }); // level 7
+    expect(setCookDish(s, cook.id, "pho").ok).toBe(true);
+  });
+  it("a cook starts their dish on their stove and plates it when it is done", () => {
+    const s = defaultState();
+    s.coins = 1000;
+    s.level = 2;
+    s.counter = [null, null, null, null];
+    hire(s, "cook", "pyranda");
+    setCookDish(s, staffOf(s, "cook")[0].id, "pho");
+    const ev = autoKitchen(s, T0);
+    expect(ev).toMatchObject([{ kind: "start", stove: 1, dish: "pho" }]);
+    expect(s.stoves[0].dish).toBeNull(); // the head chef's stove is left alone
+    expect(autoKitchen(s, T0 + 30_000)).toEqual([]);
+    const done = autoKitchen(s, T0 + 60_000);
+    expect(done.map((e) => e.kind)).toEqual(["plate", "start"]);
+    expect(s.counter[0]).toMatchObject({ dish: "pho", servings: 10 });
+  });
+  it("candidates are three creatures not on the team, the same all day", () => {
+    const s = defaultState();
+    const a = candidates(s, "voltkit", new Date(2026, 10, 6, 9));
+    expect(a).toHaveLength(3);
+    expect(new Set(a).size).toBe(3);
+    expect(a).not.toContain("voltkit");
+    expect(a).not.toContain("sunbara");
+    expect(candidates(s, "voltkit", new Date(2026, 10, 6, 22))).toEqual(a);
+  });
+});
+
+describe("bistro: while you are away", () => {
+  it("nothing happens for a short absence or a first visit", () => {
+    const s = defaultState();
+    expect(simulateAway(s, 0, T0)).toBeNull();
+    expect(simulateAway(s, T0, T0 + AWAY_MIN_MS - 1)).toBeNull();
+  });
+  it("waiters sell what is on the counter, then the bistro waits for food", () => {
+    const s = defaultState();
+    const coins = s.coins;
+    const r = simulateAway(s, T0, T0 + 3600_000)!;
+    expect(r.served).toBe(6); // the starting spring rolls, no cook
+    expect(r.batches).toBe(0);
+    expect(s.coins).toBe(coins + r.coins);
+    expect(r.coins).toBeGreaterThanOrEqual(6 * 4);
+  });
+  it("a cook keeps food coming; the shift caps the time worked", () => {
+    const s = defaultState();
+    s.coins = 500;
+    s.level = 2;
+    hire(s, "cook", "pyranda");
+    const coins = s.coins;
+    const r = simulateAway(s, T0, T0 + 10 * 3600_000)!;
+    expect(r.capped).toBe(true);
+    expect(r.worked).toBe(SHIFT_HOURS[0] * 3600_000);
+    expect(r.batches).toBeGreaterThan(10);
+    expect(r.served).toBeGreaterThan(50);
+    expect(r.coins - r.spent).toBeGreaterThan(0);
+    // Coins: what guests paid, less ingredients, plus any level-up gifts.
+    expect(s.coins).toBeGreaterThanOrEqual(coins + r.coins - r.spent);
+    // A longer shift works longer.
+    const t = defaultState();
+    t.coins = 5000;
+    t.level = 2;
+    hire(t, "cook", "pyranda");
+    buyShift(t);
+    expect(simulateAway(t, T0, T0 + 10 * 3600_000)!.worked).toBe(4 * 3600_000);
+  });
+  it("cooks stop when there are no coins for ingredients", () => {
+    const s = defaultState();
+    s.level = 2;
+    s.coins = 250;
+    hire(s, "cook", "pyranda");
+    s.counter = [null, null, null, null];
+    expect(s.coins).toBe(0);
+    const r = simulateAway(s, T0, T0 + 3600_000)!;
+    expect(r.batches).toBe(0);
+    expect(r.served).toBe(0);
   });
 });

@@ -131,3 +131,35 @@ test("Bistro fits a phone in landscape", async ({ page }, info) => {
   await snap(page, info, "bistro-phone");
   expect(errors).toEqual([]);
 });
+
+test("Bistro staff: hire a cook who cooks alone, and a report after time away", async ({
+  page,
+}, info) => {
+  const errors = await openBistro(page);
+  await page.evaluate(() => {
+    const s = (window as any).__bistro.state();
+    s.level = 2;
+    s.coins = 600;
+  });
+  await page.click('.bs-rail [data-sheet="staff"]');
+  await page.click('#bs-sheet [data-tab="hire"]');
+  await page.locator('#bs-sheet [data-hire^="cook:"]').first().click();
+  await expect(page.locator("#bs-sheet .bs-staff")).toHaveCount(2);
+  await expect(page.locator("#bs-sheet .role.cook")).toHaveCount(1);
+  // The cook starts their dish on the last stove by themselves.
+  await expect
+    .poll(() =>
+      page.evaluate(() => (window as any).__bistro.state().stoves[1].dish),
+    )
+    .not.toBeNull();
+  await page.click("#bs-sheet [data-close]");
+  // Three hours away: the staff work their two-hour shift.
+  await page.evaluate(() => (window as any).__bistro.away(3 * 3600 * 1000));
+  await expect(page.locator(".bs-away")).toBeVisible();
+  await expect(page.locator(".bs-away")).toContainText("While you were away");
+  await expect(page.locator(".bs-away")).toContainText("2 h");
+  await snap(page, info, "bistro-away");
+  await page.click(".bs-away [data-collect]");
+  await expect(page.locator("#bs-modal")).toBeHidden();
+  expect(errors).toEqual([]);
+});

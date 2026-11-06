@@ -17,7 +17,6 @@ import { fadeIn } from "../ui/motion";
 import {
   BOUNDS,
   dishIconUrl,
-  drawBackdrop,
   drawChair,
   drawCounterTile,
   drawDish,
@@ -59,8 +58,28 @@ import {
   ROWS,
   STOVE_TILES,
   WAITER_HOME,
-  WAITER_LEVEL,
-  WAITER_PRICE,
+  HIRE_STEPS,
+  KITCHEN_PRICES,
+  SHIFT_HOURS,
+  SHIFT_PRICES,
+  STAFF_MAX_LEVEL,
+  autoKitchen,
+  buyKitchen,
+  buyShift,
+  candidates,
+  cookStove,
+  hire,
+  nextHire,
+  setCookDish,
+  simulateAway,
+  staffOf,
+  staffSpeed,
+  staffUpgradePrice,
+  stoveMs,
+  unlockedDishes,
+  upgradeStaff,
+  type AwayReport,
+  type Staff,
   WALLS,
   addXp,
   approach,
@@ -73,7 +92,6 @@ import {
   cookProgress,
   findPath,
   heartsFor,
-  hireWaiter,
   inPerfectWindow,
   nextStovePrice,
   patienceSeconds,
@@ -98,6 +116,17 @@ import {
   type ItemKind,
   type Seat,
 } from "./bistro-model";
+import {
+  carGlows,
+  drawFrontLamps,
+  drawRoofSign,
+  drawSceneryLive,
+  drawSceneryStatic,
+  roofSignGlow,
+  sceneryGlows,
+  updateCars,
+  type Car,
+} from "./bistro-scenery";
 import "./bistro.css";
 
 export interface BistroOptions {
@@ -198,6 +227,19 @@ function sprite(id: CharacterId, dir: Facing, mood: Mood = "normal"): Sprite {
   return s;
 }
 
+/** A creature's front view as an image URL (staff cards). */
+const portraits = new Map<string, string>();
+function portrait(id: string): string {
+  let url = portraits.get(id);
+  if (!url) {
+    url =
+      "data:image/svg+xml;charset=utf-8," +
+      encodeURIComponent(creatureSvg(asChar(id), "down"));
+    portraits.set(id, url);
+  }
+  return url;
+}
+
 /* ───────────── the scene's people ───────────── */
 
 interface Pt {
@@ -238,6 +280,7 @@ interface Customer extends Walker {
   orderedAt: number;
 }
 interface Waiter extends Walker {
+  staff: Staff;
   task: { kind: "serve"; c: Customer } | { kind: "clear"; p: Pile } | null;
   phase: "idle" | "toCounter" | "pick" | "toTable" | "drop" | "toPile" | "home";
   carry: DishId | null;
@@ -297,6 +340,7 @@ const HTML = `<canvas class="bs-cv" aria-label="Your bistro"></canvas>
   <div class="bs-corner">
     <nav class="bs-rail glass" aria-label="Bistro menu">
       <button type="button" data-sheet="menu" title="Recipes">${I("book")}<span>Recipes</span></button>
+      <button type="button" data-sheet="staff" title="Staff and upgrades">${I("friends")}<span>Staff</span><b class="dot" id="bs-staff-dot" hidden></b></button>
       <button type="button" data-sheet="shop" title="Shop">${I("shop")}<span>Shop</span></button>
       <button type="button" data-act="decor" title="Decorate">${I("decor")}<span>Decor</span></button>
     </nav>
@@ -307,6 +351,7 @@ const HTML = `<canvas class="bs-cv" aria-label="Your bistro"></canvas>
   <div class="bs-tip glass" id="bs-tip" hidden></div>
   <section class="bs-sheet glass" id="bs-sheet" hidden></section>
   <div class="bs-banner" id="bs-banner" hidden></div>
+  <div class="bs-modal" id="bs-modal" hidden></div>
   <div class="bs-hint" id="bs-hint">Tap a stove to cook · customers come when the counter has food</div>
 </div>`;
 
@@ -347,6 +392,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
   let dirty = false;
   const save = () => {
     dirty = false;
+    S.lastSeen = Date.now();
     try {
       localStorage.setItem(KEY, JSON.stringify(S));
     } catch {
@@ -357,11 +403,11 @@ export function openBistro(o: BistroOptions): BistroHandle {
     dirty = true;
     hudDirty = true;
   };
-  const saveTimer = setInterval(() => dirty && save(), 4000);
+  // Saving also stamps "last seen", the start of any time away.
+  const saveTimer = setInterval(save, 5000);
 
   /* ───────────── people ───────────── */
   const chefChar = () => asChar(o.character());
-  const WAITER_CHARS: CharacterId[] = ["sunbara", "astrabun"];
   const mkWalker = (
     char: CharacterId,
     gx: number,
@@ -379,26 +425,52 @@ export function openBistro(o: BistroOptions): BistroHandle {
     hop: 0,
   });
   const chef = mkWalker(chefChar(), 2.5, 1, 2.2);
+  // The hired team: waiters on the floor, cooks at their stoves.
   let waiters: Waiter[] = [];
-  const syncWaiters = () => {
-    while (waiters.length < S.waiters) {
-      const i = waiters.length;
-      const ch = WAITER_CHARS[i] === chef.char ? "halcyra" : WAITER_CHARS[i];
-      waiters.push({
-        ...mkWalker(ch, WAITER_HOME.x + i, WAITER_HOME.y + i * 0, 2.8),
+  let cooks: (Walker & { staff: Staff })[] = [];
+  const syncStaff = () => {
+    const ws = staffOf(S, "waiter");
+    waiters = ws.map((st, i) => {
+      const old = waiters.find((w) => w.staff.id === st.id);
+      if (old) {
+        old.staff = st;
+        old.speed = 2.8 * staffSpeed(st.level);
+        return old;
+      }
+      return {
+        ...mkWalker(
+          asChar(st.char),
+          WAITER_HOME.x + (i ? 0.6 : 0),
+          WAITER_HOME.y + (i ? 0.6 : 0),
+          2.8 * staffSpeed(st.level),
+        ),
+        staff: st,
         task: null,
-        phase: "idle",
+        phase: "idle" as const,
         carry: null,
         timer: 0,
-      });
-    }
+      };
+    });
+    cooks = staffOf(S, "cook").map((st, i) => {
+      const old = cooks.find((c) => c.staff.id === st.id);
+      if (old) {
+        old.staff = st;
+        return old;
+      }
+      const idx = cookStove(S, i);
+      return {
+        ...mkWalker(asChar(st.char), idx >= 0 ? STOVE_TILES[idx].x : 4.6, 1, 2),
+        staff: st,
+      };
+    });
+    for (const w of [...waiters, ...cooks])
+      for (const d of ["down", "left", "right", "up"] as Facing[])
+        sprite(w.char, d);
   };
-  syncWaiters();
+  syncStaff();
   // Warm the sprite cache: the staff first, then the whole roster bit by bit.
-  for (const d of ["down", "left", "right", "up"] as Facing[]) {
+  for (const d of ["down", "left", "right", "up"] as Facing[])
     sprite(chef.char, d);
-    for (const w of waiters) sprite(w.char, d);
-  }
   let warmI = 0;
   const warm = setInterval(() => {
     const id = ROSTER[warmI % ROSTER.length];
@@ -893,11 +965,8 @@ export function openBistro(o: BistroOptions): BistroHandle {
       }
       if (w.phase !== "home") {
         w.phase = "home";
-        const i = waiters.indexOf(w);
-        pathTo(w, {
-          x: WAITER_HOME.x + (i ? 1 : 0),
-          y: WAITER_HOME.y + (i ? 1 : 0),
-        });
+        if (waiters.indexOf(w) === 0) pathTo(w, WAITER_HOME);
+        else pathNear(w, [WAITER_HOME]);
       }
       if (step(w, dt)) w.face = "down";
       return;
@@ -992,8 +1061,9 @@ export function openBistro(o: BistroOptions): BistroHandle {
     // that will finish first.
     let target = -1;
     let best = Infinity;
+    const cookRun = new Set(cooks.map((_, i) => cookStove(S, i)));
     S.stoves.forEach((st, i) => {
-      if (!st.dish) return;
+      if (!st.dish || cookRun.has(i)) return;
       const p = cookProgress(st, now);
       const score = inPerfectWindow(st, now) ? -2 : p >= 1 ? -1 : 1 - p;
       if (score < best) {
@@ -1001,10 +1071,51 @@ export function openBistro(o: BistroOptions): BistroHandle {
         target = i;
       }
     });
-    const tx = target >= 0 ? STOVE_TILES[target].x : 2.5;
+    const own = S.stoves.map((_, i) => i).filter((i) => !cookRun.has(i));
+    const tx =
+      target >= 0
+        ? STOVE_TILES[target].x
+        : own.length
+          ? (STOVE_TILES[own[0]].x + STOVE_TILES[own[own.length - 1]].x) / 2
+          : 0.35;
     if (Math.abs(chef.gx - tx) > 0.02 && !chef.path.length)
       chef.path = [{ x: tx, y: 1 }];
     if (step(chef, dt)) chef.face = target >= 0 ? "up" : "down";
+    // Cooks stand at their stove, facing it while something cooks.
+    cooks.forEach((c, i) => {
+      const idx = cookStove(S, i);
+      const x = idx >= 0 ? STOVE_TILES[idx].x : 4.6;
+      if (Math.abs(c.gx - x) > 0.02 && !c.path.length) c.path = [{ x, y: 1 }];
+      if (step(c, dt)) c.face = idx >= 0 && S.stoves[idx]?.dish ? "up" : "down";
+    });
+  };
+  /** The cooks' work, a few times a second: start their dish, plate it when done. */
+  let kitchenT = 0;
+  const runKitchen = (dt: number) => {
+    kitchenT -= dt;
+    if (kitchenT > 0) return;
+    kitchenT = 0.4;
+    for (const ev of autoKitchen(S, Date.now())) {
+      const c = iso(STOVE_TILES[ev.stove].x, STOVE_TILES[ev.stove].y);
+      const walker = cooks.find((w) => w.staff.id === ev.cook.id);
+      if (walker) walker.hop = 1;
+      if (ev.kind === "start") {
+        burst(c.x, c.y - 60, "spark", 6, "#ffb36b", 0.4);
+      } else {
+        const to = iso(1 + ev.slot, COUNTER_ROW);
+        flights.push({
+          dish: ev.dish,
+          from: { x: c.x, y: c.y - 70 },
+          to: { x: to.x, y: to.y - 52 },
+          t: 0,
+          dur: 0.55,
+        });
+        floatText({ x: c.x, y: c.y - 96 }, `+${ev.servings} servings`, "#fff");
+        sound("pop", 3);
+        levelUp(ev.levels);
+      }
+      changed();
+    }
   };
 
   /* ───────────── input ───────────── */
@@ -1205,7 +1316,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
       }
       if (cookProgress(st, now) >= 1) return plateStove(h.i);
       const d = DISH_BY_ID[st.dish];
-      const left = (d.seconds * 1000 - (now - st.start)) / 1000;
+      const left = (stoveMs(st) - (now - st.start)) / 1000;
       const golden = !st.perfect && cookProgress(st, now) < PERFECT_FROM;
       return showTip(
         sx,
@@ -1213,7 +1324,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
         `<b>${esc(d.name)}</b><span>${fmtTime(left)} left${st.perfect ? " · perfect ★" : ""}</span>${golden ? `<small>Tap the pot when it glows gold for +${PERFECT_BONUS} servings</small>` : ""}`,
       );
     }
-    if (h.kind === "stove-buy") return openSheet("shop", "kitchen");
+    if (h.kind === "stove-buy") return openSheet("staff", "upgrades");
     if (h.kind === "counter") {
       const c = S.counter[h.slot];
       return showTip(
@@ -1481,12 +1592,93 @@ export function openBistro(o: BistroOptions): BistroHandle {
             ${d.id === sp ? `<i class="sp">Special ×1.5</i>` : ""}
           </button>`;
         }).join("")}</div>`;
+    } else if (sheetKind === "staff") {
+      const tab = (sheetArg as string) || "team";
+      const tabs = [
+        ["team", "Your team"],
+        ["hire", "Hire"],
+        ["upgrades", "Upgrades"],
+      ];
+      let body = "";
+      if (tab === "team") {
+        const cards = S.staff.map((st) => {
+          const name = CHARACTERS[asChar(st.char)].name;
+          const up =
+            st.level < STAFF_MAX_LEVEL ? staffUpgradePrice(st.level) : null;
+          const ci = staffOf(S, "cook").indexOf(st);
+          const stove = st.role === "cook" ? cookStove(S, ci) : -1;
+          return `<div class="bs-staff">
+            <img class="pt" src="${portrait(st.char)}" alt="">
+            <div class="who"><b>${esc(name)}</b><span class="role ${st.role}">${st.role === "cook" ? "Cook" : "Waiter"}</span>
+              <span class="lv">${"★".repeat(st.level)}<i>${"★".repeat(STAFF_MAX_LEVEL - st.level)}</i></span>
+              <small>${st.role === "cook" ? (stove >= 0 ? `Runs stove ${stove + 1} · ${Math.round((staffSpeed(st.level) - 1) * 100)}% faster` : "Needs a stove: build one in Upgrades") : `Serves and clears · ${Math.round((staffSpeed(st.level) - 1) * 100)}% faster`}</small>
+            </div>
+            ${up === null ? `<span class="lk">Top level</span>` : `<button type="button" class="pr ${S.coins < up ? "poor" : ""}" data-up="${st.id}">Train ${coinTag(up)}</button>`}
+            ${
+              st.role === "cook"
+                ? `<div class="cookdish"><small>Cooks</small>${unlockedDishes(
+                    S.level,
+                  )
+                    .map(
+                      (d) =>
+                        `<button type="button" data-cd="${st.id}:${d.id}" class="${st.dish === d.id ? "on" : ""}" title="${esc(d.name)}"><img src="${dishIconUrl(d.id, 48)}" alt="${esc(d.name)}"></button>`,
+                    )
+                    .join("")}</div>`
+                : ""
+            }
+          </div>`;
+        });
+        body = `<div class="bs-team">${cards.join("")}
+          <p class="bs-note">${I("clock")} While you are away your staff keep the bistro open for up to <b>${SHIFT_HOURS[S.shiftLv]} hours</b>: cooks cook their dish, waiters serve what is on the counter.${staffOf(S, "cook").length ? "" : " <b>Hire a cook</b> so food keeps coming."}</p></div>`;
+      } else if (tab === "hire") {
+        const nc = nextHire(S, "cook"),
+          nw = nextHire(S, "waiter");
+        const btn = (
+          role: "cook" | "waiter",
+          char: string,
+          step: { level: number; price: number } | null,
+        ) =>
+          !step
+            ? `<span class="lk">${role === "cook" ? "Cooks" : "Waiters"} full</span>`
+            : S.level < step.level
+              ? `<span class="lk">${I("lock")} ${role === "cook" ? "Cook" : "Waiter"} at level ${step.level}</span>`
+              : `<button type="button" class="pr ${S.coins < step.price ? "poor" : ""}" data-hire="${role}:${char}">${role === "cook" ? "Hire as cook" : "Hire as waiter"} · ${step.price ? coinTag(step.price) : "free"}</button>`;
+        body = `<div class="bs-items">${candidates(S, chef.char)
+          .map(
+            (c) =>
+              `<div class="bs-item hire"><img src="${portrait(c)}" alt=""><b>${esc(CHARACTERS[asChar(c)].name)}</b><small>${esc(CHARACTERS[asChar(c)].element)} · looking for work</small>${btn("cook", c, nc)}${btn("waiter", c, nw)}</div>`,
+          )
+          .join(
+            "",
+          )}</div><p class="bs-note">New faces come by every day. Cooks: ${staffOf(S, "cook").length} of ${HIRE_STEPS.cook.length} · Waiters: ${staffOf(S, "waiter").length} of ${HIRE_STEPS.waiter.length}</p>`;
+      } else {
+        const sp = nextStovePrice(S);
+        const kp = KITCHEN_PRICES[S.kitchenLv];
+        const shp = SHIFT_PRICES[S.shiftLv];
+        const card = (
+          attr: string,
+          icon: string,
+          title: string,
+          sub: string,
+          price: number | null | undefined,
+          done: string,
+        ) =>
+          `<button type="button" class="bs-item" ${attr} ${price == null ? "disabled" : ""}><div class="ic">${I(icon)}</div><b>${title}</b><small>${sub}</small>${price == null ? `<span class="lk">${done}</span>` : `<span class="pr ${S.coins < price ? "poor" : ""}">${coinTag(price)}</span>`}</button>`;
+        body = `<div class="bs-items">
+          ${card("data-buy-stove", "spark", "Another stove", `${S.stoves.length} of ${MAX_STOVES} in the kitchen`, sp, "All built")}
+          ${card("data-kitchen", "star", `Kitchen level ${S.kitchenLv + 1}`, `Every dish cooks ${(S.kitchenLv + 1) * 10}% faster (now ${S.kitchenLv * 10}%)`, kp, "Fully upgraded")}
+          ${card("data-shift", "clock", `Longer shifts`, `Open ${SHIFT_HOURS[S.shiftLv]} h while you're away${shp != null ? ` → ${SHIFT_HOURS[S.shiftLv + 1]} h` : ""}`, shp, "8 hours: the longest")}
+        </div>`;
+      }
+      sheet.innerHTML =
+        head("Staff", `Hire, train and upgrade · ${coinTag(S.coins)}`) +
+        `<nav class="bs-tabs">${tabs.map(([id, label]) => `<button type="button" data-tab="${id}" aria-pressed="${id === tab}">${label}</button>`).join("")}</nav>` +
+        body;
     } else if (sheetKind === "shop") {
       const tab = (sheetArg as string) || "furniture";
       const tabs = [
         ["furniture", "Furniture"],
         ["decor", "Decor"],
-        ["kitchen", "Kitchen & staff"],
         ["style", "Floors & walls"],
       ];
       let body = "";
@@ -1501,12 +1693,6 @@ export function openBistro(o: BistroOptions): BistroHandle {
             </button>`;
           })
           .join("")}</div>`;
-      } else if (tab === "kitchen") {
-        const sp = nextStovePrice(S);
-        body = `<div class="bs-items">
-          <button type="button" class="bs-item" data-buy-stove ${sp === null ? "disabled" : ""}><div class="ic">${I("spark")}</div><b>Another stove</b><small>${S.stoves.length} of ${MAX_STOVES} in the kitchen</small>${sp === null ? `<span class="lk">All built</span>` : `<span class="pr ${S.coins < sp ? "poor" : ""}">${coinTag(sp)}</span>`}</button>
-          <button type="button" class="bs-item" data-hire ${S.waiters >= 2 || S.level < WAITER_LEVEL ? "disabled" : ""}><div class="ic">${I("friends")}</div><b>Second waiter</b><small>Serves and clears tables twice as fast</small>${S.waiters >= 2 ? `<span class="lk">Hired</span>` : S.level < WAITER_LEVEL ? `<span class="lk">${I("lock")} Level ${WAITER_LEVEL}</span>` : `<span class="pr ${S.coins < WAITER_PRICE ? "poor" : ""}">${coinTag(WAITER_PRICE)}</span>`}</button>
-        </div>`;
       } else {
         const row = (
           kind: "floor" | "wall",
@@ -1574,10 +1760,43 @@ export function openBistro(o: BistroOptions): BistroHandle {
       changed();
       return renderSheet();
     }
-    if (b.hasAttribute("data-hire")) {
-      const r = hireWaiter(S);
+    if (b.dataset.hire) {
+      const [role, char] = b.dataset.hire.split(":") as [
+        "cook" | "waiter",
+        string,
+      ];
+      const r = hire(S, role, char);
       if (!r.ok) return o.toast(r.error);
-      syncWaiters();
+      syncStaff();
+      sound("fanfare");
+      const p = iso(DOOR.x, DOOR.y);
+      burst(p.x, p.y - 40, "confetti", 30, "#ffd65b", 1);
+      banner(
+        `<b>Welcome aboard!</b><span>${esc(CHARACTERS[asChar(char)].name)} joins as your ${role}</span>`,
+      );
+      changed();
+      sheetArg = "team";
+      return renderSheet();
+    }
+    if (b.dataset.up) {
+      const r = upgradeStaff(S, Number(b.dataset.up));
+      if (!r.ok) return o.toast(r.error);
+      syncStaff();
+      sound("levelup");
+      changed();
+      return renderSheet();
+    }
+    if (b.dataset.cd) {
+      const [id, dish] = b.dataset.cd.split(":");
+      const r = setCookDish(S, Number(id), dish as DishId);
+      if (!r.ok) return o.toast(r.error);
+      sound("tick");
+      changed();
+      return renderSheet();
+    }
+    if (b.hasAttribute("data-kitchen") || b.hasAttribute("data-shift")) {
+      const r = b.hasAttribute("data-kitchen") ? buyKitchen(S) : buyShift(S);
+      if (!r.ok) return o.toast(r.error);
       sound("fanfare");
       changed();
       return renderSheet();
@@ -1619,6 +1838,13 @@ export function openBistro(o: BistroOptions): BistroHandle {
   const bar = $("#bs-bar");
   const renderHud = () => {
     hudDirty = false;
+    // A dot on Staff when someone can be hired right now.
+    const canHire = (["cook", "waiter"] as const).some((r) => {
+      const st = nextHire(S, r);
+      return !!st && S.level >= st.level && S.coins >= st.price;
+    });
+    const dot = layer.querySelector<HTMLElement>("#bs-staff-dot");
+    if (dot) dot.hidden = !canHire;
     const need = xpToNext(S.level);
     const name = o.playerName();
     badge.innerHTML = `<div class="bs-ring" style="--p:${Math.round((S.xp / need) * 100)}"><b>${S.level}</b></div>
@@ -1646,6 +1872,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
   /* ───────────── update ───────────── */
   const update = (dt: number) => {
     T += dt;
+    cars = updateCars(cars, dt, Math.random());
     const now = Date.now();
     // Rush hours, every few minutes while there is food to sell.
     if (T >= rushAt && servingsLeft(S) > 0 && !editing) {
@@ -1667,6 +1894,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
     customers = customers.filter((c) => !(c.state === "leave" && c.alpha <= 0));
     for (const w of waiters) updateWaiter(w, dt);
     updateChef(dt);
+    runKitchen(dt);
     // Customers who just found food on the counter.
     // (Seated customers without an order retry in updateCustomer.)
     // The door swings while someone is near it.
@@ -1751,7 +1979,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
       }
     }
     flyers = flyers.filter((f) => f.t < f.dur);
-    if (!flyers.length && shownCoins !== S.coins) {
+    if (!flyers.length && shownCoins !== S.coins && modal.hidden) {
       shownCoins = S.coins;
       hudDirty = true;
     }
@@ -1873,11 +2101,62 @@ export function openBistro(o: BistroOptions): BistroHandle {
     drawSparkle(ctx, x + 12, y - 16, 4);
   };
 
+  // A couple of cars already on the road when the bistro opens.
+  let cars: Car[] = [
+    { y: -2, v: 2.8, col: "#3d8fd1", kind: 0 },
+    { y: 13, v: -3.1, col: "#f2c14e", kind: 1 },
+  ];
+  const scenery = document.createElement("canvas");
+  let sceneryKey = "";
+  const sceneryCanvas = (L: Light) => {
+    const key = [
+      view.s.toFixed(4),
+      view.x.toFixed(1),
+      view.y.toFixed(1),
+      W,
+      H,
+      DPR,
+      Math.round(L.night * 24),
+      Math.round(L.gold * 24),
+      special(),
+    ].join(":");
+    if (key === sceneryKey) return scenery;
+    sceneryKey = key;
+    scenery.width = cv.width;
+    scenery.height = cv.height;
+    const g = scenery.getContext("2d")!;
+    g.setTransform(
+      view.s * DPR,
+      0,
+      0,
+      view.s * DPR,
+      view.x * DPR,
+      view.y * DPR,
+    );
+    drawSceneryStatic(g, L, DISH_BY_ID[special()].name);
+    return scenery;
+  };
+  /** The diorama's outline: the slab, the floor and the walls. */
+  const roomPath = () => {
+    const l = iso(-0.5, ROWS - 0.5),
+      b = iso(COLS - 0.5, ROWS - 0.5),
+      r = iso(COLS - 0.5, -0.5),
+      t = iso(-0.5, -0.5);
+    ctx.beginPath();
+    ctx.moveTo(l.x - 16, l.y + 40);
+    ctx.lineTo(b.x, b.y + 40);
+    ctx.lineTo(r.x + 16, r.y + 40);
+    ctx.lineTo(r.x + 16, r.y - 190);
+    ctx.lineTo(t.x, t.y - 190);
+    ctx.lineTo(l.x - 16, l.y - 190);
+    ctx.closePath();
+  };
   const draw = () => {
     applyView();
     const L = light();
-    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-    drawBackdrop(ctx, W, H, L, low);
+    // The street corner around the bistro: drawn once per view and light.
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.drawImage(sceneryCanvas(L), 0, 0);
     ctx.setTransform(
       view.s * DPR,
       0,
@@ -1886,6 +2165,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
       view.x * DPR,
       view.y * DPR,
     );
+    drawSceneryLive(ctx, L, cars, low);
     drawGroundShadow(ctx);
     const sh = shellCanvas();
     ctx.drawImage(
@@ -1898,6 +2178,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
     drawWindows(ctx, L, low);
     drawDoorAndBoard(ctx, doorOpen, DISH_BY_ID[special()].name, L);
     drawFestoon(ctx, L);
+    drawRoofSign(ctx, L, T);
     // Sunbeams through the right wall's windows by day.
     if (!low && L.night < 0.8) drawBeams(L);
     // Rugs lie on the floor under everything.
@@ -2107,6 +2388,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
       drawDish(ctx, f.dish, x, y, 13, T, false);
     }
 
+    drawFrontLamps(ctx, L);
     drawLighting(L);
     drawOverlay(now);
     // Screen-space: coins flying to the badge.
@@ -2177,15 +2459,20 @@ export function openBistro(o: BistroOptions): BistroHandle {
     if (n <= 0.02 && L.gold <= 0.02) return;
     ctx.save();
     if (n > 0.02) {
+      // The room darkens (the street outside has its own night colours).
+      ctx.save();
+      roomPath();
+      ctx.clip();
       ctx.globalCompositeOperation = "multiply";
       const k = 0.42 * n;
       ctx.fillStyle = `rgb(${Math.round(255 - 150 * k)},${Math.round(255 - 140 * k)},${Math.round(255 - 70 * k)})`;
       ctx.fillRect(
-        BOUNDS.x0 - 400,
-        BOUNDS.y0 - 400,
-        BOUNDS.x1 - BOUNDS.x0 + 800,
-        BOUNDS.y1 - BOUNDS.y0 + 800,
+        BOUNDS.x0 - 50,
+        BOUNDS.y0 - 80,
+        BOUNDS.x1 - BOUNDS.x0 + 100,
+        BOUNDS.y1 - BOUNDS.y0 + 160,
       );
+      ctx.restore();
       // Warm pools of light from lamps, stoves and the festoon.
       ctx.globalCompositeOperation = "lighter";
       const glow = (
@@ -2217,16 +2504,18 @@ export function openBistro(o: BistroOptions): BistroHandle {
       });
       const door = iso(-0.5, DOOR.y);
       glow(door.x + 20, door.y - 40, 80, "255,200,140", 0.12 * n * doorOpen);
+      // Street lamps, headlights and the rooftop sign.
+      for (const [x, y, r, rgb, a] of [
+        ...sceneryGlows(),
+        ...carGlows(cars),
+        roofSignGlow(),
+      ])
+        glow(x, y, r, rgb, a * n);
     }
     if (L.gold > 0.02) {
       ctx.globalCompositeOperation = "soft-light";
       ctx.fillStyle = `rgba(255,140,50,${0.55 * L.gold})`;
-      ctx.fillRect(
-        BOUNDS.x0 - 400,
-        BOUNDS.y0 - 400,
-        BOUNDS.x1 - BOUNDS.x0 + 800,
-        BOUNDS.y1 - BOUNDS.y0 + 800,
-      );
+      ctx.fillRect(-5000, -5000, 10000, 10000);
     }
     ctx.restore();
   };
@@ -2337,7 +2626,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
       ctx.fillStyle = "#fff";
       ctx.font = "800 10px 'Barlow Condensed', sans-serif";
       ctx.textAlign = "center";
-      const left = DISH_BY_ID[st.dish].seconds * (1 - p);
+      const left = (stoveMs(st) / 1000) * (1 - p);
       ctx.fillText(fmtTime(left), x, y + 4);
       if (inPerfectWindow(st, now)) {
         const pulse = 0.5 + 0.5 * Math.sin(T * 12);
@@ -2475,6 +2764,60 @@ export function openBistro(o: BistroOptions): BistroHandle {
     ctx.fill();
   };
 
+  /* ───────────── the time away ───────────── */
+  const modal = $("#bs-modal");
+  const fmtDur = (ms: number) => {
+    const m = Math.round(ms / 60000);
+    return m >= 60
+      ? `${Math.floor(m / 60)} h ${m % 60 ? `${m % 60} min` : ""}`.trim()
+      : `${Math.max(1, m)} min`;
+  };
+  /** Run the bistro for the time since it was last open, and say what happened. */
+  const away = () => {
+    const before = S.coins;
+    const rep = simulateAway(S, S.lastSeen, Date.now());
+    S.lastSeen = Date.now();
+    if (!rep) return;
+    changed();
+    save();
+    if (rep.served === 0 && rep.batches === 0) {
+      if (rep.away > 10 * 60_000)
+        o.toast(
+          staffOf(S, "cook").length
+            ? "Your cooks had no coins for ingredients while you were away."
+            : "Hire a cook (Staff) and the bistro keeps cooking while you're away.",
+        );
+      return;
+    }
+    shownCoins = before;
+    showAway(rep);
+  };
+  const showAway = (rep: AwayReport) => {
+    modal.hidden = false;
+    modal.innerHTML = `<div class="bs-away glass" role="dialog" aria-label="While you were away">
+      <div class="bs-away-staff">${S.staff.map((st) => `<img src="${portrait(st.char)}" alt="">`).join("")}</div>
+      <h2>While you were away</h2>
+      <p>Your staff ran the bistro for <b>${fmtDur(rep.worked)}</b>${rep.capped ? ` (you were gone ${fmtDur(rep.away)}: their shift is ${SHIFT_HOURS[S.shiftLv]} h)` : ""}.</p>
+      <div class="bs-away-stats">
+        <div><b>${fmt(rep.served)}</b><small>guests served</small></div>
+        <div><b>${fmt(rep.batches)}</b><small>batches cooked</small></div>
+        <div class="gold"><b>${I("coin")} ${fmt(rep.coins - rep.spent)}</b><small>profit${rep.spent ? ` (${fmt(rep.coins)} paid − ${fmt(rep.spent)} ingredients)` : ""}</small></div>
+      </div>
+      ${rep.levels ? `<p class="lvl">Level up! The bistro is now level ${S.level}.</p>` : ""}
+      ${rep.capped && SHIFT_PRICES[S.shiftLv] != null ? `<p class="tip">Longer shifts in Staff → Upgrades keep it open longer.</p>` : ""}
+      <button type="button" class="go" data-collect>Collect</button>
+    </div>`;
+    modal.querySelector("[data-collect]")!.addEventListener("click", () => {
+      modal.hidden = true;
+      const c = toWorld(W / 2, H / 2);
+      flyCoins(c, Math.max(0, rep.coins - rep.spent));
+      for (let i = 0; i < 3; i++)
+        flyCoins({ x: c.x + (i - 1) * 40, y: c.y }, 0);
+      sound("coin");
+      if (rep.levels) levelUp(rep.levels);
+    });
+  };
+
   /* ───────────── the loop ───────────── */
   let raf = 0;
   let last = performance.now();
@@ -2504,10 +2847,12 @@ export function openBistro(o: BistroOptions): BistroHandle {
   raf = requestAnimationFrame(frame);
   const onVis = () => {
     if (document.hidden) save();
+    else away();
     last = performance.now();
   };
   document.addEventListener("visibilitychange", onVis);
   renderHud();
+  away();
 
   // Visual tests and the demo's screenshots drive the scene through this.
   if (import.meta.env.DEV)
@@ -2530,6 +2875,10 @@ export function openBistro(o: BistroOptions): BistroHandle {
         return toScreen({ x: p.x, y: p.y - lift });
       },
       rush: () => (rushAt = T),
+      away: (ms: number) => {
+        S.lastSeen = Date.now() - ms;
+        away();
+      },
       edit: (on: boolean) => setEditing(on),
       sheet: (k: string, a?: string | number) => openSheet(k, a),
       advance: (s: number) => {

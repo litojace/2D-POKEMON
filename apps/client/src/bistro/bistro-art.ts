@@ -42,11 +42,17 @@ export const BOUNDS = {
 
 /* ───────────── colour helpers ───────────── */
 
-export function shade(hex: string, f: number): string {
-  const n = parseInt(hex.slice(1), 16);
-  let r = (n >> 16) & 255,
-    g = (n >> 8) & 255,
+export function shade(col: string, f: number): string {
+  // "#rrggbb" or "rgb(r,g,b)".
+  let r: number, g: number, b: number;
+  if (col.startsWith("#")) {
+    const n = parseInt(col.slice(1), 16);
+    r = (n >> 16) & 255;
+    g = (n >> 8) & 255;
     b = n & 255;
+  } else {
+    [r, g, b] = (col.match(/[\d.]+/g) ?? ["0", "0", "0"]).map(Number);
+  }
   if (f >= 0) {
     r += (255 - r) * f;
     g += (255 - g) * f;

@@ -11,6 +11,8 @@
  * guests, a daily special and rush hours.
  */
 
+import { CHARACTERS } from "../../../../packages/shared/src";
+
 export const COLS = 11;
 export const ROWS = 9;
 /** Where customers come in (a tile on the left wall's front end). */
@@ -284,9 +286,49 @@ export type WallId = (typeof WALLS)[number]["id"];
 
 /** Price of the next stove (the 3rd, then the 4th). */
 export const STOVE_PRICES = [0, 0, 200, 450] as const;
-/** The second waiter, from level 3. */
-export const WAITER_PRICE = 400;
-export const WAITER_LEVEL = 3;
+
+/* Staff: cooks run a stove on their own (and keep cooking while you are
+   away); waiters serve and clear. Each has a level that makes them faster. */
+export type Role = "cook" | "waiter";
+export interface Staff {
+  id: number;
+  /** A roster creature id. */
+  char: string;
+  role: Role;
+  level: number;
+  /** What a cook makes (cooks only). */
+  dish: DishId;
+}
+export const STAFF_MAX_LEVEL = 5;
+/** Hiring the n-th cook or waiter: the bistro level it opens at, and its price. */
+export const HIRE_STEPS: Record<
+  Role,
+  readonly { level: number; price: number }[]
+> = {
+  cook: [
+    { level: 2, price: 250 },
+    { level: 5, price: 900 },
+  ],
+  waiter: [
+    { level: 1, price: 0 },
+    { level: 3, price: 400 },
+    { level: 6, price: 1000 },
+  ],
+};
+/** Each staff level after the first: 12% quicker. */
+export const staffSpeed = (level: number) => 1 + 0.12 * (level - 1);
+export const staffUpgradePrice = (level: number) => 150 * level * level;
+/** Kitchen upgrades: every dish cooks 10% faster per level. */
+export const KITCHEN_PRICES = [300, 700, 1400] as const;
+/** Longer shifts: how many hours the staff keep the bistro open while you are away. */
+export const SHIFT_HOURS = [2, 4, 6, 8] as const;
+export const SHIFT_PRICES = [300, 800, 1600] as const;
+/** Offline, the bistro needs at least this long away to report anything. */
+export const AWAY_MIN_MS = 60_000;
+/** Fewer guests come while you are away than when you are there. */
+export const AWAY_RATE = 0.5;
+/** Cooks start a new batch only while the counter holds fewer servings than this. */
+export const STOCK_CAP = 24;
 
 export interface Item {
   id: number;
@@ -301,6 +343,8 @@ export interface Stove {
   /** When cooking started (ms since epoch). */
   start: number;
   perfect: boolean;
+  /** How long it takes (ms), fixed when it starts (kitchen and cook levels). */
+  dur?: number;
 }
 export interface CounterSlot {
   dish: DishId;
@@ -320,7 +364,11 @@ export interface BistroState {
   stored: Partial<Record<ItemKind, number>>;
   stoves: Stove[];
   counter: (CounterSlot | null)[];
-  waiters: number;
+  staff: Staff[];
+  kitchenLv: number;
+  shiftLv: number;
+  /** When the bistro was last open on this device (ms), for the time away. */
+  lastSeen: number;
   floor: FloorId;
   wall: WallId;
   floors: FloorId[];
@@ -376,7 +424,12 @@ export function defaultState(): BistroState {
       null,
       null,
     ],
-    waiters: 1,
+    staff: [
+      { id: 1, char: "sunbara", role: "waiter", level: 1, dish: "goicuon" },
+    ],
+    kitchenLv: 0,
+    shiftLv: 0,
+    lastSeen: 0,
     floor: "checker",
     wall: "butter",
     floors: ["checker"],
@@ -400,7 +453,39 @@ export function sanitize(raw: unknown): BistroState {
   s.level = Math.floor(num(r.level, 1, 1, MAX_LEVEL));
   s.rating = num(r.rating, 3, 0, 5);
   s.served = Math.floor(num(r.served, 0));
-  s.waiters = Math.floor(num(r.waiters, 1, 1, 2));
+  s.kitchenLv = Math.floor(num(r.kitchenLv, 0, 0, KITCHEN_PRICES.length));
+  s.shiftLv = Math.floor(num(r.shiftLv, 0, 0, SHIFT_PRICES.length));
+  s.lastSeen = num(r.lastSeen, 0);
+  if (Array.isArray(r.staff)) {
+    const staff: Staff[] = [];
+    for (const st of r.staff as Record<string, unknown>[]) {
+      if (!st || (st.role !== "cook" && st.role !== "waiter")) continue;
+      if (typeof st.char !== "string" || !Object.hasOwn(CHARACTERS, st.char))
+        continue;
+      if (
+        staff.filter((x) => x.role === st.role).length >=
+        HIRE_STEPS[st.role].length
+      )
+        continue;
+      if (staff.some((x) => x.char === st.char)) continue;
+      staff.push({
+        id: staff.length + 1,
+        char: st.char,
+        role: st.role,
+        level: Math.floor(num(st.level, 1, 1, STAFF_MAX_LEVEL)),
+        dish: isDish(st.dish) ? st.dish : "goicuon",
+      });
+    }
+    if (!staff.some((x) => x.role === "waiter"))
+      staff.unshift({ ...base.staff[0] });
+    s.staff = staff.map((x, i) => ({ ...x, id: i + 1 }));
+  } else if (num(r.waiters, 1) >= 2) {
+    // Saves from before staff: the second waiter.
+    s.staff = [
+      ...base.staff,
+      { id: 2, char: "astrabun", role: "waiter", level: 1, dish: "goicuon" },
+    ];
+  }
   if (Array.isArray(r.items)) {
     const items: Item[] = [];
     let maxId = 0;
@@ -442,6 +527,7 @@ export function sanitize(raw: unknown): BistroState {
         dish: st && isDish(st.dish) ? st.dish : null,
         start: num(st?.start, 0),
         perfect: st?.perfect === true,
+        ...(num(st?.dur, 0) > 0 ? { dur: num(st?.dur, 0) } : {}),
       }));
   }
   if (Array.isArray(r.counter)) {
@@ -547,8 +633,22 @@ export function payment(
 
 export function cookProgress(st: Stove, now: number): number {
   if (!st.dish) return 0;
-  const d = DISH_BY_ID[st.dish];
-  return Math.min(1, Math.max(0, (now - st.start) / (d.seconds * 1000)));
+  return Math.min(1, Math.max(0, (now - st.start) / stoveMs(st)));
+}
+/** How long the dish on a stove takes, in ms. */
+export function stoveMs(st: Stove): number {
+  return st.dur && st.dur > 0
+    ? st.dur
+    : st.dish
+      ? DISH_BY_ID[st.dish].seconds * 1000
+      : 1;
+}
+/** How long a dish takes with this kitchen (and this cook's level, if a cook makes it). */
+export function cookMs(s: BistroState, dish: DishId, cookLevel = 1): number {
+  return Math.round(
+    (DISH_BY_ID[dish].seconds * 1000 * (1 - 0.1 * s.kitchenLv)) /
+      staffSpeed(cookLevel),
+  );
 }
 export function inPerfectWindow(st: Stove, now: number): boolean {
   const p = cookProgress(st, now);
@@ -562,6 +662,7 @@ export function startCooking(
   stove: number,
   dish: DishId,
   now: number,
+  cookLevel = 1,
 ): Result {
   const st = s.stoves[stove];
   if (!st) return fail("No stove there.");
@@ -571,7 +672,12 @@ export function startCooking(
   if (d.level > s.level) return fail(`${d.name} opens at level ${d.level}.`);
   if (s.coins < d.cost) return fail(`You need ${d.cost} coins for ${d.name}.`);
   s.coins -= d.cost;
-  s.stoves[stove] = { dish, start: now, perfect: false };
+  s.stoves[stove] = {
+    dish,
+    start: now,
+    perfect: false,
+    dur: cookMs(s, dish, cookLevel),
+  };
   return { ok: true };
 }
 /** A tap in the golden part of the bar. */
@@ -897,13 +1003,220 @@ export function buyStove(s: BistroState): Result {
   s.stoves.push({ dish: null, start: 0, perfect: false });
   return { ok: true };
 }
-export function hireWaiter(s: BistroState): Result {
-  if (s.waiters >= 2) return fail("You have two waiters already.");
-  if (s.level < WAITER_LEVEL) return fail(`Hire at level ${WAITER_LEVEL}.`);
-  if (s.coins < WAITER_PRICE) return fail(`You need ${WAITER_PRICE} coins.`);
-  s.coins -= WAITER_PRICE;
-  s.waiters = 2;
+
+/* ───────────── staff, upgrades and the time away ───────────── */
+
+export const staffOf = (s: BistroState, role: Role) =>
+  s.staff.filter((x) => x.role === role);
+/** The next hire for a role (its level and price), or null when the team is full. */
+export function nextHire(s: BistroState, role: Role) {
+  return HIRE_STEPS[role][staffOf(s, role).length] ?? null;
+}
+export function hire(s: BistroState, role: Role, char: string): Result {
+  const step = nextHire(s, role);
+  if (!step) return fail(`You have every ${role} you can hire.`);
+  if (s.level < step.level) return fail(`Hire at level ${step.level}.`);
+  if (!Object.hasOwn(CHARACTERS, char)) return fail("Unknown creature.");
+  if (s.staff.some((x) => x.char === char))
+    return fail("Already on your team.");
+  if (s.coins < step.price) return fail(`You need ${step.price} coins.`);
+  s.coins -= step.price;
+  const best = unlockedDishes(s.level).slice(-1)[0].id;
+  s.staff.push({
+    id: Math.max(0, ...s.staff.map((x) => x.id)) + 1,
+    char,
+    role,
+    level: 1,
+    dish: role === "cook" ? best : "goicuon",
+  });
   return { ok: true };
+}
+export function upgradeStaff(s: BistroState, id: number): Result {
+  const st = s.staff.find((x) => x.id === id);
+  if (!st) return fail("Not on your team.");
+  if (st.level >= STAFF_MAX_LEVEL) return fail("Already at the top level.");
+  const price = staffUpgradePrice(st.level);
+  if (s.coins < price) return fail(`You need ${price} coins.`);
+  s.coins -= price;
+  st.level++;
+  return { ok: true };
+}
+export function setCookDish(s: BistroState, id: number, dish: DishId): Result {
+  const st = s.staff.find((x) => x.id === id && x.role === "cook");
+  if (!st) return fail("Not a cook.");
+  if (DISH_BY_ID[dish].level > s.level)
+    return fail(`Opens at level ${DISH_BY_ID[dish].level}.`);
+  st.dish = dish;
+  return { ok: true };
+}
+/** Three creatures looking for work today (not on the team, not the head chef). */
+export function candidates(
+  s: BistroState,
+  chef: string,
+  date = new Date(),
+): string[] {
+  const pool = Object.keys(CHARACTERS).filter(
+    (c) => c !== chef && !s.staff.some((x) => x.char === c),
+  );
+  let h = date.getFullYear() * 400 + date.getMonth() * 32 + date.getDate();
+  const out: string[] = [];
+  while (out.length < 3 && pool.length) {
+    h = (Math.imul(h ^ (h >>> 15), 0x2c1b3c6d) + 0x9e3779b9) | 0;
+    out.push(pool.splice(Math.abs(h) % pool.length, 1)[0]);
+  }
+  return out;
+}
+export function buyKitchen(s: BistroState): Result {
+  const price = KITCHEN_PRICES[s.kitchenLv];
+  if (price === undefined) return fail("The kitchen is fully upgraded.");
+  if (s.coins < price) return fail(`You need ${price} coins.`);
+  s.coins -= price;
+  s.kitchenLv++;
+  return { ok: true };
+}
+export function buyShift(s: BistroState): Result {
+  const price = SHIFT_PRICES[s.shiftLv];
+  if (price === undefined) return fail("Shifts are as long as they go.");
+  if (s.coins < price) return fail(`You need ${price} coins.`);
+  s.coins -= price;
+  s.shiftLv++;
+  return { ok: true };
+}
+/** The stove a cook runs: cooks take the stoves from the last one back. */
+export function cookStove(s: BistroState, cookIndex: number): number {
+  const i = s.stoves.length - 1 - cookIndex;
+  return i >= 0 ? i : -1;
+}
+export type KitchenEvent =
+  | { kind: "start"; stove: number; dish: DishId; cook: Staff }
+  | {
+      kind: "plate";
+      stove: number;
+      dish: DishId;
+      slot: number;
+      servings: number;
+      levels: number;
+      cook: Staff;
+    };
+/** The cooks' turn: plate what is done, start their dish on an empty stove. */
+export function autoKitchen(s: BistroState, now: number): KitchenEvent[] {
+  const out: KitchenEvent[] = [];
+  staffOf(s, "cook").forEach((cook, i) => {
+    const idx = cookStove(s, i);
+    const st = s.stoves[idx];
+    if (!st) return;
+    if (st.dish && cookProgress(st, now) >= 1) {
+      const dish = st.dish;
+      const r = plate(s, idx, now);
+      if (!r.ok) return; // the counter is full: wait
+      out.push({
+        kind: "plate",
+        stove: idx,
+        dish,
+        slot: r.slot!,
+        servings: r.servings!,
+        levels: r.levels ?? 0,
+        cook,
+      });
+    }
+    if (!s.stoves[idx].dish && servingsLeft(s) < STOCK_CAP) {
+      // Their dish, or the best one you can still pay for.
+      const pick = [
+        cook.dish,
+        ...unlockedDishes(s.level)
+          .map((d) => d.id)
+          .reverse(),
+      ].find(
+        (d) => DISH_BY_ID[d].level <= s.level && DISH_BY_ID[d].cost <= s.coins,
+      );
+      if (pick && startCooking(s, idx, pick, now, cook.level).ok)
+        out.push({ kind: "start", stove: idx, dish: pick, cook });
+    }
+  });
+  return out;
+}
+/** Guests a second the staff can serve: the arrivals, the seats and the waiters, whichever is fewer. */
+export function serviceRate(s: BistroState): number {
+  const arrivals = 1 / arrivalSeconds(s.rating, charm(s.items), false);
+  const seatRate = seats(s.items).length / 28;
+  const waiterRate =
+    staffOf(s, "waiter").reduce((n, w) => n + staffSpeed(w.level), 0) / 10;
+  return Math.min(arrivals, seatRate, waiterRate);
+}
+export interface AwayReport {
+  /** Time the staff worked (capped by the shift), ms. */
+  worked: number;
+  away: number;
+  capped: boolean;
+  served: number;
+  /** What guests paid. */
+  coins: number;
+  /** What the cooks spent on ingredients. */
+  spent: number;
+  batches: number;
+  levels: number;
+}
+/**
+ * The bistro while you were away: the cooks keep cooking, guests come at the
+ * rate the seats and waiters allow and pay the plain price (no streaks, VIPs
+ * or rush hours: those are for when you play). Stops when the shift ends.
+ */
+export function simulateAway(
+  s: BistroState,
+  from: number,
+  to: number,
+): AwayReport | null {
+  if (!from || to - from < AWAY_MIN_MS) return null;
+  const cap = SHIFT_HOURS[s.shiftLv] * 3600_000;
+  const end = Math.min(to, from + cap);
+  const rep: AwayReport = {
+    worked: end - from,
+    away: to - from,
+    capped: to - from > cap,
+    served: 0,
+    coins: 0,
+    spent: 0,
+    batches: 0,
+    levels: 0,
+  };
+  const rate = serviceRate(s) * AWAY_RATE;
+  const special = todaySpecial(s.level, new Date(from));
+  const STEP = 15_000;
+  let acc = 0;
+  for (let t = from; t < end; t += STEP) {
+    for (const ev of autoKitchen(s, t)) {
+      if (ev.kind === "plate") {
+        rep.batches++;
+        rep.levels += ev.levels;
+      } else rep.spent += DISH_BY_ID[ev.dish].cost;
+    }
+    acc += (rate * Math.min(STEP, end - t)) / 1000;
+    while (acc >= 1) {
+      let slot = -1;
+      s.counter.forEach((c, i) => {
+        if (
+          c &&
+          c.servings > 0 &&
+          (slot < 0 || c.servings > s.counter[slot]!.servings)
+        )
+          slot = i;
+      });
+      if (slot < 0) {
+        acc = Math.min(acc, 1);
+        break;
+      }
+      const dish = s.counter[slot]!.dish;
+      takeServing(s, dish);
+      const bill = payment(dish, { special: dish === special, hearts: 2 });
+      s.coins += bill.total;
+      rep.coins += bill.total;
+      rep.served++;
+      s.served++;
+      rep.levels += addXp(s, 1);
+      acc--;
+    }
+  }
+  return rep;
 }
 export function buyStyle(
   s: BistroState,
