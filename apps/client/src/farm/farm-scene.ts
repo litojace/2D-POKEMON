@@ -187,6 +187,8 @@ const FARM_HTML = `<div class="fm" id="fm">
     <div class="fm-log" id="fm-log" aria-live="polite"></div>
     <div class="fm-tip glass" id="fm-tip" hidden></div>
     <div class="fm-pop glass" id="fm-pop" hidden></div>
+    <div class="fm-sickle" id="fm-sickle" hidden><button type="button" data-sickle aria-label="Harvest: tap, or drag across ripe crops">${I("sickle")}</button></div>
+    <div class="fm-ghost" id="fm-ghost" hidden aria-hidden="true"></div>
     <div class="fm-orbpop glass" id="fm-orbpop" hidden></div>
     <section class="fm-sheet glass" id="fm-sheet" hidden></section>
     <div class="fm-hint" id="fm-hint">Drag the grass to move · scroll or press +/− to zoom</div>
@@ -4103,7 +4105,15 @@ export function openFarm(options) {
     const gi = F.giantAt[i];
     if (gi && ["hand", "seed", "shovel"].includes(F.tool)) {
       if (F.tool === "hand" && p.pests) catchAt(i);
-      else if (F.tool === "shovel") {
+      else if (
+        F.tool === "hand" &&
+        pressType !== "mouse" &&
+        !drag &&
+        !holdPaint
+      ) {
+        sicklePop(i);
+        return;
+      } else if (F.tool === "shovel") {
         if (!drag) toast("Harvest the giant crop first");
       } else harvestGiant(gi, F.tool === "seed" && drag);
       renderChips();
@@ -4117,7 +4127,9 @@ export function openFarm(options) {
           break;
         }
         if (p.crop && p.prog >= 1) {
-          harvestAt(i);
+          // A touch tap shows the sickle to drag across the field.
+          if (pressType !== "mouse" && !drag && !holdPaint) sicklePop(i);
+          else harvestAt(i);
           break;
         }
         if (!p.crop && !drag) seedPop(i);
@@ -4238,7 +4250,13 @@ export function openFarm(options) {
     pop.style.left = `${Math.max(8, Math.min(o.w - pw - 8, sp.x - pw / 2))}px`;
     const top = sp.y - pop.offsetHeight - 14;
     pop.style.top = `${top < 60 ? Math.min(o.h - pop.offsetHeight - 8, sp.y + PH * Z * K + 10) : top}px`;
+    // Press a seed and drag it across the field to sow every empty plot it
+    // passes; a tap still sows just this one.
+    pop.querySelectorAll("[data-pseed]:not([disabled])").forEach((b) => {
+      b.onpointerdown = (e) => startCarry(e, "seed", b.dataset.pseed, i);
+    });
     pop.onclick = (e) => {
+      if (carried()) return;
       const b = e.target.closest("[data-pseed]"),
         q = e.target.closest("[data-pbuy]");
       const id = b?.dataset.pseed || q?.dataset.pbuy;
@@ -4254,6 +4272,123 @@ export function openFarm(options) {
       toast(`Planting ${CROP[id].n} · drag over empty plots to keep sowing`);
     };
   }
+  /* ---------- planting and harvesting by hand, as in mobile farm games ----------
+     Tap an empty plot: the seed tray opens; press a seed and drag it across
+     the field and every empty plot it passes is sown. Tap a ripe crop (on a
+     touch screen): a sickle pops up beside it; drag it across the field and
+     every ripe crop it passes is harvested (a giant whole), or tap it for
+     just that one. The seed or sickle rides under your finger meanwhile. The
+     mouse keeps click and click-and-drag with the tool in hand. */
+  let pressType = "mouse",
+    holdPaint = false,
+    carry = null,
+    carriedAt = 0;
+  /** A carry just ended with a drag: the click that follows is not a tap. */
+  const carried = () => performance.now() - carriedAt < 400;
+  function sicklePop(i) {
+    const r = plotRect(i),
+      o = hudOff(),
+      sp0 = toScreen(r.x + PW * 0.82, r.y + PH * 0.15),
+      el = $("fm-sickle");
+    el.hidden = false;
+    el.dataset.plot = String(i);
+    el.style.left = `${Math.max(8, Math.min(o.w - 72, sp0.x - o.x - 32))}px`;
+    el.style.top = `${Math.max(56, Math.min(o.h - 72, sp0.y - o.y - 70))}px`;
+    clearTimeout(sicklePop.t);
+    sicklePop.t = setTimeout(() => (el.hidden = true), 5000);
+    const b = el.querySelector("[data-sickle]");
+    b.onpointerdown = (e) => startCarry(e, "sickle", null, i);
+    b.onclick = () => {
+      if (carried()) return;
+      el.hidden = true;
+      carryOne("sickle", null, i);
+      endDrag();
+    };
+  }
+  function startCarry(e, kind, id, from) {
+    if (e.button > 0) return;
+    carry = {
+      kind,
+      id,
+      from,
+      pid: e.pointerId,
+      x0: e.clientX,
+      y0: e.clientY,
+      moved: false,
+      done: new Set(),
+      out: false,
+    };
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {}
+  }
+  function carryOne(kind, id, i) {
+    if (i < 0 || carry?.done.has(i)) return;
+    carry?.done.add(i);
+    const p = F.plots[i];
+    if (!p || p.locked) return;
+    if (kind === "seed") {
+      if (p.crop) return;
+      if (!F.seeds[id]) {
+        if (carry && !carry.out) {
+          carry.out = true;
+          toast(`Out of ${CROP[id]?.n ?? "these"} seeds`);
+        }
+        return;
+      }
+      if (plantAt(i, id)) F.seed = id;
+      return;
+    }
+    if (p.crowAt) return shooAt(i);
+    const gi = F.giantAt[i];
+    if (gi) {
+      for (const j of gi.plots) carry?.done.add(j);
+      harvestGiant(gi, true);
+      return;
+    }
+    if (p.crop && p.prog >= 1) harvestAt(i, true);
+  }
+  function carryMove(e) {
+    if (!carry || e.pointerId !== carry.pid) return;
+    if (!carry.moved) {
+      if (Math.hypot(e.clientX - carry.x0, e.clientY - carry.y0) < 8) return;
+      carry.moved = true;
+      dragging = true;
+      $("fm-pop").hidden = true;
+      $("fm-pop").classList.remove("seedpick");
+      $("fm-sickle").hidden = true;
+      $("fm-tip").hidden = true;
+      const g = $("fm-ghost");
+      g.innerHTML =
+        carry.kind === "seed"
+          ? `<img src="${icon(carry.id)}" alt="">`
+          : I("sickle");
+      g.hidden = false;
+      // The plot it started from counts too.
+      carryOne(carry.kind, carry.id, carry.from);
+    }
+    e.preventDefault();
+    const o = hudOff(),
+      lr = layer.getBoundingClientRect(),
+      g = $("fm-ghost");
+    g.style.left = `${e.clientX - lr.left - o.x}px`;
+    g.style.top = `${e.clientY - lr.top - o.y}px`;
+    const w = toWorld(e.clientX, e.clientY);
+    carryOne(carry.kind, carry.id, plotAt(w.x, w.y));
+  }
+  function carryEnd(e) {
+    if (!carry || e.pointerId !== carry.pid) return;
+    const moved = carry.moved;
+    carry = null;
+    $("fm-ghost").hidden = true;
+    if (!moved) return; // a tap: the button's click handles it
+    carriedAt = performance.now();
+    renderTools();
+    endDrag();
+  }
+  addEventListener("pointermove", carryMove, true);
+  addEventListener("pointerup", carryEnd, true);
+  addEventListener("pointercancel", carryEnd, true);
   function landClick(i) {
     if (!buyable(i))
       return toast("You can only buy plots next to land you own");
@@ -6460,7 +6595,7 @@ export function openFarm(options) {
   // touch has no hover: tapping a growing crop with the hand shows its card for a moment
   if (matchMedia("(pointer: coarse)").matches)
     $("fm-hint").textContent =
-      "Drag to move · pinch to zoom · hold a plot to plant many";
+      "Tap a plot, then drag a seed or the sickle across the field · drag the grass to move";
 
   /* canvas pointer */
   let dragging = false,
@@ -6476,6 +6611,7 @@ export function openFarm(options) {
     if (touchPts.size >= 2) return;
     screen.focus({ preventScroll: true });
     $("fm-pop").hidden = true;
+    $("fm-sickle").hidden = true;
     try {
       cv.setPointerCapture(e.pointerId);
     } catch {}
@@ -6497,7 +6633,9 @@ export function openFarm(options) {
         if (tapG && tapG.mode === "pending") {
           tapG.mode = "paint";
           navigator.vibrate?.(12);
+          holdPaint = true;
           press(tapG.ev);
+          holdPaint = false;
         }
       }, HOLD_MS),
     };
@@ -6505,6 +6643,8 @@ export function openFarm(options) {
   function press(e) {
     screen.focus({ preventScroll: true });
     $("fm-pop").hidden = true;
+    $("fm-sickle").hidden = true;
+    pressType = e.pointerType ?? "mouse";
     const w = toWorld(e.clientX, e.clientY);
     if (F.decorPick && !V) {
       const k = DECO_SLOTS.findIndex(
@@ -6892,7 +7032,7 @@ export function openFarm(options) {
   onResize();
   if (matchMedia("(pointer: coarse)").matches)
     $("fm-hint").textContent =
-      "Drag to move · pinch to zoom · hold a plot to plant many";
+      "Tap a plot, then drag a seed or the sickle across the field · drag the grass to move";
   // The animals stand where you left them.
   if (left) {
     if (left.dog) Object.assign(dog, left.dog, { path: [], moving: false });
@@ -6940,6 +7080,9 @@ export function openFarm(options) {
       layer.focus({ preventScroll: true });
     },
     close() {
+      removeEventListener("pointermove", carryMove, true);
+      removeEventListener("pointerup", carryEnd, true);
+      removeEventListener("pointercancel", carryEnd, true);
       LEFT.set(options.owner ?? "", {
         dog: {
           x: dog.x,
