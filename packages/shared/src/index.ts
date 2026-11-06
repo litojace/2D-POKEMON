@@ -1881,8 +1881,8 @@ export const TEAM_TUNING: Partial<Record<CharacterId, number>> = {
   astrabun: 1.008,
   wombolder: 1.006,
   shadopus: 1.047,
-  pangrove: 1,
-  mossloth: 1,
+  pangrove: 0.975,
+  mossloth: 0.993,
 };
 /**
  * Free-for-all tuning, for mode "ffa" only, in the same form as TEAM_TUNING
@@ -1909,8 +1909,8 @@ export const FFA_TUNING: Partial<Record<CharacterId, number>> = {
   astrabun: 1.026,
   wombolder: 1.11,
   shadopus: 1.089,
-  pangrove: 1,
-  mossloth: 1,
+  pangrove: 1.03,
+  mossloth: 0.965,
 };
 /**
  * The same for a free-for-all that started with three players, tuned on
