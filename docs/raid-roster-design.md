@@ -1123,7 +1123,7 @@ its beak):
   (Terradon's shell grows obsidian spikes instead), and a rune circle turns
   on the ground.
 - **Stage III:** four rune swords fanned behind the shoulders and a taller
-  crest; void flames lick up behind it and rune shards orbit it.
+  crest; a rune seal turns behind its shoulders and rune shards orbit it.
 
 Every Void Knight **enters** through a void gate that opens behind it (black
 smoke swirls in, and it seals with a rune shockwave) and **wins** by planting

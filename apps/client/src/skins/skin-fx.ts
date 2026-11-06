@@ -253,11 +253,39 @@ function groundRing(
   }
 }
 
+/** Stage III: a rune seal stands behind the knight's shoulders, turning slowly. */
+function runeSeal(ctx: FxContext, color: number, hot: number) {
+  const { under, sc, now } = ctx;
+  const cx = ctx.headX,
+    cy = ctx.headY + 18 * sc,
+    r = 36 * sc,
+    pulse = 0.75 + Math.sin(now / 600) * 0.25;
+  under.fillStyle(color, 0.1 * pulse).fillCircle(cx, cy, r + 6 * sc);
+  under.lineStyle(2.2 * sc, color, 0.7 * pulse).strokeCircle(cx, cy, r);
+  under.lineStyle(1.2 * sc, hot, 0.5 * pulse).strokeCircle(cx, cy, r - 6 * sc);
+  under.lineStyle(1 * sc, color, 0.45 * pulse).strokeCircle(cx, cy, r * 0.55);
+  // Rune ticks between the rings turn one way...
+  for (let i = 0; i < 16; i++) {
+    const a = now / 3000 + (i / 16) * Math.PI * 2;
+    const r0 = r - 5 * sc,
+      r1 = r - 1.5 * sc;
+    under.lineStyle(1.6 * sc, i % 4 ? color : hot, 0.85 * pulse).lineBetween(cx + Math.cos(a) * r0, cy + Math.sin(a) * r0, cx + Math.cos(a) * r1, cy + Math.sin(a) * r1);
+  }
+  // ...and a hexagram turns the other.
+  for (const off of [0, Math.PI]) {
+    const pts = [0, 1, 2].map((k) => {
+      const a = -now / 4200 + off + (k / 3) * Math.PI * 2 - Math.PI / 2;
+      return { x: cx + Math.cos(a) * (r - 7 * sc), y: cy + Math.sin(a) * (r - 7 * sc) };
+    });
+    under.lineStyle(1.3 * sc, color, 0.55 * pulse).strokePoints(pts, true);
+  }
+}
+
 /**
  * The Void Knights' Awakening effects, in each knight's rune colour.
  * Stage I: black smoke curls off the armour with rune sparks.
  * Stage II: a rune circle turns on the ground beneath it.
- * Stage III: void flames lick up behind it and rune shards orbit it.
+ * Stage III: a rune seal turns behind its shoulders and rune shards orbit it.
  */
 function mythic(ctx: FxContext, art: SkinArt, stage: number) {
   const { g, under, x, y, sc, now } = ctx;
@@ -308,16 +336,7 @@ function mythic(ctx: FxContext, art: SkinArt, stage: number) {
     }
   }
   if (stage >= 3) {
-    // Void flames behind the body: dark tongues edged in rune light.
-    for (let i = 0; i < 7; i++) {
-      const t = (i - 3) / 3;
-      const fx = x + t * 22 * sc,
-        base = y + 2 * sc,
-        h = (32 - Math.abs(t) * 10 + Math.sin(now / 110 + i * 1.7) * 6) * sc,
-        w = 6 * sc;
-      under.fillStyle(color, 0.5).fillTriangle(fx - w - 2 * sc, base, fx + w + 2 * sc, base, fx + t * 5 * sc, base - h - 5 * sc);
-      under.fillStyle(0x0c0614, 0.75).fillTriangle(fx - w, base, fx + w, base, fx + t * 4 * sc, base - h);
-    }
+    runeSeal(ctx, color, hot);
     // Three rune shards orbit at chest height.
     for (let i = 0; i < 3; i++) {
       const o = orbit(ctx, i, 3, 1100, 30, 10, -14);
