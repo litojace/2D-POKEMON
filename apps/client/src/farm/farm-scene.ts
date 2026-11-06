@@ -84,6 +84,7 @@ import {
 } from "./farm-icons";
 import "./farm.css";
 import { fadeIn } from "../ui/motion";
+import { setInner } from "../ui/patch";
 
 const svgUrl = (s) =>
   "data:image/svg+xml;charset=utf-8," + encodeURIComponent(s);
@@ -5853,8 +5854,10 @@ export function openFarm(options) {
   /* ---------- HUD ---------- */
   function renderBadge() {
     const p = F.lv >= 100 ? 100 : (F.xp / need(F.lv)) * 100;
-    $("fm-badge").innerHTML =
-      `<div class="fm-ring" style="--p:${p}"><b>${F.lv}</b></div><div><strong>${esc(options.playerName())}'s Farm</strong><small class="row2"><span>${F.lv >= 100 ? "Max level" : `${F.xp}/${need(F.lv)} XP`}</span></small><div class="xpbar"><i style="width:${p}%"></i></div></div>`;
+    setInner(
+      $("fm-badge"),
+      `<div class="fm-ring" style="--p:${p}"><b>${F.lv}</b></div><div><strong>${esc(options.playerName())}'s Farm</strong><small class="row2"><span>${F.lv >= 100 ? "Max level" : `${F.xp}/${need(F.lv)} XP`}</span></small><div class="xpbar"><i style="width:${p}%"></i></div></div>`,
+    );
   }
   const dogLeft = () => Math.max(0, (F.dog.until - serverNow()) / 1000),
     dogTotal = () => Math.max(1, (F.dog.until - F.dog.since) / 1000);
@@ -6063,12 +6066,15 @@ export function openFarm(options) {
   }
   function renderTools() {
     $("fm-tools").hidden = !TOOLS().length;
-    $("fm-tools").innerHTML = TOOLS()
-      .map(
-        ([id, ic, label, count, lvl], idx) =>
-          `<button type="button" class="fm-tool" data-tool="${id}" aria-pressed="${F.tool === id}" title="${label} (key ${idx + 1})"><kbd>${idx + 1}</kbd>${count != null ? `<b>${count > 99 ? "99+" : count}</b>` : ""}${I(ic)}<span>${label}</span>${lvl ? `<em>${lvl}</em>` : ""}</button>`,
-      )
-      .join("");
+    setInner(
+      $("fm-tools"),
+      TOOLS()
+        .map(
+          ([id, ic, label, count, lvl], idx) =>
+            `<button type="button" class="fm-tool" data-tool="${id}" aria-pressed="${F.tool === id}" title="${label} (key ${idx + 1})"><kbd>${idx + 1}</kbd>${count != null ? `<b>${count > 99 ? "99+" : count}</b>` : ""}${I(ic)}<span>${label}</span>${lvl ? `<em>${lvl}</em>` : ""}</button>`,
+        )
+        .join(""),
+    );
   }
   function showTip(i) {
     const p = cur().plots[i],
@@ -6204,8 +6210,14 @@ export function openFarm(options) {
       ),
     );
   };
+  let sheetView = "";
   function renderSheet() {
     const el = $("fm-sheet");
+    // Another sheet or tab (or one just opened) is drawn from scratch; the
+    // same one is patched in place (ui/patch.ts).
+    const view = `${sheet}:${sheetTab}`,
+      fresh = el.hidden || view !== sheetView;
+    sheetView = view;
     el.hidden = false;
     const top = el.querySelector(".sh-body")?.scrollTop ?? 0;
     let html = "";
@@ -6497,7 +6509,7 @@ export function openFarm(options) {
               : `<p class="sh-note">None of your friends has a farm yet. Add friends from the Lobby, or invite them from the Invite tab.</p>`) +
           `</div>`;
     }
-    el.innerHTML = html;
+    if (!setInner(el, html, fresh)) return;
     if (sheet === "market" && sheetTab === "stall") wireStallForm(el);
     el.querySelectorAll("[data-dogprev]").forEach((c) => {
       const g = c.getContext("2d");
@@ -6525,6 +6537,8 @@ export function openFarm(options) {
     for (const sel of LINE_UP) {
       const bs = [...el.querySelectorAll(`.item .acts ${sel}`)];
       if (bs.length < 2) continue;
+      // Measured at their own width (a patched sheet keeps the last one).
+      for (const x of bs) x.style.minWidth = "";
       const w = Math.max(...bs.map((x) => x.offsetWidth));
       for (const x of bs) x.style.minWidth = `${w}px`;
     }
@@ -7406,6 +7420,8 @@ export function openFarm(options) {
     /** Debug handle for tests. */
     _dbg: {
       F,
+      /** Read the farm from the server again, as the minute poll does (tests). */
+      refresh: () => refresh(),
       /** Preview a time of day (0..1), or null for the device clock (tests). */
       tod: (v) => {
         todOverride = v;

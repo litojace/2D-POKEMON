@@ -63,3 +63,35 @@ export function patch(
   if (live instanceof HTMLSelectElement && next instanceof HTMLSelectElement)
     live.value = next.value;
 }
+
+/** What setInner last put in each element: its markup, a detached copy, and
+ *  the element's children right after (to notice when other code swapped them). */
+const shown = new WeakMap<
+  Element,
+  { html: string; tree: HTMLElement; kids: ChildNode[] }
+>();
+
+/**
+ * Set an element's insides from markup, for panels drawn again whenever new
+ * data comes in (a server answer, a timer). Markup that hasn't changed leaves
+ * the element alone; markup that has is patched in, so lists keep their
+ * scroll, buttons under a finger stay the same buttons (the tap still lands),
+ * pictures don't reload and running animations don't restart. `fresh` (a
+ * different view: another sheet or tab) draws it from scratch instead.
+ * Returns whether anything changed.
+ */
+export function setInner(live: HTMLElement, html: string, fresh = false) {
+  const last = shown.get(live);
+  const kids = Array.from(live.childNodes);
+  const intact =
+    !!last &&
+    last.kids.length === kids.length &&
+    last.kids.every((node, i) => node === kids[i]);
+  if (!fresh && intact && last.html === html) return false;
+  const next = document.createElement(live.tagName);
+  next.innerHTML = html;
+  if (fresh || !intact) live.innerHTML = html;
+  else patch(live, last.tree, next);
+  shown.set(live, { html, tree: next, kids: Array.from(live.childNodes) });
+  return true;
+}

@@ -76,6 +76,7 @@ import {
 import { bakeSprite } from "./plaza-sprite";
 import "./plaza.css";
 import { fadeIn } from "../ui/motion";
+import { setInner } from "../ui/patch";
 
 const esc = (s) =>
   String(s).replace(
@@ -952,13 +953,16 @@ export function openPlaza(options) {
     const q = progress?.quests;
     const done = q ? PLAZA_QUESTS.filter((x) => q[x.id]?.done).length : 0;
     box.className = `pz-quests glass${qmin[qk()] ? " min" : ""}`;
-    box.innerHTML = `<h5><span>Plaza today · ${done}/${PLAZA_QUESTS.length}</span><button type="button" data-qmin aria-label="${qmin[qk()] ? "Expand" : "Collapse"}">${qmin[qk()] ? "▾" : "▴"}</button></h5>${PLAZA_QUESTS.map(
-      (x) => {
-        const n = q?.[x.id]?.n ?? 0,
-          paid = q?.[x.id]?.done;
-        return `<div class="pz-q${paid ? " done" : ""}"><span>${x.text}</span><span class="rw">${paid ? "✓" : `+${x.leaves} ${L}`}</span><span class="bar"><i style="width:${(Math.min(n, x.max) / x.max) * 100}%"></i></span></div>`;
-      },
-    ).join("")}`;
+    setInner(
+      box,
+      `<h5><span>Plaza today · ${done}/${PLAZA_QUESTS.length}</span><button type="button" data-qmin aria-label="${qmin[qk()] ? "Expand" : "Collapse"}">${qmin[qk()] ? "▾" : "▴"}</button></h5>${PLAZA_QUESTS.map(
+        (x) => {
+          const n = q?.[x.id]?.n ?? 0,
+            paid = q?.[x.id]?.done;
+          return `<div class="pz-q${paid ? " done" : ""}"><span>${x.text}</span><span class="rw">${paid ? "✓" : `+${x.leaves} ${L}`}</span><span class="bar"><i style="width:${(Math.min(n, x.max) / x.max) * 100}%"></i></span></div>`;
+        },
+      ).join("")}`,
+    );
   }
   $("pz-quests").addEventListener("click", (e) => {
     if (e.target.closest("[data-qmin]")) {
@@ -1774,13 +1778,9 @@ export function openPlaza(options) {
     }
   }
 
-  /** Set markup only when it changed (no relayout every frame). */
-  const setHtml = (el, html) => {
-    if (el.__html !== html) {
-      el.__html = html;
-      el.innerHTML = html;
-    }
-  };
+  /** Set markup only when it changed, and then only the part that did
+   *  (no relayout every frame; ui/patch.ts). */
+  const setHtml = (el, html) => setInner(el, html);
   const setClass = (el, cls) => {
     if (el.className !== cls) el.className = cls;
   };

@@ -952,6 +952,7 @@ let lockAttempt = 0;
 let roomPicker: RosterScreen | undefined;
 let openingRoomPicker = false;
 let roomSeatsTemplate: HTMLElement | undefined;
+let roomWatchTemplate: HTMLElement | undefined;
 /** The roster's data, shared by the hub's Fighters screen and the rooms. */
 function rosterData() {
   const bindings = controlPrefs().bindings;
@@ -1039,12 +1040,19 @@ function renderRoom(watch: boolean) {
     room = menu.querySelector<HTMLElement>(":scope > .room-screen")!;
     room.addEventListener("click", onRoomClick);
     roomSeatsTemplate = parse(seats);
+    roomWatchTemplate = watch ? parse(roomWatchMarkup(d)) : undefined;
   } else {
     const next = parse(seats);
     patch(room.querySelector(".room-seats")!, roomSeatsTemplate!, next);
     roomSeatsTemplate = next;
     const panel = room.querySelector<HTMLElement>(":scope > .room-watch");
-    if (watch && panel) panel.outerHTML = roomWatchMarkup(d);
+    // Patched too: its buttons stay put under a finger.
+    if (watch && panel) {
+      const nextWatch = parse(roomWatchMarkup(d));
+      if (roomWatchTemplate) patch(panel, roomWatchTemplate, nextWatch);
+      else panel.replaceWith(nextWatch.cloneNode(true));
+      roomWatchTemplate = nextWatch;
+    }
   }
   if (watch) return;
   // Friends stands in the picker's place until it closes (only the sheet

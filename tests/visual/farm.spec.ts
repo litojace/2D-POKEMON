@@ -3044,3 +3044,44 @@ test("a tap on the farm closes the open sheet or orb card and does nothing else"
     await context.close();
   }
 });
+
+test("a server answer changes the open sheet in place: same rows, same scroll", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 667, height: 375 });
+  const errors = await openLobby(page);
+  await fakeFarm(page);
+  await page.click('#hub-scenes [data-hub-scene="farm"]');
+  await page.waitForFunction(() => (window as any).__farm?.F?.loaded);
+  await openSheet(page, "shop");
+  const body = page.locator("#fm-sheet .sh-body");
+  await body.evaluate((el) => (el.scrollTop = el.scrollHeight));
+  const y = await body.evaluate((el) => el.scrollTop);
+  expect(y).toBeGreaterThan(20);
+  await page.evaluate(() =>
+    document
+      .querySelectorAll("#fm-sheet *")
+      .forEach((e: any) => (e.__kept = true)),
+  );
+  // The minute poll reads the farm again: more wheat seeds now.
+  const gets = await page.evaluate(() => (window as any).__farmGets);
+  await page.evaluate(() => {
+    const w = window as any;
+    w.__fakeFarm.seeds.wheat = 21;
+    void w.__farm.refresh();
+  });
+  await page.waitForFunction(
+    (n) => (window as any).__farmGets > n,
+    gets as number,
+  );
+  await page.waitForTimeout(200);
+  const fresh = await page.evaluate(
+    () =>
+      Array.from(document.querySelectorAll("#fm-sheet *")).filter(
+        (e: any) => !e.__kept,
+      ).length,
+  );
+  expect(fresh).toBe(0);
+  expect(await body.evaluate((el) => el.scrollTop)).toBe(y);
+  expect(errors).toEqual([]);
+});

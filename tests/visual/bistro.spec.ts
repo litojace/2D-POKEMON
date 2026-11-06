@@ -453,6 +453,37 @@ test("Bistro: a sheet scrolled down stays there when the server answers", async 
   expect(errors).toEqual([]);
 });
 
+test("Bistro: a guest's coins change a sheet in place, not by drawing it again", async ({
+  page,
+}) => {
+  const errors = await openBistro(page);
+  // Pho costs 40: with 30 coins it is out of reach, with 60 it isn't.
+  await B(page, "srv.S.level = 3; srv.S.coins = 30; return b.load()");
+  for (const kind of ["cook", "menu", "staff", "board"]) {
+    await B(page, `b.sheet('${kind}', ${kind === "cook" ? 0 : "undefined"})`);
+    await B(page, "srv.S.coins = 30; return b.load()");
+    const before = await page.evaluate(() => {
+      const els = Array.from(document.querySelectorAll("#bs-sheet *"));
+      els.forEach((e: any) => (e.__kept = true));
+      return [els.length, document.querySelector("#bs-sheet")!.innerHTML];
+    });
+    // A guest pays: the server answers with more coins.
+    await B(page, "srv.S.coins = 60; return b.load()");
+    const after = await page.evaluate(() => {
+      const els = Array.from(document.querySelectorAll("#bs-sheet *"));
+      return [
+        els.length,
+        els.filter((e: any) => !e.__kept).length,
+        document.querySelector("#bs-sheet")!.innerHTML,
+      ];
+    });
+    // Same elements (nothing drawn anew), whatever text or class changed.
+    expect([kind, after[0], after[1]]).toEqual([kind, before[0], 0]);
+    if (kind === "cook") expect(after[2]).not.toBe(before[1]);
+  }
+  expect(errors).toEqual([]);
+});
+
 test("Bistro: furniture in the bigger room stays through tab switches, even when one change is refused", async ({
   page,
 }) => {
