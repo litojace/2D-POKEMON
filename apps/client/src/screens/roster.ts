@@ -2,6 +2,7 @@ import type { CharacterId } from "@arena/shared";
 import { lowGraphics } from "../graphics-quality";
 import type { ShopPreviewHandle } from "../shop-preview";
 import { openHubPanel, type HubPanel } from "../ui/hub-panel";
+import { whenSettled } from "../ui/motion";
 import { parse, patch } from "../ui/patch";
 import {
   rosterMarkup,
@@ -314,8 +315,18 @@ export function openRoster(
   q<HTMLElement>(`[data-roster-card="${view.focus}"]`)?.focus({
     preventScroll: true,
   });
+  let refreshing = false;
   return {
-    refresh: () => render(),
+    // Fresh data that lands while the panel slides in waits for it to
+    // settle (one redraw, not one per answer).
+    refresh: () => {
+      if (refreshing) return;
+      refreshing = true;
+      whenSettled(panel.root, () => {
+        refreshing = false;
+        render();
+      });
+    },
     close: () => panel.close(),
     get isOpen() {
       return !closed;

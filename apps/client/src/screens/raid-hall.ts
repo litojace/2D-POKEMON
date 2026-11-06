@@ -4,6 +4,7 @@ import type {
 } from "../../../../packages/shared/src/raid";
 import { openHubPanel, type HubPanel } from "../ui/hub-panel";
 import { parse, patch } from "../ui/patch";
+import { whenSettled } from "../ui/motion";
 import {
   practiceAttack,
   raidMarkup,
@@ -258,8 +259,18 @@ export function openRaids(
     ? q<HTMLElement>('[role="tab"][aria-selected="true"]')
     : q<HTMLElement>("[data-raid-card]")
   )?.focus({ preventScroll: true });
+  let refreshing = false;
   return {
-    refresh: () => render(),
+    // Fresh data that lands while the panel slides in waits for it to
+    // settle (one redraw, not one per answer).
+    refresh: () => {
+      if (refreshing) return;
+      refreshing = true;
+      whenSettled(panel.root, () => {
+        refreshing = false;
+        render();
+      });
+    },
     show: (boss, tab) => {
       if (boss) openBoss(boss, tab ?? "party");
       else toHall();

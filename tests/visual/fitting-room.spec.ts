@@ -62,6 +62,18 @@ for (const size of SIZES)
       await page.click('.lobby-rail [data-lobby-action="shop"]');
       const room = page.locator(".fit-room");
       await expect(room).toBeVisible();
+      // While the live rig loads, no stand-in spotlight: its beam differs
+      // from the rig's, so it flashed and then jumped on phones (owner,
+      // 6 Nov). Checked at once, before the rig is ready.
+      expect(
+        await page.evaluate(() => {
+          const live = document.querySelector(".fit-stage .shop-live-stage");
+          const light = document.querySelector(".fit-stage .fit-light");
+          return live?.classList.contains("is-ready")
+            ? "ready"
+            : light && getComputedStyle(light).display;
+        }),
+      ).toMatch(/^(none|ready)$/);
       // Inside the Lobby: the HUD and the rail stay; the rail marks the Shop.
       await expect(page.locator("#account-coins")).toBeVisible();
       await expect(
@@ -363,6 +375,12 @@ test("Low graphics: a still fighter, no live rig, and Hold to compare still work
   );
   await page.waitForTimeout(1500);
   await expect(stage.locator("canvas")).toHaveCount(0);
+  // A still fighter keeps the stand-in spotlight (there is no rig to draw one).
+  expect(
+    await page
+      .locator(".fit-stage .fit-light")
+      .evaluate((e) => getComputedStyle(e).display),
+  ).toBe("block");
   await expect(page.locator("[data-fit-play]")).toHaveCount(0);
   const compare = page.locator("[data-preview-compare]");
   const shown = stage.locator(".shop-preview-fallback").first();
