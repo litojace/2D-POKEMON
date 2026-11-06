@@ -292,6 +292,7 @@ import {
   type CourtId,
 } from "./arena-courts";
 import { RITE_EFFECTS, riteEffect, riteIcon } from "./rite-icons";
+import { ConnectionWatch, dropMessage } from "./connection-loss";
 // Last: the hub's aero glass overrides the panels' own fills.
 import "./ui/aero.css";
 const audio = new AudioManager();
@@ -344,6 +345,12 @@ const socket = io(import.meta.env.VITE_SERVER_URL || undefined, {
 });
 let accountsUI: AccountUI;
 let authConnectionAttempt = 0;
+const connectionWatch = new ConnectionWatch();
+document.addEventListener("visibilitychange", () =>
+  connectionWatch.visibility(),
+);
+window.addEventListener("offline", () => connectionWatch.network());
+window.addEventListener("online", () => connectionWatch.network());
 // Keep a displaced tab paused across reloads. Only an explicit button press
 // may reclaim the game; token refresh/focus must not kick the other device.
 let replacedAccount = sessionStorage.getItem("arena-session-replaced");
@@ -2903,6 +2910,9 @@ socket.on("connect", () => {
     return;
   }
   connected = true;
+  // Tell the server what this browser saw when it last dropped (once).
+  const dropReport = connectionWatch.reconnected();
+  if (dropReport) socket.emit("connection-report", dropReport);
   // Reconnected while watching: take the ringside seat again.
   if (watching && !myId)
     void request("watch", { code: watching }).then((reply) => {
@@ -2935,6 +2945,14 @@ socket.on("connect", () => {
     });
 });
 socket.on("disconnect", (reason: string) => {
+  const drop = connectionWatch.dropped({
+    reason,
+    transport: socket.io.engine?.transport?.name ?? "unknown",
+    hiddenNow: document.hidden,
+    offlineNow: !navigator.onLine,
+    // Only drops from inside a room are worth reporting to the server.
+    report: reason !== "io client disconnect" && !replacedAccount && !!myId,
+  });
   lobbySelection.reset();
   connected = false;
   if (!myId && !watching && !state) {
@@ -2946,8 +2964,8 @@ socket.on("disconnect", (reason: string) => {
     : "RECONNECTING…";
   $("connection").classList.remove("online");
   pending = [];
-  if (reason !== "io client disconnect" && !replacedAccount)
-    toast("Connection lost. Reconnecting to your session…");
+  const message = dropMessage(drop);
+  if (message && !replacedAccount) toast(message);
 });
 socket.on("session-replaced", () => {
   replacedAccount =

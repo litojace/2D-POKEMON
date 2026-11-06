@@ -52,6 +52,7 @@ import {
   type Reply,
 } from "../../../packages/shared/src/index.js";
 import { Arena } from "./simulation.js";
+import { connectionReportSchema } from "../../../packages/shared/src/connection.js";
 import { PlazaWorld, type PlazaEvent } from "./plaza.js";
 import { PLAZA, type PlazaRecord } from "../../../packages/shared/src/plaza.js";
 import { Parties, type Party, type PartyAppearance } from "./party.js";
@@ -144,8 +145,19 @@ export function createArenaServer(
      * steady 15 Hz loop to deliver the catch-up, so it defaults to autoTick.
      */
     backpressure?: boolean;
+    /**
+     * Where dropped-player lines go (see the "disconnect" handler). Defaults
+     * to console.log on a live server (autoTick), and to nothing in tests.
+     */
+    connectionLog?: (event: string, details: Record<string, unknown>) => void;
   } = {},
 ) {
+  const connectionLog =
+    options.connectionLog ??
+    (options.autoTick === false
+      ? () => {}
+      : (event: string, details: Record<string, unknown>) =>
+          console.log(event, JSON.stringify(details)));
   const diagnosticsEvery = Number(process.env.ARENA_DIAGNOSTICS ?? 0);
   const diagnostics = new ServerDiagnostics(
     options.diagnostics ?? diagnosticsEvery > 0,
@@ -2188,7 +2200,38 @@ export function createArenaServer(
       plaza.leave(socket.id);
       reply(cb, { ok: true });
     });
-    socket.on("disconnect", () => {
+    socket.on("connection-report", (data: unknown) => {
+      // One report per connection, from a signed-in player.
+      const who = account();
+      if (!who || socket.data.connectionReported) return;
+      const result = connectionReportSchema.safeParse(data);
+      if (!result.success) return;
+      socket.data.connectionReported = true;
+      connectionLog("arena-client-drop", { ...result.data, account: who.id });
+    });
+    socket.on("disconnect", (reason: string) => {
+      // Record why a player in a room dropped: the opponent only sees
+      // "Opponent disconnected", and Socket.IO's reason says whether the
+      // connection closed, errored, went quiet (ping timeout) or was kicked.
+      const dropped = getSession(socket.id);
+      if (dropped) {
+        const arena = rooms.get(dropped.code);
+        const conn = socket.conn as unknown as {
+          transport?: { name?: string };
+        };
+        connectionLog("arena-disconnect", {
+          reason,
+          transport: conn.transport?.name ?? "unknown",
+          ...(socket.data.sessionReplaced ? { replaced: true } : {}),
+          room: dropped.code,
+          mode: arena?.mode,
+          phase: arena?.phase,
+          account: dropped.accountId,
+          connectedFor: Math.round(
+            (Date.now() - socket.handshake.issued) / 1000,
+          ),
+        });
+      }
       const who = account();
       if (who && activeAccounts.get(who.id) === socket.id)
         activeAccounts.delete(who.id);
