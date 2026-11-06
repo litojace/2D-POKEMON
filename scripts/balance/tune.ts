@@ -8,7 +8,8 @@
  *   --start <file>     starting factors JSON (default: all 1)
  *   --shards <n>       parallel processes per difficulty (default 4)
  *   --only <a,b,...>   tune only these champions; the rest keep their
- *                      starting factors (adding champions to a tuned roster)
+ *                      starting factors, and only pairings with one of these
+ *                      are played (adding champions to a tuned roster)
  *
  * Each round writes <out>/round-N.json ({ factors, rates, next }) and prints
  * the win-rate spread. At the end it prints the factors averaged over the
@@ -50,7 +51,10 @@ let factors: Record<string, number> = start
 const tsx = join("node_modules", ".bin", "tsx");
 const run = (argv: string[]) =>
   new Promise<void>((ok, bad) => {
-    const p = spawn(tsx, argv, { stdio: "inherit" });
+    const p = spawn(tsx, argv, {
+      stdio: "inherit",
+      env: only ? { ...process.env, RR_ONLY: only.join(",") } : process.env,
+    });
     p.on("exit", (code) =>
       code ? bad(new Error(`round robin exited ${code}`)) : ok(),
     );

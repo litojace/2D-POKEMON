@@ -22,7 +22,7 @@ export function championMaterials(
         ? feathers
         : id === "duskveil"
           ? velvet
-          : id === "cindrake" || id === "tidefin"
+          : id === "cindrake" || id === "tidefin" || id === "pangrove"
             ? scales
             : fur;
   let defs = `<defs><pattern id="${key}" width="12" height="12" patternUnits="userSpaceOnUse"><g fill="none" stroke-width=".55" stroke-linecap="round">${mark}</g></pattern>`;

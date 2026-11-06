@@ -36,11 +36,14 @@ let seed =
   +(process.env.TEAMS_SEED ?? 2024) + (difficulty === "hard" ? 0 : 1_000_003);
 const random = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296;
 const rows: [string[], string[], number | null][] = [];
+const only = process.env.RR_ONLY?.split(",");
 for (let m = 0; m < +matches; m++) {
   const pool = [...FIGHTER_IDS];
   const pick: CharacterId[] = [];
   for (let i = 0; i < 4; i++)
     pick.push(pool.splice(Math.floor(random() * pool.length), 1)[0]);
+  // RR_ONLY: only the line-ups with one of these champions (tune-teams --only).
+  if (only && !pick.some((id) => only.includes(id))) continue;
   if (m % +shards !== +shard) continue;
   const arena = new Arena(`teams-${m}`, "teams");
   // Join order alternates teams: 0 and 2 blue, 1 and 3 red.

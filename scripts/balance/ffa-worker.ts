@@ -56,12 +56,15 @@ type Row = {
   stats: [number, number, number, number][];
 };
 const rows: Row[] = [];
+const only = process.env.RR_ONLY?.split(",");
 const dt = 1 / RULES.tick;
 for (let m = 0; m < +matches; m++) {
   const pool = [...FIGHTER_IDS];
   const picks: CharacterId[] = [];
   for (let i = 0; i < size; i++)
     picks.push(pool.splice(Math.floor(random() * pool.length), 1)[0]);
+  // RR_ONLY: only the line-ups with one of these champions (tune-teams --only).
+  if (only && !picks.some((id) => only.includes(id))) continue;
   if (m % +shards !== +shard) continue;
   const arena = new Arena(`ffa-${m}`, matchMode);
   picks.forEach((c, i) => {
