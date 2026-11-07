@@ -33,6 +33,11 @@ async function match(
   await page.evaluate((remaining) => {
     const w = window as any;
     w.__snap.remaining = remaining;
+    // Real health (the harness leaves it empty), so the camera follows you
+    // as in a real match.
+    w.__snap.players.forEach((p: any, i: number) => {
+      p.hp = [110, 75, 40, 95][i % 4];
+    });
     w.__push();
   }, remaining);
   for (let i = 0; i < 3; i++) {
@@ -423,3 +428,70 @@ test("a fighter's name never slides under the badge or its note", async ({
     await context.close();
   }
 });
+
+for (const [label, me, kai] of [
+  // You at the top middle (the camera stops there), Kai off to the right:
+  // the arrow beside you is at the badge's height.
+  ["to the right, at the top", [800, 110], [1560, 110]],
+  // Kai off screen straight above you: the arrow points up, where your
+  // own name is.
+  ["straight above", [800, 640], [800, 40]],
+] as const)
+  test(`the arrow to an opponent off screen (${label}) covers neither the badge nor your name`, async ({
+    browser,
+  }) => {
+    const context = await browser.newContext({
+      viewport: { width: 844, height: 390 },
+      isMobile: true,
+      hasTouch: true,
+      reducedMotion: "reduce",
+    });
+    try {
+      const page = await context.newPage();
+      const errors = await match(page, "duel");
+      await page.evaluate(
+        ([me, kai]) => {
+          const w = window as any,
+            [a, b] = w.__snap.players;
+          [a.x, a.y] = me;
+          [b.x, b.y] = kai;
+          w.__push();
+        },
+        [me, kai] as const,
+      );
+      const arrow = page.locator(".enemy-bearing.is-orbit span");
+      // Until your fighter (predicted) and the camera have settled.
+      let last = "";
+      await expect
+        .poll(
+          async () => {
+            await page.evaluate(() => (window as any).__push());
+            const box = JSON.stringify(await arrow.boundingBox());
+            const still = box === last && box !== "null";
+            last = box;
+            return still;
+          },
+          { timeout: 15_000, intervals: [400] },
+        )
+        .toBe(true);
+      const a = (await arrow.boundingBox())!;
+      const badge = (await page.locator("#hud").boundingBox())!;
+      const mine = (await page
+        .locator(".battle-nameplate", { hasText: "YOU" })
+        .boundingBox())!;
+      const apart = (p: typeof a, q: typeof a) =>
+        p.x + p.width <= q.x ||
+        q.x + q.width <= p.x ||
+        p.y + p.height <= q.y ||
+        q.y + q.height <= p.y;
+      expect(apart(a, badge), "arrow under the badge").toBe(true);
+      expect(
+        apart(a, mine),
+        `arrow over your name: arrow ${JSON.stringify(a)} name ${JSON.stringify(mine)}`,
+      ).toBe(true);
+      expect(apart(mine, badge), "your name under the badge").toBe(true);
+      expect(errors).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });

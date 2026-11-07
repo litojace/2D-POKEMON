@@ -483,6 +483,49 @@ function nameplateSize(label: HTMLElement, title: string) {
   }
   return size;
 }
+/** A nameplate's box in the arena (x is its middle, placed by its bottom). */
+interface PlateBox {
+  x: number;
+  bottom: number;
+  w: number;
+  h: number;
+}
+/** The off-screen arrow, BEARING_SIZE across and placed by its middle. */
+const BEARING_SIZE = 24;
+const overlapsPlate = (x: number, y: number, plate?: PlateBox) => {
+  const half = BEARING_SIZE / 2;
+  return (
+    !!plate &&
+    plate.w > 0 &&
+    x + half > plate.x - plate.w / 2 &&
+    x - half < plate.x + plate.w / 2 &&
+    y + half > plate.bottom - plate.h &&
+    y - half < plate.bottom
+  );
+};
+const underBadge = (x: number, y: number) => {
+  const half = BEARING_SIZE / 2;
+  return (
+    !!badgeClear &&
+    x + half > badgeClear.left &&
+    x - half < badgeClear.right &&
+    y - half < badgeClear.bottom
+  );
+};
+/** Where the arrow goes: its spot on the circle, kept out from under the
+ * PvP badge (just below it) and off your own name (above the name, or
+ * beside it when above would be under the badge). */
+function bearingSpot(x: number, y: number, plate?: PlateBox) {
+  const half = BEARING_SIZE / 2;
+  if (underBadge(x, y)) y = badgeClear!.bottom + half;
+  if (plate && overlapsPlate(x, y, plate)) {
+    const above = plate.bottom - plate.h - half - 3;
+    if (!underBadge(x, above)) y = above;
+    else x = plate.x + (x >= plate.x ? 1 : -1) * (plate.w / 2 + half + 3);
+  }
+  if (underBadge(x, y)) y = badgeClear!.bottom + half;
+  return { x, y };
+}
 /** How high a nameplate's bottom may go: 54 px, or below the badge for a
  * plate that would reach under it. */
 function nameplateFloor(label: HTMLElement, title: string, x: number) {
@@ -4308,6 +4351,9 @@ class ArenaScene extends Phaser.Scene {
   private needsHydration = true;
   private followCamera = new FollowCamera();
   private enemyBearing = document.createElement("div");
+  /** Where each fighter's nameplate was drawn last frame (the arrow keeps
+   * off the followed fighter's). */
+  private plates = new Map<string, PlateBox>();
   hydrateNextSnapshot() {
     this.needsHydration = true;
   }
@@ -4996,6 +5042,9 @@ class ArenaScene extends Phaser.Scene {
             !this.courtRaid
             ? COURT_APRON
             : 0,
+          // The PvP badge covers the top of a phone's arena: the court may
+          // scroll below it (badge pixels → game pixels).
+          touch.enabled && badgeClear ? badgeClear.bottom / this.scale.zoom : 0,
         );
     const hitZoom = state?.raid ? 1 : this.koZoom;
     this.cameras.main
@@ -5052,12 +5101,15 @@ class ArenaScene extends Phaser.Scene {
           );
       this.enemyBearing.querySelector<HTMLElement>("span")!.style.transform =
         `rotate(${angle}rad)`;
+      const spot = bearingSpot(
+        from.x + Math.cos(angle) * BEARING_RADIUS,
+        from.y + Math.sin(angle) * BEARING_RADIUS,
+        this.plates.get(follow!.id),
+      );
       setHudStyle(
         this.enemyBearing,
         "transform",
-        orbit
-          ? `translate(${from.x + Math.cos(angle) * BEARING_RADIUS}px, ${from.y + Math.sin(angle) * BEARING_RADIUS}px)`
-          : "",
+        orbit ? `translate(${spot.x}px, ${spot.y}px)` : "",
       );
       setHudStyle(
         this.enemyBearing,
@@ -6037,7 +6089,18 @@ class ArenaScene extends Phaser.Scene {
           view.zoomY +
           this.scale.height / 2) *
         css;
-      label.style.transform = `translate3d(${labelX}px, ${Math.max(nameplateFloor(label, p.title ?? "", labelX), labelY)}px, 0) translate(-50%, -100%)`;
+      const plateBottom = Math.max(
+        nameplateFloor(label, p.title ?? "", labelX),
+        labelY,
+      );
+      label.style.transform = `translate3d(${labelX}px, ${plateBottom}px, 0) translate(-50%, -100%)`;
+      const plateSize = nameplateSize(label, p.title ?? "");
+      this.plates.set(p.id, {
+        x: labelX,
+        bottom: plateBottom,
+        w: plateSize.w,
+        h: plateSize.h,
+      });
       setHudStyle(label, "opacity", p.hp > 0 ? "1" : "0.4");
       label.classList.toggle(
         "team-ally",
