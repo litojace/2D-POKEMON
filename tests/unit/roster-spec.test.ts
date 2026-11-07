@@ -51,7 +51,7 @@ const ROSTER: Record<
     basic: ["Tide Needle", 240],
     skills: [
       ["Gill Siphon", 10],
-      ["Eddy", 12],
+      ["Undertow", 12],
       ["Tide Double", 15],
       ["Riptide Wave", 20],
     ],
@@ -89,7 +89,7 @@ const ROSTER: Record<
       ["Third-Eye Ray", 8],
       ["Booming Hoot", 12],
       ["Wing Cloak", 15],
-      ["Silent Swoop", 20],
+      ["Mind Maze", 20],
     ],
   },
   terradon: {
@@ -124,7 +124,7 @@ const ROSTER: Record<
     skills: [
       ["Magnet Lash", 12],
       ["Static Clamp", 12],
-      ["Spark Tether", 15],
+      ["Spark Trail", 15],
       ["Electromagnet", 20],
     ],
   },

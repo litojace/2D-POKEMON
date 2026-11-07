@@ -2655,7 +2655,13 @@ function renderBattle() {
                             ? "CHARGED"
                             : s.kind === "cage"
                               ? "CAGED"
-                              : s.kind.toUpperCase(),
+                              : s.kind === "current"
+                                ? "SWEPT AWAY"
+                                : s.kind === "float"
+                                  ? "FLOATING"
+                                  : s.kind === "confuse"
+                                    ? "CONFUSED"
+                                    : s.kind.toUpperCase(),
         )
         .join(" · "),
     );
@@ -5675,6 +5681,9 @@ class ArenaScene extends Phaser.Scene {
           blind: 0x3a2a5a,
           clamp: 0x9fe8ff,
           cage: 0xbfe6ff,
+          current: 0x4fc3f7,
+          float: 0xe8e0ff,
+          confuse: 0xff9de2,
           mark: 0xffffff,
         };
         g.fillStyle(colors[s.kind]).fillCircle(
@@ -5696,6 +5705,27 @@ class ArenaScene extends Phaser.Scene {
             reducedMotion ? 0 : _time,
             CHARACTERS[p.character].color,
           );
+      }
+      // Mind Maze: little question marks circling its head while confused.
+      if (serverPlayer.statuses.some((s) => s.kind === "confuse" && s.until > serverTime)) {
+        const spin = reducedMotion ? 0 : _time / 260;
+        for (let k = 0; k < 3; k++) {
+          const a0 = spin + (k * Math.PI * 2) / 3,
+            qx = x + Math.cos(a0) * 20,
+            qy = y - 66 - jump + Math.sin(a0) * 6;
+          g.lineStyle(3, 0xff9de2, 0.95);
+          g.beginPath();
+          g.arc(qx, qy - 4, 4, Math.PI, Math.PI * 0.4, false);
+          g.lineTo(qx, qy + 2);
+          g.strokePath();
+          g.fillStyle(0xff9de2, 0.95).fillCircle(qx, qy + 6, 1.6);
+        }
+      }
+      // Moon Gravity: a floating fighter hovers over a soft shadow.
+      if (serverPlayer.statuses.some((s) => s.kind === "float" && s.until > serverTime)) {
+        const bob = reducedMotion ? 0 : Math.sin(_time / 180) * 3;
+        g.lineStyle(2, 0xe8e0ff, 0.7).strokeEllipse(x, y + 14 + bob * 0.3, 52, 16);
+        g.fillStyle(0xe8e0ff, 0.15).fillEllipse(x, y + 14, 44, 12);
       }
       // Static Clamp: a crackling ring that tightens as the charge runs out.
       const clamp = serverPlayer.statuses.find(

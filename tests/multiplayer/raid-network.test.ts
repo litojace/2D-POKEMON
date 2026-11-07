@@ -352,7 +352,7 @@ it("sends Somnara's dream only to its authenticated Dreamer, with Lucid/reveal e
   ally = (await Promise.all(pending))[0]; expect(ally.raidDream.runes).toHaveLength(1);
   a.heroes()[0].character = "mystowl";
   const { CHARACTERS } = await import("@arena/shared");
-  a.cast(a.heroes()[0], CHARACTERS.mystowl.skills.find(s => s.id === "silent-swoop")!);
+  a.cast(a.heroes()[0], CHARACTERS.mystowl.skills.find(s => s.id === "mind-maze")!);
   pending = [state(other, v => v.raidDream?.full), state(watcher, v => v.raid?.dream?.id === d.id)];
   for (let i = 0; i < 6; i++) server!.step();
   [ally, publicView] = await Promise.all(pending);

@@ -1720,6 +1720,53 @@ export class Arena {
         this.events[this.events.length - 1].combo = combo.name;
       }
     }
+    if (a.kind === "current" && this.zones.length < RULES.maxZones)
+      // Undertow: a current from the caster along the aim.
+      this.zones.push({
+        id: ++this.serial,
+        owner: p.id,
+        x: p.x,
+        y: p.y,
+        radius: a.radius,
+        until: this.time + a.duration,
+        nextTick: this.time + (a.tickDelay ?? 0.2),
+        ability: a,
+        color,
+        born: this.time,
+        angle,
+      });
+    if (a.kind === "trail" && this.zones.length < RULES.maxZones)
+      // Spark Trail: laid behind the caster while it lasts, then it fades.
+      this.zones.push({
+        id: ++this.serial,
+        owner: p.id,
+        x: p.x,
+        y: p.y,
+        radius: a.radius,
+        until: this.time + a.duration + (a.trail?.fade ?? 1.5),
+        nextTick: this.time,
+        ability: a,
+        color,
+        born: this.time,
+        points: [{ x: p.x, y: p.y, t: this.time }],
+      });
+    if (a.kind === "steer" && this.zones.length < RULES.maxZones) {
+      // Sunfire Pillar: rises at the aim, then follows it.
+      const aim = p.lastInput;
+      const distance = Math.min(a.range, Math.hypot(aim.aimX - p.x, aim.aimY - p.y));
+      this.zones.push({
+        id: ++this.serial,
+        owner: p.id,
+        x: p.x + Math.cos(angle) * distance,
+        y: p.y + Math.sin(angle) * distance,
+        radius: a.radius,
+        until: this.time + a.duration,
+        nextTick: this.time + (a.tickDelay ?? 0.25),
+        ability: a,
+        color,
+        born: this.time,
+      });
+    }
     if (a.kind === "veil") {
       this.status(p, "stealth", a.duration);
       this.status(p, "haste", a.statusDuration ?? 1.5);
@@ -2095,6 +2142,82 @@ export class Arena {
       if (!this.lineClear(owner, enemy)) continue;
       this.rayHits.set(key, this.time);
       this.damage(enemy, a.damage, owner.id, a);
+    }
+  }
+  /** Is this body in the current's lane (along it, within its width)? */
+  inCurrent(zone: Zone, body: { x: number; y: number }, r: number) {
+    const ux = Math.cos(zone.angle ?? 0),
+      uy = Math.sin(zone.angle ?? 0);
+    const dx = body.x - zone.x,
+      dy = body.y - zone.y;
+    const along = dx * ux + dy * uy,
+      across = Math.abs(-dx * uy + dy * ux);
+    return (
+      along >= -r * 0.5 &&
+      along <= zone.ability.range + r * 0.5 &&
+      across <= zone.radius + r * 0.5
+    );
+  }
+  /** Undertow: enemies in the lane drift along it; every tick they take a hit. */
+  private stepCurrent(zone: Zone) {
+    const a = zone.ability,
+      speed = a.current?.speed ?? 200,
+      vx = Math.cos(zone.angle ?? 0) * speed,
+      vy = Math.sin(zone.angle ?? 0) * speed;
+    const tick = this.time >= zone.nextTick;
+    if (tick) zone.nextTick += a.tickInterval ?? 0.5;
+    for (const enemy of this.enemiesOfOwner(zone.owner)) {
+      if (
+        enemy.hp <= 0 ||
+        enemy.raidBoss ||
+        enemy.jumpUntil > this.time ||
+        !this.inCurrent(zone, enemy, this.hitRadius(enemy))
+      )
+        continue;
+      const old = enemy.statuses.find((s) => s.kind === "current");
+      if (old) Object.assign(old, { until: this.time + 0.15, tx: vx, ty: vy });
+      else
+        enemy.statuses.push({
+          kind: "current",
+          until: this.time + 0.15,
+          nextTick: this.time + 0.15,
+          tx: vx,
+          ty: vy,
+          by: zone.owner,
+        });
+      if (tick && a.damage > 0) this.damage(enemy, a.damage, zone.owner, a);
+    }
+  }
+  /**
+   * Spark Trail: the caster lays points while it lasts; each fades after
+   * `trail.fade`. An enemy touching any of them takes the hit (once per tick).
+   */
+  private stepTrail(zone: Zone) {
+    const a = zone.ability,
+      owner = this.players.find((q) => q.id === zone.owner),
+      laying = this.time < (zone.born ?? 0) + a.duration;
+    const pts = (zone.points ??= []);
+    if (laying && owner && owner.hp > 0 && !owner.out) {
+      const last = pts[pts.length - 1];
+      if (!last || Math.hypot(owner.x - last.x, owner.y - last.y) >= 18)
+        pts.push({ x: owner.x, y: owner.y, t: this.time });
+      zone.x = owner.x;
+      zone.y = owner.y;
+    }
+    const fade = a.trail?.fade ?? 1.5;
+    while (pts.length && pts[0].t < this.time - fade) pts.shift();
+    if (!pts.length) {
+      if (!laying) zone.until = this.time;
+      return;
+    }
+    for (const enemy of this.enemiesOfOwner(zone.owner)) {
+      if (enemy.hp <= 0 || enemy.jumpUntil > this.time) continue;
+      const r = a.radius + this.hitRadius(enemy) * 0.6;
+      if (!pts.some((q) => Math.hypot(enemy.x - q.x, enemy.y - q.y) < r)) continue;
+      const key = `${zone.id}:${enemy.id}`;
+      if (this.time - (this.rayHits.get(key) ?? -99) < (a.tickInterval ?? 0.5)) continue;
+      this.rayHits.set(key, this.time);
+      this.damage(enemy, a.damage, zone.owner, a);
     }
   }
   /** Does a curtain against this shot's owner stand where the shot is? */
@@ -2719,6 +2842,28 @@ export class Arena {
       if (zone.ability.kind === "lighthouse") {
         this.stepLighthouse(zone, dt);
         continue;
+      }
+      if (zone.ability.kind === "current") {
+        this.stepCurrent(zone);
+        continue;
+      }
+      if (zone.ability.kind === "trail") {
+        this.stepTrail(zone);
+        continue;
+      }
+      if (zone.ability.kind === "steer") {
+        // Sunfire Pillar: drift toward the caster's aim (then hit like a zone).
+        const owner = this.players.find((q) => q.id === zone.owner);
+        if (owner && owner.hp > 0 && !owner.out) {
+          const dx = owner.lastInput.aimX - zone.x,
+            dy = owner.lastInput.aimY - zone.y,
+            d = Math.hypot(dx, dy),
+            stepLen = Math.min(d, (zone.ability.steer?.speed ?? 240) * dt);
+          if (d > 0.5) {
+            zone.x += (dx / d) * stepLen;
+            zone.y += (dy / d) * stepLen;
+          }
+        }
       }
       if (zone.ability.kind === "screen") {
         // Enemies on the curtain catch fire.

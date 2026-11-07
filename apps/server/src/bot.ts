@@ -188,6 +188,16 @@ export function hostileZone(arena: Arena, me: Fighter, z: Zone) {
   if (a.kind === "cage") return false;
   return !a.heal || a.damage > 0 || !!a.status || !!a.knockback || !!a.turret;
 }
+/** The circle a bot keeps out of: a current is a lane, so its middle and half its length. */
+function zoneArea(z: Zone) {
+  if (z.ability.kind !== "current") return { x: z.x, y: z.y, radius: z.radius };
+  const half = z.ability.range / 2;
+  return {
+    x: z.x + Math.cos(z.angle ?? 0) * half,
+    y: z.y + Math.sin(z.angle ?? 0) * half,
+    radius: Math.max(z.radius, half * 0.6),
+  };
+}
 /** Corners just outside every pillar: the waypoints for walking around cover. */
 const CORNERS: Point[] = OBSTACLES.flatMap((o) => {
   const m = RULES.radius + 14;
@@ -503,11 +513,13 @@ export class BotBrain {
     }
     // Get out of enemy zones (jump the ground ones if it can).
     let escaping = false;
-    for (const z of arena.zones)
+    for (const zone of arena.zones)
       if (
-        hostileZone(arena, me, z) &&
-        Math.hypot(z.x - me.x, z.y - me.y) < z.radius + RULES.radius
+        hostileZone(arena, me, zone) &&
+        Math.hypot(zoneArea(zone).x - me.x, zoneArea(zone).y - me.y) <
+          zoneArea(zone).radius + RULES.radius
       ) {
+        const z = { ...zone, ...zoneArea(zone) };
         escaping = true;
         const away = Math.hypot(me.x - z.x, me.y - z.y) || 1;
         dx = (me.x - z.x) / away;
@@ -648,7 +660,8 @@ export class BotBrain {
       for (const z of arena.zones)
         if (
           hostileZone(arena, me, z) &&
-          Math.hypot(z.x - x, z.y - y) < z.radius + RULES.radius
+          Math.hypot(zoneArea(z).x - x, zoneArea(z).y - y) <
+            zoneArea(z).radius + RULES.radius
         )
           score -= 4;
       // Arena hazards: careful bots step out before a vent or surge fires.
@@ -759,6 +772,18 @@ export class BotBrain {
         case "lighthouse":
           // Radiant Flare: rays turning round it while the target is near.
           if (s.sight && reach(a.range * 0.8)) score = a.damage * 5;
+          break;
+        case "current":
+          // Undertow: sweep the target away (it flows along the aim).
+          if (s.sight && reach(a.range * 0.8)) score = 16;
+          break;
+        case "trail":
+          // Spark Trail: lay it while closing in or circling a nearby target.
+          if (reach(260)) score = 15 + a.damage;
+          break;
+        case "steer":
+          // Sunfire Pillar: drop it on the target, then keep aiming at it.
+          if (reach(a.range)) score = a.damage * 5;
           break;
         case "grapple":
           // Latch on from mid range: a gap closer that lands its hit first.
