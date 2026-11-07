@@ -478,7 +478,13 @@ test("Bistro Orders button breathes while orders wait for food", async ({
      if (srv.extras.league?.last) srv.extras.league.last.claimed = true;
      return b.load()`,
   );
+  // Waiting: a red count of the orders, the button breathing red.
   await expect(page.locator("#bs-board-n")).toBeVisible();
+  await expect(page.locator("#bs-board-n")).not.toHaveClass(/\bready\b/);
+  await expect(page.locator("#bs-board-n")).toHaveCSS(
+    "background-color",
+    "rgb(255, 90, 90)",
+  );
   await expect(page.locator("#bs-board-btn")).toHaveClass(/\bwaiting\b/);
   await expect(page.locator("#bs-board-btn")).not.toHaveClass(/\bready\b/);
   // The board's tabs count what waits; nothing can be done yet, so no gold.
@@ -498,6 +504,68 @@ test("Bistro Orders button breathes while orders wait for food", async ({
   );
 });
 
+test("Bistro Orders: a clock when one runs out, a ring for the closest, wanted dishes marked, a chime when ready, hand it all over", async ({
+  page,
+}, info) => {
+  const errors = await openBistro(page);
+  // The big order (12 Banh Mi, 9 Pho) runs out in a minute; nothing cooked.
+  await B(
+    page,
+    `const S = srv.S; S.level = 30; S.counter = [null, null, null, null];
+     if (srv.extras.league?.last) srv.extras.league.last.claimed = true;
+     srv.extras.orders[1].expires = b.sync().now() + 60_000;
+     return b.load()`,
+  );
+  // 1. Running out: a blinking clock on the button, and it hurries; the
+  // card's time left turns red.
+  await expect(page.locator("#bs-board-urg")).toBeVisible();
+  await expect(page.locator("#bs-board-btn")).toHaveClass(/\burgent\b/);
+  await expect(page.locator("#bs-board-ring")).toBeHidden();
+  // 4 and 5. Some Banh Mi cooked: a ring shows how far the closest order is,
+  // and the counter marks the dish as wanted.
+  await B(
+    page,
+    "srv.S.counter[0] = { dish: 'banhmi', servings: 3, perfect: false }; return b.load()",
+  );
+  await expect(page.locator("#bs-board-ring")).toBeVisible();
+  const p = Number(
+    await page
+      .locator("#bs-board-ring")
+      .evaluate((e) => (e as HTMLElement).style.getPropertyValue("--p")),
+  );
+  expect(p).toBeGreaterThan(0);
+  expect(p).toBeLessThan(100);
+  await expect(page.locator(".bs-slot.wanted")).toHaveCount(1);
+  await page.click('.bs-rail [data-sheet="board"]');
+  await expect(
+    page.locator('#bs-sheet [data-order="1"]').locator("xpath=../.."),
+  ).toContainText(/left/);
+  await expect(page.locator("#bs-sheet .bs-card .soon")).toHaveCount(1);
+  await snap(page, info, "bistro-orders-soon");
+  // 2. Spring rolls cooked: the small order and Mira can both be handed
+  // over now; it chimes and says so, once.
+  await B(
+    page,
+    "srv.S.counter[2] = { dish: 'goicuon', servings: 12, perfect: false }; return b.load()",
+  );
+  await expect(page.locator("#toast")).toContainText(
+    "2 things are ready to hand over!",
+  );
+  await expect(page.locator("#bs-board-n")).toHaveClass(/\bready\b/);
+  // 3. Two ready: one tap hands both over.
+  const all = page.locator("#bs-sheet [data-deliver-all]");
+  await expect(all).toContainText("Hand over all ready (2)");
+  const coins = (await B(page, "return srv.S.coins")) as number;
+  await all.click();
+  await flush(page);
+  expect(await B(page, "return srv.S.regulars.mira")).toBe(1);
+  expect((await B(page, "return srv.S.coins")) as number).toBeGreaterThan(
+    coins,
+  );
+  await expect(page.locator("#bs-sheet [data-deliver-all]")).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
 test("Bistro board: deliver a catering order, a regular's visit, claim the league, buy event decor, open a branch", async ({
   page,
 }, info) => {
@@ -508,15 +576,16 @@ test("Bistro board: deliver a catering order, a regular's visit, claim the leagu
      S.counter = [{ dish: 'goicuon', servings: 12, perfect: false }, null, null, null];
      return b.load()`,
   );
-  // Orders waiting: the button counts them and glows gold when one can be
-  // handed over now.
+  // Something can be handed over now: the count turns gold and counts what
+  // is ready (here at least Mira), and the button glows gold.
   await expect(page.locator("#bs-board-n")).toBeVisible();
-  const open = (await B(
-    page,
-    "return srv.extras.orders.filter((x) => x.dishes && x.expires > b.sync().now()).length",
-  )) as number;
-  expect(open).toBeGreaterThan(0);
-  await expect(page.locator("#bs-board-n")).toHaveText(String(open));
+  await expect(page.locator("#bs-board-n")).toHaveClass(/\bready\b/);
+  await expect(page.locator("#bs-board-n")).toHaveCSS(
+    "background-color",
+    "rgb(255, 214, 91)",
+  );
+  const readyN = Number(await page.locator("#bs-board-n").textContent());
+  expect(readyN).toBeGreaterThan(0);
   await expect(page.locator("#bs-board-btn")).toHaveClass(/\bready\b/);
   await page.click('.bs-rail [data-sheet="board"]');
   // Spring rolls on the counter: an order and Mira can be served now.
