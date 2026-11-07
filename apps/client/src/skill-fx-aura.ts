@@ -412,8 +412,12 @@ function crystalCage(g: G, z: Zone, progress: number, now: number) {
     color = z.color,
     rise = ease(Math.min(1, progress * 12)),
     fall = progress > 0.88 ? 1 - (progress - 0.88) / 0.12 : 1;
-  fx.floor.lineStyle(10, INK, 0.25 * fall).strokeEllipse(z.x, z.y, r * 2, r * 2 * sq);
-  fx.floor.lineStyle(3, color, 0.7 * fall).strokeEllipse(z.x, z.y, r * 2, r * 2 * sq);
+  fx.floor
+    .lineStyle(10, INK, 0.25 * fall)
+    .strokeEllipse(z.x, z.y, r * 2, r * 2 * sq);
+  fx.floor
+    .lineStyle(3, color, 0.7 * fall)
+    .strokeEllipse(z.x, z.y, r * 2, r * 2 * sq);
   const n = Math.max(14, Math.round(r / 11));
   // Back spires first, so the front ones overlap them.
   const spires = Array.from({ length: n }, (_, i) => (i * TAU) / n).sort(
@@ -426,16 +430,26 @@ function crystalCage(g: G, z: Zone, progress: number, now: number) {
       h = (34 + hash(i) * 22) * rise * fall,
       w = 9 + hash(i * 7) * 4;
     if (h <= 1) continue;
-    fx.solid.fillStyle(0x000000, 0.18).fillEllipse(px + 4, py + 2, w * 2.4, w * 0.9);
-    fx.solid.fillStyle(INK, 0.5).fillTriangle(px - w - 2, py + 2, px + w + 2, py + 2, px, py - h - 3);
-    fx.solid.fillStyle(color, 1).fillTriangle(px - w, py, px, py + 3, px, py - h);
-    fx.solid.fillStyle(GLASS, 1).fillTriangle(px, py + 3, px + w, py, px, py - h);
+    fx.solid
+      .fillStyle(0x000000, 0.18)
+      .fillEllipse(px + 4, py + 2, w * 2.4, w * 0.9);
+    fx.solid
+      .fillStyle(INK, 0.5)
+      .fillTriangle(px - w - 2, py + 2, px + w + 2, py + 2, px, py - h - 3);
+    fx.solid
+      .fillStyle(color, 1)
+      .fillTriangle(px - w, py, px, py + 3, px, py - h);
+    fx.solid
+      .fillStyle(GLASS, 1)
+      .fillTriangle(px, py + 3, px + w, py, px, py - h);
     fx.g
       .fillStyle(0xffffff, 0.5 + 0.3 * Math.sin(now / 240 + i))
       .fillTriangle(px + 1, py - 3, px + 4, py - 5, px, py - h + 4);
   }
   if (progress > 0.88)
-    fx.trail(`cage-${z.id}`, 999, () => shards(fx, z.x, z.y, 24, color, { power: 1.4 }));
+    fx.trail(`cage-${z.id}`, 999, () =>
+      shards(fx, z.x, z.y, 24, color, { power: 1.4 }),
+    );
 }
 
 // ───────────── Hits ─────────────

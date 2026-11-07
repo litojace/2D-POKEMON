@@ -337,10 +337,14 @@ function lighthouse(g: G, z: Zone, progress: number, now: number) {
       .fillTriangle(z.x, z.y, f1.x, f1.y + 16, f2.x, f2.y + 16);
     const p1 = tip(-w, len),
       p2 = tip(w, len);
-    fx.solid.fillStyle(GOLD, 0.5 * fade).fillTriangle(z.x, cy, p1.x, p1.y, p2.x, p2.y);
+    fx.solid
+      .fillStyle(GOLD, 0.5 * fade)
+      .fillTriangle(z.x, cy, p1.x, p1.y, p2.x, p2.y);
     const c1 = tip(-w * 0.4, len * 0.95),
       c2 = tip(w * 0.4, len * 0.95);
-    fx.g.fillStyle(CREAM, 0.75 * fade).fillTriangle(z.x, cy, c1.x, c1.y, c2.x, c2.y);
+    fx.g
+      .fillStyle(CREAM, 0.75 * fade)
+      .fillTriangle(z.x, cy, c1.x, c1.y, c2.x, c2.y);
     const end = tip(0, len);
     fx.glow(end.x, end.y, 26, GOLD, 0.45 * fade);
   }

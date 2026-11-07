@@ -194,7 +194,11 @@ describe("special skills", () => {
     expect(away.arena.has(away.q, "stun")).toBe(false);
     // Out of reach: untouched.
     const far = duel("lumoth");
-    Object.assign(far.q, { x: 600 + flash.radius + 60, y: 150, angle: Math.PI });
+    Object.assign(far.q, {
+      x: 600 + flash.radius + 60,
+      y: 150,
+      angle: Math.PI,
+    });
     far.arena.cast(far.p, flash);
     expect(far.q.hp).toBe(CHARACTERS.terradon.health);
   });

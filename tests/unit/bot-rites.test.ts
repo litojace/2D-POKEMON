@@ -3,10 +3,12 @@ import { Arena } from "../../apps/server/src/simulation";
 import { BotBrain, chooseRite, riteValue } from "../../apps/server/src/bot";
 import { FIGHTER_IDS, RITES, RITE_BY_ID, kitOf } from "@arena/shared";
 
-const seeded = (seed = 11) => () => {
-  seed = (seed * 16807) % 2147483647;
-  return seed / 2147483647;
-};
+const seeded =
+  (seed = 11) =>
+  () => {
+    seed = (seed * 16807) % 2147483647;
+    return seed / 2147483647;
+  };
 const ofFighter = (f: string) => RITES.filter((r) => r.fighter === f);
 
 describe("bot rite choice", () => {
@@ -75,9 +77,9 @@ describe("bot rite choice", () => {
       riteValue("mystowl-far-sight", me, shooter),
     );
     // Wider areas are worth more with several targets around.
-    expect(
-      riteValue("mystowl-loud-hoot", me, shooter, true),
-    ).toBeGreaterThan(riteValue("mystowl-loud-hoot", me, shooter));
+    expect(riteValue("mystowl-loud-hoot", me, shooter, true)).toBeGreaterThan(
+      riteValue("mystowl-loud-hoot", me, shooter),
+    );
     // Other fighters' rites are worthless to it.
     expect(riteValue("voltkit-hot-darts", me, shooter)).toBeLessThan(0);
   });

@@ -2507,7 +2507,12 @@ const art: Record<string, { el: Element; draw: () => string }> = {
       star(32, 60, 5.5, "#ffe9a3") +
       star(96, 60, 5.5, "#ffe9a3") +
       star(108, 44, 4, "#ffe9a3") +
-      [0, 1, 2].map((k) => `<circle cx="${50 + k * 14}" cy="118" r="${2.6 + k * 1.3}" fill="#fff0f5" opacity="${0.6 + k * 0.2}"/>`).join(""),
+      [0, 1, 2]
+        .map(
+          (k) =>
+            `<circle cx="${50 + k * 14}" cy="118" r="${2.6 + k * 1.3}" fill="#fff0f5" opacity="${0.6 + k * 0.2}"/>`,
+        )
+        .join(""),
   },
   "Moon Gravity": {
     el: "psychic",

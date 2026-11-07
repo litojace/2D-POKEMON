@@ -5705,8 +5705,16 @@ class ArenaScene extends Phaser.Scene {
         const left = Math.max(0, clamp.until - serverTime),
           flick = reducedMotion ? 1 : 0.7 + 0.3 * Math.sin(_time / 30);
         const r = 22 + 16 * Math.min(1, left / 1.5);
-        g.lineStyle(7, 0x2b6f8f, 0.35 * flick).strokeCircle(x, y - 18 - jump, r);
-        g.lineStyle(3.5, 0x9fe8ff, 0.95 * flick).strokeCircle(x, y - 18 - jump, r);
+        g.lineStyle(7, 0x2b6f8f, 0.35 * flick).strokeCircle(
+          x,
+          y - 18 - jump,
+          r,
+        );
+        g.lineStyle(3.5, 0x9fe8ff, 0.95 * flick).strokeCircle(
+          x,
+          y - 18 - jump,
+          r,
+        );
         for (let k = 0; k < 4; k++) {
           const a0 = (reducedMotion ? 0 : _time / 160) + (k * Math.PI) / 2;
           g.lineStyle(2, 0xffffff, 0.8 * flick).lineBetween(

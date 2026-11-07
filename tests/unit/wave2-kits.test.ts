@@ -90,7 +90,9 @@ describe("Static Clamp (Coilemur)", () => {
     place(them, 500, Y);
     const hp = them.hp;
     a.cast(me, skill("coilemur", "static-clamp"));
-    expect(hp - them.hp).toBeGreaterThan(skill("coilemur", "static-clamp").damage);
+    expect(hp - them.hp).toBeGreaterThan(
+      skill("coilemur", "static-clamp").damage,
+    );
     expect(a.has(them, "clamp")).toBe(false);
   });
 });
@@ -138,7 +140,9 @@ describe("Kraken Grasp (Shadopus)", () => {
 });
 
 describe("Mochi Pound (Astrabun)", () => {
-  const slot = CHARACTERS.astrabun.skills.findIndex((k) => k.id === "mochi-pound");
+  const slot = CHARACTERS.astrabun.skills.findIndex(
+    (k) => k.id === "mochi-pound",
+  );
   it("chains three pounds; only the last stuns; then the cooldown runs", () => {
     const a = arena("astrabun");
     const [me, them] = a.players;
@@ -194,12 +198,12 @@ describe("Crystal Cage (Auralynx)", () => {
     inside.lastInput = { ...inside.lastInput, dx: 1 };
     outside.lastInput = { ...outside.lastInput, dx: -1 };
     seconds(a, 1.5);
-    expect(Math.hypot(inside.x - 500, inside.y - (Y + 100))).toBeLessThanOrEqual(
-      cage.radius,
-    );
-    expect(Math.hypot(outside.x - 500, outside.y - (Y + 100))).toBeGreaterThanOrEqual(
-      cage.radius,
-    );
+    expect(
+      Math.hypot(inside.x - 500, inside.y - (Y + 100)),
+    ).toBeLessThanOrEqual(cage.radius);
+    expect(
+      Math.hypot(outside.x - 500, outside.y - (Y + 100)),
+    ).toBeGreaterThanOrEqual(cage.radius);
     // A shot from outside dies on the ring.
     a.projectiles.push({
       id: ++a.serial,
@@ -232,7 +236,8 @@ describe("Radiant Flare (Lumoth)", () => {
     a.cast(me, flare);
     seconds(a, flare.duration + 0.1);
     const sweeps = (hp - them.hp) / flare.damage;
-    const expected = (flare.duration / (flare.spin ?? 1.2)) * (flare.count ?? 3);
+    const expected =
+      (flare.duration / (flare.spin ?? 1.2)) * (flare.count ?? 3);
     expect(sweeps).toBeGreaterThanOrEqual(expected - 1);
     expect(sweeps).toBeLessThanOrEqual(expected + 1);
     // Out of reach: untouched.
