@@ -1015,7 +1015,9 @@ describe("the long game (migration 100)", () => {
       [ana],
     );
     let r = await act(ana, [{ a: "order", slot: o.slot }]);
-    expect(r.results[0].error).toMatch(/^You need \d+ .+ on the counter\.$/);
+    expect(r.results[0].error).toBe(
+      "Nothing for this order on the counter yet.",
+    );
     // Stock the counter (one slot a dish) and fill it.
     for (const [i, d] of o.dishes.entries())
       await sql(
@@ -1048,6 +1050,76 @@ describe("the long game (migration 100)", () => {
     expect(
       r.bistro.league.week.find((x: any) => x.me).points,
     ).toBeGreaterThanOrEqual(10);
+  });
+  it("catering orders fill as you go (migration 102): put aside, kept from guests, paid when complete", async () => {
+    const B = await import("../../packages/shared/src/bistro");
+    await setCoins(ben, 50000, 12);
+    await open(ben);
+    // One order of 10 Pho, nothing put aside yet.
+    await sql(
+      "update public.arena_bistro_orders set dishes = '[{\"dish\": \"pho\", \"qty\": 10}]'::jsonb, coins = 160, xp = 20, tokens = 0, filled = '{}'::jsonb, expires_at = now() + interval '6 hours', next_at = null where player_id = $1 and slot = 0",
+      [ben],
+    );
+    const stock = (servings: number) =>
+      sql(
+        "update public.arena_bistro_counter set dish = case slot when 0 then 'pho' end, servings = case slot when 0 then $2 else 0 end, perfect = false where player_id = $1",
+        [ben, servings],
+      );
+    await stock(6);
+    let b = await open(ben);
+    const coins = b.coins;
+    // The shared rules, on the same state.
+    const local = sanitize(b);
+    const lo = JSON.parse(
+      JSON.stringify(b.orders.find((x: any) => x.slot === 0)),
+    );
+    const res = B.fillOrder(local, lo);
+    expect(res).toEqual({ ok: true, done: false, put: 6 });
+    let r = await act(ben, [{ a: "order", slot: 0 }]);
+    expect(r.results[0].ok).toBe(true);
+    let o = r.bistro.orders.find((x: any) => x.slot === 0);
+    expect(o.filled).toEqual({ pho: 6 });
+    expect(o.filled).toEqual(lo.filled);
+    expect(r.bistro.counter).toEqual(local.counter);
+    expect(r.bistro.coins).toBe(coins);
+    // Put aside is off the counter: a guest can't buy it.
+    r = await act(ben, [{ a: "serve", dish: "pho", hearts: 3 }]);
+    expect(r.results[0].ok).toBe(false);
+    // Another batch: 6 more, only 4 are needed; it is delivered and paid.
+    await stock(6);
+    r = await act(ben, [{ a: "order", slot: 0 }]);
+    expect(r.results[0].ok).toBe(true);
+    o = r.bistro.orders.find((x: any) => x.slot === 0);
+    expect(o.dishes).toBeNull();
+    expect(o.filled).toEqual({});
+    expect(r.bistro.coins).toBe(coins + 160);
+    expect(r.bistro.counter[0]).toEqual({
+      dish: "pho",
+      servings: 2,
+      perfect: false,
+    });
+    // A skip gives back what was put aside.
+    await sql(
+      'update public.arena_bistro_orders set dishes = \'[{"dish": "pho", "qty": 10}]\'::jsonb, filled = \'{"pho": 5}\'::jsonb, expires_at = now() + interval \'6 hours\', next_at = null where player_id = $1 and slot = 0',
+      [ben],
+    );
+    await stock(1);
+    r = await act(ben, [{ a: "skip", slot: 0 }]);
+    expect(r.results[0].ok).toBe(true);
+    expect(r.bistro.counter[0]).toEqual({
+      dish: "pho",
+      servings: 6,
+      perfect: false,
+    });
+    // So does an order that expires.
+    await sql(
+      'update public.arena_bistro_orders set dishes = \'[{"dish": "pho", "qty": 10}]\'::jsonb, filled = \'{"pho": 3}\'::jsonb, expires_at = now() - interval \'1 minute\', next_at = null where player_id = $1 and slot = 1',
+      [ben],
+    );
+    await stock(0);
+    b = await open(ben);
+    expect(b.counter[0]).toEqual({ dish: "pho", servings: 3, perfect: false });
+    expect(b.orders.find((x: any) => x.slot === 1).filled).toEqual({});
   });
   it("a regular's three visits: thanks each time, a Golden Plate at the end", async () => {
     const B = await import("../../packages/shared/src/bistro");

@@ -170,6 +170,8 @@ import {
   REGULARS,
   leagueReward,
   onCounter,
+  orderLeft,
+  orderReady,
   regularReward,
 } from "./bistro-model";
 import {
@@ -2251,12 +2253,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
   /** Something on the board you can do now: an order or a regular to serve, a reward to claim. */
   const boardReady = () => {
     const ex = sync.extras;
-    if (
-      ex.orders.some(
-        (o) => o.dishes && o.dishes.every((d) => onCounter(S, d.dish) >= d.qty),
-      )
-    )
-      return true;
+    if (ex.orders.some((o) => orderReady(S, o))) return true;
     for (const g of REGULARS) {
       const st = g.steps[S.regulars[g.id] ?? 0];
       if (st && S.level >= g.level && onCounter(S, st.dish) >= st.qty)
@@ -2327,13 +2324,22 @@ export function openBistro(o: BistroOptions): BistroHandle {
           const left = Math.max(0, (o.next - now) / 1000);
           return `<div class="bs-card wait"><div class="ic">${I("clock")}</div><div class="txt"><b>A new order</b><small>${left > 0 ? `comes in ${fmtTime(left)}` : "is on its way"}</small></div></div>`;
         }
-        const ready = o.dishes.every((d) => onCounter(S, d.dish) >= d.qty);
+        const ready = orderReady(S, o);
+        // Something on the counter it still needs: it can be put aside.
+        const can = o.dishes.some(
+          (d) => orderLeft(o, d.dish, d.qty) > 0 && onCounter(S, d.dish) > 0,
+        );
         const left = Math.max(0, (o.expires - now) / 1000);
-        return `<div class="bs-card"><div class="ic">${I("flag")}</div><div class="txt"><b>Catering order</b><span class="needs">${o.dishes.map((d) => need(d.dish, d.qty)).join("")}</span><small>${coinTag(o.coins)} · ${o.xp} XP${o.tokens ? ` · ${o.tokens} tokens` : ""} · ${fmtDur(left * 1000)} left</small></div><div class="acts"><button type="button" class="pr${ready ? "" : " poor"}" data-order="${o.slot}">Deliver</button><button type="button" class="pr ghost" data-skip="${o.slot}">Skip</button></div></div>`;
+        const row = (dish: DishId, qty: number) => {
+          const aside = Math.min(qty, o.filled[dish] ?? 0);
+          const more = Math.min(qty - aside, onCounter(S, dish));
+          return `<em class="${aside >= qty ? "ok" : aside + more >= qty ? "ready" : "poor"}"><img src="${dishIconUrl(dish, 48)}" alt="">${aside}/${qty} ${esc(DISH_BY_ID[dish].name)}${more ? ` <i>+${more}</i>` : ""}</em>`;
+        };
+        return `<div class="bs-card"><div class="ic">${I("flag")}</div><div class="txt"><b>Catering order</b><span class="needs">${o.dishes.map((d) => row(d.dish, d.qty)).join("")}</span><small>${coinTag(o.coins)} · ${o.xp} XP${o.tokens ? ` · ${o.tokens} tokens` : ""} · ${fmtDur(left * 1000)} left</small></div><div class="acts"><button type="button" class="pr${ready || can ? "" : " poor"}" data-order="${o.slot}">${ready ? "Deliver" : "Put aside"}</button><button type="button" class="pr ghost" data-skip="${o.slot}">Skip</button></div></div>`;
       })
       .join(
         "",
-      )}<p class="bs-note">Orders take dishes off the counter and pay 1.6 times their price. Cook ahead, then deliver.</p></div>`;
+      )}<p class="bs-note">Orders pay 1.6 times their price. Put dishes aside as you cook them (+n: on the counter now): guests can't eat what is put aside, and the order pays when it is complete. Skipping it puts them back on the counter.</p></div>`;
   };
   const drawSheet = (out: { innerHTML: string }) => {
     if (!sheetKind) return;
@@ -2758,19 +2764,41 @@ export function openBistro(o: BistroOptions): BistroHandle {
       const slot = Number(b.dataset.order);
       const ord = sync.extras.orders.find((x) => x.slot === slot);
       const reward = ord ? { coins: ord.coins, xp: ord.xp } : null;
+      const asideBefore = ord
+        ? Object.values(ord.filled).reduce((n, x) => n + (x ?? 0), 0)
+        : 0;
       const r = sync.do({ a: "order", slot });
       if (!r.ok) return o.toast(r.error ?? "Can't deliver that yet.");
-      sound("fanfare");
-      banner(
-        `<b>Order delivered!</b><span>+${reward?.coins ?? 0} coins · +${reward?.xp ?? 0} XP</span>`,
-      );
+      const after = sync.extras.orders.find((x) => x.slot === slot);
+      if (after?.dishes) {
+        // Part of it: set aside, the rest to come.
+        const put =
+          Object.values(after.filled).reduce((n, x) => n + (x ?? 0), 0) -
+          asideBefore;
+        sound("pop", 3);
+        o.toast(
+          `Put aside ${put} serving${put === 1 ? "" : "s"} for the order`,
+        );
+      } else {
+        sound("fanfare");
+        banner(
+          `<b>Order delivered!</b><span>+${reward?.coins ?? 0} coins · +${reward?.xp ?? 0} XP</span>`,
+        );
+      }
       changed();
       return renderSheet();
     }
     if (b.dataset.skip !== undefined) {
+      const had = sync.extras.orders.find(
+        (x) => x.slot === Number(b.dataset.skip),
+      );
+      const aside = had
+        ? Object.values(had.filled).reduce((n, x) => n + (x ?? 0), 0)
+        : 0;
       const r = sync.do({ a: "skip", slot: Number(b.dataset.skip) });
       if (!r.ok) return o.toast(r.error ?? "Can't skip that.");
       sound("whoosh");
+      if (aside) o.toast("What you put aside is back on the counter");
       changed();
       return renderSheet();
     }

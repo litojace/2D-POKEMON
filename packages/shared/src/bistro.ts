@@ -2232,25 +2232,66 @@ export interface CateringOrder {
   /** When it goes (ms), or when the next one comes for an empty slot. */
   expires: number;
   next: number;
+  /** Servings put aside for it so far, by dish (migration 102): guests
+   *  can't eat those. */
+  filled: Partial<Record<DishId, number>>;
 }
 export const ORDER_PAY = 1.6;
 export const orderSlots = (level: number) =>
   2 + (level >= 10 ? 1 : 0) + (level >= 20 ? 1 : 0);
 export const onCounter = (s: BistroState, dish: DishId) =>
   s.counter.reduce((n, c) => n + (c?.dish === dish ? c.servings : 0), 0);
-export function fillOrder(s: BistroState, o: CateringOrder): Result {
-  if (!o.dishes) return fail("No order there yet.");
-  for (const d of o.dishes)
-    if (onCounter(s, d.dish) < d.qty)
-      return fail(
-        `You need ${d.qty} ${DISH_BY_ID[d.dish].name} on the counter.`,
-      );
-  for (const d of o.dishes)
-    for (let i = 0; i < d.qty; i++) takeServing(s, d.dish);
-  s.coins += o.coins;
-  addXp(s, o.xp);
-  s.tokens += o.tokens;
-  return { ok: true };
+/** Servings of a dish an order still needs. */
+export const orderLeft = (o: CateringOrder, dish: DishId, qty: number) =>
+  Math.max(0, qty - (o.filled[dish] ?? 0));
+/** An order the counter can finish now (with what is already put aside). */
+export const orderReady = (s: BistroState, o: CateringOrder) =>
+  !!o.dishes &&
+  o.dishes.every((d) => onCounter(s, d.dish) >= orderLeft(o, d.dish, d.qty));
+/**
+ * Fill an order from the counter: what it still needs of each dish is put
+ * aside (guests can't eat it), as much as the counter has. When it has
+ * everything, it is delivered and paid. Nothing to put aside is an error.
+ */
+export function fillOrder(
+  s: BistroState,
+  o: CateringOrder,
+): { ok: true; done: boolean; put: number } | { ok: false; error: string } {
+  if (!o.dishes) return { ok: false, error: "No order there yet." };
+  let put = 0;
+  for (const d of o.dishes) {
+    const n = Math.min(orderLeft(o, d.dish, d.qty), onCounter(s, d.dish));
+    for (let i = 0; i < n; i++) takeServing(s, d.dish);
+    if (n) o.filled[d.dish] = (o.filled[d.dish] ?? 0) + n;
+    put += n;
+  }
+  const done = o.dishes.every((d) => !orderLeft(o, d.dish, d.qty));
+  if (!put && !done)
+    return { ok: false, error: "Nothing for this order on the counter yet." };
+  if (done) {
+    s.coins += o.coins;
+    addXp(s, o.xp);
+    s.tokens += o.tokens;
+  }
+  return { ok: true, done, put };
+}
+/** Servings back on the counter: with the same dish, else an empty spot
+ *  (none free: they are lost). */
+export function counterAdd(s: BistroState, dish: DishId, n: number) {
+  if (n <= 0) return;
+  let i = s.counter.findIndex((c) => c?.dish === dish);
+  if (i < 0) i = s.counter.findIndex((c) => !c);
+  if (i < 0) return;
+  const c = s.counter[i];
+  s.counter[i] = c
+    ? { ...c, servings: c.servings + n }
+    : { dish, servings: n, perfect: false };
+}
+/** A skipped (or expired) order gives back what was put aside for it. */
+export function returnAside(s: BistroState, o: CateringOrder) {
+  for (const [dish, n] of Object.entries(o.filled))
+    counterAdd(s, dish as DishId, n ?? 0);
+  o.filled = {};
 }
 
 /* Regulars: guests with a story in three visits, each asking for a dish
