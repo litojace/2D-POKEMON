@@ -2,7 +2,7 @@
 
 Status: **All seven bosses are implemented, including Storm Twins. Apply migration 021_storm_twins.sql after 020_emberwing.sql to enable Storm Twins records and eleven rewards.** The Raid Hub, Raid of the Day, five cosmetic slots, coins, daily missions and Shop are implemented. Balance values still need live play feedback.
 
-Somnara's sequence is generated privately on the server, omitted from public and spectator snapshots, and delivered only to the Dreamer (or through Lucid/Silent Swoop). Its camera keeps all four pads visible. Tests cover solo/co-op rune entry, backwards dreams, sleep/wake, champion tricks, practice, daily rotation, socket privacy, reward persistence and desktop/mobile controls.
+Somnara's sequence is generated privately on the server, omitted from public and spectator snapshots, and delivered only to the Dreamer (or through Lucid/Mind Maze). Its camera keeps all four pads visible. Tests cover solo/co-op rune entry, backwards dreams, sleep/wake, champion tricks, practice, daily rotation, socket privacy, reward persistence and desktop/mobile controls.
 
 Prismatail fights in the Sun Atrium. Light passes through raiders and directional mirror posts; ordinary attacks turn a mirror 45°. Solar Crown requires two team paths within three seconds, or a continuous two-second solo path. The mobile camera keeps the complete relay visible, with compact Look away and Turn mirror controls. Six practice drills, champion tricks, traits, Polished, eleven rewards and Sunday daily rotation are implemented. Lightkeeper credits one relay per participating raider when the shield breaks, never per simulation frame. The two-player final phase uses both beams too; a Radiant Flare carrier can relay both during its four-second effect. Tests cover party sizes 1–4 on all Perils, attack geometry, mirror repair by stand-ins, socket state, database permissions and reward equipping. Balance still needs human play feedback.
 
@@ -568,7 +568,7 @@ the Raid Hub's guide and the raid briefing read them from there.
 **Tidefin** (3)
 
 - **Tidewyrm:** Tide Double's double can carry the dive ripple.
-- **Emberwing:** Eddy puts out burning ground where it lands.
+- **Emberwing:** Undertow puts out burning ground all along its current.
 - **Somnara:** Tide Double's double can step on a rune pad.
 
 **Auralynx** (3)
@@ -591,7 +591,7 @@ the Raid Hub's guide and the raid briefing read them from there.
 
 - **Grumblecrag:** Wing Cloak splits the meteor.
 - **Gloomshade:** Third-Eye Ray passes through decoys and marks the real one.
-- **Somnara:** Silent Swoop shows the current sequence to the whole team.
+- **Somnara:** Mind Maze shows the current sequence to the whole team.
 - **Prismatail:** Wing Cloak blocks Glare for allies inside it.
 
 **Terradon** (3)
@@ -1208,15 +1208,15 @@ _Ultimate_ (a Mythical's stage III ultimate, cast every few seconds).
 
 #### Tidefin (axolotl duelist, Water)
 
-| Rarity                     | Skin               | Look and effects                                                                                                                    |
-| -------------------------- | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
-| Common                     | Bubblegum          | Classic pink axolotl, magenta gills                                                                                                 |
-| Common                     | Abyss              | Deep navy with teal gills                                                                                                           |
-| Common                     | Sandbar            | Sand and sea-green                                                                                                                  |
-| Rare · Garden              | **Koi Pond**       | Orange-and-white koi spots, a koi-scale sash; dash leaves lily pads                                                                 |
-| Rare · Festival            | **Corsair**        | Tricorn hat and striped sash; splashes scatter gold coins                                                                           |
-| Epic · Winter              | **Glacier**        | See-through ice-crystal body. Skills become ice, Eddy swirls with snow, hits shatter into shards, and its gills frost over and thaw |
-| **Mythical · Void Knight** | **Abyssal Reaver** | Black steel, tide-green runes; a steel dorsal-fin helm takes the headband's place. Stages as in “The Void Knights” above            |
+| Rarity                     | Skin               | Look and effects                                                                                                                       |
+| -------------------------- | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Common                     | Bubblegum          | Classic pink axolotl, magenta gills                                                                                                    |
+| Common                     | Abyss              | Deep navy with teal gills                                                                                                              |
+| Common                     | Sandbar            | Sand and sea-green                                                                                                                     |
+| Rare · Garden              | **Koi Pond**       | Orange-and-white koi spots, a koi-scale sash; dash leaves lily pads                                                                    |
+| Rare · Festival            | **Corsair**        | Tricorn hat and striped sash; splashes scatter gold coins                                                                              |
+| Epic · Winter              | **Glacier**        | See-through ice-crystal body. Skills become ice, Undertow flows with snow, hits shatter into shards, and its gills frost over and thaw |
+| **Mythical · Void Knight** | **Abyssal Reaver** | Black steel, tide-green runes; a steel dorsal-fin helm takes the headband's place. Stages as in “The Void Knights” above               |
 
 #### Auralynx (crystal-fisted lynx monk, Aura)
 

@@ -333,12 +333,12 @@ describe("Drowsy, sleep, bubbles and champion tricks", () => {
     expect(a.raid.dreamBubbles).toHaveLength(0);
     expect(a.raid.dreamTrails!.length).toBeGreaterThan(0);
   });
-  it("Silent Swoop reveals only the current sequence to the team; a new dream restores privacy", () => {
+  it("Mind Maze reveals only the current sequence to the team; a new dream restores privacy", () => {
     const a = setup(["mystowl", "lumoth"]);
     attack(a, "dream-sequence");
     a.cast(
       a.heroes()[0],
-      CHARACTERS.mystowl.skills.find((s) => s.id === "silent-swoop")!,
+      CHARACTERS.mystowl.skills.find((s) => s.id === "mind-maze")!,
     );
     expect(a.heroes().every((p) => a.dreamFor(p.id)?.full)).toBe(true);
     (a as any).beginDream();

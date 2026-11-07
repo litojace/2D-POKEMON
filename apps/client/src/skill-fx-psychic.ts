@@ -321,7 +321,7 @@ function ward(
   void a;
 }
 
-// ───────────── Silent Swoop ─────────────
+// ───────────── Mind Maze ─────────────
 function thoughtstrike(g: G, z: Zone, progress: number, now: number) {
   const fx = fxFor(g.scene),
     a = z.ability,
@@ -1110,8 +1110,8 @@ function fullMoonCrash(
 export const psychicKit: FxKit = {
   projectile: { "mind-dart": mindDart },
   beam: { "third-eye-ray": focusRay },
-  zone: { "silent-swoop": thoughtstrike, "moon-gravity": moonGravity },
-  windup: { "silent-swoop": strikeWindup, "full-moon": fullMoonWindup },
+  zone: { "mind-maze": thoughtstrike, "moon-gravity": moonGravity },
+  windup: { "mind-maze": strikeWindup, "full-moon": fullMoonWindup },
   cast: {
     "mind-dart": dartCast,
     "third-eye-ray": rayCast,

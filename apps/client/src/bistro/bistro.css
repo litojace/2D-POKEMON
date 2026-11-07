@@ -560,10 +560,10 @@
   cursor: pointer;
 }
 .bistro-layer .bs-tabs {
-  /* Tabs of one width, side by side. */
+  /* Tabs of one width, as wide as the longest label needs: where they don't
+     all fit on one line they go on two, never cut short. */
   display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(0, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(78px, 1fr));
   gap: 6px;
   padding: 0 18px 10px;
 }
@@ -572,7 +572,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  padding: 8px 14px;
+  padding: 8px 6px;
   border: 1px solid #ffffff22;
   border-radius: 999px;
   background: #ffffff0d;
@@ -586,6 +586,118 @@
   background: #ffd65b;
   border-color: #ffd65b;
   color: #2a1a00;
+}
+/* Board tabs: how many orders and regulars wait (gold when one can be done
+   now), hanging off the tab's top right corner. */
+.bistro-layer .bs-tabs button {
+  position: relative;
+  overflow: visible;
+}
+.bistro-layer .bs-tabs .tn {
+  position: absolute;
+  top: -7px;
+  right: 0;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  box-sizing: border-box;
+  border-radius: 9px;
+  background: #ff7a5a;
+  color: #fff;
+  font:
+    800 10px/17px "DM Sans",
+    sans-serif;
+  text-align: center;
+  box-shadow: 0 0 0 2px #1d2540;
+}
+.bistro-layer .bs-tabs .tn.go {
+  background: #ffd65b;
+  color: #2a1a00;
+  animation: bs-tab-go 1.1s ease-in-out infinite;
+}
+.bistro-layer .bs-tabs .tn.dot {
+  min-width: 11px;
+  width: 11px;
+  height: 11px;
+  top: -4px;
+  padding: 0;
+}
+@keyframes bs-tab-go {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 2px #1d2540,
+      0 0 0 0 #ffd65b00;
+  }
+  50% {
+    box-shadow:
+      0 0 0 2px #1d2540,
+      0 0 10px 3px #ffd65baa;
+  }
+}
+/* Board cards: one waiting has a warm edge; one that can be done now glows. */
+.bistro-layer .bs-card.want {
+  box-shadow: inset 3px 0 0 #ff8a5a;
+}
+.bistro-layer .bs-card.go {
+  border-color: #ffd65b;
+  box-shadow:
+    inset 3px 0 0 #ffd65b,
+    0 0 0 1px #ffd65b66;
+  animation: bs-card-go 1.6s ease-in-out infinite;
+}
+@keyframes bs-card-go {
+  0%,
+  100% {
+    box-shadow:
+      inset 3px 0 0 #ffd65b,
+      0 0 0 1px #ffd65b66;
+  }
+  50% {
+    box-shadow:
+      inset 3px 0 0 #ffd65b,
+      0 0 14px 2px #ffd65b66;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bistro-layer :is(.bs-tabs .tn.go, .bs-card.go) {
+    animation: none;
+  }
+}
+/* Shop: how many one tap buys. */
+.bistro-layer .bs-qty {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 18px 10px;
+  color: #b8c2da;
+  font:
+    700 12px/1 "DM Sans",
+    sans-serif;
+}
+.bistro-layer .bs-qty button {
+  min-width: 44px;
+  padding: 6px 10px;
+  border: 1px solid #ffffff22;
+  border-radius: 999px;
+  background: #ffffff0d;
+  color: #dfe6f5;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.bistro-layer .bs-qty button[aria-pressed="true"] {
+  background: #7ad3c4;
+  border-color: #7ad3c4;
+  color: #10302a;
+}
+.bistro-layer .bs-qty small {
+  margin-left: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+  opacity: 0.8;
 }
 .bistro-layer :is(.bs-dishes, .bs-items) {
   flex: 1;
@@ -1039,6 +1151,102 @@ body.hub-bistro:has(.bistro-layer.editing) #toast {
   border-radius: 50%;
   background: #ff5a5a;
   box-shadow: 0 0 0 2px #22182e;
+}
+/* Orders: a count while catering orders wait; the button breathes while
+   they wait and glows gold when one can be handed over now. */
+.bistro-layer .bs-rail .cnt {
+  position: absolute;
+  top: 3px;
+  right: 4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  box-sizing: border-box;
+  border-radius: 9px;
+  background: #ff5a5a;
+  color: #fff;
+  font:
+    800 11px/18px "DM Sans",
+    sans-serif;
+  text-align: center;
+  box-shadow: 0 0 0 2px #22182e;
+}
+.bistro-layer .bs-rail button.waiting::after,
+.bistro-layer .bs-rail button.ready::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  pointer-events: none;
+}
+.bistro-layer .bs-rail button.waiting::after {
+  box-shadow: 0 0 0 2px #ff8a5a;
+  animation: bs-order-wait 1.8s ease-out infinite;
+}
+.bistro-layer .bs-rail button.waiting svg {
+  animation: bs-order-flag 1.8s ease-in-out infinite;
+  transform-origin: 30% 90%;
+}
+.bistro-layer .bs-rail button.ready {
+  border-color: #ffd65b;
+  background: linear-gradient(180deg, #ffd65b33, #ffd65b14);
+}
+.bistro-layer .bs-rail button.ready::after {
+  box-shadow:
+    0 0 0 2px #ffd65b,
+    0 0 16px 2px #ffd65b88;
+  animation: bs-order-ready 1.1s ease-in-out infinite;
+}
+.bistro-layer .bs-rail button.ready svg {
+  animation: bs-order-hop 1.1s ease-in-out infinite;
+}
+@keyframes bs-order-wait {
+  0% {
+    opacity: 0.9;
+    transform: scale(1);
+  }
+  70%,
+  100% {
+    opacity: 0;
+    transform: scale(1.18);
+  }
+}
+@keyframes bs-order-flag {
+  0%,
+  60%,
+  100% {
+    transform: rotate(0);
+  }
+  70% {
+    transform: rotate(-12deg);
+  }
+  85% {
+    transform: rotate(8deg);
+  }
+}
+@keyframes bs-order-ready {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@keyframes bs-order-hop {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-3px) scale(1.08);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bistro-layer .bs-rail button:is(.waiting, .ready)::after,
+  .bistro-layer .bs-rail button:is(.waiting, .ready) svg {
+    animation: none;
+  }
 }
 .bistro-layer .bs-team {
   flex: 1;

@@ -123,7 +123,10 @@ export function drawClouds(ctx: Ctx, l: Light, low: boolean) {
           : "255,255,255";
     ctx.fillStyle = `rgba(${tint},${a})`;
     ctx.beginPath();
+    // Each puff its own sub-path (joined, the lines between them made a
+    // hole where they wound the other way).
     ctx.ellipse(x, y, w, w * 0.22, 0, 0, Math.PI * 2);
+    ctx.moveTo(x + w * 0.72, y - w * 0.16);
     ctx.ellipse(
       x + w * 0.3,
       y - w * 0.16,
@@ -133,6 +136,7 @@ export function drawClouds(ctx: Ctx, l: Light, low: boolean) {
       0,
       Math.PI * 2,
     );
+    ctx.moveTo(x + w * 0.02, y - w * 0.08);
     ctx.ellipse(
       x - w * 0.32,
       y - w * 0.08,
@@ -848,8 +852,11 @@ function drawStreetProps(ctx: Ctx, l: Light) {
     ctx.fill();
     ctx.fillStyle = shade("#4f9f45", -0.5 * n);
     ctx.beginPath();
+    // Three clumps, each its own sub-path (see the clouds).
     ctx.arc(c.x - 4, c.y - 18, 7, 0, Math.PI * 2);
+    ctx.moveTo(c.x + 11, c.y - 19);
     ctx.arc(c.x + 4, c.y - 19, 7, 0, Math.PI * 2);
+    ctx.moveTo(c.x + 7, c.y - 24);
     ctx.arc(c.x, c.y - 24, 7, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = shade("#ff7aa8", -0.4 * n);

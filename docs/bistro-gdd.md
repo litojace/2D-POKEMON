@@ -406,6 +406,7 @@ Mỗi giai đoạn: một migration riêng (số tiếp theo còn trống), test
 | 7. Đơn đặt tiệc: để dành món dần dần, khách không ăn mất                                                                                                                                            | [102_bistro_orders_aside.sql](../supabase/migrations/102_bistro_orders_aside.sql)   | Đã làm     |
 | 8. Bếp mua trong Shop: Clay Stove / Steel Range (+15%) / Dragon Oven (+30%), đặt và đổi chỗ trên tường bếp; bếp rộng thêm 1 cột mỗi lần mở rộng phòng (4 → 9 chỗ)                                   | [103_bistro_stove_shop.sql](../supabase/migrations/103_bistro_stove_shop.sql)       | Đã làm     |
 | 9. Cân bằng kinh tế (giá ×2,5–12, XP dốc hơn: ~45 giờ tới cấp 30) và 24 món đồ mới có hiệu ứng (tip, patience, waiter speed, VIP, rest)                                                             | [104_bistro_economy_items.sql](../supabase/migrations/104_bistro_economy_items.sql) | Đã làm     |
+| 10. Sửa lỗi: 6 món mới thiếu công thức trên server, nâng cấp món không ăn                                                                                                                           | [105_bistro_all_recipes.sql](../supabase/migrations/105_bistro_all_recipes.sql)     | Đã làm     |
 
 Khác với bản thiết kế ban đầu: Staff Corner giảm hao Energy thay vì hồi khi nhân viên rảnh (để server tính được cả khi offline); XP khi bày món không tăng theo cấp món; nút chuyển nông sản nằm trong Bistro (Pantry & Market) thay vì trong kho Farm.
 

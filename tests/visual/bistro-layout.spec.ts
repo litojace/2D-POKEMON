@@ -120,6 +120,12 @@ async function problems(page: Page, where: string, inset: Insets | null) {
       sameSize("zoom buttons", ".bs-zoom button", "all");
       sameSize("counter slots", ".bs-slot", "all");
       sameSize("tabs", ".bs-tabs button", "row");
+      // A tab's label shows whole (the Shop's "Gadgets" was cut to "Gadge…").
+      for (const e of Array.from(
+        document.querySelectorAll<HTMLElement>(".bs-tabs button"),
+      ))
+        if (shown(e) && e.scrollWidth > e.clientWidth + 1)
+          out.push(`tab "${e.textContent?.trim()}" is cut short`);
       sameSize("cards", ".bs-dishes > button, .bs-items > *", "row");
       sameSize("edit buttons", ".bs-edit-btns button", "row");
       sameSize("visit buttons", ".bs-visit button", "row");

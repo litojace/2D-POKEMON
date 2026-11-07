@@ -1487,3 +1487,59 @@ describe("items with perks (migration 104)", () => {
     expect(n).toBeGreaterThanOrEqual(1);
   });
 });
+
+describe("every dish and every regular on the server (migration 105)", () => {
+  it("every dish levels up on the server as the shared rules say", async () => {
+    const B = await import("../../packages/shared/src/bistro");
+    await open(ana); // the bistro exists even when this test runs alone
+    await setCoins(ana, 10_000_000, 30);
+    // The six dishes of migration 100 had no recipe on the server: their
+    // level-up was refused while the Recipes button glowed.
+    for (const d of B.DISHES) {
+      await sql(
+        "insert into public.arena_bistro_dish_lv(player_id, dish, lv, mastery) values ($1, $2, 1, 5) on conflict (player_id, dish) do update set lv = 1, mastery = 5",
+        [ana, d.id],
+      );
+      for (const ing of [...B.BASE_INGREDIENTS, "spice"])
+        await sql(
+          "insert into public.arena_bistro_pantry(player_id, ingredient, qty) values ($1, $2, 50) on conflict (player_id, ingredient) do update set qty = 50",
+          [ana, ing],
+        );
+      const local = sanitize(await open(ana));
+      expect(B.dishUp(local, d.id).error ?? "ok", d.id).toBe("ok");
+      const r = await act(ana, [{ a: "dishup", dish: d.id }]);
+      expect(r.results[0], d.id).toEqual({ ok: true });
+      expect(r.bistro.dishLv[d.id].lv, d.id).toBe(2);
+      expect(r.bistro.coins, d.id).toBe(local.coins);
+      expect(r.bistro.pantry, d.id).toEqual(
+        Object.fromEntries(
+          Object.entries(local.pantry).filter(([, n]) => n > 0),
+        ),
+      );
+    }
+  });
+  it("every regular's every visit is served on the server as the shared rules say", async () => {
+    const B = await import("../../packages/shared/src/bistro");
+    await open(ana);
+    await setCoins(ana, 50_000, 30);
+    await sql("delete from public.arena_bistro_regulars where player_id = $1", [
+      ana,
+    ]);
+    const ev =
+      B.eventOn((await sql("select public.arena_today()::text d"))[0].d)?.id ??
+      null;
+    for (const g of B.REGULARS)
+      for (const [i, st] of g.steps.entries()) {
+        await sql(
+          "update public.arena_bistro_counter set dish = case slot when 0 then $2 else null end, servings = case slot when 0 then $3 else 0 end, perfect = false where player_id = $1",
+          [ana, st.dish, st.qty],
+        );
+        const local = sanitize(await open(ana));
+        expect(B.fillRegular(local, g.id, ev).ok, `${g.id} ${i}`).toBe(true);
+        const r = await act(ana, [{ a: "regular", id: g.id }]);
+        expect(r.results[0], `${g.id} ${i}`).toEqual({ ok: true });
+        expect(r.bistro.regulars[g.id], `${g.id} ${i}`).toBe(i + 1);
+        expect(r.bistro.coins, `${g.id} ${i}`).toBe(local.coins);
+      }
+  });
+});

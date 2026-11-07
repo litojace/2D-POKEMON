@@ -144,6 +144,65 @@ test("Bistro decorate mode moves furniture on the server and refuses the kitchen
   expect(errors).toEqual([]);
 });
 
+test("Bistro decorate: while holding an item a drag pans the room; a drag from the item moves it", async ({
+  page,
+}) => {
+  const errors = await openBistro(page);
+  await page.click('.bs-rail [data-act="decor"]');
+  const from = (await B(page, "return b.screen(10, 0, 30)")) as Pt;
+  await page.mouse.click(from.x, from.y);
+  await expect(page.locator("#bs-edit")).toContainText("Placing: Potted Fern");
+  // A drag from an empty spot moves the view, places nothing.
+  const a = (await B(page, "return b.screen(6, 6)")) as Pt;
+  await page.mouse.move(a.x, a.y);
+  await page.mouse.down();
+  await page.mouse.move(a.x - 60, a.y - 40, { steps: 6 });
+  await page.mouse.up();
+  const moved = (await B(page, "return b.screen(6, 6)")) as Pt;
+  expect(Math.round(moved.x - a.x)).toBe(-60);
+  expect(Math.round(moved.y - a.y)).toBe(-40);
+  await expect(page.locator("#bs-edit")).toContainText("Placing: Potted Fern");
+  // On a touch screen, a drag that starts on the held item carries it and
+  // drops it where it ends (with a mouse it follows the pointer anyway).
+  const on = (await B(page, "return b.screen(6, 6)")) as Pt;
+  const to = (await B(page, "return b.screen(9, 4)")) as Pt;
+  await page.evaluate(
+    ([on, to]) => {
+      const cv = document.querySelector(".bistro-layer .bs-cv")!;
+      const r = cv.getBoundingClientRect();
+      const ev = (type: string, x: number, y: number) =>
+        cv.dispatchEvent(
+          new PointerEvent(type, {
+            pointerId: 7,
+            pointerType: "touch",
+            isPrimary: true,
+            bubbles: true,
+            clientX: r.left + x,
+            clientY: r.top + y,
+          }),
+        );
+      ev("pointerdown", on.x, on.y);
+      for (let i = 1; i <= 8; i++)
+        ev(
+          "pointermove",
+          on.x + ((to.x - on.x) * i) / 8,
+          on.y + ((to.y - on.y) * i) / 8,
+        );
+      ev("pointerup", to.x, to.y);
+    },
+    [on, to],
+  );
+  await expect(page.locator("#bs-edit")).toContainText("Decorate");
+  await flush(page);
+  expect(
+    await B(
+      page,
+      "return srv.S.items.some((i) => i.kind === 'plant' && i.x === 9 && i.y === 4)",
+    ),
+  ).toBe(true);
+  expect(errors).toEqual([]);
+});
+
 test("Bistro fits a phone in landscape", async ({ page }, info) => {
   await page.setViewportSize({ width: 844, height: 390 });
   const errors = await openBistro(page);
@@ -409,6 +468,36 @@ test("Bistro recipes: master a dish and level it up, buy at the Market, bring cr
   expect(errors).toEqual([]);
 });
 
+test("Bistro Orders button breathes while orders wait for food", async ({
+  page,
+}) => {
+  await openBistro(page);
+  await B(
+    page,
+    `const S = srv.S; S.level = 30; S.counter = [null, null, null, null];
+     if (srv.extras.league?.last) srv.extras.league.last.claimed = true;
+     return b.load()`,
+  );
+  await expect(page.locator("#bs-board-n")).toBeVisible();
+  await expect(page.locator("#bs-board-btn")).toHaveClass(/\bwaiting\b/);
+  await expect(page.locator("#bs-board-btn")).not.toHaveClass(/\bready\b/);
+  // The board's tabs count what waits; nothing can be done yet, so no gold.
+  await page.click('.bs-rail [data-sheet="board"]');
+  const n = await page.locator("#bs-board-n").textContent();
+  await expect(page.locator('#bs-sheet [data-tn="orders"]')).toHaveText(n!);
+  await expect(page.locator('#bs-sheet [data-tn="orders"]')).not.toHaveClass(
+    /\bgo\b/,
+  );
+  await expect(page.locator('#bs-sheet [data-tn="regulars"]')).toBeVisible();
+  await expect(page.locator('#bs-sheet [data-tn="regulars"]')).not.toHaveClass(
+    /\bgo\b/,
+  );
+  // Waiting orders come first, before the empty slots' "A new order".
+  await expect(page.locator("#bs-sheet .bs-card").first()).toHaveClass(
+    /\bwant\b/,
+  );
+});
+
 test("Bistro board: deliver a catering order, a regular's visit, claim the league, buy event decor, open a branch", async ({
   page,
 }, info) => {
@@ -419,8 +508,25 @@ test("Bistro board: deliver a catering order, a regular's visit, claim the leagu
      S.counter = [{ dish: 'goicuon', servings: 12, perfect: false }, null, null, null];
      return b.load()`,
   );
-  await expect(page.locator("#bs-board-dot")).toBeVisible();
+  // Orders waiting: the button counts them and glows gold when one can be
+  // handed over now.
+  await expect(page.locator("#bs-board-n")).toBeVisible();
+  const open = (await B(
+    page,
+    "return srv.extras.orders.filter((x) => x.dishes && x.expires > b.sync().now()).length",
+  )) as number;
+  expect(open).toBeGreaterThan(0);
+  await expect(page.locator("#bs-board-n")).toHaveText(String(open));
+  await expect(page.locator("#bs-board-btn")).toHaveClass(/\bready\b/);
   await page.click('.bs-rail [data-sheet="board"]');
+  // Spring rolls on the counter: an order and Mira can be served now.
+  await expect(page.locator('#bs-sheet [data-tn="orders"]')).toHaveClass(
+    /\bgo\b/,
+  );
+  await expect(page.locator('#bs-sheet [data-tn="regulars"]')).toHaveClass(
+    /\bgo\b/,
+  );
+  await expect(page.locator("#bs-sheet .bs-card.go")).not.toHaveCount(0);
   await snap(page, info, "bistro-orders");
   await page.click('#bs-sheet [data-order="0"]');
   await flush(page);

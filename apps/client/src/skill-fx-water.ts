@@ -121,76 +121,58 @@ function needleImpact(
   shot(360, (k) => fx.shockwave(x, y + 14, 34 * ease(k), k, FOAM, 5));
 }
 
-// ───────────── Eddy ─────────────
-function whirlpool(g: G, z: Zone, progress: number, now: number) {
+// ───────────── Undertow ─────────────
+/**
+ * Undertow: a lane of fast water from where Tidefin stood along its aim,
+ * streaks of foam racing down it and chevrons showing which way it flows.
+ */
+function undertow(g: G, z: Zone, progress: number, now: number) {
   const fx = fxFor(g.scene),
-    r = z.radius,
-    c = z.color,
-    sq = 0.82,
-    fade =
-      progress > 0.85 ? (1 - progress) / 0.15 : Math.min(1, progress / 0.06),
-    spin = -now / 420;
-  fx.trail(`wp${z.id}`, 999, () => {
-    splash(fx, z.x, z.y, c, 24, 1.4);
-    fx.decal({ kind: "wet", x: z.x, y: z.y, r: r * 0.85, color: c, life: 3 });
+    a = z.ability,
+    ang = z.angle ?? 0,
+    ux = Math.cos(ang),
+    uy = Math.sin(ang),
+    nx = -uy,
+    ny = ux,
+    w = z.radius,
+    grow = Math.min(1, progress * 10),
+    len = a.range * grow,
+    fade = progress > 0.88 ? (1 - progress) / 0.12 : 1,
+    c = z.color;
+  const at = (along: number, across: number) => ({
+    x: z.x + ux * along + nx * across,
+    y: z.y + uy * along + ny * across,
   });
-  // Water surface, darkening toward the eye of the vortex.
-  fx.floorSolid
-    .fillStyle(c, 0.42 * fade)
-    .fillEllipse(z.x, z.y, r * 2, r * 2 * sq);
-  fx.floorSolid
-    .fillStyle(DEEP, 0.38 * fade)
-    .fillEllipse(z.x, z.y, r * 1.25, r * 1.25 * sq);
-  fx.floorSolid
-    .fillStyle(0x0b2d48, 0.5 * fade)
-    .fillEllipse(z.x, z.y, r * 0.45, r * 0.45 * sq);
-  // Foam arms spiralling in.
-  for (let arm = 0; arm < 4; arm++) {
-    const pts = [];
-    for (let i = 0; i <= 24; i++) {
-      const k = i / 24,
-        a = spin + arm * (TAU / 4) + k * 3.6;
-      pts.push({
-        x: z.x + Math.cos(a) * r * (1 - k * 0.85),
-        y: z.y + Math.sin(a) * r * (1 - k * 0.85) * sq,
-      });
-    }
-    fx.floorSolid
-      .lineStyle(6, FOAM, 0.55 * fade)
-      .strokePoints(pts.slice(0, 18), false);
-    fx.floorSolid
-      .lineStyle(2.5, 0xffffff, 0.85 * fade)
-      .strokePoints(pts.slice(2, 14), false);
+  const lane = [at(0, -w), at(len, -w), at(len, w), at(0, w)];
+  fx.floorSolid.fillStyle(DEEP, 0.5 * fade).fillPoints(lane, true);
+  fx.floorSolid.fillStyle(c, 0.3 * fade).fillPoints(lane, true);
+  fx.floor
+    .lineStyle(3, FOAM, 0.55 * fade)
+    .lineBetween(lane[0].x, lane[0].y, lane[1].x, lane[1].y);
+  fx.floor
+    .lineStyle(3, FOAM, 0.55 * fade)
+    .lineBetween(lane[3].x, lane[3].y, lane[2].x, lane[2].y);
+  // Foam streaks racing along.
+  const speed = a.current?.speed ?? 200;
+  for (let i = 0; i < 9; i++) {
+    const across = ((i % 3) - 1) * w * 0.55 + Math.sin(i * 2.3) * 6,
+      along = ((now / 1000) * speed * 1.4 + i * 97) % Math.max(1, len),
+      p1 = at(along, across),
+      p2 = at(Math.max(0, along - 34), across);
+    fx.g.lineStyle(3, FOAM, 0.75 * fade).lineBetween(p2.x, p2.y, p1.x, p1.y);
   }
-  fx.floorSolid
-    .lineStyle(4, FOAM, 0.75 * fade)
-    .strokeEllipse(z.x, z.y, r * 2, r * 2 * sq);
-  fx.glow(z.x, z.y, r, c, 0.25 * fade, true);
-  // Foam flecks riding the current, bubbles popping up.
-  for (let i = 0; i < 14; i++) {
-    const t = (now / 1400 + hash(z.id + i)) % 1,
-      a = spin * 2 + hash(i) * TAU + t * 4,
-      d = r * (1 - t) * 0.95;
-    fx.floorSolid
-      .fillStyle(0xffffff, 0.9 * fade * (1 - t * 0.5))
-      .fillCircle(z.x + Math.cos(a) * d, z.y + Math.sin(a) * d * sq, 2.2);
+  // Chevrons: which way it flows.
+  for (let k = 60; k < len; k += 90) {
+    const o = ((now / 1000) * speed) % 90;
+    const tip = at(k + o - 45, 0),
+      l = at(k + o - 63, -14),
+      r = at(k + o - 63, 14);
+    if (k + o - 45 > len) continue;
+    fx.g.lineStyle(3, c, 0.7 * fade).strokePoints([l, tip, r], false);
   }
-  fx.trail(`wpb${z.id}`, 0.06, () => {
-    const a = Math.random() * TAU,
-      d = Math.random() * r * 0.8;
-    fx.burst({
-      x: z.x + Math.cos(a) * d,
-      y: z.y + Math.sin(a) * d * sq,
-      z: 2,
-      count: 1,
-      kind: "drop",
-      color: FOAM,
-      speed: [0, 20],
-      up: [60, 140],
-      life: [0.3, 0.5],
-      size: [1.2, 2],
-      grav: 900,
-    });
+  fx.trail(`ut${z.id}`, 0.12, () => {
+    const p = at(Math.random() * len, (Math.random() * 2 - 1) * w);
+    splash(fx, p.x, p.y, c, 3, 0.6);
   });
 }
 
@@ -1332,7 +1314,7 @@ export const waterKit: FxKit = {
     "rime-shard": rimeShard,
     hailstone,
   },
-  zone: { eddy: whirlpool, "frost-bloom": frostBloom, whiteout },
+  zone: { undertow, "frost-bloom": frostBloom, whiteout },
   windup: {
     "riptide-wave": riptideWindup,
     "frost-bloom": frostBloomWindup,
@@ -1342,6 +1324,7 @@ export const waterKit: FxKit = {
   cast: {
     "tide-needle": waterCast,
     "gill-siphon": waterCast,
+    undertow: waterCast,
     "riptide-wave": waterCast,
     "rime-shard": frostCast,
     hailstone: frostCast,
