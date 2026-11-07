@@ -279,4 +279,39 @@ whole kit is artillery. The others change:
 
 ### Balance
 
-WAVE3_BALANCE
+Measured like the other waves (round robin against all seventeen others,
+Hard / Normal, fresh seeds; the wave 2 build as the reference):
+
+| Champion | Before wave 3 (seed 81000) | First version (seed 81000) | Shipped (seed 84000) |
+| -------- | -------------------------- | -------------------------- | -------------------- |
+| Tidefin  | 48.6% / 46.5%              | 52.0% / 46.9%              | 51.4% / 45.5%        |
+| Astrabun | 53.1% / 52.0%              | 50.6% / 51.4%              | 50.2% / 56.7%        |
+| Coilemur | 47.3% / 57.8%              | 28.4% / 44.3%              | 53.7% / 53.5%        |
+| Cindrake | 60.2% / 50.0%              | 64.5% / 58.2%              | 53.7% / 54.3%        |
+| Mystowl  | 51.4% / 47.3%              | 51.4% / 45.5%              | 54.7% / 44.3%        |
+
+(The shipped Normal column was played before the last change to the Normal
+handicaps below.) What moved on the way:
+
+- **Spark Trail** at first only hurt enemies who walked onto it, and bots
+  standing toe to toe rarely did: Coilemur fell to 28%. It now also makes
+  Coilemur 30% faster while it lays the trail (so it runs rings round its
+  target), and the trail is wider (28 px, was 22) and lasts 2 s (was 1.6),
+  hitting every 0.4 s (was 0.5). A try with 8 damage and a 2.5 s trail went
+  to 61%; it ships at 6.
+- **Sunfire Pillar** followed bots' aim too well (they always aim at their
+  target): 200 px/s (was 240) and 6 a tick (was 7).
+- Normal handicaps (`dazeBy`): Cindrake 0.41 → 0.44, Tidefin 0.18 → 0.15,
+  Mystowl 0.18 → 0.14, Coilemur 0.32 → 0.34, Astrabun 0.32 → 0.35.
+
+**2v2 and free-for-all**: two rounds of 1,000 fresh line-ups per difficulty
+in 2v2 and 4-player free-for-all, one in 3-player, then a check on unused
+line-ups:
+
+| Champion | 2v2 factor    | 2v2 check (fair 50%) | FFA factor    | FFA check (fair 25%) | 3-player FFA factor |
+| -------- | ------------- | -------------------- | ------------- | -------------------- | ------------------- |
+| Tidefin  | 1.037 → 1.035 | 52.0%                | 0.85 → 0.82   | 29.2% (at 0.84)      | 0.835 → 0.83        |
+| Astrabun | 0.99 → 1.005  | 48.0%                | 1.06 → 1.09   | 22.9%                | 1.16 → 1.19         |
+| Coilemur | 1 → 0.975     | 49.7%                | 1.19 → 1.2    | 25.6%                | 1.26 → 1.25         |
+| Cindrake | 0.993 (same)  | 50.9%                | 1.159 → 1.126 | 24.3%                | 1.189 → 1.195       |
+| Mystowl  | 1.006 → 0.985 | 52.1%                | 0.872 → 0.85  | 24.5%                | 0.838 → 0.835       |
