@@ -646,7 +646,7 @@ const HTML = `<canvas class="bs-cv" aria-label="Your bistro"></canvas>
     <nav class="bs-rail glass" aria-label="Bistro menu">
       <button type="button" data-sheet="menu" title="Recipes">${I("book")}<span>Recipes</span></button>
       <button type="button" data-sheet="friends" title="Friends' bistros">${I("smile")}<span>Friends</span></button>
-      <button type="button" data-sheet="board" id="bs-board-btn" title="Catering orders, regulars, the league and events">${I("flag")}<span>Orders</span><b class="dot" id="bs-board-dot" hidden></b><b class="cnt" id="bs-board-n" hidden></b></button>
+      <button type="button" data-sheet="board" id="bs-board-btn" title="Catering orders, regulars, the league and events"><i class="ring" id="bs-board-ring" hidden></i>${I("flag")}<span>Orders</span><b class="dot" id="bs-board-dot" hidden></b><b class="cnt" id="bs-board-n" hidden></b><b class="urg" id="bs-board-urg" title="An order runs out soon" hidden>${I("clock")}</b></button>
       <button type="button" data-sheet="staff" title="Staff and upgrades">${I("friends")}<span>Staff</span><b class="dot" id="bs-staff-dot" hidden></b></button>
       <button type="button" data-sheet="shop" title="Shop">${I("shop")}<span>Shop</span></button>
       <button type="button" data-act="decor" title="Decorate">${I("decor")}<span>Decor</span></button>
@@ -2457,22 +2457,64 @@ export function openBistro(o: BistroOptions): BistroHandle {
     </div>`;
   };
   let branchArmed = false;
-  /** How many things on the board can be handed over right now: complete
-   * catering orders, regulars whose dish is on the counter, the league prize. */
-  const boardReadyCount = () => {
+  /** Seconds left under which a waiting order counts as running out. */
+  const ORDER_SOON = 120;
+  /**
+   * The board at a glance: everything that can be handed over now (with a
+   * key per thing, so each is announced once), the open orders, whether one
+   * runs out soon, how far along the order closest to done is, and which
+   * dishes the open orders and regulars still want.
+   */
+  const boardState = () => {
     const ex = sync.extras;
     const now = nowS();
-    let n = ex.orders.filter(
-      (o) => o.dishes && o.expires > now && orderReady(S, o),
-    ).length;
+    const ready: { key: string; label: string }[] = [];
+    const want = new Set<DishId>();
+    const open = ex.orders.filter((o) => o.dishes && o.expires > now);
+    let best = 0,
+      soon = false;
+    for (const o of open) {
+      if (orderReady(S, o)) {
+        ready.push({
+          key: `o${o.slot}:${o.expires}`,
+          label: "A catering order is ready to deliver!",
+        });
+        continue;
+      }
+      if (o.expires - now < ORDER_SOON * 1000) soon = true;
+      let have = 0,
+        total = 0;
+      for (const d of o.dishes!) {
+        const aside = Math.min(d.qty, o.filled[d.dish] ?? 0);
+        const left = orderLeft(o, d.dish, d.qty);
+        if (left > 0) want.add(d.dish);
+        have += aside + Math.min(left, onCounter(S, d.dish));
+        total += d.qty;
+      }
+      if (total) best = Math.max(best, have / total);
+    }
     for (const g of REGULARS) {
-      const st = g.steps[S.regulars[g.id] ?? 0];
-      if (st && S.level >= g.level && onCounter(S, st.dish) >= st.qty) n++;
+      const step = S.regulars[g.id] ?? 0;
+      const st = g.steps[step];
+      if (!st || S.level < g.level) continue;
+      if (onCounter(S, st.dish) >= st.qty)
+        ready.push({
+          key: `r${g.id}:${step}`,
+          label: `${g.name}'s dish is ready to serve!`,
+        });
+      else want.add(st.dish);
     }
     const l = ex.league.last;
-    if (l && !l.claimed && l.points >= LEAGUE_MIN) n++;
-    return n;
+    if (l && !l.claimed && l.points >= LEAGUE_MIN)
+      ready.push({
+        key: "league",
+        label: "Your league reward is ready to claim!",
+      });
+    return { ready, open: open.length, soon, best, want };
   };
+  /** What has been announced as ready (null: not looked yet; what is ready
+   * then is taken as known), so each thing is announced once. */
+  let announced: Set<string> | null = null;
   /** What waits on the board: open orders and regulars, and how many of
    * them can be done right now (tabs and cards light up for those). */
   const boardWaiting = () => {
@@ -2577,7 +2619,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
           const more = Math.min(qty - aside, onCounter(S, dish));
           return `<em class="${aside >= qty ? "ok" : aside + more >= qty ? "ready" : "poor"}"><img src="${dishIconUrl(dish, 48)}" alt="">${aside}/${qty} ${esc(DISH_BY_ID[dish].name)}${more ? ` <i>+${more}</i>` : ""}</em>`;
         };
-        return `<div class="bs-card want${ready || can ? " go" : ""}"><div class="ic">${I("flag")}</div><div class="txt"><b>Catering order</b><span class="needs">${o.dishes.map((d) => row(d.dish, d.qty)).join("")}</span><small>${coinTag(o.coins)} · ${o.xp} XP${o.tokens ? ` · ${o.tokens} tokens` : ""} · ${fmtDur(left * 1000)} left</small></div><div class="acts"><button type="button" class="pr${ready || can ? "" : " poor"}" data-order="${o.slot}">${ready ? "Deliver" : "Put aside"}</button><button type="button" class="pr ghost" data-skip="${o.slot}">Skip</button></div></div>`;
+        return `<div class="bs-card want${ready || can ? " go" : ""}"><div class="ic">${I("flag")}</div><div class="txt"><b>Catering order</b><span class="needs">${o.dishes.map((d) => row(d.dish, d.qty)).join("")}</span><small>${coinTag(o.coins)} · ${o.xp} XP${o.tokens ? ` · ${o.tokens} tokens` : ""} · <span class="${!ready && left < ORDER_SOON ? "soon" : ""}">${fmtDur(left * 1000)} left</span></small></div><div class="acts"><button type="button" class="pr${ready || can ? "" : " poor"}" data-order="${o.slot}">${ready ? "Deliver" : "Put aside"}</button><button type="button" class="pr ghost" data-skip="${o.slot}">Skip</button></div></div>`;
       })
       .join(
         "",
@@ -2619,6 +2661,13 @@ export function openBistro(o: BistroOptions): BistroHandle {
             return `<button type="button" data-tab="${id}" aria-pressed="${id === tab}">${label}${mark}</button>`;
           })
           .join("")}</nav>` +
+        (() => {
+          // Two or more ready: hand them all over in one tap.
+          const n = visiting ? 0 : boardState().ready.length;
+          return n >= 2
+            ? `<div class="bs-allbar"><button type="button" class="pr" data-deliver-all>${I("flag")} Hand over all ready (${n})</button></div>`
+            : "";
+        })() +
         boardBody(tab);
       return;
     }
@@ -3112,6 +3161,37 @@ export function openBistro(o: BistroOptions): BistroHandle {
       changed();
       return renderSheet();
     }
+    if (b.hasAttribute("data-deliver-all")) {
+      // Every complete order, every regular whose dish is on the counter,
+      // and the league prize, in one go.
+      const coins0 = S.coins;
+      let done = 0;
+      for (const ord of [...sync.extras.orders]) {
+        if (!ord.dishes || !orderReady(S, ord)) continue;
+        if (sync.do({ a: "order", slot: ord.slot }).ok) done++;
+      }
+      for (const g of REGULARS) {
+        const st = g.steps[S.regulars[g.id] ?? 0];
+        if (!st || S.level < g.level || onCounter(S, st.dish) < st.qty)
+          continue;
+        if (sync.do({ a: "regular", id: g.id }).ok) done++;
+      }
+      const l = sync.extras.league.last;
+      if (
+        l &&
+        !l.claimed &&
+        l.points >= LEAGUE_MIN &&
+        sync.do({ a: "league" }).ok
+      )
+        done++;
+      if (!done) return o.toast("Nothing is ready yet.");
+      sound("fanfare");
+      banner(
+        `<b>${done} handed over!</b><span>+${fmt(Math.max(0, S.coins - coins0))} coins</span>`,
+      );
+      changed();
+      return renderSheet();
+    }
     if (b.dataset.skip !== undefined) {
       const had = sync.extras.orders.find(
         (x) => x.slot === Number(b.dataset.skip),
@@ -3373,14 +3453,42 @@ export function openBistro(o: BistroOptions): BistroHandle {
     const bdot = layer.querySelector<HTMLElement>("#bs-board-dot");
     const bn = layer.querySelector<HTMLElement>("#bs-board-n");
     const bbtn = layer.querySelector<HTMLElement>("#bs-board-btn");
-    const now = nowS();
-    const open = visiting
-      ? 0
-      : sync.extras.orders.filter((x) => x.dishes && x.expires > now).length;
-    const readyN = visiting ? 0 : boardReadyCount();
+    const st = visiting ? null : boardState();
+    const open = st?.open ?? 0;
+    const readyN = st?.ready.length ?? 0;
     const ready = readyN > 0;
     const shown = ready ? readyN : open;
     if (bdot) bdot.hidden = true;
+    // Something just became ready: a chime and a word, once for each.
+    if (st) {
+      if (!announced) announced = new Set(st.ready.map((r) => r.key));
+      else {
+        const fresh = st.ready.filter((r) => !announced!.has(r.key));
+        for (const r of fresh) announced.add(r.key);
+        if (announced.size > 200)
+          announced = new Set(st.ready.map((r) => r.key));
+        if (fresh.length) {
+          sound("chime");
+          o.toast(
+            fresh.length > 1
+              ? `${fresh.length} things are ready to hand over!`
+              : fresh[0].label,
+          );
+        }
+      }
+    } else announced = null;
+    // An order about to run out: a clock on the button, and it hurries.
+    const urg = layer.querySelector<HTMLElement>("#bs-board-urg");
+    if (urg) urg.hidden = !st?.soon;
+    bbtn?.classList.toggle("urgent", !!st?.soon);
+    // How close the order nearest to done is, as a ring round the flag.
+    const ring = layer.querySelector<HTMLElement>("#bs-board-ring");
+    if (ring) {
+      const p = Math.round((st?.best ?? 0) * 100);
+      ring.hidden = !st || ready || open === 0 || p === 0;
+      ring.style.setProperty("--p", String(p));
+      ring.title = `The closest order is ${p}% ready`;
+    }
     if (bn) {
       bn.hidden = shown === 0;
       bn.classList.toggle("ready", ready);
@@ -3409,10 +3517,12 @@ export function openBistro(o: BistroOptions): BistroHandle {
     // Only when something shows differently: a chip redrawn under a finger
     // would swallow the tap.
     setInner(chips, chipsHtml);
+    // Dishes an open order or a regular still wants get a gold edge.
+    const wanted = st?.want;
     const slots = S.counter
       .map((c) =>
         c
-          ? `<div class="bs-slot${c.perfect ? " perfect" : ""}" title="${esc(DISH_BY_ID[c.dish].name)}"><img src="${dishIconUrl(c.dish, 64)}" alt=""><b>${c.servings}</b></div>`
+          ? `<div class="bs-slot${c.perfect ? " perfect" : ""}${wanted?.has(c.dish) ? " wanted" : ""}" title="${esc(DISH_BY_ID[c.dish].name)}${wanted?.has(c.dish) ? " · wanted for an order" : ""}"><img src="${dishIconUrl(c.dish, 64)}" alt=""><b>${c.servings}</b></div>`
           : `<div class="bs-slot empty"></div>`,
       )
       .join("");
