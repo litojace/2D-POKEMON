@@ -11,8 +11,8 @@ import { fxFor, type Fx } from "./fx-engine";
  * aura scatter motes and shards; nature sheds leaves and pollen.
  *
  * Purely cosmetic and capped by the effects engine's particle budget and
- * quality settings. The moves reworked in waves 1–3 draw their own physics
- * and are skipped here.
+ * quality settings. The moves reworked in waves 1–3 and the ultimates draw
+ * their own physics and are skipped here.
  */
 const BESPOKE = new Set([
   "gill-siphon",
@@ -33,6 +33,20 @@ const BESPOKE = new Set([
   "spark-trail",
   "sunfire-pillar",
   "mind-maze",
+  // The older ultimates draw their own physics too (skill-fx-ultimates.ts).
+  "overcharge",
+  "electromagnet",
+  "riptide-wave",
+  "whiteout",
+  "chestnut-storm",
+  "tremor",
+  "landslide",
+  "void-orb",
+  "skyline-lance",
+  "sanctuary",
+  "full-moon",
+  "pinball",
+  "overgrowth",
 ]);
 
 type Element =

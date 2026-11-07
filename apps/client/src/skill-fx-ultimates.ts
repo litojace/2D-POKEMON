@@ -509,11 +509,573 @@ const voidOrb: ImpactFn = (scene, a, x, y, color, shot) => {
   });
 };
 
+// ───────────── Second pass: the physical side of every older ultimate ─────────────
+// Each set piece above gets what it would really throw about: debris that
+// falls and bounces, smoke and dust that roll and settle, marks left on the
+// floor, things pulled in or blown away.
+type BeamFn = NonNullable<FxKit["beam"]>[string];
+type ProjectileFn = NonNullable<FxKit["projectile"]>[string];
+type Fx = ReturnType<typeof fxFor>;
+const ring = (n: number, f: (a: number, i: number) => void) => {
+  for (let i = 0; i < n; i++) f((i / n) * TAU, i);
+};
+const rocks = (
+  fx: Fx,
+  x: number,
+  y: number,
+  n: number,
+  speed: [number, number],
+  size: [number, number] = [2.5, 5],
+  color = [0x8a7a64, 0x6b5a48, 0xa8957a],
+) =>
+  fx.burst({
+    x,
+    y,
+    z: 6,
+    count: n,
+    kind: "debris",
+    color,
+    speed,
+    up: [200, 460],
+    life: [0.7, 1.2],
+    size,
+    grav: 1100,
+    bounce: 0.35,
+  });
+const dustRing = (
+  fx: Fx,
+  x: number,
+  y: number,
+  r: number,
+  color = [0xc4a678, 0xd9bf8f],
+) =>
+  ring(18, (a) =>
+    fx.burst({
+      x: x + Math.cos(a) * 30,
+      y: y + Math.sin(a) * 15,
+      z: 4,
+      count: 1,
+      kind: "smoke",
+      color,
+      angle: a,
+      spread: 0.1,
+      speed: [r * 0.9, r * 1.3],
+      up: [5, 30],
+      life: [0.7, 1.1],
+      size: [14, 22],
+      drag: 2.2,
+    }),
+  );
+
+/** Overcharge: fulgurite scorches, spark showers off the rim, ozone rising. */
+const overchargePhysics: CastFn = (scene, a, x, y) => {
+  const fx = fxFor(scene),
+    r = a.radius;
+  fx.decal({ kind: "scorch", x, y, r: r * 0.6, color: 0x9fe8ff, life: 4 });
+  ring(6, (aa) => {
+    const px = x + Math.cos(aa) * r * 0.8,
+      py = y + Math.sin(aa) * r * 0.8 * SQ;
+    fx.burst({
+      x: px,
+      y: py,
+      z: 10,
+      count: 8,
+      kind: "spark",
+      color: [WHITE, 0xfff6c2, 0x9fe8ff],
+      speed: [80, 260],
+      up: [150, 380],
+      life: [0.4, 0.8],
+      size: [0.9, 1.7],
+      grav: 1100,
+      bounce: 0.45,
+    });
+  });
+  fx.burst({
+    x,
+    y,
+    z: 20,
+    count: 10,
+    kind: "smoke",
+    color: [0x6a7488, 0x9aa4b8],
+    speed: [20, 80],
+    up: [40, 90],
+    life: [1, 1.6],
+    size: [14, 22],
+    grav: -20,
+    drag: 1.2,
+  });
+};
+/** Electromagnet: filings and grit dragged in from the rim, sparks at the core. */
+const electromagnetPhysics: ZoneFn = (g, z, progress) => {
+  const fx = fxFor(g.scene),
+    r = z.radius;
+  if (progress > 0.95) return;
+  fx.trail(`em-pull${z.id}`, 0.03, () => {
+    const aa = Math.random() * TAU,
+      px = z.x + Math.cos(aa) * r,
+      py = z.y + Math.sin(aa) * r * SQ;
+    fx.burst({
+      x: px,
+      y: py,
+      z: 6,
+      count: 1,
+      kind: "debris",
+      color: [0xd4dde9, 0x8a94a4, 0x6b5a48],
+      angle: aa + Math.PI,
+      spread: 0.15,
+      speed: [r * 1.2, r * 1.8],
+      up: [10, 40],
+      life: [0.45, 0.6],
+      size: [1.2, 2.2],
+      drag: 0.4,
+    });
+  });
+  fx.trail(`em-core${z.id}`, 0.08, () =>
+    fx.burst({
+      x: z.x,
+      y: z.y,
+      z: 20,
+      count: 2,
+      kind: "spark",
+      color: [WHITE, 0xff5f57, 0x9fe8ff],
+      speed: [60, 180],
+      up: [80, 220],
+      life: [0.3, 0.5],
+      size: [0.9, 1.5],
+      grav: 1000,
+      bounce: 0.4,
+    }),
+  );
+};
+/** Riptide Wave: the wall of water throws spray and foam and soaks the floor. */
+const riptidePhysics: ProjectileFn = (g, pr) => {
+  const fx = fxFor(g.scene),
+    dir = Math.atan2(pr.vy, pr.vx),
+    r = pr.ability.radius;
+  fx.trail(`rw-spray${pr.id}`, 0.03, () => {
+    for (const side of [-1, 1])
+      fx.burst({
+        x: pr.x - Math.sin(dir) * r * side,
+        y: pr.y + Math.cos(dir) * r * side,
+        z: 20,
+        count: 2,
+        kind: "drop",
+        color: [0x6fd3ff, 0xf2fdff, 0x3fa9e0],
+        angle: dir + side * 1.2,
+        spread: 0.5,
+        speed: [80, 220],
+        up: [200, 420],
+        life: [0.45, 0.8],
+        size: [1.6, 3],
+        grav: 1150,
+        bounce: 0.1,
+      });
+    fx.burst({
+      x: pr.x,
+      y: pr.y,
+      z: 30,
+      count: 1,
+      kind: "smoke",
+      color: [0xf2fdff, 0xd6f3ff],
+      angle: dir + Math.PI,
+      spread: 0.4,
+      speed: [40, 90],
+      up: [20, 60],
+      life: [0.5, 0.8],
+      size: [14, 22],
+      drag: 1.6,
+    });
+  });
+  fx.trail(`rw-wet${pr.id}`, 0.12, () =>
+    fx.decal({
+      kind: "wet",
+      x: pr.x,
+      y: pr.y,
+      r: r * 0.9,
+      color: 0x3fa9e0,
+      life: 2.5,
+    }),
+  );
+};
+const riptideCrash: ImpactFn = (scene, a, x, y) => {
+  const fx = fxFor(scene),
+    r = Math.max(a.explosion ?? 0, a.radius * 2);
+  fx.decal({ kind: "wet", x, y, r: r * 1.2, color: 0x3fa9e0, life: 3.5 });
+  fx.burst({
+    x,
+    y,
+    z: 10,
+    count: 34,
+    kind: "drop",
+    color: [0x6fd3ff, 0xf2fdff, 0x3fa9e0],
+    speed: [80, 320],
+    up: [220, 520],
+    life: [0.6, 1],
+    size: [1.8, 3.4],
+    grav: 1150,
+    bounce: 0.1,
+  });
+  dustRing(fx, x, y, r, [0xf2fdff, 0xd6f3ff]);
+  fx.shake(200, 0.006);
+};
+/** Whiteout: snow driving sideways, ice chips, frost on the floor. */
+const whiteoutPhysics: ZoneFn = (g, z, progress) => {
+  const fx = fxFor(g.scene),
+    r = z.radius,
+    wind = 0.4;
+  fx.trail(`wo-frost${z.id}`, 999, () =>
+    fx.decal({
+      kind: "wet",
+      x: z.x,
+      y: z.y,
+      r: r * 0.95,
+      color: 0xdff8ff,
+      life: z.ability.duration + 1.5,
+    }),
+  );
+  if (progress > 0.95) return;
+  fx.trail(`wo-snow${z.id}`, 0.02, () => {
+    const px = z.x - r + Math.random() * r * 0.6,
+      py = z.y + (Math.random() * 2 - 1) * r * SQ;
+    fx.burst({
+      x: px,
+      y: py,
+      z: 40 + Math.random() * 60,
+      count: 1,
+      kind: "mote",
+      color: [WHITE, 0xdff8ff, 0xb8ecff],
+      angle: wind,
+      spread: 0.3,
+      speed: [r * 1.2, r * 1.8],
+      up: [-40, 0],
+      life: [0.7, 1.1],
+      size: [1.2, 2.4],
+      grav: 60,
+      drag: 0.3,
+    });
+  });
+  fx.trail(`wo-chip${z.id}`, 0.15, () => {
+    const aa = Math.random() * TAU,
+      d = Math.random() * r;
+    fx.burst({
+      x: z.x + Math.cos(aa) * d,
+      y: z.y + Math.sin(aa) * d * SQ,
+      z: 4,
+      count: 2,
+      kind: "debris",
+      color: [0xdff8ff, 0xb8ecff],
+      speed: [30, 90],
+      up: [80, 180],
+      life: [0.4, 0.7],
+      size: [1.2, 2.2],
+      grav: 1000,
+      bounce: 0.45,
+    });
+  });
+};
+/** Chestnut Storm: when it lands, shells shatter, fires flare, smoke columns. */
+const stormPhysics: ZoneFn = (g, z, progress) => {
+  const fx = fxFor(g.scene),
+    a = z.ability,
+    r = z.radius,
+    strikeAt = (a.tickDelay ?? 0.35) / a.duration;
+  if (progress < strikeAt) return;
+  fx.trail(`cs-land${z.id}`, 999, () => {
+    ring(7, (aa, i) => {
+      const d = r * (0.25 + hash(i * 3 + z.id) * 0.6),
+        px = z.x + Math.cos(aa + i) * d,
+        py = z.y + Math.sin(aa + i) * d * SQ;
+      fx.burst({
+        x: px,
+        y: py,
+        z: 8,
+        count: 6,
+        kind: "debris",
+        color: [0x7a4a24, 0x4a2c14, 0xc98b4a],
+        speed: [60, 200],
+        up: [200, 420],
+        life: [0.6, 1],
+        size: [2, 3.6],
+        grav: 1100,
+        bounce: 0.35,
+      });
+      fx.burst({
+        x: px,
+        y: py,
+        z: 10,
+        count: 5,
+        kind: "flame",
+        color: [0xff8a3d, 0xffd76a],
+        speed: [20, 80],
+        up: [40, 120],
+        life: [0.3, 0.6],
+        size: [8, 13],
+        drag: 3,
+      });
+    });
+    fx.shake(260, 0.008);
+  });
+  fx.trail(`cs-smoke${z.id}`, 0.1, () => {
+    const aa = Math.random() * TAU,
+      d = Math.random() * r * 0.8;
+    fx.burst({
+      x: z.x + Math.cos(aa) * d,
+      y: z.y + Math.sin(aa) * d * SQ,
+      z: 30,
+      count: 1,
+      kind: "smoke",
+      color: [0x4a4240, 0x5e5450],
+      speed: [5, 25],
+      up: [50, 90],
+      life: [1.2, 1.8],
+      size: [16, 26],
+      grav: -18,
+      drag: 1,
+    });
+  });
+};
+/** Tremor: radiating cracks, boulders lobbed up, a dust wall rolling out. */
+const tremorPhysics: CastFn = (scene, a, x, y) => {
+  const fx = fxFor(scene),
+    r = a.radius;
+  fx.decal({ kind: "crack", x, y, r: r * 0.7, color: 0x6b5640, life: 5 });
+  rocks(fx, x, y, 24, [80, r * 1.2], [3, 6]);
+  dustRing(fx, x, y, r);
+};
+/** Landslide: dirt sprays from the burrow, then the eruption flings boulders. */
+const landslideDig: CastFn = (scene, _a, x, y, angle) => {
+  const fx = fxFor(scene);
+  fx.burst({
+    x,
+    y,
+    z: 4,
+    count: 14,
+    kind: "debris",
+    color: [0x5a4330, 0x8a7a64],
+    angle: angle + Math.PI,
+    spread: 0.7,
+    speed: [80, 220],
+    up: [120, 280],
+    life: [0.5, 0.8],
+    size: [1.8, 3.2],
+    grav: 1100,
+    bounce: 0.3,
+  });
+  fx.burst({
+    x,
+    y,
+    z: 4,
+    count: 6,
+    kind: "smoke",
+    color: [0xc4a678, 0xd9bf8f],
+    angle: angle + Math.PI,
+    spread: 0.6,
+    speed: [40, 120],
+    up: [10, 40],
+    life: [0.6, 1],
+    size: [12, 18],
+    drag: 2,
+  });
+};
+const landslidePhysics: ImpactFn = (scene, a, x, y) => {
+  const fx = fxFor(scene),
+    r = a.explosion ?? 130;
+  fx.decal({ kind: "crack", x, y, r: r * 0.8, color: 0x6b5640, life: 5 });
+  rocks(fx, x, y, 22, [60, r * 1.6], [3, 6.5]);
+  fx.burst({
+    x,
+    y,
+    z: 10,
+    count: 10,
+    kind: "smoke",
+    color: [0xc4a678, 0xd9bf8f, 0x8a7a64],
+    speed: [20, 80],
+    up: [80, 180],
+    life: [1, 1.6],
+    size: [18, 28],
+    grav: -10,
+    drag: 1.2,
+  });
+  dustRing(fx, x, y, r);
+};
+/** Void Orb: it drinks the light around it, then bursts and stains the floor. */
+const voidPhysics: ProjectileFn = (g, pr) => {
+  const fx = fxFor(g.scene),
+    r = pr.ability.radius;
+  fx.trail(`vo-suck${pr.id}`, 0.03, () => {
+    const aa = Math.random() * TAU;
+    fx.burst({
+      x: pr.x + Math.cos(aa) * r * 3,
+      y: pr.y + Math.sin(aa) * r * 3,
+      z: 16,
+      count: 1,
+      kind: "mote",
+      color: [0xb59bff, 0x7dffe1, 0x150b26],
+      angle: aa + Math.PI,
+      spread: 0.1,
+      speed: [r * 4, r * 6],
+      life: [0.2, 0.3],
+      size: [1, 2],
+      drag: 0.5,
+    });
+  });
+};
+const voidStain: ImpactFn = (scene, a, x, y) => {
+  const fx = fxFor(scene),
+    r = a.explosion ?? 110;
+  fx.decal({ kind: "wet", x, y, r: r * 0.9, color: 0x150b26, life: 4 });
+  rocks(fx, x, y, 14, [80, r * 1.4], [2, 4], [0x3a2470, 0x150b26, 0x6b5a48]);
+  fx.burst({
+    x,
+    y,
+    z: 10,
+    count: 12,
+    kind: "smoke",
+    color: [0x2a1450, 0x3a2470],
+    speed: [30, r],
+    up: [20, 70],
+    life: [0.9, 1.4],
+    size: [14, 24],
+    grav: -12,
+    drag: 1.6,
+  });
+};
+/** Skyline Lance: the shock along the lane kicks up dust and grit and scars it. */
+const lancePhysics: BeamFn = (scene, _a, x, y, tx, ty) => {
+  const fx = fxFor(scene),
+    len = Math.hypot(tx - x, ty - y),
+    ang = Math.atan2(ty - y, tx - x);
+  for (let d = 30; d < len; d += 60) {
+    const px = x + Math.cos(ang) * d,
+      py = y + Math.sin(ang) * d;
+    fx.burst({
+      x: px,
+      y: py,
+      z: 4,
+      count: 2,
+      kind: "debris",
+      color: [0x8a7a64, 0xdff4ff],
+      angle: ang + (Math.random() < 0.5 ? 1.57 : -1.57),
+      spread: 0.5,
+      speed: [60, 160],
+      up: [120, 260],
+      life: [0.4, 0.7],
+      size: [1.4, 2.6],
+      grav: 1100,
+      bounce: 0.35,
+    });
+    fx.burst({
+      x: px,
+      y: py,
+      z: 4,
+      count: 1,
+      kind: "smoke",
+      color: [0xd9cbb4, 0xdff4ff],
+      speed: [10, 40],
+      up: [10, 30],
+      life: [0.6, 1],
+      size: [12, 18],
+      drag: 2,
+    });
+  }
+  rocks(fx, tx, ty, 10, [80, 240], [2, 3.6], [0xdff4ff, 0x8ff6ff, 0x8a7a64]);
+};
+/** Sanctuary: warm light, petals and pollen drifting up, sparkles rising. */
+const sanctuaryPhysics: ZoneFn = (g, z) => {
+  const fx = fxFor(g.scene),
+    r = z.radius;
+  fx.trail(`sa-petal${z.id}`, 0.05, () => {
+    const aa = Math.random() * TAU,
+      d = Math.sqrt(Math.random()) * r;
+    fx.burst({
+      x: z.x + Math.cos(aa) * d,
+      y: z.y + Math.sin(aa) * d * SQ,
+      z: 2,
+      count: 1,
+      kind: Math.random() < 0.5 ? "debris" : "mote",
+      color: [0xffd76a, 0xfff6d6, 0x9be07a, 0xffb0c8],
+      speed: [4, 20],
+      up: [30, 70],
+      life: [1.2, 1.8],
+      size: [1.4, 2.6],
+      grav: -8,
+      drag: 1.4,
+    });
+  });
+};
+/** Full Moon: a crater, moon dust billowing, rocks thrown out. */
+const fullMoonPhysics: ImpactFn = (scene, a, x, y) => {
+  const fx = fxFor(scene),
+    r = a.radius || 170;
+  fx.decal({ kind: "crack", x, y, r: r * 0.6, color: 0x6a4fa0, life: 5 });
+  rocks(fx, x, y, 20, [80, r * 1.3], [2.5, 5], [0x9a8a78, 0xc9b8a4, 0x6b5a48]);
+  dustRing(fx, x, y, r, [0xfff3cf, 0xe8dcc0]);
+  fx.shake(240, 0.008);
+};
+/** Pinball: every ram sends scale-leaves and grit flying. */
+const pinballPhysics: ImpactFn = (scene, _a, x, y) => {
+  const fx = fxFor(scene);
+  fx.burst({
+    x,
+    y,
+    z: 16,
+    count: 8,
+    kind: "debris",
+    color: [0x9be07a, 0x6fbf5a, 0x3e7a3a],
+    speed: [80, 220],
+    up: [100, 240],
+    life: [0.8, 1.2],
+    size: [2.2, 3.4],
+    grav: 400,
+    drag: 2,
+  });
+  rocks(fx, x, y, 6, [60, 160], [1.6, 3]);
+};
+/** Overgrowth: soil heaves, leaves and petals burst out, pollen hangs in the air. */
+const overgrowthPhysics: CastFn = (scene, a, x, y) => {
+  const fx = fxFor(scene),
+    r = a.radius;
+  fx.decal({ kind: "crack", x, y, r: r * 0.6, color: 0x3e7a3a, life: 4 });
+  rocks(fx, x, y, 12, [60, r], [2, 3.6], [0x5a4330, 0x8a7a64]);
+  ring(10, (aa) =>
+    fx.burst({
+      x: x + Math.cos(aa) * r * 0.6,
+      y: y + Math.sin(aa) * r * 0.6 * SQ,
+      z: 10,
+      count: 3,
+      kind: "debris",
+      color: [0x9be07a, 0x6fbf5a, 0xffb0c8, 0xfff6a0],
+      speed: [20, 80],
+      up: [80, 180],
+      life: [1, 1.6],
+      size: [2.2, 3.4],
+      grav: 200,
+      drag: 2.4,
+    }),
+  );
+  fx.burst({
+    x,
+    y,
+    z: 30,
+    count: 14,
+    kind: "mote",
+    color: [0xfff6a0, 0xe9f5c8],
+    speed: [20, r * 0.6],
+    up: [20, 60],
+    life: [1.4, 2.2],
+    size: [1, 2],
+    grav: -10,
+    drag: 1.4,
+  });
+};
+
 export function withUltimates(kit: Required<FxKit>): Required<FxKit> {
   const cast = { ...kit.cast },
     zone = { ...kit.zone },
     windup = { ...kit.windup },
-    impact = { ...kit.impact };
+    impact = { ...kit.impact },
+    beam = { ...kit.beam },
+    projectile = { ...kit.projectile };
   cast.overcharge = then(kit.cast.overcharge, overcharge);
   cast["crystal-cage"] = then(kit.cast["crystal-cage"], cage);
   cast["radiant-flare"] = then(kit.cast["radiant-flare"], radiant);
@@ -522,5 +1084,22 @@ export function withUltimates(kit: Required<FxKit>): Required<FxKit> {
   zone["mind-maze"] = then(kit.zone["mind-maze"], thought);
   windup["radiant-flare"] = then(kit.windup["radiant-flare"], flareWindup);
   impact["void-orb"] = then(kit.impact["void-orb"], voidOrb);
-  return { ...kit, cast, zone, windup, impact };
+  // The physical side of every older ultimate.
+  cast.overcharge = then(cast.overcharge, overchargePhysics);
+  zone.electromagnet = then(zone.electromagnet, electromagnetPhysics);
+  projectile["riptide-wave"] = then(projectile["riptide-wave"], riptidePhysics);
+  impact["riptide-wave"] = then(impact["riptide-wave"], riptideCrash);
+  zone.whiteout = then(zone.whiteout, whiteoutPhysics);
+  zone["chestnut-storm"] = then(zone["chestnut-storm"], stormPhysics);
+  cast.tremor = then(cast.tremor, tremorPhysics);
+  cast.landslide = then(cast.landslide, landslideDig);
+  impact.landslide = then(impact.landslide, landslidePhysics);
+  projectile["void-orb"] = then(projectile["void-orb"], voidPhysics);
+  impact["void-orb"] = then(impact["void-orb"], voidStain);
+  beam["skyline-lance"] = then(beam["skyline-lance"], lancePhysics);
+  zone.sanctuary = then(zone.sanctuary, sanctuaryPhysics);
+  impact["full-moon"] = then(impact["full-moon"], fullMoonPhysics);
+  impact.pinball = then(impact.pinball, pinballPhysics);
+  cast.overgrowth = then(cast.overgrowth, overgrowthPhysics);
+  return { ...kit, cast, zone, windup, impact, beam, projectile };
 }
