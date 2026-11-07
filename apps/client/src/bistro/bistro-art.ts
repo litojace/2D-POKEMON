@@ -3524,27 +3524,67 @@ export function drawChandelier(ctx: Ctx, x: number, y: number, t: number) {
 export function drawSakura(ctx: Ctx, x: number, y: number, t: number) {
   const c = iso(x, y);
   softShadow(ctx, c.x, c.y + 2, 30, 12, 0.28);
-  ctx.fillStyle = "#6b4226";
+  // Trunk and two branches run up into the crown, so the blossoms sit on
+  // the wood (no gap between them).
+  ctx.fillStyle = lin(ctx, c.x - 6, 0, c.x + 6, 0, [
+    [0, "#8a5a36"],
+    [0.5, "#6b4226"],
+    [1, "#4a2a16"],
+  ]);
   ctx.beginPath();
-  ctx.moveTo(c.x - 5, c.y);
-  ctx.lineTo(c.x - 3, c.y - 50);
-  ctx.lineTo(c.x + 3, c.y - 50);
-  ctx.lineTo(c.x + 6, c.y);
+  ctx.moveTo(c.x - 7, c.y);
+  ctx.quadraticCurveTo(c.x - 3, c.y - 4, c.x - 3, c.y - 12);
+  ctx.lineTo(c.x - 2, c.y - 70);
+  ctx.lineTo(c.x + 2, c.y - 70);
+  ctx.lineTo(c.x + 3, c.y - 12);
+  ctx.quadraticCurveTo(c.x + 3, c.y - 4, c.x + 8, c.y);
   ctx.closePath();
   ctx.fill();
+  ctx.strokeStyle = "#5a3520";
+  ctx.lineWidth = 3;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(c.x, c.y - 34);
+  ctx.quadraticCurveTo(c.x - 10, c.y - 44, c.x - 18, c.y - 58);
+  ctx.moveTo(c.x + 1, c.y - 40);
+  ctx.quadraticCurveTo(c.x + 10, c.y - 48, c.x + 17, c.y - 58);
+  ctx.stroke();
+  const sw = (dy: number) => Math.sin(t * 1.2) * (-dy / 60);
+  // A darker underside first, then the lit clumps.
   for (const [dx, dy, r] of [
-    [0, -76, 26],
-    [-20, -64, 18],
-    [20, -62, 18],
-    [-8, -92, 16],
-    [12, -90, 15],
+    [-16, -58, 15],
+    [16, -57, 15],
+    [0, -56, 14],
   ] as const) {
-    const sw = Math.sin(t * 1.2 + dx) * 1.2;
-    ctx.fillStyle = rad(ctx, c.x + dx - 4 + sw, c.y + dy - 4, r + 4, [
-      [0, "#ffe1ec"],
-      [1, "#f49ac1"],
+    ctx.fillStyle = "#d9799f";
+    ellipse(ctx, c.x + dx + sw(dy), c.y + dy, r, r * 0.8);
+    ctx.fill();
+  }
+  for (const [dx, dy, r] of [
+    [0, -76, 24],
+    [-20, -66, 17],
+    [20, -64, 17],
+    [-9, -92, 16],
+    [12, -90, 15],
+    [0, -60, 13],
+  ] as const) {
+    const px = c.x + dx + sw(dy);
+    ctx.fillStyle = rad(ctx, px + r * 0.3, c.y + dy - r * 0.35, r * 1.1, [
+      [0, "#ffe6ef"],
+      [0.65, "#f6a6c8"],
+      [1, "#e284ac"],
     ]);
-    ellipse(ctx, c.x + dx + sw, c.y + dy, r, r * 0.8);
+    ellipse(ctx, px, c.y + dy, r, r * 0.8);
+    ctx.fill();
+  }
+  // Blossoms dotted over the crown.
+  ctx.fillStyle = "rgba(255,246,250,0.9)";
+  for (let i = 0; i < 12; i++) {
+    const a = i * 2.4,
+      d = 6 + ((i * 7) % 20);
+    const dy = -78 + Math.sin(a) * d * 0.7;
+    ctx.beginPath();
+    ctx.arc(c.x + Math.cos(a) * d + 4 + sw(dy), c.y + dy, 1.8, 0, Math.PI * 2);
     ctx.fill();
   }
 }
