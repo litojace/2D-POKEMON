@@ -6,6 +6,38 @@
  */
 import { COLD_DISHES, drawDishBody, drawDishLive } from "./bistro-dishes";
 import {
+  drawPlant,
+  drawBonsai,
+  drawVase,
+  drawTipJar,
+  drawEspresso,
+  drawCart,
+  drawArcade,
+  drawFreezer,
+  drawMassage,
+  drawPodium,
+  drawRobot,
+  drawScreen,
+  drawBookshelf,
+  drawKoi,
+  drawChandelier,
+  drawHayBale,
+  drawTrophy,
+} from "./bistro-furniture";
+import {
+  TH,
+  TW,
+  ellipse,
+  iso,
+  isoBox,
+  lin,
+  poly,
+  rad,
+  shade,
+  softShadow,
+} from "./bistro-geom";
+export { TH, TW, iso, isoBox, shade, softShadow } from "./bistro-geom";
+import {
   COLS,
   ROWS,
   type RoomSize,
@@ -13,6 +45,7 @@ import {
   kitchenX1Of,
   COUNTER_ROW,
   DOOR,
+  ITEM_BY_KIND,
   type DishId,
   type FloorId,
   type ItemKind,
@@ -21,13 +54,7 @@ import {
 } from "./bistro-model";
 
 type Ctx = CanvasRenderingContext2D;
-export const TW = 96;
-export const TH = 48;
 export const WALL_H = 168;
-export const iso = (gx: number, gy: number) => ({
-  x: (gx - gy) * (TW / 2),
-  y: (gx + gy) * (TH / 2),
-});
 /** The room's corners on the floor. */
 /**
  * The dining room's size being drawn (it grows when the room is expanded,
@@ -70,128 +97,6 @@ export const BOUNDS = {
     return ROOM.bottom.y + 50;
   },
 };
-
-/* ───────────── colour helpers ───────────── */
-
-export function shade(col: string, f: number): string {
-  // "#rrggbb" or "rgb(r,g,b)".
-  let r: number, g: number, b: number;
-  if (col.startsWith("#")) {
-    const n = parseInt(col.slice(1), 16);
-    r = (n >> 16) & 255;
-    g = (n >> 8) & 255;
-    b = n & 255;
-  } else {
-    [r, g, b] = (col.match(/[\d.]+/g) ?? ["0", "0", "0"]).map(Number);
-  }
-  if (f >= 0) {
-    r += (255 - r) * f;
-    g += (255 - g) * f;
-    b += (255 - b) * f;
-  } else {
-    r *= 1 + f;
-    g *= 1 + f;
-    b *= 1 + f;
-  }
-  return `rgb(${r | 0},${g | 0},${b | 0})`;
-}
-const lin = (
-  ctx: Ctx,
-  x0: number,
-  y0: number,
-  x1: number,
-  y1: number,
-  stops: [number, string][],
-) => {
-  const g = ctx.createLinearGradient(x0, y0, x1, y1);
-  for (const [o, c] of stops) g.addColorStop(o, c);
-  return g;
-};
-const rad = (
-  ctx: Ctx,
-  x: number,
-  y: number,
-  r: number,
-  stops: [number, string][],
-  r0 = 0,
-) => {
-  const g = ctx.createRadialGradient(x, y, r0, x, y, r);
-  for (const [o, c] of stops) g.addColorStop(o, c);
-  return g;
-};
-function poly(ctx: Ctx, pts: { x: number; y: number }[]) {
-  ctx.beginPath();
-  ctx.moveTo(pts[0].x, pts[0].y);
-  for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
-  ctx.closePath();
-}
-function ellipse(ctx: Ctx, x: number, y: number, rx: number, ry: number) {
-  ctx.beginPath();
-  ctx.ellipse(x, y, Math.max(0.1, rx), Math.max(0.1, ry), 0, 0, Math.PI * 2);
-}
-export function softShadow(
-  ctx: Ctx,
-  x: number,
-  y: number,
-  rx: number,
-  ry: number,
-  a = 0.28,
-) {
-  ctx.fillStyle = rad(ctx, x, y, rx, [
-    [0, `rgba(40,20,10,${a})`],
-    [0.6, `rgba(40,20,10,${a * 0.55})`],
-    [1, "rgba(40,20,10,0)"],
-  ]);
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.scale(1, ry / rx);
-  ctx.translate(-x, -y);
-  ellipse(ctx, x, y, rx, rx);
-  ctx.fill();
-  ctx.restore();
-}
-
-/**
- * An iso box over the tile span [gx0, gx1] × [gy0, gy1] (grid units, edges),
- * h tall, its base lifted by z. Draws the two faces toward the viewer and the top.
- */
-export function isoBox(
-  ctx: Ctx,
-  gx0: number,
-  gy0: number,
-  gx1: number,
-  gy1: number,
-  z: number,
-  h: number,
-  col: {
-    top: string | CanvasGradient;
-    left: string | CanvasGradient;
-    right: string | CanvasGradient;
-  },
-  faces = { left: true, right: true },
-) {
-  const A = iso(gx0, gy0),
-    B = iso(gx1, gy0),
-    C = iso(gx1, gy1),
-    D = iso(gx0, gy1);
-  const up = (p: { x: number; y: number }, d: number) => ({
-    x: p.x,
-    y: p.y - d,
-  });
-  if (faces.left) {
-    ctx.fillStyle = col.left;
-    poly(ctx, [up(D, z), up(C, z), up(C, z + h), up(D, z + h)]);
-    ctx.fill();
-  }
-  if (faces.right) {
-    ctx.fillStyle = col.right;
-    poly(ctx, [up(B, z), up(C, z), up(C, z + h), up(B, z + h)]);
-    ctx.fill();
-  }
-  ctx.fillStyle = col.top;
-  poly(ctx, [up(A, z + h), up(B, z + h), up(C, z + h), up(D, z + h)]);
-  ctx.fill();
-}
 
 /* ───────────── sky and backdrop ───────────── */
 
@@ -1381,6 +1286,66 @@ export function drawSparkle(ctx: Ctx, x: number, y: number, r: number) {
 
 /* ───────────── furniture and decorations ───────────── */
 
+/** A woven look over a rug: fine threads both ways and a soft pile sheen. */
+function weave(
+  ctx: Ctx,
+  x0: number,
+  y0: number,
+  x1: number,
+  y1: number,
+  dark: string,
+) {
+  const pts = [iso(x0, y0), iso(x1, y0), iso(x1, y1), iso(x0, y1)];
+  ctx.save();
+  poly(ctx, pts);
+  ctx.clip();
+  const c = iso((x0 + x1) / 2, (y0 + y1) / 2);
+  ctx.fillStyle = rad(ctx, c.x - 20, c.y - 12, 90, [
+    [0, "rgba(255,255,255,.14)"],
+    [1, "rgba(0,0,0,.12)"],
+  ]);
+  poly(ctx, pts);
+  ctx.fill();
+  ctx.strokeStyle = dark;
+  ctx.globalAlpha = 0.16;
+  ctx.lineWidth = 0.6;
+  ctx.beginPath();
+  for (let f = 0; f <= 1.0001; f += 1 / 26) {
+    const a = iso(x0 + (x1 - x0) * f, y0),
+      b = iso(x0 + (x1 - x0) * f, y1);
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
+    const d = iso(x0, y0 + (y1 - y0) * f),
+      e = iso(x1, y0 + (y1 - y0) * f);
+    ctx.moveTo(d.x, d.y);
+    ctx.lineTo(e.x, e.y);
+  }
+  ctx.stroke();
+  ctx.restore();
+}
+/** Tassels along a rug's edge from grid point a to b. */
+function fringe(
+  ctx: Ctx,
+  ax: number,
+  ay: number,
+  bx: number,
+  by: number,
+  n: number,
+  col: string,
+) {
+  ctx.strokeStyle = col;
+  ctx.lineWidth = 1;
+  ctx.lineCap = "round";
+  for (let i = 0; i <= n; i++) {
+    const f = i / n;
+    const p = iso(ax + (bx - ax) * f, ay + (by - ay) * f);
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+    ctx.lineTo(p.x - 2, p.y + 4);
+    ctx.stroke();
+  }
+  ctx.lineCap = "butt";
+}
 export function drawRug(ctx: Ctx, x: number, y: number) {
   const pts = [
     iso(x - 0.35, y - 0.35),
@@ -1401,6 +1366,25 @@ export function drawRug(ctx: Ctx, x: number, y: number) {
   ctx.lineWidth = 3;
   poly(ctx, inner);
   ctx.stroke();
+  // A row of little diamonds in the border.
+  ctx.fillStyle = "#1f5d73";
+  for (let i = 0; i < 8; i++) {
+    for (const [gx, gy] of [
+      [x - 0.28 + (i + 0.5) * 0.2, y - 0.28],
+      [x - 0.28 + (i + 0.5) * 0.2, y + 1.28],
+      [x - 0.28, y - 0.28 + (i + 0.5) * 0.2],
+      [x + 1.28, y - 0.28 + (i + 0.5) * 0.2],
+    ]) {
+      const p = iso(gx, gy);
+      poly(ctx, [
+        { x: p.x, y: p.y - 2 },
+        { x: p.x + 4, y: p.y },
+        { x: p.x, y: p.y + 2 },
+        { x: p.x - 4, y: p.y },
+      ]);
+      ctx.fill();
+    }
+  }
   const c = iso(x + 0.5, y + 0.5);
   ctx.fillStyle = "#d9a441";
   poly(ctx, [
@@ -1418,16 +1402,17 @@ export function drawRug(ctx: Ctx, x: number, y: number) {
     { x: c.x - 24, y: c.y },
   ]);
   ctx.fill();
-  // Fringe.
-  ctx.strokeStyle = "#f3e2c0";
-  ctx.lineWidth = 1;
-  for (let i = 0; i <= 12; i++) {
-    const p = iso(x - 0.35 + (i / 12) * 1.7, y + 1.35);
-    ctx.beginPath();
-    ctx.moveTo(p.x, p.y);
-    ctx.lineTo(p.x - 2, p.y + 4);
-    ctx.stroke();
-  }
+  ctx.fillStyle = "#f2c66d";
+  poly(ctx, [
+    { x: c.x, y: c.y - 4 },
+    { x: c.x + 8, y: c.y },
+    { x: c.x, y: c.y + 4 },
+    { x: c.x - 8, y: c.y },
+  ]);
+  ctx.fill();
+  weave(ctx, x - 0.35, y - 0.35, x + 1.35, y + 1.35, "#2a0a0e");
+  fringe(ctx, x - 0.35, y + 1.35, x + 1.35, y + 1.35, 14, "#f3e2c0");
+  fringe(ctx, x + 1.35, y - 0.35, x + 1.35, y + 1.35, 14, "#f3e2c0");
 }
 
 /** Table looks (each table kind of the shop): cloth, trim, top, pedestal. */
@@ -1474,51 +1459,211 @@ export function drawTable(
 ) {
   const look = TABLE_LOOK[style];
   const c = iso(x, y);
-  softShadow(ctx, c.x, c.y + 2, 36, 15, 0.3);
-  // Pedestal and foot.
-  ctx.fillStyle = "#4a2b19";
-  ellipse(ctx, c.x, c.y, 14, 6);
-  ctx.fill();
-  ctx.fillStyle = lin(ctx, c.x - 4, 0, c.x + 4, 0, [
-    [0, look.post[0]],
-    [1, look.post[1]],
-  ]);
-  ctx.fillRect(c.x - 4, c.y - 30, 8, 30);
-  // Cloth: a round top with a skirt that falls in soft scallops.
   const ty = c.y - 32;
-  ctx.fillStyle = lin(ctx, c.x - 34, 0, c.x + 34, 0, [
-    [0, look.cloth[0]],
-    [0.5, look.cloth[1]],
-    [1, look.cloth[2]],
-  ]);
-  ctx.beginPath();
-  ctx.ellipse(c.x, ty, 34, 16, 0, 0, Math.PI);
-  ctx.lineTo(c.x - 34, ty);
-  for (let i = 0; i <= 8; i++) {
-    const a = Math.PI - (i / 8) * Math.PI;
-    const px = c.x + Math.cos(a) * 35,
-      py = ty + Math.sin(a) * 16 + 10 + (i % 2) * 2;
-    ctx.lineTo(px, py);
+  softShadow(ctx, c.x, c.y + 2, 36, 15, 0.32);
+  if (style === "garden" || style === "marble") {
+    // No cloth: a pedestal on a foot, and the top's own material.
+    if (style === "garden") {
+      // Cast iron: three curled legs and a slim post.
+      ctx.strokeStyle = "#2e3a2a";
+      ctx.lineWidth = 2.6;
+      ctx.lineCap = "round";
+      for (const a of [0.4, 2.5, 4.6]) {
+        const ex = c.x + Math.cos(a) * 16,
+          ey = c.y + Math.sin(a) * 6;
+        ctx.beginPath();
+        ctx.moveTo(c.x, c.y - 10);
+        ctx.quadraticCurveTo(
+          c.x + Math.cos(a) * 12,
+          c.y + Math.sin(a) * 4 - 8,
+          ex,
+          ey,
+        );
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(ex + Math.cos(a) * 1.5, ey - 2, 2, 0, Math.PI * 1.5);
+        ctx.stroke();
+      }
+      ctx.fillStyle = lin(ctx, c.x - 3, 0, c.x + 3, 0, [
+        [0, "#3a4a34"],
+        [0.5, "#6a7d5e"],
+        [1, "#26301f"],
+      ]);
+      ctx.fillRect(c.x - 2.5, c.y - 30, 5, 22);
+    } else {
+      // A black steel pedestal on a round plate.
+      ctx.fillStyle = "#1c1c20";
+      ellipse(ctx, c.x, c.y, 15, 6);
+      ctx.fill();
+      ctx.fillStyle = "#34343a";
+      ellipse(ctx, c.x, c.y - 1.5, 14, 5.4);
+      ctx.fill();
+      ctx.fillStyle = lin(ctx, c.x - 4, 0, c.x + 4, 0, [
+        [0, "#18181c"],
+        [0.45, "#55555e"],
+        [1, "#141418"],
+      ]);
+      ctx.fillRect(c.x - 3.5, c.y - 30, 7, 29);
+    }
+    // The top's edge, then its face.
+    ctx.fillStyle =
+      style === "garden"
+        ? "#7a4e2c"
+        : lin(ctx, c.x - 32, 0, c.x + 32, 0, [
+            [0, "#b9bec2"],
+            [0.5, "#eef0f1"],
+            [1, "#9aa1a6"],
+          ]);
+    ellipse(ctx, c.x, ty + 3.5, 32, 15);
+    ctx.fill();
+    if (style === "garden") {
+      ctx.fillStyle = lin(ctx, c.x - 32, ty - 15, c.x + 32, ty + 15, [
+        [0, "#c8905a"],
+        [0.5, "#a8703e"],
+        [1, "#8a5a30"],
+      ]);
+      ellipse(ctx, c.x, ty, 32, 15);
+      ctx.fill();
+      // Slats with gaps.
+      ctx.save();
+      ellipse(ctx, c.x, ty, 32, 15);
+      ctx.clip();
+      ctx.strokeStyle = "rgba(60,32,12,.55)";
+      ctx.lineWidth = 1.2;
+      for (let i = -3; i <= 3; i++) {
+        ctx.beginPath();
+        ctx.moveTo(c.x - 34 + i * 9, ty - 16);
+        ctx.lineTo(c.x + 2 + i * 9, ty + 16);
+        ctx.stroke();
+      }
+      ctx.strokeStyle = "rgba(255,225,180,.25)";
+      ctx.lineWidth = 0.6;
+      for (let i = -3; i <= 3; i++) {
+        ctx.beginPath();
+        ctx.moveTo(c.x - 31 + i * 9, ty - 16);
+        ctx.lineTo(c.x + 5 + i * 9, ty + 16);
+        ctx.stroke();
+      }
+      ctx.restore();
+    } else {
+      ctx.fillStyle = rad(ctx, c.x - 10, ty - 6, 42, [
+        [0, "#ffffff"],
+        [0.7, "#f1f2f3"],
+        [1, "#dadde0"],
+      ]);
+      ellipse(ctx, c.x, ty, 32, 15);
+      ctx.fill();
+      // Marble veins.
+      ctx.save();
+      ellipse(ctx, c.x, ty, 32, 15);
+      ctx.clip();
+      ctx.strokeStyle = "rgba(120,128,138,.45)";
+      ctx.lineWidth = 0.8;
+      ctx.beginPath();
+      ctx.moveTo(c.x - 30, ty - 4);
+      ctx.bezierCurveTo(c.x - 14, ty - 10, c.x - 4, ty + 6, c.x + 12, ty - 2);
+      ctx.bezierCurveTo(c.x + 20, ty - 6, c.x + 26, ty + 4, c.x + 34, ty + 2);
+      ctx.moveTo(c.x - 8, ty + 3);
+      ctx.quadraticCurveTo(c.x - 2, ty + 10, c.x + 8, ty + 14);
+      ctx.stroke();
+      ctx.strokeStyle = "rgba(160,150,120,.35)";
+      ctx.lineWidth = 0.5;
+      ctx.beginPath();
+      ctx.moveTo(c.x - 22, ty + 8);
+      ctx.bezierCurveTo(c.x - 10, ty + 2, c.x + 4, ty - 12, c.x + 20, ty - 10);
+      ctx.stroke();
+      ctx.restore();
+      ctx.strokeStyle = "rgba(255,255,255,.9)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.ellipse(c.x, ty, 31, 14, 0, Math.PI * 1.05, Math.PI * 1.5);
+      ctx.stroke();
+    }
+  } else {
+    // Pedestal under a cloth that falls in soft folds to a scalloped hem.
+    ctx.fillStyle = "#4a2b19";
+    ellipse(ctx, c.x, c.y, 14, 6);
+    ctx.fill();
+    ctx.fillStyle = lin(ctx, c.x - 4, 0, c.x + 4, 0, [
+      [0, look.post[0]],
+      [1, look.post[1]],
+    ]);
+    ctx.fillRect(c.x - 4, c.y - 30, 8, 30);
+    const skirt = () => {
+      ctx.beginPath();
+      ctx.ellipse(c.x, ty, 34, 16, 0, 0, Math.PI);
+      ctx.lineTo(c.x - 34, ty);
+      for (let i = 0; i <= 10; i++) {
+        const a = Math.PI - (i / 10) * Math.PI;
+        const px = c.x + Math.cos(a) * 35,
+          py = ty + Math.sin(a) * 16 + 10 + (i % 2) * 2.5;
+        ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+    };
+    ctx.fillStyle = lin(ctx, c.x - 34, 0, c.x + 34, 0, [
+      [0, look.cloth[0]],
+      [0.45, look.cloth[1]],
+      [1, look.cloth[2]],
+    ]);
+    skirt();
+    ctx.fill();
+    // Folds: soft shadow and light down the drape.
+    ctx.save();
+    skirt();
+    ctx.clip();
+    for (let i = 1; i < 10; i++) {
+      const a = Math.PI - (i / 10) * Math.PI;
+      const px = c.x + Math.cos(a) * 34;
+      const g = ctx.createLinearGradient(px - 3, 0, px + 3, 0);
+      g.addColorStop(0, "rgba(0,0,0,0)");
+      g.addColorStop(
+        0.5,
+        i % 2 ? "rgba(60,40,30,.12)" : "rgba(255,255,255,.22)",
+      );
+      g.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = g;
+      ctx.fillRect(px - 3, ty, 6, 32);
+    }
+    ctx.restore();
+    ctx.strokeStyle = look.trim;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.ellipse(c.x, ty + 9, 34.5, 16, 0, 0.1, Math.PI - 0.1);
+    ctx.stroke();
+    ctx.fillStyle = rad(ctx, c.x - 8, ty - 4, 40, [
+      [0, look.top[0]],
+      [1, look.top[1]],
+    ]);
+    ellipse(ctx, c.x, ty, 32, 15);
+    ctx.fill();
+    if (style === "gold") {
+      // Damask: a ring of little gold motifs.
+      ctx.fillStyle = "rgba(184,134,11,.4)";
+      for (let i = 0; i < 12; i++) {
+        const a = (i / 12) * Math.PI * 2;
+        ellipse(ctx, c.x + Math.cos(a) * 24, ty + Math.sin(a) * 11, 1.6, 0.9);
+        ctx.fill();
+      }
+    }
+    // The cloth's sheen.
+    ctx.fillStyle = "rgba(255,255,255,.35)";
+    ctx.beginPath();
+    ctx.ellipse(c.x - 9, ty - 5, 14, 4, -0.15, 0, Math.PI * 2);
+    ctx.fill();
   }
-  ctx.closePath();
-  ctx.fill();
-  // Trim.
-  ctx.strokeStyle = look.trim;
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.ellipse(c.x, ty + 9, 34.5, 16, 0, 0.1, Math.PI - 0.1);
-  ctx.stroke();
-  // Top.
-  ctx.fillStyle = rad(ctx, c.x - 8, ty - 4, 40, [
-    [0, look.top[0]],
-    [1, look.top[1]],
+  // A bud vase with a flower.
+  ctx.fillStyle = lin(ctx, c.x - 3, 0, c.x + 3, 0, [
+    [0, "#3a7fb0"],
+    [0.4, "#8cc6ec"],
+    [1, "#2f6a96"],
   ]);
-  ellipse(ctx, c.x, ty, 32, 15);
-  ctx.fill();
-  // A little vase with a flower.
-  ctx.fillStyle = "#4f9fd1";
   ctx.beginPath();
-  ctx.roundRect(c.x - 3, ty - 12, 6, 9, 2);
+  ctx.moveTo(c.x - 1.5, ty - 12);
+  ctx.quadraticCurveTo(c.x - 4.5, ty - 6, c.x - 3, ty - 3);
+  ctx.lineTo(c.x + 3, ty - 3);
+  ctx.quadraticCurveTo(c.x + 4.5, ty - 6, c.x + 1.5, ty - 12);
+  ctx.closePath();
   ctx.fill();
   ctx.strokeStyle = "#3f8c3a";
   ctx.lineWidth = 1.2;
@@ -1526,9 +1671,24 @@ export function drawTable(
   ctx.moveTo(c.x, ty - 12);
   ctx.lineTo(c.x + 1, ty - 19);
   ctx.stroke();
-  ctx.fillStyle = "#ff7aa8";
+  ctx.fillStyle = "#4f9f3f";
   ctx.beginPath();
-  ctx.arc(c.x + 1, ty - 20, 3, 0, 7);
+  ctx.ellipse(c.x + 2.5, ty - 15, 2.2, 1, -0.5, 0, Math.PI * 2);
+  ctx.fill();
+  for (let i = 0; i < 5; i++) {
+    const a = (i / 5) * Math.PI * 2;
+    ctx.fillStyle = i % 2 ? "#ff7aa8" : "#ff92b8";
+    ellipse(
+      ctx,
+      c.x + 1 + Math.cos(a) * 2,
+      ty - 20 + Math.sin(a) * 1.6,
+      1.8,
+      1.4,
+    );
+    ctx.fill();
+  }
+  ctx.fillStyle = "#ffd65b";
+  ellipse(ctx, c.x + 1, ty - 20, 1, 0.9);
   ctx.fill();
 }
 /** Where a plate goes on a table, on the side toward the chair in direction `dir` from the table. */
@@ -1544,6 +1704,10 @@ export function tableSpot(x: number, y: number, dirFromTable: number) {
 }
 
 const CUSHIONS = ["#e0594d", "#3d8fd1", "#f2b53c", "#5cb36b"];
+/** Which cushion colour a chair on (x, y) gets (drawn at (0, 0) with it as the tint). */
+const cushionIndex = (x: number, y: number, tint: number) =>
+  (((x * 7 + y * 3 + tint) % CUSHIONS.length) + CUSHIONS.length) %
+  CUSHIONS.length;
 /** Chair looks (each chair kind of the shop). */
 export type ChairStyle = "cushion" | "stool" | "armchair" | "throne";
 const CHAIR_LOOK: Record<
@@ -1585,7 +1749,7 @@ const CHAIR_LOOK: Record<
     trim: "#fff1b0",
   },
 };
-export function drawChair(
+function drawChairRaw(
   ctx: Ctx,
   x: number,
   y: number,
@@ -1599,113 +1763,250 @@ export function drawChair(
   // `dir` faces the table; the backrest sits on the opposite side.
   const bx = [-1, 0, 1, 0][dir] * 0.32,
     by = [0, -1, 0, 1][dir] * 0.32;
-  const bp = iso(x + bx, y + by);
   const backIsFar = dir === 0 || dir === 1; // back toward the wall side
+  const cu = look.cushion ?? CUSHIONS[(x * 7 + y * 3 + tint) % CUSHIONS.length];
   const drawBack = () => {
-    // Backrest: a slatted panel, drawn as a vertical quad along the back edge.
     if (!look.back) return;
     const H = look.backH;
-    const along = dir % 2 === 0 ? { x: 0, y: 0.32 } : { x: 0.32, y: 0 };
+    const along = dir % 2 === 0 ? { x: 0, y: 0.3 } : { x: 0.3, y: 0 };
     const p0 = iso(x + bx - along.x, y + by - along.y),
       p1 = iso(x + bx + along.x, y + by + along.y);
-    ctx.fillStyle = lin(ctx, 0, p0.y - H, 0, p0.y, [
+    const at = (f: number, h: number) => ({
+      x: p0.x + (p1.x - p0.x) * f,
+      y: p0.y + (p1.y - p0.y) * f - h,
+    });
+    if (style === "cushion") {
+      // A wooden back: two posts, a curved top rail and three slats.
+      const wood = lin(ctx, 0, p0.y - H, 0, p0.y, [
+        [0, look.back[0]],
+        [1, look.back[1]],
+      ]);
+      ctx.strokeStyle = wood;
+      ctx.lineCap = "round";
+      ctx.lineWidth = 2;
+      for (const f of [0.3, 0.5, 0.7]) {
+        const q0 = at(f, 22),
+          q1 = at(f, H - 7);
+        ctx.beginPath();
+        ctx.moveTo(q0.x, q0.y);
+        ctx.lineTo(q1.x, q1.y);
+        ctx.stroke();
+      }
+      ctx.lineWidth = 3.4;
+      for (const f of [0.04, 0.96]) {
+        const q0 = at(f, 18),
+          q1 = at(f, H);
+        ctx.beginPath();
+        ctx.moveTo(q0.x, q0.y);
+        ctx.lineTo(q1.x, q1.y);
+        ctx.stroke();
+      }
+      ctx.fillStyle = wood;
+      const r0 = at(0, H + 1),
+        r1 = at(1, H + 1),
+        m = at(0.5, H + 4);
+      ctx.beginPath();
+      ctx.moveTo(r0.x, r0.y + 7);
+      ctx.quadraticCurveTo(m.x, m.y + 6, r1.x, r1.y + 7);
+      ctx.lineTo(r1.x, r1.y);
+      ctx.quadraticCurveTo(m.x, m.y - 2, r0.x, r0.y);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255,225,190,.35)";
+      ctx.lineWidth = 0.8;
+      ctx.beginPath();
+      ctx.moveTo(r0.x, r0.y + 1);
+      ctx.quadraticCurveTo(m.x, m.y - 1, r1.x, r1.y + 1);
+      ctx.stroke();
+      return;
+    }
+    // Padded backs: a panel with a rounded or crested top.
+    const crest = style === "throne" ? 12 : 6;
+    const panel = (inset: number) => {
+      const q0 = at(inset, 20),
+        q1 = at(1 - inset, 20),
+        t1 = at(1 - inset, H - inset * 30),
+        t0 = at(inset, H - inset * 30),
+        m = at(0.5, H + crest - inset * 30);
+      ctx.beginPath();
+      ctx.moveTo(q0.x, q0.y);
+      ctx.lineTo(q1.x, q1.y);
+      ctx.lineTo(t1.x, t1.y);
+      ctx.quadraticCurveTo((t1.x + m.x) / 2, m.y, m.x, m.y);
+      ctx.quadraticCurveTo((t0.x + m.x) / 2, m.y, t0.x, t0.y);
+      ctx.closePath();
+    };
+    ctx.fillStyle = lin(ctx, 0, p0.y - H - crest, 0, p0.y, [
       [0, look.back[0]],
       [1, look.back[1]],
     ]);
-    poly(ctx, [
-      { x: p0.x, y: p0.y - 20 },
-      { x: p1.x, y: p1.y - 20 },
-      { x: p1.x, y: p1.y - H },
-      { x: p0.x, y: p0.y - H },
-    ]);
+    panel(0);
     ctx.fill();
-    ctx.fillStyle = look.trim ?? "rgba(255,230,200,.25)";
-    poly(ctx, [
-      { x: p0.x, y: p0.y - H + 6 },
-      { x: p1.x, y: p1.y - H + 6 },
-      { x: p1.x, y: p1.y - H },
-      { x: p0.x, y: p0.y - H },
-    ]);
-    ctx.fill();
-    void bp;
+    if (style === "throne") {
+      // Carved gold frame round a velvet panel, a gem on the crest.
+      ctx.fillStyle = lin(ctx, 0, p0.y - H, 0, p0.y, [
+        [0, "#c8303a"],
+        [1, "#7a141a"],
+      ]);
+      panel(0.14);
+      ctx.fill();
+      ctx.strokeStyle = look.trim ?? "#fff1b0";
+      ctx.lineWidth = 1;
+      panel(0.06);
+      ctx.stroke();
+      const g = at(0.5, H + crest - 3);
+      ctx.fillStyle = "#4ad0ff";
+      ellipse(ctx, g.x, g.y, 2.4, 2.4);
+      ctx.fill();
+      ctx.fillStyle = "rgba(255,255,255,.8)";
+      ellipse(ctx, g.x - 0.8, g.y - 0.8, 0.8, 0.8);
+      ctx.fill();
+    } else {
+      // Velvet with piping and tufted buttons.
+      ctx.strokeStyle = "rgba(255,255,255,.28)";
+      ctx.lineWidth = 1;
+      panel(0.05);
+      ctx.stroke();
+      ctx.fillStyle = "rgba(30,10,50,.55)";
+      for (const [f, h] of [
+        [0.3, H * 0.62],
+        [0.7, H * 0.62],
+        [0.5, H * 0.8],
+        [0.3, H * 0.44],
+        [0.7, H * 0.44],
+      ] as const) {
+        const q = at(f, h);
+        ellipse(ctx, q.x, q.y, 1.2, 1.2);
+        ctx.fill();
+      }
+    }
   };
-  if (back === "all" || back === "behind") {
-    softShadow(ctx, c.x, c.y + 2, 24, 11, 0.22);
-    if (backIsFar) drawBack();
-    // Legs.
-    ctx.strokeStyle = look.legs;
-    ctx.lineWidth = 3;
+  const legs = () => {
+    if (style === "stool") {
+      // Chrome legs and a foot ring.
+      ctx.lineCap = "round";
+      for (const [lx, ly] of [
+        [-0.22, -0.22],
+        [0.22, -0.22],
+        [0.22, 0.22],
+        [-0.22, 0.22],
+      ]) {
+        const p = iso(x + lx, y + ly);
+        ctx.strokeStyle = lin(ctx, p.x - 1.5, 0, p.x + 1.5, 0, [
+          [0, "#7d868e"],
+          [0.5, "#eef1f3"],
+          [1, "#6e777f"],
+        ]);
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+        ctx.lineTo(c.x + (p.x - c.x) * 0.55, c.y - 24 + (p.y - c.y) * 0.55);
+        ctx.stroke();
+      }
+      ctx.strokeStyle = "#c9d0d6";
+      ctx.lineWidth = 1.6;
+      ellipse(ctx, c.x, c.y - 9, 11, 5);
+      ctx.stroke();
+      return;
+    }
+    // Tapered wooden (or gilded) legs, lit on one side.
     for (const [lx, ly] of [
-      [-0.28, -0.28],
-      [0.28, -0.28],
-      [0.28, 0.28],
-      [-0.28, 0.28],
+      [-0.27, -0.27],
+      [0.27, -0.27],
+      [0.27, 0.27],
+      [-0.27, 0.27],
     ]) {
       const p = iso(x + lx, y + ly);
+      ctx.fillStyle = look.legs;
       ctx.beginPath();
-      ctx.moveTo(p.x, p.y);
-      ctx.lineTo(p.x, p.y - 20);
-      ctx.stroke();
+      ctx.moveTo(p.x - 1.9, p.y - 20);
+      ctx.lineTo(p.x + 1.9, p.y - 20);
+      ctx.lineTo(p.x + 1.1, p.y);
+      ctx.lineTo(p.x - 1.1, p.y);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = "rgba(255,235,200,.3)";
+      ctx.fillRect(p.x - 1.6, p.y - 19, 1, 18);
     }
-    // Seat with a cushion.
+  };
+  const seat = () => {
+    const s0 = iso(x, y);
+    if (style === "stool") {
+      // A round seat: a chrome rim and a buttoned leather top.
+      ctx.fillStyle = "#8d969e";
+      ellipse(ctx, s0.x, s0.y - 23, 15, 7);
+      ctx.fill();
+      ctx.fillStyle = shade(cu, -0.35);
+      ellipse(ctx, s0.x, s0.y - 25, 15, 7);
+      ctx.fill();
+      ctx.fillStyle = rad(ctx, s0.x - 4, s0.y - 29, 16, [
+        [0, shade(cu, 0.3)],
+        [0.7, cu],
+        [1, shade(cu, -0.2)],
+      ]);
+      ellipse(ctx, s0.x, s0.y - 27, 14, 6.4);
+      ctx.fill();
+      ctx.fillStyle = shade(cu, -0.45);
+      ellipse(ctx, s0.x, s0.y - 27, 1.2, 0.8);
+      ctx.fill();
+      return;
+    }
     isoBox(ctx, x - 0.32, y - 0.32, x + 0.32, y + 0.32, 18, 4, look.seat);
-    const cu =
-      look.cushion ?? CUSHIONS[(x * 7 + y * 3 + tint) % CUSHIONS.length];
-    ctx.fillStyle = cu;
-    const s = iso(x, y);
-    ctx.beginPath();
-    ctx.ellipse(s.x, s.y - 24, 17, 8, 0, 0, Math.PI * 2);
+    // A cushion that follows the seat: rounded, piped, with a button.
+    const corner = (gx: number, gy: number) => {
+      const p = iso(x + gx, y + gy);
+      return { x: p.x, y: p.y - 24 };
+    };
+    const N = corner(-0.27, -0.27),
+      E = corner(0.27, -0.27),
+      S = corner(0.27, 0.27),
+      W = corner(-0.27, 0.27);
+    const cushion = () => {
+      const mid = (
+        a: { x: number; y: number },
+        b: { x: number; y: number },
+      ) => ({
+        x: (a.x + b.x) / 2,
+        y: (a.y + b.y) / 2,
+      });
+      const pts = [N, E, S, W];
+      ctx.beginPath();
+      const m0 = mid(W, N);
+      ctx.moveTo(m0.x, m0.y);
+      for (let i = 0; i < 4; i++) {
+        const cpt = pts[i],
+          nxt = mid(pts[i], pts[(i + 1) % 4]);
+        ctx.quadraticCurveTo(cpt.x, cpt.y, nxt.x, nxt.y);
+      }
+      ctx.closePath();
+    };
+    ctx.fillStyle = shade(cu, -0.35);
+    ctx.save();
+    ctx.translate(0, 2);
+    cushion();
     ctx.fill();
-    ctx.fillStyle = "rgba(255,255,255,.3)";
-    ctx.beginPath();
-    ctx.ellipse(s.x - 4, s.y - 26, 8, 3, 0, 0, Math.PI * 2);
+    ctx.restore();
+    ctx.fillStyle = rad(ctx, s0.x - 4, s0.y - 28, 20, [
+      [0, shade(cu, 0.3)],
+      [0.65, cu],
+      [1, shade(cu, -0.15)],
+    ]);
+    cushion();
     ctx.fill();
+    ctx.strokeStyle = shade(cu, 0.35);
+    ctx.lineWidth = 0.8;
+    ctx.stroke();
+    ctx.fillStyle = shade(cu, -0.45);
+    ellipse(ctx, s0.x, s0.y - 24, 1.3, 0.8);
+    ctx.fill();
+  };
+  if (back === "all" || back === "behind") {
+    softShadow(ctx, c.x, c.y + 2, 24, 11, 0.24);
+    if (backIsFar) drawBack();
+    legs();
+    seat();
   }
   if ((back === "all" || back === "front") && !backIsFar) drawBack();
-}
-
-export function drawPlant(ctx: Ctx, x: number, y: number, t: number) {
-  const c = iso(x, y);
-  softShadow(ctx, c.x, c.y + 2, 20, 9, 0.26);
-  // Terracotta pot.
-  ctx.fillStyle = lin(ctx, c.x - 14, 0, c.x + 14, 0, [
-    [0, "#a24e2c"],
-    [0.4, "#de7d4f"],
-    [1, "#8f4325"],
-  ]);
-  ctx.beginPath();
-  ctx.moveTo(c.x - 14, c.y - 26);
-  ctx.lineTo(c.x - 10, c.y);
-  ctx.quadraticCurveTo(c.x, c.y + 4, c.x + 10, c.y);
-  ctx.lineTo(c.x + 14, c.y - 26);
-  ctx.closePath();
-  ctx.fill();
-  ctx.fillStyle = "#b65b33";
-  ellipse(ctx, c.x, c.y - 26, 15, 5);
-  ctx.fill();
-  ctx.fillStyle = "#4a2a18";
-  ellipse(ctx, c.x, c.y - 26, 12, 3.5);
-  ctx.fill();
-  // Fern fronds, swaying.
-  for (let i = 0; i < 9; i++) {
-    const a = -Math.PI / 2 + (i - 4) * 0.33 + Math.sin(t * 1.3 + i) * 0.04;
-    const len = 30 + ((i * 7) % 11);
-    const ex = c.x + Math.cos(a) * len,
-      ey = c.y - 28 + Math.sin(a) * len;
-    ctx.strokeStyle = i % 2 ? "#3f8f45" : "#58ad4f";
-    ctx.lineWidth = 6;
-    ctx.lineCap = "round";
-    ctx.beginPath();
-    ctx.moveTo(c.x, c.y - 26);
-    ctx.quadraticCurveTo(
-      c.x + Math.cos(a) * len * 0.5,
-      c.y - 34 + Math.sin(a) * len * 0.8,
-      ex,
-      ey + 6,
-    );
-    ctx.stroke();
-  }
-  ctx.lineCap = "butt";
 }
 
 export function drawLamp(ctx: Ctx, x: number, y: number, t: number) {
@@ -1757,41 +2058,6 @@ export function drawLamp(ctx: Ctx, x: number, y: number, t: number) {
   ctx.moveTo(lx, ly + 17);
   ctx.lineTo(lx, ly + 25);
   ctx.stroke();
-}
-
-export function drawBonsai(ctx: Ctx, x: number, y: number, t: number) {
-  const c = iso(x, y);
-  softShadow(ctx, c.x, c.y + 2, 22, 10, 0.26);
-  isoBox(ctx, x - 0.3, y - 0.3, x + 0.3, y + 0.3, 0, 28, {
-    top: "#5b3420",
-    left: "#7c4a2b",
-    right: "#4f2d1a",
-  });
-  ctx.fillStyle = "#2f4f6e";
-  ctx.beginPath();
-  ctx.roundRect(c.x - 15, c.y - 38, 30, 9, 3);
-  ctx.fill();
-  ctx.strokeStyle = "#6b4026";
-  ctx.lineWidth = 4;
-  ctx.beginPath();
-  ctx.moveTo(c.x, c.y - 37);
-  ctx.bezierCurveTo(c.x - 10, c.y - 46, c.x + 10, c.y - 54, c.x - 4, c.y - 62);
-  ctx.stroke();
-  const pads: [number, number, number][] = [
-    [-12, -62, 11],
-    [6, -66, 12],
-    [-2, -74, 10],
-    [12, -54, 8],
-  ];
-  for (const [dx, dy, r] of pads) {
-    const s = Math.sin(t * 1.2 + dx) * 0.6;
-    ctx.fillStyle = rad(ctx, c.x + dx - 3, c.y + dy - 3, r + 2, [
-      [0, "#9be08a"],
-      [1, "#3f8a3c"],
-    ]);
-    ellipse(ctx, c.x + dx + s, c.y + dy, r, r * 0.6);
-    ctx.fill();
-  }
 }
 
 export function drawLuckyCat(ctx: Ctx, x: number, y: number, t: number) {
@@ -2061,7 +2327,141 @@ export function drawFountain(ctx: Ctx, x: number, y: number, t: number) {
   }
 }
 
+/* ───────────── furniture, drawn once per look ───────────── */
+
+/**
+ * The furniture is detailed (wood grain, woven rugs, fern leaflets), too much
+ * to draw every frame for a room full of it. Each piece is drawn once per
+ * look (kind, turn, cushion colour, size on screen) into a bitmap at grid
+ * (0, 0) and copied where it stands (the drawings are the same anywhere on
+ * the grid). Pieces that sway gently keep a loop of frames; the few that
+ * move a lot (fish, water, flames, screens) are drawn live.
+ */
+const LIVE_ITEMS: ReadonlySet<ItemKind> = new Set<ItemKind>([
+  "koi",
+  "fountain",
+  "aquarium",
+  "jukebox",
+  "neon",
+  "chandelier",
+  "pumpkin",
+  "lantern",
+  "arcade",
+  "trophy",
+  "robot",
+  "espresso",
+  "tipjar",
+  "podium",
+  "luckycat",
+  "lamp",
+  "corner",
+  "statue",
+  "blossom",
+]);
+/** Pieces that sway: the loop's length (s), drawn in SWAY_FRAMES frames. */
+const SWAY: Partial<Record<ItemKind, number>> = {
+  plant: (Math.PI * 2) / 1.3,
+  bonsai: (Math.PI * 2) / 1.2,
+  vase: (Math.PI * 2) / 1.5,
+  sakura: (Math.PI * 2) / 1.2,
+};
+const SWAY_FRAMES = 12;
+const sprites = new Map<string, HTMLCanvasElement | null>();
+/** The box round a piece at grid (0, 0), in world units: [x0, y0, x1, y1]. */
+const BOX_ITEM = [-62, -128, 62, 26] as const;
+const BOX_FLOOR = [-96, -30, 96, 84] as const;
+function sprite(
+  ctx: Ctx,
+  key: string,
+  floor: boolean,
+  gx: number,
+  gy: number,
+  render: (g: Ctx) => void,
+) {
+  const m = ctx.getTransform();
+  const scale = Math.hypot(m.a, m.b) || 1;
+  // Very big on screen (or no DOM): draw it as it is.
+  if (scale > 4 || scale < 0.2 || typeof document === "undefined") {
+    ctx.save();
+    const o = iso(gx, gy);
+    ctx.translate(o.x, o.y);
+    render(ctx);
+    ctx.restore();
+    return;
+  }
+  const step = Math.round(Math.log(scale) / Math.log(1.12));
+  const k = `${key}:${step}`;
+  const [x0, y0, x1, y1] = floor ? BOX_FLOOR : BOX_ITEM;
+  let cv = sprites.get(k);
+  if (cv === undefined) {
+    const q = Math.pow(1.12, step);
+    cv = document.createElement("canvas");
+    cv.width = Math.ceil((x1 - x0) * q);
+    cv.height = Math.ceil((y1 - y0) * q);
+    const g = cv.getContext("2d");
+    if (g) {
+      g.setTransform(q, 0, 0, q, -x0 * q, -y0 * q);
+      render(g);
+    } else cv = null;
+    if (sprites.size > 360) sprites.clear();
+    sprites.set(k, cv);
+  }
+  const o = iso(gx, gy);
+  if (!cv) {
+    ctx.save();
+    ctx.translate(o.x, o.y);
+    render(ctx);
+    ctx.restore();
+    return;
+  }
+  ctx.drawImage(cv, o.x + x0, o.y + y0, x1 - x0, y1 - y0);
+}
+/** A piece of furniture on tile (x, y) (the rugs: their top corner tile). */
 export function drawItem(
+  ctx: Ctx,
+  kind: ItemKind,
+  x: number,
+  y: number,
+  t: number,
+  rot = 0,
+) {
+  if (LIVE_ITEMS.has(kind)) return drawItemRaw(ctx, kind, x, y, t, rot);
+  const loop = SWAY[kind];
+  const frame = loop
+    ? Math.floor(((((t % loop) + loop) % loop) / loop) * SWAY_FRAMES)
+    : 0;
+  const tf = loop ? (frame / SWAY_FRAMES) * loop : 0;
+  // A chair's cushion colour depends on where it stands: keep it.
+  const cu = ITEM_BY_KIND[kind]?.seat === "chair" ? cushionIndex(x, y, 0) : 0;
+  sprite(
+    ctx,
+    `i:${kind}:${rot}:${frame}:${cu}`,
+    !!ITEM_BY_KIND[kind]?.floor,
+    x,
+    y,
+    (g) =>
+      ITEM_BY_KIND[kind]?.seat === "chair"
+        ? drawChairRaw(g, 0, 0, rot, "all", cu, chairStyleOf(kind))
+        : drawItemRaw(g, kind, 0, 0, tf, rot),
+  );
+}
+/** A chair (or its back alone, drawn in front of who sits on it). */
+export function drawChair(
+  ctx: Ctx,
+  x: number,
+  y: number,
+  dir: number,
+  back: "behind" | "front" | "all",
+  tint = 0,
+  style: ChairStyle = "cushion",
+) {
+  const cu = cushionIndex(x, y, tint);
+  sprite(ctx, `c:${style}:${dir}:${back}:${cu}`, false, x, y, (g) =>
+    drawChairRaw(g, 0, 0, dir, back, cu, style),
+  );
+}
+
+function drawItemRaw(
   ctx: Ctx,
   kind: ItemKind,
   x: number,
@@ -2079,7 +2479,7 @@ export function drawItem(
     case "stool":
     case "armchair":
     case "throne":
-      return drawChair(ctx, x, y, rot, "all", 0, chairStyleOf(kind));
+      return drawChairRaw(ctx, x, y, rot, "all", 0, chairStyleOf(kind));
     case "tipjar":
       return drawTipJar(ctx, x, y, t);
     case "espresso":
@@ -2182,35 +2582,6 @@ export function drawPumpkin(ctx: Ctx, x: number, y: number, t: number) {
   ctx.quadraticCurveTo(c.x, c.y - 9, c.x - 7, c.y - 12);
   ctx.fill();
 }
-/** Harvest Moon: a hay bale to sit on, tied with twine. */
-export function drawHayBale(ctx: Ctx, x: number, y: number) {
-  const c = iso(x, y);
-  softShadow(ctx, c.x, c.y + 2, 30, 12, 0.26);
-  isoBox(ctx, x - 0.36, y - 0.3, x + 0.36, y + 0.3, 0, 24, {
-    top: "#f2d27a",
-    left: "#d9b04a",
-    right: "#c49a36",
-  });
-  ctx.strokeStyle = "rgba(150,110,30,.5)";
-  ctx.lineWidth = 1;
-  for (let i = 0; i < 6; i++) {
-    ctx.beginPath();
-    ctx.moveTo(c.x - 24 + i * 3, c.y - 4 - i);
-    ctx.lineTo(c.x - 22 + i * 3, c.y - 18 - i);
-    ctx.stroke();
-  }
-  ctx.strokeStyle = "#8a5a2a";
-  ctx.lineWidth = 2;
-  for (const f of [-0.15, 0.15]) {
-    const a = iso(x + f, y + 0.3),
-      b = iso(x + f, y - 0.3);
-    ctx.beginPath();
-    ctx.moveTo(a.x, a.y - 1);
-    ctx.lineTo(a.x, a.y - 24);
-    ctx.lineTo(b.x, b.y - 24);
-    ctx.stroke();
-  }
-}
 /** Lantern Festival: a red paper lantern on a stand, swaying. */
 export function drawRedLantern(ctx: Ctx, x: number, y: number, t: number) {
   const c = iso(x, y);
@@ -2276,32 +2647,6 @@ export function drawBlossom(ctx: Ctx, x: number, y: number, t: number) {
     ctx.arc(px, py, 2.6, 0, Math.PI * 2);
     ctx.fill();
   }
-}
-/** A regular's thank-you: a golden plate on a stand. */
-export function drawTrophy(ctx: Ctx, x: number, y: number, t: number) {
-  const c = iso(x, y);
-  softShadow(ctx, c.x, c.y + 2, 18, 7, 0.28);
-  isoBox(ctx, x - 0.22, y - 0.22, x + 0.22, y + 0.22, 0, 22, {
-    top: "#6d4025",
-    left: "#8a5530",
-    right: "#5a3420",
-  });
-  ctx.fillStyle = lin(ctx, c.x - 16, 0, c.x + 16, 0, [
-    [0, "#c98f2e"],
-    [0.5, "#ffe58a"],
-    [1, "#b77a1e"],
-  ]);
-  ellipse(ctx, c.x, c.y - 42, 15, 15);
-  ctx.fill();
-  ctx.fillStyle = "#ffd65b";
-  ellipse(ctx, c.x, c.y - 42, 10, 10);
-  ctx.fill();
-  ctx.fillStyle = "#c98f2e";
-  ctx.fillRect(c.x - 2, c.y - 28, 4, 8);
-  const g = 0.5 + 0.5 * Math.sin(t * 3);
-  ctx.fillStyle = `rgba(255,255,255,${0.5 * g})`;
-  ellipse(ctx, c.x - 4, c.y - 46, 4, 2);
-  ctx.fill();
 }
 /** The Staff Corner: a low bench with cushions and a pot of tea. */
 export function drawStaffCorner(ctx: Ctx, x: number, y: number, t: number) {
@@ -2570,10 +2915,13 @@ export function itemIconUrl(kind: ItemKind, px = 72): string {
   // Centre the tile at (60, 92) in a 120 box.
   const c = iso(0, 0);
   ctx.translate(60 - c.x, 92 - c.y);
-  if (kind === "rug") {
-    ctx.translate(-0, -24);
-    ctx.scale(0.62, 0.62);
-    ctx.translate(30, 40);
+  // The 2 × 2 floor pieces (rugs): scaled down, their middle (the centre of
+  // the four tiles, iso(0.5, 0.5)) at (60, 64).
+  if (ITEM_BY_KIND[kind]?.floor) {
+    const m = iso(0.5, 0.5);
+    ctx.translate(0, -28);
+    ctx.scale(0.58, 0.58);
+    ctx.translate(-m.x, -m.y);
   }
   drawItem(ctx, kind, 0, 0, 0.3, 1);
   const url = cv.toDataURL();
@@ -2602,21 +2950,6 @@ export const tableStyleOf = (kind: ItemKind): TableStyle =>
         : "round";
 
 /** A small stand (a cabinet) things sit on. */
-function stand(
-  ctx: Ctx,
-  x: number,
-  y: number,
-  h: number,
-  top: string,
-  side: string,
-  dark: string,
-) {
-  isoBox(ctx, x - 0.3, y - 0.3, x + 0.3, y + 0.3, 0, h, {
-    top,
-    left: side,
-    right: dark,
-  });
-}
 function glow(
   ctx: Ctx,
   x: number,
@@ -2631,100 +2964,6 @@ function glow(
   ]);
   ellipse(ctx, x, y, r, r);
   ctx.fill();
-}
-export function drawTipJar(ctx: Ctx, x: number, y: number, t: number) {
-  const c = iso(x, y);
-  softShadow(ctx, c.x, c.y + 2, 18, 8, 0.24);
-  stand(ctx, x, y, 26, "#a8683f", "#7a4a2c", "#653c23");
-  const by = c.y - 30;
-  ctx.fillStyle = "rgba(200,235,255,.55)";
-  ctx.beginPath();
-  ctx.roundRect(c.x - 9, by - 22, 18, 22, 4);
-  ctx.fill();
-  for (let i = 0; i < 4; i++) {
-    ctx.fillStyle = i % 2 ? "#f2c94c" : "#e0a82e";
-    ellipse(ctx, c.x - 4 + (i % 2) * 7, by - 4 - Math.floor(i / 2) * 4, 4, 2);
-    ctx.fill();
-  }
-  ctx.strokeStyle = "rgba(255,255,255,.7)";
-  ctx.lineWidth = 1.5;
-  ctx.strokeRect(c.x - 9, by - 22, 18, 22);
-  const tw = 0.5 + 0.5 * Math.sin(t * 3);
-  ctx.fillStyle = `rgba(255,240,170,${0.4 + tw * 0.5})`;
-  ellipse(ctx, c.x + 5, by - 18, 2, 2);
-  ctx.fill();
-}
-export function drawEspresso(ctx: Ctx, x: number, y: number, t: number) {
-  const c = iso(x, y);
-  softShadow(ctx, c.x, c.y + 2, 24, 10, 0.26);
-  stand(ctx, x, y, 28, "#3a3f46", "#2a2e33", "#202328");
-  isoBox(ctx, x - 0.22, y - 0.18, x + 0.22, y + 0.18, 28, 26, {
-    top: "#d9dfe4",
-    left: "#aab3bb",
-    right: "#8d969e",
-  });
-  ctx.fillStyle = "#c0392b";
-  ctx.fillRect(c.x - 6, c.y - 50, 12, 5);
-  ctx.fillStyle = "#fff";
-  ellipse(ctx, c.x, c.y - 33, 5, 2.5);
-  ctx.fill();
-  const s = (t * 0.8) % 1;
-  ctx.fillStyle = `rgba(255,255,255,${0.5 * (1 - s)})`;
-  ellipse(ctx, c.x + 2, c.y - 60 - s * 14, 4 + s * 4, 4 + s * 4);
-  ctx.fill();
-}
-export function drawCart(ctx: Ctx, x: number, y: number) {
-  const c = iso(x, y);
-  softShadow(ctx, c.x, c.y + 2, 26, 11, 0.24);
-  for (const z of [8, 30])
-    isoBox(ctx, x - 0.32, y - 0.22, x + 0.32, y + 0.22, z, 3, {
-      top: "#d9dfe4",
-      left: "#9aa3ab",
-      right: "#87909a",
-    });
-  ctx.strokeStyle = "#7d868e";
-  ctx.lineWidth = 2;
-  for (const [lx, ly] of [
-    [-0.3, -0.2],
-    [0.3, -0.2],
-    [0.3, 0.2],
-    [-0.3, 0.2],
-  ]) {
-    const p = iso(x + lx, y + ly);
-    ctx.beginPath();
-    ctx.moveTo(p.x, p.y - 4);
-    ctx.lineTo(p.x, p.y - 33);
-    ctx.stroke();
-    ctx.fillStyle = "#333";
-    ellipse(ctx, p.x, p.y - 2, 3, 3);
-    ctx.fill();
-  }
-  ctx.fillStyle = "rgba(230,240,245,.9)";
-  ctx.beginPath();
-  ctx.ellipse(c.x, c.y - 34, 12, 9, 0, Math.PI, 0);
-  ctx.fill();
-}
-export function drawArcade(ctx: Ctx, x: number, y: number, t: number) {
-  const c = iso(x, y);
-  softShadow(ctx, c.x, c.y + 2, 24, 10, 0.28);
-  isoBox(ctx, x - 0.3, y - 0.26, x + 0.3, y + 0.26, 0, 70, {
-    top: "#5b2a86",
-    left: "#43206a",
-    right: "#361a57",
-  });
-  const hue = (t * 60) % 360;
-  ctx.fillStyle = `hsl(${hue},80%,60%)`;
-  ctx.fillRect(c.x - 12, c.y - 58, 20, 16);
-  ctx.fillStyle = "rgba(255,255,255,.25)";
-  ctx.fillRect(c.x - 12, c.y - 58, 20, 4);
-  ctx.fillStyle = "#e74c3c";
-  ellipse(ctx, c.x - 6, c.y - 36, 3, 2);
-  ctx.fill();
-  ctx.fillStyle = "#f1c40f";
-  ellipse(ctx, c.x + 3, c.y - 34, 3, 2);
-  ctx.fill();
-  ctx.fillStyle = "#ffd65b";
-  ctx.fillRect(c.x - 12, c.y - 72, 20, 6);
 }
 export function drawNeon(ctx: Ctx, x: number, y: number, t: number) {
   const c = iso(x, y);
@@ -2749,45 +2988,6 @@ export function drawNeon(ctx: Ctx, x: number, y: number, t: number) {
     ellipse(ctx, c.x + dx, c.y - 50, 1.8, 1.8);
     ctx.fill();
   }
-}
-export function drawFreezer(ctx: Ctx, x: number, y: number) {
-  const c = iso(x, y);
-  softShadow(ctx, c.x, c.y + 2, 28, 12, 0.26);
-  isoBox(ctx, x - 0.36, y - 0.28, x + 0.36, y + 0.28, 0, 30, {
-    top: "rgba(190,230,250,.85)",
-    left: "#f2f6f8",
-    right: "#d5dde2",
-  });
-  for (const [dx, col] of [
-    [-12, "#ff9fb3"],
-    [0, "#fff1b8"],
-    [12, "#9fe0c8"],
-  ] as const) {
-    ctx.fillStyle = col;
-    ellipse(ctx, c.x + dx, c.y - 34, 6, 3.5);
-    ctx.fill();
-  }
-  ctx.fillStyle = "#4fa3d9";
-  ctx.fillRect(c.x - 20, c.y - 18, 40, 4);
-}
-export function drawMassage(ctx: Ctx, x: number, y: number) {
-  const c = iso(x, y);
-  softShadow(ctx, c.x, c.y + 2, 26, 11, 0.28);
-  isoBox(ctx, x - 0.34, y - 0.3, x + 0.34, y + 0.3, 0, 20, {
-    top: "#3b2d27",
-    left: "#2c211c",
-    right: "#231a16",
-  });
-  ctx.fillStyle = lin(ctx, 0, c.y - 64, 0, c.y - 20, [
-    [0, "#5a4238"],
-    [1, "#2c211c"],
-  ]);
-  ctx.beginPath();
-  ctx.roundRect(c.x - 16, c.y - 64, 32, 44, 10);
-  ctx.fill();
-  ctx.fillStyle = "#7ad3c4";
-  ellipse(ctx, c.x + 14, c.y - 28, 3, 3);
-  ctx.fill();
 }
 export function drawPiano(ctx: Ctx, x: number, y: number) {
   const c = iso(x, y);
@@ -2820,123 +3020,6 @@ export function drawPiano(ctx: Ctx, x: number, y: number) {
     ctx.stroke();
   }
 }
-export function drawPodium(ctx: Ctx, x: number, y: number, t: number) {
-  const c = iso(x, y);
-  softShadow(ctx, c.x, c.y + 2, 30, 12, 0.28);
-  isoBox(ctx, x - 0.3, y - 0.3, x + 0.3, y + 0.3, 0, 30, {
-    top: "#f6d36b",
-    left: "#c9a032",
-    right: "#a8821e",
-  });
-  ctx.fillStyle = "#b0262b";
-  ctx.fillRect(c.x - 20, c.y - 40, 40, 6);
-  const tw = 0.5 + 0.5 * Math.sin(t * 4);
-  glow(ctx, c.x, c.y - 44, 22, "rgba(255,225,120,A)", 0.25 + 0.2 * tw);
-  ctx.fillStyle = "#fff4c2";
-  ctx.beginPath();
-  ctx.moveTo(c.x, c.y - 58);
-  ctx.lineTo(c.x + 4, c.y - 50);
-  ctx.lineTo(c.x - 4, c.y - 50);
-  ctx.closePath();
-  ctx.fill();
-}
-export function drawRobot(ctx: Ctx, x: number, y: number, t: number) {
-  const c = iso(x, y);
-  softShadow(ctx, c.x, c.y + 2, 24, 10, 0.26);
-  ctx.fillStyle = "#4fc3f7";
-  ellipse(ctx, c.x, c.y, 22, 10);
-  ctx.fill();
-  ctx.fillStyle = "#e3f2fd";
-  ellipse(ctx, c.x, c.y - 2, 18, 8);
-  ctx.fill();
-  const bob = Math.sin(t * 3) * 2;
-  ctx.fillStyle = lin(ctx, c.x - 12, 0, c.x + 12, 0, [
-    [0, "#b0bec5"],
-    [0.5, "#eceff1"],
-    [1, "#90a4ae"],
-  ]);
-  ctx.beginPath();
-  ctx.roundRect(c.x - 11, c.y - 40 + bob, 22, 30, 9);
-  ctx.fill();
-  ctx.fillStyle = "#263238";
-  ctx.fillRect(c.x - 8, c.y - 34 + bob, 16, 8);
-  ctx.fillStyle = "#4dd0e1";
-  for (const dx of [-4, 4]) {
-    ellipse(ctx, c.x + dx, c.y - 30 + bob, 2, 2);
-    ctx.fill();
-  }
-}
-export function drawVase(ctx: Ctx, x: number, y: number, t: number) {
-  const c = iso(x, y);
-  softShadow(ctx, c.x, c.y + 2, 14, 6, 0.24);
-  ctx.fillStyle = lin(ctx, c.x - 9, 0, c.x + 9, 0, [
-    [0, "#2f6fa8"],
-    [0.5, "#6cb2e6"],
-    [1, "#2a5f90"],
-  ]);
-  ctx.beginPath();
-  ctx.moveTo(c.x - 5, c.y - 30);
-  ctx.quadraticCurveTo(c.x - 13, c.y - 12, c.x - 6, c.y);
-  ctx.lineTo(c.x + 6, c.y);
-  ctx.quadraticCurveTo(c.x + 13, c.y - 12, c.x + 5, c.y - 30);
-  ctx.closePath();
-  ctx.fill();
-  for (const [dx, dy, col] of [
-    [-6, -40, "#ff7aa8"],
-    [5, -44, "#ffd65b"],
-    [0, -50, "#ff5d7a"],
-  ] as const) {
-    const sw = Math.sin(t * 1.5 + dx) * 1.5;
-    ctx.strokeStyle = "#4a8a3a";
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(c.x, c.y - 30);
-    ctx.lineTo(c.x + dx + sw, c.y + dy);
-    ctx.stroke();
-    ctx.fillStyle = col;
-    ellipse(ctx, c.x + dx + sw, c.y + dy, 4, 4);
-    ctx.fill();
-  }
-}
-export function drawScreen(ctx: Ctx, x: number, y: number) {
-  const c = iso(x, y);
-  softShadow(ctx, c.x, c.y + 2, 26, 10, 0.24);
-  for (let i = 0; i < 3; i++) {
-    const px = c.x - 21 + i * 14,
-      py = c.y - (i % 2) * 4;
-    ctx.fillStyle = i % 2 ? "#d9c58a" : "#e8d69c";
-    ctx.fillRect(px, py - 56, 13, 54);
-    ctx.strokeStyle = "#8a6d2c";
-    ctx.lineWidth = 2;
-    ctx.strokeRect(px, py - 56, 13, 54);
-    ctx.strokeStyle = "rgba(90,120,60,.6)";
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(px + 6, py - 50);
-    ctx.lineTo(px + 6, py - 8);
-    ctx.stroke();
-  }
-}
-export function drawBookshelf(ctx: Ctx, x: number, y: number) {
-  const c = iso(x, y);
-  softShadow(ctx, c.x, c.y + 2, 24, 10, 0.26);
-  isoBox(ctx, x - 0.34, y - 0.22, x + 0.34, y + 0.22, 0, 64, {
-    top: "#8a5232",
-    left: "#6a3c22",
-    right: "#5a321c",
-  });
-  const cols = ["#c0392b", "#2e86c1", "#f1c40f", "#27ae60", "#8e44ad"];
-  for (let r = 0; r < 3; r++)
-    for (let i = 0; i < 5; i++) {
-      ctx.fillStyle = cols[(i + r * 2) % cols.length];
-      ctx.fillRect(
-        c.x - 20 + i * 5,
-        c.y - 18 - r * 16 - (i % 2) * 2,
-        4,
-        12 + (i % 2) * 2,
-      );
-    }
-}
 export function drawCarpet(ctx: Ctx, x: number, y: number) {
   const pts = [
     iso(x - 0.4, y - 0.4),
@@ -2944,9 +3027,14 @@ export function drawCarpet(ctx: Ctx, x: number, y: number) {
     iso(x + 1.4, y + 1.4),
     iso(x - 0.4, y + 1.4),
   ];
-  ctx.fillStyle = "#b3122a";
+  ctx.fillStyle = lin(ctx, pts[3].x, pts[3].y, pts[1].x, pts[1].y, [
+    [0, "#8e0c1f"],
+    [0.5, "#c4162f"],
+    [1, "#9a0f24"],
+  ]);
   poly(ctx, pts);
   ctx.fill();
+  // A gold border with a braid, and a plush sheen down the middle.
   ctx.strokeStyle = "#e8b84a";
   ctx.lineWidth = 3;
   poly(ctx, [
@@ -2956,50 +3044,20 @@ export function drawCarpet(ctx: Ctx, x: number, y: number) {
     iso(x - 0.28, y + 1.28),
   ]);
   ctx.stroke();
-}
-export function drawKoi(ctx: Ctx, x: number, y: number, t: number) {
-  const c = iso(x, y);
-  ctx.fillStyle = "#8a8f94";
-  ellipse(ctx, c.x, c.y - 4, 34, 16);
-  ctx.fill();
-  ctx.fillStyle = rad(ctx, c.x - 6, c.y - 8, 32, [
-    [0, "#5fc3e4"],
-    [1, "#1f7fa8"],
+  ctx.strokeStyle = "#fff0b8";
+  ctx.lineWidth = 1;
+  ctx.setLineDash([3, 3]);
+  poly(ctx, [
+    iso(x - 0.22, y - 0.22),
+    iso(x + 1.22, y - 0.22),
+    iso(x + 1.22, y + 1.22),
+    iso(x - 0.22, y + 1.22),
   ]);
-  ellipse(ctx, c.x, c.y - 6, 29, 13);
-  ctx.fill();
-  for (let i = 0; i < 2; i++) {
-    const a = t * (0.9 + i * 0.3) + i * 3;
-    const fx = c.x + Math.cos(a) * 16,
-      fy = c.y - 6 + Math.sin(a) * 6;
-    ctx.fillStyle = i ? "#ffffff" : "#ff7a2e";
-    ellipse(ctx, fx, fy, 5, 2.5);
-    ctx.fill();
-  }
-  ctx.fillStyle = "#4caf50";
-  ellipse(ctx, c.x + 18, c.y - 10, 5, 2.5);
-  ctx.fill();
-}
-export function drawChandelier(ctx: Ctx, x: number, y: number, t: number) {
-  const c = iso(x, y);
-  softShadow(ctx, c.x, c.y + 2, 18, 8, 0.24);
-  ctx.fillStyle = "#c9a032";
-  ctx.fillRect(c.x - 2, c.y - 70, 4, 70);
-  ctx.fillRect(c.x - 12, c.y - 3, 24, 4);
-  glow(ctx, c.x, c.y - 78, 30, "rgba(255,245,200,A)", 0.35);
-  for (let i = 0; i < 6; i++) {
-    const a = (i / 6) * Math.PI * 2 + t * 0.4;
-    const px = c.x + Math.cos(a) * 14,
-      py = c.y - 78 + Math.sin(a) * 5;
-    ctx.fillStyle = "rgba(220,240,255,.95)";
-    ctx.beginPath();
-    ctx.moveTo(px, py - 6);
-    ctx.lineTo(px + 3, py);
-    ctx.lineTo(px, py + 6);
-    ctx.lineTo(px - 3, py);
-    ctx.closePath();
-    ctx.fill();
-  }
+  ctx.stroke();
+  ctx.setLineDash([]);
+  weave(ctx, x - 0.4, y - 0.4, x + 1.4, y + 1.4, "#3a0008");
+  fringe(ctx, x - 0.4, y + 1.4, x + 1.4, y + 1.4, 16, "#f2d27a");
+  fringe(ctx, x + 1.4, y - 0.4, x + 1.4, y + 1.4, 16, "#f2d27a");
 }
 export function drawSakura(ctx: Ctx, x: number, y: number, t: number) {
   const c = iso(x, y);
