@@ -79,7 +79,11 @@ describe("battle effects", () => {
         : a.kind === "grapple" ? a.id in effectKit.beam && a.id in effectKit.cast
         : a.kind === "shrapnel" ? a.id in effectKit.projectile && a.id in effectKit.impact && a.id in effectKit.cast
         : ["roll", "pinball", "swap"].includes(a.kind) ? a.id in effectKit.cast && a.id in effectKit.impact
-        : ["seedling", "timewarp"].includes(a.kind) ? a.id in effectKit.zone
+        : ["seedling", "timewarp", "screen"].includes(a.kind) ? a.id in effectKit.zone && a.id in effectKit.cast
+        // Wave 1's: a taunt (cast), a rewind (leaves on cast, lands as an
+        // impact) and a tether (cast; the stream is drawn while it holds).
+        : ["taunt", "tether"].includes(a.kind) ? a.id in effectKit.cast
+        : a.kind === "rewind" ? a.id in effectKit.cast && a.id in effectKit.impact
         : false;
       if (!has) missing.push(`${a.id} (${a.kind})`);
       if ((a.cast ?? 0) > 0 && !(a.id in effectKit.windup)) missing.push(`${a.id} wind-up`);

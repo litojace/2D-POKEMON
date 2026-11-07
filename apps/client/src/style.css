@@ -626,6 +626,29 @@ input::placeholder {
   display: block !important;
   max-width: 100%;
 }
+/* Blinded (Ink Jet): a few ink splotches over the view, not all of it. */
+body.is-blinded #game {
+  position: relative;
+}
+body.is-blinded #game::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 4;
+  background:
+    radial-gradient(circle at 18% 24%, rgb(18 10 36 / 0.88) 0 7%, transparent 13%),
+    radial-gradient(circle at 78% 30%, rgb(18 10 36 / 0.82) 0 6%, transparent 12%),
+    radial-gradient(circle at 62% 76%, rgb(18 10 36 / 0.85) 0 8%, transparent 14%),
+    radial-gradient(circle at 26% 72%, rgb(18 10 36 / 0.78) 0 5%, transparent 10%);
+  animation: ink-splash 0.25s ease-out;
+}
+@keyframes ink-splash {
+  from {
+    opacity: 0;
+    transform: scale(1.06);
+  }
+}
 .map-label {
   position: absolute;
   bottom: 13px;

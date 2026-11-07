@@ -129,6 +129,8 @@ export class Arena {
     string,
     { target?: string; x: number; y: number; gap: number; speed: number; until: number }
   >();
+  /** Where each fighter was lately (Halcyon Rewind): time, place and health, oldest first. */
+  private trail = new Map<string, { t: number; x: number; y: number; hp: number }[]>();
   /** Pinball flights: the enemies hit on the current stretch, and bounces left then. */
   private pinballs = new Map<
     string,
@@ -434,6 +436,7 @@ export class Arena {
     this.rollHits.clear();
     this.pinballs.clear();
     this.zips.clear();
+    this.trail.clear();
     // Fighter roulette: a fresh random fighter for everyone each round.
     if (this.rule("random") && !this.practice)
       for (const p of this.players) {
@@ -489,6 +492,7 @@ export class Arena {
         clone: undefined,
         roll: undefined,
         pinball: undefined,
+        tether: undefined,
         plates: undefined,
         plateAt: 0,
         moss: 0,
@@ -517,6 +521,8 @@ export class Arena {
     this.rollHits.delete(p.id);
     this.pinballs.delete(p.id);
     this.zips.delete(p.id);
+    this.trail.delete(p.id);
+    p.tether = undefined;
     p.roll = undefined;
     p.pinball = undefined;
     p.vx = p.vy = 0;
@@ -734,6 +740,22 @@ export class Arena {
     if (target.hp <= 0 || this.phase !== "playing") return;
     if (ability?.ground && target.jumpUntil > this.time) return;
     const source = this.players.find((p) => p.id === owner);
+    // Blinded (Ink Jet): a basic attack misses.
+    if (
+      source &&
+      source !== target &&
+      ability &&
+      ability.id === CHARACTERS[source.character].basic.id &&
+      this.has(source, "blind")
+    ) {
+      this.event("hit", target, CHARACTERS[target.character].color, 0, undefined, ability.id);
+      Object.assign(this.events[this.events.length - 1], {
+        target: target.id,
+        source: owner,
+        miss: true,
+      });
+      return;
+    }
     let ambushed = false;
     if (amount > 0 && ability && source && source !== target) {
       // Marksman shots hit harder the farther away the target is.
@@ -890,7 +912,7 @@ export class Arena {
       if (guard.onAbsorb) this.status(target, "mark", guard.window, target.id);
     }
     const status = primed && combo!.status ? combo!.status : ability?.status;
-    if (status)
+    if (status) {
       this.status(
         target,
         status,
@@ -899,7 +921,21 @@ export class Arena {
           : ability?.statusDuration) ?? 1,
         owner,
       );
-    if (ability && source && ability.knockback) {
+      // A leash pins its target where it was hit; a taunt points at the taunter.
+      const s = target.statuses.find(
+        (x) => x.kind === status && x.until > this.time,
+      );
+      if (s && status === "leash") {
+        s.tx = target.x;
+        s.ty = target.y;
+        s.amount = ability?.leash ?? 110;
+      }
+      if (s && status === "taunt" && source) {
+        s.tx = source.x;
+        s.ty = source.y;
+      }
+    }
+    if (ability && source && ability.knockback && !this.has(target, "brace")) {
       // A pull (negative knockback) stops just in front of the caster.
       const room = Math.max(
         0,
@@ -1452,6 +1488,84 @@ export class Arena {
         });
       }
     }
+    if (a.kind === "screen" && this.zones.length < RULES.maxZones) {
+      // A curtain across the aim, a little way ahead.
+      const d = a.screen?.distance ?? 90;
+      this.zones.push({
+        id: ++this.serial,
+        owner: p.id,
+        x: p.x + Math.cos(angle) * d,
+        y: p.y + Math.sin(angle) * d,
+        radius: (a.screen?.length ?? 200) / 2,
+        until: this.time + a.duration,
+        nextTick: this.time + (a.tickDelay ?? 0.1),
+        ability: a,
+        color,
+        born: this.time,
+        angle: angle + Math.PI / 2,
+      });
+    }
+    if (a.kind === "taunt") {
+      for (const enemy of enemies)
+        if (
+          enemy.hp > 0 &&
+          Math.hypot(enemy.x - p.x, enemy.y - p.y) < a.radius + this.hitRadius(enemy)
+        )
+          this.damage(enemy, a.damage, p.id, a);
+      this.status(p, "brace", a.duration);
+    }
+    if (a.kind === "rewind") {
+      // Back to where it was `seconds` ago (or the oldest place it remembers).
+      const trail = this.trail.get(p.id) ?? [];
+      const back = this.time - (a.rewind?.seconds ?? 2);
+      const then = trail.find((m) => m.t >= back) ?? trail[0];
+      if (then) {
+        const from = { x: p.x, y: p.y };
+        this.rushes.delete(p.id);
+        this.stopZip(p);
+        p.x = then.x;
+        p.y = then.y;
+        p.vx = p.vy = 0;
+        p.dashUntil = Math.min(p.dashUntil, this.time);
+        const lost = Math.max(0, then.hp - p.hp);
+        if (lost > 0)
+          this.heal(
+            p,
+            Math.min(a.rewind?.max ?? 30, lost * (a.rewind?.heal ?? 0.6)),
+            a.id,
+          );
+        this.event("burst", p, color, undefined, p.id, a.id);
+        Object.assign(this.events[this.events.length - 1], { tx: from.x, ty: from.y });
+        this.trail.set(p.id, []);
+      }
+    }
+    if (a.kind === "tether") {
+      // The enemy nearest the aim, within reach and in sight.
+      const aim = { x: p.lastInput.aimX, y: p.lastInput.aimY };
+      const target = enemies
+        .filter(
+          (e) =>
+            e.hp > 0 &&
+            Math.hypot(e.x - p.x, e.y - p.y) <= a.range + this.hitRadius(e) &&
+            this.lineClear(p, e),
+        )
+        .sort(
+          (m, n) =>
+            Math.hypot(m.x - aim.x, m.y - aim.y) -
+            Math.hypot(n.x - aim.x, n.y - aim.y),
+        )[0];
+      const slot = this.kit(p).skills.findIndex((k) => k.id === a.id);
+      if (target)
+        p.tether = {
+          target: target.id,
+          until: this.time + a.duration,
+          nextTick: this.time + (a.tether?.tick ?? 0.25),
+          skill: slot,
+        };
+      else if (slot >= 0 && slot !== ULT_SLOT)
+        // Nobody in reach: most of the cooldown comes back.
+        p.cooldowns[slot] = Math.min(p.cooldowns[slot], this.time + 1.5);
+    }
     if (a.kind === "veil") {
       this.status(p, "stealth", a.duration);
       this.status(p, "haste", a.statusDuration ?? 1.5);
@@ -1648,6 +1762,113 @@ export class Arena {
     if (!this.zips.delete(p.id)) return;
     p.dashUntil = Math.min(p.dashUntil, this.time);
     p.vx = p.vy = 0;
+  }
+  /** Halcyon Rewind's memory: where this fighter has been, the last 3 seconds. */
+  private remember(p: Fighter) {
+    const trail = this.trail.get(p.id) ?? [];
+    trail.push({ t: this.time, x: p.x, y: p.y, hp: p.hp });
+    while (trail.length && trail[0].t < this.time - 3) trail.shift();
+    this.trail.set(p.id, trail);
+  }
+  /**
+   * Gill Siphon: while the stream holds (in reach, in sight, the caster not
+   * stunned), the target takes a tick of damage and the caster drinks its share.
+   */
+  private stepTether(p: Fighter, disabled: boolean) {
+    const t = p.tether!;
+    const a = this.kit(p).skills[t.skill];
+    const target = this.players.find((q) => q.id === t.target);
+    if (
+      !a ||
+      !target ||
+      target.hp <= 0 ||
+      target.out ||
+      disabled ||
+      this.time >= t.until ||
+      Math.hypot(target.x - p.x, target.y - p.y) >
+        (a.tether?.breakRange ?? 470) + this.hitRadius(target) ||
+      !this.lineClear(p, target)
+    ) {
+      p.tether = undefined;
+      return;
+    }
+    if (this.time >= t.nextTick) {
+      t.nextTick += a.tether?.tick ?? 0.25;
+      this.damage(target, a.damage, p.id, a);
+    }
+  }
+  /** Is a body (radius `r`) on this curtain? */
+  onScreen(zone: Zone, body: { x: number; y: number }, r: number) {
+    const ang = zone.angle ?? 0,
+      ux = Math.cos(ang),
+      uy = Math.sin(ang);
+    const dx = body.x - zone.x,
+      dy = body.y - zone.y;
+    const along = dx * ux + dy * uy,
+      across = Math.abs(-dx * uy + dy * ux);
+    return Math.abs(along) <= zone.radius + r * 0.5 && across <= 14 + r;
+  }
+  /** Does a curtain against this shot's owner stand where the shot is? */
+  private screened(pr: Projectile) {
+    return this.zones.some(
+      (z) =>
+        z.ability.kind === "screen" &&
+        z.until > this.time &&
+        this.rivals(z.owner, pr.owner) &&
+        this.onScreen(z, pr, pr.ability.radius),
+    );
+  }
+  /**
+   * A boomerang: out for its range (a wall turns it early), then back to its
+   * thrower through anything, hitting each enemy once a pass. Gone when it
+   * gets home (or its thrower does not exist).
+   */
+  private stepBoomerang(pr: Projectile, dt: number) {
+    const owner = this.players.find((q) => q.id === pr.owner);
+    if (!owner || owner.hp <= 0 || owner.out) return false;
+    if (this.screened(pr)) {
+      this.event("impact", pr, pr.color, undefined, pr.owner, pr.ability.id);
+      return false;
+    }
+    const speed = Math.hypot(pr.vx, pr.vy) || pr.ability.speed;
+    if (pr.back) {
+      const d = Math.hypot(owner.x - pr.x, owner.y - pr.y);
+      if (d < RULES.radius + 6) return false;
+      pr.vx = ((owner.x - pr.x) / d) * speed;
+      pr.vy = ((owner.y - pr.y) / d) * speed;
+    }
+    const steps = Math.max(1, Math.ceil((speed * dt) / 10));
+    for (let i = 0; i < steps; i++) {
+      const next = { x: pr.x + (pr.vx * dt) / steps, y: pr.y + (pr.vy * dt) / steps };
+      if (!pr.back) {
+        const contact = projectileContact(pr, next, pr.ability.radius, currentObstacles());
+        pr.remaining -= (speed * dt) / steps;
+        if (contact || pr.remaining <= 0) {
+          // Turn round here, and start a new pass.
+          pr.x = contact?.x ?? next.x;
+          pr.y = contact?.y ?? next.y;
+          pr.back = true;
+          pr.hit = [];
+          this.event("impact", pr, pr.color, undefined, pr.owner, pr.ability.id);
+          return true;
+        }
+      }
+      if (pr.back) pr.remaining -= (speed * dt) / steps;
+      pr.x = next.x;
+      pr.y = next.y;
+      for (const enemy of this.enemiesOfOwner(pr.owner))
+        if (
+          enemy.hp > 0 &&
+          !(pr.hit ?? []).includes(enemy.id) &&
+          Math.hypot(pr.x - enemy.x, pr.y - enemy.y) < this.hitRadius(enemy) + pr.ability.radius
+        ) {
+          pr.hit = [...(pr.hit ?? []), enemy.id];
+          this.event("impact", pr, pr.color, undefined, pr.owner, pr.ability.id);
+          this.damage(enemy, pr.ability.damage, pr.owner, pr.ability);
+        }
+    }
+    // Lost on the way back for too long: drop it.
+    return pr.remaining > -pr.ability.range * 3 || !pr.back;
   }
   /**
    * Passives, after the fighter moved: Pangrove's plates grow back; Mossloth's
@@ -1969,8 +2190,19 @@ export class Arena {
         if (disabled || rooted) this.stopZip(p);
         else this.stepZip(p, dt);
       }
+      // A taunt points at where the taunter is now (gone: it ends).
+      for (const s of p.statuses)
+        if (s.kind === "taunt") {
+          const by = this.players.find((q) => q.id === s.by && q.hp > 0 && !q.out);
+          if (by) {
+            s.tx = by.x;
+            s.ty = by.y;
+          } else s.until = this.time;
+        }
       advanceMovement(p, input, dt, this.time);
       this.stepPassive(p, dt);
+      this.remember(p);
+      if (p.tether) this.stepTether(p, disabled);
       if (p.charge && this.time >= p.charge.at) {
         const a = this.kit(p).skills[p.charge.skill];
         this.cast(p, p.charge.ex ? exAbility(a) : a, p.charge.ex);
@@ -2087,6 +2319,12 @@ export class Arena {
     );
     // Swept substeps prevent fast projectiles from tunneling through a fighter or wall.
     this.projectiles = this.projectiles.filter((pr) => {
+      if (pr.ability.boomerang) return this.stepBoomerang(pr, dt);
+      // An Ember Curtain burns up the shots of whoever it works against.
+      if (this.screened(pr)) {
+        this.event("impact", pr, pr.color, undefined, pr.owner, pr.ability.id);
+        return false;
+      }
       const slowed = bubbles.some(
         (z) =>
           this.rivals(z.owner, pr.owner) &&
@@ -2162,6 +2400,22 @@ export class Arena {
       return true;
     });
     for (const zone of this.zones) {
+      if (zone.ability.kind === "screen") {
+        // Enemies on the curtain catch fire.
+        if (this.time >= zone.nextTick) {
+          zone.nextTick += zone.ability.tickInterval ?? 0.5;
+          const a = zone.ability;
+          for (const enemy of this.enemiesOfOwner(zone.owner))
+            if (
+              enemy.hp > 0 &&
+              enemy.jumpUntil <= this.time &&
+              this.onScreen(zone, enemy, this.hitRadius(enemy))
+            )
+              if (a.damage > 0) this.damage(enemy, a.damage, zone.owner, a);
+              else if (a.status) this.status(enemy, a.status, a.statusDuration ?? 1, zone.owner);
+        }
+        continue;
+      }
       if (zone.ability.kind === "timewarp") {
         // Sloth Time: enemies inside move at a fraction of their speed.
         for (const enemy of this.enemiesOfOwner(zone.owner))

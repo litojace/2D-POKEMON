@@ -24,7 +24,7 @@ import {
 const TRICKS = {
   /** How far each Electromagnet tick drags a twin toward Coilemur (px). */
   magnetPull: 45,
-  /** Wombolder's Rump Block stopping a Twin Rush. */
+  /** Wombolder, Braced by Grudge Thump, stopping a Twin Rush. */
   blockStagger: 15,
 };
 export class StormTwinsArena extends RaidArena {
@@ -117,16 +117,16 @@ export class StormTwinsArena extends RaidArena {
     owner: string,
     ability?: Ability,
   ) {
-    // Wombolder's Rump Block stops a Twin Rush dead and staggers that twin.
+    // Wombolder Braced by Grudge Thump stops a Twin Rush dead and staggers that twin.
     if (
       this.hitBy === "twin-rush" &&
       p.character === "wombolder" &&
-      this.has(p, "counter")
+      this.has(p, "brace")
     ) {
       const twin = this.twins().find((t) => t.id === owner);
       if (twin && !this.raid.drill) {
         this.addBossStagger(twin, TRICKS.blockStagger);
-        this.raid.message = `${p.name}'s Rump Block stops ${twin.name}'s rush!`;
+        this.raid.message = `${p.name} braces and stops ${twin.name}'s rush!`;
       }
       this.event("hit", p, 0xc9f4ff, 0, p.id);
       return;

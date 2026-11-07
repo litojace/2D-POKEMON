@@ -698,7 +698,7 @@ export class BotBrain {
         case "beam":
           // A marksman's shot (farBonus) is worth more the farther away they are.
           if (s.sight && reach(a.range * 0.85))
-            score = a.damage * farMultiplier(a, s.dist);
+            score = a.damage * farMultiplier(a, s.dist) * (a.boomerang ? 1.6 : 1);
           break;
         case "rush":
         case "blink":
@@ -712,6 +712,26 @@ export class BotBrain {
         case "veil":
           // Slip into stealth on the way in, so the first hit is an ambush.
           if (s.sight && reach(520)) score = 15;
+          break;
+        case "screen": {
+          // An Ember Curtain against shots coming in, or a shooter keeping its distance.
+          const ranged = CHARACTERS[enemy.character].basic.kind !== "melee" &&
+            CHARACTERS[enemy.character].basic.kind !== "cone";
+          if (s.threatened || (ranged && s.dist > 220 && s.sight)) score = 18;
+          break;
+        }
+        case "taunt":
+          // Grudge Thump: drag whoever is close into a brawl.
+          if (s.sight && reach(a.radius)) score = 18 + a.damage;
+          break;
+        case "rewind":
+          // Halcyon Rewind: an escape (and a heal) when hurt and pressed.
+          if (s.threatened && s.hpRatio < 0.65) score = 17;
+          break;
+        case "tether":
+          // Gill Siphon: lock on while the target is in reach.
+          if (s.sight && reach(a.range * 0.95))
+            score = a.damage * (a.duration / (a.tether?.tick ?? 0.25)) * 0.6;
           break;
         case "grapple":
           // Latch on from mid range: a gap closer that lands its hit first.

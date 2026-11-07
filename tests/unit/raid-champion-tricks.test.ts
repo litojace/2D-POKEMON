@@ -168,12 +168,12 @@ describe("Grumblecrag tricks", () => {
       else expect(p.hp).toBeLessThan(hp);
     }
   });
-  it("Rock Volley is blocked by Facet Guard only, not by any counter", () => {
+  it("Rock Volley is blocked by Facet Guard only, not by Wombolder's brace", () => {
     const a = arena("grumblecrag", ["wombolder"]);
     const p = hero(a, 0),
       boss = a.boss()!;
     Object.assign(p, { x: 1000, y: 450 });
-    a.cast(p, skill("wombolder", "rump-block"));
+    a.cast(p, skill("wombolder", "grudge-thump"));
     const hp = p.hp;
     (a as any).resolveWarning(
       {
@@ -457,18 +457,18 @@ describe("Storm Twins tricks", () => {
     expect(second).toBeGreaterThan(0);
     expect(shoot(750)[1]).toBe(0);
   });
-  it("Wombolder's Rump Block stops Twin Rush and staggers that twin", () => {
+  it("Wombolder Braced by Grudge Thump stops Twin Rush and staggers that twin", () => {
     const a = arena<StormTwinsArena>("storm-twins", ["wombolder"]);
     a.raid.trait = "bickering";
     const p = hero(a, 0),
       [fizz] = twins(a),
       hp = p.hp;
-    a.cast(p, skill("wombolder", "rump-block"));
+    a.cast(p, skill("wombolder", "grudge-thump"));
     (a as any).hitBy = "twin-rush";
     a.damage(p, STORM_TWINS.rush.damage, fizz.id);
     expect(p.hp).toBe(hp);
     expect(a.raid.twins![0].stagger).toBe(15);
-    // Without the block, the rush lands.
+    // Once the brace wears off, the rush lands.
     run(a, 2);
     (a as any).hitBy = "twin-rush";
     a.damage(p, STORM_TWINS.rush.damage, fizz.id);

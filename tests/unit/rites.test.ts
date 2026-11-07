@@ -115,14 +115,17 @@ describe("rites", () => {
     arena.cast(p, arena.kit(p).skills[1]);
     const wire = unpackSnapshot(packSnapshot(arena.snapshot()));
     expect(wire.projectiles[0].ability.explosion).toBeCloseTo(110 * 1.3);
-    const tide = duel();
-    tide.q.rites = ["tidefin-rapid-spray"];
-    tide.arena.submit(tide.q, {
-      ...tide.q.lastInput,
-      seq: 99,
-      skill: 0,
-    });
-    tide.arena.tick();
-    expect(tide.q.cooldowns[0] - tide.arena.time).toBeCloseTo(5, 1);
+    // A cooldown rite: Halcyon Rewind 15s → 11s.
+    const hal = new Arena("RITES2");
+    hal.add("one", "One", "cindrake");
+    const h = hal.add("two", "Two", "halcyra");
+    hal.start();
+    hal.phase = "playing";
+    hal.deadline = 999;
+    h.rites = ["halcyra-quick-rewind"];
+    const slot = CHARACTERS.halcyra.skills.findIndex((k) => k.id === "halcyon-rewind");
+    hal.submit(h, { ...h.lastInput, seq: 99, skill: slot });
+    hal.tick();
+    expect(h.cooldowns[slot] - hal.time).toBeCloseTo(11, 1);
   });
 });

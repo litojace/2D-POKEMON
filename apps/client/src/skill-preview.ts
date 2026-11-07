@@ -145,6 +145,33 @@ export function previewShape(
         r: ability.radius + RULES.radius,
       });
       break;
+    case "screen": {
+      // The curtain itself: its real length, across the aim, a little ahead.
+      const d = ability.screen?.distance ?? 90,
+        half = (ability.screen?.length ?? 200) / 2,
+        cx = from.x + Math.cos(angle) * d,
+        cy = from.y + Math.sin(angle) * d,
+        ux = Math.cos(angle + Math.PI / 2),
+        uy = Math.sin(angle + Math.PI / 2),
+        tx = Math.cos(angle) * 12,
+        ty = Math.sin(angle) * 12;
+      shape.polygons.push([
+        { x: cx - ux * half - tx, y: cy - uy * half - ty },
+        { x: cx + ux * half - tx, y: cy + uy * half - ty },
+        { x: cx + ux * half + tx, y: cy + uy * half + ty },
+        { x: cx - ux * half + tx, y: cy - uy * half + ty },
+      ]);
+      break;
+    }
+    case "taunt":
+      // Everyone this close is taunted.
+      shape.discs.push({ x: from.x, y: from.y, r: ability.radius + RULES.radius });
+      break;
+    case "tether":
+      // It locks onto the enemy nearest the aim within this reach.
+      shape.rings.push({ x: from.x, y: from.y, r: ability.range });
+      shape.polygons.push(lane(from, angle, ability.range, 16));
+      break;
     case "grapple":
       // The tongue's lane: it catches the first enemy (or wall) along it.
       shape.polygons.push(

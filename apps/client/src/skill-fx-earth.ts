@@ -865,31 +865,31 @@ function landslideEruption(
   });
 }
 
-// ───────────── Pebble Spray ─────────────
-function pebble(g: G, pr: Projectile, now: number) {
+// ───────────── Bush Boomerang ─────────────
+/** A wooden boomerang spinning flat as it flies (out or back). */
+function boomerang(g: G, pr: Projectile, now: number) {
   const fx = fxFor(g.scene),
     r = pr.ability.radius,
-    hop = Math.abs(Math.sin(now / 90 + pr.id * 1.7)) * 10,
     x = pr.x,
-    y = pr.y - 8 - hop,
-    spin = now / 60 + pr.id;
-  fx.solid
-    .fillStyle(0x000000, 0.22)
-    .fillEllipse(pr.x, pr.y + 6, r * 1.8 * (1 - hop / 40), r * 0.7);
-  const stone = (s: number) =>
-    Array.from({ length: 6 }, (_, i) => {
-      const a = spin + (i * TAU) / 6,
-        d = r * s * (0.8 + hash(pr.id * 6 + i) * 0.35);
-      return { x: x + Math.cos(a) * d, y: y + Math.sin(a) * d * 0.85 };
-    });
-  fx.solid.fillStyle(DARK, 1).fillPoints(stone(1.12), true);
-  fx.solid.fillStyle(ROCK[pr.id % 3], 1).fillPoints(stone(0.95), true);
-  fx.solid
-    .fillStyle(0xd8ccb6, 0.9)
-    .fillEllipse(x - r * 0.25, y - r * 0.3, r * 0.6, r * 0.35);
-  fx.trail(`pb${pr.id}`, 0.06, () =>
-    dust(fx, pr.x, pr.y, 1, [5, 20], { size: [5, 9] }),
-  );
+    y = pr.y - 10,
+    spin = now / 40 + pr.id;
+  fx.solid.fillStyle(0x000000, 0.2).fillEllipse(pr.x, pr.y + 6, r * 2, r * 0.7);
+  const arm = (a: number) => {
+    const c = Math.cos(a),
+      s = Math.sin(a);
+    return [
+      { x: x - s * 3, y: y + c * 3 * 0.8 },
+      { x: x + c * r * 1.6 - s * 2, y: y + (s * r * 1.6 + c * 2) * 0.8 },
+      { x: x + c * r * 1.7 + s * 2, y: y + (s * r * 1.7 - c * 2) * 0.8 },
+      { x: x + s * 3, y: y - c * 3 * 0.8 },
+    ];
+  };
+  for (const a of [spin, spin + 1.9]) {
+    fx.solid.fillStyle(DARK, 1).fillPoints(arm(a), true);
+    fx.solid.lineStyle(1.5, SAND, 0.9).strokePoints(arm(a), true);
+  }
+  fx.solid.fillStyle(0xc98b4a, 1).fillCircle(x, y, 3);
+  fx.trail(`bm${pr.id}`, 0.05, () => dust(fx, pr.x, pr.y, 1, [5, 20], { size: [4, 8] }));
 }
 function pebbleImpact(
   scene: Phaser.Scene,
@@ -909,8 +909,8 @@ function pebbleImpact(
       .strokeEllipse(x, y - 6, r * 2 + k * 30, r * 1.6 + k * 24),
   );
 }
-/** Kicked back: dirt sprays out of the dig in the aim's direction. */
-function pebbleKick(
+/** The throw: a little dust and a whoosh arc in the aim's direction. */
+function boomerangThrow(
   scene: Phaser.Scene,
   a: Ability,
   x: number,
@@ -919,111 +919,58 @@ function pebbleKick(
   _color: number,
   shot: Shot,
 ) {
-  const fx = fxFor(scene),
-    spread = ((a.count ?? 5) - 1) * 0.11 * 0.5 + 0.15;
-  dust(fx, x + Math.cos(angle) * 20, y + Math.sin(angle) * 20, 6, [80, 220], {
+  const fx = fxFor(scene);
+  dust(fx, x + Math.cos(angle) * 18, y + Math.sin(angle) * 18, 3, [40, 120], {
     angle,
-    spread,
-    size: [9, 15],
+    spread: 0.4,
+    size: [8, 12],
   });
-  rocks(fx, x, y, 5, [160, 320], [60, 160], { angle, spread, size: [1.5, 3] });
-  shot(fx.reduced ? 120 : 240, (k) => {
-    fx.floorSolid
-      .fillStyle(SOIL, 0.4 * (1 - k))
-      .fillEllipse(x - Math.cos(angle) * 6, y + 6, 34, 14);
-    fx.floor
-      .fillStyle(SAND, 0.18 * (1 - k))
-      .slice(
-        x,
-        y,
-        (a.range || 300) * 0.35 * ease(k),
-        angle - spread,
-        angle + spread,
-      );
-    fx.floor.fillPath();
-  });
+  shot(fx.reduced ? 120 : 220, (k) =>
+    fx.g
+      .lineStyle(3 * (1 - k) + 1, SAND, 0.7 * (1 - k))
+      .beginPath()
+      .arc(x, y - 16, 30 + k * 20, angle - 1, angle - 1 + 2 * ease(k))
+      .strokePath(),
+  );
+  void a;
 }
 
-// ───────────── Rump Block ─────────────
+// ───────────── Grudge Thump ─────────────
 /**
- * Wombolder turns its armoured rump: a slab of riveted boulder plate stands
- * around it for the block's duration, with a bright edge that flickers like
- * it is ready to bounce hits back.
+ * Wombolder thumps the ground and glares: a dusty shockwave over the real
+ * taunt radius, rocks jumping, and a red glare pulse.
  */
-function rumpBlock(
+function grudgeThump(
   scene: Phaser.Scene,
   a: Ability,
   x: number,
   y: number,
-  angle: number,
+  _angle: number,
   color: number,
   shot: Shot,
 ) {
   const fx = fxFor(scene),
-    ms = Math.min(2400, (a.duration || 1.6) * 1000),
-    cy = y - 22,
-    R = 56;
-  rocks(fx, x, y, 6, [40, 140], [80, 180], { size: [2, 3.5] });
-  dust(fx, x, y, 8, [60, 140], { size: [10, 16] });
-  fx.shake(90, 0.003);
-  shot(fx.reduced ? 500 : ms, (k) => {
-    const close = ease(Math.min(1, k / 0.1)),
-      fade = k > 0.88 ? (1 - k) / 0.12 : 1,
-      r = R * (1.3 - 0.3 * close);
-    // Ground ring where it braced its feet.
-    fx.floorSolid
-      .lineStyle(5, DARK, 0.35 * fade)
-      .strokeEllipse(x, y, r * 2.1, r * 2.1 * 0.5);
-    // Boulder plates in an overlapping ring, the back ones darker.
-    const plates = 8;
-    for (let pass = 0; pass < 2; pass++)
-      for (let i = 0; i < plates; i++) {
-        const ang = (i * TAU) / plates + angle + Math.PI / plates,
-          front = Math.sin(ang) > 0;
-        if (front !== (pass === 1)) continue;
-        const px = x + Math.cos(ang) * r * 0.85,
-          py = cy + Math.sin(ang) * r * 0.55,
-          pw = 19,
-          ph = 26,
-          // The back row stays see-through so the fighter shows.
-          see = front ? 1 : 0.4;
-        fx.solid
-          .fillStyle(DARK, 0.55 * fade * close * see)
-          .fillRoundedRect(
-            px - pw / 2 - 1.5,
-            py - ph / 2 - 1.5,
-            pw + 3,
-            ph + 3,
-            5,
-          );
-        fx.solid
-          .fillStyle(front ? PLATE : 0x6e665c, 0.85 * fade * close * see)
-          .fillRoundedRect(px - pw / 2, py - ph / 2, pw, ph, 4);
-        fx.solid
-          .fillStyle(PLATE_LIGHT, 0.8 * fade * close * see)
-          .fillRect(px - pw / 2 + 3, py - ph / 2 + 3, pw - 6, 3)
-          .fillCircle(px, py + 4, 1.8);
-      }
-    // The ready edge: a hard light that pulses (the 30% bounce).
-    const pulse = 0.55 + 0.45 * Math.sin(k * ms * 0.02);
-    fx.g
-      .lineStyle(2.5, color, 0.7 * fade * pulse)
-      .strokeEllipse(x, cy, r * 2.05, r * 1.25);
-    fx.g
-      .lineStyle(1.2, 0xfff1d6, 0.8 * fade * pulse)
-      .strokeEllipse(x, cy, r * 2.05, r * 1.25);
-    if (k < 0.12) fx.glow(x, cy, r * 1.2, SAND, 0.6 * (1 - k / 0.12));
+    R = a.radius || 240;
+  fx.shake(140, 0.005);
+  rocks(fx, x, y, 8, [60, 180], [100, 220], { size: [2, 3.5] });
+  dust(fx, x, y, 10, [80, 200], { size: [10, 16] });
+  shot(fx.reduced ? 300 : 700, (k) => {
+    const fade = 1 - k;
+    fx.shockwave(x, y + 4, R * ease(Math.min(1, k * 1.8)), Math.min(1, k * 1.4), SAND, 10, 0.5);
+    fx.floor.lineStyle(2, 0xff5a5a, 0.5 * fade).strokeEllipse(x, y, R * 2, R);
+    // The glare: two angry red flashes over the head.
+    fx.glow(x, y - 40, 26, 0xff5a5a, 0.6 * fade);
+    fx.glow(x, y - 20, 50, color, 0.3 * fade);
   });
 }
-
 export const earthKit: FxKit = {
-  projectile: { "pebble-spray": pebble },
+  projectile: { "bush-boomerang": boomerang },
   cast: {
     "rump-bump": rumpBump,
     "burrow-rush": (scene, a, x, y, angle, color, shot) =>
       burrowCharge(scene, a, x, y, angle, color, shot, false),
-    "pebble-spray": pebbleKick,
-    "rump-block": rumpBlock,
+    "bush-boomerang": boomerangThrow,
+    "grudge-thump": grudgeThump,
     landslide: (scene, a, x, y, angle, color, shot) =>
       burrowCharge(scene, a, x, y, angle, color, shot, true),
     "boulder-swipe": boulderSwipe,
@@ -1037,7 +984,7 @@ export const earthKit: FxKit = {
   impact: {
     "burrow-rush": rushContact,
     landslide: landslideEruption,
-    "pebble-spray": pebbleImpact,
+    "bush-boomerang": pebbleImpact,
   },
   hit: { earth: earthHit },
 };

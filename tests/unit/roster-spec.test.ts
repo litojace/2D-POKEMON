@@ -50,7 +50,7 @@ const ROSTER: Record<
     role: "Agile assassin",
     basic: ["Tide Needle", 240],
     skills: [
-      ["Gill Spray", 8],
+      ["Gill Siphon", 9],
       ["Eddy", 12],
       ["Tide Double", 15],
       ["Riptide Wave", 20],
@@ -136,7 +136,7 @@ const ROSTER: Record<
     skills: [
       ["Chestnut Mortar", 8],
       ["Hot Coals", 12],
-      ["Tail Wrap", 15],
+      ["Ember Curtain", 13],
       ["Chestnut Storm", 20],
     ],
   },
@@ -160,7 +160,7 @@ const ROSTER: Record<
     skills: [
       ["Pinning Quill", 8],
       ["Focus Shot", 12],
-      ["Mirage Perch", 15],
+      ["Halcyon Rewind", 15],
       ["Skyline Lance", 20],
     ],
   },
@@ -195,8 +195,8 @@ const ROSTER: Record<
     basic: ["Rump Bump", 535],
     skills: [
       ["Burrow Rush", 9],
-      ["Pebble Spray", 12],
-      ["Rump Block", 15],
+      ["Bush Boomerang", 8],
+      ["Grudge Thump", 14],
       ["Landslide", 20],
     ],
   },
