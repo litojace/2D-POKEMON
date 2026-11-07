@@ -29,7 +29,9 @@ it("gives every rite its skill's own icon and an effect badge", () => {
   expect(riteEffect(RITES.find((r) => r.name === "Stunning Lance")!)).toBe("status");
   expect(riteEffect(RITES.find((r) => r.name === "Harvest Moon")!)).toBe("area");
   expect(riteEffect(RITES.find((r) => r.name === "Superconductor")!)).toBe("area");
-  // The Nature champions': a greedier drain heals more.
-  expect(riteEffect(RITES.find((r) => r.name === "Greedy Sap")!)).toBe("heal");
-  expect(riteEffect(RITES.find((r) => r.name === "Deep Roots")!)).toBe("area");
+  // The Nature champions': a ram that roots, more bounces, longer roots and naps.
+  expect(riteEffect(RITES.find((r) => r.name === "Spiked Ball")!)).toBe("status");
+  expect(riteEffect(RITES.find((r) => r.name === "Bank Shot")!)).toBe("count");
+  expect(riteEffect(RITES.find((r) => r.name === "Deep Roots")!)).toBe("duration");
+  expect(riteEffect(RITES.find((r) => r.name === "Long Nap")!)).toBe("duration");
 });

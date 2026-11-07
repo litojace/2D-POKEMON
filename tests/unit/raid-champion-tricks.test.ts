@@ -141,13 +141,13 @@ describe("Grumblecrag tricks", () => {
     expect(open.slam).toBe(false);
     expect(pinned.stagger - open.stagger).toBeGreaterThan(25);
   });
-  it("Pangrove's Scale Curl lets Rock Volley glance off", () => {
+  it("Pangrove curled up (Curl & Roll) lets Rock Volley glance off", () => {
     for (const curled of [true, false]) {
       const a = arena("grumblecrag", ["pangrove"]);
       const p = hero(a, 0),
         boss = a.boss()!;
       Object.assign(p, { x: 1000, y: 450 });
-      if (curled) a.cast(p, skill("pangrove", "scale-curl"));
+      if (curled) a.cast(p, skill("pangrove", "curl-roll"));
       const hp = p.hp;
       (a as any).resolveWarning(
         {
@@ -247,7 +247,7 @@ describe("Tidewyrm tricks", () => {
     expect(a.raid.exposedUntil).toBeCloseTo(until + 2);
     expect(a.raid.message).toContain("stranded");
   });
-  it("Mossloth's Rootsnare keeps a stranded Tidewyrm there 1 s longer", () => {
+  it("A Mossloth seedling going off by a stranded Tidewyrm keeps it there 1 s longer", () => {
     const a = arena<TidewyrmArena>("tidewyrm", ["mossloth"]);
     const p = hero(a, 0),
       boss = a.boss()!,
@@ -257,13 +257,14 @@ describe("Tidewyrm tricks", () => {
     a.raid.exposedUntil = a.time + 5;
     const until = a.raid.exposedUntil;
     aim(p, island.x, island.y, { x: island.x + 300, y: island.y });
-    a.cast(p, skill("mossloth", "rootsnare"));
+    a.cast(p, skill("mossloth", "seedling"));
     run(a, 0.7);
     expect(a.raid.exposedUntil).toBeCloseTo(until + 1);
     expect(a.raid.message).toContain("stranded");
   });
-  it("Pangrove's Sap Bite on a stranded Tidewyrm adds extra stagger", () => {
-    const staggerAfter = (id: string) => {
+  it("Pangrove's Tongue Grapple on a stranded Tidewyrm adds extra stagger", () => {
+    const grapple = skill("pangrove", "tongue-grapple");
+    const staggerAfter = (move: Ability) => {
       const a = arena<TidewyrmArena>("tidewyrm", ["pangrove"]);
       const p = hero(a, 0),
         boss = a.boss()!,
@@ -272,18 +273,13 @@ describe("Tidewyrm tricks", () => {
       (a as any).strandedOn = 0;
       a.raid.exposedUntil = a.time + 5;
       a.raid.stagger = 0;
-      const move = [
-        CHARACTERS.pangrove.basic,
-        ...CHARACTERS.pangrove.skills,
-      ].find((m) => m.id === id)!;
       a.damage(boss, 10, p.id, move);
       return a.raid.stagger;
     };
-    // Against the basic attack (no status of its own, so no stagger from one).
-    expect(staggerAfter("sap-bite") - staggerAfter("scale-swipe")).toBeCloseTo(
-      T.lanceStagger,
-      0,
-    );
+    // Against the same move under another name (same slow, same stagger from it).
+    expect(
+      staggerAfter(grapple) - staggerAfter({ ...grapple, id: "plain-tongue" }),
+    ).toBeCloseTo(T.lanceStagger, 0);
   });
 });
 
@@ -373,7 +369,7 @@ describe("Emberwing tricks", () => {
     expect(a.raid.emberPatches).toEqual([]);
     expect(a.raid.emberTrails).toEqual([]);
   });
-  it("Mossloth's Wild Roots smother fire patches and dive trails where they burst", () => {
+  it("Mossloth's Overgrowth smothers fire patches and dive trails around it", () => {
     const a = flying("mossloth");
     const p = hero(a, 0);
     a.raid.emberPatches = [
@@ -382,9 +378,9 @@ describe("Emberwing tricks", () => {
     a.raid.emberTrails = [
       { x: 400, y: 700, tx: 600, ty: 700, until: a.time + 5, width: 40 },
     ];
-    aim(p, 500, 700, { x: 300, y: 450 });
+    Object.assign(p, { x: 500, y: 640 });
     p.ult = 100;
-    a.cast(p, skill("mossloth", "wild-roots"));
+    a.cast(p, skill("mossloth", "overgrowth"));
     a.tick(1 / 30);
     expect(a.raid.emberPatches).toEqual([]);
     expect(a.raid.emberTrails).toEqual([]);
@@ -523,16 +519,16 @@ describe("Somnara tricks", () => {
       run(a, 0.5);
       expect(d.step).toBe(1);
     });
-  it("Mossloth's prickly Bramble Patch keeps allies inside from going Drowsy", () => {
+  it("Mossloth's Sloth Time keeps allies inside from going Drowsy", () => {
     const a = arena<SomnaraArena>("somnara", ["mossloth", "voltkit"]);
     const [p, ally] = [hero(a, 0), hero(a, 1)];
     aim(p, 900, 450, { x: 700, y: 450 });
     Object.assign(ally, { x: 900, y: 450 });
-    a.cast(p, skill("mossloth", "bramble-patch"));
+    a.cast(p, skill("mossloth", "sloth-time"));
     for (let i = 0; i < S.drowsy.stacks + 1; i++) drowsy(a, ally);
     expect(a.has(ally, "sleep")).toBe(false);
     expect(a.raid.drowsy?.[ally.id]?.stacks ?? 0).toBe(0);
-    // Outside the patch, it builds again.
+    // Outside the bubble, it builds again.
     Object.assign(ally, { x: 1400, y: 450 });
     drowsy(a, ally);
     expect(a.raid.drowsy![ally.id].stacks).toBe(1);

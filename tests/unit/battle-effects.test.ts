@@ -73,11 +73,18 @@ describe("battle effects", () => {
         : ["nova", "melee", "veil", ...SELF].includes(a.kind) ? a.id in effectKit.cast
         // A blink or rush plays its cast at takeoff and its impact where it lands.
         : ["blink", "rush"].includes(a.kind) ? a.id in effectKit.cast && a.id in effectKit.impact
+        // Nature's own kinds: a tongue (beam), a fan of blades, a ball that
+        // rams (roll, pinball), a swap's landing, and the seedling's and
+        // Sloth Time's ground.
+        : a.kind === "grapple" ? a.id in effectKit.beam && a.id in effectKit.cast
+        : a.kind === "shrapnel" ? a.id in effectKit.projectile && a.id in effectKit.impact && a.id in effectKit.cast
+        : ["roll", "pinball", "swap"].includes(a.kind) ? a.id in effectKit.cast && a.id in effectKit.impact
+        : ["seedling", "timewarp"].includes(a.kind) ? a.id in effectKit.zone
         : false;
       if (!has) missing.push(`${a.id} (${a.kind})`);
       if ((a.cast ?? 0) > 0 && !(a.id in effectKit.windup)) missing.push(`${a.id} wind-up`);
       // The server sends an impact whenever a projectile ends, hit or miss.
-      if (["projectile", "barrage", "charged"].includes(a.kind) && !(a.id in effectKit.impact)) missing.push(`${a.id} impact`);
+      if (["projectile", "barrage", "charged", "shrapnel"].includes(a.kind) && !(a.id in effectKit.impact)) missing.push(`${a.id} impact`);
     }
     for (const c of Object.values(CHARACTERS))
       if (!(c.element.toLowerCase() in effectKit.hit)) missing.push(`${c.element} hit`);

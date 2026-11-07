@@ -1,136 +1,162 @@
 # Nature champions: Pangrove and Mossloth
 
 The ninth element, **Nature**, brings the roster to eighteen: two champions
-per element again. Both are original creatures with original kits; each adds
-something the other sixteen don't have.
+per element again. Both are original creatures, and their kits are built on
+mechanics no other champion has. A first version (November 2026) repeated
+other champions' skills (a damage barrier like Wing Cloak and Tail Wrap, a
+rush like Wombolder's, fans of shots and slow zones like half the roster), so
+both were rebuilt around new mechanics, borrowing proven ideas from other
+games but none of their characters.
 
-| Champion | Role            | Creature                                                   | Signature mechanic                                                               |
-| -------- | --------------- | ---------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| Pangrove | Drain bruiser   | Pangolin with living leaf scales and a sprout on its crown | **Life drain**: Sap Bite and Thornwheel heal it for part of the damage they deal |
-| Mossloth | Root controller | Three-toed sloth with a moss garden on its back            | **Rooted**: Rootsnare and Wild Roots pin enemies in place                        |
+| Champion | Role            | Creature                                        | What no one else does                                                                                        |
+| -------- | --------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Pangrove | Armoured roller | Pangolin with living leaf scales and a sprout   | **Armour plates** it spends as blades; a **ball you steer**; a **grappling tongue**; a **pinball** off walls |
+| Mossloth | Time gardener   | Three-toed sloth with a moss garden on its back | **Moss** that grows while it stands still; **seeds that grow**; a **time bubble**; **swapping places**       |
 
 ## Kits
 
-Numbers are in `CHARACTERS` (`packages/shared/src/index.ts`); the tables below
-are the shipped values.
+Numbers are in `CHARACTERS` (`packages/shared/src/index.ts`); the tables
+below are the shipped values.
 
-**Pangrove** (melee) — health 150, speed 245
+**Pangrove** (melee) — health 164, speed 245
 
-| Slot     | Move        | Kind    | What it does                                                                                                                         |
-| -------- | ----------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| Basic    | Scale Swipe | melee   | 14 damage every 450 ms, 150 px                                                                                                       |
-| 1 (9 s)  | Tongue Snag | beam    | 10 damage to the first enemy within 400 px, Rooted 0.9 s                                                                             |
-| 2 (11 s) | Sap Bite    | melee   | 22 damage, heals Pangrove half of it                                                                                                 |
-| 3 (15 s) | Scale Curl  | barrier | 60% less damage for 1.4 s                                                                                                            |
-| Ultimate | Thornwheel  | rush    | 0.25 s wind-up, rolls up to 560 px; 28 damage to the first enemy and everyone within 120 px of it, Rooted 1 s, heals half the damage |
+| Slot     | Move           | What it does                                                                                                                                                                                                                  | Idea from                                      |
+| -------- | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| Passive  | Armour Plates  | Three leaf plates. A hit of 10 or more breaks one and only 40% of it gets through; after 2.5 s without taking damage they grow back, one every 2 s                                                                            | armour charges in hero shooters                |
+| Basic    | Scale Swipe    | 15 damage every 450 ms, 150 px                                                                                                                                                                                                |                                                |
+| 1 (8 s)  | Tongue Grapple | The tongue shoots 480 px: the first enemy it reaches takes 14 and is slowed 1.2 s, and Pangrove zips to it (following it if it moves); a wall pulls Pangrove to the wall                                                      | grappling hooks (Zelda, hero shooters)         |
+| 2 (9 s)  | Scale Shrapnel | A 69° fan of blades (6 damage each): 3, plus 3 for each plate it has. Every plate is spent                                                                                                                                    | spending defence for offence                   |
+| 3 (11 s) | Curl & Roll    | A ball you steer for up to 3.5 s (cast again to uncurl). Speed builds on straight lines toward 540 px/s; turning and walls cost momentum; a ram deals 10 to 34 (the faster the harder) and bounces off. 30% less damage taken | rolling-ball heroes in MOBAs and hero shooters |
+| Ultimate | Pinball        | After a 0.2 s tuck, launch at 950 px/s and ricochet off up to 4 walls, 12% faster after each; every enemy on each stretch takes 22. Half damage taken meanwhile                                                               | pinball and bank shots                         |
 
-Combo **Snagged**: Tongue Snag marks; Sap Bite deals 35% more to a Snagged
-target (and drains from the bigger hit).
+Combo **Latched**: Tongue Grapple latches Pangrove on; Scale Shrapnel within
+2.5 s deals 35% more.
 
-**Mossloth** (ranged) — health 150, speed 240
+**Mossloth** (ranged) — health 170, speed 240
 
-| Slot     | Move          | Kind       | What it does                                                                            |
-| -------- | ------------- | ---------- | --------------------------------------------------------------------------------------- |
-| Basic    | Seed Spit     | projectile | 8 damage every 360 ms, 640 px                                                           |
-| 1 (9 s)  | Rootsnare     | projectile | 12 damage, Rooted 1.1 s                                                                 |
-| 2 (10 s) | Thorn Volley  | barrage    | four thorns of 8 damage                                                                 |
-| 3 (13 s) | Bramble Patch | zone       | a 125 px patch at the aim for 3 s: 4 damage every half second and slows (jump over it)  |
-| Ultimate | Wild Roots    | zone       | roots mark a 160 px circle at the aim, then burst 0.45 s later: 28 damage, Rooted 1.2 s |
+| Slot     | Move       | What it does                                                                                                                                                                                                   | Idea from                               |
+| -------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- |
+| Passive  | Moss       | Standing still grows moss: a stack every 0.5 s, up to 5. Each takes 5% off damage and heals 0.6 health a second; moving sheds a stack every 0.3 s                                                              | stationary "turret mode" heroes         |
+| Basic    | Seed Spit  | 9 damage every 345 ms, 640 px                                                                                                                                                                                  |                                         |
+| 1 (5 s)  | Seedling   | Plant a seed at the aim (over cover). It grows a stage every 1.5 s: sprout, bud, bloom. The first enemy to step on it sets it off for 9 / 17 / 26 damage and a 0.5 / 0.8 / 1.3 s root. Up to 3; jump over them | growing plant traps (Plants vs Zombies) |
+| 2 (14 s) | Sloth Time | A 150 px bubble at the aim for 3 s: enemies inside, and their shots, move at 35% speed                                                                                                                         | time-dilation fields (Dota 2)           |
+| 3 (12 s) | Lazy Swap  | Swap places with the enemy (not a raid boss) or own seedling nearest the aim, up to 600 px away; a swapped enemy is slowed 1 s. Nothing there: the cooldown comes back to 1.5 s                                | position swaps (Dota 2's Nether Swap)   |
+| Ultimate | Overgrowth | After a 0.3 s wind-up, vines erupt in 230 px: 28 damage, Rooted 1.2 s. Every seedling blooms at full growth wherever it is, and the moss grows full                                                            |                                         |
 
-Combo **Tangled**: Rootsnare marks; the first thorn of a Thorn Volley deals
-30% more to a Tangled target.
+Combo **Timelocked**: a seedling set off by an enemy with any harmful status
+(in Sloth Time, slowed by a swap, rooted by another seedling) deals 40% more.
 
-Each has six rites (four minor, two major) in `RITES`, among them Greedy Sap
-(Sap Bite drains all of its damage) and Deep Roots (Wild Roots 25% wider).
+Each has six rites (four minor, two major) in `RITES`: Pangrove's majors are
+Spiked Ball (rams root for 0.8 s) and Bank Shot (6 bounces); Mossloth's are
+Deep Roots (seedlings root 50% longer) and Long Nap (Sloth Time 4.5 s).
 
-## New mechanics
+## Mechanics
 
-Engine changes are in `packages/shared/src/index.ts`,
+Engine changes are in `packages/shared/src/index.ts` (kinds, statuses,
+`PLATES`, `MOSS`, `ROLL`, and the movement in `advanceMovement`),
 `apps/server/src/simulation.ts` and `apps/server/src/bot.ts`; tests in
-`tests/unit/new-mechanics.test.ts`.
+`tests/unit/nature-kits.test.ts`.
 
-| Mechanic        | Fields                 | How it works                                                                                                                                                                                                                                                                                          |
-| --------------- | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Rooted          | status `root`          | Can't walk or dash (a dash press is refused, not spent) and a charge in progress stops; can still attack, cast, blink and jump. A harmful status (`DEBUFFS`), but no crowd-control immunity afterwards. On a raid boss it counts like a stun: 3 stagger, no root. Shown as bark roots round the feet. |
-| Life drain      | `drain`                | The attacker heals `drain` × the damage the hit actually dealt (after shields, team-up and so on), never past full health; a `heal` event shows it.                                                                                                                                                   |
-| Lifebloom (2v2) | `ELEMENT_GIFTS.Nature` | A Nature partner close by makes your hits heal you 6% of the damage dealt.                                                                                                                                                                                                                            |
+| Mechanic    | Where                          | How it works                                                                                                                                                                                                                                                     |
+| ----------- | ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Plates      | `PLATES`, `Fighter.plates`     | Applied last in `Arena.damage`, to hits from an ability (burn ticks and the ring don't break plates). Any damage delays regrowth.                                                                                                                                |
+| Moss        | `MOSS`, `Fighter.moss`         | "Still" is under 25 px/s, not dashing or rolling. Reduction applies in `Arena.damage`; the regeneration runs each tick.                                                                                                                                          |
+| Roll        | kind `roll`, `Fighter.roll`    | Steering, speed build-up, turn and wall losses run in the shared `advanceMovement`, so the client predicts your roll. No attacks or dash while curled; casting it again uncurls (allowed on cooldown); the ultimate launches straight out of it. A stun ends it. |
+| Pinball     | kind `pinball`                 | The flight is a dash; wall bounces (and the speed-up) run in `advanceMovement`, so they are predicted too. The server hits each enemy once per stretch between walls. A root or stun ends it.                                                                    |
+| Grapple     | kind `grapple`                 | The tongue is traced like a beam; the zip is a dash steered each tick toward its goal (an enemy is followed) and stopped dead just short of it.                                                                                                                  |
+| Shrapnel    | kind `shrapnel`                | `count × (1 + plates)` projectiles spread evenly over `fan` radians.                                                                                                                                                                                             |
+| Seedlings   | kind `seedling`, `Zone.born`   | `seedStage` (shared) gives the stage from when it was planted, for the server and the client's drawing. A jumping enemy doesn't set it off.                                                                                                                      |
+| Time bubble | kind `timewarp`, status `warp` | Enemies inside get `warp` (0.35× movement, dashes and rolls, in `advanceMovement`); enemy projectiles inside move 0.35× as far each tick.                                                                                                                        |
+| Swap        | kind `swap`                    | Picks the enemy or own seedling nearest the aim within `radius`; swaps positions (a seedling moves to where Mossloth stood).                                                                                                                                     |
 
-Bots: a rooted bot doesn't start a charge; rooted enemies count as an opening
-(like a stun) for combos and the ultimate; rites value `root` (0.6) and
-drain (its healing counts at 70% of damage).
+Bots: they use every new skill. The Mossloth bot plants itself and fires
+when nothing threatens it and it isn't standing in a hostile zone (so its moss
+grows, as a person playing it would), puts seedlings down part of the way
+toward the opponent, and swaps the opponent onto its seedlings. Seedlings and
+bubbles count as hostile ground for other bots, which path around them.
 
 ## Everything else
 
-- **Art**: front, side and back views on the shared rig
-  (`creature-design.ts`, `creature-profile.ts`), eye styles `leaf` and
-  `lazy`, portraits from `scripts/export-fighters.ts`, ten illustrated skill
-  icons (`skill-art.ts`, Nature theme) and battle effects
-  (`skill-fx-nature.ts`).
-- **Raid tricks** (three bosses each, `RAID_BOSS_PERKS`): see
+- **Art**: the curled-up ball pose (`AnimationPose.ball`: the rig hides and
+  a ball of leaf plates spins as it travels), new battle effects
+  (`skill-fx-nature.ts`), eight illustrated skill icons (`skill-art.ts`), aim
+  previews for the new kinds (`skill-preview.ts`), plate and moss pips under
+  each fighter, and each passive explained on the roster's overview.
+- **Raid tricks** (three each, `RAID_BOSS_PERKS`): curled up, Pangrove shrugs
+  off Grumblecrag's Rock Volley and the Storm Twins' Polarity; its Tongue
+  Grapple staggers a stranded Tidewyrm. A Mossloth seedling going off keeps a
+  stranded Tidewyrm there 1 s longer, Overgrowth smothers Emberwing's fires,
+  and allies in Sloth Time stay awake against Somnara. See
   [raid-roster-design.md](raid-roster-design.md) §6.
-- **Shop**: eight skins each: three Common, two Rare, a Garden Epic, a
-  Cyber Mecha Epic (Scale Roller, Treehugger Mk) and a Void Knight Mythical
-  (Thorn Warden, Blight Sentinel)
-  ([raid-roster-design.md](raid-roster-design.md) §10.6).
-- **Farm**: Nature has no original champion, so Pangrove farms with Night
-  Stalker (it hunts bugs) and Mossloth with Early Sun (crops grow faster).
-- **Database**: [migration 070](../supabase/migrations/070_eighteen_champions.sql)
-  (run after 069) adds them to the roster SQL checks (portrait, farmer, farm
-  orders), their farm perks and their Shop skins; without it, choosing one as
-  your portrait or playing one (your Lobby fighter is your farmer) is
-  refused. [Migration 071](../supabase/migrations/071_nature_void_knights_and_cyber.sql)
-  (after 070) makes their Mythicals Void Knights and adds their Cyber Mecha
-  Epics. Both are applied to the 2D-POKEMON Supabase project.
+- **Shop, farm and database**: unchanged by the rebuild (eight skins each,
+  Pangrove farms with Night Stalker and Mossloth with Early Sun; migrations
+  [070](../supabase/migrations/070_eighteen_champions.sql) and
+  [071](../supabase/migrations/071_nature_void_knights_and_cyber.sql)). No new
+  migration: the kits live in code.
 
 ## Balance
 
-Balanced with the bot tools in `scripts/balance/` (Hard and Normal bots
-averaged). New for this: `--only <ids>` on `tune.ts` and `tune-teams.ts`
-plays only the pairings or line-ups that include those champions and tunes
-only them, so the other sixteen keep their shipped numbers.
+Measured with the bot tools in `scripts/balance/` (Hard and Normal bots);
+`--only <ids>` on `tune.ts` and `tune-teams.ts` (and `RR_ONLY` in
+`round-robin.ts`) plays only the pairings or line-ups with these two.
 
-**First draft → shipped kit.** The first draft's duels ran Pangrove 75.6% and
-Mossloth 14.4% (Hard bots, 20 games per pairing). `duel-diag.ts` showed why:
-Pangrove's drain and a 1.8 s Scale Curl kept it alive, and Mossloth's slow
-seeds were dodged while its ultimate landed one cast in ten (a ground zone
-with half a second of warning: bots jumped it). Changes: Pangrove health 165 →
-150, Sap Bite drain 60% → 50%, Scale Curl 1.8 s / 14 s → 1.4 s / 15 s;
-Mossloth speed 225 → 240, Seed Spit 380 → 360 ms and faster (720 → 780 px/s),
-Rootsnare faster and wider, Bramble Patch 3 → 4 a tick, Wild Roots no longer a
-ground attack (0.45 s warning, 160 px, 28 damage, Rooted 1.2 s; it now lands
-about seven casts in ten). Normal bots' dazed share (`dazeBy`) was then
-calibrated so each does as well against Normal bots as against Hard ones:
-Pangrove 0.335, Mossloth 0.23.
+**First draft → shipped kit.** The first draft lost most duels (Hard bots:
+Pangrove 18.6%, Mossloth 14.7%). `duel-diag.ts` showed why: Scale Shrapnel's
+120° fan landed about one blade per cast, plates broke on 6-damage chip shots,
+and the Mossloth bot never stood still, so its moss never grew. Changes: a
+69° fan, plates that only take hits of 10 or more and stop 60% of them, the
+bot rule above (and its fix: not while standing in an enemy's zone, which had
+left it at 8% against Pyranda's mortars), and numbers (Pangrove health 164,
+Scale Swipe 15, Tongue Grapple 14 with a 1.2 s slow; Mossloth health 170,
+Seed Spit 9 every 345 ms, seedlings 9 / 17 / 26, Overgrowth 28). Normal bots'
+dazed share (`dazeBy`) was then calibrated so each does about as well against
+Normal bots as against Hard ones: Pangrove 0.39, Mossloth 0.485.
 
-**Duels** (fresh seeds `RR_SEED=60000`, 40 games per pairing per difficulty,
-680 duels each per difficulty; the other sixteen run 46.5–53.1%):
+**Duels** (40 games per pairing per difficulty, 680 duels each per
+difficulty; the other sixteen run 46.5–53.1%). Seedlings landing over cover
+and the last health changes moved Pangrove more than seed noise, so it was
+checked on four unused seed sets in turn; the shipped kit is the last row.
 
-| Champion | Win rate | Hard / Normal | Factor           |
-| -------- | -------- | ------------- | ---------------- |
-| Pangrove | 51.5%    | 51.5% / 51.5% | ×1 (none needed) |
-| Mossloth | 52.1%    | 51.0% / 53.2% | ×1 (none needed) |
+| Seeds (`RR_SEED`) | Pangrove health | Pangrove Hard / Normal | Mossloth Hard / Normal |
+| ----------------- | --------------- | ---------------------- | ---------------------- |
+| 61000             | 164 (\*)        | 52.2% / 56.2%          | 52.4% / 53.4%          |
+| 62000             | 161             | 44.7% / 50.9%          | 50.4% / 50.3%          |
+| 63000             | 166             | 54.4% / 55.3%          | 52.8% / 49.6%          |
+| 64000             | **164**         | **48.4% / 54.6%**      | **53.5% / 51.0%**      |
 
-**2v2** (`TEAM_TUNING`): five rounds of 2,000 random line-ups per difficulty,
-fresh each round; round-to-round noise is about ±4 points. Averaged factors:
-Pangrove ×0.975, Mossloth ×0.993 (both 47–55% across the rounds).
+(\*) Before seedlings landed over cover. One seed set swings a champion by
+about ±3 points, so 164 sits between the 161 and 166 results.
 
-**Free-for-all, four players** (`FFA_TUNING`, fair is 25%): like the other
-melee champions Pangrove does worse in a free-for-all than in a duel and
-Mossloth, ranged, better (at ×1: 20.8% and 32.1%). Checked on line-ups no
-tuning round used (`FFA_SEED=31337`, 3,000 matches per difficulty): at ×1.03
-Pangrove wins 25.5%, at ×0.95 Mossloth 22.9%; Mossloth ships at ×0.965.
+**2v2** (`TEAM_TUNING`, fair is 50%): three rounds of 2,000 random line-ups per
+difficulty, fresh each round (Pangrove 50.8 → 52.8 → 47.5%, Mossloth 46.7 →
+50.1 → 49.7% as the factors moved). Shipped Pangrove ×0.98, Mossloth ×1.035;
+on unused line-ups (1,500 per difficulty) Pangrove 51.4% Hard / 50.0% Normal,
+Mossloth 57.6% / 44.9% (51.3% averaged).
 
-**Free-for-all, three players** (`FFA_THREE_TUNING`, fair is 33.3%), 2,500
-matches per difficulty on line-ups no tuning used: at ×1.04 / ×0.95 Pangrove
-won 27.1% and Mossloth 39.5% (`FFA_SEED=31337`); at ×1.12 / ×0.87, 35.9% and
-31.3% (`FFA_SEED=31339`; the other sixteen run 29.8–38.0%). They ship at the
-factors between the two that give 33%: Pangrove ×1.10, Mossloth ×0.89.
+**Free-for-all, four players** (`FFA_TUNING`, fair is 25%): two rounds of
+1,000 per difficulty (at ×1: Pangrove 21.5%, Mossloth 32.1%), interpolated
+to Pangrove ×1.02, Mossloth ×0.94; on unused line-ups (1,200 per difficulty)
+Pangrove 24.2% and Mossloth 23.7% averaged.
+
+**Free-for-all, three players** (`FFA_THREE_TUNING`, fair is 33.3%): single
+rounds are noisy here (Pangrove 25–32% and Mossloth 34–38% over three rounds
+near ×1), but always off the same way. Shipped Pangrove ×1.07, Mossloth
+×0.95; on unused line-ups (1,500 per difficulty) Pangrove 34.4% and Mossloth
+33.1% averaged.
+
+The team and free-for-all checks ran before Pangrove's final health: at 161
+(2v2, four players) and 166 (three players) instead of 164, about a point
+either way, within their noise.
 
 **Known issues**
 
-- The 2v2 and free-for-all numbers have more noise than the duels (each
-  line-up has only one or two of the new champions): about ±2 points in a
-  free-for-all and ±4 per 2v2 round.
-- Raids use the champions' own health; the Nature champions' raid tricks are
-  tested (`tests/unit/raid-champion-tricks.test.ts`) but raids were not
-  re-measured with them.
+- Matchups are more polarised than the average suggests: Mossloth beats
+  brawlers that must walk through its seedlings (Wombolder, Coilemur ~85–95%)
+  and struggles against zone artillery (Pyranda) and Duskveil; Pangrove beats
+  marksmen it can grapple onto (Halcyra, Pyranda) and struggles against
+  Auralynx's counter.
+- Bots avoid seedlings perfectly (they treat them as hostile ground), so
+  seedlings deal little damage in bot matches; against people they will go off
+  more, which bot balance can't measure.
+- Raids use the champions' own health; the raid tricks are tested
+  (`tests/unit/raid-champion-tricks.test.ts`) but raids were not re-measured.
