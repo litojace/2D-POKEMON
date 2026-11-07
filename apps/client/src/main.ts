@@ -217,6 +217,7 @@ import "./collection-frames.css";
 import "./journey-frames.css";
 import "./boss-frames.css";
 import "./mobile-panels.css";
+import "./match-badge.css";
 import { FollowCamera, screenToWorld, outsideView } from "./follow-camera";
 import { updateNameplate, updateNameplateHealth } from "./player-nameplate";
 import { fighterPack } from "./animation/pack-config";
@@ -1248,6 +1249,10 @@ const TEAM_LABELS = ["Blue", "Red"] as const;
 const isTeams = () => state?.mode === "teams";
 /** Free-for-all: three or four fighters, everyone for themselves. */
 const isFfa = () => state?.mode === "ffa";
+/** The off-screen arrow circles the fighter at this distance (CSS px),
+ * around a point this far (world px) above the feet. */
+const BEARING_RADIUS = 46;
+const BEARING_LIFT = 32;
 /** Living, visible enemies nearest first (aim assist, off-screen arrow). */
 function nearestEnemy(from: { x: number; y: number }, myself: Fighter) {
   return visibleEnemies(from, myself)[0];
@@ -2592,6 +2597,12 @@ function renderBattle() {
     $("abilities").innerHTML =
       `<div class="basic-hint" title="${c.basic.name}: ${c.basic.description} No cooldown · ${Math.round(basicInterval(c, false, state?.mode, state?.players.length) * 1000)} ms between attacks."><kbd data-action="basic">${keyText("basic")}</kbd><span>${abilityIcon(c.basic.name)}<small>${c.basic.name.toUpperCase()}</small></span></div>${c.skills.map((a, i) => `<div class="ability" id="ability-${i}" style="--element:#${c.color.toString(16)}"><kbd data-action="${SKILL_ACTIONS[i]}">${keyText(SKILL_ACTIONS[i])}</kbd><span>${abilityIcon(a.name)}<small id="cooldown-${i}">READY</small></span><i class="cooldown-fill" id="fill-${i}"></i><i class="skill-cooldown-ring" aria-hidden="true"></i></div>`).join("")}<div class="movement-ability"><kbd data-action="dash">${keyText("dash")}</kbd><span>Dash<small id="dash-cd"></small></span></div><div class="movement-ability"><kbd data-action="jump">${keyText("jump")}</kbd><span>Jump<small id="jump-cd"></small></span></div>`;
   }
+  // PvP shows one score badge (names, rounds, the clock): health is over
+  // each fighter, and no one sees an opponent's ultimate (owner, 7 Nov
+  // 2026). Raids and Practice keep the full cards.
+  const badge = !state.raid && !state.practice;
+  document.body.classList.toggle("pvp-badge", badge);
+  $("hud").classList.toggle("hud-badge", badge);
   hudOrder.forEach((p, i) => {
     // 2v2 has its own health per champion (TEAM_TUNING).
     const full = maxHealth(p.character, state!.mode, state!.players.length);
@@ -2610,9 +2621,15 @@ function renderBattle() {
         ? p.id === myId
           ? "TRAINER"
           : "TARGET"
-        : isTeams()
-          ? `${state!.teamScores?.[teamOf(p)] ?? 0} / ${roundsNeeded(state!.mutators)}`
-          : `${state!.scores[p.id]} / ${roundsNeeded(state!.mutators)}`,
+        : badge
+          ? String(
+              isTeams()
+                ? (state!.teamScores?.[teamOf(p)] ?? 0)
+                : (state!.scores[p.id] ?? 0),
+            )
+          : isTeams()
+            ? `${state!.teamScores?.[teamOf(p)] ?? 0} / ${roundsNeeded(state!.mutators)}`
+            : `${state!.scores[p.id]} / ${roundsNeeded(state!.mutators)}`,
     );
     const charge = Math.min(
       100,
@@ -2679,7 +2696,9 @@ function renderBattle() {
     $("round-label"),
     state.practice
       ? "FREE PRACTICE"
-      : `ROUND ${state.round} · BEST OF ${roundsNeeded(state.mutators) * 2 - 1}`,
+      : badge
+        ? `R${state.round} · BO${roundsNeeded(state.mutators) * 2 - 1}`
+        : `ROUND ${state.round} · BEST OF ${roundsNeeded(state.mutators) * 2 - 1}`,
   );
   setHudText(
     $("network"),
@@ -2696,8 +2715,7 @@ function renderBattle() {
             .toString()
             .padStart(2, "0")}:${(seconds % 60).toString().padStart(2, "0")}`,
   );
-  setHudText(
-    $("phase-label"),
+  const phaseText =
     state.phase === "playing"
       ? state.practice
         ? "TEST YOUR SKILLS"
@@ -2708,8 +2726,13 @@ function renderBattle() {
             : ringRadius(state.remaining, state.overtime) !== null
               ? "RING CLOSING · STAY INSIDE"
               : `LIVE · ${ARENAS[state.arena ?? "classic"].name.toUpperCase()}`
-      : state.phase.toUpperCase(),
-  );
+      : state.phase.toUpperCase();
+  setHudText($("phase-label"), phaseText);
+  // The badge says only what changes the fight (ring, overtime, a rule).
+  const quietPhase =
+    badge && state.phase === "playing" && phaseText.startsWith("LIVE ·");
+  if ($("phase-label").hidden !== quietPhase)
+    $("phase-label").hidden = quietPhase;
   $("timer").classList.toggle(
     "ring-on",
     !state.practice &&
@@ -4933,15 +4956,50 @@ class ArenaScene extends Phaser.Scene {
         this.scale.height,
         view,
       );
-    if (opponent && !this.enemyBearing.hidden) {
+    // PvP: an arrow circling the fighter you follow, in the nearest
+    // off-screen opponent's colour (owner, 7 Nov 2026: no chip at the top,
+    // where the score badge is). Raids keep the named chip.
+    const orbit = !state?.raid;
+    this.enemyBearing.classList.toggle("is-orbit", orbit);
+    if (opponent && presented && !this.enemyBearing.hidden) {
       this.enemyBearing.querySelector("strong")!.textContent =
         opponent.raidBoss && state?.raid
           ? state.raid.boss === "storm-twins"
             ? opponent.name
             : state.raid.name
           : CHARACTERS[opponent.character].name;
+      const css = this.scale.zoom;
+      const from = {
+        x: ((presented.x - view.x) * view.zoomX + this.scale.width / 2) * css,
+        // The middle of the fighter, above the feet.
+        y:
+          ((presented.y - BEARING_LIFT - view.y) * view.zoomY +
+            this.scale.height / 2) *
+          css,
+      };
+      const angle = orbit
+        ? Math.atan2(
+            (opponent.y - presented.y) * view.zoomY,
+            (opponent.x - presented.x) * view.zoomX,
+          )
+        : Math.atan2(
+            (opponent.y - view.y) * view.zoomY,
+            (opponent.x - view.x) * view.zoomX,
+          );
       this.enemyBearing.querySelector<HTMLElement>("span")!.style.transform =
-        `rotate(${Math.atan2((opponent.y - view.y) * view.zoomY, (opponent.x - view.x) * view.zoomX)}rad)`;
+        `rotate(${angle}rad)`;
+      setHudStyle(
+        this.enemyBearing,
+        "transform",
+        orbit
+          ? `translate(${from.x + Math.cos(angle) * BEARING_RADIUS}px, ${from.y + Math.sin(angle) * BEARING_RADIUS}px)`
+          : "",
+      );
+      setHudStyle(
+        this.enemyBearing,
+        "--bearing-color",
+        `#${CHARACTERS[opponent.character].color.toString(16).padStart(6, "0")}`,
+      );
     }
     for (const [id, label] of this.labels)
       if (!state?.players.some((p) => p.id === id)) {

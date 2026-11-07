@@ -1,0 +1,203 @@
+/*
+ * PvP's score badge (owner, 7 Nov 2026): one pill at the top middle with
+ * each side's name and rounds and the clock. Health is the bar over each
+ * fighter, and nobody sees an opponent's ultimate, so the pill keeps the
+ * fight unpredictable and, on phones, gives the arena the screen's height.
+ * main.ts adds .hud-badge to #hud (and .pvp-badge to <body>) outside raids
+ * and Practice. The cards keep their elements and ids; this only shows the
+ * name, the score and the clock. ID-weighted selectors win over the cards'
+ * many layout rules in style.css.
+ */
+body.battle-active #battle #hud.hud-badge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  left: 50%;
+  right: auto;
+  width: auto;
+  max-width: calc(100% - 120px);
+  margin: 0;
+  padding: 4px 14px;
+  transform: translateX(-50%);
+  border: 1px solid #ffffff22;
+  border-radius: 999px;
+  background: #0b1428d9;
+  box-shadow: 0 4px 14px #0006;
+  color: #eef2ff;
+  pointer-events: none;
+  grid-template-columns: none;
+}
+body.battle-active.touch-mode #battle #hud.hud-badge {
+  top: calc(var(--safe-top) + 6px);
+}
+#hud.hud-badge .health-card {
+  display: flex;
+  align-items: center;
+  flex: none;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+}
+/* Name and score share a baseline (digits are taller than the name's
+   letters); the dot sits in the middle of the name. */
+#hud.hud-badge .health-card > div:first-child {
+  position: relative;
+  top: -1px;
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  margin: 0;
+  font-size: 12px;
+  white-space: nowrap;
+}
+/* A dot in the fighter's colour (a team's colour in 2v2) before the name. */
+#hud.hud-badge .health-card > div:first-child::before {
+  content: "";
+  flex: none;
+  align-self: center;
+  transform: translateY(2px);
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--element);
+}
+#hud.hud-badge.hud-teams .health-card > div:first-child::before {
+  background: var(--team);
+}
+#hud.hud-badge .health-card b {
+  max-width: 96px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 600;
+}
+#hud.hud-badge .health-card strong[id^="score-"] {
+  font:
+    700 15px "Barlow Condensed",
+    sans-serif;
+  color: var(--element);
+  margin: 0;
+}
+#hud.hud-badge.hud-teams .health-card strong[id^="score-"] {
+  color: var(--team);
+}
+/* 2v2: the team's rounds once, beside the clock. */
+#hud.hud-badge.hud-teams:not(.hud-ffa)
+  .health-card:not(.right):first-child
+  strong[id^="score-"],
+#hud.hud-badge.hud-teams:not(.hud-ffa)
+  .health-card.right:last-child
+  strong[id^="score-"] {
+  /* Kept in the row (out of sight, no width) so every name sits on the
+     same baseline as the ones beside a score. */
+  visibility: hidden;
+  width: 0;
+  margin-left: -5px;
+  overflow: hidden;
+}
+/* What the badge leaves to the fighters themselves. */
+#hud.hud-badge .health-card > div:first-child > span,
+#hud.hud-badge .health-track,
+#hud.hud-badge .health-card small,
+#hud.hud-badge .hud-ultimate {
+  display: none;
+}
+#hud.hud-badge .timer-wrap {
+  position: relative;
+  /* Its ink (clock and round) on the badge's middle line. */
+  top: -1px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: none;
+  width: auto;
+  min-width: 0;
+  max-width: none;
+  margin: 0;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  line-height: 1;
+}
+#hud.hud-badge #timer {
+  margin: 0;
+  font:
+    700 18px "Barlow Condensed",
+    sans-serif;
+  line-height: 1;
+}
+/* The clock first, the round under it. */
+#hud.hud-badge #round-label {
+  /* The cards' phone layout pins it above the clock; here it is in line. */
+  position: static;
+  order: 1;
+  width: auto;
+  transform: none;
+  white-space: nowrap;
+  line-height: 1;
+  margin: 2px 0 0;
+  font-size: 8px;
+  letter-spacing: 0.8px;
+  color: #9fb0d0;
+}
+/* Shown only when it changes the fight (the ring, a rule): a small note
+   under the badge. */
+#hud.hud-badge #phase-label:not([hidden]) {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  width: auto;
+  line-height: 1.2;
+  transform: translateX(-50%);
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: #0b1428d9;
+  color: #ffd65b;
+  font-size: 10px;
+  letter-spacing: 0.6px;
+  white-space: nowrap;
+}
+
+/* Phones: no row above the arena; it starts under the notch. */
+@media (orientation: landscape) {
+  body.battle-active.touch-mode.pvp-badge:not(.battle-raid) .arena-frame {
+    top: calc(var(--safe-top) + 4px);
+  }
+}
+
+/* The nearest off-screen opponent: an arrow circling your fighter, in that
+   opponent's colour (main.ts places it). */
+.enemy-bearing.is-orbit {
+  top: 0 !important;
+  left: 0 !important;
+  width: 0;
+  height: 0;
+  padding: 0;
+  gap: 0;
+  border: 0;
+  background: none;
+  overflow: visible;
+}
+.enemy-bearing.is-orbit strong {
+  display: none;
+}
+.enemy-bearing.is-orbit span {
+  position: absolute;
+  left: -12px;
+  top: -12px;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  font-size: 0;
+  filter: drop-shadow(0 0 4px var(--bearing-color, #ffd65b))
+    drop-shadow(0 1px 1px #000c);
+}
+.enemy-bearing.is-orbit span::before {
+  content: "";
+  margin-left: 4px;
+  border-left: 14px solid var(--bearing-color, #ffd65b);
+  border-top: 9px solid transparent;
+  border-bottom: 9px solid transparent;
+}
