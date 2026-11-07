@@ -7,7 +7,8 @@
  * factors.json maps champion id to a strength factor (health × f, basic
  * interval ÷ √f, rounded to 5 ms); "-" means none. BOT_OVERRIDE (JSON, e.g.
  * {"hard":{"rest":0.34}}) overrides bot profile settings for the run;
- * RR_SEED (default 5000) picks another set of seeded matches.
+ * RR_SEED (default 5000) picks another set of seeded matches; RR_ONLY
+ * (comma-separated ids) plays only the pairings that include one of them.
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { FIGHTER_IDS } from "../../packages/shared/src/index.ts";
@@ -39,10 +40,15 @@ const ids: string[] = [...FIGHTER_IDS];
 applyFactors(file === "-" ? {} : JSON.parse(readFileSync(file, "utf8")));
 
 const rows: [string, string, string | null][] = [];
-let k = 0;
+const only = process.env.RR_ONLY?.split(",");
+// Pairings are numbered over the whole roster (k, which seeds the matches)
+// whatever RR_ONLY leaves out; shards split the pairings actually played.
+let k = 0,
+  played = 0;
 for (let i = 0; i < ids.length; i++)
   for (let j = i + 1; j < ids.length; j++, k++) {
-    if (k % shards !== shard) continue;
+    if (only && !only.includes(ids[i]) && !only.includes(ids[j])) continue;
+    if (played++ % shards !== shard) continue;
     for (let g = 0; g < games; g++) {
       // Alternate sides so the spawn side never decides a matchup.
       const [a, b] = g % 2 ? [ids[j], ids[i]] : [ids[i], ids[j]];

@@ -543,7 +543,7 @@ describe("the Wardrobe", () => {
       data(e, { look: { skin: "candy-colours" } }),
     ).body;
     expect(body.match(/data-fit-slot="/g)).toHaveLength(6);
-    expect(body).toMatch(/data-fit-slot="champion"[\s\S]*?Stormcrown/);
+    expect(body).toMatch(/data-fit-slot="champion"[\s\S]*?Storm Revenant/);
     expect(body).toMatch(/data-fit-slot="skin"[\s\S]*?Candy colors/);
     expect(body.match(/data-fit-fighter="/g)).toHaveLength(
       Object.keys(CHARACTERS).length,
@@ -574,7 +574,7 @@ describe("the Wardrobe", () => {
     ]);
     const foot = fittingRoomParts(view, d).foot;
     expect(foot).toContain("Voltkit · 2 changes");
-    expect(foot).toContain("Skin: Stormcrown → Midnight");
+    expect(foot).toContain("Skin: Storm Revenant → Midnight");
     expect(foot).not.toMatch(
       /data-fit-save[^>]*disabled|disabled[^>]*data-fit-save/,
     );
@@ -682,4 +682,22 @@ describe("a fighter with no skins in the Shop yet", () => {
       expect(wardrobe).toContain(`No ${CHARACTERS[bare!].name} skins yet`);
     },
   );
+});
+
+describe("the stage's animation buttons", () => {
+  it("offers a Mythical's ultimate, and says which animation is playing", () => {
+    const mythic = fittingRoomParts(
+      shop({ tryOn: { champion: "voltkit-stormcrown" }, action: "ultimate" }),
+      data(),
+    ).stage;
+    expect(mythic).toMatch(/data-fit-play="ultimate"[^>]*aria-pressed="true"/);
+    expect(mythic).toMatch(/data-fit-play="entrance"[^>]*aria-pressed="false"/);
+    // Another rarity has no ultimate of its own to show.
+    const epic = fittingRoomParts(
+      shop({ tryOn: { champion: "voltkit-neon-arcade" }, action: "victory" }),
+      data(),
+    ).stage;
+    expect(epic).not.toContain('data-fit-play="ultimate"');
+    expect(epic).toMatch(/data-fit-play="victory"[^>]*aria-pressed="true"/);
+  });
 });

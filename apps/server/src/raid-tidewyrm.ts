@@ -24,6 +24,8 @@ const W = RULES.width,
 const POP_GAP = 0.35;
 /** Glacelle's Frost Bloom keeps a stranded Tidewyrm there this much longer (s). */
 const FROST_HOLD = 2;
+/** Mossloth's Rootsnare roots a stranded Tidewyrm there this much longer. */
+const ROOT_HOLD = 1;
 
 /**
  * Tidewyrm, "The Rising Tide" (docs/raid-roster-design.md §5.1). It shares
@@ -639,6 +641,20 @@ export class TidewyrmArena extends RaidArena {
         r.exposedUntil += FROST_HOLD;
         this.nextAttack = Math.max(this.nextAttack, r.exposedUntil + 1);
         r.message = "Frozen fast! Tidewyrm stays stranded a little longer.";
+      }
+      // Pangrove's Sap Bite drinks from a stranded Tidewyrm: extra stagger.
+      if (ability?.id === "sap-bite" && this.strandedOn >= 0 && r.exposedUntil > this.time && !r.drill)
+        r.stagger = Math.min(100, r.stagger + T.lanceStagger);
+      // Mossloth's Rootsnare roots a stranded Tidewyrm where it lies.
+      if (
+        ability?.id === "rootsnare" &&
+        this.strandedOn >= 0 &&
+        r.exposedUntil > this.time &&
+        !r.drill
+      ) {
+        r.exposedUntil += ROOT_HOLD;
+        this.nextAttack = Math.max(this.nextAttack, r.exposedUntil + 1);
+        r.message = "Rooted! Tidewyrm stays stranded a little longer.";
       }
     }
     super.damage(target, amount, owner, ability);

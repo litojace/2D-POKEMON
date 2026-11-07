@@ -158,8 +158,28 @@ async function prepare(page: Page, id: string, axis: "y" | "x") {
   );
 }
 
+/** Wait for the screen to stop moving: finite animations (a panel's slide-in,
+ * its contents arriving) finish before anything is measured. */
+async function stillness(page: Page) {
+  await page
+    .waitForFunction(
+      () =>
+        document
+          .getAnimations()
+          .every(
+            (a) =>
+              a.playState !== "running" ||
+              a.effect?.getComputedTiming().iterations === Infinity,
+          ),
+      undefined,
+      { timeout: 4000 },
+    )
+    .catch(() => {});
+}
+
 /** Text and controls cut off by a box that doesn't scroll. */
 export async function cutOff(page: Page, root: string) {
+  await stillness(page);
   return page.evaluate((root) => {
     const out: string[] = [];
     const name = (e: Element) =>

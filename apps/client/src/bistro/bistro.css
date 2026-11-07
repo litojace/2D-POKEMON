@@ -1,0 +1,2318 @@
+/* Element Bistro (demo): the HUD over the restaurant canvas. Every selector
+   is scoped to .bistro-layer; the glass matches the hub's (ui/aero.css). */
+.bistro-layer {
+  --bs-x-l: max(14px, var(--safe-left, 0px));
+  --bs-x-r: max(14px, var(--safe-right, 0px));
+  --bs-y-b: max(14px, var(--safe-bottom, 0px));
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  overflow: hidden;
+  background: #2a1d2e;
+  color: #eef2ff;
+  font-family: "DM Sans", system-ui, sans-serif;
+  outline: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.bistro-layer .bs-cv {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+}
+.bistro-layer .bs-hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  font-size: 14px;
+}
+.bistro-layer .bs-hud > * {
+  pointer-events: auto;
+}
+.bistro-layer .glass {
+  background-color: var(--aero-tint, rgba(13, 20, 38, 0.62));
+  -webkit-backdrop-filter: var(--aero-blur, blur(16px) saturate(1.3));
+  backdrop-filter: var(--aero-blur, blur(16px) saturate(1.3));
+  border: 1px solid var(--aero-rim, rgba(226, 200, 140, 0.42));
+}
+.bistro-layer[data-graphics="low"] .glass {
+  background-color: var(--aero-tint-solid, rgba(12, 18, 34, 0.9));
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.bistro-layer .ico {
+  width: 1.15em;
+  height: 1.15em;
+  vertical-align: -0.2em;
+}
+
+/* ── The bistro's badge: in the player card's place (the card, with the
+   account's level, is hidden here), the same box ── */
+.bistro-layer .bs-badge {
+  position: absolute;
+  left: var(--bs-x-l);
+  top: 10px;
+  box-sizing: border-box;
+  width: var(--hub-card-w, 236px);
+  min-height: var(--hub-card-h, 52px);
+  padding: var(--hub-card-pad, 6px 14px 6px 6px);
+  border-radius: 16px;
+  display: grid;
+  grid-template-columns: var(--hub-card-art, 38px) minmax(0, 1fr) auto;
+  /* The name (with a visitor's likes at its end), then a thick bar with
+     the XP written in it. */
+  grid-template-areas: "art name sub" "art xp xp";
+  align-items: center;
+  column-gap: 8px;
+  row-gap: 3px;
+}
+.bistro-layer .bs-ring {
+  --p: 0;
+  grid-area: art;
+  position: relative;
+  width: var(--hub-card-art, 38px);
+  height: var(--hub-card-art, 38px);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: conic-gradient(#ffb36b calc(var(--p) * 1%), #ffffff22 0);
+}
+.bistro-layer .bs-ring::before {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #a5452c, #6a2618);
+}
+.bistro-layer .bs-ring b {
+  position: relative;
+  font: 800 1.35em/1 var(--display, "Barlow Condensed", sans-serif);
+}
+.bistro-layer .bs-badge strong {
+  grid-area: name;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 800 15px/22px var(--display, "Barlow Condensed", sans-serif);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.bistro-layer .bs-badge small {
+  grid-area: sub;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font:
+    800 13px/1 "DM Sans",
+    sans-serif;
+  color: #ffe27a;
+  white-space: nowrap;
+}
+.bistro-layer .bs-badge small.bump {
+  animation: bs-bump 0.35s var(--ease-pop, cubic-bezier(0.34, 1.56, 0.64, 1));
+}
+@keyframes bs-bump {
+  40% {
+    transform: scale(1.25);
+  }
+}
+.bistro-layer .bs-badge .xpbar {
+  grid-area: xp;
+  position: relative;
+  height: 15px;
+  border-radius: 8px;
+  background: #00000059;
+  box-shadow: inset 0 0 0 1px #ffffff1f;
+  overflow: hidden;
+}
+.bistro-layer .bs-badge .xpbar i {
+  display: block;
+  height: 100%;
+  border-radius: 8px;
+  background: linear-gradient(90deg, #e8803f, #f5b94a);
+  transition: width 0.5s ease-out;
+}
+.bistro-layer .bs-badge .xpbar span {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font:
+    800 10px/1 "DM Sans",
+    sans-serif;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  text-shadow:
+    0 1px 2px #000c,
+    0 0 3px #0008;
+}
+
+/* ── Chips under the scene switch: rating, today's special, rush ── */
+.bistro-layer .bs-chips {
+  position: absolute;
+  left: 50%;
+  top: calc(var(--hub-card-h, 52px) + 14px);
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+  pointer-events: none;
+}
+.bistro-layer .bs-chip {
+  /* Chips of one size, their content centred. */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 156px;
+  height: 44px;
+  box-sizing: border-box;
+  padding: 0 12px;
+  overflow: hidden;
+  border-radius: 14px;
+  white-space: nowrap;
+  pointer-events: auto;
+}
+.bistro-layer .bs-chip b {
+  font: 800 16px/1 var(--display, "Barlow Condensed", sans-serif);
+  letter-spacing: 0.02em;
+}
+.bistro-layer .bs-chip small {
+  display: block;
+  font-size: 10.5px;
+  color: #cbd3e6;
+  line-height: 1.2;
+}
+.bistro-layer .bs-chip img {
+  width: 34px;
+  height: 34px;
+}
+.bistro-layer .bs-chip .stars {
+  --r: 60%;
+  font-size: 15px;
+  letter-spacing: 1px;
+  background: linear-gradient(90deg, #ffd65b var(--r), #ffffff33 var(--r));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.bistro-layer .bs-chip.special b {
+  color: #ffd65b;
+}
+.bistro-layer .bs-chip.rush {
+  border-color: #ff8a5a;
+  background-color: rgba(120, 30, 20, 0.7);
+  animation: bs-pulse 0.9s ease-in-out infinite alternate;
+}
+@keyframes bs-pulse {
+  to {
+    box-shadow: 0 0 18px rgba(255, 120, 70, 0.6);
+  }
+}
+
+/* ── The rail and zoom, right edge ── */
+.bistro-layer .bs-corner {
+  /* Bottom right, like the Farm's: the rail, the zoom buttons under it,
+     ending on the counter bar's line. */
+  position: absolute;
+  right: var(--bs-x-r);
+  bottom: var(--bs-y-b);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  z-index: 2;
+}
+.bistro-layer .bs-rail {
+  display: grid;
+  gap: 6px;
+  padding: 7px;
+  border-radius: 22px;
+}
+.bistro-layer .bs-rail button {
+  box-sizing: border-box;
+  width: 72px;
+  height: 66px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 5px;
+  padding: 6px 2px 5px;
+  border: 1px solid #ffffff1f;
+  border-radius: 15px;
+  background:
+    radial-gradient(circle at 50% 36%, #ffb36b44 0, transparent 60%),
+    linear-gradient(180deg, #3a2a4a, #22182e);
+  color: #fff;
+  cursor: pointer;
+  transition:
+    transform 0.12s,
+    border-color 0.15s;
+}
+.bistro-layer .bs-rail button .ico {
+  width: 1.9em;
+  height: 1.9em;
+  filter: drop-shadow(0 2px 3px #000a);
+}
+.bistro-layer .bs-rail button span {
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  color: #f2e6ff;
+}
+.bistro-layer .bs-rail button[aria-expanded="true"],
+.bistro-layer.editing .bs-rail [data-act="decor"] {
+  border-color: #ffd65b;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 214, 91, 0.35),
+    0 0 14px rgba(255, 214, 91, 0.35);
+}
+.bistro-layer .bs-rail button:active {
+  transform: scale(0.95);
+}
+.bistro-layer .bs-zoom {
+  display: flex;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 999px;
+}
+.bistro-layer .bs-zoom button {
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: #eef2ff;
+  font:
+    800 18px/1 "DM Sans",
+    sans-serif;
+  cursor: pointer;
+}
+.bistro-layer .bs-zoom button:hover {
+  background: #ffffff1a;
+}
+
+/* ── The counter bar at the bottom ── */
+.bistro-layer .bs-bar {
+  position: absolute;
+  left: 50%;
+  bottom: var(--bs-y-b);
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 14px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+.bistro-layer.editing .bs-bar {
+  display: none;
+}
+.bistro-layer .bs-bar small {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #b8c2da;
+}
+.bistro-layer .bs-slots {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.bistro-layer .bs-slots > small {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  margin-right: 2px;
+}
+.bistro-layer .bs-slot {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: radial-gradient(circle at 50% 40%, #fff3 0, #fff1 70%);
+  border: 1px solid #ffffff22;
+  display: grid;
+  place-items: center;
+}
+.bistro-layer .bs-slot.empty {
+  background: #ffffff0a;
+  border-style: dashed;
+}
+.bistro-layer .bs-slot img {
+  width: 46px;
+  height: 46px;
+}
+.bistro-layer .bs-slot b {
+  /* The count sits inside the slot's corner (nothing pokes out). */
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  min-width: 19px;
+  height: 18px;
+  padding: 0 4px;
+  box-sizing: border-box;
+  border-radius: 9px;
+  background: #ffd65b;
+  color: #2a1a00;
+  font:
+    800 11px/18px "DM Sans",
+    sans-serif;
+  text-align: center;
+}
+.bistro-layer .bs-slot.perfect {
+  border-color: #ffd65b;
+  box-shadow: 0 0 12px #ffd65b55;
+}
+.bistro-layer .bs-combo,
+.bistro-layer .bs-open {
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+  min-width: 58px;
+}
+.bistro-layer .bs-combo b,
+.bistro-layer .bs-open b {
+  font: 800 20px/1 var(--display, "Barlow Condensed", sans-serif);
+}
+.bistro-layer .bs-combo {
+  --c: 0%;
+  position: relative;
+  padding-bottom: 6px;
+}
+.bistro-layer .bs-combo::after {
+  content: "";
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 0;
+  height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #7fd8ff var(--c), #ffffff22 var(--c));
+}
+.bistro-layer .bs-combo.on b {
+  color: #9fe8ff;
+  text-shadow: 0 0 10px #4fc3ff;
+}
+.bistro-layer .bs-open b {
+  font-size: 16px;
+}
+
+/* ── Tooltip, banner and the first-visit hint ── */
+.bistro-layer .bs-tip {
+  position: absolute;
+  max-width: 240px;
+  padding: 9px 12px;
+  border-radius: 12px;
+  display: grid;
+  gap: 2px;
+  pointer-events: none;
+  animation: bs-in 0.16s ease-out;
+}
+.bistro-layer .bs-tip b {
+  font: 800 15px/1.2 var(--display, "Barlow Condensed", sans-serif);
+  letter-spacing: 0.02em;
+}
+.bistro-layer .bs-tip span {
+  font-size: 12.5px;
+  color: #dfe6f5;
+}
+.bistro-layer .bs-tip small {
+  font-size: 11px;
+  color: #ffd65b;
+}
+@keyframes bs-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+.bistro-layer .bs-banner {
+  position: absolute;
+  left: 50%;
+  top: 34%;
+  transform: translate(-50%, -50%);
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  padding: 14px 30px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #ffcf5a, #f08a3c);
+  color: #3a1600;
+  box-shadow:
+    0 10px 40px #0007,
+    inset 0 2px 0 #fff8;
+  pointer-events: none;
+  text-align: center;
+}
+.bistro-layer .bs-banner.show {
+  animation: bs-banner 2.2s ease-out both;
+}
+.bistro-layer .bs-banner b {
+  font: 900 34px/1 var(--display, "Barlow Condensed", sans-serif);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.bistro-layer .bs-banner span {
+  font-weight: 700;
+  font-size: 14px;
+}
+@keyframes bs-banner {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.6);
+  }
+  12% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.06);
+  }
+  20% {
+    transform: translate(-50%, -50%) scale(1);
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -60%) scale(1);
+  }
+}
+.bistro-layer .bs-hint {
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--bs-y-b) + 86px);
+  transform: translateX(-50%);
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: #0b1020b0;
+  color: #eef2ff;
+  font-size: 12.5px;
+  white-space: nowrap;
+  pointer-events: none;
+  transition: opacity 0.4s;
+}
+.bistro-layer .bs-hint.done {
+  opacity: 0;
+}
+
+/* ── Sheets: the cook menu, recipes and the shop ── */
+.bistro-layer .bs-sheet {
+  /* Between the left column (the badge) and the menu column (the rail and
+     the zoom row under it), under the top bar. */
+  position: absolute;
+  right: calc(var(--bs-x-r) + 128px);
+  top: calc(var(--hub-card-h, 52px) + 14px);
+  bottom: var(--bs-y-b);
+  width: min(
+    560px,
+    calc(
+      100vw - var(--bs-x-r) - 128px - var(--bs-x-l) - var(--hub-card-w, 236px) -
+        12px
+    )
+  );
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  border-radius: 22px;
+  background-color: rgba(18, 16, 34, 0.86);
+  overflow: hidden;
+  animation: bs-in 0.18s ease-out;
+}
+.bistro-layer .bs-sheet header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px 18px 10px;
+}
+.bistro-layer .bs-sheet header div {
+  flex: 1;
+  min-width: 0;
+}
+.bistro-layer .bs-sheet h2 {
+  margin: 0;
+  font: 800 24px/1.1 var(--display, "Barlow Condensed", sans-serif);
+  letter-spacing: 0.02em;
+}
+.bistro-layer .bs-sheet header p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: #c3cbe0;
+}
+.bistro-layer .bs-sheet .x {
+  width: 36px;
+  height: 36px;
+  border: 1px solid #ffffff22;
+  border-radius: 50%;
+  background: #ffffff10;
+  color: #fff;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+.bistro-layer .bs-tabs {
+  /* Tabs of one width, side by side. */
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 6px;
+  padding: 0 18px 10px;
+}
+.bistro-layer .bs-tabs button {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 8px 14px;
+  border: 1px solid #ffffff22;
+  border-radius: 999px;
+  background: #ffffff0d;
+  color: #dfe6f5;
+  font:
+    700 13px/1 "DM Sans",
+    sans-serif;
+  cursor: pointer;
+}
+.bistro-layer .bs-tabs button[aria-pressed="true"] {
+  background: #ffd65b;
+  border-color: #ffd65b;
+  color: #2a1a00;
+}
+.bistro-layer :is(.bs-dishes, .bs-items) {
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 4px 18px 18px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+  align-content: start;
+}
+.bistro-layer :is(.bs-dish, .bs-item) {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  padding: 12px 10px 12px;
+  border: 1px solid #ffffff1c;
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 50% 22%, #ffb36b2e 0, transparent 55%),
+    linear-gradient(180deg, #2c2442, #1d172e);
+  color: #fff;
+  text-align: center;
+  font: inherit;
+  cursor: pointer;
+  transition:
+    transform 0.12s,
+    border-color 0.15s;
+}
+.bistro-layer :is(.bs-dish, .bs-item):not(:disabled):hover {
+  border-color: #ffd65b88;
+  transform: translateY(-2px);
+}
+.bistro-layer :is(.bs-dish, .bs-item):disabled {
+  cursor: default;
+}
+.bistro-layer .bs-dishes .bs-dish:disabled:not(.locked) {
+  opacity: 1;
+}
+.bistro-layer :is(.bs-dish, .bs-item).locked {
+  opacity: 0.55;
+  filter: saturate(0.5);
+}
+.bistro-layer :is(.bs-dish, .bs-item) img {
+  width: 76px;
+  height: 76px;
+  filter: drop-shadow(0 4px 6px #0007);
+}
+.bistro-layer .bs-item .ic {
+  width: 76px;
+  height: 76px;
+  display: grid;
+  place-items: center;
+  font-size: 40px;
+}
+.bistro-layer :is(.bs-dish, .bs-item) b {
+  font: 800 17px/1.1 var(--display, "Barlow Condensed", sans-serif);
+  letter-spacing: 0.02em;
+}
+.bistro-layer :is(.bs-dish, .bs-item) small {
+  font-size: 11.5px;
+  color: #b9c2d8;
+}
+.bistro-layer .bs-dish .st {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px;
+  margin-top: 4px;
+}
+.bistro-layer .bs-dish .st em,
+.bistro-layer .bs-item .pr {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 7px;
+  border-radius: 8px;
+  background: #ffffff12;
+  font:
+    700 11.5px/1 "DM Sans",
+    sans-serif;
+  font-style: normal;
+}
+.bistro-layer .bs-item .pr {
+  margin-top: 4px;
+  padding: 6px 12px;
+  background: #ffd65b;
+  color: #2a1a00;
+  font-size: 13px;
+}
+.bistro-layer :is(.bs-dish em, .bs-item .pr).poor {
+  background: #5a2430;
+  color: #ffb0b0;
+}
+.bistro-layer .bs-dish .pf {
+  font-size: 11px;
+  color: #9cf07f;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.bistro-layer .bs-c .ico {
+  width: 1em;
+  height: 1em;
+}
+.bistro-layer .bs-dish .lk,
+.bistro-layer .bs-item .lk {
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #c3cbe0;
+}
+.bistro-layer .bs-dish.special {
+  border-color: #ffd65b99;
+}
+.bistro-layer .bs-dish .sp {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 3px 7px;
+  border-radius: 8px;
+  background: #ffd65b;
+  color: #2a1a00;
+  font:
+    800 10px/1 "DM Sans",
+    sans-serif;
+  font-style: normal;
+}
+.bistro-layer .bs-item.on {
+  border-color: #ffd65b;
+}
+.bistro-layer .bs-item .swatch {
+  width: 76px;
+  height: 56px;
+  border-radius: 10px;
+  border: 1px solid #ffffff33;
+}
+.bistro-layer .sw-floor-checker .swatch {
+  background: repeating-conic-gradient(#f6ead2 0 25%, #d9705a 0 50%) 0 0 / 19px
+    19px;
+}
+.bistro-layer .sw-floor-wood .swatch {
+  background: repeating-linear-gradient(
+    0deg,
+    #d9a066 0 12px,
+    #9b6236 12px 13px,
+    #c88a52 13px 25px,
+    #9b6236 25px 26px
+  );
+}
+.bistro-layer .sw-floor-teal .swatch {
+  background: repeating-conic-gradient(#5fb6ad 0 25%, #e9f3ea 0 50%) 0 0 / 19px
+    19px;
+}
+.bistro-layer .sw-wall-butter .swatch {
+  background: linear-gradient(
+    180deg,
+    #f6d98c 62%,
+    #8c5a34 62% 66%,
+    #a8643c 66%
+  );
+}
+.bistro-layer .sw-wall-mint .swatch {
+  background:
+    linear-gradient(180deg, transparent 62%, #3f6f5c 62% 66%, #4f8a6f 66%),
+    repeating-linear-gradient(90deg, #bfe6cf 0 9px, #dff4e6 9px 14px);
+}
+.bistro-layer .sw-wall-brick .swatch {
+  background:
+    linear-gradient(180deg, transparent 62%, #5d3226 62% 66%, #6e3a2b 66%),
+    repeating-linear-gradient(0deg, #c4664d 0 8px, #eed7c8 8px 9px);
+}
+
+/* ── Decorate mode ── */
+.bistro-layer .bs-edit {
+  position: absolute;
+  left: 50%;
+  bottom: var(--bs-y-b);
+  transform: translateX(-50%);
+  /* Centred, clear of the menu column on the right (the same room both sides). */
+  width: min(720px, calc(100vw - 2 * (var(--bs-x-r) + 98px)));
+  box-sizing: border-box;
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 20px;
+}
+.bistro-layer .bs-edit[hidden] {
+  display: none;
+}
+.bistro-layer .bs-edit-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.bistro-layer .bs-edit-head b {
+  font: 800 17px/1 var(--display, "Barlow Condensed", sans-serif);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+.bistro-layer .bs-edit-head span {
+  font-size: 12px;
+  color: #c3cbe0;
+}
+.bistro-layer .bs-store {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  min-height: 56px;
+  align-items: center;
+}
+.bistro-layer .bs-store em {
+  font-size: 12px;
+  color: #9aa6c2;
+}
+.bistro-layer .bs-store button {
+  /* Compact tiles of one size: the item, its name, how many are stored. */
+  position: relative;
+  flex: none;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 2px;
+  box-sizing: border-box;
+  width: 82px;
+  height: 70px;
+  padding: 4px;
+  border: 1px solid #ffffff22;
+  border-radius: 14px;
+  background: #ffffff10;
+  color: #fff;
+  font:
+    700 12px/1 "DM Sans",
+    sans-serif;
+  cursor: pointer;
+}
+.bistro-layer .bs-store button.on {
+  border-color: #ffd65b;
+  background: #ffd65b22;
+}
+.bistro-layer .bs-store img {
+  width: 46px;
+  height: 46px;
+}
+.bistro-layer .bs-store i {
+  font-style: normal;
+  color: #ffd65b;
+}
+.bistro-layer .bs-edit-btns {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+.bistro-layer .bs-edit-btns button {
+  /* One width for every button on the bar. */
+  flex: 0 0 96px;
+  box-sizing: border-box;
+  padding: 9px 4px;
+  text-align: center;
+  border: 1px solid #ffffff2a;
+  border-radius: 12px;
+  background: #ffffff12;
+  color: #fff;
+  font:
+    700 13px/1 "DM Sans",
+    sans-serif;
+  cursor: pointer;
+}
+.bistro-layer .bs-edit-btns button.go {
+  background: #ffd65b;
+  border-color: #ffd65b;
+  color: #2a1a00;
+}
+
+/* ── Phones (landscape): tighter ── */
+.bistro-layer.phone .bs-hud {
+  font-size: 12px;
+}
+.bistro-layer.phone .bs-badge .xpbar {
+  height: 13px;
+}
+.bistro-layer.phone .bs-badge .xpbar span {
+  font-size: 9px;
+}
+.bistro-layer.phone .bs-badge strong {
+  font-size: 12.5px;
+  line-height: 15px;
+}
+.bistro-layer.phone .bs-chips {
+  /* Under the bistro's badge, on the left (the menu has the right). */
+  top: calc(var(--hub-card-h, 42px) + 14px);
+  left: var(--bs-x-l);
+  transform: none;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+.bistro-layer.phone .bs-chip {
+  height: 30px;
+  padding: 0 8px;
+  gap: 5px;
+  border-radius: 10px;
+}
+.bistro-layer.phone .bs-chip.soft,
+.bistro-layer.phone .bs-chip small {
+  display: none;
+}
+.bistro-layer.phone .bs-chip b {
+  font-size: 13px;
+}
+.bistro-layer.phone .bs-chip img {
+  width: 22px;
+  height: 22px;
+}
+.bistro-layer.phone .bs-chip .stars {
+  font-size: 11px;
+}
+.bistro-layer.phone .bs-corner {
+  gap: 6px;
+}
+.bistro-layer.phone .bs-rail {
+  padding: 4px;
+  gap: 4px;
+  border-radius: 16px;
+}
+.bistro-layer.phone .bs-rail button {
+  width: 52px;
+  height: 46px;
+  gap: 3px;
+  border-radius: 11px;
+}
+.bistro-layer.phone .bs-rail button .ico {
+  width: 1.5em;
+  height: 1.5em;
+}
+.bistro-layer.phone .bs-rail button span {
+  font-size: 9px;
+}
+.bistro-layer.phone .bs-zoom {
+  display: none;
+}
+.bistro-layer.phone .bs-bar {
+  left: var(--bs-x-l);
+  transform: none;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: 14px;
+}
+.bistro-layer.phone .bs-slot {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+}
+.bistro-layer.phone .bs-slot img {
+  width: 34px;
+  height: 34px;
+}
+.bistro-layer.phone .bs-slot b {
+  min-width: 16px;
+  height: 16px;
+  font-size: 10px;
+  line-height: 16px;
+}
+.bistro-layer.phone .bs-combo b,
+.bistro-layer.phone .bs-open b {
+  font-size: 15px;
+}
+.bistro-layer.phone .bs-open {
+  display: none;
+}
+.bistro-layer.phone .bs-hint {
+  display: none;
+}
+.bistro-layer.phone .bs-sheet {
+  top: calc(var(--hub-card-h, 42px) + 12px);
+  bottom: var(--bs-y-b);
+  right: calc(var(--bs-x-r) + 64px);
+  width: min(
+    520px,
+    calc(
+      100vw - var(--bs-x-r) - 64px - var(--bs-x-l) - var(--hub-card-w, 172px) -
+        8px
+    )
+  );
+  z-index: 3;
+}
+.bistro-layer.phone .bs-sheet header {
+  padding: 10px 12px 6px;
+}
+.bistro-layer.phone .bs-sheet h2 {
+  font-size: 19px;
+}
+.bistro-layer.phone :is(.bs-dishes, .bs-items) {
+  grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+  padding: 4px 12px 12px;
+  gap: 8px;
+}
+.bistro-layer.phone :is(.bs-dish, .bs-item) img,
+.bistro-layer.phone .bs-item .ic,
+.bistro-layer.phone .bs-item .swatch {
+  width: 52px;
+  height: 52px;
+}
+.bistro-layer.phone .bs-banner b {
+  font-size: 24px;
+}
+.bistro-layer.phone .bs-edit {
+  padding: 6px 8px;
+  gap: 4px;
+}
+.bistro-layer.phone .bs-store {
+  min-height: 40px;
+}
+.bistro-layer.phone .bs-store img {
+  width: 32px;
+  height: 32px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .bistro-layer .bs-chip.rush,
+  .bistro-layer .bs-banner.show {
+    animation: none;
+  }
+}
+/* Toasts sit above the counter bar (or the decorate panel). */
+body.hub-bistro #toast {
+  bottom: calc(max(14px, var(--safe-bottom, 0px)) + 96px);
+  z-index: 80;
+}
+body.hub-bistro:has(.bistro-layer.editing) #toast {
+  bottom: calc(max(14px, var(--safe-bottom, 0px)) + 150px);
+}
+@media (max-height: 500px) {
+  body.hub-bistro #toast {
+    bottom: calc(max(14px, var(--safe-bottom, 0px)) + 60px);
+  }
+}
+
+/* ── Staff: the team, hiring and upgrades ── */
+.bistro-layer .bs-rail button {
+  position: relative;
+}
+.bistro-layer .bs-rail .dot {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #ff5a5a;
+  box-shadow: 0 0 0 2px #22182e;
+}
+.bistro-layer .bs-team {
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 4px 18px 18px;
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+.bistro-layer .bs-staff {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid #ffffff1c;
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 10% 30%, #ffb36b26 0, transparent 50%),
+    linear-gradient(180deg, #2c2442, #1d172e);
+}
+.bistro-layer .bs-staff .pt {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  filter: drop-shadow(0 3px 4px #0008);
+}
+.bistro-layer .bs-staff .who {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.bistro-layer .bs-staff .who b {
+  font: 800 18px/1.1 var(--display, "Barlow Condensed", sans-serif);
+  letter-spacing: 0.02em;
+}
+.bistro-layer .bs-staff .role {
+  justify-self: start;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font:
+    800 10px/1.4 "DM Sans",
+    sans-serif;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.bistro-layer .bs-staff .role.cook {
+  background: #ffb36b;
+  color: #3a1600;
+}
+.bistro-layer .bs-staff .role.waiter {
+  background: #7fd8ff;
+  color: #062a3a;
+}
+.bistro-layer .bs-staff .lv {
+  color: #ffd65b;
+  font-size: 13px;
+  letter-spacing: 1px;
+}
+.bistro-layer .bs-staff .lv i {
+  font-style: normal;
+  color: #ffffff2a;
+}
+.bistro-layer .bs-staff small {
+  font-size: 11.5px;
+  color: #b9c2d8;
+}
+.bistro-layer :is(.bs-staff, .bs-item.hire) button.pr {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 10px;
+  background: #ffd65b;
+  color: #2a1a00;
+  font:
+    800 12.5px/1 "DM Sans",
+    sans-serif;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.bistro-layer :is(.bs-staff, .bs-item.hire) button.pr.poor {
+  background: #5a2430;
+  color: #ffb0b0;
+}
+.bistro-layer .bs-staff .lk {
+  font-size: 12px;
+  font-weight: 700;
+  color: #c3cbe0;
+}
+.bistro-layer .bs-staff .cookdish {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.bistro-layer .bs-staff .cookdish small {
+  margin-right: 4px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 10px;
+}
+.bistro-layer .bs-staff .cookdish button {
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border: 1px solid #ffffff22;
+  border-radius: 10px;
+  background: #ffffff0d;
+  cursor: pointer;
+}
+.bistro-layer .bs-staff .cookdish button.on {
+  border-color: #ffd65b;
+  background: #ffd65b26;
+  box-shadow: 0 0 10px #ffd65b55;
+}
+.bistro-layer .bs-staff .cookdish img {
+  width: 36px;
+  height: 36px;
+}
+.bistro-layer .bs-item.hire {
+  cursor: default;
+  gap: 6px;
+}
+.bistro-layer .bs-item.hire img {
+  object-fit: contain;
+}
+.bistro-layer .bs-item.hire button.pr {
+  width: 100%;
+}
+.bistro-layer .bs-note {
+  margin: 0;
+  padding: 0 18px 16px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: #c3cbe0;
+}
+.bistro-layer .bs-team .bs-note {
+  padding: 4px 2px 0;
+}
+.bistro-layer .bs-note b {
+  color: #ffd65b;
+}
+
+/* ── While you were away ── */
+.bistro-layer .bs-modal {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  background: rgba(10, 8, 20, 0.5);
+}
+.bistro-layer .bs-modal[hidden] {
+  display: none;
+}
+.bistro-layer .bs-away {
+  width: min(460px, calc(100vw - 40px));
+  box-sizing: border-box;
+  max-height: calc(100vh - 30px);
+  overflow-y: auto;
+  padding: 22px 24px 20px;
+  border-radius: 24px;
+  background-color: rgba(28, 20, 40, 0.92);
+  text-align: center;
+  animation: bs-pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes bs-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+}
+.bistro-layer .bs-away-staff {
+  display: flex;
+  justify-content: center;
+  margin-top: -6px;
+}
+.bistro-layer .bs-away-staff img {
+  width: 70px;
+  height: 70px;
+  margin: 0 -6px;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 6px #0009);
+  animation: bs-bob 1.4s ease-in-out infinite alternate;
+}
+.bistro-layer .bs-away-staff img:nth-child(2n) {
+  animation-delay: -0.7s;
+}
+@keyframes bs-bob {
+  to {
+    transform: translateY(-5px);
+  }
+}
+.bistro-layer .bs-away h2 {
+  margin: 6px 0 4px;
+  font: 900 28px/1.1 var(--display, "Barlow Condensed", sans-serif);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #ffd65b;
+}
+.bistro-layer .bs-away p {
+  margin: 4px 0;
+  font-size: 13.5px;
+  color: #dfe6f5;
+}
+.bistro-layer .bs-away p.lvl {
+  color: #9cf07f;
+  font-weight: 700;
+}
+.bistro-layer .bs-away p.tip {
+  font-size: 12px;
+  color: #c3cbe0;
+}
+.bistro-layer .bs-away-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin: 14px 0 10px;
+}
+.bistro-layer .bs-away-stats div {
+  display: grid;
+  gap: 4px;
+  padding: 10px 6px;
+  border-radius: 14px;
+  background: #ffffff0d;
+}
+.bistro-layer .bs-away-stats b {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font: 800 24px/1 var(--display, "Barlow Condensed", sans-serif);
+}
+.bistro-layer .bs-away-stats .gold b {
+  color: #ffe27a;
+}
+.bistro-layer .bs-away-stats small {
+  font-size: 11px;
+  color: #b9c2d8;
+}
+.bistro-layer .bs-away .go {
+  margin-top: 10px;
+  padding: 12px 40px;
+  border: 0;
+  border-radius: 14px;
+  background: #ffd65b;
+  color: #2a1a00;
+  font: 900 18px/1 var(--display, "Barlow Condensed", sans-serif);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.bistro-layer.phone .bs-staff {
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  padding: 8px;
+}
+.bistro-layer.phone .bs-staff .pt {
+  width: 44px;
+  height: 44px;
+}
+.bistro-layer.phone .bs-away {
+  padding: 12px 16px;
+}
+.bistro-layer.phone .bs-away-staff img {
+  width: 44px;
+  height: 44px;
+}
+.bistro-layer.phone .bs-away h2 {
+  font-size: 20px;
+}
+.bistro-layer.phone .bs-away-stats {
+  margin: 8px 0 6px;
+}
+
+/* ── Loading, visiting a friend, the bank ── */
+.bistro-layer .bs-loading {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  transform: translate(-50%, -50%);
+  padding: 12px 22px;
+  border-radius: 999px;
+  background: rgba(14, 12, 28, 0.82);
+  font-weight: 700;
+  font-size: 14px;
+  pointer-events: none;
+}
+.bistro-layer .bs-loading[hidden] {
+  display: none;
+}
+.bistro-layer.visiting :is(.bs-rail, .bs-bar, .bs-hint) {
+  display: none;
+}
+.bistro-layer .bs-visit {
+  position: absolute;
+  left: 50%;
+  bottom: var(--bs-y-b);
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px 8px 8px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+.bistro-layer .bs-visit[hidden] {
+  display: none;
+}
+.bistro-layer .bs-visit .who {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: 6px;
+}
+.bistro-layer .bs-visit .who img {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+}
+.bistro-layer .bs-visit .who small {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #b8c2da;
+}
+.bistro-layer .bs-visit .who b {
+  font: 800 17px/1.1 var(--display, "Barlow Condensed", sans-serif);
+}
+.bistro-layer .bs-visit button {
+  padding: 11px 16px;
+  border: 1px solid #ffffff2a;
+  border-radius: 12px;
+  background: #ffffff14;
+  color: #fff;
+  font:
+    800 13px/1 "DM Sans",
+    sans-serif;
+  cursor: pointer;
+}
+.bistro-layer .bs-visit button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.bistro-layer .bs-visit button.go {
+  background: #ffd65b;
+  border-color: #ffd65b;
+  color: #2a1a00;
+}
+.bistro-layer .bs-badge small.likes {
+  color: #ff9bb3;
+}
+.bistro-layer .bs-bank {
+  flex: 1;
+  overflow-y: auto;
+}
+.bistro-layer .bs-bank > p {
+  margin: 0;
+  padding: 0 18px 10px;
+  font-size: 13px;
+  color: #dfe6f5;
+}
+.bistro-layer .bs-bank-left {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 0 18px 8px;
+}
+.bistro-layer .bs-bank-left b {
+  font: 800 26px/1 var(--display, "Barlow Condensed", sans-serif);
+  color: #9cf07f;
+}
+.bistro-layer .bs-bank-left small {
+  font-size: 12px;
+  color: #b9c2d8;
+}
+.bistro-layer .bs-staff.friend button.pr {
+  padding: 10px 16px;
+}
+.bistro-layer.phone .bs-visit {
+  left: var(--bs-x-l);
+  transform: none;
+  gap: 5px;
+  padding: 5px;
+}
+.bistro-layer.phone .bs-visit .who img {
+  width: 30px;
+  height: 30px;
+}
+.bistro-layer.phone .bs-visit button {
+  padding: 8px 10px;
+  font-size: 11.5px;
+}
+
+/* ── The wallet: bistro coins where the top bar's coin pills are ── */
+.bistro-layer .bs-wallet {
+  position: absolute;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-sizing: border-box;
+  min-width: 168px;
+  height: 42px;
+  padding: 0 18px 0 12px;
+  border: 1px solid rgba(255, 179, 107, 0.7);
+  border-radius: 999px;
+  background:
+    radial-gradient(
+      circle at 18% 50%,
+      rgba(255, 214, 91, 0.22),
+      transparent 55%
+    ),
+    rgba(14, 26, 49, 0.86);
+  backdrop-filter: blur(6px);
+  color: #ffe39a;
+  font: 800 21px/1 var(--display, "Barlow Condensed", sans-serif);
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.bistro-layer .bs-wallet[hidden] {
+  display: none;
+}
+.bistro-layer .bs-wallet .ico-wrap {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+}
+.bistro-layer .bs-wallet .ico-wrap .ico {
+  width: 26px;
+  height: 26px;
+  filter: drop-shadow(0 2px 3px #0008);
+}
+.bistro-layer .bs-wallet:hover {
+  border-color: #ffd65b;
+}
+.bistro-layer .bs-wallet.bump {
+  animation: bs-bump 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.bistro-layer.phone .bs-wallet {
+  min-width: 118px;
+  gap: 5px;
+  padding: 0 12px 0 8px;
+  font-size: 16px;
+}
+.bistro-layer.phone .bs-wallet .ico-wrap,
+.bistro-layer.phone .bs-wallet .ico-wrap .ico {
+  width: 20px;
+  height: 20px;
+}
+/* The game's coins and Gold Leaves don't belong to the Bistro: hidden here. */
+body.hub-bistro :is(#account-coins, #account-leaves) {
+  display: none !important;
+}
+/* Nor the player card: its level is the account's, not the bistro's, and
+   the bistro's badge takes its place. Hidden, not removed, so the top bar
+   keeps its layout. */
+body.hub-bistro #account-profile {
+  visibility: hidden;
+}
+
+.bistro-layer.phone .bs-edit {
+  width: min(640px, calc(100vw - 2 * (var(--bs-x-r) + 66px)));
+}
+
+.bistro-layer .bs-chip > span {
+  min-width: 0;
+}
+.bistro-layer .bs-chip b,
+.bistro-layer .bs-chip small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.bistro-layer.phone .bs-chip {
+  width: 124px;
+}
+.bistro-layer .bs-store img {
+  width: 38px;
+  height: 38px;
+}
+.bistro-layer .bs-store button span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10.5px;
+}
+.bistro-layer .bs-store i {
+  position: absolute;
+  top: 3px;
+  right: 5px;
+  font-size: 11px;
+}
+.bistro-layer.phone .bs-store button {
+  width: 64px;
+  height: 52px;
+}
+.bistro-layer.phone .bs-store img {
+  width: 26px;
+  height: 26px;
+}
+.bistro-layer.phone .bs-edit-btns button {
+  flex-basis: 78px;
+  padding: 7px 2px;
+}
+/* A card's lines never run past the card: they wrap inside it. */
+.bistro-layer :is(.bs-dish, .bs-item) > * {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.bistro-layer :is(.bs-dish, .bs-item) small {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+/* A card's column is the card's width, whatever its widest line. */
+.bistro-layer :is(.bs-dish, .bs-item) {
+  grid-template-columns: minmax(0, 1fr);
+}
+.bistro-layer .bs-item.hire button.pr {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* A sheet sits between the chips and the counter bar (desktop), and on
+   phones, where there is no room, the bar, the chips and the hint step
+   aside while it is open. */
+.bistro-layer .bs-sheet {
+  top: calc(var(--hub-card-h, 52px) + 14px + 44px + 10px);
+  bottom: calc(var(--bs-y-b) + 84px);
+}
+.bistro-layer.sheet-open .bs-hint {
+  display: none;
+}
+.bistro-layer.phone .bs-sheet {
+  top: calc(var(--hub-card-h, 42px) + 12px);
+  bottom: var(--bs-y-b);
+}
+.bistro-layer.phone.sheet-open :is(.bs-bar, .bs-chips) {
+  display: none;
+}
+
+/* ── Popularity (migration 070): the chip, its sheet, the plan's grade ── */
+.bistro-layer button.bs-chip {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+.bistro-layer .bs-chip .pop-ring {
+  --p: 40;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: conic-gradient(#ffd65b calc(var(--p) * 1%), #ffffff26 0);
+}
+.bistro-layer .bs-chip .pop-ring i {
+  display: grid;
+  place-items: center;
+  width: 25px;
+  height: 25px;
+  border-radius: 50%;
+  background: #151a2c;
+  font: 800 14px/1 var(--display, "Barlow Condensed", sans-serif);
+  font-style: normal;
+  color: #fff;
+}
+.bistro-layer .bs-chip.pop b {
+  font-size: 14px;
+  color: #ffd65b;
+}
+.bistro-layer .bs-chip.pop .ph {
+  display: none;
+}
+.bistro-layer .bs-chip.lay b {
+  color: #9fe8ff;
+}
+.bistro-layer.phone .bs-chip .pop-ring {
+  width: 22px;
+  height: 22px;
+}
+.bistro-layer.phone .bs-chip .pop-ring i {
+  width: 17px;
+  height: 17px;
+  font-size: 11px;
+}
+.bistro-layer.phone .bs-chip.pop > span:not(.pop-ring) {
+  display: none;
+}
+.bistro-layer.phone .bs-chip.pop .ph {
+  display: block;
+  color: #fff;
+  font-size: 13px;
+}
+.bistro-layer .bs-pop {
+  flex: 1;
+  overflow-y: auto;
+  padding: 2px 18px 16px;
+  display: grid;
+  gap: 8px;
+  align-content: start;
+}
+.bistro-layer .bs-pop-row {
+  display: grid;
+  grid-template-columns: 78px minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 10px;
+  row-gap: 3px;
+  padding: 9px 12px;
+  border-radius: 14px;
+  background: #ffffff0d;
+}
+.bistro-layer .bs-pop-row > b {
+  font: 800 15px/1 var(--display, "Barlow Condensed", sans-serif);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+.bistro-layer .bs-pop-row > i {
+  --w: 50%;
+  height: 8px;
+  border-radius: 4px;
+  background:
+    linear-gradient(90deg, #ffb36b, #ffe27a) 0 0 / var(--w) 100% no-repeat,
+    #ffffff1a;
+}
+.bistro-layer .bs-pop-row.minus > i {
+  background:
+    linear-gradient(90deg, #ff7a6b, #ff9a8a) 0 0 / var(--w) 100% no-repeat,
+    #ffffff1a;
+}
+.bistro-layer .bs-pop-row > strong {
+  font: 800 16px/1 var(--display, "Barlow Condensed", sans-serif);
+  white-space: nowrap;
+}
+.bistro-layer .bs-pop-row > strong small {
+  font-size: 11px;
+  color: #9aa4bd;
+}
+.bistro-layer .bs-pop-row > small {
+  grid-column: 1 / -1;
+  font-size: 11.5px;
+  color: #b9c2d8;
+}
+.bistro-layer .bs-pop-fx {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.bistro-layer .bs-pop-fx div {
+  display: grid;
+  gap: 4px;
+  padding: 10px 6px;
+  border-radius: 14px;
+  background: #ffffff0d;
+  text-align: center;
+}
+.bistro-layer .bs-pop-fx b {
+  font: 800 22px/1 var(--display, "Barlow Condensed", sans-serif);
+  color: #ffe27a;
+}
+.bistro-layer .bs-pop-fx small {
+  font-size: 11px;
+  color: #b9c2d8;
+}
+.bistro-layer .bs-pop-plan {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: #ffffff0d;
+}
+.bistro-layer .bs-pop-plan .grade {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  font: 800 26px/1 var(--display, "Barlow Condensed", sans-serif);
+  background: #2c3550;
+  color: #fff;
+}
+.bistro-layer .bs-pop-plan .g-A,
+.bistro-layer .bs-pop-plan .g-B {
+  background: #2f8a55;
+}
+.bistro-layer .bs-pop-plan .g-C {
+  background: #a07a1c;
+}
+.bistro-layer .bs-pop-plan .g-D,
+.bistro-layer .bs-pop-plan .g-E {
+  background: #a33d3d;
+}
+.bistro-layer .bs-pop-plan p {
+  margin: 0;
+  font-size: 12px;
+  color: #c3cbe0;
+}
+.bistro-layer .bs-pop-plan p b {
+  display: block;
+  margin-bottom: 2px;
+  font: 800 15px/1.1 var(--display, "Barlow Condensed", sans-serif);
+  color: #fff;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.bistro-layer .bs-pop-plan .pr {
+  padding: 9px 14px;
+  border: 0;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #ffd65b, #f0a92a);
+  color: #3a2300;
+  font: 800 14px/1 var(--display, "Barlow Condensed", sans-serif);
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.bistro-layer.phone .bs-pop {
+  padding: 0 12px 10px;
+  gap: 6px;
+}
+.bistro-layer.phone .bs-pop-row {
+  padding: 7px 10px;
+}
+.bistro-layer.phone .bs-pop-fx b {
+  font-size: 18px;
+}
+.bistro-layer .bs-edit-head .bs-grade {
+  margin-left: auto;
+  font-size: 12px;
+  font-style: normal;
+  color: #c3cbe0;
+  white-space: nowrap;
+}
+.bistro-layer .bs-edit-head .bs-grade b {
+  font-size: 15px;
+  color: #9fe8ff;
+}
+.bistro-layer .bs-edit-head .bs-grade b.up {
+  color: #7fe7a0;
+}
+.bistro-layer .bs-edit-head .bs-grade b.down {
+  color: #ff9a8a;
+}
+.bistro-layer .bs-staff .lv.pop {
+  color: #ffd65b;
+  font-weight: 700;
+}
+
+/* ── Staff energy, janitors, friends on the team (migration 073) ── */
+.bistro-layer .bs-staff .role.janitor {
+  background: #7fe7a0;
+  color: #06321a;
+}
+.bistro-layer .bs-staff .role.friend {
+  background: #ff9be8;
+  color: #3a0630;
+}
+.bistro-layer .bs-staff .en {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+}
+.bistro-layer .bs-staff .en i {
+  --e: 100%;
+  height: 7px;
+  border-radius: 4px;
+  background:
+    linear-gradient(90deg, #7fe7a0, #c8f59a) 0 0 / var(--e) 100% no-repeat,
+    #ffffff1a;
+}
+.bistro-layer .bs-staff .en.hungry i {
+  background:
+    linear-gradient(90deg, #ffc23d, #ffe27a) 0 0 / var(--e) 100% no-repeat,
+    #ffffff1a;
+}
+.bistro-layer .bs-staff .en.exhausted i {
+  background:
+    linear-gradient(90deg, #ff6b5b, #ff9a8a) 0 0 / var(--e) 100% no-repeat,
+    #ffffff1a;
+}
+.bistro-layer .bs-staff .en em {
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 700;
+  color: #dfe6f5;
+  white-space: nowrap;
+}
+.bistro-layer .bs-staff .acts {
+  display: grid;
+  gap: 6px;
+  justify-items: stretch;
+  min-width: 112px;
+}
+.bistro-layer .bs-staff .acts > * {
+  justify-content: center;
+  text-align: center;
+}
+.bistro-layer .bs-staff button.pr.feed {
+  background: linear-gradient(180deg, #8ef0b0, #3fbf6e);
+  color: #06321a;
+}
+.bistro-layer .bs-staff button.pr.feed:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.bistro-layer .bs-tabs.roles button {
+  font-size: 13px;
+}
+.bistro-layer.phone .bs-staff .acts {
+  min-width: 92px;
+}
+
+/* ── Dish levels, the pantry, the Market (migration 074) ── */
+.bistro-layer .bs-dishes.levels {
+  grid-template-columns: repeat(auto-fill, minmax(176px, 1fr));
+}
+.bistro-layer .bs-dishes.levels .bs-dish {
+  cursor: default;
+}
+.bistro-layer .bs-dish .dlv {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: #ffd65b;
+  color: #2a1a00;
+  font: 800 12px/1.3 var(--display, "Barlow Condensed", sans-serif);
+  font-style: normal;
+  vertical-align: 2px;
+}
+.bistro-layer .bs-dish .mast {
+  display: grid;
+  gap: 3px;
+  width: 100%;
+  margin-top: 4px;
+}
+.bistro-layer .bs-dish .mast i {
+  --m: 0%;
+  height: 6px;
+  border-radius: 3px;
+  background:
+    linear-gradient(90deg, #9fe8ff, #7fd8ff) 0 0 / var(--m) 100% no-repeat,
+    #ffffff1a;
+}
+.bistro-layer .bs-dish .mast em {
+  font-size: 10.5px;
+  font-style: normal;
+  color: #b9c2d8;
+}
+.bistro-layer .bs-dish .needs {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px;
+}
+.bistro-layer .bs-dish .needs em {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border-radius: 7px;
+  background: #ffffff12;
+  font:
+    700 10.5px/1.2 "DM Sans",
+    sans-serif;
+  font-style: normal;
+}
+.bistro-layer .bs-dish button.up {
+  margin-top: 4px;
+  padding: 7px 12px;
+  border: 0;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #ffe27a, #f0a92a);
+  color: #2a1a00;
+  font: 800 13px/1 var(--display, "Barlow Condensed", sans-serif);
+  text-transform: uppercase;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.bistro-layer .bs-dish button.up.poor {
+  background: #3a3350;
+  color: #b9c2d8;
+}
+.bistro-layer .bs-dish .up.top {
+  margin-top: 4px;
+  color: #ffd65b;
+  font-weight: 800;
+  font-size: 12px;
+}
+/* An ingredient's swatch. */
+.bistro-layer i.ing {
+  flex: none;
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ccc;
+  box-shadow: inset 0 -2px 0 #0003;
+}
+.bistro-layer i.ing.big {
+  width: 44px;
+  height: 44px;
+  margin: 6px 0;
+  box-shadow:
+    inset 0 -6px 0 #0003,
+    0 4px 8px #0006;
+}
+.bistro-layer i.ing.ing-rice {
+  background: #f4f1e6;
+}
+.bistro-layer i.ing.ing-flour {
+  background: #f2d27a;
+}
+.bistro-layer i.ing.ing-herbs {
+  background: #5fcf7a;
+}
+.bistro-layer i.ing.ing-pork {
+  background: #e98a7c;
+}
+.bistro-layer i.ing.ing-egg {
+  background: radial-gradient(circle at 50% 50%, #ffcf3d 0 35%, #fff8e6 37%);
+}
+.bistro-layer i.ing.ing-beans {
+  background: #9a5b3a;
+}
+.bistro-layer i.ing.ing-coconut {
+  background: radial-gradient(circle at 50% 50%, #fffaf0 0 45%, #7a4a2a 47%);
+}
+.bistro-layer i.ing.ing-coffee {
+  background: #5a3420;
+}
+.bistro-layer i.ing.ing-milk {
+  background: #e9f3ff;
+}
+.bistro-layer i.ing.ing-chili {
+  background: #e8402f;
+}
+.bistro-layer i.ing.ing-spice {
+  background: conic-gradient(#ffd65b, #ff8a3d, #ff6bd0, #9fe8ff, #ffd65b);
+}
+.bistro-layer .bs-pantry {
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.bistro-layer .bs-pantry .bs-items {
+  overflow: visible;
+}
+.bistro-layer .bs-pantry h3 {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 6px 18px 6px;
+  font: 800 16px/1.1 var(--display, "Barlow Condensed", sans-serif);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.bistro-layer .bs-pantry h3 small {
+  font:
+    600 11.5px/1.2 "DM Sans",
+    sans-serif;
+  color: #b9c2d8;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.bistro-layer .pt-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: 6px;
+  padding: 2px 18px 8px;
+}
+.bistro-layer .pt-ing {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  column-gap: 6px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: #ffffff0d;
+}
+.bistro-layer .pt-ing.none {
+  opacity: 0.5;
+}
+.bistro-layer .pt-ing .ing {
+  grid-row: span 2;
+  width: 18px;
+  height: 18px;
+}
+.bistro-layer .pt-ing b {
+  font: 800 15px/1 var(--display, "Barlow Condensed", sans-serif);
+}
+.bistro-layer .pt-ing small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10.5px;
+  color: #b9c2d8;
+}
+.bistro-layer.phone .pt-grid,
+.bistro-layer.phone .bs-pantry h3 {
+  padding-left: 12px;
+  padding-right: 12px;
+  margin-left: 0;
+  margin-right: 0;
+}
+
+/* ── Shorter chips (two now: popularity and the floor plan / rush) ── */
+.bistro-layer .bs-chip {
+  width: 132px;
+  padding: 0 10px;
+  gap: 7px;
+}
+.bistro-layer .bs-chip .pop-ring {
+  width: 30px;
+  height: 30px;
+}
+.bistro-layer .bs-chip .pop-ring i {
+  width: 23px;
+  height: 23px;
+  font-size: 13px;
+}
+.bistro-layer .bs-chip.pop b {
+  font-size: 13px;
+}
+.bistro-layer .bs-chip.rush span {
+  display: grid;
+  justify-items: center;
+}
+
+/* ── Today's special stands out in the Recipes and cook sheets ── */
+.bistro-layer .bs-dish.special {
+  border: 2px solid #ffd65b;
+  background:
+    radial-gradient(circle at 50% 22%, #ffd65b55 0, transparent 60%),
+    linear-gradient(180deg, #4a3a26, #2a1f1a);
+  box-shadow:
+    0 0 0 3px #ffd65b22,
+    0 0 22px #ffb84a66;
+  animation: bs-special 1.8s ease-in-out infinite alternate;
+}
+@keyframes bs-special {
+  to {
+    box-shadow:
+      0 0 0 3px #ffd65b44,
+      0 0 30px #ffb84aaa;
+  }
+}
+.bistro-layer .bs-dish .sp {
+  top: -1px;
+  right: 50%;
+  transform: translateX(50%);
+  padding: 4px 10px;
+  border-radius: 0 0 10px 10px;
+  background: linear-gradient(180deg, #ffe58a, #f0a92a);
+  white-space: nowrap;
+  box-shadow: 0 2px 6px #0006;
+}
+@media (prefers-reduced-motion: reduce) {
+  .bistro-layer .bs-dish.special {
+    animation: none;
+  }
+}
+
+/* ── The board: catering orders, regulars, the league, events (migration 100) ── */
+.bistro-layer .bs-board {
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 2px 18px 16px;
+  display: grid;
+  gap: 8px;
+  align-content: start;
+}
+.bistro-layer .bs-card {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid #ffffff1c;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #2c2442, #1d172e);
+}
+.bistro-layer .bs-card .pt,
+.bistro-layer .bs-card .ic {
+  width: 52px;
+  height: 52px;
+  object-fit: contain;
+  display: grid;
+  place-items: center;
+  font-size: 30px;
+}
+.bistro-layer .bs-card .txt {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.bistro-layer .bs-card b {
+  font: 800 16px/1.15 var(--display, "Barlow Condensed", sans-serif);
+  letter-spacing: 0.02em;
+}
+.bistro-layer .bs-card small {
+  font-size: 11.5px;
+  color: #b9c2d8;
+}
+.bistro-layer .bs-card q {
+  font-size: 12px;
+  font-style: italic;
+  color: #e6ebf7;
+}
+.bistro-layer .bs-card .needs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.bistro-layer .bs-card .needs em {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 7px 2px 2px;
+  border-radius: 9px;
+  background: #ffffff12;
+  font:
+    700 11px/1.2 "DM Sans",
+    sans-serif;
+  font-style: normal;
+}
+.bistro-layer .bs-card .needs em img {
+  width: 22px;
+  height: 22px;
+}
+.bistro-layer .bs-card .needs em.ok {
+  background: #2f8a5544;
+  color: #c8f5d6;
+}
+.bistro-layer .bs-card .needs em.poor {
+  color: #ffb0b0;
+}
+.bistro-layer .bs-card .dots {
+  display: inline-flex;
+  gap: 3px;
+  vertical-align: 2px;
+}
+.bistro-layer .bs-card .dots i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ffffff2a;
+}
+.bistro-layer .bs-card .dots i.on {
+  background: #ffd65b;
+}
+.bistro-layer .bs-card .acts {
+  display: grid;
+  gap: 6px;
+}
+.bistro-layer .bs-card button.pr {
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #ffe27a, #f0a92a);
+  color: #2a1a00;
+  font: 800 13px/1 var(--display, "Barlow Condensed", sans-serif);
+  text-transform: uppercase;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.bistro-layer .bs-card button.pr.poor {
+  background: #3a3350;
+  color: #b9c2d8;
+}
+.bistro-layer .bs-card button.pr.ghost {
+  background: #ffffff14;
+  color: #dfe6f5;
+}
+.bistro-layer .bs-card.locked,
+.bistro-layer .bs-card.wait {
+  opacity: 0.7;
+}
+.bistro-layer .bs-card .tok,
+.bistro-layer .bs-card .lk {
+  font: 800 14px/1 var(--display, "Barlow Condensed", sans-serif);
+  color: #ffd65b;
+  white-space: nowrap;
+}
+.bistro-layer .bs-league {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.bistro-layer .bs-league li {
+  display: grid;
+  grid-template-columns: 26px 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 12px;
+  background: #ffffff0d;
+}
+.bistro-layer .bs-league li.me {
+  background: #ffd65b26;
+  outline: 1px solid #ffd65b66;
+}
+.bistro-layer .bs-league .rk {
+  font: 800 16px/1 var(--display, "Barlow Condensed", sans-serif);
+  color: #ffd65b;
+  text-align: center;
+}
+.bistro-layer .bs-league img {
+  width: 34px;
+  height: 34px;
+  object-fit: contain;
+}
+.bistro-layer .bs-league b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font:
+    700 14px/1.1 "DM Sans",
+    sans-serif;
+}
+.bistro-layer .bs-league em {
+  font: 800 16px/1 var(--display, "Barlow Condensed", sans-serif);
+  font-style: normal;
+}
+.bistro-layer .bs-board .bs-note {
+  padding: 0 2px;
+}
+.bistro-layer .bs-board .bs-items {
+  padding: 0;
+  overflow: visible;
+}
+.bistro-layer .bs-ring .stars {
+  position: absolute;
+  left: 50%;
+  bottom: -5px;
+  transform: translateX(-50%);
+  padding: 1px 4px;
+  border-radius: 8px;
+  background: #2a1a00;
+  border: 1px solid #ffd65b;
+  color: #ffd65b;
+  font:
+    800 9px/1 "DM Sans",
+    sans-serif;
+  font-style: normal;
+  white-space: nowrap;
+}
+.bistro-layer .bs-item.branch.armed {
+  border-color: #ff8a5a;
+  box-shadow: 0 0 16px #ff8a5a66;
+}
+.bistro-layer.phone .bs-board {
+  padding: 0 12px 10px;
+}
+.bistro-layer.phone .bs-card {
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  padding: 8px 10px;
+}
+.bistro-layer.phone .bs-card .pt,
+.bistro-layer.phone .bs-card .ic {
+  width: 40px;
+  height: 40px;
+}

@@ -72,6 +72,8 @@ export function mountShopPreview(
   let drawn = false;
   let clock = 0;
   let cycle = 0;
+  /** The rig and cycle the ultimate preview last cast in. */
+  let ultimateCast: { rig?: FighterRig; cycle: number } = { cycle: -1 };
   let original = false;
   let revision = 0;
   let rig: FighterRig | undefined;
@@ -156,10 +158,16 @@ export function mountShopPreview(
         Math.round(viewportHeight * resolution),
       );
     }
+    // The still fighter and the stage light (stage-light.ts) follow the
+    // camera's frame, so the light's disc stays under the rig's feet.
     if (!selection)
-      host
-        .querySelector(".shop-preview-fallback > svg")
-        ?.setAttribute("viewBox", previewViewBox(action, viewportHeight));
+      for (const part of [
+        ":scope > .stage-light",
+        ".shop-preview-fallback > svg",
+      ])
+        host
+          .querySelector(part)
+          ?.setAttribute("viewBox", previewViewBox(action, viewportHeight));
     scene.paintFloor();
     dirty = true;
     syncLoop();
@@ -210,6 +218,7 @@ export function mountShopPreview(
   const reset = () => {
     clock = 0;
     cycle = -1;
+    ultimateCast = { cycle: -1 };
     dirty = true;
     if (rig && scene) {
       rig.destroy();
@@ -480,38 +489,9 @@ export function mountShopPreview(
       this.floor.clear();
       if (selection) return;
       const feet = framing.y + WORLD_ART.fighterFeet * framing.scale;
-      const zoom = cameraZoom();
-      const worldWidth = framing.width / zoom;
-      const top = framing.cameraY - viewportHeight / (2 * zoom);
-      // The soft beam enters above the full stage's upper-right corner as a
-      // narrow source and widens like a real light cone until it pools on
-      // the floor around the fighter's shadow. Each layer is one shape (beam
-      // plus the lower half of its pool), so the pool has one even tone;
-      // drawn separately, the beam doubled the light above the foot line.
-      const source = framing.x + worldWidth * 0.55;
-      for (let i = 0; i < 24; i++) {
-        const fade = 1 - i / 24;
-        const rx = 110 * fade,
-          ry = rx * SHOP_GROUND_FLAT;
-        const pool: { x: number; y: number }[] = [];
-        // The cone's edges land on the pool's widest points (0° and 180°),
-        // so the light spreads as wide as the gold pool on the floor.
-        for (let a = 0; a <= 180; a += 10)
-          pool.push({
-            x: framing.x + Math.cos((a * Math.PI) / 180) * rx,
-            y: feet + Math.sin((a * Math.PI) / 180) * ry,
-          });
-        this.floor
-          .fillStyle(0xffdc85, 0.028)
-          .fillPoints(
-            [
-              { x: source - worldWidth * 0.045 * fade, y: top - 40 },
-              { x: source + worldWidth * 0.045 * fade, y: top - 40 },
-              ...pool,
-            ],
-            true,
-          );
-      }
+      // The light itself (glow, lit disc and ring) is the stage's own layer
+      // behind the canvas (stage-light.ts, owner's option C): the rig draws
+      // only the fighter's contact shadow.
       this.floor
         .fillStyle(0x040d20, 0.4)
         .fillEllipse(framing.x, feet, SHOP_SHADOW.width, SHOP_SHADOW.height);
@@ -535,6 +515,17 @@ export function mountShopPreview(
         cycle = nextCycle;
       }
       const t = (clock % 4400) / 1000;
+      // A Mythical's ultimate, early in each cycle (its Stage III effect
+      // plays as the cast lands; skin-fx). A rig rebuilt mid-cycle, once its
+      // textures load, casts again.
+      if (
+        action === "ultimate" &&
+        t < 3 &&
+        (ultimateCast.rig !== rig || ultimateCast.cycle !== cycle)
+      ) {
+        rig.trigger("skill3", clock, 1300);
+        ultimateCast = { rig, cycle };
+      }
       const { x, y } = framing;
       const pose: AnimationPose = {
         hp: 100,
@@ -650,6 +641,7 @@ export function mountShopPreview(
       replay() {
         clock = 0;
         cycle = -1;
+        ultimateCast = { cycle: -1 };
         dirty = true;
         rig?.controller.reset();
         syncLoop();

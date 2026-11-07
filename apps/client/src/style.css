@@ -3720,13 +3720,27 @@ html.zoom-locked #game,
 html.zoom-locked #game * {
   touch-action: none !important;
 }
+/* Touch screens: a long press is a game action (hold to harvest or plant
+   many on the Farm, hold to compare in the Shop), never a text selection or
+   the phone's Copy / Save image menu. Fields you type in keep selection. */
+@media (any-pointer: coarse) {
+  html {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+  :is(input, textarea, select, [contenteditable="true"]) {
+    -webkit-user-select: text;
+    user-select: text;
+    -webkit-touch-callout: default;
+  }
+}
 html.zoom-locked body {
   -webkit-user-select: none;
   user-select: none;
   -webkit-touch-callout: none;
 }
-html.zoom-locked dialog,
-html.zoom-locked dialog input {
+html.zoom-locked dialog :is(input, textarea) {
   -webkit-user-select: text;
   user-select: text;
 }
@@ -5982,7 +5996,7 @@ html::before {
   /* Elemental Plaza, dimmed, behind lobbies and other screens. */
   background:
     linear-gradient(180deg, #0b1424d9 0%, #0b1424e6 50%, #0b1424f2 100%),
-    url("/assets/backgrounds/plaza-lobby.webp") center/cover no-repeat;
+    url("/assets/backgrounds/plaza-lobby-f340a3b8.webp") center/cover no-repeat;
 }
 html:has(body.battle-active)::before {
   display: none;

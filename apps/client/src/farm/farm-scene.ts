@@ -84,6 +84,7 @@ import {
 } from "./farm-icons";
 import "./farm.css";
 import { fadeIn } from "../ui/motion";
+import { setInner } from "../ui/patch";
 
 const svgUrl = (s) =>
   "data:image/svg+xml;charset=utf-8," + encodeURIComponent(s);
@@ -187,6 +188,10 @@ const FARM_HTML = `<div class="fm" id="fm">
     <div class="fm-log" id="fm-log" aria-live="polite"></div>
     <div class="fm-tip glass" id="fm-tip" hidden></div>
     <div class="fm-pop glass" id="fm-pop" hidden></div>
+    <div class="fm-acts" id="fm-acts" hidden></div>
+    <div class="fm-sickle fm-seedbub" id="fm-seed" hidden><button type="button" data-seedbub></button></div>
+    <div class="fm-sickle" id="fm-sickle" hidden><button type="button" data-sickle aria-label="Harvest: tap, or drag across ripe crops">${I("sickle")}</button></div>
+    <div class="fm-ghost" id="fm-ghost" hidden aria-hidden="true"></div>
     <div class="fm-orbpop glass" id="fm-orbpop" hidden></div>
     <section class="fm-sheet glass" id="fm-sheet" hidden></section>
     <div class="fm-hint" id="fm-hint">Drag the grass to move · scroll or press +/− to zoom</div>
@@ -194,6 +199,12 @@ const FARM_HTML = `<div class="fm" id="fm">
   </div>
 </div>`;
 
+/*
+ * The farm as you left it, this session, per player: where the animals
+ * stood. Opening the farm again starts from here. (The balloon and stall,
+ * loaded after the farm, come kept from openFarmScreen so they don't pop in.)
+ */
+const LEFT = new Map();
 export function openFarm(options) {
   const layer = document.createElement("div");
   layer.className = "farm-layer";
@@ -375,7 +386,6 @@ export function openFarm(options) {
     market: { day: "", mult: {}, hot: null },
     leaves: 0,
     tool: "hand",
-    seed: "wheat",
     fert: "norm",
     can: 1,
     net: 1,
@@ -430,6 +440,10 @@ export function openFarm(options) {
       i,
     );
   const buyable = (i) => F.plots[i].locked && touching(F.plots, i);
+  /** Rain and storms water every growing crop (the server's rule, 039 and
+   *  067): show it the moment it rains, before the next update says so. */
+  const raining = () => ["rain", "storm"].includes(F.weather.cur);
+  const wetNow = (p) => !!p.wet || (!!p.crop && p.prog < 1 && raining());
   function growth(p, now) {
     if (!p.crop) return 0;
     if (p.prog0 >= 1 || !p.ripeAt || p.ripeAt <= p.at0)
@@ -660,10 +674,6 @@ export function openFarm(options) {
       );
     announceGifts();
     announceVisits(st.visits);
-    if (!F.seeds[F.seed]) {
-      const first = CROPS.find((c) => F.seeds[c.id]);
-      if (first) F.seed = first.id;
-    }
     F.loaded = true;
     for (const a of queue) applyLocal(a);
     announceGiants();
@@ -974,10 +984,16 @@ export function openFarm(options) {
   }
 
   /* ---------- scenery (verbatim from the prototype) ---------- */
+  /* The scenery's random numbers come from sequences of its own. GFX's shared
+     one is reseeded each time a sprite is painted, and sprites are cached, so
+     scenery drawn from it moved between the first visit and the next. */
+  const seeded = (s) => {
+    let x = Math.max(1, Math.floor(s) % 2147483646);
+    return () => (x = (x * 16807) % 2147483647) / 2147483647;
+  };
   const MARGIN = [];
   (() => {
-    GFX.srand(91);
-    const r = GFX.rnd,
+    const r = seeded(91),
       kinds = [
         "round",
         "pine",
@@ -1171,6 +1187,7 @@ export function openFarm(options) {
       y + (m.actualBoundingBoxAscent - m.actualBoundingBoxDescent) / 2,
     );
     g.restore();
+    return { x, y, w, h };
   }
   /* ---------- background ---------- */
   const bg = document.createElement("canvas");
@@ -1179,8 +1196,7 @@ export function openFarm(options) {
   function paintBg() {
     const g = bg.getContext("2d");
     g.translate(-WX0, -WY0);
-    GFX.srand(77);
-    const rnd = GFX.rnd;
+    const rnd = seeded(77);
     g.fillStyle = "#7cc45e";
     g.fillRect(WX0, WY0, BW, BH);
     for (let i = 0; i < 44; i++) {
@@ -1644,6 +1660,23 @@ export function openFarm(options) {
     if (!F.decorPick || V) return;
     const rm = F.decorPick === "__remove",
       rgb = decorRgb();
+    // Night, moonlight and rain darken the ground rings with the farm: light
+    // them again on top, as strong as the dark, so they read at any hour.
+    const w = F.weather.cur,
+      dark = Math.max(
+        nightLevel(TOD),
+        w === "moon" ? 0.85 : 0,
+        w === "storm" ? 0.5 : w === "rain" ? 0.3 : 0,
+      );
+    if (dark > 0.05)
+      DECO_SLOTS.forEach(([x, y], k) => {
+        if (!decorTarget(k)) return;
+        ctx.save();
+        ctx.globalCompositeOperation = "lighter";
+        ctx.globalAlpha = Math.min(1, dark * 1.2);
+        drawDecorSpot(x, y, k, time);
+        ctx.restore();
+      });
     DECO_SLOTS.forEach(([x, y], k) => {
       if (!decorTarget(k)) return;
       const bob = reduced ? 0 : Math.sin(time * 3 + k) * 4 * z,
@@ -1852,10 +1885,10 @@ export function openFarm(options) {
       g.beginPath();
       g.roundRect(0, 0, PW, PH, 12);
       g.fill();
-      GFX.srand(i * 13 + 5);
+      const pr = seeded(i * 13 + 5);
       for (let k = 0; k < 9; k++) {
-        const x = 8 + GFX.rnd() * (PW - 16),
-          y = 10 + GFX.rnd() * (PH - 14);
+        const x = 8 + pr() * (PW - 16),
+          y = 10 + pr() * (PH - 14);
         g.strokeStyle = k % 2 ? "#4f9a3c" : "#a6e07e";
         g.lineWidth = 2;
         g.beginPath();
@@ -2016,7 +2049,7 @@ export function openFarm(options) {
       }
       return;
     }
-    GFX.blit(g, soilArt(p.wet, p.fert), r.x, r.y);
+    GFX.blit(g, soilArt(wetNow(p), p.fert), r.x, r.y);
     // A ripe square of a giant crop waiting for the server's answer glows.
     if (s.me && F.pending.has(i)) {
       g.strokeStyle = `rgba(255,214,91,${0.45 + 0.4 * Math.sin(time * 8)})`;
@@ -2144,7 +2177,7 @@ export function openFarm(options) {
       g.beginPath();
       g.roundRect(r.x + 14, r.y + r.h - 8, r.w - 28, 5, 3);
       g.fill();
-      g.fillStyle = p.wet ? "#7fd4ff" : "#7ff0a2";
+      g.fillStyle = wetNow(p) ? "#7fd4ff" : "#7ff0a2";
       g.beginPath();
       g.roundRect(r.x + 14, r.y + r.h - 8, (r.w - 28) * p.prog, 5, 3);
       g.fill();
@@ -2300,52 +2333,379 @@ export function openFarm(options) {
     for (const j of gi.plots)
       if (s.plots[j].pests) drawBugs(g, j, s.plots[j], time);
   }
-  // Weather you can see at a glance: layered rain with splashes, real lightning flashes,
-  // drifting snow, a starry night with fireflies, a bright rainbow, warm sun rays.
-  const WX = { flash: 0 };
-  function drawWeather(g, time) {
+  /* Rain splashes ring out on the ground itself, drawn before the houses,
+     trees and animals, so anything standing in front of a splash covers it
+     (they used to ring out on roofs and treetops). In world space, spread
+     over what the camera sees, the same density at any zoom. */
+  function drawRainSplashes(g, time) {
     const w = F.weather.cur;
-    if (w === "rain" || w === "storm") {
-      const heavy = w === "storm";
-      g.fillStyle = heavy ? "rgba(14,22,50,.36)" : "rgba(26,46,96,.24)";
-      g.fillRect(0, 0, VW, VH);
-      g.lineCap = "round";
-      // Low graphics: half the drops and splashes.
-      const share = low ? 0.5 : 1;
-      for (const [n, len, sp, lw, a] of [
-        [(heavy ? 240 : 170) * share, 15, 760, 1.3, 0.38],
-        [(heavy ? 160 : 110) * share, 28, 1180, 2.3, 0.72],
-      ]) {
-        g.strokeStyle = `rgba(205,228,255,${a})`;
-        g.lineWidth = lw;
-        g.beginPath();
-        for (let k = 0; k < n; k++) {
-          const x = ((k * 97.3 + time * sp * 0.32) % (VW + 220)) - 110,
-            y = ((k * 53.7 + time * sp) % (VH + 60)) - 30;
-          g.moveTo(x, y);
-          g.lineTo(x - len * 0.32, y + len);
-        }
-        g.stroke();
-      }
-      g.strokeStyle = "rgba(215,238,255,.75)";
-      g.lineWidth = 1.4;
-      for (let k = 0; k < (heavy ? 54 : 40) * share; k++) {
-        const c = time * 2.4 + k * 0.37,
-          ph = c % 1,
-          cyc = Math.floor(c),
-          x = (k * 211.7 + cyc * 157) % VW,
-          y = 110 + ((k * 137.3 + cyc * 89) % (VH - 130));
-        g.globalAlpha = 1 - ph;
-        g.beginPath();
-        g.ellipse(x, y, 3 + ph * 11, 1.3 + ph * 3.6, 0, 0, 7);
-        g.stroke();
-      }
-      g.globalAlpha = 1;
-      if (heavy && WX.flash > 0) {
-        g.fillStyle = `rgba(235,242,255,${WX.flash * 0.6})`;
-        g.fillRect(0, 0, VW, VH);
+    if (w !== "rain" && w !== "storm") return;
+    const heavy = w === "storm",
+      vw = VW / Z,
+      vh = VH / Z,
+      x0 = cam.x - vw / 2,
+      y0 = cam.y - vh / 2,
+      n = Math.round((heavy ? 54 : 40) * (low ? 0.5 : 1));
+    g.save();
+    // A touch stronger than the drops: the rain's tint is drawn over them.
+    g.strokeStyle = "rgba(225,242,255,.95)";
+    g.lineWidth = 1.7 / Math.max(0.6, Z);
+    for (let k = 0; k < n; k++) {
+      const c = time * 2.4 + k * 0.37,
+        ph = c % 1,
+        cyc = Math.floor(c),
+        // Spread over the view in fractions, so a splash keeps its place on
+        // the ground for its whole ring.
+        fx = ((k * 211.7 + cyc * 157) % 1000) / 1000,
+        fy = ((k * 137.3 + cyc * 89) % 1000) / 1000;
+      const sx = x0 + fx * vw,
+        sy = y0 + fy * vh;
+      g.globalAlpha = 1 - ph;
+      g.beginPath();
+      g.ellipse(sx, sy, 3 + ph * 11, 1.3 + ph * 3.6, 0, 0, Math.PI * 2);
+      g.stroke();
+      // Every third drop throws up two droplets that arc back down.
+      if (k % 3 === 0 && ph < 0.5) {
+        const q = ph / 0.5,
+          up = Math.sin(q * Math.PI) * 9;
+        g.fillStyle = "rgba(225,242,255,.9)";
+        g.fillRect(sx - 3 - q * 7, sy - up, 1.6, 1.6);
+        g.fillRect(sx + 2 + q * 7, sy - up * 0.8, 1.6, 1.6);
       }
     }
+    g.restore();
+  }
+  /* Weather, drawn over the farm in screen space but tied to the world:
+     rain and snow fall in depth layers that shift with the camera, lean
+     with a gusting wind and never repeat in a visible grid (each drop has
+     its own length, speed and place); storms bring real lightning (a
+     branching bolt, a flicker, thunder after it; none with reduced motion);
+     the sun casts soft shafts; a rainbow is a soft spectral bow with a faint
+     second one outside it. Low graphics draws about half. */
+  const WX = { flash: 0, next: 4, boltT: -9, bolt: null, rainbow: null };
+  /** A fixed random number in [0, 1) for drop k of layer s. */
+  const wxHash = (k, s) => {
+    const x = Math.sin(k * 127.1 + s * 311.7) * 43758.5453;
+    return x - Math.floor(x);
+  };
+  /** The wind's lean (horizontal per vertical), gusting slowly. */
+  const wxWind = (w, time) =>
+    (w === "storm" ? 0.42 : w === "frost" ? 0.2 : 0.24) +
+    Math.sin(time * 0.37) * 0.08 +
+    Math.sin(time * 1.3 + 1) * 0.03;
+  /** How far a layer at `depth` (0 far … 1 near) has moved with the camera. */
+  const wxPan = (depth) => ({ x: -cam.x * Z * depth, y: -cam.y * Z * depth });
+  const wxMod = (v, m) => ((v % m) + m) % m;
+  /** A soft round flake, drawn once. */
+  let flakeSprite;
+  function flakeImg() {
+    if (flakeSprite) return flakeSprite;
+    const c = document.createElement("canvas");
+    c.width = c.height = 32;
+    const g = c.getContext("2d"),
+      gr = g.createRadialGradient(16, 16, 0, 16, 16, 16);
+    gr.addColorStop(0, "rgba(255,255,255,1)");
+    gr.addColorStop(0.45, "rgba(255,255,255,.75)");
+    gr.addColorStop(1, "rgba(255,255,255,0)");
+    g.fillStyle = gr;
+    g.fillRect(0, 0, 32, 32);
+    return (flakeSprite = c);
+  }
+  /** A jagged bolt from the clouds, with a few forks. */
+  function makeBolt() {
+    const main = [];
+    let x = VW * (0.15 + Math.random() * 0.7),
+      y = -10;
+    const end = VH * (0.42 + Math.random() * 0.3);
+    main.push([x, y]);
+    while (y < end) {
+      x += (Math.random() - 0.5) * 70;
+      y += 22 + Math.random() * 30;
+      main.push([x, y]);
+    }
+    const forks = [];
+    for (let k = 2; k < main.length - 2; k++)
+      if (Math.random() < 0.3) {
+        let [fx, fy] = main[k];
+        const dir = Math.random() < 0.5 ? -1 : 1,
+          f = [[fx, fy]];
+        for (let n = 0; n < 3 + Math.random() * 3; n++) {
+          fx += dir * (10 + Math.random() * 30);
+          fy += 14 + Math.random() * 22;
+          f.push([fx, fy]);
+        }
+        forks.push(f);
+      }
+    return { main, forks };
+  }
+  function strokePath(g, pts) {
+    g.beginPath();
+    g.moveTo(pts[0][0], pts[0][1]);
+    for (let k = 1; k < pts.length; k++) g.lineTo(pts[k][0], pts[k][1]);
+    g.stroke();
+  }
+  function drawRain(g, time, heavy) {
+    const wind = wxWind(heavy ? "storm" : "rain", time),
+      share = low ? 0.5 : 1;
+    // The cloud deck darkens the top; mist lies low over the ground.
+    const sky = g.createLinearGradient(0, 0, 0, VH);
+    sky.addColorStop(0, heavy ? "rgba(16,22,40,.66)" : "rgba(38,54,88,.42)");
+    sky.addColorStop(0.45, heavy ? "rgba(20,28,52,.36)" : "rgba(34,50,90,.2)");
+    sky.addColorStop(1, heavy ? "rgba(40,52,78,.34)" : "rgba(70,90,120,.2)");
+    g.fillStyle = sky;
+    g.fillRect(0, 0, VW, VH);
+    // Curtains of heavier rain sweep across now and then.
+    g.save();
+    g.globalCompositeOperation = "lighter";
+    for (let k = 0; k < 3; k++) {
+      const cx = wxMod(k * 520 + time * (40 + k * 12), VW + 900) - 450,
+        a = (heavy ? 0.06 : 0.04) * (0.6 + 0.4 * Math.sin(time * 0.5 + k));
+      const band = g.createLinearGradient(cx - 220, 0, cx + 220, 0);
+      band.addColorStop(0, "rgba(200,215,240,0)");
+      band.addColorStop(0.5, `rgba(200,215,240,${a})`);
+      band.addColorStop(1, "rgba(200,215,240,0)");
+      g.fillStyle = band;
+      g.beginPath();
+      g.moveTo(cx - 220, 0);
+      g.lineTo(cx + 220, 0);
+      g.lineTo(cx + 220 + VH * wind, VH);
+      g.lineTo(cx - 220 + VH * wind, VH);
+      g.fill();
+    }
+    g.restore();
+    // Three layers of drops, far to near.
+    g.lineCap = "round";
+    for (const [layer, n, len, sp, lw, a, depth] of [
+      [1, heavy ? 160 : 120, 12, 620, 1, 0.3, 0.15],
+      [2, heavy ? 130 : 95, 20, 900, 1.5, 0.5, 0.4],
+      [3, heavy ? 75 : 50, 34, 1350, 2.3, 0.62, 0.8],
+    ]) {
+      const pan = wxPan(depth),
+        span = VW + 400;
+      g.strokeStyle = `rgba(214,230,255,${a})`;
+      g.lineWidth = lw;
+      g.beginPath();
+      for (let k = 0; k < n * share; k++) {
+        const r1 = wxHash(k, layer),
+          r2 = wxHash(k, layer + 10),
+          r3 = wxHash(k, layer + 20),
+          L = len * (0.7 + r2 * 0.6),
+          fall = time * sp * (0.85 + r3 * 0.3) + r1 * 5000,
+          y = wxMod(fall + pan.y, VH + L * 2) - L,
+          x = wxMod(r1 * span + y * wind + pan.x, span) - 200;
+        g.moveTo(x, y);
+        g.lineTo(x - L * wind, y - L);
+      }
+      g.stroke();
+    }
+    if (heavy) drawLightning(g, time);
+  }
+  function drawLightning(g, time) {
+    // Spaced out and gentle; never with reduced motion (no flashing).
+    if (reduced) return;
+    if (time >= WX.next) {
+      WX.next = time + 6 + Math.random() * 9;
+      WX.boltT = time;
+      WX.bolt = makeBolt();
+      // Thunder follows, later the farther the strike.
+      setTimeout(() => sfx("thunder"), 300 + Math.random() * 1200);
+    }
+    const k = time - WX.boltT;
+    if (k > 0.6 || !WX.bolt) return;
+    // Two flickers, then a fading glow.
+    const on = k < 0.08 || (k > 0.14 && k < 0.22) ? 1 : 0.35,
+      a = (1 - k / 0.6) * on;
+    g.save();
+    g.fillStyle = `rgba(225,232,255,${0.32 * a})`;
+    g.fillRect(0, 0, VW, VH);
+    g.globalCompositeOperation = "lighter";
+    g.lineJoin = "round";
+    g.lineCap = "round";
+    for (const [lw, c] of [
+      [16, `rgba(150,180,255,${0.2 * a})`],
+      [6, `rgba(200,220,255,${0.5 * a})`],
+      [2.6, `rgba(255,255,255,${a})`],
+    ]) {
+      g.lineWidth = lw;
+      g.strokeStyle = c;
+      strokePath(g, WX.bolt.main);
+      g.lineWidth = lw * 0.6;
+      for (const f of WX.bolt.forks) strokePath(g, f);
+    }
+    g.restore();
+  }
+  function drawSnow(g, time) {
+    const wind = wxWind("frost", time),
+      share = low ? 0.5 : 1,
+      img = flakeImg();
+    // A cold, pale sky and a little haze.
+    const sky = g.createLinearGradient(0, 0, 0, VH);
+    sky.addColorStop(0, "rgba(214,232,250,.34)");
+    sky.addColorStop(0.5, "rgba(226,240,255,.1)");
+    sky.addColorStop(1, "rgba(230,244,255,.16)");
+    g.fillStyle = sky;
+    g.fillRect(0, 0, VW, VH);
+    for (const [layer, n, r, sp, a, depth] of [
+      [4, 110, 1.4, 22, 0.55, 0.15],
+      [5, 70, 2.8, 36, 0.8, 0.45],
+      [6, 24, 6.5, 62, 0.85, 0.85],
+    ]) {
+      const pan = wxPan(depth),
+        span = VW + 200;
+      for (let k = 0; k < n * share; k++) {
+        const r1 = wxHash(k, layer),
+          r2 = wxHash(k, layer + 10),
+          r3 = wxHash(k, layer + 20),
+          R = r * (0.7 + r2 * 0.6),
+          y =
+            wxMod(time * sp * (0.8 + r3 * 0.4) + r1 * 3000 + pan.y, VH + 40) -
+            20,
+          // Mostly straight down: a slow, slight sway and a gentle drift.
+          sway = Math.sin(time * (0.25 + r2 * 0.25) + r1 * 9) * (1 + 2 * depth),
+          x =
+            wxMod(
+              r1 * span +
+                time * wind * 6 * depth +
+                y * wind * 0.12 +
+                sway +
+                pan.x,
+              span,
+            ) - 100;
+        g.globalAlpha = a * (0.7 + 0.3 * r3);
+        g.drawImage(img, x - R * 1.6, y - R * 1.6, R * 3.2, R * 3.2);
+      }
+    }
+    g.globalAlpha = 1;
+    // Frost creeps in at the edges of the view.
+    const vg = g.createRadialGradient(
+      VW / 2,
+      VH / 2,
+      VH * 0.4,
+      VW / 2,
+      VH / 2,
+      VH * 1.05,
+    );
+    vg.addColorStop(0, "rgba(220,245,255,0)");
+    vg.addColorStop(1, "rgba(228,246,255,.45)");
+    g.fillStyle = vg;
+    g.fillRect(0, 0, VW, VH);
+  }
+  function drawSun(g, time) {
+    // The sun stands off the top right; its light fans out in soft shafts.
+    const sx = VW * 0.95,
+      sy = -VH * 0.28;
+    g.save();
+    g.globalCompositeOperation = "lighter";
+    const glowR = VH * 0.95,
+      gl = g.createRadialGradient(sx, sy, 0, sx, sy, glowR);
+    gl.addColorStop(0, "rgba(255,240,190,.3)");
+    gl.addColorStop(0.4, "rgba(255,230,170,.1)");
+    gl.addColorStop(1, "rgba(255,230,170,0)");
+    g.fillStyle = gl;
+    g.fillRect(0, 0, VW, VH);
+    const reach = Math.hypot(VW, VH) * 1.15;
+    for (let k = 0; k < (low ? 4 : 7); k++) {
+      const ang =
+          Math.PI * (0.6 + k * 0.055) + Math.sin(time * 0.15 + k) * 0.01,
+        wid = 0.012 + wxHash(k, 30) * 0.02,
+        a = 0.07 + 0.05 * Math.sin(time * 0.5 + k * 1.7);
+      const ex = sx + Math.cos(ang) * reach,
+        ey = sy + Math.sin(ang) * reach,
+        sh = g.createLinearGradient(sx, sy, ex, ey);
+      sh.addColorStop(0, `rgba(255,242,200,${a})`);
+      sh.addColorStop(0.55, `rgba(255,242,200,${a * 0.45})`);
+      sh.addColorStop(1, "rgba(255,242,200,0)");
+      g.fillStyle = sh;
+      g.beginPath();
+      g.moveTo(sx, sy);
+      g.lineTo(
+        sx + Math.cos(ang - wid) * reach,
+        sy + Math.sin(ang - wid) * reach,
+      );
+      g.lineTo(
+        sx + Math.cos(ang + wid) * reach,
+        sy + Math.sin(ang + wid) * reach,
+      );
+      g.fill();
+    }
+    // Dust drifting in the light.
+    const wind = 0.15 + Math.sin(time * 0.2) * 0.05;
+    for (let k = 0; k < (low ? 14 : 28); k++) {
+      const r1 = wxHash(k, 40),
+        r2 = wxHash(k, 41),
+        x = wxMod(
+          r1 * VW + time * 12 * wind * (1 + r2) + Math.sin(time * 0.5 + k) * 20,
+          VW,
+        ),
+        y = wxMod(r2 * VH + Math.sin(time * 0.3 + k * 2) * 18 - time * 3, VH),
+        a = (0.35 + 0.65 * Math.abs(Math.sin(time * 0.8 + k))) * 0.45;
+      g.fillStyle = `rgba(255,244,200,${a})`;
+      g.beginPath();
+      g.arc(x, y, 1.1 + r2 * 1.2, 0, Math.PI * 2);
+      g.fill();
+    }
+    g.restore();
+  }
+  /** The rainbow, drawn once per screen size: a soft spectral bow that fades
+   *  into the ground at both ends, and a faint second bow outside it with
+   *  its colours reversed, the sky brighter inside the main bow. */
+  function rainbowImg() {
+    const key = `${VW}x${VH}`;
+    if (WX.rainbow?.key === key) return WX.rainbow.c;
+    const c = document.createElement("canvas");
+    c.width = VW;
+    c.height = VH;
+    const g = c.getContext("2d"),
+      cx = VW * 0.5,
+      cy = VH * 1.08,
+      R = Math.min(VW * 0.56, 780),
+      cols = [
+        "255,70,70",
+        "255,150,60",
+        "255,225,90",
+        "100,210,120",
+        "80,170,255",
+        "90,110,240",
+        "160,110,240",
+      ];
+    // Brighter sky inside the bow.
+    const inside = g.createRadialGradient(cx, cy, 0, cx, cy, R);
+    inside.addColorStop(0.6, "rgba(255,255,255,0)");
+    inside.addColorStop(1, "rgba(255,255,255,.07)");
+    g.fillStyle = inside;
+    g.beginPath();
+    g.arc(cx, cy, R, Math.PI, 0);
+    g.fill();
+    const bow = (r0, band, order, alpha) => {
+      const seg = 28;
+      for (let i = 0; i < cols.length; i++) {
+        const col = cols[order ? i : cols.length - 1 - i],
+          r = r0 - i * band;
+        for (let s = 0; s < seg; s++) {
+          const a0 = Math.PI + (Math.PI * s) / seg,
+            a1 = Math.PI + (Math.PI * (s + 1)) / seg,
+            fade = Math.pow(Math.sin(((s + 0.5) / seg) * Math.PI), 0.7);
+          for (const [lw, k] of [
+            [band * 2.2, 0.35],
+            [band * 1.1, 1],
+          ]) {
+            g.strokeStyle = `rgba(${col},${alpha * fade * k})`;
+            g.lineWidth = lw;
+            g.beginPath();
+            g.arc(cx, cy, r, a0, a1 + 0.002);
+            g.stroke();
+          }
+        }
+      }
+    };
+    bow(R, 8, true, 0.3);
+    bow(R * 1.3, 9, false, 0.11);
+    WX.rainbow = { key, c };
+    return c;
+  }
+  function drawWeather(g, time) {
+    const w = F.weather.cur;
+    if (w === "rain" || w === "storm") drawRain(g, time, w === "storm");
     if (w === "moon") {
       g.save();
       g.globalCompositeOperation = "multiply";
@@ -2394,108 +2754,27 @@ export function openFarm(options) {
       }
       g.restore();
     }
-    if (w === "frost") {
-      g.fillStyle = "rgba(222,242,255,.2)";
-      g.fillRect(0, 0, VW, VH);
-      for (let k = 0; k < 170; k++) {
-        const r = 1.6 + (k % 4) * 1,
-          sp = 26 + (k % 5) * 13,
-          x =
-            ((k * 131.7 + Math.sin(time * 0.8 + k) * 40 + time * 22) %
-              (VW + 40)) -
-            20,
-          y = ((k * 71.3 + time * sp) % (VH + 20)) - 10;
-        g.fillStyle = `rgba(255,255,255,${0.65 + (k % 3) * 0.12})`;
-        g.beginPath();
-        g.arc(x, y, r, 0, 7);
-        g.fill();
-      }
-      const vg = g.createRadialGradient(
-        VW / 2,
-        VH / 2,
-        VH * 0.35,
-        VW / 2,
-        VH / 2,
-        VH,
-      );
-      vg.addColorStop(0, "rgba(220,245,255,0)");
-      vg.addColorStop(1, "rgba(225,245,255,.55)");
-      g.fillStyle = vg;
-      g.fillRect(0, 0, VW, VH);
-    }
+    if (w === "frost") drawSnow(g, time);
     if (w === "rainbow") {
-      const cx = VW / 2,
-        cy = VH + 40,
-        R = Math.min(VW * 0.62, 820);
-      g.save();
-      g.globalAlpha = 0.22;
-      g.strokeStyle = "#fff";
-      g.lineWidth = 120;
-      g.filter = "blur(18px)";
-      g.beginPath();
-      g.arc(cx, cy, R - 40, Math.PI, 0);
-      g.stroke();
-      g.restore();
-      g.save();
-      g.globalAlpha = 0.5;
-      [
-        "#ff5a5a",
-        "#ffa94d",
-        "#ffe066",
-        "#69db7c",
-        "#4dabf7",
-        "#9775fa",
-      ].forEach((c, k) => {
-        g.strokeStyle = c;
-        g.lineWidth = 16;
-        g.beginPath();
-        g.arc(cx, cy, R - k * 16, Math.PI, 0);
-        g.stroke();
-      });
-      g.restore();
+      g.drawImage(rainbowImg(), 0, 0);
+      // Drops still glinting in the air after the rain.
       g.save();
       g.globalCompositeOperation = "lighter";
-      for (let k = 0; k < 40; k++) {
-        const a = (0.5 + 0.5 * Math.sin(time * 4 + k * 1.3)) * 0.8;
+      for (let k = 0; k < (low ? 12 : 24); k++) {
+        const a = (0.5 + 0.5 * Math.sin(time * 4 + k * 1.3)) * 0.6,
+          x = wxMod(wxHash(k, 50) * VW + time * 8, VW),
+          y = wxHash(k, 51) * VH * 0.75;
         g.fillStyle = `rgba(255,250,230,${a})`;
-        const x = (k * 151.3 + time * 12) % VW,
-          y = (k * 83.7) % (VH * 0.7);
         g.beginPath();
-        g.moveTo(x, y - 5);
-        g.lineTo(x + 1.6, y);
-        g.lineTo(x, y + 5);
-        g.lineTo(x - 1.6, y);
+        g.moveTo(x, y - 4);
+        g.lineTo(x + 1.3, y);
+        g.lineTo(x, y + 4);
+        g.lineTo(x - 1.3, y);
         g.fill();
       }
       g.restore();
     }
-    if (w === "sun") {
-      g.save();
-      g.globalCompositeOperation = "lighter";
-      for (let k = 0; k < 5; k++) {
-        g.fillStyle = "rgba(255,238,170,.075)";
-        g.beginPath();
-        g.moveTo(VW - 200 + k * 46, -20);
-        g.lineTo(VW - 110 + k * 46, -20);
-        g.lineTo(VW * 0.45 + k * 130, VH);
-        g.lineTo(VW * 0.45 - 110 + k * 130, VH);
-        g.fill();
-      }
-      for (let k = 0; k < 36; k++) {
-        const a = (0.4 + 0.6 * Math.abs(Math.sin(time * 0.9 + k))) * 0.55;
-        g.fillStyle = `rgba(255,240,190,${a})`;
-        g.beginPath();
-        g.arc(
-          (k * 167.9 + Math.sin(time * 0.4 + k) * 40) % VW,
-          (k * 97.7 + time * 9) % VH,
-          1.8,
-          0,
-          7,
-        );
-        g.fill();
-      }
-      g.restore();
-    }
+    if (w === "sun") drawSun(g, time);
   }
   let hoverI = -1;
   const combo = { n: 0, x: 0, y: 0 };
@@ -2590,20 +2869,6 @@ export function openFarm(options) {
     g.shadowOffsetY = 3;
     if (im?.complete) g.drawImage(im, -S * 0.35, -S * 0.75, S, S);
     g.restore();
-    if (t === "seed" && !CUR.grab) {
-      const ci = ITEM[F.seed] || CIMG[F.seed]?.[4];
-      if (ci?.complete) g.drawImage(ci, S * 0.22, -S * 0.1, 20, 23);
-      g.font = "800 11px 'DM Sans', sans-serif";
-      g.textAlign = "center";
-      g.textBaseline = "middle";
-      g.lineWidth = 3;
-      g.strokeStyle = "#2a1f12";
-      g.fillStyle = "#fff";
-      const n = `×${F.seeds[F.seed] || 0}`;
-      g.strokeText(n, S * 0.5, S * 0.5);
-      g.fillText(n, S * 0.5, S * 0.5);
-      g.textBaseline = "alphabetic";
-    }
     if (k > 0 && !CUR.grab) {
       if (t === "can") {
         g.fillStyle = "rgba(120,200,255,.9)";
@@ -2669,7 +2934,7 @@ export function openFarm(options) {
         ? area(hoverI, AREA(F.tool))
         : [hoverI];
     // A giant crop the tool takes whole lights up whole (migration 050).
-    if (s.me && ["hand", "seed", "sickle"].includes(F.tool))
+    if (s.me && ["hand", "sickle"].includes(F.tool))
       ids = [
         ...new Set(
           ids.flatMap((j) => (s.giantAt?.[j] ? s.giantAt[j].plots : [j])),
@@ -2948,7 +3213,7 @@ export function openFarm(options) {
     renderVisit();
   }
   /* ---------- the Farm Stall and the Valley Paper (migration 059) ---------- */
-  let stall = null,
+  let stall = options.initialStall ?? null,
     stallSlot = null;
   const stallForm = { key: null, qty: 1, f: 1.1 };
   async function loadStall() {
@@ -3092,11 +3357,12 @@ export function openFarm(options) {
     };
   }
   /* ---------- the Supply Balloon and friends' help (migration 058) ---------- */
-  let balloon = null,
+  const left = LEFT.get(options.owner ?? "");
+  let balloon = options.initialBalloon ?? null,
     helpList = null;
   const BAL = { x: 1080, y: 105 },
     PEG = { x: 1104, y: 300 };
-  const bal = { mode: "idle", t0: 0 };
+  const bal = { mode: "idle", t0: 0, armed: false };
   const balReady = () =>
     !!balloon?.crates && balloon.crates.every((c) => c.state === "done");
   async function loadBalloon() {
@@ -3148,7 +3414,9 @@ export function openFarm(options) {
           40,
         );
         toast(
-          `Balloon launched: +${r.gained?.leaves} Gold Leaves, +${r.gained?.xp} XP and a Gold Fertilizer`,
+          r.gained?.bonus === "gold"
+            ? `Balloon launched: +${r.gained?.leaves} Gold Leaves, +${r.gained?.xp} XP and a Gold Fertilizer`
+            : `Balloon sent with ${r.gained?.crates} crate${r.gained?.crates === 1 ? "" : "s"}: +${r.gained?.leaves} Gold Leaves, +${r.gained?.xp} XP`,
         );
         log(
           `Launched the <b>Supply Balloon</b> · +${r.gained?.leaves} ${L}`,
@@ -3359,8 +3627,9 @@ export function openFarm(options) {
         return `<div class="fm-crate ${c.state}"><img src="${icon(c.crop)}" alt=""><b>${c.qty} ${esc(crop?.n ?? c.crop)}</b><small>You have ${have}${crop && crop.lv > F.lv ? ` · grows at Lv ${crop.lv}` : ""}</small>${act}</div>`;
       })
       .join("");
-    const ready = balReady();
-    return `<div class="sh-body"><p class="sh-note">Fill six crates for a big reward. Ask friends for the ones you can't fill (up to ${BALLOON.ask} a balloon): they get leaves and a Helper Star.</p><div class="fm-crates">${crates}</div><p class="sh-note">Reward: <b>${balloon.leaves} ${L}</b> · +${balloon.xp} XP · a Gold Fertilizer</p><button type="button" class="btn-s gold fm-wide" data-blaunch ${ready ? "" : "disabled"}>${ready ? "Launch the balloon" : `${balloon.crates.filter((c) => c.state !== "done").length} crates to go`}</button>${stars}</div>`;
+    const ready = balReady(),
+      done = balloon.crates.filter((c) => c.state === "done").length;
+    return `<div class="sh-body"><p class="sh-note">Fill six crates for a big reward. Ask friends for the ones you can't fill (up to ${BALLOON.ask} a balloon): they get leaves and a Helper Star.</p><div class="fm-crates">${crates}</div><p class="sh-note">All six: <b>${balloon.leaves} ${L}</b> · +${balloon.xp} XP · a Gold Fertilizer.${!ready && done ? ` It can leave now with the ${done} you filled: <b>${balloon.leavesNow ?? 0} ${L}</b> · +${balloon.xpNow ?? 0} XP.` : ""}</p><button type="button" class="btn-s gold fm-wide${bal.armed ? " armed" : ""}" data-blaunch ${done ? "" : "disabled"}>${ready ? "Launch the balloon" : !done ? "Fill a crate to launch" : bal.armed ? `Tap again: leave with ${done}/6 (no Gold Fertilizer)` : `Send it off now · ${balloon.leavesNow ?? 0} ${L}`}</button>${stars}</div>`;
   }
   function helpHTML() {
     if (!helpList)
@@ -3465,7 +3734,7 @@ export function openFarm(options) {
         a = "sneak";
       }
     } else if (F.tool === "can") {
-      if (p.crop && p.prog < 1 && !p.wet) a = "water";
+      if (p.crop && p.prog < 1 && !wetNow(p)) a = "water";
     } else if (F.tool === "net") {
       if (p.pests) a = "catch";
     } else if (F.tool === "prank") {
@@ -3984,7 +4253,7 @@ export function openFarm(options) {
    * harvested whole, first; then the other ripe plots one by one, so a giant
    * that can't be harvested (a full barn) is never cut up plot by plot.
    */
-  function sickleAt(i) {
+  function sickleAt(i, silent = false) {
     const reach = area(i, 3),
       giants = [...new Set(reach.map((j) => F.giantAt[j]).filter(Boolean))],
       ripe = reach.filter((j) => {
@@ -3998,7 +4267,7 @@ export function openFarm(options) {
         );
       });
     if (!ripe.length && !giants.length) {
-      if (!dragging && reach.some((j) => F.pending.has(j)))
+      if (!silent && reach.some((j) => F.pending.has(j)))
         toast("Something big is growing here…");
       return false;
     }
@@ -4041,11 +4310,19 @@ export function openFarm(options) {
     // A giant crop (migration 050): the hand and the seed bag harvest all of
     // it (a bug on its plot is caught first); the shovel leaves it.
     const gi = F.giantAt[i];
-    if (gi && ["hand", "seed", "shovel"].includes(F.tool)) {
+    if (gi && ["hand", "shovel"].includes(F.tool)) {
       if (F.tool === "hand" && p.pests) catchAt(i);
-      else if (F.tool === "shovel") {
+      else if (
+        F.tool === "hand" &&
+        pressType !== "mouse" &&
+        !drag &&
+        !holdPaint
+      ) {
+        sicklePop(i);
+        return;
+      } else if (F.tool === "shovel") {
         if (!drag) toast("Harvest the giant crop first");
-      } else harvestGiant(gi, F.tool === "seed" && drag);
+      } else harvestGiant(gi, drag);
       renderChips();
       renderTools();
       return;
@@ -4053,23 +4330,28 @@ export function openFarm(options) {
     switch (F.tool) {
       case "hand":
         if (p.pests) {
-          catchAt(i);
+          if (drag || holdPaint) catchAt(i);
+          else actsPop(i);
+          break;
+        }
+        if (p.crop && p.prog < 1 && !drag && !holdPaint) {
+          actsPop(i);
           break;
         }
         if (p.crop && p.prog >= 1) {
-          harvestAt(i);
+          // A touch tap shows the sickle to drag across the field.
+          if (pressType !== "mouse" && !drag && !holdPaint) sicklePop(i);
+          // A click cuts a 3×3 with the Sickle you bought, else one plot.
+          else if (F.sickle && !drag) sickleAt(i);
+          else harvestAt(i);
           break;
         }
         if (!p.crop && !drag) seedPop(i);
         break;
-      case "seed":
-        if (!p.crop) plantAt(i, F.seed);
-        else if (p.prog >= 1) harvestAt(i, true);
-        break;
       case "can": {
         const dry = area(i, F.can).filter((j) => {
           const q = F.plots[j];
-          return !q.locked && q.crop && q.prog < 1 && !q.wet;
+          return !q.locked && q.crop && q.prog < 1 && !wetNow(q);
         });
         if (!dry.length) break;
         act({ a: "water", plot: i });
@@ -4152,6 +4434,7 @@ export function openFarm(options) {
     renderChips();
     renderTools();
   }
+  /** Tap an empty plot: pick a seed, then sow with the bubble (seedBubble). */
   function seedPop(i) {
     const r = plotRect(i),
       o = hudOff(),
@@ -4160,34 +4443,299 @@ export function openFarm(options) {
       pop = $("fm-pop");
     pop.hidden = false;
     pop.classList.add("seedpick");
-    const have = PCROPS.filter((c) => F.seeds[c.id]),
-      buy = PCROPS.filter(
-        (c) => !F.seeds[c.id] && c.lv <= F.lv && (F.shop.stock[c.id] ?? 0) > 0,
-      ).slice(0, 4);
-    const card = (c, mine) =>
-      `<button type="button" class="opt sp r-${c.rar}${mine ? "" : " spbuy"}" ${mine ? `data-pseed="${c.id}"` : `data-pbuy="${c.id}"`} ${!mine && F.leaves < c.cost ? "disabled" : ""} title="${c.n}"><b>${mine ? `×${F.seeds[c.id]}` : `${c.cost}${L}`}</b><img src="${icon(c.id)}" alt=""><span>${c.n}</span><small>${I("clock")}${fmtSecs(c.t)} · ${c.sell}${L}</small></button>`;
-    pop.innerHTML = `<h6>What should grow here?</h6>${have.length ? `<div class="grid">${have.map((c) => card(c, true)).join("")}</div>` : `<p class="sh-note" style="margin:2px 4px 6px">Your seed bag is empty.</p>`}${buy.length ? `<h6 style="margin-top:8px">Quick buy 1 seed</h6><div class="grid">${buy.map((c) => card(c, false)).join("")}</div>` : ""}<p class="sh-note sp-tip">Tip: after picking a seed, <b>drag</b> across empty plots to sow them all.</p>`;
+    // Seeds you can't grow yet (a gift or a wish above your level) are greyed
+    // out at the end, with the level they need, as in the Shop.
+    const have = PCROPS.filter((c) => F.seeds[c.id]).sort(
+      (a, b) => +(a.lv > F.lv) - +(b.lv > F.lv),
+    );
+    const card = (c) => {
+      const lock = c.lv > F.lv;
+      return `<button type="button" class="opt sp r-${c.rar}${lock ? " locked" : ""}" data-pseed="${c.id}" ${lock ? "disabled" : ""} title="${lock ? `${c.n}: grows at Lv ${c.lv}` : c.n}"><b>×${F.seeds[c.id]}</b><img src="${icon(c.id)}" alt=""><span>${c.n}</span><small>${lock ? `Lv ${c.lv}` : `${I("clock")}${fmtSecs(c.t)} · ${c.sell}${L}`}</small></button>`;
+    };
+    pop.innerHTML = have.length
+      ? `<h6>What should grow here?</h6><div class="grid">${have.map(card).join("")}</div><p class="sh-note sp-tip">Pick a seed, then <b>drag</b> it across empty plots to sow them.</p>`
+      : `<h6>What should grow here?</h6><p class="sh-note" style="margin:2px 4px 8px">Your seed bag is empty.</p><button type="button" class="btn-s gold fm-wide" data-seedshop>Buy seeds in the Shop</button>`;
     const pw = Math.min(320, o.w - 16);
     pop.style.width = `${pw}px`;
     pop.style.left = `${Math.max(8, Math.min(o.w - pw - 8, sp.x - pw / 2))}px`;
     const top = sp.y - pop.offsetHeight - 14;
     pop.style.top = `${top < 60 ? Math.min(o.h - pop.offsetHeight - 8, sp.y + PH * Z * K + 10) : top}px`;
     pop.onclick = (e) => {
-      const b = e.target.closest("[data-pseed]"),
-        q = e.target.closest("[data-pbuy]");
-      const id = b?.dataset.pseed || q?.dataset.pbuy;
-      if (!id) return;
-      if (q) act({ a: "buy-seeds", crop: id, qty: 1 });
-      F.seed = id;
-      F.tool = "seed";
-      plantAt(i, id);
+      if (e.target.closest("[data-seedshop]")) {
+        pop.hidden = true;
+        pop.classList.remove("seedpick");
+        return openSheet("shop", "seeds");
+      }
+      const b = e.target.closest("[data-pseed]");
+      if (!b || b.disabled) return;
       pop.hidden = true;
       pop.classList.remove("seedpick");
-      renderTools();
+      seedBubble(i, b.dataset.pseed);
       screen.focus({ preventScroll: true });
-      toast(`Planting ${CROP[id].n} · drag over empty plots to keep sowing`);
     };
   }
+  /* ---------- planting and harvesting by hand, as in mobile farm games ----------
+     Tap an empty plot: the seed tray opens; press a seed and drag it across
+     the field and every empty plot it passes is sown. Tap a ripe crop (on a
+     touch screen): a sickle pops up beside it; drag it across the field and
+     every ripe crop it passes is harvested (a giant whole), or tap it for
+     just that one. The seed or sickle rides under your finger meanwhile. The
+     mouse keeps click and click-and-drag with the tool in hand. */
+  let pressType = "mouse",
+    holdPaint = false,
+    carry = null,
+    carriedAt = 0;
+  /** A carry just ended with a drag: the click that follows is not a tap. */
+  const carried = () => performance.now() - carriedAt < 400;
+  /** Where a bubble (seed or sickle) floats: just above the plot's right. */
+  function placeBubble(el, i) {
+    const r = plotRect(i),
+      o = hudOff(),
+      sp0 = toScreen(r.x + PW * 0.82, r.y + PH * 0.15);
+    el.hidden = false;
+    el.dataset.plot = String(i);
+    el.style.left = `${Math.max(8, Math.min(o.w - 72, sp0.x - o.x - 32))}px`;
+    el.style.top = `${Math.max(56, Math.min(o.h - 72, sp0.y - o.y - 70))}px`;
+  }
+  /** The picked seed, ready to sow: drag it across empty plots, or tap it to
+   *  sow just the plot you picked it for. Only this seed is sown: when it
+   *  runs out, sowing stops (no other seed is picked for you). */
+  function seedBubble(i, id) {
+    const el = $("fm-seed"),
+      b = el.querySelector("[data-seedbub]");
+    $("fm-sickle").hidden = true;
+    b.innerHTML = `<img src="${icon(id)}" alt=""><b>×${F.seeds[id] || 0}</b>`;
+    b.setAttribute(
+      "aria-label",
+      `Sow ${CROP[id]?.n}: tap, or drag across empty plots`,
+    );
+    placeBubble(el, i);
+    b.onpointerdown = (e) => startCarry(e, "seed", id, i);
+    b.onclick = () => {
+      if (carried()) return;
+      el.hidden = true;
+      carryOne("seed", id, i);
+    };
+  }
+  /** The icon a tool shows (the can and net you own). */
+  const toolIcon = (kind, id) =>
+    kind === "can"
+      ? ["", "can", "can2", "can3"][F.can]
+      : kind === "fert"
+        ? { norm: "fert", super: "fertSuper", gold: "fertGold" }[id]
+        : kind;
+  /** Tap a growing crop: a row of bubbles with what it can use — the net
+   *  for its bugs, the can when it's dry, each fertilizer you have when it
+   *  has none, the shovel. Drag one across the field to use it on every
+   *  plot it passes (the can and the Big Net reach their own area), or tap
+   *  it for just this plot. The shovel only taps, twice, to dig up. */
+  function actsPop(i) {
+    const p = F.plots[i],
+      acts = [];
+    if (p.pests) acts.push(["net", "", "Catch the bugs"]);
+    if (p.crop && p.prog < 1) {
+      if (!wetNow(p)) acts.push(["can", "", "Water"]);
+      for (const [k, lv, n] of [
+        ["norm", 1, "Fertilizer"],
+        ["super", 6, "Super Fertilizer"],
+        ["gold", 24, "Gold Fertilizer"],
+      ])
+        if (F.ferts[k] > 0 && F.lv >= lv && (!p.fert || k === "super"))
+          acts.push(["fert", k, n]);
+      acts.push(["shovel", "", "Dig up"]);
+    }
+    if (!acts.length) return;
+    const el = $("fm-acts");
+    $("fm-sickle").hidden = true;
+    $("fm-seed").hidden = true;
+    el.innerHTML = acts
+      .map(
+        ([k, id, n]) =>
+          `<button type="button" data-act="${k}" data-id="${id}" aria-label="${n}: tap, or drag across the field" title="${n}">${I(toolIcon(k, id))}${k === "fert" ? `<b>×${F.ferts[id]}</b>` : ""}</button>`,
+      )
+      .join("");
+    const r = plotRect(i),
+      o = hudOff(),
+      sp0 = toScreen(r.x + PW / 2, r.y),
+      w = acts.length * 70;
+    el.hidden = false;
+    el.dataset.plot = String(i);
+    el.style.left = `${Math.max(8, Math.min(o.w - w - 8, sp0.x - o.x - w / 2))}px`;
+    el.style.top = `${Math.max(56, Math.min(o.h - 72, sp0.y - o.y - 74))}px`;
+    el.querySelectorAll("[data-act]").forEach((b) => {
+      const k = b.dataset.act,
+        id = b.dataset.id || null;
+      if (k !== "shovel") b.onpointerdown = (e) => startCarry(e, k, id, i);
+      b.onclick = () => {
+        if (carried()) return;
+        useAs(k, id, i, false);
+        // The shovel asks for a second tap: keep it there for that.
+        if (k === "shovel" && F.shovelArm === i) {
+          b.classList.add("armed");
+          return;
+        }
+        el.hidden = true;
+        endDrag();
+      };
+    });
+  }
+  /** Use a tool on one plot, as the tool bar's tool used to. */
+  function useAs(kind, id, i, drag) {
+    const t = F.tool,
+      f = F.fert;
+    F.tool = kind;
+    if (kind === "fert") F.fert = id;
+    try {
+      useTool(i, drag);
+    } finally {
+      F.tool = t;
+      F.fert = f;
+    }
+  }
+  function sicklePop(i) {
+    const el = $("fm-sickle");
+    $("fm-seed").hidden = true;
+    placeBubble(el, i);
+    const b = el.querySelector("[data-sickle]");
+    b.onpointerdown = (e) => startCarry(e, "sickle", null, i);
+    b.onclick = () => {
+      if (carried()) return;
+      el.hidden = true;
+      carryOne("sickle", null, i);
+      endDrag();
+    };
+  }
+  function startCarry(e, kind, id, from) {
+    if (e.button > 0) return;
+    carry = {
+      kind,
+      id,
+      from,
+      pid: e.pointerId,
+      x0: e.clientX,
+      y0: e.clientY,
+      moved: false,
+      done: new Set(),
+      out: false,
+    };
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {}
+  }
+  function carryOne(kind, id, i) {
+    if (i < 0 || carry?.done.has(i)) return;
+    carry?.done.add(i);
+    const p = F.plots[i];
+    if (!p || p.locked) return;
+    if (kind === "seed") {
+      if (p.crop) return;
+      if (!F.seeds[id]) {
+        if (carry && !carry.out) {
+          carry.out = true;
+          toast(`Out of ${CROP[id]?.n ?? "these"} seeds`);
+        }
+        return;
+      }
+      plantAt(i, id);
+      return;
+    }
+    if (kind !== "sickle") {
+      if (p.crop) useAs(kind, id, i, !!carry);
+      return;
+    }
+    if (p.crowAt) return shooAt(i);
+    // The Sickle you bought cuts a 3×3 at each plot it passes.
+    if (F.sickle) {
+      sickleAt(i, !!carry);
+      return;
+    }
+    const gi = F.giantAt[i];
+    if (gi) {
+      for (const j of gi.plots) carry?.done.add(j);
+      harvestGiant(gi, true);
+      return;
+    }
+    if (p.crop && p.prog >= 1) harvestAt(i, true);
+  }
+  function carryMove(e) {
+    if (!carry || e.pointerId !== carry.pid) return;
+    if (!carry.moved) {
+      if (Math.hypot(e.clientX - carry.x0, e.clientY - carry.y0) < 8) return;
+      carry.moved = true;
+      dragging = true;
+      $("fm-pop").hidden = true;
+      $("fm-pop").classList.remove("seedpick");
+      $("fm-sickle").hidden = true;
+      $("fm-seed").hidden = true;
+      $("fm-acts").hidden = true;
+      $("fm-tip").hidden = true;
+      const g = $("fm-ghost");
+      g.innerHTML =
+        carry.kind === "seed"
+          ? `<img src="${icon(carry.id)}" alt="">`
+          : I(toolIcon(carry.kind, carry.id));
+      g.hidden = false;
+      // The plot it started from counts too.
+      carryOne(carry.kind, carry.id, carry.from);
+    }
+    e.preventDefault();
+    carry.lx = e.clientX;
+    carry.ly = e.clientY;
+    const o = hudOff(),
+      lr = layer.getBoundingClientRect(),
+      g = $("fm-ghost");
+    g.style.left = `${e.clientX - lr.left - o.x}px`;
+    g.style.top = `${e.clientY - lr.top - o.y}px`;
+    const w = toWorld(e.clientX, e.clientY);
+    carryOne(carry.kind, carry.id, plotAt(w.x, w.y));
+  }
+  /** Carrying a seed or a tool to the edge of the view scrolls the farm that
+   *  way, faster the closer to the edge; what slides under the finger is
+   *  sown, watered or cut as it goes. Called every frame; it starts once the
+   *  finger has left the edges, so a drag starting there doesn't scroll. */
+  function edgeScroll(dt) {
+    if (!carry?.moved || carry.lx == null) return;
+    const r = cv.getBoundingClientRect(),
+      ex = Math.min(72, r.width * 0.12),
+      ey = Math.min(72, r.height * 0.16),
+      push = (v, lo, hi, e) =>
+        v < lo + e
+          ? -Math.min(1, (lo + e - v) / e)
+          : v > hi - e
+            ? Math.min(1, (v - (hi - e)) / e)
+            : 0,
+      kx = push(carry.lx, r.left, r.right, ex),
+      ky = push(carry.ly, r.top, r.bottom, ey);
+    // Only once the finger has been away from the edges: a bubble near the
+    // top of a phone screen doesn't scroll the farm as the drag starts.
+    if (!kx && !ky) {
+      carry.edgeOk = true;
+      return;
+    }
+    if (!carry.edgeOk) return;
+    const sp = (900 * dt) / Z,
+      bx = cam.x,
+      by = cam.y;
+    cam.x += kx * sp;
+    cam.y += ky * sp;
+    clampCam();
+    if (cam.x === bx && cam.y === by) return; // already at the farm's edge
+    const w = toWorld(carry.lx, carry.ly);
+    carryOne(carry.kind, carry.id, plotAt(w.x, w.y));
+  }
+  function carryEnd(e) {
+    if (!carry || e.pointerId !== carry.pid) return;
+    const moved = carry.moved;
+    carry = null;
+    $("fm-ghost").hidden = true;
+    if (!moved) return; // a tap: the button's click handles it
+    carriedAt = performance.now();
+    renderTools();
+    endDrag();
+  }
+  addEventListener("pointermove", carryMove, true);
+  addEventListener("pointerup", carryEnd, true);
+  addEventListener("pointercancel", carryEnd, true);
   function landClick(i) {
     if (!buyable(i))
       return toast("You can only buy plots next to land you own");
@@ -4292,6 +4840,7 @@ export function openFarm(options) {
     drawPastureFence(ctx, true);
     s.plots.forEach((p, i) => drawPlot(ctx, i, p, time, s));
     drawArea(ctx);
+    drawRainSplashes(ctx, time);
     const items = [];
     // Trees and the back row stand in the depth order too, so nothing
     // walking behind them is drawn over them.
@@ -4870,27 +5419,64 @@ export function openFarm(options) {
     ctx.translate(-cam.x, -cam.y);
     const z = 1 / Math.max(0.6, Z),
       tag = (t, x, top, accent) => nameTag(ctx, t, x, top - 20 * z, accent);
-    const bob = reduced ? 0 : Math.abs(Math.sin(time * 3)) * 4;
-    const badge = (t, x, top, bg) => {
-      const fs = 15 * z;
-      ctx.font = `800 ${fs}px 'Barlow Condensed', sans-serif`;
-      const w = Math.max(22 * z, ctx.measureText(t).width + 14 * z),
-        h = 22 * z,
-        y = top - 50 * z - bob;
+    const bob = reduced ? 0 : Math.abs(Math.sin(time * 3)) * 2.5 * z;
+    /** A badge pinned to a tag's top-right corner, so it reads as part of
+     *  it: big, outlined, with a glow ring pulsing out to catch the eye. */
+    const badge = (box, t, bg) => {
+      const fs = 18 * z;
+      ctx.save();
+      ctx.font = `900 ${fs}px 'Barlow Condensed', sans-serif`;
+      const w = Math.max(28 * z, ctx.measureText(t).width + 16 * z),
+        h = 28 * z,
+        x = box.x + box.w / 2 - 6 * z,
+        y = box.y - box.h / 2 - 2 * z - bob;
+      if (!reduced) {
+        const k = (time * 0.9) % 1;
+        ctx.globalAlpha = 0.55 * (1 - k);
+        ctx.strokeStyle = bg;
+        ctx.lineWidth = 3 * z;
+        ctx.beginPath();
+        ctx.roundRect(
+          x - w / 2 - k * 12 * z,
+          y - h / 2 - k * 12 * z,
+          w + k * 24 * z,
+          h + k * 24 * z,
+          h / 2 + k * 12 * z,
+        );
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
       ctx.fillStyle = bg;
+      ctx.strokeStyle = "#1a0f05";
+      ctx.lineWidth = 2.5 * z;
       ctx.beginPath();
       ctx.roundRect(x - w / 2, y - h / 2, w, h, h / 2);
       ctx.fill();
+      ctx.stroke();
       ctx.fillStyle = "#1a0f05";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText(t, x, y + 0.5);
-      ctx.textBaseline = "alphabetic";
+      ctx.fillText(t, x, y + 1 * z);
+      ctx.restore();
     };
     drawDecorPins(time, z);
-    tag("ORDERS", BOARDP.x, BOARDP.y - 140);
-    tag("MARKET", STALL.x, STALL.y - 150);
-    tag("BARN", BARN.x, BARN.y - 196);
+    // A place with something for you: its tag gets a gold edge and a badge.
+    const orderReady = !V && F.orders.some((o) => o.items && canFill(o)),
+      sold = !V && stall?.shelves?.some((x) => x.sold),
+      full = !V && barnUsed() >= F.barnCap * 0.9;
+    const tOrders = tag(
+        "ORDERS",
+        BOARDP.x,
+        BOARDP.y - 140,
+        orderReady ? "#ffd65b" : undefined,
+      ),
+      tMarket = tag(
+        "MARKET",
+        STALL.x,
+        STALL.y - 150,
+        sold ? "#7ff0a2" : undefined,
+      ),
+      tBarn = tag("BARN", BARN.x, BARN.y - 196, full ? "#ff8a7a" : undefined);
     tag(
       F.wishReady && !V ? "WISHING WELL ✦" : "WISHING WELL",
       WELL.x,
@@ -4898,12 +5484,9 @@ export function openFarm(options) {
       F.wishReady && !V ? "#ffd65b" : undefined,
     );
     if (!V) {
-      if (F.orders.some((o) => o.items && canFill(o)))
-        badge("!", BOARDP.x + 44 * z, BOARDP.y - 140, "#ffd65b");
-      if (stall?.shelves?.some((x) => x.sold))
-        badge("SOLD!", STALL.x + 46 * z, STALL.y - 150, "#7ff0a2");
-      if (barnUsed() >= F.barnCap * 0.9)
-        badge("FULL", BARN.x + 40 * z, BARN.y - 196, "#ff8a7a");
+      if (orderReady) badge(tOrders, "!", "#ffd65b");
+      if (sold) badge(tMarket, "SOLD!", "#7ff0a2");
+      if (full) badge(tBarn, "FULL", "#ff8a7a");
       if (balloon) {
         if (balloon.crates && bal.mode === "idle") {
           const p = balloonPos(time, performance.now()),
@@ -5100,6 +5683,7 @@ export function openFarm(options) {
     last = now;
     T = now / 1000;
     if (!inited) return;
+    edgeScroll(dt);
     const sn = serverNow();
     for (const p of F.plots) if (p.crop) p.prog = growth(p, sn);
     if (V) for (const p of V.plots) if (p.crop) p.prog = growth(p, sn);
@@ -5315,8 +5899,10 @@ export function openFarm(options) {
   /* ---------- HUD ---------- */
   function renderBadge() {
     const p = F.lv >= 100 ? 100 : (F.xp / need(F.lv)) * 100;
-    $("fm-badge").innerHTML =
-      `<div class="fm-ring" style="--p:${p}"><b>${F.lv}</b></div><div><strong>${esc(options.playerName())}'s Farm</strong><small class="row2"><span>${F.lv >= 100 ? "Max level" : `${F.xp}/${need(F.lv)} XP`}</span></small><div class="xpbar"><i style="width:${p}%"></i></div></div>`;
+    setInner(
+      $("fm-badge"),
+      `<div class="fm-ring" style="--p:${p}"><b>${F.lv}</b></div><div><strong>${esc(options.playerName())}'s Farm</strong><div class="xpbar"><i style="width:${p}%"></i><span>${F.lv >= 100 ? "Max level" : `${F.xp.toLocaleString("en-US")} / ${need(F.lv).toLocaleString("en-US")} XP`}</span></div></div>`,
+    );
   }
   const dogLeft = () => Math.max(0, (F.dog.until - serverNow()) / 1000),
     dogTotal = () => Math.max(1, (F.dog.until - F.dog.since) / 1000);
@@ -5486,30 +6072,8 @@ export function openFarm(options) {
     ["net", "net", "Catch"],
     ["prank", "bug", "Prank", Math.max(0, 3 - V.today.pranks)],
   ];
-  const HOME_TOOLS = () => [
-    ["hand", "hand", "Hand"],
-    ["seed", "seed", "Seeds", F.seeds[F.seed] || 0],
-    [
-      "can",
-      ["", "can", "can2", "can3"][F.can],
-      "Can",
-      null,
-      ["", "Wood", "Copper", "Gold"][F.can],
-    ],
-    [
-      "fert",
-      F.fert === "gold"
-        ? "fertGold"
-        : F.fert === "super"
-          ? "fertSuper"
-          : "fert",
-      "Fertilizer",
-      F.ferts[F.fert],
-    ],
-    ["net", "net", F.net === 2 ? "Big Net" : "Net"],
-    ...(F.sickle ? [["sickle", "sickle", "Sickle"]] : []),
-    ["shovel", "shovel", "Shovel"],
-  ];
+  /** Your own farm has no tool bar: every tool is a bubble by the plot. */
+  const HOME_TOOLS = () => [];
   /** The Tools tab: [id, icon, name, text, price, level, owned, why not yet]. */
   function toolRows() {
     const has = {
@@ -5546,12 +6110,16 @@ export function openFarm(options) {
     ];
   }
   function renderTools() {
-    $("fm-tools").innerHTML = TOOLS()
-      .map(
-        ([id, ic, label, count, lvl], idx) =>
-          `<button type="button" class="fm-tool" data-tool="${id}" aria-pressed="${F.tool === id}" title="${id === "seed" ? `${CROP[F.seed]?.n ?? "Seed"} seeds` : label} (key ${idx + 1})"><kbd>${idx + 1}</kbd>${count != null ? `<b>${count > 99 ? "99+" : count}</b>` : ""}${id === "seed" ? `<span class="seedico">${I("seed")}<img src="${icon(F.seed)}" alt=""></span>` : I(ic)}<span>${id === "seed" ? (CROP[F.seed]?.n ?? "Seeds").split(" ").pop() : label}</span>${lvl ? `<em>${lvl}</em>` : ""}</button>`,
-      )
-      .join("");
+    $("fm-tools").hidden = !TOOLS().length;
+    setInner(
+      $("fm-tools"),
+      TOOLS()
+        .map(
+          ([id, ic, label, count, lvl], idx) =>
+            `<button type="button" class="fm-tool" data-tool="${id}" aria-pressed="${F.tool === id}" title="${label} (key ${idx + 1})"><kbd>${idx + 1}</kbd>${count != null ? `<b>${count > 99 ? "99+" : count}</b>` : ""}${I(ic)}<span>${label}</span>${lvl ? `<em>${lvl}</em>` : ""}</button>`,
+        )
+        .join(""),
+    );
   }
   function showTip(i) {
     const p = cur().plots[i],
@@ -5588,7 +6156,7 @@ export function openFarm(options) {
       sp = { x: sp0.x - o.x, y: sp0.y - o.y };
     const left = p.prog < 1 && p.ripeAt ? (p.ripeAt - serverNow()) / 1000 : 0;
     tip.hidden = false;
-    tip.innerHTML = `<b>${c.n}</b><div class="bar"><i style="width:${p.prog * 100}%"></i></div><div class="row"><span>${p.prog >= 1 ? "Ready" : "Time left"}</span><span>${p.prog >= 1 ? (!V && F.pending.has(i) ? "Just a moment…" : "Harvest now") : fmtSecs(left)}</span></div><div class="row"><span>Water</span><span>${p.wet ? "watered" : "dry"}</span></div>${p.pests ? `<div class="row"><span>Bugs</span><span>${p.pests} · ${p.pests * 20}% slower</span></div>` : ""}${p.fert ? `<div class="row"><span>Fertilizer</span><span>${p.fert === "gold" ? "gold" : "regular"}</span></div>` : ""}`;
+    tip.innerHTML = `<b>${c.n}</b><div class="bar"><i style="width:${p.prog * 100}%"></i></div><div class="row"><span>${p.prog >= 1 ? "Ready" : "Time left"}</span><span>${p.prog >= 1 ? (!V && F.pending.has(i) ? "Just a moment…" : "Harvest now") : fmtSecs(left)}</span></div><div class="row"><span>Water</span><span>${p.wet ? "watered" : wetNow(p) ? "watered by the rain" : "dry"}</span></div>${p.pests ? `<div class="row"><span>Bugs</span><span>${p.pests} · ${p.pests * 20}% slower</span></div>` : ""}${p.fert ? `<div class="row"><span>Fertilizer</span><span>${p.fert === "gold" ? "gold" : "regular"}</span></div>` : ""}`;
     tip.style.left = `${Math.min(o.w - 200, sp.x + 8)}px`;
     tip.style.top = `${Math.max(60, sp.y - 10)}px`;
   }
@@ -5980,6 +6548,9 @@ export function openFarm(options) {
               : `<p class="sh-note">None of your friends has a farm yet. Add friends from the Lobby, or invite them from the Invite tab.</p>`) +
           `</div>`;
     }
+    // Drawn whole: patching this sheet in place made the visited farm draw
+    // far slower (tests/visual/farm.spec.ts, a friend's giant crop), for a
+    // reason not found yet. Its list keeps its scroll below.
     el.innerHTML = html;
     if (sheet === "market" && sheetTab === "stall") wireStallForm(el);
     el.querySelectorAll("[data-dogprev]").forEach((c) => {
@@ -5987,8 +6558,30 @@ export function openFarm(options) {
       g.clearRect(0, 0, 120, 120);
       GFX.dog(g, c.dataset.dogprev, "sit", 0, 54, 108, 1.7, 1);
     });
+    lineUpButtons(el);
     const b = el.querySelector(".sh-body");
     if (b) b.scrollTop = top;
+  }
+  /* Buttons of one kind line up in a column from row to row: each gets the
+     width of the widest (a bigger price, "All · 102" next to "All · 30", no
+     longer shifts its row's buttons). Measured once each time a sheet is
+     drawn, on phones and desktop alike. */
+  const LINE_UP = [
+    ".b-sell1",
+    ".b-sellall",
+    '[data-buyseed][data-n="1"]',
+    '[data-buyseed][data-n="5"]',
+    "[data-buytool]",
+    "[data-deco]",
+    "[data-mast]",
+  ];
+  function lineUpButtons(el) {
+    for (const sel of LINE_UP) {
+      const bs = [...el.querySelectorAll(`.item .acts ${sel}`)];
+      if (bs.length < 2) continue;
+      const w = Math.max(...bs.map((x) => x.offsetWidth));
+      for (const x of bs) x.style.minWidth = `${w}px`;
+    }
   }
   function updateSheetTimers() {
     const r = $("fm-restock");
@@ -6043,7 +6636,19 @@ export function openFarm(options) {
     }
     if (d.bfill) return void balloonAct("fill", +d.bfill);
     if (d.bask) return void balloonAct("ask", +d.bask);
-    if ("blaunch" in d) return void balloonAct("launch");
+    if ("blaunch" in d) {
+      // Leaving early asks for a second tap (it gives up the other crates).
+      if (!balReady() && !bal.armed) {
+        bal.armed = true;
+        setTimeout(() => {
+          bal.armed = false;
+          if (sheet === "balloon") renderSheet();
+        }, 4000);
+        return renderSheet();
+      }
+      bal.armed = false;
+      return void balloonAct("launch");
+    }
     if (d.hfill) {
       const [friend, slot] = d.hfill.split(":");
       return void helpFill(friend, +slot);
@@ -6073,7 +6678,6 @@ export function openFarm(options) {
     }
     if (d.buyseed) {
       act({ a: "buy-seeds", crop: d.buyseed, qty: +d.n }, true);
-      F.seed = d.buyseed;
       toast(`Bought ${d.n} ${CROP[d.buyseed].n} seed${+d.n > 1 ? "s" : ""}`);
       renderTools();
       return renderSheet();
@@ -6266,14 +6870,7 @@ export function openFarm(options) {
     const b = e.target.closest("[data-tool]");
     if (!b) return;
     const id = b.dataset.tool;
-    if (id === "seed") {
-      if (F.tool === "seed") {
-        const r = b.getBoundingClientRect(),
-          sr = hudEl.getBoundingClientRect();
-        toolPop("seed", r.left - sr.left, r.top - sr.top);
-      }
-      F.tool = "seed";
-    } else if (id === "fert") {
+    if (id === "fert") {
       if (F.tool === "fert") {
         const r = b.getBoundingClientRect(),
           sr = hudEl.getBoundingClientRect();
@@ -6286,40 +6883,23 @@ export function openFarm(options) {
   function toolPop(kind, x, y) {
     const pop = $("fm-pop");
     pop.hidden = false;
-    if (kind === "seed")
-      pop.innerHTML = `<h6>Pick a seed to sow</h6><div class="grid">${
-        PCROPS.filter((c) => F.seeds[c.id])
-          .map(
-            (c) =>
-              `<button type="button" class="opt" data-tseed="${c.id}"><b>${F.seeds[c.id]}</b><img src="${icon(c.id)}" alt=""><span>${esc(c.n)}</span></button>`,
-          )
-          .join("") || `<p class="sh-note">No seeds</p>`
-      }</div>`;
-    else
-      pop.innerHTML = `<h6>Pick a fertilizer</h6><div class="grid">${[
-        ["norm", "fert", "Regular"],
-        ["super", "fertSuper", "Super"],
-        ["gold", "fertGold", "Gold"],
-      ]
-        .map(
-          ([k, ic, n]) =>
-            `<button type="button" class="opt" data-tfert="${k}" ${F.ferts[k] ? "" : "disabled"}><b>${F.ferts[k]}</b>${I(ic, "big")}<span>${n}</span></button>`,
-        )
-        .join("")}</div>`;
+    pop.innerHTML = `<h6>Pick a fertilizer</h6><div class="grid">${[
+      ["norm", "fert", "Regular"],
+      ["super", "fertSuper", "Super"],
+      ["gold", "fertGold", "Gold"],
+    ]
+      .map(
+        ([k, ic, n]) =>
+          `<button type="button" class="opt" data-tfert="${k}" ${F.ferts[k] ? "" : "disabled"}><b>${F.ferts[k]}</b>${I(ic, "big")}<span>${n}</span></button>`,
+      )
+      .join("")}</div>`;
     pop.style.left = `${Math.max(8, Math.min(NW - 308, x - 120))}px`;
     pop.style.top = `${y - pop.offsetHeight - 10}px`;
     pop.onclick = (e) => {
-      const s = e.target.closest("[data-tseed]"),
-        f = e.target.closest("[data-tfert]");
-      if (s) {
-        F.seed = s.dataset.tseed;
-        F.tool = "seed";
-      }
+      const f = e.target.closest("[data-tfert]");
       if (f) {
         F.fert = f.dataset.tfert;
         F.tool = "fert";
-      }
-      if (s || f) {
         pop.hidden = true;
         renderTools();
         screen.focus({ preventScroll: true });
@@ -6370,7 +6950,7 @@ export function openFarm(options) {
   // touch has no hover: tapping a growing crop with the hand shows its card for a moment
   if (matchMedia("(pointer: coarse)").matches)
     $("fm-hint").textContent =
-      "Drag to move · pinch to zoom · hold a plot to plant many";
+      "Tap a plot, then drag a seed or a tool across the field · drag the grass to move";
 
   /* canvas pointer */
   let dragging = false,
@@ -6386,6 +6966,9 @@ export function openFarm(options) {
     if (touchPts.size >= 2) return;
     screen.focus({ preventScroll: true });
     $("fm-pop").hidden = true;
+    $("fm-sickle").hidden = true;
+    $("fm-seed").hidden = true;
+    $("fm-acts").hidden = true;
     try {
       cv.setPointerCapture(e.pointerId);
     } catch {}
@@ -6407,7 +6990,9 @@ export function openFarm(options) {
         if (tapG && tapG.mode === "pending") {
           tapG.mode = "paint";
           navigator.vibrate?.(12);
+          holdPaint = true;
           press(tapG.ev);
+          holdPaint = false;
         }
       }, HOLD_MS),
     };
@@ -6415,6 +7000,10 @@ export function openFarm(options) {
   function press(e) {
     screen.focus({ preventScroll: true });
     $("fm-pop").hidden = true;
+    $("fm-sickle").hidden = true;
+    $("fm-seed").hidden = true;
+    $("fm-acts").hidden = true;
+    pressType = e.pointerType ?? "mouse";
     const w = toWorld(e.clientX, e.clientY);
     if (F.decorPick && !V) {
       const k = DECO_SLOTS.findIndex(
@@ -6786,8 +7375,9 @@ export function openFarm(options) {
   addEventListener("resize", onResize);
   // While the farm is open, come back to the server now and then: ripe
   // crops, the restock and the market day are all decided there.
+  let hiddenAway = false;
   const poll = setInterval(() => {
-    if (document.hidden) return;
+    if (document.hidden || hiddenAway) return;
     if (V) {
       if (!visitQueue.length && !visitSending)
         options
@@ -6801,7 +7391,20 @@ export function openFarm(options) {
   onResize();
   if (matchMedia("(pointer: coarse)").matches)
     $("fm-hint").textContent =
-      "Drag to move · pinch to zoom · hold a plot to plant many";
+      "Tap a plot, then drag a seed or a tool across the field · drag the grass to move";
+  // The animals stand where you left them.
+  if (left) {
+    if (left.dog) Object.assign(dog, left.dog, { path: [], moving: false });
+    left.hens?.forEach((h, k) => hens[k] && Object.assign(hens[k], h));
+    left.ducks?.forEach((a, k) => FDUCKS[k] && (FDUCKS[k].a = a));
+    if (left.cow) Object.assign(COW, left.cow);
+  }
+  // The farm as last known (this session): drawn at once, then refreshed.
+  if (options.initial) {
+    try {
+      applyState(options.initial);
+    } catch {}
+  }
   enter();
   void refresh();
   // The Friends button shows a dot when a friend's farm has bugs or ripe crops.
@@ -6814,7 +7417,50 @@ export function openFarm(options) {
   layer.focus({ preventScroll: true });
   return {
     refresh,
+    /** Behind the Lobby or the Plaza: paused (no drawing, sound or polls)
+     *  and gone from your farm for visiting friends, but kept as it is. */
+    hide() {
+      if (hiddenAway) return;
+      hiddenAway = true;
+      void flush();
+      leave();
+      layer.style.display = "none";
+    },
+    /** Back on the farm: just as you left it, then refreshed. */
+    show() {
+      if (!hiddenAway) return;
+      hiddenAway = false;
+      layer.style.display = "";
+      onResize();
+      enter();
+      void refresh();
+      void loadBalloon();
+      void loadStall();
+      layer.focus({ preventScroll: true });
+    },
     close() {
+      removeEventListener("pointermove", carryMove, true);
+      removeEventListener("pointerup", carryEnd, true);
+      removeEventListener("pointercancel", carryEnd, true);
+      LEFT.set(options.owner ?? "", {
+        dog: {
+          x: dog.x,
+          y: dog.y,
+          face: dog.face,
+          wait: 1 + Math.random() * 3,
+        },
+        hens: hens.map((h) => ({
+          x: h.x,
+          y: h.y,
+          face: h.face,
+          tx: null,
+          ty: null,
+          st: "idle",
+          wait: 1 + Math.random() * 2,
+        })),
+        ducks: FDUCKS.map((d) => d.a),
+        cow: { x: COW.x, face: COW.face, t: COW.t },
+      });
       void flush();
       leave();
       clearInterval(poll);
@@ -6826,6 +7472,8 @@ export function openFarm(options) {
     /** Debug handle for tests. */
     _dbg: {
       F,
+      /** Read the farm from the server again, as the minute poll does (tests). */
+      refresh: () => refresh(),
       /** Preview a time of day (0..1), or null for the device clock (tests). */
       tod: (v) => {
         todOverride = v;
@@ -6849,6 +7497,14 @@ export function openFarm(options) {
         };
       },
       well: WELL,
+      /** The weather's effects state: lightning timing (tests). */
+      wx: WX,
+      /** The farm's clock, in seconds since it opened (tests). */
+      time: () => T,
+      /** Whether the Supply Balloon is drawn (tests). */
+      hasBalloon: () => !!balloon?.crates,
+      /** Where the scenery around the farm stands (tests: it never moves). */
+      scenery: () => MARGIN.map((m) => [Math.round(m.x), Math.round(m.y)]),
       /** A world point that opens each place on the farm when tapped (tests). */
       place: (k) =>
         ({
@@ -6874,6 +7530,19 @@ export function openFarm(options) {
           x: r.left + (sp.x * r.width) / NW,
           y: r.top + (sp.y * r.height) / NH,
         };
+      },
+      /** A plot's centre on the farm (tests). */
+      plotWorld: (i) => {
+        const pr = plotRect(i);
+        return { x: pr.x + PW / 2, y: pr.y + PH / 2 };
+      },
+      /** Zoom (tests): the farm's scale, and a way to set it. */
+      zoom: (z) => {
+        if (z) {
+          Z = Math.max(ZMIN, Math.min(ZMAX, z));
+          clampCam();
+        }
+        return Z;
       },
       plotClient: (i) => {
         const r = cv.getBoundingClientRect(),

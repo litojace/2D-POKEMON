@@ -46,7 +46,7 @@ async function fakeFarm(page: Page) {
       barnCap: 80,
       barnUpgrades: 0,
       fertilizer: { norm: 3, super: 1, gold: 0 },
-      // Every tool bar slot in use (7 tools), a scarecrow and a sprinkler.
+      // Every tool owned (Copper Can, Sickle), a scarecrow and a sprinkler.
       tools: {
         can: 2,
         bigNet: false,
@@ -193,12 +193,17 @@ async function fakeFarm(page: Page) {
             partyLeft: 3600,
           },
         );
-      if (url.endsWith("/api/farm/gone")) return json({ ok: true });
+      if (url.endsWith("/api/farm/gone")) {
+        w.__gones = (w.__gones ?? 0) + 1;
+        return json({ ok: true });
+      }
       if (url.endsWith("/api/farm/tour")) return json(w.__tour ?? []);
       if (url.endsWith("/api/farm/like"))
         return json({ ok: true, tour: w.__tour ?? [] });
       // The Supply Balloon and friends' help (migration 058).
-      if (url.endsWith("/api/farm/balloon") && !init?.body)
+      if (url.endsWith("/api/farm/balloon") && !init?.body) {
+        if (w.__balloonDelay)
+          await new Promise((r) => setTimeout(r, w.__balloonDelay));
         return json(
           w.__balloon ?? {
             crates: null,
@@ -212,6 +217,7 @@ async function fakeFarm(page: Page) {
             helpers: {},
           },
         );
+      }
       if (url.endsWith("/api/farm/balloon")) {
         const body = JSON.parse(String(init?.body));
         w.__farmRequests.push({ balloon: body.kind, slot: body.slot });
@@ -526,7 +532,13 @@ async function hudBoxes(page: Page) {
       const el = document.querySelector(sel);
       if (!el) continue;
       const r = el.getBoundingClientRect();
-      if (r.width && r.height && getComputedStyle(el).display !== "none")
+      const cs = getComputedStyle(el);
+      if (
+        r.width &&
+        r.height &&
+        cs.display !== "none" &&
+        cs.visibility !== "hidden"
+      )
         out.push({ name, x: r.left, y: r.top, w: r.width, h: r.height });
     }
     return out;
@@ -573,8 +585,12 @@ for (const viewport of [
       await expect(page.locator(".farm-layer #fm-cv")).toBeVisible();
       await expect(page.locator("#fm-chips [data-orb]")).toHaveCount(4);
       await expect(page.locator("#fm-badge")).toContainText("tester's Farm");
-      await expect(page.locator("#fm-badge")).toContainText("20/");
-      await expect(page.locator("#fm-tools [data-tool]")).toHaveCount(7);
+      // The XP count is written in the bar.
+      await expect(page.locator("#fm-badge .xpbar")).toContainText(
+        /^20 \/ \d+ XP$/,
+      );
+      // No tool bar on your own farm: tools are bubbles by the plots.
+      await expect(page.locator("#fm-tools")).toBeHidden();
       await page.waitForTimeout(600);
       await snap(
         page,
@@ -582,16 +598,33 @@ for (const viewport of [
         `farm-${viewport.width}x${viewport.height}${viewport.inset ? "-island" : ""}`,
       );
       const all = await hudBoxes(page);
-      // The farm badge is the player card's twin: same width, height and left edge.
-      const card = all.find((b) => b.name === "profile")!,
+      // The player card (the account's level) is hidden on the farm, and the
+      // farm badge takes its place: the same box, at the same spot.
+      expect(all.map((b) => b.name)).not.toContain("profile");
+      await expect(page.locator("#account-profile")).toHaveCSS(
+        "visibility",
+        "hidden",
+      );
+      const card = await page.locator("#account-profile").evaluate((e) => {
+          const r = e.getBoundingClientRect();
+          return { x: r.left, y: r.top, w: r.width, h: r.height };
+        }),
         badge = all.find((b) => b.name === "badge")!;
       expect(badge.w, "badge width").toBeCloseTo(card.w, 1);
       expect(badge.h, "badge height").toBeCloseTo(card.h, 1);
       expect(badge.x, "badge left edge").toBeCloseTo(card.x, 1);
-      expect(badge.y - (card.y + card.h), "gap under the card").toBeCloseTo(
-        4,
-        1,
-      );
+      expect(badge.y, "badge top").toBeCloseTo(card.y, 1);
+      // The bar is thick enough for its text, and the text fits in it.
+      const bar = await page.locator("#fm-badge .xpbar").evaluate((e) => {
+        const r = e.getBoundingClientRect();
+        return {
+          h: r.height,
+          w: r.width,
+          sw: e.querySelector("span")!.scrollWidth,
+        };
+      });
+      expect(bar.h, "bar height").toBeGreaterThanOrEqual(12);
+      expect(bar.sw, "XP text fits the bar").toBeLessThanOrEqual(bar.w);
       const left = viewport.inset?.left ?? 0,
         right = viewport.inset?.right ?? 0,
         bottom = viewport.inset?.bottom ?? 0;
@@ -604,16 +637,15 @@ for (const viewport of [
           viewport.height - bottom + 1,
         );
       }
-      // The right rail (with the zoom buttons under it on desktop) ends on
-      // the tool bar's line, and its four buttons are all there.
-      const tools = all.find((b) => b.name === "tools")!,
-        corner = all
-          .filter((b) => b.name === "rail" || b.name === "zoom")
-          .reduce((a, b) => (b.y + b.h > a.y + a.h ? b : a));
-      expect(corner.y + corner.h, "corner bottom").toBeCloseTo(
-        tools.y + tools.h,
-        0,
-      );
+      // The right rail (with the zoom buttons under it on desktop) sits at
+      // the bottom right, and its four buttons are all there.
+      const corner = all
+        .filter((b) => b.name === "rail" || b.name === "zoom")
+        .reduce((a, b) => (b.y + b.h > a.y + a.h ? b : a));
+      expect(
+        viewport.height - bottom - (corner.y + corner.h),
+        "corner bottom",
+      ).toBeLessThan(24);
       await expect(page.locator("#fm-rail [data-sheet]")).toHaveCount(4);
       const clashes = all.flatMap((a, i) =>
         all
@@ -638,7 +670,10 @@ test("the weather orb shows the weather now and the forecast", async ({
   await page.click('#hub-scenes [data-hub-scene="farm"]');
   const orb = page.locator('#fm-chips [data-orb="weather"]');
   await expect(orb).toBeVisible();
-  await expect(orb).toHaveAttribute("aria-label", /Thunderstorm: 25% Shocked/);
+  await expect(orb).toHaveAttribute(
+    "aria-label",
+    /Thunderstorm: Waters every plot · 25% Shocked/,
+  );
   await orb.click();
   const pop = page.locator("#fm-orbpop");
   await expect(pop).toBeVisible();
@@ -712,6 +747,10 @@ test("tapping a ripe plot harvests it, and an empty plot opens the seed picker",
     const page = await context.newPage();
     const errors = await openLobby(page);
     await fakeFarm(page);
+    // A Storm Melon seed from a gift: it grows at Lv 35, above this farm.
+    await page.evaluate(() => {
+      (window as any).__fakeFarm.seeds.melon = 2;
+    });
     await page.click('#hub-scenes [data-hub-scene="farm"]');
     await expect(page.locator("#fm-badge")).toContainText("tester's Farm");
     await page.waitForTimeout(400);
@@ -725,19 +764,40 @@ test("tapping a ripe plot harvests it, and an empty plot opens the seed picker",
           (window as any).__farmRequests.flatMap((r: any) => r.actions),
         ),
       )
-      .toEqual([{ a: "harvest", plot: 0 }]);
+      .toEqual([{ a: "harvest", plot: 0, tool: "sickle" }]);
     const empty = await plot(3);
     await page.mouse.click(empty.x, empty.y);
     await expect(page.locator("#fm-pop")).toBeVisible();
+    // The melon is greyed out and can't be picked; it says when it grows.
+    const melon = page.locator('#fm-pop [data-pseed="melon"]');
+    await expect(melon).toBeDisabled();
+    await expect(melon).toHaveClass(/locked/);
+    await expect(melon).toContainText("Lv 35");
+    await expect(page.locator('#fm-pop [data-pseed="carrot"]')).toBeEnabled();
+    // No quick buy here: seeds come from the Shop.
+    await expect(page.locator("#fm-pop [data-pbuy]")).toHaveCount(0);
     await snap(page, info, "farm-seed-picker-1280x800");
+    // Picking a seed sows nothing yet: it shows the seed, ready to sow…
     await page.locator('#fm-pop [data-pseed="carrot"]').click();
+    await expect(page.locator("#fm-pop")).toBeHidden();
+    const bubble = page.locator("#fm-seed [data-seedbub]");
+    await expect(bubble).toBeVisible();
+    await expect(bubble).toContainText("×6");
+    const sent = () =>
+      page.evaluate(() =>
+        (window as any).__farmRequests.flatMap((r: any) => r.actions),
+      );
+    expect(await sent()).not.toContainEqual(
+      expect.objectContaining({ a: "plant" }),
+    );
+    // …and a tap on it sows the plot it was picked for.
+    await bubble.click();
     await expect
-      .poll(() =>
-        page.evaluate(() =>
-          (window as any).__farmRequests.flatMap((r: any) => r.actions),
-        ),
-      )
+      .poll(sent)
       .toContainEqual({ a: "plant", plot: 3, crop: "carrot" });
+    await expect(page.locator("#fm-seed")).toBeHidden();
+    // No seed tool on the bar any more: nothing sows a seed you didn't pick.
+    await expect(page.locator('#fm-tools [data-tool="seed"]')).toHaveCount(0);
     // The market sheet opens from the menu.
     await openSheet(page, "market");
     await expect(page.locator("#fm-sheet")).toContainText("Farmers' market");
@@ -764,21 +824,34 @@ test("a tap catches a bug, and the Tools tab sells tools", async ({
     });
     await page.click('#hub-scenes [data-hub-scene="farm"]');
     await expect(page.locator("#fm-badge")).toContainText("tester's Farm");
-    // Seven tools, the can showing the one you own.
-    await expect(page.locator("#fm-tools [data-tool]")).toHaveCount(7);
-    await expect(page.locator('#fm-tools [data-tool="can"]')).toContainText(
-      "Copper",
-    );
     await page.waitForTimeout(400);
+    // Sunny (in the rain the crop is watered, and the can stays away).
+    await page.evaluate(() => {
+      const w = window as any;
+      w.__fakeFarm.weather.now = "sun";
+      w.__farm.F.weather.cur = "sun";
+    });
+    // A tap on the plot with a bug: its tools pop up (the net first, the
+    // Copper Can you own, the shovel); the net catches it.
     const bug = await page.evaluate(() => (window as any).__farm.plotClient(2));
     await page.mouse.click(bug.x, bug.y);
+    const acts = page.locator("#fm-acts");
+    await expect(acts).toBeVisible();
+    await expect(acts.locator("[data-act]").first()).toHaveAttribute(
+      "data-act",
+      "net",
+    );
+    await expect(acts.locator('[data-act="can"]')).toBeVisible();
+    await expect(acts.locator('[data-act="shovel"]')).toBeVisible();
+    await snap(page, info, "farm-tool-bubbles-1280x800");
+    await acts.locator('[data-act="net"]').click();
     await expect
       .poll(() =>
         page.evaluate(() =>
           (window as any).__farmRequests.flatMap((r: any) => r.actions),
         ),
       )
-      .toEqual([{ a: "catch", plot: 2 }]);
+      .toEqual([{ a: "catch", plot: 2, tool: "net" }]);
     await openSheet(page, "shop");
     await page.click('#fm-sheet [data-tab="tools"]');
     const sheet = page.locator("#fm-sheet");
@@ -798,9 +871,7 @@ test("a tap catches a bug, and the Tools tab sells tools", async ({
     await expect(
       sheet.locator(".item", { hasText: "Big Net" }).locator("button"),
     ).toHaveText("Owned");
-    await expect(page.locator('#fm-tools [data-tool="net"]')).toContainText(
-      "Big Net",
-    );
+    expect(await page.evaluate(() => (window as any).__farm.F.net)).toBe(2);
     expect(errors).toEqual([]);
   } finally {
     await context.close();
@@ -1040,7 +1111,8 @@ test("visiting a friend's farm: sneak a ripe crop, catch a bug, go home", async 
     );
     await banner.locator("[data-home]").click();
     await expect(banner).toBeHidden();
-    await expect(page.locator("#fm-tools [data-tool]")).toHaveCount(7);
+    // Home again: no tool bar (the friend's tools were for the visit).
+    await expect(page.locator("#fm-tools")).toBeHidden();
     expect(errors).toEqual([]);
   } finally {
     await context.close();
@@ -1353,6 +1425,496 @@ for (const viewport of [
   });
 }
 
+test("the farm opens ready on every return: the same scenery, animals where they were, the balloon up", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const errors = await openLobby(page);
+  await fakeFarm(page);
+  // The first visit loads the farm (a ripe Breeze Wheat stands on plot 0).
+  await page.click('#hub-scenes [data-hub-scene="farm"]');
+  await page.waitForFunction(() => (window as any).__farm?.F?.loaded);
+  const first = await page.evaluate(() => (window as any).__farm.scenery());
+  expect(first.length).toBeGreaterThan(40);
+  // A Supply Balloon is up, and the hens stand in spots of their own.
+  await page.evaluate(() => {
+    const w = window as any;
+    w.__balloon = {
+      crates: [{ crop: "wheat", qty: 3, state: "open", by: null }],
+      arrivesAt: null,
+      launches: 0,
+      leaves: 140,
+      xp: 90,
+      helperStars: 0,
+      helperLeavesToday: 0,
+      helperCap: 600,
+      helpers: {},
+    };
+  });
+  await page.click('#hub-scenes [data-hub-scene="lobby"]');
+  await page.click('#hub-scenes [data-hub-scene="farm"]');
+  await expect
+    .poll(() => page.evaluate(() => (window as any).__farm.hasBalloon()))
+    .toBe(true);
+  const spots = await page.evaluate(() =>
+    (window as any).__farm.hens.map((h: any, k: number) => {
+      Object.assign(h, { x: 340 + k * 50, y: 900, tx: null, ty: null });
+      Object.assign(h, { st: "idle", wait: 99 });
+      return [h.x, h.y];
+    }),
+  );
+  // Away in the Lobby and the Plaza: nothing loads the farm again.
+  await page.click('#hub-scenes [data-hub-scene="lobby"]');
+  const gets = await page.evaluate(() => (window as any).__farmGets);
+  await page.click('#hub-scenes [data-hub-scene="plaza"]');
+  await page.click('#hub-scenes [data-hub-scene="lobby"]');
+  await page.waitForTimeout(500);
+  expect(await page.evaluate(() => (window as any).__farmGets)).toBe(gets);
+  // Back with a slow server: the farm is ready on its first frame, the
+  // trees and bushes stand where they stood, the hens where they were, and
+  // the balloon is there at once.
+  await page.evaluate(() => {
+    (window as any).__farmDelay = 4000;
+    (window as any).__balloonDelay = 4000;
+  });
+  for (let visit = 0; visit < 2; visit++) {
+    await page.click('#hub-scenes [data-hub-scene="farm"]');
+    const now = await page.evaluate(() => {
+      const f = (window as any).__farm;
+      return {
+        loaded: !!f.F.loaded,
+        crop: f.F.plots[0]?.crop ?? null,
+        scenery: f.scenery(),
+        balloon: f.hasBalloon(),
+        hens: f.hens.map((h: any) => [h.x, h.y]),
+      };
+    });
+    expect(now.loaded).toBe(true);
+    expect(now.crop).toBe("wheat");
+    expect(now.scenery).toEqual(first);
+    expect(now.balloon).toBe(true);
+    now.hens.forEach(([x, y]: number[], k: number) => {
+      expect(Math.hypot(x - spots[k][0], y - spots[k][1])).toBeLessThan(25);
+    });
+    // Keep them still for the next visit.
+    await page.evaluate(() =>
+      (window as any).__farm.hens.forEach((h: any) =>
+        Object.assign(h, { tx: null, ty: null, st: "idle", wait: 99 }),
+      ),
+    );
+    await page.click('#hub-scenes [data-hub-scene="lobby"]');
+  }
+  await page.evaluate(() => {
+    (window as any).__farmDelay = 0;
+    (window as any).__balloonDelay = 0;
+  });
+  expect(errors).toEqual([]);
+});
+
+test("switching hub tabs keeps the same farm, paused and gone while hidden", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const errors = await openLobby(page);
+  await fakeFarm(page);
+  await page.click('#hub-scenes [data-hub-scene="farm"]');
+  await page.waitForFunction(() => (window as any).__farm?.F?.loaded);
+  // Mark this farm, then go to the Lobby.
+  await page.evaluate(() => ((window as any).__farm.F.mark = "same farm"));
+  const layer = page.locator(".farm-layer");
+  await page.click('#hub-scenes [data-hub-scene="lobby"]');
+  // Hidden and paused: not drawn, and friends see you left.
+  await expect(layer).toBeHidden();
+  await expect
+    .poll(() => page.evaluate(() => (window as any).__gones ?? 0))
+    .toBe(1);
+  // Back: the very same farm, shown at once and drawing again.
+  await page.click('#hub-scenes [data-hub-scene="farm"]');
+  await expect(layer).toBeVisible();
+  expect(await page.evaluate(() => (window as any).__farm.F.mark)).toBe(
+    "same farm",
+  );
+  await expect(page.locator("body")).toHaveClass(/hub-farm/);
+  await openSheet(page, "barn");
+  await expect(page.locator("#fm-sheet")).toContainText("Barn storage");
+  expect(errors).toEqual([]);
+});
+
+test("the farm is kept in this browser: after a reload it draws at once", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await openLobby(page);
+  await fakeFarm(page);
+  await page.click('#hub-scenes [data-hub-scene="farm"]');
+  await page.waitForFunction(() => (window as any).__farm?.F?.loaded);
+  // Kept per player, a moment after the farm loads.
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        Object.keys(localStorage).filter((k) => k.startsWith("arena-farm:")),
+      ),
+    )
+    .toHaveLength(1);
+  // A new visit: the page reloads (the farm closed, its memory gone).
+  await page.click('#hub-scenes [data-hub-scene="lobby"]');
+  await openLobby(page);
+  await fakeFarm(page);
+  await page.evaluate(() => ((window as any).__farmDelay = 4000));
+  await page.click('#hub-scenes [data-hub-scene="farm"]');
+  const now = await page.evaluate(() => {
+    const f = (window as any).__farm;
+    return { loaded: !!f.F.loaded, crop: f.F.plots[0]?.crop ?? null };
+  });
+  expect(now).toEqual({ loaded: true, crop: "wheat" });
+  await page.evaluate(() => ((window as any).__farmDelay = 0));
+  // Logging out forgets it: the next player on this browser starts clean.
+  await page.evaluate(() => document.getElementById("account-logout")!.click());
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        Object.keys(localStorage).filter((k) => k.startsWith("arena-farm:")),
+      ),
+    )
+    .toEqual([]);
+  await expect(page.locator(".farm-layer")).toHaveCount(0);
+});
+
+test("on a phone, the Market's Sell and All buttons line up in columns", async ({
+  browser,
+}, info) => {
+  const context = await browser.newContext({
+    viewport: { width: 844, height: 390 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  try {
+    const page = await context.newPage();
+    const errors = await openLobby(page);
+    await fakeFarm(page);
+    // Totals of very different lengths: 2, 30-odd, a few hundred.
+    await page.evaluate(() => {
+      (window as any).__fakeFarm.barn = [
+        { crop: "wheat", mutation: "", qty: 1 },
+        { crop: "carrot", mutation: "", qty: 4 },
+        { crop: "carrot", mutation: "frost", qty: 2 },
+        { crop: "wheat", mutation: "gold", qty: 30 },
+      ];
+    });
+    await page.click('#hub-scenes [data-hub-scene="farm"]');
+    await page.waitForFunction(() => (window as any).__farm?.F?.loaded);
+    await tapPlace(page, "market");
+    const sheet = page.locator("#fm-sheet");
+    await expect(sheet.locator(".b-sellall")).toHaveCount(4);
+    await sheet.evaluate((el) =>
+      Promise.all(el.getAnimations().map((a) => a.finished)),
+    );
+    const cols = await sheet.evaluate((el) =>
+      [".b-sell1", ".b-sellall"].map((sel) =>
+        [...el.querySelectorAll(sel)].map((b) => {
+          const r = b.getBoundingClientRect();
+          return [Math.round(r.left), Math.round(r.width)];
+        }),
+      ),
+    );
+    for (const col of cols) {
+      expect(new Set(col.map(([l]) => l)).size, "one left edge").toBe(1);
+      expect(new Set(col.map(([, w]) => w)).size, "one width").toBe(1);
+    }
+    await snap(page, info, "farm-market-sell-844x390");
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});
+
+test("on a phone, pick a seed and drag it to sow, and drag the sickle to harvest", async ({
+  browser,
+}, info) => {
+  const context = await browser.newContext({
+    viewport: { width: 844, height: 390 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  try {
+    const page = await context.newPage();
+    const errors = await openLobby(page);
+    await fakeFarm(page);
+    // Ripe wheat on plots 0, 3 and 4 (1 and 2 are still growing).
+    await page.evaluate(() => {
+      const f = (window as any).__fakeFarm,
+        past = new Date(Date.now() - 60_000).toISOString();
+      for (const i of [3, 4])
+        Object.assign(f.plots[i], { crop: "wheat", progress: 1, ripeAt: past });
+      // No Sickle bought: the harvest bubble cuts one plot at a time.
+      f.tools.sickle = false;
+    });
+    await page.click('#hub-scenes [data-hub-scene="farm"]');
+    await page.waitForFunction(() => (window as any).__farm?.F?.loaded);
+    await page.waitForTimeout(400);
+    const plot = (i: number) =>
+      page.evaluate((i) => (window as any).__farm.plotClient(i), i);
+    const center = async (sel: string) => {
+      const b = (await page.locator(sel).boundingBox())!;
+      return { x: b.x + b.width / 2, y: b.y + b.height / 2 };
+    };
+    // A real finger: touch down, slide through the points, lift.
+    const cdp = await context.newCDPSession(page);
+    const swipe = async (pts: { x: number; y: number }[]) => {
+      const at = (p: { x: number; y: number }) => [
+        { x: Math.round(p.x), y: Math.round(p.y) },
+      ];
+      await cdp.send("Input.dispatchTouchEvent", {
+        type: "touchStart",
+        touchPoints: at(pts[0]),
+      });
+      for (let k = 1; k < pts.length; k++)
+        for (let s = 1; s <= 8; s++) {
+          const a = pts[k - 1],
+            b = pts[k];
+          await cdp.send("Input.dispatchTouchEvent", {
+            type: "touchMove",
+            touchPoints: at({
+              x: a.x + ((b.x - a.x) * s) / 8,
+              y: a.y + ((b.y - a.y) * s) / 8,
+            }),
+          });
+        }
+      await cdp.send("Input.dispatchTouchEvent", {
+        type: "touchEnd",
+        touchPoints: [],
+      });
+    };
+    const sent = (a: string) =>
+      page.evaluate(
+        (a) =>
+          (window as any).__farmRequests
+            .flatMap((r: any) => r.actions ?? [])
+            .filter((x: any) => x.a === a)
+            .map((x: any) => x.plot)
+            .sort((x: number, y: number) => x - y),
+        a,
+      );
+    // Sowing: tap an empty plot, pick Breeze Wheat, then drag the seed
+    // across the row.
+    const p11 = await plot(11);
+    await page.touchscreen.tap(p11.x, p11.y);
+    await page.locator('#fm-pop [data-pseed="wheat"]').tap();
+    await expect(page.locator("#fm-seed [data-seedbub]")).toBeVisible();
+    await snap(page, info, "farm-seed-bubble-844x390");
+    await swipe([
+      await center("#fm-seed [data-seedbub]"),
+      await plot(12),
+      await plot(14),
+    ]);
+    await expect.poll(() => sent("plant")).toEqual([11, 12, 13, 14]);
+    await expect(page.locator("#fm-ghost")).toBeHidden();
+    // Watering works the same: tap a growing crop, drag the can across.
+    // (Sunny now: rain would water them all already.)
+    await page.evaluate(() => {
+      const w = window as any;
+      w.__fakeFarm.weather.now = "sun";
+      w.__farm.F.weather.cur = "sun";
+    });
+    const p12 = await plot(12);
+    await page.touchscreen.tap(p12.x, p12.y);
+    const can = page.locator('#fm-acts [data-act="can"]');
+    await expect(can).toBeVisible();
+    await swipe([
+      await center('#fm-acts [data-act="can"]'),
+      await plot(11),
+      await plot(14),
+    ]);
+    // The Copper Can waters three in a row: together the waterings cover
+    // plots 11–14 (the fake server forgets watering, so which plots are sent
+    // varies; the bubble floats over the row above, so plot 1 gets some too).
+    const covered = async () =>
+      [
+        ...new Set(
+          (await sent("water")).flatMap((p: number) =>
+            [p - 1, p, p + 1].filter(
+              (q) => Math.floor(q / 10) === Math.floor(p / 10),
+            ),
+          ),
+        ),
+      ].sort((a, b) => a - b);
+    await expect
+      .poll(covered)
+      .toEqual(expect.arrayContaining([11, 12, 13, 14]));
+    // Harvesting: a tap on a ripe crop shows the sickle (nothing is cut yet)…
+    const p3 = await plot(3);
+    await page.touchscreen.tap(p3.x, p3.y);
+    const sickle = page.locator("#fm-sickle [data-sickle]");
+    await expect(sickle).toBeVisible();
+    await snap(page, info, "farm-sickle-844x390");
+    expect(await sent("harvest")).toEqual([]);
+    // …drag it across the row: every ripe crop it passes is harvested, the
+    // growing ones stay.
+    await swipe([
+      await center("#fm-sickle [data-sickle]"),
+      await plot(4),
+      await plot(0),
+    ]);
+    await expect.poll(() => sent("harvest")).toEqual([0, 3, 4]);
+    await expect(page.locator("#fm-sickle")).toBeHidden();
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});
+
+for (const reduced of [false, true]) {
+  test(`a storm brings lightning${reduced ? ", but not with reduced motion" : ""}`, async ({
+    browser,
+  }, info) => {
+    const context = await browser.newContext({
+      viewport: { width: 1280, height: 800 },
+      reducedMotion: reduced ? "reduce" : "no-preference",
+    });
+    try {
+      const page = await context.newPage();
+      const errors = await openLobby(page);
+      await fakeFarm(page);
+      await page.click('#hub-scenes [data-hub-scene="farm"]');
+      await page.waitForFunction(() => (window as any).__farm?.F?.loaded);
+      // The fake farm is in a storm; strike now.
+      await page.evaluate(() => {
+        const f = (window as any).__farm;
+        f.F.weather.cur = "storm";
+        f.wx.next = 0;
+      });
+      const bolt = () =>
+        page.evaluate(() => {
+          const wx = (window as any).__farm.wx;
+          return wx.bolt ? wx.bolt.main.length : 0;
+        });
+      if (reduced) {
+        // Two seconds of the farm running in the storm: no bolt, no flash.
+        const t0 = await page.evaluate(() => (window as any).__farm.time());
+        await expect
+          .poll(() => page.evaluate(() => (window as any).__farm.time()), {
+            timeout: 30_000,
+          })
+          .toBeGreaterThan(t0 + 2);
+        expect(await bolt()).toBe(0);
+      } else {
+        // A bolt from the clouds down, several segments long.
+        await expect.poll(bolt, { timeout: 30_000 }).toBeGreaterThan(4);
+        await snap(page, info, "farm-storm-1280x800");
+      }
+      expect(errors).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });
+}
+
+test("rain and storms water the growing crops: the soil isn't dry while it pours", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const errors = await openLobby(page);
+  await fakeFarm(page);
+  await page.click('#hub-scenes [data-hub-scene="farm"]');
+  await page.waitForFunction(() => (window as any).__farm?.F?.loaded);
+  // Plot 2 grows wheat that nobody watered by hand.
+  const hover = async () => {
+    const p = await page.evaluate(() => (window as any).__farm.plotClient(2));
+    await page.mouse.move(p.x + 40, p.y + 40);
+    await page.mouse.move(p.x, p.y);
+    return page.locator("#fm-tip");
+  };
+  for (const [w, text] of [
+    ["storm", "watered by the rain"],
+    ["rain", "watered by the rain"],
+    ["sun", "dry"],
+  ]) {
+    await page.evaluate((w) => ((window as any).__farm.F.weather.cur = w), w);
+    const tip = await hover();
+    await expect(tip).toBeVisible();
+    await expect(tip.locator(".row", { hasText: "Water" })).toHaveText(
+      new RegExp(`Water\\s*${text}$`),
+    );
+  }
+  expect(errors).toEqual([]);
+});
+
+test("on a phone, carrying a seed to the edge scrolls the farm and keeps sowing", async ({
+  browser,
+}) => {
+  const context = await browser.newContext({
+    viewport: { width: 844, height: 390 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  try {
+    const page = await context.newPage();
+    const errors = await openLobby(page);
+    await fakeFarm(page);
+    // The whole second row is yours and empty; plenty of wheat seeds.
+    await page.evaluate(() => {
+      const f = (window as any).__fakeFarm;
+      for (let i = 10; i < 20; i++)
+        Object.assign(f.plots[i], { owned: true, crop: null, progress: 0 });
+      f.seeds.wheat = 20;
+    });
+    await page.click('#hub-scenes [data-hub-scene="farm"]');
+    await page.waitForFunction(() => (window as any).__farm?.F?.loaded);
+    // Zoomed in on the left of the row: its right end is off the screen.
+    await page.evaluate(() => {
+      const f = (window as any).__farm;
+      f.zoom(2.2);
+      const w = f.plotWorld(12);
+      f.look(w.x, w.y);
+    });
+    await page.waitForTimeout(400);
+    const plot = (i: number) =>
+      page.evaluate((i) => (window as any).__farm.plotClient(i), i);
+    expect((await plot(18)).x).toBeGreaterThan(844);
+    const cdp = await context.newCDPSession(page);
+    const touch = (type: string, p?: { x: number; y: number }) =>
+      cdp.send("Input.dispatchTouchEvent", {
+        type,
+        touchPoints: p ? [{ x: Math.round(p.x), y: Math.round(p.y) }] : [],
+      });
+    const p11 = await plot(11);
+    await page.touchscreen.tap(p11.x, p11.y);
+    await page.locator('#fm-pop [data-pseed="wheat"]').tap();
+    const b = (await page.locator("#fm-seed [data-seedbub]").boundingBox())!;
+    // Press the seed, drag it along the row to the right edge, and hold.
+    const p12 = await plot(12);
+    await touch("touchStart", { x: b.x + b.width / 2, y: b.y + b.height / 2 });
+    for (let s = 1; s <= 8; s++)
+      await touch("touchMove", {
+        x: b.x + b.width / 2 + ((p12.x - b.x - b.width / 2) * s) / 8,
+        y: b.y + b.height / 2 + ((p12.y - b.y - b.height / 2) * s) / 8,
+      });
+    for (let s = 1; s <= 8; s++)
+      await touch("touchMove", {
+        x: p12.x + ((836 - p12.x) * s) / 8,
+        y: p12.y,
+      });
+    const edge = { x: 836, y: p12.y };
+    for (let k = 0; k < 30; k++) {
+      await touch("touchMove", { x: edge.x, y: edge.y + (k % 2) });
+      await page.waitForTimeout(100);
+    }
+    await touch("touchEnd");
+    // The farm scrolled, and the far end of the row was sown as it came.
+    const planted = await page.evaluate(() =>
+      (window as any).__farmRequests
+        .flatMap((r: any) => r.actions ?? [])
+        .filter((x: any) => x.a === "plant")
+        .map((x: any) => x.plot),
+    );
+    expect(planted).toContain(18);
+    expect((await plot(12)).x).toBeLessThan(p12.x - 100);
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});
+
 test("the farm rests behind Settings and wakes when it closes", async ({
   page,
 }) => {
@@ -1613,10 +2175,19 @@ async function cropDraws(page: Page) {
       }
       return orig.call(this, img, ...a);
     };
-    await new Promise((r) => setTimeout(r, 2500));
+    // At least 2.5s, and until a whole frame with crops in it came: this
+    // machine draws on the CPU, a frame a second or slower while it rains,
+    // with longer gaps, so a fixed wait can catch none.
+    const whole = () => frames.slice(1, -1).find((f) => f.length);
+    const t0 = performance.now();
+    while (
+      performance.now() - t0 < 2500 ||
+      (!whole() && performance.now() - t0 < 20_000)
+    )
+      await new Promise((r) => setTimeout(r, 100));
     proto.drawImage = orig;
     // A whole frame: not the first or last (they may be cut).
-    return frames.slice(1, -1).find((f) => f.length) ?? [];
+    return whole() ?? [];
   });
 }
 const plotAt = (page: Page, i: number) =>
@@ -1737,8 +2308,13 @@ for (const viewport of [
       // A tap on the plot with the bug catches the bug first…
       await tap(await plotAt(page, 30));
       await expect.poll(sent).toEqual([{ a: "catch", plot: 30 }]);
-      // …and a tap anywhere on it harvests all of it.
+      // …and a tap anywhere on it harvests all of it (on a phone the tap
+      // shows the sickle, and a tap on the sickle cuts the whole giant).
       await tap(p21);
+      if (phone) {
+        await expect.poll(sent).toEqual([{ a: "catch", plot: 30 }]);
+        await page.locator("#fm-sickle [data-sickle]").tap();
+      }
       await expect.poll(sent).toEqual([
         { a: "catch", plot: 30 },
         { a: "harvest-giant", plot: 10 },
@@ -1853,7 +2429,6 @@ test("the Sickle takes a giant whole, and a ripe square waits for the server's a
       );
     // The Sickle at plot 13: its 3×3 touches the giant, which goes first and
     // whole; then the other ripe plots in reach, one by one.
-    await page.click('#fm-tools [data-tool="sickle"]');
     const p13 = await plotAt(page, 13);
     await page.mouse.click(p13.x, p13.y);
     await expect.poll(sent).toEqual([
@@ -1864,7 +2439,6 @@ test("the Sickle takes a giant whole, and a ripe square waits for the server's a
     ]);
     // The second square ripens on the screen: the farm asks the server at
     // once, and holds its harvest until the answer (slowed down here) comes.
-    await page.click('#fm-tools [data-tool="hand"]');
     await page.evaluate(() => {
       const w = window as any;
       w.__farmGets = 0;
@@ -2274,6 +2848,18 @@ test("the Supply Balloon: fill a crate, ask friends, launch it; help a friend's 
   await sheet.locator('[data-bask="1"]').click();
   await expect(sheet.locator(".fm-crate").nth(1)).toHaveClass(/asked/);
   await snap(page, info, "farm-balloon-sheet");
+  // Not all six yet: it can leave early with the filled ones, after a
+  // second tap (the first sends nothing).
+  const launch = sheet.locator("[data-blaunch]");
+  await expect(launch).toBeEnabled();
+  await expect(launch).toContainText("Send it off now");
+  await launch.click();
+  await expect(launch).toContainText("Tap again: leave with");
+  expect(
+    await page.evaluate(() =>
+      (window as any).__farmRequests.filter((r: any) => r.balloon === "launch"),
+    ),
+  ).toEqual([]);
   // Everything filled (the fake fills the asked crates): launch.
   await page.evaluate(() =>
     (window as any).__balloon.crates.forEach((c: any) => (c.state = "done")),
@@ -2483,9 +3069,12 @@ test("a tap on the farm closes the open sheet or orb card and does nothing else"
     await page.waitForTimeout(1200);
     expect(await actions(), "the closing tap harvested").toEqual([]);
 
-    // With nothing open, the tap harvests as always.
+    // With nothing open, the tap harvests as always (a 3×3 cut: this farm
+    // owns the Sickle).
     await page.mouse.click(ripe.x, ripe.y);
-    await expect.poll(actions).toEqual([{ a: "harvest", plot: 0 }]);
+    await expect
+      .poll(actions)
+      .toEqual([{ a: "harvest", plot: 0, tool: "sickle" }]);
 
     // The land deed: a tap beside it, on its dim background, closes it
     // (and leaves the shop open behind it).
@@ -2512,4 +3101,35 @@ test("a tap on the farm closes the open sheet or orb card and does nothing else"
   } finally {
     await context.close();
   }
+});
+
+test("a server answer keeps the open sheet scrolled where it was", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 667, height: 375 });
+  const errors = await openLobby(page);
+  await fakeFarm(page);
+  await page.click('#hub-scenes [data-hub-scene="farm"]');
+  await page.waitForFunction(() => (window as any).__farm?.F?.loaded);
+  await openSheet(page, "shop");
+  const body = page.locator("#fm-sheet .sh-body");
+  await body.evaluate((el) => (el.scrollTop = el.scrollHeight));
+  const y = await body.evaluate((el) => el.scrollTop);
+  expect(y).toBeGreaterThan(20);
+  // The minute poll reads the farm again: more wheat seeds now.
+  const gets = await page.evaluate(() => (window as any).__farmGets);
+  await page.evaluate(() => {
+    const w = window as any;
+    w.__fakeFarm.seeds.wheat = 21;
+    void w.__farm.refresh();
+  });
+  await page.waitForFunction(
+    (n) => (window as any).__farmGets > n,
+    gets as number,
+  );
+  await page.waitForTimeout(200);
+  // The sheet shows the new count, and its list stays where it was.
+  await expect(page.locator("#fm-sheet")).toContainText("You have 21");
+  expect(await body.evaluate((el) => el.scrollTop)).toBe(y);
+  expect(errors).toEqual([]);
 });

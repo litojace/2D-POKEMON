@@ -117,6 +117,7 @@ describe("special skills", () => {
       "ink-cloud",
       "warm-spring",
       "sanctuary",
+      "scale-curl",
     ]);
     for (const id of FIGHTER_IDS)
       for (let i = 0; i < 4; i++) {

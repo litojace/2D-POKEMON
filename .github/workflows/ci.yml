@@ -23,11 +23,30 @@ jobs:
       - run: node scripts/verify-pwa.mjs
   visual:
     # The real client in Chromium with no server: one fighter on the select
-    # screen, arenas filling their frames, dialogs fitting a phone.
-    # About 35 minutes, so it runs for main (what Render deploys), pull
-    # requests and manual runs, not again for the same commit on work.
+    # screen, arenas filling their frames, dialogs fitting a phone. Split
+    # across ten runners (one worker each, so timing checks keep a machine to
+    # themselves): six shards of the suite, and four of the panel-scroll
+    # sweeps, whose sixteen tests take about 45 minutes between them and
+    # would otherwise all land in one shard. About 25 minutes instead of over
+    # two hours. It runs for main (what Render deploys), pull requests and
+    # manual runs, not again for the same commit on work.
     if: github.event_name != 'push' || github.ref == 'refs/heads/main'
+    name: visual (${{ matrix.part }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { part: "1 of 6", args: "--grep-invert 'scroll to their end' --shard=1/6" }
+          - { part: "2 of 6", args: "--grep-invert 'scroll to their end' --shard=2/6" }
+          - { part: "3 of 6", args: "--grep-invert 'scroll to their end' --shard=3/6" }
+          - { part: "4 of 6", args: "--grep-invert 'scroll to their end' --shard=4/6" }
+          - { part: "5 of 6", args: "--grep-invert 'scroll to their end' --shard=5/6" }
+          - { part: "6 of 6", args: "--grep-invert 'scroll to their end' --shard=6/6" }
+          - { part: "sweeps 1 of 4", args: "panel-scroll --shard=1/4" }
+          - { part: "sweeps 2 of 4", args: "panel-scroll --shard=2/4" }
+          - { part: "sweeps 3 of 4", args: "panel-scroll --shard=3/4" }
+          - { part: "sweeps 4 of 4", args: "panel-scroll --shard=4/4" }
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -36,9 +55,34 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
-      - run: npm run test:visual
+      - run: npm run test:visual -- ${{ matrix.args }}
       - if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
+        with:
+          name: blob-report-${{ strategy.job-index }}
+          path: blob-report/
+          retention-days: 1
+  visual-report:
+    # One HTML report from every shard (screenshots for a person to look over).
+    needs: visual
+    if: ${{ !cancelled() && (github.event_name != 'push' || github.ref == 'refs/heads/main') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - uses: actions/download-artifact@v4
+        with:
+          path: all-blob-reports
+          pattern: blob-report-*
+          merge-multiple: true
+      - run: npx playwright merge-reports --reporter html ./all-blob-reports
+        env:
+          PLAYWRIGHT_HTML_OPEN: never
+      - uses: actions/upload-artifact@v4
         with:
           name: visual-report
           path: playwright-report/

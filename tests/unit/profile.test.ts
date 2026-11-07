@@ -211,7 +211,7 @@ describe("titles", () => {
 describe("the rest of the profile", () => {
   it("has every fighter's mastery, both summaries, every boss and the achievements", () => {
     const page = html();
-    expect(page.match(/class="pf-mastery-chip/g)).toHaveLength(16);
+    expect(page.match(/class="pf-mastery-chip/g)).toHaveLength(18);
     expect(page).toContain("Voltkit: Gold mastery, 31 played, 20 won");
     expect(page).toContain('data-profile-go="journey"');
     expect(page).toContain("Tier ");

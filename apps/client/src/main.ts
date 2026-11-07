@@ -49,10 +49,18 @@ import {
   type LobbyMode,
 } from "./lobby-screen";
 import {
+  forgetFarms,
   openFarmScreen,
+  prefetchFarm,
   type FarmScreen,
   type FarmScreenOptions,
 } from "./farm/farm-screen";
+import {
+  forgetBistros,
+  openBistro,
+  type BistroFriend,
+  type BistroHandle,
+} from "./bistro/bistro-scene";
 import type {
   FarmActResult,
   FarmHere,
@@ -230,6 +238,7 @@ import { PAD_LABELS, firstPad, readPad, type PadAction } from "./gamepad";
 import { drawPreview, previewShape } from "./skill-preview";
 import { controlsCapturing, showControlsScreen } from "./controls-screen";
 import { watchBattleZoom } from "./zoom-guard";
+import { guardTouchHold } from "./touch-hold";
 import { KO_FEEL, hitFeel, hitStrength, rumble } from "./game-feel";
 import { captureInvite, clearInvite, pendingInvite } from "./invite";
 import {
@@ -428,6 +437,7 @@ battleHudSize.observe($("hud"));
 battleHudSize.observe($("abilities"));
 // Touch battles lock zoom (pinch and double tap); menus keep it for accessibility.
 watchBattleZoom();
+guardTouchHold();
 const homeNavigation = setupHomeNavigation($("menu"), () => showSettings());
 $("home-settings").onclick = () => showSettings();
 $("hub-scenes").onclick = (event) => {
@@ -942,6 +952,7 @@ let lockAttempt = 0;
 let roomPicker: RosterScreen | undefined;
 let openingRoomPicker = false;
 let roomSeatsTemplate: HTMLElement | undefined;
+let roomWatchTemplate: HTMLElement | undefined;
 /** The roster's data, shared by the hub's Fighters screen and the rooms. */
 function rosterData() {
   const bindings = controlPrefs().bindings;
@@ -1029,12 +1040,19 @@ function renderRoom(watch: boolean) {
     room = menu.querySelector<HTMLElement>(":scope > .room-screen")!;
     room.addEventListener("click", onRoomClick);
     roomSeatsTemplate = parse(seats);
+    roomWatchTemplate = watch ? parse(roomWatchMarkup(d)) : undefined;
   } else {
     const next = parse(seats);
     patch(room.querySelector(".room-seats")!, roomSeatsTemplate!, next);
     roomSeatsTemplate = next;
     const panel = room.querySelector<HTMLElement>(":scope > .room-watch");
-    if (watch && panel) panel.outerHTML = roomWatchMarkup(d);
+    // Patched too: its buttons stay put under a finger.
+    if (watch && panel) {
+      const nextWatch = parse(roomWatchMarkup(d));
+      if (roomWatchTemplate) patch(panel, roomWatchTemplate, nextWatch);
+      else panel.replaceWith(nextWatch.cloneNode(true));
+      roomWatchTemplate = nextWatch;
+    }
   }
   if (watch) return;
   // Friends stands in the picker's place until it closes (only the sheet
@@ -1651,13 +1669,20 @@ function syncHub() {
   else delete document.body.dataset.hubScene;
   syncParty();
   syncLobby(hub && hubScene === "lobby");
-  syncFarm(hub && hubScene === "farm");
-  syncPlaza(hub && hubScene === "plaza");
+  syncFarm(hub && hubScene === "farm", hub);
+  syncBistro(hub && hubScene === "bistro", hub);
+  syncPlaza(hub && hubScene === "plaza", hub);
+  // A scene hiding after the next one showed may have taken the hub's top
+  // bar style away (each checks only some of the others): in the hub it is on.
+  if (hub) document.body.classList.add("hub-screen");
 }
 /** The new Plaza (hub redesign phase 3): the server moves everyone in it. */
-function syncPlaza(want: boolean) {
+function syncPlaza(want: boolean, hub = want) {
   if (!want) {
-    if (plaza) {
+    // Behind the Lobby or the Farm the Plaza waits, drawn and kept (you are
+    // off it on the server, which keeps your spot); out of the hub it closes.
+    if (plaza && hub) plaza.hide();
+    else if (plaza) {
       wantedPlazaClosed = true;
       plaza.close();
       wantedPlazaClosed = false;
@@ -1667,6 +1692,7 @@ function syncPlaza(want: boolean) {
   const skin = accountsUI.economy?.looks[selected] ?? null;
   const look = plazaOutfitKey(selected, skin, accountsUI.raidLook);
   if (plaza) {
+    plaza.show();
     if (look !== plazaLook) plaza.look(selected, skin);
     plazaLook = look;
     return;
@@ -1813,18 +1839,94 @@ function syncLobby(want: boolean) {
   }
   lobby.update(lobbyView());
 }
+/** The Bistro (migration 068): the server's restaurant, next to the Farm. */
+let bistro: BistroHandle | undefined;
+let bistroOwner: string | undefined;
+function syncBistro(want: boolean, hub = want) {
+  // Another player now (or logged out): that bistro is not theirs.
+  if (bistro && bistroOwner !== accountsUI?.account?.id) {
+    bistro.close();
+    bistro = undefined;
+  }
+  if (!want) {
+    if (bistro) {
+      // Behind another hub tab the bistro waits, paused, as it is (guests,
+      // plates, coins); out of the hub (a match) it closes.
+      if (hub) bistro.hide();
+      else {
+        bistro.close();
+        bistro = undefined;
+      }
+      document.body.classList.remove("hub-bistro");
+      if (!document.querySelector(".lobby-layer"))
+        document.body.classList.remove("hub-screen");
+    }
+    return;
+  }
+  document.body.classList.add("hub-screen", "hub-bistro");
+  if (bistro) {
+    bistro.show();
+    return;
+  }
+  bistroOwner = accountsUI.account?.id;
+  bistro = openBistro({
+    owner: bistroOwner,
+    api: {
+      load: () => accountsUI.api("/api/bistro"),
+      act: (request, actions) =>
+        accountsUI.api("/api/bistro/act", { request, actions }),
+      friends: async () =>
+        (await accountsUI.api("/api/bistro/friends")) as BistroFriend[],
+      visit: (id) =>
+        accountsUI.api(`/api/bistro/visit/${encodeURIComponent(id)}`),
+      visitAct: (friend, kind) =>
+        accountsUI.api("/api/bistro/visit/act", {
+          request: crypto.randomUUID(),
+          friend,
+          kind,
+        }),
+    },
+    onLeaves: (balance) => accountsUI.setLeaves(balance),
+    playerName: () => accountsUI.account?.displayName ?? "Your",
+    character: () => selected,
+    toast,
+    sound: (cue, step) => audio.farm(cue, step),
+    reduced: reducedMotion,
+    low: lowGraphics(),
+  });
+}
 /** The Farm scene (hub redesign phase 4): server state, server time. */
 let farmScreen: FarmScreen | undefined;
 let farmLow = false;
-function syncFarm(want: boolean) {
-  if (!want) {
-    farmScreen?.close();
+let farmOwner: string | undefined;
+const farmLoad = async () => (await accountsUI.api("/api/farm")) as FarmState;
+function syncFarm(want: boolean, hub = want) {
+  const owner = accountsUI?.account?.id;
+  // Another player now (or logged out): that farm is not theirs.
+  if (farmScreen && farmOwner !== owner) {
+    farmScreen.close();
     farmScreen = undefined;
+  }
+  if (!want) {
+    // Behind the Lobby or the Plaza the farm waits, paused, as it is; out of
+    // the hub (a match) it closes, so the battle has the device to itself.
+    if (hub) farmScreen?.hide();
+    else {
+      farmScreen?.close();
+      farmScreen = undefined;
+    }
+    // In the hub, the farm loads in the background (once) so it opens ready.
+    if (hub && owner) prefetchFarm(owner, farmLoad);
     return;
   }
-  if (farmScreen) return;
+  if (farmScreen) {
+    farmScreen.show();
+    return;
+  }
+  farmOwner = owner;
   farmLow = lowGraphics();
   farmScreen = openFarmScreen({
+    owner,
     reduced: reducedMotion,
     low: farmLow,
     sound: (cue, step) => audio.farm(cue, step),
@@ -1873,7 +1975,7 @@ function syncFarm(want: boolean) {
         slot,
       })) as FarmHelpResult,
     rainSound: (level) => audio.farmRainSound(level),
-    load: async () => (await accountsUI.api("/api/farm")) as FarmState,
+    load: farmLoad,
     act: async (actions) =>
       (await accountsUI.api("/api/farm/act", {
         request: crypto.randomUUID(),
@@ -5358,6 +5460,33 @@ class ArenaScene extends Phaser.Scene {
           0xffffff,
           0.55 + Math.sin(_time / 60) * 0.25,
         ).strokeCircle(x, y - jump - 10, 40);
+      // Rooted: bark roots coil up round the feet until it wears off.
+      if (
+        serverPlayer.statuses.some(
+          (s) => s.kind === "root" && s.until > state!.time,
+        )
+      ) {
+        g.lineStyle(3, 0x7fcf6a, 0.7).strokeEllipse(
+          x,
+          feetY,
+          70,
+          groundHeight(70),
+        );
+        for (let i = 0; i < 5; i++) {
+          const a = (i / 5) * Math.PI * 2 + 0.3,
+            bx = x + Math.cos(a) * 30,
+            by = feetY + Math.sin(a) * groundHeight(30),
+            lean = -Math.cos(a) * 8;
+          g.lineStyle(5, 0x2a1a0e, 0.85).lineBetween(
+            bx,
+            by,
+            bx + lean,
+            by - 20,
+          );
+          g.lineStyle(3, 0x8a5a30, 1).lineBetween(bx, by, bx + lean, by - 20);
+          g.fillStyle(0x7fcf6a, 1).fillCircle(bx + lean, by - 21, 2.6);
+        }
+      }
       if (serverPlayer.statuses.some((s) => s.kind === "empower"))
         g.lineStyle(2, 0xffb347, 0.7).strokeEllipse(
           x,
@@ -5436,6 +5565,7 @@ class ArenaScene extends Phaser.Scene {
           empower: 0xffb347,
           haste: 0x8ee6ad,
           stealth: 0xa98be6,
+          root: 0x7fcf6a,
           mark: 0xffffff,
         };
         g.fillStyle(colors[s.kind]).fillCircle(
@@ -5832,6 +5962,18 @@ accountsUI = new AccountUI({
   notify: toast,
   beforeSignOut: async () => {
     roomInvites.clear();
+    // The farm kept in this browser is this player's: forget it.
+    forgetFarms();
+    forgetBistros();
+    bistro?.close();
+    bistro = undefined;
+    farmScreen?.close();
+    farmScreen = undefined;
+    if (plaza) {
+      wantedPlazaClosed = true;
+      plaza.close();
+      wantedPlazaClosed = false;
+    }
     if (myId) await leave(false);
   },
   onSession: (token, accountId) => {

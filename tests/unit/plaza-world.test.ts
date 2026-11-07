@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   PITCH_BOTS,
+  PLAZA_RETURN_MS,
   PlazaWorld,
   TOWNSFOLK,
   townsfolkFor,
@@ -45,6 +46,51 @@ const place = (world: PlazaWorld, key: string, x: number, y: number) => {
 };
 
 describe("the Plaza world", () => {
+  it("keeps the townsfolk, bots and ball where they were while the Plaza is empty", () => {
+    const world = new PlazaWorld(() => 0.5);
+    world.join("s1", "acc-1", profile("Ann"), QUIET);
+    const { now } = run(world, 20, QUIET);
+    const c = (world as any).copies.get(1);
+    const where = () => [
+      ...c.folk.map((f: any) => [f.body.x, f.body.y]),
+      ...c.bots.map((b: any) => [b.body.x, b.body.y]),
+      [c.ball.x, c.ball.y],
+    ];
+    const left = where();
+    world.leave("s1", now);
+    // Nobody there for five minutes: nothing moves (and nothing runs).
+    run(world, 5, now + 5 * 60_000 - 5000);
+    expect(where()).toEqual(left);
+    // Back: the same copy, everyone where they were.
+    world.join("s2", "acc-1", profile("Ann"), now + 5 * 60_000);
+    expect((world as any).copies.get(1)).toBe(c);
+    expect(c.emptySince).toBeNull();
+    expect(where()).toEqual(left);
+  });
+
+  it("puts you back where you stood when you return within ten minutes", () => {
+    const world = new PlazaWorld(() => 0.5);
+    world.join("s1", "acc-1", profile("Ann"), QUIET);
+    place(world, "s1", 900, 1150);
+    world.leave("s1", QUIET);
+    // Back a few minutes later (a new socket): the same spot.
+    const back = world.join("s2", "acc-1", profile("Ann"), QUIET + 5 * 60_000);
+    expect(Math.hypot(back.body.x - 900, back.body.y - 1150)).toBeLessThan(2);
+    // Someone else never gets your spot.
+    const other = world.join("s3", "acc-2", profile("Ben"), QUIET);
+    expect(Math.abs(other.body.x - 1350)).toBeLessThan(80);
+    // Too long away: by the fountain again.
+    place(world, "s2", 900, 1150);
+    world.leave("s2", QUIET);
+    const late = world.join(
+      "s4",
+      "acc-1",
+      profile("Ann"),
+      QUIET + PLAZA_RETURN_MS,
+    );
+    expect(Math.abs(late.body.x - 1350)).toBeLessThan(80);
+  });
+
   it("spawns players by the fountain, one body per account, with four pitch bots per copy", () => {
     const world = new PlazaWorld(() => 0.5);
     const a = world.join("s1", "acc-1", profile("Ann"), QUIET);
@@ -151,8 +197,11 @@ describe("the Plaza world", () => {
     for (let i = 2; i <= 6; i++) world.leave(`s${i}`);
     run(world, 1, later.now);
     expect(folk()).toHaveLength(TOWNSFOLK.length);
-    // Nobody is left once the last player goes (the copy stops).
-    world.leave("s1");
+    // Once the last player goes the copy stops, paused for a while, then
+    // it is dropped.
+    world.leave("s1", later.now);
+    expect((world as any).copies.get(1).emptySince).toBe(later.now);
+    world.step(DT, later.now + PLAZA_RETURN_MS);
     expect((world as any).copies.size).toBe(0);
   });
 

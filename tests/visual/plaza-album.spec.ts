@@ -445,10 +445,9 @@ test("the album works from the keyboard and keeps its photos", async ({
   expect(await focused()).toBe("Open photo: tester at the Photo Spot");
   await page.keyboard.press("Escape");
   await expect(page.locator("#pz-album")).toBeHidden();
-  // Kept on this device: leave the Plaza, come back, the photos are there.
-  await page.click('#hub-scenes [data-hub-scene="lobby"]');
-  await expect(page.locator(".plaza-layer")).toHaveCount(0);
-  await page.click('#hub-scenes [data-hub-scene="plaza"]');
+  // Kept on this device: a new visit (the page loads again), the photos
+  // are there. (Leaving the tab keeps the Plaza itself, album and all.)
+  await openPlaza(page);
   await expect(page.locator(".plaza-layer #pz-cv")).toBeVisible();
   await page.click("#pz-album-btn");
   await expect(page.locator("#pz-album-count")).toHaveText("3 / 30");

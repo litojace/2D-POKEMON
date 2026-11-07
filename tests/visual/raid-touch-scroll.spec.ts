@@ -103,12 +103,32 @@ async function swipe(page: Page, sel: string) {
   return { overflow: box.overflow, first, end, stuck };
 }
 
+/** Wait for the screen to stop moving: finite animations (a panel's slide-in,
+ * its contents arriving) finish before anything is measured. */
+async function stillness(page: Page) {
+  await page
+    .waitForFunction(
+      () =>
+        document
+          .getAnimations()
+          .every(
+            (a) =>
+              a.playState !== "running" ||
+              a.effect?.getComputedTiming().iterations === Infinity,
+          ),
+      undefined,
+      { timeout: 4000 },
+    )
+    .catch(() => {});
+}
+
 /**
  * Text and controls cut off (top or bottom) by a box that doesn't scroll
  * (overflow hidden or clip), so no swipe can bring them into sight. Inside
  * a scroller the scroller's own box is what must stay in sight.
  */
 async function clipped(page: Page, sel: string) {
+  await stillness(page);
   return page.locator(sel).evaluate((root) => {
     const out: string[] = [];
     const name = (e: Element) =>

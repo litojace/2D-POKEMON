@@ -189,7 +189,7 @@ for (const size of [
         info,
         `compact-mythical-purchase-${size.width}x${size.height}`,
       );
-      // Effects are tried on the worn skin (Tidefin wears Moontide, Stage III).
+      // Effects are tried on the worn skin (Tidefin wears Abyssal Reaver, Stage III).
       await page.click(".fit-room [data-ui-item=tidefin-moontide]");
       await page.click("[data-ui-section=collections]");
       await page.click("[data-fit-collection=galaxy]");

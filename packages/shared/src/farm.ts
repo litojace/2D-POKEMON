@@ -563,8 +563,8 @@ export const FARM_TOOLS: readonly {
 /** Sprinklers, one a row from the top: what the 1st…5th costs and needs. */
 export const SPRINKLER_PRICES = [1500, 2200, 3000, 3800, 4500] as const;
 export const SPRINKLER_LEVELS = [18, 26, 34, 42, 50] as const;
-/** Bugs (migration 044): chance a second for each growing plot while you are on the farm. */
-export const BUG_RATE = 0.00005;
+/** Bugs (migration 044; doubled in 066): chance a second for each growing plot while you are on the farm. */
+export const BUG_RATE = 0.0001;
 /** Each bug slows its crop by this much; a plot holds at most BUG_MAX from nature. */
 export const BUG_SLOW = 0.2;
 export const BUG_MAX = 2;
@@ -649,7 +649,8 @@ export const FARM_PERKS: Record<
 /**
  * The champion whose perk a farmer has: the eight newest champions farm with
  * the perk of the original of their element (migration 055,
- * arena_farm_perk_of). The originals have their own.
+ * arena_farm_perk_of), the two Nature champions with the perk that suits
+ * them (070). The originals have their own.
  */
 export const FARM_PERK_OF: Record<string, string> = {
   coilemur: "voltkit",
@@ -660,6 +661,10 @@ export const FARM_PERK_OF: Record<string, string> = {
   astrabun: "mystowl",
   wombolder: "terradon",
   shadopus: "duskveil",
+  // Nature has no original champion: the pangolin hunts bugs (Night Stalker)
+  // and the gardener sloth grows crops faster (Early Sun). Migration 070.
+  pangrove: "duskveil",
+  mossloth: "lumoth",
 };
 /** Whose perk this farmer farms with (itself for the original eight). */
 export const farmPerkOf = (farmer: string) => FARM_PERK_OF[farmer] ?? farmer;
@@ -867,7 +872,7 @@ export const FARM_WEATHERS: readonly {
     name: "Thunderstorm",
     icon: "storm",
     color: "#9fd0ff",
-    text: "25% Shocked ×3",
+    text: "Waters every plot · 25% Shocked ×3",
     weight: 14,
     speed: 1,
   },
@@ -1256,8 +1261,12 @@ export interface FarmBalloon {
   crates: FarmCrate[] | null;
   arrivesAt: string | null;
   launches: number;
+  /** What all six full crates pay. */
   leaves: number | null;
   xp: number | null;
+  /** What launching now pays, for the crates already full (migration 068). */
+  leavesNow?: number | null;
+  xpNow?: number | null;
   helperStars: number;
   helperLeavesToday: number;
   helperCap: number;
@@ -1269,7 +1278,14 @@ export interface FarmBalloonResult {
   ok: boolean;
   error?: string | null;
   repeated?: boolean;
-  gained?: { leaves: number; xp: number; bonus: string } | null;
+  /** A launch: leaves and XP for the full crates, how many, and a Gold
+   *  Fertilizer ("gold") only when all six were full. */
+  gained?: {
+    leaves: number;
+    xp: number;
+    crates?: number;
+    bonus: string | null;
+  } | null;
 }
 export interface FarmHelpRequest {
   friend: string;

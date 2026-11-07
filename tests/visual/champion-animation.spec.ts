@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { CHAMPION_SKINS } from "../../packages/shared/src/shop";
+import { FIGHTER_IDS } from "../../packages/shared/src/index";
 const SKINNED = {
   rare: new Set(
     CHAMPION_SKINS.filter((s) => s.rarity === "rare").map((s) => s.champion),
@@ -11,8 +12,8 @@ const SKINNED = {
   ),
 };
 for (const canvas of [false, true])
-  for (const group of [0, 1])
-    test(`articulated champions ${group * 8 + 1}–${group * 8 + 8} stay joined in ${canvas ? "Canvas fallback" : "WebGL"}`, async ({
+  for (const group of [0, 1, 2])
+    test(`articulated champions ${group * 8 + 1}–${Math.min(FIGHTER_IDS.length, group * 8 + 8)} stay joined in ${canvas ? "Canvas fallback" : "WebGL"}`, async ({
       page,
     }, info) => {
       // 70 poses × 24 articulated views plus skin loads can exceed 150 seconds
@@ -43,7 +44,10 @@ for (const canvas of [false, true])
       );
       const audit = () => page.evaluate(() => (window as any).review.audit());
       const rest = await audit();
-      expect(rest).toHaveLength(24);
+      // Three articulated views (left, right, back) per champion in the group.
+      expect(rest).toHaveLength(
+        3 * FIGHTER_IDS.slice(group * 8, group * 8 + 8).length,
+      );
       const coverage = await page.evaluate(() =>
         (window as any).review.coverage(),
       );
@@ -156,7 +160,7 @@ for (const canvas of [false, true])
         }
       }
       await info.attach(
-        `champions-${group * 8 + 1}-${group * 8 + 8}-left-right-back`,
+        `champions-${group * 8 + 1}-${Math.min(FIGHTER_IDS.length, group * 8 + 8)}-left-right-back`,
         {
           body: await page.screenshot(),
           contentType: "image/png",

@@ -595,3 +595,136 @@ describe("rite values for the new mechanics", () => {
     ).toBeCloseTo(0.3, 6);
   });
 });
+
+describe("root (Nature)", () => {
+  const snare = move("projectile", {
+    damage: 12,
+    speed: 1000,
+    range: 600,
+    status: "root",
+    statusDuration: 1.1,
+  });
+  it("stops the target walking and dashing, but it can still attack", () => {
+    const a = arena(),
+      [p, q] = a.players;
+    place(p, 200, 450, 700, 450);
+    place(q, 500, 450, 200, 450);
+    a.cast(p, snare);
+    ticks(a, 12);
+    expect(q.statuses.some((s) => s.kind === "root")).toBe(true);
+    const at = { x: q.x, y: q.y },
+      dashAt = q.dashAt;
+    for (let i = 0; i < 10; i++) {
+      q.lastInput = {
+        ...blankInput(),
+        seq: 0,
+        dx: 0,
+        dy: 1,
+        dash: i === 0,
+        aimX: p.x,
+        aimY: p.y,
+        basic: true,
+      };
+      a.tick();
+    }
+    expect(Math.hypot(q.x - at.x, q.y - at.y)).toBeLessThan(1);
+    // The dash was refused, not spent.
+    expect(q.dashAt).toBe(dashAt);
+    // Its basic attack still flew.
+    expect(
+      a.events.some(
+        (e) =>
+          e.kind === "cast" && e.owner === q.id && e.abilityId === "spark-dart",
+      ),
+    ).toBe(true);
+  });
+  it("wears off after its duration, and walking works again", () => {
+    const a = arena(),
+      [, q] = a.players;
+    place(q, 500, 450);
+    a.status(q, "root", 0.5);
+    ticks(a, 20);
+    q.lastInput = { ...blankInput(), dx: 0, dy: 1, aimX: 500, aimY: 900 };
+    ticks(a, 6);
+    expect(q.y).toBeGreaterThan(460);
+  });
+  it("stops a charge where it is", () => {
+    const a = arena(),
+      [p, q] = a.players;
+    const charge = move("rush", { damage: 16, range: 380, speed: 1100 });
+    place(p, 200, 150, 600, 150);
+    place(q, 560, 150);
+    a.cast(p, charge);
+    a.tick();
+    a.status(p, "root", 1);
+    ticks(a, 15);
+    expect(q.hp).toBe(full);
+    expect(p.x).toBeLessThan(300);
+  });
+  it("counts as harmful, and grants no crowd-control immunity", () => {
+    const a = arena(),
+      [, q] = a.players;
+    a.status(q, "root", 0.3);
+    expect(q.immuneUntil).toBeLessThanOrEqual(a.time);
+    a.status(q, "stun", 0.3);
+    expect(q.statuses.some((s) => s.kind === "stun")).toBe(true);
+  });
+});
+
+describe("life drain (Nature)", () => {
+  it("heals the attacker its share of the damage dealt, up to full", () => {
+    const a = arena(),
+      [p, q] = a.players;
+    place(p, 400, 450, 500, 450);
+    place(q, 450, 450);
+    p.hp = 100;
+    a.cast(p, move("melee", { damage: 20, range: 150, arc: 0.3, drain: 0.6 }));
+    expect(q.hp).toBe(full - 20);
+    expect(p.hp).toBeCloseTo(112, 6);
+    expect(
+      a.events.some(
+        (e) => e.kind === "heal" && e.owner === p.id && e.value === 12,
+      ),
+    ).toBe(true);
+    // The hit event keeps its details (the heal comes after it).
+    const hit = a.events.find((e) => e.kind === "hit" && e.target === q.id)!;
+    expect(hit.source).toBe(p.id);
+    p.hp = full - 1;
+    a.cast(p, move("melee", { damage: 20, range: 150, arc: 0.3, drain: 0.6 }));
+    expect(p.hp).toBe(full);
+  });
+  it("drains nothing without the field", () => {
+    const a = arena(),
+      [p, q] = a.players;
+    place(p, 400, 450, 500, 450);
+    place(q, 450, 450);
+    p.hp = 100;
+    a.cast(p, move("melee", { damage: 20, range: 150, arc: 0.3 }));
+    expect(p.hp).toBe(100);
+  });
+  it("Lifebloom: a Nature partner close by makes every hit heal 6%", () => {
+    for (const near of [true, false]) {
+      // P0 + P2 are Blue, P1 + P3 Red (join order alternates teams).
+      const a = new Arena("BLOOM", "teams");
+      a.add("p0", "P0", "voltkit");
+      a.add("p1", "P1", "voltkit");
+      a.add("p2", "P2", "mossloth");
+      a.add("p3", "P3", "voltkit");
+      a.start();
+      a.phase = "playing";
+      a.deadline = 999;
+      const [p, foe, partner, other] = a.players;
+      expect(a.teamOf(partner)).toBe(a.teamOf(p));
+      place(p, 400, 450, 500, 450);
+      place(foe, 450, 450);
+      place(partner, near ? 400 : 1400, near ? 520 : 100);
+      place(other, 1400, 800);
+      p.hp = 100;
+      a.cast(p, move("melee", { damage: 20, range: 150, arc: 0.3 }));
+      const dealt = maxHealth("voltkit", "teams") - foe.hp;
+      // Side by side, the team-up adds 10%.
+      expect(dealt).toBeCloseTo(near ? 22 : 20, 6);
+      expect(p.hp).toBeCloseTo(near ? 100 + dealt * 0.06 : 100, 6);
+    }
+  });
+});

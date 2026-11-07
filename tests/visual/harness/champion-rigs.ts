@@ -237,10 +237,11 @@ export function reviewChampions(canvas = false, group?: number) {
             continue;
           if (r.id === "lumoth" && part === "tail") continue;
           // Parts the newer champions don't have: Glacelle floats with no legs
-          // or tail, Sunbara and Wombolder have no tail to speak of, Halcyra's
+          // or tail, Sunbara, Wombolder and Mossloth have no tail to speak of, Halcyra's
           // toes are strokes (like Mystowl's) and its folded wings cover its
-          // arms from behind, and the cotton tail and the curled tentacle only
-          // show from the side (Astrabun's sits over its back from behind).
+          // arms from behind, and the cotton tail, the curled tentacle and
+          // Pangrove's leaf tail only show from the side (Astrabun's and
+          // Pangrove's sit over the back from behind).
           if (
             r.id === "glacelle" &&
             part !== "armL" &&
@@ -248,7 +249,12 @@ export function reviewChampions(canvas = false, group?: number) {
             part !== "head"
           )
             continue;
-          if ((r.id === "sunbara" || r.id === "wombolder") && part === "tail")
+          if (
+            (r.id === "sunbara" ||
+              r.id === "wombolder" ||
+              r.id === "mossloth") &&
+            part === "tail"
+          )
             continue;
           if (r.id === "halcyra" && (part === "legL" || part === "legR"))
             continue;
@@ -259,7 +265,9 @@ export function reviewChampions(canvas = false, group?: number) {
           )
             continue;
           if (
-            (r.id === "astrabun" || r.id === "shadopus") &&
+            (r.id === "astrabun" ||
+              r.id === "shadopus" ||
+              r.id === "pangrove") &&
             dir === "up" &&
             part === "tail"
           )

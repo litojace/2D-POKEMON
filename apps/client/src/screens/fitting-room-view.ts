@@ -42,8 +42,9 @@ import {
   type RaidSlot,
 } from "../../../../packages/shared/src/raid";
 import {
-  JOURNEY_ITEMS,
+  COLLECTION_FRAMES,
   JOURNEY_ITEM_BY_ID,
+  REWARD_ITEMS,
 } from "../../../../packages/shared/src/journey";
 import {
   TIER_NAMES,
@@ -53,6 +54,7 @@ import { fighterAvatar, scopeIds } from "../fighter-art";
 import { creatureSvg, type SkinLook } from "../creature-design";
 import { colourPreview, hasColourPalette } from "../colour-preview";
 import { previewViewBox } from "../shop-preview-layout";
+import { stageLight } from "../stage-light";
 import { framedAvatar } from "../portraits";
 import { itemPicture, picksCountdown } from "../shop-ui";
 import { menuIcon } from "../menu-icons";
@@ -118,8 +120,8 @@ export interface FitView {
   stage?: number;
   /** Boss frame stars shown on the stage (a preview only, never saved). */
   frameStars?: number;
-  /** The animation the stage plays. */
-  action: "idle" | "entrance" | "victory";
+  /** The animation the stage plays ("ultimate": a Mythical's, at Stage III). */
+  action: "idle" | "entrance" | "victory" | "ultimate";
   ownership: "all" | "owned" | "unowned";
   rarity: Rarity | "all";
   collection: Collection;
@@ -199,14 +201,18 @@ export function fitItem(id: string): FitItem | undefined {
         : "Boss reward",
     };
   const journey = JOURNEY_ITEM_BY_ID[id];
-  if (journey)
+  if (journey) {
+    const set = COLLECTION_FRAMES.find((f) => f.id === id);
     return {
       id,
       name: journey.name,
       description: journey.description,
       slot: journey.slot,
-      source: "Journey reward",
+      source: set
+        ? `Collection reward · ${COLLECTION_NAMES[set.collection]}`
+        : "Journey reward",
     };
+  }
 }
 const nameOf = (id: string) =>
   fitItem(id)?.name ?? SHOP_BUNDLES.find((b) => b.id === id)?.name ?? id;
@@ -230,8 +236,9 @@ export function ownedFor(
     ...LOOK_ITEMS.filter((i) => i.slot === slot && e.owned.includes(i.id)).map(
       (i) => i.id,
     ),
-    // Journey rewards (levels and seasons) are owned items too.
-    ...JOURNEY_ITEMS.filter(
+    // Journey rewards (levels and seasons) and collection frames are owned
+    // items too.
+    ...REWARD_ITEMS.filter(
       (i) => i.slot === slot && e.owned.includes(i.id),
     ).map((i) => i.id),
     ...RAID_REWARDS.filter((r) => r.slot === slot && earned.has(r.id)).map(
@@ -518,14 +525,18 @@ function stageMarkup(view: FitView, d: FitData) {
         : palette
           ? " raid-cosmetic-preview"
           : "";
-    live = `<div class="shop-live-stage fit-live${d.low ? " is-still" : ""}" data-preview-champion="${view.champion}" data-preview-item="${esc(view.selected ?? look?.skin ?? "")}" data-preview-skin="${esc(look?.skin ?? "")}" data-preview-stage="${look?.stage ?? 1}" data-preview-look="${encodeURIComponent(JSON.stringify(outfit.look))}" data-preview-action="${view.action}" role="img" aria-label="${esc(`${name}${look?.skin ? ` in ${nameOf(look.skin)}` : ""}`)}"><div class="shop-preview-fallback${colours}"${palette ? ` data-cosmetic="${esc(palette)}"` : ""}>${still}</div>${d.low ? `<div class="shop-preview-fallback fit-original" hidden>${stillFighter(view.champion, null, "", view.action, "fit-original")}</div>` : ""}</div>`;
+    live = `<div class="shop-live-stage fit-live${d.low ? " is-still" : ""}" data-preview-champion="${view.champion}" data-preview-item="${esc(view.selected ?? look?.skin ?? "")}" data-preview-skin="${esc(look?.skin ?? "")}" data-preview-stage="${look?.stage ?? 1}" data-preview-look="${encodeURIComponent(JSON.stringify(outfit.look))}" data-preview-action="${view.action}" role="img" aria-label="${esc(`${name}${look?.skin ? ` in ${nameOf(look.skin)}` : ""}`)}">${stageLight(previewViewBox(view.action), "fit")}<div class="shop-preview-fallback${colours}"${palette ? ` data-cosmetic="${esc(palette)}"` : ""}>${still}</div>${d.low ? `<div class="shop-preview-fallback fit-original" hidden>${stillFighter(view.champion, null, "", view.action, "fit-original")}</div>` : ""}</div>`;
   }
   // Top: the portrait frame you'd wear (opens the Frame slot), and the
   // animations that only play on the stage.
   const frameBadge = `<button type="button" class="fit-frame-badge" data-fit-slot="frame" aria-label="Portrait frame: ${esc(outfit.look.frame ? nameOf(outfit.look.frame) : "none")}. Choose a frame">${framedAvatar({ character: view.champion, raidLook: outfit.look, championLooks: outfit.skin ? { [view.champion]: outfit.skin } : {} }, "fit-badge", earnedStars)}<small>${outfit.look.frame ? "Portrait frame" : "No frame"}</small></button>`;
+  // A Mythical also shows its Stage III ultimate.
+  const mythicShown =
+    !!outfit.skin &&
+    CHAMPION_SKIN_BY_ID[outfit.skin.skin]?.rarity === "mythical";
   const animations =
     !frameView && !d.low
-      ? `${button("Entrance", { size: "s", icon: "enter", attrs: { "data-fit-play": "entrance", "aria-pressed": view.action === "entrance", title: "Entrance" } })}${button("Victory", { size: "s", icon: "sparkle", attrs: { "data-fit-play": "victory", "aria-pressed": view.action === "victory", title: "Victory" } })}`
+      ? `${button("Entrance", { size: "s", icon: "enter", attrs: { "data-fit-play": "entrance", "aria-pressed": String(view.action === "entrance"), title: "Entrance" } })}${button("Victory", { size: "s", icon: "sparkle", attrs: { "data-fit-play": "victory", "aria-pressed": String(view.action === "victory"), title: "Victory" } })}${mythicShown ? button("Ultimate", { size: "s", icon: "battle", attrs: { "data-fit-play": "ultimate", "aria-pressed": String(view.action === "ultimate"), title: "Ultimate (Stage III)" } }) : ""}`
       : "";
   // Back to what you wear, while something you haven't equipped is on.
   const back = trying(view)
@@ -587,7 +598,7 @@ function stageMarkup(view: FitView, d: FitData) {
     : (info?.source ?? (outfit.skin ? "" : `${name} · original look`));
   const rarity =
     focus && !set ? rarityTag(rarityOf(focus, starsOf(focus, d))) : "";
-  return `<section class="ui-split-stage fit-stage${frameView ? " is-frame" : ""}" style="--el:${elVar(view.champion)}" aria-label="Try-on stage" data-fit-region="stage"><div class="fit-light" aria-hidden="true"></div>${live}<div class="fit-stage-top">${frameBadge}${plays}</div><div class="fit-stage-info"><span class="fit-row">${rarity}<span class="ui-note">${state}</span></span><b class="fit-stage-name">${esc(title)}</b>${sub ? `<small class="ui-note fit-stage-sub">${esc(sub)}</small>` : ""}${extra}${compare || awaken ? `<span class="fit-row fit-stage-tools">${compare}${awaken}</span>` : ""}${awakenNote}</div></section>`;
+  return `<section class="ui-split-stage fit-stage${frameView ? " is-frame" : ""}" style="--el:${elVar(view.champion)}" aria-label="Try-on stage" data-fit-region="stage">${live}<div class="fit-stage-top">${frameBadge}${plays}</div><div class="fit-stage-info"><span class="fit-row">${rarity}<span class="ui-note">${state}</span></span><b class="fit-stage-name">${esc(title)}</b>${sub ? `<small class="ui-note fit-stage-sub">${esc(sub)}</small>` : ""}${extra}${compare || awaken ? `<span class="fit-row fit-stage-tools">${compare}${awaken}</span>` : ""}${awakenNote}</div></section>`;
 }
 export function awakeningNote(id: string, e: Economy | null) {
   if (e?.mythicTesting) return "All stages unlocked for testing.";
@@ -774,11 +785,33 @@ function skinsBody(view: FitView, d: FitData) {
       ownershipMatch(s.id, view, d) &&
       (view.rarity === "all" || s.rarity === view.rarity),
   );
-  return `${fighterRow(view, d, "Fighter")}${filters(view, skins.length, true, "skin")}${
+  return `${fighterRow(view, d, "Fighter")}${filters(view, skins.length, true, "skin")}${collectionReward("cyber", view, d)}${
+    // The Arcade frame, on the fighters with an Arcade skin.
+    CHAMPION_SKINS.some(
+      (s) => s.champion === view.champion && s.collection === "arcade",
+    )
+      ? collectionReward("arcade", view, d)
+      : ""
+  }${
     skins.length
       ? grid(skins.map((s) => shopTile(s.id, view, d)).join(""))
       : noMatch()
   }`;
+}
+/** A skin collection's reward frame: how close you are, with its picture. */
+function collectionReward(
+  collection: (typeof COLLECTION_FRAMES)[number]["collection"],
+  view: FitView,
+  d: FitData,
+) {
+  const e = d.economy!;
+  const frame = COLLECTION_FRAMES.find((f) => f.collection === collection)!;
+  const skins = CHAMPION_SKINS.filter((s) => s.collection === collection);
+  const have = skins.filter((s) => e.owned.includes(s.id)).length;
+  const text = e.owned.includes(frame.id)
+    ? `The <b>${esc(frame.name)}</b> is yours (${have}/${skins.length} ${esc(COLLECTION_NAMES[collection])} skins).`
+    : `Own all ${skins.length} ${esc(COLLECTION_NAMES[collection])} skins and the <b>${esc(frame.name)}</b> is yours free (${have}/${skins.length}).`;
+  return `<div class="fit-set-reward" data-fit-reward="${frame.id}"><span class="fit-set-reward-art">${pictureOf(frame.id, view, d, `fit-reward-${collection}`)}</span><p class="ui-note">${text}</p></div>`;
 }
 function mythicBody(view: FitView, d: FitData) {
   const e = d.economy!;
@@ -788,7 +821,7 @@ function mythicBody(view: FitView, d: FitData) {
   const intro = e.mythicTesting
     ? '<p class="ui-note">Testing: Mythic Trials and Awakening stages are open.</p>'
     : `<p class="ui-note">Each fighter's Mythical opens after ${MYTHIC_TRIAL_WINS} wins against players or raid clears with that fighter. Wear it to awaken it: Stage II at ${AWAKENING.stage2Wins} wins, Stage III at ${AWAKENING.stage3Wins} wins and a raid clear.</p>`;
-  return `${intro}${filters(view, skins.length, false, "Mythical")}${
+  return `${intro}${collectionReward("void", view, d)}${filters(view, skins.length, false, "Mythical")}${
     skins.length
       ? grid(skins.map((s) => mythicTile(s.id, view, d)).join(""))
       : noMatch()

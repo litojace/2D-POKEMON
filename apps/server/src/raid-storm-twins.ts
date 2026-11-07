@@ -533,6 +533,8 @@ export class StormTwinsArena extends RaidArena {
       const p = alive.find((p) => p.id === m.playerId);
       if (!p) continue;
       if (p.character === "terradon" && this.has(p, "shell")) continue;
+      // Pangrove's Scale Curl: Polarity can't reach under the leaf scales.
+      if (p.character === "pangrove" && this.has(p, "shield")) continue;
       const mismatch = marks.some(
         (n) =>
           n !== m &&

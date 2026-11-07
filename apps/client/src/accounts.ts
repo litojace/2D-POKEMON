@@ -342,7 +342,10 @@ export class AccountUI {
       Date.now(),
     );
     const value = await response.json();
-    if (!response.ok) throw new Error(value.error ?? "Request failed.");
+    if (!response.ok)
+      throw Object.assign(new Error(value.error ?? "Request failed."), {
+        status: response.status,
+      });
     return value;
   }
   ensurePlayer() {

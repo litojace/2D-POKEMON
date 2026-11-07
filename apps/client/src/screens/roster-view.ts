@@ -28,7 +28,9 @@ import {
   attackRange,
   fighterStageArt,
   previewLook,
+  RIG_FRAME,
 } from "../fighter-selection";
+import { stageLight } from "../stage-light";
 import { itemPicture } from "../shop-ui";
 import {
   actionBar,
@@ -342,7 +344,7 @@ function stage(view: RosterView, d: RosterData) {
         `<div class="roster-stat"><span>${label}</span>${bar(value, max, { label, color: elVar(c), thick: true })}<b class="ui-num">${value}</b></div>`,
     )
     .join("");
-  return `<section class="ui-split-stage roster-stage" style="--el:${elVar(c)}" aria-label="${esc(f.name)}" data-roster-region="stage"><div class="fighter-rig-stage roster-rig${d.low ? " is-still" : ""}" data-preview-champion="${c}" data-preview-item="${esc(worn?.skin ?? "")}" data-preview-stage="${worn?.stage ?? 1}" data-preview-look="${previewLook(d.look ?? {})}" data-preview-action="idle" role="img" aria-label="${esc(f.name)}">${fighterStageArt(c, "roster", worn, d.look ?? {})}</div><div class="roster-stage-top"><span class="roster-counter ui-num">${String(index).padStart(2, "0")}<small>/${String(FIGHTERS.length).padStart(2, "0")}</small></span>${masteryRing(c, d, 40)}</div><button type="button" class="ui-icon-btn roster-step roster-prev" data-roster-step="-1" aria-label="Previous fighter">‹</button><button type="button" class="ui-icon-btn roster-step roster-next" data-roster-step="1" aria-label="Next fighter">›</button><div class="roster-stage-info"><div class="roster-plate"><span class="roster-row">${elementTag(f.element)}${rangeTag(c)}</span><b class="roster-stage-name">${esc(f.name)}</b><small class="ui-note roster-stage-role">${esc(f.role)}</small></div><div class="roster-stats">${stats}</div></div></section>`;
+  return `<section class="ui-split-stage roster-stage" style="--el:${elVar(c)}" aria-label="${esc(f.name)}" data-roster-region="stage"><div class="fighter-rig-stage roster-rig${d.low ? " is-still" : ""}" data-preview-champion="${c}" data-preview-item="${esc(worn?.skin ?? "")}" data-preview-stage="${worn?.stage ?? 1}" data-preview-look="${previewLook(d.look ?? {})}" data-preview-action="idle" role="img" aria-label="${esc(f.name)}">${stageLight(RIG_FRAME, "roster")}${fighterStageArt(c, "roster", worn, d.look ?? {})}</div><div class="roster-stage-top"><span class="roster-counter ui-num">${String(index).padStart(2, "0")}<small>/${String(FIGHTERS.length).padStart(2, "0")}</small></span>${masteryRing(c, d, 40)}</div><button type="button" class="ui-icon-btn roster-step roster-prev" data-roster-step="-1" aria-label="Previous fighter">‹</button><button type="button" class="ui-icon-btn roster-step roster-next" data-roster-step="1" aria-label="Next fighter">›</button><div class="roster-stage-info"><div class="roster-plate"><span class="roster-row">${elementTag(f.element)}${rangeTag(c)}</span><b class="roster-stage-name">${esc(f.name)}</b><small class="ui-note roster-stage-role">${esc(f.role)}</small></div><div class="roster-stats">${stats}</div></div></section>`;
 }
 
 /** One skill (or the basic attack) as a row: key, icon, name, text, cooldown. */
@@ -370,7 +372,9 @@ function skillsTab(view: RosterView, d: RosterData) {
         ? "Ultimate"
         : `${f.skills[i].cooldown}s cooldown`;
   const tricks = raidTricks(view.focus);
-  return `<div class="roster-skill-big" aria-live="polite"><span class="roster-skill-art">${abilityIcon(s.name)}</span><span class="roster-skill-big-text"><span class="ui-kicker">${esc(key)} · ${esc(when)}</span><b class="ui-h">${esc(s.name)}</b><p class="ui-note">${esc(s.description)}</p></span></div><div class="roster-skills" role="group" aria-label="Skills">${[0, 1, 2, 3].map((n) => skillRow(view, d, n)).join("")}${skillRow(view, d, "basic")}</div>${
+  const combo = COMBOS[view.focus];
+  // The combo sits under the basic attack: it is how the skills above chain.
+  return `<div class="roster-skill-big" aria-live="polite"><span class="roster-skill-art">${abilityIcon(s.name)}</span><span class="roster-skill-big-text"><span class="ui-kicker">${esc(key)} · ${esc(when)}</span><b class="ui-h">${esc(s.name)}</b><p class="ui-note">${esc(s.description)}</p></span></div><div class="roster-skills" role="group" aria-label="Skills">${[0, 1, 2, 3].map((n) => skillRow(view, d, n)).join("")}${skillRow(view, d, "basic")}</div><div class="roster-combo" role="note" aria-label="Combo: ${esc(combo.name)}"><span class="roster-combo-tag">Combo</span><span class="roster-combo-text"><b>${esc(combo.name)}</b><small>${esc(combo.text)}</small></span></div>${
     tricks.length
       ? `<div class="roster-tricks"><span class="ui-kicker">Raid tricks</span>${tricks.map((t) => `<span class="roster-trick"><b>${esc(t.boss)}</b> · ${esc(t.skill)}: ${esc(t.text)}</span>`).join("")}</div>`
       : ""
@@ -379,9 +383,9 @@ function skillsTab(view: RosterView, d: RosterData) {
 function overviewTab(view: RosterView, d: RosterData) {
   const c = view.focus;
   const f = CHARACTERS[c];
-  const combo = COMBOS[c];
   const m = mastery(d.matches(c));
-  return `<p class="roster-bio">${esc(f.description)}</p><div class="roster-facts"><div class="roster-fact"><span class="ui-kicker">Combo</span><b class="ui-h">${esc(combo.name)}</b><p class="ui-note">${esc(combo.text)}</p></div><div class="roster-fact"><span class="ui-kicker">Mastery</span><b class="ui-h" style="color:${m.tier?.color ?? "var(--ui-text)"}">${esc(m.tier?.name ?? "New challenger")}</b><p class="ui-note">${d.matches(c)} matches · ${esc(m.next ? `${m.next.left} more to ${m.next.name}` : "maximum mastery")}</p>${bar(m.progress, 100, { label: "Mastery progress", color: m.next?.color ?? m.tier?.color })}</div><div class="roster-fact"><span class="ui-kicker">Basic attack</span><b class="ui-h">${esc(f.basic.name)}</b><p class="ui-note">${esc(f.basic.description)} ${rangeName(c)} · ${f.basic.damage} damage.</p></div></div><p class="ui-note roster-universal">Every fighter shares one <b>dash</b> (${esc(d.keys.dash)}) and one <b>jump</b> (${esc(d.keys.jump)}). Jump clears ground attacks.</p>`;
+  // The combo is on the Skills tab, under the basic attack.
+  return `<p class="roster-bio">${esc(f.description)}</p><div class="roster-facts"><div class="roster-fact"><span class="ui-kicker">Mastery</span><b class="ui-h" style="color:${m.tier?.color ?? "var(--ui-text)"}">${esc(m.tier?.name ?? "New challenger")}</b><p class="ui-note">${d.matches(c)} matches · ${esc(m.next ? `${m.next.left} more to ${m.next.name}` : "maximum mastery")}</p>${bar(m.progress, 100, { label: "Mastery progress", color: m.next?.color ?? m.tier?.color })}</div><div class="roster-fact"><span class="ui-kicker">Basic attack</span><b class="ui-h">${esc(f.basic.name)}</b><p class="ui-note">${esc(f.basic.description)} ${rangeName(c)} · ${f.basic.damage} damage.</p></div></div><p class="ui-note roster-universal">Every fighter shares one <b>dash</b> (${esc(d.keys.dash)}) and one <b>jump</b> (${esc(d.keys.jump)}). Jump clears ground attacks.</p>`;
 }
 function skinsTab(view: RosterView, d: RosterData) {
   const c = view.focus;

@@ -62,6 +62,19 @@ for (const size of SIZES)
       await page.click('.lobby-rail [data-lobby-action="shop"]');
       const room = page.locator(".fit-room");
       await expect(room).toBeVisible();
+      // The stage light (owner's option C) is there from the first frame,
+      // the same layer under the still fighter and the live rig, and in the
+      // still fighter's frame, so its disc sits under the feet.
+      const light = await page.evaluate(() => {
+        const host = document.querySelector(".fit-stage .shop-live-stage")!;
+        const svg = host.querySelector(":scope > .stage-light");
+        const still = host.querySelector(".shop-preview-fallback > svg");
+        return {
+          shown: !!svg && getComputedStyle(svg).display !== "none",
+          same: svg?.getAttribute("viewBox") === still?.getAttribute("viewBox"),
+        };
+      });
+      expect(light).toEqual({ shown: true, same: true });
       // Inside the Lobby: the HUD and the rail stay; the rail marks the Shop.
       await expect(page.locator("#account-coins")).toBeVisible();
       await expect(
@@ -137,7 +150,7 @@ for (const size of SIZES)
       await expect(page.locator(".fit-slot")).toHaveCount(6);
       await page.click('[data-fit-fighter="voltkit"]');
       await page.click('[data-fit-slot="champion"]');
-      await expect(page.locator(".fit-grid [data-ui-item]")).toHaveCount(3); // original, Midnight, Stormcrown
+      await expect(page.locator(".fit-grid [data-ui-item]")).toHaveCount(3); // original, Midnight, Storm Revenant
       await expect(page.locator(".fit-more")).toBeVisible();
       await page.click('[data-ui-item="voltkit-midnight"]');
       await expect(page.locator(".ui-panel-foot")).toContainText("1 change");
@@ -363,6 +376,8 @@ test("Low graphics: a still fighter, no live rig, and Hold to compare still work
   );
   await page.waitForTimeout(1500);
   await expect(stage.locator("canvas")).toHaveCount(0);
+  // Low graphics draws the same stage light (gradients, no blur).
+  await expect(stage.locator(":scope > .stage-light")).toBeVisible();
   await expect(page.locator("[data-fit-play]")).toHaveCount(0);
   const compare = page.locator("[data-preview-compare]");
   const shown = stage.locator(".shop-preview-fallback").first();

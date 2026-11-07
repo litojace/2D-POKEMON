@@ -104,7 +104,8 @@ export function riteEffect(rite: Rite): RiteEffect {
   if (has("status")) return "status";
   // More projectiles, or a turret that shoots more often: more shots.
   if (has("count", "tickInterval")) return "count";
-  if (has("heal")) return "heal";
+  // More healing, or a drain that drinks more of each hit.
+  if (has("heal", "drain")) return "heal";
   if (has("bonusVsStatus")) return "combo";
   if (has("damage")) return "damage";
   if (has("cooldown")) return "cooldown";

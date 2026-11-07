@@ -687,6 +687,10 @@ export const RAID_PERKS: Partial<
     skill: "Burrow Rush and Landslide",
     text: "Charge Grumblecrag into a pillar for 25 extra stagger.",
   },
+  pangrove: {
+    skill: "Scale Curl",
+    text: "Curled up, Rock Volley glances off you.",
+  },
 };
 /** Champion tricks per boss (docs/raid-roster-design.md §6). */
 export const RAID_BOSS_PERKS: Partial<
@@ -758,6 +762,10 @@ export const RAID_BOSS_PERKS: Partial<
       skill: "Full Moon",
       text: "Your crash reaches an airborne Emberwing at full damage and adds 20 stagger.",
     },
+    mossloth: {
+      skill: "Wild Roots",
+      text: "Its roots smother fire patches and dive trails where they burst.",
+    },
   },
   "storm-twins": {
     voltkit: {
@@ -787,6 +795,10 @@ export const RAID_BOSS_PERKS: Partial<
     wombolder: {
       skill: "Rump Block",
       text: "Blocks Twin Rush completely and adds 15 stagger to that twin.",
+    },
+    pangrove: {
+      skill: "Scale Curl",
+      text: "Curled up, Polarity can't touch you.",
     },
   },
   grumblecrag: RAID_PERKS,
@@ -818,6 +830,14 @@ export const RAID_BOSS_PERKS: Partial<
     glacelle: {
       skill: "Frost Bloom",
       text: "Blooming on a stranded Tidewyrm freezes it there 2 seconds longer.",
+    },
+    pangrove: {
+      skill: "Sap Bite",
+      text: "A bite on a stranded Tidewyrm adds extra stagger.",
+    },
+    mossloth: {
+      skill: "Rootsnare",
+      text: "Rooting a stranded Tidewyrm keeps it stranded 1 second longer.",
     },
   },
   gloomshade: {
@@ -882,6 +902,10 @@ export const RAID_BOSS_PERKS: Partial<
     shadopus: {
       skill: "Ink Cloud",
       text: "While you are hidden, Drowsy and sleep can't touch you.",
+    },
+    mossloth: {
+      skill: "Bramble Patch",
+      text: "Allies inside your prickly patch stay awake: no Drowsy, no sleep.",
     },
   },
 };

@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { box, inside, openLobby, snap } from "./helpers";
 import { ISLAND, closeSpot, layoutProblems, setInsets } from "./ui-measure";
+import { clippedFrames } from "./ui-checks";
 
 // UI remodel step 4 (docs/ui-remodel/PLAN.md): the Journey panel (Season ·
 // Levels · Weekly arcade) at the four review sizes, measured with the shared
@@ -342,3 +343,42 @@ test("the Journey with reduced motion and Low graphics", async ({
     await context.close();
   }
 });
+
+const FRAME_BOX =
+  ".journey-room :is(.journey-tier-art, .journey-lvl-art, .journey-prize-art, .journey-foot-art):has(> [data-frame-stars])";
+
+for (const size of [SIZES[0], SIZES[3]])
+  test(`every frame on the Journey fits its box at ${size.name}`, async ({
+    browser,
+  }) => {
+    const context = await browser.newContext({
+      viewport: { width: size.width, height: size.height },
+      reducedMotion: "reduce",
+    });
+    try {
+      const page = await context.newPage();
+      const errors = await openLobby(page);
+      if (size.island) await setInsets(page, ISLAND);
+      await withJourney(page);
+      await page.click('.lobby-rail [data-lobby-action="journey"]');
+      // The Journey's data has arrived (the 30-tier season road).
+      await expect(page.locator(".journey-room .journey-tier")).toHaveCount(30);
+      const season = await clippedFrames(page, FRAME_BOX);
+      await page.click('[data-ui-jtab="levels"]');
+      await expect(page.locator(".journey-room")).toHaveAttribute(
+        "data-journey-tab",
+        "levels",
+      );
+      // The level road: 21 prizes (level 100 gives a title and a frame).
+      await expect(page.locator(".journey-room .journey-prize")).toHaveCount(
+        21,
+      );
+      const levels = await clippedFrames(page, FRAME_BOX);
+      // The season road's frame and the level road's five.
+      expect(season.count + levels.count).toBeGreaterThanOrEqual(6);
+      expect([...season.bad, ...levels.bad]).toEqual([]);
+      expect(errors).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });

@@ -38,8 +38,8 @@
 .lobby-backdrop {
   position: absolute;
   inset: -28px;
-  background: #0b1020 url("/assets/backgrounds/plaza-lobby.webp") center 42% /
-    cover no-repeat;
+  background: #0b1020 url("/assets/backgrounds/plaza-lobby-f340a3b8.webp")
+    center 42% / cover no-repeat;
   filter: blur(5px) saturate(1.05) brightness(0.6);
   transform: scale(1.04);
 }
@@ -218,6 +218,30 @@
   width: var(--fighter-size);
   height: var(--fighter-size);
   margin: 0;
+}
+/* The stage light's glow (stage-light.ts, owner's option C) behind your
+   fighter; the podium below is its lit disc and ring. Centred where the
+   preview windows centre it (source y 92 of the tight 0 -12 200 202 frame:
+   51.5% down), 112 units across each way (112% of the box). */
+.lobby-fighter::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 51.5%;
+  width: 112%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  /* Brighter than in the preview windows, and added as light: the Lobby
+     stands on the bright Plaza map, where their dark-stage glow vanished. */
+  background: radial-gradient(
+    closest-side,
+    color-mix(in srgb, var(--element, #ffd65b) 85%, transparent),
+    color-mix(in srgb, var(--element, #ffd65b) 38%, transparent) 50%,
+    transparent
+  );
+  mix-blend-mode: screen;
+  pointer-events: none;
 }
 .lobby-fighter-art {
   position: absolute;
@@ -1442,4 +1466,26 @@ body:not(.hub-active) #account-leaves {
 .lobby-layer.is-covered > :not(.ui-panel-host),
 .lobby-layer.is-covered > :not(.ui-panel-host) * {
   animation-play-state: paused !important;
+}
+
+/* Four hub scenes (Lobby, Plaza, Farm, Bistro): narrower buttons where the
+   switch would otherwise reach the coin pills. */
+@media (max-width: 1100px) and (min-height: 501px) {
+  .hub-scenes button {
+    width: 80px;
+  }
+}
+@media (max-height: 500px) {
+  .hub-scenes button {
+    width: 54px;
+    font-size: 12.5px;
+    letter-spacing: 0.06em;
+  }
+}
+@media (max-height: 500px) and (max-width: 760px) {
+  .hub-scenes button {
+    width: 50px;
+    font-size: 12px;
+    letter-spacing: 0.05em;
+  }
 }

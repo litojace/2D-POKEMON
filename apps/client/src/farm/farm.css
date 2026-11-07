@@ -28,20 +28,17 @@
 .farm-layer.phone .fm-hud {
   font-size: 9.5px;
 }
-/* The badge is the player card's twin: the same box and the same grid
-   (--hub-card-* in lobby.css), so the name row, the bar and the small text
-   row sit at the same heights in both; the same left edge too,
-   max(14px, safe-left) on screen. */
+/* The player card (the account's level) is hidden on the farm, and the badge
+   takes its place: the same box (--hub-card-* in lobby.css), the same left
+   edge, max(14px, safe-left) on screen, and the same 10px from the top. */
 .farm-layer .fm-badge {
   position: absolute;
   left: max(0px, calc(14px - var(--safe-left, 0px)));
-  /* 4px under the player card (10px from the top, --hub-card-h tall). */
-  top: calc(var(--hub-card-h, 52px) + 14px);
+  top: 10px;
   display: grid;
-  /* Two rows, the card's: the name with the XP count where the card has
-     its level, then the bar. */
+  /* Two rows: the name, then a thick bar with the XP written in it. */
   grid-template-columns: var(--hub-card-art, 38px) minmax(0, 1fr) auto;
-  grid-template-areas: "art name sub" "art xp xp";
+  grid-template-areas: "art name name" "art xp xp";
   align-content: center;
   align-items: center;
   column-gap: 8px;
@@ -103,32 +100,38 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-/* The XP count, at the end of the name row (the card's level). */
-.farm-layer .fm-badge small {
-  grid-area: sub;
-  display: block;
-  min-width: 0;
-  white-space: nowrap;
-  color: #cfe8c8;
-  font:
-    700 11px/1 "DM Sans",
-    sans-serif;
-}
-/* The bar: the card's XP bar size and shape. */
+/* The bar, thick enough to carry the XP count in it. */
 .farm-layer .fm-badge .xpbar {
   grid-area: xp;
+  position: relative;
   width: 100%;
-  height: 5px;
-  border-radius: 3px;
-  background: #ffffff1f;
+  height: 15px;
+  border-radius: 8px;
+  background: #00000059;
+  box-shadow: inset 0 0 0 1px #ffffff1f;
   overflow: hidden;
 }
 .farm-layer .fm-badge .xpbar i {
   display: block;
   height: 100%;
-  border-radius: 3px;
-  background: linear-gradient(90deg, #7ff0a2, #d8ff8a);
+  border-radius: 8px;
+  background: linear-gradient(90deg, #3fbf6a, #8fdc5a);
   transition: width 0.5s var(--ease-out);
+}
+.farm-layer .fm-badge .xpbar span {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font:
+    800 10px/1 "DM Sans",
+    sans-serif;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  text-shadow:
+    0 1px 2px #000c,
+    0 0 3px #0008;
 }
 .farm-layer .fm-weather {
   position: absolute;
@@ -489,6 +492,140 @@
   width: 300px;
   animation: popin 0.18s var(--ease-out);
 }
+/* Planting and harvesting by hand: seeds in the tray and the sickle are
+   pressed and dragged across the field (no scrolling or zooming meanwhile),
+   and what you carry rides just above your finger. */
+.farm-layer .fm-pop.seedpick [data-pseed] {
+  touch-action: none;
+}
+.farm-layer .fm-sickle {
+  position: absolute;
+  z-index: 6;
+  animation: popin 0.16s var(--ease-out);
+}
+.farm-layer .fm-sickle button {
+  width: 64px;
+  height: 64px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 3px solid #ffd65b;
+  background: radial-gradient(circle at 50% 35%, #3a4a86, #172040);
+  box-shadow:
+    0 6px 16px #0008,
+    0 0 0 4px #ffd65b33;
+  cursor: grab;
+  touch-action: none;
+}
+/* A growing crop's tools: a row of the same round bubbles. */
+.farm-layer .fm-acts {
+  position: absolute;
+  z-index: 6;
+  display: flex;
+  gap: 6px;
+  animation: popin 0.16s var(--ease-out);
+}
+.farm-layer .fm-acts[hidden],
+.farm-layer .fm-tools[hidden] {
+  display: none;
+}
+.farm-layer .fm-acts button {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 3px solid #8fd8ff;
+  background: radial-gradient(circle at 50% 35%, #3a4a86, #172040);
+  box-shadow:
+    0 6px 16px #0008,
+    0 0 0 4px #8fd8ff33;
+  cursor: grab;
+  touch-action: none;
+}
+.farm-layer .fm-acts .ico {
+  width: 36px;
+  height: 36px;
+}
+.farm-layer .fm-acts button[data-act="shovel"] {
+  border-color: #ffb08a;
+  cursor: pointer;
+}
+.farm-layer .fm-acts button.armed {
+  border-color: #ff6b5a;
+  box-shadow:
+    0 6px 16px #0008,
+    0 0 0 6px #ff6b5a66;
+}
+.farm-layer .fm-acts b {
+  position: absolute;
+  right: -6px;
+  bottom: -4px;
+  min-width: 1.6em;
+  padding: 1px 6px;
+  border-radius: 99px;
+  background: #ffd65b;
+  color: #2a1a00;
+  font-size: 12px;
+  font-weight: 800;
+  box-shadow: 0 0 0 2px #0b1020;
+}
+.farm-layer.phone .fm-acts button {
+  width: 56px;
+  height: 56px;
+}
+/* The picked seed, ready to sow: its picture and how many are left. */
+.farm-layer .fm-seedbub button {
+  position: relative;
+  border-color: #7ff0a2;
+  box-shadow:
+    0 6px 16px #0008,
+    0 0 0 4px #7ff0a233;
+}
+.farm-layer .fm-seedbub img {
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+  pointer-events: none;
+}
+.farm-layer .fm-seedbub b {
+  position: absolute;
+  right: -6px;
+  bottom: -4px;
+  min-width: 1.6em;
+  padding: 1px 6px;
+  border-radius: 99px;
+  background: #ffd65b;
+  color: #2a1a00;
+  font-size: 12px;
+  font-weight: 800;
+  box-shadow: 0 0 0 2px #0b1020;
+}
+.farm-layer .fm-sickle .ico {
+  width: 38px;
+  height: 38px;
+}
+.farm-layer .fm-ghost {
+  position: absolute;
+  z-index: 9;
+  width: 64px;
+  height: 64px;
+  margin: -78px 0 0 -32px;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  filter: drop-shadow(0 6px 8px #0009);
+}
+.farm-layer .fm-ghost img,
+.farm-layer .fm-ghost .ico {
+  width: 56px;
+  height: 56px;
+}
+.farm-layer .fm-ghost[hidden],
+.farm-layer .fm-sickle[hidden] {
+  display: none;
+}
 .farm-layer .fm-pop h6 {
   margin: 2px 4px 6px;
   font-family: var(--display);
@@ -537,6 +674,18 @@
 .farm-layer .fm-pop .opt[disabled] {
   opacity: 0.35;
   cursor: default;
+}
+/* A seed you can't grow yet: greyed out with the level it needs, as in the
+   Shop, so nobody taps it. */
+.farm-layer .fm-pop .opt.locked {
+  opacity: 0.5;
+  filter: grayscale(0.85);
+  cursor: not-allowed;
+}
+.farm-layer .fm-pop .opt.locked small,
+.farm-layer .fm-pop .opt .lv {
+  color: #ffd65b;
+  font-weight: 800;
 }
 @keyframes fm-feedin {
   from {
@@ -2011,8 +2160,7 @@
   -webkit-backdrop-filter: blur(10px) saturate(1.2);
   box-shadow: 0 8px 24px #0006;
 }
-.farm-layer .fm-badge strong,
-.farm-layer .fm-badge small {
+.farm-layer .fm-badge strong {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -2244,22 +2392,18 @@
 .farm-layer.phone .fm-hud {
   font-size: 12px;
 }
-/* 4px under the phone player card (top 10px, 42px tall). */
-.farm-layer.phone .fm-badge {
-  top: 56px;
-}
 .farm-layer.phone .fm-ring b {
   top: 0;
   font-size: 14px;
 }
-.farm-layer.phone .fm-badge {
-  grid-template-areas: "art name name" "art xp xp";
-}
 .farm-layer.phone .fm-badge strong {
   font-size: 13px;
 }
-.farm-layer.phone .fm-badge small.row2 {
-  display: none;
+.farm-layer.phone .fm-badge .xpbar {
+  height: 13px;
+}
+.farm-layer.phone .fm-badge .xpbar span {
+  font-size: 9px;
 }
 .farm-layer.phone .fm-weather {
   left: 172px;
@@ -2847,4 +2991,24 @@ body.hub-farm:has(.fm-hint:not(.done)) #toast {
 }
 .farm-layer .fm-emotes button:active {
   transform: scale(0.9);
+}
+
+/* The Lobby's coins don't belong to the Farm (Gold Leaves do): on the farm
+   only the leaf pill shows, pushed right beside the menu. */
+body.hub-farm #account-coins {
+  display: none !important;
+}
+/* Nor the player card: its level is the account's, not the farm's, and the
+   farm badge takes its place. Hidden, not removed, so the top bar keeps its
+   layout. */
+body.hub-farm #account-profile {
+  visibility: hidden;
+}
+body.hub-farm #account-leaves {
+  margin-left: auto;
+}
+/* The balloon leaving early asks for a second tap. */
+.farm-layer .btn-s.gold.armed {
+  background: linear-gradient(180deg, #ffb08a, #ff7a59);
+  color: #2a0f00;
 }

@@ -10,29 +10,15 @@
   isolation: isolate;
   container-type: size;
 }
-/* The live rig draws its own spotlight; a still fighter (Low graphics, or
-   until the rig is ready) gets this one, without blur on Low. */
-.fit-light {
+/* The stage light (stage-light.ts, owner's option C): the element's glow
+   behind the fighter and a lit disc with a ring under the feet, in the
+   fighter's own frame, behind the still fighter and the live rig alike. */
+.shop-live-stage > .stage-light {
   position: absolute;
-  right: -40px;
-  top: -90px;
-  width: 280px;
-  height: 700px;
-  transform-origin: 50% 0;
-  transform: rotate(13deg);
-  background: linear-gradient(180deg, #ffe9a6, #ffe9a600 88%);
-  clip-path: polygon(44% 0, 56% 0, 100% 100%, 0 100%);
-  filter: blur(12px);
-  opacity: 0.35;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   pointer-events: none;
-  z-index: -1;
-}
-.fit-stage:has(.shop-live-stage.is-ready) .fit-light {
-  display: none;
-}
-.ui-panel[data-graphics="low"] .fit-light {
-  filter: none;
-  opacity: 0.18;
 }
 .fit-stage > .shop-live-stage {
   /* The rig's camera is framed on the host's width, so a tall, narrow stage
@@ -189,7 +175,8 @@
     .fit-deal-art,
     .fit-slot-art,
     .fit-bundle-art > span,
-    .fit-foot-art
+    .fit-foot-art,
+    .fit-set-reward-art
   ),
 .ui-modal-art {
   container-type: size;
@@ -200,7 +187,8 @@
     .fit-deal-art,
     .fit-slot-art,
     .fit-bundle-art > span,
-    .fit-foot-art
+    .fit-foot-art,
+    .fit-set-reward-art
   )
   > img,
 .ui-modal-art > img {
@@ -219,7 +207,8 @@
     .fit-deal-art,
     .fit-slot-art,
     .fit-bundle-art > span,
-    .fit-foot-art
+    .fit-foot-art,
+    .fit-set-reward-art
   )
   > .raid-cosmetic-preview,
 .ui-modal-art > .raid-cosmetic-preview,
@@ -238,7 +227,8 @@
     .fit-deal-art,
     .fit-slot-art,
     .fit-bundle-art > span,
-    .fit-foot-art
+    .fit-foot-art,
+    .fit-set-reward-art
   )
   > .raid-cosmetic-preview:has(> .fx-live),
 .ui-modal-art > .raid-cosmetic-preview:has(> .fx-live) {
@@ -475,6 +465,22 @@
   align-items: center;
   gap: 6px;
 }
+/* A skin collection's reward frame, beside how many of its skins you own. */
+.fit-set-reward {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.fit-set-reward-art {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+}
+.fit-set-reward .ui-note {
+  margin: 0;
+}
 .fit-collections .ui-chip .ui-tag {
   height: 16px;
 }
@@ -633,6 +639,14 @@
   }
 }
 @media (max-height: 500px) {
+  /* Phones: the reward frame rows stay compact above the grid. */
+  .fit-set-reward {
+    gap: 8px;
+  }
+  .fit-set-reward-art {
+    width: 38px;
+    height: 38px;
+  }
   .fit-stage {
     --fit-info-h: 44px;
   }
@@ -648,12 +662,6 @@
      to compare. */
   .fit-stage > .shop-live-stage:not(.is-frame) {
     transform: translate(-50%, var(--fit-drop, 34px));
-  }
-  .fit-light {
-    width: 150px;
-    height: 360px;
-    right: -30px;
-    top: -60px;
   }
   /* Small buttons on a phone stay 8 px from the stage's edge, so each
      still catches a 44 px finger. */
