@@ -2699,6 +2699,16 @@ const GFX = (() => {
     }
     g.restore();
   }
+  /**
+   * Forget every baked sprite (2× canvases, ~45 MB once the Plaza and the Farm
+   * have both been visited). A scene that is open keeps the sprites it holds
+   * (nothing is blanked); the next visit paints them again. Used where memory is short (an iPhone
+   * opening a battle), see releaseHubArt in main.ts.
+   */
+  function release() {
+    cache.clear();
+    shadows.clear();
+  }
   return {
     R,
     mix,
@@ -2710,6 +2720,7 @@ const GFX = (() => {
     sprite,
     blit,
     shadow,
+    release,
     ball,
     tree,
     drawTree,

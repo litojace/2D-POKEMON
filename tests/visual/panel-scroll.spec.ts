@@ -332,8 +332,13 @@ const print = (size: string, name: string, r: Report[string]) =>
     `SWEEP ${size} | ${name}: ${r.seen.length} scroller(s)${r.seen.length ? ` [${r.seen.join("; ")}]` : ""}${r.problems.length ? `\n    PROBLEM ${r.problems.join("\n    PROBLEM ")}` : ""}${r.cuts.length ? `\n    CUT ${r.cuts.slice(0, 8).join("\n    CUT ")}` : ""}`,
   );
 
+// Ranks, Friends and the Profile have long lists (fifty friends): about as
+// slow to sweep as all the other panels together, so they are a test of
+// their own and neither test comes near its time limit on a slow runner.
+const SOCIAL = (s: Screen) => /^(ranks|friends|profile)\b/.test(s.name);
 const GROUPS: Record<string, Screen[]> = {
-  "hub panels": HUB_SCREENS.filter((s) => s.root === HUB),
+  "hub panels": HUB_SCREENS.filter((s) => s.root === HUB && !SOCIAL(s)),
+  "social panels": HUB_SCREENS.filter((s) => s.root === HUB && SOCIAL(s)),
   "dialogs and menus": HUB_SCREENS.filter((s) => s.root !== HUB),
   "farm sheets": FARM_SHEETS,
 };

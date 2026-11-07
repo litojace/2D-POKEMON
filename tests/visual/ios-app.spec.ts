@@ -38,8 +38,13 @@ test("iOS Home Screen resumes the hub and releases the old battle canvas on retu
       .poll(() => canvas.evaluate((c: HTMLCanvasElement) => c.width))
       .toBe(1688);
     // An iPad-sized window keeps the canvas the size of its host and within
-    // the pixel budget.
+    // the pixel budget. Wait for the drawing buffer to follow the window (the
+    // CSS box follows at once): measured before that, the phone-sized buffer
+    // passed by luck.
     await page.setViewportSize({ width: 1194, height: 834 });
+    await expect
+      .poll(() => canvas.evaluate((c: HTMLCanvasElement) => c.width))
+      .not.toBe(1688);
     await expect
       .poll(() =>
         canvas.evaluate((c) => {

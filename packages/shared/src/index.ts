@@ -115,6 +115,8 @@ export type StatusKind =
   | "stealth"
   /** Rooted: can't move or dash (a charge stops), but can still attack, cast and jump. */
   | "root"
+  /** Inside a time bubble (Sloth Time): moves, dashes and rolls at STATUS_RULES.warpMultiplier. */
+  | "warp"
   /** Combo setup: primed for the marker's payoff skill (`by` = the marker). */
   | "mark";
 /** Statuses that count as harmful (the Shadow team-up gift, bots' targeting). */
@@ -127,6 +129,7 @@ export const DEBUFFS: StatusKind[] = [
   "sleep",
   "drowsy",
   "root",
+  "warp",
 ];
 export const STATUS_RULES = {
   stacking: "refresh" as const,
@@ -149,7 +152,72 @@ export const STATUS_RULES = {
   sleepVulnerability: 1.2,
   /** Shell Up: damage multiplier while in the shell. */
   shellReduction: 0.55,
+  /** Sloth Time: speed multiplier inside the bubble (movement and enemy shots). */
+  warpMultiplier: 0.35,
 };
+/**
+ * Pangrove's passive: armour plates. A hit of at least `minHit` damage breaks
+ * one and only `block` of it gets through (0.4: the plate stops 60%); after
+ * `regrowDelay` seconds without taking damage they grow back one every
+ * `regrowEvery` seconds.
+ */
+export const PLATES = {
+  max: 3,
+  block: 0.4,
+  minHit: 10,
+  regrowDelay: 2.5,
+  regrowEvery: 2,
+};
+/**
+ * Mossloth's passive: moss grows while it stands still (under `stillSpeed`
+ * px/s), a stack every `growEvery` seconds up to `max`, and falls off one
+ * every `shedEvery` seconds once it moves. Each stack takes `reduction` off
+ * damage taken and regrows `regen` health a second.
+ */
+export const MOSS = {
+  max: 5,
+  stillSpeed: 25,
+  growEvery: 0.5,
+  shedEvery: 0.3,
+  reduction: 0.05,
+  regen: 0.6,
+};
+/** Curl & Roll steering: time to build speed, turn rate, momentum lost turning and on walls. */
+export const ROLL = {
+  build: 0.45,
+  start: 0.9,
+  turn: 3.4,
+  turnLoss: 0.35,
+  wallLoss: 0.55,
+  coast: 1.5,
+  /** Ramming the same enemy again waits this long. */
+  rehit: 0.6,
+};
+/** The passives, as players read them (the roster's overview, the tutorial). */
+export const PASSIVES: Record<
+  NonNullable<Character["passive"]>,
+  { name: string; text: string }
+> = {
+  plates: {
+    name: "Armour Plates",
+    text: `Three leaf plates on your back. A hit of ${PLATES.minHit} damage or more breaks one, and only ${Math.round(PLATES.block * 100)}% of it gets through. After ${PLATES.regrowDelay} seconds without taking damage they grow back, one every ${PLATES.regrowEvery} seconds. Scale Shrapnel spends them.`,
+  },
+  moss: {
+    name: "Moss",
+    text: `Standing still grows moss: a stack every ${MOSS.growEvery} seconds, up to ${MOSS.max}. Each stack takes ${Math.round(MOSS.reduction * 100)}% off damage and heals ${MOSS.regen} health a second; moving sheds it. Overgrowth grows it full.`,
+  },
+};
+/** Plates a fighter has now (Pangrove starts every round with all of them). */
+export const platesOf = (p: { plates?: number }) => p.plates ?? PLATES.max;
+/** A seedling's growth stage now: 0 (sprout), 1 (bud) or 2 (bloom). */
+export function seedStage(zone: { born?: number; ability: Ability }, time: number) {
+  const seed = zone.ability.seed;
+  if (!seed) return 0;
+  return Math.min(
+    seed.stages.length - 1,
+    Math.max(0, Math.floor((time - (zone.born ?? time)) / seed.grow)),
+  );
+}
 /** Statuses that stop a fighter from moving and acting. */
 export const DISABLING_STATUSES: StatusKind[] = ["stun", "freeze", "sleep", "shell"];
 export type AbilityKind =
@@ -193,7 +261,45 @@ export type AbilityKind =
    * Stealth for `duration` (casting or taking damage reveals) plus haste for
    * `statusDuration`.
    */
-  | "veil";
+  | "veil"
+  /**
+   * Shoot a tongue up to `range` px: the first enemy it reaches takes the hit
+   * and the caster zips to it at `speed`; a wall pulls the caster to the wall.
+   */
+  | "grapple"
+  /**
+   * A fan (`fan` radians) of `count` blades for each armour plate the caster
+   * has, plus `count` more; it spends every plate.
+   */
+  | "shrapnel"
+  /**
+   * Curl into a ball for up to `duration` seconds, steered like a vehicle:
+   * speed builds toward `speed` px/s on straight lines, turning and walls
+   * cost momentum, and enemies rammed take `damage` plus up to `roll.bonus`
+   * at full speed. Casting it again uncurls.
+   */
+  | "roll"
+  /**
+   * Launch at `speed` and ricochet off up to `count` walls (faster after each),
+   * hitting every enemy on each stretch once for `damage`.
+   */
+  | "pinball"
+  /**
+   * Plant a seed at the aim that grows for `seed.grow` seconds a stage; the
+   * first enemy to step on it sets it off (more damage and a longer root at
+   * each stage). At most `count` at once; it lasts `duration` seconds.
+   */
+  | "seedling"
+  /**
+   * A bubble at the aim for `duration`: enemies inside, and their shots,
+   * move at `warp` times their speed.
+   */
+  | "timewarp"
+  /**
+   * Swap places with the enemy (not a raid boss) or own seedling nearest the
+   * aim, within `radius` of the aim and `range` of the caster.
+   */
+  | "swap";
 export interface Ability {
   id: string;
   name: string;
@@ -250,6 +356,21 @@ export interface Ability {
   ambush?: number;
   /** Life drain: the caster heals this share of the damage the hit deals (0.6 = 60%). */
   drain?: number;
+  /** Shrapnel: the fan's width in radians. */
+  fan?: number;
+  /** Roll: extra ram damage at full speed, and the damage taken while curled. */
+  roll?: { bonus: number; reduction: number };
+  /** Pinball: speed multiplier after each bounce, and the damage taken meanwhile. */
+  pinball?: { speedUp: number; reduction: number };
+  /**
+   * Seedling: seconds per growth stage, the share of `damage` and
+   * `statusDuration` at each stage, and how close an enemy sets it off (px).
+   */
+  seed?: { grow: number; stages: number[]; trigger: number };
+  /** Time bubble: speed multiplier for enemies and enemy shots inside. */
+  warp?: number;
+  /** Nova: every seedling the caster has blooms at full growth. */
+  bloom?: boolean;
   /** Buff: the caster is airborne for `duration` (ground attacks miss). */
   glide?: boolean;
   /** Buff: a burst around the caster on cast that pushes enemies away and slows them. */
@@ -323,6 +444,8 @@ export interface Character {
   speed: number;
   basic: Ability;
   skills: Ability[];
+  /** A passive of its own (Pangrove's armour plates, Mossloth's moss). */
+  passive?: "plates" | "moss";
 }
 export const CHARACTERS: Record<CharacterId, Character> = {
   voltkit: {
@@ -1497,65 +1620,64 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     id: "pangrove",
     name: "Pangrove",
     element: "Nature",
-    role: "Drain bruiser",
+    role: "Armoured roller",
     description:
-      "A pangolin whose scales are living leaves. Snags you with its sticky tongue, then bites the sap right out of you.",
+      "A pangolin whose scales are living leaves. Three armour plates soak up hits; it grapples in with its tongue, curls into a ball you steer, and sheds its plates as blades.",
     color: 0x7fcf6a,
-    health: 150,
+    health: 164,
     speed: 245,
+    passive: "plates",
     basic: basic(
       "scale-swipe",
       "Scale Swipe",
       "melee",
-      14,
+      15,
       450,
       "A swipe of leafy scales in front of Pangrove.",
       { range: 150, arc: 0.25, knockback: 12 },
     ),
     skills: [
       ability(
-        "tongue-snag",
-        "Tongue Snag",
-        "beam",
-        10,
+        "tongue-grapple",
+        "Tongue Grapple",
+        "grapple",
+        14,
+        8,
+        "Shoot out a sticky tongue. The first enemy it reaches takes 14 damage and is slowed, and Pangrove zips to it; a wall pulls Pangrove to the wall.",
+        { range: 480, radius: 14, speed: 1300, knockback: 0, status: "slow", statusDuration: 1.2 },
+      ),
+      ability(
+        "scale-shrapnel",
+        "Scale Shrapnel",
+        "shrapnel",
+        6,
         9,
-        "Flick out a long sticky tongue: the first enemy it reaches is Rooted for 0.9 seconds (can't move or dash, can still fight).",
-        { range: 400, radius: 16, knockback: 0, status: "root", statusDuration: 0.9 },
+        "Shed your armour plates as a fan of blades: 3 blades, plus 3 for each plate you have. Every plate is spent and grows back later.",
+        { count: 3, fan: 1.2, speed: 760, range: 300, radius: 10, knockback: 15 },
       ),
       ability(
-        "sap-bite",
-        "Sap Bite",
-        "melee",
-        22,
+        "curl-roll",
+        "Curl & Roll",
+        "roll",
+        10,
         11,
-        "A deep bite that drinks sap: Pangrove heals half the damage it deals.",
-        { range: 150, arc: 0.3, knockback: 40, drain: 0.5 },
+        "Curl into a ball you steer for up to 3.5 seconds (cast again to uncurl). Speed builds on straight lines; ramming an enemy deals 10 to 34 damage, the faster the harder. Curled, you take 30% less damage.",
+        { duration: 3.5, speed: 540, knockback: 140, roll: { bonus: 24, reduction: 0.7 } },
       ),
       ability(
-        "scale-curl",
-        "Scale Curl",
-        "barrier",
-        0,
-        15,
-        "Curl up behind your leaf scales for 1.4 seconds: take 60% less damage.",
-        { duration: 1.4 },
-      ),
-      ability(
-        "thornwheel",
-        "Thornwheel",
-        "rush",
-        28,
+        "pinball",
+        "Pinball",
+        "pinball",
+        22,
         20,
-        "Curl into a wheel of thorns and roll up to 560 px. The first enemy you hit, and everyone near it, is Rooted for a second; Pangrove heals half the damage dealt.",
+        "Curl up and launch: ricochet off up to 4 walls, faster after each, hitting every enemy on each stretch for 22 damage. You take half damage meanwhile.",
         {
-          range: 560,
-          speed: 1200,
-          cast: 0.25,
-          explosion: 120,
-          knockback: 60,
-          status: "root",
-          statusDuration: 1,
-          drain: 0.5,
+          cast: 0.2,
+          speed: 950,
+          count: 4,
+          duration: 3,
+          knockback: 150,
+          pinball: { speedUp: 1.12, reduction: 0.5 },
         },
       ),
     ],
@@ -1564,75 +1686,69 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     id: "mossloth",
     name: "Mossloth",
     element: "Nature",
-    role: "Root controller",
+    role: "Time gardener",
     description:
-      "A three-toed sloth with a little moss garden on its back. Slow and sleepy, but nothing it plants lets go.",
+      "A three-toed sloth with a moss garden on its back. Moss grows while it stands still; it plants seeds that grow, slows time itself, and lazily swaps places.",
     color: 0x9bd36a,
-    health: 150,
+    health: 170,
     speed: 240,
+    passive: "moss",
     basic: basic(
       "seed-spit",
       "Seed Spit",
       "projectile",
-      8,
-      360,
+      9,
+      345,
       "Spit a hard seed.",
       { speed: 780, range: 640, radius: 10 },
     ),
     skills: [
       ability(
-        "rootsnare",
-        "Rootsnare",
-        "projectile",
-        12,
-        9,
-        "Throw a seed that sprouts on impact: the enemy hit is Rooted for 1.1 seconds (can't move or dash, can still fight).",
-        { speed: 900, range: 600, radius: 18, knockback: 0, status: "root", statusDuration: 1.1 },
-      ),
-      ability(
-        "thorn-volley",
-        "Thorn Volley",
-        "barrage",
-        8,
-        10,
-        "Flick a fan of four thorns.",
-        { count: 4, speed: 820, range: 520, radius: 10, knockback: 20 },
-      ),
-      ability(
-        "bramble-patch",
-        "Bramble Patch",
-        "zone",
-        4,
-        13,
-        "Grow a bramble patch at the aim point for 3 seconds. Enemies inside are slowed and scratched (jump over it).",
+        "seedling",
+        "Seedling",
+        "seedling",
+        26,
+        5,
+        "Plant a seed at the aim. It grows a stage every 1.5 seconds (sprout, bud, bloom); the first enemy to step on it sets it off for 9, 17 or 26 damage and a 0.5, 0.8 or 1.3 second root. Up to 3 at once; jump over them.",
         {
-          radius: 125,
-          range: 480,
-          duration: 3,
-          tickInterval: 0.5,
+          range: 520,
+          radius: 70,
+          duration: 15,
+          count: 3,
           ground: true,
           knockback: 0,
-          status: "slow",
-          statusDuration: 0.6,
+          status: "root",
+          statusDuration: 1.3,
+          bonusVsStatus: 1.4,
+          seed: { grow: 1.5, stages: [0.36, 0.64, 1], trigger: 40 },
         },
       ),
       ability(
-        "wild-roots",
-        "Wild Roots",
-        "zone",
+        "sloth-time",
+        "Sloth Time",
+        "timewarp",
+        0,
+        14,
+        "Slow time in a bubble at the aim for 3 seconds: enemies inside, and their shots, move at a third of their speed.",
+        { range: 520, radius: 150, duration: 3, knockback: 0, warp: 0.35 },
+      ),
+      ability(
+        "lazy-swap",
+        "Lazy Swap",
+        "swap",
+        0,
+        12,
+        "Swap places with the enemy or your own seedling nearest the aim (up to 600 px away). A swapped enemy is slowed for a second.",
+        { range: 600, radius: 120, knockback: 0, status: "slow", statusDuration: 1 },
+      ),
+      ability(
+        "overgrowth",
+        "Overgrowth",
+        "nova",
         28,
         20,
-        "Roots mark the ground at the aim point, then burst out a moment later: 28 damage and Rooted for 1.2 seconds.",
-        {
-          radius: 160,
-          range: 520,
-          duration: 0.55,
-          tickDelay: 0.45,
-          tickInterval: 1,
-          knockback: 0,
-          status: "root",
-          statusDuration: 1.2,
-        },
+        "Vines erupt around Mossloth: 28 damage and Rooted for 1.2 seconds. Every seedling you have blooms at full growth, and your moss grows full.",
+        { cast: 0.3, radius: 230, knockback: 0, status: "root", statusDuration: 1.2, bloom: true },
       ),
     ],
   },
@@ -1830,20 +1946,21 @@ export const COMBOS: Record<CharacterId, Combo> = {
     text: "Ink Jet inks enemies. Ink Strike deals 40% more to Inked targets.",
   },
   pangrove: {
-    name: "Snagged",
-    setup: "tongue-snag",
-    payoff: "sap-bite",
-    window: 3,
+    name: "Latched",
+    setup: "tongue-grapple",
+    payoff: "scale-shrapnel",
+    window: 2.5,
+    self: true,
     damage: 1.35,
-    text: "Tongue Snag snags enemies. Sap Bite deals 35% more to Snagged targets (and drinks that much more).",
+    text: "Tongue Grapple latches Pangrove on. Scale Shrapnel within 2.5 seconds deals 35% more.",
   },
   mossloth: {
-    name: "Tangled",
-    setup: "rootsnare",
-    payoff: "thorn-volley",
+    name: "Timelocked",
+    setup: "sloth-time",
+    payoff: "seedling",
     window: 3,
-    damage: 1.3,
-    text: "Rootsnare tangles enemies. The first thorn of a Thorn Volley deals 30% more to a Tangled target.",
+    anyDebuff: true,
+    text: "A seedling set off by an enemy with a harmful status (in Sloth Time, slowed by a swap, rooted) deals 40% more.",
   },
 };
 /** Is `p` carrying a combo mark placed by `by`? (Self combos: by = p.id.) */
@@ -1881,8 +1998,8 @@ export const TEAM_TUNING: Partial<Record<CharacterId, number>> = {
   astrabun: 1.008,
   wombolder: 1.006,
   shadopus: 1.047,
-  pangrove: 0.975,
-  mossloth: 0.993,
+  pangrove: 0.98,
+  mossloth: 1.035,
 };
 /**
  * Free-for-all tuning, for mode "ffa" only, in the same form as TEAM_TUNING
@@ -1909,8 +2026,8 @@ export const FFA_TUNING: Partial<Record<CharacterId, number>> = {
   astrabun: 1.026,
   wombolder: 1.11,
   shadopus: 1.089,
-  pangrove: 1.03,
-  mossloth: 0.965,
+  pangrove: 1.02,
+  mossloth: 0.94,
 };
 /**
  * The same for a free-for-all that started with three players, tuned on
@@ -1934,8 +2051,8 @@ export const FFA_THREE_TUNING: Partial<Record<CharacterId, number>> = {
   astrabun: 1.106,
   wombolder: 1.161,
   shadopus: 1.144,
-  pangrove: 1.1,
-  mossloth: 0.89,
+  pangrove: 1.07,
+  mossloth: 0.95,
 };
 /**
  * A champion's strength factor in this mode (1 outside 2v2 and free-for-all).
@@ -2197,6 +2314,17 @@ export interface Fighter extends Vec {
   /** Active continuous cone (Fire Breath). */
   channel?: { until: number; nextTick: number; skill: number; ex?: boolean };
   clone?: Vec & { until: number };
+  /** Pangrove: armour plates left (undefined = all), and when the next grows back. */
+  plates?: number;
+  plateAt?: number;
+  /** Mossloth: moss stacks, when the next one grows or falls, and whether it stood still. */
+  moss?: number;
+  mossAt?: number;
+  mossStill?: boolean;
+  /** Curl & Roll: rolling until `until`, at `speed` px/s toward `heading`, building to `top`. */
+  roll?: { until: number; speed: number; heading: number; top: number; slot: number };
+  /** Pinball: bounces left and the speed-up per bounce (the flight itself is the dash). */
+  pinball?: { bounces: number; speedUp: number };
   lastInput: Input;
 }
 export interface Projectile extends Vec {
@@ -2366,6 +2494,8 @@ export interface Zone extends Vec {
   nextTick: number;
   ability: Ability;
   color: number;
+  /** When it was placed (seedlings grow from then). */
+  born?: number;
 }
 export interface GameEvent extends Vec {
   id: number;
@@ -2722,7 +2852,8 @@ export function advanceMovement(
 ): void {
   const dir = normalize(input.dx, input.dy);
   p.angle = Math.atan2(input.aimY - p.y, input.aimX - p.x);
-  let modifier = 1;
+  let modifier = 1,
+    warp = 1;
   for (const s of p.statuses)
     if (s.until > time) {
       if (DISABLING_STATUSES.includes(s.kind)) modifier = 0;
@@ -2730,10 +2861,68 @@ export function advanceMovement(
         modifier *= STATUS_RULES.slowMultiplier;
       if (s.kind === "haste") modifier *= STATUS_RULES.hasteMultiplier;
       if (s.kind === "root") modifier = 0;
+      if (s.kind === "warp") warp = STATUS_RULES.warpMultiplier;
     }
+  modifier *= warp;
+  if (p.pinball && time < p.dashUntil && modifier > 0) {
+    // Pinball: fly at the dash velocity and bounce off walls, faster each time.
+    const r = RULES.radius;
+    const nx = p.x + p.dashX * warp * dt,
+      ny = p.y + p.dashY * warp * dt;
+    const hitX = blocked(nx, p.y, r),
+      hitY = blocked(p.x, ny, r);
+    if (hitX || hitY) {
+      if (p.pinball.bounces <= 0) {
+        // Out of bounces: the next wall ends the flight.
+        p.dashUntil = time;
+        p.vx = p.vy = 0;
+        return;
+      }
+      p.pinball.bounces--;
+      if (hitX) p.dashX = -p.dashX;
+      if (hitY) p.dashY = -p.dashY;
+      p.dashX *= p.pinball.speedUp;
+      p.dashY *= p.pinball.speedUp;
+    }
+    p.vx = p.dashX * warp;
+    p.vy = p.dashY * warp;
+    move(p, p.vx * dt, p.vy * dt);
+    return;
+  }
+  if (p.roll && time < p.roll.until && time >= p.dashUntil) {
+    // Curl & Roll: steer a ball. Speed builds toward `top` on a straight
+    // line; turning and walls cost momentum.
+    const roll = p.roll;
+    if (dir.x || dir.y) {
+      const want = Math.atan2(dir.y, dir.x);
+      const diff = Math.atan2(
+        Math.sin(want - roll.heading),
+        Math.cos(want - roll.heading),
+      );
+      const turn = Math.max(-ROLL.turn * dt, Math.min(ROLL.turn * dt, diff));
+      roll.heading += turn;
+      roll.speed *= 1 - Math.abs(turn) * ROLL.turnLoss;
+      roll.speed += (roll.top - roll.speed) * (1 - Math.exp(-dt / ROLL.build));
+    } else roll.speed *= Math.exp(-ROLL.coast * dt);
+    const speed = roll.speed * modifier * speedScale;
+    const r = RULES.radius;
+    if (blocked(p.x + Math.cos(roll.heading) * speed * dt, p.y, r)) {
+      roll.heading = Math.PI - roll.heading;
+      roll.speed *= ROLL.wallLoss;
+    }
+    if (blocked(p.x, p.y + Math.sin(roll.heading) * speed * dt, r)) {
+      roll.heading = -roll.heading;
+      roll.speed *= ROLL.wallLoss;
+    }
+    const v = roll.speed * modifier * speedScale;
+    p.vx = Math.cos(roll.heading) * v;
+    p.vy = Math.sin(roll.heading) * v;
+    move(p, p.vx * dt, p.vy * dt);
+    return;
+  }
   if (time < p.dashUntil) {
-    p.vx = p.dashX;
-    p.vy = p.dashY;
+    p.vx = p.dashX * warp;
+    p.vy = p.dashY * warp;
   } else {
     const factor = 1 - Math.exp(-RULES.acceleration * dt);
     const speed = CHARACTERS[p.character].speed * modifier * speedScale;
@@ -2917,18 +3106,18 @@ export const RITES: Rite[] = [
   rite("shadopus", "minor", "tentacle-lash", "Long Arms", "Tentacle Lash reaches 20% further.", { mul: { range: 1.2 } }),
   rite("shadopus", "major", "ink-cloud", "Vanishing Act", "Ink Cloud cooldown 15s → 10s.", { set: { cooldown: 10 } }),
   rite("shadopus", "major", "kraken-grasp", "Leviathan", "Kraken Grasp reaches 25% further.", { mul: { range: 1.25 } }),
-  rite("pangrove", "minor", "tongue-snag", "Long Tongue", "Tongue Snag reaches 20% further.", { mul: { range: 1.2 } }),
-  rite("pangrove", "minor", "sap-bite", "Deep Bite", "Sap Bite deals 26 damage instead of 22.", { set: { damage: 26 } }),
-  rite("pangrove", "minor", "scale-curl", "Thick Scales", "Scale Curl lasts 2s instead of 1.4s.", { set: { duration: 2 } }),
-  rite("pangrove", "minor", "scale-swipe", "Sharp Scales", "Scale Swipe deals 16 damage instead of 14.", { set: { damage: 16 } }),
-  rite("pangrove", "major", "sap-bite", "Greedy Sap", "Sap Bite heals all the damage it deals instead of half.", { set: { drain: 1 } }),
-  rite("pangrove", "major", "thornwheel", "Bramble Wheel", "Thornwheel's burst is 35% wider.", { mul: { explosion: 1.35 } }),
-  rite("mossloth", "minor", "rootsnare", "Tight Snare", "Rootsnare roots for 1.5s instead of 1.1s.", { set: { statusDuration: 1.5 } }),
-  rite("mossloth", "minor", "thorn-volley", "Six Thorns", "Thorn Volley flicks 6 thorns of 7 damage instead of 4 of 8.", { set: { count: 6, damage: 7 } }),
-  rite("mossloth", "minor", "bramble-patch", "Wide Bramble", "Bramble Patch is 20% wider.", { mul: { radius: 1.2 } }),
-  rite("mossloth", "minor", "seed-spit", "Hard Seed", "Seed Spit deals 9 damage instead of 8.", { set: { damage: 9 } }),
-  rite("mossloth", "major", "rootsnare", "Quick Snare", "Rootsnare cooldown 9s → 6.5s.", { set: { cooldown: 6.5 } }),
-  rite("mossloth", "major", "wild-roots", "Deep Roots", "Wild Roots is 25% wider.", { mul: { radius: 1.25 } }),
+  rite("pangrove", "minor", "tongue-grapple", "Long Tongue", "Tongue Grapple reaches 25% further.", { mul: { range: 1.25 } }),
+  rite("pangrove", "minor", "scale-shrapnel", "Sharp Plates", "Scale Shrapnel blades deal 7 damage instead of 6.", { set: { damage: 7 } }),
+  rite("pangrove", "minor", "curl-roll", "Long Roll", "Curl & Roll lasts up to 5s instead of 3.5s.", { set: { duration: 5 } }),
+  rite("pangrove", "minor", "scale-swipe", "Sharp Scales", "Scale Swipe deals 17 damage instead of 15.", { set: { damage: 17 } }),
+  rite("pangrove", "major", "curl-roll", "Spiked Ball", "Curl & Roll rams Root the enemy for 0.8s.", { set: { status: "root", statusDuration: 0.8 } }),
+  rite("pangrove", "major", "pinball", "Bank Shot", "Pinball ricochets off up to 6 walls instead of 4.", { set: { count: 6 } }),
+  rite("mossloth", "minor", "seedling", "Thicket", "Up to 4 seedlings at once instead of 3.", { set: { count: 4 } }),
+  rite("mossloth", "minor", "sloth-time", "Wide Bubble", "Sloth Time's bubble is 20% wider.", { mul: { radius: 1.2 } }),
+  rite("mossloth", "minor", "lazy-swap", "Lazier", "Lazy Swap cooldown 12s → 9s.", { set: { cooldown: 9 } }),
+  rite("mossloth", "minor", "seed-spit", "Hard Seed", "Seed Spit deals 10 damage instead of 9.", { set: { damage: 10 } }),
+  rite("mossloth", "major", "seedling", "Deep Roots", "Seedlings root 50% longer.", { mul: { statusDuration: 1.5 } }),
+  rite("mossloth", "major", "sloth-time", "Long Nap", "Sloth Time lasts 4.5s instead of 3s.", { set: { duration: 4.5 } }),
 ];
 export const RITE_BY_ID: Record<string, Rite> = Object.fromEntries(
   RITES.map((r) => [r.id, r]),

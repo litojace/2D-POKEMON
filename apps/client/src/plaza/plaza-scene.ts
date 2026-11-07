@@ -77,6 +77,7 @@ import { bakeSprite } from "./plaza-sprite";
 import "./plaza.css";
 import { fadeIn } from "../ui/motion";
 import { setInner } from "../ui/patch";
+import { sceneDensity } from "../render-budget";
 
 const esc = (s) =>
   String(s).replace(
@@ -3862,8 +3863,9 @@ export function openPlaza(options) {
     syncPhone();
     const nw = Math.max(1, layer.clientWidth),
       nh = Math.max(1, layer.clientHeight),
-      // Low graphics draws one pixel per CSS pixel.
-      ps = low ? 1 : Math.min(2, devicePixelRatio || 1);
+      // Low graphics draws one pixel per CSS pixel; iPhones and iPads keep
+      // within a pixel budget (render-budget.ts).
+      ps = low ? 1 : sceneDensity(nw, nh);
     NW = nw;
     NH = nh;
     PS = ps;

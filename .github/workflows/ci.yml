@@ -26,7 +26,7 @@ jobs:
     # screen, arenas filling their frames, dialogs fitting a phone. Split
     # across ten runners (one worker each, so timing checks keep a machine to
     # themselves): six shards of the suite, and four of the panel-scroll
-    # sweeps, whose sixteen tests take about 45 minutes between them and
+    # sweeps, whose twenty tests take about 45 minutes between them and
     # would otherwise all land in one shard. About 25 minutes instead of over
     # two hours. It runs for main (what Render deploys), pull requests and
     # manual runs, not again for the same commit on work.

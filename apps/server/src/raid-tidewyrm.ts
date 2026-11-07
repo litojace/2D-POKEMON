@@ -24,7 +24,7 @@ const W = RULES.width,
 const POP_GAP = 0.35;
 /** Glacelle's Frost Bloom keeps a stranded Tidewyrm there this much longer (s). */
 const FROST_HOLD = 2;
-/** Mossloth's Rootsnare roots a stranded Tidewyrm there this much longer. */
+/** A Mossloth seedling going off roots a stranded Tidewyrm there this much longer. */
 const ROOT_HOLD = 1;
 
 /**
@@ -642,12 +642,12 @@ export class TidewyrmArena extends RaidArena {
         this.nextAttack = Math.max(this.nextAttack, r.exposedUntil + 1);
         r.message = "Frozen fast! Tidewyrm stays stranded a little longer.";
       }
-      // Pangrove's Sap Bite drinks from a stranded Tidewyrm: extra stagger.
-      if (ability?.id === "sap-bite" && this.strandedOn >= 0 && r.exposedUntil > this.time && !r.drill)
+      // Pangrove's Tongue Grapple latches onto a stranded Tidewyrm: extra stagger.
+      if (ability?.id === "tongue-grapple" && this.strandedOn >= 0 && r.exposedUntil > this.time && !r.drill)
         r.stagger = Math.min(100, r.stagger + T.lanceStagger);
-      // Mossloth's Rootsnare roots a stranded Tidewyrm where it lies.
+      // A Mossloth seedling going off roots a stranded Tidewyrm where it lies.
       if (
-        ability?.id === "rootsnare" &&
+        ability?.id === "seedling" &&
         this.strandedOn >= 0 &&
         r.exposedUntil > this.time &&
         !r.drill

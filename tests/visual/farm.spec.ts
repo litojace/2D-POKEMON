@@ -1628,6 +1628,72 @@ test("on a phone, the Market's Sell and All buttons line up in columns", async (
   }
 });
 
+test("on a phone, a long press on an empty plot opens the seed tray and it stays; a tap under the seed bubble opens it again", async ({
+  browser,
+}) => {
+  const context = await browser.newContext({
+    viewport: { width: 844, height: 390 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  try {
+    const page = await context.newPage();
+    const errors = await openLobby(page);
+    await fakeFarm(page);
+    await page.click('#hub-scenes [data-hub-scene="farm"]');
+    await page.waitForFunction(() => (window as any).__farm?.F?.loaded);
+    await page.waitForTimeout(400);
+    const cdp = await context.newCDPSession(page);
+    // A real finger, held for ms before it lifts.
+    const press = async (p: { x: number; y: number }, ms: number) => {
+      const at = [{ x: Math.round(p.x), y: Math.round(p.y) }];
+      await cdp.send("Input.dispatchTouchEvent", {
+        type: "touchStart",
+        touchPoints: at,
+      });
+      await page.waitForTimeout(ms);
+      await cdp.send("Input.dispatchTouchEvent", {
+        type: "touchEnd",
+        touchPoints: [],
+      });
+    };
+    const plant = () =>
+      page.evaluate(() =>
+        (window as any).__farmRequests
+          .flatMap((r: any) => r.actions ?? [])
+          .filter((x: any) => x.a === "plant"),
+      );
+    const p3 = await page.evaluate(() => (window as any).__farm.plotClient(3));
+    // Held past the hold time, the tray opens under the finger: lifting it
+    // picks nothing and the tray stays open.
+    await press(p3, 600);
+    const tray = page.locator("#fm-pop");
+    await expect(tray).toBeVisible();
+    await page.waitForTimeout(600);
+    await expect(tray).toBeVisible();
+    await expect(page.locator("#fm-seed")).toBeHidden();
+    // A press on a seed picks it.
+    await press(
+      await page
+        .locator('#fm-pop [data-pseed="wheat"]')
+        .boundingBox()
+        .then((b) => ({ x: b!.x + b!.width / 2, y: b!.y + b!.height / 2 })),
+      80,
+    );
+    await expect(tray).toBeHidden();
+    await expect(page.locator("#fm-seed [data-seedbub]")).toBeVisible();
+    // The bubble floats over the field: a tap on the plot under its box
+    // (not on the bubble itself) reaches the field and opens the tray.
+    await press(p3, 80);
+    await expect(tray).toBeVisible();
+    await expect(page.locator("#fm-seed")).toBeHidden();
+    expect(await plant()).toEqual([]);
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});
+
 test("on a phone, pick a seed and drag it to sow, and drag the sickle to harvest", async ({
   browser,
 }, info) => {

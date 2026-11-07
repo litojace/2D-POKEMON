@@ -190,6 +190,8 @@ export class EmberwingArena extends RaidArena {
   override cast(p: Fighter, a: Ability, ex = false) {
     super.cast(p, a, ex);
     if (p.raidBoss || p.hp <= 0) return;
+    // Mossloth's Overgrowth: the vines smother fire and dive trails around it.
+    if (a.id === "overgrowth") this.water(p.x, p.y, a.radius);
     if (a.id === "eddy") {
       const aim = p.lastInput,
         d = normalize(aim.aimX - p.x, aim.aimY - p.y),
@@ -512,13 +514,8 @@ export class EmberwingArena extends RaidArena {
           if (Math.hypot(b.x - z.x, b.y - z.y) <= z.radius + E.brazierRadius)
             this.light(i, p);
         });
-      // Tidefin's Eddy and Glacelle's Frost Bloom put the fire out; Mossloth's
-      // Wild Roots smother it where they burst.
-      if (
-        z.ability.id === "eddy" ||
-        z.ability.id === "frost-bloom" ||
-        z.ability.id === "wild-roots"
-      )
+      // Tidefin's Eddy and Glacelle's Frost Bloom put the fire out.
+      if (z.ability.id === "eddy" || z.ability.id === "frost-bloom")
         this.water(z.x, z.y, z.radius);
     }
     r.emberPatches = (r.emberPatches ?? []).filter((p) => p.until > this.time);

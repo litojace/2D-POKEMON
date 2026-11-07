@@ -17,6 +17,7 @@ import {
   RITE_BY_ID,
   DEBUFFS,
   farMultiplier,
+  platesOf,
   type Ability,
   type CharacterId,
   type StatusKind,
@@ -122,8 +123,8 @@ export const BOT_PROFILES: Record<BotDifficulty, Profile> = {
       astrabun: 0.36,
       wombolder: 0.36,
       shadopus: 0.3,
-      pangrove: 0.335,
-      mossloth: 0.23,
+      pangrove: 0.39,
+      mossloth: 0.485,
     },
   },
   hard: {
@@ -495,11 +496,13 @@ export class BotBrain {
       dy = by / bl;
     }
     // Get out of enemy zones (jump the ground ones if it can).
+    let escaping = false;
     for (const z of arena.zones)
       if (
         hostileZone(arena, me, z) &&
         Math.hypot(z.x - me.x, z.y - me.y) < z.radius + RULES.radius
       ) {
+        escaping = true;
         const away = Math.hypot(me.x - z.x, me.y - z.y) || 1;
         dx = (me.x - z.x) / away;
         dy = (me.y - z.y) / away;
@@ -530,6 +533,19 @@ export class BotBrain {
       dy = gy / g;
       input.dash = true;
     }
+    // Mossloth plants itself and fires while nothing is coming, so its moss
+    // grows (a person playing it stands still the same way).
+    if (
+      CHARACTERS[me.character].passive === "moss" &&
+      !threat &&
+      !fleeWindup &&
+      !escaping &&
+      sight &&
+      dist > 220 &&
+      dist <= basic.range * 0.9 &&
+      hpRatio > 0.25
+    )
+      dx = dy = 0;
     input.dx = clamp(dx, -1, 1);
     input.dy = clamp(dy, -1, 1);
     // ---- Aim: lead moving targets with projectiles, plus human-like spread.
@@ -544,6 +560,15 @@ export class BotBrain {
     const reach = Math.max(60, Math.hypot(ax - me.x, ay - me.y));
     ax = me.x + Math.cos(angle) * reach;
     ay = me.y + Math.sin(angle) * reach;
+    // A seedling goes down part of the way toward the opponent, to grow
+    // before it gets there (not under its feet, where it would go off unripe).
+    if (
+      this.wantSkill >= 0 &&
+      arena.kit(me).skills[this.wantSkill]?.kind === "seedling"
+    ) {
+      ax = me.x + (ax - me.x) * 0.45;
+      ay = me.y + (ay - me.y) * 0.45;
+    }
     input.aimX = clamp(ax, 0, RULES.width);
     input.aimY = clamp(ay, 0, RULES.height);
     // ---- Attack.
@@ -688,6 +713,51 @@ export class BotBrain {
           // Slip into stealth on the way in, so the first hit is an ambush.
           if (s.sight && reach(520)) score = 15;
           break;
+        case "grapple":
+          // Latch on from mid range: a gap closer that lands its hit first.
+          if (s.sight && s.dist > 170 && reach(a.range * 0.9)) score = 22;
+          break;
+        case "shrapnel": {
+          // Worth more with plates to spend (and only up close, where the fan lands).
+          const plates =
+            CHARACTERS[me.character].passive === "plates" ? platesOf(me) : 0;
+          if (s.sight && reach(a.range * 0.55))
+            score = a.damage * (a.count ?? 3) * (1 + plates) * 0.35;
+          break;
+        }
+        case "roll":
+          // Curl up and steer in for a ram from a distance (a rooted ball goes nowhere).
+          if (s.sight && s.dist > 160 && reach(650) && !arena.has(me, "root"))
+            score = 20;
+          break;
+        case "pinball":
+          if (s.sight && reach(700) && !arena.has(me, "root"))
+            score = a.damage * 2;
+          break;
+        case "seedling": {
+          // Keep a few seedlings growing between itself and the opponent.
+          const mine = arena.zones.filter(
+            (z) => z.owner === me.id && z.ability.kind === "seedling" && z.until > t,
+          ).length;
+          if (mine < (a.count ?? 3) && reach(a.range / 0.45)) score = 14;
+          break;
+        }
+        case "timewarp":
+          // Slow the opponent (and its shots) when it presses in or fires.
+          if (reach(a.range) && (s.threatened || s.dist < 260)) score = 20;
+          break;
+        case "swap": {
+          // Standing among its own seedlings: swap the opponent onto them.
+          const seeded = arena.zones.some(
+            (z) =>
+              z.owner === me.id &&
+              z.ability.kind === "seedling" &&
+              z.until > t &&
+              Math.hypot(z.x - me.x, z.y - me.y) < 140,
+          );
+          if (seeded && s.dist > 200 && reach(a.range)) score = 19;
+          break;
+        }
         case "melee":
           if (s.sight && reach(a.range + RULES.radius)) score = a.damage * 1.2;
           break;
@@ -697,6 +767,11 @@ export class BotBrain {
         case "nova":
           if (s.sight && reach(a.radius + RULES.radius * 0.5))
             score = a.damage * 1.1;
+          // Overgrowth also blooms every seedling it has.
+          if (score && a.bloom)
+            score += 8 * arena.zones.filter(
+              (z) => z.owner === me.id && z.ability.kind === "seedling" && z.until > t,
+            ).length;
           break;
         case "zone":
           if (a.heal) {

@@ -900,8 +900,11 @@ export class FighterRig {
     if (pose.shell)
       for (const [part, image] of this.images)
         if (part !== "wings") image.setVisible(false);
+    // Curled into a ball (Curl & Roll, Pinball): only the ball of leaf plates.
+    if (pose.ball) for (const image of this.images.values()) image.setVisible(false);
     this.effects.clear();
     this.under.clear();
+    if (pose.ball) this.drawBall(pose.ball, x, y, alpha, reduced);
     if (!this.suffix && pose.look?.skin === "starlit-skin") {
       for (let i = 0; i < 5; i++) {
         const sx = x + ((i % 3) - 1) * 14 * this.baseX,
@@ -1280,6 +1283,63 @@ export class FighterRig {
     }
   }
 
+  /**
+   * Pangrove curled up: a ball of overlapping leaf plates resting on the
+   * ground, its rows of plates turning over as it rolls toward `heading`.
+   */
+  private drawBall(
+    ball: { spin: number; heading: number },
+    x: number,
+    y: number,
+    alpha: number,
+    reduced: boolean,
+  ) {
+    const g = this.effects,
+      R = 26 * (this.baseX / 0.7),
+      cx = x,
+      cy = y + FEET * this.baseY - R * 0.95,
+      spin = reduced ? 0 : ball.spin,
+      hx = Math.cos(ball.heading),
+      hy = Math.sin(ball.heading) * 0.8;
+    g.fillStyle(0x1f4626, alpha).fillCircle(cx, cy, R + 2);
+    g.fillStyle(0x3f8f4a, alpha).fillCircle(cx, cy, R);
+    // Rows of plates running round the ball, front rows drawn last.
+    const rows = [...Array(6).keys()]
+      .map((i) => spin + (i * Math.PI * 2) / 6)
+      .sort((a, b) => Math.cos(a) - Math.cos(b));
+    for (const phase of rows) {
+      const facing = Math.cos(phase);
+      if (facing < -0.15) continue;
+      const along = Math.sin(phase) * R * 0.72,
+        size = R * (0.32 + 0.22 * (facing + 1) * 0.5);
+      for (const across of [-0.5, 0, 0.5]) {
+        const px = cx + hx * along - hy * across * R * 1.1,
+          py = cy + hy * along + hx * across * R * 0.9;
+        if (Math.hypot(px - cx, py - cy) > R - size * 0.3) continue;
+        const rot = ball.heading,
+          c = Math.cos(rot),
+          s = Math.sin(rot),
+          w = size * 0.5,
+          h = size * 0.38;
+        const pts = [
+          { x: px + c * w, y: py + s * w },
+          { x: px - s * h, y: py + c * h },
+          { x: px - c * w * 0.6, y: py - s * w * 0.6 },
+          { x: px + s * h, y: py - c * h },
+        ];
+        const lit = 0.55 + 0.45 * (facing + 1) * 0.5;
+        g.fillStyle(lit > 0.85 ? 0xc7e88a : 0x7fcf6a, alpha).fillPoints(pts, true);
+        g.lineStyle(1.2, 0x1f4626, 0.8 * alpha).strokePoints(pts, true);
+      }
+    }
+    // A sheen on top.
+    g.fillStyle(0xffffff, 0.18 * alpha).fillEllipse(
+      cx - R * 0.3,
+      cy - R * 0.4,
+      R * 0.7,
+      R * 0.35,
+    );
+  }
   private drawEffects(
     pose: AnimationPose,
     state: AnimationState,
