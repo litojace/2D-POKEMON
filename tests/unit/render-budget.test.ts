@@ -4,6 +4,7 @@ import {
   isIOSWebApp,
   memoryConstrained,
   rendererDensity,
+  sceneDensity,
 } from "../../apps/client/src/render-budget";
 it("caps an installed iOS drawing buffer without changing CSS coordinates", () => {
   expect(isIOSWebApp("iPhone AppleWebKit", 5, true)).toBe(true);
@@ -34,4 +35,22 @@ it("gives memory back eagerly on iOS and on phones with little memory", () => {
   expect(memoryConstrained(false, 4)).toBe(false);
   // Most browsers don't say: only iOS counts then.
   expect(memoryConstrained(false, undefined)).toBe(false);
+});
+
+it("keeps the Plaza and Farm canvases within the pixel budget on iOS", () => {
+  // A phone in landscape stays sharp: 844x390 at 2x is 1.3 million pixels.
+  expect(sceneDensity(844, 390, 3, true)).toBe(2);
+  // An iPad-sized window at 2x would be 4 million: drawn softer, within 2.
+  const d = sceneDensity(1194, 834, 2, true);
+  expect(d).toBeLessThan(2);
+  expect(Math.round(1194 * d) * Math.round(834 * d)).toBeLessThanOrEqual(
+    2_002_000,
+  );
+  // Elsewhere only the 2x cap applies.
+  expect(sceneDensity(1194, 834, 2, false)).toBe(2);
+  expect(sceneDensity(2560, 1440, 3, false)).toBe(2);
+  // Never below 1, and no density reported counts as 1.
+  expect(sceneDensity(4000, 3000, 2, true)).toBe(1);
+  expect(sceneDensity(800, 600, NaN, true)).toBe(1);
+  expect(sceneDensity(800, 600, 1, false)).toBe(1);
 });

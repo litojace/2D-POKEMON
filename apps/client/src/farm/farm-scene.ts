@@ -85,6 +85,7 @@ import {
 import "./farm.css";
 import { fadeIn } from "../ui/motion";
 import { setInner } from "../ui/patch";
+import { sceneDensity } from "../render-budget";
 
 const svgUrl = (s) =>
   "data:image/svg+xml;charset=utf-8," + encodeURIComponent(s);
@@ -7366,11 +7367,11 @@ export function openFarm(options) {
   }
   const onResize = () => {
     syncPhone();
-    resize(
-      layer.clientWidth || innerWidth,
-      layer.clientHeight || innerHeight,
-      low ? 1 : Math.min(2, devicePixelRatio || 1),
-    );
+    const w = layer.clientWidth || innerWidth,
+      h = layer.clientHeight || innerHeight;
+    // Low graphics draws one pixel per CSS pixel; iPhones and iPads keep
+    // within a pixel budget (render-budget.ts).
+    resize(w, h, low ? 1 : sceneDensity(w, h));
   };
   addEventListener("resize", onResize);
   // While the farm is open, come back to the server now and then: ripe

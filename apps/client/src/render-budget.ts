@@ -41,3 +41,27 @@ export function rendererDensity(
 ) {
   return Math.max(1, Math.min(ios ? 1.5 : 2, Number.isFinite(dpr) ? dpr : 1));
 }
+/** Most pixels a full-screen 2D scene canvas (the Plaza, the Farm) may have on
+ *  an iPhone or iPad: an iPad-sized window at 2x would be 4 million, 16 MB
+ *  plus its GPU copy, kept while the scene waits behind the Lobby. */
+export const SCENE_PIXEL_BUDGET = 2_000_000;
+/**
+ * A 2D scene canvas's pixels per CSS pixel for a width × height window: the
+ * screen's density, at most 2, and on iPhones and iPads no more than keeps
+ * the canvas within SCENE_PIXEL_BUDGET (a phone in landscape stays at 2x;
+ * an iPad-sized window draws a little softer). Never below 1.
+ */
+export function sceneDensity(
+  width: number,
+  height: number,
+  dpr = typeof devicePixelRatio === "number" ? devicePixelRatio : 1,
+  ios = isIOSDevice(),
+) {
+  let d = Math.min(2, Number.isFinite(dpr) ? dpr : 1);
+  if (ios)
+    d = Math.min(
+      d,
+      Math.sqrt(SCENE_PIXEL_BUDGET / Math.max(1, width * height)),
+    );
+  return Math.max(1, d);
+}
