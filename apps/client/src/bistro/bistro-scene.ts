@@ -170,6 +170,8 @@ import {
   REGULARS,
   leagueReward,
   onCounter,
+  mealSeconds,
+  MEAL_SPREAD,
   orderLeft,
   orderReady,
   regularReward,
@@ -1330,11 +1332,6 @@ export function openBistro(o: BistroOptions): BistroHandle {
     // Leaving.
     if (step(c, dt)) c.alpha -= dt * 3;
   };
-  /* A meal: 12 to 17 s. With ordering, the waiter's walk and paying, a seat
-     turns over in about SEAT_BASE (20 s), as the server counts it, so a busy
-     room fills up and the queue at the door shows when it's full. */
-  const EAT_SECONDS = 12;
-  const EAT_SPREAD = 5;
   const sitFace = (dir: number): Facing =>
     dir === 0 ? "right" : dir === 1 ? "left" : "up";
   const pay = (c: Customer) => {
@@ -1515,7 +1512,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
     w.task = null;
     c.served = true;
     c.state = "eating";
-    c.eatEnd = T + EAT_SECONDS + Math.random() * EAT_SPREAD;
+    c.eatEnd = T + mealSeconds(c.dish!) + Math.random() * MEAL_SPREAD;
     const waited = T - c.sat;
     c.hearts = heartsFor(waited, c.patience);
     combo = T - lastServe <= COMBO_SECONDS ? Math.min(COMBO_MAX, combo + 1) : 1;

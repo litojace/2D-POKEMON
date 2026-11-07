@@ -1467,6 +1467,15 @@ export const SERVE_HANDLING = 5;
 export const CLEAR_SECONDS = 1.2;
 /** A seat's turn, besides the walk in and out: ordering, waiting, eating, clearing. */
 export const SEAT_BASE = 20;
+/**
+ * How long a guest eats a dish (s), before up to MEAL_SPREAD more: the
+ * longer a dish takes to cook (the dearer ones do), the longer they sit
+ * over it. 10 s for Spring Rolls, about 14 for Pho, 20 for the Hotpot, 23
+ * for the Phoenix Feast; with ordering and paying, about SEAT_BASE a seat.
+ */
+export const MEAL_SPREAD = 4;
+export const mealSeconds = (dish: DishId) =>
+  10 + 2 * Math.log2(DISH_BY_ID[dish].seconds / 15);
 export function distField(
   blocked: boolean[][],
   sources: readonly { x: number; y: number }[],

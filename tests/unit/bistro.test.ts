@@ -794,3 +794,21 @@ describe("bistro: dish levels and ingredients (docs/bistro-gdd.md §2)", () => {
     expect(run(8).coins).toBeGreaterThan(run(1).coins);
   });
 });
+
+describe("meals", () => {
+  it("guests sit longer over dishes that take longer to cook (the dearer ones)", async () => {
+    const { mealSeconds, DISHES, SEAT_BASE } =
+      await import("../../packages/shared/src/bistro");
+    expect(mealSeconds("goicuon")).toBe(10);
+    expect(mealSeconds("pho")).toBe(14);
+    expect(mealSeconds("phoenix")).toBeCloseTo(22.6, 1);
+    const bySeconds = [...DISHES].sort((a, b) => a.seconds - b.seconds);
+    for (let i = 1; i < bySeconds.length; i++)
+      expect(mealSeconds(bySeconds[i].id)).toBeGreaterThanOrEqual(
+        mealSeconds(bySeconds[i - 1].id),
+      );
+    // No meal keeps a seat much past the server's turn of a seat.
+    for (const d of DISHES)
+      expect(mealSeconds(d.id)).toBeLessThan(SEAT_BASE + 5);
+  });
+});

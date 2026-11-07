@@ -461,7 +461,7 @@ test("Bistro board: deliver a catering order, a regular's visit, claim the leagu
   expect(errors).toEqual([]);
 });
 
-test("Bistro: a guest stays at the table 12 to 17 s, so a busy room fills up", async ({
+test("Bistro: a guest sits over Spring Rolls 10 to 14 s (longer for dearer dishes), so a busy room fills up", async ({
   page,
 }) => {
   const errors = await openBistro(page);
@@ -482,9 +482,9 @@ test("Bistro: a guest stays at the table 12 to 17 s, so a busy room fills up", a
     `for (let i = 0; i < 60; i++) { const c = b.customers().find((x) => x.id === ${id}); if (c?.state === 'eating') return true; b.advance(0.5); } return false`,
   )) as boolean;
   expect(served).toBe(true);
-  await B(page, "b.advance(11.5)");
+  await B(page, "b.advance(9.5)");
   expect(await B(page, state)).toBe("eating");
-  await B(page, "b.advance(6)");
+  await B(page, "b.advance(5)");
   expect(await B(page, state)).not.toBe("eating");
   expect(errors).toEqual([]);
 });
