@@ -897,6 +897,23 @@ function boomerang(g: G, pr: Projectile, now: number) {
   fx.trail(`bm${pr.id}`, 0.05, () =>
     dust(fx, pr.x, pr.y, 1, [5, 20], { size: [4, 8] }),
   );
+  // Leaves it tore off the bush on the way, spinning down behind it.
+  fx.trail(`bm-leaf${pr.id}`, 0.09, () =>
+    fx.burst({
+      x: pr.x,
+      y: pr.y,
+      z: 18,
+      count: 1,
+      kind: "debris",
+      color: [LEAF, 0x6fbf5a, 0xb6e88a],
+      speed: [10, 40],
+      up: [10, 50],
+      life: [0.8, 1.2],
+      size: [2.2, 3.2],
+      grav: 150,
+      drag: 3,
+    }),
+  );
 }
 function pebbleImpact(
   scene: Phaser.Scene,
@@ -909,7 +926,36 @@ function pebbleImpact(
   const fx = fxFor(scene),
     r = a.radius;
   rocks(fx, x, y, 5, [60, 180], [80, 220], { size: [1.8, 3.2] });
-  dust(fx, x, y, 2, [20, 60], { size: [7, 11] });
+  dust(fx, x, y, 3, [20, 60], { size: [7, 11] });
+  // A wooden thwack: chips fly, a few leaves flutter down.
+  fx.burst({
+    x,
+    y,
+    z: 16,
+    count: 5,
+    kind: "debris",
+    color: [0xc98b4a, 0x8a5a2e],
+    speed: [80, 200],
+    up: [120, 260],
+    life: [0.45, 0.75],
+    size: [1.6, 2.8],
+    grav: 1000,
+    bounce: 0.35,
+  });
+  fx.burst({
+    x,
+    y,
+    z: 30,
+    count: 4,
+    kind: "debris",
+    color: [LEAF, 0x6fbf5a],
+    speed: [20, 80],
+    up: [40, 120],
+    life: [0.9, 1.4],
+    size: [2.4, 3.4],
+    grav: 160,
+    drag: 3,
+  });
   shot(fx.reduced ? 100 : 220, (k) =>
     fx.solid
       .lineStyle(3 * (1 - k), SAND, 0.8 * (1 - k))
@@ -958,9 +1004,47 @@ function grudgeThump(
 ) {
   const fx = fxFor(scene),
     R = a.radius || 240;
-  fx.shake(140, 0.005);
-  rocks(fx, x, y, 8, [60, 180], [100, 220], { size: [2, 3.5] });
-  dust(fx, x, y, 10, [80, 200], { size: [10, 16] });
+  fx.shake(180, 0.007);
+  // The stamp: the ground cracks, chunks jump and bounce, a dust ring rolls
+  // outward and settles, and angry steam puffs from the nostrils.
+  fx.decal({ kind: "crack", x, y, r: 70, color: DARK, life: 4 });
+  rocks(fx, x, y, 16, [70, 220], [140, 300], { size: [2, 4.5] });
+  dust(fx, x, y, 14, [120, 280], { size: [12, 20] });
+  for (let i = 0; i < 16; i++) {
+    const aa = (i / 16) * Math.PI * 2;
+    fx.burst({
+      x: x + Math.cos(aa) * 30,
+      y: y + Math.sin(aa) * 15,
+      z: 2,
+      count: 1,
+      kind: "smoke",
+      color: [DUST, SAND],
+      angle: aa,
+      spread: 0.1,
+      speed: [R * 0.8, R * 1.2],
+      up: [5, 25],
+      life: [0.6, 0.9],
+      size: [12, 18],
+      drag: 2.2,
+    });
+  }
+  for (const side of [-1, 1])
+    fx.burst({
+      x: x + side * 8,
+      y: y - 30,
+      z: 30,
+      count: 3,
+      kind: "smoke",
+      color: [0xf2f2f2, 0xffd6d0],
+      angle: -Math.PI / 2 + side * 0.6,
+      spread: 0.3,
+      speed: [30, 70],
+      up: [40, 80],
+      life: [0.4, 0.7],
+      size: [5, 8],
+      grav: -30,
+      drag: 1.6,
+    });
   shot(fx.reduced ? 300 : 700, (k) => {
     const fade = 1 - k;
     fx.shockwave(
