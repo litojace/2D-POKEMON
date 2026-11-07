@@ -1,43 +1,33 @@
 /**
- * On a touch screen a long press is a game action (hold to harvest or plant
- * many on the Farm, hold to compare in the Shop), not a request for the
- * phone's menu. The stylesheet stops text selection and iOS's callout
- * (style.css, "Touch screens"); this cancels the context menu a long press
- * opens on Android (Copy, Save image, Open in new tab) while a finger is
- * down. A mouse's right click and fields you type in keep their menu.
+ * The game is not a page to copy from (owner, 6–7 Nov 2026). A long press
+ * on a phone is a game action (hold to harvest or plant many on the Farm,
+ * hold to compare in the Shop), and on a computer a drag or a right click
+ * shouldn't select text or open the browser's menu. The stylesheet stops
+ * text selection, iOS's callout and image dragging (style.css, "Not a page
+ * to copy"); this cancels the context menu (a right click, or Android's
+ * long-press menu: Copy, Save image, Open in new tab) and dragging a
+ * picture, a link or text out of the page. Fields you type in keep their
+ * menu (paste a friend code). The right mouse button still dashes: only
+ * the menu is cancelled, not the press.
  */
 export const EDITABLE = 'input, textarea, select, [contenteditable="true"]';
 
-/** Cancel this context menu? Only from a finger, and not in a text field. */
-export function blocksTouchMenu(
-  fromTouch: boolean,
+/** Cancel this menu or drag? Everywhere but a field you type in. */
+export function blocksMenu(
   target: { closest(selector: string): unknown } | null,
 ) {
-  return fromTouch && !target?.closest(EDITABLE);
+  return !target?.closest(EDITABLE);
 }
 
-let fingers = 0;
 let installed = false;
 
 export function guardTouchHold(win: Window = window) {
   if (installed) return;
   installed = true;
-  const count = (e: TouchEvent) => {
-    fingers = e.touches.length;
+  const cancel = (e: Event) => {
+    const target = e.target instanceof Element ? e.target : null;
+    if (blocksMenu(target)) e.preventDefault();
   };
-  win.addEventListener("touchstart", count, { capture: true, passive: true });
-  win.addEventListener("touchend", count, { capture: true, passive: true });
-  win.addEventListener("touchcancel", count, { capture: true, passive: true });
-  win.addEventListener(
-    "contextmenu",
-    (e) => {
-      // Chrome says which pointer opened the menu; Safari and older Chrome
-      // don't, so a finger still on the screen counts as a touch.
-      const type = (e as PointerEvent).pointerType;
-      const fromTouch = type ? type === "touch" : fingers > 0;
-      const target = e.target instanceof Element ? e.target : null;
-      if (blocksTouchMenu(fromTouch, target)) e.preventDefault();
-    },
-    { capture: true },
-  );
+  win.addEventListener("contextmenu", cancel, { capture: true });
+  win.addEventListener("dragstart", cancel, { capture: true });
 }

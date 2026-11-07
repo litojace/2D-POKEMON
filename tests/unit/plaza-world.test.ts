@@ -321,6 +321,33 @@ describe("the Plaza world", () => {
     expect(lap!).toBeGreaterThan(5000);
   });
 
+  it("keeps the pitch bots out of one another while they play (owner, 7 Nov 2026)", () => {
+    const world = new PlazaWorld(() => 0.5);
+    world.join("s1", "acc-1", profile("Ann"), QUIET);
+    const copy = (world as any).copies.get(1);
+    const bots = copy.bots.map((b: any) => b.body);
+    let closest = Infinity,
+      travelled = 0,
+      last = { x: copy.ball.x, y: copy.ball.y };
+    let now = QUIET;
+    for (let t = 0; t < 90; t += DT) {
+      now += DT * 1000;
+      world.step(DT, now);
+      for (let i = 0; i < bots.length; i++)
+        for (let j = i + 1; j < bots.length; j++)
+          closest = Math.min(
+            closest,
+            Math.hypot(bots[i].x - bots[j].x, bots[i].y - bots[j].y),
+          );
+      travelled += Math.hypot(copy.ball.x - last.x, copy.ball.y - last.y);
+      last = { x: copy.ball.x, y: copy.ball.y };
+    }
+    // Never closer than two bodies side by side.
+    expect(closest).toBeGreaterThanOrEqual(PLAZA.radius * 2 - 0.5);
+    // And they still play: the ball goes up and down the pitch.
+    expect(travelled).toBeGreaterThan(1500);
+  });
+
   it("lets a player score with a dash into the ball and names them", () => {
     const world = new PlazaWorld(() => 0.99); // bots never dash
     world.join("s1", "acc-1", profile("Ann"), QUIET);

@@ -3,7 +3,8 @@ import { openLobby } from "./helpers";
 
 // A long press on a phone is a game action (hold to harvest or plant many on
 // the Farm), never the phone's text selection or Copy menu (owner, 6 Nov
-// 2026). Fields you type in keep both; a mouse keeps selecting text.
+// 2026); on a computer a drag or a right click selects and opens nothing
+// either (7 Nov). Fields you type in keep both.
 // (iOS's -webkit-touch-callout isn't in Chromium; tests/unit/touch-hold.test.ts
 // checks the stylesheet sets it.)
 const selectable = (page: Page, selector: string) =>
@@ -86,11 +87,31 @@ test("a long press on a phone selects nothing and opens no menu", async ({
   }
 });
 
-test("a mouse still selects text and right-clicks as usual", async ({
+test("on a computer a drag selects nothing, and right click and dragging a picture open nothing", async ({
   page,
 }) => {
   const errors = await openLobby(page);
-  expect(await selectable(page, "#lobby-play")).not.toBe("none");
-  expect(await menuCancelled(page, "#lobby-play", "mouse")).toBe(false);
+  expect(await selectable(page, "#lobby-play")).toBe("none");
+  expect(await selectable(page, ".lobby-layer")).toBe("none");
+  expect(await menuCancelled(page, "#lobby-play", "mouse")).toBe(true);
+  // Dragging a picture (a fighter's portrait) out of the page.
+  const dragCancelled = await page.evaluate(() => {
+    const img = document.querySelector("img")!;
+    const drag = new DragEvent("dragstart", {
+      bubbles: true,
+      cancelable: true,
+    });
+    img.dispatchEvent(drag);
+    return drag.defaultPrevented;
+  });
+  expect(dragCancelled).toBe(true);
+  // A field keeps selection and its menu (paste a code).
+  await page.evaluate(() => {
+    const input = document.createElement("input");
+    input.id = "zz-field";
+    document.body.append(input);
+  });
+  expect(await selectable(page, "#zz-field")).toBe("text");
+  expect(await menuCancelled(page, "#zz-field", "mouse")).toBe(false);
   expect(errors).toEqual([]);
 });
