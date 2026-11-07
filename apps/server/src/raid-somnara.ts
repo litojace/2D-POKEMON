@@ -712,9 +712,9 @@ export class SomnaraArena extends RaidArena {
         this.enterPad(p.id, p, pad.rune);
       }
     }
-    if (a.id === "silent-swoop" && this.raid.dream) {
+    if (a.id === "mind-maze" && this.raid.dream) {
       this.sharedUntil = this.raid.dream.until;
-      this.raid.message = `${p.name}'s Silent Swoop reveals this dream to the whole team!`;
+      this.raid.message = `${p.name}'s Mind Maze reveals this dream to the whole team!`;
     }
   }
   protected override botHint(

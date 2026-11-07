@@ -1038,98 +1038,36 @@ function magnetLashImpact(
   });
 }
 
-/** Spark Tether: a ring-tail of current around Coilemur that pulses on each shock. */
-function sparkTether(g: G, z: Zone, progress: number, now: number) {
+/**
+ * Spark Trail: a crackling line along where Coilemur has been, brightest
+ * where it was laid last and fading as each stretch runs out.
+ */
+function sparkTrail(g: G, z: Zone, _progress: number, now: number) {
   const fx = fxFor(g.scene),
-    a = z.ability,
+    pts = z.points ?? [],
     c = z.color,
-    r = z.radius,
-    x = z.x,
-    y = z.y,
-    fade =
-      progress > 0.88 ? (1 - progress) / 0.12 : Math.min(1, progress / 0.06),
-    t = progress * a.duration,
-    since = t - (a.tickDelay ?? 0),
-    every = Math.max(0.05, a.tickInterval ?? 0.5),
-    pulse = since >= 0 ? 1 - Math.min(1, (since % every) / (every * 0.35)) : 0,
-    spin = now / 900,
-    seed = Math.floor(now / 70) + z.id;
-  fx.floorSolid
-    .fillStyle(0x0d1430, 0.12 * fade)
-    .fillEllipse(x, y, r * 2, r * 2 * SQ);
-  fx.glow(x, y, r * 1.1, c, (0.14 + pulse * 0.3) * fade, true);
-  // The banded rim: dark stripes on the ground, lit stripes in the light.
-  const bands = 24;
-  for (let i = 0; i < bands; i++) {
-    const a0 = spin + (i * TAU) / bands,
-      a1 = a0 + TAU / bands,
-      x0 = x + Math.cos(a0) * r,
-      y0 = y + Math.sin(a0) * r * SQ,
-      x1 = x + Math.cos(a1) * r,
-      y1 = y + Math.sin(a1) * r * SQ;
-    if (i % 2)
-      fx.floorSolid.lineStyle(7, RING, 0.55 * fade).lineBetween(x0, y0, x1, y1);
-    else
-      fx.floor
-        .lineStyle(7, c, (0.55 + pulse * 0.4) * fade)
-        .lineBetween(x0, y0, x1, y1);
-  }
-  fx.floor
-    .lineStyle(1.5, WHITE, (0.35 + pulse * 0.6) * fade)
-    .strokeEllipse(x, y, r * 2, r * 2 * SQ);
-  // Current running round the rim, and a shock inward on each tick.
-  for (let i = 0; i < 3; i++) {
-    const a0 = hash(seed + i) * TAU,
-      a1 = a0 + 0.5 + hash(seed - i) * 0.6;
-    fx.bolt(
-      x + Math.cos(a0) * r,
-      y + Math.sin(a0) * r * SQ,
-      x + Math.cos(a1) * r,
-      y + Math.sin(a1) * r * SQ,
-      c,
-      {
-        width: 1.4,
-        jag: 0.3,
-        depth: 3,
+    fadeFor = z.ability.trail?.fade ?? 1.5,
+    newest = pts.length ? pts[pts.length - 1].t : 0,
+    seed = Math.floor(now / 80) + z.id;
+  for (let i = 1; i < pts.length; i++) {
+    const a = pts[i - 1],
+      b = pts[i],
+      life = Math.max(0, 1 - (newest - b.t) / fadeFor);
+    fx.floor
+      .lineStyle(10, 0x0d1430, 0.25 * life)
+      .lineBetween(a.x, a.y, b.x, b.y);
+    fx.floor.lineStyle(5, c, 0.55 * life).lineBetween(a.x, a.y, b.x, b.y);
+    if (i % 2 === 0)
+      fx.bolt(a.x, a.y - 4, b.x, b.y - 4, BLUE, {
+        width: 1.6 + life,
+        jag: 0.35,
+        branches: 0,
         seed: seed + i,
-        alpha: fade,
-        onFloor: true,
-      },
-    );
+        alpha: life,
+      });
   }
-  if (pulse > 0.2)
-    for (let i = 0; i < 5; i++) {
-      const a0 = (i * TAU) / 5 + hash(Math.floor(since / every) + i) * 1.2;
-      fx.bolt(
-        x,
-        y - 14,
-        x + Math.cos(a0) * r * 0.97,
-        y + Math.sin(a0) * r * 0.97 * SQ,
-        c,
-        {
-          width: 1.6 * pulse,
-          jag: 0.3,
-          depth: 4,
-          seed: seed * 3 + i,
-          alpha: pulse * fade,
-        },
-      );
-    }
-  fx.trail(`st${z.id}`, 0.06, () => {
-    const a0 = Math.random() * TAU;
-    fx.burst({
-      x: x + Math.cos(a0) * r,
-      y: y + Math.sin(a0) * r * SQ,
-      count: 1,
-      kind: "mote",
-      color: [c, PALE],
-      speed: [0, 15],
-      up: [40, 100],
-      life: [0.4, 0.8],
-      size: [1, 1.8],
-      drag: 1.5,
-    });
-  });
+  const head = pts[pts.length - 1];
+  if (head) fx.glow(head.x, head.y, 22, PALE, 0.5);
 }
 
 /**
@@ -1276,7 +1214,7 @@ export const electricKit: FxKit = {
   },
   zone: {
     "practice-grid": stormGrid,
-    "spark-tether": sparkTether,
+    "spark-trail": sparkTrail,
     electromagnet,
   },
   windup: {
@@ -1293,6 +1231,7 @@ export const electricKit: FxKit = {
     "static-glide": staticGlide,
     "coil-swipe": coilSwipe,
     "static-clamp": staticClamp,
+    "spark-trail": electricCast,
   },
   impact: {
     "ball-lightning": ballLightningImpact,

@@ -96,6 +96,19 @@ export function previewShape(
       );
       break;
     }
+    case "current":
+      // The current's lane, from the caster along the aim.
+      shape.polygons.push(lane(from, angle, ability.range, ability.radius * 2));
+      break;
+    case "trail":
+      // Laid where the caster walks: just its width round the caster.
+      shape.discs.push({
+        x: from.x,
+        y: from.y,
+        r: ability.radius + RULES.radius,
+      });
+      break;
+    case "steer":
     case "zone": {
       const distance = ability.follow
         ? 0

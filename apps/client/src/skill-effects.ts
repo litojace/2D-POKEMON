@@ -457,25 +457,7 @@ export function drawZone(
       }
       return;
     }
-    case "eddy": {
-      g.fillStyle(c, 0.16 * fade).fillCircle(z.x, z.y, r);
-      g.lineStyle(3, WHITE, 0.55 * fade);
-      for (let arm = 0; arm < 3; arm++) {
-        const pts = [];
-        for (let i = 0; i <= 20; i++) {
-          const k = i / 20,
-            aa = -t * 3 + arm * (TAU / 3) + k * 4;
-          pts.push({
-            x: z.x + Math.cos(aa) * r * k,
-            y: z.y + Math.sin(aa) * r * k * 0.9,
-          });
-        }
-        g.strokePoints(pts, false);
-      }
-      g.lineStyle(3, c, 0.8 * fade).strokeCircle(z.x, z.y, r);
-      return;
-    }
-    case "silent-swoop": {
+    case "mind-maze": {
       const strikeAt = (a.tickDelay ?? 0.35) / a.duration;
       if (progress < strikeAt) {
         // Reticle closes in on the target, then the strike lands.

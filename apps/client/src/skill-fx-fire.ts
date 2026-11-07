@@ -1288,6 +1288,7 @@ export const fireKit: FxKit = {
     "hot-coals": chestnutLob,
     "chestnut-storm": chestnutLob,
     "ember-curtain": curtainCast,
+    "sunfire-pillar": magmaCast,
   },
   impact: { "magma-bomb": magmaImpact, "ember-lob": emberLobImpact },
   hit: { fire: fireHit },

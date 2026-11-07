@@ -121,6 +121,8 @@ describe("special skills", () => {
       // Sloth Time and Lazy Swap slow and move, they don't hurt.
       "sloth-time",
       "lazy-swap",
+      // Spark Trail hurts where Coilemur walks, not where it stands (wave3-kits).
+      "spark-trail",
     ]);
     for (const id of FIGHTER_IDS)
       for (let i = 0; i < 4; i++) {

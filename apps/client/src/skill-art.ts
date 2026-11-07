@@ -932,33 +932,32 @@ const art: Record<string, { el: Element; draw: () => string }> = {
         W.accent[2],
       ),
   },
-  Eddy: {
+  Undertow: {
     el: "water",
     draw: () =>
-      floorGlow("water", 64, 70, 58, 36, 0.8) +
-      [0, 1, 2, 3, 4]
-        .map((k) => {
-          const r = 48 - k * 9;
-          return `<path d="M${64 - r} 70 A${r} ${r * 0.55} 0 1 1 ${64 + r * 0.6} ${70 + r * 0.44}" fill="none" stroke="${k % 2 ? W.accent[1] : W.accent[2]}" stroke-width="${4.4 - k * 0.6}" stroke-linecap="round" opacity="${0.95 - k * 0.1}" transform="rotate(${k * 34} 64 70)"/>`;
-        })
-        .join("") +
-      `<ellipse cx="64" cy="70" rx="8" ry="4.5" fill="${W.bg[2]}"/>` +
-      `<ellipse cx="64" cy="70" rx="12" ry="7" fill="none" stroke="#fff" stroke-width="1.6" opacity=".8"/>` +
-      [
-        [24, 40],
-        [104, 36],
-        [110, 96],
-        [20, 98],
-      ]
+      // A lane of racing water sweeps a little figure off to the right.
+      floorGlow("water", 64, 76, 60, 26, 0.8) +
+      `<path d="M8 58 L112 58 L112 94 L8 94Z" fill="${W.accent[0]}" opacity=".55"/>` +
+      `<path d="M8 58 H112 M8 94 H112" stroke="#f2fdff" stroke-width="2.6" opacity=".8"/>` +
+      [0, 1, 2]
         .map(
-          ([x, y]) =>
-            `<path d="M${x} ${y} q3 -6 0 -9 q-3 3 0 9Z" fill="${W.accent[2]}"/>`,
+          (k) =>
+            `<path d="M${18 + k * 30} 64 l12 12 l-12 12" fill="none" stroke="${W.accent[2]}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" opacity="${0.55 + k * 0.2}"/>`,
         )
         .join("") +
+      [66, 76, 86]
+        .map(
+          (y, k) =>
+            `<path d="M${14 + k * 9} ${y} h${28 + k * 6}" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity=".7"/>`,
+        )
+        .join("") +
+      `<circle cx="104" cy="62" r="8" fill="#1b1636" opacity=".85"/><path d="M98 70 Q104 80 112 74" fill="none" stroke="#1b1636" stroke-width="6" stroke-linecap="round" opacity=".85"/>` +
+      `<path d="M116 52 l6 -4 M118 60 l7 0" stroke="${W.accent[2]}" stroke-width="2.4" stroke-linecap="round"/>` +
       sparks(
         [
-          [64, 22, 1.5],
-          [36, 26, 1.2],
+          [24, 30, 1.4],
+          [70, 22, 1.3],
+          [110, 110, 1.2],
         ],
         W.accent[2],
       ),
@@ -1380,27 +1379,24 @@ const art: Record<string, { el: Element; draw: () => string }> = {
         P.accent[2],
       ),
   },
-  "Silent Swoop": {
+  "Mind Maze": {
     el: "psychic",
-    draw: () =>
-      floorGlow("psychic", 64, 92, 50, 18) +
-      // A target circle, then the psychic blast falling from above.
-      `<ellipse cx="64" cy="92" rx="40" ry="13" fill="none" stroke="${P.accent[2]}" stroke-width="2.4"/>` +
-      `<ellipse cx="64" cy="92" rx="26" ry="8" fill="none" stroke="${P.accent[1]}" stroke-width="1.8" stroke-dasharray="4 4"/>` +
-      `<path d="M46 0 L82 0 L70 90 L58 90Z" fill="url(#sa-glow-psychic)"/>` +
-      `<path d="M58 0 L70 0 L66 88 L62 88Z" fill="${P.accent[2]}"/>` +
-      halo("psychic", 64, 86, 26) +
-      `<circle cx="64" cy="86" r="10" fill="url(#sa-core-psychic)"/>` +
-      `<path d="M46 34 Q64 18 82 34 Q64 50 46 34Z" fill="url(#sa-orb-psychic)"/><circle cx="64" cy="34" r="6" fill="#fff"/><circle cx="64" cy="34" r="3" fill="${P.accent[0]}"/>` +
-      sparks(
-        [
-          [22, 70, 1.5],
-          [106, 72, 1.5],
-          [30, 104, 1.2],
-          [100, 106, 1.2],
-        ],
-        P.accent[2],
-      ),
+    draw: () => {
+      // Walls of a maze close round a dizzy target; arrows point the wrong way.
+      const ring = (r: number, gap: number) =>
+        `<path d="M${n(64 + Math.cos(gap) * r)} ${n(66 + Math.sin(gap) * r * 0.8)} A${r} ${n(r * 0.8)} 0 1 0 ${n(64 + Math.cos(gap + 0.7) * r)} ${n(66 + Math.sin(gap + 0.7) * r * 0.8)}" fill="none" stroke="${P.accent[2]}" stroke-width="4" stroke-linecap="round"/>`;
+      return (
+        floorGlow("psychic", 64, 70, 58, 30) +
+        halo("psychic", 64, 66, 50) +
+        ring(40, 0.3) +
+        ring(28, 2.4) +
+        ring(16, 4.4) +
+        `<circle cx="64" cy="66" r="6" fill="#fff"/>` +
+        `<path d="M24 22 h-14 m4 -5 l-5 5 l5 5" fill="none" stroke="#ff9de2" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>` +
+        `<path d="M104 22 h14 m-4 -5 l5 5 l-5 5" fill="none" stroke="#ff9de2" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>` +
+        `<path d="M60 110 q0 -6 4 -6 q4 0 4 4 q0 3 -4 4 v3" fill="none" stroke="#ff9de2" stroke-width="2.6" stroke-linecap="round"/>`
+      );
+    },
   },
 
   // Terradon · Earth
@@ -1805,68 +1801,40 @@ const art: Record<string, { el: Element; draw: () => string }> = {
       ) +
       `<circle cx="94" cy="64" r="17" fill="none" stroke="#fff" stroke-width="2.2" stroke-dasharray="5 4" opacity=".9"/><path d="M94 47 V54" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/>`,
   },
-  "Spark Tether": {
+  "Spark Trail": {
     el: "electric",
-    draw: () => {
-      // A coiled, ringed tail at the centre of a crackling ring, tethered to two foes.
-      const ring = Array.from({ length: 13 }, (_, k) => {
-        const a = (k / 12) * Math.PI * 2;
-        return [n(64 + Math.cos(a) * 46), n(88 + Math.sin(a) * 16)] as [
-          number,
-          number,
-        ];
-      });
-      return (
-        floorGlow("electric", 64, 88, 56, 22) +
-        glow(bolt(ring, 2.2, 4), E.accent[2], 2.2, E.accent[1]) +
-        [0, 1, 2, 3, 4]
-          .map((k) => {
-            const y = 82 - k * 11,
-              rx = 14 - k;
-            return `<path d="M${64 + rx} ${y} A${rx} 4.5 0 0 0 ${64 - rx} ${y}" fill="none" stroke="${E.bg[0]}" stroke-width="4"/><path d="M${64 - rx} ${y} A${rx} 4.5 0 0 0 ${64 + rx} ${y}" fill="none" stroke="${k % 2 ? "#2c2840" : "#f7f3ea"}" stroke-width="5" stroke-linecap="round"/>`;
-          })
-          .join("") +
-        halo("electric", 64, 32, 22) +
-        `<circle cx="64" cy="32" r="7" fill="url(#sa-orb-electric)"/>` +
-        glow(
-          bolt(
-            [
-              [58, 34],
-              [36, 46],
-              [18, 54],
-            ],
-            3,
-            6,
-          ),
-          E.hot,
-          2,
-          E.accent[1],
-        ) +
-        glow(
-          bolt(
-            [
-              [70, 34],
-              [92, 44],
-              [110, 52],
-            ],
-            3,
-            7,
-          ),
-          E.hot,
-          2,
-          E.accent[1],
-        ) +
-        `<circle cx="16" cy="56" r="6" fill="${E.bg[2]}" stroke="${E.accent[2]}" stroke-width="2"/><circle cx="112" cy="54" r="6" fill="${E.bg[2]}" stroke="${E.accent[2]}" stroke-width="2"/>` +
-        sparks(
+    draw: () =>
+      // A crackling trail snaking back from Coilemur's ringed tail.
+      floorGlow("electric", 64, 84, 60, 22) +
+      `<path d="M14 100 Q34 70 56 88 T96 70 T118 40" fill="none" stroke="${E.accent[0]}" stroke-width="12" stroke-linecap="round" opacity=".45"/>` +
+      `<path d="M14 100 Q34 70 56 88 T96 70 T118 40" fill="none" stroke="${E.accent[2]}" stroke-width="5" stroke-linecap="round"/>` +
+      glow(
+        bolt(
           [
-            [30, 20, 1.3],
-            [100, 18, 1.4],
-            [64, 112, 1.3],
+            [18, 96],
+            [36, 78],
+            [56, 88],
+            [76, 80],
+            [96, 70],
+            [110, 50],
           ],
-          E.accent[2],
-        )
-      );
-    },
+          5,
+          11,
+        ),
+        "#fff",
+        2,
+        E.accent[1],
+      ) +
+      halo("electric", 116, 38, 16) +
+      `<circle cx="116" cy="38" r="8" fill="url(#sa-orb-electric)"/>` +
+      sparks(
+        [
+          [30, 30, 1.5],
+          [70, 40, 1.3],
+          [100, 104, 1.3],
+        ],
+        E.accent[2],
+      ),
   },
   Electromagnet: {
     el: "electric",
@@ -2517,7 +2485,7 @@ const art: Record<string, { el: Element; draw: () => string }> = {
   "Moon Gravity": {
     el: "psychic",
     draw: () =>
-      // A little moon bearing down on a patch of heavy gravity.
+      // A little moon over a patch of low gravity: everything floats up.
       floorGlow("psychic", 64, 92, 58, 22) +
       [0, 1, 2]
         .map(
@@ -2528,8 +2496,8 @@ const art: Record<string, { el: Element; draw: () => string }> = {
       [36, 64, 92]
         .map(
           (x, i) =>
-            chevron(x, i === 1 ? 72 : 76, 7, 90, P.accent[2], 3.4) +
-            chevron(x, i === 1 ? 60 : 64, 7, 90, P.accent[1], 3, 0.6),
+            chevron(x, i === 1 ? 72 : 76, 7, -90, P.accent[2], 3.4) +
+            chevron(x, i === 1 ? 60 : 64, 7, -90, P.accent[1], 3, 0.6),
         )
         .join("") +
       halo("psychic", 64, 30, 28) +
