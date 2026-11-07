@@ -87,6 +87,36 @@ test("the Bistro tab opens next to the Farm and plays a full service on the serv
   expect(errors).toEqual([]);
 });
 
+test("Bistro hats sit on the head, not on ears, horns or tails", async ({
+  page,
+}) => {
+  await openBistro(page);
+  // Cindrake's horns and flame and Astrabun's ears rise far above their
+  // heads: a hat put on the top of the whole drawing floated over them.
+  const ids = ["cindrake", "astrabun", "auralynx", "duskveil", "voltkit"];
+  for (const id of ids) await B(page, `b.chefAs("${id}")`);
+  await page.waitForFunction(
+    (list) =>
+      list.every((id) => {
+        const h = (window as any).__bistro.headOf(id);
+        return h.ready && h.headTop > 0;
+      }),
+    ids,
+  );
+  const heads = (await B(
+    page,
+    `return ${JSON.stringify(ids)}.map((id) => [id, b.headOf(id)])`,
+  )) as [string, { top: number; headTop: number }][];
+  for (const [id, h] of heads) {
+    // The head's top is never above the drawing's, and well inside it.
+    expect(h.headTop, id).toBeGreaterThanOrEqual(h.top);
+    expect(h.headTop, id).toBeLessThan(80);
+  }
+  const by = Object.fromEntries(heads);
+  expect(by.cindrake.headTop - by.cindrake.top).toBeGreaterThan(30);
+  expect(by.astrabun.headTop - by.astrabun.top).toBeGreaterThan(30);
+});
+
 test("Bistro decorate mode moves furniture on the server and refuses the kitchen", async ({
   page,
 }) => {

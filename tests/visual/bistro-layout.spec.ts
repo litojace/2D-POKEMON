@@ -131,9 +131,13 @@ async function problems(page: Page, where: string, inset: Insets | null) {
         ),
       )) {
         if (!shown(e) || !e.textContent?.trim()) continue;
-        const box = e.closest(
-          ".bs-dish, .bs-item, .bs-staff, .bs-slot, .bs-chip, .bs-badge, .bs-wallet, .bs-rail button, .bs-visit, .bs-edit, .bs-away-stats > div, .bs-pop-row, .bs-pop-fx > div, .bs-pop-plan, .bs-card, .bs-league li",
-        );
+        // A counter slot's count sits on its corner like a badge: it only
+        // has to stay inside the bar.
+        const box = e.matches(".bs-slot > b")
+          ? e.closest(".bs-bar")
+          : e.closest(
+              ".bs-dish, .bs-item, .bs-staff, .bs-slot, .bs-chip, .bs-badge, .bs-wallet, .bs-rail button, .bs-visit, .bs-edit, .bs-away-stats > div, .bs-pop-row, .bs-pop-fx > div, .bs-pop-plan, .bs-card, .bs-league li",
+            );
         if (!box) continue;
         const t = e.getBoundingClientRect(),
           o = box.getBoundingClientRect();

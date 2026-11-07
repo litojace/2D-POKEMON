@@ -9,7 +9,8 @@
  */
 import { CHARACTERS, type CharacterId } from "../../../../packages/shared/src";
 import type { Facing } from "../animation/controller";
-import { creatureSvg, type Mood } from "../creature-design";
+import { CREATURE_VIEWBOX, creatureSvg, type Mood } from "../creature-design";
+import { profileViewBox } from "../creature-profile";
 import { deviceTimeOfDay, goldenLevel, nightLevel } from "../farm/farm-feel";
 import { farmIcon as I } from "../farm/farm-icons";
 import type { FarmCue } from "../farm/farm-sound";
@@ -299,6 +300,12 @@ interface Sprite {
   ay: number;
   top: number;
   w: number;
+  /**
+   * The head's top and middle (canvas pixels), from the head alone: hats sit
+   * there, not on the tips of ears, horns or a raised tail.
+   */
+  headTop: number;
+  hx: number;
 }
 const RES = 168;
 /** World units per sprite pixel: a creature stands about 80 tall. */
@@ -318,6 +325,8 @@ function sprite(id: CharacterId, dir: Facing, mood: Mood = "normal"): Sprite {
     ay: cv.height * 0.95,
     top: cv.height * 0.1,
     w: RES * 0.6,
+    headTop: cv.height * 0.1,
+    hx: RES / 2,
   };
   sprites.set(key, s);
   const img = new Image();
@@ -345,6 +354,8 @@ function sprite(id: CharacterId, dir: Facing, mood: Mood = "normal"): Sprite {
         s!.ay = y1;
         s!.top = y0;
         s!.w = x1 - x0;
+        s!.headTop = y0;
+        s!.hx = s!.ax;
       }
     } catch {
       /* A tainted canvas keeps the default anchor. */
@@ -354,7 +365,63 @@ function sprite(id: CharacterId, dir: Facing, mood: Mood = "normal"): Sprite {
   img.src =
     "data:image/svg+xml;charset=utf-8," +
     encodeURIComponent(creatureSvg(id, dir, undefined, undefined, mood));
+  // The head alone, drawn the same size: where a hat goes.
+  const head = new Image();
+  head.decoding = "async";
+  head.onload = () => {
+    const b = opaqueBox(head, cv.width, cv.height);
+    if (b) {
+      s!.headTop = b.wide;
+      s!.hx = (b.x0 + b.x1) / 2;
+    }
+  };
+  head.src =
+    "data:image/svg+xml;charset=utf-8," +
+    encodeURIComponent(
+      creatureSvg(
+        id,
+        dir,
+        "head",
+        // The same frame as the whole drawing (side and back views use theirs).
+        dir === "down" ? CREATURE_VIEWBOX : profileViewBox(id, dir),
+        mood,
+      ),
+    );
   return s;
+}
+/** The box around an image's opaque pixels, drawn at w × h. */
+function opaqueBox(img: HTMLImageElement, w: number, h: number) {
+  const cv = document.createElement("canvas");
+  cv.width = w;
+  cv.height = h;
+  const g = cv.getContext("2d", { willReadFrequently: true });
+  if (!g) return null;
+  g.drawImage(img, 0, 0, w, h);
+  try {
+    const d = g.getImageData(0, 0, w, h).data;
+    let x0 = w,
+      x1 = 0,
+      y0 = h,
+      y1 = 0;
+    const rows = new Array<number>(h).fill(0);
+    for (let y = 0; y < h; y++)
+      for (let x = 0; x < w; x++)
+        if (d[(y * w + x) * 4 + 3] > 40) {
+          rows[y]++;
+          if (x < x0) x0 = x;
+          if (x > x1) x1 = x;
+          if (y < y0) y0 = y;
+          if (y > y1) y1 = y;
+        }
+    if (!(x1 > x0 && y1 > y0)) return null;
+    // Where the shape is half as wide as it gets: a hat rests there, not on
+    // a pointed hood's tip or a tuft.
+    const half = Math.max(...rows) / 2;
+    const wide = rows.findIndex((n) => n >= half);
+    return { x0, x1, y0, y1, wide };
+  } catch {
+    return null;
+  }
 }
 
 /*
@@ -3372,12 +3439,14 @@ export function openBistro(o: BistroOptions): BistroHandle {
       const x = p.x - s.ax * k,
         y = p.y - lift - s.ay * k * sq;
       ctx.drawImage(s.cv, x, y, dw, dh);
-      const headY = y + s.top * k * sq;
-      if (opts.hat === "chef")
-        drawChefHat(p.x + (s.ax - s.cv.width / 2) * 0, headY + 6);
-      else if (opts.hat === "waiter") drawWaiterCap(p.x, headY + 8);
-      else if (opts.hat === "janitor") drawJanitorCap(p.x, headY + 8, p);
-      else if (opts.hat === "vip") drawCrown(p.x, headY + 2);
+      // Hats sit on the head itself (its top and middle), not on the top
+      // of the whole drawing (ears, horns or a tail stick up higher).
+      const headY = y + s.headTop * k * sq,
+        hx = x + s.hx * k;
+      if (opts.hat === "chef") drawChefHat(hx, headY + 4);
+      else if (opts.hat === "waiter") drawWaiterCap(hx, headY + 4);
+      else if (opts.hat === "janitor") drawJanitorCap(hx, headY + 4, p);
+      else if (opts.hat === "vip") drawCrown(hx, headY + 1);
       if (opts.carry) {
         // A tray held up beside the head.
         const tx = p.x + 18,
@@ -4741,6 +4810,23 @@ export function openBistro(o: BistroOptions): BistroHandle {
       edit: (on: boolean) => setEditing(on),
       sheet: (k: string, a?: string | number) => openSheet(k, a),
       drawnStaff: () => [...drawnStaff].sort((x, y) => x - y),
+      /** Another head chef (tests: hats on every creature). */
+      chefAs: (id: CharacterId) => {
+        chef.char = id;
+        for (const d of ["down", "up", "left", "right"] as Facing[])
+          sprite(id, d);
+      },
+      /** A creature's drawing: its top and its head's (tests: hats sit on heads). */
+      headOf: (id: CharacterId, d: Facing = "down") => {
+        const s = sprite(id, d);
+        return {
+          ready: s.ready,
+          top: s.top,
+          headTop: s.headTop,
+          hx: s.hx,
+          ax: s.ax,
+        };
+      },
       advance: (s: number) => {
         for (let i = 0; i < s * 30; i++) update(1 / 30);
       },
