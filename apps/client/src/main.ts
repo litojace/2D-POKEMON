@@ -5937,11 +5937,18 @@ function syncBattleLoop() {
     // the game has torn down (destroy runs on its next step), or every
     // battle leaves a context and its buffers until garbage collection, and
     // Safari limits both. The renderer watcher has detached by then.
+    // Something still holds each old battle canvas after Phaser removes it
+    // (measured: one more per battle), so shrink it too, as Phaser's own
+    // CanvasPool does: whatever keeps it then keeps a 1×1 canvas. Phaser
+    // never pools WebGL canvases, so a later battle can't be handed this one.
     const gl = (previous.renderer as { gl?: WebGLRenderingContext | null }).gl;
     if (gl)
-      previous.events.once(Phaser.Core.Events.DESTROY, () =>
-        gl.getExtension("WEBGL_lose_context")?.loseContext(),
-      );
+      previous.events.once(Phaser.Core.Events.DESTROY, () => {
+        gl.getExtension("WEBGL_lose_context")?.loseContext();
+        const canvas = gl.canvas;
+        if (canvas instanceof HTMLCanvasElement)
+          canvas.width = canvas.height = 1;
+      });
     previous.destroy(true);
     if (previous.isRunning && !previous.loop.running) previous.loop.wake();
   } else if (gameInstance.isRunning && !gameInstance.loop.running)
