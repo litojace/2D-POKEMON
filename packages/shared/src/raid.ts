@@ -681,7 +681,7 @@ export const RAID_PERKS: Partial<
   },
   astrabun: {
     skill: "Mochi Pound",
-    text: "A pound on Grumblecrag adds 15 stagger.",
+    text: "The last pound of a chain on Grumblecrag adds 15 stagger.",
   },
   wombolder: {
     skill: "Burrow Rush and Landslide",

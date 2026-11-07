@@ -104,16 +104,18 @@ describe("signature combos", () => {
     expect(charged.dealt).toBeCloseTo(plain.dealt * COMBOS.voltkit.damage!);
     expect(charged.arena.events.some((e) => e.combo === "Charged")).toBe(true);
   });
-  it("Lumoth's Radiant Flare is wider while Kindled, then the mark is spent", () => {
+  it("Lumoth's Radiant Flare has longer rays while Kindled, then the mark is spent", () => {
     const flare = skill("lumoth", "radiant-flare");
-    const reach = flare.radius * 1.15;
+    const reach = flare.range * 1.15;
     const hit = (kindle: boolean) => {
       const { arena, p, q } = duel("lumoth");
       Object.assign(q, { x: p.x + reach, y: p.y });
       if (kindle) arena.cast(p, skill("lumoth", "kindle"));
       const before = q.hp;
       arena.cast(p, flare);
-      return { dealt: before - q.hp, marked: hasMark(p, p.id, arena.time) };
+      const marked = hasMark(p, p.id, arena.time);
+      for (let i = 0; i < 60; i++) arena.tick();
+      return { dealt: before - q.hp, marked };
     };
     expect(hit(false).dealt).toBe(0);
     const kindled = hit(true);

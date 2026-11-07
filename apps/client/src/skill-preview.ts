@@ -86,6 +86,9 @@ export function previewShape(
       );
       break;
     case "melee":
+    case "clamp":
+    case "throw":
+    case "pound":
     case "cone": {
       const arc = ability.arc ?? (ability.kind === "melee" ? 0.35 : 0.7);
       shape.polygons.push(
@@ -163,6 +166,22 @@ export function previewShape(
       ]);
       break;
     }
+    case "gaze":
+      // Everyone this close takes the flash (whoever looks is stunned).
+      shape.discs.push({
+        x: from.x,
+        y: from.y,
+        r: ability.radius + RULES.radius,
+      });
+      break;
+    case "cage":
+      // The ring the crystal rises on.
+      shape.rings.push({ x: from.x, y: from.y, r: ability.radius });
+      break;
+    case "lighthouse":
+      // How far the rays reach as they turn.
+      shape.rings.push({ x: from.x, y: from.y, r: ability.range });
+      break;
     case "taunt":
       // Everyone this close is taunted.
       shape.discs.push({

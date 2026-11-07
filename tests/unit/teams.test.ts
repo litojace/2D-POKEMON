@@ -86,7 +86,8 @@ describe("2v2 teams", () => {
     place(b1, 800, 200);
     place(r1, 860, 200);
     place(r2, 800, 260);
-    a.cast(b1, CHARACTERS.lumoth.skills[3]); // Radiant Flare nova
+    a.cast(b1, CHARACTERS.lumoth.skills[3]); // Radiant Flare's turning rays
+    for (let i = 0; i < 40; i++) a.tick();
     expect(r1.hp).toBeLessThan(maxHealth("terradon", "teams"));
     expect(r2.hp).toBeLessThan(maxHealth("terradon", "teams"));
   });

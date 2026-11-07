@@ -65,7 +65,7 @@ const ROSTER: Record<
       ["Prism Shot", 8],
       ["Shatter Paw", 12],
       ["Facet Guard", 15],
-      ["Shard Nova", 20],
+      ["Crystal Cage", 20],
     ],
   },
   lumoth: {

@@ -185,7 +185,7 @@ const rosterIconSources: Record<string, string> = {
   "Prism Shot": "Prism Shot",
   "Shatter Paw": "Shard Combination",
   "Facet Guard": "Prism Guard",
-  "Shard Nova": "Nova Ray",
+  "Crystal Cage": "Prism Guard",
   Glint: "Frost Flake",
   "Wing Dust": "Riptide Volley",
   "Eyespot Flash": "Nova Ray",

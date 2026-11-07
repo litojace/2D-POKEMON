@@ -125,6 +125,10 @@ export type StatusKind =
   | "leash"
   /** Blinded (Ink Jet): its basic attacks miss. */
   | "blind"
+  /** Clamped (Static Clamp): a charge that goes off when it runs out (`by` = who clamped it). */
+  | "clamp"
+  /** Caged (Crystal Cage): can't cross the ring of radius `amount` round (`tx`, `ty`); `inside` says which side it is on. */
+  | "cage"
   /** Combo setup: primed for the marker's payoff skill (`by` = the marker). */
   | "mark";
 /** Statuses that count as harmful (the Shadow team-up gift, bots' targeting). */
@@ -141,6 +145,7 @@ export const DEBUFFS: StatusKind[] = [
   "taunt",
   "leash",
   "blind",
+  "clamp",
 ];
 export const STATUS_RULES = {
   stacking: "refresh" as const,
@@ -334,7 +339,45 @@ export type AbilityKind =
    * for up to `duration`, until it gets `tether.breakRange` px away or out
    * of sight.
    */
-  | "tether";
+  | "tether"
+  /**
+   * Eyespots flash: enemies within `radius` who are facing the caster (aiming
+   * within `gaze` radians of it) take `damage` and get `status`; the rest
+   * only take `damage`.
+   */
+  | "gaze"
+  /**
+   * Clamp a charge onto the first enemy in front (melee reach): after `fuse`
+   * seconds it takes `damage` and `status`, and arcs to enemies within
+   * `explosion` of it for `chain` of that. A combo-primed target goes off at once.
+   */
+  | "clamp"
+  /**
+   * Seize the enemy in front (`range`, `arc`), hold it for `hold` seconds,
+   * then hurl it `throw` px toward the aim: `damage` (× `wallSlam` into a
+   * wall); enemies within `explosion` of where it lands take half.
+   */
+  | "throw"
+  /**
+   * Up to three strikes in front, each cast again within `chainWindow`
+   * seconds of the last: `strikes` lists each one's damage; the last stuns
+   * (`status`) and pushes (`knockback`). The cooldown starts after the last.
+   */
+  | "pound"
+  /**
+   * A ring of crystal `radius` px round the caster for `duration`: nobody
+   * can cross it, nor can shots. Enemies inside take `damage` as it rises.
+   */
+  | "cage"
+  /**
+   * The caster glows for `duration`: `count` rays `range` px long turn round
+   * it (a turn every `spin` seconds); an enemy a ray sweeps takes `damage`.
+   */
+  | "lighthouse";
+/** Strikes in front of the caster, within `range` and `arc` (raids treat them alike). */
+export const STRIKE_KINDS: AbilityKind[] = ["melee", "pound", "clamp", "throw"];
+/** Rings round the caster, within `radius` (raids treat them alike). */
+export const RING_KINDS: AbilityKind[] = ["nova", "gaze", "cage"];
 export interface Ability {
   id: string;
   name: string;
@@ -416,6 +459,21 @@ export interface Ability {
   tether?: { tick: number; breakRange: number };
   /** Leash (status "leash"): how far from where it was hit the target can go (px). */
   leash?: number;
+  /** Gaze: how closely (radians) an enemy must be aiming at the caster to be caught. */
+  gaze?: number;
+  /** Clamp: seconds until the charge goes off. */
+  fuse?: number;
+  /** Clamp: the share of the damage that arcs to enemies near the target. */
+  chain?: number;
+  /** Throw: seconds the enemy is held before it is hurled, and how far (px). */
+  hold?: number;
+  throw?: number;
+  /** Pound: each strike's damage, in order. */
+  strikes?: number[];
+  /** Pound: seconds to cast the next strike before the chain ends. */
+  chainWindow?: number;
+  /** Lighthouse: seconds per turn of the rays. */
+  spin?: number;
   /** Buff: the caster is airborne for `duration` (ground attacks miss). */
   glide?: boolean;
   /** Buff: a burst around the caster on cast that pushes enemies away and slows them. */
@@ -772,13 +830,13 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         { duration: 1.6 },
       ),
       ability(
-        "shard-nova",
-        "Shard Nova",
-        "nova",
-        34,
+        "crystal-cage",
+        "Crystal Cage",
+        "cage",
+        10,
         20,
-        "After a short charge, the orbiting shards blast outward in a ring.",
-        { radius: 200, cast: 0.4, knockback: 150 },
+        "After a short charge, crystal spires rise in a 180 px ring round Auralynx for 2.5 seconds: nobody can cross it and no shot gets through. Enemies caught inside take 10.",
+        { radius: 180, cast: 0.4, duration: 2.5, knockback: 0 },
       ),
     ],
   },
@@ -814,16 +872,16 @@ export const CHARACTERS: Record<CharacterId, Character> = {
       ability(
         "eyespot-flash",
         "Eyespot Flash",
-        "melee",
+        "gaze",
+        8,
         12,
-        12,
-        "Flash the big eyespots on your wings: enemies in front are startled (stunned) and pushed back.",
+        "Flash the big eyespots on your wings: enemies within 220 px take 8, and those looking at Lumoth (aiming at it) are stunned for 0.5 seconds. Look away to dodge it.",
         {
-          range: 150,
-          arc: 0,
-          knockback: 110,
+          radius: 220,
+          gaze: 0.5,
+          knockback: 0,
           status: "stun",
-          statusDuration: 0.4,
+          statusDuration: 0.5,
         },
       ),
       ability(
@@ -838,11 +896,19 @@ export const CHARACTERS: Record<CharacterId, Character> = {
       ability(
         "radiant-flare",
         "Radiant Flare",
-        "nova",
-        40,
+        "lighthouse",
+        6,
         20,
-        "After a charge, a powerful energy burst around Lumoth.",
-        { radius: 210, cast: 0.45, knockback: 140 },
+        "After a charge, Lumoth glows like a lighthouse for 2 seconds: three rays of light 260 px long turn round it, and every enemy a ray sweeps takes 6.",
+        {
+          cast: 0.45,
+          duration: 2,
+          count: 3,
+          range: 260,
+          radius: 18,
+          spin: 1.2,
+          knockback: 0,
+        },
       ),
     ],
   },
@@ -1088,16 +1154,19 @@ export const CHARACTERS: Record<CharacterId, Character> = {
       ability(
         "static-clamp",
         "Static Clamp",
-        "melee",
-        22,
+        "clamp",
+        28,
         12,
-        "Grab and shock whoever is in front of you. Stuns briefly.",
+        "Clamp a charge onto whoever is in front of you. 0.9 seconds later it goes off: 28 damage and paralysis, and it arcs to every enemy within 200 px of it for half.",
         {
           range: 150,
           arc: 0.35,
-          knockback: 40,
-          status: "stun",
-          statusDuration: 0.45,
+          knockback: 0,
+          fuse: 0.9,
+          explosion: 200,
+          chain: 0.5,
+          status: "paralysis",
+          statusDuration: 0.6,
         },
       ),
       ability(
@@ -1482,16 +1551,18 @@ export const CHARACTERS: Record<CharacterId, Character> = {
       ability(
         "mochi-pound",
         "Mochi Pound",
-        "melee",
-        26,
+        "pound",
+        10,
         12,
-        "A heavy overhead pound. Stuns briefly and knocks back.",
+        "Three pounds of the mallet: cast it again within 1.4 seconds for the next. 10, then 13, then 20 that stuns and knocks back. The cooldown starts after the last.",
         {
           range: 150,
           arc: 0.3,
           knockback: 150,
           status: "stun",
           statusDuration: 0.45,
+          strikes: [10, 13, 20],
+          chainWindow: 1.4,
         },
       ),
       ability(
@@ -1646,17 +1717,21 @@ export const CHARACTERS: Record<CharacterId, Character> = {
       ability(
         "kraken-grasp",
         "Kraken Grasp",
-        "melee",
-        34,
+        "throw",
+        32,
         20,
-        "After a short wind-up, every tentacle grabs at once: a huge strike across the whole half circle in front that stuns.",
+        "After a short wind-up, the tentacles seize the enemy in front (200 px), hold it for half a second, then hurl it 380 px toward your aim: 32 damage, half again into a wall. Enemies where it lands take half.",
         {
           range: 200,
           arc: 0,
           cast: 0.25,
-          knockback: 90,
+          hold: 0.5,
+          throw: 380,
+          wallSlam: 1.5,
+          explosion: 90,
+          knockback: 0,
           status: "stun",
-          statusDuration: 0.8,
+          statusDuration: 0.5,
         },
       ),
     ],
@@ -1895,7 +1970,7 @@ export const COMBOS: Record<CharacterId, Combo> = {
     window: 5,
     self: true,
     radius: 1.25,
-    text: "Radiant Flare cast while Kindled is 25% wider.",
+    text: "Radiant Flare cast while Kindled has 25% longer rays.",
   },
   auralynx: {
     name: "Primed",
@@ -1925,7 +2000,7 @@ export const COMBOS: Record<CharacterId, Combo> = {
     damage: 1.35,
     status: "stun",
     statusDuration: 0.8,
-    text: "Magnet Lash magnetises. Static Clamp deals 35% more to a Magnetised target and stuns longer.",
+    text: "Magnet Lash magnetises. Static Clamp on a Magnetised target goes off at once, deals 35% more and stuns.",
   },
   pyranda: {
     name: "Toasted",
@@ -1970,7 +2045,7 @@ export const COMBOS: Record<CharacterId, Combo> = {
     window: 2,
     self: true,
     damage: 1.35,
-    text: "Mochi Pound within 2 seconds of a Moon Hop deals 35% more.",
+    text: "The first Mochi Pound within 2 seconds of a Moon Hop deals 35% more.",
   },
   wombolder: {
     name: "Pelted",
@@ -2030,19 +2105,19 @@ export const TEAM_TUNING: Partial<Record<CharacterId, number>> = {
   voltkit: 1.045,
   cindrake: 0.993,
   tidefin: 1.037,
-  auralynx: 0.97,
-  lumoth: 0.997,
+  auralynx: 0.95,
+  lumoth: 1,
   mystowl: 1.006,
   terradon: 0.993,
   duskveil: 1.025,
-  coilemur: 1.006,
+  coilemur: 1,
   pyranda: 0.93,
   glacelle: 0.963,
   halcyra: 1,
   sunbara: 0.966,
-  astrabun: 1.008,
+  astrabun: 0.99,
   wombolder: 1.01,
-  shadopus: 1.02,
+  shadopus: 1.04,
   pangrove: 0.98,
   mossloth: 1.035,
 };
@@ -2058,17 +2133,17 @@ export const FFA_TUNING: Partial<Record<CharacterId, number>> = {
   voltkit: 0.928,
   cindrake: 1.159,
   tidefin: 0.85,
-  auralynx: 1.055,
-  lumoth: 0.919,
+  auralynx: 1.065,
+  lumoth: 0.9,
   mystowl: 0.872,
   terradon: 1,
   duskveil: 0.917,
-  coilemur: 1.178,
+  coilemur: 1.19,
   pyranda: 0.876,
   glacelle: 0.981,
   halcyra: 0.845,
   sunbara: 0.911,
-  astrabun: 1.026,
+  astrabun: 1.06,
   wombolder: 1.054,
   shadopus: 1.06,
   pangrove: 1.02,
@@ -2083,19 +2158,19 @@ export const FFA_THREE_TUNING: Partial<Record<CharacterId, number>> = {
   voltkit: 0.868,
   cindrake: 1.189,
   tidefin: 0.835,
-  auralynx: 1.127,
-  lumoth: 0.864,
+  auralynx: 1.15,
+  lumoth: 0.87,
   mystowl: 0.838,
   terradon: 1.056,
   duskveil: 0.864,
-  coilemur: 1.242,
+  coilemur: 1.26,
   pyranda: 0.855,
   glacelle: 0.936,
   halcyra: 0.78,
   sunbara: 0.86,
-  astrabun: 1.106,
+  astrabun: 1.16,
   wombolder: 1.16,
-  shadopus: 1.13,
+  shadopus: 1.12,
   pangrove: 1.07,
   mossloth: 0.95,
 };
@@ -2262,9 +2337,11 @@ export interface Status {
   nextTick: number;
   /** Rest (Shell Up): health restored per tick. Leash: its length (px). */
   amount?: number;
-  /** Taunt: where the taunter is (kept up to date). Leash: where it is pinned. */
+  /** Taunt: where the taunter is (kept up to date). Leash: where it is pinned. Cage: its centre. */
   tx?: number;
   ty?: number;
+  /** Cage: true when the fighter was inside the ring as it rose. */
+  inside?: boolean;
   /** Who applied it (burn damage is credited to them). */
   by?: string;
 }
@@ -2375,6 +2452,10 @@ export interface Fighter extends Vec {
   pinball?: { bounces: number; speedUp: number };
   /** Gill Siphon: the stream locked onto `target` until `until`; the next tick, and the skill slot. */
   tether?: { target: string; until: number; nextTick: number; skill: number };
+  /** Mochi Pound: the strike it is on, the slot, until when the next can follow, and the cooldown's end. */
+  pound?: { skill: number; step: number; until: number; cdEnd: number };
+  /** Kraken Grasp: the enemy held in front, hurled at `at` (`skill` is the slot). */
+  grab?: { target: string; at: number; skill: number };
   lastInput: Input;
 }
 export interface Projectile extends Vec {
@@ -2550,7 +2631,7 @@ export interface Zone extends Vec {
   color: number;
   /** When it was placed (seedlings grow from then). */
   born?: number;
-  /** Screen: which way the curtain runs (radians). */
+  /** Screen: which way the curtain runs (radians). Lighthouse: where the first ray points. */
   angle?: number;
 }
 export interface GameEvent extends Vec {
@@ -2594,6 +2675,8 @@ export interface GameEvent extends Vec {
   slam?: boolean;
   /** Hit events: a blinded attacker's basic attack missed. */
   miss?: boolean;
+  /** Burst events (Mochi Pound): which strike of the chain it was (1, 2, 3). */
+  step?: number;
 }
 export type Phase =
   | "lobby"
@@ -2908,6 +2991,46 @@ export function advanceMovement(
   dt: number,
   time: number,
 ): void {
+  stepMovement(p, input, dt, time);
+  holdInCage(p, time);
+}
+/**
+ * Crystal Cage: whoever was inside the ring stays inside, whoever was outside
+ * stays out (after any move, knockbacks included).
+ */
+export function holdInCage(p: Fighter, time: number) {
+  for (const cage of p.statuses) {
+    if (cage.kind !== "cage" || cage.until <= time || cage.tx === undefined)
+      continue;
+    const R = cage.amount ?? 200,
+      dx = p.x - cage.tx,
+      dy = p.y - cage.ty!,
+      d = Math.hypot(dx, dy);
+    const ux = d > 0.001 ? dx / d : 1,
+      uy = d > 0.001 ? dy / d : 0;
+    if (cage.inside) {
+      const max = R - RULES.radius;
+      if (d <= max) continue;
+      for (let k = max; k >= 0; k -= 10)
+        if (!blocked(cage.tx + ux * k, cage.ty! + uy * k)) {
+          p.x = cage.tx + ux * k;
+          p.y = cage.ty! + uy * k;
+          break;
+        }
+    } else {
+      const min = R + RULES.radius;
+      if (d >= min) continue;
+      for (let k = min; k <= min + 200; k += 10)
+        if (!blocked(cage.tx + ux * k, cage.ty! + uy * k)) {
+          p.x = cage.tx + ux * k;
+          p.y = cage.ty! + uy * k;
+          break;
+        }
+    }
+    p.vx = p.vy = 0;
+  }
+}
+function stepMovement(p: Fighter, input: Input, dt: number, time: number): void {
   let dir = normalize(input.dx, input.dy);
   p.angle = Math.atan2(input.aimY - p.y, input.aimX - p.x);
   // Taunted: it walks toward the taunter, whatever the input says.
@@ -3120,13 +3243,13 @@ export const RITES: Rite[] = [
   rite("auralynx", "minor", "facet-guard", "Steady Guard", "Facet Guard lasts 2.2s instead of 1.6s.", { set: { duration: 2.2 } }),
   rite("auralynx", "minor", "prism-jab", "Hard Jab", "Prism Jab deals 15 damage instead of 13.", { set: { damage: 15 } }),
   rite("auralynx", "major", "prism-shot", "Prism Burst", "Prism Shot explodes on impact, hitting everyone nearby.", { set: { explosion: 90 } }),
-  rite("auralynx", "major", "shard-nova", "Stunning Nova", "Shard Nova also stuns for 0.6s.", { set: { status: "stun", statusDuration: 0.6 } }),
+  rite("auralynx", "major", "crystal-cage", "Long Cage", "Crystal Cage stands for 4s instead of 2.5s and deals 18 instead of 10.", { set: { duration: 4, damage: 18 } }),
   rite("lumoth", "minor", "wing-dust", "Dust Storm", "Wing Dust throws 7 motes of 7 damage instead of 5 of 8.", { set: { count: 7, damage: 7 } }),
-  rite("lumoth", "minor", "eyespot-flash", "Wide Wings", "Eyespot Flash reaches 20% further.", { mul: { range: 1.2 } }),
+  rite("lumoth", "minor", "eyespot-flash", "Wide Wings", "Eyespot Flash reaches 20% further.", { mul: { radius: 1.2 } }),
   rite("lumoth", "minor", "kindle", "Long Kindle", "Kindle lasts 6.5s instead of 5s.", { set: { duration: 6.5 } }),
   rite("lumoth", "minor", "glint", "Bright Glint", "Glint deals 7 damage instead of 6.", { set: { damage: 7 } }),
   rite("lumoth", "major", "radiant-flare", "Quick Flare", "Radiant Flare charges in 0.2s instead of 0.45s.", { set: { cast: 0.2 } }),
-  rite("lumoth", "major", "eyespot-flash", "Dazzle", "Eyespot Flash deals 18 damage instead of 12 and pushes 50% harder.", { set: { damage: 18 }, mul: { knockback: 1.5 } }),
+  rite("lumoth", "major", "eyespot-flash", "Dazzle", "Eyespot Flash stuns for 0.9s instead of 0.5s.", { set: { statusDuration: 0.9 } }),
   rite("mystowl", "minor", "third-eye-ray", "Far Sight", "Third-Eye Ray reaches 20% further.", { mul: { range: 1.2 } }),
   rite("mystowl", "minor", "booming-hoot", "Loud Hoot", "Booming Hoot is 20% wider.", { mul: { radius: 1.2 } }),
   rite("mystowl", "minor", "wing-cloak", "Long Cloak", "Wing Cloak lasts 4s instead of 3s.", { set: { duration: 4 } }),
@@ -3146,7 +3269,7 @@ export const RITES: Rite[] = [
   rite("duskveil", "major", "haunted-lantern", "Bright Lantern", "Haunted Lantern shoots twice as often.", { mul: { tickInterval: 0.5 } }),
   rite("duskveil", "major", "void-orb", "Burning Void", "Void Orb's blast is 30% wider and burns.", { mul: { explosion: 1.3 }, set: { status: "burn", statusDuration: 2 } }),
   rite("coilemur", "minor", "magnet-lash", "Long Lash", "Magnet Lash reaches 20% further.", { mul: { range: 1.2 } }),
-  rite("coilemur", "minor", "static-clamp", "Tight Clamp", "Static Clamp deals 26 damage instead of 22.", { set: { damage: 26 } }),
+  rite("coilemur", "minor", "static-clamp", "Tight Clamp", "Static Clamp deals 32 damage instead of 28.", { set: { damage: 32 } }),
   rite("coilemur", "minor", "spark-tether", "Long Tether", "Spark Tether lasts 4s instead of 3s.", { set: { duration: 4 } }),
   rite("coilemur", "minor", "coil-swipe", "Hot Coil", "Coil Swipe deals 14 damage instead of 12.", { set: { damage: 14 } }),
   rite("coilemur", "major", "magnet-lash", "Quick Lash", "Magnet Lash cooldown 12s → 9s.", { set: { cooldown: 9 } }),

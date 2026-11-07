@@ -109,16 +109,22 @@ describe("Grumblecrag tricks", () => {
     };
     expect(progress(true)).toBeCloseTo(progress(false) * 2, 1);
   });
-  it("Astrabun's Mochi Pound adds 15 stagger", () => {
+  it("Astrabun's last Mochi Pound of a chain adds 15 stagger", () => {
     const a = arena("grumblecrag", ["astrabun"]);
     const p = hero(a, 0),
       boss = a.boss()!,
       pound = skill("astrabun", "mochi-pound");
-    a.damage(boss, 26, p.id, { ...pound, id: "plain-pound" });
-    const plain = a.raid.stagger;
-    a.raid.stagger = 0;
-    a.damage(boss, 26, p.id, pound);
-    expect(a.raid.stagger).toBeCloseTo(plain + 15);
+    const stagger = (ability: typeof pound) => {
+      a.raid.stagger = 0;
+      a.damage(boss, 26, p.id, ability);
+      return a.raid.stagger;
+    };
+    // The last pound (the one that stuns) adds 15.
+    const plain = stagger({ ...pound, id: "plain-pound" });
+    expect(stagger(pound)).toBeCloseTo(plain + 15);
+    // The first two (no stun) add nothing extra.
+    const soft = { ...pound, status: undefined };
+    expect(stagger(soft)).toBeCloseTo(stagger({ ...soft, id: "plain-pound" }));
   });
   it("Wombolder's charge into a pillar adds 25 stagger (the engine's wall slam)", () => {
     const charge = (bossX: number) => {

@@ -1299,9 +1299,86 @@ export const electricKit: FxKit = {
     "spark-dart": fizzle,
     "static-lance": fizzle,
     "magnet-lash": magnetLashImpact,
+    "static-clamp": clampBurst,
   },
+  beam: { "static-clamp": clampArc },
   hit: { electric: electricHit },
 };
+/** Static Clamp goes off: a crack of lightning round the clamped enemy. */
+function clampBurst(
+  scene: Phaser.Scene,
+  a: Ability,
+  x: number,
+  y: number,
+  color: number,
+  shot: Shot,
+) {
+  const fx = fxFor(scene),
+    cy = y - 18,
+    seed = Math.floor(Math.random() * 1000);
+  fx.burst({
+    x,
+    y,
+    z: 18,
+    count: 22,
+    kind: "spark",
+    color: [color, WHITE, BLUE],
+    speed: [140, 420],
+    up: [80, 260],
+    life: [0.25, 0.55],
+    size: [1, 2],
+    grav: 900,
+    drag: 2,
+  });
+  fx.shake(120, 0.004);
+  shot(fx.reduced ? 160 : 360, (k) => {
+    const fade = 1 - k;
+    for (let i = 0; i < 5; i++) {
+      const ang = (i / 5) * Math.PI * 2 + seed;
+      fx.bolt(x, cy, x + Math.cos(ang) * 46, cy + Math.sin(ang) * 30, BLUE, {
+        width: 2.4 * fade + 0.6,
+        jag: 0.3,
+        branches: 1,
+        seed: seed + i + Math.floor(k * 6),
+        alpha: fade,
+      });
+    }
+    fx.glow(x, cy, 70 * (1 - k * 0.5), PALE, 0.9 * fade);
+    fx.shockwave(x, y, (a.explosion ?? 200) * 0.5 * ease(k), k, BLUE, 4);
+  });
+}
+/** Static Clamp's arc: a bolt from the clamped enemy to one nearby. */
+function clampArc(
+  scene: Phaser.Scene,
+  _a: Ability,
+  x: number,
+  y: number,
+  tx: number,
+  ty: number,
+  color: number,
+  shot: Shot,
+) {
+  const fx = fxFor(scene),
+    seed = Math.floor(Math.random() * 1000);
+  shot(fx.reduced ? 140 : 320, (k) => {
+    const fade = 1 - k;
+    fx.bolt(x, y - 18, tx, ty - 18, color, {
+      width: 4 * fade + 1,
+      jag: 0.22,
+      branches: 2,
+      seed: seed + Math.floor(k * 5),
+      alpha: fade,
+    });
+    fx.bolt(x, y - 18, tx, ty - 18, WHITE, {
+      width: 1.6 * fade + 0.4,
+      jag: 0.22,
+      branches: 0,
+      seed: seed + Math.floor(k * 5),
+      alpha: fade,
+    });
+    fx.glow(tx, ty - 18, 36, BLUE, 0.7 * fade);
+  });
+}
 /** A bolt that ends without a target: a few sparks and a blink of light. */
 function fizzle(
   scene: Phaser.Scene,
