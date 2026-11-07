@@ -183,6 +183,8 @@ export function hostileZone(arena: Arena, me: Fighter, z: Zone) {
   const owner = arena.players.find((p) => p.id === z.owner);
   if (owner && arena.teamOf(owner) === arena.teamOf(me)) return false;
   const a = z.ability;
+  // A Crystal Cage is a wall, not a hazard: fight on inside it.
+  if (a.kind === "cage") return false;
   return !a.heal || a.damage > 0 || !!a.status || !!a.knockback || !!a.turret;
 }
 /** Corners just outside every pillar: the waypoints for walking around cover. */
@@ -732,6 +734,27 @@ export class BotBrain {
           // Gill Siphon: lock on while the target is in reach.
           if (s.sight && reach(a.range * 0.95))
             score = a.damage * (a.duration / (a.tether?.tick ?? 0.25)) * 0.6;
+          break;
+        case "gaze":
+          // Eyespot Flash: whoever is near and looking gets stunned.
+          if (s.sight && reach(a.radius * 0.9)) score = a.damage + 14;
+          break;
+        case "clamp":
+        case "throw":
+          // Static Clamp, Kraken Grasp: melee reach, the payoff comes a moment later.
+          if (s.sight && reach(a.range + RULES.radius)) score = a.damage * 1.2;
+          break;
+        case "pound":
+          // Mochi Pound: every strike of the chain while the target is close.
+          if (s.sight && reach(a.range + RULES.radius)) score = a.damage * 2.4;
+          break;
+        case "cage":
+          // Crystal Cage: shut the target in with it, up close.
+          if (s.sight && reach(a.radius * 0.75)) score = a.damage + 18;
+          break;
+        case "lighthouse":
+          // Radiant Flare: rays turning round it while the target is near.
+          if (s.sight && reach(a.range * 0.8)) score = a.damage * 5;
           break;
         case "grapple":
           // Latch on from mid range: a gap closer that lands its hit first.

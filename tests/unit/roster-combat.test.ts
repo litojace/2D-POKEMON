@@ -82,6 +82,8 @@ describe("special skills", () => {
   it("every skill casts once; cooldowns (or the empty meter) block repeats", () => {
     for (const id of FIGHTER_IDS)
       for (let i = 0; i < 4; i++) {
+        // Mochi Pound chains three strikes (its own test, wave2-kits).
+        if (CHARACTERS[id].skills[i].kind === "pound") continue;
         const { arena, p } = duel(id);
         if (i === ULT_SLOT) p.ult = RULES.ultMax;
         arena.submit(p, input({ skill: i }));
@@ -176,19 +178,25 @@ describe("special skills", () => {
     expect(arena.has(p, "haste")).toBe(true);
     expect(p.hp).toBe(100 + double.heal!);
   });
-  it("Eyespot Flash stuns and pushes enemies in a wide arc in front", () => {
+  it("Eyespot Flash hits everyone near; only those looking at Lumoth are stunned", () => {
     const flash = CHARACTERS.lumoth.skills[1];
-    const { arena, p, q } = duel("lumoth");
-    // Off to the side but still in front (the arc is a half circle).
-    Object.assign(q, { x: 640, y: 260 });
-    arena.cast(p, flash);
-    expect(q.hp).toBe(CHARACTERS.terradon.health - flash.damage);
-    expect(arena.has(q, "stun")).toBe(true);
-    // Behind Lumoth: untouched.
-    const back = duel("lumoth");
-    Object.assign(back.q, { x: 520, y: 150 });
-    back.arena.cast(back.p, flash);
-    expect(back.q.hp).toBe(CHARACTERS.terradon.health);
+    // Looking at Lumoth, even from behind it: hit and stunned.
+    const look = duel("lumoth");
+    Object.assign(look.q, { x: 450, y: 150, angle: 0 });
+    look.arena.cast(look.p, flash);
+    expect(look.q.hp).toBe(CHARACTERS.terradon.health - flash.damage);
+    expect(look.arena.has(look.q, "stun")).toBe(true);
+    // Looking away: hit, not stunned.
+    const away = duel("lumoth");
+    Object.assign(away.q, { x: 750, y: 150, angle: 0 });
+    away.arena.cast(away.p, flash);
+    expect(away.q.hp).toBe(CHARACTERS.terradon.health - flash.damage);
+    expect(away.arena.has(away.q, "stun")).toBe(false);
+    // Out of reach: untouched.
+    const far = duel("lumoth");
+    Object.assign(far.q, { x: 600 + flash.radius + 60, y: 150, angle: Math.PI });
+    far.arena.cast(far.p, flash);
+    expect(far.q.hp).toBe(CHARACTERS.terradon.health);
   });
   it("Shell Up heals 25 over its duration, blocks actions and takes 45% less damage", () => {
     const { arena, q } = duel("cindrake");

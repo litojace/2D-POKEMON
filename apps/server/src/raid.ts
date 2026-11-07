@@ -480,7 +480,8 @@ export class RaidArena extends Arena {
   /** Astrabun's Mochi Pound, and Wombolder ramming Grumblecrag into a pillar. */
   private crackTricks(boss: Fighter, source: Fighter, ability?: Ability) {
     const r = this.raid;
-    if (ability?.id === "mochi-pound") {
+    // Only the last pound of the chain (the one that stuns) counts.
+    if (ability?.id === "mochi-pound" && ability.status) {
       this.addBossStagger(boss, TRICKS.poundStagger);
       r.message = `${source.name}'s Mochi Pound rattles Grumblecrag!`;
     } else if (

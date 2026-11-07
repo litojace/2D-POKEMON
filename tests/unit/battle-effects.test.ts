@@ -109,7 +109,23 @@ describe("battle effects", () => {
                             : a.kind === "rewind"
                               ? a.id in effectKit.cast &&
                                 a.id in effectKit.impact
-                              : false;
+                              : // Wave 2's: a flash (cast); a clamp (cast, goes off as an
+                                // impact, arcs as beams); a throw and a pound (cast, then
+                                // an impact where it lands); a cage and turning rays (cast
+                                // and the zone they leave).
+                                a.kind === "gaze"
+                                ? a.id in effectKit.cast
+                                : a.kind === "clamp"
+                                  ? a.id in effectKit.cast &&
+                                    a.id in effectKit.impact &&
+                                    a.id in effectKit.beam
+                                  : ["throw", "pound"].includes(a.kind)
+                                    ? a.id in effectKit.cast &&
+                                      a.id in effectKit.impact
+                                    : ["cage", "lighthouse"].includes(a.kind)
+                                      ? a.id in effectKit.cast &&
+                                        a.id in effectKit.zone
+                                      : false;
       if (!has) missing.push(`${a.id} (${a.kind})`);
       if ((a.cast ?? 0) > 0 && !(a.id in effectKit.windup))
         missing.push(`${a.id} wind-up`);
@@ -182,7 +198,10 @@ describe("battle effects", () => {
     const { scene } = fakeScene();
     // Shatter Palm's cracks and shockwave stay where the palm struck.
     const IMPACT_ONLY = ["shatter-paw"];
-    const melee = moves.filter(({ a }) => a.kind === "melee");
+    // Strikes that grab, clamp, pound or flash play like melee strikes too.
+    const melee = moves.filter(({ a }) =>
+      ["melee", "clamp", "throw", "pound", "gaze"].includes(a.kind),
+    );
     expect(melee.length).toBeGreaterThanOrEqual(14);
     for (const { c, a } of melee) {
       let asked = 0;

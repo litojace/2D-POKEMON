@@ -2651,7 +2651,11 @@ function renderBattle() {
                         ? "TAUNTED"
                         : s.kind === "brace"
                           ? "BRACED"
-                          : s.kind.toUpperCase(),
+                          : s.kind === "clamp"
+                            ? "CHARGED"
+                            : s.kind === "cage"
+                              ? "CAGED"
+                              : s.kind.toUpperCase(),
         )
         .join(" · "),
     );
@@ -4561,6 +4565,10 @@ class ArenaScene extends Phaser.Scene {
         "seedling",
         "swap",
         "rewind",
+        "pound",
+        "clamp",
+        "throw",
+        "lighthouse",
       ].includes(ability.kind)
     )
       playImpact(this, ability, event.x, event.y, event.color, reducedMotion);
@@ -4587,6 +4595,9 @@ class ArenaScene extends Phaser.Scene {
     if (event.kind === "hit" && event.ambush) this.comboText(event, "AMBUSH!");
     // A blinded fighter's basic attack (Ink Jet) misses.
     if (event.kind === "hit" && event.miss) this.comboText(event, "MISS");
+    // Mochi Pound: which pound of the chain.
+    if (event.kind === "burst" && event.step && event.step > 1)
+      this.comboText(event, event.step >= 3 ? "POUND!" : `×${event.step}`);
     if (event.kind === "burst" && event.slam) {
       this.comboText(event, "WALL SLAM!");
       if (!reducedMotion) this.cameras.main.shake(140, 0.004);
@@ -5123,7 +5134,10 @@ class ArenaScene extends Phaser.Scene {
     // smoothed, and for you predicted, position), not at the last snapshot,
     // so it moves with the fighter instead of trailing in steps.
     const followed = (z: Zone) => {
-      const at = z.ability.follow ? this.positions.get(z.owner) : undefined;
+      const at =
+        z.ability.follow || z.ability.kind === "lighthouse"
+          ? this.positions.get(z.owner)
+          : undefined;
       return at ? { ...z, x: at.x, y: at.y } : z;
     };
     for (const z of state.zones)
@@ -5659,6 +5673,8 @@ class ArenaScene extends Phaser.Scene {
           brace: 0xb08850,
           leash: 0x9fb4ff,
           blind: 0x3a2a5a,
+          clamp: 0x9fe8ff,
+          cage: 0xbfe6ff,
           mark: 0xffffff,
         };
         g.fillStyle(colors[s.kind]).fillCircle(
@@ -5680,6 +5696,44 @@ class ArenaScene extends Phaser.Scene {
             reducedMotion ? 0 : _time,
             CHARACTERS[p.character].color,
           );
+      }
+      // Static Clamp: a crackling ring that tightens as the charge runs out.
+      const clamp = serverPlayer.statuses.find(
+        (s) => s.kind === "clamp" && s.until > serverTime,
+      );
+      if (clamp) {
+        const left = Math.max(0, clamp.until - serverTime),
+          flick = reducedMotion ? 1 : 0.7 + 0.3 * Math.sin(_time / 30);
+        const r = 22 + 16 * Math.min(1, left / 1.5);
+        g.lineStyle(3, 0x9fe8ff, 0.85 * flick).strokeCircle(x, y - 18 - jump, r);
+        for (let k = 0; k < 4; k++) {
+          const a0 = (reducedMotion ? 0 : _time / 160) + (k * Math.PI) / 2;
+          g.lineStyle(2, 0xffffff, 0.8 * flick).lineBetween(
+            x + Math.cos(a0) * r,
+            y - 18 - jump + Math.sin(a0) * r,
+            x + Math.cos(a0 + 0.35) * (r - 7),
+            y - 18 - jump + Math.sin(a0 + 0.35) * (r - 7),
+          );
+        }
+      }
+      // Kraken Grasp: a tentacle round the enemy it holds.
+      if (serverPlayer.grab) {
+        const to = this.positions.get(serverPlayer.grab.target);
+        if (to) {
+          const wob = reducedMotion ? 0 : Math.sin(_time / 60) * 8;
+          const mx = (x + to.x) / 2 + wob,
+            my = (y + to.y) / 2 - 24;
+          const curve = new Phaser.Curves.QuadraticBezier(
+            new Phaser.Math.Vector2(x, y - 14 - jump),
+            new Phaser.Math.Vector2(mx, my),
+            new Phaser.Math.Vector2(to.x, to.y - 14),
+          );
+          g.lineStyle(9, 0x2a1240, 0.9);
+          curve.draw(g, 16);
+          g.lineStyle(5, 0x9a6ad8, 1);
+          curve.draw(g, 16);
+          g.lineStyle(3, 0x9a6ad8, 1).strokeCircle(to.x, to.y - 16, 20);
+        }
       }
       // Pinning Quill: a taut line back to the quill that pins it.
       const pin = serverPlayer.statuses.find(

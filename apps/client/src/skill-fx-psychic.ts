@@ -868,6 +868,26 @@ function hopLanding(
     if (k < 0.12) fx.glow(x, cy, 36, WHITE, 0.9 * (1 - k / 0.12));
   });
 }
+/** Each pound of the chain lands: a puff of mochi flour round Astrabun. */
+function poundThud(
+  scene: Phaser.Scene,
+  _a: Ability,
+  x: number,
+  y: number,
+  color: number,
+  shot: Shot,
+) {
+  const fx = fxFor(scene);
+  moonDust(fx, x, y, 8, [40, 120], MOCHI);
+  shot(fx.reduced ? 160 : 320, (k) => {
+    const out = ease(Math.min(1, k * 2)),
+      fade = 1 - k;
+    fx.floorSolid
+      .fillStyle(MOCHI, 0.22 * fade)
+      .fillEllipse(x, y + 4, 120 * out, 120 * SQ * out);
+    lensRing(fx, x, y + 4, 60 * out, color, fade, 3, SQ, true);
+  });
+}
 
 // ───────────── Moon Gravity ─────────────
 /**
@@ -1108,6 +1128,7 @@ export const psychicKit: FxKit = {
     "mind-dart": dartImpact,
     "moon-hop": hopLanding,
     "full-moon": fullMoonCrash,
+    "mochi-pound": poundThud,
   },
   hit: { psychic: psychicHit },
 };

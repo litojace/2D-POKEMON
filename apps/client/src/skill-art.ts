@@ -1121,26 +1121,31 @@ const art: Record<string, { el: Element; draw: () => string }> = {
         A.accent[2],
       ),
   },
-  "Shard Nova": {
+  "Crystal Cage": {
     el: "aura",
     draw: () =>
-      floorGlow("aura", 64, 98, 54, 16) +
-      `<ellipse cx="64" cy="98" rx="44" ry="12" fill="none" stroke="${A.accent[2]}" stroke-width="2" opacity=".8"/>` +
-      halo("aura", 64, 60, 52) +
-      [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-        .map((k) => {
-          const a = (k / 10) * Math.PI * 2,
-            r1 = k % 2 ? 34 : 50;
-          return `<path d="M64 60 L${n(64 + Math.cos(a - 0.12) * 18)} ${n(60 + Math.sin(a - 0.12) * 18)} L${n(64 + Math.cos(a) * r1)} ${n(60 + Math.sin(a) * r1)} L${n(64 + Math.cos(a + 0.12) * 18)} ${n(60 + Math.sin(a + 0.12) * 18)}Z" fill="${k % 2 ? A.accent[1] : A.accent[2]}" opacity=".9"/>`;
+      // A ring of crystal spires round a lone enemy; a shot shatters on it.
+      floorGlow("aura", 64, 86, 56, 20) +
+      `<ellipse cx="64" cy="84" rx="48" ry="20" fill="none" stroke="${A.accent[2]}" stroke-width="2.4" opacity=".85"/>` +
+      `<circle cx="64" cy="74" r="9" fill="#1b1636" opacity=".85"/><circle cx="64" cy="62" r="7" fill="#1b1636" opacity=".85"/>` +
+      Array.from({ length: 11 }, (_, k) => (k / 11) * Math.PI * 2)
+        .sort((a, b) => Math.sin(a) - Math.sin(b))
+        .map((a) => {
+          const x = 64 + Math.cos(a) * 48,
+            y = 84 + Math.sin(a) * 20,
+            h = 30 + (Math.sin(a * 3) + 1) * 6;
+          return (
+            `<path d="M${n(x - 7)} ${n(y)} L${n(x)} ${n(y - h)} L${n(x)} ${n(y + 2)}Z" fill="${A.accent[1]}"/>` +
+            `<path d="M${n(x)} ${n(y + 2)} L${n(x)} ${n(y - h)} L${n(x + 7)} ${n(y)}Z" fill="#dff4ff"/>`
+          );
         })
         .join("") +
-      `<circle cx="64" cy="60" r="20" fill="url(#sa-core-aura)"/>` +
-      `<path d="M64 46 L74 60 L64 74 L54 60Z" fill="#fff"/>` +
+      `<path d="M120 28 L100 44" stroke="#ff9be0" stroke-width="3" stroke-linecap="round" stroke-dasharray="4 4"/>` +
       sparks(
         [
+          [98, 46, 2.2],
           [20, 26, 1.5],
-          [108, 22, 1.4],
-          [114, 76, 1.5],
+          [108, 112, 1.3],
         ],
         A.accent[2],
       ),
@@ -1257,20 +1262,25 @@ const art: Record<string, { el: Element; draw: () => string }> = {
   "Radiant Flare": {
     el: "light",
     draw: () =>
+      // Three long rays turning round Lumoth like a lighthouse's.
       floorGlow("light", 64, 98, 54, 16) +
-      halo("light", 64, 60, 54) +
-      [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+      halo("light", 64, 62, 50) +
+      `<path d="M28 34 A50 50 0 0 1 64 14" fill="none" stroke="${L.accent[2]}" stroke-width="2.6" stroke-linecap="round" stroke-dasharray="4 5"/><path d="M60 8 L66 14 L58 18" fill="none" stroke="${L.accent[2]}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>` +
+      [0, 1, 2]
         .map((k) => {
-          const a = (k / 12) * Math.PI * 2,
-            r = k % 2 ? 36 : 52;
-          return `<path d="M${n(64 + Math.cos(a) * 16)} ${n(60 + Math.sin(a) * 16)} L${n(64 + Math.cos(a) * r)} ${n(60 + Math.sin(a) * r)}" stroke="${k % 2 ? L.accent[1] : L.accent[2]}" stroke-width="${k % 2 ? 2.4 : 3.4}" stroke-linecap="round"/>`;
+          const a = -0.5 + (k / 3) * Math.PI * 2,
+            w = 0.16,
+            len = 60;
+          return (
+            `<path d="M64 62 L${n(64 + Math.cos(a - w) * len)} ${n(62 + Math.sin(a - w) * len)} L${n(64 + Math.cos(a + w) * len)} ${n(62 + Math.sin(a + w) * len)}Z" fill="${L.accent[1]}" opacity=".75"/>` +
+            `<path d="M64 62 L${n(64 + Math.cos(a - w * 0.4) * len * 0.95)} ${n(62 + Math.sin(a - w * 0.4) * len * 0.95)} L${n(64 + Math.cos(a + w * 0.4) * len * 0.95)} ${n(62 + Math.sin(a + w * 0.4) * len * 0.95)}Z" fill="#fff6d6"/>`
+          );
         })
         .join("") +
-      `<circle cx="64" cy="60" r="20" fill="url(#sa-core-light)"/>` +
-      glint(64, 60, 14, "#fff") +
+      `<circle cx="64" cy="62" r="16" fill="url(#sa-core-light)"/>` +
+      glint(64, 62, 12, "#fff") +
       sparks(
         [
-          [22, 24, 1.4],
           [106, 20, 1.5],
           [112, 96, 1.3],
           [16, 92, 1.3],
@@ -1792,7 +1802,8 @@ const art: Record<string, { el: Element; draw: () => string }> = {
           [44, 112, 1.2],
         ],
         E.accent[2],
-      ),
+      ) +
+      `<circle cx="94" cy="64" r="17" fill="none" stroke="#fff" stroke-width="2.2" stroke-dasharray="5 4" opacity=".9"/><path d="M94 47 V54" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/>`,
   },
   "Spark Tether": {
     el: "electric",
@@ -2495,7 +2506,8 @@ const art: Record<string, { el: Element; draw: () => string }> = {
       mallet(64, 56, 1.2, 180) +
       star(32, 60, 5.5, "#ffe9a3") +
       star(96, 60, 5.5, "#ffe9a3") +
-      star(108, 44, 4, "#ffe9a3"),
+      star(108, 44, 4, "#ffe9a3") +
+      [0, 1, 2].map((k) => `<circle cx="${50 + k * 14}" cy="118" r="${2.6 + k * 1.3}" fill="#fff0f5" opacity="${0.6 + k * 0.2}"/>`).join(""),
   },
   "Moon Gravity": {
     el: "psychic",
@@ -2920,7 +2932,9 @@ const art: Record<string, { el: Element; draw: () => string }> = {
             [112, 30, 1.2],
           ],
           S.accent[2],
-        )
+        ) +
+        // Then it is hurled away.
+        `<path d="M70 40 Q96 6 120 26" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-dasharray="5 5" opacity=".85"/><path d="M112 20 L121 27 L111 32" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity=".9"/>`
       );
     },
   },

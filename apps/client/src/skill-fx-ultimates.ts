@@ -164,92 +164,31 @@ const sunfire: ZoneFn = (g, z, progress, now) => {
   }
 };
 
-// ───────────── Auralynx · Shard Nova: crystal spires that shatter ─────────────
-const nova: CastFn = (scene, a, x, y, _angle, color, shot) => {
+// ───────────── Auralynx · Crystal Cage: the screen flashes crystal ─────────────
+// (The spires themselves are the zone, drawn for as long as the cage stands.)
+const cage: CastFn = (scene, a, x, y, _angle, color) => {
   const fx = fxFor(scene),
-    r = a.radius,
-    once = onceAt();
+    r = a.radius;
   fx.ultimate(color);
-  const spires = Array.from({ length: 7 }, (_, i) => {
-    const ang = (i * TAU) / 7 + 0.3,
-      d = r * (0.55 + hash(i * 3) * 0.25);
-    return {
-      x: x + Math.cos(ang) * d,
-      y: y + Math.sin(ang) * d * SQ,
-      h: 56 + hash(i) * 34,
-      w: 13 + hash(i * 5) * 6,
-      at: 0.05 + i * 0.03,
-      breakAt: 0.55 + hash(i * 9) * 0.12,
-    };
-  });
-  shot(fx.reduced ? 360 : 1150, (k) => {
-    for (const [i, s] of spires.entries()) {
-      if (k > s.breakAt) {
-        once(i, () => {
-          fx.burst({
-            x: s.x,
-            y: s.y,
-            z: s.h * 0.5,
-            count: 16,
-            kind: "debris",
-            color: [color, 0xdff4ff, 0xff9be0, 0x8ff6ff],
-            speed: [60, 220],
-            up: [60, 260],
-            life: [0.6, 1],
-            size: [2.5, 4.5],
-            grav: 900,
-            bounce: 0.3,
-          });
-          fx.burst({
-            x: s.x,
-            y: s.y,
-            z: s.h * 0.5,
-            count: 10,
-            kind: "mote",
-            color: [0xffffff, color],
-            speed: [20, 90],
-            up: [20, 90],
-            life: [0.5, 1],
-            size: [1, 2],
-            drag: 2,
-          });
-        });
-        continue;
-      }
-      const grow = ease(Math.min(1, (k - s.at) / 0.18));
-      if (grow <= 0) continue;
-      const h = s.h * grow,
-        top = { x: s.x, y: s.y - h };
-      // Faceted spire: shadow, dark face, light face, glint.
-      fx.solid
-        .fillStyle(0x000000, 0.2)
-        .fillEllipse(s.x + 6, s.y + 3, s.w * 2.6, s.w);
-      fx.solid
-        .fillStyle(0x26285a, 0.5)
-        .fillTriangle(
-          s.x - s.w - 2,
-          s.y + 2,
-          s.x + s.w + 2,
-          s.y + 2,
-          top.x,
-          top.y - 3,
-        );
-      fx.solid
-        .fillStyle(color, 1)
-        .fillTriangle(s.x - s.w, s.y, s.x, s.y + 3, top.x, top.y);
-      fx.solid
-        .fillStyle(0xdff4ff, 1)
-        .fillTriangle(s.x, s.y + 3, s.x + s.w, s.y, top.x, top.y);
-      fx.g
-        .fillStyle(WHITE, 0.8)
-        .fillTriangle(s.x + 2, s.y - 4, s.x + 5, s.y - 6, top.x + 1, top.y + 6);
-      // Each spire throws a beam of refracted light upward.
-      fx.glow(top.x, top.y - 40, 16, color, 0.5 * grow, false, 4);
-    }
-  });
+  for (let i = 0; i < 12; i++) {
+    const ang = (i * TAU) / 12;
+    fx.burst({
+      x: x + Math.cos(ang) * r,
+      y: y + Math.sin(ang) * r * SQ,
+      z: 30,
+      count: 6,
+      kind: "mote",
+      color: [0xffffff, color, 0xdff4ff],
+      speed: [20, 90],
+      up: [40, 140],
+      life: [0.5, 1],
+      size: [1, 2.2],
+      drag: 2,
+    });
+  }
 };
 
-// ───────────── Lumoth · Radiant Flare: a small sun rises, then bursts ─────────────
+// ───────────── Lumoth · Radiant Flare: a small sun rises, then lights up ─────────────
 const flareWindup: WindupFn = (g, _a, x, y, _angle, _ax, _ay, color, k) => {
   const fx = fxFor(g.scene),
     sy = y - 30 - ease(k) * 60,
@@ -285,7 +224,7 @@ const radiant: CastFn = (scene, a, x, y, _angle, color, shot) => {
     count: 40,
     kind: "mote",
     color: [0xffd76a, 0xfff6d6, color],
-    speed: [20, a.radius * 0.9],
+    speed: [20, a.range * 0.9],
     up: [-30, 10],
     life: [1, 1.6],
     size: [1.2, 2.4],
@@ -296,8 +235,8 @@ const radiant: CastFn = (scene, a, x, y, _angle, color, shot) => {
     const b = Math.max(0, 1 - k / 0.35);
     // The sun bursts: a white disc expanding and an anamorphic streak.
     fx.glow(x, sy, 40 + ease(Math.min(1, k * 3)) * 120, WHITE, 0.9 * b);
-    fx.glow(x, sy, a.radius * 2.6, 0xffd76a, 0.55 * b, false, 0.05);
-    fx.glow(x, sy, a.radius * 1.4, WHITE, 0.7 * b, false, 0.03);
+    fx.glow(x, sy, a.range * 1.6, 0xffd76a, 0.55 * b, false, 0.05);
+    fx.glow(x, sy, a.range * 0.9, WHITE, 0.7 * b, false, 0.03);
     fx.g
       .lineStyle(3, 0xfff6d6, 0.8 * b)
       .strokeCircle(x, sy, 30 + ease(k) * 140);
@@ -576,7 +515,7 @@ export function withUltimates(kit: Required<FxKit>): Required<FxKit> {
     windup = { ...kit.windup },
     impact = { ...kit.impact };
   cast.overcharge = then(kit.cast.overcharge, overcharge);
-  cast["shard-nova"] = then(kit.cast["shard-nova"], nova);
+  cast["crystal-cage"] = then(kit.cast["crystal-cage"], cage);
   cast["radiant-flare"] = then(kit.cast["radiant-flare"], radiant);
   cast.tremor = then(kit.cast.tremor, tremor);
   zone["sunfire-pillar"] = then(kit.zone["sunfire-pillar"], sunfire);

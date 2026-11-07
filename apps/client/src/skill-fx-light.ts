@@ -146,87 +146,11 @@ function starImpact(
   });
 }
 
-// ───────────── Eyespot Flash: a wingbeat of glittering dust, then the eyespots ─────────────
-function dustStrike(
-  scene: Phaser.Scene,
-  a: Ability,
-  x0: number,
-  y0: number,
-  angle: number,
-  color: number,
-  shot: Shot,
-  at?: Follow,
-) {
-  // Start where the caster is drawn (not the server position it was cast from).
-  const origin = at?.() ?? { x: x0, y: y0 },
-    { x, y } = origin;
-  const fx = fxFor(scene),
-    cy = y - 12,
-    spread = Math.min(Math.PI * 0.95, Math.acos(a.arc ?? 0.35)),
-    range = a.range;
-  for (let i = 0; i < 12; i++) {
-    const off = (i / 11 - 0.5) * 2 * spread,
-      d = range * (0.5 + hash(i) * 0.5);
-    fx.burst({
-      x: x + Math.cos(angle + off) * d,
-      y: y + Math.sin(angle + off) * d,
-      z: 14,
-      count: 2,
-      kind: "mote",
-      color: [color, GOLD, CREAM],
-      angle: angle + off,
-      spread: 0.4,
-      speed: [40, 120],
-      up: [20, 90],
-      life: [0.6, 1.1],
-      size: [1, 1.8],
-      grav: 80,
-      drag: 2,
-    });
-  }
-  shot(fx.reduced ? 160 : 420, (k) => {
-    // The strike stays on the caster while it moves.
-    const { x, y } = at?.() ?? origin,
-      cy = y - 12;
-    const sweep = Math.min(1, k / 0.4),
-      fade = 1 - Math.max(0, (k - 0.3) / 0.7);
-    fx.floor
-      .fillStyle(color, 0.14 * (1 - k))
-      .slice(x, cy + 12, range, angle - spread, angle + spread);
-    fx.floor.fillPath();
-    // A soft, golden cloud of dust along the swing.
-    for (let i = 0; i < 7; i++) {
-      const t = i / 6,
-        aa = angle - spread + 2 * spread * Math.min(t, sweep),
-        d = range * (0.55 + 0.25 * Math.sin(t * Math.PI));
-      fx.soft(
-        x + Math.cos(aa) * d,
-        cy + Math.sin(aa) * d,
-        26 + k * 18,
-        GOLD,
-        0.35 * fade,
-      );
-    }
-    const pts = Array.from({ length: 16 }, (_, i) => {
-      const aa = angle - spread + 2 * spread * sweep * (i / 15);
-      return {
-        x: x + Math.cos(aa) * range * 0.8,
-        y: cy + Math.sin(aa) * range * 0.8,
-      };
-    });
-    fx.solid.lineStyle(7, INK, 0.2 * fade).strokePoints(pts, false);
-    fx.g.lineStyle(6, color, 0.6 * fade).strokePoints(pts, false);
-    fx.g.lineStyle(2, CREAM, fade).strokePoints(pts.slice(6), false);
-    const head = pts[pts.length - 1];
-    twinkle(fx, head.x, head.y, 9 * fade, color, fade, k * 4);
-  });
-}
-
-// ───────────── Kindle: a halo lights up ─────────────
+// ───────────── Eyespot Flash: the eyespots open and flash ─────────────
 /**
  * Eyespot Flash: two big eyespots open on the wings in front of Lumoth and
- * flare, then a startle wave sweeps the arc that stuns (the ability's arc
- * and range).
+ * a ring of light flashes out to the ability's radius (whoever is looking at
+ * Lumoth is stunned).
  */
 function eyespotFlash(
   scene: Phaser.Scene,
@@ -241,9 +165,25 @@ function eyespotFlash(
   // Start where the caster is drawn (not the server position it was cast from).
   const origin = at?.() ?? { x: x0, y: y0 },
     { x, y } = origin;
-  dustStrike(scene, a, x, y, angle, color, shot, at);
   const fx = fxFor(scene),
-    cy = y - 22;
+    reach = a.radius;
+  // The flash: a ring of light out to its reach (whoever looks is stunned).
+  glitter(fx, x, y, 18, color, 1);
+  shot(fx.reduced ? 220 : 520, (k) => {
+    const { x, y } = at?.() ?? origin;
+    const out = ease(Math.min(1, k * 1.6)),
+      fade = 1 - k;
+    fx.floor
+      .lineStyle(6, GOLD, 0.55 * fade)
+      .strokeEllipse(x, y, reach * 2 * out, reach * 2 * out * 0.82);
+    fx.floor
+      .lineStyle(2, CREAM, 0.8 * fade)
+      .strokeEllipse(x, y, reach * 1.9 * out, reach * 1.9 * out * 0.82);
+    fx.floor
+      .fillStyle(GOLD, 0.1 * fade)
+      .fillEllipse(x, y, reach * 2 * out, reach * 2 * out * 0.82);
+    if (k < 0.2) fx.glow(x, y - 22, 90, 0xffffff, 0.6 * (1 - k / 0.2));
+  });
   shot(fx.reduced ? 200 : 460, (k) => {
     // The strike stays on the caster while it moves.
     const { x, y } = at?.() ?? origin,
@@ -349,6 +289,7 @@ function flareWindup(
   fx.glow(x, cy, 24 + k * 60, color, 0.4 + k * 0.5);
   twinkle(fx, x, cy, 6 + k * 14, color, 0.6 + k * 0.4, now / 200);
 }
+/** Radiant Flare's cast: Lumoth lights up (the rays are the zone). */
 function radiantFlare(
   scene: Phaser.Scene,
   a: Ability,
@@ -359,48 +300,52 @@ function radiantFlare(
   shot: Shot,
 ) {
   const fx = fxFor(scene),
-    r = a.radius,
-    sq = 0.82,
     cy = y - 16;
-  glitter(fx, x, y, 40, color, 2);
-  fx.decal({ kind: "glyph", x, y, r: r * 0.9, color: GOLD, life: 3 });
-  fx.shake(180, 0.004);
-  shot(fx.reduced ? 240 : 700, (k) => {
-    const out = ease(Math.min(1, k * 2.2)),
-      fade = 1 - k;
-    // God rays: long solid-cored beams rotating slowly outward.
-    for (let i = 0; i < 14; i++) {
-      const aa = (i * TAU) / 14 + k * 0.4,
-        len = r * (i % 2 ? 0.8 : 1.05) * out,
-        w = 0.07;
-      const p1 = {
-          x: x + Math.cos(aa - w) * len,
-          y: cy + Math.sin(aa - w) * len * sq,
-        },
-        p2 = {
-          x: x + Math.cos(aa + w) * len,
-          y: cy + Math.sin(aa + w) * len * sq,
-        };
-      fx.solid
-        .fillStyle(GOLD, 0.45 * fade)
-        .fillTriangle(x, cy, p1.x, p1.y, p2.x, p2.y);
-      fx.g
-        .fillStyle(CREAM, 0.35 * fade)
-        .fillTriangle(
-          x,
-          cy,
-          (x + p1.x) / 2,
-          (cy + p1.y) / 2,
-          (x + p2.x) / 2,
-          (cy + p2.y) / 2,
-        );
-    }
-    fx.glow(x, cy, r * 0.8, color, 0.6 * fade);
-    if (k < 0.15) fx.glow(x, cy, r * 0.6, 0xffffff, 0.8 * (1 - k / 0.15));
-    flare(fx, x, cy, r * 1.4 * (1 - k * 0.4), color, fade);
-    twinkle(fx, x, cy, 26 * (1 - k * 0.6), color, fade, k * 3);
-    fx.shockwave(x, y, r * out, k, GOLD, 8);
+  glitter(fx, x, y, 30, color, 1.6);
+  fx.decal({ kind: "glyph", x, y, r: a.range * 0.5, color: GOLD, life: 2.4 });
+  fx.shake(140, 0.003);
+  shot(fx.reduced ? 200 : 420, (k) => {
+    const fade = 1 - k;
+    fx.glow(x, cy, 120 * (1 - k * 0.5), 0xffffff, 0.7 * fade);
+    flare(fx, x, cy, 80 * (1 - k * 0.4), color, fade);
   });
+}
+/**
+ * Radiant Flare: rays of light turning round Lumoth like a lighthouse's
+ * (`count` of them, `radius` px long, pointing from `z.angle`).
+ */
+function lighthouse(g: G, z: Zone, progress: number, now: number) {
+  const fx = fxFor(g.scene),
+    a = z.ability,
+    rays = a.count ?? 3,
+    len = z.radius * ease(Math.min(1, progress * 10)),
+    fade = progress > 0.9 ? 1 - (progress - 0.9) / 0.1 : 1,
+    sq = 0.82,
+    cy = z.y - 16,
+    w = Math.atan2(a.radius, z.radius);
+  for (let i = 0; i < rays; i++) {
+    const ang = (z.angle ?? 0) + (i * TAU) / rays;
+    const tip = (o: number, l: number) => ({
+      x: z.x + Math.cos(ang + o) * l,
+      y: cy + Math.sin(ang + o) * l * sq,
+    });
+    // A pool of light on the floor, then the beam itself.
+    const f1 = tip(-w * 1.6, len),
+      f2 = tip(w * 1.6, len);
+    fx.floor
+      .fillStyle(GOLD, 0.14 * fade)
+      .fillTriangle(z.x, z.y, f1.x, f1.y + 16, f2.x, f2.y + 16);
+    const p1 = tip(-w, len),
+      p2 = tip(w, len);
+    fx.solid.fillStyle(GOLD, 0.5 * fade).fillTriangle(z.x, cy, p1.x, p1.y, p2.x, p2.y);
+    const c1 = tip(-w * 0.4, len * 0.95),
+      c2 = tip(w * 0.4, len * 0.95);
+    fx.g.fillStyle(CREAM, 0.75 * fade).fillTriangle(z.x, cy, c1.x, c1.y, c2.x, c2.y);
+    const end = tip(0, len);
+    fx.glow(end.x, end.y, 26, GOLD, 0.45 * fade);
+  }
+  fx.glow(z.x, cy, 60, GOLD, 0.55 * fade);
+  twinkle(fx, z.x, cy, 18, GOLD, fade, now / 300);
 }
 
 // ───────────── Casts and hits ─────────────
@@ -1059,7 +1004,7 @@ export const lightKit: FxKit = {
     sunseed,
     "yuzu-toss": yuzuToss,
   },
-  zone: { "warm-spring": warmSpring, sanctuary },
+  zone: { "warm-spring": warmSpring, sanctuary, "radiant-flare": lighthouse },
   windup: { "radiant-flare": flareWindup },
   cast: {
     glint: lightCast,

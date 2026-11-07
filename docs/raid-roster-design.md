@@ -647,7 +647,7 @@ the Raid Hub's guide and the raid briefing read them from there.
 
 **Astrabun** (3)
 
-- **Grumblecrag:** Mochi Pound adds +15 stagger.
+- **Grumblecrag:** the last pound of a Mochi Pound chain adds +15 stagger.
 - **Emberwing:** Full Moon's crash hits an airborne boss at full damage, +20
   stagger.
 - **Somnara:** Moon Hop landing on a rune pad, or within its 90 px landing
