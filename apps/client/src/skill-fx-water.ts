@@ -144,8 +144,27 @@ function undertow(g: G, z: Zone, progress: number, now: number) {
     y: z.y + uy * along + ny * across,
   });
   const lane = [at(0, -w), at(len, -w), at(len, w), at(0, w)];
-  fx.floorSolid.fillStyle(DEEP, 0.5 * fade).fillPoints(lane, true);
-  fx.floorSolid.fillStyle(c, 0.3 * fade).fillPoints(lane, true);
+  fx.floorSolid.fillStyle(c, 0.45 * fade).fillPoints(lane, true);
+  // Deeper water down the middle of the channel.
+  const core = [
+    at(0, -w * 0.55),
+    at(len, -w * 0.55),
+    at(len, w * 0.55),
+    at(0, w * 0.55),
+  ];
+  fx.floorSolid.fillStyle(DEEP, 0.45 * fade).fillPoints(core, true);
+  // Ripples: sinuous lines sliding down the current.
+  for (let j = -2; j <= 2; j++) {
+    const across = (j / 2.5) * w,
+      pts = Array.from({ length: 16 }, (_, q) => {
+        const along = (q / 15) * len;
+        return at(
+          along,
+          across + Math.sin(along / 38 - (now / 1000) * 7 + j * 1.7) * 5,
+        );
+      });
+    fx.floor.lineStyle(2, FOAM, 0.28 * fade).strokePoints(pts, false);
+  }
   fx.floor
     .lineStyle(3, FOAM, 0.55 * fade)
     .lineBetween(lane[0].x, lane[0].y, lane[1].x, lane[1].y);
@@ -170,9 +189,59 @@ function undertow(g: G, z: Zone, progress: number, now: number) {
     if (k + o - 45 > len) continue;
     fx.g.lineStyle(3, c, 0.7 * fade).strokePoints([l, tip, r], false);
   }
-  fx.trail(`ut${z.id}`, 0.12, () => {
-    const p = at(Math.random() * len, (Math.random() * 2 - 1) * w);
-    splash(fx, p.x, p.y, c, 3, 0.6);
+  // The floor stays wet behind it.
+  fx.trail(`ut-wet${z.id}`, 999, () => {
+    for (let k = 0; k <= a.range; k += w * 1.4) {
+      const p = at(k, 0);
+      fx.decal({
+        kind: "wet",
+        x: p.x,
+        y: p.y,
+        r: w * 0.9,
+        color: c,
+        life: a.duration + 1.5,
+      });
+    }
+  });
+  // Spray kicks up where the current breaks on its banks, and whitecaps
+  // tumble down its middle.
+  fx.trail(`ut${z.id}`, 0.06, () => {
+    const side = Math.random() < 0.5 ? -1 : 1,
+      p = at(Math.random() * len, side * w);
+    fx.burst({
+      x: p.x,
+      y: p.y,
+      z: 4,
+      count: 2,
+      kind: "drop",
+      color: [c, FOAM, FOAM],
+      angle: ang + side * 0.5,
+      spread: 0.6,
+      speed: [80, 200],
+      up: [120, 260],
+      life: [0.35, 0.6],
+      size: [1.4, 2.6],
+      grav: 1150,
+      bounce: 0.1,
+    });
+  });
+  fx.trail(`ut-cap${z.id}`, 0.14, () => {
+    const p = at(Math.random() * len * 0.9, (Math.random() * 2 - 1) * w * 0.5);
+    fx.burst({
+      x: p.x,
+      y: p.y,
+      z: 2,
+      count: 2,
+      kind: "smoke",
+      color: [FOAM, 0xd6f3ff],
+      angle: ang,
+      spread: 0.25,
+      speed: [speed * 0.8, speed * 1.2],
+      up: [10, 30],
+      life: [0.4, 0.7],
+      size: [7, 12],
+      drag: 0.6,
+    });
   });
 }
 
@@ -1288,24 +1357,85 @@ export function drawSiphon(
     sx = x,
     sy = y - 16,
     ex = tx,
-    ey = ty - 16,
+    ey = ty - 18,
     len = Math.hypot(ex - sx, ey - sy) || 1,
     nx = -(ey - sy) / len,
-    ny = (ex - sx) / len;
-  const pts = Array.from({ length: 13 }, (_, i) => {
-    const t = i / 12,
-      w = Math.sin(t * Math.PI * 3 - now / 80) * 6 * Math.sin(t * Math.PI);
-    return { x: sx + (ex - sx) * t + nx * w, y: sy + (ey - sy) * t + ny * w };
-  });
-  fx.g.lineStyle(9, DEEP, 0.35).strokePoints(pts, false);
-  fx.g.lineStyle(5, color, 0.75).strokePoints(pts, false);
-  fx.g.lineStyle(2, FOAM, 0.85).strokePoints(pts, false);
-  // Droplets flowing home.
-  for (let i = 0; i < 4; i++) {
-    const t = 1 - ((now / 500 + i / 4) % 1);
-    fx.glow(sx + (ex - sx) * t, sy + (ey - sy) * t, 7, FOAM, 0.8);
+    ny = (ex - sx) / len,
+    // A real stream sags a little under its own weight.
+    sag = Math.min(40, len * 0.08);
+  const at = (t: number, phase: number, amp: number) => {
+    const w =
+      Math.sin(t * Math.PI * 3 - now / 70 + phase) *
+      amp *
+      Math.sin(t * Math.PI);
+    return {
+      x: sx + (ex - sx) * t + nx * w,
+      y: sy + (ey - sy) * t + ny * w + Math.sin(t * Math.PI) * sag,
+    };
+  };
+  const N = 18;
+  // Two strands braiding round each other, thicker where the water is torn
+  // out of the target, thinning toward Tidefin's gills.
+  for (const [phase, amp, c, a] of [
+    [0, 7, color, 0.9],
+    [Math.PI, 4, FOAM, 0.6],
+  ] as const) {
+    for (let i = 0; i < N; i++) {
+      const p1 = at(i / N, phase, amp),
+        p2 = at((i + 1) / N, phase, amp),
+        w = 3 + (i / N) * 6;
+      // Normal blending, so the water reads blue on any floor.
+      fx.solid.lineStyle(w + 4, DEEP, 0.45).lineBetween(p1.x, p1.y, p2.x, p2.y);
+      fx.solid.lineStyle(w, c, a).lineBetween(p1.x, p1.y, p2.x, p2.y);
+    }
   }
-  fx.glow(ex, ey, 22, color, 0.4);
+  // Glints riding the current home, faster near Tidefin.
+  for (let i = 0; i < 7; i++) {
+    const k = (now / 420 + i / 7) % 1,
+      t = 1 - k * k,
+      q = at(t, i, 5);
+    fx.glow(q.x, q.y, 5 + 4 * t, FOAM, 0.9);
+  }
+  // Drops break off the stream and fall to the floor.
+  fx.trail(`siphon-drip-${Math.round(sx)}-${Math.round(ex)}`, 0.07, () => {
+    const q = at(0.2 + Math.random() * 0.7, 0, 5);
+    fx.burst({
+      x: q.x,
+      y: q.y + 16,
+      z: 16,
+      count: 1,
+      kind: "drop",
+      color: [color, FOAM],
+      speed: [5, 30],
+      up: [0, 40],
+      life: [0.35, 0.55],
+      size: [1.4, 2.4],
+      grav: 1200,
+      bounce: 0.1,
+    });
+  });
+  // The target sprays: water torn out of it, and a fine mist.
+  fx.trail(`siphon-spray-${Math.round(ex)}-${Math.round(ey)}`, 0.09, () => {
+    fx.burst({
+      x: ex,
+      y: ey + 18,
+      z: 18,
+      count: 3,
+      kind: "drop",
+      color: [color, FOAM, FOAM],
+      angle: Math.atan2(sy - ey, sx - ex),
+      spread: 0.9,
+      speed: [60, 160],
+      up: [80, 220],
+      life: [0.35, 0.6],
+      size: [1.4, 2.6],
+      grav: 1100,
+      bounce: 0.12,
+    });
+    fx.soft(ex, ey, 22, FOAM, 0.18);
+  });
+  fx.glow(ex, ey, 26, color, 0.45);
+  fx.glow(sx, sy, 14, FOAM, 0.5);
 }
 export const waterKit: FxKit = {
   projectile: {

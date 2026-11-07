@@ -594,7 +594,33 @@ function inkSplat(
   const fx = fxFor(scene),
     r = a.radius;
   fx.decal({ kind: "wet", x, y, r: r * 2.4, color: INK_BLACK, life: 2.6 });
-  inkDrops(fx, x, y, 10, [60, 200]);
+  // Flung drops land around it as their own little splats.
+  for (let i = 0; i < 5; i++) {
+    const aa = hash(x * 3 + i) * TAU,
+      d = r * (2.2 + hash(y + i * 7) * 2.6);
+    fx.decal({
+      kind: "wet",
+      x: x + Math.cos(aa) * d,
+      y: y + Math.sin(aa) * d * SQ,
+      r: r * (0.35 + hash(i + x) * 0.35),
+      color: INK_BLACK,
+      life: 2.2,
+    });
+  }
+  inkDrops(fx, x, y, 16, [60, 240]);
+  fx.burst({
+    x,
+    y,
+    z: 14,
+    count: 5,
+    kind: "smoke",
+    color: [INK_DEEP, 0x3a2470],
+    speed: [20, 60],
+    up: [10, 40],
+    life: [0.5, 0.9],
+    size: [8, 13],
+    drag: 2,
+  });
   wisps(fx, x, y, 3);
   shot(fx.reduced ? 160 : 360, (k) => {
     const out = ease(Math.min(1, k * 2.5)),
@@ -625,8 +651,37 @@ function krakenLand(
   const fx = fxFor(scene),
     r = a.explosion ?? 90;
   fx.decal({ kind: "wet", x, y, r: r * 0.8, color: INK_BLACK, life: 2.4 });
-  inkDrops(fx, x, y, 14, [80, 260]);
-  fx.shake(150, 0.005);
+  fx.decal({ kind: "crack", x, y, r: r * 0.6, color, life: 3 });
+  inkDrops(fx, x, y, 22, [80, 300]);
+  // The body hits the floor: grit jumps and a dust ring rolls out.
+  fx.burst({
+    x,
+    y,
+    z: 4,
+    count: 10,
+    kind: "debris",
+    color: [0x6b5a48, 0x4a3b30],
+    speed: [80, 220],
+    up: [150, 320],
+    life: [0.5, 0.8],
+    size: [1.6, 3],
+    grav: 1100,
+    bounce: 0.35,
+  });
+  fx.burst({
+    x,
+    y,
+    z: 4,
+    count: 10,
+    kind: "smoke",
+    color: [0xb8a890, 0x8f7f6a],
+    speed: [r, r * 2],
+    up: [5, 30],
+    life: [0.5, 0.9],
+    size: [10, 16],
+    drag: 2.4,
+  });
+  fx.shake(200, 0.007);
   shot(fx.reduced ? 180 : 420, (k) => {
     const out = ease(Math.min(1, k * 2.2)),
       fade = 1 - k;

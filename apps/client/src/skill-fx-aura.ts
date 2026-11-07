@@ -446,10 +446,73 @@ function crystalCage(g: G, z: Zone, progress: number, now: number) {
       .fillStyle(0xffffff, 0.5 + 0.3 * Math.sin(now / 240 + i))
       .fillTriangle(px + 1, py - 3, px + 4, py - 5, px, py - h + 4);
   }
+  // As they rise, crystal chips burst out of the floor at each spire.
+  fx.trail(`cage-rise-${z.id}`, 999, () => {
+    for (let i = 0; i < n; i += 2) {
+      const aa = (i * TAU) / n;
+      fx.burst({
+        x: z.x + Math.cos(aa) * r,
+        y: z.y + Math.sin(aa) * r * sq,
+        z: 4,
+        count: 3,
+        kind: "debris",
+        color: [GLASS, color, CYAN],
+        speed: [40, 140],
+        up: [140, 300],
+        life: [0.5, 0.8],
+        size: [1.6, 3],
+        grav: 1100,
+        bounce: 0.45,
+      });
+    }
+  });
+  // Cold mist pools at the foot of the ring, and light glints off facets.
+  fx.trail(`cage-mist-${z.id}`, 0.08, () => {
+    const aa = Math.random() * TAU;
+    fx.burst({
+      x: z.x + Math.cos(aa) * r,
+      y: z.y + Math.sin(aa) * r * sq,
+      z: 2,
+      count: 1,
+      kind: "smoke",
+      color: [GLASS, 0xe8f6ff],
+      speed: [5, 25],
+      up: [2, 12],
+      life: [0.8, 1.4],
+      size: [10, 16],
+      drag: 1.5,
+    });
+  });
+  const ga = ((((now / 120) % n) | 0) * TAU) / n;
+  fx.glow(
+    z.x + Math.cos(ga) * r,
+    z.y + Math.sin(ga) * r * sq - 30,
+    16,
+    0xffffff,
+    0.8 * rise * fall,
+  );
+  // Breaking up: the spires shatter into falling shards.
   if (progress > 0.88)
-    fx.trail(`cage-${z.id}`, 999, () =>
-      shards(fx, z.x, z.y, 24, color, { power: 1.4 }),
-    );
+    fx.trail(`cage-${z.id}`, 999, () => {
+      shards(fx, z.x, z.y, 24, color, { power: 1.4 });
+      for (let i = 0; i < n; i++) {
+        const aa = (i * TAU) / n;
+        fx.burst({
+          x: z.x + Math.cos(aa) * r,
+          y: z.y + Math.sin(aa) * r * sq,
+          z: 30,
+          count: 3,
+          kind: "debris",
+          color: [GLASS, color],
+          speed: [30, 120],
+          up: [40, 160],
+          life: [0.5, 0.9],
+          size: [1.6, 3],
+          grav: 1100,
+          bounce: 0.4,
+        });
+      }
+    });
 }
 
 // ───────────── Hits ─────────────
@@ -647,6 +710,37 @@ function quillImpact(
     grav: 60,
     drag: 2,
   });
+  if (pin) {
+    // Driven into the floor: a puff of dust, grit and a little crack.
+    fx.burst({
+      x,
+      y,
+      z: 4,
+      count: 6,
+      kind: "smoke",
+      color: [0xcbb89a, 0xe4d6c0],
+      speed: [30, 90],
+      up: [10, 40],
+      life: [0.5, 0.9],
+      size: [6, 11],
+      drag: 2.4,
+    });
+    fx.burst({
+      x,
+      y,
+      z: 4,
+      count: 6,
+      kind: "debris",
+      color: [0x8a7a64, 0x6b5a48],
+      speed: [60, 160],
+      up: [120, 260],
+      life: [0.4, 0.7],
+      size: [1.5, 2.6],
+      grav: 1100,
+      bounce: 0.3,
+    });
+    fx.decal({ kind: "crack", x, y, r: 16, color, life: 2.4 });
+  }
   const lean = hash(x + y) * 0.6 - 0.3;
   shot(fx.reduced ? 160 : pin ? 640 : 260, (k) => {
     fx.glow(x, y - 12, r * 3.4 * (1 - k * 0.4), color, 0.6 * (1 - k));
@@ -892,6 +986,59 @@ function rewindCast(
     fx.glow(x, cy, 40, color, 0.35 * fade);
   });
 }
+/**
+ * Halcyon Rewind's dive, from where Halcyra was to where it lands: a fading
+ * streak with afterimages along it and loose feathers drifting down.
+ */
+export function rewindDive(
+  scene: Phaser.Scene,
+  fromX: number,
+  fromY: number,
+  toX: number,
+  toY: number,
+  color: number,
+  shot: Shot,
+) {
+  const fx = fxFor(scene),
+    len = Math.hypot(toX - fromX, toY - fromY),
+    ang = Math.atan2(toY - fromY, toX - fromX),
+    ghosts = Math.max(3, Math.min(7, Math.round(len / 70)));
+  for (let i = 0; i <= ghosts; i++) {
+    const t = i / ghosts;
+    fx.burst({
+      x: fromX + (toX - fromX) * t,
+      y: fromY + (toY - fromY) * t,
+      z: 30,
+      count: 2,
+      kind: "debris",
+      color: [KING, GLASS, color],
+      speed: [10, 50],
+      up: [20, 70],
+      life: [0.9, 1.5],
+      size: [2.2, 3.4],
+      grav: 140,
+      drag: 3,
+      bounce: 0.05,
+    });
+  }
+  shot(fx.reduced ? 220 : 520, (k) => {
+    const fade = 1 - k;
+    fx.g
+      .lineStyle(10 * fade + 2, color, 0.18 * fade)
+      .lineBetween(fromX, fromY - 20, toX, toY - 20);
+    fx.g
+      .lineStyle(3 * fade + 1, GLASS, 0.7 * fade)
+      .lineBetween(fromX, fromY - 20, toX, toY - 20);
+    for (let i = 1; i < ghosts; i++) {
+      const t = i / ghosts,
+        gx = fromX + (toX - fromX) * t,
+        gy = fromY - 20 + (toY - fromY) * t;
+      // Each afterimage fades a little after the one ahead of it.
+      const a = Math.max(0, fade - (1 - t) * 0.4);
+      feather(fx, gx, gy, 26, 9, ang + Math.PI, color, 0.55 * a);
+    }
+  });
+}
 /** Where Halcyra lands: a burst of light and a healing shimmer. */
 function rewindLand(
   scene: Phaser.Scene,
@@ -916,11 +1063,32 @@ function rewindLand(
     size: [1.5, 2.4],
     drag: 2,
   });
-  shot(fx.reduced ? 200 : 420, (k) => {
+  // It lands like a kingfisher on water: rings spread across the floor.
+  fx.burst({
+    x,
+    y,
+    z: 4,
+    count: 5,
+    kind: "smoke",
+    color: [GLASS, 0xcfe9ff],
+    speed: [30, 90],
+    up: [10, 30],
+    life: [0.5, 0.8],
+    size: [7, 11],
+    drag: 2.4,
+  });
+  shot(fx.reduced ? 200 : 620, (k) => {
     fx.glow(x, cy, 50 * (1 - k * 0.4), color, 0.55 * (1 - k));
     fx.g
       .lineStyle(3 * (1 - k) + 1, GLASS, 0.8 * (1 - k))
       .strokeCircle(x, cy, 10 + k * 30);
+    for (let i = 0; i < 3; i++) {
+      const kk = k * 1.3 - i * 0.18;
+      if (kk <= 0 || kk >= 1) continue;
+      fx.floor
+        .lineStyle(2.5, i % 2 ? CYAN : GLASS, 0.7 * (1 - kk))
+        .strokeEllipse(x, y, 30 + kk * 110, (30 + kk * 110) * 0.45);
+    }
   });
 }
 

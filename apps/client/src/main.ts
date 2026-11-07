@@ -145,6 +145,7 @@ import {
   playCast,
   playHit,
   playImpact,
+  playRewindDive,
 } from "./skill-effects";
 import { setupPWA } from "./pwa";
 import { abilityIcon } from "./ability-icons";
@@ -4599,8 +4600,17 @@ class ArenaScene extends Phaser.Scene {
         "throw",
         "lighthouse",
       ].includes(ability.kind)
-    )
+    ) {
       playImpact(this, ability, event.x, event.y, event.color, reducedMotion);
+      // Halcyon Rewind: the dive back from where it left.
+      if (
+        ability.kind === "rewind" &&
+        event.tx !== undefined &&
+        event.ty !== undefined &&
+        !reducedMotion
+      )
+        playRewindDive(this, event.tx, event.ty, event.x, event.y, event.color);
+    }
     // Novas play on their burst event; every other move plays on cast.
     else if (ability && event.kind === "burst") {
       const combo = owner && COMBOS[owner.character];
@@ -5806,6 +5816,27 @@ class ArenaScene extends Phaser.Scene {
         const left = Math.max(0, clamp.until - serverTime),
           flick = reducedMotion ? 1 : 0.7 + 0.3 * Math.sin(_time / 30);
         const r = 22 + 16 * Math.min(1, left / 1.5);
+        // The charge sizzles, faster as it runs out.
+        if (!reducedMotion)
+          fxFor(this).trail(
+            `clamp-${p.id}`,
+            0.05 + 0.1 * Math.min(1, left),
+            () =>
+              fxFor(this).burst({
+                x,
+                y,
+                z: 30,
+                count: 1,
+                kind: "spark",
+                color: [0xffffff, 0x9fe8ff],
+                speed: [60, 160],
+                up: [60, 180],
+                life: [0.2, 0.4],
+                size: [0.8, 1.4],
+                grav: 1000,
+                bounce: 0.4,
+              }),
+          );
         g.lineStyle(7, 0x2b6f8f, 0.35 * flick).strokeCircle(
           x,
           y - 18 - jump,
@@ -5843,6 +5874,28 @@ class ArenaScene extends Phaser.Scene {
           g.lineStyle(5, 0x9a6ad8, 1);
           curve.draw(g, 16);
           g.lineStyle(3, 0x9a6ad8, 1).strokeCircle(to.x, to.y - 16, 20);
+          // Suckers along the arm, and ink dripping from it.
+          for (let k = 2; k < 15; k += 3) {
+            const q = curve.getPoint(k / 16);
+            g.fillStyle(0xe4d6ff, 0.9).fillCircle(q.x, q.y + 2, 2);
+          }
+          if (!reducedMotion)
+            fxFor(this).trail(`grasp-${p.id}`, 0.08, () => {
+              const q = curve.getPoint(0.3 + Math.random() * 0.6);
+              fxFor(this).burst({
+                x: q.x,
+                y: q.y + 14,
+                z: 14,
+                count: 1,
+                kind: "drop",
+                color: [0x150b26, 0x2a1450],
+                speed: [5, 25],
+                up: [0, 30],
+                life: [0.3, 0.5],
+                size: [1.6, 2.6],
+                grav: 1100,
+              });
+            });
         }
       }
       // Pinning Quill: a taut line back to the quill that pins it.
