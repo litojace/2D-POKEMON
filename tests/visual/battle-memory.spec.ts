@@ -38,18 +38,19 @@ test("an iPhone battle keeps a small memory budget and hands its WebGL context b
       ...rest: any[]
     ) {
       const ctx = get.call(this, type as any, ...rest);
-      if (ctx && /webgl/.test(type) && !w.__gls.includes(ctx))
+      // Battle contexts only: Phaser also makes a 1×1 one to test for WebGL.
+      if (ctx && /webgl/.test(type) && this.width > 1 && !w.__gls.includes(ctx))
         w.__gls.push(ctx);
       return ctx;
     } as any;
   });
   const errors = await openLobby(page);
-  // Battle contexts only: Phaser also makes a 1×1 one to test for WebGL.
-  const battleContextsLost = () =>
+  // Each finished battle's context is lost and its canvas shrunk to 1×1.
+  const battleContextsReleased = () =>
     page.evaluate(() =>
-      (window as any).__gls
-        .filter((g: any) => g.canvas.width > 1)
-        .map((g: any) => g.isContextLost()),
+      (window as any).__gls.map(
+        (g: any) => g.isContextLost() && g.canvas.width * g.canvas.height === 1,
+      ),
     );
   for (const round of [1, 2]) {
     if (round === 1) {
@@ -92,9 +93,10 @@ test("an iPhone battle keeps a small memory budget and hands its WebGL context b
       w.__push();
     });
     await expect(page.locator("#battle")).toBeHidden({ timeout: 30_000 });
-    // Phaser tears down on its next step; then the context is given back.
+    // Phaser tears down on its next step; then the context is given back
+    // and the canvas (still held somewhere) shrinks to nothing.
     await expect
-      .poll(battleContextsLost, { timeout: 30_000 })
+      .poll(battleContextsReleased, { timeout: 30_000 })
       .toEqual(round === 1 ? [true] : [true, true]);
   }
   // Handing the context back is not mistaken for a lost display.
