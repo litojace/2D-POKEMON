@@ -144,10 +144,14 @@ function undertow(g: G, z: Zone, progress: number, now: number) {
     y: z.y + uy * along + ny * across,
   });
   const lane = [at(0, -w), at(len, -w), at(len, w), at(0, w)];
-  fx.floor.fillStyle(DEEP, 0.32 * fade).fillPoints(lane, true);
-  fx.floor.fillStyle(c, 0.18 * fade).fillPoints(lane, true);
-  fx.floor.lineStyle(3, FOAM, 0.55 * fade).lineBetween(lane[0].x, lane[0].y, lane[1].x, lane[1].y);
-  fx.floor.lineStyle(3, FOAM, 0.55 * fade).lineBetween(lane[3].x, lane[3].y, lane[2].x, lane[2].y);
+  fx.floorSolid.fillStyle(DEEP, 0.5 * fade).fillPoints(lane, true);
+  fx.floorSolid.fillStyle(c, 0.3 * fade).fillPoints(lane, true);
+  fx.floor
+    .lineStyle(3, FOAM, 0.55 * fade)
+    .lineBetween(lane[0].x, lane[0].y, lane[1].x, lane[1].y);
+  fx.floor
+    .lineStyle(3, FOAM, 0.55 * fade)
+    .lineBetween(lane[3].x, lane[3].y, lane[2].x, lane[2].y);
   // Foam streaks racing along.
   const speed = a.current?.speed ?? 200;
   for (let i = 0; i < 9; i++) {

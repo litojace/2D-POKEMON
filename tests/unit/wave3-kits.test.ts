@@ -45,7 +45,9 @@ describe("Undertow (Tidefin)", () => {
     seconds(a, 1);
     // Carried toward +x though it stands still.
     expect(them.x).toBeGreaterThan(530);
-    expect(hp - them.hp).toBeGreaterThanOrEqual(skill("tidefin", "undertow").damage);
+    expect(hp - them.hp).toBeGreaterThanOrEqual(
+      skill("tidefin", "undertow").damage,
+    );
   });
   it("lets a jumping enemy over it", () => {
     const a = arena("tidefin");
@@ -66,7 +68,11 @@ describe("Moon Gravity (Astrabun)", () => {
       const them = a.players[1];
       place(them, 600, Y + 200);
       if (float)
-        them.statuses.push({ kind: "float", until: a.time + 5, nextTick: a.time + 5 });
+        them.statuses.push({
+          kind: "float",
+          until: a.time + 5,
+          nextTick: a.time + 5,
+        });
       // Running right, it turns left: how far left does it get in 0.3 s?
       Object.assign(them, { vx: 250 });
       const left = { ...blankInput(), dx: -1, aimX: 0, aimY: Y + 200 };

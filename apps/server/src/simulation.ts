@@ -1735,6 +1735,7 @@ export class Arena {
         born: this.time,
         angle,
       });
+    if (a.kind === "trail") this.status(p, "haste", a.duration);
     if (a.kind === "trail" && this.zones.length < RULES.maxZones)
       // Spark Trail: laid behind the caster while it lasts, then it fades.
       this.zones.push({

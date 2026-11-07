@@ -1208,15 +1208,15 @@ _Ultimate_ (a Mythical's stage III ultimate, cast every few seconds).
 
 #### Tidefin (axolotl duelist, Water)
 
-| Rarity                     | Skin               | Look and effects                                                                                                                    |
-| -------------------------- | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
-| Common                     | Bubblegum          | Classic pink axolotl, magenta gills                                                                                                 |
-| Common                     | Abyss              | Deep navy with teal gills                                                                                                           |
-| Common                     | Sandbar            | Sand and sea-green                                                                                                                  |
-| Rare · Garden              | **Koi Pond**       | Orange-and-white koi spots, a koi-scale sash; dash leaves lily pads                                                                 |
-| Rare · Festival            | **Corsair**        | Tricorn hat and striped sash; splashes scatter gold coins                                                                           |
+| Rarity                     | Skin               | Look and effects                                                                                                                       |
+| -------------------------- | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Common                     | Bubblegum          | Classic pink axolotl, magenta gills                                                                                                    |
+| Common                     | Abyss              | Deep navy with teal gills                                                                                                              |
+| Common                     | Sandbar            | Sand and sea-green                                                                                                                     |
+| Rare · Garden              | **Koi Pond**       | Orange-and-white koi spots, a koi-scale sash; dash leaves lily pads                                                                    |
+| Rare · Festival            | **Corsair**        | Tricorn hat and striped sash; splashes scatter gold coins                                                                              |
 | Epic · Winter              | **Glacier**        | See-through ice-crystal body. Skills become ice, Undertow flows with snow, hits shatter into shards, and its gills frost over and thaw |
-| **Mythical · Void Knight** | **Abyssal Reaver** | Black steel, tide-green runes; a steel dorsal-fin helm takes the headband's place. Stages as in “The Void Knights” above            |
+| **Mythical · Void Knight** | **Abyssal Reaver** | Black steel, tide-green runes; a steel dorsal-fin helm takes the headband's place. Stages as in “The Void Knights” above               |
 
 #### Auralynx (crystal-fisted lynx monk, Aura)
 

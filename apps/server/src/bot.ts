@@ -109,19 +109,19 @@ export const BOT_PROFILES: Record<BotDifficulty, Profile> = {
     seeShots: true,
     dazeBy: {
       voltkit: 0.17,
-      cindrake: 0.41,
-      tidefin: 0.18,
+      cindrake: 0.44,
+      tidefin: 0.15,
       auralynx: 0.3,
       lumoth: 0.17,
-      mystowl: 0.18,
+      mystowl: 0.14,
       terradon: 0.3,
       duskveil: 0.27,
-      coilemur: 0.32,
+      coilemur: 0.34,
       pyranda: 0.38,
       glacelle: 0.26,
       halcyra: 0.19,
       sunbara: 0.23,
-      astrabun: 0.32,
+      astrabun: 0.35,
       wombolder: 0.36,
       shadopus: 0.28,
       pangrove: 0.39,
@@ -778,8 +778,8 @@ export class BotBrain {
           if (s.sight && reach(a.range * 0.8)) score = 16;
           break;
         case "trail":
-          // Spark Trail: lay it while closing in or circling a nearby target.
-          if (reach(260)) score = 15 + a.damage;
+          // Spark Trail: lay it while circling a nearby target (bots strafe).
+          if (s.sight && reach(220)) score = 18 + a.damage;
           break;
         case "steer":
           // Sunfire Pillar: drop it on the target, then keep aiming at it.

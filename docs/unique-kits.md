@@ -13,7 +13,7 @@ It ships in waves, one pull request each:
 | ---- | -------------------------------------- | ------------------------------------------------------------------------------------- |
 | 1    | Exact copies                           | Gill Spray, Tail Wrap, Mirage Perch, Pebble Spray, Rump Block, Pinning Quill, Ink Jet |
 | 2    | Melee stun strikes and knockback novas | Six stun strikes (two stay, four change) and four novas (two stay, two change)        |
-| 3    | Slow zones and zone ultimates          | About five                                                                            |
+| 3    | Slow zones and zone ultimates          | Eddy, Moon Gravity, Spark Tether, Sunfire Pillar, Silent Swoop                        |
 
 ## Wave 1: exact copies
 
@@ -227,3 +227,56 @@ line-ups (Lumoth's factors were raised after its last nerf):
 | Astrabun | 1.008 → 0.99 | 49.1%                | 1.026 → 1.06  | 27.4%                | 1.106 → 1.16        |
 | Shadopus | 1.02 → 1.04  | 53.9%                | 1.06 (same)   | 28.0%                | 1.13 → 1.12         |
 | Auralynx | 0.97 → 0.95  | 48.6%                | 1.055 → 1.065 | 24.4%                | 1.127 → 1.15        |
+
+## Wave 3: slow zones and zone ultimates
+
+Four skills were a patch of ground that slows (Eddy, Mud Mire, Spark Tether
+round Coilemur, Moon Gravity), and three ultimates a big circle that lands at
+the aim a moment later (Sunfire Pillar, Silent Swoop, Chestnut Storm). Mud
+Mire (Terradon's mud) stays the slow; Chestnut Storm stays with Pyranda, whose
+whole kit is artillery. The others change:
+
+| Champion | Was                                          | Now                                                                                                                                                                                 | Borrowed from                |
+| -------- | -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- |
+| Tidefin  | **Eddy**: a slowing patch at the aim         | **Undertow** (12 s): a current 420 px long from Tidefin along the aim for 3.5 s; enemies in it are **swept along** at 200 px/s and take 3 every half second. Jumping gets out of it | conveyor and current hazards |
+| Astrabun | **Moon Gravity**: a slowing patch            | **Moon Gravity** (15 s): low gravity at the aim for 2.5 s; enemies in it **float**, keeping almost no grip, so they slide on and barely turn                                        | low-gravity and ice physics  |
+| Coilemur | **Spark Tether**: a slowing ring round it    | **Spark Trail** (15 s): for 3.5 s Coilemur runs 30% faster and leaves a **trail** that lasts 2 s; enemies who touch it take 6 and are paralysed for a moment                        | light-cycle trails           |
+| Cindrake | **Sunfire Pillar**: a blast at the aim (ult) | **Sunfire Pillar** (ultimate): the pillar rises at the aim and **follows your aim** at 200 px/s for 3 s, hitting for 6 every half second and burning                                | steerable area spells        |
+| Mystowl  | **Silent Swoop**: a blast at the aim (ult)   | **Mind Maze** (ultimate): a psychic maze closes over the aim (150 px): 24 damage and **Confused** for 2.2 s, every way it walks reversed                                            | confusion effects            |
+
+### New mechanics
+
+- **Current** (`kind: "current"`, status `current`): enemies in the lane get a
+  `current` status holding the drift velocity (`tx`, `ty`), refreshed every
+  tick; `advanceMovement` adds the drift after the fighter's own movement
+  (not while jumping), so client prediction agrees.
+- **Float** (status `float`): the fighter's acceleration is multiplied by
+  `STATUS_RULES.floatGrip` (0.12) in `advanceMovement`.
+- **Trail** (`kind: "trail"`): the zone keeps `points` (where the caster has
+  been, with when) and sends them to clients; points older than
+  `trail.fade` drop, and an enemy within `radius` of any point is hit at most
+  once every `tickInterval`.
+- **Steer** (`kind: "steer"`): a zone that moves toward the caster's live aim
+  at `steer.speed`, then hits like any zone.
+- **Confuse** (status `confuse`): `advanceMovement` reverses the direction
+  the fighter is trying to walk.
+
+### Everything else
+
+- **Bots** use the current with a target in reach, the trail when circling a
+  close target, and the pillar with a target in range (they keep aiming at
+  it, so it follows). They keep out of a current's lane.
+- **Combos**: Soaked is now set up by Undertow; Dazed pays off with Mind Maze.
+- **Rites**: Wide Undertow, Maelstrom (5 a tick, 4.5 s), Light Moon (Moon
+  Gravity 20% wider), Long Trail (4.5 s), Deep Maze (35% wider).
+- **Raid tricks**: on Emberwing, Undertow puts out fire patches and dive
+  trails all along its current; on Somnara, Mind Maze reveals the dream to the
+  whole team (as Silent Swoop did). Sunfire Pillar keeps its Prismatail relay.
+- **Client**: new icons (Undertow, Spark Trail, Mind Maze; Moon Gravity's
+  chevrons now point up), the current's lane with racing foam and chevrons,
+  the crackling trail, question marks round a confused fighter and a hover
+  ring under a floating one, and SWEPT AWAY / FLOATING / CONFUSED labels.
+
+### Balance
+
+WAVE3_BALANCE

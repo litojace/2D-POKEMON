@@ -1053,7 +1053,9 @@ function sparkTrail(g: G, z: Zone, _progress: number, now: number) {
     const a = pts[i - 1],
       b = pts[i],
       life = Math.max(0, 1 - (newest - b.t) / fadeFor);
-    fx.floor.lineStyle(10, 0x0d1430, 0.25 * life).lineBetween(a.x, a.y, b.x, b.y);
+    fx.floor
+      .lineStyle(10, 0x0d1430, 0.25 * life)
+      .lineBetween(a.x, a.y, b.x, b.y);
     fx.floor.lineStyle(5, c, 0.55 * life).lineBetween(a.x, a.y, b.x, b.y);
     if (i % 2 === 0)
       fx.bolt(a.x, a.y - 4, b.x, b.y - 4, BLUE, {

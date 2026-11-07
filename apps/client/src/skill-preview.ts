@@ -102,7 +102,11 @@ export function previewShape(
       break;
     case "trail":
       // Laid where the caster walks: just its width round the caster.
-      shape.discs.push({ x: from.x, y: from.y, r: ability.radius + RULES.radius });
+      shape.discs.push({
+        x: from.x,
+        y: from.y,
+        r: ability.radius + RULES.radius,
+      });
       break;
     case "steer":
     case "zone": {
