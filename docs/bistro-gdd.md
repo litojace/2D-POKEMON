@@ -404,6 +404,8 @@ Mỗi giai đoạn: một migration riêng (số tiếp theo còn trống), test
 | 5. Chơi lâu dài: cân bằng offline, 6 món mới, phòng 21×14, nhân viên Lv10, đơn đặt tiệc, khách quen, giải đấu tuần, sự kiện, chi nhánh                                                              | [100_bistro_long_term.sql](../supabase/migrations/100_bistro_long_term.sql)         | Đã làm     |
 | 6. Nồi của đầu bếp không còn chớp khi server trả lời; khách ăn lâu hơn với món nấu lâu, đắt tiền: Gỏi cuốn 10–14 s, Phở 14–18 s, Lẩu 21–25 s, Phoenix Feast 23–27 s (một ghế ~20 s như server tính) | [101_bistro_cooks_in_step.sql](../supabase/migrations/101_bistro_cooks_in_step.sql) | Đã làm     |
 | 7. Đơn đặt tiệc: để dành món dần dần, khách không ăn mất                                                                                                                                            | [102_bistro_orders_aside.sql](../supabase/migrations/102_bistro_orders_aside.sql)   | Đã làm     |
+| 8. Bếp mua trong Shop: Clay Stove / Steel Range (+15%) / Dragon Oven (+30%), đặt và đổi chỗ trên tường bếp; bếp rộng thêm 1 cột mỗi lần mở rộng phòng (4 → 9 chỗ)                                   | [103_bistro_stove_shop.sql](../supabase/migrations/103_bistro_stove_shop.sql)       | Đã làm     |
+| 9. Cân bằng kinh tế (giá ×2,5–12, XP dốc hơn: ~45 giờ tới cấp 30) và 24 món đồ mới có hiệu ứng (tip, patience, waiter speed, VIP, rest)                                                             | [104_bistro_economy_items.sql](../supabase/migrations/104_bistro_economy_items.sql) | Đã làm     |
 
 Khác với bản thiết kế ban đầu: Staff Corner giảm hao Energy thay vì hồi khi nhân viên rảnh (để server tính được cả khi offline); XP khi bày món không tăng theo cấp món; nút chuyển nông sản nằm trong Bistro (Pantry & Market) thay vì trong kho Farm.
 
@@ -423,3 +425,25 @@ Khác với bản thiết kế ban đầu: Staff Corner giảm hao Energy thay v
 | **Chi nhánh (Branch)**     | Từ cấp 30 (chạm hai lần): bắt đầu lại ở cấp 1 với 500 xu và **+1 sao** (+10% mọi giá, tối đa 5 sao). Bàn ghế trong phòng vào kho; giữ cấp món, kho nguyên liệu, sàn/tường, khách quen.                                                                                                                                                                          |
 
 Giá một phần: `round(price × (100 + 12 × (lv − 1)) × (10 + stars) / 1000)`.
+
+## 10. Kinh tế và đồ có hiệu ứng (migration 104)
+
+Đo bằng luật dùng chung (một người chơi chăm chỉ, có đủ nhân viên, bếp, phòng và món tốt nhất ở mỗi cấp): trước đây ~1,5k xu/giờ ở cấp 1, ~30k ở cấp 10, ~130k ở cấp 30; lên cấp 30 trong ~19 giờ chơi; tới cấp 10 gần như không còn gì để mua ngoài nâng cấp món (bị giới hạn bởi nguyên liệu), nên xu dồn lại.
+
+Thay đổi: giữ nguyên thu nhập, tăng giá và làm XP dốc hơn.
+
+| Thứ                               | Trước                       | Sau                                                     |
+| --------------------------------- | --------------------------- | ------------------------------------------------------- |
+| XP lên cấp                        | 40·L^1.45                   | 40·L^1.45 · (1 + 0,08·max(0, L−3)) (~45 giờ tới cấp 30) |
+| Mở rộng phòng                     | 800 / 2,5k / 6k / 12k / 20k | 3k / 12k / 30k / 60k / 100k                             |
+| Kitchen                           | 300 / 700 / 1,4k            | 1,5k / 6k / 20k                                         |
+| Ca làm                            | 300 / 800 / 1,6k            | 1k / 5k / 15k                                           |
+| Thuê đầu bếp / phục vụ / lao công | 250–2k / 0–1k / 300–900     | 600–12k / 0–6k / 1,2k–8k                                |
+| Huấn luyện                        | 150·lv²                     | 300·lv²                                                 |
+| Bếp Clay / Steel / Dragon         | 200 / 1,2k / 4k             | 500 / 8k / 40k                                          |
+| Sàn, tường                        | 150 / 220                   | 800 / 1,5k                                              |
+| Đồ cũ                             | 25–600                      | 60–5k                                                   |
+
+Hiệu ứng của đồ (cộng dồn, có trần): **tip** +% tiền tip khi bạn đang chơi (trần 30%), **patience** khách chờ lâu hơn (60%), **speed** phục vụ nhanh hơn (25%, cả khi vắng mặt), **vip** thêm khách VIP (50%), **rest** như Staff Corner (tối đa 2). Ý tưởng từ My Cafe (đồ đẹp tăng tip), Café World (bếp/thiết bị nhanh hơn) và Restaurant City (thiết bị tăng độ nổi tiếng).
+
+24 món mới: bàn/ghế (Bar Stool, Garden Table, Velvet Armchair, Marble Table, Golden Table, Royal Throne), Gadgets (Tip Jar, Espresso Machine, Serving Cart, Arcade Cabinet, Neon Sign, Ice Cream Freezer, Massage Chair, Grand Piano, Golden Podium, Robot Waiter Dock) và trang trí (Flower Vase, Bamboo Screen, Bookshelf, Red Carpet, Koi Pond, Crystal Chandelier, Cherry Tree, Dragon Statue), giá từ 90 tới 65k, mở từ cấp 2 tới 25.

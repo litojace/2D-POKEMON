@@ -586,6 +586,19 @@ function drawHouse(
     right: dim("#6e4630"),
   });
 }
+/** A linear gradient from stops. */
+const lin = (
+  ctx: Ctx,
+  x0: number,
+  y0: number,
+  x1: number,
+  y1: number,
+  stops: [number, string][],
+) => {
+  const g = ctx.createLinearGradient(x0, y0, x1, y1);
+  for (const [o, col] of stops) g.addColorStop(o, col);
+  return g;
+};
 function drawTree(
   ctx: Ctx,
   x: number,
@@ -593,39 +606,122 @@ function drawTree(
   s: number,
   kind: number,
   l: Light,
+  /** Wind: how far the crown leans (px at the top; 0 for the still layer). */
+  sway = 0,
 ) {
   const n = l.night;
   const c = iso(x, y);
+  // The crown leans with the wind, more the higher it is.
+  const lean = (dy: number) => (sway * -dy) / 110;
   softShadow(ctx, c.x + 10, c.y + 4, 46 * s, 18 * s, 0.3);
-  ctx.fillStyle = shade("#7a4a2a", -0.5 * n);
-  ctx.fillRect(c.x - 4 * s, c.y - 40 * s, 8 * s, 40 * s);
-  ctx.fillStyle = shade("#5a3418", -0.5 * n);
-  ctx.fillRect(c.x - 4 * s, c.y - 40 * s, 3 * s, 40 * s);
+  // Trunk: tapered, flaring at the roots, running up into the crown (so the
+  // leaves cover its top: no gap between them).
+  const top = (kind === 1 ? -84 : -78) * s;
+  const bark = shade("#7a4a2a", -0.5 * n),
+    barkDark = shade("#4e2c14", -0.5 * n);
+  ctx.fillStyle = lin(ctx, c.x - 7 * s, 0, c.x + 7 * s, 0, [
+    [0, shade("#9a6338", -0.5 * n)],
+    [0.45, bark],
+    [1, barkDark],
+  ]);
+  ctx.beginPath();
+  ctx.moveTo(c.x - 9 * s, c.y);
+  ctx.quadraticCurveTo(c.x - 5 * s, c.y - 6 * s, c.x - 5 * s, c.y - 14 * s);
+  ctx.lineTo(c.x - 3 * s + lean(top), c.y + top);
+  ctx.lineTo(c.x + 3 * s + lean(top), c.y + top);
+  ctx.lineTo(c.x + 5 * s, c.y - 14 * s);
+  ctx.quadraticCurveTo(c.x + 5 * s, c.y - 6 * s, c.x + 10 * s, c.y);
+  ctx.closePath();
+  ctx.fill();
+  // A few bark lines.
+  ctx.strokeStyle = shade("#3e2210", -0.4 * n);
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (const [bx, b0, b1] of [
+    [-1.5, -10, -26],
+    [2, -20, -38],
+  ] as const) {
+    ctx.moveTo(c.x + bx * s, c.y + b0 * s);
+    ctx.lineTo(c.x + bx * s + lean(b1 * s) * 0.5, c.y + b1 * s);
+  }
+  ctx.stroke();
   if (kind === 1) {
-    // A pine: three stacked cones.
-    for (let i = 0; i < 3; i++) {
-      const w = (34 - i * 8) * s,
-        top = c.y - (60 + i * 26) * s;
-      ctx.fillStyle = shade(i % 2 ? "#2f7a4a" : "#3b8e55", -0.55 * n);
+    // A pine: four jagged tiers, darker underneath, lit from the right.
+    for (let i = 0; i < 4; i++) {
+      const w = (38 - i * 8) * s,
+        base = c.y - (46 + i * 22) * s,
+        tip = base - 44 * s,
+        lx = lean(base - c.y),
+        tx = lean(tip - c.y);
+      const col = shade(i % 2 ? "#2f7a4a" : "#3b8e55", -0.55 * n);
+      ctx.fillStyle = lin(ctx, c.x - w, 0, c.x + w, 0, [
+        [0, shade(col, -0.18)],
+        [0.6, col],
+        [1, shade(col, 0.16)],
+      ]);
       ctx.beginPath();
-      ctx.moveTo(c.x, top - 40 * s);
-      ctx.lineTo(c.x + w, top + 18 * s);
-      ctx.lineTo(c.x - w, top + 18 * s);
+      ctx.moveTo(c.x + tx, tip);
+      // The jagged hem: a few points along the bottom.
+      const steps = 6;
+      ctx.lineTo(c.x + w + lx, base);
+      for (let k = steps; k >= 0; k--) {
+        const f = k / steps;
+        const px = c.x - w + 2 * w * f + lx;
+        ctx.lineTo(px, base + (k % 2 ? 7 : 2) * s);
+      }
+      ctx.lineTo(c.x - w + lx, base);
       ctx.closePath();
+      ctx.fill();
+      // The tier's shadow on the one below.
+      ctx.fillStyle = `rgba(10,40,20,${0.22 - n * 0.1})`;
+      ctx.beginPath();
+      ctx.ellipse(c.x + lx, base + 4 * s, w * 0.8, 4 * s, 0, 0, Math.PI * 2);
       ctx.fill();
     }
     return;
   }
-  // A round leafy tree: clustered puffs, lit from the top right.
-  const puffs: [number, number, number][] = [
-    [0, -86, 34],
-    [-24, -68, 26],
-    [24, -66, 28],
-    [-10, -110, 24],
-    [14, -100, 24],
+  // A round leafy crown: a darker underside, then clumps lit from the top
+  // right; the low middle clump covers the trunk's top.
+  const base = kind === 2 ? "#e78fb0" : "#5fae4f";
+  const under: [number, number, number][] = [
+    [-22, -66, 28],
+    [22, -64, 30],
+    [0, -60, 26],
   ];
+  const puffs: [number, number, number][] = [
+    [0, -88, 34],
+    [-26, -74, 25],
+    [26, -72, 27],
+    [-12, -110, 24],
+    [14, -104, 25],
+    [0, -66, 20],
+  ];
+  for (const [dx, dy, r] of under) {
+    ctx.fillStyle = shade(shade(base, -0.38), -0.55 * n);
+    ctx.beginPath();
+    ctx.arc(c.x + (dx + lean(dy)) * s, c.y + dy * s, r * s, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // Leafy edge: small tufts behind each clump, so only their tips stick out
+  // past the outline (a ragged, leafy silhouette instead of smooth balls).
+  ctx.fillStyle = shade(shade(base, -0.22), -0.55 * n);
+  for (const [i, [dx, dy, r]] of puffs.entries()) {
+    for (let k = 0; k < 7; k++) {
+      const a = (k / 7) * Math.PI * 2 + hash(i * 7 + k + x * 3) * 0.6;
+      const tr = (5 + hash(i + k * 5 + y) * 3) * s;
+      ctx.beginPath();
+      ctx.arc(
+        c.x + (dx + lean(dy)) * s + Math.cos(a) * (r * s - tr * 0.2),
+        c.y + dy * s + Math.sin(a) * (r * s - tr * 0.2),
+        tr,
+        0,
+        Math.PI * 2,
+      );
+      ctx.fill();
+    }
+  }
   for (const [dx, dy, r] of puffs) {
-    const px = c.x + dx * s,
+    const px = c.x + (dx + lean(dy)) * s,
       py = c.y + dy * s,
       rr = r * s;
     const g = ctx.createRadialGradient(
@@ -636,20 +732,21 @@ function drawTree(
       py,
       rr,
     );
-    const base = kind === 2 ? "#e78fb0" : "#5fae4f";
     g.addColorStop(0, shade(shade(base, 0.35), -0.55 * n));
-    g.addColorStop(1, shade(shade(base, -0.25), -0.55 * n));
+    g.addColorStop(0.7, shade(base, -0.55 * n));
+    g.addColorStop(1, shade(shade(base, -0.22), -0.55 * n));
     ctx.fillStyle = g;
     ctx.beginPath();
     ctx.arc(px, py, rr, 0, Math.PI * 2);
     ctx.fill();
   }
-  // Leafy highlights catching the light, and blossoms on the pink ones.
+  // Highlights catching the light, and blossoms on the pink ones.
   for (let i = 0; i < 14; i++) {
     const a = hash(i + x * 13 + y * 7) * Math.PI * 2;
     const d = hash(i + 40 + x * 3) * 34 * s;
-    const px = c.x + Math.cos(a) * d + 6 * s,
-      py = c.y - 90 * s + Math.sin(a) * d * 0.8;
+    const dy = -90 + Math.sin(a) * (d / s) * 0.8;
+    const px = c.x + Math.cos(a) * d + 6 * s + lean(dy) * s,
+      py = c.y + dy * s;
     ctx.fillStyle =
       kind === 2
         ? `rgba(255,236,244,${0.8 - n * 0.6})`
@@ -657,6 +754,27 @@ function drawTree(
     ctx.beginPath();
     ctx.arc(px, py, (kind === 2 ? 2.4 : 3) * s, 0, Math.PI * 2);
     ctx.fill();
+  }
+}
+/** Petals drifting down from the pink trees (the live layer, a few at a time). */
+function drawPetals(ctx: Ctx, l: Light) {
+  const n = l.night;
+  for (const [x, y, s, k] of trees()) {
+    if (k !== 2 || !onGround(x, y)) continue;
+    const c = iso(x, y);
+    for (let i = 0; i < 5; i++) {
+      const f = (l.t * 0.12 + hash(i + x * 7)) % 1;
+      const px =
+        c.x +
+        (hash(i + 3 + y) - 0.5) * 60 * s +
+        Math.sin(l.t * 2 + i) * 6 +
+        f * 18;
+      const py = c.y - 80 * s + f * 84 * s;
+      ctx.fillStyle = `rgba(255,214,228,${(0.9 - n * 0.5) * Math.min(1, (1 - f) * 3)})`;
+      ctx.beginPath();
+      ctx.ellipse(px, py, 2.6, 1.6, l.t * 2 + i, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
 }
 /** Street lamps: (grid x, grid y). */
@@ -801,7 +919,8 @@ export function drawFrontTrees(ctx: Ctx, l: Light) {
   for (const [x, y, s, k] of trees()
     .filter(([x, y]) => inFront(x, y) && onGround(x, y))
     .sort((a, b) => a[0] + a[1] - b[0] - b[1]))
-    drawTree(ctx, x, y, s, k, l);
+    // Trees in front sway in the wind (they're drawn every frame anyway).
+    drawTree(ctx, x, y, s, k, l, Math.sin(l.t * 1.1 + x * 0.7 + y) * 3);
 }
 
 /* ───────────── what moves: cars, lamps, birds, fireflies ───────────── */
@@ -904,6 +1023,7 @@ function drawCar(ctx: Ctx, car: Car, l: Light) {
 /** The moving parts and street furniture, in depth order (lamps stand in front of the far lane). */
 export function drawSceneryLive(ctx: Ctx, l: Light, cars: Car[], low: boolean) {
   drawClouds(ctx, l, low);
+  if (!low) drawPetals(ctx, l);
   type D = { d: number; f: () => void };
   const list: D[] = [];
   for (const car of cars) {

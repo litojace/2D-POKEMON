@@ -131,9 +131,13 @@ async function problems(page: Page, where: string, inset: Insets | null) {
         ),
       )) {
         if (!shown(e) || !e.textContent?.trim()) continue;
-        const box = e.closest(
-          ".bs-dish, .bs-item, .bs-staff, .bs-slot, .bs-chip, .bs-badge, .bs-wallet, .bs-rail button, .bs-visit, .bs-edit, .bs-away-stats > div, .bs-pop-row, .bs-pop-fx > div, .bs-pop-plan, .bs-card, .bs-league li",
-        );
+        // A counter slot's count sits on its corner like a badge: it only
+        // has to stay inside the bar.
+        const box = e.matches(".bs-slot > b")
+          ? e.closest(".bs-bar")
+          : e.closest(
+              ".bs-dish, .bs-item, .bs-staff, .bs-slot, .bs-chip, .bs-badge, .bs-wallet, .bs-rail button, .bs-visit, .bs-edit, .bs-away-stats > div, .bs-pop-row, .bs-pop-fx > div, .bs-pop-plan, .bs-card, .bs-league li",
+            );
         if (!box) continue;
         const t = e.getBoundingClientRect(),
           o = box.getBoundingClientRect();
@@ -197,7 +201,7 @@ for (const size of SIZES)
          S.stars = 2; S.tokens = 45; S.regulars = { mira: 1, tobi: 3 };
          S.dishLv = { pho: { lv: 4, mastery: 12 }, lau: { lv: 10, mastery: 0 }, goicuon: { lv: 2, mastery: 10 } };
          S.pantry = { rice: 12, flour: 3, herbs: 99, pork: 1, spice: 2 };
-         S.stoves.push({ dish: null, start: 0, perfect: false }, { dish: null, start: 0, perfect: false });
+         S.stoves.push({ x: 3, model: 'clay', dish: null, start: 0, perfect: false }, { x: 4, model: 'clay', dish: null, start: 0, perfect: false });
          S.counter = [{ dish: 'lau', servings: 188, perfect: true }, { dish: 'pho', servings: 12, perfect: false },
                       { dish: 'caphe', servings: 9, perfect: false }, { dish: 'goicuon', servings: 3, perfect: false }];
          S.stored = { plant: 12, lamp: 3, fountain: 1, aquarium: 2, rug: 1, luckycat: 4 };

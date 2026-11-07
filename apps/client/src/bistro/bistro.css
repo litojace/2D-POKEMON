@@ -349,10 +349,15 @@
   height: 46px;
 }
 .bistro-layer .bs-slot b {
-  /* The count sits inside the slot's corner (nothing pokes out). */
+  /* The count sits on the top right corner, like a notification badge, so
+     it doesn't cover the dish (it stays inside the bar's padding). */
   position: absolute;
-  right: 2px;
-  bottom: 2px;
+  right: -6px;
+  top: -6px;
+  z-index: 1;
+  box-shadow:
+    0 0 0 2px #1d2540,
+    0 2px 4px #0006;
   min-width: 19px;
   height: 18px;
   padding: 0 4px;
@@ -940,6 +945,8 @@
   height: 34px;
 }
 .bistro-layer.phone .bs-slot b {
+  right: -4px;
+  top: -4px;
   min-width: 16px;
   height: 16px;
   font-size: 10px;

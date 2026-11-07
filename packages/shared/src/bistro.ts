@@ -31,29 +31,45 @@ export const sizeOf = (lv: number): RoomSize => ({
 });
 export const BASE_SIZE: RoomSize = sizeOf(0);
 export const EXPAND_STEPS = [
-  { level: 4, price: 800 },
-  { level: 8, price: 2500 },
-  { level: 12, price: 6000 },
-  { level: 16, price: 12000 },
-  { level: 20, price: 20000 },
+  { level: 4, price: 3000 },
+  { level: 8, price: 12000 },
+  { level: 12, price: 30000 },
+  { level: 16, price: 60000 },
+  { level: 20, price: 100000 },
 ] as const;
 export const MAX_SIZE_LV = EXPAND_STEPS.length;
 export const MAX_SIZE = sizeOf(MAX_SIZE_LV);
 /** Where customers come in (a tile on the left wall's front end). */
 export const DOOR = { x: 0, y: 7 } as const;
-/** Stove slots along the back wall, the chef's lane in front of them. */
+/** The stoves stand on the kitchen's back wall (row 0), the chef's lane in
+ *  front of them (row 1). The first room's four stove spots. */
 export const STOVE_TILES = [
   { x: 1, y: 0 },
   { x: 2, y: 0 },
   { x: 3, y: 0 },
   { x: 4, y: 0 },
 ] as const;
-export const MAX_STOVES = STOVE_TILES.length;
 /** The serving counter runs x 0..5 on row 2; dishes sit on x 1..4. */
 export const COUNTER_ROW = 2;
 export const COUNTER_X0 = 0;
 export const COUNTER_X1 = 5;
 export const COUNTER_SLOTS = 4;
+/**
+ * The kitchen's last column (migration 103): one more with each room
+ * expansion (the room gains two), 5 to 10. The fridge stands at x 0 and the
+ * sink at this column; stoves go on the back wall between them, and the
+ * counter runs the kitchen's width.
+ */
+export const kitchenX1 = (sizeLv: number) => COUNTER_X1 + sizeLv;
+/** The kitchen's last column for a room of this size. */
+export const kitchenX1Of = (z: RoomSize) =>
+  kitchenX1(Math.max(0, Math.round((z.cols - COLS) / 2)));
+/** The back-wall tiles a stove can stand on: 4 in the first room, 9 at the biggest. */
+export const stoveSpots = (sizeLv: number) =>
+  Array.from({ length: kitchenX1(sizeLv) - 1 }, (_, i) => i + 1);
+export const maxStoves = (sizeLv: number) => kitchenX1(sizeLv) - 1;
+/** Every stove the room could ever hold (the biggest room). */
+export const MAX_STOVES = maxStoves(MAX_SIZE_LV);
 /** Where a waiter stands to pick up the dish in counter slot i. */
 export const pickupTile = (slot: number) => ({ x: 1 + slot, y: 3 });
 /** The waiters' resting spot, by the counter's end. */
@@ -482,7 +498,45 @@ export type ItemKind =
   | "lantern"
   | "blossom"
   | "trophy"
-  | "rug";
+  | "rug"
+  | "stool"
+  | "gardentable"
+  | "armchair"
+  | "marbletable"
+  | "goldtable"
+  | "throne"
+  | "tipjar"
+  | "espresso"
+  | "cart"
+  | "arcade"
+  | "neon"
+  | "freezer"
+  | "massage"
+  | "piano"
+  | "podium"
+  | "robot"
+  | "vase"
+  | "screen"
+  | "bookshelf"
+  | "carpet"
+  | "koi"
+  | "chandelier"
+  | "sakura"
+  | "statue";
+/**
+ * Item perks (migration 104), inspired by My Cafe's tip-raising furniture
+ * and Restaurant City's equipment: tip (% on tips while you play), patience
+ * (% longer before a guest gives up), speed (% faster waiters), vip (% more
+ * VIPs), rest (counts as a Staff Corner: a quarter off the staff's drain).
+ */
+export type Perk = "tip" | "patience" | "speed" | "vip" | "rest";
+export const PERK_CAPS: Record<Perk, number> = {
+  tip: 30,
+  patience: 60,
+  speed: 25,
+  vip: 50,
+  rest: 2,
+};
 export interface ItemDef {
   kind: ItemKind;
   name: string;
@@ -495,7 +549,11 @@ export interface ItemDef {
   /** Footprint in tiles (rugs are 2 × 2). */
   w?: number;
   h?: number;
-  group: "furniture" | "decor";
+  group: "furniture" | "decor" | "machines";
+  /** Tables and chairs seat guests (a chair beside a table), whatever their kind. */
+  seat?: "table" | "chair";
+  /** What it does besides its charm (PERK_CAPS caps each kind of perk). */
+  perk?: Partial<Record<Perk, number>>;
   /** An event's item: bought with event tokens while the event is on. */
   event?: string;
   tokens?: number;
@@ -506,7 +564,8 @@ export const ITEMS: readonly ItemDef[] = [
   {
     kind: "table",
     name: "Round Table",
-    price: 60,
+    price: 150,
+    seat: "table",
     level: 1,
     charm: 0,
     group: "furniture",
@@ -514,7 +573,8 @@ export const ITEMS: readonly ItemDef[] = [
   {
     kind: "chair",
     name: "Cushioned Chair",
-    price: 25,
+    price: 60,
+    seat: "chair",
     level: 1,
     charm: 0,
     group: "furniture",
@@ -522,7 +582,7 @@ export const ITEMS: readonly ItemDef[] = [
   {
     kind: "plant",
     name: "Potted Fern",
-    price: 40,
+    price: 120,
     level: 1,
     charm: 2,
     group: "decor",
@@ -530,7 +590,7 @@ export const ITEMS: readonly ItemDef[] = [
   {
     kind: "rug",
     name: "Woven Rug",
-    price: 70,
+    price: 200,
     level: 1,
     charm: 2,
     floor: true,
@@ -541,7 +601,7 @@ export const ITEMS: readonly ItemDef[] = [
   {
     kind: "lamp",
     name: "Paper Lantern",
-    price: 80,
+    price: 300,
     level: 2,
     charm: 3,
     group: "decor",
@@ -549,7 +609,7 @@ export const ITEMS: readonly ItemDef[] = [
   {
     kind: "bonsai",
     name: "Bonsai Stand",
-    price: 120,
+    price: 600,
     level: 3,
     charm: 4,
     group: "decor",
@@ -557,7 +617,7 @@ export const ITEMS: readonly ItemDef[] = [
   {
     kind: "luckycat",
     name: "Waving Cat",
-    price: 150,
+    price: 900,
     level: 3,
     charm: 5,
     group: "decor",
@@ -565,7 +625,8 @@ export const ITEMS: readonly ItemDef[] = [
   {
     kind: "jukebox",
     name: "Jukebox",
-    price: 250,
+    price: 2000,
+    perk: { patience: 10 },
     level: 4,
     charm: 6,
     group: "decor",
@@ -573,7 +634,8 @@ export const ITEMS: readonly ItemDef[] = [
   {
     kind: "aquarium",
     name: "Aquarium",
-    price: 300,
+    price: 3000,
+    perk: { patience: 5 },
     level: 5,
     charm: 8,
     group: "decor",
@@ -581,7 +643,7 @@ export const ITEMS: readonly ItemDef[] = [
   {
     kind: "fountain",
     name: "Element Fountain",
-    price: 420,
+    price: 5000,
     level: 6,
     charm: 10,
     group: "decor",
@@ -590,10 +652,231 @@ export const ITEMS: readonly ItemDef[] = [
     // Staff rest here: each of up to two takes a quarter off the drain.
     kind: "corner",
     name: "Staff Corner",
-    price: 600,
+    price: 4000,
+    perk: { rest: 1 },
     level: 5,
     charm: 1,
     group: "furniture",
+  },
+  // Migration 104: tables and chairs with perks, machines, decor.
+  {
+    kind: "stool",
+    name: "Bar Stool",
+    price: 90,
+    level: 2,
+    charm: 0,
+    group: "furniture",
+    seat: "chair",
+  },
+  {
+    kind: "gardentable",
+    name: "Garden Table",
+    price: 700,
+    level: 4,
+    charm: 1,
+    group: "furniture",
+    seat: "table",
+    perk: { patience: 10 },
+  },
+  {
+    kind: "armchair",
+    name: "Velvet Armchair",
+    price: 2500,
+    level: 7,
+    charm: 1,
+    group: "furniture",
+    seat: "chair",
+    perk: { patience: 15 },
+  },
+  {
+    kind: "marbletable",
+    name: "Marble Table",
+    price: 6000,
+    level: 10,
+    charm: 2,
+    group: "furniture",
+    seat: "table",
+    perk: { tip: 2 },
+  },
+  {
+    kind: "goldtable",
+    name: "Golden Table",
+    price: 25000,
+    level: 18,
+    charm: 3,
+    group: "furniture",
+    seat: "table",
+    perk: { tip: 4 },
+  },
+  {
+    kind: "throne",
+    name: "Royal Throne",
+    price: 30000,
+    level: 20,
+    charm: 3,
+    group: "furniture",
+    seat: "chair",
+    perk: { tip: 4 },
+  },
+  {
+    kind: "tipjar",
+    name: "Tip Jar",
+    price: 500,
+    level: 3,
+    charm: 0,
+    group: "machines",
+    perk: { tip: 3 },
+  },
+  {
+    kind: "espresso",
+    name: "Espresso Machine",
+    price: 3500,
+    level: 6,
+    charm: 1,
+    group: "machines",
+    perk: { rest: 1 },
+  },
+  {
+    kind: "cart",
+    name: "Serving Cart",
+    price: 6000,
+    level: 8,
+    charm: 0,
+    group: "machines",
+    perk: { speed: 8 },
+  },
+  {
+    kind: "arcade",
+    name: "Arcade Cabinet",
+    price: 5000,
+    level: 9,
+    charm: 2,
+    group: "machines",
+    perk: { patience: 25 },
+  },
+  {
+    kind: "neon",
+    name: "Neon Sign",
+    price: 9000,
+    level: 11,
+    charm: 4,
+    group: "machines",
+    perk: { vip: 20 },
+  },
+  {
+    kind: "freezer",
+    name: "Ice Cream Freezer",
+    price: 11000,
+    level: 12,
+    charm: 1,
+    group: "machines",
+    perk: { tip: 4 },
+  },
+  {
+    kind: "massage",
+    name: "Massage Chair",
+    price: 14000,
+    level: 13,
+    charm: 1,
+    group: "machines",
+    perk: { rest: 1 },
+  },
+  {
+    kind: "piano",
+    name: "Grand Piano",
+    price: 20000,
+    level: 15,
+    charm: 6,
+    group: "machines",
+    perk: { tip: 6 },
+  },
+  {
+    kind: "podium",
+    name: "Golden Podium",
+    price: 45000,
+    level: 22,
+    charm: 5,
+    group: "machines",
+    perk: { vip: 30 },
+  },
+  {
+    kind: "robot",
+    name: "Robot Waiter Dock",
+    price: 65000,
+    level: 25,
+    charm: 2,
+    group: "machines",
+    perk: { speed: 15 },
+  },
+  {
+    kind: "vase",
+    name: "Flower Vase",
+    price: 200,
+    level: 2,
+    charm: 3,
+    group: "decor",
+  },
+  {
+    kind: "screen",
+    name: "Bamboo Screen",
+    price: 900,
+    level: 5,
+    charm: 5,
+    group: "decor",
+  },
+  {
+    kind: "bookshelf",
+    name: "Bookshelf",
+    price: 2500,
+    level: 8,
+    charm: 6,
+    group: "decor",
+    perk: { patience: 5 },
+  },
+  {
+    kind: "carpet",
+    name: "Red Carpet",
+    price: 5000,
+    level: 10,
+    charm: 2,
+    group: "decor",
+    perk: { vip: 15 },
+    floor: true,
+    w: 2,
+    h: 2,
+  },
+  {
+    kind: "koi",
+    name: "Koi Pond",
+    price: 16000,
+    level: 14,
+    charm: 12,
+    group: "decor",
+  },
+  {
+    kind: "chandelier",
+    name: "Crystal Chandelier",
+    price: 22000,
+    level: 17,
+    charm: 10,
+    group: "decor",
+    perk: { tip: 2 },
+  },
+  {
+    kind: "sakura",
+    name: "Cherry Tree",
+    price: 26000,
+    level: 19,
+    charm: 12,
+    group: "decor",
+  },
+  {
+    kind: "statue",
+    name: "Dragon Statue",
+    price: 55000,
+    level: 24,
+    charm: 16,
+    group: "decor",
   },
   // Event items (migration 100): tokens only, while their event is on.
   {
@@ -655,13 +938,13 @@ const isItemKind = (v: unknown): v is ItemKind =>
 
 export const FLOORS = [
   { id: "checker", name: "Cream Checker", price: 0 },
-  { id: "wood", name: "Honey Planks", price: 150 },
-  { id: "teal", name: "Teal Tiles", price: 220 },
+  { id: "wood", name: "Honey Planks", price: 800 },
+  { id: "teal", name: "Teal Tiles", price: 1500 },
 ] as const;
 export const WALLS = [
   { id: "butter", name: "Butter & Wainscot", price: 0 },
-  { id: "mint", name: "Mint Stripes", price: 150 },
-  { id: "brick", name: "Red Brick", price: 220 },
+  { id: "mint", name: "Mint Stripes", price: 800 },
+  { id: "brick", name: "Red Brick", price: 1500 },
 ] as const;
 export type FloorId = (typeof FLOORS)[number]["id"];
 export type WallId = (typeof WALLS)[number]["id"];
@@ -695,18 +978,18 @@ export const HIRE_STEPS: Record<
   readonly { level: number; price: number }[]
 > = {
   cook: [
-    { level: 2, price: 250 },
-    { level: 5, price: 900 },
-    { level: 9, price: 2000 },
+    { level: 2, price: 600 },
+    { level: 5, price: 3500 },
+    { level: 9, price: 12000 },
   ],
   waiter: [
     { level: 1, price: 0 },
-    { level: 3, price: 400 },
-    { level: 6, price: 1000 },
+    { level: 3, price: 1500 },
+    { level: 6, price: 6000 },
   ],
   janitor: [
-    { level: 4, price: 300 },
-    { level: 8, price: 900 },
+    { level: 4, price: 1200 },
+    { level: 8, price: 8000 },
   ],
 };
 /** Each staff level after the first: 12% quicker. */
@@ -733,9 +1016,14 @@ export const mood = (energy: number) =>
   energy >= 50 ? 1 : energy >= 20 ? 0.85 : 0.6;
 export const moodName = (energy: number) =>
   energy >= 50 ? "Fresh" : energy >= 20 ? "Hungry" : "Exhausted";
-/** Staff Corners that count (each takes a quarter off the drain). */
-export const cornerCount = (items: readonly Item[]) =>
-  Math.min(2, items.filter((i) => i.kind === "corner").length);
+/** A perk's total over the placed items, capped (PERK_CAPS). */
+export const perkTotal = (items: readonly Item[], perk: Perk) =>
+  Math.min(
+    PERK_CAPS[perk],
+    items.reduce((n, i) => n + (ITEM_BY_KIND[i.kind]?.perk?.[perk] ?? 0), 0),
+  );
+/** Rest spots that count (Staff Corners and the like: a quarter off the drain each). */
+export const cornerCount = (items: readonly Item[]) => perkTotal(items, "rest");
 export const drainPerHour = (role: Role, corners: number) =>
   ENERGY_DRAIN[role] * (1 - 0.25 * corners);
 /** Energy after `ms` of work from `e`. */
@@ -756,12 +1044,12 @@ export const energyNow = (s: BistroState, st: Staff, now: number) =>
 /** How fast someone works with this much energy (1 is a fresh level-1 creature). */
 export const workSpeed = (st: Staff, energy: number) =>
   staffSpeed(st.level) * (st.friend ? FRIEND_BONUS : 1) * mood(energy);
-export const staffUpgradePrice = (level: number) => 150 * level * level;
+export const staffUpgradePrice = (level: number) => 300 * level * level;
 /** Kitchen upgrades: every dish cooks 10% faster per level. */
-export const KITCHEN_PRICES = [300, 700, 1400] as const;
+export const KITCHEN_PRICES = [1500, 6000, 20000] as const;
 /** Longer shifts: how many hours the staff keep the bistro open while you are away. */
 export const SHIFT_HOURS = [2, 4, 6, 8] as const;
-export const SHIFT_PRICES = [300, 800, 1600] as const;
+export const SHIFT_PRICES = [1000, 5000, 15000] as const;
 /** Offline, the bistro needs at least this long away to report anything. */
 export const AWAY_MIN_MS = 60_000;
 /** Fewer guests come while you are away than when you are there. */
@@ -780,7 +1068,52 @@ export interface Item {
   /** Facing, 0..3 (chairs pick the table they touch; this breaks ties). */
   rot: number;
 }
+/* Stoves (migration 103): bought in the Shop, placed on the back wall. A
+   dearer model cooks faster (it adds to the kitchen upgrade and the cook). */
+export type StoveModel = "clay" | "steel" | "dragon";
+export interface StoveDef {
+  model: StoveModel;
+  name: string;
+  price: number;
+  level: number;
+  speed: number;
+  blurb: string;
+}
+export const STOVES: readonly StoveDef[] = [
+  {
+    model: "clay",
+    name: "Clay Stove",
+    price: 500,
+    level: 1,
+    speed: 1,
+    blurb: "A sturdy stove: cooks at the usual pace.",
+  },
+  {
+    model: "steel",
+    name: "Steel Range",
+    price: 8000,
+    level: 8,
+    speed: 1.15,
+    blurb: "Polished steel: cooks 15% faster.",
+  },
+  {
+    model: "dragon",
+    name: "Dragon Oven",
+    price: 40000,
+    level: 16,
+    speed: 1.3,
+    blurb: "Breathes fire: cooks 30% faster.",
+  },
+];
+export const STOVE_BY_MODEL = Object.fromEntries(
+  STOVES.map((d) => [d.model, d]),
+) as Record<StoveModel, StoveDef>;
+export const isStoveModel = (v: unknown): v is StoveModel =>
+  typeof v === "string" && Object.hasOwn(STOVE_BY_MODEL, v);
 export interface Stove {
+  /** Its spot on the back wall (row 0). */
+  x: number;
+  model: StoveModel;
   dish: DishId | null;
   /** When cooking started (ms since epoch). */
   start: number;
@@ -805,6 +1138,8 @@ export interface BistroState {
   /** Bought but not placed. */
   stored: Partial<Record<ItemKind, number>>;
   stoves: Stove[];
+  /** Stoves bought and not placed, by model (migration 103). */
+  stoveStore: Partial<Record<StoveModel, number>>;
   counter: (CounterSlot | null)[];
   staff: Staff[];
   kitchenLv: number;
@@ -832,8 +1167,12 @@ export interface BistroState {
   regulars: Record<string, number>;
 }
 
+/** XP to the next level: steeper from level 4 (migration 104), so the
+ *  later levels take a while (about 45 hours of play to level 30). */
 export function xpToNext(level: number): number {
-  return Math.round(40 * Math.pow(level, 1.45));
+  return Math.round(
+    40 * Math.pow(level, 1.45) * (1 + 0.08 * Math.max(0, level - 3)),
+  );
 }
 export const MAX_LEVEL = 30;
 
@@ -870,9 +1209,10 @@ export function defaultState(): BistroState {
     ],
     stored: {},
     stoves: [
-      { dish: null, start: 0, perfect: false },
-      { dish: null, start: 0, perfect: false },
+      { x: 1, model: "clay", dish: null, start: 0, perfect: false },
+      { x: 2, model: "clay", dish: null, start: 0, perfect: false },
     ],
+    stoveStore: {},
     // A first batch of spring rolls, so the first guests come right away.
     counter: [
       { dish: "goicuon", servings: 6, perfect: false },
@@ -1035,13 +1375,23 @@ export function sanitize(raw: unknown): BistroState {
   }
   if (Array.isArray(r.stoves) && r.stoves.length >= 2) {
     s.stoves = (r.stoves as Record<string, unknown>[])
-      .slice(0, MAX_STOVES)
-      .map((st) => ({
+      .slice(0, maxStoves(s.sizeLv))
+      .map((st, i) => ({
+        x: Math.floor(num(st?.x, i + 1, 1, kitchenX1(s.sizeLv) - 1)),
+        model: isStoveModel(st?.model) ? st.model : "clay",
         dish: st && isDish(st.dish) ? st.dish : null,
         start: num(st?.start, 0),
         perfect: st?.perfect === true,
         ...(num(st?.dur, 0) > 0 ? { dur: num(st?.dur, 0) } : {}),
       }));
+  }
+  if (r.stoveStore && typeof r.stoveStore === "object") {
+    s.stoveStore = {};
+    for (const [k, v] of Object.entries(
+      r.stoveStore as Record<string, unknown>,
+    ))
+      if (isStoveModel(k) && num(v, 0) > 0)
+        s.stoveStore[k] = Math.floor(num(v, 0));
   }
   if (Array.isArray(r.counter)) {
     s.counter = Array.from({ length: COUNTER_SLOTS }, (_, i) => {
@@ -1165,6 +1515,8 @@ export function payment(
     level?: number;
     /** Branch stars: 10% each. */
     stars?: number;
+    /** Tip perks of the room's items (whole percent, perkTotal). */
+    perk?: number;
   },
 ): { base: number; tip: number; total: number } {
   let base = priceAt(dish, o.level ?? 1, o.stars ?? 0);
@@ -1174,7 +1526,11 @@ export function payment(
   // Whole percents, so the database (068_bistro.sql) rounds the same way.
   const combo = Math.min(COMBO_MAX, Math.max(1, Math.floor(o.combo ?? 1)));
   const hearts = Math.min(3, Math.max(1, Math.floor(o.hearts ?? 3)));
-  let pct = (combo - 1) * 8 + (hearts - 1) * 5 + (o.quick ? 10 : 0);
+  let pct =
+    (combo - 1) * 8 +
+    (hearts - 1) * 5 +
+    (o.quick ? 10 : 0) +
+    Math.max(0, Math.floor(o.perk ?? 0));
   if (o.rush) pct *= 2;
   const tip = Math.round((base * pct) / 100);
   return { base, tip, total: base + tip };
@@ -1231,10 +1587,19 @@ export function startCooking(
   if (s.coins < d.cost) return fail(`You need ${d.cost} coins for ${d.name}.`);
   s.coins -= d.cost;
   s.stoves[stove] = {
+    x: st.x ?? stove + 1,
+    model: st.model ?? "clay",
     dish,
     start: now,
     perfect: false,
-    dur: cookMs(s, dish, cookLevel, pace),
+    // The stove's speed counts like the cook's pace (the server does the same).
+    // (A stove saved before migration 103 has no model: a Clay Stove.)
+    dur: cookMs(
+      s,
+      dish,
+      cookLevel,
+      pace * (STOVE_BY_MODEL[st.model]?.speed ?? 1),
+    ),
   };
   return { ok: true };
 }
@@ -1274,7 +1639,13 @@ export function plate(
     lv,
     mastery: Math.min(masteryNeed(lv), m + (st.perfect ? 2 : 1)),
   };
-  s.stoves[stove] = { dish: null, start: 0, perfect: false };
+  s.stoves[stove] = {
+    x: st.x,
+    model: st.model,
+    dish: null,
+    start: 0,
+    perfect: false,
+  };
   const levels = addXp(s, d.xp);
   return { ok: true, slot, servings, xp: d.xp, levels };
 }
@@ -1319,8 +1690,8 @@ export function pickOrder(
 
 /* ───────────── the floor plan ───────────── */
 
-export const inKitchen = (x: number, y: number) =>
-  x <= COUNTER_X1 && y <= COUNTER_ROW;
+export const inKitchen = (x: number, y: number, z: RoomSize = BASE_SIZE) =>
+  x <= kitchenX1Of(z) && y <= COUNTER_ROW;
 export const inGrid = (x: number, y: number, z: RoomSize = BASE_SIZE) =>
   x >= 0 && y >= 0 && x < z.cols && y < z.rows;
 /** A grid's size, from the grid itself. */
@@ -1355,7 +1726,7 @@ export function blockedGrid(
     Array<boolean>(z.rows).fill(false),
   );
   // The kitchen (stoves, the chef's lane, the counter) is the chef's alone.
-  for (let x = COUNTER_X0; x <= COUNTER_X1; x++)
+  for (let x = COUNTER_X0; x <= kitchenX1Of(z); x++)
     for (let y = 0; y <= COUNTER_ROW; y++) g[x][y] = true;
   for (const it of items) {
     if (it.id === ignoreId || ITEM_BY_KIND[it.kind].floor) continue;
@@ -1418,10 +1789,10 @@ export interface Seat {
 }
 /** Chairs that touch a table; each seats one customer (the chair's rot breaks ties). */
 export function seats(items: readonly Item[]): Seat[] {
-  const tables = items.filter((i) => i.kind === "table");
+  const tables = items.filter((i) => ITEM_BY_KIND[i.kind]?.seat === "table");
   const out: Seat[] = [];
   for (const c of items) {
-    if (c.kind !== "chair") continue;
+    if (ITEM_BY_KIND[c.kind]?.seat !== "chair") continue;
     let best: Seat | null = null;
     for (const t of tables) {
       const dx = t.x - c.x,
@@ -1772,15 +2143,74 @@ export function buyItem(
   s.stored[kind] = (s.stored[kind] ?? 0) + 1;
   return { ok: true };
 }
+/** The first free stove spot on the back wall, or -1. */
+export const freeStoveSpot = (s: BistroState) =>
+  stoveSpots(s.sizeLv).find((x) => !s.stoves.some((st) => st.x === x)) ?? -1;
 export function nextStovePrice(s: BistroState): number | null {
-  return s.stoves.length < MAX_STOVES ? STOVE_PRICES[s.stoves.length] : null;
+  return s.stoves.length < maxStoves(s.sizeLv)
+    ? STOVE_BY_MODEL.clay.price
+    : null;
 }
+/** A Clay Stove on the first free spot (what "stove" did before the Shop sold them). */
 export function buyStove(s: BistroState): Result {
   const price = nextStovePrice(s);
-  if (price === null) return fail("Every stove slot is in use.");
+  const x = freeStoveSpot(s);
+  if (price === null || x < 0) return fail("Every stove spot is in use.");
   if (s.coins < price) return fail(`You need ${price} coins.`);
   s.coins -= price;
-  s.stoves.push({ dish: null, start: 0, perfect: false });
+  s.stoves.push({ x, model: "clay", dish: null, start: 0, perfect: false });
+  return { ok: true };
+}
+/** A stove from the Shop, into storage. */
+export function buyStoveModel(s: BistroState, model: StoveModel): Result {
+  const def = STOVE_BY_MODEL[model];
+  if (!def) return fail("Unknown stove.");
+  if (def.level > s.level)
+    return fail(`${def.name} opens at level ${def.level}.`);
+  if (s.coins < def.price) return fail(`You need ${def.price} coins.`);
+  s.coins -= def.price;
+  s.stoveStore[model] = (s.stoveStore[model] ?? 0) + 1;
+  return { ok: true };
+}
+/**
+ * A stove from storage onto the back wall at x: a free spot takes a new
+ * stove (up to the room's spots); a stove standing there is swapped for it
+ * (it goes into storage), if nothing is cooking on it.
+ */
+export function placeStove(
+  s: BistroState,
+  model: StoveModel,
+  x: number,
+): Result {
+  if (!isStoveModel(model)) return fail("Unknown stove.");
+  if ((s.stoveStore[model] ?? 0) < 1) return fail("None in storage.");
+  if (!stoveSpots(s.sizeLv).includes(x))
+    return fail("Stoves go on the kitchen's back wall.");
+  const i = s.stoves.findIndex((st) => st.x === x);
+  if (i >= 0) {
+    const st = s.stoves[i];
+    if (st.dish) return fail("That stove is cooking: wait until it's done.");
+    if (st.model === model) return fail("That's the same stove.");
+    s.stoveStore[st.model] = (s.stoveStore[st.model] ?? 0) + 1;
+    st.model = model;
+  } else {
+    if (s.stoves.length >= maxStoves(s.sizeLv))
+      return fail("Every stove spot is in use.");
+    s.stoves.push({ x, model, dish: null, start: 0, perfect: false });
+  }
+  s.stoveStore[model] = (s.stoveStore[model] ?? 0) - 1;
+  if (!s.stoveStore[model]) delete s.stoveStore[model];
+  return { ok: true };
+}
+/** A stove to another free spot on the back wall (a pot on it moves too). */
+export function moveStove(s: BistroState, stove: number, x: number): Result {
+  const st = s.stoves[stove];
+  if (!st) return fail("No stove there.");
+  if (!stoveSpots(s.sizeLv).includes(x))
+    return fail("Stoves go on the kitchen's back wall.");
+  if (s.stoves.some((o) => o !== st && o.x === x))
+    return fail("Something's already there.");
+  st.x = x;
   return { ok: true };
 }
 
@@ -1909,6 +2339,14 @@ export function buyExpand(s: BistroState): Result {
   if (s.coins < step.price) return fail(`You need ${step.price} coins.`);
   s.coins -= step.price;
   s.sizeLv++;
+  // The kitchen grows a column: furniture standing there goes into storage.
+  const z = sizeOf(s.sizeLv);
+  s.items = s.items.filter((it) => {
+    if (!footprint(it.kind, it.x, it.y).some((t) => inKitchen(t.x, t.y, z)))
+      return true;
+    s.stored[it.kind] = (s.stored[it.kind] ?? 0) + 1;
+    return false;
+  });
   return { ok: true };
 }
 export function buyKitchen(s: BistroState): Result {
@@ -2022,6 +2460,8 @@ export function rateFrom(
 ): number {
   let speed = 0;
   for (const w of staffOf(s, "waiter")) speed += workSpeed(w, energyAt(w));
+  // Serving carts and the like (the server's arena_bistro_pace does the same).
+  speed = speed * (1 + perkTotal(s.items, "speed") / 100);
   const waiterRate = p.seats ? speed / (p.tMeal + p.clear) : 0;
   return Math.min(p.arrivals, p.seatRate, waiterRate);
 }
@@ -2218,6 +2658,8 @@ export function openBranch(s: BistroState): Result {
   s.items = d.items;
   s.nextId = d.nextId;
   s.stored = stored;
+  for (const st of s.stoves)
+    s.stoveStore[st.model] = (s.stoveStore[st.model] ?? 0) + 1;
   s.stoves = d.stoves;
   s.counter = d.counter;
   s.staff = d.staff;
