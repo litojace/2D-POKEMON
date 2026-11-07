@@ -815,13 +815,14 @@ function focusShot(
   });
 }
 
-// ───────────── Mirage Perch: a decoy stays, Halcyra darts away ─────────────
-function miragePerch(
+// ───────────── Halcyon Rewind: back to where it was ─────────────
+/** Where Halcyra leaves from: a ripple of feathers folding back in time. */
+function rewindCast(
   scene: Phaser.Scene,
   _a: Ability,
   x: number,
   y: number,
-  angle: number,
+  _angle: number,
   color: number,
   shot: Shot,
 ) {
@@ -831,47 +832,60 @@ function miragePerch(
     x,
     y,
     z: 24,
-    count: 8,
+    count: 10,
     kind: "mote",
     color: [color, KING, GLASS],
     speed: [30, 90],
     up: [10, 50],
-    life: [0.7, 1.2],
+    life: [0.6, 1],
     size: [1.5, 2.5],
     grav: 50,
     drag: 2,
   });
-  shot(fx.reduced ? 200 : 560, (k) => {
+  shot(fx.reduced ? 200 : 480, (k) => {
     const fade = 1 - k;
-    // Heat-haze ripples where the mirage stays.
+    // Clock-hand ripples turning backwards.
     for (let i = 0; i < 3; i++) {
-      const kk = (k * 1.5 + i * 0.25) % 1;
+      const kk = (k * 1.5 + i * 0.25) % 1,
+        a0 = -k * 6 - i;
       fx.g
-        .lineStyle(1.5, i % 2 ? CYAN : PINK, 0.6 * fade * (1 - kk))
-        .strokeEllipse(
-          x + Math.sin(k * 30 + i) * 2,
-          cy,
-          30 + kk * 30,
-          44 + kk * 30,
-        );
+        .lineStyle(2, i % 2 ? CYAN : KING, 0.7 * fade * (1 - kk))
+        .beginPath()
+        .arc(x, cy, 22 + kk * 30, a0, a0 + Math.PI * 1.3)
+        .strokePath();
     }
     fx.glow(x, cy, 40, color, 0.35 * fade);
-    // Speed streaks ahead: the haste dart.
-    for (let i = -2; i <= 2; i++) {
-      const off = i * 9,
-        s = 30 + ease(Math.min(1, k * 2)) * 90,
-        px = x + Math.cos(angle) * 18 - Math.sin(angle) * off,
-        py = cy + Math.sin(angle) * 18 + Math.cos(angle) * off;
-      fx.g
-        .lineStyle(2, i % 2 ? KING : GLASS, 0.75 * fade)
-        .lineBetween(
-          px + Math.cos(angle) * s * 0.4,
-          py + Math.sin(angle) * s * 0.4,
-          px + Math.cos(angle) * s,
-          py + Math.sin(angle) * s,
-        );
-    }
-    fx.shockwave(x, y, 46 * ease(Math.min(1, k * 2)), k, color, 5);
+  });
+}
+/** Where Halcyra lands: a burst of light and a healing shimmer. */
+function rewindLand(
+  scene: Phaser.Scene,
+  _a: Ability,
+  x: number,
+  y: number,
+  color: number,
+  shot: Shot,
+) {
+  const fx = fxFor(scene),
+    cy = y - 20;
+  fx.burst({
+    x,
+    y: cy,
+    z: 10,
+    count: 8,
+    kind: "mote",
+    color: [0x7dffb0, GLASS],
+    speed: [20, 60],
+    up: [60, 110],
+    life: [0.6, 1],
+    size: [1.5, 2.4],
+    drag: 2,
+  });
+  shot(fx.reduced ? 200 : 420, (k) => {
+    fx.glow(x, cy, 50 * (1 - k * 0.4), color, 0.55 * (1 - k));
+    fx.g
+      .lineStyle(3 * (1 - k) + 1, GLASS, 0.8 * (1 - k))
+      .strokeCircle(x, cy, 10 + k * 30);
   });
 }
 
@@ -981,12 +995,13 @@ export const auraKit: FxKit = {
     "shatter-paw": shatterPalm,
     "facet-guard": mirrorGuard,
     "shard-nova": novaBurst,
-    "mirage-perch": miragePerch,
+    "halcyon-rewind": rewindCast,
   },
   impact: {
     "prism-shot": prismImpact,
     "aura-quill": quillImpact,
     "pinning-quill": quillImpact,
+    "halcyon-rewind": rewindLand,
   },
   beam: { "focus-shot": focusShot, "skyline-lance": skylineLance },
   hit: { aura: auraHit },

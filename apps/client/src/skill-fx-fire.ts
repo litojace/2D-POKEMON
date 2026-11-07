@@ -659,7 +659,6 @@ const NUT = 0x7a3b1c;
 const NUT_DARK = 0x3a1a0c;
 const NUT_BASE = 0xd9b48a;
 const RUST = 0xc4522a;
-const TAN = 0xf0c48a;
 const SQ = 0.82;
 /** Run `draw(k)` every frame for `ms` from inside a per-frame draw (zones). */
 const shotOn =
@@ -1078,8 +1077,67 @@ function hotCoals(g: G, z: Zone, progress: number, now: number) {
   });
 }
 
-// ───────────── Tail Wrap: curled up in a fluffy ringed tail ─────────────
-function tailWrap(
+// ───────────── Ember Curtain: a wall of embers across the aim ─────────────
+/**
+ * The curtain on the ground over its real length (`radius` either side of its
+ * middle, along `angle`): a row of flame tongues that flicker, and embers
+ * rising off it. Shots that touch it burn up (the server ends them).
+ */
+function emberCurtain(g: G, z: Zone, progress: number, now: number) {
+  const fx = fxFor(g.scene),
+    ang = z.angle ?? 0,
+    ux = Math.cos(ang),
+    uy = Math.sin(ang),
+    half = z.radius,
+    grow = ease(Math.min(1, progress * 8)),
+    fade = progress > 0.85 ? 1 - (progress - 0.85) / 0.15 : 1,
+    len = half * grow;
+  // The scorched line on the floor.
+  fx.floorSolid
+    .lineStyle(16, 0x2a0c04, 0.35 * fade)
+    .lineBetween(
+      z.x - ux * len,
+      z.y - uy * len * SQ,
+      z.x + ux * len,
+      z.y + uy * len * SQ,
+    );
+  fx.floor
+    .lineStyle(5, RUST, 0.7 * fade)
+    .lineBetween(
+      z.x - ux * len,
+      z.y - uy * len * SQ,
+      z.x + ux * len,
+      z.y + uy * len * SQ,
+    );
+  const n = 11;
+  for (let i = 0; i < n; i++) {
+    const t = (i / (n - 1)) * 2 - 1,
+      px = z.x + ux * len * t,
+      py = z.y + uy * len * t * SQ,
+      flick = 0.75 + 0.25 * Math.sin(now / 70 + i * 1.7),
+      h = (26 + 10 * Math.sin(now / 130 + i)) * flick * fade;
+    fx.solid
+      .fillStyle(RUST, 0.85 * fade)
+      .fillTriangle(
+        px - 7,
+        py,
+        px + 7,
+        py,
+        px + Math.sin(now / 90 + i) * 3,
+        py - h,
+      );
+    fx.g
+      .fillStyle(GOLD, 0.8 * fade)
+      .fillTriangle(px - 3.5, py, px + 3.5, py, px, py - h * 0.65);
+    fx.glow(px, py - h * 0.4, 16, RUST, 0.35 * fade);
+  }
+  fx.trail(`curtain-${z.id}`, 0.08, () => {
+    const t = Math.random() * 2 - 1;
+    embers(fx, z.x + ux * len * t, z.y + uy * len * t * SQ, 1, RUST, 30);
+  });
+}
+/** Ember Curtain cast: a sweep of embers across where the curtain rises. */
+function curtainCast(
   scene: Phaser.Scene,
   a: Ability,
   x: number,
@@ -1089,60 +1147,13 @@ function tailWrap(
   shot: Shot,
 ) {
   const fx = fxFor(scene),
-    cy = y - 20,
-    rx = 40,
-    ry = 32;
-  embers(fx, x, y, 8, color, 50);
-  shot(Math.min(1000, a.duration * 1000), (k) => {
-    const wrap = ease(Math.min(1, k / 0.3)),
-      fade = k > 0.75 ? 1 - (k - 0.75) / 0.25 : 1,
-      start = angle + Math.PI * 0.5,
-      bands = 16,
-      shown = Math.max(1, Math.round(bands * wrap));
-    fx.glow(x, cy, 60, color, 0.3 * fade);
-    // Fluff: soft puffs along the ring.
-    for (let i = 0; i < shown; i++) {
-      const a0 = start + (i / bands) * TAU,
-        px = x + Math.cos(a0) * rx,
-        py = cy + Math.sin(a0) * ry;
-      fx.soft(px, py, 16, i % 2 ? TAN : RUST, 0.55 * fade);
-    }
-    // Rings of the tail: rust and tan bands, thick near the base.
-    for (let i = 0; i < shown; i++) {
-      const a0 = start + (i / bands) * TAU,
-        a1 = start + ((i + 1) / bands) * TAU,
-        w = 12 - (i / bands) * 5;
-      fx.solid
-        .lineStyle(w, Math.floor(i / 2) % 2 ? TAN : RUST, 0.95 * fade)
-        .lineBetween(
-          x + Math.cos(a0) * rx,
-          cy + Math.sin(a0) * ry,
-          x + Math.cos(a1) * rx,
-          cy + Math.sin(a1) * ry,
-        );
-    }
-    // A warm sheen sliding round: the damage it soaks.
-    const sheen = start + ((k * 2) % 1) * TAU;
-    fx.glow(
-      x + Math.cos(sheen) * rx,
-      cy + Math.sin(sheen) * ry,
-      20,
-      GOLD,
-      0.6 * fade,
-    );
-    fx.g
-      .lineStyle(2, GOLD, 0.6 * fade * wrap)
-      .strokeEllipse(x, cy, rx * 2 + 16, ry * 2 + 14);
-    // The flame at the tail tip.
-    const tip = start + (shown / bands) * TAU;
-    fx.glow(
-      x + Math.cos(tip) * rx,
-      cy + Math.sin(tip) * ry - 4,
-      16,
-      color,
-      0.9 * fade,
-    );
-  });
+    d = a.screen?.distance ?? 90,
+    cx = x + Math.cos(angle) * d,
+    cy = y + Math.sin(angle) * d;
+  embers(fx, cx, cy, 10, color, 90);
+  shot(fx.reduced ? 160 : 300, (k) =>
+    fx.glow(cx, cy - 10, 60 * (1 - k * 0.4), color, 0.5 * (1 - k)),
+  );
 }
 
 // ───────────── Chestnut Storm (ultimate) ─────────────
@@ -1262,6 +1273,7 @@ export const fireKit: FxKit = {
     "chestnut-mortar": chestnutMortar,
     "hot-coals": hotCoals,
     "chestnut-storm": chestnutStorm,
+    "ember-curtain": emberCurtain,
   },
   windup: {
     "sunfire-pillar": sunfireWindup,
@@ -1275,7 +1287,7 @@ export const fireKit: FxKit = {
     "chestnut-mortar": chestnutLob,
     "hot-coals": chestnutLob,
     "chestnut-storm": chestnutLob,
-    "tail-wrap": tailWrap,
+    "ember-curtain": curtainCast,
   },
   impact: { "magma-bomb": magmaImpact, "ember-lob": emberLobImpact },
   hit: { fire: fireHit },

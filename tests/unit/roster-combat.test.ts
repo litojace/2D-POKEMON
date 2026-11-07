@@ -111,9 +111,8 @@ describe("special skills", () => {
       "shell-up",
       "mud-mire",
       // Guards, decoys, stealth and healing springs deal no damage.
-      "tail-wrap",
-      "mirage-perch",
-      "rump-block",
+      // Halcyon Rewind moves and heals; it doesn't hurt.
+      "halcyon-rewind",
       "ink-cloud",
       "warm-spring",
       "sanctuary",

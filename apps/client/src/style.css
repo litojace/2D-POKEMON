@@ -626,6 +626,45 @@ input::placeholder {
   display: block !important;
   max-width: 100%;
 }
+/* Blinded (Ink Jet): a few ink splotches over the view, not all of it. */
+body.is-blinded #game {
+  position: relative;
+}
+body.is-blinded #game::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 4;
+  background:
+    radial-gradient(
+      circle at 18% 24%,
+      rgb(18 10 36 / 0.88) 0 7%,
+      transparent 13%
+    ),
+    radial-gradient(
+      circle at 78% 30%,
+      rgb(18 10 36 / 0.82) 0 6%,
+      transparent 12%
+    ),
+    radial-gradient(
+      circle at 62% 76%,
+      rgb(18 10 36 / 0.85) 0 8%,
+      transparent 14%
+    ),
+    radial-gradient(
+      circle at 26% 72%,
+      rgb(18 10 36 / 0.78) 0 5%,
+      transparent 10%
+    );
+  animation: ink-splash 0.25s ease-out;
+}
+@keyframes ink-splash {
+  from {
+    opacity: 0;
+    transform: scale(1.06);
+  }
+}
 .map-label {
   position: absolute;
   bottom: 13px;
@@ -2441,10 +2480,14 @@ body.battle-still .spectator {
   border: 1px solid #070e13;
   border-radius: 2px;
   background: #0c161b;
-  box-shadow: 0 0 0 1px #9eada088, 0 2px 4px #000c;
+  box-shadow:
+    0 0 0 1px #9eada088,
+    0 2px 4px #000c;
 }
 .battle-nameplate .fighter-health[data-team="self"] {
-  box-shadow: 0 0 0 1px #f2d582, 0 2px 4px #000c;
+  box-shadow:
+    0 0 0 1px #f2d582,
+    0 2px 4px #000c;
 }
 .battle-nameplate .fighter-health[data-team="enemy"] {
   --health-color: #ef5963;
@@ -3781,9 +3824,7 @@ html.zoom-locked dialog :is(input, textarea) {
   /* The fighter panel slides open under the chosen card. */
   /* Cards respond to hover and taps. */
   /* Menu buttons press in slightly (touch battle buttons have their own). */
-  :is(.primary, .secondary, .quiet, .bot-level):not(
-      :disabled
-    ):active {
+  :is(.primary, .secondary, .quiet, .bot-level):not(:disabled):active {
     transform: scale(0.97);
   }
   /* Dialogs and their backdrop ease in. */
@@ -7705,9 +7746,7 @@ button.small .button-icon {
 }
 
 /* Consistent menu rhythm and a live fitting room for Shop cosmetics. */
-dialog
-  :is(.help-screen, .credits-screen, .settings-screen)
-  > h2 {
+dialog :is(.help-screen, .credits-screen, .settings-screen) > h2 {
   padding-right: 32px;
   line-height: 1.15;
   overflow-wrap: anywhere;
@@ -8535,12 +8574,20 @@ dialog:is(:has(.admin-tabs), :has(#admin-message)) {
 }
 /* Somnara's earned cosmetics, also represented in combat's layered rig. */
 .raid-cosmetic-preview[data-cosmetic="twilight-colors"] > svg,
-:is(.raid-party-avatar, .raid-score-avatar, .player-avatar)[data-raid-cosmetic~="twilight-colors"]
+:is(
+    .raid-party-avatar,
+    .raid-score-avatar,
+    .player-avatar
+  )[data-raid-cosmetic~="twilight-colors"]
   svg {
   filter: hue-rotate(225deg) saturate(0.55) brightness(1.08);
 }
 .raid-cosmetic-preview[data-cosmetic="starlit-skin"] > svg,
-:is(.raid-party-avatar, .raid-score-avatar, .player-avatar)[data-raid-cosmetic~="starlit-skin"]
+:is(
+    .raid-party-avatar,
+    .raid-score-avatar,
+    .player-avatar
+  )[data-raid-cosmetic~="starlit-skin"]
   svg {
   filter: hue-rotate(240deg) saturate(0.4) drop-shadow(0 0 4px #e6ddff88);
 }
@@ -8945,9 +8992,7 @@ dialog.framed-dialog > .dialog-content:focus-visible {
   }
 }
 @media (prefers-reduced-motion: no-preference) {
-  :is(.player-avatar, .vs-fighter)
-    svg[data-fighter="auralynx"]
-    .fighter-wings {
+  :is(.player-avatar, .vs-fighter) svg[data-fighter="auralynx"] .fighter-wings {
     transform-origin: 100px 122.98px;
     animation: fighter-aura-ring 8.8s linear infinite;
   }
@@ -9006,12 +9051,20 @@ dialog.framed-dialog > .dialog-content:focus-visible {
   backdrop-filter: blur(6px);
 }
 .raid-cosmetic-preview[data-cosmetic="dawn-colors"] > svg,
-:is(.raid-party-avatar, .raid-score-avatar, .player-avatar)[data-raid-cosmetic~="dawn-colors"]
+:is(
+    .raid-party-avatar,
+    .raid-score-avatar,
+    .player-avatar
+  )[data-raid-cosmetic~="dawn-colors"]
   svg {
   filter: sepia(0.5) saturate(0.85) hue-rotate(325deg) brightness(1.15);
 }
 .raid-cosmetic-preview[data-cosmetic="prismatic-skin"] > svg,
-:is(.raid-party-avatar, .raid-score-avatar, .player-avatar)[data-raid-cosmetic~="prismatic-skin"]
+:is(
+    .raid-party-avatar,
+    .raid-score-avatar,
+    .player-avatar
+  )[data-raid-cosmetic~="prismatic-skin"]
   svg {
   filter: saturate(0.45) brightness(1.3) drop-shadow(-2px 0 2px #ff899e88)
     drop-shadow(2px 0 2px #80e1ff99);
@@ -9054,12 +9107,20 @@ dialog.framed-dialog > .dialog-content:focus-visible {
 
 /* Emberwing rewards keep portraits stable; moving effects render in the combat rig. */
 .raid-cosmetic-preview[data-cosmetic="ember-colors"] > svg,
-:is(.raid-party-avatar, .raid-score-avatar, .player-avatar)[data-raid-cosmetic~="ember-colors"]
+:is(
+    .raid-party-avatar,
+    .raid-score-avatar,
+    .player-avatar
+  )[data-raid-cosmetic~="ember-colors"]
   svg {
   filter: sepia(0.5) saturate(1.1) hue-rotate(335deg);
 }
 .raid-cosmetic-preview[data-cosmetic="cinderplume"] > svg,
-:is(.raid-party-avatar, .raid-score-avatar, .player-avatar)[data-raid-cosmetic~="cinderplume"]
+:is(
+    .raid-party-avatar,
+    .raid-score-avatar,
+    .player-avatar
+  )[data-raid-cosmetic~="cinderplume"]
   svg {
   filter: sepia(0.25) saturate(0.6) brightness(0.7)
     drop-shadow(0 0 3px #ff985a77);
@@ -9182,12 +9243,20 @@ dialog.framed-dialog > .dialog-content:focus-visible {
   }
 }
 .raid-cosmetic-preview[data-cosmetic="static-colors"] > svg,
-:is(.raid-party-avatar, .raid-score-avatar, .player-avatar)[data-raid-cosmetic~="static-colors"]
+:is(
+    .raid-party-avatar,
+    .raid-score-avatar,
+    .player-avatar
+  )[data-raid-cosmetic~="static-colors"]
   svg {
   filter: sepia(0.25) saturate(0.6) hue-rotate(145deg) brightness(1.1);
 }
 .raid-cosmetic-preview[data-cosmetic="thundercell"] > svg,
-:is(.raid-party-avatar, .raid-score-avatar, .player-avatar)[data-raid-cosmetic~="thundercell"]
+:is(
+    .raid-party-avatar,
+    .raid-score-avatar,
+    .player-avatar
+  )[data-raid-cosmetic~="thundercell"]
   svg {
   filter: saturate(0.35) brightness(1.25) drop-shadow(0 0 3px #8edfff88);
 }
@@ -9252,12 +9321,20 @@ dialog.framed-dialog > .dialog-content:focus-visible {
   box-shadow: 0 0 14px #ffb5da44;
 }
 .raid-cosmetic-preview[data-cosmetic="aurora-colors"] > svg,
-:is(.raid-party-avatar, .raid-score-avatar, .player-avatar)[data-raid-cosmetic~="aurora-colors"]
+:is(
+    .raid-party-avatar,
+    .raid-score-avatar,
+    .player-avatar
+  )[data-raid-cosmetic~="aurora-colors"]
   svg {
   filter: sepia(0.5) saturate(0.8) hue-rotate(130deg) brightness(1.08);
 }
 .raid-cosmetic-preview[data-cosmetic="starlit-colors"] > svg,
-:is(.raid-party-avatar, .raid-score-avatar, .player-avatar)[data-raid-cosmetic~="starlit-colors"]
+:is(
+    .raid-party-avatar,
+    .raid-score-avatar,
+    .player-avatar
+  )[data-raid-cosmetic~="starlit-colors"]
   svg {
   filter: sepia(0.5) saturate(1.2) hue-rotate(195deg) brightness(0.8);
 }
@@ -9284,7 +9361,11 @@ dialog.framed-dialog > .dialog-content:focus-visible {
   box-shadow: 0 0 14px #b6a0ff44;
 }
 .raid-cosmetic-preview[data-cosmetic="season-aurora-colors"] > svg,
-:is(.raid-party-avatar, .raid-score-avatar, .player-avatar)[data-raid-cosmetic~="season-aurora-colors"]
+:is(
+    .raid-party-avatar,
+    .raid-score-avatar,
+    .player-avatar
+  )[data-raid-cosmetic~="season-aurora-colors"]
   svg {
   filter: sepia(0.5) saturate(0.8) hue-rotate(140deg) brightness(1.08);
 }
@@ -9311,7 +9392,11 @@ dialog.framed-dialog > .dialog-content:focus-visible {
   box-shadow: 0 0 14px #ffe39d44;
 }
 .raid-cosmetic-preview[data-cosmetic="season-ember-colors"] > svg,
-:is(.raid-party-avatar, .raid-score-avatar, .player-avatar)[data-raid-cosmetic~="season-ember-colors"]
+:is(
+    .raid-party-avatar,
+    .raid-score-avatar,
+    .player-avatar
+  )[data-raid-cosmetic~="season-ember-colors"]
   svg {
   filter: sepia(0.5) saturate(0.8) hue-rotate(335deg) brightness(1.08);
 }
@@ -9338,7 +9423,11 @@ dialog.framed-dialog > .dialog-content:focus-visible {
   box-shadow: 0 0 14px #b9f5e944;
 }
 .raid-cosmetic-preview[data-cosmetic="season-tide-colors"] > svg,
-:is(.raid-party-avatar, .raid-score-avatar, .player-avatar)[data-raid-cosmetic~="season-tide-colors"]
+:is(
+    .raid-party-avatar,
+    .raid-score-avatar,
+    .player-avatar
+  )[data-raid-cosmetic~="season-tide-colors"]
   svg {
   filter: sepia(0.5) saturate(0.8) hue-rotate(165deg) brightness(1.08);
 }
@@ -9365,7 +9454,11 @@ dialog.framed-dialog > .dialog-content:focus-visible {
   box-shadow: 0 0 14px #ffb5da44;
 }
 .raid-cosmetic-preview[data-cosmetic="season-astral-colors"] > svg,
-:is(.raid-party-avatar, .raid-score-avatar, .player-avatar)[data-raid-cosmetic~="season-astral-colors"]
+:is(
+    .raid-party-avatar,
+    .raid-score-avatar,
+    .player-avatar
+  )[data-raid-cosmetic~="season-astral-colors"]
   svg {
   filter: sepia(0.5) saturate(0.8) hue-rotate(245deg) brightness(1.08);
 }
@@ -9963,9 +10056,6 @@ body.home-active .header-menu summary > span {
     height: 18px;
   }
 
-
-
-
   .home-drawer {
     inset: calc(10px + var(--safe-top)) calc(10px + var(--safe-right))
       calc(10px + var(--safe-bottom)) auto;
@@ -10007,8 +10097,6 @@ body.home-active .header-menu summary > span {
   body.home-active {
     --home-top: calc(44px + var(--safe-top));
   }
-
-
 }
 @media (prefers-reduced-motion: reduce) {
   .home-screen *,
@@ -11637,7 +11725,8 @@ body.hub-screen .topbar {
   z-index: 70;
   height: auto;
   min-height: 0;
-  padding: max(10px, var(--safe-top)) max(14px, var(--safe-right)) 0 max(14px, var(--safe-left));
+  padding: max(10px, var(--safe-top)) max(14px, var(--safe-right)) 0
+    max(14px, var(--safe-left));
   background: none;
   border: 0;
   box-shadow: none;
@@ -11707,7 +11796,9 @@ body.hub-screen #account-profile .account-avatar {
 body.lobby-active #account-profile .account-name,
 body.hub-screen #account-profile .account-name {
   grid-area: name;
-  font: 800 17px/1 "Barlow Condensed", sans-serif;
+  font:
+    800 17px/1 "Barlow Condensed",
+    sans-serif;
   letter-spacing: 0.02em;
 }
 body.lobby-active #account-profile .nav-level,
@@ -11736,7 +11827,9 @@ body.lobby-active .nav-title,
 body.hub-screen .nav-title {
   display: block;
   grid-area: title;
-  font: 700 11px/1 "DM Sans", sans-serif;
+  font:
+    700 11px/1 "DM Sans",
+    sans-serif;
 }
 /* Coins: pushed to the right, a glass pill. */
 body.lobby-active #account-coins,
@@ -11860,7 +11953,9 @@ body.hub-screen .menu-gear svg {
    instead of a solid gold fill. */
 .play-start h3 {
   margin: 0 0 4px;
-  font: 700 13px/1 "DM Sans", sans-serif;
+  font:
+    700 13px/1 "DM Sans",
+    sans-serif;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--text-dim, #a0afc8);
@@ -11906,14 +12001,18 @@ body.hub-screen .menu-gear svg {
 }
 .play-start .mode-card b {
   overflow: hidden;
-  font: 600 15px/1.2 "DM Sans", sans-serif;
+  font:
+    600 15px/1.2 "DM Sans",
+    sans-serif;
   letter-spacing: 0;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .play-start .mode-card small {
   overflow: hidden;
-  font: 400 12px/1.3 "DM Sans", sans-serif;
+  font:
+    400 12px/1.3 "DM Sans",
+    sans-serif;
   color: #93a4c0;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -11993,8 +12092,14 @@ body.gate-active main {
   position: absolute;
   inset: 0;
   z-index: -1;
-  background:
-    linear-gradient(90deg, rgba(6, 10, 28, 0.55) 0%, rgba(6, 10, 28, 0.2) 28%, rgba(6, 10, 28, 0) 46%, rgba(6, 10, 28, 0) 60%, rgba(6, 10, 28, 0.3) 100%);
+  background: linear-gradient(
+    90deg,
+    rgba(6, 10, 28, 0.55) 0%,
+    rgba(6, 10, 28, 0.2) 28%,
+    rgba(6, 10, 28, 0) 46%,
+    rgba(6, 10, 28, 0) 60%,
+    rgba(6, 10, 28, 0.3) 100%
+  );
 }
 .gate-layout {
   display: grid;
@@ -12002,7 +12107,10 @@ body.gate-active main {
   align-items: center;
   gap: clamp(24px, 5vw, 80px);
   min-height: 100dvh;
-  padding: max(28px, env(safe-area-inset-top)) max(28px, calc(env(safe-area-inset-right) + 5vw)) max(28px, env(safe-area-inset-bottom)) max(28px, calc(env(safe-area-inset-left) + 5vw));
+  padding: max(28px, env(safe-area-inset-top))
+    max(28px, calc(env(safe-area-inset-right) + 5vw))
+    max(28px, env(safe-area-inset-bottom))
+    max(28px, calc(env(safe-area-inset-left) + 5vw));
   box-sizing: border-box;
 }
 .gate-intro {
@@ -12024,16 +12132,22 @@ body.gate-active main {
 }
 .gate-kicker {
   color: #f2c25b;
-  font: 700 12px/1 "DM Sans", sans-serif;
+  font:
+    700 12px/1 "DM Sans",
+    sans-serif;
   letter-spacing: 0.2em;
   text-transform: uppercase;
 }
 .gate-intro h1 {
   margin: 0;
-  font: 800 clamp(48px, 7vw, 92px) / 0.9 "Barlow Condensed", sans-serif;
+  font:
+    800 clamp(48px, 7vw, 92px) / 0.9 "Barlow Condensed",
+    sans-serif;
   letter-spacing: 0.02em;
   text-transform: uppercase;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.35), 0 4px 30px rgba(0, 0, 0, 0.55);
+  text-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.35),
+    0 4px 30px rgba(0, 0, 0, 0.55);
 }
 .gate-intro h1 span {
   display: block;
@@ -12044,7 +12158,9 @@ body.gate-active main {
   margin: 4px 0 6px;
   max-width: 460px;
   color: #d6def0;
-  font: 400 17px/1.5 "DM Sans", sans-serif;
+  font:
+    400 17px/1.5 "DM Sans",
+    sans-serif;
   text-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
 }
 .gate-invite b {
@@ -12057,7 +12173,9 @@ body.gate-active main {
   border-radius: 22px;
   background: rgba(12, 20, 38, 0.82);
   backdrop-filter: blur(14px) saturate(1.2);
-  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  box-shadow:
+    0 30px 80px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 .gate-wait {
   display: grid;
@@ -12140,7 +12258,9 @@ dialog .auth-panel {
   height: 100%;
 }
 .auth-title {
-  font: 700 24px/1.15 "DM Sans", sans-serif;
+  font:
+    700 24px/1.15 "DM Sans",
+    sans-serif;
   letter-spacing: -0.01em;
 }
 .auth-head p {
@@ -12162,13 +12282,17 @@ dialog .auth-panel {
   border-radius: 9px;
   background: none;
   color: #9fb0cc;
-  font: 600 14px/1 "DM Sans", sans-serif;
+  font:
+    600 14px/1 "DM Sans",
+    sans-serif;
   cursor: pointer;
 }
 .auth-tabs button[aria-selected="true"] {
   background: #1d2b48;
   color: #fff;
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.08) inset, 0 4px 12px rgba(0, 0, 0, 0.25);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.08) inset,
+    0 4px 12px rgba(0, 0, 0, 0.25);
 }
 .auth-form {
   display: grid;
@@ -12181,10 +12305,15 @@ dialog .auth-panel {
 }
 .auth-field > span:first-child {
   color: #c9d4e8;
-  font: 600 13px/1 "DM Sans", sans-serif;
+  font:
+    600 13px/1 "DM Sans",
+    sans-serif;
 }
 /* Matches the global input rule's specificity plus the panel class, so it wins. */
-.auth-panel input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]) {
+.auth-panel
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not(
+    [type="color"]
+  ) {
   width: 100%;
   min-height: 46px;
   box-sizing: border-box;
@@ -12193,8 +12322,12 @@ dialog .auth-panel {
   border-radius: 11px;
   background: rgba(5, 10, 22, 0.6);
   color: #fff;
-  font: 400 15px/1 "DM Sans", sans-serif;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  font:
+    400 15px/1 "DM Sans",
+    sans-serif;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
 }
 .auth-panel input::placeholder {
   color: #63738f;
@@ -12208,7 +12341,11 @@ dialog .auth-panel {
   position: relative;
   display: block;
 }
-.auth-panel .password-field input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]) {
+.auth-panel
+  .password-field
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not(
+    [type="color"]
+  ) {
   padding-right: 48px;
 }
 .auth-panel .password-toggle {
@@ -12261,7 +12398,9 @@ dialog .auth-panel {
   border: 0;
   background: none;
   color: #f2c25b;
-  font: 600 13px/1 "DM Sans", sans-serif;
+  font:
+    600 13px/1 "DM Sans",
+    sans-serif;
   cursor: pointer;
 }
 .auth-link:hover {
@@ -12278,10 +12417,14 @@ dialog .auth-panel {
   border-radius: 12px;
   background: linear-gradient(180deg, #ffe08a, #f2b93b);
   color: #2a1a00;
-  font: 700 15px/1 "DM Sans", sans-serif;
+  font:
+    700 15px/1 "DM Sans",
+    sans-serif;
   box-shadow: 0 8px 24px rgba(242, 185, 59, 0.28);
   cursor: pointer;
-  transition: filter 0.15s, transform 0.1s;
+  transition:
+    filter 0.15s,
+    transform 0.1s;
 }
 .auth-submit:hover:not(:disabled) {
   filter: brightness(1.06);
@@ -12304,7 +12447,9 @@ dialog .auth-panel {
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.04);
   color: #eef2ff;
-  font: 600 14px/1 "DM Sans", sans-serif;
+  font:
+    600 14px/1 "DM Sans",
+    sans-serif;
   cursor: pointer;
 }
 .auth-secondary:hover {
@@ -12381,7 +12526,10 @@ dialog .auth-panel {
     gap: 10px;
   }
   /* Matches the global input rule's specificity plus the panel class, so it wins. */
-.auth-panel input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]) {
+  .auth-panel
+    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not(
+      [type="color"]
+    ) {
     min-height: 40px;
   }
   .auth-submit,
@@ -12440,7 +12588,10 @@ dialog .auth-panel {
   .auth-field > span:first-child {
     font-size: 12px;
   }
-  .auth-panel input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]) {
+  .auth-panel
+    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not(
+      [type="color"]
+    ) {
     min-height: 36px;
     font-size: 14px;
   }
@@ -12909,9 +13060,10 @@ body.battle-active.court-view #game canvas {
   }
   /* Mechanic buttons keep their existing nodes/held gestures, but sit beside
      the HUD instead of covering the newly visible centre of the court. */
-  body.battle-active.touch-mode.battle-raid :is(
-    #raid-prism-controls, #raid-dream-panel, #raid-storm-targets
-  ):not([hidden]) {
+  body.battle-active.touch-mode.battle-raid
+    :is(#raid-prism-controls, #raid-dream-panel, #raid-storm-targets):not(
+      [hidden]
+    ) {
     position: fixed;
     top: calc(var(--safe-top) + 6px);
     right: calc(var(--safe-right) + 6px);
@@ -12920,9 +13072,9 @@ body.battle-active.court-view #game canvas {
     max-width: none;
     transform: none;
   }
-  body.battle-active.touch-mode.battle-raid :is(
-    #raid-prism-controls, #raid-storm-targets
-  ) > button {
+  body.battle-active.touch-mode.battle-raid
+    :is(#raid-prism-controls, #raid-storm-targets)
+    > button {
     flex: 1;
     padding: 6px;
     font-size: 11px;
@@ -12999,7 +13151,11 @@ body.battle-active.court-view #game canvas {
   color: var(--rite-color);
   border: 0;
   border-radius: 24px;
-  background: radial-gradient(ellipse, color-mix(in srgb, currentColor 13%, transparent), transparent 74%);
+  background: radial-gradient(
+    ellipse,
+    color-mix(in srgb, currentColor 13%, transparent),
+    transparent 74%
+  );
   box-shadow: none;
 }
 #arena-overlay .raid-draft .raid-rite-icon > svg {
@@ -13011,7 +13167,9 @@ body.battle-active.court-view #game canvas {
 }
 #arena-overlay .raid-draft .panel-actions .raid-rite-trigger {
   color: var(--text-dim);
-  font: 500 13px/1.3 "DM Sans", sans-serif;
+  font:
+    500 13px/1.3 "DM Sans",
+    sans-serif;
 }
 #arena-overlay .raid-draft .raid-rite-intro {
   position: static;
@@ -13045,7 +13203,9 @@ body.battle-active.court-view #game canvas {
   border-radius: 9px;
   background: var(--bg-1);
   color: var(--text);
-  font: 600 12px/1.2 "DM Sans", sans-serif;
+  font:
+    600 12px/1.2 "DM Sans",
+    sans-serif;
   list-style: none;
   cursor: pointer;
 }
@@ -13117,7 +13277,9 @@ body.battle-active.court-view #game canvas {
 #arena-overlay .raid-draft .raid-rite-reference p {
   margin: 0;
   color: var(--text-dim);
-  font: 400 14px/1.5 "DM Sans", sans-serif;
+  font:
+    400 14px/1.5 "DM Sans",
+    sans-serif;
 }
 @media (orientation: landscape) and (max-height: 600px) {
   #arena-overlay .raid-draft > .panel-actions {
@@ -13208,15 +13370,21 @@ body.battle-active.court-view #game canvas {
   color: #f2f7ff;
   text-align: center;
   white-space: nowrap;
-  text-shadow: 0 1px 4px #10182e, 0 0 8px #10182e;
+  text-shadow:
+    0 1px 4px #10182e,
+    0 0 8px #10182e;
 }
 .raid-rite-buff-value {
-  font: 800 29px/1.05 "DM Sans", sans-serif;
+  font:
+    800 29px/1.05 "DM Sans",
+    sans-serif;
   letter-spacing: -1px;
   font-variant-numeric: tabular-nums;
 }
 .raid-rite-buff-unit {
-  font: 600 11px/1.3 "DM Sans", sans-serif;
+  font:
+    600 11px/1.3 "DM Sans",
+    sans-serif;
   color: var(--rite-color);
 }
 .raid-rite-icon--dual .raid-rite-buff-stat {
@@ -13293,7 +13461,9 @@ body.battle-active.court-view #game canvas {
   color: #ffe390;
   font: 700 26px/1 var(--display);
 }
-.spectate-banner.pvp-spectator button:disabled { opacity: .3; }
+.spectate-banner.pvp-spectator button:disabled {
+  opacity: 0.3;
+}
 .spectator-copy {
   display: grid;
   gap: 2px;
@@ -13301,11 +13471,26 @@ body.battle-active.court-view #game canvas {
   max-width: 240px;
   text-align: center;
 }
-.spectator-copy small { color: #a6bad4; font: 500 10px/1.2 "DM Sans", sans-serif; }
-.spectator-copy b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 700 14px/1.3 "DM Sans", sans-serif; }
+.spectator-copy small {
+  color: #a6bad4;
+  font:
+    500 10px/1.2 "DM Sans",
+    sans-serif;
+}
+.spectator-copy b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font:
+    700 14px/1.3 "DM Sans",
+    sans-serif;
+}
 body.pvp-knocked-out #mobile-controls .joystick-area,
 body.pvp-knocked-out #mobile-controls .touch-buttons,
-body.pvp-knocked-out #abilities { visibility: hidden; pointer-events: none; }
+body.pvp-knocked-out #abilities {
+  visibility: hidden;
+  pointer-events: none;
+}
 
 /* Use the idle control corner after a knockout, leaving the middle of the court clear. */
 .spectate-banner.pvp-spectator,
@@ -13320,7 +13505,9 @@ body.pvp-knocked-out #abilities { visibility: hidden; pointer-events: none; }
   max-width: none;
   box-sizing: border-box;
 }
-body.pvp-knocked-out #control-hints { visibility: hidden; }
+body.pvp-knocked-out #control-hints {
+  visibility: hidden;
+}
 
 /* Lower the complete compact lobby into its unused bottom space without
    reducing the fighter preview's height or creating a second scroll area. */
@@ -13333,7 +13520,9 @@ body.pvp-knocked-out #control-hints { visibility: hidden; }
     padding-top: calc(max(8px, env(safe-area-inset-top)) + var(--lobby-drop));
   }
   body.lobby-active main {
-    height: calc(100dvh - var(--lobby-top) - 40px - var(--safe-bottom) + var(--lobby-drop));
+    height: calc(
+      100dvh - var(--lobby-top) - 40px - var(--safe-bottom) + var(--lobby-drop)
+    );
   }
 }
 
@@ -13612,7 +13801,11 @@ body.battle-active.touch-mode.pvp-knocked-out #battle-menu {
     font-size: 8px;
   }
   .touch-mode.battle-raid #raid-hud .raid-party-bars b,
-  .touch-mode.battle-raid #raid-hud .raid-party-bars :is(.downed, .is-targeted, .has-alert) small {
+  .touch-mode.battle-raid
+    #raid-hud
+    .raid-party-bars
+    :is(.downed, .is-targeted, .has-alert)
+    small {
     line-height: 8px;
   }
 }
@@ -13658,17 +13851,22 @@ body.battle-active.touch-mode.pvp-knocked-out #battle-menu {
     font-size: 9px;
     line-height: 10px;
   }
-  body.battle-active.touch-mode.battle-raid :is(#raid-prism-controls, #raid-storm-targets):not([hidden]) {
+  body.battle-active.touch-mode.battle-raid
+    :is(#raid-prism-controls, #raid-storm-targets):not([hidden]) {
     top: auto;
     right: calc(var(--safe-right) + 58px);
     left: auto;
-    bottom: calc(var(--safe-bottom) + var(--combat-cluster-height, 192px) + 20px);
+    bottom: calc(
+      var(--safe-bottom) + var(--combat-cluster-height, 192px) + 20px
+    );
     width: 176px;
     max-width: none;
     transform: none;
     gap: 4px;
   }
-  body.battle-active.touch-mode.battle-raid :is(#raid-prism-controls, #raid-storm-targets) > button {
+  body.battle-active.touch-mode.battle-raid
+    :is(#raid-prism-controls, #raid-storm-targets)
+    > button {
     min-height: 32px;
     height: 32px;
     padding: 4px 6px;
@@ -13682,7 +13880,9 @@ body.battle-active.touch-mode.pvp-knocked-out #battle-menu {
   body.battle-active.touch-mode.battle-raid #raid-dream-panel:not([hidden]) {
     top: auto;
     right: calc(var(--safe-right) + 58px);
-    bottom: calc(var(--safe-bottom) + var(--combat-cluster-height, 192px) + 20px);
+    bottom: calc(
+      var(--safe-bottom) + var(--combat-cluster-height, 192px) + 20px
+    );
     left: auto;
     width: 352px;
     padding: 0 6px;
@@ -13751,8 +13951,11 @@ body:not(.touch-mode) .raid-ping-menu > summary {
   display: none;
 }
 @media (orientation: landscape) and (max-height: 350px) {
-  body.battle-active.touch-mode.battle-raid :is(#raid-dream-panel, #raid-storm-targets):not([hidden]) {
-    bottom: calc(var(--safe-bottom) + var(--combat-cluster-height, 187px) + 16px);
+  body.battle-active.touch-mode.battle-raid
+    :is(#raid-dream-panel, #raid-storm-targets):not([hidden]) {
+    bottom: calc(
+      var(--safe-bottom) + var(--combat-cluster-height, 187px) + 16px
+    );
   }
 }
 body.battle-active.touch-mode .battle-dock .practice-settings > summary {
@@ -13833,7 +14036,9 @@ body.battle-active.touch-mode .battle-dock .practice-settings > summary {
   font-size: 12px;
   line-height: 16px;
 }
-.battle-raid #raid-hud .raid-elapsed { grid-area: timer; }
+.battle-raid #raid-hud .raid-elapsed {
+  grid-area: timer;
+}
 .battle-raid #raid-hud .raid-twin-health {
   grid-area: health;
   margin: 0;
@@ -13980,12 +14185,20 @@ body.battle-active:not(.touch-mode).battle-raid .raid-party-bars small {
     min-width: 0;
     font-size: 11px;
   }
-  body.battle-active.touch-mode.battle-raid :is(#raid-prism-controls, #raid-storm-targets):not([hidden]) {
-    top: max(calc(var(--safe-top) + 50px), calc(100dvh - var(--safe-bottom) - var(--combat-cluster-height, 192px) - 60px));
+  body.battle-active.touch-mode.battle-raid
+    :is(#raid-prism-controls, #raid-storm-targets):not([hidden]) {
+    top: max(
+      calc(var(--safe-top) + 50px),
+      calc(
+        100dvh - var(--safe-bottom) - var(--combat-cluster-height, 192px) - 60px
+      )
+    );
     right: calc(var(--safe-right) + 6px);
     bottom: auto;
   }
-  body.battle-active.touch-mode.battle-raid :is(#raid-prism-controls, #raid-storm-targets) > button {
+  body.battle-active.touch-mode.battle-raid
+    :is(#raid-prism-controls, #raid-storm-targets)
+    > button {
     height: 30px;
     min-height: 30px;
   }
@@ -13993,7 +14206,10 @@ body.battle-active:not(.touch-mode).battle-raid .raid-party-bars small {
     top: calc(var(--safe-top) + var(--desktop-raid-hud-height, 45px) + 12px);
     right: calc(var(--safe-right) + 176px);
     bottom: auto;
-    width: min(352px, calc(100% - var(--safe-left) - var(--safe-right) - 288px));
+    width: min(
+      352px,
+      calc(100% - var(--safe-left) - var(--safe-right) - 288px)
+    );
     grid-template-columns: minmax(0, 1fr) 188px;
   }
   .touch-mode #raid-dream-panel .dream-private-runes {
@@ -14025,7 +14241,8 @@ body.battle-active:not(.touch-mode).battle-raid .raid-party-bars small {
   .touch-mode.battle-raid #raid-hud .raid-boss-heading > span {
     line-height: 12px;
   }
-  body.battle-active.touch-mode.battle-raid :is(#raid-prism-controls, #raid-storm-targets):not([hidden]) {
+  body.battle-active.touch-mode.battle-raid
+    :is(#raid-prism-controls, #raid-storm-targets):not([hidden]) {
     right: calc(var(--safe-right) + 52px);
   }
 }
@@ -14034,7 +14251,8 @@ body.battle-active:not(.touch-mode).battle-raid .raid-party-bars small {
 body.battle-active:not(.touch-mode) .topbar {
   display: none;
 }
-body.battle-active:not(.touch-mode).battle-raid :is(#raid-prism-controls, #raid-storm-targets):not([hidden]) {
+body.battle-active:not(.touch-mode).battle-raid
+  :is(#raid-prism-controls, #raid-storm-targets):not([hidden]) {
   top: calc(var(--desktop-arena-top, 0px) + 100px);
   right: calc((100% - var(--desktop-arena-width, 100%)) / 2 + 8px);
   left: auto;
@@ -14075,28 +14293,90 @@ body.battle-active.battle-raid #raid-drill:not([hidden]) {
   border-radius: 8px;
   font-size: 11px;
 }
-#raid-drill p { font-size: 12px; }
-#arena-overlay .raid-draft .panel-actions .raid-rite-icon--buff {display:flex;flex-direction:column;align-items:center;justify-content:center;width:min(200px,100%);height:auto;gap:8px;}
-#arena-overlay .raid-draft .raid-rite-icon--buff > svg {width:128px;height:96px;filter:drop-shadow(0 3px 8px #0005);}
-.raid-rite-stats {display:flex;justify-content:center;gap:8px;width:100%;}
-.raid-rite-icon--buff .raid-rite-buff-stat {position:static;width:auto;flex:1;min-width:0;padding:6px 4px;border-radius:10px;border:1px solid color-mix(in srgb,var(--rite-color),transparent 65%);background:#0c182dcc;white-space:normal;}
-.raid-rite-buff-value {font-size:24px;letter-spacing:-.5px;}
-.raid-rite-buff-unit {font-size:10px;}
-#arena-overlay .raid-draft .raid-rite-heading {align-items:center;justify-content:center;}
-@media (orientation:landscape) and (max-height:450px) {
- #arena-overlay .raid-draft .raid-rite-icon--buff > svg {width:96px;height:72px;}
- #arena-overlay .raid-draft .panel-actions .raid-rite-icon--buff {gap:4px;}
- .raid-rite-buff-value {font-size:20px;}
+#raid-drill p {
+  font-size: 12px;
 }
-@media (orientation:landscape) and (max-height:450px) {
- .raid-rite-buff-value {font-size:22px;}
+#arena-overlay .raid-draft .panel-actions .raid-rite-icon--buff {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: min(200px, 100%);
+  height: auto;
+  gap: 8px;
 }
-@media (orientation:landscape) and (max-height:350px) {
- #arena-overlay .raid-draft .panel-actions .raid-rite-icon--buff {display:grid;grid-template-columns:52px minmax(0,1fr);width:138px;gap:4px;}
- #arena-overlay .raid-draft .raid-rite-icon--buff > svg {width:52px;height:48px;}
- .raid-rite-stats {flex-direction:column;gap:2px;}
- .raid-rite-icon--buff .raid-rite-buff-stat {padding:2px;}
- #arena-overlay .raid-draft .panel-actions .raid-rite-heading > b {max-width:7ch;font-size:18px;}
+#arena-overlay .raid-draft .raid-rite-icon--buff > svg {
+  width: 128px;
+  height: 96px;
+  filter: drop-shadow(0 3px 8px #0005);
+}
+.raid-rite-stats {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+}
+.raid-rite-icon--buff .raid-rite-buff-stat {
+  position: static;
+  width: auto;
+  flex: 1;
+  min-width: 0;
+  padding: 6px 4px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--rite-color), transparent 65%);
+  background: #0c182dcc;
+  white-space: normal;
+}
+.raid-rite-buff-value {
+  font-size: 24px;
+  letter-spacing: -0.5px;
+}
+.raid-rite-buff-unit {
+  font-size: 10px;
+}
+#arena-overlay .raid-draft .raid-rite-heading {
+  align-items: center;
+  justify-content: center;
+}
+@media (orientation: landscape) and (max-height: 450px) {
+  #arena-overlay .raid-draft .raid-rite-icon--buff > svg {
+    width: 96px;
+    height: 72px;
+  }
+  #arena-overlay .raid-draft .panel-actions .raid-rite-icon--buff {
+    gap: 4px;
+  }
+  .raid-rite-buff-value {
+    font-size: 20px;
+  }
+}
+@media (orientation: landscape) and (max-height: 450px) {
+  .raid-rite-buff-value {
+    font-size: 22px;
+  }
+}
+@media (orientation: landscape) and (max-height: 350px) {
+  #arena-overlay .raid-draft .panel-actions .raid-rite-icon--buff {
+    display: grid;
+    grid-template-columns: 52px minmax(0, 1fr);
+    width: 138px;
+    gap: 4px;
+  }
+  #arena-overlay .raid-draft .raid-rite-icon--buff > svg {
+    width: 52px;
+    height: 48px;
+  }
+  .raid-rite-stats {
+    flex-direction: column;
+    gap: 2px;
+  }
+  .raid-rite-icon--buff .raid-rite-buff-stat {
+    padding: 2px;
+  }
+  #arena-overlay .raid-draft .panel-actions .raid-rite-heading > b {
+    max-width: 7ch;
+    font-size: 18px;
+  }
 }
 
 /* Keep the boss health and name together, with the cue and Peril in the center. */
@@ -14133,7 +14413,8 @@ body.battle-active:not(.touch-mode).battle-raid
   .raid-party-bars[data-party-size="1"] {
   grid-template-columns: minmax(0, 1fr);
 }
-body.battle-active:not(.touch-mode).battle-raid #raid-hud:has(.raid-twin-health) {
+body.battle-active:not(.touch-mode).battle-raid
+  #raid-hud:has(.raid-twin-health) {
   grid-template-areas:
     "health health health party"
     "name cue peril party"
@@ -14180,15 +14461,10 @@ body.battle-active:not(.touch-mode)
 }
 
 /* Mobile practice picker sits in the lower control band and opens upward. */
-body.battle-active.touch-mode.battle-raid
-  #battle
-  #raid-drill:not([hidden]) {
+body.battle-active.touch-mode.battle-raid #battle #raid-drill:not([hidden]) {
   position: fixed;
   inset: auto auto calc(var(--safe-bottom) + 12px) 50%;
-  width: min(
-    190px,
-    calc(100vw - var(--safe-left) - var(--safe-right) - 24px)
-  );
+  width: min(190px, calc(100vw - var(--safe-left) - var(--safe-right) - 24px));
   max-height: min(28dvh, 210px);
   padding: 5px 6px;
   transform: translateX(-50%);
@@ -14211,7 +14487,10 @@ body.battle-active.touch-mode.battle-raid #raid-drill .raid-drill-count {
   flex: 0 0 auto;
   font-size: 9px;
 }
-body.battle-active.touch-mode.battle-raid #raid-drill .raid-drill-picker > summary {
+body.battle-active.touch-mode.battle-raid
+  #raid-drill
+  .raid-drill-picker
+  > summary {
   min-height: 32px;
   font-size: 12px;
   white-space: nowrap;
@@ -14221,7 +14500,10 @@ body.battle-active.touch-mode.battle-raid #raid-drill .raid-drill-options {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 4px;
 }
-body.battle-active.touch-mode.battle-raid #raid-drill .raid-drill-options button {
+body.battle-active.touch-mode.battle-raid
+  #raid-drill
+  .raid-drill-options
+  button {
   width: 100%;
   min-width: 0;
   min-height: 27px;
@@ -14251,7 +14533,11 @@ body.battle-active.touch-mode.battle-raid #raid-drill p {
   position: absolute;
   inset: 14% 12% 8%;
   border-radius: 50%;
-  background: radial-gradient(ellipse, color-mix(in srgb, var(--boss) 21%, transparent), transparent 70%);
+  background: radial-gradient(
+    ellipse,
+    color-mix(in srgb, var(--boss) 21%, transparent),
+    transparent 70%
+  );
   filter: blur(8px);
 }
 .raid-showcase-sprite {
@@ -14280,7 +14566,10 @@ body.battle-active.touch-mode.battle-raid #raid-drill p {
 /* Keep the name, status and Peril in distinct cells on the same baseline. */
 body.battle-active.battle-raid #raid-hud .raid-callout,
 body.battle-active:not(.touch-mode).battle-raid #raid-hud .raid-callout,
-body.battle-active:not(.touch-mode) #battle.desktop-hud-outside #raid-hud .raid-callout {
+body.battle-active:not(.touch-mode)
+  #battle.desktop-hud-outside
+  #raid-hud
+  .raid-callout {
   grid-area: cue;
   position: static;
   left: auto;
@@ -14291,7 +14580,10 @@ body.battle-active:not(.touch-mode) #battle.desktop-hud-outside #raid-hud .raid-
   text-align: right;
 }
 body.battle-active.battle-raid #raid-hud .raid-boss-heading > b,
-body.battle-active.battle-raid #raid-hud:has(.raid-twin-health) .raid-boss-heading > b {
+body.battle-active.battle-raid
+  #raid-hud:has(.raid-twin-health)
+  .raid-boss-heading
+  > b {
   display: block;
   align-self: center;
 }
@@ -14300,7 +14592,8 @@ body.battle-active:not(.touch-mode) #battle.desktop-hud-outside #raid-hud {
   grid-template-areas: "health health health party" "name cue peril party";
   align-items: center;
 }
-body.battle-active:not(.touch-mode).battle-raid #raid-hud:has(.raid-twin-health) {
+body.battle-active:not(.touch-mode).battle-raid
+  #raid-hud:has(.raid-twin-health) {
   grid-template-areas: "health health health party" "name cue peril party";
 }
 @media (orientation: landscape) {
@@ -14315,10 +14608,16 @@ body.battle-active:not(.touch-mode).battle-raid #raid-hud:has(.raid-twin-health)
 }
 
 body.battle-active:not(.touch-mode).battle-raid #raid-hud .raid-party-bars,
-body.battle-active:not(.touch-mode) #battle.desktop-hud-outside #raid-hud .raid-party-bars {
+body.battle-active:not(.touch-mode)
+  #battle.desktop-hud-outside
+  #raid-hud
+  .raid-party-bars {
   grid-area: party;
 }
-body.battle-active:not(.touch-mode).battle-raid #battle #raid-hud .raid-callout {
+body.battle-active:not(.touch-mode).battle-raid
+  #battle
+  #raid-hud
+  .raid-callout {
   grid-column: 2;
   grid-row: 2;
   position: static;
@@ -14327,15 +14626,26 @@ body.battle-active:not(.touch-mode).battle-raid #battle #raid-hud .raid-callout 
   justify-self: stretch;
   text-align: right;
 }
-body.battle-active:not(.touch-mode).battle-raid #battle #raid-hud .raid-party-bars {
+body.battle-active:not(.touch-mode).battle-raid
+  #battle
+  #raid-hud
+  .raid-party-bars {
   grid-area: party;
 }
 
 /* Static illustrated boss introductions: the approved artwork stays text-free. */
-button[data-raid-boss="tidewyrm"] .raid-splash-image { object-position: 75% 45%; }
-button[data-raid-boss="gloomshade"] .raid-splash-image { object-position: 60% 50%; }
-button[data-raid-boss="somnara"] .raid-splash-image { object-position: 35% 45%; }
-button[data-raid-boss="prismatail"] .raid-splash-image { object-position: 60% 40%; }
+button[data-raid-boss="tidewyrm"] .raid-splash-image {
+  object-position: 75% 45%;
+}
+button[data-raid-boss="gloomshade"] .raid-splash-image {
+  object-position: 60% 50%;
+}
+button[data-raid-boss="somnara"] .raid-splash-image {
+  object-position: 35% 45%;
+}
+button[data-raid-boss="prismatail"] .raid-splash-image {
+  object-position: 60% 40%;
+}
 
 /* Keep practice controls readable, with the exit outside the scrolling list. */
 body.battle-active.battle-raid #raid-drill .raid-drill-body {
@@ -14357,7 +14667,9 @@ body.battle-active.touch-mode.battle-raid #battle #raid-drill:not([hidden]) {
   max-height: min(65dvh, 300px);
   padding: 7px 9px;
 }
-body.battle-active.touch-mode.battle-raid #battle #raid-drill:has(details[open]) {
+body.battle-active.touch-mode.battle-raid
+  #battle
+  #raid-drill:has(details[open]) {
   width: min(320px, calc(100vw - var(--safe-left) - var(--safe-right) - 24px));
 }
 body.battle-active.touch-mode.battle-raid #raid-drill .raid-drill-head {
@@ -14374,7 +14686,10 @@ body.battle-active.touch-mode.battle-raid #raid-drill .raid-drill-count {
 body.battle-active.touch-mode.battle-raid #raid-drill .raid-drill-body {
   max-height: max(60px, calc(min(65dvh, 300px) - 116px));
 }
-body.battle-active.touch-mode.battle-raid #raid-drill .raid-drill-options button {
+body.battle-active.touch-mode.battle-raid
+  #raid-drill
+  .raid-drill-options
+  button {
   min-height: 36px;
   font-size: 11px;
   line-height: 1.25;
@@ -14452,16 +14767,25 @@ body.battle-active:not(.touch-mode).battle-raid .arena-frame {
 /* Raid Hub: independent boss navigation, scrollable details, persistent actions. */
 
 /* Mobile thumb arc: larger circles retain their original icon scale. */
-.touch-buttons button:is(.touch-skill, .touch-attack, .touch-ultimate, [data-action]) .skill-icon {
+.touch-buttons
+  button:is(.touch-skill, .touch-attack, .touch-ultimate, [data-action])
+  .skill-icon {
   width: var(--combat-icon-size, 56%);
   height: var(--combat-icon-size, 56%);
 }
-.touch-buttons .touch-ultimate:not(.ult-ready) .skill-icon { visibility: hidden; }
+.touch-buttons .touch-ultimate:not(.ult-ready) .skill-icon {
+  visibility: hidden;
+}
 .touch-buttons .touch-ultimate:not(.ult-ready) .touch-key {
-  position: absolute; bottom: clamp(7px, 20%, 12px); font-size: 9px; opacity: 1;
+  position: absolute;
+  bottom: clamp(7px, 20%, 12px);
+  font-size: 9px;
+  opacity: 1;
 }
 .touch-buttons .touch-ultimate:not(.ult-ready) .touch-cooldown {
-  font-size: 18px; line-height: 1; transform: translateY(-3px);
+  font-size: 18px;
+  line-height: 1;
+  transform: translateY(-3px);
 }
 
 /* Storm Twins share one bounded HP row, including Safari's intrinsic sizing. */
@@ -14525,15 +14849,58 @@ body.battle-active.battle-raid #spectate:not(.pvp-spectator) {
   background: #101c35f2;
   border-color: #a1b9d866;
 }
-.raid-revive-head { display: flex; align-items: center; gap: 8px; font-size: 14px; line-height: 18px; }
-.raid-revive-head > svg { width: 18px; height: 18px; color: #83dfc7; flex: none; }
-.battle-raid .spectate-banner .raid-revive-head > b { display: inline; min-width: 0; flex: 1; }
-.raid-revive-head > span { color: #83dfc7; font-variant-numeric: tabular-nums; }
-.raid-revive-progress { height: 5px; border-radius: 4px; overflow: hidden; background: #53698555; margin: 7px 0; }
-.raid-revive-progress > i { display: block; height: 100%; background: #83dfc7; border-radius: inherit; }
-.raid-revive-instruction { margin: 0; color: #e6edf8; font-size: 12px; font-weight: 500; line-height: 16px; }
-.battle-raid .spectate-banner .raid-revive-cause { margin-top: 4px; color: #a9bad2; font-size: 11px; line-height: 14px; }
-body.battle-raid.raid-downed #mobile-controls .touch-buttons { visibility: hidden; pointer-events: none; }
+.raid-revive-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  line-height: 18px;
+}
+.raid-revive-head > svg {
+  width: 18px;
+  height: 18px;
+  color: #83dfc7;
+  flex: none;
+}
+.battle-raid .spectate-banner .raid-revive-head > b {
+  display: inline;
+  min-width: 0;
+  flex: 1;
+}
+.raid-revive-head > span {
+  color: #83dfc7;
+  font-variant-numeric: tabular-nums;
+}
+.raid-revive-progress {
+  height: 5px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: #53698555;
+  margin: 7px 0;
+}
+.raid-revive-progress > i {
+  display: block;
+  height: 100%;
+  background: #83dfc7;
+  border-radius: inherit;
+}
+.raid-revive-instruction {
+  margin: 0;
+  color: #e6edf8;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+}
+.battle-raid .spectate-banner .raid-revive-cause {
+  margin-top: 4px;
+  color: #a9bad2;
+  font-size: 11px;
+  line-height: 14px;
+}
+body.battle-raid.raid-downed #mobile-controls .touch-buttons {
+  visibility: hidden;
+  pointer-events: none;
+}
 
 /* The animated fighter (a canvas) lies over the artwork. */
 
@@ -14585,7 +14952,9 @@ body.battle-raid #battle #raid-hud#raid-hud .raid-boss-heading > b {
   color: #fff3d6;
   font: 700 17px/1.1 var(--display);
   letter-spacing: 0.14em;
-  text-shadow: 0 2px 6px #000d, 0 0 14px #ffb45a33;
+  text-shadow:
+    0 2px 6px #000d,
+    0 0 14px #ffb45a33;
 }
 body.battle-raid #battle #raid-hud#raid-hud .raid-boss-heading > span {
   grid-area: auto;
@@ -14608,7 +14977,10 @@ body.battle-raid #battle #raid-hud#raid-hud .raid-boss-phase {
   justify-self: start;
 }
 /* The framed bar (and each Storm Twin's). */
-body.battle-raid #battle #raid-hud#raid-hud :is(.raid-boss-health, .raid-twin-track) {
+body.battle-raid
+  #battle
+  #raid-hud#raid-hud
+  :is(.raid-boss-health, .raid-twin-track) {
   position: relative;
   height: 14px;
   margin: 0;
@@ -14623,7 +14995,11 @@ body.battle-raid #battle #raid-hud#raid-hud :is(.raid-boss-health, .raid-twin-tr
 body.battle-raid #battle #raid-hud#raid-hud .raid-boss-health {
   grid-area: health;
 }
-body.battle-raid #battle #raid-hud#raid-hud :is(.raid-boss-health, .raid-twin-track) > i {
+body.battle-raid
+  #battle
+  #raid-hud#raid-hud
+  :is(.raid-boss-health, .raid-twin-track)
+  > i {
   position: absolute;
   inset: 0 auto 0 0;
   display: block;
@@ -14635,7 +15011,11 @@ body.battle-raid #battle #raid-hud#raid-hud .raid-boss-trail {
   background: linear-gradient(180deg, #fff6dc, #ffd9a0);
   opacity: 0.85;
 }
-body.battle-raid #battle #raid-hud#raid-hud .raid-boss-health > .raid-boss-fill {
+body.battle-raid
+  #battle
+  #raid-hud#raid-hud
+  .raid-boss-health
+  > .raid-boss-fill {
   background: linear-gradient(180deg, #ff9a6a 0%, #e5483a 52%, #a3232c 100%);
   box-shadow: inset 0 1px 0 #ffffff55;
 }
@@ -14649,7 +15029,14 @@ body.battle-raid #battle #raid-hud#raid-hud .raid-twin-track > .raid-boss-fill {
   box-shadow: inset 0 1px 0 #ffffff55;
 }
 /* Text on a bar of any colour: a dark outline under the white. */
-body.battle-raid #battle #raid-hud#raid-hud :is(.raid-boss-pct, .raid-twin-bar > div:first-child b, .raid-twin-bar > div:first-child span) {
+body.battle-raid
+  #battle
+  #raid-hud#raid-hud
+  :is(
+    .raid-boss-pct,
+    .raid-twin-bar > div:first-child b,
+    .raid-twin-bar > div:first-child span
+  ) {
   -webkit-text-stroke: 2.5px #0a0710;
   paint-order: stroke fill;
 }
@@ -14662,7 +15049,9 @@ body.battle-raid #battle #raid-hud#raid-hud .raid-boss-pct {
   color: #fff;
   font: 700 10px/1 var(--body);
   font-variant-numeric: tabular-nums;
-  text-shadow: 0 1px 2px #000, 0 0 3px #000;
+  text-shadow:
+    0 1px 2px #000,
+    0 0 3px #000;
 }
 /* Rite marks at 67% and 33%: gold ticks with a small diamond. */
 body.battle-raid #battle #raid-hud#raid-hud .raid-health-mark {
@@ -14688,7 +15077,10 @@ body.battle-raid #battle #raid-hud#raid-hud .raid-health-mark::before {
   box-shadow: 0 0 0 1px #000a;
 }
 body.battle-raid #battle #raid-hud#raid-hud .raid-health-mark.is-passed,
-body.battle-raid #battle #raid-hud#raid-hud .raid-health-mark.is-passed::before {
+body.battle-raid
+  #battle
+  #raid-hud#raid-hud
+  .raid-health-mark.is-passed::before {
   background: #6c7489;
 }
 body.battle-raid #battle #raid-hud#raid-hud .raid-stagger {
@@ -14725,9 +15117,16 @@ body.battle-raid #battle #raid-hud#raid-hud .raid-twin-bar > div:first-child b {
   font: 700 10px/1 var(--body);
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  text-shadow: 0 1px 2px #000, 0 0 3px #000;
+  text-shadow:
+    0 1px 2px #000,
+    0 0 3px #000;
 }
-body.battle-raid #battle #raid-hud#raid-hud .raid-twin-bar > div:first-child span {
+body.battle-raid
+  #battle
+  #raid-hud#raid-hud
+  .raid-twin-bar
+  > div:first-child
+  span {
   color: #ffe9b0;
   font: 700 9px/1 var(--body);
   text-shadow: 0 1px 2px #000;
@@ -14774,12 +15173,19 @@ body.battle-raid.touch-mode #battle #raid-hud#raid-hud .raid-boss-heading > b {
   font-size: 12px;
   line-height: 12px;
 }
-body.battle-raid.touch-mode #battle #raid-hud#raid-hud .raid-boss-heading > span {
+body.battle-raid.touch-mode
+  #battle
+  #raid-hud#raid-hud
+  .raid-boss-heading
+  > span {
   padding: 0 6px;
   font-size: 8px;
   line-height: 10px;
 }
-body.battle-raid.touch-mode #battle #raid-hud#raid-hud :is(.raid-boss-health, .raid-twin-track) {
+body.battle-raid.touch-mode
+  #battle
+  #raid-hud#raid-hud
+  :is(.raid-boss-health, .raid-twin-track) {
   height: 10px;
 }
 body.battle-raid.touch-mode #battle #raid-hud#raid-hud .raid-stagger {
@@ -14794,10 +15200,20 @@ body.battle-raid.touch-mode #battle #raid-hud#raid-hud .raid-twin-stagger {
   z-index: 2;
 }
 body.battle-raid.touch-mode #battle #raid-hud#raid-hud .raid-boss-pct,
-body.battle-raid.touch-mode #battle #raid-hud#raid-hud .raid-twin-bar > div:first-child b {
+body.battle-raid.touch-mode
+  #battle
+  #raid-hud#raid-hud
+  .raid-twin-bar
+  > div:first-child
+  b {
   font-size: 8px;
 }
-body.battle-raid.touch-mode #battle #raid-hud#raid-hud .raid-twin-bar > div:first-child span {
+body.battle-raid.touch-mode
+  #battle
+  #raid-hud#raid-hud
+  .raid-twin-bar
+  > div:first-child
+  span {
   font-size: 7px;
 }
 body.battle-raid.touch-mode #battle #raid-hud#raid-hud .raid-callout {
@@ -14809,11 +15225,18 @@ body.battle-raid.touch-mode #battle #raid-hud#raid-hud .raid-callout {
   body.battle-raid.touch-mode #battle #raid-hud#raid-hud {
     row-gap: 2px;
   }
-  body.battle-raid.touch-mode #battle #raid-hud#raid-hud .raid-boss-heading > b {
+  body.battle-raid.touch-mode
+    #battle
+    #raid-hud#raid-hud
+    .raid-boss-heading
+    > b {
     font-size: 11px;
     line-height: 11px;
   }
-  body.battle-raid.touch-mode #battle #raid-hud#raid-hud :is(.raid-boss-health, .raid-twin-track) {
+  body.battle-raid.touch-mode
+    #battle
+    #raid-hud#raid-hud
+    :is(.raid-boss-health, .raid-twin-track) {
     height: 9px;
   }
   body.battle-raid.touch-mode #battle #raid-hud#raid-hud .raid-callout {
@@ -14874,7 +15297,9 @@ body.battle-raid.touch-mode #battle #raid-hud#raid-hud .raid-callout {
   border-radius: 999px;
   background: #0b1222e6;
   color: #d6deec;
-  font: 700 10px/14px "DM Sans", sans-serif;
+  font:
+    700 10px/14px "DM Sans",
+    sans-serif;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0;
   white-space: nowrap;
@@ -14905,12 +15330,17 @@ body.battle-raid.touch-mode #battle #raid-hud#raid-hud .raid-callout {
   z-index: 27;
   top: max(
     var(--target-row-top, calc(var(--safe-top, 0px) + 62px)),
-    calc(100dvh - var(--safe-bottom, 0px) - var(--combat-cluster-height, 192px) - 60px)
+    calc(
+      100dvh - var(--safe-bottom, 0px) - var(--combat-cluster-height, 192px) -
+        60px
+    )
   );
   right: calc(var(--safe-right, 0px) + 6px);
   display: flex;
   gap: 6px;
-  max-width: calc(100vw - var(--safe-left, 0px) - var(--safe-right, 0px) - 220px);
+  max-width: calc(
+    100vw - var(--safe-left, 0px) - var(--safe-right, 0px) - 220px
+  );
 }
 #target-picker button {
   display: flex;
@@ -14924,7 +15354,9 @@ body.battle-raid.touch-mode #battle #raid-hud#raid-hud .raid-callout {
   border: 1px solid #ff5d6c66;
   background: #14243bea;
   color: #f4efe2;
-  font: 600 12px/1 "DM Sans", sans-serif;
+  font:
+    600 12px/1 "DM Sans",
+    sans-serif;
   touch-action: manipulation;
 }
 #target-picker button > i {
@@ -15011,7 +15443,12 @@ body #arena-overlay .raid-draft .panel-actions .raid-rite-options > button {
   padding: 14px 14px 14px;
   gap: 0;
 }
-body #arena-overlay .raid-draft .panel-actions .raid-rite-options > button::before {
+body
+  #arena-overlay
+  .raid-draft
+  .panel-actions
+  .raid-rite-options
+  > button::before {
   content: none;
 }
 body #arena-overlay .raid-draft .panel-actions .raid-rite-copy {
@@ -15048,7 +15485,12 @@ body #arena-overlay .raid-draft .panel-actions .raid-rite-stats {
   width: auto;
   max-width: 100%;
 }
-body #arena-overlay .raid-draft .panel-actions .raid-rite-icon--buff .raid-rite-buff-stat {
+body
+  #arena-overlay
+  .raid-draft
+  .panel-actions
+  .raid-rite-icon--buff
+  .raid-rite-buff-stat {
   flex: 0 1 auto;
   min-width: 76px;
   padding: 4px 8px;
@@ -15094,7 +15536,12 @@ body #arena-overlay .raid-draft .panel-actions .raid-rite-trigger {
     flex-direction: row;
     gap: 4px;
   }
-  body #arena-overlay .raid-draft .panel-actions .raid-rite-icon--buff .raid-rite-buff-stat {
+  body
+    #arena-overlay
+    .raid-draft
+    .panel-actions
+    .raid-rite-icon--buff
+    .raid-rite-buff-stat {
     min-width: 0;
     padding: 2px 6px;
   }
@@ -15148,7 +15595,9 @@ body #arena-overlay .raid-draft .panel-actions .raid-rite-trigger {
 .skill-icon.skill-art {
   border-radius: 24%;
   filter: none;
-  box-shadow: 0 0 0 1px #ffffff1f, 0 2px 6px #0007;
+  box-shadow:
+    0 0 0 1px #ffffff1f,
+    0 2px 6px #0007;
   overflow: hidden;
 }
 .ability .skill-icon.skill-art,
@@ -15161,7 +15610,10 @@ body #arena-overlay .raid-draft .panel-actions .raid-rite-trigger {
 body.battle-active:not(.touch-mode) :is(.ability, .basic-hint) > span {
   position: static;
 }
-body.battle-active:not(.touch-mode) :is(.ability, .basic-hint) > span > .skill-icon.skill-art {
+body.battle-active:not(.touch-mode)
+  :is(.ability, .basic-hint)
+  > span
+  > .skill-icon.skill-art {
   position: absolute;
   inset: 3px;
   width: auto;
@@ -15171,7 +15623,10 @@ body.battle-active:not(.touch-mode) :is(.ability, .basic-hint) > span > .skill-i
   box-shadow: none;
   z-index: 0;
 }
-body.battle-active:not(.touch-mode) :is(.ability, .basic-hint) > span:has(> .skill-art) > small {
+body.battle-active:not(.touch-mode)
+  :is(.ability, .basic-hint)
+  > span:has(> .skill-art)
+  > small {
   position: relative;
   z-index: 2;
   margin-top: 24px;
@@ -15193,7 +15648,9 @@ body.battle-active:not(.touch-mode) :is(.ability, .basic-hint) > span:has(> .ski
 }
 .touch-buttons button:has(> .skill-art) :is(.touch-key, .touch-cooldown) {
   z-index: 2;
-  text-shadow: 0 1px 3px #000, 0 0 6px #000;
+  text-shadow:
+    0 1px 3px #000,
+    0 0 6px #000;
 }
 .touch-buttons button:has(> .skill-art) .touch-key {
   padding: 1px 5px;
@@ -15210,7 +15667,9 @@ body.battle-active:not(.touch-mode) :is(.ability, .basic-hint) > span:has(> .ski
 .touch-buttons .touch-ultimate.cooling .skill-icon {
   opacity: 0.5;
 }
-.touch-buttons button.touch-ultimate:is(.ult-ready, :not(.ult-ready)) .touch-cooldown {
+.touch-buttons
+  button.touch-ultimate:is(.ult-ready, :not(.ult-ready))
+  .touch-cooldown {
   position: absolute;
   inset: auto auto 1px 50%;
   display: block;
@@ -15223,7 +15682,9 @@ body.battle-active:not(.touch-mode) :is(.ability, .basic-hint) > span:has(> .ski
   transform: translateX(-50%);
   z-index: 2;
 }
-.touch-buttons button.touch-ultimate:is(.ult-ready, :not(.ult-ready)) .touch-cooldown:empty {
+.touch-buttons
+  button.touch-ultimate:is(.ult-ready, :not(.ult-ready))
+  .touch-cooldown:empty {
   display: none;
 }
 
@@ -15246,7 +15707,9 @@ body.battle-active:not(.touch-mode) :is(.ability, .basic-hint) > span:has(> .ski
    smaller, more specific font sizes, so this last rule wins over all of them on
    touch screens. Checked by tests/visual/input-zoom.spec.ts. */
 @media (pointer: coarse) {
-  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not(
+      [type="color"]
+    ),
   select,
   textarea {
     font-size: max(16px, 1em) !important;

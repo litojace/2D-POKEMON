@@ -31,15 +31,15 @@ The full list, with later decisions, is in §12.
 - Every boss teaches a **different kind of teamwork**, not a reskin of the
   same fight:
 
-| Day | Boss | Element | Teamwork it asks for | Difficulty |
-|---|---|---|---|---|
-| Sat | Grumblecrag (existing) | Earth | Baiting and stacking | ★ |
-| Fri | Tidewyrm | Water | Sharing safe ground, rescuing a trapped ally | ★★ |
-| Mon | Gloomshade | Shadow | Reading tells, spreading out | ★★ |
-| Wed | Somnara | Psychic | Calling out what only one of you can see | ★★ |
-| Sun | Prismatail | Light | Forming a relay chain | ★★★ |
-| Tue | Emberwing | Fire | Being in several places at once | ★★★ |
-| Thu | Storm Twins | Electric | Pairing up, timing two kills | ★★★ |
+| Day | Boss                   | Element  | Teamwork it asks for                         | Difficulty |
+| --- | ---------------------- | -------- | -------------------------------------------- | ---------- |
+| Sat | Grumblecrag (existing) | Earth    | Baiting and stacking                         | ★          |
+| Fri | Tidewyrm               | Water    | Sharing safe ground, rescuing a trapped ally | ★★         |
+| Mon | Gloomshade             | Shadow   | Reading tells, spreading out                 | ★★         |
+| Wed | Somnara                | Psychic  | Calling out what only one of you can see     | ★★         |
+| Sun | Prismatail             | Light    | Forming a relay chain                        | ★★★        |
+| Tue | Emberwing              | Fire     | Being in several places at once              | ★★★        |
+| Thu | Storm Twins            | Electric | Pairing up, timing two kills                 | ★★★        |
 
 The days follow the old planet names of the week: Sun's day for light,
 Moon's day for shadow, Mars (Tuesday) for fire, Mercury (Wednesday) for the
@@ -55,7 +55,7 @@ for stone.
 
 ## 2. The Raid Hub
 
-**Entry:** choosing *Boss Raid* on the Play panel opens the Hub instead of
+**Entry:** choosing _Boss Raid_ on the Play panel opens the Hub instead of
 going straight to a room.
 
 **Hub page, top to bottom**
@@ -67,8 +67,8 @@ going straight to a room.
    - Past days you cleared get a check mark; missed days are dimmed.
    - Tapping a tile opens that boss.
 3. **Raid of the Day card:** today's boss, its trait, Peril 2, today's board
-   (top 10 per party size), a countdown to the next boss, and *Raid today's
-   boss*.
+   (top 10 per party size), a countdown to the next boss, and _Raid today's
+   boss_.
 4. **Boss cards** for all seven, in a grid (one column on phones, swipeable
    like the champion roster). Each card shows:
    - Boss art (idle animation), element chip and its day.
@@ -90,20 +90,20 @@ going straight to a room.
 1. **Overview:** a flavour blurb, the three chapters and their goals, an
    illustration of the signature mechanic, and the champion tricks that
    apply (§6).
-2. **Attacks:** every attack with its warning shape, a tip, and *Practice
-   this*.
+2. **Attacks:** every attack with its warning shape, a tip, and _Practice
+   this_.
 3. **Rewards:** the full ladder with exact progress, equip buttons, and a
    preview of each cosmetic on your current champion.
 4. **Records:** best time per party size, clears per Peril, today's board
    (if it's that boss's day), and recent runs.
 
-**Actions:** *Create raid room* (boss and Peril chosen here), *Join with
-code*, *Play solo now*.
+**Actions:** _Create raid room_ (boss and Peril chosen here), _Join with
+code_, _Play solo now_.
 
 - Room codes carry the boss, so friends who join land in the right fight.
 - The host gets a boss switcher in the raid lobby; changing it un-readies
   everyone, like party rules do now.
-- The Bestiary button becomes *Raid Hub*. Profile, results and lobby links
+- The Bestiary button becomes _Raid Hub_. Profile, results and lobby links
   open the Hub on the relevant boss.
 
 ### 2.1 Raid of the Day (replaces Raid of the Week)
@@ -118,8 +118,8 @@ code*, *Play solo now*.
 - Open to anyone who has cleared Grumblecrag, even without that boss's
   Peril 2 unlock (like the weekly works now). Saturday (Grumblecrag) is
   open to everyone.
-- **Grand Tour:** clear each day's boss *on its day*, all seven within one
-  Sunday–Saturday week. The reward is the *Seven Suns* victory (§7). The
+- **Grand Tour:** clear each day's boss _on its day_, all seven within one
+  Sunday–Saturday week. The reward is the _Seven Suns_ victory (§7). The
   Hub shows the tour as seven checks.
 - **Until all seven bosses exist:** the days of unbuilt bosses feature the
   built ones in turn, and the Grand Tour starts once all seven are out.
@@ -171,7 +171,7 @@ eyes. It loops through ring-shaped splashes as it moves.
 
 **Arena:** the Lagoon Court, a shallow pool floor with **4 raised islands**
 (walkable platforms, about 150 px across). They work like Grumblecrag's
-pillars, but you stand *on* them instead of behind them.
+pillars, but you stand _on_ them instead of behind them.
 
 **Signature: Strand it.** Tidewyrm dives, and a ripple follows the marked
 raider. When the ripple locks, it surfaces there.
@@ -184,14 +184,14 @@ raider. When the ripple locks, it surfaces there.
 
 **Health:** 1350, +850 per extra raider.
 
-| Attack | Warning | How to beat it | Dmg |
-|---|---|---|---|
-| **Dive & Surface** | Ripple follows one raider for 1.4 s, then locks for 0.8 s | Lead it onto an island, then step off | 26 (splash ring r 110) |
-| **Tidal Wave** | A band sweeps across the arena from one edge | Low wave (ch. 1): jump it. High wave (ch. 2+): be on an island | 22 |
-| **Bubble Barrage** | 7–9 slow bubbles in a fan | Dodge or pop them; a hit roots you 0.8 s | 10 each |
-| **High Tide** (ch. 2+) | The water edge glows, then the floor floods for 5 s | Get on an island. Islands fit 2 comfortably; a third raider gets pushed off the edge | 7/s in water, +slow |
-| **Undertow** (ch. 2+) | A whirlpool at the centre pulls everyone in for 3 s | Dash outward; touching the centre hurts | 24 at centre |
-| **Bubble Prison** (ch. 2+) | One raider is sealed in a bubble that drifts toward the boss's mouth for 6 s | Teammates pop it (3 hits). Solo: mash attack to break out (8 presses). Reaching the mouth downs you | — |
+| Attack                     | Warning                                                                      | How to beat it                                                                                      | Dmg                    |
+| -------------------------- | ---------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | ---------------------- |
+| **Dive & Surface**         | Ripple follows one raider for 1.4 s, then locks for 0.8 s                    | Lead it onto an island, then step off                                                               | 26 (splash ring r 110) |
+| **Tidal Wave**             | A band sweeps across the arena from one edge                                 | Low wave (ch. 1): jump it. High wave (ch. 2+): be on an island                                      | 22                     |
+| **Bubble Barrage**         | 7–9 slow bubbles in a fan                                                    | Dodge or pop them; a hit roots you 0.8 s                                                            | 10 each                |
+| **High Tide** (ch. 2+)     | The water edge glows, then the floor floods for 5 s                          | Get on an island. Islands fit 2 comfortably; a third raider gets pushed off the edge                | 7/s in water, +slow    |
+| **Undertow** (ch. 2+)      | A whirlpool at the centre pulls everyone in for 3 s                          | Dash outward; touching the centre hurts                                                             | 24 at centre           |
+| **Bubble Prison** (ch. 2+) | One raider is sealed in a bubble that drifts toward the boss's mouth for 6 s | Teammates pop it (3 hits). Solo: mash attack to break out (8 presses). Reaching the mouth downs you | —                      |
 
 **Chapters**
 
@@ -204,9 +204,9 @@ raider. When the ripple locks, it surfaces there.
 
 **Traits**
 
-- *Murky:* ripples are harder to see, but strands last 1 s longer.
-- *Rip Current:* stronger Undertow, but waves move slower.
-- *Spring Tide:* High Tide lasts longer, but islands are bigger.
+- _Murky:_ ripples are harder to see, but strands last 1 s longer.
+- _Rip Current:_ stronger Undertow, but waves move slower.
+- _Spring Tide:_ High Tide lasts longer, but islands are bigger.
 
 **Themed rite: Sure Footing.** Immune to Bubble Barrage roots; +15% speed
 while in water.
@@ -243,14 +243,14 @@ fully dark).
 **Health:** 1050, +1000 per extra raider (changed from 1300 + 870 after the
 bot check in §11.3).
 
-| Attack | Warning | How to beat it | Dmg |
-|---|---|---|---|
-| **Shadow Lunge** | A dark line from a shadow to one raider, 1.2 s | Sidestep. It comes from the nearest shadow, not the boss | 25 |
-| **Grasping Hands** | A checkerboard of tiles darkens | Stand on a lit tile. The pattern shifts on Peril 2+ | 20 |
-| **Lantern Snuff** | One lantern dims, then goes out | Hit it 2 times to relight. Unlit lanterns mean less light to find the real one | — |
+| Attack                      | Warning                                                                 | How to beat it                                                                              | Dmg |
+| --------------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | --- |
+| **Shadow Lunge**            | A dark line from a shadow to one raider, 1.2 s                          | Sidestep. It comes from the nearest shadow, not the boss                                    | 25  |
+| **Grasping Hands**          | A checkerboard of tiles darkens                                         | Stand on a lit tile. The pattern shifts on Peril 2+                                         | 20  |
+| **Lantern Snuff**           | One lantern dims, then goes out                                         | Hit it 2 times to relight. Unlit lanterns mean less light to find the real one              | —   |
 | **Creeping Curse** (ch. 2+) | A purple mark on one raider; it spreads to anyone within 120 px for 2 s | Spread out. 3 stacks = Haunted (5 dmg/s for 6 s). Stand in lantern light for 2 s to cleanse | 5/s |
-| **Mirror Split** (ch. 2+) | The boss blinks, then 3–4 copies appear | Find the shadow and the flickering crescent | — |
-| **Nightmare Pulse** | A dark ring expands from *every* copy, but only the real one's hurts | Jump the real ring. It also reveals which one is real | 24 |
+| **Mirror Split** (ch. 2+)   | The boss blinks, then 3–4 copies appear                                 | Find the shadow and the flickering crescent                                                 | —   |
+| **Nightmare Pulse**         | A dark ring expands from _every_ copy, but only the real one's hurts    | Jump the real ring. It also reveals which one is real                                       | 24  |
 
 **Chapters**
 
@@ -261,9 +261,9 @@ bot check in §11.3).
 
 **Traits**
 
-- *Moonlit:* brighter arena, but one extra decoy.
-- *Restless Spirits:* hands come more often, but curses spread slower.
-- *Hollow:* fewer decoys, but the real one's shadow is fainter.
+- _Moonlit:_ brighter arena, but one extra decoy.
+- _Restless Spirits:_ hands come more often, but curses spread slower.
+- _Hollow:_ fewer decoys, but the real one's shadow is fainter.
 
 **Themed rite: Lamplighter.** One hit relights a lantern, and standing in
 light heals 1%/s.
@@ -300,14 +300,14 @@ ground that slowly catches fire.
 **Health:** 1250, +830 per extra raider. Lower than the others because you
 get less time to hit it.
 
-| Attack | Warning | How to beat it | Dmg |
-|---|---|---|---|
-| **Dive Bomb** | A line marked from the air on one raider, 1.3 s | Sidestep. It leaves a burning line for 4 s | 26 |
-| **Ember Rain** | Many small circles, staggered | Keep moving | 14 each |
-| **Wing Gust** | An arrow cone; everyone in it gets pushed | Dash *into* the gust to hold ground. Don't get pushed into fire | 8 + push |
-| **Flame Ring** | A ring expands outward from the boss | Jump as the edge passes | 22 |
-| **Scorched Earth** (ch. 2+) | Glowing patches that grow every 10 s | Don't fight in them (6 dmg/s). They shrink when it's Grounded | 6/s |
-| **Heat Mark** (ch. 2+) | 1–3 raiders marked; each explodes after 3 s (r 140) | **Spread out**: anyone else in the blast takes it too. The opposite of the Shared Meteor | 30 |
+| Attack                      | Warning                                             | How to beat it                                                                           | Dmg      |
+| --------------------------- | --------------------------------------------------- | ---------------------------------------------------------------------------------------- | -------- |
+| **Dive Bomb**               | A line marked from the air on one raider, 1.3 s     | Sidestep. It leaves a burning line for 4 s                                               | 26       |
+| **Ember Rain**              | Many small circles, staggered                       | Keep moving                                                                              | 14 each  |
+| **Wing Gust**               | An arrow cone; everyone in it gets pushed           | Dash _into_ the gust to hold ground. Don't get pushed into fire                          | 8 + push |
+| **Flame Ring**              | A ring expands outward from the boss                | Jump as the edge passes                                                                  | 22       |
+| **Scorched Earth** (ch. 2+) | Glowing patches that grow every 10 s                | Don't fight in them (6 dmg/s). They shrink when it's Grounded                            | 6/s      |
+| **Heat Mark** (ch. 2+)      | 1–3 raiders marked; each explodes after 3 s (r 140) | **Spread out**: anyone else in the blast takes it too. The opposite of the Shared Meteor | 30       |
 
 **Chapters**
 
@@ -319,9 +319,9 @@ get less time to hit it.
 
 **Traits**
 
-- *Updraft:* longer flights, but Grounded lasts 2 s longer.
-- *Smouldering:* burning ground lingers, but less Ember Rain.
-- *Molting:* drops feathers that give 10 ultimate charge, but dives come
+- _Updraft:_ longer flights, but Grounded lasts 2 s longer.
+- _Smouldering:_ burning ground lingers, but less Ember Rain.
+- _Molting:_ drops feathers that give 10 ultimate charge, but dives come
   faster.
 
 **Themed rite: Fireproof.** Take 50% less damage from burning ground, and
@@ -359,14 +359,14 @@ redirect the beam.
 
 **Health:** 800 each (1600 total), +480 each per extra raider.
 
-| Attack | Warning | How to beat it | Dmg |
-|---|---|---|---|
-| **Link Beam** | The ribbon between them brightens, then sweeps as they move | Jump over it; never stand on the line between them | 20 |
-| **Chain Lightning** | One raider is marked; it jumps to anyone within 200 px | Spread out. Each jump does less | 24 → 16 → 10 |
-| **Static Field** | A crackling zone on the floor | Jump while crossing or avoid it; it slows | 5/s |
-| **Twin Rush** | Both dash toward each other along marked lanes, making an X | Leave both lanes | 26 |
-| **Polarity** (ch. 2+) | Every raider gets a + or − badge; it detonates after 4 s | Stand next to someone with the **opposite** sign to cancel. Same signs together take double damage | 28 |
-| **Thunderclap** | A ring around the twin with *less* health | Jump it | 22 |
+| Attack                | Warning                                                     | How to beat it                                                                                     | Dmg          |
+| --------------------- | ----------------------------------------------------------- | -------------------------------------------------------------------------------------------------- | ------------ |
+| **Link Beam**         | The ribbon between them brightens, then sweeps as they move | Jump over it; never stand on the line between them                                                 | 20           |
+| **Chain Lightning**   | One raider is marked; it jumps to anyone within 200 px      | Spread out. Each jump does less                                                                    | 24 → 16 → 10 |
+| **Static Field**      | A crackling zone on the floor                               | Jump while crossing or avoid it; it slows                                                          | 5/s          |
+| **Twin Rush**         | Both dash toward each other along marked lanes, making an X | Leave both lanes                                                                                   | 26           |
+| **Polarity** (ch. 2+) | Every raider gets a + or − badge; it detonates after 4 s    | Stand next to someone with the **opposite** sign to cancel. Same signs together take double damage | 28           |
+| **Thunderclap**       | A ring around the twin with _less_ health                   | Jump it                                                                                            | 22           |
 
 **Chapters** (based on combined health)
 
@@ -379,9 +379,9 @@ redirect the beam.
 
 **Traits**
 
-- *Bickering:* they drift apart more, but the beam does less damage.
-- *In Sync:* they attack together, but the kill window is 3 s longer.
-- *Overloaded:* more Static Fields, but stagger fills 20% faster.
+- _Bickering:_ they drift apart more, but the beam does less damage.
+- _In Sync:_ they attack together, but the kill window is 3 s longer.
+- _Overloaded:_ more Static Fields, but stagger fills 20% faster.
 
 **Themed rite: Grounded.** Chain Lightning never jumps from you, and a
 Polarity mismatch only does normal damage to you.
@@ -429,14 +429,14 @@ Star, Moon, Wave) and soft cloud floor.
 **Health:** 1050, +1000 per extra raider (changed from 1300 + 870 after the
 bot check in §11.3).
 
-| Attack | Warning | How to beat it | Dmg |
-|---|---|---|---|
-| **Lullaby Rings** | Soft rings ripple out from the whale | Each ring that touches you adds a Drowsy stack; 3 stacks = asleep for 2 s, unless a teammate taps you awake (any hit wakes you, harmlessly) | 6 + Drowsy |
-| **Tail Splash** | A wide rectangle beside the whale | Leave it | 26 |
-| **Dream Bubbles** | Floating orbs drift toward the nearest raider | Pop them (one hit) or outrun them; touching one adds Drowsy | Drowsy |
-| **Falling Stars** (ch. 2+) | A constellation flashes for 1.5 s, then stars land on its points | Remember the shape, then stand between the stars | 22 each |
-| **Whale Song** (ch. 2+) | A 4 s channel; the whole arena hurts except a moving Quiet Zone | **Everyone into the Quiet Zone**: a stack mechanic. It shrinks on higher Perils | 30 |
-| **Nightmare** | Only after a wrong rune | Get the order right | 18 |
+| Attack                     | Warning                                                          | How to beat it                                                                                                                              | Dmg        |
+| -------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| **Lullaby Rings**          | Soft rings ripple out from the whale                             | Each ring that touches you adds a Drowsy stack; 3 stacks = asleep for 2 s, unless a teammate taps you awake (any hit wakes you, harmlessly) | 6 + Drowsy |
+| **Tail Splash**            | A wide rectangle beside the whale                                | Leave it                                                                                                                                    | 26         |
+| **Dream Bubbles**          | Floating orbs drift toward the nearest raider                    | Pop them (one hit) or outrun them; touching one adds Drowsy                                                                                 | Drowsy     |
+| **Falling Stars** (ch. 2+) | A constellation flashes for 1.5 s, then stars land on its points | Remember the shape, then stand between the stars                                                                                            | 22 each    |
+| **Whale Song** (ch. 2+)    | A 4 s channel; the whole arena hurts except a moving Quiet Zone  | **Everyone into the Quiet Zone**: a stack mechanic. It shrinks on higher Perils                                                             | 30         |
+| **Nightmare**              | Only after a wrong rune                                          | Get the order right                                                                                                                         | 18         |
 
 **Chapters**
 
@@ -448,9 +448,9 @@ bot check in §11.3).
 
 **Traits**
 
-- *Deep Slumber:* longer sequences, but exposure lasts 2 s longer.
-- *Restless Dream:* more bubbles, but sequences are one rune shorter.
-- *Starry Night:* more Falling Stars, but a bigger Quiet Zone.
+- _Deep Slumber:_ longer sequences, but exposure lasts 2 s longer.
+- _Restless Dream:_ more bubbles, but sequences are one rune shorter.
+- _Starry Night:_ more Falling Stars, but a bigger Quiet Zone.
 
 **Themed rite: Lucid.** Immune to Drowsy from bubbles. You also see the
 first rune of every sequence, even when you're not the Dreamer.
@@ -465,6 +465,7 @@ first rune of every sequence, even when you're not the Dreamer.
 Sequence.
 
 **Engine note:**
+
 - The Dreamer-only sequence must be sent privately to that one player, not
   in the shared snapshot everyone receives, so others can't peek.
 - Drowsy is a new status type.
@@ -484,7 +485,7 @@ sunbeam, and **4 mirror posts**.
 - The crystal heart is shielded.
 - When the skylight opens, a sunbeam lands at one spot and shoots toward
   the **nearest raider** within 300 px.
-- A raider standing in a beam **passes it on** to the nearest *other*
+- A raider standing in a beam **passes it on** to the nearest _other_
   raider or mirror post within 300 px. The chain keeps going until it
   reaches the boss (within 260 px of it).
 - When it arrives, the shield shatters: **exposed** for 6 s.
@@ -494,14 +495,14 @@ sunbeam, and **4 mirror posts**.
 
 **Health:** 1350, +880 per extra raider.
 
-| Attack | Warning | How to beat it | Dmg |
-|---|---|---|---|
-| **Prism Lance** | A thin line locks onto one raider for 1.1 s | Step out of the line | 25 |
-| **Fan Display** | The tail opens into 6 coloured cones; the crest on its head glows **one colour** | Only cones of the crest's colour fire. Read the crest and stand in another colour | 24 |
-| **Glare** | The crest flashes white for 1 s | **Face away**: anyone aiming toward the boss when it flashes is blinded (screen whites out for 1.5 s) | — |
-| **Refraction** (ch. 2+) | Prism Lances bounce off mirror posts; the bounce lines are shown | Read the bounces, not just the first line | 25 |
-| **Halo Crush** (ch. 2+) | A ring of light closes in on one raider, with one gap | Dash out through the gap | 28 |
-| **Split Light** (ch. 3) | **Two** sunbeams at once | Both chains must reach the heart within 3 s of each other | — |
+| Attack                  | Warning                                                                          | How to beat it                                                                                        | Dmg |
+| ----------------------- | -------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | --- |
+| **Prism Lance**         | A thin line locks onto one raider for 1.1 s                                      | Step out of the line                                                                                  | 25  |
+| **Fan Display**         | The tail opens into 6 coloured cones; the crest on its head glows **one colour** | Only cones of the crest's colour fire. Read the crest and stand in another colour                     | 24  |
+| **Glare**               | The crest flashes white for 1 s                                                  | **Face away**: anyone aiming toward the boss when it flashes is blinded (screen whites out for 1.5 s) | —   |
+| **Refraction** (ch. 2+) | Prism Lances bounce off mirror posts; the bounce lines are shown                 | Read the bounces, not just the first line                                                             | 25  |
+| **Halo Crush** (ch. 2+) | A ring of light closes in on one raider, with one gap                            | Dash out through the gap                                                                              | 28  |
+| **Split Light** (ch. 3) | **Two** sunbeams at once                                                         | Both chains must reach the heart within 3 s of each other                                             | —   |
 
 **Chapters**
 
@@ -514,9 +515,9 @@ sunbeam, and **4 mirror posts**.
 
 **Traits**
 
-- *Dazzling:* more Glare, but relay range is +60.
-- *Overcast:* a dimmer beam needs one more link, but fewer lances.
-- *Kaleidoscope:* the fan has 8 cones, but the shield breaks for 1 s
+- _Dazzling:_ more Glare, but relay range is +60.
+- _Overcast:_ a dimmer beam needs one more link, but fewer lances.
+- _Kaleidoscope:_ the fan has 8 cones, but the shield breaks for 1 s
   longer.
 
 **Themed rite: Polished.** Holding a beam doesn't hurt you, and your relay
@@ -532,9 +533,10 @@ range is +60.
 Relay.
 
 **Engine note:**
+
 - Beam chains are line-segment geometry rebuilt each tick, a new system.
 - "Facing" uses the existing aim direction.
-- On touch, aim follows the opponent, so Glare must turn auto-aim *away*
+- On touch, aim follows the opponent, so Glare must turn auto-aim _away_
   from the boss during the flash. Otherwise touch players can't dodge it.
   This needs testing on phones.
 
@@ -549,6 +551,7 @@ are listed per boss in `RAID_BOSS_PERKS` (`packages/shared/src/raid.ts`), and
 the Raid Hub's guide and the raid briefing read them from there.
 
 **Voltkit** (3)
+
 - **Tidewyrm:** Static Lance on a Stranded boss adds +15 stagger (water
   conducts).
 - **Gloomshade:** Ball Lightning's burst lights the area for 3 s and shows
@@ -556,48 +559,56 @@ the Raid Hub's guide and the raid briefing read them from there.
 - **Storm Twins:** absorbs Chain Lightning: no jump, +15 ultimate charge.
 
 **Cindrake** (4)
+
 - **Tidewyrm:** Magma Bomb pops a Bubble Prison in one hit.
 - **Emberwing:** Heat Cracks lights a brazier from range.
 - **Somnara:** Crest Flare wakes sleeping allies in its cone at once.
 - **Prismatail:** Sunfire Pillar counts as a relay point for 4 s.
 
 **Tidefin** (3)
+
 - **Tidewyrm:** Tide Double's double can carry the dive ripple.
 - **Emberwing:** Eddy puts out burning ground where it lands.
 - **Somnara:** Tide Double's double can step on a rune pad.
 
 **Auralynx** (3)
+
 - **Grumblecrag:** Facet Guard blocks the volley.
 - **Emberwing:** Facet Guard reflects a Dive Bomb: +20 stagger.
 - **Storm Twins:** Facet Guard reflects the Link Beam into a twin: +20
   stagger.
 
 **Lumoth** (4)
+
 - **Grumblecrag:** Kindle fills half a revive.
 - **Gloomshade:** Radiant Flare relights lanterns nearby and cleanses
   curse.
 - **Emberwing:** Wing Dust hits an airborne boss at full damage.
-- **Prismatail:** Radiant Flare relays a beam it touches to *every* raider
+- **Prismatail:** Radiant Flare relays a beam it touches to _every_ raider
   in range at once.
 
 **Mystowl** (4)
+
 - **Grumblecrag:** Wing Cloak splits the meteor.
 - **Gloomshade:** Third-Eye Ray passes through decoys and marks the real one.
 - **Somnara:** Silent Swoop shows the current sequence to the whole team.
 - **Prismatail:** Wing Cloak blocks Glare for allies inside it.
 
 **Terradon** (3)
+
 - **Grumblecrag:** its shell stops a charge.
 - **Tidewyrm:** Tremor pops all bubbles nearby and frees a Prison.
 - **Storm Twins:** Shell Up's closed shell is immune to Polarity.
 
 **Duskveil** (4)
+
 - **Gloomshade:** Haunted Lantern hung by the real one reveals it for 6 s.
 - **Storm Twins:** Void Orb pulls one twin toward the other.
 - **Somnara:** Shade Crawl leaves a trail that blocks Dream Bubbles.
 - **Prismatail:** Void Orb swallows a Prism Lance.
 
 **Coilemur** (3)
+
 - **Grumblecrag:** Magnet Lash drags a fallen ally it passes over (before it
   reaches the boss) to Coilemur's side.
 - **Tidewyrm:** Magnet Lash yanks a raider out of a Bubble Prison.
@@ -605,12 +616,14 @@ the Raid Hub's guide and the raid briefing read them from there.
   toward Coilemur, shortening the Link Beam.
 
 **Pyranda** (3)
+
 - **Tidewyrm:** Chestnut Storm pops every bubble where it lands, a Bubble
   Prison included.
 - **Gloomshade:** Chestnut Mortar landing on a dark lantern relights it.
 - **Emberwing:** Chestnut Mortar lights a brazier it lands on, from range.
 
 **Glacelle** (3)
+
 - **Tidewyrm:** Frost Bloom on a stranded boss keeps it there 2 s longer.
 - **Emberwing:** Frost Bloom puts out fire patches and dive trails in its
   area.
@@ -618,6 +631,7 @@ the Raid Hub's guide and the raid briefing read them from there.
   Pillar).
 
 **Halcyra** (3)
+
 - **Emberwing:** Aura Quill and Focus Shot hit an airborne boss at full
   damage.
 - **Storm Twins:** Focus Shot pierces the first twin and hits the other if
@@ -625,12 +639,14 @@ the Raid Hub's guide and the raid briefing read them from there.
 - **Prismatail:** Skyline Lance cuts every Prism Lance lane it crosses.
 
 **Sunbara** (3)
+
 - **Grumblecrag:** a fallen ally inside Warm Spring is revived twice as fast.
 - **Gloomshade:** Warm Spring and Sanctuary cleanse curses from allies inside.
 - **Somnara:** Warm Spring wakes sleepers inside it (as any ally's zone does)
   and keeps them from going Drowsy.
 
 **Astrabun** (3)
+
 - **Grumblecrag:** Mochi Pound adds +15 stagger.
 - **Emberwing:** Full Moon's crash hits an airborne boss at full damage, +20
   stagger.
@@ -638,20 +654,23 @@ the Raid Hub's guide and the raid briefing read them from there.
   burst of one, counts as stepping on it (once).
 
 **Wombolder** (3)
+
 - **Grumblecrag:** Burrow Rush or Landslide driving the boss into a pillar
   (the engine's wall-slam check) adds +25 stagger.
 - **Gloomshade:** Landslide on the real one shakes off every copy until it
   splits again.
-- **Storm Twins:** Rump Block stops Twin Rush completely: +15 stagger to that
-  twin.
+- **Storm Twins:** braced by Grudge Thump, Wombolder stops Twin Rush
+  completely: +15 stagger to that twin.
 
 **Shadopus** (3)
+
 - **Gloomshade:** while stealthed in Ink Cloud, attacks never pick it as their
   target (alone and hidden, Gloomshade waits).
 - **Somnara:** immune to Drowsy and sleep while stealthed.
 - **Prismatail:** an Ink Jet hit blots out Glare for 3 s.
 
 **Pangrove** (3)
+
 - **Grumblecrag:** curled into a ball (Curl & Roll, or flying as a Pinball),
   Rock Volley glances off it.
 - **Tidewyrm:** Tongue Grapple on a stranded boss adds +15 stagger (like
@@ -660,6 +679,7 @@ the Raid Hub's guide and the raid briefing read them from there.
   Terradon's closed shell).
 
 **Mossloth** (3)
+
 - **Tidewyrm:** a seedling going off by a stranded boss keeps it there 1 s
   longer.
 - **Emberwing:** Overgrowth's vines smother fire patches and dive trails all
@@ -670,7 +690,7 @@ the Raid Hub's guide and the raid briefing read them from there.
 Grumblecrag, Tidewyrm and Emberwing have nine champion tricks; Gloomshade,
 Storm Twins and Somnara have eight, Prismatail seven. Only Auralynx's Facet
 Guard reflects Rock Volley; Pangrove curled into a ball lets it glance off
-(Wombolder's Rump Block is also a counter, but has its own trick on the
+(Wombolder's Grudge Thump braces it instead, and has its own trick on the
 Storm Twins). Rooted on a boss works like a stun: 3 stagger, no root.
 
 ## 7. Rewards
@@ -679,31 +699,31 @@ Storm Twins). Rooted on a boss works like a stun: 3 stagger, no root.
 
 **Five boss-agnostic slots:** you can mix pieces from any boss.
 
-| Slot | What it is |
-|---|---|
-| Skin | Colours or a textured look on your fighter |
-| Aura | A ring or effect beneath your fighter |
-| Entrance | How you arrive each round |
-| Frame | Your portrait border in lobbies and results |
-| **Victory** *(new)* | A 2-second celebration when you win a round, a match or a raid. It also plays on your results card and in the menu preview |
+| Slot                | What it is                                                                                                                 |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Skin                | Colours or a textured look on your fighter                                                                                 |
+| Aura                | A ring or effect beneath your fighter                                                                                      |
+| Entrance            | How you arrive each round                                                                                                  |
+| Frame               | Your portrait border in lobbies and results                                                                                |
+| **Victory** _(new)_ | A 2-second celebration when you win a round, a match or a raid. It also plays on your results card and in the menu preview |
 
 The Rewards tab previews every item on your current champion before you
 equip it. Titles keep using the profile title picker.
 
 ### 7.2 Per-boss ladder (the same shape on every boss)
 
-| Goal | Reward |
-|---|---|
-| First clear | Title |
-| 5 clears | Colours (skin) |
-| 10 clears | Textured skin |
-| Peril 2 clear | Entrance |
-| Peril 3 clear | Mastery title + frame |
-| Peril 3, no downs | Aura |
-| **Feat** (a skill challenge) | **Victory** |
-| **Speed** (Peril 2 under a target time, per party size) | Title |
-| **Solo Peril 3** | "Lone …" title |
-| **Lifetime stat** (wins and losses) | Title |
+| Goal                                                    | Reward                |
+| ------------------------------------------------------- | --------------------- |
+| First clear                                             | Title                 |
+| 5 clears                                                | Colours (skin)        |
+| 10 clears                                               | Textured skin         |
+| Peril 2 clear                                           | Entrance              |
+| Peril 3 clear                                           | Mastery title + frame |
+| Peril 3, no downs                                       | Aura                  |
+| **Feat** (a skill challenge)                            | **Victory**           |
+| **Speed** (Peril 2 under a target time, per party size) | Title                 |
+| **Solo Peril 3**                                        | "Lone …" title        |
+| **Lifetime stat** (wins and losses)                     | Title                 |
 
 **Per boss**
 
@@ -711,73 +731,73 @@ equip it. Titles keep using the profile title picker.
   - Existing: Cragbreaker, Cragbound colours, Cragstone skin, Mountainborn
     entrance, Mountain Conqueror + Conqueror frame, Mountain aura, Gilded
     Cragbreaker, Pillar Breaker, Mountain Guardian.
-  - **New:** *Rockslide Flex* victory (feat: every charge in a run hits a
-    pillar), *Avalanche* title (Peril 2 solo under 3:30), *Lone
-    Mountain* (solo Peril 3).
+  - **New:** _Rockslide Flex_ victory (feat: every charge in a run hits a
+    pillar), _Avalanche_ title (Peril 2 solo under 3:30), _Lone
+    Mountain_ (solo Peril 3).
 - **Tidewyrm**
-  - Titles: *Tidebreaker* (first clear), *Leviathan's Bane* (Peril 3).
+  - Titles: _Tidebreaker_ (first clear), _Leviathan's Bane_ (Peril 3).
   - Cosmetics: Seafoam colours, Pearlscale skin, Riptide entrance, Reef
     frame, Tidal aura.
   - **Splashdown** victory (feat: strand it 4 times in one run).
-  - Lifetime: 30 strands, *Shipwright*.
+  - Lifetime: 30 strands, _Shipwright_.
 - **Gloomshade**
-  - Titles: *Lightbringer* (first clear), *Night's End* (Peril 3).
+  - Titles: _Lightbringer_ (first clear), _Night's End_ (Peril 3).
   - Cosmetics: Dusk colours, Moonlit skin, Shadowstep entrance, Crescent
     frame, Nightmote aura.
   - **Crescent Bow** victory (feat: nobody hits a decoy).
-  - Lifetime: relight 50 lanterns, *Lamplighter*.
+  - Lifetime: relight 50 lanterns, _Lamplighter_.
 - **Somnara**
-  - Titles: *Dreamwaker* (first clear), *Lucid Legend* (Peril 3).
+  - Titles: _Dreamwaker_ (first clear), _Lucid Legend_ (Peril 3).
   - Cosmetics: Twilight colours, Starlit skin (twinkling flecks), Dreamdrift
     entrance (bubbles), Moonglass frame, Lullaby aura (floating notes).
   - **Sweet Dreams** victory (feat: a run with no wrong runes).
-  - Lifetime: 60 runes stepped, *Dream Weaver*.
+  - Lifetime: 60 runes stepped, _Dream Weaver_.
 - **Prismatail**
-  - Titles: *Prismbreaker* (first clear), *Sunshatter* (Peril 3).
+  - Titles: _Prismbreaker_ (first clear), _Sunshatter_ (Peril 3).
   - Cosmetics: Dawn colours, Prismatic skin (rainbow edges), Sunburst
     entrance, Stained-glass frame, Halo aura.
   - **Rainbow Fan** victory (feat: shatter the shield within 8 s of the
     beam, 3 times).
-  - Lifetime: 80 relays, *Lightkeeper*.
+  - Lifetime: 80 relays, _Lightkeeper_.
 - **Emberwing**
-  - Titles: *Skyfeller* (first clear), *Wingbreaker* (Peril 3).
+  - Titles: _Skyfeller_ (first clear), _Wingbreaker_ (Peril 3).
   - Cosmetics: Ember colours, Cinderplume skin, Firefall entrance, Brazier
     frame, Ember aura.
   - **Feather Fall** victory (feat: ground it within 20 s of take-off, 3
     times).
-  - Lifetime: light 60 braziers, *Torchbearer*.
+  - Lifetime: light 60 braziers, _Torchbearer_.
 - **Storm Twins**
-  - Titles: *Stormsplitter* (first clear), *Eye of the Storm* (Peril 3).
+  - Titles: _Stormsplitter_ (first clear), _Eye of the Storm_ (Peril 3).
   - Cosmetics: Static colours, Thundercell skin, Lightning-strike entrance,
     Conductor frame, Spark aura.
   - **Twin Spark** victory (feat: both twins down within 2 s of each
     other).
-  - Lifetime: 40 polarity pairs, *Perfect Pair*.
+  - Lifetime: 40 polarity pairs, _Perfect Pair_.
 
 Each speed target is set after the first week of real clear times. A
 guessed number would be either trivial or impossible.
 
 ### 7.3 Cross-boss and daily rewards
 
-| Goal | Reward |
-|---|---|
-| Clear all 7 bosses (any Peril) | **Raid Veteran** title |
-| Clear all 7 on Peril 3 | **Hall of Bosses** frame (cycles each boss's crest) |
-| Peril 3 no-downs on all 7 | **Unbroken** aura (prismatic) |
-| 100 total raid clears | **Boss Hunter** title |
-| **Grand Tour**: each day's boss on its day, all 7 in one week | **Seven Suns** victory (seven elemental orbs) |
+| Goal                                                          | Reward                                              |
+| ------------------------------------------------------------- | --------------------------------------------------- |
+| Clear all 7 bosses (any Peril)                                | **Raid Veteran** title                              |
+| Clear all 7 on Peril 3                                        | **Hall of Bosses** frame (cycles each boss's crest) |
+| Peril 3 no-downs on all 7                                     | **Unbroken** aura (prismatic)                       |
+| 100 total raid clears                                         | **Boss Hunter** title                               |
+| **Grand Tour**: each day's boss on its day, all 7 in one week | **Seven Suns** victory (seven elemental orbs)       |
 
 Days with a Raid of the Day clear are shown as a streak on your profile;
 the streak is a record, not a reward.
 
 **Totals**
 
-| Group | Count |
-|---|---|
-| 6 new bosses × 11 | 66 |
-| Grumblecrag (10 today + 3 new) | 13 |
-| Cross-boss and Grand Tour | 5 |
-| **Total** | **84** |
+| Group                          | Count  |
+| ------------------------------ | ------ |
+| 6 new bosses × 11              | 66     |
+| Grumblecrag (10 today + 3 new) | 13     |
+| Cross-boss and Grand Tour      | 5      |
+| **Total**                      | **84** |
 
 ## 8. Engineering plan
 
@@ -829,7 +849,7 @@ the streak is a record, not a reward.
 **Database (migration 009)**
 
 - **Rewards table:** `arena_raid_rewards(id, boss, slot, kind, rule jsonb,
-  name, description)` lists every reward and its rule. Rule kinds:
+name, description)` lists every reward and its rule. Rule kinds:
   - `clears >= n`
   - `peril >= n`
   - `flawless peril`
@@ -842,6 +862,7 @@ the streak is a record, not a reward.
 
   Progress and unlocks are computed from this table, so each new boss
   needs **rows, not new SQL functions**.
+
 - `arena_raid_players.feats jsonb` stores per-boss stats such as strands,
   lanterns, runes, relays, braziers and pairs.
 - `arena_raid_runs` gains `daily boolean` and `day date`. The server
@@ -855,6 +876,7 @@ the streak is a record, not a reward.
 - Existing Grumblecrag rows keep working.
 
 **Tests per boss:**
+
 - attack patterns per Peril and party size
 - the signature rule (strand / expose / sequence / relay / ground / kill
   window)
@@ -865,15 +887,15 @@ the streak is a record, not a reward.
 
 ## 9. Build order and size
 
-| Step | What | Size |
-|---|---|---|
-| 1 | Raid Hub, week strip, Raid of the Day, boss registry refactor, Victory slot, migration 009, Grumblecrag's new rewards and the Peril 3 solo change | Large |
-| 2 | **Tidewyrm**: reuses the bait-to-a-feature idea, the gentlest new boss | Large |
-| 3 | **Gloomshade**: reveal and curse systems, no engine changes | Large |
-| 4 | **Somnara**: private Dreamer info, Drowsy, rune pads | Large |
-| 5 | **Prismatail**: relay beams, facing check | Large |
-| 6 | **Emberwing**: the airborne state | Large |
-| 7 | **Storm Twins**: two boss entities | Largest |
+| Step | What                                                                                                                                              | Size    |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| 1    | Raid Hub, week strip, Raid of the Day, boss registry refactor, Victory slot, migration 009, Grumblecrag's new rewards and the Peril 3 solo change | Large   |
+| 2    | **Tidewyrm**: reuses the bait-to-a-feature idea, the gentlest new boss                                                                            | Large   |
+| 3    | **Gloomshade**: reveal and curse systems, no engine changes                                                                                       | Large   |
+| 4    | **Somnara**: private Dreamer info, Drowsy, rune pads                                                                                              | Large   |
+| 5    | **Prismatail**: relay beams, facing check                                                                                                         | Large   |
+| 6    | **Emberwing**: the airborne state                                                                                                                 | Large   |
+| 7    | **Storm Twins**: two boss entities                                                                                                                | Largest |
 
 Each step is played with friends before the next starts; the balance data
 (clears, time, downs by attack) decides the tuning. Until all seven exist,
@@ -893,14 +915,14 @@ the Raid of the Day rotates through the bosses that are built.
 
 ### 10.2 Earning coins
 
-| Source | Coins |
-|---|---|
-| Each daily mission (3 per day) | 40 / 70 / 120 (easy / medium / hard) |
-| All 3 daily missions done | +50 bonus |
-| Raid clear | 30 at Peril 1, 45 at Peril 2, 60 at Peril 3 |
-| Raid of the Day, first clear today | +50 |
-| First raid reward of a new kind (title, skin…) | +25 |
-| PvP match | 15 for a win, 6 for a loss |
+| Source                                         | Coins                                       |
+| ---------------------------------------------- | ------------------------------------------- |
+| Each daily mission (3 per day)                 | 40 / 70 / 120 (easy / medium / hard)        |
+| All 3 daily missions done                      | +50 bonus                                   |
+| Raid clear                                     | 30 at Peril 1, 45 at Peril 2, 60 at Peril 3 |
+| Raid of the Day, first clear today             | +50                                         |
+| First raid reward of a new kind (title, skin…) | +25                                         |
+| PvP match                                      | 15 for a win, 6 for a loss                  |
 
 ### 10.3 Limits
 
@@ -916,11 +938,11 @@ the Raid of the Day rotates through the bosses that are built.
 
 Rough pace: a typical evening earns about **500 coins**:
 
-| Source | Coins |
-|---|---|
-| 3 missions (40 + 70 + 120) + 50 bonus | ~280 |
-| 3 Peril 2 raid clears + Raid of the Day bonus | ~185 |
-| 4 PvP matches | ~40 |
+| Source                                        | Coins |
+| --------------------------------------------- | ----- |
+| 3 missions (40 + 70 + 120) + 50 bonus         | ~280  |
+| 3 Peril 2 raid clears + Raid of the Day bonus | ~185  |
+| 4 PvP matches                                 | ~40   |
 
 At the prices below (§10.5.1), that works out to:
 
@@ -957,27 +979,27 @@ At the prices below (§10.5.1), that works out to:
 
 **Update (Oct 18, migration 014): missions that fit how you play.**
 
-- Missions have their **own screen** (the *Daily missions* card on the
+- Missions have their **own screen** (the _Daily missions_ card on the
   home screen), no longer a Shop tab.
-- Every mission is marked **solo** or **with others**. With others: *Win
-  2 / 5 matches against players*, *Help revive 3 allies*, *Win a 2v2
-  without being knocked out*, *Clear a raid with a friend*, *Win a
-  free-for-all* (bot matches are always 1-against-1).
+- Every mission is marked **solo** or **with others**. With others: _Win
+  2 / 5 matches against players_, _Help revive 3 allies_, _Win a 2v2
+  without being knocked out_, _Clear a raid with a friend_, _Win a
+  free-for-all_ (bot matches are always 1-against-1).
 - A player who hasn't played a match against people in the past 7 days is
   **only given solo missions**. Everyone else draws from the full pool. The
   picks are still seeded by day, so friends who play the same way still
   share missions.
-- Re-rolling a *with others* mission always gives a solo one (the button
-  says *Swap for a solo mission*).
-- The pool grew from 15 to 30 (24 solo). New: *Win a match*, *Finish a
-  raid, win or lose*, *Play for 10 / 30 minutes*, *Win 3 matches against
-  bots*, *Win as Voltkit or Auralynx*, *Win as Mystowl or Duskveil*, *Clear
-  2 / 3 raids*, *Clear a raid on your own* (and on Peril 2+), *Use your
-  ultimate 8 times*, *Beat 3 Hard bots*, plus the two group missions above.
+- Re-rolling a _with others_ mission always gives a solo one (the button
+  says _Swap for a solo mission_).
+- The pool grew from 15 to 30 (24 solo). New: _Win a match_, _Finish a
+  raid, win or lose_, _Play for 10 / 30 minutes_, _Win 3 matches against
+  bots_, _Win as Voltkit or Auralynx_, _Win as Mystowl or Duskveil_, _Clear
+  2 / 3 raids_, _Clear a raid on your own_ (and on Peril 2+), _Use your
+  ultimate 8 times_, _Beat 3 Hard bots_, plus the two group missions above.
 
 ### 10.5 The shop
 
-**Where:** a *Shop* item in the menu (with an icon), and a coin balance
+**Where:** a _Shop_ item in the menu (with an icon), and a coin balance
 next to your name in the header.
 
 **Layout**
@@ -991,8 +1013,8 @@ next to your name in the header.
 - **Catalog:** everything for sale, filtered by champion, rarity,
   collection and slot.
 - **Previews:** every item has a live preview on its champion: idle, dash,
-  skills, entrance and victory. Then *Buy* and *Equip*.
-- **Owned items** show *Owned* and go straight into the loadout.
+  skills, entrance and victory. Then _Buy_ and _Equip_.
+- **Owned items** show _Owned_ and go straight into the loadout.
 
 **What's sold**
 
@@ -1005,11 +1027,11 @@ next to your name in the header.
 
 ### 10.5.1 Rarity
 
-| Rarity | Border | What you get | Price | About how long |
-|---|---|---|---|---|
-| **Common** | Grey | A new palette on the champion's art | **500** | 1 evening |
-| **Rare** | Blue | Palette + pattern + one small accessory + a matching dash trail | **1,500** | 3–4 evenings |
-| **Epic** | Purple | All of Rare + recoloured skill effects, custom hit sparks, custom KO poof, one animated detail | **3,500** | ~1 week |
+| Rarity       | Border                   | What you get                                                                                                                          | Price                      | About how long                         |
+| ------------ | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------- | -------------------------- | -------------------------------------- |
+| **Common**   | Grey                     | A new palette on the champion's art                                                                                                   | **500**                    | 1 evening                              |
+| **Rare**     | Blue                     | Palette + pattern + one small accessory + a matching dash trail                                                                       | **1,500**                  | 3–4 evenings                           |
+| **Epic**     | Purple                   | All of Rare + recoloured skill effects, custom hit sparks, custom KO poof, one animated detail                                        | **3,500**                  | ~1 week                                |
 | **Mythical** | Animated gold-to-rainbow | All of Epic + animated body texture, ambient particles, its own entrance and victory, custom ultimate, and **three Awakening stages** | **8,000** + a Mythic Trial | ~3 weeks, then more to awaken it fully |
 
 **Mythic Trial (to unlock the purchase):** win **30 matches or raid clears
@@ -1029,7 +1051,7 @@ champion first.
 - You can show any stage you've reached; it doesn't have to be the
   highest.
 
-**Collection bonus:** own every skin in a collection (e.g. all *Winter*
+**Collection bonus:** own every skin in a collection (e.g. all _Winter_
 skins) to earn that collection's frame for free.
 
 **Fairness rules for every skin** (enforced in code review and tests):
@@ -1085,26 +1107,26 @@ colour. Like a Mythical it swaps the champion's own head and neck pieces
   neon colour; a neon scan line sweeps down the body (its animated
   detail); dashing throws neon sparks.
 
-| Champion | Skin | Paint / neon |
-|---|---|---|
-| Voltkit | **Arc Unit** | gold / cyan |
-| Cindrake | **Reactor** | red / yellow |
-| Tidefin | **Hydro Frame** | teal / magenta |
-| Auralynx | **Prism Mech** | periwinkle / cyan |
-| Lumoth | **Photon** | mint / yellow |
-| Mystowl | **Psi Core** | pink / cyan |
-| Terradon | **Tank Mk II** | olive / orange |
-| Duskveil | **Phantom OS** | violet / green |
-| Coilemur | **Tesla Frame** | steel / yellow |
-| Pyranda | **Afterburner** | rust / cyan |
-| Glacelle | **Cryo Unit** | ice white / pink |
-| Halcyra | **Sniper Drone** | cobalt / orange |
-| Sunbara | **Solar Mech** | tan / teal |
-| Astrabun | **Warp Unit** | lilac / pink |
-| Wombolder | **Bulldozer** | brown / lime |
-| Shadopus | **Stealth Mk** | indigo / red |
-| Pangrove | **Scale Roller** | green / lime |
-| Mossloth | **Treehugger Mk** | khaki / mint |
+| Champion  | Skin              | Paint / neon      |
+| --------- | ----------------- | ----------------- |
+| Voltkit   | **Arc Unit**      | gold / cyan       |
+| Cindrake  | **Reactor**       | red / yellow      |
+| Tidefin   | **Hydro Frame**   | teal / magenta    |
+| Auralynx  | **Prism Mech**    | periwinkle / cyan |
+| Lumoth    | **Photon**        | mint / yellow     |
+| Mystowl   | **Psi Core**      | pink / cyan       |
+| Terradon  | **Tank Mk II**    | olive / orange    |
+| Duskveil  | **Phantom OS**    | violet / green    |
+| Coilemur  | **Tesla Frame**   | steel / yellow    |
+| Pyranda   | **Afterburner**   | rust / cyan       |
+| Glacelle  | **Cryo Unit**     | ice white / pink  |
+| Halcyra   | **Sniper Drone**  | cobalt / orange   |
+| Sunbara   | **Solar Mech**    | tan / teal        |
+| Astrabun  | **Warp Unit**     | lilac / pink      |
+| Wombolder | **Bulldozer**     | brown / lime      |
+| Shadopus  | **Stealth Mk**    | indigo / red      |
+| Pangrove  | **Scale Roller**  | green / lime      |
+| Mossloth  | **Treehugger Mk** | khaki / mint      |
 
 #### Collection reward frames (Void Knight, Cyber Mecha, Arcade)
 
@@ -1157,104 +1179,104 @@ strikes (bolts), a pillar of black fire rises (flames), ice or obsidian
 spikes erupt (ice, crystals), the tide rings out (fins), a black sun flares
 (eclipse) or the ground quakes (iron helm). These stay around the fighter
 and last under a second; they change no shape, reach or timing.
-The Shop's stage shows all three before you buy: *Entrance*, *Victory* and
-*Ultimate* (a Mythical's stage III ultimate, cast every few seconds).
+The Shop's stage shows all three before you buy: _Entrance_, _Victory_ and
+_Ultimate_ (a Mythical's stage III ultimate, cast every few seconds).
 
 #### Voltkit (sugar-glider kit, Electric)
 
-| Rarity | Skin | Look and effects |
-|---|---|---|
-| Common | Midnight | Navy fur, cyan cheeks |
-| Common | Peach Fizz | Peach and pink, soft-drink bubbles on its tail tip |
-| Common | Mint Static | Mint and white |
-| Rare · Winter | **Snowcap** | Frosty blue fur, earmuffs; dash leaves snowflake sparks |
-| Rare · Festival | **Kite Runner** | Paper-kite wing pattern, a tail ribbon that trails; dash leaves confetti |
-| Epic · Arcade | **Neon Arcade** | Synthwave grid fur in pink and cyan. Skills turn neon magenta, hit sparks are pixel bursts, KO is a pixel "poof", and its antennae pulse like LEDs |
-| **Mythical · Void Knight** | **Storm Revenant** | Black steel, violet runes; a crown of lightning-bolt blades takes the goggles' place. Stages as in “The Void Knights” above |
+| Rarity                     | Skin               | Look and effects                                                                                                                                   |
+| -------------------------- | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Common                     | Midnight           | Navy fur, cyan cheeks                                                                                                                              |
+| Common                     | Peach Fizz         | Peach and pink, soft-drink bubbles on its tail tip                                                                                                 |
+| Common                     | Mint Static        | Mint and white                                                                                                                                     |
+| Rare · Winter              | **Snowcap**        | Frosty blue fur, earmuffs; dash leaves snowflake sparks                                                                                            |
+| Rare · Festival            | **Kite Runner**    | Paper-kite wing pattern, a tail ribbon that trails; dash leaves confetti                                                                           |
+| Epic · Arcade              | **Neon Arcade**    | Synthwave grid fur in pink and cyan. Skills turn neon magenta, hit sparks are pixel bursts, KO is a pixel "poof", and its antennae pulse like LEDs |
+| **Mythical · Void Knight** | **Storm Revenant** | Black steel, violet runes; a crown of lightning-bolt blades takes the goggles' place. Stages as in “The Void Knights” above                        |
 
 #### Cindrake (magma newt, Fire)
 
-| Rarity | Skin | Look and effects |
-|---|---|---|
-| Common | Ashen | Charcoal body with ember-orange crest |
-| Common | Coral | Coral pink and cream |
-| Common | Lime Flame | Green flame crest |
-| Rare · Garden | **Chili Pepper** | Glossy red with a green stem cap; dash puffs spice dust |
-| Rare · Winter | **Blue Flame** | Cool blue fire crest, white-hot skills |
-| Epic · Festival | **Volcano Forge** | Blacksmith apron and goggles, molten-metal skin. Magma Bomb becomes a glowing ingot, hits throw anvil sparks, KO is a puff of forge smoke, and its crest pulses like bellows |
-| **Mythical · Void Knight** | **Hellforge** | Black steel, ember runes; demon horns and a crest of black hellfire take the flame crest's place. Stages as in “The Void Knights” above |
+| Rarity                     | Skin              | Look and effects                                                                                                                                                             |
+| -------------------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Common                     | Ashen             | Charcoal body with ember-orange crest                                                                                                                                        |
+| Common                     | Coral             | Coral pink and cream                                                                                                                                                         |
+| Common                     | Lime Flame        | Green flame crest                                                                                                                                                            |
+| Rare · Garden              | **Chili Pepper**  | Glossy red with a green stem cap; dash puffs spice dust                                                                                                                      |
+| Rare · Winter              | **Blue Flame**    | Cool blue fire crest, white-hot skills                                                                                                                                       |
+| Epic · Festival            | **Volcano Forge** | Blacksmith apron and goggles, molten-metal skin. Magma Bomb becomes a glowing ingot, hits throw anvil sparks, KO is a puff of forge smoke, and its crest pulses like bellows |
+| **Mythical · Void Knight** | **Hellforge**     | Black steel, ember runes; demon horns and a crest of black hellfire take the flame crest's place. Stages as in “The Void Knights” above                                      |
 
 #### Tidefin (axolotl duelist, Water)
 
-| Rarity | Skin | Look and effects |
-|---|---|---|
-| Common | Bubblegum | Classic pink axolotl, magenta gills |
-| Common | Abyss | Deep navy with teal gills |
-| Common | Sandbar | Sand and sea-green |
-| Rare · Garden | **Koi Pond** | Orange-and-white koi spots, a koi-scale sash; dash leaves lily pads |
-| Rare · Festival | **Corsair** | Tricorn hat and striped sash; splashes scatter gold coins |
-| Epic · Winter | **Glacier** | See-through ice-crystal body. Skills become ice, Eddy swirls with snow, hits shatter into shards, and its gills frost over and thaw |
-| **Mythical · Void Knight** | **Abyssal Reaver** | Black steel, tide-green runes; a steel dorsal-fin helm takes the headband's place. Stages as in “The Void Knights” above |
+| Rarity                     | Skin               | Look and effects                                                                                                                    |
+| -------------------------- | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Common                     | Bubblegum          | Classic pink axolotl, magenta gills                                                                                                 |
+| Common                     | Abyss              | Deep navy with teal gills                                                                                                           |
+| Common                     | Sandbar            | Sand and sea-green                                                                                                                  |
+| Rare · Garden              | **Koi Pond**       | Orange-and-white koi spots, a koi-scale sash; dash leaves lily pads                                                                 |
+| Rare · Festival            | **Corsair**        | Tricorn hat and striped sash; splashes scatter gold coins                                                                           |
+| Epic · Winter              | **Glacier**        | See-through ice-crystal body. Skills become ice, Eddy swirls with snow, hits shatter into shards, and its gills frost over and thaw |
+| **Mythical · Void Knight** | **Abyssal Reaver** | Black steel, tide-green runes; a steel dorsal-fin helm takes the headband's place. Stages as in “The Void Knights” above            |
 
 #### Auralynx (crystal-fisted lynx monk, Aura)
 
-| Rarity | Skin | Look and effects |
-|---|---|---|
-| Common | Snowshoe | White fur, ice-blue fists |
-| Common | Desert | Tan fur, amber fists |
-| Common | Twilight | Purple fur, rose fists |
-| Rare · Garden | **Cherry Blossom** | Pink robe; petals drift down on dash |
-| Rare · Festival | **Jade Temple** | Jade fists, red tassels; hits ring like a small bell |
-| Epic · Arcade | **Stained Glass** | Fists and robe made of stained-glass panels. Prism Shot fires coloured glass, hits shatter into sparkles, Facet Guard looks like a rose window, and light glints across it |
-| **Mythical · Void Knight** | **Spectral Warden** | Black steel, ice-blue runes; a crown of blades takes the gem's place. Stages as in “The Void Knights” above |
+| Rarity                     | Skin                | Look and effects                                                                                                                                                           |
+| -------------------------- | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Common                     | Snowshoe            | White fur, ice-blue fists                                                                                                                                                  |
+| Common                     | Desert              | Tan fur, amber fists                                                                                                                                                       |
+| Common                     | Twilight            | Purple fur, rose fists                                                                                                                                                     |
+| Rare · Garden              | **Cherry Blossom**  | Pink robe; petals drift down on dash                                                                                                                                       |
+| Rare · Festival            | **Jade Temple**     | Jade fists, red tassels; hits ring like a small bell                                                                                                                       |
+| Epic · Arcade              | **Stained Glass**   | Fists and robe made of stained-glass panels. Prism Shot fires coloured glass, hits shatter into sparkles, Facet Guard looks like a rose window, and light glints across it |
+| **Mythical · Void Knight** | **Spectral Warden** | Black steel, ice-blue runes; a crown of blades takes the gem's place. Stages as in “The Void Knights” above                                                                |
 
 #### Lumoth (fluffy moth, Light)
 
-| Rarity | Skin | Look and effects |
-|---|---|---|
-| Common | Lunar | Silver-white fluff |
-| Common | Peachy | Peach and cream |
-| Common | Dusk | Lilac and navy |
-| Rare · Garden | **Rosy Maple** | Pink and buttery yellow, like the real rosy maple moth; soft yellow dust puffs on dash |
-| Rare · Festival | **Paper Lantern** | Wings like warm paper lanterns that glow from inside |
-| Epic · Winter | **Aurora** | Wings ripple through northern-lights colours. Its dust becomes aurora ribbons, hits sparkle green-violet, and KO fades like dawn |
-| **Mythical · Void Knight** | **Fallen Lightbringer** | Black steel, gold runes; a small crown of blades between the antennae, and a short cape. Stages as in “The Void Knights” above |
+| Rarity                     | Skin                    | Look and effects                                                                                                                 |
+| -------------------------- | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Common                     | Lunar                   | Silver-white fluff                                                                                                               |
+| Common                     | Peachy                  | Peach and cream                                                                                                                  |
+| Common                     | Dusk                    | Lilac and navy                                                                                                                   |
+| Rare · Garden              | **Rosy Maple**          | Pink and buttery yellow, like the real rosy maple moth; soft yellow dust puffs on dash                                           |
+| Rare · Festival            | **Paper Lantern**       | Wings like warm paper lanterns that glow from inside                                                                             |
+| Epic · Winter              | **Aurora**              | Wings ripple through northern-lights colours. Its dust becomes aurora ribbons, hits sparkle green-violet, and KO fades like dawn |
+| **Mythical · Void Knight** | **Fallen Lightbringer** | Black steel, gold runes; a small crown of blades between the antennae, and a short cape. Stages as in “The Void Knights” above   |
 
 #### Mystowl (three-eyed owl, Psychic)
 
-| Rarity | Skin | Look and effects |
-|---|---|---|
-| Common | Snowy | White feathers, gold eyes |
-| Common | Barn | Tan, heart-shaped face |
-| Common | Midnight | Dark blue, silver eyes |
-| Rare · Festival | **Scholar** | A tiny graduation cap and scarf (all three eyes stay visible); pages flutter on dash |
-| Rare · Garden | **Witch's Familiar** | A pointed hat, potion-bubble dash trail |
-| Epic · Arcade | **Clockwork** | Brass gears and rivets, ticking eye. Third-Eye Ray becomes a golden clock-hand beam, Wing Cloak shows a clock face, and gears spin on its back |
-| **Mythical · Void Knight** | **Void Inquisitor** | Black steel, magenta runes; a crown of blades and a third eye that never closes, and a short cape. Stages as in “The Void Knights” above |
+| Rarity                     | Skin                 | Look and effects                                                                                                                               |
+| -------------------------- | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| Common                     | Snowy                | White feathers, gold eyes                                                                                                                      |
+| Common                     | Barn                 | Tan, heart-shaped face                                                                                                                         |
+| Common                     | Midnight             | Dark blue, silver eyes                                                                                                                         |
+| Rare · Festival            | **Scholar**          | A tiny graduation cap and scarf (all three eyes stay visible); pages flutter on dash                                                           |
+| Rare · Garden              | **Witch's Familiar** | A pointed hat, potion-bubble dash trail                                                                                                        |
+| Epic · Arcade              | **Clockwork**        | Brass gears and rivets, ticking eye. Third-Eye Ray becomes a golden clock-hand beam, Wing Cloak shows a clock face, and gears spin on its back |
+| **Mythical · Void Knight** | **Void Inquisitor**  | Black steel, magenta runes; a crown of blades and a third eye that never closes, and a short cape. Stages as in “The Void Knights” above       |
 
 #### Terradon (boulder tortoise, Earth)
 
-| Rarity | Skin | Look and effects |
-|---|---|---|
-| Common | Mossy | Green moss on the shell |
-| Common | Sandstone | Red-orange layered stone |
-| Common | Granite | Speckled grey |
-| Rare · Garden | **Bonsai** | A tiny bonsai tree on its shell; leaves fall on dash |
-| Rare · Winter | **Snowball** | Snow-covered shell, knitted scarf; puffs of snow on hits |
-| Epic · Arcade | **Geode** | Shell cracks show glowing amethyst. Tremor bursts with crystal shards, hits sparkle violet, and the crystals pulse while it sleeps |
+| Rarity                     | Skin                 | Look and effects                                                                                                                                                                       |
+| -------------------------- | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Common                     | Mossy                | Green moss on the shell                                                                                                                                                                |
+| Common                     | Sandstone            | Red-orange layered stone                                                                                                                                                               |
+| Common                     | Granite              | Speckled grey                                                                                                                                                                          |
+| Rare · Garden              | **Bonsai**           | A tiny bonsai tree on its shell; leaves fall on dash                                                                                                                                   |
+| Rare · Winter              | **Snowball**         | Snow-covered shell, knitted scarf; puffs of snow on hits                                                                                                                               |
+| Epic · Arcade              | **Geode**            | Shell cracks show glowing amethyst. Tremor bursts with crystal shards, hits sparkle violet, and the crystals pulse while it sleeps                                                     |
 | **Mythical · Void Knight** | **Obsidian Bulwark** | Black steel, acid-green runes; ram horns and obsidian crystals take the sprout's place; at II the shell grows obsidian spikes instead of a cape. Stages as in “The Void Knights” above |
 
 #### Duskveil (hooded lantern wisp, Shadow)
 
-| Rarity | Skin | Look and effects |
-|---|---|---|
-| Common | Ember | Orange flame, charcoal hood |
-| Common | Ghost White | Pale hood, blue flame |
-| Common | Teal Spirit | Teal flame, navy hood |
-| Rare · Festival | **Pumpkin Lantern** | A carved-pumpkin lantern; autumn leaves on dash |
-| Rare · Festival | **Paper Lantern** | A red paper lantern with tassels |
-| Epic · Garden | **Candlelight** | A melting-candle hood with wax drips. Ghostfire becomes candle flames, hits puff smoke, and KO is a blown-out wick |
-| **Mythical · Void Knight** | **Crimson Sovereign** | Black steel, crimson eyes and runes; demon horns rise from the hood. Stages as in “The Void Knights” above |
+| Rarity                     | Skin                  | Look and effects                                                                                                   |
+| -------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Common                     | Ember                 | Orange flame, charcoal hood                                                                                        |
+| Common                     | Ghost White           | Pale hood, blue flame                                                                                              |
+| Common                     | Teal Spirit           | Teal flame, navy hood                                                                                              |
+| Rare · Festival            | **Pumpkin Lantern**   | A carved-pumpkin lantern; autumn leaves on dash                                                                    |
+| Rare · Festival            | **Paper Lantern**     | A red paper lantern with tassels                                                                                   |
+| Epic · Garden              | **Candlelight**       | A melting-candle hood with wax drips. Ghostfire becomes candle flames, hits puff smoke, and KO is a blown-out wick |
+| **Mythical · Void Knight** | **Crimson Sovereign** | Black steel, crimson eyes and runes; demon horns rise from the hood. Stages as in “The Void Knights” above         |
 
 #### The eight newest champions
 
@@ -1271,99 +1293,99 @@ colours.
 
 #### Coilemur (ring-tailed lemur, Electric)
 
-| Rarity | Skin | Look and effects |
-|---|---|---|
-| Common | Sifaka | Snow-white fur, chocolate mask |
-| Common | Copper Wire | Copper fur, teal sparks |
-| Common | Blackout | Charcoal fur, lime sparks |
-| Rare · Festival | **Firecracker** | Lucky red with a gold-banded tail; dashing pops confetti |
-| Rare · Winter | **Frost Fuse** | Icy fur and a bobble hat; dashing leaves snowflakes |
-| Epic · Arcade | **Tesla Coil** | Gunmetal fur with glowing circuits, teal skills and a crackling pulse. Hit sparks take its colour, KO is a puff in its colours, and a pulsing ring plays on the rig |
-| **Mythical · Void Knight** | **Volt Executioner** | Black steel, cyan runes and stripes; a crown of bolts takes the magnet's place. Stages as in “The Void Knights” above |
+| Rarity                     | Skin                 | Look and effects                                                                                                                                                    |
+| -------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Common                     | Sifaka               | Snow-white fur, chocolate mask                                                                                                                                      |
+| Common                     | Copper Wire          | Copper fur, teal sparks                                                                                                                                             |
+| Common                     | Blackout             | Charcoal fur, lime sparks                                                                                                                                           |
+| Rare · Festival            | **Firecracker**      | Lucky red with a gold-banded tail; dashing pops confetti                                                                                                            |
+| Rare · Winter              | **Frost Fuse**       | Icy fur and a bobble hat; dashing leaves snowflakes                                                                                                                 |
+| Epic · Arcade              | **Tesla Coil**       | Gunmetal fur with glowing circuits, teal skills and a crackling pulse. Hit sparks take its colour, KO is a puff in its colours, and a pulsing ring plays on the rig |
+| **Mythical · Void Knight** | **Volt Executioner** | Black steel, cyan runes and stripes; a crown of bolts takes the magnet's place. Stages as in “The Void Knights” above                                               |
 
 #### Pyranda (red panda, Fire)
 
-| Rarity | Skin | Look and effects |
-|---|---|---|
-| Common | Snowy | White fur, smoky markings |
-| Common | Cinnamon | Cinnamon brown and cream |
-| Common | Plum | Plum fur, peach face |
-| Rare · Garden | **Chestnut Grove** | Chestnut brown with an acorn cap; dashing drops leaves |
-| Rare · Festival | **Street Vendor** | A folded paper hat and a striped coat; dashing puffs spice |
-| Epic · Winter | **Fireside Knit** | A cable-knit sweater, cocoa-gold skills and a flickering ember. Hit sparks take its colour, KO is a puff in its colours, and a flickering flame plays on the rig |
-| **Mythical · Void Knight** | **Ashen Warlord** | Black steel, ash-grey markings and ember runes; a crown of black flame. Stages as in “The Void Knights” above |
+| Rarity                     | Skin               | Look and effects                                                                                                                                                 |
+| -------------------------- | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Common                     | Snowy              | White fur, smoky markings                                                                                                                                        |
+| Common                     | Cinnamon           | Cinnamon brown and cream                                                                                                                                         |
+| Common                     | Plum               | Plum fur, peach face                                                                                                                                             |
+| Rare · Garden              | **Chestnut Grove** | Chestnut brown with an acorn cap; dashing drops leaves                                                                                                           |
+| Rare · Festival            | **Street Vendor**  | A folded paper hat and a striped coat; dashing puffs spice                                                                                                       |
+| Epic · Winter              | **Fireside Knit**  | A cable-knit sweater, cocoa-gold skills and a flickering ember. Hit sparks take its colour, KO is a puff in its colours, and a flickering flame plays on the rig |
+| **Mythical · Void Knight** | **Ashen Warlord**  | Black steel, ash-grey markings and ember runes; a crown of black flame. Stages as in “The Void Knights” above                                                    |
 
 #### Glacelle (sea angel, Water)
 
-| Rarity | Skin | Look and effects |
-|---|---|---|
-| Common | Deep Sea | Navy body, cyan glow |
-| Common | Lilac Tide | Lilac and pink |
-| Common | Seafoam | Mint and white |
-| Rare · Garden | **Water Lily** | Petal pink with a lotus bloom; dashing scatters petals |
-| Rare · Winter | **Snow Globe** | Snow drifting inside a glassy body; dashing leaves snowflakes |
-| Epic · Arcade | **Deep Glow** | An abyssal body with neon spots and magenta skills. Hit sparks take its colour, KO is a puff in its colours, and a shimmer of stars plays on the rig |
-| **Mythical · Void Knight** | **Rimebane** | Black steel, frost-bright runes; a crown of black ice, and a short cape. Stages as in “The Void Knights” above |
+| Rarity                     | Skin           | Look and effects                                                                                                                                     |
+| -------------------------- | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Common                     | Deep Sea       | Navy body, cyan glow                                                                                                                                 |
+| Common                     | Lilac Tide     | Lilac and pink                                                                                                                                       |
+| Common                     | Seafoam        | Mint and white                                                                                                                                       |
+| Rare · Garden              | **Water Lily** | Petal pink with a lotus bloom; dashing scatters petals                                                                                               |
+| Rare · Winter              | **Snow Globe** | Snow drifting inside a glassy body; dashing leaves snowflakes                                                                                        |
+| Epic · Arcade              | **Deep Glow**  | An abyssal body with neon spots and magenta skills. Hit sparks take its colour, KO is a puff in its colours, and a shimmer of stars plays on the rig |
+| **Mythical · Void Knight** | **Rimebane**   | Black steel, frost-bright runes; a crown of black ice, and a short cape. Stages as in “The Void Knights” above                                       |
 
 #### Halcyra (kingfisher, Aura)
 
-| Rarity | Skin | Look and effects |
-|---|---|---|
-| Common | Teal Wing | Teal feathers, buff chest |
-| Common | Pied | Black and white feathers |
-| Common | Sunset | Coral and gold |
-| Rare · Festival | **Fletcher** | A feathered archer's cap and striped wings; dashing leaves gold dust |
-| Rare · Winter | **Winter Plume** | Frost-white feathers and earmuffs; dashing leaves snowflakes |
-| Epic · Festival | **Paper Crane** | Folded-paper feathers, crimson skills and a glinting crest. Hit sparks take its colour, KO is a puff in its colours, and a glint plays on the rig |
+| Rarity                     | Skin             | Look and effects                                                                                                                                         |
+| -------------------------- | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Common                     | Teal Wing        | Teal feathers, buff chest                                                                                                                                |
+| Common                     | Pied             | Black and white feathers                                                                                                                                 |
+| Common                     | Sunset           | Coral and gold                                                                                                                                           |
+| Rare · Festival            | **Fletcher**     | A feathered archer's cap and striped wings; dashing leaves gold dust                                                                                     |
+| Rare · Winter              | **Winter Plume** | Frost-white feathers and earmuffs; dashing leaves snowflakes                                                                                             |
+| Epic · Festival            | **Paper Crane**  | Folded-paper feathers, crimson skills and a glinting crest. Hit sparks take its colour, KO is a puff in its colours, and a glint plays on the rig        |
 | **Mythical · Void Knight** | **Nightfeather** | Black steel, indigo runes; a crown of blades over its own crest (it keeps its beak and monocle), and a short cape. Stages as in “The Void Knights” above |
 
 #### Sunbara (capybara, Light)
 
-| Rarity | Skin | Look and effects |
-|---|---|---|
-| Common | Cocoa | Dark cocoa fur |
-| Common | Milk Tea | Milky beige and caramel |
-| Common | Rose Quartz | Soft rose pink |
-| Rare · Festival | **Bathhouse** | A folded towel and steamy stripes; dashing blows bubbles |
-| Rare · Winter | **Snow Day** | Snow-dusted fur and a knitted scarf; dashing leaves snowflakes |
-| Epic · Garden | **Sunflower** | A sunflower bloom, golden skills and a glint. Hit sparks take its colour, KO is a puff in its colours, and a glint plays on the rig |
-| **Mythical · Void Knight** | **Eclipse Templar** | Black steel, amber runes; a black sun with a blade corona takes the yuzu's place. Stages as in “The Void Knights” above |
+| Rarity                     | Skin                | Look and effects                                                                                                                    |
+| -------------------------- | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Common                     | Cocoa               | Dark cocoa fur                                                                                                                      |
+| Common                     | Milk Tea            | Milky beige and caramel                                                                                                             |
+| Common                     | Rose Quartz         | Soft rose pink                                                                                                                      |
+| Rare · Festival            | **Bathhouse**       | A folded towel and steamy stripes; dashing blows bubbles                                                                            |
+| Rare · Winter              | **Snow Day**        | Snow-dusted fur and a knitted scarf; dashing leaves snowflakes                                                                      |
+| Epic · Garden              | **Sunflower**       | A sunflower bloom, golden skills and a glint. Hit sparks take its colour, KO is a puff in its colours, and a glint plays on the rig |
+| **Mythical · Void Knight** | **Eclipse Templar** | Black steel, amber runes; a black sun with a blade corona takes the yuzu's place. Stages as in “The Void Knights” above             |
 
 #### Astrabun (moon rabbit, Psychic)
 
-| Rarity | Skin | Look and effects |
-|---|---|---|
-| Common | Nightfall | Navy fur, pale gold glow |
-| Common | Sakura Mochi | Cherry pink and white |
-| Common | Matcha | Matcha green and cream |
-| Rare · Festival | **Mochi Maker** | A twisted headband for pounding mochi; dashing throws confetti |
-| Rare · Garden | **Clover** | Clover-green spots and a flower crown; dashing drops leaves |
-| Epic · Arcade | **Space Cadet** | A starry suit with an antenna, cyan skills and a glint. Hit sparks take its colour, KO is a puff in its colours, and a glint plays on the rig |
-| **Mythical · Void Knight** | **Rift Duelist** | Black steel, violet runes; a rift gem and a crown of blades between its ears. Stages as in “The Void Knights” above |
+| Rarity                     | Skin             | Look and effects                                                                                                                              |
+| -------------------------- | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Common                     | Nightfall        | Navy fur, pale gold glow                                                                                                                      |
+| Common                     | Sakura Mochi     | Cherry pink and white                                                                                                                         |
+| Common                     | Matcha           | Matcha green and cream                                                                                                                        |
+| Rare · Festival            | **Mochi Maker**  | A twisted headband for pounding mochi; dashing throws confetti                                                                                |
+| Rare · Garden              | **Clover**       | Clover-green spots and a flower crown; dashing drops leaves                                                                                   |
+| Epic · Arcade              | **Space Cadet**  | A starry suit with an antenna, cyan skills and a glint. Hit sparks take its colour, KO is a puff in its colours, and a glint plays on the rig |
+| **Mythical · Void Knight** | **Rift Duelist** | Black steel, violet runes; a rift gem and a crown of blades between its ears. Stages as in “The Void Knights” above                           |
 
 #### Wombolder (wombat, Earth)
 
-| Rarity | Skin | Look and effects |
-|---|---|---|
-| Common | Sandy | Pale sand fur |
-| Common | Coal | Coal-grey fur, green glow |
-| Common | Ochre | Ochre and rust |
-| Rare · Garden | **Mushroom Hollow** | A spotted toadstool cap; dashing drops leaves |
-| Rare · Winter | **Snowplough** | Frosted fur and a bobble hat; dashing kicks up snow |
-| Epic · Arcade | **Gold Rush** | A miner's lamp helmet, gold-veined fur and gold skills. Hit sparks take its colour, KO is a puff in its colours, and a glint plays on the rig |
-| **Mythical · Void Knight** | **Iron Juggernaut** | Black steel, acid-lime runes; a riveted iron helm with spike horns takes the stone's place. Stages as in “The Void Knights” above |
+| Rarity                     | Skin                | Look and effects                                                                                                                              |
+| -------------------------- | ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Common                     | Sandy               | Pale sand fur                                                                                                                                 |
+| Common                     | Coal                | Coal-grey fur, green glow                                                                                                                     |
+| Common                     | Ochre               | Ochre and rust                                                                                                                                |
+| Rare · Garden              | **Mushroom Hollow** | A spotted toadstool cap; dashing drops leaves                                                                                                 |
+| Rare · Winter              | **Snowplough**      | Frosted fur and a bobble hat; dashing kicks up snow                                                                                           |
+| Epic · Arcade              | **Gold Rush**       | A miner's lamp helmet, gold-veined fur and gold skills. Hit sparks take its colour, KO is a puff in its colours, and a glint plays on the rig |
+| **Mythical · Void Knight** | **Iron Juggernaut** | Black steel, acid-lime runes; a riveted iron helm with spike horns takes the stone's place. Stages as in “The Void Knights” above             |
 
 #### Shadopus (octopus, Shadow)
 
-| Rarity | Skin | Look and effects |
-|---|---|---|
-| Common | Coral Reef | Coral orange and cream |
-| Common | Deep Blue | Deep blue and teal |
-| Common | Mimic | Sand and brown |
-| Rare · Festival | **Masquerade** | A jewelled masquerade mask; dashing throws confetti |
-| Rare · Garden | **Tide Pool** | Rock-pool speckles and a starfish clip; dashing blows bubbles |
-| Epic · Garden | **Anglerlight** | A glowing lure on a stalk, abyss-teal skills and a flicker. Hit sparks take its colour, KO is a puff in its colours, and a flickering flame plays on the rig |
-| **Mythical · Void Knight** | **Abyss Stalker** | Black steel, magenta runes; a crown of blades on its dome, and a short cape. Stages as in “The Void Knights” above |
+| Rarity                     | Skin              | Look and effects                                                                                                                                             |
+| -------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Common                     | Coral Reef        | Coral orange and cream                                                                                                                                       |
+| Common                     | Deep Blue         | Deep blue and teal                                                                                                                                           |
+| Common                     | Mimic             | Sand and brown                                                                                                                                               |
+| Rare · Festival            | **Masquerade**    | A jewelled masquerade mask; dashing throws confetti                                                                                                          |
+| Rare · Garden              | **Tide Pool**     | Rock-pool speckles and a starfish clip; dashing blows bubbles                                                                                                |
+| Epic · Garden              | **Anglerlight**   | A glowing lure on a stalk, abyss-teal skills and a flicker. Hit sparks take its colour, KO is a puff in its colours, and a flickering flame plays on the rig |
+| **Mythical · Void Knight** | **Abyss Stalker** | Black steel, magenta runes; a crown of blades on its dome, and a short cape. Stages as in “The Void Knights” above                                           |
 
 #### The Nature champions
 
@@ -1377,28 +1399,28 @@ earned stays theirs).
 
 #### Pangrove (pangolin, Nature)
 
-| Rarity | Skin | Look and effects |
-|---|---|---|
-| Common | Autumn | Russet and gold leaf scales |
-| Common | Frostleaf | Frosted silver-blue leaves |
-| Common | Jade | Deep jade with a gold glow |
-| Rare · Garden | **Blossom** | Cherry-blossom scales and a flower crown; dashing scatters petals |
-| Rare · Festival | **Lantern Night** | Festival-red scales and lantern tassels; dashing throws confetti |
-| Epic · Garden | **Golden Sap** | Amber scales veined with sap, a golden stem, golden skills and a glint |
-| Epic · Cyber Mecha | **Scale Roller** | Green plating, lime neon (see "Cyber Mecha" above) |
-| **Mythical · Void Knight** | **Thorn Warden** | Black thorn-plate, lime runes; a crown of blades and spiked horns take the sprout's place, and a cape. Stages as in “The Void Knights” above |
+| Rarity                     | Skin              | Look and effects                                                                                                                             |
+| -------------------------- | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| Common                     | Autumn            | Russet and gold leaf scales                                                                                                                  |
+| Common                     | Frostleaf         | Frosted silver-blue leaves                                                                                                                   |
+| Common                     | Jade              | Deep jade with a gold glow                                                                                                                   |
+| Rare · Garden              | **Blossom**       | Cherry-blossom scales and a flower crown; dashing scatters petals                                                                            |
+| Rare · Festival            | **Lantern Night** | Festival-red scales and lantern tassels; dashing throws confetti                                                                             |
+| Epic · Garden              | **Golden Sap**    | Amber scales veined with sap, a golden stem, golden skills and a glint                                                                       |
+| Epic · Cyber Mecha         | **Scale Roller**  | Green plating, lime neon (see "Cyber Mecha" above)                                                                                           |
+| **Mythical · Void Knight** | **Thorn Warden**  | Black thorn-plate, lime runes; a crown of blades and spiked horns take the sprout's place, and a cape. Stages as in “The Void Knights” above |
 
 #### Mossloth (three-toed sloth, Nature)
 
-| Rarity | Skin | Look and effects |
-|---|---|---|
-| Common | Cinnamon | Warm cinnamon fur |
-| Common | Snowy | Snow-white fur, pale moss |
-| Common | Dusk | Lilac-grey fur, violet moss |
-| Rare · Garden | **Acorn Nap** | An acorn cap for napping; dashing drops leaves |
-| Rare · Winter | **Cozy Knit** | A knitted scarf over frosty fur; dashing leaves snowflakes |
-| Epic · Garden | **Bonsai Keeper** | A little bonsai on its head, blossom skills and a shimmer |
-| Epic · Cyber Mecha | **Treehugger Mk** | Khaki armour, mint neon (see "Cyber Mecha" above) |
+| Rarity                     | Skin                | Look and effects                                                                                                                              |
+| -------------------------- | ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Common                     | Cinnamon            | Warm cinnamon fur                                                                                                                             |
+| Common                     | Snowy               | Snow-white fur, pale moss                                                                                                                     |
+| Common                     | Dusk                | Lilac-grey fur, violet moss                                                                                                                   |
+| Rare · Garden              | **Acorn Nap**       | An acorn cap for napping; dashing drops leaves                                                                                                |
+| Rare · Winter              | **Cozy Knit**       | A knitted scarf over frosty fur; dashing leaves snowflakes                                                                                    |
+| Epic · Garden              | **Bonsai Keeper**   | A little bonsai on its head, blossom skills and a shimmer                                                                                     |
+| Epic · Cyber Mecha         | **Treehugger Mk**   | Khaki armour, mint neon (see "Cyber Mecha" above)                                                                                             |
 | **Mythical · Void Knight** | **Blight Sentinel** | Rotwood-black steel, mint runes; a crystal crest and ram horns take the moss crown's place, and a cape. Stages as in “The Void Knights” above |
 
 ### 10.7 All-fighter collections
@@ -1406,24 +1428,24 @@ earned stays theirs).
 Sold per piece (slot prices below) or as a bundle at 20% off. Rarity
 applies here too.
 
-| Collection | Colours (Common 300) | Aura (Rare 900) | Entrance (Rare 1,000) | Frame (Rare 800) | Victory (Epic 1,800) |
-|---|---|---|---|---|---|
-| **Candy** | Pastel swirl | Sprinkle ring | Pops out of a gift box | Frosted cookie | Confetti cake burst |
-| **Galaxy** | Deep-space tint | Slow nebula ring | Warps in through a star tunnel | Planet-ring border | Supernova pose |
-| **Retro Pixel** | 8-bit palette | Pixel heart ring | "Player 1" pixel spawn | Cartridge border | "LEVEL UP!" pixel burst |
-| **Festival** | Lantern red-gold | Floating paper lanterns | Firecracker pop | Knot-and-tassel border | Fireworks finale |
-| **Garden** | Spring green | Petal ring | Blooms from a flower | Vine border | Flower shower |
-| **Winter** | Frost tint | Snowflake ring | Arrives in a snow flurry | Icicle border | Snowglobe shake |
+| Collection      | Colours (Common 300) | Aura (Rare 900)         | Entrance (Rare 1,000)          | Frame (Rare 800)       | Victory (Epic 1,800)    |
+| --------------- | -------------------- | ----------------------- | ------------------------------ | ---------------------- | ----------------------- |
+| **Candy**       | Pastel swirl         | Sprinkle ring           | Pops out of a gift box         | Frosted cookie         | Confetti cake burst     |
+| **Galaxy**      | Deep-space tint      | Slow nebula ring        | Warps in through a star tunnel | Planet-ring border     | Supernova pose          |
+| **Retro Pixel** | 8-bit palette        | Pixel heart ring        | "Player 1" pixel spawn         | Cartridge border       | "LEVEL UP!" pixel burst |
+| **Festival**    | Lantern red-gold     | Floating paper lanterns | Firecracker pop                | Knot-and-tassel border | Fireworks finale        |
+| **Garden**      | Spring green         | Petal ring              | Blooms from a flower           | Vine border            | Flower shower           |
+| **Winter**      | Frost tint           | Snowflake ring          | Arrives in a snow flurry       | Icicle border          | Snowglobe shake         |
 
 Each collection costs about 3,900 coins as a bundle.
 
 ### 10.8 Coin sink and pace
 
-| Item | Coins | At ~500 coins an evening |
-|---|---|---|
-| One champion's full skin line (3 Common + 2 Rare + Epic + Mythical) | 16,000 | ~5 weeks |
-| Every champion skin | 128,000 | Long-term: a goal for the most dedicated |
-| Every collection | ~23,400 | ~7 weeks |
+| Item                                                                | Coins   | At ~500 coins an evening                 |
+| ------------------------------------------------------------------- | ------- | ---------------------------------------- |
+| One champion's full skin line (3 Common + 2 Rare + Epic + Mythical) | 16,000  | ~5 weeks                                 |
+| Every champion skin                                                 | 128,000 | Long-term: a goal for the most dedicated |
+| Every collection                                                    | ~23,400 | ~7 weeks                                 |
 
 To keep this motivating rather than a grind, harder play pays more:
 
@@ -1443,11 +1465,11 @@ To keep this motivating rather than a grind, harder play pays more:
   **append-only**, with a unique `ref` per grant, so a retried save never
   pays twice. The balance is checked against the ledger in tests.
 - `arena_shop_items(id, kind, slot, champion, name, price, set, active,
-  available_from, available_to)`.
+available_from, available_to)`.
 - `arena_owned_items(player_id, item_id, acquired_at)`.
 - `arena_daily_missions(day, slot, mission)`, seeded and the same for
   everyone, plus `arena_mission_progress(player_id, day, mission,
-  progress, done, rerolled)`.
+progress, done, rerolled)`.
 
 **Rules**
 
@@ -1476,6 +1498,7 @@ To keep this motivating rather than a grind, harder play pays more:
 and coin grants ride on the same receipts.
 
 **Client:**
+
 - The Shop page and coin chip.
 - Mission cards on the home screen (progress bars, re-roll).
 - The champion-skin rendering path in the rig, built in layers so each
@@ -1496,6 +1519,7 @@ and coin grants ride on the same receipts.
   and without every skin.
 
 **Tests:**
+
 - grant idempotency
 - daily caps
 - buying with too few coins
@@ -1506,11 +1530,11 @@ and coin grants ride on the same receipts.
 
 ## 11. Overall build order
 
-| Step | What |
-|---|---|
-| 1 | Raid Hub + Raid of the Day + Victory slot + migration 009 (§9 step 1) |
-| 2 | **Coins, daily missions and the Shop** (migration 010) with the **whole catalog at once** (decided): all 56 champion skins, the Mythic Hall with Awakening, and the six collections. Coins start flowing from the raids and PvP that already exist |
-| 3–8 | The six new bosses, in the §9 order, each adding its rewards |
+| Step | What                                                                                                                                                                                                                                               |
+| ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1    | Raid Hub + Raid of the Day + Victory slot + migration 009 (§9 step 1)                                                                                                                                                                              |
+| 2    | **Coins, daily missions and the Shop** (migration 010) with the **whole catalog at once** (decided): all 56 champion skins, the Mythic Hall with Awakening, and the six collections. Coins start flowing from the raids and PvP that already exist |
+| 3–8  | The six new bosses, in the §9 order, each adding its rewards                                                                                                                                                                                       |
 
 **Step 2 is the biggest single step in the plan:** 56 skins, 8 of them
 Mythicals with three stages each, plus 30 collection pieces. It's built in
@@ -1563,8 +1587,8 @@ release.
   a sealed raider takes no other damage; the solo mash is 8 presses in a
   party too; chapter 3 keeps its armour (only strands and stagger expose
   it, unlike Grumblecrag's always-open last chapter); the speed title is
-  Peril 2 solo under 4:00 (*Flash Flood*) and the solo Peril 3 title is
-  *Lone Current* (names not in the original spec).
+  Peril 2 solo under 4:00 (_Flash Flood_) and the solo Peril 3 title is
+  _Lone Current_ (names not in the original spec).
 - **Bot check:** AI stand-in teams clear every Peril; solo runs take about
   80–90 s against Grumblecrag's 70 s (bots play far better than people,
   so only the comparison matters). Real tuning waits for the play session.
@@ -1588,31 +1612,31 @@ release.
     aimed at it from within 140 px. Radiant Flare reaches 240 px.
   - The real ring of a Nightmare Pulse marks the real one for 1.5 s.
   - Witching Hour re-splits as soon as an exposure ends.
-  - Names not in the spec: *Moonrunner* (Peril 2 solo under 4:00) and
-    *Lone Lantern* (Peril 3 solo).
+  - Names not in the spec: _Moonrunner_ (Peril 2 solo under 4:00) and
+    _Lone Lantern_ (Peril 3 solo).
 - **Bot check** (5 seeds each): solo ≈ 91 s (Tidewyrm ≈ 84 s), three
   raiders ≈ 68 s (74 s), four ≈ 61 s (63 s), no downs. Bots play far
   better than people, so only the comparison matters.
 
 ## 12. Decisions log
 
-| Date | Decision |
-|---|---|
-| Oct 17 | No self-revive at Peril 3 solo (all bosses) |
-| Oct 17 | New bosses unlock after a Grumblecrag clear |
-| Oct 17 | Boss names approved |
-| Oct 17 | Seven bosses, one per day; Raid of the Day |
-| Oct 17 | Fifth slot: Victory |
-| Oct 17 | Shop with coins from daily missions and raids |
-| Oct 17 | Daily changeover at midnight Pacific |
-| Oct 17 | Grand Tour bosses must be cleared on their own day |
-| Oct 17 | One make-up clear per week for a missed day |
+| Date   | Decision                                                                        |
+| ------ | ------------------------------------------------------------------------------- |
+| Oct 17 | No self-revive at Peril 3 solo (all bosses)                                     |
+| Oct 17 | New bosses unlock after a Grumblecrag clear                                     |
+| Oct 17 | Boss names approved                                                             |
+| Oct 17 | Seven bosses, one per day; Raid of the Day                                      |
+| Oct 17 | Fifth slot: Victory                                                             |
+| Oct 17 | Shop with coins from daily missions and raids                                   |
+| Oct 17 | Daily changeover at midnight Pacific                                            |
+| Oct 17 | Grand Tour bosses must be cleared on their own day                              |
+| Oct 17 | One make-up clear per week for a missed day                                     |
 | Oct 17 | Rarity tiers (Common / Rare / Epic / Mythical) with Mythic Trials and Awakening |
-| Oct 17 | PvP coins only from matches against people |
-| Oct 17 | All champion skins and collections ship together |
-| Oct 17 | Mythical price confirmed: 8,000 coins + 30-win trial |
-| Oct 17 | Opponents see a Mythical's Awakening stage |
-| Oct 17 | Skin names and themes approved |
+| Oct 17 | PvP coins only from matches against people                                      |
+| Oct 17 | All champion skins and collections ship together                                |
+| Oct 17 | Mythical price confirmed: 8,000 coins + 30-win trial                            |
+| Oct 17 | Opponents see a Mythical's Awakening stage                                      |
+| Oct 17 | Skin names and themes approved                                                  |
 
 ## 13. Open questions
 

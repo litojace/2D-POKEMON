@@ -793,8 +793,8 @@ export const RAID_BOSS_PERKS: Partial<
       text: "Pierces the first twin and also hits the other if it is on the line.",
     },
     wombolder: {
-      skill: "Rump Block",
-      text: "Blocks Twin Rush completely and adds 15 stagger to that twin.",
+      skill: "Grudge Thump",
+      text: "Braced, you stop Twin Rush completely and add 15 stagger to that twin.",
     },
     pangrove: {
       skill: "Curl & Roll",

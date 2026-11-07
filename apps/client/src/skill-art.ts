@@ -898,41 +898,39 @@ const art: Record<string, { el: Element; draw: () => string }> = {
         W.accent[2],
       ),
   },
-  "Gill Spray": {
+  "Gill Siphon": {
     el: "water",
-    draw: () => {
-      // Three water droplets flicked from the gill fronds in a narrow fan.
-      const drop = (x: number, y: number, s: number, rot: number) =>
-        `<g transform="translate(${x} ${y}) rotate(${rot}) scale(${s})"><path d="M0 -15 Q11 0 8 7 Q4 14 0 14 Q-4 14 -8 7 Q-11 0 0 -15Z" fill="url(#sa-orb-water)"/><ellipse cx="-3" cy="2" rx="2.4" ry="4" fill="#fff" opacity=".85"/></g>`;
-      return (
-        [
-          [64, 30],
-          [96, 52],
-          [30, 56],
-        ]
-          .map(
-            ([x, y]) =>
-              `<path d="M64 108 L${x} ${y}" stroke="url(#sa-diag-water)" stroke-width="3" stroke-linecap="round" opacity=".55"/>`,
-          )
-          .join("") +
-        halo("water", 64, 34, 22) +
-        halo("water", 98, 54, 20) +
-        halo("water", 30, 58, 20) +
-        drop(64, 32, 1.1, 0) +
-        drop(98, 54, 0.95, 50) +
-        drop(30, 58, 0.95, -50) +
-        `<path d="M40 110 Q52 96 64 104 Q76 96 88 110" fill="none" stroke="#ff9fc4" stroke-width="5" stroke-linecap="round" opacity=".8"/>` +
-        sparks(
-          [
-            [80, 20, 1.4],
-            [112, 74, 1.3],
-            [16, 80, 1.2],
-            [46, 18, 1.2],
-          ],
-          W.accent[2],
+    draw: () =>
+      // A wavy stream from the gill fronds to a target; droplets flow home.
+      floorGlow("water", 64, 104, 56, 12) +
+      `<path d="M40 110 Q52 96 64 104 Q76 96 88 110" fill="none" stroke="#ff9fc4" stroke-width="5" stroke-linecap="round" opacity=".8"/>` +
+      glow(
+        "M30 84 Q50 64 64 70 Q80 76 96 52 Q104 40 108 34",
+        W.hot,
+        5,
+        W.accent[1],
+      ) +
+      `<circle cx="108" cy="32" r="14" fill="none" stroke="${W.accent[2]}" stroke-width="2.4" stroke-dasharray="4 4"/>` +
+      [
+        [52, 68, 4],
+        [76, 70, 3.4],
+        [94, 52, 3],
+      ]
+        .map(
+          ([x, y, r]) =>
+            `<circle cx="${x}" cy="${y}" r="${r}" fill="url(#sa-orb-water)"/><circle cx="${x - 1}" cy="${y - 1}" r="${r * 0.35}" fill="#fff" opacity=".85"/>`,
         )
-      );
-    },
+        .join("") +
+      halo("water", 30, 86, 14) +
+      `<path d="M24 92 l6 -12 l6 12" fill="none" stroke="#7dffb0" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>` +
+      sparks(
+        [
+          [18, 30, 1.4],
+          [60, 20, 1.2],
+          [118, 92, 1.3],
+        ],
+        W.accent[2],
+      ),
   },
   Eddy: {
     el: "water",
@@ -1972,35 +1970,30 @@ const art: Record<string, { el: Element; draw: () => string }> = {
         F.accent[2],
       ),
   },
-  "Tail Wrap": {
+  "Ember Curtain": {
     el: "fire",
-    draw: () => {
-      // Curled up in the ringed tail, its flame tip glowing at the heart.
-      const tail =
-        "M98 100 Q118 72 104 44 Q88 16 58 20 Q26 26 22 58 Q20 90 50 100 Q76 106 86 82 Q92 62 72 56";
-      return (
-        halo("fire", 64, 62, 54) +
-        `<circle cx="64" cy="62" r="54" fill="none" stroke="${F.accent[2]}" stroke-width="2" stroke-dasharray="6 6" opacity=".55"/>` +
-        `<path d="${tail}" fill="none" stroke="${F.accent[1]}" stroke-width="30" stroke-opacity=".22" stroke-linecap="round"/>` +
-        `<path d="${tail}" fill="none" stroke="#7a2a12" stroke-width="22" stroke-linecap="round"/>` +
-        `<path d="${tail}" fill="none" stroke="#e0702f" stroke-width="18" stroke-linecap="round"/>` +
-        `<path d="${tail}" fill="none" stroke="#7a2412" stroke-width="18" stroke-dasharray="7 13" opacity=".9"/>` +
-        `<path d="M102 52 Q90 28 60 28 Q34 32 30 56" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity=".45"/>` +
-        halo("fire", 66, 54, 18) +
-        `<path d="M66 64 Q54 58 58 46 Q62 52 64 50 Q62 40 70 34 Q72 44 78 48 Q80 62 66 64Z" fill="url(#sa-up-fire)"/>` +
-        `<path d="M66 60 Q61 56 63 50 Q66 54 68 52 Q72 58 66 60Z" fill="${F.hot}"/>` +
-        glow(`M122 18 L108 32`, "#ffb0a0", 2.2, "#ff6a4a") +
-        glow(`M108 32 L122 44`, F.accent[2], 2.2, F.accent[1]) +
-        sparks(
-          [
-            [14, 22, 1.4],
-            [16, 108, 1.3],
-            [114, 112, 1.3],
-          ],
-          F.accent[2],
-        )
-      );
-    },
+    draw: () =>
+      // A wall of flame tongues; an incoming shot burns up against it.
+      floorGlow("fire", 64, 104, 58, 12) +
+      `<path d="M10 104 H118" stroke="${F.accent[0]}" stroke-width="5" stroke-linecap="round" opacity=".8"/>` +
+      Array.from({ length: 7 }, (_, i) => {
+        const x = 16 + i * 16,
+          h = 46 + (i % 3) * 12;
+        return (
+          `<path d="M${x - 8} 104 Q${x - 6} ${104 - h * 0.5} ${x} ${104 - h} Q${x + 6} ${104 - h * 0.5} ${x + 8} 104Z" fill="url(#sa-orb-fire)"/>` +
+          `<path d="M${x - 3.5} 104 Q${x - 2} ${104 - h * 0.35} ${x} ${104 - h * 0.65} Q${x + 2} ${104 - h * 0.35} ${x + 3.5} 104Z" fill="#fff4b0" opacity=".85"/>`
+        );
+      }).join("") +
+      `<path d="M126 30 L104 42" stroke="#cfe8ff" stroke-width="3" stroke-linecap="round" opacity=".8" stroke-dasharray="4 4"/>` +
+      `<circle cx="98" cy="46" r="6" fill="#ffd166" opacity=".9"/>` +
+      sparks(
+        [
+          [98, 46, 2.2],
+          [24, 24, 1.3],
+          [60, 16, 1.2],
+        ],
+        F.accent[2],
+      ),
   },
   "Chestnut Storm": {
     el: "fire",
@@ -2256,36 +2249,23 @@ const art: Record<string, { el: Element; draw: () => string }> = {
         A.accent[2],
       ),
   },
-  "Mirage Perch": {
+  "Halcyon Rewind": {
     el: "aura",
     draw: () =>
-      // A mirage left on the perch while the real kingfisher darts away.
-      `<path d="M6 92 Q34 84 62 92" fill="none" stroke="#5a3f2a" stroke-width="5" stroke-linecap="round"/><path d="M40 88 l-6 10" stroke="#5a3f2a" stroke-width="3" stroke-linecap="round"/>` +
-      `<ellipse cx="36" cy="70" rx="26" ry="22" fill="url(#sa-glow-aura)" opacity=".7"/>` +
-      kingfisher(34, 72, 1.05, true) +
-      [
-        [46, 56, 78, 46],
-        [44, 66, 74, 60],
-        [50, 46, 80, 32],
-      ]
-        .map(([x0, y0, x1, y1], i) =>
-          glow(
-            `M${x0} ${y0} L${x1} ${y1}`,
-            i ? A.accent[2] : A.hot,
-            i ? 1.8 : 2.4,
-            A.accent[1],
-          ),
-        )
-        .join("") +
-      halo("aura", 96, 42, 26) +
-      kingfisher(94, 42, 0.95) +
-      chevron(104, 76, 6, 0, A.accent[2], 3) +
-      chevron(114, 76, 6, 0, A.accent[1], 3, 0.6) +
+      // Halcyra dives back along a dotted loop from where it is (a fading
+      // ghost) to where it was two seconds ago; a little clock runs backward.
+      halo("aura", 36, 82, 26) +
+      `<path d="M100 48 Q118 74 90 94 Q62 110 44 90" fill="none" stroke="${A.hot}" stroke-width="3" stroke-dasharray="5 5" stroke-linecap="round"/>` +
+      `<path d="M54 86 L44 90 L50 99" fill="none" stroke="${A.hot}" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>` +
+      kingfisher(94, 40, 0.75, true) +
+      kingfisher(30, 80, 0.85) +
+      `<circle cx="112" cy="18" r="9" fill="none" stroke="${A.accent[2]}" stroke-width="2" opacity=".75"/>` +
+      `<path d="M112 12 V18 L107 21" fill="none" stroke="${A.accent[2]}" stroke-width="2" stroke-linecap="round" opacity=".8"/>` +
+      plus(64, 30, 7, "#7dffb0", 0.9) +
       sparks(
         [
-          [112, 18, 1.4],
-          [70, 18, 1.2],
-          [96, 104, 1.3],
+          [18, 30, 1.4],
+          [116, 106, 1.3],
         ],
         A.accent[2],
       ),
@@ -2629,54 +2609,41 @@ const art: Record<string, { el: Element; draw: () => string }> = {
         R.accent[2],
       ),
   },
-  "Pebble Spray": {
+  "Bush Boomerang": {
     el: "earth",
     draw: () =>
-      // Five pebbles kicked up in a short fan.
-      `<g fill="${R.accent[2]}" opacity=".4"><circle cx="22" cy="102" r="10"/><circle cx="36" cy="108" r="6"/><circle cx="12" cy="110" r="5"/></g>` +
-      [-78, -60, -42, -24, -6]
-        .map((deg, i) => {
-          const a = (deg * Math.PI) / 180,
-            d = i % 2 ? 66 : 80,
-            x = n(22 + Math.cos(a) * d),
-            y = n(100 + Math.sin(a) * d);
-          return (
-            `<path d="M${n(22 + Math.cos(a) * 18)} ${n(100 + Math.sin(a) * 18)} L${n(22 + Math.cos(a) * (d - 15))} ${n(100 + Math.sin(a) * (d - 15))}" stroke="url(#sa-diag-earth)" stroke-width="3" stroke-linecap="round" opacity=".6"/>` +
-            halo("earth", x, y, 12) +
-            `<ellipse cx="${x}" cy="${y}" rx="7.5" ry="5.6" fill="${i % 2 ? R.accent[0] : R.accent[1]}" stroke="${R.accent[2]}" stroke-width="1.6" transform="rotate(${deg} ${x} ${y})"/>` +
-            `<ellipse cx="${n(x - 2)}" cy="${n(y - 2)}" rx="2.6" ry="1.6" fill="#fff" opacity=".55" transform="rotate(${deg} ${n(x - 2)} ${n(y - 2)})"/>`
-          );
-        })
-        .join("") +
+      // A wooden boomerang spinning out on a curved path that loops home.
+      `<path d="M22 100 Q64 10 108 60 Q86 104 30 104" fill="none" stroke="${R.accent[2]}" stroke-width="2.6" stroke-dasharray="5 5" stroke-linecap="round" opacity=".7"/>` +
+      `<path d="M36 98 L26 104 L36 110" fill="none" stroke="${R.accent[2]}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity=".8"/>` +
+      halo("earth", 84, 40, 26) +
+      `<g transform="translate(84 44) rotate(-24)"><path d="M-32 8 Q-16 -16 2 -16 Q18 -14 30 8 Q32 15 25 14 Q14 -3 2 -4 Q-12 -4 -24 14 Q-32 16 -32 8Z" fill="#c98b4a" stroke="#4a2c14" stroke-width="2" stroke-linejoin="round"/><path d="M-26 6 Q-12 -10 2 -11 Q14 -10 24 6" fill="none" stroke="#efdcc0" stroke-width="1.6" stroke-linecap="round" opacity=".75"/><path d="M-6 -12 L-2 -5 M6 -12 L4 -5" stroke="#4a2c14" stroke-width="1.4" opacity=".6"/></g><path d="M50 30 Q60 22 72 24 M100 64 Q108 56 110 46" fill="none" stroke="#efdcc0" stroke-width="2" stroke-linecap="round" opacity=".5"/>` +
       sparks(
         [
-          [112, 30, 1.4],
-          [70, 16, 1.2],
-          [116, 100, 1.3],
+          [112, 24, 1.4],
+          [20, 40, 1.2],
+          [70, 112, 1.2],
         ],
         R.accent[2],
       ),
   },
-  "Rump Block": {
+  "Grudge Thump": {
     el: "earth",
     draw: () =>
-      // The armoured rump turned to block, a shot bouncing off.
-      halo("earth", 58, 64, 50) +
-      `<circle cx="58" cy="64" r="42" fill="#b08a62" stroke="#3e2a1a" stroke-width="2"/>` +
-      `<circle cx="58" cy="64" r="42" fill="none" stroke="#efdcc0" stroke-width="2" stroke-dasharray="2 5" opacity=".7"/>` +
-      `<circle cx="58" cy="66" r="32" fill="#8b8f99" stroke="#c9ccd4" stroke-width="2.4"/>` +
-      `<path d="M38 48 Q48 40 60 40" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".5"/>` +
-      `<path d="M58 66 L44 58 L34 64 M58 66 L52 84 L44 92 M58 66 L76 74 L84 88 M58 66 L74 52" fill="none" stroke="#4b4e57" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>` +
-      `<ellipse cx="58" cy="30" rx="5" ry="3.6" fill="#8a6440" stroke="#3e2a1a" stroke-width="1.2"/>` +
-      glow(`M124 26 L98 50`, "#ffb0a0", 2.4, "#ff6a4a") +
-      glow(`M98 50 L122 80`, R.hot, 2.4, R.accent[1]) +
-      `<path d="M122 80 l-9 -1 l5 -7Z" fill="#fff"/>` +
-      glint(98, 50, 8, "#fff") +
+      // A heavy thump: a cracked ring in the ground and an angry glare.
+      floorGlow("earth", 64, 96, 58, 18) +
+      `<ellipse cx="64" cy="96" rx="54" ry="16" fill="none" stroke="#ff6a5a" stroke-width="2.4" stroke-dasharray="6 5"/>` +
+      `<path d="M64 96 L40 88 M64 96 L90 86 M64 96 L52 110 M64 96 L84 108" stroke="${R.accent[2]}" stroke-width="2.4" stroke-linecap="round"/>` +
+      halo("earth", 64, 62, 30) +
+      `<ellipse cx="64" cy="70" rx="26" ry="20" fill="#b08a62" stroke="#3e2a1a" stroke-width="2"/>` +
+      `<path d="M50 60 L60 64 M78 60 L68 64" stroke="#3e2a1a" stroke-width="3.4" stroke-linecap="round"/>` +
+      `<circle cx="56" cy="68" r="3" fill="#1b1636"/><circle cx="72" cy="68" r="3" fill="#1b1636"/>` +
+      `<path d="M58 80 Q64 76 70 80" fill="none" stroke="#3e2a1a" stroke-width="2.4" stroke-linecap="round"/>` +
+      `<path d="M96 28 l6 10 l-8 2 l6 10" fill="none" stroke="#ff6a5a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>` +
+      `<path d="M32 28 l-6 10 l8 2 l-6 10" fill="none" stroke="#ff6a5a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>` +
       sparks(
         [
-          [16, 20, 1.4],
-          [12, 104, 1.3],
-          [108, 108, 1.2],
+          [112, 70, 1.3],
+          [16, 70, 1.3],
         ],
         R.accent[2],
       ),
@@ -3258,7 +3225,8 @@ const art: Record<string, { el: Element; draw: () => string }> = {
                 const a = (d * Math.PI) / 180;
                 return `<ellipse cx="${n(x + Math.cos(a) * 5)}" cy="${n(y + Math.sin(a) * 4)}" rx="5" ry="4" fill="#ff9fc4"/>`;
               })
-              .join("") + `<circle cx="${x}" cy="${y}" r="2.6" fill="#ffd166"/>`,
+              .join("") +
+            `<circle cx="${x}" cy="${y}" r="2.6" fill="#ffd166"/>`,
         )
         .join("") +
       sparks(

@@ -117,6 +117,14 @@ export type StatusKind =
   | "root"
   /** Inside a time bubble (Sloth Time): moves, dashes and rolls at STATUS_RULES.warpMultiplier. */
   | "warp"
+  /** Taunted: walks toward the taunter (`tx`, `ty`), whatever its input; can still attack and cast. */
+  | "taunt"
+  /** Braced (Grudge Thump): no knockback or pull moves it. */
+  | "brace"
+  /** Leashed (Pinning Quill): can't go farther than `amount` px from (`tx`, `ty`). */
+  | "leash"
+  /** Blinded (Ink Jet): its basic attacks miss. */
+  | "blind"
   /** Combo setup: primed for the marker's payoff skill (`by` = the marker). */
   | "mark";
 /** Statuses that count as harmful (the Shadow team-up gift, bots' targeting). */
@@ -130,6 +138,9 @@ export const DEBUFFS: StatusKind[] = [
   "drowsy",
   "root",
   "warp",
+  "taunt",
+  "leash",
+  "blind",
 ];
 export const STATUS_RULES = {
   stacking: "refresh" as const,
@@ -299,7 +310,31 @@ export type AbilityKind =
    * Swap places with the enemy (not a raid boss) or own seedling nearest the
    * aim, within `radius` of the aim and `range` of the caster.
    */
-  | "swap";
+  | "swap"
+  /**
+   * A curtain `screen.length` px wide, across the aim `screen.distance` px
+   * ahead, for `duration`: enemy shots that touch it burn up, and enemies
+   * crossing it get `status`.
+   */
+  | "screen"
+  /**
+   * Enemies within `radius` are Taunted for `statusDuration` (made to walk
+   * toward the caster, still free to attack); the caster is Braced (no
+   * knockback or pull) for `duration`.
+   */
+  | "taunt"
+  /**
+   * Jump back to where the caster was `rewind.seconds` ago and regain
+   * `rewind.heal` of the health lost since (at most `rewind.max`).
+   */
+  | "rewind"
+  /**
+   * Lock a stream onto the enemy nearest the aim within `range`: every
+   * `tether.tick` seconds it takes `damage` (the caster drains `drain` of it)
+   * for up to `duration`, until it gets `tether.breakRange` px away or out
+   * of sight.
+   */
+  | "tether";
 export interface Ability {
   id: string;
   name: string;
@@ -371,6 +406,16 @@ export interface Ability {
   warp?: number;
   /** Nova: every seedling the caster has blooms at full growth. */
   bloom?: boolean;
+  /** Screen: how wide the curtain is and how far ahead it stands (px). */
+  screen?: { length: number; distance: number };
+  /** Projectile: flies `range` px out, then comes back to the caster, hitting on each pass. */
+  boomerang?: boolean;
+  /** Rewind: how far back (seconds), the share of health lost since it gives back, and the most. */
+  rewind?: { seconds: number; heal: number; max: number };
+  /** Tether: seconds between ticks, and how far the target can get before it snaps. */
+  tether?: { tick: number; breakRange: number };
+  /** Leash (status "leash"): how far from where it was hit the target can go (px). */
+  leash?: number;
   /** Buff: the caster is airborne for `duration` (ground attacks miss). */
   glide?: boolean;
   /** Buff: a burst around the caster on cast that pushes enemies away and slows them. */
@@ -629,13 +674,13 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     ),
     skills: [
       ability(
-        "gill-spray",
-        "Gill Spray",
-        "barrage",
-        11,
-        8,
-        "Flick three water droplets from the gill fronds in a narrow fan.",
-        { count: 3, speed: 1000, radius: 11 },
+        "gill-siphon",
+        "Gill Siphon",
+        "tether",
+        3,
+        10,
+        "Lock a stream of water onto the enemy nearest your aim (380 px). For up to 2.1 seconds it takes 3 damage every 0.3 seconds and Tidefin drinks half of it back, until it gets 430 px away or out of sight.",
+        { range: 380, radius: 60, duration: 2.1, knockback: 0, drain: 0.5, tether: { tick: 0.3, breakRange: 430 } },
       ),
       ability(
         "eddy",
@@ -1152,13 +1197,13 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         },
       ),
       ability(
-        "tail-wrap",
-        "Tail Wrap",
-        "barrier",
-        0,
-        15,
-        "Curl up inside your fluffy tail: take 60% less damage for 3 seconds.",
-        { duration: 3 },
+        "ember-curtain",
+        "Ember Curtain",
+        "screen",
+        7,
+        10,
+        "Sweep up a curtain of embers 240 px wide across your aim for 3 seconds: enemy shots that touch it burn up, and enemies on it take 7 damage every half second and catch fire.",
+        { duration: 3, knockback: 0, status: "burn", statusDuration: 2, tickInterval: 0.5, screen: { length: 240, distance: 90 } },
       ),
       ability(
         "chestnut-storm",
@@ -1292,10 +1337,10 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "pinning-quill",
         "Pinning Quill",
         "projectile",
-        14,
+        12,
         8,
-        "A heavy quill that slows its target for over a second.",
-        { speed: 1100, radius: 12, status: "slow", statusDuration: 1.2 },
+        "A heavy quill that pins its target on a leash for 1.4 seconds: it can't go more than 110 px from where it was hit.",
+        { speed: 1100, radius: 12, status: "leash", statusDuration: 1.4, leash: 110 },
       ),
       ability(
         "focus-shot",
@@ -1307,13 +1352,13 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         { cast: 0.4, range: 1000, radius: 14, knockback: 60, farBonus: 0.5 },
       ),
       ability(
-        "mirage-perch",
-        "Mirage Perch",
-        "clone",
+        "halcyon-rewind",
+        "Halcyon Rewind",
+        "rewind",
         0,
-        15,
-        "Leave a mirage that absorbs one projectile and dart away with a burst of speed.",
-        { duration: 3, status: "haste", statusDuration: 1.8 },
+        17,
+        "Dive back to where you were 2 seconds ago and win back 40% of the health you lost since (at most 18).",
+        { knockback: 0, rewind: { seconds: 2, heal: 0.4, max: 18 } },
       ),
       ability(
         "skyline-lance",
@@ -1514,22 +1559,22 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         },
       ),
       ability(
-        "pebble-spray",
-        "Pebble Spray",
-        "barrage",
-        6,
-        12,
-        "Kick back a short-range spray of five pebbles.",
-        { count: 5, speed: 800, range: 380, radius: 10, knockback: 30 },
+        "bush-boomerang",
+        "Bush Boomerang",
+        "projectile",
+        11,
+        8,
+        "Throw a boomerang 460 px: it comes back to you, hitting each enemy on the way out and again on the way back.",
+        { speed: 820, range: 460, radius: 14, knockback: 20, boomerang: true },
       ),
       ability(
-        "rump-block",
-        "Rump Block",
-        "counter",
-        0,
-        15,
-        "Turn and block with your armoured rump for 1.6 seconds: take half damage and bounce 30% back.",
-        { duration: 1.6 },
+        "grudge-thump",
+        "Grudge Thump",
+        "taunt",
+        8,
+        14,
+        "Thump the ground and glare: enemies within 240 px take 8 and are Taunted for 1.1 seconds (they must walk at you, but can still fight back). You're Braced for 1.5 seconds: nothing knocks you back or pulls you.",
+        { radius: 240, duration: 1.5, knockback: 0, status: "taunt", statusDuration: 1.1 },
       ),
       ability(
         "landslide",
@@ -1575,10 +1620,10 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "ink-jet",
         "Ink Jet",
         "projectile",
-        12,
-        8,
-        "Squirt a jet of ink that slows.",
-        { speed: 950, range: 520, radius: 14, status: "slow", statusDuration: 0.8 },
+        9,
+        11,
+        "Squirt a jet of ink in their eyes: Blinded for 0.7 seconds, their basic attacks miss.",
+        { speed: 950, range: 520, radius: 14, status: "blind", statusDuration: 0.7 },
       ),
       ability(
         "ink-strike",
@@ -1906,7 +1951,7 @@ export const COMBOS: Record<CharacterId, Combo> = {
     payoff: "focus-shot",
     window: 3,
     damage: 1.35,
-    text: "Pinning Quill pins. Focus Shot deals 35% more to a Pinned target.",
+    text: "Pinning Quill pins its target on a leash. Focus Shot deals 35% more to a Pinned target.",
   },
   sunbara: {
     name: "Zested",
@@ -1929,13 +1974,13 @@ export const COMBOS: Record<CharacterId, Combo> = {
   },
   wombolder: {
     name: "Pelted",
-    setup: "pebble-spray",
+    setup: "bush-boomerang",
     payoff: "burrow-rush",
     window: 3,
     damage: 1.3,
     status: "stun",
     statusDuration: 0.6,
-    text: "Pebble Spray pelts. Burrow Rush hits Pelted targets 30% harder and stuns longer.",
+    text: "Bush Boomerang pelts. Burrow Rush hits Pelted targets 30% harder and stuns longer.",
   },
   shadopus: {
     name: "Inked",
@@ -1943,7 +1988,7 @@ export const COMBOS: Record<CharacterId, Combo> = {
     payoff: "ink-strike",
     window: 3,
     damage: 1.4,
-    text: "Ink Jet inks enemies. Ink Strike deals 40% more to Inked targets.",
+    text: "Ink Jet inks (and blinds) enemies. Ink Strike deals 40% more to Inked targets.",
   },
   pangrove: {
     name: "Latched",
@@ -1984,20 +2029,20 @@ for (const character of Object.values(CHARACTERS))
 export const TEAM_TUNING: Partial<Record<CharacterId, number>> = {
   voltkit: 1.045,
   cindrake: 0.993,
-  tidefin: 1,
+  tidefin: 1.037,
   auralynx: 0.97,
   lumoth: 0.997,
   mystowl: 1.006,
   terradon: 0.993,
   duskveil: 1.025,
   coilemur: 1.006,
-  pyranda: 0.915,
+  pyranda: 0.93,
   glacelle: 0.963,
-  halcyra: 1.008,
+  halcyra: 1,
   sunbara: 0.966,
   astrabun: 1.008,
-  wombolder: 1.006,
-  shadopus: 1.047,
+  wombolder: 1.01,
+  shadopus: 1.02,
   pangrove: 0.98,
   mossloth: 1.035,
 };
@@ -2012,20 +2057,20 @@ export const TEAM_TUNING: Partial<Record<CharacterId, number>> = {
 export const FFA_TUNING: Partial<Record<CharacterId, number>> = {
   voltkit: 0.928,
   cindrake: 1.159,
-  tidefin: 0.881,
+  tidefin: 0.85,
   auralynx: 1.055,
   lumoth: 0.919,
   mystowl: 0.872,
   terradon: 1,
   duskveil: 0.917,
   coilemur: 1.178,
-  pyranda: 0.899,
+  pyranda: 0.876,
   glacelle: 0.981,
-  halcyra: 0.863,
+  halcyra: 0.845,
   sunbara: 0.911,
   astrabun: 1.026,
-  wombolder: 1.11,
-  shadopus: 1.089,
+  wombolder: 1.054,
+  shadopus: 1.06,
   pangrove: 1.02,
   mossloth: 0.94,
 };
@@ -2044,13 +2089,13 @@ export const FFA_THREE_TUNING: Partial<Record<CharacterId, number>> = {
   terradon: 1.056,
   duskveil: 0.864,
   coilemur: 1.242,
-  pyranda: 0.852,
+  pyranda: 0.855,
   glacelle: 0.936,
-  halcyra: 0.788,
+  halcyra: 0.78,
   sunbara: 0.86,
   astrabun: 1.106,
-  wombolder: 1.161,
-  shadopus: 1.144,
+  wombolder: 1.16,
+  shadopus: 1.13,
   pangrove: 1.07,
   mossloth: 0.95,
 };
@@ -2215,8 +2260,11 @@ export interface Status {
   kind: StatusKind;
   until: number;
   nextTick: number;
-  /** Rest (Shell Up): health restored per tick. */
+  /** Rest (Shell Up): health restored per tick. Leash: its length (px). */
   amount?: number;
+  /** Taunt: where the taunter is (kept up to date). Leash: where it is pinned. */
+  tx?: number;
+  ty?: number;
   /** Who applied it (burn damage is credited to them). */
   by?: string;
 }
@@ -2325,6 +2373,8 @@ export interface Fighter extends Vec {
   roll?: { until: number; speed: number; heading: number; top: number; slot: number };
   /** Pinball: bounces left and the speed-up per bounce (the flight itself is the dash). */
   pinball?: { bounces: number; speedUp: number };
+  /** Gill Siphon: the stream locked onto `target` until `until`; the next tick, and the skill slot. */
+  tether?: { target: string; until: number; nextTick: number; skill: number };
   lastInput: Input;
 }
 export interface Projectile extends Vec {
@@ -2335,6 +2385,10 @@ export interface Projectile extends Vec {
   remaining: number;
   ability: Ability;
   color: number;
+  /** Boomerang: on its way back to the caster. */
+  back?: boolean;
+  /** Boomerang: who it has hit on this pass. */
+  hit?: string[];
 }
 /** An orb on the court, waiting to be picked up. */
 export interface Orb extends Vec {
@@ -2496,6 +2550,8 @@ export interface Zone extends Vec {
   color: number;
   /** When it was placed (seedlings grow from then). */
   born?: number;
+  /** Screen: which way the curtain runs (radians). */
+  angle?: number;
 }
 export interface GameEvent extends Vec {
   id: number;
@@ -2536,6 +2592,8 @@ export interface GameEvent extends Vec {
   ambush?: boolean;
   /** Burst events (a rush landing): the target was driven into a wall (`wallSlam`). */
   slam?: boolean;
+  /** Hit events: a blinded attacker's basic attack missed. */
+  miss?: boolean;
 }
 export type Phase =
   | "lobby"
@@ -2850,8 +2908,20 @@ export function advanceMovement(
   dt: number,
   time: number,
 ): void {
-  const dir = normalize(input.dx, input.dy);
+  let dir = normalize(input.dx, input.dy);
   p.angle = Math.atan2(input.aimY - p.y, input.aimX - p.x);
+  // Taunted: it walks toward the taunter, whatever the input says.
+  const taunt = p.statuses.find(
+    (s) => s.kind === "taunt" && s.until > time && s.tx !== undefined,
+  );
+  if (taunt) {
+    const d = Math.hypot(taunt.tx! - p.x, taunt.ty! - p.y);
+    dir = d > RULES.radius * 2 ? { x: (taunt.tx! - p.x) / d, y: (taunt.ty! - p.y) / d } : { x: 0, y: 0 };
+  }
+  const leash = p.statuses.find(
+    (s) => s.kind === "leash" && s.until > time && s.tx !== undefined,
+  );
+  const leashFrom = leash ? { x: p.x, y: p.y } : undefined;
   let modifier = 1,
     warp = 1;
   for (const s of p.statuses)
@@ -2934,6 +3004,23 @@ export function advanceMovement(
     p.vy = 0;
   }
   move(p, p.vx * dt, p.vy * dt);
+  // Leashed: it can't go past the leash's length from where it was pinned.
+  if (leash && leashFrom) {
+    const len = leash.amount ?? 100,
+      d = Math.hypot(p.x - leash.tx!, p.y - leash.ty!);
+    if (d > len) {
+      const x = leash.tx! + ((p.x - leash.tx!) * len) / d,
+        y = leash.ty! + ((p.y - leash.ty!) * len) / d;
+      if (blocked(x, y)) {
+        p.x = leashFrom.x;
+        p.y = leashFrom.y;
+      } else {
+        p.x = x;
+        p.y = y;
+      }
+      p.vx = p.vy = 0;
+    }
+  }
 }
 export const blankInput = (): Input => ({
   seq: 0,
@@ -3022,12 +3109,12 @@ export const RITES: Rite[] = [
   rite("cindrake", "minor", "cinder-snap", "Searing Snap", "Cinder Snap deals 18 damage instead of 15.", { set: { damage: 18 } }),
   rite("cindrake", "major", "sunfire-pillar", "Solar Pillar", "Sunfire Pillar erupts instantly and is 25% wider.", { set: { cast: 0 }, mul: { radius: 1.25 } }),
   rite("cindrake", "major", "heat-cracks", "Burning Cracks", "Heat Cracks sets enemies on fire.", { set: { status: "burn", statusDuration: 1.5 } }),
-  rite("tidefin", "minor", "gill-spray", "Five Drops", "Gill Spray flicks 5 droplets of 9 damage instead of 3 of 11.", { set: { count: 5, damage: 9 } }),
+  rite("tidefin", "minor", "gill-siphon", "Deep Siphon", "Gill Siphon lasts 3s instead of 2.1s.", { set: { duration: 3 } }),
   rite("tidefin", "minor", "eddy", "Wide Eddy", "Eddy is 20% wider.", { mul: { radius: 1.2 } }),
   rite("tidefin", "minor", "tide-double", "Slipstream", "Tide Double's speed burst lasts 3s instead of 2s.", { set: { statusDuration: 3 } }),
   rite("tidefin", "minor", "tide-needle", "Long Needle", "Tide Needle flies 25% further.", { mul: { range: 1.25 } }),
   rite("tidefin", "major", "eddy", "Maelstrom", "Eddy deals 6 per tick instead of 4 and lasts 4.5s.", { set: { damage: 6, duration: 4.5 } }),
-  rite("tidefin", "major", "gill-spray", "Rapid Spray", "Gill Spray cooldown 8s → 5s.", { set: { cooldown: 5 } }),
+  rite("tidefin", "major", "gill-siphon", "Thirsty Gills", "Gill Siphon drinks back all the damage it deals instead of half.", { set: { drain: 1 } }),
   rite("auralynx", "minor", "prism-shot", "Swift Prism", "Prism Shot flies 35% faster.", { mul: { speed: 1.35 } }),
   rite("auralynx", "minor", "shatter-paw", "Long Paw", "Shatter Paw reaches 20% further.", { mul: { range: 1.2 } }),
   rite("auralynx", "minor", "facet-guard", "Steady Guard", "Facet Guard lasts 2.2s instead of 1.6s.", { set: { duration: 2.2 } }),
@@ -3066,7 +3153,7 @@ export const RITES: Rite[] = [
   rite("coilemur", "major", "electromagnet", "Superconductor", "Electromagnet is 25% wider and pulls harder.", { mul: { radius: 1.25, knockback: 1.4 } }),
   rite("pyranda", "minor", "chestnut-mortar", "Big Chestnut", "Chestnut Mortar's blast is 25% wider.", { mul: { radius: 1.25 } }),
   rite("pyranda", "minor", "hot-coals", "Slow Burn", "Hot Coals last 5.5s instead of 4s.", { set: { duration: 5.5 } }),
-  rite("pyranda", "minor", "tail-wrap", "Thick Fur", "Tail Wrap lasts 4s instead of 3s.", { set: { duration: 4 } }),
+  rite("pyranda", "minor", "ember-curtain", "Long Curtain", "Ember Curtain stands for 4.5s instead of 3s.", { set: { duration: 4.5 } }),
   rite("pyranda", "minor", "ember-lob", "Hot Lob", "Ember Lob deals 12 damage instead of 10.", { set: { damage: 12 } }),
   rite("pyranda", "major", "chestnut-mortar", "Rapid Fire", "Chestnut Mortar cooldown 8s → 5.5s.", { set: { cooldown: 5.5 } }),
   rite("pyranda", "major", "chestnut-storm", "Harvest Storm", "Chestnut Storm is 30% wider.", { mul: { radius: 1.3 } }),
@@ -3076,9 +3163,9 @@ export const RITES: Rite[] = [
   rite("glacelle", "minor", "rime-shard", "Sharp Rime", "Rime Shard deals 9 damage instead of 8.", { set: { damage: 9 } }),
   rite("glacelle", "major", "hailstone", "Flash Freeze", "Hailstone freezes for 0.5s instead of slowing.", { set: { status: "freeze", statusDuration: 0.5 } }),
   rite("glacelle", "major", "whiteout", "Permafrost", "Whiteout lasts 3.6s and is 15% wider.", { set: { duration: 3.6 }, mul: { radius: 1.15 } }),
-  rite("halcyra", "minor", "pinning-quill", "Heavy Quill", "Pinning Quill slows for 1.8s instead of 1.2s.", { set: { statusDuration: 1.8 } }),
+  rite("halcyra", "minor", "pinning-quill", "Heavy Quill", "Pinning Quill pins for 2.2s instead of 1.4s.", { set: { statusDuration: 2.2 } }),
   rite("halcyra", "minor", "focus-shot", "Steady Aim", "Focus Shot charges in 0.25s instead of 0.4s.", { set: { cast: 0.25 } }),
-  rite("halcyra", "minor", "mirage-perch", "Long Mirage", "Mirage Perch's speed burst lasts 2.8s.", { set: { statusDuration: 2.8 } }),
+  rite("halcyra", "minor", "halcyon-rewind", "Quick Rewind", "Halcyon Rewind cooldown 17s → 12s.", { set: { cooldown: 12 } }),
   rite("halcyra", "minor", "aura-quill", "Keen Quill", "Aura Quill deals 9 damage instead of 8.", { set: { damage: 9 } }),
   rite("halcyra", "major", "focus-shot", "Rapid Focus", "Focus Shot cooldown 12s → 8s.", { set: { cooldown: 8 } }),
   rite("halcyra", "major", "skyline-lance", "Stunning Lance", "Skyline Lance also stuns for 0.6s.", { set: { status: "stun", statusDuration: 0.6 } }),
@@ -3095,12 +3182,12 @@ export const RITES: Rite[] = [
   rite("astrabun", "major", "moon-hop", "Double Hop", "Moon Hop cooldown 8s → 5s.", { set: { cooldown: 5 } }),
   rite("astrabun", "major", "full-moon", "Harvest Moon", "Full Moon lands instantly and is 20% wider.", { set: { cast: 0 }, mul: { radius: 1.2 } }),
   rite("wombolder", "minor", "burrow-rush", "Long Burrow", "Burrow Rush travels 20% further.", { mul: { range: 1.2 } }),
-  rite("wombolder", "minor", "pebble-spray", "Gravel", "Pebble Spray throws 7 pebbles instead of 5.", { set: { count: 7 } }),
-  rite("wombolder", "minor", "rump-block", "Iron Rump", "Rump Block lasts 2.2s instead of 1.6s.", { set: { duration: 2.2 } }),
+  rite("wombolder", "minor", "bush-boomerang", "Heavy Boomerang", "Bush Boomerang deals 14 damage a pass instead of 11.", { set: { damage: 14 } }),
+  rite("wombolder", "minor", "grudge-thump", "Long Grudge", "Grudge Thump taunts for 1.6s instead of 1.1s.", { set: { statusDuration: 1.6 } }),
   rite("wombolder", "minor", "rump-bump", "Big Bump", "Rump Bump deals 18 damage instead of 16.", { set: { damage: 18 } }),
   rite("wombolder", "major", "burrow-rush", "Quick Burrow", "Burrow Rush cooldown 9s → 6.5s.", { set: { cooldown: 6.5 } }),
   rite("wombolder", "major", "landslide", "Avalanche", "Landslide's eruption is 35% wider.", { mul: { explosion: 1.35 } }),
-  rite("shadopus", "minor", "ink-jet", "Thick Ink", "Ink Jet slows for 1.3s instead of 0.8s.", { set: { statusDuration: 1.3 } }),
+  rite("shadopus", "minor", "ink-jet", "Thick Ink", "Ink Jet blinds for 1.1s instead of 0.7s.", { set: { statusDuration: 1.1 } }),
   rite("shadopus", "minor", "ink-strike", "Sharp Ink", "Ink Strike deals 28 damage instead of 24.", { set: { damage: 28 } }),
   rite("shadopus", "minor", "ink-cloud", "Deep Ink", "Ink Cloud's stealth lasts 3.5s instead of 2.5s.", { set: { duration: 3.5 } }),
   rite("shadopus", "minor", "tentacle-lash", "Long Arms", "Tentacle Lash reaches 20% further.", { mul: { range: 1.2 } }),

@@ -121,56 +121,6 @@ function needleImpact(
   shot(360, (k) => fx.shockwave(x, y + 14, 34 * ease(k), k, FOAM, 5));
 }
 
-// ───────────── Gill Spray: droplets flicked from the gill fronds ─────────────
-function gillDrop(g: G, pr: Projectile, now: number) {
-  const fx = fxFor(g.scene),
-    r = pr.ability.radius,
-    c = pr.color,
-    x = pr.x,
-    y = pr.y,
-    dir = Math.atan2(pr.vy, pr.vx),
-    wobble = 1 + Math.sin(now / 45 + pr.id) * 0.06;
-  fx.solid.fillStyle(0x000000, 0.14).fillEllipse(x, y + 18, r * 2, r * 0.7);
-  // A teardrop: round at the front, a tail streaming back along the flight.
-  const drop = (rr: number) =>
-    Array.from({ length: 14 }, (_, i) => {
-      const a = (i / 14) * Math.PI * 2,
-        tail = Math.max(0, -Math.cos(a)),
-        d = rr * (1 + tail * 0.9) * (i % 2 ? wobble : 1);
-      const lx = Math.cos(a) * d,
-        ly = Math.sin(a) * rr * (1 - tail * 0.45);
-      return {
-        x: x + lx * Math.cos(dir) - ly * Math.sin(dir),
-        y: y + lx * Math.sin(dir) + ly * Math.cos(dir),
-      };
-    });
-  fx.solid.fillStyle(DEEP, 0.55).fillPoints(drop(r * 1.2), true);
-  fx.solid.fillStyle(c, 1).fillPoints(drop(r * 1.05), true);
-  fx.solid
-    .fillStyle(FOAM, 0.95)
-    .fillCircle(
-      x + Math.cos(dir) * r * 0.25 - 2,
-      y + Math.sin(dir) * r * 0.25 - 2,
-      r * 0.35,
-    );
-  fx.glow(x, y, r * 2.2, c, 0.3);
-  fx.trail(`rs${pr.id}`, 0.035, () =>
-    fx.burst({
-      x,
-      y,
-      z: 0,
-      count: 1,
-      kind: "drop",
-      color: [c, FOAM],
-      speed: [10, 40],
-      up: [0, 40],
-      life: [0.25, 0.4],
-      size: [1, 1.6],
-      grav: 900,
-    }),
-  );
-}
-
 // ───────────── Eddy ─────────────
 function whirlpool(g: G, z: Zone, progress: number, now: number) {
   const fx = fxFor(g.scene),
@@ -1338,10 +1288,46 @@ function frostCast(
   );
 }
 
+/**
+ * Gill Siphon: the stream of water from Tidefin's gills to the enemy it is
+ * locked onto, drawn each frame while the server holds the tether. Droplets
+ * flow back along it to Tidefin (the drain).
+ */
+export function drawSiphon(
+  scene: Phaser.Scene,
+  x: number,
+  y: number,
+  tx: number,
+  ty: number,
+  now: number,
+  color: number,
+) {
+  const fx = fxFor(scene),
+    sx = x,
+    sy = y - 16,
+    ex = tx,
+    ey = ty - 16,
+    len = Math.hypot(ex - sx, ey - sy) || 1,
+    nx = -(ey - sy) / len,
+    ny = (ex - sx) / len;
+  const pts = Array.from({ length: 13 }, (_, i) => {
+    const t = i / 12,
+      w = Math.sin(t * Math.PI * 3 - now / 80) * 6 * Math.sin(t * Math.PI);
+    return { x: sx + (ex - sx) * t + nx * w, y: sy + (ey - sy) * t + ny * w };
+  });
+  fx.g.lineStyle(9, DEEP, 0.35).strokePoints(pts, false);
+  fx.g.lineStyle(5, color, 0.75).strokePoints(pts, false);
+  fx.g.lineStyle(2, FOAM, 0.85).strokePoints(pts, false);
+  // Droplets flowing home.
+  for (let i = 0; i < 4; i++) {
+    const t = 1 - ((now / 500 + i / 4) % 1);
+    fx.glow(sx + (ex - sx) * t, sy + (ey - sy) * t, 7, FOAM, 0.8);
+  }
+  fx.glow(ex, ey, 22, color, 0.4);
+}
 export const waterKit: FxKit = {
   projectile: {
     "tide-needle": tideNeedle,
-    "gill-spray": gillDrop,
     "riptide-wave": riptideWave,
     "rime-shard": rimeShard,
     hailstone,
@@ -1355,7 +1341,7 @@ export const waterKit: FxKit = {
   channel: { "frost-breath": frostBreath },
   cast: {
     "tide-needle": waterCast,
-    "gill-spray": waterCast,
+    "gill-siphon": waterCast,
     "riptide-wave": waterCast,
     "rime-shard": frostCast,
     hailstone: frostCast,
@@ -1380,7 +1366,6 @@ export const waterKit: FxKit = {
   },
   impact: {
     "tide-needle": needleImpact,
-    "gill-spray": needleImpact,
     "riptide-wave": riptideImpact,
     "rime-shard": frostImpact,
     hailstone: frostImpact,
