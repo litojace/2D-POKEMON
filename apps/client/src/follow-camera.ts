@@ -38,6 +38,10 @@ export class FollowCamera {
     focusZoom = 1.65,
     /** Decorative world below the playable court; does not change the zoom. */
     bottom = 0,
+    /** Screen pixels covered at the top (the PvP badge on phones): the view
+     * may scroll this much further up, so the court's top edge can sit
+     * just below it and nothing on the court ends up under it. */
+    coveredTop = 0,
   ): CameraView {
     const base = arenaViewport(width, height, landscape, top);
     const snap = key !== this.identity;
@@ -68,15 +72,16 @@ export class FollowCamera {
       halfW,
       1600 - halfW,
     );
+    const minY = halfH - top - Math.max(0, coveredTop) / zoomY;
     const ty = clamp(
       focus && !reduced ? focus.y + aheadY : 450 - top / 2,
-      halfH - top,
+      minY,
       900 + bottom - halfH,
     );
     this.x = snap || reduced ? tx : this.x + (tx - this.x) * blend;
     this.y = snap || reduced ? ty : this.y + (ty - this.y) * blend;
     this.x = clamp(this.x, halfW, 1600 - halfW);
-    this.y = clamp(this.y, halfH - top, 900 + bottom - halfH);
+    this.y = clamp(this.y, minY, 900 + bottom - halfH);
     return {
       x: this.x,
       y: this.y,

@@ -13,6 +13,30 @@ const focus = (x = 800, y = 450) => ({
   attacking: false,
 });
 describe("fighter follow camera", () => {
+  it("can scroll under a covered top strip so the court starts below it (PvP badge, 7 Nov 2026)", () => {
+    const [w, h, top] = [834, 382, 60];
+    const edge = (covered: number) => {
+      const view = new FollowCamera().update(
+        w,
+        h,
+        true,
+        focus(800, 0),
+        "room:1",
+        16,
+        false,
+        top,
+        1.2,
+        0,
+        covered,
+      );
+      // Where the world's top (the stands' top edge) lands on the screen.
+      return (-top - view.y) * view.zoomY + h / 2;
+    };
+    // Without a covered strip the stands' top edge is the screen's top.
+    expect(edge(0)).toBeCloseTo(0, 5);
+    // With 48 px covered it sits 48 px down, just below the badge.
+    expect(edge(48)).toBeCloseTo(48, 5);
+  });
   it.each([
     [1200, 675, false],
     [726, 310, true],
