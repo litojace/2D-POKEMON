@@ -646,7 +646,7 @@ const HTML = `<canvas class="bs-cv" aria-label="Your bistro"></canvas>
     <nav class="bs-rail glass" aria-label="Bistro menu">
       <button type="button" data-sheet="menu" title="Recipes">${I("book")}<span>Recipes</span></button>
       <button type="button" data-sheet="friends" title="Friends' bistros">${I("smile")}<span>Friends</span></button>
-      <button type="button" data-sheet="board" title="Catering orders, regulars, the league and events">${I("flag")}<span>Orders</span><b class="dot" id="bs-board-dot" hidden></b></button>
+      <button type="button" data-sheet="board" id="bs-board-btn" title="Catering orders, regulars, the league and events">${I("flag")}<span>Orders</span><b class="dot" id="bs-board-dot" hidden></b><b class="cnt" id="bs-board-n" hidden></b></button>
       <button type="button" data-sheet="staff" title="Staff and upgrades">${I("friends")}<span>Staff</span><b class="dot" id="bs-staff-dot" hidden></b></button>
       <button type="button" data-sheet="shop" title="Shop">${I("shop")}<span>Shop</span></button>
       <button type="button" data-act="decor" title="Decorate">${I("decor")}<span>Decor</span></button>
@@ -1744,7 +1744,21 @@ export function openBistro(o: BistroOptions): BistroHandle {
     px: number;
     py: number;
     moved: boolean;
+    /** Decorate: the drag started on the held item, so it moves the item
+     * (dropped where it ends); any other drag pans the room. */
+    item?: boolean;
   } | null = null;
+  /** Is the screen point on the held item's ghost (its tile, or 2 × 2)? */
+  const onHeld = (sx: number, sy: number) => {
+    if (!held || !hover) return false;
+    const g = toGrid(toWorld(sx, sy));
+    const tx = Math.round(g.x),
+      ty = Math.round(g.y);
+    const n = ITEM_BY_KIND[held.kind].floor ? 1 : 0;
+    return (
+      tx >= hover.x && tx <= hover.x + n && ty >= hover.y && ty <= hover.y + n
+    );
+  };
   let pinch: { d: number; z: number } | null = null;
   const local = (e: PointerEvent | WheelEvent) => {
     const r = cv.getBoundingClientRect();
@@ -1753,14 +1767,27 @@ export function openBistro(o: BistroOptions): BistroHandle {
   cv.addEventListener("pointerdown", (e) => {
     const p = local(e);
     pointers.set(e.pointerId, p);
-    cv.setPointerCapture(e.pointerId);
+    try {
+      cv.setPointerCapture(e.pointerId);
+    } catch {
+      /* A pointer the browser no longer tracks: nothing to capture. */
+    }
     if (pointers.size === 2) {
       const [a, b] = [...pointers.values()];
       pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), z: zoom };
       drag = null;
       return;
     }
-    drag = { x: p.x, y: p.y, px: pan.x, py: pan.y, moved: false };
+    drag = {
+      x: p.x,
+      y: p.y,
+      px: pan.x,
+      py: pan.y,
+      moved: false,
+      // A mouse's held item already follows the pointer (a click drops
+      // it), so its drags always pan; a finger drags the item it's on.
+      item: editing && !!held && e.pointerType !== "mouse" && onHeld(p.x, p.y),
+    };
   });
   cv.addEventListener("pointermove", (e) => {
     const p = local(e);
@@ -1774,7 +1801,9 @@ export function openBistro(o: BistroOptions): BistroHandle {
       );
       return;
     }
-    if (editing && held) {
+    // The held item follows a mouse that isn't pressed, or a drag that
+    // started on it (other drags pan the room).
+    if (editing && held && (!drag || drag.item)) {
       const g = toGrid(toWorld(p.x, p.y));
       hover = { x: Math.round(g.x), y: Math.round(g.y) };
     }
@@ -1785,7 +1814,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
     const dx = p.x - drag.x,
       dy = p.y - drag.y;
     if (!drag.moved && Math.hypot(dx, dy) > 7) drag.moved = true;
-    if (drag.moved && !(editing && held)) {
+    if (drag.moved && !drag.item) {
       pan.x = drag.px + dx;
       pan.y = drag.py + dy;
     }
@@ -1798,7 +1827,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
       drag = null;
       return;
     }
-    if (drag && (!drag.moved || (editing && held))) tap(p.x, p.y);
+    if (drag && (!drag.moved || drag.item)) tap(p.x, p.y);
     drag = null;
   };
   cv.addEventListener("pointerup", end);
@@ -2324,6 +2353,8 @@ export function openBistro(o: BistroOptions): BistroHandle {
   /* ───────────── sheets ───────────── */
   const sheet = $("#bs-sheet");
   let sheetKind: string | null = null;
+  /** Shop: how many of a thing one tap buys. */
+  let shopQty = 1;
   /** Staff → Hire: the role being hired for. */
   let hireRole: Role = "waiter";
   let hireChosen = false;
@@ -2438,6 +2469,36 @@ export function openBistro(o: BistroOptions): BistroHandle {
     const l = ex.league.last;
     return !!l && !l.claimed && l.points >= LEAGUE_MIN;
   };
+  /** What waits on the board: open orders and regulars, and how many of
+   * them can be done right now (tabs and cards light up for those). */
+  const boardWaiting = () => {
+    const ex = sync.extras;
+    const now = nowS();
+    const open = ex.orders.filter((x) => x.dishes && x.expires > now);
+    const orderGo = (x: (typeof ex.orders)[number]) =>
+      !!x.dishes &&
+      (orderReady(S, x) ||
+        x.dishes.some(
+          (d) => orderLeft(x, d.dish, d.qty) > 0 && onCounter(S, d.dish) > 0,
+        ));
+    const regs = REGULARS.filter(
+      (g) => S.level >= g.level && (S.regulars[g.id] ?? 0) < g.steps.length,
+    );
+    const regGo = (g: (typeof REGULARS)[number]) => {
+      const st = g.steps[S.regulars[g.id] ?? 0];
+      return !!st && onCounter(S, st.dish) >= st.qty;
+    };
+    const l = ex.league.last;
+    return {
+      orders: open.length,
+      ordersGo: open.filter(orderGo).length,
+      orderGo,
+      regulars: regs.length,
+      regularsGo: regs.filter(regGo).length,
+      regGo,
+      league: !!l && !l.claimed && l.points >= LEAGUE_MIN,
+    };
+  };
   const boardBody = (tab: string) => {
     const ex = sync.extras;
     const now = nowS();
@@ -2459,7 +2520,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
           return `<div class="bs-card done"><img class="pt" src="${portrait(g.char)}" alt=""><div class="txt"><b>${esc(g.name)} <span class="dots">${dots}</span></b><small>Story complete: thanks for everything! (A Golden Plate is in your storage.)</small></div></div>`;
         const rw = regularReward(g, step);
         const ready = onCounter(S, st.dish) >= st.qty;
-        return `<div class="bs-card"><img class="pt" src="${portrait(g.char)}" alt=""><div class="txt"><b>${esc(g.name)} <span class="dots">${dots}</span></b><q>${esc(st.line)}</q><span class="needs">${need(st.dish, st.qty)}</span><small>Thanks: ${coinTag(rw.coins)} · ${rw.xp} XP${ex.event ? ` · ${rw.tokens} tokens` : ""}${rw.trophy ? " · a Golden Plate" : ""}</small></div><button type="button" class="pr${ready ? "" : " poor"}" data-regular="${g.id}">Serve</button></div>`;
+        return `<div class="bs-card want${ready ? " go" : ""}"><img class="pt" src="${portrait(g.char)}" alt=""><div class="txt"><b>${esc(g.name)} <span class="dots">${dots}</span></b><q>${esc(st.line)}</q><span class="needs">${need(st.dish, st.qty)}</span><small>Thanks: ${coinTag(rw.coins)} · ${rw.xp} XP${ex.event ? ` · ${rw.tokens} tokens` : ""}${rw.trophy ? " · a Golden Plate" : ""}</small></div><button type="button" class="pr${ready ? "" : " poor"}" data-regular="${g.id}">Serve</button></div>`;
       }).join("")}</div>`;
     if (tab === "league") {
       const l = ex.league;
@@ -2493,8 +2554,9 @@ export function openBistro(o: BistroOptions): BistroHandle {
           .join("")}</div>
       </div>`;
     }
-    // Catering orders.
-    return `<div class="bs-board">${ex.orders
+    // Catering orders: the ones waiting first, then the empty slots.
+    return `<div class="bs-board">${[...ex.orders]
+      .sort((a, b) => Number(!a.dishes) - Number(!b.dishes) || a.slot - b.slot)
       .map((o) => {
         if (!o.dishes) {
           const left = Math.max(0, (o.next - now) / 1000);
@@ -2511,7 +2573,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
           const more = Math.min(qty - aside, onCounter(S, dish));
           return `<em class="${aside >= qty ? "ok" : aside + more >= qty ? "ready" : "poor"}"><img src="${dishIconUrl(dish, 48)}" alt="">${aside}/${qty} ${esc(DISH_BY_ID[dish].name)}${more ? ` <i>+${more}</i>` : ""}</em>`;
         };
-        return `<div class="bs-card"><div class="ic">${I("flag")}</div><div class="txt"><b>Catering order</b><span class="needs">${o.dishes.map((d) => row(d.dish, d.qty)).join("")}</span><small>${coinTag(o.coins)} · ${o.xp} XP${o.tokens ? ` · ${o.tokens} tokens` : ""} · ${fmtDur(left * 1000)} left</small></div><div class="acts"><button type="button" class="pr${ready || can ? "" : " poor"}" data-order="${o.slot}">${ready ? "Deliver" : "Put aside"}</button><button type="button" class="pr ghost" data-skip="${o.slot}">Skip</button></div></div>`;
+        return `<div class="bs-card want${ready || can ? " go" : ""}"><div class="ic">${I("flag")}</div><div class="txt"><b>Catering order</b><span class="needs">${o.dishes.map((d) => row(d.dish, d.qty)).join("")}</span><small>${coinTag(o.coins)} · ${o.xp} XP${o.tokens ? ` · ${o.tokens} tokens` : ""} · ${fmtDur(left * 1000)} left</small></div><div class="acts"><button type="button" class="pr${ready || can ? "" : " poor"}" data-order="${o.slot}">${ready ? "Deliver" : "Put aside"}</button><button type="button" class="pr ghost" data-skip="${o.slot}">Skip</button></div></div>`;
       })
       .join(
         "",
@@ -2523,6 +2585,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
       `<header><div><h2>${title}</h2><p>${sub}</p></div><button type="button" class="x" data-close aria-label="Close">${I("close")}</button></header>`;
     if (sheetKind === "board") {
       const tab = (sheetArg as string) || "orders";
+      const w = boardWaiting();
       const tabs = [
         ["orders", "Orders"],
         ["regulars", "Regulars"],
@@ -2534,7 +2597,24 @@ export function openBistro(o: BistroOptions): BistroHandle {
           "Orders & more",
           `Catering, regulars, the weekly league and events · ${coinTag(S.coins)}`,
         ) +
-        `<nav class="bs-tabs">${tabs.map(([id, label]) => `<button type="button" data-tab="${id}" aria-pressed="${id === tab}">${label}</button>`).join("")}</nav>` +
+        `<nav class="bs-tabs">${tabs
+          .map(([id, label]) => {
+            const n =
+              id === "orders" ? w.orders : id === "regulars" ? w.regulars : 0;
+            const go =
+              id === "orders"
+                ? w.ordersGo > 0
+                : id === "regulars"
+                  ? w.regularsGo > 0
+                  : id === "league" && w.league;
+            const mark = n
+              ? `<b class="tn${go ? " go" : ""}" data-tn="${id}">${n}</b>`
+              : go
+                ? `<b class="tn go dot" data-tn="${id}"></b>`
+                : "";
+            return `<button type="button" data-tab="${id}" aria-pressed="${id === tab}">${label}${mark}</button>`;
+          })
+          .join("")}</nav>` +
         boardBody(tab);
       return;
     }
@@ -2817,7 +2897,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
             return `<button type="button" class="bs-item${locked ? " locked" : ""}" data-buy="${i.kind}" ${locked ? "disabled" : ""}>
               <img src="${itemIconUrl(i.kind, 96)}" alt=""><b>${esc(i.name)}</b>
               <small>${itemBlurb(i)}${S.stored[i.kind] ? ` · ${S.stored[i.kind]} stored` : ""}</small>
-              ${locked ? `<span class="lk">${I("lock")} Level ${i.level}</span>` : `<span class="pr ${S.coins < i.price ? "poor" : ""}">${coinTag(i.price)}</span>`}
+              ${locked ? `<span class="lk">${I("lock")} Level ${i.level}</span>` : `<span class="pr ${S.coins < i.price * shopQty ? "poor" : ""}">${shopQty > 1 ? `×${shopQty} ` : ""}${coinTag(i.price * shopQty)}</span>`}
             </button>`;
           })
           .join("")}</div>`;
@@ -2829,7 +2909,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
           return `<button type="button" class="bs-item${locked ? " locked" : ""}" data-stovebuy="${d.model}" ${locked ? "disabled" : ""}>
               <img src="${stoveIconUrl(d.model, 96)}" alt=""><b>${esc(d.name)}</b>
               <small>${esc(d.blurb)}${have ? ` · ${have} in the kitchen` : ""}${stored ? ` · ${stored} stored` : ""}</small>
-              ${locked ? `<span class="lk">${I("lock")} Level ${d.level}</span>` : `<span class="pr ${S.coins < d.price ? "poor" : ""}">${coinTag(d.price)}</span>`}
+              ${locked ? `<span class="lk">${I("lock")} Level ${d.level}</span>` : `<span class="pr ${S.coins < d.price * shopQty ? "poor" : ""}">${shopQty > 1 ? `×${shopQty} ` : ""}${coinTag(d.price * shopQty)}</span>`}
             </button>`;
         }).join(
           "",
@@ -2868,6 +2948,16 @@ export function openBistro(o: BistroOptions): BistroHandle {
       out.innerHTML =
         head("Shop", `Bistro coins: ${coinTag(S.coins)}`) +
         `<nav class="bs-tabs">${tabs.map(([id, label]) => `<button type="button" data-tab="${id}" aria-pressed="${id === tab}">${label}</button>`).join("")}</nav>` +
+        (["furniture", "decor", "machines", "kitchen"].includes(tab)
+          ? `<div class="bs-qty"><span>Buy</span>${[1, 5, 10]
+              .map(
+                (n) =>
+                  `<button type="button" data-qty="${n}" aria-pressed="${n === shopQty}">×${n}</button>`,
+              )
+              .join(
+                "",
+              )}<small>${shopQty > 1 ? "then place them one after another" : "one at a time"}</small></div>`
+          : "") +
         body;
     }
   };
@@ -2930,10 +3020,32 @@ export function openBistro(o: BistroOptions): BistroHandle {
       changed();
       return;
     }
+    if (b.dataset.qty) {
+      shopQty = Number(b.dataset.qty) || 1;
+      sound("tick");
+      return renderSheet();
+    }
     if (b.dataset.buy) {
       const kind = b.dataset.buy as ItemKind;
-      const r = sync.do({ a: "buy", kind });
-      if (!r.ok) return o.toast(r.error ?? "Can't buy that.");
+      // As many as chosen, or as many as the coins (or tokens) cover.
+      const want = ITEM_BY_KIND[kind]?.event ? 1 : shopQty;
+      let got = 0,
+        err: string | undefined;
+      for (let i = 0; i < want; i++) {
+        const r = sync.do({ a: "buy", kind });
+        if (!r.ok) {
+          err = r.error;
+          break;
+        }
+        got++;
+      }
+      if (!got) return o.toast(err ?? "Can't buy that.");
+      if (got < want)
+        o.toast(`Bought ${got} of ${want}: ${err ?? "that's all for now"}`);
+      else if (got > 1)
+        o.toast(
+          `Bought ${got} ${ITEM_BY_KIND[kind].name}: place them one after another`,
+        );
       sound("coin");
       changed();
       closeSheet();
@@ -2945,8 +3057,19 @@ export function openBistro(o: BistroOptions): BistroHandle {
     if (b.hasAttribute("data-shop-stoves")) return openSheet("shop", "kitchen");
     if (b.dataset.stovebuy) {
       const model = b.dataset.stovebuy as StoveModel;
-      const r = sync.do({ a: "stovebuy", model });
-      if (!r.ok) return o.toast(r.error ?? "Can't buy that.");
+      let got = 0,
+        err: string | undefined;
+      for (let i = 0; i < shopQty; i++) {
+        const r = sync.do({ a: "stovebuy", model });
+        if (!r.ok) {
+          err = r.error;
+          break;
+        }
+        got++;
+      }
+      if (!got) return o.toast(err ?? "Can't buy that.");
+      if (got < shopQty)
+        o.toast(`Bought ${got} of ${shopQty}: ${err ?? "that's all for now"}`);
       sound("coin");
       changed();
       closeSheet();
@@ -3240,8 +3363,24 @@ export function openBistro(o: BistroOptions): BistroHandle {
       const st = nextHire(S, r);
       return !!st && S.level >= st.level && S.coins >= st.price;
     });
+    // Orders: a count of the catering orders waiting, the button breathing
+    // while any wait, and glowing gold when one (or a regular, or the
+    // league's prize) can be handed over now.
     const bdot = layer.querySelector<HTMLElement>("#bs-board-dot");
-    if (bdot) bdot.hidden = visiting !== null || !boardReady();
+    const bn = layer.querySelector<HTMLElement>("#bs-board-n");
+    const bbtn = layer.querySelector<HTMLElement>("#bs-board-btn");
+    const now = nowS();
+    const open = visiting
+      ? 0
+      : sync.extras.orders.filter((x) => x.dishes && x.expires > now).length;
+    const ready = !visiting && boardReady();
+    if (bdot) bdot.hidden = !ready || open > 0;
+    if (bn) {
+      bn.hidden = open === 0;
+      if (bn.textContent !== String(open)) bn.textContent = String(open);
+    }
+    bbtn?.classList.toggle("waiting", open > 0 && !ready);
+    bbtn?.classList.toggle("ready", ready);
     const dot = layer.querySelector<HTMLElement>("#bs-staff-dot");
     if (dot) dot.hidden = !canHire;
     const need = xpToNext(S.level);
@@ -3471,18 +3610,55 @@ export function openBistro(o: BistroOptions): BistroHandle {
     ctx.globalAlpha = 1;
   };
   const drawChefHat = (x: number, y: number) => {
-    ctx.fillStyle = "#e8e6e1";
+    // The puff: three round lobes, each its own sub-path (drawn as one path
+    // they were joined by straight lines, and the triangle between them
+    // wound the other way: a see-through hole in the hat).
+    const lobes: [number, number, number][] = [
+      [x - 9, y - 16, 9],
+      [x + 9, y - 16, 9],
+      [x, y - 22, 11],
+    ];
+    const puff = () => {
+      ctx.beginPath();
+      for (const [cx, cy, r] of lobes) {
+        ctx.moveTo(cx + r, cy);
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      }
+      // Fill the V between the two lower lobes, above the band.
+      ctx.rect(x - 10, y - 17, 20, 9);
+    };
+    ctx.fillStyle = "rgba(60,50,40,.18)";
+    ctx.save();
+    ctx.translate(1, 1.5);
+    puff();
+    ctx.fill();
+    ctx.restore();
+    const g = ctx.createRadialGradient(x - 5, y - 26, 2, x, y - 18, 20);
+    g.addColorStop(0, "#ffffff");
+    g.addColorStop(0.7, "#f6f5f2");
+    g.addColorStop(1, "#dcd9d2");
+    ctx.fillStyle = g;
+    puff();
+    ctx.fill();
+    ctx.lineWidth = 1;
+    // The band: pleated, a touch greyer, shaded at the bottom.
+    const b = ctx.createLinearGradient(x - 13, 0, x + 13, 0);
+    b.addColorStop(0, "#e2dfd8");
+    b.addColorStop(0.4, "#f4f2ee");
+    b.addColorStop(1, "#cfcbc3");
+    ctx.fillStyle = b;
     ctx.beginPath();
     ctx.roundRect(x - 13, y - 10, 26, 10, 3);
     ctx.fill();
-    ctx.fillStyle = "#ffffff";
+    ctx.strokeStyle = "rgba(140,130,115,.35)";
     ctx.beginPath();
-    ctx.arc(x - 9, y - 16, 9, 0, Math.PI * 2);
-    ctx.arc(x + 9, y - 16, 9, 0, Math.PI * 2);
-    ctx.arc(x, y - 22, 11, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = "rgba(0,0,0,.08)";
-    ctx.fillRect(x - 13, y - 4, 26, 4);
+    for (const dx of [-8, -3, 2, 7]) {
+      ctx.moveTo(x + dx, y - 9);
+      ctx.lineTo(x + dx, y - 1);
+    }
+    ctx.stroke();
+    ctx.fillStyle = "rgba(0,0,0,.1)";
+    ctx.fillRect(x - 13, y - 3, 26, 3);
   };
   /** A crumpled wrapper, a paper cup or a napkin. */
   const drawLitter = (l: Litter) => {

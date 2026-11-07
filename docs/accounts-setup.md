@@ -175,6 +175,8 @@ Then run [103_bistro_stove_shop.sql](../supabase/migrations/103_bistro_stove_sho
 
 Then run [104_bistro_economy_items.sql](../supabase/migrations/104_bistro_economy_items.sql) (after 103). The final query should return **true**. It rebalances the Bistro's prices and XP curve and adds 24 items with perks: `seat`, `tip`, `patience`, `speed`, `vip` and `rest` columns on `arena_bistro_kinds`, `arena_bistro_perk()`, seats by role, a tip perk on sales and the waiters' speed perk while away.
 
+Then run [105_bistro_all_recipes.sql](../supabase/migrations/105_bistro_all_recipes.sql) (after 104). The final query should return **true**. It gives the six dishes of migration 100 their recipes in `arena_bistro_recipe()`: without them a level-up of those dishes changed nothing while the game showed it.
+
 ### Unlimited coins for admin testing
 
 Run [016_admin_shop_coins.sql](../supabase/migrations/016_admin_shop_coins.sql) after the earlier migrations. Existing non-suspended administrators see **∞ coins** and can buy Shop items and collection sets without spending their real balance. Purchases persist, can be equipped normally, and are recorded in the admin audit log. Prices, Mythic Trials, Awakening requirements and regular player spending still work as usual. Removing admin membership ends unlimited spending immediately; the saved wallet balance is unchanged.

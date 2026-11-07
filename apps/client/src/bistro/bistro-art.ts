@@ -794,8 +794,12 @@ export function drawWindows(ctx: Ctx, l: Light, low: boolean) {
           y = cy - 22 + i * 14;
         ctx.fillStyle = `rgba(255,255,255,${0.75 - l.gold * 0.25})`;
         ctx.beginPath();
+        // Each puff its own sub-path (joined, the lines between them made
+        // a hole where they wound the other way).
         ctx.ellipse(x, y, 16, 6, 0, 0, Math.PI * 2);
+        ctx.moveTo(x + 20, y - 4);
         ctx.ellipse(x + 10, y - 4, 10, 6, 0, 0, Math.PI * 2);
+        ctx.moveTo(x - 1, y - 2);
         ctx.ellipse(x - 9, y - 2, 8, 5, 0, 0, Math.PI * 2);
         ctx.fill();
       }
