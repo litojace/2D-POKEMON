@@ -24,6 +24,7 @@ import {
   type Fighter,
   type Input,
   type Zone,
+  RING_KINDS,
 } from "../../../packages/shared/src/index.js";
 import type { Arena } from "./simulation.js";
 /**
@@ -410,8 +411,11 @@ export class BotBrain {
       (() => {
         // The enemy's own rites (a wider nova, say) count when dodging.
         const a = kitOf(enemy.character, enemy.rites).skills[enemy.charge!.skill];
-        return a.kind === "nova" &&
-          Math.hypot(enemy.x - me.x, enemy.y - me.y) < a.radius + 40
+        // A blast ring, a cage about to rise, or rays about to turn.
+        const reach =
+          a.kind === "lighthouse" ? a.range : RING_KINDS.includes(a.kind) ? a.radius : 0;
+        return reach > 0 &&
+          Math.hypot(enemy.x - me.x, enemy.y - me.y) < reach + 40
           ? a
           : undefined;
       })();

@@ -124,3 +124,65 @@ These line-up runs are noisy (a champion is in about a fifth of the games,
 so a round moves it by ±3 points): the factors are set from all the rounds
 together rather than the last one. In 3-player free-for-alls all five were
 already within 31–36% (fair 33.3%) and barely moved.
+
+## Wave 2: melee stun strikes and knockback novas
+
+Six skills were a strike in front that stuns (Shatter Paw, Eyespot Flash,
+Shell Bash, Static Clamp, Mochi Pound, Kraken Grasp), and four ultimates a
+ring that blasts everyone away (Overcharge, Shard Nova, Radiant Flare,
+Tremor). Shatter Paw (Auralynx's crystal palm) and Shell Bash (Terradon's
+shell) stay; Overcharge (it paralyses) and Tremor (a ground quake you jump)
+stay. The others change:
+
+| Champion | Was                                     | Now                                                                                                                                                                        | Borrowed from                    |
+| -------- | --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------- |
+| Lumoth   | **Eyespot Flash**: a stun strike in front | **Eyespot Flash** (12 s): the eyespots flash; every enemy within 300 px takes 8, and those **looking at Lumoth** (aiming within 0.6 rad of it) are stunned for 0.8 s. Look away to dodge it | gaze attacks                     |
+| Lumoth   | **Radiant Flare**: a blast ring           | **Radiant Flare** (ultimate): Lumoth glows like a **lighthouse** for 2.4 s; three rays 260 px long turn round it (a turn every 1.2 s) and each enemy a ray sweeps takes 8 | rotating beams                   |
+| Coilemur | **Static Clamp**: a stun strike           | **Static Clamp** (12 s): clamps a **charge** on the enemy in front; 1.5 s later it goes off (22 and paralysis) and **arcs** to every enemy within 200 px of it for half    | time bombs and chain lightning   |
+| Astrabun | **Mochi Pound**: a stun strike            | **Mochi Pound** (12 s): a **chain of three pounds**, each cast again within 1.2 s: 8, 10, then 16 that stuns and knocks back. The cooldown starts after the last          | recast combos                    |
+| Shadopus | **Kraken Grasp**: a stun strike (ultimate) | **Kraken Grasp** (ultimate): **seizes** the enemy in front, holds it 0.5 s (aim while you hold it), then **hurls** it 380 px: 34, half again into a wall; enemies where it lands take half | grabs and throws                 |
+| Auralynx | **Shard Nova**: a blast ring (ultimate)   | **Crystal Cage** (ultimate): crystal spires rise in a 230 px **ring** round Auralynx for 3 s; nobody can cross it and no shot gets through. Enemies caught inside take 24  | arena-locking ultimates          |
+
+### New mechanics
+
+- **Gaze** (`kind: "gaze"`): an enemy is caught when the direction it aims is
+  within `gaze` radians of the caster.
+- **Clamp** (`kind: "clamp"`, status `clamp`): the charge is a status on the
+  target (`by` = the clamper). When it runs out the server fires it
+  (`fireClamp`): the hit, then a `beam` event and a hit for each enemy it arcs
+  to. A combo-primed (Magnetised) target goes off at once.
+- **Throw** (`kind: "throw"`): the thrower keeps `grab` (target, when). While
+  it holds, the target is kept in front of it (and stunned); then it is
+  moved `throw` px along the thrower's aim at that moment, with the rush's
+  wall-slam test.
+- **Pound** (`kind: "pound"`): the fighter keeps `pound` (step, until, the
+  cooldown's end). A strike that is not the last puts the cooldown at a
+  quarter second; if the chain lapses, the cooldown counted from the first
+  strike comes back. Each burst event carries its `step`.
+- **Cage** (`kind: "cage"`, status `cage`): every fighter gets a `cage`
+  status with the centre, radius and which side it was on. `advanceMovement`
+  ends with `holdInCage`, so client prediction agrees; shots that would cross
+  the ring this tick are destroyed. Bots don't treat a cage as a hazard.
+- **Lighthouse** (`kind: "lighthouse"`): a zone that follows the caster and
+  turns (`angle`); an enemy within a ray's width is hit, at most once per ray
+  passing, through nothing solid.
+
+### Everything else
+
+- **Bots** use each one: the flash with enemies near, the clamp, throw and
+  pound in melee reach (the pound again while its chain lasts), the cage up
+  close, the rays with enemies in reach.
+- **Combos**: Magnetised (Magnet Lash) now makes Static Clamp go off at once,
+  35% harder, and stun; Moonlit adds 35% to the first pound after a Moon
+  Hop; Kindled gives Radiant Flare 25% longer rays.
+- **Rites**: Wide Wings (Eyespot Flash 20% wider), Dazzle (stuns 1.2 s),
+  Long Cage (4.5 s and 32 damage); the others carry over.
+- **Raid trick**: on Grumblecrag only the last pound of a chain adds 15
+  stagger. Radiant Flare keeps its Gloomshade and Prismatail tricks (they
+  happen on cast).
+- **Client**: new or redrawn icons (Crystal Cage, Radiant Flare, Static
+  Clamp's fuse, Kraken Grasp's throw, Mochi Pound's three pounds), battle
+  effects (the flash ring, the turning rays, the crackling charge ring that
+  tightens as it runs out and its arcs, the tentacle holding its catch, the
+  ink splash where it lands, each pound's puff and "×2" / "POUND!", the ring
+  of spires), CHARGED and CAGED labels.

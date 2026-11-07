@@ -7,6 +7,8 @@ import {
   type Input,
   type Ability,
   type StatusKind,
+  STRIKE_KINDS,
+  RING_KINDS,
 } from "../../../packages/shared/src/index.js";
 import {
   PRISMATAIL as P,
@@ -158,12 +160,12 @@ export class PrismatailArena extends RaidArena {
     if (a.id === "wing-cloak") this.wardUntil.set(p.id, this.time + a.duration);
     if (
       a.id !== "radiant-flare" &&
-      ["melee", "cone", "beam", "nova"].includes(a.kind)
+      [...STRIKE_KINDS, ...RING_KINDS, "cone", "beam"].includes(a.kind)
     )
       this.raid.mirrors?.forEach((m, i) => {
         const dist = Math.hypot(m.x - p.x, m.y - p.y);
         const hit =
-          a.kind === "nova"
+          RING_KINDS.includes(a.kind)
             ? dist <= a.radius + 30
             : dist <= a.range + 30 &&
               (a.kind === "beam"

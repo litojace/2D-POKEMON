@@ -6,6 +6,8 @@ import {
   type Ability,
   type Fighter,
   type Input,
+  STRIKE_KINDS,
+  RING_KINDS,
 } from "../../../packages/shared/src/index.js";
 import {
   DREAM_RUNES,
@@ -686,12 +688,14 @@ export class SomnaraArena extends RaidArena {
     super.cast(p, a, ex);
     if (p.raidBoss) return;
     const affected = (x: number, y: number) =>
-      a.kind === "melee" || a.kind === "cone" || a.kind === "beam"
+      STRIKE_KINDS.includes(a.kind) || a.kind === "cone" || a.kind === "beam"
         ? Math.hypot(x - p.x, y - p.y) < a.range + RULES.radius &&
           Math.cos(Math.atan2(y - p.y, x - p.x) - p.angle) > (a.arc ?? 0.35)
-        : a.kind === "nova" &&
+        : RING_KINDS.includes(a.kind) &&
           Math.hypot(x - p.x, y - p.y) < a.radius + RULES.radius;
-    if (["melee", "cone", "beam", "nova"].includes(a.kind)) {
+    if (
+      [...STRIKE_KINDS, ...RING_KINDS, "cone", "beam"].includes(a.kind)
+    ) {
       for (const ally of this.heroes())
         if (ally !== p && affected(ally.x, ally.y)) this.wake(ally);
       this.raid.dreamBubbles = (this.raid.dreamBubbles ?? []).filter(

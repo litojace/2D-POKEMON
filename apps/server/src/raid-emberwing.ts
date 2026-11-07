@@ -7,6 +7,7 @@ import {
   type Fighter,
   type Input,
   type Ability,
+  STRIKE_KINDS,
 } from "../../../packages/shared/src/index.js";
 import {
   EMBERWING as E,
@@ -156,7 +157,8 @@ export class EmberwingArena extends RaidArena {
   ) {
     const r = this.raid;
     if (target.raidBoss && r.airborne) {
-      if (ability?.kind === "melee" || ability?.ground) return;
+      if ((ability && STRIKE_KINDS.includes(ability.kind)) || ability?.ground)
+        return;
       if (!SKYWARD.has(ability?.id ?? "")) amount *= 0.5;
     }
     const crash =

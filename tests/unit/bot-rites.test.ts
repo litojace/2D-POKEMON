@@ -12,7 +12,7 @@ const ofFighter = (f: string) => RITES.filter((r) => r.fighter === f);
 describe("bot rite choice", () => {
   it("Easy picks any card evenly; Normal leans towards majors", () => {
     const offer = [
-      "auralynx-stunning-nova",
+      "auralynx-long-cage",
       "auralynx-hard-jab",
       "auralynx-long-palm",
     ];
@@ -36,14 +36,14 @@ describe("bot rite choice", () => {
     const me = { character: "auralynx" as const, rites: [] };
     const offer = [
       "auralynx-hard-jab",
-      "auralynx-stunning-nova",
+      "auralynx-long-cage",
       "auralynx-swift-prism",
     ];
     const random = seeded();
     for (let i = 0; i < 50; i++)
       expect(
         chooseRite("hard", offer, me, { character: "cindrake" }, random),
-      ).toBe("auralynx-stunning-nova");
+      ).toBe("auralynx-long-cage");
   });
 
   it("Hard values every rite it can be offered, majors above the average minor", () => {

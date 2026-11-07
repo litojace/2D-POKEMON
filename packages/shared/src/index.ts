@@ -374,6 +374,10 @@ export type AbilityKind =
    * it (a turn every `spin` seconds); an enemy a ray sweeps takes `damage`.
    */
   | "lighthouse";
+/** Strikes in front of the caster, within `range` and `arc` (raids treat them alike). */
+export const STRIKE_KINDS: AbilityKind[] = ["melee", "pound", "clamp", "throw"];
+/** Rings round the caster, within `radius` (raids treat them alike). */
+export const RING_KINDS: AbilityKind[] = ["nova", "gaze", "cage"];
 export interface Ability {
   id: string;
   name: string;
@@ -3239,7 +3243,7 @@ export const RITES: Rite[] = [
   rite("auralynx", "minor", "facet-guard", "Steady Guard", "Facet Guard lasts 2.2s instead of 1.6s.", { set: { duration: 2.2 } }),
   rite("auralynx", "minor", "prism-jab", "Hard Jab", "Prism Jab deals 15 damage instead of 13.", { set: { damage: 15 } }),
   rite("auralynx", "major", "prism-shot", "Prism Burst", "Prism Shot explodes on impact, hitting everyone nearby.", { set: { explosion: 90 } }),
-  rite("auralynx", "major", "crystal-cage", "Long Cage", "Crystal Cage stands for 4.5s instead of 3s.", { set: { duration: 4.5 } }),
+  rite("auralynx", "major", "crystal-cage", "Long Cage", "Crystal Cage stands for 4.5s instead of 3s and deals 32 instead of 24.", { set: { duration: 4.5, damage: 32 } }),
   rite("lumoth", "minor", "wing-dust", "Dust Storm", "Wing Dust throws 7 motes of 7 damage instead of 5 of 8.", { set: { count: 7, damage: 7 } }),
   rite("lumoth", "minor", "eyespot-flash", "Wide Wings", "Eyespot Flash reaches 20% further.", { mul: { radius: 1.2 } }),
   rite("lumoth", "minor", "kindle", "Long Kindle", "Kindle lasts 6.5s instead of 5s.", { set: { duration: 6.5 } }),
