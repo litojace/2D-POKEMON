@@ -64,6 +64,7 @@ import {
   isSuperSwipe,
   nightLevel,
   star,
+  weatherLook,
 } from "./farm-feel";
 import {
   FrameRateProbe,
@@ -1666,7 +1667,7 @@ export function openFarm(options) {
     const w = F.weather.cur,
       dark = Math.max(
         nightLevel(TOD),
-        w === "moon" ? 0.85 : 0,
+        w === "moon" ? 0.85 * nightLevel(TOD) : 0,
         w === "storm" ? 0.5 : w === "rain" ? 0.3 : 0,
       );
     if (dark > 0.05)
@@ -2591,11 +2592,27 @@ export function openFarm(options) {
     g.fillStyle = vg;
     g.fillRect(0, 0, VW, VH);
   }
+  /** Stars twinkling in the sky, a as strong as they get (0..1). */
+  function drawStars(g, time, a) {
+    for (let k = 0; k < 60; k++) {
+      const tw = 0.4 + 0.6 * Math.abs(Math.sin(time * 1.6 + k * 2.1));
+      g.fillStyle = `rgba(255,255,240,${tw * 0.9 * a})`;
+      g.beginPath();
+      g.arc((k * 197.3) % VW, 12 + ((k * 61.7) % 150), k % 5 ? 1.3 : 2.2, 0, 7);
+      g.fill();
+    }
+  }
   function drawSun(g, time) {
+    // A clear sky after dark (the device's clock, as in the Plaza): stars,
+    // and no sun shafts. The light fades with the dusk.
+    const n = nightLevel(TOD);
+    if (n > 0) drawStars(g, time, n * 0.8);
+    if (n >= 0.98) return;
     // The sun stands off the top right; its light fans out in soft shafts.
     const sx = VW * 0.95,
       sy = -VH * 0.28;
     g.save();
+    g.globalAlpha = 1 - n;
     g.globalCompositeOperation = "lighter";
     const glowR = VH * 0.95,
       gl = g.createRadialGradient(sx, sy, 0, sx, sy, glowR);
@@ -2708,11 +2725,17 @@ export function openFarm(options) {
     const w = F.weather.cur;
     if (w === "rain" || w === "storm") drawRain(g, time, w === "storm");
     if (w === "moon") {
+      // A moonlit night after dark; by day (the device's clock) a pale moon
+      // in a daytime sky, without the night's darkness, stars or fireflies.
+      const n = nightLevel(TOD);
       g.save();
+      g.globalAlpha = n;
       g.globalCompositeOperation = "multiply";
       g.fillStyle = "#454a86";
       g.fillRect(0, 0, VW, VH);
       g.restore();
+      g.save();
+      g.globalAlpha = 0.35 + 0.65 * n;
       const mx = VW - 260,
         gr = g.createRadialGradient(mx, 90, 10, mx, 90, 150);
       gr.addColorStop(0, "rgba(255,250,220,.95)");
@@ -2726,23 +2749,12 @@ export function openFarm(options) {
       g.beginPath();
       g.arc(mx, 90, 26, 0, 7);
       g.fill();
-      for (let k = 0; k < 60; k++) {
-        const tw = 0.4 + 0.6 * Math.abs(Math.sin(time * 1.6 + k * 2.1));
-        g.fillStyle = `rgba(255,255,240,${tw * 0.9})`;
-        g.beginPath();
-        g.arc(
-          (k * 197.3) % VW,
-          12 + ((k * 61.7) % 150),
-          k % 5 ? 1.3 : 2.2,
-          0,
-          7,
-        );
-        g.fill();
-      }
+      g.restore();
+      drawStars(g, time, n);
       g.save();
       g.globalCompositeOperation = "lighter";
       for (let k = 0; k < 46; k++) {
-        const a = (0.5 + 0.5 * Math.sin(time * 3 + k)) * 0.9,
+        const a = (0.5 + 0.5 * Math.sin(time * 3 + k)) * 0.9 * n,
           x = (k * 173.3 + Math.sin(time * 0.5 + k) * 30) % VW,
           y = 220 + ((k * 97.1) % (VH - 260)) + Math.sin(time + k) * 14;
         const fg = g.createRadialGradient(x, y, 0, x, y, 12);
@@ -2757,7 +2769,11 @@ export function openFarm(options) {
     }
     if (w === "frost") drawSnow(g, time);
     if (w === "rainbow") {
+      // After dark, a faint moonbow.
+      g.save();
+      g.globalAlpha = 1 - 0.75 * nightLevel(TOD);
       g.drawImage(rainbowImg(), 0, 0);
+      g.restore();
       // Drops still glinting in the air after the rain.
       g.save();
       g.globalCompositeOperation = "lighter";
@@ -4461,7 +4477,16 @@ export function openFarm(options) {
     pop.style.left = `${Math.max(8, Math.min(o.w - pw - 8, sp.x - pw / 2))}px`;
     const top = sp.y - pop.offsetHeight - 14;
     pop.style.top = `${top < 60 ? Math.min(o.h - pop.offsetHeight - 8, sp.y + PH * Z * K + 10) : top}px`;
+    // Held past the hold time, a touch opens the tray while the finger is
+    // still down, and on a phone the tray can lie under it: the click that
+    // ends that touch would pick whatever seed is there (and close the tray
+    // at once). Only a press that starts on the tray picks; Enter still does.
+    let pressed = false;
+    pop.onpointerdown = () => {
+      pressed = true;
+    };
     pop.onclick = (e) => {
+      if (!pressed && e.detail !== 0) return;
       if (e.target.closest("[data-seedshop]")) {
         pop.hidden = true;
         pop.classList.remove("seedpick");
@@ -5342,7 +5367,12 @@ export function openFarm(options) {
       );
     feel.drawWorld(ctx);
     const wcur = F.weather.cur;
-    if (!low && !reduced && !["rain", "storm", "moon"].includes(wcur))
+    if (
+      !low &&
+      !reduced &&
+      !["rain", "storm"].includes(wcur) &&
+      !(wcur === "moon" && nightLevel(TOD) > 0.5)
+    )
       feel.drawClouds(ctx, 0.14 * (1 - nightLevel(TOD) * 0.7));
     ctx.restore();
     lightPass(time);
@@ -5357,13 +5387,16 @@ export function openFarm(options) {
     const w = F.weather.cur,
       wet = w === "rain" || w === "storm",
       n = nightLevel(TOD),
-      golden = wet || w === "moon" ? 0 : goldenLevel(TOD) * (1 - n * 0.6),
-      warm = wet || w === "moon" || w === "frost" ? 0 : (1 - n) * (1 - golden);
-    // The Moonlit weather already paints a night: no second darkening.
+      golden = wet
+        ? 0
+        : goldenLevel(TOD) * (1 - n * 0.6) * (w === "moon" ? 1 - n : 1),
+      warm = wet || w === "frost" ? 0 : (1 - n) * (1 - golden);
+    // The Moonlit weather paints its own night (after dark only): no second
+    // darkening.
     gradeView(ctx, VW, VH, { night: w === "moon" ? 0 : n, golden, warm, low });
     const lit = Math.max(
       n,
-      w === "moon" ? 0.85 : 0,
+      w === "moon" ? 0.85 * n : 0,
       golden * 0.55,
       w === "storm" ? 0.5 : w === "rain" ? 0.3 : 0,
     );
@@ -5914,10 +5947,24 @@ export function openFarm(options) {
   let orbKey = "";
   const weatherLeft = () =>
     Math.max(0, ((F.weather.until ?? 0) - serverNow()) / 1000);
+  /** A weather as it looks now, or at a moment (ms) by this device's clock
+   *  (a forecast): a Sunny window after dark is a clear night, and so on. */
+  const wlook = (id, at = null) =>
+    id
+      ? weatherLook(
+          FARM_WEATHER_BY_ID[id],
+          // A time of day pinned for a preview (tests) holds for all.
+          nightLevel(
+            at == null || todOverride != null
+              ? TOD
+              : deviceTimeOfDay(new Date(at)),
+          ),
+        )
+      : null;
   function renderChips() {
     const used = barnUsed(),
       bp = Math.min(1, used / F.barnCap),
-      wn = F.weather.cur ? FARM_WEATHER_BY_ID[F.weather.cur] : null,
+      wn = wlook(F.weather.cur),
       wp = Math.max(0, Math.min(1, weatherLeft() / FARM_WEATHER_SECONDS));
     const want = [
       wn && [
@@ -5967,7 +6014,8 @@ export function openFarm(options) {
           (w) =>
             w[0] +
             (w[0] === "weather"
-              ? F.weather.cur
+              ? // Its icon changes with the hour too (a clear night's star).
+                `${F.weather.cur}:${wn.icon}`
               : w[0] === "perk"
                 ? F.farmer
                 : ""),
@@ -6012,10 +6060,14 @@ export function openFarm(options) {
     }
     let h = "";
     if (k === "weather") {
-      const w = FARM_WEATHER_BY_ID[F.weather.cur],
-        n = F.weather.next ? FARM_WEATHER_BY_ID[F.weather.next] : null,
+      // Each named for the middle of its window by this device's clock.
+      const w = wlook(F.weather.cur),
+        n = wlook(F.weather.next, F.weather.until + FARM_WEATHER_SECONDS * 500),
         // The third forecast comes only with Mystowl's Foresight (migration 046).
-        n2 = F.weather.next2 ? FARM_WEATHER_BY_ID[F.weather.next2] : null,
+        n2 = wlook(
+          F.weather.next2,
+          F.weather.until + FARM_WEATHER_SECONDS * 1500,
+        ),
         p = Math.max(0, Math.min(1, weatherLeft() / FARM_WEATHER_SECONDS));
       h = `<div class="op-h">${I(w.icon)}<b>${w.name}</b><span class="op-tag">Now</span></div><p>${w.text}.</p><div class="op-big">${fmtSecs(weatherLeft())}<small>until it changes</small></div><div class="op-bar" style="--rc:${w.color}"><i style="width:${p * 100}%"></i></div>${n ? `<div class="op-next"><span>Next</span>${I(n.icon)}<b>${n.name}</b></div><p class="op-note">${n.text}.</p>` : ""}${n2 ? `<div class="op-next"><span>Then</span>${I(n2.icon)}<b>${n2.name}</b></div><p class="op-note">Foresight: ${n2.text}.</p>` : ""}`;
     } else if (k === "perk") {

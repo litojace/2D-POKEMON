@@ -502,6 +502,13 @@
   position: absolute;
   z-index: 6;
   animation: popin 0.16s var(--ease-out);
+  /* Only the round button takes a tap: the box around it (and the gaps in
+     a row of them) let it through to the field, or a tap there did nothing
+     and the bubble stayed (touch screens also snap a finger to it). */
+  pointer-events: none;
+}
+.farm-layer .fm-sickle button {
+  pointer-events: auto;
 }
 .farm-layer .fm-sickle button {
   width: 64px;
@@ -524,6 +531,10 @@
   display: flex;
   gap: 6px;
   animation: popin 0.16s var(--ease-out);
+  pointer-events: none;
+}
+.farm-layer .fm-acts button {
+  pointer-events: auto;
 }
 .farm-layer .fm-acts[hidden],
 .farm-layer .fm-tools[hidden] {

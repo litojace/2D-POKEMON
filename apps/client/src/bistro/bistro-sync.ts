@@ -19,6 +19,7 @@ import {
   dishUp,
   buyIngredient,
   fillOrder,
+  returnAside,
   fillRegular,
   leagueReward,
   openBranch,
@@ -203,12 +204,17 @@ export function applyLocal(
       const o = extras?.orders.find((o) => o.slot === x.slot);
       if (!o) return { ok: false, error: "No order there yet." };
       const res = fillOrder(s, o);
-      if (res.ok) o.dishes = null;
-      return r(res);
+      if (!res.ok) return res;
+      if (res.done) {
+        o.dishes = null;
+        o.filled = {};
+      }
+      return { ok: true };
     }
     case "skip": {
       const o = extras?.orders.find((o) => o.slot === x.slot);
       if (!o?.dishes) return { ok: false, error: "No order there yet." };
+      returnAside(s, o);
       o.dishes = null;
       return { ok: true };
     }
@@ -375,6 +381,9 @@ export function readServer(raw: unknown): {
             tokens: num(o.tokens),
             expires: num(o.expires),
             next: num(o.next),
+            filled: Object.fromEntries(
+              Object.entries(numMap(o.filled)).filter(([k]) => isDishId(k)),
+            ) as Partial<Record<DishId, number>>,
           }))
         : [],
       league: readLeague(r.league),

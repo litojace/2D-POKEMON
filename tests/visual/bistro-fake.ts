@@ -35,6 +35,7 @@ export async function fakeBistro(page: Page) {
             tokens: 5,
             expires: Date.now() + 6 * 3600_000,
             next: 0,
+            filled: {},
           },
           {
             slot: 1,
@@ -47,6 +48,7 @@ export async function fakeBistro(page: Page) {
             tokens: 5,
             expires: Date.now() + 3 * 3600_000,
             next: 0,
+            filled: {},
           },
           {
             slot: 2,
@@ -56,6 +58,7 @@ export async function fakeBistro(page: Page) {
             tokens: 0,
             expires: 0,
             next: Date.now() + 9 * 60_000,
+            filled: {},
           },
         ],
         league: {

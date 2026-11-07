@@ -396,6 +396,35 @@ test("Bistro board: deliver a catering order, a regular's visit, claim the leagu
   await flush(page);
   expect(await B(page, "return srv.S.coins")).toBe(20040);
   expect(await B(page, "return srv.S.counter[0].servings")).toBe(8);
+  // The big order (12 Banh Mi, 9 Pho) fills as you go: 5 Banh Mi on the
+  // counter are put aside, kept from the guests.
+  await B(
+    page,
+    "srv.S.counter[1] = { dish: 'banhmi', servings: 5, perfect: false }; return b.load()",
+  );
+  const big = page.locator('#bs-sheet [data-order="1"]');
+  await expect(big).toHaveText("Put aside");
+  await expect(big.locator("xpath=../..")).toContainText("0/12 Banh Mi +5");
+  await big.click();
+  await expect(page.locator("#toast")).toContainText(
+    "Put aside 5 servings for the order",
+  );
+  await flush(page);
+  expect(
+    await B(
+      page,
+      "return [srv.extras.orders[1].filled.banhmi, srv.S.counter[1], srv.S.coins]",
+    ),
+  ).toEqual([5, null, 20040]);
+  await expect(big.locator("xpath=../..")).toContainText("5/12 Banh Mi");
+  // Skipping it puts them back on the counter.
+  await page.click('#bs-sheet [data-skip="1"]');
+  await flush(page);
+  expect(await B(page, "return srv.S.counter[1]")).toEqual({
+    dish: "banhmi",
+    servings: 5,
+    perfect: false,
+  });
   // Mira's first visit: six spring rolls.
   await page.click('#bs-sheet [data-tab="regulars"]');
   await snap(page, info, "bistro-regulars");
@@ -432,7 +461,7 @@ test("Bistro board: deliver a catering order, a regular's visit, claim the leagu
   expect(errors).toEqual([]);
 });
 
-test("Bistro: a guest stays at the table 12 to 17 s, so a busy room fills up", async ({
+test("Bistro: a guest sits over Spring Rolls 10 to 14 s (longer for dearer dishes), so a busy room fills up", async ({
   page,
 }) => {
   const errors = await openBistro(page);
@@ -453,9 +482,9 @@ test("Bistro: a guest stays at the table 12 to 17 s, so a busy room fills up", a
     `for (let i = 0; i < 60; i++) { const c = b.customers().find((x) => x.id === ${id}); if (c?.state === 'eating') return true; b.advance(0.5); } return false`,
   )) as boolean;
   expect(served).toBe(true);
-  await B(page, "b.advance(11.5)");
+  await B(page, "b.advance(9.5)");
   expect(await B(page, state)).toBe("eating");
-  await B(page, "b.advance(6)");
+  await B(page, "b.advance(5)");
   expect(await B(page, state)).not.toBe("eating");
   expect(errors).toEqual([]);
 });

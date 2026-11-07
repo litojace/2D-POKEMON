@@ -2188,6 +2188,16 @@ body.hub-bistro #account-profile {
 .bistro-layer .bs-card .needs em.poor {
   color: #ffb0b0;
 }
+/* Enough on the counter to finish it now. */
+.bistro-layer .bs-card .needs em.ready {
+  background: #ffd65b26;
+  color: #ffe9a8;
+}
+/* "+n": on the counter now, ready to put aside. */
+.bistro-layer .bs-card .needs em i {
+  font-style: normal;
+  color: #ffd65b;
+}
 .bistro-layer .bs-card .dots {
   display: inline-flex;
   gap: 3px;
