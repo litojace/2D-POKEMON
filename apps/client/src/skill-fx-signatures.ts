@@ -1116,6 +1116,342 @@ const tongueLick: BeamFn = (scene, _a, x, y, tx, ty) => {
   splash(fx, tx, ty, 5, [0xf2a0b8, 0xffd6e2], 0.5, { z: 10 });
 };
 
+// ───────────── Aura ─────────────
+const PRISM = [0xff8fa3, 0xffd76a, 0x8fffc1, 0x8fd0ff, 0xc59bff];
+const CRYSTAL = [0xe8d8ff, 0xb89cff, WHITE];
+/** Little glints of light that flash and fade without falling. */
+const glints = (
+  fx: Fx,
+  x: number,
+  y: number,
+  n: number,
+  color: number[],
+  speed: [number, number] = [20, 80],
+  o: { angle?: number; spread?: number; z?: number } = {},
+) =>
+  fx.burst({
+    x,
+    y,
+    z: o.z ?? 14,
+    count: n,
+    kind: "mote",
+    color,
+    speed,
+    up: [10, 60],
+    life: [0.35, 0.7],
+    size: [1, 2.2],
+    grav: -20,
+    drag: 2,
+    angle: o.angle,
+    spread: o.spread,
+  });
+const facetGuard: CastFn = (scene, _a, x, y) => {
+  const fx = fxFor(scene);
+  // Facets lock into place: glints flash round it and crystal dust falls.
+  ring(8, (t) =>
+    glints(
+      fx,
+      x + Math.cos(t) * 20,
+      y + Math.sin(t) * 12,
+      1,
+      CRYSTAL,
+      [5, 15],
+      {
+        z: 18,
+      },
+    ),
+  );
+  chunks(fx, x, y, 4, CRYSTAL, [20, 60], [0.9, 1.6], { z: 28 });
+};
+const prismJab: CastFn = (scene, a, x, y, angle) => {
+  const fx = fxFor(scene),
+    [tx, ty] = tip(x, y, angle, (a.range || 130) * 0.7);
+  // Light split by the strike: a spray of colours off the paw.
+  glints(fx, tx, ty, 8, PRISM, [60, 160], { angle, spread: 0.7 });
+};
+const prismTrail = shed(0.04, (fx, x, y, back) =>
+  glints(fx, x, y, 1, PRISM, [10, 40], { angle: back, spread: 0.6 }),
+);
+const prismBreak: ImpactFn = (scene, _a, x, y) => {
+  const fx = fxFor(scene);
+  // The prism shatters: glass bits bounce, the light fans into colours.
+  chunks(fx, x, y, 7, CRYSTAL, [60, 170], [1, 2]);
+  glints(fx, x, y, 10, PRISM, [60, 180]);
+};
+const shatterPaw: CastFn = (scene, a, x, y, angle) => {
+  const fx = fxFor(scene),
+    [tx, ty] = tip(x, y, angle, (a.range || 145) * 0.7);
+  // Crystal claws break on the blow: shards spray and tinkle down.
+  chunks(fx, tx, ty, 9, CRYSTAL, [80, 220], [1.2, 2.4], {
+    angle,
+    spread: 0.9,
+    z: 12,
+  });
+  sparks(fx, tx, ty, 4, [WHITE, 0xe8d8ff], 0.6, { angle, spread: 0.8 });
+};
+/** Fluff that floats down slowly (feathers, down). */
+const down = (
+  fx: Fx,
+  x: number,
+  y: number,
+  n: number,
+  color: number[],
+  speed: [number, number] = [20, 80],
+  z = 14,
+) =>
+  fx.burst({
+    x,
+    y,
+    z,
+    count: n,
+    kind: "debris",
+    color,
+    speed,
+    up: [40, 120],
+    life: [1, 1.6],
+    size: [1.4, 2.4],
+    grav: 120,
+    drag: 3,
+    bounce: 0.05,
+  });
+const quillTrail = shed(0.07, (fx, x, y, back) =>
+  glints(fx, x, y, 1, [WHITE, 0xe8d8ff], [5, 25], { angle: back, spread: 0.5 }),
+);
+const quillHit: ImpactFn = (scene, _a, x, y) => {
+  const fx = fxFor(scene);
+  // The quill strikes and frays: a little down floats away.
+  down(fx, x, y, 6, [WHITE, 0xe8d8ff, 0xc9b8ff]);
+};
+const focusShot: BeamFn = (scene, _a, x, y, tx, ty) => {
+  const fx = fxFor(scene),
+    len = Math.hypot(tx - x, ty - y) || 1;
+  // A focused shot heats the air along its line and pierces where it ends.
+  for (let d = 50; d < len; d += 80)
+    glints(
+      fx,
+      x + ((tx - x) * d) / len,
+      y + ((ty - y) * d) / len,
+      1,
+      [0xe8d8ff, WHITE],
+      [5, 20],
+    );
+  sparks(fx, tx, ty, 6, [WHITE, 0xe8d8ff, 0xc59bff], 0.7);
+  fx.decal({ kind: "scorch", x: tx, y: ty, r: 10, color: 0xb89cff, life: 2 });
+};
+
+// ───────────── Light ─────────────
+const SUN = [0xfff2a8, 0xffd76a, 0xffb347];
+const glintTrail = shed(0.05, (fx, x, y, back) =>
+  glints(fx, x, y, 1, [WHITE, 0xfff6c2], [5, 25], { angle: back, spread: 0.5 }),
+);
+const glintPop: ImpactFn = (scene, _a, x, y) => {
+  const fx = fxFor(scene);
+  // A twinkle bursts into a star of tiny sparks.
+  sparks(fx, x, y, 5, [WHITE, 0xfff6c2], 0.5);
+};
+const kindle: CastFn = (scene, _a, x, y) => {
+  const fx = fxFor(scene);
+  // A small warmth catches: embers rise round it in the heat.
+  embers(fx, x, y, 8, 30);
+  fx.glow(x, y, 40, 0xffd76a, 0.3, true);
+};
+const wingDustTrail = shed(0.05, (fx, x, y) =>
+  // Wing scales glitter and sift down slowly behind it.
+  fx.burst({
+    x,
+    y,
+    z: 18,
+    count: 1,
+    kind: "mote",
+    color: SUN,
+    speed: [5, 20],
+    up: [-10, 10],
+    life: [0.8, 1.2],
+    size: [0.8, 1.5],
+    grav: 40,
+    drag: 2.2,
+  }),
+);
+const wingDustHit: ImpactFn = (scene, _a, x, y) => {
+  const fx = fxFor(scene);
+  glints(fx, x, y, 6, SUN, [30, 90]);
+};
+const daybreak: CastFn = (scene, a, x, y) => {
+  const fx = fxFor(scene),
+    r = a.radius || 150;
+  // Dawn breaks: warm air rolls out over the blast and lifts golden dust.
+  ring(12, (t) =>
+    fx.burst({
+      x: x + Math.cos(t) * 20,
+      y: y + Math.sin(t) * 12,
+      z: 4,
+      count: 1,
+      kind: "smoke",
+      color: [0xfff2c8, 0xffe7a0],
+      angle: t,
+      spread: 0.1,
+      speed: [r * 0.9, r * 1.3],
+      up: [5, 25],
+      life: [0.5, 0.8],
+      size: [12, 18],
+      drag: 2.2,
+    }),
+  );
+  glints(fx, x, y, 14, SUN, [r * 0.4, r * 1.1]);
+};
+const sunseedTrail = shed(0.06, (fx, x, y) => embers(fx, x, y, 1, 15));
+const sunseedPop: ImpactFn = (scene, _a, x, y) => {
+  const fx = fxFor(scene);
+  // The seed cracks open in a puff of sunlit pollen.
+  chunks(fx, x, y, 4, [0xc9a46a, 0x8a6a3a], [40, 120], [1, 1.8]);
+  glints(fx, x, y, 8, SUN, [20, 70]);
+};
+const warmSpring: ZoneFn = (g, z) => {
+  const fx = fxFor(g.scene),
+    r = z.radius;
+  // A hot spring: steam curls up off it and bubbles pop at the surface.
+  fx.trail(`sig-spring-mark${z.id}`, 999, () =>
+    fx.decal({
+      kind: "wet",
+      x: z.x,
+      y: z.y,
+      r: r * 0.8,
+      color: 0x8fd0e0,
+      life: z.ability.duration + 1,
+    }),
+  );
+  fx.trail(`sig-spring${z.id}`, 0.16, () => {
+    const t = Math.random() * TAU,
+      d = Math.sqrt(Math.random()) * r * 0.8,
+      sx = z.x + Math.cos(t) * d,
+      sy = z.y + Math.sin(t) * d * SQ;
+    smoke(fx, sx, sy, 1, [0xffffff, 0xf2f8ff], [10, 16]);
+    if (Math.random() < 0.5)
+      splash(fx, sx, sy, 2, [0xdff6ff, WHITE], 0.25, { z: 1 });
+  });
+};
+const JUICE = [0xffd23a, 0xffb020, 0xfff2a8];
+const yuzuTrail = shed(0.09, (fx, x, y, back) =>
+  splash(fx, x, y, 1, JUICE, 0.2, { angle: back, spread: 0.6, z: 16 }),
+);
+const yuzuSplat: ImpactFn = (scene, _a, x, y) => {
+  const fx = fxFor(scene);
+  // The fruit bursts: juice sprays, peel and pith go flying.
+  splash(fx, x, y, 12, JUICE, 0.8);
+  chunks(fx, x, y, 5, [0xffc21a, 0xf2e6b0], [50, 140], [1.4, 2.6]);
+};
+
+// ───────────── Psychic ─────────────
+const MIND = [0xff9fe0, 0xc59bff, 0xffd6f2];
+const MOON = [0xf2eedc, 0xd8d2bc, WHITE];
+const malletBop: CastFn = (scene, a, x, y, angle) => {
+  const fx = fxFor(scene),
+    [tx, ty] = tip(x, y, angle, (a.range || 145) * 0.7);
+  // The mallet thumps the ground: a ring of moon dust and pebbles hop.
+  ring(8, (t) =>
+    fx.burst({
+      x: tx + Math.cos(t) * 8,
+      y: ty + Math.sin(t) * 5,
+      z: 2,
+      count: 1,
+      kind: "smoke",
+      color: MOON,
+      angle: t,
+      spread: 0.2,
+      speed: [40, 80],
+      up: [5, 25],
+      life: [0.5, 0.8],
+      size: [8, 12],
+      drag: 2.2,
+    }),
+  );
+  chunks(fx, tx, ty, 3, STONE, [30, 80], [1.2, 2], { z: 2 });
+};
+/** Pale moon dust that drifts as if gravity were weak. */
+const moonDust = (
+  fx: Fx,
+  x: number,
+  y: number,
+  n: number,
+  speed: [number, number],
+) =>
+  fx.burst({
+    x,
+    y,
+    z: 4,
+    count: n,
+    kind: "mote",
+    color: MOON,
+    speed,
+    up: [30, 90],
+    life: [1, 1.6],
+    size: [1, 2],
+    grav: 40,
+    drag: 1.2,
+    bounce: 0.2,
+  });
+const moonHopGo: CastFn = (scene, _a, x, y) => {
+  const fx = fxFor(scene);
+  moonDust(fx, x, y, 8, [20, 60]);
+};
+const moonHopLand: ImpactFn = (scene, _a, x, y) => {
+  const fx = fxFor(scene);
+  // A light landing: dust puffs out and hangs, slow to settle.
+  moonDust(fx, x, y, 10, [40, 100]);
+};
+const boomingHoot: CastFn = (scene, a, x, y) => {
+  const fx = fxFor(scene),
+    r = a.radius || 180;
+  // The hoot booms out: dust and loose feathers ride the sound wave.
+  ring(14, (t) =>
+    fx.burst({
+      x: x + Math.cos(t) * 24,
+      y: y + Math.sin(t) * 14,
+      z: 3,
+      count: 1,
+      kind: "smoke",
+      color: DUST,
+      angle: t,
+      spread: 0.08,
+      speed: [r * 1, r * 1.4],
+      up: [5, 20],
+      life: [0.5, 0.8],
+      size: [10, 15],
+      drag: 2.4,
+    }),
+  );
+  down(fx, x, y, 6, [0xd8c8b0, 0x8a7a6a, WHITE], [40, 120], 24);
+};
+const mindTrail = shed(0.05, (fx, x, y, back) =>
+  glints(fx, x, y, 1, MIND, [10, 40], { angle: back, spread: 1 }),
+);
+const mindPop: ImpactFn = (scene, _a, x, y) => {
+  const fx = fxFor(scene);
+  // Thought breaks on it: motes scatter and a sigil flashes underfoot.
+  glints(fx, x, y, 8, MIND, [30, 100]);
+  fx.decal({ kind: "glyph", x, y, r: 16, color: 0xc59bff, life: 1.6 });
+};
+const thirdEyeRay: BeamFn = (scene, _a, x, y, tx, ty) => {
+  const fx = fxFor(scene),
+    len = Math.hypot(tx - x, ty - y) || 1;
+  for (let d = 50; d < len; d += 70)
+    glints(
+      fx,
+      x + ((tx - x) * d) / len,
+      y + ((ty - y) * d) / len,
+      1,
+      MIND,
+      [5, 25],
+    );
+  glints(fx, tx, ty, 6, MIND, [30, 90]);
+  fx.decal({ kind: "glyph", x: tx, y: ty, r: 20, color: 0xc59bff, life: 1.8 });
+};
+const wingCloak: CastFn = (scene, _a, x, y) => {
+  const fx = fxFor(scene);
+  // Wings wrap round: loose feathers drift down past the cloak.
+  down(fx, x, y, 7, [0x8a7a9a, 0xd8c8e8, 0x5a4a6a], [20, 70], 30);
+};
+
 const SIGNATURES: Record<string, Sig> = {
   // Fire
   "ember-lob": { projectile: emberLobTrail, impact: emberLobHit },
@@ -1164,6 +1500,25 @@ const SIGNATURES: Record<string, Sig> = {
   },
   "scale-swipe": { cast: scaleSwipe },
   "tongue-grapple": { beam: tongueLick },
+  "facet-guard": { cast: facetGuard },
+  "prism-jab": { cast: prismJab },
+  "prism-shot": { projectile: prismTrail, impact: prismBreak },
+  "shatter-paw": { cast: shatterPaw },
+  "aura-quill": { projectile: quillTrail, impact: quillHit },
+  "focus-shot": { beam: focusShot },
+  glint: { projectile: glintTrail, impact: glintPop },
+  kindle: { cast: kindle },
+  "wing-dust": { projectile: wingDustTrail, impact: wingDustHit },
+  daybreak: { cast: daybreak },
+  sunseed: { projectile: sunseedTrail, impact: sunseedPop },
+  "warm-spring": { zone: warmSpring },
+  "yuzu-toss": { projectile: yuzuTrail, impact: yuzuSplat },
+  "mallet-bop": { cast: malletBop },
+  "moon-hop": { cast: moonHopGo, impact: moonHopLand },
+  "booming-hoot": { cast: boomingHoot },
+  "mind-dart": { projectile: mindTrail, impact: mindPop },
+  "third-eye-ray": { beam: thirdEyeRay },
+  "wing-cloak": { cast: wingCloak },
 };
 /** The moves drawn with a signature here (the shared physics layer skips them). */
 export const SIGNED = new Set(Object.keys(SIGNATURES));
