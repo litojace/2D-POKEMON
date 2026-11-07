@@ -644,6 +644,478 @@ interface Sig {
   channel?: ChannelFn;
   beam?: BeamFn;
 }
+// ───────────── Earth ─────────────
+const STONE = [0x8a7f72, 0x6f655a, 0xb0a493];
+const MUD = [0x6b4a2b, 0x8a6238, 0x4a3220];
+const DUST = [0xcdb994, 0xb8a27a];
+/** A low puff of dust kicked off the ground. */
+const dust = (
+  fx: Fx,
+  x: number,
+  y: number,
+  n: number,
+  speed: [number, number] = [20, 70],
+  o: { angle?: number; spread?: number } = {},
+) =>
+  fx.burst({
+    x,
+    y,
+    z: 2,
+    count: n,
+    kind: "smoke",
+    color: DUST,
+    speed,
+    up: [5, 30],
+    life: [0.5, 0.9],
+    size: [8, 14],
+    grav: -6,
+    drag: 2.2,
+    angle: o.angle,
+    spread: o.spread,
+  });
+const tip = (x: number, y: number, angle: number, d: number) =>
+  [x + Math.cos(angle) * d, y + Math.sin(angle) * d] as const;
+const boulderSwipe: CastFn = (scene, a, x, y, angle) => {
+  const fx = fxFor(scene),
+    [tx, ty] = tip(x, y, angle, (a.range || 150) * 0.75);
+  // The boulder scrapes the ground: gravel thrown along the swing.
+  chunks(fx, tx, ty, 8, STONE, [90, 230], [1.8, 3.6], {
+    angle,
+    spread: 0.9,
+    z: 10,
+  });
+  dust(fx, tx, ty, 4, [30, 90], { angle, spread: 1 });
+  fx.decal({ kind: "crack", x: tx, y: ty, r: 16, color: 0x5a4a3a, life: 2.4 });
+};
+const mudMire: ZoneFn = (g, z) => {
+  const fx = fxFor(g.scene),
+    r = z.radius;
+  // The mud lies wet; bubbles swell and pop, flicking little gobs up.
+  fx.trail(`sig-mud-mark${z.id}`, 999, () =>
+    fx.decal({
+      kind: "wet",
+      x: z.x,
+      y: z.y,
+      r: r * 0.85,
+      color: 0x5a3e22,
+      life: z.ability.duration + 1,
+    }),
+  );
+  fx.trail(`sig-mud${z.id}`, 0.22, () => {
+    const t = Math.random() * TAU,
+      d = Math.sqrt(Math.random()) * r * 0.8,
+      bx = z.x + Math.cos(t) * d,
+      by = z.y + Math.sin(t) * d * SQ;
+    splash(fx, bx, by, 3, MUD, 0.35, { z: 1 });
+    fx.soft(bx, by, 6, 0x8a6238, 0.5, 0.6);
+  });
+};
+const shellBash: CastFn = (scene, a, x, y, angle) => {
+  const fx = fxFor(scene),
+    [tx, ty] = tip(x, y, angle, (a.range || 150) * 0.6);
+  // A hard shell meets the ground: a thump of dust and chips knocked loose.
+  ring(8, (t) =>
+    dust(fx, tx + Math.cos(t) * 10, ty + Math.sin(t) * 6, 1, [50, 90], {
+      angle: t,
+      spread: 0.2,
+    }),
+  );
+  chunks(fx, tx, ty, 5, [0x9a8a6a, 0x6f655a, 0xd8c8a0], [60, 160], [1.4, 2.6]);
+};
+const shellUp: CastFn = (scene, _a, x, y) => {
+  const fx = fxFor(scene);
+  // It drops into its shell: dust puffs out round the rim and loose
+  // pebbles patter down off its back.
+  ring(10, (t) =>
+    dust(fx, x + Math.cos(t) * 16, y + Math.sin(t) * 9, 1, [30, 60], {
+      angle: t,
+      spread: 0.25,
+    }),
+  );
+  chunks(fx, x, y, 5, STONE, [20, 60], [1.2, 2.2], { z: 26 });
+};
+const burrowRush: CastFn = (scene, _a, x, y, angle) => {
+  const fx = fxFor(scene),
+    back = angle + Math.PI;
+  // Claws dig in: clods of earth thrown back out of the hole it leaves.
+  chunks(fx, x, y, 9, MUD, [80, 200], [1.8, 3.4], {
+    angle: back,
+    spread: 0.7,
+  });
+  dust(fx, x, y, 4, [30, 80], { angle: back, spread: 0.8 });
+  fx.decal({ kind: "crack", x, y, r: 14, color: 0x4a3220, life: 2.2 });
+};
+const burrowLand: ImpactFn = (scene, _a, x, y) => {
+  const fx = fxFor(scene);
+  // It bursts out of the ground: soil and stones heave up and rain back.
+  chunks(fx, x, y, 12, [...MUD, ...STONE], [40, 170], [1.8, 3.8]);
+  ring(10, (t) =>
+    dust(fx, x + Math.cos(t) * 12, y + Math.sin(t) * 7, 1, [60, 110], {
+      angle: t,
+      spread: 0.2,
+    }),
+  );
+};
+const rumpBump: CastFn = (scene, a, x, y, angle) => {
+  const fx = fxFor(scene),
+    [tx, ty] = tip(x, y, angle, (a.range || 140) * 0.5);
+  // A heavy rump lands: the ground jumps, pebbles hop, dust rolls out.
+  ring(6, (t) =>
+    dust(fx, tx + Math.cos(t) * 8, ty + Math.sin(t) * 5, 1, [40, 80], {
+      angle: t,
+      spread: 0.3,
+    }),
+  );
+  chunks(fx, tx, ty, 4, STONE, [30, 90], [1.2, 2], { z: 2 });
+};
+
+// ───────────── Shadow ─────────────
+const GHOST = [0x7dffe1, 0xbfffee, 0x3fd6b8];
+const INK = [0x1b1430, 0x2c2048, 0x0e0a1c];
+const SOOT = [0x2a2438, 0x3a3248];
+/** Cold ghost flame that licks upward. */
+const coldFlame = (
+  fx: Fx,
+  x: number,
+  y: number,
+  n: number,
+  o: {
+    angle?: number;
+    spread?: number;
+    z?: number;
+    speed?: [number, number];
+  } = {},
+) =>
+  fx.burst({
+    x,
+    y,
+    z: o.z ?? 12,
+    count: n,
+    kind: "flame",
+    color: GHOST,
+    speed: o.speed ?? [10, 40],
+    up: [30, 90],
+    life: [0.3, 0.55],
+    size: [3, 6],
+    grav: -80,
+    drag: 1.4,
+    angle: o.angle,
+    spread: o.spread,
+  });
+const ghostfireTrail = shed(0.04, (fx, x, y, back) => {
+  coldFlame(fx, x, y, 1, { angle: back, spread: 0.5 });
+  smoke(fx, x, y, 1, SOOT, [5, 8]);
+});
+const ghostfireHit: ImpactFn = (scene, _a, x, y) => {
+  const fx = fxFor(scene);
+  // The flame breaks on it: a cold flare and a curl of soot.
+  coldFlame(fx, x, y, 7, { speed: [30, 90] });
+  smoke(fx, x, y, 3, SOOT, [8, 13]);
+  fx.glow(x, y, 26, 0x7dffe1, 0.4);
+};
+const hauntedLantern: ZoneFn = (g, z) => {
+  const fx = fxFor(g.scene);
+  // The lantern flickers: cold flame curls out of its top, soot rises,
+  // and ghost motes circle the light.
+  fx.trail(`sig-lantern${z.id}`, 0.12, () => {
+    coldFlame(fx, z.x, z.y, 1, { z: 30, speed: [4, 14] });
+    smoke(fx, z.x, z.y, 1, SOOT, [5, 9]);
+  });
+  fx.trail(`sig-lantern-m${z.id}`, 0.3, () => {
+    const t = Math.random() * TAU;
+    fx.burst({
+      x: z.x + Math.cos(t) * z.radius,
+      y: z.y + Math.sin(t) * z.radius * SQ,
+      z: 20,
+      count: 1,
+      kind: "mote",
+      color: GHOST,
+      angle: t + Math.PI / 2,
+      spread: 0.2,
+      speed: [20, 40],
+      up: [-10, 20],
+      life: [0.8, 1.2],
+      size: [1, 2],
+      drag: 0.8,
+    });
+  });
+  fx.glow(z.x, z.y, z.radius * 1.6, 0x7dffe1, 0.12, true);
+};
+const wispTrail = shed(0.05, (fx, x, y, back) =>
+  fx.burst({
+    x,
+    y,
+    z: 14,
+    count: 2,
+    kind: "mote",
+    color: [0xe9fff9, 0x7dffe1],
+    angle: back,
+    spread: 0.9,
+    speed: [10, 40],
+    up: [10, 40],
+    life: [0.5, 0.9],
+    size: [1, 2],
+    grav: -20,
+    drag: 1.2,
+  }),
+);
+const wispPop: ImpactFn = (scene, _a, x, y) => {
+  const fx = fxFor(scene);
+  // The wisp comes apart into pale motes and a breath of mist.
+  fx.burst({
+    x,
+    y,
+    z: 14,
+    count: 10,
+    kind: "mote",
+    color: [0xe9fff9, 0x7dffe1],
+    speed: [40, 120],
+    up: [20, 80],
+    life: [0.5, 0.9],
+    size: [1, 2.2],
+    grav: -30,
+    drag: 1.6,
+  });
+  smoke(fx, x, y, 2, [0xcfe9e4, 0xa8d4cc], [8, 12]);
+};
+const crawlTrail = shed(0.05, (fx, x, y, back, r) => {
+  // A shadow creeping on the ground: a dark smear and low murk behind it.
+  fx.burst({
+    x,
+    y,
+    z: 1,
+    count: 1,
+    kind: "smoke",
+    color: INK,
+    angle: back,
+    spread: 0.5,
+    speed: [5, 20],
+    up: [0, 8],
+    life: [0.5, 0.8],
+    size: [r * 0.7, r * 1.1],
+    grav: 0,
+    drag: 2,
+  });
+});
+const crawlRise: ImpactFn = (scene, _a, x, y) => {
+  const fx = fxFor(scene);
+  // It rears up out of the ground and splashes like ink.
+  splash(fx, x, y, 8, INK, 0.7, { z: 2 });
+  fx.decal({ kind: "wet", x, y, r: 16, color: 0x1b1430, life: 2.4 });
+};
+const inkCloud: CastFn = (scene, _a, x, y) => {
+  const fx = fxFor(scene);
+  // A squirt of ink: drops spatter, a puddle spreads, the cloud billows.
+  splash(fx, x, y, 12, INK, 0.8, { z: 14 });
+  ring(8, (t) =>
+    fx.burst({
+      x: x + Math.cos(t) * 10,
+      y: y + Math.sin(t) * 6,
+      z: 10,
+      count: 1,
+      kind: "smoke",
+      color: INK,
+      angle: t,
+      spread: 0.3,
+      speed: [40, 90],
+      up: [10, 40],
+      life: [0.9, 1.4],
+      size: [16, 24],
+      grav: -8,
+      drag: 1.8,
+    }),
+  );
+};
+const inkStrike: CastFn = (scene, a, x, y, angle) => {
+  const fx = fxFor(scene),
+    [tx, ty] = tip(x, y, angle, (a.range || 150) * 0.7);
+  // Ink flung off the tentacle spatters along the swing.
+  splash(fx, tx, ty, 9, INK, 0.7, { angle, spread: 0.8, z: 14 });
+  fx.decal({ kind: "wet", x: tx, y: ty, r: 14, color: 0x1b1430, life: 2.2 });
+};
+const tentacleLash: CastFn = (scene, a, x, y, angle) => {
+  const fx = fxFor(scene),
+    [tx, ty] = tip(x, y, angle, (a.range || 150) * 0.8);
+  // A wet slap: sea water flicked off the tentacle, a dust slap at the end.
+  splash(fx, tx, ty, 7, [0x9ad7e8, 0xe9f8ff, 0x6a5a9a], 0.6, {
+    angle,
+    spread: 1,
+    z: 12,
+  });
+  dust(fx, tx, ty, 2, [20, 60], { angle, spread: 0.8 });
+};
+
+// ───────────── Nature ─────────────
+const LEAF = [0x6fbf5a, 0x9fd86a, 0x3f8f3a];
+const HUSK = [0x8a6a3a, 0xc9a46a, 0x5a4020];
+const SOIL = [0x6b4a2b, 0x4a3220, 0x8a6238];
+/** Leaves tossed up that flutter down slowly. */
+const leaves = (
+  fx: Fx,
+  x: number,
+  y: number,
+  n: number,
+  speed: [number, number] = [30, 110],
+  o: { angle?: number; spread?: number; z?: number } = {},
+) =>
+  fx.burst({
+    x,
+    y,
+    z: o.z ?? 10,
+    count: n,
+    kind: "debris",
+    color: LEAF,
+    speed,
+    up: [80, 200],
+    life: [0.9, 1.5],
+    size: [1.6, 2.8],
+    grav: 260,
+    drag: 2.4,
+    bounce: 0.05,
+    angle: o.angle,
+    spread: o.spread,
+  });
+const pollen = (fx: Fx, x: number, y: number, n: number, r = 30) =>
+  fx.burst({
+    x,
+    y,
+    z: 10,
+    count: n,
+    kind: "mote",
+    color: [0xfff2a8, 0xe9f5c8],
+    speed: [5, r],
+    up: [10, 50],
+    life: [0.9, 1.5],
+    size: [0.8, 1.6],
+    grav: -10,
+    drag: 1.4,
+  });
+const lazySwapGo: CastFn = (scene, _a, x, y) => {
+  const fx = fxFor(scene);
+  // Where it was: a swirl of leaves left hanging in the air.
+  leaves(fx, x, y, 8, [20, 80], { z: 16 });
+  pollen(fx, x, y, 5);
+};
+const lazySwapLand: ImpactFn = (scene, _a, x, y) => {
+  const fx = fxFor(scene);
+  leaves(fx, x, y, 8, [40, 110], { z: 16 });
+  dust(fx, x, y, 3, [20, 60]);
+};
+const seedSpitTrail = shed(0.08, (fx, x, y, back) =>
+  pollen(fx, x - Math.cos(back) * 2, y - Math.sin(back) * 2, 1, 10),
+);
+const seedCrack: ImpactFn = (scene, _a, x, y) => {
+  const fx = fxFor(scene);
+  // The seed cracks open: husk chips skitter and a puff of soil.
+  chunks(fx, x, y, 6, HUSK, [50, 150], [1.2, 2.2]);
+  dust(fx, x, y, 2, [20, 50]);
+};
+const seedlingGrow: ZoneFn = (g, z, progress) => {
+  const fx = fxFor(g.scene);
+  // The sprout pushes through: soil crumbs heave, pollen drifts off it.
+  if (progress < 0.25)
+    fx.trail(`sig-sprout${z.id}`, 0.1, () =>
+      chunks(fx, z.x, z.y, 1, SOIL, [10, 40], [1, 1.8], { z: 1 }),
+    );
+  fx.trail(`sig-sprout-p${z.id}`, 0.5, () => pollen(fx, z.x, z.y, 1, 15));
+};
+const seedlingPop: ImpactFn = (scene, _a, x, y) => {
+  const fx = fxFor(scene);
+  // Roots tear up through the ground: clods and torn leaves fly.
+  chunks(fx, x, y, 10, SOIL, [50, 170], [1.6, 3.2]);
+  leaves(fx, x, y, 6, [40, 120]);
+};
+const slothTime: ZoneFn = (g, z) => {
+  const fx = fxFor(g.scene),
+    r = z.radius;
+  // Time thickens: dust and leaves hang in the air, barely sinking.
+  fx.trail(`sig-sloth${z.id}`, 0.18, () => {
+    const t = Math.random() * TAU,
+      d = Math.sqrt(Math.random()) * r * 0.85;
+    fx.burst({
+      x: z.x + Math.cos(t) * d,
+      y: z.y + Math.sin(t) * d * SQ,
+      z: 20 + Math.random() * 30,
+      count: 1,
+      kind: Math.random() < 0.5 ? "debris" : "mote",
+      color: [...LEAF, 0xe9f5c8],
+      speed: [2, 8],
+      up: [-4, 4],
+      life: [1.6, 2.4],
+      size: [1, 2],
+      grav: 6,
+      drag: 3,
+    });
+  });
+};
+const curlRollGo: CastFn = (scene, _a, x, y, angle) => {
+  const fx = fxFor(scene);
+  // It tucks and pushes off: grass and dust kicked out behind.
+  leaves(fx, x, y, 5, [60, 140], { angle: angle + Math.PI, spread: 0.7 });
+  dust(fx, x, y, 3, [30, 80], { angle: angle + Math.PI, spread: 0.8 });
+};
+const curlRollHit: ImpactFn = (scene, _a, x, y) => {
+  const fx = fxFor(scene);
+  // An armoured ball slams home: dust, a chipped scale, a dent.
+  ring(8, (t) =>
+    dust(fx, x + Math.cos(t) * 10, y + Math.sin(t) * 6, 1, [50, 100], {
+      angle: t,
+      spread: 0.2,
+    }),
+  );
+  chunks(fx, x, y, 4, [0x8fae5a, 0x5a7a3a, 0xc9d89a], [60, 150], [1.2, 2.2]);
+};
+const scaleTrail = shed(0.06, (fx, x, y, back) =>
+  fx.burst({
+    x,
+    y,
+    z: 14,
+    count: 1,
+    kind: "spark",
+    color: [0xe9f5c8, WHITE],
+    angle: back,
+    spread: 0.4,
+    speed: [20, 60],
+    up: [0, 20],
+    life: [0.15, 0.3],
+    size: [0.6, 1.1],
+  }),
+);
+const scaleClink: ImpactFn = (scene, _a, x, y) => {
+  const fx = fxFor(scene);
+  // A hard scale strikes and skitters: a glint and a few chips.
+  sparks(fx, x, y, 3, [0xe9f5c8, WHITE], 0.5);
+  chunks(fx, x, y, 3, [0x8fae5a, 0xc9d89a], [40, 110], [1, 1.8]);
+};
+const scaleShrapnelGo: CastFn = (scene, _a, x, y) => {
+  const fx = fxFor(scene);
+  // The scales flare out: a rattle of glints off its back.
+  sparks(fx, x, y, 6, [0xe9f5c8, WHITE], 0.6, { z: 22 });
+};
+const scaleSwipe: CastFn = (scene, a, x, y, angle) => {
+  const fx = fxFor(scene),
+    [tx, ty] = tip(x, y, angle, (a.range || 150) * 0.7);
+  // Sharp scales cut through grass: clippings fly, dust trails the arc.
+  leaves(fx, tx, ty, 7, [80, 180], { angle, spread: 0.9 });
+  dust(fx, tx, ty, 2, [20, 60], { angle, spread: 0.8 });
+};
+const tongueLick: BeamFn = (scene, _a, x, y, tx, ty) => {
+  const fx = fxFor(scene),
+    len = Math.hypot(tx - x, ty - y) || 1;
+  // A sticky tongue: drips fall from it and it splats where it lands.
+  for (let d = 60; d < len; d += 90)
+    splash(
+      fx,
+      x + ((tx - x) * d) / len,
+      y + ((ty - y) * d) / len,
+      1,
+      [0xf2a0b8, 0xffd6e2],
+      0.2,
+      { z: 16 },
+    );
+  splash(fx, tx, ty, 5, [0xf2a0b8, 0xffd6e2], 0.5, { z: 10 });
+};
+
 const SIGNATURES: Record<string, Sig> = {
   // Fire
   "ember-lob": { projectile: emberLobTrail, impact: emberLobHit },
@@ -667,6 +1139,31 @@ const SIGNATURES: Record<string, Sig> = {
   "static-glide": { cast: staticGlide },
   "coil-swipe": { cast: coilSwipe },
   "magnet-lash": { projectile: magnetTrail, impact: magnetHit },
+  "boulder-swipe": { cast: boulderSwipe },
+  "mud-mire": { zone: mudMire },
+  "shell-bash": { cast: shellBash },
+  "shell-up": { cast: shellUp },
+  "burrow-rush": { cast: burrowRush, impact: burrowLand },
+  "rump-bump": { cast: rumpBump },
+  ghostfire: { projectile: ghostfireTrail, impact: ghostfireHit },
+  "haunted-lantern": { zone: hauntedLantern },
+  "lantern-wisp": { projectile: wispTrail, impact: wispPop },
+  "shade-crawl": { projectile: crawlTrail, impact: crawlRise },
+  "ink-cloud": { cast: inkCloud },
+  "ink-strike": { cast: inkStrike },
+  "tentacle-lash": { cast: tentacleLash },
+  "lazy-swap": { cast: lazySwapGo, impact: lazySwapLand },
+  "seed-spit": { projectile: seedSpitTrail, impact: seedCrack },
+  seedling: { zone: seedlingGrow, impact: seedlingPop },
+  "sloth-time": { zone: slothTime },
+  "curl-roll": { cast: curlRollGo, impact: curlRollHit },
+  "scale-shrapnel": {
+    projectile: scaleTrail,
+    impact: scaleClink,
+    cast: scaleShrapnelGo,
+  },
+  "scale-swipe": { cast: scaleSwipe },
+  "tongue-grapple": { beam: tongueLick },
 };
 /** The moves drawn with a signature here (the shared physics layer skips them). */
 export const SIGNED = new Set(Object.keys(SIGNATURES));
