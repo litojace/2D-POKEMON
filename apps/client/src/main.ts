@@ -26,7 +26,8 @@ import {
 } from "./cast-prediction";
 import { queueBossSpellArt } from "./boss-spell-flipbook";
 import { queueBossArt, retainBossArt } from "./boss-painted-rig";
-import { rendererDensity } from "./render-budget";
+import { memoryConstrained, rendererDensity } from "./render-budget";
+import { GFX } from "./farm/farm-gfx";
 import { watchRendererLifecycle } from "./renderer-lifecycle";
 import {
   groundHeight,
@@ -3732,6 +3733,31 @@ class ArenaScene extends Phaser.Scene {
     }
     return key;
   }
+  /**
+   * Drop a floor no picture shows any more (the stand-in "classic" floor
+   * baked when the scene starts, or the last arena's): each is a full-court
+   * canvas plus its GPU copy, 13–23 MB apiece, which a phone can't spare.
+   * It is baked again if that arena comes back.
+   */
+  private releaseFloor(key: string) {
+    if (!key.startsWith("arena-floor-")) return;
+    // A raid floor's illustrated copy (":art") shares the stand-in's canvas:
+    // both go, and only when no picture shows either.
+    const base = key.replace(/:art$/, "");
+    const keys = [base, `${base}:art`];
+    const shown = [this.floor, ...this.raidSurround].some(
+      (img) => !!img && keys.includes(img.texture.key),
+    );
+    if (shown) return;
+    for (const k of keys) {
+      if (!this.textures.exists(k)) continue;
+      const source = this.textures.get(k).getSourceImage();
+      this.textures.remove(k);
+      this.floorScale.delete(k);
+      // Give WebKit the canvas memory back now, not at some later collection.
+      if (source instanceof HTMLCanvasElement) source.width = source.height = 0;
+    }
+  }
   /** Bake and place a court's blocks (once per court). */
   private ensureBlocks(id: CourtId) {
     if (this.courtBlocks.has(id)) return this.courtBlocks.get(id)!;
@@ -3789,7 +3815,9 @@ class ArenaScene extends Phaser.Scene {
     const key = this.floorTexture(
       this.courtRaid ? "raid-coliseum" : court ? `court-${court}` : arena,
     );
+    const previous = this.floor.texture.key;
     this.floor.setTexture(key).setScale(1 / (this.floorScale.get(key) ?? 1));
+    this.releaseFloor(previous);
     if (raid && !this.raidSurround.length) {
       for (const x of [-1600, 0, 1600])
         for (const y of [-900, 0, 900]) {
@@ -4265,13 +4293,11 @@ class ArenaScene extends Phaser.Scene {
     fxFor(this);
     prepareSurfaceTextures(this);
     this.crumbleTextures();
-    // Paint the court once and bake it into a texture so it costs nothing per frame.
-    // High-density screens get a 2x bake so the floor stays sharp when zoomed in.
-    this.floor = this.add
-      .image(0, 0, this.floorTexture("classic"))
-      .setOrigin(0)
-      .setScale(1 / (this.floorScale.get("arena-floor-classic") ?? 1))
-      .setDepth(-10);
+    // The floor picture: showArena bakes the room's court (once per arena,
+    // at floorBake's density) on the first frame. No stand-in court is
+    // painted first: that was a whole extra full-court canvas per battle.
+    this.floor = this.add.image(0, 0, "__DEFAULT").setOrigin(0).setDepth(-10);
+    this.floorArena = "";
     const clearDom = () => {
       this.enemyBearing.remove();
       for (const label of this.labels.values()) label.remove();
@@ -5641,8 +5667,14 @@ class ArenaScene extends Phaser.Scene {
 function fighterDepth(y: number) {
   return 2 + y / 10000;
 }
+/**
+ * Floor (and court block) pixels per world pixel: the battle canvas's own
+ * density, in quarter steps. A phone's camera zooms in at most 1.65× on a
+ * screen at most ~930 CSS px wide, so the court never needs more texels than
+ * that; a flat 2× cost an iPhone two 23 MB copies of a 3200×1800 floor.
+ */
 function floorBake() {
-  return renderScale() > 1.25 ? 2 : 1;
+  return Math.min(2, Math.max(1, Math.round(renderScale() * 4) / 4));
 }
 /** Seconds into the live round on the server's clock (-1 when not live). */
 function arenaClock() {
@@ -5842,10 +5874,20 @@ function reportBattleLoad(fighters: number) {
     ...(nav.hardwareConcurrency ? { cores: nav.hardwareConcurrency } : {}),
   });
 }
+/**
+ * Opening a battle on an iPhone (or a phone with little memory): forget the
+ * Plaza's and the Farm's baked sprites first. Both scenes are closed by now,
+ * and the cache (~45 MB of canvases once both were visited) would otherwise
+ * sit beside the battle's floor and textures until iOS ends the page.
+ */
+function releaseHubArt() {
+  if (memoryConstrained()) GFX.release();
+}
 function ensureBattleRenderer() {
   if (gameInstance || $("game").clientWidth < 1 || $("game").clientHeight < 1)
     return;
   battleLoadStarted = performance.now();
+  releaseHubArt();
   const dpr = renderScale();
   gameInstance = new Phaser.Game({
     type: Phaser.AUTO,
@@ -5860,6 +5902,11 @@ function ensureBattleRenderer() {
       autoCenter: Phaser.Scale.CENTER_BOTH,
     },
     scene: [ArenaScene],
+    // The battle uses no Phaser Pre/Post FX. Left on, Phaser keeps a stack of
+    // screen-sized render targets for them anyway (tens of MB of GPU memory,
+    // which an older iPhone runs out of).
+    disablePreFX: true,
+    disablePostFX: true,
     // CSS zoom compensates for DPR; it must not enable Phaser's pixel-art mode.
     render: { pixelArt: false, antialias: true },
     // The camera maps the authoritative 1600x900 world onto the buffer.
@@ -5886,6 +5933,15 @@ function syncBattleLoop() {
     battleResizeObserver?.disconnect();
     battleResizeObserver = undefined;
     window.removeEventListener("resize", fitRenderer);
+    // Phaser never releases its WebGL context: hand it back explicitly once
+    // the game has torn down (destroy runs on its next step), or every
+    // battle leaves a context and its buffers until garbage collection, and
+    // Safari limits both. The renderer watcher has detached by then.
+    const gl = (previous.renderer as { gl?: WebGLRenderingContext | null }).gl;
+    if (gl)
+      previous.events.once(Phaser.Core.Events.DESTROY, () =>
+        gl.getExtension("WEBGL_lose_context")?.loseContext(),
+      );
     previous.destroy(true);
     if (previous.isRunning && !previous.loop.running) previous.loop.wake();
   } else if (gameInstance.isRunning && !gameInstance.loop.running)
