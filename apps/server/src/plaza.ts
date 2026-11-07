@@ -71,6 +71,36 @@ interface Visitor {
   profile: PlazaProfile;
   version: number;
 }
+/** Where a pitch bot's teammate waits while the other chases the ball. */
+const BOT_SUPPORT = { back: 120, wide: 110, tie: 24 } as const;
+const clampTo = (v: number, lo: number, hi: number) =>
+  Math.max(lo, Math.min(hi, v));
+/** Push bodies that overlap apart, half each, then out of any wall. */
+export function separateBodies(bodies: PlazaBody[]) {
+  const min = PLAZA.radius * 2 + 4;
+  for (let i = 0; i < bodies.length; i++)
+    for (let j = i + 1; j < bodies.length; j++) {
+      const a = bodies[i],
+        b = bodies[j];
+      let dx = b.x - a.x,
+        dy = b.y - a.y,
+        d = Math.hypot(dx, dy);
+      if (d >= min) continue;
+      if (d < 0.01) {
+        // Exactly on top: part them sideways.
+        dx = 1;
+        dy = 0;
+        d = 1;
+      }
+      const push = (min - Math.max(d, 0.01)) / 2;
+      a.x -= (dx / d) * push;
+      a.y -= (dy / d) * push;
+      b.x += (dx / d) * push;
+      b.y += (dy / d) * push;
+      plazaCollide(a);
+      plazaCollide(b);
+    }
+}
 interface Bot {
   key: string;
   team: 0 | 1;
@@ -576,6 +606,9 @@ export class PlazaWorld {
   private stepCopy(c: Copy, dt: number, now: number, events: PlazaEvent[]) {
     const players = [...this.visitors.values()].filter((v) => v.plaza === c.id);
     for (const bot of c.bots) plazaStep(bot.body, this.botStick(c, bot), dt);
+    // Bots never stand inside one another (players still pass through
+    // each other, the Plaza being a place to meet).
+    separateBodies(c.bots.map((b) => b.body));
     this.syncFolk(c, players.length);
     for (const f of c.folk) {
       if (f.emote && now >= f.emoteUntil) f.emote = 0;
@@ -742,6 +775,18 @@ export class PlazaWorld {
       }
     }
   }
+  /** The teammate nearer the ball chases it (a near tie goes to the first,
+   * so they don't swap every step). */
+  private chasesBall(c: Copy, bot: Bot) {
+    const mate = c.bots.find((t) => t.team === bot.team && t !== bot);
+    if (!mate) return true;
+    const d = (b: PlazaBody) => Math.hypot(b.x - c.ball.x, b.y - c.ball.y);
+    const mine = d(bot.body),
+      theirs = d(mate.body);
+    if (Math.abs(mine - theirs) < BOT_SUPPORT.tie)
+      return c.bots.indexOf(bot) < c.bots.indexOf(mate);
+    return mine < theirs;
+  }
   /** Pitch bots: get behind the ball and push it at the other goal (the prototype's brain). */
   private botStick(c: Copy, bot: Bot) {
     const b = bot.body,
@@ -763,8 +808,29 @@ export class PlazaWorld {
       goalY = (PLAZA_PITCH.gy0 + PLAZA_PITCH.gy1) / 2,
       gx = goalX - ball.x,
       gy = goalY - ball.y,
-      gd = Math.hypot(gx, gy) || 1,
-      behind = toward(ball.x - (gx / gd) * 44, ball.y - (gy / gd) * 44);
+      gd = Math.hypot(gx, gy) || 1;
+    // One teammate goes for the ball; the other backs them up behind and
+    // to the side, so two bots never chase the same spot.
+    if (!this.chasesBall(c, bot)) {
+      const mate = c.bots.find((t) => t.team === bot.team && t !== bot)!;
+      const side = mate.body.y > ball.y ? -1 : 1;
+      const spot = toward(
+        clampTo(
+          ball.x - (gx / gd) * BOT_SUPPORT.back,
+          PLAZA_PITCH.x0 + 40,
+          PLAZA_PITCH.x1 - 40,
+        ),
+        clampTo(
+          ball.y + side * BOT_SUPPORT.wide,
+          PLAZA_PITCH.y0 + 40,
+          PLAZA_PITCH.y1 - 40,
+        ),
+      );
+      return spot.d < 20
+        ? { x: 0, y: 0 }
+        : { x: spot.x * 0.7, y: spot.y * 0.7 };
+    }
+    const behind = toward(ball.x - (gx / gd) * 44, ball.y - (gy / gd) * 44);
     if (behind.d > 28) return { x: behind.x * 0.82, y: behind.y * 0.82 };
     if (this.random() < 0.036) plazaDash(b);
     const at = toward(ball.x, ball.y);
