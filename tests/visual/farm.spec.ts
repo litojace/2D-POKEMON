@@ -670,6 +670,8 @@ test("the weather orb shows the weather now and the forecast", async ({
   await page.click('#hub-scenes [data-hub-scene="farm"]');
   const orb = page.locator('#fm-chips [data-orb="weather"]');
   await expect(orb).toBeVisible();
+  // Midday: the weather goes by its own name (after dark some look different).
+  await page.evaluate(() => (window as any).__farm.tod(0.5));
   await expect(orb).toHaveAttribute(
     "aria-label",
     /Thunderstorm: Waters every plot · 25% Shocked/,
@@ -696,6 +698,89 @@ test("the weather orb shows the weather now and the forecast", async ({
     "Unlocks at farm Lv 40",
   );
   await expect(page.locator('#fm-sheet [data-mast="wheat"]')).toBeDisabled();
+  expect(errors).toEqual([]);
+});
+
+test("the weather follows the clock: a Sunny window after dark is a clear night, a Moonlit one by day a daytime moon", async ({
+  page,
+}, info) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const errors = await openLobby(page);
+  await fakeFarm(page);
+  await page.evaluate(() => {
+    const f = (window as any).__fakeFarm;
+    f.weather.now = "sun";
+    f.weather.next = "rainbow";
+  });
+  await page.click('#hub-scenes [data-hub-scene="farm"]');
+  await page.waitForFunction(() => (window as any).__farm?.F?.loaded);
+  const orb = page.locator('#fm-chips [data-orb="weather"]'),
+    pop = page.locator("#fm-orbpop");
+  // The linear gradients drawn in the next frames, by where they start.
+  const gradients = () =>
+    page.evaluate(async () => {
+      const proto = CanvasRenderingContext2D.prototype as any,
+        orig = proto.createLinearGradient,
+        at: Record<string, number> = {};
+      proto.createLinearGradient = function (...a: number[]) {
+        const k = `${Math.round(a[0])},${Math.round(a[1])}`;
+        at[k] = (at[k] ?? 0) + 1;
+        return orig.apply(this, a);
+      };
+      // A few whole frames: this machine draws in bursts, seconds apart.
+      const t0 = performance.now(),
+        total = () => Object.values(at).reduce((x, y) => x + y, 0);
+      while (
+        performance.now() - t0 < 1500 ||
+        (total() < 30 && performance.now() - t0 < 20_000)
+      )
+        await new Promise((r) => setTimeout(r, 100));
+      proto.createLinearGradient = orig;
+      return at;
+    });
+  // The sun's shafts all fan out from the sun, above the view's top right
+  // (other gradients start at its left edge).
+  const shafts = (g: Record<string, number>) =>
+    Object.entries(g)
+      .filter(([k]) => {
+        const [x, y] = k.split(",").map(Number);
+        return x > 0 && y < 0;
+      })
+      .reduce((t, [, n]) => t + n, 0);
+  // Midday: Sunny, with its shafts; a Rainbow next.
+  await page.evaluate(() => (window as any).__farm.tod(0.5));
+  await expect(orb).toHaveAttribute("aria-label", /^Sunny: Crops grow 10%/);
+  expect(shafts(await gradients())).toBeGreaterThanOrEqual(7);
+  // After dark (as the Plaza and the Bistro are): a clear night, same
+  // effect, no sun shafts; the Rainbow ahead is a moonbow.
+  await page.evaluate(() => (window as any).__farm.tod(0.95));
+  await expect(orb).toHaveAttribute(
+    "aria-label",
+    /^Clear Night: Crops grow 10%/,
+  );
+  expect(shafts(await gradients())).toBe(0);
+  await orb.click();
+  await expect(pop).toContainText("Clear Night");
+  await expect(pop.locator(".op-next")).toContainText("Moonbow");
+  // The orb shows the same icon as its card (the night's star, not the sun).
+  expect(await orb.locator(".wx-ic").innerHTML()).toBe(
+    await pop.locator(".op-h > :first-child").evaluate((e) => e.outerHTML),
+  );
+  await snap(page, info, "farm-clear-night");
+  await orb.click();
+  // A Moonlit window by day is a daytime moon: no night painted over it.
+  await page.evaluate(() => {
+    const w = window as any;
+    w.__fakeFarm.weather.now = "moon";
+    w.__farm.F.weather.cur = "moon";
+    w.__farm.tod(0.5);
+  });
+  await expect(orb).toHaveAttribute("aria-label", /^Daytime Moon: 25% Moonlit/);
+  await page.evaluate(() => (window as any).__farm.tod(0.95));
+  await expect(orb).toHaveAttribute(
+    "aria-label",
+    /^Moonlit Night: 25% Moonlit/,
+  );
   expect(errors).toEqual([]);
 });
 
