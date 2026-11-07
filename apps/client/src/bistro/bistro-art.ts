@@ -23,6 +23,29 @@ import {
   drawChandelier,
   drawHayBale,
   drawTrophy,
+  lampBody,
+  lampLive,
+  luckyCatBody,
+  luckyCatLive,
+  jukeboxBody,
+  jukeboxLive,
+  aquariumBody,
+  aquariumLive,
+  fountainBody,
+  fountainLive,
+  neonBody,
+  neonLive,
+  statueBody,
+  statueLive,
+  cornerBody,
+  cornerLive,
+  pumpkinBody,
+  pumpkinLive,
+  lanternStandBody,
+  lanternStandLive,
+  blossomBody,
+  blossomLive,
+  drawPiano,
 } from "./bistro-furniture";
 import {
   TH,
@@ -2009,324 +2032,6 @@ function drawChairRaw(
   if ((back === "all" || back === "front") && !backIsFar) drawBack();
 }
 
-export function drawLamp(ctx: Ctx, x: number, y: number, t: number) {
-  const c = iso(x, y);
-  softShadow(ctx, c.x, c.y + 2, 16, 7, 0.24);
-  ctx.fillStyle = "#3a2618";
-  ellipse(ctx, c.x, c.y, 10, 4);
-  ctx.fill();
-  ctx.fillStyle = "#4b301d";
-  ctx.fillRect(c.x - 1.5, c.y - 74, 3, 74);
-  // A hooked arm with a red paper lantern.
-  ctx.strokeStyle = "#4b301d";
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.moveTo(c.x, c.y - 74);
-  ctx.quadraticCurveTo(c.x + 2, c.y - 86, c.x + 14, c.y - 84);
-  ctx.stroke();
-  const sw = Math.sin(t * 1.6) * 1.5;
-  const lx = c.x + 14 + sw,
-    ly = c.y - 66;
-  ctx.fillStyle = rad(ctx, lx - 4, ly - 4, 18, [
-    [0, "#ff9a6a"],
-    [0.7, "#e2453a"],
-    [1, "#a92a25"],
-  ]);
-  ellipse(ctx, lx, ly, 13, 15);
-  ctx.fill();
-  ctx.strokeStyle = "rgba(120,20,15,.5)";
-  ctx.lineWidth = 1;
-  for (const k of [-6, 0, 6]) {
-    ctx.beginPath();
-    ctx.ellipse(
-      lx,
-      ly,
-      Math.abs(13 - Math.abs(k)) * 0.9 + 1,
-      15,
-      0,
-      0,
-      Math.PI * 2,
-    );
-    ctx.stroke();
-    void k;
-  }
-  ctx.fillStyle = "#f2c14e";
-  ctx.fillRect(lx - 6, ly - 17, 12, 3);
-  ctx.fillRect(lx - 6, ly + 14, 12, 3);
-  ctx.strokeStyle = "#f2c14e";
-  ctx.beginPath();
-  ctx.moveTo(lx, ly + 17);
-  ctx.lineTo(lx, ly + 25);
-  ctx.stroke();
-}
-
-export function drawLuckyCat(ctx: Ctx, x: number, y: number, t: number) {
-  const c = iso(x, y);
-  softShadow(ctx, c.x, c.y + 2, 20, 9, 0.26);
-  isoBox(ctx, x - 0.26, y - 0.26, x + 0.26, y + 0.26, 0, 22, {
-    top: "#c63b35",
-    left: "#a92f2a",
-    right: "#8e2622",
-  });
-  const by = c.y - 22;
-  // Body.
-  ctx.fillStyle = rad(ctx, c.x - 4, by - 18, 22, [
-    [0, "#ffffff"],
-    [1, "#e6e1da"],
-  ]);
-  ellipse(ctx, c.x, by - 14, 13, 15);
-  ctx.fill();
-  // Head.
-  ellipse(ctx, c.x, by - 34, 12, 10);
-  ctx.fill();
-  // Ears.
-  ctx.beginPath();
-  ctx.moveTo(c.x - 11, by - 38);
-  ctx.lineTo(c.x - 8, by - 48);
-  ctx.lineTo(c.x - 3, by - 42);
-  ctx.moveTo(c.x + 11, by - 38);
-  ctx.lineTo(c.x + 8, by - 48);
-  ctx.lineTo(c.x + 3, by - 42);
-  ctx.fill();
-  ctx.fillStyle = "#f29aa6";
-  ctx.beginPath();
-  ctx.moveTo(c.x - 9, by - 40);
-  ctx.lineTo(c.x - 8, by - 45);
-  ctx.lineTo(c.x - 5, by - 42);
-  ctx.fill();
-  // Face.
-  ctx.strokeStyle = "#333";
-  ctx.lineWidth = 1.4;
-  ctx.beginPath();
-  ctx.arc(c.x - 4.5, by - 34, 2, Math.PI, 0);
-  ctx.moveTo(c.x + 2.5, by - 34);
-  ctx.arc(c.x + 4.5, by - 34, 2, Math.PI, 0);
-  ctx.stroke();
-  ctx.fillStyle = "#ff8a8a";
-  ctx.beginPath();
-  ctx.arc(c.x, by - 30.5, 1.4, 0, 7);
-  ctx.fill();
-  // Gold coin and red collar with a bell.
-  ctx.fillStyle = "#d2302d";
-  ctx.fillRect(c.x - 10, by - 26, 20, 3);
-  ctx.fillStyle = "#f2c14e";
-  ctx.beginPath();
-  ctx.arc(c.x, by - 21, 2.6, 0, 7);
-  ctx.fill();
-  ctx.fillStyle = lin(ctx, 0, by - 16, 0, by - 4, [
-    [0, "#ffe27a"],
-    [1, "#d39b22"],
-  ]);
-  ellipse(ctx, c.x, by - 10, 7, 6);
-  ctx.fill();
-  // The waving paw.
-  const wave = Math.sin(t * 4) * 0.45;
-  ctx.save();
-  ctx.translate(c.x + 9, by - 22);
-  ctx.rotate(-0.5 + wave);
-  ctx.fillStyle = "#fbf8f4";
-  ctx.beginPath();
-  ctx.roundRect(-3.5, -18, 7, 18, 3.5);
-  ctx.fill();
-  ctx.restore();
-}
-
-export function drawJukebox(ctx: Ctx, x: number, y: number, t: number) {
-  const c = iso(x, y);
-  softShadow(ctx, c.x, c.y + 2, 26, 12, 0.3);
-  isoBox(ctx, x - 0.34, y - 0.3, x + 0.34, y + 0.3, 0, 62, {
-    top: "#7c3f1e",
-    left: lin(ctx, 0, c.y - 60, 0, c.y, [
-      [0, "#b4602d"],
-      [1, "#7c3f1e"],
-    ]),
-    right: "#5d2f16",
-  });
-  // The arched front with neon tubes cycling colour.
-  const f = iso(x, y + 0.3);
-  const hue = (t * 60) % 360;
-  ctx.fillStyle = `hsl(${hue},90%,62%)`;
-  ctx.beginPath();
-  ctx.moveTo(f.x - 18, f.y - 36);
-  ctx.quadraticCurveTo(f.x, f.y - 90, f.x + 18, f.y - 48);
-  ctx.lineTo(f.x + 14, f.y - 46);
-  ctx.quadraticCurveTo(f.x, f.y - 80, f.x - 14, f.y - 34);
-  ctx.closePath();
-  ctx.fill();
-  ctx.fillStyle = "#2d1a10";
-  ctx.beginPath();
-  ctx.roundRect(f.x - 12, f.y - 40, 24, 16, 3);
-  ctx.fill();
-  for (let i = 0; i < 5; i++) {
-    ctx.fillStyle = `hsl(${(hue + i * 50) % 360},90%,65%)`;
-    ctx.fillRect(
-      f.x - 10 + i * 4.4,
-      f.y - 30 - Math.abs(Math.sin(t * 6 + i)) * 7,
-      3,
-      3 + Math.abs(Math.sin(t * 6 + i)) * 7,
-    );
-  }
-  ctx.fillStyle = "#e7d2a8";
-  ctx.beginPath();
-  ctx.roundRect(f.x - 10, f.y - 20, 20, 8, 2);
-  ctx.fill();
-}
-
-export function drawAquarium(ctx: Ctx, x: number, y: number, t: number) {
-  const c = iso(x, y);
-  softShadow(ctx, c.x, c.y + 2, 34, 15, 0.3);
-  // Stand.
-  isoBox(ctx, x - 0.44, y - 0.3, x + 0.44, y + 0.3, 0, 24, {
-    top: "#3a2a22",
-    left: "#5a3d2c",
-    right: "#46301f",
-  });
-  // Water tank (translucent faces).
-  const tankCol = {
-    top: "rgba(170,230,255,.55)",
-    left: lin(ctx, 0, c.y - 80, 0, c.y - 24, [
-      [0, "rgba(120,210,245,.75)"],
-      [1, "rgba(30,110,170,.9)"],
-    ]),
-    right: "rgba(30,100,160,.85)",
-  };
-  isoBox(ctx, x - 0.44, y - 0.3, x + 0.44, y + 0.3, 24, 48, tankCol);
-  // Fish swimming along the front.
-  const a = iso(x - 0.4, y + 0.3),
-    b = iso(x + 0.4, y + 0.3);
-  const fishes = [
-    ["#ff8a3d", 0.0, 0.0],
-    ["#ffd65b", 0.45, 12],
-    ["#ff5a7a", 0.8, 22],
-  ] as const;
-  for (const [col, ph, dz] of fishes) {
-    const u = (Math.sin(t * 0.7 + ph * 6) + 1) / 2;
-    const dirR = Math.cos(t * 0.7 + ph * 6) > 0;
-    const px = a.x + (b.x - a.x) * u,
-      py = a.y + (b.y - a.y) * u - 36 - dz * 0.6;
-    ctx.fillStyle = col;
-    ctx.beginPath();
-    ctx.ellipse(px, py, 5, 3, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    const tx = dirR ? px - 5 : px + 5;
-    ctx.moveTo(tx, py);
-    ctx.lineTo(tx + (dirR ? -4 : 4), py - 3);
-    ctx.lineTo(tx + (dirR ? -4 : 4), py + 3);
-    ctx.fill();
-  }
-  // Weed and bubbles.
-  ctx.strokeStyle = "#3fae6a";
-  ctx.lineWidth = 2;
-  for (const k of [0.2, 0.75]) {
-    const p = iso(x - 0.44 + k * 0.88, y + 0.3);
-    ctx.beginPath();
-    ctx.moveTo(p.x, p.y - 26);
-    ctx.quadraticCurveTo(
-      p.x + Math.sin(t * 2 + k * 9) * 4,
-      p.y - 40,
-      p.x,
-      p.y - 54,
-    );
-    ctx.stroke();
-  }
-  ctx.fillStyle = "rgba(255,255,255,.7)";
-  for (let i = 0; i < 4; i++) {
-    const ph = (t * 0.6 + i * 0.25) % 1;
-    const p = iso(x + 0.25, y + 0.3);
-    ctx.beginPath();
-    ctx.arc(p.x + Math.sin(ph * 12) * 1.5, p.y - 28 - ph * 42, 1.4 + ph, 0, 7);
-    ctx.fill();
-  }
-  // Glass highlight and lid.
-  ctx.fillStyle = "rgba(255,255,255,.22)";
-  poly(ctx, [
-    { x: a.x + 6, y: a.y - 70 },
-    { x: a.x + 14, y: a.y - 74 },
-    { x: a.x + 14, y: a.y - 30 },
-    { x: a.x + 6, y: a.y - 26 },
-  ]);
-  ctx.fill();
-  isoBox(ctx, x - 0.46, y - 0.32, x + 0.46, y + 0.32, 72, 3, {
-    top: "#2a2f36",
-    left: "#1f2328",
-    right: "#171a1e",
-  });
-}
-
-export function drawFountain(ctx: Ctx, x: number, y: number, t: number) {
-  const c = iso(x, y);
-  softShadow(ctx, c.x, c.y + 2, 36, 16, 0.28);
-  // Stone basin.
-  ctx.fillStyle = lin(ctx, c.x - 34, 0, c.x + 34, 0, [
-    [0, "#9aa4b5"],
-    [0.5, "#dfe5ee"],
-    [1, "#8b95a6"],
-  ]);
-  ctx.beginPath();
-  ctx.ellipse(c.x, c.y - 4, 34, 15, 0, 0, Math.PI);
-  ctx.lineTo(c.x - 34, c.y - 18);
-  ctx.ellipse(c.x, c.y - 18, 34, 15, 0, Math.PI, 0, true);
-  ctx.closePath();
-  ctx.fill();
-  ctx.fillStyle = "#c9d1dc";
-  ellipse(ctx, c.x, c.y - 18, 34, 15);
-  ctx.fill();
-  ctx.fillStyle = lin(ctx, 0, c.y - 30, 0, c.y - 6, [
-    [0, "#7fd9ff"],
-    [1, "#2f8fd1"],
-  ]);
-  ellipse(ctx, c.x, c.y - 18, 29, 12);
-  ctx.fill();
-  // Ripples.
-  ctx.strokeStyle = "rgba(255,255,255,.5)";
-  ctx.lineWidth = 1;
-  for (let i = 0; i < 2; i++) {
-    const ph = (t * 0.6 + i * 0.5) % 1;
-    ctx.globalAlpha = 1 - ph;
-    ellipse(ctx, c.x, c.y - 18, 6 + ph * 22, 2.5 + ph * 9);
-    ctx.stroke();
-  }
-  ctx.globalAlpha = 1;
-  // The crystal on a plinth, slowly turning colour.
-  ctx.fillStyle = "#b9c2cf";
-  ctx.fillRect(c.x - 4, c.y - 44, 8, 26);
-  const hue = (t * 40) % 360;
-  ctx.fillStyle = lin(ctx, c.x - 10, c.y - 80, c.x + 10, c.y - 46, [
-    [0, `hsl(${hue},95%,85%)`],
-    [1, `hsl(${(hue + 60) % 360},85%,55%)`],
-  ]);
-  const by = c.y - 50 + Math.sin(t * 2) * 2;
-  ctx.beginPath();
-  ctx.moveTo(c.x, by - 30);
-  ctx.lineTo(c.x + 9, by - 14);
-  ctx.lineTo(c.x, by);
-  ctx.lineTo(c.x - 9, by - 14);
-  ctx.closePath();
-  ctx.fill();
-  ctx.fillStyle = "rgba(255,255,255,.55)";
-  ctx.beginPath();
-  ctx.moveTo(c.x, by - 30);
-  ctx.lineTo(c.x - 9, by - 14);
-  ctx.lineTo(c.x - 2, by - 14);
-  ctx.closePath();
-  ctx.fill();
-  // Water arcs.
-  ctx.strokeStyle = "rgba(190,240,255,.8)";
-  ctx.lineWidth = 2;
-  for (const s of [-1, 1]) {
-    ctx.beginPath();
-    ctx.moveTo(c.x + s * 4, c.y - 42);
-    ctx.quadraticCurveTo(
-      c.x + s * 18,
-      c.y - 56 + Math.sin(t * 8) * 1.5,
-      c.x + s * 24,
-      c.y - 20,
-    );
-    ctx.stroke();
-  }
-}
-
 /* ───────────── furniture, drawn once per look ───────────── */
 
 /**
@@ -2339,25 +2044,36 @@ export function drawFountain(ctx: Ctx, x: number, y: number, t: number) {
  */
 const LIVE_ITEMS: ReadonlySet<ItemKind> = new Set<ItemKind>([
   "koi",
-  "fountain",
-  "aquarium",
-  "jukebox",
-  "neon",
   "chandelier",
-  "pumpkin",
-  "lantern",
   "arcade",
   "trophy",
   "robot",
   "espresso",
   "tipjar",
   "podium",
-  "luckycat",
-  "lamp",
-  "corner",
-  "statue",
-  "blossom",
 ]);
+/** Pieces with a still body (kept as a bitmap) and a moving part drawn live. */
+const HYBRID: Partial<
+  Record<
+    ItemKind,
+    [
+      (ctx: Ctx, x: number, y: number) => void,
+      (ctx: Ctx, x: number, y: number, t: number) => void,
+    ]
+  >
+> = {
+  lamp: [lampBody, lampLive],
+  luckycat: [luckyCatBody, luckyCatLive],
+  jukebox: [jukeboxBody, jukeboxLive],
+  aquarium: [aquariumBody, aquariumLive],
+  fountain: [fountainBody, fountainLive],
+  neon: [neonBody, neonLive],
+  statue: [statueBody, statueLive],
+  corner: [cornerBody, cornerLive],
+  pumpkin: [pumpkinBody, pumpkinLive],
+  lantern: [lanternStandBody, lanternStandLive],
+  blossom: [blossomBody, blossomLive],
+};
 /** Pieces that sway: the loop's length (s), drawn in SWAY_FRAMES frames. */
 const SWAY: Partial<Record<ItemKind, number>> = {
   plant: (Math.PI * 2) / 1.3,
@@ -2426,6 +2142,11 @@ export function drawItem(
   rot = 0,
 ) {
   if (LIVE_ITEMS.has(kind)) return drawItemRaw(ctx, kind, x, y, t, rot);
+  const hy = HYBRID[kind];
+  if (hy) {
+    sprite(ctx, `h:${kind}`, false, x, y, (g) => hy[0](g, 0, 0));
+    return hy[1](ctx, x, y, t);
+  }
   const loop = SWAY[kind];
   const frame = loop
     ? Math.floor(((((t % loop) + loop) % loop) / loop) * SWAY_FRAMES)
@@ -2489,7 +2210,7 @@ function drawItemRaw(
     case "arcade":
       return drawArcade(ctx, x, y, t);
     case "neon":
-      return drawNeon(ctx, x, y, t);
+      return (neonBody(ctx, x, y), neonLive(ctx, x, y, t));
     case "freezer":
       return drawFreezer(ctx, x, y);
     case "massage":
@@ -2515,189 +2236,36 @@ function drawItemRaw(
     case "sakura":
       return drawSakura(ctx, x, y, t);
     case "statue":
-      return drawStatue(ctx, x, y, t);
+      return (statueBody(ctx, x, y), statueLive(ctx, x, y, t));
     case "plant":
       return drawPlant(ctx, x, y, t);
     case "lamp":
-      return drawLamp(ctx, x, y, t);
+      return (lampBody(ctx, x, y), lampLive(ctx, x, y, t));
     case "bonsai":
       return drawBonsai(ctx, x, y, t);
     case "luckycat":
-      return drawLuckyCat(ctx, x, y, t);
+      return (luckyCatBody(ctx, x, y), luckyCatLive(ctx, x, y, t));
     case "jukebox":
-      return drawJukebox(ctx, x, y, t);
+      return (jukeboxBody(ctx, x, y), jukeboxLive(ctx, x, y, t));
     case "aquarium":
-      return drawAquarium(ctx, x, y, t);
+      return (aquariumBody(ctx, x, y), aquariumLive(ctx, x, y, t));
     case "fountain":
-      return drawFountain(ctx, x, y, t);
+      return (fountainBody(ctx, x, y), fountainLive(ctx, x, y, t));
     case "rug":
       return drawRug(ctx, x, y);
     case "corner":
-      return drawStaffCorner(ctx, x, y, t);
+      return (cornerBody(ctx, x, y), cornerLive(ctx, x, y, t));
     case "pumpkin":
-      return drawPumpkin(ctx, x, y, t);
+      return (pumpkinBody(ctx, x, y), pumpkinLive(ctx, x, y, t));
     case "haybale":
       return drawHayBale(ctx, x, y);
     case "lantern":
-      return drawRedLantern(ctx, x, y, t);
+      return (lanternStandBody(ctx, x, y), lanternStandLive(ctx, x, y, t));
     case "blossom":
-      return drawBlossom(ctx, x, y, t);
+      return (blossomBody(ctx, x, y), blossomLive(ctx, x, y, t));
     case "trophy":
       return drawTrophy(ctx, x, y, t);
   }
-}
-/** Harvest Moon: a carved pumpkin with a candle inside. */
-export function drawPumpkin(ctx: Ctx, x: number, y: number, t: number) {
-  const c = iso(x, y);
-  softShadow(ctx, c.x, c.y + 2, 24, 10, 0.28);
-  for (const [dx, r] of [
-    [-9, 11],
-    [9, 11],
-    [0, 13],
-  ] as const) {
-    ctx.fillStyle = rad(ctx, c.x + dx - 3, c.y - 22, r + 4, [
-      [0, "#ffb04a"],
-      [1, "#d8641a"],
-    ]);
-    ellipse(ctx, c.x + dx, c.y - 16, r, 15);
-    ctx.fill();
-  }
-  ctx.fillStyle = "#4a7a2a";
-  ctx.fillRect(c.x - 2, c.y - 36, 4, 8);
-  const flick = 0.75 + 0.25 * Math.sin(t * 9);
-  ctx.fillStyle = `rgba(255,${200 + 40 * flick},90,${flick})`;
-  ctx.beginPath();
-  ctx.moveTo(c.x - 8, c.y - 20);
-  ctx.lineTo(c.x - 4, c.y - 24);
-  ctx.lineTo(c.x - 2, c.y - 19);
-  ctx.closePath();
-  ctx.moveTo(c.x + 8, c.y - 20);
-  ctx.lineTo(c.x + 4, c.y - 24);
-  ctx.lineTo(c.x + 2, c.y - 19);
-  ctx.closePath();
-  ctx.fill();
-  ctx.beginPath();
-  ctx.moveTo(c.x - 7, c.y - 12);
-  ctx.quadraticCurveTo(c.x, c.y - 6, c.x + 7, c.y - 12);
-  ctx.quadraticCurveTo(c.x, c.y - 9, c.x - 7, c.y - 12);
-  ctx.fill();
-}
-/** Lantern Festival: a red paper lantern on a stand, swaying. */
-export function drawRedLantern(ctx: Ctx, x: number, y: number, t: number) {
-  const c = iso(x, y);
-  softShadow(ctx, c.x, c.y + 2, 18, 7, 0.28);
-  ctx.fillStyle = "#5a3420";
-  ctx.fillRect(c.x - 2, c.y - 70, 4, 70);
-  ctx.fillRect(c.x - 9, c.y - 4, 18, 4);
-  ctx.fillRect(c.x - 2, c.y - 72, 16, 3);
-  const sw = Math.sin(t * 1.6) * 2;
-  const lx = c.x + 12 + sw,
-    ly = c.y - 52;
-  ctx.strokeStyle = "#5a3420";
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(c.x + 12, c.y - 69);
-  ctx.lineTo(lx, ly - 13);
-  ctx.stroke();
-  ctx.fillStyle = rad(ctx, lx - 3, ly - 3, 14, [
-    [0, "#ff6a4a"],
-    [1, "#c0161a"],
-  ]);
-  ellipse(ctx, lx, ly, 11, 13);
-  ctx.fill();
-  ctx.strokeStyle = "rgba(255,210,120,.6)";
-  for (const dx of [-5, 0, 5]) {
-    ctx.beginPath();
-    ctx.ellipse(lx, ly, Math.abs(dx) + 1, 13, 0, 0, Math.PI * 2);
-    ctx.stroke();
-  }
-  ctx.fillStyle = "#f2c14e";
-  ctx.fillRect(lx - 6, ly - 15, 12, 3);
-  ctx.fillRect(lx - 6, ly + 12, 12, 3);
-  ctx.strokeStyle = "#f2c14e";
-  ctx.beginPath();
-  ctx.moveTo(lx, ly + 15);
-  ctx.lineTo(lx + sw * 0.5, ly + 24);
-  ctx.stroke();
-}
-/** Lantern Festival: a plum tree in a pot, in bloom. */
-export function drawBlossom(ctx: Ctx, x: number, y: number, t: number) {
-  const c = iso(x, y);
-  softShadow(ctx, c.x, c.y + 2, 22, 9, 0.26);
-  isoBox(ctx, x - 0.26, y - 0.26, x + 0.26, y + 0.26, 0, 18, {
-    top: "#3a4a6a",
-    left: "#2f6fa8",
-    right: "#245a8a",
-  });
-  ctx.strokeStyle = "#5a3420";
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.moveTo(c.x, c.y - 18);
-  ctx.quadraticCurveTo(c.x - 8, c.y - 40, c.x - 4, c.y - 58);
-  ctx.moveTo(c.x - 3, c.y - 36);
-  ctx.quadraticCurveTo(c.x + 10, c.y - 44, c.x + 12, c.y - 56);
-  ctx.stroke();
-  for (let i = 0; i < 22; i++) {
-    const a = (i / 22) * Math.PI * 2 + i;
-    const r = 6 + ((i * 7) % 12);
-    const px = c.x + Math.cos(a) * r + (i % 2 ? 6 : -3),
-      py = c.y - 52 + Math.sin(a) * r * 0.7 + Math.sin(t + i) * 0.4;
-    ctx.fillStyle = i % 3 ? "#ff8fb1" : "#ffd0de";
-    ctx.beginPath();
-    ctx.arc(px, py, 2.6, 0, Math.PI * 2);
-    ctx.fill();
-  }
-}
-/** The Staff Corner: a low bench with cushions and a pot of tea. */
-export function drawStaffCorner(ctx: Ctx, x: number, y: number, t: number) {
-  const c = iso(x, y);
-  softShadow(ctx, c.x, c.y + 2, 32, 12, 0.26);
-  isoBox(ctx, x - 0.42, y - 0.32, x + 0.42, y + 0.32, 0, 16, {
-    top: "#d29458",
-    left: "#ad6f38",
-    right: "#8c5629",
-  });
-  ctx.fillStyle = "#e86a5c";
-  ellipse(ctx, c.x - 11, c.y - 19, 13, 5);
-  ctx.fill();
-  ctx.fillStyle = "#5fb3a1";
-  ellipse(ctx, c.x + 11, c.y - 19, 13, 5);
-  ctx.fill();
-  // The teapot and two cups.
-  ctx.fillStyle = "#f4efe6";
-  ellipse(ctx, c.x, c.y - 29, 9, 7.5);
-  ctx.fill();
-  ctx.fillStyle = "#d8cfc0";
-  ellipse(ctx, c.x, c.y - 36, 4.5, 2);
-  ctx.fill();
-  ctx.strokeStyle = "#f4efe6";
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.moveTo(c.x + 8, c.y - 30);
-  ctx.quadraticCurveTo(c.x + 15, c.y - 33, c.x + 16, c.y - 38);
-  ctx.stroke();
-  ctx.fillStyle = "#ffffff";
-  for (const dx of [-20, 21]) {
-    ellipse(ctx, c.x + dx, c.y - 22, 4.5, 2.5);
-    ctx.fill();
-  }
-  // Steam.
-  ctx.strokeStyle = "rgba(255,255,255,.55)";
-  ctx.lineWidth = 2;
-  for (let i = 0; i < 2; i++) {
-    const k = (t * 0.6 + i * 0.5) % 1;
-    ctx.globalAlpha = 1 - k;
-    ctx.beginPath();
-    ctx.moveTo(c.x + 16, c.y - 40 - k * 16);
-    ctx.quadraticCurveTo(
-      c.x + 20,
-      c.y - 46 - k * 16,
-      c.x + 16,
-      c.y - 52 - k * 16,
-    );
-    ctx.stroke();
-  }
-  ctx.globalAlpha = 1;
 }
 /** Light sources an item gives off at night: [dx, dy from the tile centre, radius, rgb]. */
 export function itemGlow(
@@ -2950,76 +2518,6 @@ export const tableStyleOf = (kind: ItemKind): TableStyle =>
         : "round";
 
 /** A small stand (a cabinet) things sit on. */
-function glow(
-  ctx: Ctx,
-  x: number,
-  y: number,
-  r: number,
-  col: string,
-  a: number,
-) {
-  ctx.fillStyle = rad(ctx, x, y, r, [
-    [0, col.replace("A", String(a))],
-    [1, col.replace("A", "0")],
-  ]);
-  ellipse(ctx, x, y, r, r);
-  ctx.fill();
-}
-export function drawNeon(ctx: Ctx, x: number, y: number, t: number) {
-  const c = iso(x, y);
-  softShadow(ctx, c.x, c.y + 2, 20, 8, 0.24);
-  ctx.fillStyle = "#2b2f36";
-  ctx.fillRect(c.x - 2, c.y - 40, 4, 40);
-  ctx.fillRect(c.x - 12, c.y - 2, 24, 4);
-  const on = Math.sin(t * 11) > -0.92 ? 1 : 0.3;
-  glow(ctx, c.x, c.y - 56, 34, "rgba(255,80,200,A)", 0.35 * on);
-  ctx.strokeStyle = `rgba(255,120,220,${on})`;
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.roundRect(c.x - 22, c.y - 68, 44, 24, 8);
-  ctx.stroke();
-  ctx.strokeStyle = `rgba(120,240,255,${on})`;
-  ctx.beginPath();
-  ctx.moveTo(c.x - 12, c.y - 52);
-  ctx.quadraticCurveTo(c.x, c.y - 64, c.x + 12, c.y - 52);
-  ctx.stroke();
-  ctx.fillStyle = `rgba(255,236,120,${on})`;
-  for (const dx of [-8, 0, 8]) {
-    ellipse(ctx, c.x + dx, c.y - 50, 1.8, 1.8);
-    ctx.fill();
-  }
-}
-export function drawPiano(ctx: Ctx, x: number, y: number) {
-  const c = iso(x, y);
-  softShadow(ctx, c.x, c.y + 4, 36, 15, 0.3);
-  isoBox(ctx, x - 0.42, y - 0.36, x + 0.42, y + 0.36, 14, 18, {
-    top: "#1f1f24",
-    left: "#141418",
-    right: "#0e0e12",
-  });
-  ctx.fillStyle = "#fff";
-  ctx.fillRect(c.x - 22, c.y - 22, 28, 5);
-  ctx.fillStyle = "#111";
-  for (let i = 0; i < 6; i++) ctx.fillRect(c.x - 20 + i * 4.6, c.y - 22, 2, 3);
-  ctx.fillStyle = "#26262c";
-  ctx.beginPath();
-  ctx.moveTo(c.x - 16, c.y - 32);
-  ctx.lineTo(c.x + 18, c.y - 62);
-  ctx.lineTo(c.x + 26, c.y - 34);
-  ctx.closePath();
-  ctx.fill();
-  ctx.strokeStyle = "#d4af37";
-  ctx.lineWidth = 1.5;
-  ctx.stroke();
-  ctx.strokeStyle = "#3a3a40";
-  ctx.lineWidth = 3;
-  for (const dx of [-14, 16]) {
-    ctx.beginPath();
-    ctx.moveTo(c.x + dx, c.y - 2);
-    ctx.lineTo(c.x + dx, c.y - 14);
-    ctx.stroke();
-  }
-}
 export function drawCarpet(ctx: Ctx, x: number, y: number) {
   const pts = [
     iso(x - 0.4, y - 0.4),
@@ -3125,32 +2623,4 @@ export function drawSakura(ctx: Ctx, x: number, y: number, t: number) {
     ctx.arc(c.x + Math.cos(a) * d + 4 + sw(dy), c.y + dy, 1.8, 0, Math.PI * 2);
     ctx.fill();
   }
-}
-export function drawStatue(ctx: Ctx, x: number, y: number, t: number) {
-  const c = iso(x, y);
-  softShadow(ctx, c.x, c.y + 2, 26, 11, 0.3);
-  isoBox(ctx, x - 0.3, y - 0.3, x + 0.3, y + 0.3, 0, 16, {
-    top: "#b8b2a7",
-    left: "#958f85",
-    right: "#7d776e",
-  });
-  ctx.strokeStyle = lin(ctx, c.x - 20, 0, c.x + 20, 0, [
-    [0, "#1e7a52"],
-    [0.5, "#4cc58e"],
-    [1, "#16603f"],
-  ]);
-  ctx.lineWidth = 9;
-  ctx.lineCap = "round";
-  ctx.beginPath();
-  ctx.moveTo(c.x - 16, c.y - 20);
-  ctx.bezierCurveTo(c.x - 24, c.y - 48, c.x + 22, c.y - 36, c.x + 10, c.y - 64);
-  ctx.stroke();
-  ctx.lineCap = "butt";
-  ctx.fillStyle = "#2fa36e";
-  ellipse(ctx, c.x + 10, c.y - 68, 9, 7);
-  ctx.fill();
-  const tw = 0.5 + 0.5 * Math.sin(t * 2.5);
-  ctx.fillStyle = `rgba(255,214,91,${0.6 + 0.4 * tw})`;
-  ellipse(ctx, c.x + 13, c.y - 70, 2, 2);
-  ctx.fill();
 }
