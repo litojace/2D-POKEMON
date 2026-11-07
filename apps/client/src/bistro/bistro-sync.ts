@@ -14,11 +14,16 @@ import {
   buyKitchen,
   buyShift,
   buyStove,
+  buyStoveModel,
+  placeStove,
+  moveStove,
+  type StoveModel,
   buyStyle,
   dishLevel,
   dishUp,
   buyIngredient,
   fillOrder,
+  perkTotal,
   returnAside,
   fillRegular,
   leagueReward,
@@ -78,6 +83,9 @@ export type BistroAction =
   | { a: "buy"; kind: ItemKind }
   | { a: "style"; kind: "floor" | "wall"; id: string }
   | { a: "stove" }
+  | { a: "stovebuy"; model: StoveModel }
+  | { a: "stoveplace"; model: StoveModel; x: number }
+  | { a: "stovemove"; stove: number; x: number }
   | { a: "kitchen" }
   | { a: "shift" }
   | { a: "expand" }
@@ -175,6 +183,8 @@ export function applyLocal(
       const bill = payment(x.dish, {
         level: dishLevel(s, x.dish),
         stars: s.stars,
+        // The room's tip perks (the server adds them too, migration 104).
+        perk: perkTotal(s.items, "tip"),
         vip: x.vip,
         combo: x.combo,
         hearts: x.hearts,
@@ -236,6 +246,12 @@ export function applyLocal(
       return r(buyStyle(s, x.kind, x.id));
     case "stove":
       return r(buyStove(s));
+    case "stovebuy":
+      return r(buyStoveModel(s, x.model));
+    case "stoveplace":
+      return r(placeStove(s, x.model, x.x));
+    case "stovemove":
+      return r(moveStove(s, x.stove, x.x));
     case "kitchen":
       return r(buyKitchen(s));
     case "shift":

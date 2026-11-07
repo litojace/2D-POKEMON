@@ -20,7 +20,10 @@ import {
   type ActivityReceipt,
 } from "../../../packages/shared/src/shop.js";
 import { JOURNEY_ITEM_BY_ID } from "../../../packages/shared/src/journey.js";
-import { MAX_SIZE as BISTRO_MAX_SIZE } from "../../../packages/shared/src/bistro.js";
+import {
+  MAX_SIZE as BISTRO_MAX_SIZE,
+  MAX_STOVES as BISTRO_MAX_STOVES,
+} from "../../../packages/shared/src/bistro.js";
 import { createClient } from "@supabase/supabase-js";
 import {
   buildFriendsBoard,
@@ -56,7 +59,7 @@ import {
   type OnlineList,
 } from "../../../packages/shared/src/accounts.js";
 /** The newest database migration the server expects. */
-export const LATEST_MIGRATION = "102_bistro_orders_aside.sql";
+export const LATEST_MIGRATION = "104_bistro_economy_items.sql";
 /** The migration that last redefined the raid appearance functions. */
 export const RAID_FUNCTIONS_MIGRATION = "018_collection_equipping.sql";
 export interface AccountProvider {
@@ -673,9 +676,19 @@ export function installAccountRoutes(
         "regular",
         "league",
         "branch",
+        // Stoves from the Shop (migration 103).
+        "stovebuy",
+        "stoveplace",
+        "stovemove",
         "sync",
       ]),
-      stove: z.number().int().min(0).max(3).optional(),
+      stove: z
+        .number()
+        .int()
+        .min(0)
+        .max(BISTRO_MAX_STOVES - 1)
+        .optional(),
+      model: z.enum(["clay", "steel", "dragon"]).optional(),
       dish: bistroId.optional(),
       vip: z.boolean().optional(),
       combo: z.number().int().min(1).max(5).optional(),

@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  EXPAND_STEPS as EXPAND_STEPS_ALL,
+  HIRE_STEPS,
+} from "../../packages/shared/src/bistro";
+import {
   COLS,
   COUNTER_SLOTS,
   DISHES,
@@ -267,7 +271,7 @@ describe("bistro: the floor plan", () => {
 describe("bistro: the shop", () => {
   it("buys items into storage, stoves up to four and one more waiter", () => {
     const s = defaultState();
-    s.coins = 5000;
+    s.coins = 50000;
     s.level = 5;
     expect(buyItem(s, "aquarium").ok).toBe(true);
     expect(s.stored.aquarium).toBe(1);
@@ -391,7 +395,8 @@ describe("bistro: while you are away", () => {
   });
   it("a cook keeps food coming; the shift caps the time worked", () => {
     const s = defaultState();
-    s.coins = 500;
+    // The cook's hire, and some coins for ingredients.
+    s.coins = HIRE_STEPS.cook[0].price + 400;
     s.level = 2;
     hire(s, "cook", "pyranda");
     const coins = s.coins;
@@ -414,7 +419,7 @@ describe("bistro: while you are away", () => {
   it("cooks stop when there are no coins for ingredients", () => {
     const s = defaultState();
     s.level = 2;
-    s.coins = 250;
+    s.coins = HIRE_STEPS.cook[0].price;
     hire(s, "cook", "pyranda");
     s.counter = [null, null, null, null];
     expect(s.coins).toBe(0);
@@ -429,7 +434,7 @@ describe("bistro: expanding the dining room", () => {
     const { buyExpand, sizeOf, EXPAND_STEPS } =
       await import("../../apps/client/src/bistro/bistro-model");
     const s = defaultState();
-    s.coins = 50000;
+    s.coins = EXPAND_STEPS_ALL.reduce((n, e) => n + e.price, 0);
     s.stored = { plant: 2 };
     expect(tryPlace(s, "plant", 12, 4, 0)).toMatchObject({ ok: false });
     expect(buyExpand(s)).toMatchObject({ ok: false }); // level 4
@@ -635,7 +640,7 @@ describe("bistro: staff energy, janitors and friends (docs/bistro-gdd.md §1)", 
   it("hires janitors from level 4, a third cook at 9, and friends for any role", async () => {
     const B = await import("../../packages/shared/src/bistro");
     const s = defaultState();
-    s.coins = 10000;
+    s.coins = 100000;
     s.level = 3;
     expect(hire(s, "janitor", "pyranda")).toMatchObject({
       ok: false,

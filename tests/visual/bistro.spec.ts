@@ -87,6 +87,36 @@ test("the Bistro tab opens next to the Farm and plays a full service on the serv
   expect(errors).toEqual([]);
 });
 
+test("Bistro hats sit on the head, not on ears, horns or tails", async ({
+  page,
+}) => {
+  await openBistro(page);
+  // Cindrake's horns and flame and Astrabun's ears rise far above their
+  // heads: a hat put on the top of the whole drawing floated over them.
+  const ids = ["cindrake", "astrabun", "auralynx", "duskveil", "voltkit"];
+  for (const id of ids) await B(page, `b.chefAs("${id}")`);
+  await page.waitForFunction(
+    (list) =>
+      list.every((id) => {
+        const h = (window as any).__bistro.headOf(id);
+        return h.ready && h.headTop > 0;
+      }),
+    ids,
+  );
+  const heads = (await B(
+    page,
+    `return ${JSON.stringify(ids)}.map((id) => [id, b.headOf(id)])`,
+  )) as [string, { top: number; headTop: number }][];
+  for (const [id, h] of heads) {
+    // The head's top is never above the drawing's, and well inside it.
+    expect(h.headTop, id).toBeGreaterThanOrEqual(h.top);
+    expect(h.headTop, id).toBeLessThan(80);
+  }
+  const by = Object.fromEntries(heads);
+  expect(by.cindrake.headTop - by.cindrake.top).toBeGreaterThan(30);
+  expect(by.astrabun.headTop - by.astrabun.top).toBeGreaterThan(30);
+});
+
 test("Bistro decorate mode moves furniture on the server and refuses the kitchen", async ({
   page,
 }) => {
@@ -584,8 +614,12 @@ test("Bistro: furniture in the bigger room stays through tab switches, even when
     "That change couldn't be saved.",
   );
   expect(await B(page, "return srv.S.sizeLv")).toBe(3);
-  expect(await B(page, "return srv.S.stored.plant")).toBe(1);
-  expect(await items("srv.S")).toEqual([...before, "lamp@8,6"].sort());
+  // The kitchen grew a column (x 6): the plant standing at 6,0 went into
+  // storage with the refused one.
+  expect(await B(page, "return srv.S.stored.plant")).toBe(2);
+  expect(await items("srv.S")).toEqual(
+    [...before.filter((i) => i !== "plant@6,0"), "lamp@8,6"].sort(),
+  );
   // The scene shows the server's room: the refused plant is back in storage.
   expect(await items("b.state()")).toEqual(await items("srv.S"));
   // With the server taking it, the plant goes to the far corner…
@@ -702,4 +736,127 @@ test.describe("on a touch screen", () => {
     await expect(page.locator("#bs-tip")).toContainText("cooks here");
     expect(errors).toEqual([]);
   });
+});
+
+test("Bistro stoves: bought in the Shop, placed, moved and swapped on the kitchen's back wall", async ({
+  page,
+}, info) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const errors = await openBistro(page);
+  await B(page, "srv.S.level = 10; srv.S.coins = 100000; return b.load()");
+  const spot = (x: number) =>
+    B(page, `return b.screen(${x}, 0, 50)`) as Promise<Pt>;
+  const tapSpot = async (x: number) => {
+    const p = await spot(x);
+    await page.mouse.click(p.x, p.y);
+  };
+  const stoves = () =>
+    B(page, "return srv.S.stoves.map((s) => s.x + ':' + s.model)");
+  // The Shop's Kitchen tab: three models, the Dragon Oven from level 16.
+  await page.click('.bs-rail [data-sheet="shop"]');
+  await page.click('#bs-sheet [data-tab="kitchen"]');
+  await expect(page.locator("#bs-sheet [data-stovebuy]")).toHaveCount(3);
+  await expect(
+    page.locator('#bs-sheet [data-stovebuy="dragon"]'),
+  ).toBeDisabled();
+  await expect(page.locator("#bs-sheet .bs-note")).toContainText(
+    "2 of 4 spots on the back wall",
+  );
+  await snap(page, info, "bistro-stove-shop");
+  // A Steel Range: straight to Decorate, placed on a free spot.
+  await page.click('#bs-sheet [data-stovebuy="steel"]');
+  await expect(page.locator("#bs-edit")).toContainText("Placing: Steel Range");
+  await tapSpot(3);
+  await flush(page);
+  expect(await stoves()).toEqual(["1:clay", "2:clay", "3:steel"]);
+  // A Steel Range costs 8,000.
+  expect(await B(page, "return srv.S.coins")).toBe(92000);
+  // Moved to the last spot.
+  await tapSpot(3);
+  await expect(page.locator("#bs-edit")).toContainText("Moving: Steel Range");
+  await tapSpot(4);
+  await flush(page);
+  expect(await stoves()).toEqual(["1:clay", "2:clay", "4:steel"]);
+  // A Dragon Oven at level 16, swapped for the Clay Stove at x 1.
+  await B(page, "srv.S.level = 16; return b.load()");
+  await page.click('#bs-edit [data-ed="shop"]');
+  await page.click('#bs-sheet [data-tab="kitchen"]');
+  await page.click('#bs-sheet [data-stovebuy="dragon"]');
+  await tapSpot(1);
+  await flush(page);
+  expect(await stoves()).toEqual(["1:dragon", "2:clay", "4:steel"]);
+  expect(await B(page, "return srv.S.stoveStore")).toEqual({ clay: 1 });
+  // The Clay Stove from storage fills the last free spot.
+  await page.click('#bs-edit [data-hold-stove="clay"]');
+  await tapSpot(3);
+  await flush(page);
+  expect(await stoves()).toEqual(["1:dragon", "2:clay", "4:steel", "3:clay"]);
+  await page.click('#bs-edit [data-ed="done"]');
+  // The Dragon Oven cooks 30% faster than a Clay Stove.
+  await B(
+    page,
+    "return srv.S.stoves.forEach((s) => (s.dish = null)) ?? b.load()",
+  );
+  const p1 = await spot(1);
+  await page.mouse.click(p1.x, p1.y);
+  await page.click('#bs-sheet [data-dish="pho"]');
+  const p2 = await spot(2);
+  await page.mouse.click(p2.x, p2.y);
+  await page.click('#bs-sheet [data-dish="pho"]');
+  await flush(page);
+  const [dragon, clay] = (await B(
+    page,
+    "return [srv.S.stoves[0].dur, srv.S.stoves[1].dur]",
+  )) as number[];
+  expect(dragon).toBe(Math.round(clay / 1.3));
+  await snap(page, info, "bistro-stoves");
+  expect(errors).toEqual([]);
+});
+
+test("Bistro items with perks: gadgets, a new table and armchair that seat a guest", async ({
+  page,
+}, info) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const errors = await openBistro(page);
+  await B(page, "srv.S.level = 12; srv.S.coins = 100000; return b.load()");
+  const seats = () =>
+    B(page, "return b.state().items.length") as Promise<number>;
+  // The Gadgets tab: machines with their perks, cheapest first.
+  await page.click('.bs-rail [data-sheet="shop"]');
+  await page.click('#bs-sheet [data-tab="machines"]');
+  const first = page.locator("#bs-sheet .bs-item").first();
+  await expect(first).toContainText("Tip Jar");
+  await expect(first).toContainText("+3% tips");
+  await expect(page.locator('#bs-sheet [data-buy="piano"]')).toBeDisabled(); // level 15
+  await snap(page, info, "bistro-gadgets");
+  // A Tip Jar, bought and placed.
+  await page.click('#bs-sheet [data-buy="tipjar"]');
+  await expect(page.locator("#bs-edit")).toContainText("Placing: Tip Jar");
+  const p = (await B(page, "return b.screen(10, 6, 10)")) as Pt;
+  await page.mouse.click(p.x, p.y);
+  await page.click('#bs-edit [data-ed="done"]');
+  await flush(page);
+  expect(
+    await B(page, "return srv.S.items.some((i) => i.kind === 'tipjar')"),
+  ).toBe(true);
+  expect(await B(page, "return srv.S.coins")).toBe(100000 - 500);
+  // A Garden Table and a Velvet Armchair seat one more guest.
+  const before = (await B(
+    page,
+    "return b.state().items.filter((i) => i.kind === 'chair' || i.kind === 'armchair').length",
+  )) as number;
+  await B(
+    page,
+    `const s = b.sync();
+     return [s.do({ a: 'buy', kind: 'gardentable' }), s.do({ a: 'buy', kind: 'armchair' }),
+       s.do({ a: 'place', kind: 'gardentable', x: 5, y: 8, rot: 0 }),
+       s.do({ a: 'place', kind: 'armchair', x: 4, y: 8, rot: 0 })].map((r) => r.ok)`,
+  );
+  await flush(page);
+  const n = await seats();
+  expect(n).toBeGreaterThan(0);
+  await expect(page.locator("#bs-bar .bs-open b")).toContainText(
+    `${before + 1} seats`,
+  );
+  expect(errors).toEqual([]);
 });
