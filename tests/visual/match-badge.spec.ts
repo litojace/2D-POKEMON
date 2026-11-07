@@ -461,18 +461,23 @@ for (const [label, me, kai] of [
         [me, kai] as const,
       );
       const arrow = page.locator(".enemy-bearing.is-orbit span");
-      // Until your fighter (predicted) and the camera have settled.
+      // Until your fighter (predicted) has arrived, so the camera centres
+      // you (x 800 in both cases), and nothing moves any more.
+      const yours = page.locator(".battle-nameplate", { hasText: "YOU" });
       let last = "";
       await expect
         .poll(
           async () => {
             await page.evaluate(() => (window as any).__push());
-            const box = JSON.stringify(await arrow.boundingBox());
-            const still = box === last && box !== "null";
+            const plate = await yours.boundingBox();
+            const box = JSON.stringify([await arrow.boundingBox(), plate]);
+            const centred =
+              !!plate && Math.abs(plate.x + plate.width / 2 - 844 / 2) < 60;
+            const still = centred && box === last;
             last = box;
             return still;
           },
-          { timeout: 15_000, intervals: [400] },
+          { timeout: 40_000, intervals: [500] },
         )
         .toBe(true);
       const a = (await arrow.boundingBox())!;
