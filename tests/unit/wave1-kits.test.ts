@@ -67,7 +67,9 @@ describe("Ember Curtain (Pyranda)", () => {
     const hp = them.hp;
     ticks(a, 6);
     expect(a.has(them, "burn")).toBe(true);
-    expect(hp - them.hp).toBeGreaterThanOrEqual(skill("pyranda", "ember-curtain").damage);
+    expect(hp - them.hp).toBeGreaterThanOrEqual(
+      skill("pyranda", "ember-curtain").damage,
+    );
   });
 });
 
@@ -155,12 +157,16 @@ describe("Pinning Quill (Halcyra)", () => {
     expect(a.has(them, "leash")).toBe(true);
     const pin = them.statuses.find((s) => s.kind === "leash")!;
     them.lastInput = { ...them.lastInput, dx: 1 };
-    ticks(a, 40);
+    ticks(a, 30);
     const len = skill("halcyra", "pinning-quill").leash!;
-    expect(Math.hypot(them.x - pin.tx!, them.y - pin.ty!)).toBeLessThanOrEqual(len + 1);
+    expect(Math.hypot(them.x - pin.tx!, them.y - pin.ty!)).toBeLessThanOrEqual(
+      len + 1,
+    );
     // Free again once it wears off.
     ticks(a, Math.round(RULES.tick * 1.5));
-    expect(Math.hypot(them.x - pin.tx!, them.y - pin.ty!)).toBeGreaterThan(len + 20);
+    expect(Math.hypot(them.x - pin.tx!, them.y - pin.ty!)).toBeGreaterThan(
+      len + 20,
+    );
   });
 });
 

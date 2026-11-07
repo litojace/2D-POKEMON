@@ -430,7 +430,6 @@ function earthHit(
 }
 
 // ═════════════ Wombolder: burrowing charges and a boulder-hard rump ═════════════
-const PLATE = 0x8d8478;
 const PLATE_LIGHT = 0xb9b0a2;
 const SOIL = 0x5a4330;
 const SQ = 0.82;
@@ -874,22 +873,30 @@ function boomerang(g: G, pr: Projectile, now: number) {
     y = pr.y - 10,
     spin = now / 40 + pr.id;
   fx.solid.fillStyle(0x000000, 0.2).fillEllipse(pr.x, pr.y + 6, r * 2, r * 0.7);
+  // A spinning blur first, then two broad wooden arms on top.
+  fx.solid.lineStyle(3, SAND, 0.22).strokeEllipse(x, y, r * 4, r * 3.2);
   const arm = (a: number) => {
     const c = Math.cos(a),
-      s = Math.sin(a);
+      s = Math.sin(a),
+      L = r * 2,
+      w = 5;
     return [
-      { x: x - s * 3, y: y + c * 3 * 0.8 },
-      { x: x + c * r * 1.6 - s * 2, y: y + (s * r * 1.6 + c * 2) * 0.8 },
-      { x: x + c * r * 1.7 + s * 2, y: y + (s * r * 1.7 - c * 2) * 0.8 },
-      { x: x + s * 3, y: y - c * 3 * 0.8 },
+      { x: x - s * w, y: y + c * w * 0.8 },
+      { x: x + c * L - s * w * 0.6, y: y + (s * L + c * w * 0.6) * 0.8 },
+      { x: x + c * (L + 3), y: y + s * (L + 3) * 0.8 },
+      { x: x + c * L + s * w * 0.6, y: y + (s * L - c * w * 0.6) * 0.8 },
+      { x: x + s * w, y: y - c * w * 0.8 },
     ];
   };
   for (const a of [spin, spin + 1.9]) {
-    fx.solid.fillStyle(DARK, 1).fillPoints(arm(a), true);
-    fx.solid.lineStyle(1.5, SAND, 0.9).strokePoints(arm(a), true);
+    fx.solid.fillStyle(0xc98b4a, 1).fillPoints(arm(a), true);
+    fx.solid.lineStyle(2, DARK, 0.95).strokePoints(arm(a), true);
   }
-  fx.solid.fillStyle(0xc98b4a, 1).fillCircle(x, y, 3);
-  fx.trail(`bm${pr.id}`, 0.05, () => dust(fx, pr.x, pr.y, 1, [5, 20], { size: [4, 8] }));
+  fx.solid.fillStyle(0xefdcc0, 1).fillCircle(x, y, 3.5);
+  fx.glow(x, y, r * 2.2, SAND, 0.18);
+  fx.trail(`bm${pr.id}`, 0.05, () =>
+    dust(fx, pr.x, pr.y, 1, [5, 20], { size: [4, 8] }),
+  );
 }
 function pebbleImpact(
   scene: Phaser.Scene,
@@ -956,7 +963,15 @@ function grudgeThump(
   dust(fx, x, y, 10, [80, 200], { size: [10, 16] });
   shot(fx.reduced ? 300 : 700, (k) => {
     const fade = 1 - k;
-    fx.shockwave(x, y + 4, R * ease(Math.min(1, k * 1.8)), Math.min(1, k * 1.4), SAND, 10, 0.5);
+    fx.shockwave(
+      x,
+      y + 4,
+      R * ease(Math.min(1, k * 1.8)),
+      Math.min(1, k * 1.4),
+      SAND,
+      10,
+      0.5,
+    );
     fx.floor.lineStyle(2, 0xff5a5a, 0.5 * fade).strokeEllipse(x, y, R * 2, R);
     // The glare: two angry red flashes over the head.
     fx.glow(x, y - 40, 26, 0xff5a5a, 0.6 * fade);

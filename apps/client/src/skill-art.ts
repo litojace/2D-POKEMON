@@ -904,7 +904,12 @@ const art: Record<string, { el: Element; draw: () => string }> = {
       // A wavy stream from the gill fronds to a target; droplets flow home.
       floorGlow("water", 64, 104, 56, 12) +
       `<path d="M40 110 Q52 96 64 104 Q76 96 88 110" fill="none" stroke="#ff9fc4" stroke-width="5" stroke-linecap="round" opacity=".8"/>` +
-      glow("M30 84 Q50 64 64 70 Q80 76 96 52 Q104 40 108 34", W.hot, 5, W.accent[1]) +
+      glow(
+        "M30 84 Q50 64 64 70 Q80 76 96 52 Q104 40 108 34",
+        W.hot,
+        5,
+        W.accent[1],
+      ) +
       `<circle cx="108" cy="32" r="14" fill="none" stroke="${W.accent[2]}" stroke-width="2.4" stroke-dasharray="4 4"/>` +
       [
         [52, 68, 4],
@@ -2247,13 +2252,15 @@ const art: Record<string, { el: Element; draw: () => string }> = {
   "Halcyon Rewind": {
     el: "aura",
     draw: () =>
-      // Halcyra's feather loops back along a dotted path to where it was.
+      // Halcyra dives back along a dotted loop from where it is (a fading
+      // ghost) to where it was two seconds ago; a little clock runs backward.
       halo("aura", 36, 82, 26) +
-      `<path d="M100 40 Q118 70 90 92 Q62 110 40 84" fill="none" stroke="${A.hot}" stroke-width="3" stroke-dasharray="5 5" stroke-linecap="round"/>` +
-      `<path d="M48 78 L38 84 L46 92" fill="none" stroke="${A.hot}" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>` +
-      `<g transform="translate(36 82) rotate(-30)"><path d="M0 -20 Q9 -6 4 14 Q0 18 -4 14 Q-9 -6 0 -20Z" fill="url(#sa-orb-aura)"/><path d="M0 -18 L0 14" stroke="#fff" stroke-width="1.4" opacity=".8"/></g>` +
-      `<circle cx="100" cy="40" r="12" fill="none" stroke="${A.accent[2]}" stroke-width="2" opacity=".6"/>` +
-      `<path d="M100 32 V40 L106 44" fill="none" stroke="${A.accent[2]}" stroke-width="2" stroke-linecap="round" opacity=".7"/>` +
+      `<path d="M100 48 Q118 74 90 94 Q62 110 44 90" fill="none" stroke="${A.hot}" stroke-width="3" stroke-dasharray="5 5" stroke-linecap="round"/>` +
+      `<path d="M54 86 L44 90 L50 99" fill="none" stroke="${A.hot}" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>` +
+      kingfisher(94, 40, 0.75, true) +
+      kingfisher(30, 80, 0.85) +
+      `<circle cx="112" cy="18" r="9" fill="none" stroke="${A.accent[2]}" stroke-width="2" opacity=".75"/>` +
+      `<path d="M112 12 V18 L107 21" fill="none" stroke="${A.accent[2]}" stroke-width="2" stroke-linecap="round" opacity=".8"/>` +
       plus(64, 30, 7, "#7dffb0", 0.9) +
       sparks(
         [
@@ -2609,7 +2616,7 @@ const art: Record<string, { el: Element; draw: () => string }> = {
       `<path d="M22 100 Q64 10 108 60 Q86 104 30 104" fill="none" stroke="${R.accent[2]}" stroke-width="2.6" stroke-dasharray="5 5" stroke-linecap="round" opacity=".7"/>` +
       `<path d="M36 98 L26 104 L36 110" fill="none" stroke="${R.accent[2]}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity=".8"/>` +
       halo("earth", 84, 40, 26) +
-      `<g transform="translate(84 40) rotate(-20)"><path d="M-4 4 L-30 -6 Q-34 -12 -28 -14 L2 -4Z M4 4 L14 -24 Q18 -30 22 -24 L10 6Z" fill="#c98b4a" stroke="#4a2c14" stroke-width="2" stroke-linejoin="round"/><path d="M-26 -10 L-4 -2 M18 -22 L8 2" stroke="#efdcc0" stroke-width="1.4" opacity=".7"/></g>` +
+      `<g transform="translate(84 44) rotate(-24)"><path d="M-32 8 Q-16 -16 2 -16 Q18 -14 30 8 Q32 15 25 14 Q14 -3 2 -4 Q-12 -4 -24 14 Q-32 16 -32 8Z" fill="#c98b4a" stroke="#4a2c14" stroke-width="2" stroke-linejoin="round"/><path d="M-26 6 Q-12 -10 2 -11 Q14 -10 24 6" fill="none" stroke="#efdcc0" stroke-width="1.6" stroke-linecap="round" opacity=".75"/><path d="M-6 -12 L-2 -5 M6 -12 L4 -5" stroke="#4a2c14" stroke-width="1.4" opacity=".6"/></g><path d="M50 30 Q60 22 72 24 M100 64 Q108 56 110 46" fill="none" stroke="#efdcc0" stroke-width="2" stroke-linecap="round" opacity=".5"/>` +
       sparks(
         [
           [112, 24, 1.4],
@@ -3218,7 +3225,8 @@ const art: Record<string, { el: Element; draw: () => string }> = {
                 const a = (d * Math.PI) / 180;
                 return `<ellipse cx="${n(x + Math.cos(a) * 5)}" cy="${n(y + Math.sin(a) * 4)}" rx="5" ry="4" fill="#ff9fc4"/>`;
               })
-              .join("") + `<circle cx="${x}" cy="${y}" r="2.6" fill="#ffd166"/>`,
+              .join("") +
+            `<circle cx="${x}" cy="${y}" r="2.6" fill="#ffd166"/>`,
         )
         .join("") +
       sparks(

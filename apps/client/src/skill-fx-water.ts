@@ -121,56 +121,6 @@ function needleImpact(
   shot(360, (k) => fx.shockwave(x, y + 14, 34 * ease(k), k, FOAM, 5));
 }
 
-// ───────────── Gill Spray: droplets flicked from the gill fronds ─────────────
-function gillDrop(g: G, pr: Projectile, now: number) {
-  const fx = fxFor(g.scene),
-    r = pr.ability.radius,
-    c = pr.color,
-    x = pr.x,
-    y = pr.y,
-    dir = Math.atan2(pr.vy, pr.vx),
-    wobble = 1 + Math.sin(now / 45 + pr.id) * 0.06;
-  fx.solid.fillStyle(0x000000, 0.14).fillEllipse(x, y + 18, r * 2, r * 0.7);
-  // A teardrop: round at the front, a tail streaming back along the flight.
-  const drop = (rr: number) =>
-    Array.from({ length: 14 }, (_, i) => {
-      const a = (i / 14) * Math.PI * 2,
-        tail = Math.max(0, -Math.cos(a)),
-        d = rr * (1 + tail * 0.9) * (i % 2 ? wobble : 1);
-      const lx = Math.cos(a) * d,
-        ly = Math.sin(a) * rr * (1 - tail * 0.45);
-      return {
-        x: x + lx * Math.cos(dir) - ly * Math.sin(dir),
-        y: y + lx * Math.sin(dir) + ly * Math.cos(dir),
-      };
-    });
-  fx.solid.fillStyle(DEEP, 0.55).fillPoints(drop(r * 1.2), true);
-  fx.solid.fillStyle(c, 1).fillPoints(drop(r * 1.05), true);
-  fx.solid
-    .fillStyle(FOAM, 0.95)
-    .fillCircle(
-      x + Math.cos(dir) * r * 0.25 - 2,
-      y + Math.sin(dir) * r * 0.25 - 2,
-      r * 0.35,
-    );
-  fx.glow(x, y, r * 2.2, c, 0.3);
-  fx.trail(`rs${pr.id}`, 0.035, () =>
-    fx.burst({
-      x,
-      y,
-      z: 0,
-      count: 1,
-      kind: "drop",
-      color: [c, FOAM],
-      speed: [10, 40],
-      up: [0, 40],
-      life: [0.25, 0.4],
-      size: [1, 1.6],
-      grav: 900,
-    }),
-  );
-}
-
 // ───────────── Eddy ─────────────
 function whirlpool(g: G, z: Zone, progress: number, now: number) {
   const fx = fxFor(g.scene),

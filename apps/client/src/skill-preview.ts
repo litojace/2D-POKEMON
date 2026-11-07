@@ -165,7 +165,11 @@ export function previewShape(
     }
     case "taunt":
       // Everyone this close is taunted.
-      shape.discs.push({ x: from.x, y: from.y, r: ability.radius + RULES.radius });
+      shape.discs.push({
+        x: from.x,
+        y: from.y,
+        r: ability.radius + RULES.radius,
+      });
       break;
     case "tether":
       // It locks onto the enemy nearest the aim within this reach.

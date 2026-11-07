@@ -883,7 +883,9 @@ function rewindLand(
   });
   shot(fx.reduced ? 200 : 420, (k) => {
     fx.glow(x, cy, 50 * (1 - k * 0.4), color, 0.55 * (1 - k));
-    fx.g.lineStyle(3 * (1 - k) + 1, GLASS, 0.8 * (1 - k)).strokeCircle(x, cy, 10 + k * 30);
+    fx.g
+      .lineStyle(3 * (1 - k) + 1, GLASS, 0.8 * (1 - k))
+      .strokeCircle(x, cy, 10 + k * 30);
   });
 }
 

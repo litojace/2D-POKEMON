@@ -659,7 +659,6 @@ const NUT = 0x7a3b1c;
 const NUT_DARK = 0x3a1a0c;
 const NUT_BASE = 0xd9b48a;
 const RUST = 0xc4522a;
-const TAN = 0xf0c48a;
 const SQ = 0.82;
 /** Run `draw(k)` every frame for `ms` from inside a per-frame draw (zones). */
 const shotOn =
@@ -1096,10 +1095,20 @@ function emberCurtain(g: G, z: Zone, progress: number, now: number) {
   // The scorched line on the floor.
   fx.floorSolid
     .lineStyle(16, 0x2a0c04, 0.35 * fade)
-    .lineBetween(z.x - ux * len, z.y - uy * len * SQ, z.x + ux * len, z.y + uy * len * SQ);
+    .lineBetween(
+      z.x - ux * len,
+      z.y - uy * len * SQ,
+      z.x + ux * len,
+      z.y + uy * len * SQ,
+    );
   fx.floor
     .lineStyle(5, RUST, 0.7 * fade)
-    .lineBetween(z.x - ux * len, z.y - uy * len * SQ, z.x + ux * len, z.y + uy * len * SQ);
+    .lineBetween(
+      z.x - ux * len,
+      z.y - uy * len * SQ,
+      z.x + ux * len,
+      z.y + uy * len * SQ,
+    );
   const n = 11;
   for (let i = 0; i < n; i++) {
     const t = (i / (n - 1)) * 2 - 1,
@@ -1109,7 +1118,14 @@ function emberCurtain(g: G, z: Zone, progress: number, now: number) {
       h = (26 + 10 * Math.sin(now / 130 + i)) * flick * fade;
     fx.solid
       .fillStyle(RUST, 0.85 * fade)
-      .fillTriangle(px - 7, py, px + 7, py, px + Math.sin(now / 90 + i) * 3, py - h);
+      .fillTriangle(
+        px - 7,
+        py,
+        px + 7,
+        py,
+        px + Math.sin(now / 90 + i) * 3,
+        py - h,
+      );
     fx.g
       .fillStyle(GOLD, 0.8 * fade)
       .fillTriangle(px - 3.5, py, px + 3.5, py, px, py - h * 0.65);

@@ -22,10 +22,12 @@ const duel = () => {
   arena.deadline = 999;
   return { arena, p: arena.players[0], q: arena.players[1] };
 };
-const seeded = (seed = 7) => () => {
-  seed = (seed * 16807) % 2147483647;
-  return seed / 2147483647;
-};
+const seeded =
+  (seed = 7) =>
+  () => {
+    seed = (seed * 16807) % 2147483647;
+    return seed / 2147483647;
+  };
 
 describe("rites", () => {
   it("every fighter has four minors and two majors on real abilities", () => {
@@ -42,16 +44,20 @@ describe("rites", () => {
         const before = [CHARACTERS[id].basic, ...CHARACTERS[id].skills].find(
           (a) => a.id === r.skill,
         )!;
-        const after = [kitOf(id, [r.id]).basic, ...kitOf(id, [r.id]).skills].find(
-          (a) => a.id === r.skill,
-        )!;
+        const after = [
+          kitOf(id, [r.id]).basic,
+          ...kitOf(id, [r.id]).skills,
+        ].find((a) => a.id === r.skill)!;
         expect(after).not.toEqual(before);
       }
     }
     expect(new Set(RITES.map((r) => r.id)).size).toBe(RITES.length);
   });
   it("applies changes without touching the shared roster", () => {
-    const kit = kitOf("cindrake", ["cindrake-wide-bomb", "cindrake-searing-snap"]);
+    const kit = kitOf("cindrake", [
+      "cindrake-wide-bomb",
+      "cindrake-searing-snap",
+    ]);
     expect(kit.skills[1].explosion).toBeCloseTo(110 * 1.3);
     expect(kit.basic.damage).toBe(18);
     expect(CHARACTERS.cindrake.skills[1].explosion).toBe(110);
@@ -66,7 +72,9 @@ describe("rites", () => {
     expect(early).toHaveLength(RITE_RULES.choices);
     expect(early.every((id) => RITE_BY_ID[id].tier === "minor")).toBe(true);
     const later = riteOffer("lumoth", [], 3, seeded());
-    expect(later.filter((id) => RITE_BY_ID[id].tier === "major")).toHaveLength(2);
+    expect(later.filter((id) => RITE_BY_ID[id].tier === "major")).toHaveLength(
+      2,
+    );
     const major = later.find((id) => RITE_BY_ID[id].tier === "major")!;
     const after = riteOffer("lumoth", [major], 4, seeded(), 1);
     expect(after).toHaveLength(4);
@@ -123,7 +131,9 @@ describe("rites", () => {
     hal.phase = "playing";
     hal.deadline = 999;
     h.rites = ["halcyra-quick-rewind"];
-    const slot = CHARACTERS.halcyra.skills.findIndex((k) => k.id === "halcyon-rewind");
+    const slot = CHARACTERS.halcyra.skills.findIndex(
+      (k) => k.id === "halcyon-rewind",
+    );
     hal.submit(h, { ...h.lastInput, seq: 99, skill: slot });
     hal.tick();
     expect(h.cooldowns[slot] - hal.time).toBeCloseTo(12, 1);

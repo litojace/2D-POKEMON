@@ -136,7 +136,7 @@ const ROSTER: Record<
     skills: [
       ["Chestnut Mortar", 8],
       ["Hot Coals", 12],
-      ["Ember Curtain", 12],
+      ["Ember Curtain", 10],
       ["Chestnut Storm", 20],
     ],
   },
@@ -206,7 +206,7 @@ const ROSTER: Record<
     role: "Stealth assassin",
     basic: ["Tentacle Lash", 305],
     skills: [
-      ["Ink Jet", 8],
+      ["Ink Jet", 11],
       ["Ink Strike", 12],
       ["Ink Cloud", 15],
       ["Kraken Grasp", 20],

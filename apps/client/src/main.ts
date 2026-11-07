@@ -4553,9 +4553,15 @@ class ArenaScene extends Phaser.Scene {
     if (
       ability &&
       event.kind === "burst" &&
-      ["blink", "rush", "roll", "pinball", "seedling", "swap", "rewind"].includes(
-        ability.kind,
-      )
+      [
+        "blink",
+        "rush",
+        "roll",
+        "pinball",
+        "seedling",
+        "swap",
+        "rewind",
+      ].includes(ability.kind)
     )
       playImpact(this, ability, event.x, event.y, event.color, reducedMotion);
     // Novas play on their burst event; every other move plays on cast.
@@ -5665,16 +5671,33 @@ class ArenaScene extends Phaser.Scene {
       if (serverPlayer.tether) {
         const to = this.positions.get(serverPlayer.tether.target);
         if (to)
-          drawSiphon(this, x, y - jump, to.x, to.y, reducedMotion ? 0 : _time, CHARACTERS[p.character].color);
+          drawSiphon(
+            this,
+            x,
+            y - jump,
+            to.x,
+            to.y,
+            reducedMotion ? 0 : _time,
+            CHARACTERS[p.character].color,
+          );
       }
       // Pinning Quill: a taut line back to the quill that pins it.
       const pin = serverPlayer.statuses.find(
         (s) => s.kind === "leash" && s.until > serverTime && s.tx !== undefined,
       );
       if (pin) {
-        g.lineStyle(2, 0x9fb4ff, 0.8).lineBetween(x, y - jump, pin.tx!, pin.ty!);
+        g.lineStyle(2, 0x9fb4ff, 0.8).lineBetween(
+          x,
+          y - jump,
+          pin.tx!,
+          pin.ty!,
+        );
         g.fillStyle(0xffe58f, 1).fillCircle(pin.tx!, pin.ty!, 4);
-        g.lineStyle(1.5, 0x9fb4ff, 0.35).strokeCircle(pin.tx!, pin.ty!, pin.amount ?? 110);
+        g.lineStyle(2, 0x9fb4ff, 0.55).strokeCircle(
+          pin.tx!,
+          pin.ty!,
+          pin.amount ?? 110,
+        );
       }
       // Passives everyone can read: Pangrove's plates (lit leaves, dim when
       // broken) and Mossloth's moss (tufts, and a green ring at its feet).
@@ -5692,7 +5715,10 @@ class ArenaScene extends Phaser.Scene {
             { x: px - 5, y: py },
           ];
           if (i < n) g.fillStyle(0x9be37a, 1).fillPoints(leafPts, true);
-          g.lineStyle(1.5, 0x2a1a0e, i < n ? 0.9 : 0.5).strokePoints(leafPts, true);
+          g.lineStyle(1.5, 0x2a1a0e, i < n ? 0.9 : 0.5).strokePoints(
+            leafPts,
+            true,
+          );
         }
       } else if (passive === "moss" && serverPlayer.hp > 0) {
         const moss = serverPlayer.moss ?? 0;
@@ -5704,11 +5730,10 @@ class ArenaScene extends Phaser.Scene {
             18,
           );
         for (let i = 0; i < MOSS.max; i++)
-          g.fillStyle(i < moss ? 0x8fd36a : 0x2f4a2a, i < moss ? 1 : 0.6).fillCircle(
-            x - 16 + i * 8,
-            y + 42,
-            3,
-          );
+          g.fillStyle(
+            i < moss ? 0x8fd36a : 0x2f4a2a,
+            i < moss ? 1 : 0.6,
+          ).fillCircle(x - 16 + i * 8, y + 42, 3);
       }
       let label = this.labels.get(p.id);
       if (!label) {
