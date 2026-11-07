@@ -109,7 +109,7 @@ export const BOT_PROFILES: Record<BotDifficulty, Profile> = {
     dazeBy: {
       voltkit: 0.17,
       cindrake: 0.41,
-      tidefin: 0.15,
+      tidefin: 0.19,
       auralynx: 0.3,
       lumoth: 0.17,
       mystowl: 0.18,

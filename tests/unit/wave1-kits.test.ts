@@ -58,14 +58,16 @@ describe("Ember Curtain (Pyranda)", () => {
     expect(a.projectiles.map((p) => p.owner)).toEqual(["me"]);
     expect(me.hp).toBe(me.hp);
   });
-  it("sets enemies walking through it on fire", () => {
+  it("hurts enemies on it and sets them on fire", () => {
     const a = arena("pyranda");
     const [me, them] = a.players;
     place(me, 300, Y, 600, Y);
     place(them, 390, Y);
     a.cast(me, skill("pyranda", "ember-curtain"));
+    const hp = them.hp;
     ticks(a, 6);
     expect(a.has(them, "burn")).toBe(true);
+    expect(hp - them.hp).toBeGreaterThanOrEqual(skill("pyranda", "ember-curtain").damage);
   });
 });
 
@@ -196,10 +198,10 @@ describe("Gill Siphon (Tidefin)", () => {
       mine = me.hp;
     a.cast(me, skill("tidefin", "gill-siphon"));
     expect(me.tether?.target).toBe(them.id);
-    // Ticks at 0.25, 0.5, 0.75 and 1 s (measured just past 1 s).
-    ticks(a, Math.round(RULES.tick * 1.1));
+    // Ticks every 0.3 s: 0.3, 0.6 and 0.9 s (measured at 1 s).
+    ticks(a, Math.round(RULES.tick * 1));
     const dealt = hp - them.hp;
-    expect(dealt).toBe(skill("tidefin", "gill-siphon").damage * 4);
+    expect(dealt).toBe(skill("tidefin", "gill-siphon").damage * 3);
     expect(me.hp - mine).toBeCloseTo(dealt * 0.5, 0);
     // It walks out of reach: the stream snaps.
     place(them, 1300, Y);
@@ -211,7 +213,7 @@ describe("Gill Siphon (Tidefin)", () => {
     const [me, them] = a.players;
     place(them, 1500, 850);
     place(me, 300, Y, 600, Y);
-    me.cooldowns[0] = a.time + 9;
+    me.cooldowns[0] = a.time + 10;
     a.cast(me, skill("tidefin", "gill-siphon"));
     expect(me.tether).toBeUndefined();
     expect(me.cooldowns[0]).toBeCloseTo(a.time + 1.5);

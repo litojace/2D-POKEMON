@@ -115,7 +115,7 @@ describe("rites", () => {
     arena.cast(p, arena.kit(p).skills[1]);
     const wire = unpackSnapshot(packSnapshot(arena.snapshot()));
     expect(wire.projectiles[0].ability.explosion).toBeCloseTo(110 * 1.3);
-    // A cooldown rite: Halcyon Rewind 15s → 11s.
+    // A cooldown rite: Halcyon Rewind 17s → 12s.
     const hal = new Arena("RITES2");
     hal.add("one", "One", "cindrake");
     const h = hal.add("two", "Two", "halcyra");
@@ -126,6 +126,6 @@ describe("rites", () => {
     const slot = CHARACTERS.halcyra.skills.findIndex((k) => k.id === "halcyon-rewind");
     hal.submit(h, { ...h.lastInput, seq: 99, skill: slot });
     hal.tick();
-    expect(h.cooldowns[slot] - hal.time).toBeCloseTo(11, 1);
+    expect(h.cooldowns[slot] - hal.time).toBeCloseTo(12, 1);
   });
 });
