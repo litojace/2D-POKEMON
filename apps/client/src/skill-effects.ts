@@ -6,7 +6,7 @@ import { fxFor } from "./fx-engine";
 import { electricKit } from "./skill-fx-electric";
 import { fireKit } from "./skill-fx-fire";
 import { waterKit } from "./skill-fx-water";
-import { auraKit } from "./skill-fx-aura";
+import { auraKit, rewindDive } from "./skill-fx-aura";
 import { lightKit } from "./skill-fx-light";
 import { psychicKit } from "./skill-fx-psychic";
 import { earthKit } from "./skill-fx-earth";
@@ -27,6 +27,17 @@ const KIT = withUltimates(
     natureKit,
   ]),
 );
+/** Halcyon Rewind's dive from where Halcyra was to where it landed. */
+export function playRewindDive(
+  scene: Phaser.Scene,
+  fromX: number,
+  fromY: number,
+  toX: number,
+  toY: number,
+  color: number,
+) {
+  rewindDive(scene, fromX, fromY, toX, toY, color, shotIn(scene));
+}
 /** For tests: which moves have a new-style effect. */
 export const effectKit = KIT;
 const shotIn =
