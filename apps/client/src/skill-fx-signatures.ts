@@ -671,15 +671,26 @@ const SIGNATURES: Record<string, Sig> = {
 /** The moves drawn with a signature here (the shared physics layer skips them). */
 export const SIGNED = new Set(Object.keys(SIGNATURES));
 
+type Scene = Parameters<typeof fxFor>[0];
+/**
+ * The move's own drawing, then its signature physics on top. Like the shared
+ * layer they replace, the physics are left out under reduced motion. A
+ * signature only ever adds to a drawing: with none to add to, the move would
+ * lose its classic fallback, so it is skipped and listed in `unbacked`.
+ */
 const then =
   <A extends unknown[]>(
-    base: ((...a: A) => void) | undefined,
+    base: (...a: A) => void,
     extra: (...a: A) => void,
+    sceneOf: (...a: A) => Scene | undefined,
   ) =>
   (...a: A) => {
-    base?.(...a);
-    extra(...a);
+    base(...a);
+    const scene = sceneOf(...a);
+    if (scene && !fxFor(scene).reduced) extra(...a);
   };
+/** Signatures with no drawing under them (for tests: should be empty). */
+export const unbacked: string[] = [];
 export function withSignatures(kit: Required<FxKit>): Required<FxKit> {
   const out: Required<FxKit> = {
     ...kit,
@@ -690,14 +701,27 @@ export function withSignatures(kit: Required<FxKit>): Required<FxKit> {
     channel: { ...kit.channel },
     beam: { ...kit.beam },
   };
+  const add = <A extends unknown[]>(
+    map: Record<string, (...a: A) => void>,
+    id: string,
+    hook: string,
+    extra: ((...a: A) => void) | undefined,
+    sceneOf: (...a: A) => Scene | undefined,
+  ) => {
+    if (!extra) return;
+    const base = map[id];
+    if (base) map[id] = then(base, extra, sceneOf);
+    else unbacked.push(`${id} ${hook}`);
+  };
+  const scene = (s: Scene) => s;
+  const ofG = (g: { scene?: Scene }) => g.scene;
   for (const [id, s] of Object.entries(SIGNATURES)) {
-    if (s.cast) out.cast[id] = then(out.cast[id], s.cast);
-    if (s.zone) out.zone[id] = then(out.zone[id], s.zone);
-    if (s.impact) out.impact[id] = then(out.impact[id], s.impact);
-    if (s.projectile)
-      out.projectile[id] = then(out.projectile[id], s.projectile);
-    if (s.channel) out.channel[id] = then(out.channel[id], s.channel);
-    if (s.beam) out.beam[id] = then(out.beam[id], s.beam);
+    add(out.cast, id, "cast", s.cast, scene);
+    add(out.impact, id, "impact", s.impact, scene);
+    add(out.beam, id, "beam", s.beam, scene);
+    add(out.zone, id, "zone", s.zone, ofG);
+    add(out.projectile, id, "projectile", s.projectile, ofG);
+    add(out.channel, id, "channel", s.channel, ofG);
   }
   return out;
 }
