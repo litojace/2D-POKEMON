@@ -136,12 +136,12 @@ stay. The others change:
 
 | Champion | Was                                     | Now                                                                                                                                                                        | Borrowed from                    |
 | -------- | --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------- |
-| Lumoth   | **Eyespot Flash**: a stun strike in front | **Eyespot Flash** (12 s): the eyespots flash; every enemy within 300 px takes 8, and those **looking at Lumoth** (aiming within 0.6 rad of it) are stunned for 0.8 s. Look away to dodge it | gaze attacks                     |
-| Lumoth   | **Radiant Flare**: a blast ring           | **Radiant Flare** (ultimate): Lumoth glows like a **lighthouse** for 2.4 s; three rays 260 px long turn round it (a turn every 1.2 s) and each enemy a ray sweeps takes 8 | rotating beams                   |
-| Coilemur | **Static Clamp**: a stun strike           | **Static Clamp** (12 s): clamps a **charge** on the enemy in front; 1.5 s later it goes off (22 and paralysis) and **arcs** to every enemy within 200 px of it for half    | time bombs and chain lightning   |
-| Astrabun | **Mochi Pound**: a stun strike            | **Mochi Pound** (12 s): a **chain of three pounds**, each cast again within 1.2 s: 8, 10, then 16 that stuns and knocks back. The cooldown starts after the last          | recast combos                    |
-| Shadopus | **Kraken Grasp**: a stun strike (ultimate) | **Kraken Grasp** (ultimate): **seizes** the enemy in front, holds it 0.5 s (aim while you hold it), then **hurls** it 380 px: 34, half again into a wall; enemies where it lands take half | grabs and throws                 |
-| Auralynx | **Shard Nova**: a blast ring (ultimate)   | **Crystal Cage** (ultimate): crystal spires rise in a 230 px **ring** round Auralynx for 3 s; nobody can cross it and no shot gets through. Enemies caught inside take 24  | arena-locking ultimates          |
+| Lumoth   | **Eyespot Flash**: a stun strike in front | **Eyespot Flash** (12 s): the eyespots flash; every enemy within 260 px takes 8, and those **looking at Lumoth** (aiming within 0.5 rad of it) are stunned for 0.5 s. Look away to dodge it | gaze attacks                     |
+| Lumoth   | **Radiant Flare**: a blast ring           | **Radiant Flare** (ultimate): Lumoth glows like a **lighthouse** for 2.4 s; three rays 260 px long turn round it (a turn every 1.2 s) and each enemy a ray sweeps takes 6 | rotating beams                   |
+| Coilemur | **Static Clamp**: a stun strike           | **Static Clamp** (12 s): clamps a **charge** on the enemy in front; 0.9 s later it goes off (28 and paralysis) and **arcs** to every enemy within 200 px of it for half    | time bombs and chain lightning   |
+| Astrabun | **Mochi Pound**: a stun strike            | **Mochi Pound** (12 s): a **chain of three pounds**, each cast again within 1.4 s: 10, 13, then 20 that stuns and knocks back. The cooldown starts after the last          | recast combos                    |
+| Shadopus | **Kraken Grasp**: a stun strike (ultimate) | **Kraken Grasp** (ultimate): **seizes** the enemy in front, holds it 0.5 s (aim while you hold it), then **hurls** it 380 px: 30, half again into a wall; enemies where it lands take half | grabs and throws                 |
+| Auralynx | **Shard Nova**: a blast ring (ultimate)   | **Crystal Cage** (ultimate): crystal spires rise in a 180 px **ring** round Auralynx for 2.5 s; nobody can cross it and no shot gets through. Enemies caught inside take 10  | arena-locking ultimates          |
 
 ### New mechanics
 
@@ -175,8 +175,8 @@ stay. The others change:
 - **Combos**: Magnetised (Magnet Lash) now makes Static Clamp go off at once,
   35% harder, and stun; Moonlit adds 35% to the first pound after a Moon
   Hop; Kindled gives Radiant Flare 25% longer rays.
-- **Rites**: Wide Wings (Eyespot Flash 20% wider), Dazzle (stuns 1.2 s),
-  Long Cage (4.5 s and 32 damage); the others carry over.
+- **Rites**: Wide Wings (Eyespot Flash 20% wider), Dazzle (stuns 0.9 s),
+  Long Cage (4 s and 18 damage), Tight Clamp (32); the others carry over.
 - **Raid trick**: on Grumblecrag only the last pound of a chain adds 15
   stagger. Radiant Flare keeps its Gloomshade and Prismatail tricks (they
   happen on cast).
