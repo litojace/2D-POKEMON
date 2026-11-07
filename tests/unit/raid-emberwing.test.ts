@@ -378,7 +378,7 @@ describe("Emberwing attacks and champion answers", () => {
     p.lastInput.aimY = p.y;
     b.cast(
       p,
-      CHARACTERS.tidefin.skills.find((a) => a.id === "eddy")!,
+      CHARACTERS.tidefin.skills.find((a) => a.id === "undertow")!,
     );
     expect(b.raid.emberPatches).toEqual([]);
   });

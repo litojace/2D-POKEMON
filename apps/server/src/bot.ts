@@ -109,19 +109,19 @@ export const BOT_PROFILES: Record<BotDifficulty, Profile> = {
     seeShots: true,
     dazeBy: {
       voltkit: 0.17,
-      cindrake: 0.41,
-      tidefin: 0.18,
+      cindrake: 0.44,
+      tidefin: 0.15,
       auralynx: 0.3,
       lumoth: 0.17,
-      mystowl: 0.18,
+      mystowl: 0.14,
       terradon: 0.3,
       duskveil: 0.27,
-      coilemur: 0.32,
+      coilemur: 0.34,
       pyranda: 0.38,
       glacelle: 0.26,
       halcyra: 0.19,
       sunbara: 0.23,
-      astrabun: 0.32,
+      astrabun: 0.35,
       wombolder: 0.36,
       shadopus: 0.28,
       pangrove: 0.39,
@@ -187,6 +187,16 @@ export function hostileZone(arena: Arena, me: Fighter, z: Zone) {
   // A Crystal Cage is a wall, not a hazard: fight on inside it.
   if (a.kind === "cage") return false;
   return !a.heal || a.damage > 0 || !!a.status || !!a.knockback || !!a.turret;
+}
+/** The circle a bot keeps out of: a current is a lane, so its middle and half its length. */
+function zoneArea(z: Zone) {
+  if (z.ability.kind !== "current") return { x: z.x, y: z.y, radius: z.radius };
+  const half = z.ability.range / 2;
+  return {
+    x: z.x + Math.cos(z.angle ?? 0) * half,
+    y: z.y + Math.sin(z.angle ?? 0) * half,
+    radius: Math.max(z.radius, half * 0.6),
+  };
 }
 /** Corners just outside every pillar: the waypoints for walking around cover. */
 const CORNERS: Point[] = OBSTACLES.flatMap((o) => {
@@ -503,11 +513,13 @@ export class BotBrain {
     }
     // Get out of enemy zones (jump the ground ones if it can).
     let escaping = false;
-    for (const z of arena.zones)
+    for (const zone of arena.zones)
       if (
-        hostileZone(arena, me, z) &&
-        Math.hypot(z.x - me.x, z.y - me.y) < z.radius + RULES.radius
+        hostileZone(arena, me, zone) &&
+        Math.hypot(zoneArea(zone).x - me.x, zoneArea(zone).y - me.y) <
+          zoneArea(zone).radius + RULES.radius
       ) {
+        const z = { ...zone, ...zoneArea(zone) };
         escaping = true;
         const away = Math.hypot(me.x - z.x, me.y - z.y) || 1;
         dx = (me.x - z.x) / away;
@@ -648,7 +660,8 @@ export class BotBrain {
       for (const z of arena.zones)
         if (
           hostileZone(arena, me, z) &&
-          Math.hypot(z.x - x, z.y - y) < z.radius + RULES.radius
+          Math.hypot(zoneArea(z).x - x, zoneArea(z).y - y) <
+            zoneArea(z).radius + RULES.radius
         )
           score -= 4;
       // Arena hazards: careful bots step out before a vent or surge fires.
@@ -759,6 +772,18 @@ export class BotBrain {
         case "lighthouse":
           // Radiant Flare: rays turning round it while the target is near.
           if (s.sight && reach(a.range * 0.8)) score = a.damage * 5;
+          break;
+        case "current":
+          // Undertow: sweep the target away (it flows along the aim).
+          if (s.sight && reach(a.range * 0.8)) score = 16;
+          break;
+        case "trail":
+          // Spark Trail: lay it while circling a nearby target (bots strafe).
+          if (s.sight && reach(220)) score = 18 + a.damage;
+          break;
+        case "steer":
+          // Sunfire Pillar: drop it on the target, then keep aiming at it.
+          if (reach(a.range)) score = a.damage * 5;
           break;
         case "grapple":
           // Latch on from mid range: a gap closer that lands its hit first.

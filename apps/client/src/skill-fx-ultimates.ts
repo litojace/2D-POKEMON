@@ -243,7 +243,7 @@ const radiant: CastFn = (scene, a, x, y, _angle, color, shot) => {
   });
 };
 
-// ───────────── Mystowl · Silent Swoop: the great eye, weightless debris ─────────────
+// ───────────── Mystowl · Mind Maze: the great eye, weightless debris ─────────────
 const thought: ZoneFn = (g, z, progress, now) => {
   const fx = fxFor(g.scene),
     a = z.ability,
@@ -519,7 +519,7 @@ export function withUltimates(kit: Required<FxKit>): Required<FxKit> {
   cast["radiant-flare"] = then(kit.cast["radiant-flare"], radiant);
   cast.tremor = then(kit.cast.tremor, tremor);
   zone["sunfire-pillar"] = then(kit.zone["sunfire-pillar"], sunfire);
-  zone["silent-swoop"] = then(kit.zone["silent-swoop"], thought);
+  zone["mind-maze"] = then(kit.zone["mind-maze"], thought);
   windup["radiant-flare"] = then(kit.windup["radiant-flare"], flareWindup);
   impact["void-orb"] = then(kit.impact["void-orb"], voidOrb);
   return { ...kit, cast, zone, windup, impact };

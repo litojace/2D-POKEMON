@@ -122,7 +122,13 @@ describe("battle effects", () => {
                                   : ["throw", "pound"].includes(a.kind)
                                     ? a.id in effectKit.cast &&
                                       a.id in effectKit.impact
-                                    : ["cage", "lighthouse"].includes(a.kind)
+                                    : [
+                                          "cage",
+                                          "lighthouse",
+                                          "current",
+                                          "trail",
+                                          "steer",
+                                        ].includes(a.kind)
                                       ? a.id in effectKit.cast &&
                                         a.id in effectKit.zone
                                       : false;

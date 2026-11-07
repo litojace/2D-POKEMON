@@ -163,7 +163,7 @@ export const RAID_ATTACKS: Record<
   },
   "scorched-earth": {
     name: "Scorched Earth",
-    tip: "Avoid growing fire patches. Grounding Emberwing shrinks all fire; Tidefin\u2019s Eddy extinguishes nearby patches.",
+    tip: "Avoid growing fire patches. Grounding Emberwing shrinks all fire; Tidefin\u2019s Undertow puts out the patches along its current.",
     practice: "Fire patches grow over time. Ground the boss to shrink them.",
   },
   "heat-mark": {
@@ -735,8 +735,8 @@ export const RAID_BOSS_PERKS: Partial<
       text: "Your heat lights any brazier it touches, including while you move.",
     },
     tidefin: {
-      skill: "Eddy",
-      text: "Your water extinguishes fire patches and dive trails where it lands.",
+      skill: "Undertow",
+      text: "Your current puts out fire patches and dive trails all along it.",
     },
     auralynx: {
       skill: "Facet Guard",
@@ -884,7 +884,7 @@ export const RAID_BOSS_PERKS: Partial<
       text: "Your double can enter a rune pad and count as a step.",
     },
     mystowl: {
-      skill: "Silent Swoop",
+      skill: "Mind Maze",
       text: "Reveals the current dream sequence to the whole team.",
     },
     duskveil: {

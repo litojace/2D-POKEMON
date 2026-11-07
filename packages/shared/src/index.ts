@@ -129,6 +129,12 @@ export type StatusKind =
   | "clamp"
   /** Caged (Crystal Cage): can't cross the ring of radius `amount` round (`tx`, `ty`); `inside` says which side it is on. */
   | "cage"
+  /** In a current (Undertow): drifts at (`tx`, `ty`) px/s on top of its own movement. */
+  | "current"
+  /** Floating (Moon Gravity): low gravity, it slides and barely changes direction. */
+  | "float"
+  /** Confused (Mind Maze): its movement is reversed. */
+  | "confuse"
   /** Combo setup: primed for the marker's payoff skill (`by` = the marker). */
   | "mark";
 /** Statuses that count as harmful (the Shadow team-up gift, bots' targeting). */
@@ -146,6 +152,9 @@ export const DEBUFFS: StatusKind[] = [
   "leash",
   "blind",
   "clamp",
+  "current",
+  "float",
+  "confuse",
 ];
 export const STATUS_RULES = {
   stacking: "refresh" as const,
@@ -170,6 +179,8 @@ export const STATUS_RULES = {
   shellReduction: 0.55,
   /** Sloth Time: speed multiplier inside the bubble (movement and enemy shots). */
   warpMultiplier: 0.35,
+  /** Moon Gravity: how much grip a floating fighter keeps (its acceleration multiplier). */
+  floatGrip: 0.12,
 };
 /**
  * Pangrove's passive: armour plates. A hit of at least `minHit` damage breaks
@@ -373,7 +384,24 @@ export type AbilityKind =
    * The caster glows for `duration`: `count` rays `range` px long turn round
    * it (a turn every `spin` seconds); an enemy a ray sweeps takes `damage`.
    */
-  | "lighthouse";
+  | "lighthouse"
+  /**
+   * A current `range` px long from the caster along the aim, `radius` px
+   * either side, for `duration`: enemies in it (not jumping) drift along it at
+   * `current.speed` px/s and take `damage` every `tickInterval`.
+   */
+  | "current"
+  /**
+   * For `duration` the caster leaves a trail behind it that lasts
+   * `trail.fade` seconds: enemies touching it (`radius`) take `damage` and
+   * `status`, at most once every `tickInterval`.
+   */
+  | "trail"
+  /**
+   * A zone at the aim that moves toward the caster's aim at `steer.speed`
+   * px/s for `duration`, hitting like a zone every `tickInterval`.
+   */
+  | "steer";
 /** Strikes in front of the caster, within `range` and `arc` (raids treat them alike). */
 export const STRIKE_KINDS: AbilityKind[] = ["melee", "pound", "clamp", "throw"];
 /** Rings round the caster, within `radius` (raids treat them alike). */
@@ -474,6 +502,12 @@ export interface Ability {
   chainWindow?: number;
   /** Lighthouse: seconds per turn of the rays. */
   spin?: number;
+  /** Current: how fast enemies in it drift (px/s). */
+  current?: { speed: number };
+  /** Trail: how long each stretch of the trail lasts (s). */
+  trail?: { fade: number };
+  /** Steer: how fast the zone follows the caster's aim (px/s). */
+  steer?: { speed: number };
   /** Buff: the caster is airborne for `duration` (ground attacks miss). */
   glide?: boolean;
   /** Buff: a burst around the caster on cast that pushes enemies away and slows them. */
@@ -694,19 +728,20 @@ export const CHARACTERS: Record<CharacterId, Character> = {
       ability(
         "sunfire-pillar",
         "Sunfire Pillar",
-        "zone",
-        22,
+        "steer",
+        6,
         20,
-        "A large pillar of fire erupts at the aim point. Burns.",
+        "A pillar of fire erupts at the aim point and follows your aim for 3 seconds (200 px a second), hitting for 6 every half second and burning. Steer it onto them.",
         {
-          radius: 120,
+          radius: 90,
           range: 520,
-          duration: 1.2,
+          duration: 3,
           cast: 0.15,
           tickDelay: 0.25,
           tickInterval: 0.5,
           status: "burn",
-          statusDuration: 2,
+          statusDuration: 1.5,
+          steer: { speed: 200 },
         },
       ),
     ],
@@ -741,19 +776,20 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         { range: 380, radius: 60, duration: 2.1, knockback: 0, drain: 0.5, tether: { tick: 0.3, breakRange: 430 } },
       ),
       ability(
-        "eddy",
-        "Eddy",
-        "zone",
-        4,
+        "undertow",
+        "Undertow",
+        "current",
+        3,
         12,
-        "A swirling eddy at the aim point that damages and slows enemies in it.",
+        "A current 420 px long flows from Tidefin along your aim for 3.5 seconds: enemies in it are swept along at 200 px a second and take 3 every half second. Jump to get out of it.",
         {
-          radius: 140,
+          radius: 70,
           duration: 3.5,
           range: 420,
           ground: true,
-          status: "slow",
-          statusDuration: 0.8,
+          tickInterval: 0.5,
+          knockback: 0,
+          current: { speed: 200 },
         },
       ),
       ability(
@@ -960,20 +996,22 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         { duration: 3 },
       ),
       ability(
-        "silent-swoop",
-        "Silent Swoop",
+        "mind-maze",
+        "Mind Maze",
         "zone",
-        38,
+        24,
         20,
-        "A phantom owl swoops silently on the target spot.",
+        "A psychic maze closes over the aim point (150 px): enemies caught take 24 and are Confused for 2.2 seconds, their movement reversed.",
         {
-          radius: 120,
+          radius: 150,
           range: 600,
           cast: 0.2,
           duration: 0.7,
           tickDelay: 0.35,
           tickInterval: 1,
-          knockback: 120,
+          knockback: 0,
+          status: "confuse",
+          statusDuration: 2.2,
         },
       ),
     ],
@@ -1170,22 +1208,21 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         },
       ),
       ability(
-        "spark-tether",
-        "Spark Tether",
-        "zone",
-        4,
+        "spark-trail",
+        "Spark Trail",
+        "trail",
+        6,
         15,
-        "For 3 seconds a charged ring around Coilemur shocks and slows anyone who stays close.",
+        "For 3.5 seconds Coilemur runs 30% faster and leaves a crackling trail behind it that lasts 2 seconds: enemies who touch it take 6 and are paralysed for a moment. Run rings round them.",
         {
-          radius: 135,
-          duration: 3,
-          follow: true,
+          radius: 28,
+          duration: 3.5,
           range: 0,
-          tickDelay: 0.2,
-          tickInterval: 0.5,
+          tickInterval: 0.4,
           knockback: 0,
-          status: "slow",
-          statusDuration: 0.6,
+          status: "paralysis",
+          statusDuration: 0.4,
+          trail: { fade: 2 },
         },
       ),
       ability(
@@ -1571,14 +1608,14 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "zone",
         4,
         15,
-        "A patch of heavy moon gravity at the aim point for 2.5 seconds. Slows and stings.",
+        "A patch of low moon gravity at the aim point for 2.5 seconds: enemies in it float, sliding about and barely able to turn, and take 4 every half second.",
         {
           radius: 130,
           range: 450,
           duration: 2.5,
           tickInterval: 0.5,
           knockback: 0,
-          status: "slow",
+          status: "float",
           statusDuration: 0.8,
         },
       ),
@@ -1919,11 +1956,11 @@ export interface Combo {
 export const COMBOS: Record<CharacterId, Combo> = {
   tidefin: {
     name: "Soaked",
-    setup: "eddy",
+    setup: "undertow",
     payoff: "riptide-wave",
     window: 3,
     damage: 1.3,
-    text: "Eddy soaks enemies. Riptide Wave deals 30% more to Soaked targets.",
+    text: "Undertow soaks enemies. Riptide Wave deals 30% more to Soaked targets.",
   },
   voltkit: {
     name: "Charged",
@@ -1949,10 +1986,10 @@ export const COMBOS: Record<CharacterId, Combo> = {
   mystowl: {
     name: "Dazed",
     setup: "booming-hoot",
-    payoff: "silent-swoop",
+    payoff: "mind-maze",
     window: 3,
     damage: 1.4,
-    text: "Booming Hoot dazes. Silent Swoop deals 40% more to Dazed targets.",
+    text: "Booming Hoot dazes. Mind Maze deals 40% more to Dazed targets.",
   },
   terradon: {
     name: "Mired",
@@ -2104,18 +2141,18 @@ for (const character of Object.values(CHARACTERS))
 export const TEAM_TUNING: Partial<Record<CharacterId, number>> = {
   voltkit: 1.045,
   cindrake: 0.993,
-  tidefin: 1.037,
+  tidefin: 1.035,
   auralynx: 0.95,
   lumoth: 1,
-  mystowl: 1.006,
+  mystowl: 0.985,
   terradon: 0.993,
   duskveil: 1.025,
-  coilemur: 1,
+  coilemur: 0.975,
   pyranda: 0.93,
   glacelle: 0.963,
   halcyra: 1,
   sunbara: 0.966,
-  astrabun: 0.99,
+  astrabun: 1.005,
   wombolder: 1.01,
   shadopus: 1.04,
   pangrove: 0.98,
@@ -2131,19 +2168,19 @@ export const TEAM_TUNING: Partial<Record<CharacterId, number>> = {
  */
 export const FFA_TUNING: Partial<Record<CharacterId, number>> = {
   voltkit: 0.928,
-  cindrake: 1.159,
-  tidefin: 0.85,
+  cindrake: 1.126,
+  tidefin: 0.82,
   auralynx: 1.065,
   lumoth: 0.9,
-  mystowl: 0.872,
+  mystowl: 0.85,
   terradon: 1,
   duskveil: 0.917,
-  coilemur: 1.19,
+  coilemur: 1.2,
   pyranda: 0.876,
   glacelle: 0.981,
   halcyra: 0.845,
   sunbara: 0.911,
-  astrabun: 1.06,
+  astrabun: 1.09,
   wombolder: 1.054,
   shadopus: 1.06,
   pangrove: 1.02,
@@ -2156,19 +2193,19 @@ export const FFA_TUNING: Partial<Record<CharacterId, number>> = {
  */
 export const FFA_THREE_TUNING: Partial<Record<CharacterId, number>> = {
   voltkit: 0.868,
-  cindrake: 1.189,
-  tidefin: 0.835,
+  cindrake: 1.195,
+  tidefin: 0.83,
   auralynx: 1.15,
   lumoth: 0.87,
-  mystowl: 0.838,
+  mystowl: 0.835,
   terradon: 1.056,
   duskveil: 0.864,
-  coilemur: 1.26,
+  coilemur: 1.25,
   pyranda: 0.855,
   glacelle: 0.936,
   halcyra: 0.78,
   sunbara: 0.86,
-  astrabun: 1.16,
+  astrabun: 1.19,
   wombolder: 1.16,
   shadopus: 1.12,
   pangrove: 1.07,
@@ -2631,8 +2668,10 @@ export interface Zone extends Vec {
   color: number;
   /** When it was placed (seedlings grow from then). */
   born?: number;
-  /** Screen: which way the curtain runs (radians). Lighthouse: where the first ray points. */
+  /** Screen: which way the curtain runs (radians). Lighthouse: where the first ray points. Current: which way it flows. */
   angle?: number;
+  /** Trail: where the caster has been (oldest first) and when. */
+  points?: { x: number; y: number; t: number }[];
 }
 export interface GameEvent extends Vec {
   id: number;
@@ -2992,6 +3031,12 @@ export function advanceMovement(
   time: number,
 ): void {
   stepMovement(p, input, dt, time);
+  // Undertow: a current carries it along (jumping clears it).
+  const current = p.statuses.find(
+    (s) => s.kind === "current" && s.until > time && s.tx !== undefined,
+  );
+  if (current && p.jumpUntil <= time && p.hp > 0)
+    move(p, current.tx! * dt, current.ty! * dt);
   holdInCage(p, time);
 }
 /**
@@ -3033,6 +3078,9 @@ export function holdInCage(p: Fighter, time: number) {
 function stepMovement(p: Fighter, input: Input, dt: number, time: number): void {
   let dir = normalize(input.dx, input.dy);
   p.angle = Math.atan2(input.aimY - p.y, input.aimX - p.x);
+  // Confused (Mind Maze): every way it tries to walk is reversed.
+  if (p.statuses.some((s) => s.kind === "confuse" && s.until > time))
+    dir = { x: -dir.x, y: -dir.y };
   // Taunted: it walks toward the taunter, whatever the input says.
   const taunt = p.statuses.find(
     (s) => s.kind === "taunt" && s.until > time && s.tx !== undefined,
@@ -3117,7 +3165,11 @@ function stepMovement(p: Fighter, input: Input, dt: number, time: number): void 
     p.vx = p.dashX * warp;
     p.vy = p.dashY * warp;
   } else {
-    const factor = 1 - Math.exp(-RULES.acceleration * dt);
+    // Floating (Moon Gravity): almost no grip, so it slides and turns slowly.
+    const grip = p.statuses.some((s) => s.kind === "float" && s.until > time)
+      ? STATUS_RULES.floatGrip
+      : 1;
+    const factor = 1 - Math.exp(-RULES.acceleration * grip * dt);
     const speed = CHARACTERS[p.character].speed * modifier * speedScale;
     p.vx += (dir.x * speed - p.vx) * factor;
     p.vy += (dir.y * speed - p.vy) * factor;
@@ -3233,10 +3285,10 @@ export const RITES: Rite[] = [
   rite("cindrake", "major", "sunfire-pillar", "Solar Pillar", "Sunfire Pillar erupts instantly and is 25% wider.", { set: { cast: 0 }, mul: { radius: 1.25 } }),
   rite("cindrake", "major", "heat-cracks", "Burning Cracks", "Heat Cracks sets enemies on fire.", { set: { status: "burn", statusDuration: 1.5 } }),
   rite("tidefin", "minor", "gill-siphon", "Deep Siphon", "Gill Siphon lasts 3s instead of 2.1s.", { set: { duration: 3 } }),
-  rite("tidefin", "minor", "eddy", "Wide Eddy", "Eddy is 20% wider.", { mul: { radius: 1.2 } }),
+  rite("tidefin", "minor", "undertow", "Wide Undertow", "Undertow is 20% wider.", { mul: { radius: 1.2 } }),
   rite("tidefin", "minor", "tide-double", "Slipstream", "Tide Double's speed burst lasts 3s instead of 2s.", { set: { statusDuration: 3 } }),
   rite("tidefin", "minor", "tide-needle", "Long Needle", "Tide Needle flies 25% further.", { mul: { range: 1.25 } }),
-  rite("tidefin", "major", "eddy", "Maelstrom", "Eddy deals 6 per tick instead of 4 and lasts 4.5s.", { set: { damage: 6, duration: 4.5 } }),
+  rite("tidefin", "major", "undertow", "Maelstrom", "Undertow deals 5 per tick instead of 3 and lasts 4.5s.", { set: { damage: 5, duration: 4.5 } }),
   rite("tidefin", "major", "gill-siphon", "Thirsty Gills", "Gill Siphon drinks back all the damage it deals instead of half.", { set: { drain: 1 } }),
   rite("auralynx", "minor", "prism-shot", "Swift Prism", "Prism Shot flies 35% faster.", { mul: { speed: 1.35 } }),
   rite("auralynx", "minor", "shatter-paw", "Long Paw", "Shatter Paw reaches 20% further.", { mul: { range: 1.2 } }),
@@ -3255,7 +3307,7 @@ export const RITES: Rite[] = [
   rite("mystowl", "minor", "wing-cloak", "Long Cloak", "Wing Cloak lasts 4s instead of 3s.", { set: { duration: 4 } }),
   rite("mystowl", "minor", "mind-dart", "Heavy Dart", "Mind Dart deals 10 damage instead of 8.", { set: { damage: 10 } }),
   rite("mystowl", "major", "third-eye-ray", "Mind Lock", "Third-Eye Ray stuns for 0.5s instead of slowing.", { set: { status: "stun", statusDuration: 0.5 } }),
-  rite("mystowl", "major", "silent-swoop", "Wide Swoop", "Silent Swoop is 35% wider.", { mul: { radius: 1.35 } }),
+  rite("mystowl", "major", "mind-maze", "Deep Maze", "Mind Maze is 35% wider.", { mul: { radius: 1.35 } }),
   rite("terradon", "minor", "shell-bash", "Long Bash", "Shell Bash reaches 20% further.", { mul: { range: 1.2 } }),
   rite("terradon", "minor", "shell-up", "Thick Moss", "Shell Up regrows 35 HP instead of 25.", { set: { heal: 7 } }),
   rite("terradon", "minor", "mud-mire", "Deep Mud", "Mud Mire is 20% wider.", { mul: { radius: 1.2 } }),
@@ -3270,7 +3322,7 @@ export const RITES: Rite[] = [
   rite("duskveil", "major", "void-orb", "Burning Void", "Void Orb's blast is 30% wider and burns.", { mul: { explosion: 1.3 }, set: { status: "burn", statusDuration: 2 } }),
   rite("coilemur", "minor", "magnet-lash", "Long Lash", "Magnet Lash reaches 20% further.", { mul: { range: 1.2 } }),
   rite("coilemur", "minor", "static-clamp", "Tight Clamp", "Static Clamp deals 32 damage instead of 28.", { set: { damage: 32 } }),
-  rite("coilemur", "minor", "spark-tether", "Long Tether", "Spark Tether lasts 4s instead of 3s.", { set: { duration: 4 } }),
+  rite("coilemur", "minor", "spark-trail", "Long Trail", "Spark Trail lasts 4.5s instead of 3.5s.", { set: { duration: 4.5 } }),
   rite("coilemur", "minor", "coil-swipe", "Hot Coil", "Coil Swipe deals 14 damage instead of 12.", { set: { damage: 14 } }),
   rite("coilemur", "major", "magnet-lash", "Quick Lash", "Magnet Lash cooldown 12s → 9s.", { set: { cooldown: 9 } }),
   rite("coilemur", "major", "electromagnet", "Superconductor", "Electromagnet is 25% wider and pulls harder.", { mul: { radius: 1.25, knockback: 1.4 } }),
@@ -3300,7 +3352,7 @@ export const RITES: Rite[] = [
   rite("sunbara", "major", "sanctuary", "Long Summer", "Sanctuary lasts 5.5s instead of 4s.", { set: { duration: 5.5 } }),
   rite("astrabun", "minor", "moon-hop", "Far Hop", "Moon Hop reaches 380 px instead of 300.", { set: { range: 380 } }),
   rite("astrabun", "minor", "mochi-pound", "Sticky Mochi", "Mochi Pound stuns for 0.7s instead of 0.45s.", { set: { statusDuration: 0.7 } }),
-  rite("astrabun", "minor", "moon-gravity", "Heavy Moon", "Moon Gravity is 20% wider.", { mul: { radius: 1.2 } }),
+  rite("astrabun", "minor", "moon-gravity", "Light Moon", "Moon Gravity is 20% wider.", { mul: { radius: 1.2 } }),
   rite("astrabun", "minor", "mallet-bop", "Big Bop", "Mallet Bop deals 16 damage instead of 14.", { set: { damage: 16 } }),
   rite("astrabun", "major", "moon-hop", "Double Hop", "Moon Hop cooldown 8s → 5s.", { set: { cooldown: 5 } }),
   rite("astrabun", "major", "full-moon", "Harvest Moon", "Full Moon lands instantly and is 20% wider.", { set: { cast: 0 }, mul: { radius: 1.2 } }),

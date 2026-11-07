@@ -45,7 +45,7 @@ describe("signature combos", () => {
   });
   it("the setup marks the target, for the attacker only", () => {
     const { arena, p, q } = duel("tidefin");
-    arena.damage(q, 4, p.id, skill("tidefin", "eddy"));
+    arena.damage(q, 4, p.id, skill("tidefin", "undertow"));
     expect(hasMark(q, p.id, arena.time)).toBe(true);
     expect(hasMark(q, q.id, arena.time)).toBe(false);
     arena.time += COMBOS.tidefin.window + 0.1;
