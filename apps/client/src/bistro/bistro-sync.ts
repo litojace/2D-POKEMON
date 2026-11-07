@@ -23,6 +23,7 @@ import {
   dishUp,
   buyIngredient,
   fillOrder,
+  perkTotal,
   returnAside,
   fillRegular,
   leagueReward,
@@ -182,6 +183,8 @@ export function applyLocal(
       const bill = payment(x.dish, {
         level: dishLevel(s, x.dish),
         stars: s.stars,
+        // The room's tip perks (the server adds them too, migration 104).
+        perk: perkTotal(s.items, "tip"),
         vip: x.vip,
         combo: x.combo,
         hearts: x.hearts,

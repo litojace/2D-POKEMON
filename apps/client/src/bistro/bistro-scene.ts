@@ -39,6 +39,7 @@ import {
   itemGlow,
   itemIconUrl,
   stoveIconUrl,
+  chairStyleOf,
   softShadow,
   tableSpot,
   type Light,
@@ -167,6 +168,9 @@ import {
   REGULARS,
   leagueReward,
   onCounter,
+  perkTotal,
+  type Perk,
+  type ItemDef,
   kitchenX1,
   stoveSpots,
   maxStoves,
@@ -253,6 +257,28 @@ const staffName = (st: Staff) =>
   st.friend?.name ?? CHARACTERS[asChar(st.char)].name;
 const esc = (s: string) =>
   s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+/** What an item does, in a few words: its seat, charm and perks. */
+const PERK_TEXT: Record<Perk, (n: number) => string> = {
+  tip: (n) => `+${n}% tips`,
+  patience: (n) => `guests wait ${n}% longer`,
+  speed: (n) => `waiters ${n}% faster`,
+  vip: (n) => `+${n}% VIP guests`,
+  rest: () => "rests the staff",
+};
+const itemBlurb = (d: ItemDef) =>
+  [
+    d.seat === "chair"
+      ? "Seats a guest"
+      : d.seat === "table"
+        ? "Chairs around it seat guests"
+        : "",
+    d.charm ? `+${d.charm} charm` : "",
+    ...(Object.entries(d.perk ?? {}) as [Perk, number][]).map(([k, n]) =>
+      PERK_TEXT[k](n),
+    ),
+  ]
+    .filter(Boolean)
+    .join(" · ");
 const fmtTime = (s: number) => {
   s = Math.max(0, Math.ceil(s));
   return s >= 60
@@ -649,6 +675,9 @@ export function openBistro(o: BistroOptions): BistroHandle {
   // The hired team: waiters on the floor, cooks at their stoves.
   let waiters: Waiter[] = [];
   let cooks: (Walker & { staff: Staff })[] = [];
+  /** Item perks while you play: guests wait longer, waiters walk faster. */
+  const patienceBoost = () => 1 + perkTotal(S.items, "patience") / 100;
+  const waiterBoost = () => 1 + perkTotal(S.items, "speed") / 100;
   /** Where stove i stands (the back wall, row 0). */
   const stoveTile = (i: number) => ({ x: S.stoves[i]?.x ?? i + 1, y: 0 });
   /** The kitchen's last column (it grows with the room). */
@@ -663,7 +692,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
       );
       if (old) {
         old.staff = st;
-        old.speed = 2.8 * staffSpeed(st.level);
+        old.speed = 2.8 * staffSpeed(st.level) * waiterBoost();
         return old;
       }
       return {
@@ -671,7 +700,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
           asChar(st.char),
           WAITER_HOME.x + (i ? 0.6 : 0),
           WAITER_HOME.y + (i ? 0.6 : 0),
-          2.8 * staffSpeed(st.level),
+          2.8 * staffSpeed(st.level) * waiterBoost(),
         ),
         staff: st,
         task: null,
@@ -1174,7 +1203,9 @@ export function openBistro(o: BistroOptions): BistroHandle {
     )
       return false;
     const seat = waiting ? NO_SEAT : pickSeat(free);
-    const vip = Math.random() < vipShare(pop, rushing());
+    const vip =
+      Math.random() <
+      vipShare(pop, rushing()) * (1 + perkTotal(S.items, "vip") / 100);
     // Guests are never your own chef or staff (they are busy).
     const pool = ROSTER.filter(
       (r) => r !== chef.char && !S.staff.some((st) => st.char === r),
@@ -1189,7 +1220,9 @@ export function openBistro(o: BistroOptions): BistroHandle {
       dish: null,
       slot: -1,
       sat: waiting ? T : 0,
-      patience: waiting ? queuePatience(pop) : patienceSeconds(charmPts, vip),
+      patience:
+        (waiting ? queuePatience(pop) : patienceSeconds(charmPts, vip)) *
+        patienceBoost(),
       claimed: false,
       served: false,
       eatEnd: 0,
@@ -1226,7 +1259,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
     c.seat = seat;
     c.state = "enter";
     c.path = p.slice(1);
-    c.patience = patienceSeconds(charmPts, c.vip);
+    c.patience = patienceSeconds(charmPts, c.vip) * patienceBoost();
     requeue();
   };
   /** Waited too long by the door: off they go (they never sat down). */
@@ -1345,6 +1378,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
   const pay = (c: Customer) => {
     const bill = payment(c.dish!, {
       level: dishLevel(S, c.dish!),
+      perk: perkTotal(S.items, "tip"),
       vip: c.vip,
       combo: c.combo,
       special: c.dish === special(),
@@ -1547,6 +1581,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
     const quick = byTap && T - p.t0 < 5;
     const bill = payment(p.sale.dish, {
       level: dishLevel(S, p.sale.dish),
+      perk: perkTotal(S.items, "tip"),
       ...p.sale,
       quick,
       special: p.sale.dish === special(),
@@ -1963,7 +1998,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
       return showTip(
         sx,
         sy,
-        `<b>${esc(def.name)}</b><span>${def.charm ? `+${def.charm} charm` : it.kind === "chair" ? "Seats one next to a table" : "Chairs around it seat guests"}</span>`,
+        `<b>${esc(def.name)}</b><span>${itemBlurb(def)}</span>`,
       );
     }
   };
@@ -2064,7 +2099,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
       <div class="bs-edit-head"><b>${held ? `Placing: ${esc(ITEM_BY_KIND[held.kind].name)}` : stoveTitle ? stoveTitle : "Decorate"}</b><span>${held ? "Tap a floor tile to put it down" : heldStove ? ("model" in heldStove ? "Tap a free spot on the kitchen's back wall, or a stove to swap it" : "Tap a free spot on the kitchen's back wall") : "Tap something to move it · tags: a waiter's steps to each seat"}</span><em class="bs-grade" id="bs-grade">${gradeText()}</em></div>
       <div class="bs-store">${stored.length || stoves.length ? stoves.map(([m, n]) => `<button type="button" data-hold-stove="${m}" class="${heldStove && "model" in heldStove && heldStove.model === m ? "on" : ""}"><img src="${stoveIconUrl(m)}" alt=""><span>${esc(STOVE_BY_MODEL[m].name)}</span><i>×${n}</i></button>`).join("") + stored.map(([k, n]) => `<button type="button" data-hold="${k}" class="${held?.kind === k && !held.moving ? "on" : ""}"><img src="${itemIconUrl(k)}" alt=""><span>${esc(ITEM_BY_KIND[k].name)}</span><i>×${n}</i></button>`).join("") : `<em>Storage is empty</em>`}</div>
       <div class="bs-edit-btns">
-        ${held?.kind === "chair" ? `<button type="button" data-ed="rot">Turn</button>` : ""}
+        ${held && ITEM_BY_KIND[held.kind].seat === "chair" ? `<button type="button" data-ed="rot">Turn</button>` : ""}
         ${held ? `<button type="button" data-ed="store">Put away</button><button type="button" data-ed="cancel">Cancel</button>` : ""}
         ${heldStove ? `<button type="button" data-ed="cancel">Cancel</button>` : ""}
         <button type="button" data-ed="shop">Shop</button>
@@ -2112,8 +2147,8 @@ export function openBistro(o: BistroOptions): BistroHandle {
     }
   });
   const inUse = (it: Item) => {
-    if (it.kind === "chair") return seatBusy(it.id);
-    if (it.kind === "table")
+    if (ITEM_BY_KIND[it.kind].seat === "chair") return seatBusy(it.id);
+    if (ITEM_BY_KIND[it.kind].seat === "table")
       return seatList.some((s) => s.table.id === it.id && seatBusy(s.chair.id));
     return false;
   };
@@ -2183,9 +2218,11 @@ export function openBistro(o: BistroOptions): BistroHandle {
       return;
     }
     let rot = held.rot;
-    if (held.kind === "chair") {
+    if (ITEM_BY_KIND[held.kind].seat === "chair") {
       // Turn the chair toward a table it touches.
-      const tables = S.items.filter((i) => i.kind === "table");
+      const tables = S.items.filter(
+        (i) => ITEM_BY_KIND[i.kind].seat === "table",
+      );
       const t = tables.find(
         (t) => Math.abs(t.x - fx) + Math.abs(t.y - fy) === 1,
       );
@@ -2695,22 +2732,24 @@ export function openBistro(o: BistroOptions): BistroHandle {
     } else if (sheetKind === "shop") {
       const tab = (sheetArg as string) || "furniture";
       const tabs = [
-        ["furniture", "Furniture"],
+        ["furniture", "Seating"],
         ["decor", "Decor"],
+        ["machines", "Gadgets"],
         ["kitchen", "Kitchen"],
         ["style", "Styles"],
         ["bank", "Bank"],
       ];
       let body = "";
-      if (tab === "furniture" || tab === "decor") {
+      if (tab === "furniture" || tab === "decor" || tab === "machines") {
         body = `<div class="bs-items">${ITEMS.filter(
           (i) => i.group === tab && !i.event && !i.gift,
         )
+          .sort((a, b) => a.level - b.level || a.price - b.price)
           .map((i) => {
             const locked = i.level > S.level;
             return `<button type="button" class="bs-item${locked ? " locked" : ""}" data-buy="${i.kind}" ${locked ? "disabled" : ""}>
               <img src="${itemIconUrl(i.kind, 96)}" alt=""><b>${esc(i.name)}</b>
-              <small>${i.charm ? `+${i.charm} charm` : i.kind === "chair" ? "Seats one guest" : "Put chairs around it"}${S.stored[i.kind] ? ` · ${S.stored[i.kind]} stored` : ""}</small>
+              <small>${itemBlurb(i)}${S.stored[i.kind] ? ` · ${S.stored[i.kind]} stored` : ""}</small>
               ${locked ? `<span class="lk">${I("lock")} Level ${i.level}</span>` : `<span class="pr ${S.coins < i.price ? "poor" : ""}">${coinTag(i.price)}</span>`}
             </button>`;
           })
@@ -3677,27 +3716,29 @@ export function openBistro(o: BistroOptions): BistroHandle {
     for (const it of S.items) {
       if (ITEM_BY_KIND[it.kind].floor || it === held?.moving || !roomShown())
         continue;
-      if (it.kind === "chair") {
+      const role = ITEM_BY_KIND[it.kind].seat;
+      if (role === "chair") {
         const dir = seatDir.get(it.id) ?? it.rot;
         const guest = seated.get(it.id);
+        const style = chairStyleOf(it.kind);
         list.push({
           d: it.x + it.y,
           f: () => {
-            drawChair(ctx, it.x, it.y, dir, "behind", it.id);
+            drawChair(ctx, it.x, it.y, dir, "behind", it.id, style);
             if (guest)
               drawWalker(guest, {
                 sit: true,
                 hat: guest.vip ? "vip" : undefined,
                 mood: guest.state === "eating" ? "happy" : "normal",
               });
-            drawChair(ctx, it.x, it.y, dir, "front", it.id);
+            drawChair(ctx, it.x, it.y, dir, "front", it.id, style);
           },
         });
-      } else if (it.kind === "table") {
+      } else if (role === "table") {
         list.push({
           d: it.x + it.y,
           f: () => {
-            drawItem(ctx, "table", it.x, it.y, T);
+            drawItem(ctx, it.kind, it.x, it.y, T);
             for (const pl of plates.get(it.id) ?? []) {
               if (pl.dish)
                 drawDish(ctx, pl.dish, pl.spot.x, pl.spot.y, 11, T, true);

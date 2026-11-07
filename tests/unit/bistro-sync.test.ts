@@ -7,6 +7,8 @@ import { defaultState } from "../../packages/shared/src/bistro";
 
 const server = () => ({
   ...defaultState(),
+  // Enough for the purchases these tests make.
+  coins: 5000,
   special: "banhmi",
   chef: "voltkit",
   now: Date.now(),

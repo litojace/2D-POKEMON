@@ -713,7 +713,7 @@ test("Bistro stoves: bought in the Shop, placed, moved and swapped on the kitche
 }, info) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   const errors = await openBistro(page);
-  await B(page, "srv.S.level = 10; srv.S.coins = 9000; return b.load()");
+  await B(page, "srv.S.level = 10; srv.S.coins = 100000; return b.load()");
   const spot = (x: number) =>
     B(page, `return b.screen(${x}, 0, 50)`) as Promise<Pt>;
   const tapSpot = async (x: number) => {
@@ -739,7 +739,8 @@ test("Bistro stoves: bought in the Shop, placed, moved and swapped on the kitche
   await tapSpot(3);
   await flush(page);
   expect(await stoves()).toEqual(["1:clay", "2:clay", "3:steel"]);
-  expect(await B(page, "return srv.S.coins")).toBe(7800);
+  // A Steel Range costs 8,000.
+  expect(await B(page, "return srv.S.coins")).toBe(92000);
   // Moved to the last spot.
   await tapSpot(3);
   await expect(page.locator("#bs-edit")).toContainText("Moving: Steel Range");
@@ -779,5 +780,53 @@ test("Bistro stoves: bought in the Shop, placed, moved and swapped on the kitche
   )) as number[];
   expect(dragon).toBe(Math.round(clay / 1.3));
   await snap(page, info, "bistro-stoves");
+  expect(errors).toEqual([]);
+});
+
+test("Bistro items with perks: gadgets, a new table and armchair that seat a guest", async ({
+  page,
+}, info) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const errors = await openBistro(page);
+  await B(page, "srv.S.level = 12; srv.S.coins = 100000; return b.load()");
+  const seats = () =>
+    B(page, "return b.state().items.length") as Promise<number>;
+  // The Gadgets tab: machines with their perks, cheapest first.
+  await page.click('.bs-rail [data-sheet="shop"]');
+  await page.click('#bs-sheet [data-tab="machines"]');
+  const first = page.locator("#bs-sheet .bs-item").first();
+  await expect(first).toContainText("Tip Jar");
+  await expect(first).toContainText("+3% tips");
+  await expect(page.locator('#bs-sheet [data-buy="piano"]')).toBeDisabled(); // level 15
+  await snap(page, info, "bistro-gadgets");
+  // A Tip Jar, bought and placed.
+  await page.click('#bs-sheet [data-buy="tipjar"]');
+  await expect(page.locator("#bs-edit")).toContainText("Placing: Tip Jar");
+  const p = (await B(page, "return b.screen(10, 6, 10)")) as Pt;
+  await page.mouse.click(p.x, p.y);
+  await page.click('#bs-edit [data-ed="done"]');
+  await flush(page);
+  expect(
+    await B(page, "return srv.S.items.some((i) => i.kind === 'tipjar')"),
+  ).toBe(true);
+  expect(await B(page, "return srv.S.coins")).toBe(100000 - 500);
+  // A Garden Table and a Velvet Armchair seat one more guest.
+  const before = (await B(
+    page,
+    "return b.state().items.filter((i) => i.kind === 'chair' || i.kind === 'armchair').length",
+  )) as number;
+  await B(
+    page,
+    `const s = b.sync();
+     return [s.do({ a: 'buy', kind: 'gardentable' }), s.do({ a: 'buy', kind: 'armchair' }),
+       s.do({ a: 'place', kind: 'gardentable', x: 5, y: 8, rot: 0 }),
+       s.do({ a: 'place', kind: 'armchair', x: 4, y: 8, rot: 0 })].map((r) => r.ok)`,
+  );
+  await flush(page);
+  const n = await seats();
+  expect(n).toBeGreaterThan(0);
+  await expect(page.locator("#bs-bar .bs-open b")).toContainText(
+    `${before + 1} seats`,
+  );
   expect(errors).toEqual([]);
 });

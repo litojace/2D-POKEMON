@@ -1425,7 +1425,49 @@ export function drawRug(ctx: Ctx, x: number, y: number) {
   }
 }
 
-export function drawTable(ctx: Ctx, x: number, y: number) {
+/** Table looks (each table kind of the shop): cloth, trim, top, pedestal. */
+export type TableStyle = "round" | "garden" | "marble" | "gold";
+const TABLE_LOOK: Record<
+  TableStyle,
+  {
+    cloth: [string, string, string];
+    trim: string;
+    top: [string, string];
+    post: [string, string];
+  }
+> = {
+  round: {
+    cloth: ["#e9e2d6", "#fffdf8", "#ddd4c5"],
+    trim: "#d24c4c",
+    top: ["#ffffff", "#efe7da"],
+    post: ["#5c3520", "#8a5534"],
+  },
+  garden: {
+    cloth: ["#cfe8c4", "#eef8e8", "#bcdcae"],
+    trim: "#3f9a4f",
+    top: ["#f6fff0", "#dcefd2"],
+    post: ["#4f6b3a", "#7a9a58"],
+  },
+  marble: {
+    cloth: ["#d9dde0", "#f6f7f8", "#c9cfd3"],
+    trim: "#7c8790",
+    top: ["#ffffff", "#e3e7ea"],
+    post: ["#6b737a", "#a3abb2"],
+  },
+  gold: {
+    cloth: ["#f2dc8c", "#fff6cc", "#e3c766"],
+    trim: "#b8860b",
+    top: ["#fffbe6", "#f3e2a0"],
+    post: ["#9a7410", "#e0b83a"],
+  },
+};
+export function drawTable(
+  ctx: Ctx,
+  x: number,
+  y: number,
+  style: TableStyle = "round",
+) {
+  const look = TABLE_LOOK[style];
   const c = iso(x, y);
   softShadow(ctx, c.x, c.y + 2, 36, 15, 0.3);
   // Pedestal and foot.
@@ -1433,16 +1475,16 @@ export function drawTable(ctx: Ctx, x: number, y: number) {
   ellipse(ctx, c.x, c.y, 14, 6);
   ctx.fill();
   ctx.fillStyle = lin(ctx, c.x - 4, 0, c.x + 4, 0, [
-    [0, "#5c3520"],
-    [1, "#8a5534"],
+    [0, look.post[0]],
+    [1, look.post[1]],
   ]);
   ctx.fillRect(c.x - 4, c.y - 30, 8, 30);
   // Cloth: a round top with a skirt that falls in soft scallops.
   const ty = c.y - 32;
   ctx.fillStyle = lin(ctx, c.x - 34, 0, c.x + 34, 0, [
-    [0, "#e9e2d6"],
-    [0.5, "#fffdf8"],
-    [1, "#ddd4c5"],
+    [0, look.cloth[0]],
+    [0.5, look.cloth[1]],
+    [1, look.cloth[2]],
   ]);
   ctx.beginPath();
   ctx.ellipse(c.x, ty, 34, 16, 0, 0, Math.PI);
@@ -1455,16 +1497,16 @@ export function drawTable(ctx: Ctx, x: number, y: number) {
   }
   ctx.closePath();
   ctx.fill();
-  // Red trim.
-  ctx.strokeStyle = "#d24c4c";
+  // Trim.
+  ctx.strokeStyle = look.trim;
   ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.ellipse(c.x, ty + 9, 34.5, 16, 0, 0.1, Math.PI - 0.1);
   ctx.stroke();
   // Top.
   ctx.fillStyle = rad(ctx, c.x - 8, ty - 4, 40, [
-    [0, "#ffffff"],
-    [1, "#efe7da"],
+    [0, look.top[0]],
+    [1, look.top[1]],
   ]);
   ellipse(ctx, c.x, ty, 32, 15);
   ctx.fill();
@@ -1497,6 +1539,47 @@ export function tableSpot(x: number, y: number, dirFromTable: number) {
 }
 
 const CUSHIONS = ["#e0594d", "#3d8fd1", "#f2b53c", "#5cb36b"];
+/** Chair looks (each chair kind of the shop). */
+export type ChairStyle = "cushion" | "stool" | "armchair" | "throne";
+const CHAIR_LOOK: Record<
+  ChairStyle,
+  {
+    back?: [string, string];
+    backH: number;
+    seat: { top: string; left: string; right: string };
+    legs: string;
+    cushion?: string;
+    trim?: string;
+  }
+> = {
+  cushion: {
+    back: ["#a8683f", "#6e3f24"],
+    backH: 52,
+    seat: { top: "#8a5232", left: "#6a3c22", right: "#5a321c" },
+    legs: "#5a321c",
+  },
+  stool: {
+    backH: 0,
+    seat: { top: "#c8473b", left: "#9e3229", right: "#86281f" },
+    legs: "#a9b2ba",
+    cushion: "#e05a4c",
+  },
+  armchair: {
+    back: ["#8a58b8", "#4e2a73"],
+    backH: 56,
+    seat: { top: "#6b3f96", left: "#53307a", right: "#45276a" },
+    legs: "#3a2418",
+    cushion: "#9c6ccb",
+  },
+  throne: {
+    back: ["#f6d36b", "#b8860b"],
+    backH: 68,
+    seat: { top: "#c8a032", left: "#a8821e", right: "#916f16" },
+    legs: "#8a6a10",
+    cushion: "#b0262b",
+    trim: "#fff1b0",
+  },
+};
 export function drawChair(
   ctx: Ctx,
   x: number,
@@ -1504,7 +1587,9 @@ export function drawChair(
   dir: number,
   back: "behind" | "front" | "all",
   tint = 0,
+  style: ChairStyle = "cushion",
 ) {
+  const look = CHAIR_LOOK[style];
   const c = iso(x, y);
   // `dir` faces the table; the backrest sits on the opposite side.
   const bx = [-1, 0, 1, 0][dir] * 0.32,
@@ -1513,26 +1598,28 @@ export function drawChair(
   const backIsFar = dir === 0 || dir === 1; // back toward the wall side
   const drawBack = () => {
     // Backrest: a slatted panel, drawn as a vertical quad along the back edge.
+    if (!look.back) return;
+    const H = look.backH;
     const along = dir % 2 === 0 ? { x: 0, y: 0.32 } : { x: 0.32, y: 0 };
     const p0 = iso(x + bx - along.x, y + by - along.y),
       p1 = iso(x + bx + along.x, y + by + along.y);
-    ctx.fillStyle = lin(ctx, 0, p0.y - 52, 0, p0.y, [
-      [0, "#a8683f"],
-      [1, "#6e3f24"],
+    ctx.fillStyle = lin(ctx, 0, p0.y - H, 0, p0.y, [
+      [0, look.back[0]],
+      [1, look.back[1]],
     ]);
     poly(ctx, [
       { x: p0.x, y: p0.y - 20 },
       { x: p1.x, y: p1.y - 20 },
-      { x: p1.x, y: p1.y - 52 },
-      { x: p0.x, y: p0.y - 52 },
+      { x: p1.x, y: p1.y - H },
+      { x: p0.x, y: p0.y - H },
     ]);
     ctx.fill();
-    ctx.fillStyle = "rgba(255,230,200,.25)";
+    ctx.fillStyle = look.trim ?? "rgba(255,230,200,.25)";
     poly(ctx, [
-      { x: p0.x, y: p0.y - 46 },
-      { x: p1.x, y: p1.y - 46 },
-      { x: p1.x, y: p1.y - 52 },
-      { x: p0.x, y: p0.y - 52 },
+      { x: p0.x, y: p0.y - H + 6 },
+      { x: p1.x, y: p1.y - H + 6 },
+      { x: p1.x, y: p1.y - H },
+      { x: p0.x, y: p0.y - H },
     ]);
     ctx.fill();
     void bp;
@@ -1541,7 +1628,7 @@ export function drawChair(
     softShadow(ctx, c.x, c.y + 2, 24, 11, 0.22);
     if (backIsFar) drawBack();
     // Legs.
-    ctx.strokeStyle = "#5a321c";
+    ctx.strokeStyle = look.legs;
     ctx.lineWidth = 3;
     for (const [lx, ly] of [
       [-0.28, -0.28],
@@ -1556,12 +1643,9 @@ export function drawChair(
       ctx.stroke();
     }
     // Seat with a cushion.
-    isoBox(ctx, x - 0.32, y - 0.32, x + 0.32, y + 0.32, 18, 4, {
-      top: "#8a5232",
-      left: "#6a3c22",
-      right: "#5a321c",
-    });
-    const cu = CUSHIONS[(x * 7 + y * 3 + tint) % CUSHIONS.length];
+    isoBox(ctx, x - 0.32, y - 0.32, x + 0.32, y + 0.32, 18, 4, look.seat);
+    const cu =
+      look.cushion ?? CUSHIONS[(x * 7 + y * 3 + tint) % CUSHIONS.length];
     ctx.fillStyle = cu;
     const s = iso(x, y);
     ctx.beginPath();
@@ -1982,9 +2066,51 @@ export function drawItem(
 ) {
   switch (kind) {
     case "table":
-      return drawTable(ctx, x, y);
+    case "gardentable":
+    case "marbletable":
+    case "goldtable":
+      return drawTable(ctx, x, y, tableStyleOf(kind));
     case "chair":
-      return drawChair(ctx, x, y, rot, "all");
+    case "stool":
+    case "armchair":
+    case "throne":
+      return drawChair(ctx, x, y, rot, "all", 0, chairStyleOf(kind));
+    case "tipjar":
+      return drawTipJar(ctx, x, y, t);
+    case "espresso":
+      return drawEspresso(ctx, x, y, t);
+    case "cart":
+      return drawCart(ctx, x, y);
+    case "arcade":
+      return drawArcade(ctx, x, y, t);
+    case "neon":
+      return drawNeon(ctx, x, y, t);
+    case "freezer":
+      return drawFreezer(ctx, x, y);
+    case "massage":
+      return drawMassage(ctx, x, y);
+    case "piano":
+      return drawPiano(ctx, x, y);
+    case "podium":
+      return drawPodium(ctx, x, y, t);
+    case "robot":
+      return drawRobot(ctx, x, y, t);
+    case "vase":
+      return drawVase(ctx, x, y, t);
+    case "screen":
+      return drawScreen(ctx, x, y);
+    case "bookshelf":
+      return drawBookshelf(ctx, x, y);
+    case "carpet":
+      return drawCarpet(ctx, x, y);
+    case "koi":
+      return drawKoi(ctx, x, y, t);
+    case "chandelier":
+      return drawChandelier(ctx, x, y, t);
+    case "sakura":
+      return drawSakura(ctx, x, y, t);
+    case "statue":
+      return drawStatue(ctx, x, y, t);
     case "plant":
       return drawPlant(ctx, x, y, t);
     case "lamp":
@@ -2973,4 +3099,480 @@ export function itemIconUrl(kind: ItemKind, px = 72): string {
   const url = cv.toDataURL();
   itemUrls.set(key, url);
   return url;
+}
+
+/* ───────────── migration 104: machines and decor ───────────── */
+
+/** The chair and table look for each seat kind of the shop. */
+export const chairStyleOf = (kind: ItemKind): ChairStyle =>
+  kind === "stool"
+    ? "stool"
+    : kind === "armchair"
+      ? "armchair"
+      : kind === "throne"
+        ? "throne"
+        : "cushion";
+export const tableStyleOf = (kind: ItemKind): TableStyle =>
+  kind === "gardentable"
+    ? "garden"
+    : kind === "marbletable"
+      ? "marble"
+      : kind === "goldtable"
+        ? "gold"
+        : "round";
+
+/** A small stand (a cabinet) things sit on. */
+function stand(
+  ctx: Ctx,
+  x: number,
+  y: number,
+  h: number,
+  top: string,
+  side: string,
+  dark: string,
+) {
+  isoBox(ctx, x - 0.3, y - 0.3, x + 0.3, y + 0.3, 0, h, {
+    top,
+    left: side,
+    right: dark,
+  });
+}
+function glow(
+  ctx: Ctx,
+  x: number,
+  y: number,
+  r: number,
+  col: string,
+  a: number,
+) {
+  ctx.fillStyle = rad(ctx, x, y, r, [
+    [0, col.replace("A", String(a))],
+    [1, col.replace("A", "0")],
+  ]);
+  ellipse(ctx, x, y, r, r);
+  ctx.fill();
+}
+export function drawTipJar(ctx: Ctx, x: number, y: number, t: number) {
+  const c = iso(x, y);
+  softShadow(ctx, c.x, c.y + 2, 18, 8, 0.24);
+  stand(ctx, x, y, 26, "#a8683f", "#7a4a2c", "#653c23");
+  const by = c.y - 30;
+  ctx.fillStyle = "rgba(200,235,255,.55)";
+  ctx.beginPath();
+  ctx.roundRect(c.x - 9, by - 22, 18, 22, 4);
+  ctx.fill();
+  for (let i = 0; i < 4; i++) {
+    ctx.fillStyle = i % 2 ? "#f2c94c" : "#e0a82e";
+    ellipse(ctx, c.x - 4 + (i % 2) * 7, by - 4 - Math.floor(i / 2) * 4, 4, 2);
+    ctx.fill();
+  }
+  ctx.strokeStyle = "rgba(255,255,255,.7)";
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(c.x - 9, by - 22, 18, 22);
+  const tw = 0.5 + 0.5 * Math.sin(t * 3);
+  ctx.fillStyle = `rgba(255,240,170,${0.4 + tw * 0.5})`;
+  ellipse(ctx, c.x + 5, by - 18, 2, 2);
+  ctx.fill();
+}
+export function drawEspresso(ctx: Ctx, x: number, y: number, t: number) {
+  const c = iso(x, y);
+  softShadow(ctx, c.x, c.y + 2, 24, 10, 0.26);
+  stand(ctx, x, y, 28, "#3a3f46", "#2a2e33", "#202328");
+  isoBox(ctx, x - 0.22, y - 0.18, x + 0.22, y + 0.18, 28, 26, {
+    top: "#d9dfe4",
+    left: "#aab3bb",
+    right: "#8d969e",
+  });
+  ctx.fillStyle = "#c0392b";
+  ctx.fillRect(c.x - 6, c.y - 50, 12, 5);
+  ctx.fillStyle = "#fff";
+  ellipse(ctx, c.x, c.y - 33, 5, 2.5);
+  ctx.fill();
+  const s = (t * 0.8) % 1;
+  ctx.fillStyle = `rgba(255,255,255,${0.5 * (1 - s)})`;
+  ellipse(ctx, c.x + 2, c.y - 60 - s * 14, 4 + s * 4, 4 + s * 4);
+  ctx.fill();
+}
+export function drawCart(ctx: Ctx, x: number, y: number) {
+  const c = iso(x, y);
+  softShadow(ctx, c.x, c.y + 2, 26, 11, 0.24);
+  for (const z of [8, 30])
+    isoBox(ctx, x - 0.32, y - 0.22, x + 0.32, y + 0.22, z, 3, {
+      top: "#d9dfe4",
+      left: "#9aa3ab",
+      right: "#87909a",
+    });
+  ctx.strokeStyle = "#7d868e";
+  ctx.lineWidth = 2;
+  for (const [lx, ly] of [
+    [-0.3, -0.2],
+    [0.3, -0.2],
+    [0.3, 0.2],
+    [-0.3, 0.2],
+  ]) {
+    const p = iso(x + lx, y + ly);
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y - 4);
+    ctx.lineTo(p.x, p.y - 33);
+    ctx.stroke();
+    ctx.fillStyle = "#333";
+    ellipse(ctx, p.x, p.y - 2, 3, 3);
+    ctx.fill();
+  }
+  ctx.fillStyle = "rgba(230,240,245,.9)";
+  ctx.beginPath();
+  ctx.ellipse(c.x, c.y - 34, 12, 9, 0, Math.PI, 0);
+  ctx.fill();
+}
+export function drawArcade(ctx: Ctx, x: number, y: number, t: number) {
+  const c = iso(x, y);
+  softShadow(ctx, c.x, c.y + 2, 24, 10, 0.28);
+  isoBox(ctx, x - 0.3, y - 0.26, x + 0.3, y + 0.26, 0, 70, {
+    top: "#5b2a86",
+    left: "#43206a",
+    right: "#361a57",
+  });
+  const hue = (t * 60) % 360;
+  ctx.fillStyle = `hsl(${hue},80%,60%)`;
+  ctx.fillRect(c.x - 12, c.y - 58, 20, 16);
+  ctx.fillStyle = "rgba(255,255,255,.25)";
+  ctx.fillRect(c.x - 12, c.y - 58, 20, 4);
+  ctx.fillStyle = "#e74c3c";
+  ellipse(ctx, c.x - 6, c.y - 36, 3, 2);
+  ctx.fill();
+  ctx.fillStyle = "#f1c40f";
+  ellipse(ctx, c.x + 3, c.y - 34, 3, 2);
+  ctx.fill();
+  ctx.fillStyle = "#ffd65b";
+  ctx.fillRect(c.x - 12, c.y - 72, 20, 6);
+}
+export function drawNeon(ctx: Ctx, x: number, y: number, t: number) {
+  const c = iso(x, y);
+  softShadow(ctx, c.x, c.y + 2, 20, 8, 0.24);
+  ctx.fillStyle = "#2b2f36";
+  ctx.fillRect(c.x - 2, c.y - 40, 4, 40);
+  ctx.fillRect(c.x - 12, c.y - 2, 24, 4);
+  const on = Math.sin(t * 11) > -0.92 ? 1 : 0.3;
+  glow(ctx, c.x, c.y - 56, 34, "rgba(255,80,200,A)", 0.35 * on);
+  ctx.strokeStyle = `rgba(255,120,220,${on})`;
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.roundRect(c.x - 22, c.y - 68, 44, 24, 8);
+  ctx.stroke();
+  ctx.strokeStyle = `rgba(120,240,255,${on})`;
+  ctx.beginPath();
+  ctx.moveTo(c.x - 12, c.y - 52);
+  ctx.quadraticCurveTo(c.x, c.y - 64, c.x + 12, c.y - 52);
+  ctx.stroke();
+  ctx.fillStyle = `rgba(255,236,120,${on})`;
+  for (const dx of [-8, 0, 8]) {
+    ellipse(ctx, c.x + dx, c.y - 50, 1.8, 1.8);
+    ctx.fill();
+  }
+}
+export function drawFreezer(ctx: Ctx, x: number, y: number) {
+  const c = iso(x, y);
+  softShadow(ctx, c.x, c.y + 2, 28, 12, 0.26);
+  isoBox(ctx, x - 0.36, y - 0.28, x + 0.36, y + 0.28, 0, 30, {
+    top: "rgba(190,230,250,.85)",
+    left: "#f2f6f8",
+    right: "#d5dde2",
+  });
+  for (const [dx, col] of [
+    [-12, "#ff9fb3"],
+    [0, "#fff1b8"],
+    [12, "#9fe0c8"],
+  ] as const) {
+    ctx.fillStyle = col;
+    ellipse(ctx, c.x + dx, c.y - 34, 6, 3.5);
+    ctx.fill();
+  }
+  ctx.fillStyle = "#4fa3d9";
+  ctx.fillRect(c.x - 20, c.y - 18, 40, 4);
+}
+export function drawMassage(ctx: Ctx, x: number, y: number) {
+  const c = iso(x, y);
+  softShadow(ctx, c.x, c.y + 2, 26, 11, 0.28);
+  isoBox(ctx, x - 0.34, y - 0.3, x + 0.34, y + 0.3, 0, 20, {
+    top: "#3b2d27",
+    left: "#2c211c",
+    right: "#231a16",
+  });
+  ctx.fillStyle = lin(ctx, 0, c.y - 64, 0, c.y - 20, [
+    [0, "#5a4238"],
+    [1, "#2c211c"],
+  ]);
+  ctx.beginPath();
+  ctx.roundRect(c.x - 16, c.y - 64, 32, 44, 10);
+  ctx.fill();
+  ctx.fillStyle = "#7ad3c4";
+  ellipse(ctx, c.x + 14, c.y - 28, 3, 3);
+  ctx.fill();
+}
+export function drawPiano(ctx: Ctx, x: number, y: number) {
+  const c = iso(x, y);
+  softShadow(ctx, c.x, c.y + 4, 36, 15, 0.3);
+  isoBox(ctx, x - 0.42, y - 0.36, x + 0.42, y + 0.36, 14, 18, {
+    top: "#1f1f24",
+    left: "#141418",
+    right: "#0e0e12",
+  });
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(c.x - 22, c.y - 22, 28, 5);
+  ctx.fillStyle = "#111";
+  for (let i = 0; i < 6; i++) ctx.fillRect(c.x - 20 + i * 4.6, c.y - 22, 2, 3);
+  ctx.fillStyle = "#26262c";
+  ctx.beginPath();
+  ctx.moveTo(c.x - 16, c.y - 32);
+  ctx.lineTo(c.x + 18, c.y - 62);
+  ctx.lineTo(c.x + 26, c.y - 34);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = "#d4af37";
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  ctx.strokeStyle = "#3a3a40";
+  ctx.lineWidth = 3;
+  for (const dx of [-14, 16]) {
+    ctx.beginPath();
+    ctx.moveTo(c.x + dx, c.y - 2);
+    ctx.lineTo(c.x + dx, c.y - 14);
+    ctx.stroke();
+  }
+}
+export function drawPodium(ctx: Ctx, x: number, y: number, t: number) {
+  const c = iso(x, y);
+  softShadow(ctx, c.x, c.y + 2, 30, 12, 0.28);
+  isoBox(ctx, x - 0.3, y - 0.3, x + 0.3, y + 0.3, 0, 30, {
+    top: "#f6d36b",
+    left: "#c9a032",
+    right: "#a8821e",
+  });
+  ctx.fillStyle = "#b0262b";
+  ctx.fillRect(c.x - 20, c.y - 40, 40, 6);
+  const tw = 0.5 + 0.5 * Math.sin(t * 4);
+  glow(ctx, c.x, c.y - 44, 22, "rgba(255,225,120,A)", 0.25 + 0.2 * tw);
+  ctx.fillStyle = "#fff4c2";
+  ctx.beginPath();
+  ctx.moveTo(c.x, c.y - 58);
+  ctx.lineTo(c.x + 4, c.y - 50);
+  ctx.lineTo(c.x - 4, c.y - 50);
+  ctx.closePath();
+  ctx.fill();
+}
+export function drawRobot(ctx: Ctx, x: number, y: number, t: number) {
+  const c = iso(x, y);
+  softShadow(ctx, c.x, c.y + 2, 24, 10, 0.26);
+  ctx.fillStyle = "#4fc3f7";
+  ellipse(ctx, c.x, c.y, 22, 10);
+  ctx.fill();
+  ctx.fillStyle = "#e3f2fd";
+  ellipse(ctx, c.x, c.y - 2, 18, 8);
+  ctx.fill();
+  const bob = Math.sin(t * 3) * 2;
+  ctx.fillStyle = lin(ctx, c.x - 12, 0, c.x + 12, 0, [
+    [0, "#b0bec5"],
+    [0.5, "#eceff1"],
+    [1, "#90a4ae"],
+  ]);
+  ctx.beginPath();
+  ctx.roundRect(c.x - 11, c.y - 40 + bob, 22, 30, 9);
+  ctx.fill();
+  ctx.fillStyle = "#263238";
+  ctx.fillRect(c.x - 8, c.y - 34 + bob, 16, 8);
+  ctx.fillStyle = "#4dd0e1";
+  for (const dx of [-4, 4]) {
+    ellipse(ctx, c.x + dx, c.y - 30 + bob, 2, 2);
+    ctx.fill();
+  }
+}
+export function drawVase(ctx: Ctx, x: number, y: number, t: number) {
+  const c = iso(x, y);
+  softShadow(ctx, c.x, c.y + 2, 14, 6, 0.24);
+  ctx.fillStyle = lin(ctx, c.x - 9, 0, c.x + 9, 0, [
+    [0, "#2f6fa8"],
+    [0.5, "#6cb2e6"],
+    [1, "#2a5f90"],
+  ]);
+  ctx.beginPath();
+  ctx.moveTo(c.x - 5, c.y - 30);
+  ctx.quadraticCurveTo(c.x - 13, c.y - 12, c.x - 6, c.y);
+  ctx.lineTo(c.x + 6, c.y);
+  ctx.quadraticCurveTo(c.x + 13, c.y - 12, c.x + 5, c.y - 30);
+  ctx.closePath();
+  ctx.fill();
+  for (const [dx, dy, col] of [
+    [-6, -40, "#ff7aa8"],
+    [5, -44, "#ffd65b"],
+    [0, -50, "#ff5d7a"],
+  ] as const) {
+    const sw = Math.sin(t * 1.5 + dx) * 1.5;
+    ctx.strokeStyle = "#4a8a3a";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(c.x, c.y - 30);
+    ctx.lineTo(c.x + dx + sw, c.y + dy);
+    ctx.stroke();
+    ctx.fillStyle = col;
+    ellipse(ctx, c.x + dx + sw, c.y + dy, 4, 4);
+    ctx.fill();
+  }
+}
+export function drawScreen(ctx: Ctx, x: number, y: number) {
+  const c = iso(x, y);
+  softShadow(ctx, c.x, c.y + 2, 26, 10, 0.24);
+  for (let i = 0; i < 3; i++) {
+    const px = c.x - 21 + i * 14,
+      py = c.y - (i % 2) * 4;
+    ctx.fillStyle = i % 2 ? "#d9c58a" : "#e8d69c";
+    ctx.fillRect(px, py - 56, 13, 54);
+    ctx.strokeStyle = "#8a6d2c";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(px, py - 56, 13, 54);
+    ctx.strokeStyle = "rgba(90,120,60,.6)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(px + 6, py - 50);
+    ctx.lineTo(px + 6, py - 8);
+    ctx.stroke();
+  }
+}
+export function drawBookshelf(ctx: Ctx, x: number, y: number) {
+  const c = iso(x, y);
+  softShadow(ctx, c.x, c.y + 2, 24, 10, 0.26);
+  isoBox(ctx, x - 0.34, y - 0.22, x + 0.34, y + 0.22, 0, 64, {
+    top: "#8a5232",
+    left: "#6a3c22",
+    right: "#5a321c",
+  });
+  const cols = ["#c0392b", "#2e86c1", "#f1c40f", "#27ae60", "#8e44ad"];
+  for (let r = 0; r < 3; r++)
+    for (let i = 0; i < 5; i++) {
+      ctx.fillStyle = cols[(i + r * 2) % cols.length];
+      ctx.fillRect(
+        c.x - 20 + i * 5,
+        c.y - 18 - r * 16 - (i % 2) * 2,
+        4,
+        12 + (i % 2) * 2,
+      );
+    }
+}
+export function drawCarpet(ctx: Ctx, x: number, y: number) {
+  const pts = [
+    iso(x - 0.4, y - 0.4),
+    iso(x + 1.4, y - 0.4),
+    iso(x + 1.4, y + 1.4),
+    iso(x - 0.4, y + 1.4),
+  ];
+  ctx.fillStyle = "#b3122a";
+  poly(ctx, pts);
+  ctx.fill();
+  ctx.strokeStyle = "#e8b84a";
+  ctx.lineWidth = 3;
+  poly(ctx, [
+    iso(x - 0.28, y - 0.28),
+    iso(x + 1.28, y - 0.28),
+    iso(x + 1.28, y + 1.28),
+    iso(x - 0.28, y + 1.28),
+  ]);
+  ctx.stroke();
+}
+export function drawKoi(ctx: Ctx, x: number, y: number, t: number) {
+  const c = iso(x, y);
+  ctx.fillStyle = "#8a8f94";
+  ellipse(ctx, c.x, c.y - 4, 34, 16);
+  ctx.fill();
+  ctx.fillStyle = rad(ctx, c.x - 6, c.y - 8, 32, [
+    [0, "#5fc3e4"],
+    [1, "#1f7fa8"],
+  ]);
+  ellipse(ctx, c.x, c.y - 6, 29, 13);
+  ctx.fill();
+  for (let i = 0; i < 2; i++) {
+    const a = t * (0.9 + i * 0.3) + i * 3;
+    const fx = c.x + Math.cos(a) * 16,
+      fy = c.y - 6 + Math.sin(a) * 6;
+    ctx.fillStyle = i ? "#ffffff" : "#ff7a2e";
+    ellipse(ctx, fx, fy, 5, 2.5);
+    ctx.fill();
+  }
+  ctx.fillStyle = "#4caf50";
+  ellipse(ctx, c.x + 18, c.y - 10, 5, 2.5);
+  ctx.fill();
+}
+export function drawChandelier(ctx: Ctx, x: number, y: number, t: number) {
+  const c = iso(x, y);
+  softShadow(ctx, c.x, c.y + 2, 18, 8, 0.24);
+  ctx.fillStyle = "#c9a032";
+  ctx.fillRect(c.x - 2, c.y - 70, 4, 70);
+  ctx.fillRect(c.x - 12, c.y - 3, 24, 4);
+  glow(ctx, c.x, c.y - 78, 30, "rgba(255,245,200,A)", 0.35);
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2 + t * 0.4;
+    const px = c.x + Math.cos(a) * 14,
+      py = c.y - 78 + Math.sin(a) * 5;
+    ctx.fillStyle = "rgba(220,240,255,.95)";
+    ctx.beginPath();
+    ctx.moveTo(px, py - 6);
+    ctx.lineTo(px + 3, py);
+    ctx.lineTo(px, py + 6);
+    ctx.lineTo(px - 3, py);
+    ctx.closePath();
+    ctx.fill();
+  }
+}
+export function drawSakura(ctx: Ctx, x: number, y: number, t: number) {
+  const c = iso(x, y);
+  softShadow(ctx, c.x, c.y + 2, 30, 12, 0.28);
+  ctx.fillStyle = "#6b4226";
+  ctx.beginPath();
+  ctx.moveTo(c.x - 5, c.y);
+  ctx.lineTo(c.x - 3, c.y - 50);
+  ctx.lineTo(c.x + 3, c.y - 50);
+  ctx.lineTo(c.x + 6, c.y);
+  ctx.closePath();
+  ctx.fill();
+  for (const [dx, dy, r] of [
+    [0, -76, 26],
+    [-20, -64, 18],
+    [20, -62, 18],
+    [-8, -92, 16],
+    [12, -90, 15],
+  ] as const) {
+    const sw = Math.sin(t * 1.2 + dx) * 1.2;
+    ctx.fillStyle = rad(ctx, c.x + dx - 4 + sw, c.y + dy - 4, r + 4, [
+      [0, "#ffe1ec"],
+      [1, "#f49ac1"],
+    ]);
+    ellipse(ctx, c.x + dx + sw, c.y + dy, r, r * 0.8);
+    ctx.fill();
+  }
+}
+export function drawStatue(ctx: Ctx, x: number, y: number, t: number) {
+  const c = iso(x, y);
+  softShadow(ctx, c.x, c.y + 2, 26, 11, 0.3);
+  isoBox(ctx, x - 0.3, y - 0.3, x + 0.3, y + 0.3, 0, 16, {
+    top: "#b8b2a7",
+    left: "#958f85",
+    right: "#7d776e",
+  });
+  ctx.strokeStyle = lin(ctx, c.x - 20, 0, c.x + 20, 0, [
+    [0, "#1e7a52"],
+    [0.5, "#4cc58e"],
+    [1, "#16603f"],
+  ]);
+  ctx.lineWidth = 9;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(c.x - 16, c.y - 20);
+  ctx.bezierCurveTo(c.x - 24, c.y - 48, c.x + 22, c.y - 36, c.x + 10, c.y - 64);
+  ctx.stroke();
+  ctx.lineCap = "butt";
+  ctx.fillStyle = "#2fa36e";
+  ellipse(ctx, c.x + 10, c.y - 68, 9, 7);
+  ctx.fill();
+  const tw = 0.5 + 0.5 * Math.sin(t * 2.5);
+  ctx.fillStyle = `rgba(255,214,91,${0.6 + 0.4 * tw})`;
+  ellipse(ctx, c.x + 13, c.y - 70, 2, 2);
+  ctx.fill();
 }

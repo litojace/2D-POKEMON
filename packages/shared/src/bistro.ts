@@ -31,11 +31,11 @@ export const sizeOf = (lv: number): RoomSize => ({
 });
 export const BASE_SIZE: RoomSize = sizeOf(0);
 export const EXPAND_STEPS = [
-  { level: 4, price: 800 },
-  { level: 8, price: 2500 },
-  { level: 12, price: 6000 },
-  { level: 16, price: 12000 },
-  { level: 20, price: 20000 },
+  { level: 4, price: 3000 },
+  { level: 8, price: 12000 },
+  { level: 12, price: 30000 },
+  { level: 16, price: 60000 },
+  { level: 20, price: 100000 },
 ] as const;
 export const MAX_SIZE_LV = EXPAND_STEPS.length;
 export const MAX_SIZE = sizeOf(MAX_SIZE_LV);
@@ -498,7 +498,45 @@ export type ItemKind =
   | "lantern"
   | "blossom"
   | "trophy"
-  | "rug";
+  | "rug"
+  | "stool"
+  | "gardentable"
+  | "armchair"
+  | "marbletable"
+  | "goldtable"
+  | "throne"
+  | "tipjar"
+  | "espresso"
+  | "cart"
+  | "arcade"
+  | "neon"
+  | "freezer"
+  | "massage"
+  | "piano"
+  | "podium"
+  | "robot"
+  | "vase"
+  | "screen"
+  | "bookshelf"
+  | "carpet"
+  | "koi"
+  | "chandelier"
+  | "sakura"
+  | "statue";
+/**
+ * Item perks (migration 104), inspired by My Cafe's tip-raising furniture
+ * and Restaurant City's equipment: tip (% on tips while you play), patience
+ * (% longer before a guest gives up), speed (% faster waiters), vip (% more
+ * VIPs), rest (counts as a Staff Corner: a quarter off the staff's drain).
+ */
+export type Perk = "tip" | "patience" | "speed" | "vip" | "rest";
+export const PERK_CAPS: Record<Perk, number> = {
+  tip: 30,
+  patience: 60,
+  speed: 25,
+  vip: 50,
+  rest: 2,
+};
 export interface ItemDef {
   kind: ItemKind;
   name: string;
@@ -511,7 +549,11 @@ export interface ItemDef {
   /** Footprint in tiles (rugs are 2 × 2). */
   w?: number;
   h?: number;
-  group: "furniture" | "decor";
+  group: "furniture" | "decor" | "machines";
+  /** Tables and chairs seat guests (a chair beside a table), whatever their kind. */
+  seat?: "table" | "chair";
+  /** What it does besides its charm (PERK_CAPS caps each kind of perk). */
+  perk?: Partial<Record<Perk, number>>;
   /** An event's item: bought with event tokens while the event is on. */
   event?: string;
   tokens?: number;
@@ -522,7 +564,8 @@ export const ITEMS: readonly ItemDef[] = [
   {
     kind: "table",
     name: "Round Table",
-    price: 60,
+    price: 150,
+    seat: "table",
     level: 1,
     charm: 0,
     group: "furniture",
@@ -530,7 +573,8 @@ export const ITEMS: readonly ItemDef[] = [
   {
     kind: "chair",
     name: "Cushioned Chair",
-    price: 25,
+    price: 60,
+    seat: "chair",
     level: 1,
     charm: 0,
     group: "furniture",
@@ -538,7 +582,7 @@ export const ITEMS: readonly ItemDef[] = [
   {
     kind: "plant",
     name: "Potted Fern",
-    price: 40,
+    price: 120,
     level: 1,
     charm: 2,
     group: "decor",
@@ -546,7 +590,7 @@ export const ITEMS: readonly ItemDef[] = [
   {
     kind: "rug",
     name: "Woven Rug",
-    price: 70,
+    price: 200,
     level: 1,
     charm: 2,
     floor: true,
@@ -557,7 +601,7 @@ export const ITEMS: readonly ItemDef[] = [
   {
     kind: "lamp",
     name: "Paper Lantern",
-    price: 80,
+    price: 300,
     level: 2,
     charm: 3,
     group: "decor",
@@ -565,7 +609,7 @@ export const ITEMS: readonly ItemDef[] = [
   {
     kind: "bonsai",
     name: "Bonsai Stand",
-    price: 120,
+    price: 600,
     level: 3,
     charm: 4,
     group: "decor",
@@ -573,7 +617,7 @@ export const ITEMS: readonly ItemDef[] = [
   {
     kind: "luckycat",
     name: "Waving Cat",
-    price: 150,
+    price: 900,
     level: 3,
     charm: 5,
     group: "decor",
@@ -581,7 +625,8 @@ export const ITEMS: readonly ItemDef[] = [
   {
     kind: "jukebox",
     name: "Jukebox",
-    price: 250,
+    price: 2000,
+    perk: { patience: 10 },
     level: 4,
     charm: 6,
     group: "decor",
@@ -589,7 +634,8 @@ export const ITEMS: readonly ItemDef[] = [
   {
     kind: "aquarium",
     name: "Aquarium",
-    price: 300,
+    price: 3000,
+    perk: { patience: 5 },
     level: 5,
     charm: 8,
     group: "decor",
@@ -597,7 +643,7 @@ export const ITEMS: readonly ItemDef[] = [
   {
     kind: "fountain",
     name: "Element Fountain",
-    price: 420,
+    price: 5000,
     level: 6,
     charm: 10,
     group: "decor",
@@ -606,10 +652,231 @@ export const ITEMS: readonly ItemDef[] = [
     // Staff rest here: each of up to two takes a quarter off the drain.
     kind: "corner",
     name: "Staff Corner",
-    price: 600,
+    price: 4000,
+    perk: { rest: 1 },
     level: 5,
     charm: 1,
     group: "furniture",
+  },
+  // Migration 104: tables and chairs with perks, machines, decor.
+  {
+    kind: "stool",
+    name: "Bar Stool",
+    price: 90,
+    level: 2,
+    charm: 0,
+    group: "furniture",
+    seat: "chair",
+  },
+  {
+    kind: "gardentable",
+    name: "Garden Table",
+    price: 700,
+    level: 4,
+    charm: 1,
+    group: "furniture",
+    seat: "table",
+    perk: { patience: 10 },
+  },
+  {
+    kind: "armchair",
+    name: "Velvet Armchair",
+    price: 2500,
+    level: 7,
+    charm: 1,
+    group: "furniture",
+    seat: "chair",
+    perk: { patience: 15 },
+  },
+  {
+    kind: "marbletable",
+    name: "Marble Table",
+    price: 6000,
+    level: 10,
+    charm: 2,
+    group: "furniture",
+    seat: "table",
+    perk: { tip: 2 },
+  },
+  {
+    kind: "goldtable",
+    name: "Golden Table",
+    price: 25000,
+    level: 18,
+    charm: 3,
+    group: "furniture",
+    seat: "table",
+    perk: { tip: 4 },
+  },
+  {
+    kind: "throne",
+    name: "Royal Throne",
+    price: 30000,
+    level: 20,
+    charm: 3,
+    group: "furniture",
+    seat: "chair",
+    perk: { tip: 4 },
+  },
+  {
+    kind: "tipjar",
+    name: "Tip Jar",
+    price: 500,
+    level: 3,
+    charm: 0,
+    group: "machines",
+    perk: { tip: 3 },
+  },
+  {
+    kind: "espresso",
+    name: "Espresso Machine",
+    price: 3500,
+    level: 6,
+    charm: 1,
+    group: "machines",
+    perk: { rest: 1 },
+  },
+  {
+    kind: "cart",
+    name: "Serving Cart",
+    price: 6000,
+    level: 8,
+    charm: 0,
+    group: "machines",
+    perk: { speed: 8 },
+  },
+  {
+    kind: "arcade",
+    name: "Arcade Cabinet",
+    price: 5000,
+    level: 9,
+    charm: 2,
+    group: "machines",
+    perk: { patience: 25 },
+  },
+  {
+    kind: "neon",
+    name: "Neon Sign",
+    price: 9000,
+    level: 11,
+    charm: 4,
+    group: "machines",
+    perk: { vip: 20 },
+  },
+  {
+    kind: "freezer",
+    name: "Ice Cream Freezer",
+    price: 11000,
+    level: 12,
+    charm: 1,
+    group: "machines",
+    perk: { tip: 4 },
+  },
+  {
+    kind: "massage",
+    name: "Massage Chair",
+    price: 14000,
+    level: 13,
+    charm: 1,
+    group: "machines",
+    perk: { rest: 1 },
+  },
+  {
+    kind: "piano",
+    name: "Grand Piano",
+    price: 20000,
+    level: 15,
+    charm: 6,
+    group: "machines",
+    perk: { tip: 6 },
+  },
+  {
+    kind: "podium",
+    name: "Golden Podium",
+    price: 45000,
+    level: 22,
+    charm: 5,
+    group: "machines",
+    perk: { vip: 30 },
+  },
+  {
+    kind: "robot",
+    name: "Robot Waiter Dock",
+    price: 65000,
+    level: 25,
+    charm: 2,
+    group: "machines",
+    perk: { speed: 15 },
+  },
+  {
+    kind: "vase",
+    name: "Flower Vase",
+    price: 200,
+    level: 2,
+    charm: 3,
+    group: "decor",
+  },
+  {
+    kind: "screen",
+    name: "Bamboo Screen",
+    price: 900,
+    level: 5,
+    charm: 5,
+    group: "decor",
+  },
+  {
+    kind: "bookshelf",
+    name: "Bookshelf",
+    price: 2500,
+    level: 8,
+    charm: 6,
+    group: "decor",
+    perk: { patience: 5 },
+  },
+  {
+    kind: "carpet",
+    name: "Red Carpet",
+    price: 5000,
+    level: 10,
+    charm: 2,
+    group: "decor",
+    perk: { vip: 15 },
+    floor: true,
+    w: 2,
+    h: 2,
+  },
+  {
+    kind: "koi",
+    name: "Koi Pond",
+    price: 16000,
+    level: 14,
+    charm: 12,
+    group: "decor",
+  },
+  {
+    kind: "chandelier",
+    name: "Crystal Chandelier",
+    price: 22000,
+    level: 17,
+    charm: 10,
+    group: "decor",
+    perk: { tip: 2 },
+  },
+  {
+    kind: "sakura",
+    name: "Cherry Tree",
+    price: 26000,
+    level: 19,
+    charm: 12,
+    group: "decor",
+  },
+  {
+    kind: "statue",
+    name: "Dragon Statue",
+    price: 55000,
+    level: 24,
+    charm: 16,
+    group: "decor",
   },
   // Event items (migration 100): tokens only, while their event is on.
   {
@@ -671,13 +938,13 @@ const isItemKind = (v: unknown): v is ItemKind =>
 
 export const FLOORS = [
   { id: "checker", name: "Cream Checker", price: 0 },
-  { id: "wood", name: "Honey Planks", price: 150 },
-  { id: "teal", name: "Teal Tiles", price: 220 },
+  { id: "wood", name: "Honey Planks", price: 800 },
+  { id: "teal", name: "Teal Tiles", price: 1500 },
 ] as const;
 export const WALLS = [
   { id: "butter", name: "Butter & Wainscot", price: 0 },
-  { id: "mint", name: "Mint Stripes", price: 150 },
-  { id: "brick", name: "Red Brick", price: 220 },
+  { id: "mint", name: "Mint Stripes", price: 800 },
+  { id: "brick", name: "Red Brick", price: 1500 },
 ] as const;
 export type FloorId = (typeof FLOORS)[number]["id"];
 export type WallId = (typeof WALLS)[number]["id"];
@@ -711,18 +978,18 @@ export const HIRE_STEPS: Record<
   readonly { level: number; price: number }[]
 > = {
   cook: [
-    { level: 2, price: 250 },
-    { level: 5, price: 900 },
-    { level: 9, price: 2000 },
+    { level: 2, price: 600 },
+    { level: 5, price: 3500 },
+    { level: 9, price: 12000 },
   ],
   waiter: [
     { level: 1, price: 0 },
-    { level: 3, price: 400 },
-    { level: 6, price: 1000 },
+    { level: 3, price: 1500 },
+    { level: 6, price: 6000 },
   ],
   janitor: [
-    { level: 4, price: 300 },
-    { level: 8, price: 900 },
+    { level: 4, price: 1200 },
+    { level: 8, price: 8000 },
   ],
 };
 /** Each staff level after the first: 12% quicker. */
@@ -749,9 +1016,14 @@ export const mood = (energy: number) =>
   energy >= 50 ? 1 : energy >= 20 ? 0.85 : 0.6;
 export const moodName = (energy: number) =>
   energy >= 50 ? "Fresh" : energy >= 20 ? "Hungry" : "Exhausted";
-/** Staff Corners that count (each takes a quarter off the drain). */
-export const cornerCount = (items: readonly Item[]) =>
-  Math.min(2, items.filter((i) => i.kind === "corner").length);
+/** A perk's total over the placed items, capped (PERK_CAPS). */
+export const perkTotal = (items: readonly Item[], perk: Perk) =>
+  Math.min(
+    PERK_CAPS[perk],
+    items.reduce((n, i) => n + (ITEM_BY_KIND[i.kind]?.perk?.[perk] ?? 0), 0),
+  );
+/** Rest spots that count (Staff Corners and the like: a quarter off the drain each). */
+export const cornerCount = (items: readonly Item[]) => perkTotal(items, "rest");
 export const drainPerHour = (role: Role, corners: number) =>
   ENERGY_DRAIN[role] * (1 - 0.25 * corners);
 /** Energy after `ms` of work from `e`. */
@@ -772,12 +1044,12 @@ export const energyNow = (s: BistroState, st: Staff, now: number) =>
 /** How fast someone works with this much energy (1 is a fresh level-1 creature). */
 export const workSpeed = (st: Staff, energy: number) =>
   staffSpeed(st.level) * (st.friend ? FRIEND_BONUS : 1) * mood(energy);
-export const staffUpgradePrice = (level: number) => 150 * level * level;
+export const staffUpgradePrice = (level: number) => 300 * level * level;
 /** Kitchen upgrades: every dish cooks 10% faster per level. */
-export const KITCHEN_PRICES = [300, 700, 1400] as const;
+export const KITCHEN_PRICES = [1500, 6000, 20000] as const;
 /** Longer shifts: how many hours the staff keep the bistro open while you are away. */
 export const SHIFT_HOURS = [2, 4, 6, 8] as const;
-export const SHIFT_PRICES = [300, 800, 1600] as const;
+export const SHIFT_PRICES = [1000, 5000, 15000] as const;
 /** Offline, the bistro needs at least this long away to report anything. */
 export const AWAY_MIN_MS = 60_000;
 /** Fewer guests come while you are away than when you are there. */
@@ -811,7 +1083,7 @@ export const STOVES: readonly StoveDef[] = [
   {
     model: "clay",
     name: "Clay Stove",
-    price: 200,
+    price: 500,
     level: 1,
     speed: 1,
     blurb: "A sturdy stove: cooks at the usual pace.",
@@ -819,7 +1091,7 @@ export const STOVES: readonly StoveDef[] = [
   {
     model: "steel",
     name: "Steel Range",
-    price: 1200,
+    price: 8000,
     level: 8,
     speed: 1.15,
     blurb: "Polished steel: cooks 15% faster.",
@@ -827,7 +1099,7 @@ export const STOVES: readonly StoveDef[] = [
   {
     model: "dragon",
     name: "Dragon Oven",
-    price: 4000,
+    price: 40000,
     level: 16,
     speed: 1.3,
     blurb: "Breathes fire: cooks 30% faster.",
@@ -895,8 +1167,12 @@ export interface BistroState {
   regulars: Record<string, number>;
 }
 
+/** XP to the next level: steeper from level 4 (migration 104), so the
+ *  later levels take a while (about 45 hours of play to level 30). */
 export function xpToNext(level: number): number {
-  return Math.round(40 * Math.pow(level, 1.45));
+  return Math.round(
+    40 * Math.pow(level, 1.45) * (1 + 0.08 * Math.max(0, level - 3)),
+  );
 }
 export const MAX_LEVEL = 30;
 
@@ -1239,6 +1515,8 @@ export function payment(
     level?: number;
     /** Branch stars: 10% each. */
     stars?: number;
+    /** Tip perks of the room's items (whole percent, perkTotal). */
+    perk?: number;
   },
 ): { base: number; tip: number; total: number } {
   let base = priceAt(dish, o.level ?? 1, o.stars ?? 0);
@@ -1248,7 +1526,11 @@ export function payment(
   // Whole percents, so the database (068_bistro.sql) rounds the same way.
   const combo = Math.min(COMBO_MAX, Math.max(1, Math.floor(o.combo ?? 1)));
   const hearts = Math.min(3, Math.max(1, Math.floor(o.hearts ?? 3)));
-  let pct = (combo - 1) * 8 + (hearts - 1) * 5 + (o.quick ? 10 : 0);
+  let pct =
+    (combo - 1) * 8 +
+    (hearts - 1) * 5 +
+    (o.quick ? 10 : 0) +
+    Math.max(0, Math.floor(o.perk ?? 0));
   if (o.rush) pct *= 2;
   const tip = Math.round((base * pct) / 100);
   return { base, tip, total: base + tip };
@@ -1507,10 +1789,10 @@ export interface Seat {
 }
 /** Chairs that touch a table; each seats one customer (the chair's rot breaks ties). */
 export function seats(items: readonly Item[]): Seat[] {
-  const tables = items.filter((i) => i.kind === "table");
+  const tables = items.filter((i) => ITEM_BY_KIND[i.kind]?.seat === "table");
   const out: Seat[] = [];
   for (const c of items) {
-    if (c.kind !== "chair") continue;
+    if (ITEM_BY_KIND[c.kind]?.seat !== "chair") continue;
     let best: Seat | null = null;
     for (const t of tables) {
       const dx = t.x - c.x,
@@ -2178,6 +2460,8 @@ export function rateFrom(
 ): number {
   let speed = 0;
   for (const w of staffOf(s, "waiter")) speed += workSpeed(w, energyAt(w));
+  // Serving carts and the like (the server's arena_bistro_pace does the same).
+  speed = speed * (1 + perkTotal(s.items, "speed") / 100);
   const waiterRate = p.seats ? speed / (p.tMeal + p.clear) : 0;
   return Math.min(p.arrivals, p.seatRate, waiterRate);
 }

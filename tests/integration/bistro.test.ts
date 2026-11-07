@@ -9,7 +9,9 @@ import {
   HIRE_STEPS,
   KITCHEN_PRICES,
   SHIFT_PRICES,
-  STOVE_PRICES,
+  STOVE_BY_MODEL,
+  EXPAND_STEPS,
+  staffUpgradePrice,
   cookMs,
   defaultState,
   inRush,
@@ -345,8 +347,8 @@ describe("staff, upgrades and the time away", () => {
     ]);
     const spent =
       HIRE_STEPS.cook[0].price +
-      150 +
-      STOVE_PRICES[2] +
+      staffUpgradePrice(1) +
+      STOVE_BY_MODEL.clay.price +
       KITCHEN_PRICES[0] +
       SHIFT_PRICES[0];
     expect(r.bistro.coins).toBe(5000 - spent);
@@ -463,7 +465,7 @@ describe("expanding the dining room", () => {
     ]);
     expect(r.results[0].error).toBe("Expand at level 4.");
     expect(r.results[2].error).toBe("That's outside the restaurant.");
-    await setCoins(cal, 60000, 20);
+    await setCoins(cal, 300000, 20);
     r = await act(cal, [
       { a: "expand" },
       { a: "place", kind: "plant", x: 12, y: 9 },
@@ -484,7 +486,9 @@ describe("expanding the dining room", () => {
     ]);
     expect(r.results[6].error).toBe("The dining room is as big as it gets.");
     expect(r.bistro.sizeLv).toBe(5);
-    expect(r.bistro.coins).toBe(60000 - 800 - 2500 - 6000 - 12000 - 20000);
+    expect(r.bistro.coins).toBe(
+      300000 - EXPAND_STEPS.reduce((n, e) => n + e.price, 0),
+    );
     // The far corner of the biggest room (20, 13) takes a table and chairs.
     r = await act(cal, [
       { a: "buy", kind: "table" },
@@ -1273,7 +1277,7 @@ describe("stoves from the Shop (migration 103)", () => {
   it("buy, place, swap and move stoves on the back wall; a faster stove cooks faster; the same as the shared rules", async () => {
     const B = await import("../../packages/shared/src/bistro");
     await open(ana);
-    await setCoins(ana, 20000, 10);
+    await setCoins(ana, 100000, 10);
     await sql(
       "update public.arena_bistros set size_lv = 0 where player_id = $1",
       [ana],
@@ -1375,6 +1379,7 @@ describe("stoves from the Shop (migration 103)", () => {
       "update public.arena_bistros set coins = 20000 where player_id = $1",
       [ana],
     );
+    // (Expanding costs EXPAND_STEPS[0].price: 20000 covers it.)
     await sql(
       "insert into public.arena_bistro_items(player_id, id, kind, x, y, rot) values ($1, 900, 'plant', 6, 1, 0) on conflict do nothing",
       [ana],
@@ -1390,5 +1395,95 @@ describe("stoves from the Shop (migration 103)", () => {
     expect(b.items.some((it) => it.x === 6 && it.y <= 2)).toBe(false);
     await step({ a: "stove" }, (s) => B.buyStove(s));
     expect(sanitize(await open(ana)).stoves.map((s) => s.x)).toContain(5);
+  });
+});
+
+describe("items with perks (migration 104)", () => {
+  it("new tables and chairs seat guests; tips, waiter speed and rest perks work as in the shared rules", async () => {
+    const B = await import("../../packages/shared/src/bistro");
+    await open(ben);
+    await setCoins(ben, 500000, 20);
+    await sql(
+      "update public.arena_bistros set size_lv = 2 where player_id = $1",
+      [ben],
+    );
+    // A Garden Table with a Velvet Armchair: one more seat.
+    const seatsOf = async () =>
+      (
+        await sql("select count(*)::int n from public.arena_bistro_seats($1)", [
+          ben,
+        ])
+      )[0].n;
+    const seats0 = await seatsOf();
+    let r = await act(ben, [
+      { a: "buy", kind: "gardentable" },
+      { a: "buy", kind: "armchair" },
+      { a: "place", kind: "gardentable", x: 12, y: 8 },
+      { a: "place", kind: "armchair", x: 11, y: 8, rot: 0 },
+    ]);
+    expect(r.results.map((x: any) => x.ok)).toEqual([true, true, true, true]);
+    expect(await seatsOf()).toBe(seats0 + 1);
+    let local = sanitize(r.bistro);
+    expect(B.seats(local.items)).toHaveLength(seats0 + 1);
+    // Tips: a Tip Jar (+3%) and a Grand Piano (+6%).
+    r = await act(ben, [
+      { a: "buy", kind: "tipjar" },
+      { a: "buy", kind: "piano" },
+      { a: "place", kind: "tipjar", x: 13, y: 4 },
+      { a: "place", kind: "piano", x: 14, y: 4 },
+    ]);
+    expect(r.results.map((x: any) => x.ok)).toEqual([true, true, true, true]);
+    local = sanitize(r.bistro);
+    expect(B.perkTotal(local.items, "tip")).toBe(9);
+    await sql(
+      "update public.arena_bistro_counter set dish = case slot when 0 then 'pho' end, servings = case slot when 0 then 5 else 0 end where player_id = $1",
+      [ben],
+    );
+    const before = (await open(ben)).coins;
+    r = await act(ben, [{ a: "serve", dish: "pho", hearts: 3, combo: 2 }]);
+    const bill = B.payment("pho", {
+      level: r.bistro.dishLv.pho?.lv ?? 1,
+      hearts: 3,
+      combo: 2,
+      special: r.bistro.special === "pho",
+      rush: inRush(Number(r.bistro.now)),
+      stars: r.bistro.stars,
+      perk: 9,
+    }).total;
+    expect(r.results[0].ok).toBe(true);
+    expect(r.bistro.coins - before).toBe(bill);
+    expect(bill).toBeGreaterThan(
+      B.payment("pho", {
+        level: r.bistro.dishLv.pho?.lv ?? 1,
+        hearts: 3,
+        combo: 2,
+        special: r.bistro.special === "pho",
+        rush: inRush(Number(r.bistro.now)),
+        stars: r.bistro.stars,
+      }).total - 1,
+    );
+    // A Serving Cart: the waiters' rate while away, the same both sides.
+    const rate0 = (
+      await sql("select public.arena_bistro_service_rate($1) r", [ben])
+    )[0].r;
+    r = await act(ben, [
+      { a: "buy", kind: "cart" },
+      { a: "place", kind: "cart", x: 13, y: 6 },
+      { a: "buy", kind: "espresso" },
+      { a: "place", kind: "espresso", x: 14, y: 6 },
+    ]);
+    expect(r.results.map((x: any) => x.ok)).toEqual([true, true, true, true]);
+    local = sanitize(r.bistro);
+    const rate1 = (
+      await sql("select public.arena_bistro_service_rate($1) r", [ben])
+    )[0].r;
+    expect(rate1).toBeCloseTo(B.serviceRate(local), 6);
+    expect(rate1).toBeGreaterThanOrEqual(rate0);
+    // The Espresso Machine rests the staff like a Staff Corner.
+    const [{ n }] = await sql("select public.arena_bistro_corners($1) n", [
+      ben,
+    ]);
+    expect(n).toBe(B.cornerCount(local.items));
+    expect(n).toBeGreaterThanOrEqual(1);
   });
 });
