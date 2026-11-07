@@ -6,7 +6,16 @@ import { fxFor } from "./fx-engine";
 import { electricKit } from "./skill-fx-electric";
 import { fireKit } from "./skill-fx-fire";
 import { waterKit } from "./skill-fx-water";
-import { auraKit } from "./skill-fx-aura";
+import { auraKit, rewindDive } from "./skill-fx-aura";
+import {
+  physicalBeam,
+  physicalCast,
+  physicalChannel,
+  physicalHit,
+  physicalImpact,
+  physicalTrail,
+  physicalZone,
+} from "./fx-physics";
 import { lightKit } from "./skill-fx-light";
 import { psychicKit } from "./skill-fx-psychic";
 import { earthKit } from "./skill-fx-earth";
@@ -27,6 +36,17 @@ const KIT = withUltimates(
     natureKit,
   ]),
 );
+/** Halcyon Rewind's dive from where Halcyra was to where it landed. */
+export function playRewindDive(
+  scene: Phaser.Scene,
+  fromX: number,
+  fromY: number,
+  toX: number,
+  toY: number,
+  color: number,
+) {
+  rewindDive(scene, fromX, fromY, toX, toY, color, shotIn(scene));
+}
 /** For tests: which moves have a new-style effect. */
 export const effectKit = KIT;
 const shotIn =
@@ -152,7 +172,9 @@ export function drawProjectile(
     const fx = fxFor(g.scene);
     fx.at(pr.y);
     try {
-      return kit(g, pr, now);
+      kit(g, pr, now);
+      if (!reduced) physicalTrail(g.scene, pr);
+      return;
     } finally {
       fx.at(null);
     }
@@ -378,7 +400,11 @@ export function drawZone(
   reduced: boolean,
 ) {
   const kit = KIT.zone[z.ability.id];
-  if (kit && g.scene) return kit(g, z, progress, now);
+  if (kit && g.scene) {
+    kit(g, z, progress, now);
+    if (!reduced) physicalZone(g.scene, z);
+    return;
+  }
   const a = z.ability,
     c = z.color,
     r = z.radius,
@@ -564,7 +590,11 @@ export function drawChannel(
   reduced: boolean,
 ) {
   const kit = KIT.channel[a.id];
-  if (kit && g.scene) return kit(g, a, x, y, angle, color, now);
+  if (kit && g.scene) {
+    kit(g, a, x, y, angle, color, now);
+    if (!reduced) physicalChannel(g.scene, a, x, y, angle);
+    return;
+  }
   const spread = Math.acos(a.arc ?? 0.7);
   g.fillStyle(color, 0.16).slice(
     x,
@@ -642,7 +672,11 @@ export function playCast(
   at?: () => { x: number; y: number } | undefined,
 ) {
   const kit = KIT.cast[a.id];
-  if (kit) return kit(scene, a, x, y, angle, color, shotIn(scene), at);
+  if (kit) {
+    kit(scene, a, x, y, angle, color, shotIn(scene), at);
+    if (!reduced) physicalCast(scene, a, x, y, angle);
+    return;
+  }
   // Every roster move has its own effect above; anything else that is a
   // melee strike still shows its real arc.
   if (a.kind === "melee")
@@ -662,7 +696,11 @@ export function playBeam(
   reduced: boolean,
 ) {
   const kit = KIT.beam[a.id];
-  if (kit) return kit(scene, a, x, y, tx, ty, color, shotIn(scene));
+  if (kit) {
+    kit(scene, a, x, y, tx, ty, color, shotIn(scene));
+    if (!reduced) physicalBeam(scene, a, x, y, tx, ty);
+    return;
+  }
   const sy = y - 12;
   oneShot(scene, reduced ? 140 : 320, (g, k) => {
     g.lineStyle(a.radius * 2 * (1 - k * 0.5), color, 0.3 * (1 - k)).lineBetween(
@@ -701,7 +739,11 @@ export function playImpact(
   reduced: boolean,
 ) {
   const kit = KIT.impact[a.id];
-  if (kit) return kit(scene, a, x, y, color, shotIn(scene));
+  if (kit) {
+    kit(scene, a, x, y, color, shotIn(scene));
+    if (!reduced) physicalImpact(scene, a, x, y);
+    return;
+  }
   const blast = a.explosion ?? 0;
   if (blast > 0)
     return oneShot(
@@ -776,7 +818,11 @@ export function playHit(
   reduced: boolean,
 ) {
   const kit = KIT.hit[element.toLowerCase()];
-  if (kit) return kit(scene, x, y, color, shotIn(scene));
+  if (kit) {
+    kit(scene, x, y, color, shotIn(scene));
+    if (!reduced) physicalHit(scene, element, x, y);
+    return;
+  }
   if (reduced) return;
   const cy = y - 12;
   oneShot(

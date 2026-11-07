@@ -183,6 +183,24 @@ function eyespotFlash(
       .fillStyle(GOLD, 0.1 * fade)
       .fillEllipse(x, y, reach * 2 * out, reach * 2 * out * 0.82);
     if (k < 0.2) fx.glow(x, y - 22, 90, 0xffffff, 0.6 * (1 - k / 0.2));
+    // A camera-flash streak across the eyes.
+    if (k < 0.35)
+      fx.glow(x, y - 30, reach * 0.9, CREAM, 0.5 * (1 - k / 0.35), false, 0.12);
+  });
+  // Wing scales shake loose and glitter down in the flash.
+  fx.burst({
+    x,
+    y,
+    z: 36,
+    count: 16,
+    kind: "mote",
+    color: [GOLD, CREAM, color],
+    speed: [60, reach * 0.8],
+    up: [20, 90],
+    life: [0.7, 1.2],
+    size: [1, 2.2],
+    grav: 90,
+    drag: 1.8,
   });
   shot(fx.reduced ? 200 : 460, (k) => {
     // The strike stays on the caster while it moves.
@@ -350,6 +368,25 @@ function lighthouse(g: G, z: Zone, progress: number, now: number) {
   }
   fx.glow(z.x, cy, 60, GOLD, 0.55 * fade);
   twinkle(fx, z.x, cy, 18, GOLD, fade, now / 300);
+  // Dust caught in the beams: specks lit up as a ray passes over them.
+  fx.trail(`lh-dust${z.id}`, 0.03, () => {
+    const i = (Math.random() * rays) | 0,
+      ang = (z.angle ?? 0) + (i * TAU) / rays,
+      d = 30 + Math.random() * len * 0.95;
+    fx.burst({
+      x: z.x + Math.cos(ang) * d,
+      y: z.y + Math.sin(ang) * d * sq,
+      z: 14,
+      count: 1,
+      kind: "mote",
+      color: [CREAM, GOLD, 0xffffff],
+      speed: [2, 14],
+      up: [4, 20],
+      life: [0.5, 0.9],
+      size: [1, 2],
+      drag: 2,
+    });
+  });
 }
 
 // ───────────── Casts and hits ─────────────

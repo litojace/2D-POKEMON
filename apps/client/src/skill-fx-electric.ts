@@ -1068,6 +1068,36 @@ function sparkTrail(g: G, z: Zone, _progress: number, now: number) {
   }
   const head = pts[pts.length - 1];
   if (head) fx.glow(head.x, head.y, 22, PALE, 0.5);
+  // Sparks jump off the live wire, and it leaves a scorched line behind.
+  if (pts.length > 1) {
+    fx.trail(`st-spark${z.id}`, 0.05, () => {
+      const q = pts[(Math.random() * pts.length) | 0];
+      fx.burst({
+        x: q.x,
+        y: q.y,
+        z: 4,
+        count: 2,
+        kind: "spark",
+        color: [WHITE, BLUE, PALE],
+        speed: [40, 140],
+        up: [80, 220],
+        life: [0.25, 0.5],
+        size: [0.8, 1.4],
+        grav: 1050,
+        bounce: 0.4,
+      });
+    });
+    fx.trail(`st-scorch${z.id}`, 0.2, () =>
+      fx.decal({
+        kind: "scorch",
+        x: head!.x,
+        y: head!.y,
+        r: 14,
+        color: BLUE,
+        life: 2.5,
+      }),
+    );
+  }
 }
 
 /**
@@ -1269,7 +1299,37 @@ function clampBurst(
     grav: 900,
     drag: 2,
   });
-  fx.shake(120, 0.004);
+  fx.shake(140, 0.005);
+  // It goes off: bouncing sparks, an ozone puff and a scorch mark.
+  fx.burst({
+    x,
+    y,
+    z: 4,
+    count: 10,
+    kind: "spark",
+    color: [WHITE, BLUE, PALE],
+    speed: [120, 300],
+    up: [60, 200],
+    life: [0.4, 0.8],
+    size: [0.9, 1.6],
+    grav: 1100,
+    bounce: 0.45,
+  });
+  fx.burst({
+    x,
+    y: cy,
+    z: 18,
+    count: 5,
+    kind: "smoke",
+    color: [0x6a7488, 0x9aa4b8],
+    speed: [15, 50],
+    up: [30, 70],
+    life: [0.6, 1.1],
+    size: [9, 14],
+    grav: -20,
+    drag: 1.4,
+  });
+  fx.decal({ kind: "scorch", x, y, r: 30, color: BLUE, life: 3 });
   shot(fx.reduced ? 160 : 360, (k) => {
     const fade = 1 - k;
     for (let i = 0; i < 5; i++) {
@@ -1316,6 +1376,20 @@ function clampArc(
       alpha: fade,
     });
     fx.glow(tx, ty - 18, 36, BLUE, 0.7 * fade);
+  });
+  fx.burst({
+    x: tx,
+    y: ty,
+    z: 18,
+    count: 6,
+    kind: "spark",
+    color: [WHITE, BLUE],
+    speed: [80, 220],
+    up: [40, 160],
+    life: [0.3, 0.6],
+    size: [0.9, 1.5],
+    grav: 1000,
+    bounce: 0.4,
   });
 }
 /** A bolt that ends without a target: a few sparks and a blink of light. */

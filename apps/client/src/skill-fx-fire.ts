@@ -519,6 +519,45 @@ function sunfirePillar(g: G, z: Zone, progress: number, now: number) {
     });
     fx.shake(200, 0.005);
   });
+  // As it is steered it scorches a path, throws embers and trails smoke.
+  fx.trail(`sp-path${z.id}`, 0.22, () =>
+    fx.decal({
+      kind: "scorch",
+      x: z.x,
+      y: z.y,
+      r: r * 0.55,
+      color: c,
+      life: 3.5,
+    }),
+  );
+  fx.trail(`sp-fly${z.id}`, 0.05, () => {
+    embers(
+      fx,
+      z.x + (Math.random() - 0.5) * r,
+      z.y + (Math.random() - 0.5) * r * sq,
+      3,
+      c,
+      70,
+    );
+    fx.burst({
+      x: z.x + (Math.random() - 0.5) * r * 0.8,
+      y: z.y,
+      z: 4,
+      count: 2,
+      kind: "spark",
+      color: [GOLD, 0xffffff],
+      speed: [80, 220],
+      up: [160, 340],
+      life: [0.3, 0.55],
+      size: [1, 1.8],
+      grav: 1000,
+      bounce: 0.3,
+    });
+  });
+  fx.trail(`sp-smoke${z.id}`, 0.12, () =>
+    smoke(fx, z.x, z.y - 40, 2, [14, 24]),
+  );
+  fx.glow(z.x, z.y, r * 1.6, c, 0.35 * fade, true);
   const w =
     r * (0.75 + Math.sin(now / 50) * 0.04) * (k < 0.08 ? 0.5 + k / 0.16 : 1);
   // The column: solid fire body with a hot core, soft at the edges.
@@ -1131,10 +1170,45 @@ function emberCurtain(g: G, z: Zone, progress: number, now: number) {
       .fillTriangle(px - 3.5, py, px + 3.5, py, px, py - h * 0.65);
     fx.glow(px, py - h * 0.4, 16, RUST, 0.35 * fade);
   }
-  fx.trail(`curtain-${z.id}`, 0.08, () => {
+  // Embers lift off it, sparks pop and smoke rolls up and drifts.
+  fx.trail(`curtain-${z.id}`, 0.04, () => {
     const t = Math.random() * 2 - 1;
-    embers(fx, z.x + ux * len * t, z.y + uy * len * t * SQ, 1, RUST, 30);
+    embers(fx, z.x + ux * len * t, z.y + uy * len * t * SQ, 2, RUST, 45);
   });
+  fx.trail(`curtain-pop-${z.id}`, 0.11, () => {
+    const t = Math.random() * 2 - 1;
+    fx.burst({
+      x: z.x + ux * len * t,
+      y: z.y + uy * len * t * SQ,
+      z: 10,
+      count: 3,
+      kind: "spark",
+      color: [GOLD, 0xffffff, RUST],
+      speed: [40, 160],
+      up: [150, 320],
+      life: [0.3, 0.6],
+      size: [0.9, 1.6],
+      grav: 950,
+      bounce: 0.25,
+    });
+  });
+  fx.trail(`curtain-smoke-${z.id}`, 0.16, () => {
+    const t = Math.random() * 2 - 1;
+    smoke(fx, z.x + ux * len * t, z.y + uy * len * t * SQ - 30, 1, [12, 20]);
+  });
+  // Heat haze over the flames.
+  for (let i = 0; i < 4; i++) {
+    const t = (i / 3) * 2 - 1;
+    fx.glow(
+      z.x + ux * len * t,
+      z.y + uy * len * t * SQ - 50,
+      34,
+      GOLD,
+      0.12 * fade,
+      false,
+      1.8,
+    );
+  }
 }
 /** Ember Curtain cast: a sweep of embers across where the curtain rises. */
 function curtainCast(
@@ -1150,9 +1224,26 @@ function curtainCast(
     d = a.screen?.distance ?? 90,
     cx = x + Math.cos(angle) * d,
     cy = y + Math.sin(angle) * d;
-  embers(fx, cx, cy, 10, color, 90);
+  // A whoosh: flame licks out along the line, then embers settle.
+  embers(fx, cx, cy, 16, color, 110);
+  for (const side of [1, -1])
+    fx.burst({
+      x: cx,
+      y: cy,
+      z: 8,
+      count: 18,
+      kind: "flame",
+      color,
+      angle: angle + (side * Math.PI) / 2,
+      spread: 0.25,
+      speed: [120, (a.screen?.length ?? 240) * 1.1],
+      up: [20, 90],
+      life: [0.25, 0.45],
+      size: [7, 12],
+      drag: 3,
+    });
   shot(fx.reduced ? 160 : 300, (k) =>
-    fx.glow(cx, cy - 10, 60 * (1 - k * 0.4), color, 0.5 * (1 - k)),
+    fx.glow(cx, cy - 10, 70 * (1 - k * 0.4), color, 0.55 * (1 - k)),
   );
 }
 

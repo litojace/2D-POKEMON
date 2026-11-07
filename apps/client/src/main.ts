@@ -145,6 +145,7 @@ import {
   playCast,
   playHit,
   playImpact,
+  playRewindDive,
 } from "./skill-effects";
 import { setupPWA } from "./pwa";
 import { abilityIcon } from "./ability-icons";
@@ -217,6 +218,7 @@ import "./collection-frames.css";
 import "./journey-frames.css";
 import "./boss-frames.css";
 import "./mobile-panels.css";
+import "./match-badge.css";
 import { FollowCamera, screenToWorld, outsideView } from "./follow-camera";
 import { updateNameplate, updateNameplateHealth } from "./player-nameplate";
 import { fighterPack } from "./animation/pack-config";
@@ -1248,6 +1250,10 @@ const TEAM_LABELS = ["Blue", "Red"] as const;
 const isTeams = () => state?.mode === "teams";
 /** Free-for-all: three or four fighters, everyone for themselves. */
 const isFfa = () => state?.mode === "ffa";
+/** The off-screen arrow circles the fighter at this distance (CSS px),
+ * around a point this far (world px) above the feet. */
+const BEARING_RADIUS = 46;
+const BEARING_LIFT = 32;
 /** Living, visible enemies nearest first (aim assist, off-screen arrow). */
 function nearestEnemy(from: { x: number; y: number }, myself: Fighter) {
   return visibleEnemies(from, myself)[0];
@@ -2592,6 +2598,12 @@ function renderBattle() {
     $("abilities").innerHTML =
       `<div class="basic-hint" title="${c.basic.name}: ${c.basic.description} No cooldown · ${Math.round(basicInterval(c, false, state?.mode, state?.players.length) * 1000)} ms between attacks."><kbd data-action="basic">${keyText("basic")}</kbd><span>${abilityIcon(c.basic.name)}<small>${c.basic.name.toUpperCase()}</small></span></div>${c.skills.map((a, i) => `<div class="ability" id="ability-${i}" style="--element:#${c.color.toString(16)}"><kbd data-action="${SKILL_ACTIONS[i]}">${keyText(SKILL_ACTIONS[i])}</kbd><span>${abilityIcon(a.name)}<small id="cooldown-${i}">READY</small></span><i class="cooldown-fill" id="fill-${i}"></i><i class="skill-cooldown-ring" aria-hidden="true"></i></div>`).join("")}<div class="movement-ability"><kbd data-action="dash">${keyText("dash")}</kbd><span>Dash<small id="dash-cd"></small></span></div><div class="movement-ability"><kbd data-action="jump">${keyText("jump")}</kbd><span>Jump<small id="jump-cd"></small></span></div>`;
   }
+  // PvP shows one score badge (names, rounds, the clock): health is over
+  // each fighter, and no one sees an opponent's ultimate (owner, 7 Nov
+  // 2026). Raids and Practice keep the full cards.
+  const badge = !state.raid && !state.practice;
+  document.body.classList.toggle("pvp-badge", badge);
+  $("hud").classList.toggle("hud-badge", badge);
   hudOrder.forEach((p, i) => {
     // 2v2 has its own health per champion (TEAM_TUNING).
     const full = maxHealth(p.character, state!.mode, state!.players.length);
@@ -2610,9 +2622,15 @@ function renderBattle() {
         ? p.id === myId
           ? "TRAINER"
           : "TARGET"
-        : isTeams()
-          ? `${state!.teamScores?.[teamOf(p)] ?? 0} / ${roundsNeeded(state!.mutators)}`
-          : `${state!.scores[p.id]} / ${roundsNeeded(state!.mutators)}`,
+        : badge
+          ? String(
+              isTeams()
+                ? (state!.teamScores?.[teamOf(p)] ?? 0)
+                : (state!.scores[p.id] ?? 0),
+            )
+          : isTeams()
+            ? `${state!.teamScores?.[teamOf(p)] ?? 0} / ${roundsNeeded(state!.mutators)}`
+            : `${state!.scores[p.id]} / ${roundsNeeded(state!.mutators)}`,
     );
     const charge = Math.min(
       100,
@@ -2685,7 +2703,9 @@ function renderBattle() {
     $("round-label"),
     state.practice
       ? "FREE PRACTICE"
-      : `ROUND ${state.round} · BEST OF ${roundsNeeded(state.mutators) * 2 - 1}`,
+      : badge
+        ? `R${state.round} · BO${roundsNeeded(state.mutators) * 2 - 1}`
+        : `ROUND ${state.round} · BEST OF ${roundsNeeded(state.mutators) * 2 - 1}`,
   );
   setHudText(
     $("network"),
@@ -2702,8 +2722,7 @@ function renderBattle() {
             .toString()
             .padStart(2, "0")}:${(seconds % 60).toString().padStart(2, "0")}`,
   );
-  setHudText(
-    $("phase-label"),
+  const phaseText =
     state.phase === "playing"
       ? state.practice
         ? "TEST YOUR SKILLS"
@@ -2714,8 +2733,13 @@ function renderBattle() {
             : ringRadius(state.remaining, state.overtime) !== null
               ? "RING CLOSING · STAY INSIDE"
               : `LIVE · ${ARENAS[state.arena ?? "classic"].name.toUpperCase()}`
-      : state.phase.toUpperCase(),
-  );
+      : state.phase.toUpperCase();
+  setHudText($("phase-label"), phaseText);
+  // The badge says only what changes the fight (ring, overtime, a rule).
+  const quietPhase =
+    badge && state.phase === "playing" && phaseText.startsWith("LIVE ·");
+  if ($("phase-label").hidden !== quietPhase)
+    $("phase-label").hidden = quietPhase;
   $("timer").classList.toggle(
     "ring-on",
     !state.practice &&
@@ -4576,8 +4600,17 @@ class ArenaScene extends Phaser.Scene {
         "throw",
         "lighthouse",
       ].includes(ability.kind)
-    )
+    ) {
       playImpact(this, ability, event.x, event.y, event.color, reducedMotion);
+      // Halcyon Rewind: the dive back from where it left.
+      if (
+        ability.kind === "rewind" &&
+        event.tx !== undefined &&
+        event.ty !== undefined &&
+        !reducedMotion
+      )
+        playRewindDive(this, event.tx, event.ty, event.x, event.y, event.color);
+    }
     // Novas play on their burst event; every other move plays on cast.
     else if (ability && event.kind === "burst") {
       const combo = owner && COMBOS[owner.character];
@@ -4939,15 +4972,50 @@ class ArenaScene extends Phaser.Scene {
         this.scale.height,
         view,
       );
-    if (opponent && !this.enemyBearing.hidden) {
+    // PvP: an arrow circling the fighter you follow, in the nearest
+    // off-screen opponent's colour (owner, 7 Nov 2026: no chip at the top,
+    // where the score badge is). Raids keep the named chip.
+    const orbit = !state?.raid;
+    this.enemyBearing.classList.toggle("is-orbit", orbit);
+    if (opponent && presented && !this.enemyBearing.hidden) {
       this.enemyBearing.querySelector("strong")!.textContent =
         opponent.raidBoss && state?.raid
           ? state.raid.boss === "storm-twins"
             ? opponent.name
             : state.raid.name
           : CHARACTERS[opponent.character].name;
+      const css = this.scale.zoom;
+      const from = {
+        x: ((presented.x - view.x) * view.zoomX + this.scale.width / 2) * css,
+        // The middle of the fighter, above the feet.
+        y:
+          ((presented.y - BEARING_LIFT - view.y) * view.zoomY +
+            this.scale.height / 2) *
+          css,
+      };
+      const angle = orbit
+        ? Math.atan2(
+            (opponent.y - presented.y) * view.zoomY,
+            (opponent.x - presented.x) * view.zoomX,
+          )
+        : Math.atan2(
+            (opponent.y - view.y) * view.zoomY,
+            (opponent.x - view.x) * view.zoomX,
+          );
       this.enemyBearing.querySelector<HTMLElement>("span")!.style.transform =
-        `rotate(${Math.atan2((opponent.y - view.y) * view.zoomY, (opponent.x - view.x) * view.zoomX)}rad)`;
+        `rotate(${angle}rad)`;
+      setHudStyle(
+        this.enemyBearing,
+        "transform",
+        orbit
+          ? `translate(${from.x + Math.cos(angle) * BEARING_RADIUS}px, ${from.y + Math.sin(angle) * BEARING_RADIUS}px)`
+          : "",
+      );
+      setHudStyle(
+        this.enemyBearing,
+        "--bearing-color",
+        `#${CHARACTERS[opponent.character].color.toString(16).padStart(6, "0")}`,
+      );
     }
     for (const [id, label] of this.labels)
       if (!state?.players.some((p) => p.id === id)) {
@@ -5748,6 +5816,27 @@ class ArenaScene extends Phaser.Scene {
         const left = Math.max(0, clamp.until - serverTime),
           flick = reducedMotion ? 1 : 0.7 + 0.3 * Math.sin(_time / 30);
         const r = 22 + 16 * Math.min(1, left / 1.5);
+        // The charge sizzles, faster as it runs out.
+        if (!reducedMotion)
+          fxFor(this).trail(
+            `clamp-${p.id}`,
+            0.05 + 0.1 * Math.min(1, left),
+            () =>
+              fxFor(this).burst({
+                x,
+                y,
+                z: 30,
+                count: 1,
+                kind: "spark",
+                color: [0xffffff, 0x9fe8ff],
+                speed: [60, 160],
+                up: [60, 180],
+                life: [0.2, 0.4],
+                size: [0.8, 1.4],
+                grav: 1000,
+                bounce: 0.4,
+              }),
+          );
         g.lineStyle(7, 0x2b6f8f, 0.35 * flick).strokeCircle(
           x,
           y - 18 - jump,
@@ -5785,6 +5874,28 @@ class ArenaScene extends Phaser.Scene {
           g.lineStyle(5, 0x9a6ad8, 1);
           curve.draw(g, 16);
           g.lineStyle(3, 0x9a6ad8, 1).strokeCircle(to.x, to.y - 16, 20);
+          // Suckers along the arm, and ink dripping from it.
+          for (let k = 2; k < 15; k += 3) {
+            const q = curve.getPoint(k / 16);
+            g.fillStyle(0xe4d6ff, 0.9).fillCircle(q.x, q.y + 2, 2);
+          }
+          if (!reducedMotion)
+            fxFor(this).trail(`grasp-${p.id}`, 0.08, () => {
+              const q = curve.getPoint(0.3 + Math.random() * 0.6);
+              fxFor(this).burst({
+                x: q.x,
+                y: q.y + 14,
+                z: 14,
+                count: 1,
+                kind: "drop",
+                color: [0x150b26, 0x2a1450],
+                speed: [5, 25],
+                up: [0, 30],
+                life: [0.3, 0.5],
+                size: [1.6, 2.6],
+                grav: 1100,
+              });
+            });
         }
       }
       // Pinning Quill: a taut line back to the quill that pins it.

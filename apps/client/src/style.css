@@ -3763,20 +3763,35 @@ html.zoom-locked #game,
 html.zoom-locked #game * {
   touch-action: none !important;
 }
-/* Touch screens: a long press is a game action (hold to harvest or plant
-   many on the Farm, hold to compare in the Shop), never a text selection or
-   the phone's Copy / Save image menu. Fields you type in keep selection. */
-@media (any-pointer: coarse) {
-  html {
-    -webkit-user-select: none;
-    user-select: none;
-    -webkit-touch-callout: none;
-  }
-  :is(input, textarea, select, [contenteditable="true"]) {
-    -webkit-user-select: text;
-    user-select: text;
-    -webkit-touch-callout: default;
-  }
+/* Not a page to copy (owner, 6–7 Nov 2026): a long press on a phone is a
+   game action (hold to harvest or plant many on the Farm, hold to compare in
+   the Shop), and a drag with the mouse on a computer selects nothing. No
+   text selection, no Copy / Save image callout, no dragging pictures out
+   (touch-hold.ts cancels the menus). Fields you type in keep selection,
+   and admins can copy from the Admin panel (owner, 7 Nov 2026). */
+html {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+/* A modal dialog sits in the top layer, where Chrome lets its text be
+   selected whatever the page says: say it again for dialogs. */
+dialog,
+dialog * {
+  -webkit-user-select: none;
+  user-select: none;
+}
+img,
+a,
+svg {
+  -webkit-user-drag: none;
+}
+:is(input, textarea, select, [contenteditable="true"]),
+dialog:has(.admin-tabs),
+dialog:has(.admin-tabs) * {
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
 }
 html.zoom-locked body {
   -webkit-user-select: none;

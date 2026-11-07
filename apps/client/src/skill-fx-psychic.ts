@@ -348,22 +348,38 @@ function thoughtstrike(g: G, z: Zone, progress: number, now: number) {
   const k = (progress - strikeAt) / (1 - strikeAt);
   fx.trail(`ts${z.id}`, 999, () => {
     fx.decal({ kind: "glyph", x, y, r: r * 0.7, color: c, life: 3 });
-    fx.decal({ kind: "crack", x, y, r: r * 0.6, color: c, life: 2.4 });
+    floatMotes(fx, x, y, 22, c, r);
     fx.burst({
       x,
       y,
-      count: 22,
-      kind: "debris",
-      color: [0x8a7f74, 0x6d6460, 0x9c9389],
-      speed: [60, 200],
-      up: [200, 420],
+      z: 20,
+      count: 10,
+      kind: "smoke",
+      color: [c, PINK, 0x6a3fa0],
+      speed: [r * 0.6, r * 1.2],
+      up: [10, 40],
       life: [0.6, 1],
-      size: [2, 4],
-      grav: 900,
+      size: [10, 16],
+      drag: 2.4,
     });
-    floatMotes(fx, x, y, 14, c, 120);
-    fx.shake(170, 0.005);
+    fx.shake(140, 0.004);
   });
+  // The maze: broken rings on the floor, turning against each other.
+  for (let i = 0; i < 3; i++) {
+    const rr = r * (0.35 + i * 0.3) * ease(Math.min(1, k * 2.5)),
+      dir = i % 2 ? 1 : -1,
+      a0 = dir * (now / 500) + i * 1.3;
+    for (let seg = 0; seg < 2; seg++) {
+      const b0 = a0 + seg * Math.PI,
+        pts = Array.from({ length: 12 }, (_, q) => {
+          const t = b0 + (q / 11) * 2.4;
+          return { x: x + Math.cos(t) * rr, y: y + Math.sin(t) * rr * 0.82 };
+        });
+      fx.floor
+        .lineStyle(4, i % 2 ? CYAN : PINK, 0.85 * (1 - k))
+        .strokePoints(pts, false);
+    }
+  }
   // The psychic hammer: a shaft from above, then the floor ripples.
   const shaft = Math.max(0, 1 - k * 2.2);
   fx.glow(x, y - 160, 70, c, 0.6 * shaft, false, 3.2);
@@ -878,7 +894,38 @@ function poundThud(
   shot: Shot,
 ) {
   const fx = fxFor(scene);
+  // The mallet lands: a cloud of rice flour billows and settles, grit jumps.
   moonDust(fx, x, y, 8, [40, 120], MOCHI);
+  fx.burst({
+    x,
+    y,
+    z: 6,
+    count: 9,
+    kind: "smoke",
+    color: [MOCHI, 0xffffff, 0xf3e6ea],
+    speed: [40, 130],
+    up: [20, 70],
+    life: [0.6, 1.1],
+    size: [10, 18],
+    grav: -10,
+    drag: 2.2,
+  });
+  fx.burst({
+    x,
+    y,
+    z: 4,
+    count: 6,
+    kind: "debris",
+    color: [0x9a8a78, 0x6b5a48],
+    speed: [60, 170],
+    up: [120, 260],
+    life: [0.4, 0.7],
+    size: [1.5, 2.6],
+    grav: 1100,
+    bounce: 0.35,
+  });
+  fx.decal({ kind: "crack", x, y, r: 22, color, life: 2 });
+  fx.shake(90, 0.004);
   shot(fx.reduced ? 160 : 320, (k) => {
     const out = ease(Math.min(1, k * 2)),
       fade = 1 - k;
@@ -902,18 +949,28 @@ function moonGravity(g: G, z: Zone, progress: number, now: number) {
     grow = ease(Math.min(1, progress / 0.1)),
     fade = progress > 0.88 ? (1 - progress) / 0.12 : 1,
     rr = r * grow;
-  fx.trail(`mg${z.id}`, 999, () => {
-    fx.decal({
-      kind: "crack",
-      x,
-      y,
-      r: r * 0.5,
-      color: c,
-      life: (z.ability.duration || 2) + 0.8,
+  // Low gravity: grit, pebbles and dust lift off the floor and drift up
+  // slowly, turning as they go.
+  fx.trail(`mg-lift${z.id}`, 0.05, () => {
+    const aa = Math.random() * Math.PI * 2,
+      d = Math.sqrt(Math.random()) * rr * 0.9;
+    fx.burst({
+      x: x + Math.cos(aa) * d,
+      y: y + Math.sin(aa) * d * SQ,
+      z: 0,
+      count: 1,
+      kind: Math.random() < 0.6 ? "debris" : "mote",
+      color: [0x9a8a78, 0xc9b8a4, MOON],
+      speed: [2, 12],
+      up: [20, 55],
+      life: [1.2, 2],
+      size: [1.4, 3],
+      grav: -6,
+      drag: 1.6,
+      bounce: 0,
     });
-    fx.shake(100, 0.003);
   });
-  // The ground sags: dark violet bowl with a pale rim.
+  // The patch: a pale violet haze over the floor.
   fx.floorSolid
     .fillStyle(INK, 0.32 * fade)
     .fillEllipse(x, y, rr * 2, rr * 2 * SQ);
@@ -922,10 +979,10 @@ function moonGravity(g: G, z: Zone, progress: number, now: number) {
     .fillEllipse(x, y + rr * 0.06, rr * 1.4, rr * 1.4 * SQ);
   fx.glow(x, y, rr * 1.05, c, 0.25 * fade, true);
   lensRing(fx, x, y, rr, c, 0.9 * fade, 4, SQ, true);
-  // Rings pressing inward: the pull of the weight.
+  // Rings rising and spreading out: gravity letting go.
   for (let i = 0; i < 3; i++) {
-    const k = (now / 1100 + i / 3) % 1,
-      rp = rr * (1 - ease(k)) * 0.95;
+    const k = (now / 1600 + i / 3) % 1,
+      rp = rr * (0.2 + ease(k) * 0.8);
     fx.floor
       .lineStyle(2.5, i % 2 ? CYAN : PINK, 0.6 * fade * Math.min(1, k * 4))
       .strokeEllipse(x, y, rp * 2, rp * 2 * SQ);
