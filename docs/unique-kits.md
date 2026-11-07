@@ -136,11 +136,11 @@ stay. The others change:
 
 | Champion | Was                                        | Now                                                                                                                                                                                         | Borrowed from                  |
 | -------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
-| Lumoth   | **Eyespot Flash**: a stun strike in front  | **Eyespot Flash** (12 s): the eyespots flash; every enemy within 260 px takes 8, and those **looking at Lumoth** (aiming within 0.5 rad of it) are stunned for 0.5 s. Look away to dodge it | gaze attacks                   |
-| Lumoth   | **Radiant Flare**: a blast ring            | **Radiant Flare** (ultimate): Lumoth glows like a **lighthouse** for 2.4 s; three rays 260 px long turn round it (a turn every 1.2 s) and each enemy a ray sweeps takes 6                   | rotating beams                 |
+| Lumoth   | **Eyespot Flash**: a stun strike in front  | **Eyespot Flash** (12 s): the eyespots flash; every enemy within 220 px takes 8, and those **looking at Lumoth** (aiming within 0.5 rad of it) are stunned for 0.5 s. Look away to dodge it | gaze attacks                   |
+| Lumoth   | **Radiant Flare**: a blast ring            | **Radiant Flare** (ultimate): Lumoth glows like a **lighthouse** for 2 s; three rays 260 px long turn round it (a turn every 1.2 s) and each enemy a ray sweeps takes 6                     | rotating beams                 |
 | Coilemur | **Static Clamp**: a stun strike            | **Static Clamp** (12 s): clamps a **charge** on the enemy in front; 0.9 s later it goes off (28 and paralysis) and **arcs** to every enemy within 200 px of it for half                     | time bombs and chain lightning |
 | Astrabun | **Mochi Pound**: a stun strike             | **Mochi Pound** (12 s): a **chain of three pounds**, each cast again within 1.4 s: 10, 13, then 20 that stuns and knocks back. The cooldown starts after the last                           | recast combos                  |
-| Shadopus | **Kraken Grasp**: a stun strike (ultimate) | **Kraken Grasp** (ultimate): **seizes** the enemy in front, holds it 0.5 s (aim while you hold it), then **hurls** it 380 px: 30, half again into a wall; enemies where it lands take half  | grabs and throws               |
+| Shadopus | **Kraken Grasp**: a stun strike (ultimate) | **Kraken Grasp** (ultimate): **seizes** the enemy in front, holds it 0.5 s (aim while you hold it), then **hurls** it 380 px: 32, half again into a wall; enemies where it lands take half  | grabs and throws               |
 | Auralynx | **Shard Nova**: a blast ring (ultimate)    | **Crystal Cage** (ultimate): crystal spires rise in a 180 px **ring** round Auralynx for 2.5 s; nobody can cross it and no shot gets through. Enemies caught inside take 10                 | arena-locking ultimates        |
 
 ### New mechanics
@@ -186,3 +186,44 @@ stay. The others change:
   tightens as it runs out and its arcs, the tentacle holding its catch, the
   ink splash where it lands, each pound's puff and "×2" / "POUND!", the ring
   of spires), CHARGED and CAGED labels.
+
+### Balance
+
+Measured like wave 1: round robin against all seventeen others, Hard / Normal,
+on fresh seeds, with the wave 1 build as the reference.
+
+| Champion | Before wave 2 (seed 75000) | First version (seed 75000) | Shipped kit (latest fresh seed) |
+| -------- | -------------------------- | -------------------------- | ------------------------------- |
+| Lumoth   | 53.5% / 48.6%              | 64.9% / 56.9%              | 49.4% / 45.9% (seed 80000)      |
+| Coilemur | 52.5% / 51.6%              | 43.5% / 46.1%              | 47.3% / 49.0% (seed 80000)      |
+| Astrabun | 47.6% / 50.6%              | 41.8% / 40.6%              | 51.0% / 54.1% (seed 79000)      |
+| Shadopus | 48.8% / 46.1%              | 53.3% / 50.8%              | 51.8% / 57.3% (seed 80000)      |
+| Auralynx | 50.8% / 51.0%              | 61.4% / 56.1%              | 54.7% / 47.6% (seed 79000)      |
+
+What moved on the way:
+
+- **Lumoth** was the strongest by far: bots always face their target, so
+  every Eyespot Flash stunned. The flash now reaches 220 px (was 300) and
+  stuns for 0.5 s (was 0.8) within 0.5 rad (was 0.6); Radiant Flare's rays
+  hit for 6 (was 8) for 2 s (was 2.4).
+- **Crystal Cage** shut ranged champions in with a melee duelist: 180 px (was
+  230), 2.5 s (was 3), 10 damage (was 24).
+- **Static Clamp** waited too long: it goes off after 0.9 s (was 1.5) for 28
+  (was 22). **Mochi Pound**: 10, 13 and 20 (was 8, 10 and 16), with 1.4 s
+  to follow up (was 1.2). **Kraken Grasp**: 32 (was 34).
+- Normal handicaps (`dazeBy`): Astrabun 0.36 → 0.32, Shadopus 0.32 → 0.28.
+
+Coilemur ends a few points under its old kit on Hard (Lumoth's flash
+counters it hard); Auralynx a few over.
+
+**2v2 and free-for-all**: two rounds of 1,000 fresh line-ups per difficulty
+in 2v2 and 4-player free-for-all, one in 3-player, then a check on unused
+line-ups (Lumoth's factors were raised after its last nerf):
+
+| Champion | 2v2 factor   | 2v2 check (fair 50%) | FFA factor    | FFA check (fair 25%) | 3-player FFA factor |
+| -------- | ------------ | -------------------- | ------------- | -------------------- | ------------------- |
+| Lumoth   | 0.997 → 1    | 42.6% (at 0.97)      | 0.919 → 0.9   | 23.9%                | 0.864 → 0.87        |
+| Coilemur | 1.006 → 1    | 53.5%                | 1.178 → 1.19  | 25.9%                | 1.242 → 1.26        |
+| Astrabun | 1.008 → 0.99 | 49.1%                | 1.026 → 1.06  | 27.4%                | 1.106 → 1.16        |
+| Shadopus | 1.02 → 1.04  | 53.9%                | 1.06 (same)   | 28.0%                | 1.13 → 1.12         |
+| Auralynx | 0.97 → 0.95  | 48.6%                | 1.055 → 1.065 | 24.4%                | 1.127 → 1.15        |
