@@ -2457,17 +2457,21 @@ export function openBistro(o: BistroOptions): BistroHandle {
     </div>`;
   };
   let branchArmed = false;
-  /** Something on the board you can do now: an order or a regular to serve, a reward to claim. */
-  const boardReady = () => {
+  /** How many things on the board can be handed over right now: complete
+   * catering orders, regulars whose dish is on the counter, the league prize. */
+  const boardReadyCount = () => {
     const ex = sync.extras;
-    if (ex.orders.some((o) => orderReady(S, o))) return true;
+    const now = nowS();
+    let n = ex.orders.filter(
+      (o) => o.dishes && o.expires > now && orderReady(S, o),
+    ).length;
     for (const g of REGULARS) {
       const st = g.steps[S.regulars[g.id] ?? 0];
-      if (st && S.level >= g.level && onCounter(S, st.dish) >= st.qty)
-        return true;
+      if (st && S.level >= g.level && onCounter(S, st.dish) >= st.qty) n++;
     }
     const l = ex.league.last;
-    return !!l && !l.claimed && l.points >= LEAGUE_MIN;
+    if (l && !l.claimed && l.points >= LEAGUE_MIN) n++;
+    return n;
   };
   /** What waits on the board: open orders and regulars, and how many of
    * them can be done right now (tabs and cards light up for those). */
@@ -3363,9 +3367,9 @@ export function openBistro(o: BistroOptions): BistroHandle {
       const st = nextHire(S, r);
       return !!st && S.level >= st.level && S.coins >= st.price;
     });
-    // Orders: a count of the catering orders waiting, the button breathing
-    // while any wait, and glowing gold when one (or a regular, or the
-    // league's prize) can be handed over now.
+    // Orders: red while catering orders wait (a count of them, the button
+    // breathing red); gold as soon as something can be handed over (a count
+    // of how many, the button glowing gold).
     const bdot = layer.querySelector<HTMLElement>("#bs-board-dot");
     const bn = layer.querySelector<HTMLElement>("#bs-board-n");
     const bbtn = layer.querySelector<HTMLElement>("#bs-board-btn");
@@ -3373,11 +3377,17 @@ export function openBistro(o: BistroOptions): BistroHandle {
     const open = visiting
       ? 0
       : sync.extras.orders.filter((x) => x.dishes && x.expires > now).length;
-    const ready = !visiting && boardReady();
-    if (bdot) bdot.hidden = !ready || open > 0;
+    const readyN = visiting ? 0 : boardReadyCount();
+    const ready = readyN > 0;
+    const shown = ready ? readyN : open;
+    if (bdot) bdot.hidden = true;
     if (bn) {
-      bn.hidden = open === 0;
-      if (bn.textContent !== String(open)) bn.textContent = String(open);
+      bn.hidden = shown === 0;
+      bn.classList.toggle("ready", ready);
+      if (bn.textContent !== String(shown)) bn.textContent = String(shown);
+      bn.title = ready
+        ? `${shown} ready to hand over`
+        : `${shown} order${shown === 1 ? "" : "s"} waiting`;
     }
     bbtn?.classList.toggle("waiting", open > 0 && !ready);
     bbtn?.classList.toggle("ready", ready);

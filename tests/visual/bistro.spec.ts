@@ -478,7 +478,13 @@ test("Bistro Orders button breathes while orders wait for food", async ({
      if (srv.extras.league?.last) srv.extras.league.last.claimed = true;
      return b.load()`,
   );
+  // Waiting: a red count of the orders, the button breathing red.
   await expect(page.locator("#bs-board-n")).toBeVisible();
+  await expect(page.locator("#bs-board-n")).not.toHaveClass(/\bready\b/);
+  await expect(page.locator("#bs-board-n")).toHaveCSS(
+    "background-color",
+    "rgb(255, 90, 90)",
+  );
   await expect(page.locator("#bs-board-btn")).toHaveClass(/\bwaiting\b/);
   await expect(page.locator("#bs-board-btn")).not.toHaveClass(/\bready\b/);
   // The board's tabs count what waits; nothing can be done yet, so no gold.
@@ -508,15 +514,16 @@ test("Bistro board: deliver a catering order, a regular's visit, claim the leagu
      S.counter = [{ dish: 'goicuon', servings: 12, perfect: false }, null, null, null];
      return b.load()`,
   );
-  // Orders waiting: the button counts them and glows gold when one can be
-  // handed over now.
+  // Something can be handed over now: the count turns gold and counts what
+  // is ready (here at least Mira), and the button glows gold.
   await expect(page.locator("#bs-board-n")).toBeVisible();
-  const open = (await B(
-    page,
-    "return srv.extras.orders.filter((x) => x.dishes && x.expires > b.sync().now()).length",
-  )) as number;
-  expect(open).toBeGreaterThan(0);
-  await expect(page.locator("#bs-board-n")).toHaveText(String(open));
+  await expect(page.locator("#bs-board-n")).toHaveClass(/\bready\b/);
+  await expect(page.locator("#bs-board-n")).toHaveCSS(
+    "background-color",
+    "rgb(255, 214, 91)",
+  );
+  const readyN = Number(await page.locator("#bs-board-n").textContent());
+  expect(readyN).toBeGreaterThan(0);
   await expect(page.locator("#bs-board-btn")).toHaveClass(/\bready\b/);
   await page.click('.bs-rail [data-sheet="board"]');
   // Spring rolls on the counter: an order and Mira can be served now.
