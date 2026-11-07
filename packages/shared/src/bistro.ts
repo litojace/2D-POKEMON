@@ -41,19 +41,35 @@ export const MAX_SIZE_LV = EXPAND_STEPS.length;
 export const MAX_SIZE = sizeOf(MAX_SIZE_LV);
 /** Where customers come in (a tile on the left wall's front end). */
 export const DOOR = { x: 0, y: 7 } as const;
-/** Stove slots along the back wall, the chef's lane in front of them. */
+/** The stoves stand on the kitchen's back wall (row 0), the chef's lane in
+ *  front of them (row 1). The first room's four stove spots. */
 export const STOVE_TILES = [
   { x: 1, y: 0 },
   { x: 2, y: 0 },
   { x: 3, y: 0 },
   { x: 4, y: 0 },
 ] as const;
-export const MAX_STOVES = STOVE_TILES.length;
 /** The serving counter runs x 0..5 on row 2; dishes sit on x 1..4. */
 export const COUNTER_ROW = 2;
 export const COUNTER_X0 = 0;
 export const COUNTER_X1 = 5;
 export const COUNTER_SLOTS = 4;
+/**
+ * The kitchen's last column (migration 103): one more with each room
+ * expansion (the room gains two), 5 to 10. The fridge stands at x 0 and the
+ * sink at this column; stoves go on the back wall between them, and the
+ * counter runs the kitchen's width.
+ */
+export const kitchenX1 = (sizeLv: number) => COUNTER_X1 + sizeLv;
+/** The kitchen's last column for a room of this size. */
+export const kitchenX1Of = (z: RoomSize) =>
+  kitchenX1(Math.max(0, Math.round((z.cols - COLS) / 2)));
+/** The back-wall tiles a stove can stand on: 4 in the first room, 9 at the biggest. */
+export const stoveSpots = (sizeLv: number) =>
+  Array.from({ length: kitchenX1(sizeLv) - 1 }, (_, i) => i + 1);
+export const maxStoves = (sizeLv: number) => kitchenX1(sizeLv) - 1;
+/** Every stove the room could ever hold (the biggest room). */
+export const MAX_STOVES = maxStoves(MAX_SIZE_LV);
 /** Where a waiter stands to pick up the dish in counter slot i. */
 export const pickupTile = (slot: number) => ({ x: 1 + slot, y: 3 });
 /** The waiters' resting spot, by the counter's end. */
@@ -780,7 +796,52 @@ export interface Item {
   /** Facing, 0..3 (chairs pick the table they touch; this breaks ties). */
   rot: number;
 }
+/* Stoves (migration 103): bought in the Shop, placed on the back wall. A
+   dearer model cooks faster (it adds to the kitchen upgrade and the cook). */
+export type StoveModel = "clay" | "steel" | "dragon";
+export interface StoveDef {
+  model: StoveModel;
+  name: string;
+  price: number;
+  level: number;
+  speed: number;
+  blurb: string;
+}
+export const STOVES: readonly StoveDef[] = [
+  {
+    model: "clay",
+    name: "Clay Stove",
+    price: 200,
+    level: 1,
+    speed: 1,
+    blurb: "A sturdy stove: cooks at the usual pace.",
+  },
+  {
+    model: "steel",
+    name: "Steel Range",
+    price: 1200,
+    level: 8,
+    speed: 1.15,
+    blurb: "Polished steel: cooks 15% faster.",
+  },
+  {
+    model: "dragon",
+    name: "Dragon Oven",
+    price: 4000,
+    level: 16,
+    speed: 1.3,
+    blurb: "Breathes fire: cooks 30% faster.",
+  },
+];
+export const STOVE_BY_MODEL = Object.fromEntries(
+  STOVES.map((d) => [d.model, d]),
+) as Record<StoveModel, StoveDef>;
+export const isStoveModel = (v: unknown): v is StoveModel =>
+  typeof v === "string" && Object.hasOwn(STOVE_BY_MODEL, v);
 export interface Stove {
+  /** Its spot on the back wall (row 0). */
+  x: number;
+  model: StoveModel;
   dish: DishId | null;
   /** When cooking started (ms since epoch). */
   start: number;
@@ -805,6 +866,8 @@ export interface BistroState {
   /** Bought but not placed. */
   stored: Partial<Record<ItemKind, number>>;
   stoves: Stove[];
+  /** Stoves bought and not placed, by model (migration 103). */
+  stoveStore: Partial<Record<StoveModel, number>>;
   counter: (CounterSlot | null)[];
   staff: Staff[];
   kitchenLv: number;
@@ -870,9 +933,10 @@ export function defaultState(): BistroState {
     ],
     stored: {},
     stoves: [
-      { dish: null, start: 0, perfect: false },
-      { dish: null, start: 0, perfect: false },
+      { x: 1, model: "clay", dish: null, start: 0, perfect: false },
+      { x: 2, model: "clay", dish: null, start: 0, perfect: false },
     ],
+    stoveStore: {},
     // A first batch of spring rolls, so the first guests come right away.
     counter: [
       { dish: "goicuon", servings: 6, perfect: false },
@@ -1035,13 +1099,23 @@ export function sanitize(raw: unknown): BistroState {
   }
   if (Array.isArray(r.stoves) && r.stoves.length >= 2) {
     s.stoves = (r.stoves as Record<string, unknown>[])
-      .slice(0, MAX_STOVES)
-      .map((st) => ({
+      .slice(0, maxStoves(s.sizeLv))
+      .map((st, i) => ({
+        x: Math.floor(num(st?.x, i + 1, 1, kitchenX1(s.sizeLv) - 1)),
+        model: isStoveModel(st?.model) ? st.model : "clay",
         dish: st && isDish(st.dish) ? st.dish : null,
         start: num(st?.start, 0),
         perfect: st?.perfect === true,
         ...(num(st?.dur, 0) > 0 ? { dur: num(st?.dur, 0) } : {}),
       }));
+  }
+  if (r.stoveStore && typeof r.stoveStore === "object") {
+    s.stoveStore = {};
+    for (const [k, v] of Object.entries(
+      r.stoveStore as Record<string, unknown>,
+    ))
+      if (isStoveModel(k) && num(v, 0) > 0)
+        s.stoveStore[k] = Math.floor(num(v, 0));
   }
   if (Array.isArray(r.counter)) {
     s.counter = Array.from({ length: COUNTER_SLOTS }, (_, i) => {
@@ -1231,10 +1305,13 @@ export function startCooking(
   if (s.coins < d.cost) return fail(`You need ${d.cost} coins for ${d.name}.`);
   s.coins -= d.cost;
   s.stoves[stove] = {
+    x: st.x,
+    model: st.model,
     dish,
     start: now,
     perfect: false,
-    dur: cookMs(s, dish, cookLevel, pace),
+    // The stove's speed counts like the cook's pace (the server does the same).
+    dur: cookMs(s, dish, cookLevel, pace * STOVE_BY_MODEL[st.model].speed),
   };
   return { ok: true };
 }
@@ -1274,7 +1351,13 @@ export function plate(
     lv,
     mastery: Math.min(masteryNeed(lv), m + (st.perfect ? 2 : 1)),
   };
-  s.stoves[stove] = { dish: null, start: 0, perfect: false };
+  s.stoves[stove] = {
+    x: st.x,
+    model: st.model,
+    dish: null,
+    start: 0,
+    perfect: false,
+  };
   const levels = addXp(s, d.xp);
   return { ok: true, slot, servings, xp: d.xp, levels };
 }
@@ -1319,8 +1402,8 @@ export function pickOrder(
 
 /* ───────────── the floor plan ───────────── */
 
-export const inKitchen = (x: number, y: number) =>
-  x <= COUNTER_X1 && y <= COUNTER_ROW;
+export const inKitchen = (x: number, y: number, z: RoomSize = BASE_SIZE) =>
+  x <= kitchenX1Of(z) && y <= COUNTER_ROW;
 export const inGrid = (x: number, y: number, z: RoomSize = BASE_SIZE) =>
   x >= 0 && y >= 0 && x < z.cols && y < z.rows;
 /** A grid's size, from the grid itself. */
@@ -1355,7 +1438,7 @@ export function blockedGrid(
     Array<boolean>(z.rows).fill(false),
   );
   // The kitchen (stoves, the chef's lane, the counter) is the chef's alone.
-  for (let x = COUNTER_X0; x <= COUNTER_X1; x++)
+  for (let x = COUNTER_X0; x <= kitchenX1Of(z); x++)
     for (let y = 0; y <= COUNTER_ROW; y++) g[x][y] = true;
   for (const it of items) {
     if (it.id === ignoreId || ITEM_BY_KIND[it.kind].floor) continue;
@@ -1772,15 +1855,74 @@ export function buyItem(
   s.stored[kind] = (s.stored[kind] ?? 0) + 1;
   return { ok: true };
 }
+/** The first free stove spot on the back wall, or -1. */
+export const freeStoveSpot = (s: BistroState) =>
+  stoveSpots(s.sizeLv).find((x) => !s.stoves.some((st) => st.x === x)) ?? -1;
 export function nextStovePrice(s: BistroState): number | null {
-  return s.stoves.length < MAX_STOVES ? STOVE_PRICES[s.stoves.length] : null;
+  return s.stoves.length < maxStoves(s.sizeLv)
+    ? STOVE_BY_MODEL.clay.price
+    : null;
 }
+/** A Clay Stove on the first free spot (what "stove" did before the Shop sold them). */
 export function buyStove(s: BistroState): Result {
   const price = nextStovePrice(s);
-  if (price === null) return fail("Every stove slot is in use.");
+  const x = freeStoveSpot(s);
+  if (price === null || x < 0) return fail("Every stove spot is in use.");
   if (s.coins < price) return fail(`You need ${price} coins.`);
   s.coins -= price;
-  s.stoves.push({ dish: null, start: 0, perfect: false });
+  s.stoves.push({ x, model: "clay", dish: null, start: 0, perfect: false });
+  return { ok: true };
+}
+/** A stove from the Shop, into storage. */
+export function buyStoveModel(s: BistroState, model: StoveModel): Result {
+  const def = STOVE_BY_MODEL[model];
+  if (!def) return fail("Unknown stove.");
+  if (def.level > s.level)
+    return fail(`${def.name} opens at level ${def.level}.`);
+  if (s.coins < def.price) return fail(`You need ${def.price} coins.`);
+  s.coins -= def.price;
+  s.stoveStore[model] = (s.stoveStore[model] ?? 0) + 1;
+  return { ok: true };
+}
+/**
+ * A stove from storage onto the back wall at x: a free spot takes a new
+ * stove (up to the room's spots); a stove standing there is swapped for it
+ * (it goes into storage), if nothing is cooking on it.
+ */
+export function placeStove(
+  s: BistroState,
+  model: StoveModel,
+  x: number,
+): Result {
+  if (!isStoveModel(model)) return fail("Unknown stove.");
+  if ((s.stoveStore[model] ?? 0) < 1) return fail("None in storage.");
+  if (!stoveSpots(s.sizeLv).includes(x))
+    return fail("Stoves go on the kitchen's back wall.");
+  const i = s.stoves.findIndex((st) => st.x === x);
+  if (i >= 0) {
+    const st = s.stoves[i];
+    if (st.dish) return fail("That stove is cooking: wait until it's done.");
+    if (st.model === model) return fail("That's the same stove.");
+    s.stoveStore[st.model] = (s.stoveStore[st.model] ?? 0) + 1;
+    st.model = model;
+  } else {
+    if (s.stoves.length >= maxStoves(s.sizeLv))
+      return fail("Every stove spot is in use.");
+    s.stoves.push({ x, model, dish: null, start: 0, perfect: false });
+  }
+  s.stoveStore[model] = (s.stoveStore[model] ?? 0) - 1;
+  if (!s.stoveStore[model]) delete s.stoveStore[model];
+  return { ok: true };
+}
+/** A stove to another free spot on the back wall (a pot on it moves too). */
+export function moveStove(s: BistroState, stove: number, x: number): Result {
+  const st = s.stoves[stove];
+  if (!st) return fail("No stove there.");
+  if (!stoveSpots(s.sizeLv).includes(x))
+    return fail("Stoves go on the kitchen's back wall.");
+  if (s.stoves.some((o) => o !== st && o.x === x))
+    return fail("Something's already there.");
+  st.x = x;
   return { ok: true };
 }
 
@@ -1909,6 +2051,14 @@ export function buyExpand(s: BistroState): Result {
   if (s.coins < step.price) return fail(`You need ${step.price} coins.`);
   s.coins -= step.price;
   s.sizeLv++;
+  // The kitchen grows a column: furniture standing there goes into storage.
+  const z = sizeOf(s.sizeLv);
+  s.items = s.items.filter((it) => {
+    if (!footprint(it.kind, it.x, it.y).some((t) => inKitchen(t.x, t.y, z)))
+      return true;
+    s.stored[it.kind] = (s.stored[it.kind] ?? 0) + 1;
+    return false;
+  });
   return { ok: true };
 }
 export function buyKitchen(s: BistroState): Result {
@@ -2218,6 +2368,8 @@ export function openBranch(s: BistroState): Result {
   s.items = d.items;
   s.nextId = d.nextId;
   s.stored = stored;
+  for (const st of s.stoves)
+    s.stoveStore[st.model] = (s.stoveStore[st.model] ?? 0) + 1;
   s.stoves = d.stoves;
   s.counter = d.counter;
   s.staff = d.staff;

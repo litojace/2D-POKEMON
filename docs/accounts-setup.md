@@ -171,6 +171,8 @@ Then run [101_bistro_cooks_in_step.sql](../supabase/migrations/101_bistro_cooks_
 
 Then run [102_bistro_orders_aside.sql](../supabase/migrations/102_bistro_orders_aside.sql) (after 101). The final query should return **true**. Catering orders fill as you go: delivering puts aside what the order still needs from the counter (guests can't eat it, `filled` on `arena_bistro_orders`), and it pays when complete; a skipped or expired order gives back what was put aside.
 
+Then run [103_bistro_stove_shop.sql](../supabase/migrations/103_bistro_stove_shop.sql) (after 102). The final query should return **true**. Stoves are bought in the Shop (Clay Stove, Steel Range +15% from level 8, Dragon Oven +30% from level 16; `arena_bistro_stove_store`) and placed on the kitchen's back wall (`x` and `model` on `arena_bistro_stoves`). The kitchen gains a column with each room expansion (4 stove spots at first, 9 at the biggest); furniture standing in an expanded room's kitchen goes into storage.
+
 ### Unlimited coins for admin testing
 
 Run [016_admin_shop_coins.sql](../supabase/migrations/016_admin_shop_coins.sql) after the earlier migrations. Existing non-suspended administrators see **∞ coins** and can buy Shop items and collection sets without spending their real balance. Purchases persist, can be equipped normally, and are recorded in the admin audit log. Prices, Mythic Trials, Awakening requirements and regular player spending still work as usual. Removing admin membership ends unlimited spending immediately; the saved wallet balance is unchanged.

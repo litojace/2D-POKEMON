@@ -9,12 +9,13 @@ import {
   ROWS,
   type RoomSize,
   COUNTER_X0,
-  COUNTER_X1,
+  kitchenX1Of,
   COUNTER_ROW,
   DOOR,
   type DishId,
   type FloorId,
   type ItemKind,
+  type StoveModel,
   type WallId,
 } from "./bistro-model";
 
@@ -285,7 +286,8 @@ export const WINDOWS = {
   /** Along the right wall, past the kitchen: one every 2.4 tiles. */
   get right(): [number, number][] {
     const out: [number, number][] = [];
-    for (let g = 6.3; g + 1.6 <= R.cols - 0.6; g += 2.4) out.push([g, g + 1.6]);
+    for (let g = kitchenX1Of(R) + 1.3; g + 1.6 <= R.cols - 0.6; g += 2.4)
+      out.push([g, g + 1.6]);
     return out;
   },
   /** Along the left wall: by the counter, and past the door in a bigger room. */
@@ -376,7 +378,7 @@ export function drawShell(ctx: Ctx, floor: FloorId, wall: WallId) {
       }
     }
   // Kitchen floor: small grey tiles behind the counter.
-  for (let x = COUNTER_X0; x <= COUNTER_X1; x++)
+  for (let x = COUNTER_X0; x <= kitchenX1Of(R); x++)
     for (let y = 0; y < COUNTER_ROW; y++) {
       for (let i = 0; i < 2; i++)
         for (let j = 0; j < 2; j++) {
@@ -598,7 +600,7 @@ function drawWalls(ctx: Ctx, wall: WallId) {
   ctx.fillRect(top.x - 30, top.y - H, 60, H);
 
   // Kitchen: tiled splashback and a range hood over the stoves.
-  for (let gx = -0.5; gx < COUNTER_X1 + 0.5; gx += 0.25)
+  for (let gx = -0.5; gx < kitchenX1Of(R) + 0.5; gx += 0.25)
     for (let h = WAIN; h < WAIN + 60; h += 15) {
       const a = rightWallPt(gx, h),
         b = rightWallPt(gx + 0.25, h),
@@ -611,11 +613,13 @@ function drawWalls(ctx: Ctx, wall: WallId) {
       ctx.lineWidth = 0.8;
       ctx.stroke();
     }
-  // Range hood: a trapezoid of brushed steel over stoves 1..4.
+  // Range hood: a trapezoid of brushed steel over the stove spots (it
+  // grows with the kitchen).
   {
+    const end = kitchenX1Of(R) - 0.6;
     const a = rightWallPt(0.6, WAIN + 92),
-      b = rightWallPt(4.4, WAIN + 92),
-      c = rightWallPt(4.1, WAIN + 128),
+      b = rightWallPt(end, WAIN + 92),
+      c = rightWallPt(end - 0.3, WAIN + 128),
       d = rightWallPt(0.9, WAIN + 128);
     const off = { x: -10, y: 5 };
     ctx.fillStyle = lin(ctx, a.x, 0, b.x, 0, [
@@ -1135,6 +1139,27 @@ export function drawCounterTile(ctx: Ctx, x: number, last: boolean) {
 }
 
 export type Fixture = "fridge" | "sink" | "stove" | "stove-locked";
+/** Each stove model's look (STOVES in the shared rules). */
+const STOVE_LOOK: Record<
+  StoveModel | "locked",
+  { top: string; left: string; right: string; door: string; trim?: string }
+> = {
+  locked: {
+    top: "#2d2f36",
+    left: "#1c1d22",
+    right: "#16171b",
+    door: "#3b3e47",
+  },
+  clay: { top: "#9a5638", left: "#7a4029", right: "#663421", door: "#b5694a" },
+  steel: { top: "#a9b2ba", left: "#87919a", right: "#737d86", door: "#c9d0d6" },
+  dragon: {
+    top: "#5a1c1c",
+    left: "#431313",
+    right: "#370f0f",
+    door: "#7a2420",
+    trim: "#e8b84a",
+  },
+};
 export function drawFixture(
   ctx: Ctx,
   kind: Fixture,
@@ -1142,6 +1167,7 @@ export function drawFixture(
   y: number,
   t: number,
   fire: number,
+  model: StoveModel = "clay",
 ) {
   if (kind === "fridge") {
     isoBox(ctx, x - 0.42, y - 0.42, x + 0.42, y + 0.42, 0, 104, {
@@ -1203,14 +1229,30 @@ export function drawFixture(
     ctx.stroke();
     return;
   }
-  // Stove: dark enamel top, two burners, an oven door.
+  // Stove: the model's body, a burner, an oven door.
+  const look = STOVE_LOOK[kind === "stove-locked" ? "locked" : model];
   isoBox(ctx, x - 0.5, y - 0.44, x + 0.5, y + 0.44, 40, 4, {
-    top: "#2d2f36",
-    left: "#1c1d22",
-    right: "#16171b",
+    top: look.top,
+    left: look.left,
+    right: look.right,
   });
+  if (look.trim) {
+    // A gold rim round the top.
+    ctx.strokeStyle = look.trim;
+    ctx.lineWidth = 2;
+    poly(
+      ctx,
+      [
+        iso(x - 0.5, y - 0.44),
+        iso(x + 0.5, y - 0.44),
+        iso(x + 0.5, y + 0.44),
+        iso(x - 0.5, y + 0.44),
+      ].map((p) => ({ x: p.x, y: p.y - 44 })),
+    );
+    ctx.stroke();
+  }
   const d = iso(x, y + 0.42);
-  ctx.fillStyle = "#3b3e47";
+  ctx.fillStyle = look.door;
   ctx.beginPath();
   ctx.roundRect(d.x - 26, d.y - 34, 30, 20, 3);
   ctx.fill();
@@ -2887,6 +2929,25 @@ export function dishIconUrl(id: DishId, px = 64): string {
   drawDish(ctx, id, 32, 40, 24, 0.4, false);
   const url = cv.toDataURL();
   dishUrls.set(key, url);
+  return url;
+}
+/** A stove model's picture, for the Shop and Decorate (as itemIconUrl). */
+const stoveUrls = new Map<string, string>();
+export function stoveIconUrl(model: StoveModel, px = 72): string {
+  const key = `${model}:${px}`;
+  const hit = stoveUrls.get(key);
+  if (hit) return hit;
+  const cv = document.createElement("canvas");
+  cv.width = cv.height = px;
+  const ctx = cv.getContext("2d");
+  if (!ctx) return "";
+  const k = px / 120;
+  ctx.scale(k, k);
+  const c = iso(0, 0);
+  ctx.translate(60 - c.x, 96 - c.y);
+  drawFixture(ctx, "stove", 0, 0, 0.3, 0.6, model);
+  const url = cv.toDataURL();
+  stoveUrls.set(key, url);
   return url;
 }
 const itemUrls = new Map<string, string>();

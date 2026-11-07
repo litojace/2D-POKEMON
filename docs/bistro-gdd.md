@@ -404,6 +404,7 @@ Mỗi giai đoạn: một migration riêng (số tiếp theo còn trống), test
 | 5. Chơi lâu dài: cân bằng offline, 6 món mới, phòng 21×14, nhân viên Lv10, đơn đặt tiệc, khách quen, giải đấu tuần, sự kiện, chi nhánh                                                              | [100_bistro_long_term.sql](../supabase/migrations/100_bistro_long_term.sql)         | Đã làm     |
 | 6. Nồi của đầu bếp không còn chớp khi server trả lời; khách ăn lâu hơn với món nấu lâu, đắt tiền: Gỏi cuốn 10–14 s, Phở 14–18 s, Lẩu 21–25 s, Phoenix Feast 23–27 s (một ghế ~20 s như server tính) | [101_bistro_cooks_in_step.sql](../supabase/migrations/101_bistro_cooks_in_step.sql) | Đã làm     |
 | 7. Đơn đặt tiệc: để dành món dần dần, khách không ăn mất                                                                                                                                            | [102_bistro_orders_aside.sql](../supabase/migrations/102_bistro_orders_aside.sql)   | Đã làm     |
+| 8. Bếp mua trong Shop: Clay Stove / Steel Range (+15%) / Dragon Oven (+30%), đặt và đổi chỗ trên tường bếp; bếp rộng thêm 1 cột mỗi lần mở rộng phòng (4 → 9 chỗ)                                   | [103_bistro_stove_shop.sql](../supabase/migrations/103_bistro_stove_shop.sql)       | Đã làm     |
 
 Khác với bản thiết kế ban đầu: Staff Corner giảm hao Energy thay vì hồi khi nhân viên rảnh (để server tính được cả khi offline); XP khi bày món không tăng theo cấp món; nút chuyển nông sản nằm trong Bistro (Pantry & Market) thay vì trong kho Farm.
 

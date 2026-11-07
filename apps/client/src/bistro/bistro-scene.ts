@@ -38,6 +38,7 @@ import {
   iso,
   itemGlow,
   itemIconUrl,
+  stoveIconUrl,
   softShadow,
   tableSpot,
   type Light,
@@ -47,18 +48,15 @@ import {
   COMBO_SECONDS,
   COUNTER_ROW,
   COUNTER_SLOTS,
-  COUNTER_X1,
   DISHES,
   DISH_BY_ID,
   DOOR,
   FLOORS,
   ITEMS,
   ITEM_BY_KIND,
-  MAX_STOVES,
   PERFECT_BONUS,
   PERFECT_FROM,
   PERFECT_TO,
-  STOVE_TILES,
   WAITER_HOME,
   HIRE_STEPS,
   BISTRO_TRADE,
@@ -103,7 +101,6 @@ import {
   findPath,
   heartsFor,
   inPerfectWindow,
-  nextStovePrice,
   patienceSeconds,
   payment,
   pickOrder,
@@ -170,6 +167,13 @@ import {
   REGULARS,
   leagueReward,
   onCounter,
+  kitchenX1,
+  stoveSpots,
+  maxStoves,
+  freeStoveSpot,
+  STOVES,
+  STOVE_BY_MODEL,
+  type StoveModel,
   mealSeconds,
   MEAL_SPREAD,
   orderLeft,
@@ -645,6 +649,10 @@ export function openBistro(o: BistroOptions): BistroHandle {
   // The hired team: waiters on the floor, cooks at their stoves.
   let waiters: Waiter[] = [];
   let cooks: (Walker & { staff: Staff })[] = [];
+  /** Where stove i stands (the back wall, row 0). */
+  const stoveTile = (i: number) => ({ x: S.stoves[i]?.x ?? i + 1, y: 0 });
+  /** The kitchen's last column (it grows with the room). */
+  const kitchenEnd = () => kitchenX1(S.sizeLv);
   const syncStaff = () => {
     const ws = S.staff.filter(
       (x) => x.role === "waiter" || x.role === "janitor",
@@ -680,7 +688,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
       }
       const idx = cookStove(S, i);
       return {
-        ...mkWalker(asChar(st.char), idx >= 0 ? STOVE_TILES[idx].x : 4.6, 1, 2),
+        ...mkWalker(asChar(st.char), idx >= 0 ? stoveTile(idx).x : 4.6, 1, 2),
         staff: st,
       };
     });
@@ -1577,9 +1585,9 @@ export function openBistro(o: BistroOptions): BistroHandle {
     const own = S.stoves.map((_, i) => i).filter((i) => !cookRun.has(i));
     const tx =
       target >= 0
-        ? STOVE_TILES[target].x
+        ? stoveTile(target).x
         : own.length
-          ? (STOVE_TILES[own[0]].x + STOVE_TILES[own[own.length - 1]].x) / 2
+          ? (stoveTile(own[0]).x + stoveTile(own[own.length - 1]).x) / 2
           : 0.35;
     if (Math.abs(chef.gx - tx) > 0.02 && !chef.path.length)
       chef.path = [{ x: tx, y: 1 }];
@@ -1587,7 +1595,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
     // Cooks stand at their stove, facing it while something cooks.
     cooks.forEach((c, i) => {
       const idx = cookStove(S, i);
-      const x = idx >= 0 ? STOVE_TILES[idx].x : 4.6;
+      const x = idx >= 0 ? stoveTile(idx).x : 4.6;
       if (Math.abs(c.gx - x) > 0.02 && !c.path.length) c.path = [{ x, y: 1 }];
       if (step(c, dt)) c.face = idx >= 0 && S.stoves[idx]?.dish ? "up" : "down";
     });
@@ -1599,7 +1607,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
     if (kitchenT > 0) return;
     kitchenT = 0.4;
     for (const ev of autoKitchen(S, nowS())) {
-      const c = iso(STOVE_TILES[ev.stove].x, STOVE_TILES[ev.stove].y);
+      const c = iso(stoveTile(ev.stove).x, 0);
       const walker = cooks.find((w) => w.staff.id === ev.cook.id);
       if (walker) walker.hop = 1;
       if (ev.kind === "start") {
@@ -1624,6 +1632,8 @@ export function openBistro(o: BistroOptions): BistroHandle {
   /* ───────────── input ───────────── */
   let editing = false;
   let held: { kind: ItemKind; rot: number; moving?: Item } | null = null;
+  /** Decorate: a stove from storage to place, or a placed stove to move. */
+  let heldStove: { model: StoveModel } | { move: number } | null = null;
   let hover: Pt | null = null;
   const pointers = new Map<number, { x: number; y: number }>();
   let drag: {
@@ -1733,6 +1743,16 @@ export function openBistro(o: BistroOptions): BistroHandle {
     | { kind: "staff"; who: "chef" | "waiter" }
     | { kind: "litter"; l: Litter }
     | { kind: "worker"; st: Staff };
+  /** The back-wall stove spot under a screen point (a stove's tall body too), or null. */
+  const stoveSpotAt = (sx: number, sy: number): number | null => {
+    const w = toWorld(sx, sy);
+    for (const x of stoveSpots(S.sizeLv)) {
+      const c = iso(x, 0);
+      if (Math.abs(w.x - c.x) < 34 && w.y > c.y - 92 && w.y < c.y + 20)
+        return x;
+    }
+    return null;
+  };
   const hit = (sx: number, sy: number): Hit | null => {
     const w = toWorld(sx, sy);
     const near = (p: Pt, r: number) =>
@@ -1745,12 +1765,12 @@ export function openBistro(o: BistroOptions): BistroHandle {
         const c = iso(l.x, l.y);
         if (near({ x: c.x, y: c.y - 2 }, 20)) return { kind: "litter", l };
       }
-      for (let i = 0; i < MAX_STOVES; i++) {
-        const c = iso(STOVE_TILES[i].x, STOVE_TILES[i].y);
-        if (Math.abs(w.x - c.x) < 34 && w.y > c.y - 92 && w.y < c.y + 20)
-          return i < S.stoves.length
-            ? { kind: "stove", i }
-            : { kind: "stove-buy" };
+      const spot = stoveSpotAt(sx, sy);
+      if (spot !== null) {
+        const i = S.stoves.findIndex((st) => st.x === spot);
+        if (i >= 0) return { kind: "stove", i };
+        if (!visiting && spot === freeStoveSpot(S))
+          return { kind: "stove-buy" };
       }
       for (let i = 0; i < COUNTER_SLOTS; i++) {
         const c = iso(1 + i, COUNTER_ROW);
@@ -1854,7 +1874,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
         );
       if (!st.dish) return openSheet("cook", h.i);
       if (inPerfectWindow(st, now) && sync.do({ a: "stir", stove: h.i }).ok) {
-        const c = iso(STOVE_TILES[h.i].x, STOVE_TILES[h.i].y);
+        const c = iso(stoveTile(h.i).x, 0);
         burst(c.x, c.y - 70, "spark", 18, "#ffd65b", 1);
         floatText({ x: c.x, y: c.y - 96 }, "Perfect!", "#ffd65b", true);
         sound("chime");
@@ -1873,7 +1893,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
         `<b>${esc(d.name)}</b><span>${fmtTime(left)} left${st.perfect ? " · perfect ★" : ""}</span>${cook ? `<small>${esc(staffName(cook))} cooks here · change their dish in Staff</small>` : golden ? `<small>Tap the pot when it glows gold for +${PERFECT_BONUS} servings</small>` : ""}`,
       );
     }
-    if (h.kind === "stove-buy") return openSheet("staff", "upgrades");
+    if (h.kind === "stove-buy") return openSheet("shop", "kitchen");
     if (h.kind === "counter") {
       const c = S.counter[h.slot];
       return showTip(
@@ -1960,7 +1980,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
       o.toast(r.error ?? "Can't plate that.");
       return;
     }
-    const from = iso(STOVE_TILES[i].x, STOVE_TILES[i].y);
+    const from = iso(stoveTile(i).x, 0);
     const to = iso(1 + slot, COUNTER_ROW);
     flights.push({
       dish,
@@ -1982,6 +2002,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
     if (!on && held?.moving) held = null; // a moved item stays where it was
     editing = on;
     if (!on) held = null;
+    if (!on) heldStove = null;
     hover = null;
     layer.classList.toggle("editing", on);
     closeSheet();
@@ -2029,14 +2050,23 @@ export function openBistro(o: BistroOptions): BistroHandle {
       ItemKind,
       number,
     ][];
+    const stoves = Object.entries(S.stoveStore).filter(
+      ([, n]) => (n ?? 0) > 0,
+    ) as [StoveModel, number][];
+    const stoveTitle = heldStove
+      ? "model" in heldStove
+        ? `Placing: ${esc(STOVE_BY_MODEL[heldStove.model].name)}`
+        : `Moving: ${esc(STOVE_BY_MODEL[S.stoves[heldStove.move]?.model ?? "clay"].name)}`
+      : "";
     setInner(
       editEl,
       `
-      <div class="bs-edit-head"><b>${held ? `Placing: ${esc(ITEM_BY_KIND[held.kind].name)}` : "Decorate"}</b><span>${held ? "Tap a floor tile to put it down" : "Tap something to move it · tags: a waiter's steps to each seat"}</span><em class="bs-grade" id="bs-grade">${gradeText()}</em></div>
-      <div class="bs-store">${stored.length ? stored.map(([k, n]) => `<button type="button" data-hold="${k}" class="${held?.kind === k && !held.moving ? "on" : ""}"><img src="${itemIconUrl(k)}" alt=""><span>${esc(ITEM_BY_KIND[k].name)}</span><i>×${n}</i></button>`).join("") : `<em>Storage is empty</em>`}</div>
+      <div class="bs-edit-head"><b>${held ? `Placing: ${esc(ITEM_BY_KIND[held.kind].name)}` : stoveTitle ? stoveTitle : "Decorate"}</b><span>${held ? "Tap a floor tile to put it down" : heldStove ? ("model" in heldStove ? "Tap a free spot on the kitchen's back wall, or a stove to swap it" : "Tap a free spot on the kitchen's back wall") : "Tap something to move it · tags: a waiter's steps to each seat"}</span><em class="bs-grade" id="bs-grade">${gradeText()}</em></div>
+      <div class="bs-store">${stored.length || stoves.length ? stoves.map(([m, n]) => `<button type="button" data-hold-stove="${m}" class="${heldStove && "model" in heldStove && heldStove.model === m ? "on" : ""}"><img src="${stoveIconUrl(m)}" alt=""><span>${esc(STOVE_BY_MODEL[m].name)}</span><i>×${n}</i></button>`).join("") + stored.map(([k, n]) => `<button type="button" data-hold="${k}" class="${held?.kind === k && !held.moving ? "on" : ""}"><img src="${itemIconUrl(k)}" alt=""><span>${esc(ITEM_BY_KIND[k].name)}</span><i>×${n}</i></button>`).join("") : `<em>Storage is empty</em>`}</div>
       <div class="bs-edit-btns">
         ${held?.kind === "chair" ? `<button type="button" data-ed="rot">Turn</button>` : ""}
         ${held ? `<button type="button" data-ed="store">Put away</button><button type="button" data-ed="cancel">Cancel</button>` : ""}
+        ${heldStove ? `<button type="button" data-ed="cancel">Cancel</button>` : ""}
         <button type="button" data-ed="shop">Shop</button>
         <button type="button" class="go" data-ed="done">Done</button>
       </div>`,
@@ -2051,6 +2081,13 @@ export function openBistro(o: BistroOptions): BistroHandle {
     sound("tick");
     if (b.dataset.hold) {
       held = { kind: b.dataset.hold as ItemKind, rot: 0 };
+      heldStove = null;
+      renderEdit();
+      return;
+    }
+    if (b.dataset.holdStove) {
+      heldStove = { model: b.dataset.holdStove as StoveModel };
+      held = null;
       renderEdit();
       return;
     }
@@ -2059,6 +2096,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
     else if (a === "shop") openSheet("shop", "furniture");
     else if (a === "cancel") {
       held = null;
+      heldStove = null;
       renderEdit();
     } else if (a === "rot" && held) {
       held.rot = (held.rot + 1) % 4;
@@ -2087,6 +2125,43 @@ export function openBistro(o: BistroOptions): BistroHandle {
   const editTap = (sx: number, sy: number) => {
     const g = toGrid(toWorld(sx, sy));
     const tile = { x: Math.round(g.x), y: Math.round(g.y) };
+    // Stoves: on the kitchen's back wall.
+    const spot = stoveSpotAt(sx, sy);
+    if (heldStove) {
+      if (spot === null) {
+        o.toast("Stoves go on the kitchen's back wall.");
+        sound("tick");
+        return;
+      }
+      const hs = heldStove;
+      const r =
+        "model" in hs
+          ? sync.do({ a: "stoveplace", model: hs.model, x: spot })
+          : sync.do({ a: "stovemove", stove: hs.move, x: spot });
+      if (!r.ok) {
+        o.toast(r.error ?? "Can't put that there.");
+        sound("tick");
+        return;
+      }
+      const c = iso(spot, 0);
+      burst(c.x, c.y - 40, "puff", 10, "#f3e2c6", 0.6);
+      sound("plant");
+      // Keep placing from storage while there are more of the same.
+      heldStove =
+        "model" in hs && (S.stoveStore[hs.model] ?? 0) > 0 ? hs : null;
+      changed();
+      renderEdit();
+      return;
+    }
+    if (!held && spot !== null) {
+      const i = S.stoves.findIndex((st) => st.x === spot);
+      if (i >= 0) {
+        heldStove = { move: i };
+        sound("rustle");
+        renderEdit();
+        return;
+      }
+    }
     if (!held) {
       const h = hit(sx, sy);
       if (h?.kind !== "item") return;
@@ -2567,7 +2642,6 @@ export function openBistro(o: BistroOptions): BistroHandle {
             "",
           )}</div><p class="bs-note">${role === "janitor" ? "Janitors clear the tables (so waiters only serve) and sweep up litter, which costs popularity." : role === "cook" ? "Cooks each run a stove on their own and keep the counter stocked." : "Waiters bring the dishes; more of them serve more guests."} New faces come by every day; friends can work for you too.</p>`;
       } else {
-        const sp = nextStovePrice(S);
         const kp = KITCHEN_PRICES[S.kitchenLv];
         const shp = SHIFT_PRICES[S.shiftLv];
         const card = (
@@ -2602,7 +2676,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
               );
         body = `<div class="bs-items">
           ${expandCard}
-          ${card("data-buy-stove", "spark", "Another stove", `${S.stoves.length} of ${MAX_STOVES} in the kitchen`, sp, "All built")}
+          <button type="button" class="bs-item" data-shop-stoves><div class="ic">${I("spark")}</div><b>Stoves</b><small>${S.stoves.length} of ${maxStoves(S.sizeLv)} spots on the back wall · faster models in the Shop</small><span class="pr">Shop</span></button>
           ${card("data-kitchen", "star", `Kitchen level ${S.kitchenLv + 1}`, `Every dish cooks ${(S.kitchenLv + 1) * 10}% faster (now ${S.kitchenLv * 10}%)`, kp, "Fully upgraded")}
           ${card("data-shift", "clock", `Longer shifts`, `Open ${SHIFT_HOURS[S.shiftLv]} h while you're away${shp != null ? ` → ${SHIFT_HOURS[S.shiftLv + 1]} h` : ""}`, shp, "8 hours: the longest")}
           ${
@@ -2623,7 +2697,8 @@ export function openBistro(o: BistroOptions): BistroHandle {
       const tabs = [
         ["furniture", "Furniture"],
         ["decor", "Decor"],
-        ["style", "Floors & walls"],
+        ["kitchen", "Kitchen"],
+        ["style", "Styles"],
         ["bank", "Bank"],
       ];
       let body = "";
@@ -2640,6 +2715,19 @@ export function openBistro(o: BistroOptions): BistroHandle {
             </button>`;
           })
           .join("")}</div>`;
+      } else if (tab === "kitchen") {
+        body = `<div class="bs-items">${STOVES.map((d) => {
+          const locked = d.level > S.level;
+          const have = S.stoves.filter((st) => st.model === d.model).length;
+          const stored = S.stoveStore[d.model] ?? 0;
+          return `<button type="button" class="bs-item${locked ? " locked" : ""}" data-stovebuy="${d.model}" ${locked ? "disabled" : ""}>
+              <img src="${stoveIconUrl(d.model, 96)}" alt=""><b>${esc(d.name)}</b>
+              <small>${esc(d.blurb)}${have ? ` · ${have} in the kitchen` : ""}${stored ? ` · ${stored} stored` : ""}</small>
+              ${locked ? `<span class="lk">${I("lock")} Level ${d.level}</span>` : `<span class="pr ${S.coins < d.price ? "poor" : ""}">${coinTag(d.price)}</span>`}
+            </button>`;
+        }).join(
+          "",
+        )}</div><p class="bs-note">${S.stoves.length} of ${maxStoves(S.sizeLv)} spots on the back wall are taken (expanding the room adds one). Place a stove on a free spot, or on a stove to swap them (the old one goes into storage). Hired cooks use the stoves you added last.</p>`;
       } else if (tab === "bank") {
         const left = BISTRO_TRADE.dailyLeaves - sync.extras.tradedToday;
         body = `<div class="bs-bank"><p>Trade bistro coins for Gold Leaves (the Farm's currency): <b>${BISTRO_TRADE.coins} coins → ${BISTRO_TRADE.leaves} ${I("leaf")}</b>, up to ${BISTRO_TRADE.dailyLeaves} leaves a day.</p>
@@ -2728,7 +2816,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
         dish: b.dataset.dish as DishId,
       });
       if (!r.ok) return o.toast(r.error ?? "Can't cook that.");
-      const c = iso(STOVE_TILES[i].x, STOVE_TILES[i].y);
+      const c = iso(stoveTile(i).x, 0);
       burst(c.x, c.y - 60, "spark", 8, "#ffb36b", 0.5);
       sound("plant");
       chef.hop = 1;
@@ -2748,14 +2836,20 @@ export function openBistro(o: BistroOptions): BistroHandle {
       renderEdit();
       return;
     }
-    if (b.hasAttribute("data-buy-stove")) {
-      const r = sync.do({ a: "stove" });
-      if (!r.ok) return o.toast(r.error ?? "Can't build that.");
-      sound("fanfare");
-      const c = iso(STOVE_TILES[S.stoves.length - 1].x, 0);
-      burst(c.x, c.y - 50, "confetti", 30, "#ffd65b", 1);
+    if (b.hasAttribute("data-shop-stoves")) return openSheet("shop", "kitchen");
+    if (b.dataset.stovebuy) {
+      const model = b.dataset.stovebuy as StoveModel;
+      const r = sync.do({ a: "stovebuy", model });
+      if (!r.ok) return o.toast(r.error ?? "Can't buy that.");
+      sound("coin");
       changed();
-      return renderSheet();
+      closeSheet();
+      // Straight to Decorate, holding it: tap a spot on the back wall.
+      if (!editing) setEditing(true);
+      held = null;
+      heldStove = { model };
+      renderEdit();
+      return;
     }
     if (b.dataset.order !== undefined) {
       const slot = Number(b.dataset.order);
@@ -3120,7 +3214,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
     if (!low)
       S.stoves.forEach((st, i) => {
         if (st.dish && Math.random() < dt * 5) {
-          const c = iso(STOVE_TILES[i].x, STOVE_TILES[i].y);
+          const c = iso(stoveTile(i).x, 0);
           particles.push({
             x: c.x + (Math.random() - 0.5) * 14,
             y: c.y - 74,
@@ -3134,7 +3228,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
           });
         }
         if (cookProgress(st, now) >= 1 && st.dish && Math.random() < dt * 2) {
-          const c = iso(STOVE_TILES[i].x, STOVE_TILES[i].y);
+          const c = iso(stoveTile(i).x, 0);
           burst(c.x + 10, c.y - 80, "spark", 1, "#fff6c0", 0.3);
         }
       });
@@ -3474,49 +3568,62 @@ export function openBistro(o: BistroOptions): BistroHandle {
     const list: Drawable[] = [];
     // Kitchen fixtures.
     list.push({ d: 0, f: () => drawFixture(ctx, "fridge", 0, 0, T, 0) });
-    list.push({ d: 5, f: () => drawFixture(ctx, "sink", 5, 0, T, 0) });
-    STOVE_TILES.forEach((tile, i) => {
-      const st = S.stoves[i];
+    const kEnd = kitchenEnd();
+    list.push({
+      d: kEnd,
+      f: () => drawFixture(ctx, "sink", kEnd, 0, T, 0),
+    });
+    S.stoves.forEach((st, i) => {
+      const x = stoveTile(i).x;
+      const lifted = heldStove && "move" in heldStove && heldStove.move === i;
       list.push({
-        d: tile.x + tile.y,
+        d: x,
         f: () => {
-          if (!st) {
-            drawFixture(ctx, "stove-locked", tile.x, tile.y, T, 0);
-            const c = iso(tile.x, tile.y);
-            ctx.fillStyle = "rgba(255,255,255,.85)";
-            ctx.font = "800 22px 'Barlow Condensed', sans-serif";
-            ctx.textAlign = "center";
-            ctx.fillText("+", c.x, c.y - 52);
-            return;
-          }
           const p = cookProgress(st, now);
           const cooking = !!st.dish && p < 1;
+          if (lifted) ctx.globalAlpha = 0.55;
           drawFixture(
             ctx,
             "stove",
-            tile.x,
-            tile.y,
+            x,
+            0,
             T,
             cooking ? 1 : st.dish ? 0.3 : 0,
+            st.model,
           );
           if (st.dish)
             drawPot(
               ctx,
-              tile.x,
-              tile.y,
+              x,
+              0,
               T,
               cooking,
               inPerfectWindow(st, now) ? 1 : 0,
               p >= 1,
             );
+          ctx.globalAlpha = 1;
         },
       });
     });
-    for (let x = 0; x <= COUNTER_X1; x++) {
+    // The first free spot: a stove to buy (in the Shop).
+    const free = visiting ? -1 : freeStoveSpot(S);
+    if (free >= 0 && !editing)
+      list.push({
+        d: free,
+        f: () => {
+          drawFixture(ctx, "stove-locked", free, 0, T, 0);
+          const c = iso(free, 0);
+          ctx.fillStyle = "rgba(255,255,255,.85)";
+          ctx.font = "800 22px 'Barlow Condensed', sans-serif";
+          ctx.textAlign = "center";
+          ctx.fillText("+", c.x, c.y - 52);
+        },
+      });
+    for (let x = 0; x <= kEnd; x++) {
       list.push({
         d: x + COUNTER_ROW + 0.2,
         f: () => {
-          drawCounterTile(ctx, x, x === COUNTER_X1);
+          drawCounterTile(ctx, x, x === kEnd);
           const slot = x - 1;
           if (slot >= 0 && slot < COUNTER_SLOTS) {
             const c = S.counter[slot];
@@ -3799,7 +3906,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
           glow(p.x, p.y + 6, 26, "255,210,140", 0.22 * n);
       S.stoves.forEach((st, i) => {
         if (!st.dish) return;
-        const c = iso(STOVE_TILES[i].x, STOVE_TILES[i].y);
+        const c = iso(stoveTile(i).x, 0);
         glow(c.x, c.y - 46, 70, "255,150,80", 0.25 * n);
       });
       const door = iso(-0.5, DOOR.y);
@@ -3823,7 +3930,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
     ctx.save();
     for (let x = 0; x < R.cols; x++)
       for (let y = 0; y < R.rows; y++) {
-        const k = x <= COUNTER_X1 && y <= COUNTER_ROW;
+        const k = x <= kitchenEnd() && y <= COUNTER_ROW;
         if (k) continue;
         const a = iso(x - 0.5, y - 0.5),
           b = iso(x + 0.5, y - 0.5),
@@ -3882,6 +3989,33 @@ export function openBistro(o: BistroOptions): BistroHandle {
           ctx.fill();
         }
     }
+    // Holding a stove: the back-wall spots it can go on (free ones green;
+    // with a stove from storage, the stoves it could swap in gold).
+    if (heldStove) {
+      const swap = "model" in heldStove;
+      for (const x of stoveSpots(S.sizeLv)) {
+        const taken = S.stoves.some((st) => st.x === x);
+        if (taken && !swap) continue;
+        const a = iso(x - 0.45, -0.45),
+          b = iso(x + 0.45, -0.45),
+          c = iso(x + 0.45, 0.45),
+          d = iso(x - 0.45, 0.45);
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x, b.y);
+        ctx.lineTo(c.x, c.y);
+        ctx.lineTo(d.x, d.y);
+        ctx.closePath();
+        if (taken) {
+          ctx.strokeStyle = "rgba(255,214,91,.9)";
+          ctx.lineWidth = 2.5;
+          ctx.stroke();
+        } else {
+          ctx.fillStyle = "rgba(120,255,150,.45)";
+          ctx.fill();
+        }
+      }
+    }
     ctx.restore();
   };
   const tryPlaceDry = (kind: ItemKind, x: number, y: number) => {
@@ -3924,7 +4058,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
     // Perfect-moment and ready badges over the stoves.
     S.stoves.forEach((st, i) => {
       if (!st.dish) return;
-      const c = iso(STOVE_TILES[i].x, STOVE_TILES[i].y);
+      const c = iso(stoveTile(i).x, 0);
       const p = cookProgress(st, now);
       const x = c.x,
         y = c.y - 112;

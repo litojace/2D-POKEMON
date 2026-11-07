@@ -703,3 +703,77 @@ test.describe("on a touch screen", () => {
     expect(errors).toEqual([]);
   });
 });
+
+test("Bistro stoves: bought in the Shop, placed, moved and swapped on the kitchen's back wall", async ({
+  page,
+}, info) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const errors = await openBistro(page);
+  await B(page, "srv.S.level = 10; srv.S.coins = 9000; return b.load()");
+  const spot = (x: number) =>
+    B(page, `return b.screen(${x}, 0, 50)`) as Promise<Pt>;
+  const tapSpot = async (x: number) => {
+    const p = await spot(x);
+    await page.mouse.click(p.x, p.y);
+  };
+  const stoves = () =>
+    B(page, "return srv.S.stoves.map((s) => s.x + ':' + s.model)");
+  // The Shop's Kitchen tab: three models, the Dragon Oven from level 16.
+  await page.click('.bs-rail [data-sheet="shop"]');
+  await page.click('#bs-sheet [data-tab="kitchen"]');
+  await expect(page.locator("#bs-sheet [data-stovebuy]")).toHaveCount(3);
+  await expect(
+    page.locator('#bs-sheet [data-stovebuy="dragon"]'),
+  ).toBeDisabled();
+  await expect(page.locator("#bs-sheet .bs-note")).toContainText(
+    "2 of 4 spots on the back wall",
+  );
+  await snap(page, info, "bistro-stove-shop");
+  // A Steel Range: straight to Decorate, placed on a free spot.
+  await page.click('#bs-sheet [data-stovebuy="steel"]');
+  await expect(page.locator("#bs-edit")).toContainText("Placing: Steel Range");
+  await tapSpot(3);
+  await flush(page);
+  expect(await stoves()).toEqual(["1:clay", "2:clay", "3:steel"]);
+  expect(await B(page, "return srv.S.coins")).toBe(7800);
+  // Moved to the last spot.
+  await tapSpot(3);
+  await expect(page.locator("#bs-edit")).toContainText("Moving: Steel Range");
+  await tapSpot(4);
+  await flush(page);
+  expect(await stoves()).toEqual(["1:clay", "2:clay", "4:steel"]);
+  // A Dragon Oven at level 16, swapped for the Clay Stove at x 1.
+  await B(page, "srv.S.level = 16; return b.load()");
+  await page.click('#bs-edit [data-ed="shop"]');
+  await page.click('#bs-sheet [data-tab="kitchen"]');
+  await page.click('#bs-sheet [data-stovebuy="dragon"]');
+  await tapSpot(1);
+  await flush(page);
+  expect(await stoves()).toEqual(["1:dragon", "2:clay", "4:steel"]);
+  expect(await B(page, "return srv.S.stoveStore")).toEqual({ clay: 1 });
+  // The Clay Stove from storage fills the last free spot.
+  await page.click('#bs-edit [data-hold-stove="clay"]');
+  await tapSpot(3);
+  await flush(page);
+  expect(await stoves()).toEqual(["1:dragon", "2:clay", "4:steel", "3:clay"]);
+  await page.click('#bs-edit [data-ed="done"]');
+  // The Dragon Oven cooks 30% faster than a Clay Stove.
+  await B(
+    page,
+    "return srv.S.stoves.forEach((s) => (s.dish = null)) ?? b.load()",
+  );
+  const p1 = await spot(1);
+  await page.mouse.click(p1.x, p1.y);
+  await page.click('#bs-sheet [data-dish="pho"]');
+  const p2 = await spot(2);
+  await page.mouse.click(p2.x, p2.y);
+  await page.click('#bs-sheet [data-dish="pho"]');
+  await flush(page);
+  const [dragon, clay] = (await B(
+    page,
+    "return [srv.S.stoves[0].dur, srv.S.stoves[1].dur]",
+  )) as number[];
+  expect(dragon).toBe(Math.round(clay / 1.3));
+  await snap(page, info, "bistro-stoves");
+  expect(errors).toEqual([]);
+});

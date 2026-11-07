@@ -14,6 +14,10 @@ import {
   buyKitchen,
   buyShift,
   buyStove,
+  buyStoveModel,
+  placeStove,
+  moveStove,
+  type StoveModel,
   buyStyle,
   dishLevel,
   dishUp,
@@ -78,6 +82,9 @@ export type BistroAction =
   | { a: "buy"; kind: ItemKind }
   | { a: "style"; kind: "floor" | "wall"; id: string }
   | { a: "stove" }
+  | { a: "stovebuy"; model: StoveModel }
+  | { a: "stoveplace"; model: StoveModel; x: number }
+  | { a: "stovemove"; stove: number; x: number }
   | { a: "kitchen" }
   | { a: "shift" }
   | { a: "expand" }
@@ -236,6 +243,12 @@ export function applyLocal(
       return r(buyStyle(s, x.kind, x.id));
     case "stove":
       return r(buyStove(s));
+    case "stovebuy":
+      return r(buyStoveModel(s, x.model));
+    case "stoveplace":
+      return r(placeStove(s, x.model, x.x));
+    case "stovemove":
+      return r(moveStove(s, x.stove, x.x));
     case "kitchen":
       return r(buyKitchen(s));
     case "shift":

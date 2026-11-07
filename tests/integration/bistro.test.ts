@@ -1268,3 +1268,127 @@ describe("the cooks in step (migration 101)", () => {
     expect(Math.abs(Number(last.start) - Number(b.now))).toBeLessThan(2000);
   });
 });
+
+describe("stoves from the Shop (migration 103)", () => {
+  it("buy, place, swap and move stoves on the back wall; a faster stove cooks faster; the same as the shared rules", async () => {
+    const B = await import("../../packages/shared/src/bistro");
+    await open(ana);
+    await setCoins(ana, 20000, 10);
+    await sql(
+      "update public.arena_bistros set size_lv = 0 where player_id = $1",
+      [ana],
+    );
+    await sql("delete from public.arena_bistro_stoves where player_id = $1", [
+      ana,
+    ]);
+    await sql(
+      "insert into public.arena_bistro_stoves(player_id, idx, x, model) values ($1, 0, 1, 'clay'), ($1, 1, 2, 'clay')",
+      [ana],
+    );
+    await sql(
+      "delete from public.arena_bistro_stove_store where player_id = $1",
+      [ana],
+    );
+    // Each step on the server and in the shared rules, from the same state.
+    const step = async (action: any, run: (s: BistroState) => any) => {
+      const before = sanitize(await open(ana));
+      const local = JSON.parse(JSON.stringify(before)) as BistroState;
+      const res = run(local);
+      const r = await act(ana, [action]);
+      const after = sanitize(r.bistro);
+      expect(r.results[0].ok).toBe(res.ok);
+      if (!res.ok) expect(r.results[0].error).toBe(res.error);
+      expect(after.stoves.map((s) => [s.x, s.model, s.dish])).toEqual(
+        local.stoves.map((s) => [s.x, s.model, s.dish]),
+      );
+      expect(after.stoveStore).toEqual(local.stoveStore);
+      expect(after.coins).toBe(local.coins);
+      return { r, res };
+    };
+    // A Dragon Oven opens at level 16.
+    let { res } = await step({ a: "stovebuy", model: "dragon" }, (s) =>
+      B.buyStoveModel(s, "dragon"),
+    );
+    expect(res).toEqual({ ok: false, error: "Dragon Oven opens at level 16." });
+    await step({ a: "stovebuy", model: "steel" }, (s) =>
+      B.buyStoveModel(s, "steel"),
+    );
+    await step({ a: "stovebuy", model: "clay" }, (s) =>
+      B.buyStoveModel(s, "clay"),
+    );
+    // Off the back wall, then on a free spot.
+    ({ res } = await step({ a: "stoveplace", model: "steel", x: 6 }, (s) =>
+      B.placeStove(s, "steel", 6),
+    ));
+    expect(res.ok).toBe(false);
+    await step({ a: "stoveplace", model: "steel", x: 4 }, (s) =>
+      B.placeStove(s, "steel", 4),
+    );
+    // Swap the stove at x 1 for the Clay Stove in storage: refused, same model.
+    ({ res } = await step({ a: "stoveplace", model: "clay", x: 1 }, (s) =>
+      B.placeStove(s, "clay", 1),
+    ));
+    expect(res).toEqual({ ok: false, error: "That's the same stove." });
+    // Move the Steel Range to x 3, then onto a taken spot.
+    await step({ a: "stovemove", stove: 2, x: 3 }, (s) => B.moveStove(s, 2, 3));
+    ({ res } = await step({ a: "stovemove", stove: 2, x: 1 }, (s) =>
+      B.moveStove(s, 2, 1),
+    ));
+    expect(res).toEqual({ ok: false, error: "Something's already there." });
+    // The Steel Range cooks 15% faster: the same time as the shared rules.
+    await step({ a: "cook", stove: 2, dish: "pho" }, (s) =>
+      B.startCooking(s, 2, "pho", Date.now()),
+    );
+    let b = sanitize(await open(ana));
+    const local = B.defaultState();
+    local.kitchenLv = b.kitchenLv;
+    expect(b.stoves[2].dur).toBe(B.cookMs(local, "pho", 1, 1.15));
+    expect(b.stoves[2].dur).toBeLessThan(B.cookMs(local, "pho"));
+    // A cooking stove can't be swapped.
+    await step({ a: "stovebuy", model: "clay" }, (s) =>
+      B.buyStoveModel(s, "clay"),
+    );
+    await sql(
+      "update public.arena_bistros set level = 16 where player_id = $1",
+      [ana],
+    );
+    await step({ a: "stovebuy", model: "dragon" }, (s) =>
+      B.buyStoveModel(s, "dragon"),
+    );
+    ({ res } = await step({ a: "stoveplace", model: "dragon", x: 3 }, (s) =>
+      B.placeStove(s, "dragon", 3),
+    ));
+    expect(res.error).toBe("That stove is cooking: wait until it's done.");
+    // Swapping an idle one puts it into storage.
+    await step({ a: "stoveplace", model: "dragon", x: 1 }, (s) =>
+      B.placeStove(s, "dragon", 1),
+    );
+    // Four spots in the first room: the fourth stove fills it.
+    await step({ a: "stoveplace", model: "clay", x: 4 }, (s) =>
+      B.placeStove(s, "clay", 4),
+    );
+    ({ res } = await step({ a: "stove" }, (s) => B.buyStove(s)));
+    expect(res).toEqual({ ok: false, error: "Every stove spot is in use." });
+    // Expanding widens the kitchen: furniture in the new column goes into
+    // storage, and a fifth spot opens.
+    await sql(
+      "update public.arena_bistros set coins = 20000 where player_id = $1",
+      [ana],
+    );
+    await sql(
+      "insert into public.arena_bistro_items(player_id, id, kind, x, y, rot) values ($1, 900, 'plant', 6, 1, 0) on conflict do nothing",
+      [ana],
+    );
+    const before = sanitize(await open(ana));
+    const exp = JSON.parse(JSON.stringify(before)) as BistroState;
+    expect(B.buyExpand(exp).ok).toBe(true);
+    const r = await act(ana, [{ a: "expand" }]);
+    expect(r.results[0].ok).toBe(true);
+    b = sanitize(r.bistro);
+    expect(b.items).toEqual(exp.items);
+    expect(b.stored).toEqual(exp.stored);
+    expect(b.items.some((it) => it.x === 6 && it.y <= 2)).toBe(false);
+    await step({ a: "stove" }, (s) => B.buyStove(s));
+    expect(sanitize(await open(ana)).stoves.map((s) => s.x)).toContain(5);
+  });
+});
