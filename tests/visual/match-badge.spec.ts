@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { openHub, openPlayPanel, pushUntilBattle, snap } from "./helpers";
+import { ISLAND, setInsets } from "./ui-measure";
 
 // PvP's score badge (owner, 7 Nov 2026): one pill at the top middle with
 // names, rounds and the clock; health over each fighter; no opponent's
@@ -232,6 +233,184 @@ test("Practice keeps the full cards", async ({ browser }) => {
     await pushUntilBattle(page);
     await expect(page.locator("#hud")).not.toHaveClass(/hud-badge/);
     await expect(page.locator("#hud .health-track").first()).toBeVisible();
+  } finally {
+    await context.close();
+  }
+});
+
+/** Where an element's ink is across (CSS px), like ink() for height. */
+async function inkAcross(page: Page, hide: string) {
+  const box = (await page.locator("#hud").boundingBox())!;
+  const clip = {
+    x: box.x - 2,
+    y: box.y - 2,
+    width: box.width + 4,
+    height: box.height + 4,
+  };
+  const shot = async () =>
+    (await page.screenshot({ clip, animations: "disabled" })).toString(
+      "base64",
+    );
+  const on = await shot();
+  const tag = await page.addStyleTag({
+    content: `${hide} { visibility: hidden !important; }`,
+  });
+  const off = await shot();
+  await tag.evaluate((e) => e.remove());
+  return page.evaluate(
+    async ([a, b, left, width]) => {
+      const pixels = async (src: string) => {
+        const img = new Image();
+        img.src = `data:image/png;base64,${src}`;
+        await img.decode();
+        const c = document.createElement("canvas");
+        c.width = img.width;
+        c.height = img.height;
+        const g = c.getContext("2d")!;
+        g.drawImage(img, 0, 0);
+        return g.getImageData(0, 0, c.width, c.height);
+      };
+      const [p, q] = [await pixels(a), await pixels(b)];
+      let x0 = Infinity,
+        x1 = -1;
+      for (let y = 0; y < p.height; y++)
+        for (let x = 0; x < p.width; x++) {
+          const k = (y * p.width + x) * 4;
+          const d =
+            Math.abs(p.data[k] - q.data[k]) +
+            Math.abs(p.data[k + 1] - q.data[k + 1]) +
+            Math.abs(p.data[k + 2] - q.data[k + 2]);
+          if (d > 60) {
+            x0 = Math.min(x0, x);
+            x1 = Math.max(x1, x);
+          }
+        }
+      const scale = p.width / (width + 4);
+      return left - 2 + (x0 + x1 + 1) / 2 / scale;
+    },
+    [on, off, box.x, box.width] as const,
+  );
+}
+
+for (const size of [
+  { name: "844x390", width: 844, height: 390, island: false },
+  { name: "852x393-island", width: 852, height: 393, island: true },
+])
+  test(`the clock is in the middle whatever the names, inside the safe area (${size.name})`, async ({
+    browser,
+  }) => {
+    const context = await browser.newContext({
+      viewport: { width: size.width, height: size.height },
+      isMobile: true,
+      hasTouch: true,
+      reducedMotion: "reduce",
+      deviceScaleFactor: 2,
+    });
+    try {
+      const page = await context.newPage();
+      const errors = await match(page, "duel");
+      if (size.island) await setInsets(page, ISLAND);
+      // A long name against a short one.
+      await page.evaluate(() => {
+        const w = window as any;
+        w.__snap.players[0].name = "Bartholomew";
+        w.__push();
+      });
+      const box = (await page.locator("#hud").boundingBox())!;
+      const middle = box.x + box.width / 2;
+      const clock = await inkAcross(page, "#hud .timer-wrap");
+      expect(Math.abs(clock - middle), "clock in the pill").toBeLessThanOrEqual(
+        1,
+      );
+      expect(
+        Math.abs(middle - size.width / 2),
+        "pill on the screen",
+      ).toBeLessThanOrEqual(1);
+      // Inside the safe area and clear of the gear.
+      const inset = size.island
+        ? ISLAND
+        : { left: 0, right: 0, top: 0, bottom: 0 };
+      expect(box.x).toBeGreaterThanOrEqual(inset.left);
+      expect(box.x + box.width).toBeLessThanOrEqual(size.width - inset.right);
+      expect(box.y).toBeGreaterThanOrEqual(inset.top);
+      const gear = (await page.locator("#battle-menu").boundingBox())!;
+      expect(
+        box.x + box.width <= gear.x ||
+          gear.x + gear.width <= box.x ||
+          box.y + box.height <= gear.y,
+      ).toBe(true);
+      const frame = (await page.locator(".arena-frame").boundingBox())!;
+      expect(frame.x).toBeGreaterThanOrEqual(inset.left);
+      expect(frame.x + frame.width).toBeLessThanOrEqual(
+        size.width - inset.right + 0.5,
+      );
+      expect(errors).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });
+
+test("a fighter's name never slides under the badge or its note", async ({
+  browser,
+}) => {
+  const context = await browser.newContext({
+    viewport: { width: 844, height: 390 },
+    isMobile: true,
+    hasTouch: true,
+    reducedMotion: "reduce",
+  });
+  try {
+    const page = await context.newPage();
+    // The ring closing: the note under the badge shows too.
+    const errors = await match(page, "duel", 25);
+    // Kai stands straight above you near the top of the view.
+    await page.evaluate(() => {
+      const w = window as any,
+        [me, kai] = w.__snap.players;
+      me.x = 800;
+      me.y = 470;
+      kai.x = 800;
+      kai.y = me.y - 200;
+      w.__push();
+    });
+    for (let i = 0; i < 6; i++) {
+      await page.evaluate(() => (window as any).__push());
+      await page.waitForTimeout(250);
+    }
+    await expect(page.locator("#phase-label")).toBeVisible();
+    const covered = [
+      (await page.locator("#hud").boundingBox())!,
+      (await page.locator("#phase-label").boundingBox())!,
+    ];
+    const plates = await page
+      .locator(".battle-nameplate:not([hidden])")
+      .evaluateAll((all) =>
+        all.map((e) => {
+          const r = e.getBoundingClientRect();
+          return {
+            name: e.textContent,
+            x: r.x,
+            y: r.y,
+            width: r.width,
+            height: r.height,
+          };
+        }),
+      );
+    // Both on screen, Kai's plate at the very top (where the old 54 px
+    // limit let it slide under the badge).
+    expect(plates.map((p) => p.name)).toEqual(
+      expect.arrayContaining(["tester · YOU", "Kai"]),
+    );
+    for (const plate of plates)
+      for (const c of covered)
+        expect(
+          plate.x + plate.width <= c.x ||
+            c.x + c.width <= plate.x ||
+            plate.y + plate.height <= c.y ||
+            c.y + c.height <= plate.y,
+          `${plate.name} under the badge`,
+        ).toBe(true);
+    expect(errors).toEqual([]);
   } finally {
     await context.close();
   }
