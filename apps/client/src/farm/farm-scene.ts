@@ -4461,7 +4461,16 @@ export function openFarm(options) {
     pop.style.left = `${Math.max(8, Math.min(o.w - pw - 8, sp.x - pw / 2))}px`;
     const top = sp.y - pop.offsetHeight - 14;
     pop.style.top = `${top < 60 ? Math.min(o.h - pop.offsetHeight - 8, sp.y + PH * Z * K + 10) : top}px`;
+    // Held past the hold time, a touch opens the tray while the finger is
+    // still down, and on a phone the tray can lie under it: the click that
+    // ends that touch would pick whatever seed is there (and close the tray
+    // at once). Only a press that starts on the tray picks; Enter still does.
+    let pressed = false;
+    pop.onpointerdown = () => {
+      pressed = true;
+    };
     pop.onclick = (e) => {
+      if (!pressed && e.detail !== 0) return;
       if (e.target.closest("[data-seedshop]")) {
         pop.hidden = true;
         pop.classList.remove("seedpick");
