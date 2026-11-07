@@ -3767,7 +3767,8 @@ html.zoom-locked #game * {
    game action (hold to harvest or plant many on the Farm, hold to compare in
    the Shop), and a drag with the mouse on a computer selects nothing. No
    text selection, no Copy / Save image callout, no dragging pictures out
-   (touch-hold.ts cancels the menus). Fields you type in keep selection. */
+   (touch-hold.ts cancels the menus). Fields you type in keep selection,
+   and admins can copy from the Admin panel (owner, 7 Nov 2026). */
 html {
   -webkit-user-select: none;
   user-select: none;
@@ -3778,7 +3779,9 @@ a,
 svg {
   -webkit-user-drag: none;
 }
-:is(input, textarea, select, [contenteditable="true"]) {
+:is(input, textarea, select, [contenteditable="true"]),
+dialog:has(.admin-tabs),
+dialog:has(.admin-tabs) * {
   -webkit-user-select: text;
   user-select: text;
   -webkit-touch-callout: default;

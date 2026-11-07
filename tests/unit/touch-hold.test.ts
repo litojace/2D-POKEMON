@@ -1,11 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { EDITABLE, blocksMenu } from "../../apps/client/src/touch-hold";
+import { ADMIN, EDITABLE, blocksMenu } from "../../apps/client/src/touch-hold";
 
 // The game is not a page to copy from: a long press on a phone (hold to
 // harvest on the Farm) or a drag or right click on a computer selects
 // nothing and opens no menu (owner, 6–7 Nov 2026).
-const field = { closest: (s: string) => (s === EDITABLE ? {} : null) };
+const field = {
+  closest: (s: string) => (s.split(", ").includes("input") ? {} : null),
+};
+const admin = {
+  closest: (s: string) => (s.includes(ADMIN) ? {} : null),
+};
 const plain = { closest: () => null };
 
 describe("menus and selection", () => {
@@ -13,6 +18,9 @@ describe("menus and selection", () => {
     expect(blocksMenu(plain)).toBe(true);
     expect(blocksMenu(null)).toBe(true);
     expect(blocksMenu(field)).toBe(false);
+    // Admins copy player ids and reports from the Admin panel.
+    expect(blocksMenu(admin)).toBe(false);
+    expect(ADMIN).toBe("dialog:has(.admin-tabs)");
     expect(EDITABLE).toContain("input");
     expect(EDITABLE).toContain("textarea");
   });
@@ -27,7 +35,7 @@ describe("menus and selection", () => {
     );
     expect(block).toMatch(/img,\s*a,\s*svg \{\s*-webkit-user-drag: none;/);
     expect(block).toMatch(
-      /:is\(input, textarea, select, \[contenteditable="true"\]\) \{\s*-webkit-user-select: text;\s*user-select: text;/,
+      /:is\(input, textarea, select, \[contenteditable="true"\]\),\s*dialog:has\(\.admin-tabs\),\s*dialog:has\(\.admin-tabs\) \* \{\s*-webkit-user-select: text;\s*user-select: text;/,
     );
   });
 });
