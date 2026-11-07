@@ -584,8 +584,12 @@ test("Bistro: furniture in the bigger room stays through tab switches, even when
     "That change couldn't be saved.",
   );
   expect(await B(page, "return srv.S.sizeLv")).toBe(3);
-  expect(await B(page, "return srv.S.stored.plant")).toBe(1);
-  expect(await items("srv.S")).toEqual([...before, "lamp@8,6"].sort());
+  // The kitchen grew a column (x 6): the plant standing at 6,0 went into
+  // storage with the refused one.
+  expect(await B(page, "return srv.S.stored.plant")).toBe(2);
+  expect(await items("srv.S")).toEqual(
+    [...before.filter((i) => i !== "plant@6,0"), "lamp@8,6"].sort(),
+  );
   // The scene shows the server's room: the refused plant is back in storage.
   expect(await items("b.state()")).toEqual(await items("srv.S"));
   // With the server taking it, the plant goes to the far corner…

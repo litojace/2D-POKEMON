@@ -1305,13 +1305,19 @@ export function startCooking(
   if (s.coins < d.cost) return fail(`You need ${d.cost} coins for ${d.name}.`);
   s.coins -= d.cost;
   s.stoves[stove] = {
-    x: st.x,
-    model: st.model,
+    x: st.x ?? stove + 1,
+    model: st.model ?? "clay",
     dish,
     start: now,
     perfect: false,
     // The stove's speed counts like the cook's pace (the server does the same).
-    dur: cookMs(s, dish, cookLevel, pace * STOVE_BY_MODEL[st.model].speed),
+    // (A stove saved before migration 103 has no model: a Clay Stove.)
+    dur: cookMs(
+      s,
+      dish,
+      cookLevel,
+      pace * (STOVE_BY_MODEL[st.model]?.speed ?? 1),
+    ),
   };
   return { ok: true };
 }
