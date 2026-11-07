@@ -11,6 +11,7 @@ import {
   playHit,
   playImpact,
 } from "../../apps/client/src/skill-effects";
+import { SIGNED, unbacked } from "../../apps/client/src/skill-fx-signatures";
 
 /** Anything callable, chainable and readable: a stand-in for Phaser objects. */
 function deep(overrides: Record<string | symbol, unknown> = {}): any {
@@ -146,6 +147,13 @@ describe("battle effects", () => {
       if (!(c.element.toLowerCase() in effectKit.hit))
         missing.push(`${c.element} hit`);
     expect(missing).toEqual([]);
+  });
+
+  it("layers signature physics only on moves that have their own drawing", () => {
+    // A signature with nothing under it would hide the move's classic look.
+    expect(unbacked).toEqual([]);
+    const ids = new Set(moves.map(({ a }) => a.id));
+    expect([...SIGNED].filter((id) => !ids.has(id))).toEqual([]);
   });
 
   it("draws every move for many frames without errors or bad numbers", () => {

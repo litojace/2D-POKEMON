@@ -1,6 +1,7 @@
 import type Phaser from "phaser";
 import type { Ability, Projectile, Zone } from "@arena/shared";
 import { fxFor, type Fx } from "./fx-engine";
+import { SIGNED } from "./skill-fx-signatures";
 
 /**
  * A layer of real-world physics under every move's own effect: what its
@@ -206,7 +207,7 @@ const MATTER: Record<Element, Matter> = {
 };
 
 const matterOf = (a: Ability): Matter | undefined =>
-  BESPOKE.has(a.id)
+  BESPOKE.has(a.id) || SIGNED.has(a.id)
     ? undefined
     : MATTER[(a.element ?? "").toLowerCase() as Element];
 
