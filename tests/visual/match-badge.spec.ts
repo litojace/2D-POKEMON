@@ -11,11 +11,21 @@ const SIZES = [
   { name: "desktop", width: 1440, height: 900, phone: false },
 ];
 
-async function match(page: Page, mode: string, remaining = 95) {
+async function match(
+  page: Page,
+  mode: string,
+  remaining = 95,
+  myName?: string,
+) {
   const errors = await openHub(page);
   await page.evaluate(
-    (mode) => (window as any).__room("pvp", { mode, phase: "playing" }),
-    mode,
+    ([mode, myName]) => {
+      const w = window as any;
+      w.__room("pvp", { mode, phase: "playing" });
+      // Before the match starts: the HUD is built once, with the names.
+      if (myName) w.__snap.players[0].name = myName;
+    },
+    [mode, myName] as const,
   );
   await openPlayPanel(page);
   await page.click("#play-create");
@@ -308,14 +318,12 @@ for (const size of [
     });
     try {
       const page = await context.newPage();
-      const errors = await match(page, "duel");
-      if (size.island) await setInsets(page, ISLAND);
       // A long name against a short one.
-      await page.evaluate(() => {
-        const w = window as any;
-        w.__snap.players[0].name = "Bartholomew";
-        w.__push();
-      });
+      const errors = await match(page, "duel", 95, "Bartholomew");
+      if (size.island) await setInsets(page, ISLAND);
+      await expect(page.locator("#hud .health-card b").first()).toHaveText(
+        "Bartholomew",
+      );
       const box = (await page.locator("#hud").boundingBox())!;
       const middle = box.x + box.width / 2;
       const clock = await inkAcross(page, "#hud .timer-wrap");
