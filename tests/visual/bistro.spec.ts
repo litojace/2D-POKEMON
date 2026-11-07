@@ -15,6 +15,9 @@ async function openBistro(page: Page) {
   await expect(page.locator(".bistro-layer .bs-cv")).toBeVisible();
   await page.waitForFunction(() => (window as any).__bistro?.sync().ready);
   await B(page, "b.setTod(0.5)");
+  // Rush hours follow the clock (35 s of every 4 min) and change the pace
+  // and the chips: start each test just after one (b.rush() starts one).
+  await B(page, "b.calm()");
   return errors;
 }
 /** Send what the scene has queued and wait for the answer. */
@@ -429,6 +432,34 @@ test("Bistro board: deliver a catering order, a regular's visit, claim the leagu
   expect(errors).toEqual([]);
 });
 
+test("Bistro: a guest stays at the table 12 to 17 s, so a busy room fills up", async ({
+  page,
+}) => {
+  const errors = await openBistro(page);
+  await B(
+    page,
+    "srv.S.counter = [{ dish: 'goicuon', servings: 20, perfect: false }, null, null, null]; return b.load()",
+  );
+  // Follow one guest by id: others keep coming, and those who leave drop
+  // off the list.
+  const id = (await B(
+    page,
+    "b.spawn(); const c = b.customers().at(-1); return c.id",
+  )) as number;
+  const state = `const c = b.customers().find((x) => x.id === ${id}); return c ? c.state : 'gone'`;
+  // Seated, ordered, served: eating.
+  const served = (await B(
+    page,
+    `for (let i = 0; i < 60; i++) { const c = b.customers().find((x) => x.id === ${id}); if (c?.state === 'eating') return true; b.advance(0.5); } return false`,
+  )) as boolean;
+  expect(served).toBe(true);
+  await B(page, "b.advance(11.5)");
+  expect(await B(page, state)).toBe("eating");
+  await B(page, "b.advance(6)");
+  expect(await B(page, state)).not.toBe("eating");
+  expect(errors).toEqual([]);
+});
+
 test("Bistro: a sheet scrolled down stays there when the server answers", async ({
   page,
 }) => {
@@ -441,10 +472,13 @@ test("Bistro: a sheet scrolled down stays there when the server answers", async 
   const y = await list.evaluate((el) => el.scrollTop);
   expect(y).toBeGreaterThan(50);
   await list.evaluate((el) => ((el as any).old = true));
-  // The server answers with other coins (a guest paid, a level-up cost
-  // was spent): the sheet is drawn again, and the list stays put.
+  await expect(page.locator("#bs-sheet .st em.poor")).toHaveCount(0);
+  // The server answers with other coins (a level-up cost was spent): the
+  // sheet shows it (every dish now out of reach) in place (ui/patch.ts),
+  // the same list, and it stays put.
   await B(page, "srv.S.coins = 3; return b.load()");
-  await expect.poll(() => list.evaluate((el) => !!(el as any).old)).toBe(false);
+  await expect(page.locator("#bs-sheet .st em.poor")).not.toHaveCount(0);
+  expect(await list.evaluate((el) => !!(el as any).old)).toBe(true);
   expect(await list.evaluate((el) => el.scrollTop)).toBe(y);
   // Another tab and back starts at the top again.
   await page.click('#bs-sheet [data-rtab="pantry"]');
@@ -594,4 +628,49 @@ test("Bistro: switching tabs keeps the guests as they were, and a reload brings 
   for (const id of seated) expect(back).toContain(id);
   expect(errors).toEqual([]);
   expect(again).toEqual([]);
+});
+
+test.describe("on a touch screen", () => {
+  test.use({
+    viewport: { width: 844, height: 390 },
+    hasTouch: true,
+    isMobile: true,
+  });
+  test("Bistro: tapping an empty stove waits for a dish, and a hired cook stands at their stove", async ({
+    page,
+  }) => {
+    const errors = await openBistro(page);
+    await B(page, "srv.S.level = 2; srv.S.coins = 900; return b.load()");
+    await page.click('.bs-rail [data-sheet="staff"]');
+    await page.click('#bs-sheet [data-tab="hire"]');
+    await page.locator('#bs-sheet [data-hire^="cook:"]').first().click();
+    await page.click("#bs-sheet [data-close]");
+    // The cook takes the last stove and starts their dish.
+    await expect
+      .poll(() => B(page, "return b.state().stoves[1].dish"))
+      .not.toBeNull();
+    const cook = (await B(
+      page,
+      "return b.state().staff.find((s) => s.role === 'cook').id",
+    )) as number;
+    // Everyone on the team is drawn, the cook too.
+    await expect.poll(() => B(page, "return b.drawnStaff()")).toContain(cook);
+    // A tap on the first stove (yours, empty) opens the dishes, and the
+    // click that follows the touch doesn't pick one.
+    const stove = (await B(page, "return b.screen(1, 0, 50)")) as Pt;
+    await page.touchscreen.tap(stove.x, stove.y);
+    await expect(page.locator("#bs-sheet h2")).toContainText("Stove 1");
+    await page.waitForTimeout(500);
+    await expect(page.locator("#bs-sheet")).toBeVisible();
+    expect(await B(page, "return b.state().stoves[0].dish")).toBeNull();
+    // Picking a dish is a tap of its own.
+    await page.locator('#bs-sheet [data-dish="banhmi"]').tap();
+    await expect(page.locator("#bs-sheet")).toBeHidden();
+    expect(await B(page, "return b.state().stoves[0].dish")).toBe("banhmi");
+    // The cook's stove says who cooks there.
+    const theirs = (await B(page, "return b.screen(2, 0, 50)")) as Pt;
+    await page.touchscreen.tap(theirs.x, theirs.y);
+    await expect(page.locator("#bs-tip")).toContainText("cooks here");
+    expect(errors).toEqual([]);
+  });
 });

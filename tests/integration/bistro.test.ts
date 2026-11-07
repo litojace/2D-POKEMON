@@ -1157,3 +1157,42 @@ describe("the long game (migration 100)", () => {
     expect(B.priceAt("goicuon", 5, 1)).toBe(Math.round((4 * 148 * 11) / 1000));
   });
 });
+
+describe("the cooks in step (migration 101)", () => {
+  it("online, a cook's dish done since the last request is plated and the next started now", async () => {
+    await open(cal);
+    await setCoins(cal, 5000, 5);
+    const [{ c }] = await sql("select (public.arena_champion_ids())[3] c");
+    await sql(
+      "delete from public.arena_bistro_staff where player_id = $1 and role = 'cook'",
+      [cal],
+    );
+    await sql(
+      "insert into public.arena_bistro_staff(player_id, id, creature, role, dish) values ($1, 50, $2, 'cook', 'goicuon')",
+      [cal, c],
+    );
+    // The cook runs the last stove. Their batch was started 13 s ago and
+    // takes 10 s; the request before was 5 s ago, when it wasn't done yet.
+    await sql(
+      "update public.arena_bistro_stoves set dish = 'goicuon', started_at = now() - interval '13 seconds', dur_ms = 10000, perfect = false where player_id = $1 and idx = (select max(idx) from public.arena_bistro_stoves where player_id = $1)",
+      [cal],
+    );
+    await sql(
+      "update public.arena_bistro_counter set dish = null, servings = 0, perfect = false where player_id = $1",
+      [cal],
+    );
+    await sql(
+      "update public.arena_bistros set last_seen = now() - interval '5 seconds' where player_id = $1",
+      [cal],
+    );
+    const b = await open(cal);
+    const last = b.stoves[b.stoves.length - 1];
+    // Plated, and the next batch started now, as the scene's own cooks do
+    // it: the answer doesn't take back what the scene shows.
+    expect(
+      b.counter.find((x: any) => x?.dish === "goicuon")?.servings,
+    ).toBeGreaterThan(0);
+    expect(last.dish).toBe("goicuon");
+    expect(Math.abs(Number(last.start) - Number(b.now))).toBeLessThan(2000);
+  });
+});

@@ -6255,14 +6255,8 @@ export function openFarm(options) {
       ),
     );
   };
-  let sheetView = "";
   function renderSheet() {
     const el = $("fm-sheet");
-    // Another sheet or tab (or one just opened) is drawn from scratch; the
-    // same one is patched in place (ui/patch.ts).
-    const view = `${sheet}:${sheetTab}`,
-      fresh = el.hidden || view !== sheetView;
-    sheetView = view;
     el.hidden = false;
     const top = el.querySelector(".sh-body")?.scrollTop ?? 0;
     let html = "";
@@ -6554,7 +6548,10 @@ export function openFarm(options) {
               : `<p class="sh-note">None of your friends has a farm yet. Add friends from the Lobby, or invite them from the Invite tab.</p>`) +
           `</div>`;
     }
-    if (!setInner(el, html, fresh)) return;
+    // Drawn whole: patching this sheet in place made the visited farm draw
+    // far slower (tests/visual/farm.spec.ts, a friend's giant crop), for a
+    // reason not found yet. Its list keeps its scroll below.
+    el.innerHTML = html;
     if (sheet === "market" && sheetTab === "stall") wireStallForm(el);
     el.querySelectorAll("[data-dogprev]").forEach((c) => {
       const g = c.getContext("2d");
@@ -6582,8 +6579,6 @@ export function openFarm(options) {
     for (const sel of LINE_UP) {
       const bs = [...el.querySelectorAll(`.item .acts ${sel}`)];
       if (bs.length < 2) continue;
-      // Measured at their own width (a patched sheet keeps the last one).
-      for (const x of bs) x.style.minWidth = "";
       const w = Math.max(...bs.map((x) => x.offsetWidth));
       for (const x of bs) x.style.minWidth = `${w}px`;
     }

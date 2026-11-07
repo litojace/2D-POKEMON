@@ -1328,6 +1328,11 @@ export function openBistro(o: BistroOptions): BistroHandle {
     // Leaving.
     if (step(c, dt)) c.alpha -= dt * 3;
   };
+  /* A meal: 12 to 17 s. With ordering, the waiter's walk and paying, a seat
+     turns over in about SEAT_BASE (20 s), as the server counts it, so a busy
+     room fills up and the queue at the door shows when it's full. */
+  const EAT_SECONDS = 12;
+  const EAT_SPREAD = 5;
   const sitFace = (dir: number): Facing =>
     dir === 0 ? "right" : dir === 1 ? "left" : "up";
   const pay = (c: Customer) => {
@@ -1508,7 +1513,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
     w.task = null;
     c.served = true;
     c.state = "eating";
-    c.eatEnd = T + 5 + Math.random() * 2.5;
+    c.eatEnd = T + EAT_SECONDS + Math.random() * EAT_SPREAD;
     const waited = T - c.sat;
     c.hearts = heartsFor(waited, c.patience);
     combo = T - lastServe <= COMBO_SECONDS ? Math.min(COMBO_MAX, combo + 1) : 1;
@@ -1686,6 +1691,13 @@ export function openBistro(o: BistroOptions): BistroHandle {
     drag = null;
   };
   cv.addEventListener("pointerup", end);
+  // A tap is handled on pointerup, which can open a sheet under the finger.
+  // On a touch screen the browser then sends a click to that same spot,
+  // which would press whatever button the new sheet put there (the first
+  // dish, after tapping an empty stove). The canvas uses no clicks.
+  cv.addEventListener("touchend", (e) => e.preventDefault(), {
+    passive: false,
+  });
   cv.addEventListener("pointercancel", (e) => {
     pointers.delete(e.pointerId);
     pinch = null;
@@ -1853,12 +1865,13 @@ export function openBistro(o: BistroOptions): BistroHandle {
       }
       if (cookProgress(st, now) >= 1) return plateStove(h.i);
       const d = DISH_BY_ID[st.dish];
+      const cook = staffOf(S, "cook").find((_, i) => cookStove(S, i) === h.i);
       const left = (stoveMs(st) - (now - st.start)) / 1000;
       const golden = !st.perfect && cookProgress(st, now) < PERFECT_FROM;
       return showTip(
         sx,
         sy,
-        `<b>${esc(d.name)}</b><span>${fmtTime(left)} left${st.perfect ? " · perfect ★" : ""}</span>${golden ? `<small>Tap the pot when it glows gold for +${PERFECT_BONUS} servings</small>` : ""}`,
+        `<b>${esc(d.name)}</b><span>${fmtTime(left)} left${st.perfect ? " · perfect ★" : ""}</span>${cook ? `<small>${esc(staffName(cook))} cooks here · change their dish in Staff</small>` : golden ? `<small>Tap the pot when it glows gold for +${PERFECT_BONUS} servings</small>` : ""}`,
       );
     }
     if (h.kind === "stove-buy") return openSheet("staff", "upgrades");
@@ -3169,6 +3182,8 @@ export function openBistro(o: BistroOptions): BistroHandle {
     return { night: nightLevel(tod), gold: goldenLevel(tod), t: T };
   };
   type Drawable = { d: number; f: () => void };
+  /** The staff drawn in the last frame, by id (tests: everyone on the team shows). */
+  let drawnStaff: number[] = [];
   const drawWalker = (
     w: Walker,
     opts: {
@@ -3595,11 +3610,23 @@ export function openBistro(o: BistroOptions): BistroHandle {
     for (const w of waiters)
       list.push({
         d: w.gx + w.gy + 0.3,
-        f: () =>
+        f: () => {
           drawWalker(w, {
             hat: w.staff.role === "janitor" ? "janitor" : "waiter",
             carry: w.carry,
-          }),
+          });
+          drawnStaff.push(w.staff.id);
+        },
+      });
+    // The hired cooks, each at the stove they run.
+    drawnStaff = [];
+    for (const c of cooks)
+      list.push({
+        d: c.gx + c.gy + 0.1,
+        f: () => {
+          drawWalker(c, { hat: "chef", mood: c.hop > 0 ? "happy" : "normal" });
+          drawnStaff.push(c.staff.id);
+        },
       });
     list.push({
       d: chef.gx + chef.gy + 0.1,
@@ -4247,6 +4274,10 @@ export function openBistro(o: BistroOptions): BistroHandle {
       relayout();
       syncStaff();
       syncLitter();
+      // The cooks' turn now, not up to 0.4 s later: a dish done while the
+      // answer was on its way is plated before the next frame shows it.
+      kitchenT = 0;
+      runKitchen(0);
     }
     if (info.payday)
       o.toast(
@@ -4502,8 +4533,14 @@ export function openBistro(o: BistroOptions): BistroHandle {
       },
       rush: () =>
         (rushShift = RUSH_PERIOD * 1000 - (nowS() % (RUSH_PERIOD * 1000))),
+      /** Just after a rush hour ends (tests: guests and chips as usual). */
+      calm: () => {
+        const P = RUSH_PERIOD * 1000;
+        rushShift = (((RUSH_SECONDS * 1000 - nowS()) % P) + P) % P;
+      },
       edit: (on: boolean) => setEditing(on),
       sheet: (k: string, a?: string | number) => openSheet(k, a),
+      drawnStaff: () => [...drawnStaff].sort((x, y) => x - y),
       advance: (s: number) => {
         for (let i = 0; i < s * 30; i++) update(1 / 30);
       },

@@ -2175,10 +2175,19 @@ async function cropDraws(page: Page) {
       }
       return orig.call(this, img, ...a);
     };
-    await new Promise((r) => setTimeout(r, 2500));
+    // At least 2.5s, and until a whole frame with crops in it came: this
+    // machine draws on the CPU, a frame a second or slower while it rains,
+    // with longer gaps, so a fixed wait can catch none.
+    const whole = () => frames.slice(1, -1).find((f) => f.length);
+    const t0 = performance.now();
+    while (
+      performance.now() - t0 < 2500 ||
+      (!whole() && performance.now() - t0 < 20_000)
+    )
+      await new Promise((r) => setTimeout(r, 100));
     proto.drawImage = orig;
     // A whole frame: not the first or last (they may be cut).
-    return frames.slice(1, -1).find((f) => f.length) ?? [];
+    return whole() ?? [];
   });
 }
 const plotAt = (page: Page, i: number) =>
@@ -3094,7 +3103,7 @@ test("a tap on the farm closes the open sheet or orb card and does nothing else"
   }
 });
 
-test("a server answer changes the open sheet in place: same rows, same scroll", async ({
+test("a server answer keeps the open sheet scrolled where it was", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 667, height: 375 });
@@ -3107,11 +3116,6 @@ test("a server answer changes the open sheet in place: same rows, same scroll", 
   await body.evaluate((el) => (el.scrollTop = el.scrollHeight));
   const y = await body.evaluate((el) => el.scrollTop);
   expect(y).toBeGreaterThan(20);
-  await page.evaluate(() =>
-    document
-      .querySelectorAll("#fm-sheet *")
-      .forEach((e: any) => (e.__kept = true)),
-  );
   // The minute poll reads the farm again: more wheat seeds now.
   const gets = await page.evaluate(() => (window as any).__farmGets);
   await page.evaluate(() => {
@@ -3124,13 +3128,8 @@ test("a server answer changes the open sheet in place: same rows, same scroll", 
     gets as number,
   );
   await page.waitForTimeout(200);
-  const fresh = await page.evaluate(
-    () =>
-      Array.from(document.querySelectorAll("#fm-sheet *")).filter(
-        (e: any) => !e.__kept,
-      ).length,
-  );
-  expect(fresh).toBe(0);
+  // The sheet shows the new count, and its list stays where it was.
+  await expect(page.locator("#fm-sheet")).toContainText("You have 21");
   expect(await body.evaluate((el) => el.scrollTop)).toBe(y);
   expect(errors).toEqual([]);
 });
