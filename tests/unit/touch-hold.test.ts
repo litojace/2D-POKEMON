@@ -28,12 +28,16 @@ describe("menus and selection", () => {
     const css = readFileSync("apps/client/src/style.css", "utf8");
     const at = css.indexOf("/* Not a page to copy");
     expect(at).toBeGreaterThan(-1);
-    const block = css.slice(at, at + 900);
+    const block = css.slice(at, at + 1600);
     // Not inside a media query: phones and computers alike.
     expect(block).toMatch(
       /\*\/\nhtml \{\s*-webkit-user-select: none;\s*user-select: none;\s*-webkit-touch-callout: none;/,
     );
     expect(block).toMatch(/img,\s*a,\s*svg \{\s*-webkit-user-drag: none;/);
+    // Modal dialogs too (Chrome lets their text be selected otherwise).
+    expect(block).toMatch(
+      /dialog,\s*dialog \* \{\s*-webkit-user-select: none;\s*user-select: none;/,
+    );
     expect(block).toMatch(
       /:is\(input, textarea, select, \[contenteditable="true"\]\),\s*dialog:has\(\.admin-tabs\),\s*dialog:has\(\.admin-tabs\) \* \{\s*-webkit-user-select: text;\s*user-select: text;/,
     );

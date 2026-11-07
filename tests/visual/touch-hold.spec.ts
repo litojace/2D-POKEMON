@@ -95,17 +95,35 @@ test("on a computer a drag selects nothing, and right click and dragging a pictu
   expect(await selectable(page, "#lobby-play")).toBe("none");
   expect(await selectable(page, ".lobby-layer")).toBe("none");
   expect(await menuCancelled(page, "#lobby-play", "mouse")).toBe(true);
-  // Dragging a picture (a fighter's portrait) out of the page.
+  // Dragging a picture or a link out of the page.
   const dragCancelled = await page.evaluate(() => {
-    const img = document.querySelector("img")!;
-    const drag = new DragEvent("dragstart", {
-      bubbles: true,
-      cancelable: true,
+    const host = document.createElement("div");
+    host.innerHTML =
+      '<img id="zz-img" alt="" src="data:image/gif;base64,R0lGODlhAQABAAAAACw="><a id="zz-link" href="#x">link</a>';
+    document.body.append(host);
+    return ["#zz-img", "#zz-link"].map((sel) => {
+      const drag = new DragEvent("dragstart", {
+        bubbles: true,
+        cancelable: true,
+      });
+      document.querySelector(sel)!.dispatchEvent(drag);
+      return drag.defaultPrevented;
     });
-    img.dispatchEvent(drag);
-    return drag.defaultPrevented;
   });
-  expect(dragCancelled).toBe(true);
+  expect(dragCancelled).toEqual([true, true]);
+  // A dialog (Settings, How to play) selects nothing either: Chrome lets
+  // a modal dialog's text be selected unless told otherwise.
+  // (The shared dialog every one of them opens in.)
+  await page.evaluate(() => {
+    const d = document.querySelector<HTMLDialogElement>("dialog#dialog")!;
+    d.innerHTML = "<h2>Settings</h2><p>Sound and controls.</p>";
+    d.showModal();
+  });
+  expect(await selectable(page, "dialog#dialog h2")).toBe("none");
+  expect(await selectable(page, "dialog#dialog p")).toBe("none");
+  await page.evaluate(() =>
+    document.querySelector<HTMLDialogElement>("dialog#dialog")!.close(),
+  );
   // A field keeps selection and its menu (paste a code).
   await page.evaluate(() => {
     const input = document.createElement("input");
@@ -123,7 +141,38 @@ test("admins can select and copy from the Admin panel", async ({ page }) => {
   });
   await exposeAccount(page);
   const errors = await openLobby(page);
-  await page.evaluate(() => void (window as any).__account.showAdmin());
+  // The Admin panel's own data (the harness fakes the rest of the API).
+  await page.evaluate(() => {
+    const fetch = window.fetch.bind(window);
+    const reply = (body: unknown) =>
+      new Response(JSON.stringify(body), {
+        headers: { "Content-Type": "application/json" },
+      });
+    window.fetch = async (input, init) => {
+      const url = String(input instanceof Request ? input.url : input);
+      if (url.includes("/api/admin/online"))
+        return reply({ players: [], guests: 0, at: new Date().toISOString() });
+      if (url.includes("/api/admin/reports"))
+        return reply({ reports: [], total: 0, open: 0 });
+      if (url.includes("/api/admin/titles")) return reply([]);
+      if (url.includes("/api/admin/players"))
+        return reply({
+          players: [
+            {
+              id: "22222222-2222-4222-8222-222222222222",
+              displayName: "Nova",
+              isAdmin: false,
+              suspended: false,
+              createdAt: "2026-10-01T00:00:00Z",
+              titleIds: [],
+            },
+          ],
+          total: 1,
+        });
+      return fetch(input, init);
+    };
+  });
+  await page.evaluate(() => (window as any).__account.showAdmin());
   const panel = page.locator("dialog:has(.admin-tabs)");
   await expect(panel).toBeVisible();
   for (const selector of [
@@ -134,9 +183,11 @@ test("admins can select and copy from the Admin panel", async ({ page }) => {
   expect(await menuCancelled(page, "dialog:has(.admin-tabs) h2", "mouse")).toBe(
     false,
   );
-  // The game around it still selects nothing.
+  // The game around it, and other dialogs, still select nothing.
   expect(await selectable(page, ".lobby-layer")).toBe("none");
-  expect(errors.filter((e) => !/admin|Request failed|fetch/i.test(e))).toEqual(
-    [],
-  );
+  // A player's row, the text an admin copies.
+  expect(
+    await selectable(page, "dialog:has(.admin-tabs) .admin-row strong"),
+  ).toBe("text");
+  expect(errors).toEqual([]);
 });
