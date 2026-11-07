@@ -113,7 +113,8 @@ for (const size of SIZES)
     test(`the score badge at ${size.name}, ${mode}`, async ({
       browser,
     }, info) => {
-      test.setTimeout(150_000);
+      // Many pixel measurements (four cards in a free-for-all) at 2x.
+      test.setTimeout(240_000);
       const context = await browser.newContext({
         viewport: { width: size.width, height: size.height },
         isMobile: size.phone,
