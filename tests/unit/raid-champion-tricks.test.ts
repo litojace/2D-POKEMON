@@ -109,16 +109,22 @@ describe("Grumblecrag tricks", () => {
     };
     expect(progress(true)).toBeCloseTo(progress(false) * 2, 1);
   });
-  it("Astrabun's Mochi Pound adds 15 stagger", () => {
+  it("Astrabun's last Mochi Pound of a chain adds 15 stagger", () => {
     const a = arena("grumblecrag", ["astrabun"]);
     const p = hero(a, 0),
       boss = a.boss()!,
       pound = skill("astrabun", "mochi-pound");
-    a.damage(boss, 26, p.id, { ...pound, id: "plain-pound" });
-    const plain = a.raid.stagger;
-    a.raid.stagger = 0;
-    a.damage(boss, 26, p.id, pound);
-    expect(a.raid.stagger).toBeCloseTo(plain + 15);
+    const stagger = (ability: typeof pound) => {
+      a.raid.stagger = 0;
+      a.damage(boss, 26, p.id, ability);
+      return a.raid.stagger;
+    };
+    // The last pound (the one that stuns) adds 15.
+    const plain = stagger({ ...pound, id: "plain-pound" });
+    expect(stagger(pound)).toBeCloseTo(plain + 15);
+    // The first two (no stun) add nothing extra.
+    const soft = { ...pound, status: undefined };
+    expect(stagger(soft)).toBeCloseTo(stagger({ ...soft, id: "plain-pound" }));
   });
   it("Wombolder's charge into a pillar adds 25 stagger (the engine's wall slam)", () => {
     const charge = (bossX: number) => {
@@ -168,12 +174,12 @@ describe("Grumblecrag tricks", () => {
       else expect(p.hp).toBeLessThan(hp);
     }
   });
-  it("Rock Volley is blocked by Facet Guard only, not by any counter", () => {
+  it("Rock Volley is blocked by Facet Guard only, not by Wombolder's brace", () => {
     const a = arena("grumblecrag", ["wombolder"]);
     const p = hero(a, 0),
       boss = a.boss()!;
     Object.assign(p, { x: 1000, y: 450 });
-    a.cast(p, skill("wombolder", "rump-block"));
+    a.cast(p, skill("wombolder", "grudge-thump"));
     const hp = p.hp;
     (a as any).resolveWarning(
       {
@@ -457,18 +463,18 @@ describe("Storm Twins tricks", () => {
     expect(second).toBeGreaterThan(0);
     expect(shoot(750)[1]).toBe(0);
   });
-  it("Wombolder's Rump Block stops Twin Rush and staggers that twin", () => {
+  it("Wombolder Braced by Grudge Thump stops Twin Rush and staggers that twin", () => {
     const a = arena<StormTwinsArena>("storm-twins", ["wombolder"]);
     a.raid.trait = "bickering";
     const p = hero(a, 0),
       [fizz] = twins(a),
       hp = p.hp;
-    a.cast(p, skill("wombolder", "rump-block"));
+    a.cast(p, skill("wombolder", "grudge-thump"));
     (a as any).hitBy = "twin-rush";
     a.damage(p, STORM_TWINS.rush.damage, fizz.id);
     expect(p.hp).toBe(hp);
     expect(a.raid.twins![0].stagger).toBe(15);
-    // Without the block, the rush lands.
+    // Once the brace wears off, the rush lands.
     run(a, 2);
     (a as any).hitBy = "twin-rush";
     a.damage(p, STORM_TWINS.rush.damage, fizz.id);

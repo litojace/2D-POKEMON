@@ -4,7 +4,9 @@ import {
   goldenLevel,
   isSuperSwipe,
   nightLevel,
+  weatherLook,
 } from "../../apps/client/src/farm/farm-feel";
+import { FARM_WEATHER_BY_ID } from "../../packages/shared/src/farm";
 import {
   FARM_CUES,
   playFarmCue,
@@ -122,5 +124,28 @@ describe("farm sounds", () => {
     for (const cue of FARM_CUES)
       playFarmCue(ctx, {} as AudioNode, 0, noise, cue);
     expect(started).toEqual([]);
+  });
+});
+
+describe("weatherLook", () => {
+  const look = (id: string, night: number) =>
+    weatherLook(
+      FARM_WEATHER_BY_ID[id as keyof typeof FARM_WEATHER_BY_ID],
+      night,
+    );
+  it("names the weather for the hour, keeping what it does", () => {
+    expect(look("sun", 0).name).toBe("Sunny");
+    expect(look("sun", 1)).toMatchObject({ name: "Clear Night", icon: "star" });
+    expect(look("sun", 1).text).toBe(FARM_WEATHER_BY_ID.sun.text);
+    expect(look("rainbow", 1).name).toBe("Moonbow");
+    expect(look("rainbow", 0).name).toBe("Rainbow");
+    expect(look("moon", 0).name).toBe("Daytime Moon");
+    expect(look("moon", 1).name).toBe("Moonlit Night");
+    // Rain, storms and frost look the same at any hour.
+    for (const id of ["rain", "storm", "frost"])
+      expect(look(id, 1)).toBe(FARM_WEATHER_BY_ID[id as "rain"]);
+    // Dusk: night from halfway.
+    expect(look("sun", 0.49).name).toBe("Sunny");
+    expect(look("sun", 0.5).name).toBe("Clear Night");
   });
 });

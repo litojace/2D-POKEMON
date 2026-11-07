@@ -21,6 +21,31 @@ const escape = (s: string) =>
       ]!,
   );
 
+/** A tap's own click arrives right after its touch; within this window the
+ * click repeats the pick the touch already made. */
+export const TOUCH_CLICK_MS = 700;
+
+/**
+ * Pick on the finger's touch, like the skill buttons: a browser makes a
+ * click only from the first finger on the screen, so with a thumb on the
+ * joystick (moving) a tap on the row never clicked. A mouse and the
+ * keyboard (Enter, Space) still pick by click; a touch's own click is
+ * skipped so one tap never picks twice.
+ */
+export function wirePick(button: HTMLButtonElement, pick: () => void) {
+  let touchedAt = -Infinity;
+  button.onpointerdown = (event) => {
+    if (event.pointerType === "mouse" || button.disabled) return;
+    event.preventDefault();
+    touchedAt = event.timeStamp;
+    pick();
+  };
+  button.onclick = (event) => {
+    if (event.timeStamp - touchedAt < TOUCH_CLICK_MS) return;
+    pick();
+  };
+}
+
 export function renderTargetPicker(
   frame: HTMLElement,
   show: boolean,
@@ -53,7 +78,7 @@ export function renderTargetPicker(
     for (const b of Array.from(
       panel.querySelectorAll<HTMLButtonElement>("button"),
     ))
-      b.onclick = () => pick(b.dataset.targetId!);
+      wirePick(b, () => pick(b.dataset.targetId!));
   }
   for (const b of Array.from(
     panel.querySelectorAll<HTMLButtonElement>("button"),

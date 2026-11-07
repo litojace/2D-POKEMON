@@ -613,6 +613,30 @@ function inkSplat(
     fx.glow(x, y - 8, r * 2.2 * (1 - k * 0.5), color, 0.5 * fade);
   });
 }
+/** Kraken Grasp: the thrown enemy crashes down in a splash of ink. */
+function krakenLand(
+  scene: Phaser.Scene,
+  a: Ability,
+  x: number,
+  y: number,
+  color: number,
+  shot: Shot,
+) {
+  const fx = fxFor(scene),
+    r = a.explosion ?? 90;
+  fx.decal({ kind: "wet", x, y, r: r * 0.8, color: INK_BLACK, life: 2.4 });
+  inkDrops(fx, x, y, 14, [80, 260]);
+  fx.shake(150, 0.005);
+  shot(fx.reduced ? 180 : 420, (k) => {
+    const out = ease(Math.min(1, k * 2.2)),
+      fade = 1 - k;
+    fx.floorSolid
+      .fillStyle(INK_BLACK, 0.55 * fade)
+      .fillEllipse(x, y, r * 2 * out, r * 2 * SQ * out);
+    fx.shockwave(x, y, r * out, k, color, 6);
+    fx.glow(x, y - 10, r * (1 - k * 0.5), color, 0.5 * fade);
+  });
+}
 function inkCast(
   scene: Phaser.Scene,
   _a: Ability,
@@ -865,6 +889,7 @@ export const shadowKit: FxKit = {
   impact: {
     "void-orb": voidBurst,
     "ink-jet": inkSplat,
+    "kraken-grasp": krakenLand,
     "haunted-lantern-shot": wispImpact,
     "lantern-wisp": wispImpact,
     ghostfire: wispImpact,

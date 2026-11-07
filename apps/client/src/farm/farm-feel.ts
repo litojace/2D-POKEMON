@@ -15,6 +15,25 @@ export function nightLevel(tod: number): number {
   if (tod >= 0.2 && tod <= 0.3) return 1 - (tod - 0.2) / 0.1;
   return 1;
 }
+/**
+ * How a weather looks at this hour. The server's weather is the same for
+ * every player (4-hour windows), but day and night follow this device's
+ * clock, as in the Plaza and the Bistro: a Sunny window after dark is a
+ * clear night, a Rainbow one a pale moonbow, and a Moonlit one by day a
+ * pale moon in a daytime sky. What it does (growth, mutations) is the same;
+ * only its name, icon and colour change, and what's drawn.
+ */
+export function weatherLook<
+  T extends { id: string; name: string; icon: string; color: string },
+>(w: T, night: number): T {
+  const dark = night >= 0.5;
+  if (w.id === "sun" && dark)
+    return { ...w, name: "Clear Night", icon: "star", color: "#b8c4ff" };
+  if (w.id === "rainbow" && dark)
+    return { ...w, name: "Moonbow", color: "#d8e0ff" };
+  if (w.id === "moon" && !dark) return { ...w, name: "Daytime Moon" };
+  return w;
+}
 /** 0 … 1 golden light: strongest at 17:30 (0.73), a softer glow at dawn. */
 export function goldenLevel(tod: number): number {
   const dusk = 1 - Math.abs(tod - 0.73) / 0.07;

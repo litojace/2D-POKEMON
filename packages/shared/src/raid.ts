@@ -681,7 +681,7 @@ export const RAID_PERKS: Partial<
   },
   astrabun: {
     skill: "Mochi Pound",
-    text: "A pound on Grumblecrag adds 15 stagger.",
+    text: "The last pound of a chain on Grumblecrag adds 15 stagger.",
   },
   wombolder: {
     skill: "Burrow Rush and Landslide",
@@ -793,8 +793,8 @@ export const RAID_BOSS_PERKS: Partial<
       text: "Pierces the first twin and also hits the other if it is on the line.",
     },
     wombolder: {
-      skill: "Rump Block",
-      text: "Blocks Twin Rush completely and adds 15 stagger to that twin.",
+      skill: "Grudge Thump",
+      text: "Braced, you stop Twin Rush completely and add 15 stagger to that twin.",
     },
     pangrove: {
       skill: "Curl & Roll",

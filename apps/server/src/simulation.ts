@@ -45,6 +45,7 @@ import {
   basicInterval,
   maxHealth,
   advanceMovement,
+  holdInCage,
   blankInput,
   blinkLanding,
   emptyStats,
@@ -129,6 +130,10 @@ export class Arena {
     string,
     { target?: string; x: number; y: number; gap: number; speed: number; until: number }
   >();
+  /** Where each fighter was lately (Halcyon Rewind): time, place and health, oldest first. */
+  private trail = new Map<string, { t: number; x: number; y: number; hp: number }[]>();
+  /** Radiant Flare: when each ray zone last swept each enemy (`zone:fighter`). */
+  private rayHits = new Map<string, number>();
   /** Pinball flights: the enemies hit on the current stretch, and bounces left then. */
   private pinballs = new Map<
     string,
@@ -434,6 +439,8 @@ export class Arena {
     this.rollHits.clear();
     this.pinballs.clear();
     this.zips.clear();
+    this.trail.clear();
+    this.rayHits.clear();
     // Fighter roulette: a fresh random fighter for everyone each round.
     if (this.rule("random") && !this.practice)
       for (const p of this.players) {
@@ -489,6 +496,9 @@ export class Arena {
         clone: undefined,
         roll: undefined,
         pinball: undefined,
+        tether: undefined,
+        grab: undefined,
+        pound: undefined,
         plates: undefined,
         plateAt: 0,
         moss: 0,
@@ -517,6 +527,10 @@ export class Arena {
     this.rollHits.delete(p.id);
     this.pinballs.delete(p.id);
     this.zips.delete(p.id);
+    this.trail.delete(p.id);
+    p.tether = undefined;
+    p.grab = undefined;
+    p.pound = undefined;
     p.roll = undefined;
     p.pinball = undefined;
     p.vx = p.vy = 0;
@@ -734,6 +748,22 @@ export class Arena {
     if (target.hp <= 0 || this.phase !== "playing") return;
     if (ability?.ground && target.jumpUntil > this.time) return;
     const source = this.players.find((p) => p.id === owner);
+    // Blinded (Ink Jet): a basic attack misses.
+    if (
+      source &&
+      source !== target &&
+      ability &&
+      ability.id === CHARACTERS[source.character].basic.id &&
+      this.has(source, "blind")
+    ) {
+      this.event("hit", target, CHARACTERS[target.character].color, 0, undefined, ability.id);
+      Object.assign(this.events[this.events.length - 1], {
+        target: target.id,
+        source: owner,
+        miss: true,
+      });
+      return;
+    }
     let ambushed = false;
     if (amount > 0 && ability && source && source !== target) {
       // Marksman shots hit harder the farther away the target is.
@@ -890,7 +920,7 @@ export class Arena {
       if (guard.onAbsorb) this.status(target, "mark", guard.window, target.id);
     }
     const status = primed && combo!.status ? combo!.status : ability?.status;
-    if (status)
+    if (status) {
       this.status(
         target,
         status,
@@ -899,7 +929,21 @@ export class Arena {
           : ability?.statusDuration) ?? 1,
         owner,
       );
-    if (ability && source && ability.knockback) {
+      // A leash pins its target where it was hit; a taunt points at the taunter.
+      const s = target.statuses.find(
+        (x) => x.kind === status && x.until > this.time,
+      );
+      if (s && status === "leash") {
+        s.tx = target.x;
+        s.ty = target.y;
+        s.amount = ability?.leash ?? 110;
+      }
+      if (s && status === "taunt" && source) {
+        s.tx = source.x;
+        s.ty = source.y;
+      }
+    }
+    if (ability && source && ability.knockback && !this.has(target, "brace")) {
       // A pull (negative knockback) stops just in front of the caster.
       const room = Math.max(
         0,
@@ -1452,6 +1496,230 @@ export class Arena {
         });
       }
     }
+    if (a.kind === "screen" && this.zones.length < RULES.maxZones) {
+      // A curtain across the aim, a little way ahead.
+      const d = a.screen?.distance ?? 90;
+      this.zones.push({
+        id: ++this.serial,
+        owner: p.id,
+        x: p.x + Math.cos(angle) * d,
+        y: p.y + Math.sin(angle) * d,
+        radius: (a.screen?.length ?? 200) / 2,
+        until: this.time + a.duration,
+        nextTick: this.time + (a.tickDelay ?? 0.1),
+        ability: a,
+        color,
+        born: this.time,
+        angle: angle + Math.PI / 2,
+      });
+    }
+    if (a.kind === "taunt") {
+      for (const enemy of enemies)
+        if (
+          enemy.hp > 0 &&
+          Math.hypot(enemy.x - p.x, enemy.y - p.y) < a.radius + this.hitRadius(enemy)
+        )
+          this.damage(enemy, a.damage, p.id, a);
+      this.status(p, "brace", a.duration);
+    }
+    if (a.kind === "rewind") {
+      // Back to where it was `seconds` ago (or the oldest place it remembers).
+      const trail = this.trail.get(p.id) ?? [];
+      const back = this.time - (a.rewind?.seconds ?? 2);
+      const then = trail.find((m) => m.t >= back) ?? trail[0];
+      if (then) {
+        const from = { x: p.x, y: p.y };
+        this.rushes.delete(p.id);
+        this.stopZip(p);
+        p.x = then.x;
+        p.y = then.y;
+        p.vx = p.vy = 0;
+        p.dashUntil = Math.min(p.dashUntil, this.time);
+        const lost = Math.max(0, then.hp - p.hp);
+        if (lost > 0)
+          this.heal(
+            p,
+            Math.min(a.rewind?.max ?? 30, lost * (a.rewind?.heal ?? 0.6)),
+            a.id,
+          );
+        this.event("burst", p, color, undefined, p.id, a.id);
+        Object.assign(this.events[this.events.length - 1], { tx: from.x, ty: from.y });
+        this.trail.set(p.id, []);
+      }
+    }
+    if (a.kind === "tether") {
+      // The enemy nearest the aim, within reach and in sight.
+      const aim = { x: p.lastInput.aimX, y: p.lastInput.aimY };
+      const target = enemies
+        .filter(
+          (e) =>
+            e.hp > 0 &&
+            Math.hypot(e.x - p.x, e.y - p.y) <= a.range + this.hitRadius(e) &&
+            this.lineClear(p, e),
+        )
+        .sort(
+          (m, n) =>
+            Math.hypot(m.x - aim.x, m.y - aim.y) -
+            Math.hypot(n.x - aim.x, n.y - aim.y),
+        )[0];
+      const slot = this.kit(p).skills.findIndex((k) => k.id === a.id);
+      if (target)
+        p.tether = {
+          target: target.id,
+          until: this.time + a.duration,
+          nextTick: this.time + (a.tether?.tick ?? 0.25),
+          skill: slot,
+        };
+      else if (slot >= 0 && slot !== ULT_SLOT)
+        // Nobody in reach: most of the cooldown comes back.
+        p.cooldowns[slot] = Math.min(p.cooldowns[slot], this.time + 1.5);
+    }
+    if (a.kind === "gaze") {
+      // Eyespot Flash: everyone near takes the hit; whoever is looking is stunned.
+      for (const enemy of enemies) {
+        if (
+          enemy.hp <= 0 ||
+          Math.hypot(enemy.x - p.x, enemy.y - p.y) >=
+            a.radius + this.hitRadius(enemy) ||
+          !this.lineClear(p, enemy)
+        )
+          continue;
+        const toMe = Math.atan2(p.y - enemy.y, p.x - enemy.x);
+        const off = Math.abs(
+          Math.atan2(Math.sin(toMe - enemy.angle), Math.cos(toMe - enemy.angle)),
+        );
+        this.damage(
+          enemy,
+          a.damage,
+          p.id,
+          off <= (a.gaze ?? 0.6) ? a : { ...a, status: undefined },
+        );
+      }
+    }
+    if (a.kind === "clamp" || a.kind === "throw") {
+      // The nearest enemy in front, within reach.
+      const target = enemies
+        .filter((e) => e.hp > 0 && this.inArc(p, e, a.range, a.arc ?? 0.35))
+        .sort(
+          (m, n) =>
+            Math.hypot(m.x - p.x, m.y - p.y) - Math.hypot(n.x - p.x, n.y - p.y),
+        )[0];
+      if (target && a.kind === "clamp") {
+        // A combo-primed target (Magnetised) goes off at once.
+        if (!combo.self && combo.payoff === a.id && hasMark(target, p.id, this.time))
+          this.fireClamp(target, p.id, a);
+        else {
+          target.statuses = target.statuses.filter(
+            (s) => !(s.kind === "clamp" && s.by === p.id),
+          );
+          target.statuses.push({
+            kind: "clamp",
+            until: this.time + (a.fuse ?? 1.5),
+            nextTick: this.time + (a.fuse ?? 1.5),
+            by: p.id,
+          });
+          this.event("hit", target, color, 0, p.id, a.id);
+        }
+      }
+      if (target && a.kind === "throw") {
+        // Kraken Grasp: seize it now, hurl it when the hold runs out.
+        if (a.status) this.status(target, a.status, a.statusDuration ?? 0.5, p.id);
+        p.grab = {
+          target: target.id,
+          at: this.time + (a.hold ?? 0.5),
+          skill: this.kit(p).skills.findIndex((k) => k.id === a.id),
+        };
+        this.holdGrabbed(p);
+      }
+    }
+    if (a.kind === "pound") {
+      // Mochi Pound: strike 1, 2 or 3 of the chain.
+      const slot = this.kit(p).skills.findIndex((k) => k.id === a.id);
+      const chain =
+        p.pound && p.pound.skill === slot && this.time <= p.pound.until
+          ? p.pound
+          : undefined;
+      const strikes = a.strikes ?? [a.damage];
+      const step = Math.min(strikes.length, (chain?.step ?? 0) + 1);
+      const last = step >= strikes.length;
+      // Rites and EX scale every strike alike.
+      const scale = a.damage / (strikes[0] || 1);
+      const hit: Ability = {
+        ...a,
+        damage: Math.round(strikes[step - 1] * scale),
+        knockback: last ? a.knockback : 30,
+        status: last ? a.status : undefined,
+      };
+      this.event("burst", p, color, undefined, p.id, a.id);
+      this.events[this.events.length - 1].step = step;
+      for (const enemy of enemies)
+        if (enemy.hp > 0 && this.inArc(p, enemy, a.range, a.arc ?? 0.3))
+          this.damage(enemy, hit.damage, p.id, hit);
+      if (slot >= 0 && slot !== ULT_SLOT) {
+        if (last) p.pound = undefined;
+        else {
+          p.pound = {
+            skill: slot,
+            step,
+            until: this.time + (a.chainWindow ?? 1.2),
+            cdEnd: chain?.cdEnd ?? p.cooldowns[slot],
+          };
+          // The next strike is ready almost at once.
+          p.cooldowns[slot] = Math.min(p.cooldowns[slot], this.time + 0.25);
+        }
+      }
+    }
+    if (a.kind === "cage" && this.zones.length < RULES.maxZones) {
+      // Crystal Cage: whoever is inside stays in, whoever is outside stays out.
+      const R = a.radius,
+        until = this.time + a.duration;
+      this.zones.push({
+        id: ++this.serial,
+        owner: p.id,
+        x: p.x,
+        y: p.y,
+        radius: R,
+        until,
+        nextTick: until,
+        ability: a,
+        color,
+        born: this.time,
+      });
+      for (const q of this.players) {
+        if (q.hp <= 0 || q.out || q.raidBoss) continue;
+        const inside = Math.hypot(q.x - p.x, q.y - p.y) < R;
+        q.statuses.push({
+          kind: "cage",
+          until,
+          nextTick: until,
+          tx: p.x,
+          ty: p.y,
+          amount: R,
+          inside,
+        });
+        if (inside && enemies.includes(q)) this.damage(q, a.damage, p.id, a);
+      }
+    }
+    if (a.kind === "lighthouse" && this.zones.length < RULES.maxZones) {
+      // Radiant Flare: rays turn round the caster (longer when Kindled).
+      this.zones.push({
+        id: ++this.serial,
+        owner: p.id,
+        x: p.x,
+        y: p.y,
+        radius: a.range * (selfPrimed ? (combo.radius ?? 1) : 1),
+        until: this.time + a.duration,
+        nextTick: this.time,
+        ability: a,
+        color,
+        born: this.time,
+        angle,
+      });
+      if (selfPrimed) {
+        this.event("burst", p, color, undefined, p.id, a.id);
+        this.events[this.events.length - 1].combo = combo.name;
+      }
+    }
     if (a.kind === "veil") {
       this.status(p, "stealth", a.duration);
       this.status(p, "haste", a.statusDuration ?? 1.5);
@@ -1648,6 +1916,248 @@ export class Arena {
     if (!this.zips.delete(p.id)) return;
     p.dashUntil = Math.min(p.dashUntil, this.time);
     p.vx = p.vy = 0;
+  }
+  /** Halcyon Rewind's memory: where this fighter has been, the last 3 seconds. */
+  private remember(p: Fighter) {
+    const trail = this.trail.get(p.id) ?? [];
+    trail.push({ t: this.time, x: p.x, y: p.y, hp: p.hp });
+    while (trail.length && trail[0].t < this.time - 3) trail.shift();
+    this.trail.set(p.id, trail);
+  }
+  /**
+   * Gill Siphon: while the stream holds (in reach, in sight, the caster not
+   * stunned), the target takes a tick of damage and the caster drinks its share.
+   */
+  private stepTether(p: Fighter, disabled: boolean) {
+    const t = p.tether!;
+    const a = this.kit(p).skills[t.skill];
+    const target = this.players.find((q) => q.id === t.target);
+    if (
+      !a ||
+      !target ||
+      target.hp <= 0 ||
+      target.out ||
+      disabled ||
+      this.time >= t.until ||
+      Math.hypot(target.x - p.x, target.y - p.y) >
+        (a.tether?.breakRange ?? 470) + this.hitRadius(target) ||
+      !this.lineClear(p, target)
+    ) {
+      p.tether = undefined;
+      return;
+    }
+    if (this.time >= t.nextTick) {
+      t.nextTick += a.tether?.tick ?? 0.25;
+      this.damage(target, a.damage, p.id, a);
+    }
+  }
+  /** Is a body (radius `r`) on this curtain? */
+  onScreen(zone: Zone, body: { x: number; y: number }, r: number) {
+    const ang = zone.angle ?? 0,
+      ux = Math.cos(ang),
+      uy = Math.sin(ang);
+    const dx = body.x - zone.x,
+      dy = body.y - zone.y;
+    const along = dx * ux + dy * uy,
+      across = Math.abs(-dx * uy + dy * ux);
+    return Math.abs(along) <= zone.radius + r * 0.5 && across <= 14 + r;
+  }
+  /**
+   * Static Clamp goes off on `target`: the hit (and its status), then an arc
+   * to every other enemy of the clamper near it.
+   */
+  private fireClamp(target: Fighter, by: string, a: Ability) {
+    target.statuses = target.statuses.filter(
+      (s) => !(s.kind === "clamp" && s.by === by),
+    );
+    const owner = this.players.find((q) => q.id === by);
+    const color = owner ? CHARACTERS[owner.character].color : 0x9fe8ff;
+    this.event("burst", target, color, undefined, by, a.id);
+    this.damage(target, a.damage, by, a);
+    if (!owner) return;
+    const arc: Ability = { ...a, damage: a.damage * (a.chain ?? 0.5) };
+    for (const e of this.enemiesOf(owner))
+      if (
+        e !== target &&
+        e.hp > 0 &&
+        Math.hypot(e.x - target.x, e.y - target.y) <
+          (a.explosion ?? 200) + this.hitRadius(e) &&
+        this.lineClear(target, e)
+      ) {
+        // The arc: a bolt from the target to it.
+        this.event("beam", target, color, undefined, by, a.id);
+        Object.assign(this.events[this.events.length - 1], { tx: e.x, ty: e.y });
+        this.damage(e, arc.damage, by, arc);
+      }
+  }
+  /** Kraken Grasp: keep the seized enemy in front of the thrower. */
+  private holdGrabbed(p: Fighter) {
+    const target = this.players.find((q) => q.id === p.grab?.target);
+    if (!target || target.hp <= 0 || target.out) {
+      p.grab = undefined;
+      return;
+    }
+    if (target.raidBoss || this.has(target, "brace")) return;
+    const x = p.x + Math.cos(p.angle) * 62,
+      y = p.y + Math.sin(p.angle) * 62;
+    if (!blocked(x, y)) {
+      target.x = x;
+      target.y = y;
+      target.vx = target.vy = 0;
+    }
+  }
+  /** Kraken Grasp: hurl the held enemy toward the thrower's aim. */
+  private hurl(p: Fighter) {
+    const grab = p.grab!;
+    p.grab = undefined;
+    const a = this.kit(p).skills[grab.skill];
+    const target = this.players.find((q) => q.id === grab.target);
+    if (!a || !target || target.hp <= 0 || target.out) return;
+    const dir = { x: Math.cos(p.angle), y: Math.sin(p.angle) };
+    const from = { x: target.x, y: target.y };
+    let slam = false;
+    if (!target.raidBoss && !this.has(target, "brace")) {
+      const far = a.throw ?? 380;
+      for (let d = 10; d <= far && !slam; d += 10)
+        slam = blocked(from.x + dir.x * d, from.y + dir.y * d, RULES.radius);
+      move(target, dir.x * far, dir.y * far);
+      holdInCage(target, this.time);
+    }
+    const color = CHARACTERS[p.character].color;
+    this.event("burst", target, color, undefined, p.id, a.id);
+    Object.assign(this.events[this.events.length - 1], {
+      tx: from.x,
+      ty: from.y,
+      ...(slam ? { slam: true } : {}),
+    });
+    const hit: Ability = {
+      ...a,
+      damage: a.damage * (slam ? (a.wallSlam ?? 1) : 1),
+      status: undefined,
+      knockback: 0,
+    };
+    this.damage(target, hit.damage, p.id, hit);
+    // It lands on whoever is there.
+    for (const e of this.enemiesOf(p))
+      if (
+        e !== target &&
+        e.hp > 0 &&
+        Math.hypot(e.x - target.x, e.y - target.y) <
+          (a.explosion ?? 90) + this.hitRadius(e)
+      )
+        this.damage(e, a.damage / 2, p.id, { ...hit, damage: a.damage / 2, knockback: 60 });
+  }
+  /** Does a crystal cage stand between where this shot is and where it is going? */
+  private caged(pr: Projectile, dt: number) {
+    for (const z of this.zones) {
+      if (z.ability.kind !== "cage" || z.until <= this.time) continue;
+      const now = Math.hypot(pr.x - z.x, pr.y - z.y) - z.radius,
+        next =
+          Math.hypot(pr.x + pr.vx * dt - z.x, pr.y + pr.vy * dt - z.y) -
+          z.radius;
+      if ((now < 0) !== (next < 0)) return true;
+    }
+    return false;
+  }
+  /**
+   * Radiant Flare: the rays turn; an enemy a ray passes over takes a hit (once
+   * per ray passing, through nothing solid).
+   */
+  private stepLighthouse(zone: Zone, dt: number) {
+    const owner = this.players.find((q) => q.id === zone.owner);
+    if (!owner || owner.hp <= 0 || owner.out) {
+      zone.until = this.time;
+      return;
+    }
+    const a = zone.ability;
+    zone.x = owner.x;
+    zone.y = owner.y;
+    zone.angle = (zone.angle ?? 0) + ((Math.PI * 2) / (a.spin ?? 1.2)) * dt;
+    const rays = a.count ?? 3;
+    // A ray passes a point every spin / rays seconds.
+    const gap = ((a.spin ?? 1.2) / rays) * 0.8;
+    for (const enemy of this.enemiesOf(owner)) {
+      if (enemy.hp <= 0) continue;
+      const dx = enemy.x - zone.x,
+        dy = enemy.y - zone.y,
+        d = Math.hypot(dx, dy);
+      const r = this.hitRadius(enemy);
+      if (d > zone.radius + r) continue;
+      const at = Math.atan2(dy, dx);
+      const swept = Array.from({ length: rays }, (_, k) => zone.angle! + (k * Math.PI * 2) / rays).some(
+        (ray) => {
+          const off = Math.atan2(Math.sin(at - ray), Math.cos(at - ray));
+          return Math.abs(off) < Math.PI / 2 && d * Math.abs(Math.sin(off)) < a.radius + r;
+        },
+      );
+      const key = `${zone.id}:${enemy.id}`;
+      if (!swept || this.time - (this.rayHits.get(key) ?? -99) < gap) continue;
+      if (!this.lineClear(owner, enemy)) continue;
+      this.rayHits.set(key, this.time);
+      this.damage(enemy, a.damage, owner.id, a);
+    }
+  }
+  /** Does a curtain against this shot's owner stand where the shot is? */
+  private screened(pr: Projectile) {
+    return this.zones.some(
+      (z) =>
+        z.ability.kind === "screen" &&
+        z.until > this.time &&
+        this.rivals(z.owner, pr.owner) &&
+        this.onScreen(z, pr, pr.ability.radius),
+    );
+  }
+  /**
+   * A boomerang: out for its range (a wall turns it early), then back to its
+   * thrower through anything, hitting each enemy once a pass. Gone when it
+   * gets home (or its thrower does not exist).
+   */
+  private stepBoomerang(pr: Projectile, dt: number) {
+    const owner = this.players.find((q) => q.id === pr.owner);
+    if (!owner || owner.hp <= 0 || owner.out) return false;
+    if (this.screened(pr)) {
+      this.event("impact", pr, pr.color, undefined, pr.owner, pr.ability.id);
+      return false;
+    }
+    const speed = Math.hypot(pr.vx, pr.vy) || pr.ability.speed;
+    if (pr.back) {
+      const d = Math.hypot(owner.x - pr.x, owner.y - pr.y);
+      if (d < RULES.radius + 6) return false;
+      pr.vx = ((owner.x - pr.x) / d) * speed;
+      pr.vy = ((owner.y - pr.y) / d) * speed;
+    }
+    const steps = Math.max(1, Math.ceil((speed * dt) / 10));
+    for (let i = 0; i < steps; i++) {
+      const next = { x: pr.x + (pr.vx * dt) / steps, y: pr.y + (pr.vy * dt) / steps };
+      if (!pr.back) {
+        const contact = projectileContact(pr, next, pr.ability.radius, currentObstacles());
+        pr.remaining -= (speed * dt) / steps;
+        if (contact || pr.remaining <= 0) {
+          // Turn round here, and start a new pass.
+          pr.x = contact?.x ?? next.x;
+          pr.y = contact?.y ?? next.y;
+          pr.back = true;
+          pr.hit = [];
+          this.event("impact", pr, pr.color, undefined, pr.owner, pr.ability.id);
+          return true;
+        }
+      }
+      if (pr.back) pr.remaining -= (speed * dt) / steps;
+      pr.x = next.x;
+      pr.y = next.y;
+      for (const enemy of this.enemiesOfOwner(pr.owner))
+        if (
+          enemy.hp > 0 &&
+          !(pr.hit ?? []).includes(enemy.id) &&
+          Math.hypot(pr.x - enemy.x, pr.y - enemy.y) < this.hitRadius(enemy) + pr.ability.radius
+        ) {
+          pr.hit = [...(pr.hit ?? []), enemy.id];
+          this.event("impact", pr, pr.color, undefined, pr.owner, pr.ability.id);
+          this.damage(enemy, pr.ability.damage, pr.owner, pr.ability);
+        }
+    }
+    // Lost on the way back for too long: drop it.
+    return pr.remaining > -pr.ability.range * 3 || !pr.back;
   }
   /**
    * Passives, after the fighter moved: Pangrove's plates grow back; Mossloth's
@@ -1899,6 +2409,15 @@ export class Arena {
         this.stopKnockedOut(p);
         continue;
       }
+      // Static Clamp: a charge that has run out goes off.
+      for (const s of p.statuses.filter(
+        (x) => x.kind === "clamp" && x.until <= this.time + 1e-9,
+      )) {
+        const by = this.players.find((q) => q.id === s.by);
+        const a = by && this.kit(by).skills.find((k) => k.kind === "clamp");
+        if (a) this.fireClamp(p, s.by!, a);
+      }
+      if (p.hp <= 0) continue;
       p.statuses = p.statuses.filter((s) => s.until > this.time);
       for (const s of p.statuses) {
         if (p.hp <= 0) break;
@@ -1969,8 +2488,31 @@ export class Arena {
         if (disabled || rooted) this.stopZip(p);
         else this.stepZip(p, dt);
       }
+      // A taunt points at where the taunter is now (gone: it ends).
+      for (const s of p.statuses)
+        if (s.kind === "taunt") {
+          const by = this.players.find((q) => q.id === s.by && q.hp > 0 && !q.out);
+          if (by) {
+            s.tx = by.x;
+            s.ty = by.y;
+          } else s.until = this.time;
+        }
       advanceMovement(p, input, dt, this.time);
       this.stepPassive(p, dt);
+      this.remember(p);
+      if (p.tether) this.stepTether(p, disabled);
+      if (p.grab) {
+        if (this.time >= p.grab.at - 1e-9) this.hurl(p);
+        else this.holdGrabbed(p);
+      }
+      if (p.pound && this.time > p.pound.until) {
+        // The chain lapsed: the cooldown runs from its first strike.
+        p.cooldowns[p.pound.skill] = Math.max(
+          p.cooldowns[p.pound.skill],
+          p.pound.cdEnd,
+        );
+        p.pound = undefined;
+      }
       if (p.charge && this.time >= p.charge.at) {
         const a = this.kit(p).skills[p.charge.skill];
         this.cast(p, p.charge.ex ? exAbility(a) : a, p.charge.ex);
@@ -2087,6 +2629,17 @@ export class Arena {
     );
     // Swept substeps prevent fast projectiles from tunneling through a fighter or wall.
     this.projectiles = this.projectiles.filter((pr) => {
+      // A Crystal Cage stops every shot that would cross it.
+      if (this.caged(pr, dt)) {
+        this.event("impact", pr, pr.color, undefined, pr.owner, pr.ability.id);
+        return false;
+      }
+      if (pr.ability.boomerang) return this.stepBoomerang(pr, dt);
+      // An Ember Curtain burns up the shots of whoever it works against.
+      if (this.screened(pr)) {
+        this.event("impact", pr, pr.color, undefined, pr.owner, pr.ability.id);
+        return false;
+      }
       const slowed = bubbles.some(
         (z) =>
           this.rivals(z.owner, pr.owner) &&
@@ -2162,6 +2715,27 @@ export class Arena {
       return true;
     });
     for (const zone of this.zones) {
+      if (zone.ability.kind === "cage") continue;
+      if (zone.ability.kind === "lighthouse") {
+        this.stepLighthouse(zone, dt);
+        continue;
+      }
+      if (zone.ability.kind === "screen") {
+        // Enemies on the curtain catch fire.
+        if (this.time >= zone.nextTick) {
+          zone.nextTick += zone.ability.tickInterval ?? 0.5;
+          const a = zone.ability;
+          for (const enemy of this.enemiesOfOwner(zone.owner))
+            if (
+              enemy.hp > 0 &&
+              enemy.jumpUntil <= this.time &&
+              this.onScreen(zone, enemy, this.hitRadius(enemy))
+            )
+              if (a.damage > 0) this.damage(enemy, a.damage, zone.owner, a);
+              else if (a.status) this.status(enemy, a.status, a.statusDuration ?? 1, zone.owner);
+        }
+        continue;
+      }
       if (zone.ability.kind === "timewarp") {
         // Sloth Time: enemies inside move at a fraction of their speed.
         for (const enemy of this.enemiesOfOwner(zone.owner))

@@ -24,6 +24,7 @@ import {
   type Fighter,
   type Input,
   type Zone,
+  RING_KINDS,
 } from "../../../packages/shared/src/index.js";
 import type { Arena } from "./simulation.js";
 /**
@@ -109,20 +110,20 @@ export const BOT_PROFILES: Record<BotDifficulty, Profile> = {
     dazeBy: {
       voltkit: 0.17,
       cindrake: 0.41,
-      tidefin: 0.15,
+      tidefin: 0.18,
       auralynx: 0.3,
       lumoth: 0.17,
       mystowl: 0.18,
       terradon: 0.3,
       duskveil: 0.27,
       coilemur: 0.32,
-      pyranda: 0.34,
+      pyranda: 0.38,
       glacelle: 0.26,
-      halcyra: 0.2,
+      halcyra: 0.19,
       sunbara: 0.23,
-      astrabun: 0.36,
+      astrabun: 0.32,
       wombolder: 0.36,
-      shadopus: 0.3,
+      shadopus: 0.28,
       pangrove: 0.39,
       mossloth: 0.485,
     },
@@ -183,6 +184,8 @@ export function hostileZone(arena: Arena, me: Fighter, z: Zone) {
   const owner = arena.players.find((p) => p.id === z.owner);
   if (owner && arena.teamOf(owner) === arena.teamOf(me)) return false;
   const a = z.ability;
+  // A Crystal Cage is a wall, not a hazard: fight on inside it.
+  if (a.kind === "cage") return false;
   return !a.heal || a.damage > 0 || !!a.status || !!a.knockback || !!a.turret;
 }
 /** Corners just outside every pillar: the waypoints for walking around cover. */
@@ -408,8 +411,11 @@ export class BotBrain {
       (() => {
         // The enemy's own rites (a wider nova, say) count when dodging.
         const a = kitOf(enemy.character, enemy.rites).skills[enemy.charge!.skill];
-        return a.kind === "nova" &&
-          Math.hypot(enemy.x - me.x, enemy.y - me.y) < a.radius + 40
+        // A blast ring, a cage about to rise, or rays about to turn.
+        const reach =
+          a.kind === "lighthouse" ? a.range : RING_KINDS.includes(a.kind) ? a.radius : 0;
+        return reach > 0 &&
+          Math.hypot(enemy.x - me.x, enemy.y - me.y) < reach + 40
           ? a
           : undefined;
       })();
@@ -698,7 +704,7 @@ export class BotBrain {
         case "beam":
           // A marksman's shot (farBonus) is worth more the farther away they are.
           if (s.sight && reach(a.range * 0.85))
-            score = a.damage * farMultiplier(a, s.dist);
+            score = a.damage * farMultiplier(a, s.dist) * (a.boomerang ? 1.6 : 1);
           break;
         case "rush":
         case "blink":
@@ -712,6 +718,47 @@ export class BotBrain {
         case "veil":
           // Slip into stealth on the way in, so the first hit is an ambush.
           if (s.sight && reach(520)) score = 15;
+          break;
+        case "screen": {
+          // An Ember Curtain against shots coming in, or a shooter keeping its distance.
+          const ranged = CHARACTERS[enemy.character].basic.kind !== "melee" &&
+            CHARACTERS[enemy.character].basic.kind !== "cone";
+          if (s.threatened || (ranged && s.dist > 220 && s.sight)) score = 18;
+          break;
+        }
+        case "taunt":
+          // Grudge Thump: drag whoever is close into a brawl.
+          if (s.sight && reach(a.radius)) score = 18 + a.damage;
+          break;
+        case "rewind":
+          // Halcyon Rewind: an escape (and a heal) when hurt and pressed.
+          if (s.threatened && s.hpRatio < 0.65) score = 17;
+          break;
+        case "tether":
+          // Gill Siphon: lock on while the target is in reach.
+          if (s.sight && reach(a.range * 0.95))
+            score = a.damage * (a.duration / (a.tether?.tick ?? 0.25)) * 0.6;
+          break;
+        case "gaze":
+          // Eyespot Flash: whoever is near and looking gets stunned.
+          if (s.sight && reach(a.radius * 0.9)) score = a.damage + 14;
+          break;
+        case "clamp":
+        case "throw":
+          // Static Clamp, Kraken Grasp: melee reach, the payoff comes a moment later.
+          if (s.sight && reach(a.range + RULES.radius)) score = a.damage * 1.2;
+          break;
+        case "pound":
+          // Mochi Pound: every strike of the chain while the target is close.
+          if (s.sight && reach(a.range + RULES.radius)) score = a.damage * 2.4;
+          break;
+        case "cage":
+          // Crystal Cage: shut the target in with it, up close.
+          if (s.sight && reach(a.radius * 0.75)) score = a.damage + 18;
+          break;
+        case "lighthouse":
+          // Radiant Flare: rays turning round it while the target is near.
+          if (s.sight && reach(a.range * 0.8)) score = a.damage * 5;
           break;
         case "grapple":
           // Latch on from mid range: a gap closer that lands its hit first.

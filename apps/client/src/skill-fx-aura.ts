@@ -1,5 +1,5 @@
 import type Phaser from "phaser";
-import type { Ability, Projectile } from "@arena/shared";
+import type { Ability, Projectile, Zone } from "@arena/shared";
 import { fxFor, type Fx } from "./fx-engine";
 import {
   TAU,
@@ -334,7 +334,7 @@ function mirrorGuard(
   shards(fx, x, y, 6, color, { power: 0.5 });
 }
 
-// ───────────── Shard Nova: crystal spikes erupt ─────────────
+// ───────────── Crystal Cage: a ring of crystal spires ─────────────
 function novaWindup(
   g: G,
   a: Ability,
@@ -372,7 +372,8 @@ function novaWindup(
   }
   fx.glow(x, y - 14, 30 + k * 50, color, 0.4 + k * 0.4);
 }
-function novaBurst(
+/** Crystal Cage rises: spikes punch up all round the ring at once. */
+function cageCast(
   scene: Phaser.Scene,
   a: Ability,
   x: number,
@@ -384,37 +385,71 @@ function novaBurst(
   const fx = fxFor(scene),
     r = a.radius,
     sq = 0.82;
-  shards(fx, x, y, 34, color, { power: 1.6 });
+  for (let i = 0; i < 8; i++) {
+    const aa = (i * TAU) / 8;
+    shards(fx, x + Math.cos(aa) * r, y + Math.sin(aa) * r * sq, 5, color, {
+      power: 1,
+    });
+  }
   fx.decal({ kind: "glyph", x, y, r: r * 0.95, color, life: 3 });
   fx.shake(200, 0.005);
-  shot(fx.reduced ? 220 : 620, (k) => {
-    const out = ease(Math.min(1, k * 2.2)),
-      fade = 1 - k;
-    if (k < 0.12) fx.glow(x, y - 14, r * 0.9, GLASS, 0.8 * (1 - k / 0.12));
-    fx.glow(x, y, r * 1.1, color, 0.45 * fade, true);
-    // Prismatic shockwave: three colour-split rings.
+  shot(fx.reduced ? 200 : 520, (k) => {
+    const fade = 1 - k;
+    if (k < 0.15) fx.glow(x, y - 14, r * 0.7, GLASS, 0.7 * (1 - k / 0.15));
     [PINK, CYAN, GOLD].forEach((c, i) =>
-      fx.shockwave(x, y, r * out * (1 - i * 0.04), k, c, 7),
+      fx.shockwave(x, y, r * (1 - i * 0.03), k, c, 6 * fade + 1),
     );
-    // A ring of crystal spikes punches out of the floor.
-    for (let i = 0; i < 16; i++) {
-      const aa = (i * TAU) / 16,
-        d = r * (0.35 + out * 0.6),
-        px = x + Math.cos(aa) * d,
-        py = y + Math.sin(aa) * d * sq,
-        h = (18 + hash(i) * 26) * Math.sin(Math.min(1, k * 1.6) * Math.PI);
-      if (h <= 0) continue;
-      fx.solid
-        .fillStyle(INK, 0.35)
-        .fillTriangle(px - 8, py + 2, px + 8, py + 2, px, py - h - 2);
-      fx.solid
-        .fillStyle(color, 1)
-        .fillTriangle(px - 7, py, px + 7, py, px, py - h);
-      fx.solid
-        .fillStyle(GLASS, 0.95)
-        .fillTriangle(px - 2, py, px + 4, py, px, py - h * 0.9);
-    }
   });
+}
+/**
+ * Crystal Cage: a ring of faceted spires round where it rose, for as long as
+ * it stands; they crack and fall in the last moments.
+ */
+function crystalCage(g: G, z: Zone, progress: number, now: number) {
+  const fx = fxFor(g.scene),
+    r = z.radius,
+    sq = 0.82,
+    color = z.color,
+    rise = ease(Math.min(1, progress * 12)),
+    fall = progress > 0.88 ? 1 - (progress - 0.88) / 0.12 : 1;
+  fx.floor
+    .lineStyle(10, INK, 0.25 * fall)
+    .strokeEllipse(z.x, z.y, r * 2, r * 2 * sq);
+  fx.floor
+    .lineStyle(3, color, 0.7 * fall)
+    .strokeEllipse(z.x, z.y, r * 2, r * 2 * sq);
+  const n = Math.max(14, Math.round(r / 11));
+  // Back spires first, so the front ones overlap them.
+  const spires = Array.from({ length: n }, (_, i) => (i * TAU) / n).sort(
+    (m, k) => Math.sin(m) - Math.sin(k),
+  );
+  for (const aa of spires) {
+    const i = Math.round((aa / TAU) * n),
+      px = z.x + Math.cos(aa) * r,
+      py = z.y + Math.sin(aa) * r * sq,
+      h = (34 + hash(i) * 22) * rise * fall,
+      w = 9 + hash(i * 7) * 4;
+    if (h <= 1) continue;
+    fx.solid
+      .fillStyle(0x000000, 0.18)
+      .fillEllipse(px + 4, py + 2, w * 2.4, w * 0.9);
+    fx.solid
+      .fillStyle(INK, 0.5)
+      .fillTriangle(px - w - 2, py + 2, px + w + 2, py + 2, px, py - h - 3);
+    fx.solid
+      .fillStyle(color, 1)
+      .fillTriangle(px - w, py, px, py + 3, px, py - h);
+    fx.solid
+      .fillStyle(GLASS, 1)
+      .fillTriangle(px, py + 3, px + w, py, px, py - h);
+    fx.g
+      .fillStyle(0xffffff, 0.5 + 0.3 * Math.sin(now / 240 + i))
+      .fillTriangle(px + 1, py - 3, px + 4, py - 5, px, py - h + 4);
+  }
+  if (progress > 0.88)
+    fx.trail(`cage-${z.id}`, 999, () =>
+      shards(fx, z.x, z.y, 24, color, { power: 1.4 }),
+    );
 }
 
 // ───────────── Hits ─────────────
@@ -815,13 +850,14 @@ function focusShot(
   });
 }
 
-// ───────────── Mirage Perch: a decoy stays, Halcyra darts away ─────────────
-function miragePerch(
+// ───────────── Halcyon Rewind: back to where it was ─────────────
+/** Where Halcyra leaves from: a ripple of feathers folding back in time. */
+function rewindCast(
   scene: Phaser.Scene,
   _a: Ability,
   x: number,
   y: number,
-  angle: number,
+  _angle: number,
   color: number,
   shot: Shot,
 ) {
@@ -831,47 +867,60 @@ function miragePerch(
     x,
     y,
     z: 24,
-    count: 8,
+    count: 10,
     kind: "mote",
     color: [color, KING, GLASS],
     speed: [30, 90],
     up: [10, 50],
-    life: [0.7, 1.2],
+    life: [0.6, 1],
     size: [1.5, 2.5],
     grav: 50,
     drag: 2,
   });
-  shot(fx.reduced ? 200 : 560, (k) => {
+  shot(fx.reduced ? 200 : 480, (k) => {
     const fade = 1 - k;
-    // Heat-haze ripples where the mirage stays.
+    // Clock-hand ripples turning backwards.
     for (let i = 0; i < 3; i++) {
-      const kk = (k * 1.5 + i * 0.25) % 1;
+      const kk = (k * 1.5 + i * 0.25) % 1,
+        a0 = -k * 6 - i;
       fx.g
-        .lineStyle(1.5, i % 2 ? CYAN : PINK, 0.6 * fade * (1 - kk))
-        .strokeEllipse(
-          x + Math.sin(k * 30 + i) * 2,
-          cy,
-          30 + kk * 30,
-          44 + kk * 30,
-        );
+        .lineStyle(2, i % 2 ? CYAN : KING, 0.7 * fade * (1 - kk))
+        .beginPath()
+        .arc(x, cy, 22 + kk * 30, a0, a0 + Math.PI * 1.3)
+        .strokePath();
     }
     fx.glow(x, cy, 40, color, 0.35 * fade);
-    // Speed streaks ahead: the haste dart.
-    for (let i = -2; i <= 2; i++) {
-      const off = i * 9,
-        s = 30 + ease(Math.min(1, k * 2)) * 90,
-        px = x + Math.cos(angle) * 18 - Math.sin(angle) * off,
-        py = cy + Math.sin(angle) * 18 + Math.cos(angle) * off;
-      fx.g
-        .lineStyle(2, i % 2 ? KING : GLASS, 0.75 * fade)
-        .lineBetween(
-          px + Math.cos(angle) * s * 0.4,
-          py + Math.sin(angle) * s * 0.4,
-          px + Math.cos(angle) * s,
-          py + Math.sin(angle) * s,
-        );
-    }
-    fx.shockwave(x, y, 46 * ease(Math.min(1, k * 2)), k, color, 5);
+  });
+}
+/** Where Halcyra lands: a burst of light and a healing shimmer. */
+function rewindLand(
+  scene: Phaser.Scene,
+  _a: Ability,
+  x: number,
+  y: number,
+  color: number,
+  shot: Shot,
+) {
+  const fx = fxFor(scene),
+    cy = y - 20;
+  fx.burst({
+    x,
+    y: cy,
+    z: 10,
+    count: 8,
+    kind: "mote",
+    color: [0x7dffb0, GLASS],
+    speed: [20, 60],
+    up: [60, 110],
+    life: [0.6, 1],
+    size: [1.5, 2.4],
+    drag: 2,
+  });
+  shot(fx.reduced ? 200 : 420, (k) => {
+    fx.glow(x, cy, 50 * (1 - k * 0.4), color, 0.55 * (1 - k));
+    fx.g
+      .lineStyle(3 * (1 - k) + 1, GLASS, 0.8 * (1 - k))
+      .strokeCircle(x, cy, 10 + k * 30);
   });
 }
 
@@ -971,8 +1020,9 @@ export const auraKit: FxKit = {
     "aura-quill": auraQuill,
     "pinning-quill": auraQuill,
   },
+  zone: { "crystal-cage": crystalCage },
   windup: {
-    "shard-nova": novaWindup,
+    "crystal-cage": novaWindup,
     "focus-shot": focusWindup,
     "skyline-lance": focusWindup,
   },
@@ -980,13 +1030,14 @@ export const auraKit: FxKit = {
     "prism-jab": prismJab,
     "shatter-paw": shatterPalm,
     "facet-guard": mirrorGuard,
-    "shard-nova": novaBurst,
-    "mirage-perch": miragePerch,
+    "crystal-cage": cageCast,
+    "halcyon-rewind": rewindCast,
   },
   impact: {
     "prism-shot": prismImpact,
     "aura-quill": quillImpact,
     "pinning-quill": quillImpact,
+    "halcyon-rewind": rewindLand,
   },
   beam: { "focus-shot": focusShot, "skyline-lance": skylineLance },
   hit: { aura: auraHit },

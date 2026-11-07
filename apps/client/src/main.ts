@@ -203,6 +203,7 @@ import {
 } from "../../../packages/shared/src/index";
 import { AudioManager } from "./audio";
 import { bounceFx, plateFx } from "./skill-fx-nature";
+import { drawSiphon } from "./skill-fx-water";
 import { InterpolationBuffer } from "./networking/interpolation";
 import { AccountUI } from "./accounts";
 import { framedAvatar } from "./portraits";
@@ -2642,11 +2643,28 @@ function renderBattle() {
                 ? comboOf(s.by).toUpperCase()
                 : s.kind === "warp"
                   ? "TIME SLOWED"
-                  : s.kind.toUpperCase(),
+                  : s.kind === "leash"
+                    ? "PINNED"
+                    : s.kind === "blind"
+                      ? "BLINDED"
+                      : s.kind === "taunt"
+                        ? "TAUNTED"
+                        : s.kind === "brace"
+                          ? "BRACED"
+                          : s.kind === "clamp"
+                            ? "CHARGED"
+                            : s.kind === "cage"
+                              ? "CAGED"
+                              : s.kind.toUpperCase(),
         )
         .join(" · "),
     );
   });
+  // Blinded by Ink Jet: ink splashes over your view while it lasts.
+  document.body.classList.toggle(
+    "is-blinded",
+    me.statuses.some((s) => s.kind === "blind" && s.until > state!.time),
+  );
   if (state.practice) {
     setHudText(
       $("practice-stats"),
@@ -4539,9 +4557,19 @@ class ArenaScene extends Phaser.Scene {
     if (
       ability &&
       event.kind === "burst" &&
-      ["blink", "rush", "roll", "pinball", "seedling", "swap"].includes(
-        ability.kind,
-      )
+      [
+        "blink",
+        "rush",
+        "roll",
+        "pinball",
+        "seedling",
+        "swap",
+        "rewind",
+        "pound",
+        "clamp",
+        "throw",
+        "lighthouse",
+      ].includes(ability.kind)
     )
       playImpact(this, ability, event.x, event.y, event.color, reducedMotion);
     // Novas play on their burst event; every other move plays on cast.
@@ -4565,6 +4593,11 @@ class ArenaScene extends Phaser.Scene {
       this.comboText(event);
     // The first hit out of stealth, and a charge that drives into a wall.
     if (event.kind === "hit" && event.ambush) this.comboText(event, "AMBUSH!");
+    // A blinded fighter's basic attack (Ink Jet) misses.
+    if (event.kind === "hit" && event.miss) this.comboText(event, "MISS");
+    // Mochi Pound: which pound of the chain.
+    if (event.kind === "burst" && event.step && event.step > 1)
+      this.comboText(event, event.step >= 3 ? "POUND!" : `×${event.step}`);
     if (event.kind === "burst" && event.slam) {
       this.comboText(event, "WALL SLAM!");
       if (!reducedMotion) this.cameras.main.shake(140, 0.004);
@@ -5101,7 +5134,10 @@ class ArenaScene extends Phaser.Scene {
     // smoothed, and for you predicted, position), not at the last snapshot,
     // so it moves with the fighter instead of trailing in steps.
     const followed = (z: Zone) => {
-      const at = z.ability.follow ? this.positions.get(z.owner) : undefined;
+      const at =
+        z.ability.follow || z.ability.kind === "lighthouse"
+          ? this.positions.get(z.owner)
+          : undefined;
       return at ? { ...z, x: at.x, y: at.y } : z;
     };
     for (const z of state.zones)
@@ -5633,12 +5669,97 @@ class ArenaScene extends Phaser.Scene {
           stealth: 0xa98be6,
           root: 0x7fcf6a,
           warp: 0xc9b6ff,
+          taunt: 0xff5a5a,
+          brace: 0xb08850,
+          leash: 0x9fb4ff,
+          blind: 0x3a2a5a,
+          clamp: 0x9fe8ff,
+          cage: 0xbfe6ff,
           mark: 0xffffff,
         };
         g.fillStyle(colors[s.kind]).fillCircle(
           x - 18 + i * 10,
           y - 60 - jump,
           4,
+        );
+      }
+      // Gill Siphon: the stream to the enemy it holds.
+      if (serverPlayer.tether) {
+        const to = this.positions.get(serverPlayer.tether.target);
+        if (to)
+          drawSiphon(
+            this,
+            x,
+            y - jump,
+            to.x,
+            to.y,
+            reducedMotion ? 0 : _time,
+            CHARACTERS[p.character].color,
+          );
+      }
+      // Static Clamp: a crackling ring that tightens as the charge runs out.
+      const clamp = serverPlayer.statuses.find(
+        (s) => s.kind === "clamp" && s.until > serverTime,
+      );
+      if (clamp) {
+        const left = Math.max(0, clamp.until - serverTime),
+          flick = reducedMotion ? 1 : 0.7 + 0.3 * Math.sin(_time / 30);
+        const r = 22 + 16 * Math.min(1, left / 1.5);
+        g.lineStyle(7, 0x2b6f8f, 0.35 * flick).strokeCircle(
+          x,
+          y - 18 - jump,
+          r,
+        );
+        g.lineStyle(3.5, 0x9fe8ff, 0.95 * flick).strokeCircle(
+          x,
+          y - 18 - jump,
+          r,
+        );
+        for (let k = 0; k < 4; k++) {
+          const a0 = (reducedMotion ? 0 : _time / 160) + (k * Math.PI) / 2;
+          g.lineStyle(2, 0xffffff, 0.8 * flick).lineBetween(
+            x + Math.cos(a0) * r,
+            y - 18 - jump + Math.sin(a0) * r,
+            x + Math.cos(a0 + 0.35) * (r - 7),
+            y - 18 - jump + Math.sin(a0 + 0.35) * (r - 7),
+          );
+        }
+      }
+      // Kraken Grasp: a tentacle round the enemy it holds.
+      if (serverPlayer.grab) {
+        const to = this.positions.get(serverPlayer.grab.target);
+        if (to) {
+          const wob = reducedMotion ? 0 : Math.sin(_time / 60) * 8;
+          const mx = (x + to.x) / 2 + wob,
+            my = (y + to.y) / 2 - 24;
+          const curve = new Phaser.Curves.QuadraticBezier(
+            new Phaser.Math.Vector2(x, y - 14 - jump),
+            new Phaser.Math.Vector2(mx, my),
+            new Phaser.Math.Vector2(to.x, to.y - 14),
+          );
+          g.lineStyle(9, 0x2a1240, 0.9);
+          curve.draw(g, 16);
+          g.lineStyle(5, 0x9a6ad8, 1);
+          curve.draw(g, 16);
+          g.lineStyle(3, 0x9a6ad8, 1).strokeCircle(to.x, to.y - 16, 20);
+        }
+      }
+      // Pinning Quill: a taut line back to the quill that pins it.
+      const pin = serverPlayer.statuses.find(
+        (s) => s.kind === "leash" && s.until > serverTime && s.tx !== undefined,
+      );
+      if (pin) {
+        g.lineStyle(2, 0x9fb4ff, 0.8).lineBetween(
+          x,
+          y - jump,
+          pin.tx!,
+          pin.ty!,
+        );
+        g.fillStyle(0xffe58f, 1).fillCircle(pin.tx!, pin.ty!, 4);
+        g.lineStyle(2, 0x9fb4ff, 0.55).strokeCircle(
+          pin.tx!,
+          pin.ty!,
+          pin.amount ?? 110,
         );
       }
       // Passives everyone can read: Pangrove's plates (lit leaves, dim when
@@ -5657,7 +5778,10 @@ class ArenaScene extends Phaser.Scene {
             { x: px - 5, y: py },
           ];
           if (i < n) g.fillStyle(0x9be37a, 1).fillPoints(leafPts, true);
-          g.lineStyle(1.5, 0x2a1a0e, i < n ? 0.9 : 0.5).strokePoints(leafPts, true);
+          g.lineStyle(1.5, 0x2a1a0e, i < n ? 0.9 : 0.5).strokePoints(
+            leafPts,
+            true,
+          );
         }
       } else if (passive === "moss" && serverPlayer.hp > 0) {
         const moss = serverPlayer.moss ?? 0;
@@ -5669,11 +5793,10 @@ class ArenaScene extends Phaser.Scene {
             18,
           );
         for (let i = 0; i < MOSS.max; i++)
-          g.fillStyle(i < moss ? 0x8fd36a : 0x2f4a2a, i < moss ? 1 : 0.6).fillCircle(
-            x - 16 + i * 8,
-            y + 42,
-            3,
-          );
+          g.fillStyle(
+            i < moss ? 0x8fd36a : 0x2f4a2a,
+            i < moss ? 1 : 0.6,
+          ).fillCircle(x - 16 + i * 8, y + 42, 3);
       }
       let label = this.labels.get(p.id);
       if (!label) {
