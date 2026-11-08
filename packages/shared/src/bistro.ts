@@ -2519,7 +2519,8 @@ export function simulateAway(
   const e0 = new Map(s.staff.map((st) => [st.id, energyOf(st)]));
   const eAt = (st: Staff, t: number) =>
     afterWork(st, e0.get(st.id) ?? energyOf(st), t - from, corners);
-  const STEP = 15_000;
+  // One-minute steps (the server's catch-up takes the same: migration 106).
+  const STEP = 60_000;
   let acc = 0;
   let dirt = 0;
   let sweep = 0;

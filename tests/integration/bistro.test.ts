@@ -893,7 +893,9 @@ describe("dish levels, ingredients, the Market and the Farm (migration 074)", ()
     ]);
     expect(r.results.map((x: any) => x.ok)).toEqual([false, true, false]);
     expect(r.results[0].error).toBe("You need 9 in the Farm's barn.");
-    expect(r.bistro.pantry.flour).toBe(2);
+    // (Plus the 5 bought above when the Market's first offer is flour: it
+    // changes every four hours.)
+    expect(r.bistro.pantry.flour).toBe(2 + (offer.id === "flour" ? 5 : 0));
     expect(r.bistro.farmSent).toBe(2);
     const barn = await sql(
       "select mutation, qty from public.arena_farm_barn where player_id = $1 and crop = 'wheat' order by mutation",
@@ -1542,4 +1544,103 @@ describe("every dish and every regular on the server (migration 105)", () => {
         expect(r.bistro.coins, `${g.id} ${i}`).toBe(local.coins);
       }
   });
+});
+
+describe("a big room's long day away (migration 106)", () => {
+  it("is worked out fast (one-minute steps) and still like the shared rules", async () => {
+    // A level 22 room, expanded four times: 18 tables and 36 chairs, three
+    // cooks, three waiters, two janitors, left for 13 hours (an 8-hour shift).
+    // Worked out in 15-second steps it took ~15 s on the server, past the
+    // 8 s a request may run, and the bistro could never load again.
+    await open(cal);
+    await sql(
+      "update public.arena_bistros set level = 22, size_lv = 4, coins = 500000, shift_lv = 3, kitchen_lv = 3, trash = 0 where player_id = $1",
+      [cal],
+    );
+    for (const t of ["items", "staff", "orders"])
+      await sql(`delete from public.arena_bistro_${t} where player_id = $1`, [
+        cal,
+      ]);
+    await sql(
+      "update public.arena_bistro_counter set dish = null, servings = 0, perfect = false where player_id = $1",
+      [cal],
+    );
+    await sql(
+      "update public.arena_bistro_stoves set dish = null, started_at = null, dur_ms = null, perfect = false where player_id = $1",
+      [cal],
+    );
+    let id = 1;
+    const put = (kind: string, x: number, y: number, rot = 0) =>
+      sql(
+        "insert into public.arena_bistro_items(player_id, id, kind, x, y, rot) values ($1,$2,$3,$4,$5,$6)",
+        [cal, id++, kind, x, y, rot],
+      );
+    for (let ty = 5; ty <= 12; ty += 3)
+      for (let tx = 2; tx <= 18; tx += 3) {
+        await put("table", tx, ty);
+        await put("chair", tx - 1, ty, 0);
+        await put("chair", tx + 1, ty, 2);
+      }
+    await put("fountain", 1, 4);
+    const crew: [string, string, number][] = [
+      ["voltkit", "cook", 8],
+      ["cindrake", "cook", 8],
+      ["tidefin", "cook", 8],
+      ["sunbara", "waiter", 9],
+      ["lumoth", "waiter", 9],
+      ["mystowl", "waiter", 9],
+      ["terradon", "janitor", 6],
+      ["duskveil", "janitor", 6],
+    ];
+    for (const [i, [c, r, lv]] of crew.entries())
+      await sql(
+        "insert into public.arena_bistro_staff(player_id, id, creature, role, level, dish) values ($1,$2,$3,$4,$5,'comtam')",
+        [cal, i + 1, c, r, lv],
+      );
+    const before = await open(cal);
+    const local: BistroState = sanitize(before);
+    await ago(cal, 13 * 3600);
+    // Count the calls (the steps), not the time: it doesn't depend on the machine.
+    await sql("set track_functions = 'all'");
+    const calls = async () => {
+      // Function stats are written out at most once a second: force it.
+      await sql("select pg_stat_force_next_flush()");
+      await sql("select 1");
+      await sql("select pg_stat_clear_snapshot()");
+      return Object.fromEntries(
+        (
+          await sql(
+            "select funcname, calls from pg_stat_user_functions where funcname in ('arena_bistro_kitchen', 'arena_bistro_add_xp')",
+          )
+        ).map((x: any) => [x.funcname, Number(x.calls)]),
+      );
+    };
+    const c0 = await calls();
+    const b = await open(cal);
+    const c1 = await calls();
+    const lastSeen = Number(before.lastSeen);
+    const rep = simulateAway(
+      local,
+      lastSeen,
+      lastSeen + b.away.away,
+      before.special,
+      { likesWeek: before.likesWeek, dinedToday: before.friendGuests.length },
+    )!;
+    expect(b.away.worked).toBe(8 * 3600 * 1000);
+    expect(b.away.served).toBeGreaterThan(1000);
+    expect(b.away.batches).toBe(rep.batches);
+    expect(b.away.served).toBe(rep.served);
+    expect(b.away.coins).toBe(rep.coins);
+    expect(b.away.spent).toBe(rep.spent);
+    expect(b.coins).toBe(local.coins);
+    expect(b.level).toBe(local.level);
+    // An 8-hour shift in one-minute steps: at most 480 turns of the cooks
+    // and 480 XP updates (15-second steps, one per guest: 1,920 and 2,000+).
+    const delta = (k: string) => (c1[k] ?? 0) - (c0[k] ?? 0);
+    expect(delta("arena_bistro_kitchen")).toBeGreaterThan(0);
+    expect(delta("arena_bistro_kitchen")).toBeLessThanOrEqual(481);
+    expect(delta("arena_bistro_add_xp")).toBeLessThanOrEqual(
+      481 + b.away.batches,
+    );
+  }, 60000);
 });
