@@ -37,6 +37,11 @@ export interface ShopPreviewHandle {
   replay(): void;
   /** Plays one move now (a Lobby tap); false while the rig is not ready. */
   play(state: AnimationState, ms: number): boolean;
+  /**
+   * The top of the fighter's drawn pixels in its middle third (viewport
+   * px), from the last frame; undefined before the rig is drawn.
+   */
+  inkTop(): number | undefined;
 }
 
 /** Shared idle rig for Shop and Home. Keep decoded textures when browsing. */
@@ -654,6 +659,28 @@ export function mountShopPreview(
       suspend(value: boolean) {
         suspended = value;
         syncLoop();
+      },
+      inkTop() {
+        const canvas = game?.canvas;
+        if (!canvas || !ready || !drawn || disposed) return undefined;
+        const box = canvas.getBoundingClientRect();
+        if (!box.height) return undefined;
+        try {
+          const ctx = canvas.getContext("2d");
+          if (!ctx) return undefined;
+          const x0 = Math.floor(canvas.width * 0.3);
+          const w = Math.ceil(canvas.width * 0.4);
+          const { data } = ctx.getImageData(x0, 0, w, canvas.height);
+          for (let y = 0; y < canvas.height; y++) {
+            let ink = 0;
+            for (let x = 0; x < w; x++)
+              if (data[(y * w + x) * 4 + 3] > 60 && ++ink >= 3)
+                return box.top + (y * box.height) / canvas.height;
+          }
+        } catch {
+          // A canvas that can't be read: the caller's fallback.
+        }
+        return undefined;
       },
       play(state: AnimationState, ms: number) {
         // Reduced motion: a still fighter (the clock does not run).

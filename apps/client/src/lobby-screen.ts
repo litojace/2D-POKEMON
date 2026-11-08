@@ -309,11 +309,61 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
     bubble.textContent = text;
     bubble.classList.toggle("is-line", line);
     bubble.hidden = false;
+    const spot = line ? linePlace(bubble) : undefined;
+    bubble.style.top = spot ? `${spot.top}px` : "";
+    bubble.style.left = spot ? `${spot.left}px` : "";
+    bubble.style.setProperty("--tail", spot ? `${spot.tail}px` : "0px");
     bubble.classList.remove("is-popping");
     void bubble.offsetWidth;
     bubble.classList.add("is-popping");
     clearTimeout(bubbleTimer);
     bubbleTimer = setTimeout(() => (bubble.hidden = true), ms);
+  };
+  /**
+   * Where a line's bubble goes (px from the figure's top): its tail just
+   * above the fighter's head, which starts anywhere from the top of its
+   * box (tall ears, flames) to a third of the way down (a round body). The
+   * live rig says where its drawn pixels start; the still artwork (Low
+   * graphics) puts the bubble over the whole box. Never above the top bar,
+   * never out of the stage (its tail then still points at the head).
+   * Returns px from the figure's top left.
+   */
+  const linePlace = (bubble: HTMLElement) => {
+    const figure = $("lobby-fighter").getBoundingClientRect();
+    const row = layer.querySelector(".lobby-party")!.getBoundingClientRect();
+    const tail = 8;
+    const head = rig?.inkTop() ?? figure.top;
+    const width = bubble.offsetWidth,
+      height = bubble.offsetHeight;
+    const middle = figure.left + figure.width / 2;
+    const centre = Math.min(
+      Math.max(middle, row.left + width / 2 + 4),
+      row.right - width / 2 - 4,
+    );
+    const left = centre - width / 2;
+    let limit =
+      (parseFloat(
+        getComputedStyle(document.documentElement).getPropertyValue(
+          "--safe-top",
+        ),
+      ) || 0) + 6;
+    for (const e of Array.from(
+      document.querySelectorAll(
+        ".hub-scenes, #account-profile, #account-coins, #account-leaves, #home-settings, .lobby-party-bar:not([hidden])",
+      ),
+    )) {
+      const r = e.getBoundingClientRect();
+      if (r.width && r.left < left + width && r.right > left)
+        limit = Math.max(limit, r.bottom + 6);
+    }
+    return {
+      top: Math.round(Math.max(limit, head - tail - height) - figure.top),
+      left: Math.round(centre - figure.left),
+      // Within the bubble's straight edge (its corners are 14 px round).
+      tail: Math.round(
+        Math.min(Math.max(middle - centre, 20 - width / 2), width / 2 - 20),
+      ),
+    };
   };
   /** The champion on the stage now. */
   let champion: CharacterId | undefined;

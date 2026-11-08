@@ -312,6 +312,7 @@ import {
 } from "./arena-courts";
 import { RITE_EFFECTS, riteEffect, riteIcon } from "./rite-icons";
 import { ConnectionWatch, dropMessage } from "./connection-loss";
+import { watchSceneSwitch } from "./scene-switch-place";
 // Last: the hub's aero glass overrides the panels' own fills.
 import "./ui/aero.css";
 const audio = new AudioManager();
@@ -1883,7 +1884,11 @@ function syncHubScenes(hub: boolean) {
   if (!hub) return;
   const markup = sceneSwitchMarkup(hubScene);
   if (nav.innerHTML !== markup) nav.innerHTML = markup;
+  // Centred, or between the player card and the pills on narrow phones.
+  placeSceneSwitch ??= watchSceneSwitch(nav);
+  placeSceneSwitch();
 }
+let placeSceneSwitch: (() => void) | undefined;
 function setHubScene(scene: HubScene) {
   if (!sceneAvailable(scene) || scene === hubScene) return;
   hubScene = scene;
