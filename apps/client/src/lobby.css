@@ -23,12 +23,7 @@
   position: fixed;
   inset: 0;
   z-index: 60;
-  /* Clipped, never scrolled: `hidden` still lets scrollIntoView (a boss
-     card brought into view, a tap in a test) scroll the whole Lobby up
-     under the header and leave it there. `clip` is not a scroll container,
-     so nothing can; `hidden` stays for browsers without `clip`. */
   overflow: hidden;
-  overflow: clip;
   color: #eef2ff;
   font-family: "DM Sans", system-ui, sans-serif;
   background: #0b1020;
