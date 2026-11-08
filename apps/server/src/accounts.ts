@@ -59,7 +59,7 @@ import {
   type OnlineList,
 } from "../../../packages/shared/src/accounts.js";
 /** The newest database migration the server expects. */
-export const LATEST_MIGRATION = "105_bistro_all_recipes.sql";
+export const LATEST_MIGRATION = "106_bistro_fast_catch_up.sql";
 /** The migration that last redefined the raid appearance functions. */
 export const RAID_FUNCTIONS_MIGRATION = "018_collection_equipping.sql";
 export interface AccountProvider {
@@ -81,9 +81,62 @@ export class AccountError extends Error {
   constructor(
     public status: number,
     message: string,
+    /** What went wrong, for the server's log only (not shown to players). */
+    public detail?: string,
+    /** Already written to the log (by rpc()). */
+    public logged = false,
   ) {
     super(message);
   }
+}
+/** SQLSTATE classes where the database itself failed, not the request:
+ * resources (53), a cancelled or timed-out statement (57: 57014), lost
+ * connections (08), serialization failures and deadlocks (40), system and
+ * internal errors (58, XX). */
+const DB_FAILED = /^(53|57|08|40|58|XX)/;
+/**
+ * A failed RPC as the API's error. The rules' own refusals (a plpgsql
+ * `raise exception`, PostgREST's 4xx) stay 400 (or 403) with their message;
+ * a failure of the database itself (a timeout, a lost connection, PostgREST
+ * answering 5xx, Supabase unreachable) is a 503 the player can retry, its
+ * reason in `detail` for the log.
+ */
+export function rpcError(
+  name: string,
+  error: {
+    code?: string;
+    message?: string;
+    details?: string | null;
+    hint?: string | null;
+  },
+  status?: number,
+): AccountError {
+  const code = error.code ?? "";
+  const reason = [
+    code || (status ? `HTTP ${status}` : "no answer"),
+    error.message,
+    error.details,
+    error.hint,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  // PGRST202: the function isn't in the database (a migration wasn't run).
+  if (code === "PGRST202")
+    return new AccountError(
+      503,
+      `The database needs an update (missing ${name}). In Supabase's SQL Editor, run the files in supabase/migrations you haven't run yet, newest last (${LATEST_MIGRATION}).`,
+      `${name}: ${reason}`,
+    );
+  if ((status ?? 0) >= 500 || DB_FAILED.test(code) || (!code && !status))
+    return new AccountError(
+      503,
+      "The server is busy right now. Please try again in a moment.",
+      `${name}: ${reason}`,
+    );
+  return new AccountError(
+    code === "42501" ? 403 : 400,
+    error.message || "Request refused.",
+  );
 }
 export function createAccountProvider(): AccountProvider {
   const url = process.env.SUPABASE_URL,
@@ -164,17 +217,16 @@ export function createAccountProvider(): AccountProvider {
       const result = await (name === "arena_touch_presence"
         ? request.abortSignal(AbortSignal.timeout(8000))
         : request);
-      // PGRST202: the function isn't in the database (a migration wasn't run).
-      if (result.error?.code === "PGRST202")
-        throw new AccountError(
-          503,
-          `The database needs an update (missing ${name}). In Supabase's SQL Editor, run the files in supabase/migrations you haven't run yet, newest last (${LATEST_MIGRATION}).`,
-        );
-      if (result.error)
-        throw new AccountError(
-          result.error.code === "42501" ? 403 : 400,
-          result.error.message,
-        );
+      if (result.error) {
+        const error = rpcError(name, result.error, result.status);
+        // A failure of the database itself goes to the log here, whichever
+        // route (HTTP or socket) called: players only see "try again".
+        if (error.status >= 500) {
+          console.error(`[db] rpc ${error.detail ?? name}`);
+          error.logged = true;
+        }
+        throw error;
+      }
       return result.data;
     },
   };

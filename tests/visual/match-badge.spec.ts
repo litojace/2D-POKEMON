@@ -487,3 +487,49 @@ for (const [label, me, kai] of [
       await context.close();
     }
   });
+
+test("an opponent off screen shows no name or health, only the arrow", async ({
+  browser,
+}) => {
+  const context = await browser.newContext({
+    viewport: { width: 844, height: 390 },
+    isMobile: true,
+    hasTouch: true,
+    reducedMotion: "reduce",
+  });
+  try {
+    const page = await context.newPage();
+    const errors = await match(page, "duel");
+    const place = (kai: readonly [number, number]) =>
+      page.evaluate((kai) => {
+        const w = window as any,
+          [me, k] = w.__snap.players;
+        [me.x, me.y] = [800, 640];
+        [k.x, k.y] = kai;
+        w.__push();
+      }, kai);
+    const kai = page.locator(".battle-nameplate", { hasText: "Kai" });
+    const arrow = page.locator(".enemy-bearing.is-orbit span");
+    const settle = (want: boolean) =>
+      expect
+        .poll(
+          async () => {
+            await page.evaluate(() => (window as any).__push());
+            return (await kai.isVisible()) === want;
+          },
+          { timeout: 40_000, intervals: [500] },
+        )
+        .toBe(true);
+    // Above the screen: no name hanging under the badge, the arrow instead.
+    await place([800, 40]);
+    await settle(false);
+    await expect(arrow).toBeVisible();
+    // Back in view: the name and health again, and no arrow.
+    await place([800, 520]);
+    await settle(true);
+    await expect(arrow).toBeHidden();
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});

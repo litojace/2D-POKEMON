@@ -3023,3 +3023,22 @@ body.hub-farm #account-leaves {
   background: linear-gradient(180deg, #ffb08a, #ff7a59);
   color: #2a0f00;
 }
+
+/* iPhones and iPads (only Safari there knows -webkit-touch-callout): no live
+   blur behind the panels over a moving scene. While the field scrolls,
+   Safari blurs what lies under each panel again every frame, and dragging
+   stuttered; a more solid panel reads just as well. */
+@supports (-webkit-touch-callout: none) {
+  .farm-layer :is(.glass, .fm-chip),
+  body.hub-screen
+    :is(.hub-scenes, #account-leaves > *, .header-menu > summary) {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  .farm-layer :is(.glass, .fm-chip) {
+    background: #0b1020eb;
+  }
+  body.hub-screen :is(.hub-scenes, #account-leaves > *) {
+    background: rgba(14, 26, 49, 0.95);
+  }
+}

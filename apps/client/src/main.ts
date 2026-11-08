@@ -6111,6 +6111,12 @@ class ArenaScene extends Phaser.Scene {
         labelX < 0 ||
         labelX > this.scale.width * css ||
         labelY > this.scale.height * css ||
+        // Off screen, a fighter shows no name or health (only the arrow
+        // says which way): where they are and how hurt they are stays a
+        // guess (owner, 8 Nov 2026). Before, a name above the screen hung
+        // under the badge with no one beneath it.
+        (p.id !== myId &&
+          outsideView(x, y, this.scale.width, this.scale.height, view)) ||
         serverPlayer.statuses.some(
           (s) => s.kind === "stealth" && p.id !== myId,
         );

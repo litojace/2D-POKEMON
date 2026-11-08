@@ -1510,6 +1510,96 @@ for (const viewport of [
   });
 }
 
+test('the balloon\'s tag gets a "!" when the barn can fill one of its crates, as the orders do', async ({
+  page,
+}, info) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const errors = await openLobby(page);
+  await fakeFarm(page);
+  await page.evaluate(() => {
+    const crate = (crop: string, qty: number, state = "open") => ({
+      crop,
+      qty,
+      state,
+      by: null,
+    });
+    // 4 wheat in the barn: the 3-wheat crate can be filled.
+    (window as any).__balloon = {
+      crates: [
+        crate("wheat", 3),
+        crate("carrot", 6),
+        crate("wheat", 2, "done"),
+        crate("carrot", 4, "done"),
+        crate("wheat", 1, "done"),
+        crate("melon", 2, "asked"),
+      ],
+      arrivesAt: null,
+      launches: 0,
+      leaves: 140,
+      xp: 90,
+      helperStars: 0,
+      helperLeavesToday: 0,
+      helperCap: 600,
+      helpers: {},
+    };
+  });
+  await page.click('#hub-scenes [data-hub-scene="farm"]');
+  await page.waitForFunction(() => (window as any).__farm?.hasBalloon?.());
+  await page.evaluate(() => (window as any).__farm.look(1080, 300));
+  // The text drawn in a whole frame: is there a "!" on the balloon tag's
+  // corner (just right of its text, at its height)?
+  const balloonBadge = () =>
+    page.evaluate(async () => {
+      const proto = CanvasRenderingContext2D.prototype as any,
+        orig = proto.fillText,
+        frames: { t: string; x: number; y: number }[][] = [[]];
+      proto.fillText = function (t: string, x: number, y: number, ...a: any[]) {
+        const m = this.getTransform();
+        frames.at(-1)!.push({
+          t: String(t),
+          x: m.a * x + m.c * y + m.e,
+          y: m.b * x + m.d * y + m.f,
+        });
+        return orig.call(this, t, x, y, ...a);
+      };
+      // A few frames (this machine draws in bursts).
+      const t0 = performance.now();
+      await new Promise<void>((done) => {
+        const tick = () => {
+          frames.push([]);
+          const whole = frames.filter((f) =>
+            f.some((e) => e.t.startsWith("SUPPLY BALLOON")),
+          );
+          if (whole.length >= 2 || performance.now() - t0 > 20_000)
+            return done();
+          requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      });
+      proto.fillText = orig;
+      const f = frames.find((f) =>
+        f.some((e) => e.t.startsWith("SUPPLY BALLOON")),
+      );
+      if (!f) return null;
+      const tag = f.find((e) => e.t.startsWith("SUPPLY BALLOON"))!;
+      return f.some(
+        (e) =>
+          e.t === "!" &&
+          e.x > tag.x &&
+          e.x - tag.x < 400 &&
+          Math.abs(e.y - tag.y) < 80,
+      );
+    });
+  await expect.poll(balloonBadge, { timeout: 60_000 }).toBe(true);
+  await snap(page, info, "farm-balloon-fillable");
+  // Nothing in the barn fills a crate (the wheat sold): no badge.
+  await page.evaluate(() => {
+    (window as any).__farm.F.barn = {};
+  });
+  await expect.poll(balloonBadge, { timeout: 60_000 }).toBe(false);
+  expect(errors).toEqual([]);
+});
+
 test("the farm opens ready on every return: the same scenery, animals where they were, the balloon up", async ({
   page,
 }) => {
@@ -2306,8 +2396,13 @@ async function cropDraws(page: Page) {
       cv = document.querySelector(".farm-layer #fm-cv") as HTMLCanvasElement,
       frames: any[][] = [];
     proto.drawImage = function (img: any, ...a: number[]) {
-      // Each frame starts with the background at the world's corner.
-      if (a.length === 2 && a[0] === -360 && a[1] === -180) frames.push([]);
+      // Each frame starts with the baked ground (the whole world's size).
+      if (
+        img instanceof HTMLCanvasElement &&
+        img.width === 2480 &&
+        img.height === 1460
+      )
+        frames.push([]);
       else if (
         frames.length &&
         a.length === 4 &&
