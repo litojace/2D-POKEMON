@@ -106,25 +106,55 @@ async function without(
   return inkSpan(shown.pixels, off);
 }
 
-/** Where an item's ink is (CSS px): the badge photographed with the item
- * shown and hidden; the badge is see-through, so the arena behind it can't
- * be told from text any other way. `whole` is a photo of the whole badge
- * taken once for several items: each photo at 2x costs seconds on a
- * software renderer. */
-async function ink(
+/** Where the ink is (CSS px) in each range of columns (CSS px across), from
+ * two photos: the whole badge, and the badge with every card's text and
+ * the clock hidden (the badge is see-through, so the arena behind it can't
+ * be told from text any other way). A card's dot, name and score sit side
+ * by side, so each is told apart by its own columns: two photos in all,
+ * where a pair per item (each costing seconds at 2x on a software
+ * renderer) ran out of time on a slow CI machine. */
+async function inkByColumns(
   page: Page,
-  hide: string,
-  whole?: Awaited<ReturnType<typeof badgeShot>>,
+  ranges: Record<string, readonly [number, number]>,
 ) {
-  const shown = whole ?? (await badgeShot(page));
-  const span = await without(page, hide, shown);
-  if (!span) return null;
-  const { box } = shown;
-  const scale = shown.pixels.height / (box.height + 4);
-  return {
-    mid: box.y - 2 + (span.y0 + span.y1 + 1) / 2 / scale,
-    bottom: box.y - 2 + (span.y1 + 1) / scale,
-  };
+  const shown = await badgeShot(page);
+  const tag = await page.addStyleTag({
+    content:
+      "#hud .health-card > div:first-child, #hud .timer-wrap { visibility: hidden !important; }",
+  });
+  const bare = decodePng(
+    await page.screenshot({ clip: shown.clip, animations: "disabled" }),
+  );
+  await tag.evaluate((e) => e.remove());
+  const { box, pixels: on } = shown;
+  const scale = on.height / (box.height + 4);
+  const out: Record<string, { mid: number; bottom: number } | null> = {};
+  for (const [key, [left, right]] of Object.entries(ranges)) {
+    const x0 = Math.max(0, Math.round((left - (box.x - 2)) * scale));
+    const x1 = Math.min(on.width, Math.round((right - (box.x - 2)) * scale));
+    let y0 = Infinity,
+      y1 = -1;
+    for (let y = 0; y < on.height; y++)
+      for (let x = x0; x < x1; x++) {
+        const k = (y * on.width + x) * 4;
+        const d =
+          Math.abs(on.data[k] - bare.data[k]) +
+          Math.abs(on.data[k + 1] - bare.data[k + 1]) +
+          Math.abs(on.data[k + 2] - bare.data[k + 2]);
+        if (d > 60) {
+          y0 = Math.min(y0, y);
+          y1 = Math.max(y1, y);
+        }
+      }
+    out[key] =
+      y1 < 0
+        ? null
+        : {
+            mid: box.y - 2 + (y0 + y1 + 1) / 2 / scale,
+            bottom: box.y - 2 + (y1 + 1) / scale,
+          };
+  }
+  return out;
 }
 
 for (const size of SIZES)
@@ -183,22 +213,35 @@ for (const size of SIZES)
               ).length,
           );
         const baselines: number[] = [];
-        // One photo of the whole badge serves every item below; the arena
-        // is hidden meanwhile, so the background behind the see-through
-        // badge is the same in every photo.
+        // Each item's columns: the dot from the row's left edge to the name,
+        // then the name and the score (side by side, 5 px apart), and the
+        // clock. The arena is hidden for the photos, so the background
+        // behind the see-through badge is the same in both.
+        const ranges = await page.evaluate(() => {
+          const out: Record<string, [number, number]> = {};
+          const across = (e: Element) => {
+            const r = e.getBoundingClientRect();
+            return [r.left, r.right] as [number, number];
+          };
+          document.querySelectorAll("#hud .health-card").forEach((c, i) => {
+            const [row] = across(c.querySelector(":scope > div:first-child")!);
+            const name = across(c.querySelector("b")!);
+            out[`dot${i}`] = [row, name[0]];
+            out[`name${i}`] = name;
+            out[`score${i}`] = across(c.querySelector("strong[id^=score-]")!);
+          });
+          out.clock = across(document.querySelector("#hud .timer-wrap")!);
+          return out;
+        });
         const calm = await page.addStyleTag({
           content: "#game, #arena-overlay { visibility: hidden !important; }",
         });
-        const whole = await badgeShot(page);
+        const inks = await inkByColumns(page, ranges);
+        await calm.evaluate((e) => e.remove());
         for (let i = 0; i < cards; i++) {
-          const card = `#hud .health-card[data-test-card="${i}"]`;
-          const name = (await ink(page, `${card} b`, whole))!;
-          const dot = (await ink(
-            page,
-            `${card} > div:first-child::before`,
-            whole,
-          ))!;
-          const score = await ink(page, `${card} strong[id^=score-]`, whole);
+          const name = inks[`name${i}`]!;
+          const dot = inks[`dot${i}`]!;
+          const score = inks[`score${i}`];
           baselines.push(name.bottom);
           if (score) baselines.push(score.bottom);
           expect(Math.abs(dot.mid - name.mid), `card ${i} dot`).toBeLessThan(1);
@@ -216,8 +259,7 @@ for (const size of SIZES)
         expect(Math.max(...baselines) - Math.min(...baselines)).toBeLessThan(
           0.6,
         );
-        const clock = (await ink(page, "#hud .timer-wrap", whole))!;
-        await calm.evaluate((e) => e.remove());
+        const clock = inks.clock!;
         expect(Math.abs(clock.mid - middle)).toBeLessThanOrEqual(1);
         await snap(page, info, `match-badge-${size.name}-${mode}`);
         expect(errors).toEqual([]);
