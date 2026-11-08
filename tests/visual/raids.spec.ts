@@ -530,6 +530,15 @@ test("phones the size of an iPhone SE keep the boss page's actions in reach", as
       '[data-ui-raid-play="party"]',
     ])
       expect(inside(await box(page, sel), main)).toBe(true);
+    // The Lobby can't be scrolled: bringing a card into view used to scroll
+    // it up under the header now and then and leave it there.
+    expect(
+      await page.evaluate(() => {
+        const layer = document.querySelector(".lobby-layer")!;
+        layer.scrollTop = 40;
+        return layer.scrollTop;
+      }),
+    ).toBe(0);
     // The HUD at this width is the Lobby's (its own spec); the panel's rules hold.
     expect(
       (await layoutProblems(page, { phone: true })).filter(

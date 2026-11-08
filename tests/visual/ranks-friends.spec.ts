@@ -424,6 +424,11 @@ for (const size of SIZES)
       viewport: { width: size.width, height: size.height },
       isMobile: size.phone,
       hasTouch: size.phone,
+      // A layout test: the fighter behind the sheet holds still, so each of
+      // its many element photos doesn't wait on the live Lobby's frames
+      // (seconds each on a software GPU; at large sizes the test outran its
+      // time on a slow CI machine). Motion has its own test below.
+      reducedMotion: "reduce",
     });
     try {
       const page = await context.newPage();

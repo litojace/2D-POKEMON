@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { openHub, openPlayPanel, pushUntilBattle, snap } from "./helpers";
 import { ISLAND, setInsets } from "./ui-measure";
+import { decodePng } from "./png";
 
 // PvP's score badge (owner, 7 Nov 2026): one pill at the top middle with
 // names, rounds and the clock; health over each fighter; no opponent's
@@ -47,10 +48,34 @@ async function match(
   return errors;
 }
 
-/** Where an item's ink is (CSS px): the badge photographed with the item
- * shown and hidden; the badge is see-through, so the arena behind it can't
- * be told from text any other way. */
-async function ink(page: Page, hide: string) {
+type Pixels = ReturnType<typeof decodePng>;
+
+/** Where two photos differ (photo px), or null where they don't. Read in
+ * Node: in the page this waited seconds on a main thread drawing the game. */
+function inkSpan(on: Pixels, off: Pixels) {
+  let x0 = Infinity,
+    x1 = -1,
+    y0 = Infinity,
+    y1 = -1;
+  for (let y = 0; y < on.height; y++)
+    for (let x = 0; x < on.width; x++) {
+      const k = (y * on.width + x) * 4;
+      const d =
+        Math.abs(on.data[k] - off.data[k]) +
+        Math.abs(on.data[k + 1] - off.data[k + 1]) +
+        Math.abs(on.data[k + 2] - off.data[k + 2]);
+      if (d > 60) {
+        x0 = Math.min(x0, x);
+        x1 = Math.max(x1, x);
+        y0 = Math.min(y0, y);
+        y1 = Math.max(y1, y);
+      }
+    }
+  return y1 < 0 ? null : { x0, x1, y0, y1 };
+}
+
+/** A photo of the whole badge: its CSS box, the clip and the pixels. */
+async function badgeShot(page: Page) {
   const box = (await page.locator("#hud").boundingBox())!;
   const clip = {
     x: box.x - 2,
@@ -58,54 +83,48 @@ async function ink(page: Page, hide: string) {
     width: box.width + 4,
     height: box.height + 4,
   };
-  const shot = async () =>
-    (await page.screenshot({ clip, animations: "disabled" })).toString(
-      "base64",
-    );
-  const on = await shot();
+  const pixels = decodePng(
+    await page.screenshot({ clip, animations: "disabled" }),
+  );
+  return { box, clip, pixels };
+}
+
+/** The badge photographed again with `hide` hidden, and where that differs
+ * from `shown` (photo px). */
+async function without(
+  page: Page,
+  hide: string,
+  shown: Awaited<ReturnType<typeof badgeShot>>,
+) {
   const tag = await page.addStyleTag({
     content: `${hide} { visibility: hidden !important; }`,
   });
-  const off = await shot();
-  await tag.evaluate((e) => e.remove());
-  return page.evaluate(
-    async ([a, b, top, height]) => {
-      const pixels = async (src: string) => {
-        const img = new Image();
-        img.src = `data:image/png;base64,${src}`;
-        await img.decode();
-        const c = document.createElement("canvas");
-        c.width = img.width;
-        c.height = img.height;
-        const g = c.getContext("2d")!;
-        g.drawImage(img, 0, 0);
-        return g.getImageData(0, 0, c.width, c.height);
-      };
-      const [p, q] = [await pixels(a), await pixels(b)];
-      let y0 = Infinity,
-        y1 = -1;
-      for (let y = 0; y < p.height; y++)
-        for (let x = 0; x < p.width; x++) {
-          const k = (y * p.width + x) * 4;
-          const d =
-            Math.abs(p.data[k] - q.data[k]) +
-            Math.abs(p.data[k + 1] - q.data[k + 1]) +
-            Math.abs(p.data[k + 2] - q.data[k + 2]);
-          if (d > 60) {
-            y0 = Math.min(y0, y);
-            y1 = Math.max(y1, y);
-          }
-        }
-      const scale = p.height / (height + 4);
-      return y1 < 0
-        ? null
-        : {
-            mid: top - 2 + (y0 + y1 + 1) / 2 / scale,
-            bottom: top - 2 + (y1 + 1) / scale,
-          };
-    },
-    [on, off, box.y, box.height] as const,
+  const off = decodePng(
+    await page.screenshot({ clip: shown.clip, animations: "disabled" }),
   );
+  await tag.evaluate((e) => e.remove());
+  return inkSpan(shown.pixels, off);
+}
+
+/** Where an item's ink is (CSS px): the badge photographed with the item
+ * shown and hidden; the badge is see-through, so the arena behind it can't
+ * be told from text any other way. `whole` is a photo of the whole badge
+ * taken once for several items: each photo at 2x costs seconds on a
+ * software renderer. */
+async function ink(
+  page: Page,
+  hide: string,
+  whole?: Awaited<ReturnType<typeof badgeShot>>,
+) {
+  const shown = whole ?? (await badgeShot(page));
+  const span = await without(page, hide, shown);
+  if (!span) return null;
+  const { box } = shown;
+  const scale = shown.pixels.height / (box.height + 4);
+  return {
+    mid: box.y - 2 + (span.y0 + span.y1 + 1) / 2 / scale,
+    bottom: box.y - 2 + (span.y1 + 1) / scale,
+  };
 }
 
 for (const size of SIZES)
@@ -164,11 +183,22 @@ for (const size of SIZES)
               ).length,
           );
         const baselines: number[] = [];
+        // One photo of the whole badge serves every item below; the arena
+        // is hidden meanwhile, so the background behind the see-through
+        // badge is the same in every photo.
+        const calm = await page.addStyleTag({
+          content: "#game, #arena-overlay { visibility: hidden !important; }",
+        });
+        const whole = await badgeShot(page);
         for (let i = 0; i < cards; i++) {
           const card = `#hud .health-card[data-test-card="${i}"]`;
-          const name = (await ink(page, `${card} b`))!;
-          const dot = (await ink(page, `${card} > div:first-child::before`))!;
-          const score = await ink(page, `${card} strong[id^=score-]`);
+          const name = (await ink(page, `${card} b`, whole))!;
+          const dot = (await ink(
+            page,
+            `${card} > div:first-child::before`,
+            whole,
+          ))!;
+          const score = await ink(page, `${card} strong[id^=score-]`, whole);
           baselines.push(name.bottom);
           if (score) baselines.push(score.bottom);
           expect(Math.abs(dot.mid - name.mid), `card ${i} dot`).toBeLessThan(1);
@@ -186,7 +216,8 @@ for (const size of SIZES)
         expect(Math.max(...baselines) - Math.min(...baselines)).toBeLessThan(
           0.6,
         );
-        const clock = (await ink(page, "#hud .timer-wrap"))!;
+        const clock = (await ink(page, "#hud .timer-wrap", whole))!;
+        await calm.evaluate((e) => e.remove());
         expect(Math.abs(clock.mid - middle)).toBeLessThanOrEqual(1);
         await snap(page, info, `match-badge-${size.name}-${mode}`);
         expect(errors).toEqual([]);
@@ -256,56 +287,11 @@ test("Practice keeps the full cards", async ({ browser }) => {
 
 /** Where an element's ink is across (CSS px), like ink() for height. */
 async function inkAcross(page: Page, hide: string) {
-  const box = (await page.locator("#hud").boundingBox())!;
-  const clip = {
-    x: box.x - 2,
-    y: box.y - 2,
-    width: box.width + 4,
-    height: box.height + 4,
-  };
-  const shot = async () =>
-    (await page.screenshot({ clip, animations: "disabled" })).toString(
-      "base64",
-    );
-  const on = await shot();
-  const tag = await page.addStyleTag({
-    content: `${hide} { visibility: hidden !important; }`,
-  });
-  const off = await shot();
-  await tag.evaluate((e) => e.remove());
-  return page.evaluate(
-    async ([a, b, left, width]) => {
-      const pixels = async (src: string) => {
-        const img = new Image();
-        img.src = `data:image/png;base64,${src}`;
-        await img.decode();
-        const c = document.createElement("canvas");
-        c.width = img.width;
-        c.height = img.height;
-        const g = c.getContext("2d")!;
-        g.drawImage(img, 0, 0);
-        return g.getImageData(0, 0, c.width, c.height);
-      };
-      const [p, q] = [await pixels(a), await pixels(b)];
-      let x0 = Infinity,
-        x1 = -1;
-      for (let y = 0; y < p.height; y++)
-        for (let x = 0; x < p.width; x++) {
-          const k = (y * p.width + x) * 4;
-          const d =
-            Math.abs(p.data[k] - q.data[k]) +
-            Math.abs(p.data[k + 1] - q.data[k + 1]) +
-            Math.abs(p.data[k + 2] - q.data[k + 2]);
-          if (d > 60) {
-            x0 = Math.min(x0, x);
-            x1 = Math.max(x1, x);
-          }
-        }
-      const scale = p.width / (width + 4);
-      return left - 2 + (x0 + x1 + 1) / 2 / scale;
-    },
-    [on, off, box.x, box.width] as const,
-  );
+  const shown = await badgeShot(page);
+  const span = (await without(page, hide, shown))!;
+  const { box } = shown;
+  const scale = shown.pixels.width / (box.width + 4);
+  return box.x - 2 + (span.x0 + span.x1 + 1) / 2 / scale;
 }
 
 for (const size of [
