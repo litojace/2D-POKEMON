@@ -146,6 +146,62 @@ test("Bistro free stoves call you to cook; their bubble opens them; cooks' stove
   expect(errors).toEqual([]);
 });
 
+test("Bistro team: grouped and filtered by role; a cook's dishes carry their names", async ({
+  page,
+}, info) => {
+  const errors = await openBistro(page);
+  await B(
+    page,
+    `const S = srv.S; S.level = 12; S.coins = 99999;
+     S.staff = [
+       { id: 1, char: 'sunbara', role: 'waiter', level: 1, dish: 'goicuon' },
+       { id: 2, char: 'pyranda', role: 'cook', level: 1, dish: 'pho' },
+       { id: 3, char: 'terradon', role: 'janitor', level: 1, dish: 'goicuon' },
+       { id: 4, char: 'lumoth', role: 'cook', level: 1, dish: 'goicuon' },
+       { id: 5, char: 'mystowl', role: 'waiter', level: 1, dish: 'goicuon' },
+     ];
+     return b.load()`,
+  );
+  await B(page, "b.sheet('staff', 'team')");
+  const roles = () =>
+    page.locator("#bs-sheet .bs-staff .role:not(.friend)").allTextContents();
+  // Cooks first, then waiters, then the janitor, each group headed.
+  await expect(page.locator("#bs-sheet .bs-teamhead")).toHaveText([
+    "Cooks · 2",
+    "Waiters · 2",
+    "Janitors · 1",
+  ]);
+  expect((await roles()).map((r) => r.toLowerCase())).toEqual([
+    "cook",
+    "cook",
+    "waiter",
+    "waiter",
+    "janitor",
+  ]);
+  // A cook's dishes: each button names its dish, and the chosen one is named.
+  const first = page.locator("#bs-sheet .bs-staff").first();
+  await expect(first.locator(".cookdish small")).toContainText("Pho");
+  await expect(first.locator('.cookdish [data-cd="2:pho"] span')).toHaveText(
+    "Pho",
+  );
+  await expect(
+    first.locator('.cookdish [data-cd="2:goicuon"] span'),
+  ).toHaveText("Spring Rolls");
+  await first.locator('.cookdish [data-cd="2:goicuon"]').click();
+  await expect(first.locator(".cookdish small")).toContainText("Spring Rolls");
+  await snap(page, info, "bistro-team-grouped");
+  // The filter: waiters only.
+  await page.click('#bs-sheet [data-teamrole="waiter"]');
+  expect((await roles()).map((r) => r.toLowerCase())).toEqual([
+    "waiter",
+    "waiter",
+  ]);
+  await expect(page.locator("#bs-sheet .bs-teamhead")).toHaveCount(0);
+  await page.click('#bs-sheet [data-teamrole="all"]');
+  await expect(page.locator("#bs-sheet .bs-staff")).toHaveCount(5);
+  expect(errors).toEqual([]);
+});
+
 test("Bistro decorate mode moves furniture on the server and refuses the kitchen", async ({
   page,
 }) => {

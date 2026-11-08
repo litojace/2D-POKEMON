@@ -2358,6 +2358,8 @@ export function openBistro(o: BistroOptions): BistroHandle {
   let shopQty = 1;
   /** Staff → Hire: the role being hired for. */
   let hireRole: Role = "waiter";
+  /** Staff → Your team: which role shows ("all": every role, grouped). */
+  let teamRole: Role | "all" = "all";
   let hireChosen = false;
   let sheetArg: number | string | undefined;
   /** The view (sheet and tab) the open sheet shows. */
@@ -2783,7 +2785,40 @@ export function openBistro(o: BistroOptions): BistroHandle {
       if (tab === "team") {
         const now = nowS();
         const meal = fullestSlot(S) >= 0;
-        const cards = S.staff.map((st) => {
+        // Grouped by role (cooks, waiters, janitors), each in hiring order.
+        const ROLE_ORDER: Role[] = ["cook", "waiter", "janitor"];
+        const roles = ROLE_ORDER.filter((r) =>
+          S.staff.some((x) => x.role === r),
+        );
+        if (teamRole !== "all" && !roles.includes(teamRole)) teamRole = "all";
+        const shown = S.staff
+          .filter((x) => teamRole === "all" || x.role === teamRole)
+          .sort(
+            (a, b) =>
+              ROLE_ORDER.indexOf(a.role) - ROLE_ORDER.indexOf(b.role) ||
+              a.id - b.id,
+          );
+        const plural: Record<Role, string> = {
+          cook: "Cooks",
+          waiter: "Waiters",
+          janitor: "Janitors",
+        };
+        const filter =
+          roles.length > 1
+            ? `<nav class="bs-teamfilter">${(["all", ...roles] as const)
+                .map(
+                  (r) =>
+                    `<button type="button" data-teamrole="${r}" aria-pressed="${r === teamRole}">${r === "all" ? `All <i>${S.staff.length}</i>` : `${plural[r]} <i>${S.staff.filter((x) => x.role === r).length}</i>`}</button>`,
+                )
+                .join("")}</nav>`
+            : "";
+        let lastRole: Role | null = null;
+        const cards = shown.map((st) => {
+          const head =
+            teamRole === "all" && st.role !== lastRole && roles.length > 1
+              ? `<h3 class="bs-teamhead">${plural[st.role]} · ${S.staff.filter((x) => x.role === st.role).length}</h3>`
+              : "";
+          lastRole = st.role;
           const name = staffName(st);
           const up =
             st.level < STAFF_MAX_LEVEL ? staffUpgradePrice(st.level) : null;
@@ -2809,7 +2844,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
               : wait > 0
                 ? `<span class="lk">Ate ${fmtTime(Math.max(0, (FEED_COOLDOWN_MS - wait) / 1000))} ago</span>`
                 : `<button type="button" class="pr feed" data-feed="${st.id}" ${meal ? "" : "disabled"} title="${meal ? "A serving from the counter: +50 energy" : "Nothing on the counter to eat"}">Feed</button>`;
-          return `<div class="bs-staff${st.friend ? " is-friend" : ""}">
+          return `${head}<div class="bs-staff${st.friend ? " is-friend" : ""}">
             <img class="pt" src="${portrait(st.char)}" alt="">
             <div class="who"><b>${esc(name)}</b><span class="role ${st.role}">${roleName(st.role)}</span>${st.friend ? `<span class="role friend">Friend</span>` : ""}
               <span class="lv">Lv ${st.level}<i> / ${STAFF_MAX_LEVEL}</i></span>
@@ -2819,19 +2854,19 @@ export function openBistro(o: BistroOptions): BistroHandle {
             <div class="acts">${feed}${up === null ? `<span class="lk">Top level</span>` : `<button type="button" class="pr ${S.coins < up ? "poor" : ""}" data-up="${st.id}">Train ${coinTag(up)}</button>`}</div>
             ${
               st.role === "cook"
-                ? `<div class="cookdish"><small>Cooks</small>${unlockedDishes(
+                ? `<div class="cookdish"><small>Cooks${st.dish && DISH_BY_ID[st.dish] ? `: <b>${esc(DISH_BY_ID[st.dish].name)}</b>` : ""}</small><div class="picks">${unlockedDishes(
                     S.level,
                   )
                     .map(
                       (d) =>
-                        `<button type="button" data-cd="${st.id}:${d.id}" class="${st.dish === d.id ? "on" : ""}" title="${esc(d.name)}"><img src="${dishIconUrl(d.id, 48)}" alt="${esc(d.name)}"></button>`,
+                        `<button type="button" data-cd="${st.id}:${d.id}" class="${st.dish === d.id ? "on" : ""}" title="${esc(d.name)}" aria-pressed="${st.dish === d.id}"><img src="${dishIconUrl(d.id, 48)}" alt=""><span>${esc(d.name)}</span></button>`,
                     )
-                    .join("")}</div>`
+                    .join("")}</div></div>`
                 : ""
             }
           </div>`;
         });
-        body = `<div class="bs-team">${cards.join("")}
+        body = `${filter}<div class="bs-team">${cards.join("")}
           <p class="bs-note">${I("clock")} While you are away your staff keep the bistro open for up to <b>${SHIFT_HOURS[S.shiftLv]} hours</b>: cooks cook their dish, waiters serve what is on the counter.${staffOf(S, "cook").length ? "" : " <b>Hire a cook</b> so food keeps coming."} Work tires them (tired staff are slower): feed them a serving from the counter, put a Staff Corner in the room, or let them rest after the shift.</p></div>`;
       } else if (tab === "hire") {
         if (!friendsAsked) void loadFriends();
@@ -3345,6 +3380,11 @@ export function openBistro(o: BistroOptions): BistroHandle {
       syncStaff();
       sound("levelup");
       changed();
+      return renderSheet();
+    }
+    if (b.dataset.teamrole) {
+      teamRole = b.dataset.teamrole as Role | "all";
+      sound("tick");
       return renderSheet();
     }
     if (b.dataset.cd) {

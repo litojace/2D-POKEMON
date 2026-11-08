@@ -1446,26 +1446,88 @@ body.hub-bistro:has(.bistro-layer.editing) #toast {
 }
 .bistro-layer .bs-staff .cookdish {
   grid-column: 1 / -1;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
+  display: grid;
   gap: 6px;
 }
 .bistro-layer .bs-staff .cookdish small {
-  margin-right: 4px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   font-size: 10px;
 }
+.bistro-layer .bs-staff .cookdish small b {
+  color: #ffd65b;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 12px;
+}
+.bistro-layer .bs-staff .cookdish .picks {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+  gap: 6px;
+}
+/* Each dish with its name under it (a name, not just a picture). */
 .bistro-layer .bs-staff .cookdish button {
-  width: 42px;
-  height: 42px;
-  padding: 0;
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 2px;
+  min-width: 0;
+  padding: 4px 3px 5px;
   border: 1px solid #ffffff22;
   border-radius: 10px;
   background: #ffffff0d;
+  color: #dfe6f5;
   cursor: pointer;
+}
+.bistro-layer .bs-staff .cookdish button span {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  max-width: 100%;
+  font:
+    700 10px/1.15 "DM Sans",
+    sans-serif;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+/* Staff → Your team: a filter by role, and a heading for each role. */
+.bistro-layer .bs-teamfilter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 18px 8px;
+}
+.bistro-layer .bs-teamfilter button {
+  padding: 6px 12px;
+  border: 1px solid #ffffff22;
+  border-radius: 999px;
+  background: #ffffff0d;
+  color: #dfe6f5;
+  font:
+    700 12px/1 "DM Sans",
+    sans-serif;
+  cursor: pointer;
+}
+.bistro-layer .bs-teamfilter button i {
+  font-style: normal;
+  opacity: 0.7;
+  margin-left: 2px;
+}
+.bistro-layer .bs-teamfilter button[aria-pressed="true"] {
+  background: #7ad3c4;
+  border-color: #7ad3c4;
+  color: #10302a;
+}
+.bistro-layer .bs-teamhead {
+  margin: 6px 2px 0;
+  color: #b8c2da;
+  font:
+    800 11px/1 "DM Sans",
+    sans-serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 .bistro-layer .bs-staff .cookdish button.on {
   border-color: #ffd65b;
