@@ -1189,19 +1189,19 @@
   }
 }
 /* Short phones (360–380 px tall): the emote tile is as tall as a rail
-   button is at its least, so all eight rail buttons keep 28px above it. */
+   button is at its least, still 12px under the rail, so all eight rail
+   buttons keep 28px above it. */
 @media (max-height: 400px) {
   .lobby-rail {
-    bottom: calc(var(--lobby-bottom) + 28px + 8px);
-    gap: 3px;
+    bottom: calc(var(--lobby-bottom) + 28px + 12px);
+    gap: 2px;
   }
   .lobby-emotes .lobby-emote-toggle {
     height: 28px;
   }
   .lobby-emote-list {
-    bottom: calc(100% + 8px);
-    gap: 3px;
-    height: calc(100dvh - var(--lobby-top) - var(--lobby-bottom) - 36px);
+    gap: 2px;
+    height: calc(100dvh - var(--lobby-top) - var(--lobby-bottom) - 40px);
   }
 }
 /* The shortest (320 px): two columns of full-size buttons. --lobby-rail is

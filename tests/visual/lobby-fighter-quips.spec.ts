@@ -143,7 +143,9 @@ for (const size of [
     try {
       const page = await context.newPage();
       const errors = await openLobby(page);
-      if (size.phone) await setInsets(page, ISLAND);
+      // The island only on the phone that has one (no 568 or 667 px wide
+      // phone does).
+      if (size.width === 852) await setInsets(page, ISLAND);
       await expect(page.locator(art)).toHaveClass(/is-ready/, {
         timeout: 30_000,
       });
