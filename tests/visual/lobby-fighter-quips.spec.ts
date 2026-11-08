@@ -200,31 +200,30 @@ for (const size of [
         "data-preview-champion",
         "voltkit",
       );
-      // The pick's two draws, pinned only for the tap's own click: own
-      // pool (under 2/3), then that line's place among the lines left once
-      // the one just said is set aside.
-      // Three seconds on: a fourth tap sooner is a poke (its own lines).
-      await page.waitForTimeout(3100);
+      // Math.random pinned for the tap's own click to one value that picks
+      // it: under 2/3 (the own pool), and on that line's place among the
+      // lines left once the one just said is set aside. One value for every
+      // draw, so other code drawing in the same click can't shift it.
       const target = "Fully charged. One hundred percent.";
       const said = (await page.locator(bubble).textContent()) ?? "";
       const left = CHAMPION_QUIPS.voltkit
         .map((q) => q.text)
         .filter((t) => t !== said);
-      const draws = [0.1, (left.indexOf(target) + 0.5) / left.length];
+      const pinned = (left.indexOf(target) + 0.5) / left.length;
+      expect(pinned).toBeLessThan(2 / 3);
       await page.evaluate(
-        ({ s, draws }) => {
+        ({ s, pinned }) => {
           document.querySelector(s)!.addEventListener(
             "click",
             () => {
               const random = Math.random;
-              const queue = [...draws];
-              Math.random = () => queue.shift() ?? random();
+              Math.random = () => pinned;
               setTimeout(() => (Math.random = random));
             },
             { capture: true, once: true },
           );
         },
-        { s: tap, draws },
+        { s: tap, pinned },
       );
       if (size.phone) await page.locator(tap).tap();
       else await page.locator(tap).click();
