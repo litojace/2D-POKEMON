@@ -38,11 +38,12 @@ it("gives memory back eagerly on iOS and on phones with little memory", () => {
 });
 
 it("keeps the Plaza and Farm canvases within the pixel budget on iOS", () => {
-  // A phone in landscape stays sharp: 844x390 at 2x is 1.3 million pixels.
-  expect(sceneDensity(844, 390, 3, true)).toBe(2);
-  // An iPad-sized window at 2x would be 4 million: drawn softer, within 2.
+  // An iPhone draws at most 1.5x, as in battle (fewer pixels each frame).
+  expect(sceneDensity(844, 390, 3, true)).toBe(1.5);
+  expect(sceneDensity(844, 390, 1, true)).toBe(1);
+  // An iPad-sized window at 1.5x would be 2.2 million: a little softer.
   const d = sceneDensity(1194, 834, 2, true);
-  expect(d).toBeLessThan(2);
+  expect(d).toBeLessThan(1.5);
   expect(Math.round(1194 * d) * Math.round(834 * d)).toBeLessThanOrEqual(
     2_002_000,
   );

@@ -33,10 +33,10 @@ test("iOS Home Screen resumes the hub and releases the old battle canvas on retu
     const errors = await openPlaza(page);
     const canvas = page.locator(".plaza-layer #pz-cv");
     await expect(canvas).toBeVisible();
-    // Phones draw the Plaza at up to 2x (here 844 × 2).
+    // iPhones draw the Plaza at up to 1.5x, as in battle (here 844 × 1.5).
     await expect
       .poll(() => canvas.evaluate((c: HTMLCanvasElement) => c.width))
-      .toBe(1688);
+      .toBe(1266);
     // An iPad-sized window keeps the canvas the size of its host and within
     // the pixel budget. Wait for the drawing buffer to follow the window (the
     // CSS box follows at once): measured before that, the phone-sized buffer
@@ -44,7 +44,7 @@ test("iOS Home Screen resumes the hub and releases the old battle canvas on retu
     await page.setViewportSize({ width: 1194, height: 834 });
     await expect
       .poll(() => canvas.evaluate((c: HTMLCanvasElement) => c.width))
-      .not.toBe(1688);
+      .not.toBe(1266);
     await expect
       .poll(() =>
         canvas.evaluate((c) => {
@@ -62,7 +62,7 @@ test("iOS Home Screen resumes the hub and releases the old battle canvas on retu
     await page.setViewportSize(iphone.viewport);
     await expect
       .poll(() => canvas.evaluate((c: HTMLCanvasElement) => c.width))
-      .toBe(1688);
+      .toBe(1266);
     await page.evaluate(() => {
       (window as any).__keepApp = true;
       dispatchEvent(new PageTransitionEvent("pagehide", { persisted: true }));
