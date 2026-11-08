@@ -179,6 +179,8 @@ Then run [105_bistro_all_recipes.sql](../supabase/migrations/105_bistro_all_reci
 
 Then run [106_bistro_fast_catch_up.sql](../supabase/migrations/106_bistro_fast_catch_up.sql) (after 105). The final query should return **true**. It works out the time away in one-minute steps and serves a step's guests at once, so a big bistro left for a full shift catches up in a few seconds: before, it could take longer than the 8 seconds a player's request may run, and that bistro could not open again.
 
+Then run [107_bistro_cook_times.sql](../supabase/migrations/107_bistro_cook_times.sql) (after 106). The final query should return **true**. A cook's next batch starts the moment the last one is done, on the server as on the screen (before, the server started it only at the next request, so each answer set the batch back to the start); an action may carry when it was done (`at`), and a recent one runs at that time; the cooks look again after each action.
+
 ### Unlimited coins for admin testing
 
 Run [016_admin_shop_coins.sql](../supabase/migrations/016_admin_shop_coins.sql) after the earlier migrations. Existing non-suspended administrators see **∞ coins** and can buy Shop items and collection sets without spending their real balance. Purchases persist, can be equipped normally, and are recorded in the admin audit log. Prices, Mythic Trials, Awakening requirements and regular player spending still work as usual. Removing admin membership ends unlimited spending immediately; the saved wallet balance is unchanged.

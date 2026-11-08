@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   EXPAND_STEPS as EXPAND_STEPS_ALL,
   HIRE_STEPS,
+  stoveMs,
 } from "../../packages/shared/src/bistro";
 import {
   COLS,
@@ -366,6 +367,39 @@ describe("bistro: staff", () => {
     const done = autoKitchen(s, T0 + 60_000);
     expect(done.map((e) => e.kind)).toEqual(["plate", "start"]);
     expect(s.counter[0]).toMatchObject({ dish: "pho", servings: 10 });
+  });
+  it("a dish done since the kitchen was last looked at started the next one then, batch after batch", () => {
+    const s = defaultState();
+    s.coins = 1000;
+    s.level = 2;
+    s.counter = [null, null, null, null];
+    hire(s, "cook", "pyranda");
+    setCookDish(s, staffOf(s, "cook")[0].id, "goicuon");
+    autoKitchen(s, T0);
+    const dur = stoveMs(s.stoves[1]);
+    // Looked at a moment before it was done, and again 1.5 batches later:
+    // plated, the next started when the first was done, and that one too.
+    const ev = autoKitchen(s, T0 + dur * 2.5, undefined, T0 + dur - 100);
+    expect(ev.map((e) => e.kind)).toEqual(["plate", "start", "plate", "start"]);
+    const start3 = s.stoves[1].start;
+    expect(Math.abs(start3 - (T0 + 2 * dur))).toBeLessThan(dur * 0.05);
+    // By default nothing is earlier than now (the old way).
+    const done3 = start3 + stoveMs(s.stoves[1]);
+    s.counter = [null, null, null, null]; // (the stock was full)
+    autoKitchen(s, done3 + 7000);
+    expect(s.stoves[1].start).toBe(done3 + 7000);
+    // Held back (the counter full when it was done): it starts when there's
+    // room, then; not when it was done.
+    const done4 = s.stoves[1].start + stoveMs(s.stoves[1]);
+    s.counter = (["pho", "lau", "banhmi", "che"] as const).map((dish) => ({
+      dish,
+      servings: 1,
+      perfect: false,
+    }));
+    expect(autoKitchen(s, done4 + 1000, undefined, done4 - 500)).toEqual([]);
+    s.counter = [null, null, null, null];
+    autoKitchen(s, done4 + 5000, undefined, done4 + 1000);
+    expect(s.stoves[1].start).toBe(done4 + 5000);
   });
   it("candidates are three creatures not on the team, the same all day", () => {
     const s = defaultState();

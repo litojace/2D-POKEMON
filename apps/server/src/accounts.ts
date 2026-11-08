@@ -59,7 +59,7 @@ import {
   type OnlineList,
 } from "../../../packages/shared/src/accounts.js";
 /** The newest database migration the server expects. */
-export const LATEST_MIGRATION = "106_bistro_fast_catch_up.sql";
+export const LATEST_MIGRATION = "107_bistro_cook_times.sql";
 /** The migration that last redefined the raid appearance functions. */
 export const RAID_FUNCTIONS_MIGRATION = "018_collection_equipping.sql";
 export interface AccountProvider {
@@ -777,6 +777,9 @@ export function installAccountRoutes(
       qty: z.number().int().min(1).max(30).optional(),
       // Catering orders (migration 100).
       slot: z.number().int().min(0).max(3).optional(),
+      // When it was done, by the server's clock as the page keeps it
+      // (migration 107: a recent one is run at that time).
+      at: z.number().int().positive().max(1e14).optional(),
     })
     .strict();
   app.get(

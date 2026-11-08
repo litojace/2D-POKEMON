@@ -146,6 +146,42 @@ test("Bistro free stoves call you to cook; their bubble opens them; cooks' stove
   expect(errors).toEqual([]);
 });
 
+test("Bistro a cook's next batch keeps its start when the server answers (a guest's paying, a ping)", async ({
+  page,
+}) => {
+  const errors = await openBistro(page);
+  // A cook on the last stove, their batch done in a second.
+  await B(
+    page,
+    `srv.S.level = 5; srv.S.coins = 5000; srv.S.counter = [null, null, null, null];
+     srv.S.staff.push({ id: 9, char: 'pyranda', role: 'cook', level: 1, dish: 'goicuon' });
+     const i = srv.S.stoves.length - 1;
+     srv.S.stoves[i] = { ...srv.S.stoves[i], dish: 'goicuon', start: srv.now() - 9000, dur: 10000, perfect: false };
+     return b.load()`,
+  );
+  const last = "b.state().stoves[b.state().stoves.length - 1]";
+  const first = (await B(page, `return ${last}.start`)) as number;
+  // The scene's cook plates it and starts the next: when it was done.
+  await expect
+    .poll(() => B(page, `return ${last}.start`), { timeout: 5000 })
+    .not.toBe(first);
+  const next = (await B(page, `return ${last}.start`)) as number;
+  expect(next).toBe(first + 10000);
+  // Seconds later an answer comes (a sale, a ping): the batch stays put.
+  await page.waitForTimeout(1500);
+  const sent = (await B(page, "return srv.requests.length")) as number;
+  await B(page, "b.sync().do({ a: 'sync' }); return b.sync().flush()");
+  await expect
+    .poll(() => B(page, "return srv.requests.length"))
+    .toBeGreaterThan(sent);
+  await page.waitForTimeout(300);
+  expect(await B(page, `return ${last}.start`)).toBe(next);
+  expect(
+    await B(page, "return srv.S.stoves[srv.S.stoves.length - 1].start"),
+  ).toBe(next);
+  expect(errors).toEqual([]);
+});
+
 test("Bistro team: grouped and filtered by role; a cook's dishes carry their names", async ({
   page,
 }, info) => {

@@ -695,10 +695,19 @@ export function openBistro(o: BistroOptions): BistroHandle {
   const cached = kept
     ? { state: structuredClone(kept.state), extras: { ...kept.extras } }
     : undefined;
+  /**
+   * An action of yours just ran: the cooks look at once, not up to 0.4 s
+   * later (a serving sold frees the stock, coins come in…), as the server
+   * looks right after each action.
+   */
+  let kitchenDue = false;
   const sync = new BistroSync(
     o.api,
     {
       onAdopt: (info) => adopted(info),
+      onDo: () => {
+        kitchenDue = true;
+      },
       onFail: () => {
         if (!sync.ready) showLoading("Can't reach the bistro. Retrying…");
       },
@@ -1704,11 +1713,24 @@ export function openBistro(o: BistroOptions): BistroHandle {
   };
   /** The cooks' work, a few times a second: start their dish, plate it when done. */
   let kitchenT = 0;
+  /**
+   * When the cooks were last looked at: a dish done since then was plated
+   * the moment it was done, and the next one started then (as the server
+   * does, migration 107), so the answers to your actions don't move a
+   * batch's start. Each answer sets it to the server's time (adopted()).
+   */
+  let kitchenSeen = 0;
   const runKitchen = (dt: number) => {
     kitchenT -= dt;
-    if (kitchenT > 0) return;
+    if (kitchenT > 0 && !kitchenDue) return;
     kitchenT = 0.4;
-    for (const ev of autoKitchen(S, nowS())) {
+    kitchenDue = false;
+    const now = nowS();
+    // A friend's kitchen: as of now (only yours keeps its own time).
+    const seen = visiting ? now : Math.min(now, kitchenSeen || now);
+    const evs = autoKitchen(S, now, undefined, seen);
+    if (!visiting) kitchenSeen = now;
+    for (const ev of evs) {
       const c = iso(stoveTile(ev.stove).x, 0);
       const walker = cooks.find((w) => w.staff.id === ev.cook.id);
       if (walker) walker.hop = 1;
@@ -4968,6 +4990,9 @@ export function openBistro(o: BistroOptions): BistroHandle {
       syncLitter();
       // The cooks' turn now, not up to 0.4 s later: a dish done while the
       // answer was on its way is plated before the next frame shows it.
+      // The server looked at the kitchen at its time (lastSeen): what is
+      // done since then was plated then, as it will be on the server.
+      if (S.lastSeen) kitchenSeen = S.lastSeen;
       kitchenT = 0;
       runKitchen(0);
     }

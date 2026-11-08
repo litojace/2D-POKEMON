@@ -91,7 +91,7 @@ export async function fakeBistro(page: Page) {
       if (t - from >= 60_000) {
         const rep = R.simulateAway(server.S, from, t, server.extras.special);
         if (rep) server.away = rep;
-      } else R.autoKitchen(server.S, t);
+      } else R.autoKitchen(server.S, t, undefined, from);
     };
     const state = () => ({
       ...server.S,
@@ -123,12 +123,38 @@ export async function fakeBistro(page: Page) {
             status: 400,
             headers: { "Content-Type": "application/json" },
           });
+        const prev = server.S.lastSeen;
         catchUp(R);
         const away = server.away;
         server.away = null;
-        const results = body.actions.map((a: any) =>
-          R.applyLocal(server.S, a, server.now(), server.extras),
-        );
+        // As migration 107: each action at its time if recent, the cooks
+        // looking right after it, and once more at the end.
+        const t = server.now();
+        let low = Math.min(t, Math.max(prev || t, t - 10_000));
+        const quiet = [
+          "leave",
+          "sync",
+          "stir",
+          "place",
+          "store",
+          "style",
+          "chef",
+          "sweep",
+        ];
+        const results = body.actions.map((a: any) => {
+          const at = a.at ? Math.min(t, Math.max(low, a.at)) : t;
+          low = at;
+          const r = R.applyLocal(
+            server.S,
+            { ...a, at: undefined },
+            at,
+            server.extras,
+          );
+          if (r.ok && !quiet.includes(a.a))
+            R.autoKitchen(server.S, at, undefined, at);
+          return r;
+        });
+        R.autoKitchen(server.S, t, undefined, low);
         return json({ bistro: state(), results, away });
       }
       if (url.endsWith("/api/bistro/friends")) return json(server.friends);

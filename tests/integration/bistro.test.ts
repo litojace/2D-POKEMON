@@ -5,6 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   BISTRO_TRADE,
   DISHES,
+  DISH_BY_ID,
   ITEMS,
   HIRE_STEPS,
   KITCHEN_PRICES,
@@ -351,7 +352,17 @@ describe("staff, upgrades and the time away", () => {
       STOVE_BY_MODEL.clay.price +
       KITCHEN_PRICES[0] +
       SHIFT_PRICES[0];
-    expect(r.bistro.coins).toBe(5000 - spent);
+    // The cook starts a dish right after the hire, and on the new stove
+    // (theirs now) right after it's bought: the cooks look after each
+    // action (migration 107).
+    const cooking = r.bistro.stoves
+      .filter((st: any) => st.dish)
+      .reduce(
+        (n: number, st: any) => n + DISH_BY_ID[st.dish as DishId].cost,
+        0,
+      );
+    expect(cooking).toBeGreaterThan(0);
+    expect(r.bistro.coins).toBe(5000 - spent - cooking);
     expect(r.bistro.staff[1]).toMatchObject({
       char: "pyranda",
       role: "cook",
@@ -1237,7 +1248,7 @@ describe("the long game (migration 100)", () => {
 });
 
 describe("the cooks in step (migration 101)", () => {
-  it("online, a cook's dish done since the last request is plated and the next started now", async () => {
+  it("online, a cook's dish done since the last request is plated and the next started when it was done (migration 107)", async () => {
     await open(cal);
     await setCoins(cal, 5000, 5);
     const [{ c }] = await sql("select (public.arena_champion_ids())[3] c");
@@ -1263,15 +1274,132 @@ describe("the cooks in step (migration 101)", () => {
       "update public.arena_bistros set last_seen = now() - interval '5 seconds' where player_id = $1",
       [cal],
     );
+    const [{ start0 }] = await sql(
+      "select round(extract(epoch from started_at) * 1000)::bigint start0 from public.arena_bistro_stoves where player_id = $1 and idx = (select max(idx) from public.arena_bistro_stoves where player_id = $1)",
+      [cal],
+    );
     const b = await open(cal);
     const last = b.stoves[b.stoves.length - 1];
-    // Plated, and the next batch started now, as the scene's own cooks do
-    // it: the answer doesn't take back what the scene shows.
+    // Plated, and the next batch started the moment the last one was done,
+    // as the scene's own cooks do it: the answer doesn't take back what the
+    // scene shows (it set the batch back to the start before).
     expect(
       b.counter.find((x: any) => x?.dish === "goicuon")?.servings,
     ).toBeGreaterThan(0);
     expect(last.dish).toBe("goicuon");
-    expect(Math.abs(Number(last.start) - Number(b.now))).toBeLessThan(2000);
+    expect(
+      Math.abs(Number(last.start) - (Number(start0) + 10_000)),
+    ).toBeLessThanOrEqual(1);
+    expect(Number(last.start)).toBeLessThan(Number(b.now));
+  });
+});
+
+describe("cook times (migration 107)", () => {
+  /** Cal's own stove (the first; the cook runs the last) emptied, and the request before 5 s ago. */
+  const fresh = async () => {
+    await sql(
+      "update public.arena_bistro_stoves set dish = null, started_at = null, dur_ms = null, perfect = false where player_id = $1 and idx = 0",
+      [cal],
+    );
+    await sql(
+      "update public.arena_bistros set last_seen = now() - interval '5 seconds' where player_id = $1",
+      [cal],
+    );
+  };
+  const nowMs = async () =>
+    Number(
+      (await sql("select round(extract(epoch from now()) * 1000)::bigint n"))[0]
+        .n,
+    );
+  it("a dish you start starts when you tapped (a recent time), else now", async () => {
+    await setCoins(cal, 5000, 5);
+    await fresh();
+    let at = (await nowMs()) - 3000;
+    let r = await act(cal, [{ a: "cook", stove: 0, dish: "goicuon", at }]);
+    expect(r.results[0].ok).toBe(true);
+    expect(Math.abs(Number(r.bistro.stoves[0].start) - at)).toBeLessThanOrEqual(
+      1,
+    );
+    // Too long ago: 10 seconds ago at most.
+    await fresh();
+    at = (await nowMs()) - 60_000;
+    r = await act(cal, [{ a: "cook", stove: 0, dish: "goicuon", at }]);
+    const back = Number(r.bistro.now) - Number(r.bistro.stoves[0].start);
+    expect(back).toBeGreaterThanOrEqual(4000); // not before the request before (5 s)
+    expect(back).toBeLessThanOrEqual(5100);
+    // Ahead of the server: now.
+    await fresh();
+    at = (await nowMs()) + 60_000;
+    r = await act(cal, [{ a: "cook", stove: 0, dish: "goicuon", at }]);
+    expect(Number(r.bistro.stoves[0].start)).toBe(Number(r.bistro.now));
+    // No time given (an older page): now.
+    await fresh();
+    r = await act(cal, [{ a: "cook", stove: 0, dish: "goicuon" }]);
+    expect(Number(r.bistro.stoves[0].start)).toBe(Number(r.bistro.now));
+  });
+  it("a tap in the golden moment counts when you tapped, though the request comes later", async () => {
+    for (const withAt of [false, true]) {
+      await fresh();
+      // 9.8 s into a 10 s dish: past the golden part (78–96%) by now.
+      await sql(
+        "update public.arena_bistro_stoves set dish = 'goicuon', started_at = now() - interval '9.8 seconds', dur_ms = 10000, perfect = false where player_id = $1 and idx = 0",
+        [cal],
+      );
+      const [{ s0 }] = await sql(
+        "select round(extract(epoch from started_at) * 1000)::bigint s0 from public.arena_bistro_stoves where player_id = $1 and idx = 0",
+        [cal],
+      );
+      const r = await act(cal, [
+        withAt
+          ? { a: "stir", stove: 0, at: Number(s0) + 8500 }
+          : { a: "stir", stove: 0 },
+      ]);
+      expect(r.results[0].ok).toBe(withAt);
+      expect(r.bistro.stoves[0].perfect).toBe(withAt);
+    }
+  });
+  it("a cook held back by a full stock starts when a guest's paying made room, at that time", async () => {
+    await setCoins(cal, 5000, 5);
+    await fresh();
+    const last = (
+      await sql(
+        "select max(idx) i from public.arena_bistro_stoves where player_id = $1",
+        [cal],
+      )
+    )[0].i;
+    await sql(
+      "update public.arena_bistro_stoves set dish = null, started_at = null, dur_ms = null, perfect = false where player_id = $1 and idx = $2",
+      [cal, last],
+    );
+    await sql(
+      "update public.arena_bistro_counter set dish = case when slot = 0 then 'goicuon' end, servings = case when slot = 0 then 24 else 0 end, perfect = false where player_id = $1",
+      [cal],
+    );
+    await sql(
+      "update public.arena_bistros set sale_budget = 10, sale_at = now() where player_id = $1",
+      [cal],
+    );
+    // Nothing starts while the stock is full.
+    let b = await open(cal);
+    expect(b.stoves[last].dish).toBeNull();
+    // (No action is earlier than the request before: that was 5 s ago.)
+    await fresh();
+    const at = (await nowMs()) - 2000;
+    const r = await act(cal, [
+      {
+        a: "serve",
+        dish: "goicuon",
+        vip: false,
+        combo: 1,
+        hearts: 3,
+        quick: false,
+        at,
+      },
+    ]);
+    expect(r.results[0].ok).toBe(true);
+    b = r.bistro;
+    expect(b.stoves[last].dish).toBe("goicuon");
+    expect(Math.abs(Number(b.stoves[last].start) - at)).toBeLessThanOrEqual(1);
   });
 });
 

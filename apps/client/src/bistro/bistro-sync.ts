@@ -58,7 +58,13 @@ import {
   type Role,
 } from "./bistro-model";
 
-export type BistroAction =
+/**
+ * An action, and when it was done (`at`, the server's clock as this device
+ * keeps it): the server runs it at that time, if it's recent (migration
+ * 107), so a dish starts when you tapped, not when the request got there.
+ */
+export type BistroAction = BistroDo & { at?: number };
+type BistroDo =
   | { a: "cook"; stove: number; dish: DishId }
   | { a: "stir"; stove: number }
   | { a: "plate"; stove: number }
@@ -168,6 +174,8 @@ export function applyLocal(
 ): ActResult {
   const r = (v: { ok: boolean; error?: string }) =>
     v.ok ? { ok: true } : { ok: false, error: v.error };
+  // When it was done (not after the bistro the server last saw, nor ahead).
+  if (x.at) now = Math.min(now, Math.max(x.at, s.lastSeen || 0));
   switch (x.a) {
     case "cook":
       return r(startCooking(s, x.stove, x.dish, now));
@@ -456,6 +464,14 @@ export class BistroSync {
   extras: BistroExtras;
   /** Server time minus this device's time (ms). */
   offset = 0;
+  /**
+   * What the answers so far tell of the offset: at least `lo` (the server's
+   * time came before the answer), at most `hi` (and after the request).
+   * The clock goes by `lo`, the tightest so far, so it doesn't jump back and
+   * forth with each answer's delay (a slow answer would set it back, and
+   * every timer on screen with it).
+   */
+  private clock: { lo: number; hi: number } | null = null;
   ready = false;
   private outbox: BistroAction[] = [];
   /**
@@ -488,6 +504,8 @@ export class BistroSync {
         payday?: Payday | null;
       }): void;
       onFail(error: unknown): void;
+      /** An action just ran on the local copy. */
+      onDo?(): void;
     },
     initial?: { state: BistroState; extras: BistroExtras },
   ) {
@@ -513,9 +531,10 @@ export class BistroSync {
     return Date.now() + this.offset;
   }
   async load() {
+    const sent = Date.now();
     const raw = await this.api.load();
     if (this.closed) return;
-    this.adopt(raw, []);
+    this.adopt(raw, [], sent);
   }
   /** Run an action now and queue it for the server. */
   do(x: BistroAction): ActResult {
@@ -524,6 +543,7 @@ export class BistroSync {
     this.schedule(
       x.a === "serve" || x.a === "leave" || x.a === "sync" ? 800 : 150,
     );
+    this.hooks.onDo?.();
     return r;
   }
   /** A guest's order: their serving leaves the counter until they pay or leave. */
@@ -581,6 +601,7 @@ export class BistroSync {
     }
     const batch = this.pending;
     this.sending = true;
+    const sent = Date.now();
     try {
       const raw = (await this.api.act(batch.id, batch.actions)) as {
         bistro?: unknown;
@@ -599,7 +620,11 @@ export class BistroSync {
       this.pending = null;
       this.refused = 0;
       errors.unshift(...this.dropped.splice(0));
-      this.adopt({ ...(raw.bistro as object), away: raw.away ?? null }, errors);
+      this.adopt(
+        { ...(raw.bistro as object), away: raw.away ?? null },
+        errors,
+        sent,
+      );
     } catch (e) {
       this.sending = false;
       this.hooks.onFail(e);
@@ -671,9 +696,10 @@ export class BistroSync {
   private adopt(
     raw: unknown,
     errors: { action: BistroAction; error: string }[],
+    sent?: number,
   ) {
     const got = readServer(raw);
-    this.offset = got.now - Date.now();
+    this.offset = this.tick(got.now, sent ?? Date.now(), Date.now());
     this.S = got.state;
     this.extras = {
       ...got.extras,
@@ -687,6 +713,18 @@ export class BistroSync {
       if (takeServing(this.S, dish) < 0) this.reserved.delete(guest);
     this.ready = true;
     this.hooks.onAdopt({ away: got.away, errors, payday: got.payday });
+  }
+  /** The offset after an answer with the server's time, sent and got at these times. */
+  private tick(server: number, sent: number, got: number): number {
+    const lo = server - got,
+      hi = Math.max(lo, server - sent);
+    const c = this.clock;
+    const lo2 = c ? Math.max(c.lo, lo) : lo,
+      hi2 = c ? Math.min(c.hi, hi) : hi;
+    // An answer that doesn't fit the others (this device's clock was
+    // changed, or drifted): start again from it, the surest.
+    this.clock = lo2 <= hi2 ? { lo: lo2, hi: hi2 } : { lo, hi };
+    return this.clock.lo;
   }
   /** Keep "last seen" fresh while the bistro is open. */
   ping() {

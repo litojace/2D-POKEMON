@@ -2381,34 +2381,51 @@ export type KitchenEvent =
       levels: number;
       cook: Staff;
     };
-/** The cooks' turn: plate what is done, start their dish on an empty stove. */
+/**
+ * The cooks' turn: plate what is done, start their dish on an empty stove.
+ *
+ * A cook doesn't wait for anyone to look: a dish done since `seen` (when the
+ * kitchen was last looked at) was plated the moment it was done, and the next
+ * one started right then, not now. The server does the same (migration 107),
+ * so a batch starts at the same time on both, whenever either looks: the scene
+ * a few times a second, the server at each request.
+ */
 export function autoKitchen(
   s: BistroState,
   now: number,
-  /** A cook's pace (energy, friend): by default as of now with the bistro open. */
-  paceOf: (cook: Staff) => number = (c) =>
-    (c.friend ? FRIEND_BONUS : 1) * mood(energyNow(s, c, now)),
+  /** A cook's pace at a time (energy, friend): by default with the bistro open. */
+  paceOf: (cook: Staff, at: number) => number = (c, at) =>
+    (c.friend ? FRIEND_BONUS : 1) * mood(energyNow(s, c, at)),
+  /** When the kitchen was last looked at (now: nothing is earlier than now). */
+  seen = now,
 ): KitchenEvent[] {
   const out: KitchenEvent[] = [];
   staffOf(s, "cook").forEach((cook, i) => {
     const idx = cookStove(s, i);
-    const st = s.stoves[idx];
-    if (!st) return;
-    if (st.dish && cookProgress(st, now) >= 1) {
-      const dish = st.dish;
-      const r = plate(s, idx, now);
-      if (!r.ok) return; // the counter is full: wait
-      out.push({
-        kind: "plate",
-        stove: idx,
-        dish,
-        slot: r.slot!,
-        servings: r.servings!,
-        levels: r.levels ?? 0,
-        cook,
-      });
-    }
-    if (!s.stoves[idx].dish && servingsLeft(s) < STOCK_CAP) {
+    if (!s.stoves[idx]) return;
+    // Batch after batch (a long time away can hold several).
+    for (let n = 0; n < 50; n++) {
+      const st = s.stoves[idx];
+      let at = now;
+      if (st.dish) {
+        const done = st.start + stoveMs(st);
+        if (now < done) return;
+        const dish = st.dish;
+        const r = plate(s, idx, now);
+        if (!r.ok) return; // the counter is full: wait
+        out.push({
+          kind: "plate",
+          stove: idx,
+          dish,
+          slot: r.slot!,
+          servings: r.servings!,
+          levels: r.levels ?? 0,
+          cook,
+        });
+        // Done since last looked at: plated then, and the next one starts then.
+        if (done >= seen) at = done;
+      }
+      if (servingsLeft(s) >= STOCK_CAP) return;
       // Their dish, or the best one you can still pay for.
       const pick = [
         cook.dish,
@@ -2418,8 +2435,12 @@ export function autoKitchen(
       ].find(
         (d) => DISH_BY_ID[d].level <= s.level && DISH_BY_ID[d].cost <= s.coins,
       );
-      if (pick && startCooking(s, idx, pick, now, cook.level, paceOf(cook)).ok)
-        out.push({ kind: "start", stove: idx, dish: pick, cook });
+      if (
+        !pick ||
+        !startCooking(s, idx, pick, at, cook.level, paceOf(cook, at)).ok
+      )
+        return;
+      out.push({ kind: "start", stove: idx, dish: pick, cook });
     }
   });
   return out;
@@ -2524,12 +2545,16 @@ export function simulateAway(
   let acc = 0;
   let dirt = 0;
   let sweep = 0;
+  // The kitchen was last looked at when you left; then at each step.
+  let seen = from;
   for (let t = from; t < end; t += STEP) {
     const kitchen = autoKitchen(
       s,
       t,
-      (c) => (c.friend ? FRIEND_BONUS : 1) * mood(eAt(c, t)),
+      (c, at) => (c.friend ? FRIEND_BONUS : 1) * mood(eAt(c, at)),
+      seen,
     );
+    seen = t;
     for (const ev of kitchen) {
       if (ev.kind === "plate") {
         rep.batches++;
