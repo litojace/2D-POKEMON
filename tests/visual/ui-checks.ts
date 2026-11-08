@@ -191,9 +191,12 @@ export async function clippedFrames(page: Page, boxes: string) {
   const bad: string[] = [];
   for (let i = 0; i < count; i++) {
     const spot = await page.evaluate(
-      ([selector, i]) => {
+      async ([selector, i]) => {
         const art = document.querySelectorAll<HTMLElement>(selector)[i];
         art.scrollIntoView({ block: "center", inline: "center" });
+        // Measured once the Lobby has put its layer back, if that scrolled
+        // it too (lobby-screen.ts does so with the next frame's scroll event).
+        await new Promise((r) => requestAnimationFrame(() => setTimeout(r)));
         const r = art.getBoundingClientRect();
         // Rounded inwards: the picture's outer ring is the box's own edge.
         const x = Math.ceil(r.left),
