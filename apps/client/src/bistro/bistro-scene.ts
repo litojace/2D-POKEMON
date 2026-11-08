@@ -4036,6 +4036,10 @@ export function openBistro(o: BistroOptions): BistroHandle {
             cooking ? 1 : st.dish ? 0.3 : 0,
             st.model,
           );
+          // A free stove calling you: the burner glows, a ring breathing
+          // out from it (with the stove, so whoever stands in front of
+          // it covers it; the bubble goes on top, in drawOverlay).
+          if (!st.dish && calling.includes(i)) burnerCall(i);
           if (st.dish)
             drawPot(
               ctx,
@@ -4479,6 +4483,32 @@ export function openBistro(o: BistroOptions): BistroHandle {
   /** Free stoves of yours: since when (for the call to cook), and which call now. */
   const idleSince = new Map<number, number>();
   let calling: number[] = [];
+  /** The glow on a free stove's burner (see drawOverlay's "Cook!" bubble). */
+  const burnerCall = (i: number) => {
+    const since = idleSince.get(i);
+    const k = since === undefined ? 0 : clamp((T - since - 1.2) / 0.5, 0, 1);
+    if (k <= 0) return;
+    const c = iso(stoveTile(i).x, 0);
+    const pulse = 0.5 + 0.5 * Math.sin(T * 4 + i);
+    ctx.save();
+    ctx.globalAlpha *= k;
+    ctx.translate(c.x, c.y - 44);
+    ctx.scale(1, 0.45);
+    const g = ctx.createRadialGradient(0, 0, 4, 0, 0, 34);
+    g.addColorStop(0, `rgba(255,170,70,${0.35 + 0.25 * pulse})`);
+    g.addColorStop(1, "rgba(255,140,40,0)");
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(0, 0, 34, 0, Math.PI * 2);
+    ctx.fill();
+    const ring = (T * 0.8 + i * 0.3) % 1;
+    ctx.strokeStyle = `rgba(255,200,110,${0.7 * (1 - ring)})`;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(0, 0, 18 + ring * 18, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  };
   /** Bubbles, rings, floaters and particles: always on top of the room. */
   const drawOverlay = (now: number) => {
     // Decorating: each seat's walk for the waiters, as a coloured tag.
@@ -4587,25 +4617,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
         calling.push(i);
         const c = iso(stoveTile(i).x, 0);
         const pulse = 0.5 + 0.5 * Math.sin(T * 4 + i);
-        ctx.save();
-        ctx.globalAlpha = k;
-        // The burner glows, a ring breathing out from it.
-        ctx.translate(c.x, c.y - 44);
-        ctx.scale(1, 0.45);
-        const g = ctx.createRadialGradient(0, 0, 4, 0, 0, 34);
-        g.addColorStop(0, `rgba(255,170,70,${0.35 + 0.25 * pulse})`);
-        g.addColorStop(1, "rgba(255,140,40,0)");
-        ctx.fillStyle = g;
-        ctx.beginPath();
-        ctx.arc(0, 0, 34, 0, Math.PI * 2);
-        ctx.fill();
-        const ring = (T * 0.8 + i * 0.3) % 1;
-        ctx.strokeStyle = `rgba(255,200,110,${0.7 * (1 - ring)})`;
-        ctx.lineWidth = 2.5;
-        ctx.beginPath();
-        ctx.arc(0, 0, 18 + ring * 18, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.restore();
+        // (The burner's glow is drawn with the stove, under the cooks.)
         // The bubble: a pan, a green "+", and the word.
         const x = c.x,
           y = c.y - 112 - Math.abs(Math.sin(T * 3 + i)) * 4;
