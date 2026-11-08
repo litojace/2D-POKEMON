@@ -14,6 +14,9 @@ const server = () => ({
   now: Date.now(),
 });
 const hooks = () => ({ onAdopt: vi.fn(), onFail: vi.fn() });
+/** The actions without when they were done (each carries its own `at`). */
+const bare = (xs: BistroAction[]) =>
+  xs.map(({ at, ...x }) => (expect(at).toBeTypeOf("number"), x));
 
 describe("bistro sync: a batch keeps its request id", () => {
   it("a retry after a failure sends the same id, so the server applies it once", async () => {
@@ -37,9 +40,11 @@ describe("bistro sync: a batch keeps its request id", () => {
     sync.do({ a: "buy", kind: "chair" }); // queued behind the unanswered batch
     await vi.advanceTimersByTimeAsync(4100);
     expect(calls[1][0]).toBe(calls[0][0]);
-    expect(calls[1][1]).toEqual([{ a: "buy", kind: "plant" }]);
+    expect(bare(calls[1][1])).toEqual([{ a: "buy", kind: "plant" }]);
+    // When it was done goes with it, the same on the retry.
+    expect(calls[1][1][0].at).toBe(calls[0][1][0].at);
     await vi.advanceTimersByTimeAsync(300);
-    expect(calls[2][1]).toEqual([{ a: "buy", kind: "chair" }]);
+    expect(bare(calls[2][1])).toEqual([{ a: "buy", kind: "chair" }]);
     expect(calls[2][0]).not.toBe(calls[0][0]);
     vi.useRealTimers();
   });
@@ -64,7 +69,7 @@ describe("bistro sync: a batch keeps its request id", () => {
     first.do({ a: "buy", kind: "plant" });
     await vi.advanceTimersByTimeAsync(200);
     const kept = JSON.parse(JSON.stringify(first.snapshot()));
-    expect(kept.pending.actions).toEqual([{ a: "buy", kind: "plant" }]);
+    expect(bare(kept.pending.actions)).toEqual([{ a: "buy", kind: "plant" }]);
     const second = new BistroSync(
       {
         load: async () => server(),
@@ -139,7 +144,7 @@ describe("bistro sync: a batch keeps its request id", () => {
     const errors = h.onAdopt.mock.calls.flatMap((c) => c[0].errors);
     expect(errors).toEqual([
       {
-        action: { a: "buy", kind: "rug" },
+        action: { a: "buy", kind: "rug", at: expect.any(Number) },
         error: "That change couldn't be saved.",
       },
     ]);
@@ -187,6 +192,44 @@ describe("bistro sync: a batch keeps its request id", () => {
     await vi.advanceTimersByTimeAsync(30000);
     expect(ids.length).toBeGreaterThan(5);
     expect(new Set(ids).size).toBe(1);
+    vi.useRealTimers();
+  });
+});
+
+describe("bistro sync: the server's clock", () => {
+  it("keeps the tightest bound: a slow answer doesn't set it back; a changed device clock starts it again", async () => {
+    vi.useFakeTimers();
+    const skew = 60_000;
+    let shift = 0;
+    let delay = 0;
+    // The server stamps its time, then the answer takes `delay` to arrive.
+    const answer = async () => {
+      const now = Date.now() + skew + shift;
+      if (delay) await new Promise((r) => setTimeout(r, delay));
+      return { ...server(), now };
+    };
+    const sync = new BistroSync(
+      {
+        load: answer,
+        act: async () => ({ bistro: await answer(), results: [] }),
+      },
+      hooks(),
+    );
+    await sync.load();
+    expect(sync.now() - Date.now()).toBe(skew);
+    delay = 2000;
+    const slow = sync.load();
+    await vi.advanceTimersByTimeAsync(2000);
+    await slow;
+    // (Taken as it came, the clock would go 2 s back, and every timer with it.)
+    expect(sync.now() - Date.now()).toBe(skew);
+    // This device's clock is set an hour back: the next answer doesn't fit
+    // the others, so the clock starts again from it.
+    delay = 0;
+    vi.setSystemTime(Date.now() - 3_600_000);
+    shift = 3_600_000;
+    await sync.load();
+    expect(sync.now() - Date.now()).toBe(skew + 3_600_000);
     vi.useRealTimers();
   });
 });

@@ -54,6 +54,7 @@ import {
   FARM_WEATHER_SECONDS,
 } from "../../../../packages/shared/src/farm";
 import { GIANT_ART, cropFieldSvg, cropGiantSvg, cropItemSvg } from "./crop-art";
+import { ClockBounds } from "../server-clock";
 import { GFX } from "./farm-gfx";
 import {
   FarmFeel,
@@ -419,6 +420,9 @@ export function openFarm(options) {
     pending: new Set(),
   };
   let offset = 0; // server clock minus this device's clock, in ms
+  // From the answers' `now` (server-clock.ts): it doesn't jump with their
+  // delays. `asked`: when the request an answer came from was sent.
+  const clock = new ClockBounds();
   const serverNow = () => Date.now() + offset;
   const barnUsed = () => Object.values(F.barn).reduce((a, b) => a + b, 0);
   const dogOn = () => !!F.dog && F.dog.until > serverNow();
@@ -547,9 +551,9 @@ export function openFarm(options) {
         );
       } catch {}
   }
-  function applyState(st) {
+  function applyState(st, asked) {
     const now = Date.parse(st.now);
-    offset = now - Date.now();
+    offset = clock.note(now, Date.now(), asked);
     F.lv = st.level;
     F.xp = st.xp;
     F.land = st.landBought;
@@ -829,8 +833,9 @@ export function openFarm(options) {
     wishing = true;
     try {
       await flush();
+      const asked = Date.now();
       const r = await options.wish();
-      if (r?.farm) applyState(r.farm);
+      if (r?.farm) applyState(r.farm, asked);
       if (!r?.ok) return toast(r?.error ?? "The well is quiet right now.");
       const names = r.seeds.map((id) => CROP[id]?.n ?? id);
       for (let k = 0; k < 10; k++)
@@ -866,9 +871,10 @@ export function openFarm(options) {
       lvBefore = F.lv;
     sending = true;
     try {
+      const asked = Date.now();
       const r = await options.act(actions);
       queue = queue.slice(actions.length);
-      applyState(r.farm);
+      applyState(r.farm, asked);
       const errors = r.results.filter((x) => !x.ok).map((x) => x.error);
       if (errors.length) toast(errors[0]);
       for (const x of r.results) {
@@ -979,7 +985,8 @@ export function openFarm(options) {
   }
   async function refresh() {
     try {
-      applyState(await options.load());
+      const asked = Date.now();
+      applyState(await options.load(), asked);
     } catch (e) {
       toast(e?.message || "Couldn't load your farm.");
     }
@@ -3008,9 +3015,9 @@ export function openFarm(options) {
           giants: F.giants,
           giantAt: F.giantAt,
         };
-  function applyVisit(v) {
+  function applyVisit(v, asked) {
     const now = Date.parse(v.now);
-    offset = now - Date.now();
+    offset = clock.note(now, Date.now(), asked);
     V = {
       id: v.id,
       name: v.name,
@@ -3058,11 +3065,12 @@ export function openFarm(options) {
   async function visitFriend(id) {
     try {
       await flush();
+      const asked = Date.now();
       const v = await options.visit(id);
       closeSheet();
       F.tool = "hand";
       visitQueue = [];
-      applyVisit(v);
+      applyVisit(v, asked);
       log(`Visiting <b>${esc(v.name)}</b>'s farm`);
       present.clear();
       void ping();
@@ -3784,10 +3792,11 @@ export function openFarm(options) {
       friend = V;
     visitSending = true;
     try {
+      const asked = Date.now();
       const r = await options.visitAct(friend.id, actions);
       visitQueue = visitQueue.slice(actions.length);
       if (typeof r.leaves === "number") options.onLeaves?.(r.leaves);
-      if (V && V.id === friend.id) applyVisit(r.farm);
+      if (V && V.id === friend.id) applyVisit(r.farm, asked);
       const errors = r.results.filter((x) => !x.ok).map((x) => x.error);
       if (errors.length) toast(errors[0]);
       let xp = 0;
@@ -6800,8 +6809,9 @@ export function openFarm(options) {
       t.disabled = true;
       try {
         await flush();
+        const asked = Date.now();
         const r = await options.master(d.mast);
-        if (r?.farm) applyState(r.farm);
+        if (r?.farm) applyState(r.farm, asked);
         if (r?.ok) {
           toast(`${CROP[d.mast].n} ★${r.stars}: sells +${r.stars * 4}%`);
           log(`Mastered <b>${CROP[d.mast].n}</b> ★${r.stars}`, "good");
@@ -6817,8 +6827,9 @@ export function openFarm(options) {
       t.disabled = true;
       try {
         await flush();
+        const asked = Date.now();
         const r = await options.order(slot, kind);
-        if (r?.farm) applyState(r.farm);
+        if (r?.farm) applyState(r.farm, asked);
         if (r?.ok && kind === "deliver") {
           toast(
             `Delivered to ${r.gained.who}: +${r.gained.leaves} Gold Leaves`,
@@ -7460,11 +7471,13 @@ export function openFarm(options) {
   const poll = setInterval(() => {
     if (document.hidden || hiddenAway) return;
     if (V) {
-      if (!visitQueue.length && !visitSending)
+      if (!visitQueue.length && !visitSending) {
+        const asked = Date.now();
         options
           .visit(V.id)
-          .then((v) => V && V.id === v.id && applyVisit(v))
+          .then((v) => V && V.id === v.id && applyVisit(v, asked))
           .catch(() => {});
+      }
     } else if (!queue.length && !sending) {
       void refresh();
     }

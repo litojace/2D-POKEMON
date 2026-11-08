@@ -57,6 +57,7 @@ import {
   type ItemKind,
   type Role,
 } from "./bistro-model";
+import { ClockBounds } from "../server-clock";
 
 /**
  * An action, and when it was done (`at`, the server's clock as this device
@@ -464,14 +465,8 @@ export class BistroSync {
   extras: BistroExtras;
   /** Server time minus this device's time (ms). */
   offset = 0;
-  /**
-   * What the answers so far tell of the offset: at least `lo` (the server's
-   * time came before the answer), at most `hi` (and after the request).
-   * The clock goes by `lo`, the tightest so far, so it doesn't jump back and
-   * forth with each answer's delay (a slow answer would set it back, and
-   * every timer on screen with it).
-   */
-  private clock: { lo: number; hi: number } | null = null;
+  /** What the answers tell of the offset (server-clock.ts): it doesn't jump with their delays. */
+  private clock = new ClockBounds();
   ready = false;
   private outbox: BistroAction[] = [];
   /**
@@ -538,7 +533,10 @@ export class BistroSync {
   }
   /** Run an action now and queue it for the server. */
   do(x: BistroAction): ActResult {
-    const r = applyLocal(this.S, x, this.now(), this.extras);
+    // Stamped with when it was done: the server runs it at that time.
+    const now = this.now();
+    if (x.a !== "sync") x = { ...x, at: Math.round(now) };
+    const r = applyLocal(this.S, x, now, this.extras);
     if (r.ok || x.a === "serve" || x.a === "leave") this.outbox.push(x);
     this.schedule(
       x.a === "serve" || x.a === "leave" || x.a === "sync" ? 800 : 150,
@@ -699,7 +697,7 @@ export class BistroSync {
     sent?: number,
   ) {
     const got = readServer(raw);
-    this.offset = this.tick(got.now, sent ?? Date.now(), Date.now());
+    this.offset = this.clock.note(got.now, Date.now(), sent);
     this.S = got.state;
     this.extras = {
       ...got.extras,
@@ -713,18 +711,6 @@ export class BistroSync {
       if (takeServing(this.S, dish) < 0) this.reserved.delete(guest);
     this.ready = true;
     this.hooks.onAdopt({ away: got.away, errors, payday: got.payday });
-  }
-  /** The offset after an answer with the server's time, sent and got at these times. */
-  private tick(server: number, sent: number, got: number): number {
-    const lo = server - got,
-      hi = Math.max(lo, server - sent);
-    const c = this.clock;
-    const lo2 = c ? Math.max(c.lo, lo) : lo,
-      hi2 = c ? Math.min(c.hi, hi) : hi;
-    // An answer that doesn't fit the others (this device's clock was
-    // changed, or drifted): start again from it, the surest.
-    this.clock = lo2 <= hi2 ? { lo: lo2, hi: hi2 } : { lo, hi };
-    return this.clock.lo;
   }
   /** Keep "last seen" fresh while the bistro is open. */
   ping() {

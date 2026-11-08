@@ -34,3 +34,28 @@ export function resetServerClock() {
   offset = 0;
   known = false;
 }
+
+/**
+ * A server's clock from the times in its answers (the Bistro's and the
+ * Farm's `now`, stamped while the request runs). Each answer bounds the
+ * offset (server minus this device): at least `now - got` (the stamp came
+ * before the answer arrived), at most `now - sent` (and after it was sent).
+ * The clock goes by the tightest lower bound so far, so it doesn't jump with
+ * each answer's delay (a slow answer would set it back, and every timer on
+ * screen with it), and never runs ahead of the server. An answer that
+ * doesn't fit the others (this device's clock was changed, or drifted)
+ * starts it again.
+ */
+export class ClockBounds {
+  private b: { lo: number; hi: number } | null = null;
+  /** The offset after an answer stamped `server`, got at `got` and sent at `sent` (if known). */
+  note(server: number, got: number, sent?: number): number {
+    const lo = server - got,
+      hi = sent === undefined ? Infinity : Math.max(lo, server - sent);
+    const c = this.b;
+    const lo2 = c ? Math.max(c.lo, lo) : lo,
+      hi2 = c ? Math.min(c.hi, hi) : hi;
+    this.b = lo2 <= hi2 ? { lo: lo2, hi: hi2 } : { lo, hi };
+    return this.b.lo;
+  }
+}
