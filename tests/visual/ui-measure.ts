@@ -1,5 +1,6 @@
 import type { Locator, Page } from "@playwright/test";
 import { settle } from "./helpers";
+import { decodePng } from "./png";
 
 /**
  * The UI remodel's layout rules, measured (docs/ui-remodel/PLAN.md, "Tests").
@@ -215,58 +216,50 @@ export async function closeSpot(page: Page) {
  */
 export async function inkOffset(page: Page, target: Locator) {
   const shot = await target.screenshot({ animations: "disabled" });
-  return page.evaluate(async (b64) => {
-    const img = new Image();
-    img.src = `data:image/png;base64,${b64}`;
-    await img.decode();
-    const c = document.createElement("canvas");
-    c.width = img.width;
-    c.height = img.height;
-    const ctx = c.getContext("2d")!;
-    ctx.drawImage(img, 0, 0);
-    const { data, width, height } = ctx.getImageData(0, 0, c.width, c.height);
-    // The fill is the most common colour on the middle row; ink is anything
-    // far from it. Ignore a 3 px rim (border, shadow, rounded corners).
-    const at = (x: number, y: number) => {
-      const i = (y * width + x) * 4;
-      return [data[i], data[i + 1], data[i + 2]];
-    };
-    const counts = new Map<string, number>();
-    for (let x = 3; x < width - 3; x++) {
-      const k = at(x, Math.floor(height / 2))
-        .map((v) => v >> 3)
-        .join(",");
-      counts.set(k, (counts.get(k) ?? 0) + 1);
-    }
-    const fill = [...counts]
-      .sort((a, b) => b[1] - a[1])[0][0]
-      .split(",")
-      .map((v) => Number(v) * 8 + 4);
-    let x0 = width,
-      x1 = -1,
-      y0 = height,
-      y1 = -1;
-    const rim = Math.max(3, Math.round(height * 0.12));
-    for (let y = rim; y < height - rim; y++)
-      for (let x = rim; x < width - rim; x++) {
-        const p = at(x, y);
-        if (
-          Math.abs(p[0] - fill[0]) +
-            Math.abs(p[1] - fill[1]) +
-            Math.abs(p[2] - fill[2]) >
-          150
-        ) {
-          x0 = Math.min(x0, x);
-          x1 = Math.max(x1, x);
-          y0 = Math.min(y0, y);
-          y1 = Math.max(y1, y);
-        }
+  // Read in Node: decoding in the page waited on a main thread that is busy
+  // drawing the live Lobby or a battle (seconds a shot on a software GPU).
+  const dpr = await page.evaluate(() => window.devicePixelRatio || 1);
+  const { data, width, height } = decodePng(shot);
+  // The fill is the most common colour on the middle row; ink is anything
+  // far from it. Ignore a 3 px rim (border, shadow, rounded corners).
+  const at = (x: number, y: number) => {
+    const i = (y * width + x) * 4;
+    return [data[i], data[i + 1], data[i + 2]];
+  };
+  const counts = new Map<string, number>();
+  for (let x = 3; x < width - 3; x++) {
+    const k = at(x, Math.floor(height / 2))
+      .map((v) => v >> 3)
+      .join(",");
+    counts.set(k, (counts.get(k) ?? 0) + 1);
+  }
+  const fill = [...counts]
+    .sort((a, b) => b[1] - a[1])[0][0]
+    .split(",")
+    .map((v) => Number(v) * 8 + 4);
+  let x0 = width,
+    x1 = -1,
+    y0 = height,
+    y1 = -1;
+  const rim = Math.max(3, Math.round(height * 0.12));
+  for (let y = rim; y < height - rim; y++)
+    for (let x = rim; x < width - rim; x++) {
+      const p = at(x, y);
+      if (
+        Math.abs(p[0] - fill[0]) +
+          Math.abs(p[1] - fill[1]) +
+          Math.abs(p[2] - fill[2]) >
+        150
+      ) {
+        x0 = Math.min(x0, x);
+        x1 = Math.max(x1, x);
+        y0 = Math.min(y0, y);
+        y1 = Math.max(y1, y);
       }
-    const dpr = window.devicePixelRatio || 1;
-    if (x1 < 0) return { dx: NaN, dy: NaN };
-    return {
-      dx: ((x0 + x1 + 1) / 2 - width / 2) / dpr,
-      dy: ((y0 + y1 + 1) / 2 - height / 2) / dpr,
-    };
-  }, shot.toString("base64"));
+    }
+  if (x1 < 0) return { dx: NaN, dy: NaN };
+  return {
+    dx: ((x0 + x1 + 1) / 2 - width / 2) / dpr,
+    dy: ((y0 + y1 + 1) / 2 - height / 2) / dpr,
+  };
 }
