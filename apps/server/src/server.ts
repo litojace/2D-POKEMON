@@ -559,6 +559,7 @@ export function createArenaServer(
     (error: unknown, req: Request, res: Response, _next: NextFunction) => {
       // A player sees only "Account service failed" or "Invalid request.";
       // the reason goes to the log, or nobody can tell why a screen failed.
+      // So does every 5xx (a refusal by the rules, a 4xx, is the player's).
       if (!(error instanceof AccountError))
         console.error(
           `[api] ${req.method} ${req.path} failed:`,
@@ -567,6 +568,11 @@ export function createArenaServer(
             : error instanceof Error
               ? error.message
               : String(error),
+        );
+      else if (error.status >= 500 && !error.logged)
+        console.error(
+          `[api] ${req.method} ${req.path} failed (${error.status}):`,
+          error.detail ?? error.message,
         );
       res
         .status(
