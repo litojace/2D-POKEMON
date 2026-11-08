@@ -227,6 +227,17 @@ export function missionsCard(e: Economy | undefined) {
 export function openLobby(options: LobbyOptions): LobbyHandle {
   const layer = document.createElement("div");
   layer.className = "lobby-layer";
+  // One screen that never scrolls; but overflow: hidden still lets
+  // scrollIntoView move it (a card brought into view), which left the whole
+  // Lobby up under the header. Put it back. (overflow: clip would stop it
+  // too, but lazy pictures in a panel then never load.)
+  layer.addEventListener(
+    "scroll",
+    () => {
+      if (layer.scrollTop || layer.scrollLeft) layer.scrollTo(0, 0);
+    },
+    { passive: true },
+  );
   let mode = savedLobbyMode();
   /** Fighter + worn skin + stage now drawn on the stage. */
   let artKey: string | undefined;
