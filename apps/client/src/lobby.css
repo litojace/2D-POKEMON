@@ -361,6 +361,80 @@
 .lobby-emote-bubble.is-popping {
   animation: lobby-pop 0.35s cubic-bezier(0.3, 1.5, 0.5, 1);
 }
+/* A line your fighter says when tapped (lobby-quips.ts): a speech bubble
+   over its head, its tail pointing down at it. At most two lines. */
+.lobby-emote-bubble.is-line {
+  /* Its tail just above the head (the art's top is about 18% down the
+     box); it grows upwards, so it never covers the face. */
+  top: auto;
+  bottom: 85%;
+  width: max-content;
+  min-width: 0;
+  /* As wide as the stage allows (the party row is its container), so a
+     long line takes two lines even beside a small phone fighter. */
+  max-width: min(260px, calc(100cqw - 16px));
+  height: auto;
+  padding: 7px 12px 8px;
+  border-radius: 14px;
+  font:
+    700 15px/1.2 "DM Sans",
+    sans-serif;
+  text-align: center;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+  transform: translateX(-50%);
+}
+/* A small phone's stage: a size smaller, still two lines at most. */
+@container (max-width: 320px) {
+  .lobby-emote-bubble.is-line {
+    max-width: calc(100cqw - 8px);
+    padding: 6px 10px 7px;
+    font-size: 14px;
+  }
+}
+.lobby-emote-bubble.is-line::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  margin-left: -7px;
+  border: 7px solid transparent;
+  border-top-color: #fff;
+  border-bottom: 0;
+}
+/* Tap your fighter (lobby-screen.ts): an invisible button over its body. */
+.lobby-fighter-tap {
+  position: absolute;
+  left: 18%;
+  right: 18%;
+  top: 12%;
+  bottom: 4%;
+  z-index: 2;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 40%;
+  background: none;
+  box-shadow: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.lobby-fighter-tap:focus-visible {
+  outline: 3px solid #ffd65b;
+  outline-offset: 2px;
+}
+/* The still artwork's answer to a tap (Low graphics, or before the rig). */
+.lobby-fighter-art.is-hopping {
+  animation: lobby-hop 0.55s cubic-bezier(0.3, 1.4, 0.5, 1);
+}
+@keyframes lobby-hop {
+  30% {
+    transform: translateY(-7%) scale(1.04, 0.97);
+  }
+  60% {
+    transform: translateY(0) scale(1.05, 0.94);
+  }
+}
 @keyframes lobby-pop {
   from {
     transform: translateX(-50%) scale(0.4);
@@ -1120,7 +1194,8 @@
   .lobby-member-art {
     animation: none;
   }
-  .lobby-emote-bubble.is-popping {
+  .lobby-emote-bubble.is-popping,
+  .lobby-fighter-art.is-hopping {
     animation: none;
   }
 }
