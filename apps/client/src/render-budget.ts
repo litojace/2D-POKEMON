@@ -47,9 +47,11 @@ export function rendererDensity(
 export const SCENE_PIXEL_BUDGET = 2_000_000;
 /**
  * A 2D scene canvas's pixels per CSS pixel for a width × height window: the
- * screen's density, at most 2, and on iPhones and iPads no more than keeps
- * the canvas within SCENE_PIXEL_BUDGET (a phone in landscape stays at 2x;
- * an iPad-sized window draws a little softer). Never below 1.
+ * screen's density, at most 2, and on iPhones and iPads at most 1.5, as the
+ * battle canvas (rendererDensity): Safari fills fewer pixels each frame, so
+ * dragging the Farm or the Plaza stays smooth. There it also stays within
+ * SCENE_PIXEL_BUDGET (an iPad-sized window draws a little softer). Never
+ * below 1.
  */
 export function sceneDensity(
   width: number,
@@ -57,7 +59,7 @@ export function sceneDensity(
   dpr = typeof devicePixelRatio === "number" ? devicePixelRatio : 1,
   ios = isIOSDevice(),
 ) {
-  let d = Math.min(2, Number.isFinite(dpr) ? dpr : 1);
+  let d = Math.min(ios ? 1.5 : 2, Number.isFinite(dpr) ? dpr : 1);
   if (ios)
     d = Math.min(
       d,

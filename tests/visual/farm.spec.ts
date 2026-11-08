@@ -2306,8 +2306,13 @@ async function cropDraws(page: Page) {
       cv = document.querySelector(".farm-layer #fm-cv") as HTMLCanvasElement,
       frames: any[][] = [];
     proto.drawImage = function (img: any, ...a: number[]) {
-      // Each frame starts with the background at the world's corner.
-      if (a.length === 2 && a[0] === -360 && a[1] === -180) frames.push([]);
+      // Each frame starts with the baked ground (the whole world's size).
+      if (
+        img instanceof HTMLCanvasElement &&
+        img.width === 2480 &&
+        img.height === 1460
+      )
+        frames.push([]);
       else if (
         frames.length &&
         a.length === 4 &&

@@ -22,19 +22,22 @@ import { earthKit } from "./skill-fx-earth";
 import { shadowKit } from "./skill-fx-shadow";
 import { natureKit } from "./skill-fx-nature";
 import { withUltimates } from "./skill-fx-ultimates";
+import { withSignatures } from "./skill-fx-signatures";
 /** New-style effects by move; anything not listed keeps its classic drawing. */
-const KIT = withUltimates(
-  mergeKits([
-    electricKit,
-    fireKit,
-    waterKit,
-    auraKit,
-    lightKit,
-    psychicKit,
-    earthKit,
-    shadowKit,
-    natureKit,
-  ]),
+const KIT = withSignatures(
+  withUltimates(
+    mergeKits([
+      electricKit,
+      fireKit,
+      waterKit,
+      auraKit,
+      lightKit,
+      psychicKit,
+      earthKit,
+      shadowKit,
+      natureKit,
+    ]),
+  ),
 );
 /** Halcyon Rewind's dive from where Halcyra was to where it landed. */
 export function playRewindDive(

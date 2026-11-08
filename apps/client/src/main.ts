@@ -447,8 +447,93 @@ function scheduleBattleLayout() {
       Math.max(panel.bottom, callout?.bottom ?? panel.bottom) - panel.top,
     );
     $("battle").style.setProperty("--match-hud-height", `${height + 8}px`);
+    // Where the PvP badge (and its note) covers the arena, in the arena's
+    // own pixels: nameplates stay below it.
+    const frame = $("game").parentElement?.getBoundingClientRect();
+    if ($("hud").classList.contains("hud-badge") && frame && panel.width) {
+      const note =
+        callout && callout.height > 0 && !$("phase-label").hidden
+          ? callout
+          : panel;
+      badgeClear = {
+        left: Math.min(panel.left, note.left) - frame.left,
+        right: Math.max(panel.right, note.right) - frame.left,
+        bottom: Math.max(panel.bottom, note.bottom) - frame.top + 4,
+      };
+    } else badgeClear = null;
     fitRenderer();
   });
+}
+/** The arena area under the PvP badge (scheduleBattleLayout keeps it). */
+let badgeClear: { left: number; right: number; bottom: number } | null = null;
+/** A nameplate's size, measured again only when its title changes (the
+ * labels move every frame by transform alone). */
+const nameplateSizes = new WeakMap<
+  HTMLElement,
+  { title: string; w: number; h: number }
+>();
+function nameplateSize(label: HTMLElement, title: string) {
+  let size = nameplateSizes.get(label);
+  if (!size || size.title !== title) {
+    const w = label.offsetWidth,
+      h = label.offsetHeight;
+    if (!w || !h) return { w: 0, h: 0 };
+    size = { title, w, h };
+    nameplateSizes.set(label, size);
+  }
+  return size;
+}
+/** A nameplate's box in the arena (x is its middle, placed by its bottom). */
+interface PlateBox {
+  x: number;
+  bottom: number;
+  w: number;
+  h: number;
+}
+/** The off-screen arrow, BEARING_SIZE across and placed by its middle. */
+const BEARING_SIZE = 24;
+const overlapsPlate = (x: number, y: number, plate?: PlateBox) => {
+  const half = BEARING_SIZE / 2;
+  return (
+    !!plate &&
+    plate.w > 0 &&
+    x + half > plate.x - plate.w / 2 &&
+    x - half < plate.x + plate.w / 2 &&
+    y + half > plate.bottom - plate.h &&
+    y - half < plate.bottom
+  );
+};
+const underBadge = (x: number, y: number) => {
+  const half = BEARING_SIZE / 2;
+  return (
+    !!badgeClear &&
+    x + half > badgeClear.left &&
+    x - half < badgeClear.right &&
+    y - half < badgeClear.bottom
+  );
+};
+/** Where the arrow goes: its spot on the circle, kept out from under the
+ * PvP badge (just below it) and off your own name (above the name, or
+ * beside it when above would be under the badge). */
+function bearingSpot(x: number, y: number, plate?: PlateBox) {
+  const half = BEARING_SIZE / 2;
+  if (underBadge(x, y)) y = badgeClear!.bottom + half;
+  if (plate && overlapsPlate(x, y, plate)) {
+    const above = plate.bottom - plate.h - half - 3;
+    if (!underBadge(x, above)) y = above;
+    else x = plate.x + (x >= plate.x ? 1 : -1) * (plate.w / 2 + half + 3);
+  }
+  if (underBadge(x, y)) y = badgeClear!.bottom + half;
+  return { x, y };
+}
+/** How high a nameplate's bottom may go: 54 px, or below the badge for a
+ * plate that would reach under it. */
+function nameplateFloor(label: HTMLElement, title: string, x: number) {
+  if (!badgeClear) return 54;
+  const { w, h } = nameplateSize(label, title);
+  return x + w / 2 > badgeClear.left && x - w / 2 < badgeClear.right
+    ? Math.max(54, badgeClear.bottom + h)
+    : 54;
 }
 const battleHudSize = new ResizeObserver(scheduleBattleLayout);
 
@@ -2538,7 +2623,11 @@ function renderBattle() {
     : isFfa()
       ? [me, ...state.players.filter((p) => p !== me)]
       : state.players;
-  const key = `battle:${me.character}:${!!state.practice}:${state.mode ?? "duel"}:${hudOrder.map((p) => p.id + p.character).join(",")}`;
+  // PvP shows one score badge (names, rounds, the clock): health is over
+  // each fighter, and no one sees an opponent's ultimate (owner, 7 Nov
+  // 2026). Raids and Practice keep the full cards.
+  const badge = !state.raid && !state.practice;
+  const key = `battle:${me.character}:${!!state.practice}:${badge}:${state.mode ?? "duel"}:${hudOrder.map((p) => p.id + p.character).join(",")}`;
   if (screen !== key) {
     screen = key;
     $("menu").hidden = true;
@@ -2585,23 +2674,25 @@ function renderBattle() {
     const split = isTeams() || isFfa() ? 2 : 1;
     $("hud").classList.toggle("hud-teams", isTeams() || isFfa());
     $("hud").classList.toggle("hud-ffa", isFfa());
-    $("hud").innerHTML = hudOrder
-      .map(
-        (p, i) =>
-          `${i === split ? '<div class="timer-wrap"><span id="round-label"></span><strong id="timer">03:00</strong><span id="phase-label"></span></div>' : ""}<div class="health-card ${i >= split ? "right" : ""}${isTeams() ? ` team-${teamOf(p)}${p.id === myId ? " me" : ""}` : isFfa() && p.id === myId ? " me" : ""}" style="--element:#${CHARACTERS[p.character].color.toString(16)}"><div><b>${escape(p.name)}</b><span>${CHARACTERS[p.character].name}</span><strong id="score-${i}"></strong></div><div class="health-track"><span id="health-${i}"></span></div><small id="health-text-${i}"></small><small id="status-${i}"></small><div class="hud-ultimate" title="Ultimate charge"><span>ULT <b id="ult-text-${i}"></b></span><div class="hud-ultimate-track" role="meter" aria-label="${escape(p.name)} ultimate charge" aria-valuemin="0" aria-valuemax="100"><i id="ult-meter-${i}"></i></div></div></div>`,
-      )
-      .join("");
+    const timerWrap =
+      '<div class="timer-wrap"><span id="round-label"></span><strong id="timer">03:00</strong><span id="phase-label"></span></div>';
+    const card = (p: Fighter, i: number) =>
+      `<div class="health-card ${i >= split ? "right" : ""}${isTeams() ? ` team-${teamOf(p)}${p.id === myId ? " me" : ""}` : isFfa() && p.id === myId ? " me" : ""}" style="--element:#${CHARACTERS[p.character].color.toString(16)}"><div><b>${escape(p.name)}</b><span>${CHARACTERS[p.character].name}</span><strong id="score-${i}"></strong></div><div class="health-track"><span id="health-${i}"></span></div><small id="health-text-${i}"></small><small id="status-${i}"></small><div class="hud-ultimate" title="Ultimate charge"><span>ULT <b id="ult-text-${i}"></b></span><div class="hud-ultimate-track" role="meter" aria-label="${escape(p.name)} ultimate charge" aria-valuemin="0" aria-valuemax="100"><i id="ult-meter-${i}"></i></div></div></div>`;
+    const cards = hudOrder.map(card);
+    // The badge holds each side in a group of the same width, so the clock
+    // sits in the middle whatever the names' lengths.
+    $("hud").innerHTML = badge
+      ? `<div class="hud-side">${cards.slice(0, split).join("")}</div>${timerWrap}<div class="hud-side right">${cards.slice(split).join("")}</div>`
+      : cards.map((c, i) => (i === split ? timerWrap : "") + c).join("");
     battleHudSize.disconnect();
     battleHudSize.observe($("hud"));
     battleHudSize.observe($("phase-label"));
+    // The arena's size too: the badge's place in it follows.
+    battleHudSize.observe($("game").parentElement!);
     const c = CHARACTERS[me.character];
     $("abilities").innerHTML =
       `<div class="basic-hint" title="${c.basic.name}: ${c.basic.description} No cooldown · ${Math.round(basicInterval(c, false, state?.mode, state?.players.length) * 1000)} ms between attacks."><kbd data-action="basic">${keyText("basic")}</kbd><span>${abilityIcon(c.basic.name)}<small>${c.basic.name.toUpperCase()}</small></span></div>${c.skills.map((a, i) => `<div class="ability" id="ability-${i}" style="--element:#${c.color.toString(16)}"><kbd data-action="${SKILL_ACTIONS[i]}">${keyText(SKILL_ACTIONS[i])}</kbd><span>${abilityIcon(a.name)}<small id="cooldown-${i}">READY</small></span><i class="cooldown-fill" id="fill-${i}"></i><i class="skill-cooldown-ring" aria-hidden="true"></i></div>`).join("")}<div class="movement-ability"><kbd data-action="dash">${keyText("dash")}</kbd><span>Dash<small id="dash-cd"></small></span></div><div class="movement-ability"><kbd data-action="jump">${keyText("jump")}</kbd><span>Jump<small id="jump-cd"></small></span></div>`;
   }
-  // PvP shows one score badge (names, rounds, the clock): health is over
-  // each fighter, and no one sees an opponent's ultimate (owner, 7 Nov
-  // 2026). Raids and Practice keep the full cards.
-  const badge = !state.raid && !state.practice;
   document.body.classList.toggle("pvp-badge", badge);
   $("hud").classList.toggle("hud-badge", badge);
   hudOrder.forEach((p, i) => {
@@ -4260,6 +4351,9 @@ class ArenaScene extends Phaser.Scene {
   private needsHydration = true;
   private followCamera = new FollowCamera();
   private enemyBearing = document.createElement("div");
+  /** Where each fighter's nameplate was drawn last frame (the arrow keeps
+   * off the followed fighter's). */
+  private plates = new Map<string, PlateBox>();
   hydrateNextSnapshot() {
     this.needsHydration = true;
   }
@@ -4948,6 +5042,9 @@ class ArenaScene extends Phaser.Scene {
             !this.courtRaid
             ? COURT_APRON
             : 0,
+          // The PvP badge covers the top of a phone's arena: the court may
+          // scroll below it (badge pixels → game pixels).
+          touch.enabled && badgeClear ? badgeClear.bottom / this.scale.zoom : 0,
         );
     const hitZoom = state?.raid ? 1 : this.koZoom;
     this.cameras.main
@@ -5004,12 +5101,15 @@ class ArenaScene extends Phaser.Scene {
           );
       this.enemyBearing.querySelector<HTMLElement>("span")!.style.transform =
         `rotate(${angle}rad)`;
+      const spot = bearingSpot(
+        from.x + Math.cos(angle) * BEARING_RADIUS,
+        from.y + Math.sin(angle) * BEARING_RADIUS,
+        this.plates.get(follow!.id),
+      );
       setHudStyle(
         this.enemyBearing,
         "transform",
-        orbit
-          ? `translate(${from.x + Math.cos(angle) * BEARING_RADIUS}px, ${from.y + Math.sin(angle) * BEARING_RADIUS}px)`
-          : "",
+        orbit ? `translate(${spot.x}px, ${spot.y}px)` : "",
       );
       setHudStyle(
         this.enemyBearing,
@@ -5989,7 +6089,18 @@ class ArenaScene extends Phaser.Scene {
           view.zoomY +
           this.scale.height / 2) *
         css;
-      label.style.transform = `translate3d(${labelX}px, ${Math.max(54, labelY)}px, 0) translate(-50%, -100%)`;
+      const plateBottom = Math.max(
+        nameplateFloor(label, p.title ?? "", labelX),
+        labelY,
+      );
+      label.style.transform = `translate3d(${labelX}px, ${plateBottom}px, 0) translate(-50%, -100%)`;
+      const plateSize = nameplateSize(label, p.title ?? "");
+      this.plates.set(p.id, {
+        x: labelX,
+        bottom: plateBottom,
+        w: plateSize.w,
+        h: plateSize.h,
+      });
       setHudStyle(label, "opacity", p.hp > 0 ? "1" : "0.4");
       label.classList.toggle(
         "team-ally",

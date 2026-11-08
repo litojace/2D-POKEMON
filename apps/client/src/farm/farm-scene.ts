@@ -4861,7 +4861,29 @@ export function openFarm(options) {
     ctx.translate(VW / 2, VH / 2);
     ctx.scale(Z, Z);
     ctx.translate(-cam.x, -cam.y);
-    ctx.drawImage(bg, WX0, WY0);
+    // Only the part of the baked ground that's on screen: drawing all of it
+    // (four screens' worth, scaled) every frame made dragging stutter on
+    // iPhones.
+    {
+      const hw = VW / 2 / Z,
+        hh = VH / 2 / Z,
+        sx = Math.max(0, Math.floor(cam.x - hw - WX0) - 1),
+        sy = Math.max(0, Math.floor(cam.y - hh - WY0) - 1),
+        ex = Math.min(BW, Math.ceil(cam.x + hw - WX0) + 1),
+        ey = Math.min(BH, Math.ceil(cam.y + hh - WY0) + 1);
+      if (ex > sx && ey > sy)
+        ctx.drawImage(
+          bg,
+          sx,
+          sy,
+          ex - sx,
+          ey - sy,
+          WX0 + sx,
+          WY0 + sy,
+          ex - sx,
+          ey - sy,
+        );
+    }
     drawFence(ctx);
     drawPastureFence(ctx, true);
     s.plots.forEach((p, i) => drawPlot(ctx, i, p, time, s));
