@@ -1879,7 +1879,8 @@ export function openBistro(o: BistroOptions): BistroHandle {
     const w = toWorld(sx, sy);
     for (const x of stoveSpots(S.sizeLv)) {
       const c = iso(x, 0);
-      if (Math.abs(w.x - c.x) < 34 && w.y > c.y - 92 && w.y < c.y + 20)
+      // The stove, and the bubble over it (ready, cooking or "Cook!").
+      if (Math.abs(w.x - c.x) < 34 && w.y > c.y - 136 && w.y < c.y + 20)
         return x;
     }
     return null;
@@ -4435,6 +4436,9 @@ export function openBistro(o: BistroOptions): BistroHandle {
       !standingOn(x, y)
     );
   };
+  /** Free stoves of yours: since when (for the call to cook), and which call now. */
+  const idleSince = new Map<number, number>();
+  let calling: number[] = [];
   /** Bubbles, rings, floaters and particles: always on top of the room. */
   const drawOverlay = (now: number) => {
     // Decorating: each seat's walk for the waiters, as a coloured tag.
@@ -4523,6 +4527,77 @@ export function openBistro(o: BistroOptions): BistroHandle {
         ctx.fillText("TAP!", x, y - 22 - pulse * 3);
       }
     });
+    // A free stove of yours (the cooks fill theirs): a warm glow on the
+    // burner and a bobbing "Cook!" bubble, after a moment's grace (not the
+    // instant a dish comes off it).
+    calling = [];
+    if (!visiting && !editing && sync.ready) {
+      const cookRun = new Set(
+        staffOf(S, "cook").map((_, i) => cookStove(S, i)),
+      );
+      S.stoves.forEach((st, i) => {
+        if (st.dish || cookRun.has(i)) {
+          idleSince.delete(i);
+          return;
+        }
+        let since = idleSince.get(i);
+        if (since === undefined) idleSince.set(i, (since = T));
+        const k = clamp((T - since - 1.2) / 0.5, 0, 1);
+        if (k <= 0) return;
+        calling.push(i);
+        const c = iso(stoveTile(i).x, 0);
+        const pulse = 0.5 + 0.5 * Math.sin(T * 4 + i);
+        ctx.save();
+        ctx.globalAlpha = k;
+        // The burner glows, a ring breathing out from it.
+        ctx.translate(c.x, c.y - 44);
+        ctx.scale(1, 0.45);
+        const g = ctx.createRadialGradient(0, 0, 4, 0, 0, 34);
+        g.addColorStop(0, `rgba(255,170,70,${0.35 + 0.25 * pulse})`);
+        g.addColorStop(1, "rgba(255,140,40,0)");
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(0, 0, 34, 0, Math.PI * 2);
+        ctx.fill();
+        const ring = (T * 0.8 + i * 0.3) % 1;
+        ctx.strokeStyle = `rgba(255,200,110,${0.7 * (1 - ring)})`;
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.arc(0, 0, 18 + ring * 18, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+        // The bubble: a pan, a green "+", and the word.
+        const x = c.x,
+          y = c.y - 112 - Math.abs(Math.sin(T * 3 + i)) * 4;
+        ctx.save();
+        ctx.globalAlpha = k;
+        bubble(x, y, 19, "#fff7e6");
+        ctx.font = "20px system-ui, sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("🍳", x, y + 1);
+        const s0 = 1 + 0.12 * pulse;
+        ctx.fillStyle = "#3fbf5a";
+        ctx.beginPath();
+        ctx.arc(x + 15, y - 14, 7 * s0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = "#fff";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(x + 15 - 3.5 * s0, y - 14);
+        ctx.lineTo(x + 15 + 3.5 * s0, y - 14);
+        ctx.moveTo(x + 15, y - 14 - 3.5 * s0);
+        ctx.lineTo(x + 15, y - 14 + 3.5 * s0);
+        ctx.stroke();
+        ctx.font = "900 12px 'Barlow Condensed', sans-serif";
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = "rgba(60,30,0,.75)";
+        ctx.fillStyle = "#ffd65b";
+        ctx.strokeText("COOK!", x, y - 28);
+        ctx.fillText("COOK!", x, y - 28);
+        ctx.restore();
+      });
+    }
     // Hungry or exhausted staff say so.
     if (!visiting)
       for (const x of [...waiters, ...cooks]) {
@@ -5106,6 +5181,8 @@ export function openBistro(o: BistroOptions): BistroHandle {
       edit: (on: boolean) => setEditing(on),
       sheet: (k: string, a?: string | number) => openSheet(k, a),
       drawnStaff: () => [...drawnStaff].sort((x, y) => x - y),
+      /** The free stoves calling you to cook (tests). */
+      calling: () => [...calling],
       /** Another head chef (tests: hats on every creature). */
       chefAs: (id: CharacterId) => {
         chef.char = id;

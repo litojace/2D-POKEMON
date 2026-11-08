@@ -117,6 +117,35 @@ test("Bistro hats sit on the head, not on ears, horns or tails", async ({
   expect(by.astrabun.headTop - by.astrabun.top).toBeGreaterThan(30);
 });
 
+test("Bistro free stoves call you to cook; their bubble opens them; cooks' stoves don't call", async ({
+  page,
+}, info) => {
+  const errors = await openBistro(page);
+  // The two stoves of a new bistro are free: after a moment they call.
+  await page.waitForFunction(
+    () => (window as any).__bistro.calling().length === 2,
+  );
+  await snap(page, info, "bistro-stoves-calling");
+  // Tapping the bubble (above the stove) opens that stove.
+  const x0 = (await B(page, "return b.state().stoves[0].x")) as number;
+  const bub = (await B(page, `return b.screen(${x0}, 0, 112)`)) as Pt;
+  await page.mouse.click(bub.x, bub.y);
+  await expect(page.locator("#bs-sheet")).toContainText(
+    "Stove 1: what's cooking?",
+  );
+  await page.click('#bs-sheet [data-dish="goicuon"]');
+  await expect.poll(() => B(page, "return b.calling()")).toEqual([1]);
+  // A cook runs the last stove: it doesn't call you.
+  await B(
+    page,
+    `srv.S.level = 5; srv.S.staff.push({ id: 9, char: 'pyranda', role: 'cook', level: 1, dish: 'goicuon' });
+     srv.S.coins = 0; srv.S.stoves[0] = { ...srv.S.stoves[0], dish: 'goicuon', start: srv.now(), perfect: false };
+     return b.load()`,
+  );
+  await expect.poll(() => B(page, "return b.calling()")).toEqual([]);
+  expect(errors).toEqual([]);
+});
+
 test("Bistro decorate mode moves furniture on the server and refuses the kitchen", async ({
   page,
 }) => {
