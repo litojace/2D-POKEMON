@@ -203,8 +203,8 @@ begin
     tt = tt + step;
   end loop;
   -- Online, the cooks' latest turn is now, as the scene shows it, and not the
-  -- last step (the time of the request before): a dish done since then is
-  -- plated and the next one started now.
+  -- last step: a dish done since then is plated, and the next one started
+  -- when it was done.
   if not away then
     ev = public.arena_bistro_kitchen(pid, t, v_from, v_seen);
     lv = lv + (ev->>'levels')::integer;
