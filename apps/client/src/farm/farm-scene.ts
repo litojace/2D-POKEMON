@@ -5547,13 +5547,19 @@ export function openFarm(options) {
         if (balloon.crates && bal.mode === "idle") {
           const p = balloonPos(time, performance.now()),
             done = balloon.crates.filter((c) => c.state === "done").length,
-            ready = done === balloon.crates.length;
-          tag(
-            ready ? "READY TO LAUNCH!" : `SUPPLY BALLOON ${done}/6`,
-            p.x,
-            p.y - 118,
-            ready ? "#7ff0a2" : undefined,
-          );
+            ready = done === balloon.crates.length,
+            // A crate the barn can fill now (the sheet's Fill button): the
+            // same gold edge and "!" as the orders.
+            fillable = balloon.crates.some(
+              (c) => c.state !== "done" && owned(c.crop) >= c.qty,
+            ),
+            tBalloon = tag(
+              ready ? "READY TO LAUNCH!" : `SUPPLY BALLOON ${done}/6`,
+              p.x,
+              p.y - 118,
+              ready ? "#7ff0a2" : fillable ? "#ffd65b" : undefined,
+            );
+          if (fillable) badge(tBalloon, "!", "#ffd65b");
         } else if (!balloon.crates || bal.mode === "gone") {
           const left = balloon.arrivesAt
             ? (new Date(balloon.arrivesAt).getTime() - serverNow()) / 1000
