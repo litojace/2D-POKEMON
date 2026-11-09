@@ -134,7 +134,9 @@ async function problems(page: Page, where: string, inset: Insets | null) {
         const words = e.textContent?.trim();
         if (!shown(e) || !words || e.closest(".bs-rail")) continue;
         const r = e.getBoundingClientRect();
-        if (r.height < 24)
+        // (A finger on a phone needs a little more than a mouse.)
+        const least = e.closest(".bistro-layer.phone") ? 28 : 24;
+        if (r.height < least)
           out.push(`button "${words.slice(0, 24)}" is ${Math.round(r.height)} px tall`);
         if (e.scrollWidth > e.clientWidth + 1 || e.scrollHeight > e.clientHeight + 1)
           out.push(`button "${words.slice(0, 24)}" is cut short`);

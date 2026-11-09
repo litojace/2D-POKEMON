@@ -2864,6 +2864,7 @@ body.hub-bistro #account-profile {
   padding: 0 10px 6px;
 }
 .bistro-layer.phone .bs-tabs button {
+  min-height: 30px;
   padding: 5px 4px;
   font-size: 12px;
 }
@@ -2872,14 +2873,14 @@ body.hub-bistro #account-profile {
   font-size: 11px;
 }
 .bistro-layer.phone .bs-step button {
-  width: 26px;
-  height: 26px;
-  font-size: 16px;
+  width: 30px;
+  height: 30px;
+  font-size: 17px;
 }
 /* (16 px: smaller, and iPhones zoom the page in to type.) */
 .bistro-layer.phone .bs-step input {
   width: 40px;
-  height: 26px;
+  height: 30px;
   font-size: 16px;
 }
 /* Cards: smaller pictures and type, more to a row. */
@@ -2910,10 +2911,6 @@ body.hub-bistro #account-profile {
 .bistro-layer.phone :is(.bs-dish, .bs-item) small {
   font-size: 10.5px;
   line-height: 1.25;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
 }
 .bistro-layer.phone .bs-item .pr {
   padding: 3px 8px;
@@ -2933,6 +2930,10 @@ body.hub-bistro #account-profile {
 }
 .bistro-layer.phone :is(.bs-staff, .bs-card) small {
   font-size: 10.5px;
+}
+/* Small, but still a finger's size. */
+.bistro-layer.phone .bs-sheet button.pr {
+  min-height: 30px;
 }
 .bistro-layer.phone :is(.bs-staff, .bs-item.hire) button.pr {
   padding: 6px 10px;
@@ -3010,9 +3011,8 @@ body.hub-bistro #account-profile {
   gap: 4px;
 }
 .bistro-layer.phone .bs-edit-btns button {
-  flex: 0 0 auto;
-  min-width: 56px;
-  padding: 8px 10px;
+  flex: 0 0 66px;
+  padding: 8px 2px;
   border-radius: 10px;
   font-size: 12px;
 }
@@ -3022,4 +3022,14 @@ body.hub-bistro #account-profile {
 .bistro-layer.phone .bs-allbar button {
   padding: 8px 12px;
   font-size: 13.5px;
+}
+.bistro-layer.phone .bs-teamfilter button {
+  min-height: 30px;
+}
+/* Hiring: room in each card for "Hire · 12,000". */
+.bistro-layer.phone .bs-items:has(.bs-item.hire) {
+  grid-template-columns: repeat(auto-fill, minmax(124px, 1fr));
+}
+.bistro-layer.phone .bs-item.hire button.pr {
+  padding: 6px 8px;
 }
