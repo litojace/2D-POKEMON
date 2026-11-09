@@ -31,7 +31,7 @@ const vector = (page: Page) =>
     if (!root) return null;
     const parts: Record<string, any> = {};
     // the body (root.list[0]) and its glows (root.list[1])
-    for (const o of root.list.flatMap((c: any) => c.list))
+    for (const o of root.list.flatMap((c: any) => c.list ?? []))
       if (o.visible)
         parts[o.name.replace("vector-part-", "")] = {
           x: o.x,
