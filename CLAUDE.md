@@ -15,9 +15,6 @@ npx vitest run tests/unit tests/integration
 ```
 
 Run only the files you touched while working (`npx vitest run tests/integration/bistro.test.ts`).
-`tests/integration/farm.test.ts > can be run again without changing any farm`
-can fail when the machine is busy (a timing check); if it fails, run that file
-alone before treating it as a real failure.
 
 **2. Visual tests: pick the specs for the change.** Find them by the DOM ids,
 classes or screen names you changed:

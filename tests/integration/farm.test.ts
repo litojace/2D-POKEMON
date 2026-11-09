@@ -6,8 +6,11 @@ import {
   CROPS,
   CROP_BY_ID,
   FARM_STARTER,
+  FARM_WEATHERS,
+  FERTILIZER_SPEED,
   LAND_LEVEL,
   LAND_PRICE,
+  WET_SPEED,
   farmXpToNext,
   isStartPlot,
 } from "../../packages/shared/src/farm";
@@ -337,6 +340,7 @@ it("keeps the farm tables and internal functions away from players", async () =>
 });
 
 it("can be run again without changing any farm", async () => {
+  const start = Date.now();
   const before = await farm();
   // 037 and every migration after it, newest last (as the README says).
   for (const f of (await readdir("supabase/migrations"))
@@ -346,14 +350,32 @@ it("can be run again without changing any farm", async () => {
       "reset role;" + (await readFile("supabase/migrations/" + f, "utf8")),
     );
   const after = await farm();
-  // Growing crops keep growing while the files run: compare growth loosely.
+  // Seconds between the two reads of the farm (+1 ms for Date.now's grain).
+  const elapsed = (Date.now() - start + 1) / 1000;
   const still = (f: any) => ({
     ...f,
     now: null,
     plots: f.plots.map((p: any) => ({ ...p, progress: null })),
   });
   expect(still(after)).toEqual(still(before));
-  after.plots.forEach((p: any, i: number) =>
-    expect(p.progress).toBeCloseTo(before.plots[i].progress, 2),
-  );
+  // Growing crops keep growing while the files run, and the replay takes
+  // longer on a busy machine: a plot may grow, but never go back, and never
+  // faster than its crop can. arena_farm_sim (migration 067) grows a plot by
+  // speed / grow_seconds per second, with speed at most fertilized × watered
+  // × Early Sun perk (1.2) × the fastest weather.
+  const fastest =
+    FERTILIZER_SPEED *
+    WET_SPEED *
+    1.2 *
+    Math.max(...FARM_WEATHERS.map((w) => w.speed));
+  // Progress is rounded to 4 decimals on each side.
+  const eps = 1e-4 + 1e-9;
+  after.plots.forEach((p: any, i: number) => {
+    const was = before.plots[i].progress;
+    expect(p.progress).toBeGreaterThanOrEqual(was - eps);
+    const most = p.crop
+      ? (fastest * elapsed) / CROP_BY_ID[p.crop].growSeconds
+      : 0;
+    expect(p.progress).toBeLessThanOrEqual(Math.min(1, was + most) + eps);
+  });
 });
