@@ -346,14 +346,25 @@ it("can be run again without changing any farm", async () => {
       "reset role;" + (await readFile("supabase/migrations/" + f, "utf8")),
     );
   const after = await farm();
-  // Growing crops keep growing while the files run: compare growth loosely.
+  // Growing crops keep growing while the files run (longer as migrations are
+  // added, and on a busy machine), so growth is bounded by the time that
+  // passed on the database's clock, not by a fixed tolerance.
   const still = (f: any) => ({
     ...f,
     now: null,
     plots: f.plots.map((p: any) => ({ ...p, progress: null })),
   });
   expect(still(after)).toEqual(still(before));
-  after.plots.forEach((p: any, i: number) =>
-    expect(p.progress).toBeCloseTo(before.plots[i].progress, 2),
-  );
+  const elapsed = (Date.parse(after.now) - Date.parse(before.now)) / 1000;
+  expect(elapsed).toBeGreaterThanOrEqual(0);
+  after.plots.forEach((p: any, i: number) => {
+    const was = before.plots[i].progress;
+    // Never set back (progress is rounded to 4 places)...
+    expect(p.progress, `plot ${i}`).toBeGreaterThanOrEqual(was - 1e-4);
+    // ...and grown no faster than its crop can (3x covers any speed-up).
+    const grow = p.crop ? CROP_BY_ID[p.crop].growSeconds : Infinity;
+    expect(p.progress - was, `plot ${i}`).toBeLessThanOrEqual(
+      (3 * elapsed) / grow + 2e-4,
+    );
+  });
 });
