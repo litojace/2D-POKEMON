@@ -27,7 +27,6 @@ import {
 import { queueBossSpellArt } from "./boss-spell-flipbook";
 import { queueBossArt, retainBossArt } from "./boss-painted-rig";
 import { memoryConstrained, rendererDensity } from "./render-budget";
-import { GFX } from "./farm/farm-gfx";
 import { watchRendererLifecycle } from "./renderer-lifecycle";
 import {
   groundHeight,
@@ -49,19 +48,15 @@ import {
   type LobbyHandle,
   type LobbyMode,
 } from "./lobby-screen";
-import {
-  forgetFarms,
-  openFarmScreen,
-  prefetchFarm,
-  type FarmScreen,
-  type FarmScreenOptions,
-} from "./farm/farm-screen";
-import {
-  forgetBistros,
-  openBistro,
-  type BistroFriend,
-  type BistroHandle,
-} from "./bistro/bistro-scene";
+// The Farm, the Bistro and the Plaza load when first wanted (hub-worlds.ts).
+// Their styles stay in the main stylesheet, in the same place as before.
+import type { FarmScreen, FarmScreenOptions } from "./farm/farm-screen";
+import { forgetFarms, prefetchFarm } from "./farm/farm-cache";
+import "./farm/farm.css";
+import type { BistroFriend, BistroHandle } from "./bistro/bistro-scene";
+import { clearKeptBistros } from "./bistro/bistro-kept";
+import "./bistro/bistro.css";
+import { worldLoader, type World } from "./hub-worlds";
 import type {
   FarmActResult,
   FarmHere,
@@ -282,7 +277,8 @@ import {
   setWornSkins,
 } from "./fighter-selection";
 import { shareResult } from "./share-card";
-import { openPlazaScreen, type PlazaScreen } from "./plaza/plaza-screen";
+import type { PlazaScreen } from "./plaza/plaza-screen";
+import "./plaza/plaza.css";
 import type { PlazaProgress } from "../../../packages/shared/src/plaza";
 import { CHAMPION_SKIN_BY_ID } from "../../../packages/shared/src/shop";
 import { prepareSurfaceTextures, surfaceBurst } from "./court-surface-fx";
@@ -1754,6 +1750,57 @@ function renderGate() {
   }
 }
 
+const WORLD_NAMES: Record<World, string> = {
+  farm: "Farm",
+  plaza: "Plaza",
+  bistro: "Bistro",
+};
+const worlds = worldLoader();
+/** The hub world wanted on screen whose code is still on the way (or failed). */
+let worldWait: World | null = null;
+/**
+ * A world's code, or undefined while it loads: then the hub shows a loading
+ * card, and syncHub runs again when the code arrives, deciding afresh
+ * whether that world is still wanted (nothing opens after you moved on).
+ */
+function worldCode<W extends World>(world: W) {
+  // Joins a load already on the way (the idle warm-up's too). A failed load
+  // shows its card until the page reloads (hub-worlds.ts).
+  const code = worlds.want(world, (loaded) =>
+    loaded ? syncHub() : renderWorldWait(),
+  );
+  if (!code) worldWait = world;
+  return code;
+}
+/** The card shown while a hub world's code loads, or after it failed. */
+function renderWorldWait() {
+  let card = document.getElementById("hub-world-wait");
+  const world = worldWait;
+  if (!world) {
+    card?.remove();
+    return;
+  }
+  const failed = worlds.failed(world);
+  const key = `${world}:${failed ? "failed" : "loading"}`;
+  if (!card) {
+    card = document.createElement("div");
+    card.id = "hub-world-wait";
+    card.className = "hub-world-wait";
+    card.setAttribute("role", "status");
+    document.body.append(card);
+  }
+  if (card.dataset.key === key) return;
+  card.dataset.key = key;
+  const name = WORLD_NAMES[world];
+  // A browser won't fetch a failed import again, so trying again is a
+  // reload; the hub reopens on this tab (and gets a newer release, if any).
+  card.innerHTML = failed
+    ? `<p>Couldn't load the ${name}. Check your connection, then reload.</p><button type="button" class="primary" id="hub-world-retry">Reload</button>`
+    : `<p><span class="hub-world-spinner" aria-hidden="true"></span>Loading the ${name}…</p>`;
+  card
+    .querySelector("#hub-world-retry")
+    ?.addEventListener("click", () => location.reload());
+}
 let plaza: PlazaScreen | undefined;
 let plazaLook = "";
 let plazaLow = false;
@@ -1778,9 +1825,17 @@ function syncHub() {
   else delete document.body.dataset.hubScene;
   syncParty();
   syncLobby(hub && hubScene === "lobby");
+  worldWait = null;
   syncFarm(hub && hubScene === "farm", hub);
   syncBistro(hub && hubScene === "bistro", hub);
   syncPlaza(hub && hubScene === "plaza", hub);
+  renderWorldWait();
+  // While the hub is idle, fetch the other worlds' code so they open at once
+  // (not in a match, and not when the browser asks to save data).
+  const saveData = (navigator as { connection?: { saveData?: boolean } })
+    .connection?.saveData;
+  if (hub && !saveData) worlds.warm();
+  else worlds.stopWarming();
   // A scene hiding after the next one showed may have taken the hub's top
   // bar style away (each checks only some of the others): in the hub it is on.
   if (hub) document.body.classList.add("hub-screen");
@@ -1807,9 +1862,11 @@ function syncPlaza(want: boolean, hub = want) {
     return;
   }
   if (plazaRetry) return;
+  const code = worldCode("plaza");
+  if (!code) return;
   plazaLook = look;
   plazaLow = lowGraphics();
-  plaza = openPlazaScreen({
+  plaza = code.openPlazaScreen({
     socket,
     character: selected,
     skin,
@@ -1976,13 +2033,16 @@ function syncBistro(want: boolean, hub = want) {
     }
     return;
   }
-  document.body.classList.add("hub-screen", "hub-bistro");
   if (bistro) {
+    document.body.classList.add("hub-screen", "hub-bistro");
     bistro.show();
     return;
   }
+  const code = worldCode("bistro");
+  if (!code) return;
+  document.body.classList.add("hub-screen", "hub-bistro");
   bistroOwner = accountsUI.account?.id;
-  bistro = openBistro({
+  bistro = code.openBistro({
     owner: bistroOwner,
     api: {
       load: () => accountsUI.api("/api/bistro"),
@@ -2036,9 +2096,11 @@ function syncFarm(want: boolean, hub = want) {
     farmScreen.show();
     return;
   }
+  const code = worldCode("farm");
+  if (!code) return;
   farmOwner = owner;
   farmLow = lowGraphics();
-  farmScreen = openFarmScreen({
+  farmScreen = code.openFarmScreen({
     owner,
     reduced: reducedMotion,
     low: farmLow,
@@ -3771,6 +3833,11 @@ document.addEventListener("keydown", (e) => {
 });
 renderMenu();
 
+/** A fighter's rig mid-attack (a basic or skill pose); no rig, no attack. */
+const attacking = (rig: FighterVisual | undefined) =>
+  !!rig &&
+  (rig.controller.state === "basic" ||
+    rig.controller.state.startsWith("skill"));
 class ArenaScene extends Phaser.Scene {
   graphics!: Phaser.GameObjects.Graphics;
   /** A raid boss, sorted with the fighters by where it stands. */
@@ -4329,28 +4396,30 @@ class ArenaScene extends Phaser.Scene {
   }
   /** Queue whichever of this snapshot's fighters are still missing. */
   private requestFighters(s: Snapshot) {
+    if (this.fightersReady(s)) return;
     const ids = this.fighters.toRequest(neededFighters(s.players));
     if (!ids.length) return;
     for (const id of ids)
       queueFighterAssets(this, id, this.fighters.assetsFor(id));
-    // Files added mid-load join the running load and its COMPLETE.
-    if (!this.load.isLoading()) {
-      this.load.once(Phaser.Loader.Events.COMPLETE, () =>
-        this.fighters.settled(),
-      );
-      this.load.start();
-    }
+    // Files added mid-load join the running load, whoever started it (a
+    // skin, boss art), and settle with its COMPLETE (listener in preload).
+    if (!this.load.isLoading()) this.load.start();
   }
   /**
-   * Hold the scene until a snapshot's fighters are loaded: a new fighter
-   * (Fighter roulette, a new seat) pauses drawing briefly instead of
-   * showing missing art. Returns whether the scene may use the snapshot.
+   * A fighter's rig, or undefined while its art is loading (a fighter that
+   * turns up later: Fighter roulette, a new seat) or after it failed to
+   * load: that fighter is drawn as a plain stand-in meanwhile, and the rest
+   * of the battle (other fighters, your controls and input, attack warnings)
+   * carries on. A rig of the fighter it was before is removed.
    */
-  private ensureFighters(s: Snapshot) {
-    if (this.fightersReady(s)) return true;
-    this.requestFighters(s);
-    this.needsHydration = true;
-    return false;
+  private readyRig(id: string, character: CharacterId) {
+    if (this.fighters.hasArt(character)) return this.getRig(id, character);
+    const old = this.rigs.get(id);
+    if (old) {
+      old.destroy();
+      this.rigs.delete(id);
+    }
+    return undefined;
   }
   private animationLive = false;
   private needsHydration = true;
@@ -4403,7 +4472,7 @@ class ArenaScene extends Phaser.Scene {
     }
   }
   observeSnapshot(next: Snapshot, previous?: Snapshot) {
-    if (!this.ensureFighters(next)) return;
+    this.requestFighters(next);
     this.animationLive = !this.needsHydration && previous?.code === next.code;
     this.needsHydration = false;
     const reset = !this.animationLive || previous?.round !== next.round;
@@ -4420,7 +4489,8 @@ class ArenaScene extends Phaser.Scene {
         this.rigs.delete(id);
       }
     for (const p of next.players) {
-      const rig = this.getRig(p.id, p.character);
+      const rig = this.readyRig(p.id, p.character);
+      if (!rig) continue;
       if (reset) rig.controller.reset();
       const old = previous?.players.find((other) => other.id === p.id);
       if (!reset && old) {
@@ -4439,9 +4509,11 @@ class ArenaScene extends Phaser.Scene {
     if (state)
       for (const id of this.fighters.toRequest(neededFighters(state.players)))
         queueFighterAssets(this, id, this.fighters.assetsFor(id));
-    this.load.once(Phaser.Loader.Events.COMPLETE, () =>
-      this.fighters.settled(),
-    );
+    // Every load that finishes (this one, and later ones started for a new
+    // fighter, a skin or boss art) settles what was requested: art still
+    // missing may be asked for again. The scene's loader drops its
+    // listeners when the scene shuts down.
+    this.load.on(Phaser.Loader.Events.COMPLETE, () => this.fighters.settled());
   }
   create() {
     scene = this;
@@ -4536,7 +4608,7 @@ class ArenaScene extends Phaser.Scene {
       if (castPredictor.waiting(action, now)) {
         // Already shown; the server has it.
       } else if (canCastSkill(local, input.skill, time, free)) {
-        this.getRig(local.id, local.character).trigger(
+        this.readyRig(local.id, local.character)?.trigger(
           windUp > 0 ? "skill3" : (action as "skill0"),
           this.feelClock,
           windUp > 0 ? windUp * 1000 : castDuration(c, input.skill),
@@ -4559,7 +4631,7 @@ class ArenaScene extends Phaser.Scene {
       !castPredictor.waiting("basic", now) &&
       canBasic(local, time)
     ) {
-      this.getRig(local.id, local.character).trigger(
+      this.readyRig(local.id, local.character)?.trigger(
         "basic",
         this.feelClock,
         castDuration(c, -1),
@@ -4592,8 +4664,8 @@ class ArenaScene extends Phaser.Scene {
     );
   }
   effect(event: Snapshot["events"][number]) {
-    // Effects can pose a fighter's rig: skip them while its art loads.
-    if (state && !this.fightersReady(state)) return;
+    // Effects pose only fighters whose art has loaded (readyRig); sounds,
+    // impacts and the other fighters' poses play as usual meanwhile.
     if (event.kind === "raid-impact") {
       const ring = this.add
         .circle(event.x, event.y, event.raidRadius ?? 90, event.color, 0.12)
@@ -4631,7 +4703,7 @@ class ArenaScene extends Phaser.Scene {
         const c = CHARACTERS[p.character];
         const slot = c.skills.findIndex((a) => a.id === event.abilityId);
         if (slot >= 0 || event.abilityId === c.basic.id)
-          this.getRig(p.id, p.character).trigger(
+          this.readyRig(p.id, p.character)?.trigger(
             slot >= 0
               ? (`skill${slot}` as "skill0" | "skill1" | "skill2" | "skill3")
               : "basic",
@@ -4648,7 +4720,7 @@ class ArenaScene extends Phaser.Scene {
     ) {
       const p = state?.players.find((p) => p.id === event.owner);
       if (p)
-        this.getRig(p.id, p.character).trigger(
+        this.readyRig(p.id, p.character)?.trigger(
           event.kind,
           this.feelClock,
           event.kind === "dash"
@@ -4974,9 +5046,10 @@ class ArenaScene extends Phaser.Scene {
     }
   }
   update(_time: number, delta: number) {
-    // A fighter still loading: draw nothing that needs its art yet.
-    if (state && !this.ensureFighters(state)) return;
-    if (!this.loadReported && state) {
+    // A fighter still loading is drawn as a stand-in (readyRig) while its
+    // art loads; nothing else waits for it.
+    if (state) this.requestFighters(state);
+    if (!this.loadReported && state && this.fightersReady(state)) {
       this.loadReported = true;
       reportBattleLoad(neededFighters(state.players).length);
     }
@@ -5027,13 +5100,9 @@ class ArenaScene extends Phaser.Scene {
                 ...follow,
                 x: presented.x,
                 y: presented.y,
-                attacking:
-                  this.getRig(follow.id, follow.character).controller.state ===
-                    "basic" ||
-                  this.getRig(
-                    follow.id,
-                    follow.character,
-                  ).controller.state.startsWith("skill"),
+                attacking: attacking(
+                  this.readyRig(follow.id, follow.character),
+                ),
               }
             : undefined,
           `${state?.code ?? "menu"}:${state?.round ?? 0}:${myId ?? ""}`,
@@ -5142,7 +5211,7 @@ class ArenaScene extends Phaser.Scene {
     if (refused.length && local)
       for (const action of refused)
         if (action !== "dash" && action !== "charge")
-          this.getRig(local.id, local.character).controller.cancel(action);
+          this.readyRig(local.id, local.character)?.controller.cancel(action);
     if (!state || state.phase === "lobby") {
       this.rigs.forEach((rig) => rig.setVisible(false));
       this.labels.forEach((label) => (label.hidden = true));
@@ -5604,8 +5673,9 @@ class ArenaScene extends Phaser.Scene {
                   ? state.roundWinner
                   : null) === p.id,
       };
-      if (serverPlayer.clone) {
-        const clone = this.getRig(`${p.id}:clone`, p.character);
+      const clone =
+        serverPlayer.clone && this.readyRig(`${p.id}:clone`, p.character);
+      if (serverPlayer.clone && clone) {
         clone.root.setScale(view.fighterX * 0.7, view.fighterY * 0.7);
         clone.setVisible(true);
         clone.render(
@@ -5687,50 +5757,74 @@ class ArenaScene extends Phaser.Scene {
           38,
         );
       }
-      const rig = this.getRig(p.id, p.character);
-      // The rig keeps this as its base scale (squash and stretch multiply it).
-      rig.root.setScale(
-        view.fighterX * 0.7 * giant,
-        view.fighterY * 0.7 * giant,
-      );
-      rig.setVisible(true);
-      // On the coliseum court fighters sort with the blocks by where they stand.
-      rig.setDepth(this.activeCourt || state?.raid ? fighterDepth(y) : 2);
-      const casting =
-        rig.controller.state === "basic" ||
-        rig.controller.state.startsWith("skill") ||
-        pose.charging;
-      rig.render(
-        {
-          ...pose,
-          angle: pose.speed > 12 && !casting ? Math.atan2(p.vy, p.vx) : p.angle,
-        },
-        x,
-        y - jump,
-        this.feelClock,
-        serverPlayer.statuses.some((s) => s.kind === "stealth")
+      const rig = this.readyRig(p.id, p.character);
+      if (rig) {
+        // The rig keeps this as its base scale (squash and stretch multiply it).
+        rig.root.setScale(
+          view.fighterX * 0.7 * giant,
+          view.fighterY * 0.7 * giant,
+        );
+        rig.setVisible(true);
+        // On the coliseum court fighters sort with the blocks by where they stand.
+        rig.setDepth(this.activeCourt || state?.raid ? fighterDepth(y) : 2);
+        const casting =
+          rig.controller.state === "basic" ||
+          rig.controller.state.startsWith("skill") ||
+          pose.charging;
+        rig.render(
+          {
+            ...pose,
+            angle:
+              pose.speed > 12 && !casting ? Math.atan2(p.vy, p.vx) : p.angle,
+          },
+          x,
+          y - jump,
+          this.feelClock,
+          serverPlayer.statuses.some((s) => s.kind === "stealth")
+            ? p.id === myId
+              ? 0.5
+              : 0.12
+            : 1,
+          reducedMotion,
+        );
+        if ((this.flashUntil.get(p.id) ?? 0) > feelNow) flashWhite(rig.root);
+        // After render (it clears the rig's layers): the aura's near items
+        // pass in front of the fighter, the rest go round behind.
+        if (p.raidLook?.aura)
+          // On the shadow's plane (48×18 at the feet): same flatness.
+          drawCollectionAura(
+            g,
+            p.raidLook.aura,
+            x,
+            feetY,
+            _time,
+            reducedMotion,
+            rig.front,
+            18 / 48,
+            0,
+          );
+      } else {
+        // Its art is still loading (or failed): a plain stand-in in the
+        // fighter's colour where the rig would stand, never missing textures.
+        const alpha = serverPlayer.statuses.some((s) => s.kind === "stealth")
           ? p.id === myId
             ? 0.5
             : 0.12
-          : 1,
-        reducedMotion,
-      );
-      if ((this.flashUntil.get(p.id) ?? 0) > feelNow) flashWhite(rig.root);
-      // After render (it clears the rig's layers): the aura's near items
-      // pass in front of the fighter, the rest go round behind.
-      if (p.raidLook?.aura)
-        // On the shadow's plane (48×18 at the feet): same flatness.
-        drawCollectionAura(
-          g,
-          p.raidLook.aura,
+          : 1;
+        const r = 24 * giant * view.fighterX;
+        g.fillStyle(c.color, 0.85 * alpha).fillEllipse(
           x,
-          feetY,
-          _time,
-          reducedMotion,
-          rig.front,
-          18 / 48,
-          0,
+          y - jump - r * 1.1,
+          r * 1.6,
+          r * 2.2,
         );
+        g.lineStyle(2, 0xffffff, 0.7 * alpha).strokeEllipse(
+          x,
+          y - jump - r * 1.1,
+          r * 1.6,
+          r * 2.2,
+        );
+      }
       if (serverPlayer.statuses.some((s) => s.kind === "shield")) {
         g.fillStyle(c.color, 0.1).fillCircle(x, y - jump - 10, 46);
         g.lineStyle(3, c.color, 0.8).strokeCircle(x, y - jump - 10, 46);
@@ -6350,12 +6444,17 @@ function reportBattleLoad(fighters: number) {
 }
 /**
  * Opening a battle on an iPhone (or a phone with little memory): forget the
- * Plaza's and the Farm's baked sprites first. Both scenes are closed by now,
- * and the cache (~45 MB of canvases once both were visited) would otherwise
+ * Plaza's, the Farm's and the Bistro's baked sprites first. The scenes are closed by now,
+ * and the cache (~45 MB of canvases once the Farm and the Plaza were visited) would otherwise
  * sit beside the battle's floor and textures until iOS ends the page.
  */
 function releaseHubArt() {
-  if (memoryConstrained()) GFX.release();
+  if (!memoryConstrained()) return;
+  // The sprite cache is shared by the Farm and the Plaza; if neither has
+  // loaded this session it holds nothing.
+  (worlds.loaded("farm") ?? worlds.loaded("plaza"))?.hubGfx.release();
+  // The Bistro's creature, furniture and dish drawings (it is closed too).
+  worlds.loaded("bistro")?.releaseBistroArt();
 }
 function ensureBattleRenderer() {
   if (gameInstance || $("game").clientWidth < 1 || $("game").clientHeight < 1)
@@ -6501,7 +6600,8 @@ accountsUI = new AccountUI({
     roomInvites.clear();
     // The farm kept in this browser is this player's: forget it.
     forgetFarms();
-    forgetBistros();
+    clearKeptBistros();
+    worlds.loaded("bistro")?.forgetBistros();
     bistro?.close();
     bistro = undefined;
     farmScreen?.close();

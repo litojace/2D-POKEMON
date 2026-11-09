@@ -15730,3 +15730,44 @@ body.battle-active:not(.touch-mode)
     font-size: max(16px, 1em) !important;
   }
 }
+/* A hub world (Farm, Plaza, Bistro) whose code is still loading, or failed to
+   load: the same layer the world opens in, so the top bar stays above it. */
+.hub-world-wait {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 14px;
+  padding: max(16px, var(--safe-top, 0px)) max(16px, var(--safe-right, 0px))
+    max(16px, var(--safe-bottom, 0px)) max(16px, var(--safe-left, 0px));
+  background: #0b1020;
+  color: #dfe6f5;
+  font-size: 15px;
+  text-align: center;
+}
+.hub-world-wait p {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.hub-world-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid #ffffff33;
+  border-top-color: #fff1a3;
+  border-radius: 50%;
+  animation: hub-world-spin 0.9s linear infinite;
+}
+@keyframes hub-world-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hub-world-spinner {
+    animation: none;
+  }
+}

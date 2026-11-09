@@ -21,7 +21,11 @@ it("preserves raid choices during countdown and teammate picks, but redraws chan
     querySelectorAll: (selector: string) =>
       selector === ".live-seconds" ? [timer] : [],
   };
-  const hud = { innerHTML: "" };
+  const hud = {
+    innerHTML: "",
+    firstElementChild: null,
+    querySelectorAll: () => [],
+  };
   vi.stubGlobal("document", {
     body: { classList: { toggle: vi.fn() } },
     getElementById: (id: string) =>
@@ -93,7 +97,11 @@ it.each(["finished", "briefing", "intermission"])(
                 : null,
       querySelectorAll: () => [],
     };
-    const hud = { innerHTML: "" };
+    const hud = {
+      innerHTML: "",
+      firstElementChild: null,
+      querySelectorAll: () => [],
+    };
     vi.stubGlobal("document", {
       body: { classList: { toggle: vi.fn() } },
       getElementById: (id: string) =>

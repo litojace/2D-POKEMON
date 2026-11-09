@@ -53,15 +53,49 @@ export function renderStormTargets(state: Snapshot, frame: HTMLElement) {
   }
 }
 /** Separate bars show each twin's real health and stagger; the shared thin bar retains phase marks. */
-export function stormTwinHealth(state: Snapshot) {
+export interface TwinBarView {
+  id: string;
+  name: string;
+  /** Under the name: revive countdown, core exposed, defeated or nothing. */
+  status: string;
+  percent: number;
+  trail: number;
+  stagger: number;
+}
+/** One twin's bar (Storm Twins). Moves its damage trail along. */
+export function twinBars(state: Snapshot): TwinBarView[] {
   const r = state.raid!;
-  return `<div class="raid-twin-health">${(r.twins ?? [])
-    .map((t, i) => {
-      const p = state.players.find((p) => p.id === t.id),
-        hp = Math.max(0, p?.hp ?? 0),
-        percent = Math.max(0, Math.min(100, (hp / t.maxHp) * 100)),
-        down = hp <= 0;
-      return `<div class="raid-twin-bar" style="--twin-color:${i ? "#8edfff" : "#ffe18b"}"><div><b>${t.name}</b><span>${down ? (state.phase === "finished" ? (r.result === "victory" ? "DEFEATED" : "DOWN") : `REVIVES IN ${Math.max(0, Math.ceil((t.reviveAt ?? state.time) - state.time))}s`) : t.exposedUntil > state.time ? "CORE EXPOSED" : ""}</span></div><div class="raid-twin-track" role="progressbar" aria-label="${t.name} health" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(percent)}"><i class="raid-boss-trail" style="width:${healthTrail(`twin:${t.id}`, percent)}%"></i><i class="raid-boss-fill" style="width:${percent}%"></i><span class="raid-boss-pct" aria-hidden="true">${Math.ceil(percent)}%</span></div><div class="raid-twin-stagger" title="${t.name} stagger"><i style="width:${t.exposedUntil > state.time ? 100 : t.stagger}%"></i></div></div>`;
-    })
+  return (r.twins ?? []).map((t) => {
+    const p = state.players.find((p) => p.id === t.id),
+      hp = Math.max(0, p?.hp ?? 0),
+      percent = Math.max(0, Math.min(100, (hp / t.maxHp) * 100)),
+      down = hp <= 0;
+    return {
+      id: t.id,
+      name: t.name,
+      status: down
+        ? state.phase === "finished"
+          ? r.result === "victory"
+            ? "DEFEATED"
+            : "DOWN"
+          : `REVIVES IN ${Math.max(0, Math.ceil((t.reviveAt ?? state.time) - state.time))}s`
+        : t.exposedUntil > state.time
+          ? "CORE EXPOSED"
+          : "",
+      percent,
+      trail: healthTrail(`twin:${t.id}`, percent),
+      stagger: t.exposedUntil > state.time ? 100 : t.stagger,
+    };
+  });
+}
+
+/** The twins' bars as markup (the live HUD builds the same structure once
+ *  and updates it in place: see raid-hud.ts). */
+export function stormTwinHealth(state: Snapshot) {
+  return `<div class="raid-twin-health">${twinBars(state)
+    .map(
+      (t, i) =>
+        `<div class="raid-twin-bar" style="--twin-color:${i ? "#8edfff" : "#ffe18b"}"><div><b>${t.name}</b><span>${t.status}</span></div><div class="raid-twin-track" role="progressbar" aria-label="${t.name} health" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(t.percent)}"><i class="raid-boss-trail" style="width:${t.trail}%"></i><i class="raid-boss-fill" style="width:${t.percent}%"></i><span class="raid-boss-pct" aria-hidden="true">${Math.ceil(t.percent)}%</span></div><div class="raid-twin-stagger" title="${t.name} stagger"><i style="width:${t.stagger}%"></i></div></div>`,
+    )
     .join("")}</div>`;
 }

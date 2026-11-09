@@ -73,3 +73,60 @@ it("retries art that failed to load, then stops holding the battle", () => {
   expect(loading.isReady("voltkit")).toBe(true);
   expect(loading.toRequest(["voltkit"])).toEqual([]);
 });
+
+it("never claims art it doesn't have: a fighter that gave up is drawn as a stand-in", () => {
+  const { loading } = setup();
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    loading.toRequest(["voltkit"]);
+    expect(loading.gaveUp("voltkit")).toBe(false);
+    loading.settled();
+  }
+  // The battle may go on (briefing, first frame), but no rig is built.
+  expect(loading.isReady("voltkit")).toBe(true);
+  expect(loading.gaveUp("voltkit")).toBe(true);
+  expect(loading.hasArt("voltkit")).toBe(false);
+});
+
+it("keeps a request open until some load settles, whoever started that load", () => {
+  const { loading, textures } = setup();
+  expect(loading.toRequest(["voltkit"])).toEqual(["voltkit"]);
+  // The files joined a load another feature started (a skin, boss art) and
+  // one of them failed: until that load's COMPLETE settles, nothing is
+  // queued twice, and the fighter is not ready.
+  textures.add("voltkit-0");
+  expect(loading.toRequest(["voltkit"])).toEqual([]);
+  expect(loading.isReady("voltkit")).toBe(false);
+  expect(loading.hasArt("voltkit")).toBe(false);
+  // Any COMPLETE settles it (the scene listens to every one): it is retried.
+  loading.settled();
+  expect(loading.toRequest(["voltkit"])).toEqual(["voltkit"]);
+  textures.add("voltkit-1");
+  loading.settled();
+  expect(loading.hasArt("voltkit")).toBe(true);
+  expect(loading.isReady("voltkit")).toBe(true);
+  expect(loading.gaveUp("voltkit")).toBe(false);
+});
+
+it("a fighter added while another loads is requested on its own and settles with that load", () => {
+  const { loading, load } = setup();
+  expect(loading.toRequest(["voltkit"])).toEqual(["voltkit"]);
+  // Fighter roulette mid-load: the new fighter joins the running load.
+  expect(loading.toRequest(["voltkit", "tidefin"])).toEqual(["tidefin"]);
+  load("voltkit", "tidefin");
+  expect(loading.allReady(["voltkit", "tidefin"])).toBe(true);
+  expect(loading.hasArt("tidefin")).toBe(true);
+});
+
+it("art that arrives after giving up is used", () => {
+  const { loading, textures } = setup();
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    loading.toRequest(["voltkit"]);
+    loading.settled();
+  }
+  expect(loading.gaveUp("voltkit")).toBe(true);
+  // Loaded meanwhile by something else (the textures are shared).
+  textures.add("voltkit-0");
+  textures.add("voltkit-1");
+  expect(loading.hasArt("voltkit")).toBe(true);
+  expect(loading.gaveUp("voltkit")).toBe(false);
+});
