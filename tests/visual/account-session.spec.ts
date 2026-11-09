@@ -186,12 +186,23 @@ for (const mode of ["login", "signup"] as const) {
       /Connection lost|Server did not respond|xhr poll error/,
     );
     expect(errors).toEqual([]);
-    await page.evaluate(() => {
-      (window as any).__sock.fire("connect_error", {
-        message: "Your login expired. Please sign in again.",
-        data: { code: "ACCOUNT_ERROR", status: 401 },
+    // An expired login is renewed first (socket-relogin.spec.ts); refused
+    // again right after, it is reported.
+    const expired = () =>
+      page.evaluate(() => {
+        (window as any).__sock.fire("connect_error", {
+          message: "Your login expired. Please sign in again.",
+          data: { code: "ACCOUNT_ERROR", status: 401 },
+        });
       });
-    });
+    await expired();
+    await expect
+      .poll(() => page.evaluate(() => (window as any).__refreshes ?? 0))
+      .toBe(1);
+    expect(await page.locator("#toast").textContent()).not.toMatch(
+      /Your login expired/,
+    );
+    await expired();
     await expect(page.locator("#toast")).toContainText("Your login expired");
     await expect(page.locator("#connection")).toHaveText("LOGIN REQUIRED");
   });
