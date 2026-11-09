@@ -392,6 +392,63 @@ test("Bistro decorate: pieces turn as they're placed (the ↻ button, R, a right
   expect(errors).toEqual([]);
 });
 
+test("Bistro shop: buy any number at once (typed, or counted with − and +, held down)", async ({
+  page,
+}) => {
+  const errors = await openBistro(page);
+  await B(page, "srv.S.coins = 100000; srv.S.stored = {}; return b.load()");
+  await page.click('.bs-rail [data-sheet="shop"]');
+  await page.click('#bs-sheet [data-tab="decor"]');
+  const n = page.locator("#bs-qty-n");
+  const minus = page.locator('#bs-sheet [data-qtystep="-1"]');
+  const plus = page.locator('#bs-sheet [data-qtystep="1"]');
+  await expect(n).toHaveValue("1");
+  await expect(minus).toBeDisabled();
+  // Typed in: the prices show for that many.
+  await n.fill("7");
+  await expect(page.locator('#bs-sheet [data-buy="plant"] .pr')).toContainText(
+    "×7",
+  );
+  await expect(n).toBeFocused(); // a redraw keeps the field as it is
+  await plus.click();
+  await expect(n).toHaveValue("8");
+  await minus.click();
+  await minus.click();
+  await expect(n).toHaveValue("6");
+  // Too many or none: the most there is, or one.
+  await n.fill("500");
+  await n.press("Enter");
+  await expect(n).toHaveValue("99");
+  await expect(plus).toBeDisabled();
+  await n.fill("0");
+  await n.press("Enter");
+  await expect(n).toHaveValue("1");
+  // Held down, + keeps counting.
+  const box = (await plus.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await expect
+    .poll(async () => Number(await n.inputValue()), { timeout: 5000 })
+    .toBeGreaterThan(4);
+  await page.mouse.up();
+  const held = Number(await n.inputValue());
+  await page.waitForTimeout(600);
+  expect(Number(await n.inputValue())).toBe(held); // stops when let go
+  // Buy 13 plants at once.
+  await n.fill("13");
+  await n.press("Enter");
+  const coins = (await B(page, "return b.state().coins")) as number;
+  await page.click('#bs-sheet [data-buy="plant"]');
+  await expect(page.locator("#bs-edit")).toContainText("Placing: Potted Fern");
+  expect(await B(page, "return b.state().stored.plant")).toBe(13);
+  expect(coins - ((await B(page, "return b.state().coins")) as number)).toBe(
+    13 * 120,
+  );
+  await flush(page);
+  expect(await B(page, "return srv.S.stored.plant")).toBe(13);
+  expect(errors).toEqual([]);
+});
+
 test("Bistro fits a phone in landscape", async ({ page }, info) => {
   await page.setViewportSize({ width: 844, height: 390 });
   const errors = await openBistro(page);

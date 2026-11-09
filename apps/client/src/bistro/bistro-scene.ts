@@ -2425,8 +2425,20 @@ export function openBistro(o: BistroOptions): BistroHandle {
   /* ───────────── sheets ───────────── */
   const sheet = $("#bs-sheet");
   let sheetKind: string | null = null;
-  /** Shop: how many of a thing one tap buys. */
+  /** Shop: how many of a thing one tap buys (any number up to SHOP_MAX). */
   let shopQty = 1;
+  const SHOP_MAX = 99;
+  /** Set the count; `typing`: from the field itself (left as typed). */
+  const setShopQty = (n: number, typing = false) => {
+    const q = Math.max(1, Math.min(SHOP_MAX, Math.round(n) || 1));
+    if (q === shopQty) return false;
+    shopQty = q;
+    renderSheet();
+    // A field typed in no longer follows its value attribute: set what it shows.
+    const el = sheet.querySelector<HTMLInputElement>("#bs-qty-n");
+    if (el && !typing) el.value = String(q);
+    return true;
+  };
   /** Staff → Hire: the role being hired for. */
   let hireRole: Role = "waiter";
   /** Staff → Your team: which role shows ("all": every role, grouped). */
@@ -3109,14 +3121,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
         head("Shop", `Bistro coins: ${coinTag(S.coins)}`) +
         `<nav class="bs-tabs">${tabs.map(([id, label]) => `<button type="button" data-tab="${id}" aria-pressed="${id === tab}">${label}</button>`).join("")}</nav>` +
         (["furniture", "decor", "machines", "kitchen"].includes(tab)
-          ? `<div class="bs-qty"><span>Buy</span>${[1, 5, 10]
-              .map(
-                (n) =>
-                  `<button type="button" data-qty="${n}" aria-pressed="${n === shopQty}">×${n}</button>`,
-              )
-              .join(
-                "",
-              )}<small>${shopQty > 1 ? "then place them one after another" : "one at a time"}</small></div>`
+          ? `<div class="bs-qty"><span>Buy</span><div class="bs-step" role="group" aria-label="How many to buy"><button type="button" data-qtystep="-1" aria-label="One fewer" ${shopQty <= 1 ? "disabled" : ""}>−</button><input id="bs-qty-n" type="number" inputmode="numeric" min="1" max="${SHOP_MAX}" step="1" value="${shopQty}" aria-label="How many to buy"><button type="button" data-qtystep="1" aria-label="One more" ${shopQty >= SHOP_MAX ? "disabled" : ""}>+</button></div><small>${shopQty > 1 ? "then place them one after another" : "one at a time"}</small></div>`
           : "") +
         body;
     }
@@ -3151,6 +3156,47 @@ export function openBistro(o: BistroOptions): BistroHandle {
       if (el.scrollLeft !== x) el.scrollLeft = x;
     }
   };
+  // The Shop's count: typed in (any number), or − and + (held down, they
+  // keep counting, faster and faster).
+  sheet.addEventListener("input", (e) => {
+    const el = e.target as HTMLInputElement;
+    if (el.id !== "bs-qty-n" || el.value === "") return;
+    setShopQty(Number(el.value), true);
+  });
+  sheet.addEventListener("change", (e) => {
+    const el = e.target as HTMLInputElement;
+    if (el.id !== "bs-qty-n") return;
+    setShopQty(Number(el.value));
+    // What was typed, as it counts (0 is 1, 500 is the most).
+    el.value = String(shopQty);
+  });
+  sheet.addEventListener("keydown", (e) => {
+    const el = e.target as HTMLElement;
+    if (el.id === "bs-qty-n" && e.key === "Enter") el.blur();
+  });
+  let stepTimer: ReturnType<typeof setTimeout> | undefined;
+  let stepHeld = false;
+  const stopStep = () => clearTimeout(stepTimer);
+  sheet.addEventListener("pointerdown", (e) => {
+    const b = (e.target as HTMLElement).closest<HTMLButtonElement>(
+      "[data-qtystep]",
+    );
+    if (!b) return;
+    const d = Number(b.dataset.qtystep);
+    stepHeld = false;
+    stopStep();
+    let wait = 380;
+    const tick = () => {
+      if (!setShopQty(shopQty + d)) return;
+      stepHeld = true;
+      sound("tick");
+      wait = Math.max(45, wait * 0.8);
+      stepTimer = setTimeout(tick, wait);
+    };
+    stepTimer = setTimeout(tick, wait);
+  });
+  for (const ev of ["pointerup", "pointercancel", "pointerleave"])
+    sheet.addEventListener(ev, stopStep);
   sheet.addEventListener("click", (e) => {
     const b = (e.target as HTMLElement).closest("button");
     if (!b || b.disabled) return;
@@ -3180,10 +3226,11 @@ export function openBistro(o: BistroOptions): BistroHandle {
       changed();
       return;
     }
-    if (b.dataset.qty) {
-      shopQty = Number(b.dataset.qty) || 1;
-      sound("tick");
-      return renderSheet();
+    if (b.dataset.qtystep) {
+      // (A press held down already counted on its own: see below.)
+      if (stepHeld) return void (stepHeld = false);
+      if (setShopQty(shopQty + Number(b.dataset.qtystep))) sound("tick");
+      return;
     }
     if (b.dataset.buy) {
       const kind = b.dataset.buy as ItemKind;

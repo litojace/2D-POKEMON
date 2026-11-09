@@ -692,21 +692,60 @@
     700 12px/1 "DM Sans",
     sans-serif;
 }
-.bistro-layer .bs-qty button {
-  min-width: 44px;
-  padding: 6px 10px;
+/* − [count] +: any number, typed or counted. */
+.bistro-layer .bs-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
   border: 1px solid #ffffff22;
   border-radius: 999px;
   background: #ffffff0d;
-  color: #dfe6f5;
-  font: inherit;
-  font-size: 13px;
-  cursor: pointer;
 }
-.bistro-layer .bs-qty button[aria-pressed="true"] {
+.bistro-layer .bs-step button {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
   background: #7ad3c4;
-  border-color: #7ad3c4;
   color: #10302a;
+  font:
+    800 18px/1 "DM Sans",
+    sans-serif;
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.bistro-layer .bs-step button:disabled {
+  background: #ffffff14;
+  color: #ffffff55;
+  cursor: default;
+}
+.bistro-layer .bs-step input {
+  width: 46px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #fff;
+  font:
+    800 16px/1 "DM Sans",
+    sans-serif;
+  text-align: center;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+.bistro-layer .bs-step input::-webkit-inner-spin-button,
+.bistro-layer .bs-step input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.bistro-layer .bs-step input:focus {
+  outline: 2px solid #7ad3c4;
+  outline-offset: -2px;
+  border-radius: 8px;
 }
 .bistro-layer .bs-qty small {
   margin-left: 4px;
