@@ -3282,6 +3282,9 @@ socket.on(
     if (replacedAccount) return;
     $("connection").classList.remove("online");
     if (error.data?.code === "ACCOUNT_ERROR") {
+      // An expired login: get a fresh token (onToken connects with it). Only
+      // a second refusal soon after says something is really wrong.
+      if (error.data.status === 401 && renewLogin()) return;
       toast(error.message);
       $("connection").textContent =
         error.data.status === 401 ? "LOGIN REQUIRED" : "SIGN-IN UNAVAILABLE";
@@ -3332,6 +3335,22 @@ socket.on("token-expired", () => {
     socket.emit("token", { token });
   else void accountsUI.client?.auth.refreshSession();
 });
+/**
+ * Ask Supabase for a fresh token after the server refused an expired one;
+ * its refresh reaches onToken, which reconnects. At most once in 30 s, so a
+ * login that can't be renewed is reported instead of retried forever.
+ */
+let loginRenewedAt = 0;
+function renewLogin() {
+  const auth = accountsUI.client?.auth;
+  if (!auth || !accountsUI.session || Date.now() - loginRenewedAt < 30_000)
+    return false;
+  loginRenewedAt = Date.now();
+  void auth.refreshSession().catch(() => {
+    /* Signed out: the gate asks for a login. */
+  });
+  return true;
+}
 socket.on("access-revoked", ({ error }: { error: string }) => {
   sessionStorage.removeItem("arena-token");
   lobbySelection.reset();
@@ -3344,6 +3363,7 @@ socket.on("access-revoked", ({ error }: { error: string }) => {
   screen = "";
   renderMenu();
   toast(error);
+  // Reconnects too (onSession); a refused expired token is then renewed.
   void accountsUI.refresh();
 });
 socket.on("state", (snapshot: WireSnapshot) => {
@@ -6552,6 +6572,10 @@ accountsUI = new AccountUI({
     // the new token if the socket ever has to reconnect.
     socket.auth = { accessToken: token };
     if (socket.connected) socket.emit("token", { token });
+    // A connection the server refused or closed (an hour-old token on a
+    // phone waking up) never retries by itself: without this, a player sat
+    // in the game offline to their friends until they reloaded.
+    else if (!replacedAccount && !socket.active) socket.connect();
   },
   onChange: () => {
     loadMastery();

@@ -43,7 +43,12 @@ export function io() {
         },
       };
     },
+    // Like Socket.IO's: true while the socket is connected or retrying. A
+    // test that sets it (and connected) to false stands for a connection the
+    // server refused or closed; window.__connects counts connect() calls.
+    active: true,
     connect() {
+      w.__connects = (w.__connects ?? 0) + 1;
       return s;
     },
     disconnect() {
@@ -72,8 +77,17 @@ export function createClient() {
   };
   return {
     auth: {
-      onAuthStateChange() {
+      onAuthStateChange(callback: (event: string, session: unknown) => void) {
+        w.__authChange = callback;
         return { data: { subscription: { unsubscribe() {} } } };
+      },
+      // A refresh hands out a new token, as Supabase's does (TOKEN_REFRESHED);
+      // window.__refreshes counts them.
+      refreshSession: async () => {
+        w.__refreshes = (w.__refreshes ?? 0) + 1;
+        const fresh = { ...session, access_token: `fresh-${w.__refreshes}` };
+        w.__authChange?.("TOKEN_REFRESHED", fresh);
+        return { data: { session: fresh }, error: null };
       },
       getSession: async () => ({ data: { session } }),
       signOut: async () => ({}),
