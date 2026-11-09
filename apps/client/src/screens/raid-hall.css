@@ -425,6 +425,56 @@
 .rh-reward.is-done {
   border-color: color-mix(in srgb, var(--ui-ok) 45%, transparent);
 }
+/* A button (a tap opens the whole rule): none of a button's own look. */
+button.rh-reward {
+  width: 100%;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  box-shadow: none;
+  cursor: pointer;
+}
+button.rh-reward:hover {
+  border-color: color-mix(in srgb, var(--boss) 75%, transparent);
+}
+button.rh-reward:focus-visible {
+  outline: 2px solid var(--boss);
+  outline-offset: 2px;
+}
+/* Open: the name and the rule wrap instead of being cut short, and the
+   whole rule and what the item is follow the bar. The art stays at the
+   top; the other cards in its row keep their own height. */
+.rh-rewards:has(.rh-reward.is-open) {
+  align-items: start;
+}
+.rh-reward.is-open {
+  align-items: start;
+  border-color: var(--boss);
+}
+.rh-reward.is-open .rh-reward-text b,
+.rh-reward.is-open .rh-reward-text small {
+  white-space: normal;
+  overflow: visible;
+}
+.rh-reward.is-open .rh-reward-line {
+  flex-wrap: wrap;
+}
+.rh-reward-more {
+  display: grid;
+  gap: 4px;
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--ui-dim);
+}
+.rh-reward-more strong {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--boss);
+}
 .rh-reward-art {
   width: 52px;
   height: 52px;

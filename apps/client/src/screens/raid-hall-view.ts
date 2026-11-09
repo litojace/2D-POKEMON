@@ -81,6 +81,8 @@ export interface RaidView {
   invited: string[];
   /** The last answer worth telling (an invite refused, …). */
   status: string;
+  /** The reward opened to its full rule (Rewards tab), if any. */
+  reward?: string | null;
 }
 export interface RaidSeat {
   id: string;
@@ -330,7 +332,12 @@ function seat(s: RaidSeat, i: number) {
       : "In your party";
   return `<div class="rh-seat${s.me ? " is-me" : ""}">${fighterChip(s.character, `rh-seat-${i}`, 52)}<b>${esc(s.name)}</b><small class="ui-note">${esc(sub)}</small></div>`;
 }
-function rewardCard(g: RaidGoal, d: RaidData, scope: string) {
+/**
+ * A reward: its picture, name, rule and progress. A tap opens it in place
+ * to the whole rule and what the item is (the card's one-line rule is cut
+ * short); another tap closes it. On a desktop the rule is also its tooltip.
+ */
+function rewardCard(g: RaidGoal, d: RaidData, scope: string, open: boolean) {
   const r = g.reward;
   const stars = d.progress ? frameStars(r.id, bossClears(d.progress)) : 0;
   const art =
@@ -341,7 +348,15 @@ function rewardCard(g: RaidGoal, d: RaidData, scope: string) {
     r.slot === "title"
       ? ""
       : rarityTag(cosmeticTier(r.id, stars) as RarityName);
-  return `<div class="rh-reward${g.done ? " is-done" : ""}" data-raid-reward="${esc(r.id)}"><span class="rh-reward-art">${art}</span><span class="rh-reward-text"><b>${esc(g.name)}</b><span class="rh-reward-line">${rarity}<small class="ui-note">${esc(g.text)}</small></span>${bar(g.value, g.max, { label: `${g.name} progress`, color: g.done ? "var(--ui-ok)" : "var(--boss)" })}</span>${g.done ? `<span class="rh-check" role="img" aria-label="Earned">${menuIcon("check")}</span>` : ""}</div>`;
+  // The whole rule, and what the item is (a title is worn under your
+  // name). Open, the short line keeps only progress (3/10 clears), never a
+  // second copy of the rule.
+  const more = `<span class="rh-reward-more" id="${scope}-${esc(r.id)}-more"><span><strong>How to earn</strong> ${esc(r.goal)}</span><span><strong>What it is</strong> ${esc(r.slot === "title" ? "A title to wear under your name" : r.description)}</span></span>`;
+  const line =
+    open && g.text === r.goal
+      ? ""
+      : `<small class="ui-note">${esc(g.text)}</small>`;
+  return `<button type="button" class="rh-reward${g.done ? " is-done" : ""}${open ? " is-open" : ""}" data-raid-reward="${esc(r.id)}" aria-expanded="${open}"${open ? ` aria-controls="${scope}-${esc(r.id)}-more"` : ""} title="${esc(open ? "Tap to close" : r.goal)}"><span class="rh-reward-art">${art}</span><span class="rh-reward-text"><b>${esc(g.name)}</b>${rarity || line ? `<span class="rh-reward-line">${rarity}${line}</span>` : ""}${bar(g.value, g.max, { label: `${g.name} progress`, color: g.done ? "var(--ui-ok)" : "var(--boss)" })}${open ? more : ""}</span>${g.done ? `<span class="rh-check" role="img" aria-label="Earned">${menuIcon("check")}</span>` : ""}</button>`;
 }
 function partyTab(view: RaidView, d: RaidData) {
   const b = RAID_BOSSES[view.boss];
@@ -412,7 +427,7 @@ function rewardsTab(view: RaidView, d: RaidData) {
     return `<p class="ui-note">${d.loading ? "Loading your progress…" : "Log in to see your progress."}</p>`;
   const goals = raidGoals(d.progress, view.boss);
   const { earned, total } = rewardCounts(d.progress, view.boss);
-  return `<div class="rh-section"><h3 class="ui-h">${earned} of ${total} earned</h3>${button("Wardrobe", { size: "s", icon: "wardrobe", attrs: { "data-raid-wardrobe": true } })}</div><p class="ui-note">Wear what you earn in the Wardrobe; it shows on all your fighters. Appearance only, no stat changes.</p><div class="rh-rewards is-all">${goals.map((g) => rewardCard(g, d, "rh-all")).join("")}</div>`;
+  return `<div class="rh-section"><h3 class="ui-h">${earned} of ${total} earned</h3>${button("Wardrobe", { size: "s", icon: "wardrobe", attrs: { "data-raid-wardrobe": true } })}</div><p class="ui-note">Wear what you earn in the Wardrobe; it shows on all your fighters. Appearance only, no stat changes.</p><div class="rh-rewards is-all">${goals.map((g) => rewardCard(g, d, "rh-all", view.reward === g.reward.id)).join("")}</div>`;
 }
 function guideTab(view: RaidView) {
   const b = RAID_BOSSES[view.boss];

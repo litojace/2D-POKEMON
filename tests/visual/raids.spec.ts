@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { box, inside, openLobby, snap } from "./helpers";
 import { bossFraming } from "./raid-frames";
 import { clippedFrames } from "./ui-checks";
-import { raidPerksOf } from "../../packages/shared/src/raid";
+import { RAID_REWARDS, raidPerksOf } from "../../packages/shared/src/raid";
 import {
   ISLAND,
   closeSpot,
@@ -327,6 +327,52 @@ for (const size of SIZES)
         [],
       );
       await snap(page, info, `raid-rewards-${size.name}`);
+      // A reward whose rule is cut short opens to the whole rule and what
+      // the item is; another tap closes it (owner's question, 9 Nov).
+      const cut = await room.locator(".rh-reward").evaluateAll((cards) =>
+        cards
+          .filter((c) => {
+            const t = c.querySelector(".rh-reward-line small")!;
+            return t.scrollWidth > t.clientWidth + 1;
+          })
+          .map((c) => (c as HTMLElement).dataset.raidReward!),
+      );
+      // The longest rule is cut on every size.
+      expect(cut.length).toBeGreaterThan(0);
+      const id = cut[0];
+      const reward = RAID_REWARDS.find((r) => r.id === id)!;
+      const card = room.locator(`[data-raid-reward="${id}"]`);
+      await expect(card).toHaveAttribute("title", reward.goal);
+      await card.click();
+      await expect(card).toHaveAttribute("aria-expanded", "true");
+      await expect(card.locator(".rh-reward-more")).toContainText(reward.goal);
+      await settle(page);
+      // Nothing in it is cut short now.
+      expect(
+        await card.evaluate((c) =>
+          Array.from(
+            c.querySelectorAll(
+              ".rh-reward-text b, .rh-reward-text small, .rh-reward-more span",
+            ),
+          )
+            .filter((t) => t.scrollWidth > t.clientWidth + 1)
+            .map((t) => t.textContent),
+        ),
+      ).toEqual([]);
+      expect(await layoutProblems(page, { inset, phone: size.phone })).toEqual(
+        [],
+      );
+      await card.scrollIntoViewIfNeeded();
+      await snap(page, info, `raid-reward-open-${size.name}`);
+      // Another tap closes it; the keyboard opens it too.
+      await card.click();
+      await expect(card).toHaveAttribute("aria-expanded", "false");
+      await expect(card.locator(".rh-reward-more")).toHaveCount(0);
+      await card.focus();
+      await page.keyboard.press("Enter");
+      await expect(card).toHaveAttribute("aria-expanded", "true");
+      await page.keyboard.press("Enter");
+      await expect(card).toHaveAttribute("aria-expanded", "false");
       await room.locator('[data-ui-raid-tab="guide"]').click();
       await expect(room.locator(".rh-chapters > li")).toHaveCount(3);
       expect(await layoutProblems(page, { inset, phone: size.phone })).toEqual(
