@@ -1,4 +1,4 @@
-import { defineConfig, type Plugin } from "vite";
+import { defineConfig, type Plugin, type Rollup } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
 import { copyFileSync, mkdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
@@ -33,9 +33,67 @@ function legacyAuthPages(): Plugin {
   };
 }
 
+/**
+ * The scripts the game page loads to start: its entry and everything that
+ * entry imports statically (Phaser, the libraries). Recorded while bundling
+ * so the service worker precaches exactly these; scripts loaded later (the
+ * Farm, Plaza and Bistro, the shop preview) are cached when first used.
+ */
+const startupScripts = new Set<string>();
+function startupScriptList(): Plugin {
+  return {
+    name: "startup-script-list",
+    apply: "build",
+    generateBundle(_options, bundle) {
+      const chunks = Object.values(bundle).filter(
+        (file): file is Rollup.OutputChunk => file.type === "chunk",
+      );
+      // Only the page's own build (not the service worker's).
+      const entries = chunks.filter(
+        (chunk) =>
+          chunk.isEntry && chunk.facadeModuleId?.endsWith("index.html"),
+      );
+      if (!entries.length) return;
+      startupScripts.clear();
+      const byFile = new Map(chunks.map((chunk) => [chunk.fileName, chunk]));
+      const queue = entries.map((chunk) => chunk.fileName);
+      while (queue.length) {
+        const file = queue.pop()!;
+        if (startupScripts.has(file)) continue;
+        startupScripts.add(file);
+        queue.push(...(byFile.get(file)?.imports ?? []));
+      }
+    },
+  };
+}
+/**
+ * Hashed artwork installed ahead of time (scripts/verify-pwa.mjs checks it):
+ * the startup screen, and every boss's painted rig and spell flipbook, so a
+ * raid starts without downloading its boss and works offline once installed.
+ */
+const PRECACHED_ART =
+  /^assets\/(startup-|raid-whole-|raid-directions-|raid-spell-flipbook-)/;
+/**
+ * What the service worker installs ahead of time: the shell the game needs
+ * to start (startup scripts, styles, fonts, icons, the offline page), the
+ * artwork above, and the unhashed public files (fighter layers, music,
+ * backgrounds), which need its revision checks to stay current. Hashed
+ * scripts loaded later (the Farm, Plaza and Bistro, the shop preview) and the
+ * other raid art (splash pictures, thumbnails, portraits, illustrated arenas)
+ * are cached by the service worker when first used instead (sw.ts).
+ */
+function precached(url: string) {
+  if (/^assets\/[^/]+\.js$/.test(url))
+    // Unknown (a build without the list): keep every script, as before.
+    return !startupScripts.size || startupScripts.has(url);
+  if (/^assets\/[^/]+\.webp$/.test(url)) return PRECACHED_ART.test(url);
+  return true;
+}
+
 export default defineConfig({
   plugins: [
     legacyAuthPages(),
+    startupScriptList(),
     VitePWA({
       strategies: "injectManifest",
       srcDir: "src",
@@ -53,6 +111,14 @@ export default defineConfig({
         ],
         globIgnores: ["assets/fighters/**/portrait-showcase-v1.webp"],
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
+        manifestTransforms: [
+          (entries) => ({
+            manifest: entries.filter((entry) => precached(entry.url)),
+            warnings: startupScripts.size
+              ? []
+              : ["Startup scripts unknown: every script is precached."],
+          }),
+        ],
       },
       manifest: {
         id: "/",

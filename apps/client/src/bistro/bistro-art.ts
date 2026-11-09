@@ -2083,6 +2083,12 @@ const SWAY: Partial<Record<ItemKind, number>> = {
 };
 const SWAY_FRAMES = 12;
 const sprites = new Map<string, HTMLCanvasElement | null>();
+/** Let go of the cached furniture and dish drawings (bistro-scene.ts,
+ *  releaseBistroArt). */
+export function releaseFurnitureArt() {
+  sprites.clear();
+  dishBodies.clear();
+}
 /** The box round a piece at grid (0, 0), in world units: [x0, y0, x1, y1]. */
 const BOX_ITEM = [-62, -128, 62, 26] as const;
 const BOX_FLOOR = [-96, -30, 96, 84] as const;

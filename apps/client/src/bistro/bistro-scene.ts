@@ -211,6 +211,9 @@ import {
   type BistroExtras,
   type SyncSnapshot,
 } from "./bistro-sync";
+import { KEPT, clearKeptBistros } from "./bistro-kept";
+import { memoryConstrained, sceneDensity } from "../render-budget";
+import { releaseFurnitureArt } from "./bistro-art";
 import "./bistro.css";
 
 export interface BistroFriend {
@@ -312,11 +315,27 @@ interface Sprite {
 const RES = 168;
 /** World units per sprite pixel: a creature stands about 80 tall. */
 const SPR = 0.62;
+/**
+ * Creature drawings by fighter, facing and mood, each a 168×170 canvas
+ * (about 114 KB, kept readable in memory). The roster at four facings is
+ * 72 of them; moods add more, so the least recently drawn are let go past
+ * SPRITE_LIMIT (one still on screen is drawn again, so it stays).
+ */
 const sprites = new Map<string, Sprite>();
+const SPRITE_LIMIT = 160;
 function sprite(id: CharacterId, dir: Facing, mood: Mood = "normal"): Sprite {
   const key = `${id}:${dir}:${mood}`;
   let s = sprites.get(key);
-  if (s) return s;
+  if (s) {
+    // Most recently used last, so the oldest are let go first.
+    sprites.delete(key);
+    sprites.set(key, s);
+    return s;
+  }
+  if (sprites.size >= SPRITE_LIMIT) {
+    const oldest = sprites.keys().next().value;
+    if (oldest !== undefined) sprites.delete(oldest);
+  }
   const cv = document.createElement("canvas");
   cv.width = RES;
   cv.height = Math.round((RES * 202) / 200);
@@ -448,7 +467,6 @@ interface Kept {
   floor?: FloorSnap;
   at: number;
 }
-const KEPT = "arena-bistro:";
 const lastKnown = new Map<string, Kept>();
 function keptFor(owner: string): Kept | null {
   const mem = lastKnown.get(owner);
@@ -482,14 +500,19 @@ function keepBistro(owner: string, k: Kept) {
 /** Forget the kept bistros (sign-out). */
 export function forgetBistros() {
   lastKnown.clear();
-  try {
-    for (let i = localStorage.length - 1; i >= 0; i--) {
-      const key = localStorage.key(i);
-      if (key?.startsWith(KEPT)) localStorage.removeItem(key);
-    }
-  } catch {
-    /* No storage. */
-  }
+  // Friends' names belong to the account that loaded them.
+  friendNames.clear();
+  clearKeptBistros();
+}
+/**
+ * Let go of the drawings the Bistro keeps between visits (creatures,
+ * furniture, dishes): used where memory is short before a battle, when the
+ * Bistro is closed. The next visit draws them again.
+ */
+export function releaseBistroArt() {
+  sprites.clear();
+  portraits.clear();
+  releaseFurnitureArt();
 }
 /** A creature's front view as an image URL (staff cards). */
 const portraits = new Map<string, string>();
@@ -808,16 +831,26 @@ export function openBistro(o: BistroOptions): BistroHandle {
   // Warm the sprite cache: the staff first, then the whole roster bit by bit.
   for (const d of ["down", "left", "right", "up"] as Facing[])
     sprite(chef.char, d);
+  // Paused behind another hub tab (the guests it is for aren't coming).
   let warmI = 0;
-  const warm = setInterval(() => {
-    const id = ROSTER[warmI % ROSTER.length];
-    const d = (["down", "left", "right", "up"] as Facing[])[
-      Math.floor(warmI / ROSTER.length)
-    ];
-    if (d) sprite(id, d);
-    else clearInterval(warm);
-    warmI++;
-  }, 120);
+  let warm: ReturnType<typeof setInterval> | undefined;
+  const stopWarm = () => {
+    clearInterval(warm);
+    warm = undefined;
+  };
+  const startWarm = () => {
+    if (warm || warmI >= ROSTER.length * 4) return;
+    warm = setInterval(() => {
+      const id = ROSTER[warmI % ROSTER.length];
+      const d = (["down", "left", "right", "up"] as Facing[])[
+        Math.floor(warmI / ROSTER.length)
+      ];
+      if (d) sprite(id, d);
+      else stopWarm();
+      warmI++;
+    }, 120);
+  };
+  startWarm();
 
   let customers: Customer[] = [];
   let piles: Pile[] = [];
@@ -924,11 +957,20 @@ export function openBistro(o: BistroOptions): BistroHandle {
   };
   const resize = () => {
     syncPhone();
-    DPR = Math.min(2, window.devicePixelRatio || 1) * (low ? 0.75 : 1);
     W = layer.clientWidth;
     H = layer.clientHeight;
-    cv.width = Math.round(W * DPR);
-    cv.height = Math.round(H * DPR);
+    // As the Farm and the Plaza (render-budget.ts): on iPhones and iPads at
+    // most 1.5× and within the scene pixel budget; Low graphics a bit softer.
+    const density = sceneDensity(W, H);
+    DPR = low
+      ? Math.min(density, Math.min(2, window.devicePixelRatio || 1) * 0.75)
+      : density;
+    // Setting a canvas's size clears it (and may reallocate it): only when
+    // it changed.
+    const cw = Math.round(W * DPR),
+      ch = Math.round(H * DPR);
+    if (cv.width !== cw) cv.width = cw;
+    if (cv.height !== ch) cv.height = ch;
     const ins = insets();
     const bw = BOUNDS.x1 - BOUNDS.x0,
       bh = BOUNDS.y1 - BOUNDS.y0;
@@ -4077,9 +4119,14 @@ export function openBistro(o: BistroOptions): BistroHandle {
     ].join(":");
     if (key === sceneryKey) return scenery;
     sceneryKey = key;
-    scenery.width = cv.width;
-    scenery.height = cv.height;
     const g = scenery.getContext("2d")!;
+    if (scenery.width !== cv.width || scenery.height !== cv.height) {
+      scenery.width = cv.width;
+      scenery.height = cv.height;
+    } else {
+      g.setTransform(1, 0, 0, 1, 0, 0);
+      g.clearRect(0, 0, scenery.width, scenery.height);
+    }
     g.setTransform(
       view.s * DPR,
       0,
@@ -5362,7 +5409,9 @@ export function openBistro(o: BistroOptions): BistroHandle {
     // Hidden: send what is queued (the time away starts now). Back: the
     // server works the time away and says what happened.
     if (document.hidden) void sync.flush();
-    else if (!visiting) void sync.load().catch(() => {});
+    // Paused behind another hub tab: show() loads when you come back, so the
+    // time-away report opens with the bistro in front of you.
+    else if (!visiting && !paused) void sync.load().catch(() => {});
     last = performance.now();
   };
   document.addEventListener("visibilitychange", onVis);
@@ -5373,7 +5422,8 @@ export function openBistro(o: BistroOptions): BistroHandle {
   const firstLoad = () =>
     sync.load().catch(() => {
       showLoading("Can't reach the bistro. Retrying…");
-      if (running) retry = setTimeout(firstLoad, 4000);
+      // Paused behind another tab: show() tries again.
+      if (running && !paused) retry = setTimeout(firstLoad, 4000);
     });
   void firstLoad();
 
@@ -5457,7 +5507,17 @@ export function openBistro(o: BistroOptions): BistroHandle {
       tip.hidden = true;
       persist();
       void sync.flush();
+      stopWarm();
+      clearTimeout(retry);
       layer.style.display = "none";
+      // Where memory is short, the cached room and scenery (each up to a
+      // screen of pixels) are drawn again on return instead of kept.
+      if (memoryConstrained()) {
+        shell = null;
+        shellKey = "";
+        scenery.width = scenery.height = 0;
+        sceneryKey = "";
+      }
     },
     /** Back: just as you left it, then the server's word (and any time away). */
     show() {
@@ -5467,6 +5527,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
       resize();
       last = performance.now();
       raf = requestAnimationFrame(frame);
+      startWarm();
       if (!visiting) {
         // A new Lobby fighter takes over the kitchen.
         if (chef.char !== chefChar()) {
@@ -5475,7 +5536,12 @@ export function openBistro(o: BistroOptions): BistroHandle {
             sprite(chef.char, d);
           chefSent = false;
         }
-        void sync.load().catch(() => {});
+        // Never loaded yet (hidden while it retried): retry as at first.
+        if (sync.ready) void sync.load().catch(() => {});
+        else {
+          clearTimeout(retry);
+          void firstLoad();
+        }
       }
       layer.focus({ preventScroll: true });
     },
@@ -5484,7 +5550,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
       cancelAnimationFrame(raf);
       clearInterval(pingTimer);
       clearTimeout(retry);
-      clearInterval(warm);
+      stopWarm();
       clearTimeout(bannerTimer);
       clearTimeout(tipTimer);
       ro.disconnect();

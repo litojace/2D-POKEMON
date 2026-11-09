@@ -1,4 +1,3 @@
-import { healthTrail } from "./raid-health-trail";
 import { drawBossBattleEffects } from "./boss-spell-art";
 import { resultXp } from "./adventure-ui";
 import type { Journey } from "../../../packages/shared/src/journey";
@@ -7,7 +6,7 @@ import {
   drawStormWarning,
   drawStormTwins,
 } from "./raid-storm-twins-art";
-import { renderStormTargets, stormTwinHealth } from "./storm-twins-controls";
+import { renderStormTargets } from "./storm-twins-controls";
 import {
   drawSkyTerrace,
   drawEmberwingWarning,
@@ -28,7 +27,8 @@ import {
 import { iconLabel, menuIcon } from "./menu-icons";
 import { actions as uiActions, button as uiButton } from "./ui/components";
 import "./screens/raid-cards.css";
-import { raidCue, raidContributions, raidGoals } from "./raid-presentation";
+import { raidContributions, raidGoals } from "./raid-presentation";
+import { paintRaidHud, raidHudView } from "./raid-hud";
 import type Phaser from "phaser";
 import type { LayerAt } from "./raid-layers";
 import { CHARACTERS, type Fighter, type Snapshot } from "@arena/shared";
@@ -104,8 +104,7 @@ export function renderRaidUI(
   loadProgress?: () => Promise<RaidProgress>,
   journey?: Journey,
 ) {
-  const r = state.raid!,
-    boss = state.players.find((p) => p.id === r.bossId);
+  const r = state.raid!;
   document.body.classList.toggle(
     "raid-downed",
     state.phase === "playing" && me.hp <= 0,
@@ -122,20 +121,7 @@ export function renderRaidUI(
   // sealed or down is told in the callout and on the court, so the HUD shows
   // the boss only.
   raidControls(state, me, request);
-  const healthPercent = Math.max(
-    0,
-    Math.min(
-      100,
-      ((r.boss === "storm-twins"
-        ? state.players
-            .filter((p) => p.raidBoss)
-            .reduce((sum, p) => sum + Math.max(0, p.hp), 0)
-        : (boss?.hp ?? 0)) /
-        r.maxHp) *
-        100,
-    ),
-  );
-  hud.innerHTML = `<div class="raid-boss-heading"><b>${r.gilded ? "✦ GILDED " : ""}${RAID_BOSSES[r.boss].name.toUpperCase()}${r.boss !== "storm-twins" && (r.exposedUntil > state.time || r.staggerUntil > state.time || r.permanentGround) ? " · EXPOSED" : ""}</b><span class="raid-boss-phase" aria-label="Phase ${r.phase} of 3">Phase ${r.phase}/3</span></div>${r.boss === "storm-twins" ? stormTwinHealth(state) : ""}<div class="raid-boss-health" role="progressbar" aria-label="Boss health" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(healthPercent)}" aria-valuetext="${Math.round(healthPercent)}% health. Rite choices open at 67% and 33% health."><i class="raid-boss-trail" style="width:${healthTrail(`raid:${r.boss}`, healthPercent)}%"></i><i class="raid-boss-fill" style="width:${healthPercent}%"></i>${[67, 33].map((mark, index) => `<span class="raid-health-mark${r.phase > index + 1 ? " is-passed" : ""}" style="left:${mark}%" aria-hidden="true"></span>`).join("")}<span class="raid-boss-pct" aria-hidden="true">${Math.ceil(healthPercent)}%</span></div><div class="raid-stagger" ${r.boss === "storm-twins" ? "hidden" : ""}><i style="width:${r.boss === "emberwing" ? (r.permanentGround || r.exposedUntil > state.time ? 100 : r.airborne ? ((r.braziers ?? []).filter((b) => b.litUntil > state.time).length / 3) * 100 : r.stagger) : r.boss === "prismatail" ? (r.exposedUntil > state.time ? 100 : Math.min(100, ((r.lightHold ?? 0) / (r.phase === 3 && r.partySize === 1 ? 2 : 0.65)) * 100)) : r.staggerUntil > state.time ? 100 : r.stagger}%"></i><span>${r.boss === "emberwing" ? (r.permanentGround ? "WINGS BROKEN · HEART OPEN" : r.airborne ? `AIRBORNE · ${(r.braziers ?? []).filter((b) => b.litUntil > state.time).length}/3 BRAZIERS` : r.exposedUntil > state.time ? "GROUNDED · HEART EXPOSED" : "STAGGER") : r.boss === "prismatail" ? (r.exposedUntil > state.time ? "HEART EXPOSED" : "LIGHT RELAY · SHIELDED") : r.staggerUntil > state.time ? "STAGGER · CORE EXPOSED" : "STAGGER"}</span></div><div class="raid-status-row"><p class="raid-callout" role="status" title="${escape(raidCue(state, me.id))}">${escape(raidCue(state, me.id))}</p><div class="raid-elapsed" role="timer" aria-label="Raid elapsed time"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></svg><b>${time(r.elapsed)}</b></div></div>`;
+  paintRaidHud(hud, raidHudView(state, me));
   const overlay = document.getElementById("arena-overlay")!;
   // Fetch saved progress once per result: the caller refreshes frame stars
   // and turns over newly earned reward cards from it.

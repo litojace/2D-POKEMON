@@ -1737,6 +1737,10 @@ test("the farm is kept in this browser: after a reload it draws at once", async 
   await fakeFarm(page);
   await page.evaluate(() => ((window as any).__farmDelay = 4000));
   await page.click('#hub-scenes [data-hub-scene="farm"]');
+  // The Farm's code loads when first opened (hub-worlds.ts); its kept state
+  // is drawn as soon as the scene exists, before the server (asked when it
+  // opens, answering 4 s later) has said anything.
+  await page.waitForFunction(() => !!(window as any).__farm);
   const now = await page.evaluate(() => {
     const f = (window as any).__farm;
     return { loaded: !!f.F.loaded, crop: f.F.plots[0]?.crop ?? null };

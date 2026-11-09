@@ -128,3 +128,5 @@ export function openPlazaScreen(options: PlazaScreenOptions): PlazaScreen {
     close: () => finish(false, true),
   };
 }
+/** The Farm's and the Plaza's shared sprite cache (released before a battle). */
+export { GFX as hubGfx } from "../farm/farm-gfx";
