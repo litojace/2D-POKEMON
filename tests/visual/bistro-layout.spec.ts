@@ -126,6 +126,21 @@ async function problems(page: Page, where: string, inset: Insets | null) {
       ))
         if (shown(e) && e.scrollWidth > e.clientWidth + 1)
           out.push(`tab "${e.textContent?.trim()}" is cut short`);
+      // Every button with words is a button: tall enough to tap, its
+      // words whole (the Orders' "Hand over all ready" was a flat strip).
+      for (const e of Array.from(
+        document.querySelectorAll<HTMLElement>(".bistro-layer button"),
+      )) {
+        const words = e.textContent?.trim();
+        if (!shown(e) || !words || e.closest(".bs-rail")) continue;
+        const r = e.getBoundingClientRect();
+        // (A finger on a phone needs a little more than a mouse.)
+        const least = e.closest(".bistro-layer.phone") ? 28 : 24;
+        if (r.height < least)
+          out.push(`button "${words.slice(0, 24)}" is ${Math.round(r.height)} px tall`);
+        if (e.scrollWidth > e.clientWidth + 1 || e.scrollHeight > e.clientHeight + 1)
+          out.push(`button "${words.slice(0, 24)}" is cut short`);
+      }
       sameSize("cards", ".bs-dishes > button, .bs-items > *", "row");
       sameSize("edit buttons", ".bs-edit-btns button", "row");
       sameSize("visit buttons", ".bs-visit button", "row");
@@ -209,7 +224,8 @@ for (const size of SIZES)
          S.pantry = { rice: 12, flour: 3, herbs: 99, pork: 1, spice: 2 };
          S.stoves.push({ x: 3, model: 'clay', dish: null, start: 0, perfect: false }, { x: 4, model: 'clay', dish: null, start: 0, perfect: false });
          S.counter = [{ dish: 'lau', servings: 188, perfect: true }, { dish: 'pho', servings: 12, perfect: false },
-                      { dish: 'caphe', servings: 9, perfect: false }, { dish: 'goicuon', servings: 3, perfect: false }];
+                      { dish: 'banhmi', servings: 12, perfect: false }, { dish: 'goicuon', servings: 4, perfect: false }];
+         // (Two catering orders ready: the Orders tab's "Hand over all" shows.)
          S.stored = { plant: 12, lamp: 3, fountain: 1, aquarium: 2, rug: 1, luckycat: 4 };
          srv.extras.leaves = 98765; srv.extras.tradedToday = 120;
          srv.friends = [
@@ -252,6 +268,8 @@ for (const size of SIZES)
         ] as const);
         await page.waitForTimeout(400);
         await check(`sheet ${k}${a !== undefined ? ` ${a}` : ""}`);
+        if (k === "board" && a === "orders")
+          await expect(page.locator("#bs-sheet [data-deliver-all]")).toBeVisible();
         // Scrolled to the end too (the last cards).
         await page.evaluate(() =>
           document
