@@ -890,6 +890,58 @@
 }
 
 /* ── Decorate mode ── */
+/* The round ↻ beside the held piece (placed each frame by the scene). */
+.bistro-layer .bs-rotate {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 44px;
+  height: 44px;
+  margin: -22px 0 0 -22px;
+  padding: 0;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #ffd65b, #f2a93b);
+  color: #5a3300;
+  box-shadow:
+    0 4px 10px rgba(20, 24, 40, 0.35),
+    inset 0 -3px 0 rgba(120, 60, 0, 0.25);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  z-index: 2;
+  touch-action: manipulation;
+  /* Moved every frame with the piece: no easing behind it. */
+  transition: none;
+}
+.bistro-layer .bs-rotate[hidden] {
+  display: none;
+}
+.bistro-layer .bs-rotate svg {
+  width: 24px;
+  height: 24px;
+}
+.bistro-layer .bs-rotate:hover {
+  filter: brightness(1.06);
+}
+.bistro-layer .bs-rotate:active {
+  box-shadow:
+    0 2px 6px rgba(20, 24, 40, 0.35),
+    inset 0 2px 0 rgba(120, 60, 0, 0.25);
+}
+.bistro-layer .bs-rotate.spun svg {
+  animation: bs-rotate-spin 0.3s ease-out;
+}
+@keyframes bs-rotate-spin {
+  from {
+    rotate: -200deg;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bistro-layer .bs-rotate.spun svg {
+    animation: none;
+  }
+}
 .bistro-layer .bs-edit {
   position: absolute;
   left: 50%;

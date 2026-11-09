@@ -2132,6 +2132,53 @@ function sprite(
   }
   ctx.drawImage(cv, o.x + x0, o.y + y0, x1 - x0, y1 - y0);
 }
+/** Does a piece turned this way show mirrored? (A chair has four drawings.) */
+export const itemFlipped = (kind: ItemKind, rot: number) =>
+  ITEM_BY_KIND[kind]?.seat !== "chair" && rot % 2 === 1;
+const turnsOf = new Map<ItemKind, number>();
+/**
+ * How many ways a piece can face, as it's turned when placed: a chair four
+ * (it has a drawing for each); anything else two, seen from the other side
+ * (mirrored, as isometric games turn their furniture), or one if it looks the
+ * same mirrored (a round vase): nothing to turn.
+ */
+export function itemTurns(kind: ItemKind): number {
+  if (ITEM_BY_KIND[kind]?.seat === "chair") return 4;
+  let n = turnsOf.get(kind);
+  if (n !== undefined) return n;
+  n = 2;
+  try {
+    // Its outline beside its mirror image: the same (all but the edges)?
+    const floor = !!ITEM_BY_KIND[kind]?.floor;
+    const [, y0, x1, y1] = floor ? BOX_FLOOR : BOX_ITEM;
+    const q = 0.5;
+    const w = 2 * Math.ceil(x1 * q),
+      h = Math.ceil((y1 - y0) * q);
+    const cv = document.createElement("canvas");
+    cv.width = w;
+    cv.height = h;
+    const g = cv.getContext("2d", { willReadFrequently: true });
+    if (g) {
+      g.setTransform(q, 0, 0, q, w / 2, -y0 * q);
+      drawItemRaw(g, kind, 0, 0, 0, 0);
+      const px = g.getImageData(0, 0, w, h).data;
+      let solid = 0,
+        odd = 0;
+      for (let yy = 0; yy < h; yy++)
+        for (let xx = 0; xx < w; xx++) {
+          const a = px[(yy * w + xx) * 4 + 3] > 60;
+          const b = px[(yy * w + (w - 1 - xx)) * 4 + 3] > 60;
+          if (a) solid++;
+          if (a !== b) odd++;
+        }
+      if (solid > 0 && odd / solid < 0.05) n = 1;
+    }
+  } catch {
+    /* No canvas to look with: let it turn. */
+  }
+  turnsOf.set(kind, n);
+  return n;
+}
 /** A piece of furniture on tile (x, y) (the rugs: their top corner tile). */
 export function drawItem(
   ctx: Ctx,
@@ -2140,6 +2187,27 @@ export function drawItem(
   y: number,
   t: number,
   rot = 0,
+) {
+  // Turned to face the other way: the same piece, mirrored about its tile.
+  if (itemFlipped(kind, rot)) {
+    const cx = iso(x, y).x;
+    ctx.save();
+    ctx.translate(cx, 0);
+    ctx.scale(-1, 1);
+    ctx.translate(-cx, 0);
+    drawItemFacing(ctx, kind, x, y, t, 0);
+    ctx.restore();
+    return;
+  }
+  drawItemFacing(ctx, kind, x, y, t, rot);
+}
+function drawItemFacing(
+  ctx: Ctx,
+  kind: ItemKind,
+  x: number,
+  y: number,
+  t: number,
+  rot: number,
 ) {
   if (LIVE_ITEMS.has(kind)) return drawItemRaw(ctx, kind, x, y, t, rot);
   const hy = HYBRID[kind];

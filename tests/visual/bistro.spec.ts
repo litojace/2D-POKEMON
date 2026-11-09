@@ -324,6 +324,74 @@ test("Bistro decorate: while holding an item a drag pans the room; a drag from t
   expect(errors).toEqual([]);
 });
 
+test("Bistro decorate: pieces turn as they're placed (the ↻ button, R, a right click); a chair faces its table unless turned", async ({
+  page,
+}, info) => {
+  const errors = await openBistro(page);
+  await B(
+    page,
+    "srv.S.stored = { lamp: 2, chair: 1, trophy: 1 }; return b.load()",
+  );
+  await page.click('.bs-rail [data-act="decor"]');
+  const at = async (x: number, y: number) =>
+    (await B(page, `return b.screen(${x}, ${y})`)) as Pt;
+  const rotate = page.locator("#bs-rotate");
+  // A lamp: the round ↻ shows beside it once it's over the floor.
+  await page.click('#bs-edit [data-hold="lamp"]');
+  let p = await at(6, 6);
+  await page.mouse.move(p.x, p.y);
+  await expect(rotate).toBeVisible();
+  await expect(page.locator('#bs-edit [data-ed="rot"]')).toBeVisible();
+  const box = (await rotate.boundingBox())!;
+  expect(box.x).toBeGreaterThan(p.x - 10); // beside it, to the right
+  expect(box.y + box.height).toBeLessThan(p.y); // and above
+  await rotate.click();
+  expect(await B(page, "return b.held().rot")).toBe(1);
+  await page.mouse.move(p.x, p.y);
+  await snap(page, info, "bistro-decor-rotate");
+  await page.mouse.click(p.x, p.y);
+  // The next from storage keeps the way it faced; a right click turns it back.
+  p = await at(9, 3);
+  await page.mouse.move(p.x, p.y);
+  expect(await B(page, "return b.held().rot")).toBe(1);
+  await page.mouse.click(p.x, p.y, { button: "right" });
+  expect(await B(page, "return b.held().rot")).toBe(0);
+  await expect(page.locator("#bs-edit")).toContainText("Placing: "); // not placed
+  await page.mouse.click(p.x, p.y);
+  // A chair beside a table faces it on its own; R turns it, and it stays so.
+  await page.click('#bs-edit [data-hold="chair"]');
+  p = await at(4, 6);
+  await page.mouse.move(p.x, p.y);
+  expect(await B(page, "return b.held()")).toMatchObject({
+    rot: 3,
+    turned: false,
+  });
+  await page.keyboard.press("r");
+  expect(await B(page, "return b.held()")).toMatchObject({
+    rot: 0,
+    turned: true,
+  });
+  await page.mouse.click(p.x, p.y);
+  // A trophy looks the same either way: nothing to turn.
+  await page.click('#bs-edit [data-hold="trophy"]');
+  p = await at(2, 7);
+  await page.mouse.move(p.x, p.y);
+  await expect(page.locator("#bs-edit")).toContainText("Placing: ");
+  await expect(rotate).toBeHidden();
+  await expect(page.locator('#bs-edit [data-ed="rot"]')).toHaveCount(0);
+  await page.keyboard.press("r");
+  expect(await B(page, "return b.held().rot")).toBe(0);
+  await page.click('#bs-edit [data-ed="cancel"]');
+  await expect(rotate).toBeHidden();
+  await flush(page);
+  const placed = (await B(
+    page,
+    "return srv.S.items.filter((i) => ['lamp', 'chair'].includes(i.kind) && i.y >= 3 && i.x !== 8 && !(i.x === 3 && i.y === 5) && !(i.x === 5 && i.y === 5) && !(i.x === 7 && i.y === 7) && !(i.x === 9 && i.y === 7)).map((i) => `${i.kind}@${i.x},${i.y}:${i.rot}`).sort()",
+  )) as string[];
+  expect(placed).toEqual(["chair@4,6:0", "lamp@6,6:1", "lamp@9,3:0"]);
+  expect(errors).toEqual([]);
+});
+
 test("Bistro fits a phone in landscape", async ({ page }, info) => {
   await page.setViewportSize({ width: 844, height: 390 });
   const errors = await openBistro(page);
