@@ -846,6 +846,51 @@ it("adds live presence to the friends list and pings friends on requests", async
   await expect(pinged).resolves.toBeUndefined();
   void mine;
 });
+it("a refused login stays offline until the socket connects again with a fresh token", async () => {
+  const me = accounts.add(false),
+    pal = accounts.add(false);
+  accounts.provider.rpc = async (_token, name) => {
+    if (name === "arena_friends")
+      return {
+        code: "ABCDEF12",
+        friends: [
+          { id: pal.account.id, name: "Pal", title: null, titleColor: null },
+        ],
+        incoming: [],
+        outgoing: [],
+      };
+    throw new Error("unexpected " + name);
+  };
+  const palOnline = async () => {
+    const res = await fetch(`${url}/api/friends`, {
+      headers: { authorization: `Bearer ${me.token}` },
+    });
+    return ((await res.json()) as { friends: { online: boolean }[] }).friends[0]
+      .online;
+  };
+  // Pal's phone wakes up with an expired token, with Socket.IO's automatic
+  // reconnection on (as in the game): the server refuses it, and the
+  // socket gives up for good (the client must connect again itself).
+  const stale = io(url, {
+    auth: { accessToken: "expired" },
+    transports: ["websocket"],
+    reconnectionDelay: 50,
+  });
+  clients.push(stale);
+  const refused = await new Promise<Error & { data?: { status?: number } }>(
+    (resolve) => stale.once("connect_error", resolve),
+  );
+  expect(refused.data?.status).toBe(401);
+  expect(stale.active).toBe(false);
+  await new Promise((resolve) => setTimeout(resolve, 300));
+  expect(stale.connected).toBe(false);
+  expect(await palOnline()).toBe(false);
+  // With the renewed token (what the client now does), Pal is online.
+  stale.auth = { accessToken: pal.token };
+  stale.connect();
+  await new Promise<void>((resolve) => stale.once("connect", () => resolve()));
+  expect(await palOnline()).toBe(true);
+});
 it("lets a player wear only the mastery flair their records unlock", async () => {
   const player = accounts.add(false);
   const socket = await connect(player.token);

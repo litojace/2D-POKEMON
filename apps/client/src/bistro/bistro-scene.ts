@@ -38,6 +38,8 @@ import {
   festoonPoints,
   iso,
   itemGlow,
+  itemFlipped,
+  itemTurns,
   itemIconUrl,
   stoveIconUrl,
   chairStyleOf,
@@ -678,6 +680,7 @@ const HTML = `<canvas class="bs-cv" aria-label="Your bistro"></canvas>
   </div>
   <div class="bs-bar glass" id="bs-bar"></div>
   <div class="bs-edit glass" id="bs-edit" hidden></div>
+  <button type="button" class="bs-rotate" id="bs-rotate" hidden aria-label="Rotate (R)" title="Rotate (R)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.6-5.9" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/><path d="M20.5 3.5v5h-5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
   <div class="bs-tip glass" id="bs-tip" hidden></div>
   <section class="bs-sheet glass" id="bs-sheet" hidden></section>
   <div class="bs-banner" id="bs-banner" hidden></div>
@@ -1797,7 +1800,15 @@ export function openBistro(o: BistroOptions): BistroHandle {
 
   /* ───────────── input ───────────── */
   let editing = false;
-  let held: { kind: ItemKind; rot: number; moving?: Item } | null = null;
+  let held: {
+    kind: ItemKind;
+    rot: number;
+    moving?: Item;
+    /** Turned by hand: a chair then keeps it (not turned to a table). */
+    turned?: boolean;
+    /** When it was last turned (the ghost's little spin). */
+    spin?: number;
+  } | null = null;
   /** Decorate: a stove from storage to place, or a placed stove to move. */
   let heldStove: { model: StoveModel } | { move: number } | null = null;
   let hover: Pt | null = null;
@@ -1829,6 +1840,8 @@ export function openBistro(o: BistroOptions): BistroHandle {
     return { x: e.clientX - r.left, y: e.clientY - r.top };
   };
   cv.addEventListener("pointerdown", (e) => {
+    // The right button turns what you hold (contextmenu below), nothing else.
+    if (e.button === 2) return;
     const p = local(e);
     pointers.set(e.pointerId, p);
     try {
@@ -1884,6 +1897,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
     }
   });
   const end = (e: PointerEvent) => {
+    if (e.button === 2) return;
     const p = local(e);
     pointers.delete(e.pointerId);
     if (pinch) {
@@ -1895,6 +1909,12 @@ export function openBistro(o: BistroOptions): BistroHandle {
     drag = null;
   };
   cv.addEventListener("pointerup", end);
+  // A right click turns the held piece, as in the building games.
+  cv.addEventListener("contextmenu", (e) => {
+    if (!editing || !held) return;
+    e.preventDefault();
+    rotateHeld(1);
+  });
   // A tap is handled on pointerup, which can open a sheet under the finger.
   // On a touch screen the browser then sends a click to that same spot,
   // which would press whatever button the new sheet put there (the first
@@ -2218,7 +2238,9 @@ export function openBistro(o: BistroOptions): BistroHandle {
   };
   const updatePreview = () => {
     const key =
-      held && hover ? `${held.kind}:${hover.x},${hover.y},${held.rot}` : "";
+      held && hover
+        ? `${held.kind}:${hover.x},${hover.y},${facing(hover.x, hover.y)}`
+        : "";
     if (key === previewKey) return;
     previewKey = key;
     preview = null;
@@ -2231,7 +2253,16 @@ export function openBistro(o: BistroOptions): BistroHandle {
       const moving = held.moving
         ? copy.items.find((i) => i.id === held!.moving!.id)
         : undefined;
-      if (tryPlace(copy, held.kind, hover.x, hover.y, held.rot, moving).ok) {
+      if (
+        tryPlace(
+          copy,
+          held.kind,
+          hover.x,
+          hover.y,
+          facing(hover.x, hover.y),
+          moving,
+        ).ok
+      ) {
         preview = layoutStats(copy.items, sizeOf(S.sizeLv));
         previewItems = copy.items;
       }
@@ -2257,10 +2288,10 @@ export function openBistro(o: BistroOptions): BistroHandle {
     setInner(
       editEl,
       `
-      <div class="bs-edit-head"><b>${held ? `Placing: ${esc(ITEM_BY_KIND[held.kind].name)}` : stoveTitle ? stoveTitle : "Decorate"}</b><span>${held ? "Tap a floor tile to put it down" : heldStove ? ("model" in heldStove ? "Tap a free spot on the kitchen's back wall, or a stove to swap it" : "Tap a free spot on the kitchen's back wall") : "Tap something to move it · tags: a waiter's steps to each seat"}</span><em class="bs-grade" id="bs-grade">${gradeText()}</em></div>
+      <div class="bs-edit-head"><b>${held ? `Placing: ${esc(ITEM_BY_KIND[held.kind].name)}` : stoveTitle ? stoveTitle : "Decorate"}</b><span>${held ? `Tap a floor tile to put it down${itemTurns(held.kind) > 1 ? " · ↻ or R to rotate" : ""}` : heldStove ? ("model" in heldStove ? "Tap a free spot on the kitchen's back wall, or a stove to swap it" : "Tap a free spot on the kitchen's back wall") : "Tap something to move it · tags: a waiter's steps to each seat"}</span><em class="bs-grade" id="bs-grade">${gradeText()}</em></div>
       <div class="bs-store">${stored.length || stoves.length ? stoves.map(([m, n]) => `<button type="button" data-hold-stove="${m}" class="${heldStove && "model" in heldStove && heldStove.model === m ? "on" : ""}"><img src="${stoveIconUrl(m)}" alt=""><span>${esc(STOVE_BY_MODEL[m].name)}</span><i>×${n}</i></button>`).join("") + stored.map(([k, n]) => `<button type="button" data-hold="${k}" class="${held?.kind === k && !held.moving ? "on" : ""}"><img src="${itemIconUrl(k)}" alt=""><span>${esc(ITEM_BY_KIND[k].name)}</span><i>×${n}</i></button>`).join("") : `<em>Storage is empty</em>`}</div>
       <div class="bs-edit-btns">
-        ${held && ITEM_BY_KIND[held.kind].seat === "chair" ? `<button type="button" data-ed="rot">Turn</button>` : ""}
+        ${held && itemTurns(held.kind) > 1 ? `<button type="button" data-ed="rot" title="Rotate (R)">↻ Rotate</button>` : ""}
         ${held ? `<button type="button" data-ed="store">Put away</button><button type="button" data-ed="cancel">Cancel</button>` : ""}
         ${heldStove ? `<button type="button" data-ed="cancel">Cancel</button>` : ""}
         <button type="button" data-ed="shop">Shop</button>
@@ -2295,7 +2326,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
       heldStove = null;
       renderEdit();
     } else if (a === "rot" && held) {
-      held.rot = (held.rot + 1) % 4;
+      rotateHeld(1);
     } else if (a === "store" && held) {
       if (held.moving) {
         sync.do({ a: "store", id: held.moving.id });
@@ -2307,6 +2338,34 @@ export function openBistro(o: BistroOptions): BistroHandle {
       renderEdit();
     }
   });
+  /**
+   * The way the held piece faces on a tile: as turned; a chair not turned by
+   * hand faces a table it touches (so the ghost shows where it will face).
+   */
+  const facing = (x: number, y: number) => {
+    if (!held) return 0;
+    if (ITEM_BY_KIND[held.kind].seat === "chair" && !held.turned) {
+      const t = S.items.find(
+        (t) =>
+          ITEM_BY_KIND[t.kind].seat === "table" &&
+          Math.abs(t.x - x) + Math.abs(t.y - y) === 1,
+      );
+      if (t) return t.x > x ? 0 : t.y > y ? 1 : t.x < x ? 2 : 3;
+    }
+    return held.rot % itemTurns(held.kind);
+  };
+  /** Turn the held piece a step (a chair a quarter; anything else about). */
+  const rotateHeld = (dir: 1 | -1) => {
+    if (!held) return;
+    const n = itemTurns(held.kind);
+    if (n <= 1) return;
+    const from = hover ? facing(hover.x, hover.y) : held.rot % n;
+    held.rot = (from + dir + n) % n;
+    held.turned = true;
+    held.spin = T;
+    sound("tick");
+    updatePreview();
+  };
   const inUse = (it: Item) => {
     if (ITEM_BY_KIND[it.kind].seat === "chair") return seatBusy(it.id);
     if (ITEM_BY_KIND[it.kind].seat === "table")
@@ -2378,17 +2437,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
       o.toast("Someone is standing there.");
       return;
     }
-    let rot = held.rot;
-    if (ITEM_BY_KIND[held.kind].seat === "chair") {
-      // Turn the chair toward a table it touches.
-      const tables = S.items.filter(
-        (i) => ITEM_BY_KIND[i.kind].seat === "table",
-      );
-      const t = tables.find(
-        (t) => Math.abs(t.x - fx) + Math.abs(t.y - fy) === 1,
-      );
-      if (t) rot = t.x > fx ? 0 : t.y > fy ? 1 : t.x < fx ? 2 : 3;
-    }
+    const rot = facing(fx, fy);
     const r = sync.do({
       a: "place",
       kind: held.kind,
@@ -2408,7 +2457,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
     // Keep placing from storage while there are more of the same.
     held =
       !held.moving && (S.stored[held.kind] ?? 0) > 0
-        ? { kind: held.kind, rot }
+        ? { kind: held.kind, rot, turned: held.turned }
         : null;
     relayout();
     changed();
@@ -2418,8 +2467,20 @@ export function openBistro(o: BistroOptions): BistroHandle {
   /* ───────────── sheets ───────────── */
   const sheet = $("#bs-sheet");
   let sheetKind: string | null = null;
-  /** Shop: how many of a thing one tap buys. */
+  /** Shop: how many of a thing one tap buys (any number up to SHOP_MAX). */
   let shopQty = 1;
+  const SHOP_MAX = 99;
+  /** Set the count; `typing`: from the field itself (left as typed). */
+  const setShopQty = (n: number, typing = false) => {
+    const q = Math.max(1, Math.min(SHOP_MAX, Math.round(n) || 1));
+    if (q === shopQty) return false;
+    shopQty = q;
+    renderSheet();
+    // A field typed in no longer follows its value attribute: set what it shows.
+    const el = sheet.querySelector<HTMLInputElement>("#bs-qty-n");
+    if (el && !typing) el.value = String(q);
+    return true;
+  };
   /** Staff → Hire: the role being hired for. */
   let hireRole: Role = "waiter";
   /** Staff → Your team: which role shows ("all": every role, grouped). */
@@ -3102,14 +3163,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
         head("Shop", `Bistro coins: ${coinTag(S.coins)}`) +
         `<nav class="bs-tabs">${tabs.map(([id, label]) => `<button type="button" data-tab="${id}" aria-pressed="${id === tab}">${label}</button>`).join("")}</nav>` +
         (["furniture", "decor", "machines", "kitchen"].includes(tab)
-          ? `<div class="bs-qty"><span>Buy</span>${[1, 5, 10]
-              .map(
-                (n) =>
-                  `<button type="button" data-qty="${n}" aria-pressed="${n === shopQty}">×${n}</button>`,
-              )
-              .join(
-                "",
-              )}<small>${shopQty > 1 ? "then place them one after another" : "one at a time"}</small></div>`
+          ? `<div class="bs-qty"><span>Buy</span><div class="bs-step" role="group" aria-label="How many to buy"><button type="button" data-qtystep="-1" aria-label="One fewer" ${shopQty <= 1 ? "disabled" : ""}>−</button><input id="bs-qty-n" type="number" inputmode="numeric" min="1" max="${SHOP_MAX}" step="1" value="${shopQty}" aria-label="How many to buy"><button type="button" data-qtystep="1" aria-label="One more" ${shopQty >= SHOP_MAX ? "disabled" : ""}>+</button></div><small>${shopQty > 1 ? "then place them one after another" : "one at a time"}</small></div>`
           : "") +
         body;
     }
@@ -3144,6 +3198,47 @@ export function openBistro(o: BistroOptions): BistroHandle {
       if (el.scrollLeft !== x) el.scrollLeft = x;
     }
   };
+  // The Shop's count: typed in (any number), or − and + (held down, they
+  // keep counting, faster and faster).
+  sheet.addEventListener("input", (e) => {
+    const el = e.target as HTMLInputElement;
+    if (el.id !== "bs-qty-n" || el.value === "") return;
+    setShopQty(Number(el.value), true);
+  });
+  sheet.addEventListener("change", (e) => {
+    const el = e.target as HTMLInputElement;
+    if (el.id !== "bs-qty-n") return;
+    setShopQty(Number(el.value));
+    // What was typed, as it counts (0 is 1, 500 is the most).
+    el.value = String(shopQty);
+  });
+  sheet.addEventListener("keydown", (e) => {
+    const el = e.target as HTMLElement;
+    if (el.id === "bs-qty-n" && e.key === "Enter") el.blur();
+  });
+  let stepTimer: ReturnType<typeof setTimeout> | undefined;
+  let stepHeld = false;
+  const stopStep = () => clearTimeout(stepTimer);
+  sheet.addEventListener("pointerdown", (e) => {
+    const b = (e.target as HTMLElement).closest<HTMLButtonElement>(
+      "[data-qtystep]",
+    );
+    if (!b) return;
+    const d = Number(b.dataset.qtystep);
+    stepHeld = false;
+    stopStep();
+    let wait = 380;
+    const tick = () => {
+      if (!setShopQty(shopQty + d)) return;
+      stepHeld = true;
+      sound("tick");
+      wait = Math.max(45, wait * 0.8);
+      stepTimer = setTimeout(tick, wait);
+    };
+    stepTimer = setTimeout(tick, wait);
+  });
+  for (const ev of ["pointerup", "pointercancel", "pointerleave"])
+    sheet.addEventListener(ev, stopStep);
   sheet.addEventListener("click", (e) => {
     const b = (e.target as HTMLElement).closest("button");
     if (!b || b.disabled) return;
@@ -3173,10 +3268,11 @@ export function openBistro(o: BistroOptions): BistroHandle {
       changed();
       return;
     }
-    if (b.dataset.qty) {
-      shopQty = Number(b.dataset.qty) || 1;
-      sound("tick");
-      return renderSheet();
+    if (b.dataset.qtystep) {
+      // (A press held down already counted on its own: see below.)
+      if (stepHeld) return void (stepHeld = false);
+      if (setShopQty(shopQty + Number(b.dataset.qtystep))) sound("tick");
+      return;
     }
     if (b.dataset.buy) {
       const kind = b.dataset.buy as ItemKind;
@@ -3520,6 +3616,22 @@ export function openBistro(o: BistroOptions): BistroHandle {
     else openSheet(k);
   });
   const onKey = (e: KeyboardEvent) => {
+    const typing = (e.target as HTMLElement | null)?.closest?.(
+      "input, textarea, select, [contenteditable]",
+    );
+    if (
+      (e.key === "r" || e.key === "R") &&
+      editing &&
+      held &&
+      !typing &&
+      !e.ctrlKey &&
+      !e.metaKey &&
+      !e.altKey
+    ) {
+      e.preventDefault();
+      rotateHeld(e.shiftKey ? -1 : 1);
+      return;
+    }
     if (e.key === "Escape") {
       if (sheetKind) closeSheet();
       else if (editing) setEditing(false);
@@ -4296,7 +4408,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
         d: hv.x + hv.y + 0.5,
         f: () => {
           ctx.globalAlpha = 0.75;
-          drawItem(ctx, h.kind, hv.x, hv.y, T, h.rot);
+          drawGhost(h, hv);
           ctx.globalAlpha = 1;
         },
       });
@@ -4305,7 +4417,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
     for (const it of list) it.f();
     if (editing && held && hover && ITEM_BY_KIND[held.kind].floor) {
       ctx.globalAlpha = 0.7;
-      drawItem(ctx, held.kind, hover.x, hover.y, T);
+      drawGhost(held, hover);
       ctx.globalAlpha = 1;
     }
 
@@ -4321,6 +4433,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
     drawFrontLamps(ctx, L);
     drawLighting(L);
     drawOverlay(now);
+    placeRotate();
     // Screen-space: coins flying to the badge.
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     const tgt = coinTarget();
@@ -4419,7 +4532,8 @@ export function openBistro(o: BistroOptions): BistroHandle {
         const gl = itemGlow(it.kind);
         if (!gl) continue;
         const c = iso(it.x, it.y);
-        glow(c.x + gl[0], c.y + gl[1], gl[2], gl[3], 0.32 * n);
+        const dx = itemFlipped(it.kind, it.rot) ? -gl[0] : gl[0];
+        glow(c.x + dx, c.y + gl[1], gl[2], gl[3], 0.32 * n);
       }
       if (!low)
         for (const p of festoonPoints())
@@ -4549,6 +4663,47 @@ export function openBistro(o: BistroOptions): BistroHandle {
       !standingOn(x, y)
     );
   };
+  /** The held piece where it would go, facing as it would, with a little spin when turned. */
+  const drawGhost = (h: NonNullable<typeof held>, at: Pt) => {
+    const k = h.spin === undefined ? 1 : clamp((T - h.spin) / 0.22, 0, 1);
+    const c = iso(at.x, at.y);
+    ctx.save();
+    if (k < 1) {
+      const w = Math.sin(k * Math.PI);
+      ctx.translate(c.x, c.y);
+      ctx.scale(1 - 0.45 * w, 1 + 0.1 * w);
+      ctx.translate(-c.x, -c.y);
+    }
+    drawItem(ctx, h.kind, at.x, at.y, T, facing(at.x, at.y));
+    ctx.restore();
+  };
+  /** The round ↻ button beside the held piece (as building games put it). */
+  const rotateEl = $("#bs-rotate") as HTMLButtonElement;
+  let rotateAt = "";
+  const placeRotate = () => {
+    const show =
+      editing && !!held && !!hover && itemTurns(held.kind) > 1 && !sheetKind;
+    if (rotateEl.hidden === show) rotateEl.hidden = !show;
+    if (!show || !held || !hover) return;
+    const floor = ITEM_BY_KIND[held.kind].floor;
+    const w = iso(hover.x + (floor ? 1 : 0), hover.y);
+    const p = toScreen({ x: w.x + 40, y: w.y - (floor ? 30 : 104) });
+    const r = cv.getBoundingClientRect(),
+      lr = layer.getBoundingClientRect();
+    const x = Math.round(r.left - lr.left + p.x),
+      y = Math.round(r.top - lr.top + p.y);
+    const key = `${x},${y}`;
+    if (key === rotateAt) return;
+    rotateAt = key;
+    rotateEl.style.left = `${x}px`;
+    rotateEl.style.top = `${y}px`;
+  };
+  rotateEl.addEventListener("click", () => {
+    rotateHeld(1);
+    rotateEl.classList.remove("spun");
+    void rotateEl.offsetWidth;
+    rotateEl.classList.add("spun");
+  });
   /** Free stoves of yours: since when (for the call to cook), and which call now. */
   const idleSince = new Map<number, number>();
   let calling: number[] = [];
@@ -5293,6 +5448,17 @@ export function openBistro(o: BistroOptions): BistroHandle {
       flush: () => sync.flush(),
       plate: (i: number) => plateStove(i),
       tap: (sx: number, sy: number) => tap(sx, sy),
+      /** How many ways a piece turns (1: it looks the same mirrored). */
+      turns: (kind: ItemKind) => itemTurns(kind),
+      /** The held piece's facing where it hovers, and whether turned by hand. */
+      held: () =>
+        held && hover
+          ? {
+              kind: held.kind,
+              rot: facing(hover.x, hover.y),
+              turned: !!held.turned,
+            }
+          : null,
       screen: (gx: number, gy: number, lift = 0) => {
         applyView();
         const p = iso(gx, gy);

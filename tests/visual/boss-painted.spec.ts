@@ -20,6 +20,37 @@ async function review(page: Page, preload = true) {
   }, preload);
   return errors;
 }
+/** Grumblecrag's vector rig (boss-vector-rig.ts): its root and visible parts. */
+const vector = (page: Page) =>
+  page.evaluate(() => {
+    const w = window as any,
+      scene = w.__bossReview.rows[0].g.scene,
+      root = scene.children.list.find(
+        (o: any) => o.name === "vector-boss-grumblecrag",
+      );
+    if (!root) return null;
+    const parts: Record<string, any> = {};
+    // the body (root.list[0]) and its glows (root.list[1])
+    for (const o of root.list.flatMap((c: any) => c.list ?? []))
+      if (o.visible)
+        parts[o.name.replace("vector-part-", "")] = {
+          x: o.x,
+          y: o.y,
+          rotation: o.rotation,
+          sx: o.scaleX,
+          sy: o.scaleY,
+          alpha: o.alpha,
+          texture: o.texture.key,
+        };
+    return {
+      visible: root.visible,
+      facing: root.getData("facing"),
+      order: root.list[0].list
+        .filter((o: any) => o.visible)
+        .map((o: any) => o.name.replace("vector-part-", "")),
+      parts,
+    };
+  });
 const pose = (page: Page) =>
   page.evaluate(() => {
     const w = window as any,
@@ -62,7 +93,11 @@ test("all seven living boss rigs animate, hold a pause and keep combat snapshots
   const errors = await review(page);
   await page.evaluate(() => (window as any).__bossReview.frame(1, 0, false));
   const start = await pose(page);
-  expect(start).toHaveLength(8); // two independently posed Storm Twins
+  // Six painted bosses, two Storm Twins posed on their own; Grumblecrag is vector art.
+  expect(start).toHaveLength(7);
+  const vStart = (await vector(page))!;
+  expect(vStart.visible).toBe(true);
+  expect(Object.keys(vStart.parts).length).toBeGreaterThan(20);
   expect(
     start.every(
       (r) =>
@@ -102,6 +137,11 @@ test("all seven living boss rigs animate, hold a pause and keep combat snapshots
     for (let n = 1; n <= 12; n++) r.frame(1, n * 0.1, false);
   });
   const gathered = await pose(page);
+  // Ground Slam windup: both fists rise overhead and burn.
+  const vGathered = (await vector(page))!;
+  expect(vGathered.parts.fistL.y).toBeLessThan(vStart.parts.fistL.y - 40);
+  expect(vGathered.parts.fistR.y).toBeLessThan(vStart.parts.fistR.y - 40);
+  expect(vGathered.parts["glow-fistL"]).toBeTruthy();
   for (const rig of gathered) {
     const ready = start.find((r) => r.name === rig.name)!;
     expect(
@@ -116,6 +156,11 @@ test("all seven living boss rigs animate, hold a pause and keep combat snapshots
     r.frame(1, 1.55, false);
   });
   const striking = await pose(page);
+  const vStriking = (await vector(page))!;
+  expect(vStriking.parts.fistL.y).toBeGreaterThan(vGathered.parts.fistL.y + 40);
+  for (const p of Object.values(vStriking.parts) as any[])
+    for (const n of [p.x, p.y, p.rotation, p.sx, p.sy, p.alpha])
+      expect(Number.isFinite(n)).toBe(true);
   for (const rig of striking) {
     expect(rig.parts.length).toBeLessThanOrEqual(2);
     const windup = gathered.find((r) => r.name === rig.name)!;
@@ -132,16 +177,20 @@ test("all seven living boss rigs animate, hold a pause and keep combat snapshots
     r.frame(2, 2.1, false);
   });
   const paused = await pose(page);
+  const vPaused = await vector(page);
   await page.evaluate(() => (window as any).__bossReview.frame(2, 20, false));
   expect(await pose(page)).toEqual(paused);
+  expect(await vector(page)).toEqual(vPaused);
   await page.evaluate(() => {
     const r = (window as any).__bossReview;
     for (const row of r.rows) row.state.phase = "playing";
     r.frame(3, 20.025, true);
   });
   const reduced = await pose(page);
+  const vReduced = await vector(page);
   await page.evaluate(() => (window as any).__bossReview.frame(3, 22, true));
   expect(await pose(page)).toEqual(reduced);
+  expect(await vector(page)).toEqual(vReduced);
   await snap(page, info, "seven-painted-bosses");
   // A retry resets the presentation clock while the same scene/actors survive.
   await page.evaluate(() => {
@@ -170,6 +219,11 @@ test("all seven living boss rigs animate, hold a pause and keep combat snapshots
     expect(rig.parts[0].frame).toBe(
       start.find((r) => r.name === rig.name)!.parts[0].frame,
     );
+  }
+  const vRetry = (await vector(page))!;
+  for (const id of ["fistL", "fistR", "head", "torso"]) {
+    expect(vRetry.parts[id].x).toBeCloseTo(vStart.parts[id].x, 1);
+    expect(vRetry.parts[id].y).toBeCloseTo(vStart.parts[id].y, 1);
   }
   expect(errors).toEqual([]);
 });
@@ -224,8 +278,8 @@ test("late boss loads retain only the current boss atlas and can revisit a boss"
   const errors = await review(page, false);
   await page.evaluate(() => {
     const r = (window as any).__bossReview;
-    r.retain("grumblecrag");
-    r.frame(1, 0, false, ["grumblecrag"]);
+    r.retain("tidewyrm");
+    r.frame(1, 0, false, ["tidewyrm"]);
   });
   const loaded = async (id: string) => {
     await expect
@@ -238,7 +292,7 @@ test("late boss loads retain only the current boss atlas and can revisit a boss"
       })
       .toBe(true);
   };
-  await loaded("grumblecrag");
+  await loaded("tidewyrm");
   await page.evaluate(() => {
     const r = (window as any).__bossReview;
     r.retain("emberwing");
@@ -254,10 +308,10 @@ test("late boss loads retain only the current boss atlas and can revisit a boss"
   ).toEqual(["raid-painted-emberwing"]);
   await page.evaluate(() => {
     const r = (window as any).__bossReview;
-    r.retain("grumblecrag");
-    r.frame(1, 1.1, false, ["grumblecrag"]);
+    r.retain("tidewyrm");
+    r.frame(1, 1.1, false, ["tidewyrm"]);
   });
-  await loaded("grumblecrag");
+  await loaded("tidewyrm");
   expect(errors).toEqual([]);
 });
 
@@ -400,14 +454,14 @@ test("an unavailable art file keeps the encounter playable without a request loo
   page,
 }) => {
   let requests = 0;
-  await page.route(/raid-whole-grumblecrag\.webp/, (route) => {
+  await page.route(/raid-whole-tidewyrm\.webp/, (route) => {
     if (route.request().resourceType() === "script") return route.continue();
     requests++;
     return route.abort();
   });
   const errors = await review(page, false);
   await page.evaluate(() =>
-    (window as any).__bossReview.frame(1, 0, false, ["grumblecrag"]),
+    (window as any).__bossReview.frame(1, 0, false, ["tidewyrm"]),
   );
   await expect.poll(() => requests).toBeGreaterThan(0);
   await expect
@@ -422,13 +476,15 @@ test("an unavailable art file keeps the encounter playable without a request loo
   expect(attempts).toBeLessThanOrEqual(3);
   const commands = await page.evaluate(() => {
     const r = (window as any).__bossReview;
-    for (let n = 1; n <= 40; n++) r.frame(1, n * 0.05, false, ["grumblecrag"]);
-    return r.rows[0].g.commandBuffer.length;
+    for (let n = 1; n <= 40; n++) r.frame(1, n * 0.05, false, ["tidewyrm"]);
+    return r.rows.find((o: any) => o.id === "tidewyrm").g.commandBuffer.length;
   });
   await page.waitForTimeout(100);
   expect(requests).toBe(attempts);
   expect(commands).toBeGreaterThan(100);
-  expect(await pose(page)).toEqual([]);
+  expect((await pose(page)).filter((r) => r.name.includes("tidewyrm"))).toEqual(
+    [],
+  );
   expect(errors).toEqual([]);
 });
 
@@ -669,26 +725,37 @@ test("all seven bosses use distinct front, rear and side art with complete direc
           for (const p of row.state.players) if (p.raidBoss) p.angle = angle;
         }
         r.frame(1, time, true);
-        return r.rows.flatMap((row: any) =>
-          row.state.players
-            .filter((p: any) => p.raidBoss)
-            .map((p: any, index: number) => {
-              const mode =
-                row.id === "storm-twins" && index === 1 ? "blue" : "body";
-              const f = r.directionalFrame(row.id, mode, view, 0);
-              return {
-                view,
-                frame: `pose-${f.index}`,
-                texture: `raid-${f.atlas === "base" ? "painted" : "directions"}-${row.id}`,
-                flip: f.flip,
-              };
-            }),
-        );
+        return r.rows
+          .filter((row: any) => row.id !== "grumblecrag")
+          .flatMap((row: any) =>
+            row.state.players
+              .filter((p: any) => p.raidBoss)
+              .map((p: any, index: number) => {
+                const mode =
+                  row.id === "storm-twins" && index === 1 ? "blue" : "body";
+                const f = r.directionalFrame(row.id, mode, view, 0);
+                return {
+                  view,
+                  frame: `pose-${f.index}`,
+                  texture: `raid-${f.atlas === "base" ? "painted" : "directions"}-${row.id}`,
+                  flip: f.flip,
+                };
+              }),
+          );
       },
       { view, angle, time },
     );
     const actual = await pose(page);
-    expect(actual).toHaveLength(8);
+    expect(actual).toHaveLength(7);
+    // Grumblecrag's rig shows the matching one of its eight facings.
+    const v = (await vector(page))!;
+    expect(v.facing).toBe({ front: 0, right: 2, back: 4, left: 6 }[view]);
+    if (view === "front") expect(v.parts.eyeL && v.parts.eyeR).toBeTruthy();
+    if (view === "back") expect(v.parts.eyeL ?? v.parts.eyeR).toBeUndefined();
+    if (view === "left" || view === "right")
+      expect(Math.sign(v.parts.head.x - v.parts.pelvis.x)).toBe(
+        view === "right" ? 1 : -1,
+      );
     for (const [i, actor] of actual.entries()) {
       expect(actor.view).toBe(expected[i].view);
       expect(actor.parts).toHaveLength(1);

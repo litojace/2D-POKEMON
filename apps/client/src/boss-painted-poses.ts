@@ -16,18 +16,6 @@ interface Look {
   key?: string;
   stagger?: boolean;
 }
-export function paintedGrumble(
-  g: G,
-  o: Look & {
-    lift: number;
-    stride: number;
-    collapse: number;
-    groundY: number;
-    phase: number;
-  },
-) {
-  return paintWholeBoss(g, "grumblecrag", { ...o, y: o.groundY + 52 });
-}
 export function paintedTide(
   g: G,
   o: Look & { facing: number; stranded: boolean; rise: number; sink: number },

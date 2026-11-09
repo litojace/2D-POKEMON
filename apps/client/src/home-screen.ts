@@ -19,12 +19,18 @@ export function lastHomeFighter(): CharacterId {
   }
   return "voltkit";
 }
+let onRemember: ((id: CharacterId) => void) | undefined;
+/** Told of every fighter you pick (main.ts keeps it with your account). */
+export function onHomeFighterRemembered(listener: (id: CharacterId) => void) {
+  onRemember = listener;
+}
 export function rememberHomeFighter(id: CharacterId) {
   try {
     localStorage.setItem("arena-featured-fighter", id);
   } catch {
     /* Optional preference. */
   }
+  onRemember?.(id);
 }
 /**
  * What #menu holds in the hub: the Play panel that slides over the Lobby,
