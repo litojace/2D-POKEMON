@@ -67,19 +67,26 @@ function startupScriptList(): Plugin {
   };
 }
 /**
+ * Hashed artwork installed ahead of time (scripts/verify-pwa.mjs checks it):
+ * the startup screen, and every boss's painted rig and spell flipbook, so a
+ * raid starts without downloading its boss and works offline once installed.
+ */
+const PRECACHED_ART =
+  /^assets\/(startup-|raid-whole-|raid-directions-|raid-spell-flipbook-)/;
+/**
  * What the service worker installs ahead of time: the shell the game needs
- * to start (startup scripts, styles, fonts, icons, the offline page, the
- * startup artwork) and the unhashed public files (fighter layers, music,
+ * to start (startup scripts, styles, fonts, icons, the offline page), the
+ * artwork above, and the unhashed public files (fighter layers, music,
  * backgrounds), which need its revision checks to stay current. Hashed
- * scripts loaded later and the boss raid artwork (about 19 MB) are cached by
- * the service worker when first used instead (sw.ts).
+ * scripts loaded later (the Farm, Plaza and Bistro, the shop preview) and the
+ * other raid art (splash pictures, thumbnails, portraits, illustrated arenas)
+ * are cached by the service worker when first used instead (sw.ts).
  */
 function precached(url: string) {
   if (/^assets\/[^/]+\.js$/.test(url))
     // Unknown (a build without the list): keep every script, as before.
     return !startupScripts.size || startupScripts.has(url);
-  if (/^assets\/[^/]+\.webp$/.test(url))
-    return url.startsWith("assets/startup-");
+  if (/^assets\/[^/]+\.webp$/.test(url)) return PRECACHED_ART.test(url);
   return true;
 }
 

@@ -17,7 +17,8 @@ clientsClaim();
 
 /**
  * Optional content, cached the first time it is used: scripts loaded later
- * (the Farm, Plaza and Bistro, the shop preview) and the boss raid artwork.
+ * (the Farm, Plaza and Bistro, the shop preview) and the raid art that is not
+ * precached (splash pictures, thumbnails, portraits, illustrated arenas).
  * Their file names carry a content hash, so a cached copy never goes stale;
  * keeping the scripts also lets a page opened before a deploy still load its
  * own version's worlds afterwards. Each cache keeps its newest entries.
