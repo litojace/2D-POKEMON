@@ -1,4 +1,5 @@
 import { paintVectorGrumble } from "./boss-vector-rig";
+import { paintBossAura } from "./boss-spell-art";
 import { groundHeight } from "../../../packages/shared/src/world-art";
 import { bossLife } from "./raid-boss-life";
 import { rockGrain } from "./boss-materials";
@@ -82,7 +83,7 @@ export function drawRaidBoss(
   const cast = life.action.casts[life.action.casts.length - 1];
   const motion = reduced ? 0 : 1;
   const recoil = Math.sin(pose.hurt * Math.PI * 3) * pose.hurt * 6 * motion;
-  paintVectorGrumble(g, {
+  const core = paintVectorGrumble(g, {
     x: boss.x + recoil + Math.sin(pose.time * 17) * pose.crash * 5 * motion,
     y: boss.y,
     angle: boss.angle,
@@ -110,6 +111,8 @@ export function drawRaidBoss(
     collapse: pose.collapse,
     deathAge: pose.deathAge,
   });
+  // The cast aura every boss gathers around its core.
+  if (core && !pose.dead) paintBossAura(g, "grumblecrag", core.x, core.y, life);
   for (const f of pose.fragments) {
     const fx = f.x + f.vx * f.age,
       fy = f.y + f.vy * f.age + 160 * f.age * f.age;

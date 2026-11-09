@@ -70,6 +70,8 @@ interface Rig {
   actor: Phaser.GameObjects.Container;
   /** Glows over the body, added on top. */
   glows: Phaser.GameObjects.Container;
+  /** Markers over everything: the open core's ring, as on painted bosses. */
+  front: Phaser.GameObjects.Graphics;
   images: Map<string, Phaser.GameObjects.Image>;
   frame: number;
   facing?: number;
@@ -227,8 +229,9 @@ function dropOtherAtlases(scene: Phaser.Scene, phase: Phase, rig: Rig) {
 }
 
 /**
- * Show Grumblecrag for this frame in the graphics layer `g`. Returns false
- * only when the layer is not in a running scene.
+ * Show Grumblecrag for this frame in the graphics layer `g`. Returns where
+ * its core is in that layer, or false when the layer is not in a running
+ * scene.
  */
 export function paintVectorGrumble(
   g: Phaser.GameObjects.Graphics,
@@ -269,6 +272,7 @@ export function paintVectorGrumble(
   rig.root.setDepth(g.depth + 0.001).setAlpha(g.alpha);
   rig.actor.setPosition(o.x, o.y + GRUMBLE_FEET);
   rig.glows.setPosition(o.x, o.y + GRUMBLE_FEET);
+  rig.front.setPosition(o.x, o.y + GRUMBLE_FEET).clear();
   const seen = new Set<string>();
   const S = GRUMBLE_SCALE;
   const at = (p: Vec3) => {
@@ -344,6 +348,15 @@ export function paintVectorGrumble(
       z: p.z + (p.z * 1.15 + 10 - p.z) * e,
     };
   };
+
+  // Where the core is, from any side: the open-core ring (the same marker
+  // every painted boss shows) and the cast aura centre on it.
+  const corePart = parts.find((p) => p.kind === "core");
+  const core = corePart ? at(settle(corePart.w, 30, 1)) : at(head);
+  if (o.exposed && !o.dead) {
+    rig.front.fillStyle(0xaaffdf, 0.15).fillCircle(core.x, core.y, 25);
+    rig.front.lineStyle(2.5, 0xd9ffdb, 0.85).strokeCircle(core.x, core.y, 25);
+  }
 
   const glowBase = P.glow + (phase - 1) * 0.18;
   const pulse = o.reduced
@@ -508,7 +521,7 @@ export function paintVectorGrumble(
     if (!seen.has(key)) img.setVisible(false);
   rig.actor.sort("vz");
   dropOtherAtlases(scene, phase, rig);
-  return true;
+  return { x: o.x + core.x, y: o.y + GRUMBLE_FEET + core.y };
 }
 
 function createRig(g: Phaser.GameObjects.Graphics): Rig {
@@ -516,13 +529,15 @@ function createRig(g: Phaser.GameObjects.Graphics): Rig {
   const actor = scene.add.container(0, 0);
   // One additive layer: its glows draw in a single batch over the body.
   const glows = scene.add.container(0, 0).setBlendMode("ADD");
+  const front = scene.add.graphics().setName("vector-boss-front");
   const root = scene.add
-    .container(0, 0, [actor, glows])
+    .container(0, 0, [actor, glows, front])
     .setName("vector-boss-grumblecrag");
   const rig: Rig = {
     root,
     actor,
     glows,
+    front,
     images: new Map(),
     frame: -1,
     yaw: 0,

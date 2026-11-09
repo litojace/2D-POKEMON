@@ -61,7 +61,7 @@ const rig = (page: Page) =>
         (o: any) => o.name === "vector-boss-grumblecrag",
       );
     const parts: Record<string, any> = {};
-    for (const o of root?.list.flatMap((c: any) => c.list) ?? [])
+    for (const o of root?.list.flatMap((c: any) => c.list ?? []) ?? [])
       if (o.visible)
         parts[o.name.replace("vector-part-", "")] = {
           x: o.x,
@@ -73,6 +73,10 @@ const rig = (page: Page) =>
     return {
       visible: !!root?.visible,
       facing: root?.getData("facing"),
+      // the open-core ring (drawn commands on the front layer)
+      ring:
+        root?.list.find((o: any) => o.name === "vector-boss-front")
+          ?.commandBuffer.length ?? -1,
       parts,
       textures: r.game.textures
         .getTextureKeys()
@@ -136,6 +140,7 @@ test("phases, a stagger and the defeat change the rig; one atlas at a time", asy
   // The whole body comes from one atlas per phase.
   expect(calm.textures).toEqual(["vgrumble-atlas-1"]);
   expect(calm.parts.torso.texture).toBe("vgrumble-atlas-1");
+  expect(calm.ring).toBe(0);
 
   // Staggered (phase 2): down on a knee, the core's armour open.
   await draw(page, {
@@ -146,6 +151,8 @@ test("phases, a stagger and the defeat change the rig; one atlas at a time", asy
   });
   const stagger = await rig(page);
   expect(stagger.parts.cavity).toBeTruthy();
+  // The same open-core ring the painted bosses show.
+  expect(stagger.ring).toBeGreaterThan(0);
   expect(stagger.parts.head.y).toBeGreaterThan(calm.parts.head.y + 15);
   expect(stagger.parts.torso.texture).toBe("vgrumble-atlas-2");
   expect(stagger.textures).toEqual(["vgrumble-atlas-2"]);
@@ -160,6 +167,7 @@ test("phases, a stagger and the defeat change the rig; one atlas at a time", asy
   const molten = await rig(page);
   expect(molten.parts.torso.texture).toBe("vgrumble-atlas-3");
   expect(molten.parts["glow-aura"]).toBeTruthy();
+  expect(molten.ring).toBeGreaterThan(0);
 
   // Only the current phase's atlas is kept, whatever phases were seen.
   await draw(page, { phase: 1, clock: 5, frames: 4 });
@@ -177,6 +185,7 @@ test("phases, a stagger and the defeat change the rig; one atlas at a time", asy
   expect(
     fallen.parts.eyeL ?? fallen.parts.eyeR ?? fallen.parts.core,
   ).toBeUndefined();
+  expect(fallen.ring).toBe(0);
   const heights = Object.entries(fallen.parts)
     .filter(([id]) => /^(torso|head|hump|shoulder|fist)/.test(id))
     .map(([, p]: any) => -p.y);
