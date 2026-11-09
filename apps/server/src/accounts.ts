@@ -231,6 +231,8 @@ export function createAccountProvider(): AccountProvider {
     },
   };
 }
+/** A fighter to keep with the account: one on the roster. */
+const savedFighterSchema = z.object({ fighter: z.enum(FIGHTER_IDS) }).strict();
 export async function authorize(
   provider: AccountProvider,
   token: unknown,
@@ -328,6 +330,30 @@ export function installAccountRoutes(
         p_title_id: data.titleId,
       });
       onPlayerChanged(account.id);
+      res.json({ ok: true });
+    }),
+  );
+  // The fighter you last picked, kept with your account so another device
+  // starts on it (migration 108). Null before the first save.
+  app.get(
+    "/api/account/fighter",
+    route(false, async (_req, res, token) => {
+      res.setHeader("Cache-Control", "no-store");
+      const saved = await provider.rpc(token, "arena_saved_fighter", {});
+      res.json({
+        fighter:
+          typeof saved === "string" &&
+          (FIGHTER_IDS as readonly string[]).includes(saved)
+            ? saved
+            : null,
+      });
+    }),
+  );
+  app.post(
+    "/api/account/fighter",
+    route(false, async (req, res, token) => {
+      const { fighter } = savedFighterSchema.parse(req.body);
+      await provider.rpc(token, "arena_save_fighter", { p_fighter: fighter });
       res.json({ ok: true });
     }),
   );

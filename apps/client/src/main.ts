@@ -37,6 +37,7 @@ import { fitDesktopBattleHud } from "./desktop-battle-layout";
 import {
   homeShell,
   lastHomeFighter,
+  onHomeFighterRemembered,
   rememberHomeFighter,
   startRoomSection,
   welcomeGate,
@@ -6437,6 +6438,14 @@ accountsUI = new AccountUI({
     renderMenu();
     syncHub();
   },
+  // Logged in on another device: its last pick, unless a room holds yours.
+  restoreFighter: (id) => {
+    if (id === selected || state) return;
+    selected = id;
+    rememberHomeFighter(id);
+    renderMenu();
+    syncHub();
+  },
   toLobby: () => setHubScene("lobby"),
   openFarm: () => setHubScene("farm"),
   openDialog: dialog,
@@ -6565,6 +6574,8 @@ accountsUI = new AccountUI({
     } else renderBattle();
   },
 });
+// Every fighter you pick is kept with your account too (migration 108).
+onHomeFighterRemembered((id) => accountsUI.saveFighter(id));
 
 // Imported code and the UI shell are ready; dismiss the asset-independent loader.
 onServerStartupRetry(() => {

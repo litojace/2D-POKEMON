@@ -86,6 +86,21 @@ window.fetch = async (input, init) => {
   const url = new URL(typeof input === "string" ? input : input instanceof URL ? input.href : input.url, location.href);
   if (url.pathname.startsWith("/api/")) {
     if (url.pathname === "/api/health") return Response.json({ ok: true });
+    // The fighter kept with the account (migration 108): window.__savedFighter
+    // is what the account has; each save is pushed to window.__fighterSaves.
+    if (url.pathname === "/api/account/fighter") {
+      const f = window as unknown as {
+        __savedFighter?: string | null;
+        __fighterSaves?: string[];
+      };
+      if (init?.method === "POST") {
+        const { fighter } = JSON.parse(String(init.body));
+        f.__savedFighter = fighter;
+        (f.__fighterSaves ??= []).push(fighter);
+        return Response.json({ ok: true });
+      }
+      return Response.json({ fighter: f.__savedFighter ?? null });
+    }
     // Tests can set window.__missions (before load, or then refresh the
     // economy) to give the player today's missions, and window.__friends to
     // give them friends and requests, and window.__raids for their raid
