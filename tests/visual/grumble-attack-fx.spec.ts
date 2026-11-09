@@ -115,3 +115,65 @@ test("Grumblecrag's attacks use the demo's effects, before and as they land", as
     await context.close();
   }
 });
+
+test("Grumblecrag's own moments: the roar, a hit's chips, the stagger and its death", async ({
+  browser,
+}, info) => {
+  test.setTimeout(420_000);
+  const context = await browser.newContext({
+    viewport: { width: 1280, height: 720 },
+  });
+  try {
+    const page = await context.newPage();
+    const errors = await raid(page);
+    await page.evaluate(() => (window as any).__combat.face("front"));
+    await run(page, 0.5);
+    const moment = async (name: string, change: string, wait: number) => {
+      await page.evaluate((change) => {
+        const c = (window as any).__combat,
+          a = c.arena,
+          boss = a.boss();
+        if (change === "phase") a.raid.phase = 2;
+        if (change === "hurt") boss.hp -= 40;
+        if (change === "stagger") a.raid.staggerUntil = a.time + 4;
+        if (change === "defeat") boss.hp = 0;
+      }, change);
+      await run(page, wait);
+      const now = await drawn(page);
+      expect(now.flipbook, name).toBe(0);
+      // A hit's chips are drawn shapes only; the others raise dust or glow.
+      if (name !== "hurt") expect(now.sprites, name).toBeGreaterThan(0);
+      await snap(page, info, `grumble-moment-${name}`);
+      await run(page, 1.6);
+    };
+    await moment("roar", "phase", 0.45);
+    await moment("hurt", "hurt", 0.2);
+    await moment("stagger", "stagger", 0.3);
+    // A raid won: the results stay hidden while the boss falls (style.css,
+    // raid-victory-reveal), so its collapse and dust are seen. The photo
+    // keeps CSS animations running (snap() would jump them to their end).
+    await page.evaluate(() => ((window as any).__combat.arena.boss().hp = 0));
+    await run(page, 0.07);
+    const overlay = page.locator("#arena-overlay");
+    await expect(overlay).toHaveClass(/raid-victory-reveal/);
+    expect(await overlay.evaluate((e) => getComputedStyle(e).visibility)).toBe(
+      "hidden",
+    );
+    expect((await drawn(page)).sprites).toBeGreaterThan(0);
+    const body = await page.screenshot({ animations: "allow" });
+    await info.attach("grumble-moment-defeat", {
+      body,
+      contentType: "image/png",
+    });
+    if (process.env.VISUAL_SHOTS) {
+      const { writeFileSync } = await import("node:fs");
+      writeFileSync(
+        `${process.env.VISUAL_SHOTS}/grumble-moment-defeat.png`,
+        body,
+      );
+    }
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});

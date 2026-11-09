@@ -21,6 +21,7 @@ import type { RaidWarning } from "../../../packages/shared/src/raid";
 import type { BossCast } from "./boss-performance";
 import type { Fx } from "./fx-engine";
 import { CRYSTAL, ROCK, type Phase } from "./boss-vector-grumble";
+import { GRUMBLE_FEET } from "./boss-vector-rig";
 
 type Glow = (
   x: number,
@@ -72,7 +73,40 @@ interface Hit {
   trail?: { x: number; y: number; at: number }[];
   stop?: { x: number; y: number; at: number };
 }
-const hits = new WeakMap<Fx, { last: number; map: Map<number, Hit> }>();
+/**
+ * Moments of the boss itself (from the demo): the roar into a new phase, a
+ * hit's chips, the stagger cracking it open, and its death.
+ */
+type MomentKind = "roar" | "hurt" | "stagger" | "defeat";
+interface Moment {
+  kind: MomentKind;
+  age: number;
+  landed: number;
+  /** Where its feet were then. */
+  x: number;
+  y: number;
+  seed: number;
+}
+const MOMENT_LIFE: Record<MomentKind, number> = {
+  roar: 1.7,
+  hurt: 0.9,
+  stagger: 1.4,
+  defeat: 2.4,
+};
+/** At most one burst of chips this often (raiders hit all the time). */
+const HURT_EVERY = 0.45;
+interface Memory {
+  last: number;
+  map: Map<number, Hit>;
+  moments: Moment[];
+  phase: number;
+  hp: number;
+  staggered: boolean;
+  dead: boolean;
+  hurtAt: number;
+  count: number;
+}
+const hits = new WeakMap<Fx, Memory>();
 
 interface Palette {
   rock: number;
@@ -407,7 +441,21 @@ export function drawGrumbleAttacks(
   // The hits, each kept for as long as its effect lasts. Their clock stops
   // while the game is paused, so a paused frame stays as it was.
   let mine = hits.get(fx);
-  if (!mine) hits.set(fx, (mine = { last: clock, map: new Map() }));
+  if (!mine)
+    hits.set(
+      fx,
+      (mine = {
+        last: clock,
+        map: new Map(),
+        moments: [],
+        phase: r.phase,
+        hp: boss.hp,
+        staggered: false,
+        dead: boss.hp <= 0,
+        hurtAt: -Infinity,
+        count: 0,
+      }),
+    );
   const dt = state.phase === "paused" ? 0 : clamp(clock - mine.last, 0, 0.1);
   mine.last = clock;
   // Smooth with the frames, but never ahead of the server (a slow phone, a
@@ -424,6 +472,7 @@ export function drawGrumbleAttacks(
         age: cast.age,
         landed: state.time - cast.age,
       });
+  moments(fx, glow, state, boss, mine, dt, pal, low);
   for (const [id, hit] of mine.map) {
     const c = hit.cast,
       age = hit.age;
@@ -519,4 +568,199 @@ function charge(
       pal,
       low,
     );
+}
+
+/** The boss's own moments: noticed from the state, drawn for their life. */
+function moments(
+  fx: Fx,
+  glow: Glow,
+  state: Snapshot,
+  boss: Fighter,
+  mine: Memory,
+  dt: number,
+  pal: Palette,
+  low: boolean,
+) {
+  const r = state.raid!;
+  const feetY = boss.y + GRUMBLE_FEET;
+  const add = (kind: MomentKind) =>
+    mine.moments.push({
+      kind,
+      age: 0,
+      landed: state.time,
+      x: boss.x,
+      y: feetY,
+      seed: 900 + ++mine.count * 31,
+    });
+  const dead = boss.hp <= 0 || r.result === "victory";
+  const staggered = !dead && r.staggerUntil > state.time;
+  if (r.phase > mine.phase && !dead) add("roar");
+  if (staggered && !mine.staggered) add("stagger");
+  if (dead && !mine.dead) add("defeat");
+  else if (
+    !dead &&
+    boss.hp < mine.hp &&
+    state.time - mine.hurtAt >= HURT_EVERY &&
+    state.phase === "playing"
+  ) {
+    mine.hurtAt = state.time;
+    add("hurt");
+  }
+  mine.phase = r.phase;
+  mine.hp = boss.hp;
+  mine.staggered = staggered;
+  mine.dead = dead;
+  for (const m of mine.moments)
+    m.age = Math.max(m.age, Math.min(m.age + dt, state.time - m.landed + 0.1));
+  mine.moments = mine.moments.filter((m) => m.age <= MOMENT_LIFE[m.kind]);
+  const many = low ? 0.5 : 1;
+  for (const m of mine.moments) {
+    if (m.kind === "roar") roar(fx, glow, m, pal, low);
+    else if (m.kind === "hurt")
+      chips(fx, m.x, m.y, 115, Math.round(6 * many), m.age, m.seed, pal, 1.05);
+    else if (m.kind === "stagger") {
+      chips(fx, m.x, m.y, 90, Math.round(12 * many), m.age, m.seed, pal, 1.1);
+      dustRing(fx, m.x, m.y, 150, Math.round(14 * many), m.age, m.seed, 1.2);
+    } else if (m.kind === "defeat") {
+      dustRing(fx, m.x, m.y, 230, Math.round(26 * many), m.age, m.seed, 2.0);
+      chips(
+        fx,
+        m.x,
+        m.y,
+        100,
+        Math.round(22 * many),
+        m.age,
+        m.seed + 7,
+        pal,
+        1.3,
+      );
+      if (pal.phase >= 2)
+        embers(
+          fx,
+          glow,
+          m.x,
+          m.y,
+          120,
+          Math.round(20 * many),
+          m.age,
+          m.seed,
+          1.8,
+        );
+    }
+  }
+}
+
+/** Chips of rock bursting from the body (height h above the feet) and falling. */
+function chips(
+  fx: Fx,
+  x: number,
+  y: number,
+  h0: number,
+  count: number,
+  age: number,
+  seed: number,
+  pal: Palette,
+  power: number,
+) {
+  for (let i = 0; i < count; i++) {
+    const a = hash(seed + i) * TAU,
+      v = (60 + hash(seed + i + 3) * 120) * power,
+      up = (90 + hash(seed + i + 5) * 140) * power;
+    // Falls back to the floor (height 0), then lies there fading.
+    const land = (up + Math.sqrt(up * up + 4 * 310 * h0)) / (2 * 310);
+    const t = Math.min(age, land);
+    const h = Math.max(0, h0 + up * t - 310 * t * t);
+    const fade = 1 - clamp((age - land - 0.2) / 0.5);
+    if (fade <= 0) continue;
+    const px = x + Math.cos(a) * v * t,
+      py = y + Math.sin(a) * v * t * FLAT;
+    fx.floorSolid.fillStyle(0x050302, 0.2 * fade).fillEllipse(px, py, 10, 5);
+    rock(
+      fx.solid,
+      px,
+      py - h,
+      5.5 + hash(seed + i + 7) * 5 * power,
+      seed + i,
+      age * 7 * (hash(seed + i + 9) - 0.5),
+      pal,
+      fade,
+    );
+  }
+}
+
+/** A ring of dust thrown out along the floor. */
+function dustRing(
+  fx: Fx,
+  x: number,
+  y: number,
+  reach: number,
+  count: number,
+  age: number,
+  seed: number,
+  life: number,
+) {
+  const u = clamp(age / life);
+  if (u >= 1) return;
+  for (let i = 0; i < count; i++) {
+    const a = (i / count) * TAU + hash(seed + i) * 0.4,
+      d = reach * (0.3 + 0.7 * easeOut(u)) * (0.75 + hash(seed + i + 1) * 0.35);
+    cloud(
+      fx,
+      x + Math.cos(a) * d,
+      y + Math.sin(a) * d * FLAT - 6,
+      20 + age * 30,
+      0.36 * (1 - u),
+    );
+  }
+}
+
+/** Embers rising around a point, drifting. */
+function embers(
+  fx: Fx,
+  glow: Glow,
+  x: number,
+  y: number,
+  reach: number,
+  count: number,
+  age: number,
+  seed: number,
+  life: number,
+) {
+  const u = clamp(age / life);
+  if (u >= 1) return;
+  for (let i = 0; i < count; i++) {
+    const a = hash(seed + i + 40) * TAU,
+      d = reach * hash(seed + i + 41);
+    const ex = x + Math.cos(a) * d + Math.sin(age * 4 + i) * 8,
+      ey = y + Math.sin(a) * d * FLAT - (30 + age * (70 + hash(seed + i) * 80));
+    fx.g.fillStyle(0xffb450, 1 - u).fillCircle(ex, ey, 2.6);
+    glow(ex, ey, 13, 0xff8c3c, (1 - u) * 0.5);
+  }
+}
+
+/**
+ * The roar into a new phase: sound waves from the mouth for a second and a
+ * bit, a ring along the floor and embers rising around the boss.
+ */
+function roar(fx: Fx, glow: Glow, m: Moment, pal: Palette, low: boolean) {
+  const mouthY = m.y - 140;
+  // A wave every 0.16 s from 0.05 to 1.3 s, each lasting 0.7 s.
+  for (let k = 0; k < 8; k++) {
+    const u = (m.age - 0.05 - k * 0.16) / 0.7;
+    if (u < 0 || u > 1) continue;
+    fx.g
+      .lineStyle(3 * (1 - u) + 0.5, 0xffdcaa, 0.55 * (1 - u))
+      .strokeEllipse(m.x, mouthY, (20 + u * 160) * 2, (12 + u * 90) * 2);
+  }
+  // The floor ring as the new phase takes hold.
+  const k = easeOut(clamp(m.age / 0.8)),
+    fade = 1 - clamp(m.age / 0.8);
+  if (fade > 0) {
+    const rr = 200 * k;
+    fx.floor
+      .lineStyle(8 * (1 - k) + 1, pal.glow, fade * 0.8)
+      .strokeEllipse(m.x, m.y, rr * 2, rr * 2 * FLAT);
+    glow(m.x, m.y - 90, 140, pal.glow, fade * 0.6);
+  }
+  embers(fx, glow, m.x, m.y, 110, low ? 6 : 14, m.age, m.seed, 1.6);
 }
