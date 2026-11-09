@@ -1,4 +1,6 @@
 import { drawBossSpellFlipbook } from "./boss-spell-flipbook";
+import { drawGrumbleAttacks } from "./grumble-attack-fx";
+import { lowGraphics } from "./graphics-quality";
 import type Phaser from "phaser";
 import type { Snapshot } from "@arena/shared";
 import type { RaidBossId } from "../../../packages/shared/src/raid-roster";
@@ -197,7 +199,7 @@ function castEffect(
   e: BossCast,
   blue: boolean,
 ) {
-  const [base, hot, dark] = colors[id],
+  const [base, hot] = colors[id],
     color = id === "storm-twins" && !blue ? 0xffd36e : base;
   const k = Math.min(1, e.age / 0.75),
     fade = (1 - k) * (1 - k),
@@ -251,29 +253,7 @@ function castEffect(
       ribbon(fx.g, points, color, hot, 4 + 2 * (1 - k), fade * 0.75);
     }
   }
-  if (id === "grumblecrag") {
-    for (let i = 0; i < 10; i++) {
-      const angle = hash(e.id + i) * TAU,
-        rr = radius * (0.2 + hash(i + 21) * 0.65);
-      const px = x + Math.cos(angle) * rr * k,
-        py = y + Math.sin(angle) * rr * k * 0.58;
-      const height = Math.sin(k * Math.PI) * (24 + hash(i) * 70),
-        s = (4 + hash(i + 9) * 7) * (1 - k * 0.6);
-      fx.floorSolid.lineStyle(2, dark, fade * 0.65).lineBetween(x, y, px, py);
-      fx.solid.fillStyle(i % 2 ? 0x647386 : 0x394656, fade).fillPoints(
-        [
-          { x: px - s, y: py - height },
-          { x: px, y: py - height - s * 1.5 },
-          { x: px + s, y: py - height },
-          { x: px + s * 0.3, y: py - height + s },
-        ],
-        true,
-      );
-      fx.g
-        .lineStyle(1.6, hot, fade * 0.85)
-        .lineBetween(px - s, py - height, px, py - height - s * 1.5);
-    }
-  } else if (id === "tidewyrm") {
+  if (id === "tidewyrm") {
     for (let i = 0; i < 7; i++) {
       const angle = (i * TAU) / 7 + e.id,
         rr = ringRadius * (0.65 + hash(i) * 0.3);
@@ -415,6 +395,22 @@ export function drawBossBattleEffects(
     .filter((p) => p.raidBoss)
     .entries()) {
     const life = bossLife(g, state, boss, clock, reduced);
+    // Grumblecrag has its own attack effects (the vector boss demo's), drawn
+    // every frame: its stones and meteor are in the air before they land.
+    if (r.boss === "grumblecrag") {
+      space(g, (fx, glow) =>
+        drawGrumbleAttacks(
+          fx,
+          glow,
+          state,
+          boss,
+          life.action.casts,
+          clock,
+          lowGraphics(),
+        ),
+      );
+      continue;
+    }
     if (!life.action.casts.length) continue;
     space(g, (fx, glow) => {
       for (const event of life.action.casts) {
