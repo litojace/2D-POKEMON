@@ -33,8 +33,8 @@ for (const art of [
   "startup-starfield",
   "startup-sigil",
   "raid-spell-flipbook",
+  // Painted bosses (Grumblecrag is vector art, drawn by the client).
   ...[
-    "grumblecrag",
     "tidewyrm",
     "gloomshade",
     "somnara",
@@ -43,7 +43,6 @@ for (const art of [
     "storm-twins",
   ].map((name) => `raid-whole-${name}`),
   ...[
-    "grumblecrag",
     "tidewyrm",
     "gloomshade",
     "somnara",
