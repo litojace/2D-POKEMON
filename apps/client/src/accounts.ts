@@ -133,6 +133,8 @@ type Hooks = {
   selectedCharacter?: () => CharacterId;
   /** Make a fighter your Lobby fighter. */
   chooseFighter?: (id: CharacterId) => void;
+  /** The fighter saved with the account (picked on another device). */
+  restoreFighter?: (id: CharacterId) => void;
   /** Show the Lobby (the Shop and Wardrobe open inside it). */
   toLobby?: () => void;
   /** Create a raid room for a boss (today's challenge, or straight in solo). */
@@ -157,6 +159,11 @@ export class AccountUI {
   /** Coins, owned items, missions (undefined until loaded or before migration 010). */
   economy: Economy | undefined = undefined;
   session: Session | null = null;
+  /** The fighter the account has saved (undefined until asked, null: none). */
+  private savedFighter: string | null | undefined = undefined;
+  /** Counts this device's picks, so a slow answer never undoes a new one. */
+  private fighterPicks = 0;
+  private fighterTimer: ReturnType<typeof setTimeout> | undefined;
   private confirmedGuestLogout = false;
   generation = 0;
   private sessionLoad:
@@ -261,6 +268,8 @@ export class AccountUI {
       this.raidLook = undefined;
       this.raidClears = {};
       this.economy = undefined;
+      this.savedFighter = undefined;
+      clearTimeout(this.fighterTimer);
     }
     this.hooks.onSession(session?.access_token ?? null, session?.user.id);
     if (session && !samePlayer) this.hooks.onChange();
@@ -271,6 +280,9 @@ export class AccountUI {
         const account = accountSchema.parse(await this.api("/api/account"));
         if (version !== this.generation) return;
         this.account = account;
+        // A new login: start on the fighter this account last picked, on
+        // whatever device (not awaited: the rest of the profile goes on).
+        if (!samePlayer) void this.loadSavedFighter(version);
         try {
           const progress = (await this.api("/api/raids")) as RaidProgress;
           if (version !== this.generation) return;
@@ -347,6 +359,52 @@ export class AccountUI {
         status: response.status,
       });
     return value;
+  }
+  /**
+   * The fighter saved with the account: shown here unless this device
+   * picked another one while it was asked for. With none saved yet, the
+   * fighter on screen is saved.
+   */
+  private async loadSavedFighter(version: number) {
+    const picks = this.fighterPicks;
+    let fighter: unknown;
+    try {
+      ({ fighter } = (await this.api("/api/account/fighter")) as {
+        fighter: unknown;
+      });
+    } catch {
+      return; // Optional until migration 108 is installed.
+    }
+    if (version !== this.generation) return;
+    if (typeof fighter === "string" && Object.hasOwn(CHARACTERS, fighter)) {
+      this.savedFighter = fighter;
+      // A pick made meanwhile is already on its way to the account.
+      if (picks === this.fighterPicks)
+        this.hooks.restoreFighter?.(fighter as CharacterId);
+      return;
+    }
+    this.savedFighter = null;
+    const current = this.hooks.selectedCharacter?.();
+    if (current) this.saveFighter(current);
+  }
+  /** Keep a fighter you picked with your account (once you stop browsing). */
+  saveFighter(id: CharacterId) {
+    this.fighterPicks++;
+    if (!this.account || !this.session) return;
+    clearTimeout(this.fighterTimer);
+    if (id === this.savedFighter) return;
+    const version = this.generation;
+    this.fighterTimer = setTimeout(() => {
+      if (version !== this.generation || id === this.savedFighter) return;
+      this.api("/api/account/fighter", { fighter: id }).then(
+        () => {
+          if (version === this.generation) this.savedFighter = id;
+        },
+        () => {
+          /* Kept on this device; the next pick tries again. */
+        },
+      );
+    }, 800);
   }
   ensurePlayer() {
     if (!this.account) {

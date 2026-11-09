@@ -338,6 +338,14 @@ export function createArenaServer(
       }
       next();
     } catch (error) {
+      // Logged so a player who can't get online leaves a trace (the client
+      // renews an expired login and connects again).
+      console.log(
+        `arena-auth-refused ${JSON.stringify({
+          status: error instanceof AccountError ? error.status : 503,
+          reason: error instanceof Error ? error.message : "unknown",
+        })}`,
+      );
       const failure = new Error(
         error instanceof Error ? error.message : "Unable to verify login.",
       ) as Error & { data: { code: string; status: number } };

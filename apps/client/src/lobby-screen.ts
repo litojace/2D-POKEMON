@@ -15,6 +15,7 @@ import { menuIcon } from "./menu-icons";
 import { fighterStageArt, wornSkin } from "./fighter-selection";
 import { lowGraphics } from "./graphics-quality";
 import type { ShopPreviewHandle } from "./shop-preview";
+import { QUIP_MOVE_MS, pickQuip } from "./lobby-quips";
 import { elementIcon } from "./element-icons";
 import { picksCountdown } from "./shop-ui";
 import "./lobby.css";
@@ -226,6 +227,17 @@ export function missionsCard(e: Economy | undefined) {
 export function openLobby(options: LobbyOptions): LobbyHandle {
   const layer = document.createElement("div");
   layer.className = "lobby-layer";
+  // One screen that never scrolls; but overflow: hidden still lets
+  // scrollIntoView move it (a card brought into view), which left the whole
+  // Lobby up under the header. Put it back. (overflow: clip would stop it
+  // too, but lazy pictures in a panel then never load.)
+  layer.addEventListener(
+    "scroll",
+    () => {
+      if (layer.scrollTop || layer.scrollLeft) layer.scrollTo(0, 0);
+    },
+    { passive: true },
+  );
   let mode = savedLobbyMode();
   /** Fighter + worn skin + stage now drawn on the stage. */
   let artKey: string | undefined;
@@ -247,7 +259,7 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
   <div class="lobby-party-bar" id="lobby-party-bar" hidden><span id="lobby-party-size"></span><button type="button" data-lobby-action="leave-party">Leave party</button></div>
   <div class="lobby-party">
     <div class="lobby-slot-wrap" id="lobby-slot-0"></div>
-    <figure class="lobby-fighter" id="lobby-fighter"><div class="lobby-fighter-art fighter-rig-stage" id="lobby-fighter-art" data-preview-look="%7B%7D" data-preview-action="idle"></div><span class="lobby-floor" aria-hidden="true"></span><output class="lobby-emote-bubble" id="lobby-emote-bubble" hidden></output></figure>
+    <figure class="lobby-fighter" id="lobby-fighter"><div class="lobby-fighter-art fighter-rig-stage" id="lobby-fighter-art" data-preview-look="%7B%7D" data-preview-action="idle"></div><span class="lobby-floor" aria-hidden="true"></span><button type="button" class="lobby-fighter-tap" id="lobby-fighter-tap" aria-label="Poke your fighter" title="Poke your fighter"></button><output class="lobby-emote-bubble" id="lobby-emote-bubble" hidden></output></figure>
     <div class="lobby-slot-wrap" id="lobby-slot-1"></div>
     <div class="lobby-slot-wrap lobby-slot-third" id="lobby-slot-2" hidden></div>
   </div>
@@ -302,6 +314,101 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
       .setAttribute("aria-expanded", String(open));
   };
   let bubbleTimer: ReturnType<typeof setTimeout> | undefined;
+  /** The bubble over your fighter: an emote, or a line it says. */
+  const say = (text: string, line: boolean, ms: number) => {
+    const bubble = $<HTMLOutputElement>("lobby-emote-bubble");
+    bubble.textContent = text;
+    bubble.classList.toggle("is-line", line);
+    bubble.hidden = false;
+    const spot = line ? linePlace(bubble) : undefined;
+    bubble.style.top = spot ? `${spot.top}px` : "";
+    bubble.style.left = spot ? `${spot.left}px` : "";
+    bubble.style.setProperty("--tail", spot ? `${spot.tail}px` : "0px");
+    bubble.classList.remove("is-popping");
+    void bubble.offsetWidth;
+    bubble.classList.add("is-popping");
+    clearTimeout(bubbleTimer);
+    bubbleTimer = setTimeout(() => (bubble.hidden = true), ms);
+  };
+  /**
+   * Where a line's bubble goes (px from the figure's top): its tail just
+   * above the fighter's head, which starts anywhere from the top of its
+   * box (tall ears, flames) to a third of the way down (a round body). The
+   * live rig says where its drawn pixels start; the still artwork (Low
+   * graphics) puts the bubble over the whole box. Never above the top bar,
+   * never out of the stage (its tail then still points at the head).
+   * Returns px from the figure's top left.
+   */
+  const linePlace = (bubble: HTMLElement) => {
+    const figure = $("lobby-fighter").getBoundingClientRect();
+    const row = layer.querySelector(".lobby-party")!.getBoundingClientRect();
+    const tail = 8;
+    const head = rig?.inkTop() ?? figure.top;
+    const width = bubble.offsetWidth,
+      height = bubble.offsetHeight;
+    const middle = figure.left + figure.width / 2;
+    const centre = Math.min(
+      Math.max(middle, row.left + width / 2 + 4),
+      row.right - width / 2 - 4,
+    );
+    const left = centre - width / 2;
+    let limit =
+      (parseFloat(
+        getComputedStyle(document.documentElement).getPropertyValue(
+          "--safe-top",
+        ),
+      ) || 0) + 6;
+    for (const e of Array.from(
+      document.querySelectorAll(
+        ".hub-scenes, #account-profile, #account-coins, #account-leaves, #home-settings, .lobby-party-bar:not([hidden])",
+      ),
+    )) {
+      const r = e.getBoundingClientRect();
+      if (r.width && r.left < left + width && r.right > left)
+        limit = Math.max(limit, r.bottom + 6);
+    }
+    return {
+      top: Math.round(Math.max(limit, head - tail - height) - figure.top),
+      left: Math.round(centre - figure.left),
+      // Within the bubble's straight edge (its corners are 14 px round).
+      tail: Math.round(
+        Math.min(Math.max(middle - centre, 20 - width / 2), width / 2 - 20),
+      ),
+    };
+  };
+  /** The champion on the stage now. */
+  let champion: CharacterId | undefined;
+  let lastQuip: string | undefined;
+  /** Recent taps on the fighter: four within three seconds is a poke. */
+  let taps: number[] = [];
+  /** When the move a tap started ends; a tap before then only talks. */
+  let movingUntil = 0;
+  let hopTimer: ReturnType<typeof setTimeout> | undefined;
+  /** A tap on your fighter: it moves and says something. */
+  const poke = () => {
+    if (!champion) return;
+    const now = performance.now();
+    taps = [...taps.filter((t) => now - t < 3000), now];
+    const quip = pickQuip(champion, lastQuip, taps.length >= 4);
+    lastQuip = quip.text;
+    say(
+      quip.text,
+      true,
+      Math.min(4200, Math.max(2600, 1600 + quip.text.length * 50)),
+    );
+    if (now < movingUntil || options.reduced) return;
+    const ms = QUIP_MOVE_MS[quip.move];
+    movingUntil = now + ms;
+    // The live rig plays the move; the still artwork (Low graphics, or
+    // before the rig is ready) hops.
+    if (rig?.play(quip.move, ms)) return;
+    const art = $("lobby-fighter-art");
+    art.classList.remove("is-hopping");
+    void art.offsetWidth;
+    art.classList.add("is-hopping");
+    clearTimeout(hopTimer);
+    hopTimer = setTimeout(() => art.classList.remove("is-hopping"), 600);
+  };
   layer.addEventListener("click", (event) => {
     const target = event.target as Element;
     const action = target.closest<HTMLElement>("[data-lobby-action]")?.dataset
@@ -335,17 +442,11 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
       return;
     }
     if (emote) {
-      const bubble = $<HTMLOutputElement>("lobby-emote-bubble");
-      bubble.textContent = emote;
-      bubble.hidden = false;
-      bubble.classList.remove("is-popping");
-      void bubble.offsetWidth;
-      bubble.classList.add("is-popping");
-      clearTimeout(bubbleTimer);
-      bubbleTimer = setTimeout(() => (bubble.hidden = true), 2600);
+      say(emote, false, 2600);
       setEmotes(false);
       return;
     }
+    if (target.closest("#lobby-fighter-tap")) return poke();
     if (step) return options.onStep(step === "-1" ? -1 : 1);
     if (target.closest("#lobby-play")) return options.onPlay(mode);
     // The rail button of the screen that is open (lit, aria-current) closes
@@ -427,6 +528,11 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
       const key = `${view.character}|${skin?.skin ?? ""}|${skin?.stage ?? 1}|${look}`;
       if (key !== artKey) {
         artKey = key;
+        if (champion !== view.character) {
+          champion = view.character;
+          lastQuip = undefined;
+          taps = [];
+        }
         const fighter = CHARACTERS[view.character];
         const art = $("lobby-fighter-art");
         $("lobby-fighter").style.setProperty("--element", hex(fighter.color));
@@ -500,6 +606,7 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
       rig = undefined;
       for (const seat of seatRigs.splice(0)) seat?.();
       clearTimeout(bubbleTimer);
+      clearTimeout(hopTimer);
       coverWatch.disconnect();
       layer.removeEventListener("keydown", onKey);
       layer.remove();

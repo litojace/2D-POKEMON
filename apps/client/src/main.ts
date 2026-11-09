@@ -37,6 +37,7 @@ import { fitDesktopBattleHud } from "./desktop-battle-layout";
 import {
   homeShell,
   lastHomeFighter,
+  onHomeFighterRemembered,
   rememberHomeFighter,
   startRoomSection,
   welcomeGate,
@@ -312,6 +313,7 @@ import {
 } from "./arena-courts";
 import { RITE_EFFECTS, riteEffect, riteIcon } from "./rite-icons";
 import { ConnectionWatch, dropMessage } from "./connection-loss";
+import { watchSceneSwitch } from "./scene-switch-place";
 // Last: the hub's aero glass overrides the panels' own fills.
 import "./ui/aero.css";
 const audio = new AudioManager();
@@ -1883,7 +1885,11 @@ function syncHubScenes(hub: boolean) {
   if (!hub) return;
   const markup = sceneSwitchMarkup(hubScene);
   if (nav.innerHTML !== markup) nav.innerHTML = markup;
+  // Centred, or between the player card and the pills on narrow phones.
+  placeSceneSwitch ??= watchSceneSwitch(nav);
+  placeSceneSwitch();
 }
+let placeSceneSwitch: (() => void) | undefined;
 function setHubScene(scene: HubScene) {
   if (!sceneAvailable(scene) || scene === hubScene) return;
   hubScene = scene;
@@ -3276,6 +3282,9 @@ socket.on(
     if (replacedAccount) return;
     $("connection").classList.remove("online");
     if (error.data?.code === "ACCOUNT_ERROR") {
+      // An expired login: get a fresh token (onToken connects with it). Only
+      // a second refusal soon after says something is really wrong.
+      if (error.data.status === 401 && renewLogin()) return;
       toast(error.message);
       $("connection").textContent =
         error.data.status === 401 ? "LOGIN REQUIRED" : "SIGN-IN UNAVAILABLE";
@@ -3326,6 +3335,22 @@ socket.on("token-expired", () => {
     socket.emit("token", { token });
   else void accountsUI.client?.auth.refreshSession();
 });
+/**
+ * Ask Supabase for a fresh token after the server refused an expired one;
+ * its refresh reaches onToken, which reconnects. At most once in 30 s, so a
+ * login that can't be renewed is reported instead of retried forever.
+ */
+let loginRenewedAt = 0;
+function renewLogin() {
+  const auth = accountsUI.client?.auth;
+  if (!auth || !accountsUI.session || Date.now() - loginRenewedAt < 30_000)
+    return false;
+  loginRenewedAt = Date.now();
+  void auth.refreshSession().catch(() => {
+    /* Signed out: the gate asks for a login. */
+  });
+  return true;
+}
 socket.on("access-revoked", ({ error }: { error: string }) => {
   sessionStorage.removeItem("arena-token");
   lobbySelection.reset();
@@ -3338,6 +3363,7 @@ socket.on("access-revoked", ({ error }: { error: string }) => {
   screen = "";
   renderMenu();
   toast(error);
+  // Reconnects too (onSession); a refused expired token is then renewed.
   void accountsUI.refresh();
 });
 socket.on("state", (snapshot: WireSnapshot) => {
@@ -6432,6 +6458,14 @@ accountsUI = new AccountUI({
     renderMenu();
     syncHub();
   },
+  // Logged in on another device: its last pick, unless a room holds yours.
+  restoreFighter: (id) => {
+    if (id === selected || state) return;
+    selected = id;
+    rememberHomeFighter(id);
+    renderMenu();
+    syncHub();
+  },
   toLobby: () => setHubScene("lobby"),
   openFarm: () => setHubScene("farm"),
   openDialog: dialog,
@@ -6538,6 +6572,10 @@ accountsUI = new AccountUI({
     // the new token if the socket ever has to reconnect.
     socket.auth = { accessToken: token };
     if (socket.connected) socket.emit("token", { token });
+    // A connection the server refused or closed (an hour-old token on a
+    // phone waking up) never retries by itself: without this, a player sat
+    // in the game offline to their friends until they reloaded.
+    else if (!replacedAccount && !socket.active) socket.connect();
   },
   onChange: () => {
     loadMastery();
@@ -6560,6 +6598,8 @@ accountsUI = new AccountUI({
     } else renderBattle();
   },
 });
+// Every fighter you pick is kept with your account too (migration 108).
+onHomeFighterRemembered((id) => accountsUI.saveFighter(id));
 
 // Imported code and the UI shell are ready; dismiss the asset-independent loader.
 onServerStartupRetry(() => {
