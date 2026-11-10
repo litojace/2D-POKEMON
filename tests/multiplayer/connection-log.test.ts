@@ -183,3 +183,55 @@ it("logs how long a player's device took to load the battle", async () => {
   await wait(150);
   expect(log.length).toBe(21);
 });
+
+it("logs how smoothly a match ran on a player's device, without their account", async () => {
+  const { connect, accounts, log } = await setup();
+  const host = accounts.add(),
+    guest = accounts.add(),
+    outsider = accounts.add();
+  const one = await connect(host.token),
+    two = await connect(guest.token),
+    stranger = await connect(outsider.token);
+  const created = await emit(one, "create", { name: "One" });
+  await emit(two, "join", { name: "Two", code: created.code });
+  const arena = server!.rooms.get(created.code!)!;
+  arena.start();
+  const report = {
+    seconds: 94.2,
+    frames: 4800,
+    fps: 52.6,
+    frameP95: 38.1,
+    jank: 0.12,
+    stalls: 3,
+    quality: "low",
+    setting: "auto",
+    density: 1.5,
+    memory: 2,
+    cores: 8,
+  };
+  // Outside a room, malformed, or carrying anything more: nothing is logged.
+  stranger.emit("battle-perf", report);
+  one.emit("battle-perf", { ...report, jank: 2 });
+  one.emit("battle-perf", { ...report, name: "One" });
+  one.emit("battle-perf", report);
+  await until(() => log.length === 1);
+  await wait();
+  expect(log).toEqual([
+    {
+      event: "arena-perf",
+      details: {
+        ...report,
+        mode: "duel",
+        players: 2,
+        bots: 0,
+        character: arena.players[0].character,
+      },
+    },
+  ]);
+  expect(log[0].details).not.toHaveProperty("account");
+  // A client stuck in a loop is capped.
+  for (let i = 0; i < 30; i++) two.emit("battle-perf", report);
+  await until(() => log.length === 21);
+  await wait(150);
+  expect(log.length).toBe(21);
+});

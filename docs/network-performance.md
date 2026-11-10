@@ -118,14 +118,27 @@ resizes the canvas on the next frame; the court keeps the density it was
 baked at.
 
 Why the density: in a duel against the AI bot, for each of the 18
-champions, casting a skill every 0.7 s raised main-thread JavaScript by only
-about 6% (221 against 208 ms per second), but the frame rate fell 13% on
-average and up to a third for the heaviest kits, because their glows and
-light layers cost the GPU per pixel. Drawing at 1.5× instead of 2× gave
-about 50% more frames while casting (746 against 496 frames over the six
-heaviest kits, two runs each). These were measured on this container's
-software renderer, which exaggerates fill cost, so phones gain less, in the
-same direction.
+champions, casting a skill every 0.7 s cost 19% of the frame rate on average
+and 36–38% for the heaviest kits (Cindrake, Terradon). Drawing at 1.5×
+instead of 2× gave 45% more frames while casting (516 against 355 frames
+over the six heaviest kits, two runs each). One champion's effects cover at
+most 0.3 screens of glow light, so the cost is drawing the whole court,
+fighters and effects per pixel, and fewer pixels is what helps. These were
+measured on this container's software renderer, which exaggerates fill
+cost, so phones gain less, in the same direction.
+
+(Corrected 10 Nov 2026. The first measurement swapped a new arena in for
+each champion without carrying on its event numbering, so the client
+skipped most casts after the first champion of each group: it reported 13%
+and 50%, and a JavaScript cost that was not measured again.)
+
+Low also holds decorative glow light to 0.75 screens a frame
+(`glowBudget`): a duel never reaches it, and four fighters casting at once
+(0.66 screens typically, about 1.4 at peak) lose about half their glow fill
+at the busiest moments. Every decorative glow of the frame shrinks alike,
+at once when a big effect starts and back over about 0.3 s, never below
+half its size. Warnings never shrink: wind-ups and a boss's glows are drawn
+inside `fx.essential`.
 
 Auto watches frame times during live play only: it ignores a 3 s warm-up,
 frame gaps over 250 ms (loading, stalls, background tabs) and every frame
@@ -190,6 +203,41 @@ camera kept the last scene, so every closed battle and town stayed
 reachable. Bakes now go through `generateGraphicsTexture`
 (`apps/client/src/graphics-bake.ts`), which empties the list and detaches
 the scene afterwards. The soak test now fails if memory keeps growing.
+
+### 8. Keeping new champions and features light
+
+Three checks run in CI with the visual suite, and two numbers come back
+from players' phones:
+
+- **Effect budget** (`tests/visual/effect-budget.spec.ts`): every champion
+  casts its four skills and its ultimate at a still training dummy, with
+  `Math.random` seeded, and its heaviest frame is judged by the effects
+  engine's own counts (`FxFrameStats`): glow cover, smoke cover and live
+  particles. The limits are about twice the heaviest kit seen (glow 0.30
+  screens, smoke 0.52, particles 218), because which frame a run catches
+  moves a peak by up to about 40%. `EFFECT_BUDGET_MEASURE=1` prints every
+  champion's numbers.
+- **A real match** (`tests/visual/match-flow-budget.spec.ts`, at High and at
+  Low): dressed fighters from the first snapshot, the briefing, then the
+  fight. No fighter art may load mid-fight (512 textures before and after),
+  the game's own layout reads stay near zero a frame (measured: none;
+  Phaser's own canvas size check, on a 500 ms timer, is counted apart), the
+  page and the scene stop growing, and at Low the glow budget holds
+  decorative light to 0.75 screens (measured 0.74 at the 90th percentile,
+  against about 1 at High).
+- **Effect rules** (`tests/unit/effect-rules.test.ts`): skill effect files
+  never add their own scene objects; they draw through the effects engine,
+  so the graphics levels and the counts above see everything.
+- **From players' phones:** at the end of each match the client sends
+  `battle-perf` and the server logs `arena-perf`: seconds of play, frames,
+  median fps, 95th percentile frame time, share of time in frames that
+  missed 30 fps, frames over 250 ms (stalls), graphics level and setting,
+  canvas density, device memory and cores, plus the mode, players, bots,
+  raid boss and champion. No account or name. Slow frames are kept (only
+  gaps over 2 s are left out), so the slowest phones report too.
+- **`?perf=1`** shows the same numbers over the battle (last second's fps,
+  slowest frames, stutter, level and density, glow, smoke and particles),
+  for a player to screenshot.
 
 ## Results
 
