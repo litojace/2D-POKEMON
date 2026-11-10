@@ -625,12 +625,310 @@ var TIDE = (() => {
   var FACINGS = 8;
   var STEP = TAU / FACINGS;
 
-  // ../../apps/client/src/boss-vector-tide.ts
+  // ../../apps/client/src/boss-vector-face.ts
   var TAU2 = Math.PI * 2;
+  var DEG = Math.PI / 180;
   var clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
+  var wrap = (a) => ((a + Math.PI) % TAU2 + TAU2) % TAU2 - Math.PI;
+  function headView(yaw, prev) {
+    const w = wrap(yaw), a = Math.abs(w) / DEG;
+    const pick = (x) => x < 22.5 ? "front" : x < 67.5 ? "tq" : x < 112.5 ? "side" : x < 157.5 ? "backtq" : "back";
+    let view = pick(a);
+    if (prev && prev !== view && (pick(a - 4) === prev || pick(a + 4) === prev))
+      view = prev;
+    return { view, side: w < 0 ? -1 : 1, turn: Math.abs(w) };
+  }
+  function makeFace(F) {
+    const faceYaw = (turn) => turn - F.lag * Math.sin(2 * Math.min(turn, 90 * DEG));
+    function contain(view, u, hw, v0, v1) {
+      let lo = -1e9, hi = 1e9;
+      for (const v of [v0, (v0 + v1) / 2, v1]) {
+        const [l, r] = F.skullEdge(view, v);
+        lo = Math.max(lo, l);
+        hi = Math.min(hi, r);
+      }
+      lo += hw + F.margin;
+      hi -= hw + F.margin;
+      return lo > hi ? (lo + hi) / 2 : clamp(u, lo, hi);
+    }
+    function face(head, expr) {
+      const hv = headView(head.yaw, head.prevView);
+      const view = hv.view;
+      let side = hv.side;
+      const out = [];
+      const cr = Math.cos(head.roll), sr = Math.sin(head.roll);
+      let n = 0;
+      const at = (u, v) => ({
+        x: head.x + u * side * cr - v * sr,
+        y: head.y + u * side * sr + v * cr
+      });
+      const put = (key, piece, u, v, o = {}) => {
+        const p = at(u, v);
+        out.push({
+          key,
+          piece,
+          x: p.x,
+          y: p.y,
+          rot: o.still ? 0 : head.roll + (o.rot ?? 0) * side,
+          sx: (o.still ? 1 : (o.flip ? -1 : 1) * side) * (o.s ?? 1),
+          sy: o.s ?? 1,
+          alpha: o.alpha ?? 1,
+          z: head.z + 0.02 + 1e-3 * n++,
+          glow: o.glow
+        });
+      };
+      let pf = faceYaw(hv.turn);
+      if (view === "front") {
+        pf *= side;
+        side = 1;
+      }
+      put("head", F.headPiece(view), 0, 0);
+      const nod = clamp(head.pitch, -0.45, 0.45) * F.nod;
+      const feats = {};
+      if (view === "back" || view === "backtq")
+        return { placements: out, view, side, at, nod, feats, eyes: [] };
+      const eyeV = F.lines.eye + nod;
+      const sinF = view === "side" ? 1 : Math.sin(pf);
+      const list = view === "front" ? [
+        ["front", -F.eyeAz, false, "n"],
+        ["front", F.eyeAz, true, "f"]
+      ] : view === "tq" ? [
+        ["near", -F.eyeAz, false, "n"],
+        ["far", F.eyeAz, false, "f"]
+      ] : [["side", -F.eyeAz, false, "n"]];
+      const bridge = F.centreLine(F.lines.eye) * sinF + (F.bridgeHalf ?? 0);
+      const eyes = list.map(([v, az, flip, id]) => {
+        const g = F.eye[v];
+        let u = F.eyeOrbit * Math.sin(pf + az);
+        if (v === "far" && F.tuckCap !== void 0)
+          u = Math.max(u, bridge + g.hw * (1 - 2 * F.tuckCap));
+        u = contain(view, u, g.hw, eyeV - g.hh * 0.7, eyeV + g.hh * 0.7);
+        return { v, flip, id, g, u, rot: v === "far" ? -F.farLift : 0 };
+      });
+      for (const f of F.centre)
+        if (f.line !== void 0) {
+          const v = f.line + nod * (f.nodK ?? 1);
+          let u = F.centreLine(f.line) * sinF;
+          if (view === "side") u -= f.sideInset ?? 0;
+          else if (f.hw?.[view] !== void 0)
+            u = contain(
+              view,
+              u,
+              f.hw[view],
+              v + (f.vspan?.[0] ?? -1),
+              v + (f.vspan?.[1] ?? 1)
+            );
+          feats[f.id] = { u, v };
+        }
+      for (const f of F.centre) if (f.anchor) feats[f.id] = feats[f.anchor];
+      const drawEye2 = (e) => {
+        put("eye" + e.id, F.eyePiece(e.v, expr), e.u, eyeV, {
+          rot: e.rot,
+          flip: e.flip
+        });
+        const b = F.brow?.(e.v, expr);
+        if (b)
+          put(
+            "brow" + e.id,
+            b.piece,
+            e.u + (e.flip ? -1 : 1) * (e.v === "far" ? -1 : 1) * (b.dx ?? 0),
+            (F.lines.brow ?? F.lines.eye) + nod + (b.dy ?? 0),
+            { rot: e.rot, flip: e.flip }
+          );
+      };
+      const drawFeat = (f) => {
+        const p = feats[f.id];
+        const piece = f.piece(view, expr);
+        if (piece) put(f.id, piece, p.u, p.v);
+        const gl = f.glow?.(expr, view);
+        if (gl && gl.alpha > 0.01)
+          put(f.id + "glow", gl.piece, p.u, p.v, {
+            glow: true,
+            alpha: clamp(gl.alpha),
+            s: gl.s
+          });
+      };
+      const layer = (f) => (typeof f.layer === "function" ? f.layer(view) : f.layer) ?? "top";
+      const far = eyes.find((e) => e.id === "f"), near = eyes.find((e) => e.id === "n");
+      if (far) drawEye2(far);
+      for (const f of F.centre) if (layer(f) === "mid") drawFeat(f);
+      drawEye2(near);
+      for (const f of F.centre) if (layer(f) === "top") drawFeat(f);
+      for (const e of eyes) {
+        const g = F.glint?.(e.v, expr);
+        if (g)
+          put("glint" + e.id, g.piece, e.u + g.x, eyeV + g.y, { still: true });
+      }
+      return { placements: out, view, side, at, nod, feats, eyes, bridge };
+    }
+    return { face, contain, faceYaw, spec: F };
+  }
+  function drawEye(c, o) {
+    const { hw, hh } = o, wt = o.weight ?? 2;
+    c.lineJoin = c.lineCap = "round";
+    c.strokeStyle = c.fillStyle = o.ink;
+    c.lineWidth = wt;
+    const lash = (x, y) => {
+      c.beginPath();
+      c.moveTo(x + 1.3, y - 1.1);
+      c.lineTo(x - 2.4, y - 2.7);
+      c.lineTo(x + 0.2, y + 1);
+      c.closePath();
+      c.fill();
+    };
+    if (o.look === "closed") {
+      c.beginPath();
+      c.moveTo(-hw * 0.95, 0);
+      c.quadraticCurveTo(-hw * 0.1, hh * 0.8, hw * 0.92, 1);
+      c.stroke();
+      lash(-hw * 0.95, 0.4);
+      return;
+    }
+    const ellipse = (g = 0) => {
+      c.beginPath();
+      c.ellipse(0, 0, hw + g, hh + g, 0, 0, TAU2);
+    };
+    const white = () => {
+      const g = c.createRadialGradient(
+        0,
+        hh * 0.25,
+        0.5,
+        0,
+        hh * 0.25,
+        hh * 1.1 + hw * 0.2
+      );
+      o.sclera.forEach((s, i) => g.addColorStop(i / (o.sclera.length - 1), s));
+      return g;
+    };
+    if (o.look === "dizzy") {
+      ellipse();
+      c.fillStyle = white();
+      c.fill();
+      c.lineWidth = 1.2;
+      c.stroke();
+      c.strokeStyle = o.spiral ?? o.ink;
+      c.lineWidth = 1.25;
+      c.beginPath();
+      for (let i = 0; i <= 60; i++) {
+        const a2 = i / 60 * TAU2 * 2.25, r = i / 60 * 0.72;
+        if (i) c.lineTo(Math.cos(a2) * r * hw, Math.sin(a2) * r * hh);
+        else c.moveTo(0, 0);
+      }
+      c.stroke();
+      return;
+    }
+    const open = !o.lid;
+    const y0 = open ? 0 : o.lid[0] * hh, y1 = open ? 0 : o.lid[1] * hh;
+    const P0 = { x: -hw - 1.5, y: y0 - (y1 - y0) * 0.1 }, P1 = { x: hw + 1.5, y: y1 + (y1 - y0) * 0.1 }, C = { x: 0, y: (y0 + y1) / 2 - (o.bow ?? 1.6) };
+    const at = (t) => ({
+      x: (1 - t) * (1 - t) * P0.x + 2 * (1 - t) * t * C.x + t * t * P1.x,
+      y: (1 - t) * (1 - t) * P0.y + 2 * (1 - t) * t * C.y + t * t * P1.y
+    });
+    const under = (g) => {
+      c.beginPath();
+      c.moveTo(P0.x - g, P0.y);
+      c.quadraticCurveTo(C.x, C.y, P1.x + g, P1.y);
+      c.lineTo(hw + 5, hh + 5);
+      c.lineTo(-hw - 5, hh + 5);
+      c.closePath();
+      c.clip();
+    };
+    c.save();
+    ellipse();
+    c.clip();
+    if (!open) under(0);
+    c.fillStyle = white();
+    c.fillRect(-hw - 4, -hh - 4, 2 * hw + 8, 2 * hh + 8);
+    const I = o.iris;
+    if (I) {
+      if (I.ring) {
+        c.fillStyle = I.ring;
+        c.beginPath();
+        c.arc(I.x, I.y, I.r, 0, TAU2);
+        c.fill();
+      }
+      const g = c.createLinearGradient(0, I.y - I.r, 0, I.y + I.r);
+      I.stops.forEach((s, i) => g.addColorStop(i / (I.stops.length - 1), s));
+      c.fillStyle = g;
+      c.beginPath();
+      c.arc(I.x, I.y, I.r * (I.ring ? 0.84 : 1), 0, TAU2);
+      c.fill();
+      c.fillStyle = I.pupil ?? "#0b0503";
+      c.beginPath();
+      if (I.slit) c.ellipse(I.x, I.y, I.slit, I.r * 0.82, 0, 0, TAU2);
+      else c.arc(I.x, I.y - I.r * 0.06, I.r * 0.5, 0, TAU2);
+      c.fill();
+    }
+    if (!open && o.shade) {
+      const mid = at(0.5);
+      c.save();
+      c.transform(1, (y1 - y0) / (2 * hw), 0, 1, 0, 0);
+      const g = c.createLinearGradient(0, mid.y, 0, mid.y + 3.4);
+      g.addColorStop(0, o.shade);
+      g.addColorStop(1, "rgba(0,0,0,0)");
+      c.fillStyle = g;
+      c.fillRect(-hw - 4, mid.y - 6, 2 * hw + 8, 10);
+      c.restore();
+    }
+    c.restore();
+    c.save();
+    if (!open) under(2);
+    c.strokeStyle = o.ink;
+    c.lineWidth = 0.85;
+    ellipse(0.1);
+    c.stroke();
+    c.lineWidth = wt * 0.72;
+    c.beginPath();
+    c.ellipse(
+      0,
+      0,
+      hw + 0.2,
+      hh + 0.2,
+      0,
+      Math.PI * 0.62,
+      Math.PI * (open ? 1.05 : 1.3)
+    );
+    c.stroke();
+    c.restore();
+    c.fillStyle = c.strokeStyle = o.ink;
+    if (open) {
+      c.lineWidth = wt;
+      c.beginPath();
+      c.ellipse(0, 0, hw + 0.3, hh + 0.3, 0, Math.PI * 1.02, Math.PI * 1.9);
+      c.stroke();
+      lash(-hw * 0.86, -hh * 0.56);
+      return;
+    }
+    const inside = (p) => (p.x / (hw + 0.5)) ** 2 + (p.y / (hh + 0.5)) ** 2 <= 1;
+    let ta = 0, tb = 1;
+    for (let t = 0; t <= 0.5; t += 0.01)
+      if (inside(at(t))) {
+        ta = t;
+        break;
+      }
+    for (let t = 1; t >= 0.5; t -= 0.01)
+      if (inside(at(t))) {
+        tb = t;
+        break;
+      }
+    const a = at(ta), b = at(tb), m = at((ta + tb) / 2);
+    const cx = 2 * m.x - (a.x + b.x) / 2, cy = 2 * m.y - (a.y + b.y) / 2, h = wt / 2;
+    c.beginPath();
+    c.moveTo(a.x - 0.3, a.y - h);
+    c.quadraticCurveTo(cx, cy - h * 0.9, b.x + 0.3, b.y - h * 0.45);
+    c.lineTo(b.x + 0.2, b.y + h * 0.45);
+    c.quadraticCurveTo(cx, cy + h * 0.8, a.x - 0.2, a.y + h * 0.9);
+    c.closePath();
+    c.fill();
+    lash(a.x, a.y);
+  }
+
+  // ../../apps/client/src/boss-vector-tide.ts
+  var TAU3 = Math.PI * 2;
+  var clamp2 = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
   var lerp = (a, b, t) => a + (b - a) * t;
   var smooth = (a, b, x) => {
-    const t = clamp((x - a) / (b - a));
+    const t = clamp2((x - a) / (b - a));
     return t * t * (3 - 2 * t);
   };
   var v3 = (x, y, z) => ({ x, y, z });
@@ -698,9 +996,9 @@ var TIDE = (() => {
     for (let i = 0; i < N; i++) {
       const f = i / (N - 1);
       const lying = lerp(1 - smooth(0.45, 0.62, f), 1, P.flat);
-      h += P.coil * lying * 0.16 + P.sway * Math.sin(f * TAU2 * 1.5 - P.swimPhase) * 0.13 * (0.4 + lying) + P.flopK * Math.sin(f * TAU2 * 1.1 + P.flopPhase) * 0.2 + (1 - lying) * Math.sin(f * TAU2 * 1.4 + P.clock * 0.7) * 0.11 * (1 - P.flat);
+      h += P.coil * lying * 0.16 + P.sway * Math.sin(f * TAU3 * 1.5 - P.swimPhase) * 0.13 * (0.4 + lying) + P.flopK * Math.sin(f * TAU3 * 1.1 + P.flopPhase) * 0.2 + (1 - lying) * Math.sin(f * TAU3 * 1.4 + P.clock * 0.7) * 0.11 * (1 - P.flat);
       hs.push(h);
-      const humps = P.humps * Math.sin(f * TAU2 * 2.2 - P.swimPhase * 0.8) * 0.42 * lying;
+      const humps = P.humps * Math.sin(f * TAU3 * 2.2 - P.swimPhase * 0.8) * 0.42 * lying;
       const rise = smooth(0.5, 0.7, f) * P.rear * 1.25;
       const curl = smooth(0.78, 1, f) * P.neckCurl * 1.1;
       const leanF = smooth(0.55, 0.72, f) * P.lean;
@@ -775,7 +1073,7 @@ var TIDE = (() => {
   var after = (age, dur) => age < 0 || age > dur ? 0 : Math.sin(age / dur * Math.PI);
   function tidePose(c) {
     const P = tideIdle(c.clock, c.phase, c.reduced);
-    const w = clamp(c.windup);
+    const w = clamp2(c.windup);
     const k = c.windKind;
     if (k === "dive") {
       P.rear = lerp(P.rear, 1.3, w);
@@ -859,9 +1157,9 @@ var TIDE = (() => {
       P.headPitch += 0.35 * c.hurt;
       P.lid = Math.max(P.lid, 0.8 * c.hurt);
     }
-    P.sink = (1 - clamp(c.rise)) * 300;
+    P.sink = (1 - clamp2(c.rise)) * 300;
     if (c.dead) {
-      const s = clamp(c.deathSink);
+      const s = clamp2(c.deathSink);
       P.anger = 0;
       P.closed = 1;
       P.dizzy = 0;
@@ -981,249 +1279,103 @@ var TIDE = (() => {
     );
     ctx.stroke();
   }
-  function wedge(ctx, k, L, r0, r1, pad, fill) {
-    const x0 = (r0 + pad) * k, y = (r0 + pad) * k, x1 = x0 + L * k;
-    const a = Math.asin(clamp((r0 - r1) / L, -1, 1));
-    ctx.fillStyle = fill;
-    ctx.beginPath();
-    ctx.arc(x0, y, r0 * k, Math.PI / 2 + a, Math.PI * 1.5 - a);
-    ctx.arc(x1, y, r1 * k, -Math.PI / 2 - a, Math.PI / 2 + a);
-    ctx.closePath();
-    ctx.fill();
-  }
-  var TIDE_FACE = {
-    /** How far round from the centre line each eye sits, and the circle they ride. */
-    eyeAz: 40 * Math.PI / 180,
-    eyeOrbit: 20,
-    /** How far the face trails the skull at three-quarter. */
-    lag: 18 * Math.PI / 180,
-    /** The far eye's outer corner lifts by this, always. */
-    farLift: 6 * Math.PI / 180,
-    /** Clear space kept between an eye and the head's outline. */
-    margin: 1.2,
-    /** The least clear space between the two eyes. */
-    gap: 2,
-    /** Each view's eye: its width as a share of the full drawing, and its half-width. */
-    eye: {
-      front: { w: 0.55, hw: 8.6 },
-      near: { w: 0.55, hw: 8.6 },
-      far: { w: 0.4, hw: 5.2 },
-      side: { w: 0.63, hw: 9.8 }
-    }
+  var HA = 30;
+  var H_TOP = -0.9 * HA;
+  var H_BOT = 0.84 * HA;
+  var S_BROW = -0.32 * HA;
+  var S_NOSE = 0.36 * HA;
+  var gauss = (x, s) => Math.exp(-(x * x) / (s * s));
+  var hse = (v) => {
+    const t = clamp2(Math.abs((v + 0.03 * HA) / (0.87 * HA)));
+    const e = v > -0.03 * HA ? 2 : 2.5;
+    return Math.pow(1 - Math.pow(t, e), 1 / e);
   };
-  var eyePieceName = (view, look) => view === "front" ? `eye-${look}` : `eye-${view}-${look}`;
-  function tideEyes(yaw, edges) {
-    const w = Math.atan2(Math.sin(yaw), Math.cos(yaw));
-    const turn = Math.abs(w), deg = turn * 180 / Math.PI;
-    const F = TIDE_FACE;
-    if (deg >= 112.5) return { side: w < 0 ? -1 : 1, view: "back", eyes: [] };
-    const view = deg < 22.5 ? "front" : deg < 67.5 ? "tq" : "side";
-    let side = w < 0 ? -1 : 1;
-    let pf = turn - F.lag * Math.sin(2 * Math.min(turn, Math.PI / 2));
-    if (view === "front") {
-      pf *= side;
-      side = 1;
-    }
-    const list = view === "front" ? [
-      ["front", -F.eyeAz, false, "near"],
-      ["front", F.eyeAz, true, "far"]
-    ] : view === "tq" ? [
-      ["near", -F.eyeAz, false, "near"],
-      ["far", F.eyeAz, false, "far"]
-    ] : [["side", -F.eyeAz, false, "near"]];
-    const eyes = list.map(([v, az, flip, which]) => {
-      const hw = F.eye[v].hw;
-      let u = F.eyeOrbit * Math.sin(pf + az);
-      if (edges) {
-        const lo = edges.lo * side + (side < 0 ? 0 : 0), hi = edges.hi * side;
-        const a = Math.min(lo, hi) + hw + F.margin, b = Math.max(lo, hi) - hw - F.margin;
-        u = a > b ? (a + b) / 2 : clamp(u, a, b);
+  var tideCentre = (v) => 0.9 * HA * hse(v) + 0.56 * HA * gauss(v - 0.4 * HA, (v > 0.4 * HA ? 0.3 : 0.2) * HA) - 0.04 * HA * gauss(v - 0.02 * HA, 0.12 * HA);
+  var snoutHalf = (v) => 0.3 * HA * gauss(v - 0.44 * HA, 0.26 * HA);
+  var TQ_LAG = 14 * Math.PI / 180;
+  var TQ_SIN = Math.sin(Math.PI / 4 - TQ_LAG);
+  function tideSkull(view, v) {
+    const s = hse(v), w = 0.99 * HA * s * (1 + 0.05 * smooth(-0.2 * HA, 0.4 * HA, v));
+    if (view === "side") return [-1 * HA * s, tideCentre(v)];
+    if (view === "tq")
+      return [-w, Math.max(0.95 * HA * s, tideCentre(v) * TQ_SIN + snoutHalf(v))];
+    return [-w, w];
+  }
+  var eyeName = (view, look) => view === "front" ? `eye-${look}` : `eye-${view}-${look}`;
+  var lit = (look) => look !== "shut" && look !== "dizzy";
+  var TIDE_SPEC = {
+    A: HA,
+    top: H_TOP,
+    bot: H_BOT,
+    lines: { pearl: -0.64 * HA, brow: S_BROW, eye: -0.06 * HA, nose: S_NOSE },
+    eyeAz: 42 * Math.PI / 180,
+    eyeOrbit: 0.64 * HA,
+    lag: TQ_LAG,
+    farLift: 6 * Math.PI / 180,
+    nod: 0.4 * HA,
+    margin: 0.045 * HA,
+    tuckCap: 0.4,
+    bridgeHalf: 1,
+    eye: {
+      front: { hw: 7.4, hh: 7.2 },
+      near: { hw: 7.4, hh: 7.2 },
+      far: { hw: 5, hh: 7 },
+      side: { hw: 6.4, hh: 7.2 }
+    },
+    centreLine: tideCentre,
+    skullEdge: tideSkull,
+    headPiece: (view) => `head-${view}`,
+    eyePiece: (view, e) => eyeName(view, e.look),
+    glint: (view, e) => lit(e.look) ? {
+      piece: "eye-glint",
+      x: -TIDE_FACE_EYE[view] * 0.34,
+      y: e.look === "glare" ? -1.6 : -2.6
+    } : null,
+    brow: (view, e) => ({
+      piece: `brow-${view}-${e.brow}`,
+      dx: 0.5,
+      dy: e.brow === "angry" ? 2.4 : 0
+    }),
+    // on the centre line, in drawing order within their layer
+    centre: [
+      {
+        id: "muzzle",
+        anchor: "snout",
+        // between the far and the near eye: its far edge tucks the far eye
+        layer: "mid",
+        piece: (view) => view === "side" ? null : `muzzle-${view}`
+      },
+      {
+        id: "pearl",
+        line: -0.64 * HA,
+        nodK: 0.8,
+        hw: { front: 7.5, tq: 7.5 },
+        vspan: [-7, 7],
+        sideInset: 3.5,
+        piece: () => "pearl"
+      },
+      {
+        id: "jaw",
+        anchor: "snout",
+        piece: (view, e) => `mouth-${view}-${e.mouth}`
+      },
+      {
+        id: "snout",
+        line: S_NOSE,
+        hw: { front: 9, tq: 6 },
+        vspan: [0, 7],
+        sideInset: 1,
+        piece: (view) => `nose-${view}`
       }
-      return {
-        view: v,
-        which,
-        u,
-        hw,
-        // the far drawing has its inner corner on the other side
-        flip: flip !== (v === "far"),
-        lift: v === "far" ? -F.farLift : 0
-      };
-    });
-    if (view === "tq") {
-      const [near, far] = eyes;
-      const least = near.u + near.hw + far.hw + F.gap;
-      if (far.u < least)
-        far.u = edges ? Math.min(
-          least,
-          Math.max(edges.lo * side, edges.hi * side) - far.hw - F.margin
-        ) : least;
-    }
-    return { side, view, eyes };
-  }
-  function drawEyePiece(ctx, k, look, pal, view = "side") {
-    const s = { x: 15 * k, y: 15 * k };
-    const ew = 10.5 * HS * k * (TIDE_FACE.eye[view].w / 0.63) * 0.63, eh = 9 * HS * k;
-    const cut = view === "far" ? s.x + ew * 0.66 : null;
-    const bridge = () => {
-      ctx.beginPath();
-      ctx.moveTo(cut - eh * 0.1, s.y - eh * 1.2);
-      ctx.quadraticCurveTo(
-        cut + eh * 0.16,
-        s.y,
-        cut - eh * 0.04,
-        s.y + eh * 1.2
-      );
-    };
-    if (cut !== null && look !== "shut" && look !== "dizzy") {
-      ctx.save();
-      bridge();
-      ctx.lineTo(-10 * k, s.y + eh * 1.2);
-      ctx.lineTo(-10 * k, s.y - eh * 1.2);
-      ctx.closePath();
-      ctx.clip();
-      drawEyeShape(ctx, k, look, pal, s, ew, eh, view);
-      ctx.restore();
-      ctx.strokeStyle = pal.line;
-      ctx.lineWidth = 1.8 * k;
-      ctx.lineCap = "round";
-      ctx.save();
-      ctx.beginPath();
-      ctx.rect(0, s.y - eh * 0.8, 60 * k, eh * 1.55);
-      ctx.clip();
-      bridge();
-      ctx.stroke();
-      ctx.restore();
-      return;
-    }
-    drawEyeShape(ctx, k, look, pal, s, ew, eh, view);
-  }
-  function drawEyeShape(ctx, k, look, pal, s, ew, eh, view) {
-    const gaze = view === "far" ? -0.5 : view === "front" ? 0.6 : 1;
-    const anger = look === "squint" ? 0.7 : look === "wide" ? 1 : 0.8;
-    const lid = look === "glare" ? 0.25 : look === "wide" ? 0.05 : 0.7;
-    if (look === "dizzy") {
-      ctx.strokeStyle = pal.line;
-      ctx.lineWidth = 1.8 * k;
-      ctx.beginPath();
-      for (let a = 0; a < 9; a += 0.25) {
-        const r = a * 0.95 * k;
-        const x = s.x + Math.cos(a) * r, y = s.y + Math.sin(a) * r * 0.9;
-        if (a === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-      }
-      ctx.stroke();
-      return;
-    }
-    if (look === "shut") {
-      ctx.strokeStyle = pal.line;
-      ctx.lineWidth = 2.2 * k;
-      ctx.lineCap = "round";
-      ctx.beginPath();
-      ctx.moveTo(s.x - ew, s.y);
-      ctx.quadraticCurveTo(s.x, s.y + eh * 0.6, s.x + ew, s.y);
-      ctx.stroke();
-      return;
-    }
-    const tilt = -0.28;
-    ctx.save();
-    ctx.beginPath();
-    ctx.ellipse(s.x, s.y, ew * 1.1, eh * 0.82, tilt, 0, TAU2);
-    ctx.fillStyle = "#1a0c06";
-    ctx.fill();
-    ctx.clip();
-    const iris = pal.iris;
-    const ig = ctx.createRadialGradient(
-      s.x,
-      s.y + eh * 0.2,
-      0,
-      s.x,
-      s.y,
-      ew * 1.1
-    );
-    ig.addColorStop(
-      0,
-      rgb([iris[0] + 255 >> 1, iris[1] + 255 >> 1, iris[2] + 255 >> 1])
-    );
-    ig.addColorStop(1, rgb(iris));
-    ctx.fillStyle = ig;
-    ctx.beginPath();
-    ctx.ellipse(s.x + ew * 0.08, s.y + eh * 0.05, ew * 0.98, eh * 0.9, 0, 0, TAU2);
-    ctx.fill();
-    ctx.fillStyle = "#0b0503";
-    const slit = clamp(0.32 - anger * 0.14, 0.14, 0.32);
-    ctx.beginPath();
-    ctx.ellipse(
-      s.x + ew * 0.12 * gaze,
-      s.y + eh * 0.05,
-      // the slit keeps its width whatever the eye's (it is not squeezed)
-      10.5 * HS * k * 0.63 * slit,
-      eh * 0.78,
-      0,
-      0,
-      TAU2
-    );
-    ctx.fill();
-    const top = s.y - eh - 1, lidY = s.y - eh + lid * eh * 2, slant = anger * eh * 1.15;
-    ctx.fillStyle = pal.mid;
-    ctx.beginPath();
-    ctx.moveTo(s.x - ew - 2, top);
-    ctx.lineTo(s.x + ew + 2, top);
-    ctx.lineTo(s.x + ew + 2, lidY + slant);
-    ctx.lineTo(s.x - ew - 2, lidY - slant * 0.3);
-    ctx.closePath();
-    ctx.fill();
-    ctx.strokeStyle = pal.line;
-    ctx.lineWidth = 2 * k;
-    ctx.beginPath();
-    ctx.moveTo(s.x - ew - 2, lidY - slant * 0.3);
-    ctx.lineTo(s.x + ew + 2, lidY + slant);
-    ctx.stroke();
-    ctx.restore();
-    ctx.strokeStyle = pal.line;
-    ctx.lineWidth = 1.8 * k;
-    ctx.beginPath();
-    ctx.ellipse(s.x, s.y, ew * 1.1, eh * 0.82, tilt, 0, TAU2);
-    ctx.stroke();
-    const bOut = {
-      x: s.x - ew * 1.45,
-      y: s.y - eh * 1.25 - (1 - anger) * 2.5 * k
-    };
-    const bIn = { x: s.x + ew * 1, y: s.y - eh * 0.95 + anger * eh * 0.55 };
-    const th = (3.2 + anger * 1.6) * HS * k;
-    ctx.fillStyle = pal.dark;
-    ctx.lineWidth = 1.4 * k;
-    ctx.beginPath();
-    ctx.moveTo(bOut.x, bOut.y - th * 0.6);
-    ctx.quadraticCurveTo(
-      (bOut.x + bIn.x) / 2,
-      Math.min(bOut.y, bIn.y) - th * 1.2,
-      bIn.x,
-      bIn.y - th * 0.4
-    );
-    ctx.lineTo(bIn.x, bIn.y + th * 0.5);
-    ctx.quadraticCurveTo(
-      (bOut.x + bIn.x) / 2,
-      Math.min(bOut.y, bIn.y) + th * 0.1,
-      bOut.x,
-      bOut.y + th * 0.3
-    );
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-    for (const [f, l] of [
-      [0.05, 1.5],
-      [0.35, 1]
-    ]) {
-      const x = lerp(bOut.x, bIn.x, f), y = lerp(bOut.y, bIn.y, f) - th * 0.6;
-      ctx.beginPath();
-      ctx.moveTo(x - ew * 0.18, y + th * 0.3);
-      ctx.lineTo(x - ew * 0.75 * l, y - eh * 0.75 * l);
-      ctx.lineTo(x + ew * 0.2, y + th * 0.1);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-    }
-  }
+    ]
+  };
+  var TIDE_FACE_EYE = {
+    front: 7.4,
+    near: 7.4,
+    far: 5,
+    side: 6.4
+  };
+  var TIDE_FACE = makeFace(TIDE_SPEC);
   function tidePieces(phase) {
     const pal = TIDE[phase];
     const S = PIECE.seg;
@@ -1237,7 +1389,7 @@ var TIDE = (() => {
       g.addColorStop(1, pal.dark);
       ctx.fillStyle = g;
       ctx.beginPath();
-      ctx.arc(c, c, r, 0, TAU2);
+      ctx.arc(c, c, r, 0, TAU3);
       ctx.fill();
       ctx.strokeStyle = "rgba(10,60,70,0.3)";
       ctx.lineWidth = 1.3 * k;
@@ -1251,13 +1403,13 @@ var TIDE = (() => {
       }
       ctx.fillStyle = "rgba(255,255,255,0.18)";
       ctx.beginPath();
-      ctx.ellipse(c - r * 0.35, c - r * 0.5, r * 0.32, r * 0.16, -0.5, 0, TAU2);
+      ctx.ellipse(c - r * 0.35, c - r * 0.5, r * 0.32, r * 0.16, -0.5, 0, TAU3);
       ctx.fill();
     });
     pieceOf("seg-line", S * 2 + 6, S * 2 + 6, 0.5, 0.5, (ctx, k) => {
       ctx.fillStyle = pal.line;
       ctx.beginPath();
-      ctx.arc((S + 3) * k, (S + 3) * k, (S + 1.6) * k, 0, TAU2);
+      ctx.arc((S + 3) * k, (S + 3) * k, (S + 1.6) * k, 0, TAU3);
       ctx.fill();
     });
     pieceOf("belly", S * 1.5, S * 1.5, 0.5, 0.5, (ctx, k) => {
@@ -1267,7 +1419,7 @@ var TIDE = (() => {
       g.addColorStop(1, pal.bellyDark);
       ctx.fillStyle = g;
       ctx.beginPath();
-      ctx.arc(c, c, r, 0, TAU2);
+      ctx.arc(c, c, r, 0, TAU3);
       ctx.fill();
     });
     pieceOf(
@@ -1302,119 +1454,300 @@ var TIDE = (() => {
       1,
       (ctx, k) => finShape(ctx, k, 20, PIECE.frill + 2, pal, 2)
     );
-    pieceOf("horn", 26, PIECE.horn + 4, 0.35, 1, (ctx, k) => {
-      const b = { x: 9 * k, y: (PIECE.horn + 2) * k };
-      const beam = [
-        b,
-        { x: 10 * k, y: b.y - 16 * k },
-        { x: 15 * k, y: b.y - 31 * k },
-        { x: 18 * k, y: 3 * k }
-      ];
-      const tines = [
-        [beam[1], { x: 3 * k, y: b.y - 28 * k }],
-        [beam[2], { x: 24 * k, y: b.y - 40 * k }]
-      ];
-      const stroke = (pts, w0, w1) => {
-        for (const pass of [0, 1])
-          for (let j = 0; j < pts.length - 1; j++) {
-            const wdt = lerp(w0, w1, j / (pts.length - 1)) * k;
-            ctx.strokeStyle = pass ? j < pts.length - 2 ? "#f1e2bd" : "#ffd27a" : pal.line;
-            ctx.lineWidth = pass ? wdt : wdt + 3 * k;
-            ctx.lineCap = "round";
-            ctx.beginPath();
-            ctx.moveTo(pts[j].x, pts[j].y);
-            ctx.lineTo(pts[j + 1].x, pts[j + 1].y);
-            ctx.stroke();
-          }
-      };
-      for (const t of tines) stroke(t, 5, 2.5);
-      stroke(beam, 9.5, 2.8);
+    const A = HA;
+    const drawn = (name, w, h, ox, oy, fn) => pieceOf(name, w, h, ox, oy, (ctx, k) => {
+      ctx.save();
+      ctx.scale(k, k);
+      ctx.translate(ox * w, oy * h);
+      ctx.lineJoin = ctx.lineCap = "round";
+      fn(ctx);
+      ctx.restore();
     });
-    const skin = (ctx, x0, y0, x1, y1) => {
-      const g = ctx.createLinearGradient(x0, y0, x0 + (x1 - x0) * 0.45, y1);
+    const headSkin = (c, dy = 0) => {
+      const g = c.createLinearGradient(0, H_TOP - 4 - dy, 0, H_BOT + 6 - dy);
       g.addColorStop(0, pal.light);
-      g.addColorStop(0.5, pal.mid);
+      g.addColorStop(0.45, pal.mid);
       g.addColorStop(1, pal.dark);
       return g;
     };
-    const D = PIECE.disc;
-    pieceOf("disc", D * 2 + 2, D * 2 + 2, 0.5, 0.5, (ctx, k) => {
-      const c = (D + 1) * k;
-      ctx.fillStyle = skin(ctx, c - D * k, c - D * k, c + D * k, c + D * k);
-      ctx.beginPath();
-      ctx.arc(c, c, D * k, 0, TAU2);
-      ctx.fill();
-    });
-    pieceOf("disc-line", D * 2 + 6, D * 2 + 6, 0.5, 0.5, (ctx, k) => {
-      ctx.fillStyle = pal.line;
-      ctx.beginPath();
-      ctx.arc((D + 3) * k, (D + 3) * k, (D + 1.8) * k, 0, TAU2);
-      ctx.fill();
-    });
-    const sr0 = 15 * HS, sr1 = 9 * HS;
-    const snoutW = PIECE.snout + sr0 + sr1 + 4, snoutH = sr0 * 2 + 4;
-    pieceOf("snout", snoutW, snoutH, (sr0 + 2) / snoutW, 0.5, (ctx, k) => {
-      wedge(
-        ctx,
-        k,
-        PIECE.snout,
-        sr0,
-        sr1,
-        2,
-        skin(ctx, 0, 0, snoutW * k * 0.6, snoutH * k)
-      );
-      ctx.strokeStyle = "rgba(10,60,70,0.35)";
-      ctx.lineWidth = 1.2 * k;
-      for (const f of [0.35, 0.55, 0.75]) {
-        ctx.beginPath();
-        ctx.arc(
-          (sr0 + 2 + PIECE.snout * f) * k,
-          (snoutH / 2 - 5) * k,
-          4 * HS * k,
-          0.15 * Math.PI,
-          0.85 * Math.PI
+    const earFin = (c, x, y, deg, len2) => {
+      for (const [d, l] of [
+        [-26, 0.8],
+        [26, 0.72],
+        [0, 1]
+      ]) {
+        const a = (deg + d) * Math.PI / 180, ln = len2 * l;
+        const dx = Math.cos(a), dy = Math.sin(a);
+        c.beginPath();
+        c.moveTo(x - dy * 4.5, y + dx * 4.5);
+        c.quadraticCurveTo(
+          x + dx * ln * 0.55 - dy * 5.5,
+          y + dy * ln * 0.55 + dx * 5.5,
+          x + dx * ln,
+          y + dy * ln
         );
-        ctx.stroke();
+        c.quadraticCurveTo(
+          x + dx * ln * 0.5 + dy * 5.5,
+          y + dy * ln * 0.5 - dx * 5.5,
+          x + dy * 4.5,
+          y - dx * 4.5
+        );
+        c.closePath();
+        const g = c.createLinearGradient(x, y, x + dx * ln, y + dy * ln);
+        g.addColorStop(0, pal.finDark);
+        g.addColorStop(0.5, pal.fin);
+        g.addColorStop(1, pal.finLight);
+        c.fillStyle = g;
+        c.strokeStyle = pal.line;
+        c.lineWidth = 1.6;
+        c.stroke();
+        c.fill();
       }
+    };
+    const VIEWS = ["front", "tq", "side", "backtq", "back"];
+    for (const view of VIEWS)
+      drawn(`head-${view}`, 4.2 * A, 3.2 * A, 0.5, 0.5, (c) => {
+        const faced = view === "front" || view === "tq" || view === "side";
+        if (view === "front" || view === "back")
+          for (const s of [-1, 1])
+            earFin(c, s * 0.8 * A, -0.1 * A, 90 - s * 88, 0.78 * A);
+        else if (view === "tq") {
+          earFin(c, -0.84 * A, -0.08 * A, 186, 0.86 * A);
+          earFin(c, 0.5 * A, -0.62 * A, -52, 0.5 * A);
+        } else if (view === "side") earFin(c, -0.62 * A, -0.1 * A, 190, 0.9 * A);
+        else {
+          earFin(c, 0.84 * A, -0.08 * A, -6, 0.86 * A);
+          earFin(c, -0.6 * A, -0.5 * A, 212, 0.56 * A);
+        }
+        const path = new Path2D();
+        for (let v = H_TOP; v <= H_BOT; v += 0.5)
+          path.lineTo(tideSkull(view, v)[1], v);
+        for (let v = H_BOT; v >= H_TOP; v -= 0.5)
+          path.lineTo(tideSkull(view, v)[0], v);
+        path.closePath();
+        c.strokeStyle = pal.line;
+        c.lineWidth = 2.2;
+        c.stroke(path);
+        c.fillStyle = headSkin(c);
+        c.fill(path);
+        c.save();
+        c.clip(path);
+        if (faced) {
+          c.beginPath();
+          if (view === "front") {
+            c.moveTo(-1.3 * A, 0.5 * A);
+            c.quadraticCurveTo(0, 0.82 * A, 1.3 * A, 0.5 * A);
+          } else {
+            c.moveTo(-1.3 * A, 0.56 * A);
+            c.quadraticCurveTo(0.3 * A, 0.7 * A, 1.7 * A, 0.56 * A);
+          }
+          c.lineTo(1.7 * A, H_BOT + 8);
+          c.lineTo(-1.3 * A, H_BOT + 8);
+          c.closePath();
+          c.fillStyle = pal.belly;
+          c.fill();
+        }
+        const cu = view === "front" ? 0 : view === "tq" ? 0.42 * A : 0.62 * A;
+        c.strokeStyle = pal.dark;
+        c.lineWidth = 1;
+        c.globalAlpha = 0.4;
+        for (let r = 0; r < 9; r++)
+          for (let x = -1.3 * A + r % 2 * 4.5; x < 1.5 * A; x += 9) {
+            const y = H_TOP + 5 + r * 6.5;
+            if (y > 0.45 * A) continue;
+            if (faced && ((x - cu) / (0.86 * A)) ** 2 + ((y - 0.12 * A) / (0.6 * A)) ** 2 < 1)
+              continue;
+            c.beginPath();
+            c.arc(x, y, 4.6, 0.12 * Math.PI, 0.88 * Math.PI);
+            c.stroke();
+          }
+        c.globalAlpha = 0.55;
+        const rim = c.createLinearGradient(0, H_TOP, 0, H_TOP + 0.5 * A);
+        rim.addColorStop(0, "#ffffff");
+        rim.addColorStop(1, "rgba(255,255,255,0)");
+        c.strokeStyle = rim;
+        c.lineWidth = 5;
+        c.stroke(path);
+        c.restore();
+      });
+    drawn("snout-back", 30, 26, 0.5, 0.5, (c) => {
+      c.beginPath();
+      c.ellipse(0, 2, 11, 9, 0, 0, TAU3);
+      c.strokeStyle = pal.line;
+      c.lineWidth = 2;
+      c.stroke();
+      c.fillStyle = headSkin(c, S_NOSE);
+      c.fill();
     });
-    pieceOf(
-      "snout-line",
-      snoutW + 4,
-      snoutH + 4,
-      (sr0 + 4) / (snoutW + 4),
-      0.5,
-      (ctx, k) => wedge(ctx, k, PIECE.snout, sr0 + 1.8, sr1 + 1.8, 2.2, pal.line)
-    );
-    const jr0 = 14 * HS, jr1 = 7.5 * HS;
-    const jawW = PIECE.jaw + jr0 + jr1 + 4, jawH = jr0 * 2 + 4;
-    pieceOf("jaw", jawW, jawH, (jr0 + 2) / jawW, 0.5, (ctx, k) => {
-      const g = ctx.createLinearGradient(0, 0, 0, jawH * k);
-      g.addColorStop(0, pal.belly);
-      g.addColorStop(1, pal.bellyDark);
-      wedge(ctx, k, PIECE.jaw, jr0, jr1, 2, g);
+    drawn("muzzle-front", 44, 40, 0.5, 0.5, (c) => {
+      const g = c.createRadialGradient(0, 3, 1, 0, 3, 17);
+      g.addColorStop(0, pal.light);
+      g.addColorStop(1, "rgba(255,255,255,0)");
+      c.globalAlpha = 0.6;
+      c.fillStyle = g;
+      c.save();
+      c.scale(1, 0.72);
+      c.beginPath();
+      c.arc(0, 4, 17, 0, TAU3);
+      c.fill();
+      c.restore();
     });
-    pieceOf(
-      "jaw-line",
-      jawW + 4,
-      jawH + 4,
-      (jr0 + 4) / (jawW + 4),
-      0.5,
-      (ctx, k) => wedge(ctx, k, PIECE.jaw, jr0 + 1.8, jr1 + 1.8, 2.2, pal.line)
-    );
-    pieceOf("mouth", PIECE.jaw, 24, 0, 0.5, (ctx, k) => {
-      ctx.fillStyle = "#5a1430";
-      ctx.beginPath();
-      ctx.moveTo(0, 12 * k);
-      ctx.lineTo(PIECE.jaw * k, 0);
-      ctx.lineTo(PIECE.jaw * k, 24 * k);
-      ctx.closePath();
-      ctx.fill();
-      ctx.fillStyle = "#ff7aa0";
-      ctx.beginPath();
-      ctx.ellipse(PIECE.jaw * 0.55 * k, 13 * k, 9 * k, 4.5 * k, 0, 0, TAU2);
-      ctx.fill();
+    drawn("muzzle-tq", 44, 60, 0.6, 0.62, (c) => {
+      const mid = (v) => (tideCentre(v) - tideCentre(S_NOSE)) * TQ_SIN;
+      const half = (v) => 1 + snoutHalf(v);
+      const top = S_BROW - 5, bot = S_NOSE + 16;
+      const edge = [];
+      for (let v = top; v <= bot; v += 0.5)
+        edge.push({
+          x: mid(v) + half(v) * (1 - 0.8 * smooth(S_NOSE + 9, bot, v)),
+          y: v - S_NOSE
+        });
+      c.beginPath();
+      edge.forEach((q, i) => i ? c.lineTo(q.x, q.y) : c.moveTo(q.x, q.y));
+      c.lineTo(-24, bot - S_NOSE);
+      c.lineTo(-24, top - S_NOSE);
+      c.closePath();
+      c.fillStyle = headSkin(c, S_NOSE);
+      c.fill();
+      c.globalCompositeOperation = "destination-out";
+      const fade = (x0, y0, x1, y1) => {
+        const g = c.createLinearGradient(x0, y0, x1, y1);
+        g.addColorStop(0, "rgba(0,0,0,1)");
+        g.addColorStop(1, "rgba(0,0,0,0)");
+        c.fillStyle = g;
+        c.fillRect(-30, -45, 70, 80);
+      };
+      fade(-22, 0, -11, 0);
+      fade(0, top - S_NOSE, 0, S_BROW + 2 - S_NOSE);
+      fade(0, 9, 0, 4);
+      c.globalCompositeOperation = "source-over";
+      const line = c.createLinearGradient(0, S_BROW - 3 - S_NOSE, 0, 9);
+      line.addColorStop(0, "rgba(0,0,0,0)");
+      line.addColorStop(0.25, pal.line);
+      line.addColorStop(0.8, pal.line);
+      line.addColorStop(1, "rgba(0,0,0,0)");
+      c.strokeStyle = line;
+      c.globalAlpha = 0.8;
+      c.lineWidth = 1.2;
+      c.beginPath();
+      edge.forEach((q, i) => i ? c.lineTo(q.x, q.y) : c.moveTo(q.x, q.y));
+      c.stroke();
     });
-    for (const view of ["front", "near", "far", "side"])
+    for (const view of ["front", "tq", "side"])
+      drawn(`nose-${view}`, 22, 12, 0.5, 0.5, (c) => {
+        c.fillStyle = pal.line;
+        const dots = view === "front" ? [
+          [-4.4, 0, 0.5],
+          [4.4, 0, -0.5]
+        ] : view === "tq" ? [
+          [-3.6, 0.2, 0.45],
+          [3.2, -0.2, -0.3]
+        ] : [[-4.6, -0.6, 0.4]];
+        for (const [x, y, tilt] of dots) {
+          c.beginPath();
+          c.ellipse(x, y, view === "tq" && x > 0 ? 1.5 : 2.3, 1.4, tilt, 0, TAU3);
+          c.fill();
+        }
+      });
+    for (const view of ["front", "tq", "side"])
+      for (const [kind, d] of [
+        ["closed", 0],
+        ["half", 4.5],
+        ["open", 9]
+      ])
+        drawn(`mouth-${view}-${kind}`, 60, 44, 0.6, 0.2, (c) => {
+          c.strokeStyle = pal.line;
+          c.lineWidth = 1.5;
+          const fx = (x) => view === "tq" && x > 0 ? x * 0.5 : view === "tq" ? x * 1.15 : x;
+          const inside = () => {
+            c.fillStyle = "#7a1e3a";
+            c.fill();
+            c.stroke();
+          };
+          if (view === "side") {
+            c.translate(-5.5, 0);
+            if (d) {
+              c.beginPath();
+              c.moveTo(-22, 6.5);
+              c.lineTo(-3.5, 7 + d);
+              c.quadraticCurveTo(-1, 9.5 + d, -4.5, 11.5 + d);
+              c.quadraticCurveTo(-13, 13 + d * 0.6, -23, 11);
+              c.closePath();
+              c.fillStyle = pal.belly;
+              c.fill();
+              c.stroke();
+              c.beginPath();
+              c.moveTo(-1, 6);
+              c.quadraticCurveTo(-10, 7.6, -22, 6.5);
+              c.lineTo(-3.5, 7 + d);
+              c.quadraticCurveTo(-1.4, 6.6 + d * 0.5, -1, 6);
+              c.closePath();
+              inside();
+              c.fillStyle = "#ff7aa0";
+              c.beginPath();
+              c.ellipse(-9, 6.9 + d * 0.62, 5.5, 1.2 + d * 0.08, 0.36, 0, TAU3);
+              c.fill();
+              c.fillStyle = "#fffaf0";
+              c.beginPath();
+              c.moveTo(-3.2, 6.5);
+              c.lineTo(-4.4, 6.5 + Math.min(d, 6) * 0.75);
+              c.lineTo(-5.8, 6.7);
+              c.fill();
+            } else {
+              c.beginPath();
+              c.moveTo(-1, 6);
+              c.quadraticCurveTo(-10, 8.2, -20, 6.8);
+              c.quadraticCurveTo(-22.6, 6, -23.4, 3.6);
+              c.stroke();
+            }
+            return;
+          }
+          const lip = () => {
+            c.moveTo(fx(-12), 4.6);
+            c.quadraticCurveTo(fx(-9), 9.2, fx(-3), 9.4);
+            c.quadraticCurveTo(0, 9.6, fx(3), 9.4);
+            c.quadraticCurveTo(fx(9), 9.2, fx(12), 4.6);
+          };
+          c.beginPath();
+          lip();
+          if (!d) {
+            c.stroke();
+            c.beginPath();
+            c.moveTo(fx(-12), 4.6);
+            c.quadraticCurveTo(fx(-13), 3.6, fx(-12.8), 2.4);
+            c.moveTo(fx(12), 4.6);
+            c.quadraticCurveTo(fx(13), 3.6, fx(12.8), 2.4);
+            c.stroke();
+            return;
+          }
+          c.quadraticCurveTo(fx(11), 9 + d, 0, 11 + d);
+          c.quadraticCurveTo(fx(-11), 9 + d, fx(-12), 4.6);
+          c.closePath();
+          inside();
+          c.save();
+          c.clip();
+          c.fillStyle = "#ff7aa0";
+          c.beginPath();
+          c.ellipse(fx(0), 10.5 + d, Math.abs(fx(-6)) * 0.9, 2.6, 0, 0, TAU3);
+          c.fill();
+          c.restore();
+          c.fillStyle = "#fffaf0";
+          for (const s of [-1, 1]) {
+            c.beginPath();
+            c.moveTo(fx(s * 5), 8.6);
+            c.lineTo(fx(s * 6.4), 8.6 + Math.min(d, 6) * 0.8);
+            c.lineTo(fx(s * 7.8), 8.2);
+            c.fill();
+          }
+        });
+    const lighter = (v) => v + 255 >> 1;
+    const irisStops = [
+      rgb([lighter(pal.iris[0]), lighter(pal.iris[1]), lighter(pal.iris[2])]),
+      rgb(pal.iris),
+      rgb([lighter(pal.iris[0]), lighter(pal.iris[1]), lighter(pal.iris[2])])
+    ];
+    for (const view of ["front", "near", "far", "side"]) {
+      const { hw, hh } = TIDE_SPEC.eye[view];
       for (const look of [
         "glare",
         "wide",
@@ -1422,18 +1755,52 @@ var TIDE = (() => {
         "shut",
         "dizzy"
       ])
-        pieceOf(
-          eyePieceName(view, look),
-          30 * HS,
-          26 * HS,
-          15 / (30 * HS),
-          15 / (26 * HS),
-          (ctx, k) => drawEyePiece(ctx, k, look, pal, view)
-        );
+        drawn(eyeName(view, look), 26, 26, 0.5, 0.5, (c) => {
+          const way = view === "far" ? -1 : 1;
+          if (view === "far") c.scale(-1, 1);
+          drawEye(c, {
+            hw,
+            hh,
+            ink: pal.line,
+            weight: 2.1,
+            look: look === "shut" ? "closed" : look === "dizzy" ? "dizzy" : "open",
+            lid: look === "glare" ? [-0.66, -0.16] : look === "squint" ? [-0.3, 0.22] : void 0,
+            bow: look === "squint" ? 0.5 : 1.3,
+            sclera: ["#ffffff", "#f1fdff", "#bfe7ee"],
+            shade: "rgba(8,60,70,0.4)",
+            spiral: pal.dark,
+            iris: {
+              // the slit looks the way the head faces
+              x: (view === "far" ? 0.2 : view === "front" ? 0.6 : 1) * way,
+              y: look === "wide" ? 0.2 : 1.1,
+              r: look === "wide" ? 3.4 : 4.5,
+              ring: pal.dark,
+              stops: irisStops,
+              slit: look === "wide" ? 0.9 : 1.35
+            }
+          });
+        });
+      const L = { front: 9.4, near: 9.4, far: 6.2, side: 8.2 }[view] / 2;
+      for (const [kind, s] of [
+        ["calm", [0.5, -0.9, 0.4, 1.7]],
+        ["angry", [-2, -0.6, 2.1, 2.4]]
+      ])
+        drawn(`brow-${view}-${kind}`, 16, 10, 0.5, 0.5, (c) => {
+          if (view === "far") c.scale(-1, 1);
+          c.beginPath();
+          c.moveTo(-L, s[0]);
+          c.quadraticCurveTo(0, s[1] - s[3] * 0.5, L, s[2] - s[3] * 0.4);
+          c.lineTo(L, s[2] + s[3] * 0.5);
+          c.quadraticCurveTo(0, s[1] + s[3] * 0.6, -L, s[0] + 0.25);
+          c.closePath();
+          c.fillStyle = pal.dark;
+          c.fill();
+        });
+    }
     pieceOf("eye-glint", 6, 6, 0.5, 0.5, (ctx, k) => {
-      ctx.fillStyle = "rgba(255,255,255,0.9)";
+      ctx.fillStyle = "rgba(255,255,255,0.92)";
       ctx.beginPath();
-      ctx.arc(3 * k, 3 * k, 1.9 * k, 0, TAU2);
+      ctx.arc(3 * k, 3 * k, 1.5 * k, 0, TAU3);
       ctx.fill();
     });
     pieceOf("pearl", 22 * HS, 18 * HS, 0.5, 0.5, (ctx, k) => {
@@ -1442,7 +1809,7 @@ var TIDE = (() => {
       ctx.strokeStyle = pal.line;
       ctx.lineWidth = 1.4 * k;
       ctx.beginPath();
-      ctx.ellipse(cx, cy + 2.5 * k, r * 1.3, r * 0.75, 0, 0, TAU2);
+      ctx.ellipse(cx, cy + 2.5 * k, r * 1.3, r * 0.75, 0, 0, TAU3);
       ctx.fill();
       ctx.stroke();
       const g = ctx.createRadialGradient(
@@ -1459,30 +1826,12 @@ var TIDE = (() => {
       ctx.fillStyle = g;
       ctx.lineWidth = 1.5 * k;
       ctx.beginPath();
-      ctx.arc(cx, cy, r, 0, TAU2);
+      ctx.arc(cx, cy, r, 0, TAU3);
       ctx.fill();
       ctx.stroke();
       ctx.fillStyle = "rgba(255,255,255,0.9)";
       ctx.beginPath();
-      ctx.arc(cx - r * 0.35, cy - r * 0.35, r * 0.25, 0, TAU2);
-      ctx.fill();
-    });
-    pieceOf("fang", 6, 14, 0.5, 0, (ctx, k) => {
-      ctx.fillStyle = "#fffaf0";
-      ctx.strokeStyle = pal.line;
-      ctx.lineWidth = 1.1 * k;
-      ctx.beginPath();
-      ctx.moveTo(0.6 * k, 0.6 * k);
-      ctx.lineTo(5.4 * k, 0.6 * k);
-      ctx.quadraticCurveTo(4 * k, 8 * k, 3 * k, 13.2 * k);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-    });
-    pieceOf("nostril", 8, 6, 0.5, 0.5, (ctx, k) => {
-      ctx.fillStyle = pal.line;
-      ctx.beginPath();
-      ctx.ellipse(4 * k, 3 * k, 3.2 * k, 2 * k, 0, 0, TAU2);
+      ctx.arc(cx - r * 0.35, cy - r * 0.35, r * 0.25, 0, TAU3);
       ctx.fill();
     });
     pieceOf(
@@ -1546,7 +1895,7 @@ var TIDE = (() => {
             rot: 0,
             sx: sc,
             sy: sc,
-            alpha: clamp((facing + 0.35) * 1.6),
+            alpha: clamp2((facing + 0.35) * 1.6),
             z: runZ - 0.18 + k * 0.05,
             waterY
           });
@@ -1626,6 +1975,7 @@ var TIDE = (() => {
       });
     }
     const { F, R, U, at } = head;
+    let pearlScreen = sp(head.pearl);
     const hz = head.w.z;
     const hw = water(head.w.x, head.w.z);
     if (hw === null || head.w.y > hw - 30) {
@@ -1655,151 +2005,54 @@ var TIDE = (() => {
           `mane${j}`,
           "mane",
           base,
-          add(base, mul(dir, (50 - Math.abs(k) * 12) * HS)),
+          add(base, mul(dir, (34 - Math.abs(k) * 8) * HS)),
           PIECE.mane,
           1,
           maneBehind ? backZ + j * 1e-3 : frontZ + j * 1e-3
         );
       });
-      [-1, 1].forEach((k) => {
-        const base = at(-2, k * 11, 16);
-        const tip = add(
-          base,
-          mul(add(add(mul(F, -45), mul(U, 30)), mul(R, k * 16)), HS)
-        );
-        finAt(
-          `horn${k}`,
-          "horn",
-          base,
-          tip,
-          PIECE.horn,
-          HS * k,
-          maneBehind ? backZ + 0.01 : frontZ + 0.01
-        );
-      });
-      [-1, 1].forEach((k) => {
-        const base = at(-4, k * 18, -5);
-        const tip = add(
-          base,
-          mul(
-            norm(
-              add(
-                add(mul(F, -0.8), mul(R, k * 0.75)),
-                mul(U, -0.15 + Math.sin(P.clock * 2 + k) * 0.08)
-              )
-            ),
-            30 * HS
-          )
-        );
-        finAt(
-          `frill${k}`,
-          "frill",
-          base,
-          tip,
-          PIECE.frill,
-          HS,
-          behind(tip) ? backZ + 0.02 : frontZ - 0.25
-        );
-      });
-      const disc = (key, w, r, z, piece = "disc") => {
-        const c = sp(w);
-        out.push({
-          key,
-          piece,
-          x: c.x,
-          y: c.y,
-          rot: 0,
-          sx: r / PIECE.disc,
-          sy: r / PIECE.disc,
-          alpha: 1,
-          z
-        });
-      };
-      const bar = (key, piece, from, dir, length, z, sy = 1) => {
-        const a = sp(from), b = sp(add(from, mul(dir, length)));
-        out.push({
-          key,
-          piece,
-          x: a.x,
-          y: a.y,
-          rot: Math.atan2(b.y - a.y, b.x - a.x),
-          sx: Math.max(0.02, Math.hypot(b.x - a.x, b.y - a.y) / length),
-          sy,
-          alpha: 1,
-          z
-        });
-      };
-      const cran = at(-6, 0, 4), brow = at(12, 0, 9), snoutBase = at(14, 0, 4);
-      disc("cran-line", cran, 22 * HS, hz - 0.3, "disc-line");
-      disc("brow-line", brow, 19 * HS, hz - 0.3, "disc-line");
-      bar("snout-line", "snout-line", snoutBase, F, PIECE.snout, hz - 0.3);
-      bar("jaw-line", "jaw-line", head.hinge, head.jawDir, PIECE.jaw, hz - 0.3);
-      if (P.jaw > 0.05)
-        bar(
-          "mouth",
-          "mouth",
-          head.hinge,
-          norm(add(F, head.jawDir)),
-          PIECE.jaw,
-          hz - 0.2,
-          clamp(P.jaw * 1.4, 0.2, 1.2)
-        );
-      bar("jaw", "jaw", head.hinge, head.jawDir, PIECE.jaw, hz - 0.15);
-      disc("cran", cran, 22 * HS, hz - 0.1);
-      disc("brow", brow, 19 * HS, hz - 0.1);
-      bar("snout", "snout", snoutBase, F, PIECE.snout, hz - 0.09);
       const look = P.dizzy > 0.5 ? "dizzy" : P.closed > 0.5 || P.lid > 0.92 ? "shut" : P.lid > 0.55 ? "squint" : P.anger > 0.9 && P.lid < 0.15 ? "wide" : "glare";
-      const axis = sp(at(0, 0, 9));
       const headYaw = Math.atan2(F.x, F.z);
-      const roll = (P.headRoll || 0) * Math.cos(headYaw);
-      const ex = { x: Math.cos(roll), y: Math.sin(roll) };
-      const discs = [
-        [cran, 22 * HS],
-        [brow, 19 * HS]
-      ];
-      const reach = discs.map(([w, r]) => {
-        const c = sp(w);
-        const along = (c.x - axis.x) * ex.x + (c.y - axis.y) * ex.y, off = -(c.x - axis.x) * ex.y + (c.y - axis.y) * ex.x;
-        const half = Math.sqrt(Math.max(0, r * r - off * off));
-        return { lo: along - half, hi: along + half };
-      });
-      const lying = P.flat > 0.5 && (look === "dizzy" || look === "shut") ? Math.sign(headYaw || 1) * Math.min(Math.abs(headYaw), 100 * Math.PI / 180) : headYaw;
-      const placedEyes = tideEyes(lying, {
-        lo: Math.min(...reach.map((q) => q.lo)),
-        hi: Math.max(...reach.map((q) => q.hi))
-      });
-      for (const e of placedEyes.eyes) {
-        const side = placedEyes.side;
-        const x = axis.x + ex.x * e.u * side, y = axis.y + ex.y * e.u * side;
-        const id = e.which === "near" ? side : -side;
-        out.push({
-          key: `eye${id}`,
-          piece: eyePieceName(e.view, look),
-          x,
-          y,
-          rot: roll + e.lift * side,
-          sx: (e.flip ? -1 : 1) * side,
-          sy: 1,
-          alpha: 1,
-          z: hz + 0.05
-        });
-        if (look !== "shut" && look !== "dizzy") {
+      const lying = P.flat > 0.5 && (look === "dizzy" || look === "shut");
+      const shown = lying ? Math.sign(headYaw || 1) * Math.min(Math.abs(headYaw), 100 * Math.PI / 180) : headYaw;
+      const hc = sp(at(4, 0, 4));
+      const built = TIDE_FACE.face(
+        {
+          x: hc.x,
+          y: hc.y,
+          z: hz,
+          yaw: shown,
+          pitch: -Math.asin(clamp2(F.y, -1, 1)) * 0.6,
+          roll: (P.headRoll || 0) * Math.cos(headYaw)
+        },
+        {
+          look,
+          brow: P.anger > 0.6 ? "angry" : "calm",
+          mouth: P.jaw > 0.4 ? "open" : P.jaw > 0.12 ? "half" : "closed"
+        }
+      );
+      const side = built.side;
+      const names = {
+        head: "cran",
+        eyen: `eye${side}`,
+        eyef: `eye${-side}`,
+        brown: `brow${side}`,
+        browf: `brow${-side}`,
+        glintn: `eyeglint${side}`,
+        glintf: `eyeglint${-side}`
+      };
+      for (const q of built.placements)
+        out.push({ ...q, key: names[q.key] ?? q.key });
+      const S = TIDE_SPEC;
+      const eyeV = S.lines.eye + built.nod;
+      if (look !== "shut" && look !== "dizzy")
+        for (const e of built.eyes) {
+          const q = built.at(e.u, eyeV);
           out.push({
-            key: `eyeglint${id}`,
-            piece: "eye-glint",
-            x: x - e.hw * 0.42,
-            y: y - 4.2,
-            rot: 0,
-            sx: 1,
-            sy: 1,
-            alpha: 1,
-            z: hz + 0.06
-          });
-          out.push({
-            key: `eyeglow${id}`,
+            key: `eyeglow${e.id === "n" ? side : -side}`,
             piece: "glow",
-            x,
-            y,
+            x: q.x,
+            y: q.y,
             rot: 0,
             sx: 0.5,
             sy: 0.5,
@@ -1809,142 +2062,70 @@ var TIDE = (() => {
             tint: pal.iris[0] << 16 | pal.iris[1] << 8 | pal.iris[2]
           });
         }
-      }
-      const down = sp(mul(U, -1)), upS = sp(U);
-      const fangRot = (d) => Math.atan2(-d.x, d.y);
-      for (const k of [-1, 1]) {
-        if (dot(norm(add(mul(F, 0.4), mul(R, k))), VIEW) < 0.12) continue;
-        const L = (9 + P.anger * 3) * HS;
-        for (const [f, r, u, l, dir] of [
-          [39.5, 9.5, -6, L, down],
-          [28.5, 11.2, -7, L * 0.5, down],
-          [46.5, 7.5, -8, L * 0.55, upS]
-        ]) {
-          const p = sp(at(f, k * r, u));
-          out.push({
-            key: `fang${k}${f}`,
-            piece: "fang",
-            x: p.x,
-            y: p.y,
-            rot: fangRot(dir),
-            sx: HS,
-            sy: l / 14,
-            alpha: 1,
-            z: hz + 0.06
-          });
-        }
-      }
-      if (faceN > -0.2)
-        for (const k of [-1, 1]) {
-          const n = sp(at(56, k * 5, 9));
-          out.push({
-            key: `nostril${k}`,
-            piece: "nostril",
-            x: n.x,
-            y: n.y,
-            rot: k * 0.5,
-            sx: HS,
-            sy: HS,
-            alpha: clamp(faceN + 0.3),
-            z: hz + 0.06
-          });
-        }
-      if (dot(norm(add(mul(F, 0.4), mul(U, 0.9))), VIEW) > -0.45) {
-        const p = sp(head.pearl);
+      let pearlAt = built.feats.pearl ? built.at(built.feats.pearl.u, built.feats.pearl.v) : null;
+      if (!pearlAt) {
+        pearlAt = built.at(0, S.lines.pearl + 2);
         out.push({
           key: "pearl",
           piece: "pearl",
-          x: p.x,
-          y: p.y,
+          x: pearlAt.x,
+          y: pearlAt.y,
           rot: 0,
           sx: 1,
           sy: 1,
           alpha: 1,
-          z: hz + 0.08
+          z: hz + 0.04
         });
-        const g = P.pearl + P.exposed * 0.8;
-        out.push({
-          key: "pearlglow",
-          piece: "glow",
-          x: p.x,
-          y: p.y,
-          rot: 0,
-          sx: 0.55 + g * 0.4,
-          sy: 0.55 + g * 0.4,
-          alpha: clamp(0.25 + g * 0.45),
-          z: 0,
-          glow: true,
-          tint: pal.glow
-        });
-      }
-      for (const k of [-1, 1]) {
-        const b = at(50, k * 7, -1);
-        const pts = [sp(b)];
-        for (let j = 1; j <= 9; j++) {
-          const f = j / 9;
-          pts.push(
-            sp(
-              add(
-                b,
-                add(
-                  mul(F, (-f * 46 + 8) * HS),
-                  add(
-                    mul(R, k * (8 + f * 40) * HS),
-                    mul(
-                      U,
-                      (-f * 26 + Math.sin(P.clock * 2.2 + f * 5 + k) * 9 * f + Math.sin(f * 7) * 6 * f) * HS
-                    )
-                  )
-                )
-              )
-            )
-          );
-        }
-        lines.push({
-          pts,
-          width: 2,
-          color: "rgba(255,240,220,0.85)",
-          front: !behind(add(b, mul(R, k * 30)))
-        });
-      }
-      if (faceN > -0.5) {
-        const ch = at(22, 0, -13);
-        for (const k of [-1, 0, 1]) {
-          const a = add(ch, mul(R, k * 5 * HS));
-          const end = add(
-            add(ch, mul(R, k * 9 * HS)),
-            add(mul(U, -18 * HS), mul(F, -26 * HS))
-          );
-          const sway = Math.sin(P.clock * 2.3 + k) * 4;
-          const mA = sp(a), mE = sp(end);
-          const pts = [
-            mA,
-            { x: mA.x + sway, y: (mA.y + mE.y) / 2 },
-            { x: mE.x + sway, y: mE.y }
-          ];
-          lines.push({ pts, width: 5.5, color: pal.line, front: true });
-          lines.push({
-            pts,
-            width: 3.4,
-            color: k ? pal.belly : pal.bellyDark,
-            front: true
+        const turn = Math.abs(Math.atan2(Math.sin(shown), Math.cos(shown)));
+        const m = built.at(
+          tideCentre(S.lines.nose) * Math.sin(turn),
+          S.lines.nose
+        );
+        for (const key of ["snout", "jaw"])
+          out.push({
+            key,
+            piece: "snout-back",
+            x: m.x,
+            y: m.y,
+            rot: 0,
+            sx: side,
+            sy: 1,
+            alpha: 1,
+            z: hz - 0.01
           });
+      }
+      pearlScreen = pearlAt;
+      const g = P.pearl + P.exposed * 0.8;
+      out.push({
+        key: "pearlglow",
+        piece: "glow",
+        x: pearlAt.x,
+        y: pearlAt.y,
+        rot: 0,
+        sx: 0.55 + g * 0.4,
+        sy: 0.55 + g * 0.4,
+        alpha: clamp2(0.25 + g * 0.45),
+        z: 0,
+        glow: true,
+        tint: pal.glow
+      });
+      const nose = built.feats.snout;
+      if (nose) {
+        const front = built.view === "front";
+        for (const k of front ? [-1, 1] : [-1]) {
+          const pts = [];
+          for (let j = 0; j <= 8; j++) {
+            const f = j / 8;
+            const wave = Math.sin(P.clock * 2.2 + f * 4 + k) * 2.5 * f;
+            const out2 = 15 * Math.sin(f * 2.3) + wave, down = 4 + 19 * f - 7 * f * f;
+            pts.push(
+              front ? built.at(nose.u + k * (13 + out2), nose.v + down) : built.at(nose.u - 11 - out2, nose.v + 1 + down)
+            );
+          }
+          lines.push({ pts, width: 3.2, color: pal.line, front: true });
+          lines.push({ pts, width: 1.7, color: pal.finLight, front: true });
         }
       }
-      if (P.jaw < 0.1)
-        for (const k of [-1, 1]) {
-          if (dot(norm(add(mul(F, 0.2), mul(R, k))), VIEW) < -0.1) continue;
-          lines.push({
-            pts: [
-              sp(at(54, k * 5, -5)),
-              sp(at(30, k * 11, -6)),
-              sp(at(4, k * 15, -10 - P.anger * 2))
-            ],
-            width: 1.8,
-            color: pal.line,
-            front: true
-          });
-        }
     }
     return {
       placements: out,
@@ -1952,7 +2133,7 @@ var TIDE = (() => {
       segs,
       head,
       headScreen: sp(head.w),
-      pearlScreen: sp(head.pearl)
+      pearlScreen
     };
   }
 
@@ -1989,44 +2170,57 @@ var TIDE = (() => {
     const dry = P.flat > 0.5;
     const r = tidePlacements(P, yaw, phase, () => dry ? null : 0);
     const headZ = r.head.w.z;
-    const list = r.placements.map((p) => ({ ...p, face: /^(eye|cran|brow|snout|jaw|mouth|fang|nostril)/.test(p.key) }));
+    const HEAD = /^(cran|eye|brow|muzzle|pearl$|jaw|snout)/;
+    const list = r.placements.map((p) => ({ ...p, face: HEAD.test(p.key) }));
     for (const l of r.lines)
       list.push({ line: l.pts, color: l.color, width: l.width, z: l.front ? headZ + 0.07 : headZ - 0.6 + 5e-4, face: true });
     list.sort((a, b) => a.z - b.z);
-    const { F, at } = r.head;
+    const { F } = r.head;
     const headYaw = Math.atan2(F.x, F.z);
-    const e = tideEyes(headYaw);
-    const axis = tideProject(at(0, 0, 9));
-    const turn = Math.abs(Math.atan2(Math.sin(headYaw), Math.cos(headYaw)));
-    const pf = turn - TIDE_FACE.lag * Math.sin(2 * Math.min(turn, Math.PI / 2));
-    const cu = (e.view === "side" ? 1 : Math.sin(e.view === "front" ? pf * (headYaw < 0 ? -1 : 1) : pf)) * 26 * e.side;
-    const guide = e.view === "back" ? null : {
-      centre: [{ x: axis.x + cu * 0.7, y: axis.y - 34 }, { x: axis.x + cu, y: axis.y }, { x: axis.x + cu * 1.25, y: axis.y + 30 }],
-      eyeLine: [{ x: axis.x - 40, y: axis.y }, { x: axis.x + 40, y: axis.y }],
-      others: [],
-      eyes: r.placements.filter((p) => /^eye-?1$/.test(p.key)).map((p) => ({ x: p.x, y: p.y }))
-    };
+    const cran = r.placements.find((p) => p.key === "cran");
+    const hx = cran ? cran.x : r.headScreen.x, hy = cran ? cran.y : r.headScreen.y;
+    const hv = headView(headYaw);
+    const S = TIDE_SPEC;
+    let guide = null;
+    if (cran && hv.view !== "back" && hv.view !== "backtq") {
+      const roll = cran.rot, cr = Math.cos(roll), sr = Math.sin(roll);
+      const side = hv.view === "front" ? 1 : hv.side;
+      const at = (u, v) => ({ x: hx + u * side * cr - v * sr, y: hy + u * side * sr + v * cr });
+      let pf = TIDE_FACE.faceYaw(hv.turn);
+      if (hv.view === "front") pf *= hv.side;
+      const sinF = hv.view === "side" ? 1 : Math.sin(pf);
+      const eyes = r.placements.filter((p) => /^eye-?1$/.test(p.key));
+      const nod = eyes.length ? 0 : 0;
+      const centre = [];
+      for (let v = S.top + 1; v <= S.bot - 1; v += 2) centre.push(at(S.centreLine(v) * sinF, v + nod));
+      const [l, rr] = S.skullEdge(hv.view, S.lines.eye);
+      const line = (v, k = 1) => {
+        const [a, b] = S.skullEdge(hv.view, v);
+        return [at(a * k, v), at(b * k, v)];
+      };
+      guide = { centre, eyeLine: [at(l, S.lines.eye), at(rr, S.lines.eye)], others: [line(S.lines.brow, 0.9), line(S.lines.nose, 0.9), line(S.lines.pearl, 0.9)], eyes: eyes.map((p) => ({ x: p.x, y: p.y })) };
+    }
     return {
       placements: list,
-      heads: [{ x: axis.x, y: axis.y, view: e.view === "back" ? turn > 2.75 ? "back" : "backtq" : e.view, side: headYaw < 0 ? -1 : 1, guide, marks: { top: -40, eye: 0, bot: 44 } }],
+      heads: [{ x: hx, y: hy, view: cran ? cran.piece.replace("head-", "") : hv.view, side: headYaw < 0 ? -1 : 1, guide, marks: { top: S.top, eye: S.lines.eye, bot: S.bot } }],
       shadows: [[0, 0, 70, 20]]
     };
   }
   var boss = {
     id: "tidewyrm",
     title: "Tidewyrm",
-    lede: "The water dragon that is already in the game. Its eye used to be one drawing squeezed sideways by the turn; it now has a front, a near, a far and a side drawing on one eye line. The far eye is drawn cut by the bridge of the snout.",
+    lede: "The water dragon that is already in the game, with its head redrawn: a rounded head with a short snout, sleepy slit eyes, pink ear fins and the pearl on its brow, one drawing per view. The snout's far edge tucks the far eye.",
     attacks: [["dive", "Dive"], ["wave", "Tidal Wave"], ["bubbles", "Bubbles"], ["hightide", "High Tide"], ["undertow", "Undertow"], ["prison", "Water Prison"]],
     pose,
     placements,
     pieces: tidePieces,
     faces: [],
-    face: TIDE_FACE,
-    tideEyes,
+    face: { ...TIDE_SPEC, eyeOrbit: TIDE_SPEC.eyeOrbit },
+    tideFace: TIDE_FACE,
     looks: ["glare", "wide", "squint", "shut", "dizzy"],
     mouths: ["closed"],
-    stage: { w: 460, h: 330, ground: 0.8, closeW: 150, closeH: 120, sheetGap: 300, sheetH: 300, closeGap: 110, closeSheetH: 120, champion: [-170, 40], shadow: [70, 20], floor: ["#06141c", "#0c2a38", "120,220,255"] },
-    occluder: "the bridge of the snout, drawn into the far eye's own drawing"
+    stage: { w: 460, h: 330, ground: 0.8, closeW: 130, closeH: 100, sheetGap: 300, sheetH: 300, closeGap: 110, closeSheetH: 120, champion: [-170, 40], shadow: [70, 20], floor: ["#06141c", "#0c2a38", "120,220,255"] },
+    occluder: "muzzle-tq: the bridge and far side of the snout"
   };
   return __toCommonJS(tide_entry_exports);
 })();

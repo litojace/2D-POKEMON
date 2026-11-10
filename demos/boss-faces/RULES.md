@@ -11,7 +11,7 @@ only moves, turns, mirrors and re-sorts pieces.
 | `src/<boss>-rig.js` | one boss: its construction, pose, body and pieces (pure functions) |
 | `src/tide-rig.js` | Tidewyrm: a bundle of the game's own `apps/client/src/boss-vector-tide.ts` |
 | `tools/check-face.cjs` | checks the rules over every yaw, nod, roll, look and mouth |
-| `tools/make-proofs.py` | renders `proof/<boss>/` |
+| `tools/make-proofs.py`, `tools/proofs-one.py <boss>` | render `proof/<boss>/` |
 | `build.py`, `tools/build-tide.sh` | rebuild the `.html` files and the Tidewyrm bundle |
 
 ## Frames
@@ -62,7 +62,7 @@ Line weights are in rig units, so nothing is squeezed.
 | Prismatail | 17 | 40° | 0.70 A | 12° | 6° | 35% | `beak_tq`: the beak's base |
 | Somnara | 66 | 50° | 0.90 A | 10° | 4° | none | the whale's own outline |
 | Storm Twins | 40 | 30° | 0.80 A | 10° | 5° | none | the bell's own outline |
-| Tidewyrm | disc 25.6 | 40° | 20 units | 18° | 6° | none | the bridge of the snout, drawn into the far eye |
+| Tidewyrm | 30 | 42° | 0.64 A | 14° | 6° | 40% | `muzzle-tq`: the bridge and far side of the snout |
 
 | Boss | Lines (from the head's centre, down is +) | Eye half-widths: front / near / far / side |
 | --- | --- | --- |
@@ -71,7 +71,7 @@ Line weights are in rig units, so nothing is squeezed.
 | Prismatail | brow -0.34 A, eye -0.06 A, beak +0.27 A | 4.6 / 4.6 / 3.1 / 4.4 |
 | Somnara | eye -0.06 A, mouth +0.17 A | 5.6 / 8 / 3.3 / 8.4 |
 | Storm Twins | eye +0.04 A, mouth +0.30 A | 6.6 / 6.6 / 4.3 / 3.6 |
-| Tidewyrm | eyes on the line through the head's axis at eye height | 8.6 / 8.6 / 5.2 / 9.8 |
+| Tidewyrm | pearl -0.64 A, brow -0.32 A, eye -0.06 A, nose +0.36 A | 7.4 / 7.4 / 5 / 6.4 |
 
 Notes per boss:
 
@@ -92,11 +92,16 @@ Notes per boss:
 - **Storm Twins.** The bell is the head and looks the same from every side, so
   one bell piece serves all views. Fizz and Crackle share the construction and
   have their own eye and mouth drawings.
-- **Tidewyrm.** Changed in the game (`boss-vector-tide.ts`: `TIDE_FACE`,
-  `tideEyes`). Its eye used to be one drawing scaled sideways by the turn. It
-  now has four drawings, placed by the same rules and clamped inside the
-  head's two discs. A stranded head lying on its side still shows its dizzy or
-  shut eye from behind, as the side drawing.
+- **Tidewyrm.** Changed in the game. Its head is redrawn after the painted
+  sprite: a rounded head with a short snout, sleepy slit eyes, pink ear fins
+  and the pearl on its brow, one drawing per view, with the face built by
+  `apps/client/src/boss-vector-face.ts` (the kit, in TypeScript). The antlers,
+  beard and long whiskers are gone; two short barbels remain as thin lines. A
+  stranded head lying on its side still shows its dizzy or shut eye from
+  behind, in profile.
+
+The method, with templates for drawing another boss this way, is in
+`docs/boss-face-drawing.md`.
 
 ## Expressions
 
