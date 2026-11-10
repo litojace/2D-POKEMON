@@ -1,6 +1,6 @@
 /**
  * Tidewyrm as vector art: an Eastern water dragon (a long scaly body, antler
- * horns, a beard, gold slit eyes and the pearl on its crown). Pure: the pose
+ * mane, ear fins, gold slit eyes and the pearl on its brow). Pure: the pose
  * from the battle's state, the body in 3D, and where each drawn piece goes on
  * screen this frame (`tidePlacements`). boss-vector-tide-rig.ts draws the
  * pieces once into an atlas and moves images to these placements; the
@@ -15,6 +15,12 @@ import {
   turnToward,
   type Phase,
 } from "./boss-vector-grumble";
+import {
+  drawEye,
+  makeFace,
+  type EyeView,
+  type FaceView,
+} from "./boss-vector-face";
 
 export type V3 = { x: number; y: number; z: number };
 const TAU = Math.PI * 2;
@@ -563,144 +569,128 @@ function wedge(
   ctx.fill();
 }
 export type EyeLook = "glare" | "wide" | "squint" | "shut" | "dizzy";
-function drawEyePiece(ctx: Ctx, k: number, look: EyeLook, pal: TidePalette) {
-  // Drawn with the inner corner to the right; brow ridge included.
-  const s = { x: 15 * k, y: 15 * k };
-  const ew = 10.5 * HS * k,
-    eh = 9 * HS * k;
-  const anger = look === "squint" ? 0.7 : look === "wide" ? 1 : 0.8;
-  const lid = look === "glare" ? 0.25 : look === "wide" ? 0.05 : 0.7;
-  if (look === "dizzy") {
-    ctx.strokeStyle = pal.line;
-    ctx.lineWidth = 1.8 * k;
-    ctx.beginPath();
-    for (let a = 0; a < 9; a += 0.25) {
-      const r = a * 0.95 * k;
-      const x = s.x + Math.cos(a) * r,
-        y = s.y + Math.sin(a) * r * 0.9;
-      if (a === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
-    }
-    ctx.stroke();
-    return;
-  }
-  if (look === "shut") {
-    ctx.strokeStyle = pal.line;
-    ctx.lineWidth = 2.2 * k;
-    ctx.lineCap = "round";
-    ctx.beginPath();
-    ctx.moveTo(s.x - ew, s.y);
-    ctx.quadraticCurveTo(s.x, s.y + eh * 0.6, s.x + ew, s.y);
-    ctx.stroke();
-    return;
-  }
-  const tilt = -0.28;
-  ctx.save();
-  ctx.beginPath();
-  ctx.ellipse(s.x, s.y, ew * 1.1, eh * 0.82, tilt, 0, TAU);
-  ctx.fillStyle = "#1a0c06";
-  ctx.fill();
-  ctx.clip();
-  const iris = pal.iris;
-  const ig = ctx.createRadialGradient(
-    s.x,
-    s.y + eh * 0.2,
-    0,
-    s.x,
-    s.y,
-    ew * 1.1,
-  );
-  ig.addColorStop(
-    0,
-    rgb([(iris[0] + 255) >> 1, (iris[1] + 255) >> 1, (iris[2] + 255) >> 1]),
-  );
-  ig.addColorStop(1, rgb(iris));
-  ctx.fillStyle = ig;
-  ctx.beginPath();
-  ctx.ellipse(s.x + ew * 0.08, s.y + eh * 0.05, ew * 0.98, eh * 0.9, 0, 0, TAU);
-  ctx.fill();
-  ctx.fillStyle = "#0b0503";
-  const slit = clamp(0.32 - anger * 0.14, 0.14, 0.32);
-  ctx.beginPath();
-  ctx.ellipse(
-    s.x + ew * 0.12,
-    s.y + eh * 0.05,
-    ew * slit,
-    eh * 0.78,
-    0,
-    0,
-    TAU,
-  );
-  ctx.fill();
-  ctx.fillStyle = "rgba(255,255,255,0.9)";
-  ctx.beginPath();
-  ctx.arc(s.x - ew * 0.35, s.y - eh * 0.3, Math.max(1.2, ew * 0.16), 0, TAU);
-  ctx.fill();
-  const top = s.y - eh - 1,
-    lidY = s.y - eh + lid * eh * 2,
-    slant = anger * eh * 1.15;
-  ctx.fillStyle = pal.mid;
-  ctx.beginPath();
-  ctx.moveTo(s.x - ew - 2, top);
-  ctx.lineTo(s.x + ew + 2, top);
-  ctx.lineTo(s.x + ew + 2, lidY + slant);
-  ctx.lineTo(s.x - ew - 2, lidY - slant * 0.3);
-  ctx.closePath();
-  ctx.fill();
-  ctx.strokeStyle = pal.line;
-  ctx.lineWidth = 2 * k;
-  ctx.beginPath();
-  ctx.moveTo(s.x - ew - 2, lidY - slant * 0.3);
-  ctx.lineTo(s.x + ew + 2, lidY + slant);
-  ctx.stroke();
-  ctx.restore();
-  ctx.strokeStyle = pal.line;
-  ctx.lineWidth = 1.8 * k;
-  ctx.beginPath();
-  ctx.ellipse(s.x, s.y, ew * 1.1, eh * 0.82, tilt, 0, TAU);
-  ctx.stroke();
-  // the brow ridge, lower at the inner end, with two spikes sweeping back
-  const bOut = {
-    x: s.x - ew * 1.45,
-    y: s.y - eh * 1.25 - (1 - anger) * 2.5 * k,
-  };
-  const bIn = { x: s.x + ew * 1.0, y: s.y - eh * 0.95 + anger * eh * 0.55 };
-  const th = (3.2 + anger * 1.6) * HS * k;
-  ctx.fillStyle = pal.dark;
-  ctx.lineWidth = 1.4 * k;
-  ctx.beginPath();
-  ctx.moveTo(bOut.x, bOut.y - th * 0.6);
-  ctx.quadraticCurveTo(
-    (bOut.x + bIn.x) / 2,
-    Math.min(bOut.y, bIn.y) - th * 1.2,
-    bIn.x,
-    bIn.y - th * 0.4,
-  );
-  ctx.lineTo(bIn.x, bIn.y + th * 0.5);
-  ctx.quadraticCurveTo(
-    (bOut.x + bIn.x) / 2,
-    Math.min(bOut.y, bIn.y) + th * 0.1,
-    bOut.x,
-    bOut.y + th * 0.3,
-  );
-  ctx.closePath();
-  ctx.fill();
-  ctx.stroke();
-  for (const [f, l] of [
-    [0.05, 1.5],
-    [0.35, 1.0],
-  ]) {
-    const x = lerp(bOut.x, bIn.x, f),
-      y = lerp(bOut.y, bIn.y, f) - th * 0.6;
-    ctx.beginPath();
-    ctx.moveTo(x - ew * 0.18, y + th * 0.3);
-    ctx.lineTo(x - ew * 0.75 * l, y - eh * 0.75 * l);
-    ctx.lineTo(x + ew * 0.2, y + th * 0.1);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-  }
+/**
+ * THE HEAD. A rounded dragon's head with a short snout, ear fins and the
+ * pearl on its brow, drawn once per view. The face on it is built by the
+ * shared construction (boss-vector-face.ts; the method is written up in
+ * docs/boss-face-drawing.md).
+ */
+const HA = 30; // half the head's width: the unit of the constants below
+const H_TOP = -0.9 * HA,
+  H_BOT = 0.84 * HA;
+const S_BROW = -0.32 * HA,
+  S_NOSE = 0.36 * HA;
+const gauss = (x: number, s: number) => Math.exp(-(x * x) / (s * s));
+/** The skull's roundness at height v: 1 at its widest, 0 at crown and chin. */
+const hse = (v: number) => {
+  const t = clamp(Math.abs((v + 0.03 * HA) / (0.87 * HA)));
+  const e = v > -0.03 * HA ? 2 : 2.5;
+  return Math.pow(1 - Math.pow(t, e), 1 / e);
+};
+/** The profile (the centre line): brow, a shallow stop, the short snout, the chin. */
+export const tideCentre = (v: number) =>
+  0.9 * HA * hse(v) +
+  0.56 * HA * gauss(v - 0.4 * HA, (v > 0.4 * HA ? 0.3 : 0.2) * HA) -
+  0.04 * HA * gauss(v - 0.02 * HA, 0.12 * HA);
+/** Half the snout's width where it stands proud of the face. */
+const snoutHalf = (v: number) => 0.3 * HA * gauss(v - 0.44 * HA, 0.26 * HA);
+const TQ_LAG = (14 * Math.PI) / 180;
+/** sin of the face's yaw at the three-quarter facing (45 degrees less the lag). */
+const TQ_SIN = Math.sin(Math.PI / 4 - TQ_LAG);
+/** The drawn outline of a view at height v: [left, right], turned to screen right. */
+export function tideSkull(view: FaceView, v: number): [number, number] {
+  const s = hse(v),
+    w = 0.99 * HA * s * (1 + 0.05 * smooth(-0.2 * HA, 0.4 * HA, v));
+  if (view === "side") return [-1.0 * HA * s, tideCentre(v)];
+  if (view === "tq")
+    return [-w, Math.max(0.95 * HA * s, tideCentre(v) * TQ_SIN + snoutHalf(v))];
+  return [-w, w];
 }
+export interface TideExpr {
+  look: EyeLook;
+  brow: "calm" | "angry";
+  mouth: "closed" | "half" | "open";
+}
+const eyeName = (view: EyeView, look: EyeLook) =>
+  view === "front" ? `eye-${look}` : `eye-${view}-${look}`;
+const lit = (look: EyeLook) => look !== "shut" && look !== "dizzy";
+export const TIDE_SPEC = {
+  A: HA,
+  top: H_TOP,
+  bot: H_BOT,
+  lines: { pearl: -0.64 * HA, brow: S_BROW, eye: -0.06 * HA, nose: S_NOSE },
+  eyeAz: (42 * Math.PI) / 180,
+  eyeOrbit: 0.64 * HA,
+  lag: TQ_LAG,
+  farLift: (6 * Math.PI) / 180,
+  nod: 0.4 * HA,
+  margin: 0.045 * HA,
+  tuckCap: 0.4,
+  bridgeHalf: 1,
+  eye: {
+    front: { hw: 7.4, hh: 7.2 },
+    near: { hw: 7.4, hh: 7.2 },
+    far: { hw: 5, hh: 7 },
+    side: { hw: 6.4, hh: 7.2 },
+  },
+  centreLine: tideCentre,
+  skullEdge: tideSkull,
+  headPiece: (view: FaceView) => `head-${view}`,
+  eyePiece: (view: EyeView, e: TideExpr) => eyeName(view, e.look),
+  glint: (view: EyeView, e: TideExpr) =>
+    lit(e.look)
+      ? {
+          piece: "eye-glint",
+          x: -TIDE_FACE_EYE[view] * 0.34,
+          y: e.look === "glare" ? -1.6 : -2.6,
+        }
+      : null,
+  brow: (view: EyeView, e: TideExpr) => ({
+    piece: `brow-${view}-${e.brow}`,
+    dx: 0.5,
+    dy: e.brow === "angry" ? 2.4 : 0,
+  }),
+  // on the centre line, in drawing order within their layer
+  centre: [
+    {
+      id: "muzzle",
+      anchor: "snout",
+      // between the far and the near eye: its far edge tucks the far eye
+      layer: "mid" as const,
+      piece: (view: FaceView) => (view === "side" ? null : `muzzle-${view}`),
+    },
+    {
+      id: "pearl",
+      line: -0.64 * HA,
+      nodK: 0.8,
+      hw: { front: 7.5, tq: 7.5 },
+      vspan: [-7, 7] as [number, number],
+      sideInset: 3.5,
+      piece: () => "pearl",
+    },
+    {
+      id: "jaw",
+      anchor: "snout",
+      piece: (view: FaceView, e: TideExpr) => `mouth-${view}-${e.mouth}`,
+    },
+    {
+      id: "snout",
+      line: S_NOSE,
+      hw: { front: 9, tq: 6 },
+      vspan: [0, 7] as [number, number],
+      sideInset: 1,
+      piece: (view: FaceView) => `nose-${view}`,
+    },
+  ],
+};
+const TIDE_FACE_EYE: Record<EyeView, number> = {
+  front: 7.4,
+  near: 7.4,
+  far: 5,
+  side: 6.4,
+};
+/** The face: a head pose and an expression in, piece placements out. */
+export const TIDE_FACE = makeFace<TideExpr>(TIDE_SPEC);
 /** Every piece the rig draws in a phase. */
 export function tidePieces(phase: Phase): Piece[] {
   const pal = TIDE[phase];
@@ -770,143 +760,403 @@ export function tidePieces(phase: Phase): Piece[] {
   pieceOf("frill", 20, PIECE.frill + 2, 0.5, 1, (ctx, k) =>
     finShape(ctx, k, 20, PIECE.frill + 2, pal, 2),
   );
-  // an antler: a beam with two tines, pointing up, ivory with gold tips
-  pieceOf("horn", 26, PIECE.horn + 4, 0.35, 1, (ctx, k) => {
-    const b = { x: 9 * k, y: (PIECE.horn + 2) * k };
-    const beam = [
-      b,
-      { x: 10 * k, y: b.y - 16 * k },
-      { x: 15 * k, y: b.y - 31 * k },
-      { x: 18 * k, y: 3 * k },
-    ];
-    const tines = [
-      [beam[1], { x: 3 * k, y: b.y - 28 * k }],
-      [beam[2], { x: 24 * k, y: b.y - 40 * k }],
-    ];
-    const stroke = (
-      pts: { x: number; y: number }[],
-      w0: number,
-      w1: number,
-    ) => {
-      for (const pass of [0, 1])
-        for (let j = 0; j < pts.length - 1; j++) {
-          const wdt = lerp(w0, w1, j / (pts.length - 1)) * k;
-          ctx.strokeStyle = pass
-            ? j < pts.length - 2
-              ? "#f1e2bd"
-              : "#ffd27a"
-            : pal.line;
-          ctx.lineWidth = pass ? wdt : wdt + 3 * k;
-          ctx.lineCap = "round";
-          ctx.beginPath();
-          ctx.moveTo(pts[j].x, pts[j].y);
-          ctx.lineTo(pts[j + 1].x, pts[j + 1].y);
-          ctx.stroke();
-        }
-    };
-    for (const t of tines) stroke(t, 5, 2.5);
-    stroke(beam, 9.5, 2.8);
-  });
-  // the head: two discs, the snout and the jaw (each with an outline piece)
-  const skin = (ctx: Ctx, x0: number, y0: number, x1: number, y1: number) => {
-    const g = ctx.createLinearGradient(x0, y0, x0 + (x1 - x0) * 0.45, y1);
+  // ── the head: one drawing per view, built on tideSkull (the same outline
+  // the face is held inside), and the face's own pieces ──
+  const A = HA;
+  /** A head piece: drawn in rig units about its anchor. */
+  const drawn = (
+    name: string,
+    w: number,
+    h: number,
+    ox: number,
+    oy: number,
+    fn: (c: Ctx) => void,
+  ) =>
+    pieceOf(name, w, h, ox, oy, (ctx, k) => {
+      ctx.save();
+      ctx.scale(k, k);
+      ctx.translate(ox * w, oy * h);
+      ctx.lineJoin = ctx.lineCap = "round";
+      fn(ctx);
+      ctx.restore();
+    });
+  /** The skin down a head or muzzle: one gradient, so the pieces match. */
+  const headSkin = (c: Ctx, dy = 0) => {
+    const g = c.createLinearGradient(0, H_TOP - 4 - dy, 0, H_BOT + 6 - dy);
     g.addColorStop(0, pal.light);
-    g.addColorStop(0.5, pal.mid);
+    g.addColorStop(0.45, pal.mid);
     g.addColorStop(1, pal.dark);
     return g;
   };
-  const D = PIECE.disc;
-  pieceOf("disc", D * 2 + 2, D * 2 + 2, 0.5, 0.5, (ctx, k) => {
-    const c = (D + 1) * k;
-    ctx.fillStyle = skin(ctx, c - D * k, c - D * k, c + D * k, c + D * k);
-    ctx.beginPath();
-    ctx.arc(c, c, D * k, 0, TAU);
-    ctx.fill();
-  });
-  pieceOf("disc-line", D * 2 + 6, D * 2 + 6, 0.5, 0.5, (ctx, k) => {
-    ctx.fillStyle = pal.line;
-    ctx.beginPath();
-    ctx.arc((D + 3) * k, (D + 3) * k, (D + 1.8) * k, 0, TAU);
-    ctx.fill();
-  });
-  const sr0 = 15 * HS,
-    sr1 = 9 * HS;
-  const snoutW = PIECE.snout + sr0 + sr1 + 4,
-    snoutH = sr0 * 2 + 4;
-  pieceOf("snout", snoutW, snoutH, (sr0 + 2) / snoutW, 0.5, (ctx, k) => {
-    wedge(
-      ctx,
-      k,
-      PIECE.snout,
-      sr0,
-      sr1,
-      2,
-      skin(ctx, 0, 0, snoutW * k * 0.6, snoutH * k),
-    );
-    // the scaly ridge down its top
-    ctx.strokeStyle = "rgba(10,60,70,0.35)";
-    ctx.lineWidth = 1.2 * k;
-    for (const f of [0.35, 0.55, 0.75]) {
-      ctx.beginPath();
-      ctx.arc(
-        (sr0 + 2 + PIECE.snout * f) * k,
-        (snoutH / 2 - 5) * k,
-        4 * HS * k,
-        0.15 * Math.PI,
-        0.85 * Math.PI,
+  /** A pink ear fin: three webbed rays fanning from (x, y) towards `deg`. */
+  const earFin = (c: Ctx, x: number, y: number, deg: number, len: number) => {
+    for (const [d, l] of [
+      [-26, 0.8],
+      [26, 0.72],
+      [0, 1],
+    ]) {
+      const a = ((deg + d) * Math.PI) / 180,
+        ln = len * l;
+      const dx = Math.cos(a),
+        dy = Math.sin(a);
+      c.beginPath();
+      c.moveTo(x - dy * 4.5, y + dx * 4.5);
+      c.quadraticCurveTo(
+        x + dx * ln * 0.55 - dy * 5.5,
+        y + dy * ln * 0.55 + dx * 5.5,
+        x + dx * ln,
+        y + dy * ln,
       );
-      ctx.stroke();
+      c.quadraticCurveTo(
+        x + dx * ln * 0.5 + dy * 5.5,
+        y + dy * ln * 0.5 - dx * 5.5,
+        x + dy * 4.5,
+        y - dx * 4.5,
+      );
+      c.closePath();
+      const g = c.createLinearGradient(x, y, x + dx * ln, y + dy * ln);
+      g.addColorStop(0, pal.finDark);
+      g.addColorStop(0.5, pal.fin);
+      g.addColorStop(1, pal.finLight);
+      c.fillStyle = g;
+      c.strokeStyle = pal.line;
+      c.lineWidth = 1.6;
+      c.stroke();
+      c.fill();
     }
+  };
+  const VIEWS: FaceView[] = ["front", "tq", "side", "backtq", "back"];
+  for (const view of VIEWS)
+    drawn(`head-${view}`, 4.2 * A, 3.2 * A, 0.5, 0.5, (c) => {
+      const faced = view === "front" || view === "tq" || view === "side";
+      // ear fins, behind the skull
+      if (view === "front" || view === "back")
+        for (const s of [-1, 1])
+          earFin(c, s * 0.8 * A, -0.1 * A, 90 - s * 88, 0.78 * A);
+      else if (view === "tq") {
+        earFin(c, -0.84 * A, -0.08 * A, 186, 0.86 * A);
+        earFin(c, 0.5 * A, -0.62 * A, -52, 0.5 * A);
+      } else if (view === "side") earFin(c, -0.62 * A, -0.1 * A, 190, 0.9 * A);
+      else {
+        earFin(c, 0.84 * A, -0.08 * A, -6, 0.86 * A);
+        earFin(c, -0.6 * A, -0.5 * A, 212, 0.56 * A);
+      }
+      const path = new Path2D();
+      for (let v = H_TOP; v <= H_BOT; v += 0.5)
+        path.lineTo(tideSkull(view, v)[1], v);
+      for (let v = H_BOT; v >= H_TOP; v -= 0.5)
+        path.lineTo(tideSkull(view, v)[0], v);
+      path.closePath();
+      c.strokeStyle = pal.line;
+      c.lineWidth = 2.2;
+      c.stroke(path);
+      c.fillStyle = headSkin(c);
+      c.fill(path);
+      c.save();
+      c.clip(path);
+      if (faced) {
+        // the cream lower jaw and throat
+        c.beginPath();
+        if (view === "front") {
+          c.moveTo(-1.3 * A, 0.5 * A);
+          c.quadraticCurveTo(0, 0.82 * A, 1.3 * A, 0.5 * A);
+        } else {
+          c.moveTo(-1.3 * A, 0.56 * A);
+          c.quadraticCurveTo(0.3 * A, 0.7 * A, 1.7 * A, 0.56 * A);
+        }
+        c.lineTo(1.7 * A, H_BOT + 8);
+        c.lineTo(-1.3 * A, H_BOT + 8);
+        c.closePath();
+        c.fillStyle = pal.belly;
+        c.fill();
+      }
+      // scales on the crown and cheeks; the face itself stays clean
+      const cu = view === "front" ? 0 : view === "tq" ? 0.42 * A : 0.62 * A;
+      c.strokeStyle = pal.dark;
+      c.lineWidth = 1;
+      c.globalAlpha = 0.4;
+      for (let r = 0; r < 9; r++)
+        for (let x = -1.3 * A + (r % 2) * 4.5; x < 1.5 * A; x += 9) {
+          const y = H_TOP + 5 + r * 6.5;
+          if (y > 0.45 * A) continue;
+          if (
+            faced &&
+            ((x - cu) / (0.86 * A)) ** 2 + ((y - 0.12 * A) / (0.6 * A)) ** 2 < 1
+          )
+            continue;
+          c.beginPath();
+          c.arc(x, y, 4.6, 0.12 * Math.PI, 0.88 * Math.PI);
+          c.stroke();
+        }
+      // light along the crown
+      c.globalAlpha = 0.55;
+      const rim = c.createLinearGradient(0, H_TOP, 0, H_TOP + 0.5 * A);
+      rim.addColorStop(0, "#ffffff");
+      rim.addColorStop(1, "rgba(255,255,255,0)");
+      c.strokeStyle = rim;
+      c.lineWidth = 5;
+      c.stroke(path);
+      c.restore();
+    });
+  // from behind, the muzzle: a rounded end that may show past the skull
+  drawn("snout-back", 30, 26, 0.5, 0.5, (c) => {
+    c.beginPath();
+    c.ellipse(0, 2, 11, 9, 0, 0, TAU);
+    c.strokeStyle = pal.line;
+    c.lineWidth = 2;
+    c.stroke();
+    c.fillStyle = headSkin(c, S_NOSE);
+    c.fill();
   });
-  pieceOf(
-    "snout-line",
-    snoutW + 4,
-    snoutH + 4,
-    (sr0 + 4) / (snoutW + 4),
-    0.5,
-    (ctx, k) => wedge(ctx, k, PIECE.snout, sr0 + 1.8, sr1 + 1.8, 2.2, pal.line),
-  );
-  const jr0 = 14 * HS,
-    jr1 = 7.5 * HS;
-  const jawW = PIECE.jaw + jr0 + jr1 + 4,
-    jawH = jr0 * 2 + 4;
-  pieceOf("jaw", jawW, jawH, (jr0 + 2) / jawW, 0.5, (ctx, k) => {
-    const g = ctx.createLinearGradient(0, 0, 0, jawH * k);
-    g.addColorStop(0, pal.belly);
-    g.addColorStop(1, pal.bellyDark);
-    wedge(ctx, k, PIECE.jaw, jr0, jr1, 2, g);
+  // the muzzle: a soft, paler pad from the front; at three-quarter the piece
+  // whose far edge (the bridge and the side of the snout) tucks the far eye
+  drawn("muzzle-front", 44, 40, 0.5, 0.5, (c) => {
+    const g = c.createRadialGradient(0, 3, 1, 0, 3, 17);
+    g.addColorStop(0, pal.light);
+    g.addColorStop(1, "rgba(255,255,255,0)");
+    c.globalAlpha = 0.6;
+    c.fillStyle = g;
+    c.save();
+    c.scale(1, 0.72);
+    c.beginPath();
+    c.arc(0, 4, 17, 0, TAU);
+    c.fill();
+    c.restore();
   });
-  pieceOf(
-    "jaw-line",
-    jawW + 4,
-    jawH + 4,
-    (jr0 + 4) / (jawW + 4),
-    0.5,
-    (ctx, k) => wedge(ctx, k, PIECE.jaw, jr0 + 1.8, jr1 + 1.8, 2.2, pal.line),
-  );
-  // the inside of the mouth (a dark wedge, opened by scaling it taller)
-  pieceOf("mouth", PIECE.jaw, 24, 0, 0.5, (ctx, k) => {
-    ctx.fillStyle = "#5a1430";
+  drawn("muzzle-tq", 44, 60, 0.6, 0.62, (c) => {
+    const mid = (v: number) => (tideCentre(v) - tideCentre(S_NOSE)) * TQ_SIN;
+    const half = (v: number) => 1 + snoutHalf(v);
+    const top = S_BROW - 5,
+      bot = S_NOSE + 16;
+    const edge: { x: number; y: number }[] = [];
+    for (let v = top; v <= bot; v += 0.5)
+      edge.push({
+        x: mid(v) + half(v) * (1 - 0.8 * smooth(S_NOSE + 9, bot, v)),
+        y: v - S_NOSE,
+      });
+    c.beginPath();
+    edge.forEach((q, i) => (i ? c.lineTo(q.x, q.y) : c.moveTo(q.x, q.y)));
+    c.lineTo(-24, bot - S_NOSE);
+    c.lineTo(-24, top - S_NOSE);
+    c.closePath();
+    c.fillStyle = headSkin(c, S_NOSE);
+    c.fill();
+    // melt into the face on the near side, above the brow and under the lip
+    c.globalCompositeOperation = "destination-out";
+    const fade = (x0: number, y0: number, x1: number, y1: number) => {
+      const g = c.createLinearGradient(x0, y0, x1, y1);
+      g.addColorStop(0, "rgba(0,0,0,1)");
+      g.addColorStop(1, "rgba(0,0,0,0)");
+      c.fillStyle = g;
+      c.fillRect(-30, -45, 70, 80);
+    };
+    fade(-22, 0, -11, 0);
+    fade(0, top - S_NOSE, 0, S_BROW + 2 - S_NOSE);
+    fade(0, 9, 0, 4);
+    c.globalCompositeOperation = "source-over";
+    // the one drawn line: the far side of the bridge and snout
+    const line = c.createLinearGradient(0, S_BROW - 3 - S_NOSE, 0, 9);
+    line.addColorStop(0, "rgba(0,0,0,0)");
+    line.addColorStop(0.25, pal.line);
+    line.addColorStop(0.8, pal.line);
+    line.addColorStop(1, "rgba(0,0,0,0)");
+    c.strokeStyle = line;
+    c.globalAlpha = 0.8;
+    c.lineWidth = 1.2;
+    c.beginPath();
+    edge.forEach((q, i) => (i ? c.lineTo(q.x, q.y) : c.moveTo(q.x, q.y)));
+    c.stroke();
+  });
+  // nostrils (the piece the battle knows as the snout)
+  for (const view of ["front", "tq", "side"] as const)
+    drawn(`nose-${view}`, 22, 12, 0.5, 0.5, (c) => {
+      c.fillStyle = pal.line;
+      const dots: [number, number, number][] =
+        view === "front"
+          ? [
+              [-4.4, 0, 0.5],
+              [4.4, 0, -0.5],
+            ]
+          : view === "tq"
+            ? [
+                [-3.6, 0.2, 0.45],
+                [3.2, -0.2, -0.3],
+              ]
+            : [[-4.6, -0.6, 0.4]];
+      for (const [x, y, tilt] of dots) {
+        c.beginPath();
+        c.ellipse(x, y, view === "tq" && x > 0 ? 1.5 : 2.3, 1.4, tilt, 0, TAU);
+        c.fill();
+      }
+    });
+  // the mouth: a smile, half open, and open with two small fangs
+  for (const view of ["front", "tq", "side"] as const)
+    for (const [kind, d] of [
+      ["closed", 0],
+      ["half", 4.5],
+      ["open", 9],
+    ] as const)
+      drawn(`mouth-${view}-${kind}`, 60, 44, 0.6, 0.2, (c) => {
+        c.strokeStyle = pal.line;
+        c.lineWidth = 1.5;
+        // the far half is shorter at three-quarter: replotted, not squeezed
+        const fx = (x: number) =>
+          view === "tq" && x > 0 ? x * 0.5 : view === "tq" ? x * 1.15 : x;
+        const inside = () => {
+          c.fillStyle = "#7a1e3a";
+          c.fill();
+          c.stroke();
+        };
+        if (view === "side") {
+          // in profile the lip starts under the nostril, inside the outline
+          c.translate(-5.5, 0);
+          if (d) {
+            c.beginPath(); // the lower jaw, dropped
+            c.moveTo(-22, 6.5);
+            c.lineTo(-3.5, 7 + d);
+            c.quadraticCurveTo(-1, 9.5 + d, -4.5, 11.5 + d);
+            c.quadraticCurveTo(-13, 13 + d * 0.6, -23, 11);
+            c.closePath();
+            c.fillStyle = pal.belly;
+            c.fill();
+            c.stroke();
+            c.beginPath();
+            c.moveTo(-1, 6);
+            c.quadraticCurveTo(-10, 7.6, -22, 6.5);
+            c.lineTo(-3.5, 7 + d);
+            c.quadraticCurveTo(-1.4, 6.6 + d * 0.5, -1, 6);
+            c.closePath();
+            inside();
+            c.fillStyle = "#ff7aa0";
+            c.beginPath();
+            c.ellipse(-9, 6.9 + d * 0.62, 5.5, 1.2 + d * 0.08, 0.36, 0, TAU);
+            c.fill();
+            c.fillStyle = "#fffaf0";
+            c.beginPath();
+            c.moveTo(-3.2, 6.5);
+            c.lineTo(-4.4, 6.5 + Math.min(d, 6) * 0.75);
+            c.lineTo(-5.8, 6.7);
+            c.fill();
+          } else {
+            c.beginPath();
+            c.moveTo(-1, 6);
+            c.quadraticCurveTo(-10, 8.2, -20, 6.8);
+            c.quadraticCurveTo(-22.6, 6, -23.4, 3.6);
+            c.stroke();
+          }
+          return;
+        }
+        const lip = () => {
+          c.moveTo(fx(-12), 4.6);
+          c.quadraticCurveTo(fx(-9), 9.2, fx(-3), 9.4);
+          c.quadraticCurveTo(0, 9.6, fx(3), 9.4);
+          c.quadraticCurveTo(fx(9), 9.2, fx(12), 4.6);
+        };
+        c.beginPath();
+        lip();
+        if (!d) {
+          c.stroke();
+          c.beginPath(); // the corners turn up
+          c.moveTo(fx(-12), 4.6);
+          c.quadraticCurveTo(fx(-13), 3.6, fx(-12.8), 2.4);
+          c.moveTo(fx(12), 4.6);
+          c.quadraticCurveTo(fx(13), 3.6, fx(12.8), 2.4);
+          c.stroke();
+          return;
+        }
+        c.quadraticCurveTo(fx(11), 9 + d, 0, 11 + d);
+        c.quadraticCurveTo(fx(-11), 9 + d, fx(-12), 4.6);
+        c.closePath();
+        inside();
+        c.save();
+        c.clip();
+        c.fillStyle = "#ff7aa0";
+        c.beginPath();
+        c.ellipse(fx(0), 10.5 + d, Math.abs(fx(-6)) * 0.9, 2.6, 0, 0, TAU);
+        c.fill();
+        c.restore();
+        c.fillStyle = "#fffaf0";
+        for (const s of [-1, 1]) {
+          c.beginPath();
+          c.moveTo(fx(s * 5), 8.6);
+          c.lineTo(fx(s * 6.4), 8.6 + Math.min(d, 6) * 0.8);
+          c.lineTo(fx(s * 7.8), 8.2);
+          c.fill();
+        }
+      });
+  // eyes and brows: a drawing for each view (front, near, far, side) and look
+  const lighter = (v: number) => (v + 255) >> 1;
+  const irisStops = [
+    rgb([lighter(pal.iris[0]), lighter(pal.iris[1]), lighter(pal.iris[2])]),
+    rgb(pal.iris),
+    rgb([lighter(pal.iris[0]), lighter(pal.iris[1]), lighter(pal.iris[2])]),
+  ];
+  for (const view of ["front", "near", "far", "side"] as EyeView[]) {
+    const { hw, hh } = TIDE_SPEC.eye[view];
+    for (const look of [
+      "glare",
+      "wide",
+      "squint",
+      "shut",
+      "dizzy",
+    ] as EyeLook[])
+      drawn(eyeName(view, look), 26, 26, 0.5, 0.5, (c) => {
+        // drawn with the inner corner at +x; the far eye's is on the other side
+        const way = view === "far" ? -1 : 1;
+        if (view === "far") c.scale(-1, 1);
+        drawEye(c, {
+          hw,
+          hh,
+          ink: pal.line,
+          weight: 2.1,
+          look:
+            look === "shut" ? "closed" : look === "dizzy" ? "dizzy" : "open",
+          lid:
+            look === "glare"
+              ? [-0.66, -0.16]
+              : look === "squint"
+                ? [-0.3, 0.22]
+                : undefined,
+          bow: look === "squint" ? 0.5 : 1.3,
+          sclera: ["#ffffff", "#f1fdff", "#bfe7ee"],
+          shade: "rgba(8,60,70,0.4)",
+          spiral: pal.dark,
+          iris: {
+            // the slit looks the way the head faces
+            x: (view === "far" ? 0.2 : view === "front" ? 0.6 : 1) * way,
+            y: look === "wide" ? 0.2 : 1.1,
+            r: look === "wide" ? 3.4 : 4.5,
+            ring: pal.dark,
+            stops: irisStops,
+            slit: look === "wide" ? 0.9 : 1.35,
+          },
+        });
+      });
+    const L = { front: 9.4, near: 9.4, far: 6.2, side: 8.2 }[view] / 2;
+    for (const [kind, s] of [
+      ["calm", [0.5, -0.9, 0.4, 1.7]],
+      ["angry", [-2, -0.6, 2.1, 2.4]],
+    ] as const)
+      drawn(`brow-${view}-${kind}`, 16, 10, 0.5, 0.5, (c) => {
+        // the brow ridge: a tapered stroke, inner end at +x
+        if (view === "far") c.scale(-1, 1);
+        c.beginPath();
+        c.moveTo(-L, s[0]);
+        c.quadraticCurveTo(0, s[1] - s[3] * 0.5, L, s[2] - s[3] * 0.4);
+        c.lineTo(L, s[2] + s[3] * 0.5);
+        c.quadraticCurveTo(0, s[1] + s[3] * 0.6, -L, s[0] + 0.25);
+        c.closePath();
+        c.fillStyle = pal.dark;
+        c.fill();
+      });
+  }
+  // the highlight: one drawing for both eyes, never mirrored
+  pieceOf("eye-glint", 6, 6, 0.5, 0.5, (ctx, k) => {
+    ctx.fillStyle = "rgba(255,255,255,0.92)";
     ctx.beginPath();
-    ctx.moveTo(0, 12 * k);
-    ctx.lineTo(PIECE.jaw * k, 0);
-    ctx.lineTo(PIECE.jaw * k, 24 * k);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = "#ff7aa0";
-    ctx.beginPath();
-    ctx.ellipse(PIECE.jaw * 0.55 * k, 13 * k, 9 * k, 4.5 * k, 0, 0, TAU);
+    ctx.arc(3 * k, 3 * k, 1.5 * k, 0, TAU);
     ctx.fill();
   });
-  for (const look of ["glare", "wide", "squint", "shut", "dizzy"] as EyeLook[])
-    pieceOf(
-      `eye-${look}`,
-      30 * HS,
-      26 * HS,
-      15 / (30 * HS),
-      15 / (26 * HS),
-      (ctx, k) => drawEyePiece(ctx, k, look, pal),
-    );
   pieceOf("pearl", 22 * HS, 18 * HS, 0.5, 0.5, (ctx, k) => {
     const r = 6.8 * HS * k,
       cx = 11 * HS * k,
@@ -938,24 +1188,6 @@ export function tidePieces(phase: Phase): Piece[] {
     ctx.fillStyle = "rgba(255,255,255,0.9)";
     ctx.beginPath();
     ctx.arc(cx - r * 0.35, cy - r * 0.35, r * 0.25, 0, TAU);
-    ctx.fill();
-  });
-  pieceOf("fang", 6, 14, 0.5, 0, (ctx, k) => {
-    ctx.fillStyle = "#fffaf0";
-    ctx.strokeStyle = pal.line;
-    ctx.lineWidth = 1.1 * k;
-    ctx.beginPath();
-    ctx.moveTo(0.6 * k, 0.6 * k);
-    ctx.lineTo(5.4 * k, 0.6 * k);
-    ctx.quadraticCurveTo(4 * k, 8 * k, 3 * k, 13.2 * k);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-  });
-  pieceOf("nostril", 8, 6, 0.5, 0.5, (ctx, k) => {
-    ctx.fillStyle = pal.line;
-    ctx.beginPath();
-    ctx.ellipse(4 * k, 3 * k, 3.2 * k, 2 * k, 0, 0, TAU);
     ctx.fill();
   });
   pieceOf("glow", PIECE.glow * 2, PIECE.glow * 2, 0.5, 0.5, (ctx, k) =>
@@ -1149,6 +1381,7 @@ export function tidePlacements(
 
   // the head
   const { F, R, U, at } = head;
+  let pearlScreen = sp(head.pearl);
   const hz = head.w.z;
   const hw = water(head.w.x, head.w.z);
   if (hw === null || head.w.y > hw - 30) {
@@ -1182,112 +1415,15 @@ export function tidePlacements(
         `mane${j}`,
         "mane",
         base,
-        add(base, mul(dir, (50 - Math.abs(k) * 12) * HS)),
+        add(base, mul(dir, (34 - Math.abs(k) * 8) * HS)),
         PIECE.mane,
         1,
         maneBehind ? backZ + j * 0.001 : frontZ + j * 0.001,
       );
     });
-    [-1, 1].forEach((k) => {
-      const base = at(-2, k * 11, 16);
-      const tip = add(
-        base,
-        mul(add(add(mul(F, -45), mul(U, 30)), mul(R, k * 16)), HS),
-      );
-      finAt(
-        `horn${k}`,
-        "horn",
-        base,
-        tip,
-        PIECE.horn,
-        HS * k,
-        maneBehind ? backZ + 0.01 : frontZ + 0.01,
-      );
-    });
-    [-1, 1].forEach((k) => {
-      const base = at(-4, k * 18, -5);
-      const tip = add(
-        base,
-        mul(
-          norm(
-            add(
-              add(mul(F, -0.8), mul(R, k * 0.75)),
-              mul(U, -0.15 + Math.sin(P.clock * 2 + k) * 0.08),
-            ),
-          ),
-          30 * HS,
-        ),
-      );
-      finAt(
-        `frill${k}`,
-        "frill",
-        base,
-        tip,
-        PIECE.frill,
-        HS,
-        behind(tip) ? backZ + 0.02 : frontZ - 0.25,
-      );
-    });
-    // outlines first, then the mouth, the jaw and the head over them
-    const disc = (key: string, w: V3, r: number, z: number, piece = "disc") => {
-      const c = sp(w);
-      out.push({
-        key,
-        piece,
-        x: c.x,
-        y: c.y,
-        rot: 0,
-        sx: r / PIECE.disc,
-        sy: r / PIECE.disc,
-        alpha: 1,
-        z,
-      });
-    };
-    const bar = (
-      key: string,
-      piece: string,
-      from: V3,
-      dir: V3,
-      length: number,
-      z: number,
-      sy = 1,
-    ) => {
-      const a = sp(from),
-        b = sp(add(from, mul(dir, length)));
-      out.push({
-        key,
-        piece,
-        x: a.x,
-        y: a.y,
-        rot: Math.atan2(b.y - a.y, b.x - a.x),
-        sx: Math.max(0.02, Math.hypot(b.x - a.x, b.y - a.y) / length),
-        sy,
-        alpha: 1,
-        z,
-      });
-    };
-    const cran = at(-6, 0, 4),
-      brow = at(12, 0, 9),
-      snoutBase = at(14, 0, 4);
-    disc("cran-line", cran, 22 * HS, hz - 0.3, "disc-line");
-    disc("brow-line", brow, 19 * HS, hz - 0.3, "disc-line");
-    bar("snout-line", "snout-line", snoutBase, F, PIECE.snout, hz - 0.3);
-    bar("jaw-line", "jaw-line", head.hinge, head.jawDir, PIECE.jaw, hz - 0.3);
-    if (P.jaw > 0.05)
-      bar(
-        "mouth",
-        "mouth",
-        head.hinge,
-        norm(add(F, head.jawDir)),
-        PIECE.jaw,
-        hz - 0.2,
-        clamp(P.jaw * 1.4, 0.2, 1.2),
-      );
-    bar("jaw", "jaw", head.hinge, head.jawDir, PIECE.jaw, hz - 0.15);
-    disc("cran", cran, 22 * HS, hz - 0.1);
-    disc("brow", brow, 19 * HS, hz - 0.1);
-    bar("snout", "snout", snoutBase, F, PIECE.snout, hz - 0.09);
-    // eyes (only the side facing us), with the brow ridge
+    // The head: one drawing per view, with the face built on it by the shared
+    // construction (boss-vector-face.ts). Eyes, brows, nostrils and mouth each
+    // have a front, a three-quarter and a profile drawing; nothing is squeezed.
     const look: EyeLook =
       P.dizzy > 0.5
         ? "dizzy"
@@ -1298,41 +1434,53 @@ export function tidePlacements(
             : P.anger > 0.9 && P.lid < 0.15
               ? "wide"
               : "glare";
-    const mid = sp(at(14, 0, 9));
-    const eyes = [-1, 1].map((k) => {
-      const w = at(14, k * 13, 9);
-      return {
-        k,
-        w,
-        s: sp(w),
-        facing: dot(norm(add(mul(F, 0.55), mul(R, k * 0.85))), VIEW),
-      };
-    });
-    for (const e of eyes) {
-      if (e.facing <= -0.15) continue;
-      const other = eyes.find((o) => o !== e)!;
-      const inward =
-        other.facing > -0.15
-          ? Math.sign(other.s.x - e.s.x) || 1
-          : Math.sign(mid.x - e.s.x) || 1;
-      const sq = clamp(0.35 + 0.65 * e.facing, 0.3, 1);
-      out.push({
-        key: `eye${e.k}`,
-        piece: `eye-${look}`,
-        x: e.s.x,
-        y: e.s.y,
-        rot: 0,
-        sx: sq * inward,
-        sy: 1,
-        alpha: 1,
-        z: hz + 0.05,
-      });
-      if (look !== "shut" && look !== "dizzy")
+    const headYaw = Math.atan2(F.x, F.z);
+    // No face from behind, with one exception: lying stranded, its head rolls
+    // onto its side and the dizzy or shut eye still shows, in profile.
+    const lying = P.flat > 0.5 && (look === "dizzy" || look === "shut");
+    const shown = lying
+      ? Math.sign(headYaw || 1) *
+        Math.min(Math.abs(headYaw), (100 * Math.PI) / 180)
+      : headYaw;
+    const hc = sp(at(4, 0, 4));
+    const built = TIDE_FACE.face(
+      {
+        x: hc.x,
+        y: hc.y,
+        z: hz,
+        yaw: shown,
+        pitch: -Math.asin(clamp(F.y, -1, 1)) * 0.6,
+        roll: (P.headRoll || 0) * Math.cos(headYaw),
+      },
+      {
+        look,
+        brow: P.anger > 0.6 ? "angry" : "calm",
+        mouth: P.jaw > 0.4 ? "open" : P.jaw > 0.12 ? "half" : "closed",
+      },
+    );
+    const side = built.side;
+    // the keys the battle and its tests know the head by
+    const names: Record<string, string> = {
+      head: "cran",
+      eyen: `eye${side}`,
+      eyef: `eye${-side}`,
+      brown: `brow${side}`,
+      browf: `brow${-side}`,
+      glintn: `eyeglint${side}`,
+      glintf: `eyeglint${-side}`,
+    };
+    for (const q of built.placements)
+      out.push({ ...q, key: names[q.key] ?? q.key });
+    const S = TIDE_SPEC;
+    const eyeV = S.lines.eye + built.nod;
+    if (look !== "shut" && look !== "dizzy")
+      for (const e of built.eyes) {
+        const q = built.at(e.u, eyeV);
         out.push({
-          key: `eyeglow${e.k}`,
+          key: `eyeglow${e.id === "n" ? side : -side}`,
           piece: "glow",
-          x: e.s.x,
-          y: e.s.y,
+          x: q.x,
+          y: q.y,
           rot: 0,
           sx: 0.5,
           sy: 0.5,
@@ -1341,150 +1489,82 @@ export function tidePlacements(
           glow: true,
           tint: (pal.iris[0] << 16) | (pal.iris[1] << 8) | pal.iris[2],
         });
-    }
-    // fangs over the lip, and nostrils on the nose
-    const down = sp(mul(U, -1)),
-      upS = sp(U);
-    const fangRot = (d: { x: number; y: number }) => Math.atan2(-d.x, d.y);
-    for (const k of [-1, 1]) {
-      if (dot(norm(add(mul(F, 0.4), mul(R, k))), VIEW) < 0.12) continue; // the near side only
-      const L = (9 + P.anger * 3) * HS;
-      for (const [f, r, u, l, dir] of [
-        [39.5, 9.5, -6, L, down],
-        [28.5, 11.2, -7, L * 0.5, down],
-        [46.5, 7.5, -8, L * 0.55, upS],
-      ] as [number, number, number, number, { x: number; y: number }][]) {
-        const p = sp(at(f, k * r, u));
-        out.push({
-          key: `fang${k}${f}`,
-          piece: "fang",
-          x: p.x,
-          y: p.y,
-          rot: fangRot(dir),
-          sx: HS,
-          sy: l / 14,
-          alpha: 1,
-          z: hz + 0.06,
-        });
       }
-    }
-    if (faceN > -0.2)
-      for (const k of [-1, 1]) {
-        const n = sp(at(56, k * 5, 9));
-        out.push({
-          key: `nostril${k}`,
-          piece: "nostril",
-          x: n.x,
-          y: n.y,
-          rot: k * 0.5,
-          sx: HS,
-          sy: HS,
-          alpha: clamp(faceN + 0.3),
-          z: hz + 0.06,
-        });
-      }
-    // the pearl on its crown (the weak point), and its glow
-    if (dot(norm(add(mul(F, 0.4), mul(U, 0.9))), VIEW) > -0.45) {
-      const p = sp(head.pearl);
+    // the pearl on its brow (the weak point) and its glow: on the centre
+    // line when the face shows, on the crown from behind
+    let pearlAt = built.feats.pearl
+      ? built.at(built.feats.pearl.u, built.feats.pearl.v)
+      : null;
+    if (!pearlAt) {
+      pearlAt = built.at(0, S.lines.pearl + 2);
       out.push({
         key: "pearl",
         piece: "pearl",
-        x: p.x,
-        y: p.y,
+        x: pearlAt.x,
+        y: pearlAt.y,
         rot: 0,
         sx: 1,
         sy: 1,
         alpha: 1,
-        z: hz + 0.08,
+        z: hz + 0.04,
       });
-      const g = P.pearl + P.exposed * 0.8;
-      out.push({
-        key: "pearlglow",
-        piece: "glow",
-        x: p.x,
-        y: p.y,
-        rot: 0,
-        sx: 0.55 + g * 0.4,
-        sy: 0.55 + g * 0.4,
-        alpha: clamp(0.25 + g * 0.45),
-        z: 0,
-        glow: true,
-        tint: pal.glow,
-      });
-    }
-    // whiskers from the nose, a beard under the chin, the mouth's snarl
-    for (const k of [-1, 1]) {
-      const b = at(50, k * 7, -1);
-      const pts = [sp(b)];
-      for (let j = 1; j <= 9; j++) {
-        const f = j / 9;
-        pts.push(
-          sp(
-            add(
-              b,
-              add(
-                mul(F, (-f * 46 + 8) * HS),
-                add(
-                  mul(R, k * (8 + f * 40) * HS),
-                  mul(
-                    U,
-                    (-f * 26 +
-                      Math.sin(P.clock * 2.2 + f * 5 + k) * 9 * f +
-                      Math.sin(f * 7) * 6 * f) *
-                      HS,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        );
-      }
-      lines.push({
-        pts,
-        width: 2,
-        color: "rgba(255,240,220,0.85)",
-        front: !behind(add(b, mul(R, k * 30))),
-      });
-    }
-    if (faceN > -0.5) {
-      const ch = at(22, 0, -13);
-      for (const k of [-1, 0, 1]) {
-        const a = add(ch, mul(R, k * 5 * HS));
-        const end = add(
-          add(ch, mul(R, k * 9 * HS)),
-          add(mul(U, -18 * HS), mul(F, -26 * HS)),
-        );
-        const sway = Math.sin(P.clock * 2.3 + k) * 4;
-        const mA = sp(a),
-          mE = sp(end);
-        const pts = [
-          mA,
-          { x: mA.x + sway, y: (mA.y + mE.y) / 2 },
-          { x: mE.x + sway, y: mE.y },
-        ];
-        lines.push({ pts, width: 5.5, color: pal.line, front: true });
-        lines.push({
-          pts,
-          width: 3.4,
-          color: k ? pal.belly : pal.bellyDark,
-          front: true,
+      // from behind, the muzzle is the far side of the head: mostly hidden
+      const turn = Math.abs(Math.atan2(Math.sin(shown), Math.cos(shown)));
+      const m = built.at(
+        tideCentre(S.lines.nose) * Math.sin(turn),
+        S.lines.nose,
+      );
+      for (const key of ["snout", "jaw"])
+        out.push({
+          key,
+          piece: "snout-back",
+          x: m.x,
+          y: m.y,
+          rot: 0,
+          sx: side,
+          sy: 1,
+          alpha: 1,
+          z: hz - 0.01,
         });
+    }
+    pearlScreen = pearlAt;
+    const g = P.pearl + P.exposed * 0.8;
+    out.push({
+      key: "pearlglow",
+      piece: "glow",
+      x: pearlAt.x,
+      y: pearlAt.y,
+      rot: 0,
+      sx: 0.55 + g * 0.4,
+      sy: 0.55 + g * 0.4,
+      alpha: clamp(0.25 + g * 0.45),
+      z: 0,
+      glow: true,
+      tint: pal.glow,
+    });
+    // two short barbels from the sides of the muzzle (thin lines), curling
+    // down and away from the mouth: both from the front, the near one once
+    // the head has turned
+    const nose = built.feats.snout;
+    if (nose) {
+      const front = built.view === "front";
+      for (const k of front ? [-1, 1] : [-1]) {
+        const pts: { x: number; y: number }[] = [];
+        for (let j = 0; j <= 8; j++) {
+          const f = j / 8;
+          const wave = Math.sin(P.clock * 2.2 + f * 4 + k) * 2.5 * f;
+          const out2 = 15 * Math.sin(f * 2.3) + wave,
+            down = 4 + 19 * f - 7 * f * f;
+          pts.push(
+            front
+              ? built.at(nose.u + k * (13 + out2), nose.v + down)
+              : built.at(nose.u - 11 - out2, nose.v + 1 + down),
+          );
+        }
+        lines.push({ pts, width: 3.2, color: pal.line, front: true });
+        lines.push({ pts, width: 1.7, color: pal.finLight, front: true });
       }
     }
-    if (P.jaw < 0.1)
-      for (const k of [-1, 1]) {
-        if (dot(norm(add(mul(F, 0.2), mul(R, k))), VIEW) < -0.1) continue;
-        lines.push({
-          pts: [
-            sp(at(54, k * 5, -5)),
-            sp(at(30, k * 11, -6)),
-            sp(at(4, k * 15, -10 - P.anger * 2)),
-          ],
-          width: 1.8,
-          color: pal.line,
-          front: true,
-        });
-      }
   }
   return {
     placements: out,
@@ -1492,7 +1572,7 @@ export function tidePlacements(
     segs,
     head,
     headScreen: sp(head.w),
-    pearlScreen: sp(head.pearl),
+    pearlScreen,
   };
 }
 
