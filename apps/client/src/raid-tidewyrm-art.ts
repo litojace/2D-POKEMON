@@ -1,4 +1,4 @@
-import { paintedTide } from "./boss-painted-poses";
+import { paintVectorTide } from "./boss-vector-tide-rig";
 import { groundHeight } from "../../../packages/shared/src/world-art";
 import { bossLife } from "./raid-boss-life";
 import { bossSurface } from "./boss-materials";
@@ -48,6 +48,8 @@ class TideMotion {
   sinking = new Map<number, number>();
   surfacedAt = -10;
   hurtAt = -10;
+  /** When the last new phase began (its roar). */
+  roarAt = -10;
   deathAt = -1;
   drops: Drop[] = [];
   serial = 0;
@@ -607,7 +609,10 @@ export function drawTidewyrm(
         : "chip",
     );
   }
-  if (r.phase > m.phase && live) cues.push("awaken");
+  if (r.phase > m.phase && live) {
+    cues.push("awaken");
+    m.roarAt = m.time;
+  }
   for (const island of r.islands ?? [])
     if (island.sunk && !m.sinking.has(island.x * 7 + island.y)) {
       m.sinking.set(island.x * 7 + island.y, m.time);
@@ -665,249 +670,66 @@ export function drawTidewyrm(
   const hurt = Math.max(0, 1 - (t - m.hurtAt) / 0.24);
   const rise = Math.min(1, (t - m.surfacedAt) / 0.35);
   const sink = dead ? (reduced ? 1 : Math.min(1, (t - m.deathAt) / 2.2)) : 0;
-  const x = boss.x + Math.sin(hurt * Math.PI * 3) * hurt * 6 * motion;
-  const base = boss.y + 30;
-  // Stranded, it flops on its side on dry land; in water it rises in coils.
-  const height = (stranded ? 55 : 120 - life.windup * 9) * rise * (1 - sink);
-  const sway =
-    Math.sin(t * (stranded ? 7 : 1.6)) * (stranded ? 10 : 6) * motion;
-  const facing = Math.cos(boss.angle) >= 0 ? 1 : -1;
-  // Ring splash at the waterline (not on dry land).
-  if (!stranded) {
-    g.fillStyle(DEEP, 0.4).fillEllipse(x, base + 6, 190, 54);
-    for (let k = 0; k < 3; k++) {
-      const p = reduced ? k / 3 : (t * 0.8 + k / 3) % 1;
-      g.lineStyle(3, 0xd9f5f0, 0.5 * (1 - p)).strokeEllipse(
-        x,
-        base + 4,
-        120 + p * 120,
-        groundHeight(120 + p * 120),
-      );
-    }
-  } else g.fillStyle(0x3b2f1c, 0.3).fillEllipse(x, base + 10, 340, 60);
-  // The body: a looping chain of segments, tail in the water.
-  const segments = 12;
-  const pts: { x: number; y: number; r: number }[] = [];
-  for (let i = 0; i < segments; i++) {
-    const k = i / (segments - 1);
-    const loop = stranded
-      ? {
-          x: (k - 0.5) * 180 * facing,
-          y:
-            Math.sin(k * Math.PI * 1.6) * -22 +
-            Math.sin(k * Math.PI * 2 + t * 6 * motion) * 6,
-        }
-      : {
-          x:
-            Math.sin(k * Math.PI * 1.6 + t * 1.3 * motion) *
-              34 *
-              (1 - k * 0.4) -
-            facing * (1 - k) * 40,
-          y: -k * height,
-        };
-    pts.push({
-      x: x + loop.x + (stranded ? 0 : sway * k),
-      y: base + loop.y - (stranded ? 8 : 0) + sink * 60,
-      r: 30 - k * 8 + (stranded ? 4 : 0),
-    });
-  }
-  const paintedHead = pts[pts.length - 1];
-  const paintedX = stranded
-    ? boss.x + facing * 35
-    : paintedHead.x + facing * 12;
-  const paintedY =
-    paintedHead.y - (stranded ? 6 : 14) - life.windup * 9 + life.breath;
-  if (
-    paintedTide(g, {
-      groundX: boss.x,
-      groundY: boss.y,
-      x: paintedX,
-      y: paintedY,
-      life,
-      facing,
-      stranded,
-      rise,
-      sink,
-      exposed: stranded || stagger,
-      dead,
-      hurt: hurt > 0.6,
-      gilded: !!r.gilded,
-    })
-  ) {
-    if (stagger)
+  // The attack being wound up (its warning) and the last one cast.
+  const wind = r.warnings.find(
+    (w) =>
+      (!w.casterId || w.casterId === boss.id) &&
+      w.at >= state.time &&
+      (w.startedAt ?? w.at - 1.5) <= state.time,
+  );
+  const cast = life.action.casts[life.action.casts.length - 1];
+  const islands = (r.islands ?? []).filter((i) => !i.sunk && !i.gone);
+  const head = paintVectorTide(g, {
+    x: boss.x + Math.sin(hurt * Math.PI * 3) * hurt * 6 * motion,
+    y: boss.y + 30,
+    angle: boss.angle,
+    clock: t,
+    phase: r.phase,
+    reduced,
+    gilded: !!r.gilded,
+    windKind: wind?.kind,
+    windup: life.windup,
+    castKind: cast?.kind,
+    castAge: cast?.age ?? 99,
+    stranded,
+    stagger,
+    hurt,
+    dead,
+    rise,
+    deathSink: sink,
+    roarAge: t - m.roarAt,
+    // Water everywhere but the islands' sand.
+    wet: (x, y) =>
+      !islands.some((i) => Math.hypot(x - i.x, y - i.y) < i.radius),
+  });
+  if (head) {
+    if (stagger && !stranded)
       for (let i = 0; i < 3; i++) {
         const a = t * 4 + (i * Math.PI * 2) / 3;
         g.fillStyle(0xfff1a0, 1).fillCircle(
-          paintedX + Math.cos(a) * 34,
-          paintedY - 46 + Math.sin(a) * 8,
+          head.head.x + Math.cos(a) * 34,
+          head.head.y - 46 + Math.sin(a) * 8,
           4,
+        );
+      }
+    if (stranded && !dead)
+      for (let i = 0; i < 4; i++) {
+        const a = t * 4 + (i * Math.PI * 2) / 4;
+        g.fillStyle(0xfff1a0, 1).fillCircle(
+          head.head.x + Math.cos(a) * 30,
+          head.head.y - 30 + Math.sin(a) * 8,
+          3.5,
         );
       }
     if (dead)
       for (let i = 0; i < 4; i++) {
         const p = reduced ? i / 4 : (t * 0.6 + i / 4) % 1;
         g.lineStyle(2, PEARL_GLOW, 1 - p).strokeCircle(
-          paintedX + 20 + i * 8,
-          paintedY - 40 - p * 70,
+          head.pearl.x + i * 8 - 12,
+          boss.y + 20 - p * 70,
           4 + p * 6,
         );
       }
-    paintDrops();
-    return cues;
-  }
-  const glow = stranded || stagger;
-  const skin = hurt > 0.6 ? 0xd8fff6 : r.gilded ? 0xe8d48a : TEAL;
-  const belly = r.gilded ? 0xfff3c4 : SEAFOAM;
-  for (let i = 0; i < pts.length; i++) {
-    const p = pts[i];
-    g.fillStyle(DEEP, 1).fillCircle(p.x + 2, p.y + 3, p.r + 3);
-    bossSurface(g, p.x, p.y, p.r * 2, p.r * 2, skin, "scales");
-    g.fillStyle(belly, 0.85).fillEllipse(
-      p.x - facing * p.r * 0.25,
-      p.y + p.r * 0.2,
-      p.r * 1.1,
-      p.r * 0.9,
-    );
-    // Pearl freckles along the back.
-    if (i % 2 === 0 && i > 1)
-      g.fillStyle(PEARL, 0.9).fillCircle(
-        p.x + facing * p.r * 0.45,
-        p.y - p.r * 0.45,
-        3.5,
-      );
-    // Ribbon fins every few segments.
-    if (i === 4 || i === 8) {
-      const f = Math.sin(t * 5 + i) * 6 * motion;
-      g.fillStyle(FIN, 0.9).fillTriangle(
-        p.x - facing * p.r * 0.6,
-        p.y - p.r * 0.4,
-        p.x - facing * (p.r + 26),
-        p.y - p.r - 10 + f,
-        p.x - facing * (p.r + 10),
-        p.y + 4,
-      );
-    }
-  }
-  // The head on the last segment: round snout, sleepy eyes, a pearl on its brow.
-  const head = pts[pts.length - 1];
-  const hx = head.x + facing * 12,
-    hy = head.y - (stranded ? 6 : 14) - life.windup * 9 + life.breath;
-  g.fillStyle(DEEP, 1).fillEllipse(hx + 2, hy + 3, 92, 74);
-  bossSurface(g, hx, hy, 88, 70, skin, "scales");
-  g.fillStyle(belly, 1).fillEllipse(hx + facing * 22, hy + 14, 50, 34);
-  g.fillStyle(DEEP, 0.7)
-    .fillCircle(hx + facing * 34, hy + 8, 3)
-    .fillCircle(hx + facing * 26, hy + 10, 3);
-  // Ribbon fins at the cheeks.
-  const ear = Math.sin(t * 3) * 5 * motion;
-  g.fillStyle(FIN, 1).fillTriangle(
-    hx - facing * 24,
-    hy - 18,
-    hx - facing * 62,
-    hy - 40 + ear,
-    hx - facing * 40,
-    hy - 4,
-  );
-  g.fillStyle(0xffd2e4, 1).fillTriangle(
-    hx - facing * 26,
-    hy - 14,
-    hx - facing * 50,
-    hy - 30 + ear,
-    hx - facing * 38,
-    hy - 6,
-  );
-  // Eyes: sleepy lids; dizzy when staggered; closed when beaten.
-  const eye = (ex: number) => {
-    const ey = hy - 6;
-    if (dead || (life.blink > 0.85 && !stranded && !stagger)) {
-      g.lineStyle(3, DEEP, 1)
-        .beginPath()
-        .arc(ex, ey, 7, 0.2, Math.PI - 0.2, false)
-        .strokePath();
-      return;
-    }
-    if (stagger) {
-      g.lineStyle(3, DEEP, 1).strokeCircle(ex, ey, 6);
-      g.lineStyle(2, DEEP, 1).strokeCircle(ex, ey, 2.5);
-      return;
-    }
-    const open = Math.max(0.15, 1 - life.blink);
-    g.fillStyle(0xffffff, 1).fillEllipse(ex, ey, 16, 16 * open);
-    g.fillStyle(0x16324a, 1).fillEllipse(
-      ex + facing * 1.5 + life.lookX,
-      ey + 1,
-      10,
-      10 * open,
-    );
-    g.fillStyle(0xffffff, 1).fillCircle(ex + facing * 3, ey - 2, 2);
-    // Heavy lids: half-closed when calm, wide when stranded.
-    if (!stranded) g.fillStyle(skin, 1).fillRect(ex - 9, ey - 9, 18, 8);
-    g.lineStyle(2, DEEP, 1).lineBetween(
-      ex - 9,
-      ey - (stranded ? 8 : 1),
-      ex + 9,
-      ey - (stranded ? 8 : 1),
-    );
-  };
-  eye(hx + facing * 4);
-  eye(hx + facing * 24);
-  // Paired trailing barbels lag behind the head; a small jaw opens on a cast.
-  for (const side of [-1, 1]) {
-    const wx = hx + facing * 36,
-      wy = hy + 13 + side * 6;
-    const lag = Math.sin(t * 2.2 + side) * 4 * life.move;
-    g.lineStyle(2.5, PEARL, 0.8)
-      .beginPath()
-      .moveTo(wx, wy)
-      .lineTo(wx + facing * 12, wy + side * 5 + lag)
-      .lineTo(wx + facing * 20, wy + side * 12 + lag)
-      .strokePath();
-  }
-  if (life.windup > 0.1 && !dead)
-    g.fillStyle(DEEP, 0.9).fillEllipse(
-      hx + facing * 31,
-      hy + 23,
-      18,
-      4 + life.windup * 9,
-    );
-  else
-    g.lineStyle(2, DEEP, 0.8)
-      .beginPath()
-      .arc(hx + facing * 27, hy + 14, 11, 0.1, Math.PI * 0.8, false)
-      .strokePath();
-  // The pearl: it glows when the boss is open to attack.
-  const pearlPulse = reduced ? 1 : 0.75 + Math.sin(t * (glow ? 9 : 2)) * 0.25;
-  if (glow)
-    g.fillStyle(PEARL_GLOW, 0.35 * pearlPulse).fillCircle(
-      hx + facing * 8,
-      hy - 30,
-      22,
-    );
-  g.fillStyle(glow ? PEARL_GLOW : PEARL, 1).fillCircle(
-    hx + facing * 8,
-    hy - 30,
-    10,
-  );
-  g.fillStyle(0xffffff, 1).fillCircle(hx + facing * 5, hy - 33, 3.5);
-  if (stagger)
-    for (let i = 0; i < 3; i++) {
-      const a = t * 4 + (i * Math.PI * 2) / 3;
-      g.fillStyle(0xfff1a0, 1).fillCircle(
-        hx + Math.cos(a) * 34,
-        hy - 46 + Math.sin(a) * 8,
-        4,
-      );
-    }
-  if (dead) {
-    // Drifting off to sleep: bubbles rise.
-    for (let i = 0; i < 4; i++) {
-      const p = reduced ? i / 4 : (t * 0.6 + i / 4) % 1;
-      g.lineStyle(2, PEARL_GLOW, 1 - p).strokeCircle(
-        hx + 20 + i * 8,
-        hy - 40 - p * 70,
-        4 + p * 6,
-      );
-    }
   }
   paintDrops();
   return cues;

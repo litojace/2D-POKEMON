@@ -9,24 +9,21 @@ import {
   type BossArtMode,
 } from "./boss-directions";
 import frames from "./art/raid-whole-frames.json";
-import tidewyrm from "./art/raid-whole-tidewyrm.webp";
 import gloomshade from "./art/raid-whole-gloomshade.webp";
 import somnara from "./art/raid-whole-somnara.webp";
 import prismatail from "./art/raid-whole-prismatail.webp";
 import emberwing from "./art/raid-whole-emberwing.webp";
 import stormTwins from "./art/raid-whole-storm-twins.webp";
-import tideDirections from "./art/raid-directions-tidewyrm.webp";
 import gloomDirections from "./art/raid-directions-gloomshade.webp";
 import somnaraDirections from "./art/raid-directions-somnara.webp";
 import prismaDirections from "./art/raid-directions-prismatail.webp";
 import emberDirections from "./art/raid-directions-emberwing.webp";
 import twinDirections from "./art/raid-directions-storm-twins.webp";
 /** Bosses drawn from painted atlases (Grumblecrag is vector art, boss-vector-rig.ts). */
-export type PaintedBossId = Exclude<RaidBossId, "grumblecrag">;
+export type PaintedBossId = Exclude<RaidBossId, "grumblecrag" | "tidewyrm">;
 export const isPaintedBoss = (id: RaidBossId): id is PaintedBossId =>
-  id !== "grumblecrag";
+  id !== "grumblecrag" && id !== "tidewyrm";
 export const BOSS_PAINTED_ART: Record<PaintedBossId, string> = {
-  tidewyrm,
   gloomshade,
   somnara,
   prismatail,
@@ -35,7 +32,6 @@ export const BOSS_PAINTED_ART: Record<PaintedBossId, string> = {
 };
 const keyFor = (id: RaidBossId) => `raid-painted-${id}`;
 export const BOSS_DIRECTION_ART: Record<PaintedBossId, string> = {
-  tidewyrm: tideDirections,
   gloomshade: gloomDirections,
   somnara: somnaraDirections,
   prismatail: prismaDirections,
@@ -195,17 +191,12 @@ export function paintWholeBoss(
     ? "blue"
     : id === "emberwing" && (o.flight ?? 0) < 0.1
       ? "ground"
-      : id === "tidewyrm" && o.pose === 4
-        ? "stranded"
-        : "body";
+      : "body";
   const action = chooseAction(id, o);
   let pose = bossDirectionalFrame(id, mode, o.life.view, action);
   if (pose.atlas === "directions" && !scene.textures.exists(directionKey(id))) {
     // A failed optional turnaround retains the existing complete base sprite.
-    const index =
-      mode === "stranded"
-        ? 4
-        : action + (mode === "ground" || mode === "blue" ? 4 : 0);
+    const index = action + (mode === "ground" || mode === "blue" ? 4 : 0);
     const flip =
       id === "somnara" ? o.life.view === "right" : o.life.view === "left";
     pose = {
