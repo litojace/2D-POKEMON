@@ -78,8 +78,15 @@ const SOMNARA = (() => {
   }
 
   // ════════════════════════ the body ════════════════════════
-  // the spine behind the head: [z, lift, radius] in units of A
-  const SPINE = [[-0.55, 0, 0.95], [-1.2, 0.03, 0.86], [-1.8, 0.12, 0.68], [-2.3, 0.3, 0.47], [-2.7, 0.52, 0.3]];
+  // The body behind the head: its profile as [z, lift, radius] in units of A,
+  // sampled closely so the discs melt into one smooth shape (far enough apart
+  // and each would read as its own ball).
+  const PROFILE = [[-0.3, 0, 0.97], [-0.9, 0.01, 0.92], [-1.5, 0.07, 0.78], [-2.0, 0.2, 0.58], [-2.4, 0.36, 0.4], [-2.75, 0.54, 0.27]];
+  const SPINE = [];
+  for (let i = 0; i < 18; i++) {
+    const f = (i / 17) * (PROFILE.length - 1), k = Math.min(PROFILE.length - 2, Math.floor(f)), u = f - k;
+    SPINE.push(PROFILE[k].map((a, j) => a + (PROFILE[k + 1][j] - a) * u));
+  }
   function somnaraPlacements(P, yaw, phase, prev) {
     const list = [], add = adder(list, () => P.alpha);
     const t = P.t, by = yaw + P.sway;
@@ -99,9 +106,22 @@ const SOMNARA = (() => {
     const sideOn = Math.abs(Math.sin(by)) > 0.8;
     const front = Math.max(...pts.map((p) => depth(p.w))) + 0.2;
     pts.forEach((p, i) => {
-      add("spine" + i, "ball", p.w, { sx: p.r / (0.95 * A), sy: (p.r / (0.95 * A)) * 0.9 });
-      if (sideOn || i === 0) add("belly" + i, "belly", p.w, { sx: p.r / (0.95 * A), sy: (p.r / (0.95 * A)) * 0.9, bias: sideOn ? Math.min(front, hz + 5) - depth(p.w) : 0.05 });
-      add("spine" + i + "e", "ball_e", p.w, { sx: p.r / (0.95 * A), sy: (p.r / (0.95 * A)) * 0.9, bias: back - depth(p.w) });
+      const k = p.r / (0.95 * A), o = { sx: k, sy: k * 0.9 };
+      add("spine" + i, "ball", p.w, o);
+      // one outline round the whole body: every edge sits behind every back
+      add("spine" + i + "e", "ball_e", p.w, { ...o, bias: back - depth(p.w) });
+      // light along the top and shade underneath, laid over all the backs at once
+      const hi = { ...p.w, y: p.w.y + p.r * 0.5 }, lo = { ...p.w, y: p.w.y - p.r * 0.42 };
+      add("spine" + i + "h", "back_hi", hi, { sx: k, sy: k * 0.62, bias: front - depth(hi) });
+      add("spine" + i + "s", "back_lo", lo, { sx: k, sy: k * 0.6, bias: front - 0.05 - depth(lo) });
+      if (sideOn) {
+        // side-on, the belly is one band: each disc's cut is turned along the
+        // body, so the cuts join into one smooth line
+        const a = project(pts[Math.max(0, i - 1)].w), b = project(pts[Math.min(pts.length - 1, i + 1)].w);
+        let rot = Math.atan2(b.y - a.y, b.x - a.x);
+        if (Math.cos(rot) < 0) rot += Math.PI;
+        add("belly" + i, "belly", p.w, { ...o, rot: Math.atan2(Math.sin(rot), Math.cos(rot)), bias: front + 0.1 - depth(p.w) });
+      } else if (i < 3) add("belly" + i, "belly", p.w, { ...o, bias: 0.05 });
     });
     // the fluke, on the last of the spine
     const a = pts[pts.length - 2].w, b = pts[pts.length - 1].w;
@@ -117,11 +137,14 @@ const SOMNARA = (() => {
     }
     // cottage and cap on its back
     const flop = side < -0.05 ? -1 : 1;
-    add("cottage", "cottage", pose({ x: 0, y: 0.84 * A, z: -1.05 * A }), { sx: flop, bias: 1 });
-    add("cap", "cap", pose({ x: 0, y: 0.8 * A, z: -0.05 * A }), { sx: flop, rot: -flop * 0.12 * P.bobble + Math.sin(t * 1.6) * 0.03, bias: 14 });
+    // (they ride on top of the body's light and shade)
+    const onTop = (w, least) => Math.max(least, front + 0.6 - depth(w));
+    const cot = pose({ x: 0, y: 0.84 * A, z: -1.05 * A }), capW = pose({ x: 0, y: 0.8 * A, z: -0.05 * A });
+    add("cottage", "cottage", cot, { sx: flop, bias: onTop(cot, 1) });
+    add("cap", "cap", capW, { sx: flop, rot: -flop * 0.12 * P.bobble + Math.sin(t * 1.6) * 0.03, bias: onTop(capW, 14) + (Math.cos(by) > 0 ? 1 : 0) });
     if (P.bobble > 0.02) add("bobble", "glow_gold", pose({ x: flop * Math.cos(by) * 0.72 * A, y: 1.02 * A, z: 0.1 * A }), { glow: true, alpha: P.bobble, bias: 16 });
     // head and face
-    const face = FACE.face({ x: hs.x, y: hs.y, yaw: by, pitch: -P.pitch * 1.4 + P.nod, roll: P.roll, z: hz + 6, prevView: prev && prev[0] }, { look: P.look, mouth: P.mouth, blink: P.blink });
+    const face = FACE.face({ x: hs.x, y: hs.y, yaw: by, pitch: -P.pitch * 1.4 + P.nod, roll: P.roll, z: sideOn ? Math.max(hz + 6, front + 0.3) : hz + 6, prevView: prev && prev[0] }, { look: P.look, mouth: P.mouth, blink: P.blink });
     for (const f of face.placements) { f.alpha *= P.alpha; if (f.piece.startsWith("head_")) { f.sx *= P.puff; f.sy *= P.puff; list.push({ ...f, key: "heade", piece: f.piece + "_e", z: back - 0.1, face: false }); } list.push(f); }
     // notes and bubbles drift up from the mouth
     const mouth = face.feats ? face.feats.mouth : null;
@@ -146,9 +169,23 @@ const SOMNARA = (() => {
   };
   /** Purple back over a pale pleated belly, split along the jaw line. */
   function whaleSkin(c, path, pal, view, seed, part) {
-    if (part === "back") { // a plain purple back, no light direction: for the spine
-      c.fillStyle = grad(c, 0, TOP, 0, LINES.mouth + 10, [pal.light, pal.base, pal.dark]); // the head's own gradient, so they join
+    if (part === "back") { // one flat colour: the light and shade are laid over the whole body
+      c.fillStyle = pal.base;
       c.fill(path);
+      return;
+    }
+    if (part === "belly") { // the body's belly: one flat colour below the jaw line, so its discs join without a seam
+      c.save();
+      c.clip(path);
+      c.beginPath();
+      c.moveTo(1.3 * A, LINES.mouth - 2);
+      c.quadraticCurveTo(0.2 * A, LINES.mouth + 9, -1.3 * A, LINES.mouth - 3);
+      c.lineTo(-1.3 * A, BOT + 8);
+      c.lineTo(1.3 * A, BOT + 8);
+      c.closePath();
+      c.fillStyle = pal.belly[1];
+      c.fill();
+      c.restore();
       return;
     }
     c.fillStyle = grad(c, 0, LINES.mouth, 0, BOT, pal.belly);
@@ -156,10 +193,10 @@ const SOMNARA = (() => {
     c.save();
     c.clip(path);
     // pleats: they fan from the chin from the front, and run back along the belly from the side
-    c.strokeStyle = pal.pleat;
-    c.lineWidth = 1;
-    c.globalAlpha = 0.75;
     for (let i = -5; i <= 5; i++) {
+      c.strokeStyle = pal.pleat;
+      c.lineWidth = 1;
+      c.globalAlpha = 0.75;
       c.beginPath();
       if (view === "side") { const y = LINES.mouth + 8 + (i + 5) * 5; c.moveTo(A * 1.1, y - 6); c.quadraticCurveTo(0, y + 5, -A * 1.2, y - 2); }
       else { const k = view === "tq" ? 0.3 * A : 0; c.moveTo(k + i * 0.19 * A, LINES.mouth); c.quadraticCurveTo(k + i * 0.15 * A, 0.5 * A, k + i * 0.05 * A, BOT + 4); }
@@ -173,7 +210,6 @@ const SOMNARA = (() => {
     if (view === "side") { c.lineTo(1.3 * A, LINES.mouth - 2); c.quadraticCurveTo(0.2 * A, LINES.mouth + 9, -1.3 * A, LINES.mouth - 3); }
     else { c.lineTo(1.3 * A, LINES.mouth - 10); c.quadraticCurveTo(view === "tq" ? 0.4 * A : 0, LINES.mouth + 16, -1.3 * A, LINES.mouth - 10); }
     c.closePath();
-    if (part === "belly") { c.globalCompositeOperation = "destination-out"; c.fill(); c.globalCompositeOperation = "source-over"; c.restore(); return; }
     c.fillStyle = grad(c, 0, TOP, 0, LINES.mouth + 10, [pal.light, pal.base, pal.dark]);
     c.fill();
     c.save();
@@ -294,6 +330,7 @@ const SOMNARA = (() => {
       pieceOf("ball", 2.2 * R, 2.2 * R, 0.5, 0.5, (c) => whaleSkin(c, disc(), pal, "back", 21, "back")),
       pieceOf("belly", 2.2 * R, 2.2 * R, 0.5, 0.5, (c) => whaleSkin(c, disc(), pal, "side", 21, "belly")),
       pieceOf("ball_e", 2.3 * R, 2.3 * R, 0.5, 0.5, (c) => { c.fillStyle = pal.edge; c.beginPath(); c.arc(0, 0, R + 2.2, 0, TAU); c.fill(); }),
+      KIT.softPiece("back_hi", pal.light, 0.5, 2 * R), KIT.softPiece("back_lo", pal.dark, 0.5, 2 * R),
       pieceOf("fluke", 2.0 * A, 1.0 * A, 0.5, 0.88, (c) => {
         const p = new Path2D();
         p.moveTo(-7, 6);

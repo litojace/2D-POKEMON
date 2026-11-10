@@ -84,7 +84,7 @@ Notes per boss:
   the beak line and has a front, a three-quarter and a profile drawing, closed
   and open. At three-quarter it is drawn under the near eye and over the far
   eye. Prismatail's crown rides the top of the head.
-- **Somnara.** The front of the whale is the head. The eyes sit far round on
+- **Somnara.** The body behind the head is 18 closely spaced discs in one flat colour, with a single outline behind them all and the light, shade and (side-on) belly band laid over them all at once, so it reads as one smooth shape and never as separate balls. The front of the whale is the head. The eyes sit far round on
   its sides: two narrow eyes from the front, one full eye in profile, and a
   sliver held against the far outline at three-quarter. The mouth is one line
   round the head, replotted per view from the same control points.
