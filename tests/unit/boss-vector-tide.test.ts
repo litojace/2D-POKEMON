@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   SEGMENTS,
+  TIDE_FACE,
   tideBody,
+  tideEyes,
   tideGuideImage,
   tideIdle,
   tidePlacements,
@@ -102,6 +104,59 @@ describe("vector Tidewyrm rig", () => {
     expect(back.filter((k) => /^eye-?1$/.test(k))).toEqual([]);
     // one image per key
     expect(new Set(front).size).toBe(front.length);
+  });
+
+  it("draws each eye for its view and never squeezes one", () => {
+    const P = tideIdle(1);
+    const names = (yaw: number) =>
+      tidePlacements(P, yaw, 1, water)
+        .placements.filter((q) => /^eye-?1$/.test(q.key))
+        .map((q) => q.piece)
+        .sort();
+    expect(names(0)).toEqual(["eye-glare", "eye-glare"]);
+    expect(names(Math.PI / 4)).toEqual(["eye-far-glare", "eye-near-glare"]);
+    expect(names(Math.PI / 2)).toEqual(["eye-side-glare"]);
+    for (let deg = -180; deg <= 180; deg += 5) {
+      const eyes = tidePlacements(
+        P,
+        (deg * Math.PI) / 180,
+        1,
+        water,
+      ).placements.filter((q) => /^eye-?1$/.test(q.key));
+      // only ever mirrored, and both on one eye line
+      for (const e of eyes) expect([Math.abs(e.sx), e.sy]).toEqual([1, 1]);
+      if (eyes.length === 2) expect(eyes[0].y).toBeCloseTo(eyes[1].y, 6);
+      // nothing tilts but the far eye, by its fixed lift
+      for (const e of eyes)
+        expect(Math.abs(e.rot)).toBeCloseTo(
+          e.piece.startsWith("eye-far-") ? TIDE_FACE.farLift : 0,
+          6,
+        );
+    }
+  });
+
+  it("keeps the eyes apart and inside the head's outline", () => {
+    for (let deg = 0; deg < 112; deg += 0.5) {
+      const edges = { lo: -26, hi: 30 };
+      const { eyes, view } = tideEyes((deg * Math.PI) / 180, edges);
+      for (const e of eyes) {
+        expect(e.u - e.hw).toBeGreaterThanOrEqual(
+          edges.lo + TIDE_FACE.margin - 1e-9,
+        );
+        expect(e.u + e.hw).toBeLessThanOrEqual(
+          edges.hi - TIDE_FACE.margin + 1e-9,
+        );
+      }
+      if (view === "tq") {
+        const [near, far] = eyes;
+        // near eye, a clear gap, then the far eye
+        expect(far.u - far.hw - (near.u + near.hw)).toBeGreaterThan(1.5);
+        expect(far.hw).toBeLessThan(near.hw);
+      }
+    }
+    // mirrored for a turn the other way; none from behind
+    expect(tideEyes(-Math.PI / 4).side).toBe(-1);
+    expect(tideEyes(Math.PI * 0.75).eyes).toEqual([]);
   });
 
   it("cuts the body at the waterline, but not on an island's sand", () => {

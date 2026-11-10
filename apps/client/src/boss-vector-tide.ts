@@ -563,11 +563,162 @@ function wedge(
   ctx.fill();
 }
 export type EyeLook = "glare" | "wide" | "squint" | "shut" | "dizzy";
-function drawEyePiece(ctx: Ctx, k: number, look: EyeLook, pal: TidePalette) {
+/**
+ * The face's construction (demos/boss-faces/RULES.md). Each view has its own eye
+ * drawing at its own width: nothing is squeezed to fake a turn. Heights are
+ * the same in every view; only the head's roll (and the far eye's fixed
+ * lift) turns an eye.
+ */
+export type EyeView = "front" | "near" | "far" | "side";
+export const TIDE_FACE = {
+  /** How far round from the centre line each eye sits, and the circle they ride. */
+  eyeAz: (40 * Math.PI) / 180,
+  eyeOrbit: 20,
+  /** How far the face trails the skull at three-quarter. */
+  lag: (18 * Math.PI) / 180,
+  /** The far eye's outer corner lifts by this, always. */
+  farLift: (6 * Math.PI) / 180,
+  /** Clear space kept between an eye and the head's outline. */
+  margin: 1.2,
+  /** The least clear space between the two eyes. */
+  gap: 2,
+  /** Each view's eye: its width as a share of the full drawing, and its half-width. */
+  eye: {
+    front: { w: 0.55, hw: 8.6 },
+    near: { w: 0.55, hw: 8.6 },
+    far: { w: 0.4, hw: 5.2 },
+    side: { w: 0.63, hw: 9.8 },
+  } as Record<EyeView, { w: number; hw: number }>,
+};
+const eyePieceName = (view: EyeView, look: EyeLook) =>
+  view === "front" ? `eye-${look}` : `eye-${view}-${look}`;
+/**
+ * Where the eyes go for a head turned `yaw` from the camera (0 faces it):
+ * which drawing, how far across from the head's axis (rig units, + is the way
+ * the head faces on screen), its lift, and whether the drawing is mirrored.
+ * `edges` is the head's drawn outline at the eye line, from the same axis.
+ * Empty from behind.
+ */
+export function tideEyes(yaw: number, edges?: { lo: number; hi: number }) {
+  const w = Math.atan2(Math.sin(yaw), Math.cos(yaw));
+  const turn = Math.abs(w),
+    deg = (turn * 180) / Math.PI;
+  const F = TIDE_FACE;
+  if (deg >= 112.5) return { side: w < 0 ? -1 : 1, view: "back", eyes: [] };
+  const view = deg < 22.5 ? "front" : deg < 67.5 ? "tq" : "side";
+  let side = w < 0 ? -1 : 1;
+  let pf = turn - F.lag * Math.sin(2 * Math.min(turn, Math.PI / 2));
+  // the front view is one drawing: it slides with the turn but never flips
+  if (view === "front") {
+    pf *= side;
+    side = 1;
+  }
+  const list: [EyeView, number, boolean, "near" | "far"][] =
+    view === "front"
+      ? [
+          ["front", -F.eyeAz, false, "near"],
+          ["front", F.eyeAz, true, "far"],
+        ]
+      : view === "tq"
+        ? [
+            ["near", -F.eyeAz, false, "near"],
+            ["far", F.eyeAz, false, "far"],
+          ]
+        : [["side", -F.eyeAz, false, "near"]];
+  const eyes = list.map(([v, az, flip, which]) => {
+    const hw = F.eye[v].hw;
+    let u = F.eyeOrbit * Math.sin(pf + az);
+    if (edges) {
+      const lo = edges.lo * side + (side < 0 ? 0 : 0),
+        hi = edges.hi * side;
+      const a = Math.min(lo, hi) + hw + F.margin,
+        b = Math.max(lo, hi) - hw - F.margin;
+      u = a > b ? (a + b) / 2 : clamp(u, a, b);
+    }
+    return {
+      view: v,
+      which,
+      u,
+      hw,
+      // the far drawing has its inner corner on the other side
+      flip: flip !== (v === "far"),
+      lift: v === "far" ? -F.farLift : 0,
+    };
+  });
+  // near eye, a clear gap, then the far eye: close to profile the far eye is
+  // pushed out rather than let the two meet
+  if (view === "tq") {
+    const [near, far] = eyes;
+    const least = near.u + near.hw + far.hw + F.gap;
+    if (far.u < least)
+      far.u = edges
+        ? Math.min(
+            least,
+            Math.max(edges.lo * side, edges.hi * side) - far.hw - F.margin,
+          )
+        : least;
+  }
+  return { side, view, eyes };
+}
+function drawEyePiece(
+  ctx: Ctx,
+  k: number,
+  look: EyeLook,
+  pal: TidePalette,
+  view: EyeView = "side",
+) {
   // Drawn with the inner corner to the right; brow ridge included.
   const s = { x: 15 * k, y: 15 * k };
-  const ew = 10.5 * HS * k,
+  const ew = 10.5 * HS * k * (TIDE_FACE.eye[view].w / 0.63) * 0.63,
     eh = 9 * HS * k;
+  // Three-quarter, far side: the bridge of the snout hides the inner corner.
+  // That is part of this view's drawing, not a patch laid over it.
+  const cut = view === "far" ? s.x + ew * 0.66 : null;
+  const bridge = () => {
+    ctx.beginPath();
+    ctx.moveTo(cut! - eh * 0.1, s.y - eh * 1.2);
+    ctx.quadraticCurveTo(
+      cut! + eh * 0.16,
+      s.y,
+      cut! - eh * 0.04,
+      s.y + eh * 1.2,
+    );
+  };
+  if (cut !== null && look !== "shut" && look !== "dizzy") {
+    ctx.save();
+    bridge();
+    ctx.lineTo(-10 * k, s.y + eh * 1.2);
+    ctx.lineTo(-10 * k, s.y - eh * 1.2);
+    ctx.closePath();
+    ctx.clip();
+    drawEyeShape(ctx, k, look, pal, s, ew, eh, view);
+    ctx.restore();
+    ctx.strokeStyle = pal.line;
+    ctx.lineWidth = 1.8 * k;
+    ctx.lineCap = "round";
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, s.y - eh * 0.8, 60 * k, eh * 1.55);
+    ctx.clip();
+    bridge();
+    ctx.stroke();
+    ctx.restore();
+    return;
+  }
+  drawEyeShape(ctx, k, look, pal, s, ew, eh, view);
+}
+function drawEyeShape(
+  ctx: Ctx,
+  k: number,
+  look: EyeLook,
+  pal: TidePalette,
+  s: { x: number; y: number },
+  ew: number,
+  eh: number,
+  view: EyeView,
+) {
+  // the slit looks the way the head faces: inward, except on the far eye
+  const gaze = view === "far" ? -0.5 : view === "front" ? 0.6 : 1;
   const anger = look === "squint" ? 0.7 : look === "wide" ? 1 : 0.8;
   const lid = look === "glare" ? 0.25 : look === "wide" ? 0.05 : 0.7;
   if (look === "dizzy") {
@@ -623,18 +774,15 @@ function drawEyePiece(ctx: Ctx, k: number, look: EyeLook, pal: TidePalette) {
   const slit = clamp(0.32 - anger * 0.14, 0.14, 0.32);
   ctx.beginPath();
   ctx.ellipse(
-    s.x + ew * 0.12,
+    s.x + ew * 0.12 * gaze,
     s.y + eh * 0.05,
-    ew * slit,
+    // the slit keeps its width whatever the eye's (it is not squeezed)
+    10.5 * HS * k * 0.63 * slit,
     eh * 0.78,
     0,
     0,
     TAU,
   );
-  ctx.fill();
-  ctx.fillStyle = "rgba(255,255,255,0.9)";
-  ctx.beginPath();
-  ctx.arc(s.x - ew * 0.35, s.y - eh * 0.3, Math.max(1.2, ew * 0.16), 0, TAU);
   ctx.fill();
   const top = s.y - eh - 1,
     lidY = s.y - eh + lid * eh * 2,
@@ -898,15 +1046,29 @@ export function tidePieces(phase: Phase): Piece[] {
     ctx.ellipse(PIECE.jaw * 0.55 * k, 13 * k, 9 * k, 4.5 * k, 0, 0, TAU);
     ctx.fill();
   });
-  for (const look of ["glare", "wide", "squint", "shut", "dizzy"] as EyeLook[])
-    pieceOf(
-      `eye-${look}`,
-      30 * HS,
-      26 * HS,
-      15 / (30 * HS),
-      15 / (26 * HS),
-      (ctx, k) => drawEyePiece(ctx, k, look, pal),
-    );
+  for (const view of ["front", "near", "far", "side"] as EyeView[])
+    for (const look of [
+      "glare",
+      "wide",
+      "squint",
+      "shut",
+      "dizzy",
+    ] as EyeLook[])
+      pieceOf(
+        eyePieceName(view, look),
+        30 * HS,
+        26 * HS,
+        15 / (30 * HS),
+        15 / (26 * HS),
+        (ctx, k) => drawEyePiece(ctx, k, look, pal, view),
+      );
+  // the highlight: one drawing for both eyes, never mirrored
+  pieceOf("eye-glint", 6, 6, 0.5, 0.5, (ctx, k) => {
+    ctx.fillStyle = "rgba(255,255,255,0.9)";
+    ctx.beginPath();
+    ctx.arc(3 * k, 3 * k, 1.9 * k, 0, TAU);
+    ctx.fill();
+  });
   pieceOf("pearl", 22 * HS, 18 * HS, 0.5, 0.5, (ctx, k) => {
     const r = 6.8 * HS * k,
       cx = 11 * HS * k,
@@ -1298,41 +1460,70 @@ export function tidePlacements(
             : P.anger > 0.9 && P.lid < 0.15
               ? "wide"
               : "glare";
-    const mid = sp(at(14, 0, 9));
-    const eyes = [-1, 1].map((k) => {
-      const w = at(14, k * 13, 9);
-      return {
-        k,
-        w,
-        s: sp(w),
-        facing: dot(norm(add(mul(F, 0.55), mul(R, k * 0.85))), VIEW),
-      };
+    // The eyes sit on one line through the head's axis at eye height, at
+    // the same height in every view. Across, they ride a circle round that
+    // axis; they are held inside the head's outline (its two discs) by their
+    // own half-width; they turn only with the head's roll.
+    const axis = sp(at(0, 0, 9));
+    const headYaw = Math.atan2(F.x, F.z);
+    const roll = (P.headRoll || 0) * Math.cos(headYaw);
+    const ex = { x: Math.cos(roll), y: Math.sin(roll) };
+    const discs: [V3, number][] = [
+      [cran, 22 * HS],
+      [brow, 19 * HS],
+    ];
+    const reach = discs.map(([w, r]) => {
+      const c = sp(w);
+      const along = (c.x - axis.x) * ex.x + (c.y - axis.y) * ex.y,
+        off = -(c.x - axis.x) * ex.y + (c.y - axis.y) * ex.x;
+      const half = Math.sqrt(Math.max(0, r * r - off * off));
+      return { lo: along - half, hi: along + half };
     });
-    for (const e of eyes) {
-      if (e.facing <= -0.15) continue;
-      const other = eyes.find((o) => o !== e)!;
-      const inward =
-        other.facing > -0.15
-          ? Math.sign(other.s.x - e.s.x) || 1
-          : Math.sign(mid.x - e.s.x) || 1;
-      const sq = clamp(0.35 + 0.65 * e.facing, 0.3, 1);
+    // No face from behind, with one exception: lying stranded on its side,
+    // its dizzy or shut eye still shows, as the side drawing.
+    const lying =
+      P.flat > 0.5 && (look === "dizzy" || look === "shut")
+        ? Math.sign(headYaw || 1) *
+          Math.min(Math.abs(headYaw), (100 * Math.PI) / 180)
+        : headYaw;
+    const placedEyes = tideEyes(lying, {
+      lo: Math.min(...reach.map((q) => q.lo)),
+      hi: Math.max(...reach.map((q) => q.hi)),
+    });
+    for (const e of placedEyes.eyes) {
+      const side = placedEyes.side;
+      const x = axis.x + ex.x * e.u * side,
+        y = axis.y + ex.y * e.u * side;
+      // the near eye is the one on the camera's side of the head
+      const id = e.which === "near" ? side : -side;
       out.push({
-        key: `eye${e.k}`,
-        piece: `eye-${look}`,
-        x: e.s.x,
-        y: e.s.y,
-        rot: 0,
-        sx: sq * inward,
+        key: `eye${id}`,
+        piece: eyePieceName(e.view, look),
+        x,
+        y,
+        rot: roll + e.lift * side,
+        sx: (e.flip ? -1 : 1) * side,
         sy: 1,
         alpha: 1,
         z: hz + 0.05,
       });
-      if (look !== "shut" && look !== "dizzy")
+      if (look !== "shut" && look !== "dizzy") {
         out.push({
-          key: `eyeglow${e.k}`,
+          key: `eyeglint${id}`,
+          piece: "eye-glint",
+          x: x - e.hw * 0.42,
+          y: y - 4.2,
+          rot: 0,
+          sx: 1,
+          sy: 1,
+          alpha: 1,
+          z: hz + 0.06,
+        });
+        out.push({
+          key: `eyeglow${id}`,
           piece: "glow",
-          x: e.s.x,
-          y: e.s.y,
+          x,
+          y,
           rot: 0,
           sx: 0.5,
           sy: 0.5,
@@ -1341,6 +1532,7 @@ export function tidePlacements(
           glow: true,
           tint: (pal.iris[0] << 16) | (pal.iris[1] << 8) | pal.iris[2],
         });
+      }
     }
     // fangs over the lip, and nostrils on the nose
     const down = sp(mul(U, -1)),
