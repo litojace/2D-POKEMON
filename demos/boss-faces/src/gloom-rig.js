@@ -12,29 +12,8 @@
  */
 const GLOOM = (() => {
   "use strict";
-  const TAU = Math.PI * 2,
-    DEG = Math.PI / 180;
-  const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
-  const lerp = (a, b, t) => a + (b - a) * t;
-  const smooth = (a, b, x) => {
-    const t = clamp((x - a) / (b - a));
-    return t * t * (3 - 2 * t);
-  };
-  const wrap = (a) => ((((a + Math.PI) % TAU) + TAU) % TAU) - Math.PI;
-  const gauss = (x, s) => Math.exp(-(x * x) / (s * s));
-  const TILT = 0.65;
-  const project = (p) => ({ x: p.x, y: -p.y + p.z * TILT });
-  const rotY = (p, a) => {
-    const c = Math.cos(a),
-      s = Math.sin(a);
-    return { x: p.x * c + p.z * s, y: p.y, z: -p.x * s + p.z * c };
-  };
-  const rng = (seed) => () => {
-    seed = (seed + 0x6d2b79f5) | 0;
-    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
+  const { TAU, DEG, clamp, lerp, smooth, gauss, project, rotY, depth, after, rng,
+    makeFace, pieceOf, tuft, furPath, glowPiece, softPiece } = KIT;
 
   // ════════════════════════ THE FACE: CONSTRUCTION ════════════════════════
   /** Skull half-width, the face's unit. */
@@ -105,41 +84,6 @@ const GLOOM = (() => {
     if (view === "backtq") return [-0.97 * A * s * cheek, 1.0 * A * s * cheek];
     return [-1.0 * A * s * cheek, 1.0 * A * s * cheek];
   }
-  /** Which drawing of the head a yaw shows, and which way it is mirrored. */
-  function headView(yaw) {
-    const w = wrap(yaw),
-      a = Math.abs(w) / DEG;
-    return {
-      view:
-        a < 22.5
-          ? "front"
-          : a < 67.5
-            ? "tq"
-            : a < 112.5
-              ? "side"
-              : a < 157.5
-                ? "backtq"
-                : "back",
-      side: w < 0 ? -1 : 1,
-      turn: Math.abs(w),
-    };
-  }
-  /** The face's own yaw: the skull's, held back a little (0 at front and side). */
-  const faceYaw = (turn) => turn - FACE.lag * Math.sin(2 * Math.min(turn, 90 * DEG));
-  /** Keep a feature of half-width hw, spanning v0..v1, inside the outline. */
-  function contain(view, u, hw, v0, v1) {
-    let lo = -1e9,
-      hi = 1e9;
-    for (const v of [v0, (v0 + v1) / 2, v1]) {
-      const [l, r] = skullEdge(view, v);
-      lo = Math.max(lo, l);
-      hi = Math.min(hi, r);
-    }
-    lo += hw + FACE.margin;
-    hi -= hw + FACE.margin;
-    return lo > hi ? (lo + hi) / 2 : clamp(u, lo, hi);
-  }
-
   const BROW = { idle: "calm", glare: "angry", wide: "raised", hurt: "pinch", dizzy: "raised", closed: "calm" };
   const BROW_DY = { calm: 0, angry: 2.6, raised: -2.4, pinch: 1.6 };
   /** Where the iris sits in an eye drawing (for the highlight, which never mirrors). */
@@ -153,143 +97,34 @@ const GLOOM = (() => {
     return { hw, hh, lid, r, gx, gy, inner: view === "far" ? -1 : 1 };
   }
 
-  /**
-   * THE FACE. `head`: where the head's centre is on screen (rig units), its
-   * yaw from the camera, nod, roll and sort depth. `expr`: { look, mouth,
-   * blink, gemGlow, eyeGlow }. Returns placements: the head piece of the view
-   * and every feature on it, back to front.
-   *
-   * 1. pick the view from the yaw; work in the canonical drawing (turned to
-   *    screen right) and mirror at the end;
-   * 2. u = orbit * sin(face yaw +- azimuth), v = the feature's line;
-   * 3. clamp u inside the view's outline by the feature's half-width;
-   * 4. turn everything by the head's roll only (+ the far eye's fixed lift).
-   */
-  function gloomFace(head, expr) {
-    const { view, side, turn } = headView(head.yaw);
-    const out = [];
-    const cr = Math.cos(head.roll),
-      sr = Math.sin(head.roll);
-    let n = 0;
-    const put = (key, piece, u, v, o = {}) => {
-      const U = u * side;
-      out.push({
-        key: "f-" + key,
-        piece,
-        x: head.x + U * cr - v * sr,
-        y: head.y + U * sr + v * cr,
-        rot: head.roll + (o.rot || 0) * side,
-        sx: (o.flip ? -1 : 1) * (o.still ? 1 : side) * (o.s || 1),
-        sy: o.s || 1,
-        alpha: o.alpha === undefined ? 1 : o.alpha,
-        z: head.z + 0.02 + 0.001 * n++,
-        glow: !!o.glow,
-        face: true,
-      });
-    };
-    put("head", "head_" + view, 0, 0);
-    if (view === "back" || view === "backtq") return { placements: out, view, side, guide: null };
+  /** Gloomshade's construction, handed to the kit (kit.js: makeFace). */
+  const SPEC = {
+    A, top: SK.top, bot: SK.bot,
+    lines: { gem: FACE.gemLine, brow: FACE.browLine, eye: FACE.eyeLine, nose: FACE.noseLine },
+    eyeAz: FACE.eyeAz, eyeOrbit: FACE.eyeOrbit, lag: FACE.lag, farLift: FACE.farLift, nod: FACE.nod, margin: FACE.margin,
+    eye: FACE.eye, eyeGeom,
+    // the far eye may hide at most 40% of itself behind the bridge
+    tuckCap: 0.4, bridgeHalf: 1,
+    centreLine, skullEdge,
+    headPiece: (view) => "head_" + view,
+    lit: (look) => look === "idle" || look === "glare" || look === "wide",
+    glint: (look) => look === "idle" || look === "glare" || look === "wide",
+    glintR: 4.3, eyeGlowPiece: "glow_amber",
+    brow: (look) => ({ kind: BROW[look], dy: BROW_DY[BROW[look]], dx: 0.6 }),
+    // features on the centre line, in drawing order within their layer
+    centre: [
+      { id: "muzzle", anchor: "nose", layer: "mid", piece: (v) => (v === "side" ? null : "muzzle_" + v) },
+      { id: "gem", line: FACE.gemLine, nodK: 0.8, hw: FACE.gem, vspan: [-5, 5], sideInset: 0.5, piece: (v) => "gem_" + v,
+        glow: (e) => ({ piece: "glow_gold", alpha: e.gemGlow || 0, s: 0.8 }) },
+      { id: "mouth", anchor: "nose", piece: (v, e) => `mouth_${v}_${e.mouth || "smile"}` },
+      { id: "nose", line: FACE.noseLine, hw: FACE.pad, vspan: [0, 6], piece: (v) => "nose_" + v },
+    ],
+  };
+  const FACEKIT = makeFace(SPEC);
+  const gloomFace = FACEKIT.face;
 
-    const pf = faceYaw(turn);
-    const nod = clamp(head.pitch, -0.45, 0.45) * FACE.nod;
-    const look = expr.blink ? "closed" : expr.look || "idle";
-    const lit = look === "idle" || look === "glare" || look === "wide";
-    const eyeV = FACE.eyeLine + nod,
-      browV = FACE.browLine + nod + BROW_DY[BROW[look]],
-      gemV = FACE.gemLine + nod * 0.8,
-      noseV = FACE.noseLine + nod;
-    const sinF = view === "side" ? 1 : Math.sin(pf);
-
-    // eyes: [which drawing, azimuth, flip]
-    const eyes =
-      view === "front"
-        ? [["front", -FACE.eyeAz, false, "n"], ["front", FACE.eyeAz, true, "f"]]
-        : view === "tq"
-          ? [["near", -FACE.eyeAz, false, "n"], ["far", FACE.eyeAz, false, "f"]]
-          : [["side", -FACE.eyeAz, false, "n"]];
-    const placedEyes = eyes.map(([v, az, flip, id]) => {
-      const g = eyeGeom(v, look);
-      let u = FACE.eyeOrbit * Math.sin(pf + az);
-      u = contain(view, u, g.hw, eyeV - g.hh * 0.7, eyeV + g.hh * 0.7);
-      return { v, flip, id, g, u, rot: v === "far" ? -FACE.farLift : 0 };
-    });
-    // centre-line features
-    const pad = FACE.pad[view];
-    let noseU = centreLine(FACE.noseLine) * sinF;
-    if (view !== "side") noseU = contain(view, noseU, pad, noseV, noseV + 6);
-    let gemU = centreLine(FACE.gemLine) * sinF;
-    gemU =
-      view === "side"
-        ? gemU - 0.5
-        : contain(view, gemU, FACE.gem[view], gemV - 5, gemV + 5);
-
-    const eyeGlow = expr.eyeGlow === undefined ? 0.3 : expr.eyeGlow;
-    const drawEye = (e) => {
-      if (lit && eyeGlow > 0.01)
-        put("eg" + e.id, "glow_amber", e.u, eyeV, { glow: true, alpha: eyeGlow, s: (e.g.hw / 8) * 0.7 });
-      put("eye" + e.id, `eye_${e.v}_${look}`, e.u, eyeV, { rot: e.rot, flip: e.flip });
-      put("brow" + e.id, `brow_${e.v}_${BROW[look]}`, e.u + (e.flip ? -1 : 1) * e.g.inner * 0.6, browV, {
-        flip: e.flip,
-        rot: e.rot,
-      });
-    };
-    const far = placedEyes.find((e) => e.id === "f"),
-      near = placedEyes.find((e) => e.id === "n");
-    // back to front: far eye, the muzzle that tucks its inner corner, near eye
-    if (far) drawEye(far);
-    if (view !== "side") put("muzzle", "muzzle_" + view, noseU, noseV);
-    drawEye(near);
-    put("gem", "gem_" + view, gemU, gemV);
-    if ((expr.gemGlow || 0) > 0.01)
-      put("gemglow", "glow_gold", gemU, gemV, { glow: true, alpha: clamp(expr.gemGlow), s: 0.8 });
-    put("mouth", `mouth_${view}_${expr.mouth || "smile"}`, noseU, noseV);
-    put("nose", "nose_" + view, noseU, noseV);
-    // highlights: one drawing, never mirrored, on the same side of both irises
-    if (lit)
-      for (const e of placedEyes) {
-        const m = e.flip ? -1 : 1;
-        const ix = e.g.gx * e.g.inner * e.g.inner * m, // gx is already "the way it faces"
-          iy = e.g.gy;
-        // the iris offset turns with the eye's own lift
-        const c = Math.cos(e.rot),
-          s = Math.sin(e.rot);
-        const gu = e.u + (ix * c - iy * s),
-          gv = eyeV + (ix * s + iy * c);
-        const U = gu * side;
-        out.push({
-          key: "f-glint" + e.id,
-          piece: "glint",
-          x: head.x + U * cr - gv * sr,
-          y: head.y + U * sr + gv * cr,
-          rot: 0,
-          sx: e.g.r / 4.3,
-          sy: e.g.r / 4.3,
-          alpha: 1,
-          z: head.z + 0.02 + 0.001 * n++,
-          glow: false,
-          face: true,
-        });
-      }
-    // construction, for the model sheet: the centre line and the eye line
-    const toScreen = (u, v) => ({
-      x: head.x + u * side * cr - v * sr,
-      y: head.y + u * side * sr + v * cr,
-    });
-    const centre = [];
-    for (let v = SK.top + 1; v <= SK.bot - 1; v += 2) centre.push(toScreen(centreLine(v) * sinF, v + nod * 0.9));
-    const [l, r] = skullEdge(view, FACE.eyeLine);
-    const guide = {
-      centre,
-      eyeLine: [toScreen(l, eyeV), toScreen(r, eyeV)],
-      browLine: [toScreen(l * 0.9, FACE.browLine + nod), toScreen(r * 0.9, FACE.browLine + nod)],
-      noseLine: [toScreen(l * 0.8, noseV), toScreen(r * 0.8, noseV)],
-      eyes: placedEyes.map((e) => ({ ...toScreen(e.u, eyeV), hw: e.g.hw })),
-    };
-    return { placements: out, view, side, guide };
-  }
 
   // ════════════════════════ THE POSE ════════════════════════
-  const after = (age, dur) => (age < 0 || age > dur ? 0 : Math.sin((age / dur) * Math.PI));
   const ATTACKS = ["lunge", "hands", "snuff", "curse", "split", "pulse"];
   /**
    * What the battle tells the rig each frame (all cosmetic):
@@ -451,9 +286,8 @@ const GLOOM = (() => {
   }
 
   // ════════════════════════ THE BODY ════════════════════════
-  const depth = (p) => p.z * 0.84 + p.y * 0.3;
   /** Pose -> every piece's placement this frame, the head's and face's included. */
-  function gloomPlacements(P, yaw, phase) {
+  function gloomPlacements(P, yaw, phase, prev) {
     const list = [];
     const t = P.t;
     const jit = P.shake ? Math.sin(t * 43) * 1.6 * P.shake : 0;
@@ -581,58 +415,55 @@ const GLOOM = (() => {
     const headW = pose({ x: 0, y: base + 30 - P.headDrop, z: 24 });
     const hs = project(headW);
     const hz = depth(headW) + 8;
-    // ears: long, streaming back from the sides of the head
+    // ears: long lop ears from the top of the skull, draping out, down and back
+    const facing = Math.cos(headYaw) > -0.25,
+      turned = Math.abs(Math.sin(headYaw)) > 0.5;
     for (const s of [-1, 1]) {
-      const root = rotY({ x: s * 0.58 * A, y: 0.3 * A, z: -0.5 * A }, headYaw);
+      const root = rotY({ x: s * 0.62 * A, y: 0.34 * A, z: -0.42 * A }, headYaw);
       let p = { x: headW.x + root.x, y: headW.y + root.y, z: headW.z + root.z };
-      const pts = [],
-        N = 7,
-        L = 10.5;
+      const pts = [], N = 10, L = 9;
       const eb = P.earBack;
       for (let i = 0; i < N; i++) {
         const u = i / (N - 1);
         pts.push({ ...p });
-        const wave = Math.sin(t * 2.3 - i * 0.85 + s) * 0.22 * (0.3 + u);
-        // hanging: out a little and down; streaming: out, back and level
-        const d = {
-          x: s * lerp(0.3, 0.25, eb),
-          y: lerp(-1, -0.35 + P.earLift * 0.9, eb) + wave,
-          z: lerp(-0.15, -1, eb) * lerp(0.6, 1, u),
-        };
+        const wave = Math.sin(t * 2.3 - i * 0.6 + s) * 0.2 * (0.3 + u);
+        // hanging: out a little and down; streaming: back and nearly level
+        const d = { x: s * lerp(0.42, 0.28, eb), y: lerp(-1, -0.32 + P.earLift * 0.9, eb) + wave, z: lerp(-0.15, -1, eb) * lerp(0.6, 1, u) };
         const n = Math.hypot(d.x, d.y, d.z) || 1;
         const r = rotY({ x: (d.x / n) * L, y: (d.y / n) * L, z: (d.z / n) * L }, yaw);
         p = { x: p.x + r.x, y: p.y + r.y, z: p.z + r.z };
       }
-      // two drawn leaves, root to bend and bend to tip, each turned along its half
+      // The ear on the camera's side lies over the back of the skull once the
+      // head has turned (it starts behind the eye, so it never crosses the
+      // face); otherwise the ears tuck behind the head. From behind, both lie over it.
+      const near = -s * Math.sin(headYaw) > 0;
+      const over = !facing || (near && turned);
       const id = s < 0 ? "l" : "r";
       const leaf = (key, piece, a, b, nominal, bias) => {
         const sa = project(a), sb = project(b);
         const len = Math.hypot(sb.x - sa.x, sb.y - sa.y), rot = Math.atan2(sb.y - sa.y, sb.x - sa.x);
-        // tucked under the head's fur from the front and side; over it from behind
-        const z = hz + (Math.cos(headYaw) > -0.25 ? -2 : 2) + bias;
-        add(key, piece, a, { rot, sx: clamp(len / nominal, 0.5, 1.12), sy: Math.cos(rot) < 0 ? -1 : 1, bias: z - depth(a) });
+        add(key, piece, a, { rot, sx: clamp(len / nominal, 0.5, 1.12), sy: Math.cos(rot) < 0 ? -1 : 1, bias: hz + (over ? 1.5 : -2) + bias - depth(a) });
       };
-      leaf("ear" + id + "b", "ear_b", pts[3], pts[6], 33, -0.6);
-      leaf("ear" + id + "a", "ear_a", pts[0], pts[3], 33, 0);
+      leaf("ear" + id + "b", "ear_b", pts[6], pts[9], 27, -0.8);
+      leaf("ear" + id + "m", "ear_m", pts[3], pts[6], 27, -0.4);
+      leaf("ear" + id + "a", "ear_a", pts[0], pts[3], 27, 0);
+    }
+    // phases 2 and 3: wisps of shadow lifting off its back
+    for (let i = 0; i < (phase - 1) * 3; i++) {
+      const u = (t * 0.35 + i * 0.37) % 1;
+      const w = pose({ x: Math.sin(i * 2.4) * 12, y: base + 18 + u * 34, z: 4 - i * 9 });
+      add("wisp" + i, "wisp", w, { rot: Math.sin(t * 2 + i) * 0.25, sx: 0.7 + 0.5 * u, sy: 0.7 + 0.6 * u, alpha: Math.sin(u * Math.PI) * 0.75, bias: -4 });
     }
     const face = gloomFace(
-      { x: hs.x, y: hs.y, yaw: headYaw, pitch: P.headPitch, roll: P.headRoll, z: hz },
+      { x: hs.x, y: hs.y, yaw: headYaw, pitch: P.headPitch, roll: P.headRoll, z: hz, prevView: prev && prev[0] },
       { look: P.look, mouth: P.mouth, blink: P.blink, gemGlow: P.gemGlow, eyeGlow: P.eyeGlow },
     );
     for (const f of face.placements) (f.alpha *= P.alpha), list.push(f);
-    if (P.stars > 0)
-      for (let i = 0; i < 3; i++) {
-        const a = t * 4 + (i * TAU) / 3;
-        list.push({
-          key: "star" + i, piece: "star", x: hs.x + Math.cos(a) * 30, y: hs.y - A * 1.25 + Math.sin(a) * 7,
-          rot: a, sx: 1, sy: 1, alpha: 1, z: hz + (Math.sin(a) > 0 ? 1 : -1), glow: false,
-        });
-      }
+    if (P.stars > 0) KIT.stars(list, hs, hz, t, A * 1.25);
     list.sort((a, b) => a.z - b.z);
     return {
       placements: list,
-      head: { x: hs.x, y: hs.y, view: face.view, side: face.side },
-      guide: face.guide,
+      heads: [{ x: hs.x, y: hs.y, view: face.view, side: face.side, guide: face.guide, marks: face.marks }],
       core: project(pose({ x: 0, y: base + 2, z: 31 })),
       moon: list.moon,
     };
@@ -657,18 +488,6 @@ const GLOOM = (() => {
     },
   };
   const INK = "#1b0b1f"; // lids, nose, mouth line
-  const pieceOf = (name, w, h, ox, oy, fn) => ({
-    name, w, h, ox, oy,
-    draw: (ctx, k) => {
-      ctx.save();
-      ctx.scale(k, k);
-      ctx.translate(ox * w, oy * h);
-      ctx.lineJoin = "round";
-      ctx.lineCap = "round";
-      fn(ctx);
-      ctx.restore();
-    },
-  });
   /** The fur's colour down a head or muzzle: one gradient, so pieces match. */
   function furGradient(c, pal, top, bot) {
     const g = c.createLinearGradient(0, top, 0, bot);
@@ -678,40 +497,6 @@ const GLOOM = (() => {
     return g;
   }
   const headGradient = (c, pal, dy = 0) => furGradient(c, pal, SK.top - 6 - dy, SK.bot + 8 - dy);
-  /** A curved tuft of fur: base at (x, y), tip `len` along `ang`. */
-  function tuft(path, x, y, ang, len, w, bend = 0.25) {
-    const dx = Math.cos(ang), dy = Math.sin(ang), nx = -dy, ny = dx;
-    const tx = x + dx * len + nx * len * bend, ty = y + dy * len + ny * len * bend;
-    path.moveTo(x - nx * w, y - ny * w);
-    path.quadraticCurveTo(x + dx * len * 0.55 - nx * w * 0.9, y + dy * len * 0.55 - ny * w * 0.9, tx, ty);
-    path.quadraticCurveTo(x + dx * len * 0.5 + nx * w * 1.1, y + dy * len * 0.5 + ny * w * 1.1, x + nx * w, y + ny * w);
-    path.closePath();
-  }
-  /** A closed outline with a fringe of little fur points along it. */
-  function furPath(path, pts, o) {
-    const rnd = rng(o.seed || 1);
-    // resample by arc length
-    const out = [];
-    const step = 0.3;
-    let acc = 0, tooth = 0, amp = 1;
-    for (let i = 0; i < pts.length; i++) {
-      const a = pts[i], b = pts[(i + 1) % pts.length];
-      const d = Math.hypot(b.x - a.x, b.y - a.y);
-      const nx = (b.y - a.y) / (d || 1), ny = -(b.x - a.x) / (d || 1);
-      for (let s = 0; s < d; s += step) {
-        const x = a.x + ((b.x - a.x) * s) / d, y = a.y + ((b.y - a.y) * s) / d;
-        acc += step;
-        if (acc > tooth) { acc = 0; tooth = o.tooth * (0.7 + rnd() * 0.7); amp = 0.5 + rnd() * 0.7; }
-        const f = acc / tooth;
-        const prof = f < 0.72 ? f / 0.72 : (1 - f) / 0.28; // a slow rise, a quick drop
-        const m = o.mask ? o.mask(x, y) : 1;
-        const off = o.depth * amp * m * (prof - 0.45);
-        out.push({ x: x + nx * off, y: y + ny * off });
-      }
-    }
-    out.forEach((p, i) => (i ? path.lineTo(p.x, p.y) : path.moveTo(p.x, p.y)));
-    path.closePath();
-  }
   /** Stroke the outline, fill, then light the fur inside. */
   function paintFur(c, path, pal, top, bot, o = {}) {
     c.strokeStyle = pal.edge;
@@ -779,26 +564,27 @@ const GLOOM = (() => {
       } else paintFur(c, path, pal, -r, r, { fill: o.fill, strands: o.strands === undefined ? r * 1.4 : o.strands, x0: -r, x1: r, seed: seed + 3, edge: o.edge });
     });
   }
-  /** Half of a long lop ear, drawn along +x from its anchor: both ends round. */
-  function earPiece(name, pal, tip) {
-    return pieceOf(name, 62, 34, 9 / 62, 0.5, (c) => {
+  /** A third of a long lop ear, drawn along +x from its anchor: half-width w0 to w1. */
+  function earPiece(name, pal, w0, w1, tip) {
+    return pieceOf(name, 52, 38, 9 / 52, 0.5, (c) => {
       const pts = [];
-      const N = 48, x0 = -7, x1 = tip ? 46 : 43;
-      const cap = (u) => Math.sqrt(clamp(1 - Math.pow(Math.abs(2 * u - 1), tip ? 3.2 : 5)));
-      const half = (u) => (tip ? lerp(12.5, 10.5, u) : lerp(6.5, 12.5, smooth(0, 0.8, u))) * cap(u);
+      const N = 48, x0 = -7, x1 = tip ? 37 : 35;
+      const cap = (u) => Math.sqrt(clamp(1 - Math.pow(Math.abs(2 * u - 1), tip ? 3 : 6)));
+      const half = (u) => lerp(w0, w1, tip ? u : smooth(0, 0.85, u)) * cap(u);
       for (let i = 0; i <= N; i++) { const u = i / N; pts.push({ x: lerp(x0, x1, u), y: -half(u) * 0.85 }); }
       for (let i = N; i >= 0; i--) { const u = i / N; pts.push({ x: lerp(x0, x1, u), y: half(u) * 1.1 }); }
       const path = new Path2D();
-      furPath(path, pts, { seed: tip ? 23 : 19, tooth: 6.5, depth: 1.8, mask: (x, y) => (y > 1 ? 1 : 0.15) });
-      paintFur(c, path, pal, -12, 13, { strands: 26, x0, x1, seed: 41, edge: 1.9, flow: 0.3 });
+      furPath(path, pts, { seed: 19 + w0, tooth: 6.5, depth: 2, mask: (x, y) => (y > 1 ? 1 : 0.15) });
+      if (tip) for (const [x, y, a] of [[30, 6, 0.5], [34, 1, 0.1], [31, -5, -0.4]]) tuft(path, x, y, a, 8, 3.2, 0.2);
+      paintFur(c, path, pal, -15, 16, { strands: 26, x0, x1, seed: 41, edge: 1.9, flow: 0.3 });
       c.save(); // the paler inside of the ear, along its lower edge
       c.clip(path);
-      const g = c.createLinearGradient(0, 2, 0, 13);
-      g.addColorStop(0, "rgba(0,0,0,0)");
+      const g = c.createLinearGradient(0, 3, 0, 16);
+      g.addColorStop(0, pal.rim + "00");
       g.addColorStop(1, pal.rim);
-      c.globalAlpha = 0.45;
+      c.globalAlpha = 0.5;
       c.fillStyle = g;
-      c.fillRect(x0, 0, 60, 16);
+      c.fillRect(x0, 0, 60, 18);
       c.restore();
     });
   }
@@ -906,7 +692,7 @@ const GLOOM = (() => {
       }
       // Built from the centre line, as seen at 45 degrees: the bridge rises
       // from the nose towards the brow; its far side is the muzzle's outline.
-      const k = Math.sin(faceYaw(45 * DEG));
+      const k = Math.sin(FACEKIT.faceYaw(45 * DEG));
       const n0 = centreLine(FACE.noseLine) * k;
       const mid = (v) => centreLine(v) * k - n0; // centre line, from the nose
       const half = (v) => lerp(1.0, 5.0, smooth(FACE.eyeLine - 2, FACE.noseLine + 2, v)) * (1 - 0.75 * smooth(FACE.noseLine + 5, FACE.noseLine + 10.5, v));
@@ -1193,8 +979,8 @@ const GLOOM = (() => {
     });
   }
   function nosePiece(view) {
-    return pieceOf("nose_" + view, 10, 8, 0.5, 0.5, (c) => {
-      c.scale(1.3, 1.3);
+    return pieceOf("nose_" + view, 12, 10, 0.5, 0.5, (c) => {
+      c.scale(view === "side" ? 1.65 : 1.3, view === "side" ? 1.65 : 1.3);
       c.fillStyle = INK;
       c.beginPath();
       if (view === "side") {
@@ -1221,7 +1007,7 @@ const GLOOM = (() => {
   function mouthPiece(view, kind, pal) {
     return pieceOf(`mouth_${view}_${kind}`, 26, 22, 0.5, 0.25, (c) => {
       c.strokeStyle = INK;
-      c.lineWidth = 1.05;
+      c.lineWidth = view === "side" ? 1.25 : 1.05;
       // the far half of the mouth is shorter in three-quarter: replotted, not squeezed
       const fx = (x) => (view === "tq" && x > 0 ? x * 0.52 : x);
       const M = (x, y) => c.moveTo(fx(x), y), Q = (a, b, x, y) => c.quadraticCurveTo(fx(a), b, fx(x), y), Ln = (x, y) => c.lineTo(fx(x), y);
@@ -1296,27 +1082,6 @@ const GLOOM = (() => {
       }
     });
   }
-  function glowPiece(name, rgb) {
-    return pieceOf(name, 44, 44, 0.5, 0.5, (c) => {
-      const g = c.createRadialGradient(0, 0, 0, 0, 0, 22);
-      g.addColorStop(0, `rgba(${rgb},0.85)`);
-      g.addColorStop(0.35, `rgba(${rgb},0.34)`);
-      g.addColorStop(1, `rgba(${rgb},0)`);
-      c.fillStyle = g;
-      c.fillRect(-22, -22, 44, 44);
-    });
-  }
-
-  function softPiece(name, color, alpha) {
-    return pieceOf(name, 44, 44, 0.5, 0.5, (c) => {
-      const g = c.createRadialGradient(0, 0, 0, 0, 0, 20);
-      g.addColorStop(0, color);
-      g.addColorStop(1, color + "00");
-      c.globalAlpha = alpha;
-      c.fillStyle = g;
-      c.beginPath(); c.arc(0, 0, 20, 0, TAU); c.fill();
-    });
-  }
   const VIEWS = ["front", "tq", "side"];
   const LOOKS = ["idle", "glare", "wide", "hurt", "dizzy", "closed"];
   const MOUTHS = ["smile", "open", "o", "grit", "flat"];
@@ -1335,12 +1100,7 @@ const GLOOM = (() => {
       for (const m of MOUTHS) list.push(mouthPiece(v, m, pal));
     }
     list.push(
-      pieceOf("glint", 9, 9, 0.5, 0.5, (c) => {
-        c.fillStyle = "#fff";
-        c.beginPath(); c.arc(-1.5, -1.9, 1.3, 0, TAU); c.fill();
-        c.globalAlpha = 0.85;
-        c.beginPath(); c.arc(1.7, 1.6, 0.6, 0, TAU); c.fill();
-      }),
+      KIT.glintPiece(),
       glowPiece("glow_amber", "255,196,86"),
       glowPiece("glow_gold", "255,214,110"),
       ballPiece("ball24_f", 24, pal, 5, { mode: "f", depth: 3.4 }),
@@ -1348,8 +1108,17 @@ const GLOOM = (() => {
       ballPiece("ball14", 14, pal, 9, { strands: 10 }),
       softPiece("puff_hi", pal.furLight, 0.6),
       softPiece("puff_lo", pal.furDark, 0.6),
-      earPiece("ear_a", pal, false),
-      earPiece("ear_b", pal, true),
+      earPiece("ear_a", pal, 7, 12, false),
+      earPiece("ear_m", pal, 12, 14.5, false),
+      earPiece("ear_b", pal, 14.5, 12, true),
+      pieceOf("wisp", 20, 30, 0.5, 0.8, (c) => {
+        const path = new Path2D();
+        tuft(path, 0, 4, -Math.PI / 2, 24, 6, 0.3);
+        tuft(path, -4, 5, -Math.PI / 2 - 0.3, 15, 4, -0.3);
+        c.fillStyle = pal.furDark;
+        c.globalAlpha = 0.8;
+        c.fill(path);
+      }),
       pieceOf("ruff", 40, 36, 0.5, 0.4, (c) => {
         const path = new Path2D();
         const rp = { ...pal, furLight: pal.ruffLight, fur: pal.ruff, furDark: pal.fur, rim: pal.ruffLight };
@@ -1401,25 +1170,25 @@ const GLOOM = (() => {
         c.beginPath(); c.arc(0, 0, 8.5, 0, TAU); c.fill();
         c.strokeStyle = "#9a5a10"; c.lineWidth = 0.9; c.stroke();
       }),
-      pieceOf("star", 12, 12, 0.5, 0.5, (c) => {
-        c.fillStyle = "#fff1a0";
-        c.strokeStyle = "#a8781a";
-        c.lineWidth = 0.6;
-        c.beginPath();
-        for (let i = 0; i < 10; i++) {
-          const a = (i / 10) * TAU - Math.PI / 2, r = i % 2 ? 2 : 4.6;
-          c.lineTo(Math.cos(a) * r, Math.sin(a) * r);
-        }
-        c.closePath(); c.fill(); c.stroke();
-      }),
+      KIT.starPiece(),
     );
     return list;
   }
 
+  /** What the demo (and the checker) needs to know about this boss. */
+  const boss = {
+    id: "gloomshade",
+    title: "Gloomshade",
+    lede: "A fluffy shadow cat: big round amber eyes under a thick slanted lid, a gold gem on the brow, a short muzzle that tucks the far eye.",
+    attacks: [["lunge", "Shadow Lunge"], ["hands", "Grasping Hands"], ["snuff", "Snuff"], ["curse", "Creeping Curse"], ["split", "Split"], ["pulse", "Moon Pulse"]],
+    pose: gloomPose, placements: gloomPlacements, pieces: gloomPieces, faces: [FACEKIT],
+    looks: LOOKS, mouths: MOUTHS,
+    stage: { w: 380, h: 235, ground: 0.78, closeW: 110, closeH: 84, sheetGap: 232, sheetH: 205, closeGap: 84, closeSheetH: 96, champion: [-118, 34], shadow: [58, 17] },
+    occluder: "the three-quarter muzzle: bridge and far whisker pad",
+  };
   return {
-    A, FACE, SK, TILT, DEG, ATTACKS, LOOKS, MOUTHS, PAL,
-    centreLine, skullEdge, headView, faceYaw, contain, eyeGeom,
-    gloomFace, gloomPose, gloomPlacements, gloomPieces, project, rotY,
+    A, FACE, SK, SPEC, ATTACKS, LOOKS, MOUTHS, PAL, boss,
+    centreLine, skullEdge, eyeGeom, gloomFace, gloomPose, gloomPlacements, gloomPieces,
   };
 })();
 if (typeof module !== "undefined") module.exports = GLOOM;

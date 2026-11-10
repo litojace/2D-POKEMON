@@ -1,91 +1,130 @@
-# Gloomshade face rig: rule sheet
+# Raid boss face rigs: rule sheet
 
-Code: `src/gloom-rig.js` (pure functions, no DOM). Demo: `gloomshade.html`.
-Checks: `node tools/check-face.cjs`. Proof images: `proof/`.
+One face system, six bosses. Every piece is drawn once per phase; each frame
+only moves, turns, mirrors and re-sorts pieces.
 
-## Frames and units
+| File | What it is |
+| --- | --- |
+| `all-bosses.html` | every boss in one demo, with a boss switcher |
+| `<boss>.html` | the same demo for one boss; opens from disk, no build step |
+| `src/kit.js` | the shared face construction (`KIT.makeFace`) and drawing helpers |
+| `src/<boss>-rig.js` | one boss: its construction, pose, body and pieces (pure functions) |
+| `src/tide-rig.js` | Tidewyrm: a bundle of the game's own `apps/client/src/boss-vector-tide.ts` |
+| `tools/check-face.cjs` | checks the rules over every yaw, nod, roll, look and mouth |
+| `tools/make-proofs.py` | renders `proof/<boss>/` |
+| `build.py`, `tools/build-tide.sh` | rebuild the `.html` files and the Tidewyrm bundle |
+
+## Frames
 
 - Rig units are world pixels. Screen = `(x, -y + z * 0.65)`.
-- Yaw 0 faces the camera, 90° faces screen right, 180° faces away (the same as `yawFor` in `boss-vector-grumble.ts`).
-- The face is laid out in **head space**: `u` across, `v` down, origin at the head's centre. `A = 32` is the skull's half-width and the unit of every constant.
-- Everything is worked out for a head turned to **screen right** (the canonical drawing) and mirrored for left turns.
+- Yaw 0 faces the camera, 90° faces screen right, 180° faces away.
+- A face is laid out in **head space**: `u` across, `v` down, from the head's
+  centre. `A` is half the head's width and the unit of every constant.
+- Everything is worked out for a head turned to **screen right** and mirrored
+  for left turns.
 
-## Constants (`GLOOM.FACE`)
+## How a feature is placed (`KIT.makeFace(spec).face(head, expr)`)
 
-| Name | Value | Meaning |
-| --- | --- | --- |
-| `gemLine` | −0.50 A | height of the brow gem |
-| `browLine` | −0.30 A | height of the brows (an expression adds −2.4 to +2.6 units) |
-| `eyeLine` | +0.06 A | the eye line |
-| `noseLine` | +0.43 A | the nose; the mouth and muzzle are anchored to the same point |
-| `eyeAz` | 42° | how far round from the centre line each eye sits |
-| `eyeOrbit` | 0.62 A | radius of the circle the eyes ride |
-| `lag` | 14° | how far the face trails the skull at three-quarter |
-| `farLift` | 6° | fixed lift of the far eye's outer corner |
-| `nod` | 0.45 A per radian | how far a nod slides the whole face |
-| `margin` | 0.045 A | clear fur between a feature and the outline |
-| eye half-widths | front 8, near 8, far 5.6, side 6.6 | half-height stays 8.6 (far 8.4) |
-| iris radius | 5 (far 4.5, startled 3.8) | round in every view |
-
-## How a feature's position is computed (`gloomFace`)
-
-1. **View.** `|yaw| < 22.5°` front, `< 67.5°` three-quarter, `< 112.5°` side, otherwise no face (back three-quarter and back draw the head only).
-2. **Face yaw.** `faceYaw = turn − lag × sin(2 × turn)`. It equals the skull's yaw at 0° and 90° and trails it by 14° at 45°.
-3. **Height.** `v` is the feature's line. It is the same number in every view. A nod adds `pitch × nod` to all of them.
+1. **View.** Under 22.5° front, under 67.5° three-quarter, under 112.5° side,
+   otherwise the head alone (no face from behind). An optional `prevView`
+   holds a view until the yaw is 4° past a line, so a swaying head cannot
+   flicker between two drawings.
+2. **Face yaw.** `faceYaw = turn - lag * sin(2 * turn)`: the skull's yaw at
+   0° and 90°, trailing it most at 45°.
+3. **Height.** `v` is the feature's line, the same number in every view. A nod
+   adds `pitch * nod` to all of them.
 4. **Across.**
-   - eyes: `u = eyeOrbit × sin(faceYaw ∓ eyeAz)` (near eye −, far eye +);
-   - gem, nose, mouth, muzzle: `u = centreLine(v) × sin(faceYaw)`.
-   `centreLine(v)` is the head's profile: forehead, the stop at the eye line, the short muzzle, the chin. The side view draws it as the outline, so centre-line features land exactly on the profile there.
-5. **Containment.** `contain(view, u, halfWidth, vTop, vBottom)` clamps `u` to `skullEdge(view, v) ± (halfWidth + margin)`. The head pieces are drawn from the same `skullEdge`, so the test is exact for the drawn outline.
-6. **Orientation.** Every piece's rotation is the head's roll. The far eye (and its brow) adds `farLift`. Nothing follows the curve of the head.
-7. **Mirror.** For left turns `u`, the rotation offset and the piece's x-scale change sign. The highlight piece is never mirrored, so both eyes keep their highlight on the same side.
+   - eyes: `u = eyeOrbit * sin(faceYaw -+ eyeAz)` (near eye -, far eye +);
+   - centre-line features (gem, nose, mouth, beak, muzzle):
+     `u = centreLine(v) * sin(faceYaw)`, where `centreLine` is the head's own
+     profile. The side view draws that profile as its outline.
+5. **Far eye.** It may hide at most `tuckCap` of its width behind the bridge.
+6. **Containment.** Each feature is clamped to
+   `skullEdge(view, v) +- (halfWidth + margin)`. Head pieces are drawn from the
+   same `skullEdge`, so the test is exact for the drawn outline.
+7. **Orientation.** A piece's rotation is the head's roll. The far eye and its
+   brow add `farLift`. Nothing follows the curve of the head.
+8. **Mirror.** Left turns flip `u`, the rotation offset and the x-scale. The
+   front view is one drawing and never flips; the highlight is never mirrored.
+9. **Draw order.** Head, far eye, the occluder (`layer: "mid"`), near eye, the
+   other features, highlights.
 
-## Pieces per view
+Each view's eye is its own drawing at its own width (`KIT.drawEye`): a round
+or almond eye cut by a lid that runs from the outer corner down to the inner.
+Line weights are in rig units, so nothing is squeezed.
 
-| Feature | Front | Three-quarter | Side |
-| --- | --- | --- | --- |
-| Head | `head_front` | `head_tq` | `head_side` (profile with muzzle) |
-| Eyes | `eye_front_<look>` twice, one mirrored | `eye_near_<look>`, `eye_far_<look>` | `eye_side_<look>` |
-| Brows | `brow_front_<kind>` twice | `brow_near_<kind>`, `brow_far_<kind>` | `brow_side_<kind>` |
-| Gem | `gem_front` | `gem_tq` | `gem_side` (edge-on, on the profile) |
-| Nose | `nose_front` | `nose_tq` | `nose_side` |
-| Mouth | `mouth_front_<m>` | `mouth_tq_<m>` | `mouth_side_<m>` |
-| Muzzle | `muzzle_front` (two whisker pads) | `muzzle_tq` (the occluder) | part of `head_side` |
-| Back views | `head_backtq`, `head_back`, nothing else | | |
+## The bosses
 
-Looks: `idle`, `glare`, `wide`, `hurt`, `dizzy`, `closed` (a blink uses `closed`).
-Brow kinds: `calm`, `angry`, `raised`, `pinch`. Mouths: `smile`, `open`, `o`, `grit`, `flat`.
-Shared: `glint` (highlight), `glow_amber` (eye glow), `glow_gold` (gem, moon, core).
+| Boss | A | eyeAz | eyeOrbit | lag | farLift | tuckCap | Occluder at three-quarter |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Gloomshade | 32 | 42° | 0.62 A | 14° | 6° | 40% | `muzzle_tq`: bridge and far whisker pad |
+| Emberwing | 26 | 36° | 0.66 A | 12° | 6° | 35% | `beak_tq`: the beak's base |
+| Prismatail | 17 | 40° | 0.70 A | 12° | 6° | 35% | `beak_tq`: the beak's base |
+| Somnara | 66 | 50° | 0.90 A | 10° | 4° | none | the whale's own outline |
+| Storm Twins | 40 | 30° | 0.80 A | 10° | 5° | none | the bell's own outline |
+| Tidewyrm | disc 25.6 | 40° | 20 units | 18° | 6° | none | the bridge of the snout, drawn into the far eye |
 
-The eye is an ellipse cut by a thick, near-straight lid that slants down to the inner corner. Each view has its own ellipse width; line weights are in rig units, so no drawing is ever squeezed. The far eye is narrower in the white and the lid; its iris stays round.
-
-## The occluder
-
-`muzzle_tq` is built from `centreLine` as seen at 45°. Its far edge runs from above the brow, down the bridge, round the far whisker pad to the chin. It is filled with the same fur gradient as the head, is opaque over the full height of the far eye, and fades out on the near side and above the brow, so only its far edge is ever visible. That edge carries the one drawn line.
-
-Draw order: head, far eye, far brow, muzzle, near eye, near brow, gem, mouth, nose, highlights.
-
-At 45° the far eye's inner corner is tucked 1.5 units of its 11.2; the clear gap from the near eye to the bridge is 9.7 units. At 60° 6.8 units are tucked; at 30° the far eye stands 2.3 units clear of the bridge.
-
-## Expressions by state (`gloomPose`)
-
-| State | Eyes | Mouth |
+| Boss | Lines (from the head's centre, down is +) | Eye half-widths: front / near / far / side |
 | --- | --- | --- |
-| idle | idle, blinks | smile |
-| Shadow Lunge | glare | smile, then open on the cast |
-| Grasping Hands | glare | open |
-| Snuff | wide, then closed on the blow | o |
-| Creeping Curse | glare, gem glows | smile |
-| Split | wide | o |
-| Moon Pulse | closed, then wide | smile, then open |
-| phase roar | glare | open |
-| hurt | hurt | grit |
-| stagger | dizzy, head rolls | flat |
-| exposed | wide | o |
-| defeat | closed, head rolled | flat |
+| Gloomshade | gem -0.50 A, brow -0.30 A, eye +0.06 A, nose +0.43 A | 8 / 8 / 5.6 / 6.6 |
+| Emberwing | brow -0.30 A, eye -0.03 A, beak +0.30 A | 6.2 / 6.2 / 4.2 / 5.4 |
+| Prismatail | brow -0.34 A, eye -0.06 A, beak +0.27 A | 4.6 / 4.6 / 3.1 / 4.4 |
+| Somnara | eye -0.06 A, mouth +0.17 A | 5.6 / 8 / 3.3 / 8.4 |
+| Storm Twins | eye +0.04 A, mouth +0.30 A | 6.6 / 6.6 / 4.3 / 3.6 |
+| Tidewyrm | eyes on the line through the head's axis at eye height | 8.6 / 8.6 / 5.2 / 9.8 |
 
-## Porting
+Notes per boss:
 
-- `Piece` and `Placement` have the fields of `boss-vector-tide.ts`, so `packPieces`, `paintPieces` and the loop in `boss-vector-tide-rig.ts` apply as they are. `Placement.face` is extra (the demo's head close-up uses it).
-- `gloomPose(cue)`, `gloomPlacements(pose, yaw, phase)` and `gloomFace(head, expr)` keep no state. The 8-facing turn stays in the rig file (`nextFacing`, `turnToward`).
+- **Gloomshade.** Round amber eyes under a thick slanted lid; gem, nose and
+  mouth on the centre line. `muzzle_tq` is fur-coloured, opaque over the full
+  height of the far eye, and fades into the face on the near side, so only its
+  far edge shows. The ear on the camera's side lies over the back of the skull
+  once the head has turned; otherwise both ears tuck behind the head.
+- **Emberwing, Prismatail.** The beak is anchored where the centre line meets
+  the beak line and has a front, a three-quarter and a profile drawing, closed
+  and open. At three-quarter it is drawn under the near eye and over the far
+  eye. Prismatail's crown rides the top of the head.
+- **Somnara.** The front of the whale is the head. The eyes sit far round on
+  its sides: two narrow eyes from the front, one full eye in profile, and a
+  sliver held against the far outline at three-quarter. The mouth is one line
+  round the head, replotted per view from the same control points.
+- **Storm Twins.** The bell is the head and looks the same from every side, so
+  one bell piece serves all views. Fizz and Crackle share the construction and
+  have their own eye and mouth drawings.
+- **Tidewyrm.** Changed in the game (`boss-vector-tide.ts`: `TIDE_FACE`,
+  `tideEyes`). Its eye used to be one drawing scaled sideways by the turn. It
+  now has four drawings, placed by the same rules and clamped inside the
+  head's two discs. A stranded head lying on its side still shows its dizzy or
+  shut eye from behind, as the side drawing.
+
+## Expressions
+
+Looks: `idle`, `glare`, `wide`, `hurt`, `dizzy`, `closed` (a blink uses
+`closed`). Tidewyrm keeps its own: `glare`, `wide`, `squint`, `shut`, `dizzy`.
+Mouths: `smile`, `open`, `o`, `grit`, `flat`; the birds have `closed` and
+`open`. Each boss's `<boss>Pose(cue)` maps the battle's state to a look and a
+mouth: glare on a windup, open on a cast, hurt, dizzy when staggered, wide
+when exposed, closed when defeated.
+
+## Porting a boss into the game
+
+- `Piece` and `Placement` have the fields of `boss-vector-tide.ts`, so
+  `packPieces`, `paintPieces` and the loop in `boss-vector-tide-rig.ts` apply.
+  `Placement.face` and `Placement.actor` are extras the demo uses.
+- `kit.js` becomes one shared TypeScript module; each `<boss>-rig.js` becomes
+  `boss-vector-<boss>.ts`. They keep no state: the 8-facing turn and the
+  remembered view (`prevView`) stay in the Phaser rig file.
+- Prismatail's legs are thin lines (`{ line, color, width, z }`), drawn the
+  way Tidewyrm's whiskers are.
 - Glow placements (`glow: true`) go in the additive container.
+
+## Checks
+
+`node tools/check-face.cjs`: 977,280 placements, 0 failures. For each boss it
+checks that every piece exists, that there is no face from behind, that eyes
+stay on the eye line and inside the outline, that nothing is tilted except the
+far eye by its fixed lift, that the highlight is never mirrored, that the two
+eyes never overlap, and that the far eye keeps its `tuckCap` at 45°.
+
+Tidewyrm's rules are in the repo's own tests
+(`tests/unit/boss-vector-tide.test.ts`, `tests/visual/vector-tide.spec.ts`).
