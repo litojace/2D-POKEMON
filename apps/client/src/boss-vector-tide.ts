@@ -52,12 +52,12 @@ export const tideProject = (p: V3) => ({ x: p.x, y: -p.y + p.z * TIDE_TILT });
 /** Body segments, their spacing, and the head's scale. */
 export const SEGMENTS = 30;
 const SEG = 12.5;
-const HS = 1.22;
+const HS = 1.35;
 export function radiusAt(i: number) {
   const f = i / (SEGMENTS - 1);
-  if (f < 0.14) return lerp(5, 15, f / 0.14);
-  if (f < 0.55) return lerp(15, 24, (f - 0.14) / 0.41);
-  return lerp(24, 18.5, (f - 0.55) / 0.45);
+  if (f < 0.14) return lerp(8, 19, f / 0.14);
+  if (f < 0.55) return lerp(19, 30, (f - 0.14) / 0.41);
+  return lerp(30, 23, (f - 0.55) / 0.45);
 }
 
 export interface TidePose {
@@ -169,7 +169,8 @@ export function tideBody(P: TidePose, yaw: number) {
     const rise = smooth(0.5, 0.7, f) * P.rear * 1.25;
     const curl = smooth(0.78, 1, f) * P.neckCurl * 1.1;
     const leanF = smooth(0.55, 0.72, f) * P.lean;
-    es.push(lerp(humps + rise - curl - leanF, 0, P.flat));
+    const flick = -Math.max(0, 1 - f / 0.12) * 0.9;
+    es.push(lerp(humps + rise - curl - leanF + flick, 0, P.flat));
   }
   const h0 = hs[base];
   const local: { p: V3; d: V3 }[] = [];
@@ -197,7 +198,7 @@ export function tideBody(P: TidePose, yaw: number) {
   const b = local[base].p;
   const ox = lerp(b.x, cx, P.flat),
     oz = lerp(b.z - 26, cz, P.flat);
-  const restY = lerp(-5, 21, P.flat) + P.bob * (1 - P.flat) * 0.6 - P.sink;
+  const restY = lerp(5, 27, P.flat) + P.bob * (1 - P.flat) * 0.6 - P.sink;
   const turn = yaw + P.spin;
   const W = (p: V3) =>
     rotY(v3(p.x - ox, p.y - b.y * (1 - P.flat) + restY, p.z - oz), turn);
@@ -472,7 +473,7 @@ const rgb = (c: [number, number, number], a = 1) =>
 type Ctx = CanvasRenderingContext2D;
 /** Native sizes (rig units) of the pieces, as drawn in the atlas. */
 export const PIECE = {
-  seg: 24, // a body disc's radius
+  seg: 30, // a body disc's radius
   fin: 22, // a back fin's height
   ray: 46, // a tail-fin ray's length
   mane: 50,
@@ -1106,7 +1107,7 @@ export function tidePlacements(
   for (const s of segs) {
     const f = s.i / (SEGMENTS - 1);
     if (f <= 0.25 || f >= 0.97 || s.i % 2 !== 1) continue;
-    const size = 14 + 8 * Math.sin(f * Math.PI);
+    const size = 18 + 12 * Math.sin(f * Math.PI);
     const base = add(s.w, mul(s.up, s.r * 0.75));
     const wl = water(base.x, base.z);
     if (wl !== null && base.y < wl) continue;
@@ -1138,7 +1139,7 @@ export function tidePlacements(
         `ray${j}`,
         "ray",
         tail.w,
-        add(tail.w, mul(dir, 46)),
+        add(tail.w, mul(dir, 62)),
         PIECE.ray,
         1,
         tail.w.z - 0.3 - j * 0.001,
@@ -1346,7 +1347,7 @@ export function tidePlacements(
       upS = sp(U);
     const fangRot = (d: { x: number; y: number }) => Math.atan2(-d.x, d.y);
     for (const k of [-1, 1]) {
-      if (dot(norm(add(mul(F, 0.4), mul(R, k))), VIEW) < -0.05) continue;
+      if (dot(norm(add(mul(F, 0.4), mul(R, k))), VIEW) < 0.12) continue; // the near side only
       const L = (9 + P.anger * 3) * HS;
       for (const [f, r, u, l, dir] of [
         [39.5, 9.5, -6, L, down],
