@@ -94,12 +94,39 @@ const EMBER = (() => {
     const body = pose({ x: 0, y: 0, z: 0 });
     add("body", "body", body, {});
     add("chest", "chest", pose({ x: 0, y: 0, z: 17 }), { sx: 0.85, sy: 0.85, bias: 4 });
-    // wings: out, up and a little back; the flap is the raise angle
-    for (const s of [-1, 1]) {
+    // Wings: out, up and swept back; the flap is the raise angle. From the
+    // side a wing is shown broadside (never squeezed to a sliver): the near
+    // wing lies over the body, and the far wing takes the near wing's line,
+    // a little more raised, behind the body.
+    const sinY = Math.sin(yaw), sideOn = smooth(0.62, 0.95, Math.abs(sinY)); // only near profile: at three-quarter each wing stays on its own side
+    const wings = [-1, 1].map((s) => {
       const sh = pose({ x: s * 20, y: 14, z: -3 });
-      const r = P.wing + Math.sin(t * 3.2 + s * 0.2) * 0.02;
-      const tip = pose({ x: s * (20 + Math.cos(r) * 110), y: 14 + Math.sin(r) * 110, z: -3 - 28 - P.sweep * 70 });
-      add("wing" + s, "wing", sh, { ...along(sh, tip, 112, 0.42, 1.08), bias: -1.5 });
+      const r = P.wing + Math.sin(t * 3.2 + s * 0.2) * 0.02, sw = 0.6 + P.sweep * 0.8;
+      const d = { x: s * Math.cos(r) * Math.cos(sw), y: Math.sin(r), z: -Math.cos(r) * Math.sin(sw) - 0.15 };
+      const tip = pose({ x: s * 20 + d.x * 112, y: 14 + d.y * 112, z: -3 + d.z * 112 });
+      return { s, sh, o: along(sh, tip, 112, 0.66, 1.05), near: -s * sinY > 0 };
+    });
+    const nearW = wings.find((w) => w.near) || wings[0];
+    for (const w of wings) {
+      let { rot, sx, sy } = w.o, bias = -1.5;
+      if (sideOn > 0) {
+        if (w.near) bias = lerp(-1.5, 5, sideOn);
+        else {
+          const want = nearW.o.rot + 0.32 * Math.sign(sinY);
+          rot += Math.atan2(Math.sin(want - rot), Math.cos(want - rot)) * sideOn;
+          sx = lerp(sx, nearW.o.sx * 0.94, sideOn);
+          if (sideOn > 0.5) sy = nearW.o.sy;
+          bias = lerp(-1.5, -7, sideOn);
+        }
+      }
+      // at three-quarter the far wing would stand straight up behind the head
+      // (the camera looks down its length): lean it out to its own side
+      if (!w.near) {
+        const tq = (1 - sideOn) * smooth(0.2, 0.6, Math.abs(sinY));
+        rot += 0.42 * Math.sign(sinY) * tq;
+        sx *= 1 - 0.1 * tq;
+      }
+      add("wing" + w.s, "wing", w.sh, { rot, sx, sy, bias });
     }
     // tail plumes, trailing behind and below
     for (let i = -2; i <= 2; i++) {
@@ -211,24 +238,39 @@ const EMBER = (() => {
       for (const k of Object.keys(BROWS)) list.push(pieceOf(`brow_${v}_${k}`, 14, 9, 0.5, 0.5, (c) => { if (v === "far") c.scale(-1, 1); drawBrow(c, { front: 8, near: 8, far: 5.4, side: 7 }[v] / 2, BROWS[k], pal.brow, BROWS[k][4]); }));
     }
     for (const v of ["front", "tq", "side"]) list.push(beakPiece(v, false, pal), beakPiece(v, true, pal));
-    /** Rows of feathers along +x: a wing or a plume. */
-    const rows = (c, len, wide, n, tipCol, seed, droop) => {
-      for (let row = 0; row < 3; row++) {
-        const path = new Path2D();
-        const reach = [1, 0.72, 0.42][row], fl = [0.5, 0.38, 0.28][row] * wide * 2;
-        for (let i = 0; i < n; i++) {
-          const u = (i + 0.5) / n;
-          const x = u * len * reach, ang = lerp(1.25, 0.25, u) + droop * u;
-          tuft(path, x, 0, ang, fl * lerp(0.8, 1.15, u) * (row ? 1 : 1.2), fl * 0.3, 0.12);
-        }
-        path.moveTo(0, -wide * 0.3); path.quadraticCurveTo(len * reach * 0.5, -wide * (0.5 - row * 0.1), len * reach, 0); path.lineTo(0, wide * 0.25); path.closePath();
-        c.strokeStyle = pal.edge; c.lineWidth = 1.5; c.stroke(path);
-        c.fillStyle = grad(c, 0, -wide * 0.4, 0, fl * 1.15, row === 0 ? [pal.base, pal.light, tipCol] : row === 1 ? [pal.dark, pal.base, pal.light] : [pal.dark, pal.dark, pal.base]);
-        c.fill(path);
-      }
-    };
     list.push(
-      pieceOf("wing", 170, 150, 0.06, 0.2, (c) => rows(c, 118, 44, 11, pal.tip, 3, 0.35)),
+      pieceOf("wing", 190, 150, 0.07, 0.2, (c) => {
+        // A wing along +x: the arm on top, then three rows of round feathers
+        // overlapping like tiles, the long primaries fanning out at the tip.
+        const span = 116;
+        const arm = (u) => ({ x: u * span, y: -10 * Math.sin(u * Math.PI) - 2 * u }); // the leading edge
+        const row = (n, u0, u1, len, wid, a0, a1, cols) => {
+          for (let i = n - 1; i >= 0; i--) { // from the tip inwards, so each overlaps the one beyond it
+            const u = lerp(u0, u1, n === 1 ? 0 : i / (n - 1)), p = arm(u), ang = lerp(a0, a1, i / Math.max(1, n - 1));
+            const L = len * lerp(0.82, 1.18, i / Math.max(1, n - 1));
+            const cx = p.x + Math.cos(ang) * L * 0.5, cy = p.y + Math.sin(ang) * L * 0.5;
+            c.beginPath();
+            c.ellipse(cx, cy, L * 0.56, wid, ang, 0, TAU);
+            const tx = p.x + Math.cos(ang) * L, ty = p.y + Math.sin(ang) * L;
+            c.fillStyle = grad(c, p.x, p.y, tx, ty, cols);
+            c.fill();
+            c.strokeStyle = pal.edge; c.lineWidth = 1.1; c.stroke();
+            c.strokeStyle = "rgba(255,240,170,0.5)"; c.lineWidth = 0.8; // the quill
+            c.beginPath(); c.moveTo(p.x + Math.cos(ang) * L * 0.2, p.y + Math.sin(ang) * L * 0.2); c.lineTo(p.x + Math.cos(ang) * L * 0.9, p.y + Math.sin(ang) * L * 0.9); c.stroke();
+          }
+        };
+        row(10, 0.2, 1, 62, 8.4, 1.45, 0.2, [pal.base, pal.light, pal.tip]); // primaries and secondaries
+        row(8, 0.1, 0.86, 40, 7.4, 1.4, 0.45, [pal.dark, pal.base, pal.light]); // greater coverts
+        row(7, 0.04, 0.7, 24, 6.4, 1.35, 0.6, [pal.dark, pal.dark, pal.base]); // lesser coverts
+        const lead = new Path2D(); // the arm
+        lead.moveTo(-6, -6);
+        for (let i = 0; i <= 20; i++) { const p = arm(i / 20); lead.lineTo(p.x, p.y - 6 * (1 - i / 26)); }
+        for (let i = 20; i >= 0; i--) { const p = arm(i / 20); lead.lineTo(p.x, p.y + 7 * (1 - i / 24)); }
+        lead.lineTo(-6, 9);
+        lead.closePath();
+        c.strokeStyle = pal.edge; c.lineWidth = 1.6; c.stroke(lead);
+        c.fillStyle = grad(c, 0, -16, 0, 8, [pal.light, pal.base, pal.dark]); c.fill(lead);
+      }),
       pieceOf("plume", 110, 44, 0.07, 0.5, (c) => {
         const p = new Path2D();
         p.moveTo(0, -5); p.bezierCurveTo(30, -15, 62, -11, 92, 4); p.bezierCurveTo(82, 2, 76, 8, 84, 15); p.bezierCurveTo(56, 15, 26, 12, 0, 5); p.closePath();

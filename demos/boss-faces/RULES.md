@@ -80,6 +80,7 @@ Notes per boss:
   height of the far eye, and fades into the face on the near side, so only its
   far edge shows. The ear on the camera's side lies over the back of the skull
   once the head has turned; otherwise both ears tuck behind the head.
+- **Emberwing's wings.** One drawn wing (an arm and three rows of round, overlapping feathers), turned along the line from shoulder to tip and never scaled below two thirds of its length. Near profile the near wing lies over the body and the far wing takes the near wing's line, a little more raised, behind the body; at three-quarter the far wing leans out to its own side.
 - **Emberwing, Prismatail.** The beak is anchored where the centre line meets
   the beak line and has a front, a three-quarter and a profile drawing, closed
   and open. At three-quarter it is drawn under the near eye and over the far
