@@ -223,7 +223,11 @@ test("stranded on an island it lies low and dizzy with its pearl open; defeated 
   const segs = ids(stranded.parts, /^seg\d+$/).map((id) => stranded.parts[id]);
   expect(segs).toHaveLength(30);
   expect(segs.some((p) => p.cropped)).toBe(false);
-  expect(Math.max(...segs.map((p) => -p.y))).toBeLessThan(60);
+  // (relative to standing, so the check does not depend on the boss's scale)
+  const standingTop = Math.max(
+    ...ids(standing.parts, /^seg\d+$/).map((id) => -standing.parts[id].y),
+  );
+  expect(Math.max(...segs.map((p) => -p.y))).toBeLessThan(standingTop * 0.6);
   // dizzy eyes and the open weak point's ring
   const eyes = ids(stranded.parts, /^eye-?1$/).map((id) => stranded.parts[id]);
   expect(eyes.length).toBeGreaterThan(0);

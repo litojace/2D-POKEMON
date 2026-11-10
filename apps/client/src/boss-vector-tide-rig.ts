@@ -23,7 +23,7 @@ import {
 } from "./boss-vector-tide";
 
 /** World pixels per rig unit. */
-export const TIDE_SCALE = 0.75;
+export const TIDE_SCALE = 1;
 /** Texture pixels per world pixel: sharp on 2× screens and close cameras. */
 const Q = 2;
 const PX = TIDE_SCALE * Q;

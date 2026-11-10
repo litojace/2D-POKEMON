@@ -530,6 +530,23 @@ test("stranded Tidewyrm is one complete grounded creature in both directions", a
   page,
 }, info) => {
   const errors = await review(page);
+  // Standing in the water, side-on: how high its body reaches (the yardstick).
+  await page.evaluate(() => {
+    const r = (window as any).__bossReview,
+      row = r.rows.find((o: any) => o.id === "tidewyrm"),
+      boss = row.state.players.find((p: any) => p.raidBoss);
+    boss.angle = 0;
+    r.frame(1, 5.5, true);
+  });
+  const up = (await vector(page, "tidewyrm"))!;
+  const top = (parts: Record<string, any>) =>
+    Math.max(
+      ...Object.entries(parts)
+        .filter(([id]) => /^seg\d+$/.test(id))
+        .map(([, p]) => -p.y),
+    );
+  const standing = top(up.parts);
+  expect(standing).toBeGreaterThan(80);
   for (const facing of [1, -1]) {
     await page.evaluate((facing) => {
       const r = (window as any).__bossReview,
@@ -553,8 +570,8 @@ test("stranded Tidewyrm is one complete grounded creature in both directions", a
     expect(Math.sign(v.parts.snout.x - v.parts.seg15.x)).toBe(facing);
     // the whole body is out on the sand (none of it under water), lying low
     expect(segs).toHaveLength(30);
-    expect(Math.max(...segs.map((p) => -p.y))).toBeLessThan(75);
-    expect(v.parts.cran.y).toBeGreaterThan(-60);
+    expect(top(v.parts)).toBeLessThan(standing * 0.75);
+    expect(v.parts.cran.y).toBeGreaterThan(up.parts.cran.y + standing * 0.3);
     // one creature: every visible piece within a body's length of the boss
     for (const p of Object.values(v.parts) as any[])
       expect(Math.hypot(p.x, p.y)).toBeLessThan(260);

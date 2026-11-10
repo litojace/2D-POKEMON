@@ -64,7 +64,7 @@ describe("vector Tidewyrm rig", () => {
     const P = tidePose(cue({ stranded: true }));
     expect([P.flat, P.dizzy, P.exposed]).toEqual([1, 1, 1]);
     const body = tideBody(P, 0.4);
-    expect(Math.max(...body.segs.map((s) => s.w.y))).toBeLessThan(25);
+    expect(Math.max(...body.segs.map((s) => s.w.y))).toBeLessThan(35);
     const dead = tidePose(cue({ dead: true, deathSink: 1, stranded: true }));
     expect(dead.closed).toBe(1);
     expect(dead.exposed).toBe(0);
