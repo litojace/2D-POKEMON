@@ -51,6 +51,34 @@ async function instrument(page: Page) {
     });
   });
 }
+/**
+ * Count layout reads on the battle nameplates. A hidden plate that was never
+ * measured on screen reads 0, which is never cached, so measuring it forced
+ * a page layout on every frame. (This scenario brings fighters in off screen
+ * mid-fight, so it has such plates.)
+ */
+async function countPlateMeasures(page: Page) {
+  await page.addInitScript(() => {
+    const w = window as any;
+    w.__plateMeasures = { all: 0, hidden: 0 };
+    for (const prop of ["offsetWidth", "offsetHeight"] as const) {
+      const real = Object.getOwnPropertyDescriptor(
+        HTMLElement.prototype,
+        prop,
+      )!;
+      Object.defineProperty(HTMLElement.prototype, prop, {
+        configurable: true,
+        get() {
+          if (this.classList?.contains("battle-nameplate")) {
+            w.__plateMeasures.all++;
+            if (this.hidden) w.__plateMeasures.hidden++;
+          }
+          return real.get!.call(this);
+        },
+      });
+    }
+  });
+}
 type Scenario = "pvp2" | "pvp4" | "raid4";
 async function enterBattle(page: Page, scenario: Scenario) {
   await page.evaluate(
@@ -208,6 +236,7 @@ for (const scenario of ["pvp2", "pvp4", "raid4"] as Scenario[])
     try {
       const page = await context.newPage();
       await instrument(page);
+      await countPlateMeasures(page);
       const errors = await openHub(page);
       await enterBattle(page, scenario);
       await startFight(page, scenario);
@@ -224,8 +253,10 @@ for (const scenario of ["pvp2", "pvp4", "raid4"] as Scenario[])
         }),
       ).toHaveCount(1);
       await page.evaluate(() => {
-        const p = (window as any).__perf;
+        const w = window as any;
+        const p = w.__perf;
         for (const k of Object.keys(p)) p[k] = [];
+        w.__plateMeasures = { all: 0, hidden: 0 };
       });
       const cdp = await context.newCDPSession(page);
       await cdp.send("Performance.enable");
@@ -234,6 +265,10 @@ for (const scenario of ["pvp2", "pvp4", "raid4"] as Scenario[])
       const after = await cdp.send("Performance.getMetrics");
       await cdp.detach();
       const raw = await page.evaluate(() => (window as any).__perf);
+      const plates = await page.evaluate(() => (window as any).__plateMeasures);
+      const hiddenPlates = await page
+        .locator(".battle-nameplate[hidden]")
+        .count();
       await stopFight(page);
       const metric = (m: any, name: string) =>
         m.metrics.find((x: any) => x.name === name)?.value ?? 0;
@@ -258,6 +293,7 @@ for (const scenario of ["pvp2", "pvp4", "raid4"] as Scenario[])
         frameStepMs: stats(raw.step),
         frameIntervalMs: stats(raw.frames),
         longFrames: raw.frames.filter((d: number) => d > 50).length,
+        nameplateMeasures: { ...plates, hiddenPlates },
         mainThreadMs: cpu,
         memory: await heap(context, page),
       };
@@ -271,6 +307,10 @@ for (const scenario of ["pvp2", "pvp4", "raid4"] as Scenario[])
       // Generous guards: a regression to per-snapshot rebuilds would blow these.
       expect(result.snapshotHandlingMs.p50).toBeLessThan(25);
       expect(result.frameStepMs.n).toBeGreaterThan(3);
+      // A hidden nameplate (an off-screen fighter) is never measured, and
+      // a shown one only when its title changes, not every frame.
+      expect(plates.hidden).toBe(0);
+      expect(plates.all).toBeLessThan(result.frameStepMs.n / 2 + 8);
       expect(errors).toEqual([]);
     } finally {
       await context.close();

@@ -342,6 +342,8 @@ function ballSpin(id: string, speed: number, heading: number) {
 /** Adapts optional battle decoration to the device (Settings → Graphics). */
 const battleQuality = new BattleQualityGovernor();
 let battleStill: boolean | undefined;
+/** The canvas density the battle quality allowed last frame. */
+let battleDensity: number | undefined;
 /** Fighters' names and equipped looks, sent apart from combat snapshots. */
 const snapshotMeta = new MetaCache();
 let snapshotMetaAsked = "";
@@ -465,12 +467,14 @@ function scheduleBattleLayout() {
 /** The arena area under the PvP badge (scheduleBattleLayout keeps it). */
 let badgeClear: { left: number; right: number; bottom: number } | null = null;
 /** A nameplate's size, measured again only when its title changes (the
- * labels move every frame by transform alone). */
+ * labels move every frame by transform alone). A hidden plate is never
+ * measured: it reads as 0, is not cached, and each read forces a layout. */
 const nameplateSizes = new WeakMap<
   HTMLElement,
   { title: string; w: number; h: number }
 >();
 function nameplateSize(label: HTMLElement, title: string) {
+  if (label.hidden) return { w: 0, h: 0 };
   let size = nameplateSizes.get(label);
   if (!size || size.title !== title) {
     const w = label.offsetWidth,
@@ -4491,6 +4495,12 @@ class ArenaScene extends Phaser.Scene {
       battleStill = knobs.stillBackground;
       document.body.classList.toggle("battle-still", battleStill);
     }
+    // Low draws fewer pixels: resize the canvas on the next frame (the
+    // floor keeps the density it was baked at, see floorScale).
+    if (battleDensity !== knobs.density) {
+      if (battleDensity !== undefined) scheduleBattleLayout();
+      battleDensity = knobs.density;
+    }
   }
   observeSnapshot(next: Snapshot, previous?: Snapshot) {
     this.requestFighters(next);
@@ -6209,25 +6219,11 @@ class ArenaScene extends Phaser.Scene {
           view.zoomY +
           this.scale.height / 2) *
         css;
-      const plateBottom = Math.max(
-        nameplateFloor(label, p.title ?? "", labelX),
-        labelY,
-      );
-      label.style.transform = `translate3d(${labelX}px, ${plateBottom}px, 0) translate(-50%, -100%)`;
-      const plateSize = nameplateSize(label, p.title ?? "");
-      this.plates.set(p.id, {
-        x: labelX,
-        bottom: plateBottom,
-        w: plateSize.w,
-        h: plateSize.h,
-      });
-      setHudStyle(label, "opacity", p.hp > 0 ? "1" : "0.4");
-      label.classList.toggle(
-        "team-ally",
-        isTeams() && p.id !== myId && teamOf(p) === myTeam,
-      );
-      label.classList.toggle("team-enemy", isTeams() && teamOf(p) !== myTeam);
-      label.hidden =
+      // Decide first whether the plate shows: a hidden plate is never
+      // measured or moved. A plate not yet measured on screen (a fighter
+      // off screen from the start, or joining there) measured 0, which is
+      // not cached, so it forced a page layout every frame until it showed.
+      const hidden =
         labelX < 0 ||
         labelX > this.scale.width * css ||
         labelY > this.scale.height * css ||
@@ -6240,6 +6236,30 @@ class ArenaScene extends Phaser.Scene {
         serverPlayer.statuses.some(
           (s) => s.kind === "stealth" && p.id !== myId,
         );
+      label.hidden = hidden;
+      setHudStyle(label, "opacity", p.hp > 0 ? "1" : "0.4");
+      label.classList.toggle(
+        "team-ally",
+        isTeams() && p.id !== myId && teamOf(p) === myTeam,
+      );
+      label.classList.toggle("team-enemy", isTeams() && teamOf(p) !== myTeam);
+      if (hidden) {
+        // Takes no room: the off-screen arrow ignores a plate with no width.
+        this.plates.set(p.id, { x: labelX, bottom: labelY, w: 0, h: 0 });
+        continue;
+      }
+      const plateBottom = Math.max(
+        nameplateFloor(label, p.title ?? "", labelX),
+        labelY,
+      );
+      label.style.transform = `translate3d(${labelX}px, ${plateBottom}px, 0) translate(-50%, -100%)`;
+      const plateSize = nameplateSize(label, p.title ?? "");
+      this.plates.set(p.id, {
+        x: labelX,
+        bottom: plateBottom,
+        w: plateSize.w,
+        h: plateSize.h,
+      });
     }
     if (touch.enabled) return;
     g.lineStyle(1, 0xffffff, 0.6).strokeCircle(aim.x, aim.y, 10);
@@ -6382,10 +6402,11 @@ function flashWhite(root: Phaser.GameObjects.Container) {
 }
 /**
  * Canvas pixels per CSS pixel. Phones have 2–3x screens; rendering at that density
- * keeps creatures, effects and text sharp. Capped at 2 to protect frame rate.
+ * keeps creatures, effects and text sharp. Capped at 2 to protect frame rate,
+ * and at 1.5 at Low battle graphics (battle-quality.ts), as on iPhones.
  */
 function renderScale() {
-  return rendererDensity();
+  return Math.min(rendererDensity(), battleQuality.knobs().density);
 }
 /** Size the drawing buffer to the arena box at device resolution. */
 function fitRenderer() {

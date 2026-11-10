@@ -96,11 +96,49 @@ it("respects a manual High or Low and remembers nothing for them", () => {
   expect(low.run(60, 1000 / 60)).toEqual([]);
 });
 
-it("only ever trims decoration", () => {
+it("steps down for the stutter each skill causes on an older phone", () => {
+  // 60 fps, but half a second of 25 fps after each skill, one every 2 s:
+  // a quarter of the time stutters, though only an eighth of the frames.
+  const stutter = (every: number, burst: number, slow: number) => {
+    let t = 0,
+      cast = -Infinity;
+    return () => {
+      if (t - cast >= every) cast = t;
+      const step = t - cast < burst ? slow : 1000 / 60;
+      t += step;
+      return step;
+    };
+  };
+  const phone = governor();
+  const seconds =
+    (BATTLE_PROBE.warmup + BATTLE_PROBE.window * BATTLE_PROBE.slowWindows) /
+      1000 +
+    1;
+  expect(phone.run(seconds, stutter(2000, 500, 40))).toEqual(["medium"]);
+  // Skills that cost a frame or two now and then are fine.
+  const fine = governor();
+  expect(fine.run(60, stutter(2000, 60, 40))).toEqual([]);
+  // So is a phone that holds 30 fps through its skills.
+  const steady = governor();
+  expect(steady.run(60, stutter(2000, 600, 33))).toEqual([]);
+});
+
+it("only trims decoration, and at Low draws fewer pixels", () => {
   for (const knobs of Object.values(BATTLE_QUALITY)) {
     expect(Object.keys(knobs).sort()).toEqual(
-      ["mythicAmbient", "particles", "stillBackground", "trails"].sort(),
+      [
+        "density",
+        "mythicAmbient",
+        "particles",
+        "stillBackground",
+        "trails",
+      ].sort(),
     );
     expect(knobs.particles).toBeGreaterThan(0.3);
   }
+  // High and Medium keep the screen's density (at most 2); Low draws at
+  // most 1.5, as iPhones always do.
+  expect(BATTLE_QUALITY.high.density).toBe(2);
+  expect(BATTLE_QUALITY.medium.density).toBe(2);
+  expect(BATTLE_QUALITY.low.density).toBe(1.5);
 });
