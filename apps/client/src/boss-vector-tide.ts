@@ -140,6 +140,8 @@ export interface TideSeg {
   r: number;
   right: V3;
   up: V3;
+  /** An in-between disc's number (1–3) between two segments; none on a segment. */
+  mid?: number;
 }
 export interface TideHead {
   w: V3;
@@ -1225,6 +1227,11 @@ export interface TideLine {
 /** The surface under a rig point: the water's level (0), or null on dry land. */
 export type WaterAt = (x: number, z: number) => number | null;
 
+/** Screen gap between two body discs, in radii, past which an in-between disc fills it. */
+export const TIDE_GAP = 0.55;
+/** How far the belly may sit off the spine, in radii: its 0.72 r disc stays inside the body. */
+const BELLY_ACROSS = 1 - 0.72;
+
 export function tidePlacements(
   P: TidePose,
   yaw: number,
@@ -1239,17 +1246,47 @@ export function tidePlacements(
   // body: runs of six, each run's outlines under its fills (one smooth tube)
   const RUN = 5;
   for (let r0 = 0; r0 < SEGMENTS; r0 += RUN) {
-    const run = segs.slice(r0, r0 + RUN + 1).sort((a, b) => a.w.z - b.w.z);
+    const run = segs.slice(r0, r0 + RUN + 1);
+    // Where two discs sit far apart on screen (the neck leaning away from the
+    // camera, the thin tail), the outline scallops like a stack of coins: an
+    // in-between disc fills the gap.
+    for (let n = run.length - 1; n > 0; n--) {
+      const a = run[n - 1],
+        b = run[n];
+      const pa = sp(a.w),
+        pb = sp(b.w);
+      const gap = Math.hypot(pb.x - pa.x, pb.y - pa.y) / Math.min(a.r, b.r);
+      const extra = Math.min(3, Math.ceil(gap / TIDE_GAP) - 1);
+      for (let m = extra; m >= 1; m--) {
+        const t = m / (extra + 1);
+        const right = norm(add(mul(a.right, 1 - t), mul(b.right, t))),
+          d = norm(add(mul(a.d, 1 - t), mul(b.d, t)));
+        run.splice(n, 0, {
+          i: a.i + t,
+          w: add(mul(a.w, 1 - t), mul(b.w, t)),
+          d,
+          r: lerp(a.r, b.r, t),
+          right,
+          up: norm(cross(right, d)),
+          mid: m,
+        });
+      }
+    }
+    run.sort((a, b) => a.w.z - b.w.z);
     const runZ = run.reduce((a, s) => a + s.w.z, 0) / run.length;
-    run.forEach((s, k) => {
+    // the z steps below were tuned for six discs a run: keep the same span
+    const kz = 6 / run.length;
+    run.forEach((s, k0) => {
+      const k = k0 * kz;
       const wl = water(s.w.x, s.w.z);
       if (wl !== null && s.w.y < wl - s.r * 1.05) return;
       const c = sp(s.w),
         sc = s.r / PIECE.seg;
       const waterY = wl === null ? undefined : sp(v3(s.w.x, wl, s.w.z)).y;
-      const dup = s.i === r0 + RUN ? "b" : "";
+      const dup = s.i === r0 + RUN && !s.mid ? "b" : "";
+      const tag = s.mid ? `${Math.floor(s.i)}m${s.mid}` : `${s.i}`;
       out.push({
-        key: `line${s.i}${dup}`,
+        key: `line${tag}${dup}`,
         piece: "seg-line",
         x: c.x,
         y: c.y,
@@ -1261,7 +1298,7 @@ export function tidePlacements(
         waterY,
       });
       out.push({
-        key: `seg${s.i}${dup}`,
+        key: `seg${tag}${dup}`,
         piece: "seg",
         x: c.x,
         y: c.y,
@@ -1274,14 +1311,43 @@ export function tidePlacements(
       });
       const belly = mul(s.up, -1),
         facing = dot(belly, VIEW);
-      if (facing > -0.35) {
+      // in-between discs fill the outline; the belly's own discs overlap enough
+      if (facing > -0.35 && !s.mid) {
         const o = sp(belly),
           ol = Math.hypot(o.x, o.y) || 1;
+        // The belly sits 0.62 r off the disc's centre, past its outline. A
+        // neighbouring disc covers what sticks out towards it; anything else
+        // would show past the neck as a faint ghost when the serpent turns
+        // side-on. So keep the belly (radius 0.72 r) within 0.28 r of the
+        // spine between this disc and the neighbour it leans towards.
+        const bx = (o.x / ol) * 0.62 * s.r,
+          by = (o.y / ol) * 0.62 * s.r;
+        let ax = 0,
+          ay = 0,
+          best = 0;
+        for (const j of [s.i - 1, s.i + 1]) {
+          if (j < 0 || j >= SEGMENTS) continue;
+          const nb = sp(segs[j].w),
+            nx = nb.x - c.x,
+            ny = nb.y - c.y,
+            nl = nx * nx + ny * ny || 1;
+          // the nearest point to the belly on the spine towards this neighbour
+          const t = clamp((bx * nx + by * ny) / nl);
+          if (t * Math.sqrt(nl) > best) {
+            best = t * Math.sqrt(nl);
+            ax = nx * t;
+            ay = ny * t;
+          }
+        }
+        const px = bx - ax,
+          py = by - ay,
+          pl = Math.hypot(px, py),
+          keep = pl > BELLY_ACROSS * s.r ? (BELLY_ACROSS * s.r) / pl : 1;
         out.push({
-          key: `belly${s.i}${dup}`,
+          key: `belly${tag}${dup}`,
           piece: "belly",
-          x: c.x + (o.x / ol) * s.r * 0.62,
-          y: c.y + (o.y / ol) * s.r * 0.62,
+          x: c.x + ax + px * keep,
+          y: c.y + ay + py * keep,
           rot: 0,
           sx: sc,
           sy: sc,
@@ -1294,7 +1360,7 @@ export function tidePlacements(
         const o = sp(s.up),
           ol = Math.hypot(o.x, o.y) || 1;
         out.push({
-          key: `mark${s.i}${dup}`,
+          key: `mark${tag}${dup}`,
           piece: "glow",
           x: c.x + (o.x / ol) * s.r * 0.5,
           y: c.y + (o.y / ol) * s.r * 0.5,

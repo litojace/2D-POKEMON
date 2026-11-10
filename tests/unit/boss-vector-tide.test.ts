@@ -10,6 +10,7 @@ import {
   tidePlacements,
   tidePose,
   tideTurn,
+  TIDE_GAP,
   type TideCue,
 } from "../../apps/client/src/boss-vector-tide";
 
@@ -198,7 +199,8 @@ describe("vector Tidewyrm rig", () => {
       0,
       1,
       () => null,
-    ).placements.filter((q) => q.piece === "seg");
+    ).placements.filter((q) => q.piece === "seg" && !/m/.test(q.key));
+    // one disc per segment (in-between discs aside), the runs' joins twice
     expect(dry).toHaveLength(SEGMENTS + Math.floor((SEGMENTS - 1) / 5));
     expect(dry.every((q) => q.waterY === undefined)).toBe(true);
   });
@@ -230,5 +232,99 @@ describe("vector Tidewyrm rig", () => {
       expect(art.core[1]).toBeGreaterThan(y);
       expect(art.core[1]).toBeLessThan(y + h);
     }
+  });
+
+  // The body is a chain of discs: seen from any side, its belly stays inside
+  // the outline and its edge doesn't scallop like a stack of coins.
+  describe("body outline", () => {
+    const views = [0, 45, 90, 135, 180, 225, 270, 315];
+    // risen from the water, or stranded on dry sand
+    const bodies = () =>
+      views.flatMap((deg) =>
+        [false, true].flatMap((stranded) =>
+          [0.5, 2.1, 4.49, 7.3].map((clock) => {
+            const P = tidePose(cue({ clock, stranded }));
+            if (stranded) P.flat = 1;
+            const r = tidePlacements(
+              P,
+              (deg * Math.PI) / 180,
+              1,
+              stranded ? () => null : water,
+            );
+            // one disc per segment or in-between ("seg4m2": the second
+            // in-between disc from segment 4 to 5)
+            const discs = new Map<
+              number,
+              { x: number; y: number; r: number; waterY?: number }
+            >();
+            for (const p of r.placements) {
+              const m = /^seg(\d+)(?:m(\d))?b?$/.exec(p.key);
+              if (m)
+                discs.set(+m[1] + (m[2] ? +m[2] / 4 : 0), {
+                  x: p.x,
+                  y: p.y,
+                  r: 30 * p.sx,
+                  waterY: p.waterY,
+                });
+            }
+            const where = `${deg}°, ${stranded ? "stranded" : "in the water"}, clock ${clock}`;
+            return { deg, where, r, discs };
+          }),
+        ),
+      );
+
+    it("keeps the belly inside the body's outline, even side-on", () => {
+      for (const { where, r, discs } of bodies()) {
+        const all = [...discs.values()];
+        for (const p of r.placements) {
+          if (!p.key.startsWith("belly") || p.alpha < 0.05) continue;
+          const br = 30 * 0.72 * p.sx;
+          let worst = 0;
+          for (let a = 0; a < 24; a++) {
+            const x = p.x + Math.cos((a / 24) * Math.PI * 2) * br,
+              y = p.y + Math.sin((a / 24) * Math.PI * 2) * br;
+            if (p.waterY !== undefined && y > p.waterY) continue; // under water
+            // how far this rim point is outside the outline (1.6 past the fill)
+            const out = Math.min(
+              ...all.map((d) => Math.hypot(x - d.x, y - d.y) - d.r - 1.6),
+            );
+            worst = Math.max(worst, out);
+          }
+          expect(worst, `${p.key} at ${where}`).toBeLessThan(0.5);
+        }
+      }
+    });
+
+    it("fills wide gaps between discs, so the edge doesn't scallop", () => {
+      for (const { where, discs } of bodies()) {
+        const order = [...discs.keys()].sort((a, b) => a - b);
+        for (let n = 1; n < order.length; n++) {
+          // a segment sunk under the water leaves a gap nobody sees
+          if (order[n] - order[n - 1] > 1) continue;
+          const a = discs.get(order[n - 1])!,
+            b = discs.get(order[n])!;
+          expect(
+            Math.hypot(b.x - a.x, b.y - a.y) / Math.min(a.r, b.r),
+            `discs ${order[n - 1]}–${order[n]} at ${where}`,
+          ).toBeLessThanOrEqual(TIDE_GAP + 1e-9);
+        }
+      }
+    });
+
+    it("adds in-between discs only where needed: on the neck, only leaning away", () => {
+      // in-between discs on the neck (the tail is thin, so it always has some)
+      const mids = (deg: number) =>
+        bodies()
+          .filter((b) => b.deg === deg && b.where.includes("water"))
+          .map(
+            (b) => [...b.discs.keys()].filter((i) => i % 1 && i > 15).length,
+          );
+      expect(Math.max(...mids(0))).toBe(0);
+      expect(Math.min(...mids(180))).toBeGreaterThan(2);
+      const all = bodies().map(
+        (b) => [...b.discs.keys()].filter((i) => i % 1).length,
+      );
+      expect(Math.max(...all)).toBeLessThan(30);
+    });
   });
 });
