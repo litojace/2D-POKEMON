@@ -10,6 +10,7 @@ import {
   isPaintedBoss,
 } from "./boss-painted-rig";
 import { grumbleGuideImage } from "./boss-vector-grumble";
+import { tideGuideImage } from "./boss-vector-tide";
 import base from "./art/raid-whole-frames.json";
 
 /** Reuse a complete battle pose in the diagram; native atlas has ample resolution
@@ -28,8 +29,11 @@ export function raidGuideSprite(
       ? `<circle cx="${cx}" cy="${cy}" r="12" fill="#82ffe7" fill-opacity=".15" stroke="#82ffe7" stroke-width="2"/>`
       : "";
   if (!isPaintedBoss(boss)) {
-    // Vector bosses draw themselves once into a picture (boss-vector-grumble.ts).
-    const art = grumbleGuideImage(exposed),
+    // Vector bosses draw themselves once into a picture (boss-vector-*.ts).
+    const art =
+        boss === "tidewyrm"
+          ? tideGuideImage(exposed)
+          : grumbleGuideImage(exposed),
       [sx, sy, w, h] = art.crop,
       scale = Math.min(90 / w, 80 / h),
       frameX = -45 + (90 - w * scale) / 2,
@@ -55,11 +59,6 @@ export function raidGuideSprite(
     // expose neighboring poses in the otherwise empty space above the creature.
     return `<svg x="${frameX}" y="${frameY}" width="${w * scale}" height="${h * scale}" viewBox="${sx} ${sy} ${w} ${h}" preserveAspectRatio="xMidYMax meet" overflow="hidden"><image data-guide-sprite="${boss}" href="${url}" width="${aw}" height="${ah}"/></svg>${ring(cx, cy)}`;
   };
-  const mode =
-    boss === "emberwing"
-      ? "ground"
-      : boss === "tidewyrm" && exposed
-        ? "stranded"
-        : "body";
+  const mode = boss === "emberwing" ? "ground" : "body";
   return `<g data-guide-boss="${boss}">${floor}${boss === "storm-twins" ? draw("body", -50, 48) + draw("blue", 2, 48) : draw(mode, -45, 90)}</g>`;
 }
