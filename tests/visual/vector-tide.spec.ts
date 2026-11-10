@@ -148,12 +148,12 @@ test("Tidewyrm is drawn as vector art from the battle's own state, in eight faci
   const left = await rig(page);
   expect(left.facing).toBe(6);
   expect(left.parts.snout.x).toBeLessThan(left.parts.seg0.x);
-  // From behind, no eyes; the mane and horns face the camera.
+  // From behind, no eyes; the mane and the pearl on its crown face the camera.
   await draw(page, { clock: 14, angle: -Math.PI / 2, frames: 8 });
   const back = await rig(page);
   expect(back.facing).toBe(4);
   expect(ids(back.parts, /^eye/)).toEqual([]);
-  expect(back.parts.mane2 && back.parts.horn1).toBeTruthy();
+  expect(back.parts.mane2 && back.parts.pearl).toBeTruthy();
   expect(errors).toEqual([]);
 });
 
