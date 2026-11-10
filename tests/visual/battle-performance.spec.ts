@@ -52,9 +52,10 @@ async function instrument(page: Page) {
   });
 }
 /**
- * Count layout reads on the battle nameplates. Reading the size of a hidden
- * plate gives 0, which is never cached, so it forced a page layout on every
- * frame for every off-screen fighter (battles lagged on older phones).
+ * Count layout reads on the battle nameplates. A hidden plate that was never
+ * measured on screen reads 0, which is never cached, so measuring it forced
+ * a page layout on every frame. (This scenario brings fighters in off screen
+ * mid-fight, so it has such plates.)
  */
 async function countPlateMeasures(page: Page) {
   await page.addInitScript(() => {

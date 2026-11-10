@@ -6212,9 +6212,9 @@ class ArenaScene extends Phaser.Scene {
           this.scale.height / 2) *
         css;
       // Decide first whether the plate shows: a hidden plate is never
-      // measured or moved. Measuring one (offsetWidth is 0, so nothing is
-      // cached) forced a full page layout every frame for every off-screen
-      // fighter, which made battles lag on older phones.
+      // measured or moved. A plate not yet measured on screen (a fighter
+      // off screen from the start, or joining there) measured 0, which is
+      // not cached, so it forced a page layout every frame until it showed.
       const hidden =
         labelX < 0 ||
         labelX > this.scale.width * css ||
