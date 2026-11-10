@@ -465,12 +465,14 @@ function scheduleBattleLayout() {
 /** The arena area under the PvP badge (scheduleBattleLayout keeps it). */
 let badgeClear: { left: number; right: number; bottom: number } | null = null;
 /** A nameplate's size, measured again only when its title changes (the
- * labels move every frame by transform alone). */
+ * labels move every frame by transform alone). A hidden plate is never
+ * measured: it reads as 0, is not cached, and each read forces a layout. */
 const nameplateSizes = new WeakMap<
   HTMLElement,
   { title: string; w: number; h: number }
 >();
 function nameplateSize(label: HTMLElement, title: string) {
+  if (label.hidden) return { w: 0, h: 0 };
   let size = nameplateSizes.get(label);
   if (!size || size.title !== title) {
     const w = label.offsetWidth,
@@ -6209,25 +6211,11 @@ class ArenaScene extends Phaser.Scene {
           view.zoomY +
           this.scale.height / 2) *
         css;
-      const plateBottom = Math.max(
-        nameplateFloor(label, p.title ?? "", labelX),
-        labelY,
-      );
-      label.style.transform = `translate3d(${labelX}px, ${plateBottom}px, 0) translate(-50%, -100%)`;
-      const plateSize = nameplateSize(label, p.title ?? "");
-      this.plates.set(p.id, {
-        x: labelX,
-        bottom: plateBottom,
-        w: plateSize.w,
-        h: plateSize.h,
-      });
-      setHudStyle(label, "opacity", p.hp > 0 ? "1" : "0.4");
-      label.classList.toggle(
-        "team-ally",
-        isTeams() && p.id !== myId && teamOf(p) === myTeam,
-      );
-      label.classList.toggle("team-enemy", isTeams() && teamOf(p) !== myTeam);
-      label.hidden =
+      // Decide first whether the plate shows: a hidden plate is never
+      // measured or moved. Measuring one (offsetWidth is 0, so nothing is
+      // cached) forced a full page layout every frame for every off-screen
+      // fighter, which made battles lag on older phones.
+      const hidden =
         labelX < 0 ||
         labelX > this.scale.width * css ||
         labelY > this.scale.height * css ||
@@ -6240,6 +6228,30 @@ class ArenaScene extends Phaser.Scene {
         serverPlayer.statuses.some(
           (s) => s.kind === "stealth" && p.id !== myId,
         );
+      label.hidden = hidden;
+      setHudStyle(label, "opacity", p.hp > 0 ? "1" : "0.4");
+      label.classList.toggle(
+        "team-ally",
+        isTeams() && p.id !== myId && teamOf(p) === myTeam,
+      );
+      label.classList.toggle("team-enemy", isTeams() && teamOf(p) !== myTeam);
+      if (hidden) {
+        // Takes no room: the off-screen arrow ignores a plate with no width.
+        this.plates.set(p.id, { x: labelX, bottom: labelY, w: 0, h: 0 });
+        continue;
+      }
+      const plateBottom = Math.max(
+        nameplateFloor(label, p.title ?? "", labelX),
+        labelY,
+      );
+      label.style.transform = `translate3d(${labelX}px, ${plateBottom}px, 0) translate(-50%, -100%)`;
+      const plateSize = nameplateSize(label, p.title ?? "");
+      this.plates.set(p.id, {
+        x: labelX,
+        bottom: plateBottom,
+        w: plateSize.w,
+        h: plateSize.h,
+      });
     }
     if (touch.enabled) return;
     g.lineStyle(1, 0xffffff, 0.6).strokeCircle(aim.x, aim.y, 10);
