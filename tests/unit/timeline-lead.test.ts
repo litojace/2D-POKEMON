@@ -48,7 +48,11 @@ describe("shots on your timeline", () => {
       arena.tick();
       const real = arena.projectiles.find((pr) => pr.id === snapshot.id);
       if (!real) break;
-      const drawn = leadProjectile(snapshot, n / RULES.tick, currentObstacles());
+      const drawn = leadProjectile(
+        snapshot,
+        n / RULES.tick,
+        currentObstacles(),
+      );
       expect(drawn.x).toBeCloseTo(real.x, 3);
       expect(drawn.y).toBeCloseTo(real.y, 3);
       compared++;

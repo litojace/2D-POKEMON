@@ -5499,8 +5499,7 @@ class ArenaScene extends Phaser.Scene {
         g,
         followed(tinted(z)),
         1 -
-          Math.max(0, z.until - yourTime) /
-            Math.max(0.01, z.ability.duration),
+          Math.max(0, z.until - yourTime) / Math.max(0.01, z.ability.duration),
         _time,
         reducedMotion,
       );
@@ -6023,8 +6022,7 @@ class ArenaScene extends Phaser.Scene {
             serverPlayer.lastInput.aimY,
             c.color,
             1 -
-              (serverPlayer.charge.at - yourTime) /
-                Math.max(0.01, windup.cast),
+              (serverPlayer.charge.at - yourTime) / Math.max(0.01, windup.cast),
             _time,
           );
       }

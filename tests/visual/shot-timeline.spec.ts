@@ -16,8 +16,7 @@ test("shots run on from their snapshot to where the server will have them", asyn
   await page.route(/\/apps\/client\/src\/main\.ts(?:\?|$)/, async (route) => {
     const response = await route.fetch();
     const body = await response.text();
-    const hook =
-      "const drawn = leadProjectile(pr, seconds, walls, slow);";
+    const hook = "const drawn = leadProjectile(pr, seconds, walls, slow);";
     expect(body).toContain(hook);
     await route.fulfill({
       response,

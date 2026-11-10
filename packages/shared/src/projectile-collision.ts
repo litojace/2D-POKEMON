@@ -1,8 +1,4 @@
-import {
-  RULES,
-  type Rect,
-  type Vec,
-} from "./index.js";
+import { RULES, type Rect, type Vec } from "./index.js";
 
 /** First contact of a moving circle with solid cover or the arena boundary. */
 export function projectileContact(

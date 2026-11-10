@@ -107,7 +107,13 @@ export function leadProjectile(
 export class ShotTimeline {
   private seen = new Map<number, number>();
   /** Seconds past the snapshot to draw this shot at. */
-  seconds(pr: Projectile, mine: boolean, now: number, lead: number, age: number) {
+  seconds(
+    pr: Projectile,
+    mine: boolean,
+    now: number,
+    lead: number,
+    age: number,
+  ) {
     let first = this.seen.get(pr.id);
     if (first === undefined) this.seen.set(pr.id, (first = now));
     const ramp = mine ? 1 : Math.min(1, (now - first) / 1000 / LEAD.easeIn);
