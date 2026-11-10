@@ -104,6 +104,26 @@ describe("vector Tidewyrm rig", () => {
     expect(new Set(front).size).toBe(front.length);
   });
 
+  it("draws its eyes for each view instead of squeezing them", () => {
+    const P = tideIdle(1);
+    const eyesAt = (deg: number) =>
+      tidePlacements(P, (deg * Math.PI) / 180, 1, water).placements.filter(
+        (q) => /^eye-?1$/.test(q.key),
+      );
+    // never narrowed: each view has its own drawing
+    for (const deg of [0, 45, 90, 315])
+      for (const e of eyesAt(deg)) expect(Math.abs(e.sx)).toBe(1);
+    expect(eyesAt(0).map((e) => e.piece)).toEqual(["eye-glare", "eye-glare"]);
+    // three-quarters: the far eye tucks in behind the snout, as anime draws it
+    const three = tidePlacements(P, Math.PI / 4, 1, water).placements;
+    const far = three.find((q) => q.piece === "eye-glare-far")!;
+    const snout = three.find((q) => q.key === "snout")!;
+    expect(far.z).toBeLessThan(snout.z);
+    expect(three.filter((q) => q.piece === "eye-glare")).toHaveLength(1);
+    // side on: one profile eye
+    expect(eyesAt(90).map((e) => e.piece)).toEqual(["eye-glare-side"]);
+  });
+
   it("cuts the body at the waterline, but not on an island's sand", () => {
     const P = tideIdle(1);
     const wet = tidePlacements(P, 0, 1, water).placements.filter(

@@ -563,10 +563,24 @@ function wedge(
   ctx.fill();
 }
 export type EyeLook = "glare" | "wide" | "squint" | "shut" | "dizzy";
-function drawEyePiece(ctx: Ctx, k: number, look: EyeLook, pal: TidePalette) {
-  // Drawn with the inner corner to the right; brow ridge included.
+/** The eye as each view shows it: redrawn narrower, never squeezed. */
+export type EyeView = "front" | "far" | "side";
+/** Where the far eye sits at three-quarters (forward, across, up; head units). */
+export const FAR_EYE = [18, 12, 15];
+function drawEyePiece(
+  ctx: Ctx,
+  k: number,
+  look: EyeLook,
+  pal: TidePalette,
+  view: EyeView = "front",
+) {
+  // Drawn with the inner corner to the right; brow ridge included. The far
+  // eye of a three-quarter view is narrower and looks outward; the side view
+  // is narrower too, looking ahead (to the inner corner, the snout's way).
+  const wf = view === "far" ? 0.58 : view === "side" ? 0.72 : 1;
+  const gaze = view === "far" ? -0.25 : view === "side" ? 0.3 : 0;
   const s = { x: 15 * k, y: 15 * k };
-  const ew = 10.5 * HS * k,
+  const ew = 10.5 * HS * k * wf,
     eh = 9 * HS * k;
   const anger = look === "squint" ? 0.7 : look === "wide" ? 1 : 0.8;
   const lid = look === "glare" ? 0.25 : look === "wide" ? 0.05 : 0.7;
@@ -594,7 +608,7 @@ function drawEyePiece(ctx: Ctx, k: number, look: EyeLook, pal: TidePalette) {
     ctx.stroke();
     return;
   }
-  const tilt = -0.28;
+  const tilt = -0.28 * wf;
   ctx.save();
   ctx.beginPath();
   ctx.ellipse(s.x, s.y, ew * 1.1, eh * 0.82, tilt, 0, TAU);
@@ -617,15 +631,24 @@ function drawEyePiece(ctx: Ctx, k: number, look: EyeLook, pal: TidePalette) {
   ig.addColorStop(1, rgb(iris));
   ctx.fillStyle = ig;
   ctx.beginPath();
-  ctx.ellipse(s.x + ew * 0.08, s.y + eh * 0.05, ew * 0.98, eh * 0.9, 0, 0, TAU);
+  const gx = gaze * 10.5 * HS * k;
+  ctx.ellipse(
+    s.x + ew * 0.08 + gx,
+    s.y + eh * 0.05,
+    ew * 0.98,
+    eh * 0.9,
+    0,
+    0,
+    TAU,
+  );
   ctx.fill();
   ctx.fillStyle = "#0b0503";
   const slit = clamp(0.32 - anger * 0.14, 0.14, 0.32);
   ctx.beginPath();
   ctx.ellipse(
-    s.x + ew * 0.12,
+    s.x + ew * 0.12 + gx,
     s.y + eh * 0.05,
-    ew * slit,
+    Math.max(ew * slit, 1.4 * k),
     eh * 0.78,
     0,
     0,
@@ -634,7 +657,13 @@ function drawEyePiece(ctx: Ctx, k: number, look: EyeLook, pal: TidePalette) {
   ctx.fill();
   ctx.fillStyle = "rgba(255,255,255,0.9)";
   ctx.beginPath();
-  ctx.arc(s.x - ew * 0.35, s.y - eh * 0.3, Math.max(1.2, ew * 0.16), 0, TAU);
+  ctx.arc(
+    s.x - ew * 0.35 + gx,
+    s.y - eh * 0.3,
+    Math.max(1.2, (ew / wf) * 0.16),
+    0,
+    TAU,
+  );
   ctx.fill();
   const top = s.y - eh - 1,
     lidY = s.y - eh + lid * eh * 2,
@@ -899,14 +928,15 @@ export function tidePieces(phase: Phase): Piece[] {
     ctx.fill();
   });
   for (const look of ["glare", "wide", "squint", "shut", "dizzy"] as EyeLook[])
-    pieceOf(
-      `eye-${look}`,
-      30 * HS,
-      26 * HS,
-      15 / (30 * HS),
-      15 / (26 * HS),
-      (ctx, k) => drawEyePiece(ctx, k, look, pal),
-    );
+    for (const view of ["front", "far", "side"] as EyeView[])
+      pieceOf(
+        view === "front" ? `eye-${look}` : `eye-${look}-${view}`,
+        30 * HS,
+        26 * HS,
+        15 / (30 * HS),
+        15 / (26 * HS),
+        (ctx, k) => drawEyePiece(ctx, k, look, pal, view),
+      );
   pieceOf("pearl", 22 * HS, 18 * HS, 0.5, 0.5, (ctx, k) => {
     const r = 6.8 * HS * k,
       cx = 11 * HS * k,
@@ -1298,6 +1328,13 @@ export function tidePlacements(
             : P.anger > 0.9 && P.lid < 0.15
               ? "wide"
               : "glare";
+    // Eyes as a cartoon draws them, by view (never squeezed): from the front
+    // both; at three-quarters the near eye and, tucked in behind the snout as
+    // anime draws it, the inner corner of the far one; side on, a profile eye;
+    // from behind, none.
+    const turn = Math.atan2(F.x, F.z); // 0 facing us, + turned to screen right
+    let view = Math.round(Math.abs(turn) / (Math.PI / 4)); // 0 front … 4 behind
+    const facingSide = Math.sign(turn) || 1;
     const mid = sp(at(14, 0, 9));
     const eyes = [-1, 1].map((k) => {
       const w = at(14, k * 13, 9);
@@ -1308,26 +1345,46 @@ export function tidePlacements(
         facing: dot(norm(add(mul(F, 0.55), mul(R, k * 0.85))), VIEW),
       };
     });
+    const nearK = eyes[0].facing >= eyes[1].facing ? -1 : 1;
+    // A head lying on its side (stranded, defeated) can face away yet still
+    // show an eye, dizzy or shut: then it is seen side on, as before.
+    const plain = look === "dizzy" || look === "shut";
+    if (view >= 3 && plain && Math.max(eyes[0].facing, eyes[1].facing) > -0.15)
+      view = 2;
     for (const e of eyes) {
-      if (e.facing <= -0.15) continue;
-      const other = eyes.find((o) => o !== e)!;
-      const inward =
-        other.facing > -0.15
-          ? Math.sign(other.s.x - e.s.x) || 1
-          : Math.sign(mid.x - e.s.x) || 1;
-      const sq = clamp(0.35 + 0.65 * e.facing, 0.3, 1);
+      if (view >= 3) break;
+      const near = e.k === nearK;
+      if (view === 2 && !near) continue;
+      let piece = `eye-${look}`,
+        inward = Math.sign(mid.x - e.s.x) || 1,
+        z = hz + 0.05;
+      const shaped = look !== "shut" && look !== "dizzy";
+      if (view === 1) {
+        inward = near ? facingSide : -facingSide;
+        if (!near) {
+          if (shaped) piece = `eye-${look}-far`;
+          z = hz - 0.095; // under the snout, over the skull
+          // on the far side of the snout's bridge, at the head's edge: its brow
+          // breaks the outline and the snout covers its inner corner
+          e.s = sp(at(FAR_EYE[0], e.k * FAR_EYE[1], FAR_EYE[2]));
+        }
+      } else if (view === 2) {
+        inward = facingSide;
+        if (shaped) piece = `eye-${look}-side`;
+      }
+      const narrow = !shaped && (view === 2 || !near) && view !== 0 ? 0.6 : 1;
       out.push({
         key: `eye${e.k}`,
-        piece: `eye-${look}`,
+        piece,
         x: e.s.x,
         y: e.s.y,
         rot: 0,
-        sx: sq * inward,
+        sx: narrow * inward,
         sy: 1,
         alpha: 1,
-        z: hz + 0.05,
+        z,
       });
-      if (look !== "shut" && look !== "dizzy")
+      if (shaped)
         out.push({
           key: `eyeglow${e.k}`,
           piece: "glow",
