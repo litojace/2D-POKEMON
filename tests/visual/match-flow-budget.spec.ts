@@ -180,6 +180,12 @@ for (const quality of ["high", "low"] as const)
             ).length,
             dom: document.getElementsByTagName("*").length,
             sceneObjects: game.scene.getScene("arena").children.list.length,
+            // Everything but the effects engine's pooled sprites (kept and
+            // reused at the busiest moment's size, by design).
+            unpooled: game.scene
+              .getScene("arena")
+              .children.list.filter((o: any) => o.texture?.key !== "fx-glow")
+              .length,
           };
         });
       // The fight: players spread out (some off screen), everyone casting.
@@ -228,9 +234,7 @@ for (const quality of ["high", "low"] as const)
         w.__glow = [];
         w.__live = true;
       });
-      await page.waitForTimeout(FIGHT_MS / 2);
-      const middle = await counts();
-      await page.waitForTimeout(FIGHT_MS / 2);
+      await page.waitForTimeout(FIGHT_MS);
       await page.evaluate(() => ((window as any).__live = false));
       // `?perf=1` (here, its saved form): the read-out shows real numbers
       // and never catches a touch meant for the battle.
@@ -278,6 +282,15 @@ for (const quality of ["high", "low"] as const)
           ),
         )
         .toBe(1);
+      // The effects play out (no new ones come once the match is over).
+      let settled = await counts();
+      await expect
+        .poll(async () => (settled = await counts()).unpooled, {
+          timeout: 30_000,
+          intervals: [500],
+        })
+        .toBeLessThanOrEqual(before.unpooled + 40)
+        .catch(() => undefined);
       const report = await page.evaluate(
         () =>
           (window as any).__emitted.find(
@@ -286,7 +299,7 @@ for (const quality of ["high", "low"] as const)
       );
       console.log(
         "MATCH_FLOW",
-        JSON.stringify({ before, middle, after, layout, glow, report }),
+        JSON.stringify({ before, after, settled, layout, glow, report }),
       );
       expect(after.rigTextures, "no fighter art loads mid-fight").toBe(
         before.rigTextures,
@@ -300,12 +313,14 @@ for (const quality of ["high", "low"] as const)
         after.dom - before.dom,
         "the page does not keep growing",
       ).toBeLessThan(40);
-      // Effect sprites are pooled: the pool grows to the busiest moment and
-      // is reused, so a leak shows as growth from the middle to the end.
+      // Nothing leaks: once the match is over and its effects have played
+      // out, the scene is back to where the fight started (pooled effect
+      // sprites aside). Judged after the fight, not during it: on a machine
+      // under 5 fps Phaser slows game time, so effects pile up while it lasts.
       expect(
-        after.sceneObjects,
-        "the scene does not keep growing",
-      ).toBeLessThan(middle.sceneObjects * 1.25 + 30);
+        settled.unpooled,
+        "the scene goes back to its size once the effects end",
+      ).toBeLessThanOrEqual(before.unpooled + 40);
       expect(battlePerfSchema.safeParse(report).success).toBe(true);
       expect(report.quality).toBe(quality);
       expect(report.density).toBe(quality === "high" ? 2 : 1.5);
