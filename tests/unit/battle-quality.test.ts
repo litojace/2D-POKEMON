@@ -128,6 +128,7 @@ it("only trims decoration, and at Low draws fewer pixels", () => {
     expect(Object.keys(knobs).sort()).toEqual(
       [
         "density",
+        "glowBudget",
         "mythicAmbient",
         "particles",
         "stillBackground",
@@ -141,4 +142,11 @@ it("only trims decoration, and at Low draws fewer pixels", () => {
   expect(BATTLE_QUALITY.high.density).toBe(2);
   expect(BATTLE_QUALITY.medium.density).toBe(2);
   expect(BATTLE_QUALITY.low.density).toBe(1.5);
+  // Only Low limits decorative glow light (warnings never shrink).
+  expect(BATTLE_QUALITY.high.glowBudget).toBe(Infinity);
+  expect(BATTLE_QUALITY.medium.glowBudget).toBe(Infinity);
+  // Above one champion's heaviest cast (0.30 screens), so a duel at Low
+  // never shrinks; below crowded fights' typical 0.66 screens.
+  expect(BATTLE_QUALITY.low.glowBudget).toBeGreaterThan(0.45);
+  expect(BATTLE_QUALITY.low.glowBudget).toBeLessThan(1);
 });

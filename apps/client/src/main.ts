@@ -7,6 +7,8 @@ import {
 } from "./graphics-quality";
 import { raidCameraView } from "./raid-camera";
 import { BattleQualityGovernor, resetBattleQuality } from "./battle-quality";
+import { BattlePerfMeter, PERF_MIN_SECONDS, perfMode } from "./battle-perf";
+import { PerfOverlay } from "./perf-overlay";
 import { addCanvasTexture } from "./canvas-texture";
 import { setHudText, setHudAttribute, setHudStyle } from "./hud-dom";
 import { battleCurves } from "./battle-curves";
@@ -344,6 +346,10 @@ const battleQuality = new BattleQualityGovernor();
 let battleStill: boolean | undefined;
 /** The canvas density the battle quality allowed last frame. */
 let battleDensity: number | undefined;
+/** How smoothly this match runs on this device (battle-perf.ts). */
+const battlePerf = new BattlePerfMeter();
+/** `?perf=1`: the read-out over the battle, and its numbers for tests. */
+const showPerf = perfMode();
 /** Fighters' names and equipped looks, sent apart from combat snapshots. */
 const snapshotMeta = new MetaCache();
 let snapshotMetaAsked = "";
@@ -4415,6 +4421,7 @@ class ArenaScene extends Phaser.Scene {
     exists: (key) => this.textures.exists(key),
   });
   private loadReported = false;
+  private perfOverlay?: PerfOverlay;
   /** Every fighter in this snapshot has its textures (or gave up loading). */
   fightersReady(s: Snapshot) {
     return this.fighters.allReady(neededFighters(s.players));
@@ -4478,19 +4485,27 @@ class ArenaScene extends Phaser.Scene {
    * tabs or rounds not being played) and apply its decoration knobs.
    */
   private applyBattleQuality(now: number) {
-    if (
+    const live =
       state?.phase === "playing" &&
       !document.hidden &&
       !menuOpen &&
       !settingsOpen &&
-      !$<HTMLDialogElement>("dialog").open
-    )
-      battleQuality.frame(now);
+      !$<HTMLDialogElement>("dialog").open;
+    if (live) battleQuality.frame(now);
     else battleQuality.pause();
+    battlePerf.frame(now, live);
     const knobs = battleQuality.knobs();
     const fx = fxFor(this);
     fx.density = knobs.particles;
     fx.trailScale = knobs.trails;
+    fx.glowBudget = knobs.glowBudget;
+    this.perfOverlay?.update(
+      now,
+      battlePerf.summary(1000),
+      battleQuality.current(),
+      renderScale(),
+      fx.stats,
+    );
     if (battleStill !== knobs.stillBackground) {
       battleStill = knobs.stillBackground;
       document.body.classList.toggle("battle-still", battleStill);
@@ -4504,6 +4519,13 @@ class ArenaScene extends Phaser.Scene {
   }
   observeSnapshot(next: Snapshot, previous?: Snapshot) {
     this.requestFighters(next);
+    // The match is over: tell the server how smoothly it ran here.
+    if (
+      next.phase === "finished" &&
+      previous?.code === next.code &&
+      previous.phase !== "finished"
+    )
+      reportBattlePerf();
     this.animationLive = !this.needsHydration && previous?.code === next.code;
     this.needsHydration = false;
     const reset = !this.animationLive || previous?.round !== next.round;
@@ -4549,6 +4571,17 @@ class ArenaScene extends Phaser.Scene {
   create() {
     scene = this;
     battleQuality.restart();
+    battlePerf.reset();
+    if (showPerf) {
+      this.perfOverlay = new PerfOverlay($("game").parentElement!);
+      // The same numbers for the budget tests (tests/visual/effect-budget).
+      (window as unknown as Record<string, unknown>).__arenaPerf = {
+        fx: () => ({ ...fxFor(this).stats }),
+        summary: (ms?: number) => battlePerf.summary(ms),
+        quality: () => battleQuality.current(),
+        density: () => renderScale(),
+      };
+    }
     this.enemyBearing.className = "enemy-bearing";
     this.enemyBearing.hidden = true;
     this.enemyBearing.innerHTML =
@@ -4566,6 +4599,8 @@ class ArenaScene extends Phaser.Scene {
     this.floor = this.add.image(0, 0, "__DEFAULT").setOrigin(0).setDepth(-10);
     this.floorArena = "";
     const clearDom = () => {
+      this.perfOverlay?.remove();
+      this.perfOverlay = undefined;
       this.enemyBearing.remove();
       for (const label of this.labels.values()) label.remove();
       this.labels.clear();
@@ -6465,6 +6500,27 @@ function arenaLoading(s: Snapshot) {
   const now = performance.now();
   if (!arenaWaitSince) arenaWaitSince = now;
   return now - arenaWaitSince < ARENA_WAIT_MAX_MS;
+}
+/**
+ * At the end of a match, tell the server how smoothly it ran on this device
+ * ("arena-perf" in its log): frame rate, slowest frames, stutter, graphics
+ * level. Technical numbers only (battle-perf.ts).
+ */
+function reportBattlePerf() {
+  const summary = battlePerf.summary();
+  battlePerf.reset();
+  if (summary.seconds < PERF_MIN_SECONDS || !myId || !connected) return;
+  const nav = navigator as Navigator & { deviceMemory?: number };
+  socket.emit("battle-perf", {
+    ...summary,
+    quality: battleQuality.current(),
+    setting: graphicsSetting(),
+    density: renderScale(),
+    ...(typeof nav.deviceMemory === "number"
+      ? { memory: nav.deviceMemory }
+      : {}),
+    ...(nav.hardwareConcurrency ? { cores: nav.hardwareConcurrency } : {}),
+  });
 }
 /**
  * Tell the server how long the arena took to load on this device, once per

@@ -7,8 +7,9 @@
  * danger zones, projectiles, status markers and every skill's shapes and
  * colours are drawn the same at every level. Low also draws the battle at
  * 1.5 canvas pixels per CSS pixel at most (instead of 2), as iPhones always
- * do: skill effects' glows cost an older phone's GPU per pixel, so this is
- * what stops lag when skills go off (owner, 10 Nov 2026).
+ * do: an older phone's GPU pays for every pixel drawn, and skill effects add
+ * to it, so fewer pixels is what stops lag when skills go off (owner, 10 Nov
+ * 2026). Low also limits decorative glow light (glowBudget).
  *
  * The governor watches frame times during live play only. It ignores a
  * warm-up after the battle (re)starts, any frame gap over 250 ms (loading,
@@ -42,6 +43,9 @@ export interface BattleQualityKnobs {
   /** Most canvas pixels per CSS pixel (the screen's own density is lower on
    * some devices, and iPhones are capped at 1.5 at every level). */
   density: number;
+  /** Most screens' worth of decorative glow light a frame (fx-engine.ts);
+   * warnings (wind-ups, a boss gathering power) are never shrunk. */
+  glowBudget: number;
 }
 export const BATTLE_QUALITY: Record<BattleQuality, BattleQualityKnobs> = {
   high: {
@@ -50,6 +54,7 @@ export const BATTLE_QUALITY: Record<BattleQuality, BattleQualityKnobs> = {
     mythicAmbient: 2,
     stillBackground: false,
     density: 2,
+    glowBudget: Infinity,
   },
   medium: {
     particles: 0.6,
@@ -57,6 +62,7 @@ export const BATTLE_QUALITY: Record<BattleQuality, BattleQualityKnobs> = {
     mythicAmbient: 1,
     stillBackground: false,
     density: 2,
+    glowBudget: Infinity,
   },
   low: {
     particles: 0.35,
@@ -64,6 +70,11 @@ export const BATTLE_QUALITY: Record<BattleQuality, BattleQualityKnobs> = {
     mythicAmbient: 0,
     stillBackground: true,
     density: 1.5,
+    // Measured 10 Nov 2026: one champion's heaviest cast covers at most
+    // 0.30 screens; four fighters casting at once 0.66 typically and 1.38 at
+    // peak (tests/visual/match-flow-budget.spec.ts). So a duel never shrinks
+    // and crowded peaks lose about half their glow fill.
+    glowBudget: 0.75,
   },
 };
 

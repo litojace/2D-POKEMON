@@ -54,6 +54,7 @@ import {
 import { Arena } from "./simulation.js";
 import {
   battleLoadSchema,
+  battlePerfSchema,
   connectionReportSchema,
 } from "../../../packages/shared/src/connection.js";
 import { PlazaWorld, type PlazaEvent } from "./plaza.js";
@@ -2252,6 +2253,25 @@ export function createArenaServer(
           room: a.code,
           mode: a.mode,
           phase: a.phase,
+          character: a.players.find((p) => p.id === id)?.character,
+        });
+      }),
+    );
+    socket.on("battle-perf", (data: unknown) =>
+      withRoom(undefined, (a, id) => {
+        // One per match; a cap keeps a looping client quiet. Technical
+        // numbers only: no account (battle-perf.ts in the client).
+        const sent = (socket.data.perfReports ?? 0) as number;
+        if (sent >= 20) return;
+        const result = battlePerfSchema.safeParse(data);
+        if (!result.success) return;
+        socket.data.perfReports = sent + 1;
+        connectionLog("arena-perf", {
+          ...result.data,
+          mode: a.mode,
+          players: a.players.length,
+          bots: a.bots.size,
+          ...(a instanceof RaidArena ? { boss: a.raid.boss } : {}),
           character: a.players.find((p) => p.id === id)?.character,
         });
       }),

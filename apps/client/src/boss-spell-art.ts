@@ -104,7 +104,8 @@ function space(
     fx.glow(p.x, p.y, r * m.scaleX, c, a, floor);
   };
   try {
-    run(fx, glow);
+    // A boss's glows warn of its attacks: Low's glow budget never shrinks them.
+    fx.essential(() => run(fx, glow));
   } finally {
     for (const layer of layers) layer.restore();
     fx.at(null);
