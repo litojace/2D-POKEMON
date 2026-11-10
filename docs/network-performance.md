@@ -265,6 +265,55 @@ from players' phones:
   slowest frames, stutter, level and density, glow, smoke and particles),
   for a player to screenshot.
 
+### 9. Shots and wind-ups on your own timeline
+
+Players on phones reported (10 Nov 2026) that skills stuttered when cast,
+and that stepping out of a skill still got them hit. The `arena-perf` lines
+from those PvP matches showed the phones drawing at a steady 58.8 fps with
+almost no slow frames (`jank` 0–0.002), so the cause was not the GPU.
+
+Two things were drawn on the wrong clock:
+
+- **Shots sat where the last snapshot had them.** Snapshots come 15 times
+  a second, so a 900 px/s shot jumped about 60 px every fourth frame at
+  60 fps: the stutter when a skill goes off.
+- **Your own fighter is predicted, shots were not.** You are drawn where
+  the server will have you once it has run every input it has not
+  answered yet (`pending` in main.ts: about one round trip plus its input
+  queue). Shots, wind-up rings and zone timers were drawn from the last
+  snapshot, a round trip plus the snapshot's age in the past. On good Wi-Fi
+  (60 ms round trip) that is about 0.13 s: a spark dart (860 px/s) was
+  drawn about 110 px short of where the server had it relative to you,
+  more than four fighter radii. You saw yourself clear it; the server,
+  where the shot was further along, hit you.
+
+`apps/client/src/networking/timeline-lead.ts` now puts them on your
+timeline. `LocalTimeline` is how far past the last snapshot your fighter is
+drawn: the unanswered inputs (one tick each) plus the time since the
+snapshot arrived, running smoothly between snapshots and easing over 0.1 s
+when a snapshot changes it, capped at 0.3 s (beyond that it is a stall,
+not latency). Each shot is drawn that far along its straight path, stopped
+by cover and the court's edge the way the server stops it
+(`projectileContact`, now in `packages/shared`), never past its range, and
+slowed inside an opposing time bubble. Boomerangs, which turn back, stay
+where the snapshot had them. Your own shots go on the timeline at once
+(your cast already played on the press); an opponent's eases in over
+0.2 s so it leaves its caster's hand instead of appearing ahead of it.
+Wind-up rings and zone timers count down on the same clock, so a wind-up
+shows the time you really have to get out.
+
+Hits, damage and every rule stay the server's. The trade-off: a shot you
+fire at an opponent, who is drawn about 0.1 s in the past (section 2), now
+looks a little further along than that opponent when it lands.
+
+`tests/unit/timeline-lead.test.ts` checks a real shot from the server's
+`Arena` against the drawn position tick by tick;
+`tests/visual/shot-timeline.spec.ts` checks in the browser that shots run
+on smoothly from their snapshot and within the cap. `arena-perf` now also
+carries `ping` (the badge's smoothed round trip, ms) and `lead` (the
+average lead over the match, ms), so the lag players feel can be read from
+the log.
+
 ## Results
 
 All measurements were taken on one Linux container (Intel Xeon 2.8 GHz). The
