@@ -53,7 +53,9 @@ body.battle-active.touch-mode #battle #hud.hud-badge {
   box-shadow: none;
 }
 /* Name and score share a baseline (digits are taller than the name's
-   letters); the dot sits in the middle of the name. */
+   letters). The score is on the clock's side (owner, 10 Nov): the right
+   half is the left half in a mirror, so the two scores read together
+   across the clock, as in most esports scoreboards. */
 #hud.hud-badge .health-card > div:first-child {
   position: relative;
   top: -1px;
@@ -64,19 +66,8 @@ body.battle-active.touch-mode #battle #hud.hud-badge {
   font-size: 12px;
   white-space: nowrap;
 }
-/* A dot in the fighter's colour (a team's colour in 2v2) before the name. */
-#hud.hud-badge .health-card > div:first-child::before {
-  content: "";
-  flex: none;
-  align-self: center;
-  transform: translateY(2px);
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--element);
-}
-#hud.hud-badge.hud-teams .health-card > div:first-child::before {
-  background: var(--team);
+#hud.hud-badge .health-card.right > div:first-child {
+  flex-direction: row-reverse;
 }
 #hud.hud-badge .health-card b {
   max-width: 96px;
@@ -107,6 +98,14 @@ body.battle-active.touch-mode #battle #hud.hud-badge {
   width: 0;
   margin-left: -5px;
   overflow: hidden;
+}
+/* On the right the score is before the name: the gap to cancel is on its
+   other side. */
+#hud.hud-badge.hud-teams:not(.hud-ffa)
+  .health-card.right:last-child
+  strong[id^="score-"] {
+  margin-left: 0;
+  margin-right: -5px;
 }
 /* What the badge leaves to the fighters themselves. */
 #hud.hud-badge .health-card > div:first-child > span,

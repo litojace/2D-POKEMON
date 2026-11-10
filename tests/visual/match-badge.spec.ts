@@ -200,8 +200,8 @@ for (const size of SIZES)
           expect(frame.y).toBeLessThanOrEqual(6);
           expect(frame.height).toBeGreaterThanOrEqual(size.height - 10);
         }
-        // One line: every name and score on one baseline, dots on the
-        // names' middle, everything on the badge's middle line.
+        // One line: every name and score on one baseline, everything on the
+        // badge's middle line.
         const middle = box.y + box.height / 2;
         // Number the cards (the clock sits between them among the divs).
         const cards = await hud
@@ -213,9 +213,8 @@ for (const size of SIZES)
               ).length,
           );
         const baselines: number[] = [];
-        // Each item's columns: the dot from the row's left edge to the name,
-        // then the name and the score (side by side, 5 px apart), and the
-        // clock. The arena is hidden for the photos, so the background
+        // Each item's columns: the name and the score (side by side, 5 px
+        // apart), and the clock. The arena is hidden for the photos, so the background
         // behind the see-through badge is the same in both.
         const ranges = await page.evaluate(() => {
           const out: Record<string, [number, number]> = {};
@@ -224,10 +223,7 @@ for (const size of SIZES)
             return [r.left, r.right] as [number, number];
           };
           document.querySelectorAll("#hud .health-card").forEach((c, i) => {
-            const [row] = across(c.querySelector(":scope > div:first-child")!);
-            const name = across(c.querySelector("b")!);
-            out[`dot${i}`] = [row, name[0]];
-            out[`name${i}`] = name;
+            out[`name${i}`] = across(c.querySelector("b")!);
             out[`score${i}`] = across(c.querySelector("strong[id^=score-]")!);
           });
           out.clock = across(document.querySelector("#hud .timer-wrap")!);
@@ -240,14 +236,11 @@ for (const size of SIZES)
         await calm.evaluate((e) => e.remove());
         for (let i = 0; i < cards; i++) {
           const name = inks[`name${i}`]!;
-          const dot = inks[`dot${i}`]!;
           const score = inks[`score${i}`];
           baselines.push(name.bottom);
           if (score) baselines.push(score.bottom);
-          expect(Math.abs(dot.mid - name.mid), `card ${i} dot`).toBeLessThan(1);
           for (const [label, part] of [
             ["name", name],
-            ["dot", dot],
             ["score", score],
           ] as const)
             if (part)
@@ -261,6 +254,67 @@ for (const size of SIZES)
         );
         const clock = inks.clock!;
         expect(Math.abs(clock.mid - middle)).toBeLessThanOrEqual(1);
+        // No coloured dots (owner, 10 Nov), and the right half mirrors the
+        // left: name then score on the left, score then name on the right,
+        // so the scores sit on either side of the clock, as far from it.
+        const layout = await page.evaluate(() => {
+          const box = (e: Element) => e.getBoundingClientRect();
+          const shown = (e: Element) =>
+            getComputedStyle(e).visibility !== "hidden";
+          const cards = Array.from(
+            document.querySelectorAll("#hud .health-card"),
+          );
+          const clock = box(document.querySelector("#hud .timer-wrap")!);
+          const items = cards.map((c) => {
+            const name = box(c.querySelector("b")!),
+              score = c.querySelector("strong[id^=score-]")!;
+            return {
+              right: c.classList.contains("right"),
+              dot: getComputedStyle(c.firstElementChild!, "::before").content,
+              name: [name.left, name.right],
+              score: shown(score) ? [box(score).left, box(score).right] : null,
+            };
+          });
+          // What sits next to the clock on each side.
+          const visible = items.flatMap((it) => [
+            { kind: "name", l: it.name[0], r: it.name[1] },
+            ...(it.score
+              ? [{ kind: "score", l: it.score[0], r: it.score[1] }]
+              : []),
+          ]);
+          const left = visible
+            .filter((v) => v.r <= clock.left)
+            .sort((a, b) => b.r - a.r)[0];
+          const right = visible
+            .filter((v) => v.l >= clock.right)
+            .sort((a, b) => a.l - b.l)[0];
+          return {
+            items,
+            left: { kind: left.kind, gap: clock.left - left.r },
+            right: { kind: right.kind, gap: right.l - clock.right },
+          };
+        });
+        for (const [i, it] of layout.items.entries()) {
+          expect(it.dot, `card ${i} has no dot`).toMatch(/^(none|normal)$/);
+          if (it.score)
+            if (it.right)
+              expect(
+                it.score[1],
+                `card ${i}: score before name`,
+              ).toBeLessThanOrEqual(it.name[0]);
+            else
+              expect(
+                it.score[0],
+                `card ${i}: name before score`,
+              ).toBeGreaterThanOrEqual(it.name[1]);
+        }
+        expect([layout.left.kind, layout.right.kind]).toEqual([
+          "score",
+          "score",
+        ]);
+        expect(
+          Math.abs(layout.left.gap - layout.right.gap),
+        ).toBeLessThanOrEqual(1);
         await snap(page, info, `match-badge-${size.name}-${mode}`);
         expect(errors).toEqual([]);
       } finally {
