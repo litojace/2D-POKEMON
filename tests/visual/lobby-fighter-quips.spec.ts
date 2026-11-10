@@ -205,29 +205,41 @@ for (const size of [
       // lines left once the one just said is set aside. One value for every
       // draw, so other code drawing in the same click can't shift it.
       const target = "Fully charged. One hundred percent.";
-      const said = (await page.locator(bubble).textContent()) ?? "";
-      const left = CHAMPION_QUIPS.voltkit
-        .map((q) => q.text)
-        .filter((t) => t !== said);
-      const pinned = (left.indexOf(target) + 0.5) / left.length;
-      expect(pinned).toBeLessThan(2 / 3);
-      await page.evaluate(
-        ({ s, pinned }) => {
-          document.querySelector(s)!.addEventListener(
-            "click",
-            () => {
-              const random = Math.random;
-              Math.random = () => pinned;
-              setTimeout(() => (Math.random = random));
-            },
-            { capture: true, once: true },
-          );
-        },
-        { s: tap, pinned },
-      );
-      if (size.phone) await page.locator(tap).tap();
-      else await page.locator(tap).click();
-      await expect(page.locator(bubble)).toHaveText(target);
+      const sayPinned = async (line: string) => {
+        const said = (await page.locator(bubble).textContent()) ?? "";
+        const left = CHAMPION_QUIPS.voltkit
+          .map((q) => q.text)
+          .filter((t) => t !== said);
+        expect(left, `"${line}" was just said`).toContain(line);
+        const pinned = (left.indexOf(line) + 0.5) / left.length;
+        expect(pinned).toBeLessThan(2 / 3);
+        await page.evaluate(
+          ({ s, pinned }) => {
+            document.querySelector(s)!.addEventListener(
+              "click",
+              () => {
+                const random = Math.random;
+                Math.random = () => pinned;
+                setTimeout(() => (Math.random = random));
+              },
+              { capture: true, once: true },
+            );
+          },
+          { s: tap, pinned },
+        );
+        if (size.phone) await page.locator(tap).tap();
+        else await page.locator(tap).click();
+        await expect(page.locator(bubble)).toHaveText(line);
+      };
+      // The game never says the same line twice in a row: if the last random
+      // tap already said it, say another line first. Taps 3 s apart, so it
+      // doesn't count as poking (four taps within 3 s).
+      if ((await page.locator(bubble).textContent()) === target) {
+        await page.waitForTimeout(3100);
+        await sayPinned(CHAMPION_QUIPS.voltkit[0].text);
+        await page.waitForTimeout(800);
+      }
+      await sayPinned(target);
       await settle(page);
       const long = await bubbleFits(page);
       expect(long.inside, JSON.stringify(long)).toBe(true);
