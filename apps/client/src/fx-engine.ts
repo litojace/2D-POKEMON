@@ -137,6 +137,8 @@ const emptyStats = (): FxFrameStats => ({
   softCover: 0,
   shrink: 1,
 });
+/** Longest step effects take in one frame (s): Phaser's 5 fps floor. */
+export const FX_MAX_STEP = 0.2;
 /** Decorative glows never shrink below this radius factor. */
 const MIN_SHRINK = 0.5;
 /** Seconds decorative glows take to grow back once the budget allows
@@ -307,7 +309,11 @@ export class Fx {
   }
 
   private end(_time: number, delta: number) {
-    const dt = Math.min(0.05, delta / 1000);
+    // Effects age in real time down to 5 fps (Phaser's own floor). Capped at
+    // 50 ms once, they outlived their design on a phone at 5–20 fps (twice
+    // as long at 10 fps) while new casts kept coming: more on screen, slower
+    // frames, longer lives again.
+    const dt = Math.min(FX_MAX_STEP, delta / 1000);
     this.step(dt);
     this.drawParticles();
     this.at(null);

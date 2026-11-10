@@ -23,10 +23,16 @@
  * retried this session. The settled level is remembered on this device.
  *
  * Settings → Graphics: High always draws everything; Low always draws the
- * lightest level; Auto (default) adapts. Reduced motion keeps its own,
- * stricter effect limits at every level.
+ * lightest level; Auto (default) adapts, starting at Low on a device with
+ * 2 GB of memory or less (or one Auto found slow in the Plaza) and at High
+ * otherwise. Reduced motion keeps its own, stricter effect limits at every
+ * level.
  */
-import { graphicsSetting, type GraphicsSetting } from "./graphics-quality";
+import {
+  autoChoosesLow,
+  graphicsSetting,
+  type GraphicsSetting,
+} from "./graphics-quality";
 
 export type BattleQuality = "high" | "medium" | "low";
 export const BATTLE_LEVELS: BattleQuality[] = ["high", "medium", "low"];
@@ -135,8 +141,19 @@ export class BattleQualityGovernor {
     private setting: () => GraphicsSetting = graphicsSetting,
     remembered: BattleQuality | null = read(),
     private remember: (level: BattleQuality) => void = write,
+    /**
+     * Where Auto starts before it has learned this device: Low when the
+     * device reports 2 GB of memory or less, or Auto already found it slow
+     * in the Plaza (the Plaza's own rule, graphics-quality.ts), so an older
+     * phone's first battle does not lag while Auto measures. It steps up
+     * after a comfortable stretch if the device copes.
+     */
+    private startsLow: () => boolean = autoChoosesLow,
   ) {
-    this.level = remembered ?? "high";
+    this.level = remembered ?? this.firstLevel();
+  }
+  private firstLevel(): BattleQuality {
+    return this.startsLow() ? "low" : "high";
   }
   /** The level to draw at now (manual settings win over Auto). */
   current(): BattleQuality {
@@ -151,7 +168,7 @@ export class BattleQualityGovernor {
   /** Forget the learned level (Settings → Auto picked again). */
   reset(forget: () => void) {
     forget();
-    this.level = "high";
+    this.level = this.firstLevel();
     this.left.clear();
     this.slow = this.fast = 0;
     this.restart();

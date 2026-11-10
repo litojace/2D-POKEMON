@@ -146,7 +146,11 @@ while a menu or dialog is open or the round is not being played. It steps
 down after two consecutive slow 4 s windows (median slower than ~45 fps, or
 a fifth of the window's time spent in frames missing 30 fps), steps up after
 five comfortable ones, and does not retry a level it had to leave twice. The
-level is remembered per device. Manual High/Low always win; choosing Auto
+level is remembered per device. Before it has learned a device, Auto starts
+at Low when the device reports 2 GB of memory or less, or Auto already found
+it slow in the Plaza (the Plaza's own rule, `autoChoosesLow`), so an older
+phone's first battle does not lag while Auto measures; it steps up after a
+comfortable stretch if the device copes. Other devices start at High. Manual High/Low always win; choosing Auto
 again re-measures. Reduced motion keeps its own stricter limits at every
 level.
 
@@ -206,6 +210,25 @@ the scene afterwards. The soak test now fails if memory keeps growing.
 
 ### 8. Keeping new champions and features light
 
+Three changes from this work also make every battle lighter now:
+
+- **Effects age in real time down to 5 fps.** The effects engine capped
+  each frame's step at 50 ms, so on a phone at 5–20 fps particles and
+  marks outlived their design (twice as long at 10 fps) while new casts
+  kept coming at the game's pace: more on screen, slower frames, longer
+  lives again. The cap is now 200 ms, Phaser's own floor (`FX_MAX_STEP`).
+  In a four-player fight most particles come from spammed basic attacks
+  (about 375 a second asked for here), so at 10 fps this halves what is on
+  screen; this container renders below 5 fps there, so it cannot show it.
+- **Circles cost less to draw.** Battles draw hundreds of filled and
+  outlined circles a frame; each one had Phaser compute every outline point
+  with cos/sin and make new objects. `circlePoints` (battle-curves.ts)
+  reuses one table and one point list per point count, giving exactly the
+  same points: in a four-player profile, `CircumferencePoint` went from
+  about 100–114 ms to 36–38 ms per 10 s and `fillEllipse` from 129–169 to
+  45 ms (what remains is code that draws ellipses directly).
+- **An older phone's first battle starts at Low** (see Auto in section 5).
+
 Three checks run in CI with the visual suite, and two numbers come back
 from players' phones:
 
@@ -222,7 +245,10 @@ from players' phones:
   fight. No fighter art may load mid-fight (512 textures before and after),
   the game's own layout reads stay near zero a frame (measured: none;
   Phaser's own canvas size check, on a 500 ms timer, is counted apart), the
-  page and the scene stop growing, and at Low the glow budget holds
+  page does not grow, nothing leaks (once the match is over and its effects
+  have played out, the scene less its pooled effect sprites is back to its
+  size; judged then because under 5 fps Phaser slows game time and effects
+  pile up while the fight lasts), and at Low the glow budget holds
   decorative light to 0.75 screens (measured 0.74 at the 90th percentile,
   against about 1 at High).
 - **Effect rules** (`tests/unit/effect-rules.test.ts`): skill effect files

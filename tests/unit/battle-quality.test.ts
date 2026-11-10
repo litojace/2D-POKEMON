@@ -32,6 +32,55 @@ function governor(
   return { g, run, saved };
 }
 
+it("starts an older phone's first battle at Low, and climbs if it copes", () => {
+  const saved: BattleQuality[] = [];
+  // Nothing learned yet, 2 GB or less (or slow in the Plaza): Low at once.
+  const g = new BattleQualityGovernor(
+    () => "auto",
+    null,
+    (l) => saved.push(l),
+    () => true,
+  );
+  expect(g.current()).toBe("low");
+  // A device that turns out fine steps up after a comfortable stretch.
+  let now = 0;
+  const changes: BattleQuality[] = [];
+  const stretch =
+    BATTLE_PROBE.warmup + BATTLE_PROBE.window * BATTLE_PROBE.fastWindows + 1000;
+  for (let t = 0; t < stretch * 2.2; t += 1000 / 60) {
+    now += 1000 / 60;
+    const c = g.frame(now);
+    if (c) changes.push(c);
+  }
+  expect(changes).toEqual(["medium", "high"]);
+  // What Auto learned wins over the hint; a manual High still wins too.
+  expect(
+    new BattleQualityGovernor(
+      () => "auto",
+      "medium",
+      () => {},
+      () => true,
+    ).current(),
+  ).toBe("medium");
+  expect(
+    new BattleQualityGovernor(
+      () => "high",
+      null,
+      () => {},
+      () => true,
+    ).current(),
+  ).toBe("high");
+  // Other devices start at High, as before.
+  expect(
+    new BattleQualityGovernor(
+      () => "auto",
+      null,
+      () => {},
+      () => false,
+    ).current(),
+  ).toBe("high");
+});
+
 it("leaves a device that keeps up at full quality", () => {
   const { g, run } = governor();
   expect(run(60, 1000 / 60)).toEqual([]);

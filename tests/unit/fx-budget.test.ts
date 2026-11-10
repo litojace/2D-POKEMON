@@ -131,3 +131,27 @@ describe("the glow budget (Low)", () => {
     expect(fx.stats.shrink).toBe(1);
   });
 });
+
+describe("effects on a slow phone", () => {
+  it("live their designed time in real seconds at 10 fps, not longer", () => {
+    const { s, frame } = scene();
+    const fx = new Fx(s);
+    const burst = (fx: Fx) =>
+      fx.burst({
+        x: 0,
+        y: 0,
+        count: 50,
+        kind: "spark",
+        color: 0xffffff,
+        speed: [10, 20],
+        life: [1, 1],
+        size: [1, 1],
+      });
+    frame(burst, fx, 100);
+    expect(fx.stats.particles).toBe(50);
+    // One second later at 10 fps (ten 100 ms frames) they are gone. With
+    // steps capped at 50 ms they lived two seconds: twice as many at once.
+    for (let i = 0; i < 11; i++) frame(() => {}, fx, 100);
+    expect(fx.stats.particles).toBe(0);
+  });
+});
