@@ -67,6 +67,13 @@ export const battlePerfSchema = z
     density: z.number().min(0.25).max(8),
     memory: z.number().min(0).max(1024).optional(),
     cores: z.number().int().min(1).max(1024).optional(),
+    /** Round trip to the server at the end (ms, smoothed; the ping badge). */
+    ping: z.number().min(0).max(60_000).optional(),
+    /**
+     * How far ahead of the last snapshot your fighter was drawn, on average
+     * (ms): unanswered inputs plus the snapshot's age (timeline-lead.ts).
+     */
+    lead: z.number().min(0).max(60_000).optional(),
   })
   .strict();
 export type BattlePerf = z.infer<typeof battlePerfSchema>;
