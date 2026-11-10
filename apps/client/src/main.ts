@@ -342,6 +342,8 @@ function ballSpin(id: string, speed: number, heading: number) {
 /** Adapts optional battle decoration to the device (Settings → Graphics). */
 const battleQuality = new BattleQualityGovernor();
 let battleStill: boolean | undefined;
+/** The canvas density the battle quality allowed last frame. */
+let battleDensity: number | undefined;
 /** Fighters' names and equipped looks, sent apart from combat snapshots. */
 const snapshotMeta = new MetaCache();
 let snapshotMetaAsked = "";
@@ -4493,6 +4495,12 @@ class ArenaScene extends Phaser.Scene {
       battleStill = knobs.stillBackground;
       document.body.classList.toggle("battle-still", battleStill);
     }
+    // Low draws fewer pixels: resize the canvas on the next frame (the
+    // floor keeps the density it was baked at, see floorScale).
+    if (battleDensity !== knobs.density) {
+      if (battleDensity !== undefined) scheduleBattleLayout();
+      battleDensity = knobs.density;
+    }
   }
   observeSnapshot(next: Snapshot, previous?: Snapshot) {
     this.requestFighters(next);
@@ -6394,10 +6402,11 @@ function flashWhite(root: Phaser.GameObjects.Container) {
 }
 /**
  * Canvas pixels per CSS pixel. Phones have 2–3x screens; rendering at that density
- * keeps creatures, effects and text sharp. Capped at 2 to protect frame rate.
+ * keeps creatures, effects and text sharp. Capped at 2 to protect frame rate,
+ * and at 1.5 at Low battle graphics (battle-quality.ts), as on iPhones.
  */
 function renderScale() {
-  return rendererDensity();
+  return Math.min(rendererDensity(), battleQuality.knobs().density);
 }
 /** Size the drawing buffer to the arena box at device resolution. */
 function fitRenderer() {

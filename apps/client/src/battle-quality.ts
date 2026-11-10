@@ -1,19 +1,25 @@
 /**
  * Battle graphics quality: Auto adapts PvP and raid battles to the device.
  *
- * Only optional decoration is ever reduced: extra particles and trail
- * sparks, Mythical skins' ambient motes, the stands' cheering crowd and
- * other background flourishes. Fighters, portraits, text, HUD, attack
- * telegraphs, danger zones, projectiles, status markers and every skill's
- * shapes and colours are drawn the same at every level, at full resolution.
+ * Optional decoration is reduced: extra particles and trail sparks,
+ * Mythical skins' ambient motes, the stands' cheering crowd and other
+ * background flourishes. Fighters, portraits, text, HUD, attack telegraphs,
+ * danger zones, projectiles, status markers and every skill's shapes and
+ * colours are drawn the same at every level. Low also draws the battle at
+ * 1.5 canvas pixels per CSS pixel at most (instead of 2), as iPhones always
+ * do: skill effects' glows cost an older phone's GPU per pixel, so this is
+ * what stops lag when skills go off (owner, 10 Nov 2026).
  *
- * The governor watches sustained frame times during live play only. It
- * ignores a warm-up after the battle (re)starts, any frame gap over 250 ms
- * (loading, a stall, a background tab) and every frame while a menu or
- * dialog is open or the round is not being played. It steps down one level
- * after two consecutive slow 4-second windows and steps back up only after
- * five comfortable ones; a level it had to leave twice is not retried this
- * session. The settled level is remembered on this device.
+ * The governor watches frame times during live play only. It ignores a
+ * warm-up after the battle (re)starts, any frame gap over 250 ms (loading,
+ * a stall, a background tab) and every frame while a menu or dialog is open
+ * or the round is not being played. A 4-second window is slow when its
+ * median frame is slow, or when a fifth of its time went to frames that
+ * missed 30 fps: the stutter each skill causes on an older phone. (Counting
+ * a fifth of the frames instead missed it: slow frames are long, so few.)
+ * It steps down one level after two consecutive slow windows and steps back
+ * up only after five comfortable ones; a level it had to leave twice is not
+ * retried this session. The settled level is remembered on this device.
  *
  * Settings → Graphics: High always draws everything; Low always draws the
  * lightest level; Auto (default) adapts. Reduced motion keeps its own,
@@ -33,20 +39,31 @@ export interface BattleQualityKnobs {
   mythicAmbient: number;
   /** Stop purely decorative background animation (the stands' crowd). */
   stillBackground: boolean;
+  /** Most canvas pixels per CSS pixel (the screen's own density is lower on
+   * some devices, and iPhones are capped at 1.5 at every level). */
+  density: number;
 }
 export const BATTLE_QUALITY: Record<BattleQuality, BattleQualityKnobs> = {
-  high: { particles: 1, trails: 1, mythicAmbient: 2, stillBackground: false },
+  high: {
+    particles: 1,
+    trails: 1,
+    mythicAmbient: 2,
+    stillBackground: false,
+    density: 2,
+  },
   medium: {
     particles: 0.6,
     trails: 1.6,
     mythicAmbient: 1,
     stillBackground: false,
+    density: 2,
   },
   low: {
     particles: 0.35,
     trails: 2.5,
     mythicAmbient: 0,
     stillBackground: true,
+    density: 1.5,
   },
 };
 
@@ -57,7 +74,8 @@ export const BATTLE_PROBE = {
   gap: 250,
   /** A window is slow when its median frame is longer than this (≈45 fps)… */
   slowMedian: 1000 / 45,
-  /** …or this share of frames take longer than `jank` ms (missed 30 fps). */
+  /** …or this share of its time went to frames longer than `jank` ms
+   * (missed 30 fps): the stutter after each skill on an older phone. */
   jankShare: 0.2,
   jank: 34,
   /** Comfortable: 90% of frames within this (≈58 fps). */
@@ -161,8 +179,13 @@ export class BattleQualityGovernor {
     const sorted = this.intervals.sort((a, b) => a - b);
     const median = sorted[sorted.length >> 1];
     const p90 = sorted[Math.floor(sorted.length * 0.9)];
+    // Share of the window's time, not of its frames: half a second of
+    // 25 fps after a skill is a quarter of a 2-second gap between skills,
+    // though only an eighth of the frames.
     const jank =
-      sorted.filter((s) => s > BATTLE_PROBE.jank).length / sorted.length;
+      sorted
+        .filter((s) => s > BATTLE_PROBE.jank)
+        .reduce((sum, s) => sum + s, 0) / this.counted;
     this.intervals = [];
     this.counted = 0;
     const isSlow =

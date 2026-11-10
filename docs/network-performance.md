@@ -101,25 +101,46 @@ leave it off unless they ask for it (`createArenaServer({ backpressure })`).
 
 `apps/client/src/battle-quality.ts` extends Settings → Graphics to battles:
 
-| Level  | Burst particles | Trail sparks | Mythical ambient motes | Stands' crowd |
-| ------ | --------------- | ------------ | ---------------------- | ------------- |
-| High   | all             | normal       | 2 fighters (you first) | animated      |
-| Medium | 60%             | 1.6× sparser | 1 (you)                | animated      |
-| Low    | 35%             | 2.5× sparser | none                   | still         |
+| Level  | Burst particles | Trail sparks | Mythical ambient motes | Stands' crowd | Canvas density |
+| ------ | --------------- | ------------ | ---------------------- | ------------- | -------------- |
+| High   | all             | normal       | 2 fighters (you first) | animated      | screen, ≤ 2×   |
+| Medium | 60%             | 1.6× sparser | 1 (you)                | animated      | screen, ≤ 2×   |
+| Low    | 35%             | 2.5× sparser | none                   | still         | ≤ 1.5×         |
 
-Only decoration changes. Fighters, portraits, text, HUD, telegraphs, danger
-zones, projectiles, status markers and every skill's shapes and colours are
-identical at every level and at full resolution. Low reuses the particle
-density reduced motion already uses, so it is an existing, reviewed look.
+Fighters, portraits, text, HUD, telegraphs, danger zones, projectiles,
+status markers and every skill's shapes and colours are identical at every
+level. Low reuses the particle density reduced motion already uses, so it is
+an existing, reviewed look. Low also draws the battle at 1.5 canvas pixels
+per CSS pixel at most, as iPhones do at every level (`rendererDensity`):
+slightly softer, and it is what stops older Android phones lagging when
+skills go off (owner's decision, 10 Nov 2026). A level change mid-battle
+resizes the canvas on the next frame; the court keeps the density it was
+baked at.
+
+Why the density: in a duel against the AI bot, for each of the 18
+champions, casting a skill every 0.7 s raised main-thread JavaScript by only
+about 6% (221 against 208 ms per second), but the frame rate fell 13% on
+average and up to a third for the heaviest kits, because their glows and
+light layers cost the GPU per pixel. Drawing at 1.5× instead of 2× gave
+about 50% more frames while casting (746 against 496 frames over the six
+heaviest kits, two runs each). These were measured on this container's
+software renderer, which exaggerates fill cost, so phones gain less, in the
+same direction.
 
 Auto watches frame times during live play only: it ignores a 3 s warm-up,
 frame gaps over 250 ms (loading, stalls, background tabs) and every frame
 while a menu or dialog is open or the round is not being played. It steps
 down after two consecutive slow 4 s windows (median slower than ~45 fps, or
-20% of frames missing 30 fps), steps up after five comfortable ones, and does
-not retry a level it had to leave twice. The level is remembered per device.
-Manual High/Low always win; choosing Auto again re-measures. Reduced motion
-keeps its own stricter limits at every level.
+a fifth of the window's time spent in frames missing 30 fps), steps up after
+five comfortable ones, and does not retry a level it had to leave twice. The
+level is remembered per device. Manual High/Low always win; choosing Auto
+again re-measures. Reduced motion keeps its own stricter limits at every
+level.
+
+The "fifth of the time" was "a fifth of the frames" until 10 Nov 2026. A
+phone that runs at 60 fps but drops to 25 fps for half a second after each
+skill, one every 2 s, stutters a quarter of the time, yet those slow frames
+are only an eighth of the frames, so Auto never stepped down for it.
 
 ### 6. Diagnostics (optional, off by default)
 
