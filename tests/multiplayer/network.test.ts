@@ -468,3 +468,72 @@ it("a full room doesn't end the watch you already have", async () => {
   await until(() => !!seen);
   expect((await emit(fan, "watch", { code: a.host.code })).ok).toBe(true);
 });
+it("sends the snapshot at once when a skill is cast, not at the next 15 Hz slot", async () => {
+  const client = await connect();
+  const reply = await emit(client, "practice", {
+    name: "Tester",
+    character: "voltkit",
+  });
+  const a = server.rooms.get(reply.code!)!;
+  a.players[0].x = 850;
+  let states = 0;
+  client.on("state", () => states++);
+  // Step until a regular snapshot has just gone out: the next tick is off
+  // the 15 Hz slot (one snapshot every two 30 Hz ticks).
+  const settle = async () => {
+    for (let i = 0; i < 6; i++) {
+      states = 0;
+      server.step();
+      await wait();
+      if (states > 0) return;
+    }
+    throw new Error("No regular snapshot");
+  };
+  await settle();
+  // An off-slot tick with nothing cast sends nothing.
+  states = 0;
+  server.step();
+  await wait();
+  expect(states).toBe(0);
+  // A basic attack on an off-slot tick keeps the steady rate.
+  await settle();
+  client.emit("input", {
+    ...blankInput(),
+    seq: 1,
+    aimX: 950,
+    aimY: 180,
+    basic: true,
+  });
+  await wait();
+  states = 0;
+  server.step();
+  await wait();
+  expect(
+    a.players[0].stats.dealt + a.events.filter((e) => e.kind === "cast").length,
+  ).toBeGreaterThan(0);
+  expect(states).toBe(0);
+  // A skill on an off-slot tick goes out on that tick, with its cast (once
+  // the basic attack's recovery is over).
+  for (let i = 0; i < 30; i++) server.step();
+  await wait();
+  await settle();
+  const casts: unknown[] = [];
+  client.on("state", (s: any) => {
+    for (const e of s.events ?? [])
+      if (e.kind === "cast" && e.abilityId === "static-lance") casts.push(e);
+  });
+  client.emit("input", {
+    ...blankInput(),
+    seq: 2,
+    aimX: 950,
+    aimY: 180,
+    skill: 0,
+  });
+  await wait();
+  states = 0;
+  server.step();
+  await wait();
+  expect(a.players[0].stats.skills).toBe(1);
+  expect(states).toBe(1);
+  expect(casts).toHaveLength(1);
+});

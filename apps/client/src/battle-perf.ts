@@ -106,3 +106,97 @@ export function perfMode(
     return false;
   }
 }
+
+/**
+ * The network side of a match, from the same device: why a battle can feel
+ * late or jerky while it draws at full frame rate. Round trips come from the
+ * ping badge; snapshot gaps are how irregularly the server's 15 a second
+ * arrive; corrections are how far your own fighter jumped when a snapshot
+ * disagreed with what was predicted; a skill's wait is from your press to
+ * the server confirming it.
+ */
+export interface NetSummary {
+  rttP50: number;
+  rttP95: number;
+  /** 95th percentile gap between snapshots (ms; 67 is on time). */
+  snapGapP95: number;
+  /** Share of snapshot gaps over 120 ms (a late or bunched snapshot). */
+  snapLate: number;
+  /** Your fighter's corrections over 4 px, per minute of play. */
+  corrections: number;
+  /** The largest correction (px). */
+  correctionMax: number;
+  /** Median wait from a skill press to the server's confirmation (ms). */
+  confirmP50: number;
+}
+/** A snapshot gap longer than this is late (the server sends one every 67 ms). */
+export const SNAP_LATE = 120;
+/** A correction smaller than this is not noticeable. */
+export const CORRECTION_PX = 4;
+const MAX_SAMPLES = 20_000;
+
+export class NetMeter {
+  private rtts: number[] = [];
+  private gaps: number[] = [];
+  private fixes: number[] = [];
+  private waits: number[] = [];
+  private lastSnap: number | undefined;
+  private liveMs = 0;
+  private push(list: number[], v: number) {
+    if (list.length >= MAX_SAMPLES) list.splice(0, MAX_SAMPLES / 2);
+    list.push(v);
+  }
+  rtt(ms: number) {
+    if (Number.isFinite(ms) && ms >= 0) this.push(this.rtts, ms);
+  }
+  /** A snapshot arrived during live play (`live` false: not counted). */
+  snapshot(now: number, live: boolean) {
+    const last = this.lastSnap;
+    this.lastSnap = live ? now : undefined;
+    if (!live || last === undefined) return;
+    const gap = now - last;
+    // A tab in the background or a reconnect is a pause, not a late snapshot.
+    if (gap <= 0 || gap > 2000) return;
+    this.push(this.gaps, gap);
+    this.liveMs += gap;
+  }
+  correction(px: number) {
+    if (px > CORRECTION_PX) this.push(this.fixes, px);
+  }
+  confirmed(ms: number) {
+    if (Number.isFinite(ms) && ms >= 0) this.push(this.waits, ms);
+  }
+  summary(): NetSummary {
+    const q = (v: number[], f: number) => {
+      if (!v.length) return 0;
+      const s = v.slice().sort((a, b) => a - b);
+      return Math.round(s[Math.min(s.length - 1, Math.floor(s.length * f))]);
+    };
+    const minutes = this.liveMs / 60_000;
+    return {
+      rttP50: q(this.rtts, 0.5),
+      rttP95: q(this.rtts, 0.95),
+      snapGapP95: q(this.gaps, 0.95),
+      snapLate: this.gaps.length
+        ? Math.round(
+            (this.gaps.filter((g) => g > SNAP_LATE).length / this.gaps.length) *
+              1000,
+          ) / 1000
+        : 0,
+      corrections:
+        minutes > 0 ? Math.round((this.fixes.length / minutes) * 10) / 10 : 0,
+      correctionMax: Math.round(
+        this.fixes.length ? Math.max(...this.fixes) : 0,
+      ),
+      confirmP50: q(this.waits, 0.5),
+    };
+  }
+  reset() {
+    this.rtts = [];
+    this.gaps = [];
+    this.fixes = [];
+    this.waits = [];
+    this.lastSnap = undefined;
+    this.liveMs = 0;
+  }
+}
