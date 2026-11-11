@@ -97,6 +97,26 @@ describe("match reports exported to GitHub", () => {
     expect(renderReadme(rows)).toBe(md);
   });
 
+  it("shows the network numbers each match reports", () => {
+    const r = toReport(
+      entry(
+        'arena-perf {"fps":58.8,"ping":65,"rttP50":67,"rttP95":74,"snapGapP95":76,"snapLate":0.002,"corrections":205.1,"correctionMax":33,"confirmP50":112,"lead":211,"mode":"duel","bots":1,"character":"cindrake"}',
+      ),
+    );
+    expect(r).toMatchObject({
+      rttP50: 67,
+      corrections: 205.1,
+      confirmP50: 112,
+    });
+    const md = renderReadme([r]);
+    expect(md).toContain(
+      "| 67 ms 🟢 (74) | 211 ms | 0.2% | 205.1/min (max 33 px) | 112 ms |",
+    );
+    expect(md).toContain(
+      "| 2026-11-11 | 1 | 65 ms | 65 ms | 211 ms | 205.1 | 112 ms |",
+    );
+  });
+
   it("labels ping as the in-battle badge does", () => {
     expect(pingLabel(79)).toBe("79 ms 🟢");
     expect(pingLabel(80)).toBe("80 ms 🟡");

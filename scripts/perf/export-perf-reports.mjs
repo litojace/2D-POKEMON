@@ -33,7 +33,14 @@ const API = "https://api.render.com/v1/logs";
 export const KEEP = {
   "arena-perf": [
     "ping",
+    "rttP50",
+    "rttP95",
     "lead",
+    "snapGapP95",
+    "snapLate",
+    "corrections",
+    "correctionMax",
+    "confirmP50",
     "fps",
     "frameP95",
     "jank",
@@ -161,6 +168,22 @@ export const pingLabel = (ms) =>
         ? `${ms} ms 🟡`
         : `${ms} ms 🔴`;
 
+/** The ping cell: the match's median round trip (and its slowest 5%). */
+export function pingCell(r) {
+  const p50 = typeof r.rttP50 === "number" && r.rttP50 > 0 ? r.rttP50 : r.ping;
+  const label = pingLabel(p50);
+  return typeof r.rttP95 === "number" && r.rttP95 > 0
+    ? `${label} (${r.rttP95})`
+    : label;
+}
+/** Jumps a minute, and the largest. */
+const jumps = (r) =>
+  typeof r.corrections !== "number"
+    ? "–"
+    : `${r.corrections}/min${r.correctionMax ? ` (max ${r.correctionMax} px)` : ""}`;
+const numbers = (rows, field) =>
+  rows.map((r) => r[field]).filter((v) => typeof v === "number");
+
 /** The README: newest matches first, then a summary for each day. */
 export function renderReadme(reports) {
   const perf = reports
@@ -178,12 +201,17 @@ export function renderReadme(reports) {
     "- **Lead**: how far ahead of the last server update your fighter (and the shots around it) is drawn, on average.",
     "- **FPS**: frames per second at the median frame. **Slowest 5%**: the 95th percentile frame time.",
     "- **Stutter**: share of the time in frames that missed 30 fps. **Stalls**: frames over 250 ms.",
+    "- **Ping** shows the match's median round trip, and in brackets its slowest 5%, where the device reported them.",
+    "- **Late updates**: share of the server's 15-a-second updates that came over 120 ms apart (Wi-Fi hiccups).",
+    "- **Jumps**: times a minute your own fighter was moved by more than 4 px when the server's update disagreed with the phone's guess, and the largest (px). A hit that knocks you back or a stun always does this (the phone cannot know a hit is coming); see `scripts/perf/correction-sim.ts`.",
+    "- **Skill confirm**: median time from pressing a skill to the server confirming it.",
+    "- Late updates, Jumps and Skill confirm are reported from the 11 Nov 2026 update on.",
     "- Ping and Lead are reported from the 10 Nov 2026 update (23:23 UTC) on; older rows show –.",
     "",
     "## Latest matches",
     "",
-    "| Time (UTC) | Mode | Champion | Ping | Lead | FPS | Slowest 5% | Stutter | Stalls | Graphics | Device |",
-    "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+    "| Time (UTC) | Mode | Champion | Ping | Lead | Late updates | Jumps | Skill confirm | FPS | Slowest 5% | Stutter | Stalls | Graphics | Device |",
+    "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
   ];
   for (const r of perf.slice(0, 50)) {
     const mode =
@@ -197,16 +225,16 @@ export function renderReadme(reports) {
       .filter(Boolean)
       .join(", ");
     lines.push(
-      `| ${r.at.slice(0, 16).replace("T", " ")} | ${mode} | ${cell(r.character)} | ${pingLabel(r.ping)} | ${cell(r.lead, " ms")} | ${cell(r.fps)} | ${cell(r.frameP95, " ms")} | ${pct(r.jank)} | ${cell(r.stalls)} | ${cell(r.quality)} (${cell(r.setting)}) | ${device || "–"} |`,
+      `| ${r.at.slice(0, 16).replace("T", " ")} | ${mode} | ${cell(r.character)} | ${pingCell(r)} | ${cell(r.lead, " ms")} | ${pct(r.snapLate)} | ${jumps(r)} | ${cell(r.confirmP50, " ms")} | ${cell(r.fps)} | ${cell(r.frameP95, " ms")} | ${pct(r.jank)} | ${cell(r.stalls)} | ${cell(r.quality)} (${cell(r.setting)}) | ${device || "–"} |`,
     );
   }
-  if (!perf.length) lines.push("| – | | | | | | | | | | |");
+  if (!perf.length) lines.push("| – | | | | | | | | | | | | | |");
   lines.push(
     "",
     "## By day",
     "",
-    "| Day (UTC) | Reports | Ping, median | Ping, worst 10% | Lead, median | FPS, median | Stutter, median | Dropped connections |",
-    "| --- | --- | --- | --- | --- | --- | --- | --- |",
+    "| Day (UTC) | Reports | Ping, median | Ping, worst 10% | Lead, median | Jumps/min, median | Skill confirm, median | FPS, median | Stutter, median | Dropped connections |",
+    "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
   );
   const days = [...new Set(reports.map((r) => day(r.at)))].sort().reverse();
   for (const d of days) {
@@ -222,7 +250,7 @@ export function renderReadme(reports) {
       .map(([why, n]) => `${n} ${why}`)
       .join(", ");
     lines.push(
-      `| ${d} | ${today.length} | ${cell(round(median(pings)), " ms")} | ${cell(round(quantile(pings, 0.9)), " ms")} | ${cell(round(median(leads)), " ms")} | ${cell(median(today.map((r) => r.fps).filter((v) => typeof v === "number")))} | ${pct(median(today.map((r) => r.jank).filter((v) => typeof v === "number")))} | ${dropped || "0"} |`,
+      `| ${d} | ${today.length} | ${cell(round(median(pings)), " ms")} | ${cell(round(quantile(pings, 0.9)), " ms")} | ${cell(round(median(leads)), " ms")} | ${cell(median(numbers(today, "corrections")))} | ${cell(round(median(numbers(today, "confirmP50"))), " ms")} | ${cell(median(today.map((r) => r.fps).filter((v) => typeof v === "number")))} | ${pct(median(today.map((r) => r.jank).filter((v) => typeof v === "number")))} | ${dropped || "0"} |`,
     );
   }
   lines.push(
@@ -259,11 +287,12 @@ async function main() {
     ).toISOString();
   const found = await fetchReports(key, start, now.toISOString());
   let added = 0;
-  for (const r of found)
-    if (!saved.has(r.id)) {
-      saved.set(r.id, r);
-      added++;
-    }
+  for (const r of found) {
+    // A report read again replaces the saved one: a newer version of this
+    // script may keep more of its fields.
+    if (!saved.has(r.id)) added++;
+    saved.set(r.id, r);
+  }
   const all = [...saved.values()].sort((a, b) => a.at.localeCompare(b.at));
   const byDay = new Map();
   for (const r of all) {

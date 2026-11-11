@@ -20,7 +20,7 @@ import { battleCurves } from "./battle-curves";
 import { generateGraphicsTexture } from "./graphics-bake";
 import { RoomInvites } from "./room-invites";
 import { PvpSpectator } from "./pvp-spectator";
-import { predictFighter } from "./predict-fighter";
+import { carryCurrent, predictFighter } from "./predict-fighter";
 import { startPingBadge } from "./ping-badge";
 import { TargetLock, drawTargetReticle } from "./target-lock";
 import { renderTargetPicker } from "./target-picker";
@@ -3559,6 +3559,7 @@ socket.on("state", (snapshot: WireSnapshot) => {
       : undefined;
   timeline.snapshot(pending.length, receivedAt);
   local = structuredClone(me);
+  carryCurrent(local, state.time);
   for (const [i, input] of pending.entries())
     predict(local, input, state.time + (i + 1) / RULES.tick);
   if (predicted)

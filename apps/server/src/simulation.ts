@@ -1,5 +1,6 @@
 import {
   CHARACTERS,
+  CURRENT_HOLD,
   ARENAS,
   ARENA_ROTATION,
   COMBOS,
@@ -2176,12 +2177,12 @@ export class Arena {
       )
         continue;
       const old = enemy.statuses.find((s) => s.kind === "current");
-      if (old) Object.assign(old, { until: this.time + 0.15, tx: vx, ty: vy });
+      if (old) Object.assign(old, { until: this.time + CURRENT_HOLD, tx: vx, ty: vy });
       else
         enemy.statuses.push({
           kind: "current",
-          until: this.time + 0.15,
-          nextTick: this.time + 0.15,
+          until: this.time + CURRENT_HOLD,
+          nextTick: this.time + CURRENT_HOLD,
           tx: vx,
           ty: vy,
           by: zone.owner,

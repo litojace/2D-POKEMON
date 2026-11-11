@@ -1,5 +1,6 @@
 import {
   CHARACTERS,
+  CURRENT_HOLD,
   ROLL,
   ULT_SLOT,
   advanceMovement,
@@ -70,6 +71,25 @@ function castMove(
   }
 }
 
+/**
+ * Undertow: the server refreshes a fighter's `current` to CURRENT_HOLD
+ * seconds every tick it stands in the lane. A snapshot therefore says the
+ * current ends 0.15 s later, but your inputs are replayed up to a round
+ * trip and more past it (~0.2 s), so the last of them were predicted
+ * without the drift and every snapshot pulled you back ~7 px: a twitch 15
+ * times a second while you stood in it. When the snapshot shows the current
+ * was just refreshed (you are still in the lane), it carries on through the
+ * replay; once you leave, the server stops refreshing it and the next
+ * snapshot ends it.
+ */
+export function carryCurrent(p: Fighter, snapshotTime: number) {
+  for (const s of p.statuses)
+    if (
+      s.kind === "current" &&
+      s.until - snapshotTime > CURRENT_HOLD - 1 / RULES.tick - 1e-6
+    )
+      s.until = snapshotTime + 1;
+}
 /** Local movement prediction must obey the same knockout rules as the server. */
 export function predictFighter(
   p: Fighter,
