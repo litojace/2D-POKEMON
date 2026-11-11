@@ -3024,6 +3024,8 @@ export function move(
     if (!blocked(body.x, body.y + dy / steps, r)) body.y += dy / steps;
   }
 }
+/** Undertow: how long a fighter keeps drifting after the lane last held it (s). */
+export const CURRENT_HOLD = 0.15;
 export function advanceMovement(
   p: Fighter,
   input: Input,

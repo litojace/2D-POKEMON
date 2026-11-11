@@ -9,7 +9,15 @@ import {
 import { softwareRendering } from "./gpu-check";
 import { raidCameraView } from "./raid-camera";
 import { BattleQualityGovernor, resetBattleQuality } from "./battle-quality";
-import { BattlePerfMeter, PERF_MIN_SECONDS, perfMode } from "./battle-perf";
+import {
+  BattlePerfMeter,
+  BUILD,
+  NetMeter,
+  PERF_MIN_SECONDS,
+  deviceKind,
+  perfMode,
+} from "./battle-perf";
+import { correctionCause } from "./networking/correction-cause";
 import { PerfOverlay } from "./perf-overlay";
 import { addCanvasTexture } from "./canvas-texture";
 import { setHudText, setHudAttribute, setHudStyle } from "./hud-dom";
@@ -17,7 +25,7 @@ import { battleCurves } from "./battle-curves";
 import { generateGraphicsTexture } from "./graphics-bake";
 import { RoomInvites } from "./room-invites";
 import { PvpSpectator } from "./pvp-spectator";
-import { predictFighter } from "./predict-fighter";
+import { carryCurrent, predictFighter } from "./predict-fighter";
 import { startPingBadge } from "./ping-badge";
 import { TargetLock, drawTargetReticle } from "./target-lock";
 import { renderTargetPicker } from "./target-picker";
@@ -191,6 +199,8 @@ import {
   MetaCache,
   type SnapshotMeta,
   type WireSnapshot,
+  type Ability,
+  type AbilityKind,
   type CharacterId,
   type Fighter,
   type Input,
@@ -340,6 +350,29 @@ const remoteFrames = new InterpolationBuffer();
 /** How far ahead of the last snapshot your fighter is drawn (timeline-lead.ts). */
 const timeline = new LocalTimeline();
 const shotTimeline = new ShotTimeline();
+/**
+ * Where your own fighter was drawn over the last second or so, to tell
+ * whether a hit on you landed where you saw yourself (battle-perf hitsFar).
+ */
+const drawnSelf: { t: number; x: number; y: number }[] = [];
+/**
+ * A hit on you: the server hit you at (event.x, event.y) at about the last
+ * snapshot's time, which your screen showed a lead ago. How far from there
+ * were you drawn then?
+ */
+function measureHitGap(event: { x: number; y: number }) {
+  const now = performance.now(),
+    back = now - timeline.lead(now) * 1000;
+  let best: (typeof drawnSelf)[number] | undefined;
+  for (const d of drawnSelf)
+    if (!best || Math.abs(d.t - back) < Math.abs(best.t - back)) best = d;
+  if (best && Math.abs(best.t - back) < 100)
+    netMeter.hitGap(Math.hypot(best.x - event.x, best.y - event.y));
+}
+/** Script errors during the match, for its battle-perf report. */
+let matchErrors = 0;
+addEventListener("error", () => matchErrors++);
+addEventListener("unhandledrejection", () => matchErrors++);
 /** The lead over a match, for its battle-perf report. */
 const leadSeen = { sum: 0, frames: 0 };
 /** The last round trip the ping badge measured (ms), for battle-perf. */
@@ -364,6 +397,24 @@ let battleStill: boolean | undefined;
 let battleDensity: number | undefined;
 /** How smoothly this match runs on this device (battle-perf.ts). */
 const battlePerf = new BattlePerfMeter();
+/**
+ * Moves whose cast effect plays on your press (predicted): it depends only on
+ * where you stand and face. The rest wait for the server (see
+ * ArenaScene.predictCastEffect).
+ */
+const PREDICTED_CAST_KINDS = new Set<AbilityKind>([
+  "projectile",
+  "barrage",
+  "melee",
+  "cone",
+  "clone",
+  "counter",
+  "barrier",
+  "buff",
+  "rest",
+]);
+/** The network side of the same match: round trips, snapshot gaps, corrections. */
+const netMeter = new NetMeter();
 /** `?perf=1`: the read-out over the battle, and its numbers for tests. */
 const showPerf = perfMode();
 /** Fighters' names and equipped looks, sent apart from combat snapshots. */
@@ -689,6 +740,7 @@ startPingBadge(
       : null,
   (ms) => {
     castPredictor.rtt = ms;
+    if (state?.phase === "playing") netMeter.rtt(ms);
     lastPing = ms;
   },
 );
@@ -3500,6 +3552,7 @@ socket.on("state", (snapshot: WireSnapshot) => {
   pwa.sync();
   const receivedAt = performance.now();
   remoteFrames.add(state, receivedAt);
+  netMeter.snapshot(receivedAt, state.phase === "playing" && !document.hidden);
   const me = state.players.find((p) => p.id === myId);
   if (!me) {
     timeline.snapshot(0, receivedAt);
@@ -3524,13 +3577,40 @@ socket.on("state", (snapshot: WireSnapshot) => {
       exArmedUntil = 0;
     }
   }
+  // Where your fighter was predicted to be, to measure how far this
+  // snapshot moves it (a correction you see as a jerk).
+  const predicted =
+    local &&
+    previous?.code === state.code &&
+    previous.round === state.round &&
+    state.phase === "playing" &&
+    me.hp > 0
+      ? { x: local.x, y: local.y }
+      : undefined;
   timeline.snapshot(pending.length, receivedAt);
   local = structuredClone(me);
+  carryCurrent(local, state.time);
   for (const [i, input] of pending.entries())
     predict(local, input, state.time + (i + 1) / RULES.tick);
+  if (predicted)
+    netMeter.correction(
+      Math.hypot(local.x - predicted.x, local.y - predicted.y),
+      correctionCause(
+        me,
+        previous?.players.find((p) => p.id === myId),
+        state.events.filter((e) => e.id > eventId),
+        state.time,
+      ).cause,
+    );
   for (const event of state.events)
     if (event.id > eventId) {
       if (scene && state.phase !== "lobby") scene.effect(event);
+      if (
+        event.kind === "hit" &&
+        event.target === myId &&
+        state.phase === "playing"
+      )
+        measureHitGap(event);
       eventId = Math.max(eventId, event.id);
     }
   if (
@@ -4612,7 +4692,10 @@ class ArenaScene extends Phaser.Scene {
     scene = this;
     battleQuality.restart();
     battlePerf.reset();
+    netMeter.reset();
     leadSeen.sum = leadSeen.frames = 0;
+    matchErrors = 0;
+    drawnSelf.length = 0;
     if (showPerf) {
       this.perfOverlay = new PerfOverlay($("game").parentElement!);
       // The same numbers for the budget tests (tests/visual/effect-budget).
@@ -4720,7 +4803,10 @@ class ArenaScene extends Phaser.Scene {
           this.feelClock,
           windUp > 0 ? windUp * 1000 : castDuration(c, input.skill),
         );
-        if (windUp <= 0) audio.play("cast");
+        if (windUp <= 0) {
+          audio.play("cast");
+          this.predictCastEffect(local, c.skills[input.skill], input);
+        }
         castPredictor.predict(action, now);
         if (input.skill !== ULT_SLOT && !free)
           optimisticCooldowns.set(input.skill, {
@@ -4744,6 +4830,7 @@ class ArenaScene extends Phaser.Scene {
         castDuration(c, -1),
       );
       audio.play("cast");
+      this.predictCastEffect(local, c.basic, input);
       castPredictor.predict("basic", now);
     }
     if (
@@ -4755,6 +4842,36 @@ class ArenaScene extends Phaser.Scene {
       castPredictor.predict("dash", now);
     }
   }
+  /** Your own casts whose effect already played on the press (ability id → when). */
+  private shownEffects = new Map<string, number>();
+  /**
+   * Play your own cast's effect on the press, one round trip before the
+   * server confirms it: only moves whose cast effect depends on nothing but
+   * where you stand and face (a strike, a shot leaving, a shield going up).
+   * Moves the server places or resolves (a blink, a rush, a beam's path, a
+   * zone at the aim, a nova's burst) still play when the server says so.
+   */
+  private predictCastEffect(local: Fighter, ability: Ability, input: Input) {
+    if (!this.animationLive || !PREDICTED_CAST_KINDS.has(ability.kind)) return;
+    // Facing as the server will set it from this very input (predictFighter
+    // runs after this, so local.angle is still the last step's).
+    const angle = Math.atan2(input.aimY - local.y, input.aimX - local.x);
+    const color = fighterSkillColor(local) ?? CHARACTERS[local.character].color;
+    playCast(this, ability, local.x, local.y, angle, color, reducedMotion, () =>
+      this.positions.get(local.id),
+    );
+    this.shownEffects.set(ability.id, performance.now());
+  }
+  /** The server's cast of a move whose effect already played on the press. */
+  private effectShown(abilityId: string) {
+    const at = this.shownEffects.get(abilityId);
+    this.shownEffects.delete(abilityId);
+    return (
+      at !== undefined &&
+      performance.now() - at <=
+        Math.max(300, Math.min(1200, castPredictor.rtt + 250))
+    );
+  }
   /** Is this server event the echo of a cast or dash already shown? */
   predictedEcho(event: Snapshot["events"][number]) {
     const now = performance.now();
@@ -4765,10 +4882,14 @@ class ArenaScene extends Phaser.Scene {
     const c = CHARACTERS[me.character];
     const slot = c.skills.findIndex((a) => a.id === event.abilityId);
     if (slot < 0 && event.abilityId !== c.basic.id) return false;
-    return castPredictor.confirm(
+    const shown = castPredictor.confirm(
       slot >= 0 ? (`skill${slot}` as CastAction) : "basic",
       now,
     );
+    // How long a skill press waited for the server (basics aside).
+    if (shown && slot >= 0 && castPredictor.lastWait !== undefined)
+      netMeter.confirmed(castPredictor.lastWait);
+    return shown;
   }
   effect(event: Snapshot["events"][number]) {
     // Effects pose only fighters whose art has loaded (readyRig); sounds,
@@ -4919,7 +5040,12 @@ class ArenaScene extends Phaser.Scene {
       this.comboText(event, "WALL SLAM!");
       if (!reducedMotion) this.cameras.main.shake(140, 0.004);
     }
-    if (ability && event.kind === "cast" && ability.kind !== "nova") {
+    if (
+      ability &&
+      event.kind === "cast" &&
+      ability.kind !== "nova" &&
+      !(echo && event.abilityId && this.effectShown(event.abilityId))
+    ) {
       const caster = event.owner;
       playCast(
         this,
@@ -5754,6 +5880,10 @@ class ArenaScene extends Phaser.Scene {
         pos.y += (p.y - pos.y) * factor;
       }
       this.positions.set(p.id, pos);
+      if (p.id === myId && state.phase === "playing") {
+        drawnSelf.push({ t: sampledAt, x: pos.x, y: pos.y });
+        if (drawnSelf.length > 150) drawnSelf.splice(0, 30);
+      }
       const x = pos.x,
         y = pos.y,
         c = CHARACTERS[p.character];
@@ -6604,15 +6734,21 @@ function arenaLoading(s: Snapshot) {
  */
 function reportBattlePerf() {
   const summary = battlePerf.summary();
+  const net = netMeter.summary();
   battlePerf.reset();
+  netMeter.reset();
   const leadMs = leadSeen.frames
     ? Math.round((leadSeen.sum / leadSeen.frames) * 1000)
     : undefined;
   leadSeen.sum = leadSeen.frames = 0;
+  const errors = matchErrors;
+  matchErrors = 0;
+  drawnSelf.length = 0;
   if (summary.seconds < PERF_MIN_SECONDS || !myId || !connected) return;
   const nav = navigator as Navigator & { deviceMemory?: number };
   socket.emit("battle-perf", {
     ...summary,
+    ...net,
     quality: battleQuality.current(),
     setting: graphicsSetting(),
     density: renderScale(),
@@ -6622,6 +6758,9 @@ function reportBattlePerf() {
     ...(nav.hardwareConcurrency ? { cores: nav.hardwareConcurrency } : {}),
     ...(lastPing !== undefined ? { ping: Math.round(lastPing) } : {}),
     ...(leadMs !== undefined ? { lead: leadMs } : {}),
+    ...deviceKind(),
+    build: BUILD,
+    errors,
     ...(softwareRendering() ? { gpu: "software" as const } : {}),
   });
 }

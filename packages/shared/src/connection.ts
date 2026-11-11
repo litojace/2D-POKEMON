@@ -67,6 +67,14 @@ export const battlePerfSchema = z
     density: z.number().min(0.25).max(8),
     memory: z.number().min(0).max(1024).optional(),
     cores: z.number().int().min(1).max(1024).optional(),
+    /** The network side (NetMeter): optional, older clients omit it. */
+    rttP50: z.number().min(0).max(60_000).optional(),
+    rttP95: z.number().min(0).max(60_000).optional(),
+    snapGapP95: z.number().min(0).max(60_000).optional(),
+    snapLate: z.number().min(0).max(1).optional(),
+    corrections: z.number().min(0).max(100_000).optional(),
+    correctionMax: z.number().min(0).max(100_000).optional(),
+    confirmP50: z.number().min(0).max(60_000).optional(),
     /** Round trip to the server at the end (ms, smoothed; the ping badge). */
     ping: z.number().min(0).max(60_000).optional(),
     /**
@@ -74,6 +82,24 @@ export const battlePerfSchema = z
      * (ms): unanswered inputs plus the snapshot's age (timeline-lead.ts).
      */
     lead: z.number().min(0).max(60_000).optional(),
+    /** Corrections a minute by cause (correction-cause.ts); "other" is a prediction fault. */
+    correctionsHit: z.number().min(0).max(100_000).optional(),
+    correctionsStatus: z.number().min(0).max(100_000).optional(),
+    correctionsMove: z.number().min(0).max(100_000).optional(),
+    correctionsOther: z.number().min(0).max(100_000).optional(),
+    /** Hits on you that landed over 24 px from where you were drawn, and the largest gap (px). */
+    hitsFar: z.number().int().min(0).max(1_000_000).optional(),
+    hitGapMax: z.number().min(0).max(100_000).optional(),
+    /** Script errors during the match. */
+    errors: z.number().int().min(0).max(1_000_000).optional(),
+    /** The build the device ran (a commit, or "dev"). */
+    build: z
+      .string()
+      .regex(/^[a-z0-9-]{1,16}$/)
+      .optional(),
+    /** The system family, coarsely, and whether it ran as the installed app. */
+    os: z.enum(["ios", "android", "mac", "windows", "linux", "other"]).optional(),
+    app: z.boolean().optional(),
     /** The browser drew without the graphics card (client gpu-check.ts). */
     gpu: z.literal("software").optional(),
   })

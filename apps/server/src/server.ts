@@ -40,6 +40,7 @@ import {
   joinSchema,
   resumeSchema,
   RULES,
+  CHARACTERS,
   blankInput,
   packSnapshot,
   MetaTracker,
@@ -52,6 +53,8 @@ import {
   type Reply,
 } from "../../../packages/shared/src/index.js";
 import { Arena } from "./simulation.js";
+/** Every champion's basic attack: spammed, so it never forces a snapshot. */
+const BASIC_IDS = new Set(Object.values(CHARACTERS).map((c) => c.basic.id));
 import {
   battleLoadSchema,
   battlePerfSchema,
@@ -2266,13 +2269,22 @@ export function createArenaServer(
         const result = battlePerfSchema.safeParse(data);
         if (!result.success) return;
         socket.data.perfReports = sent + 1;
+        const bot = [...a.bots.values()][0];
         connectionLog("arena-perf", {
           ...result.data,
           mode: a.mode,
           players: a.players.length,
           bots: a.bots.size,
+          ...(bot ? { botLevel: bot.difficulty } : {}),
           ...(a instanceof RaidArena ? { boss: a.raid.boss } : {}),
           character: a.players.find((p) => p.id === id)?.character,
+          // Who you fought (champions only), and a tag shared by every
+          // player's report of this match, to read both sides together.
+          opponents: a.players
+            .filter((p) => p.id !== id && !p.raidBoss)
+            .map((p) => p.character)
+            .slice(0, 8),
+          ...(a.matchTag ? { match: a.matchTag } : {}),
         });
       }),
     );
@@ -2321,6 +2333,20 @@ export function createArenaServer(
     });
   });
   let ticks = 0;
+  /**
+   * A skill was cast or a fighter dashed this tick: send the snapshot now
+   * rather than at the next 15 Hz slot (up to 33 ms later), so the cast
+   * reaches every player, and its echo the caster, a tick sooner. Basic
+   * attacks, which players spam, keep the steady rate.
+   */
+  const castThisTick = (a: Arena, serial: number) =>
+    a.serial > serial &&
+    a.events.some(
+      (e) =>
+        e.id > serial &&
+        (e.kind === "dash" ||
+          (e.kind === "cast" && !!e.abilityId && !BASIC_IDS.has(e.abilityId))),
+    );
   const step = () => {
     const started = diagnostics.now();
     ticks++;
@@ -2328,6 +2354,7 @@ export function createArenaServer(
       if (!s.socketId && s.expires <= Date.now()) expire(s);
     for (let a of [...rooms.values()]) {
       const before = a.phase;
+      const serial = a.serial;
       a.drainInputs();
       a.tick();
       if (before !== a.phase && a.phase === "finished")
@@ -2335,7 +2362,8 @@ export function createArenaServer(
         for (const p of a.players) p.ready = a.bots.has(p.id);
       if (
         ticks % Math.round(RULES.tick / RULES.snapshot) === 0 ||
-        before !== a.phase
+        before !== a.phase ||
+        castThisTick(a, serial)
       )
         broadcast(a);
     }
