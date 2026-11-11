@@ -181,6 +181,7 @@ import {
   obstaclesAt,
   shiftingRisesIn,
   shiftingUp,
+  currentObstacles,
   useObstacles,
   useSpeedScale,
   type ArenaId,
@@ -211,6 +212,11 @@ import { AudioManager } from "./audio";
 import { bounceFx, plateFx } from "./skill-fx-nature";
 import { drawSiphon } from "./skill-fx-water";
 import { InterpolationBuffer } from "./networking/interpolation";
+import {
+  LocalTimeline,
+  ShotTimeline,
+  leadProjectile,
+} from "./networking/timeline-lead";
 import { AccountUI } from "./accounts";
 import { framedAvatar } from "./portraits";
 import { waitForServer, onServerStartupRetry } from "./server-connection";
@@ -335,6 +341,13 @@ const abilityColor = new Map(
   ),
 );
 const remoteFrames = new InterpolationBuffer();
+/** How far ahead of the last snapshot your fighter is drawn (timeline-lead.ts). */
+const timeline = new LocalTimeline();
+const shotTimeline = new ShotTimeline();
+/** The lead over a match, for its battle-perf report. */
+const leadSeen = { sum: 0, frames: 0 };
+/** The last round trip the ping badge measured (ms), for battle-perf. */
+let lastPing: number | undefined;
 /** Static Glide in progress, per fighter: when it started (server time). */
 const gliding = new Map<string, { until: number; start: number }>();
 /** Curled-up balls: how far each has spun (it rolls as far as it travels). */
@@ -657,6 +670,8 @@ function identity(reply: Reply) {
   scene?.hydrateNextSnapshot();
   local = undefined;
   remoteFrames.clear();
+  timeline.clear();
+  shotTimeline.clear();
   sessionStorage.setItem("arena-token", reply.token!);
 }
 const touch: TouchControls = new TouchControls(
@@ -697,6 +712,7 @@ startPingBadge(
   (ms) => {
     castPredictor.rtt = ms;
     if (state?.phase === "playing") netMeter.rtt(ms);
+    lastPing = ms;
   },
 );
 /**
@@ -3369,6 +3385,8 @@ socket.on("session-replaced", () => {
   local = undefined;
   pending = [];
   remoteFrames.clear();
+  timeline.clear();
+  shotTimeline.clear();
   touch.reset();
   document
     .querySelectorAll<HTMLDialogElement>("dialog[open]")
@@ -3471,8 +3489,11 @@ socket.on("state", (snapshot: WireSnapshot) => {
   const spectator = !myId && !!watching;
   // A stale room (we left it) can still send a last snapshot: ignore it.
   if (spectator && snapshot.code !== watching) return;
-  if (state?.phase !== snapshot.phase || state?.round !== snapshot.round)
+  if (state?.phase !== snapshot.phase || state?.round !== snapshot.round) {
     remoteFrames.clear();
+    timeline.clear();
+    shotTimeline.clear();
+  }
   const previous = state;
   if (snapshot.raid?.boss) prefetchRaidArena(snapshot.raid.boss);
   // No rite choice mid-fight: at each new chapter the rites grow a step.
@@ -3499,13 +3520,15 @@ socket.on("state", (snapshot: WireSnapshot) => {
     recoverSnapshotMeta(snapshot.code, snapshot.metaRev);
   scene?.observeSnapshot(state, previous);
   pwa.sync();
-  remoteFrames.add(state, performance.now());
+  const receivedAt = performance.now();
+  remoteFrames.add(state, receivedAt);
   netMeter.snapshot(
-    performance.now(),
+    receivedAt,
     state.phase === "playing" && !document.hidden,
   );
   const me = state.players.find((p) => p.id === myId);
   if (!me) {
+    timeline.snapshot(0, receivedAt);
     if (!spectator) return;
     for (const event of state.events)
       if (event.id > eventId) {
@@ -3537,6 +3560,7 @@ socket.on("state", (snapshot: WireSnapshot) => {
     me.hp > 0
       ? { x: local.x, y: local.y }
       : undefined;
+  timeline.snapshot(pending.length, receivedAt);
   local = structuredClone(me);
   for (const [i, input] of pending.entries())
     predict(local, input, state.time + (i + 1) / RULES.tick);
@@ -4619,6 +4643,7 @@ class ArenaScene extends Phaser.Scene {
     battleQuality.restart();
     battlePerf.reset();
     netMeter.reset();
+    leadSeen.sum = leadSeen.frames = 0;
     if (showPerf) {
       this.perfOverlay = new PerfOverlay($("game").parentElement!);
       // The same numbers for the budget tests (tests/visual/effect-budget).
@@ -5526,6 +5551,19 @@ class ArenaScene extends Phaser.Scene {
       _time,
       !!this.activeCourt,
     );
+    // Shots, zone timers and wind-ups are drawn on your timeline: where the
+    // server will have them when it runs the inputs it has not answered yet,
+    // as your own fighter is (networking/timeline-lead.ts). Then a shot you
+    // see miss you is one the server sees miss you.
+    const frameNow = performance.now();
+    const live = state.phase === "playing";
+    const lead = live ? timeline.lead(frameNow) : 0,
+      snapshotAge = live ? timeline.age(frameNow) : 0;
+    const yourTime = state.time + lead;
+    if (live) {
+      leadSeen.sum += lead;
+      leadSeen.frames++;
+    }
     // Epic and Mythical skins recolour their wearer's moves (shapes never change).
     const tints = new Map(
       state.players.map((p) => [p.id, fighterSkillColor(p)] as const),
@@ -5549,13 +5587,41 @@ class ArenaScene extends Phaser.Scene {
         g,
         followed(tinted(z)),
         1 -
-          Math.max(0, z.until - state.time) /
-            Math.max(0.01, z.ability.duration),
+          Math.max(0, z.until - yourTime) / Math.max(0.01, z.ability.duration),
         _time,
         reducedMotion,
       );
-    for (const pr of state.projectiles)
-      drawProjectile(g, tinted(pr), _time, reducedMotion);
+    const walls = currentObstacles();
+    const bubbles = state.zones.filter(
+      (z) => z.ability.kind === "timewarp" && z.until > yourTime,
+    );
+    const ownerOf = new Map(state.players.map((p) => [p.id, p] as const));
+    const rivals = (a: string, b: string) => {
+      const pa = ownerOf.get(a),
+        pb = ownerOf.get(b);
+      return a !== b && (!pa || !pb || teamOf(pa) !== teamOf(pb));
+    };
+    for (const pr of state.projectiles) {
+      const seconds = shotTimeline.seconds(
+        pr,
+        pr.owner === myId,
+        frameNow,
+        lead,
+        snapshotAge,
+      );
+      // A time bubble slows the shots of whoever it works against.
+      const bubble = bubbles.find(
+        (z) =>
+          rivals(z.owner, pr.owner) &&
+          Math.hypot(pr.x - z.x, pr.y - z.y) < z.radius,
+      );
+      const slow = bubble
+        ? (bubble.ability.warp ?? STATUS_RULES.warpMultiplier)
+        : 1;
+      const drawn = leadProjectile(pr, seconds, walls, slow);
+      drawProjectile(g, tinted(drawn), _time, reducedMotion);
+    }
+    shotTimeline.keep(state.projectiles.map((pr) => pr.id));
     // Healing orbs: a soft green glow with a white cross, gently pulsing.
     // Energy orbs: gold with a lightning bolt (they charge the ultimate).
     for (const orb of state.orbs ?? []) {
@@ -6044,8 +6110,7 @@ class ArenaScene extends Phaser.Scene {
             serverPlayer.lastInput.aimY,
             c.color,
             1 -
-              (serverPlayer.charge.at - state.time) /
-                Math.max(0.01, windup.cast),
+              (serverPlayer.charge.at - yourTime) / Math.max(0.01, windup.cast),
             _time,
           );
       }
@@ -6601,6 +6666,10 @@ function reportBattlePerf() {
   const net = netMeter.summary();
   battlePerf.reset();
   netMeter.reset();
+  const leadMs = leadSeen.frames
+    ? Math.round((leadSeen.sum / leadSeen.frames) * 1000)
+    : undefined;
+  leadSeen.sum = leadSeen.frames = 0;
   if (summary.seconds < PERF_MIN_SECONDS || !myId || !connected) return;
   const nav = navigator as Navigator & { deviceMemory?: number };
   socket.emit("battle-perf", {
@@ -6613,6 +6682,8 @@ function reportBattlePerf() {
       ? { memory: nav.deviceMemory }
       : {}),
     ...(nav.hardwareConcurrency ? { cores: nav.hardwareConcurrency } : {}),
+    ...(lastPing !== undefined ? { ping: Math.round(lastPing) } : {}),
+    ...(leadMs !== undefined ? { lead: leadMs } : {}),
   });
 }
 /**
