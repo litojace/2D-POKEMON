@@ -3522,10 +3522,7 @@ socket.on("state", (snapshot: WireSnapshot) => {
   pwa.sync();
   const receivedAt = performance.now();
   remoteFrames.add(state, receivedAt);
-  netMeter.snapshot(
-    receivedAt,
-    state.phase === "playing" && !document.hidden,
-  );
+  netMeter.snapshot(receivedAt, state.phase === "playing" && !document.hidden);
   const me = state.players.find((p) => p.id === myId);
   if (!me) {
     timeline.snapshot(0, receivedAt);
