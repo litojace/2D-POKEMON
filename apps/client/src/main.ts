@@ -7,7 +7,12 @@ import {
 } from "./graphics-quality";
 import { raidCameraView } from "./raid-camera";
 import { BattleQualityGovernor, resetBattleQuality } from "./battle-quality";
-import { BattlePerfMeter, PERF_MIN_SECONDS, perfMode } from "./battle-perf";
+import {
+  BattlePerfMeter,
+  NetMeter,
+  PERF_MIN_SECONDS,
+  perfMode,
+} from "./battle-perf";
 import { PerfOverlay } from "./perf-overlay";
 import { addCanvasTexture } from "./canvas-texture";
 import { setHudText, setHudAttribute, setHudStyle } from "./hud-dom";
@@ -189,6 +194,8 @@ import {
   MetaCache,
   type SnapshotMeta,
   type WireSnapshot,
+  type Ability,
+  type AbilityKind,
   type CharacterId,
   type Fighter,
   type Input,
@@ -361,6 +368,24 @@ let battleStill: boolean | undefined;
 let battleDensity: number | undefined;
 /** How smoothly this match runs on this device (battle-perf.ts). */
 const battlePerf = new BattlePerfMeter();
+/**
+ * Moves whose cast effect plays on your press (predicted): it depends only on
+ * where you stand and face. The rest wait for the server (see
+ * ArenaScene.predictCastEffect).
+ */
+const PREDICTED_CAST_KINDS = new Set<AbilityKind>([
+  "projectile",
+  "barrage",
+  "melee",
+  "cone",
+  "clone",
+  "counter",
+  "barrier",
+  "buff",
+  "rest",
+]);
+/** The network side of the same match: round trips, snapshot gaps, corrections. */
+const netMeter = new NetMeter();
 /** `?perf=1`: the read-out over the battle, and its numbers for tests. */
 const showPerf = perfMode();
 /** Fighters' names and equipped looks, sent apart from combat snapshots. */
@@ -686,6 +711,7 @@ startPingBadge(
       : null,
   (ms) => {
     castPredictor.rtt = ms;
+    if (state?.phase === "playing") netMeter.rtt(ms);
     lastPing = ms;
   },
 );
@@ -3496,6 +3522,7 @@ socket.on("state", (snapshot: WireSnapshot) => {
   pwa.sync();
   const receivedAt = performance.now();
   remoteFrames.add(state, receivedAt);
+  netMeter.snapshot(receivedAt, state.phase === "playing" && !document.hidden);
   const me = state.players.find((p) => p.id === myId);
   if (!me) {
     timeline.snapshot(0, receivedAt);
@@ -3520,10 +3547,24 @@ socket.on("state", (snapshot: WireSnapshot) => {
       exArmedUntil = 0;
     }
   }
+  // Where your fighter was predicted to be, to measure how far this
+  // snapshot moves it (a correction you see as a jerk).
+  const predicted =
+    local &&
+    previous?.code === state.code &&
+    previous.round === state.round &&
+    state.phase === "playing" &&
+    me.hp > 0
+      ? { x: local.x, y: local.y }
+      : undefined;
   timeline.snapshot(pending.length, receivedAt);
   local = structuredClone(me);
   for (const [i, input] of pending.entries())
     predict(local, input, state.time + (i + 1) / RULES.tick);
+  if (predicted)
+    netMeter.correction(
+      Math.hypot(local.x - predicted.x, local.y - predicted.y),
+    );
   for (const event of state.events)
     if (event.id > eventId) {
       if (scene && state.phase !== "lobby") scene.effect(event);
@@ -4598,6 +4639,7 @@ class ArenaScene extends Phaser.Scene {
     scene = this;
     battleQuality.restart();
     battlePerf.reset();
+    netMeter.reset();
     leadSeen.sum = leadSeen.frames = 0;
     if (showPerf) {
       this.perfOverlay = new PerfOverlay($("game").parentElement!);
@@ -4706,7 +4748,10 @@ class ArenaScene extends Phaser.Scene {
           this.feelClock,
           windUp > 0 ? windUp * 1000 : castDuration(c, input.skill),
         );
-        if (windUp <= 0) audio.play("cast");
+        if (windUp <= 0) {
+          audio.play("cast");
+          this.predictCastEffect(local, c.skills[input.skill], input);
+        }
         castPredictor.predict(action, now);
         if (input.skill !== ULT_SLOT && !free)
           optimisticCooldowns.set(input.skill, {
@@ -4730,6 +4775,7 @@ class ArenaScene extends Phaser.Scene {
         castDuration(c, -1),
       );
       audio.play("cast");
+      this.predictCastEffect(local, c.basic, input);
       castPredictor.predict("basic", now);
     }
     if (
@@ -4741,6 +4787,36 @@ class ArenaScene extends Phaser.Scene {
       castPredictor.predict("dash", now);
     }
   }
+  /** Your own casts whose effect already played on the press (ability id → when). */
+  private shownEffects = new Map<string, number>();
+  /**
+   * Play your own cast's effect on the press, one round trip before the
+   * server confirms it: only moves whose cast effect depends on nothing but
+   * where you stand and face (a strike, a shot leaving, a shield going up).
+   * Moves the server places or resolves (a blink, a rush, a beam's path, a
+   * zone at the aim, a nova's burst) still play when the server says so.
+   */
+  private predictCastEffect(local: Fighter, ability: Ability, input: Input) {
+    if (!this.animationLive || !PREDICTED_CAST_KINDS.has(ability.kind)) return;
+    // Facing as the server will set it from this very input (predictFighter
+    // runs after this, so local.angle is still the last step's).
+    const angle = Math.atan2(input.aimY - local.y, input.aimX - local.x);
+    const color = fighterSkillColor(local) ?? CHARACTERS[local.character].color;
+    playCast(this, ability, local.x, local.y, angle, color, reducedMotion, () =>
+      this.positions.get(local.id),
+    );
+    this.shownEffects.set(ability.id, performance.now());
+  }
+  /** The server's cast of a move whose effect already played on the press. */
+  private effectShown(abilityId: string) {
+    const at = this.shownEffects.get(abilityId);
+    this.shownEffects.delete(abilityId);
+    return (
+      at !== undefined &&
+      performance.now() - at <=
+        Math.max(300, Math.min(1200, castPredictor.rtt + 250))
+    );
+  }
   /** Is this server event the echo of a cast or dash already shown? */
   predictedEcho(event: Snapshot["events"][number]) {
     const now = performance.now();
@@ -4751,10 +4827,14 @@ class ArenaScene extends Phaser.Scene {
     const c = CHARACTERS[me.character];
     const slot = c.skills.findIndex((a) => a.id === event.abilityId);
     if (slot < 0 && event.abilityId !== c.basic.id) return false;
-    return castPredictor.confirm(
+    const shown = castPredictor.confirm(
       slot >= 0 ? (`skill${slot}` as CastAction) : "basic",
       now,
     );
+    // How long a skill press waited for the server (basics aside).
+    if (shown && slot >= 0 && castPredictor.lastWait !== undefined)
+      netMeter.confirmed(castPredictor.lastWait);
+    return shown;
   }
   effect(event: Snapshot["events"][number]) {
     // Effects pose only fighters whose art has loaded (readyRig); sounds,
@@ -4905,7 +4985,12 @@ class ArenaScene extends Phaser.Scene {
       this.comboText(event, "WALL SLAM!");
       if (!reducedMotion) this.cameras.main.shake(140, 0.004);
     }
-    if (ability && event.kind === "cast" && ability.kind !== "nova") {
+    if (
+      ability &&
+      event.kind === "cast" &&
+      ability.kind !== "nova" &&
+      !(echo && event.abilityId && this.effectShown(event.abilityId))
+    ) {
       const caster = event.owner;
       playCast(
         this,
@@ -6575,7 +6660,9 @@ function arenaLoading(s: Snapshot) {
  */
 function reportBattlePerf() {
   const summary = battlePerf.summary();
+  const net = netMeter.summary();
   battlePerf.reset();
+  netMeter.reset();
   const leadMs = leadSeen.frames
     ? Math.round((leadSeen.sum / leadSeen.frames) * 1000)
     : undefined;
@@ -6584,6 +6671,7 @@ function reportBattlePerf() {
   const nav = navigator as Navigator & { deviceMemory?: number };
   socket.emit("battle-perf", {
     ...summary,
+    ...net,
     quality: battleQuality.current(),
     setting: graphicsSetting(),
     density: renderScale(),

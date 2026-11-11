@@ -67,6 +67,14 @@ export const battlePerfSchema = z
     density: z.number().min(0.25).max(8),
     memory: z.number().min(0).max(1024).optional(),
     cores: z.number().int().min(1).max(1024).optional(),
+    /** The network side (NetMeter): optional, older clients omit it. */
+    rttP50: z.number().min(0).max(60_000).optional(),
+    rttP95: z.number().min(0).max(60_000).optional(),
+    snapGapP95: z.number().min(0).max(60_000).optional(),
+    snapLate: z.number().min(0).max(1).optional(),
+    corrections: z.number().min(0).max(100_000).optional(),
+    correctionMax: z.number().min(0).max(100_000).optional(),
+    confirmP50: z.number().min(0).max(60_000).optional(),
     /** Round trip to the server at the end (ms, smoothed; the ping badge). */
     ping: z.number().min(0).max(60_000).optional(),
     /**

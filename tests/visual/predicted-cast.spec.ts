@@ -5,7 +5,7 @@ import { openHub, pushUntilBattle, openPlayPanel } from "./helpers";
 // round trip later. The offline harness never sends the server's "cast"
 // echo unless a test pushes one, so whatever moves the fighter here was the
 // client's own prediction.
-async function practice(page: Page) {
+async function practice(page: Page, character = "voltkit") {
   await page.route(/\/apps\/client\/src\/main\.ts(?:\?|$)/, async (route) => {
     const response = await route.fetch(),
       body = await response.text();
@@ -19,7 +19,7 @@ async function practice(page: Page) {
     w.__events = [];
     w.__emit = (event: string, data: unknown) => w.__events.push({ event, data });
   });
-  await page.evaluate(() => (window as any).__room("practice", { arena: "classic", pos: [800, 760, 1300, 200] }));
+  await page.evaluate((character) => (window as any).__room("practice", { arena: "classic", pos: [800, 760, 1300, 200], character }), character);
   await openPlayPanel(page);
   await page.click("#practice");
   await pushUntilBattle(page);
@@ -113,3 +113,52 @@ test("the battle gear shows the round trip to the server", async ({ page }) => {
     .poll(() => page.evaluate(() => (window as any).__events.some((e: any) => e.event === "rtt")))
     .toBe(true);
 });
+
+/** Record every skill effect played (playCast), with when it started. */
+async function countEffects(page: Page) {
+  await page.route(/\/apps\/client\/src\/skill-effects\.ts(?:\?|$)/, async (route) => {
+    const response = await route.fetch(),
+      body = await response.text();
+    const marker = "export function playCast(";
+    expect(body).toContain(marker);
+    await route.fulfill({
+      response,
+      body: body.replace(
+        marker,
+        "export function playCast(...a) { (window.__effects ??= []).push(a[1].id); return playCastNow(...a); }\nfunction playCastNow(",
+      ),
+    });
+  });
+}
+const effects = (page: Page, id: string) =>
+  page.evaluate((id) => ((window as any).__effects ?? []).filter((e: string) => e === id).length, id);
+const echo = (page: Page, abilityId: string) =>
+  page.evaluate((abilityId) => {
+    const w = window as any,
+      me = w.__snap.players.find((p: any) => p.id === "me");
+    w.__snap.events = [{ id: 90100 + Math.floor(Math.random() * 1000), kind: "cast", owner: "me", abilityId, x: me.x, y: me.y, color: 0xffe18b }];
+    w.__push();
+    w.__snap.events = [];
+  }, abilityId);
+
+test("a shot's effect plays on the press, and once only when the server confirms", async ({ page }) => {
+  await countEffects(page);
+  await practice(page);
+  await page.keyboard.press("KeyQ");
+  // No server answer yet (this harness sends none): the effect is already up.
+  await expect.poll(() => effects(page, "static-lance"), { timeout: 2000, intervals: [16, 50, 100] }).toBe(1);
+  await echo(page, "static-lance");
+  await page.waitForTimeout(150);
+  expect(await effects(page, "static-lance")).toBe(1);
+});
+
+test("a move the server places still waits for it (a zone at the aim)", async ({ page }) => {
+  await countEffects(page);
+  await practice(page, "cindrake");
+  await page.keyboard.press("KeyR");
+  await expect.poll(async () => (await rig(page)).state, { timeout: 2000, intervals: [16, 50] }).toBe("skill2");
+  expect(await effects(page, "heat-cracks")).toBe(0);
+  await echo(page, "heat-cracks");
+  await expect.poll(() => effects(page, "heat-cracks"), { timeout: 2000 }).toBe(1);
+});
+
