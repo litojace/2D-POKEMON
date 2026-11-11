@@ -6,11 +6,9 @@
  * moves your predicted fighter by more than 4 px (what battle-perf counts
  * as a correction), the cause is read off the server's own state:
  *
- * - knockback: a hit on you this snapshot pushed or pulled you;
- * - status: a status that changes how you move landed on you (stun,
- *   freeze, root, slow, taunt...);
- * - own-move: your own dash or movement skill (blink, rush...) ran;
- * - unexplained: none of these (a prediction bug, if it is common).
+ * hit, status, move or other, as the game itself reads it on the phone
+ * (apps/client/src/networking/correction-cause.ts). "other" is the one to
+ * worry about: the prediction disagreed with the server for no reason.
  *
  *   npx tsx scripts/perf/correction-sim.ts [seconds] [one-way ms] [me] [bot]
  *
@@ -43,23 +41,10 @@ import {
   carryCurrent,
   predictFighter,
 } from "../../apps/client/src/predict-fighter.js";
-
-/** Statuses that change where your inputs take you. */
-const MOVEMENT = new Set([
-  "stun",
-  "freeze",
-  "sleep",
-  "shell",
-  "root",
-  "slow",
-  "warp",
-  "taunt",
-  "leash",
-  "cage",
-  "current",
-  "float",
-  "haste",
-]);
+import {
+  correctionCause,
+  type CorrectionReason,
+} from "../../apps/client/src/networking/correction-cause.js";
 
 function rng(seed: number) {
   return () => {
@@ -94,10 +79,8 @@ class Link<T> {
   }
 }
 
-export interface Correction {
+export interface Correction extends CorrectionReason {
   px: number;
-  cause: "knockback" | "status" | "own-move" | "unexplained";
-  detail: string;
 }
 
 export function simulateCorrections(o: {
@@ -173,59 +156,11 @@ export function simulateCorrections(o: {
       const px = Math.hypot(local.x - before.x, local.y - before.y);
       if (px <= 4) continue;
       const was = previous?.players.find((p) => p.id === "me");
-      const hits = state.events.filter(
-        (e) => e.kind === "hit" && e.target === "me",
-      );
-      const pushed = hits.filter((e) => {
-        const a = Object.values(CHARACTERS)
-          .flatMap((c) => [c.basic, ...c.skills])
-          .find((x) => x.id === e.abilityId);
-        return !!a && (a.knockback ?? 0) !== 0;
+      // The same reading the game makes on the phone (battle-perf).
+      corrections.push({
+        px,
+        ...correctionCause(server, was, state.events, state.time),
       });
-      const landed = server.statuses
-        .filter((s) => MOVEMENT.has(s.kind))
-        .filter(
-          (s) =>
-            !was?.statuses.some((w) => w.kind === s.kind && w.until >= s.until),
-        );
-      const ended = (was?.statuses ?? []).filter(
-        (w) =>
-          MOVEMENT.has(w.kind) &&
-          !server.statuses.some((s) => s.kind === w.kind),
-      );
-      const moving =
-        server.dashUntil > state.time - 0.07 ||
-        !!server.roll ||
-        !!server.charge ||
-        state.events.some(
-          (e) =>
-            e.owner === "me" &&
-            (e.kind === "dash" || e.kind === "blink" || e.kind === "cast"),
-        );
-      corrections.push(
-        pushed.length
-          ? {
-              px,
-              cause: "knockback",
-              detail: pushed.map((e) => e.abilityId).join(","),
-            }
-          : landed.length || ended.length
-            ? {
-                px,
-                cause: "status",
-                detail: [
-                  ...landed.map((s) => s.kind),
-                  ...ended.map((s) => `${s.kind} ended`),
-                ].join(","),
-              }
-            : moving
-              ? { px, cause: "own-move", detail: "" }
-              : {
-                  px,
-                  cause: "unexplained",
-                  detail: hits.map((e) => e.abilityId).join(","),
-                },
-      );
     }
     if (!state || !local) continue;
     accumulator += frameMs;

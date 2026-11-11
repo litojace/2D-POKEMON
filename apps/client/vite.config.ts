@@ -1,5 +1,6 @@
 import { defineConfig, type Plugin, type Rollup } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
+import { execSync } from "node:child_process";
 import { copyFileSync, mkdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { LEGACY_AUTH_PATHS } from "./src/auth-redirect";
@@ -90,7 +91,26 @@ function precached(url: string) {
   return true;
 }
 
+/**
+ * The commit this build is made from, for battle-perf's `build`: Render sets
+ * RENDER_GIT_COMMIT while it builds; otherwise ask git, else "dev".
+ */
+function buildId() {
+  const fromRender = process.env.RENDER_GIT_COMMIT?.slice(0, 7);
+  if (fromRender) return fromRender;
+  try {
+    return execSync("git rev-parse --short=7 HEAD", {
+      stdio: ["ignore", "pipe", "ignore"],
+    })
+      .toString()
+      .trim();
+  } catch {
+    return "dev";
+  }
+}
+
 export default defineConfig({
+  define: { __BUILD__: JSON.stringify(buildId()) },
   plugins: [
     legacyAuthPages(),
     startupScriptList(),

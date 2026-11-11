@@ -16,7 +16,7 @@ describe("your fighter's corrections", () => {
   it("come from hits and statuses in a real fight, not from prediction", () => {
     const { corrections } = simulateCorrections({ seconds: 60 });
     expect(corrections.length).toBeGreaterThan(0);
-    const unexplained = corrections.filter((c) => c.cause === "unexplained");
+    const unexplained = corrections.filter((c) => c.cause === "other");
     expect(unexplained).toEqual([]);
   });
 

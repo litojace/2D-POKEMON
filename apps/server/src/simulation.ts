@@ -187,6 +187,12 @@ export class Arena {
   playTime = 0;
   /** Id of the last finished real match (players report it for records). */
   matchId: string | null = null;
+  /**
+   * A random tag for this match, new at each start: every player's
+   * arena-perf report of it carries it, so both sides read together. Not an
+   * id anything else knows.
+   */
+  matchTag = "";
   /** Rites: random source for offers. Seeded per room so bot replays repeat. */
   random: () => number;
   roundEndedAt = 0;
@@ -407,6 +413,7 @@ export class Arena {
     this.roundWinnerTeam = null;
     this.roundLog = [];
     this.matchId = null;
+    this.matchTag = Math.random().toString(36).slice(2, 8);
     this.playTime = 0;
     this.activityStatus = undefined;
     this.activityEligible = undefined;

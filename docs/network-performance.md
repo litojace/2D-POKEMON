@@ -328,6 +328,20 @@ fields listed in `KEEP` (`scripts/perf/export-perf-reports.mjs`) are
 written: never an account, a name or a room code
 (`tests/unit/perf-reports.test.ts`).
 
+The README opens with **Needs attention**: each recent match with
+something a player would notice (slow connection, late updates, slow
+drawing, freezes, unexplained jumps, hits that landed while you were drawn
+elsewhere, script errors, slow skill confirms, a phone on an old build),
+each with where to start; it ends with a table from symptom to tool. To
+make that possible each report also carries, from the device: corrections
+a minute by cause (`correction-cause.ts`: hit, status, own move, other),
+`hitsFar` and `hitGapMax` (hits on you that landed over 24 px from where
+you were drawn), `errors`, `build` (the commit, stamped at build time from
+`RENDER_GIT_COMMIT`) and `os`/`app` (system family, installed or not);
+and from the server: `opponents` (champions only), `botLevel`, and
+`match`, a random tag new at each match start so both players' rows read
+together.
+
 ### 11. Why your own fighter jumps
 
 The first matches with the network fields (an iPhone on school Wi-Fi

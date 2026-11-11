@@ -2269,13 +2269,22 @@ export function createArenaServer(
         const result = battlePerfSchema.safeParse(data);
         if (!result.success) return;
         socket.data.perfReports = sent + 1;
+        const bot = [...a.bots.values()][0];
         connectionLog("arena-perf", {
           ...result.data,
           mode: a.mode,
           players: a.players.length,
           bots: a.bots.size,
+          ...(bot ? { botLevel: bot.difficulty } : {}),
           ...(a instanceof RaidArena ? { boss: a.raid.boss } : {}),
           character: a.players.find((p) => p.id === id)?.character,
+          // Who you fought (champions only), and a tag shared by every
+          // player's report of this match, to read both sides together.
+          opponents: a.players
+            .filter((p) => p.id !== id && !p.raidBoss)
+            .map((p) => p.character)
+            .slice(0, 8),
+          ...(a.matchTag ? { match: a.matchTag } : {}),
         });
       }),
     );
