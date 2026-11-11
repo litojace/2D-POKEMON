@@ -921,7 +921,7 @@
   --hud-gap: 12px;
   /* The row under the header: under the player card (--hub-card-h). */
   --hud-row2: calc(
-    max(10px, var(--safe-top, 0px)) - var(--safe-top, 0px) +
+    var(--hub-top, max(10px, var(--safe-top, 0px))) - var(--safe-top, 0px) +
       var(--hub-card-h, 52px) + var(--hud-gap)
   );
   --hud-clock-h: 32px;

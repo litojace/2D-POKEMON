@@ -11779,8 +11779,8 @@ body.hub-screen .topbar {
   z-index: 70;
   height: auto;
   min-height: 0;
-  padding: max(10px, var(--safe-top)) max(14px, var(--safe-right)) 0
-    max(14px, var(--safe-left));
+  padding: var(--hub-top, max(10px, var(--safe-top)))
+    max(14px, var(--safe-right)) 0 max(14px, var(--safe-left));
   background: none;
   border: 0;
   box-shadow: none;

@@ -34,7 +34,8 @@
 .farm-layer .fm-badge {
   position: absolute;
   left: max(0px, calc(14px - var(--safe-left, 0px)));
-  top: 10px;
+  /* The header's line (lobby.css --hub-top), inside .fm-hud's safe area. */
+  top: calc(10px + var(--hub-drop-in, 0px));
   display: grid;
   /* Two rows: the name, then a thick bar with the XP written in it. */
   grid-template-columns: var(--hub-card-art, 38px) minmax(0, 1fr) auto;
@@ -137,7 +138,7 @@
   position: absolute;
   left: 50%;
   /* On the farm badge's line. */
-  top: calc(var(--hub-card-h, 52px) + 14px);
+  top: calc(var(--hub-card-h, 52px) + var(--hub-drop-in, 0px) + 14px);
   transform: translateX(-50%);
   display: flex;
   align-items: center;
@@ -178,7 +179,7 @@
 .farm-layer .fm-chips {
   position: absolute;
   right: var(--hud-x-r);
-  top: calc(var(--hub-card-h, 52px) + 14px);
+  top: calc(var(--hub-card-h, 52px) + var(--hub-drop-in, 0px) + 14px);
   display: flex;
   gap: 6px;
 }
@@ -2562,7 +2563,7 @@ body.hub-farm:has(.fm-hint:not(.done)) #toast {
   right: 112px;
   /* 10px under the player card (10px from the top, --hub-card-h tall), the
      Plaza's second row; it touched the card. */
-  top: calc(var(--hub-card-h, 42px) + 20px);
+  top: calc(var(--hub-card-h, 42px) + var(--hub-drop-in, 0px) + 20px);
   bottom: var(--hud-y-b);
   width: auto;
   font-size: 12px;
@@ -2782,7 +2783,7 @@ body.hub-farm:has(.fm-hint:not(.done)) #toast {
 .farm-layer .fm-sheet {
   right: calc(var(--hud-x-r) + 94px);
   /* 8px under the orbs (46px tall, on the badge's line). */
-  top: calc(var(--hub-card-h, 52px) + 68px);
+  top: calc(var(--hub-card-h, 52px) + var(--hub-drop-in, 0px) + 68px);
   bottom: 162px;
 }
 .farm-layer.phone .fm-sheet {
