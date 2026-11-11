@@ -12782,6 +12782,20 @@ body.battle-active.court-view #game canvas {
 .prefs-graphics-note b {
   color: var(--accent);
 }
+/* The browser draws without the graphics card (gpu-check.ts): how to fix it. */
+.prefs-gpu-off {
+  margin: 10px 0 0;
+  padding: 8px 10px;
+  border: 1px solid #ffb44a66;
+  border-radius: 10px;
+  background: #ffb44a1a;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.4;
+}
+.prefs-gpu-off b {
+  color: #ffc76a;
+}
 /* Credits: the crest and name, then what made the game. */
 .credits-hero {
   display: flex;

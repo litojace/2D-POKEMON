@@ -11,9 +11,12 @@
  * Auto starts High and watches the Plaza's or the Farm's real frame rate for
  * a few seconds, and keeps watching while you play; a device that cannot hold
  * about 50 frames a second switches to Low and is remembered, so its next visit starts Low straight away (a
- * device reporting 2 GB of memory or less starts Low too). Choosing High or
+ * device reporting 2 GB of memory or less starts Low too, and so does a
+ * browser drawing without its graphics card, gpu-check.ts). Choosing High or
  * Low by hand overrides Auto.
  */
+import { softwareRendering } from "./gpu-check";
+
 export type GraphicsSetting = "auto" | "high" | "low";
 const SETTING_KEY = "ea-graphics";
 const AUTO_KEY = "ea-graphics-auto";
@@ -48,9 +51,12 @@ export function autoChoosesLow(
   memory = typeof navigator === "undefined"
     ? undefined
     : (navigator as Navigator & { deviceMemory?: number }).deviceMemory,
+  software: () => boolean = softwareRendering,
 ) {
   if (read(AUTO_KEY) === "low") return true;
-  return typeof memory === "number" && memory > 0 && memory <= 2;
+  if (typeof memory === "number" && memory > 0 && memory <= 2) return true;
+  // Drawing on the processor: start Low rather than lag while Auto measures.
+  return software();
 }
 export function rememberAutoLow() {
   write(AUTO_KEY, "low");

@@ -74,6 +74,8 @@ export const battlePerfSchema = z
      * (ms): unanswered inputs plus the snapshot's age (timeline-lead.ts).
      */
     lead: z.number().min(0).max(60_000).optional(),
+    /** The browser drew without the graphics card (client gpu-check.ts). */
+    gpu: z.literal("software").optional(),
   })
   .strict();
 export type BattlePerf = z.infer<typeof battlePerfSchema>;
