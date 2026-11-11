@@ -1,6 +1,6 @@
 # Match reports
 
-Newest report: 2026-11-10 21:28 UTC. From the game server's log (`scripts/perf/export-perf-reports.mjs` on `main`). One row per player's device per match; times are UTC. No accounts or names are kept.
+Newest report: 2026-11-11 04:40 UTC. From the game server's log (`scripts/perf/export-perf-reports.mjs` on `main`). One row per player's device per match; times are UTC. No accounts or names are kept.
 
 - **Ping**: round trip to the server (the badge in battle): 🟢 under 80 ms, 🟡 under 150, 🔴 above.
 - **Lead**: how far ahead of the last server update your fighter (and the shots around it) is drawn, on average.
@@ -12,6 +12,13 @@ Newest report: 2026-11-10 21:28 UTC. From the game server's log (`scripts/perf/e
 
 | Time (UTC) | Mode | Champion | Ping | Lead | FPS | Slowest 5% | Stutter | Stalls | Graphics | Device |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 2026-11-11 04:40 | duel vs bot | tidefin | 67 ms 🟢 | 206 ms | 58.8 | 18 ms | 0.1% | 0 | high (high) | 4 cores |
+| 2026-11-11 04:38 | duel vs bot | tidefin | 65 ms 🟢 | 210 ms | 58.8 | 18 ms | 0.0% | 0 | high (high) | 4 cores |
+| 2026-11-11 04:37 | duel vs bot | tidefin | 67 ms 🟢 | 205 ms | 58.8 | 18 ms | 0.0% | 0 | high (high) | 4 cores |
+| 2026-11-11 04:35 | duel vs bot | tidefin | 68 ms 🟢 | 205 ms | 58.8 | 18 ms | 0.0% | 0 | high (high) | 4 cores |
+| 2026-11-11 04:34 | duel vs bot | tidefin | 66 ms 🟢 | 209 ms | 58.8 | 18 ms | 0.0% | 0 | high (high) | 4 cores |
+| 2026-11-11 04:33 | duel vs bot | tidefin | 73 ms 🟢 | 205 ms | 58.8 | 18 ms | 0.0% | 0 | high (high) | 4 cores |
+| 2026-11-11 04:32 | duel vs bot | cindrake | 65 ms 🟢 | 211 ms | 58.8 | 18 ms | 0.1% | 0 | high (high) | 4 cores |
 | 2026-11-10 21:28 | duel | sunbara | – | – | 58.8 | 19 ms | 0.0% | 0 | medium (auto) | 4 cores |
 | 2026-11-10 21:28 | duel | cindrake | – | – | 58.8 | 17 ms | 0.0% | 0 | high (high) | 4 cores |
 | 2026-11-10 21:25 | duel | cindrake | – | – | 58.8 | 19 ms | 0.2% | 0 | medium (auto) | 4 cores |
@@ -46,6 +53,7 @@ Newest report: 2026-11-10 21:28 UTC. From the game server's log (`scripts/perf/e
 
 | Day (UTC) | Reports | Ping, median | Ping, worst 10% | Lead, median | FPS, median | Stutter, median | Dropped connections |
 | --- | --- | --- | --- | --- | --- | --- | --- |
+| 2026-11-11 | 7 | 67 ms | 73 ms | 206 ms | 58.8 | 0.0% | 0 |
 | 2026-11-10 | 29 | – | – | – | 58.8 | 0.1% | 11 transport close |
 | 2026-11-09 | 0 | – | – | – | – | – | 2 transport close |
 | 2026-11-08 | 0 | – | – | – | – | – | 1 transport close |
