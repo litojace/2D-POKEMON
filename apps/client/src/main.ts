@@ -2,9 +2,11 @@ import {
   autoChoosesLow,
   graphicsSetting,
   lowGraphics,
+  rememberAutoLow,
   setGraphicsSetting,
   type GraphicsSetting,
 } from "./graphics-quality";
+import { softwareRendering } from "./gpu-check";
 import { raidCameraView } from "./raid-camera";
 import { BattleQualityGovernor, resetBattleQuality } from "./battle-quality";
 import {
@@ -239,6 +241,7 @@ import { fighterPack } from "./animation/pack-config";
 import { fullscreenLandscape } from "./orientation";
 import { wireRotateGate } from "./rotate-gate";
 import { watchRotation } from "./orientation-settle";
+import { watchScreenPin } from "./screen-pin";
 import { watchCosmeticPreviews } from "./cosmetic-fx-preview";
 import { openHubPanelNow } from "./ui/hub-panel";
 import { openRoster, type RosterScreen } from "./screens/roster";
@@ -1101,6 +1104,7 @@ document.addEventListener("visibilitychange", stopControls);
 const pwa = setupPWA(() => state?.phase, dialog, toast);
 wireRotateGate();
 watchRotation();
+watchScreenPin();
 watchCosmeticPreviews();
 // Remember a room from an invite link (?room=ABC123) before the first render.
 if (captureInvite()) inviteHinted = false;
@@ -3767,15 +3771,18 @@ function graphicsCard() {
   const setting = graphicsSetting();
   const option = (value: GraphicsSetting, label: string) =>
     `<button type="button" role="radio" data-graphics="${value}" aria-checked="${setting === value}">${label}</button>`;
-  return `<section class="prefs-card prefs-graphics" aria-labelledby="prefs-graphics"><h3 id="prefs-graphics">${menuIcon("sparkle")}Graphics</h3><div class="prefs-choice" role="radiogroup" aria-labelledby="prefs-graphics">${option("auto", "Auto")}${option("high", "High")}${option("low", "Low")}</div><p class="prefs-graphics-note">${graphicsNote(setting)}</p></section>`;
+  return `<section class="prefs-card prefs-graphics" aria-labelledby="prefs-graphics"><h3 id="prefs-graphics">${menuIcon("sparkle")}Graphics</h3><div class="prefs-choice" role="radiogroup" aria-labelledby="prefs-graphics">${option("auto", "Auto")}${option("high", "High")}${option("low", "Low")}</div><p class="prefs-graphics-note">${graphicsNote(setting)}</p>${softwareRendering() ? GPU_OFF_NOTE : ""}</section>`;
 }
+/** Shown when the browser draws without the graphics card (gpu-check.ts). */
+const GPU_OFF_NOTE =
+  '<p class="prefs-gpu-off" role="note"><b>This browser is not using the graphics card</b>, so the game is drawn by the processor and can lag on any setting. In Edge: Settings → System and performance → turn on “Use graphics acceleration when available”, then restart Edge (in Chrome: Settings → System). If it is already on, the computer’s graphics driver may need an update.</p>';
 function graphicsNote(setting: GraphicsSetting) {
   if (setting === "high")
     return "The living Plaza and Farm: animals, night glow and full weather, sharp on high-resolution screens.";
   if (setting === "low")
     return "A lighter Plaza and Farm at 30 fps for older phones: no animals or night glow, lighter rain. Battles keep every attack, telegraph and skill but draw fewer decorative sparks.";
   return autoChoosesLow()
-    ? "Auto picked <b>Low</b> for the Plaza and Farm on this device (they ran slowly). Battles adapt on their own. Pick High to try it again."
+    ? `Auto picked <b>Low</b> for the Plaza and Farm on this device (${softwareRendering() ? "it draws without a graphics card" : "they ran slowly"}). Battles adapt on their own. Pick High to try it again.`
     : "Starts on High. The Plaza and Farm switch to Low if they run slowly; battles trim decorative sparks only while frames stay slow.";
 }
 function bindGraphicsCard() {
@@ -4597,8 +4604,14 @@ class ArenaScene extends Phaser.Scene {
       !menuOpen &&
       !settingsOpen &&
       !$<HTMLDialogElement>("dialog").open;
-    if (live) battleQuality.frame(now);
-    else battleQuality.pause();
+    if (live) {
+      // Auto had to bring the battle down to Low: this device is slow, so
+      // the Lobby, Plaza and Farm start Low too from now on (no blurred
+      // glass over moving art, a still Lobby fighter), as when the Plaza
+      // finds it slow itself. Picking Auto again in Settings forgets it.
+      if (battleQuality.frame(now) === "low" && graphicsSetting() === "auto")
+        rememberAutoLow();
+    } else battleQuality.pause();
     battlePerf.frame(now, live);
     const knobs = battleQuality.knobs();
     const fx = fxFor(this);
@@ -4608,7 +4621,8 @@ class ArenaScene extends Phaser.Scene {
     this.perfOverlay?.update(
       now,
       battlePerf.summary(1000),
-      battleQuality.current(),
+      // "cpu": drawn without the graphics card (gpu-check.ts).
+      `${battleQuality.current()}${softwareRendering() ? " cpu" : ""}`,
       renderScale(),
       fx.stats,
     );
@@ -6638,11 +6652,26 @@ function flashWhite(root: Phaser.GameObjects.Container) {
  * and at 1.5 at Low battle graphics (battle-quality.ts), as on iPhones.
  */
 function renderScale() {
-  return Math.min(rendererDensity(), battleQuality.knobs().density);
+  const density = Math.min(rendererDensity(), battleQuality.knobs().density);
+  // Drawn by the processor (gpu-check.ts) at Low: every pixel costs CPU
+  // time, so a large monitor draws the court a little softer rather than
+  // lag. The HUD, names and controls are page elements and stay sharp.
+  if (!softwareRendering() || battleQuality.current() !== "low") return density;
+  const fit = Math.sqrt(SOFTWARE_BATTLE_PIXELS / Math.max(1, arenaCssArea));
+  return Math.max(0.6, Math.min(density, Math.floor(fit * 20) / 20));
 }
+/**
+ * Most battle canvas pixels on a browser without a graphics card at Low: a
+ * 1366×768 screen's arena keeps one pixel per CSS pixel, a 1920×1080 one
+ * draws at 0.8 (measured: 9.4 → 11.4 fps on a CPU-drawn 1920×1080 browser).
+ */
+const SOFTWARE_BATTLE_PIXELS = 1_100_000;
+/** The arena box's CSS area, measured when the renderer is sized (never per frame). */
+let arenaCssArea = 0;
 /** Size the drawing buffer to the arena box at device resolution. */
 function fitRenderer() {
   if (!gameInstance) return;
+  arenaCssArea = $("game").clientWidth * $("game").clientHeight;
   const parent = $("game"),
     dpr = renderScale();
   fitDesktopBattleHud($("battle"));
@@ -6732,6 +6761,7 @@ function reportBattlePerf() {
     ...deviceKind(),
     build: BUILD,
     errors,
+    ...(softwareRendering() ? { gpu: "software" as const } : {}),
   });
 }
 /**
@@ -6771,6 +6801,7 @@ function ensureBattleRenderer() {
     return;
   battleLoadStarted = performance.now();
   releaseHubArt();
+  arenaCssArea = $("game").clientWidth * $("game").clientHeight;
   const dpr = renderScale();
   gameInstance = new Phaser.Game({
     type: Phaser.AUTO,

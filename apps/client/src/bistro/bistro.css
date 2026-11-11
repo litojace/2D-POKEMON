@@ -54,7 +54,8 @@
 .bistro-layer .bs-badge {
   position: absolute;
   left: var(--bs-x-l);
-  top: 10px;
+  /* The header's line, under an iPad's status bar too (lobby.css). */
+  top: var(--hub-top, 10px);
   box-sizing: border-box;
   width: var(--hub-card-w, 236px);
   min-height: var(--hub-card-h, 52px);
@@ -156,7 +157,7 @@
 .bistro-layer .bs-chips {
   position: absolute;
   left: 50%;
-  top: calc(var(--hub-card-h, 52px) + 14px);
+  top: calc(var(--hub-card-h, 52px) + var(--hub-drop, 0px) + 14px);
   transform: translateX(-50%);
   display: flex;
   gap: 8px;
@@ -528,7 +529,7 @@
      the zoom row under it), under the top bar. */
   position: absolute;
   right: calc(var(--bs-x-r) + 128px);
-  top: calc(var(--hub-card-h, 52px) + 14px);
+  top: calc(var(--hub-card-h, 52px) + var(--hub-drop, 0px) + 14px);
   bottom: var(--bs-y-b);
   width: min(
     560px,
@@ -783,6 +784,21 @@
   transition:
     transform 0.12s,
     border-color 0.15s;
+}
+/* Shop, Bank, Market and Staff cards: the price (or the lock or button)
+   sits on the card's bottom edge, so a row of cards lines its prices up
+   however long each blurb is (they wandered up and down before). Cards in a
+   row are already one height (the grid stretches them). */
+.bistro-layer .bs-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.bistro-layer .bs-item > * {
+  flex: none;
+}
+.bistro-layer .bs-item > :last-child:is(.pr, .lk) {
+  margin-top: auto;
 }
 .bistro-layer :is(.bs-dish, .bs-item):not(:disabled):hover {
   border-color: #ffd65b88;
@@ -1097,7 +1113,7 @@
 }
 .bistro-layer.phone .bs-chips {
   /* Under the bistro's badge, on the left (the menu has the right). */
-  top: calc(var(--hub-card-h, 42px) + 14px);
+  top: calc(var(--hub-card-h, 42px) + var(--hub-drop, 0px) + 14px);
   left: var(--bs-x-l);
   transform: none;
   flex-direction: column;
@@ -1183,7 +1199,7 @@
   display: none;
 }
 .bistro-layer.phone .bs-sheet {
-  top: calc(var(--hub-card-h, 42px) + 12px);
+  top: calc(var(--hub-card-h, 42px) + var(--hub-drop, 0px) + 12px);
   bottom: var(--bs-y-b);
   right: calc(var(--bs-x-r) + 64px);
   width: min(
@@ -2066,14 +2082,16 @@ body.hub-bistro #account-profile {
    phones, where there is no room, the bar, the chips and the hint step
    aside while it is open. */
 .bistro-layer .bs-sheet {
-  top: calc(var(--hub-card-h, 52px) + 14px + 44px + 10px);
+  top: calc(
+    var(--hub-card-h, 52px) + var(--hub-drop, 0px) + 14px + 44px + 10px
+  );
   bottom: calc(var(--bs-y-b) + 84px);
 }
 .bistro-layer.sheet-open .bs-hint {
   display: none;
 }
 .bistro-layer.phone .bs-sheet {
-  top: calc(var(--hub-card-h, 42px) + 12px);
+  top: calc(var(--hub-card-h, 42px) + var(--hub-drop, 0px) + 12px);
   bottom: var(--bs-y-b);
 }
 .bistro-layer.phone.sheet-open :is(.bs-bar, .bs-chips) {
@@ -2833,7 +2851,7 @@ body.hub-bistro #account-profile {
   width: auto;
   max-width: 760px;
   margin-left: auto;
-  top: calc(var(--hub-card-h, 42px) + 10px);
+  top: calc(var(--hub-card-h, 42px) + var(--hub-drop, 0px) + 10px);
   bottom: max(8px, var(--safe-bottom, 0px));
   border-radius: 16px;
   font-size: 12px;

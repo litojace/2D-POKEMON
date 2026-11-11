@@ -258,6 +258,23 @@
 .fit-head .ui-tabs .ui-tag {
   margin-left: 2px;
 }
+/* Tablet-wide screens (an iPad held sideways, 1024–1200px): the four Shop
+   tabs scroll sideways with no scrollbar, so the last one looked cut off.
+   Tighter tabs fit all four beside Shop | Wardrobe and the close button. */
+@media (max-width: 1200px) and (min-height: 501px) {
+  .fit-head .ui-tabs > button[role="tab"] {
+    padding-inline: 7px;
+    letter-spacing: 0.02em;
+  }
+}
+/* An older 9.7-inch iPad in Safari (1024px wide) needs a size smaller. */
+@media (max-width: 1060px) and (min-height: 501px) {
+  .fit-head .ui-tabs > button[role="tab"] {
+    padding-inline: 5px;
+    font-size: 14px;
+    letter-spacing: 0;
+  }
+}
 .fit-hint {
   flex: 1;
   min-width: 0;

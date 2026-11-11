@@ -8,11 +8,19 @@ export default defineConfig({
   root: here("./harness"),
   publicDir: here("../../apps/client/public"),
   resolve: {
-    alias: {
-      "socket.io-client": here("./harness/stubs.ts"),
-      "@supabase/supabase-js": here("./harness/stubs.ts"),
-      "virtual:pwa-register": here("./harness/stubs.ts"),
-    },
+    alias: [
+      { find: "socket.io-client", replacement: here("./harness/stubs.ts") },
+      {
+        find: "@supabase/supabase-js",
+        replacement: here("./harness/stubs.ts"),
+      },
+      { find: "virtual:pwa-register", replacement: here("./harness/stubs.ts") },
+      // The client's GPU probe (see the fake for why).
+      {
+        find: /^\.\.?\/gpu-check$/,
+        replacement: here("./harness/gpu-check-fake.ts"),
+      },
+    ],
   },
   define: {
     "import.meta.env.VITE_SUPABASE_URL": JSON.stringify("http://offline"),

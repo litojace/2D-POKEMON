@@ -2,6 +2,7 @@ import { expect, it } from "vitest";
 import {
   isIOSDevice,
   isIOSWebApp,
+  largeIPad,
   memoryConstrained,
   rendererDensity,
   sceneDensity,
@@ -54,4 +55,27 @@ it("keeps the Plaza and Farm canvases within the pixel budget on iOS", () => {
   expect(sceneDensity(4000, 3000, 2, true)).toBe(1);
   expect(sceneDensity(800, 600, NaN, true)).toBe(1);
   expect(sceneDensity(800, 600, 1, false)).toBe(1);
+});
+
+it("draws sharp on large iPads (4 GB or more), as on a desktop", () => {
+  // The long side of the screen, in points: iPad Pro 13" (M4), 12.9",
+  // 11", iPad Air 4+ and iPad 10 are large; iPhones and older iPads not.
+  for (const size of [1376, 1366, 1210, 1194, 1180])
+    expect(largeIPad(true, size)).toBe(true);
+  for (const size of [956, 1133, 1080, 1112, 1024])
+    expect(largeIPad(true, size)).toBe(false);
+  // A Mac or a PC is never one, whatever its screen.
+  expect(largeIPad(false, 2560)).toBe(false);
+  // Battles: 2x on a large iPad, 1.5x on the rest of iOS.
+  expect(rendererDensity(2, true, true)).toBe(2);
+  expect(rendererDensity(2, true, false)).toBe(1.5);
+  // An iPad Pro 13" home-screen app (1376x1032) draws its scenes at 2x:
+  // 5.7 million pixels, within the large budget (it was about 1.19x).
+  expect(sceneDensity(1376, 1032, 2, true, true)).toBe(2);
+  expect(sceneDensity(1376, 1032, 2, true, false)).toBeCloseTo(1.19, 2);
+  // Still within its budget on anything bigger (an external display).
+  const d = sceneDensity(2560, 1440, 2, true, true);
+  expect(Math.round(2560 * d) * Math.round(1440 * d)).toBeLessThanOrEqual(
+    6_002_000,
+  );
 });

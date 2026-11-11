@@ -100,6 +100,8 @@ export const battlePerfSchema = z
     /** The system family, coarsely, and whether it ran as the installed app. */
     os: z.enum(["ios", "android", "mac", "windows", "linux", "other"]).optional(),
     app: z.boolean().optional(),
+    /** The browser drew without the graphics card (client gpu-check.ts). */
+    gpu: z.literal("software").optional(),
   })
   .strict();
 export type BattlePerf = z.infer<typeof battlePerfSchema>;
