@@ -3447,6 +3447,13 @@ html:has(body.battle-active:not(.touch-mode)) {
   overflow: hidden;
   overscroll-behavior: none;
 }
+/* The hub (Lobby, Plaza, Farm, Bistro and their panels) is one fixed screen
+   too (its body is overflow: hidden): no rubber-band on the window either,
+   so iPhone and iPad Safari have less reason to lift the page (screen-pin.ts
+   puts it back when they do). Panels scroll inside themselves. */
+html:has(body.hub-active) {
+  overscroll-behavior: none;
+}
 body.battle-active:not(.touch-mode) {
   height: 100vh;
   height: 100dvh;
