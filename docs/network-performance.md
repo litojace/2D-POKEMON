@@ -328,6 +328,52 @@ fields listed in `KEEP` (`scripts/perf/export-perf-reports.mjs`) are
 written: never an account, a name or a room code
 (`tests/unit/perf-reports.test.ts`).
 
+The README opens with **Needs attention**: each recent match with
+something a player would notice (slow connection, late updates, slow
+drawing, freezes, unexplained jumps, hits that landed while you were drawn
+elsewhere, script errors, slow skill confirms, a phone on an old build),
+each with where to start; it ends with a table from symptom to tool. To
+make that possible each report also carries, from the device: corrections
+a minute by cause (`correction-cause.ts`: hit, status, own move, other),
+`hitsFar` and `hitGapMax` (hits on you that landed over 24 px from where
+you were drawn), `errors`, `build` (the commit, stamped at build time from
+`RENDER_GIT_COMMIT`) and `os`/`app` (system family, installed or not);
+and from the server: `opponents` (champions only), `botLevel`, and
+`match`, a random tag new at each match start so both players' rows read
+together.
+
+### 11. Why your own fighter jumps
+
+The first matches with the network fields (an iPhone on school Wi-Fi
+against the bot, 11 Nov 2026) showed a steady 65–73 ms ping, on-time
+snapshots (0–0.2% late) and 58.8 fps, yet 56–205 corrections over 4 px a
+minute, the largest 130–380 px. `scripts/perf/correction-sim.ts` replays
+such a duel (the real Arena, input queue and bot brain, the wire packing
+and the client's reconciliation, 33 ms each way) and names the cause of
+every correction from the server's own state:
+
+- Walking alone: none.
+- In a fight: 30–50 a minute, every one a knockback or a status that just
+  landed (stun, slow, root...). The phone cannot know a hit is coming, so
+  the server's push shows up a lead later. Knockbacks go up to 600 px
+  (Magnet Lash), so a 380 px correction is a hit, not a fault.
+- Standing in Tidefin's Undertow added about 70 a minute of ~7 px: a
+  twitch 15 times a second. The server refreshes the `current` status to
+  `CURRENT_HOLD` (0.15 s) every tick you are in the lane, but inputs are
+  replayed about 0.2 s past the snapshot, so the last of them lost the
+  drift and every snapshot pulled you back. `carryCurrent`
+  (predict-fighter.ts) keeps a freshly refreshed current through the
+  replay; what is left is entering and leaving the lane (about 70 → 8 a
+  minute). One reported match (205 a minute, none over 33 px) looks like
+  this case.
+
+`tests/unit/correction-sim.test.ts` holds all three: no corrections from
+walking, none unexplained in a fight, and the Undertow twitch gone (it
+fails without `carryCurrent`). The match reports on the `perf-reports`
+branch (section 10) now also show the round trip p50/p95, late snapshots,
+corrections a minute (and the largest) and the wait from a skill press to
+its confirmation.
+
 ## Results
 
 All measurements were taken on one Linux container (Intel Xeon 2.8 GHz). The

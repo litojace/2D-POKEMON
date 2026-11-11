@@ -9,10 +9,13 @@ import { raidCameraView } from "./raid-camera";
 import { BattleQualityGovernor, resetBattleQuality } from "./battle-quality";
 import {
   BattlePerfMeter,
+  BUILD,
   NetMeter,
   PERF_MIN_SECONDS,
+  deviceKind,
   perfMode,
 } from "./battle-perf";
+import { correctionCause } from "./networking/correction-cause";
 import { PerfOverlay } from "./perf-overlay";
 import { addCanvasTexture } from "./canvas-texture";
 import { setHudText, setHudAttribute, setHudStyle } from "./hud-dom";
@@ -20,7 +23,7 @@ import { battleCurves } from "./battle-curves";
 import { generateGraphicsTexture } from "./graphics-bake";
 import { RoomInvites } from "./room-invites";
 import { PvpSpectator } from "./pvp-spectator";
-import { predictFighter } from "./predict-fighter";
+import { carryCurrent, predictFighter } from "./predict-fighter";
 import { startPingBadge } from "./ping-badge";
 import { TargetLock, drawTargetReticle } from "./target-lock";
 import { renderTargetPicker } from "./target-picker";
@@ -344,6 +347,29 @@ const remoteFrames = new InterpolationBuffer();
 /** How far ahead of the last snapshot your fighter is drawn (timeline-lead.ts). */
 const timeline = new LocalTimeline();
 const shotTimeline = new ShotTimeline();
+/**
+ * Where your own fighter was drawn over the last second or so, to tell
+ * whether a hit on you landed where you saw yourself (battle-perf hitsFar).
+ */
+const drawnSelf: { t: number; x: number; y: number }[] = [];
+/**
+ * A hit on you: the server hit you at (event.x, event.y) at about the last
+ * snapshot's time, which your screen showed a lead ago. How far from there
+ * were you drawn then?
+ */
+function measureHitGap(event: { x: number; y: number }) {
+  const now = performance.now(),
+    back = now - timeline.lead(now) * 1000;
+  let best: (typeof drawnSelf)[number] | undefined;
+  for (const d of drawnSelf)
+    if (!best || Math.abs(d.t - back) < Math.abs(best.t - back)) best = d;
+  if (best && Math.abs(best.t - back) < 100)
+    netMeter.hitGap(Math.hypot(best.x - event.x, best.y - event.y));
+}
+/** Script errors during the match, for its battle-perf report. */
+let matchErrors = 0;
+addEventListener("error", () => matchErrors++);
+addEventListener("unhandledrejection", () => matchErrors++);
 /** The lead over a match, for its battle-perf report. */
 const leadSeen = { sum: 0, frames: 0 };
 /** The last round trip the ping badge measured (ms), for battle-perf. */
@@ -3559,15 +3585,28 @@ socket.on("state", (snapshot: WireSnapshot) => {
       : undefined;
   timeline.snapshot(pending.length, receivedAt);
   local = structuredClone(me);
+  carryCurrent(local, state.time);
   for (const [i, input] of pending.entries())
     predict(local, input, state.time + (i + 1) / RULES.tick);
   if (predicted)
     netMeter.correction(
       Math.hypot(local.x - predicted.x, local.y - predicted.y),
+      correctionCause(
+        me,
+        previous?.players.find((p) => p.id === myId),
+        state.events.filter((e) => e.id > eventId),
+        state.time,
+      ).cause,
     );
   for (const event of state.events)
     if (event.id > eventId) {
       if (scene && state.phase !== "lobby") scene.effect(event);
+      if (
+        event.kind === "hit" &&
+        event.target === myId &&
+        state.phase === "playing"
+      )
+        measureHitGap(event);
       eventId = Math.max(eventId, event.id);
     }
   if (
@@ -4641,6 +4680,8 @@ class ArenaScene extends Phaser.Scene {
     battlePerf.reset();
     netMeter.reset();
     leadSeen.sum = leadSeen.frames = 0;
+    matchErrors = 0;
+    drawnSelf.length = 0;
     if (showPerf) {
       this.perfOverlay = new PerfOverlay($("game").parentElement!);
       // The same numbers for the budget tests (tests/visual/effect-budget).
@@ -5825,6 +5866,10 @@ class ArenaScene extends Phaser.Scene {
         pos.y += (p.y - pos.y) * factor;
       }
       this.positions.set(p.id, pos);
+      if (p.id === myId && state.phase === "playing") {
+        drawnSelf.push({ t: sampledAt, x: pos.x, y: pos.y });
+        if (drawnSelf.length > 150) drawnSelf.splice(0, 30);
+      }
       const x = pos.x,
         y = pos.y,
         c = CHARACTERS[p.character];
@@ -6667,6 +6712,9 @@ function reportBattlePerf() {
     ? Math.round((leadSeen.sum / leadSeen.frames) * 1000)
     : undefined;
   leadSeen.sum = leadSeen.frames = 0;
+  const errors = matchErrors;
+  matchErrors = 0;
+  drawnSelf.length = 0;
   if (summary.seconds < PERF_MIN_SECONDS || !myId || !connected) return;
   const nav = navigator as Navigator & { deviceMemory?: number };
   socket.emit("battle-perf", {
@@ -6681,6 +6729,9 @@ function reportBattlePerf() {
     ...(nav.hardwareConcurrency ? { cores: nav.hardwareConcurrency } : {}),
     ...(lastPing !== undefined ? { ping: Math.round(lastPing) } : {}),
     ...(leadMs !== undefined ? { lead: leadMs } : {}),
+    ...deviceKind(),
+    build: BUILD,
+    errors,
   });
 }
 /**

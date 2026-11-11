@@ -225,10 +225,16 @@ it("logs how smoothly a match ran on a player's device, without their account", 
         players: 2,
         bots: 0,
         character: arena.players[0].character,
+        // Who they fought, and the match's random tag (not its room code).
+        opponents: [arena.players[1].character],
+        match: arena.matchTag,
       },
     },
   ]);
+  expect(arena.matchTag).toMatch(/^[a-z0-9]{1,6}$/);
+  expect(log[0].details.match).not.toBe(created.code);
   expect(log[0].details).not.toHaveProperty("account");
+  expect(log[0].details).not.toHaveProperty("room");
   // A client stuck in a loop is capped.
   for (let i = 0; i < 30; i++) two.emit("battle-perf", report);
   await until(() => log.length === 21);
