@@ -1,0 +1,6 @@
+{"id":"7bbc6f0f-a41f-4484-b67c-f83452484673","at":"2026-11-06T05:18:15.00457118Z","kind":"arena-disconnect","reason":"transport close","transport":"websocket","mode":"teams","phase":"lobby","connectedFor":349}
+{"id":"5b7b71c9-b5b3-4647-b677-008d2d8aac8d","at":"2026-11-06T17:45:49.459414742Z","kind":"arena-disconnect","reason":"transport close","transport":"websocket","mode":"duel","phase":"finished","connectedFor":103}
+{"id":"8d8fad0a-6258-4bf9-a7b9-85b0d5ef774e","at":"2026-11-06T17:45:56.964256517Z","kind":"arena-disconnect","reason":"transport close","transport":"websocket","mode":"duel","phase":"finished","connectedFor":240}
+{"id":"9cbd69f2-3875-41a4-a69a-253599c95197","at":"2026-11-06T23:04:07.73551463Z","kind":"arena-disconnect","reason":"transport close","transport":"websocket","mode":"duel","phase":"playing","connectedFor":156}
+{"id":"d1c80084-f4c1-4408-83ef-342f4185c37d","at":"2026-11-06T23:04:58.850647257Z","kind":"arena-disconnect","reason":"transport close","transport":"websocket","mode":"duel","phase":"finished","connectedFor":49}
+{"id":"5f085f54-e1cc-4d4c-9273-aac348631f06","at":"2026-11-06T23:07:54.655256362Z","kind":"arena-disconnect","reason":"transport close","transport":"websocket","mode":"duel","phase":"intermission","connectedFor":29}

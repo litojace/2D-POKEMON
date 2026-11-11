@@ -1,0 +1,2 @@
+{"id":"67cab3fd-9217-469a-a5ef-05cc36b23821","at":"2026-11-09T06:58:54.916349723Z","kind":"arena-disconnect","reason":"transport close","transport":"websocket","mode":"duel","phase":"intermission","connectedFor":129}
+{"id":"b427d276-1d1e-4c7a-b08e-fead792654ed","at":"2026-11-09T07:00:23.712663534Z","kind":"arena-disconnect","reason":"transport close","transport":"websocket","mode":"duel","phase":"finished","connectedFor":72}
