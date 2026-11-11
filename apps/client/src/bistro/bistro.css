@@ -784,6 +784,21 @@
     transform 0.12s,
     border-color 0.15s;
 }
+/* Shop, Bank, Market and Staff cards: the price (or the lock or button)
+   sits on the card's bottom edge, so a row of cards lines its prices up
+   however long each blurb is (they wandered up and down before). Cards in a
+   row are already one height (the grid stretches them). */
+.bistro-layer .bs-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.bistro-layer .bs-item > * {
+  flex: none;
+}
+.bistro-layer .bs-item > :last-child:is(.pr, .lk) {
+  margin-top: auto;
+}
 .bistro-layer :is(.bs-dish, .bs-item):not(:disabled):hover {
   border-color: #ffd65b88;
   transform: translateY(-2px);
