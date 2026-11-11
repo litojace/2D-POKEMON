@@ -314,6 +314,20 @@ carries `ping` (the badge's smoothed round trip, ms) and `lead` (the
 average lead over the match, ms), so the lag players feel can be read from
 the log.
 
+### 10. Match reports on GitHub
+
+The `arena-perf` and `arena-disconnect` lines from Render's log are copied
+to the `perf-reports` branch every three hours
+(`.github/workflows/perf-reports.yml`, or Actions → Match reports → Run
+workflow for an update now): `README.md` lists the latest matches (ping,
+lead, frame rate, stutter, graphics level, device) and sums up each day,
+and `reports/<day>.jsonl` keeps every report. Render keeps logs for a few
+days only, so the branch is the long-term record. It needs a
+`RENDER_API_KEY` repository secret. The repository is public, so only the
+fields listed in `KEEP` (`scripts/perf/export-perf-reports.mjs`) are
+written: never an account, a name or a room code
+(`tests/unit/perf-reports.test.ts`).
+
 ## Results
 
 All measurements were taken on one Linux container (Intel Xeon 2.8 GHz). The
