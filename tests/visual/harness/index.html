@@ -73,6 +73,16 @@
       }
     </style>
     <script>
+      // iPadOS calls itself a Mac with a touch screen. Mark iPads so the
+      // landscape cover shows when one is held upright, even with a Magic
+      // Keyboard or trackpad attached (style.css, #rotate-gate).
+      if (
+        /iPad/.test(navigator.userAgent) ||
+        (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1)
+      )
+        document.documentElement.classList.add("ipad-gate");
+    </script>
+    <script>
       (() => {
         let ready = false,
           assetFailed = false,
