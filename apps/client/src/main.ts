@@ -140,6 +140,9 @@ import {
 import { rigAssets, skinSuffix } from "./animation/assets";
 import { loadRigTextures } from "./animation/rig-textures";
 import { prewarmBossAtlas } from "./boss-vector-prewarm";
+import { PillarRig, prewarmPillars } from "./raid-grumble-pillars-rig";
+import { IMPACT_RADIUS } from "./raid-grumble-pillars";
+import { prewarmTerrace } from "./raid-emberwing-terrace-rig";
 import { FighterLoading, neededFighters } from "./animation/fighter-loading";
 import {
   setOverlayMarkup,
@@ -329,11 +332,9 @@ import {
   isCourt,
   paintCourtBlock,
   paintCourtFloor,
-  paintCourtRubble,
   paintCourtStands,
   paintCourtApron,
   COURT_APRON,
-  RUBBLE_PAD,
   SHIFTING_BLOCK,
   STANDS,
   type CourtId,
@@ -4043,15 +4044,10 @@ class ArenaScene extends Phaser.Scene {
   courtAprons = new Map<CourtId, Phaser.GameObjects.Image>();
   /** Grumblecrag's raid plays on the Coliseum court (no stands strip). */
   courtRaid = false;
-  raidPillarShadows: Phaser.GameObjects.Ellipse[] = [];
+  /** Its pillars, shadows, rubble and crumbles (raid-grumble-pillars-rig.ts). */
+  pillarRig?: PillarRig;
   /** Shared floor textures continue into dim, non-playable scenery around the court. */
   raidSurround: Phaser.GameObjects.Image[] = [];
-  /** Transparent rubble over the current raid material. */
-  rubble: Phaser.GameObjects.Image[] = [];
-  /** Each pillar's broken state last frame, to animate the change. */
-  pillarBroken: boolean[] = [];
-  /** Pillars mid-crumble or mid-rise (their tweens own them meanwhile). */
-  pillarMoving = new Set<number>();
   /** Bake an arena's floor once (2x on dense screens); returns its texture key. */
   floorTexture(id: string) {
     const key = `arena-floor-${id}`;
@@ -4184,7 +4180,6 @@ class ArenaScene extends Phaser.Scene {
     this.floorArena = id;
     this.activeCourt = court;
     this.courtRaid = !!court && raid;
-    this.pillarBroken = [];
     const standsOn = !!court && !raid;
     const label = document.querySelector<HTMLElement>(".map-label");
     if (label) {
@@ -4219,8 +4214,10 @@ class ArenaScene extends Phaser.Scene {
     for (const image of this.raidSurround)
       image.setTexture(key).setDisplaySize(1600, 900).setVisible(raid);
     if (court) this.ensureBlocks(court);
+    // Grumblecrag's raid shows its own pillars (the PvP blocks stay as they are).
     for (const [cid, list] of this.courtBlocks)
-      for (const b of list) b.img.setVisible(cid === court && !b.shifting);
+      for (const b of list)
+        b.img.setVisible(cid === court && !b.shifting && !this.courtRaid);
     if (standsOn && court && !this.stands.has(court)) {
       const bake = floorBake(),
         skey = `court-stands-${court}`;
@@ -4268,213 +4265,10 @@ class ArenaScene extends Phaser.Scene {
     for (const [cid, img] of this.courtAprons)
       img.setVisible(standsOn && cid === court);
 
-    if (this.courtRaid && !this.rubble.length)
-      this.rubble = courtBlocks("classic").map((o, i) =>
-        this.rubbleImage(o, i),
-      );
-    for (const img of this.rubble) img.setVisible(false);
-    if (this.courtRaid && !this.raidPillarShadows.length) {
-      this.raidPillarShadows = courtBlocks("classic").map((o) =>
-        this.add
-          .ellipse(
-            o.x + o.w / 2 + 8,
-            o.y + o.h - 5,
-            o.w + 25,
-            o.h * 0.45,
-            0x080b13,
-            0.28,
-          )
-          .setDepth(-9.5),
-      );
-    }
-    for (const shadow of this.raidPillarShadows)
-      shadow.setVisible(this.courtRaid);
+    if (this.courtRaid) this.pillarRig ??= new PillarRig(this, fighterDepth);
+    this.pillarRig?.setVisible(this.courtRaid);
     // The frame grows to show the stands on desktop (see .court-view in CSS).
     document.body.classList.toggle("court-view", standsOn);
-  }
-  /** Small stone and dust pictures for crumbling pillars (made once). */
-  private crumbleTextures() {
-    if (this.textures.exists("crumble-dust")) return;
-    const dust = document.createElement("canvas");
-    dust.width = dust.height = 64;
-    const d = dust.getContext("2d")!;
-    const g = d.createRadialGradient(32, 32, 0, 32, 32, 32);
-    g.addColorStop(0, "rgba(226,212,182,0.9)");
-    g.addColorStop(0.55, "rgba(206,190,156,0.45)");
-    g.addColorStop(1, "rgba(206,190,156,0)");
-    d.fillStyle = g;
-    d.fillRect(0, 0, 64, 64);
-    addCanvasTexture(this.textures, "crumble-dust", dust);
-    for (let k = 0; k < 3; k++) {
-      const c = document.createElement("canvas");
-      c.width = c.height = 24;
-      const x = c.getContext("2d")!;
-      const pts = [
-        [4, 8 + k],
-        [11 - k, 3],
-        [20, 6 + k],
-        [21 - k, 15],
-        [13, 21 - k],
-        [3 + k, 17],
-      ];
-      x.fillStyle = "#8b7e64";
-      x.beginPath();
-      pts.forEach(([px, py], n) =>
-        n ? x.lineTo(px, py + 2) : x.moveTo(px, py + 2),
-      );
-      x.fill();
-      x.fillStyle = ["#e9e0cc", "#d9cdb2", "#c9bd9f"][k];
-      x.beginPath();
-      pts.forEach(([px, py], n) =>
-        n ? x.lineTo(px, py - 1) : x.moveTo(px, py - 1),
-      );
-      x.fill();
-      addCanvasTexture(this.textures, `crumble-chunk-${k}`, c);
-    }
-  }
-  /**
-   * A pillar Grumblecrag charged into: it shudders, drops into its rubble and
-   * throws stones and dust (reduced motion: the dust alone).
-   */
-  private crumblePillar(
-    i: number,
-    img: Phaser.GameObjects.Image,
-    o: { x: number; y: number; w: number; h: number },
-  ) {
-    this.crumbleTextures();
-    const rubble = this.rubble[i];
-    const depth = fighterDepth(o.y + o.h) + 0.0001;
-    const foot = o.y + o.h;
-    this.pillarMoving.add(i);
-    rubble?.setVisible(true).setAlpha(0);
-    const done = () => {
-      img.setVisible(false).setAlpha(1).setPosition(baseX, baseY);
-      rubble?.setAlpha(1);
-      this.pillarMoving.delete(i);
-    };
-    const baseX = img.x,
-      baseY = img.y;
-    // Dust rolling out from the base.
-    for (let k = 0; k < (reducedMotion ? 3 : 7); k++) {
-      const puff = this.add
-        .image(
-          o.x + o.w * (0.1 + 0.8 * Math.random()),
-          foot - Math.random() * 20,
-          "crumble-dust",
-        )
-        .setDepth(depth)
-        .setScale(0.6, 0.45)
-        .setAlpha(0.8);
-      this.tweens.add({
-        targets: puff,
-        x: puff.x + (Math.random() - 0.5) * 120,
-        y: puff.y - 10 - Math.random() * 25,
-        scaleX: 2.2,
-        scaleY: 1.5,
-        alpha: 0,
-        duration: 650 + Math.random() * 350,
-        ease: "Quad.Out",
-        onComplete: () => puff.destroy(),
-      });
-    }
-    if (reducedMotion) {
-      done();
-      return;
-    }
-    // Shudder, then sink into the heap while the rubble shows through.
-    this.tweens.chain({
-      targets: img,
-      tweens: [
-        { x: baseX + 3, duration: 40, yoyo: true, repeat: 2 },
-        { y: baseY + 26, alpha: 0, duration: 340, ease: "Quad.In" },
-      ],
-      onComplete: done,
-    });
-    this.tweens.add({ targets: rubble, alpha: 1, delay: 160, duration: 300 });
-    // Stones thrown off the top, landing around the footprint.
-    // The stone's top face starts at its footprint's back edge (stoneBase).
-    const top = o.y;
-    for (let k = 0; k < 12; k++) {
-      const sx = o.x + Math.random() * o.w,
-        sy = top + Math.random() * (o.h * 0.6);
-      const lx = sx + (Math.random() - 0.5) * 150,
-        ly = foot - 6 + (Math.random() - 0.3) * 50;
-      const stone = this.add
-        .image(sx, sy, `crumble-chunk-${k % 3}`)
-        .setDepth(fighterDepth(ly) + 0.0001)
-        .setScale(0.6 + Math.random() * 0.6)
-        .setRotation(Math.random() * 6);
-      this.tweens.add({ targets: stone, x: lx, duration: 520, ease: "Linear" });
-      this.tweens.add({
-        targets: stone,
-        y: ly,
-        rotation: stone.rotation + (Math.random() - 0.5) * 8,
-        duration: 520,
-        ease: "Bounce.Out",
-        delay: 60,
-      });
-      this.tweens.add({
-        targets: stone,
-        alpha: 0,
-        delay: 900 + Math.random() * 400,
-        duration: 400,
-        onComplete: () => stone.destroy(),
-      });
-    }
-  }
-  /** All pillars broken: they grow back out of their rubble. */
-  private raisePillar(i: number, img: Phaser.GameObjects.Image) {
-    const rubble = this.rubble[i];
-    if (reducedMotion) return;
-    const baseY = img.y;
-    this.pillarMoving.add(i);
-    img
-      .setVisible(true)
-      .setAlpha(0)
-      .setY(baseY + 24);
-    this.tweens.add({
-      targets: img,
-      y: baseY,
-      alpha: 1,
-      duration: 420,
-      ease: "Back.Out",
-      onComplete: () => {
-        rubble?.setVisible(false);
-        this.pillarMoving.delete(i);
-      },
-    });
-    if (rubble) this.tweens.add({ targets: rubble, alpha: 0, duration: 300 });
-  }
-  /**
-   * Transparent rubble sits directly on the raid's current floor, so loading
-   * the painted material cannot leave a rectangular patch of the old court.
-   */
-  private rubbleImage(
-    o: { x: number; y: number; w: number; h: number },
-    index: number,
-  ) {
-    const bake = floorBake(),
-      key = `court-rubble-${index}`;
-    const x = o.x - RUBBLE_PAD,
-      y = o.y - RUBBLE_PAD,
-      w = o.w + RUBBLE_PAD * 2 + 32,
-      h = o.h + RUBBLE_PAD * 2 + 8;
-    if (!this.textures.exists(key)) {
-      const canvas = document.createElement("canvas");
-      canvas.width = Math.ceil(w * bake);
-      canvas.height = Math.ceil(h * bake);
-      const ctx = canvas.getContext("2d")!;
-      ctx.scale(bake, bake);
-      ctx.translate(-x, -y);
-      paintCourtRubble(ctx, o, index);
-      addCanvasTexture(this.textures, key, canvas);
-    }
-    return this.add
-      .image(x, y, key)
-      .setOrigin(0)
-      .setScale(1 / bake)
-      .setDepth(-9)
-      .setVisible(false);
   }
   /**
    * Blocks on show each frame: the Shifting Ruins block only while it's up,
@@ -4482,6 +4276,16 @@ class ArenaScene extends Phaser.Scene {
    * behind (see Fx.at).
    */
   private updateBlocks(t: number, pillars?: readonly { broken: boolean }[]) {
+    if (this.courtRaid && this.pillarRig) {
+      const fronts = this.pillarRig.update(
+        this.time.now,
+        pillars ?? [],
+        reducedMotion,
+        battleQuality.current() === "low",
+      );
+      fxFor(this).setOccluders(fronts, fighterDepth);
+      return;
+    }
     const list = this.activeCourt && this.courtBlocks.get(this.activeCourt);
     // Effects pass behind the blocks on show (see Fx.at); none off the courts.
     fxFor(this).setOccluders(
@@ -4491,23 +4295,11 @@ class ArenaScene extends Phaser.Scene {
       fighterDepth,
     );
     if (!list) return;
-    for (const [i, { img, o, shifting }] of list.entries()) {
+    for (const { img, shifting } of list) {
       if (shifting) img.setVisible(shiftingUp(ARENAS["shifting-ruins"], t));
-      if (this.courtRaid) {
-        const broken = !!pillars?.[i]?.broken,
-          was = this.pillarBroken[i];
-        this.pillarBroken[i] = broken;
-        this.raidPillarShadows[i]?.setVisible(!broken);
-        if (was !== undefined && broken && !was) this.crumblePillar(i, img, o);
-        else if (was && !broken) this.raisePillar(i, img);
-        if (this.pillarMoving.has(i)) continue;
-        img.setVisible(!broken);
-        this.rubble[i]?.setVisible(broken).setAlpha(1);
-      }
       // The stone fills its footprint, so whatever stands behind it is clear
-      // of the picture: blocks stay solid (alpha 1; the crumble tweens own it
-      // while a pillar falls).
-      if (!this.pillarMoving.has(i)) img.setAlpha(1);
+      // of the picture: blocks stay solid.
+      img.setAlpha(1);
     }
   }
   /** Knockout moment: camera push-in multiplier and its end time. */
@@ -4711,6 +4503,9 @@ class ArenaScene extends Phaser.Scene {
     scene = this;
     // The boss's pieces are drawn once into an atlas: now, not on its first frame.
     if (state?.raid) prewarmBossAtlas(this, state.raid.boss, state.raid.phase);
+    // So are its arena's (pillars, braziers and burning ground).
+    if (state?.raid?.boss === "grumblecrag") prewarmPillars(this);
+    if (state?.raid?.boss === "emberwing") prewarmTerrace(this);
     battleQuality.restart();
     battlePerf.reset();
     netMeter.reset();
@@ -4737,7 +4532,6 @@ class ArenaScene extends Phaser.Scene {
     // (the first hit, the first skill, the first pillar to crumble).
     fxFor(this);
     prepareSurfaceTextures(this);
-    this.crumbleTextures();
     // The floor picture: showArena bakes the room's court (once per arena,
     // at floorBake's density) on the first frame. No stand-in court is
     // painted first: that was a whole extra full-court canvas per battle.
@@ -4931,7 +4725,16 @@ class ArenaScene extends Phaser.Scene {
   effect(event: Snapshot["events"][number]) {
     // Effects pose only fighters whose art has loaded (readyRig); sounds,
     // impacts and the other fighters' poses play as usual meanwhile.
-    if (event.kind === "raid-impact") {
+    if (
+      event.kind === "raid-impact" &&
+      this.courtRaid &&
+      this.pillarRig &&
+      event.raidRadius === IMPACT_RADIUS &&
+      event.color === 0xffd65b
+    )
+      // A pillar breaking: its ring is drawn with the pillars.
+      this.pillarRig.impact(event.x, event.y, this.time.now, reducedMotion);
+    else if (event.kind === "raid-impact") {
       const ring = this.add
         .circle(event.x, event.y, event.raidRadius ?? 90, event.color, 0.12)
         .setStrokeStyle(4, event.color, 0.9);
