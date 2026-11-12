@@ -691,6 +691,88 @@ function drawFlare(c: Ctx, k: number, col: number) {
   c.fillStyle = "#fff";
   c.fill();
 }
+/** A scramble warning's colour (the server's flash pink). */
+export const SCRAMBLE_PINK = 0xff6f91;
+/** The flash on the floor round a mirror about to scramble. */
+function drawScrambleHalo(c: Ctx, k: number) {
+  c.scale(k, k);
+  radial(
+    c,
+    62,
+    [
+      [0, "rgba(255,111,145,0.3)"],
+      [0.75, "rgba(255,111,145,0.24)"],
+      [1, "rgba(255,111,145,0)"],
+    ],
+    1,
+    24 / 62,
+  );
+  c.beginPath();
+  c.ellipse(0, 0, 62, 24, 0, 0, TAU);
+  c.lineWidth = 7;
+  c.strokeStyle = "rgba(92,16,44,0.4)";
+  c.stroke();
+  c.lineWidth = 4;
+  c.strokeStyle = css(SCRAMBLE_PINK);
+  c.stroke();
+}
+/** The ring round its crystal and hoop (the game's radius 37). */
+function drawScrambleRing(c: Ctx, k: number) {
+  c.scale(k, k);
+  c.beginPath();
+  c.arc(0, 0, 37, 0, TAU);
+  c.lineWidth = 8;
+  c.strokeStyle = "rgba(92,16,44,0.45)";
+  c.stroke();
+  c.lineWidth = 5;
+  c.strokeStyle = css(SCRAMBLE_PINK);
+  c.stroke();
+  c.lineWidth = 1.2;
+  c.strokeStyle = "rgba(255,226,234,0.9)";
+  c.stroke();
+}
+/** The ghost arrow: where it will point, from 44 to 108 units out. */
+export const GHOST = { tail: 44, headBase: 88, tip: 108, halfWidth: 11 };
+function drawGhostArrow(c: Ctx, k: number) {
+  c.scale(k, k);
+  const path = () => {
+    c.beginPath();
+    c.moveTo(44, -3);
+    c.lineTo(90, -3);
+    c.lineTo(88, -11);
+    c.lineTo(108, 0);
+    c.lineTo(88, 11);
+    c.lineTo(90, 3);
+    c.lineTo(44, 3);
+    c.closePath();
+  };
+  path();
+  c.lineJoin = "round";
+  c.lineWidth = 3;
+  c.strokeStyle = "rgba(92,16,44,0.7)";
+  c.stroke();
+  c.fillStyle = css(SCRAMBLE_PINK);
+  c.fill();
+  // a lighter core, broken into dashes: a direction still to come
+  c.fillStyle = "rgba(255,214,226,0.95)";
+  for (let x = 48; x < 84; x += 9) c.fillRect(x, -1, 5, 2);
+  c.beginPath();
+  c.moveTo(91, -4.5);
+  c.lineTo(103, 0);
+  c.lineTo(91, 4.5);
+  c.closePath();
+  c.fill();
+}
+/** Low graphics' floor line: the relay's exact path, thin and crisp. */
+function drawTrace(c: Ctx, k: number, col: number) {
+  c.scale(k, k);
+  c.fillStyle = css(deepen(col, 0.62), 0.55);
+  c.fillRect(0, -3, 64, 6);
+  c.fillStyle = css(col, 1);
+  c.fillRect(0, -1.6, 64, 3.2);
+  c.fillStyle = css(lighten(col, 0.7), 1);
+  c.fillRect(0, -0.4, 64, 0.8);
+}
 /** Sun pillar floor: a burning rune ring. */
 function drawPillarBase(c: Ctx, k: number) {
   c.scale(k, k);
@@ -841,6 +923,9 @@ export function atriumPieces(): AtriumPiece[] {
     piece("pcrys", 44, 72, 22, 36, drawPillarCrystal),
     piece("blind", 50, 38, 25, 19, drawBlind),
     piece("glint", 24, 24, 12, 12, drawGlint),
+    piece("scrHalo", 132, 56, 66, 28, drawScrambleHalo),
+    piece("scrRing", 86, 86, 43, 43, drawScrambleRing),
+    piece("scrArrow", 112, 30, 0, 15, drawGhostArrow),
   ];
   for (let i = 0; i < 4; i++)
     list.push(
@@ -873,6 +958,7 @@ export function atriumPieces(): AtriumPiece[] {
         (c, k) => drawBeamGlow(c, k, col, 26, 0.45),
         0.5,
       ),
+      piece(`trace${b}`, 64, 8, 0, 4, (c, k) => drawTrace(c, k, col)),
       piece(`spark${b}`, 28, 28, 14, 14, (c, k) => drawSpark(c, k, col)),
       piece(`flare${b}`, 48, 48, 24, 24, (c, k) => drawFlare(c, k, col)),
     );
@@ -1115,6 +1201,10 @@ export interface AtriumMirror {
   shown: number;
   /** Seconds since it was last turned (Infinity if not lately). */
   turnAge: number;
+  /** A scramble is coming (the server's battle time it turns at). */
+  scrambleAt?: number;
+  /** How many 45° steps it turns back then. */
+  scrambleTurns?: number;
 }
 export interface AtriumInput {
   mirrors: AtriumMirror[];
@@ -1161,6 +1251,9 @@ export const atriumRange = (trait?: string) =>
  * them; sideways and downwards it starts at the post.
  */
 export const arrowPush = (angle: number) => Math.max(0, -Math.sin(angle)) * 30;
+/** The mirror flashes until its scramble turns it. */
+export const scrambling = (m: AtriumMirror, time: number) =>
+  m.scrambleAt !== undefined && m.scrambleAt > time;
 /** A pillar's strength: fades in over 0.25 s and out over its last 0.5 s. */
 export const pillarFade = (time: number, until: number) =>
   clamp((until - time) / 0.5) * clamp((time - (until - 4)) / 0.25);
@@ -1217,9 +1310,18 @@ export function atriumFrame(o: AtriumInput): AtriumFrame {
       tint: 0xffb556,
     });
   }
+  const pulse = o.reduced ? 1 : 0.55 + 0.45 * Math.abs(Math.sin(anim * 9));
   o.mirrors.forEach((m, i) => {
     const a = m.shown,
       push = arrowPush(a);
+    // about to scramble: a pink flash under its arrow (a warning: every level)
+    if (scrambling(m, o.time))
+      floor.push({
+        piece: "scrHalo",
+        x: m.x,
+        y: m.y + 4,
+        alpha: pulse,
+      });
     // the notch it points at shines in its colour
     floor.push({
       piece: "glow",
@@ -1231,7 +1333,7 @@ export function atriumFrame(o: AtriumInput): AtriumFrame {
     });
     const ax = m.x + Math.cos(a) * push,
       ay = m.y + Math.sin(a) * push;
-    if (lit[i]) {
+    if (lit[i] && !o.low) {
       floor.push({
         piece: "glow",
         x: m.x + 4,
@@ -1258,16 +1360,20 @@ export function atriumFrame(o: AtriumInput): AtriumFrame {
     const rot = Math.atan2(L.ty - L.y, L.tx - L.x),
       b = L.beam ? 1 : 0,
       sx = len / 64;
-    if (!o.low)
+    // The floor line is where the light really runs (raiders read it to
+    // know whether they stand in it): a soft strip, or on Low a thin crisp
+    // one; Low saves the beam's glow instead.
+    if (!o.low) {
       floor.push({ piece: `spill${b}`, x: L.x, y: L.y, rot, sx, alpha: 0.7 });
-    floor.push({
-      piece: `bglow${b}`,
-      x: L.x,
-      y: L.y - BEAM_LIFT,
-      rot,
-      sx,
-      alpha: 0.85,
-    });
+      floor.push({
+        piece: `bglow${b}`,
+        x: L.x,
+        y: L.y - BEAM_LIFT,
+        rot,
+        sx,
+        alpha: 0.85,
+      });
+    } else floor.push({ piece: `trace${b}`, x: L.x, y: L.y, rot, sx });
     floor.push({ piece: `beam${b}`, x: L.x, y: L.y - BEAM_LIFT, rot, sx });
   }
   // ---- standing ----
@@ -1276,7 +1382,18 @@ export function atriumFrame(o: AtriumInput): AtriumFrame {
     const ringing = u >= 0 && u < 1;
     const pop = ringing && !o.reduced ? 1 + 0.12 * Math.sin(u * Math.PI) : 1;
     const gy = m.y - 24 + Math.sin(anim * 1.7 + i) * 1.2;
-    const items: Placement[] = [{ piece: `post${i}`, x: m.x, y: m.y }];
+    const items: Placement[] = [];
+    const warn = scrambling(m, o.time);
+    // where it will point once it scrambles (turned back 2 or 3 steps)
+    if (warn)
+      items.push({
+        piece: "scrArrow",
+        x: m.x,
+        y: m.y,
+        rot: m.angle - ((m.scrambleTurns ?? 2) * Math.PI) / 4,
+        alpha: 0.95 * pulse,
+      });
+    items.push({ piece: `post${i}`, x: m.x, y: m.y });
     // light behind the crystal, so its facets stay clear (never washed white)
     if (lit[i])
       items.push({
@@ -1299,6 +1416,8 @@ export function atriumFrame(o: AtriumInput): AtriumFrame {
         tint: 0xffe2a0,
       });
     items.push({ piece: `gem${i}`, x: m.x, y: gy, sx: pop, sy: pop });
+    if (warn)
+      items.push({ piece: "scrRing", x: m.x, y: m.y - 24, alpha: pulse });
     stands.push({ key: `mirror-${i}`, groundY: m.y + 23, items });
     if (ringing) {
       const grow = o.reduced ? 1 : 1 + 0.25 * u;
@@ -1374,7 +1493,12 @@ export function atriumFrame(o: AtriumInput): AtriumFrame {
       });
     }
     const prev = o.links[j - 1];
-    if (prev && (prev.beam ? 1 : 0) === b && same(L, prev.tx, prev.ty)) {
+    if (
+      !o.low &&
+      prev &&
+      (prev.beam ? 1 : 0) === b &&
+      same(L, prev.tx, prev.ty)
+    ) {
       const s = 0.7 + 0.08 * Math.sin(anim * 6 + j);
       top.push({
         piece: `flare${b}`,

@@ -385,10 +385,23 @@ test("Low graphics and reduced motion keep the atrium light and still", async ({
       links: SPLIT,
     });
     const seen = await pieces(page);
-    // Low: no sunbeam and no floor light strips; the beams themselves stay.
-    expect(count(seen.layers, "shaft")).toBe(0);
-    expect(count(seen.layers, "spill0") + count(seen.layers, "spill1")).toBe(0);
+    // Low: no sunbeam, soft floor light, beam glow or flares; the beams stay.
+    for (const piece of ["shaft", "spill0", "spill1", "bglow0", "bglow1"])
+      expect(count(seen.layers, piece), piece).toBe(0);
+    expect(count(seen.layers, "flare0") + count(seen.layers, "flare1")).toBe(0);
     expect(count(seen.layers, "beam0") + count(seen.layers, "beam1")).toBe(8);
+    // The relay's floor line stays, thin, on the server's exact line: raiders
+    // read it to know whether they stand in the light.
+    const traces = seen.layers["atrium-floor"].images.filter((i: any) =>
+      /^trace\d$/.test(i.piece),
+    );
+    expect(traces).toHaveLength(SPLIT.length);
+    for (const [i, [x, y, tx, ty, beam]] of SPLIT.entries()) {
+      expect(traces[i].piece).toBe(`trace${beam}`);
+      expect(traces[i].x).toBeCloseTo(x, 3);
+      expect(traces[i].y).toBeCloseTo(y, 3);
+      expect(traces[i].rotation).toBeCloseTo(Math.atan2(ty - y, tx - x), 3);
+    }
     // Reduced motion: no light blades, no travelling sparkle.
     expect(count(seen.layers, "crown")).toBe(0);
     expect(count(seen.layers, "spark0") + count(seen.layers, "spark1")).toBe(0);
@@ -401,6 +414,36 @@ test("Low graphics and reduced motion keep the atrium light and still", async ({
       s.layers["atrium-floor"].images.find((i: any) => i.piece === "range")
         .rotation;
     expect(angle(later)).toBe(angle(seen));
+    // A scramble warning is drawn at every level, full size, in atrium pieces.
+    await page.evaluate(() => {
+      const w = window as any,
+        m = w.__snap.raid.mirrors[0];
+      m.scrambleAt = w.__snap.time + 30;
+      m.scrambleTurns = 2;
+      w.__snap.time += 0.1;
+      w.__push();
+    });
+    await expect
+      .poll(async () => {
+        const l = (await pieces(page)).layers;
+        return [
+          count(l, "scrHalo", "atrium-floor"),
+          count(l, "scrArrow", "atrium-mirror-0"),
+          count(l, "scrRing", "atrium-mirror-0"),
+        ];
+      })
+      .toEqual([1, 1, 1]);
+    const warned = (await pieces(page)).layers;
+    const plate = warned["atrium-floor"].images.find(
+      (i: any) => i.piece === "plate",
+    );
+    const halo = warned["atrium-floor"].images.find(
+      (i: any) => i.piece === "scrHalo",
+    );
+    // the same atlas scale as the unscaled medallion: nothing shrunk on Low
+    expect(halo.scaleX).toBeCloseTo(plate.scaleX, 5);
+    // steady (reduced motion): full strength
+    expect(halo.alpha).toBe(1);
     expect(errors).toEqual([]);
     expect(consoleErrors).toEqual([]);
   } finally {

@@ -1,4 +1,5 @@
 import { RaidArena } from "./raid.js";
+import { leadPoint } from "./raid-boss-aim.js";
 import {
   useObstacles,
   normalize,
@@ -42,6 +43,12 @@ export class EmberwingArena extends RaidArena {
   private brazierTargets = new Map<string, number>();
   private ringStruck = new Map<number, Set<string>>();
   private ringHits = new Map<number, Set<string>>();
+  /** The dive under way turns and comes back at this raider when it ends. */
+  private returnPass?: { targetId?: string };
+  /** This flight, the boss already turned on the last brazier's lighter. */
+  private lighterCalled = false;
+  /** Broken wings mend at this time (last chapter). */
+  private groundedUntil = 0;
   protected override def() {
     return E;
   }
@@ -90,6 +97,9 @@ export class EmberwingArena extends RaidArena {
     this.ringStruck.clear();
     this.floorAt.clear();
     this.ringHits.clear();
+    this.returnPass = undefined;
+    this.lighterCalled = false;
+    this.groundedUntil = 0;
   }
   protected override onChapter() {
     this.raid.chapterGroundings = 0;
@@ -110,6 +120,7 @@ export class EmberwingArena extends RaidArena {
     const r = this.raid;
     r.airborne = true;
     r.takeoffAt = this.time;
+    this.lighterCalled = false;
     r.braziers?.forEach((b) => {
       b.progress = 0;
       b.litUntil = 0;
@@ -126,7 +137,11 @@ export class EmberwingArena extends RaidArena {
     if (this.time - (r.takeoffAt ?? this.time) <= 20)
       r.quickGroundings = (r.quickGroundings ?? 0) + 1;
     r.permanentGround =
-      r.phase === 3 && (r.chapterGroundings ?? 0) >= 2 && !r.drill;
+      r.phase === 3 &&
+      (r.chapterGroundings ?? 0) >= E.permanentGround.after &&
+      !r.drill;
+    if (r.permanentGround)
+      this.groundedUntil = this.time + E.permanentGround.seconds;
     r.exposedUntil = this.time + E.expose + (r.trait === "updraft" ? 2 : 0);
     r.stagger = 0;
     r.staggerUntil = 0;
@@ -136,13 +151,14 @@ export class EmberwingArena extends RaidArena {
     r.emberTrails = [];
     r.warnings = [];
     this.charging = undefined;
+    this.returnPass = undefined;
     r.emberDive = undefined;
     r.flameRings = [];
     this.ringHits.clear();
     this.ringStruck.clear();
     if (r.drill === "brazier-lighting" && r.drillStats) r.drillStats.dodges++;
     r.message = r.permanentGround
-      ? "WINGS BROKEN! The heart stays open — finish the fight!"
+      ? `WINGS BROKEN! The heart stays open for ${E.permanentGround.seconds} seconds!`
       : "GROUNDED! Fire shrinks — strike the exposed heart!";
     this.nextAttack = r.exposedUntil + 0.8;
     this.floorAt.clear();
@@ -223,21 +239,39 @@ export class EmberwingArena extends RaidArena {
       if (!r.airborne && r.exposedUntil <= this.time) this.takeoff();
       return;
     }
+    // Two braziers burn: whatever it planned, it rains on the last lighter.
+    if (this.lastBrazier() !== undefined && this.cunning() > 0) {
+      this.lighterRain();
+      return;
+    }
     const seen = this.seenAttacks.get(kind) ?? 0;
     this.seenAttacks.set(kind, seen + 1);
     const teach = seen < 2;
     boss.angle = Math.atan2(target.y - boss.y, target.x - boss.x);
-    if (kind === "dive-bomb")
-      this.warn(
-        kind,
-        boss.x,
-        boss.y,
-        target.x,
-        target.y,
-        E.dive.width,
-        E.dive.delay,
-      ).teach = teach;
-    else if (kind === "ember-rain") {
+    if (kind === "dive-bomb") {
+      // It dives where a running raider is heading.
+      const aim =
+        this.cunning() > 0
+          ? leadPoint(target, E.dive.delay, {
+              x0: 90,
+              y0: 90,
+              x1: 1510,
+              y1: 810,
+            })
+          : target;
+      Object.assign(
+        this.warn(
+          kind,
+          boss.x,
+          boss.y,
+          aim.x,
+          aim.y,
+          E.dive.width,
+          E.dive.delay,
+        ),
+        { teach, targetId: target.id },
+      );
+    } else if (kind === "ember-rain") {
       const alive = this.heroes().filter((p) => p.hp > 0),
         count =
           r.trait === "smouldering"
@@ -308,6 +342,90 @@ export class EmberwingArena extends RaidArena {
       }
     }
   }
+  /** While flying with two braziers lit: the one still dark. */
+  private lastBrazier() {
+    const r = this.raid;
+    if (!r.airborne || r.braziers?.length !== 3) return undefined;
+    const dark = r.braziers.filter((b) => b.litUntil <= this.time);
+    return dark.length === 1 ? r.braziers.indexOf(dark[0]) : undefined;
+  }
+  /**
+   * Embers on the last brazier's lighter: one on their half of the ring
+   * (the far side stays clear, so they can keep lighting) and a few on the
+   * ground around that side.
+   */
+  private lighterRain() {
+    const r = this.raid,
+      boss = this.boss()!,
+      b = r.braziers![this.lastBrazier()!];
+    const lighter = this.heroes()
+      .filter((p) => p.hp > 0)
+      .sort(
+        (p, q) =>
+          Math.hypot(p.x - b.x, p.y - b.y) - Math.hypot(q.x - b.x, q.y - b.y),
+      )[0];
+    const from =
+      lighter && Math.hypot(lighter.x - b.x, lighter.y - b.y) > 8
+        ? lighter
+        : boss;
+    const side = Math.atan2(from.y - b.y, from.x - b.x),
+      L = E.lighterRain;
+    const spots = [
+      { x: b.x + Math.cos(side) * L.inset, y: b.y + Math.sin(side) * L.inset },
+      ...[0, -L.spread, L.spread].map((o) => ({
+        x: b.x + Math.cos(side + o) * L.ring,
+        y: b.y + Math.sin(side + o) * L.ring,
+      })),
+    ];
+    boss.angle = Math.atan2(b.y - boss.y, b.x - boss.x);
+    const seen = this.seenAttacks.get("ember-rain") ?? 0;
+    this.seenAttacks.set("ember-rain", seen + 1);
+    spots.forEach((p, i) =>
+      Object.assign(
+        this.warn(
+          "ember-rain",
+          Math.max(100, Math.min(1500, p.x)),
+          Math.max(100, Math.min(800, p.y)),
+          Math.max(100, Math.min(1500, p.x)),
+          Math.max(100, Math.min(800, p.y)),
+          E.rain.radius,
+          E.rain.delay + (i ? 0.18 * i : 0),
+        ),
+        { teach: seen < 2, ...(lighter && !i ? { targetId: lighter.id } : {}) },
+      ),
+    );
+    r.message = "Emberwing rains fire on the last brazier!";
+  }
+  /** The dive turns at its end and comes back through its target. */
+  private warnReturn(boss: Fighter) {
+    const pass = this.returnPass;
+    this.returnPass = undefined;
+    if (!pass) return;
+    const target =
+      this.heroes().find((p) => p.id === pass.targetId && p.hp > 0) ??
+      this.heroes().find((p) => p.hp > 0);
+    if (!target) return;
+    // Through where the target is heading, and 150 px on.
+    const aim = leadPoint(target, E.dive.returnDelay),
+      d = Math.hypot(aim.x - boss.x, aim.y - boss.y) || 1,
+      stop = {
+        x: Math.max(90, Math.min(1510, aim.x + ((aim.x - boss.x) / d) * 150)),
+        y: Math.max(90, Math.min(810, aim.y + ((aim.y - boss.y) / d) * 150)),
+      };
+    boss.angle = Math.atan2(stop.y - boss.y, stop.x - boss.x);
+    Object.assign(
+      this.warn(
+        "dive-bomb",
+        boss.x,
+        boss.y,
+        stop.x,
+        stop.y,
+        E.dive.width,
+        E.dive.returnDelay,
+      ),
+      { followUp: true, targetId: target.id },
+    );
+  }
   protected override followWarnings(boss: Fighter) {
     super.followWarnings(boss);
     for (const w of this.raid.warnings)
@@ -322,6 +440,8 @@ export class EmberwingArena extends RaidArena {
   protected override resolveWarning(w: RaidWarning, boss: Fighter) {
     const r = this.raid;
     if (w.kind === "dive-bomb") {
+      if (!w.followUp && r.phase >= 2 && this.cunning() > 0 && !r.drill)
+        this.returnPass = { targetId: w.targetId };
       this.charging = {
         tx: w.tx,
         ty: w.ty,
@@ -432,6 +552,7 @@ export class EmberwingArena extends RaidArena {
         this.countDodges();
         this.charging = undefined;
         r.emberDive = undefined;
+        this.warnReturn(boss);
         if (r.trait === "molting" && !r.drill)
           (r.emberFeathers ??= []).push({
             id: ++this.serial,
@@ -443,6 +564,8 @@ export class EmberwingArena extends RaidArena {
       return;
     }
     if (r.exposedUntil > this.time && !r.permanentGround) return;
+    // A dive is drawn from where it waits: it hovers in place until it goes.
+    if (r.warnings.some((w) => w.kind === "dive-bomb")) return;
     const x =
         E.home.x + Math.sin(this.phaseElapsed * 0.18) * (r.airborne ? 170 : 75),
       y =
@@ -458,6 +581,13 @@ export class EmberwingArena extends RaidArena {
   protected override worldStep(dt: number, boss: Fighter) {
     const r = this.raid;
     if (r.airborne && r.staggerUntil > this.time) this.ground();
+    // Broken wings mend: it takes off again and the count starts over.
+    if (r.permanentGround && this.time >= this.groundedUntil) {
+      r.permanentGround = false;
+      r.chapterGroundings = 0;
+      r.exposedUntil = Math.min(r.exposedUntil, this.time);
+      r.message = "Emberwing's wings mend — it takes flight again!";
+    }
     if (
       !r.airborne &&
       !r.permanentGround &&
@@ -491,7 +621,9 @@ export class EmberwingArena extends RaidArena {
             b.progress +
               dt /
                 (E.lightSeconds *
-                  (this.hasRite(lighter, "fireproof") ? 1 - riteValue("fireproof", this.raid.phase) : 1)),
+                  (this.hasRite(lighter, "fireproof")
+                    ? 1 - riteValue("fireproof", this.raid.phase)
+                    : 1)),
           );
           if (b.progress >= 1) this.light(i, lighter);
         } else b.progress = 0;
@@ -501,6 +633,16 @@ export class EmberwingArena extends RaidArena {
         r.braziers.every((b) => b.litUntil > this.time)
       )
         this.ground();
+      // The second flame catches: it turns on the last lighter at once.
+      else if (
+        !this.lighterCalled &&
+        this.lastBrazier() !== undefined &&
+        this.cunning() > 0 &&
+        !r.drill
+      ) {
+        this.lighterCalled = true;
+        this.nextAttack = Math.min(this.nextAttack, this.time + 0.4);
+      }
     }
     // Cindrake's moving whirlwind can light a brazier as it passes.
     for (const z of this.zones) {
@@ -554,7 +696,9 @@ export class EmberwingArena extends RaidArena {
             p,
             E.fire.damage *
               Math.min(0.55, this.time - at) *
-              (this.hasRite(p, "fireproof") ? 1 - riteValue("fireproof", this.raid.phase) : 1),
+              (this.hasRite(p, "fireproof")
+                ? 1 - riteValue("fireproof", this.raid.phase)
+                : 1),
             boss.id,
           );
           this.floorAt.set(p.id, this.time);
@@ -668,11 +812,36 @@ export class EmberwingArena extends RaidArena {
         input.basic = false;
         input.skill = -1;
         input.dash = false;
+        // Embers falling on the ring: keep lighting from its clear side.
+        const rain = r.warnings.filter((w) => w.kind === "ember-rain"),
+          hot = (x: number, y: number) =>
+            rain.some(
+              (w) => Math.hypot(x - w.x, y - w.y) < w.radius + RULES.radius + 8,
+            );
+        const spot = rain.length
+          ? ([
+              { x: target.x, y: target.y },
+              ...Array.from({ length: 12 }, (_, k) => ({
+                x:
+                  target.x +
+                  Math.cos((k * Math.PI) / 6) * E.brazierRadius * 0.8,
+                y:
+                  target.y +
+                  Math.sin((k * Math.PI) / 6) * E.brazierRadius * 0.8,
+              })),
+            ]
+              .filter((p) => !hot(p.x, p.y))
+              .sort(
+                (p, q) =>
+                  Math.hypot(p.x - bot.x, p.y - bot.y) -
+                  Math.hypot(q.x - bot.x, q.y - bot.y),
+              )[0] ?? target)
+          : target;
         if (
-          Math.hypot(bot.x - target.x, bot.y - target.y) >
-          E.brazierRadius * 0.5
+          Math.hypot(bot.x - spot.x, bot.y - spot.y) >
+          (spot === target ? E.brazierRadius * 0.5 : 6)
         )
-          return go(target.x, target.y, false);
+          return go(spot.x, spot.y, false);
         input.dx = input.dy = 0;
         return input;
       }

@@ -248,7 +248,7 @@ describe("Sun Atrium layout", () => {
     expect(named(turned(CHIME + 0.01), /^chime$/)).toHaveLength(0);
     expect(named(turned(Infinity), /^chime$/)).toHaveLength(0);
   });
-  it("leaves out the sunbeam and floor light strips on Low", () => {
+  it("keeps the relay's exact floor line on Low, cutting decoration instead", () => {
     const high = atriumFrame(
       input({
         links: SPLIT,
@@ -264,10 +264,24 @@ describe("Sun Atrium layout", () => {
     );
     expect(named(high, /^shaft$/)).toHaveLength(2);
     expect(named(high, /^spill/)).toHaveLength(8);
-    expect(named(low, /^(shaft|spill\d)$/)).toHaveLength(0);
+    expect(
+      named(low, /^(shaft|spill\d|bglow\d|flare\d|arrowGlow)$/),
+    ).toHaveLength(0);
     // the beams themselves are gameplay: always drawn
     expect(named(low, /^beam\d$/)).toHaveLength(8);
-    expect(atriumImages(high) - atriumImages(low)).toBe(10);
+    // ...and so is the line on the floor they follow: thin, on the server's line
+    const traces = low.floor.filter((p) => /^trace\d$/.test(p.piece));
+    expect(traces).toHaveLength(SPLIT.length);
+    for (const [i, L] of SPLIT.entries()) {
+      expect(traces[i].piece).toBe(`trace${L.beam}`);
+      expect([traces[i].x, traces[i].y]).toEqual([L.x, L.y]);
+      expect(traces[i].rot).toBeCloseTo(Math.atan2(L.ty - L.y, L.tx - L.x));
+      expect(traces[i].sx! * 64).toBeCloseTo(
+        Math.hypot(L.tx - L.x, L.ty - L.y),
+      );
+    }
+    expect(named(high, /^trace\d$/)).toHaveLength(0);
+    expect(atriumImages(low)).toBeLessThan(atriumImages(high) - 20);
   });
   it("holds still for reduced motion: no light blades, no sparkle", () => {
     const at = (anim: number, links = LINKED, lit = true) =>
@@ -351,5 +365,43 @@ describe("Sun Atrium layout", () => {
     expect(counts.split).toBeLessThanOrEqual(84);
     expect(counts.splitLow).toBeLessThan(counts.split);
     expect(counts.start).toBeLessThan(counts.linked);
+  });
+  it("flashes a mirror about to scramble and shows where it will point, at every level", () => {
+    const flashing = (o: Partial<AtriumInput> = {}) => {
+      const f = input(o);
+      f.mirrors[0].scrambleAt = 11;
+      f.mirrors[0].scrambleTurns = 3;
+      return atriumFrame(f);
+    };
+    for (const o of [{}, { low: true }, { reduced: true }]) {
+      const f = flashing(o),
+        mirror = f.stands.find((s) => s.key === "mirror-0")!;
+      // the halo on the floor, under the mirror's own arrow
+      const halo = f.floor.findIndex((p) => p.piece === "scrHalo");
+      const arrow = f.floor.findIndex(
+        (p) => p.piece === "arrow" && p.x === P.mirrors[0].x,
+      );
+      expect(halo).toBeGreaterThanOrEqual(0);
+      expect(halo).toBeLessThan(arrow);
+      // the ghost arrow behind the post, the ring round the crystal in front
+      const pieces = mirror.items.map((p) => p.piece);
+      expect(pieces[0]).toBe("scrArrow");
+      expect(pieces.at(-1)).toBe("scrRing");
+      // turned back three steps from where it points now (0)
+      expect(mirror.items[0].rot).toBeCloseTo((-3 * Math.PI) / 4);
+      // full size: never scaled down
+      expect(mirror.items[0].sx ?? 1).toBe(1);
+    }
+    // steady for reduced motion
+    expect(
+      flashing({ reduced: true }).floor.find((p) => p.piece === "scrHalo")!
+        .alpha,
+    ).toBe(1);
+    // only the mirror with a scramble coming, and only until it turns
+    const f = flashing();
+    expect(named(f, /^scr/)).toHaveLength(3);
+    const done = input({ time: 11 });
+    done.mirrors[0].scrambleAt = 11;
+    expect(named(atriumFrame(done), /^scr/)).toHaveLength(0);
   });
 });

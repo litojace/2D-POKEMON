@@ -49,6 +49,8 @@ interface Rig {
   angles: number[];
   shown: number[];
   turnedAt: number[];
+  /** Each mirror had a scramble coming last frame. */
+  flashing: boolean[];
 }
 const rigs = new WeakMap<Phaser.GameObjects.Graphics, Rig>();
 
@@ -92,10 +94,16 @@ export function paintAtriumRig(
   rig.frame = scene.game.loop.frame;
   const mirrors = (r.mirrors ?? []).map((m, i) => {
     const last = rig.angles[i];
-    // a turn: ring the chime (the server turns a mirror 45° per hit)
-    if (last !== undefined && Math.abs(last - m.angle) > 0.01)
+    // a raider's hit turned it: ring the chime. A scramble (its flash just
+    // ended) shows the server's own pink ring instead.
+    if (
+      last !== undefined &&
+      Math.abs(last - m.angle) > 0.01 &&
+      !(rig.flashing[i] && m.scrambleAt === undefined)
+    )
       rig.turnedAt[i] = clock;
     rig.angles[i] = m.angle;
+    rig.flashing[i] = m.scrambleAt !== undefined;
     let shown = rig.shown[i];
     if (shown === undefined || reduced) shown = m.angle;
     else {
@@ -112,6 +120,8 @@ export function paintAtriumRig(
       angle: m.angle,
       shown,
       turnAge: clock - (rig.turnedAt[i] ?? -Infinity),
+      scrambleAt: m.scrambleAt,
+      scrambleTurns: m.scrambleTurns,
     };
   });
   const frame = atriumFrame({
@@ -192,6 +202,7 @@ function createRig(g: Phaser.GameObjects.Graphics): Rig {
     angles: [],
     shown: [],
     turnedAt: [],
+    flashing: [],
   };
   rig.top.box.setDepth(TOP_DEPTH);
   rigs.set(g, rig);

@@ -15,6 +15,8 @@ import {
   RAID_BOSS_ATTACKS,
   ritesFor,
   brazierLifetime,
+  BRAZIER_PACE,
+  BRAZIER_HOP,
   type RaidAttack,
 } from "../../packages/shared/src/raid";
 import {
@@ -72,10 +74,12 @@ const resolve = (a: EmberwingArena) => {
 };
 const stand = (a: EmberwingArena, index: number, player = 0) =>
   Object.assign(a.heroes()[player], E.braziers[index]);
+/** Long enough on a brazier to light it. */
+const LIGHT = E.lightSeconds + 0.1;
 const lightAll = (a: EmberwingArena) => {
   for (let i = 0; i < 3; i++) {
     stand(a, i);
-    run(a, 1.6);
+    run(a, LIGHT);
   }
 };
 describe("Emberwing flight and brazier puzzle", () => {
@@ -115,12 +119,12 @@ describe("Emberwing flight and brazier puzzle", () => {
         else if (size === 2) {
           stand(a, 0, 0);
           stand(a, 1, 1);
-          run(a, 1.6);
+          run(a, LIGHT);
           stand(a, 2, 0);
-          run(a, 1.6);
+          run(a, LIGHT);
         } else {
           for (let i = 0; i < 3; i++) stand(a, i, i);
-          run(a, 1.6);
+          run(a, LIGHT);
         }
         expect(a.raid.airborne).toBe(false);
         expect(a.raid.groundings).toBe(1);
@@ -131,13 +135,13 @@ describe("Emberwing flight and brazier puzzle", () => {
     const a = setup();
     a.tick();
     stand(a, 0);
-    run(a, 0.8);
+    run(a, E.lightSeconds / 2);
     expect(a.raid.braziers![0].progress).toBeGreaterThan(0.4);
     a.heroes()[0].x = 100;
     run(a, 0.1);
     expect(a.raid.braziers![0].progress).toBe(0);
     stand(a, 0);
-    run(a, 1.6);
+    run(a, LIGHT);
     expect(a.raid.contributions!.p0.pillars).toBe(1);
     run(a, 2);
     expect(a.raid.contributions!.p0.pillars).toBe(1);
@@ -146,15 +150,19 @@ describe("Emberwing flight and brazier puzzle", () => {
     expect(a.raid.braziers![0].litUntil).toBe(0);
   });
   it("uses longer solo timers and Fireproof halves lighting time", () => {
-    expect(brazierLifetime(1, 3, 3)).toBe(8);
+    expect(E.lightSeconds).toBe(2);
+    expect(brazierLifetime(1, 3, 3)).toBe(11);
     expect(brazierLifetime(1, 2, 1)).toBe(12);
-    expect(brazierLifetime(2, 3, 1)).toBe(4);
-    expect(brazierLifetime(4, 2, 3)).toBe(6);
+    expect(brazierLifetime(3, 3, 3)).toBe(3.5);
+    expect(brazierLifetime(4, 2, 3)).toBe(5);
+    expect(brazierLifetime(2, 2, 3)).toBe(5);
+    // A pair needs one walk to the third brazier after lighting two.
+    expect(brazierLifetime(2, 3, 3)).toBeCloseTo(4.52, 2);
     const a = setup();
     a.raid.rites.p0 = ["fireproof"];
     a.tick();
     stand(a, 0);
-    run(a, 0.8);
+    run(a, E.lightSeconds * (1 - riteValue("fireproof", 2)) + 0.1);
     expect(a.raid.braziers![0].litUntil).toBeGreaterThan(a.time);
     expect(a.raid.contributions!.p0.pillars).toBe(1);
   });
@@ -181,7 +189,7 @@ describe("Emberwing flight and brazier puzzle", () => {
     });
     expect(boss.hp).toBe(groundHp);
   });
-  it("shrinks fire when grounded and keeps the final heart open after two groundings", () => {
+  it("shrinks fire when grounded and keeps the final heart open for 20 s after three groundings", () => {
     const a = setup(1, 3);
     a.tick();
     attack(a, "scorched-earth");
@@ -190,16 +198,31 @@ describe("Emberwing flight and brazier puzzle", () => {
     lightAll(a);
     expect(a.raid.emberPatches![0].radius).toBeCloseTo(67.5);
     expect(a.raid.permanentGround).toBe(false);
-    a.time = a.raid.exposedUntil + 0.1;
-    (a as any).nextAttack = Infinity;
-    a.tick();
-    lightAll(a);
-    expect(a.raid.permanentGround).toBe(true);
-    expect(a.raid.chapterGroundings).toBe(2);
+    for (const n of [2, 3]) {
+      a.time = a.raid.exposedUntil + 0.1;
+      (a as any).nextAttack = Infinity;
+      a.tick();
+      expect(a.raid.airborne).toBe(true);
+      lightAll(a);
+      expect(a.raid.chapterGroundings).toBe(n);
+      expect(a.raid.permanentGround).toBe(n === 3);
+    }
+    const broken = a.time;
     a.time = a.raid.exposedUntil + 1;
+    (a as any).nextAttack = Infinity;
     a.tick();
     expect(a.raid.airborne).toBe(false);
     expect((a as any).alwaysExposed()).toBe(true);
+    // Twenty seconds later the wings mend and it flies again, count reset.
+    a.time = broken + E.permanentGround.seconds - 0.2;
+    a.tick();
+    expect(a.raid.permanentGround).toBe(true);
+    a.time = broken + E.permanentGround.seconds + 0.1;
+    a.tick();
+    expect(a.raid.permanentGround).toBe(false);
+    expect(a.raid.airborne).toBe(true);
+    expect(a.raid.chapterGroundings).toBe(0);
+    expect((a as any).alwaysExposed()).toBe(false);
   });
   it("counts the quick-grounding feat only after three real takeoffs and a victory", () => {
     const a = setup();
@@ -221,13 +244,13 @@ describe("Emberwing flight and brazier puzzle", () => {
     run(a, 1.6);
     expect(a.raid.braziers![0].progress).toBe(0);
     expect(raidCue(a.snapshot(), "p0")).toContain("Updraft");
-    run(a, 2.1);
+    run(a, 0.4 + LIGHT);
     stand(a, 1);
-    run(a, 1.6);
+    run(a, LIGHT);
     stand(a, 2);
-    run(a, 1.6);
+    run(a, LIGHT);
     expect(a.raid.groundings).toBe(1);
-    expect(a.raid.exposedUntil - a.time).toBeGreaterThan(7.7);
+    expect(a.raid.exposedUntil - a.time).toBeGreaterThan(E.expose + 2 - 0.3);
   });
 });
 describe("Emberwing attacks and champion answers", () => {
@@ -526,6 +549,150 @@ describe("Emberwing movement and long encounters", () => {
       (k) => k !== "brazier-lighting",
     ))
       expect(seen, kind).toContain(kind);
+  });
+});
+
+describe("Emberwing AI: contested braziers, return dives and mending wings", () => {
+  const route = (order: number[]) =>
+    order
+      .slice(1)
+      .reduce(
+        (sum, b, i) =>
+          sum +
+          Math.hypot(
+            E.braziers[b].x - E.braziers[order[i]].x,
+            E.braziers[b].y - E.braziers[order[i]].y,
+          ),
+        0,
+      );
+  it("times every brazier route at the slowest champion's pace", () => {
+    const slowest = Math.min(...Object.values(CHARACTERS).map((c) => c.speed));
+    expect(BRAZIER_PACE).toBe(slowest);
+    // Solo: three lights, the shortest walk past all three, and 1.5 s spare.
+    const shortest = Math.min(
+      ...[
+        [0, 1, 2],
+        [0, 2, 1],
+        [1, 0, 2],
+        [1, 2, 0],
+        [2, 0, 1],
+        [2, 1, 0],
+      ].map(route),
+    );
+    expect(brazierLifetime(1, 3, 3)).toBeGreaterThanOrEqual(
+      3 * E.lightSeconds + shortest / slowest + 1.5,
+    );
+    // A pair: one more light after the shortest hop, and a margin.
+    for (const phase of [2, 3])
+      expect(brazierLifetime(2, phase, 3)).toBeGreaterThanOrEqual(
+        E.lightSeconds + BRAZIER_HOP / slowest + 0.9,
+      );
+  });
+  it("lights the whole solo route at the slowest pace while Emberwing attacks", () => {
+    const a = setup(1, 3, 3, ["terradon"]);
+    a.standIn("p0");
+    (a as any).nextAttack = 0;
+    let contested = false;
+    for (let t = 0; t < 40 && !a.raid.groundings; t += 1 / 30) {
+      a.tick();
+      if (a.raid.warnings.some((w) => w.kind === "ember-rain" && w.targetId))
+        contested = true;
+      const p = a.heroes()[0];
+      if (p.hp <= 0) break;
+    }
+    expect(contested).toBe(true);
+    expect(a.raid.groundings).toBe(1);
+  });
+  it("rains on the last brazier's lighter as soon as the second flame catches, leaving its far side clear", () => {
+    const a = setup(3, 2);
+    a.tick();
+    stand(a, 0, 0);
+    stand(a, 1, 1);
+    // The third raider comes from the left of brazier 2.
+    Object.assign(a.heroes()[2], {
+      x: E.braziers[2].x - 80,
+      y: E.braziers[2].y,
+    });
+    run(a, LIGHT);
+    expect(a.raid.braziers!.filter((b) => b.litUntil > a.time)).toHaveLength(2);
+    // The attack comes at once, whatever was next in the rotation.
+    run(a, 0.5);
+    const rain = a.raid.warnings.filter((w) => w.kind === "ember-rain");
+    expect(rain).toHaveLength(4);
+    expect(rain[0].targetId).toBe("p2");
+    const b = E.braziers[2];
+    expect(Math.hypot(rain[0].x - b.x, rain[0].y - b.y)).toBeCloseTo(
+      E.lighterRain.inset,
+      0,
+    );
+    expect(rain[0].x).toBeLessThan(b.x);
+    for (const w of rain)
+      expect(w.at - w.startedAt!).toBeGreaterThanOrEqual(1.2);
+    // The far side of the ring is outside every circle, and in reach.
+    const clear = { x: b.x + E.lighterRain.inset, y: b.y };
+    for (const w of rain)
+      expect(Math.hypot(clear.x - w.x, clear.y - w.y)).toBeGreaterThan(
+        w.radius + 24,
+      );
+    expect(Math.hypot(clear.x - b.x, clear.y - b.y)).toBeLessThan(
+      E.brazierRadius,
+    );
+    const p = a.heroes()[2];
+    expect(Math.hypot(clear.x - p.x, clear.y - p.y)).toBeLessThan(
+      222 * (E.rain.delay - 0.45),
+    );
+    // Lighting from the clear side finishes the brazier and grounds it.
+    Object.assign(p, clear);
+    const hp = p.hp;
+    run(a, LIGHT);
+    expect(p.hp).toBe(hp);
+    expect(a.raid.groundings).toBe(1);
+  });
+  it("turns at the end of a dive and comes back through its target from the second chapter", () => {
+    const a = setup(1, 2);
+    const p = a.heroes()[0];
+    Object.assign(p, { x: 500, y: 450 });
+    attack(a, "dive-bomb");
+    expect(a.raid.warnings[0].at - a.raid.warnings[0].startedAt!).toBeCloseTo(
+      E.dive.delay,
+    );
+    run(a, E.dive.delay + 0.05);
+    // The raider sidestepped the first lane.
+    Object.assign(p, { x: 500, y: 650 });
+    run(a, E.dive.seconds + 0.1);
+    const back = a.raid.warnings.find((w) => w.kind === "dive-bomb");
+    expect(back?.followUp).toBe(true);
+    expect(back!.at - back!.startedAt!).toBeGreaterThanOrEqual(0.9);
+    expect(
+      Math.abs(
+        (back!.ty - back!.y) * (p.x - back!.x) -
+          (back!.tx - back!.x) * (p.y - back!.y),
+      ) / Math.hypot(back!.tx - back!.x, back!.ty - back!.y),
+    ).toBeLessThan(1);
+    run(a, E.dive.returnDelay + E.dive.seconds);
+    expect(p.hp).toBeLessThan(CHARACTERS.voltkit.health);
+    // The return pass does not turn again.
+    run(a, 1);
+    expect(a.raid.warnings.filter((w) => w.kind === "dive-bomb")).toEqual([]);
+    // In the first chapter the dive does not come back.
+    const b = setup(1, 1);
+    attack(b, "dive-bomb");
+    run(b, E.dive.delay + E.dive.seconds + 0.2);
+    expect(b.raid.warnings).toEqual([]);
+  });
+  it("dives ahead of a running raider, and onto a raider standing still", () => {
+    const a = setup(1, 2),
+      p = a.heroes()[0];
+    Object.assign(p, { x: 500, y: 450, vx: 0, vy: 230 });
+    attack(a, "dive-bomb");
+    expect(a.raid.warnings[0].ty).toBeGreaterThan(560);
+    const b = setup(1, 2),
+      q = b.heroes()[0];
+    Object.assign(q, { x: 500, y: 450, vx: 0, vy: 0 });
+    attack(b, "dive-bomb");
+    expect([b.raid.warnings[0].tx, b.raid.warnings[0].ty]).toEqual([500, 450]);
+    expect(E.dive.delay).toBe(1.15);
+    expect(E.expose).toBe(5);
   });
 });
 
