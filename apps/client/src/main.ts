@@ -147,6 +147,7 @@ import { prewarmTerrace } from "./raid-emberwing-terrace-rig";
 import { setRaidMapLow } from "./raid-map-atlas";
 import { prewarmLagoon } from "./raid-tidewyrm-art";
 import { noteCloudDeckEvent, prewarmCloudDeck } from "./raid-somnara-art";
+import { isMirrorTurnImpact } from "./raid-prismatail-atrium";
 import { FighterLoading, neededFighters } from "./animation/fighter-loading";
 import {
   setOverlayMarkup,
@@ -4748,7 +4749,12 @@ class ArenaScene extends Phaser.Scene {
     )
       // A pillar breaking: its ring is drawn with the pillars.
       this.pillarRig.impact(event.x, event.y, this.time.now, reducedMotion);
-    else if (event.kind === "raid-impact" && !deck) {
+    else if (
+      event.kind === "raid-impact" &&
+      !deck &&
+      // A mirror turning rings its own chime (raid-prismatail-atrium.ts).
+      !isMirrorTurnImpact(state?.raid, event)
+    ) {
       const ring = this.add
         .circle(event.x, event.y, event.raidRadius ?? 90, event.color, 0.12)
         .setStrokeStyle(4, event.color, 0.9);
