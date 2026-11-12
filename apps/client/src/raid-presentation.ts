@@ -5,6 +5,7 @@ import {
   DREAM_RUNE_NAMES,
   raidPingLabel,
   RAID_REWARDS,
+  EMBERWING,
   type RaidBossId,
   type RaidContribution,
   type RaidProgress,
@@ -77,7 +78,7 @@ export function raidCue(state: Snapshot, myId: string) {
     )
       return `Updraft — braziers ready in ${Math.ceil(2 - (state.time - (r.takeoffAt ?? 0)))}s. Get into position!`;
     if (r.airborne)
-      return `Airborne · ${(r.braziers ?? []).filter((b) => b.litUntil > state.time).length}/3 braziers lit · stand in the rings${r.phase === 3 ? ` · ${r.chapterGroundings ?? 0}/2 groundings` : ""}`;
+      return `Airborne · ${(r.braziers ?? []).filter((b) => b.litUntil > state.time).length}/3 braziers lit · stand in the rings${r.phase === 3 ? ` · ${r.chapterGroundings ?? 0}/${EMBERWING.permanentGround.after} groundings` : ""}`;
     return "Sidestep dives, jump flame rings, and keep out of burning ground.";
   }
   if (r.boss === "prismatail") {
