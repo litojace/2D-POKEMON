@@ -11,6 +11,7 @@ import {
 } from "./boss-painted-rig";
 import { grumbleGuideImage } from "./boss-vector-grumble";
 import { tideGuideImage } from "./boss-vector-tide";
+import { gloomGuideImage } from "./boss-vector-gloom";
 import base from "./art/raid-whole-frames.json";
 
 /** Reuse a complete battle pose in the diagram; native atlas has ample resolution
@@ -33,7 +34,9 @@ export function raidGuideSprite(
     const art =
         boss === "tidewyrm"
           ? tideGuideImage(exposed)
-          : grumbleGuideImage(exposed),
+          : boss === "gloomshade"
+            ? gloomGuideImage(exposed)
+            : grumbleGuideImage(exposed),
       [sx, sy, w, h] = art.crop,
       scale = Math.min(90 / w, 80 / h),
       frameX = -45 + (90 - w * scale) / 2,

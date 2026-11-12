@@ -1,7 +1,6 @@
-import { paintedGloom } from "./boss-painted-poses";
+import { paintVectorGloom } from "./boss-vector-gloom-rig";
 import { groundHeight } from "../../../packages/shared/src/world-art";
-import { bossSurface } from "./boss-materials";
-import { bossLife, type BossLifePose } from "./raid-boss-life";
+import { bossLife } from "./raid-boss-life";
 import type Phaser from "phaser";
 import type { Snapshot } from "@arena/shared";
 import {
@@ -62,6 +61,7 @@ class GloomMotion {
   hurtAt = -10;
   splitAt = -10;
   deathAt = -1;
+  roarAt = -10;
   motes: Mote[] = [];
   serial = 0;
   puff(
@@ -497,39 +497,6 @@ function hand(g: G, x: number, y: number, h: number) {
     .fillCircle(x + 3, y - h + 6, 2);
 }
 
-/** A crescent moon (the tail), pointing along `angle`. */
-function crescent(
-  g: G,
-  x: number,
-  y: number,
-  radius: number,
-  angle: number,
-  color: number,
-  alpha: number,
-) {
-  const d = radius * 0.55;
-  const phi = Math.atan2(
-    Math.sqrt(Math.max(0, radius * radius - (d * d) / 4)),
-    d / 2,
-  );
-  const pts: { x: number; y: number }[] = [];
-  const N = 14;
-  for (let i = 0; i <= N; i++) {
-    const a = phi + ((Math.PI * 2 - 2 * phi) * i) / N;
-    pts.push({ x: Math.cos(a) * radius, y: Math.sin(a) * radius });
-  }
-  for (let i = 0; i <= N; i++) {
-    const a = Math.PI + phi - (2 * phi * i) / N;
-    pts.push({ x: d + Math.cos(a) * radius, y: Math.sin(a) * radius });
-  }
-  const c = Math.cos(angle),
-    s = Math.sin(angle);
-  g.fillStyle(color, alpha).fillPoints(
-    pts.map((p) => ({ x: x + p.x * c - p.y * s, y: y + p.x * s + p.y * c })),
-    true,
-  );
-}
-
 /** Gloomshade and its copies: drifting, splitting, found, staggered, fading at dawn. */
 export function drawGloomshade(
   g: G,
@@ -595,7 +562,10 @@ export function drawGloomshade(
     m.hurtAt = m.time;
     cues.push(exposed || r.staggerUntil > state.time ? "core" : "chip");
   }
-  if (r.phase > m.phase && live) cues.push("awaken");
+  if (r.phase > m.phase && live) {
+    cues.push("awaken");
+    m.roarAt = m.time;
+  }
   const dead = r.result === "victory";
   if (dead && m.deathAt < 0) {
     m.deathAt = m.time;
@@ -613,7 +583,15 @@ export function drawGloomshade(
   const stagger = r.staggerUntil > state.time;
   const hurt = Math.max(0, 1 - (t - m.hurtAt) / 0.24);
   const fade = dead ? (reduced ? 1 : Math.min(1, (t - m.deathAt) / 2.4)) : 0;
-  const facing = Math.cos(boss.angle) >= 0 ? 1 : -1;
+  // The attack being wound up (its warning) and the last one cast: every
+  // copy shares the real one's casting pose (the tells are elsewhere).
+  const wind = r.warnings.find(
+    (w) =>
+      (!w.casterId || w.casterId === boss.id) &&
+      w.at >= state.time &&
+      (w.startedAt ?? w.at - 1.5) <= state.time,
+  );
+  const cast = life.action.casts[life.action.casts.length - 1];
   // Copies first, so the real one draws on top where they overlap.
   const bodies = [
     ...(r.decoys ?? []).map((d) => ({ x: d.x, y: d.y, real: false, id: d.id })),
@@ -627,11 +605,16 @@ export function drawGloomshade(
       key: `shade-${b.id}`,
       x: b.x + shake,
       y: b.y,
-      t: t + b.id * 0.37,
-      facing,
-      motion,
-      life,
-      // The two tells: a shadow in lantern light, and a flickering tail.
+      angle: boss.angle,
+      clock: t + b.id * 0.37,
+      phase: r.phase,
+      reduced,
+      windKind: wind?.kind,
+      windup: life.windup,
+      castKind: cast?.kind,
+      castAge: cast?.age ?? 99,
+      roarAge: t - m.roarAt,
+      // The two tells: a shadow in lantern light, and a flickering moon.
       shadow:
         b.real && litAt(state, b.x, b.y)
           ? nearestLight(state, b.x, b.y)
@@ -640,11 +623,12 @@ export function drawGloomshade(
       shadowAlpha: r.trait === "hollow" ? 0.22 : 0.4,
       flicker: b.real && !reduced,
       alpha: (b.real ? 1 : appear) * (1 - fade),
-      hurt: b.real && hurt > 0.6,
+      hurt: b.real ? hurt : 0,
       gilded: !!r.gilded,
       stagger: b.real && stagger,
       exposed: b.real && exposed,
       dead: b.real && dead,
+      deadAge: dead ? t - m.deathAt : 0,
     });
   }
   // Found: a golden ring and arrow over the real one.
@@ -698,184 +682,49 @@ function nearestLight(state: Snapshot, x: number, y: number) {
 
 interface ShadeLook {
   key: string;
+  /** The floor under the body. */
   x: number;
   y: number;
-  t: number;
-  facing: number;
-  motion: number;
-  life: BossLifePose;
+  angle: number;
+  clock: number;
+  phase: number;
+  reduced: boolean;
+  windKind?: string;
+  windup: number;
+  castKind?: string;
+  castAge: number;
+  roarAge: number;
   shadow?: { x: number; y: number };
   shadowAlpha: number;
   flicker: boolean;
   alpha: number;
-  hurt: boolean;
+  hurt: number;
   gilded: boolean;
   stagger: boolean;
   exposed: boolean;
   dead: boolean;
+  deadAge: number;
 }
-/** One shadow puff: round body, floppy ears, big eyes, a crescent-moon tail. */
+/** From the boss's position to the floor under its paws (world pixels). */
+const FEET = 16;
+/**
+ * One body (the real one or a copy): the vector shadow cat
+ * (boss-vector-gloom.ts), and, for the real one in lantern light, its shadow
+ * stretched away from the light along the floor.
+ */
 function shade(g: G, o: ShadeLook) {
-  const { t, facing, motion, alpha } = o;
-  if (alpha <= 0.01) return;
-  const bob = Math.sin(t * 2.2) * 6 * motion;
-  const x = o.x,
-    y = o.y - 46 + bob + o.life.windup * 7;
-  // Only the real one casts a shadow, and only in light: stretched away
-  // from the light source along the floor.
+  if (o.alpha <= 0.01) return;
   if (o.shadow) {
     const d = Math.hypot(o.x - o.shadow.x, o.y - o.shadow.y) || 1;
     const sx = (o.x - o.shadow.x) / d,
       sy = (o.y - o.shadow.y) / d;
     for (let k = 0; k < 5; k++)
-      g.fillStyle(NIGHT, o.shadowAlpha * alpha).fillEllipse(
+      g.fillStyle(NIGHT, o.shadowAlpha * o.alpha).fillEllipse(
         o.x + sx * (18 + k * 14),
         o.y + 18 + sy * (8 + k * 10),
         96 - k * 8,
         32 - k * 3,
       );
   }
-  if (paintedGloom(g, { ...o, x, y })) return;
-  const body = o.hurt ? 0x6e5aa8 : o.gilded ? 0x4a3d62 : SHADE;
-  const top = o.gilded ? 0x8a7a52 : SHADE_TOP;
-  // Tail: a crescent moon on a wisp, flickering on the real one.
-  const tailFlick = o.flicker
-    ? 0.3 + 0.7 * Math.abs(Math.sin(t * 7.3) * Math.sin(t * 3.1 + 1))
-    : 1;
-  const tx = x - facing * (92 + Math.sin(t * 1.7 - 0.5) * 5 * motion),
-    ty = y - 6 + Math.sin(t * 3) * 4 * motion;
-  // A wisp of shadow curling out to the moon.
-  g.fillStyle(body, 0.95 * alpha)
-    .fillCircle(x - facing * 56, y + 16, 13)
-    .fillCircle(x - facing * 70, y + 8, 10)
-    .fillCircle(tx + facing * 4, ty + 10, 8);
-  if (o.flicker)
-    g.fillStyle(MOON, 0.22 * alpha * tailFlick).fillCircle(tx, ty - 6, 30);
-  crescent(
-    g,
-    tx,
-    ty - 6,
-    22,
-    facing > 0 ? 0 : Math.PI,
-    MOON,
-    alpha * tailFlick,
-  );
-  // Wispy hem: scallops trailing beneath.
-  for (let k = -3; k <= 3; k++) {
-    const sway = Math.sin(t * 4 + k) * 3 * motion;
-    g.fillStyle(SHADE_EDGE, 0.95 * alpha).fillCircle(
-      x + k * 15 + sway,
-      y + 40 + Math.abs(k) * -2,
-      12,
-    );
-  }
-  // The round body.
-  const squash = Math.sin(t * 2.2) * 2 * motion;
-  g.fillStyle(SHADE_EDGE, alpha).fillEllipse(
-    x + 2,
-    y + 3,
-    104 + squash,
-    104 - squash,
-  );
-  bossSurface(g, x, y, 100 + squash, 100 - squash, body, "velvet", alpha);
-  g.fillStyle(top, 0.6 * alpha).fillEllipse(x - facing * 10, y - 22, 64, 36);
-  // Floppy ears hanging down each side, swaying.
-  const ear = Math.sin(t * 1.8) * 5 * motion;
-  for (const side of [-1, 1]) {
-    const ex = x + side * 40;
-    g.save()
-      .translateCanvas(ex, y - 30)
-      .rotateCanvas(side * (0.12 + o.life.windup * 0.2) + ear * 0.012);
-    g.fillStyle(SHADE_EDGE, alpha).fillEllipse(side * 6, 26, 30, 70);
-    bossSurface(g, side * 4, 24, 26, 66, body, "velvet", alpha);
-    g.fillStyle(0x7d66ab, 0.7 * alpha).fillEllipse(side * 3, 32, 12, 40);
-    g.restore();
-  }
-  // Too many eyes: little ones scattered over the top, blinking now and then.
-  if (!o.dead)
-    for (const [i, [ex, ey]] of (
-      [
-        [-30, -26],
-        [28, -30],
-        [-6, -38],
-        [36, -6],
-      ] as const
-    ).entries()) {
-      const blink = motion && Math.sin(t * 0.9 + i * 2.3) > 0.93;
-      if (blink)
-        g.lineStyle(2, EYE, 0.8 * alpha).lineBetween(
-          x + ex - 4,
-          y + ey,
-          x + ex + 4,
-          y + ey,
-        );
-      else {
-        g.fillStyle(EYE, 0.85 * alpha).fillCircle(x + ex, y + ey, 4);
-        g.fillStyle(SHADE_EDGE, alpha).fillCircle(
-          x + ex + facing,
-          y + ey + 0.5,
-          2,
-        );
-      }
-    }
-  // The core: a little moon-heart in its chest, shown when it's exposed.
-  if (o.exposed || o.stagger) {
-    const beat = motion ? 0.8 + Math.sin(t * 9) * 0.2 : 1;
-    g.fillStyle(MOON, 0.35 * beat * alpha).fillCircle(x, y + 28, 18);
-    g.fillStyle(LAMP_HOT, alpha).fillCircle(x, y + 28, 8);
-  }
-  // Eyes: big and glowing; dizzy when staggered; closed at dawn.
-  for (const side of [-1, 1]) {
-    const ex = x + side * 17 + facing * 5,
-      ey = y - 8;
-    if (o.dead) {
-      g.lineStyle(3, EYE, alpha)
-        .beginPath()
-        .arc(ex, ey, 8, 0.2, Math.PI - 0.2, false)
-        .strokePath();
-      continue;
-    }
-    if (o.stagger) {
-      g.lineStyle(3, EYE, alpha).strokeCircle(ex, ey, 8);
-      g.lineStyle(2, EYE, alpha).strokeCircle(ex, ey, 3);
-      continue;
-    }
-    const open = Math.max(0.08, 1 - o.life.blink);
-    g.fillStyle(EYE, 0.16 * alpha).fillEllipse(ex, ey, 29, 29 * open);
-    g.fillStyle(EYE, alpha).fillEllipse(ex, ey, 18, 22 * open);
-    g.fillStyle(SHADE_EDGE, alpha).fillEllipse(
-      ex + facing * 2 + o.life.lookX,
-      ey + 2 * open,
-      9,
-      13 * open,
-    );
-    if (open > 0.3)
-      g.fillStyle(0xffffff, alpha).fillCircle(
-        ex + facing * 4,
-        ey - 4 * open,
-        2.5,
-      );
-  }
-  // Every copy shares the same casting expression; only the taught tells identify the real boss.
-  if (o.life.windup > 0.2 && !o.dead)
-    g.fillStyle(EYE, alpha * 0.8).fillEllipse(
-      x + facing * 5,
-      y + 13,
-      10,
-      3 + o.life.windup * 8,
-    );
-  // A tiny smile.
-  g.lineStyle(2.5, EYE, 0.8 * alpha)
-    .beginPath()
-    .arc(x + facing * 5, y + 10, 7, 0.3, Math.PI - 0.3, false)
-    .strokePath();
-  if (o.stagger)
-    for (let i = 0; i < 3; i++) {
-      const a = t * 4 + (i * Math.PI * 2) / 3;
-      g.fillStyle(0xfff1a0, alpha).fillCircle(
-        x + Math.cos(a) * 36,
-        y - 62 + Math.sin(a) * 8,
-        4,
-      );
-    }
+  paintVectorGloom(g, o.key, { ...o, y: o.y + FEET });
 }
