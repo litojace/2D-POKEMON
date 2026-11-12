@@ -28,7 +28,7 @@ export const STORM_TWINS = {
   /**
    * Link Beam: the twins steer so the beam sweeps across the biggest group,
    * at their orbit speed, and hold still for the warning's last `hold`
-   * seconds so its drawn line is where it lands.
+   * seconds (0.6 s and a tick or two) so its drawn line is where it lands.
    */
   link: {
     delay: 1.15,
@@ -36,7 +36,7 @@ export const STORM_TWINS = {
     width: 22,
     damage: 24,
     bickeringDamage: 14,
-    hold: 0.6,
+    hold: 0.7,
   },
   chain: { delay: 1.3, range: 200, damage: [24, 16, 10] },
   field: { delay: 1.2, radius: 100, seconds: 6, damage: 5 },

@@ -564,6 +564,8 @@ export class EmberwingArena extends RaidArena {
       return;
     }
     if (r.exposedUntil > this.time && !r.permanentGround) return;
+    // A dive is drawn from where it waits: it hovers in place until it goes.
+    if (r.warnings.some((w) => w.kind === "dive-bomb")) return;
     const x =
         E.home.x + Math.sin(this.phaseElapsed * 0.18) * (r.airborne ? 170 : 75),
       y =
