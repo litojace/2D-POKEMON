@@ -24,11 +24,30 @@ export const STORM_TWINS = {
     { x: 1060, y: 640 },
   ],
   radius: 56,
-  reviveFraction: 0.35,
-  link: { delay: 1.15, seconds: 2.4, width: 22, damage: 20 },
+  reviveFraction: 0.5,
+  /**
+   * Link Beam: the twins steer so the beam sweeps across the biggest group,
+   * at their orbit speed, and hold still for the warning's last `hold`
+   * seconds so its drawn line is where it lands.
+   */
+  link: {
+    delay: 1.15,
+    seconds: 2.4,
+    width: 22,
+    damage: 24,
+    bickeringDamage: 14,
+    hold: 0.6,
+  },
   chain: { delay: 1.3, range: 200, damage: [24, 16, 10] },
   field: { delay: 1.2, radius: 100, seconds: 6, damage: 5 },
-  rush: { delay: 1.35, width: 38, seconds: 0.6, damage: 26 },
+  /** Twin Rush lanes run through raiders, to the ring's edge (`box`). */
+  rush: {
+    delay: 1.35,
+    width: 38,
+    seconds: 0.6,
+    damage: 26,
+    box: { x0: 100, y0: 170, x1: 1500, y1: 730 },
+  },
   polarity: { seconds: 4, range: 125, padRadius: 58, damage: 28 },
   clap: { delay: 1.2, radius: 180, damage: 22 },
 } as const;
@@ -38,7 +57,7 @@ export function twinKillWindow(
   trait: string,
 ) {
   return (
-    ([15, 15, 12, 8][peril] ?? 8) +
+    ([15, 15, 12, 7][peril] ?? 7) +
     (partySize === 1 ? 3 : 0) +
     (trait === "in-sync" ? 3 : 0)
   );
