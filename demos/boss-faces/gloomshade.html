@@ -1003,20 +1003,27 @@ const GLOOM = (() => {
     const headW = pose({ x: 0, y: base + 30 - P.headDrop, z: 24 });
     const hs = project(headW);
     const hz = depth(headW) + 8;
-    // ears: long lop ears from the top of the skull, draping out, down and back
+    // ears: lop ears from the top of the skull, draping out, down and back over
+    // the shoulders (well clear of the floor), the tips curling out and up
     const facing = Math.cos(headYaw) > -0.25,
       turned = Math.abs(Math.sin(headYaw)) > 0.5;
     for (const s of [-1, 1]) {
       const root = rotY({ x: s * 0.62 * A, y: 0.34 * A, z: -0.42 * A }, headYaw);
       let p = { x: headW.x + root.x, y: headW.y + root.y, z: headW.z + root.z };
-      const pts = [], N = 10, L = 9;
+      const pts = [], N = 10, L = 6.3;
       const eb = P.earBack;
       for (let i = 0; i < N; i++) {
         const u = i / (N - 1);
         pts.push({ ...p });
         const wave = Math.sin(t * 2.3 - i * 0.6 + s) * 0.2 * (0.3 + u);
-        // hanging: out a little and down; streaming: back and nearly level
-        const d = { x: s * lerp(0.42, 0.28, eb), y: lerp(-1, -0.32 + P.earLift * 0.9, eb) + wave, z: lerp(-0.15, -1, eb) * lerp(0.6, 1, u) };
+        // hanging: out a little, down and back; streaming: back and nearly
+        // level; the tip curls out and up either way
+        const curl = smooth(0.5, 1, u) * (1 - 0.6 * eb);
+        const d = {
+          x: s * (lerp(0.34, 0.28, eb) + curl * 0.75),
+          y: lerp(-1, -0.32 + P.earLift * 0.9, eb) + wave + curl * 1.1,
+          z: lerp(-0.85, -1, eb) * lerp(0.7, 1, u),
+        };
         const n = Math.hypot(d.x, d.y, d.z) || 1;
         const r = rotY({ x: (d.x / n) * L, y: (d.y / n) * L, z: (d.z / n) * L }, yaw);
         p = { x: p.x + r.x, y: p.y + r.y, z: p.z + r.z };
@@ -1027,14 +1034,18 @@ const GLOOM = (() => {
       const near = -s * Math.sin(headYaw) > 0;
       const over = !facing || (near && turned);
       const id = s < 0 ? "l" : "r";
+      // every outline of the ear behind every fill of it: one smooth shape
       const leaf = (key, piece, a, b, nominal, bias) => {
         const sa = project(a), sb = project(b);
         const len = Math.hypot(sb.x - sa.x, sb.y - sa.y), rot = Math.atan2(sb.y - sa.y, sb.x - sa.x);
-        add(key, piece, a, { rot, sx: clamp(len / nominal, 0.5, 1.12), sy: Math.cos(rot) < 0 ? -1 : 1, bias: hz + (over ? 1.5 : -2) + bias - depth(a) });
+        const o = { rot, sx: clamp(len / nominal, 0.5, 1.12), sy: Math.cos(rot) < 0 ? -1 : 1 };
+        const at = hz + (over ? 1.5 : -2) - depth(a);
+        add(key + "e", piece + "_e", a, { ...o, bias: at - 0.9 + bias * 0.01 });
+        add(key, piece + "_f", a, { ...o, bias: at + bias });
       };
-      leaf("ear" + id + "b", "ear_b", pts[6], pts[9], 27, -0.8);
-      leaf("ear" + id + "m", "ear_m", pts[3], pts[6], 27, -0.4);
-      leaf("ear" + id + "a", "ear_a", pts[0], pts[3], 27, 0);
+      leaf("ear" + id + "b", "ear_b", pts[6], pts[9], 20, -0.4);
+      leaf("ear" + id + "m", "ear_m", pts[3], pts[6], 20, -0.2);
+      leaf("ear" + id + "a", "ear_a", pts[0], pts[3], 20, 0);
     }
     // phases 2 and 3: wisps of shadow lifting off its back
     for (let i = 0; i < (phase - 1) * 3; i++) {
@@ -1087,9 +1098,11 @@ const GLOOM = (() => {
   const headGradient = (c, pal, dy = 0) => furGradient(c, pal, SK.top - 6 - dy, SK.bot + 8 - dy);
   /** Stroke the outline, fill, then light the fur inside. */
   function paintFur(c, path, pal, top, bot, o = {}) {
-    c.strokeStyle = pal.edge;
-    c.lineWidth = o.edge || 2;
-    c.stroke(path);
+    if (!o.noEdge) {
+      c.strokeStyle = pal.edge;
+      c.lineWidth = o.edge || 2;
+      c.stroke(path);
+    }
     c.fillStyle = o.fill || furGradient(c, pal, top, bot);
     c.fill(path);
     c.save();
@@ -1152,8 +1165,12 @@ const GLOOM = (() => {
       } else paintFur(c, path, pal, -r, r, { fill: o.fill, strands: o.strands === undefined ? r * 1.4 : o.strands, x0: -r, x1: r, seed: seed + 3, edge: o.edge });
     });
   }
-  /** A third of a long lop ear, drawn along +x from its anchor: half-width w0 to w1. */
-  function earPiece(name, pal, w0, w1, tip) {
+  /**
+   * A third of a lop ear, drawn along +x from its anchor: half-width w0 to w1.
+   * Mode "e" is its outline alone and "f" its fur alone: the rig lays all of
+   * an ear's outlines behind all of its fills, so the ear reads as one shape.
+   */
+  function earPiece(name, pal, w0, w1, tip, mode) {
     return pieceOf(name, 52, 38, 9 / 52, 0.5, (c) => {
       const pts = [];
       const N = 48, x0 = -7, x1 = tip ? 37 : 35;
@@ -1163,8 +1180,15 @@ const GLOOM = (() => {
       for (let i = N; i >= 0; i--) { const u = i / N; pts.push({ x: lerp(x0, x1, u), y: half(u) * 1.1 }); }
       const path = new Path2D();
       furPath(path, pts, { seed: 19 + w0, tooth: 6.5, depth: 2, mask: (x, y) => (y > 1 ? 1 : 0.15) });
-      if (tip) for (const [x, y, a] of [[30, 6, 0.5], [34, 1, 0.1], [31, -5, -0.4]]) tuft(path, x, y, a, 8, 3.2, 0.2);
-      paintFur(c, path, pal, -15, 16, { strands: 26, x0, x1, seed: 41, edge: 1.9, flow: 0.3 });
+      if (tip) for (const [x, y, a] of [[30, 5, 0.5], [34, 1, 0.1], [31, -4, -0.4]]) tuft(path, x, y, a, 7, 2.8, 0.2);
+      if (mode === "e") {
+        c.fillStyle = c.strokeStyle = pal.edge;
+        c.lineWidth = 3.8;
+        c.stroke(path);
+        c.fill(path);
+        return;
+      }
+      paintFur(c, path, pal, -15, 16, { strands: 22, x0, x1, seed: 41, edge: 1.9, flow: 0.3, noEdge: true });
       c.save(); // the paler inside of the ear, along its lower edge
       c.clip(path);
       const g = c.createLinearGradient(0, 3, 0, 16);
@@ -1696,9 +1720,11 @@ const GLOOM = (() => {
       ballPiece("ball14", 14, pal, 9, { strands: 10 }),
       softPiece("puff_hi", pal.furLight, 0.6),
       softPiece("puff_lo", pal.furDark, 0.6),
-      earPiece("ear_a", pal, 7, 12, false),
-      earPiece("ear_m", pal, 12, 14.5, false),
-      earPiece("ear_b", pal, 14.5, 12, true),
+      ...["e", "f"].flatMap((m) => [
+        earPiece("ear_a_" + m, pal, 6.5, 10, false, m),
+        earPiece("ear_m_" + m, pal, 10, 12, false, m),
+        earPiece("ear_b_" + m, pal, 12, 10, true, m),
+      ]),
       pieceOf("wisp", 20, 30, 0.5, 0.8, (c) => {
         const path = new Path2D();
         tuft(path, 0, 4, -Math.PI / 2, 24, 6, 0.3);

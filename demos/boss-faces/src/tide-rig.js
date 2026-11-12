@@ -705,6 +705,7 @@ var TIDE = (() => {
   var tideCentre = (v) => 0.9 * HA * hse(v) + 0.56 * HA * gauss(v - 0.4 * HA, (v > 0.4 * HA ? 0.3 : 0.2) * HA) - 0.04 * HA * gauss(v - 0.02 * HA, 0.12 * HA);
   var snoutHalf = (v) => 0.3 * HA * gauss(v - 0.44 * HA, 0.26 * HA);
   var TQ_LAG = 14 * Math.PI / 180;
+  var HEAD_K = 1.25;
   var TQ_SIN = Math.sin(Math.PI / 4 - TQ_LAG);
   function tideSkull(view, v) {
     const s = hse(v), w = 0.99 * HA * s * (1 + 0.05 * smooth(-0.2 * HA, 0.4 * HA, v));
@@ -858,6 +859,34 @@ var TIDE = (() => {
       1,
       (ctx, k) => finShape(ctx, k, 18, PIECE.mane + 2, pal, 4)
     );
+    pieceOf("horn", 26, PIECE.horn + 4, 0.35, 1, (ctx, k) => {
+      const b = { x: 9 * k, y: (PIECE.horn + 2) * k };
+      const beam = [
+        b,
+        { x: 10 * k, y: b.y - 16 * k },
+        { x: 15 * k, y: b.y - 31 * k },
+        { x: 18 * k, y: 3 * k }
+      ];
+      const tines = [
+        [beam[1], { x: 3 * k, y: b.y - 28 * k }],
+        [beam[2], { x: 24 * k, y: b.y - 40 * k }]
+      ];
+      const stroke = (pts, w0, w1) => {
+        for (const pass of [0, 1])
+          for (let j = 0; j < pts.length - 1; j++) {
+            const wdt = lerp(w0, w1, j / (pts.length - 1)) * k;
+            ctx.strokeStyle = pass ? j < pts.length - 2 ? "#f1e2bd" : "#ffd27a" : pal.line;
+            ctx.lineWidth = pass ? wdt : wdt + 3 * k;
+            ctx.lineCap = "round";
+            ctx.beginPath();
+            ctx.moveTo(pts[j].x, pts[j].y);
+            ctx.lineTo(pts[j + 1].x, pts[j + 1].y);
+            ctx.stroke();
+          }
+      };
+      for (const t of tines) stroke(t, 5, 2.5);
+      stroke(beam, 9.5, 2.8);
+    });
     pieceOf(
       "frill",
       20,
@@ -1256,6 +1285,8 @@ var TIDE = (() => {
     );
     return out;
   }
+  var TIDE_GAP = 0.55;
+  var BELLY_ACROSS = 1 - 0.72;
   function tidePlacements(P, yaw, phase, water) {
     const pal = TIDE[phase];
     const { segs, head } = tideBody(P, yaw);
@@ -1264,16 +1295,39 @@ var TIDE = (() => {
     const sp = tideProject;
     const RUN = 5;
     for (let r0 = 0; r0 < SEGMENTS; r0 += RUN) {
-      const run = segs.slice(r0, r0 + RUN + 1).sort((a, b) => a.w.z - b.w.z);
+      const run = segs.slice(r0, r0 + RUN + 1);
+      for (let n = run.length - 1; n > 0; n--) {
+        const a = run[n - 1], b = run[n];
+        const pa = sp(a.w), pb = sp(b.w);
+        const gap = Math.hypot(pb.x - pa.x, pb.y - pa.y) / Math.min(a.r, b.r);
+        const extra = Math.min(3, Math.ceil(gap / TIDE_GAP) - 1);
+        for (let m = extra; m >= 1; m--) {
+          const t = m / (extra + 1);
+          const right = norm(add(mul(a.right, 1 - t), mul(b.right, t))), d = norm(add(mul(a.d, 1 - t), mul(b.d, t)));
+          run.splice(n, 0, {
+            i: a.i + t,
+            w: add(mul(a.w, 1 - t), mul(b.w, t)),
+            d,
+            r: lerp(a.r, b.r, t),
+            right,
+            up: norm(cross(right, d)),
+            mid: m
+          });
+        }
+      }
+      run.sort((a, b) => a.w.z - b.w.z);
       const runZ = run.reduce((a, s) => a + s.w.z, 0) / run.length;
-      run.forEach((s, k) => {
+      const kz = 6 / run.length;
+      run.forEach((s, k0) => {
+        const k = k0 * kz;
         const wl = water(s.w.x, s.w.z);
         if (wl !== null && s.w.y < wl - s.r * 1.05) return;
         const c = sp(s.w), sc = s.r / PIECE.seg;
         const waterY = wl === null ? void 0 : sp(v3(s.w.x, wl, s.w.z)).y;
-        const dup = s.i === r0 + RUN ? "b" : "";
+        const dup = s.i === r0 + RUN && !s.mid ? "b" : "";
+        const tag = s.mid ? `${Math.floor(s.i)}m${s.mid}` : `${s.i}`;
         out.push({
-          key: `line${s.i}${dup}`,
+          key: `line${tag}${dup}`,
           piece: "seg-line",
           x: c.x,
           y: c.y,
@@ -1285,7 +1339,7 @@ var TIDE = (() => {
           waterY
         });
         out.push({
-          key: `seg${s.i}${dup}`,
+          key: `seg${tag}${dup}`,
           piece: "seg",
           x: c.x,
           y: c.y,
@@ -1297,13 +1351,26 @@ var TIDE = (() => {
           waterY
         });
         const belly = mul(s.up, -1), facing = dot(belly, VIEW);
-        if (facing > -0.35) {
+        if (facing > -0.35 && !s.mid) {
           const o = sp(belly), ol = Math.hypot(o.x, o.y) || 1;
+          const bx = o.x / ol * 0.62 * s.r, by = o.y / ol * 0.62 * s.r;
+          let ax = 0, ay = 0, best = 0;
+          for (const j of [s.i - 1, s.i + 1]) {
+            if (j < 0 || j >= SEGMENTS) continue;
+            const nb = sp(segs[j].w), nx = nb.x - c.x, ny = nb.y - c.y, nl = nx * nx + ny * ny || 1;
+            const t = clamp2((bx * nx + by * ny) / nl);
+            if (t * Math.sqrt(nl) > best) {
+              best = t * Math.sqrt(nl);
+              ax = nx * t;
+              ay = ny * t;
+            }
+          }
+          const px = bx - ax, py = by - ay, pl = Math.hypot(px, py), keep = pl > BELLY_ACROSS * s.r ? BELLY_ACROSS * s.r / pl : 1;
           out.push({
-            key: `belly${s.i}${dup}`,
+            key: `belly${tag}${dup}`,
             piece: "belly",
-            x: c.x + o.x / ol * s.r * 0.62,
-            y: c.y + o.y / ol * s.r * 0.62,
+            x: c.x + ax + px * keep,
+            y: c.y + ay + py * keep,
             rot: 0,
             sx: sc,
             sy: sc,
@@ -1315,7 +1382,7 @@ var TIDE = (() => {
         if (pal.mark && s.i % 2 === 0 && s.i > 3 && dot(s.up, VIEW) > -0.1) {
           const o = sp(s.up), ol = Math.hypot(o.x, o.y) || 1;
           out.push({
-            key: `mark${s.i}${dup}`,
+            key: `mark${tag}${dup}`,
             piece: "glow",
             x: c.x + o.x / ol * s.r * 0.5,
             y: c.y + o.y / ol * s.r * 0.5,
@@ -1427,7 +1494,28 @@ var TIDE = (() => {
       const headYaw = Math.atan2(F.x, F.z);
       const lying = P.flat > 0.5 && (look === "dizzy" || look === "shut");
       const shown = lying ? Math.sign(headYaw || 1) * Math.min(Math.abs(headYaw), 100 * Math.PI / 180) : headYaw;
+      [-1, 1].forEach((k) => {
+        const base = at(-4, k * 12, 18);
+        const tip = add(
+          base,
+          mul(add(add(mul(F, -42), mul(U, 34)), mul(R, k * 18)), HS)
+        );
+        finAt(
+          `horn${k}`,
+          "horn",
+          base,
+          tip,
+          PIECE.horn,
+          HS * k,
+          maneBehind ? backZ + 0.01 : frontZ + 0.01
+        );
+      });
       const hc = sp(at(4, 0, 4));
+      const big = (q) => ({
+        ...q,
+        x: hc.x + (q.x - hc.x) * HEAD_K,
+        y: hc.y + (q.y - hc.y) * HEAD_K
+      });
       const built = TIDE_FACE.face(
         {
           x: hc.x,
@@ -1439,7 +1527,7 @@ var TIDE = (() => {
         },
         {
           look,
-          brow: P.anger > 0.6 ? "angry" : "calm",
+          brow: P.anger > 0.5 ? "angry" : "calm",
           mouth: P.jaw > 0.4 ? "open" : P.jaw > 0.12 ? "half" : "closed"
         }
       );
@@ -1454,12 +1542,17 @@ var TIDE = (() => {
         glintf: `eyeglint${-side}`
       };
       for (const q of built.placements)
-        out.push({ ...q, key: names[q.key] ?? q.key });
+        out.push({
+          ...big(q),
+          sx: q.sx * HEAD_K,
+          sy: q.sy * HEAD_K,
+          key: names[q.key] ?? q.key
+        });
       const S = TIDE_SPEC;
       const eyeV = S.lines.eye + built.nod;
       if (look !== "shut" && look !== "dizzy")
         for (const e of built.eyes) {
-          const q = built.at(e.u, eyeV);
+          const q = big(built.at(e.u, eyeV));
           out.push({
             key: `eyeglow${e.id === "n" ? side : -side}`,
             piece: "glow",
@@ -1474,24 +1567,23 @@ var TIDE = (() => {
             tint: pal.iris[0] << 16 | pal.iris[1] << 8 | pal.iris[2]
           });
         }
-      let pearlAt = built.feats.pearl ? built.at(built.feats.pearl.u, built.feats.pearl.v) : null;
+      let pearlAt = built.feats.pearl ? big(built.at(built.feats.pearl.u, built.feats.pearl.v)) : null;
       if (!pearlAt) {
-        pearlAt = built.at(0, S.lines.pearl + 2);
+        pearlAt = big(built.at(0, S.lines.pearl + 2));
         out.push({
           key: "pearl",
           piece: "pearl",
           x: pearlAt.x,
           y: pearlAt.y,
           rot: 0,
-          sx: 1,
-          sy: 1,
+          sx: HEAD_K,
+          sy: HEAD_K,
           alpha: 1,
           z: hz + 0.04
         });
         const turn = Math.abs(Math.atan2(Math.sin(shown), Math.cos(shown)));
-        const m = built.at(
-          tideCentre(S.lines.nose) * Math.sin(turn),
-          S.lines.nose
+        const m = big(
+          built.at(tideCentre(S.lines.nose) * Math.sin(turn), S.lines.nose)
         );
         for (const key of ["snout", "jaw"])
           out.push({
@@ -1500,8 +1592,8 @@ var TIDE = (() => {
             x: m.x,
             y: m.y,
             rot: 0,
-            sx: side,
-            sy: 1,
+            sx: side * HEAD_K,
+            sy: HEAD_K,
             alpha: 1,
             z: hz - 0.01
           });
@@ -1531,11 +1623,29 @@ var TIDE = (() => {
             const wave = Math.sin(P.clock * 2.2 + f * 4 + k) * 2.5 * f;
             const out2 = 15 * Math.sin(f * 2.3) + wave, down = 4 + 19 * f - 7 * f * f;
             pts.push(
-              front ? built.at(nose.u + k * (13 + out2), nose.v + down) : built.at(nose.u - 11 - out2, nose.v + 1 + down)
+              front ? big(built.at(nose.u + k * (13 + out2), nose.v + down)) : big(built.at(nose.u - 11 - out2, nose.v + 1 + down))
             );
           }
           lines.push({ pts, width: 3.2, color: pal.line, front: true });
           lines.push({ pts, width: 1.7, color: pal.finLight, front: true });
+        }
+        const chinU = front ? 0 : nose.u * 0.45;
+        for (const k of front ? [-1, 0, 1] : [-1, 0]) {
+          const pts = [];
+          for (let j = 0; j <= 6; j++) {
+            const f = j / 6;
+            const sway = Math.sin(P.clock * 1.8 + f * 3 + k) * 2.2 * f;
+            pts.push(
+              big(
+                built.at(
+                  chinU + k * (front ? 5 : 4) + k * 4 * f + sway - (front ? 0 : 3 * f),
+                  H_BOT - 3 + (14 - Math.abs(k) * 3) * f
+                )
+              )
+            );
+          }
+          lines.push({ pts, width: 4.6, color: pal.line, front: true });
+          lines.push({ pts, width: 3, color: "#f1e2bd", front: true });
         }
       }
     }
