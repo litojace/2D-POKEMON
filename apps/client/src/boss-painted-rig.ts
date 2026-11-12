@@ -10,10 +10,8 @@ import {
 } from "./boss-directions";
 import frames from "./art/raid-whole-frames.json";
 import prismatail from "./art/raid-whole-prismatail.webp";
-import emberwing from "./art/raid-whole-emberwing.webp";
 import stormTwins from "./art/raid-whole-storm-twins.webp";
 import prismaDirections from "./art/raid-directions-prismatail.webp";
-import emberDirections from "./art/raid-directions-emberwing.webp";
 import twinDirections from "./art/raid-directions-storm-twins.webp";
 /** Bosses drawn from painted atlases (Grumblecrag is vector art, boss-vector-rig.ts). */
 export type PaintedBossId = Exclude<
@@ -27,13 +25,11 @@ export const isPaintedBoss = (id: RaidBossId): id is PaintedBossId =>
   id !== "somnara";
 export const BOSS_PAINTED_ART: Record<PaintedBossId, string> = {
   prismatail,
-  emberwing,
   "storm-twins": stormTwins,
 };
 const keyFor = (id: RaidBossId) => `raid-painted-${id}`;
 export const BOSS_DIRECTION_ART: Record<PaintedBossId, string> = {
   prismatail: prismaDirections,
-  emberwing: emberDirections,
   "storm-twins": twinDirections,
 };
 const directionKey = (id: RaidBossId) => `raid-directions-${id}`;

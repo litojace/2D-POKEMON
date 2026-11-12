@@ -22,12 +22,6 @@ export function paintedPrisma(g: G, o: Look) {
     y: (o.groundY ?? o.y + 60) + 9,
   });
 }
-export function paintedEmber(g: G, o: Look & { flight: number }) {
-  return paintWholeBoss(g, "emberwing", {
-    ...o,
-    y: o.flight < 0.1 && o.groundY !== undefined ? o.groundY + 12 : o.y + 76,
-  });
-}
 export function paintedTwin(g: G, o: Look & { blue: boolean; pulse: number }) {
   return paintWholeBoss(g, "storm-twins", { ...o, y: o.y + 85 });
 }

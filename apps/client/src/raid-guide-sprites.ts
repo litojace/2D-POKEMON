@@ -14,6 +14,7 @@ import { tideGuideImage } from "./boss-vector-tide";
 import { gloomGuideImage } from "./boss-vector-gloom";
 import { somnaraGuideImage } from "./boss-vector-somnara";
 import { prismaGuideImage } from "./boss-vector-prisma";
+import { emberGuideImage } from "./boss-vector-ember";
 import base from "./art/raid-whole-frames.json";
 
 /** Reuse a complete battle pose in the diagram; native atlas has ample resolution
@@ -42,6 +43,8 @@ export function raidGuideSprite(
             ? somnaraGuideImage(exposed)
           : boss === "prismatail"
             ? prismaGuideImage(exposed)
+          : boss === "emberwing"
+            ? emberGuideImage(exposed)
             : grumbleGuideImage(exposed),
       [sx, sy, w, h] = art.crop,
       scale = Math.min(90 / w, 80 / h),
@@ -68,6 +71,5 @@ export function raidGuideSprite(
     // expose neighboring poses in the otherwise empty space above the creature.
     return `<svg x="${frameX}" y="${frameY}" width="${w * scale}" height="${h * scale}" viewBox="${sx} ${sy} ${w} ${h}" preserveAspectRatio="xMidYMax meet" overflow="hidden"><image data-guide-sprite="${boss}" href="${url}" width="${aw}" height="${ah}"/></svg>${ring(cx, cy)}`;
   };
-  const mode = boss === "emberwing" ? "ground" : "body";
-  return `<g data-guide-boss="${boss}">${floor}${boss === "storm-twins" ? draw("body", -50, 48) + draw("blue", 2, 48) : draw(mode, -45, 90)}</g>`;
+  return `<g data-guide-boss="${boss}">${floor}${boss === "storm-twins" ? draw("body", -50, 48) + draw("blue", 2, 48) : draw("body", -45, 90)}</g>`;
 }
