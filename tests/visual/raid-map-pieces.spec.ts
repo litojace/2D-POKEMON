@@ -7,7 +7,7 @@ import { openHub, pushUntilBattle, snap, openPlayPanel } from "./helpers";
 // Each state is driven through the real snapshot; the test reads which atlas
 // pieces the arena's image layers show.
 
-async function raid(page: Page, boss: string) {
+async function raid(page: Page, boss: string, setup = "") {
   await page.route(/\/apps\/client\/src\/main\.ts(?:\?|$)/, async (route) => {
     const response = await route.fetch(),
       body = await response.text();
@@ -23,11 +23,15 @@ async function raid(page: Page, boss: string) {
   page.on("console", (m) => {
     if (m.type() === "error") errors.push(m.text());
   });
-  await page.evaluate((boss) => {
-    const w = window as any;
-    w.__room("raid", { boss });
-    w.__snap.remaining = 300;
-  }, boss);
+  await page.evaluate(
+    ([boss, setup]) => {
+      const w = window as any;
+      w.__room("raid", { boss });
+      w.__snap.remaining = 300;
+      new Function("s", "r", setup)(w.__snap, w.__snap.raid);
+    },
+    [boss, setup] as const,
+  );
   await openPlayPanel(page);
   await page.click("#play-create");
   await pushUntilBattle(page);
@@ -50,12 +54,29 @@ async function show(page: Page, setup: string, wait = 450) {
   await page.waitForTimeout(wait);
 }
 /**
- * The atlas pieces the arena's image layers show now, and its line commands.
- * With `hold`: when every named piece shows, the game holds on this frame
- * (a short effect) until heldShot.
+ * Show a short effect: hold the game, push the change, and draw two frames
+ * `ms` apart by hand (this machine draws too few a second to catch it in
+ * passing). heldShot lets the game go on.
  */
-const pieces = (page: Page, hold?: string[]) =>
-  page.evaluate((hold) => {
+async function showHeld(page: Page, setup: string, ms: number) {
+  await page.evaluate(
+    ([setup, ms]) => {
+      const w = window as any,
+        game = w.__mapGame,
+        s = w.__snap;
+      game.loop.sleep();
+      new Function("s", "r", setup)(s, s.raid);
+      w.__push();
+      const t = performance.now();
+      game.step(t, 16);
+      game.step(t + ms, ms);
+    },
+    [setup, ms] as const,
+  );
+}
+/** The atlas pieces the arena's image layers show now, and its line commands. */
+const pieces = (page: Page) =>
+  page.evaluate(() => {
     const scene = (window as any).__mapGame.scene.getScene("arena");
     const frames: string[] = [];
     const at: Record<string, { x: number; y: number; sx: number }[]> = {};
@@ -82,10 +103,8 @@ const pieces = (page: Page, hold?: string[]) =>
     const plainRings = scene.children.list.filter(
       (o: any) => o.type === "Arc" && o.radius === 500,
     ).length;
-    if (hold?.every((h) => frames.includes(h)))
-      (window as any).__mapGame.loop.sleep();
     return { frames, at, lines, plainRings };
-  }, hold);
+  });
 const count = (frames: string[], name: string | RegExp) =>
   frames.filter((f) => (typeof name === "string" ? f === name : name.test(f)))
     .length;
@@ -100,7 +119,7 @@ const atlases = (page: Page, prefix: string) =>
   }, prefix);
 const shot = (page: Page, info: TestInfo, name: string) =>
   snap(page, info, name);
-/** Shoot the frame the game is held on (see pieces), and go on. */
+/** Shoot the frame the game is held on (showHeld), and go on. */
 async function heldShot(page: Page, info: TestInfo, name: string) {
   await snap(page, info, name);
   await page.evaluate(() => (window as any).__mapGame.loop.wake());
@@ -111,15 +130,19 @@ test("Tidewyrm's islands, cracks, sinking, High Tide and capacity are painted pi
 }, info) => {
   test.setTimeout(180_000);
   await page.setViewportSize({ width: 1440, height: 900 });
-  const errors = await raid(page, "tidewyrm");
+  // Plain islands (the test room may roll Spring Tide).
+  const errors = await raid(
+    page,
+    "tidewyrm",
+    "r.trait = undefined; r.islands.forEach((i) => (i.radius = 78));",
+  );
   // The atlas was drawn while the scene was created (CREATING = 4), not mid-fight.
   const built = await atlases(page, "lagoon-atlas-");
   expect(built).toHaveLength(1);
-  expect(built[0].builtWhile).toBe(4);
+  expect(built[0]).toMatchObject({ key: "lagoon-atlas-78", builtWhile: 4 });
   console.log("lagoon atlas", JSON.stringify(built));
-  // The test room's trait may be Spring Tide: its radius (78, or 92).
-  const R = Number(built[0].key.split("-").at(-1));
-  const other = R === 78 ? 92 : 78;
+  const R = 78,
+    other = 92;
   // Keep the serpent off the islands, below the water.
   const base =
     "const b = s.players.find((p) => p.raidBoss); b.x = 800; b.y = 450;" +
@@ -133,7 +156,8 @@ test("Tidewyrm's islands, cracks, sinking, High Tide and capacity are painted pi
     `i.cracks = o.c || 0; i.sunk = !!o.sunk; i.gone = !!o.gone; i.radius = o.R || ${R}; });`;
   const report: Record<string, number> = {};
 
-  await show(page, isl("[{}, {c: 1}, {c: 2}, {sunk: true}]"));
+  // (The fourth island goes under first: wait for that to end.)
+  await show(page, isl("[{}, {c: 1}, {c: 2}, {sunk: true}]"), 1200);
   let p = await pieces(page);
   report.mix = p.frames.length;
   expect(count(p.frames, `body${R}`)).toBe(3);
@@ -169,25 +193,18 @@ test("Tidewyrm's islands, cracks, sinking, High Tide and capacity are painted pi
   await shot(page, info, "tide-crack2");
 
   // Going under: for a moment the sand and the sandbank show together, with spray.
-  await show(
+  await showHeld(
     page,
     isl(
       "[{c: 2, sunk: true}, {c: 2, sunk: true}, {c: 2, sunk: true}, {c: 2, sunk: true}]",
     ),
-    0,
+    350,
   );
-  await expect
-    .poll(
-      async () => {
-        const q = await pieces(page, [`body${R}`, `sunk${R}`]);
-        return (
-          count(q.frames, `body${R}`) > 0 && count(q.frames, `sunk${R}`) > 0
-        );
-      },
-      { intervals: [30], timeout: 900 },
-    )
-    .toBe(true);
-  report.sinking = (await pieces(page)).frames.length;
+  p = await pieces(page);
+  report.sinking = p.frames.length;
+  expect(count(p.frames, `body${R}`)).toBe(4);
+  expect(count(p.frames, `sunk${R}`)).toBe(4);
+  expect(count(p.frames, "ripple")).toBeGreaterThanOrEqual(8);
   await heldShot(page, info, "tide-sinking");
   await page.waitForTimeout(1000);
   p = await pieces(page);
@@ -197,19 +214,12 @@ test("Tidewyrm's islands, cracks, sinking, High Tide and capacity are painted pi
   await shot(page, info, "tide-sunk");
 
   // Coming back up next chapter.
-  await show(page, isl("[{}, {}, {}, {}]"), 0);
-  await expect
-    .poll(
-      async () => {
-        const q = await pieces(page, [`body${R}`, `sunk${R}`]);
-        return (
-          count(q.frames, `body${R}`) > 0 && count(q.frames, `sunk${R}`) > 0
-        );
-      },
-      { intervals: [30], timeout: 900 },
-    )
-    .toBe(true);
-  report.rising = (await pieces(page)).frames.length;
+  await showHeld(page, isl("[{}, {}, {}, {}]"), 350);
+  p = await pieces(page);
+  report.rising = p.frames.length;
+  expect(count(p.frames, `body${R}`)).toBe(4);
+  expect(count(p.frames, `sunk${R}`)).toBe(4);
+  expect(count(p.frames, "ripple")).toBeGreaterThanOrEqual(8);
   await heldShot(page, info, "tide-rising");
   await page.waitForTimeout(1000);
 
@@ -288,12 +298,20 @@ test("Somnara's rune pads, steps, Quiet Zone, lullaby, bubbles and markers are p
 }, info) => {
   test.setTimeout(180_000);
   await page.setViewportSize({ width: 1440, height: 900 });
-  const errors = await raid(page, "somnara");
+  // Peril 1, no Starry Night: the Quiet Zone's radius is 175.
+  const errors = await raid(
+    page,
+    "somnara",
+    "r.trait = undefined; r.peril = 1;",
+  );
   const built = await atlases(page, "cloud-deck-atlas-");
   expect(built).toHaveLength(1);
-  expect(built[0].builtWhile).toBe(4);
+  expect(built[0]).toMatchObject({
+    key: "cloud-deck-atlas-175",
+    builtWhile: 4,
+  });
   console.log("cloud deck atlas", JSON.stringify(built));
-  const quiet = Number(built[0].key.split("-").at(-1));
+  const quiet = 175;
   const base =
     "const b = s.players.find((p) => p.raidBoss); b.x = 800; b.y = 450;" +
     "r.warnings = []; r.runeCalls = []; r.dreamRings = []; r.dreamBubbles = [];" +
@@ -346,50 +364,33 @@ test("Somnara's rune pads, steps, Quiet Zone, lullaby, bubbles and markers are p
   await shot(page, info, "som-backwards");
 
   // A correct step: the server's value-0 mint heal at the raider on the Star pad.
-  await show(
+  await showHeld(
     page,
     base +
       dream(false) +
       "p2.x = 1066; p2.y = 306;" +
       "s.events = [{ id: 100001, kind: 'heal', x: 1066, y: 306, color: 0x99efdd, value: 0, owner: 'p2' }];",
-    0,
+    150,
   );
-  await expect
-    .poll(
-      async () => count((await pieces(page, ["ringMint"])).frames, "ringMint"),
-      {
-        intervals: [30],
-        timeout: 700,
-      },
-    )
-    .toBe(1);
   p = await pieces(page);
   report.ok = p.frames.length;
+  expect(count(p.frames, "ringMint")).toBe(1);
   expect(p.at.ringMint[0]).toMatchObject({ x: 1100, y: 270 });
   expect(count(p.frames, "basin-mint")).toBe(1);
   await heldShot(page, info, "som-ok");
   await page.waitForTimeout(1600);
 
   // A wrong step: the Nightmare hits while a raider stands on the Moon pad.
-  await show(
+  await showHeld(
     page,
     base +
       "p2.x = 1062; p2.y = 612;" +
       "s.events = [{ id: 100002, kind: 'raid-impact', x: 800, y: 450, color: 0xc090ff, raidRadius: 500, owner: b.id }];",
-    0,
+    100,
   );
-  await expect
-    .poll(
-      async () =>
-        count((await pieces(page, ["nightRing"])).frames, "nightRing"),
-      {
-        intervals: [30],
-        timeout: 400,
-      },
-    )
-    .toBe(1);
   p = await pieces(page);
   report.bad = p.frames.length;
+  expect(count(p.frames, "nightRing")).toBe(1);
   expect(p.at.cracks[0]).toMatchObject({ x: 1100, y: 630 });
   expect(count(p.frames, "basin-rose")).toBe(1);
   // The shockwave is the arena's piece now, not the plain circle.
@@ -446,5 +447,34 @@ test("Somnara's rune pads, steps, Quiet Zone, lullaby, bubbles and markers are p
   expect(await atlases(page, "cloud-deck-atlas-")).toHaveLength(1);
   await shot(page, info, "som-quiet");
   console.log("somnara images per frame", JSON.stringify(report));
+  expect(errors).toEqual([]);
+});
+
+// Settings → Graphics → Low: the same gameplay pieces, fewer glows and sparkles.
+test("on Low graphics the arenas keep every gameplay piece and drop decorative glows", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await page.addInitScript(() => localStorage.setItem("ea-graphics", "low"));
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const errors = await raid(page, "somnara");
+  await show(
+    page,
+    "r.runeCalls = [{ id: 5, playerId: 'me', rune: 'star', step: 0, until: s.time + 3 }];",
+    900,
+  );
+  const p = await pieces(page);
+  for (const rune of ["circle", "star", "moon", "wave"]) {
+    expect(count(p.frames, `stone-${rune}`)).toBe(1);
+    expect(count(p.frames, `glyph-${rune}`)).toBe(1);
+  }
+  // The called pad still lights up and is circled by its stars.
+  expect(count(p.frames, "edgeHot-star")).toBe(1);
+  expect(count(p.frames, "basin-star")).toBe(1);
+  expect(count(p.frames, "orbit-star")).toBe(4);
+  // No gem twinkles, no light thrown by the idle pads, no glow on their runes.
+  expect(count(p.frames, "gemGlow")).toBe(0);
+  expect(count(p.frames, /^floor-(circle|moon|wave)$/)).toBe(0);
+  expect(count(p.frames, /^glyphGlow-(circle|moon|wave)$/)).toBe(0);
   expect(errors).toEqual([]);
 });
