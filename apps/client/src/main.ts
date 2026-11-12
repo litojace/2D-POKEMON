@@ -140,6 +140,7 @@ import {
 import { rigAssets, skinSuffix } from "./animation/assets";
 import { loadRigTextures } from "./animation/rig-textures";
 import { prewarmBossAtlas } from "./boss-vector-prewarm";
+import { isMirrorTurnImpact } from "./raid-prismatail-atrium";
 import { FighterLoading, neededFighters } from "./animation/fighter-loading";
 import {
   setOverlayMarkup,
@@ -4931,7 +4932,11 @@ class ArenaScene extends Phaser.Scene {
   effect(event: Snapshot["events"][number]) {
     // Effects pose only fighters whose art has loaded (readyRig); sounds,
     // impacts and the other fighters' poses play as usual meanwhile.
-    if (event.kind === "raid-impact") {
+    // A mirror turning rings its own chime (raid-prismatail-atrium.ts).
+    if (
+      event.kind === "raid-impact" &&
+      !isMirrorTurnImpact(state?.raid, event)
+    ) {
       const ring = this.add
         .circle(event.x, event.y, event.raidRadius ?? 90, event.color, 0.12)
         .setStrokeStyle(4, event.color, 0.9);

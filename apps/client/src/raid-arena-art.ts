@@ -3,6 +3,7 @@ import { paintKit } from "./arena-courts";
 import type { RaidFloorId } from "./raid-floors";
 import type { RaidBossId } from "../../../packages/shared/src/raid-roster";
 import { GLOOMSHADE } from "../../../packages/shared/src/raid";
+import { paintAtriumInlay } from "./raid-prismatail-atrium";
 import grumblecrag from "./art/raid-arenas/grumblecrag.webp";
 import tidewyrm from "./art/raid-arenas/tidewyrm.webp";
 import gloomshade from "./art/raid-arenas/gloomshade.webp";
@@ -125,29 +126,8 @@ export function paintIllustratedRaidFloor(
   } else if (id === "sky-terrace") {
     ring(800, 450, 260, "#c39a6966", 3);
   } else if (id === "sun-atrium") {
-    ring(1000, 450, 210, "#997546aa", 3);
-    ring(1000, 450, 310, "#997546aa", 3);
-    const colors = [
-      "#d97c91",
-      "#e0ba70",
-      "#80b9a8",
-      "#70a9c7",
-      "#8d8dc0",
-      "#b18dbd",
-    ];
-    for (let i = 0; i < 12; i++) {
-      const a = (i * Math.PI) / 6,
-        x = 1000 + Math.cos(a) * 310,
-        y = 450 + Math.sin(a) * 310;
-      c.fillStyle = colors[i % 6];
-      c.beginPath();
-      c.moveTo(x, y - 10);
-      c.lineTo(x + 6, y);
-      c.lineTo(x, y + 10);
-      c.lineTo(x - 6, y);
-      c.closePath();
-      c.fill();
-    }
+    // Gold rings, glass and the mirrors' tracks (raid-prismatail-atrium.ts).
+    paintAtriumInlay(c);
   } else if (id === "conductor-ring") {
     for (const [rx, ry] of [
       [730, 380],

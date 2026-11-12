@@ -341,7 +341,7 @@ export function drawRaidArena(
     dream = r.boss === "somnara";
   if (r.boss === "storm-twins") drawConductorRing(g, state, reduced, at);
   if (r.boss === "emberwing") drawSkyTerrace(g, state, reduced, at);
-  if (r.boss === "prismatail") drawSunAtrium(g, state, reduced, at);
+  if (r.boss === "prismatail") drawSunAtrium(g, state, reduced, at, clock);
   if (dream) drawCloudDeck(g, state, reduced);
   if (tide) drawLagoon(g, state, reduced);
   if (gloom) drawLanternYard(g, state, reduced, at);
