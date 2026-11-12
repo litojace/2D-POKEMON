@@ -3,6 +3,7 @@ import { paintKit } from "./arena-courts";
 import type { RaidFloorId } from "./raid-floors";
 import type { RaidBossId } from "../../../packages/shared/src/raid-roster";
 import { GLOOMSHADE } from "../../../packages/shared/src/raid";
+import { paintRingInlay } from "./raid-ring-pieces";
 import grumblecrag from "./art/raid-arenas/grumblecrag.webp";
 import tidewyrm from "./art/raid-arenas/tidewyrm.webp";
 import gloomshade from "./art/raid-arenas/gloomshade.webp";
@@ -149,18 +150,9 @@ export function paintIllustratedRaidFloor(
       c.fill();
     }
   } else if (id === "conductor-ring") {
-    for (const [rx, ry] of [
-      [730, 380],
-      [710, 360],
-      [500, 285],
-    ]) {
-      c.strokeStyle = rx === 710 ? "#a5daf055" : "#c4906366";
-      c.lineWidth = rx === 730 ? 4 : 2;
-      c.beginPath();
-      c.ellipse(800, 450, rx, ry, 0, 0, Math.PI * 2);
-      c.stroke();
-    }
-    ring(800, 450, 150, "#a5daf044");
+    // The same rings at the same radii, inlaid: a riveted copper rail, the
+    // live filament, a copper inlay and the etched inner circle.
+    paintRingInlay(c);
   } else if (id === "cloud-deck") {
     ring(800, 450, 275, "#c9a3ff77", 2.5);
     c.fillStyle = "#e6e4ff99";
