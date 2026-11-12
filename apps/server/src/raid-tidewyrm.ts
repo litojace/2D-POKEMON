@@ -300,7 +300,7 @@ export class TidewyrmArena extends RaidArena {
     const r = this.raid;
     r.submerged = true;
     this.lingerUntil = 0;
-    Object.assign(
+    const w = Object.assign(
       this.warn(
         "dive",
         target.x,
@@ -311,6 +311,21 @@ export class TidewyrmArena extends RaidArena {
         T.dive.follow + T.dive.lock,
       ),
       { targetId: target.id, lockAt: this.time + T.dive.follow, teach },
+    );
+    // The splash freezes `lock` seconds before it lands, whatever the tier
+    // does to the follow (alone, where you also have to lure it: 0.8 s).
+    w.lockAt =
+      w.at -
+      (this.smart() && r.partySize === 1 ? T.dive.soloLock : T.dive.lock);
+  }
+  /** Live raids: bubbles go at a second raider too (party pressure). */
+  protected override pressured(kind: RaidAttack, alive: Fighter[]) {
+    return (
+      super.pressured(kind, alive) ||
+      (kind === "bubbles" &&
+        this.smart() &&
+        alive.length >= 3 &&
+        this.raid.phase >= 2)
     );
   }
   /** A band sweeps across from one edge: low (jump it) or high (be on an island). */
@@ -427,7 +442,13 @@ export class TidewyrmArena extends RaidArena {
     }
     if (w.kind === "bubbles") {
       const n = this.smart()
-        ? Math.min(11, 9 + (r.phase >= 2 ? 1 : 0) + (r.phase >= 3 ? 1 : 0))
+        ? // Live raids: 9-11 bubbles at a party, 7-9 at a lone raider.
+          Math.min(
+            11,
+            (r.partySize > 1 ? 9 : 7) +
+              (r.phase >= 2 ? 1 : 0) +
+              (r.phase >= 3 ? 1 : 0),
+          )
         : Math.min(9, 7 + (r.peril >= 2 ? 1 : 0) + (r.phase >= 3 ? 1 : 0));
       const aim = Math.atan2(w.ty - w.y, w.tx - w.x),
         spread = w.spread ?? T.bubbles.spread / 2;

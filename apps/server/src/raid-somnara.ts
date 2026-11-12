@@ -21,10 +21,20 @@ import {
   type RaidDreamView,
   type RaidWarning,
 } from "../../../packages/shared/src/raid.js";
-import { RaidArena, raidJitter, type RaidBossNumbers } from "./raid.js";
+import {
+  RaidArena,
+  raidJitter,
+  type RaidBossNumbers,
+  type RaidReaction,
+  type RaidSituation,
+} from "./raid.js";
 const S = SOMNARA;
 /** Attacks Somnara keeps casting while a dream runs (chapter 1 / later). */
-const DREAM_SAFE_FIRST = new Set<RaidAttack>(["lullaby", "dream-bubbles"]);
+const DREAM_SAFE_FIRST = new Set<RaidAttack>([
+  "lullaby",
+  "dream-bubbles",
+  "tail-splash",
+]);
 const DREAM_NEVER = new Set<RaidAttack>([
   "whale-song",
   "dream-sequence",
@@ -435,6 +445,14 @@ export class SomnaraArena extends RaidArena {
   }
   protected override onMechanic(p: Fighter) {
     return !!this.padAt(p.x, p.y);
+  }
+  /** Somnara swats raiders who linger at its side, and stars a crowd. */
+  protected override reactions(s: RaidSituation): RaidReaction[] {
+    const out: RaidReaction[] = [];
+    const camper = s.melee.find((m) => m.seconds >= 2);
+    if (camper) out.push({ kind: "tail-splash", score: 1.1, target: camper.p });
+    if (s.cluster.size >= 3) out.push({ kind: "falling-stars", score: 1.2 });
+    return out;
   }
   /** Where the Quiet Zone opens: 300-450 px from the party, inside the deck. */
   private quietSpot(target: Fighter) {

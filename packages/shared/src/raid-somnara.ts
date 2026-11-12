@@ -41,7 +41,7 @@ export const SOMNARA = {
     speed: 240,
     width: 22,
     radius: 820,
-    damage: 10,
+    damage: 12,
   },
   tail: { delay: 1.25, length: 340, width: 115, damage: 26 },
   bubbles: {
@@ -59,7 +59,7 @@ export const SOMNARA = {
   quiet: { near: 300, far: 450 },
   drowsy: { stacks: 3, seconds: 12, sleep: 2.5 },
   /** While a dream runs it keeps attacking, this much slower. */
-  dreamCadence: 1.6,
+  dreamCadence: 1.35,
   /** Exposed after a solved dream: one lullaby halfway through, at this damage share. */
   thrash: 0.6,
 } as const;

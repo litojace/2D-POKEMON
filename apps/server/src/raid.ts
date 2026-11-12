@@ -1602,6 +1602,9 @@ export class RaidArena extends Arena {
         continue;
       this.locked.add(w);
       if (!this.leadsOnLock(w.kind)) continue;
+      // ★ bosses teach their locks plainly in chapter 1.
+      if (RAID_BOSSES[this.raid.boss].stars === 1 && this.raid.phase === 1)
+        continue;
       const target = this.heroes().find((p) => p.id === w.targetId && p.hp > 0);
       if (!target || (target.clone && target.clone.until > this.time)) continue;
       // A charge also travels: the boss reaches a raider a little later.
@@ -1990,7 +1993,9 @@ export class RaidArena extends Arena {
           this.struck = new Set(c.hit);
           this.countDodges();
           this.charging = undefined;
-          if (this.smart() && r.phase >= 2 && !c.back) this.chargeBack(c);
+          // Chapter 2+ it turns and comes back (alone: only in chapter 3).
+          if (this.smart() && r.phase >= (r.partySize > 1 ? 2 : 3) && !c.back)
+            this.chargeBack(c);
         }
       }
     }
@@ -2201,6 +2206,13 @@ export class RaidArena extends Arena {
       if (Math.hypot(bot.x - w.x, bot.y - w.y) < w.radius + RULES.radius + 15)
         return go(w.x, w.y, true);
     }
+    // Stay inside the closing ring (live raids).
+    if (
+      this.smart() &&
+      r.closingRadius !== undefined &&
+      Math.hypot(bot.x - 800, bot.y - 450) > r.closingRadius - 30
+    )
+      return go(800, 450, false);
     const down = this.heroes().find(
       (p) => p.hp <= 0 && r.downed[p.id] && !r.downed[p.id].self,
     );

@@ -566,6 +566,8 @@ export const TIDEWYRM = {
   dive: {
     follow: 1.4,
     lock: 0.7,
+    /** Live raids, solo (you also have to lure it): a longer freeze. */
+    soloLock: 0.8,
     damage: 26,
     radius: 110,
     /** Seconds stranded (exposed) on an island; longer on Peril 1. */

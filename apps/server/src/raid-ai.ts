@@ -68,7 +68,10 @@ export const RAID_HARMLESS_ATTACKS = new Set<RaidAttack>([
 ]);
 /**
  * Single-target attacks that, under party pressure, go at a second raider
- * 0.35 s later (chapter and party size from the tier table).
+ * 0.35 s later (chapter and party size from the tier table). Chain
+ * lightning is left out: it already jumps between raiders, and two chains
+ * downed a party a dozen times a run in the harness. A boss adds its own
+ * through `pressured()`.
  */
 export const RAID_PRESSURE_ATTACKS = new Set<RaidAttack>([
   "volley",
@@ -76,7 +79,6 @@ export const RAID_PRESSURE_ATTACKS = new Set<RaidAttack>([
   "prism-lance",
   "dive-bomb",
   "curse",
-  "chain-lightning",
   "tail-splash",
   "static-field",
 ]);

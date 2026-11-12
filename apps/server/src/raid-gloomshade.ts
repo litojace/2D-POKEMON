@@ -152,6 +152,16 @@ export class GloomshadeArena extends RaidArena {
   protected override onMechanic(p: Fighter) {
     return this.lit(p.x, p.y);
   }
+  /** Live raids: in a party, a lunge also goes at a second raider. */
+  protected override pressured(kind: RaidAttack, alive: Fighter[]) {
+    return (
+      super.pressured(kind, alive) ||
+      (kind === "lunge" &&
+        this.smart() &&
+        alive.length >= 3 &&
+        this.raid.phase >= 2)
+    );
+  }
   protected override canStartAttack() {
     return (
       super.canStartAttack() &&
@@ -920,6 +930,21 @@ export class GloomshadeArena extends RaidArena {
             if (d < best.d) best = { x, y, d };
           }
         return go(best.x, best.y, false);
+      }
+      // On a safe tile: keep clear of its edges until the hands close
+      // (Peril 1-2 stand-ins carry on as before).
+      if (this.smart()) {
+        const tw = 1600 / G.hands.cols,
+          th = 900 / G.hands.rows;
+        const cx = (Math.floor(bot.x / tw) + 0.5) * tw,
+          cy = (Math.floor(bot.y / th) + 0.5) * th;
+        if (
+          Math.abs(bot.x - cx) > tw / 2 - 40 ||
+          Math.abs(bot.y - cy) > th / 2 - 40
+        )
+          return go(cx, cy, false);
+        input.dx = input.dy = 0;
+        return input;
       }
     }
     const lunge = r.warnings.find((w) => w.kind === "lunge");
