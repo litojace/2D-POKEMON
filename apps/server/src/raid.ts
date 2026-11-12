@@ -50,8 +50,34 @@ import {
   type RaidState,
   type RaidRite,
   type RaidWarning,
+  type RaidTier,
+  RAID_ENRAGE,
+  RAID_TELEGRAPH_FLOOR,
+  raidEnrageSteps,
+  raidSoloRevive,
+  raidTelegraph,
+  raidTier,
 } from "../../../packages/shared/src/raid.js";
 import { BotBrain } from "./bot.js";
+import {
+  RAID_CLUSTER_ATTACKS,
+  RAID_DURATION_ATTACKS,
+  RAID_EXCLUSIVE_ATTACKS,
+  RAID_FREEZE,
+  RAID_HARMLESS_ATTACKS,
+  RAID_IMPACT_GAP,
+  RAID_JUMP_ATTACKS,
+  RAID_LINE_ATTACKS,
+  RAID_PRESSURE_ATTACKS,
+  RAID_REACTION,
+  RAID_SLOWEST_SPEED,
+  buildRaidDeck,
+  raidShapeHits,
+  raidShapeOf,
+  type RaidReaction,
+  type RaidSituation,
+} from "./raid-ai.js";
+export type { RaidReaction, RaidSituation } from "./raid-ai.js";
 const BOSS = GRUMBLECRAG;
 /** The numbers every boss shares the shape of (health, Peril damage, rhythm). */
 export type RaidBossNumbers = {
@@ -90,6 +116,34 @@ const FAR_ATTACKS = new Set<string>([
 ]);
 /** Attacks that jump between raiders standing close: aimed into a crowd. */
 const CROWD_ATTACKS = new Set<string>(["chain-lightning"]);
+/**
+ * Peril 1 and 2 (tests and the legacy rules) keep the old numbers; live raids
+ * run at Peril 3 and read the star tier (RAID_TIERS).
+ */
+const LEGACY_TIER: RaidTier = {
+  health: 1,
+  damage: 1,
+  cadence: 1,
+  concurrency: [1, 1, 1],
+  telegraph: 1,
+  leadFraction: 0,
+  leadCap: 0,
+  windows: 1,
+  enrageAt: Infinity,
+  reviveSeconds: RAID.reviveSeconds,
+  reviveImmunity: 2,
+  pressureFrom: Infinity,
+};
+/** The signature card each boss plays at least once every four attacks. */
+const SIGNATURES: Partial<Record<string, RaidAttack>> = {
+  grumblecrag: "charge",
+  tidewyrm: "dive",
+  gloomshade: "split",
+  somnara: "dream-sequence",
+  prismatail: "light-relay",
+  emberwing: "brazier-lighting",
+  "storm-twins": "polarity",
+};
 /** A repeatable 0–1 jitter for target choice (same raid, same choices). */
 export function raidJitter(seed: number, attack: number, index: number) {
   let h =
@@ -113,7 +167,11 @@ export class RaidArena extends Arena {
     until: number;
     hit: Set<string>;
     targetId?: string;
+    /** The return run of a charge that missed (it doesn't turn again). */
+    back?: boolean;
   };
+  /** Pillars Grumblecrag has charged into this chapter. */
+  protected pillarBreaks = 0;
   protected seenAttacks = new Map<string, number>();
   protected rescueCredit = new Map<string, Set<string>>();
   protected downAt = new Map<string, number>();
@@ -134,6 +192,32 @@ export class RaidArena extends Arena {
   chargeMisses = 0;
   /** Raiders hit by the attack that is resolving (practice dodge count). */
   protected struck = new Set<string>();
+  /** This chapter's attack deck (the next cards, top first). */
+  protected deck: RaidAttack[] = [];
+  protected deckCycle = 0;
+  protected lastKind: RaidAttack | undefined;
+  protected sinceSignature = 0;
+  /** `attacks` when the boss last played a reaction instead of the deck. */
+  protected lastReaction = -99;
+  /** Raiders picked by the last attacks (newest last). */
+  protected recentTargets: string[] = [];
+  /** Which attack each live warning belongs to (overlaps count attacks). */
+  protected castOf = new WeakMap<RaidWarning, number>();
+  protected castSerial = 0;
+  protected currentCast = 0;
+  /** Warnings already checked against the honesty rules. */
+  protected settled = new WeakSet<RaidWarning>();
+  /** Party pressure: the same attack at a second raider, a moment later. */
+  protected echoes: {
+    at: number;
+    kind: RaidAttack;
+    cast: number;
+    exclude: string[];
+  }[] = [];
+  /** Recent velocity of each raider (for predictive aim). */
+  protected motion = new Map<string, { t: number; vx: number; vy: number }[]>();
+  /** When each raider stepped into melee range. */
+  protected meleeSince = new Map<string, number>();
   constructor(code: string, boss: RaidBossId = "grumblecrag") {
     super(code, "raid");
     this.raid = {
@@ -223,9 +307,13 @@ export class RaidArena extends Arena {
       (def.health.base + def.health.perExtraPlayer * (r.partySize - 1)) *
         RAID.healthScale *
         (RAID.perilHealth[r.peril] ?? 1) *
+        this.tier().health *
         (r.partySize === 1 ? RAID.soloHealth : 1) *
         (r.gilded ? def.health.gilded : 1),
     );
+    r.enrage = 0;
+    r.enrageAt = undefined;
+    this.resetBrain();
     r.pings = [];
     r.drillStats = r.drill ? { hits: 0, dodges: 0 } : undefined;
     this.downCauses = {};
@@ -407,13 +495,13 @@ export class RaidArena extends Arena {
       return;
     }
     if (source?.raidBoss) {
-      amount *= this.def().perilDamage[r.peril] ?? 1;
+      amount *= this.bossDamage();
       if (!(ability?.ground && target.jumpUntil > this.time))
         this.struck.add(target.id);
     }
     if (target.raidBoss) {
       const exposed = this.bossExposed(target);
-      amount *= exposed ? (r.trait === "restless" ? 1.8 : 1.6) : 0.72;
+      amount *= exposed ? this.coreMultiplier(target) : 0.72;
       if (
         source &&
         this.hasRite(source, "courage") &&
@@ -463,11 +551,8 @@ export class RaidArena extends Arena {
         this.downAt.set(target.id, this.time);
         r.downed[target.id] = {
           progress: 0,
-          // Solo gets one self-revive, except on Peril 3.
-          self:
-            r.partySize === 1 &&
-            !this.selfUsed &&
-            r.peril <= RAID.soloSelfReviveMaxPeril,
+          // Solo gets one self-revive, except against ★★★ bosses.
+          self: r.partySize === 1 && !this.selfUsed && !!this.soloRevive(),
           ...(this.hitBy ? { cause: this.hitBy } : {}),
         };
         if (this.hitBy)
@@ -633,16 +718,18 @@ export class RaidArena extends Arena {
               this.chargeUlt(p, riteValue("sharing", this.raid.phase));
       }
   }
-  protected revive(p: Fighter, extra = false) {
+  protected revive(p: Fighter, extra = false, self = false) {
     p.hp =
       CHARACTERS[p.character].health *
-      (0.45 +
-        (extra
-          ? RESCUE_HEALTH[Math.max(0, Math.min(2, this.raid.phase - 1))]
-          : 0));
+      (self
+        ? (this.soloRevive()?.hp ?? 0.45)
+        : 0.45 +
+          (extra
+            ? RESCUE_HEALTH[Math.max(0, Math.min(2, this.raid.phase - 1))]
+            : 0));
     p.statuses = [];
     p.lastInput = blankInput();
-    p.immuneUntil = this.time + 2;
+    p.immuneUntil = this.time + this.tier().reviveImmunity;
     delete this.raid.downed[p.id];
     this.downAt.delete(p.id);
     this.crawl.delete(p.id);
@@ -662,11 +749,11 @@ export class RaidArena extends Arena {
         down.progress = Math.min(
           1,
           (this.time - (this.downAt.get(p.id) ?? this.time)) /
-            RAID.selfReviveDelay,
+            (this.soloRevive()?.seconds ?? RAID.selfReviveDelay),
         );
         if (down.progress >= 1) {
           this.selfUsed = true;
-          this.revive(p);
+          this.revive(p, false, true);
         }
         continue;
       }
@@ -690,7 +777,7 @@ export class RaidArena extends Arena {
         down.progress = Math.min(
           1,
           down.progress +
-            (dt / RAID.reviveSeconds) *
+            (dt / this.tier().reviveSeconds) *
               spring *
               (fast ? 1 + riteValue("rescue", this.raid.phase) : 1),
         );
@@ -719,6 +806,7 @@ export class RaidArena extends Arena {
     radius: number,
     delay: number,
   ): RaidWarning {
+    delay = this.telegraph(kind, delay);
     const warning: RaidWarning = {
       id: ++this.serial,
       kind,
@@ -731,35 +819,45 @@ export class RaidArena extends Arena {
       startedAt: this.time,
     };
     this.raid.warnings.push(warning);
+    this.castOf.set(warning, this.currentCast);
     return warning;
   }
-  protected warnDebris(teach: boolean) {
-    for (const p of this.heroes().filter((p) => p.hp > 0))
+  protected warnDebris(teach: boolean, second = false) {
+    const delay = this.telegraph("debris", BOSS.debris.delay);
+    for (const p of this.heroes().filter((p) => p.hp > 0)) {
+      // The chapter-3 second wave lands where a running raider is heading.
+      const at = second ? this.lead(p, delay) : p;
       Object.assign(
         this.warn(
           "debris",
-          p.x,
-          p.y,
-          p.x,
-          p.y,
+          at.x,
+          at.y,
+          at.x,
+          at.y,
           BOSS.debris.radius,
           BOSS.debris.delay,
         ),
         { teach },
       );
+    }
     if (this.raid.peril >= 2 || this.raid.trait === "fractured")
       this.warn("debris", 800, 450, 800, 450, 135, 1.9);
   }
   /** A cone of stones from the boss towards a raider. */
   protected warnVolley(target: Fighter, teach: boolean) {
     const boss = this.boss()!;
-    // From Peril 2 the boss aims a little ahead of a running raider.
-    const lead =
-      this.raid.peril >= 2 ? BOSS.volley.delay * 0.35 * this.cunning() : 0;
-    const d = normalize(
-      target.x + (target.vx ?? 0) * lead - boss.x,
-      target.y + (target.vy ?? 0) * lead - boss.y,
-    );
+    // The boss aims ahead of a raider running in a straight line (Peril 2:
+    // a little; Peril 3: the star tier's lead).
+    const legacy =
+      this.raid.peril === 2 ? BOSS.volley.delay * 0.35 * this.cunning() : 0;
+    const at =
+      this.raid.peril >= 3
+        ? this.lead(target, this.telegraph("volley", BOSS.volley.delay))
+        : {
+            x: target.x + (target.vx ?? 0) * legacy,
+            y: target.y + (target.vy ?? 0) * legacy,
+          };
+    const d = normalize(at.x - boss.x, at.y - boss.y);
     const range = BOSS.volley.range + (this.raid.trait === "ancient" ? 40 : 0);
     return Object.assign(
       this.warn(
@@ -776,13 +874,20 @@ export class RaidArena extends Arena {
   }
   /** Eruptions under one raider; each one that lands spawns the next. */
   protected warnEruption(target: Fighter, chain: number, teach: boolean) {
+    // Into the middle of a stack around the target, else ahead of a runner.
+    const at = this.aimFloor(
+      "eruption",
+      target,
+      BOSS.eruption.radius,
+      BOSS.eruption.delay,
+    );
     return Object.assign(
       this.warn(
         "eruption",
-        target.x,
-        target.y,
-        target.x,
-        target.y,
+        at.x,
+        at.y,
+        at.x,
+        at.y,
         BOSS.eruption.radius,
         BOSS.eruption.delay,
       ),
@@ -836,7 +941,123 @@ export class RaidArena extends Arena {
     const r = this.raid,
       cadence = this.def().cadence;
     const base = r.trait === "restless" ? cadence.restless : cadence.normal;
-    return r.phase === 3 && !r.drill ? base * cadence.finalPhase : base;
+    const final = r.phase === 3 && !r.drill ? base * cadence.finalPhase : base;
+    if (r.drill || r.peril < 3) return final;
+    // Live raids: the star tier, party pressure (4 raiders: ×0.85) and the
+    // soft enrage all shorten the gap. Telegraphs stay as long as they were.
+    const party = 1 - 0.05 * (Math.max(1, r.partySize) - 1);
+    return (
+      final *
+      this.tier().cadence *
+      party *
+      RAID_ENRAGE.cadence ** (r.enrage ?? 0)
+    );
+  }
+  // ------------------------------------------------------------ Star tier
+  /** This run's difficulty row (Peril 1-2 and practice keep the old rules). */
+  protected tier(): RaidTier {
+    return this.raid.peril >= 3 && !this.raid.drill
+      ? raidTier(this.raid.boss)
+      : LEGACY_TIER;
+  }
+  /** Boss damage × this: the tier, plus the soft enrage. */
+  protected bossDamage() {
+    const r = this.raid;
+    if (r.peril < 3) return this.def().perilDamage[r.peril] ?? 1;
+    return this.tier().damage * (1 + RAID_ENRAGE.damage * (r.enrage ?? 0));
+  }
+  /** A solo raider's self-revive this run (none against ★★★ bosses). */
+  protected soloRevive() {
+    const r = this.raid;
+    if (r.peril >= 3) return raidSoloRevive(r.boss);
+    return r.peril <= RAID.soloSelfReviveMaxPeril
+      ? { seconds: RAID.selfReviveDelay, hp: 0.45 }
+      : undefined;
+  }
+  /** An exposure, strand or grounded window on this tier (seconds). */
+  protected window(seconds: number) {
+    return seconds * this.tier().windows;
+  }
+  /** A telegraph's length on this tier; jump answers and durations keep theirs. */
+  protected telegraph(kind: RaidAttack, seconds: number) {
+    const r = this.raid;
+    if (
+      r.peril < 3 ||
+      r.drill ||
+      RAID_JUMP_ATTACKS.has(kind) ||
+      RAID_DURATION_ATTACKS.has(kind) ||
+      kind === "wave"
+    )
+      return seconds;
+    return raidTelegraph(r.boss, seconds);
+  }
+  // ---------------------------------------------------------- Predictive aim
+  /** Remember each raider's velocity for a moment (steady-movement check). */
+  protected trackMotion() {
+    for (const p of this.heroes()) {
+      const list = this.motion.get(p.id) ?? [];
+      list.push({ t: this.time, vx: p.vx ?? 0, vy: p.vy ?? 0 });
+      while (list.length && list[0].t < this.time - 0.6) list.shift();
+      this.motion.set(p.id, list);
+    }
+  }
+  /** Has this raider kept running the same way for the last 0.3 s? */
+  protected steady(p: Fighter) {
+    const v = Math.hypot(p.vx ?? 0, p.vy ?? 0);
+    if (v < 120) return false;
+    const list = this.motion.get(p.id) ?? [];
+    const then = list.find((s) => s.t >= this.time - 0.32);
+    if (!then || then.t > this.time - 0.2) return false;
+    const was = Math.hypot(then.vx, then.vy);
+    if (was < 120) return false;
+    const turn = Math.abs(
+      Math.atan2(
+        then.vx * (p.vy ?? 0) - then.vy * (p.vx ?? 0),
+        then.vx * (p.vx ?? 0) + then.vy * (p.vy ?? 0),
+      ),
+    );
+    return turn < (35 * Math.PI) / 180;
+  }
+  /**
+   * Where `p` will be in `t` seconds if they keep running straight, capped by
+   * the star tier. A raider standing still, slowing or weaving is not led, so
+   * stopping or turning always beats a led shot.
+   */
+  protected lead(p: Fighter, t: number) {
+    const tier = this.tier(),
+      k = tier.leadFraction * this.cunning();
+    const v = Math.hypot(p.vx ?? 0, p.vy ?? 0);
+    if (k <= 0 || t <= 0 || !this.steady(p)) return { x: p.x, y: p.y };
+    const d = Math.min(v * t * k, tier.leadCap);
+    return {
+      x: Math.max(40, Math.min(RULES.width - 40, p.x + ((p.vx ?? 0) / v) * d)),
+      y: Math.max(40, Math.min(RULES.height - 40, p.y + ((p.vy ?? 0) / v) * d)),
+    };
+  }
+  /**
+   * Where a floor blast at `target` lands: the middle of a stack of raiders
+   * around them (2 or more inside its reach), else ahead of a runner.
+   */
+  protected aimFloor(
+    kind: RaidAttack,
+    target: Fighter,
+    radius: number,
+    delay: number,
+  ) {
+    const r = this.raid;
+    if (r.peril < 3 || r.drill) return { x: target.x, y: target.y };
+    if (RAID_CLUSTER_ATTACKS.has(kind)) {
+      const near = this.heroes().filter(
+        (p) =>
+          p.hp > 0 && Math.hypot(p.x - target.x, p.y - target.y) < radius * 1.5,
+      );
+      if (near.length >= 2)
+        return {
+          x: near.reduce((s, p) => s + p.x, 0) / near.length,
+          y: near.reduce((s, p) => s + p.y, 0) / near.length,
+        };
+    }
+    return this.lead(target, this.telegraph(kind, delay));
   }
   /** Practice: count everyone a resolved attack missed. */
   protected countDodges() {
@@ -864,7 +1085,16 @@ export class RaidArena extends Arena {
           BOSS.charge.width,
           BOSS.charge.delay,
         ),
-        { targetId: target.id, lockAt: this.time + BOSS.charge.lock, teach },
+        {
+          targetId: target.id,
+          // Baiting gets harder: from the third pillar this chapter it
+          // watches its target a little longer before it locks.
+          lockAt:
+            this.time +
+            BOSS.charge.lock +
+            (this.smart() && this.pillarBreaks >= 2 ? BOSS.charge.lateLock : 0),
+          teach,
+        },
       );
     } else if (kind === "slam") {
       Object.assign(
@@ -897,37 +1127,541 @@ export class RaidArena extends Arena {
       r.message = "STAGGER! Core exposed — unleash your ultimates!";
       r.warnings = [];
       this.charging = undefined;
-      this.nextAttack = r.staggerUntil + 1;
+      this.echoes = [];
+      this.nextAttack = r.staggerUntil + (this.smart() ? 0.4 : 1);
     }
     // Threat fades: what you did in the last few seconds is what counts.
     const fade = Math.exp(-dt / 6);
     for (const [id, value] of this.threat) this.threat.set(id, value * fade);
+    this.trackMotion();
+    this.trackMelee(boss);
+    this.stepEnrage();
     this.worldStep(dt, boss);
     if (r.staggerUntil > this.time) return;
     this.followWarnings(boss);
-    if (
-      this.time >= this.nextAttack &&
-      this.canStartAttack() &&
-      !r.warnings.length
-    ) {
-      const alive = this.heroes().filter((p) => p.hp > 0);
-      if (!alive.length) return;
-      const pattern = r.drill ? [r.drill] : this.pattern();
+    this.lockWarnings(boss);
+    this.playEchoes();
+    if (r.drill) {
+      if (
+        this.time >= this.nextAttack &&
+        this.canStartAttack() &&
+        !r.warnings.length
+      ) {
+        const alive = this.heroes().filter((p) => p.hp > 0);
+        if (!alive.length) return;
+        this.attacks++;
+        this.startAttack(r.drill, this.chooseTarget(r.drill, alive));
+        this.nextAttack = this.time + 3.2;
+        this.drillReset();
+      }
+    } else if (this.time >= this.nextAttack && this.canStartAttack())
+      this.tryAttack();
+    const due = r.warnings.filter((w) => w.at <= this.time);
+    r.warnings = r.warnings.filter((w) => w.at > this.time);
+    for (const w of due) {
+      this.struck.clear();
+      this.currentCast = this.castOf.get(w) ?? 0;
+      this.resolving = true;
+      this.resolveWarning(w, boss);
+      this.resolving = false;
+    }
+    this.currentCast = 0;
+    this.settleWarnings();
+    this.bossStep(dt, boss);
+    this.settleWarnings();
+  }
+  /** True while a warning's landing is being resolved (follow-ups it spawns). */
+  protected resolving = false;
+  /** Live raids think (Peril 3); Peril 1-2 keep the old fixed rotation. */
+  protected smart() {
+    return this.raid.peril >= 3 && !this.raid.drill;
+  }
+  // ------------------------------------------------------ Choosing attacks
+  /** Start the next attack if the tier lets one more be live. */
+  protected tryAttack() {
+    const r = this.raid;
+    const alive = this.heroes().filter((p) => p.hp > 0);
+    if (!alive.length) return;
+    if (!this.smart()) {
+      // Legacy: one attack at a time, in the pattern's fixed order.
+      if (r.warnings.length) return;
+      const pattern = this.pattern();
       const kind = pattern[this.attacks % pattern.length];
       const target = this.chooseTarget(kind, alive);
       this.attacks++;
       this.lastTargetId = target.id;
       this.startAttack(kind, target);
-      this.nextAttack = this.time + (r.drill ? 3.2 : this.cadence());
-      if (r.drill) this.drillReset();
+      this.nextAttack = this.time + this.cadence();
+      return;
     }
-    const due = r.warnings.filter((w) => w.at <= this.time);
-    r.warnings = r.warnings.filter((w) => w.at > this.time);
-    for (const w of due) {
-      this.struck.clear();
-      this.resolveWarning(w, boss);
+    const live = this.liveThreats();
+    if (live >= this.concurrency() || (live > 0 && this.busy())) return;
+    const choice = this.decide(alive, live > 0);
+    if (!choice) return;
+    const { kind, target } = choice;
+    this.currentCast = ++this.castSerial;
+    const before = new Set(r.warnings);
+    this.attacks++;
+    this.lastTargetId = target.id;
+    this.recentTargets = [...this.recentTargets.slice(-2), target.id];
+    this.startAttack(kind, target);
+    if (choice.deckIndex >= 0) this.deck.splice(choice.deckIndex, 1);
+    else this.lastReaction = this.attacks;
+    this.lastKind = kind;
+    const signature = this.signature();
+    this.sinceSignature = kind === signature ? 0 : this.sinceSignature + 1;
+    const fresh = r.warnings.filter((w) => !before.has(w));
+    this.settleWarnings();
+    if (live > 0) this.spaceOverlap(fresh);
+    if (this.pressured(kind, alive))
+      this.echoes.push({
+        at: this.time + 0.35,
+        kind,
+        cast: this.currentCast,
+        exclude: [target.id],
+      });
+    this.currentCast = 0;
+    this.nextAttack = this.time + this.cadence();
+  }
+  /**
+   * The next attack and its target: a reaction to the fight when one scores
+   * high enough (at most every other attack), else the deck's top card. With
+   * an attack already live, the first of the top three cards that may overlap.
+   */
+  protected decide(
+    alive: Fighter[],
+    overlapping: boolean,
+  ): { kind: RaidAttack; target: Fighter; deckIndex: number } | undefined {
+    const pattern = this.pattern();
+    if (!this.deck.length) this.refillDeck(pattern);
+    if (this.attacks - this.lastReaction >= 2) {
+      const s = this.situation(alive);
+      const best = this.reactions(s)
+        .filter(
+          (x) =>
+            x.score >= 1 &&
+            pattern.includes(x.kind) &&
+            x.kind !== this.lastKind &&
+            this.allows(x.kind) &&
+            (!overlapping || this.canOverlap(x.kind)),
+        )
+        .sort((a, b) => b.score - a.score)[0];
+      if (best)
+        return {
+          kind: best.kind,
+          target:
+            best.target && alive.includes(best.target)
+              ? best.target
+              : this.chooseTarget(best.kind, alive),
+          deckIndex: -1,
+        };
     }
-    this.bossStep(dt, boss);
+    // The top card, unless the boss can't play it right now (then the next
+    // one it can); with an attack live, one of the top three that may overlap.
+    const look = overlapping ? Math.min(3, this.deck.length) : this.deck.length;
+    for (let i = 0; i < look; i++) {
+      const kind = this.deck[i];
+      if (!this.allows(kind)) continue;
+      if (overlapping && !this.canOverlap(kind)) continue;
+      return { kind, target: this.chooseTarget(kind, alive), deckIndex: i };
+    }
+    return undefined;
+  }
+  /** Can the boss play this card right now? (Somnara mid-dream: only some.) */
+  protected allows(_kind: RaidAttack) {
+    return true;
+  }
+  /** Shuffle the chapter's pattern into a new deck (chapter 1 first teaches it in order). */
+  protected refillDeck(pattern: RaidAttack[]) {
+    const r = this.raid,
+      cycle = this.deckCycle++;
+    this.deck = buildRaidDeck(pattern, {
+      authored: r.phase === 1 && cycle === 0,
+      jitter: (i) => raidJitter(r.seed, 7919 * r.phase + 31 * cycle, i),
+      previous: this.lastKind,
+      signature: this.signature(),
+      sinceSignature: this.sinceSignature,
+    });
+  }
+  /** The boss's signature attack: at least one in every four cards. */
+  protected signature(): RaidAttack | undefined {
+    return SIGNATURES[this.raid.boss];
+  }
+
+  /** What the boss sees: melee, stacks, the isolated and the weak. */
+  protected situation(alive: Fighter[]): RaidSituation {
+    const boss = this.boss()!;
+    const dist = (a: { x: number; y: number }, b: { x: number; y: number }) =>
+      Math.hypot(a.x - b.x, a.y - b.y);
+    const melee = alive
+      .filter((p) => dist(p, boss) < 260)
+      .map((p) => ({
+        p,
+        seconds: this.time - (this.meleeSince.get(p.id) ?? this.time),
+      }));
+    let cluster = { size: 0, x: boss.x, y: boss.y, ids: [] as string[] };
+    for (const p of alive) {
+      const near = alive.filter((q) => dist(p, q) < 150);
+      if (near.length > cluster.size)
+        cluster = {
+          size: near.length,
+          x: near.reduce((s, q) => s + q.x, 0) / near.length,
+          y: near.reduce((s, q) => s + q.y, 0) / near.length,
+          ids: near.map((q) => q.id),
+        };
+    }
+    const nearest = (p: Fighter) =>
+      Math.min(...alive.filter((q) => q !== p).map((q) => dist(p, q)));
+    const downed = this.heroes().filter((p) => p.hp <= 0);
+    const share = (p: Fighter) => p.hp / CHARACTERS[p.character].health;
+    return {
+      time: this.time,
+      phase: this.raid.phase,
+      boss,
+      alive,
+      melee,
+      cluster,
+      isolated:
+        alive.length > 1
+          ? [...alive].sort((a, b) => nearest(b) - nearest(a))[0]
+          : undefined,
+      weakest: [...alive].sort((a, b) => share(a) - share(b))[0],
+      reviving: alive.filter((p) =>
+        downed.some((d) => dist(d, p) <= RAID.reviveRange),
+      ),
+      onMechanic: alive.filter((p) => this.onMechanic(p)),
+      airborne: alive.filter((p) => p.jumpUntil > this.time),
+      dashSpent: alive.filter((p) => p.dashAt > this.time),
+      spread: alive.reduce((s, p) => s + dist(p, boss), 0) / alive.length,
+    };
+  }
+  /** Is this raider using the boss's mechanic (island, pad, light…)? */
+  protected onMechanic(_p: Fighter) {
+    return false;
+  }
+  /** Remember when each raider stepped into melee range. */
+  protected trackMelee(boss: Fighter) {
+    for (const p of this.heroes()) {
+      const near = p.hp > 0 && Math.hypot(p.x - boss.x, p.y - boss.y) < 260;
+      if (!near) this.meleeSince.delete(p.id);
+      else if (!this.meleeSince.has(p.id)) this.meleeSince.set(p.id, this.time);
+    }
+  }
+  // ------------------------------------------------------------- Overlaps
+  /** Most damaging attacks live at once (the tier, by chapter). */
+  protected concurrency() {
+    const c = this.tier().concurrency;
+    return c[Math.max(0, Math.min(2, this.raid.phase - 1))];
+  }
+  /** Attacks that never overlap another (a boss may add its own). */
+  protected exclusive(kind: RaidAttack) {
+    return RAID_EXCLUSIVE_ATTACKS.has(kind);
+  }
+  /** Does this warning hurt by itself? */
+  protected harmful(w: RaidWarning) {
+    return !RAID_HARMLESS_ATTACKS.has(w.kind);
+  }
+  /**
+   * Live hazards on the floor that are not warnings (a charge in motion, a
+   * sweeping wave, rings, bubbles…): each kind counts as one live attack.
+   */
+  protected hazards() {
+    const r = this.raid;
+    return [
+      this.charging,
+      r.waves?.length,
+      r.undertow,
+      r.bubbles?.length,
+      r.dreamRings?.length,
+      r.quietZone,
+      r.flameRings?.length,
+      r.emberDive,
+      r.stormRushes?.length,
+      r.stormBeam,
+      r.stormChain,
+    ].filter(Boolean).length;
+  }
+  /** Something that needs the whole floor is playing out. */
+  protected busy() {
+    const r = this.raid;
+    return (
+      r.warnings.some((w) => this.exclusive(w.kind)) ||
+      !!this.charging ||
+      !!r.waves?.length ||
+      !!r.undertow ||
+      !!r.quietZone ||
+      !!r.stormBeam ||
+      !!r.stormRushes?.length ||
+      !!r.emberDive
+    );
+  }
+  /** Damaging attacks live now: distinct casts with warnings, plus hazards. */
+  liveThreats() {
+    const casts = new Set<number>();
+    for (const w of this.raid.warnings)
+      if (this.harmful(w)) casts.add(this.castOf.get(w) ?? -w.id);
+    return casts.size + this.hazards();
+  }
+  /** May this attack start while another is live? A different shape, never a second jump. */
+  protected canOverlap(kind: RaidAttack) {
+    if (this.exclusive(kind) || raidShapeOf(kind) === "field") return false;
+    const live = this.raid.warnings.filter((w) => this.harmful(w));
+    const shape = raidShapeOf(kind);
+    if (live.some((w) => raidShapeOf(w.kind) === shape)) return false;
+    if (
+      RAID_JUMP_ATTACKS.has(kind) &&
+      live.some((w) => RAID_JUMP_ATTACKS.has(w.kind))
+    )
+      return false;
+    return true;
+  }
+  /**
+   * An attack just started while another was live: its impacts land at least
+   * RAID_IMPACT_GAP from the others (the jump cooldown apart for two jumps),
+   * and every raider must still have a reachable safe spot. Otherwise the new
+   * attack waits until the older ones have landed. Delaying only ever gives
+   * raiders more warning.
+   */
+  protected spaceOverlap(fresh: RaidWarning[]) {
+    const r = this.raid;
+    const mine = fresh.filter((w) => this.harmful(w));
+    if (!mine.length) return;
+    const old = r.warnings.filter((w) => !fresh.includes(w) && this.harmful(w));
+    if (!old.length) return;
+    const shift = (delta: number) => {
+      if (delta <= 0) return;
+      for (const w of fresh) {
+        w.at += delta;
+        if (w.lockAt !== undefined) w.lockAt += delta;
+        if (w.shiftAt !== undefined) w.shiftAt += delta;
+      }
+    };
+    const jumpGap = RULES.jumpCooldown + 0.3;
+    for (let pass = 0; pass < 4; pass++) {
+      let need = 0;
+      for (const w of mine)
+        for (const o of old) {
+          const gap =
+            RAID_JUMP_ATTACKS.has(w.kind) && RAID_JUMP_ATTACKS.has(o.kind)
+              ? jumpGap
+              : RAID_IMPACT_GAP;
+          if (Math.abs(w.at - o.at) < gap)
+            need = Math.max(need, o.at + gap - w.at);
+        }
+      if (!need) break;
+      shift(need);
+    }
+    if (!this.safeSpotExists([...old, ...mine]))
+      shift(
+        Math.max(...old.map((o) => o.at)) +
+          1 -
+          Math.min(...mine.map((w) => w.at)),
+      );
+  }
+  /**
+   * For every raider, is there a spot they can reach before the first of
+   * these shapes lands (slowest champion, after a 0.45 s reaction) that is
+   * outside every one of them? Ring and field attacks are answered by
+   * jumping or by the mechanic, so they don't block a spot.
+   */
+  safeSpotExists(shapes: RaidWarning[] = this.raid.warnings) {
+    const spatial = shapes.filter(
+      (w) =>
+        this.harmful(w) &&
+        ["circle", "line", "cone"].includes(raidShapeOf(w.kind)),
+    );
+    if (!spatial.length) return true;
+    const first = Math.min(...spatial.map((w) => w.at));
+    const reach =
+      RAID_SLOWEST_SPEED * Math.max(0, first - this.time - RAID_REACTION);
+    const clear = (x: number, y: number) =>
+      x > RULES.radius &&
+      x < RULES.width - RULES.radius &&
+      y > RULES.radius &&
+      y < RULES.height - RULES.radius &&
+      !spatial.some((w) => raidShapeHits(w, x, y, RULES.radius + 4));
+    return this.heroes()
+      .filter((p) => p.hp > 0)
+      .every((p) => {
+        if (clear(p.x, p.y)) return true;
+        for (const f of [0.35, 0.7, 1])
+          for (let i = 0; i < 16; i++) {
+            const a = (i / 16) * Math.PI * 2;
+            if (
+              clear(
+                p.x + Math.cos(a) * reach * f,
+                p.y + Math.sin(a) * reach * f,
+              )
+            )
+              return true;
+          }
+        return false;
+      });
+  }
+  // ------------------------------------------------------- Party pressure
+  /** In a party of 3+, from the tier's chapter, single-target attacks hit two raiders. */
+  protected pressured(kind: RaidAttack, alive: Fighter[]) {
+    return (
+      this.smart() &&
+      alive.length >= 3 &&
+      this.raid.phase >= this.tier().pressureFrom &&
+      RAID_PRESSURE_ATTACKS.has(kind)
+    );
+  }
+  /** The second half of a pressured attack: the same attack at someone else. */
+  protected playEchoes() {
+    const r = this.raid;
+    const due = this.echoes.filter((e) => e.at <= this.time);
+    if (!due.length) return;
+    this.echoes = this.echoes.filter((e) => e.at > this.time);
+    for (const e of due) {
+      const others = this.heroes().filter(
+        (p) => p.hp > 0 && !e.exclude.includes(p.id),
+      );
+      if (!others.length) continue;
+      const target = this.chooseTarget(e.kind, others);
+      this.currentCast = e.cast;
+      const before = new Set(r.warnings);
+      this.startAttack(e.kind, target);
+      const fresh = r.warnings.filter((w) => !before.has(w));
+      this.settleWarnings();
+      this.spaceOverlap(fresh);
+      this.currentCast = 0;
+    }
+  }
+  // ------------------------------------------------------- Honesty rules
+  /**
+   * Every new warning keeps the honesty rules (docs/boss-raid.md): at least
+   * RAID_TELEGRAPH_FLOOR on screen (follow-ups of a visible attack aside),
+   * and a shape that follows a raider freezes at least RAID_FREEZE (and long
+   * enough to walk out of a circle) before it lands.
+   */
+  protected settleWarnings() {
+    if (!this.smart()) return;
+    for (const w of this.raid.warnings) {
+      if (this.settled.has(w)) continue;
+      this.settled.add(w);
+      const start = w.startedAt ?? this.time;
+      if (
+        this.harmful(w) &&
+        !w.followUp &&
+        !this.resolving &&
+        w.at - start < RAID_TELEGRAPH_FLOOR
+      )
+        w.at = start + RAID_TELEGRAPH_FLOOR;
+      const freeze =
+        raidShapeOf(w.kind) === "circle"
+          ? Math.max(
+              RAID_FREEZE,
+              (w.radius + RULES.radius) / RAID_SLOWEST_SPEED + 0.05,
+            )
+          : RAID_FREEZE;
+      if (w.lockAt !== undefined && w.lockAt < w.at)
+        w.lockAt = Math.max(start, Math.min(w.lockAt, w.at - freeze));
+      if (w.shiftAt !== undefined)
+        w.shiftAt = Math.max(start, Math.min(w.shiftAt, w.at - RAID_FREEZE));
+      // Two jump answers on the same ground land the jump cooldown apart.
+      if (RAID_JUMP_ATTACKS.has(w.kind) && w.kind !== "lullaby") {
+        const gap = RULES.jumpCooldown + 0.3;
+        for (const o of this.raid.warnings)
+          if (
+            o !== w &&
+            this.settled.has(o) &&
+            RAID_JUMP_ATTACKS.has(o.kind) &&
+            o.kind !== "lullaby" &&
+            Math.abs(o.at - w.at) < gap &&
+            Math.hypot(o.x - w.x, o.y - w.y) < o.radius + w.radius
+          ) {
+            const delta = o.at + gap - w.at;
+            w.at += delta;
+            if (w.lockAt !== undefined) w.lockAt += delta;
+          }
+      }
+    }
+  }
+  /**
+   * Attacks whose shape may be re-aimed ahead of a running raider as it
+   * locks (only when that stays fair: see `lockWarnings`).
+   */
+  protected leadsOnLock(kind: RaidAttack) {
+    return kind === "charge" || kind === "lunge" || kind === "dive";
+  }
+  protected locked = new WeakSet<RaidWarning>();
+  /**
+   * A following shape locks: it is re-aimed once, at where its raider will
+   * be if they keep running straight, and drawn there for the rest of its
+   * telegraph (the server never hits anywhere else). It only leads when a
+   * raider who sees the lock late (0.45 s) can still walk out at the slowest
+   * speed from the middle of the shape before it lands; otherwise it stays
+   * on the raider, as before.
+   */
+  protected lockWarnings(boss: Fighter) {
+    if (!this.smart()) return;
+    for (const w of this.raid.warnings) {
+      if (w.lockAt === undefined || this.time < w.lockAt || this.locked.has(w))
+        continue;
+      this.locked.add(w);
+      if (!this.leadsOnLock(w.kind)) continue;
+      const target = this.heroes().find((p) => p.id === w.targetId && p.hp > 0);
+      if (!target || (target.clone && target.clone.until > this.time)) continue;
+      // A charge also travels: the boss reaches a raider a little later.
+      const travel =
+        w.kind === "charge"
+          ? Math.hypot(target.x - boss.x, target.y - boss.y) / BOSS.charge.speed
+          : 0;
+      const left = w.at - this.time + travel;
+      const half =
+        raidShapeOf(w.kind) === "line"
+          ? w.kind === "charge"
+            ? 100 - RULES.radius
+            : (w.width ?? 0) / 2 || w.radius
+          : w.radius;
+      if (half + RULES.radius > RAID_SLOWEST_SPEED * (left - RAID_REACTION))
+        continue;
+      const at = this.lead(target, left);
+      if (at.x === target.x && at.y === target.y) continue;
+      if (raidShapeOf(w.kind) === "line") {
+        const d = normalize(at.x - w.x || 1, at.y - w.y);
+        const len =
+          w.kind === "charge" ? 1000 : Math.hypot(w.tx - w.x, w.ty - w.y);
+        w.tx = w.x + d.x * len;
+        w.ty = w.y + d.y * len;
+        if (w.kind === "charge") {
+          w.tx = Math.max(90, Math.min(1510, w.tx));
+          w.ty = Math.max(90, Math.min(810, w.ty));
+          boss.angle = Math.atan2(w.ty - w.y, w.tx - w.x);
+        }
+      } else {
+        w.x = w.tx = at.x;
+        w.y = w.ty = at.y;
+      }
+    }
+  }
+  // ---------------------------------------------------------- Soft enrage
+  /** Past the tier's time, the boss grows furious in steps (announced). */
+  protected stepEnrage() {
+    const r = this.raid;
+    if (!this.smart()) return;
+    const steps = raidEnrageSteps(r.boss, r.elapsed);
+    if (steps <= (r.enrage ?? 0)) return;
+    r.enrage = steps;
+    r.enrageAt = this.time;
+    r.message =
+      steps === 1
+        ? `${r.name} grows furious! Its attacks come faster and hit harder.`
+        : `${r.name}'s fury builds (${steps}/${RAID_ENRAGE.steps})!`;
+  }
+  /** A fresh run or chapter: forget the deck and what the boss remembered. */
+  protected resetBrain() {
+    this.deck = [];
+    this.deckCycle = 0;
+    this.lastKind = undefined;
+    this.sinceSignature = 0;
+    this.lastReaction = -99;
+    this.recentTargets = [];
+    this.echoes = [];
+    this.motion.clear();
+    this.meleeSince.clear();
   }
   /** Arena upkeep that carries on even while the boss is staggered. */
   protected worldStep(_dt: number, _boss: Fighter) {}
@@ -956,16 +1690,29 @@ export class RaidArena extends Arena {
       0,
     );
     const downed = this.heroes().filter((p) => p.hp <= 0);
+    const live = r.peril >= 3;
+    // Never the same raider three times running.
+    const [a, b] = this.recentTargets.slice(-2);
+    const banned = live && a !== undefined && a === b ? a : undefined;
     let best = rotation,
       bestScore = -Infinity;
     alive.forEach((p, i) => {
+      if (p.id === banned) return;
       const distance = Math.hypot(p.x - boss.x, p.y - boss.y);
       const nearestAlly = Math.min(
         ...alive
           .filter((q) => q !== p)
           .map((q) => Math.hypot(q.x - p.x, q.y - p.y)),
       );
-      let score = raidJitter(r.seed, this.attacks, i) * 0.6;
+      let score = raidJitter(r.seed, this.attacks, i) * (live ? 0.35 : 0.6);
+      if (live) {
+        const max = CHARACTERS[p.character].health;
+        // The weak, the fragile, and a raider who just spent their dash.
+        score += 0.7 * (1 - Math.max(0, p.hp) / max) * c;
+        if (max < 145) score += 0.3 * c;
+        if (RAID_LINE_ATTACKS.has(kind) && p.dashAt > this.time)
+          score += 0.6 * c;
+      }
       if (total > 1) score += ((this.threat.get(p.id) ?? 0) / total) * 1.5 * c;
       if (
         downed.some((d) => Math.hypot(d.x - p.x, d.y - p.y) <= RAID.reviveRange)
@@ -1038,6 +1785,7 @@ export class RaidArena extends Arena {
           until: this.time + 1.3,
           hit: new Set(),
           targetId: w.targetId,
+          back: w.followUp,
         };
         return;
       }
@@ -1092,6 +1840,25 @@ export class RaidArena extends Arena {
         for (const p of inside) this.damage(p, each, boss.id, ability);
         if (inside.length > 1 && !r.drill)
           r.message = `Meteor shared by ${inside.length} raiders!`;
+        // Chapter 3: stack, then scatter. Eruptions chase the stack's middle.
+        const target = this.heroes().find((p) => p.id === w.targetId);
+        if (this.smart() && r.phase === 3 && inside.length > 1 && target) {
+          const cx = inside.reduce((s, p) => s + p.x, 0) / inside.length,
+            cy = inside.reduce((s, p) => s + p.y, 0) / inside.length;
+          Object.assign(
+            this.warn(
+              "eruption",
+              cx,
+              cy,
+              cx,
+              cy,
+              BOSS.eruption.radius,
+              RAID_TELEGRAPH_FLOOR,
+            ),
+            { targetId: target.id, chain: 2, followUp: true },
+          );
+          r.message = "Meteor shared — now scatter!";
+        }
       } else {
         const damage =
           w.kind === "slam"
@@ -1171,10 +1938,25 @@ export class RaidArena extends Arena {
         if (c.targetId && r.contributions?.[c.targetId] && !r.drill)
           r.contributions[c.targetId].pillars++;
         if (!r.drill) this.chargeBaits++;
-        this.nextAttack = Math.max(this.nextAttack, this.time + 3);
+        if (!r.drill) this.pillarBreaks++;
+        const live = this.smart();
+        this.nextAttack = Math.max(
+          this.nextAttack,
+          this.time + (live ? BOSS.pillar.pause : 3),
+        );
         if (!r.drill) {
           r.stagger = Math.min(100, r.stagger + 42);
-          r.exposedUntil = this.time + (r.trait === "fractured" ? 10 : 8);
+          r.exposedUntil =
+            this.time +
+            (live
+              ? this.window(
+                  r.trait === "fractured"
+                    ? BOSS.pillar.fractured
+                    : BOSS.pillar.expose,
+                )
+              : r.trait === "fractured"
+                ? 10
+                : 8);
           r.message = "ARMOR BROKEN! Hit the glowing core.";
         }
         this.event("raid-impact", pillar, 0xffd65b, undefined, boss.id);
@@ -1208,16 +1990,58 @@ export class RaidArena extends Arena {
           this.struck = new Set(c.hit);
           this.countDodges();
           this.charging = undefined;
+          if (this.smart() && r.phase >= 2 && !c.back) this.chargeBack(c);
         }
       }
     }
     if (r.peril >= 3 && r.phase === 3 && !r.drill) {
-      const radius = Math.max(240, 500 - this.phaseElapsed * 2);
+      const ring = BOSS.ring;
+      const radius = Math.max(
+        ring.end,
+        ring.start - this.phaseElapsed * ring.shrink,
+      );
       r.closingRadius = radius;
       for (const p of this.heroes())
         if (p.hp > 0 && Math.hypot(p.x - 800, p.y - 450) > radius)
-          this.damage(p, 6 * dt, boss.id);
+          this.damage(p, ring.dps * dt, boss.id);
     }
+  }
+  /**
+   * Chapter 2+: a charge that missed every pillar turns round and comes
+   * back at its target (a 0.9 s warning drawn as the first run ends). A
+   * pillar still stops it.
+   */
+  protected chargeBack(c: NonNullable<RaidArena["charging"]>) {
+    const boss = this.boss();
+    const target = this.heroes().find((p) => p.id === c.targetId && p.hp > 0);
+    if (!boss || !target) return;
+    const d = normalize(target.x - boss.x || 1, target.y - boss.y);
+    Object.assign(
+      this.warn(
+        "charge",
+        boss.x,
+        boss.y,
+        Math.max(90, Math.min(1510, boss.x + d.x * 1000)),
+        Math.max(90, Math.min(810, boss.y + d.y * 1000)),
+        BOSS.charge.width,
+        BOSS.charge.returnDelay,
+      ),
+      {
+        targetId: target.id,
+        lockAt: this.time + BOSS.charge.returnDelay - RAID_FREEZE,
+        followUp: true,
+      },
+    );
+    this.raid.message = "It turns — the charge comes back!";
+  }
+  /** How much a hit on the boss counts: exposed ×1.6, cracked ×1.2, armored ×0.72. */
+  protected coreMultiplier(target: Fighter) {
+    const r = this.raid;
+    const open = r.exposedUntil > this.time || r.staggerUntil > this.time;
+    if (open || (this.alwaysExposed() && !this.smart()))
+      return r.trait === "restless" ? 1.8 : 1.6;
+    if (this.alwaysExposed()) return BOSS.crackedCore;
+    return this.bossExposed(target) ? 1.6 : 0.72;
   }
   /** Recipient-only Somnara information; ordinary raids have none. */
   dreamFor(_id: string): RaidDreamView | undefined {
@@ -1312,6 +2136,34 @@ export class RaidArena extends Arena {
     const hint = this.botHint(bot, input, go);
     if (hint) return hint;
     const alive = this.heroes().filter((p) => p.hp > 0).length;
+    // Inside one or more drawn shapes (circles, lanes, cones): head for the
+    // nearest spot outside all of them, so overlapping attacks are dodged
+    // together instead of one at a time.
+    const shapes = r.warnings.filter(
+      (w) =>
+        w.kind !== "share" &&
+        this.harmful(w) &&
+        ["circle", "line", "cone"].includes(raidShapeOf(w.kind)),
+    );
+    const pad = RULES.radius + 12;
+    const inside = (x: number, y: number) =>
+      shapes.some((w) => raidShapeHits(w, x, y, pad));
+    if (shapes.length && inside(bot.x, bot.y)) {
+      for (let reach = 40; reach <= 520; reach += 40)
+        for (let i = 0; i < 16; i++) {
+          const a = (i / 16) * Math.PI * 2;
+          const x = bot.x + Math.cos(a) * reach,
+            y = bot.y + Math.sin(a) * reach;
+          if (
+            x > 60 &&
+            x < RULES.width - 60 &&
+            y > 60 &&
+            y < RULES.height - 60 &&
+            !inside(x, y)
+          )
+            return go(x, y, false);
+        }
+    }
     for (const w of r.warnings) {
       if (w.kind === "share") {
         if (w.targetId !== bot.id && alive > 1 && w.lockAt === undefined)
@@ -1395,7 +2247,7 @@ export class RaidArena extends Arena {
     if (this.phase === "playing") {
       if (!this.started) {
         this.started = true;
-        this.nextAttack = this.time + 2;
+        this.nextAttack = this.time + (this.smart() ? 1.2 : 2);
       }
       this.raid.elapsed += dt;
       this.phaseElapsed += dt;
@@ -1435,6 +2287,9 @@ export class RaidArena extends Arena {
       this.round = next;
       this.raid.message = raidChapters(this.raid.boss)[next - 1].objective;
       this.attacks = 0;
+      this.deck = [];
+      this.deckCycle = 0;
+      this.echoes = [];
       this.started = false;
       this.raid.staggerUntil = 0;
       this.raid.exposedUntil = 0;
@@ -1464,6 +2319,34 @@ export class RaidArena extends Arena {
   /** A new chapter: Grumblecrag's pillars stand again. */
   protected onChapter() {
     this.raid.pillars.forEach((p) => (p.broken = false));
+    this.pillarBreaks = 0;
+  }
+  /**
+   * Reaction hook: attacks this boss wants to play right now, given what it
+   * sees (`situation()`). A score of 1 or more jumps ahead of the deck, at
+   * most every other attack, and only attacks in this chapter's pattern; the
+   * highest score wins. Bosses override it (the default answers nothing).
+   *
+   * Grumblecrag's: it slams raiders who camp in melee, throws a volley at a
+   * party keeping its distance, and drops eruptions on a stack.
+   */
+  protected reactions(s: RaidSituation): RaidReaction[] {
+    if (this.raid.boss !== "grumblecrag") return [];
+    const out: RaidReaction[] = [];
+    const camping = s.melee.some((m) => m.seconds >= 2.5);
+    if (camping || s.melee.length >= 2)
+      out.push({ kind: "slam", score: 1 + 0.2 * s.melee.length });
+    const open = (p: Fighter) =>
+      this.lineClear(s.boss, p) &&
+      Math.hypot(p.x - s.boss.x, p.y - s.boss.y) > 500;
+    if (s.alive.length && s.alive.every(open))
+      out.push({ kind: "volley", score: 1.1 });
+    const meteorDue = this.deck[0] === "share";
+    if (s.cluster.size >= 3 && !meteorDue) {
+      const target = s.alive.find((p) => s.cluster.ids.includes(p.id));
+      out.push({ kind: "eruption", score: 1.2, target });
+    }
+    return out;
   }
   /** Lines shown when the run ends. */
   protected finishMessage(won: boolean): string {

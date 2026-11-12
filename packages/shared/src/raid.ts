@@ -6,7 +6,7 @@ import { prismatailPattern } from "./raid-prismatail.js";
 export * from "./raid-prismatail.js";
 import { somnaraPattern, type DreamRune } from "./raid-somnara.js";
 export * from "./raid-somnara.js";
-import type { RaidBossId } from "./raid-roster.js";
+import { RAID_BOSSES, type RaidBossId } from "./raid-roster.js";
 import type { CharacterId } from "./index.js";
 export * from "./raid-roster.js";
 export const RAID = {
@@ -22,12 +22,128 @@ export const RAID = {
   reviveRange: 100,
   selfReviveDelay: 6,
   staggerSeconds: 6,
-  /** Solo raiders get one self-revive (raids are always Peril 3 now). */
-  soloSelfReviveMaxPeril: 3,
+  /** Peril 1-2 (practice and tests only): solo raiders get one self-revive.
+   * Live raids read `raidSoloRevive(boss)` from the star tier instead. */
+  soloSelfReviveMaxPeril: 2,
   /** Solo raiders face this share of the boss's health. */
   soloHealth: 0.85,
   phases: ["Wake the mountain", "Break the armor", "Heart of the mountain"],
 } as const;
+/**
+ * One difficulty per star tier (docs/boss-raid.md "Difficulty"). Every raid
+ * runs at Peril 3; the boss's stars (`RAID_BOSSES[boss].stars`) pick the row.
+ */
+export interface RaidTier {
+  /** Boss health × this, on top of the Peril 3 formula. */
+  readonly health: number;
+  /** Boss damage × this (replaces the Peril 3 multiplier). */
+  readonly damage: number;
+  /** Seconds between attacks × this. */
+  readonly cadence: number;
+  /** Most damaging attacks live at once, in chapters 1, 2 and 3. */
+  readonly concurrency: readonly [number, number, number];
+  /** Telegraphs of 1.4 s or more × this (never below `RAID_TELEGRAPH_FLOOR`). */
+  readonly telegraph: number;
+  /** Predictive aim: share of the raider's travel led, and the most it leads (px). */
+  readonly leadFraction: number;
+  readonly leadCap: number;
+  /** Exposure, strand and grounded windows × this. */
+  readonly windows: number;
+  /** Seconds of combat before the soft enrage starts. */
+  readonly enrageAt: number;
+  /** Solo raiders' one self-revive (none when undefined). */
+  readonly soloRevive?: { readonly seconds: number; readonly hp: number };
+  /** Seconds a teammate kneels to revive, and the immunity after it. */
+  readonly reviveSeconds: number;
+  readonly reviveImmunity: number;
+  /** First chapter where single-target attacks hit two raiders (3+ raiders). */
+  readonly pressureFrom: number;
+}
+export const RAID_TIERS: Record<1 | 2 | 3, RaidTier> = {
+  1: {
+    health: 1.15,
+    damage: 1.75,
+    cadence: 0.85,
+    concurrency: [1, 2, 2],
+    telegraph: 0.95,
+    leadFraction: 0.55,
+    leadCap: 110,
+    windows: 0.9,
+    enrageAt: 270,
+    soloRevive: { seconds: 8, hp: 0.3 },
+    reviveSeconds: 3.5,
+    reviveImmunity: 1.5,
+    pressureFrom: 2,
+  },
+  2: {
+    health: 1.25,
+    damage: 1.95,
+    cadence: 0.78,
+    concurrency: [2, 2, 2],
+    telegraph: 0.88,
+    leadFraction: 0.7,
+    leadCap: 140,
+    windows: 0.8,
+    enrageAt: 300,
+    soloRevive: { seconds: 8, hp: 0.25 },
+    reviveSeconds: 4,
+    reviveImmunity: 1.25,
+    pressureFrom: 2,
+  },
+  3: {
+    health: 1.35,
+    damage: 2.15,
+    cadence: 0.72,
+    concurrency: [2, 2, 3],
+    telegraph: 0.82,
+    leadFraction: 0.8,
+    leadCap: 160,
+    windows: 0.72,
+    enrageAt: 330,
+    reviveSeconds: 4.5,
+    reviveImmunity: 1,
+    pressureFrom: 1,
+  },
+};
+/** No shortened telegraph is ever below this (seconds of server time). */
+export const RAID_TELEGRAPH_FLOOR = 0.9;
+/** Soft enrage: a step every `every` seconds past `enrageAt`, up to `steps`. */
+export const RAID_ENRAGE = {
+  every: 30,
+  steps: 4,
+  cadence: 0.94,
+  damage: 0.08,
+} as const;
+/** The difficulty row for a boss. */
+export const raidTier = (boss: RaidBossId): RaidTier =>
+  RAID_TIERS[RAID_BOSSES[boss]?.stars ?? 1];
+/**
+ * A solo raider's self-revive against this boss: seconds down before they
+ * stand again, and the share of health they come back with. Undefined when
+ * there is none (★★★ bosses), so the client can warn before the fight.
+ */
+export function raidSoloRevive(
+  boss: RaidBossId,
+): { seconds: number; hp: number } | undefined {
+  const revive = raidTier(boss).soloRevive;
+  return revive ? { seconds: revive.seconds, hp: revive.hp } : undefined;
+}
+/** A telegraph's length on this tier: 1.4 s or more is shortened, never below the floor. */
+export function raidTelegraph(boss: RaidBossId, seconds: number) {
+  return seconds >= 1.4
+    ? Math.max(RAID_TELEGRAPH_FLOOR, seconds * raidTier(boss).telegraph)
+    : seconds;
+}
+/** Soft enrage steps after `elapsed` seconds of combat (0 before it starts). */
+export function raidEnrageSteps(boss: RaidBossId, elapsed: number) {
+  const start = raidTier(boss).enrageAt;
+  return elapsed < start
+    ? 0
+    : Math.min(
+        RAID_ENRAGE.steps,
+        1 + Math.floor((elapsed - start) / RAID_ENRAGE.every),
+      );
+}
 export const RAID_CHAPTERS = [
   {
     name: "Wake the mountain",
@@ -392,9 +508,25 @@ export const GRUMBLECRAG = {
   perilDamage: [1, 1, 1.25, 1.5],
   /** Seconds between attacks, and the final phase's faster rhythm. */
   cadence: { normal: 5.2, restless: 4.4, finalPhase: 0.85 },
-  charge: { damage: 28, width: 80, delay: 1.7, lock: 1, speed: 650 },
+  charge: {
+    damage: 28,
+    width: 80,
+    delay: 1.6,
+    lock: 0.95,
+    speed: 700,
+    /** Chapter 2+: a charge that misses a pillar turns and comes back. */
+    returnDelay: 0.9,
+    /** From the third pillar it breaks in a chapter, it locks this much later. */
+    lateLock: 0.15,
+  },
   slam: { damage: 27, radius: 240, finalRadius: 320, delay: 1.25 },
-  debris: { damage: 20, radius: 95, delay: 1.65 },
+  debris: { damage: 20, radius: 95, delay: 1.45 },
+  /** A charge into a pillar: seconds exposed (Fractured: longer), then a pause. */
+  pillar: { expose: 7, fractured: 9, pause: 2 },
+  /** Chapter 3: the cracked core takes this much damage (a pillar still opens it to 1.6). */
+  crackedCore: 1.2,
+  /** Peril 3, chapter 3: the closing ring (px, px/s, damage per second outside). */
+  ring: { start: 500, end: 240, shrink: 2.5, dps: 9 },
   volley: { damage: 18, range: 560, spread: 0.9, delay: 1.4 },
   eruption: { damage: 22, radius: 100, delay: 1.25, gap: 0.75 },
   share: {
@@ -628,7 +760,7 @@ export function raidPattern(
 }
 /** How many eruptions chase their target. */
 export const eruptionChain = (phase: number, peril: number) =>
-  phase === 1 ? 2 : phase === 2 && peril < 2 ? 2 : 3;
+  phase === 1 ? (peril >= 3 ? 3 : 2) : phase === 2 && peril < 2 ? 2 : 3;
 /** Quick signals for teams without voice chat. */
 export type RaidPingKind = "stack" | "revive" | "bait";
 export const RAID_PINGS: Record<RaidPingKind, { label: string; key: string }> =
@@ -2197,6 +2329,10 @@ export interface RaidState {
   result: "victory" | "defeat" | null;
   revives: number;
   downs: number;
+  /** Soft enrage steps reached (0-4): faster attacks that hit harder. */
+  enrage?: number;
+  /** Server time of the last enrage step (the client announces it). */
+  enrageAt?: number;
   closingRadius?: number;
   /** Tidewyrm: the islands of the Lagoon Court. */
   islands?: RaidIsland[];
