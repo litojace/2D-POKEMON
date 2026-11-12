@@ -11,12 +11,30 @@ import {
 } from "../../../packages/shared/src/raid";
 import type { RaidBossCue } from "./raid-boss-motion";
 import type { LayerAt } from "./raid-layers";
+import { fxFor } from "./fx-engine";
+import { dropAtlas, pieceAtlas, stageOn } from "./raid-piece-stage";
+import {
+  BALL_RADIUS,
+  RELIGHT_SHOW,
+  RELIGHT_SPREAD,
+  hitRing,
+  mistBanks,
+  nightAlpha,
+  nightSlices,
+  pipSpot,
+  poolLook,
+  relightSparks,
+  smokePuffs,
+  snuffBlend,
+  yardPieces,
+} from "./raid-yard-pieces";
 
 /**
- * Gloomshade and the Lantern Yard, drawn live each frame: the night closing
- * in, lanterns and their light, curses on raiders, every warning, and the
- * shadow puff itself with its copies. Warning edges are exact server radii;
- * only fills pulse, so the danger boundary never moves.
+ * Gloomshade and the Lantern Yard each frame: the night closing in,
+ * lanterns and their light (images from the yard's atlas,
+ * raid-yard-pieces.ts), curses on raiders, every warning, and the shadow
+ * puff itself with its copies. Warning edges are exact server radii; only
+ * fills pulse, so the danger boundary never moves.
  *
  * The copies are drawn exactly like the real one, except for the two tells
  * the briefing teaches: only the real one casts a shadow in lantern light,
@@ -32,8 +50,7 @@ const NIGHT = 0x070914,
   LAMP = 0xffd27a,
   LAMP_HOT = 0xfff1c2,
   CURSE = 0xb07bff,
-  DANGER = 0xff4059,
-  EDGE = 0xff8c99;
+  DANGER = 0xff4059;
 
 interface Mote {
   x: number;
@@ -55,7 +72,6 @@ class GloomMotion {
   phase = 1;
   result: unknown = null;
   copies = new Map<number, { x: number; y: number }>();
-  lit: boolean[] = [];
   exposed = false;
   seen = new Set<number>();
   hurtAt = -10;
@@ -119,55 +135,17 @@ export function drawLanternYard(
   state: Snapshot,
   reduced: boolean,
   at?: LayerAt,
+  clock = state.time,
 ) {
   const r = state.raid!;
   const t = state.time;
   const lanterns = r.lanterns ?? [];
-  const out = lanterns.filter((l) => !l.lit).length;
-  const reach = lanternRadius(r.trait);
-  // The night presses in from the edges, more as lanterns go out. It never
-  // goes fully dark: the middle of the yard always stays readable.
-  const dark = 0.1 + (out / Math.max(1, lanterns.length)) * 0.22;
-  for (let i = 0; i < 7; i++)
-    g.lineStyle(46, NIGHT, dark * (1 - i / 9)).strokeRoundedRect(
-      23 + i * 40,
-      23 + i * 40,
-      1600 - 46 - i * 80,
-      900 - 46 - i * 80,
-      30,
-    );
-  // Light pools: soft warm layers, then the exact edge that counts for
-  // cleansing curses and for the real one's shadow.
-  for (const [i, l] of lanterns.entries()) {
-    if (!l.lit) continue;
-    const flicker = reduced
-      ? 1
-      : 0.92 + Math.sin(t * 9 + i * 1.7) * 0.05 + Math.sin(t * 23 + i) * 0.03;
-    for (let k = 4; k >= 1; k--)
-      g.fillStyle(LAMP, 0.045 * flicker).fillCircle(l.x, l.y, (reach * k) / 4);
-    g.lineStyle(2, LAMP, 0.4).strokeCircle(l.x, l.y, reach);
-  }
-  // Ball Lightning's patches of light: cool white, fading out.
-  for (const l of r.lights ?? []) {
-    const left = l.until - t;
-    if (left <= 0) continue;
-    const fade = Math.min(1, left / 0.6);
-    g.fillStyle(0xe8f4ff, 0.1 * fade).fillCircle(l.x, l.y, l.radius);
-    g.fillStyle(0xffffff, 0.08 * fade).fillCircle(l.x, l.y, l.radius * 0.55);
-    g.lineStyle(2, 0xbfe4ff, 0.6 * fade).strokeCircle(l.x, l.y, l.radius);
-    for (let k = 0; k < 4; k++) {
-      const a = (reduced ? 0 : t * 5) + (k * Math.PI) / 2;
-      g.lineStyle(2, 0xfff3a0, 0.8 * fade).lineBetween(
-        l.x,
-        l.y,
-        l.x + Math.cos(a) * 14,
-        l.y + Math.sin(a) * 14,
-      );
-    }
-  }
-  // Posts stand up: each sorts with the raiders by its base.
-  for (const [i, l] of lanterns.entries())
-    lanternPost(at ? at(`lantern-${i}`, l.y + 30) : g, l, i, t, reduced);
+  // The yard's pieces: lantern posts, light, the night and every lantern
+  // warning, as images (raid-yard-pieces.ts). Posts stand up: each sorts
+  // with the raiders by its base.
+  paintYard(g, state, reduced, clock, (i) =>
+    at ? at(`lantern-${i}`, lanterns[i].y + 30) : g,
+  );
   // Curses: purple wisps circle the raider, one per stack; Haunted glows.
   for (const p of state.players) {
     const c = r.curses?.[p.id];
@@ -210,58 +188,224 @@ export function drawLanternYard(
   }
 }
 
-/** A stone-and-iron lantern post: glowing when lit, cold with hit pips when not. */
-function lanternPost(
+/** Per-yard memory: which lanterns were lit, and when each came back. */
+interface YardMemory {
+  seed: number;
+  serverTime: number;
+  lit: boolean[];
+  relitAt: number[];
+}
+const yards = new WeakMap<G, YardMemory>();
+
+/** The yard's atlas for a light reach (drawn once per look). */
+const yardAtlasKey = (reach: number) => `yard-atlas-${reach}`;
+export function yardAtlas(scene: Phaser.Scene, reach: number) {
+  for (const other of [GLOOMSHADE.lightRadius, GLOOMSHADE.moonlitLightRadius])
+    if (other !== reach) dropAtlas(scene, yardAtlasKey(other));
+  return pieceAtlas(scene, yardAtlasKey(reach), () => yardPieces(reach));
+}
+/** Draw the yard's atlas now (when the arena scene is created). */
+export function prewarmYard(scene: Phaser.Scene, trait?: string) {
+  yardAtlas(scene, lanternRadius(trait ?? ""));
+}
+
+/**
+ * The Lantern Yard's pieces this frame. The floor (night, light pools and
+ * their exact edges, Ball Lightning, the snuff's shade) rides just under
+ * the yard's graphics `g`, as the old drawing sat first in it; each post,
+ * its pips, ring, timer and relight sparks ride on its own sorted layer.
+ * Light edges are drawn at the server's exact radius and never flicker:
+ * only fills do.
+ */
+function paintYard(
   g: G,
-  l: { x: number; y: number; lit: boolean; hits: number },
-  i: number,
-  t: number,
+  state: Snapshot,
   reduced: boolean,
+  clock: number,
+  layer: (i: number) => G,
 ) {
-  const { x, y } = l;
-  g.fillStyle(NIGHT, 0.35).fillEllipse(x + 4, y + 30, 54, 18);
-  // Stone base and iron post.
-  g.fillStyle(0x4d4668).fillRoundedRect(x - 18, y + 14, 36, 18, 5);
-  g.fillStyle(0x6a628a).fillRoundedRect(x - 14, y + 12, 28, 6, 3);
-  g.fillStyle(0x23202f).fillRect(x - 4, y - 30, 8, 46);
-  // The lantern housing.
-  const glass = l.lit ? LAMP_HOT : 0x2c2b44;
-  g.fillStyle(0x23202f).fillTriangle(x - 20, y - 52, x + 20, y - 52, x, y - 68);
-  g.fillStyle(0x23202f).fillRoundedRect(x - 17, y - 54, 34, 30, 5);
-  g.fillStyle(glass, 1).fillRoundedRect(x - 12, y - 50, 24, 22, 4);
-  g.lineStyle(2, 0x23202f, 1).lineBetween(x, y - 50, x, y - 28);
-  if (l.lit) {
-    const f = reduced ? 1 : 0.85 + Math.sin(t * 11 + i * 2) * 0.15;
-    g.fillStyle(LAMP, 0.35 * f).fillCircle(x, y - 40, 28);
-    g.fillStyle(0xff9a3d, 1).fillEllipse(x, y - 37, 9, 14 * f);
-    g.fillStyle(0xfff6d8, 1).fillEllipse(x, y - 35, 4, 7 * f);
-    return;
+  const r = state.raid!;
+  const t = state.time;
+  const lanterns = r.lanterns ?? [];
+  const floor = stageOn(g, "arena-pieces:yard-floor", g.depth - 0.001);
+  // Posts still sort by their base (a layer each), even without a scene.
+  const layers = lanterns.map((_, i) => layer(i));
+  if (!floor) return;
+  const reach = lanternRadius(r.trait);
+  const A = yardAtlas(g.scene, reach);
+  const fx = fxFor(g.scene);
+  // Low quality: no mist or halos, fewer sparks.
+  const low = fx.density < 0.5;
+  const live = state.phase === "playing";
+  // Lanterns coming back: when, for the spreading light and sparks.
+  let m = yards.get(g);
+  if (!m || m.seed !== r.seed || t < m.serverTime) {
+    m = {
+      seed: r.seed,
+      serverTime: t,
+      lit: lanterns.map((l) => l.lit),
+      relitAt: [],
+    };
+    yards.set(g, m);
   }
-  // Out: a thin curl of smoke, and pips for the hits it needs.
-  for (let k = 0; k < 3; k++) {
-    const p = reduced ? k / 3 : (t * 0.5 + k / 3) % 1;
-    g.fillStyle(0x8a84a8, 0.35 * (1 - p)).fillCircle(
-      x + Math.sin(p * 6 + i) * 6,
-      y - 70 - p * 40,
-      4 + p * 5,
-    );
+  m.serverTime = t;
+  for (const [i, l] of lanterns.entries()) {
+    if (m.lit[i] === false && l.lit && live) m.relitAt[i] = clock;
+    if (!l.lit) m.relitAt[i] = -99;
+    m.lit[i] = l.lit;
   }
-  for (let h = 0; h < GLOOMSHADE.relightHits; h++)
-    g.fillStyle(h < l.hits ? MOON : 0x0c1b32, 1).fillCircle(
-      x - 7 + h * 14,
-      y - 84,
-      5,
-    );
-  g.lineStyle(2, MOON, 1)
-    .strokeCircle(x - 7, y - 84, 5)
-    .strokeCircle(x + 7, y - 84, 5);
-  // A gentle "hit me" ring so it's easy to find in the dark.
-  const ring = reduced ? 0.5 : (t * 0.9) % 1;
-  g.lineStyle(3, MOON, 0.6 * (1 - ring)).strokeCircle(
-    x,
-    y - 40,
-    22 + ring * 26,
-  );
+  const relightAge = (i: number) => {
+    const age = clock - (m!.relitAt[i] ?? -99);
+    return age >= 0 && age < RELIGHT_SHOW ? age : undefined;
+  };
+  // The snuff being cast, and how far along.
+  const snuffs = new Map<number, number>();
+  for (const w of r.warnings)
+    if (w.kind === "snuff" && lanterns[w.lantern ?? -1])
+      snuffs.set(w.lantern!, progressOf(w, t));
+  const out = lanterns.filter((l) => !l.lit).length;
+  const na = nightAlpha(out, lanterns.length);
+  const flickerT = reduced ? 0 : clock;
+
+  // Out lanterns leave a pool of dark where their light was.
+  for (const l of lanterns)
+    if (!l.lit) floor.put(A, `dark${reach}`, l.x, l.y, { alpha: 0.9 });
+  // The night at the edges: eight frames of one texture, the middle empty.
+  for (const s of nightSlices()) floor.slice(A, s.name, s.x, s.y, s.w, s.h, na);
+  // Mist drifting along the hedges, thicker as lanterns go out.
+  if (!low)
+    for (const b of mistBanks(clock, reduced))
+      floor.put(A, "mist", b.x, b.y, {
+        alpha: na * 0.9,
+        sx: 1.1,
+        sy: 1,
+        rot: b.rot,
+      });
+  // Light pools (additive), the snuff's shade, then the exact edges.
+  for (const [i, l] of lanterns.entries()) {
+    if (!l.lit) continue;
+    const look = poolLook(i, flickerT, reduced, snuffs.get(i), relightAge(i));
+    floor.put(A, `pool${reach}`, l.x, l.y, {
+      alpha: look.alpha,
+      sx: look.scale,
+      add: true,
+    });
+  }
+  for (const [i, p] of snuffs) {
+    const l = lanterns[i],
+      b = snuffBlend(p);
+    floor.put(A, `shade${reach}_${b.f0}`, l.x, l.y, { alpha: b.a0 });
+    floor.put(A, `shade${reach}_${b.f1}`, l.x, l.y, { alpha: b.a1 });
+  }
+  for (const [i, l] of lanterns.entries()) {
+    if (!l.lit) continue;
+    const age = relightAge(i);
+    floor.put(A, `rim${reach}`, l.x, l.y, {
+      alpha: age === undefined ? 1 : Math.min(1, age / RELIGHT_SPREAD),
+    });
+  }
+  // The snuff's red edge, exactly at the reach.
+  for (const [i] of snuffs)
+    floor.put(A, `snuffEdge${reach}`, lanterns[i].x, lanterns[i].y);
+  // Ball Lightning's patches of light: cool white, fading out.
+  for (const b of r.lights ?? []) {
+    const left = b.until - t;
+    if (left <= 0) continue;
+    const fade = Math.min(1, left / 0.6);
+    const pop = reduced
+      ? 1
+      : Math.min(1, (GLOOMSHADE.sparkLight - left) / 0.15 + 0.2);
+    const s = b.radius / BALL_RADIUS;
+    floor.put(A, "ballPool", b.x, b.y, { alpha: fade * pop, sx: s, add: true });
+    floor.put(A, "ballRim", b.x, b.y, { alpha: fade, sx: s });
+    floor.put(A, "ballCore", b.x, b.y, {
+      alpha: fade * (reduced ? 1 : 0.85 + 0.15 * Math.sin(clock * 31)),
+      add: true,
+    });
+    for (let k = 0; k < 4; k++)
+      floor.put(A, "bolt", b.x, b.y, {
+        alpha: fade,
+        rot: (reduced ? 0 : clock * 5) + (k * Math.PI) / 2,
+        add: true,
+      });
+  }
+
+  // The posts, each on its own sorted layer.
+  for (const [i, l] of lanterns.entries()) {
+    const post = stageOn(layers[i], "arena-pieces:lantern-" + i);
+    if (!post) continue;
+    const { x, y } = l;
+    const snuff = snuffs.get(i);
+    const age = relightAge(i);
+    if (l.lit) {
+      post.put(A, "contact", x + 2, y + 31);
+      post.put(A, "postLit", x, y);
+      let f = reduced ? 1 : 0.85 + Math.sin(clock * 11 + i * 2) * 0.15;
+      if (snuff !== undefined)
+        f *=
+          (1 - 0.55 * snuff) *
+          (reduced ? 1 : 0.85 + 0.15 * Math.sin(clock * 47));
+      const pop = age === undefined ? 1 : Math.min(1, age / 0.2);
+      if (!low)
+        post.put(A, "halo", x, y - 38, { alpha: 0.8 * f * pop, add: true });
+      post.put(A, "flame", x, y - 29.5, {
+        alpha: pop,
+        sx: (0.9 + 0.1 * f) * pop,
+        sy: f * pop,
+      });
+    } else {
+      post.put(A, "moonShadow", x - 2, y + 29, { alpha: 0.85 });
+      post.put(A, "contact", x + 2, y + 31, { alpha: 0.9 });
+      post.put(A, "postOut", x, y);
+      // Out: a thin curl of smoke, and pips for the hits it needs.
+      for (const s of smokePuffs(x, y, i, t, reduced))
+        post.put(A, "smoke", s.x, s.y, {
+          alpha: s.alpha,
+          sx: s.scale,
+          rot: s.rot,
+        });
+      post.put(A, "plate", x, y - 84);
+      for (let h = 0; h < GLOOMSHADE.relightHits; h++) {
+        const spot = pipSpot(x, y, h);
+        post.put(A, h < l.hits ? "pipOn" : "pipOff", spot.x, spot.y);
+      }
+      // A gentle "hit me" ring so it's easy to find in the dark.
+      const ring = hitRing(t, reduced);
+      post.put(A, "ring", x, y - 40, { alpha: ring.alpha, sx: ring.scale });
+    }
+    // The snuff's timer around the lamp.
+    if (snuff !== undefined) {
+      post.lines.lineStyle(8, 0x0c081a, 0.45).strokeCircle(x, y - 40, 32);
+      post.lines
+        .lineStyle(5, 0xffd1d6, 0.95)
+        .beginPath()
+        .arc(
+          x,
+          y - 40,
+          32,
+          -Math.PI / 2,
+          -Math.PI / 2 + snuff * Math.PI * 2,
+          false,
+        )
+        .strokePath();
+    }
+    // Relit: a warm flash and sparks thrown up out of the lamp.
+    if (age !== undefined && !reduced) {
+      const k = Math.max(0, 1 - age / 0.6);
+      post.put(A, "flash", x, y - 40, {
+        alpha: k,
+        sx: 0.5 + age * 1.6,
+        add: true,
+      });
+      for (const s of relightSparks(x, y - 40, age, low ? 4 : 12))
+        post.put(A, "sparkWarm", s.x, s.y, {
+          alpha: s.alpha,
+          sx: s.scale,
+          rot: s.rot,
+          add: true,
+        });
+    }
+  }
 }
 
 function ghost(g: G, x: number, y: number, alpha: number) {
@@ -392,28 +536,8 @@ export function drawGloomshadeWarning(
     return true;
   }
   if (w.kind === "snuff") {
-    const l = r.lanterns?.[w.lantern ?? -1];
-    if (!l) return true;
-    // Shadow swallows the light from the edge in.
-    const reach = lanternRadius(r.trait);
-    const left = reach * (1 - progress);
-    g.lineStyle(reach - left + 2, SHADE_EDGE, 0.45).strokeCircle(
-      l.x,
-      l.y,
-      (reach + left) / 2,
-    );
-    g.lineStyle(3, EDGE, 0.9).strokeCircle(l.x, l.y, reach);
-    g.lineStyle(5, 0xffd1d6, 0.95)
-      .beginPath()
-      .arc(
-        l.x,
-        l.y - 40,
-        32,
-        -Math.PI / 2,
-        -Math.PI / 2 + progress * Math.PI * 2,
-        false,
-      )
-      .strokePath();
+    // Drawn with the yard (drawLanternYard): the shade creeping in under
+    // the light's edge, the exact red edge and the timer around the lamp.
     return true;
   }
   if (w.kind === "curse") {
@@ -519,7 +643,6 @@ export function drawGloomshade(
     m.seed = r.seed;
     m.hp = boss.hp;
     m.phase = r.phase;
-    m.lit = (r.lanterns ?? []).map((l) => l.lit);
     for (const d of r.decoys ?? []) m.copies.set(d.id, { x: d.x, y: d.y });
     motions.set(g, m);
   }
@@ -549,12 +672,7 @@ export function drawGloomshade(
   for (const [id, c] of m.copies)
     if (!now.has(id) && live) m.puff(c.x, c.y - 30, 12, 0x9c7bff, reduced);
   m.copies = now;
-  // Lanterns going out and coming back.
-  for (const [i, l] of (r.lanterns ?? []).entries()) {
-    if (m.lit[i] === false && l.lit && live)
-      m.puff(l.x, l.y - 40, 14, LAMP, reduced, 90);
-    m.lit[i] = l.lit;
-  }
+  // (A relit lantern's sparks are the yard's: drawLanternYard.)
   const exposed = r.exposedUntil > state.time;
   if (exposed && !m.exposed && live) cues.push("crash");
   m.exposed = exposed;
