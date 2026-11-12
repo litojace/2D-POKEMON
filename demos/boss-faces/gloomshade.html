@@ -677,11 +677,14 @@ const GLOOM = (() => {
   /** Where the iris sits in an eye drawing (for the highlight, which never mirrors). */
   function eyeGeom(view, look) {
     const { hw, hh } = FACE.eye[view];
-    const lid = { idle: [-0.96, -0.64], glare: [-0.78, -0.08], wide: [-1.25, -1.15] }[look] || [-0.96, -0.64];
+    // the painted Gloomshade's eye: the thick upper lid a near-straight line
+    // slanting down from the outer corner to the inner one, so it looks sly
+    // at rest and slits further when it glares
+    const lid = { idle: [-0.66, -0.06], glare: [-0.46, 0.3], wide: [-1.25, -1.15] }[look] || [-0.66, -0.06];
     const r = (look === "wide" ? 3.8 : 5) * (view === "far" ? 0.9 : 1);
     // every iris is pushed the way the head faces (+x in the canonical drawing)
     const gx = { front: 0.9, near: 1.2, far: 0.35, side: 1.3 }[view];
-    const gy = look === "wide" ? 0.6 : look === "glare" ? 2.2 : 1.3;
+    const gy = look === "wide" ? 0.6 : look === "glare" ? 2.6 : 2.1;
     return { hw, hh, lid, r, gx, gy, inner: view === "far" ? -1 : 1 };
   }
 
@@ -1419,7 +1422,7 @@ const GLOOM = (() => {
       // the lid: from the outer corner (high) down to the inner corner (low)
       const y0 = g.lid[0] * hh, y1 = g.lid[1] * hh;
       const P0 = { x: -hw - 1.5, y: y0 - (y1 - y0) * 0.1 }, P1 = { x: hw + 1.5, y: y1 + (y1 - y0) * 0.1 };
-      const C = { x: 0, y: (y0 + y1) / 2 - (look === "glare" ? 0.9 : 2.1) };
+      const C = { x: 0, y: (y0 + y1) / 2 - (look === "glare" ? 0.5 : 0.9) };
       const lidAt = (t) => ({
         x: (1 - t) * (1 - t) * P0.x + 2 * (1 - t) * t * C.x + t * t * P1.x,
         y: (1 - t) * (1 - t) * P0.y + 2 * (1 - t) * t * C.y + t * t * P1.y,
