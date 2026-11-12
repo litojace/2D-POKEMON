@@ -140,6 +140,9 @@ import {
 import { rigAssets, skinSuffix } from "./animation/assets";
 import { loadRigTextures } from "./animation/rig-textures";
 import { prewarmBossAtlas } from "./boss-vector-prewarm";
+import { setRaidMapLow } from "./raid-map-atlas";
+import { prewarmLagoon } from "./raid-tidewyrm-art";
+import { noteCloudDeckEvent, prewarmCloudDeck } from "./raid-somnara-art";
 import { FighterLoading, neededFighters } from "./animation/fighter-loading";
 import {
   setOverlayMarkup,
@@ -4628,6 +4631,7 @@ class ArenaScene extends Phaser.Scene {
     fx.density = knobs.particles;
     fx.trailScale = knobs.trails;
     fx.glowBudget = knobs.glowBudget;
+    setRaidMapLow(knobs.stillBackground);
     this.perfOverlay?.update(
       now,
       battlePerf.summary(1000),
@@ -4711,6 +4715,11 @@ class ArenaScene extends Phaser.Scene {
     scene = this;
     // The boss's pieces are drawn once into an atlas: now, not on its first frame.
     if (state?.raid) prewarmBossAtlas(this, state.raid.boss, state.raid.phase);
+    // So are the arena's painted pieces (islands, rune pads and the rest).
+    if (state?.raid) {
+      prewarmLagoon(this, state);
+      prewarmCloudDeck(this, state);
+    }
     battleQuality.restart();
     battlePerf.reset();
     netMeter.reset();
@@ -4931,7 +4940,9 @@ class ArenaScene extends Phaser.Scene {
   effect(event: Snapshot["events"][number]) {
     // Effects pose only fighters whose art has loaded (readyRig); sounds,
     // impacts and the other fighters' poses play as usual meanwhile.
-    if (event.kind === "raid-impact") {
+    // Somnara's correct steps and Nightmare are drawn with its arena's pieces.
+    const deck = noteCloudDeckEvent(event, state);
+    if (event.kind === "raid-impact" && !deck) {
       const ring = this.add
         .circle(event.x, event.y, event.raidRadius ?? 90, event.color, 0.12)
         .setStrokeStyle(4, event.color, 0.9);
