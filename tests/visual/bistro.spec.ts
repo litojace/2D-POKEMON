@@ -707,6 +707,12 @@ test("Bistro: popularity sets the pace, a full room queues at the door, and Deco
     page,
     "return b.customers().find((c) => c.state === 'queue').id",
   )) as number;
+  // (Who queues now: a guest arriving meanwhile, the game still running,
+  // isn't one of them.)
+  const queued = (await B(
+    page,
+    "return b.customers().filter((c) => c.state === 'queue').map((c) => c.id)",
+  )) as number[];
   await B(
     page,
     "const c = b.customers().find((c) => c.state === 'seated' || c.state === 'eating'); b.sync().release(c.id); c.state = 'leave'; c.alpha = 0; b.advance(0.2)",
@@ -717,7 +723,7 @@ test("Bistro: popularity sets the pace, a full room queues at the door, and Deco
   expect(
     await B(
       page,
-      "return b.customers().filter((c) => c.state === 'queue').length",
+      `return b.customers().filter((c) => c.state === 'queue' && ${JSON.stringify(queued)}.includes(c.id)).length`,
     ),
   ).toBe(2);
   // Decorate: the plan's grade, each seat tinted by the waiter's walk.
