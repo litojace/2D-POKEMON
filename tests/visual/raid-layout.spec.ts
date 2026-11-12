@@ -286,7 +286,7 @@ for (const size of [
         await expect(page.locator("#raid-drill")).toBeVisible();
         await expect.poll(() => cameraSignature(page)).toEqual(camera);
         if (boss === "prismatail") {
-          // Review screenshots show the loaded illustration, not the temporary fallback.
+          // Review screenshots show the loaded floor art and the boss's vector rig.
           await expect
             .poll(() =>
               page.evaluate(() => {
@@ -298,7 +298,7 @@ for (const size of [
                     "sun-atrium" &&
                   s.children.list.some(
                     (o: any) =>
-                      o.name === "painted-boss-prismatail:body" && o.visible,
+                      o.name === "vector-boss-prismatail" && o.visible,
                   )
                 );
               }),
