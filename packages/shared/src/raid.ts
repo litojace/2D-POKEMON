@@ -136,7 +136,7 @@ export const RAID_ATTACKS: Record<
   },
   "light-relay": {
     name: "Light Relay",
-    tip: "Stand between the skylight and a mirror. Hit mirrors to rotate them 45\u00b0. Chain light into the heart. In the final phase, solo holds one beam for 2 seconds; teams need both paths within 3 seconds.",
+    tip: "Stand between the skylight and a mirror. Hit mirrors to rotate them 45\u00b0. Chain light into the heart. Hold a connected chain for 1.2 seconds (solo 1 second, 2 in the final phase); in the final phase teams need both paths within 3 seconds. Mirrors that carried the light flash and turn after each exposure.",
     practice:
       "Connect skylight \u2192 raider \u2192 mirrors \u2192 heart. Hit a mirror to turn its arrow.",
   },
@@ -174,7 +174,7 @@ export const RAID_ATTACKS: Record<
   },
   "brazier-lighting": {
     name: "Brazier Lighting",
-    tip: "Stand inside a brazier ring for 1.5 seconds. Light all three together to ground Emberwing. Solo flames last 8 seconds. Fireproof halves the lighting time.",
+    tip: "Stand inside a brazier ring for 2 seconds. Light all three together to ground Emberwing. Solo flames last 11 seconds. Fireproof halves the lighting time.",
     practice:
       "Run the triangle and light all three braziers before the first goes out.",
   },
@@ -922,7 +922,7 @@ export const RAID_BOSS_CHAPTERS: Partial<
       name: "Dawn",
       objective: "Carry skylight through mirrors into the shielded heart.",
       detail:
-        "Stand within the skylight ring to take the beam. Light travels up to 300px between raiders and mirror posts, and 260px into the heart. Hit a mirror to turn its arrow 45°. A connected chain shatters the shield for 6 seconds. Carrying light burns 3 health per second.",
+        "Stand within the skylight ring to take the beam. Light travels up to 300px between raiders and mirror posts, and 260px into the heart. Hit a mirror to turn its arrow 45°. A chain held for 1.2 seconds (1 second solo) shatters the shield for 5 seconds. Carrying light burns 6 health per second, and lances seek whoever carries it. When the heart closes, the mirrors that carried the light flash, then turn.",
     },
     {
       name: "High Noon",
@@ -948,13 +948,13 @@ export const RAID_BOSS_CHAPTERS: Partial<
       name: "High Flight",
       objective: "Light all three braziers together to ground Emberwing.",
       detail:
-        "Stand on a brazier for 1.5 seconds. Team flames last 6 seconds; solo flames last 8 seconds. Grounding exposes Emberwing for 6 seconds and shrinks fire patches. Melee cannot hit it in the air; ranged damage is halved. Spread out for Heat Marks.",
+        "Stand on a brazier for 2 seconds. Team flames last 5 seconds; solo flames last 11 seconds. Once two burn, Emberwing rains fire on the last one: light it from its clear side. Grounding exposes Emberwing for 5 seconds and shrinks fire patches. Melee cannot hit it in the air; ranged damage is halved. Spread out for Heat Marks.",
     },
     {
       name: "Blazing Sky",
       objective: "Ground it twice to keep the heart open.",
       detail:
-        "Team braziers stay lit for 4 seconds, while solo keeps the longer timer. Fire spreads faster. Bring Emberwing down twice this chapter and it stays grounded, exposed for the rest of the fight. Fireproof halves lighting time and reduces floor-fire damage by 50%.",
+        "Team braziers stay lit for 3.5 seconds (4.5 for a pair), while solo keeps the longer timer. Dives turn and come back. Fire spreads faster. Bring Emberwing down three times this chapter and it stays grounded and exposed for 20 seconds. Fireproof halves lighting time and reduces floor-fire damage by 50%.",
     },
   ],
   "storm-twins": [
@@ -969,13 +969,13 @@ export const RAID_BOSS_CHAPTERS: Partial<
       name: "Storm",
       objective: "Pair opposite signs. Follow the beam around copper posts.",
       detail:
-        "Polarity marks everyone for 4 seconds: stand near an opposite sign to cancel it. Same signs together take double damage. Solo gets an opposite-sign floor pad. Static Fields slow and hurt; jump while crossing them. Each twin staggers separately.",
+        "Polarity marks everyone for 4 seconds: stand near an opposite sign to cancel it. Raiders standing together get the same sign, and same signs together take double damage. Solo gets an opposite-sign floor pad. Static Fields slow and hurt; jump while crossing them. Each twin staggers separately.",
     },
     {
       name: "Supercell",
       objective: "Bring both low, then defeat them within the countdown.",
       detail:
-        "When one twin falls, finish the other within 8 seconds. Solo gets 3 more seconds. If time expires, the fallen twin returns at 35% health. Keep both low before dealing a finishing blow. Touch players can tap Fizz or Crackle to switch targets.",
+        "When one twin falls, finish the other within 7 seconds. Solo gets 3 more seconds. If time expires, the fallen twin returns at 50% health. Keep both low before dealing a finishing blow. Touch players can tap Fizz or Crackle to switch targets.",
     },
   ],
   grumblecrag: RAID_CHAPTERS,

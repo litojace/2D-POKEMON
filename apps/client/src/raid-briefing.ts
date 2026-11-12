@@ -168,7 +168,7 @@ export function bossBriefing(boss: RaidBossId, solo: boolean): BossBriefing {
         steps: [
           step(
             "Stand on a brazier",
-            "Stay inside a brazier’s circle for 1.5 seconds.",
+            "Stay inside a brazier’s circle for 2 seconds.",
             "Move to the next brazier when this one lights.",
             "braziers",
           ),
