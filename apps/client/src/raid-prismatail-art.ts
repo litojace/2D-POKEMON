@@ -124,6 +124,33 @@ export function drawSunAtrium(
       m.x + dx * 48 + dy * 8,
       m.y + dy * 48 - dx * 8,
     );
+    // About to scramble: the mirror flashes pink, and a ghost arrow shows
+    // where it will point.
+    if (m.scrambleAt !== undefined && m.scrambleAt > state.time) {
+      const pulse = reduced
+          ? 1
+          : 0.55 + 0.45 * Math.abs(Math.sin(state.time * 9)),
+        turned = m.angle - ((m.scrambleTurns ?? 2) * Math.PI) / 4,
+        gx = Math.cos(turned),
+        gy = Math.sin(turned);
+      g.fillStyle(0xff6f91, 0.22 * pulse).fillEllipse(m.x, m.y + 4, 120, 46);
+      g.lineStyle(4, 0xff6f91, pulse).strokeEllipse(m.x, m.y + 4, 120, 46);
+      post.lineStyle(5, 0xff6f91, pulse).strokeCircle(m.x, m.y - 8, 37);
+      g.lineStyle(4, 0xffb3c4, 0.9 * pulse).lineBetween(
+        m.x,
+        m.y,
+        m.x + gx * 56,
+        m.y + gy * 56,
+      );
+      g.fillStyle(0xffb3c4, 0.9 * pulse).fillTriangle(
+        m.x + gx * 65,
+        m.y + gy * 65,
+        m.x + gx * 48 - gy * 8,
+        m.y + gy * 48 + gx * 8,
+        m.x + gx * 48 + gy * 8,
+        m.y + gy * 48 - gx * 8,
+      );
+    }
   }
   for (const p of r.sunPillars ?? []) {
     g.fillStyle(0xffb556, 0.2).fillEllipse(p.x, p.y, 80, groundHeight(80));

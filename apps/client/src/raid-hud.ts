@@ -12,7 +12,7 @@
 import { healthTrail } from "./raid-health-trail";
 import { twinBars, type TwinBarView } from "./storm-twins-controls";
 import { raidCue } from "./raid-presentation";
-import { RAID_BOSSES } from "../../../packages/shared/src/raid";
+import { RAID_BOSSES, prismRelayHold } from "../../../packages/shared/src/raid";
 import type { Fighter, Snapshot } from "@arena/shared";
 
 const escape = (s: string) =>
@@ -89,8 +89,7 @@ export function raidHudView(state: Snapshot, me: Fighter): RaidHudView {
             ? 100
             : Math.min(
                 100,
-                ((r.lightHold ?? 0) /
-                  (r.phase === 3 && r.partySize === 1 ? 2 : 0.65)) *
+                ((r.lightHold ?? 0) / prismRelayHold(r.phase, r.partySize)) *
                   100,
               )
           : r.staggerUntil > state.time

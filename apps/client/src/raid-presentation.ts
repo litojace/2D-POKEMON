@@ -95,6 +95,8 @@ export function raidCue(state: Snapshot, myId: string) {
       return "Refraction — leave both marked lanes!";
     if (w?.kind === "prism-lance")
       return "Lance locked — sidestep the thin lane!";
+    if (r.mirrors?.some((m) => (m.scrambleAt ?? 0) > state.time))
+      return "Mirrors flashing — they will turn; get ready to re-aim them!";
     const arrivals = (r.lightArrivals ?? []).filter((t) => t >= 0);
     if (r.phase === 3 && r.partySize > 1 && arrivals.length)
       return `Split Light · ${arrivals.length}/2 paths · pair within ${Math.max(0, Math.ceil(3 - (state.time - Math.min(...arrivals))))}s!`;
