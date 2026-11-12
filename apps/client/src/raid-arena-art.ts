@@ -3,6 +3,7 @@ import { paintKit } from "./arena-courts";
 import type { RaidFloorId } from "./raid-floors";
 import type { RaidBossId } from "../../../packages/shared/src/raid-roster";
 import { GLOOMSHADE } from "../../../packages/shared/src/raid";
+import { engravedRing } from "./raid-emberwing-terrace";
 import grumblecrag from "./art/raid-arenas/grumblecrag.webp";
 import tidewyrm from "./art/raid-arenas/tidewyrm.webp";
 import gloomshade from "./art/raid-arenas/gloomshade.webp";
@@ -123,7 +124,8 @@ export function paintIllustratedRaidFloor(
     ring(800, 430, 120, "#c8b7ec55");
     ring(800, 430, 150, "#c8b7ec33");
   } else if (id === "sky-terrace") {
-    ring(800, 450, 260, "#c39a6966", 3);
+    // The ritual circle as a worn bronze inlay in the slabs.
+    engravedRing(c, 800, 450, 260);
   } else if (id === "sun-atrium") {
     ring(1000, 450, 210, "#997546aa", 3);
     ring(1000, 450, 310, "#997546aa", 3);
