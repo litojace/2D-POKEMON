@@ -13,6 +13,7 @@ import { grumbleGuideImage } from "./boss-vector-grumble";
 import { tideGuideImage } from "./boss-vector-tide";
 import { gloomGuideImage } from "./boss-vector-gloom";
 import { somnaraGuideImage } from "./boss-vector-somnara";
+import { prismaGuideImage } from "./boss-vector-prisma";
 import base from "./art/raid-whole-frames.json";
 
 /** Reuse a complete battle pose in the diagram; native atlas has ample resolution
@@ -39,6 +40,8 @@ export function raidGuideSprite(
             ? gloomGuideImage(exposed)
           : boss === "somnara"
             ? somnaraGuideImage(exposed)
+          : boss === "prismatail"
+            ? prismaGuideImage(exposed)
             : grumbleGuideImage(exposed),
       [sx, sy, w, h] = art.crop,
       scale = Math.min(90 / w, 80 / h),

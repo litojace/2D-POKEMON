@@ -1,7 +1,7 @@
-import { paintedPrisma } from "./boss-painted-poses";
+import { paintVectorPrisma } from "./boss-vector-prisma-rig";
+import { paintBossAura } from "./boss-spell-art";
 import { groundHeight } from "../../../packages/shared/src/world-art";
-import { bossSurface } from "./boss-materials";
-import { bossLife, bossEye } from "./raid-boss-life";
+import { bossLife } from "./raid-boss-life";
 import type Phaser from "phaser";
 import type { Snapshot } from "@arena/shared";
 import {
@@ -243,6 +243,18 @@ export function drawPrismatailWarning(g: G, state: Snapshot, w: RaidWarning) {
   return w.kind === "light-relay";
 }
 const motion = new WeakMap<G, RaidBossMotion>();
+/** Where the boss was last frame, to tell when it walks. */
+const steps = new WeakMap<
+  G,
+  { x: number; y: number; time: number; walk: number }
+>();
+/**
+ * Prismatail as vector art (boss-vector-prisma.ts): a crystal peacock posed
+ * from the battle's own state. The attack being wound up (its warning) and
+ * the last one cast drive its windups and follow-through; a light relay opens
+ * its heart; it cries out with its fan up at a new phase and fades to a dim
+ * husk when beaten.
+ */
 export function drawPrismatail(
   g: G,
   state: Snapshot,
@@ -259,132 +271,47 @@ export function drawPrismatail(
   }
   const pose = m.sample(state, clock, reduced)!;
   const life = bossLife(g, state, boss, clock, reduced);
-  const t = life.time,
-    x = boss.x;
   const exposed = r.exposedUntil > state.time;
-  const y =
-    boss.y - 60 + life.breath * 3 + pose.collapse * 32 + life.windup * 5;
-  const alpha = pose.dead
-    ? reduced
-      ? 0.2
-      : Math.max(0.2, 1 - pose.deathAge * 0.35)
-    : 1;
-  g.fillStyle(0x101a2d, 0.32).fillEllipse(x, boss.y + 20, 184, 47);
-  if (
-    paintedPrisma(g, {
-      groundY: boss.y,
-      x,
-      y,
-      life,
-      alpha,
-      exposed,
-      dead: pose.dead,
-      gilded: !!r.gilded,
-      hurt: pose.hurt > 0.2,
-    })
-  )
-    return pose.cues;
-  // Layered, hinged feathers open in a travelling wave, rather than rigid spokes.
-  const fan =
-    1 + life.breath * 0.025 - life.windup * 0.12 - (exposed ? 0.1 : 0);
-  for (let i = 0; i < 11; i++) {
-    const a =
-      -Math.PI +
-      (i * Math.PI) / 10 +
-      Math.sin(t * 1.25 + i * 0.55) * 0.035 * life.move;
-    const reach = (142 + Math.sin((i * Math.PI) / 10) * 22) * fan;
-    const tx = x + Math.cos(a) * reach,
-      ty = y - 8 + Math.sin(a) * reach;
-    const color = PRISM_COLORS[i % 6];
-    g.lineStyle(10, 0x26465d, alpha).lineBetween(x, y + 24, tx, ty);
-    g.save()
-      .translateCanvas(tx, ty)
-      .rotateCanvas(a + Math.PI / 2);
-    g.fillStyle(0x1a354c, alpha).fillEllipse(0, 0, 47, 89);
-    bossSurface(g, 0, -2, 39, 79, color, "pearl", alpha * 0.85);
-    g.fillStyle(0xfff7cf, alpha * 0.5).fillEllipse(-6, -12, 10, 37);
-    diamond(g, 0, -4, 22, 0xeefbff, alpha * 0.8);
-    diamond(g, 0, -4, 15, color, alpha);
-    g.fillStyle(0x243654, alpha).fillEllipse(0, -4, 10, 15);
-    g.fillStyle(0xffffff, alpha * 0.85).fillCircle(-3, -9, 2.5);
-    g.lineStyle(1.5, 0xe8faff, alpha * 0.45).lineBetween(0, 21, 0, 39);
-    g.restore();
+  const stagger = r.staggerUntil > state.time;
+  // walking: its speed over the floor, eased
+  const last = steps.get(g);
+  let walk = last?.walk ?? 0;
+  if (last && state.time > last.time) {
+    const speed =
+      Math.hypot(boss.x - last.x, boss.y - last.y) / (state.time - last.time);
+    walk += (Math.min(1, speed / 120) - walk) * 0.3;
   }
-  // Small planted feet anchor a breathing chest and independently tilting head.
-  for (const side of [-1, 1]) {
-    g.lineStyle(5, 0xb89254, alpha).lineBetween(
-      x + side * 20,
-      y + 60,
-      x + side * 24,
-      boss.y + 8,
-    );
-    g.fillStyle(0xe3b567, alpha).fillEllipse(x + side * 25, boss.y + 9, 32, 12);
-  }
-  g.fillStyle(0x224659, alpha).fillEllipse(x, y + 16, 111, 120);
-  bossSurface(
-    g,
-    x,
-    y + 12,
-    104,
-    119 + life.breath * 2,
-    pose.hurt > 0.2 ? 0xe5faff : r.gilded ? 0xf6c66f : 0x65bcca,
-    "feathers",
-    alpha,
+  steps.set(g, { x: boss.x, y: boss.y, time: state.time, walk });
+  const wind = r.warnings.find(
+    (w) =>
+      (!w.casterId || w.casterId === boss.id) &&
+      w.at >= state.time &&
+      (w.startedAt ?? w.at - 1.5) <= state.time,
   );
-  g.fillStyle(0xffe9a4, alpha).fillEllipse(x, y + 28, 66, 78);
-  for (const side of [-1, 1]) {
-    g.save()
-      .translateCanvas(x + side * 39, y + 5)
-      .rotateCanvas(side * (0.15 + life.windup * 0.45) + life.breath * 0.025);
-    g.fillStyle(0x32788e, alpha).fillEllipse(side * 8, 26, 34, 69);
-    g.lineStyle(2, 0xa4ece9, alpha * 0.6).lineBetween(
-      side * 5,
-      14,
-      side * 10,
-      40,
-    );
-    g.restore();
-  }
-  const hx = x + life.lookX * 5,
-    hy = y - 53 + life.breath * 2 - life.windup * 9;
-  g.fillStyle(0x3d91a5, alpha).fillEllipse(hx, hy + 20, 42, 57);
-  bossSurface(g, hx, hy, 67, 69, 0x86dbe1, "pearl", alpha);
-  g.fillStyle(0xc6f1e4, alpha * 0.7).fillEllipse(hx - 10, hy - 13, 31, 20);
-  for (const off of [-14, 0, 14]) {
-    const tip =
-      hy -
-      56 -
-      Math.abs(off) * 0.3 +
-      Math.sin(t * 2 + off * 0.06) * 2 * life.move;
-    g.lineStyle(3, 0xe1c36e, alpha).lineBetween(
-      hx + off * 0.4,
-      hy - 30,
-      hx + off,
-      tip,
-    );
-    diamond(g, hx + off, tip - 2, 8, 0xffe9a0, alpha);
-  }
-  if (pose.dead) {
-    g.lineStyle(3, 0x243654, alpha);
-    for (const dx of [-15, 15])
-      g.lineBetween(hx + dx - 5, hy - 1, hx + dx + 5, hy - 1);
-  } else
-    for (const dx of [-15, 15])
-      bossEye(g, hx + dx, hy - 3, 13, 18, life, 0x1e546d, alpha);
-  g.fillStyle(0xffb56b, alpha).fillTriangle(
-    hx - 8,
-    hy + 9,
-    hx + 8,
-    hy + 9,
-    hx,
-    hy + 22 + life.windup * 4,
-  );
-  diamond(g, x, y + 24, 25, exposed ? 0xfff5c9 : 0x9ae4ee, alpha);
-  if (!exposed && !pose.dead) {
-    g.fillStyle(0x9adfff, 0.1).fillEllipse(x, y + 15, 118, 136);
-    g.lineStyle(2.5, 0xc6efff, 0.7).strokeEllipse(x, y + 15, 118, 136);
-    g.lineStyle(2, 0xffffff, 0.45).lineBetween(x - 30, y - 27, x - 43, y + 4);
-  } else if (!pose.dead)
-    g.lineStyle(3, 0xffe9a0, 0.7).strokeCircle(x, y + 24, 36 + life.breath * 2);
+  const cast = life.action.casts[life.action.casts.length - 1];
+  g.fillStyle(0x101a2d, 0.32).fillEllipse(boss.x, boss.y + 8, 150, 38);
+  const at = paintVectorPrisma(g, {
+    x: boss.x,
+    y: boss.y,
+    angle: boss.angle,
+    clock: pose.time,
+    phase: r.phase,
+    reduced,
+    gilded: !!r.gilded,
+    windKind: wind?.kind,
+    windup: life.windup,
+    castKind: cast?.kind,
+    castAge: cast?.age ?? 99,
+    roarAge: pose.transform > 0 ? (1 - pose.transform) * 1.6 : 99,
+    exposed,
+    stagger,
+    hurt: pose.hurt,
+    dead: pose.dead,
+    deadAge: pose.deathAge,
+    walk: pose.dead || exposed || stagger ? 0 : walk,
+    prismHot: wind?.kind === "fan-display" ? (wind.prismIndex ?? 0) : undefined,
+  });
+  if (at && !pose.dead)
+    paintBossAura(g, "prismatail", at.heart.x, at.heart.y, life, 1);
   return pose.cues;
 }

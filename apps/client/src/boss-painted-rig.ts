@@ -161,9 +161,7 @@ function chooseAction(id: RaidBossId, o: WholeBossLook) {
     a.locomotion > 0.15 &&
     a.gather < 0.12 &&
     (!last || last.age > 0.48) &&
-    (id === "grumblecrag" ||
-      id === "prismatail" ||
-      (id === "emberwing" && (o.flight ?? 0) < 0.1))
+    (id === "grumblecrag" || (id === "emberwing" && (o.flight ?? 0) < 0.1))
   )
     pose = [0, 3][
       Math.floor(o.life.time * (id === "grumblecrag" ? 2.8 : 3.6)) % 2
@@ -348,11 +346,6 @@ export function paintWholeBoss(
     const r = id === "grumblecrag" ? 25 : 20;
     rig.front.fillStyle(0xaaffdf, 0.15).fillCircle(coreX, coreY, r);
     rig.front.lineStyle(2.5, 0xd9ffdb, 0.85).strokeCircle(coreX, coreY, r);
-  }
-  if (id === "prismatail" && !o.dead && !o.exposed) {
-    rig.front
-      .lineStyle(2, 0xb4e8ff, 0.45)
-      .strokeEllipse(coreX, coreY - 5, 100, 123);
   }
   if (o.flicker && !o.dead) {
     const mx = (f.moon[0] - f.anchor[0]) * f.scale * (flip ? -1 : 1),

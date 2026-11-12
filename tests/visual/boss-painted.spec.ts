@@ -22,11 +22,13 @@ async function review(page: Page, preload = true) {
 }
 /**
  * A vector boss's rig (Grumblecrag: boss-vector-rig.ts, Tidewyrm:
- * boss-vector-tide-rig.ts): its root and visible image parts.
+ * boss-vector-tide-rig.ts, Prismatail: boss-vector-prisma-rig.ts): its root
+ * and visible image parts.
  */
 const vector = (
   page: Page,
   id: "grumblecrag" | "tidewyrm" | "somnara" = "grumblecrag",
+  id: "grumblecrag" | "tidewyrm" | "prismatail" = "grumblecrag",
 ) =>
   page.evaluate((id) => {
     const w = window as any,
@@ -117,12 +119,17 @@ test("all seven living boss rigs animate, hold a pause and keep combat snapshots
   const sStart = (await vector(page, "somnara"))!;
   expect(sStart.visible).toBe(true);
   expect(Object.keys(sStart.parts).length).toBeGreaterThan(20);
+  // Tidewyrm and Prismatail are vector art.
+  expect(start).toHaveLength(5);
   const vStart = (await vector(page))!;
   expect(vStart.visible).toBe(true);
   expect(Object.keys(vStart.parts).length).toBeGreaterThan(20);
   const tStart = (await vector(page, "tidewyrm"))!;
   expect(tStart.visible).toBe(true);
   expect(Object.keys(tStart.parts).length).toBeGreaterThan(20);
+  const pStart = (await vector(page, "prismatail"))!;
+  expect(pStart.visible).toBe(true);
+  expect(Object.keys(pStart.parts).length).toBeGreaterThan(20);
   expect(
     start.every(
       (r) =>
@@ -175,6 +182,20 @@ test("all seven living boss rigs animate, hold a pause and keep combat snapshots
       tGathered.parts.cran.y - tStart.parts.cran.y,
     ),
   ).toBeGreaterThan(2);
+  // Fan Display windup: Prismatail's train spreads and shines, its neck lifts.
+  const pGathered = (await vector(page, "prismatail"))!;
+  // (the shards all hang from one root: half the fan is the angle from the
+  // middle shard to the end one)
+  const spread = (v: typeof pGathered) =>
+    Math.abs(
+      Math.atan2(
+        Math.sin(v.parts.shard0.rotation - v.parts.shard4.rotation),
+        Math.cos(v.parts.shard0.rotation - v.parts.shard4.rotation),
+      ),
+    );
+  expect(spread(pGathered)).toBeGreaterThan(spread(pStart));
+  expect(pGathered.parts.head.y).toBeLessThan(pStart.parts.head.y);
+  expect(pGathered.parts.shine0).toBeTruthy();
   for (const rig of gathered) {
     const ready = start.find((r) => r.name === rig.name)!;
     expect(
@@ -192,9 +213,11 @@ test("all seven living boss rigs animate, hold a pause and keep combat snapshots
   const vStriking = (await vector(page))!;
   expect(vStriking.parts.fistL.y).toBeGreaterThan(vGathered.parts.fistL.y + 40);
   const tStriking = (await vector(page, "tidewyrm"))!;
+  const pStriking = (await vector(page, "prismatail"))!;
   for (const p of [
     ...Object.values(vStriking.parts),
     ...Object.values(tStriking.parts),
+    ...Object.values(pStriking.parts),
   ] as any[])
     for (const n of [p.x, p.y, p.rotation, p.sx, p.sy, p.alpha])
       expect(Number.isFinite(n)).toBe(true);
@@ -216,10 +239,12 @@ test("all seven living boss rigs animate, hold a pause and keep combat snapshots
   const paused = await pose(page);
   const vPaused = await vector(page);
   const tPaused = await vector(page, "tidewyrm");
+  const pPaused = await vector(page, "prismatail");
   await page.evaluate(() => (window as any).__bossReview.frame(2, 20, false));
   expect(await pose(page)).toEqual(paused);
   expect(await vector(page)).toEqual(vPaused);
   expect(await vector(page, "tidewyrm")).toEqual(tPaused);
+  expect(await vector(page, "prismatail")).toEqual(pPaused);
   await page.evaluate(() => {
     const r = (window as any).__bossReview;
     for (const row of r.rows) row.state.phase = "playing";
@@ -228,10 +253,12 @@ test("all seven living boss rigs animate, hold a pause and keep combat snapshots
   const reduced = await pose(page);
   const vReduced = await vector(page);
   const tReduced = await vector(page, "tidewyrm");
+  const pReduced = await vector(page, "prismatail");
   await page.evaluate(() => (window as any).__bossReview.frame(3, 22, true));
   expect(await pose(page)).toEqual(reduced);
   expect(await vector(page)).toEqual(vReduced);
   expect(await vector(page, "tidewyrm")).toEqual(tReduced);
+  expect(await vector(page, "prismatail")).toEqual(pReduced);
   await snap(page, info, "seven-bosses");
   // A retry resets the presentation clock while the same scene/actors survive.
   await page.evaluate(() => {
@@ -270,6 +297,11 @@ test("all seven living boss rigs animate, hold a pause and keep combat snapshots
   for (const id of ["cran", "snout", "jaw", "seg20"]) {
     expect(tRetry.parts[id].x).toBeCloseTo(tStart.parts[id].x, 1);
     expect(tRetry.parts[id].y).toBeCloseTo(tStart.parts[id].y, 1);
+  }
+  const pRetry = (await vector(page, "prismatail"))!;
+  for (const id of ["body", "brooch", "head", "shard4"]) {
+    expect(pRetry.parts[id].x).toBeCloseTo(pStart.parts[id].x, 1);
+    expect(pRetry.parts[id].y).toBeCloseTo(pStart.parts[id].y, 1);
   }
   expect(errors).toEqual([]);
 });
@@ -609,88 +641,6 @@ test("stranded Tidewyrm is one complete grounded creature in both directions", a
   expect(errors).toEqual([]);
 });
 
-// Tidewyrm's head and body are one vector rig now, so only the peacock's
-// painted poses are checked here.
-test("peacock heads share a continuous opaque silhouette with their bodies", async ({
-  page,
-}) => {
-  const errors = await review(page);
-  const results = await page.evaluate(() => {
-    const r = (window as any).__bossReview;
-    const heads = {
-      prismatail: [
-        [497, 162],
-        [1204, 120],
-        [713, 746],
-        [1280, 654],
-      ],
-    };
-    return Object.entries(heads).flatMap(([id, points]) =>
-      points.map((point, index) => {
-        const f = r.poseData[id].poses[index],
-          image = r.game.textures.get(`raid-painted-${id}`).getSourceImage();
-        const canvas = document.createElement("canvas");
-        canvas.width = f.rect[2];
-        canvas.height = f.rect[3];
-        const ctx = canvas.getContext("2d")!;
-        ctx.drawImage(image, ...f.rect, 0, 0, canvas.width, canvas.height);
-        const rgba = ctx.getImageData(0, 0, canvas.width, canvas.height).data,
-          w = canvas.width,
-          h = canvas.height;
-        const ratio = w / (f.source[2] - f.source[0]);
-        let sx = Math.round((point[0] - f.source[0]) * ratio),
-          sy = Math.round((point[1] - f.source[1]) * ratio);
-        let seed = -1;
-        for (let radius = 0; radius < 18 && seed < 0; radius++)
-          for (let dy = -radius; dy <= radius; dy++)
-            for (let dx = -radius; dx <= radius; dx++) {
-              const x = sx + dx,
-                y = sy + dy;
-              if (
-                x >= 0 &&
-                x < w &&
-                y >= 0 &&
-                y < h &&
-                rgba[(y * w + x) * 4 + 3] > 128
-              )
-                seed = y * w + x;
-            }
-        let total = 0;
-        for (let n = 3; n < rgba.length; n += 4) if (rgba[n] > 128) total++;
-        const seen = new Uint8Array(w * h),
-          queue = new Int32Array(w * h);
-        let read = 0,
-          write = 0;
-        if (seed >= 0) {
-          seen[seed] = 1;
-          queue[write++] = seed;
-        }
-        while (read < write) {
-          const p = queue[read++],
-            x = p % w;
-          for (const q of [
-            x > 0 ? p - 1 : -1,
-            x < w - 1 ? p + 1 : -1,
-            p >= w ? p - w : -1,
-            p < w * (h - 1) ? p + w : -1,
-          ])
-            if (q >= 0 && !seen[q] && rgba[q * 4 + 3] > 128) {
-              seen[q] = 1;
-              queue[write++] = q;
-            }
-        }
-        return { id, index, coverage: write / Math.max(1, total) };
-      }),
-    );
-  });
-  for (const result of results)
-    expect(
-      result.coverage,
-      `${result.id} pose ${result.index}`,
-    ).toBeGreaterThan(0.82);
-  expect(errors).toEqual([]);
-});
-
 test("confirmed casts have flipbook impacts, interrupted casts do not, and pause freezes the effect", async ({
   page,
 }) => {
@@ -790,6 +740,7 @@ test("all seven bosses use distinct front, rear and side art with complete direc
               row.id !== "tidewyrm" &&
               row.id !== "gloomshade" &&
               row.id !== "somnara",
+              row.id !== "prismatail",
           )
           .flatMap((row: any) =>
             row.state.players
@@ -813,6 +764,8 @@ test("all seven bosses use distinct front, rear and side art with complete direc
     expect(actual).toHaveLength(5);
     // Grumblecrag's and Tidewyrm's rigs show the matching one of their
     // eight facings.
+    // Grumblecrag's, Tidewyrm's and Prismatail's rigs show the matching one
+    // of their eight facings.
     const v = (await vector(page))!;
     expect(v.facing).toBe({ front: 0, right: 2, back: 4, left: 6 }[view]);
     if (view === "front") expect(v.parts.eyeL && v.parts.eyeR).toBeTruthy();
@@ -836,6 +789,14 @@ test("all seven bosses use distinct front, rear and side art with complete direc
     expect(s.facing).toBe({ front: 0, right: 2, back: 4, left: 6 }[view]);
     if (view === "back") expect(s.parts.eyen).toBeUndefined();
     else expect(s.parts.eyen).toBeTruthy();
+    const pr = (await vector(page, "prismatail"))!;
+    expect(pr.facing).toBe({ front: 0, right: 2, back: 4, left: 6 }[view]);
+    if (view === "front") expect(pr.parts.eyen && pr.parts.eyef).toBeTruthy();
+    if (view === "back") expect(pr.parts.eyen ?? pr.parts.beak).toBeUndefined();
+    if (view === "left" || view === "right")
+      expect(Math.sign(pr.parts.beak.x - pr.parts.body.x)).toBe(
+        view === "right" ? 1 : -1,
+      );
     for (const [i, actor] of actual.entries()) {
       expect(actor.view).toBe(expected[i].view);
       expect(actor.parts).toHaveLength(1);
