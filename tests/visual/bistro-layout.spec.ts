@@ -137,11 +137,39 @@ async function problems(page: Page, where: string, inset: Insets | null) {
         // (A finger on a phone needs a little more than a mouse.)
         const least = e.closest(".bistro-layer.phone") ? 28 : 24;
         if (r.height < least)
-          out.push(`button "${words.slice(0, 24)}" is ${Math.round(r.height)} px tall`);
-        if (e.scrollWidth > e.clientWidth + 1 || e.scrollHeight > e.clientHeight + 1)
+          out.push(
+            `button "${words.slice(0, 24)}" is ${Math.round(r.height)} px tall`,
+          );
+        if (
+          e.scrollWidth > e.clientWidth + 1 ||
+          e.scrollHeight > e.clientHeight + 1
+        )
           out.push(`button "${words.slice(0, 24)}" is cut short`);
       }
       sameSize("cards", ".bs-dishes > button, .bs-items > *", "row");
+      // Recipes: each card's level-up at its foot, a row's in one line.
+      const ups = new Map<number, number[]>();
+      for (const c of Array.from(
+        document.querySelectorAll<HTMLElement>(".bs-dishes.levels .bs-dish"),
+      )) {
+        const up = c.querySelector<HTMLElement>(
+          ":scope > :is(button.up, .up.top)",
+        );
+        if (!shown(c) || !up) continue;
+        const cr = c.getBoundingClientRect(),
+          ur = up.getBoundingClientRect();
+        if (cr.bottom - ur.bottom > 16)
+          out.push(
+            `level-up of ${c.dataset.dish} is ${Math.round(cr.bottom - ur.bottom)} px above its card's foot`,
+          );
+        const k = Math.round(cr.top);
+        ups.set(k, [...(ups.get(k) ?? []), Math.round(ur.bottom)]);
+      }
+      for (const [, bs] of ups)
+        if (Math.max(...bs) - Math.min(...bs) > 1)
+          out.push(
+            `level-up buttons not in line (${[...new Set(bs)].join("/")})`,
+          );
       sameSize("edit buttons", ".bs-edit-btns button", "row");
       sameSize("visit buttons", ".bs-visit button", "row");
       sameSize("chips", "#bs-chips > *", "row");
@@ -269,7 +297,9 @@ for (const size of SIZES)
         await page.waitForTimeout(400);
         await check(`sheet ${k}${a !== undefined ? ` ${a}` : ""}`);
         if (k === "board" && a === "orders")
-          await expect(page.locator("#bs-sheet [data-deliver-all]")).toBeVisible();
+          await expect(
+            page.locator("#bs-sheet [data-deliver-all]"),
+          ).toBeVisible();
         // Scrolled to the end too (the last cards).
         await page.evaluate(() =>
           document

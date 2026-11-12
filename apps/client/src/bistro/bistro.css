@@ -2360,8 +2360,25 @@ body.hub-bistro #account-profile {
 .bistro-layer .bs-dishes.levels {
   grid-template-columns: repeat(auto-fill, minmax(176px, 1fr));
 }
+/* A column: the level-up button at the foot of every card, so a row's
+   buttons line up whatever is above them. */
 .bistro-layer .bs-dishes.levels .bs-dish {
   cursor: default;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.bistro-layer .bs-dishes.levels .bs-dish > :is(button.up, .up.top) {
+  margin-top: auto;
+}
+/* The profit line wraps as words, its coin with them. */
+.bistro-layer .bs-dishes.levels .bs-dish .pf {
+  display: block;
+  text-align: center;
+}
+.bistro-layer .bs-dishes.levels .bs-dish .pf .bs-c {
+  display: inline-flex;
+  vertical-align: -1px;
 }
 .bistro-layer .bs-dish .dlv {
   display: inline-block;
@@ -2412,8 +2429,11 @@ body.hub-bistro #account-profile {
   font-style: normal;
 }
 .bistro-layer .bs-dish button.up {
+  align-self: stretch;
+  justify-content: center;
+  white-space: nowrap;
   margin-top: 4px;
-  padding: 7px 12px;
+  padding: 7px 8px;
   border: 0;
   border-radius: 10px;
   background: linear-gradient(180deg, #ffe27a, #f0a92a);
@@ -3032,4 +3052,13 @@ body.hub-bistro #account-profile {
 }
 .bistro-layer.phone .bs-item.hire button.pr {
   padding: 6px 8px;
+}
+.bistro-layer.phone .bs-dish button.up {
+  min-height: 30px;
+  padding: 6px 4px;
+  font-size: 12.5px;
+}
+/* Recipes on a phone: room for "Level 10 · 12,000" and the ingredients. */
+.bistro-layer.phone .bs-dishes.levels {
+  grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
 }
