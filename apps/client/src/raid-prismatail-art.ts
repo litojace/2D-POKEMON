@@ -108,6 +108,33 @@ export function drawSunAtrium(
     post.fillStyle(0x56698a, 1).fillRoundedRect(m.x - 24, m.y - 12, 14, 35, 6);
     post.lineStyle(3, 0xd9cf9d, 0.9).strokeCircle(m.x, m.y - 8, 29);
     diamond(post, m.x, m.y - 8, 26, PRISM_COLORS[i], 0.9);
+    // About to scramble: the mirror flashes pink, and a long ghost arrow
+    // shows where it will point once it turns.
+    if (m.scrambleAt !== undefined && m.scrambleAt > state.time) {
+      const pulse = reduced
+          ? 1
+          : 0.55 + 0.45 * Math.abs(Math.sin(state.time * 9)),
+        turned = m.angle - ((m.scrambleTurns ?? 2) * Math.PI) / 4,
+        gx = Math.cos(turned),
+        gy = Math.sin(turned);
+      g.fillStyle(0xff6f91, 0.2 * pulse).fillEllipse(m.x, m.y + 4, 124, 48);
+      g.lineStyle(4, 0xff6f91, pulse).strokeEllipse(m.x, m.y + 4, 124, 48);
+      post.lineStyle(5, 0xff6f91, pulse).strokeCircle(m.x, m.y - 8, 37);
+      g.lineStyle(6, 0xff6f91, 0.95 * pulse).lineBetween(
+        m.x + gx * 44,
+        m.y + gy * 44,
+        m.x + gx * 92,
+        m.y + gy * 92,
+      );
+      g.fillStyle(0xff6f91, 0.95 * pulse).fillTriangle(
+        m.x + gx * 108,
+        m.y + gy * 108,
+        m.x + gx * 88 - gy * 11,
+        m.y + gy * 88 + gx * 11,
+        m.x + gx * 88 + gy * 11,
+        m.y + gy * 88 - gx * 11,
+      );
+    }
     const dx = Math.cos(m.angle),
       dy = Math.sin(m.angle);
     g.lineStyle(5, 0xfff5c9, 1).lineBetween(
@@ -124,33 +151,6 @@ export function drawSunAtrium(
       m.x + dx * 48 + dy * 8,
       m.y + dy * 48 - dx * 8,
     );
-    // About to scramble: the mirror flashes pink, and a ghost arrow shows
-    // where it will point.
-    if (m.scrambleAt !== undefined && m.scrambleAt > state.time) {
-      const pulse = reduced
-          ? 1
-          : 0.55 + 0.45 * Math.abs(Math.sin(state.time * 9)),
-        turned = m.angle - ((m.scrambleTurns ?? 2) * Math.PI) / 4,
-        gx = Math.cos(turned),
-        gy = Math.sin(turned);
-      g.fillStyle(0xff6f91, 0.22 * pulse).fillEllipse(m.x, m.y + 4, 120, 46);
-      g.lineStyle(4, 0xff6f91, pulse).strokeEllipse(m.x, m.y + 4, 120, 46);
-      post.lineStyle(5, 0xff6f91, pulse).strokeCircle(m.x, m.y - 8, 37);
-      g.lineStyle(4, 0xffb3c4, 0.9 * pulse).lineBetween(
-        m.x,
-        m.y,
-        m.x + gx * 56,
-        m.y + gy * 56,
-      );
-      g.fillStyle(0xffb3c4, 0.9 * pulse).fillTriangle(
-        m.x + gx * 65,
-        m.y + gy * 65,
-        m.x + gx * 48 - gy * 8,
-        m.y + gy * 48 + gx * 8,
-        m.x + gx * 48 + gy * 8,
-        m.y + gy * 48 - gx * 8,
-      );
-    }
   }
   for (const p of r.sunPillars ?? []) {
     g.fillStyle(0xffb556, 0.2).fillEllipse(p.x, p.y, 80, groundHeight(80));

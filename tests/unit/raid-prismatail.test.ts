@@ -529,6 +529,7 @@ describe("Prismatail AI: scrambled mirrors, held relays and steered attacks", ()
     expect(
       b.raid.mirrors!.filter((m) => m.scrambleAt !== undefined),
     ).toHaveLength(2);
+    expect(raidCue(b.snapshot(), "p0")).toContain("Mirrors flashing");
     // One route on the board from where the raider stands: one mirror.
     const one = setup();
     one.raid.trait = "kaleidoscope";
