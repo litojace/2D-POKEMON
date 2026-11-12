@@ -128,6 +128,9 @@ test("all seven living boss rigs animate, hold a pause and keep combat snapshots
   // Tidewyrm and Prismatail are vector art.
   // Tidewyrm and Emberwing are vector art.
   expect(start).toHaveLength(5);
+  // Four painted bosses; Grumblecrag, Tidewyrm and the Storm Twins are
+  // vector art (vector-twins.spec.ts checks the twins).
+  expect(start).toHaveLength(4);
   const vStart = (await vector(page))!;
   expect(vStart.visible).toBe(true);
   expect(Object.keys(vStart.parts).length).toBeGreaterThan(20);
@@ -785,14 +788,13 @@ test("all seven bosses use distinct front, rear and side art with complete direc
               row.id !== "somnara",
               row.id !== "prismatail",
               row.id !== "emberwing",
+              row.id !== "storm-twins",
           )
           .flatMap((row: any) =>
             row.state.players
               .filter((p: any) => p.raidBoss)
-              .map((p: any, index: number) => {
-                const mode =
-                  row.id === "storm-twins" && index === 1 ? "blue" : "body";
-                const f = r.directionalFrame(row.id, mode, view, 0);
+              .map(() => {
+                const f = r.directionalFrame(row.id, "body", view, 0);
                 return {
                   view,
                   frame: `pose-${f.index}`,
@@ -806,6 +808,7 @@ test("all seven bosses use distinct front, rear and side art with complete direc
     );
     const actual = await pose(page);
     expect(actual).toHaveLength(5);
+    expect(actual).toHaveLength(4);
     // Grumblecrag's and Tidewyrm's rigs show the matching one of their
     // eight facings.
     // Grumblecrag's, Tidewyrm's and Prismatail's rigs show the matching one

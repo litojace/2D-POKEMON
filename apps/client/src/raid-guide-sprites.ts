@@ -15,6 +15,7 @@ import { gloomGuideImage } from "./boss-vector-gloom";
 import { somnaraGuideImage } from "./boss-vector-somnara";
 import { prismaGuideImage } from "./boss-vector-prisma";
 import { emberGuideImage } from "./boss-vector-ember";
+import { twinsGuideImage } from "./boss-vector-twins";
 import base from "./art/raid-whole-frames.json";
 
 /** Reuse a complete battle pose in the diagram; native atlas has ample resolution
@@ -34,7 +35,14 @@ export function raidGuideSprite(
       : "";
   if (!isPaintedBoss(boss)) {
     // Vector bosses draw themselves once into a picture (boss-vector-*.ts).
-    const art =
+    const art: {
+        url: string;
+        width: number;
+        height: number;
+        crop: readonly [number, number, number, number];
+        core: readonly [number, number];
+        cores?: readonly (readonly [number, number])[];
+      } =
         boss === "tidewyrm"
           ? tideGuideImage(exposed)
           : boss === "gloomshade"
@@ -45,12 +53,14 @@ export function raidGuideSprite(
             ? prismaGuideImage(exposed)
           : boss === "emberwing"
             ? emberGuideImage(exposed)
+          : boss === "storm-twins"
+            ? twinsGuideImage(exposed)
             : grumbleGuideImage(exposed),
       [sx, sy, w, h] = art.crop,
       scale = Math.min(90 / w, 80 / h),
       frameX = -45 + (90 - w * scale) / 2,
       frameY = 25 - h * scale;
-    return `<g data-guide-boss="${boss}">${floor}<svg x="${frameX}" y="${frameY}" width="${w * scale}" height="${h * scale}" viewBox="${sx} ${sy} ${w} ${h}" preserveAspectRatio="xMidYMax meet" overflow="hidden"><image data-guide-sprite="${boss}" href="${art.url}" width="${art.width}" height="${art.height}"/></svg>${ring(frameX + (art.core[0] - sx) * scale, frameY + (art.core[1] - sy) * scale)}</g>`;
+    return `<g data-guide-boss="${boss}">${floor}<svg x="${frameX}" y="${frameY}" width="${w * scale}" height="${h * scale}" viewBox="${sx} ${sy} ${w} ${h}" preserveAspectRatio="xMidYMax meet" overflow="hidden"><image data-guide-sprite="${boss}" href="${art.url}" width="${art.width}" height="${art.height}"/></svg>${(art.cores ?? [art.core]).map((c) => ring(frameX + (c[0] - sx) * scale, frameY + (c[1] - sy) * scale)).join("")}</g>`;
   }
   const painted = boss;
   const draw = (mode: BossArtMode, x: number, width: number) => {
@@ -72,4 +82,6 @@ export function raidGuideSprite(
     return `<svg x="${frameX}" y="${frameY}" width="${w * scale}" height="${h * scale}" viewBox="${sx} ${sy} ${w} ${h}" preserveAspectRatio="xMidYMax meet" overflow="hidden"><image data-guide-sprite="${boss}" href="${url}" width="${aw}" height="${ah}"/></svg>${ring(cx, cy)}`;
   };
   return `<g data-guide-boss="${boss}">${floor}${boss === "storm-twins" ? draw("body", -50, 48) + draw("blue", 2, 48) : draw("body", -45, 90)}</g>`;
+  const mode = boss === "emberwing" ? "ground" : "body";
+  return `<g data-guide-boss="${boss}">${floor}${draw(mode, -45, 90)}</g>`;
 }
