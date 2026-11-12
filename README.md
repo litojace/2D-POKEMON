@@ -1,9 +1,18 @@
 # Match reports
 
-Newest report: 2026-11-11 18:43 UTC. From the game server's log (`scripts/perf/export-perf-reports.mjs` on `main`). One row per player's device per match; times are UTC. No accounts or names are kept.
+Newest report: 2026-11-12 08:09 UTC. From the game server's log (`scripts/perf/export-perf-reports.mjs` on `main`). One row per player's device per match; times are UTC. No accounts or names are kept.
 
 ## Needs attention
 
+- **2026-11-12 08:09**, pyranda against gloomshade (raid boss) (match `02sky6`):
+  - 13.3 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 30 pyranda cindrake`.
+  - 1 hit(s) landed while you were drawn over 24 px away (largest 26 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
+- **2026-11-12 08:07**, pyranda against gloomshade (raid boss) (match `nxdi6k`):
+  - 10.5 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 29 pyranda cindrake`.
+  - 1 hit(s) landed while you were drawn over 24 px away (largest 27 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
+- **2026-11-12 08:03**, tidefin against duskveil (bot, hard) (match `z1e46k`):
+  - 11.2 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 39 tidefin duskveil`.
+  - 83 hit(s) landed while you were drawn over 24 px away (largest 99 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
 - **2026-11-11 18:43**, lumoth against pyranda (bot, hard) (match `5g05f6`):
   - slow connection: ping 68 ms, slowest 5% 277 ms. The player's network: compare other players at the same time before changing the game.
   - drawing slow: 61 fps, 6.1% stutter at low graphics. Reproduce with tests/visual/effect-budget.spec.ts; ?perf=1 shows it live.
@@ -56,13 +65,14 @@ Newest report: 2026-11-11 18:43 UTC. From the game server's log (`scripts/perf/e
 - **2026-11-11 18:17**, mossloth against glacelle (bot, hard) (match `gzuxes`):
   - 25.8 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 26 mossloth glacelle`.
   - 44 hit(s) landed while you were drawn over 24 px away (largest 337 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
-- **2026-11-10 20:50**, mossloth:
-  - drawing slow: 49.3 fps, 11.1% stutter at high graphics. Reproduce with tests/visual/effect-budget.spec.ts; ?perf=1 shows it live.
 
 ## Latest matches
 
 | Time (UTC) | Match | Mode | You | Against | Ping (slowest 5%) | Lead | Late updates | Jumps | Hits off-screen | Skill confirm | FPS | Stutter | Graphics | Device | Build |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 2026-11-12 08:09 | `02sky6` | raid | pyranda | gloomshade (raid boss) | 59 ms 🟢 (61) | 195 ms | 0.0% | 15.6/min (max 16 px), ⚠️ 13.3 unexplained | ⚠️ 1 (max 26 px) | 91 ms | 58.8 | 0.0% | high (high) | ios app, 4 cores | eb499fe |
+| 2026-11-12 08:07 | `nxdi6k` | raid | pyranda | gloomshade (raid boss) | 58 ms 🟢 (61) | 190 ms | 0.0% | 13/min (max 8 px), ⚠️ 10.5 unexplained | ⚠️ 1 (max 27 px) | 90 ms | 58.8 | 0.0% | high (high) | ios app, 4 cores | eb499fe |
+| 2026-11-12 08:03 | `z1e46k` | duel vs bot | tidefin | duskveil (bot, hard) | 78 ms 🟢 (88) | 208 ms | 0.0% | 50.1/min (max 69 px), ⚠️ 11.2 unexplained | ⚠️ 83 (max 99 px) | 138 ms | 58.8 | 0.0% | high (high) | ios app, 4 cores | eb499fe |
 | 2026-11-11 18:43 | `5g05f6` | duel vs bot | lumoth | pyranda (bot, hard) | 68 ms 🟢 (277) | 218 ms | 2.3% | 76.8/min (max 187 px), ⚠️ 27.9 unexplained | ⚠️ 10 (max 172 px) | 114 ms | 61 | 6.1% | low (low) | android, 10 cores, 8 GB | 7c17f1d |
 | 2026-11-11 18:39 | `6n3lkw` | duel vs bot | tidefin | pangrove (bot, hard) | 64 ms 🟢 (91) | 218 ms | 1.7% | 66.3/min (max 150 px), ⚠️ 32.1 unexplained | ⚠️ 46 (max 85 px) | 108 ms | 61 | 2.0% | low (low) | android, 10 cores, 8 GB | 7c17f1d |
 | 2026-11-11 18:36 | `lzsko7` | duel vs bot | shadopus | terradon (bot, hard) | 56 ms 🟢 (66) | 222 ms | 1.5% | 62.9/min (max 232 px), ⚠️ 34.3 unexplained | ⚠️ 20 (max 82 px) | 101 ms | 77.5 | 1.6% | low (low) | android, 10 cores, 8 GB | 7c17f1d |
@@ -110,14 +120,12 @@ Newest report: 2026-11-11 18:43 UTC. From the game server's log (`scripts/perf/e
 | 2026-11-10 21:02 | – | duel | tidefin | – | – | – | – | – | – | – | 58.8 | 0.1% | low (auto) | 4 cores | – |
 | 2026-11-10 20:58 | – | duel | wombolder | – | – | – | – | – | – | – | 58.8 | 0.1% | low (auto) | 4 cores | – |
 | 2026-11-10 20:58 | – | duel | cindrake | – | – | – | – | – | – | – | 58.8 | 0.0% | high (high) | 4 cores | – |
-| 2026-11-10 20:54 | – | duel | pangrove | – | – | – | – | – | – | – | 58.8 | 0.2% | low (auto) | 4 cores | – |
-| 2026-11-10 20:54 | – | duel | astrabun | – | – | – | – | – | – | – | 58.8 | 0.1% | high (high) | 4 cores | – |
-| 2026-11-10 20:50 | – | duel | mossloth | – | – | – | – | – | – | – | 49.3 | 11.1% | high (auto) | 9 cores, 8 GB | – |
 
 ## By day
 
 | Day (UTC) | Reports | Needs attention | Ping, median | Ping, worst 10% | Lead, median | Jumps/min, median | Skill confirm, median | FPS, median | Stutter, median | Dropped connections |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 2026-11-12 | 3 | 3 | 59 ms | 78 ms | 195 ms | 15.6 | 91 ms | 58.8 | 0.0% | 0 |
 | 2026-11-11 | 23 | 16 | 63 ms | 68 ms | 217 ms | 91.2 | 108 ms | 64.9 | 2.0% | 7 transport close |
 | 2026-11-10 | 29 | 1 | – | – | – | – | – | 58.8 | 0.1% | 11 transport close |
 | 2026-11-09 | 0 | 0 | – | – | – | – | – | – | – | 2 transport close |
