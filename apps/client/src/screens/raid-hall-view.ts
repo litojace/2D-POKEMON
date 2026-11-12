@@ -10,6 +10,7 @@
  */
 import { CHARACTERS, type CharacterId } from "@arena/shared";
 import type { Friend } from "../../../../packages/shared/src/accounts";
+import { soloRevives } from "../raid-solo";
 import {
   RAID_ATTACKS,
   RAID_BOSSES,
@@ -194,11 +195,15 @@ export function startState(view: RaidView, d: RaidData) {
   const note = reason
     ? reason
     : play === "solo"
-      ? "Just you · one self-revive · a little less boss health"
+      ? soloRevives(view.boss)
+        ? "Just you · one self-revive · a little less boss health"
+        : "Just you · no revive at ★★★"
       : size > 1
         ? `${size} of ${RAID_SEATS} seats · your party follows you in`
         : `A room for up to ${RAID_SEATS} · invite friends there`;
-  return { play, ok: !reason, reason, note, soloLocked: size > 1 };
+  // Solo against a ★★★ boss: no self-revive, so the note is a warning.
+  const warn = !reason && play === "solo" && !soloRevives(view.boss);
+  return { play, ok: !reason, reason, note, soloLocked: size > 1, warn };
 }
 /** The attack Practice drills: the picked one, or the boss's first. */
 export const practiceAttack = (view: RaidView) =>
@@ -451,7 +456,7 @@ function guideTab(view: RaidView) {
     )
     .join(
       "",
-    )}</div><p class="ui-note rh-rules">Solo: one self-revive and a little less boss health. Teams revive each other. Raids never change your PvP rating.</p>`;
+    )}</div><p class="ui-note rh-rules">${soloRevives(view.boss) ? "Solo: one self-revive and a little less boss health." : "Solo: no revive against a ★★★ boss, and a little less boss health."} Teams revive each other. Raids never change your PvP rating.</p>`;
 }
 function bossMarkup(view: RaidView, d: RaidData) {
   const b = RAID_BOSSES[view.boss];
@@ -489,7 +494,7 @@ function bossMarkup(view: RaidView, d: RaidData) {
   const attack = practiceAttack(view);
   const foot = actionBar(
     s.ok
-      ? `${mode}<small class="ui-note rh-foot-note">${esc(s.note)}</small>`
+      ? `${mode}<small class="ui-note rh-foot-note${s.warn ? " is-warning" : ""}">${esc(s.note)}</small>`
       : `<small class="ui-note rh-foot-note is-reason" role="status">${esc(s.reason)}</small>`,
     actions(
       button("Practice", {

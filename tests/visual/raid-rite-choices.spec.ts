@@ -1,5 +1,12 @@
 import { expect, test } from "@playwright/test";
-import { box, inside, openHub, pushUntilBattle, snap, openPlayPanel } from "./helpers";
+import {
+  box,
+  inside,
+  openHub,
+  pushUntilBattle,
+  snap,
+  openPlayPanel,
+} from "./helpers";
 
 const buffValues: Record<string, string[]> = {
   shelter: ["−25%"],
@@ -64,7 +71,14 @@ for (const size of [
       // Six rites on offer, an even 3 x 2 grid.
       for (const offers of [
         ["shelter", "sharing", "core", "rescue", "courage", "mending"],
-        ["grounded", "fireproof", "polished", "lucid", "footing", "lamplighter"],
+        [
+          "grounded",
+          "fireproof",
+          "polished",
+          "lucid",
+          "footing",
+          "lamplighter",
+        ],
       ]) {
         await page.evaluate((offers) => {
           const w = window as any;
@@ -262,3 +276,113 @@ for (const size of [
     }
   });
 }
+
+// The server drops a picked rite from the offers; the card stays where it was,
+// checked and greyed out, and once both picks are made the rest grey out too.
+for (const size of [
+  { width: 1440, height: 900 },
+  { width: 1366, height: 640 },
+  { width: 844, height: 390 },
+])
+  test(`a picked rite stays in place, checked and greyed out (${size.width}x${size.height})`, async ({
+    browser,
+  }, info) => {
+    const mobile = size.width < 1000;
+    const context = await browser.newContext({
+      viewport: size,
+      isMobile: mobile,
+      hasTouch: mobile,
+    });
+    try {
+      const page = await context.newPage();
+      const errors = await openHub(page);
+      await page.evaluate(() =>
+        (window as any).__room("raid", { boss: "grumblecrag" }),
+      );
+      await openPlayPanel(page);
+      await page.click("#play-create");
+      await pushUntilBattle(page);
+      const offer = [
+        "shelter",
+        "sharing",
+        "core",
+        "rescue",
+        "courage",
+        "mending",
+      ];
+      const show = (offers: string[] | undefined, rites: string[]) =>
+        page.evaluate(
+          ([offers, rites]) => {
+            const w = window as any;
+            w.__snap.phase = "intermission";
+            w.__snap.remaining = 15;
+            if (offers) w.__snap.raid.offers.me = offers;
+            else delete w.__snap.raid.offers.me;
+            w.__snap.raid.rites.me = rites;
+            w.__push();
+          },
+          [offers, rites] as const,
+        );
+      const cards = page.locator("[data-raid-rite]");
+      const places = () =>
+        cards.evaluateAll((els) =>
+          els.map((e) => {
+            const r = e.getBoundingClientRect();
+            return [
+              (e as HTMLElement).dataset.raidRite,
+              Math.round(r.x),
+              Math.round(r.y),
+            ];
+          }),
+        );
+      await show(offer, []);
+      await expect(cards).toHaveCount(6);
+      await expect(page.locator(".raid-draft")).toBeVisible();
+      await page.waitForTimeout(400);
+      const before = await places();
+      // The six cards end above the chapter tip and timer row: a fixed-height
+      // panel used to let them overflow onto it on desktop screens.
+      if (!mobile) {
+        const cardsEnd = await page
+          .locator(".raid-draft > .panel-actions")
+          .evaluate((e) => e.getBoundingClientRect().bottom);
+        const tipStart = await page
+          .locator(".raid-draft > .panel-scroll")
+          .evaluate((e) => e.getBoundingClientRect().top);
+        expect(cardsEnd).toBeLessThanOrEqual(tipStart + 1);
+      }
+      // First pick: Core leaves the offers but keeps its card and place.
+      await show(
+        offer.filter((id) => id !== "core"),
+        ["core"],
+      );
+      const core = page.locator('[data-raid-rite="core"]');
+      await expect(core).toBeDisabled();
+      await expect(core).toHaveAttribute("aria-pressed", "true");
+      await expect(core.locator(".raid-rite-check")).toBeVisible();
+      await expect(cards).toHaveCount(6);
+      expect(await places()).toEqual(before);
+      for (const id of offer.filter((id) => id !== "core"))
+        await expect(page.locator(`[data-raid-rite="${id}"]`)).toBeEnabled();
+      // Greyed out: the picked card's text is faded.
+      expect(
+        await core
+          .locator(".raid-rite-copy")
+          .evaluate((e) => Number(getComputedStyle(e).opacity)),
+      ).toBeLessThan(0.7);
+      await snap(page, info, `rite-picked-${size.width}x${size.height}`);
+      // Second pick: every card stays, two checked, all disabled.
+      await show(undefined, ["core", "courage"]);
+      await expect(page.locator(".raid-rite-locked")).toBeVisible();
+      await expect(cards).toHaveCount(6);
+      await expect(page.locator("[data-raid-rite]:enabled")).toHaveCount(0);
+      await expect(
+        page.locator('[data-raid-rite][aria-pressed="true"]'),
+      ).toHaveCount(2);
+      expect(await places()).toEqual(before);
+      await snap(page, info, `rite-locked-${size.width}x${size.height}`);
+      expect(errors).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });

@@ -52,9 +52,11 @@ import {
 } from "../../../packages/shared/src/raid";
 import { raidGuideBossFor } from "./raid-guide-art";
 import { raidBriefingGuide } from "./raid-briefing";
+import { SOLO_NO_REVIVE, soloRevives } from "./raid-solo";
 import {
   raidRiteChoices,
   raidRiteDetails,
+  riteDisplayOrder,
   bindRaidRiteDetails,
 } from "./raid-rite-cards";
 import { drawRaidBoss } from "./raid-boss-art";
@@ -167,14 +169,16 @@ export function renderRaidUI(
     title = `${RAID_TRAITS[r.trait].name} ${RAID_BOSSES[r.boss].name}`;
     const waiting = state.instructionsReady.includes(me.id);
     body = `<div class="rc-body" tabindex="0" role="region" aria-label="Raid instructions">${raidBriefingGuide(r.boss, me.character, r.partySize === 1)}<details class="rc-extra" id="raid-briefing-extra"><summary>Your fighter, team &amp; modifiers</summary><p><b>${escape(RAID_TRAITS[r.trait].name)}</b> · ${escape(RAID_TRAITS[r.trait].text)}</p>${perkLines(state, me.id)}${r.partySize > 1 ? `<p class="raid-signals">Team signals: ${(Object.keys(RAID_PINGS) as RaidPingKind[]).map((k) => `<b>${RAID_PINGS[k].key}</b> ${raidPingLabel(k, r.boss)}`).join(" · ")} (or use the on-screen buttons)</p>` : ""}</details></div>`;
-    actions = `<p class="ui-note rc-meta">Three phases · one shared fight · ${r.partySize === 1 ? "Solo · one self-revive" : "Team · stand beside fallen allies to revive"}</p>${uiActions(uiButton(waiting ? "Waiting for the team…" : "I’m ready", { kind: "primary", icon: waiting ? undefined : "battle", disabled: waiting, attrs: { id: "raid-instructions", "aria-label": waiting ? "Waiting for the team" : "I’m ready — start raid" } }))}`;
+    actions = `<p class="ui-note rc-meta">Three phases · one shared fight · ${r.partySize === 1 ? (soloRevives(r.boss) ? "Solo · one self-revive" : "Solo") : "Team · stand beside fallen allies to revive"}</p>${r.partySize === 1 && !soloRevives(r.boss) ? `<p class="raid-solo-warning" role="note">${SOLO_NO_REVIVE}</p>` : ""}${uiActions(uiButton(waiting ? "Waiting for the team…" : "I’m ready", { kind: "primary", icon: waiting ? undefined : "battle", disabled: waiting, attrs: { id: "raid-instructions", "aria-label": waiting ? "Waiting for the team" : "I’m ready — start raid" } }))}`;
   } else if (state.phase === "intermission") {
     // Rites are chosen once, before the fight (RAID_RITE_PICKS each).
     const picked = Math.min(RAID_RITE_PICKS, (r.rites[me.id] ?? []).length);
     title = `Choose ${RAID_RITE_PICKS} rites · ${picked}/${RAID_RITE_PICKS}`;
     body = `<p class="raid-phase-objective">${raidChapters(r.boss)[r.phase - 1].detail}</p><details class="raid-team-summary"><summary>Team rites</summary><div class="raid-team-builds" aria-label="Team rites"></div></details>`;
     const offers = r.offers[me.id] ?? [];
-    actions = `<div class="raid-rite-intro"><span>Grow stronger each chapter</span><span class="raid-choice-timer" role="timer" aria-label="Time left to choose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></svg><span>Choose in</span><strong>${LIVE_SECONDS}</strong></span>${raidRiteDetails(offers)}</div><div class="raid-rite-options">${raidRiteChoices(offers)}</div>`;
+    const mine = r.rites[me.id] ?? [];
+    const order = riteDisplayOrder(offers, mine);
+    actions = `<div class="raid-rite-intro">${offers.length ? "<span>Grow stronger each chapter</span>" : '<span class="raid-rite-locked">Rites locked in · waiting for the team</span>'}<span class="raid-choice-timer" role="timer" aria-label="Time left to choose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></svg><span>Choose in</span><strong>${LIVE_SECONDS}</strong></span>${raidRiteDetails(order)}</div><div class="raid-rite-options">${raidRiteChoices(order, mine, !offers.length)}</div>`;
   } else if (state.phase === "countdown") {
     title = LIVE_COUNTDOWN;
     body = `<p>${raidChapters(r.boss)[r.phase - 1].objective}</p>`;
