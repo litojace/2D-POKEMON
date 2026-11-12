@@ -56,6 +56,13 @@ const vector = (page: Page, id: "grumblecrag" | "tidewyrm" = "grumblecrag") =>
       parts,
     };
   }, id);
+/** Gloomshade's vector bodies (boss-vector-gloom-rig.ts): one rig per body. */
+const gloomRoots = (page: Page) =>
+  page.evaluate(() =>
+    (window as any).__bossReview.rows[0].g.scene.children.list
+      .filter((o: any) => o.name.startsWith("vector-boss-gloomshade:"))
+      .map((o: any) => ({ name: o.name, visible: o.visible })),
+  );
 const pose = (page: Page) =>
   page.evaluate(() => {
     const w = window as any,
@@ -98,9 +105,10 @@ test("all seven living boss rigs animate, hold a pause and keep combat snapshots
   const errors = await review(page);
   await page.evaluate(() => (window as any).__bossReview.frame(1, 0, false));
   const start = await pose(page);
-  // Five painted bosses, two Storm Twins posed on their own; Grumblecrag and
-  // Tidewyrm are vector art.
-  expect(start).toHaveLength(6);
+  // Four painted bosses, two Storm Twins posed on their own; Grumblecrag,
+  // Tidewyrm and Gloomshade are vector art.
+  expect(start).toHaveLength(5);
+  expect((await gloomRoots(page)).filter((r) => r.visible)).toHaveLength(1);
   const vStart = (await vector(page))!;
   expect(vStart.visible).toBe(true);
   expect(Object.keys(vStart.parts).length).toBeGreaterThan(20);
@@ -269,8 +277,9 @@ test("copies, submerging and fades cannot leave stale boss sprites on cleared la
     r.frame(1, 0, false);
     for (let n = 1; n <= 30; n++) r.frame(1, n * 0.025, false);
   });
+  // Gloomshade is vector art: each copy has a rig of its own.
   expect(
-    (await pose(page)).find((r) => r.name.endsWith("shade-42"))?.visible,
+    (await gloomRoots(page)).find((r) => r.name.endsWith("shade-42"))?.visible,
   ).toBe(true);
   expect((await vector(page, "tidewyrm"))?.visible).toBe(true);
   await page.evaluate(() => {
@@ -280,7 +289,9 @@ test("copies, submerging and fades cannot leave stale boss sprites on cleared la
     r.frame(1, 0.8, false);
   });
   const hidden = await pose(page);
-  expect(hidden.find((r) => r.name.endsWith("shade-42"))?.visible).toBe(false);
+  expect(
+    (await gloomRoots(page)).find((r) => r.name.endsWith("shade-42"))?.visible,
+  ).toBe(false);
   // Tidewyrm is vector art now: diving hides its rig (no painted root at all).
   expect(hidden.some((r) => r.name.includes("tidewyrm"))).toBe(false);
   expect((await vector(page, "tidewyrm"))?.visible).toBe(false);
@@ -299,8 +310,9 @@ test("copies, submerging and fades cannot leave stale boss sprites on cleared la
     r.game.loop.frame += 121;
     r.frame(1, 3, false);
   });
+  // undrawn for over 120 frames, the burst copy's rig is disposed
   expect(
-    (await pose(page)).find((r) => r.name.endsWith("shade-42")),
+    (await gloomRoots(page)).find((r) => r.name.endsWith("shade-42")),
   ).toBeUndefined();
   // Still under water and undrawn for over 120 frames: its rig is disposed.
   expect(await vector(page, "tidewyrm")).toBeNull();
@@ -313,8 +325,8 @@ test("late boss loads retain only the current boss atlas and can revisit a boss"
   const errors = await review(page, false);
   await page.evaluate(() => {
     const r = (window as any).__bossReview;
-    r.retain("gloomshade");
-    r.frame(1, 0, false, ["gloomshade"]);
+    r.retain("somnara");
+    r.frame(1, 0, false, ["somnara"]);
   });
   const loaded = async (id: string) => {
     await expect
@@ -327,7 +339,7 @@ test("late boss loads retain only the current boss atlas and can revisit a boss"
       })
       .toBe(true);
   };
-  await loaded("gloomshade");
+  await loaded("somnara");
   await page.evaluate(() => {
     const r = (window as any).__bossReview;
     r.retain("emberwing");
@@ -343,10 +355,10 @@ test("late boss loads retain only the current boss atlas and can revisit a boss"
   ).toEqual(["raid-painted-emberwing"]);
   await page.evaluate(() => {
     const r = (window as any).__bossReview;
-    r.retain("gloomshade");
-    r.frame(1, 1.1, false, ["gloomshade"]);
+    r.retain("somnara");
+    r.frame(1, 1.1, false, ["somnara"]);
   });
-  await loaded("gloomshade");
+  await loaded("somnara");
   expect(errors).toEqual([]);
 });
 
@@ -489,14 +501,14 @@ test("an unavailable art file keeps the encounter playable without a request loo
   page,
 }) => {
   let requests = 0;
-  await page.route(/raid-whole-gloomshade\.webp/, (route) => {
+  await page.route(/raid-whole-somnara\.webp/, (route) => {
     if (route.request().resourceType() === "script") return route.continue();
     requests++;
     return route.abort();
   });
   const errors = await review(page, false);
   await page.evaluate(() =>
-    (window as any).__bossReview.frame(1, 0, false, ["gloomshade"]),
+    (window as any).__bossReview.frame(1, 0, false, ["somnara"]),
   );
   await expect.poll(() => requests).toBeGreaterThan(0);
   await expect
@@ -511,16 +523,15 @@ test("an unavailable art file keeps the encounter playable without a request loo
   expect(attempts).toBeLessThanOrEqual(3);
   const commands = await page.evaluate(() => {
     const r = (window as any).__bossReview;
-    for (let n = 1; n <= 40; n++) r.frame(1, n * 0.05, false, ["gloomshade"]);
-    return r.rows.find((o: any) => o.id === "gloomshade").g.commandBuffer
-      .length;
+    for (let n = 1; n <= 40; n++) r.frame(1, n * 0.05, false, ["somnara"]);
+    return r.rows.find((o: any) => o.id === "somnara").g.commandBuffer.length;
   });
   await page.waitForTimeout(100);
   expect(requests).toBe(attempts);
   expect(commands).toBeGreaterThan(100);
-  expect(
-    (await pose(page)).filter((r) => r.name.includes("gloomshade")),
-  ).toEqual([]);
+  expect((await pose(page)).filter((r) => r.name.includes("somnara"))).toEqual(
+    [],
+  );
   expect(errors).toEqual([]);
 });
 
@@ -760,7 +771,10 @@ test("all seven bosses use distinct front, rear and side art with complete direc
         r.frame(1, time, true);
         return r.rows
           .filter(
-            (row: any) => row.id !== "grumblecrag" && row.id !== "tidewyrm",
+            (row: any) =>
+              row.id !== "grumblecrag" &&
+              row.id !== "tidewyrm" &&
+              row.id !== "gloomshade",
           )
           .flatMap((row: any) =>
             row.state.players
@@ -781,7 +795,7 @@ test("all seven bosses use distinct front, rear and side art with complete direc
       { view, angle, time },
     );
     const actual = await pose(page);
-    expect(actual).toHaveLength(6);
+    expect(actual).toHaveLength(5);
     // Grumblecrag's and Tidewyrm's rigs show the matching one of their
     // eight facings.
     const v = (await vector(page))!;
