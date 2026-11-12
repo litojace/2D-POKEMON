@@ -432,7 +432,13 @@ export class SomnaraArena extends RaidArena {
   }
   protected override cadence() {
     return (
-      super.cadence() * (this.raid.dream && this.smart() ? S.dreamCadence : 1)
+      super.cadence() *
+      // Alone, it does not slow down for the dream, and attacks faster.
+      (this.smart() && this.raid.partySize === 1
+        ? S.soloCadence
+        : this.raid.dream && this.smart()
+          ? S.dreamCadence
+          : 1)
     );
   }
   /** The Dreamer standing on a pad is never targeted while they work. */
@@ -547,8 +553,18 @@ export class SomnaraArena extends RaidArena {
       // constellation's centre in from edges; clamping each star separately
       // would pile several hits onto one indistinguishable marker.
       const aim = this.aimFloor(kind, target, 220, S.stars.delay);
-      const cx = Math.max(320, Math.min(1280, aim.x));
-      const cy = Math.max(320, Math.min(580, aim.y));
+      const turn = ((r.seed + this.attacks) % 6) * 0.2;
+      // Live raids, alone: the constellation is laid so its first star
+      // lands where the raider is heading (between the stars is still safe).
+      const solo = this.smart() && r.partySize === 1;
+      const cx = Math.max(
+        320,
+        Math.min(1280, solo ? aim.x - Math.cos(turn) * 220 : aim.x),
+      );
+      const cy = Math.max(
+        320,
+        Math.min(580, solo ? aim.y - Math.sin(turn) * 220 : aim.y),
+      );
       for (let i = 0; i < n; i++) {
         const angle =
           (i / n) * Math.PI * 2 + ((r.seed + this.attacks) % 6) * 0.2;
@@ -615,7 +631,8 @@ export class SomnaraArena extends RaidArena {
       }
     } else if (w.kind === "dream-bubbles") {
       const count =
-        this.smart() && this.heroes().filter((p) => p.hp > 0).length >= 3
+        this.smart() &&
+        (r.partySize === 1 || this.heroes().filter((p) => p.hp > 0).length >= 3)
           ? S.bubbles.partyCount
           : S.bubbles.count;
       const n = r.trait === "restless-dream" ? count + 2 : count;
@@ -838,9 +855,27 @@ export class SomnaraArena extends RaidArena {
             Math.hypot(c.x - from.x, c.y - from.y),
         )[0];
       if (!target) return true;
-      const d = normalize(target.x - b.x, target.y - b.y);
-      b.x += d.x * S.bubbles.speed * dt;
-      b.y += d.y * S.bubbles.speed * dt;
+      // Live raids, alone: mid-dream they wait at the next right pad (pop
+      // them, or walk in drowsy) and only chase a raider who comes close.
+      let goal: { x: number; y: number } = target;
+      if (
+        next &&
+        r.partySize === 1 &&
+        Math.hypot(target.x - b.x, target.y - b.y) > S.bubbles.guard
+      ) {
+        const u = normalize(b.x - next.x || 1, b.y - next.y);
+        goal = {
+          x: next.x + u.x * (S.padRadius + 30),
+          y: next.y + u.y * (S.padRadius + 30),
+        };
+      }
+      const d = normalize(goal.x - b.x, goal.y - b.y);
+      const step = Math.min(
+        Math.hypot(goal.x - b.x, goal.y - b.y),
+        S.bubbles.speed * dt,
+      );
+      b.x += d.x * step;
+      b.y += d.y * step;
       if (
         Math.hypot(target.x - b.x, target.y - b.y) <=
         S.bubbles.radius + RULES.radius
