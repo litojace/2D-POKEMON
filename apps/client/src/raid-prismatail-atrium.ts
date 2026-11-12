@@ -1136,6 +1136,11 @@ export interface AtriumInput {
   /** Reduced motion: no light blades, no sparkle, nothing spins or bobs. */
   reduced: boolean;
 }
+/**
+ * How high over a raider's feet the Blinded eye floats: above the name and
+ * health bar, which are drawn over the battle and would hide it lower down.
+ */
+export const BLIND_LIFT = 146;
 /** How long a mirror's turn chime rings (the server's turn cooldown). */
 export const CHIME = 0.4;
 /** Where the skylights stand: two in phase 3 with a party, else one. */
@@ -1398,7 +1403,7 @@ export function atriumFrame(o: AtriumInput): AtriumFrame {
     top.push({
       piece: "blind",
       x: p.x,
-      y: p.y - 102 + Math.sin(anim * 3) * 1.5,
+      y: p.y - BLIND_LIFT + Math.sin(anim * 3) * 1.5,
       sx: 1.15,
       sy: 1.15,
     });

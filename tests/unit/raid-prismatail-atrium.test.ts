@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   ARROW,
   BEAM_LIFT,
+  BLIND_LIFT,
   CHIME,
   MIRROR_TRACK,
   arrowPush,
@@ -310,7 +311,7 @@ describe("Sun Atrium layout", () => {
       input({ blinded: [{ x: 700, y: 470 }], reduced: true }),
     );
     expect(f.top.filter((p) => p.piece === "blind")).toEqual([
-      expect.objectContaining({ x: 700, y: 470 - 102 }),
+      expect.objectContaining({ x: 700, y: 470 - BLIND_LIFT }),
     ]);
   });
   it("knows the server's mirror-turn flash, so the scene shows the chime instead", () => {
