@@ -6,6 +6,7 @@ import {
   pushUntilBattle,
   snap,
 } from "./helpers";
+import { LARGE_IPAD_PIXEL_BUDGET } from "../../apps/client/src/render-budget";
 
 const iphone = {
   viewport: { width: 844, height: 390 },
@@ -38,9 +39,12 @@ test("iOS Home Screen resumes the hub and releases the old battle canvas on retu
       .poll(() => canvas.evaluate((c: HTMLCanvasElement) => c.width))
       .toBe(1266);
     // An iPad-sized window keeps the canvas the size of its host and within
-    // the pixel budget. Wait for the drawing buffer to follow the window (the
-    // CSS box follows at once): measured before that, the phone-sized buffer
-    // passed by luck.
+    // the pixel budget. 1194 × 834 is an iPad Pro 11"'s screen (the window
+    // sets the emulated screen too): a large iPad, which draws at 2× within
+    // its own budget (render-budget.ts, largeIPad); smaller iPads keep the
+    // phones' budget (ipad-sharpness.spec). Wait for the drawing buffer to
+    // follow the window (the CSS box follows at once): measured before that,
+    // the phone-sized buffer passed by luck.
     await page.setViewportSize({ width: 1194, height: 834 });
     await expect
       .poll(() => canvas.evaluate((c: HTMLCanvasElement) => c.width))
@@ -58,7 +62,7 @@ test("iOS Home Screen resumes the hub and releases the old battle canvas on retu
       .toBeLessThan(2);
     expect(
       await canvas.evaluate((c: HTMLCanvasElement) => c.width * c.height),
-    ).toBeLessThanOrEqual(2_002_000);
+    ).toBeLessThanOrEqual(LARGE_IPAD_PIXEL_BUDGET);
     await page.setViewportSize(iphone.viewport);
     await expect
       .poll(() => canvas.evaluate((c: HTMLCanvasElement) => c.width))
