@@ -73,7 +73,7 @@ export function raidHudView(state: Snapshot, me: Fighter): RaidHudView {
   return {
     key: `${r.boss}|${twins.map((t) => `${t.id}:${t.name}`).join(",")}`,
     stormTwins,
-    title: `${r.gilded ? "✦ GILDED " : ""}${RAID_BOSSES[r.boss].name.toUpperCase()}${!stormTwins && (exposed || r.staggerUntil > state.time || r.permanentGround) ? " · EXPOSED" : ""}`,
+    title: `${r.gilded ? "✦ GILDED " : ""}${RAID_BOSSES[r.boss].name.toUpperCase()}${!stormTwins && (exposed || r.staggerUntil > state.time || r.permanentGround) ? " · EXPOSED" : ""}${(r.enrage ?? 0) > 0 ? ` · FURIOUS${r.enrage! > 1 ? ` ×${r.enrage}` : ""}` : ""}`,
     phase: r.phase,
     health,
     trail: healthTrail(`raid:${r.boss}`, health),
