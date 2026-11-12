@@ -11,22 +11,22 @@ import {
 import frames from "./art/raid-whole-frames.json";
 import gloomshade from "./art/raid-whole-gloomshade.webp";
 import somnara from "./art/raid-whole-somnara.webp";
-import prismatail from "./art/raid-whole-prismatail.webp";
 import emberwing from "./art/raid-whole-emberwing.webp";
 import stormTwins from "./art/raid-whole-storm-twins.webp";
 import gloomDirections from "./art/raid-directions-gloomshade.webp";
 import somnaraDirections from "./art/raid-directions-somnara.webp";
-import prismaDirections from "./art/raid-directions-prismatail.webp";
 import emberDirections from "./art/raid-directions-emberwing.webp";
 import twinDirections from "./art/raid-directions-storm-twins.webp";
 /** Bosses drawn from painted atlases (Grumblecrag is vector art, boss-vector-rig.ts). */
-export type PaintedBossId = Exclude<RaidBossId, "grumblecrag" | "tidewyrm">;
+export type PaintedBossId = Exclude<
+  RaidBossId,
+  "grumblecrag" | "tidewyrm" | "prismatail"
+>;
 export const isPaintedBoss = (id: RaidBossId): id is PaintedBossId =>
-  id !== "grumblecrag" && id !== "tidewyrm";
+  id !== "grumblecrag" && id !== "tidewyrm" && id !== "prismatail";
 export const BOSS_PAINTED_ART: Record<PaintedBossId, string> = {
   gloomshade,
   somnara,
-  prismatail,
   emberwing,
   "storm-twins": stormTwins,
 };
@@ -34,7 +34,6 @@ const keyFor = (id: RaidBossId) => `raid-painted-${id}`;
 export const BOSS_DIRECTION_ART: Record<PaintedBossId, string> = {
   gloomshade: gloomDirections,
   somnara: somnaraDirections,
-  prismatail: prismaDirections,
   emberwing: emberDirections,
   "storm-twins": twinDirections,
 };
@@ -163,9 +162,7 @@ function chooseAction(id: RaidBossId, o: WholeBossLook) {
     a.locomotion > 0.15 &&
     a.gather < 0.12 &&
     (!last || last.age > 0.48) &&
-    (id === "grumblecrag" ||
-      id === "prismatail" ||
-      (id === "emberwing" && (o.flight ?? 0) < 0.1))
+    (id === "grumblecrag" || (id === "emberwing" && (o.flight ?? 0) < 0.1))
   )
     pose = [0, 3][
       Math.floor(o.life.time * (id === "grumblecrag" ? 2.8 : 3.6)) % 2
@@ -350,11 +347,6 @@ export function paintWholeBoss(
     const r = id === "grumblecrag" ? 25 : 20;
     rig.front.fillStyle(0xaaffdf, 0.15).fillCircle(coreX, coreY, r);
     rig.front.lineStyle(2.5, 0xd9ffdb, 0.85).strokeCircle(coreX, coreY, r);
-  }
-  if (id === "prismatail" && !o.dead && !o.exposed) {
-    rig.front
-      .lineStyle(2, 0xb4e8ff, 0.45)
-      .strokeEllipse(coreX, coreY - 5, 100, 123);
   }
   if (o.flicker && !o.dead) {
     const mx = (f.moon[0] - f.anchor[0]) * f.scale * (flip ? -1 : 1),

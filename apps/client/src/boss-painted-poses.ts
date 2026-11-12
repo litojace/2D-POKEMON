@@ -25,12 +25,6 @@ export function paintedGloom(
 export function paintedSomnara(g: G, o: Look) {
   return paintWholeBoss(g, "somnara", { ...o, y: o.y + 72 });
 }
-export function paintedPrisma(g: G, o: Look) {
-  return paintWholeBoss(g, "prismatail", {
-    ...o,
-    y: (o.groundY ?? o.y + 60) + 9,
-  });
-}
 export function paintedEmber(g: G, o: Look & { flight: number }) {
   return paintWholeBoss(g, "emberwing", {
     ...o,
