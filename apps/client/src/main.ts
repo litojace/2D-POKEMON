@@ -140,6 +140,7 @@ import {
 import { rigAssets, skinSuffix } from "./animation/assets";
 import { loadRigTextures } from "./animation/rig-textures";
 import { prewarmBossAtlas } from "./boss-vector-prewarm";
+import { prewarmRaidArena } from "./raid-arena-prewarm";
 import { FighterLoading, neededFighters } from "./animation/fighter-loading";
 import {
   setOverlayMarkup,
@@ -4711,6 +4712,8 @@ class ArenaScene extends Phaser.Scene {
     scene = this;
     // The boss's pieces are drawn once into an atlas: now, not on its first frame.
     if (state?.raid) prewarmBossAtlas(this, state.raid.boss, state.raid.phase);
+    // So are the arena's pieces (lanterns, conductor posts, light, marks).
+    if (state?.raid) prewarmRaidArena(this, state.raid);
     battleQuality.restart();
     battlePerf.reset();
     netMeter.reset();
