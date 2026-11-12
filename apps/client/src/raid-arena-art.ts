@@ -5,6 +5,7 @@ import type { RaidBossId } from "../../../packages/shared/src/raid-roster";
 import { GLOOMSHADE } from "../../../packages/shared/src/raid";
 import { paintRingInlay } from "./raid-ring-pieces";
 import { engravedRing } from "./raid-emberwing-terrace";
+import { paintConstellationInlay } from "./raid-cloud-deck-pieces";
 import grumblecrag from "./art/raid-arenas/grumblecrag.webp";
 import tidewyrm from "./art/raid-arenas/tidewyrm.webp";
 import gloomshade from "./art/raid-arenas/gloomshade.webp";
@@ -156,20 +157,8 @@ export function paintIllustratedRaidFloor(
     // live filament, a copper inlay and the etched inner circle.
     paintRingInlay(c);
   } else if (id === "cloud-deck") {
-    ring(800, 450, 275, "#c9a3ff77", 2.5);
-    c.fillStyle = "#e6e4ff99";
-    for (let i = 0; i < 12; i++) {
-      const a = (i * Math.PI) / 6;
-      c.beginPath();
-      c.arc(
-        800 + Math.cos(a) * 275,
-        450 + Math.sin(a) * 275,
-        3.5,
-        0,
-        Math.PI * 2,
-      );
-      c.fill();
-    }
+    // The constellation ring around the whale, as a gold inlay with star gems.
+    paintConstellationInlay(c);
   }
   // A restrained rim makes the world boundary clear without hiding live warnings.
   c.strokeStyle = "#c7c1b444";
