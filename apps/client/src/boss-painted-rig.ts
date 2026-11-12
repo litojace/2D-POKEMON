@@ -9,29 +9,16 @@ import {
   type BossArtMode,
 } from "./boss-directions";
 import frames from "./art/raid-whole-frames.json";
-import prismatail from "./art/raid-whole-prismatail.webp";
-import stormTwins from "./art/raid-whole-storm-twins.webp";
-import prismaDirections from "./art/raid-directions-prismatail.webp";
-import twinDirections from "./art/raid-directions-storm-twins.webp";
-/** Bosses drawn from painted atlases (Grumblecrag is vector art, boss-vector-rig.ts). */
-export type PaintedBossId = Exclude<
-  RaidBossId,
-  "grumblecrag" | "tidewyrm" | "gloomshade" | "somnara"
->;
-export const isPaintedBoss = (id: RaidBossId): id is PaintedBossId =>
-  id !== "grumblecrag" &&
-  id !== "tidewyrm" &&
-  id !== "gloomshade" &&
-  id !== "somnara";
-export const BOSS_PAINTED_ART: Record<PaintedBossId, string> = {
-  prismatail,
-  "storm-twins": stormTwins,
-};
+/**
+ * Bosses drawn from painted atlases. Every raid boss is vector art now
+ * (boss-vector-*.ts), so none is left: this keeps the loader's shape for any
+ * painted boss added later.
+ */
+export type PaintedBossId = never;
+export const isPaintedBoss = (_id: RaidBossId): _id is PaintedBossId => false;
+export const BOSS_PAINTED_ART: Record<PaintedBossId, string> = {};
 const keyFor = (id: RaidBossId) => `raid-painted-${id}`;
-export const BOSS_DIRECTION_ART: Record<PaintedBossId, string> = {
-  prismatail: prismaDirections,
-  "storm-twins": twinDirections,
-};
+export const BOSS_DIRECTION_ART: Record<PaintedBossId, string> = {};
 const directionKey = (id: RaidBossId) => `raid-directions-${id}`;
 const keysFor = (id: RaidBossId) => [keyFor(id), directionKey(id)];
 const pending = new WeakMap<Phaser.Scene, Set<string>>(),

@@ -32,20 +32,17 @@ assert(urls.includes("offline.html"));
 for (const art of [
   "startup-starfield",
   "startup-sigil",
+  // Every raid boss is vector art, drawn by the client: no boss atlases.
   "raid-spell-flipbook",
-  // Painted bosses (Grumblecrag, Tidewyrm, Gloomshade and Somnara are vector
-  // art, drawn by the client).
-  ...["prismatail", "emberwing", "storm-twins"].map(
-    (name) => `raid-whole-${name}`,
-  ),
-  ...["prismatail", "emberwing", "storm-twins"].map(
-    (name) => `raid-directions-${name}`,
-  ),
 ])
   assert(
     urls.some((url) => new RegExp(`^assets/${art}-[\\w-]+\\.webp$`).test(url)),
     `${art} must use a content-hashed URL and remain available offline`,
   );
+assert(
+  !urls.some((url) => /^assets\/raid-(whole|directions)-/.test(url)),
+  "Boss atlases are gone (every boss is vector art) and must not be precached",
+);
 assert(!urls.includes("assets/town/fountain.webp"));
 assert(!urls.includes("assets/town/ground.webp"));
 // The hub's Plaza replaced the old town: its art is no longer downloaded.
