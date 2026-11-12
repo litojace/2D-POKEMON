@@ -27,7 +27,7 @@ import { RoomInvites } from "./room-invites";
 import { PvpSpectator } from "./pvp-spectator";
 import { carryCurrent, predictFighter } from "./predict-fighter";
 import { startPingBadge } from "./ping-badge";
-import { TargetLock, drawTargetReticle } from "./target-lock";
+import { TargetLock, drawTargetReticle, type Targetable } from "./target-lock";
 import { renderTargetPicker } from "./target-picker";
 import {
   CastPredictor,
@@ -102,6 +102,14 @@ import { resultXp } from "./adventure-ui";
 import { arcadeWeek, ARCADE_EVENTS } from "../../../packages/shared/src/arcade";
 import { drawArcade } from "./arcade-art";
 import { stormTarget } from "./storm-twins-controls";
+import { raidTargets, type RaidTarget } from "./raid-targets";
+/** Target row colours for the raid targets that are not fighters. */
+const TARGET_COLORS: Record<RaidTarget["kind"], string> = {
+  shade: "#8a6ad6",
+  lantern: "#ffd27a",
+  boss: "#4fb8d8",
+  bubble: "#9fe6ff",
+};
 import { prismatailAim } from "./prismatail-controls";
 import { dreamRuneKey } from "./somnara-controls";
 import { battleMusic } from "./battle-music";
@@ -4755,7 +4763,8 @@ class ArenaScene extends Phaser.Scene {
       const hit = targetLock.pickAt(
         pointer.worldX,
         pointer.worldY,
-        visibleEnemies(local, local),
+        (raidTargets(state, local) as Targetable[] | undefined) ??
+          visibleEnemies(local, local),
       );
       if (hit) targetLock.toggle(hit.id);
     });
@@ -4764,8 +4773,11 @@ class ArenaScene extends Phaser.Scene {
   /** The phone target row (two or more enemies) and the lock's lifetime. */
   syncTargetPicker() {
     const me = state?.players.find((p) => p.id === myId);
+    const extra = state && me ? raidTargets(state, me) : undefined;
     targetLock.keepIf(
-      (id) => !!state?.players.some((p) => p.id === id && !p.out),
+      (id) =>
+        !!state?.players.some((p) => p.id === id && !p.out) ||
+        !!extra?.some((t) => t.id === id),
     );
     const frame = document.getElementById("game")?.parentElement;
     if (!frame) return;
@@ -4776,17 +4788,29 @@ class ArenaScene extends Phaser.Scene {
       state?.phase === "playing" &&
       state.raid?.boss !== "storm-twins";
     const myTeam = me ? teamOf(me) : undefined;
-    const enemies = show
-      ? state!.players
-          .filter((p) => p.id !== myId && !p.out && teamOf(p) !== myTeam)
-          .map((p) => ({
-            id: p.id,
-            name: p.raidBoss && state!.raid ? state!.raid.name : p.name,
-            color: `#${CHARACTERS[p.character].color.toString(16).padStart(6, "0")}`,
-            available:
-              p.hp > 0 && !p.statuses.some((s) => s.kind === "stealth"),
-          }))
-      : [];
+    const enemies = !show
+      ? []
+      : extra
+        ? // Gloomshade's bodies (alike, by letter) and unlit lanterns;
+          // Tidewyrm and the bubbles holding teammates.
+          extra
+            .slice()
+            .sort((a, b) => a.label.localeCompare(b.label))
+            .map((t) => ({
+              id: t.id,
+              name: t.label,
+              color: TARGET_COLORS[t.kind],
+              available: true,
+            }))
+        : state!.players
+            .filter((p) => p.id !== myId && !p.out && teamOf(p) !== myTeam)
+            .map((p) => ({
+              id: p.id,
+              name: p.raidBoss && state!.raid ? state!.raid.name : p.name,
+              color: `#${CHARACTERS[p.character].color.toString(16).padStart(6, "0")}`,
+              available:
+                p.hp > 0 && !p.statuses.some((s) => s.kind === "stealth"),
+            }));
     renderTargetPicker(frame, show, enemies, targetLock.id, (id) =>
       targetLock.toggle(id),
     );
@@ -5496,8 +5520,18 @@ class ArenaScene extends Phaser.Scene {
         (touch.enabled ? touch.focused : document.hasFocus()) &&
         !document.hidden;
       const enemies = visibleEnemies(local, local);
+      // Gloomshade's bodies are aimed at alike (real or copy), and its unlit
+      // lanterns can be locked on to (raid-targets.ts).
+      // Tidewyrm's bubbles holding teammates can be locked on to too.
+      const extra = raidTargets(state, local);
+      const found = extra?.filter(
+        (t) => t.kind === "shade" || t.kind === "boss",
+      );
+      const bodies = found?.length ? found : undefined;
       // A locked enemy (touch or controller) before the nearest one.
-      const target = targetLock.resolve(enemies) ?? enemies[0];
+      const target =
+        targetLock.resolve<Targetable>(extra ?? enemies) ??
+        (bodies ? bodies[0] : enemies[0]);
       const combatActive = active && local.hp > 0 && !local.out;
       let skill = combatActive ? this.actions.skill : -1;
       // EX skills: the ultimate button before the meter is full arms an EX
@@ -5537,7 +5571,7 @@ class ArenaScene extends Phaser.Scene {
       } else if (usingPad && target) aimAt = target;
       else if (usingPad) aimAt = this.aimPoint;
       else if (controlPrefs().aimAssist && skill < 0)
-        aimAt = assistAim(aimAt, enemies);
+        aimAt = assistAim(aimAt, bodies ?? enemies);
       const stormAim = state ? stormTarget(state) : undefined;
       if (stormAim) aimAt = stormAim;
       const prismAim = state ? prismatailAim(state, local) : undefined;
@@ -5587,6 +5621,20 @@ class ArenaScene extends Phaser.Scene {
     const boss = state.raid ? state.players.find((p) => p.raidBoss) : undefined;
     this.bossGraphics.setDepth(boss ? fighterDepth(boss.y) : 0);
     this.layersUsed.clear();
+    // A locked Gloomshade body (real or copy, alike), unlit lantern or
+    // Tidewyrm bubble (phones).
+    if (touch.enabled && targetLock.id && local) {
+      const locked = raidTargets(state, local)?.find(
+        (t) => t.id === targetLock.id,
+      );
+      if (locked)
+        drawTargetReticle(
+          g,
+          locked.x,
+          locked.feetY,
+          reducedMotion ? 0 : _time / 1000,
+        );
+    }
     const raidCues =
       drawRaidArena(
         g,
