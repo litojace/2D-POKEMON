@@ -22,15 +22,48 @@ const escape = (s: string) =>
       })[c]!,
   );
 
-export function raidRiteChoices(offers: readonly RaidRite[]) {
-  return (
-    offers
-      .map((id) => {
-        const rite = RAID_RITES[id];
-        return `<button data-raid-rite="${id}" class="secondary raid-rite-${id}" title="${escape(rite.text)}" aria-label="${escape(rite.name + ". " + rite.text)}"><span class="raid-rite-copy"><span class="raid-rite-heading">${raidRiteBuffPicture(id)}<b>${rite.name}</b></span><small class="raid-rite-trigger">${raidRiteBuffTrigger(id)}</small></span></button>`;
-      })
-      .join("") || "<p>Rites locked in · waiting for the team.</p>"
-  );
+/**
+ * The rite cards. `list` is the order they were offered in; a picked rite
+ * stays in its place, checked and greyed out, instead of vanishing (the
+ * server drops it from the offers). Once every pick is made (`locked`), the
+ * rest are greyed out too, and the heading says the rites are locked in.
+ */
+export function raidRiteChoices(
+  list: readonly RaidRite[],
+  picked: readonly RaidRite[] = [],
+  locked = false,
+) {
+  const cards = list
+    .map((id) => {
+      const rite = RAID_RITES[id];
+      const chosen = picked.includes(id);
+      const off = chosen || locked;
+      return `<button data-raid-rite="${id}" class="secondary raid-rite-${id}${chosen ? " is-picked" : ""}"${off ? " disabled" : ""} aria-pressed="${chosen}" title="${escape(rite.text)}" aria-label="${escape(rite.name + ". " + rite.text + (chosen ? " Chosen." : ""))}"><span class="raid-rite-copy"><span class="raid-rite-heading">${raidRiteBuffPicture(id)}<b>${rite.name}</b></span><small class="raid-rite-trigger">${raidRiteBuffTrigger(id)}</small></span>${chosen ? '<span class="raid-rite-check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>' : ""}</button>`;
+    })
+    .join("");
+  // Locked in: the heading says so (raid-ui.ts), so the cards keep their places.
+  return cards || "<p>Rites locked in · waiting for the team.</p>";
+}
+
+/**
+ * The order the rites were first offered in this choice. The server removes
+ * a rite from the offers once it is picked, so the client remembers the full
+ * list to keep a picked card where it was.
+ */
+let riteOrder: RaidRite[] = [];
+export function riteDisplayOrder(
+  offers: readonly RaidRite[],
+  picked: readonly RaidRite[],
+): RaidRite[] {
+  const known = new Set(riteOrder);
+  // A fresh choice (nothing picked yet), or a list from another choice.
+  if (
+    (!picked.length && offers.length) ||
+    offers.some((id) => !known.has(id)) ||
+    picked.some((id) => !known.has(id))
+  )
+    riteOrder = [...picked.filter((id) => !offers.includes(id)), ...offers];
+  return riteOrder.slice();
 }
 
 /** A separate, tap-safe reference. Reading an effect never picks the rite. */
