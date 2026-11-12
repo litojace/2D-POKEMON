@@ -41,6 +41,11 @@ The full list, with later decisions, is in §12.
 | Tue | Emberwing              | Fire     | Being in several places at once              | ★★★        |
 | Thu | Storm Twins            | Electric | Pairing up, timing two kills                 | ★★★        |
 
+The Difficulty stars are not only a label: they pick each boss's row of
+`RAID_TIERS` (health, damage, rhythm, overlapping attacks, telegraphs,
+predictive aim, windows, soft enrage, revives, party pressure). See
+[boss-raid.md, "Difficulty"](boss-raid.md#difficulty-the-star-tiers).
+
 The days follow the old planet names of the week: Sun's day for light,
 Moon's day for shadow, Mars (Tuesday) for fire, Mercury (Wednesday) for the
 mind, Thor's day for thunder, Venus (born of the sea) for water, and Saturn
