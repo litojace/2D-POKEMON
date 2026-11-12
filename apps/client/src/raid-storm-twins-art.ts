@@ -1,7 +1,7 @@
-import { paintedTwin } from "./boss-painted-poses";
+import { paintVectorTwin } from "./boss-vector-twins-rig";
+import { paintBossAura } from "./boss-spell-art";
 import { groundHeight } from "../../../packages/shared/src/world-art";
-import { bossSurface } from "./boss-materials";
-import { bossLife, bossEye } from "./raid-boss-life";
+import { bossLife } from "./raid-boss-life";
 import type Phaser from "phaser";
 import type { Snapshot } from "@arena/shared";
 import {
@@ -202,9 +202,21 @@ interface Memory {
   serverTime: number;
   seed: number;
   hp: Map<string, number>;
+  hurtAt: Map<string, number>;
+  phase: number;
+  roarAt: number;
+  deathAt: number;
   result: unknown;
 }
 const memories = new WeakMap<G, Memory>();
+/**
+ * The twins themselves: two vector jellyfish-clouds (boss-vector-twins.ts),
+ * gold Fizz and blue Crackle, each on its own layer, sorted with the raiders
+ * by where it floats, each with its own facing. They read the battle's
+ * state: each twin's own windup and cast, a roar at a new phase, a flinch
+ * when hit, dizzy with its core open when exposed or staggered, sunk and
+ * faded while down (until revived), and both sinking when beaten.
+ */
 export function drawStormTwins(
   g: G,
   state: Snapshot,
@@ -227,6 +239,10 @@ export function drawStormTwins(
       serverTime: state.time,
       seed: r.seed,
       hp: new Map(),
+      hurtAt: new Map(),
+      phase: r.phase,
+      roarAt: -10,
+      deathAt: -1,
       result: r.result,
     };
     memories.set(g, m);
@@ -236,175 +252,71 @@ export function drawStormTwins(
   m.time += dt;
   m.clock = clock;
   m.serverTime = state.time;
-  const t = reduced ? 0 : m.time,
+  const t = m.time,
     cues: RaidBossCue[] = [];
+  const live = state.phase === "playing";
+  if (r.phase > m.phase && live) m.roarAt = t;
+  m.phase = r.phase;
+  const dead = r.result === "victory";
+  if (dead && m.deathAt < 0) m.deathAt = t;
   for (const [i, meta] of (r.twins ?? []).entries()) {
     const p = state.players.find((p) => p.id === meta.id);
     if (!p) continue;
     const old = m.hp.get(p.id);
-    if (old !== undefined && p.hp < old)
+    if (old !== undefined && p.hp < old) {
       cues.push(
         p.hp <= 0 ? "fall" : meta.exposedUntil > state.time ? "core" : "chip",
       );
+      m.hurtAt.set(p.id, t);
+    }
     if (old === 0 && p.hp > 0) cues.push("awaken");
     m.hp.set(p.id, p.hp);
     const life = bossLife(memory, state, p, clock, reduced);
     // Each twin draws on its own layer, sorted with the raiders by where it stands.
     const g = at ? at(`twin-${i}`, p.y + 13) : memory;
-    const down = p.hp <= 0,
-      x = p.x;
-    const pulse = Math.sin(t * (i ? 2.5 : 3.4) + i) * life.move;
-    const y = p.y - 52 + life.breath * 5 + life.windup * 7;
-    const body = i ? 0x72bde6 : r.gilded ? 0xffd277 : 0xf4d675;
-    const alpha = down ? 0.35 : 1;
-    g.fillStyle(0x0e1a30, 0.27).fillEllipse(x, p.y + 13, 117, 30);
-    if (
-      paintedTwin(g, {
-        x,
-        y,
-        life,
-        alpha,
-        dead: down,
-        blue: !!i,
-        pulse,
-        key: `twin-${i}`,
-        gilded: !!r.gilded,
-        exposed: meta.exposedUntil > state.time,
-      })
-    )
-      continue;
-    // Bell contraction drives the tendrils: each tip follows with a small delay.
-    for (let j = 0; j < 5; j++) {
-      const bx = x - 36 + j * 18;
-      const lag =
-        Math.sin(t * (i ? 2.5 : 3.4) - j * 0.3 - 0.7 + i) * 7 * life.move;
-      g.lineStyle(8, i ? 0x508dbb : 0xc09c56, alpha)
-        .beginPath()
-        .moveTo(bx, y + 24)
-        .lineTo(bx + lag * 0.65, y + 44 + pulse * 2)
-        .lineTo(bx + lag, y + 61 - pulse * 3 + (j % 2) * 5)
-        .lineTo(bx - lag * 0.2, y + 72 - pulse * 4)
-        .strokePath();
-      g.lineStyle(2, i ? 0xd5f2ff : 0xfff1ba, alpha * 0.6).lineBetween(
-        bx + lag,
-        y + 52,
-        bx + lag * 0.5,
-        y + 65 - pulse * 3,
-      );
-      g.fillStyle(i ? 0xc4ecff : 0xffefad, alpha).fillCircle(
-        bx - lag * 0.2,
-        y + 72 - pulse * 4,
-        4,
-      );
-    }
-    const width = 130 + pulse * 5,
-      height = 98 - pulse * 4 - life.windup * 5;
-    g.fillStyle(i ? 0x325d85 : 0x8c713e, alpha).fillEllipse(
-      x,
-      y + 2,
-      width + 4,
-      height + 4,
+    const down = p.hp <= 0 && !dead;
+    g.fillStyle(0x0e1a30, down ? 0.14 : 0.27).fillEllipse(
+      p.x,
+      p.y + 13,
+      117,
+      30,
     );
-    bossSurface(g, x, y, width, height, body, "cloud", alpha);
-    g.fillStyle(i ? 0x9ed9ed : 0xffe9a2, alpha).fillEllipse(
-      x - 12,
-      y - 15,
-      92,
-      55,
+    // its own attack being wound up (its warning) and its last cast
+    const wind = r.warnings.find(
+      (w) =>
+        (!w.casterId || w.casterId === p.id) &&
+        w.at >= state.time &&
+        (w.startedAt ?? w.at - 1.5) <= state.time,
     );
-    g.fillStyle(i ? 0xe0f6ff : 0xfff7d8, alpha * 0.4).fillEllipse(
-      x - 27,
-      y - 23,
-      32,
-      13,
-    );
-    // The cloud cap billows independently, with a raised lightning crest.
-    for (let k = 0; k < 4; k++) {
-      const cx = x - 35 + k * 26,
-        cy =
-          y -
-          39 -
-          Math.sin((k * Math.PI) / 3) * 12 +
-          Math.sin(t * 1.5 + k + i) * 2 * life.move;
-      g.fillStyle(i ? 0x8eb9d9 : 0xd6bf7f, alpha).fillCircle(
-        cx,
-        cy + 3,
-        19 + (k % 2) * 4,
-      );
-      const diameter = (18 + (k % 2) * 4) * 2;
-      bossSurface(
-        g,
-        cx - 1,
-        cy,
-        diameter,
-        diameter,
-        i ? 0xd8e9f4 : 0xfff3cf,
-        "cloud",
-        alpha,
-      );
-    }
-    const boltColor = i ? 0x5e83c4 : 0xc99341;
-    g.fillStyle(boltColor, alpha).fillPoints(
-      [
-        { x: x + 1, y: y - 71 },
-        { x: x - 13, y: y - 47 },
-        { x: x - 2, y: y - 47 },
-        { x: x - 8, y: y - 28 },
-        { x: x + 17, y: y - 54 },
-        { x: x + 4, y: y - 54 },
-      ],
-      true,
-    );
-    for (const side of [-1, 1]) {
-      const ex = x + side * 23 + life.lookX * 2,
-        ey = y - 4;
-      if (down) {
-        g.lineStyle(3, 0x243752, 0.8)
-          .lineBetween(ex - 5, ey - 4, ex + 5, ey + 4)
-          .lineBetween(ex + 5, ey - 4, ex - 5, ey + 4);
-      } else {
-        bossEye(
-          g,
-          ex,
-          ey,
-          i ? 13 : 15,
-          i ? 13 : 20,
-          life,
-          i ? 0x345985 : 0x78552b,
-          alpha,
-        );
-        g.lineStyle(3, 0x51637b, alpha).lineBetween(
-          x + side * 14,
-          y - 16 - life.windup * 3,
-          x + side * 31,
-          y - (i ? 15 : 20),
-        );
-        g.fillStyle(i ? 0x92c9e5 : 0xf0bb75, alpha * 0.8).fillEllipse(
-          x + side * 37,
-          y + 8,
-          12,
-          6,
-        );
-      }
-    }
-    g.lineStyle(2.8, 0x476079, alpha)
-      .beginPath()
-      .arc(
-        x + life.lookX * 2,
-        y + 13,
-        9,
-        i ? Math.PI : 0,
-        i ? TAU : Math.PI,
-        false,
-      )
-      .strokePath();
-    if (!down && life.windup > 0.15)
-      sign(g, x + 47, y - 28, 0.8, i ? 0xc7edff : 0xffed9d, 9);
-    if (meta.exposedUntil > state.time && !down) {
-      g.fillStyle(0xeaffef, 0.18).fillCircle(x, y + 18, 24);
-      g.lineStyle(2.5, 0xafffe1, 0.9).strokeCircle(x, y + 18, 25);
-      sign(g, x, y + 18, 1, 0xeaffef, 10);
-    }
+    const cast = life.action.casts[life.action.casts.length - 1];
+    const exposed = meta.exposedUntil > state.time;
+    const twin = paintVectorTwin(g, {
+      twin: i ? 1 : 0,
+      x: p.x,
+      y: p.y + 13,
+      angle: p.angle,
+      clock: t,
+      phase: r.phase,
+      reduced,
+      gilded: !!r.gilded,
+      windKind: wind?.kind,
+      windup: life.windup,
+      castKind: cast?.kind,
+      castAge: cast?.age ?? 99,
+      roarAge: t - m.roarAt,
+      exposed: exposed && !down,
+      stagger: r.staggerUntil > state.time && !down && !dead,
+      hurt: Math.max(0, 1 - (t - (m.hurtAt.get(p.id) ?? -10)) / 0.24),
+      down,
+      downAge:
+        meta.fallenAt !== undefined
+          ? Math.max(0, state.time - meta.fallenAt)
+          : 9,
+      dead,
+      deadAge: dead ? t - m.deathAt : 0,
+    });
+    if (twin && !down && !dead)
+      paintBossAura(g, "storm-twins", twin.core.x, twin.core.y, life, 1, !!i);
   }
   m.result = r.result;
   return cues;

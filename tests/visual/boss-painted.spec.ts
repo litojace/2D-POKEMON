@@ -98,9 +98,9 @@ test("all seven living boss rigs animate, hold a pause and keep combat snapshots
   const errors = await review(page);
   await page.evaluate(() => (window as any).__bossReview.frame(1, 0, false));
   const start = await pose(page);
-  // Five painted bosses, two Storm Twins posed on their own; Grumblecrag and
-  // Tidewyrm are vector art.
-  expect(start).toHaveLength(6);
+  // Four painted bosses; Grumblecrag, Tidewyrm and the Storm Twins are
+  // vector art (vector-twins.spec.ts checks the twins).
+  expect(start).toHaveLength(4);
   const vStart = (await vector(page))!;
   expect(vStart.visible).toBe(true);
   expect(Object.keys(vStart.parts).length).toBeGreaterThan(20);
@@ -760,15 +760,16 @@ test("all seven bosses use distinct front, rear and side art with complete direc
         r.frame(1, time, true);
         return r.rows
           .filter(
-            (row: any) => row.id !== "grumblecrag" && row.id !== "tidewyrm",
+            (row: any) =>
+              row.id !== "grumblecrag" &&
+              row.id !== "tidewyrm" &&
+              row.id !== "storm-twins",
           )
           .flatMap((row: any) =>
             row.state.players
               .filter((p: any) => p.raidBoss)
-              .map((p: any, index: number) => {
-                const mode =
-                  row.id === "storm-twins" && index === 1 ? "blue" : "body";
-                const f = r.directionalFrame(row.id, mode, view, 0);
+              .map(() => {
+                const f = r.directionalFrame(row.id, "body", view, 0);
                 return {
                   view,
                   frame: `pose-${f.index}`,
@@ -781,7 +782,7 @@ test("all seven bosses use distinct front, rear and side art with complete direc
       { view, angle, time },
     );
     const actual = await pose(page);
-    expect(actual).toHaveLength(6);
+    expect(actual).toHaveLength(4);
     // Grumblecrag's and Tidewyrm's rigs show the matching one of their
     // eight facings.
     const v = (await vector(page))!;
