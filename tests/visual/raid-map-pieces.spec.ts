@@ -140,6 +140,8 @@ test("Tidewyrm's islands, cracks, sinking, High Tide and capacity are painted pi
   const built = await atlases(page, "lagoon-atlas-");
   expect(built).toHaveLength(1);
   expect(built[0]).toMatchObject({ key: "lagoon-atlas-78", builtWhile: 4 });
+  // At most about 7 MB of GPU memory (older phones).
+  expect(built[0].width * built[0].height * 4).toBeLessThan(7.5 * 2 ** 20);
   console.log("lagoon atlas", JSON.stringify(built));
   const R = 78,
     other = 92;
@@ -168,7 +170,7 @@ test("Tidewyrm's islands, cracks, sinking, High Tide and capacity are painted pi
   expect(count(p.frames, `soggy${R}`)).toBe(1);
   expect(count(p.frames, `sunk${R}`)).toBe(1);
   // Every island's sand is centred on the server's island, at scale 1.
-  for (const a of p.at[`body${R}`]) expect(a.sx).toBeCloseTo(0.5, 3);
+  for (const a of p.at[`body${R}`]) expect(a.sx).toBeCloseTo(1 / 1.5, 3);
   await shot(page, info, "tide-mix");
 
   // (The sunk island comes back up first: wait for that to end.)
@@ -310,6 +312,7 @@ test("Somnara's rune pads, steps, Quiet Zone, lullaby, bubbles and markers are p
     key: "cloud-deck-atlas-175",
     builtWhile: 4,
   });
+  expect(built[0].width * built[0].height * 4).toBeLessThan(7.5 * 2 ** 20);
   console.log("cloud deck atlas", JSON.stringify(built));
   const quiet = 175;
   const base =

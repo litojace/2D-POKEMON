@@ -1032,14 +1032,15 @@ export function lagoonPieces(R: number): MapPiece[] {
   ) => P.push({ name, w, h, draw, ...o });
   const N = lagoonName;
   const B = R + 50;
-  add(N.base(R), 2 * B, 2 * B, (c) => drawBase(c, R));
+  // Soft washes (shallows, soaking, the deep hole) at lower density.
+  add(N.base(R), 2 * B, 2 * B, (c) => drawBase(c, R), { res: 0.75 });
   add(N.body(R), 2 * R + 2, 2 * R + 2, (c) => drawBody(c, R));
   add(N.foamA(R), 2 * R + 26, 2 * R + 26, (c) => drawFoam(c, R, 11));
   add(N.foamB(R), 2 * R + 26, 2 * R + 26, (c) => drawFoam(c, R, 23));
   add(N.surf(R), 2 * R + 46, 2 * R + 46, (c) => drawSurf(c, R));
-  add(N.soggy(R), 2 * R, 2 * R, (c) => drawSoggy(c, R));
+  add(N.soggy(R), 2 * R, 2 * R, (c) => drawSoggy(c, R), { res: 0.5 });
   add(N.sunk(R), 2 * R + 34, 2 * R + 34, (c) => drawSunk(c, R));
-  add(N.gone(R), 2 * R + 38, 2 * R + 38, (c) => drawGone(c, R));
+  add(N.gone(R), 2 * R + 38, 2 * R + 38, (c) => drawGone(c, R), { res: 0.5 });
   // Each crack only as big as its own lines (the island's centre is its anchor).
   for (let i = 0; i < TIDEWYRM.islands.length; i++)
     for (let ci = 0; ci < 2; ci++) {

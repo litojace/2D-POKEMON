@@ -89,14 +89,15 @@ describe("Somnara's steps, read from the events the client already gets", () => 
 });
 
 describe("arena atlases", () => {
-  it("packs every piece without overlaps, inside one 2048-wide canvas", () => {
+  it("packs every piece without overlaps, at most about 7 MB of GPU memory", () => {
     for (const pieces of [
       ...ISLAND_RADII.map((R) => lagoonPieces(R)),
-      cloudDeckPieces(175),
+      ...[125, 150, 175, 160, 185, 210].map((R) => cloudDeckPieces(R)),
     ]) {
-      const a = packMapPieces(pieces, 2);
-      expect(a.width).toBe(2048);
+      const a = packMapPieces(pieces, 1.5);
+      expect(a.width).toBeLessThanOrEqual(2048);
       expect(a.height).toBeLessThanOrEqual(2048);
+      expect(a.width * a.height * 4).toBeLessThan(7.5 * 2 ** 20);
       expect(new Set(pieces.map((p) => p.name)).size).toBe(pieces.length);
       for (const s of a.spots) {
         expect(s.x + s.pw).toBeLessThanOrEqual(a.width);

@@ -42,8 +42,13 @@ export interface PackedPiece {
   draw: MapPiece["draw"];
 }
 const GAP = 2;
-/** Shelf-pack pieces (tallest first) into a canvas `maxW` wide, at k texels per unit. */
-export function packMapPieces(pieces: MapPiece[], k: number, maxW = 2048) {
+/** Atlas widths tried: the one with the least area wins (less GPU memory). */
+const WIDTHS = [1024, 1280, 1536, 2048];
+/**
+ * Shelf-pack pieces (tallest first) at k texels per unit, into the narrowest
+ * canvas of WIDTHS that wastes least (or exactly `maxW` wide when given).
+ */
+export function packMapPieces(pieces: MapPiece[], k: number, maxW?: number) {
   const spots: PackedPiece[] = pieces.map((p) => {
     const res = p.res ?? 1;
     return {
@@ -60,21 +65,34 @@ export function packMapPieces(pieces: MapPiece[], k: number, maxW = 2048) {
       draw: p.draw,
     };
   });
-  let x = GAP,
-    y = GAP,
-    row = 0;
-  for (const s of [...spots].sort((a, b) => b.ph - a.ph)) {
-    if (x + s.pw + GAP > maxW) {
-      x = GAP;
-      y += row + GAP;
+  const widest = Math.max(...spots.map((s) => s.pw)) + 2 * GAP;
+  const shelf = (width: number) => {
+    let x = GAP,
+      y = GAP,
       row = 0;
+    const at = new Map<PackedPiece, [number, number]>();
+    for (const s of [...spots].sort((a, b) => b.ph - a.ph)) {
+      if (x + s.pw + GAP > width) {
+        x = GAP;
+        y += row + GAP;
+        row = 0;
+      }
+      at.set(s, [x, y]);
+      x += s.pw + GAP;
+      row = Math.max(row, s.ph);
     }
+    return { width, height: y + row + GAP, at };
+  };
+  const fits = WIDTHS.filter((w) => w >= widest);
+  const options = (maxW ? [maxW] : fits.length ? fits : [widest]).map(shelf);
+  const best = options.reduce((a, b) =>
+    b.width * b.height < a.width * a.height ? b : a,
+  );
+  for (const [s, [x, y]] of best.at) {
     s.x = x;
     s.y = y;
-    x += s.pw + GAP;
-    row = Math.max(row, s.ph);
   }
-  return { width: maxW, height: y + row + GAP, spots };
+  return { width: best.width, height: best.height, spots };
 }
 /** Draw every packed piece once into its own clipped cell. */
 export function paintMapPieces(ctx: Ctx, spots: PackedPiece[], k: number) {

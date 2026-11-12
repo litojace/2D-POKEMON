@@ -45,8 +45,11 @@ function note(
     .lineBetween(x + 4 * s, y, x + 4 * s, y - 16 * s)
     .lineBetween(x + 4 * s, y - 16 * s, x + 11 * s, y - 12 * s);
 }
-/** Texels per world unit in the Cloud Deck's atlas (sharp on 2x screens). */
-const DECK_K = 2;
+/**
+ * Texels per world unit in the atlas: 1.5 keeps lines and edges crisp at
+ * the battle's density and the atlas near 7 MB of GPU memory (2 cost 13-15).
+ */
+const DECK_K = 1.5;
 const deckKey = (quiet: number) => `cloud-deck-atlas-${quiet}`;
 /** The Quiet Zone's radius this raid will use (as the server sets it). */
 export function quietRadiusFor(state: Snapshot) {

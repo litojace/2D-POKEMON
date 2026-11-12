@@ -88,8 +88,11 @@ const progressOf = (w: RaidWarning, now: number) =>
         Math.min(1, (now - w.startedAt) / Math.max(0.01, w.at - w.startedAt)),
       );
 
-/** Texels per world unit in the lagoon's atlas (sharp on 2x screens). */
-const LAGOON_K = 2;
+/**
+ * Texels per world unit in the atlas: 1.5 keeps lines and edges crisp at
+ * the battle's density and the atlas near 7 MB of GPU memory (2 cost 13-15).
+ */
+const LAGOON_K = 1.5;
 const lagoonKey = (R: number) => `lagoon-atlas-${R}`;
 const lagoonAtlas = (scene: Phaser.Scene, R: number) =>
   mapAtlas(scene, lagoonKey(R), () => lagoonPieces(R), LAGOON_K);

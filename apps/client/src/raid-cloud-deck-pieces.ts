@@ -1000,7 +1000,7 @@ export function cloudDeckPieces(quiet: number): MapPiece[] {
     add(`floor-${r}`, 226, 226, padFloorLight(r), 0.5);
     add(`stone-${r}`, 120, 122, padStone(r, 31 + i * 17));
     add(`glyph-${r}`, 56, 56, padGlyph(r));
-    add(`glyphGlow-${r}`, 100, 100, padGlyphGlow(r));
+    add(`glyphGlow-${r}`, 100, 100, padGlyphGlow(r), 0.5);
     add(`basin-${r}`, 100, 100, padBasinGlow(RUNE[r]), 0.5);
     add(`edge-${r}`, 134, 134, padEdge(r, 2.4));
     add(`edgeHot-${r}`, 134, 134, padEdge(r, 4));
@@ -1031,7 +1031,7 @@ export function cloudDeckPieces(quiet: number): MapPiece[] {
   add("noteMint", 30, 36, note("#d9fff1"));
   add("bubble", 52, 52, bubble);
   add("bubbleStar", 26, 26, bubbleStar);
-  add("bubbleShadow", 48, 22, bubbleShadow);
+  add("bubbleShadow", 48, 22, bubbleShadow, 0.5);
   add("mist", 96, 96, mist);
   add("pipOn", 16, 16, pip(true));
   add("pipOff", 16, 16, pip(false));
