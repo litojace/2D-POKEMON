@@ -404,6 +404,9 @@ test("phones can aim at the bubble holding a teammate", async ({ browser }) => {
       w.__push();
     });
     const picker = page.locator("#target-picker");
+    // The battle is live once it sends inputs (the row being hidden says
+    // nothing yet: it is hidden before the battle starts, too).
+    await expect.poll(() => lastAim(page), { timeout: 60_000 }).toBeTruthy();
     // One enemy, no bubble: no row, aim on the boss.
     await expect(picker).toBeHidden();
     await aimNear(page, 900, 330);
