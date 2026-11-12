@@ -477,23 +477,38 @@ for (const mobile of [false, true])
           }),
         )
         .toBe(4);
-      const locked = await page.evaluate(() => {
-        const w = window as any,
-          root = w.__paintedBattle.scene
-            .getScenes(true)
-            .flatMap((s: any) => s.children.list)
-            .find((o: any) => o.name === "vector-boss-emberwing" && o.visible);
-        clearInterval(w.__turnTimer);
-        return {
-          facing: root?.getData("facing"),
-          // from behind: its head drawn from the back, and no eyes
-          parts: root?.list[0].list
-            .filter((o: any) => o.type === "Image" && o.visible)
-            .map((o: any) => [o.name, o.frame.name]),
-        };
-      });
+      const read = () =>
+        page.evaluate(() => {
+          const w = window as any,
+            root = w.__paintedBattle.scene
+              .getScenes(true)
+              .flatMap((s: any) => s.children.list)
+              .find(
+                (o: any) => o.name === "vector-boss-emberwing" && o.visible,
+              );
+          clearInterval(w.__turnTimer);
+          return {
+            facing: root?.getData("facing"),
+            // from behind: its head drawn from the back, and no eyes
+            parts: root?.list[0].list
+              .filter((o: any) => o.type === "Image" && o.visible)
+              .map((o: any) => [o.name, o.frame.name]),
+          };
+        });
+      // it turns round over a few frames once the facing is chosen
+      await expect
+        .poll(
+          async () =>
+            (await read()).parts.find(
+              ([n]: [string]) => n === "vector-part-f-head",
+            )?.[1],
+        )
+        .toMatch(/^head_back/);
+      const locked = await read();
       expect(locked.facing).toBe(4);
-      expect(locked.parts).toContainEqual(["vector-part-f-head", "head_back"]);
+      expect(
+        locked.parts.find(([n]: [string]) => n === "vector-part-f-head")?.[1],
+      ).toMatch(/^head_back/);
       expect(
         locked.parts.some(([n]: [string]) => n.startsWith("vector-part-f-eye")),
       ).toBe(false);
