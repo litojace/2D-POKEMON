@@ -597,6 +597,8 @@ export const tideCentre = (v: number) =>
 /** Half the snout's width where it stands proud of the face. */
 const snoutHalf = (v: number) => 0.3 * HA * gauss(v - 0.44 * HA, 0.26 * HA);
 const TQ_LAG = (14 * Math.PI) / 180;
+/** How much bigger the battle draws the head than the face kit's units. */
+export const HEAD_K = 1.25;
 /** sin of the face's yaw at the three-quarter facing (45 degrees less the lag). */
 const TQ_SIN = Math.sin(Math.PI / 4 - TQ_LAG);
 /** The drawn outline of a view at height v: [left, right], turned to screen right. */
@@ -759,6 +761,43 @@ export function tidePieces(phase: Phase): Piece[] {
   pieceOf("mane", 18, PIECE.mane + 2, 0.5, 1, (ctx, k) =>
     finShape(ctx, k, 18, PIECE.mane + 2, pal, 4),
   );
+  // antlers: a gold-tipped cream beam with two tines
+  pieceOf("horn", 26, PIECE.horn + 4, 0.35, 1, (ctx, k) => {
+    const b = { x: 9 * k, y: (PIECE.horn + 2) * k };
+    const beam = [
+      b,
+      { x: 10 * k, y: b.y - 16 * k },
+      { x: 15 * k, y: b.y - 31 * k },
+      { x: 18 * k, y: 3 * k },
+    ];
+    const tines = [
+      [beam[1], { x: 3 * k, y: b.y - 28 * k }],
+      [beam[2], { x: 24 * k, y: b.y - 40 * k }],
+    ];
+    const stroke = (
+      pts: { x: number; y: number }[],
+      w0: number,
+      w1: number,
+    ) => {
+      for (const pass of [0, 1])
+        for (let j = 0; j < pts.length - 1; j++) {
+          const wdt = lerp(w0, w1, j / (pts.length - 1)) * k;
+          ctx.strokeStyle = pass
+            ? j < pts.length - 2
+              ? "#f1e2bd"
+              : "#ffd27a"
+            : pal.line;
+          ctx.lineWidth = pass ? wdt : wdt + 3 * k;
+          ctx.lineCap = "round";
+          ctx.beginPath();
+          ctx.moveTo(pts[j].x, pts[j].y);
+          ctx.lineTo(pts[j + 1].x, pts[j + 1].y);
+          ctx.stroke();
+        }
+    };
+    for (const t of tines) stroke(t, 5, 2.5);
+    stroke(beam, 9.5, 2.8);
+  });
   pieceOf("frill", 20, PIECE.frill + 2, 0.5, 1, (ctx, k) =>
     finShape(ctx, k, 20, PIECE.frill + 2, pal, 2),
   );
@@ -1508,7 +1547,30 @@ export function tidePlacements(
       ? Math.sign(headYaw || 1) *
         Math.min(Math.abs(headYaw), (100 * Math.PI) / 180)
       : headYaw;
+    // antlers, sweeping back and up from the crown
+    [-1, 1].forEach((k) => {
+      const base = at(-4, k * 12, 18);
+      const tip = add(
+        base,
+        mul(add(add(mul(F, -42), mul(U, 34)), mul(R, k * 18)), HS),
+      );
+      finAt(
+        `horn${k}`,
+        "horn",
+        base,
+        tip,
+        PIECE.horn,
+        HS * k,
+        maneBehind ? backZ + 0.01 : frontZ + 0.01,
+      );
+    });
     const hc = sp(at(4, 0, 4));
+    // the face kit draws the head at its own size; the battle shows it bigger
+    const big = <T extends { x: number; y: number }>(q: T): T => ({
+      ...q,
+      x: hc.x + (q.x - hc.x) * HEAD_K,
+      y: hc.y + (q.y - hc.y) * HEAD_K,
+    });
     const built = TIDE_FACE.face(
       {
         x: hc.x,
@@ -1520,7 +1582,7 @@ export function tidePlacements(
       },
       {
         look,
-        brow: P.anger > 0.6 ? "angry" : "calm",
+        brow: P.anger > 0.5 ? "angry" : "calm",
         mouth: P.jaw > 0.4 ? "open" : P.jaw > 0.12 ? "half" : "closed",
       },
     );
@@ -1536,12 +1598,17 @@ export function tidePlacements(
       glintf: `eyeglint${-side}`,
     };
     for (const q of built.placements)
-      out.push({ ...q, key: names[q.key] ?? q.key });
+      out.push({
+        ...big(q),
+        sx: q.sx * HEAD_K,
+        sy: q.sy * HEAD_K,
+        key: names[q.key] ?? q.key,
+      });
     const S = TIDE_SPEC;
     const eyeV = S.lines.eye + built.nod;
     if (look !== "shut" && look !== "dizzy")
       for (const e of built.eyes) {
-        const q = built.at(e.u, eyeV);
+        const q = big(built.at(e.u, eyeV));
         out.push({
           key: `eyeglow${e.id === "n" ? side : -side}`,
           piece: "glow",
@@ -1559,26 +1626,25 @@ export function tidePlacements(
     // the pearl on its brow (the weak point) and its glow: on the centre
     // line when the face shows, on the crown from behind
     let pearlAt = built.feats.pearl
-      ? built.at(built.feats.pearl.u, built.feats.pearl.v)
+      ? big(built.at(built.feats.pearl.u, built.feats.pearl.v))
       : null;
     if (!pearlAt) {
-      pearlAt = built.at(0, S.lines.pearl + 2);
+      pearlAt = big(built.at(0, S.lines.pearl + 2));
       out.push({
         key: "pearl",
         piece: "pearl",
         x: pearlAt.x,
         y: pearlAt.y,
         rot: 0,
-        sx: 1,
-        sy: 1,
+        sx: HEAD_K,
+        sy: HEAD_K,
         alpha: 1,
         z: hz + 0.04,
       });
       // from behind, the muzzle is the far side of the head: mostly hidden
       const turn = Math.abs(Math.atan2(Math.sin(shown), Math.cos(shown)));
-      const m = built.at(
-        tideCentre(S.lines.nose) * Math.sin(turn),
-        S.lines.nose,
+      const m = big(
+        built.at(tideCentre(S.lines.nose) * Math.sin(turn), S.lines.nose),
       );
       for (const key of ["snout", "jaw"])
         out.push({
@@ -1587,8 +1653,8 @@ export function tidePlacements(
           x: m.x,
           y: m.y,
           rot: 0,
-          sx: side,
-          sy: 1,
+          sx: side * HEAD_K,
+          sy: HEAD_K,
           alpha: 1,
           z: hz - 0.01,
         });
@@ -1623,12 +1689,35 @@ export function tidePlacements(
             down = 4 + 19 * f - 7 * f * f;
           pts.push(
             front
-              ? built.at(nose.u + k * (13 + out2), nose.v + down)
-              : built.at(nose.u - 11 - out2, nose.v + 1 + down),
+              ? big(built.at(nose.u + k * (13 + out2), nose.v + down))
+              : big(built.at(nose.u - 11 - out2, nose.v + 1 + down)),
           );
         }
         lines.push({ pts, width: 3.2, color: pal.line, front: true });
         lines.push({ pts, width: 1.7, color: pal.finLight, front: true });
+      }
+      // a dragon's beard: cream strands hanging from the chin, swaying
+      const chinU = front ? 0 : nose.u * 0.45;
+      for (const k of front ? [-1, 0, 1] : [-1, 0]) {
+        const pts: { x: number; y: number }[] = [];
+        for (let j = 0; j <= 6; j++) {
+          const f = j / 6;
+          const sway = Math.sin(P.clock * 1.8 + f * 3 + k) * 2.2 * f;
+          pts.push(
+            big(
+              built.at(
+                chinU +
+                  k * (front ? 5 : 4) +
+                  k * 4 * f +
+                  sway -
+                  (front ? 0 : 3 * f),
+                H_BOT - 3 + (14 - Math.abs(k) * 3) * f,
+              ),
+            ),
+          );
+        }
+        lines.push({ pts, width: 4.6, color: pal.line, front: true });
+        lines.push({ pts, width: 3, color: "#f1e2bd", front: true });
       }
     }
   }

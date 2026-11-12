@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   SEGMENTS,
   TIDE_FACE,
+  HEAD_K,
   TIDE_SPEC,
   tideBody,
   tideGuideImage,
@@ -123,8 +124,9 @@ describe("vector Tidewyrm rig", () => {
     expect(names(Math.PI / 2)).toEqual(["eye-side-glare"]);
     for (let deg = -180; deg <= 180; deg += 5) {
       const eyes = eyesAt((deg * Math.PI) / 180);
-      // only ever mirrored, and both on one eye line
-      for (const e of eyes) expect([Math.abs(e.sx), e.sy]).toEqual([1, 1]);
+      // only ever mirrored (and drawn at the head's size), both on one eye line
+      for (const e of eyes)
+        expect([Math.abs(e.sx), e.sy]).toEqual([HEAD_K, HEAD_K]);
       if (eyes.length === 2) expect(eyes[0].y).toBeCloseTo(eyes[1].y, 6);
       // nothing tilts but the far eye, by its fixed lift
       for (const e of eyes)
