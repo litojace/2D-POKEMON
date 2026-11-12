@@ -104,7 +104,7 @@ describe("Somnara's encounter", () => {
         expect(RAID_BOSS_ATTACKS.somnara).toContain(kind);
     }
   });
-  it("gives solo shorter sequences and 12 seconds; teams get 9 seconds", () => {
+  it("gives solo shorter sequences and 13 seconds; teams get 9 seconds", () => {
     for (const peril of [1, 2, 3]) {
       expect(somnaraSequenceLength(2, peril, 1, "starry-night")).toBe(
         somnaraSequenceLength(2, peril, 4, "starry-night") - 1,
@@ -121,7 +121,7 @@ describe("Somnara's encounter", () => {
           ? SOMNARA.sequence.soloSeconds
           : SOMNARA.sequence.seconds,
       );
-      expect(SOMNARA.sequence.soloSeconds).toBe(12);
+      expect(SOMNARA.sequence.soloSeconds).toBe(13);
       expect(SOMNARA.sequence.seconds).toBe(9);
       const seq = sequence(a);
       expect(seq.every((r, i) => !i || r !== seq[i - 1])).toBe(true);

@@ -653,18 +653,31 @@ export const GLOOMSHADE = {
   driftSpeed: 150,
   driftEvery: 3.5,
   /** Chapter 2+ (live raids): a second lunge from another shadow, `cross` s later. */
-  lunge: { delay: 1.2, width: 34, length: 760, damage: 25, cross: 0.5 },
+  lunge: {
+    delay: 1.2,
+    width: 34,
+    length: 760,
+    damage: 28,
+    cross: 0.5,
+    /** Live raids, a party of 3+: this many copies lunge too, `copyGap` s apart. */
+    copies: 3,
+    copyGap: 0.3,
+  },
   /** Grasping Hands: the floor as a checkerboard of tiles. */
   hands: { cols: 8, rows: 5, delay: 1.45, shiftAt: 0.7, damage: 20 },
   /** A lantern going out bursts on everyone in its light (live raids). */
   snuff: { delay: 1.5, finalDelay: 0.9, damage: 14 },
   curse: {
     radius: 120,
+    /** Seconds near a cursed raider before it spreads (live raids, a party of 3+: `partySpread`). */
     spreadSeconds: 2,
+    partySpread: 1.5,
     restlessSpread: 3,
     haunted: 3,
     hauntSeconds: 6,
     dps: 8,
+    /** Live raids, a party of 3+: damage a second per stack before it haunts. */
+    creep: 3,
     cleanseSeconds: 2,
     soloStill: 2.5,
   },
@@ -676,6 +689,8 @@ export const GLOOMSHADE = {
   exposeSeconds: 4.5,
   /** The streak breaks if nobody hits the real one for this long (live raids). */
   streakGap: 1,
+  /** Live raids, a party of 3+: faster attacks and a shorter exposure. */
+  party: { cadence: 0.8, expose: 0.8 },
   /** Voltkit's Ball Lightning lights its landing spot this long. */
   sparkLight: 3,
   /** Mystowl's Third-Eye Ray and Duskveil's Haunted Lantern reveal the real one. */

@@ -142,6 +142,14 @@ export class GloomshadeArena extends RaidArena {
     }
     return super.chooseTarget(kind, pool);
   }
+  /** Live raids: against a party of 3+ the night moves faster. */
+  protected override cadence() {
+    const r = this.raid;
+    return (
+      super.cadence() *
+      (this.smart() && r.partySize >= G.split.partyCopy ? G.party.cadence : 1)
+    );
+  }
   /** Gloomshade pulses when raiders crowd the real one. */
   protected override reactions(s: RaidSituation): RaidReaction[] {
     const near = s.alive.filter(
@@ -156,10 +164,7 @@ export class GloomshadeArena extends RaidArena {
   protected override pressured(kind: RaidAttack, alive: Fighter[]) {
     return (
       super.pressured(kind, alive) ||
-      (kind === "lunge" &&
-        this.smart() &&
-        alive.length >= 3 &&
-        this.raid.phase >= 2)
+      (kind === "lunge" && this.smart() && alive.length >= 3)
     );
   }
   protected override canStartAttack() {
@@ -351,6 +356,37 @@ export class GloomshadeArena extends RaidArena {
           },
         );
       });
+      // Live raids, a party of three or more: up to two copies lunge too,
+      // each from its own body at the raider nearest it (drawn the same
+      // way; only the real one casts a shadow, so the tell stays).
+      const alive = this.heroes().filter((p) => p.hp > 0);
+      if (this.smart() && alive.length >= G.split.partyCopy && !teach) {
+        const used = sorted.slice(0, cross ? 2 : 1);
+        (r.decoys ?? [])
+          .filter((d) => !used.some((u) => u.x === d.x && u.y === d.y))
+          .slice(0, G.lunge.copies)
+          .forEach((from, k) => {
+            const prey = [...alive].sort(
+              (a, b) =>
+                Math.hypot(a.x - from.x, a.y - from.y) -
+                Math.hypot(b.x - from.x, b.y - from.y),
+            )[0];
+            const d = normalize(prey.x - from.x || 1, prey.y - from.y);
+            const delay = G.lunge.delay + (k + 1) * G.lunge.copyGap;
+            Object.assign(
+              this.warn(
+                "lunge",
+                from.x,
+                from.y,
+                from.x + d.x * G.lunge.length,
+                from.y + d.y * G.lunge.length,
+                G.lunge.width,
+                delay,
+              ),
+              { targetId: prey.id, lockAt: this.time + delay - 0.65, teach },
+            );
+          });
+      }
     } else if (kind === "hands") {
       // Live raids darken the tiles most raiders stand on (after the flip,
       // if it flips); from chapter 2 it always flips.
@@ -747,7 +783,9 @@ export class GloomshadeArena extends RaidArena {
     const spread =
       r.trait === "restless-spirits"
         ? G.curse.restlessSpread
-        : G.curse.spreadSeconds;
+        : this.smart() && r.partySize >= G.split.partyCopy
+          ? G.curse.partySpread
+          : G.curse.spreadSeconds;
     for (const p of heroes) {
       const c = curses[p.id];
       const moved = this.lastSpot.get(p.id);
@@ -770,6 +808,16 @@ export class GloomshadeArena extends RaidArena {
           this.hitBy = undefined;
         } else if (c.hauntedUntil && c.hauntedUntil <= this.time)
           delete curses[p.id];
+        else if (
+          this.smart() &&
+          r.partySize >= G.split.partyCopy &&
+          c.stacks > 0
+        ) {
+          // Live raids, a party: the curse creeps before it haunts.
+          this.hitBy = "curse";
+          this.damage(p, G.curse.creep * c.stacks * dt, boss.id);
+          this.hitBy = undefined;
+        }
         // Alone, the curse grows while you stand still.
         if (r.partySize === 1 && still && curses[p.id]) {
           const t = (this.stillFor.get(p.id) ?? 0) + dt;
@@ -834,9 +882,13 @@ export class GloomshadeArena extends RaidArena {
     if (r.streak >= G.exposeHits) {
       r.streak = 0;
       r.decoys = [];
+      // Live raids: a party (3+) finds it faster, so its window is shorter.
       r.exposedUntil =
         this.time +
-        (this.smart() ? this.window(G.exposeSeconds) : G.exposeSeconds);
+        (this.smart()
+          ? this.window(G.exposeSeconds) *
+            (r.partySize >= G.split.partyCopy ? G.party.expose : 1)
+          : G.exposeSeconds);
       r.stagger = Math.min(100, r.stagger + 20);
       this.exposedByStreak = true;
       r.message = "Found it! The copies vanish. Strike the core!";
@@ -1007,6 +1059,52 @@ export class GloomshadeArena extends RaidArena {
       input.dx = input.dy = 0;
       return input;
     }
-    return undefined;
+    return this.guessCopy(bot, input, go);
+  }
+  /** Each stand-in's guess at the real Gloomshade: a body index, until when. */
+  private guesses = new Map<string, { index: number; until: number }>();
+  /**
+   * The engine tells a bot which body is the real one; a player can't.
+   * Live raids keep stand-ins honest: while copies are out they only know
+   * the real one when it is revealed or casts a shadow in lantern light;
+   * otherwise they pick a body and hit it (a copy pops and curses them).
+   */
+  private guessCopy(
+    bot: Fighter,
+    input: Input,
+    go: (x: number, y: number, away: boolean) => Input,
+  ) {
+    const r = this.raid,
+      boss = this.boss();
+    const decoys = r.decoys ?? [];
+    if (!this.smart() || !boss || !decoys.length) return undefined;
+    if ((r.revealUntil ?? 0) > this.time || this.lit(boss.x, boss.y)) {
+      this.guesses.delete(bot.id);
+      return undefined;
+    }
+    const bodies = this.copies();
+    let guess = this.guesses.get(bot.id);
+    if (!guess || guess.until <= this.time || guess.index >= bodies.length) {
+      const roll = Math.floor(
+        ((this.time * 7.31 + bot.id.length * 3.7 + decoys.length) % 1) *
+          bodies.length *
+          0.999,
+      );
+      guess = { index: roll, until: this.time + 3 };
+      this.guesses.set(bot.id, guess);
+    }
+    if (guess.index === 0) return undefined;
+    const body = bodies[guess.index];
+    input.aimX = body.x;
+    input.aimY = body.y;
+    const d = Math.hypot(body.x - bot.x, body.y - bot.y);
+    if (d > 140) {
+      go(body.x, body.y, false);
+      input.basic = d < 420;
+      return input;
+    }
+    input.dx = input.dy = 0;
+    input.basic = true;
+    return input;
   }
 }
