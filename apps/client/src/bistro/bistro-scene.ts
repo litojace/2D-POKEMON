@@ -95,6 +95,7 @@ import {
   approach,
   arrivalSeconds,
   blockedGrid,
+  footprint,
   buyItem,
   buyStove,
   buyStyle,
@@ -919,20 +920,6 @@ export function openBistro(o: BistroOptions): BistroHandle {
     charmPts = charm(S.items);
     measure();
     requeue();
-    // Anyone standing where a piece now goes steps to the nearest free tile
-    // (Decorate places over people: they aren't shown there).
-    for (const w of [
-      ...customers.filter((c) => c.state !== "seated" && c.state !== "eating"),
-      ...waiters,
-    ]) {
-      const at = { x: Math.round(w.gx), y: Math.round(w.gy) };
-      if (!inside(at) || !blocked[at.x][at.y]) continue;
-      const to = nearestFree(at);
-      if (to) {
-        w.gx = to.x;
-        w.gy = to.y;
-      }
-    }
     // Anyone whose next steps cross a new obstacle finds a new way.
     for (const w of [...customers, ...waiters]) {
       if (!w.path.length) continue;
@@ -2486,6 +2473,25 @@ export function openBistro(o: BistroOptions): BistroHandle {
       sound("tick");
       return;
     }
+    // Anyone standing where it went down steps to the nearest free tile
+    // (Decorate places over people: they aren't shown there). Only those:
+    // a guest on their own chair is where they belong.
+    relayout();
+    if (!def.floor)
+      for (const t of footprint(held.kind, fx, fy))
+        for (const w of [
+          ...customers.filter(
+            (c) => c.state !== "seated" && c.state !== "eating",
+          ),
+          ...waiters,
+        ]) {
+          if (Math.round(w.gx) !== t.x || Math.round(w.gy) !== t.y) continue;
+          const to = nearestFree(t);
+          if (to) {
+            w.gx = to.x;
+            w.gy = to.y;
+          }
+        }
     const c = iso(fx, fy);
     burst(c.x, c.y - 10, "puff", 8, "#f3e2c6", 0.6);
     sound("plant");

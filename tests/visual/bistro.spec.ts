@@ -571,6 +571,78 @@ test("Bistro: a waiter takes every tip on a table in one trip", async ({
   expect(errors).toEqual([]);
 });
 
+test("Bistro: a server answer (coins coming in) leaves the guests, staff and stoves as they were", async ({
+  page,
+}) => {
+  const errors = await openBistro(page);
+  await B(
+    page,
+    `const S = srv.S; S.level = 8; S.coins = 9000;
+     S.counter = [{ dish: 'goicuon', servings: 40, perfect: false }, null, null, null];
+     S.staff.push({ id: 9, char: 'pyranda', role: 'cook', level: 1, dish: 'goicuon' });
+     return b.load()`,
+  );
+  // A busy room: guests in their seats.
+  await expect
+    .poll(
+      () =>
+        B(
+          page,
+          "return b.customers().filter((c) => c.state === 'seated' || c.state === 'eating').length",
+        ),
+      { timeout: 30000 },
+    )
+    .toBeGreaterThan(1);
+  // One stands up, still on their chair (as a guest who just paid does).
+  const up = (await B(
+    page,
+    `const c = b.customers().find((c) => c.state === 'seated' || c.state === 'eating');
+     c.state = 'leave'; c.gx = c.seat.chair.x; c.gy = c.seat.chair.y; c.path = [];
+     return c.id`,
+  )) as number;
+  const look = () =>
+    page.evaluate(() => {
+      const b = (window as any).__bistro;
+      return {
+        guests: b.customers().map((c: any) => ({
+          id: c.id,
+          x: c.gx,
+          y: c.gy,
+          sat: c.sat,
+          ordered: c.orderedAt,
+        })),
+        staff: b.waiters().map((w: any) => ({ x: w.gx, y: w.gy })),
+        stoves: b.state().stoves.map((s: any) => s.start),
+      };
+    });
+  for (let k = 0; k < 3; k++) {
+    const a = await look();
+    await B(page, "b.sync().do({ a: 'sync' }); return b.sync().flush()");
+    const z = await look();
+    const jumped: string[] = [];
+    for (const g of z.guests) {
+      const o = a.guests.find((x: any) => x.id === g.id);
+      if (!o) continue;
+      if (Math.hypot(g.x - o.x, g.y - o.y) > 0.6)
+        jumped.push(
+          `guest ${g.id}${g.id === up ? " (standing on their chair)" : ""} moved`,
+        );
+      if (g.sat !== o.sat || g.ordered !== o.ordered)
+        jumped.push(`guest ${g.id}'s wait started again`);
+    }
+    z.staff.forEach((w: any, i: number) => {
+      const o = a.staff[i];
+      if (o && Math.hypot(w.x - o.x, w.y - o.y) > 0.6)
+        jumped.push(`waiter ${i} moved`);
+    });
+    a.stoves.forEach((s: number, i: number) => {
+      if (z.stoves[i] !== s) jumped.push(`stove ${i} started again`);
+    });
+    expect(jumped).toEqual([]);
+  }
+  expect(errors).toEqual([]);
+});
+
 test("Bistro fits a phone in landscape", async ({ page }, info) => {
   await page.setViewportSize({ width: 844, height: 390 });
   const errors = await openBistro(page);
