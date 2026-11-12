@@ -17,14 +17,26 @@ import {
   type RaidWarning,
   riteValue,
 } from "../../../packages/shared/src/raid.js";
-import { RaidArena, type RaidBossNumbers } from "./raid.js";
+import {
+  RaidArena,
+  type RaidBossNumbers,
+  type RaidReaction,
+  type RaidSituation,
+} from "./raid.js";
 
 const G = GLOOMSHADE;
 /** Hits on the real Gloomshade from one raider count at most this often. */
 const STREAK_GAP = 0.2;
 
 /** Distance from a point to a segment. */
-function segmentDistance(px: number, py: number, ax: number, ay: number, bx: number, by: number) {
+function segmentDistance(
+  px: number,
+  py: number,
+  ax: number,
+  ay: number,
+  bx: number,
+  by: number,
+) {
   const lx = bx - ax,
     ly = by - ay,
     len2 = lx * lx + ly * ly || 1;
@@ -42,6 +54,10 @@ export class GloomshadeArena extends RaidArena {
   /** Where each copy is drifting to (index 0 is the real one). */
   private targets: { x: number; y: number }[] = [];
   private driftAt = 0;
+  /** Live raids: each copy picks its next spot on its own clock. */
+  private driftAts: number[] = [];
+  /** The last hit that counted towards the streak. */
+  private streakAt = -99;
   private serialDrift = 0;
   /** Copies hit this run (the feat is none, after at least one split). */
   decoyHits = 0;
@@ -71,7 +87,12 @@ export class GloomshadeArena extends RaidArena {
     const r = this.raid;
     this.arenaId = "lantern-yard";
     r.pillars = [];
-    r.lanterns = G.lanterns.map((l) => ({ x: l.x, y: l.y, lit: true, hits: 0 }));
+    r.lanterns = G.lanterns.map((l) => ({
+      x: l.x,
+      y: l.y,
+      lit: true,
+      hits: 0,
+    }));
     r.decoys = [];
     r.curses = {};
     r.lights = [];
@@ -79,6 +100,8 @@ export class GloomshadeArena extends RaidArena {
     r.streak = 0;
     this.targets = [];
     this.driftAt = 0;
+    this.driftAts = [];
+    this.streakAt = -99;
     this.decoyHits = 0;
     this.splits = 0;
     this.splitWhenCovered = false;
@@ -106,7 +129,38 @@ export class GloomshadeArena extends RaidArena {
   /** Attacks never pick a hidden Shadopus (and wait while nobody is seen). */
   protected override chooseTarget(kind: RaidAttack, alive: Fighter[]) {
     const seen = alive.filter((p) => !this.inked(p));
-    return super.chooseTarget(kind, seen.length ? seen : alive);
+    const pool = seen.length ? seen : alive;
+    // Live raids: the curse goes to whoever has the most friends close by,
+    // so it spreads unless the party spreads out.
+    if (kind === "curse" && this.smart() && pool.length > 1) {
+      const crowd = (p: Fighter) =>
+        pool.filter(
+          (q) => q !== p && Math.hypot(q.x - p.x, q.y - p.y) < G.curse.radius,
+        ).length;
+      const best = [...pool].sort((a, b) => crowd(b) - crowd(a))[0];
+      if (crowd(best) > 0) return best;
+    }
+    return super.chooseTarget(kind, pool);
+  }
+  /** Gloomshade pulses when raiders crowd the real one. */
+  protected override reactions(s: RaidSituation): RaidReaction[] {
+    const near = s.alive.filter(
+      (p) => Math.hypot(p.x - s.boss.x, p.y - s.boss.y) < G.pulse.radius,
+    ).length;
+    return near >= 2 ? [{ kind: "pulse", score: 1 + 0.15 * near }] : [];
+  }
+  protected override onMechanic(p: Fighter) {
+    return this.lit(p.x, p.y);
+  }
+  /** Live raids: in a party, a lunge also goes at a second raider. */
+  protected override pressured(kind: RaidAttack, alive: Fighter[]) {
+    return (
+      super.pressured(kind, alive) ||
+      (kind === "lunge" &&
+        this.smart() &&
+        alive.length >= 3 &&
+        this.raid.phase >= 2)
+    );
   }
   protected override canStartAttack() {
     return (
@@ -116,7 +170,9 @@ export class GloomshadeArena extends RaidArena {
     );
   }
   override feat() {
-    return this.raid.result === "victory" && this.splits > 0 && this.decoyHits === 0;
+    return (
+      this.raid.result === "victory" && this.splits > 0 && this.decoyHits === 0
+    );
   }
   protected override finishMessage(won: boolean) {
     return won
@@ -158,14 +214,21 @@ export class GloomshadeArena extends RaidArena {
   lit(x: number, y: number) {
     const r = this.raid;
     return (
-      (r.lanterns ?? []).some((l) => l.lit && Math.hypot(x - l.x, y - l.y) < lanternRadius(r.trait)) ||
-      (r.lights ?? []).some((l) => l.until > this.time && Math.hypot(x - l.x, y - l.y) < l.radius)
+      (r.lanterns ?? []).some(
+        (l) => l.lit && Math.hypot(x - l.x, y - l.y) < lanternRadius(r.trait),
+      ) ||
+      (r.lights ?? []).some(
+        (l) => l.until > this.time && Math.hypot(x - l.x, y - l.y) < l.radius,
+      )
     );
   }
   /** Gloomshade and its copies (the real one first). */
   private copies() {
     const boss = this.boss();
-    return [...(boss ? [{ x: boss.x, y: boss.y }] : []), ...(this.raid.decoys ?? [])];
+    return [
+      ...(boss ? [{ x: boss.x, y: boss.y }] : []),
+      ...(this.raid.decoys ?? []),
+    ];
   }
   private addCurse(p: Fighter) {
     const r = this.raid;
@@ -192,6 +255,7 @@ export class GloomshadeArena extends RaidArena {
     if (r.trait === "moonlit") n++;
     if (r.trait === "hollow") n--;
     if (r.partySize === 1) n--;
+    if (this.smart() && r.partySize >= G.split.partyCopy) n++;
     return Math.max(2, n);
   }
   /** Spots for every copy, shuffled from the seed (no two share one). */
@@ -212,7 +276,9 @@ export class GloomshadeArena extends RaidArena {
     const spots = this.pickSpots(this.copyCount());
     boss.x = spots[0].x;
     boss.y = spots[0].y;
-    r.decoys = spots.slice(1).map((s) => ({ id: ++this.serial, x: s.x, y: s.y }));
+    r.decoys = spots
+      .slice(1)
+      .map((s) => ({ id: ++this.serial, x: s.x, y: s.y }));
     this.targets = spots;
     this.driftAt = this.time + G.driftEvery;
     r.streak = 0;
@@ -247,39 +313,138 @@ export class GloomshadeArena extends RaidArena {
       // From the nearest shadow: a copy, or a lantern that has gone out.
       const shadows = [
         ...this.copies(),
-        ...(r.lanterns ?? []).filter((l) => !l.lit).map((l) => ({ x: l.x, y: l.y })),
+        ...(r.lanterns ?? [])
+          .filter((l) => !l.lit)
+          .map((l) => ({ x: l.x, y: l.y })),
       ];
-      const from = shadows.sort((a, b) => Math.hypot(a.x - target.x, a.y - target.y) - Math.hypot(b.x - target.x, b.y - target.y))[0];
-      const d = normalize(target.x - from.x || 1, target.y - from.y);
-      Object.assign(
-        this.warn("lunge", from.x, from.y, from.x + d.x * G.lunge.length, from.y + d.y * G.lunge.length, G.lunge.width, G.lunge.delay),
-        { targetId: target.id, lockAt: this.time + G.lunge.delay * 0.5, teach },
+      const sorted = shadows.sort(
+        (a, b) =>
+          Math.hypot(a.x - target.x, a.y - target.y) -
+          Math.hypot(b.x - target.x, b.y - target.y),
       );
+      // Chapter 2+ (live raids): a cross-lunge, the second lane from the
+      // next-nearest shadow half a second later, so the lanes form an X.
+      const cross = this.smart() && r.phase >= 2 && sorted.length > 1 && !teach;
+      sorted.slice(0, cross ? 2 : 1).forEach((from, k) => {
+        const d = normalize(target.x - from.x || 1, target.y - from.y);
+        const delay = G.lunge.delay + k * G.lunge.cross;
+        Object.assign(
+          this.warn(
+            "lunge",
+            from.x,
+            from.y,
+            from.x + d.x * G.lunge.length,
+            from.y + d.y * G.lunge.length,
+            G.lunge.width,
+            delay,
+          ),
+          {
+            targetId: target.id,
+            // Live raids freeze the lane a little earlier (0.65 s), so a
+            // lane led ahead of a runner can still be sidestepped.
+            lockAt:
+              this.time +
+              G.lunge.delay * 0.5 +
+              k * G.lunge.cross -
+              (this.smart() ? 0.05 : 0),
+            teach,
+          },
+        );
+      });
     } else if (kind === "hands") {
+      // Live raids darken the tiles most raiders stand on (after the flip,
+      // if it flips); from chapter 2 it always flips.
+      const flips = this.smart()
+        ? r.phase >= 2 || !teach
+        : r.peril >= 2 && !teach;
+      let parity = (r.seed + this.attacks) % 2;
+      if (this.smart()) {
+        const alive = this.heroes().filter((p) => p.hp > 0);
+        const under = (q: number) =>
+          alive.filter((p) => handsTileDark(p.x, p.y, q)).length;
+        const dark = under(1) > under(0) ? 1 : under(0) > under(1) ? 0 : parity;
+        parity = flips ? 1 - dark : dark;
+      }
       Object.assign(this.warn("hands", 800, 450, 800, 450, 0, G.hands.delay), {
-        parity: (r.seed + this.attacks) % 2,
-        ...(r.peril >= 2 && !teach ? { shiftAt: this.time + G.hands.shiftAt } : {}),
+        parity,
+        ...(flips ? { shiftAt: this.time + G.hands.shiftAt } : {}),
         teach,
       });
     } else if (kind === "snuff") {
-      const lit = (r.lanterns ?? []).map((l, i) => ({ l, i })).filter((x) => x.l.lit);
+      const lit = (r.lanterns ?? [])
+        .map((l, i) => ({ l, i }))
+        .filter((x) => x.l.lit);
       if (!lit.length) return this.startAttack("lunge", target);
-      // The lantern nearest the raider being watched goes out.
-      const { l, i } = lit.sort((a, b) => Math.hypot(a.l.x - target.x, a.l.y - target.y) - Math.hypot(b.l.x - target.x, b.l.y - target.y))[0];
-      Object.assign(this.warn("snuff", l.x, l.y, l.x, l.y, lanternRadius(r.trait), r.phase >= 3 ? G.snuff.finalDelay : G.snuff.delay), {
-        lantern: i,
-        teach,
-      });
+      // The lantern nearest the raider being watched goes out. Live raids
+      // pick the one a cursed raider needs, else the one most raiders use.
+      const dist = (l: { x: number; y: number }, p: { x: number; y: number }) =>
+        Math.hypot(l.x - p.x, l.y - p.y);
+      const cursed = this.heroes().find(
+        (p) => p.hp > 0 && (r.curses?.[p.id]?.stacks ?? 0) > 0,
+      );
+      const users = (l: { x: number; y: number }) =>
+        this.heroes().filter(
+          (p) => p.hp > 0 && dist(l, p) < lanternRadius(r.trait),
+        ).length;
+      const { l, i } = lit.sort((a, b) =>
+        this.smart() && cursed
+          ? dist(a.l, cursed) - dist(b.l, cursed)
+          : this.smart() && users(a.l) !== users(b.l)
+            ? users(b.l) - users(a.l)
+            : dist(a.l, target) - dist(b.l, target),
+      )[0];
+      Object.assign(
+        this.warn(
+          "snuff",
+          l.x,
+          l.y,
+          l.x,
+          l.y,
+          lanternRadius(r.trait),
+          r.phase >= 3 ? G.snuff.finalDelay : G.snuff.delay,
+        ),
+        {
+          lantern: i,
+          teach,
+        },
+      );
     } else if (kind === "curse") {
-      Object.assign(this.warn("curse", target.x, target.y, target.x, target.y, G.curse.radius, 1), {
-        targetId: target.id,
-        lockAt: this.time + 1,
-        teach,
-      });
+      Object.assign(
+        this.warn(
+          "curse",
+          target.x,
+          target.y,
+          target.x,
+          target.y,
+          G.curse.radius,
+          1,
+        ),
+        {
+          targetId: target.id,
+          lockAt: this.time + 1,
+          teach,
+        },
+      );
     } else if (kind === "split") {
-      this.warn("split", boss.x, boss.y, boss.x, boss.y, 120, G.split.delay).teach = teach;
+      this.warn(
+        "split",
+        boss.x,
+        boss.y,
+        boss.x,
+        boss.y,
+        120,
+        G.split.delay,
+      ).teach = teach;
     } else if (kind === "pulse") {
-      this.warn("pulse", boss.x, boss.y, boss.x, boss.y, G.pulse.radius, G.pulse.delay).teach = teach;
+      this.warn(
+        "pulse",
+        boss.x,
+        boss.y,
+        boss.x,
+        boss.y,
+        G.pulse.radius,
+        G.pulse.delay,
+      ).teach = teach;
     } else super.startAttack(kind, target);
   }
   protected override followWarnings(boss: Fighter) {
@@ -304,30 +469,58 @@ export class GloomshadeArena extends RaidArena {
   }
   protected override resolveWarning(w: RaidWarning, boss: Fighter) {
     const r = this.raid;
-    const ability: Ability = { ...CHARACTERS.duskveil.skills[3], ground: false, knockback: 0 };
+    const ability: Ability = {
+      ...CHARACTERS.duskveil.skills[3],
+      ground: false,
+      knockback: 0,
+    };
     if (w.kind === "lunge") {
       this.hitBy = "lunge";
       for (const p of this.heroes())
-        if (p.hp > 0 && segmentDistance(p.x, p.y, w.x, w.y, w.tx, w.ty) < w.radius + RULES.radius)
+        if (
+          p.hp > 0 &&
+          segmentDistance(p.x, p.y, w.x, w.y, w.tx, w.ty) <
+            w.radius + RULES.radius
+        )
           this.damage(p, G.lunge.damage, boss.id, ability);
       this.hitBy = undefined;
       this.countDodges();
       return;
     }
     if (w.kind === "hands") {
-      const parity = w.shiftAt !== undefined ? 1 - (w.parity ?? 0) : (w.parity ?? 0);
+      const parity =
+        w.shiftAt !== undefined ? 1 - (w.parity ?? 0) : (w.parity ?? 0);
       this.hitBy = "hands";
       for (const p of this.heroes())
-        if (p.hp > 0 && handsTileDark(p.x, p.y, parity)) this.damage(p, G.hands.damage, boss.id, ability);
+        if (p.hp > 0 && handsTileDark(p.x, p.y, parity))
+          this.damage(p, G.hands.damage, boss.id, ability);
       this.hitBy = undefined;
       this.countDodges();
-      this.event("raid-impact", { x: 800, y: 450 }, 0x5a3a9a, undefined, boss.id);
+      this.event(
+        "raid-impact",
+        { x: 800, y: 450 },
+        0x5a3a9a,
+        undefined,
+        boss.id,
+      );
       this.events[this.events.length - 1].raidRadius = 0;
       return;
     }
     if (w.kind === "snuff") {
       const l = r.lanterns?.[w.lantern ?? -1];
       if (l) {
+        // Live raids: the light bursts as it dies, hurting everyone in it.
+        if (this.smart()) {
+          this.hitBy = "snuff";
+          for (const p of this.heroes())
+            if (
+              p.hp > 0 &&
+              Math.hypot(p.x - l.x, p.y - l.y) < w.radius + RULES.radius
+            )
+              this.damage(p, G.snuff.damage, boss.id, ability);
+          this.hitBy = undefined;
+          this.countDodges();
+        }
         l.lit = false;
         l.hits = 0;
         r.message = "A lantern goes out! Hit it twice to relight it.";
@@ -339,7 +532,10 @@ export class GloomshadeArena extends RaidArena {
       if (p) {
         this.addCurse(p);
         if (r.drill) this.struck.add(p.id);
-        r.message = r.partySize > 1 ? `${p.name} is cursed! Spread out, and find lantern light.` : "Cursed! Keep moving and find lantern light.";
+        r.message =
+          r.partySize > 1
+            ? `${p.name} is cursed! Spread out, and find lantern light.`
+            : "Cursed! Keep moving and find lantern light.";
       }
       return;
     }
@@ -347,7 +543,11 @@ export class GloomshadeArena extends RaidArena {
     if (w.kind === "pulse") {
       this.hitBy = "pulse";
       for (const p of this.heroes())
-        if (p.hp > 0 && p.jumpUntil <= this.time && Math.hypot(p.x - boss.x, p.y - boss.y) < w.radius + RULES.radius)
+        if (
+          p.hp > 0 &&
+          p.jumpUntil <= this.time &&
+          Math.hypot(p.x - boss.x, p.y - boss.y) < w.radius + RULES.radius
+        )
           this.damage(p, G.pulse.damage, boss.id, { ...ability, ground: true });
       this.hitBy = undefined;
       this.countDodges();
@@ -357,8 +557,24 @@ export class GloomshadeArena extends RaidArena {
       this.events[this.events.length - 1].raidRadius = w.radius;
       // Witching Hour: pulses come in pairs.
       if (r.phase >= 3 && !w.followUp && !r.drill) {
-        Object.assign(this.warn("pulse", boss.x, boss.y, boss.x, boss.y, G.pulse.radius, G.pulse.pairGap), { followUp: true });
-        this.nextAttack = Math.max(this.nextAttack, this.time + G.pulse.pairGap + 2.5);
+        // Live raids space the pair by the jump cooldown: both can be jumped.
+        const gap = this.smart() ? RULES.jumpCooldown + 0.3 : G.pulse.pairGap;
+        Object.assign(
+          this.warn(
+            "pulse",
+            boss.x,
+            boss.y,
+            boss.x,
+            boss.y,
+            G.pulse.radius,
+            gap,
+          ),
+          { followUp: true },
+        );
+        this.nextAttack = Math.max(
+          this.nextAttack,
+          this.time + gap + (this.smart() ? 1.2 : 2.5),
+        );
       }
       return;
     }
@@ -373,7 +589,11 @@ export class GloomshadeArena extends RaidArena {
       this.exposedByStreak = false;
       if (r.phase >= 3 && !r.drill) this.splitWhenCovered = true;
     }
-    if (this.splitWhenCovered && r.exposedUntil <= this.time && !r.warnings.length) {
+    if (
+      this.splitWhenCovered &&
+      r.exposedUntil <= this.time &&
+      !r.warnings.length
+    ) {
       this.splitWhenCovered = false;
       this.split();
     }
@@ -401,18 +621,49 @@ export class GloomshadeArena extends RaidArena {
     for (const p of this.heroes())
       if (p.hp > 0 && this.hasRite(p, "lamplighter") && this.lit(p.x, p.y)) {
         const max = CHARACTERS[p.character].health;
-        p.hp = Math.min(max, p.hp + max * riteValue("lamplighter", this.raid.phase) * dt);
+        p.hp = Math.min(
+          max,
+          p.hp + max * riteValue("lamplighter", this.raid.phase) * dt,
+        );
       }
   }
-  /** Gloomshade and its copies drift between spots, all the same way. */
+  /**
+   * Gloomshade and its copies drift between spots. Peril 1-2: all at once;
+   * live raids: each body on its own clock, so they never move as one.
+   */
   private drift(dt: number, boss: Fighter) {
     const r = this.raid;
     const copies = 1 + (r.decoys?.length ?? 0);
-    if (this.time >= this.driftAt || this.targets.length !== copies) {
+    if (this.smart() && this.targets.length === copies) {
+      if (this.driftAts.length !== copies)
+        this.driftAts = Array.from(
+          { length: copies },
+          (_, i) => this.time + G.driftEvery * (0.5 + i / copies),
+        );
+      for (let i = 0; i < copies; i++) {
+        if (this.time < this.driftAts[i]) continue;
+        const taken = this.targets.filter((_, j) => j !== i);
+        const free = G.spots.filter(
+          (s) => !taken.some((t) => t.x === s.x && t.y === s.y),
+        );
+        const pick = this.pickSpots(G.spots.length).find((s) =>
+          free.some((f) => f.x === s.x && f.y === s.y),
+        );
+        if (pick) this.targets[i] = { ...pick };
+        this.driftAts[i] =
+          this.time +
+          G.driftEvery *
+            (0.8 + 0.4 * ((i * 0.37 + this.serialDrift * 0.13) % 1));
+      }
+    } else if (this.time >= this.driftAt || this.targets.length !== copies) {
       this.targets = this.pickSpots(copies);
       this.driftAt = this.time + G.driftEvery;
+      this.driftAts = [];
     }
-    const step = (body: { x: number; y: number }, to: { x: number; y: number }) => {
+    const step = (
+      body: { x: number; y: number },
+      to: { x: number; y: number },
+    ) => {
       const dist = Math.hypot(to.x - body.x, to.y - body.y);
       if (dist < 1) return;
       const d = normalize(to.x - body.x, to.y - body.y),
@@ -429,7 +680,9 @@ export class GloomshadeArena extends RaidArena {
   private stepHits(boss: Fighter) {
     const r = this.raid;
     const heroes = this.heroes().filter((p) => p.hp > 0);
-    const shots = this.projectiles.filter((pr) => pr.owner !== boss.id && !this.countedShots.has(pr.id));
+    const shots = this.projectiles.filter(
+      (pr) => pr.owner !== boss.id && !this.countedShots.has(pr.id),
+    );
     // A fresh press of attack, aimed at a spot within reach.
     const swings = heroes.filter((p) => {
       const was = this.basicWas.get(p.id) ?? false;
@@ -441,39 +694,60 @@ export class GloomshadeArena extends RaidArena {
       Math.hypot(p.lastInput.aimX - x, p.lastInput.aimY - y) < 110;
     for (let i = (r.decoys?.length ?? 0) - 1; i >= 0; i--) {
       const d = r.decoys![i];
-      const shot = shots.find((pr) => Math.hypot(pr.x - d.x, pr.y - d.y) < 50 + (pr.ability.radius ?? 10));
-      const zone = this.zones.find((z) => z.owner !== boss.id && Math.hypot(z.x - d.x, z.y - d.y) < z.radius + 40);
+      const shot = shots.find(
+        (pr) =>
+          Math.hypot(pr.x - d.x, pr.y - d.y) < 50 + (pr.ability.radius ?? 10),
+      );
+      const zone = this.zones.find(
+        (z) =>
+          z.owner !== boss.id &&
+          Math.hypot(z.x - d.x, z.y - d.y) < z.radius + 40,
+      );
       const swing = swings.find((p) => swingAt(p, d.x, d.y, 170));
-      const by = heroes.find((p) => p.id === (shot?.owner ?? zone?.owner ?? swing?.id));
+      const by = heroes.find(
+        (p) => p.id === (shot?.owner ?? zone?.owner ?? swing?.id),
+      );
       if (!by) continue;
       if (shot) this.countedShots.add(shot.id);
       this.popDecoy(i, by);
     }
     for (const l of r.lanterns ?? []) {
       if (l.lit) continue;
-      const shot = shots.find((pr) => !this.countedShots.has(pr.id) && Math.hypot(pr.x - l.x, pr.y - l.y) < 36 + (pr.ability.radius ?? 10));
+      const shot = shots.find(
+        (pr) =>
+          !this.countedShots.has(pr.id) &&
+          Math.hypot(pr.x - l.x, pr.y - l.y) < 36 + (pr.ability.radius ?? 10),
+      );
       const swing = swings.find((p) => swingAt(p, l.x, l.y, 140));
       const by = heroes.find((p) => p.id === (shot?.owner ?? swing?.id));
       if (!by) continue;
       if (shot) this.countedShots.add(shot.id);
       l.hits++;
-      if (l.hits >= (this.hasRite(by, "lamplighter") ? 1 : G.relightHits)) this.relight(l, by);
+      if (l.hits >= (this.hasRite(by, "lamplighter") ? 1 : G.relightHits))
+        this.relight(l, by);
     }
     if (this.countedShots.size > 400) this.countedShots.clear();
   }
-  private relight(l: { x: number; y: number; lit: boolean; hits: number }, by?: Fighter) {
+  private relight(
+    l: { x: number; y: number; lit: boolean; hits: number },
+    by?: Fighter,
+  ) {
     const r = this.raid;
     if (l.lit) return;
     l.lit = true;
     l.hits = 0;
     this.event("heal", l, 0xffd65b, 0, by?.id);
-    if (by && !r.drill && r.contributions?.[by.id]) r.contributions[by.id].pillars++;
+    if (by && !r.drill && r.contributions?.[by.id])
+      r.contributions[by.id].pillars++;
   }
   private stepCurses(dt: number, boss: Fighter) {
     const r = this.raid;
     const heroes = this.heroes().filter((p) => p.hp > 0);
     const curses = (r.curses ??= {});
-    const spread = r.trait === "restless-spirits" ? G.curse.restlessSpread : G.curse.spreadSeconds;
+    const spread =
+      r.trait === "restless-spirits"
+        ? G.curse.restlessSpread
+        : G.curse.spreadSeconds;
     for (const p of heroes) {
       const c = curses[p.id];
       const moved = this.lastSpot.get(p.id);
@@ -494,7 +768,8 @@ export class GloomshadeArena extends RaidArena {
           this.hitBy = "curse";
           this.damage(p, G.curse.dps * dt, boss.id);
           this.hitBy = undefined;
-        } else if (c.hauntedUntil && c.hauntedUntil <= this.time) delete curses[p.id];
+        } else if (c.hauntedUntil && c.hauntedUntil <= this.time)
+          delete curses[p.id];
         // Alone, the curse grows while you stand still.
         if (r.partySize === 1 && still && curses[p.id]) {
           const t = (this.stillFor.get(p.id) ?? 0) + dt;
@@ -507,7 +782,10 @@ export class GloomshadeArena extends RaidArena {
     if (r.partySize > 1)
       for (const q of heroes) {
         const nearCursed = heroes.some(
-          (p) => p !== q && (curses[p.id]?.stacks ?? 0) > 0 && Math.hypot(p.x - q.x, p.y - q.y) < G.curse.radius,
+          (p) =>
+            p !== q &&
+            (curses[p.id]?.stacks ?? 0) > 0 &&
+            Math.hypot(p.x - q.x, p.y - q.y) < G.curse.radius,
         );
         if (!nearCursed) {
           this.nearFor.delete(q.id);
@@ -522,7 +800,12 @@ export class GloomshadeArena extends RaidArena {
   }
 
   // ------------------------------------------------------------ Damage etc.
-  override damage(target: Fighter, amount: number, owner: string, ability?: Ability) {
+  override damage(
+    target: Fighter,
+    amount: number,
+    owner: string,
+    ability?: Ability,
+  ) {
     const r = this.raid;
     const before = target.hp;
     super.damage(target, amount, owner, ability);
@@ -539,15 +822,21 @@ export class GloomshadeArena extends RaidArena {
     }
     // Six hits in a row on the real one expose it, and the copies vanish.
     // Only while there are copies to tell it apart from: that's the puzzle.
-    if (!target.raidBoss || target.hp >= before || r.drill || !r.decoys?.length) return;
+    if (!target.raidBoss || target.hp >= before || r.drill || !r.decoys?.length)
+      return;
     if (this.time - (this.lastHitAt.get(owner) ?? -9) < STREAK_GAP) return;
     this.lastHitAt.set(owner, this.time);
     if (r.exposedUntil > this.time) return;
+    // Live raids: the streak breaks after a second without a hit.
+    if (this.smart() && this.time - this.streakAt > G.streakGap) r.streak = 0;
+    this.streakAt = this.time;
     r.streak = (r.streak ?? 0) + 1;
     if (r.streak >= G.exposeHits) {
       r.streak = 0;
       r.decoys = [];
-      r.exposedUntil = this.time + G.exposeSeconds;
+      r.exposedUntil =
+        this.time +
+        (this.smart() ? this.window(G.exposeSeconds) : G.exposeSeconds);
       r.stagger = Math.min(100, r.stagger + 20);
       this.exposedByStreak = true;
       r.message = "Found it! The copies vanish. Strike the core!";
@@ -563,40 +852,70 @@ export class GloomshadeArena extends RaidArena {
     if (a.id === "ball-lightning") {
       const d = normalize(aim.x - p.x || 1, aim.y - p.y),
         reach = Math.min(Math.hypot(aim.x - p.x, aim.y - p.y), 600);
-      r.lights = [...(r.lights ?? []), { x: p.x + d.x * reach, y: p.y + d.y * reach, radius: 160, until: this.time + G.sparkLight }];
+      r.lights = [
+        ...(r.lights ?? []),
+        {
+          x: p.x + d.x * reach,
+          y: p.y + d.y * reach,
+          radius: 160,
+          until: this.time + G.sparkLight,
+        },
+      ];
     }
     // Lumoth's Radiant Flare relights lanterns and cleanses curses nearby.
     if (a.id === "radiant-flare") {
-      for (const l of r.lanterns ?? []) if (!l.lit && Math.hypot(l.x - p.x, l.y - p.y) < 240) this.relight(l, p);
-      for (const q of this.heroes()) if (q.hp > 0 && Math.hypot(q.x - p.x, q.y - p.y) < 240) this.cleanse(q);
+      for (const l of r.lanterns ?? [])
+        if (!l.lit && Math.hypot(l.x - p.x, l.y - p.y) < 240)
+          this.relight(l, p);
+      for (const q of this.heroes())
+        if (q.hp > 0 && Math.hypot(q.x - p.x, q.y - p.y) < 240) this.cleanse(q);
     }
     if (!boss) return;
     // Mystowl's Third-Eye Ray passes through copies and marks the real one.
     if (a.id === "third-eye-ray") {
       const aimAngle = Math.atan2(aim.y - p.y, aim.x - p.x),
         toBoss = Math.atan2(boss.y - p.y, boss.x - p.x);
-      const off = Math.abs(Math.atan2(Math.sin(aimAngle - toBoss), Math.cos(aimAngle - toBoss)));
+      const off = Math.abs(
+        Math.atan2(Math.sin(aimAngle - toBoss), Math.cos(aimAngle - toBoss)),
+      );
       if (off < 0.25 && Math.hypot(boss.x - p.x, boss.y - p.y) < 900) {
         r.revealUntil = Math.max(r.revealUntil ?? 0, this.time + G.revealRay);
         r.message = `${p.name}'s Third-Eye Ray marks the real Gloomshade!`;
       }
     }
     // Duskveil's Haunted Lantern hung by the real one lights it up.
-    if (a.id === "haunted-lantern" && Math.hypot(aim.x - boss.x, aim.y - boss.y) < 160) {
+    if (
+      a.id === "haunted-lantern" &&
+      Math.hypot(aim.x - boss.x, aim.y - boss.y) < 160
+    ) {
       r.revealUntil = Math.max(r.revealUntil ?? 0, this.time + G.revealMark);
       r.message = `${p.name}'s Haunted Lantern reveals the real Gloomshade!`;
     }
   }
 
   // ------------------------------------------------------------- Stand-ins
-  protected override botHint(bot: Fighter, input: Input, go: (x: number, y: number, away: boolean) => Input) {
+  protected override botHint(
+    bot: Fighter,
+    input: Input,
+    go: (x: number, y: number, away: boolean) => Input,
+  ) {
     const r = this.raid,
       boss = this.boss();
     // Grasping Hands: step onto a lit tile.
     const hands = r.warnings.find((w) => w.kind === "hands");
     if (hands) {
-      const parity = hands.shiftAt !== undefined ? 1 - (hands.parity ?? 0) : (hands.parity ?? 0);
-      const showing = hands.shiftAt !== undefined && this.time < hands.shiftAt ? (hands.parity ?? 0) : parity;
+      const parity =
+        hands.shiftAt !== undefined
+          ? 1 - (hands.parity ?? 0)
+          : (hands.parity ?? 0);
+      // A board that will flip (it flickers): head for the tiles that will
+      // be lit when the hands close (Peril 1-2 stand-ins read the board as shown).
+      const showing =
+        hands.shiftAt !== undefined &&
+        this.time < hands.shiftAt &&
+        !this.smart()
+          ? (hands.parity ?? 0)
+          : parity;
       if (handsTileDark(bot.x, bot.y, showing)) {
         const { cols, rows } = G.hands;
         const tw = 1600 / cols,
@@ -612,31 +931,69 @@ export class GloomshadeArena extends RaidArena {
           }
         return go(best.x, best.y, false);
       }
+      // On a safe tile: keep clear of its edges until the hands close
+      // (Peril 1-2 stand-ins carry on as before).
+      if (this.smart()) {
+        const tw = 1600 / G.hands.cols,
+          th = 900 / G.hands.rows;
+        const cx = (Math.floor(bot.x / tw) + 0.5) * tw,
+          cy = (Math.floor(bot.y / th) + 0.5) * th;
+        if (
+          Math.abs(bot.x - cx) > tw / 2 - 40 ||
+          Math.abs(bot.y - cy) > th / 2 - 40
+        )
+          return go(cx, cy, false);
+        input.dx = input.dy = 0;
+        return input;
+      }
     }
     const lunge = r.warnings.find((w) => w.kind === "lunge");
-    if (lunge && segmentDistance(bot.x, bot.y, lunge.x, lunge.y, lunge.tx, lunge.ty) < lunge.radius + RULES.radius + 25) {
+    if (
+      lunge &&
+      segmentDistance(bot.x, bot.y, lunge.x, lunge.y, lunge.tx, lunge.ty) <
+        lunge.radius + RULES.radius + 25
+    ) {
       const d = normalize(lunge.tx - lunge.x, lunge.ty - lunge.y);
       return go(bot.x - d.y * 120, bot.y + d.x * 120, false);
     }
     const pulse = r.warnings.find((w) => w.kind === "pulse");
-    if (pulse && boss && Math.hypot(bot.x - boss.x, bot.y - boss.y) < pulse.radius + RULES.radius + 20) {
+    if (
+      pulse &&
+      boss &&
+      Math.hypot(bot.x - boss.x, bot.y - boss.y) <
+        pulse.radius + RULES.radius + 20
+    ) {
       if (pulse.at - this.time < 0.3) input.jump = true;
       else return go(boss.x, boss.y, true);
     }
     // Cursed: find lantern light. Otherwise keep away from cursed friends.
     const mine = r.curses?.[bot.id];
     const lanternTo = (filter: (l: { lit: boolean }) => boolean) =>
-      (r.lanterns ?? []).filter(filter).sort((a, b) => Math.hypot(a.x - bot.x, a.y - bot.y) - Math.hypot(b.x - bot.x, b.y - bot.y))[0];
+      (r.lanterns ?? [])
+        .filter(filter)
+        .sort(
+          (a, b) =>
+            Math.hypot(a.x - bot.x, a.y - bot.y) -
+            Math.hypot(b.x - bot.x, b.y - bot.y),
+        )[0];
     if (mine && (mine.stacks > 0 || mine.hauntedUntil > this.time)) {
       const l = lanternTo((x) => x.lit);
-      if (l && Math.hypot(l.x - bot.x, l.y - bot.y) > lanternRadius(r.trait) * 0.5) return go(l.x, l.y, false);
+      if (
+        l &&
+        Math.hypot(l.x - bot.x, l.y - bot.y) > lanternRadius(r.trait) * 0.5
+      )
+        return go(l.x, l.y, false);
       if (l) {
         input.dx = input.dy = 0;
         return input;
       }
     }
     const cursedFriend = this.heroes().find(
-      (p) => p !== bot && p.hp > 0 && (r.curses?.[p.id]?.stacks ?? 0) > 0 && Math.hypot(p.x - bot.x, p.y - bot.y) < G.curse.radius + 40,
+      (p) =>
+        p !== bot &&
+        p.hp > 0 &&
+        (r.curses?.[p.id]?.stacks ?? 0) > 0 &&
+        Math.hypot(p.x - bot.x, p.y - bot.y) < G.curse.radius + 40,
     );
     if (cursedFriend) return go(cursedFriend.x, cursedFriend.y, true);
     // Relight a dark lantern.
@@ -644,7 +1001,8 @@ export class GloomshadeArena extends RaidArena {
     if (dark && !r.warnings.length) {
       input.aimX = dark.x;
       input.aimY = dark.y;
-      if (Math.hypot(dark.x - bot.x, dark.y - bot.y) > 100) return go(dark.x, dark.y, false);
+      if (Math.hypot(dark.x - bot.x, dark.y - bot.y) > 100)
+        return go(dark.x, dark.y, false);
       input.basic = Math.floor(this.time * 4) % 2 === 0;
       input.dx = input.dy = 0;
       return input;

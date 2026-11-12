@@ -4,9 +4,11 @@ import {
   raidChapters,
   DREAM_RUNE_NAMES,
   raidPingLabel,
+  RAID_BOSSES,
   RAID_REWARDS,
   EMBERWING,
   type RaidBossId,
+  type RaidWarning,
   type RaidContribution,
   type RaidProgress,
   type RaidReward,
@@ -20,13 +22,32 @@ const escape = (s: string) =>
       ]!,
   );
 
+/**
+ * With several attacks live at once, the warning to call out: the soonest
+ * one aimed at me, else the soonest to land.
+ */
+export function cueWarning(
+  state: Snapshot,
+  myId: string,
+): RaidWarning | undefined {
+  const all = state.raid?.warnings ?? [];
+  if (all.length < 2) return all[0];
+  const mine = all.filter((w) => w.targetId === myId);
+  return (mine.length ? mine : all).reduce((a, b) => (b.at < a.at ? b : a));
+}
+
 export function raidCue(state: Snapshot, myId: string) {
   const r = state.raid!;
   if (state.phase !== "playing")
     return raidChapters(r.boss)[r.phase - 1].objective;
   if (r.staggerUntil > state.time)
     return "Core exposed — unleash your ultimates!";
-  const w = r.warnings[0];
+  // The soft enrage is announced for a few seconds when it starts or grows.
+  if ((r.enrage ?? 0) > 0 && state.time - (r.enrageAt ?? -99) < 3)
+    return r.enrage === 1
+      ? `${RAID_BOSSES[r.boss].name} grows furious — faster, harder attacks!`
+      : `${RAID_BOSSES[r.boss].name}'s fury builds (${r.enrage}/4)!`;
+  const w = cueWarning(state, myId);
   if (r.boss === "storm-twins") {
     const fallen = r.twins?.find(
       (t) => (state.players.find((p) => p.id === t.id)?.hp ?? 0) <= 0,
@@ -193,7 +214,7 @@ function tidewyrmCue(state: Snapshot, myId: string) {
   const wave = (r.waves ?? [])[0];
   if (wave)
     return wave.high ? "High wave — be on an island!" : "Low wave — jump it!";
-  const w = r.warnings[0];
+  const w = cueWarning(state, myId);
   if (!w) return "";
   if (w.kind === "dive") {
     const locked = w.lockAt !== undefined && state.time >= w.lockAt;
@@ -236,7 +257,7 @@ function gloomshadeCue(state: Snapshot, myId: string) {
   const mine = r.curses?.[myId];
   if (mine && mine.hauntedUntil > state.time)
     return "Haunted — get into lantern light to cleanse it!";
-  const w = r.warnings[0];
+  const w = cueWarning(state, myId);
   if (w?.kind === "hands")
     return w.shiftAt !== undefined && state.time < w.shiftAt
       ? "Grasping Hands — the tiles will flip! Watch for the flicker."

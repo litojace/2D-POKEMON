@@ -1,4 +1,4 @@
-import { RAID } from "../../packages/shared/src/raid";
+import { RAID, RAID_TIERS } from "../../packages/shared/src/raid";
 import { drawSomnara } from "../../apps/client/src/raid-somnara-art";
 import { describe, it, expect, vi } from "vitest";
 import {
@@ -104,7 +104,7 @@ describe("Somnara's encounter", () => {
         expect(RAID_BOSS_ATTACKS.somnara).toContain(kind);
     }
   });
-  it("gives solo shorter sequences and 14 seconds; teams get 10 seconds", () => {
+  it("gives solo shorter sequences and 12 seconds; teams get 9 seconds", () => {
     for (const peril of [1, 2, 3]) {
       expect(somnaraSequenceLength(2, peril, 1, "starry-night")).toBe(
         somnaraSequenceLength(2, peril, 4, "starry-night") - 1,
@@ -116,7 +116,13 @@ describe("Somnara's encounter", () => {
     ] as CharacterId[][]) {
       const a = setup(chars);
       attack(a, "dream-sequence");
-      expect(a.raid.dream!.until - a.time).toBe(chars.length === 1 ? 14 : 10);
+      expect(a.raid.dream!.until - a.time).toBe(
+        chars.length === 1
+          ? SOMNARA.sequence.soloSeconds
+          : SOMNARA.sequence.seconds,
+      );
+      expect(SOMNARA.sequence.soloSeconds).toBe(12);
+      expect(SOMNARA.sequence.seconds).toBe(9);
       const seq = sequence(a);
       expect(seq.every((r, i) => !i || r !== seq[i - 1])).toBe(true);
     }
@@ -198,7 +204,11 @@ describe("Somnara's encounter", () => {
     attack(a, "dream-sequence");
     expect(a.raid.dream!.backwards).toBe(false);
     solve(a);
-    expect(a.raid.exposedUntil - a.time).toBeCloseTo(8, 1);
+    // Six seconds plus two for Deep Slumber, on the ★★ tier's windows.
+    expect(a.raid.exposedUntil - a.time).toBeCloseTo(
+      8 * RAID_TIERS[2].windows,
+      1,
+    );
     a.raid.phase = 3;
     const random = vi
       .spyOn(crypto, "getRandomValues")
@@ -237,7 +247,7 @@ describe("Somnara's encounter", () => {
 });
 
 describe("Drowsy, sleep, bubbles and champion tricks", () => {
-  it("sleeps after three stacks, stops moving, and wakes naturally after two seconds", () => {
+  it("sleeps after three stacks, stops moving, and wakes naturally after two and a half seconds", () => {
     const a = setup();
     const p = a.heroes()[0];
     addStacks(a, p.id);
@@ -247,7 +257,9 @@ describe("Drowsy, sleep, bubbles and champion tricks", () => {
     p.lastInput = { ...blankInput(), dx: 1 };
     run(a, 0.5);
     expect(p.x).toBe(x);
-    run(a, 1.7);
+    run(a, 1.5);
+    expect(a.has(p, "sleep")).toBe(true);
+    run(a, 0.7);
     expect(a.has(p, "sleep")).toBe(false);
   });
   it("wakes from an ally's melee hit without taking friendly damage or losing Shell Up", () => {
