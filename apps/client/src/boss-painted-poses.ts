@@ -16,12 +16,6 @@ interface Look {
   key?: string;
   stagger?: boolean;
 }
-export function paintedGloom(
-  g: G,
-  o: Look & { facing: number; flicker: boolean; motion: number },
-) {
-  return paintWholeBoss(g, "gloomshade", { ...o, y: o.y + 46 });
-}
 export function paintedSomnara(g: G, o: Look) {
   return paintWholeBoss(g, "somnara", { ...o, y: o.y + 72 });
 }
