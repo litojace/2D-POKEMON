@@ -1201,10 +1201,39 @@ export class RaidArena extends Arena {
     const { kind, target } = choice;
     this.currentCast = ++this.castSerial;
     const before = new Set(r.warnings);
+    const was = {
+      last: this.lastTargetId,
+      recent: this.recentTargets,
+      seen: new Map(this.seenAttacks),
+    };
     this.attacks++;
     this.lastTargetId = target.id;
     this.recentTargets = [...this.recentTargets.slice(-2), target.id];
     this.startAttack(kind, target);
+    // A boss may turn a card into another attack (Emberwing rains on the
+    // last brazier whatever it planned). If what it actually cast may not
+    // overlap what is live, take it back and try again a moment later.
+    if (live > 0) {
+      const fresh = r.warnings.filter((w) => !before.has(w));
+      const old = r.warnings.filter((w) => before.has(w) && this.harmful(w));
+      const clash = fresh.some(
+        (w) =>
+          this.harmful(w) &&
+          (this.exclusive(w.kind) ||
+            raidShapeOf(w.kind) === "field" ||
+            old.some((o) => raidShapeOf(o.kind) === raidShapeOf(w.kind))),
+      );
+      if (clash) {
+        r.warnings = r.warnings.filter((w) => before.has(w));
+        this.attacks--;
+        this.lastTargetId = was.last;
+        this.recentTargets = was.recent;
+        this.seenAttacks = was.seen;
+        this.currentCast = 0;
+        this.nextAttack = this.time + 0.5;
+        return;
+      }
+    }
     if (choice.deckIndex >= 0) this.deck.splice(choice.deckIndex, 1);
     else this.lastReaction = this.attacks;
     this.lastKind = kind;

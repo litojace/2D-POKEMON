@@ -127,8 +127,9 @@ describe.each(BOSSES)("%s keeps the honesty rules through a raid", (boss) => {
         const b = a.boss()!,
           before = b.hp;
         const was = new Map(a.raid.warnings.map((w) => [w.id, w]));
+        // Nobody goes down (solo ★★★ has no self-revive): the run goes on.
+        for (const p of a.heroes()) if (p.hp > 0) p.hp = 99999;
         a.tick(DT);
-        for (const p of a.heroes()) p.hp = Math.max(p.hp, 1);
         if (a.boss()) a.boss()!.hp = before - chip;
         if ((a.phase as string) === "intermission") a.phase = "playing";
         const now = new Set(a.raid.warnings.map((w) => w.id));
@@ -495,7 +496,8 @@ describe("live-attack limits and spacing", () => {
       a.raid.warnings.find((w) => w.kind === "volley")!,
     ];
     expect(Math.abs(e.at - v.at)).toBeGreaterThanOrEqual(0.5 - EPS);
-    expect(a.safeSpotExists()).toBe(true);
+    // Either both can be dodged together, or the cone waits its turn.
+    expect(a.safeSpotExists() || v.at >= e.at + 1 - EPS).toBe(true);
     // At the limit (2 in chapter 2), nothing else starts.
     a.deck = ["slam"];
     a.nextAttack = 0;
