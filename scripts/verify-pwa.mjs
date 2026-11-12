@@ -33,12 +33,12 @@ for (const art of [
   "startup-starfield",
   "startup-sigil",
   "raid-spell-flipbook",
-  // Painted bosses (Grumblecrag, Tidewyrm and Gloomshade are vector art,
-  // drawn by the client).
-  ...["somnara", "prismatail", "emberwing", "storm-twins"].map(
+  // Painted bosses (Grumblecrag, Tidewyrm, Gloomshade and Somnara are vector
+  // art, drawn by the client).
+  ...["prismatail", "emberwing", "storm-twins"].map(
     (name) => `raid-whole-${name}`,
   ),
-  ...["somnara", "prismatail", "emberwing", "storm-twins"].map(
+  ...["prismatail", "emberwing", "storm-twins"].map(
     (name) => `raid-directions-${name}`,
   ),
 ])

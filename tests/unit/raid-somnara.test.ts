@@ -536,31 +536,36 @@ describe("Somnara stand-ins and a full raid", () => {
   });
 });
 
+// Somnara is vector art (boss-vector-somnara-rig.ts): record what the battle
+// tells the rig each frame instead of drawing it.
+const somnaraLooks = vi.hoisted(() => [] as any[]);
+vi.mock("../../apps/client/src/boss-vector-somnara-rig", () => ({
+  paintVectorSomnara: (_g: unknown, look: unknown) => {
+    somnaraLooks.push(look);
+    return false;
+  },
+}));
 it("restores Somnara's normal pose on a daily retry with the same seed", () => {
   const a = setup();
   const seed = a.raid.seed;
-  const bodies: number[] = [];
-  const g: any = new Proxy(
-    {},
-    {
-      get:
-        (_, method) =>
-        (...args: number[]) => {
-          if (method === "fillEllipse" && args[2] === 250 && args[3] === 144)
-            bodies.push(args[1]);
-          return g;
-        },
-    },
-  );
+  const g: any = new Proxy({}, { get: () => () => g });
   drawSomnara(g, a.snapshot(), false, 0);
+  expect(somnaraLooks.at(-1).dead).toBe(false);
   a.phase = "finished";
   a.raid.result = "victory";
   for (let frame = 1; frame <= 40; frame++)
     drawSomnara(g, a.snapshot(), false, frame * 0.05);
-  expect(bodies.at(-1)!).toBeLessThan(a.boss()!.y - 100);
+  // beaten: it sinks into a deep sleep
+  expect(somnaraLooks.at(-1).dead).toBe(true);
+  expect(somnaraLooks.at(-1).deadAge).toBeGreaterThan(1);
   a.start();
   a.raid.seed = seed;
   a.phase = "playing";
   drawSomnara(g, a.snapshot(), false, 3);
-  expect(bodies.at(-1)).toBeCloseTo(a.boss()!.y - 62);
+  // a fresh fight: awake again, not hurt, no yawn
+  const look = somnaraLooks.at(-1);
+  expect(look.dead).toBe(false);
+  expect(look.hurt).toBe(0);
+  expect(look.roarAge).toBeGreaterThan(5);
+  expect(look.y).toBeCloseTo(a.boss()!.y + 26);
 });

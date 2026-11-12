@@ -24,7 +24,10 @@ async function review(page: Page, preload = true) {
  * A vector boss's rig (Grumblecrag: boss-vector-rig.ts, Tidewyrm:
  * boss-vector-tide-rig.ts): its root and visible image parts.
  */
-const vector = (page: Page, id: "grumblecrag" | "tidewyrm" = "grumblecrag") =>
+const vector = (
+  page: Page,
+  id: "grumblecrag" | "tidewyrm" | "somnara" = "grumblecrag",
+) =>
   page.evaluate((id) => {
     const w = window as any,
       scene = w.__bossReview.rows[0].g.scene,
@@ -109,6 +112,11 @@ test("all seven living boss rigs animate, hold a pause and keep combat snapshots
   // Tidewyrm and Gloomshade are vector art.
   expect(start).toHaveLength(5);
   expect((await gloomRoots(page)).filter((r) => r.visible)).toHaveLength(1);
+  // Tidewyrm and Somnara are vector art.
+  expect(start).toHaveLength(5);
+  const sStart = (await vector(page, "somnara"))!;
+  expect(sStart.visible).toBe(true);
+  expect(Object.keys(sStart.parts).length).toBeGreaterThan(20);
   const vStart = (await vector(page))!;
   expect(vStart.visible).toBe(true);
   expect(Object.keys(vStart.parts).length).toBeGreaterThan(20);
@@ -302,9 +310,15 @@ test("copies, submerging and fades cannot leave stale boss sprites on cleared la
     s.players.find((p: any) => p.raidBoss).hp = 0;
     for (let n = 1; n <= 40; n++) r.frame(1, 0.8 + n * 0.05, false);
   });
-  expect(
-    (await pose(page)).find((r) => r.name.includes("somnara"))!.alpha,
-  ).toBeCloseTo(0.3);
+  // Somnara is vector art now: beaten, it sinks into a deep sleep, whole (no
+  // painted root at all).
+  expect((await pose(page)).some((r) => r.name.includes("somnara"))).toBe(
+    false,
+  );
+  const asleep = (await vector(page, "somnara"))!;
+  expect(asleep.visible).toBe(true);
+  expect(asleep.parts.eyen.frame).toBe("eye_front_closed");
+  expect(asleep.parts.head.alpha).toBe(1);
   await page.evaluate(() => {
     const r = (window as any).__bossReview;
     r.game.loop.frame += 121;
@@ -774,7 +788,8 @@ test("all seven bosses use distinct front, rear and side art with complete direc
             (row: any) =>
               row.id !== "grumblecrag" &&
               row.id !== "tidewyrm" &&
-              row.id !== "gloomshade",
+              row.id !== "gloomshade" &&
+              row.id !== "somnara",
           )
           .flatMap((row: any) =>
             row.state.players
@@ -816,6 +831,11 @@ test("all seven bosses use distinct front, rear and side art with complete direc
       expect(Math.sign(t.parts.snout.x - t.parts.seg15.x)).toBe(
         view === "right" ? 1 : -1,
       );
+    // Somnara's too (vector-somnara.spec.ts): no face from behind.
+    const s = (await vector(page, "somnara"))!;
+    expect(s.facing).toBe({ front: 0, right: 2, back: 4, left: 6 }[view]);
+    if (view === "back") expect(s.parts.eyen).toBeUndefined();
+    else expect(s.parts.eyen).toBeTruthy();
     for (const [i, actor] of actual.entries()) {
       expect(actor.view).toBe(expected[i].view);
       expect(actor.parts).toHaveLength(1);

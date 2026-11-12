@@ -16,9 +16,6 @@ interface Look {
   key?: string;
   stagger?: boolean;
 }
-export function paintedSomnara(g: G, o: Look) {
-  return paintWholeBoss(g, "somnara", { ...o, y: o.y + 72 });
-}
 export function paintedPrisma(g: G, o: Look) {
   return paintWholeBoss(g, "prismatail", {
     ...o,

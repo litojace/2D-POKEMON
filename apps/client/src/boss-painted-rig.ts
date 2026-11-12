@@ -9,30 +9,29 @@ import {
   type BossArtMode,
 } from "./boss-directions";
 import frames from "./art/raid-whole-frames.json";
-import somnara from "./art/raid-whole-somnara.webp";
 import prismatail from "./art/raid-whole-prismatail.webp";
 import emberwing from "./art/raid-whole-emberwing.webp";
 import stormTwins from "./art/raid-whole-storm-twins.webp";
-import somnaraDirections from "./art/raid-directions-somnara.webp";
 import prismaDirections from "./art/raid-directions-prismatail.webp";
 import emberDirections from "./art/raid-directions-emberwing.webp";
 import twinDirections from "./art/raid-directions-storm-twins.webp";
 /** Bosses drawn from painted atlases (Grumblecrag is vector art, boss-vector-rig.ts). */
 export type PaintedBossId = Exclude<
   RaidBossId,
-  "grumblecrag" | "tidewyrm" | "gloomshade"
+  "grumblecrag" | "tidewyrm" | "gloomshade" | "somnara"
 >;
 export const isPaintedBoss = (id: RaidBossId): id is PaintedBossId =>
-  id !== "grumblecrag" && id !== "tidewyrm" && id !== "gloomshade";
+  id !== "grumblecrag" &&
+  id !== "tidewyrm" &&
+  id !== "gloomshade" &&
+  id !== "somnara";
 export const BOSS_PAINTED_ART: Record<PaintedBossId, string> = {
-  somnara,
   prismatail,
   emberwing,
   "storm-twins": stormTwins,
 };
 const keyFor = (id: RaidBossId) => `raid-painted-${id}`;
 export const BOSS_DIRECTION_ART: Record<PaintedBossId, string> = {
-  somnara: somnaraDirections,
   prismatail: prismaDirections,
   emberwing: emberDirections,
   "storm-twins": twinDirections,
