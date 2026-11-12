@@ -32,18 +32,34 @@ export class FighterLoading {
     if (!layers) this.assets.set(id, (layers = this.hooks.build(id)));
     return layers;
   }
-  isReady(id: CharacterId) {
+  /** Every texture of the fighter's rig is loaded: its rig can be built. */
+  hasArt(id: CharacterId) {
     if (this.ready.has(id)) return true;
     const layers = this.assetsFor(id);
     if (this.hooks.keys(id, layers).every((key) => this.hooks.exists(key))) {
       this.ready.add(id);
       return true;
     }
-    // Art that keeps failing to load must not freeze the battle.
+    return false;
+  }
+  /** No load on the way and maxAttempts used up. */
+  private outOfAttempts(id: CharacterId) {
     return (
       !this.requested.has(id) &&
       (this.attempts.get(id) ?? 0) >= this.maxAttempts
     );
+  }
+  /** Its art failed to load maxAttempts times: no more retries. */
+  gaveUp(id: CharacterId) {
+    return !this.hasArt(id) && this.outOfAttempts(id);
+  }
+  /**
+   * Nothing more to wait for: the art is loaded, or it kept failing (art
+   * that never loads must not freeze the battle; the scene then draws that
+   * fighter as a plain stand-in instead of a rig, see `hasArt`).
+   */
+  isReady(id: CharacterId) {
+    return this.hasArt(id) || this.outOfAttempts(id);
   }
   allReady(ids: Iterable<CharacterId>) {
     for (const id of ids) if (!this.isReady(id)) return false;

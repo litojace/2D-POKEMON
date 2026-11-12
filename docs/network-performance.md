@@ -101,25 +101,63 @@ leave it off unless they ask for it (`createArenaServer({ backpressure })`).
 
 `apps/client/src/battle-quality.ts` extends Settings → Graphics to battles:
 
-| Level  | Burst particles | Trail sparks | Mythical ambient motes | Stands' crowd |
-| ------ | --------------- | ------------ | ---------------------- | ------------- |
-| High   | all             | normal       | 2 fighters (you first) | animated      |
-| Medium | 60%             | 1.6× sparser | 1 (you)                | animated      |
-| Low    | 35%             | 2.5× sparser | none                   | still         |
+| Level  | Burst particles | Trail sparks | Mythical ambient motes | Stands' crowd | Canvas density |
+| ------ | --------------- | ------------ | ---------------------- | ------------- | -------------- |
+| High   | all             | normal       | 2 fighters (you first) | animated      | screen, ≤ 2×   |
+| Medium | 60%             | 1.6× sparser | 1 (you)                | animated      | screen, ≤ 2×   |
+| Low    | 35%             | 2.5× sparser | none                   | still         | ≤ 1.5×         |
 
-Only decoration changes. Fighters, portraits, text, HUD, telegraphs, danger
-zones, projectiles, status markers and every skill's shapes and colours are
-identical at every level and at full resolution. Low reuses the particle
-density reduced motion already uses, so it is an existing, reviewed look.
+Fighters, portraits, text, HUD, telegraphs, danger zones, projectiles,
+status markers and every skill's shapes and colours are identical at every
+level. Low reuses the particle density reduced motion already uses, so it is
+an existing, reviewed look. Low also draws the battle at 1.5 canvas pixels
+per CSS pixel at most, as iPhones do at every level (`rendererDensity`):
+slightly softer, and it is what stops older Android phones lagging when
+skills go off (owner's decision, 10 Nov 2026). A level change mid-battle
+resizes the canvas on the next frame; the court keeps the density it was
+baked at.
+
+Why the density: in a duel against the AI bot, for each of the 18
+champions, casting a skill every 0.7 s cost 19% of the frame rate on average
+and 36–38% for the heaviest kits (Cindrake, Terradon). Drawing at 1.5×
+instead of 2× gave 45% more frames while casting (516 against 355 frames
+over the six heaviest kits, two runs each). One champion's effects cover at
+most 0.3 screens of glow light, so the cost is drawing the whole court,
+fighters and effects per pixel, and fewer pixels is what helps. These were
+measured on this container's software renderer, which exaggerates fill
+cost, so phones gain less, in the same direction.
+
+(Corrected 10 Nov 2026. The first measurement swapped a new arena in for
+each champion without carrying on its event numbering, so the client
+skipped most casts after the first champion of each group: it reported 13%
+and 50%, and a JavaScript cost that was not measured again.)
+
+Low also holds decorative glow light to 0.75 screens a frame
+(`glowBudget`): a duel never reaches it, and four fighters casting at once
+(0.66 screens typically, about 1.4 at peak) lose about half their glow fill
+at the busiest moments. Every decorative glow of the frame shrinks alike,
+at once when a big effect starts and back over about 0.3 s, never below
+half its size. Warnings never shrink: wind-ups and a boss's glows are drawn
+inside `fx.essential`.
 
 Auto watches frame times during live play only: it ignores a 3 s warm-up,
 frame gaps over 250 ms (loading, stalls, background tabs) and every frame
 while a menu or dialog is open or the round is not being played. It steps
 down after two consecutive slow 4 s windows (median slower than ~45 fps, or
-20% of frames missing 30 fps), steps up after five comfortable ones, and does
-not retry a level it had to leave twice. The level is remembered per device.
-Manual High/Low always win; choosing Auto again re-measures. Reduced motion
-keeps its own stricter limits at every level.
+a fifth of the window's time spent in frames missing 30 fps), steps up after
+five comfortable ones, and does not retry a level it had to leave twice. The
+level is remembered per device. Before it has learned a device, Auto starts
+at Low when the device reports 2 GB of memory or less, or Auto already found
+it slow in the Plaza (the Plaza's own rule, `autoChoosesLow`), so an older
+phone's first battle does not lag while Auto measures; it steps up after a
+comfortable stretch if the device copes. Other devices start at High. Manual High/Low always win; choosing Auto
+again re-measures. Reduced motion keeps its own stricter limits at every
+level.
+
+The "fifth of the time" was "a fifth of the frames" until 10 Nov 2026. A
+phone that runs at 60 fps but drops to 25 fps for half a second after each
+skill, one every 2 s, stutters a quarter of the time, yet those slow frames
+are only an eighth of the frames, so Auto never stepped down for it.
 
 ### 6. Diagnostics (optional, off by default)
 
@@ -169,6 +207,172 @@ camera kept the last scene, so every closed battle and town stayed
 reachable. Bakes now go through `generateGraphicsTexture`
 (`apps/client/src/graphics-bake.ts`), which empties the list and detaches
 the scene afterwards. The soak test now fails if memory keeps growing.
+
+### 8. Keeping new champions and features light
+
+Three changes from this work also make every battle lighter now:
+
+- **Effects age in real time down to 5 fps.** The effects engine capped
+  each frame's step at 50 ms, so on a phone at 5–20 fps particles and
+  marks outlived their design (twice as long at 10 fps) while new casts
+  kept coming at the game's pace: more on screen, slower frames, longer
+  lives again. The cap is now 200 ms, Phaser's own floor (`FX_MAX_STEP`).
+  In a four-player fight most particles come from spammed basic attacks
+  (about 375 a second asked for here), so at 10 fps this halves what is on
+  screen; this container renders below 5 fps there, so it cannot show it.
+- **Circles cost less to draw.** Battles draw hundreds of filled and
+  outlined circles a frame; each one had Phaser compute every outline point
+  with cos/sin and make new objects. `circlePoints` (battle-curves.ts)
+  reuses one table and one point list per point count, giving exactly the
+  same points: in a four-player profile, `CircumferencePoint` went from
+  about 100–114 ms to 36–38 ms per 10 s and `fillEllipse` from 129–169 to
+  45 ms (what remains is code that draws ellipses directly).
+- **An older phone's first battle starts at Low** (see Auto in section 5).
+
+Three checks run in CI with the visual suite, and two numbers come back
+from players' phones:
+
+- **Effect budget** (`tests/visual/effect-budget.spec.ts`): every champion
+  casts its four skills and its ultimate at a still training dummy, with
+  `Math.random` seeded, and its heaviest frame is judged by the effects
+  engine's own counts (`FxFrameStats`): glow cover, smoke cover and live
+  particles. The limits are about twice the heaviest kit seen (glow 0.30
+  screens, smoke 0.52, particles 218), because which frame a run catches
+  moves a peak by up to about 40%. `EFFECT_BUDGET_MEASURE=1` prints every
+  champion's numbers.
+- **A real match** (`tests/visual/match-flow-budget.spec.ts`, at High and at
+  Low): dressed fighters from the first snapshot, the briefing, then the
+  fight. No fighter art may load mid-fight (512 textures before and after),
+  the game's own layout reads stay near zero a frame (measured: none;
+  Phaser's own canvas size check, on a 500 ms timer, is counted apart), the
+  page does not grow, nothing leaks (once the match is over and its effects
+  have played out, the scene less its pooled effect sprites is back to its
+  size; judged then because under 5 fps Phaser slows game time and effects
+  pile up while the fight lasts), and at Low the glow budget holds
+  decorative light to 0.75 screens (measured 0.74 at the 90th percentile,
+  against about 1 at High).
+- **Effect rules** (`tests/unit/effect-rules.test.ts`): skill effect files
+  never add their own scene objects; they draw through the effects engine,
+  so the graphics levels and the counts above see everything.
+- **From players' phones:** at the end of each match the client sends
+  `battle-perf` and the server logs `arena-perf`: seconds of play, frames,
+  median fps, 95th percentile frame time, share of time in frames that
+  missed 30 fps, frames over 250 ms (stalls), graphics level and setting,
+  canvas density, device memory and cores, plus the mode, players, bots,
+  raid boss and champion. No account or name. Slow frames are kept (only
+  gaps over 2 s are left out), so the slowest phones report too.
+- **`?perf=1`** shows the same numbers over the battle (last second's fps,
+  slowest frames, stutter, level and density, glow, smoke and particles),
+  for a player to screenshot.
+
+### 9. Shots and wind-ups on your own timeline
+
+Players on phones reported (10 Nov 2026) that skills stuttered when cast,
+and that stepping out of a skill still got them hit. The `arena-perf` lines
+from those PvP matches showed the phones drawing at a steady 58.8 fps with
+almost no slow frames (`jank` 0–0.002), so the cause was not the GPU.
+
+Two things were drawn on the wrong clock:
+
+- **Shots sat where the last snapshot had them.** Snapshots come 15 times
+  a second, so a 900 px/s shot jumped about 60 px every fourth frame at
+  60 fps: the stutter when a skill goes off.
+- **Your own fighter is predicted, shots were not.** You are drawn where
+  the server will have you once it has run every input it has not
+  answered yet (`pending` in main.ts: about one round trip plus its input
+  queue). Shots, wind-up rings and zone timers were drawn from the last
+  snapshot, a round trip plus the snapshot's age in the past. On good Wi-Fi
+  (60 ms round trip) that is about 0.13 s: a spark dart (860 px/s) was
+  drawn about 110 px short of where the server had it relative to you,
+  more than four fighter radii. You saw yourself clear it; the server,
+  where the shot was further along, hit you.
+
+`apps/client/src/networking/timeline-lead.ts` now puts them on your
+timeline. `LocalTimeline` is how far past the last snapshot your fighter is
+drawn: the unanswered inputs (one tick each) plus the time since the
+snapshot arrived, running smoothly between snapshots and easing over 0.1 s
+when a snapshot changes it, capped at 0.3 s (beyond that it is a stall,
+not latency). Each shot is drawn that far along its straight path, stopped
+by cover and the court's edge the way the server stops it
+(`projectileContact`, now in `packages/shared`), never past its range, and
+slowed inside an opposing time bubble. Boomerangs, which turn back, stay
+where the snapshot had them. Your own shots go on the timeline at once
+(your cast already played on the press); an opponent's eases in over
+0.2 s so it leaves its caster's hand instead of appearing ahead of it.
+Wind-up rings and zone timers count down on the same clock, so a wind-up
+shows the time you really have to get out.
+
+Hits, damage and every rule stay the server's. The trade-off: a shot you
+fire at an opponent, who is drawn about 0.1 s in the past (section 2), now
+looks a little further along than that opponent when it lands.
+
+`tests/unit/timeline-lead.test.ts` checks a real shot from the server's
+`Arena` against the drawn position tick by tick;
+`tests/visual/shot-timeline.spec.ts` checks in the browser that shots run
+on smoothly from their snapshot and within the cap. `arena-perf` now also
+carries `ping` (the badge's smoothed round trip, ms) and `lead` (the
+average lead over the match, ms), so the lag players feel can be read from
+the log.
+
+### 10. Match reports on GitHub
+
+The `arena-perf` and `arena-disconnect` lines from Render's log are copied
+to the `perf-reports` branch every three hours
+(`.github/workflows/perf-reports.yml`, or Actions → Match reports → Run
+workflow for an update now): `README.md` lists the latest matches (ping,
+lead, frame rate, stutter, graphics level, device) and sums up each day,
+and `reports/<day>.jsonl` keeps every report. Render keeps logs for a few
+days only, so the branch is the long-term record. It needs a
+`RENDER_API_KEY` repository secret. The repository is public, so only the
+fields listed in `KEEP` (`scripts/perf/export-perf-reports.mjs`) are
+written: never an account, a name or a room code
+(`tests/unit/perf-reports.test.ts`).
+
+The README opens with **Needs attention**: each recent match with
+something a player would notice (slow connection, late updates, slow
+drawing, freezes, unexplained jumps, hits that landed while you were drawn
+elsewhere, script errors, slow skill confirms, a phone on an old build),
+each with where to start; it ends with a table from symptom to tool. To
+make that possible each report also carries, from the device: corrections
+a minute by cause (`correction-cause.ts`: hit, status, own move, other),
+`hitsFar` and `hitGapMax` (hits on you that landed over 24 px from where
+you were drawn), `errors`, `build` (the commit, stamped at build time from
+`RENDER_GIT_COMMIT`) and `os`/`app` (system family, installed or not);
+and from the server: `opponents` (champions only), `botLevel`, and
+`match`, a random tag new at each match start so both players' rows read
+together.
+
+### 11. Why your own fighter jumps
+
+The first matches with the network fields (an iPhone on school Wi-Fi
+against the bot, 11 Nov 2026) showed a steady 65–73 ms ping, on-time
+snapshots (0–0.2% late) and 58.8 fps, yet 56–205 corrections over 4 px a
+minute, the largest 130–380 px. `scripts/perf/correction-sim.ts` replays
+such a duel (the real Arena, input queue and bot brain, the wire packing
+and the client's reconciliation, 33 ms each way) and names the cause of
+every correction from the server's own state:
+
+- Walking alone: none.
+- In a fight: 30–50 a minute, every one a knockback or a status that just
+  landed (stun, slow, root...). The phone cannot know a hit is coming, so
+  the server's push shows up a lead later. Knockbacks go up to 600 px
+  (Magnet Lash), so a 380 px correction is a hit, not a fault.
+- Standing in Tidefin's Undertow added about 70 a minute of ~7 px: a
+  twitch 15 times a second. The server refreshes the `current` status to
+  `CURRENT_HOLD` (0.15 s) every tick you are in the lane, but inputs are
+  replayed about 0.2 s past the snapshot, so the last of them lost the
+  drift and every snapshot pulled you back. `carryCurrent`
+  (predict-fighter.ts) keeps a freshly refreshed current through the
+  replay; what is left is entering and leaving the lane (about 70 → 8 a
+  minute). One reported match (205 a minute, none over 33 px) looks like
+  this case.
+
+`tests/unit/correction-sim.test.ts` holds all three: no corrections from
+walking, none unexplained in a fight, and the Undertow twitch gone (it
+fails without `carryCurrent`). The match reports on the `perf-reports`
+branch (section 10) now also show the round trip p50/p95, late snapshots,
+corrections a minute (and the largest) and the wait from a skill press to
+its confirmation.
 
 ## Results
 

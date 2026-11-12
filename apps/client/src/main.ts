@@ -2,18 +2,30 @@ import {
   autoChoosesLow,
   graphicsSetting,
   lowGraphics,
+  rememberAutoLow,
   setGraphicsSetting,
   type GraphicsSetting,
 } from "./graphics-quality";
+import { softwareRendering } from "./gpu-check";
 import { raidCameraView } from "./raid-camera";
 import { BattleQualityGovernor, resetBattleQuality } from "./battle-quality";
+import {
+  BattlePerfMeter,
+  BUILD,
+  NetMeter,
+  PERF_MIN_SECONDS,
+  deviceKind,
+  perfMode,
+} from "./battle-perf";
+import { correctionCause } from "./networking/correction-cause";
+import { PerfOverlay } from "./perf-overlay";
 import { addCanvasTexture } from "./canvas-texture";
 import { setHudText, setHudAttribute, setHudStyle } from "./hud-dom";
 import { battleCurves } from "./battle-curves";
 import { generateGraphicsTexture } from "./graphics-bake";
 import { RoomInvites } from "./room-invites";
 import { PvpSpectator } from "./pvp-spectator";
-import { predictFighter } from "./predict-fighter";
+import { carryCurrent, predictFighter } from "./predict-fighter";
 import { startPingBadge } from "./ping-badge";
 import { TargetLock, drawTargetReticle } from "./target-lock";
 import { renderTargetPicker } from "./target-picker";
@@ -27,7 +39,6 @@ import {
 import { queueBossSpellArt } from "./boss-spell-flipbook";
 import { queueBossArt, retainBossArt } from "./boss-painted-rig";
 import { memoryConstrained, rendererDensity } from "./render-budget";
-import { GFX } from "./farm/farm-gfx";
 import { watchRendererLifecycle } from "./renderer-lifecycle";
 import {
   groundHeight,
@@ -50,19 +61,15 @@ import {
   type LobbyHandle,
   type LobbyMode,
 } from "./lobby-screen";
-import {
-  forgetFarms,
-  openFarmScreen,
-  prefetchFarm,
-  type FarmScreen,
-  type FarmScreenOptions,
-} from "./farm/farm-screen";
-import {
-  forgetBistros,
-  openBistro,
-  type BistroFriend,
-  type BistroHandle,
-} from "./bistro/bistro-scene";
+// The Farm, the Bistro and the Plaza load when first wanted (hub-worlds.ts).
+// Their styles stay in the main stylesheet, in the same place as before.
+import type { FarmScreen, FarmScreenOptions } from "./farm/farm-screen";
+import { forgetFarms, prefetchFarm } from "./farm/farm-cache";
+import "./farm/farm.css";
+import type { BistroFriend, BistroHandle } from "./bistro/bistro-scene";
+import { clearKeptBistros } from "./bistro/bistro-kept";
+import "./bistro/bistro.css";
+import { worldLoader, type World } from "./hub-worlds";
 import type {
   FarmActResult,
   FarmHere,
@@ -179,6 +186,7 @@ import {
   obstaclesAt,
   shiftingRisesIn,
   shiftingUp,
+  currentObstacles,
   useObstacles,
   useSpeedScale,
   type ArenaId,
@@ -191,6 +199,8 @@ import {
   MetaCache,
   type SnapshotMeta,
   type WireSnapshot,
+  type Ability,
+  type AbilityKind,
   type CharacterId,
   type Fighter,
   type Input,
@@ -207,6 +217,11 @@ import { AudioManager } from "./audio";
 import { bounceFx, plateFx } from "./skill-fx-nature";
 import { drawSiphon } from "./skill-fx-water";
 import { InterpolationBuffer } from "./networking/interpolation";
+import {
+  LocalTimeline,
+  ShotTimeline,
+  leadProjectile,
+} from "./networking/timeline-lead";
 import { AccountUI } from "./accounts";
 import { framedAvatar } from "./portraits";
 import { waitForServer, onServerStartupRetry } from "./server-connection";
@@ -226,6 +241,7 @@ import { fighterPack } from "./animation/pack-config";
 import { fullscreenLandscape } from "./orientation";
 import { wireRotateGate } from "./rotate-gate";
 import { watchRotation } from "./orientation-settle";
+import { watchScreenPin } from "./screen-pin";
 import { watchCosmeticPreviews } from "./cosmetic-fx-preview";
 import { openHubPanelNow } from "./ui/hub-panel";
 import { openRoster, type RosterScreen } from "./screens/roster";
@@ -283,7 +299,8 @@ import {
   setWornSkins,
 } from "./fighter-selection";
 import { shareResult } from "./share-card";
-import { openPlazaScreen, type PlazaScreen } from "./plaza/plaza-screen";
+import type { PlazaScreen } from "./plaza/plaza-screen";
+import "./plaza/plaza.css";
 import type { PlazaProgress } from "../../../packages/shared/src/plaza";
 import { CHAMPION_SKIN_BY_ID } from "../../../packages/shared/src/shop";
 import { prepareSurfaceTextures, surfaceBurst } from "./court-surface-fx";
@@ -330,6 +347,36 @@ const abilityColor = new Map(
   ),
 );
 const remoteFrames = new InterpolationBuffer();
+/** How far ahead of the last snapshot your fighter is drawn (timeline-lead.ts). */
+const timeline = new LocalTimeline();
+const shotTimeline = new ShotTimeline();
+/**
+ * Where your own fighter was drawn over the last second or so, to tell
+ * whether a hit on you landed where you saw yourself (battle-perf hitsFar).
+ */
+const drawnSelf: { t: number; x: number; y: number }[] = [];
+/**
+ * A hit on you: the server hit you at (event.x, event.y) at about the last
+ * snapshot's time, which your screen showed a lead ago. How far from there
+ * were you drawn then?
+ */
+function measureHitGap(event: { x: number; y: number }) {
+  const now = performance.now(),
+    back = now - timeline.lead(now) * 1000;
+  let best: (typeof drawnSelf)[number] | undefined;
+  for (const d of drawnSelf)
+    if (!best || Math.abs(d.t - back) < Math.abs(best.t - back)) best = d;
+  if (best && Math.abs(best.t - back) < 100)
+    netMeter.hitGap(Math.hypot(best.x - event.x, best.y - event.y));
+}
+/** Script errors during the match, for its battle-perf report. */
+let matchErrors = 0;
+addEventListener("error", () => matchErrors++);
+addEventListener("unhandledrejection", () => matchErrors++);
+/** The lead over a match, for its battle-perf report. */
+const leadSeen = { sum: 0, frames: 0 };
+/** The last round trip the ping badge measured (ms), for battle-perf. */
+let lastPing: number | undefined;
 /** Static Glide in progress, per fighter: when it started (server time). */
 const gliding = new Map<string, { until: number; start: number }>();
 /** Curled-up balls: how far each has spun (it rolls as far as it travels). */
@@ -346,6 +393,30 @@ function ballSpin(id: string, speed: number, heading: number) {
 /** Adapts optional battle decoration to the device (Settings → Graphics). */
 const battleQuality = new BattleQualityGovernor();
 let battleStill: boolean | undefined;
+/** The canvas density the battle quality allowed last frame. */
+let battleDensity: number | undefined;
+/** How smoothly this match runs on this device (battle-perf.ts). */
+const battlePerf = new BattlePerfMeter();
+/**
+ * Moves whose cast effect plays on your press (predicted): it depends only on
+ * where you stand and face. The rest wait for the server (see
+ * ArenaScene.predictCastEffect).
+ */
+const PREDICTED_CAST_KINDS = new Set<AbilityKind>([
+  "projectile",
+  "barrage",
+  "melee",
+  "cone",
+  "clone",
+  "counter",
+  "barrier",
+  "buff",
+  "rest",
+]);
+/** The network side of the same match: round trips, snapshot gaps, corrections. */
+const netMeter = new NetMeter();
+/** `?perf=1`: the read-out over the battle, and its numbers for tests. */
+const showPerf = perfMode();
 /** Fighters' names and equipped looks, sent apart from combat snapshots. */
 const snapshotMeta = new MetaCache();
 let snapshotMetaAsked = "";
@@ -469,12 +540,14 @@ function scheduleBattleLayout() {
 /** The arena area under the PvP badge (scheduleBattleLayout keeps it). */
 let badgeClear: { left: number; right: number; bottom: number } | null = null;
 /** A nameplate's size, measured again only when its title changes (the
- * labels move every frame by transform alone). */
+ * labels move every frame by transform alone). A hidden plate is never
+ * measured: it reads as 0, is not cached, and each read forces a layout. */
 const nameplateSizes = new WeakMap<
   HTMLElement,
   { title: string; w: number; h: number }
 >();
 function nameplateSize(label: HTMLElement, title: string) {
+  if (label.hidden) return { w: 0, h: 0 };
   let size = nameplateSizes.get(label);
   if (!size || size.title !== title) {
     const w = label.offsetWidth,
@@ -626,6 +699,8 @@ function identity(reply: Reply) {
   scene?.hydrateNextSnapshot();
   local = undefined;
   remoteFrames.clear();
+  timeline.clear();
+  shotTimeline.clear();
   sessionStorage.setItem("arena-token", reply.token!);
 }
 const touch: TouchControls = new TouchControls(
@@ -663,7 +738,11 @@ startPingBadge(
     !$("battle").hidden && myId && state && state.phase !== "lobby"
       ? $("battle-menu")
       : null,
-  (ms) => (castPredictor.rtt = ms),
+  (ms) => {
+    castPredictor.rtt = ms;
+    if (state?.phase === "playing") netMeter.rtt(ms);
+    lastPing = ms;
+  },
 );
 /**
  * A skill you just cast (predicted) shows its cooldown before the server's
@@ -1025,6 +1104,7 @@ document.addEventListener("visibilitychange", stopControls);
 const pwa = setupPWA(() => state?.phase, dialog, toast);
 wireRotateGate();
 watchRotation();
+watchScreenPin();
 watchCosmeticPreviews();
 // Remember a room from an invite link (?room=ABC123) before the first render.
 if (captureInvite()) inviteHinted = false;
@@ -1755,6 +1835,57 @@ function renderGate() {
   }
 }
 
+const WORLD_NAMES: Record<World, string> = {
+  farm: "Farm",
+  plaza: "Plaza",
+  bistro: "Bistro",
+};
+const worlds = worldLoader();
+/** The hub world wanted on screen whose code is still on the way (or failed). */
+let worldWait: World | null = null;
+/**
+ * A world's code, or undefined while it loads: then the hub shows a loading
+ * card, and syncHub runs again when the code arrives, deciding afresh
+ * whether that world is still wanted (nothing opens after you moved on).
+ */
+function worldCode<W extends World>(world: W) {
+  // Joins a load already on the way (the idle warm-up's too). A failed load
+  // shows its card until the page reloads (hub-worlds.ts).
+  const code = worlds.want(world, (loaded) =>
+    loaded ? syncHub() : renderWorldWait(),
+  );
+  if (!code) worldWait = world;
+  return code;
+}
+/** The card shown while a hub world's code loads, or after it failed. */
+function renderWorldWait() {
+  let card = document.getElementById("hub-world-wait");
+  const world = worldWait;
+  if (!world) {
+    card?.remove();
+    return;
+  }
+  const failed = worlds.failed(world);
+  const key = `${world}:${failed ? "failed" : "loading"}`;
+  if (!card) {
+    card = document.createElement("div");
+    card.id = "hub-world-wait";
+    card.className = "hub-world-wait";
+    card.setAttribute("role", "status");
+    document.body.append(card);
+  }
+  if (card.dataset.key === key) return;
+  card.dataset.key = key;
+  const name = WORLD_NAMES[world];
+  // A browser won't fetch a failed import again, so trying again is a
+  // reload; the hub reopens on this tab (and gets a newer release, if any).
+  card.innerHTML = failed
+    ? `<p>Couldn't load the ${name}. Check your connection, then reload.</p><button type="button" class="primary" id="hub-world-retry">Reload</button>`
+    : `<p><span class="hub-world-spinner" aria-hidden="true"></span>Loading the ${name}…</p>`;
+  card
+    .querySelector("#hub-world-retry")
+    ?.addEventListener("click", () => location.reload());
+}
 let plaza: PlazaScreen | undefined;
 let plazaLook = "";
 let plazaLow = false;
@@ -1779,9 +1910,17 @@ function syncHub() {
   else delete document.body.dataset.hubScene;
   syncParty();
   syncLobby(hub && hubScene === "lobby");
+  worldWait = null;
   syncFarm(hub && hubScene === "farm", hub);
   syncBistro(hub && hubScene === "bistro", hub);
   syncPlaza(hub && hubScene === "plaza", hub);
+  renderWorldWait();
+  // While the hub is idle, fetch the other worlds' code so they open at once
+  // (not in a match, and not when the browser asks to save data).
+  const saveData = (navigator as { connection?: { saveData?: boolean } })
+    .connection?.saveData;
+  if (hub && !saveData) worlds.warm();
+  else worlds.stopWarming();
   // A scene hiding after the next one showed may have taken the hub's top
   // bar style away (each checks only some of the others): in the hub it is on.
   if (hub) document.body.classList.add("hub-screen");
@@ -1808,9 +1947,11 @@ function syncPlaza(want: boolean, hub = want) {
     return;
   }
   if (plazaRetry) return;
+  const code = worldCode("plaza");
+  if (!code) return;
   plazaLook = look;
   plazaLow = lowGraphics();
-  plaza = openPlazaScreen({
+  plaza = code.openPlazaScreen({
     socket,
     character: selected,
     skin,
@@ -1977,13 +2118,16 @@ function syncBistro(want: boolean, hub = want) {
     }
     return;
   }
-  document.body.classList.add("hub-screen", "hub-bistro");
   if (bistro) {
+    document.body.classList.add("hub-screen", "hub-bistro");
     bistro.show();
     return;
   }
+  const code = worldCode("bistro");
+  if (!code) return;
+  document.body.classList.add("hub-screen", "hub-bistro");
   bistroOwner = accountsUI.account?.id;
-  bistro = openBistro({
+  bistro = code.openBistro({
     owner: bistroOwner,
     api: {
       load: () => accountsUI.api("/api/bistro"),
@@ -2037,9 +2181,11 @@ function syncFarm(want: boolean, hub = want) {
     farmScreen.show();
     return;
   }
+  const code = worldCode("farm");
+  if (!code) return;
   farmOwner = owner;
   farmLow = lowGraphics();
-  farmScreen = openFarmScreen({
+  farmScreen = code.openFarmScreen({
     owner,
     reduced: reducedMotion,
     low: farmLow,
@@ -3269,6 +3415,8 @@ socket.on("session-replaced", () => {
   local = undefined;
   pending = [];
   remoteFrames.clear();
+  timeline.clear();
+  shotTimeline.clear();
   touch.reset();
   document
     .querySelectorAll<HTMLDialogElement>("dialog[open]")
@@ -3371,8 +3519,11 @@ socket.on("state", (snapshot: WireSnapshot) => {
   const spectator = !myId && !!watching;
   // A stale room (we left it) can still send a last snapshot: ignore it.
   if (spectator && snapshot.code !== watching) return;
-  if (state?.phase !== snapshot.phase || state?.round !== snapshot.round)
+  if (state?.phase !== snapshot.phase || state?.round !== snapshot.round) {
     remoteFrames.clear();
+    timeline.clear();
+    shotTimeline.clear();
+  }
   const previous = state;
   if (snapshot.raid?.boss) prefetchRaidArena(snapshot.raid.boss);
   // No rite choice mid-fight: at each new chapter the rites grow a step.
@@ -3399,9 +3550,12 @@ socket.on("state", (snapshot: WireSnapshot) => {
     recoverSnapshotMeta(snapshot.code, snapshot.metaRev);
   scene?.observeSnapshot(state, previous);
   pwa.sync();
-  remoteFrames.add(state, performance.now());
+  const receivedAt = performance.now();
+  remoteFrames.add(state, receivedAt);
+  netMeter.snapshot(receivedAt, state.phase === "playing" && !document.hidden);
   const me = state.players.find((p) => p.id === myId);
   if (!me) {
+    timeline.snapshot(0, receivedAt);
     if (!spectator) return;
     for (const event of state.events)
       if (event.id > eventId) {
@@ -3423,12 +3577,40 @@ socket.on("state", (snapshot: WireSnapshot) => {
       exArmedUntil = 0;
     }
   }
+  // Where your fighter was predicted to be, to measure how far this
+  // snapshot moves it (a correction you see as a jerk).
+  const predicted =
+    local &&
+    previous?.code === state.code &&
+    previous.round === state.round &&
+    state.phase === "playing" &&
+    me.hp > 0
+      ? { x: local.x, y: local.y }
+      : undefined;
+  timeline.snapshot(pending.length, receivedAt);
   local = structuredClone(me);
+  carryCurrent(local, state.time);
   for (const [i, input] of pending.entries())
     predict(local, input, state.time + (i + 1) / RULES.tick);
+  if (predicted)
+    netMeter.correction(
+      Math.hypot(local.x - predicted.x, local.y - predicted.y),
+      correctionCause(
+        me,
+        previous?.players.find((p) => p.id === myId),
+        state.events.filter((e) => e.id > eventId),
+        state.time,
+      ).cause,
+    );
   for (const event of state.events)
     if (event.id > eventId) {
       if (scene && state.phase !== "lobby") scene.effect(event);
+      if (
+        event.kind === "hit" &&
+        event.target === myId &&
+        state.phase === "playing"
+      )
+        measureHitGap(event);
       eventId = Math.max(eventId, event.id);
     }
   if (
@@ -3589,15 +3771,18 @@ function graphicsCard() {
   const setting = graphicsSetting();
   const option = (value: GraphicsSetting, label: string) =>
     `<button type="button" role="radio" data-graphics="${value}" aria-checked="${setting === value}">${label}</button>`;
-  return `<section class="prefs-card prefs-graphics" aria-labelledby="prefs-graphics"><h3 id="prefs-graphics">${menuIcon("sparkle")}Graphics</h3><div class="prefs-choice" role="radiogroup" aria-labelledby="prefs-graphics">${option("auto", "Auto")}${option("high", "High")}${option("low", "Low")}</div><p class="prefs-graphics-note">${graphicsNote(setting)}</p></section>`;
+  return `<section class="prefs-card prefs-graphics" aria-labelledby="prefs-graphics"><h3 id="prefs-graphics">${menuIcon("sparkle")}Graphics</h3><div class="prefs-choice" role="radiogroup" aria-labelledby="prefs-graphics">${option("auto", "Auto")}${option("high", "High")}${option("low", "Low")}</div><p class="prefs-graphics-note">${graphicsNote(setting)}</p>${softwareRendering() ? GPU_OFF_NOTE : ""}</section>`;
 }
+/** Shown when the browser draws without the graphics card (gpu-check.ts). */
+const GPU_OFF_NOTE =
+  '<p class="prefs-gpu-off" role="note"><b>This browser is not using the graphics card</b>, so the game is drawn by the processor and can lag on any setting. In Edge: Settings → System and performance → turn on “Use graphics acceleration when available”, then restart Edge (in Chrome: Settings → System). If it is already on, the computer’s graphics driver may need an update.</p>';
 function graphicsNote(setting: GraphicsSetting) {
   if (setting === "high")
     return "The living Plaza and Farm: animals, night glow and full weather, sharp on high-resolution screens.";
   if (setting === "low")
     return "A lighter Plaza and Farm at 30 fps for older phones: no animals or night glow, lighter rain. Battles keep every attack, telegraph and skill but draw fewer decorative sparks.";
   return autoChoosesLow()
-    ? "Auto picked <b>Low</b> for the Plaza and Farm on this device (they ran slowly). Battles adapt on their own. Pick High to try it again."
+    ? `Auto picked <b>Low</b> for the Plaza and Farm on this device (${softwareRendering() ? "it draws without a graphics card" : "they ran slowly"}). Battles adapt on their own. Pick High to try it again.`
     : "Starts on High. The Plaza and Farm switch to Low if they run slowly; battles trim decorative sparks only while frames stay slow.";
 }
 function bindGraphicsCard() {
@@ -3792,6 +3977,11 @@ document.addEventListener("keydown", (e) => {
 });
 renderMenu();
 
+/** A fighter's rig mid-attack (a basic or skill pose); no rig, no attack. */
+const attacking = (rig: FighterVisual | undefined) =>
+  !!rig &&
+  (rig.controller.state === "basic" ||
+    rig.controller.state.startsWith("skill"));
 class ArenaScene extends Phaser.Scene {
   graphics!: Phaser.GameObjects.Graphics;
   /** A raid boss, sorted with the fighters by where it stands. */
@@ -4344,34 +4534,37 @@ class ArenaScene extends Phaser.Scene {
     exists: (key) => this.textures.exists(key),
   });
   private loadReported = false;
+  private perfOverlay?: PerfOverlay;
   /** Every fighter in this snapshot has its textures (or gave up loading). */
   fightersReady(s: Snapshot) {
     return this.fighters.allReady(neededFighters(s.players));
   }
   /** Queue whichever of this snapshot's fighters are still missing. */
   private requestFighters(s: Snapshot) {
+    if (this.fightersReady(s)) return;
     const ids = this.fighters.toRequest(neededFighters(s.players));
     if (!ids.length) return;
     for (const id of ids)
       queueFighterAssets(this, id, this.fighters.assetsFor(id));
-    // Files added mid-load join the running load and its COMPLETE.
-    if (!this.load.isLoading()) {
-      this.load.once(Phaser.Loader.Events.COMPLETE, () =>
-        this.fighters.settled(),
-      );
-      this.load.start();
-    }
+    // Files added mid-load join the running load, whoever started it (a
+    // skin, boss art), and settle with its COMPLETE (listener in preload).
+    if (!this.load.isLoading()) this.load.start();
   }
   /**
-   * Hold the scene until a snapshot's fighters are loaded: a new fighter
-   * (Fighter roulette, a new seat) pauses drawing briefly instead of
-   * showing missing art. Returns whether the scene may use the snapshot.
+   * A fighter's rig, or undefined while its art is loading (a fighter that
+   * turns up later: Fighter roulette, a new seat) or after it failed to
+   * load: that fighter is drawn as a plain stand-in meanwhile, and the rest
+   * of the battle (other fighters, your controls and input, attack warnings)
+   * carries on. A rig of the fighter it was before is removed.
    */
-  private ensureFighters(s: Snapshot) {
-    if (this.fightersReady(s)) return true;
-    this.requestFighters(s);
-    this.needsHydration = true;
-    return false;
+  private readyRig(id: string, character: CharacterId) {
+    if (this.fighters.hasArt(character)) return this.getRig(id, character);
+    const old = this.rigs.get(id);
+    if (old) {
+      old.destroy();
+      this.rigs.delete(id);
+    }
+    return undefined;
   }
   private animationLive = false;
   private needsHydration = true;
@@ -4405,26 +4598,54 @@ class ArenaScene extends Phaser.Scene {
    * tabs or rounds not being played) and apply its decoration knobs.
    */
   private applyBattleQuality(now: number) {
-    if (
+    const live =
       state?.phase === "playing" &&
       !document.hidden &&
       !menuOpen &&
       !settingsOpen &&
-      !$<HTMLDialogElement>("dialog").open
-    )
-      battleQuality.frame(now);
-    else battleQuality.pause();
+      !$<HTMLDialogElement>("dialog").open;
+    if (live) {
+      // Auto had to bring the battle down to Low: this device is slow, so
+      // the Lobby, Plaza and Farm start Low too from now on (no blurred
+      // glass over moving art, a still Lobby fighter), as when the Plaza
+      // finds it slow itself. Picking Auto again in Settings forgets it.
+      if (battleQuality.frame(now) === "low" && graphicsSetting() === "auto")
+        rememberAutoLow();
+    } else battleQuality.pause();
+    battlePerf.frame(now, live);
     const knobs = battleQuality.knobs();
     const fx = fxFor(this);
     fx.density = knobs.particles;
     fx.trailScale = knobs.trails;
+    fx.glowBudget = knobs.glowBudget;
+    this.perfOverlay?.update(
+      now,
+      battlePerf.summary(1000),
+      // "cpu": drawn without the graphics card (gpu-check.ts).
+      `${battleQuality.current()}${softwareRendering() ? " cpu" : ""}`,
+      renderScale(),
+      fx.stats,
+    );
     if (battleStill !== knobs.stillBackground) {
       battleStill = knobs.stillBackground;
       document.body.classList.toggle("battle-still", battleStill);
     }
+    // Low draws fewer pixels: resize the canvas on the next frame (the
+    // floor keeps the density it was baked at, see floorScale).
+    if (battleDensity !== knobs.density) {
+      if (battleDensity !== undefined) scheduleBattleLayout();
+      battleDensity = knobs.density;
+    }
   }
   observeSnapshot(next: Snapshot, previous?: Snapshot) {
-    if (!this.ensureFighters(next)) return;
+    this.requestFighters(next);
+    // The match is over: tell the server how smoothly it ran here.
+    if (
+      next.phase === "finished" &&
+      previous?.code === next.code &&
+      previous.phase !== "finished"
+    )
+      reportBattlePerf();
     this.animationLive = !this.needsHydration && previous?.code === next.code;
     this.needsHydration = false;
     const reset = !this.animationLive || previous?.round !== next.round;
@@ -4441,7 +4662,8 @@ class ArenaScene extends Phaser.Scene {
         this.rigs.delete(id);
       }
     for (const p of next.players) {
-      const rig = this.getRig(p.id, p.character);
+      const rig = this.readyRig(p.id, p.character);
+      if (!rig) continue;
       if (reset) rig.controller.reset();
       const old = previous?.players.find((other) => other.id === p.id);
       if (!reset && old) {
@@ -4460,13 +4682,30 @@ class ArenaScene extends Phaser.Scene {
     if (state)
       for (const id of this.fighters.toRequest(neededFighters(state.players)))
         queueFighterAssets(this, id, this.fighters.assetsFor(id));
-    this.load.once(Phaser.Loader.Events.COMPLETE, () =>
-      this.fighters.settled(),
-    );
+    // Every load that finishes (this one, and later ones started for a new
+    // fighter, a skin or boss art) settles what was requested: art still
+    // missing may be asked for again. The scene's loader drops its
+    // listeners when the scene shuts down.
+    this.load.on(Phaser.Loader.Events.COMPLETE, () => this.fighters.settled());
   }
   create() {
     scene = this;
     battleQuality.restart();
+    battlePerf.reset();
+    netMeter.reset();
+    leadSeen.sum = leadSeen.frames = 0;
+    matchErrors = 0;
+    drawnSelf.length = 0;
+    if (showPerf) {
+      this.perfOverlay = new PerfOverlay($("game").parentElement!);
+      // The same numbers for the budget tests (tests/visual/effect-budget).
+      (window as unknown as Record<string, unknown>).__arenaPerf = {
+        fx: () => ({ ...fxFor(this).stats }),
+        summary: (ms?: number) => battlePerf.summary(ms),
+        quality: () => battleQuality.current(),
+        density: () => renderScale(),
+      };
+    }
     this.enemyBearing.className = "enemy-bearing";
     this.enemyBearing.hidden = true;
     this.enemyBearing.innerHTML =
@@ -4484,6 +4723,8 @@ class ArenaScene extends Phaser.Scene {
     this.floor = this.add.image(0, 0, "__DEFAULT").setOrigin(0).setDepth(-10);
     this.floorArena = "";
     const clearDom = () => {
+      this.perfOverlay?.remove();
+      this.perfOverlay = undefined;
       this.enemyBearing.remove();
       for (const label of this.labels.values()) label.remove();
       this.labels.clear();
@@ -4557,12 +4798,15 @@ class ArenaScene extends Phaser.Scene {
       if (castPredictor.waiting(action, now)) {
         // Already shown; the server has it.
       } else if (canCastSkill(local, input.skill, time, free)) {
-        this.getRig(local.id, local.character).trigger(
+        this.readyRig(local.id, local.character)?.trigger(
           windUp > 0 ? "skill3" : (action as "skill0"),
           this.feelClock,
           windUp > 0 ? windUp * 1000 : castDuration(c, input.skill),
         );
-        if (windUp <= 0) audio.play("cast");
+        if (windUp <= 0) {
+          audio.play("cast");
+          this.predictCastEffect(local, c.skills[input.skill], input);
+        }
         castPredictor.predict(action, now);
         if (input.skill !== ULT_SLOT && !free)
           optimisticCooldowns.set(input.skill, {
@@ -4580,12 +4824,13 @@ class ArenaScene extends Phaser.Scene {
       !castPredictor.waiting("basic", now) &&
       canBasic(local, time)
     ) {
-      this.getRig(local.id, local.character).trigger(
+      this.readyRig(local.id, local.character)?.trigger(
         "basic",
         this.feelClock,
         castDuration(c, -1),
       );
       audio.play("cast");
+      this.predictCastEffect(local, c.basic, input);
       castPredictor.predict("basic", now);
     }
     if (
@@ -4597,6 +4842,36 @@ class ArenaScene extends Phaser.Scene {
       castPredictor.predict("dash", now);
     }
   }
+  /** Your own casts whose effect already played on the press (ability id → when). */
+  private shownEffects = new Map<string, number>();
+  /**
+   * Play your own cast's effect on the press, one round trip before the
+   * server confirms it: only moves whose cast effect depends on nothing but
+   * where you stand and face (a strike, a shot leaving, a shield going up).
+   * Moves the server places or resolves (a blink, a rush, a beam's path, a
+   * zone at the aim, a nova's burst) still play when the server says so.
+   */
+  private predictCastEffect(local: Fighter, ability: Ability, input: Input) {
+    if (!this.animationLive || !PREDICTED_CAST_KINDS.has(ability.kind)) return;
+    // Facing as the server will set it from this very input (predictFighter
+    // runs after this, so local.angle is still the last step's).
+    const angle = Math.atan2(input.aimY - local.y, input.aimX - local.x);
+    const color = fighterSkillColor(local) ?? CHARACTERS[local.character].color;
+    playCast(this, ability, local.x, local.y, angle, color, reducedMotion, () =>
+      this.positions.get(local.id),
+    );
+    this.shownEffects.set(ability.id, performance.now());
+  }
+  /** The server's cast of a move whose effect already played on the press. */
+  private effectShown(abilityId: string) {
+    const at = this.shownEffects.get(abilityId);
+    this.shownEffects.delete(abilityId);
+    return (
+      at !== undefined &&
+      performance.now() - at <=
+        Math.max(300, Math.min(1200, castPredictor.rtt + 250))
+    );
+  }
   /** Is this server event the echo of a cast or dash already shown? */
   predictedEcho(event: Snapshot["events"][number]) {
     const now = performance.now();
@@ -4607,14 +4882,18 @@ class ArenaScene extends Phaser.Scene {
     const c = CHARACTERS[me.character];
     const slot = c.skills.findIndex((a) => a.id === event.abilityId);
     if (slot < 0 && event.abilityId !== c.basic.id) return false;
-    return castPredictor.confirm(
+    const shown = castPredictor.confirm(
       slot >= 0 ? (`skill${slot}` as CastAction) : "basic",
       now,
     );
+    // How long a skill press waited for the server (basics aside).
+    if (shown && slot >= 0 && castPredictor.lastWait !== undefined)
+      netMeter.confirmed(castPredictor.lastWait);
+    return shown;
   }
   effect(event: Snapshot["events"][number]) {
-    // Effects can pose a fighter's rig: skip them while its art loads.
-    if (state && !this.fightersReady(state)) return;
+    // Effects pose only fighters whose art has loaded (readyRig); sounds,
+    // impacts and the other fighters' poses play as usual meanwhile.
     if (event.kind === "raid-impact") {
       const ring = this.add
         .circle(event.x, event.y, event.raidRadius ?? 90, event.color, 0.12)
@@ -4652,7 +4931,7 @@ class ArenaScene extends Phaser.Scene {
         const c = CHARACTERS[p.character];
         const slot = c.skills.findIndex((a) => a.id === event.abilityId);
         if (slot >= 0 || event.abilityId === c.basic.id)
-          this.getRig(p.id, p.character).trigger(
+          this.readyRig(p.id, p.character)?.trigger(
             slot >= 0
               ? (`skill${slot}` as "skill0" | "skill1" | "skill2" | "skill3")
               : "basic",
@@ -4669,7 +4948,7 @@ class ArenaScene extends Phaser.Scene {
     ) {
       const p = state?.players.find((p) => p.id === event.owner);
       if (p)
-        this.getRig(p.id, p.character).trigger(
+        this.readyRig(p.id, p.character)?.trigger(
           event.kind,
           this.feelClock,
           event.kind === "dash"
@@ -4761,7 +5040,12 @@ class ArenaScene extends Phaser.Scene {
       this.comboText(event, "WALL SLAM!");
       if (!reducedMotion) this.cameras.main.shake(140, 0.004);
     }
-    if (ability && event.kind === "cast" && ability.kind !== "nova") {
+    if (
+      ability &&
+      event.kind === "cast" &&
+      ability.kind !== "nova" &&
+      !(echo && event.abilityId && this.effectShown(event.abilityId))
+    ) {
       const caster = event.owner;
       playCast(
         this,
@@ -4995,9 +5279,10 @@ class ArenaScene extends Phaser.Scene {
     }
   }
   update(_time: number, delta: number) {
-    // A fighter still loading: draw nothing that needs its art yet.
-    if (state && !this.ensureFighters(state)) return;
-    if (!this.loadReported && state) {
+    // A fighter still loading is drawn as a stand-in (readyRig) while its
+    // art loads; nothing else waits for it.
+    if (state) this.requestFighters(state);
+    if (!this.loadReported && state && this.fightersReady(state)) {
       this.loadReported = true;
       reportBattleLoad(neededFighters(state.players).length);
     }
@@ -5048,13 +5333,9 @@ class ArenaScene extends Phaser.Scene {
                 ...follow,
                 x: presented.x,
                 y: presented.y,
-                attacking:
-                  this.getRig(follow.id, follow.character).controller.state ===
-                    "basic" ||
-                  this.getRig(
-                    follow.id,
-                    follow.character,
-                  ).controller.state.startsWith("skill"),
+                attacking: attacking(
+                  this.readyRig(follow.id, follow.character),
+                ),
               }
             : undefined,
           `${state?.code ?? "menu"}:${state?.round ?? 0}:${myId ?? ""}`,
@@ -5163,7 +5444,7 @@ class ArenaScene extends Phaser.Scene {
     if (refused.length && local)
       for (const action of refused)
         if (action !== "dash" && action !== "charge")
-          this.getRig(local.id, local.character).controller.cancel(action);
+          this.readyRig(local.id, local.character)?.controller.cancel(action);
     if (!state || state.phase === "lobby") {
       this.rigs.forEach((rig) => rig.setVisible(false));
       this.labels.forEach((label) => (label.hidden = true));
@@ -5322,6 +5603,19 @@ class ArenaScene extends Phaser.Scene {
       _time,
       !!this.activeCourt,
     );
+    // Shots, zone timers and wind-ups are drawn on your timeline: where the
+    // server will have them when it runs the inputs it has not answered yet,
+    // as your own fighter is (networking/timeline-lead.ts). Then a shot you
+    // see miss you is one the server sees miss you.
+    const frameNow = performance.now();
+    const live = state.phase === "playing";
+    const lead = live ? timeline.lead(frameNow) : 0,
+      snapshotAge = live ? timeline.age(frameNow) : 0;
+    const yourTime = state.time + lead;
+    if (live) {
+      leadSeen.sum += lead;
+      leadSeen.frames++;
+    }
     // Epic and Mythical skins recolour their wearer's moves (shapes never change).
     const tints = new Map(
       state.players.map((p) => [p.id, fighterSkillColor(p)] as const),
@@ -5345,13 +5639,41 @@ class ArenaScene extends Phaser.Scene {
         g,
         followed(tinted(z)),
         1 -
-          Math.max(0, z.until - state.time) /
-            Math.max(0.01, z.ability.duration),
+          Math.max(0, z.until - yourTime) / Math.max(0.01, z.ability.duration),
         _time,
         reducedMotion,
       );
-    for (const pr of state.projectiles)
-      drawProjectile(g, tinted(pr), _time, reducedMotion);
+    const walls = currentObstacles();
+    const bubbles = state.zones.filter(
+      (z) => z.ability.kind === "timewarp" && z.until > yourTime,
+    );
+    const ownerOf = new Map(state.players.map((p) => [p.id, p] as const));
+    const rivals = (a: string, b: string) => {
+      const pa = ownerOf.get(a),
+        pb = ownerOf.get(b);
+      return a !== b && (!pa || !pb || teamOf(pa) !== teamOf(pb));
+    };
+    for (const pr of state.projectiles) {
+      const seconds = shotTimeline.seconds(
+        pr,
+        pr.owner === myId,
+        frameNow,
+        lead,
+        snapshotAge,
+      );
+      // A time bubble slows the shots of whoever it works against.
+      const bubble = bubbles.find(
+        (z) =>
+          rivals(z.owner, pr.owner) &&
+          Math.hypot(pr.x - z.x, pr.y - z.y) < z.radius,
+      );
+      const slow = bubble
+        ? (bubble.ability.warp ?? STATUS_RULES.warpMultiplier)
+        : 1;
+      const drawn = leadProjectile(pr, seconds, walls, slow);
+      drawProjectile(g, tinted(drawn), _time, reducedMotion);
+    }
+    shotTimeline.keep(state.projectiles.map((pr) => pr.id));
     // Healing orbs: a soft green glow with a white cross, gently pulsing.
     // Energy orbs: gold with a lightning bolt (they charge the ultimate).
     for (const orb of state.orbs ?? []) {
@@ -5558,6 +5880,10 @@ class ArenaScene extends Phaser.Scene {
         pos.y += (p.y - pos.y) * factor;
       }
       this.positions.set(p.id, pos);
+      if (p.id === myId && state.phase === "playing") {
+        drawnSelf.push({ t: sampledAt, x: pos.x, y: pos.y });
+        if (drawnSelf.length > 150) drawnSelf.splice(0, 30);
+      }
       const x = pos.x,
         y = pos.y,
         c = CHARACTERS[p.character];
@@ -5625,8 +5951,9 @@ class ArenaScene extends Phaser.Scene {
                   ? state.roundWinner
                   : null) === p.id,
       };
-      if (serverPlayer.clone) {
-        const clone = this.getRig(`${p.id}:clone`, p.character);
+      const clone =
+        serverPlayer.clone && this.readyRig(`${p.id}:clone`, p.character);
+      if (serverPlayer.clone && clone) {
         clone.root.setScale(view.fighterX * 0.7, view.fighterY * 0.7);
         clone.setVisible(true);
         clone.render(
@@ -5708,50 +6035,74 @@ class ArenaScene extends Phaser.Scene {
           38,
         );
       }
-      const rig = this.getRig(p.id, p.character);
-      // The rig keeps this as its base scale (squash and stretch multiply it).
-      rig.root.setScale(
-        view.fighterX * 0.7 * giant,
-        view.fighterY * 0.7 * giant,
-      );
-      rig.setVisible(true);
-      // On the coliseum court fighters sort with the blocks by where they stand.
-      rig.setDepth(this.activeCourt || state?.raid ? fighterDepth(y) : 2);
-      const casting =
-        rig.controller.state === "basic" ||
-        rig.controller.state.startsWith("skill") ||
-        pose.charging;
-      rig.render(
-        {
-          ...pose,
-          angle: pose.speed > 12 && !casting ? Math.atan2(p.vy, p.vx) : p.angle,
-        },
-        x,
-        y - jump,
-        this.feelClock,
-        serverPlayer.statuses.some((s) => s.kind === "stealth")
+      const rig = this.readyRig(p.id, p.character);
+      if (rig) {
+        // The rig keeps this as its base scale (squash and stretch multiply it).
+        rig.root.setScale(
+          view.fighterX * 0.7 * giant,
+          view.fighterY * 0.7 * giant,
+        );
+        rig.setVisible(true);
+        // On the coliseum court fighters sort with the blocks by where they stand.
+        rig.setDepth(this.activeCourt || state?.raid ? fighterDepth(y) : 2);
+        const casting =
+          rig.controller.state === "basic" ||
+          rig.controller.state.startsWith("skill") ||
+          pose.charging;
+        rig.render(
+          {
+            ...pose,
+            angle:
+              pose.speed > 12 && !casting ? Math.atan2(p.vy, p.vx) : p.angle,
+          },
+          x,
+          y - jump,
+          this.feelClock,
+          serverPlayer.statuses.some((s) => s.kind === "stealth")
+            ? p.id === myId
+              ? 0.5
+              : 0.12
+            : 1,
+          reducedMotion,
+        );
+        if ((this.flashUntil.get(p.id) ?? 0) > feelNow) flashWhite(rig.root);
+        // After render (it clears the rig's layers): the aura's near items
+        // pass in front of the fighter, the rest go round behind.
+        if (p.raidLook?.aura)
+          // On the shadow's plane (48×18 at the feet): same flatness.
+          drawCollectionAura(
+            g,
+            p.raidLook.aura,
+            x,
+            feetY,
+            _time,
+            reducedMotion,
+            rig.front,
+            18 / 48,
+            0,
+          );
+      } else {
+        // Its art is still loading (or failed): a plain stand-in in the
+        // fighter's colour where the rig would stand, never missing textures.
+        const alpha = serverPlayer.statuses.some((s) => s.kind === "stealth")
           ? p.id === myId
             ? 0.5
             : 0.12
-          : 1,
-        reducedMotion,
-      );
-      if ((this.flashUntil.get(p.id) ?? 0) > feelNow) flashWhite(rig.root);
-      // After render (it clears the rig's layers): the aura's near items
-      // pass in front of the fighter, the rest go round behind.
-      if (p.raidLook?.aura)
-        // On the shadow's plane (48×18 at the feet): same flatness.
-        drawCollectionAura(
-          g,
-          p.raidLook.aura,
+          : 1;
+        const r = 24 * giant * view.fighterX;
+        g.fillStyle(c.color, 0.85 * alpha).fillEllipse(
           x,
-          feetY,
-          _time,
-          reducedMotion,
-          rig.front,
-          18 / 48,
-          0,
+          y - jump - r * 1.1,
+          r * 1.6,
+          r * 2.2,
         );
+        g.lineStyle(2, 0xffffff, 0.7 * alpha).strokeEllipse(
+          x,
+          y - jump - r * 1.1,
+          r * 1.6,
+          r * 2.2,
+        );
+      }
       if (serverPlayer.statuses.some((s) => s.kind === "shield")) {
         g.fillStyle(c.color, 0.1).fillCircle(x, y - jump - 10, 46);
         g.lineStyle(3, c.color, 0.8).strokeCircle(x, y - jump - 10, 46);
@@ -5815,8 +6166,7 @@ class ArenaScene extends Phaser.Scene {
             serverPlayer.lastInput.aimY,
             c.color,
             1 -
-              (serverPlayer.charge.at - state.time) /
-                Math.max(0.01, windup.cast),
+              (serverPlayer.charge.at - yourTime) / Math.max(0.01, windup.cast),
             _time,
           );
       }
@@ -6115,25 +6465,11 @@ class ArenaScene extends Phaser.Scene {
           view.zoomY +
           this.scale.height / 2) *
         css;
-      const plateBottom = Math.max(
-        nameplateFloor(label, p.title ?? "", labelX),
-        labelY,
-      );
-      label.style.transform = `translate3d(${labelX}px, ${plateBottom}px, 0) translate(-50%, -100%)`;
-      const plateSize = nameplateSize(label, p.title ?? "");
-      this.plates.set(p.id, {
-        x: labelX,
-        bottom: plateBottom,
-        w: plateSize.w,
-        h: plateSize.h,
-      });
-      setHudStyle(label, "opacity", p.hp > 0 ? "1" : "0.4");
-      label.classList.toggle(
-        "team-ally",
-        isTeams() && p.id !== myId && teamOf(p) === myTeam,
-      );
-      label.classList.toggle("team-enemy", isTeams() && teamOf(p) !== myTeam);
-      label.hidden =
+      // Decide first whether the plate shows: a hidden plate is never
+      // measured or moved. A plate not yet measured on screen (a fighter
+      // off screen from the start, or joining there) measured 0, which is
+      // not cached, so it forced a page layout every frame until it showed.
+      const hidden =
         labelX < 0 ||
         labelX > this.scale.width * css ||
         labelY > this.scale.height * css ||
@@ -6146,6 +6482,30 @@ class ArenaScene extends Phaser.Scene {
         serverPlayer.statuses.some(
           (s) => s.kind === "stealth" && p.id !== myId,
         );
+      label.hidden = hidden;
+      setHudStyle(label, "opacity", p.hp > 0 ? "1" : "0.4");
+      label.classList.toggle(
+        "team-ally",
+        isTeams() && p.id !== myId && teamOf(p) === myTeam,
+      );
+      label.classList.toggle("team-enemy", isTeams() && teamOf(p) !== myTeam);
+      if (hidden) {
+        // Takes no room: the off-screen arrow ignores a plate with no width.
+        this.plates.set(p.id, { x: labelX, bottom: labelY, w: 0, h: 0 });
+        continue;
+      }
+      const plateBottom = Math.max(
+        nameplateFloor(label, p.title ?? "", labelX),
+        labelY,
+      );
+      label.style.transform = `translate3d(${labelX}px, ${plateBottom}px, 0) translate(-50%, -100%)`;
+      const plateSize = nameplateSize(label, p.title ?? "");
+      this.plates.set(p.id, {
+        x: labelX,
+        bottom: plateBottom,
+        w: plateSize.w,
+        h: plateSize.h,
+      });
     }
     if (touch.enabled) return;
     g.lineStyle(1, 0xffffff, 0.6).strokeCircle(aim.x, aim.y, 10);
@@ -6288,14 +6648,30 @@ function flashWhite(root: Phaser.GameObjects.Container) {
 }
 /**
  * Canvas pixels per CSS pixel. Phones have 2–3x screens; rendering at that density
- * keeps creatures, effects and text sharp. Capped at 2 to protect frame rate.
+ * keeps creatures, effects and text sharp. Capped at 2 to protect frame rate,
+ * and at 1.5 at Low battle graphics (battle-quality.ts), as on iPhones.
  */
 function renderScale() {
-  return rendererDensity();
+  const density = Math.min(rendererDensity(), battleQuality.knobs().density);
+  // Drawn by the processor (gpu-check.ts) at Low: every pixel costs CPU
+  // time, so a large monitor draws the court a little softer rather than
+  // lag. The HUD, names and controls are page elements and stay sharp.
+  if (!softwareRendering() || battleQuality.current() !== "low") return density;
+  const fit = Math.sqrt(SOFTWARE_BATTLE_PIXELS / Math.max(1, arenaCssArea));
+  return Math.max(0.6, Math.min(density, Math.floor(fit * 20) / 20));
 }
+/**
+ * Most battle canvas pixels on a browser without a graphics card at Low: a
+ * 1366×768 screen's arena keeps one pixel per CSS pixel, a 1920×1080 one
+ * draws at 0.8 (measured: 9.4 → 11.4 fps on a CPU-drawn 1920×1080 browser).
+ */
+const SOFTWARE_BATTLE_PIXELS = 1_100_000;
+/** The arena box's CSS area, measured when the renderer is sized (never per frame). */
+let arenaCssArea = 0;
 /** Size the drawing buffer to the arena box at device resolution. */
 function fitRenderer() {
   if (!gameInstance) return;
+  arenaCssArea = $("game").clientWidth * $("game").clientHeight;
   const parent = $("game"),
     dpr = renderScale();
   fitDesktopBattleHud($("battle"));
@@ -6352,6 +6728,43 @@ function arenaLoading(s: Snapshot) {
   return now - arenaWaitSince < ARENA_WAIT_MAX_MS;
 }
 /**
+ * At the end of a match, tell the server how smoothly it ran on this device
+ * ("arena-perf" in its log): frame rate, slowest frames, stutter, graphics
+ * level. Technical numbers only (battle-perf.ts).
+ */
+function reportBattlePerf() {
+  const summary = battlePerf.summary();
+  const net = netMeter.summary();
+  battlePerf.reset();
+  netMeter.reset();
+  const leadMs = leadSeen.frames
+    ? Math.round((leadSeen.sum / leadSeen.frames) * 1000)
+    : undefined;
+  leadSeen.sum = leadSeen.frames = 0;
+  const errors = matchErrors;
+  matchErrors = 0;
+  drawnSelf.length = 0;
+  if (summary.seconds < PERF_MIN_SECONDS || !myId || !connected) return;
+  const nav = navigator as Navigator & { deviceMemory?: number };
+  socket.emit("battle-perf", {
+    ...summary,
+    ...net,
+    quality: battleQuality.current(),
+    setting: graphicsSetting(),
+    density: renderScale(),
+    ...(typeof nav.deviceMemory === "number"
+      ? { memory: nav.deviceMemory }
+      : {}),
+    ...(nav.hardwareConcurrency ? { cores: nav.hardwareConcurrency } : {}),
+    ...(lastPing !== undefined ? { ping: Math.round(lastPing) } : {}),
+    ...(leadMs !== undefined ? { lead: leadMs } : {}),
+    ...deviceKind(),
+    build: BUILD,
+    errors,
+    ...(softwareRendering() ? { gpu: "software" as const } : {}),
+  });
+}
+/**
  * Tell the server how long the arena took to load on this device, once per
  * renderer, so slow phones show up in the server log ("arena-load").
  */
@@ -6371,18 +6784,24 @@ function reportBattleLoad(fighters: number) {
 }
 /**
  * Opening a battle on an iPhone (or a phone with little memory): forget the
- * Plaza's and the Farm's baked sprites first. Both scenes are closed by now,
- * and the cache (~45 MB of canvases once both were visited) would otherwise
+ * Plaza's, the Farm's and the Bistro's baked sprites first. The scenes are closed by now,
+ * and the cache (~45 MB of canvases once the Farm and the Plaza were visited) would otherwise
  * sit beside the battle's floor and textures until iOS ends the page.
  */
 function releaseHubArt() {
-  if (memoryConstrained()) GFX.release();
+  if (!memoryConstrained()) return;
+  // The sprite cache is shared by the Farm and the Plaza; if neither has
+  // loaded this session it holds nothing.
+  (worlds.loaded("farm") ?? worlds.loaded("plaza"))?.hubGfx.release();
+  // The Bistro's creature, furniture and dish drawings (it is closed too).
+  worlds.loaded("bistro")?.releaseBistroArt();
 }
 function ensureBattleRenderer() {
   if (gameInstance || $("game").clientWidth < 1 || $("game").clientHeight < 1)
     return;
   battleLoadStarted = performance.now();
   releaseHubArt();
+  arenaCssArea = $("game").clientWidth * $("game").clientHeight;
   const dpr = renderScale();
   gameInstance = new Phaser.Game({
     type: Phaser.AUTO,
@@ -6530,7 +6949,8 @@ accountsUI = new AccountUI({
     roomInvites.clear();
     // The farm kept in this browser is this player's: forget it.
     forgetFarms();
-    forgetBistros();
+    clearKeptBistros();
+    worlds.loaded("bistro")?.forgetBistros();
     bistro?.close();
     bistro = undefined;
     farmScreen?.close();

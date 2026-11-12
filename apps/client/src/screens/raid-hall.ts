@@ -111,6 +111,7 @@ export function openRaids(
     view.boss = boss;
     view.tab = tab;
     view.attack = null;
+    view.reward = null;
     view.status = "";
     render(true);
     q<HTMLElement>('[role="tab"][aria-selected="true"]')?.focus({
@@ -203,6 +204,13 @@ export function openRaids(
     } else if (d.raidWardrobe !== undefined) {
       panel.close();
       hooks.wardrobe();
+    } else if (d.raidReward) {
+      // A reward opens to its whole rule; again (or another one) closes it.
+      view.reward = view.reward === d.raidReward ? null : d.raidReward;
+      render();
+      q<HTMLElement>(`[data-raid-reward="${d.raidReward}"]`)?.focus({
+        preventScroll: true,
+      });
     }
   };
   // Arrows: across the boss cards (a grid), the filters, the tabs and the

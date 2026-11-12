@@ -49,3 +49,23 @@ it("leaves Canvas and authored nonnumeric/concave corners unchanged", () => {
     [1, 2, 3, 4, -2],
   ]);
 });
+it("draws circles with exactly Phaser's ellipse points, reusing them", async () => {
+  const { circlePoints } = await import("../../apps/client/src/battle-curves");
+  const Ellipse = (await import("phaser/src/geom/ellipse/Ellipse.js")).default;
+  for (const [x, y, r] of [
+    [0, 0, 1],
+    [120.5, -40, 37],
+    [800, 450, 600],
+  ]) {
+    const n = curveSegments(r);
+    const ours = circlePoints(x, y, r, n).map((p) => ({ x: p.x, y: p.y }));
+    const phaser = new Ellipse(x, y, r * 2, r * 2).getPoints(n);
+    expect(ours.length).toBe(phaser.length);
+    ours.forEach((p, i) => {
+      expect(p.x).toBeCloseTo(phaser[i].x, 9);
+      expect(p.y).toBeCloseTo(phaser[i].y, 9);
+    });
+  }
+  // The same list comes back each call (no new objects per circle).
+  expect(circlePoints(0, 0, 5, 16)).toBe(circlePoints(9, 9, 7, 16));
+});

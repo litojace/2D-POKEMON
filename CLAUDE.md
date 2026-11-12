@@ -80,3 +80,37 @@ Other notes:
   that the test fails, then restore the fix.
 - Run Prettier only on the files you changed (`npx prettier --write <files>`),
   never on the whole repo.
+
+## Keeping battles smooth on older phones
+
+Older Android phones lag when skills go off: effects add drawing work their
+GPU pays for per pixel, on top of the court and fighters. Every new champion, skill, effect or battle UI
+must stay within what we already ship. Details and measurements:
+`docs/network-performance.md` (sections 5 and 8).
+
+- **New champion, skill or effect:** run `tests/visual/effect-budget.spec.ts`
+  (all champions, about 6 minutes; `EFFECT_BUDGET_MEASURE=1` prints each
+  champion's glow cover, smoke cover and particles without judging). If a
+  kit is over a limit, make the effect lighter (fewer or smaller glows,
+  fewer particles, shorter trails). Raise a limit only on purpose, and say
+  why in the pull request.
+- **Skill effects draw through the effects engine** (`fx-engine.ts`: `fx.g`,
+  `fx.floor`, `fx.glow`, `fx.soft`, `fx.burst`, `fx.trail`, or `shot`),
+  never with their own scene objects (`tests/unit/effect-rules.test.ts`).
+  Only then do the graphics levels, Low's glow budget and the budget test
+  see them.
+- **Warnings stay full size:** a glow that warns players (a wind-up, a boss
+  gathering power) goes inside `fx.essential(() => ...)`, so Low's glow
+  budget never shrinks it. Wind-ups (`drawWindup`) and boss art
+  (`boss-spell-art.ts`) already are.
+- **Battle UI:** never read layout every frame (`offsetWidth`,
+  `getBoundingClientRect`, `getComputedStyle` after a style change): measure
+  once and cache. `tests/visual/match-flow-budget.spec.ts` counts layout
+  reads during a real match, and checks that no fighter art loads mid-fight.
+- **Test scenarios that swap in a new arena** in the same page must carry on
+  its event numbering (`a.serial = previous.serial`): the client skips
+  events whose id it has passed, so a fresh count silently hides casts.
+- **Real phones:** the server logs one `arena-perf` line per match (frame
+  rate, slowest frames, stutter share, graphics level, device memory and
+  cores; no account). Opening the game with `?perf=1` shows the same numbers
+  over the battle, for a player to screenshot.

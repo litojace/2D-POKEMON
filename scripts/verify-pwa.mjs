@@ -33,24 +33,13 @@ for (const art of [
   "startup-starfield",
   "startup-sigil",
   "raid-spell-flipbook",
-  ...[
-    "grumblecrag",
-    "tidewyrm",
-    "gloomshade",
-    "somnara",
-    "prismatail",
-    "emberwing",
-    "storm-twins",
-  ].map((name) => `raid-whole-${name}`),
-  ...[
-    "grumblecrag",
-    "tidewyrm",
-    "gloomshade",
-    "somnara",
-    "prismatail",
-    "emberwing",
-    "storm-twins",
-  ].map((name) => `raid-directions-${name}`),
+  // Painted bosses (Grumblecrag and Tidewyrm are vector art, drawn by the client).
+  ...["gloomshade", "somnara", "prismatail", "emberwing", "storm-twins"].map(
+    (name) => `raid-whole-${name}`,
+  ),
+  ...["gloomshade", "somnara", "prismatail", "emberwing", "storm-twins"].map(
+    (name) => `raid-directions-${name}`,
+  ),
 ])
   assert(
     urls.some((url) => new RegExp(`^assets/${art}-[\\w-]+\\.webp$`).test(url)),

@@ -73,6 +73,16 @@
       }
     </style>
     <script>
+      // iPadOS calls itself a Mac with a touch screen. Mark iPads so the
+      // landscape cover shows when one is held upright, even with a Magic
+      // Keyboard or trackpad attached (style.css, #rotate-gate).
+      if (
+        /iPad/.test(navigator.userAgent) ||
+        (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1)
+      )
+        document.documentElement.classList.add("ipad-gate");
+    </script>
+    <script>
       (() => {
         let ready = false,
           assetFailed = false,
@@ -155,7 +165,7 @@
     <div id="rotate-gate" role="status" aria-live="polite">
       <div class="rotate-gate-card">
         <span class="rotate-gate-phone" aria-hidden="true"></span>
-        <h2>Turn your phone sideways</h2>
+        <h2>Turn your device sideways</h2>
         <p>Element Arena plays in landscape.</p>
         <button type="button" class="primary" id="rotate-gate-lock" hidden>
           Rotate for me

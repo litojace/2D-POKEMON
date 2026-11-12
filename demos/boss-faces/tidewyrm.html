@@ -1,0 +1,2586 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>body{margin:0}</style>
+<title>Tidewyrm Face Rig</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+  /* Layout: one column. The stage on top, its controls in labelled rows under it, the rules last. */
+  :root {
+    color-scheme: dark;
+    --night: #0c0a1a;
+    --panel: #171331;
+    --line: #2e2757;
+    --ink: #ece7ff;
+    --muted: #a59dcc;
+    --moon: #ffd24a;
+    --moon-ink: #2a1a05;
+    --fur: #6c4eb6;
+    --display: "Space Grotesk", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+    --body: Inter, "Segoe UI", system-ui, -apple-system, sans-serif;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--night);
+    color: var(--ink);
+    font: 15px/1.5 var(--body);
+    padding-block: 20px 48px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+  .wrap { max-width: 1120px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+  h1 { font: 600 26px/1.15 var(--display); margin: 0; letter-spacing: -0.01em; }
+  h2 { font: 600 18px/1.2 var(--display); margin: 0 0 8px; }
+  p { margin: 0; }
+  .lede { color: var(--muted); max-width: 68ch; }
+  .stage { position: relative; background: #090714; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  canvas { display: block; width: 100%; touch-action: pan-y; }
+  .readout { position: absolute; left: 10px; top: 8px; font: 12px/1.3 var(--mono); color: var(--muted); pointer-events: none; }
+  .controls { display: grid; gap: 10px; }
+  .row { display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: 10px; align-items: start; }
+  .row > span { font: 600 11px/30px var(--body); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+  .btns { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  button {
+    font: 500 13px/1 var(--body); color: var(--ink); background: var(--panel);
+    border: 1px solid var(--line); border-radius: 7px; padding: 8px 11px; cursor: pointer; min-height: 32px;
+  }
+  button:hover { border-color: var(--fur); }
+  button:focus-visible, input:focus-visible { outline: 2px solid var(--moon); outline-offset: 2px; }
+  button[aria-pressed="true"] { background: var(--moon); color: var(--moon-ink); border-color: var(--moon); }
+  input[type="range"] { flex: 1 1 160px; min-width: 0; accent-color: var(--moon); }
+  output { font: 13px var(--mono); min-width: 4ch; font-variant-numeric: tabular-nums; }
+  .tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+  .tabs button { font-family: var(--display); font-weight: 600; }
+  h3 { font: 600 14px/1.3 var(--display); margin: 8px 0 0; color: var(--muted); }
+  .rules { border-top: 1px solid var(--line); padding-top: 16px; display: grid; gap: 12px; }
+  .rules ol { margin: 0; padding-left: 20px; max-width: 72ch; display: grid; gap: 6px; }
+  .scroll { overflow-x: auto; }
+  table { border-collapse: collapse; font-size: 13px; min-width: 520px; }
+  th, td { text-align: left; padding: 5px 14px 5px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; }
+  td:nth-child(2) { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  code { font-family: var(--mono); font-size: 0.92em; color: var(--moon); }
+  @media (max-width: 520px) {
+    .row { grid-template-columns: 1fr; gap: 2px; }
+    .row > span { line-height: 20px; }
+    h1 { font-size: 22px; }
+  }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1 id="title">Raid boss face rigs</h1>
+    <p class="lede" id="lede"></p>
+  </header>
+  <nav class="tabs" id="tabs" aria-label="Boss" hidden></nav>
+
+  <div class="stage">
+    <canvas id="stage" width="900" height="520" aria-label="The boss on the stage"></canvas>
+    <div class="readout" id="readout"></div>
+  </div>
+
+  <div class="controls">
+    <div class="row"><span>Actions</span><div class="btns" id="actions"></div></div>
+    <div class="row"><span>Facing</span>
+      <div class="btns">
+        <input type="range" id="yaw" min="0" max="359" step="1" value="0" aria-label="Yaw in degrees">
+        <output id="yawOut" for="yaw">0°</output>
+        <span class="btns" id="snaps"></span>
+      </div>
+    </div>
+    <div class="row"><span>Phase</span><div class="btns" id="phases"></div></div>
+    <div class="row"><span>View</span>
+      <div class="btns">
+        <button id="tSheet" aria-pressed="false">Model sheet</button>
+        <button id="tLines" aria-pressed="false">Construction lines</button>
+        <button id="tClose" aria-pressed="false">Head close-up</button>
+        <button id="tPause" aria-pressed="false">Pause</button>
+      </div>
+    </div>
+  </div>
+
+  <section class="rules">
+    <h2>How a feature is placed</h2>
+    <ol>
+      <li>The head's yaw picks the drawing: front, three-quarter (a near and a far eye), side, then no face. Left turns mirror the right-turn drawings; the front drawing and the eye highlights are never mirrored.</li>
+      <li>Height is the feature's line and never changes with the view. A nod slides all of them together.</li>
+      <li>Across: an eye is at <code>eyeOrbit × sin(faceYaw ∓ eyeAz)</code>; features on the centre line are at <code>centreLine(height) × sin(faceYaw)</code>, where <code>centreLine</code> is the head's own profile. <code>faceYaw = yaw − lag × sin(2 × yaw)</code>, so the face trails the skull a little.</li>
+      <li>The far eye may hide at most <code>tuckCap</code> of its width behind the bridge. Then each feature is clamped inside the drawn outline of the current view by its own half-width plus a margin.</li>
+      <li>Everything turns by the head's roll only. The far eye adds one fixed lift of its outer corner.</li>
+      <li>Draw order: head, far eye, the occluder, near eye, the other features, highlights.</li>
+    </ol>
+    <div id="tables"></div>
+  </section>
+</div>
+
+<script>
+/*
+ * The face kit every boss shares. PURE: no DOM, no state.
+ *
+ *   KIT.makeFace(spec)  ->  { face(head, expr), contain, faceYaw, spec }
+ *
+ * `spec` is one boss's construction: its lines, its eye orbit, its profile
+ * (the centre line), the outline of each view's head drawing, and which
+ * drawn piece each feature uses in each view. `face()` turns a head pose
+ * into piece placements. Nothing here draws: pieces are drawn once, by the
+ * boss's own file, into an atlas.
+ *
+ * Rig units: x right, y up, z towards the camera. Screen = (x, -y + z * 0.65).
+ * Yaw 0 faces the camera, 90 degrees faces screen right, 180 faces away.
+ * Head space: u across, v down, from the head's centre; worked out for a head
+ * turned to screen right and mirrored for left turns.
+ */
+const KIT = (() => {
+  "use strict";
+  const TAU = Math.PI * 2,
+    DEG = Math.PI / 180;
+  const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const smooth = (a, b, x) => {
+    const t = clamp((x - a) / (b - a));
+    return t * t * (3 - 2 * t);
+  };
+  const wrap = (a) => ((((a + Math.PI) % TAU) + TAU) % TAU) - Math.PI;
+  const gauss = (x, s) => Math.exp(-(x * x) / (s * s));
+  const TILT = 0.65;
+  const project = (p) => ({ x: p.x, y: -p.y + p.z * TILT });
+  const rotY = (p, a) => {
+    const c = Math.cos(a),
+      s = Math.sin(a);
+    return { x: p.x * c + p.z * s, y: p.y, z: -p.x * s + p.z * c };
+  };
+  /** Sort depth of a rig point: nearer the camera, and higher, is in front. */
+  const depth = (p) => p.z * 0.84 + p.y * 0.3;
+  const after = (age, dur) => (age < 0 || age > dur ? 0 : Math.sin((age / dur) * Math.PI));
+  const rng = (seed) => () => {
+    seed = (seed + 0x6d2b79f5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+
+  // ════════════════════════ views ════════════════════════
+  const LIMITS = { front: 22.5, tq: 67.5, side: 112.5, backtq: 157.5 };
+  /**
+   * Which drawing of the head a yaw shows, and which way it is mirrored.
+   * `prev` (the view shown last frame, optional) holds a view until the yaw
+   * is 4 degrees past the line, so a swaying head never flickers between two.
+   */
+  function headView(yaw, limits = LIMITS, prev) {
+    const w = wrap(yaw),
+      a = Math.abs(w) / DEG;
+    const pick = (x) =>
+      x < limits.front ? "front" : x < limits.tq ? "tq" : x < limits.side ? "side" : x < limits.backtq ? "backtq" : "back";
+    let view = pick(a);
+    if (prev && prev !== view && (pick(a - 4) === prev || pick(a + 4) === prev)) view = prev;
+    return { view, side: w < 0 ? -1 : 1, turn: Math.abs(w) };
+  }
+
+  // ════════════════════════ the face ════════════════════════
+  function makeFace(F) {
+    const limits = F.limits || LIMITS;
+    /** The face's own yaw: the skull's, held back a little (0 at front and side). */
+    const faceYaw = (turn) => turn - F.lag * Math.sin(2 * Math.min(turn, 90 * DEG));
+    /** Keep a feature of half-width hw, spanning v0..v1, inside the view's outline. */
+    function contain(view, u, hw, v0, v1) {
+      let lo = -1e9,
+        hi = 1e9;
+      for (const v of [v0, (v0 + v1) / 2, v1]) {
+        const [l, r] = F.skullEdge(view, v);
+        lo = Math.max(lo, l);
+        hi = Math.min(hi, r);
+      }
+      lo += hw + F.margin;
+      hi -= hw + F.margin;
+      return lo > hi ? (lo + hi) / 2 : clamp(u, lo, hi);
+    }
+    /**
+     * `head`: { x, y (screen, rig units), yaw (from the camera), pitch, roll,
+     * z (sort depth), prevView? }. `expr`: { look, mouth, blink, ... }.
+     *
+     * 1. the yaw picks the view; work in the canonical drawing, mirror at the end;
+     * 2. u = orbit * sin(face yaw -+ azimuth) for eyes, centreLine(v) * sin(face yaw)
+     *    for features on the centre line; v = the feature's line, in every view;
+     * 3. clamp u inside the view's outline by the feature's half-width;
+     * 4. turn everything by the head's roll only (+ the far eye's fixed lift).
+     */
+    function face(head, expr) {
+      let { view, side, turn } = headView(head.yaw, limits, head.prevView);
+      const out = [];
+      const cr = Math.cos(head.roll),
+        sr = Math.sin(head.roll);
+      let n = 0;
+      const raw = (key, piece, u, v, rot, sx, sy, alpha, glow) =>
+        out.push({
+          key: (F.key || "f") + "-" + key, piece,
+          x: head.x + u * side * cr - v * sr,
+          y: head.y + u * side * sr + v * cr,
+          rot, sx, sy, alpha, z: head.z + 0.02 + 0.001 * n++, glow: !!glow, face: true,
+        });
+      const put = (key, piece, u, v, o = {}) =>
+        raw(key, piece, u, v, head.roll + (o.rot || 0) * side, (o.flip ? -1 : 1) * side * (o.s || 1), o.s || 1,
+          o.alpha === undefined ? 1 : o.alpha, o.glow);
+      let pf = faceYaw(turn);
+      // the front drawing is one drawing: it slides with the turn but never flips
+      if (view === "front") (pf *= side), (side = 1);
+      put("head", F.headPiece(view, expr), 0, 0);
+      if (view === "back" || view === "backtq") return { placements: out, view, side, guide: null, marks: { top: F.top, eye: F.lines.eye, bot: F.bot } };
+
+      const nod = clamp(head.pitch, -0.45, 0.45) * F.nod;
+      const look = expr.blink ? F.blinkLook || "closed" : expr.look || "idle";
+      const eyeV = F.lines.eye + nod;
+      const sinF = view === "side" ? 1 : Math.sin(pf);
+      const E = F.eye;
+      const eyes =
+        view === "front"
+          ? [["front", -F.eyeAz, false, "n"], ["front", F.eyeAz, true, "f"]]
+          : view === "tq"
+            ? [["near", -F.eyeAz, false, "n"], ["far", F.eyeAz, false, "f"]]
+            : [["side", -F.eyeAz, false, "n"]];
+      const bridge = F.centreLine(F.lines.eye) * sinF + (F.bridgeHalf || 0);
+      const placedEyes = eyes.map(([v, az, flip, id]) => {
+        const g = { ...E[v], ...(F.eyeGeom ? F.eyeGeom(v, look) : {}) };
+        let u = F.eyeOrbit * Math.sin(pf + az);
+        // the far eye never hides more than `tuckCap` of itself behind the bridge
+        if (v === "far" && F.tuckCap !== undefined) u = Math.max(u, bridge + g.hw * (1 - 2 * F.tuckCap));
+        u = contain(view, u, g.hw, eyeV - g.hh * 0.7, eyeV + g.hh * 0.7);
+        return { v, flip, id, g, u, rot: v === "far" ? -F.farLift : 0 };
+      });
+      // features on the centre line
+      const feats = {};
+      for (const f of F.centre)
+        if (!f.anchor) {
+          const v = f.line + nod * (f.nodK === undefined ? 1 : f.nodK);
+          let u = F.centreLine(f.line) * sinF;
+          if (view === "side") u -= f.sideInset || 0;
+          else if (f.hw) u = contain(view, u, f.hw[view], v + (f.vspan ? f.vspan[0] : -1), v + (f.vspan ? f.vspan[1] : 1));
+          feats[f.id] = { u, v };
+        }
+      for (const f of F.centre) if (f.anchor) feats[f.id] = feats[f.anchor];
+
+      const lit = F.lit ? F.lit(look) : false;
+      const eyeGlow = expr.eyeGlow === undefined ? 0 : expr.eyeGlow;
+      const drawEye = (e) => {
+        if (lit && eyeGlow > 0.01 && F.eyeGlowPiece)
+          put("eg" + e.id, F.eyeGlowPiece, e.u, eyeV, { glow: true, alpha: eyeGlow, s: (e.g.hw / E.front.hw) * (F.eyeGlowScale || 0.7) });
+        put("eye" + e.id, F.eyePiece ? F.eyePiece(e.v, look, expr) : `eye_${e.v}_${look}`, e.u, eyeV, { rot: e.rot, flip: e.flip });
+        const b = F.brow && F.brow(look, expr);
+        if (b)
+          put("brow" + e.id, `brow_${e.v}_${b.kind}`, e.u + (e.flip ? -1 : 1) * (e.v === "far" ? -1 : 1) * (b.dx || 0),
+            F.lines.brow + nod + (b.dy || 0), { flip: e.flip, rot: e.rot });
+      };
+      const drawFeat = (f) => {
+        const piece = f.piece(view, expr);
+        const at = feats[f.id];
+        if (piece) put(f.id, piece, at.u, at.v);
+        const gl = f.glow && f.glow(expr, view);
+        if (gl && gl.alpha > 0.01) put(f.id + "glow", gl.piece, at.u, at.v, { glow: true, alpha: clamp(gl.alpha), s: gl.s || 1 });
+      };
+      const layer = (f) => (typeof f.layer === "function" ? f.layer(view) : f.layer) || "top";
+      const far = placedEyes.find((e) => e.id === "f"),
+        near = placedEyes.find((e) => e.id === "n");
+      // back to front: far eye, whatever tucks its inner corner, near eye, the rest
+      for (const f of F.centre) if (layer(f) === "under") drawFeat(f);
+      if (far) drawEye(far);
+      for (const f of F.centre) if (layer(f) === "mid") drawFeat(f);
+      drawEye(near);
+      for (const f of F.centre) if (layer(f) === "top") drawFeat(f);
+      // highlights: one drawing, never mirrored, on the same side of both irises
+      if (F.glint && F.glint(look))
+        for (const e of placedEyes) {
+          const ix = (e.g.gx || 0) * (e.flip ? -1 : 1),
+            iy = e.g.gy || 0;
+          const c = Math.cos(e.rot),
+            s = Math.sin(e.rot);
+          const k = (e.g.r || 4) / (F.glintR || 4);
+          raw("glint" + e.id, F.glintPiece || "glint", e.u + ix * c - iy * s, eyeV + ix * s + iy * c, 0, k, k, 1, false);
+        }
+      // construction, for the model sheet: the centre line and the eye line
+      const toScreen = (u, v) => ({ x: head.x + u * side * cr - v * sr, y: head.y + u * side * sr + v * cr });
+      const centre = [];
+      for (let v = F.top + 1; v <= F.bot - 1; v += 2) centre.push(toScreen(F.centreLine(v) * sinF, v + nod * 0.9));
+      const [l, r] = F.skullEdge(view, F.lines.eye);
+      const guide = {
+        centre,
+        eyeLine: [toScreen(l, eyeV), toScreen(r, eyeV)],
+        others: Object.entries(F.lines)
+          .filter(([k]) => k !== "eye")
+          .map(([, v]) => {
+            const [a, b] = F.skullEdge(view, v);
+            return [toScreen(a * 0.9, v + nod), toScreen(b * 0.9, v + nod)];
+          }),
+        eyes: placedEyes.map((e) => ({ ...toScreen(e.u, eyeV), hw: e.g.hw })),
+      };
+      return { placements: out, view, side, guide, eyes: placedEyes, feats, bridge, marks: { top: F.top, eye: eyeV, bot: F.bot } };
+    }
+    return { face, contain, faceYaw, spec: F, limits };
+  }
+
+  // ════════════════════════ drawing helpers (pieces are drawn once) ════════════════════════
+  /** A piece: size in rig units, the anchor (0-1), and its drawing about that anchor. */
+  const pieceOf = (name, w, h, ox, oy, fn) => ({
+    name, w, h, ox, oy,
+    draw: (ctx, k) => {
+      ctx.save();
+      ctx.scale(k, k);
+      ctx.translate(ox * w, oy * h);
+      ctx.lineJoin = "round";
+      ctx.lineCap = "round";
+      fn(ctx);
+      ctx.restore();
+    },
+  });
+  /** A curved tuft (fur, feather, flame): base at (x, y), tip `len` along `ang`. */
+  function tuft(path, x, y, ang, len, w, bend = 0.25) {
+    const dx = Math.cos(ang), dy = Math.sin(ang), nx = -dy, ny = dx;
+    const tx = x + dx * len + nx * len * bend, ty = y + dy * len + ny * len * bend;
+    path.moveTo(x - nx * w, y - ny * w);
+    path.quadraticCurveTo(x + dx * len * 0.55 - nx * w * 0.9, y + dy * len * 0.55 - ny * w * 0.9, tx, ty);
+    path.quadraticCurveTo(x + dx * len * 0.5 + nx * w * 1.1, y + dy * len * 0.5 + ny * w * 1.1, x + nx * w, y + ny * w);
+    path.closePath();
+  }
+  /** A closed outline with a fringe of little points along it (fur, down). */
+  function furPath(path, pts, o) {
+    const rnd = rng(o.seed || 1);
+    const out = [];
+    const step = 0.3;
+    let acc = 0, tooth = 0, amp = 1;
+    for (let i = 0; i < pts.length; i++) {
+      const a = pts[i], b = pts[(i + 1) % pts.length];
+      const d = Math.hypot(b.x - a.x, b.y - a.y);
+      const nx = (b.y - a.y) / (d || 1), ny = -(b.x - a.x) / (d || 1);
+      for (let s = 0; s < d; s += step) {
+        const x = a.x + ((b.x - a.x) * s) / d, y = a.y + ((b.y - a.y) * s) / d;
+        acc += step;
+        if (acc > tooth) { acc = 0; tooth = o.tooth * (0.7 + rnd() * 0.7); amp = 0.5 + rnd() * 0.7; }
+        const f = acc / tooth;
+        const prof = f < 0.72 ? f / 0.72 : (1 - f) / 0.28;
+        const m = o.mask ? o.mask(x, y) : 1;
+        const off = o.depth * amp * m * (prof - 0.45);
+        out.push({ x: x + nx * off, y: y + ny * off });
+      }
+    }
+    out.forEach((p, i) => (i ? path.lineTo(p.x, p.y) : path.moveTo(p.x, p.y)));
+    path.closePath();
+  }
+  const grad = (c, x0, y0, x1, y1, stops) => {
+    const g = c.createLinearGradient(x0, y0, x1, y1);
+    stops.forEach((s, i) => g.addColorStop(Array.isArray(s) ? s[0] : i / (stops.length - 1), Array.isArray(s) ? s[1] : s));
+    return g;
+  };
+  const radial = (c, x, y, r0, r1, stops) => {
+    const g = c.createRadialGradient(x, y, r0, x, y, r1);
+    stops.forEach((s, i) => g.addColorStop(Array.isArray(s) ? s[0] : i / (stops.length - 1), Array.isArray(s) ? s[1] : s));
+    return g;
+  };
+  /**
+   * Outline, fill, then light a soft shape: `pal` = { edge, light, base, dark,
+   * rim, warm? }. Moonlight on the top edge; optional strands inside.
+   */
+  function paintSoft(c, path, pal, top, bot, o = {}) {
+    if (o.edge !== 0) {
+      c.strokeStyle = pal.edge;
+      c.lineWidth = o.edge || 2;
+      c.stroke(path);
+    }
+    c.fillStyle = o.fill || grad(c, 0, top, 0, bot, [[0, pal.light], [0.42, pal.base], [1, pal.dark]]);
+    c.fill(path);
+    c.save();
+    c.clip(path);
+    const h = bot - top;
+    c.strokeStyle = grad(c, 0, top, 0, top + h * 0.45, [pal.rim, pal.rim + "00"]);
+    c.globalAlpha = o.rimAlpha === undefined ? 0.75 : o.rimAlpha;
+    c.lineWidth = (o.edge || 2) + 2.4;
+    c.stroke(path);
+    if (pal.warm) {
+      c.strokeStyle = grad(c, 0, top, 0, top + h * 0.3, [pal.warm, "rgba(0,0,0,0)"]);
+      c.globalAlpha = 1;
+      c.lineWidth = (o.edge || 2) + 0.9;
+      c.stroke(path);
+    }
+    if (o.strands) {
+      const rnd = rng(o.seed || 7);
+      for (let i = 0; i < o.strands; i++) {
+        const x = lerp(o.x0, o.x1, rnd()), y = lerp(top, bot, rnd());
+        const a = (o.flow || Math.PI / 2) + (rnd() - 0.5) * 0.9, l = 2.5 + rnd() * 3;
+        if (o.keep && !o.keep(x, y)) continue;
+        c.strokeStyle = (y - top) / h < 0.45 ? pal.light : pal.dark;
+        c.globalAlpha = 0.35;
+        c.lineWidth = 0.7;
+        c.beginPath();
+        c.moveTo(x, y);
+        c.quadraticCurveTo(x + Math.cos(a) * l * 0.5 + 0.8, y + Math.sin(a) * l * 0.5, x + Math.cos(a) * l, y + Math.sin(a) * l);
+        c.stroke();
+      }
+    }
+    if (o.inside) (c.globalAlpha = 1), o.inside(c);
+    c.restore();
+    c.globalAlpha = 1;
+  }
+  function glowPiece(name, rgb, size = 44) {
+    return pieceOf(name, size, size, 0.5, 0.5, (c) => {
+      c.fillStyle = radial(c, 0, 0, 0, size / 2, [[0, `rgba(${rgb},0.85)`], [0.35, `rgba(${rgb},0.34)`], [1, `rgba(${rgb},0)`]]);
+      c.fillRect(-size / 2, -size / 2, size, size);
+    });
+  }
+  function softPiece(name, color, alpha, size = 44) {
+    return pieceOf(name, size, size, 0.5, 0.5, (c) => {
+      c.globalAlpha = alpha;
+      c.fillStyle = radial(c, 0, 0, 0, size * 0.45, [color, color + "00"]);
+      c.beginPath(); c.arc(0, 0, size * 0.45, 0, TAU); c.fill();
+    });
+  }
+  const starPiece = (name = "star") =>
+    pieceOf(name, 12, 12, 0.5, 0.5, (c) => {
+      c.fillStyle = "#fff1a0";
+      c.strokeStyle = "#a8781a";
+      c.lineWidth = 0.6;
+      c.beginPath();
+      for (let i = 0; i < 10; i++) {
+        const a = (i / 10) * TAU - Math.PI / 2, r = i % 2 ? 2 : 4.6;
+        c.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+      }
+      c.closePath(); c.fill(); c.stroke();
+    });
+  /** The highlight on an iris: one drawing for both eyes, never mirrored. */
+  const glintPiece = (name = "glint") =>
+    pieceOf(name, 9, 9, 0.5, 0.5, (c) => {
+      c.fillStyle = "#fff";
+      c.beginPath(); c.arc(-1.4, -1.8, 1.25, 0, TAU); c.fill();
+      c.globalAlpha = 0.85;
+      c.beginPath(); c.arc(1.6, 1.5, 0.58, 0, TAU); c.fill();
+    });
+  /**
+   * An eye, drawn once per view and look, with its inner corner at +x.
+   * o: { hw, hh, look: "open" | "hurt" | "closed" | "dizzy",
+   *      lid: [outerY, innerY] in half-heights (omit for a fully open eye), bow,
+   *      sclera: [...colours], shade, iris: { x, y, r, stops, ring, pupil },
+   *      ink, line, lash, closed: 1 (curving down) | -1 (arched) | 0 (flat) }
+   * A round or almond eye cut by a lid that runs from the outer corner down
+   * to the inner one; line weights are in rig units, whatever the eye's width.
+   */
+  function drawEye(c, o) {
+    const { hw, hh } = o, ink = o.ink || "#1b0b1f", wt = o.weight || 2;
+    c.strokeStyle = c.fillStyle = ink;
+    c.lineWidth = wt;
+    const lash = (x, y) => { if (o.lash === false) return; c.beginPath(); c.moveTo(x + 1.3, y - 1.1); c.lineTo(x - 2.4, y - 2.7); c.lineTo(x + 0.2, y + 1); c.closePath(); c.fill(); };
+    if (o.look === "hurt") { c.beginPath(); c.moveTo(-hw * 0.8, -hh * 0.6); c.lineTo(hw * 0.72, 0.3); c.lineTo(-hw * 0.8, hh * 0.64); c.stroke(); return; }
+    if (o.look === "closed") {
+      const k = o.closed === undefined ? 1 : o.closed;
+      c.beginPath(); c.moveTo(-hw * 0.95, k > 0 ? 0 : k < 0 ? hh * 0.4 : 0.4); c.quadraticCurveTo(-hw * 0.1, k * hh * 0.8, hw * 0.92, k > 0 ? 1 : k < 0 ? hh * 0.4 : 1);
+      c.stroke(); lash(-hw * 0.95, 0.4);
+      return;
+    }
+    const ellipse = (g = 0) => { c.beginPath(); c.ellipse(0, 0, hw + g, hh + g, 0, 0, TAU); };
+    const white = () => radial(c, 0, hh * 0.25, 0.5, hh * 1.1 + hw * 0.2, o.sclera || ["#ffffff", "#f1f1f6"]);
+    if (o.look === "dizzy") {
+      ellipse(); c.fillStyle = white(); c.fill(); c.lineWidth = 1.2; c.stroke();
+      c.strokeStyle = o.spiral || "#8a3a10"; c.lineWidth = 1.25; c.beginPath();
+      for (let i = 0; i <= 60; i++) { const a = (i / 60) * TAU * 2.25, r = (i / 60) * 0.72; i ? c.lineTo(Math.cos(a) * r * hw, Math.sin(a) * r * hh) : c.moveTo(0, 0); }
+      c.stroke();
+      return;
+    }
+    const open = !o.lid;
+    const y0 = open ? 0 : o.lid[0] * hh, y1 = open ? 0 : o.lid[1] * hh;
+    const P0 = { x: -hw - 1.5, y: y0 - (y1 - y0) * 0.1 }, P1 = { x: hw + 1.5, y: y1 + (y1 - y0) * 0.1 }, C = { x: 0, y: (y0 + y1) / 2 - (o.bow === undefined ? 1.6 : o.bow) };
+    const at = (t) => ({ x: (1 - t) * (1 - t) * P0.x + 2 * (1 - t) * t * C.x + t * t * P1.x, y: (1 - t) * (1 - t) * P0.y + 2 * (1 - t) * t * C.y + t * t * P1.y });
+    const under = (g) => { c.beginPath(); c.moveTo(P0.x - g, P0.y); c.quadraticCurveTo(C.x, C.y, P1.x + g, P1.y); c.lineTo(hw + 5, hh + 5); c.lineTo(-hw - 5, hh + 5); c.closePath(); c.clip(); };
+    c.save();
+    ellipse(); c.clip();
+    if (!open) under(0);
+    c.fillStyle = white();
+    c.fillRect(-hw - 4, -hh - 4, 2 * hw + 8, 2 * hh + 8);
+    const I = o.iris;
+    if (I) {
+      if (I.ring) { c.fillStyle = I.ring; c.beginPath(); c.arc(I.x, I.y, I.r, 0, TAU); c.fill(); }
+      c.fillStyle = grad(c, 0, I.y - I.r, 0, I.y + I.r, I.stops);
+      c.beginPath(); c.arc(I.x, I.y, I.r * (I.ring ? 0.84 : 1), 0, TAU); c.fill();
+      c.fillStyle = I.pupil || "#1d0910";
+      c.beginPath(); c.arc(I.x, I.y - I.r * 0.06, I.r * (I.pupilR || 0.5), 0, TAU); c.fill();
+    }
+    if (!open && o.shade) { // the lid's shadow across the top of the eye
+      const mid = at(0.5);
+      c.save();
+      c.transform(1, (y1 - y0) / (2 * hw), 0, 1, 0, 0);
+      c.fillStyle = grad(c, 0, mid.y, 0, mid.y + 3.4, [o.shade, o.shade.replace(/[\d.]+\)$/, "0)")]);
+      c.fillRect(-hw - 4, mid.y - 6, 2 * hw + 8, 10);
+      c.restore();
+    }
+    c.restore();
+    c.save();
+    if (!open) under(2);
+    c.strokeStyle = o.line || ink;
+    c.lineWidth = 0.85;
+    ellipse(0.1); c.stroke();
+    c.strokeStyle = ink;
+    c.lineWidth = wt * 0.72;
+    c.beginPath(); c.ellipse(0, 0, hw + 0.2, hh + 0.2, 0, Math.PI * 0.62, Math.PI * (open ? 1.05 : 1.3)); c.stroke();
+    c.restore();
+    c.fillStyle = c.strokeStyle = ink;
+    if (open) {
+      c.lineWidth = wt;
+      c.beginPath(); c.ellipse(0, 0, hw + 0.3, hh + 0.3, 0, Math.PI * 1.02, Math.PI * 1.9); c.stroke();
+      lash(-hw * 0.86, -hh * 0.56);
+      return;
+    }
+    const inside = (p) => (p.x / (hw + 0.5)) ** 2 + (p.y / (hh + 0.5)) ** 2 <= 1;
+    let ta = 0, tb = 1;
+    for (let t = 0; t <= 0.5; t += 0.01) if (inside(at(t))) { ta = t; break; }
+    for (let t = 1; t >= 0.5; t -= 0.01) if (inside(at(t))) { tb = t; break; }
+    const a = at(ta), b = at(tb), m = at((ta + tb) / 2);
+    const cx = 2 * m.x - (a.x + b.x) / 2, cy = 2 * m.y - (a.y + b.y) / 2, h = wt / 2;
+    c.beginPath(); // a tapered stroke: heavy at the outer corner, finer at the inner
+    c.moveTo(a.x - 0.3, a.y - h); c.quadraticCurveTo(cx, cy - h * 0.9, b.x + 0.3, b.y - h * 0.45);
+    c.lineTo(b.x + 0.2, b.y + h * 0.45); c.quadraticCurveTo(cx, cy + h * 0.8, a.x - 0.2, a.y + h * 0.9);
+    c.closePath(); c.fill();
+    lash(a.x, a.y);
+  }
+  /** A brow: a tapered stroke, inner end at +x. s = [outer y, mid y, inner y, thickness]. */
+  function drawBrow(c, L, s, color, alpha) {
+    c.globalAlpha = alpha;
+    c.fillStyle = color;
+    c.beginPath();
+    c.moveTo(-L, s[0]);
+    c.quadraticCurveTo(0, s[1] - s[3] * 0.5, L, s[2] - s[3] * 0.4);
+    c.lineTo(L, s[2] + s[3] * 0.5);
+    c.quadraticCurveTo(0, s[1] + s[3] * 0.6, -L, s[0] + 0.25);
+    c.closePath();
+    c.fill();
+    c.globalAlpha = 1;
+  }
+  const BROWS = { calm: [0.5, -0.9, 0.4, 1.0, 0.4], angry: [-1.9, -0.5, 1.9, 1.9, 0.9], raised: [0.6, -1.9, 0.2, 1.1, 0.6], pinch: [1.3, 0.3, -1.5, 1.5, 0.85] };
+  /** A long piece (wing, plume, ear) laid from 3D point a towards b: its placement options. */
+  function along(a, b, nominal, min = 0.5, max = 1.12) {
+    const sa = project(a), sb = project(b);
+    const len = Math.hypot(sb.x - sa.x, sb.y - sa.y), rot = Math.atan2(sb.y - sa.y, sb.x - sa.x);
+    return { rot, sx: clamp(len / nominal, min, max), sy: Math.cos(rot) < 0 ? -1 : 1 };
+  }
+  /** Placement list helper: adds a piece at a 3D rig point. */
+  function adder(list, alphaOf = () => 1) {
+    return (key, piece, w, o = {}) => {
+      const s = project(w);
+      list.push({
+        key, piece, x: s.x, y: s.y, rot: o.rot || 0,
+        sx: o.sx === undefined ? 1 : o.sx, sy: o.sy === undefined ? 1 : o.sy,
+        alpha: (o.alpha === undefined ? 1 : o.alpha) * alphaOf(),
+        z: depth(w) + (o.bias || 0), glow: !!o.glow, actor: o.actor,
+      });
+    };
+  }
+  /** Three stars circling a dizzy head. */
+  function stars(list, hs, hz, t, up, r = 30) {
+    for (let i = 0; i < 3; i++) {
+      const a = t * 4 + (i * TAU) / 3;
+      list.push({ key: "star" + i, piece: "star", x: hs.x + Math.cos(a) * r, y: hs.y - up + Math.sin(a) * 7, rot: a, sx: 1, sy: 1, alpha: 1, z: hz + (Math.sin(a) > 0 ? 1 : -1), glow: false });
+    }
+  }
+
+  return {
+    TAU, DEG, TILT, LIMITS, clamp, lerp, smooth, wrap, gauss, project, rotY, depth, after, rng,
+    headView, makeFace, drawEye, drawBrow, BROWS, along, pieceOf, tuft, furPath, grad, radial, paintSoft, glowPiece, softPiece, starPiece, glintPiece, adder, stars,
+  };
+})();
+if (typeof module !== "undefined") module.exports = KIT;
+
+</script>
+<script>
+var TIDE = (() => {
+  var __defProp = Object.defineProperty;
+  var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+  var __getOwnPropNames = Object.getOwnPropertyNames;
+  var __hasOwnProp = Object.prototype.hasOwnProperty;
+  var __export = (target, all) => {
+    for (var name in all)
+      __defProp(target, name, { get: all[name], enumerable: true });
+  };
+  var __copyProps = (to, from, except, desc) => {
+    if (from && typeof from === "object" || typeof from === "function") {
+      for (let key of __getOwnPropNames(from))
+        if (!__hasOwnProp.call(to, key) && key !== except)
+          __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+    }
+    return to;
+  };
+  var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
+
+  // tools/tide-entry.ts
+  var tide_entry_exports = {};
+  __export(tide_entry_exports, {
+    boss: () => boss
+  });
+
+  // ../../apps/client/src/boss-vector-grumble.ts
+  var TAU = Math.PI * 2;
+  function drawGlow(ctx, size) {
+    const r = size / 2;
+    const g = ctx.createRadialGradient(r, r, 0, r, r, r);
+    g.addColorStop(0, "rgba(255,255,255,0.85)");
+    g.addColorStop(0.35, "rgba(255,255,255,0.35)");
+    g.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, size, size);
+  }
+  var FACINGS = 8;
+  var STEP = TAU / FACINGS;
+
+  // ../../apps/client/src/boss-vector-face.ts
+  var TAU2 = Math.PI * 2;
+  var DEG = Math.PI / 180;
+  var clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
+  var wrap = (a) => ((a + Math.PI) % TAU2 + TAU2) % TAU2 - Math.PI;
+  function headView(yaw, prev) {
+    const w = wrap(yaw), a = Math.abs(w) / DEG;
+    const pick = (x) => x < 22.5 ? "front" : x < 67.5 ? "tq" : x < 112.5 ? "side" : x < 157.5 ? "backtq" : "back";
+    let view = pick(a);
+    if (prev && prev !== view && (pick(a - 4) === prev || pick(a + 4) === prev))
+      view = prev;
+    return { view, side: w < 0 ? -1 : 1, turn: Math.abs(w) };
+  }
+  function makeFace(F) {
+    const faceYaw = (turn) => turn - F.lag * Math.sin(2 * Math.min(turn, 90 * DEG));
+    function contain(view, u, hw, v0, v1) {
+      let lo = -1e9, hi = 1e9;
+      for (const v of [v0, (v0 + v1) / 2, v1]) {
+        const [l, r] = F.skullEdge(view, v);
+        lo = Math.max(lo, l);
+        hi = Math.min(hi, r);
+      }
+      lo += hw + F.margin;
+      hi -= hw + F.margin;
+      return lo > hi ? (lo + hi) / 2 : clamp(u, lo, hi);
+    }
+    function face(head, expr) {
+      const hv = headView(head.yaw, head.prevView);
+      const view = hv.view;
+      let side = hv.side;
+      const out = [];
+      const cr = Math.cos(head.roll), sr = Math.sin(head.roll);
+      let n = 0;
+      const at = (u, v) => ({
+        x: head.x + u * side * cr - v * sr,
+        y: head.y + u * side * sr + v * cr
+      });
+      const put = (key, piece, u, v, o = {}) => {
+        const p = at(u, v);
+        out.push({
+          key,
+          piece,
+          x: p.x,
+          y: p.y,
+          rot: o.still ? 0 : head.roll + (o.rot ?? 0) * side,
+          sx: (o.still ? 1 : (o.flip ? -1 : 1) * side) * (o.s ?? 1),
+          sy: o.s ?? 1,
+          alpha: o.alpha ?? 1,
+          z: head.z + 0.02 + 1e-3 * n++,
+          glow: o.glow
+        });
+      };
+      let pf = faceYaw(hv.turn);
+      if (view === "front") {
+        pf *= side;
+        side = 1;
+      }
+      put("head", F.headPiece(view), 0, 0);
+      const nod = clamp(head.pitch, -0.45, 0.45) * F.nod;
+      const feats = {};
+      if (view === "back" || view === "backtq")
+        return { placements: out, view, side, at, nod, feats, eyes: [] };
+      const eyeV = F.lines.eye + nod;
+      const sinF = view === "side" ? 1 : Math.sin(pf);
+      const list = view === "front" ? [
+        ["front", -F.eyeAz, false, "n"],
+        ["front", F.eyeAz, true, "f"]
+      ] : view === "tq" ? [
+        ["near", -F.eyeAz, false, "n"],
+        ["far", F.eyeAz, false, "f"]
+      ] : [["side", -F.eyeAz, false, "n"]];
+      const bridge = F.centreLine(F.lines.eye) * sinF + (F.bridgeHalf ?? 0);
+      const eyes = list.map(([v, az, flip, id]) => {
+        const g = F.eye[v];
+        let u = F.eyeOrbit * Math.sin(pf + az);
+        if (v === "far" && F.tuckCap !== void 0)
+          u = Math.max(u, bridge + g.hw * (1 - 2 * F.tuckCap));
+        u = contain(view, u, g.hw, eyeV - g.hh * 0.7, eyeV + g.hh * 0.7);
+        return { v, flip, id, g, u, rot: v === "far" ? -F.farLift : 0 };
+      });
+      for (const f of F.centre)
+        if (f.line !== void 0) {
+          const v = f.line + nod * (f.nodK ?? 1);
+          let u = F.centreLine(f.line) * sinF;
+          if (view === "side") u -= f.sideInset ?? 0;
+          else if (f.hw?.[view] !== void 0)
+            u = contain(
+              view,
+              u,
+              f.hw[view],
+              v + (f.vspan?.[0] ?? -1),
+              v + (f.vspan?.[1] ?? 1)
+            );
+          feats[f.id] = { u, v };
+        }
+      for (const f of F.centre) if (f.anchor) feats[f.id] = feats[f.anchor];
+      const drawEye2 = (e) => {
+        put("eye" + e.id, F.eyePiece(e.v, expr), e.u, eyeV, {
+          rot: e.rot,
+          flip: e.flip
+        });
+        const b = F.brow?.(e.v, expr);
+        if (b)
+          put(
+            "brow" + e.id,
+            b.piece,
+            e.u + (e.flip ? -1 : 1) * (e.v === "far" ? -1 : 1) * (b.dx ?? 0),
+            (F.lines.brow ?? F.lines.eye) + nod + (b.dy ?? 0),
+            { rot: e.rot, flip: e.flip }
+          );
+      };
+      const drawFeat = (f) => {
+        const p = feats[f.id];
+        const piece = f.piece(view, expr);
+        if (piece) put(f.id, piece, p.u, p.v);
+        const gl = f.glow?.(expr, view);
+        if (gl && gl.alpha > 0.01)
+          put(f.id + "glow", gl.piece, p.u, p.v, {
+            glow: true,
+            alpha: clamp(gl.alpha),
+            s: gl.s
+          });
+      };
+      const layer = (f) => (typeof f.layer === "function" ? f.layer(view) : f.layer) ?? "top";
+      const far = eyes.find((e) => e.id === "f"), near = eyes.find((e) => e.id === "n");
+      if (far) drawEye2(far);
+      for (const f of F.centre) if (layer(f) === "mid") drawFeat(f);
+      drawEye2(near);
+      for (const f of F.centre) if (layer(f) === "top") drawFeat(f);
+      for (const e of eyes) {
+        const g = F.glint?.(e.v, expr);
+        if (g)
+          put("glint" + e.id, g.piece, e.u + g.x, eyeV + g.y, { still: true });
+      }
+      return { placements: out, view, side, at, nod, feats, eyes, bridge };
+    }
+    return { face, contain, faceYaw, spec: F };
+  }
+  function drawEye(c, o) {
+    const { hw, hh } = o, wt = o.weight ?? 2;
+    c.lineJoin = c.lineCap = "round";
+    c.strokeStyle = c.fillStyle = o.ink;
+    c.lineWidth = wt;
+    const lash = (x, y) => {
+      c.beginPath();
+      c.moveTo(x + 1.3, y - 1.1);
+      c.lineTo(x - 2.4, y - 2.7);
+      c.lineTo(x + 0.2, y + 1);
+      c.closePath();
+      c.fill();
+    };
+    if (o.look === "closed") {
+      c.beginPath();
+      c.moveTo(-hw * 0.95, 0);
+      c.quadraticCurveTo(-hw * 0.1, hh * 0.8, hw * 0.92, 1);
+      c.stroke();
+      lash(-hw * 0.95, 0.4);
+      return;
+    }
+    const ellipse = (g = 0) => {
+      c.beginPath();
+      c.ellipse(0, 0, hw + g, hh + g, 0, 0, TAU2);
+    };
+    const white = () => {
+      const g = c.createRadialGradient(
+        0,
+        hh * 0.25,
+        0.5,
+        0,
+        hh * 0.25,
+        hh * 1.1 + hw * 0.2
+      );
+      o.sclera.forEach((s, i) => g.addColorStop(i / (o.sclera.length - 1), s));
+      return g;
+    };
+    if (o.look === "dizzy") {
+      ellipse();
+      c.fillStyle = white();
+      c.fill();
+      c.lineWidth = 1.2;
+      c.stroke();
+      c.strokeStyle = o.spiral ?? o.ink;
+      c.lineWidth = 1.25;
+      c.beginPath();
+      for (let i = 0; i <= 60; i++) {
+        const a2 = i / 60 * TAU2 * 2.25, r = i / 60 * 0.72;
+        if (i) c.lineTo(Math.cos(a2) * r * hw, Math.sin(a2) * r * hh);
+        else c.moveTo(0, 0);
+      }
+      c.stroke();
+      return;
+    }
+    const open = !o.lid;
+    const y0 = open ? 0 : o.lid[0] * hh, y1 = open ? 0 : o.lid[1] * hh;
+    const P0 = { x: -hw - 1.5, y: y0 - (y1 - y0) * 0.1 }, P1 = { x: hw + 1.5, y: y1 + (y1 - y0) * 0.1 }, C = { x: 0, y: (y0 + y1) / 2 - (o.bow ?? 1.6) };
+    const at = (t) => ({
+      x: (1 - t) * (1 - t) * P0.x + 2 * (1 - t) * t * C.x + t * t * P1.x,
+      y: (1 - t) * (1 - t) * P0.y + 2 * (1 - t) * t * C.y + t * t * P1.y
+    });
+    const under = (g) => {
+      c.beginPath();
+      c.moveTo(P0.x - g, P0.y);
+      c.quadraticCurveTo(C.x, C.y, P1.x + g, P1.y);
+      c.lineTo(hw + 5, hh + 5);
+      c.lineTo(-hw - 5, hh + 5);
+      c.closePath();
+      c.clip();
+    };
+    c.save();
+    ellipse();
+    c.clip();
+    if (!open) under(0);
+    c.fillStyle = white();
+    c.fillRect(-hw - 4, -hh - 4, 2 * hw + 8, 2 * hh + 8);
+    const I = o.iris;
+    if (I) {
+      if (I.ring) {
+        c.fillStyle = I.ring;
+        c.beginPath();
+        c.arc(I.x, I.y, I.r, 0, TAU2);
+        c.fill();
+      }
+      const g = c.createLinearGradient(0, I.y - I.r, 0, I.y + I.r);
+      I.stops.forEach((s, i) => g.addColorStop(i / (I.stops.length - 1), s));
+      c.fillStyle = g;
+      c.beginPath();
+      c.arc(I.x, I.y, I.r * (I.ring ? 0.84 : 1), 0, TAU2);
+      c.fill();
+      c.fillStyle = I.pupil ?? "#0b0503";
+      c.beginPath();
+      if (I.slit) c.ellipse(I.x, I.y, I.slit, I.r * 0.82, 0, 0, TAU2);
+      else c.arc(I.x, I.y - I.r * 0.06, I.r * 0.5, 0, TAU2);
+      c.fill();
+    }
+    if (!open && o.shade) {
+      const mid = at(0.5);
+      c.save();
+      c.transform(1, (y1 - y0) / (2 * hw), 0, 1, 0, 0);
+      const g = c.createLinearGradient(0, mid.y, 0, mid.y + 3.4);
+      g.addColorStop(0, o.shade);
+      g.addColorStop(1, "rgba(0,0,0,0)");
+      c.fillStyle = g;
+      c.fillRect(-hw - 4, mid.y - 6, 2 * hw + 8, 10);
+      c.restore();
+    }
+    c.restore();
+    c.save();
+    if (!open) under(2);
+    c.strokeStyle = o.ink;
+    c.lineWidth = 0.85;
+    ellipse(0.1);
+    c.stroke();
+    c.lineWidth = wt * 0.72;
+    c.beginPath();
+    c.ellipse(
+      0,
+      0,
+      hw + 0.2,
+      hh + 0.2,
+      0,
+      Math.PI * 0.62,
+      Math.PI * (open ? 1.05 : 1.3)
+    );
+    c.stroke();
+    c.restore();
+    c.fillStyle = c.strokeStyle = o.ink;
+    if (open) {
+      c.lineWidth = wt;
+      c.beginPath();
+      c.ellipse(0, 0, hw + 0.3, hh + 0.3, 0, Math.PI * 1.02, Math.PI * 1.9);
+      c.stroke();
+      lash(-hw * 0.86, -hh * 0.56);
+      return;
+    }
+    const inside = (p) => (p.x / (hw + 0.5)) ** 2 + (p.y / (hh + 0.5)) ** 2 <= 1;
+    let ta = 0, tb = 1;
+    for (let t = 0; t <= 0.5; t += 0.01)
+      if (inside(at(t))) {
+        ta = t;
+        break;
+      }
+    for (let t = 1; t >= 0.5; t -= 0.01)
+      if (inside(at(t))) {
+        tb = t;
+        break;
+      }
+    const a = at(ta), b = at(tb), m = at((ta + tb) / 2);
+    const cx = 2 * m.x - (a.x + b.x) / 2, cy = 2 * m.y - (a.y + b.y) / 2, h = wt / 2;
+    c.beginPath();
+    c.moveTo(a.x - 0.3, a.y - h);
+    c.quadraticCurveTo(cx, cy - h * 0.9, b.x + 0.3, b.y - h * 0.45);
+    c.lineTo(b.x + 0.2, b.y + h * 0.45);
+    c.quadraticCurveTo(cx, cy + h * 0.8, a.x - 0.2, a.y + h * 0.9);
+    c.closePath();
+    c.fill();
+    lash(a.x, a.y);
+  }
+
+  // ../../apps/client/src/boss-vector-tide.ts
+  var TAU3 = Math.PI * 2;
+  var clamp2 = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
+  var lerp = (a, b, t) => a + (b - a) * t;
+  var smooth = (a, b, x) => {
+    const t = clamp2((x - a) / (b - a));
+    return t * t * (3 - 2 * t);
+  };
+  var v3 = (x, y, z) => ({ x, y, z });
+  var add = (a, b) => v3(a.x + b.x, a.y + b.y, a.z + b.z);
+  var mul = (a, s) => v3(a.x * s, a.y * s, a.z * s);
+  var dot = (a, b) => a.x * b.x + a.y * b.y + a.z * b.z;
+  var cross = (a, b) => v3(a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x);
+  var len = (a) => Math.hypot(a.x, a.y, a.z);
+  var norm = (a) => {
+    const l = len(a) || 1;
+    return v3(a.x / l, a.y / l, a.z / l);
+  };
+  var rotY = (p, a) => {
+    const c = Math.cos(a), s = Math.sin(a);
+    return v3(p.x * c + p.z * s, p.y, -p.x * s + p.z * c);
+  };
+  var UP = v3(0, 1, 0);
+  var TIDE_TILT = 0.65;
+  var VIEW = norm(v3(0, 0.55, 0.84));
+  var tideProject = (p) => ({ x: p.x, y: -p.y + p.z * TIDE_TILT });
+  var SEGMENTS = 30;
+  var SEG = 12.5;
+  var HS = 1.35;
+  function radiusAt(i) {
+    const f = i / (SEGMENTS - 1);
+    if (f < 0.14) return lerp(8, 19, f / 0.14);
+    if (f < 0.55) return lerp(19, 30, (f - 0.14) / 0.41);
+    return lerp(30, 23, (f - 0.55) / 0.45);
+  }
+  function tideIdle(clock = 0, phase = 1, reduced = false) {
+    const m = reduced ? 0 : 1;
+    const b = Math.sin(clock * 1.3) * m;
+    return {
+      rear: 1,
+      neckCurl: 0.8,
+      lean: 0,
+      coil: 0.55,
+      humps: 1,
+      sway: 0.5 * m,
+      swimPhase: clock * 1.1 * m,
+      flopK: 0,
+      flopPhase: 0,
+      flat: 0,
+      sink: 0,
+      spin: 0,
+      bob: b * 3,
+      headPitch: -0.2 + b * 0.04,
+      headYaw: Math.sin(clock * 0.4) * 0.22 * m,
+      headRoll: 0,
+      jaw: 0,
+      lid: phase === 1 ? 0.3 : phase === 2 ? 0.2 : 0.12,
+      anger: phase === 3 ? 1 : phase === 2 ? 0.8 : 0.6,
+      dizzy: 0,
+      pearl: 0.45 + 0.15 * Math.sin(clock * 2.2) * m,
+      exposed: 0,
+      closed: 0,
+      clock: clock * m
+    };
+  }
+  function tideBody(P, yaw) {
+    const N = SEGMENTS;
+    const base = Math.round(0.55 * (N - 1));
+    const hs = [], es = [];
+    let h = 0;
+    for (let i = 0; i < N; i++) {
+      const f = i / (N - 1);
+      const lying = lerp(1 - smooth(0.45, 0.62, f), 1, P.flat);
+      h += P.coil * lying * 0.16 + P.sway * Math.sin(f * TAU3 * 1.5 - P.swimPhase) * 0.13 * (0.4 + lying) + P.flopK * Math.sin(f * TAU3 * 1.1 + P.flopPhase) * 0.2 + (1 - lying) * Math.sin(f * TAU3 * 1.4 + P.clock * 0.7) * 0.11 * (1 - P.flat);
+      hs.push(h);
+      const humps = P.humps * Math.sin(f * TAU3 * 2.2 - P.swimPhase * 0.8) * 0.42 * lying;
+      const rise = smooth(0.5, 0.7, f) * P.rear * 1.25;
+      const curl = smooth(0.78, 1, f) * P.neckCurl * 1.1;
+      const leanF = smooth(0.55, 0.72, f) * P.lean;
+      const flick = -Math.max(0, 1 - f / 0.12) * 0.9;
+      es.push(lerp(humps + rise - curl - leanF + flick, 0, P.flat));
+    }
+    const h0 = hs[base];
+    const local = [];
+    let pos = v3(0, 0, 0);
+    for (let i = 0; i < N; i++) {
+      const hh = hs[i] - h0, e = es[i];
+      const d = v3(
+        Math.sin(hh) * Math.cos(e),
+        Math.sin(e),
+        Math.cos(hh) * Math.cos(e)
+      );
+      local.push({ p: pos, d });
+      pos = add(pos, mul(d, SEG));
+    }
+    let cx = 0, cz = 0;
+    for (const q of local) {
+      cx += q.p.x;
+      cz += q.p.z;
+    }
+    cx /= N;
+    cz /= N;
+    const b = local[base].p;
+    const ox = lerp(b.x, cx, P.flat), oz = lerp(b.z - 26, cz, P.flat);
+    const restY = lerp(5, 27, P.flat) + P.bob * (1 - P.flat) * 0.6 - P.sink;
+    const turn = yaw + P.spin;
+    const W = (p) => rotY(v3(p.x - ox, p.y - b.y * (1 - P.flat) + restY, p.z - oz), turn);
+    const segs = local.map((q, i) => {
+      const w = W(q.p), d = rotY(q.d, turn);
+      const c = cross(d, UP);
+      const right = len(c) < 0.15 ? rotY(v3(-1, 0, 0), turn) : norm(c);
+      return { i, w, d, r: radiusAt(i), right, up: norm(cross(right, d)) };
+    });
+    const top = segs[N - 1];
+    const along = Math.atan2(top.d.x, top.d.z);
+    const drift = Math.atan2(Math.sin(along - turn), Math.cos(along - turn));
+    const H = turn + lerp(drift * 0.3, drift, P.flat) + P.headYaw;
+    const pa = lerp(P.headPitch, 0, P.flat * 0.8);
+    const F = norm(
+      v3(Math.sin(H) * Math.cos(pa), Math.sin(pa), Math.cos(H) * Math.cos(pa))
+    );
+    let R = norm(cross(F, UP));
+    let U = norm(cross(R, F));
+    if (P.headRoll) {
+      const c = Math.cos(P.headRoll), s = Math.sin(P.headRoll);
+      const R2 = add(mul(R, c), mul(U, s));
+      U = add(mul(U, c), mul(R, -s));
+      R = R2;
+    }
+    const C = add(add(top.w, mul(top.d, 10)), add(mul(F, 12), mul(U, 5)));
+    const at = (f, r, u) => add(C, add(mul(F, f * HS), add(mul(R, r * HS), mul(U, u * HS))));
+    const jawDir = norm(
+      add(mul(F, Math.cos(P.jaw * 0.75)), mul(U, -Math.sin(P.jaw * 0.75)))
+    );
+    const head = {
+      w: C,
+      F,
+      R,
+      U,
+      at,
+      hinge: at(4, 0, -6),
+      jawDir,
+      pearl: at(7, 0, 25)
+    };
+    return { segs, head };
+  }
+  var ease = (t) => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+  var after = (age, dur) => age < 0 || age > dur ? 0 : Math.sin(age / dur * Math.PI);
+  function tidePose(c) {
+    const P = tideIdle(c.clock, c.phase, c.reduced);
+    const w = clamp2(c.windup);
+    const k = c.windKind;
+    if (k === "dive") {
+      P.rear = lerp(P.rear, 1.3, w);
+      P.headPitch = lerp(P.headPitch, 0.3, w);
+      P.lean = lerp(0, -0.3, w);
+      P.jaw = 0.5 * w;
+    } else if (k === "wave") {
+      P.rear = lerp(P.rear, 1.25, w);
+      P.lean = -0.55 * w;
+      P.headPitch = lerp(P.headPitch, 0.35, w);
+      P.jaw = 0.45 * w;
+    } else if (k === "bubbles") {
+      P.headPitch = lerp(P.headPitch, 0.15, w);
+      P.lean = -0.15 * w;
+    } else if (k === "hightide") {
+      P.rear = lerp(P.rear, 1.4, w);
+      P.headPitch = lerp(P.headPitch, 1.05, w);
+      P.lean = -0.3 * w;
+      P.jaw = w;
+    } else if (k === "undertow") {
+      P.coil = lerp(P.coil, 1.5, w);
+      P.rear = lerp(P.rear, 0.7, w);
+      P.jaw = 0.4 * w;
+    } else if (k === "prison") {
+      P.headPitch = lerp(P.headPitch, -0.05, w);
+      P.jaw = 0.2 * w;
+    }
+    if (k) {
+      P.anger = Math.max(P.anger, 0.4 + 0.6 * w);
+      P.lid = Math.min(P.lid, lerp(P.lid, 0.05, w));
+    }
+    if (!c.reduced && c.castKind) {
+      const a = c.castAge;
+      if (c.castKind === "wave") {
+        const s = after(a, 0.9);
+        P.lean = Math.max(P.lean, 0.95 * s);
+        P.headPitch = lerp(P.headPitch, -0.85, s);
+        P.jaw = Math.max(P.jaw, 0.7 * s);
+      } else if (c.castKind === "bubbles") {
+        const s = after(a, 1.4);
+        P.jaw = Math.max(P.jaw, 0.5 * s);
+        P.lean = Math.max(P.lean, 0.2 * s);
+        P.headPitch = lerp(P.headPitch, -0.25, s);
+      } else if (c.castKind === "prison") {
+        const s = after(a, 0.8);
+        P.jaw = Math.max(P.jaw, 0.7 * s);
+        P.headPitch = lerp(P.headPitch, -0.35, s);
+      } else if (c.castKind === "hightide") {
+        const s = after(a, 1.2);
+        P.jaw = Math.max(P.jaw, s);
+        P.headPitch = lerp(P.headPitch, 1, s);
+        P.rear = lerp(P.rear, 1.35, s);
+      }
+    }
+    if (!c.reduced && c.roarAge >= 0 && c.roarAge < 1.6 && !c.dead) {
+      const s = Math.sin(c.roarAge / 1.6 * Math.PI);
+      P.rear = lerp(P.rear, 1.35, s);
+      P.headPitch = lerp(P.headPitch, 0.65, s);
+      P.lean = lerp(P.lean, -0.35, s);
+      P.jaw = Math.max(P.jaw, s);
+      P.anger = 1;
+    }
+    if (c.stranded && !c.dead) {
+      P.flat = 1;
+      P.coil = 0.95;
+      P.humps = 0;
+      P.sway = 0;
+      P.rear = 0;
+      P.flopK = c.reduced ? 0 : 1;
+      P.flopPhase = c.reduced ? 0 : c.clock * 7;
+      P.dizzy = 1;
+      P.headRoll = 0.55;
+      P.jaw = 0.25;
+      P.anger = 0;
+      P.lid = 0;
+    }
+    if (c.stranded || c.stagger) P.exposed = 1;
+    if (c.stagger && !c.stranded && !c.dead) P.dizzy = 1;
+    if (c.hurt > 0 && !c.dead && !c.reduced) {
+      P.lean -= 0.35 * c.hurt;
+      P.headPitch += 0.35 * c.hurt;
+      P.lid = Math.max(P.lid, 0.8 * c.hurt);
+    }
+    P.sink = (1 - clamp2(c.rise)) * 300;
+    if (c.dead) {
+      const s = clamp2(c.deathSink);
+      P.anger = 0;
+      P.closed = 1;
+      P.dizzy = 0;
+      P.exposed = 0;
+      P.rear = lerp(1, 0.4, ease(Math.min(1, s * 3)));
+      P.headPitch = -0.7;
+      P.headRoll = 0.4;
+      P.sway = 0.15;
+      P.humps = 0.4;
+      P.pearl = (1 - s) * 0.6;
+      P.sink = s * s * 430;
+    }
+    return P;
+  }
+  var TIDE = {
+    1: {
+      light: "#a5f6e4",
+      mid: "#2fbdb7",
+      dark: "#0f6b76",
+      line: "#0a3540",
+      belly: "#fff3d8",
+      bellyDark: "#e2c79e",
+      fin: "#ff8fbf",
+      finLight: "#ffd6e7",
+      finDark: "#d9548f",
+      iris: [255, 196, 64],
+      pearl: [225, 255, 248],
+      glow: 7927270,
+      mark: null
+    },
+    2: {
+      light: "#93e3f6",
+      mid: "#1f93c2",
+      dark: "#0b4f7c",
+      line: "#072b46",
+      belly: "#f1f6ea",
+      bellyDark: "#c6d6cc",
+      fin: "#ff74b2",
+      finLight: "#ffc4de",
+      finDark: "#c93f84",
+      iris: [255, 170, 52],
+      pearl: [215, 250, 255],
+      glow: 7265535,
+      mark: 9235455
+    },
+    3: {
+      light: "#6f9ce0",
+      mid: "#22448c",
+      dark: "#0b1a44",
+      line: "#040b22",
+      belly: "#c9d8f2",
+      bellyDark: "#8ea4cc",
+      fin: "#ff4fa6",
+      finLight: "#ffb3dc",
+      finDark: "#a8216b",
+      iris: [255, 236, 120],
+      pearl: [200, 250, 255],
+      glow: 5958655,
+      mark: 6616575
+    }
+  };
+  var rgb = (c, a = 1) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
+  var PIECE = {
+    seg: 30,
+    // a body disc's radius
+    fin: 22,
+    // a back fin's height
+    ray: 46,
+    // a tail-fin ray's length
+    mane: 50,
+    frill: 30,
+    horn: 46,
+    disc: 26,
+    // head discs' radius
+    snout: 42 * HS,
+    // snout length (base to nose)
+    jaw: 47 * HS,
+    glow: 40
+    // a glow's radius
+  };
+  function finShape(ctx, k, w, h, pal, droop = 0) {
+    const bx = w / 2 * k, by = h * k;
+    const g = ctx.createLinearGradient(bx, by, bx, 0);
+    g.addColorStop(0, pal.finDark);
+    g.addColorStop(0.5, pal.fin);
+    g.addColorStop(1, pal.finLight);
+    ctx.fillStyle = g;
+    ctx.strokeStyle = pal.line;
+    ctx.lineWidth = 1.5 * k;
+    ctx.lineJoin = "round";
+    ctx.beginPath();
+    ctx.moveTo(bx - w * 0.38 * k, by - 1 * k);
+    ctx.quadraticCurveTo(
+      bx - w * 0.45 * k + droop * k,
+      by * 0.45,
+      bx + droop * k * 0.6,
+      2 * k
+    );
+    ctx.quadraticCurveTo(
+      bx + w * 0.3 * k + droop * k,
+      by * 0.5,
+      bx + w * 0.38 * k,
+      by - 1 * k
+    );
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.strokeStyle = "rgba(255,255,255,0.45)";
+    ctx.lineWidth = 1 * k;
+    ctx.beginPath();
+    ctx.moveTo(bx, by - 2 * k);
+    ctx.quadraticCurveTo(
+      bx - w * 0.1 * k + droop * k * 0.5,
+      by * 0.5,
+      bx + droop * k * 0.6,
+      4 * k
+    );
+    ctx.stroke();
+  }
+  var HA = 30;
+  var H_TOP = -0.9 * HA;
+  var H_BOT = 0.84 * HA;
+  var S_BROW = -0.32 * HA;
+  var S_NOSE = 0.36 * HA;
+  var gauss = (x, s) => Math.exp(-(x * x) / (s * s));
+  var hse = (v) => {
+    const t = clamp2(Math.abs((v + 0.03 * HA) / (0.87 * HA)));
+    const e = v > -0.03 * HA ? 2 : 2.5;
+    return Math.pow(1 - Math.pow(t, e), 1 / e);
+  };
+  var tideCentre = (v) => 0.9 * HA * hse(v) + 0.56 * HA * gauss(v - 0.4 * HA, (v > 0.4 * HA ? 0.3 : 0.2) * HA) - 0.04 * HA * gauss(v - 0.02 * HA, 0.12 * HA);
+  var snoutHalf = (v) => 0.3 * HA * gauss(v - 0.44 * HA, 0.26 * HA);
+  var TQ_LAG = 14 * Math.PI / 180;
+  var TQ_SIN = Math.sin(Math.PI / 4 - TQ_LAG);
+  function tideSkull(view, v) {
+    const s = hse(v), w = 0.99 * HA * s * (1 + 0.05 * smooth(-0.2 * HA, 0.4 * HA, v));
+    if (view === "side") return [-1 * HA * s, tideCentre(v)];
+    if (view === "tq")
+      return [-w, Math.max(0.95 * HA * s, tideCentre(v) * TQ_SIN + snoutHalf(v))];
+    return [-w, w];
+  }
+  var eyeName = (view, look) => view === "front" ? `eye-${look}` : `eye-${view}-${look}`;
+  var lit = (look) => look !== "shut" && look !== "dizzy";
+  var TIDE_SPEC = {
+    A: HA,
+    top: H_TOP,
+    bot: H_BOT,
+    lines: { pearl: -0.64 * HA, brow: S_BROW, eye: -0.06 * HA, nose: S_NOSE },
+    eyeAz: 42 * Math.PI / 180,
+    eyeOrbit: 0.64 * HA,
+    lag: TQ_LAG,
+    farLift: 6 * Math.PI / 180,
+    nod: 0.4 * HA,
+    margin: 0.045 * HA,
+    tuckCap: 0.4,
+    bridgeHalf: 1,
+    eye: {
+      front: { hw: 7.4, hh: 7.2 },
+      near: { hw: 7.4, hh: 7.2 },
+      far: { hw: 5, hh: 7 },
+      side: { hw: 6.4, hh: 7.2 }
+    },
+    centreLine: tideCentre,
+    skullEdge: tideSkull,
+    headPiece: (view) => `head-${view}`,
+    eyePiece: (view, e) => eyeName(view, e.look),
+    glint: (view, e) => lit(e.look) ? {
+      piece: "eye-glint",
+      x: -TIDE_FACE_EYE[view] * 0.34,
+      y: e.look === "glare" ? -1.6 : -2.6
+    } : null,
+    brow: (view, e) => ({
+      piece: `brow-${view}-${e.brow}`,
+      dx: 0.5,
+      dy: e.brow === "angry" ? 2.4 : 0
+    }),
+    // on the centre line, in drawing order within their layer
+    centre: [
+      {
+        id: "muzzle",
+        anchor: "snout",
+        // between the far and the near eye: its far edge tucks the far eye
+        layer: "mid",
+        piece: (view) => view === "side" ? null : `muzzle-${view}`
+      },
+      {
+        id: "pearl",
+        line: -0.64 * HA,
+        nodK: 0.8,
+        hw: { front: 7.5, tq: 7.5 },
+        vspan: [-7, 7],
+        sideInset: 3.5,
+        piece: () => "pearl"
+      },
+      {
+        id: "jaw",
+        anchor: "snout",
+        piece: (view, e) => `mouth-${view}-${e.mouth}`
+      },
+      {
+        id: "snout",
+        line: S_NOSE,
+        hw: { front: 9, tq: 6 },
+        vspan: [0, 7],
+        sideInset: 1,
+        piece: (view) => `nose-${view}`
+      }
+    ]
+  };
+  var TIDE_FACE_EYE = {
+    front: 7.4,
+    near: 7.4,
+    far: 5,
+    side: 6.4
+  };
+  var TIDE_FACE = makeFace(TIDE_SPEC);
+  function tidePieces(phase) {
+    const pal = TIDE[phase];
+    const S = PIECE.seg;
+    const out = [];
+    const pieceOf = (name, w, h, ox, oy, draw) => out.push({ name, w, h, ox, oy, draw });
+    pieceOf("seg", S * 2 + 2, S * 2 + 2, 0.5, 0.5, (ctx, k) => {
+      const c = (S + 1) * k, r = S * k;
+      const g = ctx.createLinearGradient(c - r * 0.4, c - r, c + r * 0.4, c + r);
+      g.addColorStop(0, pal.light);
+      g.addColorStop(0.45, pal.mid);
+      g.addColorStop(1, pal.dark);
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(c, c, r, 0, TAU3);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(10,60,70,0.3)";
+      ctx.lineWidth = 1.3 * k;
+      for (const [dx, dy] of [
+        [-0.3, -0.35],
+        [0.25, -0.2]
+      ]) {
+        ctx.beginPath();
+        ctx.arc(c + dx * r, c + dy * r, r * 0.26, Math.PI * 1.15, Math.PI * 1.85);
+        ctx.stroke();
+      }
+      ctx.fillStyle = "rgba(255,255,255,0.18)";
+      ctx.beginPath();
+      ctx.ellipse(c - r * 0.35, c - r * 0.5, r * 0.32, r * 0.16, -0.5, 0, TAU3);
+      ctx.fill();
+    });
+    pieceOf("seg-line", S * 2 + 6, S * 2 + 6, 0.5, 0.5, (ctx, k) => {
+      ctx.fillStyle = pal.line;
+      ctx.beginPath();
+      ctx.arc((S + 3) * k, (S + 3) * k, (S + 1.6) * k, 0, TAU3);
+      ctx.fill();
+    });
+    pieceOf("belly", S * 1.5, S * 1.5, 0.5, 0.5, (ctx, k) => {
+      const c = S * 0.75 * k, r = S * 0.72 * k;
+      const g = ctx.createRadialGradient(c - r * 0.25, c - r * 0.25, 0, c, c, r);
+      g.addColorStop(0, pal.belly);
+      g.addColorStop(1, pal.bellyDark);
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(c, c, r, 0, TAU3);
+      ctx.fill();
+    });
+    pieceOf(
+      "fin",
+      18,
+      PIECE.fin + 2,
+      0.5,
+      1,
+      (ctx, k) => finShape(ctx, k, 18, PIECE.fin + 2, pal, -3)
+    );
+    pieceOf(
+      "ray",
+      16,
+      PIECE.ray + 2,
+      0.5,
+      1,
+      (ctx, k) => finShape(ctx, k, 16, PIECE.ray + 2, pal)
+    );
+    pieceOf(
+      "mane",
+      18,
+      PIECE.mane + 2,
+      0.5,
+      1,
+      (ctx, k) => finShape(ctx, k, 18, PIECE.mane + 2, pal, 4)
+    );
+    pieceOf(
+      "frill",
+      20,
+      PIECE.frill + 2,
+      0.5,
+      1,
+      (ctx, k) => finShape(ctx, k, 20, PIECE.frill + 2, pal, 2)
+    );
+    const A = HA;
+    const drawn = (name, w, h, ox, oy, fn) => pieceOf(name, w, h, ox, oy, (ctx, k) => {
+      ctx.save();
+      ctx.scale(k, k);
+      ctx.translate(ox * w, oy * h);
+      ctx.lineJoin = ctx.lineCap = "round";
+      fn(ctx);
+      ctx.restore();
+    });
+    const headSkin = (c, dy = 0) => {
+      const g = c.createLinearGradient(0, H_TOP - 4 - dy, 0, H_BOT + 6 - dy);
+      g.addColorStop(0, pal.light);
+      g.addColorStop(0.45, pal.mid);
+      g.addColorStop(1, pal.dark);
+      return g;
+    };
+    const earFin = (c, x, y, deg, len2) => {
+      for (const [d, l] of [
+        [-26, 0.8],
+        [26, 0.72],
+        [0, 1]
+      ]) {
+        const a = (deg + d) * Math.PI / 180, ln = len2 * l;
+        const dx = Math.cos(a), dy = Math.sin(a);
+        c.beginPath();
+        c.moveTo(x - dy * 4.5, y + dx * 4.5);
+        c.quadraticCurveTo(
+          x + dx * ln * 0.55 - dy * 5.5,
+          y + dy * ln * 0.55 + dx * 5.5,
+          x + dx * ln,
+          y + dy * ln
+        );
+        c.quadraticCurveTo(
+          x + dx * ln * 0.5 + dy * 5.5,
+          y + dy * ln * 0.5 - dx * 5.5,
+          x + dy * 4.5,
+          y - dx * 4.5
+        );
+        c.closePath();
+        const g = c.createLinearGradient(x, y, x + dx * ln, y + dy * ln);
+        g.addColorStop(0, pal.finDark);
+        g.addColorStop(0.5, pal.fin);
+        g.addColorStop(1, pal.finLight);
+        c.fillStyle = g;
+        c.strokeStyle = pal.line;
+        c.lineWidth = 1.6;
+        c.stroke();
+        c.fill();
+      }
+    };
+    const VIEWS = ["front", "tq", "side", "backtq", "back"];
+    for (const view of VIEWS)
+      drawn(`head-${view}`, 4.2 * A, 3.2 * A, 0.5, 0.5, (c) => {
+        const faced = view === "front" || view === "tq" || view === "side";
+        if (view === "front" || view === "back")
+          for (const s of [-1, 1])
+            earFin(c, s * 0.8 * A, -0.1 * A, 90 - s * 88, 0.78 * A);
+        else if (view === "tq") {
+          earFin(c, -0.84 * A, -0.08 * A, 186, 0.86 * A);
+          earFin(c, 0.5 * A, -0.62 * A, -52, 0.5 * A);
+        } else if (view === "side") earFin(c, -0.62 * A, -0.1 * A, 190, 0.9 * A);
+        else {
+          earFin(c, 0.84 * A, -0.08 * A, -6, 0.86 * A);
+          earFin(c, -0.6 * A, -0.5 * A, 212, 0.56 * A);
+        }
+        const path = new Path2D();
+        for (let v = H_TOP; v <= H_BOT; v += 0.5)
+          path.lineTo(tideSkull(view, v)[1], v);
+        for (let v = H_BOT; v >= H_TOP; v -= 0.5)
+          path.lineTo(tideSkull(view, v)[0], v);
+        path.closePath();
+        c.strokeStyle = pal.line;
+        c.lineWidth = 2.2;
+        c.stroke(path);
+        c.fillStyle = headSkin(c);
+        c.fill(path);
+        c.save();
+        c.clip(path);
+        if (faced) {
+          c.beginPath();
+          if (view === "front") {
+            c.moveTo(-1.3 * A, 0.5 * A);
+            c.quadraticCurveTo(0, 0.82 * A, 1.3 * A, 0.5 * A);
+          } else {
+            c.moveTo(-1.3 * A, 0.56 * A);
+            c.quadraticCurveTo(0.3 * A, 0.7 * A, 1.7 * A, 0.56 * A);
+          }
+          c.lineTo(1.7 * A, H_BOT + 8);
+          c.lineTo(-1.3 * A, H_BOT + 8);
+          c.closePath();
+          c.fillStyle = pal.belly;
+          c.fill();
+        }
+        const cu = view === "front" ? 0 : view === "tq" ? 0.42 * A : 0.62 * A;
+        c.strokeStyle = pal.dark;
+        c.lineWidth = 1;
+        c.globalAlpha = 0.4;
+        for (let r = 0; r < 9; r++)
+          for (let x = -1.3 * A + r % 2 * 4.5; x < 1.5 * A; x += 9) {
+            const y = H_TOP + 5 + r * 6.5;
+            if (y > 0.45 * A) continue;
+            if (faced && ((x - cu) / (0.86 * A)) ** 2 + ((y - 0.12 * A) / (0.6 * A)) ** 2 < 1)
+              continue;
+            c.beginPath();
+            c.arc(x, y, 4.6, 0.12 * Math.PI, 0.88 * Math.PI);
+            c.stroke();
+          }
+        c.globalAlpha = 0.55;
+        const rim = c.createLinearGradient(0, H_TOP, 0, H_TOP + 0.5 * A);
+        rim.addColorStop(0, "#ffffff");
+        rim.addColorStop(1, "rgba(255,255,255,0)");
+        c.strokeStyle = rim;
+        c.lineWidth = 5;
+        c.stroke(path);
+        c.restore();
+      });
+    drawn("snout-back", 30, 26, 0.5, 0.5, (c) => {
+      c.beginPath();
+      c.ellipse(0, 2, 11, 9, 0, 0, TAU3);
+      c.strokeStyle = pal.line;
+      c.lineWidth = 2;
+      c.stroke();
+      c.fillStyle = headSkin(c, S_NOSE);
+      c.fill();
+    });
+    drawn("muzzle-front", 44, 40, 0.5, 0.5, (c) => {
+      const g = c.createRadialGradient(0, 3, 1, 0, 3, 17);
+      g.addColorStop(0, pal.light);
+      g.addColorStop(1, "rgba(255,255,255,0)");
+      c.globalAlpha = 0.6;
+      c.fillStyle = g;
+      c.save();
+      c.scale(1, 0.72);
+      c.beginPath();
+      c.arc(0, 4, 17, 0, TAU3);
+      c.fill();
+      c.restore();
+    });
+    drawn("muzzle-tq", 44, 60, 0.6, 0.62, (c) => {
+      const mid = (v) => (tideCentre(v) - tideCentre(S_NOSE)) * TQ_SIN;
+      const half = (v) => 1 + snoutHalf(v);
+      const top = S_BROW - 5, bot = S_NOSE + 16;
+      const edge = [];
+      for (let v = top; v <= bot; v += 0.5)
+        edge.push({
+          x: mid(v) + half(v) * (1 - 0.8 * smooth(S_NOSE + 9, bot, v)),
+          y: v - S_NOSE
+        });
+      c.beginPath();
+      edge.forEach((q, i) => i ? c.lineTo(q.x, q.y) : c.moveTo(q.x, q.y));
+      c.lineTo(-24, bot - S_NOSE);
+      c.lineTo(-24, top - S_NOSE);
+      c.closePath();
+      c.fillStyle = headSkin(c, S_NOSE);
+      c.fill();
+      c.globalCompositeOperation = "destination-out";
+      const fade = (x0, y0, x1, y1) => {
+        const g = c.createLinearGradient(x0, y0, x1, y1);
+        g.addColorStop(0, "rgba(0,0,0,1)");
+        g.addColorStop(1, "rgba(0,0,0,0)");
+        c.fillStyle = g;
+        c.fillRect(-30, -45, 70, 80);
+      };
+      fade(-22, 0, -11, 0);
+      fade(0, top - S_NOSE, 0, S_BROW + 2 - S_NOSE);
+      fade(0, 9, 0, 4);
+      c.globalCompositeOperation = "source-over";
+      const line = c.createLinearGradient(0, S_BROW - 3 - S_NOSE, 0, 9);
+      line.addColorStop(0, "rgba(0,0,0,0)");
+      line.addColorStop(0.25, pal.line);
+      line.addColorStop(0.8, pal.line);
+      line.addColorStop(1, "rgba(0,0,0,0)");
+      c.strokeStyle = line;
+      c.globalAlpha = 0.8;
+      c.lineWidth = 1.2;
+      c.beginPath();
+      edge.forEach((q, i) => i ? c.lineTo(q.x, q.y) : c.moveTo(q.x, q.y));
+      c.stroke();
+    });
+    for (const view of ["front", "tq", "side"])
+      drawn(`nose-${view}`, 22, 12, 0.5, 0.5, (c) => {
+        c.fillStyle = pal.line;
+        const dots = view === "front" ? [
+          [-4.4, 0, 0.5],
+          [4.4, 0, -0.5]
+        ] : view === "tq" ? [
+          [-3.6, 0.2, 0.45],
+          [3.2, -0.2, -0.3]
+        ] : [[-4.6, -0.6, 0.4]];
+        for (const [x, y, tilt] of dots) {
+          c.beginPath();
+          c.ellipse(x, y, view === "tq" && x > 0 ? 1.5 : 2.3, 1.4, tilt, 0, TAU3);
+          c.fill();
+        }
+      });
+    for (const view of ["front", "tq", "side"])
+      for (const [kind, d] of [
+        ["closed", 0],
+        ["half", 4.5],
+        ["open", 9]
+      ])
+        drawn(`mouth-${view}-${kind}`, 60, 44, 0.6, 0.2, (c) => {
+          c.strokeStyle = pal.line;
+          c.lineWidth = 1.5;
+          const fx = (x) => view === "tq" && x > 0 ? x * 0.5 : view === "tq" ? x * 1.15 : x;
+          const inside = () => {
+            c.fillStyle = "#7a1e3a";
+            c.fill();
+            c.stroke();
+          };
+          if (view === "side") {
+            c.translate(-5.5, 0);
+            if (d) {
+              c.beginPath();
+              c.moveTo(-22, 6.5);
+              c.lineTo(-3.5, 7 + d);
+              c.quadraticCurveTo(-1, 9.5 + d, -4.5, 11.5 + d);
+              c.quadraticCurveTo(-13, 13 + d * 0.6, -23, 11);
+              c.closePath();
+              c.fillStyle = pal.belly;
+              c.fill();
+              c.stroke();
+              c.beginPath();
+              c.moveTo(-1, 6);
+              c.quadraticCurveTo(-10, 7.6, -22, 6.5);
+              c.lineTo(-3.5, 7 + d);
+              c.quadraticCurveTo(-1.4, 6.6 + d * 0.5, -1, 6);
+              c.closePath();
+              inside();
+              c.fillStyle = "#ff7aa0";
+              c.beginPath();
+              c.ellipse(-9, 6.9 + d * 0.62, 5.5, 1.2 + d * 0.08, 0.36, 0, TAU3);
+              c.fill();
+              c.fillStyle = "#fffaf0";
+              c.beginPath();
+              c.moveTo(-3.2, 6.5);
+              c.lineTo(-4.4, 6.5 + Math.min(d, 6) * 0.75);
+              c.lineTo(-5.8, 6.7);
+              c.fill();
+            } else {
+              c.beginPath();
+              c.moveTo(-1, 6);
+              c.quadraticCurveTo(-10, 8.2, -20, 6.8);
+              c.quadraticCurveTo(-22.6, 6, -23.4, 3.6);
+              c.stroke();
+            }
+            return;
+          }
+          const lip = () => {
+            c.moveTo(fx(-12), 4.6);
+            c.quadraticCurveTo(fx(-9), 9.2, fx(-3), 9.4);
+            c.quadraticCurveTo(0, 9.6, fx(3), 9.4);
+            c.quadraticCurveTo(fx(9), 9.2, fx(12), 4.6);
+          };
+          c.beginPath();
+          lip();
+          if (!d) {
+            c.stroke();
+            c.beginPath();
+            c.moveTo(fx(-12), 4.6);
+            c.quadraticCurveTo(fx(-13), 3.6, fx(-12.8), 2.4);
+            c.moveTo(fx(12), 4.6);
+            c.quadraticCurveTo(fx(13), 3.6, fx(12.8), 2.4);
+            c.stroke();
+            return;
+          }
+          c.quadraticCurveTo(fx(11), 9 + d, 0, 11 + d);
+          c.quadraticCurveTo(fx(-11), 9 + d, fx(-12), 4.6);
+          c.closePath();
+          inside();
+          c.save();
+          c.clip();
+          c.fillStyle = "#ff7aa0";
+          c.beginPath();
+          c.ellipse(fx(0), 10.5 + d, Math.abs(fx(-6)) * 0.9, 2.6, 0, 0, TAU3);
+          c.fill();
+          c.restore();
+          c.fillStyle = "#fffaf0";
+          for (const s of [-1, 1]) {
+            c.beginPath();
+            c.moveTo(fx(s * 5), 8.6);
+            c.lineTo(fx(s * 6.4), 8.6 + Math.min(d, 6) * 0.8);
+            c.lineTo(fx(s * 7.8), 8.2);
+            c.fill();
+          }
+        });
+    const lighter = (v) => v + 255 >> 1;
+    const irisStops = [
+      rgb([lighter(pal.iris[0]), lighter(pal.iris[1]), lighter(pal.iris[2])]),
+      rgb(pal.iris),
+      rgb([lighter(pal.iris[0]), lighter(pal.iris[1]), lighter(pal.iris[2])])
+    ];
+    for (const view of ["front", "near", "far", "side"]) {
+      const { hw, hh } = TIDE_SPEC.eye[view];
+      for (const look of [
+        "glare",
+        "wide",
+        "squint",
+        "shut",
+        "dizzy"
+      ])
+        drawn(eyeName(view, look), 26, 26, 0.5, 0.5, (c) => {
+          const way = view === "far" ? -1 : 1;
+          if (view === "far") c.scale(-1, 1);
+          drawEye(c, {
+            hw,
+            hh,
+            ink: pal.line,
+            weight: 2.1,
+            look: look === "shut" ? "closed" : look === "dizzy" ? "dizzy" : "open",
+            lid: look === "glare" ? [-0.66, -0.16] : look === "squint" ? [-0.3, 0.22] : void 0,
+            bow: look === "squint" ? 0.5 : 1.3,
+            sclera: ["#ffffff", "#f1fdff", "#bfe7ee"],
+            shade: "rgba(8,60,70,0.4)",
+            spiral: pal.dark,
+            iris: {
+              // the slit looks the way the head faces
+              x: (view === "far" ? 0.2 : view === "front" ? 0.6 : 1) * way,
+              y: look === "wide" ? 0.2 : 1.1,
+              r: look === "wide" ? 3.4 : 4.5,
+              ring: pal.dark,
+              stops: irisStops,
+              slit: look === "wide" ? 0.9 : 1.35
+            }
+          });
+        });
+      const L = { front: 9.4, near: 9.4, far: 6.2, side: 8.2 }[view] / 2;
+      for (const [kind, s] of [
+        ["calm", [0.5, -0.9, 0.4, 1.7]],
+        ["angry", [-2, -0.6, 2.1, 2.4]]
+      ])
+        drawn(`brow-${view}-${kind}`, 16, 10, 0.5, 0.5, (c) => {
+          if (view === "far") c.scale(-1, 1);
+          c.beginPath();
+          c.moveTo(-L, s[0]);
+          c.quadraticCurveTo(0, s[1] - s[3] * 0.5, L, s[2] - s[3] * 0.4);
+          c.lineTo(L, s[2] + s[3] * 0.5);
+          c.quadraticCurveTo(0, s[1] + s[3] * 0.6, -L, s[0] + 0.25);
+          c.closePath();
+          c.fillStyle = pal.dark;
+          c.fill();
+        });
+    }
+    pieceOf("eye-glint", 6, 6, 0.5, 0.5, (ctx, k) => {
+      ctx.fillStyle = "rgba(255,255,255,0.92)";
+      ctx.beginPath();
+      ctx.arc(3 * k, 3 * k, 1.5 * k, 0, TAU3);
+      ctx.fill();
+    });
+    pieceOf("pearl", 22 * HS, 18 * HS, 0.5, 0.5, (ctx, k) => {
+      const r = 6.8 * HS * k, cx = 11 * HS * k, cy = 8 * HS * k;
+      ctx.fillStyle = "#e7b44a";
+      ctx.strokeStyle = pal.line;
+      ctx.lineWidth = 1.4 * k;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy + 2.5 * k, r * 1.3, r * 0.75, 0, 0, TAU3);
+      ctx.fill();
+      ctx.stroke();
+      const g = ctx.createRadialGradient(
+        cx - r * 0.35,
+        cy - r * 0.4,
+        0,
+        cx,
+        cy,
+        r
+      );
+      g.addColorStop(0, "#ffffff");
+      g.addColorStop(0.6, rgb(pal.pearl));
+      g.addColorStop(1, `#${pal.glow.toString(16).padStart(6, "0")}`);
+      ctx.fillStyle = g;
+      ctx.lineWidth = 1.5 * k;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, TAU3);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = "rgba(255,255,255,0.9)";
+      ctx.beginPath();
+      ctx.arc(cx - r * 0.35, cy - r * 0.35, r * 0.25, 0, TAU3);
+      ctx.fill();
+    });
+    pieceOf(
+      "glow",
+      PIECE.glow * 2,
+      PIECE.glow * 2,
+      0.5,
+      0.5,
+      (ctx, k) => drawGlow(ctx, PIECE.glow * 2 * k)
+    );
+    return out;
+  }
+  function tidePlacements(P, yaw, phase, water) {
+    const pal = TIDE[phase];
+    const { segs, head } = tideBody(P, yaw);
+    const out = [];
+    const lines = [];
+    const sp = tideProject;
+    const RUN = 5;
+    for (let r0 = 0; r0 < SEGMENTS; r0 += RUN) {
+      const run = segs.slice(r0, r0 + RUN + 1).sort((a, b) => a.w.z - b.w.z);
+      const runZ = run.reduce((a, s) => a + s.w.z, 0) / run.length;
+      run.forEach((s, k) => {
+        const wl = water(s.w.x, s.w.z);
+        if (wl !== null && s.w.y < wl - s.r * 1.05) return;
+        const c = sp(s.w), sc = s.r / PIECE.seg;
+        const waterY = wl === null ? void 0 : sp(v3(s.w.x, wl, s.w.z)).y;
+        const dup = s.i === r0 + RUN ? "b" : "";
+        out.push({
+          key: `line${s.i}${dup}`,
+          piece: "seg-line",
+          x: c.x,
+          y: c.y,
+          rot: 0,
+          sx: sc,
+          sy: sc,
+          alpha: 1,
+          z: runZ - 0.45 + k * 0.01,
+          waterY
+        });
+        out.push({
+          key: `seg${s.i}${dup}`,
+          piece: "seg",
+          x: c.x,
+          y: c.y,
+          rot: 0,
+          sx: sc,
+          sy: sc,
+          alpha: 1,
+          z: runZ - 0.2 + k * 0.05,
+          waterY
+        });
+        const belly = mul(s.up, -1), facing = dot(belly, VIEW);
+        if (facing > -0.35) {
+          const o = sp(belly), ol = Math.hypot(o.x, o.y) || 1;
+          out.push({
+            key: `belly${s.i}${dup}`,
+            piece: "belly",
+            x: c.x + o.x / ol * s.r * 0.62,
+            y: c.y + o.y / ol * s.r * 0.62,
+            rot: 0,
+            sx: sc,
+            sy: sc,
+            alpha: clamp2((facing + 0.35) * 1.6),
+            z: runZ - 0.18 + k * 0.05,
+            waterY
+          });
+        }
+        if (pal.mark && s.i % 2 === 0 && s.i > 3 && dot(s.up, VIEW) > -0.1) {
+          const o = sp(s.up), ol = Math.hypot(o.x, o.y) || 1;
+          out.push({
+            key: `mark${s.i}${dup}`,
+            piece: "glow",
+            x: c.x + o.x / ol * s.r * 0.5,
+            y: c.y + o.y / ol * s.r * 0.5,
+            rot: 0,
+            sx: 0.22,
+            sy: 0.22,
+            alpha: 0.5 + 0.3 * Math.sin(P.clock * 3 - s.i * 0.5),
+            z: 0,
+            glow: true,
+            tint: pal.mark
+          });
+        }
+      });
+    }
+    const finAt = (key, piece, from, to, native, width, z) => {
+      const a = sp(from), b = sp(to);
+      const dx = b.x - a.x, dy = b.y - a.y, l = Math.hypot(dx, dy);
+      out.push({
+        key,
+        piece,
+        x: a.x,
+        y: a.y,
+        rot: Math.atan2(dx, -dy),
+        sx: width,
+        sy: Math.max(0.05, l / native),
+        alpha: 1,
+        z
+      });
+    };
+    for (const s of segs) {
+      const f = s.i / (SEGMENTS - 1);
+      if (f <= 0.25 || f >= 0.97 || s.i % 2 !== 1) continue;
+      const size = 18 + 12 * Math.sin(f * Math.PI);
+      const base = add(s.w, mul(s.up, s.r * 0.75));
+      const wl = water(base.x, base.z);
+      if (wl !== null && base.y < wl) continue;
+      const tip = add(add(base, mul(s.up, size)), mul(s.d, -size * 0.7));
+      const front = dot(s.up, VIEW) > 0.15;
+      finAt(
+        `fin${s.i}`,
+        "fin",
+        base,
+        tip,
+        PIECE.fin,
+        size / 18,
+        s.w.z + (front ? 0.5 : -0.5)
+      );
+    }
+    const tail = segs[0];
+    const tw = water(tail.w.x, tail.w.z);
+    if (tw === null || tail.w.y > tw - 6) {
+      const sway = Math.sin(P.clock * 3) * 0.25;
+      [-1, -0.35, 0.35, 1].forEach((k, j) => {
+        const dir = norm(
+          add(
+            add(mul(tail.d, -1), mul(tail.up, 0.55 + k * 0.5 + sway)),
+            mul(tail.right, k * 0.45)
+          )
+        );
+        finAt(
+          `ray${j}`,
+          "ray",
+          tail.w,
+          add(tail.w, mul(dir, 62)),
+          PIECE.ray,
+          1,
+          tail.w.z - 0.3 - j * 1e-3
+        );
+      });
+    }
+    const { F, R, U, at } = head;
+    let pearlScreen = sp(head.pearl);
+    const hz = head.w.z;
+    const hw = water(head.w.x, head.w.z);
+    if (hw === null || head.w.y > hw - 30) {
+      const faceN = dot(F, VIEW);
+      const behind = (w) => w.z < hz;
+      const maneBehind = behind(add(head.w, mul(F, -1)));
+      const backZ = hz - 0.6, frontZ = hz + 0.3;
+      [-1, -0.5, 0, 0.5, 1].forEach((k, j) => {
+        const base = at(
+          -12 - (1 - Math.abs(k)) * 4,
+          k * 17,
+          11 - Math.abs(k) * 7
+        );
+        const dir = norm(
+          add(
+            add(
+              mul(F, -1),
+              mul(
+                U,
+                0.28 + (1 - Math.abs(k)) * 0.32 + Math.sin(P.clock * 2.4 + k * 2) * 0.1
+              )
+            ),
+            mul(R, k * 0.95)
+          )
+        );
+        finAt(
+          `mane${j}`,
+          "mane",
+          base,
+          add(base, mul(dir, (34 - Math.abs(k) * 8) * HS)),
+          PIECE.mane,
+          1,
+          maneBehind ? backZ + j * 1e-3 : frontZ + j * 1e-3
+        );
+      });
+      const look = P.dizzy > 0.5 ? "dizzy" : P.closed > 0.5 || P.lid > 0.92 ? "shut" : P.lid > 0.55 ? "squint" : P.anger > 0.9 && P.lid < 0.15 ? "wide" : "glare";
+      const headYaw = Math.atan2(F.x, F.z);
+      const lying = P.flat > 0.5 && (look === "dizzy" || look === "shut");
+      const shown = lying ? Math.sign(headYaw || 1) * Math.min(Math.abs(headYaw), 100 * Math.PI / 180) : headYaw;
+      const hc = sp(at(4, 0, 4));
+      const built = TIDE_FACE.face(
+        {
+          x: hc.x,
+          y: hc.y,
+          z: hz,
+          yaw: shown,
+          pitch: -Math.asin(clamp2(F.y, -1, 1)) * 0.6,
+          roll: (P.headRoll || 0) * Math.cos(headYaw)
+        },
+        {
+          look,
+          brow: P.anger > 0.6 ? "angry" : "calm",
+          mouth: P.jaw > 0.4 ? "open" : P.jaw > 0.12 ? "half" : "closed"
+        }
+      );
+      const side = built.side;
+      const names = {
+        head: "cran",
+        eyen: `eye${side}`,
+        eyef: `eye${-side}`,
+        brown: `brow${side}`,
+        browf: `brow${-side}`,
+        glintn: `eyeglint${side}`,
+        glintf: `eyeglint${-side}`
+      };
+      for (const q of built.placements)
+        out.push({ ...q, key: names[q.key] ?? q.key });
+      const S = TIDE_SPEC;
+      const eyeV = S.lines.eye + built.nod;
+      if (look !== "shut" && look !== "dizzy")
+        for (const e of built.eyes) {
+          const q = built.at(e.u, eyeV);
+          out.push({
+            key: `eyeglow${e.id === "n" ? side : -side}`,
+            piece: "glow",
+            x: q.x,
+            y: q.y,
+            rot: 0,
+            sx: 0.5,
+            sy: 0.5,
+            alpha: phase === 3 ? 0.55 : 0.2 + P.anger * 0.1,
+            z: 0,
+            glow: true,
+            tint: pal.iris[0] << 16 | pal.iris[1] << 8 | pal.iris[2]
+          });
+        }
+      let pearlAt = built.feats.pearl ? built.at(built.feats.pearl.u, built.feats.pearl.v) : null;
+      if (!pearlAt) {
+        pearlAt = built.at(0, S.lines.pearl + 2);
+        out.push({
+          key: "pearl",
+          piece: "pearl",
+          x: pearlAt.x,
+          y: pearlAt.y,
+          rot: 0,
+          sx: 1,
+          sy: 1,
+          alpha: 1,
+          z: hz + 0.04
+        });
+        const turn = Math.abs(Math.atan2(Math.sin(shown), Math.cos(shown)));
+        const m = built.at(
+          tideCentre(S.lines.nose) * Math.sin(turn),
+          S.lines.nose
+        );
+        for (const key of ["snout", "jaw"])
+          out.push({
+            key,
+            piece: "snout-back",
+            x: m.x,
+            y: m.y,
+            rot: 0,
+            sx: side,
+            sy: 1,
+            alpha: 1,
+            z: hz - 0.01
+          });
+      }
+      pearlScreen = pearlAt;
+      const g = P.pearl + P.exposed * 0.8;
+      out.push({
+        key: "pearlglow",
+        piece: "glow",
+        x: pearlAt.x,
+        y: pearlAt.y,
+        rot: 0,
+        sx: 0.55 + g * 0.4,
+        sy: 0.55 + g * 0.4,
+        alpha: clamp2(0.25 + g * 0.45),
+        z: 0,
+        glow: true,
+        tint: pal.glow
+      });
+      const nose = built.feats.snout;
+      if (nose) {
+        const front = built.view === "front";
+        for (const k of front ? [-1, 1] : [-1]) {
+          const pts = [];
+          for (let j = 0; j <= 8; j++) {
+            const f = j / 8;
+            const wave = Math.sin(P.clock * 2.2 + f * 4 + k) * 2.5 * f;
+            const out2 = 15 * Math.sin(f * 2.3) + wave, down = 4 + 19 * f - 7 * f * f;
+            pts.push(
+              front ? built.at(nose.u + k * (13 + out2), nose.v + down) : built.at(nose.u - 11 - out2, nose.v + 1 + down)
+            );
+          }
+          lines.push({ pts, width: 3.2, color: pal.line, front: true });
+          lines.push({ pts, width: 1.7, color: pal.finLight, front: true });
+        }
+      }
+    }
+    return {
+      placements: out,
+      lines,
+      segs,
+      head,
+      headScreen: sp(head.w),
+      pearlScreen
+    };
+  }
+
+  // tools/tide-entry.ts
+  var smooth2 = (a, b, x) => {
+    const t = Math.max(0, Math.min(1, (x - a) / (b - a)));
+    return t * t * (3 - 2 * t);
+  };
+  function pose(c) {
+    const stranded = !!(c.exposed || c.stagger);
+    const P = tidePose({
+      clock: c.clock,
+      phase: c.phase,
+      reduced: !!c.reduced,
+      windKind: c.windKind,
+      windup: c.windup || 0,
+      castKind: c.castKind,
+      castAge: c.castAge === void 0 ? 99 : c.castAge,
+      stranded,
+      stagger: !!c.stagger,
+      hurt: c.hurt || 0,
+      dead: !!c.dead,
+      rise: 1,
+      deathSink: c.dead ? smooth2(0, 1.2, c.deadAge === void 0 ? 9 : c.deadAge) : 0,
+      roarAge: c.roarAge === void 0 ? 99 : c.roarAge
+    });
+    P.flat = stranded && !c.dead ? 1 : 0;
+    P.spin = 0;
+    P.look = P.dizzy > 0.5 ? "dizzy" : P.closed > 0.5 || P.lid > 0.92 ? "shut" : P.lid > 0.55 ? "squint" : P.anger > 0.9 && P.lid < 0.15 ? "wide" : "glare";
+    P.mouth = P.jaw > 0.3 ? "open" : "closed";
+    return P;
+  }
+  function placements(P, yaw, phase) {
+    const dry = P.flat > 0.5;
+    const r = tidePlacements(P, yaw, phase, () => dry ? null : 0);
+    const headZ = r.head.w.z;
+    const HEAD = /^(cran|eye|brow|muzzle|pearl$|jaw|snout)/;
+    const list = r.placements.map((p) => ({ ...p, face: HEAD.test(p.key) }));
+    for (const l of r.lines)
+      list.push({ line: l.pts, color: l.color, width: l.width, z: l.front ? headZ + 0.07 : headZ - 0.6 + 5e-4, face: true });
+    list.sort((a, b) => a.z - b.z);
+    const { F } = r.head;
+    const headYaw = Math.atan2(F.x, F.z);
+    const cran = r.placements.find((p) => p.key === "cran");
+    const hx = cran ? cran.x : r.headScreen.x, hy = cran ? cran.y : r.headScreen.y;
+    const hv = headView(headYaw);
+    const S = TIDE_SPEC;
+    let guide = null;
+    if (cran && hv.view !== "back" && hv.view !== "backtq") {
+      const roll = cran.rot, cr = Math.cos(roll), sr = Math.sin(roll);
+      const side = hv.view === "front" ? 1 : hv.side;
+      const at = (u, v) => ({ x: hx + u * side * cr - v * sr, y: hy + u * side * sr + v * cr });
+      let pf = TIDE_FACE.faceYaw(hv.turn);
+      if (hv.view === "front") pf *= hv.side;
+      const sinF = hv.view === "side" ? 1 : Math.sin(pf);
+      const eyes = r.placements.filter((p) => /^eye-?1$/.test(p.key));
+      const nod = eyes.length ? 0 : 0;
+      const centre = [];
+      for (let v = S.top + 1; v <= S.bot - 1; v += 2) centre.push(at(S.centreLine(v) * sinF, v + nod));
+      const [l, rr] = S.skullEdge(hv.view, S.lines.eye);
+      const line = (v, k = 1) => {
+        const [a, b] = S.skullEdge(hv.view, v);
+        return [at(a * k, v), at(b * k, v)];
+      };
+      guide = { centre, eyeLine: [at(l, S.lines.eye), at(rr, S.lines.eye)], others: [line(S.lines.brow, 0.9), line(S.lines.nose, 0.9), line(S.lines.pearl, 0.9)], eyes: eyes.map((p) => ({ x: p.x, y: p.y })) };
+    }
+    return {
+      placements: list,
+      heads: [{ x: hx, y: hy, view: cran ? cran.piece.replace("head-", "") : hv.view, side: headYaw < 0 ? -1 : 1, guide, marks: { top: S.top, eye: S.lines.eye, bot: S.bot } }],
+      shadows: [[0, 0, 70, 20]]
+    };
+  }
+  var boss = {
+    id: "tidewyrm",
+    title: "Tidewyrm",
+    lede: "The water dragon that is already in the game, with its head redrawn: a rounded head with a short snout, sleepy slit eyes, pink ear fins and the pearl on its brow, one drawing per view. The snout's far edge tucks the far eye.",
+    attacks: [["dive", "Dive"], ["wave", "Tidal Wave"], ["bubbles", "Bubbles"], ["hightide", "High Tide"], ["undertow", "Undertow"], ["prison", "Water Prison"]],
+    pose,
+    placements,
+    pieces: tidePieces,
+    faces: [],
+    face: { ...TIDE_SPEC, eyeOrbit: TIDE_SPEC.eyeOrbit },
+    tideFace: TIDE_FACE,
+    looks: ["glare", "wide", "squint", "shut", "dizzy"],
+    mouths: ["closed"],
+    stage: { w: 460, h: 330, ground: 0.8, closeW: 130, closeH: 100, sheetGap: 300, sheetH: 300, closeGap: 110, closeSheetH: 120, champion: [-170, 40], shadow: [70, 20], floor: ["#06141c", "#0c2a38", "120,220,255"] },
+    occluder: "muzzle-tq: the bridge and far side of the snout"
+  };
+  return __toCommonJS(tide_entry_exports);
+})();
+
+</script>
+<script>
+(() => {
+  "use strict";
+  const BOSSES = [TIDE.boss];
+  const DEG = KIT.DEG;
+  const $ = (id) => document.getElementById(id);
+  const canvas = $("stage"), ctx = canvas.getContext("2d");
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let B = BOSSES[0];
+  const S = {
+    yaw: 0, phase: 1, sheet: false, lines: false, close: false, paused: reduced, auto: false,
+    action: "idle", start: 0, clock: 0, manual: null, last: performance.now(), autoNext: 0, autoI: 0, prev: {},
+  };
+  const WIND = 1.1, CAST = 0.9;
+  const attackIds = () => B.attacks.map((a) => a[0]);
+
+  /** The demo's stand-in for the battle: what it would tell the rig right now. */
+  function cue() {
+    if (S.manual) return { phase: S.phase, reduced: false, ...S.manual };
+    const age = S.clock - S.start, a = S.action;
+    const c = { clock: S.clock, phase: S.phase, reduced, windup: 0 };
+    if (attackIds().includes(a)) {
+      if (age < WIND) (c.windKind = a), (c.windup = age / WIND);
+      else if (age < WIND + CAST) (c.castKind = a), (c.castAge = age - WIND);
+      else S.action = "idle";
+    } else if (a === "hurt") { c.hurt = Math.max(0, 1 - age / 0.6); if (age > 0.6) S.action = "idle"; }
+    else if (a === "stagger") { c.stagger = true; if (age > 3.2) S.action = "idle"; }
+    else if (a === "exposed") { c.exposed = true; if (age > 3.2) S.action = "idle"; }
+    else if (a === "roar") { c.roarAge = age; if (age > 1.2) S.action = "idle"; }
+    else if (a === "defeat") { c.dead = true; c.deadAge = age; }
+    return c;
+  }
+
+  // ── the atlas: every piece drawn once per boss, phase and pixel scale ──
+  const atlases = new Map();
+  function atlas(phase, k, boss = B) {
+    const key = boss.id + phase + "@" + k;
+    let a = atlases.get(key);
+    if (a) return a;
+    if (atlases.size > 5) atlases.clear();
+    a = new Map();
+    for (const p of boss.pieces(phase)) {
+      const cv = document.createElement("canvas");
+      cv.width = Math.ceil(p.w * k);
+      cv.height = Math.ceil(p.h * k);
+      p.draw(cv.getContext("2d"), k);
+      a.set(p.name, { cv, p });
+    }
+    atlases.set(key, a);
+    return a;
+  }
+  /** Move, turn, scale: nothing is drawn afresh here (thin lines apart). */
+  function drawPlacements(c, list, at, only) {
+    for (const p of list) {
+      if (only && !only(p)) continue;
+      if (p.line) {
+        c.save();
+        c.globalAlpha = p.alpha === undefined ? 1 : p.alpha;
+        c.strokeStyle = p.color; c.lineWidth = p.width; c.lineCap = "round"; c.lineJoin = "round";
+        c.beginPath();
+        p.line.forEach((q, i) => (i ? c.lineTo(q.x, q.y) : c.moveTo(q.x, q.y)));
+        c.stroke();
+        c.restore();
+        continue;
+      }
+      const e = at.get(p.piece);
+      if (!e) { if (!drawPlacements.missing.has(p.piece)) { drawPlacements.missing.add(p.piece); console.error("missing piece " + p.piece); } continue; }
+      if (p.alpha <= 0.004) continue;
+      c.save();
+      c.globalAlpha = Math.min(1, p.alpha);
+      if (p.glow) c.globalCompositeOperation = "lighter";
+      // under the water: keep only the part above the waterline
+      if (p.waterY !== undefined) { c.beginPath(); c.rect(-1e4, -1e4, 2e4, 1e4 + p.waterY); c.clip(); }
+      c.translate(p.x, p.y);
+      c.rotate(p.rot);
+      c.scale(p.sx, p.sy);
+      c.drawImage(e.cv, -e.p.ox * e.p.w, -e.p.oy * e.p.h, e.p.w, e.p.h);
+      c.restore();
+    }
+  }
+  drawPlacements.missing = new Set();
+  function drawGuide(c, g, s) {
+    if (!g) return;
+    c.save();
+    c.lineWidth = 1.4 / s;
+    const line = (pts, col, dash) => {
+      c.strokeStyle = col;
+      c.setLineDash(dash ? [4.2 / s, 4.2 / s] : []);
+      c.beginPath();
+      pts.forEach((p, i) => (i ? c.lineTo(p.x, p.y) : c.moveTo(p.x, p.y)));
+      c.stroke();
+    };
+    line(g.centre, "#5cf2ff");
+    line(g.eyeLine, "#ff5c8a");
+    for (const o of g.others) line(o, "rgba(255,92,138,0.55)", true);
+    c.fillStyle = "#ff5c8a";
+    for (const e of g.eyes) { c.beginPath(); c.arc(e.x, e.y, 2.2 / s, 0, 7); c.fill(); }
+    c.restore();
+  }
+  /** A champion, for scale (they are about 44 px tall in the battle). */
+  function champion(c, x, y) {
+    c.save();
+    c.translate(x, y);
+    c.fillStyle = "rgba(0,0,0,0.35)";
+    c.beginPath(); c.ellipse(0, 0, 13, 5, 0, 0, 7); c.fill();
+    c.fillStyle = "#2f6fb0"; c.strokeStyle = "#12233c"; c.lineWidth = 1.5;
+    c.beginPath(); c.roundRect(-9, -26, 18, 24, 7); c.fill(); c.stroke();
+    c.fillStyle = "#f2c9a0";
+    c.beginPath(); c.arc(0, -33, 10.5, 0, 7); c.fill(); c.stroke();
+    c.fillStyle = "#6a3a1c";
+    c.beginPath(); c.arc(0, -36, 10.6, Math.PI, 0); c.fill();
+    c.fillStyle = "#12233c";
+    c.beginPath(); c.arc(-3.6, -32, 1.4, 0, 7); c.arc(3.6, -32, 1.4, 0, 7); c.fill();
+    c.restore();
+  }
+  function floor(c, w, h, cx, cy, s) {
+    const tint = B.stage.floor || ["#0b0918", "#15112b", "255,190,110"];
+    const g = c.createLinearGradient(0, 0, 0, h);
+    g.addColorStop(0, tint[0]);
+    g.addColorStop(1, tint[1]);
+    c.fillStyle = g;
+    c.fillRect(0, 0, w, h);
+    const pool = c.createRadialGradient(cx, cy, 0, cx, cy, 240 * s);
+    pool.addColorStop(0, `rgba(${tint[2]},0.20)`);
+    pool.addColorStop(1, `rgba(${tint[2]},0)`);
+    c.save();
+    c.translate(cx, cy); c.scale(1, KIT.TILT); c.translate(-cx, -cy);
+    c.fillStyle = pool;
+    c.fillRect(cx - 260 * s, cy - 260 * s, 520 * s, 520 * s);
+    c.strokeStyle = "rgba(200,190,240,0.10)";
+    c.lineWidth = 1;
+    const step = 60 * s;
+    c.beginPath();
+    for (let i = -8; i <= 8; i++) {
+      c.moveTo(cx + i * step, cy - 9 * step); c.lineTo(cx + i * step, cy + 9 * step);
+      c.moveTo(cx - 9 * step, cy + i * step); c.lineTo(cx + 9 * step, cy + i * step);
+    }
+    c.stroke();
+    c.restore();
+  }
+  const shadows = (c, list, k = 1) => {
+    c.fillStyle = "rgba(4,3,12,0.45)";
+    for (const [x, y, rx, ry] of list) { c.beginPath(); c.ellipse(x, y + 4, rx * k, ry * k, 0, 0, 7); c.fill(); }
+  };
+  /** Build a frame's placements, remembering each head's view (so it holds near a line). */
+  function build(P, yaw, slot) {
+    const b = B.placements(P, yaw * DEG, S.phase, S.manual ? undefined : S.prev[slot]);
+    S.prev[slot] = b.heads.map((h) => h.view);
+    return b;
+  }
+  const mid = (heads, k) => heads.reduce((a, h) => a + h[k], 0) / heads.length;
+
+  function render() {
+    const st = B.stage;
+    const dpr = Math.min(3, window.devicePixelRatio || 1);
+    const cssW = canvas.clientWidth || 900;
+    const rows = S.sheet ? B.actors || 1 : 1;
+    const cssH = S.sheet
+      ? Math.round(Math.max(200, Math.min(460, cssW * ((S.close ? st.closeSheetH : st.sheetH) / ((S.close ? st.closeGap : st.sheetGap) * 5)))) * rows + 22)
+      : Math.round(Math.max(300, Math.min(540, cssW * 0.62)));
+    if (canvas.width !== Math.round(cssW * dpr) || canvas.height !== Math.round(cssH * dpr)) {
+      canvas.width = Math.round(cssW * dpr);
+      canvas.height = Math.round(cssH * dpr);
+      canvas.style.height = cssH + "px";
+    }
+    const c = ctx;
+    c.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const P = B.pose(cue());
+    let info = "";
+    if (S.sheet) {
+      const yaws = [0, 45, 90, 135, 180];
+      const gap = S.close ? st.closeGap : st.sheetGap, rowH = (cssH - 22) / rows;
+      const s = Math.min(cssW / (gap * 5 + 10), rowH / (S.close ? st.closeSheetH : st.sheetH));
+      const at = atlas(S.phase, Math.min(8, Math.ceil(s * dpr * 2) / 2));
+      c.fillStyle = (st.floor || ["#0b0918"])[0];
+      c.fillRect(0, 0, cssW, cssH);
+      const built = yaws.map((y, i) => build(P, y, "s" + i));
+      c.font = "12px ui-monospace, Menlo, monospace";
+      for (let r = 0; r < rows; r++) {
+        const only = (p) => (rows === 1 || p.actor === r) && (!S.close || p.face);
+        const head0 = built[0].heads[r];
+        const marks = (h) => [[h.y + h.marks.top, "top of head"], [h.y + h.marks.eye, "eye line"], [S.close ? h.y + h.marks.bot : 0, S.close ? "chin" : "ground"]];
+        // close-up: heads lined up, guides run across. Whole body: the tilted
+        // camera puts a head that leans towards it lower, so guides are per figure.
+        const cy = S.close ? r * rowH + rowH / 2 - (head0.y + (head0.marks.top + head0.marks.bot) / 2) * s : r * rowH + rowH * st.ground + 6;
+        yaws.forEach((y, i) => {
+          const cx = cssW / 2 + (i - 2) * gap * s;
+          const b = built[i], h = b.heads[r];
+          const ax = rows > 1 ? h.x : 0; // each twin centred in its own row
+          const oy = S.close ? cy + (head0.y - h.y) * s : cy;
+          c.save();
+          c.translate(cx - (S.close ? h.x : ax) * s, oy);
+          c.scale(s, s);
+          drawPlacements(c, b.placements, at, only);
+          if (S.lines) drawGuide(c, h.guide, s);
+          c.restore();
+          if (!S.close) {
+            c.setLineDash([4, 4]);
+            c.lineWidth = 1;
+            c.strokeStyle = "rgba(255,210,74,0.65)";
+            for (const [gy] of marks(h)) {
+              const yy = Math.round(cy + gy * s) + 0.5;
+              c.beginPath(); c.moveTo(cx - gap * s * 0.46, yy); c.lineTo(cx + gap * s * 0.46, yy); c.stroke();
+            }
+            c.setLineDash([]);
+          }
+          if (r === rows - 1) {
+            c.fillStyle = "#a59dcc";
+            c.textAlign = "center";
+            c.fillText(y + "°  " + h.view, cx, cssH - 7);
+          }
+        });
+        if (S.close) {
+          c.setLineDash([5, 5]);
+          c.lineWidth = 1;
+          c.textAlign = "left";
+          for (const [gy, name] of marks(head0)) {
+            const y = Math.round(cy + gy * s) + 0.5;
+            c.strokeStyle = "rgba(255,210,74,0.6)";
+            c.beginPath(); c.moveTo(0, y); c.lineTo(cssW, y); c.stroke();
+            c.fillStyle = "rgba(255,210,74,0.9)";
+            c.fillText(name, 6, y - 4);
+          }
+          c.setLineDash([]);
+        }
+      }
+      info = `phase ${S.phase} · ${P.look || ""} / ${P.mouth || ""}`;
+    } else {
+      const b = build(P, S.yaw, "one");
+      let s = Math.min(cssW / st.w, cssH / st.h);
+      let cx = cssW / 2, cy = cssH * st.ground;
+      if (S.close) {
+        s = Math.min(cssW / st.closeW, cssH / st.closeH);
+        cx = cssW / 2 - mid(b.heads, "x") * s;
+        cy = cssH / 2 - mid(b.heads, "y") * s;
+      }
+      const at = atlas(S.phase, Math.min(8, Math.ceil(s * dpr * 2) / 2));
+      floor(c, cssW, cssH, cx, cy, s);
+      c.save();
+      c.translate(cx, cy);
+      c.scale(s, s);
+      shadows(c, b.shadows || [[0, 0, st.shadow[0], st.shadow[1]]]);
+      if (!S.close) champion(c, st.champion[0], st.champion[1]);
+      drawPlacements(c, b.placements, at);
+      if (S.lines) for (const h of b.heads) drawGuide(c, h.guide, s);
+      c.restore();
+      const h = b.heads[0];
+      info = `yaw ${Math.round(S.yaw)}° · ${h.view}${h.side < 0 && h.view !== "front" && h.view !== "back" ? " (mirrored)" : ""} · ${P.look || ""} / ${P.mouth || ""}`;
+    }
+    $("readout").textContent = info;
+  }
+
+  function frame(now) {
+    const dt = Math.min(0.1, (now - S.last) / 1000);
+    S.last = now;
+    if (!S.paused && !S.manual) {
+      S.clock += dt;
+      if (S.auto && S.clock > S.autoNext) {
+        const order = [...attackIds(), "hurt", "stagger", "roar"];
+        act(order[S.autoI++ % order.length], true);
+        S.autoNext = S.clock + 3.4;
+        if (S.autoI % 3 === 0) setYaw((Math.round(S.yaw / 45) * 45 + 45) % 360);
+      }
+    }
+    render();
+    requestAnimationFrame(frame);
+  }
+  function act(a, fromAuto) {
+    S.action = a;
+    S.start = S.clock;
+    if (!fromAuto) setAuto(false);
+    if (S.paused && !fromAuto) setPaused(false);
+    for (const b of $("actions").querySelectorAll("button[data-a]")) b.setAttribute("aria-pressed", String(b.dataset.a === a && a === "defeat"));
+  }
+  function setYaw(v) {
+    S.yaw = ((v % 360) + 360) % 360;
+    $("yaw").value = String(Math.round(S.yaw));
+    $("yawOut").textContent = Math.round(S.yaw) + "°";
+  }
+  const press = (el, on) => el.setAttribute("aria-pressed", String(on));
+  function setAuto(on) { S.auto = on; S.autoNext = S.clock + 0.3; const a = $("auto"); if (a) press(a, on); }
+  function setPaused(on) { S.paused = on; press($("tPause"), on); }
+
+  // ── controls ──
+  function button(parent, id, text, fn) {
+    const b = document.createElement("button");
+    b.id = id; b.textContent = text; b.onclick = fn;
+    parent.append(b);
+    return b;
+  }
+  function setBoss(boss) {
+    B = boss;
+    S.action = "idle"; S.prev = {}; S.manual = null;
+    $("title").textContent = boss.title + " face rig";
+    $("lede").textContent = boss.lede;
+    for (const t of $("tabs").children) press(t, t.dataset.b === boss.id);
+    $("actions").textContent = "";
+    for (const [id, label] of [["idle", "Idle"], ...boss.attacks, ["hurt", "Hurt"], ["stagger", "Stagger"], ["exposed", "Exposed"], ["roar", "Phase roar"], ["defeat", "Defeat"]])
+      button($("actions"), "act-" + id, label, () => act(id)).dataset.a = id;
+    press(button($("actions"), "auto", "Autoplay", () => { setAuto(!S.auto); if (S.auto) setPaused(false); }), false);
+    // the constants, straight from the rig
+    const u = (v, A) => (v / A).toFixed(2) + " A";
+    $("tables").innerHTML = boss.faces.map((fk, i) => {
+      const F = fk.spec, A = F.A;
+      const rows = [
+        ["A", A + " units", "Half-width of the head; the face's unit"],
+        ...Object.entries(F.lines).map(([k, v]) => [k + " line", u(v, A), "Height from the head's centre (down is +)"]),
+        ["eyeAz", Math.round(F.eyeAz / DEG) + "°", "How far round from the centre line each eye sits"],
+        ["eyeOrbit", u(F.eyeOrbit, A), "Radius of the circle the eyes ride"],
+        ["lag", Math.round(F.lag / DEG) + "°", "How far the face trails the skull at three-quarter"],
+        ["farLift", Math.round(F.farLift / DEG) + "°", "Fixed lift of the far eye's outer corner"],
+        ["tuckCap", F.tuckCap === undefined ? "none" : Math.round(F.tuckCap * 100) + "%", "The most of the far eye the bridge may hide"],
+        ["nod", u(F.nod, A) + " / rad", "How far a nod slides the face"],
+        ["margin", u(F.margin, A), "Clear space between a feature and the outline"],
+        ["views", `front < ${fk.limits.front}° · three-quarter < ${fk.limits.tq}° · side < ${fk.limits.side}°`, "Where each drawing takes over"],
+        ["eye half-widths", `front ${F.eye.front.hw} · near ${F.eye.near.hw} · far ${F.eye.far.hw} · side ${F.eye.side.hw}`, "Each is its own drawing; half-height " + F.eye.front.hh],
+        ["occluder", "", (boss.occluders || [boss.occluder])[i]],
+      ];
+      return (boss.faces.length > 1 ? `<h3>${boss.faceNames[i]}</h3>` : "") +
+        `<div class="scroll"><table><thead><tr><th>Constant</th><th>Value</th><th>Meaning</th></tr></thead><tbody>` +
+        rows.map((r) => `<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join("") + `</tbody></table></div>`;
+    }).join("") || (boss.face ? `<div class="scroll"><table><thead><tr><th>Constant</th><th>Value</th><th>Meaning</th></tr></thead><tbody>` + [
+      ["eyeAz", Math.round(boss.face.eyeAz / DEG) + "°", "How far round from the centre line each eye sits"],
+      ["eyeOrbit", boss.face.eyeOrbit + " units", "Radius of the circle the eyes ride"],
+      ["lag", Math.round(boss.face.lag / DEG) + "°", "How far the face trails the skull at three-quarter"],
+      ["farLift", Math.round(boss.face.farLift / DEG) + "°", "Fixed lift of the far eye's outer corner"],
+      ["margin", boss.face.margin + " units", "Clear space between an eye and the head's outline"],
+      ["eye half-widths", Object.entries(boss.face.eye).map(([k, v]) => k + " " + v.hw).join(" · "), "Each is its own drawing"],
+      ["occluder", "", boss.occluder],
+    ].map((r) => `<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join("") + `</tbody></table></div>` : "");
+  }
+  if (BOSSES.length > 1) {
+    $("tabs").hidden = false;
+    for (const b of BOSSES) button($("tabs"), "tab-" + b.id, b.title, () => { location.hash = b.id; setBoss(b); }).dataset.b = b.id;
+  }
+  for (let i = 0; i < 8; i++) button($("snaps"), "snap-" + i, i * 45 + "°", () => setYaw(i * 45));
+  for (const p of [1, 2, 3])
+    press(button($("phases"), "phase-" + p, "Phase " + p, (e) => {
+      S.phase = p;
+      for (const o of $("phases").children) press(o, o === e.currentTarget);
+      act("roar");
+    }), p === 1);
+  $("yaw").oninput = (e) => setYaw(+e.target.value);
+  const toggle = (id, key) => ($(id).onclick = () => { S[key] = !S[key]; press($(id), S[key]); });
+  toggle("tSheet", "sheet");
+  toggle("tLines", "lines");
+  toggle("tClose", "close");
+  $("tPause").onclick = () => setPaused(!S.paused);
+  press($("tPause"), S.paused);
+  const fromHash = () => BOSSES.find((b) => b.id === location.hash.slice(1));
+  addEventListener("hashchange", () => { const b = fromHash(); if (b && b !== B) setBoss(b); });
+  setBoss(fromHash() || BOSSES[0]);
+
+  window.DEMO = { S, BOSSES, render, setYaw, act, setBoss, atlas, drawPlacements, drawGuide, boss: () => B };
+  requestAnimationFrame(frame);
+})();
+</script>
+</html>

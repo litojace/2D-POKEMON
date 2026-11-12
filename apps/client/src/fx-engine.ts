@@ -110,6 +110,41 @@ function makeTextures(scene: Phaser.Scene) {
   addCanvasTexture(scene.textures, "fx-vignette", v);
 }
 
+/**
+ * One frame's effect work, for the effect budget test, the `?perf=1`
+ * overlay and the glow budget. Cover is in screens: 1 is a sprite area as
+ * big as the canvas (2 is the whole screen filled twice).
+ */
+export interface FxFrameStats {
+  glows: number;
+  softs: number;
+  particles: number;
+  /** Additive light sprites' area, in screens (essential ones included). */
+  glowCover: number;
+  /** Of glowCover, the part that must never shrink (boss warnings). */
+  essentialCover: number;
+  /** Soft normal-blend sprites' area (smoke, flame bodies), in screens. */
+  softCover: number;
+  /** Radius factor the glow budget applied to decorative glows (1: none). */
+  shrink: number;
+}
+const emptyStats = (): FxFrameStats => ({
+  glows: 0,
+  softs: 0,
+  particles: 0,
+  glowCover: 0,
+  essentialCover: 0,
+  softCover: 0,
+  shrink: 1,
+});
+/** Longest step effects take in one frame (s): Phaser's 5 fps floor. */
+export const FX_MAX_STEP = 0.2;
+/** Decorative glows never shrink below this radius factor. */
+const MIN_SHRINK = 0.5;
+/** Seconds decorative glows take to grow back once the budget allows
+ * (time constant); shrinking is immediate. */
+const GLOW_RELEASE = 0.3;
+
 /** One depth band's layers (see Fx.at). */
 type Band = {
   g: Phaser.GameObjects.Graphics;
@@ -162,6 +197,24 @@ export class Fx {
   density = 1;
   /** Battle quality: trails emit this much less often. */
   trailScale = 1;
+  /**
+   * Battle quality: most screens' worth of decorative glow light a frame
+   * (Infinity: no limit). Over it, every decorative glow shrinks alike, so
+   * the GPU fills less on an older phone and nothing blinks out. Glows drawn
+   * inside `essential` (a boss gathering power: a warning) never shrink.
+   */
+  glowBudget = Infinity;
+  /** The last finished frame's work: what the GPU had to fill (fxStats). */
+  readonly stats: FxFrameStats = emptyStats();
+  private work = emptyStats();
+  /** Decorative glow area this frame at full size (world px²). */
+  private decorArea = 0;
+  /** This frame's decorative glow sprites, sized at the frame's end. */
+  private decor: { img: Phaser.GameObjects.Image; size: number; sy: number }[] =
+    [];
+  /** Radius factor the budget gave decorative glows last frame. */
+  private shrink = 1;
+  private essentialDepth = 0;
   private vignette?: Phaser.GameObjects.Image;
   private wash?: Phaser.GameObjects.Image;
   private ult = { start: 0, until: 0, color: 0xffffff, dark: false };
@@ -199,6 +252,9 @@ export class Fx {
     this.used = 0;
     this.usedFloor = 0;
     this.usedSoft = 0;
+    this.work = emptyStats();
+    this.decorArea = 0;
+    this.decor.length = 0;
     this.floor.clear();
     this.floorSolid.clear();
     this.current = this.top;
@@ -253,7 +309,11 @@ export class Fx {
   }
 
   private end(_time: number, delta: number) {
-    const dt = Math.min(0.05, delta / 1000);
+    // Effects age in real time down to 5 fps (Phaser's own floor). Capped at
+    // 50 ms once, they outlived their design on a phone at 5–20 fps (twice
+    // as long at 10 fps) while new casts kept coming: more on screen, slower
+    // frames, longer lives again.
+    const dt = Math.min(FX_MAX_STEP, delta / 1000);
     this.step(dt);
     this.drawParticles();
     this.at(null);
@@ -265,6 +325,62 @@ export class Fx {
       this.floorGlows[i].setVisible(false);
     for (let i = this.usedSoft; i < this.softs.length; i++)
       this.softs[i].setVisible(false);
+    this.publishStats(delta / 1000);
+  }
+
+  /** Areas so far are world px²: turn them into screens, and set the
+   * decorative glows' shrink for the next frame from the budget. */
+  private publishStats(dt: number) {
+    const num = (v: unknown) =>
+        typeof v === "number" && Number.isFinite(v) && v > 0 ? v : 1,
+      zoom = num(this.scene.cameras?.main?.zoom),
+      screen = num(this.scene.scale?.width) * num(this.scene.scale?.height),
+      toScreens = (zoom * zoom) / screen,
+      w = this.work;
+    w.essentialCover *= toScreens;
+    w.softCover *= toScreens;
+    w.particles = this.particles.length;
+    // Fit this frame's decorative glows into what the budget leaves after
+    // the essential ones (at least a quarter of it), like a compressor: at
+    // once when a big effect starts (its own flash hides the change), then
+    // back to full size over about a third of a second, so nothing pops.
+    // Sized now, at the frame's end, so there is no frame of lag (a burst
+    // that peaks in one frame on a slow phone is caught too).
+    const decor = this.decorArea * toScreens;
+    let target = 1;
+    if (Number.isFinite(this.glowBudget) && decor > 0) {
+      const room = Math.max(
+        this.glowBudget - w.essentialCover,
+        this.glowBudget / 4,
+      );
+      if (decor > room) target = Math.max(MIN_SHRINK, Math.sqrt(room / decor));
+    }
+    if (target <= this.shrink) this.shrink = target;
+    else {
+      const ease = 1 - Math.exp(-Math.min(0.5, Math.max(0, dt)) / GLOW_RELEASE);
+      this.shrink = Math.min(
+        target,
+        this.shrink + (target - this.shrink) * ease,
+      );
+      if (target - this.shrink < 0.005) this.shrink = target;
+    }
+    const k = this.shrink;
+    if (k < 1)
+      for (const d of this.decor) d.img.setScale(d.size * k, d.size * k * d.sy);
+    w.glowCover = w.essentialCover + decor * k * k;
+    w.shrink = k;
+    Object.assign(this.stats, w);
+  }
+
+  /** Glows drawn in `run` are warnings (a boss gathering power): the glow
+   * budget never shrinks them. */
+  essential<T>(run: () => T): T {
+    this.essentialDepth++;
+    try {
+      return run();
+    } finally {
+      this.essentialDepth--;
+    }
   }
 
   destroy() {
@@ -302,6 +418,12 @@ export class Fx {
     stretchY = 1,
   ) {
     if (radius <= 0 || alpha <= 0) return;
+    const stretch = onFloor ? 0.78 : stretchY,
+      area = 4 * radius * radius * stretch,
+      essential = this.essentialDepth > 0;
+    if (essential) this.work.essentialCover += area;
+    else this.decorArea += area;
+    this.work.glows++;
     const pool = onFloor ? this.floorGlows : this.glows;
     const index = onFloor ? this.usedFloor++ : this.used++;
     let img = pool[index];
@@ -313,12 +435,12 @@ export class Fx {
       .setDepth(onFloor ? 0.25 : this.current.glowDepth)
       .setVisible(true)
       .setPosition(x, y)
-      .setScale(
-        (radius * 2) / 128,
-        ((radius * 2) / 128) * (onFloor ? 0.78 : stretchY),
-      )
+      .setScale((radius * 2) / 128, ((radius * 2) / 128) * stretch)
       .setTint(color)
       .setAlpha(Math.min(1, alpha));
+    // Its final size is set at the frame's end, within the glow budget.
+    if (!essential)
+      this.decor.push({ img, size: (radius * 2) / 128, sy: stretch });
   }
 
   /** A soft normal-blend puff (solid flame body, smoke, dust) this frame. */
@@ -331,6 +453,8 @@ export class Fx {
     stretchY = 1,
   ) {
     if (radius <= 0 || alpha <= 0) return;
+    this.work.softs++;
+    this.work.softCover += 4 * radius * radius * stretchY;
     let img = this.softs[this.usedSoft++];
     if (!img) {
       img = this.scene.add.image(0, 0, "fx-glow");

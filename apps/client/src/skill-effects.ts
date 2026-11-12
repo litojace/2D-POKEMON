@@ -552,7 +552,11 @@ export function drawWindup(
 ) {
   const k = Math.max(0, Math.min(1, progress));
   const kit = KIT.windup[a.id];
-  if (kit && g.scene) return kit(g, a, x, y, angle, aimX, aimY, color, k, now);
+  // A wind-up warns the opponent: Low's glow budget never shrinks its glows.
+  if (kit && g.scene)
+    return fxFor(g.scene).essential(() =>
+      kit(g, a, x, y, angle, aimX, aimY, color, k, now),
+    );
   if (a.kind === "nova") {
     g.fillStyle(color, 0.08 + k * 0.12).fillCircle(x, y, a.radius);
     g.lineStyle(2, color, 0.7).strokeCircle(x, y, a.radius);

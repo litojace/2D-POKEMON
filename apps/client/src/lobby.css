@@ -5,7 +5,7 @@
    numbers change; numbers use tabular figures. */
 .lobby-layer {
   /* 22px under the player card (10px from the top, --hub-card-h tall). */
-  --lobby-top: calc(var(--hub-card-h) + 32px);
+  --lobby-top: calc(var(--hub-card-h) + 32px + var(--hub-drop, 0px));
   /* The header's frame (style.css: max(14px, safe area) at the sides), so
      the rail and the cards line up under the player card and the gear;
      the bottom keeps the same margin. The Plaza and the Farm use it too. */
@@ -1063,7 +1063,7 @@
   .lobby-layer {
     /* 12px under the player card (42px from max(10px, safe area)), clear
        of a frame's star row hanging below it. */
-    --lobby-top: calc(var(--hub-card-h) + 22px);
+    --lobby-top: calc(var(--hub-card-h) + 22px + var(--hub-drop, 0px));
     --lobby-rail: 36px;
     --lobby-rail-btn: 34px;
     --lobby-cards: 196px;
@@ -1276,7 +1276,7 @@
 /* ── Hub top bar: the scene switch and fixed-size boxes ─────────────────── */
 .hub-scenes {
   position: fixed;
-  top: max(10px, calc(var(--safe-top, 0px) + 6px));
+  top: var(--hub-top, max(10px, calc(var(--safe-top, 0px) + 6px)));
   /* The screen's middle, or the middle of the gap between the player card
      and the pills where the middle runs into them (scene-switch-place.ts). */
   left: var(--hub-scenes-x, 50%);
@@ -1327,6 +1327,20 @@
    = 32px of 32px). The rows under the header (Lobby, Plaza, Farm) are
    placed from --hub-card-h. */
 :root {
+  /* The header row's top edge: 10px from the top of the screen, or 12px
+     under a status bar (an iPad home-screen app, where iPadOS draws the
+     clock, the app's name and a soft fade along the bar's edge). It sat
+     right against the bar before, half lost in that fade, and the rows
+     below it (placed from 10px) ran into it. --hub-drop is how much lower
+     than 10px it is: every row under the header adds it. */
+  /* (10px with no bar: the extra 2px only comes with a bar.) */
+  --hub-top: calc(
+    var(--safe-top, 0px) + 10px + min(2px, var(--safe-top, 0px) * 100)
+  );
+  --hub-drop: calc(var(--hub-top) - 10px);
+  /* The same, for rows inside a box that already keeps out of the safe
+     area (the Farm's HUD): 0, or 2px under a bar. */
+  --hub-drop-in: calc(var(--hub-top) - var(--safe-top, 0px) - 10px);
   --hub-card-w: 236px;
   --hub-card-h: 52px;
   --hub-card-pad: 6px 14px 6px 6px;

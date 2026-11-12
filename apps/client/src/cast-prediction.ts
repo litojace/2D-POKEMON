@@ -67,11 +67,15 @@ export class CastPredictor {
   predict(action: CastAction, now: number) {
     this.pending.set(action, now);
   }
+  /** How long the last confirmed prediction waited for the server (ms). */
+  lastWait: number | undefined;
   /** The server's cast arrived: true when it was already shown (skip the replay). */
   confirm(action: CastAction, now: number) {
     const at = this.pending.get(action);
     this.pending.delete(action);
-    return at !== undefined && now - at <= this.window;
+    const shown = at !== undefined && now - at <= this.window;
+    this.lastWait = shown ? now - at : undefined;
+    return shown;
   }
   /** Predictions the server never confirmed; they are forgotten. */
   expired(now: number) {
