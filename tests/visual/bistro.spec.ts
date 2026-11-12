@@ -449,6 +449,36 @@ test("Bistro shop: buy any number at once (typed, or counted with − and +, hel
   expect(errors).toEqual([]);
 });
 
+test("Bistro: a waiter takes every tip on a table in one trip", async ({
+  page,
+}) => {
+  const errors = await openBistro(page);
+  // No food, no guests: only the two tips this test leaves.
+  await B(page, "srv.S.counter = [null, null, null, null]; return b.load()");
+  await expect.poll(() => B(page, "return b.customers().length")).toBe(0);
+  // Both chairs of the first table (3 and 4) left their coins a while ago.
+  expect(await B(page, "return b.tip(3, 20) && b.tip(4, 20)")).toBe(true);
+  // How many are left, as it goes: 2, then none (never one).
+  const seen = (await page.evaluate(
+    () =>
+      new Promise<number[]>((done) => {
+        const b = (window as any).__bistro;
+        const out: number[] = [];
+        const t0 = performance.now();
+        const id = setInterval(() => {
+          const n = b.piles().length;
+          if (out[out.length - 1] !== n) out.push(n);
+          if (n === 0 || performance.now() - t0 > 15000) {
+            clearInterval(id);
+            done(out);
+          }
+        }, 20);
+      }),
+  )) as number[];
+  expect(seen).toEqual([2, 0]);
+  expect(errors).toEqual([]);
+});
+
 test("Bistro fits a phone in landscape", async ({ page }, info) => {
   await page.setViewportSize({ width: 844, height: 390 });
   const errors = await openBistro(page);

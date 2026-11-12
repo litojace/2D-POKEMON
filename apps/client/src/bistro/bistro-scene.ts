@@ -1574,6 +1574,8 @@ export function openBistro(o: BistroOptions): BistroHandle {
       for (const x of piles) {
         if (!clears) break;
         if (x.claimed || T - x.t0 <= 9) continue;
+        // Someone is on the way to that table: they take it all.
+        if (piles.some((y) => y.claimed && y.tableId === x.tableId)) continue;
         const near = [x.chairId, x.tableId]
           .map((id) => S.items.find((i) => i.id === id))
           .filter((i): i is Item => !!i);
@@ -1665,8 +1667,12 @@ export function openBistro(o: BistroOptions): BistroHandle {
         return;
       }
       if (arrived) {
-        collectPile(p, false);
+        // Every tip on that table in one go, not one and back for the next.
         w.task = null;
+        for (const x of piles.filter(
+          (y) => y.tableId === p.tableId && (!y.claimed || y === p),
+        ))
+          collectPile(x, false);
       }
     }
   };
@@ -5495,6 +5501,31 @@ export function openBistro(o: BistroOptions): BistroHandle {
       },
       advance: (s: number) => {
         for (let i = 0; i < s * 30; i++) update(1 / 30);
+      },
+      /** The coins guests left on the tables. */
+      piles: () =>
+        piles.map((p) => ({
+          table: p.tableId,
+          chair: p.chairId,
+          claimed: p.claimed,
+        })),
+      /** A guest's coins on a chair's table, left `ago` seconds ago. */
+      tip: (chairId: number, ago = 20, dish: DishId = "goicuon") => {
+        const seat = seatList.find((x) => x.chair.id === chairId);
+        if (!seat) return false;
+        piles.push({
+          id: nextId++,
+          chairId,
+          tableId: seat.table.id,
+          spot: tableSpot(seat.table.x, seat.table.y, (seat.dir + 2) % 4),
+          coins: 10,
+          base: 10,
+          t0: T - ago,
+          claimed: false,
+          guest: -nextId,
+          sale: { dish, vip: false, combo: 1, hearts: 3 },
+        });
+        return true;
       },
     };
 
