@@ -28,8 +28,17 @@ export const RAID_JUMP_ATTACKS = new Set<RaidAttack>([
   "flame-ring",
   "thunderclap",
 ]);
-/** Warnings whose length is a duration, not a telegraph (never shortened). */
-export const RAID_DURATION_ATTACKS = new Set<RaidAttack>(["whale-song"]);
+/**
+ * Warnings the tier never shortens: durations rather than telegraphs
+ * (Whale Song), and wide escapes whose authored length is exactly what the
+ * slowest champion needs after a 0.45 s reaction (Prismatail's fan slices,
+ * Emberwing's embers on the last brazier: tests/unit/raid-star3-fairness).
+ */
+export const RAID_DURATION_ATTACKS = new Set<RaidAttack>([
+  "whale-song",
+  "fan-display",
+  "ember-rain",
+]);
 /**
  * Attacks that need the whole floor (or move the boss, or start a puzzle):
  * they never overlap another attack. A boss can widen this with `exclusive()`.
