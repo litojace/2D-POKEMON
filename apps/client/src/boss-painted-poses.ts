@@ -22,9 +22,6 @@ export function paintedGloom(
 ) {
   return paintWholeBoss(g, "gloomshade", { ...o, y: o.y + 46 });
 }
-export function paintedSomnara(g: G, o: Look) {
-  return paintWholeBoss(g, "somnara", { ...o, y: o.y + 72 });
-}
 export function paintedPrisma(g: G, o: Look) {
   return paintWholeBoss(g, "prismatail", {
     ...o,

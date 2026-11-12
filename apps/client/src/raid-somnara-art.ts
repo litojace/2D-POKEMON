@@ -1,7 +1,6 @@
-import { paintedSomnara } from "./boss-painted-poses";
+import { paintVectorSomnara } from "./boss-vector-somnara-rig";
 import { groundHeight } from "../../../packages/shared/src/world-art";
-import { bossSurface } from "./boss-materials";
-import { bossLife, bossEye } from "./raid-boss-life";
+import { bossLife } from "./raid-boss-life";
 import type Phaser from "phaser";
 import type { Snapshot } from "@arena/shared";
 import {
@@ -302,13 +301,22 @@ interface WhaleMemory {
   seed: number;
   hp: number;
   exposed: boolean;
+  phase: number;
   result: unknown;
   clock: number;
   time: number;
-  hurtUntil: number;
+  hurtAt: number;
+  roarAt: number;
   deathAt?: number;
 }
 const memory = new WeakMap<G, WhaleMemory>();
+/**
+ * Somnara, the dream whale: vector art (boss-vector-somnara.ts) posed from the
+ * battle's own state: asleep and drifting at rest, each attack's windup (its
+ * warning) and follow-through (its cast), drowsy-eyed through a dream, woken
+ * wide-eyed with its star-heart open, dizzy when staggered, a flinch when hit,
+ * a yawn into each new phase, and sinking into a deep sleep when beaten.
+ */
 export function drawSomnara(
   g: G,
   state: Snapshot,
@@ -330,10 +338,12 @@ export function drawSomnara(
       serverTime: state.time,
       hp: boss.hp,
       exposed: false,
+      phase: r.phase,
       result: null,
       clock,
       time: 0,
-      hurtUntil: 0,
+      hurtAt: -10,
+      roarAt: -10,
     };
     memory.set(g, m);
   }
@@ -341,184 +351,57 @@ export function drawSomnara(
   const dt = Math.max(0, Math.min(0.05, clock - m.clock));
   m.clock = clock;
   if (state.phase === "playing" || state.phase === "finished") m.time += dt;
-  const exposed = r.exposedUntil > state.time || r.staggerUntil > state.time;
+  const woken = r.exposedUntil > state.time,
+    stagger = r.staggerUntil > state.time,
+    exposed = woken || stagger;
   const cues: RaidBossCue[] = [];
   if (boss.hp < m.hp && boss.hp > 0) {
-    m.hurtUntil = m.time + 0.12;
+    m.hurtAt = m.time;
     cues.push(exposed ? "core" : "chip");
   }
   if (exposed && !m.exposed) cues.push("awaken");
+  if (r.phase > m.phase && state.phase === "playing") m.roarAt = m.time;
   if (r.result === "victory" && m.result !== "victory") {
     m.deathAt = m.time;
     cues.push("fall");
   }
   m.hp = boss.hp;
   m.exposed = exposed;
+  m.phase = r.phase;
   m.result = r.result;
   const life = bossLife(g, state, boss, clock, reduced),
-    t = life.time;
-  const farewell =
-    m.deathAt === undefined
-      ? 0
-      : reduced
-        ? 1
-        : Math.min(1, (m.time - m.deathAt) / 1.25);
-  const x = boss.x,
-    y = boss.y - 62 + life.breath * 6 - farewell * 90 + life.windup * 4;
-  const alpha = 1 - farewell * 0.7;
-  const skin = m.time < m.hurtUntil ? 0xb49bdd : r.gilded ? 0xa18b69 : 0x8977c5;
-  g.fillStyle(0x08102a, 0.27 * (1 - farewell)).fillEllipse(
-    x,
-    boss.y + 26,
-    217,
-    49,
+    t = m.time;
+  const deathAt = m.deathAt;
+  const dead = deathAt !== undefined;
+  g.fillStyle(0x08102a, 0.27).fillEllipse(boss.x, boss.y + 26, 217, 49);
+  // The attack being wound up (its warning) and the last one cast; through a
+  // dream it watches, drowsy-eyed, its nightcap's bobble aglow.
+  const wind = r.warnings.find(
+    (w) =>
+      (!w.casterId || w.casterId === boss.id) &&
+      w.at >= state.time &&
+      (w.startedAt ?? w.at - 1.5) <= state.time,
   );
-  const painted = paintedSomnara(g, {
-    x,
-    y,
-    life,
-    alpha,
-    exposed,
-    dead: farewell > 0,
+  const cast = life.action.casts[life.action.casts.length - 1];
+  const dreaming = !wind && !!r.dream;
+  paintVectorSomnara(g, {
+    x: boss.x,
+    y: boss.y + 26,
+    angle: boss.angle,
+    clock: t,
+    phase: r.phase,
+    reduced,
     gilded: !!r.gilded,
-    hurt: m.time < m.hurtUntil,
+    windKind: dreaming ? "dream-sequence" : wind?.kind,
+    windup: dreaming ? 1 : life.windup,
+    castKind: cast?.kind,
+    castAge: cast?.age ?? 99,
+    roarAge: t - m.roarAt,
+    exposed,
+    stagger,
+    hurt: Math.max(0, 1 - (t - m.hurtAt) / 0.24),
+    dead,
+    deadAge: dead ? (reduced ? 9 : t - deathAt) : undefined,
   });
-  if (!painted) {
-    // A hinged tail stock and two flukes follow the whale's slow swimming stroke.
-    const stroke = Math.sin(t * 1.65) * life.move;
-    g.save()
-      .translateCanvas(x + 105, y + 5)
-      .rotateCanvas(stroke * 0.13 - life.windup * 0.12);
-    g.fillStyle(0x51447e, alpha).fillEllipse(20, 0, 69, 38);
-    for (const side of [-1, 1]) {
-      g.save()
-        .translateCanvas(42, 0)
-        .rotateCanvas(side * (0.35 + stroke * 0.07));
-      g.fillStyle(0x68558f, alpha).fillTriangle(
-        0,
-        0,
-        36,
-        side * 49,
-        49,
-        side * 12,
-      );
-      g.lineStyle(2, 0xc3b3eb, alpha * 0.55).lineBetween(9, 0, 35, side * 25);
-      g.restore();
-    }
-    g.restore();
-    // The far flipper stays behind a softly shaded, breathing body.
-    g.save()
-      .translateCanvas(x - 18, y + 27)
-      .rotateCanvas(-0.35 - stroke * 0.18);
-    g.fillStyle(0x5d508d, alpha).fillEllipse(0, 25, 48, 73);
-    g.restore();
-    g.fillStyle(0x283452, alpha).fillEllipse(x, y, 255, 146);
-    bossSurface(g, x, y, 250, 144, skin, "velvet", alpha);
-    g.fillStyle(0xa797d7, alpha * 0.8).fillEllipse(x - 17, y - 28, 195, 72);
-    g.fillStyle(0xcbbbea, alpha).fillEllipse(x - 9, y + 30, 211, 72);
-    // Pleated throat and a second flipper make the silhouette read as a whale.
-    for (let i = 0; i < 4; i++)
-      g.lineStyle(1.8, 0x9d8bc7, alpha * 0.5)
-        .beginPath()
-        .arc(x - 50 + i * 17, y + 21, 27, 0.25, Math.PI - 0.25, false)
-        .strokePath();
-    g.save()
-      .translateCanvas(x + 18, y + 35)
-      .rotateCanvas(0.45 + stroke * 0.2 + life.windup * 0.2);
-    g.fillStyle(0x675695, alpha).fillEllipse(14, 22, 70, 33);
-    g.fillStyle(0x9981c4, alpha).fillEllipse(11, 17, 58, 20);
-    g.lineStyle(2, 0xc3b3eb, alpha * 0.5).lineBetween(0, 19, 32, 24);
-    g.restore();
-    // A tiny lived-in cottage rides the back, with a pendulum nightcap and warm windows.
-    g.fillStyle(0x53678a, alpha).fillEllipse(x + 13, y - 66, 120, 31);
-    g.fillStyle(0x99c6bf, alpha).fillEllipse(x + 13, y - 73, 118, 19);
-    g.fillStyle(0xf0d6b9, alpha).fillRoundedRect(x - 8, y - 115, 43, 36, 4);
-    g.fillStyle(0x64729f, alpha).fillTriangle(
-      x - 17,
-      y - 112,
-      x + 14,
-      y - 142,
-      x + 45,
-      y - 112,
-    );
-    g.lineStyle(2, 0xb7c6dd, alpha * 0.7).lineBetween(
-      x - 17,
-      y - 112,
-      x + 14,
-      y - 142,
-    );
-    g.fillStyle(
-      exposed || farewell ? 0xffdc85 : 0xd5c1a0,
-      alpha,
-    ).fillRoundedRect(x + 3, y - 104, 16, 17, 3);
-    g.lineStyle(1.5, 0x64729f, alpha)
-      .lineBetween(x + 11, y - 104, x + 11, y - 87)
-      .lineBetween(x + 3, y - 96, x + 19, y - 96);
-    const cap = life.sway * 4;
-    g.fillStyle(0x5f508c, alpha).fillTriangle(
-      x - 87,
-      y - 62,
-      x - 33,
-      y - 73,
-      x - 94 + cap,
-      y - 118,
-    );
-    g.fillStyle(0xd3d8ed, alpha).fillEllipse(x - 61, y - 73, 69, 22);
-    g.fillStyle(0xffe6a8, alpha).fillCircle(x - 94 + cap, y - 117, 9);
-    star(g, x - 94 + cap, y - 117, 5, 0xfff8dc, alpha);
-    for (let i = 0; i < 8; i++)
-      star(
-        g,
-        x - 55 + (i % 4) * 32,
-        y - 29 + Math.floor(i / 4) * 29,
-        i % 3 ? 3 : 4,
-        0xf6e8ff,
-        alpha * (0.42 + Math.sin(t * 1.25 + i) * 0.12),
-      );
-    const ex = x - 83 + life.lookX * 2,
-      ey = y - 10;
-    const awake =
-      exposed || life.windup > 0.15 || (life.move && Math.sin(t * 0.55) > 0.82);
-    if (awake && !farewell) bossEye(g, ex, ey, 15, 22, life, 0x4b477a, alpha);
-    else
-      g.lineStyle(3.5, 0x35405c, alpha)
-        .beginPath()
-        .arc(ex, ey - 5, 11, 0.3, Math.PI - 0.3, false)
-        .strokePath();
-    g.fillStyle(0xc9a9d4, alpha * 0.65).fillEllipse(x - 91, y + 9, 18, 9);
-    if (life.windup > 0.1 && !farewell) {
-      g.fillStyle(0x514674, alpha).fillEllipse(
-        x - 100,
-        y + 21,
-        19,
-        7 + life.windup * 15,
-      );
-      g.fillStyle(0xdcbbd7, alpha).fillEllipse(
-        x - 102,
-        y + 26,
-        10,
-        3 + life.windup * 4,
-      );
-    } else
-      g.lineStyle(3, 0x35405c, alpha)
-        .beginPath()
-        .arc(x - 97, y + 9, 18, 0.3, 1.5, false)
-        .strokePath();
-    if (exposed && !farewell) {
-      g.fillStyle(0xffdf8d, 0.17).fillCircle(x - 32, y + 24, 28);
-      star(g, x - 32, y + 24, 19 + life.breath, 0xffdf8d, alpha);
-      g.lineStyle(2, 0xfff1c2, alpha * 0.8).strokeCircle(x - 32, y + 24, 27);
-    }
-  }
-  if ((r.quietZone || r.dream || life.windup > 0.15) && !farewell)
-    for (let i = 0; i < 3; i++)
-      note(
-        g,
-        x - 133 - i * 16,
-        y - 24 - i * 18 + Math.sin(t + i) * 4 * life.move,
-        0.8,
-        0xd8c8ff,
-        alpha * 0.65,
-      );
   return cues;
 }
