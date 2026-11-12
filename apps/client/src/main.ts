@@ -129,7 +129,9 @@ import {
   fighterTextureKeys,
   type FighterVisual,
 } from "./animation/pipeline";
-import { rigAssets } from "./animation/assets";
+import { rigAssets, skinSuffix } from "./animation/assets";
+import { loadRigTextures } from "./animation/rig-textures";
+import { prewarmBossAtlas } from "./boss-vector-prewarm";
 import { FighterLoading, neededFighters } from "./animation/fighter-loading";
 import {
   setOverlayMarkup,
@@ -4682,6 +4684,15 @@ class ArenaScene extends Phaser.Scene {
     if (state)
       for (const id of this.fighters.toRequest(neededFighters(state.players)))
         queueFighterAssets(this, id, this.fighters.assetsFor(id));
+    // The Shop skins they wear load here too, behind the loading screen: a
+    // rig would otherwise ask for them on its first frame, mid-battle (a
+    // stall while they rasterize, then the skin popping in).
+    if (state)
+      for (const p of state.players) {
+        const look = p.championLooks?.[p.character];
+        if (!p.raidBoss && look && skinSuffix(p.character, look))
+          loadRigTextures(this, rigAssets(p.character, look));
+      }
     // Every load that finishes (this one, and later ones started for a new
     // fighter, a skin or boss art) settles what was requested: art still
     // missing may be asked for again. The scene's loader drops its
@@ -4690,6 +4701,8 @@ class ArenaScene extends Phaser.Scene {
   }
   create() {
     scene = this;
+    // The boss's pieces are drawn once into an atlas: now, not on its first frame.
+    if (state?.raid) prewarmBossAtlas(this, state.raid.boss, state.raid.phase);
     battleQuality.restart();
     battlePerf.reset();
     netMeter.reset();

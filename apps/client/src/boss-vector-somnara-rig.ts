@@ -55,6 +55,10 @@ const atlasKey = (phase: Phase) => `vsom-atlas-${phase}`;
 const sizes = new Map(somnaraPieces(1).map((p) => [p.name, p]));
 
 /** The phase's atlas, drawn once and kept while the phase lasts. */
+/** Draw the phase's atlas now (while the battle loads), not on the first frame. */
+export const prewarmAtlas = (scene: Phaser.Scene, phase: Phase) => {
+  atlas(scene, phase);
+};
 function atlas(scene: Phaser.Scene, phase: Phase) {
   const key = atlasKey(phase);
   if (scene.textures.exists(key)) return key;
