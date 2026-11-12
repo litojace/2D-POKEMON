@@ -5523,6 +5523,54 @@ body.battle-raid:not(.touch-mode) #battle {
   border-left: 3px solid var(--rite-color);
   border-radius: 12px;
 }
+/* A picked rite stays in its place, checked and greyed out; once every pick
+   is made the rest grey out further (raid-rite-cards.ts). */
+.raid-rite-options > button {
+  position: relative;
+}
+#arena-overlay .raid-draft .raid-rite-options > button:disabled {
+  cursor: default;
+  opacity: 1;
+}
+#arena-overlay .raid-draft .raid-rite-options > button:disabled > * {
+  filter: grayscale(1);
+  opacity: 0.3;
+}
+#arena-overlay .raid-draft .raid-rite-options > button.is-picked {
+  border-color: #6fdc9a99;
+  box-shadow: inset 0 0 0 1px #6fdc9a66;
+}
+#arena-overlay .raid-draft .raid-rite-options > button.is-picked > * {
+  opacity: 0.55;
+}
+#arena-overlay
+  .raid-draft
+  .raid-rite-options
+  > button.is-picked
+  > .raid-rite-check {
+  filter: none;
+  opacity: 1;
+}
+.raid-rite-check {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  color: #08240f;
+  background: #6fdc9a;
+  box-shadow: 0 0 0 3px #0c1626;
+}
+.raid-rite-check > svg {
+  width: 18px;
+  height: 18px;
+}
+.raid-rite-locked {
+  color: #6fdc9a;
+}
 .raid-rite-options .raid-rite-icon {
   width: 64px;
   height: 64px;
@@ -11012,7 +11060,10 @@ body.battle-active .ability.ult-ready,
 }
 #arena-overlay .raid-draft.action-overlay {
   width: min(1140px, 100%);
-  height: min(620px, 100%);
+  /* As tall as its six cards need, up to the screen: a fixed 620px left the
+     cards overflowing onto the chapter tip and timer below. */
+  height: auto;
+  max-height: 100%;
   padding: 24px 28px 18px;
   grid-template-rows: auto auto minmax(0, 1fr) auto;
   gap: 8px;
@@ -11110,7 +11161,11 @@ body.battle-active .ability.ult-ready,
 #arena-overlay .raid-draft .raid-rite-options > button:nth-child(3)::before {
   content: "03";
 }
-#arena-overlay .raid-draft .panel-actions .raid-rite-options > button:hover,
+#arena-overlay
+  .raid-draft
+  .panel-actions
+  .raid-rite-options
+  > button:hover:not(:disabled),
 #arena-overlay
   .raid-draft
   .panel-actions
@@ -15577,8 +15632,9 @@ body #arena-overlay .raid-draft .panel-actions .raid-rite-trigger {
   white-space: nowrap;
 }
 
-/* Landscape phones and short windows: art and chips side by side. */
-@media (orientation: landscape) and (max-height: 600px), (max-width: 559px) {
+/* Landscape phones and short windows (up to 700px tall, where six full
+   cards no longer fit above the timer): art and chips side by side. */
+@media (orientation: landscape) and (max-height: 700px), (max-width: 559px) {
   body #arena-overlay .raid-draft .panel-actions .raid-rite-options {
     gap: 8px;
   }
@@ -15823,4 +15879,25 @@ body.battle-active:not(.touch-mode)
   .hub-world-spinner {
     animation: none;
   }
+}
+
+/* Solo against a ★★★ boss: no self-revive (raid-solo.ts). */
+.raid-solo-warning {
+  margin: 0 0 8px;
+  padding: 8px 12px;
+  border: 1px solid #ff8a7a66;
+  border-radius: 10px;
+  color: #ffc9c0;
+  background: #3a161480;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+}
+.raid-solo-warning::before,
+.rh-foot-note.is-warning::before {
+  content: "⚠ ";
+}
+.rh-foot-note.is-warning {
+  color: #ffb4a8;
+  font-weight: 600;
 }

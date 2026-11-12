@@ -6,7 +6,7 @@ import { prismatailPattern } from "./raid-prismatail.js";
 export * from "./raid-prismatail.js";
 import { somnaraPattern, type DreamRune } from "./raid-somnara.js";
 export * from "./raid-somnara.js";
-import type { RaidBossId } from "./raid-roster.js";
+import { RAID_BOSSES, type RaidBossId } from "./raid-roster.js";
 import type { CharacterId } from "./index.js";
 export * from "./raid-roster.js";
 export const RAID = {
@@ -22,12 +22,128 @@ export const RAID = {
   reviveRange: 100,
   selfReviveDelay: 6,
   staggerSeconds: 6,
-  /** Solo raiders get one self-revive (raids are always Peril 3 now). */
-  soloSelfReviveMaxPeril: 3,
+  /** Peril 1-2 (practice and tests only): solo raiders get one self-revive.
+   * Live raids read `raidSoloRevive(boss)` from the star tier instead. */
+  soloSelfReviveMaxPeril: 2,
   /** Solo raiders face this share of the boss's health. */
   soloHealth: 0.85,
   phases: ["Wake the mountain", "Break the armor", "Heart of the mountain"],
 } as const;
+/**
+ * One difficulty per star tier (docs/boss-raid.md "Difficulty"). Every raid
+ * runs at Peril 3; the boss's stars (`RAID_BOSSES[boss].stars`) pick the row.
+ */
+export interface RaidTier {
+  /** Boss health × this, on top of the Peril 3 formula. */
+  readonly health: number;
+  /** Boss damage × this (replaces the Peril 3 multiplier). */
+  readonly damage: number;
+  /** Seconds between attacks × this. */
+  readonly cadence: number;
+  /** Most damaging attacks live at once, in chapters 1, 2 and 3. */
+  readonly concurrency: readonly [number, number, number];
+  /** Telegraphs of 1.4 s or more × this (never below `RAID_TELEGRAPH_FLOOR`). */
+  readonly telegraph: number;
+  /** Predictive aim: share of the raider's travel led, and the most it leads (px). */
+  readonly leadFraction: number;
+  readonly leadCap: number;
+  /** Exposure, strand and grounded windows × this. */
+  readonly windows: number;
+  /** Seconds of combat before the soft enrage starts. */
+  readonly enrageAt: number;
+  /** Solo raiders' one self-revive (none when undefined). */
+  readonly soloRevive?: { readonly seconds: number; readonly hp: number };
+  /** Seconds a teammate kneels to revive, and the immunity after it. */
+  readonly reviveSeconds: number;
+  readonly reviveImmunity: number;
+  /** First chapter where single-target attacks hit two raiders (3+ raiders). */
+  readonly pressureFrom: number;
+}
+export const RAID_TIERS: Record<1 | 2 | 3, RaidTier> = {
+  1: {
+    health: 1.15,
+    damage: 1.75,
+    cadence: 0.85,
+    concurrency: [1, 2, 2],
+    telegraph: 0.95,
+    leadFraction: 0.55,
+    leadCap: 110,
+    windows: 0.9,
+    enrageAt: 270,
+    soloRevive: { seconds: 8, hp: 0.3 },
+    reviveSeconds: 3.5,
+    reviveImmunity: 1.5,
+    pressureFrom: 2,
+  },
+  2: {
+    health: 1.25,
+    damage: 1.95,
+    cadence: 0.78,
+    concurrency: [2, 2, 2],
+    telegraph: 0.88,
+    leadFraction: 0.7,
+    leadCap: 140,
+    windows: 0.8,
+    enrageAt: 300,
+    soloRevive: { seconds: 8, hp: 0.25 },
+    reviveSeconds: 4,
+    reviveImmunity: 1.25,
+    pressureFrom: 2,
+  },
+  3: {
+    health: 1.35,
+    damage: 2.15,
+    cadence: 0.72,
+    concurrency: [2, 2, 3],
+    telegraph: 0.82,
+    leadFraction: 0.8,
+    leadCap: 160,
+    windows: 0.72,
+    enrageAt: 330,
+    reviveSeconds: 4.5,
+    reviveImmunity: 1,
+    pressureFrom: 1,
+  },
+};
+/** No shortened telegraph is ever below this (seconds of server time). */
+export const RAID_TELEGRAPH_FLOOR = 0.9;
+/** Soft enrage: a step every `every` seconds past `enrageAt`, up to `steps`. */
+export const RAID_ENRAGE = {
+  every: 30,
+  steps: 4,
+  cadence: 0.94,
+  damage: 0.08,
+} as const;
+/** The difficulty row for a boss. */
+export const raidTier = (boss: RaidBossId): RaidTier =>
+  RAID_TIERS[RAID_BOSSES[boss]?.stars ?? 1];
+/**
+ * A solo raider's self-revive against this boss: seconds down before they
+ * stand again, and the share of health they come back with. Undefined when
+ * there is none (★★★ bosses), so the client can warn before the fight.
+ */
+export function raidSoloRevive(
+  boss: RaidBossId,
+): { seconds: number; hp: number } | undefined {
+  const revive = raidTier(boss).soloRevive;
+  return revive ? { seconds: revive.seconds, hp: revive.hp } : undefined;
+}
+/** A telegraph's length on this tier: 1.4 s or more is shortened, never below the floor. */
+export function raidTelegraph(boss: RaidBossId, seconds: number) {
+  return seconds >= 1.4
+    ? Math.max(RAID_TELEGRAPH_FLOOR, seconds * raidTier(boss).telegraph)
+    : seconds;
+}
+/** Soft enrage steps after `elapsed` seconds of combat (0 before it starts). */
+export function raidEnrageSteps(boss: RaidBossId, elapsed: number) {
+  const start = raidTier(boss).enrageAt;
+  return elapsed < start
+    ? 0
+    : Math.min(
+        RAID_ENRAGE.steps,
+        1 + Math.floor((elapsed - start) / RAID_ENRAGE.every),
+      );
+}
 export const RAID_CHAPTERS = [
   {
     name: "Wake the mountain",
@@ -136,7 +252,7 @@ export const RAID_ATTACKS: Record<
   },
   "light-relay": {
     name: "Light Relay",
-    tip: "Stand between the skylight and a mirror. Hit mirrors to rotate them 45\u00b0. Chain light into the heart. In the final phase, solo holds one beam for 2 seconds; teams need both paths within 3 seconds.",
+    tip: "Stand between the skylight and a mirror. Hit mirrors to rotate them 45\u00b0. Chain light into the heart. Hold a connected chain for 1.2 seconds (solo 1 second, 2 in the final phase); in the final phase teams need both paths within 3 seconds. Mirrors that carried the light flash and turn after each exposure.",
     practice:
       "Connect skylight \u2192 raider \u2192 mirrors \u2192 heart. Hit a mirror to turn its arrow.",
   },
@@ -174,7 +290,7 @@ export const RAID_ATTACKS: Record<
   },
   "brazier-lighting": {
     name: "Brazier Lighting",
-    tip: "Stand inside a brazier ring for 1.5 seconds. Light all three together to ground Emberwing. Solo flames last 8 seconds. Fireproof halves the lighting time.",
+    tip: "Stand inside a brazier ring for 2 seconds. Light all three together to ground Emberwing. Solo flames last 11 seconds. Fireproof halves the lighting time.",
     practice:
       "Run the triangle and light all three braziers before the first goes out.",
   },
@@ -392,9 +508,25 @@ export const GRUMBLECRAG = {
   perilDamage: [1, 1, 1.25, 1.5],
   /** Seconds between attacks, and the final phase's faster rhythm. */
   cadence: { normal: 5.2, restless: 4.4, finalPhase: 0.85 },
-  charge: { damage: 28, width: 80, delay: 1.7, lock: 1, speed: 650 },
+  charge: {
+    damage: 28,
+    width: 80,
+    delay: 1.6,
+    lock: 0.95,
+    speed: 700,
+    /** Chapter 2+: a charge that misses a pillar turns and comes back. */
+    returnDelay: 0.9,
+    /** From the third pillar it breaks in a chapter, it locks this much later. */
+    lateLock: 0.15,
+  },
   slam: { damage: 27, radius: 240, finalRadius: 320, delay: 1.25 },
-  debris: { damage: 20, radius: 95, delay: 1.65 },
+  debris: { damage: 20, radius: 95, delay: 1.45 },
+  /** A charge into a pillar: seconds exposed (Fractured: longer), then a pause. */
+  pillar: { expose: 7, fractured: 9, pause: 2 },
+  /** Chapter 3: the cracked core takes this much damage (a pillar still opens it to 1.6). */
+  crackedCore: 1.2,
+  /** Peril 3, chapter 3: the closing ring (px, px/s, damage per second outside). */
+  ring: { start: 500, end: 240, shrink: 2.5, dps: 9 },
   volley: { damage: 18, range: 560, spread: 0.9, delay: 1.4 },
   eruption: { damage: 22, radius: 100, delay: 1.25, gap: 0.75 },
   share: {
@@ -433,39 +565,52 @@ export const TIDEWYRM = {
   home: { x: 800, y: 450 },
   dive: {
     follow: 1.4,
-    lock: 0.8,
+    lock: 0.7,
+    /** Live raids, solo (you also have to lure it): a longer freeze. */
+    soloLock: 0.8,
     damage: 26,
     radius: 110,
     /** Seconds stranded (exposed) on an island; longer on Peril 1. */
-    strand: 5,
+    strand: 4.25,
     strandPeril1: 7,
-    strandStagger: 35,
+    strandStagger: 30,
     /** Strands an island survives before it sinks for the chapter. */
     cracks: 2,
   },
-  wave: { delay: 1.4, speed: 520, ripSpeed: 400, width: 70, damage: 22 },
+  /** Live raids, chapter 3: a second, high wave from a side edge this much later. */
+  wave: {
+    delay: 1.4,
+    speed: 560,
+    ripSpeed: 400,
+    width: 70,
+    damage: 22,
+    secondGap: 2.3,
+  },
+  /** Live raids: as a strand ends it sweeps its tail round the island (jump it). */
+  tailSweep: { radius: 130, delay: 1, damage: 16 },
   bubbles: {
     delay: 0.9,
-    speed: 150,
+    speed: 170,
     radius: 20,
     damage: 10,
     root: 0.8,
     life: 5,
     spread: 0.9,
   },
-  highTide: { delay: 2, seconds: 5, springSeconds: 7, dps: 7 },
+  highTide: { delay: 2, seconds: 5, springSeconds: 7, dps: 9 },
   undertow: {
     delay: 1.2,
     seconds: 3,
-    pull: 120,
+    pull: 140,
     ripPull: 160,
     centreRadius: 75,
     damage: 24,
   },
-  prison: { delay: 1, seconds: 6, hits: 3, presses: 8, radius: 34 },
+  /** Bubble Prison: three teammate hits pop it; alone, `presses` presses of attack. */
+  prison: { delay: 1, seconds: 5.5, hits: 3, presses: 12, radius: 34 },
   /** Peril 3, last chapter: an island sinks for good this often (min 2 left). */
-  sinkEvery: 45,
-  soloSinkEvery: 35,
+  sinkEvery: 40,
+  soloSinkEvery: 32,
   minIslands: 2,
   /** Voltkit's Static Lance on a stranded Tidewyrm (water conducts). */
   lanceStagger: 15,
@@ -507,25 +652,45 @@ export const GLOOMSHADE = {
   ],
   driftSpeed: 150,
   driftEvery: 3.5,
-  lunge: { delay: 1.2, width: 34, length: 760, damage: 25 },
+  /** Chapter 2+ (live raids): a second lunge from another shadow, `cross` s later. */
+  lunge: {
+    delay: 1.2,
+    width: 34,
+    length: 760,
+    damage: 28,
+    cross: 0.5,
+    /** Live raids, a party of 3+: this many copies lunge too, `copyGap` s apart. */
+    copies: 3,
+    copyGap: 0.3,
+  },
   /** Grasping Hands: the floor as a checkerboard of tiles. */
-  hands: { cols: 8, rows: 5, delay: 1.6, shiftAt: 0.7, damage: 20 },
-  snuff: { delay: 1.5, finalDelay: 0.75 },
+  hands: { cols: 8, rows: 5, delay: 1.45, shiftAt: 0.7, damage: 20 },
+  /** A lantern going out bursts on everyone in its light (live raids). */
+  snuff: { delay: 1.5, finalDelay: 0.9, damage: 14 },
   curse: {
     radius: 120,
+    /** Seconds near a cursed raider before it spreads (live raids, a party of 3+: `partySpread`). */
     spreadSeconds: 2,
+    partySpread: 1.5,
     restlessSpread: 3,
     haunted: 3,
     hauntSeconds: 6,
-    dps: 5,
+    dps: 8,
+    /** Live raids, a party of 3+: damage a second per stack before it haunts. */
+    creep: 3,
     cleanseSeconds: 2,
     soloStill: 2.5,
   },
-  split: { delay: 1.2, copies: 3, peril3Copies: 4 },
+  /** One more copy with three or more raiders (live raids). */
+  split: { delay: 1.2, copies: 3, peril3Copies: 4, partyCopy: 3 },
   pulse: { delay: 1.4, radius: 260, damage: 24, pairGap: 1.2 },
   /** Hits on the real one in a row that expose it. */
   exposeHits: 6,
-  exposeSeconds: 5,
+  exposeSeconds: 4.5,
+  /** The streak breaks if nobody hits the real one for this long (live raids). */
+  streakGap: 1,
+  /** Live raids, a party of 3+: faster attacks and a shorter exposure. */
+  party: { cadence: 0.8, expose: 0.8 },
   /** Voltkit's Ball Lightning lights its landing spot this long. */
   sparkLight: 3,
   /** Mystowl's Third-Eye Ray and Duskveil's Haunted Lantern reveal the real one. */
@@ -628,7 +793,7 @@ export function raidPattern(
 }
 /** How many eruptions chase their target. */
 export const eruptionChain = (phase: number, peril: number) =>
-  phase === 1 ? 2 : phase === 2 && peril < 2 ? 2 : 3;
+  phase === 1 ? (peril >= 3 ? 3 : 2) : phase === 2 && peril < 2 ? 2 : 3;
 /** Quick signals for teams without voice chat. */
 export type RaidPingKind = "stack" | "revive" | "bait";
 export const RAID_PINGS: Record<RaidPingKind, { label: string; key: string }> =
@@ -922,7 +1087,7 @@ export const RAID_BOSS_CHAPTERS: Partial<
       name: "Dawn",
       objective: "Carry skylight through mirrors into the shielded heart.",
       detail:
-        "Stand within the skylight ring to take the beam. Light travels up to 300px between raiders and mirror posts, and 260px into the heart. Hit a mirror to turn its arrow 45°. A connected chain shatters the shield for 6 seconds. Carrying light burns 3 health per second.",
+        "Stand within the skylight ring to take the beam. Light travels up to 300px between raiders and mirror posts, and 260px into the heart. Hit a mirror to turn its arrow 45°. A chain held for 1.2 seconds (1 second solo) shatters the shield for 5 seconds. Carrying light burns 6 health per second, and lances seek whoever carries it. When the heart closes, the mirrors that carried the light flash, then turn.",
     },
     {
       name: "High Noon",
@@ -948,13 +1113,13 @@ export const RAID_BOSS_CHAPTERS: Partial<
       name: "High Flight",
       objective: "Light all three braziers together to ground Emberwing.",
       detail:
-        "Stand on a brazier for 1.5 seconds. Team flames last 6 seconds; solo flames last 8 seconds. Grounding exposes Emberwing for 6 seconds and shrinks fire patches. Melee cannot hit it in the air; ranged damage is halved. Spread out for Heat Marks.",
+        "Stand on a brazier for 2 seconds. Team flames last 5 seconds; solo flames last 11 seconds. Once two burn, Emberwing rains fire on the last one: light it from its clear side. Grounding exposes Emberwing for 5 seconds and shrinks fire patches. Melee cannot hit it in the air; ranged damage is halved. Spread out for Heat Marks.",
     },
     {
       name: "Blazing Sky",
       objective: "Ground it twice to keep the heart open.",
       detail:
-        "Team braziers stay lit for 4 seconds, while solo keeps the longer timer. Fire spreads faster. Bring Emberwing down twice this chapter and it stays grounded, exposed for the rest of the fight. Fireproof halves lighting time and reduces floor-fire damage by 50%.",
+        "Team braziers stay lit for 3.5 seconds (4.5 for a pair), while solo keeps the longer timer. Dives turn and come back. Fire spreads faster. Bring Emberwing down three times this chapter and it stays grounded and exposed for 20 seconds. Fireproof halves lighting time and reduces floor-fire damage by 50%.",
     },
   ],
   "storm-twins": [
@@ -969,13 +1134,13 @@ export const RAID_BOSS_CHAPTERS: Partial<
       name: "Storm",
       objective: "Pair opposite signs. Follow the beam around copper posts.",
       detail:
-        "Polarity marks everyone for 4 seconds: stand near an opposite sign to cancel it. Same signs together take double damage. Solo gets an opposite-sign floor pad. Static Fields slow and hurt; jump while crossing them. Each twin staggers separately.",
+        "Polarity marks everyone for 4 seconds: stand near an opposite sign to cancel it. Raiders standing together get the same sign, and same signs together take double damage. Solo gets an opposite-sign floor pad. Static Fields slow and hurt; jump while crossing them. Each twin staggers separately.",
     },
     {
       name: "Supercell",
       objective: "Bring both low, then defeat them within the countdown.",
       detail:
-        "When one twin falls, finish the other within 8 seconds. Solo gets 3 more seconds. If time expires, the fallen twin returns at 35% health. Keep both low before dealing a finishing blow. Touch players can tap Fizz or Crackle to switch targets.",
+        "When one twin falls, finish the other within 7 seconds. Solo gets 3 more seconds. If time expires, the fallen twin returns at 50% health. Keep both low before dealing a finishing blow. Touch players can tap Fizz or Crackle to switch targets.",
     },
   ],
   grumblecrag: RAID_CHAPTERS,
@@ -2197,6 +2362,10 @@ export interface RaidState {
   result: "victory" | "defeat" | null;
   revives: number;
   downs: number;
+  /** Soft enrage steps reached (0-4): faster attacks that hit harder. */
+  enrage?: number;
+  /** Server time of the last enrage step (the client announces it). */
+  enrageAt?: number;
   closingRadius?: number;
   /** Tidewyrm: the islands of the Lagoon Court. */
   islands?: RaidIsland[];

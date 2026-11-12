@@ -1,11 +1,10 @@
 import { paintVectorEmber } from "./boss-vector-ember-rig";
-import { groundHeight } from "../../../packages/shared/src/world-art";
+import { paintSkyTerrace } from "./raid-emberwing-terrace-rig";
 import { bossLife } from "./raid-boss-life";
 import type Phaser from "phaser";
 import type { Snapshot } from "@arena/shared";
 import {
   EMBERWING as E,
-  brazierLifetime,
   type RaidWarning,
 } from "../../../packages/shared/src/raid";
 import { RaidBossMotion, type RaidBossCue } from "./raid-boss-motion";
@@ -32,116 +31,18 @@ function flame(g: G, x: number, y: number, size: number, alpha = 1) {
     y - size * 0.7,
   );
 }
+/**
+ * The Sky Terrace's features (braziers, burning ground, dive lanes, flame
+ * rings, feathers): pieces from one atlas drawn when the raid's scene starts,
+ * placed each frame (raid-emberwing-terrace-rig.ts).
+ */
 export function drawSkyTerrace(
   g: G,
   state: Snapshot,
   reduced: boolean,
   at?: LayerAt,
 ) {
-  const r = state.raid!,
-    t = reduced ? 0 : state.time;
-  for (const f of r.emberPatches ?? []) {
-    g.fillStyle(0x301e23, 0.65).fillCircle(f.x, f.y, f.radius);
-    g.fillStyle(0xff643d, 0.17).fillCircle(f.x, f.y, f.radius);
-    g.lineStyle(3, 0xffac6f, 0.8).strokeCircle(f.x, f.y, f.radius);
-    for (let i = 0; i < 4; i++) {
-      const a = (i * TAU) / 4;
-      flame(
-        g,
-        f.x + Math.cos(a) * f.radius * 0.55,
-        f.y + Math.sin(a) * f.radius * 0.5,
-        9 + Math.sin(t * 2 + i) * 2,
-        0.65,
-      );
-    }
-  }
-  for (const f of r.emberTrails ?? []) {
-    g.lineStyle(f.width * 2, 0xff633d, 0.21).lineBetween(f.x, f.y, f.tx, f.ty);
-    g.lineStyle(4, 0xffa76a, 0.8).lineBetween(f.x, f.y, f.tx, f.ty);
-    for (let i = 1; i < 5; i++)
-      flame(
-        g,
-        f.x + ((f.tx - f.x) * i) / 5,
-        f.y + ((f.ty - f.y) * i) / 5,
-        8,
-        0.8,
-      );
-  }
-  for (const [bi, b] of (r.braziers ?? []).entries()) {
-    const lit = b.litUntil > state.time,
-      active =
-        r.airborne &&
-        (r.trait !== "updraft" || state.time - (r.takeoffAt ?? 0) >= 2),
-      ring = lit ? 0xffdc87 : active ? 0x8be7d0 : 0x7f8da4;
-    g.fillStyle(0x0a1630, 0.4).fillEllipse(b.x, b.y + 24, 112, 38);
-    // Circle matches the actual standing range. The stone bowl is decorative.
-    g.fillStyle(ring, lit ? 0.1 : 0.045).fillCircle(b.x, b.y, E.brazierRadius);
-    g.lineStyle(2, ring, lit ? 1 : 0.6).strokeCircle(b.x, b.y, E.brazierRadius);
-    // The bowl and its flame stand up, so they sort with the raiders.
-    const bowl = at ? at(`brazier-${bi}`, b.y + 30) : g;
-    bowl.fillStyle(0x354259, 1).fillRoundedRect(b.x - 19, b.y - 5, 38, 35, 5);
-    bowl.fillStyle(0x4a5874, 1).fillRoundedRect(b.x - 19, b.y - 5, 12, 35, 4);
-    bowl.fillStyle(0x5c5862, 1).fillEllipse(b.x, b.y - 7, 64, groundHeight(64));
-    bowl
-      .lineStyle(3, 0xc3a37c, 0.9)
-      .strokeEllipse(b.x, b.y - 7, 64, groundHeight(64));
-    bowl
-      .fillStyle(0x152239, 1)
-      .fillEllipse(b.x, b.y - 10, 50, groundHeight(50));
-    if (lit) {
-      const k = Math.max(
-        0,
-        Math.min(
-          1,
-          (b.litUntil - state.time) /
-            brazierLifetime(r.partySize, r.phase, r.peril),
-        ),
-      );
-      g.lineStyle(5, 0xffdb8d, 1)
-        .beginPath()
-        .arc(
-          b.x,
-          b.y,
-          E.brazierRadius,
-          -Math.PI / 2,
-          -Math.PI / 2 + k * TAU,
-          false,
-        )
-        .strokePath();
-      flame(bowl, b.x, b.y - 25, 21 + (reduced ? 0 : Math.sin(t * 3) * 2));
-    } else if (b.progress > 0) {
-      g.lineStyle(5, 0x8be7d0, 1)
-        .beginPath()
-        .arc(
-          b.x,
-          b.y,
-          E.brazierRadius,
-          -Math.PI / 2,
-          -Math.PI / 2 + b.progress * TAU,
-          false,
-        )
-        .strokePath();
-      flame(bowl, b.x, b.y - 17, 8 + b.progress * 8, 0.7);
-    }
-  }
-  for (const ring of r.flameRings ?? []) {
-    g.lineStyle(E.ring.width * 2, 0xff7949, 0.2).strokeCircle(
-      ring.x,
-      ring.y,
-      Math.max(1, ring.radius),
-    );
-    g.lineStyle(4, 0xffce87, 1).strokeCircle(
-      ring.x,
-      ring.y,
-      Math.max(1, ring.radius),
-    );
-  }
-  for (const f of r.emberFeathers ?? []) {
-    const y = f.y - 7 + (reduced ? 0 : Math.sin(t * 2) * 4);
-    g.fillStyle(0xffd778, 0.15).fillCircle(f.x, y, 23);
-    g.fillStyle(0xffbe6c, 1).fillEllipse(f.x, y, 10, 25);
-    g.lineStyle(2, 0xfff0bf, 1).lineBetween(f.x - 4, y + 11, f.x + 4, y - 12);
-  }
+  paintSkyTerrace(g, state, reduced, at);
 }
 export function drawEmberwingWarning(g: G, state: Snapshot, w: RaidWarning) {
   const p = Math.max(

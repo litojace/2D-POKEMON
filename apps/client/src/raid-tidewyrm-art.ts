@@ -6,6 +6,13 @@ import type Phaser from "phaser";
 import type { Snapshot } from "@arena/shared";
 import { TIDEWYRM, type RaidWarning } from "../../../packages/shared/src/raid";
 import type { RaidBossCue } from "./raid-boss-motion";
+import {
+  beginMapFrame,
+  mapAtlas,
+  mapLayers,
+  raidMapLow,
+} from "./raid-map-atlas";
+import { FLOOD, lagoonName, lagoonPieces } from "./raid-lagoon-pieces";
 
 /**
  * Tidewyrm and the Lagoon Court, drawn live each frame: the islands (they
@@ -81,10 +88,65 @@ const progressOf = (w: RaidWarning, now: number) =>
         Math.min(1, (now - w.startedAt) / Math.max(0.01, w.at - w.startedAt)),
       );
 
-/** The floor features: islands (dry, cracked, sunk) and the flood around them. */
-export function drawLagoon(g: G, state: Snapshot, reduced: boolean) {
+/**
+ * Texels per world unit in the atlas: 1.5 keeps lines and edges crisp at
+ * the battle's density and the atlas near 7 MB of GPU memory (2 cost 13-15).
+ */
+const LAGOON_K = 1.5;
+const lagoonKey = (R: number) => `lagoon-atlas-${R}`;
+const lagoonAtlas = (scene: Phaser.Scene, R: number) =>
+  mapAtlas(scene, lagoonKey(R), () => lagoonPieces(R), LAGOON_K);
+/** The islands' radius in this raid (Spring Tide makes them bigger). */
+const islandRadius = (state: Snapshot) =>
+  state.raid?.islands?.[0]?.radius ??
+  (state.raid?.trait === "spring-tide"
+    ? TIDEWYRM.springIslandRadius
+    : TIDEWYRM.islandRadius);
+/** Draw the lagoon's atlas now (the arena scene is being created), not mid-fight. */
+export function prewarmLagoon(scene: Phaser.Scene, state: Snapshot) {
+  if (state.raid?.boss === "tidewyrm") lagoonAtlas(scene, islandRadius(state));
+}
+export const lagoonAtlasKey = lagoonKey;
+
+/** How long an island takes to go under, or to come back up (seconds). */
+const SINK_SECONDS = 0.9;
+interface IslandMemory {
+  sunk: boolean;
+  anim?: { kind: "sinking" | "rising"; at: number };
+}
+const lagoonMemory = new WeakMap<
+  G,
+  { seed: number; islands: IslandMemory[] }
+>();
+const ease = (p: number) => p * p * (3 - 2 * p);
+
+/**
+ * The floor features: islands (dry, cracked, sinking, sunk, gone, rising) and
+ * the High Tide flood around them, as painted pieces (raid-lagoon-pieces.ts).
+ */
+export function drawLagoon(
+  g: G,
+  state: Snapshot,
+  reduced: boolean,
+  clock = state.time,
+) {
   const r = state.raid!;
+  const islands = r.islands ?? [];
+  const scene = g.scene;
+  if (!scene) return;
+  const R0 = islandRadius(state);
+  const layers = beginMapFrame(g, lagoonAtlas(scene, R0));
+  if (!layers) return;
+  const L = layers.under;
+  const low = raidMapLow();
   const t = state.time;
+  const m = reduced ? 0 : 1;
+  // What changed since the last frame: an island going under or coming back.
+  let mem = lagoonMemory.get(g);
+  if (!mem || mem.seed !== r.seed || mem.islands.length !== islands.length) {
+    mem = { seed: r.seed, islands: islands.map((i) => ({ sunk: !!i.sunk })) };
+    lagoonMemory.set(g, mem);
+  }
   const flooded = (r.floodUntil ?? 0) > t;
   if (flooded) {
     // Water over the whole floor; islands stay dry above it.
@@ -92,116 +154,191 @@ export function drawLagoon(g: G, state: Snapshot, reduced: boolean) {
       1,
       (t - ((r.floodUntil ?? 0) - TIDEWYRM.highTide.seconds)) / 0.6,
     );
-    g.fillStyle(0x6fe0f0, 0.32 * Math.max(0.3, rise)).fillRect(
-      36,
-      36,
-      1600 - 72,
-      900 - 72,
-    );
-    // Rolling swell lines across the flood.
-    for (let row = 0; row < 14; row++)
-      for (let k = 0; k < 9; k++) {
-        const x =
-            60 + k * 180 + (((row % 2) * 90 + (reduced ? 0 : t * 50)) % 180),
-          y = 70 + row * 58;
-        g.lineStyle(3, 0xf2fbfa, 0.35 * rise)
-          .beginPath()
-          .arc(x, y, 18, Math.PI * 1.15, Math.PI * 1.85, false)
-          .strokePath();
-      }
+    L.put("flood", FLOOD.x, FLOOD.y, { a: Math.max(0.3, rise) });
+    // Rolling swell rows across the flood (the same 180 px drift as before).
+    const off = (m * t * 50) % 180;
+    for (let j = 0; j < 7; j++)
+      L.put("swell", 60 + off - 90, 70 + j * 116 - 24, { a: 0.45 * rise });
   }
-  for (const [i, island] of (r.islands ?? []).entries()) {
-    const { x, y, radius } = island;
-    if (island.gone || island.sunk) {
-      // Shallows where it was.
-      g.lineStyle(3, 0xd9f5f0, island.gone ? 0.12 : 0.3).strokeCircle(
-        x,
-        y,
-        radius,
-      );
-      if (!island.gone) {
-        g.lineStyle(2, 0xd9c48a, 0.25).strokeCircle(x, y, radius * 0.7);
-        // Comes back next chapter.
-        g.lineStyle(2, 0xd9f5f0, 0.35).strokeCircle(x, y, radius * 0.35);
-      }
+  const riseOf = Math.min(
+    1,
+    (t - ((r.floodUntil ?? 0) - TIDEWYRM.highTide.seconds)) / 0.6,
+  );
+  const N = lagoonName;
+  for (const [i, isl] of islands.entries()) {
+    const { x, y } = isl;
+    const R = isl.radius;
+    const seen = mem.islands[i];
+    if (!!isl.sunk !== seen.sunk) {
+      seen.anim = reduced
+        ? undefined
+        : { kind: isl.sunk ? "sinking" : "rising", at: clock };
+      seen.sunk = !!isl.sunk;
+    }
+    const q = seen.anim ? (clock - seen.anim.at) / SINK_SECONDS : 1;
+    if (q >= 1 || q < 0) seen.anim = undefined;
+    const an = seen.anim,
+      p = an ? ease(q) : 0;
+    if (isl.gone && !an) {
+      L.put(N.gone(R), x, y);
       continue;
     }
-    const bob = reduced ? 0 : Math.sin(t * 1.4 + i) * 1.5;
-    g.fillStyle(0x0b3d48, 0.35).fillEllipse(
-      x + 6,
-      y + 10,
-      radius * 2.15,
-      radius * 1.85,
-    );
-    // Foam where the flood laps at the shore.
+    // How much of the dry island shows (1 dry, 0 under water).
+    const dry = !an ? (isl.sunk ? 0 : 1) : an.kind === "sinking" ? 1 - p : p;
+    if (dry < 1) {
+      L.put(isl.gone ? N.gone(R) : N.sunk(R), x, y, { a: 1 - dry });
+      if (!isl.gone && dry === 0 && !low)
+        for (let b = 0; b < 2; b++) {
+          // Bubbles rise from the "comes back" ring.
+          const ph = reduced
+              ? 0.4 + b * 0.3
+              : (t * 0.55 + b * 0.5 + i * 0.21) % 1,
+            ang = i * 1.7 + b * 2.6;
+          L.put(
+            "drop",
+            x + Math.cos(ang) * R * 0.35,
+            y + Math.sin(ang) * R * 0.35 - ph * 10,
+            { s: 0.8 + ph * 0.9, a: 0.85 * Math.sin(ph * Math.PI) },
+          );
+        }
+    }
+    if (an) {
+      // A ring of spray leaves the shore as it goes under / closes in as it rises.
+      const rr = an.kind === "sinking" ? R + 4 + q * 46 : R + 40 - q * 36;
+      L.put("ripple", x, y, { s: rr / 100, a: 0.9 * Math.sin(q * Math.PI) });
+      L.put("ripple", x, y, {
+        s: (rr - 14) / 100,
+        a: 0.5 * Math.sin(q * Math.PI),
+        rot: 1.3,
+      });
+    }
+    if (dry <= 0) continue;
+    const sb = an ? 0.955 + 0.045 * dry : 1;
+    L.put(N.base(R), x, y, { a: (flooded ? 0.4 : 1) * dry });
+    if (!flooded && !an && !low)
+      for (let r2 = 0; r2 < 2; r2++) {
+        const ph = reduced
+          ? 0.35 + r2 * 0.4
+          : (t * 0.32 + r2 / 2 + i * 0.13) % 1;
+        L.put("ripple", x, y, {
+          s: (R + 5 + ph * 30) / 100,
+          rot: r2 * 2.1 + i,
+          a: 0.5 * (1 - ph) * Math.min(1, ph * 5),
+        });
+      }
+    // Foam where the flood laps at the shore, at R + 10.
     if (flooded)
-      g.lineStyle(6, 0xffffff, 0.75).strokeCircle(
-        x,
-        y,
-        radius + 10 + (reduced ? 0 : Math.sin(t * 4 + i) * 2),
-      );
-    g.fillStyle(0xf2fbfa, 0.6).fillCircle(x, y + bob * 0.3, radius + 7);
-    g.fillStyle(0xc9a86a).fillCircle(x, y + 4, radius);
-    g.fillStyle(0xe2c88f).fillCircle(x, y, radius - 4);
-    g.fillStyle(0xf1dcae, 0.8).fillEllipse(
-      x - radius * 0.25,
-      y - radius * 0.3,
-      radius * 0.9,
-      radius * 0.5,
-    );
-    // A tuft of grass and a shell, so it reads as dry land.
-    g.fillStyle(0x58a96a).fillTriangle(
-      x + 22,
-      y - 18,
-      x + 27,
-      y - 40,
-      x + 32,
-      y - 18,
-    );
-    g.fillStyle(0x3e8f56).fillTriangle(
-      x + 28,
-      y - 18,
-      x + 36,
-      y - 34,
-      x + 38,
-      y - 16,
-    );
-    g.fillStyle(0xffd2e4).fillCircle(x - 30, y + 28, 6);
-    g.lineStyle(1.5, 0xc98aa6, 1).lineBetween(x - 30, y + 22, x - 30, y + 33);
+      L.put(N.surf(R), x, y, {
+        s: (R + 10 + m * Math.sin(t * 4 + i) * 2) / (R + 10),
+        a: Math.min(1, riseOf * 1.4) * dry,
+      });
+    L.put(N.body(R), x, y, { s: sb, a: dry });
     // Cracks from strands: one more and it sinks.
-    for (let c = 0; c < island.cracks; c++) {
-      const a = c * 2.2 + i;
-      const sx = x + Math.cos(a) * radius * 0.2,
-        sy = y + Math.sin(a) * radius * 0.2;
-      g.lineStyle(3, 0x6f5532, 0.9)
-        .lineBetween(
-          sx,
-          sy,
-          sx + Math.cos(a) * radius * 0.45,
-          sy + Math.sin(a) * radius * 0.45,
-        )
-        .lineBetween(
-          sx + Math.cos(a) * radius * 0.45,
-          sy + Math.sin(a) * radius * 0.45,
-          sx + Math.cos(a + 0.6) * radius * 0.8,
-          sy + Math.sin(a + 0.6) * radius * 0.8,
-        );
+    for (let c = 0; c < Math.min(2, isl.cracks); c++)
+      L.put(N.crack(R, i, c), x, y, { s: sb, a: dry });
+    if (isl.cracks >= 2)
+      L.put(N.soggy(R), x, y, {
+        s: sb,
+        a: dry * (0.75 + 0.25 * Math.sin(t * 3 * m + i)),
+      });
+    const f = 0.5 + 0.5 * Math.sin(t * 1.3 * m + i * 1.7),
+      fs = 1 + m * 0.01 * Math.sin(t * 1.4 + i);
+    L.put(N.foamA(R), x, y, { s: fs * sb, a: (0.45 + 0.55 * f) * dry });
+    L.put(N.foamB(R), x, y, {
+      s: fs * sb,
+      rot: 0.4,
+      a: (0.45 + 0.55 * (1 - f)) * dry,
+    });
+    if (!low) {
+      const gl = reduced ? 0.6 : Math.max(0, Math.sin(t * 2.3 + i * 2.1));
+      L.put(
+        "glint",
+        x + Math.cos(-2.35) * (R - 3),
+        y + Math.sin(-2.35) * (R - 3),
+        {
+          add: true,
+          a: gl * dry,
+          s: 0.8 + gl * 0.4,
+        },
+      );
     }
     // Under High Tide, show how full each island is (two fit).
-    if (flooded && r.partySize > 1) {
+    if (flooded && r.partySize > 1 && !isl.sunk) {
       const on = state.players.filter(
-        (p) => !p.raidBoss && p.hp > 0 && Math.hypot(p.x - x, p.y - y) < radius,
+        (pl) => !pl.raidBoss && pl.hp > 0 && Math.hypot(pl.x - x, pl.y - y) < R,
       ).length;
       for (let s = 0; s < TIDEWYRM.islandCapacity; s++)
-        g.fillStyle(s < on ? 0xffd65b : 0x0c1b32, 0.95).fillCircle(
-          x - 9 + s * 18,
-          y - radius - 16,
-          6,
-        );
-      if (on > TIDEWYRM.islandCapacity)
-        g.lineStyle(4, DANGER, 1).strokeCircle(x, y, radius + 3);
+        L.put(s < on ? "pipOn" : "pipOff", x - 9 + s * 18, y - R - 16);
+      if (on > TIDEWYRM.islandCapacity) {
+        const pulse = reduced ? 1 : 0.7 + 0.3 * Math.sin(t * 8);
+        if (!low) L.put(N.redGlow(R), x, y, { add: true, a: 0.8 * pulse });
+        // The exact over-capacity ring at R + 3.
+        L.put(N.red(R), x, y);
+      }
     }
   }
+}
+
+/** High Tide's warning: the water's edge glows all round; get on an island. */
+function drawHighTideWarning(
+  g: G,
+  state: Snapshot,
+  progress: number,
+  pulse: number,
+  reduced: boolean,
+) {
+  const L = mapLayers(g)?.under;
+  if (!L) return;
+  const low = raidMapLow();
+  const t = state.time;
+  const glow = 10 + progress * 30;
+  const ga = (0.4 + 0.6 * (glow / 40)) * pulse;
+  // Glow strips grow inward with progress, like the flat band did.
+  const x0 = 36,
+    y0 = 36,
+    x1 = 1564,
+    y1 = 864,
+    c = 40;
+  const hw = (x1 - x0 - 2 * c) / 64,
+    vh = (y1 - y0 - 2 * c) / 64;
+  L.put("rimGlow", x0 + c, y0, { sx: hw, sy: glow / 40, a: ga });
+  L.put("rimGlow", x1 - c, y1, { rot: Math.PI, sx: hw, sy: glow / 40, a: ga });
+  L.put("rimGlow", x0, y1 - c, {
+    rot: -Math.PI / 2,
+    sx: vh,
+    sy: glow / 40,
+    a: ga,
+  });
+  L.put("rimGlow", x1, y0 + c, {
+    rot: Math.PI / 2,
+    sx: vh,
+    sy: glow / 40,
+    a: ga,
+  });
+  L.put("rimLine", x0 + c, y0, { sx: hw });
+  L.put("rimLine", x1 - c, y1, { rot: Math.PI, sx: hw });
+  L.put("rimLine", x0, y1 - c, { rot: -Math.PI / 2, sx: vh });
+  L.put("rimLine", x1, y0 + c, { rot: Math.PI / 2, sx: vh });
+  L.put("rimCorner", x0 + c, y0 + c);
+  L.put("rimCorner", x1 - c, y0 + c, { rot: Math.PI / 2 });
+  L.put("rimCorner", x1 - c, y1 - c, { rot: Math.PI });
+  L.put("rimCorner", x0 + c, y1 - c, { rot: -Math.PI / 2 });
+  for (const island of state.raid!.islands ?? [])
+    if (!island.sunk && !island.gone) {
+      const R = island.radius;
+      if (!low)
+        L.put(lagoonName.goldGlow(R), island.x, island.y, {
+          add: true,
+          a: 0.45 + 0.4 * pulse,
+        });
+      // The exact ring at R + 10.
+      L.put(lagoonName.gold(R), island.x, island.y, { a: 0.6 + 0.4 * pulse });
+      L.put(
+        "chevron",
+        island.x,
+        island.y - R - 16 - (reduced ? 0 : Math.abs(Math.sin(t * 4)) * 3),
+      );
+    }
 }
 
 /** Every Tidewyrm warning and live attack. Returns false for kinds it doesn't draw. */
@@ -318,38 +455,7 @@ export function drawTidewyrmWarning(
     return true;
   }
   if (w.kind === "hightide") {
-    // The water's edge glows all round: get on an island.
-    const glow = 10 + progress * 30;
-    g.lineStyle(glow, WATER, 0.18 * pulse).strokeRoundedRect(
-      36 + glow / 2,
-      36 + glow / 2,
-      1600 - 72 - glow,
-      900 - 72 - glow,
-      40,
-    );
-    g.lineStyle(4, WATER, 0.95).strokeRoundedRect(
-      36,
-      36,
-      1600 - 72,
-      900 - 72,
-      40,
-    );
-    for (const island of r.islands ?? [])
-      if (!island.sunk && !island.gone) {
-        g.lineStyle(4, 0xffd65b, 0.6 + 0.4 * pulse).strokeCircle(
-          island.x,
-          island.y,
-          island.radius + 10,
-        );
-        g.fillStyle(0xffd65b, 1).fillTriangle(
-          island.x - 9,
-          island.y - island.radius - 30,
-          island.x + 9,
-          island.y - island.radius - 30,
-          island.x,
-          island.y - island.radius - 16,
-        );
-      }
+    drawHighTideWarning(g, state, progress, pulse, reduced);
     return true;
   }
   if (w.kind === "undertow") {

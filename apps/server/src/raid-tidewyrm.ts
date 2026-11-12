@@ -55,6 +55,10 @@ export class TidewyrmArena extends RaidArena {
   private sinkAt = Infinity;
   /** Which island the boss is stranded on, if any. */
   private strandedOn = -1;
+  /** Islands of the last strands (newest last): it learns to avoid a repeat. */
+  private strandLog: number[] = [];
+  /** The tail sweep for this strand has been telegraphed. */
+  private swept = false;
 
   protected override def(): RaidBossNumbers {
     return T;
@@ -66,8 +70,15 @@ export class TidewyrmArena extends RaidArena {
     const r = this.raid;
     this.arenaId = "lagoon";
     r.pillars = [];
-    const radius = r.trait === "spring-tide" ? T.springIslandRadius : T.islandRadius;
-    r.islands = T.islands.map((i) => ({ x: i.x, y: i.y, radius, cracks: 0, sunk: false }));
+    const radius =
+      r.trait === "spring-tide" ? T.springIslandRadius : T.islandRadius;
+    r.islands = T.islands.map((i) => ({
+      x: i.x,
+      y: i.y,
+      radius,
+      cracks: 0,
+      sunk: false,
+    }));
     r.submerged = false;
     r.floodUntil = 0;
     r.waves = [];
@@ -78,6 +89,8 @@ export class TidewyrmArena extends RaidArena {
     this.lingerUntil = 0;
     this.returning = false;
     this.strandedOn = -1;
+    this.strandLog = [];
+    this.swept = false;
     this.waveHits.clear();
     this.undertowHit.clear();
     this.rootedUntil.clear();
@@ -153,10 +166,64 @@ export class TidewyrmArena extends RaidArena {
   }
   /** The dry island a point stands on, if any. */
   islandAt(x: number, y: number): RaidIsland | undefined {
-    return this.dryIslands().find((i) => Math.hypot(x - i.x, y - i.y) < i.radius);
+    return this.dryIslands().find(
+      (i) => Math.hypot(x - i.x, y - i.y) < i.radius,
+    );
   }
   private onIsland(p: Fighter) {
     return !!this.islandAt(p.x, p.y);
+  }
+  protected override onMechanic(p: Fighter) {
+    return this.onIsland(p);
+  }
+  /** How far a raider is from the edge of the nearest dry island. */
+  private toDry(p: { x: number; y: number }) {
+    return Math.min(
+      Infinity,
+      ...this.dryIslands().map(
+        (i) => Math.hypot(p.x - i.x, p.y - i.y) - i.radius,
+      ),
+    );
+  }
+  /**
+   * Live raids: dives go after raiders out in the water, away from the
+   * islands (never one already standing on an island, and not near the
+   * island it was stranded on twice running). Prisons go to whoever is
+   * farthest from help.
+   */
+  protected override chooseTarget(kind: RaidAttack, alive: Fighter[]) {
+    if (!this.smart() || alive.length < 2)
+      return super.chooseTarget(kind, alive);
+    if (kind === "dive") {
+      const log = this.strandLog;
+      const repeat =
+        log.length >= 2 && log.at(-1) === log.at(-2)
+          ? this.raid.islands?.[log.at(-1)!]
+          : undefined;
+      const pool = alive.filter(
+        (p) =>
+          !this.onIsland(p) &&
+          !(
+            repeat &&
+            Math.hypot(p.x - repeat.x, p.y - repeat.y) < repeat.radius + 90
+          ),
+      );
+      const wet = pool.filter((p) => this.toDry(p) > 150);
+      return super.chooseTarget(
+        kind,
+        wet.length ? wet : pool.length ? pool : alive,
+      );
+    }
+    if (kind === "prison") {
+      const lonely = (p: Fighter) =>
+        Math.min(
+          ...alive
+            .filter((q) => q !== p)
+            .map((q) => Math.hypot(q.x - p.x, q.y - p.y)),
+        );
+      return [...alive].sort((a, b) => lonely(b) - lonely(a))[0];
+    }
+    return super.chooseTarget(kind, alive);
   }
 
   // ---------------------------------------------------------------- Attacks
@@ -172,23 +239,60 @@ export class TidewyrmArena extends RaidArena {
     else if (kind === "bubbles") {
       const d = normalize(target.x - boss.x, target.y - boss.y);
       Object.assign(
-        this.warn("bubbles", boss.x, boss.y, boss.x + d.x * 420, boss.y + d.y * 420, 420, T.bubbles.delay),
+        this.warn(
+          "bubbles",
+          boss.x,
+          boss.y,
+          boss.x + d.x * 420,
+          boss.y + d.y * 420,
+          420,
+          T.bubbles.delay,
+        ),
         { spread: T.bubbles.spread / 2, targetId: target.id, teach },
       );
     } else if (kind === "hightide")
-      this.warn("hightide", T.home.x, T.home.y, T.home.x, T.home.y, 0, T.highTide.delay).teach = teach;
+      this.warn(
+        "hightide",
+        T.home.x,
+        T.home.y,
+        T.home.x,
+        T.home.y,
+        0,
+        T.highTide.delay,
+      ).teach = teach;
     else if (kind === "undertow")
-      this.warn("undertow", T.home.x, T.home.y, T.home.x, T.home.y, T.undertow.centreRadius, T.undertow.delay).teach = teach;
+      this.warn(
+        "undertow",
+        T.home.x,
+        T.home.y,
+        T.home.x,
+        T.home.y,
+        T.undertow.centreRadius,
+        T.undertow.delay,
+      ).teach = teach;
     else if (kind === "prison") {
       // Nobody already sealed; alone, the only raider.
-      const free = this.heroes().filter((p) => p.hp > 0 && !r.prisons?.some((q) => q.playerId === p.id));
+      const free = this.heroes().filter(
+        (p) => p.hp > 0 && !r.prisons?.some((q) => q.playerId === p.id),
+      );
       const who = free.includes(target) ? target : free[0];
       if (!who) return;
-      Object.assign(this.warn("prison", who.x, who.y, who.x, who.y, T.prison.radius, T.prison.delay), {
-        targetId: who.id,
-        lockAt: this.time + T.prison.delay,
-        teach,
-      });
+      Object.assign(
+        this.warn(
+          "prison",
+          who.x,
+          who.y,
+          who.x,
+          who.y,
+          T.prison.radius,
+          T.prison.delay,
+        ),
+        {
+          targetId: who.id,
+          lockAt: this.time + T.prison.delay,
+          teach,
+        },
+      );
     } else super.startAttack(kind, target);
   }
   /** It dives: a ripple follows the raider (or Tidefin's clone), then locks. */
@@ -196,33 +300,101 @@ export class TidewyrmArena extends RaidArena {
     const r = this.raid;
     r.submerged = true;
     this.lingerUntil = 0;
-    Object.assign(
-      this.warn("dive", target.x, target.y, target.x, target.y, T.dive.radius, T.dive.follow + T.dive.lock),
+    const w = Object.assign(
+      this.warn(
+        "dive",
+        target.x,
+        target.y,
+        target.x,
+        target.y,
+        T.dive.radius,
+        T.dive.follow + T.dive.lock,
+      ),
       { targetId: target.id, lockAt: this.time + T.dive.follow, teach },
+    );
+    // The splash freezes `lock` seconds before it lands, whatever the tier
+    // does to the follow (alone, where you also have to lure it: 0.8 s).
+    w.lockAt =
+      w.at -
+      (this.smart() && r.partySize === 1 ? T.dive.soloLock : T.dive.lock);
+  }
+  /** Live raids: bubbles go at a second raider too (party pressure). */
+  protected override pressured(kind: RaidAttack, alive: Fighter[]) {
+    return (
+      super.pressured(kind, alive) ||
+      (kind === "bubbles" &&
+        this.smart() &&
+        alive.length >= 3 &&
+        this.raid.phase >= 2)
     );
   }
   /** A band sweeps across from one edge: low (jump it) or high (be on an island). */
-  private startWave(teach: boolean, delay: number = T.wave.delay) {
+  private startWave(
+    teach: boolean,
+    delay: number = T.wave.delay,
+    from?: number,
+    high?: boolean,
+  ) {
     const r = this.raid;
-    const side = (this.attacks + r.seed) % 4;
+    let side = from ?? (this.attacks + r.seed) % 4;
+    if (from === undefined && this.smart()) {
+      // From the edge nearest the raiders out in the water (least time to react
+      // once it is moving, though the warning is as long as ever).
+      const wet = this.heroes().filter((p) => p.hp > 0 && !this.onIsland(p));
+      if (wet.length) {
+        const edge = (s: number) =>
+          wet.reduce(
+            (sum, p) =>
+              sum +
+              (s === 0 ? p.x : s === 1 ? W - p.x : s === 2 ? p.y : H - p.y),
+            0,
+          );
+        side = [0, 1, 2, 3].sort((a, b) => edge(a) - edge(b))[0];
+      }
+    }
     const axis = side < 2 ? "x" : "y";
     const dir = side % 2 ? -1 : 1;
     const x = axis === "x" ? (dir > 0 ? 0 : W) : W / 2,
       y = axis === "y" ? (dir > 0 ? 0 : H) : H / 2;
+    // Live raids, chapter 3: a low wave, then a high one from a side edge.
+    const double =
+      from === undefined && this.smart() && r.phase === 3 && !r.drill;
     Object.assign(
-      this.warn("wave", x, y, axis === "x" ? x + dir : x, axis === "y" ? y + dir : y, T.wave.width, delay),
-      { high: r.phase >= 2, teach },
+      this.warn(
+        "wave",
+        x,
+        y,
+        axis === "x" ? x + dir : x,
+        axis === "y" ? y + dir : y,
+        T.wave.width,
+        delay,
+      ),
+      { high: high ?? (double ? false : r.phase >= 2), teach },
     );
+    if (double) {
+      const cross =
+        side < 2
+          ? 2 + ((this.attacks + r.seed) % 2)
+          : (this.attacks + r.seed) % 2;
+      this.startWave(false, delay + T.wave.secondGap, cross, true);
+    }
   }
   protected override followWarnings(boss: Fighter) {
     super.followWarnings(boss);
     for (const w of this.raid.warnings) {
-      if ((w.kind !== "dive" && w.kind !== "prison") || w.lockAt === undefined || this.time >= w.lockAt)
+      if (
+        (w.kind !== "dive" && w.kind !== "prison") ||
+        w.lockAt === undefined ||
+        this.time >= w.lockAt
+      )
         continue;
       const target = this.heroes().find((p) => p.id === w.targetId && p.hp > 0);
       if (!target) continue;
       // Tidefin's Tide Double: the ripple follows the double instead.
-      const lure = w.kind === "dive" && target.clone && target.clone.until > this.time ? target.clone : target;
+      const lure =
+        w.kind === "dive" && target.clone && target.clone.until > this.time
+          ? target.clone
+          : target;
       w.x = w.tx = lure.x;
       w.y = w.ty = lure.y;
     }
@@ -233,14 +405,51 @@ export class TidewyrmArena extends RaidArena {
     if (w.kind === "wave") {
       const speed = r.trait === "rip-current" ? T.wave.ripSpeed : T.wave.speed;
       const axis = w.tx !== w.x ? "x" : "y";
-      const dir = (axis === "x" ? Math.sign(w.tx - w.x) : Math.sign(w.ty - w.y)) as 1 | -1;
+      const dir = (
+        axis === "x" ? Math.sign(w.tx - w.x) : Math.sign(w.ty - w.y)
+      ) as 1 | -1;
       const id = ++this.serial;
-      r.waves = [...(r.waves ?? []), { id, axis, dir, pos: axis === "x" ? w.x : w.y, speed, width: T.wave.width, high: !!w.high }];
+      r.waves = [
+        ...(r.waves ?? []),
+        {
+          id,
+          axis,
+          dir,
+          pos: axis === "x" ? w.x : w.y,
+          speed,
+          width: T.wave.width,
+          high: !!w.high,
+        },
+      ];
       this.waveHits.set(id, new Set());
       return;
     }
+    if (w.kind === "slam") {
+      // The tail sweep as a strand ends: jump it or stand clear.
+      this.hitBy = "slam";
+      for (const p of this.heroes())
+        if (
+          p.hp > 0 &&
+          p.jumpUntil <= this.time &&
+          Math.hypot(p.x - w.x, p.y - w.y) < w.radius + RULES.radius
+        )
+          this.damage(p, T.tailSweep.damage, boss.id, this.splash(true));
+      this.hitBy = undefined;
+      this.countDodges();
+      this.event("raid-impact", w, 0x7fe9ff, undefined, boss.id);
+      this.events[this.events.length - 1].raidRadius = w.radius;
+      return;
+    }
     if (w.kind === "bubbles") {
-      const n = Math.min(9, 7 + (r.peril >= 2 ? 1 : 0) + (r.phase >= 3 ? 1 : 0));
+      const n = this.smart()
+        ? // Live raids: 9-11 bubbles at a party, 7-9 at a lone raider.
+          Math.min(
+            11,
+            (r.partySize > 1 ? 9 : 7) +
+              (r.phase >= 2 ? 1 : 0) +
+              (r.phase >= 3 ? 1 : 0),
+          )
+        : Math.min(9, 7 + (r.peril >= 2 ? 1 : 0) + (r.phase >= 3 ? 1 : 0));
       const aim = Math.atan2(w.ty - w.y, w.tx - w.x),
         spread = w.spread ?? T.bubbles.spread / 2;
       r.bubbles = [
@@ -261,22 +470,52 @@ export class TidewyrmArena extends RaidArena {
     }
     if (w.kind === "hightide") {
       r.floodUntil =
-        this.time + (r.trait === "spring-tide" ? T.highTide.springSeconds : T.highTide.seconds);
+        this.time +
+        (r.trait === "spring-tide"
+          ? T.highTide.springSeconds
+          : T.highTide.seconds);
       this.event("raid-impact", T.home, 0x4fd6e6, undefined, boss.id);
       this.events[this.events.length - 1].raidRadius = 600;
       // Storm Surge: High Tide leads straight into a dive.
       if (r.phase === 3 && !r.drill) {
         const alive = this.heroes().filter((p) => p.hp > 0);
-        const target = alive[(this.attacks + r.seed) % Math.max(1, alive.length)];
+        // Live raids: whoever is in the water farthest from a free island.
+        const room = (p: Fighter) =>
+          Math.min(
+            Infinity,
+            ...this.dryIslands()
+              .filter(
+                (i) =>
+                  this.heroes().filter(
+                    (q) =>
+                      q !== p &&
+                      q.hp > 0 &&
+                      Math.hypot(q.x - i.x, q.y - i.y) < i.radius,
+                  ).length < T.islandCapacity,
+              )
+              .map((i) => Math.hypot(p.x - i.x, p.y - i.y) - i.radius),
+          );
+        const wet = alive.filter((p) => !this.onIsland(p));
+        const target = this.smart()
+          ? ([...(wet.length ? wet : alive)].sort(
+              (a, b) => room(b) - room(a),
+            )[0] as Fighter | undefined)
+          : alive[(this.attacks + r.seed) % Math.max(1, alive.length)];
         if (target) this.startDive(target, false);
       }
       return;
     }
     if (w.kind === "undertow") {
-      r.undertow = { x: w.x, y: w.y, until: this.time + T.undertow.seconds, radius: T.undertow.centreRadius };
+      r.undertow = {
+        x: w.x,
+        y: w.y,
+        until: this.time + T.undertow.seconds,
+        radius: T.undertow.centreRadius,
+      };
       this.undertowHit.clear();
       // Storm Surge: the Undertow leads into a wave as it lets go.
-      if (r.phase === 3 && !r.drill) this.startWave(false, T.undertow.seconds + 0.4);
+      if (r.phase === 3 && !r.drill)
+        this.startWave(false, T.undertow.seconds + 0.4);
       return;
     }
     if (w.kind === "prison") {
@@ -284,10 +523,21 @@ export class TidewyrmArena extends RaidArena {
       if (!p || r.prisons?.some((q) => q.playerId === p.id)) return;
       r.prisons = [
         ...(r.prisons ?? []),
-        { playerId: p.id, x: p.x, y: p.y, hits: 0, presses: 0, until: this.time + T.prison.seconds, startedAt: this.time },
+        {
+          playerId: p.id,
+          x: p.x,
+          y: p.y,
+          hits: 0,
+          presses: 0,
+          until: this.time + T.prison.seconds,
+          startedAt: this.time,
+        },
       ];
       this.lastBasic.set(p.id, true);
-      r.message = r.partySize > 1 ? `${p.name} is trapped! Pop the bubble: three hits.` : "Trapped! Mash attack to break out.";
+      r.message =
+        r.partySize > 1
+          ? `${p.name} is trapped! Pop the bubble: three hits.`
+          : "Trapped! Mash attack to break out.";
       return;
     }
     super.resolveWarning(w, boss);
@@ -300,7 +550,10 @@ export class TidewyrmArena extends RaidArena {
     r.submerged = false;
     this.hitBy = "dive";
     for (const p of this.heroes())
-      if (p.hp > 0 && Math.hypot(p.x - w.x, p.y - w.y) < w.radius + RULES.radius)
+      if (
+        p.hp > 0 &&
+        Math.hypot(p.x - w.x, p.y - w.y) < w.radius + RULES.radius
+      )
         this.damage(p, T.dive.damage, boss.id, this.splash());
     this.hitBy = undefined;
     this.countDodges();
@@ -315,16 +568,28 @@ export class TidewyrmArena extends RaidArena {
     }
     // Stranded: exposed on dry land.
     this.strandedOn = islands.indexOf(island);
+    this.strandLog = [...this.strandLog.slice(-2), this.strandedOn];
+    this.swept = false;
     island.cracks++;
     r.exposedUntil =
-      this.time + (r.peril <= 1 ? T.dive.strandPeril1 : T.dive.strand) + (r.trait === "murky" ? 1 : 0);
+      this.time +
+      (r.peril <= 1
+        ? T.dive.strandPeril1
+        : this.smart()
+          ? this.window(T.dive.strand)
+          : T.dive.strand) +
+      (r.trait === "murky" ? 1 : 0);
     if (!r.drill) {
       r.strands = (r.strands ?? 0) + 1;
       r.stagger = Math.min(100, r.stagger + T.dive.strandStagger);
-      if (w.targetId && r.contributions?.[w.targetId]) r.contributions[w.targetId].pillars++;
+      if (w.targetId && r.contributions?.[w.targetId])
+        r.contributions[w.targetId].pillars++;
     }
     r.message = "STRANDED! Tidewyrm is on dry land. Hit it now!";
-    this.nextAttack = Math.max(this.nextAttack, r.exposedUntil + 1);
+    this.nextAttack = Math.max(
+      this.nextAttack,
+      r.exposedUntil + (this.smart() ? 0.4 : 1),
+    );
   }
   /** How the splash and other water hits look to the damage rules. */
   private splash(ground = false): Ability {
@@ -334,6 +599,25 @@ export class TidewyrmArena extends RaidArena {
   // ------------------------------------------------------------ Every tick
   protected override bossStep(dt: number, boss: Fighter) {
     const r = this.raid;
+    // Live raids: as the strand runs out it sweeps its tail round the island.
+    if (
+      this.smart() &&
+      this.strandedOn >= 0 &&
+      !this.swept &&
+      r.exposedUntil > this.time &&
+      r.exposedUntil - this.time <= T.tailSweep.delay
+    ) {
+      this.swept = true;
+      this.warn(
+        "slam",
+        boss.x,
+        boss.y,
+        boss.x,
+        boss.y,
+        T.tailSweep.radius,
+        T.tailSweep.delay,
+      );
+    }
     // After a strand (or a splash in water) it swims home under water.
     if (this.strandedOn >= 0 && r.exposedUntil <= this.time) {
       const island = r.islands?.[this.strandedOn];
@@ -369,7 +653,13 @@ export class TidewyrmArena extends RaidArena {
     for (const p of this.heroes()) {
       const sealed = r.prisons?.some((q) => q.playerId === p.id);
       if (sealed || (this.rootedUntil.get(p.id) ?? 0) > this.time) {
-        p.lastInput = { ...p.lastInput, dx: 0, dy: 0, dash: false, jump: false };
+        p.lastInput = {
+          ...p.lastInput,
+          dx: 0,
+          dy: 0,
+          dash: false,
+          jump: false,
+        };
         if (sealed) {
           this.clearBufferedSkills(p.id);
           p.lastInput = { ...p.lastInput, basic: false, skill: -1 };
@@ -389,7 +679,8 @@ export class TidewyrmArena extends RaidArena {
       const index = at ? islands.indexOf(at) : -1;
       const known = this.onIslandSince.get(p.id);
       if (index < 0) this.onIslandSince.delete(p.id);
-      else if (known?.island !== index) this.onIslandSince.set(p.id, { island: index, since: this.time });
+      else if (known?.island !== index)
+        this.onIslandSince.set(p.id, { island: index, since: this.time });
     }
   }
   private stepWaves(dt: number, boss: Fighter) {
@@ -401,7 +692,8 @@ export class TidewyrmArena extends RaidArena {
       for (const p of this.heroes()) {
         if (p.hp <= 0 || hit.has(p.id)) continue;
         const along = wave.axis === "x" ? p.x : p.y;
-        if (Math.abs(along - wave.pos) > wave.width / 2 + RULES.radius) continue;
+        if (Math.abs(along - wave.pos) > wave.width / 2 + RULES.radius)
+          continue;
         hit.add(p.id);
         // Low waves are jumped; high waves only spare raiders on an island.
         const safe = wave.high ? this.onIsland(p) : p.jumpUntil > this.time;
@@ -409,7 +701,11 @@ export class TidewyrmArena extends RaidArena {
         this.struck.add(p.id);
         this.damage(p, T.wave.damage, boss.id, this.splash());
         if (!r.drill)
-          move(p, wave.axis === "x" ? wave.dir * 60 : 0, wave.axis === "y" ? wave.dir * 60 : 0);
+          move(
+            p,
+            wave.axis === "x" ? wave.dir * 60 : 0,
+            wave.axis === "y" ? wave.dir * 60 : 0,
+          );
       }
       this.hitBy = undefined;
       this.waveHits.set(wave.id, hit);
@@ -432,7 +728,14 @@ export class TidewyrmArena extends RaidArena {
     for (const b of r.bubbles ?? []) {
       b.x += b.vx * dt;
       b.y += b.vy * dt;
-      if (b.until <= this.time || b.x < -40 || b.x > W + 40 || b.y < -40 || b.y > H + 40) continue;
+      if (
+        b.until <= this.time ||
+        b.x < -40 ||
+        b.x > W + 40 ||
+        b.y < -40 ||
+        b.y > H + 40
+      )
+        continue;
       // Popped by an attack.
       if (
         shots.some(
@@ -448,7 +751,9 @@ export class TidewyrmArena extends RaidArena {
         continue;
       }
       const victim = this.heroes().find(
-        (p) => p.hp > 0 && Math.hypot(p.x - b.x, p.y - b.y) < T.bubbles.radius + RULES.radius,
+        (p) =>
+          p.hp > 0 &&
+          Math.hypot(p.x - b.x, p.y - b.y) < T.bubbles.radius + RULES.radius,
       );
       if (!victim) {
         left.push(b);
@@ -485,8 +790,16 @@ export class TidewyrmArena extends RaidArena {
       // Teammates pop it: shots that reach it, or swings from beside it.
       let yank: Fighter | undefined;
       for (const pr of this.projectiles) {
-        if (pr.owner === boss.id || pr.owner === p.id || this.countedShots.has(pr.id)) continue;
-        if (Math.hypot(pr.x - prison.x, pr.y - prison.y) > T.prison.radius + (pr.ability.radius ?? 10) + RULES.radius)
+        if (
+          pr.owner === boss.id ||
+          pr.owner === p.id ||
+          this.countedShots.has(pr.id)
+        )
+          continue;
+        if (
+          Math.hypot(pr.x - prison.x, pr.y - prison.y) >
+          T.prison.radius + (pr.ability.radius ?? 10) + RULES.radius
+        )
           continue;
         this.countedShots.add(pr.id);
         // Cindrake's Magma Bomb pops it in one hit.
@@ -555,13 +868,18 @@ export class TidewyrmArena extends RaidArena {
       this.countDodges();
       return;
     }
-    const pull = r.trait === "rip-current" ? T.undertow.ripPull : T.undertow.pull;
+    const pull =
+      r.trait === "rip-current" ? T.undertow.ripPull : T.undertow.pull;
     for (const p of this.heroes()) {
       if (p.hp <= 0 || r.prisons?.some((q) => q.playerId === p.id)) continue;
       const dist = Math.hypot(u.x - p.x, u.y - p.y);
       if (dist > 4) {
         const d = normalize(u.x - p.x, u.y - p.y);
-        move(p, d.x * Math.min(dist, pull * dt), d.y * Math.min(dist, pull * dt));
+        move(
+          p,
+          d.x * Math.min(dist, pull * dt),
+          d.y * Math.min(dist, pull * dt),
+        );
       }
       if (dist < u.radius + RULES.radius && !this.undertowHit.has(p.id)) {
         this.undertowHit.add(p.id);
@@ -585,8 +903,16 @@ export class TidewyrmArena extends RaidArena {
     if (r.partySize > 1 && !r.drill)
       for (const island of this.dryIslands()) {
         const on = this.heroes()
-          .filter((p) => p.hp > 0 && Math.hypot(p.x - island.x, p.y - island.y) < island.radius)
-          .sort((a, b) => (this.onIslandSince.get(a.id)?.since ?? 0) - (this.onIslandSince.get(b.id)?.since ?? 0));
+          .filter(
+            (p) =>
+              p.hp > 0 &&
+              Math.hypot(p.x - island.x, p.y - island.y) < island.radius,
+          )
+          .sort(
+            (a, b) =>
+              (this.onIslandSince.get(a.id)?.since ?? 0) -
+              (this.onIslandSince.get(b.id)?.since ?? 0),
+          );
         for (const p of on.slice(T.islandCapacity)) {
           const d = normalize(p.x - island.x || 1, p.y - island.y);
           p.x = island.x + d.x * (island.radius + RULES.radius + 6);
@@ -617,19 +943,34 @@ export class TidewyrmArena extends RaidArena {
     r.message = "An island sinks for good!";
     this.event("raid-impact", island, 0x4fd6e6, undefined, r.bossId);
     this.events[this.events.length - 1].raidRadius = island.radius;
-    this.sinkAt = this.time + (r.partySize === 1 ? T.soloSinkEvery : T.sinkEvery);
+    this.sinkAt =
+      this.time + (r.partySize === 1 ? T.soloSinkEvery : T.sinkEvery);
   }
 
   // ------------------------------------------------------------ Damage etc.
-  override damage(target: Fighter, amount: number, owner: string, ability?: Ability) {
+  override damage(
+    target: Fighter,
+    amount: number,
+    owner: string,
+    ability?: Ability,
+  ) {
     const r = this.raid;
     // Sealed in a bubble: only reaching the mouth hurts.
-    if (this.hitBy !== "prison" && r.prisons?.some((q) => q.playerId === target.id)) return;
+    if (
+      this.hitBy !== "prison" &&
+      r.prisons?.some((q) => q.playerId === target.id)
+    )
+      return;
     if (target.raidBoss) {
       // Under water it can't be reached.
       if (r.submerged) return;
       // Voltkit's Static Lance on a stranded Tidewyrm: water conducts.
-      if (ability?.id === "static-lance" && this.strandedOn >= 0 && r.exposedUntil > this.time && !r.drill)
+      if (
+        ability?.id === "static-lance" &&
+        this.strandedOn >= 0 &&
+        r.exposedUntil > this.time &&
+        !r.drill
+      )
         r.stagger = Math.min(100, r.stagger + T.lanceStagger);
       // Glacelle's Frost Bloom freezes a stranded Tidewyrm there for longer.
       if (
@@ -643,7 +984,12 @@ export class TidewyrmArena extends RaidArena {
         r.message = "Frozen fast! Tidewyrm stays stranded a little longer.";
       }
       // Pangrove's Tongue Grapple latches onto a stranded Tidewyrm: extra stagger.
-      if (ability?.id === "tongue-grapple" && this.strandedOn >= 0 && r.exposedUntil > this.time && !r.drill)
+      if (
+        ability?.id === "tongue-grapple" &&
+        this.strandedOn >= 0 &&
+        r.exposedUntil > this.time &&
+        !r.drill
+      )
         r.stagger = Math.min(100, r.stagger + T.lanceStagger);
       // A Mossloth seedling going off roots a stranded Tidewyrm where it lies.
       if (
@@ -664,9 +1010,14 @@ export class TidewyrmArena extends RaidArena {
     // Terradon's Tremor pops every bubble nearby and frees a Prison.
     if (a.id === "tremor" && !p.raidBoss) {
       const r = this.raid;
-      r.bubbles = (r.bubbles ?? []).filter((b) => Math.hypot(b.x - p.x, b.y - p.y) > 260);
+      r.bubbles = (r.bubbles ?? []).filter(
+        (b) => Math.hypot(b.x - p.x, b.y - p.y) > 260,
+      );
       for (const prison of [...(r.prisons ?? [])])
-        if (prison.playerId !== p.id && Math.hypot(prison.x - p.x, prison.y - p.y) < 260)
+        if (
+          prison.playerId !== p.id &&
+          Math.hypot(prison.x - p.x, prison.y - p.y) < 260
+        )
           this.freeFromPrison(prison.playerId, true);
     }
   }
@@ -688,7 +1039,10 @@ export class TidewyrmArena extends RaidArena {
     const before = new Map(
       this.phase === "playing"
         ? this.heroes()
-            .filter((p) => p.hp > 0 && this.hasRite(p, "footing") && !this.onIsland(p))
+            .filter(
+              (p) =>
+                p.hp > 0 && this.hasRite(p, "footing") && !this.onIsland(p),
+            )
             .map((p) => [p.id, { x: p.x, y: p.y }] as const)
         : [],
     );
@@ -704,7 +1058,11 @@ export class TidewyrmArena extends RaidArena {
   }
 
   // ------------------------------------------------------------- Stand-ins
-  protected override botHint(bot: Fighter, input: Input, go: (x: number, y: number, away: boolean) => Input) {
+  protected override botHint(
+    bot: Fighter,
+    input: Input,
+    go: (x: number, y: number, away: boolean) => Input,
+  ) {
     const r = this.raid;
     // Sealed: mash (counted here; players' presses arrive through submit()).
     const sealed = r.prisons?.find((q) => q.playerId === bot.id);
@@ -712,19 +1070,36 @@ export class TidewyrmArena extends RaidArena {
       const press = Math.floor(this.time * 8) % 2 === 0;
       if (press && !this.lastBasic.get(bot.id)) sealed.presses++;
       this.lastBasic.set(bot.id, press);
-      return { ...input, dx: 0, dy: 0, basic: false, skill: -1, dash: false, jump: false };
+      return {
+        ...input,
+        dx: 0,
+        dy: 0,
+        basic: false,
+        skill: -1,
+        dash: false,
+        jump: false,
+      };
     }
     const nearestIsland = () => {
       const crowd = (i: RaidIsland) =>
-        this.heroes().filter((p) => p !== bot && Math.hypot(p.x - i.x, p.y - i.y) < i.radius).length;
+        this.heroes().filter(
+          (p) => p !== bot && Math.hypot(p.x - i.x, p.y - i.y) < i.radius,
+        ).length;
       return this.dryIslands()
         .filter((i) => r.partySize === 1 || crowd(i) < T.islandCapacity)
-        .sort((a, b) => Math.hypot(a.x - bot.x, a.y - bot.y) - Math.hypot(b.x - bot.x, b.y - bot.y))[0];
+        .sort(
+          (a, b) =>
+            Math.hypot(a.x - bot.x, a.y - bot.y) -
+            Math.hypot(b.x - bot.x, b.y - bot.y),
+        )[0];
     };
     const toIsland = () => {
       const island = nearestIsland();
       if (!island) return undefined;
-      if (Math.hypot(island.x - bot.x, island.y - bot.y) < island.radius * 0.5) {
+      if (
+        Math.hypot(island.x - bot.x, island.y - bot.y) <
+        island.radius * 0.5
+      ) {
         input.dx = input.dy = 0;
         return input;
       }
@@ -747,7 +1122,11 @@ export class TidewyrmArena extends RaidArena {
         const move = toIsland();
         if (move) return move;
       }
-      if (locked && Math.hypot(bot.x - dive.x, bot.y - dive.y) < dive.radius + RULES.radius + 25)
+      if (
+        locked &&
+        Math.hypot(bot.x - dive.x, bot.y - dive.y) <
+          dive.radius + RULES.radius + 25
+      )
         return go(dive.x, dive.y, true);
     }
     if (r.undertow) return go(r.undertow.x, r.undertow.y, true);
@@ -757,7 +1136,9 @@ export class TidewyrmArena extends RaidArena {
       const ahead = (along - wave.pos) * wave.dir;
       if (!wave.high && ahead > 0 && ahead < wave.width + 60) input.jump = true;
     }
-    const bubble = (r.bubbles ?? []).find((b) => Math.hypot(b.x - bot.x, b.y - bot.y) < 110);
+    const bubble = (r.bubbles ?? []).find(
+      (b) => Math.hypot(b.x - bot.x, b.y - bot.y) < 110,
+    );
     if (bubble) {
       const d = normalize(bubble.vx, bubble.vy);
       return go(bot.x - d.y * 100, bot.y + d.x * 100, false);
@@ -768,7 +1149,8 @@ export class TidewyrmArena extends RaidArena {
       input.basic = Math.floor(this.time * 4) % 2 === 0;
       input.aimX = prison.x;
       input.aimY = prison.y;
-      if (Math.hypot(prison.x - bot.x, prison.y - bot.y) > 80) return go(prison.x, prison.y, false);
+      if (Math.hypot(prison.x - bot.x, prison.y - bot.y) > 80)
+        return go(prison.x, prison.y, false);
       return input;
     }
     return undefined;

@@ -1,6 +1,7 @@
 import { createRaidArena } from "../../apps/server/src/raid-bosses";
 import { expect, it } from "vitest";
 import { RaidArena } from "../../apps/server/src/raid";
+import { raidSoloRevive } from "../../packages/shared/src/raid";
 import {
   CHARACTERS,
   blankInput,
@@ -129,8 +130,11 @@ it("lets solo revive once, then loses on a second down without awarding a win", 
   const p = a.heroes()[0];
   a.damage(p, 10000, a.boss()!.id);
   expect(a.raid.downed.p0.self).toBe(true);
-  for (let i = 0; i < 182; i++) a.tick();
-  expect(p.hp).toBeGreaterThan(0);
+  // Grumblecrag (★): back up after 8 s with 30% health.
+  for (let i = 0; i < 230; i++) a.tick();
+  expect(p.hp).toBe(0);
+  for (let i = 0; i < 15; i++) a.tick();
+  expect(p.hp).toBeCloseTo(CHARACTERS[p.character].health * 0.3, 0);
   expect(a.raid.revives).toBe(1);
   a.damage(p, 10000, a.boss()!.id);
   a.tick();
@@ -156,7 +160,10 @@ it("keeps partial co-op revive progress when interrupted and never allows friend
   for (let i = 0; i < 10; i++) a.tick();
   expect(a.raid.downed.p0.progress).toBeCloseTo(progress);
   q.x = 340;
-  for (let i = 0; i < 95; i++) a.tick();
+  // Grumblecrag (★): a 3.5 s revive.
+  for (let i = 0; i < 70; i++) a.tick();
+  expect(p.hp).toBe(0);
+  for (let i = 0; i < 30; i++) a.tick();
   expect(p.hp).toBeGreaterThan(0);
   expect(a.raid.revives).toBe(1);
 });
@@ -184,7 +191,7 @@ it("uses ordinary Peril rules even if an internal legacy caller requests daily m
   expect(a.raid.phase).toBe(1);
 });
 
-it("solo raiders keep one self-revive (raids are always Peril 3)", () => {
+it("solo raiders keep one self-revive against ★ and ★★ bosses, none against ★★★", () => {
   const a = raid();
   a.configure(3, false);
   fight(a);
@@ -193,6 +200,19 @@ it("solo raiders keep one self-revive (raids are always Peril 3)", () => {
   expect(a.raid.downed[p.id].self).toBe(true);
   for (let i = 0; i < 3; i++) a.tick();
   expect(a.raid.result).toBe(null);
+  expect(raidSoloRevive("grumblecrag")).toEqual({ seconds: 8, hp: 0.3 });
+  expect(raidSoloRevive("somnara")).toEqual({ seconds: 8, hp: 0.25 });
+  expect(raidSoloRevive("storm-twins")).toBeUndefined();
+  const hard = createRaidArena("HARD", "prismatail");
+  hard.add("p0", "Solo");
+  hard.configure(3, false);
+  hard.start();
+  fight(hard);
+  const [q] = hard.heroes();
+  hard.damage(q, 999, hard.boss()!.id);
+  expect(hard.raid.downed[q.id].self).toBe(false);
+  hard.tick();
+  expect(hard.raid.result).toBe("defeat");
 });
 
 it("the feat needs every charge (at least three) to hit a pillar", () => {
@@ -262,10 +282,14 @@ it("tracks the chosen hero before locking, then preserves the telegraphed lane",
   fight(a);
   const p = a.heroes()[0];
   p.hp = 100000;
-  for (let i = 0; i < 65; i++) a.tick();
+  // Live raids open 1.2 s into a chapter, with the charge (chapter 1 first
+  // plays its cards in order).
+  for (let i = 0; i < 40; i++) a.tick();
   const w = a.raid.warnings.find((w) => w.kind === "charge")!;
   expect(w.targetId).toBe(p.id);
-  expect(w.lockAt! - w.startedAt!).toBeCloseTo(1);
+  // ★ telegraph (1.6 s × 0.95); it locks so the lane is frozen for 0.6 s.
+  expect(w.at - w.startedAt!).toBeCloseTo(1.52, 2);
+  expect(w.lockAt! - w.startedAt!).toBeCloseTo(0.92, 2);
   const original = w.ty;
   p.y = 730;
   a.tick();
@@ -276,7 +300,7 @@ it("tracks the chosen hero before locking, then preserves the telegraphed lane",
   p.y = 100;
   for (let i = 0; i < 6; i++) a.tick();
   expect({ x: w.tx, y: w.ty }).toEqual(locked);
-  expect(w.at - w.lockAt!).toBeCloseTo(0.7);
+  expect(w.at - w.lockAt!).toBeCloseTo(0.6);
 });
 
 it("gives phase two a second slam with time to recover a jump, cancelled by stagger", () => {
@@ -395,7 +419,7 @@ it("credits all participating rescuers, including help before an interruption", 
   a.damage(p, 10000, a.boss()!.id);
   for (let i = 0; i < 15; i++) a.tick();
   q.x = 700;
-  for (let i = 0; i < 80; i++) a.tick();
+  for (let i = 0; i < 100; i++) a.tick();
   expect(p.hp).toBeGreaterThan(0);
   expect(a.raid.contributions![q.id].revives).toBe(1);
   expect(a.raid.contributions![r.id].revives).toBe(1);
@@ -444,7 +468,15 @@ it("Grumblecrag always fights in the Coliseum, even in a room with arena rotatio
 
 it("every boss offers six rites, its own rite always among them", async () => {
   const { RAID_BOSS_RITES } = await import("../../packages/shared/src/raid");
-  for (const boss of ["grumblecrag", "tidewyrm", "gloomshade", "somnara", "prismatail", "emberwing", "storm-twins"] as const) {
+  for (const boss of [
+    "grumblecrag",
+    "tidewyrm",
+    "gloomshade",
+    "somnara",
+    "prismatail",
+    "emberwing",
+    "storm-twins",
+  ] as const) {
     const a = createRaidArena("ROOM", boss);
     for (let i = 0; i < 4; i++) a.add("p" + i, "Player " + i);
     a.start();
@@ -453,7 +485,9 @@ it("every boss offers six rites, its own rite always among them", async () => {
       const offer = a.raid.offers[p.id];
       expect(offer).toHaveLength(6);
       expect(new Set(offer).size).toBe(6);
-      const own = Object.entries(RAID_BOSS_RITES).find(([, b]) => b === boss)?.[0];
+      const own = Object.entries(RAID_BOSS_RITES).find(
+        ([, b]) => b === boss,
+      )?.[0];
       if (own) expect(offer[0]).toBe(own);
     }
   }

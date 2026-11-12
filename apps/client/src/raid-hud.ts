@@ -12,7 +12,7 @@
 import { healthTrail } from "./raid-health-trail";
 import { twinBars, type TwinBarView } from "./storm-twins-controls";
 import { raidCue } from "./raid-presentation";
-import { RAID_BOSSES } from "../../../packages/shared/src/raid";
+import { RAID_BOSSES, prismRelayHold } from "../../../packages/shared/src/raid";
 import type { Fighter, Snapshot } from "@arena/shared";
 
 const escape = (s: string) =>
@@ -73,7 +73,7 @@ export function raidHudView(state: Snapshot, me: Fighter): RaidHudView {
   return {
     key: `${r.boss}|${twins.map((t) => `${t.id}:${t.name}`).join(",")}`,
     stormTwins,
-    title: `${r.gilded ? "✦ GILDED " : ""}${RAID_BOSSES[r.boss].name.toUpperCase()}${!stormTwins && (exposed || r.staggerUntil > state.time || r.permanentGround) ? " · EXPOSED" : ""}`,
+    title: `${r.gilded ? "✦ GILDED " : ""}${RAID_BOSSES[r.boss].name.toUpperCase()}${!stormTwins && (exposed || r.staggerUntil > state.time || r.permanentGround) ? " · EXPOSED" : ""}${(r.enrage ?? 0) > 0 ? " · FURIOUS" : ""}`,
     phase: r.phase,
     health,
     trail: healthTrail(`raid:${r.boss}`, health),
@@ -89,8 +89,7 @@ export function raidHudView(state: Snapshot, me: Fighter): RaidHudView {
             ? 100
             : Math.min(
                 100,
-                ((r.lightHold ?? 0) /
-                  (r.phase === 3 && r.partySize === 1 ? 2 : 0.65)) *
+                ((r.lightHold ?? 0) / prismRelayHold(r.phase, r.partySize)) *
                   100,
               )
           : r.staggerUntil > state.time

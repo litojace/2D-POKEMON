@@ -1,4 +1,4 @@
-import { RAID } from "../../packages/shared/src/raid";
+import { RAID, RAID_TIERS } from "../../packages/shared/src/raid";
 import { describe, expect, it } from "vitest";
 import { createRaidArena } from "../../apps/server/src/raid-bosses";
 import { RaidArena } from "../../apps/server/src/raid";
@@ -195,7 +195,7 @@ describe("shared meteor", () => {
 });
 
 describe("difficulty and champions", () => {
-  it("Peril raises boss damage modestly", () => {
+  it("Peril raises boss damage; live raids (Peril 3) use the star tier's", () => {
     const slam = (peril: number) => {
       const a = raid(["voltkit"], peril);
       place(a, "p0", a.boss()!.x - 60, a.boss()!.y);
@@ -206,7 +206,8 @@ describe("difficulty and champions", () => {
     const one = slam(1),
       three = slam(3);
     expect(one).toBeCloseTo(GRUMBLECRAG.slam.damage, 0);
-    expect(three / one).toBeCloseTo(GRUMBLECRAG.perilDamage[3], 2);
+    // Grumblecrag is ★: its tier's damage replaces Peril 3's ×1.5.
+    expect(three / one).toBeCloseTo(RAID_TIERS[1].damage, 2);
   });
   it("Terradon stops a charge head-on for half damage and a stagger", () => {
     const a = raid(["terradon"]);
@@ -405,19 +406,34 @@ describe("boss target choice", () => {
 });
 
 describe("volley aim", () => {
-  const aim = (peril: number) => {
+  type Aim = {
+    warnVolley(t: unknown, teach: boolean): { tx: number; ty: number };
+    motion: Map<string, { t: number; vx: number; vy: number }[]>;
+  };
+  // `was` is how the raider was moving 0.3 s ago.
+  const aim = (peril: number, was = { vx: 0, vy: 300 }) => {
     const a = raid(["voltkit"], peril);
     const boss = a.boss()!;
-    const p = place(a, "p0", boss.x + 300, boss.y);
+    const p = place(a, "p0", boss.x - 300, boss.y);
+    p.vx = 0;
     p.vy = 300; // running down the screen
-    const w = (
-      a as unknown as { warnVolley(t: unknown, teach: boolean): { ty: number } }
-    ).warnVolley(p, false);
-    return w.ty - boss.y;
+    (a as unknown as Aim).motion.set("p0", [{ t: a.time - 0.3, ...was }]);
+    const w = (a as unknown as Aim).warnVolley(p, false);
+    // How far the cone's centre line passes ahead of the raider (px).
+    const d = Math.hypot(w.tx - boss.x, w.ty - boss.y);
+    return ((w.ty - boss.y) / d) * 300;
   };
   it("aims straight at the raider on Peril 1 and a little ahead from Peril 2", () => {
     expect(Math.abs(aim(1))).toBeLessThan(1);
     expect(aim(2)).toBeGreaterThan(20);
-    expect(aim(3)).toBeGreaterThan(aim(2));
+  });
+  it("on Peril 3 leads only a raider running straight, never past the tier's cap", () => {
+    // ★ tier: 55% of the travel, at most 110 px.
+    expect(aim(3)).toBeLessThanOrEqual(RAID_TIERS[1].leadCap + 1);
+    expect(aim(3)).toBeGreaterThan(60);
+    // Just turned (was running across the screen): not led at all.
+    expect(Math.abs(aim(3, { vx: 300, vy: 0 }))).toBeLessThan(1);
+    // Standing still 0.3 s ago (just started): not led either.
+    expect(Math.abs(aim(3, { vx: 0, vy: 0 }))).toBeLessThan(1);
   });
 });
