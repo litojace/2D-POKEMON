@@ -565,39 +565,50 @@ export const TIDEWYRM = {
   home: { x: 800, y: 450 },
   dive: {
     follow: 1.4,
-    lock: 0.8,
+    lock: 0.7,
     damage: 26,
     radius: 110,
     /** Seconds stranded (exposed) on an island; longer on Peril 1. */
-    strand: 5,
+    strand: 4.25,
     strandPeril1: 7,
-    strandStagger: 35,
+    strandStagger: 30,
     /** Strands an island survives before it sinks for the chapter. */
     cracks: 2,
   },
-  wave: { delay: 1.4, speed: 520, ripSpeed: 400, width: 70, damage: 22 },
+  /** Live raids, chapter 3: a second, high wave from a side edge this much later. */
+  wave: {
+    delay: 1.4,
+    speed: 560,
+    ripSpeed: 400,
+    width: 70,
+    damage: 22,
+    secondGap: 2.3,
+  },
+  /** Live raids: as a strand ends it sweeps its tail round the island (jump it). */
+  tailSweep: { radius: 130, delay: 1, damage: 16 },
   bubbles: {
     delay: 0.9,
-    speed: 150,
+    speed: 170,
     radius: 20,
     damage: 10,
     root: 0.8,
     life: 5,
     spread: 0.9,
   },
-  highTide: { delay: 2, seconds: 5, springSeconds: 7, dps: 7 },
+  highTide: { delay: 2, seconds: 5, springSeconds: 7, dps: 9 },
   undertow: {
     delay: 1.2,
     seconds: 3,
-    pull: 120,
+    pull: 140,
     ripPull: 160,
     centreRadius: 75,
     damage: 24,
   },
-  prison: { delay: 1, seconds: 6, hits: 3, presses: 8, radius: 34 },
+  /** Bubble Prison: three teammate hits pop it; alone, `presses` presses of attack. */
+  prison: { delay: 1, seconds: 5.5, hits: 3, presses: 12, radius: 34 },
   /** Peril 3, last chapter: an island sinks for good this often (min 2 left). */
-  sinkEvery: 45,
-  soloSinkEvery: 35,
+  sinkEvery: 40,
+  soloSinkEvery: 32,
   minIslands: 2,
   /** Voltkit's Static Lance on a stranded Tidewyrm (water conducts). */
   lanceStagger: 15,
@@ -639,25 +650,30 @@ export const GLOOMSHADE = {
   ],
   driftSpeed: 150,
   driftEvery: 3.5,
-  lunge: { delay: 1.2, width: 34, length: 760, damage: 25 },
+  /** Chapter 2+ (live raids): a second lunge from another shadow, `cross` s later. */
+  lunge: { delay: 1.2, width: 34, length: 760, damage: 25, cross: 0.5 },
   /** Grasping Hands: the floor as a checkerboard of tiles. */
-  hands: { cols: 8, rows: 5, delay: 1.6, shiftAt: 0.7, damage: 20 },
-  snuff: { delay: 1.5, finalDelay: 0.75 },
+  hands: { cols: 8, rows: 5, delay: 1.45, shiftAt: 0.7, damage: 20 },
+  /** A lantern going out bursts on everyone in its light (live raids). */
+  snuff: { delay: 1.5, finalDelay: 0.9, damage: 14 },
   curse: {
     radius: 120,
     spreadSeconds: 2,
     restlessSpread: 3,
     haunted: 3,
     hauntSeconds: 6,
-    dps: 5,
+    dps: 8,
     cleanseSeconds: 2,
     soloStill: 2.5,
   },
-  split: { delay: 1.2, copies: 3, peril3Copies: 4 },
+  /** One more copy with three or more raiders (live raids). */
+  split: { delay: 1.2, copies: 3, peril3Copies: 4, partyCopy: 3 },
   pulse: { delay: 1.4, radius: 260, damage: 24, pairGap: 1.2 },
   /** Hits on the real one in a row that expose it. */
   exposeHits: 6,
-  exposeSeconds: 5,
+  exposeSeconds: 4.5,
+  /** The streak breaks if nobody hits the real one for this long (live raids). */
+  streakGap: 1,
   /** Voltkit's Ball Lightning lights its landing spot this long. */
   sparkLight: 3,
   /** Mystowl's Third-Eye Ray and Duskveil's Haunted Lantern reveal the real one. */
