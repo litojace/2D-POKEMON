@@ -77,11 +77,9 @@
   min-width: 0;
   overflow: hidden;
   transition: transform var(--dur-1) var(--ease-pop);
-  /* Eighteen detailed SVG fighters: the ones below the fold are laid out and
-     drawn only when scrolled to, so the panel's slide-in draws half as much
-     (owner, 6 Nov: the roster faded in unevenly). The grid sizes each card. */
-  content-visibility: auto;
-  contain-intrinsic-size: auto 190px auto 236px;
+  /* No content-visibility: auto here. Safari on iPhone sometimes skipped
+     drawing a card's insides after it was picked: the frame showed, the
+     fighter and name did not (owner, 12 Nov). See tests/unit/no-content-visibility. */
 }
 .roster-card:hover {
   transform: translateY(-2px);
