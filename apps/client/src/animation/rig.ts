@@ -374,11 +374,7 @@ export class FighterRig {
       offsetY = 0;
     body.setScale(0.5, 0.5 + (reduced ? 0 : idle * 0.009));
     head.y = rigAnchors.headY + (reduced ? 0 : idle * 0.55);
-    head.rotation = reduced
-      ? 0
-      : this.character === "tidefin"
-        ? -0.05
-        : idle * 0.025;
+    head.rotation = reduced ? 0 : idle * 0.025;
     ears.rotation = reduced ? 0 : Math.sin(now / 250) * 0.04;
     tail.rotation = reduced ? 0 : Math.sin(now / 340) * 0.12;
     wings.setScale(0.5 + (reduced ? 0 : Math.sin(now / 360) * 0.025), 0.5);

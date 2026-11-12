@@ -468,6 +468,8 @@ export function drawTipJar(ctx: Ctx, x: number, y: number, t: number) {
   const c = iso(x, y);
   softShadow(ctx, c.x, c.y + 2, 18, 8, 0.26);
   woodBox(ctx, x - 0.26, y - 0.26, x + 0.26, y + 0.26, 0, 26, "#8a5530", 5);
+  // A brass plate with a coin on its front face (turned, on the other).
+  brassPlate(ctx, x, y + 0.26, -3);
   const by = c.y - 27;
   // Inside the jar: a heap of coins and a folded bill.
   ctx.fillStyle = "#4f9a52";
@@ -534,6 +536,28 @@ function onFront(
   ctx.transform(1, 0.5, 0, 1, 0, 0);
   fn();
   ctx.restore();
+}
+/** A brass plate with a coin, on a box's front face (`dx` along it). */
+function brassPlate(ctx: Ctx, x: number, yEdge: number, dx: number) {
+  onFront(ctx, x, yEdge, 0, () => {
+    ctx.fillStyle = lin(ctx, dx - 7, 0, dx + 7, 0, [
+      [0, "#b8892a"],
+      [0.5, "#f6dc8a"],
+      [1, "#a8781e"],
+    ]);
+    ctx.beginPath();
+    ctx.roundRect(dx - 7, -18, 14, 9, 1.5);
+    ctx.fill();
+    ctx.strokeStyle = "rgba(90,60,10,.6)";
+    ctx.lineWidth = 0.7;
+    ctx.stroke();
+    ctx.fillStyle = "#c98f12";
+    ellipse(ctx, dx, -13.5, 2.6, 2.6);
+    ctx.fill();
+    ctx.fillStyle = "#ffe27a";
+    ellipse(ctx, dx - 0.4, -13.9, 1.6, 1.6);
+    ctx.fill();
+  });
 }
 export function drawEspresso(ctx: Ctx, x: number, y: number, t: number) {
   const c = iso(x, y);
@@ -1351,10 +1375,8 @@ export function drawTrophy(ctx: Ctx, x: number, y: number, t: number) {
   const c = iso(x, y);
   softShadow(ctx, c.x, c.y + 2, 20, 9, 0.28);
   woodBox(ctx, x - 0.24, y - 0.24, x + 0.24, y + 0.24, 0, 20, "#4e2c18", 11);
-  // A small brass plaque.
-  const f = iso(x, y + 0.24);
-  ctx.fillStyle = "#d9b44a";
-  ctx.fillRect(f.x - 12, f.y - 13, 9, 5);
+  // A brass plaque on its front face.
+  brassPlate(ctx, x, y + 0.24, -2);
   // The Golden Plate on a stand: an engraved rim, a deep shine.
   const py = c.y - 40;
   ctx.strokeStyle = "#a07818";
@@ -2043,6 +2065,9 @@ export function neonBody(ctx: Ctx, x: number, y: number) {
   ctx.fill();
   ctx.fillStyle = steel(ctx, c.x - 2, c.x + 2);
   ctx.fillRect(c.x - 1.6, c.y - 44, 3.2, 43);
+  // The board faces a corner of the room (turned, it faces the other).
+  ctx.save();
+  neonTurn(ctx, c);
   ctx.fillStyle = "rgba(20,20,30,.82)";
   ctx.beginPath();
   ctx.roundRect(c.x - 25, c.y - 72, 50, 30, 5);
@@ -2058,6 +2083,13 @@ export function neonBody(ctx: Ctx, x: number, y: number) {
     [22, -45],
   ])
     (ellipse(ctx, c.x + dx, c.y + dy, 1.2, 1.2), ctx.fill());
+  ctx.restore();
+}
+/** The neon board's slant: along the floor's left-hand diagonal. */
+function neonTurn(ctx: Ctx, c: { x: number; y: number }) {
+  ctx.translate(c.x, c.y - 57);
+  ctx.transform(1, 0.5, 0, 1, 0, 0);
+  ctx.translate(-c.x, -(c.y - 57));
 }
 export function neonLive(ctx: Ctx, x: number, y: number, t: number) {
   const c = iso(x, y);
@@ -2080,6 +2112,8 @@ export function neonLive(ctx: Ctx, x: number, y: number, t: number) {
     ctx.quadraticCurveTo(c.x, c.y - 64, c.x + 11, c.y - 52);
   };
   // Each tube: a soft wide glow, then the bright core.
+  ctx.save();
+  neonTurn(ctx, c);
   tube(`rgba(255,90,210,${0.35 * on})`, 5, frame);
   tube(`rgba(255,200,240,${on})`, 1.6, frame);
   tube(`rgba(90,230,255,${0.35 * on})`, 5, arc);
@@ -2089,6 +2123,7 @@ export function neonLive(ctx: Ctx, x: number, y: number, t: number) {
     ellipse(ctx, c.x + dx, c.y - 50.5, 1.8, 1.8);
     ctx.fill();
   }
+  ctx.restore();
 }
 
 export function statueBody(ctx: Ctx, x: number, y: number) {
@@ -2388,6 +2423,17 @@ export function pumpkinBody(ctx: Ctx, x: number, y: number) {
   ctx.arc(c.x + 8, c.y - 34, 3, Math.PI, Math.PI * 2.4);
   ctx.stroke();
   glint(ctx, c.x - 6, c.y - 24, 2.5, 4, 0.3, 0.3);
+  // A vine leaf at its foot, on one side.
+  ctx.fillStyle = "#5f8a2a";
+  ctx.beginPath();
+  ctx.ellipse(c.x - 16, c.y - 3, 7, 3.4, -0.35, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = "#3e6a1c";
+  ctx.lineWidth = 0.8;
+  ctx.beginPath();
+  ctx.moveTo(c.x - 22, c.y - 1);
+  ctx.lineTo(c.x - 10, c.y - 5);
+  ctx.stroke();
   // The carved face: dark cut-outs (the candle lights them, live).
   ctx.fillStyle = "#3a1806";
   pumpkinFace(ctx, c.x, c.y);

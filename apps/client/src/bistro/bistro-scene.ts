@@ -919,6 +919,20 @@ export function openBistro(o: BistroOptions): BistroHandle {
     charmPts = charm(S.items);
     measure();
     requeue();
+    // Anyone standing where a piece now goes steps to the nearest free tile
+    // (Decorate places over people: they aren't shown there).
+    for (const w of [
+      ...customers.filter((c) => c.state !== "seated" && c.state !== "eating"),
+      ...waiters,
+    ]) {
+      const at = { x: Math.round(w.gx), y: Math.round(w.gy) };
+      if (!inside(at) || !blocked[at.x][at.y]) continue;
+      const to = nearestFree(at);
+      if (to) {
+        w.gx = to.x;
+        w.gy = to.y;
+      }
+    }
     // Anyone whose next steps cross a new obstacle finds a new way.
     for (const w of [...customers, ...waiters]) {
       if (!w.path.length) continue;
@@ -937,6 +951,30 @@ export function openBistro(o: BistroOptions): BistroHandle {
   };
   const inside = (p: Pt) =>
     p.x >= 0 && p.y >= 0 && p.x < R.cols && p.y < R.rows;
+  /** The free tile closest to a blocked one (steps out, ring by ring). */
+  const nearestFree = (from: Pt): Pt | null => {
+    const seen = new Set([`${from.x},${from.y}`]);
+    let ring = [from];
+    while (ring.length) {
+      const next: Pt[] = [];
+      for (const p of ring)
+        for (const [dx, dy] of [
+          [1, 0],
+          [-1, 0],
+          [0, 1],
+          [0, -1],
+        ]) {
+          const q = { x: p.x + dx, y: p.y + dy };
+          const k = `${q.x},${q.y}`;
+          if (!inside(q) || seen.has(k)) continue;
+          seen.add(k);
+          if (!blocked[q.x][q.y]) return q;
+          next.push(q);
+        }
+      ring = next;
+    }
+    return null;
+  };
 
   /* ───────────── camera ───────────── */
   let W = 0,
@@ -1574,6 +1612,8 @@ export function openBistro(o: BistroOptions): BistroHandle {
       for (const x of piles) {
         if (!clears) break;
         if (x.claimed || T - x.t0 <= 9) continue;
+        // Someone is on the way to that table: they take it all.
+        if (piles.some((y) => y.claimed && y.tableId === x.tableId)) continue;
         const near = [x.chairId, x.tableId]
           .map((id) => S.items.find((i) => i.id === id))
           .filter((i): i is Item => !!i);
@@ -1665,8 +1705,12 @@ export function openBistro(o: BistroOptions): BistroHandle {
         return;
       }
       if (arrived) {
-        collectPile(p, false);
+        // Every tip on that table in one go, not one and back for the next.
         w.task = null;
+        for (const x of piles.filter(
+          (y) => y.tableId === p.tableId && (!y.claimed || y === p),
+        ))
+          collectPile(x, false);
       }
     }
   };
@@ -2372,11 +2416,6 @@ export function openBistro(o: BistroOptions): BistroHandle {
       return seatList.some((s) => s.table.id === it.id && seatBusy(s.chair.id));
     return false;
   };
-  const standingOn = (x: number, y: number) =>
-    [
-      ...customers.filter((c) => c.state !== "seated" && c.state !== "eating"),
-      ...waiters,
-    ].some((w) => Math.round(w.gx) === x && Math.round(w.gy) === y);
   const editTap = (sx: number, sy: number) => {
     const g = toGrid(toWorld(sx, sy));
     const tile = { x: Math.round(g.x), y: Math.round(g.y) };
@@ -2433,10 +2472,6 @@ export function openBistro(o: BistroOptions): BistroHandle {
     const def = ITEM_BY_KIND[held.kind];
     const fx = def.floor ? tile.x - 0 : tile.x,
       fy = tile.y;
-    if (!def.floor && standingOn(fx, fy)) {
-      o.toast("Someone is standing there.");
-      return;
-    }
     const rot = facing(fx, fy);
     const r = sync.do({
       a: "place",
@@ -4310,7 +4345,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
       const role = ITEM_BY_KIND[it.kind].seat;
       if (role === "chair") {
         const dir = seatDir.get(it.id) ?? it.rot;
-        const guest = seated.get(it.id);
+        const guest = editing ? undefined : seated.get(it.id);
         const style = chairStyleOf(it.kind);
         list.push({
           d: it.x + it.y,
@@ -4329,7 +4364,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
         list.push({
           d: it.x + it.y,
           f: () => {
-            drawItem(ctx, it.kind, it.x, it.y, T);
+            drawItem(ctx, it.kind, it.x, it.y, T, it.rot);
             for (const pl of plates.get(it.id) ?? []) {
               if (pl.dish)
                 drawDish(ctx, pl.dish, pl.spot.x, pl.spot.y, 11, T, true);
@@ -4354,8 +4389,8 @@ export function openBistro(o: BistroOptions): BistroHandle {
     // Litter on the floor (under whoever stands there).
     for (const l of litter)
       list.push({ d: l.x + l.y - 0.05, f: () => drawLitter(l) });
-    // People on their feet.
-    for (const c of customers)
+    // People on their feet (none while decorating: the room as it is laid out).
+    for (const c of editing ? [] : customers)
       if (c.state === "enter" || c.state === "leave" || c.state === "queue")
         list.push({
           d: c.gx + c.gy + 0.3,
@@ -4371,7 +4406,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
                     : "normal",
             }),
         });
-    for (const w of waiters)
+    for (const w of editing ? [] : waiters)
       list.push({
         d: w.gx + w.gy + 0.3,
         f: () => {
@@ -4384,7 +4419,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
       });
     // The hired cooks, each at the stove they run.
     drawnStaff = [];
-    for (const c of cooks)
+    for (const c of editing ? [] : cooks)
       list.push({
         d: c.gx + c.gy + 0.1,
         f: () => {
@@ -4392,14 +4427,15 @@ export function openBistro(o: BistroOptions): BistroHandle {
           drawnStaff.push(c.staff.id);
         },
       });
-    list.push({
-      d: chef.gx + chef.gy + 0.1,
-      f: () =>
-        drawWalker(chef, {
-          hat: "chef",
-          mood: chef.hop > 0 ? "happy" : "normal",
-        }),
-    });
+    if (!editing)
+      list.push({
+        d: chef.gx + chef.gy + 0.1,
+        f: () =>
+          drawWalker(chef, {
+            hat: "chef",
+            mood: chef.hop > 0 ? "happy" : "normal",
+          }),
+      });
     // The held item follows the pointer.
     if (editing && held && hover && !ITEM_BY_KIND[held.kind].floor) {
       const h = held,
@@ -4658,10 +4694,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
       items: S.items.slice(),
       stored: { ...S.stored, [kind]: (S.stored[kind] ?? 0) + 1 },
     };
-    return (
-      tryPlace(copy, kind, x, y, held?.rot ?? 0, held?.moving).ok &&
-      !standingOn(x, y)
-    );
+    return tryPlace(copy, kind, x, y, held?.rot ?? 0, held?.moving).ok;
   };
   /** The held piece where it would go, facing as it would, with a little spin when turned. */
   const drawGhost = (h: NonNullable<typeof held>, at: Pt) => {
@@ -4875,7 +4908,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
       });
     }
     // Hungry or exhausted staff say so.
-    if (!visiting)
+    if (!visiting && !editing)
       for (const x of [...waiters, ...cooks]) {
         const e = energyNow(S, x.staff, now);
         if (e >= 50) continue;
@@ -4889,7 +4922,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
         ctx.fillText(e < 20 ? "💤" : "🍜", bx, by + 1);
       }
     // Waiting by the door: a small bubble with how long they'll wait.
-    for (const c of customers) {
+    for (const c of editing ? [] : customers) {
       if (c.state !== "queue" || c.path.length) continue;
       const p = iso(c.gx, c.gy);
       const x = p.x + 4,
@@ -4909,7 +4942,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
       ctx.stroke();
     }
     // Order bubbles with a patience ring.
-    for (const c of customers) {
+    for (const c of editing ? [] : customers) {
       if (c.state !== "seated") continue;
       const p = iso(c.gx, c.gy);
       const x = p.x + 4,
@@ -5435,9 +5468,15 @@ export function openBistro(o: BistroOptions): BistroHandle {
       readServer,
     };
   if (import.meta.env.DEV)
+    (window as unknown as { __bistroArt?: unknown }).__bistroArt = {
+      drawItem,
+      itemTurns,
+    };
+  if (import.meta.env.DEV)
     (window as unknown as { __bistro?: unknown }).__bistro = {
       state: () => S,
       customers: () => customers,
+      waiters: () => waiters,
       litter: () => litter,
       setTod: (v: number | undefined) =>
         ((window as unknown as { __bistroTod?: number }).__bistroTod = v),
@@ -5495,6 +5534,31 @@ export function openBistro(o: BistroOptions): BistroHandle {
       },
       advance: (s: number) => {
         for (let i = 0; i < s * 30; i++) update(1 / 30);
+      },
+      /** The coins guests left on the tables. */
+      piles: () =>
+        piles.map((p) => ({
+          table: p.tableId,
+          chair: p.chairId,
+          claimed: p.claimed,
+        })),
+      /** A guest's coins on a chair's table, left `ago` seconds ago. */
+      tip: (chairId: number, ago = 20, dish: DishId = "goicuon") => {
+        const seat = seatList.find((x) => x.chair.id === chairId);
+        if (!seat) return false;
+        piles.push({
+          id: nextId++,
+          chairId,
+          tableId: seat.table.id,
+          spot: tableSpot(seat.table.x, seat.table.y, (seat.dir + 2) % 4),
+          coins: 10,
+          base: 10,
+          t0: T - ago,
+          claimed: false,
+          guest: -nextId,
+          sale: { dish, vip: false, combo: 1, hearts: 3 },
+        });
+        return true;
       },
     };
 

@@ -324,6 +324,95 @@ test("Bistro decorate: while holding an item a drag pans the room; a drag from t
   expect(errors).toEqual([]);
 });
 
+test("Bistro decorate: every piece shows a turn (mirrored, or a chair's four ways)", async ({
+  page,
+}) => {
+  const errors = await openBistro(page);
+  // Each piece drawn both ways: enough of it differs to see (a round table
+  // its salt and pepper, a rug its tassels; a stool its low back).
+  const flat = (await page.evaluate(() => {
+    const w = window as any;
+    const A = w.__bistroArt;
+    const px = (k: string, rot: number) => {
+      const cv = document.createElement("canvas");
+      cv.width = cv.height = 200;
+      const g = cv.getContext("2d")!;
+      g.translate(100, 150);
+      A.drawItem(g, k, 0, 0, 0, rot);
+      return g.getImageData(0, 0, 200, 200).data;
+    };
+    const out: string[] = [];
+    for (const k of Object.keys(w.__bistroRules.ITEM_BY_KIND)) {
+      const n = A.itemTurns(k);
+      if (n < 2) out.push(`${k}: ${n} way`);
+      const a = px(k, 0);
+      for (let r = 1; r < n; r++) {
+        const b = px(k, r);
+        let solid = 0,
+          odd = 0;
+        for (let i = 0; i < a.length; i += 4) {
+          if (a[i + 3] < 40 && b[i + 3] < 40) continue;
+          solid++;
+          let d = 0;
+          for (let j = 0; j < 4; j++) d += Math.abs(a[i + j] - b[i + j]);
+          if (d > 90) odd++;
+        }
+        if (odd / solid < 0.12)
+          out.push(
+            `${k} turned ${r}: ${Math.round((odd / solid) * 100)}% differs`,
+          );
+      }
+    }
+    return out;
+  })) as string[];
+  expect(flat).toEqual([]);
+  expect(errors).toEqual([]);
+});
+
+test("Bistro decorate: the room shows without anyone in it, and a piece goes down where someone stood", async ({
+  page,
+}) => {
+  const errors = await openBistro(page);
+  await B(
+    page,
+    "srv.S.counter = [null, null, null, null]; srv.S.stored = { plant: 1 }; return b.load()",
+  );
+  await expect
+    .poll(() => B(page, "return b.drawnStaff().length"))
+    .toBeGreaterThan(0);
+  // The waiter stands on a free tile, idle.
+  await B(
+    page,
+    "const w = b.waiters()[0]; w.gx = 6; w.gy = 6; w.path = []; return true",
+  );
+  await page.click('.bs-rail [data-act="decor"]');
+  // Nobody is drawn while decorating: staff, guests, the chef.
+  await expect.poll(() => B(page, "return b.drawnStaff().length")).toBe(0);
+  await page.click('#bs-edit [data-hold="plant"]');
+  const p = (await B(page, "return b.screen(6, 6)")) as Pt;
+  await page.mouse.move(p.x, p.y);
+  await page.mouse.click(p.x, p.y);
+  await expect(page.locator("#bs-edit")).toContainText("Decorate");
+  await flush(page);
+  expect(
+    await B(
+      page,
+      "return srv.S.items.some((i) => i.kind === 'plant' && i.x === 6 && i.y === 6)",
+    ),
+  ).toBe(true);
+  // The waiter stepped off it, to a free tile.
+  const at = (await B(
+    page,
+    "const w = b.waiters()[0]; return [Math.round(w.gx), Math.round(w.gy)]",
+  )) as number[];
+  expect(at).not.toEqual([6, 6]);
+  await page.click('#bs-edit [data-ed="done"]');
+  await expect
+    .poll(() => B(page, "return b.drawnStaff().length"))
+    .toBeGreaterThan(0);
+  expect(errors).toEqual([]);
+});
+
 test("Bistro decorate: pieces turn as they're placed (the ↻ button, R, a right click); a chair faces its table unless turned", async ({
   page,
 }, info) => {
@@ -372,23 +461,26 @@ test("Bistro decorate: pieces turn as they're placed (the ↻ button, R, a right
     turned: true,
   });
   await page.mouse.click(p.x, p.y);
-  // A trophy looks the same either way: nothing to turn.
+  // A trophy turns too (its plaque goes to the other face).
   await page.click('#bs-edit [data-hold="trophy"]');
   p = await at(2, 7);
   await page.mouse.move(p.x, p.y);
-  await expect(page.locator("#bs-edit")).toContainText("Placing: ");
-  await expect(rotate).toBeHidden();
-  await expect(page.locator('#bs-edit [data-ed="rot"]')).toHaveCount(0);
+  await expect(rotate).toBeVisible();
   await page.keyboard.press("r");
-  expect(await B(page, "return b.held().rot")).toBe(0);
-  await page.click('#bs-edit [data-ed="cancel"]');
+  expect(await B(page, "return b.held().rot")).toBe(1);
+  await page.mouse.click(p.x, p.y);
   await expect(rotate).toBeHidden();
   await flush(page);
   const placed = (await B(
     page,
-    "return srv.S.items.filter((i) => ['lamp', 'chair'].includes(i.kind) && i.y >= 3 && i.x !== 8 && !(i.x === 3 && i.y === 5) && !(i.x === 5 && i.y === 5) && !(i.x === 7 && i.y === 7) && !(i.x === 9 && i.y === 7)).map((i) => `${i.kind}@${i.x},${i.y}:${i.rot}`).sort()",
+    "return srv.S.items.filter((i) => ['lamp', 'chair', 'trophy'].includes(i.kind) && i.y >= 3 && i.x !== 8 && !(i.x === 3 && i.y === 5) && !(i.x === 5 && i.y === 5) && !(i.x === 7 && i.y === 7) && !(i.x === 9 && i.y === 7)).map((i) => `${i.kind}@${i.x},${i.y}:${i.rot}`).sort()",
   )) as string[];
-  expect(placed).toEqual(["chair@4,6:0", "lamp@6,6:1", "lamp@9,3:0"]);
+  expect(placed).toEqual([
+    "chair@4,6:0",
+    "lamp@6,6:1",
+    "lamp@9,3:0",
+    "trophy@2,7:1",
+  ]);
   expect(errors).toEqual([]);
 });
 
@@ -446,6 +538,36 @@ test("Bistro shop: buy any number at once (typed, or counted with − and +, hel
   );
   await flush(page);
   expect(await B(page, "return srv.S.stored.plant")).toBe(13);
+  expect(errors).toEqual([]);
+});
+
+test("Bistro: a waiter takes every tip on a table in one trip", async ({
+  page,
+}) => {
+  const errors = await openBistro(page);
+  // No food, no guests: only the two tips this test leaves.
+  await B(page, "srv.S.counter = [null, null, null, null]; return b.load()");
+  await expect.poll(() => B(page, "return b.customers().length")).toBe(0);
+  // Both chairs of the first table (3 and 4) left their coins a while ago.
+  expect(await B(page, "return b.tip(3, 20) && b.tip(4, 20)")).toBe(true);
+  // How many are left, as it goes: 2, then none (never one).
+  const seen = (await page.evaluate(
+    () =>
+      new Promise<number[]>((done) => {
+        const b = (window as any).__bistro;
+        const out: number[] = [];
+        const t0 = performance.now();
+        const id = setInterval(() => {
+          const n = b.piles().length;
+          if (out[out.length - 1] !== n) out.push(n);
+          if (n === 0 || performance.now() - t0 > 15000) {
+            clearInterval(id);
+            done(out);
+          }
+        }, 20);
+      }),
+  )) as number[];
+  expect(seen).toEqual([2, 0]);
   expect(errors).toEqual([]);
 });
 
@@ -585,6 +707,12 @@ test("Bistro: popularity sets the pace, a full room queues at the door, and Deco
     page,
     "return b.customers().find((c) => c.state === 'queue').id",
   )) as number;
+  // (Who queues now: a guest arriving meanwhile, the game still running,
+  // isn't one of them.)
+  const queued = (await B(
+    page,
+    "return b.customers().filter((c) => c.state === 'queue').map((c) => c.id)",
+  )) as number[];
   await B(
     page,
     "const c = b.customers().find((c) => c.state === 'seated' || c.state === 'eating'); b.sync().release(c.id); c.state = 'leave'; c.alpha = 0; b.advance(0.2)",
@@ -595,7 +723,7 @@ test("Bistro: popularity sets the pace, a full room queues at the door, and Deco
   expect(
     await B(
       page,
-      "return b.customers().filter((c) => c.state === 'queue').length",
+      `return b.customers().filter((c) => c.state === 'queue' && ${JSON.stringify(queued)}.includes(c.id)).length`,
     ),
   ).toBe(2);
   // Decorate: the plan's grade, each seat tinted by the waiter's walk.
