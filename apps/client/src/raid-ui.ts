@@ -343,12 +343,12 @@ export function drawRaidArena(
   const tide = r.boss === "tidewyrm",
     gloom = r.boss === "gloomshade",
     dream = r.boss === "somnara";
-  if (r.boss === "storm-twins") drawConductorRing(g, state, reduced, at);
+  if (r.boss === "storm-twins") drawConductorRing(g, state, reduced, at, clock);
   if (r.boss === "emberwing") drawSkyTerrace(g, state, reduced, at);
   if (r.boss === "prismatail") drawSunAtrium(g, state, reduced, at);
   if (dream) drawCloudDeck(g, state, reduced);
   if (tide) drawLagoon(g, state, reduced);
-  if (gloom) drawLanternYard(g, state, reduced, at);
+  if (gloom) drawLanternYard(g, state, reduced, at, clock);
   for (const w of r.warnings) {
     if (r.boss === "storm-twins" && drawStormWarning(g, state, w)) continue;
     if (r.boss === "emberwing" && drawEmberwingWarning(g, state, w)) continue;
