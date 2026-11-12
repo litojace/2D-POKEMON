@@ -80,6 +80,8 @@ export class BossLife {
         boss,
         windup > 0 || action.casts.some((cast) => cast.age < 0.35),
       ),
+      /** Where it faces (screen radians): travel, or the attack's aim. */
+      heading: this.facing.heading,
       time: t,
       breath: Math.sin(t * 1.8) * move,
       sway: Math.sin(t * 1.15) * move,
