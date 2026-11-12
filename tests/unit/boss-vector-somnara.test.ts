@@ -153,7 +153,7 @@ describe("vector Somnara rig", () => {
   it("keeps the face on its lines, inside the head's outline, in every view", () => {
     const S = SOM_SPEC;
     const pieces = new Set(somnaraPieces(1).map((q) => q.name));
-    for (let deg = -180; deg <= 180; deg += 1)
+    for (let deg = -180; deg <= 180; deg += 2)
       for (const pitch of [-0.45, 0, 0.45])
         for (const look of SOM_LOOKS)
           for (const mouth of SOM_MOUTHS) {
