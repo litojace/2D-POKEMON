@@ -108,6 +108,31 @@ const pieces = (page: Page) =>
 const count = (frames: string[], name: string | RegExp) =>
   frames.filter((f) => (typeof name === "string" ? f === name : name.test(f)))
     .length;
+/**
+ * The pieces once `done` holds for the frames drawn: a sink or rise fade has
+ * ended. If it never does, the frames drawn are logged for the CI report.
+ */
+async function settled(
+  page: Page,
+  what: string,
+  done: (frames: string[]) => boolean,
+) {
+  let last: string[] = [];
+  await expect
+    .poll(
+      async () => {
+        last = (await pieces(page)).frames;
+        return done(last);
+      },
+      { timeout: 20_000, intervals: [250] },
+    )
+    .toBe(true)
+    .catch((e) => {
+      console.log(`${what} never settled:`, JSON.stringify(last));
+      throw e;
+    });
+  return pieces(page);
+}
 /** The atlas textures this battle has, with how and when each was drawn. */
 const atlases = (page: Page, prefix: string) =>
   page.evaluate((prefix) => {
@@ -158,9 +183,14 @@ test("Tidewyrm's islands, cracks, sinking, High Tide and capacity are painted pi
     `i.cracks = o.c || 0; i.sunk = !!o.sunk; i.gone = !!o.gone; i.radius = o.R || ${R}; });`;
   const report: Record<string, number> = {};
 
-  // (The fourth island goes under first: wait for that to end.)
-  await show(page, isl("[{}, {c: 1}, {c: 2}, {sunk: true}]"), 1200);
-  let p = await pieces(page);
+  // The fourth island goes under first (a 0.9 s client fade): wait until it
+  // has, rather than a fixed time, which a slow CI runner can outlast.
+  await show(page, isl("[{}, {c: 1}, {c: 2}, {sunk: true}]"));
+  let p = await settled(
+    page,
+    "mix",
+    (f) => count(f, `body${R}`) === 3 && count(f, `sunk${R}`) === 1,
+  );
   report.mix = p.frames.length;
   expect(count(p.frames, `body${R}`)).toBe(3);
   expect(count(p.frames, `base${R}`)).toBe(3);
@@ -173,9 +203,13 @@ test("Tidewyrm's islands, cracks, sinking, High Tide and capacity are painted pi
   for (const a of p.at[`body${R}`]) expect(a.sx).toBeCloseTo(1 / 1.5, 3);
   await shot(page, info, "tide-mix");
 
-  // (The sunk island comes back up first: wait for that to end.)
-  await show(page, isl("[{}, {}, {}, {}]"), 1200);
-  p = await pieces(page);
+  // The sunk island comes back up first: wait until it has.
+  await show(page, isl("[{}, {}, {}, {}]"));
+  p = await settled(
+    page,
+    "dry",
+    (f) => count(f, `body${R}`) === 4 && count(f, /^crack|^sunk|^soggy/) === 0,
+  );
   report.dry = p.frames.length;
   expect(count(p.frames, `body${R}`)).toBe(4);
   expect(count(p.frames, /^crack|^sunk|^soggy/)).toBe(0);
