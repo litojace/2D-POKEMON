@@ -36,7 +36,7 @@ const PRISMA = (() => {
   const eyeGeom = (v, look) => ({ r: look === "wide" ? 1.6 : 1.85, gx: v === "far" ? 0.1 : v === "front" ? -0.35 : 0.7, gy: look === "wide" ? 0.1 : look === "glare" ? 0.7 : 0.4 });
   const SPEC = {
     A, top: TOP, bot: BOT, lines: LINES,
-    eyeAz: 54 * DEG, eyeOrbit: 0.78 * A, lag: 12 * DEG, farLift: 6 * DEG, nod: 0.4 * A, margin: 0.02 * A,
+    eyeAz: 38 * DEG, eyeOrbit: 0.78 * A, lag: 12 * DEG, farLift: 6 * DEG, nod: 0.4 * A, margin: 0.02 * A,
     eye: EYE, eyeGeom, centreLine, skullEdge, tuckCap: 0.35, bridgeHalf: 0.4,
     headPiece: (view) => "head_" + view,
     lit: (look) => look === "glare", eyeGlowPiece: "glow_prism", eyeGlowScale: 0.5,
