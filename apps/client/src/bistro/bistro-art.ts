@@ -1355,6 +1355,8 @@ function fringe(
   by: number,
   n: number,
   col: string,
+  /** Which way the tassels hang (out from the edge). */
+  out: [number, number] = [-2, 4],
 ) {
   ctx.strokeStyle = col;
   ctx.lineWidth = 1;
@@ -1364,10 +1366,34 @@ function fringe(
     const p = iso(ax + (bx - ax) * f, ay + (by - ay) * f);
     ctx.beginPath();
     ctx.moveTo(p.x, p.y);
-    ctx.lineTo(p.x - 2, p.y + 4);
+    ctx.lineTo(p.x + out[0], p.y + out[1]);
     ctx.stroke();
   }
   ctx.lineCap = "butt";
+}
+/** Two bands across a 2 × 2 rug, near the ends that have tassels. */
+function endBands(
+  ctx: Ctx,
+  x: number,
+  y: number,
+  m: number,
+  [a, b]: [string, string],
+) {
+  for (const [x0, x1, col] of [
+    [x - m + 0.1, x - m + 0.2, a],
+    [x - m + 0.24, x - m + 0.28, b],
+    [x + 1 + m - 0.2, x + 1 + m - 0.1, a],
+    [x + 1 + m - 0.28, x + 1 + m - 0.24, b],
+  ] as const) {
+    ctx.fillStyle = col;
+    poly(ctx, [
+      iso(x0, y - m + 0.06),
+      iso(x1, y - m + 0.06),
+      iso(x1, y + 1 + m - 0.06),
+      iso(x0, y + 1 + m - 0.06),
+    ]);
+    ctx.fill();
+  }
 }
 export function drawRug(ctx: Ctx, x: number, y: number) {
   const pts = [
@@ -1434,8 +1460,11 @@ export function drawRug(ctx: Ctx, x: number, y: number) {
   ]);
   ctx.fill();
   weave(ctx, x - 0.35, y - 0.35, x + 1.35, y + 1.35, "#2a0a0e");
-  fringe(ctx, x - 0.35, y + 1.35, x + 1.35, y + 1.35, 14, "#f3e2c0");
-  fringe(ctx, x + 1.35, y - 0.35, x + 1.35, y + 1.35, 14, "#f3e2c0");
+  // Woven bands and tassels on its two ends, as a kilim has them (so it
+  // shows which way it lies).
+  endBands(ctx, x, y, 0.35, ["#1f5d73", "#f2c66d"]);
+  fringe(ctx, x - 0.35, y - 0.35, x - 0.35, y + 1.35, 14, "#f3e2c0", [-4, -2]);
+  fringe(ctx, x + 1.35, y - 0.35, x + 1.35, y + 1.35, 14, "#f3e2c0", [4, 2]);
 }
 
 /** Table looks (each table kind of the shop): cloth, trim, top, pedestal. */
@@ -1675,6 +1704,36 @@ export function drawTable(
     ctx.ellipse(c.x - 9, ty - 5, 14, 4, -0.15, 0, Math.PI * 2);
     ctx.fill();
   }
+  // A salt and pepper pair and a little menu card, to one side (so a
+  // round table shows which way it was turned).
+  for (const [dx, col] of [
+    [11, "#ece6d8"],
+    [16.5, "#3a3430"],
+  ] as const) {
+    ctx.fillStyle = col;
+    ctx.beginPath();
+    ctx.roundRect(c.x + dx - 2.2, ty - 9, 4.4, 8, 1.6);
+    ctx.fill();
+    ctx.strokeStyle = "rgba(60,50,40,.55)";
+    ctx.lineWidth = 0.6;
+    ctx.stroke();
+    ctx.fillStyle = "#c9ccd0";
+    ctx.fillRect(c.x + dx - 2.2, ty - 10.4, 4.4, 1.8);
+  }
+  ctx.fillStyle = "#8a2a1e";
+  ctx.beginPath();
+  ctx.moveTo(c.x + 19, ty + 1);
+  ctx.lineTo(c.x + 22, ty - 9);
+  ctx.lineTo(c.x + 28, ty - 6);
+  ctx.lineTo(c.x + 26, ty + 4);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = "#f2c66d";
+  ctx.lineWidth = 0.8;
+  ctx.stroke();
+  ctx.fillStyle = "#f2c66d";
+  ctx.fillRect(c.x + 22, ty - 5, 3, 1);
+  ctx.fillRect(c.x + 21.6, ty - 3, 3, 0.8);
   // A bud vase with a flower.
   ctx.fillStyle = lin(ctx, c.x - 3, 0, c.x + 3, 0, [
     [0, "#3a7fb0"],
@@ -1751,7 +1810,9 @@ const CHAIR_LOOK: Record<
     legs: "#5a321c",
   },
   stool: {
-    backH: 0,
+    // A low padded back (it shows which way the stool faces).
+    back: ["#e05a4c", "#9e3229"],
+    backH: 38,
     seat: { top: "#c8473b", left: "#9e3229", right: "#86281f" },
     legs: "#a9b2ba",
     cushion: "#e05a4c",
@@ -1784,14 +1845,17 @@ function drawChairRaw(
   const look = CHAIR_LOOK[style];
   const c = iso(x, y);
   // `dir` faces the table; the backrest sits on the opposite side.
-  const bx = [-1, 0, 1, 0][dir] * 0.32,
-    by = [0, -1, 0, 1][dir] * 0.32;
+  // (A stool's low back sits at its round seat's edge.)
+  const off = style === "stool" ? 0.22 : 0.32;
+  const bx = [-1, 0, 1, 0][dir] * off,
+    by = [0, -1, 0, 1][dir] * off;
   const backIsFar = dir === 0 || dir === 1; // back toward the wall side
   const cu = look.cushion ?? CUSHIONS[(x * 7 + y * 3 + tint) % CUSHIONS.length];
   const drawBack = () => {
     if (!look.back) return;
     const H = look.backH;
-    const along = dir % 2 === 0 ? { x: 0, y: 0.3 } : { x: 0.3, y: 0 };
+    const half = style === "stool" ? 0.18 : 0.3;
+    const along = dir % 2 === 0 ? { x: 0, y: half } : { x: half, y: 0 };
     const p0 = iso(x + bx - along.x, y + by - along.y),
       p1 = iso(x + bx + along.x, y + by + along.y);
     const at = (f: number, h: number) => ({
@@ -2141,49 +2205,16 @@ function sprite(
 /** Does a piece turned this way show mirrored? (A chair has four drawings.) */
 export const itemFlipped = (kind: ItemKind, rot: number) =>
   ITEM_BY_KIND[kind]?.seat !== "chair" && rot % 2 === 1;
-const turnsOf = new Map<ItemKind, number>();
 /**
  * How many ways a piece can face, as it's turned when placed: a chair four
  * (it has a drawing for each); anything else two, seen from the other side
- * (mirrored, as isometric games turn their furniture), or one if it looks the
- * same mirrored (a round vase): nothing to turn.
+ * (mirrored, as isometric games turn their furniture). Each piece has
+ * something that shows which way it faces (a round table its salt and
+ * pepper, a rug the tassels on its ends): the visual tests check that a
+ * turn shows on every one.
  */
 export function itemTurns(kind: ItemKind): number {
-  if (ITEM_BY_KIND[kind]?.seat === "chair") return 4;
-  let n = turnsOf.get(kind);
-  if (n !== undefined) return n;
-  n = 2;
-  try {
-    // Its outline beside its mirror image: the same (all but the edges)?
-    const floor = !!ITEM_BY_KIND[kind]?.floor;
-    const [, y0, x1, y1] = floor ? BOX_FLOOR : BOX_ITEM;
-    const q = 0.5;
-    const w = 2 * Math.ceil(x1 * q),
-      h = Math.ceil((y1 - y0) * q);
-    const cv = document.createElement("canvas");
-    cv.width = w;
-    cv.height = h;
-    const g = cv.getContext("2d", { willReadFrequently: true });
-    if (g) {
-      g.setTransform(q, 0, 0, q, w / 2, -y0 * q);
-      drawItemRaw(g, kind, 0, 0, 0, 0);
-      const px = g.getImageData(0, 0, w, h).data;
-      let solid = 0,
-        odd = 0;
-      for (let yy = 0; yy < h; yy++)
-        for (let xx = 0; xx < w; xx++) {
-          const a = px[(yy * w + xx) * 4 + 3] > 60;
-          const b = px[(yy * w + (w - 1 - xx)) * 4 + 3] > 60;
-          if (a) solid++;
-          if (a !== b) odd++;
-        }
-      if (solid > 0 && odd / solid < 0.05) n = 1;
-    }
-  } catch {
-    /* No canvas to look with: let it turn. */
-  }
-  turnsOf.set(kind, n);
-  return n;
+  return ITEM_BY_KIND[kind]?.seat === "chair" ? 4 : 2;
 }
 /** A piece of furniture on tile (x, y) (the rugs: their top corner tile). */
 export function drawItem(
@@ -2628,8 +2659,9 @@ export function drawCarpet(ctx: Ctx, x: number, y: number) {
   ctx.stroke();
   ctx.setLineDash([]);
   weave(ctx, x - 0.4, y - 0.4, x + 1.4, y + 1.4, "#3a0008");
-  fringe(ctx, x - 0.4, y + 1.4, x + 1.4, y + 1.4, 16, "#f2d27a");
-  fringe(ctx, x + 1.4, y - 0.4, x + 1.4, y + 1.4, 16, "#f2d27a");
+  endBands(ctx, x, y, 0.4, ["#f2d27a", "#5a0010"]);
+  fringe(ctx, x - 0.4, y - 0.4, x - 0.4, y + 1.4, 16, "#f2d27a", [-4, -2]);
+  fringe(ctx, x + 1.4, y - 0.4, x + 1.4, y + 1.4, 16, "#f2d27a", [4, 2]);
 }
 export function drawSakura(ctx: Ctx, x: number, y: number, t: number) {
   const c = iso(x, y);
