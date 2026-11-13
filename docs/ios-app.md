@@ -115,7 +115,8 @@ iOS 26 SDK) and Node 22.
    - **Privacy:** the privacy policy URL, `https://parena.litojace.com/privacy.html` (`apps/client/public/privacy.html`; the game links to it from the menu and the sign-in panel), and the privacy
      answers: email address and user ID (accounts), gameplay content
      (matches, progress), and performance data (`arena-perf` logs frame
-     rates, device memory and cores, not linked to the player).
+     rates, device memory and cores without the account; `arena-load` logs
+     load times with it, so answer "linked").
    - **Age rating** questionnaire: choose **13+**. The game asks for a
      birth month and year before anyone makes an account and refuses
      under-13s (`apps/client/src/age-gate.ts`), and the privacy policy says
