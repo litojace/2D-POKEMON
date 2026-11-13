@@ -96,15 +96,8 @@ const escape = (text: string) =>
   );
 const element = <T extends HTMLElement>(id: string) =>
   document.getElementById(id) as T;
-/** Google sign-in is hidden until it is set up in Supabase (see docs/accounts-setup.md). */
-const GOOGLE_SIGN_IN = import.meta.env.VITE_GOOGLE_SIGN_IN === "on";
-/**
- * Sign in with Apple (docs/accounts-setup.md). The App Store asks apps that
- * offer Google sign-in to offer it too (App Review Guideline 4.8).
- */
+/** Sign in with Apple, hidden until it is set up (docs/accounts-setup.md). */
 const APPLE_SIGN_IN = import.meta.env.VITE_APPLE_SIGN_IN === "on";
-/** Google's sign-in page refuses to open inside apps: web only. */
-const SHOW_GOOGLE = GOOGLE_SIGN_IN && !isNativeApp();
 /** Apple's logo for its sign-in button (Apple's button guidelines). */
 const APPLE_LOGO =
   '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"/></svg>';
@@ -670,7 +663,7 @@ export class AccountUI {
       mode === "forgot" || mode === "reset"
         ? '<button type="button" class="auth-link auth-back" id="auth-switch">← Back to log in</button>'
         : "";
-    const html = `<section class="auth-panel" data-mode="${mode}"><div class="auth-head"><span class="auth-crest" aria-hidden="true"><svg viewBox="0 0 64 64"><path fill="currentColor" fill-rule="evenodd" d="M32 2 42 21 62 32 43 43 32 62 21 43 2 32 21 21Zm0 14L16 32l16 16 16-16Z"/></svg></span><div class="auth-title">${copy[0]}</div><p>${copy[1]}</p></div>${tabs}${!this.client ? '<p class="auth-warning">Sign-in isn\'t available right now. Please try again later.</p>' : ""}<form id="auth-form" class="auth-form">${fields}${extras}<button class="auth-submit" type="submit" ${!this.client ? "disabled" : ""}>${submitLabel}</button>${APPLE_SIGN_IN && (mode === "login" || mode === "signup") ? `<button id="auth-apple" class="auth-secondary auth-apple" type="button" ${!this.client ? "disabled" : ""}>${APPLE_LOGO}<span>Continue with Apple</span></button>` : ""}${SHOW_GOOGLE && (mode === "login" || mode === "signup") ? `<button id="auth-google" class="auth-secondary" type="button" ${!this.client ? "disabled" : ""}>Continue with Google</button>` : ""}<p id="auth-message" class="auth-message" role="status"></p></form>${guest}${back}<p class="auth-legal"><a href="${PRIVACY_URL}" target="_blank" rel="noopener">Privacy policy</a></p></section>`;
+    const html = `<section class="auth-panel" data-mode="${mode}"><div class="auth-head"><span class="auth-crest" aria-hidden="true"><svg viewBox="0 0 64 64"><path fill="currentColor" fill-rule="evenodd" d="M32 2 42 21 62 32 43 43 32 62 21 43 2 32 21 21Zm0 14L16 32l16 16 16-16Z"/></svg></span><div class="auth-title">${copy[0]}</div><p>${copy[1]}</p></div>${tabs}${!this.client ? '<p class="auth-warning">Sign-in isn\'t available right now. Please try again later.</p>' : ""}<form id="auth-form" class="auth-form">${fields}${extras}<button class="auth-submit" type="submit" ${!this.client ? "disabled" : ""}>${submitLabel}</button>${APPLE_SIGN_IN && (mode === "login" || mode === "signup") ? `<button id="auth-apple" class="auth-secondary auth-apple" type="button" ${!this.client ? "disabled" : ""}>${APPLE_LOGO}<span>Continue with Apple</span></button>` : ""}<p id="auth-message" class="auth-message" role="status"></p></form>${guest}${back}<p class="auth-legal"><a href="${PRIVACY_URL}" target="_blank" rel="noopener">Privacy policy</a></p></section>`;
     // On the welcome screen the panel sits in the page; elsewhere in a dialog.
     const host = document.getElementById("gate-auth");
     if (host) host.innerHTML = html;
@@ -711,8 +704,9 @@ export class AccountUI {
           field.focus();
         };
       });
-    // Google and Apple leave for their own page and come back signed in.
-    const signInWith = async (provider: "google" | "apple") => {
+    // On the website, Apple sign-in leaves for Apple's page and comes back
+    // signed in.
+    const signInWithApple = async () => {
       if (!this.client) return;
       // It can make a new account: the age question first (age-gate.ts).
       if (!(await confirmAge(this.hooks.notify))) return;
@@ -720,18 +714,16 @@ export class AccountUI {
         mode === "login" && element<HTMLInputElement>("auth-remember").checked,
       );
       const { error } = await this.client.auth.signInWithOAuth({
-        provider,
+        provider: "apple",
         options: { redirectTo: authRedirectUrl(site, "auth-callback") },
       });
       if (error) message.textContent = error.message;
     };
-    if (SHOW_GOOGLE && (mode === "login" || mode === "signup"))
-      element("auth-google").onclick = () => void signInWith("google");
     if (APPLE_SIGN_IN && (mode === "login" || mode === "signup"))
       element("auth-apple").onclick = () =>
         void (isNativeApp()
           ? this.signInWithAppleApp(message)
-          : signInWith("apple"));
+          : signInWithApple());
     const guestForm = element<HTMLFormElement>("guest-form");
     if (guestForm)
       guestForm.onsubmit = async (event) => {

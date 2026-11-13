@@ -3,8 +3,8 @@
  * "Children"). The game isn't for children under 13: under US law (COPPA) a
  * game that collects personal information from them needs verified parental
  * consent. So before signing up, playing as a guest, or signing in with
- * Apple or Google for the first time on a device, players give their month
- * and year of birth.
+ * Apple for the first time on a device, players give their month and year
+ * of birth.
  *
  * Neutral, as the FTC asks: it doesn't say what age is needed or hint at
  * the "right" answer, and the answer is kept on the device so going back

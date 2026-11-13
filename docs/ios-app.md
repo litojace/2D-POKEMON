@@ -37,9 +37,8 @@ in iPhone mode. Supporting iPad means testing its window sizes first.
   delivers updates.
 - **Coming back from the background reconnects at once.** iOS pauses an app
   soon after you switch away, which drops its game connection.
-- **Sign in with Apple** opens Apple's own sheet. **Google sign-in is hidden**
-  in the app: Google refuses to show its sign-in page inside apps. Email,
-  password and guest play work as on the website.
+- **Sign in with Apple** opens Apple's own sheet. Email, password and guest
+  play work as on the website.
 - Email links (confirm your email, reset your password) open the **website**
   in Safari. The player then logs in to the app with their email and password.
 
