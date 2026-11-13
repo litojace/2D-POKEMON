@@ -12568,6 +12568,25 @@ dialog .auth-panel {
   width: 17px;
   height: 17px;
 }
+/* The iPhone app has no install prompt (native.ts). */
+.native-app #install-app {
+  display: none;
+}
+/* Sign in with Apple: Apple's white button on the dark panel (its button
+   guidelines: black, white or white with an outline; logo and title). */
+.auth-apple {
+  border-color: #fff;
+  background: #fff;
+  color: #000;
+}
+.auth-apple:hover {
+  background: #e8e8ed;
+}
+.auth-apple svg {
+  width: 16px;
+  height: 19px;
+  margin-top: -2px;
+}
 .auth-message {
   margin: 0;
   color: #ffd68a;

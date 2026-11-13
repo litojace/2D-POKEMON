@@ -139,6 +139,7 @@ async function open(page: Page, size: Size, o: { guest?: boolean } = {}) {
     w.__titleCalls = [];
     const fetch = window.fetch.bind(window);
     w.__nameCalls = [];
+    w.__deleteCalls = [];
     window.fetch = async (input, init) => {
       const url = String(input instanceof Request ? input.url : input);
       const path = new URL(url, location.href).pathname;
@@ -158,6 +159,13 @@ async function open(page: Page, size: Size, o: { guest?: boolean } = {}) {
         w.__nameStatus = status;
         w.__accountPatch = { ...w.__accountPatch, displayName: name };
         return json({ ...status, displayName: name });
+      }
+      // Deleting your account, answered as migration 109 does.
+      if (path === "/api/account/delete" && init?.method === "POST") {
+        w.__deleteCalls.push(JSON.parse(String(init?.body ?? "{}")));
+        if (w.__refuseDelete)
+          return json({ error: "The database needs an update (missing arena_delete_my_account)." }, 503);
+        return json({ ok: true });
       }
       if (path !== "/api/account/title") return fetch(input, init);
       const { titleId } = JSON.parse(String(init?.body ?? "{}"));
@@ -491,6 +499,51 @@ test("change your name: checked, confirmed, then locked for 14 days", async ({ b
     // Locked now, with the time left on the server's clock.
     await expect(rename).toBeDisabled();
     await expect(panel.locator(".pf-section", { hasText: "Name" })).toContainText(/You can change it again in 1[34] d \d+ h/);
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});
+
+test("delete your account: type DELETE, a refusal says why, then you're signed out", async ({ browser }, info) => {
+  test.setTimeout(150_000);
+  const context = await browser.newContext({ viewport: { width: 844, height: 390 }, isMobile: true, hasTouch: true });
+  try {
+    const page = await context.newPage();
+    const { errors, panel } = await open(page, SIZES[3]);
+    const start = panel.locator("[data-profile-delete]");
+    await start.scrollIntoViewIfNeeded();
+    await start.click();
+    const form = panel.locator("[data-profile-delete-form]");
+    await expect(form).toBeVisible();
+    await expect(form).toContainText("can't be undone");
+    const input = form.locator("input");
+    await expect(input).toBeFocused();
+    expect(await layoutProblems(page, { phone: true })).toEqual([]);
+    await snap(page, info, "profile-delete-form-844x390");
+    // Nothing is sent until DELETE is typed.
+    await input.fill("delet");
+    await form.locator('button[type="submit"]').click();
+    await expect(panel.locator(".pf-delete-message")).toHaveText("Type DELETE to delete your account.");
+    expect(await page.evaluate(() => (window as any).__deleteCalls)).toEqual([]);
+    // Escape closes the form, not the card.
+    await page.keyboard.press("Escape");
+    await expect(form).toBeHidden();
+    await expect(start).toBeFocused();
+    await expect(page.locator(".profile-panel")).toBeVisible();
+    // A refusal keeps you signed in and says why.
+    await page.evaluate(() => ((window as any).__refuseDelete = true));
+    await start.click();
+    await input.fill("delete");
+    await page.keyboard.press("Enter");
+    await expect(panel.locator(".pf-delete-message")).toContainText("missing arena_delete_my_account");
+    await expect(page.locator("#account-profile")).toBeVisible();
+    // Deleted: the card closes and you're signed out.
+    await page.evaluate(() => ((window as any).__refuseDelete = false));
+    await page.keyboard.press("Enter");
+    await expect(page.locator(".profile-panel")).toBeHidden();
+    await expect(page.locator("#account-profile")).toHaveCount(0);
+    expect(await page.evaluate(() => (window as any).__deleteCalls)).toEqual([{ confirm: true }, { confirm: true }]);
     expect(errors).toEqual([]);
   } finally {
     await context.close();

@@ -174,6 +174,7 @@ import {
   playRewindDive,
 } from "./skill-effects";
 import { setupPWA } from "./pwa";
+import { setupNativeShell } from "./native";
 import { abilityIcon } from "./ability-icons";
 import { TouchControls } from "./touch-controls";
 import Phaser from "phaser";
@@ -1121,6 +1122,12 @@ const pwa = setupPWA(() => state?.phase, dialog, toast);
 wireRotateGate();
 watchRotation();
 watchScreenPin();
+// The iPhone app (native.ts): iOS pauses it soon after you switch away, which
+// drops the game connection; coming back reconnects at once.
+void setupNativeShell(() => {
+  const token = (socket.auth as { accessToken?: string | null }).accessToken;
+  if (token && !socket.connected) socket.connect();
+});
 watchCosmeticPreviews();
 // Remember a room from an invite link (?room=ABC123) before the first render.
 if (captureInvite()) inviteHinted = false;
@@ -1991,10 +1998,30 @@ function syncPlaza(want: boolean, hub = want) {
     loadProgress: async () =>
       (await accountsUI.api("/api/plaza")) as PlazaProgress,
     goFarm: () => setHubScene("farm"),
-    onPlayer: async (action, playerId) => {
+    isBlocked: (accountId) => accountsUI.isBlocked(accountId),
+    onPlayer: async (action, playerId, name) => {
       if (action === "friend") {
         await accountsUI.friendRequest({ playerId });
         return;
+      }
+      if (action === "report") {
+        accountsUI.showReport(
+          { ...reportContext(), player: playerId, playerName: name },
+          "player",
+        );
+        return true;
+      }
+      if (action === "block") {
+        try {
+          const done = await accountsUI.block(playerId, name);
+          if (done) toast(`${name} is blocked.`);
+          return done;
+        } catch (error) {
+          toast(
+            error instanceof Error ? error.message : "Couldn't block them.",
+          );
+          return false;
+        }
       }
       const reply = await request("party-invite", {
         playerId,

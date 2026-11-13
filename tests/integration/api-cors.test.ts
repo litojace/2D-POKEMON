@@ -120,3 +120,25 @@ it("stamps every API answer with the server's clock, readable from the static si
   });
   expect(other.headers.get("Access-Control-Expose-Headers")).toBeNull();
 });
+
+it("lets the iPhone app call the API, and takes several origins separated by commas", async () => {
+  const user = accounts.add(false);
+  const call = (from: string) =>
+    fetch(`${url}/api/account`, {
+      headers: { Origin: from, Authorization: `Bearer ${user.token}` },
+    });
+  const app = await call("capacitor://localhost");
+  expect(app.status).toBe(200);
+  expect(app.headers.get("Access-Control-Allow-Origin")).toBe(
+    "capacitor://localhost",
+  );
+  // Another site is refused, even with a valid login.
+  expect((await call("https://evil.example")).status).toBe(403);
+  const { clientOrigins } = await import("../../apps/server/src/api-cors");
+  expect(clientOrigins(" https://a.example/ , https://b.example ")).toEqual([
+    "https://a.example",
+    "https://b.example",
+    "capacitor://localhost",
+  ]);
+  expect(clientOrigins("")).toEqual(["capacitor://localhost"]);
+});

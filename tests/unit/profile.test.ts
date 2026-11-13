@@ -9,6 +9,7 @@ import {
   profileView,
   rankLine,
   type ProfileData,
+  DELETE_WORD,
 } from "../../apps/client/src/screens/profile-view";
 import { cardSummary } from "../../apps/client/src/screens/profile-card";
 
@@ -101,6 +102,7 @@ const data = (extra: Partial<ProfileData> = {}): ProfileData => ({
   progress,
   raids,
   nameStatus: null,
+  canDelete: true,
   ...extra,
 });
 const html = (d = data(), v = profileView()) => profileMarkup(v, d);
@@ -251,6 +253,10 @@ describe("your name", () => {
     expect(checkName("Ben\nny", "tester").problem).toBe("That name has characters that can't be shown.");
     expect(checkName("!!! ...", "tester").problem).toBe("Use at least one letter or number.");
     expect(checkName(" tester ", "tester").problem).toBe("That is already your name.");
+    expect(checkName("Sh1t Happens", "tester").problem).toBe(
+      "That name isn't allowed. Please choose another.",
+    );
+    expect(checkName("Badminton Ace", "tester").problem).toBe("");
   });
   it("is locked until the server says, counted on the server's clock", () => {
     const now = Date.parse("2026-11-06T12:00:00Z");
@@ -271,5 +277,34 @@ describe("your name", () => {
     const locked = html(data({ nameStatus: { changedAt: null, nextAt: later, now: "", days: 14 } }));
     expect(locked).toMatch(/You can change it again in 3 d (0|1) h/);
     expect(locked).toMatch(/class="ui-btn is-s" disabled data-profile-rename/);
+  });
+});
+
+describe("deleting your account", () => {
+  it("is offered to players and guests, never to administrators", () => {
+    expect(html()).toContain("data-profile-delete>");
+    expect(html(data({ guest: true, role: "Guest" }))).toContain("data-profile-delete>");
+    expect(html(data({ canDelete: false, role: "Administrator" }))).not.toContain(
+      "data-profile-delete",
+    );
+  });
+  it("can still be reached when the records can't load", () => {
+    const page = html(data({ progress: null, progressProblem: "Down." }));
+    expect(page).toContain("data-profile-retry");
+    expect(page).toContain("data-profile-delete>");
+  });
+  it("asks you to type DELETE, says what goes, and waits while it's deleting", () => {
+    const closed = html();
+    expect(closed).toContain("data-profile-delete-form hidden>");
+    const v = { ...profileView(), deleting: true };
+    const open = html(data(), v);
+    expect(open).not.toContain("data-profile-delete-form hidden");
+    expect(open).not.toContain("data-profile-delete>");
+    expect(open).toContain(`Type <b>${DELETE_WORD}</b> to confirm`);
+    expect(open).toMatch(/can(&#39;|&#039;|')t be undone/);
+    expect(html(data({ guest: true }), v)).toContain("Your guest pass");
+    const busy = html(data(), { ...v, deleteBusy: true, deleteMessage: "Deleting your account…" });
+    expect(busy).toMatch(/class="ui-btn is-s is-danger" disabled aria-busy="true"><span>Delete forever/);
+    expect(busy).toContain("Deleting your account…");
   });
 });

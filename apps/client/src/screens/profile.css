@@ -431,6 +431,63 @@
   display: none;
 }
 
+/* Delete your account: a quiet red button, then a form that asks you to
+   type DELETE. */
+.pf-delete {
+  display: grid;
+  justify-items: start;
+  gap: var(--sp-2);
+}
+.pf-delete-form {
+  display: grid;
+  gap: var(--sp-2);
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: var(--rad-md);
+  background: var(--ui-bg-1);
+  border: 1px solid #ff6b6b66;
+}
+.pf-delete-form[hidden] {
+  display: none;
+}
+.pf-delete-form > p {
+  margin: 0;
+}
+.pf-delete-label {
+  display: grid;
+  gap: 4px;
+  font-size: var(--fs-small);
+  color: var(--ui-dim);
+}
+.pf-delete-label > input {
+  height: var(--ctl-s);
+  min-width: 0;
+  padding: 0 10px;
+  border-radius: var(--rad-sm);
+  border: 1px solid var(--ui-line-2);
+  background: var(--ui-bg-0);
+  color: var(--ui-text);
+  font: inherit;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+.pf-delete-label > input:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 1px;
+}
+.pf-delete-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--sp-2);
+}
+.pf-delete-message {
+  margin: 0;
+}
+.pf-delete-message:empty {
+  display: none;
+}
+
 /* A guest keeps their progress by adding an email. */
 .pf-save {
   display: grid;

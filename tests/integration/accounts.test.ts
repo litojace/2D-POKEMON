@@ -417,6 +417,101 @@ it("checks HTTP authorization, payloads, origin and title ownership RPC paths", 
     ).status,
   ).toBe(403);
 });
+it("lets a player delete their own account, confirmed, and never an administrator", async () => {
+  const admin = accounts.add(),
+    player = accounts.add(false);
+  const calls: { token: string; name: string }[] = [];
+  accounts.provider.rpc = async (token, name) => {
+    calls.push({ token, name });
+    // The database removes the login: the token no longer checks out.
+    if (name === "arena_delete_my_account") accounts.users.delete(token);
+    return null;
+  };
+  const socket = await connect(player.token);
+  const told = new Promise<void>((resolve) =>
+    socket.once("token-expired", () => resolve()),
+  );
+  const post = (body: unknown, token = player.token) =>
+    fetch(`${url}/api/account/delete`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+  // Not signed in, not confirmed, or an extra field: refused before the database.
+  expect(
+    (await fetch(`${url}/api/account/delete`, { method: "POST" })).status,
+  ).toBe(401);
+  expect((await post({})).status).toBe(400);
+  expect((await post({ confirm: "yes" })).status).toBe(400);
+  expect((await post({ confirm: true, id: admin.account.id })).status).toBe(
+    400,
+  );
+  // An administrator is refused here (their audit trail points at them).
+  expect((await post({ confirm: true }, admin.token)).status).toBe(403);
+  const deletes = () =>
+    calls.filter((c) => c.name === "arena_delete_my_account");
+  expect(deletes()).toEqual([]);
+  // The player: the database deletes the login with the player's own token.
+  expect((await post({ confirm: true })).status).toBe(200);
+  expect(deletes()).toEqual([
+    { token: player.token, name: "arena_delete_my_account" },
+  ]);
+  // The open game connection is checked again at once and no longer passes.
+  await told;
+  expect((await post({ confirm: true })).status).toBe(401);
+});
+it("blocks and unblocks through the database, and lists who you blocked", async () => {
+  const player = accounts.add(false),
+    other = accounts.add(false);
+  const calls: { name: string; args: Record<string, unknown> }[] = [];
+  accounts.provider.rpc = async (_token, name, args) => {
+    calls.push({ name, args });
+    return name === "arena_blocked_players"
+      ? [{ id: other.account.id, name: "Player 2" }]
+      : null;
+  };
+  const headers = {
+    Authorization: `Bearer ${player.token}`,
+    "Content-Type": "application/json",
+  };
+  const post = (body: unknown) =>
+    fetch(`${url}/api/blocks`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
+    });
+  expect((await fetch(`${url}/api/blocks`)).status).toBe(401);
+  const list = await fetch(`${url}/api/blocks`, { headers });
+  expect(list.status).toBe(200);
+  expect(await list.json()).toEqual([
+    { id: other.account.id, name: "Player 2" },
+  ]);
+  // A bad id, a missing flag or an extra field never reach the database.
+  expect((await post({ playerId: "nope", block: true })).status).toBe(400);
+  expect((await post({ playerId: other.account.id })).status).toBe(400);
+  expect(
+    (await post({ playerId: other.account.id, block: true, why: "x" })).status,
+  ).toBe(400);
+  expect((await post({ playerId: other.account.id, block: true })).status).toBe(
+    200,
+  );
+  expect(
+    (await post({ playerId: other.account.id, block: false })).status,
+  ).toBe(200);
+  expect(calls.filter((c) => c.name === "arena_block_player")).toEqual([
+    {
+      name: "arena_block_player",
+      args: { p_player: other.account.id, p_block: true },
+    },
+    {
+      name: "arena_block_player",
+      args: { p_player: other.account.id, p_block: false },
+    },
+  ]);
+});
 it("clears a detached reservation when the owner explicitly leaves after reconnecting", async () => {
   const owner = accounts.add(true),
     socket = await connect(owner.token);
