@@ -1,5 +1,6 @@
 import { drawBossSpellFlipbook } from "./boss-spell-flipbook";
 import { drawGrumbleAttacks } from "./grumble-attack-fx";
+import { drawLumiwickAttacks } from "./lumiwick-attack-fx";
 import { lowGraphics } from "./graphics-quality";
 import type Phaser from "phaser";
 import type { Snapshot } from "@arena/shared";
@@ -412,6 +413,20 @@ export function drawBossBattleEffects(
       );
       continue;
     }
+    // Lumiwick's attacks start from the lantern (its hem, its eyes) every
+    // frame; the shared impacts below still mark where each one lands.
+    if (r.boss === "emberwing")
+      space(g, (fx, glow) =>
+        drawLumiwickAttacks(
+          g.scene,
+          fx,
+          glow,
+          state,
+          boss,
+          life.action.casts,
+          lowGraphics(),
+        ),
+      );
     if (!life.action.casts.length) continue;
     space(g, (fx, glow) => {
       for (const event of life.action.casts) {

@@ -877,6 +877,8 @@ export interface LumiFrame {
   heart: P2 & { open: number };
   eyes: P2[];
   flame: number;
+  /** 1 lit from inside, 0 the flame out (dim or crumpled). */
+  lit: number;
   view: number;
   mirror: boolean;
 }
@@ -1181,5 +1183,11 @@ export function lumiwickPlacements(
         alpha: 1,
       });
     }
-  return { placements: out, ...res, view: v, mirror: F.m };
+  return {
+    placements: out,
+    ...res,
+    lit: (1 - P.dim) * (1 - P.crumple),
+    view: v,
+    mirror: F.m,
+  };
 }

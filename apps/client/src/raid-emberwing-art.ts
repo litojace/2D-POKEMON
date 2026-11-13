@@ -1,4 +1,5 @@
 import { paintLumiwick } from "./boss-lumiwick-rig";
+import { noteLumiwick } from "./lumiwick-attack-fx";
 import { paintSkyTerrace } from "./raid-emberwing-terrace-rig";
 import { bossLife } from "./raid-boss-life";
 import type Phaser from "phaser";
@@ -223,7 +224,7 @@ export function drawEmberwing(
       (w.startedAt ?? w.at - 1.5) <= state.time,
   );
   const cast = life.action.casts[life.action.casts.length - 1];
-  paintLumiwick(g, {
+  const drawn = paintLumiwick(g, {
     x: boss.x,
     y: boss.y,
     // it turns to where it floats, and to its attack's aim
@@ -246,5 +247,13 @@ export function drawEmberwing(
     deadAge: pose.deathAge,
     roarAge: pose.transform > 0 ? (1 - pose.transform) * 1.6 : 99,
   });
+  // where its attack effects start from (lumiwick-attack-fx.ts)
+  if (drawn)
+    noteLumiwick(g.scene, {
+      hem: { x: boss.x + drawn.hem.x, y: boss.y + drawn.hem.y },
+      eyes: drawn.eyes.map((e) => ({ x: boss.x + e.x, y: boss.y + e.y })),
+      flame: drawn.flame,
+      lit: drawn.lit,
+    });
   return pose.cues;
 }
