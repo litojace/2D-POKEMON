@@ -1,4 +1,4 @@
-import { isNativeApp, signInWithAppleNatively } from "./native";
+import { isNativeApp, PRIVACY_URL, signInWithAppleNatively } from "./native";
 import {
   nameAllowed,
   NAME_NOT_ALLOWED,
@@ -668,7 +668,7 @@ export class AccountUI {
       mode === "forgot" || mode === "reset"
         ? '<button type="button" class="auth-link auth-back" id="auth-switch">← Back to log in</button>'
         : "";
-    const html = `<section class="auth-panel" data-mode="${mode}"><div class="auth-head"><span class="auth-crest" aria-hidden="true"><svg viewBox="0 0 64 64"><path fill="currentColor" fill-rule="evenodd" d="M32 2 42 21 62 32 43 43 32 62 21 43 2 32 21 21Zm0 14L16 32l16 16 16-16Z"/></svg></span><div class="auth-title">${copy[0]}</div><p>${copy[1]}</p></div>${tabs}${!this.client ? '<p class="auth-warning">Sign-in isn\'t available right now. Please try again later.</p>' : ""}<form id="auth-form" class="auth-form">${fields}${extras}<button class="auth-submit" type="submit" ${!this.client ? "disabled" : ""}>${submitLabel}</button>${APPLE_SIGN_IN && (mode === "login" || mode === "signup") ? `<button id="auth-apple" class="auth-secondary auth-apple" type="button" ${!this.client ? "disabled" : ""}>${APPLE_LOGO}<span>Continue with Apple</span></button>` : ""}${SHOW_GOOGLE && (mode === "login" || mode === "signup") ? `<button id="auth-google" class="auth-secondary" type="button" ${!this.client ? "disabled" : ""}>Continue with Google</button>` : ""}<p id="auth-message" class="auth-message" role="status"></p></form>${guest}${back}</section>`;
+    const html = `<section class="auth-panel" data-mode="${mode}"><div class="auth-head"><span class="auth-crest" aria-hidden="true"><svg viewBox="0 0 64 64"><path fill="currentColor" fill-rule="evenodd" d="M32 2 42 21 62 32 43 43 32 62 21 43 2 32 21 21Zm0 14L16 32l16 16 16-16Z"/></svg></span><div class="auth-title">${copy[0]}</div><p>${copy[1]}</p></div>${tabs}${!this.client ? '<p class="auth-warning">Sign-in isn\'t available right now. Please try again later.</p>' : ""}<form id="auth-form" class="auth-form">${fields}${extras}<button class="auth-submit" type="submit" ${!this.client ? "disabled" : ""}>${submitLabel}</button>${APPLE_SIGN_IN && (mode === "login" || mode === "signup") ? `<button id="auth-apple" class="auth-secondary auth-apple" type="button" ${!this.client ? "disabled" : ""}>${APPLE_LOGO}<span>Continue with Apple</span></button>` : ""}${SHOW_GOOGLE && (mode === "login" || mode === "signup") ? `<button id="auth-google" class="auth-secondary" type="button" ${!this.client ? "disabled" : ""}>Continue with Google</button>` : ""}<p id="auth-message" class="auth-message" role="status"></p></form>${guest}${back}<p class="auth-legal"><a href="${PRIVACY_URL}" target="_blank" rel="noopener">Privacy policy</a></p></section>`;
     // On the welcome screen the panel sits in the page; elsewhere in a dialog.
     const host = document.getElementById("gate-auth");
     if (host) host.innerHTML = html;

@@ -113,7 +113,7 @@ iOS 26 SDK) and Node 22.
    **Any iOS Device**, then **Product → Archive → Distribute App → App
    Store Connect**. The build shows up in TestFlight after processing.
 3. Fill in the listing:
-   - **Privacy:** a privacy policy URL (required), and the privacy
+   - **Privacy:** the privacy policy URL, `https://parena.litojace.com/privacy.html` (`apps/client/public/privacy.html`; the game links to it from the menu and the sign-in panel), and the privacy
      answers: email address and user ID (accounts), gameplay content
      (matches, progress), and performance data (`arena-perf` logs frame
      rates, device memory and cores, not linked to the player).
