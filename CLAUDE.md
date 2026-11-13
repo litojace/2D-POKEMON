@@ -4,9 +4,15 @@
 
 The full visual suite (`tests/visual`, Playwright) has 75 files and is slow
 on one machine: the config runs **one worker** on purpose, and the
-`panel-scroll` sweeps alone take over half an hour. CI splits it into eighteen
-shards (`.github/workflows/ci.yml`). Locally, don't run all of it: run what
-the change touches, in parallel, in the background.
+`panel-scroll` sweeps alone take over half an hour. CI splits it into shards
+of about equal running time (`scripts/visual-shards.mjs`, from the recorded
+times in `tests/visual/durations.json`): the timing specs below alone on one
+worker, everything else over seven shards of two workers. New tests count as
+a typical test until the durations are refreshed: when shards drift apart,
+download the `visual-durations` artifact of a CI run on `main` and commit it
+as `tests/visual/durations.json` (`node scripts/visual-shards.mjs --plan 7`
+shows the split). Locally, don't run all of it: run what the change touches,
+in parallel, in the background.
 
 **1. Unit and integration tests first** (about 2–3 minutes for all):
 
