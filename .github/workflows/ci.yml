@@ -1,7 +1,10 @@
 name: Arena checks
 on:
+  # A change to docs or Markdown alone runs nothing: no check reads them.
   push:
+    paths-ignore: ["docs/**", "**/*.md"]
   pull_request:
+    paths-ignore: ["docs/**", "**/*.md"]
   workflow_dispatch:
 # A newer push to the same branch replaces a run still in progress.
 concurrency:
@@ -24,11 +27,14 @@ jobs:
   visual:
     # The real client in Chromium with no server: one fighter on the select
     # screen, arenas filling their frames, dialogs fitting a phone. Split
-    # across ten runners (one worker each, so timing checks keep a machine to
-    # themselves): six shards of the suite, and four of the panel-scroll
-    # sweeps, whose twenty tests take about 45 minutes between them and
-    # would otherwise all land in one shard. About 25 minutes instead of over
-    # two hours. It runs for main (what Render deploys), pull requests and
+    # across eighteen runners (one worker each, so timing checks keep a
+    # machine to themselves): twelve shards of the suite, and six of the
+    # panel-scroll sweeps, whose twenty tests take about an hour between them
+    # and would otherwise all land in one shard. Shards split by test count,
+    # not duration, so the slowest sets the pace: six and four shards took
+    # about 30 minutes (10 to 30 per shard, Nov 2026); twelve and six aim for
+    # about 15. Eighteen runners plus verify stay under the free plan's 20
+    # jobs at once. It runs for main (what Render deploys), pull requests and
     # manual runs, not again for the same commit on work.
     if: github.event_name != 'push' || github.ref == 'refs/heads/main'
     name: visual (${{ matrix.part }})
@@ -37,16 +43,24 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { part: "1 of 6", args: "--grep-invert 'scroll to their end' --shard=1/6" }
-          - { part: "2 of 6", args: "--grep-invert 'scroll to their end' --shard=2/6" }
-          - { part: "3 of 6", args: "--grep-invert 'scroll to their end' --shard=3/6" }
-          - { part: "4 of 6", args: "--grep-invert 'scroll to their end' --shard=4/6" }
-          - { part: "5 of 6", args: "--grep-invert 'scroll to their end' --shard=5/6" }
-          - { part: "6 of 6", args: "--grep-invert 'scroll to their end' --shard=6/6" }
-          - { part: "sweeps 1 of 4", args: "panel-scroll --shard=1/4" }
-          - { part: "sweeps 2 of 4", args: "panel-scroll --shard=2/4" }
-          - { part: "sweeps 3 of 4", args: "panel-scroll --shard=3/4" }
-          - { part: "sweeps 4 of 4", args: "panel-scroll --shard=4/4" }
+          - { part: "1 of 12", args: "--grep-invert 'scroll to their end' --shard=1/12" }
+          - { part: "2 of 12", args: "--grep-invert 'scroll to their end' --shard=2/12" }
+          - { part: "3 of 12", args: "--grep-invert 'scroll to their end' --shard=3/12" }
+          - { part: "4 of 12", args: "--grep-invert 'scroll to their end' --shard=4/12" }
+          - { part: "5 of 12", args: "--grep-invert 'scroll to their end' --shard=5/12" }
+          - { part: "6 of 12", args: "--grep-invert 'scroll to their end' --shard=6/12" }
+          - { part: "7 of 12", args: "--grep-invert 'scroll to their end' --shard=7/12" }
+          - { part: "8 of 12", args: "--grep-invert 'scroll to their end' --shard=8/12" }
+          - { part: "9 of 12", args: "--grep-invert 'scroll to their end' --shard=9/12" }
+          - { part: "10 of 12", args: "--grep-invert 'scroll to their end' --shard=10/12" }
+          - { part: "11 of 12", args: "--grep-invert 'scroll to their end' --shard=11/12" }
+          - { part: "12 of 12", args: "--grep-invert 'scroll to their end' --shard=12/12" }
+          - { part: "sweeps 1 of 6", args: "panel-scroll --shard=1/6" }
+          - { part: "sweeps 2 of 6", args: "panel-scroll --shard=2/6" }
+          - { part: "sweeps 3 of 6", args: "panel-scroll --shard=3/6" }
+          - { part: "sweeps 4 of 6", args: "panel-scroll --shard=4/6" }
+          - { part: "sweeps 5 of 6", args: "panel-scroll --shard=5/6" }
+          - { part: "sweeps 6 of 6", args: "panel-scroll --shard=6/6" }
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
