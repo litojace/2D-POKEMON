@@ -2,6 +2,7 @@ import { askConfirm, openHubPanel, type HubPanel } from "../ui/hub-panel";
 import { parse, patch } from "../ui/patch";
 import type { RaidBossId } from "../../../../packages/shared/src/raid-roster";
 import {
+  DELETE_WORD,
   profileMarkup,
   profileView,
   type ProfileData,
@@ -29,6 +30,8 @@ export interface ProfileHooks {
   rename(name: string): Promise<string>;
   /** A guest adds an email; resolves with what to say. */
   save(email: string): Promise<string>;
+  /** Delete the account for good; resolves once it's gone (signed out). */
+  deleteAccount(): Promise<void>;
   /** Load the records again (after a problem). */
   retry(): Promise<void>;
   ranks(): void;
@@ -147,6 +150,45 @@ export function openProfile(hooks: ProfileHooks): ProfileScreen {
     else focusOn("[data-profile-rename]");
   }
 
+  /** Open or close the delete form (focus goes to the box or the button). */
+  function deleteForm(open: boolean) {
+    view.deleting = open;
+    view.deleteMessage = "";
+    render();
+    const input = root().querySelector<HTMLInputElement>(
+      "[data-profile-delete-form] input",
+    );
+    if (open && input) {
+      input.value = "";
+      input.focus({ preventScroll: true });
+      // On a phone the form opens below the fold: bring all of it in.
+      input
+        .closest("form")
+        ?.scrollIntoView({ block: "nearest", inline: "nearest" });
+    } else focusOn("[data-profile-delete]");
+  }
+  async function deleteAccount(typed: string) {
+    if (view.deleteBusy) return;
+    if (typed.trim().toUpperCase() !== DELETE_WORD) {
+      view.deleteMessage = `Type ${DELETE_WORD} to delete your account.`;
+      render();
+      return;
+    }
+    view.deleteBusy = true;
+    view.deleteMessage = "Deleting your account…";
+    render();
+    try {
+      await hooks.deleteAccount();
+      // Signed out: the card closes with the session.
+      if (!closed) panel.close();
+    } catch (error) {
+      view.deleteBusy = false;
+      view.deleteMessage =
+        error instanceof Error ? error.message : "That didn't work. Try again.";
+      render();
+    }
+  }
+
   const onClick = (event: MouseEvent) => {
     const t = (event.target as Element).closest<HTMLButtonElement>("button");
     if (!t || !root().contains(t) || t.disabled) return;
@@ -154,6 +196,8 @@ export function openProfile(hooks: ProfileHooks): ProfileScreen {
     if (d.profileTitle !== undefined) void equip(d.profileTitle);
     else if (d.profileRename !== undefined) nameForm(true);
     else if (d.profileNameCancel !== undefined) nameForm(false);
+    else if (d.profileDelete !== undefined) deleteForm(true);
+    else if (d.profileDeleteCancel !== undefined) deleteForm(false);
     else if (d.profileShare !== undefined) void share(t);
     else if (d.profileGo || d.profileBoss) {
       const go = d.profileGo,
@@ -165,6 +209,14 @@ export function openProfile(hooks: ProfileHooks): ProfileScreen {
     } else if (d.profileRetry !== undefined) void hooks.retry().then(render);
   };
   const onSubmit = (event: SubmitEvent) => {
+    const deleting = (event.target as Element).closest<HTMLFormElement>(
+      "[data-profile-delete-form]",
+    );
+    if (deleting) {
+      event.preventDefault();
+      void deleteAccount(String(new FormData(deleting).get("confirm") ?? ""));
+      return;
+    }
     const named = (event.target as Element).closest<HTMLFormElement>(
       "[data-profile-name-form]",
     );
@@ -204,6 +256,12 @@ export function openProfile(hooks: ProfileHooks): ProfileScreen {
       event.preventDefault();
       event.stopPropagation();
       nameForm(false);
+      return;
+    }
+    if (event.key === "Escape" && view.deleting && !view.deleteBusy) {
+      event.preventDefault();
+      event.stopPropagation();
+      deleteForm(false);
       return;
     }
     if (!/^Arrow(Left|Right|Up|Down)$/.test(event.key)) return;

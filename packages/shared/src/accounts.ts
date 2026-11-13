@@ -44,6 +44,10 @@ export const suspendSchema = z
 export const deletePlayerSchema = z
   .object({ id: z.string().uuid(), confirm: z.literal(true) })
   .strict();
+/** A player deleting their own account (migration 109): it must say so. */
+export const deleteMyAccountSchema = z
+  .object({ confirm: z.literal(true) })
+  .strict();
 export const deleteTitleSchema = z
   .object({ id: z.string().uuid(), confirm: z.literal(true) })
   .strict();

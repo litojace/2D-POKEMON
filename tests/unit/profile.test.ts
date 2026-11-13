@@ -9,6 +9,7 @@ import {
   profileView,
   rankLine,
   type ProfileData,
+  DELETE_WORD,
 } from "../../apps/client/src/screens/profile-view";
 import { cardSummary } from "../../apps/client/src/screens/profile-card";
 
@@ -101,6 +102,7 @@ const data = (extra: Partial<ProfileData> = {}): ProfileData => ({
   progress,
   raids,
   nameStatus: null,
+  canDelete: true,
   ...extra,
 });
 const html = (d = data(), v = profileView()) => profileMarkup(v, d);
@@ -271,5 +273,34 @@ describe("your name", () => {
     const locked = html(data({ nameStatus: { changedAt: null, nextAt: later, now: "", days: 14 } }));
     expect(locked).toMatch(/You can change it again in 3 d (0|1) h/);
     expect(locked).toMatch(/class="ui-btn is-s" disabled data-profile-rename/);
+  });
+});
+
+describe("deleting your account", () => {
+  it("is offered to players and guests, never to administrators", () => {
+    expect(html()).toContain("data-profile-delete>");
+    expect(html(data({ guest: true, role: "Guest" }))).toContain("data-profile-delete>");
+    expect(html(data({ canDelete: false, role: "Administrator" }))).not.toContain(
+      "data-profile-delete",
+    );
+  });
+  it("can still be reached when the records can't load", () => {
+    const page = html(data({ progress: null, progressProblem: "Down." }));
+    expect(page).toContain("data-profile-retry");
+    expect(page).toContain("data-profile-delete>");
+  });
+  it("asks you to type DELETE, says what goes, and waits while it's deleting", () => {
+    const closed = html();
+    expect(closed).toContain("data-profile-delete-form hidden>");
+    const v = { ...profileView(), deleting: true };
+    const open = html(data(), v);
+    expect(open).not.toContain("data-profile-delete-form hidden");
+    expect(open).not.toContain("data-profile-delete>");
+    expect(open).toContain(`Type <b>${DELETE_WORD}</b> to confirm`);
+    expect(open).toMatch(/can(&#39;|&#039;|')t be undone/);
+    expect(html(data({ guest: true }), v)).toContain("Your guest pass");
+    const busy = html(data(), { ...v, deleteBusy: true, deleteMessage: "Deleting your account…" });
+    expect(busy).toMatch(/class="ui-btn is-s is-danger" disabled aria-busy="true"><span>Delete forever/);
+    expect(busy).toContain("Deleting your account…");
   });
 });

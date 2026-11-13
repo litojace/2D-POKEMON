@@ -40,6 +40,7 @@ import {
   accountSchema,
   suspendSchema,
   deletePlayerSchema,
+  deleteMyAccountSchema,
   deleteTitleSchema,
   reportSchema,
   resolveReportSchema,
@@ -59,7 +60,7 @@ import {
   type OnlineList,
 } from "../../../packages/shared/src/accounts.js";
 /** The newest database migration the server expects. */
-export const LATEST_MIGRATION = "107_bistro_cook_times.sql";
+export const LATEST_MIGRATION = "109_delete_my_account.sql";
 /** The migration that last redefined the raid appearance functions. */
 export const RAID_FUNCTIONS_MIGRATION = "018_collection_equipping.sql";
 export interface AccountProvider {
@@ -376,6 +377,23 @@ export function installAccountRoutes(
       // Your open games (a room, the Plaza) show the new name.
       onPlayerChanged(account.id);
       res.json(result);
+    }),
+  );
+  // Delete your own account (App Store 5.1.1(v), migration 109). The
+  // database removes the login and everything that belongs to it; open
+  // games drop the player once their login no longer checks out.
+  app.post(
+    "/api/account/delete",
+    route(false, async (req, res, token, account) => {
+      deleteMyAccountSchema.parse(req.body);
+      if (account.isAdmin)
+        throw new AccountError(
+          403,
+          "Administrators cannot delete their own account here.",
+        );
+      await provider.rpc(token, "arena_delete_my_account", {});
+      onPlayerChanged(account.id);
+      res.json({ ok: true });
     }),
   );
   // Report a finished match for your records. The summary comes from the

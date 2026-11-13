@@ -91,6 +91,32 @@ The "Continue with Google" button is hidden until you turn it on. To set it up:
 
 To hide it again, remove the variable (or set it to anything but `on`) and redeploy. See [Supabase's Google guide](https://supabase.com/docs/guides/auth/social-login/auth-google).
 
+## Sign in with Apple (optional, off by default)
+
+The App Store asks any app that offers Google sign-in to offer a sign-in that collects only a name and email too (App Review Guideline 4.8); Sign in with Apple is the one Apple's reviewers accept. The "Continue with Apple" button is hidden until you turn it on. On the website it works like Google: the player goes to Apple's page and comes back signed in. To set it up (an Apple Developer account is needed):
+
+1. In [Certificates, Identifiers & Profiles](https://developer.apple.com/account/resources/identifiers/list), open **Identifiers** and create (or pick) an **App ID** for the game, for example `com.litojace.elementarena`, with **Sign in with Apple** ticked. The iPhone app will use this ID later.
+2. Create a **Services ID**, for example `com.litojace.elementarena.web`. Tick **Sign in with Apple**, choose **Configure**, pick the App ID above as the primary one, and enter:
+   - Domains and subdomains: `YOUR_GAME_PROJECT.supabase.co` (no `https://`)
+   - Return URLs: the callback Supabase shows on its Apple provider page, normally `https://YOUR_GAME_PROJECT.supabase.co/auth/v1/callback`
+3. In **Keys**, create a key with **Sign in with Apple** ticked (configured for the App ID above). Download the `.p8` file: Apple lets you download it only once. Note the **Key ID**, and your **Team ID** (top right of the developer site). Keep the `.p8` file private, never in the repository.
+4. Make the client secret: a token signed with the `.p8` key, from the Team ID, Key ID and Services ID. [Supabase's Apple guide](https://supabase.com/docs/guides/auth/social-login/auth-apple) has a generator and a script. **Apple lets this secret last at most 6 months**: put a reminder in your calendar to make a new one before then, or Apple sign-in stops working on the website.
+5. In Supabase, open **Authentication → Sign In / Providers → Apple**, enable it, put the Services ID in **Client IDs** (first, if you add the iPhone app's ID later) and paste the secret into **Secret Key (for OAuth)**.
+6. In Render, add `VITE_APPLE_SIGN_IN` = `on` to the web service (and the Static Site, if you use one) and redeploy. It's read when the site is built.
+7. Test it: log out, choose **Continue with Apple**, and check you land back in the game signed in. If the player chose **Hide My Email**, Supabase gets an `@privaterelay.appleid.com` address; that's normal. A player who hides their name starts as "Trainer" and can change it from the player card.
+
+To hide it again, remove the variable (or set it to anything but `on`) and redeploy. If you turn Google on for the App Store build, turn Apple on too.
+
+## Deleting an account
+
+Players delete their own account from their player card: **Delete account** at the bottom, then type `DELETE`. Guests can too. It needs [migration 109](../supabase/migrations/109_delete_my_account.sql) (after 108). The App Store requires it for any app where people make accounts (App Review Guideline 5.1.1(v)).
+
+- The login and everything the player owns go at once: profile, records, titles, coins, skins, farm, bistro, friends, preferences. Matches and raids they played stay for the other players, with the deleted player shown as "Deleted player" and no account id. Reports they sent stay for the admins without their name.
+- Their open games drop them: the game server checks the login again straight away, and the client signs out.
+- Administrators can't delete themselves here (their audit entries point at them, and it would lock the dashboard). Remove an admin from `arena_admins` in SQL first.
+- **Sign in with Apple:** Apple also asks apps to revoke the player's Apple tokens when the account is deleted. Supabase doesn't keep the Apple token needed for that, so the game can't do it yet. Apple's guidance is to finish the deletion anyway, and the game then tells the player how to remove Element Arena under **Sign in with Apple** in their Apple Account settings. Revoking automatically needs the native iPhone sign-in (which can hand the server the token) and a small server step.
+- Supabase may keep a deleted login in its own backups for a while; see Supabase's documentation for how long.
+
 ## Player and title management
 
 **Admin → Players & titles** supports searching/pagination, renaming players, suspending/reactivating ordinary players, creating/editing/retiring titles, and granting/revoking title ownership. Updates are recorded in `arena_admin_audit` for trusted database inspection. Players open their name in navigation to equip one of their granted, active titles. Equipped titles appear above their creatures. Retired and revoked titles cannot be equipped.

@@ -417,6 +417,52 @@ it("checks HTTP authorization, payloads, origin and title ownership RPC paths", 
     ).status,
   ).toBe(403);
 });
+it("lets a player delete their own account, confirmed, and never an administrator", async () => {
+  const admin = accounts.add(),
+    player = accounts.add(false);
+  const calls: { token: string; name: string }[] = [];
+  accounts.provider.rpc = async (token, name) => {
+    calls.push({ token, name });
+    // The database removes the login: the token no longer checks out.
+    if (name === "arena_delete_my_account") accounts.users.delete(token);
+    return null;
+  };
+  const socket = await connect(player.token);
+  const told = new Promise<void>((resolve) =>
+    socket.once("token-expired", () => resolve()),
+  );
+  const post = (body: unknown, token = player.token) =>
+    fetch(`${url}/api/account/delete`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+  // Not signed in, not confirmed, or an extra field: refused before the database.
+  expect(
+    (await fetch(`${url}/api/account/delete`, { method: "POST" })).status,
+  ).toBe(401);
+  expect((await post({})).status).toBe(400);
+  expect((await post({ confirm: "yes" })).status).toBe(400);
+  expect((await post({ confirm: true, id: admin.account.id })).status).toBe(
+    400,
+  );
+  // An administrator is refused here (their audit trail points at them).
+  expect((await post({ confirm: true }, admin.token)).status).toBe(403);
+  const deletes = () =>
+    calls.filter((c) => c.name === "arena_delete_my_account");
+  expect(deletes()).toEqual([]);
+  // The player: the database deletes the login with the player's own token.
+  expect((await post({ confirm: true })).status).toBe(200);
+  expect(deletes()).toEqual([
+    { token: player.token, name: "arena_delete_my_account" },
+  ]);
+  // The open game connection is checked again at once and no longer passes.
+  await told;
+  expect((await post({ confirm: true })).status).toBe(401);
+});
 it("clears a detached reservation when the owner explicitly leaves after reconnecting", async () => {
   const owner = accounts.add(true),
     socket = await connect(owner.token);
