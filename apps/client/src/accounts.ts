@@ -1,3 +1,4 @@
+import { confirmAge } from "./age-gate";
 import { isNativeApp, PRIVACY_URL, signInWithAppleNatively } from "./native";
 import {
   nameAllowed,
@@ -558,6 +559,7 @@ export class AccountUI {
    */
   private async signInWithAppleApp(message: HTMLElement) {
     if (!this.client) return;
+    if (!(await confirmAge(this.hooks.notify))) return;
     message.textContent = "";
     try {
       const apple = await signInWithAppleNatively();
@@ -712,6 +714,8 @@ export class AccountUI {
     // Google and Apple leave for their own page and come back signed in.
     const signInWith = async (provider: "google" | "apple") => {
       if (!this.client) return;
+      // It can make a new account: the age question first (age-gate.ts).
+      if (!(await confirmAge(this.hooks.notify))) return;
       remember(
         mode === "login" && element<HTMLInputElement>("auth-remember").checked,
       );
@@ -741,6 +745,7 @@ export class AccountUI {
           message.textContent = NAME_NOT_ALLOWED;
           return;
         }
+        if (!(await confirmAge(this.hooks.notify))) return;
         button.disabled = true;
         message.textContent = "Setting up your guest pass…";
         // Keep the guest login on this device: it can't be recovered later.
@@ -782,6 +787,8 @@ export class AccountUI {
         message.textContent = NAME_NOT_ALLOWED;
         return;
       }
+      // A new account: the neutral age question first (age-gate.ts).
+      if (mode === "signup" && !(await confirmAge(this.hooks.notify))) return;
       submit.disabled = true;
       message.textContent = "Please wait…";
       try {
