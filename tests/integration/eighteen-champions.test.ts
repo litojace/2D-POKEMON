@@ -63,7 +63,7 @@ it("lets every champion be your portrait, and nothing else", async () => {
   }
   await login();
   await expect(
-    db.query("select public.arena_set_portrait_character('pikachu')"),
+    db.query("select public.arena_set_portrait_character('notachampion')"),
   ).rejects.toThrow(/valid champion/);
   await expect(
     owner(
@@ -80,7 +80,7 @@ it("lets every champion farm", async () => {
     expect(r.farm.farmer).toBe(id);
   }
   expect(
-    (await act([{ a: "farmer", id: "pikachu" }])).results[0].error,
+    (await act([{ a: "farmer", id: "notachampion" }])).results[0].error,
   ).toBeTruthy();
   await expect(
     owner(

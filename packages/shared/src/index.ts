@@ -2344,14 +2344,6 @@ export const FIGHTER_IDS = [
 ] as const satisfies readonly CharacterId[];
 /** Older internal IDs, accepted so stale clients and saved sessions keep working. */
 const legacyIds: Record<string, CharacterId> = {
-  pikachu: "voltkit",
-  charizard: "cindrake",
-  greninja: "tidefin",
-  lucario: "auralynx",
-  eevee: "lumoth",
-  mewtwo: "mystowl",
-  snorlax: "terradon",
-  gengar: "duskveil",
   thornback: "mystowl",
   frostfang: "terradon",
   voltling: "voltkit",

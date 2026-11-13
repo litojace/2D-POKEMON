@@ -1228,7 +1228,7 @@ it("passes farm actions and leaf trades to the database only when the request is
     { request, actions: [{ a: "buy-tool", tool: "tractor" }] },
     { request, actions: [{ a: "hire-dog", dog: "wolf", days: 1 }] },
     { request, actions: [{ a: "hire-dog", dog: "gold", days: 2 }] },
-    { request, actions: [{ a: "farmer", id: "pikachu" }] },
+    { request, actions: [{ a: "farmer", id: "notachampion" }] },
     { request, actions: [{ a: "decor", slot: 8, item: "lamp" }] },
     { request, actions: [{ a: "decor", slot: 1, item: "Lamp;drop" }] },
     { request, actions: [{ a: "catch", plot: 1, area: 9 }] },

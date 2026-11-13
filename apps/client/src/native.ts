@@ -15,6 +15,13 @@ import { Capacitor, registerPlugin } from "@capacitor/core";
 
 export const isNativeApp = () => Capacitor.isNativePlatform();
 
+/**
+ * The privacy policy (public/privacy.html). The app's own pages live at
+ * capacitor://localhost, so it links to the website's copy, which opens in
+ * Safari; the website links to its own.
+ */
+export const PRIVACY_URL = `${(import.meta.env.VITE_SITE_URL || "").replace(/\/+$/, "")}/privacy.html`;
+
 interface AppleSignInResult {
   user: string;
   identityToken: string;

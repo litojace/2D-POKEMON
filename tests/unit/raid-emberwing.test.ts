@@ -590,6 +590,12 @@ describe("Emberwing AI: contested braziers, return dives and mending wings", () 
   });
   it("lights the whole solo route at the slowest pace while Emberwing attacks", () => {
     const a = setup(1, 3, 3, ["terradon"]);
+    // One fight every run: the raid's seed picks Emberwing's attacks and the
+    // stand-in's choices. With a fresh random seed each start, about one run
+    // in five lost its stand-in to the attacks before the route was done
+    // (58 of seeds 1–300), so the test failed by luck. It's set before the
+    // stand-in, whose brain takes its seed from the raid's.
+    a.raid.seed = 1;
     a.standIn("p0");
     (a as any).nextAttack = 0;
     let contested = false;
@@ -597,8 +603,11 @@ describe("Emberwing AI: contested braziers, return dives and mending wings", () 
       a.tick();
       if (a.raid.warnings.some((w) => w.kind === "ember-rain" && w.targetId))
         contested = true;
+      // Emberwing still attacks and contests the braziers, but this times the
+      // route, not the stand-in's dodging: keep it standing (as the test
+      // above does), so the walk at the slowest pace is what's measured.
       const p = a.heroes()[0];
-      if (p.hp <= 0) break;
+      p.hp = CHARACTERS[p.character].health;
     }
     expect(contested).toBe(true);
     expect(a.raid.groundings).toBe(1);

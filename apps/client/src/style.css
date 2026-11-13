@@ -12629,6 +12629,16 @@ dialog .auth-panel {
   width: auto;
   padding: 0 16px;
 }
+/* The privacy policy link: stays on short screens too (App Store 5.1.1). */
+.auth-legal {
+  margin: -4px 0 0;
+  font-size: 12px;
+  line-height: 1.2;
+  text-align: center;
+}
+.auth-legal a {
+  color: #9fb3d6;
+}
 .auth-note {
   margin: -6px 0 0;
   color: #7d8ea9;

@@ -163,6 +163,8 @@ async function open(page: Page, size: Size, o: { guest?: boolean } = {}) {
       // Deleting your account, answered as migration 109 does.
       if (path === "/api/account/delete" && init?.method === "POST") {
         w.__deleteCalls.push(JSON.parse(String(init?.body ?? "{}")));
+        // A real server takes a moment: the page repaints meanwhile.
+        await new Promise((r) => setTimeout(r, 300));
         if (w.__refuseDelete)
           return json({ error: "The database needs an update (missing arena_delete_my_account)." }, 503);
         return json({ ok: true });

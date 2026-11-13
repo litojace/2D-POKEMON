@@ -113,12 +113,15 @@ iOS 26 SDK) and Node 22.
    **Any iOS Device**, then **Product → Archive → Distribute App → App
    Store Connect**. The build shows up in TestFlight after processing.
 3. Fill in the listing:
-   - **Privacy:** a privacy policy URL (required), and the privacy
+   - **Privacy:** the privacy policy URL, `https://parena.litojace.com/privacy.html` (`apps/client/public/privacy.html`; the game links to it from the menu and the sign-in panel), and the privacy
      answers: email address and user ID (accounts), gameplay content
      (matches, progress), and performance data (`arena-perf` logs frame
      rates, device memory and cores, not linked to the player).
-   - **Age rating** questionnaire: cartoon fighting; players see each
-     other's names and emotes (no chat); there's blocking and reporting.
+   - **Age rating** questionnaire: choose **13+**. The game asks for a
+     birth month and year before anyone makes an account and refuses
+     under-13s (`apps/client/src/age-gate.ts`), and the privacy policy says
+     it isn't for children under 13. Also: cartoon fighting; players see
+     each other's names and emotes (no chat); blocking and reporting exist.
    - **App Review notes:** a demo account (email and password), and that
      _Battle an AI bot_ plays a full match alone. The game server must be
      awake and healthy while Apple reviews.
