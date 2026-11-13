@@ -9,7 +9,7 @@ import {
 import { softwareRendering } from "./gpu-check";
 import { raidCameraView } from "./raid-camera";
 import { BattleQualityGovernor, resetBattleQuality } from "./battle-quality";
-import { capGameFrames, type FrameCap } from "./frame-cap";
+import { capGameFrames, screenHz, type FrameCap } from "./frame-cap";
 /** The battle's frame cap: it also knows the screen's refresh (reports). */
 let battleFrames: FrameCap | undefined;
 import {
@@ -6698,9 +6698,7 @@ function reportBattlePerf() {
     build: BUILD,
     errors,
     ...(softwareRendering() ? { gpu: "software" as const } : {}),
-    ...(battleFrames?.refresh
-      ? { hz: Math.round(1000 / battleFrames.refresh) }
-      : {}),
+    ...(screenHz(battleFrames) ? { hz: screenHz(battleFrames) } : {}),
   });
 }
 /**

@@ -1,5 +1,9 @@
 import { expect, it } from "vitest";
-import { FrameCap, capGameFrames } from "../../apps/client/src/frame-cap";
+import {
+  FrameCap,
+  capGameFrames,
+  screenHz,
+} from "../../apps/client/src/frame-cap";
 
 /** Frames drawn a second on a screen of `hz`, with rAF times that wobble. */
 function drawn(hz: number, seconds = 3, wobble = 0.4, enabled = true) {
@@ -72,4 +76,22 @@ it("gives a Phaser game every millisecond of the frames it skips", () => {
   expect(seen.length).toBeLessThan(340);
   expect(total).toBeGreaterThan(5000 - 2 * (1000 / 120));
   expect(total).toBeLessThanOrEqual(5000 + 1e-6);
+});
+
+it("is not fooled by two calls in one frame, and reports only a screen's rate", () => {
+  // A slow device (3 fps) whose loop sometimes runs twice in one frame.
+  const cap = new FrameCap();
+  let t = 0;
+  for (let i = 0; i < 60; i++) {
+    cap.draw((t += 300));
+    cap.draw((t += 0.05));
+  }
+  expect(cap.refresh).toBe(0);
+  expect(screenHz(cap)).toBeUndefined();
+  // A 120 Hz screen reports 120; nothing measured reports nothing.
+  const fast = new FrameCap();
+  t = 0;
+  for (let i = 0; i < 60; i++) fast.draw((t += 1000 / 120));
+  expect(screenHz(fast)).toBe(120);
+  expect(screenHz(undefined)).toBeUndefined();
 });

@@ -27,7 +27,19 @@ export const FRAME_CAP = {
   samples: 32,
   /** Intervals longer than this are a pause or a hitch, not the screen. */
   gap: 100,
+  /** …and shorter than this are two calls in one frame (Phaser's step can
+   * run twice, once on rAF's time and once on performance.now()): no screen
+   * refreshes faster than 250 Hz. */
+  min: 4,
 };
+
+/** The refresh rate to report (Hz), or undefined when the measure is not a
+ * screen's (a device too slow to draw every refresh measures its own pace). */
+export function screenHz(cap: FrameCap | undefined) {
+  if (!cap?.refresh) return undefined;
+  const hz = Math.round(1000 / cap.refresh);
+  return hz >= 30 && hz <= 250 ? hz : undefined;
+}
 
 export class FrameCap {
   private last: number | undefined;
@@ -44,7 +56,7 @@ export class FrameCap {
     this.last = now;
     if (last !== undefined) {
       const step = now - last;
-      if (step > 0 && step < FRAME_CAP.gap) {
+      if (step >= FRAME_CAP.min && step < FRAME_CAP.gap) {
         if (this.intervals.length < FRAME_CAP.samples)
           this.intervals.push(step);
         else this.intervals[this.next] = step;

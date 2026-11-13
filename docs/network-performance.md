@@ -468,7 +468,10 @@ Skipped frames' time goes to the next frame drawn, so the game's clocks
 (inputs, animation) keep real time. A 90 Hz screen is left alone: a cap
 there means 45 fps or an uneven 60. Low in the Plaza, Farm and Bistro keeps
 its 30 fps. Reports now carry the screen's refresh rate (`hz`), shown
-under Device, so a capped 120 Hz phone can be told from a 60 Hz one.
+under Device, so a capped 120 Hz phone can be told from a 60 Hz one. It is
+left out when the measure cannot be a screen's (below 30 or above 250 Hz):
+a device too slow to draw every refresh measures its own pace, and two
+calls of Phaser's step in one frame (0.05 ms apart) are not counted.
 
 ## Results
 
