@@ -1,0 +1,78 @@
+<!--
+  Element Arena's app icon (original art). Two elements clash across a
+  lightning seam, with the arena's gold gem at the centre.
+
+  `node scripts/generate-icons.mjs` renders it to the iPhone app icon, the
+  launch screen and the PWA icons. The launch screen draws only #emblem, on
+  the app's background colour, so keep the gem and its glow in that group
+  and everything behind it in #backdrop.
+
+  Keep the gem inside the middle 80% circle (Android's maskable safe zone)
+  and draw no text: iOS rounds the corners itself, so the square stays
+  square and opaque.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="warm" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ff9a4a"/>
+      <stop offset="1" stop-color="#d1284f"/>
+    </linearGradient>
+    <linearGradient id="cool" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#36d6ff"/>
+      <stop offset="1" stop-color="#3a3fd8"/>
+    </linearGradient>
+    <radialGradient id="vignette" cx="50%" cy="50%" r="72%">
+      <stop offset=".55" stop-color="#05081a" stop-opacity="0"/>
+      <stop offset="1" stop-color="#05081a" stop-opacity=".35"/>
+    </radialGradient>
+    <radialGradient id="glow">
+      <stop offset="0" stop-color="#ffe7a0" stop-opacity=".75"/>
+      <stop offset=".45" stop-color="#ffb84d" stop-opacity=".22"/>
+      <stop offset="1" stop-color="#ffb84d" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="table" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fffdf2"/>
+      <stop offset="1" stop-color="#ffd76e"/>
+    </linearGradient>
+    <filter id="seam-glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="18"/>
+    </filter>
+    <filter id="gem-shadow" x="-30%" y="-30%" width="160%" height="170%">
+      <feDropShadow dx="0" dy="22" stdDeviation="20" flood-color="#14082a" flood-opacity=".55"/>
+    </filter>
+  </defs>
+
+  <g id="backdrop">
+    <rect width="1024" height="1024" fill="url(#cool)"/>
+    <polygon points="-20,-20 640,-40 560,170 640,200 520,440 500,584 380,820 470,840 380,1064 -20,1064" fill="url(#warm)"/>
+    <g stroke="#fff" stroke-linecap="round" opacity=".22">
+      <line x1="60" y1="330" x2="210" y2="180" stroke-width="16"/>
+      <line x1="110" y1="930" x2="330" y2="710" stroke-width="22"/>
+      <line x1="250" y1="180" x2="340" y2="90" stroke-width="12"/>
+      <line x1="760" y1="330" x2="930" y2="160" stroke-width="22"/>
+      <line x1="690" y1="980" x2="830" y2="840" stroke-width="14"/>
+      <line x1="860" y1="760" x2="970" y2="650" stroke-width="12"/>
+    </g>
+    <rect width="1024" height="1024" fill="url(#vignette)"/>
+    <g fill="none" stroke-linejoin="miter" stroke-miterlimit="10">
+      <polyline points="640,-40 560,170 640,200 520,440 500,584 380,820 470,840 380,1064" stroke="#fff" stroke-width="80" filter="url(#seam-glow)" opacity=".85"/>
+      <polyline points="640,-40 560,170 640,200 520,440 500,584 380,820 470,840 380,1064" stroke="#fffbe6" stroke-width="26"/>
+    </g>
+  </g>
+
+  <g id="emblem">
+    <circle cx="512" cy="512" r="300" fill="url(#glow)"/>
+    <g filter="url(#gem-shadow)">
+      <polygon points="512,262 708,512 512,762 316,512" fill="none" stroke="#2a1440" stroke-width="22" stroke-linejoin="round" opacity=".55"/>
+      <polygon points="512,262 708,512 512,762 316,512" fill="#e9a93a"/>
+      <polygon points="512,262 586.5,512 512,417" fill="#fff6c8"/>
+      <polygon points="512,262 512,417 437.5,512" fill="#fffbe6"/>
+      <polygon points="316,512 437.5,512 512,417 512,262" fill="#ffe89a"/>
+      <polygon points="512,262 708,512 586.5,512" fill="#ffd66b"/>
+      <polygon points="708,512 586.5,512 512,607 512,762" fill="#e39a2c"/>
+      <polygon points="512,762 512,607 437.5,512 316,512" fill="#f5bf4f"/>
+      <polygon points="512,417 586.5,512 512,607 437.5,512" fill="url(#table)"/>
+      <polygon points="512,417 586.5,512 512,607 437.5,512" fill="none" stroke="#fff8d8" stroke-opacity=".6" stroke-width="4"/>
+    </g>
+  </g>
+</svg>
