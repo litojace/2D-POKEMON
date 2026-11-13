@@ -9,6 +9,9 @@ import {
 import { softwareRendering } from "./gpu-check";
 import { raidCameraView } from "./raid-camera";
 import { BattleQualityGovernor, resetBattleQuality } from "./battle-quality";
+import { capGameFrames, type FrameCap } from "./frame-cap";
+/** The battle's frame cap: it also knows the screen's refresh (reports). */
+let battleFrames: FrameCap | undefined;
 import {
   BattlePerfMeter,
   BUILD,
@@ -25,7 +28,12 @@ import { battleCurves } from "./battle-curves";
 import { generateGraphicsTexture } from "./graphics-bake";
 import { RoomInvites } from "./room-invites";
 import { PvpSpectator } from "./pvp-spectator";
-import { carryCurrent, predictFighter } from "./predict-fighter";
+import {
+  carryCurrent,
+  newestStep,
+  predictFighter,
+  serverSteps,
+} from "./predict-fighter";
 import { startPingBadge } from "./ping-badge";
 import { TargetLock, drawTargetReticle, type Targetable } from "./target-lock";
 import { renderTargetPicker } from "./target-picker";
@@ -484,6 +492,8 @@ let state: Snapshot | undefined,
   local: Fighter | undefined,
   pending: Input[] = [],
   scene: ArenaScene | undefined;
+/** Your late inputs the server will fold into one tick (Fighter.owed). */
+let owedSteps = 0;
 let raidPracticeReturn:
   { boss: RaidBossId; tab: RaidTab; leaveRoom: boolean } | undefined;
 let raidRoomReturn:
@@ -712,6 +722,7 @@ function identity(reply: Reply) {
   myId = reply.id!;
   seq = 0;
   pending = [];
+  owedSteps = 0;
   eventId = 0;
   scene?.hydrateNextSnapshot();
   local = undefined;
@@ -2749,6 +2760,7 @@ async function leave(returnToHub = true) {
   myId = "";
   local = undefined;
   pending = [];
+  owedSteps = 0;
   screen = "";
   renderMenu();
   $<HTMLDialogElement>("dialog").close();
@@ -3439,6 +3451,7 @@ socket.on("disconnect", (reason: string) => {
     : "RECONNECTING…";
   $("connection").classList.remove("online");
   pending = [];
+  owedSteps = 0;
   const message = dropMessage(drop);
   if (message && !replacedAccount) toast(message);
 });
@@ -3457,6 +3470,7 @@ socket.on("session-replaced", () => {
   myId = watching = "";
   local = undefined;
   pending = [];
+  owedSteps = 0;
   remoteFrames.clear();
   timeline.clear();
   shotTimeline.clear();
@@ -3551,6 +3565,7 @@ socket.on("access-revoked", ({ error }: { error: string }) => {
   myId = "";
   local = undefined;
   pending = [];
+  owedSteps = 0;
   screen = "";
   renderMenu();
   toast(error);
@@ -3615,6 +3630,7 @@ socket.on("state", (snapshot: WireSnapshot) => {
   pending = pending.filter((i) => i.seq > me.ack);
   if (me.hp <= 0 || me.out) {
     pending = [];
+    owedSteps = 0;
     if (previous?.players.some((p) => p.id === myId && p.hp > 0 && !p.out)) {
       stopControls();
       exArmedUntil = 0;
@@ -3630,10 +3646,14 @@ socket.on("state", (snapshot: WireSnapshot) => {
     me.hp > 0
       ? { x: local.x, y: local.y }
       : undefined;
-  timeline.snapshot(pending.length, receivedAt);
+  // Late inputs the server will fold into one tick take no step of their
+  // own (serverSteps, Fighter.owed).
+  owedSteps = me.owed ?? 0;
+  const steps = serverSteps(pending, owedSteps);
+  timeline.snapshot(steps.length, receivedAt);
   local = structuredClone(me);
   carryCurrent(local, state.time);
-  for (const [i, input] of pending.entries())
+  for (const [i, input] of steps.entries())
     predict(local, input, state.time + (i + 1) / RULES.tick);
   if (predicted)
     netMeter.correction(
@@ -5461,11 +5481,12 @@ class ArenaScene extends Phaser.Scene {
       this.predictCasts(
         local,
         input,
-        state.time + (pending.length + 1) / RULES.tick,
+        state.time + Math.max(1, pending.length + 1 - owedSteps) / RULES.tick,
       );
       pending.push(input);
       if (pending.length > 90) pending.shift();
-      predict(local, input, state.time + pending.length / RULES.tick);
+      const next = newestStep(pending, owedSteps);
+      if (next) predict(local, next.input, state.time + next.tick / RULES.tick);
     }
     const g = this.graphics;
     g.clear();
@@ -6677,6 +6698,9 @@ function reportBattlePerf() {
     build: BUILD,
     errors,
     ...(softwareRendering() ? { gpu: "software" as const } : {}),
+    ...(battleFrames?.refresh
+      ? { hz: Math.round(1000 / battleFrames.refresh) }
+      : {}),
   });
 }
 /**
@@ -6740,6 +6764,14 @@ function ensureBattleRenderer() {
     render: { pixelArt: false, antialias: true },
     // The camera maps the authoritative 1600x900 world onto the buffer.
     input: { activePointers: 4 },
+    // A 120 Hz phone draws the battle at about 60 frames a second, like
+    // every other screen (frame-cap.ts): half the drawing for no visible
+    // loss, so its graphics chip stays cool and the battle does not stutter.
+    callbacks: {
+      postBoot: (game) => {
+        battleFrames = capGameFrames(game);
+      },
+    },
   });
   // A player can return home while the first texture load is still finishing.
   gameInstance.events.once(Phaser.Core.Events.POST_RENDER, syncBattleLoop);

@@ -132,3 +132,45 @@ it("bounds a flood: the queue never holds more than its cap", () => {
   step(a);
   expect(100 - me.ack).toBeLessThanOrEqual(INPUT_QUEUE.depth);
 });
+
+it("folds late inputs into the ticks that ran your last one again", () => {
+  // Two duels walking right, one input a tick: in one, Wi-Fi holds three
+  // inputs and delivers them with the fourth.
+  const steady = duel(),
+    held = duel();
+  let seq = 0;
+  for (let t = 0; t < 10; t++) {
+    seq++;
+    steady.a.enqueue(steady.me, input(seq, { dx: 1 }));
+    step(steady.a);
+    if (t >= 4 && t < 7) {
+      // Nothing arrived: the server runs the last input again, and says so.
+      step(held.a);
+      expect(held.me.owed).toBe(t - 3);
+      continue;
+    }
+    if (t === 7)
+      for (let s = seq - 3; s <= seq; s++)
+        held.a.enqueue(held.me, input(s, { dx: 1 }));
+    else held.a.enqueue(held.me, input(seq, { dx: 1 }));
+    step(held.a);
+  }
+  // The late inputs went in at once: no step lost or gained, no standing
+  // queue left behind.
+  expect(held.me.ack).toBe(steady.me.ack);
+  expect(held.me.x).toBeCloseTo(steady.me.x, 6);
+  expect(held.me.owed).toBeUndefined();
+});
+
+it("forgets what it owed after a pause (no inputs were made then)", () => {
+  const { a, me } = duel();
+  a.enqueue(me, input(1, { dx: 1 }));
+  step(a);
+  for (let t = 0; t < INPUT_QUEUE.staleTicks + 5; t++) step(a);
+  expect(me.owed).toBeUndefined();
+  // The tab is back: its new inputs each take their own step.
+  a.enqueue(me, input(2, { dx: 1 }));
+  a.enqueue(me, input(3, { dx: 1 }));
+  step(a);
+  expect(me.ack).toBe(2);
+});

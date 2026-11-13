@@ -2442,6 +2442,12 @@ export interface Fighter extends Vec {
   vy: number;
   angle: number;
   ack: number;
+  /**
+   * Ticks the server ran this fighter's last input again because the next
+   * had not arrived (Arena.drainInputs); that many late inputs will be
+   * folded into one tick. Absent when none.
+   */
+  owed?: number;
   cooldowns: number[];
   /** Ultimate meter, 0 to RULES.ultMax. Carries over between rounds. */
   ult?: number;

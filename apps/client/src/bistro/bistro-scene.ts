@@ -8,6 +8,7 @@
  * this device (see bistro-model.ts for the rules).
  */
 import { CHARACTERS, type CharacterId } from "../../../../packages/shared/src";
+import { FrameCap } from "../frame-cap";
 import type { Facing } from "../animation/controller";
 import { CREATURE_VIEWBOX, creatureSvg, type Mood } from "../creature-design";
 import { profileViewBox } from "../creature-profile";
@@ -5420,17 +5421,19 @@ export function openBistro(o: BistroOptions): BistroHandle {
   let last = performance.now();
   let acc = 0;
   let running = true;
+  // A 120 Hz phone: about 60 frames a second, as everywhere (frame-cap.ts).
+  const cap = new FrameCap();
   const frame = (ts: number) => {
     if (!running || paused) return;
     raf = requestAnimationFrame(frame);
     // Up to half a second at a time (a slow device keeps the game's pace),
     // simulated in steps of at most 1/20 s.
     const dt = Math.min(0.5, (ts - last) / 1000);
-    // Low graphics: 30 frames a second.
+    // Low graphics: 30 frames a second; otherwise at most about 60.
     acc += dt;
     last = ts;
-    if (low && acc < 1 / 31) return;
-    let tick = low ? acc : dt;
+    if (low ? acc < 1 / 31 : !cap.draw(ts)) return;
+    let tick = Math.min(0.5, acc);
     acc = 0;
     while (tick > 1e-6) {
       const h = Math.min(0.05, tick);
