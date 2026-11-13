@@ -186,6 +186,11 @@ export function openProfile(hooks: ProfileHooks): ProfileScreen {
       view.deleteMessage =
         error instanceof Error ? error.message : "That didn't work. Try again.";
       render();
+      // The box was disabled while waiting, which took the focus away: put
+      // it back so Enter tries again (as the name form does).
+      root()
+        .querySelector<HTMLInputElement>("[data-profile-delete-form] input")
+        ?.focus({ preventScroll: true });
     }
   }
 
