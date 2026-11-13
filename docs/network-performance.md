@@ -425,7 +425,11 @@ The fix keeps one step per input, on both sides:
 - The server counts each repeated tick as owed and, when the late inputs
   arrive, folds that many into one tick (merged, as a burst always was).
   After `staleTicks` with nothing (a pause or a hidden tab, not a hiccup)
-  it forgets the debt. The fighter carries the count (`Fighter.owed`, only
+  it forgets the debt, and so it does when a burst is used up and part of
+  the debt is still unpaid two ticks later: then the phone itself froze,
+  its input clock (which catches up at most 100 ms) skipped those ticks,
+  and no inputs are coming for them. Kept, that debt would have had the
+  phone predict every later input a step short. The fighter carries the count (`Fighter.owed`, only
   while it is above 0).
 - The phone replays its pending inputs as the server will step them
   (`serverSteps` and `newestStep`, predict-fighter.ts): the owed inputs take

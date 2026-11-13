@@ -174,3 +174,39 @@ it("forgets what it owed after a pause (no inputs were made then)", () => {
   step(a);
   expect(me.ack).toBe(2);
 });
+
+it("drops a debt no late inputs are coming for (the phone itself froze)", () => {
+  // The phone froze for 200 ms: the server ran its last input six times,
+  // but the phone's input clock catches up at most 100 ms (three inputs).
+  const { a, me } = duel();
+  let seq = 0;
+  for (let t = 0; t < 3; t++) {
+    a.enqueue(me, input(++seq, { dx: 1 }));
+    step(a);
+  }
+  for (let t = 0; t < 6; t++) step(a);
+  expect(me.owed).toBe(6);
+  for (let t = 0; t < 3; t++) a.enqueue(me, input(++seq, { dx: 1 }));
+  step(a);
+  // Then one input a tick again: the rest of the debt can never be repaid,
+  // so it is forgotten within a few ticks...
+  for (let t = 0; t < 3; t++) {
+    a.enqueue(me, input(++seq, { dx: 1 }));
+    step(a);
+  }
+  expect(me.owed).toBeUndefined();
+  // ...and every input after it is one step, as the phone predicts.
+  const x = me.x;
+  for (let t = 0; t < 5; t++) {
+    a.enqueue(me, input(++seq, { dx: 1 }));
+    step(a);
+  }
+  expect(me.ack).toBe(seq);
+  expect(me.x - x).toBeGreaterThan(0);
+  const perStep = (me.x - x) / 5;
+  a.enqueue(me, input(++seq, { dx: 1 }));
+  const before = me.x;
+  step(a);
+  // One step (about 9 px), not none or two.
+  expect(me.x - before).toBeCloseTo(perStep, 1);
+});

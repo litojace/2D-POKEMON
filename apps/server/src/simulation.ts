@@ -116,6 +116,8 @@ export const INPUT_QUEUE = {
   cap: 8,
   standingTicks: 30,
   staleTicks: 15,
+  /** Ticks an unpaid debt waits for the rest of a burst (see drainInputs). */
+  unpaidTicks: 2,
 };
 export class Arena {
   activityStatus?: "saving" | "saved" | "unavailable";
@@ -168,6 +170,8 @@ export class Arena {
       idle: number;
       /** Ticks that ran the last input again with nothing queued. */
       owed: number;
+      /** Ticks in a row a debt was left unpaid with the queue emptied. */
+      unpaid: number;
     }
   >();
   nextPracticeZone = 0;
@@ -579,6 +583,7 @@ export class Arena {
         minDepth: Infinity,
         idle: 0,
         owed: 0,
+        unpaid: 0,
       };
       this.inputQueues.set(p.id, q);
     }
@@ -634,6 +639,14 @@ export class Arena {
       // Late inputs whose steps a repeated tick already took: fold them in.
       apply = Math.max(apply, Math.min(q.inputs.length, 1 + q.owed));
       q.owed = Math.max(0, q.owed - (apply - 1));
+      // The burst is used up and some of the debt is left: the rest may
+      // still be on its way (a tick later), but if the phone itself froze,
+      // its input clock skipped those ticks and no inputs are coming for
+      // them. Unpaid for `unpaidTicks` ticks, the debt is forgotten (else
+      // the phone would predict every later input a step short).
+      if (q.owed > 0 && q.inputs.length <= apply) {
+        if (++q.unpaid > INPUT_QUEUE.unpaidTicks) q.owed = q.unpaid = 0;
+      } else q.unpaid = 0;
       this.showOwed(p, q.owed);
       // A queue that never emptied for a second adds standing latency:
       // apply one extra input to shorten it.
