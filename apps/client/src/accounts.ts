@@ -1,3 +1,7 @@
+import {
+  nameAllowed,
+  NAME_NOT_ALLOWED,
+} from "../../../packages/shared/src/name-filter";
 import { framedAvatar } from "./portraits";
 import { openFittingRoom, type FittingRoom } from "./screens/fitting-room";
 import type { FitMode, ShopSection } from "./screens/fitting-room-view";
@@ -47,7 +51,10 @@ import {
   friendCode,
   SERVER_TIME_HEADER,
   type Friend,
+  blockedListSchema,
+  type BlockedPlayer,
 } from "../../../packages/shared/src/accounts";
+import { askConfirm } from "./ui/hub-panel";
 import { CHARACTERS, type CharacterId } from "@arena/shared";
 import { renderOnline } from "./admin-online";
 import { openProfile, type ProfileScreen } from "./screens/profile";
@@ -277,6 +284,7 @@ export class AccountUI {
       this.raidClears = {};
       this.economy = undefined;
       this.savedFighter = undefined;
+      this.blocked = [];
       clearTimeout(this.fighterTimer);
     }
     this.hooks.onSession(session?.access_token ?? null, session?.user.id);
@@ -291,6 +299,7 @@ export class AccountUI {
         // A new login: start on the fighter this account last picked, on
         // whatever device (not awaited: the rest of the profile goes on).
         if (!samePlayer) void this.loadSavedFighter(version);
+        if (!samePlayer) void this.loadBlocked(version);
         try {
           const progress = (await this.api("/api/raids")) as RaidProgress;
           if (version !== this.generation) return;
@@ -373,6 +382,63 @@ export class AccountUI {
    * picked another one while it was asked for. With none saved yet, the
    * fighter on screen is saved.
    */
+  /** The players you blocked (migration 110), newest first. */
+  blocked: BlockedPlayer[] = [];
+  private async loadBlocked(version = this.generation) {
+    try {
+      const list = blockedListSchema.parse(await this.api("/api/blocks"));
+      if (version === this.generation) this.blocked = list;
+    } catch {
+      // Before migration 110 nobody is blocked.
+    }
+    this.friendsScreen?.refresh();
+  }
+  isBlocked(id: string | null | undefined) {
+    return !!id && this.blocked.some((b) => b.id === id);
+  }
+  /**
+   * Block a player, after asking: they leave your friends, can't send you
+   * requests or invites, and disappear from your Plaza. Resolves true once
+   * blocked; throws the server's reason.
+   */
+  async block(id: string, name: string) {
+    const sure = await askConfirm({
+      kicker: "Block player",
+      title: `Block ${name}?`,
+      lines: [
+        ["Friends", "Removed, with any requests"],
+        ["Requests and invites", "They can't send you any"],
+        ["Plaza", "You won't see them"],
+      ],
+      extra:
+        '<p class="ui-note">They aren\'t told. You can unblock them under Friends → Recent.</p>',
+      confirm: "Block",
+    });
+    if (!sure) return false;
+    await this.api("/api/blocks", { playerId: id, block: true });
+    this.blocked = [{ id, name }, ...this.blocked.filter((b) => b.id !== id)];
+    await this.afterBlockChange(id);
+    return true;
+  }
+  async unblock(id: string) {
+    await this.api("/api/blocks", { playerId: id, block: false });
+    this.blocked = this.blocked.filter((b) => b.id !== id);
+    await this.afterBlockChange(id);
+  }
+  private async afterBlockChange(id: string) {
+    const account = this.account?.id;
+    if (!account) return;
+    const recent = this.friendsData.recent;
+    if (recent && this.isBlocked(id))
+      this.friendsData = {
+        ...this.friendsData,
+        recent: recent.map((p) =>
+          p.id === id ? { ...p, relation: "none" } : p,
+        ),
+      };
+    if (this.friendsScreen?.isOpen) await this.loadFriendList(account);
+    this.friendsScreen?.refresh();
+  }
   private async loadSavedFighter(version: number) {
     const picks = this.fighterPicks;
     let fighter: unknown;
@@ -628,6 +694,10 @@ export class AccountUI {
         const nickname = String(
           new FormData(guestForm).get("nickname") ?? "",
         ).trim();
+        if (nickname && !nameAllowed(nickname)) {
+          message.textContent = NAME_NOT_ALLOWED;
+          return;
+        }
         button.disabled = true;
         message.textContent = "Setting up your guest pass…";
         // Keep the guest login on this device: it can't be recovered later.
@@ -659,6 +729,14 @@ export class AccountUI {
         password !== fields.get("confirmPassword")
       ) {
         message.textContent = "Passwords do not match.";
+        return;
+      }
+      // The database would quietly name them "Trainer": say so first.
+      if (
+        mode === "signup" &&
+        !nameAllowed(String(fields.get("displayName") ?? ""))
+      ) {
+        message.textContent = NAME_NOT_ALLOWED;
         return;
       }
       submit.disabled = true;
@@ -1252,6 +1330,7 @@ export class AccountUI {
         const party = this.hooks.raidParty?.();
         return {
           ...this.friendsData,
+          blocked: this.blocked,
           room,
           party: {
             size: Math.max(1, party?.party.length ?? 1),
@@ -1303,6 +1382,8 @@ export class AccountUI {
         else await this.loadFriendList(accountId);
         return text;
       },
+      block: (id, name) => this.block(id, name),
+      unblock: (id) => this.unblock(id),
       inviteToParty: async (id) => ok(await this.hooks.inviteToParty?.(id)),
       inviteToRoom: async (id) => ok(await this.hooks.inviteFriend?.(id)),
       join: (code) => this.hooks.joinRoom?.(code),
@@ -1465,17 +1546,23 @@ export class AccountUI {
     }
   }
   /** Ask the admin team for help. `context` is attached automatically. */
-  showReport(context: Record<string, string> = {}) {
+  showReport(
+    context: Record<string, string> = {},
+    category?: keyof typeof REPORT_CATEGORIES,
+  ) {
     if (!this.account) {
       this.hooks.notify("Log in to report a problem.");
       this.showAuth("login");
       return;
     }
     this.hooks.openDialog(
-      `<div class="eyebrow">Help us fix it</div><h2>Report a problem</h2><p>Tell the admins what happened. Your current screen${context.room ? ` and room code ${escape(context.room)}` : ""} are included automatically.</p><form id="report-form" class="account-form"><label>What kind of problem?<select name="category" required>${Object.entries(
+      `<div class="eyebrow">Help us fix it</div><h2>${context.playerName ? `Report ${escape(context.playerName)}` : "Report a problem"}</h2><p>Tell the admins what happened. Your current screen${context.playerName ? " and who you're reporting" : ""}${context.room ? ` and room code ${escape(context.room)}` : ""} are included automatically.</p><form id="report-form" class="account-form"><label>What kind of problem?<select name="category" required>${Object.entries(
         REPORT_CATEGORIES,
       )
-        .map(([value, label]) => `<option value="${value}">${label}</option>`)
+        .map(
+          ([value, label]) =>
+            `<option value="${value}"${value === category ? " selected" : ""}>${label}</option>`,
+        )
         .join(
           "",
         )}</select></label><label>What happened?<textarea name="message" rows="5" minlength="5" maxlength="1000" required placeholder="What were you doing, and what went wrong?"></textarea></label><small class="report-count" id="report-count">0 / 1000</small><button class="primary" type="submit">${iconLabel("report", "Send report")}</button><p id="report-message" role="status"></p></form>`,

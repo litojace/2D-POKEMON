@@ -1991,10 +1991,30 @@ function syncPlaza(want: boolean, hub = want) {
     loadProgress: async () =>
       (await accountsUI.api("/api/plaza")) as PlazaProgress,
     goFarm: () => setHubScene("farm"),
-    onPlayer: async (action, playerId) => {
+    isBlocked: (accountId) => accountsUI.isBlocked(accountId),
+    onPlayer: async (action, playerId, name) => {
       if (action === "friend") {
         await accountsUI.friendRequest({ playerId });
         return;
+      }
+      if (action === "report") {
+        accountsUI.showReport(
+          { ...reportContext(), player: playerId, playerName: name },
+          "player",
+        );
+        return true;
+      }
+      if (action === "block") {
+        try {
+          const done = await accountsUI.block(playerId, name);
+          if (done) toast(`${name} is blocked.`);
+          return done;
+        } catch (error) {
+          toast(
+            error instanceof Error ? error.message : "Couldn't block them.",
+          );
+          return false;
+        }
       }
       const reply = await request("party-invite", {
         playerId,

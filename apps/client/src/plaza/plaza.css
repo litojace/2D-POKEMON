@@ -1060,6 +1060,23 @@
 .plaza-layer .pz-card .pc-acts button:disabled {
   opacity: 0.5;
 }
+/* Report and Block: smaller and quieter, under the main two. */
+.plaza-layer .pz-card .pc-safety {
+  margin-top: 6px;
+}
+.plaza-layer .pz-card .pc-safety button {
+  min-height: 34px;
+  padding: 0.4em;
+  background: transparent;
+  border: 1px solid #ffffff2e;
+  color: #c9d3ea;
+  font-weight: 700;
+  font-size: 0.9em;
+}
+.plaza-layer .pz-card .pc-safety .pc-block {
+  border-color: #ff6b6b80;
+  color: #ff9b9b;
+}
 
 /* ---------- the polaroid and the photo album ----------
    Both dim the whole screen (the safe areas too) and keep their cards below

@@ -1250,7 +1250,7 @@ export function openPlaza(options) {
     if (!p?.accountId) return;
     cardFor = p;
     const card = $("pz-card");
-    card.innerHTML = `<div class="pc-h"><img src="${b.img?.src ?? ""}" alt=""><div><b>${esc(p.name)}</b><small>${p.level ? `Lv ${p.level}` : ""}${p.title ? ` · <span style="color:${esc(p.titleColor ?? "#ffd65b")}">${esc(p.title)}</span>` : ""}</small></div><button type="button" class="x" data-pc="close" aria-label="Close">✕</button></div><div class="pc-acts"><button type="button" data-pc="friend">Add friend</button><button type="button" data-pc="party">Invite to party</button></div>`;
+    card.innerHTML = `<div class="pc-h"><img src="${b.img?.src ?? ""}" alt=""><div><b>${esc(p.name)}</b><small>${p.level ? `Lv ${p.level}` : ""}${p.title ? ` · <span style="color:${esc(p.titleColor ?? "#ffd65b")}">${esc(p.title)}</span>` : ""}</small></div><button type="button" class="x" data-pc="close" aria-label="Close">✕</button></div><div class="pc-acts"><button type="button" data-pc="friend">Add friend</button><button type="button" data-pc="party">Invite to party</button></div><div class="pc-acts pc-safety"><button type="button" data-pc="report">Report</button><button type="button" data-pc="block" class="pc-block">Block</button></div>`;
     card.hidden = false;
   }
   function hideCard() {
@@ -1262,11 +1262,17 @@ export function openPlaza(options) {
     if (!b) return;
     if (b.dataset.pc === "close" || !cardFor) return hideCard();
     b.disabled = true;
+    let close = false;
     try {
-      await options.onPlayer(b.dataset.pc, cardFor.accountId);
+      close = !!(await options.onPlayer(
+        b.dataset.pc,
+        cardFor.accountId,
+        cardFor.name,
+      ));
     } finally {
       b.disabled = false;
     }
+    if (close) hideCard();
     screen.focus({ preventScroll: true });
   });
   const joyEl = $("pz-joy"),
@@ -1846,9 +1852,11 @@ export function openPlaza(options) {
         if (!(flags & PLAZA_FLAG.boost)) P.boost = 0;
         continue;
       }
+      const p = profiles.get(id);
+      // Players you blocked aren't drawn, tappable or heard (their emotes).
+      if (p?.accountId && options.isBlocked?.(p.accountId)) continue;
       seen.add(id);
       let b = others.get(id);
-      const p = profiles.get(id);
       if (!b) {
         b = decorate({
           id,

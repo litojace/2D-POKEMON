@@ -388,6 +388,89 @@ test("tapping a player shows their card, to add them or invite them", async ({
   expect(errors).toEqual([]);
 });
 
+test("block a player from their card: asked first, gone from the Plaza, unblocked under Friends", async ({
+  page,
+}, info) => {
+  await page.setViewportSize({ width: 844, height: 390 });
+  const errors = await openPlaza(page);
+  await page.evaluate(() => {
+    const w = window as any,
+      me = w.__plazaWorld.bodyOf("local");
+    w.__plazaWorld.join("other", "acct-other", {
+      name: "Rin",
+      title: null,
+      titleColor: null,
+      level: 7,
+      character: "tidefin",
+      skin: null,
+    });
+    Object.assign(w.__plazaWorld.bodyOf("other"), { x: me.x + 90, y: me.y });
+    // Blocking, answered as migration 110 does.
+    w.__blocks = [];
+    w.__blockCalls = [];
+    const fetch = window.fetch.bind(window);
+    window.fetch = async (input, init) => {
+      const path = new URL(String(input), location.href).pathname;
+      if (path === "/api/blocks") {
+        if (init?.method === "POST") {
+          const body = JSON.parse(String(init.body));
+          w.__blockCalls.push(body);
+          w.__blocks = body.block
+            ? [{ id: body.playerId, name: "Rin" }]
+            : w.__blocks.filter((b: any) => b.id !== body.playerId);
+          return Response.json({ ok: true });
+        }
+        return Response.json(w.__blocks);
+      }
+      return fetch(input, init);
+    };
+  });
+  const rinShown = () =>
+    page.evaluate(() =>
+      [...(window as any).__plaza.others.values()].some(
+        (b: any) => b.name === "Rin",
+      ),
+    );
+  await expect.poll(rinShown, { timeout: 15_000 }).toBe(true);
+  const spot = await page.evaluate(() => {
+    const p = (window as any).__plaza,
+      rin = [...p.others.values()].find((b: any) => b.name === "Rin");
+    return p.worldClient(rin.tx, rin.ty - 30);
+  });
+  await page.mouse.click(spot.x, spot.y);
+  const card = page.locator("#pz-card");
+  await expect(card.locator('[data-pc="block"]')).toBeVisible();
+  await expect(card.locator('[data-pc="report"]')).toBeVisible();
+  await snap(page, info, "plaza-player-card-block-844x390");
+  // Block asks first; Cancel changes nothing.
+  await card.locator('[data-pc="block"]').click();
+  const confirm = page.locator("[data-ui-confirm] .ui-modal");
+  await expect(confirm).toContainText("Block Rin?");
+  await confirm.locator("[data-ui-cancel]").click();
+  expect(await page.evaluate(() => (window as any).__blockCalls)).toEqual([]);
+  await card.locator('[data-pc="block"]').click();
+  await page.locator("[data-ui-confirm] [data-ui-confirm-ok]").click();
+  await expect(page.locator("#toast")).toContainText("Rin is blocked.");
+  await expect(card).toBeHidden();
+  await expect.poll(rinShown, { timeout: 15_000 }).toBe(false);
+  expect(await page.evaluate(() => (window as any).__blockCalls)).toEqual([
+    { playerId: "acct-other", block: true },
+  ]);
+  // Unblock under Friends → Recent.
+  await page.click('#hub-scenes [data-hub-scene="lobby"]');
+  await page.click('.lobby-rail [data-lobby-action="friends"]');
+  const sheet = page.locator(".friends-sheet");
+  await expect(sheet).toBeVisible();
+  await sheet.locator('[data-ui-friends-tab="recent"]').click();
+  await expect(sheet.locator(".fr-blocked")).toContainText("Rin");
+  await snap(page, info, "friends-blocked-844x390");
+  await sheet.locator('[data-friend-unblock="acct-other"]').click();
+  await expect(sheet.locator(".fr-status")).toHaveText("Unblocked.");
+  await expect(sheet.locator(".fr-blocked")).toHaveCount(0);
+  expect(await page.evaluate(() => (window as any).__blocks)).toEqual([]);
+  expect(errors).toEqual([]);
+});
+
 test("a treat from your barn bursts for everyone, and T throws one too", async ({
   page,
 }, info) => {

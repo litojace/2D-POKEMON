@@ -117,6 +117,20 @@ Players delete their own account from their player card: **Delete account** at t
 - **Sign in with Apple:** Apple also asks apps to revoke the player's Apple tokens when the account is deleted. Supabase doesn't keep the Apple token needed for that, so the game can't do it yet. Apple's guidance is to finish the deletion anyway, and the game then tells the player how to remove Element Arena under **Sign in with Apple** in their Apple Account settings. Revoking automatically needs the native iPhone sign-in (which can hand the server the token) and a small server step.
 - Supabase may keep a deleted login in its own backups for a while; see Supabase's documentation for how long.
 
+## Blocking players and the name filter
+
+Players see each other's names and meet strangers in the Plaza, so the App Store asks for a name filter and a way to block people (App Review Guideline 1.2). Both need [migration 110](../supabase/migrations/110_blocks_and_name_filter.sql) (after 109).
+
+**Name filter.** A trigger on `arena_profiles` checks every new name, however it's set: sign-up, a guest's nickname, a Google or Apple name, a name change, or an admin's rename. A refused name picked at sign-up becomes "Trainer"; a refused change says "That name isn't allowed." Names in use before the migration stay until they change. The check reads names the way people try to get around filters: case, accents, look-alike digits (`5h1t`), and spaces or dots between letters (`f.u c k`). Short words that hide inside ordinary ones ("ass" in "class", "cock" in "peacock") are refused only as words of their own. It also refuses "admin", "moderator", "official", "staff" and the game's name, so nobody poses as the team. The words are in `arena_name_words`; the client has the same lists in `packages/shared/src/name-filter.ts` to answer before it asks, and `tests/integration/name-filter.test.ts` fails if the two differ. To add a word, add it to both and to the test's examples. It catches the common cases, not every spelling: players can still report a name, and admins can rename.
+
+**Blocking.** Tap someone in the Plaza for **Block** (and **Report**), or use **Block** on a Recent player or in a friend's options (Friends sheet). Blocking asks first, then:
+
+- ends the friendship and any friend requests both ways, so farm and bistro visits, room invites and party invites stop too (those are for friends);
+- drops their future friend requests without telling them; you're asked to unblock before sending one yourself;
+- hides them from your Plaza (you don't see them, can't tap them, and don't see their emotes).
+
+They aren't told. Blocked players are listed at the bottom of Friends → Recent, with **Unblock**. A player can block up to 500 others. Matches are in private rooms you join by code, so there is no matchmaking to keep blocked players apart.
+
 ## Player and title management
 
 **Admin → Players & titles** supports searching/pagination, renaming players, suspending/reactivating ordinary players, creating/editing/retiring titles, and granting/revoking title ownership. Updates are recorded in `arena_admin_audit` for trusted database inspection. Players open their name in navigation to equip one of their granted, active titles. Equipped titles appear above their creatures. Retired and revoked titles cannot be equipped.

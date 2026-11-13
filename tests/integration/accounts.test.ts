@@ -463,6 +463,55 @@ it("lets a player delete their own account, confirmed, and never an administrato
   await told;
   expect((await post({ confirm: true })).status).toBe(401);
 });
+it("blocks and unblocks through the database, and lists who you blocked", async () => {
+  const player = accounts.add(false),
+    other = accounts.add(false);
+  const calls: { name: string; args: Record<string, unknown> }[] = [];
+  accounts.provider.rpc = async (_token, name, args) => {
+    calls.push({ name, args });
+    return name === "arena_blocked_players"
+      ? [{ id: other.account.id, name: "Player 2" }]
+      : null;
+  };
+  const headers = {
+    Authorization: `Bearer ${player.token}`,
+    "Content-Type": "application/json",
+  };
+  const post = (body: unknown) =>
+    fetch(`${url}/api/blocks`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
+    });
+  expect((await fetch(`${url}/api/blocks`)).status).toBe(401);
+  const list = await fetch(`${url}/api/blocks`, { headers });
+  expect(list.status).toBe(200);
+  expect(await list.json()).toEqual([
+    { id: other.account.id, name: "Player 2" },
+  ]);
+  // A bad id, a missing flag or an extra field never reach the database.
+  expect((await post({ playerId: "nope", block: true })).status).toBe(400);
+  expect((await post({ playerId: other.account.id })).status).toBe(400);
+  expect(
+    (await post({ playerId: other.account.id, block: true, why: "x" })).status,
+  ).toBe(400);
+  expect((await post({ playerId: other.account.id, block: true })).status).toBe(
+    200,
+  );
+  expect(
+    (await post({ playerId: other.account.id, block: false })).status,
+  ).toBe(200);
+  expect(calls.filter((c) => c.name === "arena_block_player")).toEqual([
+    {
+      name: "arena_block_player",
+      args: { p_player: other.account.id, p_block: true },
+    },
+    {
+      name: "arena_block_player",
+      args: { p_player: other.account.id, p_block: false },
+    },
+  ]);
+});
 it("clears a detached reservation when the owner explicitly leaves after reconnecting", async () => {
   const owner = accounts.add(true),
     socket = await connect(owner.token);

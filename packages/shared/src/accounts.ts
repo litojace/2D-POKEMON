@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { nameAllowed, NAME_NOT_ALLOWED } from "./name-filter.js";
 export const titleSchema = z.object({
   id: z.string().uuid(),
   name: z.string().min(1).max(40),
@@ -155,6 +156,7 @@ export function checkName(raw: string, current: string) {
   if (/^[\p{P}\p{S}\s]+$/u.test(name))
     return { name, problem: "Use at least one letter or number." };
   if (name === current) return { name, problem: "That is already your name." };
+  if (!nameAllowed(name)) return { name, problem: NAME_NOT_ALLOWED };
   return { name, problem: "" };
 }
 
@@ -429,6 +431,15 @@ export const partyRoomSchema = z
     mode: z.enum(["duel", "teams", "ffa", "raid"]),
   })
   .strict();
+/** Block or unblock a player (migration 110). */
+export const blockSchema = z
+  .object({ playerId: z.string().uuid(), block: z.boolean() })
+  .strict();
+/** The players you blocked, newest first. */
+export const blockedListSchema = z.array(
+  z.object({ id: z.string(), name: z.string() }),
+);
+export type BlockedPlayer = z.infer<typeof blockedListSchema>[number];
 export const friendRequestSchema = z
   .object({
     code: z

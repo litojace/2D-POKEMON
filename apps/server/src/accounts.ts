@@ -51,6 +51,7 @@ import {
   matchReportSchema,
   friendsSchema,
   friendRequestSchema,
+  blockSchema,
   friendRespondSchema,
   friendRemoveSchema,
   ratingSchema,
@@ -60,7 +61,7 @@ import {
   type OnlineList,
 } from "../../../packages/shared/src/accounts.js";
 /** The newest database migration the server expects. */
-export const LATEST_MIGRATION = "109_delete_my_account.sql";
+export const LATEST_MIGRATION = "110_blocks_and_name_filter.sql";
 /** The migration that last redefined the raid appearance functions. */
 export const RAID_FUNCTIONS_MIGRATION = "018_collection_equipping.sql";
 export interface AccountProvider {
@@ -459,6 +460,28 @@ export function installAccountRoutes(
       if (data.playerId) onFriendsChanged(data.playerId);
       else friendsChangedByCode(data.code!);
       res.json({ result });
+    }),
+  );
+  // Blocking (migration 110): the players you blocked, and block/unblock.
+  // Blocking ends the friendship, so both players' lists refresh.
+  app.get(
+    "/api/blocks",
+    route(false, async (_req, res, token) => {
+      res.setHeader("Cache-Control", "no-store");
+      res.json(await provider.rpc(token, "arena_blocked_players", {}));
+    }),
+  );
+  app.post(
+    "/api/blocks",
+    route(false, async (req, res, token, account) => {
+      const data = blockSchema.parse(req.body);
+      await provider.rpc(token, "arena_block_player", {
+        p_player: data.playerId,
+        p_block: data.block,
+      });
+      onFriendsChanged(data.playerId);
+      onFriendsChanged(account.id);
+      res.json({ ok: true });
     }),
   );
   app.post(

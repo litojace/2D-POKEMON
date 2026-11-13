@@ -253,6 +253,10 @@ describe("your name", () => {
     expect(checkName("Ben\nny", "tester").problem).toBe("That name has characters that can't be shown.");
     expect(checkName("!!! ...", "tester").problem).toBe("Use at least one letter or number.");
     expect(checkName(" tester ", "tester").problem).toBe("That is already your name.");
+    expect(checkName("Sh1t Happens", "tester").problem).toBe(
+      "That name isn't allowed. Please choose another.",
+    );
+    expect(checkName("Badminton Ace", "tester").problem).toBe("");
   });
   it("is locked until the server says, counted on the server's clock", () => {
     const now = Date.parse("2026-11-06T12:00:00Z");

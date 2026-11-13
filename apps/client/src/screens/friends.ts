@@ -26,6 +26,9 @@ export interface FriendsHooks {
   remove(id: string): Promise<void>;
   /** Send a request (by code or id); resolves with what happened. */
   request(body: { code?: string; playerId?: string }): Promise<string>;
+  /** Block a player (asks first); resolves true once blocked. */
+  block(id: string, name: string): Promise<boolean>;
+  unblock(id: string): Promise<void>;
   inviteToParty(id: string): Promise<Reply>;
   inviteToRoom(id: string): Promise<Reply>;
   join(code: string): void;
@@ -215,6 +218,21 @@ export function openFriends(hooks: FriendsHooks): FriendsScreen {
       void act(id, async () => {
         await hooks.remove(id);
         return "Request cancelled.";
+      });
+    } else if (d.friendBlock) {
+      const id = d.friendBlock,
+        name = d.friendName ?? "this player";
+      void act(id, async () => {
+        const done = await hooks.block(id, name);
+        if (!done) return "";
+        view.menu = view.removing = null;
+        return `${name} is blocked.`;
+      });
+    } else if (d.friendUnblock) {
+      const id = d.friendUnblock;
+      void act(id, async () => {
+        await hooks.unblock(id);
+        return "Unblocked.";
       });
     } else if (d.friendAddId) {
       const id = d.friendAddId;
