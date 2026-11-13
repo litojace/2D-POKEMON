@@ -12,7 +12,7 @@ import { prewarmAtlas as gloomshade } from "./boss-vector-gloom-rig";
 import { prewarmAtlas as somnara } from "./boss-vector-somnara-rig";
 import { prewarmAtlas as prismaRig } from "./boss-vector-prisma-rig";
 import { prewarmAtriumAtlas } from "./raid-prismatail-atrium-rig";
-import { prewarmAtlas as emberwing } from "./boss-vector-ember-rig";
+import { prewarmLumiwick } from "./boss-lumiwick-rig";
 import { prewarmAtlas as twins } from "./boss-vector-twins-rig";
 
 const PREWARM: Record<RaidBossId, (scene: Phaser.Scene, phase: Phase) => void> =
@@ -26,7 +26,8 @@ const PREWARM: Record<RaidBossId, (scene: Phaser.Scene, phase: Phase) => void> =
       prismaRig(scene, phase);
       prewarmAtriumAtlas(scene);
     },
-    emberwing,
+    // Lumiwick (Emberwing's id) paints one atlas for every phase.
+    emberwing: (scene) => prewarmLumiwick(scene),
     "storm-twins": twins,
   };
 /** Draw this boss's atlas for the phase the raid is in. */
