@@ -1,3 +1,5 @@
+import { appleConfig, exchangeAppleCode, revokeAppleToken } from "./apple.js";
+import { clientOrigins } from "./api-cors.js";
 import type {
   PlazaProgress,
   PlazaRecord,
@@ -41,6 +43,7 @@ import {
   suspendSchema,
   deletePlayerSchema,
   deleteMyAccountSchema,
+  appleCodeSchema,
   deleteTitleSchema,
   reportSchema,
   resolveReportSchema,
@@ -61,7 +64,7 @@ import {
   type OnlineList,
 } from "../../../packages/shared/src/accounts.js";
 /** The newest database migration the server expects. */
-export const LATEST_MIGRATION = "110_blocks_and_name_filter.sql";
+export const LATEST_MIGRATION = "111_apple_tokens.sql";
 /** The migration that last redefined the raid appearance functions. */
 export const RAID_FUNCTIONS_MIGRATION = "018_collection_equipping.sql";
 export interface AccountProvider {
@@ -73,11 +76,24 @@ export interface AccountProvider {
   authenticate(token: string): Promise<Account | null>;
   /** Read-only rows for friends' ratings and recent players (step 6). */
   social?: SocialStore;
+  /** Sign in with Apple tokens, for revoking on deletion (migration 111). */
+  apple?: AppleTokenStore;
   rpc(
     token: string,
     name: string,
     args: Record<string, unknown>,
   ): Promise<unknown>;
+}
+export interface AppleToken {
+  sub: string;
+  clientId: string;
+  refreshToken: string;
+}
+export interface AppleTokenStore {
+  /** Apple's id for the signed-in player, if they signed in with Apple. */
+  subjectOf(token: string): Promise<string | null>;
+  save(playerId: string, token: AppleToken): Promise<void>;
+  tokenOf(playerId: string): Promise<AppleToken | null>;
 }
 export class AccountError extends Error {
   constructor(
@@ -155,8 +171,50 @@ export function createAccountProvider(): AccountProvider {
       },
     });
   };
+  const admin = () => {
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!url || !serviceKey)
+      throw new AccountError(503, "Server storage is not configured.");
+    return createClient(url, serviceKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+  };
   return {
     social: supabaseSocialStore(),
+    apple: {
+      async subjectOf(token) {
+        const { data, error } = await client(token).auth.getUser(token);
+        if (error || !data.user) return null;
+        const apple = data.user.identities?.find((i) => i.provider === "apple");
+        const sub = apple?.identity_data?.sub ?? apple?.id;
+        return typeof sub === "string" && sub ? sub : null;
+      },
+      async save(playerId, token) {
+        const result = await admin().rpc("arena_apple_token_save", {
+          p_player: playerId,
+          p_sub: token.sub,
+          p_client: token.clientId,
+          p_token: token.refreshToken,
+        });
+        if (result.error)
+          throw new AccountError(
+            503,
+            "The Sign in with Apple token couldn't be kept.",
+            result.error.message,
+          );
+      },
+      async tokenOf(playerId) {
+        const result = await admin().rpc("arena_apple_token_of", {
+          p_player: playerId,
+        });
+        if (result.error)
+          throw new AccountError(503, "Apple tokens are unavailable.");
+        const t = result.data as Partial<AppleToken> | null;
+        return t?.sub && t.clientId && t.refreshToken
+          ? { sub: t.sub, clientId: t.clientId, refreshToken: t.refreshToken }
+          : null;
+      },
+    },
     async recordRaid(receipt) {
       const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
       if (!url || !serviceKey)
@@ -279,10 +337,7 @@ export function installAccountRoutes(
       try {
         originHost = new URL(origin).host;
       } catch {}
-      if (
-        originHost !== req.get("host") &&
-        origin !== process.env.CLIENT_ORIGIN
-      )
+      if (originHost !== req.get("host") && !clientOrigins().includes(origin))
         return res.status(403).json({ error: "This origin is not allowed." });
     }
     const key = req.ip ?? "unknown",
@@ -380,9 +435,44 @@ export function installAccountRoutes(
       res.json(result);
     }),
   );
+  // Sign in with Apple in the iPhone app: keep Apple's refresh token
+  // (migration 111) so deleting the account can revoke it. The code is
+  // traded with Apple here; Apple's answer must name the same Apple account
+  // the player is signed in with.
+  app.post(
+    "/api/account/apple",
+    route(false, async (req, res, token, account) => {
+      const { code } = appleCodeSchema.parse(req.body);
+      const cfg = appleConfig();
+      if (!cfg || !provider.apple)
+        throw new AccountError(503, "Sign in with Apple isn't set up here.");
+      const sub = await provider.apple.subjectOf(token);
+      if (!sub)
+        throw new AccountError(400, "This account isn't signed in with Apple.");
+      let issued;
+      try {
+        issued = await exchangeAppleCode(cfg, code);
+      } catch (error) {
+        throw new AccountError(
+          400,
+          "Apple didn't accept that sign-in. Try signing in again.",
+          error instanceof Error ? error.message : String(error),
+        );
+      }
+      if (issued.sub !== sub)
+        throw new AccountError(
+          403,
+          "That Apple sign-in is for another account.",
+        );
+      await provider.apple.save(account.id, issued);
+      res.json({ ok: true });
+    }),
+  );
   // Delete your own account (App Store 5.1.1(v), migration 109). The
   // database removes the login and everything that belongs to it; open
-  // games drop the player once their login no longer checks out.
+  // games drop the player once their login no longer checks out. A kept
+  // Sign in with Apple token is revoked first (Apple's TN3194); if that
+  // fails the account is deleted anyway, as Apple asks.
   app.post(
     "/api/account/delete",
     route(false, async (req, res, token, account) => {
@@ -392,11 +482,29 @@ export function installAccountRoutes(
           403,
           "Administrators cannot delete their own account here.",
         );
+      const appleRevoked = await revokeAppleFor(account.id);
       await provider.rpc(token, "arena_delete_my_account", {});
       onPlayerChanged(account.id);
-      res.json({ ok: true });
+      res.json({ ok: true, appleRevoked });
     }),
   );
+  async function revokeAppleFor(playerId: string) {
+    const cfg = appleConfig();
+    if (!cfg || !provider.apple) return false;
+    try {
+      const kept = await provider.apple.tokenOf(playerId);
+      if (!kept) return false;
+      const ok = await revokeAppleToken(cfg, kept);
+      if (!ok) console.warn("[apple] Apple refused to revoke a token");
+      return ok;
+    } catch (error) {
+      console.warn(
+        "[apple] couldn't revoke:",
+        error instanceof Error ? error.message : error,
+      );
+      return false;
+    }
+  }
   // Report a finished match for your records. The summary comes from the
   // game server's own copy, never from the browser.
   app.post(

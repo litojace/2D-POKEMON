@@ -77,7 +77,7 @@ Default controls. Every key can be changed in **Settings → Controls & key bind
 
 Q, E, R and F sit next to W A S D, so you can cast without letting go of movement. **Aim preview** (the default) draws where a skill will land while you hold its key and casts when you let go; a quick tap still casts right away. Switch to **Instant** to cast on key press. **Aim assist** (off by default) snaps mouse basic attacks onto an opponent close to your cursor; skills always go exactly where you aim.
 
-Mobile uses the left joystick and right skill/action buttons, with a separate bottom toolbar. Android/iOS PWA installation, safe-area layout and landscape play are retained. See [mobile/PWA setup](docs/mobile-pwa.md). Matches and sign-in require an internet connection.
+Mobile uses the left joystick and right skill/action buttons, with a separate bottom toolbar. Android/iOS PWA installation, safe-area layout and landscape play are retained. See [mobile/PWA setup](docs/mobile-pwa.md). An App Store version wraps the same client with Capacitor (landscape-locked, native Sign in with Apple); see [the iPhone app](docs/ios-app.md). Matches and sign-in require an internet connection.
 
 ## Balance notes
 

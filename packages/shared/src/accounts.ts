@@ -49,6 +49,10 @@ export const deletePlayerSchema = z
 export const deleteMyAccountSchema = z
   .object({ confirm: z.literal(true) })
   .strict();
+/** The iPhone app's one-time Sign in with Apple code (migration 111). */
+export const appleCodeSchema = z
+  .object({ code: z.string().min(1).max(2000) })
+  .strict();
 export const deleteTitleSchema = z
   .object({ id: z.string().uuid(), confirm: z.literal(true) })
   .strict();

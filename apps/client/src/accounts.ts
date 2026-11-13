@@ -1,3 +1,4 @@
+import { isNativeApp, signInWithAppleNatively } from "./native";
 import {
   nameAllowed,
   NAME_NOT_ALLOWED,
@@ -101,6 +102,8 @@ const GOOGLE_SIGN_IN = import.meta.env.VITE_GOOGLE_SIGN_IN === "on";
  * offer Google sign-in to offer it too (App Review Guideline 4.8).
  */
 const APPLE_SIGN_IN = import.meta.env.VITE_APPLE_SIGN_IN === "on";
+/** Google's sign-in page refuses to open inside apps: web only. */
+const SHOW_GOOGLE = GOOGLE_SIGN_IN && !isNativeApp();
 /** Apple's logo for its sign-in button (Apple's button guidelines). */
 const APPLE_LOGO =
   '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"/></svg>';
@@ -549,6 +552,43 @@ export class AccountUI {
     }
   }
   /**
+   * Sign in with Apple in the iPhone app: Apple's own sheet, then Supabase
+   * with its identity token. The server then trades Apple's one-time code
+   * for a refresh token, so deleting the account can revoke it.
+   */
+  private async signInWithAppleApp(message: HTMLElement) {
+    if (!this.client) return;
+    message.textContent = "";
+    try {
+      const apple = await signInWithAppleNatively();
+      if (!apple) return;
+      message.textContent = "Signing you in…";
+      remember(true);
+      const { data, error } = await this.client.auth.signInWithIdToken({
+        provider: "apple",
+        token: apple.identityToken,
+        nonce: apple.nonce,
+      });
+      if (error) throw error;
+      // Apple shares the name only on the first sign-in, and not in the
+      // token: keep it for the profile (migration 001 reads full_name).
+      if (apple.fullName)
+        await this.client.auth
+          .updateUser({ data: { full_name: apple.fullName } })
+          .catch(() => undefined);
+      await this.setSession(data.session);
+      element<HTMLDialogElement>("dialog").close();
+      void this.api("/api/account/apple", {
+        code: apple.authorizationCode,
+      }).catch((reason) =>
+        console.warn("[apple] couldn't keep the sign-in token", reason),
+      );
+    } catch (error) {
+      message.textContent =
+        error instanceof Error ? error.message : "Sign in with Apple failed.";
+    }
+  }
+  /**
    * Sign out on this device: leave rooms and worlds, forget the session.
    * After an account deletion the login is already gone, so Supabase's own
    * sign-out may complain; the session is forgotten either way.
@@ -628,7 +668,7 @@ export class AccountUI {
       mode === "forgot" || mode === "reset"
         ? '<button type="button" class="auth-link auth-back" id="auth-switch">← Back to log in</button>'
         : "";
-    const html = `<section class="auth-panel" data-mode="${mode}"><div class="auth-head"><span class="auth-crest" aria-hidden="true"><svg viewBox="0 0 64 64"><path fill="currentColor" fill-rule="evenodd" d="M32 2 42 21 62 32 43 43 32 62 21 43 2 32 21 21Zm0 14L16 32l16 16 16-16Z"/></svg></span><div class="auth-title">${copy[0]}</div><p>${copy[1]}</p></div>${tabs}${!this.client ? '<p class="auth-warning">Sign-in isn\'t available right now. Please try again later.</p>' : ""}<form id="auth-form" class="auth-form">${fields}${extras}<button class="auth-submit" type="submit" ${!this.client ? "disabled" : ""}>${submitLabel}</button>${APPLE_SIGN_IN && (mode === "login" || mode === "signup") ? `<button id="auth-apple" class="auth-secondary auth-apple" type="button" ${!this.client ? "disabled" : ""}>${APPLE_LOGO}<span>Continue with Apple</span></button>` : ""}${GOOGLE_SIGN_IN && (mode === "login" || mode === "signup") ? `<button id="auth-google" class="auth-secondary" type="button" ${!this.client ? "disabled" : ""}>Continue with Google</button>` : ""}<p id="auth-message" class="auth-message" role="status"></p></form>${guest}${back}</section>`;
+    const html = `<section class="auth-panel" data-mode="${mode}"><div class="auth-head"><span class="auth-crest" aria-hidden="true"><svg viewBox="0 0 64 64"><path fill="currentColor" fill-rule="evenodd" d="M32 2 42 21 62 32 43 43 32 62 21 43 2 32 21 21Zm0 14L16 32l16 16 16-16Z"/></svg></span><div class="auth-title">${copy[0]}</div><p>${copy[1]}</p></div>${tabs}${!this.client ? '<p class="auth-warning">Sign-in isn\'t available right now. Please try again later.</p>' : ""}<form id="auth-form" class="auth-form">${fields}${extras}<button class="auth-submit" type="submit" ${!this.client ? "disabled" : ""}>${submitLabel}</button>${APPLE_SIGN_IN && (mode === "login" || mode === "signup") ? `<button id="auth-apple" class="auth-secondary auth-apple" type="button" ${!this.client ? "disabled" : ""}>${APPLE_LOGO}<span>Continue with Apple</span></button>` : ""}${SHOW_GOOGLE && (mode === "login" || mode === "signup") ? `<button id="auth-google" class="auth-secondary" type="button" ${!this.client ? "disabled" : ""}>Continue with Google</button>` : ""}<p id="auth-message" class="auth-message" role="status"></p></form>${guest}${back}</section>`;
     // On the welcome screen the panel sits in the page; elsewhere in a dialog.
     const host = document.getElementById("gate-auth");
     if (host) host.innerHTML = html;
@@ -681,10 +721,13 @@ export class AccountUI {
       });
       if (error) message.textContent = error.message;
     };
-    if (GOOGLE_SIGN_IN && (mode === "login" || mode === "signup"))
+    if (SHOW_GOOGLE && (mode === "login" || mode === "signup"))
       element("auth-google").onclick = () => void signInWith("google");
     if (APPLE_SIGN_IN && (mode === "login" || mode === "signup"))
-      element("auth-apple").onclick = () => void signInWith("apple");
+      element("auth-apple").onclick = () =>
+        void (isNativeApp()
+          ? this.signInWithAppleApp(message)
+          : signInWith("apple"));
     const guestForm = element<HTMLFormElement>("guest-form");
     if (guestForm)
       guestForm.onsubmit = async (event) => {
@@ -1242,14 +1285,19 @@ export class AccountUI {
           const apple = !!this.session?.user.identities?.some(
             (i) => i.provider === "apple",
           );
-          // The server deletes the login and everything that's yours.
-          await this.api("/api/account/delete", { confirm: true });
+          // The server deletes the login and everything that's yours (and
+          // revokes Sign in with Apple when it kept the app's token).
+          const reply = (await this.api("/api/account/delete", {
+            confirm: true,
+          })) as { appleRevoked?: boolean };
           this.confirmedGuestLogout = false;
           await this.signOutHere(true);
           this.hooks.notify(
-            apple
-              ? "Your account and its data are deleted. To also disconnect Sign in with Apple, open your Apple Account settings, Sign in with Apple, and remove Element Arena."
-              : "Your account and its data are deleted. Thanks for playing.",
+            reply.appleRevoked
+              ? "Your account and its data are deleted, and Sign in with Apple is disconnected. Thanks for playing."
+              : apple
+                ? "Your account and its data are deleted. To also disconnect Sign in with Apple, open your Apple Account settings, Sign in with Apple, and remove Element Arena."
+                : "Your account and its data are deleted. Thanks for playing.",
           );
         },
         retry: () => this.loadProfile(accountId),

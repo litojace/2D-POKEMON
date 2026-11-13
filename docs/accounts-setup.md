@@ -105,7 +105,7 @@ The App Store asks any app that offers Google sign-in to offer a sign-in that co
 6. In Render, add `VITE_APPLE_SIGN_IN` = `on` to the web service (and the Static Site, if you use one) and redeploy. It's read when the site is built.
 7. Test it: log out, choose **Continue with Apple**, and check you land back in the game signed in. If the player chose **Hide My Email**, Supabase gets an `@privaterelay.appleid.com` address; that's normal. A player who hides their name starts as "Trainer" and can change it from the player card.
 
-To hide it again, remove the variable (or set it to anything but `on`) and redeploy. If you turn Google on for the App Store build, turn Apple on too.
+To hide it again, remove the variable (or set it to anything but `on`) and redeploy. If you turn Google on, turn Apple on too. The iPhone app has its own Apple sign-in (Apple's sheet, not a web page), which needs the app's bundle ID in **Client IDs** as well; see [the iPhone app](ios-app.md#one-time-setup).
 
 ## Deleting an account
 
@@ -114,7 +114,7 @@ Players delete their own account from their player card: **Delete account** at t
 - The login and everything the player owns go at once: profile, records, titles, coins, skins, farm, bistro, friends, preferences. Matches and raids they played stay for the other players, with the deleted player shown as "Deleted player" and no account id. Reports they sent stay for the admins without their name.
 - Their open games drop them: the game server checks the login again straight away, and the client signs out.
 - Administrators can't delete themselves here (their audit entries point at them, and it would lock the dashboard). Remove an admin from `arena_admins` in SQL first.
-- **Sign in with Apple:** Apple also asks apps to revoke the player's Apple tokens when the account is deleted. Supabase doesn't keep the Apple token needed for that, so the game can't do it yet. Apple's guidance is to finish the deletion anyway, and the game then tells the player how to remove Element Arena under **Sign in with Apple** in their Apple Account settings. Revoking automatically needs the native iPhone sign-in (which can hand the server the token) and a small server step.
+- **Sign in with Apple:** Apple also asks apps to revoke the player's Apple tokens when the account is deleted. Supabase doesn't keep the Apple token needed for that, so the game server keeps its own when a player signs in with Apple in the iPhone app ([migration 111](../supabase/migrations/111_apple_tokens.sql)), and revokes it before deleting the account; see [the iPhone app](ios-app.md#account-deletion-and-apple). Players who only signed in with Apple on the website have no kept token: the deletion still goes through (as Apple asks), and the game tells them how to remove Element Arena under **Sign in with Apple** in their Apple Account settings.
 - Supabase may keep a deleted login in its own backups for a while; see Supabase's documentation for how long.
 
 ## Blocking players and the name filter
