@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { openLobby, snap } from "./helpers";
-import { shopServer } from "./shop-server";
+import { exposeAccount, shopServer } from "./shop-server";
 
 // The Shop and Wardrobe catalogue keeps still to spare phones' GPUs: each
 // effect tile draws one chosen moment of its effect and frames rest in their
@@ -154,6 +154,117 @@ test("the Shop and Wardrobe catalogue shows still effects; the stage plays them"
     }
     await page.click('.fit-slots [data-fit-slot="frame"]');
     await snap(page, info, "catalogue-still-wardrobe-frames");
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});
+
+/** What one thumbnail's effect canvases show ("" when it has none). */
+const shown = (page: Page, selector: string) =>
+  page.evaluate((selector) => {
+    const el = document.querySelector<HTMLElement>(selector);
+    const canvases = el
+      ? [...el.querySelectorAll<HTMLCanvasElement>(":scope > .fx-live")]
+      : [];
+    let ink = 0;
+    for (const c of canvases) {
+      const data = c
+        .getContext("2d")!
+        .getImageData(0, 0, c.width, c.height).data;
+      for (let i = 3; i < data.length; i += 4) if (data[i]) ink++;
+    }
+    return ink ? canvases.map((c) => c.toDataURL()).join("|") : "";
+  }, selector);
+/** Draws once and keeps still (true), or keeps changing (false). */
+async function keepsStill(page: Page, selector: string) {
+  // Only thumbnails in view are drawn.
+  await page.locator(selector).first().scrollIntoViewIfNeeded();
+  await expect.poll(() => shown(page, selector)).not.toBe("");
+  await page.waitForTimeout(300);
+  const a = await shown(page, selector);
+  await page.waitForTimeout(400);
+  return (await shown(page, selector)) === a;
+}
+
+test("Raid Hub, Journey and reward reveal tiles keep still; the chosen one plays", async ({
+  browser,
+}) => {
+  test.setTimeout(120_000);
+  const context = await browser.newContext({
+    viewport: { width: 1280, height: 720 },
+  });
+  try {
+    const page = await context.newPage();
+    await exposeAccount(page);
+    await shopServer(page, {
+      raids: { bosses: { grumblecrag: { clears: 4 } } },
+    });
+    const errors = await openLobby(page);
+
+    // Raid Hub rewards: still, until a card is opened.
+    await page.evaluate(
+      () => void (window as any).__account.showRaids("grumblecrag", "rewards"),
+    );
+    await expect(page.locator(".rh-rewards.is-all")).toBeVisible();
+    const card = (id: string) =>
+      `[data-raid-reward="${id}"] .raid-cosmetic-preview`;
+    for (const id of ["mountain-aura", "mountainborn", "rockslide-flex"])
+      expect(await keepsStill(page, card(id)), id).toBe(true);
+    expect(await running(page, ".rh-reward")).toEqual([]);
+    await page.click('[data-raid-reward="mountain-aura"]');
+    await expect(
+      page.locator('[data-raid-reward="mountain-aura"]'),
+    ).toHaveAttribute("aria-expanded", "true");
+    expect(await keepsStill(page, card("mountain-aura"))).toBe(false);
+    expect(await keepsStill(page, card("mountainborn"))).toBe(true);
+    await page.click('[data-raid-reward="mountain-aura"]');
+    expect(await keepsStill(page, card("mountain-aura"))).toBe(true);
+    await page.locator(".rh-room .ui-close").click();
+
+    // Journey: still, until an item is picked.
+    await page.click('.lobby-rail [data-lobby-action="journey"]');
+    await page.click('[data-ui-jtab="levels"]');
+    const item = (id: string) =>
+      `.journey-room [data-journey-item="${id}"] .raid-cosmetic-preview`;
+    expect(await keepsStill(page, item("solar-aura"))).toBe(true);
+    expect(await running(page, ".journey-room")).toEqual([]);
+    await page.click('[data-journey-item="solar-aura"]');
+    expect(await keepsStill(page, item("solar-aura"))).toBe(false);
+    // The footer repeats the pick small, and keeps still.
+    expect(
+      await keepsStill(page, ".journey-foot-art .raid-cosmetic-preview"),
+    ).toBe(true);
+    await page.locator(".journey-room .ui-close").click();
+
+    // The reward reveal's card keeps still.
+    const path = new URL(
+      "../../apps/client/src/reward-reveal.ts",
+      import.meta.url,
+    ).pathname;
+    await page.evaluate(async (path) => {
+      const m = await import(/* @vite-ignore */ `/@fs${path}`);
+      const { RAID_REWARDS } = await import(
+        /* @vite-ignore */ `/@fs${path.replace("apps/client/src/reward-reveal.ts", "packages/shared/src/raid.ts")}`
+      );
+      const pick = (id: string) =>
+        RAID_REWARDS.find((r: { id: string }) => r.id === id);
+      void m.showRewardReveal(
+        [pick("mountain-aura"), pick("conqueror")],
+        "voltkit",
+      );
+    }, path);
+    await expect(page.locator("#reward-reveal .reveal-card")).toHaveClass(
+      /is-flipped/,
+    );
+    expect(
+      await keepsStill(page, "#reward-reveal .raid-cosmetic-preview"),
+    ).toBe(true);
+    await page.getByRole("button", { name: "Next reward" }).click();
+    await expect(page.locator(".reveal-name")).toHaveText("Conqueror frame");
+    expect(
+      await running(page, "#reward-reveal .raid-cosmetic-preview"),
+    ).toEqual([]);
     expect(errors).toEqual([]);
   } finally {
     await context.close();

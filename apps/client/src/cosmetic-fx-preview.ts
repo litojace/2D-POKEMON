@@ -19,11 +19,12 @@ import { FX_GRAVITY, drawAnyParticle, type FxParticle } from "./skins/skin-fx";
  * gets its tier (data-tier) so frames and cards can dress up by rarity.
  * Only thumbnails on screen animate, at 30 frames a second.
  *
- * The Shop and Wardrobe catalogue is the exception: dozens of tiles at once
+ * Lists of items are the exception (STILL_TILES): dozens of tiles at once
  * cost phones' GPUs too much, so each tile there draws one still moment
  * picked to show the effect clearly (FROZEN_AT) and never animates. The
- * stage on the left keeps the live effect, so choosing a tile shows it
- * playing there.
+ * item a player chooses plays for real: the Shop and Wardrobe show it on
+ * their stage, the Raid Hub and Journey play the chosen tile itself
+ * (LIVE_PICKS). The reward reveal keeps its card still too.
  */
 type Kind = "aura" | "entrance" | "victory" | "skin";
 interface Live {
@@ -40,9 +41,24 @@ interface Live {
   frozen: boolean;
   /** The canvas size the still was drawn at ("w x h"), "" when not drawn. */
   drawnAt: string;
+  /** In view (the IntersectionObserver's last word). */
+  shown: boolean;
 }
-/** The Shop and Wardrobe catalogue (everything in the room but the stage). */
-const STILL_TILES = ".fit-room > .ui-split-main";
+/**
+ * Where thumbnails keep still: the Shop and Wardrobe catalogue (the room
+ * but its stage), the Raid Hub's reward cards, the Journey and the reward
+ * reveal. Kept in step with the same list in cosmetic-fx.css.
+ */
+const STILL_TILES =
+  ".fit-room > .ui-split-main, .rh-reward, .journey-room, #reward-reveal";
+/**
+ * The item a player chose in a list without a stage plays for real: the
+ * Raid Hub reward card they opened, the Journey item they picked.
+ */
+const LIVE_PICKS =
+  '.rh-reward[aria-expanded="true"], .journey-room [aria-pressed="true"]';
+const isFrozen = (el: HTMLElement) =>
+  !!el.closest(STILL_TILES) && !el.closest(LIVE_PICKS);
 /**
  * The moment (seconds into the effect) a catalogue tile shows: auras mid
  * turn, an entrance's burst just open (later, its rings leave the tile),
@@ -337,7 +353,7 @@ function release(live: Live) {
 const resized = new ResizeObserver((entries) => {
   for (const e of entries) {
     const live = lives.get(e.target as HTMLElement);
-    if (live?.drawnAt && live.el.isConnected) queueFrozen(live);
+    if (live?.frozen && live.drawnAt && live.el.isConnected) queueFrozen(live);
   }
 });
 const onScreen = new IntersectionObserver((entries) => {
@@ -348,6 +364,7 @@ const onScreen = new IntersectionObserver((entries) => {
       release(live);
       continue;
     }
+    live.shown = e.isIntersecting;
     if (live.frozen) {
       if (e.isIntersecting) queueFrozen(live);
       continue;
@@ -361,6 +378,29 @@ const onScreen = new IntersectionObserver((entries) => {
   if (visible.size && !frame && !reduced.matches)
     frame = requestAnimationFrame(tick);
 });
+
+/**
+ * A tile chosen or let go (a Raid Hub card opened, a Journey item picked):
+ * it starts playing, or goes back to its still.
+ */
+function setFrozen(live: Live, frozen: boolean) {
+  if (live.frozen === frozen) return;
+  live.frozen = frozen;
+  live.drawnAt = "";
+  if (frozen) {
+    visible.delete(live);
+    if (live.shown) queueFrozen(live);
+    return;
+  }
+  frozenQueue.delete(live);
+  live.particles = [];
+  live.cycle = -1;
+  live.start = live.last = performance.now();
+  if (!live.shown) return;
+  visible.add(live);
+  draw(live, live.last);
+  if (!frame && !reduced.matches) frame = requestAnimationFrame(tick);
+}
 
 function attach(el: HTMLElement) {
   const id = el.dataset.cosmetic;
@@ -410,12 +450,13 @@ function attach(el: HTMLElement) {
     start: now,
     last: now,
     cycle: -1,
-    frozen: !!el.closest(STILL_TILES),
+    frozen: isFrozen(el),
     drawnAt: "",
+    shown: false,
   };
   lives.set(el, live);
   onScreen.observe(el);
-  if (live.frozen) resized.observe(el);
+  resized.observe(el);
 }
 function scan(root: ParentNode) {
   if (
@@ -442,6 +483,16 @@ export function watchCosmeticPreviews(root: HTMLElement = document.body) {
             el.dataset.cosmetic,
             Number(el.dataset.frameStars ?? 0),
           );
+        continue;
+      }
+      if (
+        r.attributeName === "aria-expanded" ||
+        r.attributeName === "aria-pressed"
+      ) {
+        // A choice changed: a chosen tile plays, the others keep still.
+        const el = r.target as HTMLElement;
+        for (const live of lives.values())
+          if (el.contains(live.el)) setFrozen(live, isFrozen(live.el));
         continue;
       }
       if (r.type === "attributes") {
@@ -473,7 +524,12 @@ export function watchCosmeticPreviews(root: HTMLElement = document.body) {
     childList: true,
     subtree: true,
     attributes: true,
-    attributeFilter: ["data-cosmetic", "data-frame-stars"],
+    attributeFilter: [
+      "data-cosmetic",
+      "data-frame-stars",
+      "aria-expanded",
+      "aria-pressed",
+    ],
   });
   reduced.addEventListener("change", () => {
     for (const live of visible) draw(live, performance.now());
