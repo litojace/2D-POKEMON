@@ -91,9 +91,22 @@ describe("raid rewards", () => {
       const enabled = new RegExp(`set playable = true where id = '${id}'`).test(
         sql,
       );
-      expect(sql).toContain(
-        `('${id}', '${RAID_BOSSES[id].name}', ${id === "grumblecrag"})`,
+      // (a boss shown under a new name is renamed by a later migration, id unchanged)
+      const renamed = new RegExp(
+        `set name = '${RAID_BOSSES[id].name}' where id = '${id}'`,
+      ).test(
+        readdirSync("supabase/migrations")
+          .map((f: string) => readFileSync(`supabase/migrations/${f}`, "utf8"))
+          .join("\n"),
       );
+      if (renamed)
+        expect(sql).toMatch(
+          new RegExp(`\\('${id}', '[^']+', ${id === "grumblecrag"}\\)`),
+        );
+      else
+        expect(sql).toContain(
+          `('${id}', '${RAID_BOSSES[id].name}', ${id === "grumblecrag"})`,
+        );
       expect(id === "grumblecrag" || enabled, id).toBe(
         RAID_BOSSES[id].playable,
       );
