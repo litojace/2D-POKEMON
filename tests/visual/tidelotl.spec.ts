@@ -579,3 +579,126 @@ test("the water effects are painted in the real raid scene (waves, whirlpool, fl
     expect(counts[k] - counts.idle, k).toBeLessThanOrEqual(12);
   expect(errors).toEqual([]);
 });
+
+/**
+ * Pixels in a box round world points, counted in the page from a screenshot:
+ * `pink` is the soap film's iridescent rim, `white` the spray and film of a pop.
+ */
+async function pixels(page: Page, pts: { x: number; y: number }[], r: number) {
+  const boxes = await page.evaluate(
+    ([pts, r]) => {
+      const game = (window as any).__mapGame,
+        scene = game.scene.getScene("arena"),
+        cam = scene.cameras.main,
+        rect = game.canvas.getBoundingClientRect(),
+        k = rect.width / game.canvas.width;
+      return pts.map((p: any) => ({
+        x:
+          rect.left + (p.x - cam.worldView.x) * cam.zoom * k - r * cam.zoom * k,
+        y: rect.top + (p.y - cam.worldView.y) * cam.zoom * k - r * cam.zoom * k,
+        s: r * 2 * cam.zoom * k,
+      }));
+    },
+    [pts, r] as const,
+  );
+  const png = (await page.screenshot()).toString("base64");
+  return page.evaluate(
+    async ([png, boxes]) => {
+      const img = new Image();
+      img.src = "data:image/png;base64," + png;
+      await img.decode();
+      const c = document.createElement("canvas");
+      c.width = img.width;
+      c.height = img.height;
+      const g = c.getContext("2d")!;
+      g.drawImage(img, 0, 0);
+      const scale = img.width / innerWidth;
+      let pink = 0,
+        white = 0;
+      for (const b of boxes as any[]) {
+        const d = g.getImageData(
+          b.x * scale,
+          b.y * scale,
+          b.s * scale,
+          b.s * scale,
+        ).data;
+        for (let i = 0; i < d.length; i += 4) {
+          const [R, G, B] = [d[i], d[i + 1], d[i + 2]];
+          if (R > 200 && B > 170 && G < R - 30) pink++;
+          if (R > 235 && G > 240 && B > 240) white++;
+        }
+      }
+      return { pink, white };
+    },
+    [png, boxes] as const,
+  );
+}
+
+test("bubbles are iridescent soap bubbles that pop with a splash; the prison is a painted bubble; the blow puffs out", async ({
+  page,
+}, info) => {
+  test.setTimeout(240_000);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const errors = await lagoon(page);
+  const calm =
+    "r.warnings = []; r.waves = []; r.undertow = undefined; r.floodUntil = 0; r.submerged = false; r.bubbles = []; r.prisons = [];";
+  // a fan of bubbles in open water (they hold still: the client draws where the server says)
+  const fan = Array.from({ length: 7 }, (_, i) => ({
+    x: 960 + Math.cos(-0.6 + i * 0.2) * 170,
+    y: 450 + Math.sin(-0.6 + i * 0.2) * 170,
+  }));
+  const counts: Record<string, number> = {};
+  counts.idle = await stage(page, calm);
+  const plain = await pixels(page, fan, 22);
+  counts.bubbles = await stage(
+    page,
+    calm +
+      `r.bubbles = ${JSON.stringify(fan)}.map((p, i) => ({ id: 100 + i, x: p.x, y: p.y, vx: 0, vy: 0, until: s.time + 60 }));`,
+  );
+  const soap = await pixels(page, fan, 22);
+  await lagoonShot(page, info, "bubbles");
+  // the film's iridescent rim shows at every bubble (open water has none)
+  expect(soap.pink).toBeGreaterThan(plain.pink + 7 * 15);
+  // the prison: a painted bubble round the sealed raider, with its pips, bar and timer
+  counts.prison = await stage(
+    page,
+    calm +
+      "const p2 = s.players.find((p) => p.id === 'p2'); p2.x = 640; p2.y = 600;" +
+      "r.prisons = [{ playerId: 'p2', x: 640, y: 600, hits: 1, presses: 4, until: s.time + 60, startedAt: s.time }];",
+  );
+  const prison = await pixels(page, [{ x: 640, y: 588 }], 54);
+  await lagoonShot(page, info, "prison");
+  expect(prison.pink).toBeGreaterThan(40);
+  // pops: the bubbles go, and each breaks with a ring of film and spray
+  // (held: this machine draws too few frames a second to catch it in passing)
+  await page.evaluate(() => {
+    const w = window as any,
+      game = w.__mapGame;
+    game.loop.sleep();
+    w.__snap.raid.bubbles = [];
+    w.__snap.raid.prisons = [];
+    w.__push();
+    const t = performance.now();
+    game.step(t, 16);
+    game.step(t + 60, 60);
+  });
+  const popped = await pixels(page, fan, 30);
+  await lagoonShot(page, info, "pop");
+  await page.evaluate(() => (window as any).__mapGame.loop.wake());
+  expect(popped.white).toBeGreaterThan(plain.white + 60);
+  // the blow: the fan's warning fills (bubbles drawn in to the puffed cheeks), then it casts
+  await stage(
+    page,
+    calm +
+      "const b = s.players.find((p) => p.raidBoss);" +
+      "r.warnings = [{ id: 501, kind: 'bubbles', startedAt: s.time - 0.6, at: s.time + 0.3, x: b.x, y: b.y, tx: b.x + 420, ty: b.y, radius: 420, spread: 0.45, casterId: b.id }];",
+    500,
+  );
+  await lagoonShot(page, info, "bubbles-windup");
+  counts.blow = await stage(page, "s.time += 0.5; r.warnings = [];", 150);
+  await lagoonShot(page, info, "bubbles-blow");
+  console.log("tidelotl bubble images per frame", JSON.stringify(counts));
+  for (const k of ["bubbles", "prison", "blow"] as const)
+    expect(counts[k] - counts.idle, k).toBeLessThanOrEqual(6);
+  expect(errors).toEqual([]);
+});

@@ -1,5 +1,7 @@
 import { paintTidelotl } from "./boss-tidelotl-rig";
 import { fxFor } from "./fx-engine";
+import { noteTidelotl } from "./tidelotl-attack-fx";
+import { lowGraphics } from "./graphics-quality";
 import { groundHeight } from "../../../packages/shared/src/world-art";
 import { bossLife } from "./raid-boss-life";
 import { bossSurface } from "./boss-materials";
@@ -582,6 +584,129 @@ function whirlpool(
     .strokePath();
 }
 
+/**
+ * An iridescent soap bubble (Tidelotl's): a clear, faintly tinted skin, a
+ * rim that shifts pink, aqua and lavender round the edge, a bright window
+ * of shine and a glint. `wob` squashes it a little (0 holds it still).
+ */
+function soapBubble(
+  g: G,
+  x: number,
+  y: number,
+  r: number,
+  wob: number,
+  big = false,
+) {
+  const w = r * 2 * (1 + wob),
+    h = r * 2 * (1 - wob);
+  g.fillStyle(0xaaf0ff, big ? 0.14 : 0.18).fillEllipse(x, y, w, h);
+  g.lineStyle(r * 0.22, 0xd2f8ff, 0.16).strokeEllipse(x, y, w * 0.86, h * 0.86);
+  const arc = (
+    a0: number,
+    a1: number,
+    color: number,
+    lw: number,
+    alpha: number,
+  ) => {
+    g.lineStyle(lw, color, alpha).beginPath();
+    for (let i = 0; i <= 10; i++) {
+      const a = a0 + ((a1 - a0) * i) / 10,
+        px = x + (Math.cos(a) * w) / 2,
+        py = y + (Math.sin(a) * h) / 2;
+      if (i === 0) g.moveTo(px, py);
+      else g.lineTo(px, py);
+    }
+    g.strokePath();
+  };
+  const lw = big ? 3.5 : 2.6;
+  arc(Math.PI * 0.55, Math.PI * 1.25, 0xffa6d6, lw, 0.9);
+  arc(Math.PI * 1.25, Math.PI * 1.85, 0xb9c4ff, lw, 0.85);
+  arc(-Math.PI * 0.15, Math.PI * 0.55, 0x8ff3e6, lw, 0.9);
+  g.lineStyle(1.2, 0xffffff, 0.55).strokeEllipse(x, y, w, h);
+  g.fillStyle(0xffffff, 0.9).fillEllipse(
+    x - r * 0.36,
+    y - r * 0.4,
+    r * 0.55,
+    r * 0.32,
+  );
+  g.fillStyle(0xffffff, 0.8).fillCircle(
+    x + r * 0.38,
+    y + r * 0.36,
+    Math.max(1.4, r * 0.09),
+  );
+  g.lineStyle(Math.max(1, r * 0.07), 0xffffff, 0.45)
+    .beginPath()
+    .arc(x, y, r * 0.78, Math.PI * 0.15, Math.PI * 0.55, false)
+    .strokePath();
+}
+interface Pop {
+  x: number;
+  y: number;
+  r: number;
+  at: number;
+}
+/** What the bubbles and prisons were last frame, to pop the ones that went. */
+const popMemory = new WeakMap<
+  G,
+  {
+    seed: number;
+    bubbles: Map<number, { x: number; y: number }>;
+    prisons: Map<string, { x: number; y: number }>;
+    pops: Pop[];
+  }
+>();
+/** A bubble breaks: a ring of film, spray and a few shiny drops. */
+function popBubble(
+  g: G,
+  mem: { pops: Pop[] },
+  x: number,
+  y: number,
+  r: number,
+  at: number,
+  reduced: boolean,
+) {
+  if (reduced) return;
+  mem.pops.push({ x, y, r, at });
+  if (mem.pops.length > 24) mem.pops.shift();
+  const low = lowGraphics();
+  fxFor(g.scene).burst({
+    x,
+    y,
+    z: 10,
+    count: (low ? 4 : 8) + Math.round(r / 10),
+    kind: "drop",
+    color: [0xe6fbff, 0x9fe8f4, 0xffd6ea],
+    speed: [60, 60 + r * 4],
+    up: [60, 160],
+    life: [0.35, 0.6],
+    size: [1.5, 3],
+    grav: 600,
+  });
+}
+function drawPops(g: G, mem: { pops: Pop[] }, t: number) {
+  mem.pops = mem.pops.filter((p) => t - p.at < 0.32 && t >= p.at);
+  for (const p of mem.pops) {
+    const u = (t - p.at) / 0.32,
+      rr = p.r * (1 + u * 0.8);
+    g.lineStyle(3 * (1 - u) + 1, 0xffffff, 0.85 * (1 - u)).strokeCircle(
+      p.x,
+      p.y,
+      rr,
+    );
+    for (let i = 0; i < 8; i++) {
+      const a = (i * Math.PI) / 4 + p.r,
+        r0 = rr * 1.05,
+        r1 = rr * (1.2 + 0.25 * (1 - u));
+      g.lineStyle(2, 0xd8fbff, 0.8 * (1 - u)).lineBetween(
+        p.x + Math.cos(a) * r0,
+        p.y + Math.sin(a) * r0,
+        p.x + Math.cos(a) * r1,
+        p.y + Math.sin(a) * r1,
+      );
+    }
+  }
+}
+
 /** Live attacks: waves, bubbles, the whirlpool and prisons. */
 export function drawTideAttacks(g: G, state: Snapshot, reduced: boolean) {
   const r = state.raid!;
@@ -664,20 +789,33 @@ export function drawTideAttacks(g: G, state: Snapshot, reduced: boolean) {
         );
     }
   }
-  for (const b of r.bubbles ?? []) {
-    const wobble = reduced ? 0 : Math.sin(t * 6 + b.id) * 2;
-    g.fillStyle(PEARL_GLOW, 0.25).fillCircle(
-      b.x,
-      b.y,
-      TIDEWYRM.bubbles.radius + wobble,
-    );
-    g.lineStyle(3, WATER, 1).strokeCircle(
-      b.x,
-      b.y,
-      TIDEWYRM.bubbles.radius + wobble,
-    );
-    g.fillStyle(0xffffff, 0.9).fillCircle(b.x - 6, b.y - 7, 4);
+  // Pops: whatever bubble or prison went since last frame breaks with a splash.
+  let mem = popMemory.get(g);
+  if (!mem || mem.seed !== r.seed) {
+    mem = { seed: r.seed, bubbles: new Map(), prisons: new Map(), pops: [] };
+    popMemory.set(g, mem);
   }
+  const nowBubbles = new Map(
+    (r.bubbles ?? []).map((b) => [b.id, { x: b.x, y: b.y }]),
+  );
+  const nowPrisons = new Map(
+    (r.prisons ?? []).map((q) => [q.playerId, { x: q.x, y: q.y - 12 }]),
+  );
+  if (state.phase === "playing") {
+    for (const [id, b] of mem.bubbles)
+      if (!nowBubbles.has(id))
+        popBubble(g, mem, b.x, b.y, TIDEWYRM.bubbles.radius, t, reduced);
+    for (const [id, q] of mem.prisons)
+      if (!nowPrisons.has(id)) popBubble(g, mem, q.x, q.y, 46, t, reduced);
+  }
+  mem.bubbles = nowBubbles;
+  mem.prisons = nowPrisons;
+  for (const b of r.bubbles ?? []) {
+    // the hit radius (20) holds; the soap film wobbles round it
+    const wob = reduced ? 0 : Math.sin(t * 6 + b.id) * 0.06;
+    soapBubble(g, b.x, b.y, TIDEWYRM.bubbles.radius, wob);
+  }
+  drawPops(g, mem, t);
   if (r.undertow && r.undertow.until > t) {
     whirlpool(g, r.undertow.x, r.undertow.y, r.undertow.radius, 1, t, reduced);
     g.lineStyle(4, DANGER, 1).strokeCircle(
@@ -690,17 +828,14 @@ export function drawTideAttacks(g: G, state: Snapshot, reduced: boolean) {
     const left = Math.max(0, prison.until - t),
       total = Math.max(0.01, prison.until - prison.startedAt);
     const wobble = reduced ? 0 : Math.sin(t * 7) * 3;
-    g.fillStyle(PEARL_GLOW, 0.22).fillCircle(
+    // the painted big bubble round the raider
+    soapBubble(
+      g,
       prison.x,
       prison.y - 12,
       46 + wobble,
-    );
-    g.lineStyle(4, WATER, 1).strokeCircle(prison.x, prison.y - 12, 46 + wobble);
-    g.fillStyle(0xffffff, 0.85).fillEllipse(
-      prison.x - 18,
-      prison.y - 36,
-      14,
-      8,
+      reduced ? 0 : Math.sin(t * 5) * 0.04,
+      true,
     );
     // Pips for teammate hits, and a bar for the mash (solo) and time left.
     for (let i = 0; i < TIDEWYRM.prison.hits; i++)
@@ -934,6 +1069,7 @@ export function drawTidewyrm(
       !islands.some((i) => Math.hypot(x - i.x, y - i.y) < i.radius),
   });
   if (head) {
+    noteTidelotl(g.scene, { mouth: head.mouth, head: head.head });
     if (stagger && !stranded)
       for (let i = 0; i < 3; i++) {
         const a = t * 4 + (i * Math.PI * 2) / 3;
