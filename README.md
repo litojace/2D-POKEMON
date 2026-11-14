@@ -1,9 +1,21 @@
 # Match reports
 
-Newest report: 2026-11-13 23:09 UTC. From the game server's log (`scripts/perf/export-perf-reports.mjs` on `main`). One row per player's device per match; times are UTC. No accounts or names are kept.
+Newest report: 2026-11-14 02:57 UTC. From the game server's log (`scripts/perf/export-perf-reports.mjs` on `main`). One row per player's device per match; times are UTC. No accounts or names are kept.
 
 ## Needs attention
 
+- **2026-11-14 02:57**, astrabun against pangrove (bot, hard) (match `tbu4k1`):
+  - 35.4 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 35 astrabun pangrove`.
+  - 15 hit(s) landed while you were drawn over 24 px away (largest 49 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
+- **2026-11-14 02:48**, voltkit against lumoth (bot, easy) (match `v003a7`):
+  - 14.5 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 28 voltkit lumoth`.
+  - 25 hit(s) landed while you were drawn over 24 px away (largest 97 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
+- **2026-11-14 01:09**, pyranda against terradon (bot, hard) (match `1ic0k3`):
+  - 17 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 29 pyranda terradon`.
+  - 8 hit(s) landed while you were drawn over 24 px away (largest 52 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
+- **2026-11-14 01:08**, pyranda against terradon (bot, hard) (match `gg8fmg`):
+  - 15.2 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 30 pyranda terradon`.
+  - 15 hit(s) landed while you were drawn over 24 px away (largest 89 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
 - **2026-11-13 23:09**, pangrove against shadopus (bot, hard) (match `5l9yad`):
   - 35.6 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 40 pangrove shadopus`.
   - 37 hit(s) landed while you were drawn over 24 px away (largest 387 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
@@ -109,6 +121,10 @@ Newest report: 2026-11-13 23:09 UTC. From the game server's log (`scripts/perf/e
 
 | Time (UTC) | Match | Mode | You | Against | Ping (slowest 5%) | Lead | Late updates | Jumps | Hits off-screen | Skill confirm | FPS | Stutter | Graphics | Device | Build |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 2026-11-14 02:57 | `tbu4k1` | duel vs bot | astrabun | pangrove (bot, hard) | 70 ms 🟢 (88) | 224 ms | 0.4% | 76.4/min (max 150 px), ⚠️ 35.4 unexplained | ⚠️ 15 (max 49 px) | 107 ms | 58.8 | 0.0% | high (auto) | ios app, 4 cores | fc22d49 |
+| 2026-11-14 02:48 | `v003a7` | duel vs bot | voltkit | lumoth (bot, easy) | 56 ms 🟢 (63) | 205 ms | 0.0% | 46.8/min (max 78 px), ⚠️ 14.5 unexplained | ⚠️ 25 (max 97 px) | 95 ms | 163.9 | 0.1% | high (auto) | windows app, 28 cores, 32 GB | fc22d49 |
+| 2026-11-14 01:09 | `1ic0k3` | duel vs bot | pyranda | terradon (bot, hard) | 58 ms 🟢 (62) | 196 ms | 0.0% | 31.2/min (max 168 px), ⚠️ 17 unexplained | ⚠️ 8 (max 52 px) | 104 ms | 58.8 | 0.0% | high (auto) | ios app, 4 cores | b025a37 |
+| 2026-11-14 01:08 | `gg8fmg` | duel vs bot | pyranda | terradon (bot, hard) | 59 ms 🟢 (67) | 196 ms | 0.0% | 40.4/min (max 221 px), ⚠️ 15.2 unexplained | ⚠️ 15 (max 89 px) | 93 ms | 58.8 | 0.0% | high (auto) | ios app, 4 cores | b025a37 |
 | 2026-11-13 23:09 | `5l9yad` | duel vs bot | pangrove | shadopus (bot, hard) | 80 ms 🟡 (91) | 241 ms | 2.4% | 171.4/min (max 313 px), ⚠️ 35.6 unexplained | ⚠️ 37 (max 387 px) | 132 ms | 103.1 | 0.7% | low (low) | android, 10 cores, 8 GB | b025a37 |
 | 2026-11-13 03:58 | `p6sg8p` | raid | pyranda | gloomshade (raid boss) | 71 ms 🟢 (99) | 241 ms | 0.3% | 70.6/min (max 176 px), ⚠️ 58.3 unexplained | ⚠️ 34 (max 27 px) | 140 ms | 58.8 | 0.1% | high (high) | ios app, 4 cores | ea78f6e |
 | 2026-11-13 02:32 | `yjzr6b` | duel vs bot | glacelle | lumoth (bot, hard) | 80 ms 🟡 (118) | 250 ms | 3.0% | 118.1/min (max 73 px), ⚠️ 63.2 unexplained | ⚠️ 41 (max 120 px) | 136 ms | 66.7 | 2.7% | low (low) | android, 10 cores, 8 GB | ea78f6e |
@@ -155,15 +171,12 @@ Newest report: 2026-11-13 23:09 UTC. From the game server's log (`scripts/perf/e
 | 2026-11-10 21:23 | – | duel | pangrove | – | – | – | – | – | – | – | 58.8 | 0.0% | high (high) | 4 cores | – |
 | 2026-11-10 21:21 | – | duel | glacelle | – | – | – | – | – | – | – | 58.8 | 0.1% | medium (auto) | 4 cores | – |
 | 2026-11-10 21:21 | – | duel | shadopus | – | – | – | – | – | – | – | 58.8 | 0.0% | high (high) | 4 cores | – |
-| 2026-11-10 21:19 | – | duel | coilemur | – | – | – | – | – | – | – | 58.8 | 0.1% | medium (auto) | 4 cores | – |
-| 2026-11-10 21:19 | – | duel | voltkit | – | – | – | – | – | – | – | 58.8 | 0.0% | high (high) | 4 cores | – |
-| 2026-11-10 21:15 | – | duel | halcyra | – | – | – | – | – | – | – | 58.8 | 0.1% | high (high) | 4 cores | – |
-| 2026-11-10 21:15 | – | duel | halcyra | – | – | – | – | – | – | – | 58.8 | 0.1% | low (auto) | 4 cores | – |
 
 ## By day
 
 | Day (UTC) | Reports | Needs attention | Ping, median | Ping, worst 10% | Lead, median | Jumps/min, median | Skill confirm, median | FPS, median | Stutter, median | Dropped connections |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 2026-11-14 | 4 | 4 | 58 ms | 70 ms | 196 ms | 40.4 | 95 ms | 58.8 | 0.0% | 0 |
 | 2026-11-13 | 12 | 12 | 72 ms | 80 ms | 241 ms | 118.1 | 122 ms | 67.1 | 2.7% | 2 transport close |
 | 2026-11-12 | 3 | 3 | 59 ms | 78 ms | 195 ms | 15.6 | 91 ms | 58.8 | 0.0% | 0 |
 | 2026-11-11 | 23 | 16 | 63 ms | 68 ms | 217 ms | 91.2 | 108 ms | 64.9 | 2.0% | 7 transport close |
