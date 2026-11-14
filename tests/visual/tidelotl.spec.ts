@@ -293,3 +293,166 @@ test("stranded it lies belly-flat, dizzy, pearl open; the phase deepens its skin
   expect(ids(sunk.parts, /^(eye|pearl|head)/)).toEqual([]);
   expect(errors).toEqual([]);
 });
+
+test.describe("face", () => {
+  test.use({ deviceScaleFactor: 2 });
+  test("eyes, mouth and pearl stay locked to the head in every facing and state", async ({
+    page,
+  }) => {
+    const errors = await review(page);
+    // every face image is painted at its place inside a head-sized piece, so it
+    // is aligned exactly when it shares the head image's transform
+    const check = async (label: string) => {
+      const v = await page.evaluate(() => {
+        const r = (window as any).__bossReview,
+          root = r.rows[0].g.scene.children.list.find(
+            (o: any) => o.name === "vector-boss-tidewyrm",
+          );
+        const out: Record<string, any> = {};
+        for (const o of root.list[0].list)
+          if (o.visible && o.type === "Image")
+            out[o.name.replace("vector-part-", "")] = {
+              x: o.x,
+              y: o.y,
+              r: o.rotation,
+              sx: o.scaleX,
+              sy: o.scaleY,
+              frame: o.frame.name,
+              cropped: o.isCropped,
+              ch: o.isCropped ? o._crop.height : 0,
+              fy: o.originY,
+              fh: o.frame.height,
+            };
+        return out;
+      });
+      for (const prefix of ["", "b:"]) {
+        const head = v[prefix + "head"];
+        if (!head) continue;
+        for (const k of ["eyen", "eyef", "mouth", "pearl"]) {
+          const f = v[prefix + k];
+          if (!f) continue;
+          const at = `${label} ${prefix}${k} (${f.frame})`;
+          expect(f.x, at).toBeCloseTo(head.x, 3);
+          expect(f.y, at).toBeCloseTo(head.y, 3);
+          // the same matrix as the head (the front view's far eye: mirrored about the centre line)
+          const m = (o: any) => [
+            o.sx * Math.cos(o.r),
+            o.sx * Math.sin(o.r),
+            -o.sy * Math.sin(o.r),
+            o.sy * Math.cos(o.r),
+          ];
+          const mirror = k === "eyef" && /^eye_0_/.test(f.frame) ? -1 : 1;
+          const hm = m(head),
+            fm = m(f);
+          // (up to one uniform factor: each piece has its own atlas density)
+          const k0 = fm[3] / hm[3];
+          expect(k0, at).toBeGreaterThan(0.6);
+          expect(k0, at).toBeLessThan(1.01);
+          expect(fm[0], at).toBeCloseTo(hm[0] * k0 * mirror, 4);
+          expect(fm[1], at).toBeCloseTo(hm[1] * k0 * mirror, 4);
+          expect(fm[2], at).toBeCloseTo(hm[2] * k0, 4);
+        }
+        if (
+          v[prefix + "eyen"] &&
+          v[prefix + "eyef"] &&
+          /eye_0_/.test(v[prefix + "eyef"].frame)
+        )
+          expect(
+            v[prefix + "eyef"].sx * v[prefix + "eyef"].sy,
+            label,
+          ).toBeLessThan(0);
+      }
+      return v;
+    };
+    const clip = { x: 820, y: 40, width: 620, height: 420 };
+    const close = async (name: string) => {
+      const dir = process.env.TIDELOTL_SHOTS;
+      if (dir) await page.screenshot({ path: `${dir}/face-${name}.png`, clip });
+    };
+    const warn = (kind: string) =>
+      `row.state.raid.warnings = [{ id: 7, kind: "${kind}", startedAt: 29, at: 31, x: boss.x, y: boss.y, tx: boss.x + 1, ty: boss.y, radius: 75, casterId: boss.id }]`;
+    // eight facings, floating and bobbing (several moments of the bob)
+    for (let i = 0; i < 8; i++)
+      for (let n = 0; n < 3; n++) {
+        await draw(page, {
+          clock: 1 + i + n * 0.37,
+          angle: Math.PI / 2 - (i * Math.PI) / 4,
+          frames: 2,
+        });
+        await check(`facing ${i} bob ${n}`);
+        if (n === 0) await close(`facing-${i}`);
+      }
+    // glare (an attack winding up), puffed cheeks, hurt, dizzy
+    await draw(page, {
+      clock: 30.5,
+      angle: Math.PI / 4,
+      frames: 2,
+      setup: warn("wave"),
+    });
+    await check("glare");
+    await close("glare");
+    await draw(page, { clock: 30.85, frames: 1, setup: warn("bubbles") });
+    await check("puffed");
+    await close("puffed");
+    await draw(page, {
+      clock: 40,
+      frames: 2,
+      setup: "row.state.raid.warnings = []; row.state.raid.staggerUntil = 99",
+    });
+    await check("dizzy");
+    await close("dizzy");
+    await draw(page, {
+      clock: 41,
+      frames: 2,
+      setup: "row.state.raid.staggerUntil = 0; boss.hp -= 5",
+    });
+    await check("hurt");
+    await close("hurt");
+    // stranded and flopping: several moments of the flop
+    for (let n = 0; n < 4; n++) {
+      await draw(page, { clock: 50 + n * 0.17, frames: 2, setup: STRAND });
+      await check(`stranded ${n}`);
+      if (n === 1) await close("stranded");
+    }
+    // surfacing: cut at the waterline, the face pieces cut with the head
+    await draw(page, {
+      clock: 60,
+      frames: 2,
+      setup:
+        "row.state.raid.exposedUntil = 0; row.state.raid.islands = []; row.state.raid.submerged = true",
+    });
+    await draw(page, {
+      clock: 60.2,
+      frames: 8,
+      step: 1 / 30,
+      setup: "row.state.raid.submerged = false",
+    });
+    const rising = await check("surfacing");
+    await close("surfacing");
+    expect(rising.head, "its head is out of the water").toBeTruthy();
+    if (rising.head.cropped && rising.eyen) {
+      // the eye's kept part ends at the same screen line as the head's
+      // (or, if the eye is wholly above the water, it ends above that line)
+      const cut = (p: any) => p.y + (p.ch - p.fy * p.fh) * p.sy;
+      const bottom = (p: any) => p.y + (1 - p.fy) * p.fh * p.sy;
+      for (const k of ["eyen", "eyef", "mouth"]) {
+        const f = rising[k];
+        if (!f) continue;
+        if (f.cropped) expect(cut(f), k).toBeCloseTo(cut(rising.head), 0);
+        else expect(bottom(f), k).toBeLessThanOrEqual(cut(rising.head) + 0.5);
+      }
+    }
+    // the Undertow spin: both drawings stay locked
+    await draw(page, {
+      clock: 70,
+      frames: 1,
+      setup: warn("undertow").replace("29", "69").replace("31", "71"),
+    });
+    for (let n = 1; n <= 24; n++) {
+      await draw(page, { clock: 70 + n / 30, frames: 1 });
+      await check(`spin ${n}`);
+      if (n === 12) await close("spin");
+    }
+    expect(errors).toEqual([]);
+  });
+});
