@@ -647,7 +647,7 @@ function defeatTip(state: Snapshot) {
   if (r.boss === "storm-twins")
     return "Lower both health bars before finishing either twin. Pair opposite Polarity signs, then finish both during the countdown.";
   if (r.boss === "emberwing")
-    return "Light all three braziers together to ground Emberwing. Solo flames last longer. Spread out for Heat Marks and save ultimates for the open heart.";
+    return "Light all three braziers together to ground Lumiwick. Solo flames last longer. Spread out for Heat Marks and save ultimates for the open heart.";
   if (r.boss === "prismatail")
     return "Stand inside the skylight ring, connect to the mirror posts, and hit a mirror to turn its arrow. Save ultimates for the open heart.";
   if (r.boss === "somnara")

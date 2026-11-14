@@ -113,7 +113,7 @@ export class EmberwingArena extends RaidArena {
   }
   protected override finishMessage(won: boolean) {
     return won
-      ? "The sky grows quiet. Emberwing lands at your feet."
+      ? "The sky grows quiet. Lumiwick drifts down at your feet."
       : "The terrace still burns. Light the braziers and try again.";
   }
   private takeoff() {
@@ -125,7 +125,7 @@ export class EmberwingArena extends RaidArena {
       b.progress = 0;
       b.litUntil = 0;
     });
-    r.message = "Emberwing takes flight! Light all three braziers together.";
+    r.message = "Lumiwick floats up! Light all three braziers together.";
   }
   private ground() {
     const r = this.raid;
@@ -158,7 +158,7 @@ export class EmberwingArena extends RaidArena {
     this.ringStruck.clear();
     if (r.drill === "brazier-lighting" && r.drillStats) r.drillStats.dodges++;
     r.message = r.permanentGround
-      ? `WINGS BROKEN! The heart stays open for ${E.permanentGround.seconds} seconds!`
+      ? `PAPER TORN! The heart stays open for ${E.permanentGround.seconds} seconds!`
       : "GROUNDED! Fire shrinks — strike the exposed heart!";
     this.nextAttack = r.exposedUntil + 0.8;
     this.floorAt.clear();
@@ -182,7 +182,7 @@ export class EmberwingArena extends RaidArena {
     super.damage(target, amount, owner, ability);
     if (crash) {
       r.stagger = Math.min(100, r.stagger + MOON_STAGGER);
-      r.message = "Full Moon crashes into Emberwing! +20 stagger";
+      r.message = "Full Moon crashes into Lumiwick! +20 stagger";
     }
   }
   private light(index: number, by: Fighter) {
@@ -394,7 +394,7 @@ export class EmberwingArena extends RaidArena {
         { teach: seen < 2, ...(lighter && !i ? { targetId: lighter.id } : {}) },
       ),
     );
-    r.message = "Emberwing rains fire on the last brazier!";
+    r.message = "Lumiwick rains fire on the last brazier!";
   }
   /** The dive turns at its end and comes back through its target. */
   private warnReturn(boss: Fighter) {
@@ -586,7 +586,7 @@ export class EmberwingArena extends RaidArena {
       r.permanentGround = false;
       r.chapterGroundings = 0;
       r.exposedUntil = Math.min(r.exposedUntil, this.time);
-      r.message = "Emberwing's wings mend — it takes flight again!";
+      r.message = "Lumiwick patches its paper — it floats up again!";
     }
     if (
       !r.airborne &&

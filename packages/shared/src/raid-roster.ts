@@ -96,7 +96,7 @@ export const RAID_BOSSES: Record<RaidBossId, RaidBossInfo> = {
   },
   emberwing: {
     id: "emberwing",
-    name: "Emberwing",
+    name: "Lumiwick",
     epithet: "Ground the sky",
     element: "Fire",
     color: "#ff8a4f",
@@ -104,7 +104,7 @@ export const RAID_BOSSES: Record<RaidBossId, RaidBossInfo> = {
     stars: 3,
     signature: "Light three braziers at once",
     blurb:
-      "A plump, smug fire bird that refuses to land. Light all three braziers together to knock it out of the sky.",
+      "A smug sky-lantern spirit that refuses to come down. Light all three braziers together to pull it out of the sky.",
     playable: true,
   },
   "storm-twins": {
