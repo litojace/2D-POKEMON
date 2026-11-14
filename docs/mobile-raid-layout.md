@@ -5,6 +5,11 @@ balanced vertically. Desktop keeps its existing four-column, two-row grid.
 Card width responds to both available width and height; the gallery scrolls
 horizontally within its own box. Safe-area insets continue to come from the
 shared lobby/panel layout, including the Dynamic Island and home indicator.
+Only the seven boss cards appear in the gallery; practice is accessed from
+inside a boss page. Boss entry and tab navigation use a short 260 ms slide
+and fade, reversed for Back/earlier tabs. Returning restores the gallery's
+horizontal scroll and card focus. Navigation responds immediately, cancels
+superseded animations, and skips motion with reduced motion or Low graphics.
 
 Opening a boss frames its body on both desktop and phone with minimal zoom
 (1.04 times stage height, 1.07 for Snoozaku, or enough to cover the width). The face may sit off
@@ -14,6 +19,14 @@ Storm Twins uses the midpoint between both faces. Cards/thumbnails use their
 whole-creature crops. Snoozaku's mobile gallery card instead uses the wide
 painting with expanded scenery, showing the creature at a smaller scale with real scenery
 covering both edges; desktop cards and room banners keep the portrait asset.
+
+The detail paintings use `*-lower.webp` variants with painted scenery added
+above the original composition. The approved creature, horizontal framing and
+zoom stay unchanged; the original painting is shifted down by 32 source pixels
+for Cragmuff, 60 for Tidelotl, 64 for Inkpurr/Snoozaku/Lumiwick, 44 for Prismell,
+and 48 for Storm Twins. Only the new top scenery is generated; the creature
+comes from the original painting. Face coordinates include the same offset.
+Gallery portraits and the original wide files remain available unchanged.
 
 ## Reference study
 

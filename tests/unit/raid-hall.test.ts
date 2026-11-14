@@ -59,10 +59,10 @@ const rewards = (p: RaidProgress) =>
   );
 
 describe("the Raid Hall", () => {
-  it("shows every boss and Attack practice; the others open after Grumblecrag", () => {
+  it("shows only the seven bosses; the others open after Grumblecrag", () => {
     const html = raidMarkup(raidView(), data());
     expect(count(html, /data-raid-card="/g)).toBe(RAID_BOSS_ORDER.length);
-    expect(html).toContain("data-raid-practice-card");
+    expect(html).not.toContain("data-raid-practice-card");
     // New players: one open boss, the rest say why they are locked.
     expect(count(html, /Clear Cragmuff first/g)).toBe(
       RAID_BOSS_ORDER.length - 1,

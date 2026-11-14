@@ -4,7 +4,7 @@ import type {
 } from "../../../../packages/shared/src/raid";
 import { openHubPanel, type HubPanel } from "../ui/hub-panel";
 import { parse, patch } from "../ui/patch";
-import { whenSettled } from "../ui/motion";
+import { enter, whenSettled } from "../ui/motion";
 import {
   practiceAttack,
   raidMarkup,
@@ -48,7 +48,6 @@ export interface RaidScreen {
 
 const FOCUS_KEYS = [
   "data-raid-card",
-  "data-raid-practice-card",
   "data-ui-raid-filter",
   "data-ui-raid-tab",
   "data-ui-raid-play",
@@ -71,6 +70,8 @@ export function openRaids(
   let template: HTMLElement;
   let panel: HubPanel;
   let closed = false;
+  let navigation: Animation[] = [];
+  let hallScroll = 0;
   const root = () => panel.root;
   const q = <T extends HTMLElement>(s: string) => root().querySelector<T>(s);
 
@@ -82,11 +83,13 @@ export function openRaids(
     const key = FOCUS_KEYS.find((k) => target.hasAttribute(k))!;
     return `[${key}="${CSS.escape(target.getAttribute(key)!)}"]`;
   };
-  function render(swap = false) {
+  function render(swap = false, direction = 1) {
     if (closed) return;
     const key = focusKey();
     const next = parse(raidMarkup(view, hooks.data()));
     if (swap || next.dataset.raidMode !== template.dataset.raidMode) {
+      for (const animation of navigation) animation.cancel();
+      navigation = [];
       // Hall ⇄ boss page, another boss or another tab: swap the insides whole.
       for (const a of Array.from(root().attributes))
         if (!["tabindex", "data-graphics"].includes(a.name))
@@ -95,6 +98,20 @@ export function openRaids(
         root().setAttribute(a.name, a.value);
       root().replaceChildren(...Array.from(next.cloneNode(true).childNodes));
       q<HTMLElement>("[data-raid-region=body]")?.scrollTo({ top: 0 });
+      // Apply navigation immediately; only its presentation glides. Back
+      // travels in the opposite direction. Shared motion respects reduced
+      // motion and Low graphics, with no delayed clicks or snapshot overlays.
+      for (const child of Array.from(root().children)) {
+        const animation = enter(
+          child,
+          {
+            opacity: 0,
+            transform: `translateX(${direction * 24}px)`,
+          },
+          { duration: 260 },
+        );
+        if (animation) navigation.push(animation);
+      }
     } else patch(root(), template, next);
     template = next;
     const active = document.activeElement as HTMLButtonElement | null;
@@ -107,6 +124,8 @@ export function openRaids(
       ).focus({ preventScroll: true });
   }
   const openBoss = (boss: RaidBossId, tab: RaidTab = "party") => {
+    if (view.mode === "hall")
+      hallScroll = q<HTMLElement>(".rh-grid")?.scrollLeft ?? 0;
     view.mode = "boss";
     view.boss = boss;
     view.tab = tab;
@@ -122,7 +141,8 @@ export function openRaids(
     const from = view.boss;
     view.mode = "hall";
     view.status = "";
-    render(true);
+    render(true, -1);
+    q<HTMLElement>(".rh-grid")?.scrollTo({ left: hallScroll });
     // Back on the card you came from, scrolled into view.
     const card = q<HTMLElement>(`[data-raid-card="${from}"]`);
     card?.scrollIntoView({ block: "nearest" });
@@ -154,7 +174,6 @@ export function openRaids(
     if (!t || !root().contains(t) || t.disabled) return;
     const d = t.dataset;
     if (d.raidCard) openBoss(d.raidCard as RaidBossId);
-    else if (d.raidPracticeCard !== undefined) openBoss(view.boss, "attacks");
     else if (d.uiRaidFilter) {
       view.filter = d.uiRaidFilter as RaidFilter;
       render();
@@ -163,9 +182,12 @@ export function openRaids(
       render();
     } else if (d.raidBack !== undefined) toHall();
     else if (d.uiRaidTab) {
+      const tabs: RaidTab[] = ["party", "attacks", "rewards", "guide"];
+      const direction =
+        tabs.indexOf(d.uiRaidTab as RaidTab) < tabs.indexOf(view.tab) ? -1 : 1;
       view.tab = d.uiRaidTab as RaidTab;
       view.status = "";
-      render(true);
+      render(true, direction);
       q<HTMLElement>(`[data-ui-raid-tab="${view.tab}"]`)?.focus({
         preventScroll: true,
       });
@@ -258,6 +280,7 @@ export function openRaids(
     rail: "raids",
     onClose: () => {
       closed = true;
+      for (const animation of navigation) animation.cancel();
       hooks.onClose?.();
     },
   });

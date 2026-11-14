@@ -160,9 +160,9 @@ for (const size of SIZES)
       await expect(
         page.locator('.lobby-rail [data-lobby-action="raids"]'),
       ).toHaveAttribute("aria-current", "page");
-      // Seven bosses and Attack practice; the records came from the server.
+      // Seven bosses, without an extra practice card; the records came from the server.
       await expect(room.locator("[data-raid-card]")).toHaveCount(7);
-      await expect(room.locator("[data-raid-practice-card]")).toHaveCount(1);
+      await expect(room.locator("[data-raid-practice-card]")).toHaveCount(0);
       await expect(
         room.locator('[data-raid-card="grumblecrag"] .ui-tag'),
       ).toHaveText("3 clears");
@@ -201,8 +201,8 @@ for (const size of SIZES)
             };
           }),
         );
-      expect(cards).toHaveLength(8);
-      expect(new Set(cards.map((c) => c.x)).size).toBe(size.phone ? 8 : 4);
+      expect(cards).toHaveLength(7);
+      expect(new Set(cards.map((c) => c.x)).size).toBe(size.phone ? 7 : 4);
       if (size.phone) {
         const gallery = await box(page, ".rh-grid");
         expect(new Set(cards.map((c) => Math.round(c.t))).size).toBe(1);

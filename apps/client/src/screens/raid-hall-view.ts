@@ -252,9 +252,6 @@ function bossCard(id: RaidBossId, d: RaidData) {
       : portrait;
   return `<button type="button" class="rh-card${locked ? " is-locked" : ""}${b.playable ? "" : " is-soon"}" style="--boss:${b.color}" data-raid-card="${id}" aria-label="${esc(label)}"><span class="rh-card-art">${art}</span><span class="rh-card-top">${corner}${stars(b.stars)}</span><span class="rh-card-text"><b class="rh-card-name">${esc(b.name)}</b><small class="ui-note rh-card-line">${esc(b.element)} · ${esc(b.signature)}</small><span class="rh-card-foot"><span class="rh-tricks" title="Fighters with a trick here">${tricks.map((t) => fighterChip(t.character, `rh-${id}-${t.character}`)).join("")}</span><span class="ui-note">${p ? `${earned} / ${total} rewards` : `${total} rewards`}</span></span></span></button>`;
 }
-function practiceCard() {
-  return `<button type="button" class="rh-card rh-practice" data-raid-practice-card aria-label="Attack practice: drill any boss attack on its own"><span class="rh-practice-icon" aria-hidden="true">${menuIcon("target")}</span><span class="rh-card-text"><b class="ui-h">Attack practice</b><small class="ui-note">Drill any boss attack on its own. Nothing to lose.</small></span><span class="ui-btn is-s" aria-hidden="true">Choose an attack</span></button>`;
-}
 
 /* -------------------------------------------------------------- hall */
 
@@ -286,7 +283,7 @@ function hallMarkup(view: RaidView, d: RaidData) {
       : "",
   ].join("");
   const grid = shown.length
-    ? `<div class="ui-grid rh-grid" role="group" aria-label="Bosses">${shown.map((id) => bossCard(id, d)).join("")}${practiceCard()}</div>`
+    ? `<div class="ui-grid rh-grid" role="group" aria-label="Bosses">${shown.map((id) => bossCard(id, d)).join("")}</div>`
     : emptyState(
         "Every boss here is cleared",
         "Try another filter, or run a favourite again.",
@@ -314,13 +311,13 @@ export const BOSS_FRAMES: Record<
   RaidBossId,
   { body: [number, number]; face: [number, number]; zoom: number }
 > = {
-  grumblecrag: { body: [0.47, 0.45], face: [0.54, 0.35], zoom: 1.04 },
-  tidewyrm: { body: [0.62, 0.48], face: [0.65, 0.36], zoom: 1.04 },
-  gloomshade: { body: [0.54, 0.44], face: [0.62, 0.3], zoom: 1.04 },
-  somnara: { body: [0.57, 0.4], face: [0.64, 0.335], zoom: 1.07 },
-  prismatail: { body: [0.475, 0.44], face: [0.675, 0.42], zoom: 1.04 },
-  emberwing: { body: [0.42, 0.39], face: [0.508, 0.315], zoom: 1.04 },
-  "storm-twins": { body: [0.487, 0.43], face: [0.552, 0.41], zoom: 1.04 },
+  grumblecrag: { body: [0.47, 0.45], face: [0.54, 0.38125], zoom: 1.04 },
+  tidewyrm: { body: [0.62, 0.48], face: [0.65, 0.418594], zoom: 1.04 },
+  gloomshade: { body: [0.54, 0.44], face: [0.62, 0.3625], zoom: 1.04 },
+  somnara: { body: [0.57, 0.4], face: [0.64, 0.3975], zoom: 1.07 },
+  prismatail: { body: [0.475, 0.44], face: [0.675, 0.462969], zoom: 1.04 },
+  emberwing: { body: [0.42, 0.39], face: [0.508, 0.3775], zoom: 1.04 },
+  "storm-twins": { body: [0.487, 0.43], face: [0.552, 0.456875], zoom: 1.04 },
 };
 /**
  * The stage: the boss's painting framed vertically on the boss (a poster),

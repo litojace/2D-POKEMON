@@ -59,7 +59,7 @@
   border-color: var(--ui-accent);
 }
 @media (hover: hover) {
-  .rh-card:not(.rh-practice):hover {
+  .rh-card:hover {
     transform: translateY(-3px);
   }
 }
@@ -79,7 +79,7 @@
   transform: scale(1.03);
 }
 /* The text sits on a dark foot of the picture. */
-.rh-card:not(.rh-practice)::after {
+.rh-card::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -166,39 +166,6 @@
 .rh-tricks .ui-avatar {
   margin-right: -6px;
   border-width: 2px;
-}
-.rh-practice {
-  place-items: center;
-  align-content: center;
-  gap: 10px;
-  padding: 16px;
-  text-align: center;
-  border-style: dashed;
-  border-color: var(--ui-line-2);
-  background: transparent;
-}
-.rh-practice .rh-card-text {
-  justify-items: center;
-  padding: 0;
-}
-.rh-practice .ui-h {
-  font-size: 22px;
-}
-.rh-practice .rh-card-name {
-  white-space: normal;
-}
-.rh-practice-icon {
-  width: 72px;
-  height: 72px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  background: var(--ui-bg-2);
-  color: var(--ui-accent);
-}
-.rh-practice-icon svg {
-  width: 34px;
-  height: 34px;
 }
 
 /* -------------------------------------------------------- boss page */
@@ -753,21 +720,6 @@ button.rh-reward:focus-visible {
   }
   .rh-card-line,
   .rh-card-foot {
-    display: none;
-  }
-  .rh-practice {
-    padding: 6px;
-    gap: 6px;
-  }
-  .rh-practice-icon {
-    width: 40px;
-    height: 40px;
-  }
-  .rh-practice-icon svg {
-    width: 20px;
-    height: 20px;
-  }
-  .rh-practice > .ui-btn {
     display: none;
   }
   /* Phones keep the same wider framing and safe face position. */
