@@ -57,6 +57,7 @@ class TideMotion {
   seen = new Set<number>();
   sinking = new Map<number, number>();
   surfacedAt = -10;
+  divedAt = -10;
   hurtAt = -10;
   /** When the last new phase began (its roar). */
   roarAt = -10;
@@ -111,6 +112,8 @@ export function prewarmLagoon(scene: Phaser.Scene, state: Snapshot) {
 }
 export const lagoonAtlasKey = lagoonKey;
 
+/** How long Tidelotl is seen sinking when it dives, before only its shadow shows. */
+const DIVE_SECONDS = 0.5;
 /** How long an island takes to go under, or to come back up (seconds). */
 const SINK_SECONDS = 0.9;
 interface IslandMemory {
@@ -923,8 +926,10 @@ export function drawTidewyrm(
         grav: 700,
       });
   }
-  if (!m.submerged && r.submerged && live)
+  if (!m.submerged && r.submerged && live) {
     m.splash(boss.x, boss.y, 12, reduced);
+    m.divedAt = m.time;
+  }
   if ((r.strands ?? 0) > m.strands) cues.push("crash");
   if (boss.hp < m.hp && boss.hp > 0) {
     m.hurtAt = m.time;
@@ -1012,7 +1017,10 @@ export function drawTidewyrm(
       );
     }
   };
-  if (r.submerged && !dead) {
+  // Diving: for a moment it is still drawn, sinking as the water closes over it.
+  const diving =
+    r.submerged && !dead && !reduced ? (t - m.divedAt) / DIVE_SECONDS : 1;
+  if (r.submerged && !dead && diving >= 1) {
     // Only a dark shape and a wake show where it swims.
     g.fillStyle(DEEP, 0.45).fillEllipse(boss.x, boss.y, 120, 46);
     for (let k = 0; k < 2; k++) {
@@ -1062,6 +1070,7 @@ export function drawTidewyrm(
     hurt,
     dead,
     rise,
+    dive: r.submerged ? diving : 0,
     deathSink: sink,
     roarAge: t - m.roarAt,
     // Water everywhere but the islands' sand.

@@ -11,6 +11,10 @@
  */
 import {
   ATTACH,
+  BODY,
+  CP,
+  SP,
+  VEIL,
   EYES,
   EXPRS,
   HEAD,
@@ -28,8 +32,11 @@ import {
   norm3,
   paintBody,
   paintEye,
-  paintFade,
-  paintFoam,
+  paintFoamClump,
+  paintFoamLace,
+  paintRipple,
+  paintVeil,
+  paintWake,
   paintGill,
   paintHead,
   paintLeg,
@@ -91,6 +98,8 @@ const QUAL = {
   tail: 1.0,
   fx: 1.0,
 };
+/** Foam clump and lace drawings (each a few seeds). */
+const FOAM_KINDS = 3;
 const LEGS_F: LegPose[] = ["stand", "paddle", "splay", "up"];
 const LEGS_B: LegPose[] = ["stand", "paddle", "splay"];
 /** Every piece, main and skin. */
@@ -179,26 +188,44 @@ export function tidelotlPieces(): LotlPiece[] {
           paint: (c) => paintTail(c, { v, pose }),
         });
   }
+  // the water round the body (boss-tidelotl-paint.ts, "the water round the body")
   add({
-    name: "foamBack",
-    box: [-66, -28, 66, 4],
-    q: 1.1,
+    name: "veil",
+    box: [-70, -6, 70, 32],
+    q: 1.5,
     outline: false,
-    paint: (c) => paintFoam(c, { front: 0 }),
+    paint: (c) => paintVeil(c),
   });
+  for (let i = 0; i < FOAM_KINDS; i++) {
+    add({
+      name: `foam${i}`,
+      box: [-12, -7, 12, 8],
+      q: 1.6,
+      outline: false,
+      paint: (c) => paintFoamClump(c, { seed: i }),
+    });
+    add({
+      name: `lace${i}`,
+      box: [-16, -5, 16, 5],
+      q: 1.5,
+      outline: false,
+      paint: (c) => paintFoamLace(c, { seed: i }),
+    });
+  }
+  for (const front of [0, 1])
+    add({
+      name: front ? "rippleFront" : "rippleBack",
+      box: front ? [-104, -4, 104, 54] : [-104, -54, 104, 4],
+      q: 1,
+      outline: false,
+      paint: (c) => paintRipple(c, { front }),
+    });
   add({
-    name: "foamFront",
-    box: [-66, -4, 66, 34],
-    q: 1.1,
+    name: "wake",
+    box: [-92, -38, 6, 38],
+    q: 1,
     outline: false,
-    paint: (c) => paintFoam(c, { front: 1 }),
-  });
-  add({
-    name: "fade",
-    box: [-110, -12, 110, 30],
-    q: QUAL.fx,
-    outline: false,
-    paint: (c) => paintFade(c),
+    paint: (c) => paintWake(c),
   });
   add({
     name: "swirl",
@@ -284,6 +311,8 @@ export interface LotlCue {
   dead: boolean;
   /** 0–1 out of the water after surfacing. */
   rise: number;
+  /** 0–1 under the water while diving (before only its shadow shows). */
+  dive?: number;
   /** 0–1 sunk after dying. */
   deathSink: number;
   /** Seconds since a new phase began, large when long past. */
@@ -498,6 +527,12 @@ export function tidelotlPose(c: LotlCue): LotlPose {
       1,
     );
   }
+  // diving: it tucks in and sinks, the water rising over it
+  if (c.dive && c.dive > 0 && !c.dead) {
+    const d = ease(clamp(c.dive));
+    toward(P, { expr: "closed", mouth: "o", tail: "out", hdy: 6 }, d, 0.2);
+    P.h = lerp(P.h, -150, d);
+  }
   // a new phase: it curls up, then bursts up roaring, gills flared
   if (!c.reduced && c.roarAge >= 0 && c.roarAge < 1.6 && !c.dead) {
     const a = c.roarAge;
@@ -708,8 +743,18 @@ export interface LotlPlacement {
   sx: number;
   sy: number;
   alpha: number;
-  /** Cut at the waterline (y = 0 in the rig's frame) when in water. */
-  water: boolean;
+  /**
+   * In the water: hidden below this y (the rig's frame), the depth where the
+   * water over its part (head, body or tail) turns opaque. Unset: not cut.
+   */
+  cut?: number;
+}
+/** The waterline round the whole body (the rig's frame), for the ripples and the wake. */
+export interface LotlWater {
+  cx: number;
+  cy: number;
+  rx: number;
+  ry: number;
 }
 export interface LotlLayout {
   placements: LotlPlacement[];
@@ -719,19 +764,151 @@ export interface LotlLayout {
   pearlVisible: boolean;
   mouth: { x: number; y: number };
   gillTip: { x: number; y: number };
+  /** Set in the water, while the body is near the surface. */
+  water?: LotlWater;
 }
 const place = (
   key: string,
   piece: string,
   m: M,
   alpha: number,
-  water: boolean,
+  cut?: number,
 ): LotlPlacement => {
   const sx = Math.hypot(m[0], m[1]),
     rot = Math.atan2(m[1], m[0]),
     sy = (m[0] * m[3] - m[1] * m[2]) / (sx || 1);
-  return { key, piece, x: m[4], y: m[5], rot, sx, sy, alpha, water };
+  return { key, piece, x: m[4], y: m[5], rot, sx, sy, alpha, cut };
 };
+
+// ── the waterline ──
+/** The water's surface in the rig's frame (y, just below the origin). */
+const WATER_LINE = -7;
+const RING_N = 18;
+interface RingPoint {
+  /** The rig's frame. */
+  x: number;
+  y: number;
+  /** Tangent (the rig's frame) and the camera's water plane. */
+  tx: number;
+  ty: number;
+  X: number;
+  Z: number;
+  near: boolean;
+}
+/** Where the water's surface cuts one part (an ellipsoid): an ellipse in the camera's water plane. */
+interface Section {
+  cx: number;
+  cz: number;
+  ax: number;
+  az: number;
+  yaw: number;
+  pts: RingPoint[];
+  /** Its bounds in the rig's frame. */
+  bx: number;
+  by: number;
+  brx: number;
+  bry: number;
+  /** The image cut: under this the veil is opaque. */
+  cut: number;
+}
+/** A part's waterline; "above" the water; or, all under, the water's height at its centre. */
+type Cut = Section | "above" | number;
+const isSection = (s: Cut | Section): s is Section => typeof s === "object";
+/**
+ * The waterline round one part: the surface (a level plane) cuts the
+ * ellipsoid in an ellipse, seen through the painting's own camera. `s0` is
+ * the water's screen height at depth 0 in the part's painting space.
+ */
+function section(
+  root: M,
+  s0: number,
+  c: { x: number; y: number; z: number },
+  e: { rx: number; ry: number; rz: number },
+  yaw: number,
+): Cut {
+  const yw = -s0 / CP,
+    t = (yw - c.y) / e.ry;
+  if (t <= -0.99) return "above";
+  if (t >= 0.99) {
+    // under: what pokes up (gill tips) still shows above the surface
+    const Y = s0 + c.z * SP;
+    return root[1] * c.x + root[3] * Y + root[5];
+  }
+  const r = Math.sqrt(1 - t * t),
+    ax = e.rx * r,
+    az = e.rz * r,
+    cy = Math.cos(yaw),
+    sy = Math.sin(yaw);
+  const pts: RingPoint[] = [];
+  let x0 = 1e9,
+    x1 = -1e9,
+    y0 = 1e9,
+    y1 = -1e9,
+    bottom = -1e9;
+  for (let i = 0; i < RING_N; i++) {
+    const th = (i / RING_N) * Math.PI * 2,
+      ct = Math.cos(th),
+      st = Math.sin(th),
+      xh = ax * ct,
+      zh = az * st;
+    const X = c.x + xh * cy + zh * sy,
+      Z = c.z - xh * sy + zh * cy,
+      Y = s0 + Z * SP;
+    const x = root[0] * X + root[2] * Y + root[4],
+      y = root[1] * X + root[3] * Y + root[5];
+    const dX = -ax * st * cy + az * ct * sy,
+      dY = (ax * st * sy + az * ct * cy) * SP;
+    const near = -(ct / ax) * sy + (st / az) * cy > 0;
+    pts.push({
+      x,
+      y,
+      X,
+      Z,
+      near,
+      tx: root[0] * dX + root[2] * dY,
+      ty: root[1] * dX + root[3] * dY,
+    });
+    if (x < x0) x0 = x;
+    if (x > x1) x1 = x;
+    if (y < y0) y0 = y;
+    if (y > y1) y1 = y;
+    if (near && y > bottom) bottom = y;
+  }
+  const bry = (y1 - y0) / 2,
+    depth = VEIL.depth * (bry / VEIL.ry);
+  return {
+    cx: c.x,
+    cz: c.z,
+    ax,
+    az,
+    yaw,
+    pts,
+    bx: (x0 + x1) / 2,
+    by: (y0 + y1) / 2,
+    brx: (x1 - x0) / 2,
+    bry,
+    cut: Math.max(bottom, (y0 + y1) / 2) + 0.8 * depth,
+  };
+}
+/** Is a point of the water plane inside this part (hidden in it)? */
+function inside(s: Section, X: number, Z: number, k = 1) {
+  const dx = X - s.cx,
+    dz = Z - s.cz,
+    c = Math.cos(s.yaw),
+    sn = Math.sin(s.yaw);
+  const u = (dx * c - dz * sn) / s.ax,
+    w = (dx * sn + dz * c) / s.az;
+  return u * u + w * w < k * k;
+}
+const cutOf = (s: Cut) =>
+  s === "above" ? undefined : typeof s === "number" ? s : s.cut;
+const hash = (n: number) => {
+  const x = Math.sin(n * 12.9898) * 43758.5453;
+  return x - Math.floor(x);
+};
+const qb = (a: number, b: number, c: number, t: number) =>
+  (1 - t) * (1 - t) * a + 2 * (1 - t) * t * b + t * t * c;
+
 /** One whole axolotl at one facing (keys prefixed with `pre`). */
 function oneBoss(
   P: LotlPose,
@@ -742,6 +919,7 @@ function oneBoss(
   legs: boolean,
   out: LotlPlacement[],
   wet: boolean,
+  sea: { low: boolean; sections: Section[] },
 ) {
   const F = FACING[facing],
     v = F.v,
@@ -752,23 +930,201 @@ function oneBoss(
   if (F.m) root = mul(root, S(-1, 1));
   if (P.brot) root = mul(root, R(P.brot));
   const items: { z: number; f: () => void }[] = [];
-  const put = (key: string, piece: string, m: M) =>
-    out.push(place(pre + key, piece, m, alpha * P.alpha, wet));
+  const a0 = alpha * P.alpha;
+  const put = (key: string, piece: string, m: M, cut?: number) =>
+    out.push(place(pre + key, piece, m, a0, cut));
   const tail = P.tail === "rest" && v >= 3 ? "restB" : P.tail;
+  const trot = P.trot * (v === 0 || v === 4 ? 0.6 : 1);
+  // where the water cuts the body, the head and the tail
+  const yb = VIEW_YAW[v],
+    cb = Math.cos(yb),
+    sb = Math.sin(yb);
+  // the water's height (painting space, depth 0) that lands on WATER_LINE
+  const s0 = (WATER_LINE - root[5]) / (root[3] || 1);
+  let body: Cut = "above",
+    head: Cut = "above",
+    tailCut: number | undefined,
+    contacts: { x: number; y: number; k: number }[] = [];
+  if (wet) {
+    body = section(root, s0, { x: 0, y: 0, z: 0 }, BODY, yb);
+    const H = ATTACH.head,
+      puffX = 1 + P.puff * 0.075;
+    head = section(
+      root,
+      s0,
+      {
+        x: H.x * cb + H.z * sb,
+        y: H.y - P.hdy / CP,
+        z: -H.x * sb + H.z * cb,
+      },
+      {
+        rx: HEAD.rx * puffX,
+        ry: HEAD.ry * (1 + P.puff * 0.03),
+        rz: HEAD.rz * puffX,
+      },
+      HEAD_YAW[v],
+    );
+    // the tail: where its fin's lower edge meets the water
+    const [p0, p1, p2] = TAIL_POSE[tail],
+      TR = ATTACH.tail,
+      yw = -s0 / CP,
+      finK = v >= 3 ? 0.5 : 1,
+      ct = Math.cos(trot),
+      st = Math.sin(trot);
+    let under = 0,
+      n = 0,
+      sum = 0;
+    for (let i = 1; i <= 9; i++) {
+      const t = i / 9,
+        x = TR.x + qb(p0.x, p1.x, p2.x, t),
+        y = TR.y + qb(p0.y, p1.y, p2.y, t),
+        z = TR.z + qb(p0.z, p1.z, p2.z, t);
+      const core = lerp(19, 3.5, Math.pow(t, 0.85)),
+        fin =
+          core +
+          12 * finK * Math.pow(Math.sin(Math.PI * clamp(t * 1.1 - 0.05)), 0.8);
+      n++;
+      if (y + core < yw) under++;
+      // within a hair of the surface counts: the water climbs the fin
+      if (y - fin > yw + 4 || y + core < yw) continue;
+      const X = x * cb + z * sb,
+        Z = -x * sb + z * cb;
+      if (isSection(body) && inside(body, X, Z, 1.05)) continue;
+      // into the tail's own frame (it turns about its root), then the rig's
+      const dx = X - A.tail.x,
+        dy = s0 + Z * SP - A.tail.y,
+        qx = A.tail.x + dx * ct - dy * st,
+        qy = A.tail.y + dx * st + dy * ct;
+      const px = root[0] * qx + root[2] * qy + root[4],
+        py = root[1] * qx + root[3] * qy + root[5];
+      sum += py;
+      contacts.push({ x: px, y: py, k: t });
+    }
+    tailCut =
+      under === n
+        ? root[3] * (s0 + (-TR.x * sb + TR.z * cb) * SP) +
+          root[1] * A.tail.x +
+          root[5]
+        : contacts.length
+          ? sum / contacts.length + 1
+          : undefined;
+    // keep the tip-most contact and one nearer the root
+    if (contacts.length > 2)
+      contacts = [
+        contacts[contacts.length - 1],
+        contacts[contacts.length >> 1],
+      ];
+    if (P.h < -60) contacts = [];
+  }
+  const bodyCut = cutOf(body),
+    headCut = cutOf(head);
+  if (pre === "") {
+    for (const s of [body, head]) if (isSection(s)) sea.sections.push(s);
+  }
+  // foam round one part's waterline: the far side (behind it) or the near side
+  const foam = (s: Section, tag: string, near: boolean) => {
+    const others = [body, head].filter(
+      (o): o is Section => o !== s && isSection(o),
+    );
+    s.pts.forEach((p, i) => {
+      if (p.near !== near || (sea.low && i % 2)) return;
+      // the far side shows only beside the part
+      if (!near && Math.abs(p.x - s.bx) < 0.62 * s.brx) return;
+      if (others.some((o) => inside(o, p.X, p.Z, 1.04))) return;
+      // the tangent, pointing right (foam has no front or back)
+      const tl = (Math.hypot(p.tx, p.ty) || 1) * (p.tx < 0 ? -1 : 1),
+        ux = p.tx / tl,
+        uy = p.ty / tl,
+        slide = Math.sin(P.clock * 0.6 + i * 1.3) * 1.6,
+        breathe = 0.5 + 0.5 * Math.sin(P.clock * 0.9 + i * 2.39),
+        ox = p.x - s.bx,
+        oy = (p.y - s.by) * 2,
+        ol = Math.hypot(ox, oy) || 1,
+        x = p.x + ux * slide + (ox / ol) * 1.5,
+        y = p.y + uy * slide + (oy / ol) * 1.2;
+      const h1 = hash(i * 7.1 + tag.charCodeAt(0)),
+        h2 = hash(i * 3.3 + tag.charCodeAt(0) * 2.7),
+        kind = Math.floor(h1 * FOAM_KINDS),
+        ang = Math.atan2(uy, ux),
+        a = a0 * (near ? 0.55 + 0.45 * breathe : 0.6);
+      // a frothy band along the line, broken here and there
+      if (h2 > 0.16) {
+        const sc = (0.95 + 0.35 * h1) * (near ? 1 : 0.8);
+        out.push(
+          place(
+            `${pre}fl${tag}${i}`,
+            `lace${kind}`,
+            mul(T(x, y), mul(R(ang), S(sc, sc * 0.85))),
+            a,
+          ),
+        );
+      }
+      // and clumps of suds piled on it, of all sizes
+      if (near && h1 > 0.35) {
+        const sc = (0.7 + 0.8 * h2) * (0.9 + 0.15 * breathe);
+        out.push(
+          place(
+            `${pre}fc${tag}${i}`,
+            `foam${(kind + 1) % FOAM_KINDS}`,
+            mul(T(x + ux * 3, y + 1), mul(R(ang * 0.5), S(sc))),
+            a0 * (0.75 + 0.25 * breathe),
+          ),
+        );
+      }
+    });
+  };
+  // the water over the part below the line, then the near foam
+  const veil = (s: Cut, tag: string) => {
+    if (!isSection(s) || pre !== "") return;
+    out.push(
+      place(
+        `veil${tag}`,
+        "veil",
+        mul(T(s.bx, s.by), S(s.brx / VEIL.rx, Math.max(0.5, s.bry) / VEIL.ry)),
+        a0,
+      ),
+    );
+    foam(s, tag, true);
+  };
+  const backFoam = (s: Cut, tag: string) => {
+    if (isSection(s) && pre === "") foam(s, tag, false);
+  };
   items.push({
     z: A.tail.z - 30,
-    f: () =>
+    f: () => {
       put(
         "tail",
         `tail_${v}_${tail}`,
-        mul(
-          root,
-          mul(
-            T(A.tail.x, A.tail.y),
-            R(P.trot * (v === 0 || v === 4 ? 0.6 : 1)),
+        mul(root, mul(T(A.tail.x, A.tail.y), R(trot))),
+        tailCut,
+      );
+      if (pre !== "") return;
+      // where the fin skims the water: a little meniscus of foam and rings
+      contacts.forEach((c, i) => {
+        const ph = (P.clock * 1.1 + i * 0.5) % 1,
+          rr = 7 + ph * 16;
+        out.push(
+          place(
+            `tcB${i}`,
+            "rippleBack",
+            mul(T(c.x, c.y), S(rr / 100, (rr * 0.42) / 50)),
+            a0 * 0.8 * (1 - ph),
           ),
-        ),
-      ),
+          place(
+            `tcF${i}`,
+            "rippleFront",
+            mul(T(c.x, c.y), S(rr / 100, (rr * 0.42) / 50)),
+            a0 * 0.9 * (1 - ph),
+          ),
+          place(
+            `tcf${i}`,
+            `foam${(i + 1) % FOAM_KINDS}`,
+            mul(T(c.x, c.y + 1), S(0.75 - c.k * 0.2)),
+            a0 * (0.75 + 0.25 * Math.sin(P.clock * 2 + i)),
+          ),
+        );
+      });
+    },
   });
   if (legs)
     for (const fb of ["F", "B"] as const)
@@ -783,11 +1139,19 @@ function oneBoss(
               `leg${fb}${side}`,
               `leg_${v}_${mirror ? "L" : side}_${fb}_${pose}`,
               mul(root, mul(T(hp.x, hp.y), S(mirror ? -1 : 1, 1))),
+              bodyCut,
             ),
         });
       }
-  items.push({ z: 0, f: () => put("body", `body_${v}`, root) });
-  const head = { x: 0, y: 0 },
+  items.push({
+    z: 0,
+    f: () => {
+      backFoam(body, "b");
+      put("body", `body_${v}`, root, bodyCut);
+      veil(body, "b");
+    },
+  });
+  const headPt = { x: 0, y: 0 },
     top = { x: 0, y: 0 },
     pearl = { x: 0, y: 0 },
     mouth = { x: 0, y: 0 },
@@ -797,6 +1161,7 @@ function oneBoss(
   items.push({
     z: A.head.z,
     f: () => {
+      backFoam(head, "h");
       const hm = mul(root, mul(T(A.head.x, A.head.y + P.hdy), R(P.hrot)));
       const G = GILL_AT[hv];
       const gill = (side: "L" | "R", i: number) => {
@@ -820,6 +1185,7 @@ function oneBoss(
           `gill${side}${i}`,
           `gill_${hv}_${mirror ? "L" : side}_${i}_${lit}`,
           mul(hm, mul(T(g.x, g.y), mul(R(rot), S(mirror ? -sc : sc, sc)))),
+          headCut,
         );
       };
       const order: { side: "L" | "R"; i: number; z: number }[] = [];
@@ -828,21 +1194,28 @@ function oneBoss(
       order.sort((a, b) => a.z - b.z);
       for (const o of order) if (o.z <= 0.02) gill(o.side, o.i);
       const puff = S(1 + P.puff * 0.075, 1 + P.puff * 0.03);
-      put("head", `head_${hv}`, mul(hm, puff));
+      put("head", `head_${hv}`, mul(hm, puff), headCut);
       for (const e of EYES[hv]) {
         const ex = e.peek ? "idle" : P.expr;
-        put(`eye${e.id}`, `eye_${hv}_${e.id}_${ex}`, mul(hm, puff));
+        put(`eye${e.id}`, `eye_${hv}_${e.id}_${ex}`, mul(hm, puff), headCut);
         if (hv === 0)
-          put("eyef", `eye_${hv}_${e.id}_${ex}`, mul(hm, mul(S(-1, 1), puff)));
+          put(
+            "eyef",
+            `eye_${hv}_${e.id}_${ex}`,
+            mul(hm, mul(S(-1, 1), puff)),
+            headCut,
+          );
       }
-      if (hv < 4) put("mouth", `mouth_${hv}_${P.mouth}`, mul(hm, puff));
-      if (hv < 3) put("pearl", `pearl_${hv}`, mul(hm, puff));
+      if (hv < 4)
+        put("mouth", `mouth_${hv}_${P.mouth}`, mul(hm, puff), headCut);
+      if (hv < 3) put("pearl", `pearl_${hv}`, mul(hm, puff), headCut);
       for (const o of order) if (o.z > 0.02) gill(o.side, o.i);
+      veil(head, "h");
       const at = (x: number, y: number, o: { x: number; y: number }) => {
         o.x = hm[0] * x + hm[2] * y + hm[4];
         o.y = hm[1] * x + hm[3] * y + hm[5];
       };
-      at(0, 0, head);
+      at(0, 0, headPt);
       at(0, -HEAD.ry, top);
       const pm = mul(hm, puff);
       pearl.x = pm[0] * PEARL_AT[hv].x + pm[2] * (PEARL_AT[hv].y - 3) + pm[4];
@@ -855,7 +1228,7 @@ function oneBoss(
   items.sort((a, b) => a.z - b.z);
   for (const it of items) it.f();
   return {
-    head,
+    head: headPt,
     top,
     pearl,
     pearlVisible: PEARL_AT[hv].vis > 0,
@@ -866,13 +1239,16 @@ function oneBoss(
 /**
  * Every image for a frame, in the rig's frame (origin = the boss on the
  * floor or the water's surface). `facing` may be fractional while it spins:
- * then the next facing fades in over the one it is leaving.
+ * then the next facing fades in over the one it is leaving. In the water each
+ * part is cut where the water over it turns opaque, with a veil of water, a
+ * meniscus and foam along its real waterline (`low`: half the foam).
  */
 export function tidelotlPlacements(
   P: LotlPose,
   facing: number,
   phase: number,
   wet: boolean,
+  low = false,
 ): LotlLayout {
   const out: LotlPlacement[] = [];
   const f0 = ((Math.floor(facing) % 8) + 8) % 8,
@@ -881,40 +1257,15 @@ export function tidelotlPlacements(
       : clamp((facing - Math.floor(facing) - 0.35) / 0.65),
     v = FACING[f0].v,
     L = VIEW_LEN[v];
-  const above = P.h > -60,
-    foam = wet && above && P.h < 100 ? clamp(1 - Math.abs(P.h - 20) / 90) : 0,
-    fw = 0.86 * L * P.sx;
-  if (wet) {
-    if (above)
-      out.push(
-        place(
-          "deep",
-          "deep",
-          mul(T(0, 6), S(1.15 * L, 1.1)),
-          0.55 * P.alpha,
-          false,
-        ),
-      );
-    if (foam > 0)
-      out.push(
-        place("foamBack", "foamBack", S(fw, 0.86), 0.8 * foam * P.alpha, false),
-      );
-  } else {
-    const sh = clamp(1.15 - P.h / 260, 0.45, 1);
-    out.push(
-      place(
-        "shadow",
-        "shadow",
-        mul(T(0, 6), S(1.25 * L * sh, 1.25 * sh)),
-        0.85 * P.alpha,
-        false,
-      ),
-    );
-  }
+  const above = P.h > -60;
+  // the shadow first: its place is known once the waterline is, so it is filled in after
+  const shadowAt = out.length;
+  out.push(place("deep", wet ? "deep" : "shadow", S(1), 0));
   const legs = !wet || P.h > 36;
-  const pts = oneBoss(P, f0, phase, "", 1, legs, out, wet);
+  const sea = { low, sections: [] as Section[] };
+  const pts = oneBoss(P, f0, phase, "", 1, legs, out, wet, sea);
   if (k > 0.03) {
-    oneBoss(P, (f0 + 1) % 8, phase, "b:", ease(k), false, out, wet);
+    oneBoss(P, (f0 + 1) % 8, phase, "b:", ease(k), false, out, wet, sea);
     for (let i = 0; i < 2; i++) {
       const a = facing * (Math.PI / 4) * 1.6 + i * Math.PI,
         h = (40 + i * 30) * LOTL_SCALE;
@@ -927,17 +1278,56 @@ export function tidelotlPlacements(
             mul(R(a + Math.PI / 2), S(1.1, 0.7)),
           ),
           0.75,
-          false,
         ),
       );
     }
   }
-  if (wet && above)
-    out.push(place("fade", "fade", S(1.5, 0.93), 0.9 * P.alpha, false));
-  if (foam > 0)
-    out.push(
-      place("foamFront", "foamFront", S(fw, 0.86), 0.9 * foam * P.alpha, false),
+  // the waterline round the whole body (or, lifted clear, the patch of water under it)
+  let water: LotlWater | undefined;
+  if (wet && above && P.h < 110) {
+    let x0 = 1e9,
+      x1 = -1e9,
+      y0 = 1e9,
+      y1 = -1e9;
+    for (const s of sea.sections) {
+      x0 = Math.min(x0, s.bx - s.brx);
+      x1 = Math.max(x1, s.bx + s.brx);
+      y0 = Math.min(y0, s.by - s.bry);
+      y1 = Math.max(y1, s.by + s.bry);
+    }
+    water =
+      x1 > x0
+        ? {
+            cx: (x0 + x1) / 2,
+            cy: (y0 + y1) / 2,
+            rx: (x1 - x0) / 2,
+            ry: (y1 - y0) / 2,
+          }
+        : { cx: 0, cy: WATER_LINE, rx: 46 * L * P.sx, ry: 12 };
+  }
+  if (wet) {
+    // depth: the water darkens under and round the body
+    if (water) {
+      const lift = clamp((P.h - 20) / 90);
+      out[shadowAt] = place(
+        "deep",
+        "deep",
+        mul(
+          T(water.cx, water.cy + 8),
+          S((water.rx * 1.6 + 16) / 60, (water.ry * 2.6 + 16) / 24),
+        ),
+        (0.9 - 0.4 * lift) * P.alpha,
+      );
+    } else out.splice(shadowAt, 1);
+  } else {
+    const sh = clamp(1.15 - P.h / 260, 0.45, 1);
+    out[shadowAt] = place(
+      "shadow",
+      "shadow",
+      mul(T(0, 6), S(1.25 * L * sh, 1.25 * sh)),
+      0.85 * P.alpha,
     );
+  }
   // phases 2 and 3: water swirls round it
   if (phase >= 2 && P.h > -30 && P.h < 90 && P.alpha > 0.5) {
     const n = phase >= 3 ? 3 : 2,
@@ -953,12 +1343,11 @@ export function tidelotlPlacements(
             mul(R(a + Math.PI / 2), S(0.9, 0.6)),
           ),
           Math.sin(a) > 0 ? 0.8 : 0.35,
-          false,
         ),
       );
     }
   }
-  return { placements: out, ...pts };
+  return { placements: out, ...pts, water };
 }
 
 // ── painting pieces (the rig's atlases and the briefing picture) ──

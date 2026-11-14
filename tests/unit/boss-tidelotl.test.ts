@@ -133,15 +133,61 @@ describe("Tidelotl rig", () => {
     const sunk = tidelotlPose(cue({ dead: true, deathSink: 1 }));
     expect(sunk.h).toBeLessThan(-150);
     expect(sunk.exposed).toBe(0);
-    // stranded out of the water: nothing is cut at the waterline, no water fade
+    // stranded out of the water: nothing is cut at the waterline, no water
     const dry = tidelotlPlacements(stranded, 2, 1, false);
-    expect(dry.placements.some((p) => p.water)).toBe(false);
-    expect(keys(dry)).not.toContain("fade");
+    expect(dry.placements.some((p) => p.cut !== undefined)).toBe(false);
+    expect(keys(dry).filter((k) => /^(veil|f[lc])/.test(k))).toEqual([]);
     expect(keys(dry)).toContain("shadow");
+    expect(dry.water).toBeUndefined();
     const wet = tidelotlPlacements(tidelotlIdle(1), 2, 1, true);
-    expect(keys(wet)).toEqual(
-      expect.arrayContaining(["fade", "foamFront", "foamBack"]),
-    );
+    expect(keys(wet)).toEqual(expect.arrayContaining(["deep", "veilh"]));
+    expect(wet.water).toBeDefined();
+  });
+
+  it("sits in the water: each part is cut along its own waterline, under a veil, ringed with foam", () => {
+    for (let f = 0; f < 8; f++) {
+      const L = tidelotlPlacements(tidelotlIdle(1), f, 1, true);
+      const head = piece(L, "head")!,
+        veil = piece(L, "veilh")!;
+      // cut below the surface (the veil is opaque there), not drawn whole
+      expect(head.cut, `facing ${f}`).toBeGreaterThan(veil.y);
+      // the foam rings the head: near side lower on screen than the far side
+      const foam = L.placements.filter((p) => /^f[lc]h\d+$/.test(p.key));
+      expect(foam.length, `facing ${f}`).toBeGreaterThan(5);
+      const ys = foam.map((p) => p.y);
+      expect(Math.max(...ys) - Math.min(...ys), `facing ${f}`).toBeGreaterThan(
+        6,
+      );
+      // its face pieces share the head's cut, so they end on the same line
+      const eye = piece(L, "eyen");
+      if (eye) expect(eye.cut).toBe(head.cut);
+      // Low keeps fewer flecks of foam
+      const low = tidelotlPlacements(tidelotlIdle(1), f, 1, true, true);
+      expect(
+        low.placements.filter((p) => /^f[lc][bh]\d+$/.test(p.key)).length,
+      ).toBeLessThan(
+        L.placements.filter((p) => /^f[lc][bh]\d+$/.test(p.key)).length,
+      );
+    }
+    // in profile the tail's fin skims the water: foam and rings where it touches
+    const side = tidelotlPlacements(tidelotlIdle(1), 2, 1, true);
+    expect(
+      keys(side).filter((k) => /^tc[BFf]\d$/.test(k)).length,
+    ).toBeGreaterThan(2);
+    // diving: it sinks and the water closes over it, but what pokes up is
+    // cut at the surface, not hidden
+    const dive = tidelotlPose(cue({ dive: 1 }));
+    expect(dive.h).toBeLessThan(-120);
+    const under = tidelotlPlacements(dive, 0, 1, true);
+    for (const k of ["head", "body"]) {
+      const c = piece(under, k)!.cut!;
+      expect(Number.isFinite(c), k).toBe(true);
+    }
+    expect(keys(under).filter((k) => /^veil/.test(k))).toEqual([]);
+    // the fading-in facing of a spin is cut too, without a second veil
+    const spin = tidelotlPlacements(tidelotlIdle(1), 2.8, 1, true);
+    expect(piece(spin, "b:head")!.cut).toBeDefined();
+    expect(keys(spin).filter((k) => /^b:(veil|f[lc])/.test(k))).toEqual([]);
   });
 
   it("spins smoothly: a fractional facing fades the next facing in, without legs, under the budget", () => {

@@ -39,17 +39,22 @@ const draw = (
     angle?: number;
     reduced?: boolean;
     setup?: string;
+    /** Run before every frame (row, boss, n). */
+    each?: string;
   },
 ) =>
   page.evaluate(
-    ({ phase, clock, frames, step, angle, reduced, setup }) => {
+    ({ phase, clock, frames, step, angle, reduced, setup, each }) => {
       const r = (window as any).__bossReview,
         row = r.rows.find((x: any) => x.id === "tidewyrm"),
         boss = row.state.players.find((p: any) => p.raidBoss);
       if (angle !== undefined) boss.angle = angle;
       if (setup) new Function("row", "boss", setup)(row, boss);
-      for (let n = 0; n < frames; n++)
+      const every = each ? new Function("row", "boss", "n", each) : undefined;
+      for (let n = 0; n < frames; n++) {
+        every?.(row, boss, n);
         r.frame(phase, clock + n * step, reduced, ["tidewyrm"]);
+      }
     },
     {
       phase: o.phase ?? 1,
@@ -59,6 +64,7 @@ const draw = (
       angle: o.angle,
       reduced: o.reduced ?? false,
       setup: o.setup,
+      each: o.each,
     },
   );
 /** Strand it: exposed, with an island's sand right under it. */
@@ -104,6 +110,9 @@ const rig = (page: Page) =>
   });
 const ids = (parts: Record<string, any>, re: RegExp) =>
   Object.keys(parts).filter((id) => re.test(id));
+/** The water's images round it (boss-tidelotl.ts and the rig's sea). */
+const WATER_PARTS =
+  /^(deep|veil[bh]|f[lc][bh]\d+|r[gr]\d+[bf]|tc[BFf]\d+|pf\d+|fk\d+|wake)$/;
 /** Optional screenshots for review (TIDELOTL_SHOTS=<folder>). */
 async function shot(page: Page, name: string) {
   const dir = process.env.TIDELOTL_SHOTS;
@@ -142,8 +151,12 @@ test("Tidelotl is drawn from the battle's own state, in eight facings, from atla
   expect(ids(front.parts, /^gill[LR]\d$/)).toHaveLength(6);
   expect(front.facing).toBe(0);
   expect(front.parts.head.frame).toBe("head_0");
-  // under the image budget
-  expect(Object.keys(front.parts).length).toBeLessThanOrEqual(34);
+  // under the image budget: the axolotl itself, and the water round it
+  const wetIds = ids(front.parts, WATER_PARTS);
+  expect(Object.keys(front.parts).length - wetIds.length).toBeLessThanOrEqual(
+    34,
+  );
+  expect(wetIds.length).toBeLessThanOrEqual(44);
   await shot(page, "front");
 
   // eight facings, one per 45°: 0 towards the camera, 2 screen right, 4 away
@@ -225,12 +238,27 @@ test("each attack winds up its own way, the Undertow spins smoothly, and diving 
     reduced: true,
   });
   expect(ids((await rig(page)).parts, /^b:/)).toEqual([]);
-  // submerged: only the dark shape and the gill fronds in the boss layer
+  // diving: for a moment it sinks, the water rising over it (more of it cut
+  // away, the waterline climbing up the head), then only the dark shape and
+  // the gill fronds show in the boss layer
+  await draw(page, {
+    clock: 39,
+    frames: 20,
+    setup: "row.state.raid.warnings = []",
+  });
+  const afloat = await rig(page);
   await draw(page, {
     clock: 40,
-    frames: 3,
-    setup: "row.state.raid.warnings = []; row.state.raid.submerged = true",
+    frames: 4,
+    setup: "row.state.raid.submerged = true",
   });
+  const sinking = await rig(page);
+  expect(sinking.visible).toBe(true);
+  expect(sinking.parts.head.y).toBeGreaterThan(afloat.parts.head.y + 20);
+  expect(sinking.parts.head.cropped).toBe(true);
+  expect(sinking.parts.veilh).toBeTruthy();
+  await shot(page, "diving");
+  await draw(page, { clock: 40.2, frames: 10 });
   expect((await rig(page)).visible).toBe(false);
   await draw(page, {
     clock: 41,
@@ -252,14 +280,15 @@ test("stranded it lies belly-flat, dizzy, pearl open; the phase deepens its skin
   await draw(page, { clock: 0, angle: 0, frames: 20 });
   const floating = await rig(page);
   expect(floating.ring).toBe(0);
-  // in the water the body is cut at the waterline (soft fade and foam over the cut)
-  expect(floating.parts.fade && floating.parts.foamFront).toBeTruthy();
+  // in the water the body is cut under its waterline (a veil of water and foam over the cut)
+  expect(floating.parts.veilh).toBeTruthy();
+  expect(ids(floating.parts, /^fl[bh]\d+$/).length).toBeGreaterThan(4);
   await draw(page, { clock: 1, frames: 20, setup: STRAND });
   const flat = await rig(page);
   expect(flat.visible).toBe(true);
   // out on the sand: nothing cut, legs splayed, tail flopped, dizzy eyes, the weak point open
   expect(Object.values(flat.parts).some((p: any) => p.cropped)).toBe(false);
-  expect(flat.parts.fade).toBeUndefined();
+  expect(ids(flat.parts, WATER_PARTS)).toEqual([]);
   expect(flat.parts.legFL.frame).toMatch(/_F_splay$/);
   expect(flat.parts.tail.frame).toMatch(/_flop$/);
   expect(flat.parts.eyen.frame).toMatch(/_dizzy$/);
@@ -292,6 +321,118 @@ test("stranded it lies belly-flat, dizzy, pearl open; the phase deepens its skin
   const sunk = await rig(page);
   expect(sunk.ring).toBe(0);
   expect(ids(sunk.parts, /^(eye|pearl|head)/)).toEqual([]);
+  expect(errors).toEqual([]);
+});
+
+test("it sits in the water: a waterline round its body, foam, ripples, a wake; Low thins it, reduced motion stills it", async ({
+  page,
+}) => {
+  const errors = await review(page);
+  const water = (parts: Record<string, any>) => ({
+    veils: ids(parts, /^veil[bh]$/).length,
+    foam: ids(parts, /^f[lc][bh]\d+$/).length,
+    rings: ids(parts, /^r[gr]\d+[bf]$/).length,
+    still: ids(parts, /^rr\d+[bf]$/).length,
+    trail: ids(parts, /^pf\d+$/).length,
+    wake: !!parts.wake,
+    tail: ids(parts, /^tc[BFf]\d+$/).length,
+  });
+  // floating in every drawn view: each part the water cuts has its veil of
+  // water and a ring of foam along its own waterline, and rings spread round it
+  for (const [i, angle] of [
+    Math.PI / 2,
+    Math.PI / 4,
+    0,
+    -Math.PI / 4,
+    -Math.PI / 2,
+  ].entries()) {
+    await draw(page, { clock: 2 + i * 4, angle, frames: 50 });
+    const v = await rig(page),
+      w = water(v.parts);
+    expect(w.veils, `view ${i}`).toBeGreaterThanOrEqual(1);
+    expect(w.foam, `view ${i}`).toBeGreaterThanOrEqual(10);
+    expect(w.rings, `view ${i}`).toBeGreaterThanOrEqual(2);
+    expect(w.wake, `view ${i}`).toBe(false);
+    // cut under the water, not drawn whole on top of it
+    expect(v.parts.head.cropped || v.parts.body.cropped, `view ${i}`).toBe(
+      true,
+    );
+    // the waterline wraps the body: its foam spans the body's width, and the
+    // near side dips below the far side (a ring seen from above, not a line)
+    const foam = ids(v.parts, /^f[lc][bh]\d+$/).map((k) => v.parts[k]);
+    const xs = foam.map((p: any) => p.x),
+      ys = foam.map((p: any) => p.y);
+    expect(Math.max(...xs) - Math.min(...xs), `view ${i}`).toBeGreaterThan(80);
+    expect(Math.max(...ys) - Math.min(...ys), `view ${i}`).toBeGreaterThan(8);
+    if (i === 2) {
+      // in profile the tail's fin skims the water: rings and foam where it touches
+      expect(w.tail).toBeGreaterThanOrEqual(3);
+      await shot(page, "water-side");
+    }
+  }
+  // swimming: a wake opens behind it, a trail of foam is left on the water,
+  // and rings come more often
+  await draw(page, { clock: 30, angle: 0, frames: 4 });
+  await draw(page, {
+    clock: 30.2,
+    angle: 0,
+    frames: 50,
+    each: "boss.x += 5",
+  });
+  const swim = await rig(page);
+  const sw = water(swim.parts);
+  expect(sw.wake).toBe(true);
+  expect(sw.trail).toBeGreaterThanOrEqual(4);
+  expect(sw.rings).toBeGreaterThanOrEqual(6);
+  // the trail stays where it was left: behind it (it swims to the right)
+  for (const k of ids(swim.parts, /^pf\d+$/))
+    expect(swim.parts[k].x, k).toBeLessThan(0);
+  await shot(page, "water-swim");
+  // Low: half the foam, fewer rings, no flecks
+  const atlas =
+    "/@fs" +
+    (await page.evaluate(() => (window as any).__lotlRoot)) +
+    "/apps/client/src/raid-map-atlas.ts";
+  await draw(page, {
+    clock: 40,
+    angle: Math.PI / 4,
+    frames: 50,
+    setup: "boss.x -= 250",
+  });
+  const high = water((await rig(page)).parts);
+  await page.evaluate(
+    async (atlas) => (await import(atlas)).setRaidMapLow(true),
+    atlas,
+  );
+  await draw(page, { clock: 44, angle: Math.PI / 4, frames: 50 });
+  const lowParts = (await rig(page)).parts,
+    low = water(lowParts);
+  await page.evaluate(
+    async (atlas) => (await import(atlas)).setRaidMapLow(false),
+    atlas,
+  );
+  expect(low.foam).toBeLessThan(high.foam * 0.75);
+  expect(low.rings).toBeLessThanOrEqual(4);
+  expect(ids(lowParts, /^fk\d+$/)).toEqual([]);
+  expect(low.veils).toBeGreaterThanOrEqual(1);
+  // reduced motion: the same two still rings in every frame, no wake, foam that holds still
+  await draw(page, {
+    clock: 50,
+    frames: 10,
+    reduced: true,
+    each: "boss.x += 5",
+  });
+  const r1 = await rig(page);
+  await draw(page, { clock: 51, frames: 10, reduced: true });
+  const r2 = await rig(page);
+  expect(water(r1.parts).still).toBe(4);
+  expect(water(r1.parts).wake).toBe(false);
+  expect(water(r1.parts).trail).toBe(0);
+  for (const k of ids(r2.parts, /^(f[lc][bh]\d+|rr\d+[bf])$/))
+    expect(r2.parts[k].y - r2.parts.head.y, k).toBeCloseTo(
+      r1.parts[k].y - r1.parts.head.y,
+      3,
+    );
   expect(errors).toEqual([]);
 });
 
@@ -514,7 +655,13 @@ async function stage(page: Page, setup: string, wait = 600) {
       for (const o of list) {
         const on = shown && o.visible !== false && (o.alpha ?? 1) > 0;
         if (o.list) walk(o.list, on);
-        else if (on && (o.type === "Image" || o.type === "Sprite")) images++;
+        // (Tidelotl's own water, which comes and goes with time, is not counted)
+        else if (
+          on &&
+          (o.type === "Image" || o.type === "Sprite") &&
+          !/^vector-part-(r[gr]\d|pf\d|fk\d|tc|f[lc][bh]|wake)/.test(o.name)
+        )
+          images++;
       }
     };
     walk(scene.children.list, true);
