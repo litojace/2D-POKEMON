@@ -2376,7 +2376,16 @@ for (const view of [
         t.textContent = "Harvested 3 Breeze Wheat";
         t.classList.add("show");
       });
-      await page.waitForTimeout(600);
+      // Measure once the fonts have loaded and the toast's rise has
+      // finished: the hint drawn in a fallback font stood 7px taller, and
+      // mid-rise the toast sits up to 20px lower (a fixed 600 ms wait
+      // missed both on a busy CI runner).
+      await page.evaluate(() => document.fonts.ready);
+      await page
+        .locator("#toast")
+        .evaluate((el) =>
+          Promise.all(el.getAnimations().map((a) => a.finished)),
+        );
       const hint = await rect("#fm-hint"),
         toast = await rect("#toast");
       expect(toast.b, "toast over the hint").toBeLessThanOrEqual(hint.t);
