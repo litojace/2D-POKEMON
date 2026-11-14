@@ -386,7 +386,12 @@ test("its snuff reaches a tendril to the lantern and its lunge leaves an ink str
       }
       return {
         commands: row.g.commandBuffer.length,
-        objects: scene.children.list.length,
+        // the lunge's existing wind-up art draws from shared pools (the
+        // spell flipbook and fx-engine glows); anything else is new
+        objects: scene.children.list.filter(
+          (c: any) =>
+            c.name !== "boss-spell-flipbook" && c.texture?.key !== "fx-glow",
+        ).length,
       };
     }, o);
   const base = await look({ warnings: "[]", from: 1, to: 1.2 });
