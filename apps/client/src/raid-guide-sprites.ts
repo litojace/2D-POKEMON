@@ -1,5 +1,5 @@
 import type { RaidBossId } from "../../../packages/shared/src/raid-roster";
-import { grumbleGuideImage } from "./boss-vector-grumble";
+import { cragmuffGuideImage } from "./boss-cragmuff";
 import { tidelotlGuideImage } from "./boss-tidelotl";
 import { inkGuideImage } from "./boss-inkpurr";
 import { somnaraGuideImage } from "./boss-vector-somnara";
@@ -42,7 +42,7 @@ export function raidGuideSprite(
                 ? lumiwickGuideImage(exposed)
                 : boss === "storm-twins"
                   ? twinsGuideImage(exposed)
-                  : grumbleGuideImage(exposed),
+                  : cragmuffGuideImage(exposed),
     [sx, sy, w, h] = art.crop,
     scale = Math.min(90 / w, 80 / h),
     frameX = -45 + (90 - w * scale) / 2,

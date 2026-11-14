@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { openHub, openPlayPanel, pushUntilBattle, snap } from "./helpers";
 
-// Grumblecrag's attacks in the real raid scene use the vector boss demo's
+// Cragmuff's attacks in the real raid scene use the vector boss demo's
 // effects (grumble-attack-fx.ts), not the shared rings and spell flipbook:
 // stones and the meteor in the air before they land, then dust, cracks,
 // debris, geysers. The server's own combat runs in the page
@@ -73,7 +73,7 @@ const drawn = (page: Page) =>
     };
   });
 
-test("Grumblecrag's attacks use the demo's effects, before and as they land", async ({
+test("Cragmuff's attacks use the demo's effects, before and as they land", async ({
   browser,
 }, info) => {
   test.setTimeout(420_000);
@@ -116,7 +116,7 @@ test("Grumblecrag's attacks use the demo's effects, before and as they land", as
   }
 });
 
-test("Grumblecrag's own moments: the roar, a hit's chips, the stagger and its death", async ({
+test("Cragmuff's own moments: the roar, a hit's tufts, the stagger and its death", async ({
   browser,
 }, info) => {
   test.setTimeout(420_000);

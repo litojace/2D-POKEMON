@@ -87,7 +87,7 @@ describe("mission completion instructions", () => {
     expect(examples).toHaveLength(7);
     expect(
       examples.some(
-        (text) => text.includes("Grumblecrag") && text.includes("pillar"),
+        (text) => text.includes("Cragmuff") && text.includes("pillar"),
       ),
     ).toBe(true);
     expect(

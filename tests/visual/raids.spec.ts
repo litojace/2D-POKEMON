@@ -232,7 +232,7 @@ for (const size of SIZES)
       // A boss page: the art on the stage, four seats, friends to invite.
       await room.locator('[data-raid-card="grumblecrag"]').click();
       await expect(room).toHaveAttribute("data-raid-mode", "boss");
-      await expect(room.locator(".rh-stage-name")).toHaveText("Grumblecrag");
+      await expect(room.locator(".rh-stage-name")).toHaveText("Cragmuff");
       await expect(room.locator(".rh-seat")).toHaveCount(4);
       await expect(room.locator(".rh-seat.is-open")).toHaveCount(3);
       await expect(room.locator('[aria-label="Invite Kai"]')).toBeEnabled();

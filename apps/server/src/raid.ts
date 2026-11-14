@@ -568,14 +568,14 @@ export class RaidArena extends Arena {
     // Only the last pound of the chain (the one that stuns) counts.
     if (ability?.id === "mochi-pound" && ability.status) {
       this.addBossStagger(boss, TRICKS.poundStagger);
-      r.message = `${source.name}'s Mochi Pound rattles Grumblecrag!`;
+      r.message = `${source.name}'s Mochi Pound rattles Cragmuff!`;
     } else if (
       ability?.kind === "rush" &&
       ability.wallSlam &&
       this.slammed(source, boss, ability.knockback)
     ) {
       this.addBossStagger(boss, TRICKS.slamStagger);
-      r.message = `${source.name} rams Grumblecrag into a pillar!`;
+      r.message = `${source.name} rams Cragmuff into a pillar!`;
     }
   }
   /** The engine's wall-slam check: would the knockback drive it into a wall? */

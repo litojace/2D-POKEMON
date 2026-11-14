@@ -64,7 +64,7 @@ describe("the Raid Hall", () => {
     expect(count(html, /data-raid-card="/g)).toBe(RAID_BOSS_ORDER.length);
     expect(html).toContain("data-raid-practice-card");
     // New players: one open boss, the rest say why they are locked.
-    expect(count(html, /Clear Grumblecrag first/g)).toBe(
+    expect(count(html, /Clear Cragmuff first/g)).toBe(
       RAID_BOSS_ORDER.length - 1,
     );
     expect(raidUnlocked(null, "grumblecrag")).toBe(true);
@@ -74,7 +74,7 @@ describe("the Raid Hall", () => {
     });
     expect(raidUnlocked(after, "tidewyrm")).toBe(true);
     const open = raidMarkup(raidView(), data({ progress: after }));
-    expect(open).not.toContain("Clear Grumblecrag first");
+    expect(open).not.toContain("Clear Cragmuff first");
     expect(open).toContain("3 clears");
     expect(count(open, />New</g)).toBe(RAID_BOSS_ORDER.length - 1);
   });
@@ -237,7 +237,7 @@ describe("a boss page", () => {
   it("says why a raid can't start, and what Solo and With party do", () => {
     const v = raidView("tidewyrm", { mode: "boss" });
     expect(startState(v, data()).reason).toBe(
-      "Clear Grumblecrag once to unlock Tidelotl.",
+      "Clear Cragmuff once to unlock Tidelotl.",
     );
     const g = raidView("grumblecrag", { mode: "boss" });
     expect(startState(g, data()).ok).toBe(true);

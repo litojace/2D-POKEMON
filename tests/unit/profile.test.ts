@@ -219,7 +219,7 @@ describe("the rest of the profile", () => {
     expect(page).toContain("Tier ");
     expect(page).toContain("40 more for Candidate Master");
     expect(page.match(/data-profile-boss=/g)).toHaveLength(7);
-    expect(page).toContain("Grumblecrag: 4 clears");
+    expect(page).toContain("Cragmuff: 4 clears");
     expect(page).toContain("Lumiwick: 1 clear.");
     expect(page).toContain("1 / 2 · each one gives its title");
     expect(page).toContain('class="is-earned"><b>First Victory');
