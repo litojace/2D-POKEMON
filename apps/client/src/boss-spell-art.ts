@@ -1,6 +1,7 @@
 import { drawBossSpellFlipbook } from "./boss-spell-flipbook";
 import { drawGrumbleAttacks } from "./grumble-attack-fx";
 import { drawLumiwickAttacks } from "./lumiwick-attack-fx";
+import { drawPrismellAttacks } from "./prismell-attack-fx";
 import { lowGraphics } from "./graphics-quality";
 import type Phaser from "phaser";
 import type { Snapshot } from "@arena/shared";
@@ -418,6 +419,20 @@ export function drawBossBattleEffects(
     if (r.boss === "emberwing")
       space(g, (fx, glow) =>
         drawLumiwickAttacks(
+          g.scene,
+          fx,
+          glow,
+          state,
+          boss,
+          life.action.casts,
+          lowGraphics(),
+        ),
+      );
+    // Prismell's attacks start from its shell (the heart, the coil) every
+    // frame; the shared impacts below still mark where each one lands.
+    if (r.boss === "prismatail")
+      space(g, (fx, glow) =>
+        drawPrismellAttacks(
           g.scene,
           fx,
           glow,

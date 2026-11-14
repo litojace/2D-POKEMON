@@ -3,7 +3,7 @@ import { cragmuffGuideImage } from "./boss-cragmuff";
 import { tidelotlGuideImage } from "./boss-tidelotl";
 import { inkGuideImage } from "./boss-inkpurr";
 import { somnaraGuideImage } from "./boss-vector-somnara";
-import { prismaGuideImage } from "./boss-vector-prisma";
+import { prismellGuideImage } from "./boss-prismell";
 import { lumiwickGuideImage } from "./boss-lumiwick-guide";
 import { twinsGuideImage } from "./boss-vector-twins";
 
@@ -37,7 +37,7 @@ export function raidGuideSprite(
           : boss === "somnara"
             ? somnaraGuideImage(exposed)
             : boss === "prismatail"
-              ? prismaGuideImage(exposed)
+              ? prismellGuideImage(exposed)
               : boss === "emberwing"
                 ? lumiwickGuideImage(exposed)
                 : boss === "storm-twins"

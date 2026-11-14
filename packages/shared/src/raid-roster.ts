@@ -84,15 +84,15 @@ export const RAID_BOSSES: Record<RaidBossId, RaidBossInfo> = {
   },
   prismatail: {
     id: "prismatail",
-    name: "Prismatail",
-    epithet: "Carry the light",
+    name: "Prismell",
+    epithet: "The prism-shelled snail",
     element: "Light",
     color: "#ffe27a",
     day: 0,
     stars: 3,
     signature: "Relay the sunbeam to its heart",
     blurb:
-      "A proud crystal peacock with a shielded heart. Pass the sunbeam raider to raider until it reaches the boss and shatters the shield.",
+      "A proud, sparkly snail in a spiral shell of prism crystal that splits the light into rainbows. Its heart glows in the coil behind a shield: pass the sunbeam raider to raider until it reaches the heart and shatters the shield.",
     playable: true,
   },
   emberwing: {

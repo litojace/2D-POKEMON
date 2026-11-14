@@ -10,7 +10,7 @@ import { prewarmAtlas as grumblecrag } from "./boss-cragmuff-rig";
 import { prewarmAtlas as tidewyrm } from "./boss-tidelotl-rig";
 import { prewarmAtlas as inkpurr } from "./boss-inkpurr-rig";
 import { prewarmAtlas as somnara } from "./boss-vector-somnara-rig";
-import { prewarmAtlas as prismaRig } from "./boss-vector-prisma-rig";
+import { prewarmAtlas as prismell } from "./boss-prismell-rig";
 import { prewarmAtriumAtlas } from "./raid-prismatail-atrium-rig";
 import { prewarmLumiwick } from "./boss-lumiwick-rig";
 import { prewarmAtlas as twins } from "./boss-vector-twins-rig";
@@ -22,9 +22,10 @@ const PREWARM: Record<RaidBossId, (scene: Phaser.Scene, phase: Phase) => void> =
     // Inkpurr (Gloomshade's look): one atlas for every phase.
     gloomshade: (scene) => inkpurr(scene),
     somnara,
-    // Prismatail's arena pieces (mirrors, skylights, beams) have an atlas too.
-    prismatail: (scene, phase) => {
-      prismaRig(scene, phase);
+    // Prismell (Prismatail's look) paints one atlas for every phase; its
+    // arena pieces (mirrors, skylights, beams) have an atlas too.
+    prismatail: (scene) => {
+      prismell(scene);
       prewarmAtriumAtlas(scene);
     },
     // Lumiwick (Emberwing's id) paints one atlas for every phase.
