@@ -71,20 +71,20 @@ export const RAID_BOSSES: Record<RaidBossId, RaidBossInfo> = {
   },
   somnara: {
     id: "somnara",
-    name: "Somnara",
-    epithet: "The dream whale",
+    name: "Snoozaku",
+    epithet: "The dream tapir",
     element: "Psychic",
     color: "#c9a3ff",
     day: 3,
     stars: 2,
     signature: "Step the runes only the Dreamer sees",
     blurb:
-      "A huge sleepy sky whale with a tiny house on its back. One raider sees its dream; the team must step the runes in order to wake it.",
+      "A sleepy violet tapir with an ivory saddle and a starry nightcap, guarding a marble deck above the clouds. One raider sees its dream; the team must step the runes in order to wake it.",
     playable: true,
   },
   prismatail: {
     id: "prismatail",
-    name: "Prismatail",
+    name: "Prismell",
     epithet: "Carry the light",
     element: "Light",
     color: "#ffe27a",
@@ -92,7 +92,7 @@ export const RAID_BOSSES: Record<RaidBossId, RaidBossInfo> = {
     stars: 3,
     signature: "Relay the sunbeam to its heart",
     blurb:
-      "A proud crystal peacock with a shielded heart. Pass the sunbeam raider to raider until it reaches the boss and shatters the shield.",
+      "A gentle lavender snail with an iridescent spiral shell and a shielded heart, guarding the sunlit crystal atrium. Pass the sunbeam raider to raider until it reaches the boss and shatters the shield.",
     playable: true,
   },
   emberwing: {

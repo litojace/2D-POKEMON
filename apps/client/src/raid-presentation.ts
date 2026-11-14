@@ -298,7 +298,7 @@ function somnaraCue(state: Snapshot, myId: string) {
   const drowsy = r.drowsy?.[myId];
   if (drowsy && drowsy.sleepUntil > state.time)
     return "Asleep — a teammate can tap you awake without hurting you!";
-  if (r.quietZone) return "Whale Song — follow the moving teal Quiet Zone!";
+  if (r.quietZone) return "Dreamsong — follow the moving teal Quiet Zone!";
   if (r.warnings.some((w) => w.kind === "falling-stars"))
     return "Falling Stars — stand between the constellation points!";
   const dream = r.dream,

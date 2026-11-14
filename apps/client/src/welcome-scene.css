@@ -1,12 +1,12 @@
-/* A single painting: Voltkit and the fountain sit on the left, with quiet space behind
+/* A single painting: Voltkit overlooks the elemental valley, with quiet space behind
    the account card. No moving scene, canvas or particles. */
 .welcome-gate .gate-backdrop {
-  background: #081326 url("/assets/backgrounds/plaza-night-voltkit-small.webp")
+  background: #081326 url("/assets/backgrounds/elemental-horizon-small.webp")
     left center / cover no-repeat;
 }
 @media (min-width: 1100px), (min-resolution: 1.5dppx) {
   .welcome-gate .gate-backdrop {
-    background-image: url("/assets/backgrounds/plaza-night-voltkit.webp");
+    background-image: url("/assets/backgrounds/elemental-horizon.webp");
   }
 }
 .welcome-gate::before {
@@ -46,6 +46,62 @@
   max-block-size: calc(100dvh - 48px);
   overflow-y: auto;
   overscroll-behavior: contain;
+}
+/* Lobby-inspired blue glass: one blur surface, with the painting visible
+   through the card. Controls keep their own darker, readable wells. */
+.welcome-gate .gate-card {
+  border-color: rgba(193, 225, 245, 0.26);
+  background:
+    linear-gradient(135deg, rgba(190, 231, 255, 0.13), transparent 48%),
+    rgba(14, 26, 49, 0.56);
+  -webkit-backdrop-filter: blur(18px) saturate(1.25);
+  backdrop-filter: blur(18px) saturate(1.25);
+  box-shadow:
+    0 24px 72px rgba(2, 9, 22, 0.38),
+    inset 0 1px 0 rgba(235, 248, 255, 0.3),
+    inset 0 -1px 0 rgba(3, 12, 25, 0.3);
+}
+.welcome-gate .auth-head p {
+  color: #bdcddd;
+}
+.welcome-gate .auth-tabs {
+  background: rgba(5, 15, 29, 0.32);
+  box-shadow: inset 0 0 0 1px rgba(205, 230, 250, 0.1);
+}
+.welcome-gate .auth-tabs button {
+  color: #bdcddd;
+}
+.welcome-gate .auth-tabs button[aria-selected="true"] {
+  color: #fff;
+  background: rgba(192, 224, 245, 0.14);
+  box-shadow:
+    inset 0 1px 0 rgba(235, 248, 255, 0.22),
+    0 3px 10px rgba(2, 9, 22, 0.2);
+}
+.welcome-gate
+  .auth-panel
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not(
+    [type="color"]
+  ) {
+  border-color: rgba(200, 224, 244, 0.2);
+  background: rgba(5, 15, 29, 0.45);
+}
+.welcome-gate .auth-panel input::placeholder {
+  color: #9baec4;
+}
+.welcome-gate
+  .auth-panel
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not(
+    [type="color"]
+  ):focus {
+  border-color: #f2c25b;
+}
+@supports not (
+  (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))
+) {
+  .welcome-gate .gate-card {
+    background: rgba(14, 26, 49, 0.92);
+  }
 }
 @media (max-height: 560px) {
   .welcome-gate .gate-layout {

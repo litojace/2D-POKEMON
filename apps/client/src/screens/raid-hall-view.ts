@@ -309,13 +309,13 @@ export const BOSS_FRAMES: Record<
   RaidBossId,
   { body: [number, number]; face: [number, number]; zoom: number }
 > = {
-  grumblecrag: { body: [0.55, 0.4], face: [0.56, 0.26], zoom: 1.8 },
-  tidewyrm: { body: [0.47, 0.62], face: [0.56, 0.64], zoom: 1.9 },
-  gloomshade: { body: [0.5, 0.37], face: [0.6, 0.28], zoom: 1.3 },
-  somnara: { body: [0.38, 0.4], face: [0.31, 0.33], zoom: 1.6 },
-  prismatail: { body: [0.57, 0.45], face: [0.63, 0.2], zoom: 2 },
-  emberwing: { body: [0.42, 0.33], face: [0.45, 0.3], zoom: 1.4 },
-  "storm-twins": { body: [0.48, 0.38], face: [0.48, 0.38], zoom: 1 },
+  grumblecrag: { body: [0.43, 0.45], face: [0.52, 0.3], zoom: 1.6 },
+  tidewyrm: { body: [0.61, 0.48], face: [0.66, 0.35], zoom: 1.6 },
+  gloomshade: { body: [0.57, 0.44], face: [0.63, 0.3], zoom: 1.6 },
+  somnara: { body: [0.54, 0.4], face: [0.61, 0.3], zoom: 1.6 },
+  prismatail: { body: [0.46, 0.44], face: [0.66, 0.4], zoom: 1.5 },
+  emberwing: { body: [0.49, 0.39], face: [0.53, 0.36], zoom: 1.6 },
+  "storm-twins": { body: [0.5, 0.43], face: [0.5, 0.43], zoom: 1.2 },
 };
 /**
  * The stage: the boss's painting framed vertically on the boss (a poster),

@@ -440,7 +440,7 @@ export const RAID_ATTACKS: Record<
     practice: "A constellation flashes; stars land on each marked point.",
   },
   "whale-song": {
-    name: "Whale Song",
+    name: "Dreamsong",
     tip: "Stay inside the moving teal Quiet Zone until the song ends. Everyone fits, but it is small.",
     practice: "Follow the moving Quiet Zone for four seconds.",
   },
@@ -1094,7 +1094,7 @@ export const RAID_BOSS_CHAPTERS: Partial<
       name: "High Noon",
       objective: "Follow reflected lanes. Escape through the halo gap.",
       detail:
-        "Prismatail moves farther from the skylight. Refraction shows both sides of the bounce before firing. The closing halo leaves a teal gap. The Polished rite prevents beam burn and extends your relay range.",
+        "Prismell moves farther from the skylight. Refraction shows both sides of the bounce before firing. The closing halo leaves a teal gap. The Polished rite prevents beam burn and extends your relay range.",
     },
     {
       name: "Solar Crown",
@@ -1196,7 +1196,7 @@ export const RAID_BOSS_CHAPTERS: Partial<
       name: "Deep Sleep",
       objective: "Remember the stars. Follow the Quiet Zone.",
       detail:
-        "Sequences get longer. Falling Stars land at the constellation points, and Whale Song hurts everyone outside its moving teal Quiet Zone. Solo sequences are shorter and give you 14 seconds.",
+        "Sequences get longer. Falling Stars land at the constellation points, and Dreamsong hurts everyone outside its moving teal Quiet Zone. Solo sequences are shorter and give you 14 seconds.",
     },
     {
       name: "Waking Dream",
