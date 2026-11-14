@@ -1499,6 +1499,8 @@ export class FighterRig {
         size: 2.6 * sc,
         color: Math.random() < 0.5 ? color : 0xffffff,
         shape: "star",
+        // Victory sparkles stay behind the fighter, off its face.
+        behind: true,
       });
     }
     // ---- Shop skin extras (trails, details, Mythical Awakening effects).

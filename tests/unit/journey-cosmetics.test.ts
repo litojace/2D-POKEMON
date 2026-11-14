@@ -267,7 +267,8 @@ it("plays the Eclipse finale: the moon covers the sun at totality, with one burs
     return { sun: circles[1], moon: circles[2], under: under.commands };
   };
   const early = sunAndMoon(0.6),
-    total = sunAndMoon(ECLIPSE_TOTALITY + 0.2);
+    // After the diamond-ring flash (which also draws behind the fighter).
+    total = sunAndMoon(ECLIPSE_TOTALITY + 0.6);
   expect(early.moon[1] - early.sun[1]).toBeGreaterThan(early.sun[3]);
   expect(total.moon[1]).toBeCloseTo(total.sun[1]);
   expect(total.moon[2]).toBeCloseTo(total.sun[2]);

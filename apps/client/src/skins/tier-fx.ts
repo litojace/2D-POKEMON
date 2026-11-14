@@ -182,9 +182,11 @@ export function entranceFlourish(emit: Emit, id: string, x: number, y: number, s
   }
 }
 
-/** Behind and around a victory (t seconds in; call each frame). */
+/**
+ * Behind and around a victory (t seconds in; call each frame). All of it on
+ * `under`, behind the fighter, so it never covers the champion's face.
+ */
 export function victoryFlourish(
-  g: G,
   under: G,
   emit: Emit,
   chance: (rate: number, dt: number) => boolean,
@@ -201,7 +203,7 @@ export function victoryFlourish(
   const [main, accent] = palette(id);
   const fade = t > 2.4 ? Math.max(0, 1 - (t - 2.4) / 0.6) : Math.min(1, t / 0.25);
   if (chance(12, dt))
-    emit({ x: x + (Math.random() - 0.5) * 140 * sc, y: y - (40 + Math.random() * 90) * sc, vx: 0, vy: 20, life: 0.9, size: 2.6 * sc, color: Math.random() < 0.5 ? main : 0xffffff, shape: "star" });
+    emit({ x: x + (Math.random() - 0.5) * 140 * sc, y: y - (40 + Math.random() * 90) * sc, vx: 0, vy: 20, life: 0.9, size: 2.6 * sc, color: Math.random() < 0.5 ? main : 0xffffff, shape: "star", behind: true });
   if (!at(tier, "legendary")) return;
   // Rays of light turn slowly behind the fighter.
   const cy = y - 40 * sc;
@@ -225,7 +227,7 @@ export function victoryFlourish(
     const a = -Math.PI / 2 + (i - 2) * 0.42;
     const px = x + Math.cos(a) * 26 * sc,
       py = hy + 18 * sc + Math.sin(a) * 18 * sc;
-    sparkle(g, px, py, (3.6 + Math.sin(t * 6 + i) * 0.8) * sc, PRISM[i], fade);
+    sparkle(under, px, py, (3.6 + Math.sin(t * 6 + i) * 0.8) * sc, PRISM[i], fade);
   }
-  g.lineStyle(2 * sc, PRISM[Math.floor(t * 4) % PRISM.length], 0.8 * fade).strokeEllipse(x, hy + 22 * sc, 56 * sc, 14 * sc);
+  under.lineStyle(2 * sc, PRISM[Math.floor(t * 4) % PRISM.length], 0.8 * fade).strokeEllipse(x, hy + 22 * sc, 56 * sc, 14 * sc);
 }

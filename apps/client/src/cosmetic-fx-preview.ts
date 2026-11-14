@@ -202,7 +202,9 @@ function draw(live: Live, now: number) {
       victoryFallback(gb, live.id, t);
   }
   if (!still) step(live, dt);
-  for (const p of live.particles) drawAnyParticle(gf, p, 1 - p.age / p.life);
+  // Particles a finale emits behind the fighter stay on the back canvas.
+  for (const p of live.particles)
+    drawAnyParticle(p.behind ? gb : gf, p, 1 - p.age / p.life);
 }
 function step(live: Live, dt: number) {
   for (const p of live.particles) {

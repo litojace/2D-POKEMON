@@ -350,10 +350,10 @@ function pixelText(g: G, text: string, cx: number, cy: number, px: number, color
 
 /**
  * Victory finales, drawn every frame of the celebration (t seconds in).
- * The champion keeps its own victory move; these play around it.
+ * The champion keeps its own victory move; these play around it, all of it
+ * on the layer behind the fighter so nothing ever covers its face.
  */
 function baseVictory(
-  g: G,
   under: G,
   emit: Emit,
   chance: (rate: number, dt: number) => boolean,
@@ -412,8 +412,8 @@ function baseVictory(
     if (flash > 0) {
       const fx = cx + Math.cos(-2.3) * R,
         fy = cy + Math.sin(-2.3) * R;
-      g.fillStyle(0xfff1c4, 0.35 * flash * fade).fillCircle(fx, fy, 9 * sc * flash);
-      sparkle(g, fx, fy, 11 * sc * flash, 0xffffff, flash * fade);
+      under.fillStyle(0xfff1c4, 0.35 * flash * fade).fillCircle(fx, fy, 9 * sc * flash);
+      sparkle(under, fx, fy, 11 * sc * flash, 0xffffff, flash * fade);
     }
     if (first)
       for (let i = 0; i < 12; i++)
@@ -432,8 +432,8 @@ function baseVictory(
       const k=Math.max(0,Math.min(1,(t-i*.25)/.65));
       if(t<i*.25)continue;
       const sx=x+(i-1)*48*sc, sy=y-100*sc+k*82*sc;
-      g.lineStyle(3*sc,i%2?color:accent,.55*fade).lineBetween(sx+24*sc,sy-50*sc,sx,sy);
-      sparkle(g,sx,sy,5*sc,i%2?color:accent,fade);
+      under.lineStyle(3*sc,i%2?color:accent,.55*fade).lineBetween(sx+24*sc,sy-50*sc,sx,sy);
+      sparkle(under,sx,sy,5*sc,i%2?color:accent,fade);
       if(k===1)under.lineStyle(2*sc,color,(1-Math.min(1,(t-i*.25-.65)/1.2))*fade).strokeEllipse(sx,y+8*sc,42*sc,16*sc);
     }
     if(first)for(let i=0;i<12;i++)emit({x,y:y-40*sc,vx:(i-5.5)*18,vy:-70-Math.random()*40,life:1,size:2.5*sc,color:i%2?color:accent,shape:'star'});
@@ -472,7 +472,7 @@ function baseVictory(
     case "retro-victory": {
       const pop = t < 0.25 ? t / 0.25 : 1;
       const blink = Math.floor(t * 6) % 2 ? 0xffd65b : 0x2ff3ff;
-      pixelText(g, "LEVEL UP!", x, y - 86 * sc - (1 - pop) * 10 * sc, 3 * sc, blink, fade);
+      pixelText(under, "LEVEL UP!", x, y - 86 * sc - (1 - pop) * 10 * sc, 3 * sc, blink, fade);
       if (chance(14, dt)) emit({ x: x + rnd(-40, 40) * sc, y: y - rnd(0, 60) * sc, vx: 0, vy: -40, life: 0.5, size: 2.4 * sc, color: [0xff4fd8, 0x2ff3ff, 0xffd65b][Math.floor(rnd(0, 3))], shape: "pixel" });
       return true;
     }
@@ -560,10 +560,10 @@ function baseVictory(
     case "winter-victory": {
       // A snow globe: a glassy dome with a swirl of snow.
       under.fillStyle(0xbfe8ff, 0.14 * fade).fillCircle(x, y - 18 * sc, 48 * sc);
-      g.lineStyle(2 * sc, 0xffffff, 0.6 * fade).strokeCircle(x, y - 18 * sc, 48 * sc);
-      g.lineStyle(3 * sc, 0xffffff, 0.35 * fade).beginPath();
-      g.arc(x, y - 18 * sc, 42 * sc, -2.6, -1.9);
-      g.strokePath();
+      under.lineStyle(2 * sc, 0xffffff, 0.6 * fade).strokeCircle(x, y - 18 * sc, 48 * sc);
+      under.lineStyle(3 * sc, 0xffffff, 0.35 * fade).beginPath();
+      under.arc(x, y - 18 * sc, 42 * sc, -2.6, -1.9);
+      under.strokePath();
       under.fillStyle(0x8a5a3a, fade).fillRoundedRect(x - 36 * sc, y + 24 * sc, 72 * sc, 10 * sc, 3 * sc);
       if (chance(30, dt)) {
         const a = rnd(0, TAU),
@@ -592,9 +592,14 @@ export function playCollectionEntrance(emit0: Emit, id: string, x: number, y: nu
   if (known) entranceFlourish(emit, id, x, y, sc);
   return known;
 }
-/** Victory finales (t seconds in), plus their rarity flourish. */
+/**
+ * Victory finales (t seconds in), plus their rarity flourish. Everything
+ * draws on `under` and every particle is emitted `behind`: a finale plays
+ * behind the champion and never covers its face. `_front` (the layer in
+ * front of the fighter) is accepted for the call shape but never drawn on.
+ */
 export function drawCollectionVictory(
-  g: G,
+  _front: G,
   under: G,
   emit: Emit,
   chance: (rate: number, dt: number) => boolean,
@@ -607,10 +612,10 @@ export function drawCollectionVictory(
   first: boolean,
 ) {
   const emit0 = emit;
-  emit = (p) => emit0({ ...p, glow: true });
-  const known = baseVictory(g, under, emit, chance, id, x, y, sc, t, dt, first);
+  emit = (p) => emit0({ ...p, glow: true, behind: true });
+  const known = baseVictory(under, emit, chance, id, x, y, sc, t, dt, first);
   // Rig-drawn pieces (Rockslide Flex) still get their flourish.
   if (known || id === "rockslide-flex")
-    victoryFlourish(g, under, emit, chance, id, x, y, sc, t, dt);
+    victoryFlourish(under, emit, chance, id, x, y, sc, t, dt);
   return known;
 }
