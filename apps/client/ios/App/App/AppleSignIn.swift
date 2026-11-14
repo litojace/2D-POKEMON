@@ -7,6 +7,7 @@ import AuthenticationServices
 class ArenaViewController: CAPBridgeViewController {
     override open func capacitorDidLoad() {
         bridge?.registerPluginInstance(AppleSignInPlugin())
+        bridge?.registerPluginInstance(AppIconPlugin())
     }
 }
 

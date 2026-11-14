@@ -275,6 +275,9 @@ export function renderRaidUI(
     shared
       ? `<div class="ui rc-card ${state.phase === "finished" ? "is-results" : "is-briefing"}" role="dialog" aria-label="${escape(title)}"><header class="rc-head"><span class="ui-kicker">Boss raid · co-op</span><h2 class="ui-title">${title}</h2></header>${state.phase === "finished" ? `<div class="rc-body panel-scroll" tabindex="0" role="region" aria-label="Raid details">${body}</div>` : body}<footer class="rc-foot">${actions}</footer></div>`
       : `<div class="overlay-card raid-overlay${state.phase === "intermission" ? " raid-draft action-overlay" : ""}"><span class="eyebrow">Boss raid · co-op</span><h2>${title}</h2>${actions ? `<div class="panel-scroll" tabindex="0" role="region" aria-label="Raid details">${body}</div><div class="panel-actions">${actions}</div>` : body}</div>`,
+    undefined,
+    // Picking a rite redraws the same panel: it doesn't pop in again.
+    `raid:${state.phase}`,
   );
   overlay.dataset.raidPhase = state.phase;
   const card = overlay.querySelector<HTMLElement>(".raid-overlay, .rc-card");
