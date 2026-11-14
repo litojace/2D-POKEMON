@@ -596,29 +596,81 @@ function paintSkinBall(ctx: Ctx, V: View, s: Ell, o: BallOpts) {
   ctx.restore();
   return E;
 }
-/** The dorsal crest seen from behind: a raised painted strip along the spine. */
+/**
+ * The dorsal crest seen from behind: a soft fin ruffle along the spine. A
+ * teal body with a coral-pink edge, translucent only at the edge, its
+ * outline gently wavy (pts run down the back, w0/w1 its half-widths).
+ */
 function paintCrestStrip(ctx: Ctx, pts: Pt[], w0: number, w1: number) {
   if (pts.length < 2) return;
-  ctx.save();
-  ctx.lineCap = "round";
-  ctx.lineJoin = "round";
-  const pass = (k: number, col: (t: number) => string, add = 0) => {
-    for (let i = 0; i < pts.length - 1; i++) {
-      const t = i / (pts.length - 1);
-      ctx.strokeStyle = col(t);
-      ctx.lineWidth = lerp(w0, w1, t) * k + add;
-      ctx.beginPath();
-      ctx.moveTo(pts[i].x, pts[i].y);
-      ctx.lineTo(pts[i + 1].x, pts[i + 1].y);
-      ctx.stroke();
+  const n = pts.length;
+  const side = (k: number, sgn: number) => {
+    const out: Pt[] = [];
+    for (let i = 0; i < n; i++) {
+      const a = pts[Math.max(0, i - 1)],
+        b = pts[Math.min(n - 1, i + 1)],
+        d = norm2(b.x - a.x, b.y - a.y),
+        t = i / (n - 1),
+        taper = Math.sin(Math.PI * Math.min(1, 0.15 + t * 0.95)) ** 0.5,
+        w = lerp(w0, w1, t) * taper * k * (1 + 0.22 * Math.sin(t * 19));
+      out.push({ x: pts[i].x - d.y * w * sgn, y: pts[i].y + d.x * w * sgn });
     }
+    return out;
   };
-  pass(1, () => rgba(ramp(skin, 0.22), 0.55), 3);
-  pass(1, () => rgba(mix(ramp(skin, 0.55), [255, 150, 195], 0.45)));
-  pass(0.42, () => "rgba(255,196,222,0.95)");
+  const ribbon = (k: number) => {
+    const L = side(k, 1),
+      R = side(k, -1),
+      p = new Path2D();
+    L.forEach((q, i) => (i ? p.lineTo(q.x, q.y) : p.moveTo(q.x, q.y)));
+    for (let i = R.length - 1; i >= 0; i--) p.lineTo(R[i].x, R[i].y);
+    p.closePath();
+    return p;
+  };
+  ctx.save();
+  // a soft shadow the fin casts on the back
+  soft(ctx, 2.5, () => {
+    ctx.fillStyle = "rgba(2,30,46,0.35)";
+    ctx.save();
+    ctx.translate(1.5, 2.5);
+    ctx.fill(ribbon(1));
+    ctx.restore();
+  });
+  // the edge: coral-pink, see-through
+  ctx.globalAlpha = 0.78;
+  ctx.fillStyle = "rgb(255,150,192)";
+  ctx.fill(ribbon(1));
+  ctx.globalAlpha = 1;
+  // the body of the fin: teal, opaque, lit down its middle
+  const body = ribbon(0.62);
+  ctx.fillStyle = rgba(ramp(skin, 0.62));
+  ctx.fill(body);
+  ctx.save();
+  ctx.clip(body);
+  ctx.strokeStyle = rgba(ramp(skin, 0.86), 0.9);
+  ctx.lineWidth = Math.max(1.5, w0 * 0.35);
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  pts.forEach((q, i) =>
+    i ? ctx.lineTo(q.x - 0.8, q.y) : ctx.moveTo(q.x - 0.8, q.y),
+  );
+  ctx.stroke();
+  ctx.restore();
+  // fine rays across the ruffle
+  ctx.strokeStyle = "rgba(255,235,244,0.4)";
+  ctx.lineWidth = 0.8;
+  const L = side(0.95, 1),
+    R = side(0.95, -1);
+  for (let i = 2; i < n - 1; i += 2) {
+    ctx.beginPath();
+    ctx.moveTo(L[i].x, L[i].y);
+    ctx.lineTo(R[i].x, R[i].y);
+    ctx.stroke();
+  }
+  ctx.strokeStyle = "rgba(214,98,150,0.55)";
+  ctx.lineWidth = 0.9;
+  ctx.stroke(ribbon(1));
   ctx.restore();
 }
-
 // ════════════════ head ════════════════
 const CHIN = norm3(0, -0.72, 0.7);
 export const HEAD_E = HEAD_YAW.map((y) => projEllipse(makeView(y), HEAD));
@@ -637,7 +689,7 @@ export function paintHead(ctx: Ctx, k: { v: number }) {
       k.v >= 3
         ? [
             { x: 0, y: HEAD.ry * 0.98, r: 34, a: 0.28 },
-            { x: 0, y: HEAD.ry * 0.75, r: 70, a: 0.42 },
+            { x: 0, y: HEAD.ry * 0.8, r: 80, a: 0.22 },
           ]
         : [{ x: 0, y: HEAD.ry * 0.98, r: 34, a: 0.28 }],
     extra: () => {
@@ -650,7 +702,7 @@ export function paintHead(ctx: Ctx, k: { v: number }) {
             p2 = onEll(d, HEAD);
           if (V.N(ellNormal(p2, HEAD)).z > 0.05) pts.push(V.P(p2));
         }
-        paintCrestStrip(ctx, pts, 3, 9);
+        paintCrestStrip(ctx, pts, 4, 9);
       }
       for (const sx of [-1, 1]) {
         const d = norm3(sx * 0.62, -0.2, 0.76),
@@ -1427,7 +1479,7 @@ const BELLY = norm3(0, -0.88, 0.48);
 export function paintBody(ctx: Ctx, k: { v: number }) {
   const V = makeView(VIEW_YAW[k.v]);
   const hd = V.P(ATTACH.head);
-  paintSkinBall(ctx, V, BODY, {
+  const E = paintSkinBall(ctx, V, BODY, {
     seed: 11,
     freckles: 90,
     cap: k.v >= 3 ? null : { dir: BELLY, ang: 58 },
@@ -1443,6 +1495,38 @@ export function paintBody(ctx: Ctx, k: { v: number }) {
           ]
         : [{ x: hd.x, y: hd.y + 30, r: 60, a: 0.4 }],
   });
+  if (k.v >= 3) {
+    // seen from behind the rump melts into the head: no hard top edge, a soft
+    // shade along its sides and bottom instead of an outline
+    ctx.save();
+    ctx.globalCompositeOperation = "destination-out";
+    const fade = ctx.createLinearGradient(
+      0,
+      E.cy - E.hy,
+      0,
+      E.cy - E.hy * 0.25,
+    );
+    fade.addColorStop(0, "rgba(0,0,0,1)");
+    fade.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = fade;
+    ctx.fillRect(E.cx - E.hx * 1.5, E.cy - E.hy * 1.5, E.hx * 3, E.hy * 1.3);
+    ctx.restore();
+    soft(ctx, 2.2, () => {
+      ctx.strokeStyle = "rgba(4,40,56,0.55)";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.ellipse(
+        E.cx,
+        E.cy,
+        E.hx * 0.98,
+        E.hy * 0.98,
+        0,
+        Math.PI * 0.05,
+        Math.PI * 0.95,
+      );
+      ctx.stroke();
+    });
+  }
   paintDorsal(ctx, V);
 }
 /** The dorsal fin: a soft membrane along the back; from behind, a raised crest. */
@@ -1464,8 +1548,8 @@ function paintDorsal(ctx: Ctx, V: View) {
         x: lerp(q.x, top[i].x, 0.5),
         y: lerp(q.y, top[i].y, 0.5),
       })),
-      9,
-      7,
+      10,
+      8,
     );
     return;
   }

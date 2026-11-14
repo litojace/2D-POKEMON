@@ -105,6 +105,8 @@ export function tidelotlPieces(): LotlPiece[] {
       box: [-110, -95, 110, 95],
       q: QUAL.body,
       skin: true,
+      // from behind the rump melts into the head: no hard outline
+      outline: v < 3,
       line: 1.8,
       paint: (c) => paintBody(c, { v }),
     });
