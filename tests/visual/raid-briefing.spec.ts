@@ -15,6 +15,10 @@ for (const size of [
   test(`raid guide keeps three steps readable and start reachable at ${size.width}x${size.height}`, async ({
     browser,
   }, info) => {
+    // Seven bosses' briefings, each painting its guide pictures the first
+    // time (the hand-painted bosses take a few seconds each in software
+    // rendering, about 66 s for the sweep here), so 90 s is too tight.
+    test.setTimeout(180_000);
     const mobile = size.width === 844,
       context = await browser.newContext({
         viewport: size,
