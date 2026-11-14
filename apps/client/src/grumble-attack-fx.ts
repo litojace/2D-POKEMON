@@ -16,7 +16,7 @@
  * id and age, so nothing random changes from frame to frame.
  */
 import type Phaser from "phaser";
-import type { Fighter, Snapshot } from "@arena/shared";
+import { OBSTACLES, type Fighter, type Snapshot } from "@arena/shared";
 import type { RaidWarning } from "../../../packages/shared/src/raid";
 import type { BossCast } from "./boss-performance";
 import type { Fx } from "./fx-engine";
@@ -62,6 +62,7 @@ const LIFE: Partial<Record<RaidWarning["kind"], number>> = {
   volley: 1.1,
   eruption: 1.25,
   share: 1.7,
+  debris: 1.3,
 };
 interface Hit {
   cast: BossCast;
@@ -72,6 +73,8 @@ interface Hit {
   /** Charge: where the boss has been (for the dust trail), and where it stopped (at those ages). */
   trail?: { x: number; y: number; at: number }[];
   stop?: { x: number; y: number; at: number };
+  /** Charge: it stopped against a pillar (that just broke) rather than skidding out. */
+  crash?: boolean;
 }
 /**
  * Moments of the boss itself (from the demo): the roar into a new phase, a
@@ -288,6 +291,188 @@ function impact(
 }
 
 /**
+ * What this frame drew, by effect (for tests and the perf notes): stones in
+ * the air and stones stopped by pillars, wool tufts, cracks racing to an
+ * eruption, crystal spikes, the meteor, roof debris, ring crystals, a miss's
+ * scrape marks, a pillar crash's shards.
+ */
+export const cragmuffFx = {
+  stones: 0,
+  stopped: 0,
+  wool: 0,
+  cracks: 0,
+  spikes: 0,
+  meteor: 0,
+  debris: 0,
+  ring: 0,
+  scrape: 0,
+  crash: 0,
+};
+// ───────────────────────── Cragmuff's crystal pieces (from the ram demo) ─────────────────────────
+const AMBER = { lit: 0xffe07e, mid: 0xffb43c, dark: 0xa9500b, line: 0x5a2206 };
+const backOut = (t: number) => {
+  const s = 1.70158;
+  t -= 1;
+  return t * t * ((s + 1) * t + s) + 1;
+};
+/**
+ * A faceted amber crystal point from (x, y) along (dx, dy): a lit facet and
+ * a shaded one either side of the ridge, a dark edge. Drawn on `g`.
+ */
+function crystal(
+  g: G,
+  x: number,
+  y: number,
+  dx: number,
+  dy: number,
+  len: number,
+  w: number,
+  alpha = 1,
+) {
+  if (len <= 1 || alpha <= 0) return;
+  const nx = -dy,
+    ny = dx;
+  const sh = { x: x + dx * len * 0.62, y: y + dy * len * 0.62 },
+    tip = { x: x + dx * len, y: y + dy * len };
+  const l0 = { x: x + nx * w, y: y + ny * w },
+    l1 = { x: sh.x + nx * w * 0.92, y: sh.y + ny * w * 0.92 },
+    r0 = { x: x - nx * w, y: y - ny * w },
+    r1 = { x: sh.x - nx * w * 0.92, y: sh.y - ny * w * 0.92 };
+  // the facet toward the upper left catches the light
+  const litLeft = nx * -0.6 + ny * -0.8 > 0;
+  g.fillStyle(litLeft ? AMBER.lit : AMBER.dark, alpha).fillPoints(
+    [l0, l1, tip, { x, y }],
+    true,
+  );
+  g.fillStyle(litLeft ? AMBER.dark : AMBER.lit, alpha).fillPoints(
+    [r0, r1, tip, { x, y }],
+    true,
+  );
+  g.fillStyle(AMBER.mid, alpha * 0.55).fillPoints(
+    [
+      { x: (l0.x + x) / 2, y: (l0.y + y) / 2 },
+      { x: (l1.x + sh.x) / 2, y: (l1.y + sh.y) / 2 },
+      tip,
+      { x: (r1.x + sh.x) / 2, y: (r1.y + sh.y) / 2 },
+      { x: (r0.x + x) / 2, y: (r0.y + y) / 2 },
+    ],
+    true,
+  );
+  g.lineStyle(Math.max(1, w * 0.3), AMBER.line, alpha).strokePoints(
+    [l0, l1, tip, r1, r0],
+    true,
+    true,
+  );
+}
+/** Crystal spikes bursting from the floor (an eruption): up fast with an overshoot, then sinking. */
+function spikes(
+  fx: Fx,
+  glow: Glow,
+  x: number,
+  y: number,
+  age: number,
+  seed: number,
+  size: number,
+  low: boolean,
+) {
+  const life = 1.15;
+  if (age < 0 || age > life) return;
+  cragmuffFx.spikes++;
+  const up = backOut(clamp(age / 0.22)),
+    down = clamp((age - (life - 0.5)) / 0.5);
+  const list: [number, number, number][] = low
+    ? [
+        [-14, 0.8, -0.3],
+        [0, 1, 0],
+        [14, 0.75, 0.32],
+      ]
+    : [
+        [-22, 0.62, -0.42],
+        [-9, 1, -0.12],
+        [6, 0.86, 0.18],
+        [20, 0.58, 0.46],
+        [-1, 0.5, 0.02],
+      ];
+  // a heap of broken floor at their foot
+  fx.floorSolid
+    .fillStyle(0x3a2e22, 0.45 * (1 - down))
+    .fillEllipse(x, y + 4, 70 * size, 26 * size);
+  for (const [i, [ox, f, lean]] of list.entries()) {
+    const len =
+      72 * f * size * up * (1 - down * 0.8) * (0.9 + hash(seed + i) * 0.2);
+    crystal(
+      fx.solid,
+      x + ox * size,
+      y + 2 + down * 20,
+      Math.sin(lean),
+      -Math.cos(lean),
+      len,
+      11 * (0.6 + f * 0.5) * size,
+      1 - down * 0.8,
+    );
+  }
+  if (age < 0.6)
+    glow(x, y - 30 * size, 70 * size, AMBER.mid, (1 - age / 0.6) * 0.75);
+}
+/**
+ * A glowing crack racing over the floor from the ram's hooves toward an
+ * eruption's mark (`u` 0..1 of the way). Its bright tip is a warning:
+ * essential, never shrunk on Low.
+ */
+function crackRace(
+  fx: Fx,
+  glow: Glow,
+  x0: number,
+  y0: number,
+  x1: number,
+  y1: number,
+  u: number,
+  fade: number,
+  seed: number,
+) {
+  if (u <= 0 || fade <= 0) return;
+  cragmuffFx.cracks++;
+  const dx = x1 - x0,
+    dy = y1 - y0,
+    l = Math.hypot(dx, dy) || 1;
+  const n = Math.max(2, Math.round(10 * u));
+  const pts = [{ x: x0, y: y0 }];
+  for (let i = 1; i <= n; i++) {
+    const f = (i / n) * u,
+      j = i < n ? (hash(seed + i) - 0.5) * 18 : 0;
+    pts.push({ x: x0 + dx * f - (dy / l) * j, y: y0 + dy * f + (dx / l) * j });
+  }
+  fx.floorSolid.lineStyle(6, 0x1e140c, 0.8 * fade).strokePoints(pts, false);
+  fx.floor.lineStyle(2.4, AMBER.mid, 0.9 * fade).strokePoints(pts, false);
+  const tip = pts[pts.length - 1];
+  if (u < 1)
+    fx.essential(() => glow(tip.x, tip.y, 20, AMBER.mid, 0.75 * fade, true));
+}
+/** Does the line from (x0, y0) to (x1, y1) meet a standing pillar's footprint? Where it first does. */
+function pillarStop(
+  r: NonNullable<Snapshot["raid"]>,
+  x0: number,
+  y0: number,
+  x1: number,
+  y1: number,
+) {
+  let best: { t: number; x: number; y: number } | undefined;
+  OBSTACLES.forEach((o, i) => {
+    if (r.pillars[i]?.broken) return;
+    for (let k = 1; k <= 32; k++) {
+      const t = k / 32,
+        x = x0 + (x1 - x0) * t,
+        y = y0 + (y1 - y0) * t;
+      if (x > o.x && x < o.x + o.w && y > o.y && y < o.y + o.h) {
+        if (!best || t < best.t) best = { t, x, y };
+        break;
+      }
+    }
+  });
+  return best;
+}
+
+/**
  * The volley's stones: where they leave the boss's fist and where they land.
  * The cone is long (most of the court), so they fall all along it, on the
  * court, not only at its far end.
@@ -308,9 +493,11 @@ function volleyStones(w: {
     const across = (i / (STONES - 1)) * 2 - 1,
       a = aim + across * spread * 0.8 + (hash(w.id + i) - 0.5) * 0.08,
       d = w.radius * (0.25 + hash(w.id + i + 20) * 0.6);
+    // shaken out of the fleece all round its top, flung down the cone
+    const from = (hash(w.id + i + 100) - 0.5) * 1.6;
     return {
-      fromX: w.x + Math.cos(aim + Math.PI / 2) * 30,
-      fromY: w.y + Math.sin(aim + Math.PI / 2) * 30 * FLAT,
+      fromX: w.x + Math.cos(aim + from) * 40,
+      fromY: w.y + Math.sin(aim + from) * 40 * FLAT,
       toX: clamp(w.x + Math.cos(a) * d, 90, 1510),
       toY: clamp(w.y + Math.sin(a) * d, 90, 810),
       flight: 0.45 + hash(w.id + i + 40) * 0.2,
@@ -328,11 +515,40 @@ function volleyFlight(
   w: RaidWarning,
   now: number,
   pal: Palette,
+  r: NonNullable<Snapshot["raid"]>,
+  low: boolean,
 ) {
-  for (const [i, s] of volleyStones(w).entries()) {
+  // the wet-dog shake: tufts of stone wool flung off as the stones leave
+  const shake = now - (w.at - 0.5);
+  if (shake > 0 && shake < 0.7)
+    for (let i = 0; i < (low ? 3 : 6); i++) {
+      const a = hash(w.id + i + 300) * TAU,
+        v = 70 + hash(w.id + i + 310) * 60,
+        t = shake;
+      const h = 110 + 150 * t - 300 * t * t;
+      if (h < 0) continue;
+      cragmuffFx.wool++;
+      rock(
+        fx.solid,
+        w.x + Math.cos(a) * v * t,
+        w.y + Math.sin(a) * v * t * FLAT - h,
+        6 + hash(w.id + i) * 3,
+        w.id + i,
+        t * 4,
+        WOOL,
+        1 - t / 0.7,
+      );
+    }
+  for (const [i, s0] of volleyStones(w).entries()) {
+    if (low && i % 2) continue;
+    // a standing pillar stops a stone at its footprint (hide behind pillars)
+    const stop = pillarStop(r, w.x, w.y, s0.toX, s0.toY);
+    const s = stop ? { ...s0, toX: stop.x, toY: stop.y } : s0;
     const depart = w.at - s.flight - (STONES - 1 - i) * 0.025,
       u = (now - depart) / s.flight;
     if (u < 0 || u > 1) continue;
+    cragmuffFx.stones++;
+    if (stop) cragmuffFx.stopped++;
     const x = s.fromX + (s.toX - s.fromX) * u,
       y = s.fromY + (s.toY - s.fromY) * u,
       h = 125 * (1 - u) + Math.sin(u * Math.PI) * s.lob;
@@ -356,72 +572,126 @@ function meteorFall(
     fall = 0.45;
   const formed = clamp((now - (w.at - form - fall)) / form);
   if (formed <= 0 || now >= w.at) return;
+  cragmuffFx.meteor++;
   const u = clamp((now - (w.at - fall)) / fall);
   const h = 300 * (1 - easeIn(u)),
     r = 34 * easeOut(formed);
   fx.floorSolid
     .fillStyle(0x050302, 0.35 * formed)
     .fillEllipse(w.x, w.y, (30 + 60 * u) * 2, (30 + 60 * u) * 2 * FLAT);
-  glow(w.x, w.y - h, r * 3.2, pal.glow, 0.9 * formed);
-  rock(fx.solid, w.x, w.y - h, r, w.id * 7, now * 2, {
-    ...pal,
-    rock: pal.hot,
-    rockLight: 0xfff0c0,
-  });
-  for (let i = 0; i < 6; i++) {
-    const a = now * 4 + (i / 6) * TAU;
-    glow(
-      w.x + Math.cos(a) * r * 1.3,
-      w.y - h + Math.sin(a) * r * 1.3,
-      r * 0.6,
-      0xff963c,
-      0.5 * formed,
+  // forming over its mark: a warning, its light never shrunk on Low
+  fx.essential(() => glow(w.x, w.y - h, r * 3, AMBER.mid, 0.85 * formed));
+  if (u > 0)
+    for (let i = 0; i < 3; i++)
+      fx.g
+        .lineStyle(3 - i * 0.8, 0xffd690, 0.55 * u)
+        .lineBetween(
+          w.x + (i - 1) * r * 0.5,
+          w.y - h - r,
+          w.x + (i - 1) * r * 0.4,
+          w.y - h - r - 120 * u,
+        );
+  // a stone boulder with amber crystals growing out of it
+  rock(fx.solid, w.x, w.y - h, r, w.id * 7, now * 0.8, pal);
+  for (let i = 0; i < 5; i++) {
+    const a = -Math.PI / 2 + (i - 2) * 0.55 + now * 0.8;
+    crystal(
+      fx.solid,
+      w.x + Math.cos(a) * r * 0.55,
+      w.y - h + Math.sin(a) * r * 0.5,
+      Math.cos(a),
+      Math.sin(a),
+      r * (i === 2 ? 0.95 : 0.7),
+      r * 0.2,
     );
   }
 }
-
-/** A lava geyser: up fast, down slowly, with blobs of magma. */
-function geyser(
+/** Rocks dropping from the cave roof onto a debris mark: a growing shadow, then the fall. */
+function debrisFall(
+  fx: Fx,
+  glow: Glow,
+  w: RaidWarning,
+  now: number,
+  pal: Palette,
+) {
+  const start = w.startedAt ?? w.at - 1.45,
+    p = clamp((now - start) / Math.max(0.1, w.at - start));
+  if (p <= 0 || now >= w.at) return;
+  cragmuffFx.debris++;
+  const size = w.radius > 110 ? 1.6 : 1.1;
+  fx.floorSolid
+    .fillStyle(0x050302, 0.35 * p)
+    .fillEllipse(w.x, w.y, 52 * size * p, 22 * size * p);
+  const fall = clamp((p - 0.6) / 0.4);
+  if (fall > 0)
+    rock(
+      fx.solid,
+      w.x,
+      w.y - (1 - fall * fall) * 520,
+      13 * size,
+      w.id * 5,
+      fall * 3,
+      pal,
+    );
+}
+/** Chapter 3's closing ring: amber crystal clusters standing on the ring. */
+function closingSpikes(fx: Fx, glow: Glow, radius: number, low: boolean) {
+  const n = low ? 6 : 12;
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * TAU + 0.31,
+      x = 800 + Math.cos(a) * (radius + 8),
+      y = 450 + Math.sin(a) * (radius + 8);
+    if (x < 40 || x > 1560 || y < 50 || y > 880) continue;
+    cragmuffFx.ring++;
+    for (const [ox, f, lean] of [
+      [-9, 0.7, -0.35],
+      [0, 1, 0.05],
+      [9, 0.6, 0.4],
+    ] as const)
+      crystal(
+        fx.solid,
+        x + ox,
+        y,
+        Math.sin(lean),
+        -Math.cos(lean),
+        26 * f,
+        5.5 * f,
+      );
+  }
+}
+/** Amber shards flung out and falling (the meteor's landing, a pillar crash). */
+function shards(
   fx: Fx,
   glow: Glow,
   x: number,
   y: number,
   age: number,
   seed: number,
-  low: boolean,
+  count: number,
+  power: number,
 ) {
-  const life = 0.85,
-    u = clamp(age / life);
-  if (u >= 1) return;
-  const height =
-    (u < 0.25 ? easeOut(u / 0.25) : 1 - easeIn((u - 0.25) / 0.75)) * 220;
-  const width = 28 * (1 - u * 0.4);
-  const column = (w: number, top: number, color: number, alpha: number) =>
-    fx.g.fillStyle(color, alpha).fillPoints(
-      [
-        { x: x - w, y },
-        { x: x - w * 0.35, y: y - top * 0.5 },
-        { x, y: y - top },
-        { x: x + w * 0.35, y: y - top * 0.5 },
-        { x: x + w, y },
-      ],
-      true,
+  for (let i = 0; i < count; i++) {
+    const a = hash(seed + i + 500) * TAU,
+      v = (90 + hash(seed + i + 510) * 140) * power,
+      up = (180 + hash(seed + i + 520) * 140) * power;
+    const land = (2 * up) / 700,
+      t = Math.min(age, land);
+    const h = Math.max(0, up * t - 350 * t * t);
+    const fade = 1 - clamp((age - land - 0.25) / 0.4);
+    if (fade <= 0) continue;
+    const px = x + Math.cos(a) * v * t,
+      py = y + Math.sin(a) * v * t * FLAT,
+      spin = a + age * 9 * (hash(seed + i) - 0.5);
+    crystal(
+      fx.solid,
+      px,
+      py - h,
+      Math.cos(spin),
+      Math.sin(spin),
+      14 * power,
+      3.6 * power,
+      fade,
     );
-  column(width, height, 0xff5a1e, 0.8);
-  column(width * 0.65, height * 0.82, 0xffaa3c, 0.7);
-  column(width * 0.32, height * 0.6, 0xffe68c, 0.65);
-  glow(x, y, 70, 0xff6e28, 0.7 * (1 - u), true);
-  for (let i = 0; i < (low ? 4 : 8); i++) {
-    const a = hash(seed + i) * TAU,
-      v = 30 + hash(seed + i + 9) * 60,
-      up = 200 + hash(seed + i + 19) * 160;
-    const t = age;
-    const h = up * t - 330 * t * t;
-    if (h < 0) continue;
-    const bx = x + Math.cos(a) * v * t,
-      by = y + Math.sin(a) * v * t * FLAT - h;
-    fx.g.fillStyle(0xffb450, 1 - u).fillCircle(bx, by, 3.4);
-    glow(bx, by, 14, 0xff7832, (1 - u) * 0.5);
   }
 }
 
@@ -440,13 +710,21 @@ export function drawGrumbleAttacks(
 ) {
   const r = state.raid;
   if (!r) return;
+  for (const k of Object.keys(cragmuffFx) as (keyof typeof cragmuffFx)[])
+    cragmuffFx[k] = 0;
   const pal = palette(r.phase);
   // Before the hits: stones in the air, the meteor forming and falling.
   for (const w of r.warnings) {
     if (w.casterId && w.casterId !== boss.id) continue;
-    if (w.kind === "volley") volleyFlight(fx, glow, w, state.time, pal);
+    if (w.kind === "volley") volleyFlight(fx, glow, w, state.time, pal, r, low);
     else if (w.kind === "share") meteorFall(fx, glow, w, state.time, pal);
+    else if (w.kind === "eruption") {
+      const start = w.startedAt ?? w.at - 1.25,
+        u = clamp(((state.time - start) / Math.max(0.1, w.at - start)) * 1.12);
+      crackRace(fx, glow, boss.x, boss.y + GRUMBLE_FEET, w.x, w.y, u, 1, w.id);
+    } else if (w.kind === "debris") debrisFall(fx, glow, w, state.time, pal);
   }
+  if (r.closingRadius) closingSpikes(fx, glow, r.closingRadius, low);
   // The hits, each kept for as long as its effect lasts. Their clock stops
   // while the game is paused, so a paused frame stays as it was.
   let mine = hits.get(fx);
@@ -490,13 +768,28 @@ export function drawGrumbleAttacks(
       continue;
     }
     const seed = id * 17;
-    if (c.kind === "slam")
+    if (c.kind === "slam") {
       impact(fx, glow, c.x, c.y, c.radius, 1.2, age, seed, pal, low);
-    else if (c.kind === "volley")
-      for (const s of volleyStones(c))
-        impact(fx, glow, s.toX, s.toY, 44, 0.6, age, s.seed, pal, low);
+      dustRing(fx, c.x, c.y, c.radius * 0.85, low ? 8 : 16, age, seed, 1.0);
+    } else if (c.kind === "volley")
+      for (const [i, s] of volleyStones(c).entries()) {
+        if (low && i % 2) continue;
+        const stop = pillarStop(r, c.x, c.y, s.toX, s.toY);
+        impact(
+          fx,
+          glow,
+          stop?.x ?? s.toX,
+          stop?.y ?? s.toY,
+          44,
+          stop ? 0.5 : 0.6,
+          age,
+          s.seed,
+          pal,
+          true,
+        );
+      }
     else if (c.kind === "eruption") {
-      geyser(fx, glow, c.x, c.y, age, seed, low);
+      spikes(fx, glow, c.x, c.y, age, seed, 1, low);
       impact(
         fx,
         glow,
@@ -509,9 +802,23 @@ export function drawGrumbleAttacks(
         pal,
         true,
       );
-    } else if (c.kind === "share")
+    } else if (c.kind === "share") {
       impact(fx, glow, c.x, c.y, c.radius, 1.4, age, seed, pal, low);
-    else if (c.kind === "charge") charge(fx, glow, hit, boss, pal, low);
+      shards(fx, glow, c.x, c.y, age, seed, low ? 4 : 8, 1.2);
+    } else if (c.kind === "debris")
+      impact(
+        fx,
+        glow,
+        c.x,
+        c.y,
+        c.radius,
+        c.radius > 110 ? 1.1 : 0.8,
+        age,
+        seed,
+        pal,
+        low,
+      );
+    else if (c.kind === "charge") charge(fx, glow, hit, boss, pal, low, r);
   }
 }
 
@@ -523,6 +830,7 @@ function charge(
   boss: Fighter,
   pal: Palette,
   low: boolean,
+  r: NonNullable<Snapshot["raid"]>,
 ) {
   const age = hit.age,
     trail = (hit.trail ??= []);
@@ -564,19 +872,77 @@ function charge(
         );
     }
   }
-  if (hit.stop)
+  if (!hit.stop) return;
+  const since = age - hit.stop.at,
+    ax = Math.cos(hit.cast.angle),
+    ay = Math.sin(hit.cast.angle);
+  if (hit.crash === undefined)
+    hit.crash = !!r.pillars.some(
+      (p) => p.broken && Math.hypot(p.x - hit.stop!.x, p.y - hit.stop!.y) < 150,
+    );
+  if (hit.crash) {
+    // into a pillar: the crash, a burst of amber shards and dust
+    if (since < 1.2) cragmuffFx.crash++;
     impact(
       fx,
       glow,
-      hit.stop.x + Math.cos(hit.cast.angle) * 40,
-      hit.stop.y + Math.sin(hit.cast.angle) * 40,
+      hit.stop.x + ax * 40,
+      hit.stop.y + ay * 40,
       100,
       1.15,
-      age - hit.stop.at,
+      since,
       hit.cast.id * 17,
       pal,
       low,
     );
+    shards(
+      fx,
+      glow,
+      hit.stop.x + ax * 50,
+      hit.stop.y + ay * 50,
+      since,
+      hit.cast.id,
+      low ? 5 : 10,
+      1,
+    );
+    dustRing(
+      fx,
+      hit.stop.x,
+      hit.stop.y,
+      130,
+      low ? 8 : 14,
+      since,
+      hit.cast.id,
+      1.1,
+    );
+  } else {
+    // a miss: it skids on, hooves scraping two marks into the floor
+    const fade = 1 - clamp((since - 1.2) / 0.8);
+    if (fade > 0) cragmuffFx.scrape++;
+    if (fade > 0)
+      for (const side of [-1, 1]) {
+        const ox = -ay * side * 16,
+          oy = ax * side * 16 * FLAT;
+        fx.floorSolid
+          .lineStyle(5, 0x46341f, 0.5 * fade)
+          .lineBetween(
+            hit.stop.x + ox - ax * 70,
+            hit.stop.y + oy - ay * 70 * FLAT + GRUMBLE_FEET * 0.6,
+            hit.stop.x + ox,
+            hit.stop.y + oy + GRUMBLE_FEET * 0.6,
+          );
+      }
+    dustRing(
+      fx,
+      hit.stop.x,
+      hit.stop.y + GRUMBLE_FEET * 0.6,
+      60,
+      low ? 4 : 8,
+      since,
+      hit.cast.id,
+      0.8,
+    );
+  }
 }
 
 /** The boss's own moments: noticed from the state, drawn for their life. */

@@ -215,7 +215,12 @@ test("Cragmuff's attacks have their poses: charge, rear-up and stomp, volley, me
     await run(page, 1.0);
     const volley = await pose("volley-windup");
     expect(volley.frames.some((f: string) => f.startsWith("rock_"))).toBe(true);
-    await run(page, 1.5);
+    // just before it lands: the wet-dog shake throws them (eyes shut, fleece emptied)
+    await run(page, 0.25);
+    const shake = await pose("volley-shake");
+    expect(shake.expr).toBe("closed");
+    expect(shake.frames.some((f: string) => f.startsWith("rock_"))).toBe(false);
+    await run(page, 1.25);
     // the meteor: rearing with the horns blazing
     await page.evaluate(() => (window as any).__combat.cast("share"));
     await run(page, 1.5);

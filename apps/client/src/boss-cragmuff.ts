@@ -158,12 +158,19 @@ export function cragmuffPose(c: CragmuffCue): CragmuffPose {
   }
   // the volley: the fleece puffs up with rocks stuck in it, then a wet-dog shake
   if (c.windKind === "volley" && w > 0) {
-    P.sx *= 1 + 0.1 * w;
-    P.sy *= 1 + 0.07 * w;
-    P.rocks = w;
+    // the last moments of the wind-up: the shake that flings the stones (they land as the warning ends)
+    const shake = c.reduced ? 0 : clamp((w - 0.66) / 0.08);
+    P.sx *= 1 + 0.1 * w * (1 - shake);
+    P.sy *= 1 + 0.07 * w * (1 - shake);
+    P.rocks = w * (1 - shake);
     P.head = 0.15 * w;
-    P.expr = "glare";
-    P.mouth = "grit";
+    P.expr = shake > 0 ? "closed" : "glare";
+    P.mouth = shake > 0 ? "roar" : "grit";
+    if (shake > 0) {
+      const s = Math.sin(c.time * 38);
+      P.brot += s * 0.07 * shake;
+      P.sx *= 1 + 0.05 * s * shake;
+    }
   }
   if (c.castKind === "volley" && c.castAge < 0.55) {
     const k = 1 - c.castAge / 0.55,
@@ -232,7 +239,10 @@ export function cragmuffPose(c: CragmuffCue): CragmuffPose {
     P.expr = "wide";
     P.mouth = "roar";
   }
-  if (c.dazed && !c.stagger) {
+  // dazed after a pillar, unless it is already winding up its next attack
+  const busy =
+    w > 0.05 || c.charge > 0 || c.slam > 0 || c.charging || c.castAge < 0.5;
+  if (c.dazed && !c.stagger && !busy) {
     P.sit = Math.max(P.sit, 0.75);
     P.head = 0.32;
     P.expr = c.crash > 0.5 ? "wide" : "dizzy";
