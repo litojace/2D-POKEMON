@@ -99,6 +99,16 @@ describe("raid rewards", () => {
     }
   });
 
+  it("gives every title reward its own name (titles are granted by name)", () => {
+    // arena_record_raid joins rewards to titles on the name, so two rewards
+    // sharing one would grant the same title for both (and leave the other
+    // unearnable).
+    const names = RAID_REWARDS.filter((r) => r.slot === "title").map(
+      (r) => r.name,
+    );
+    expect(names.filter((n, i) => names.indexOf(n) !== i)).toEqual([]);
+  });
+
   it("derives the cosmetic list (every slot item) from the rewards", () => {
     expect(Object.keys(RAID_COSMETICS).sort()).toEqual(
       RAID_REWARDS.filter((r) => r.slot !== "title")
