@@ -35,6 +35,16 @@ in iPhone mode. Supporting iPad means testing its window sizes first.
   rotation; an app can).
 - **No service worker, update banner or "Want fullscreen?"**: the App Store
   delivers updates.
+- **Edge swipes need a second swipe.** In a match, a thumb near an edge
+  shouldn't leave the game: the first swipe from an edge goes to the game,
+  and a second opens Home, the app switcher or Control Center. The home bar
+  fades out until you touch near it (`ArenaViewController`).
+- **The screen never locks while the game is open** (`SceneDelegate`):
+  briefings, waiting and watching can go a while without a touch, and a
+  locked phone drops its game connection.
+- **Haptics:** hits and the farm's long press tap the Taptic Engine
+  (`@capacitor/haptics`). iPhones have no web vibration, so the website
+  can't do this on iPhone.
 - **Coming back from the background reconnects at once.** iOS pauses an app
   soon after you switch away, which drops its game connection.
 - **Sign in with Apple** opens Apple's own sheet. Email, password and guest

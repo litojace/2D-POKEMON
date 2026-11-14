@@ -10,7 +10,11 @@
  *   app, and its game connection, soon after you switch away);
  * - Sign in with Apple is Apple's own sheet (ios/App/App/AppleSignIn.swift),
  *   not a web page;
- * - Settings → App icon switches the Home Screen icon (AppIcon.swift).
+ * - Settings → App icon switches the Home Screen icon (AppIcon.swift);
+ * - hits and long presses tap the Taptic Engine (iPhones have no web
+ *   vibration), and the screen never locks while the game is open
+ *   (SceneDelegate.swift); edge swipes need a second swipe to leave the
+ *   game, and the home bar fades out (ArenaViewController).
  */
 import { Capacitor, registerPlugin } from "@capacitor/core";
 
@@ -111,16 +115,29 @@ export async function setAppIcon(name: string | null) {
 }
 
 /**
- * Set up the app shell: hidden status bar, and `onResume` when the app
- * comes back to the front. Does nothing in a browser.
+ * Set up the app shell: hidden status bar, haptics, and `onResume` when the
+ * app comes back to the front. Does nothing in a browser.
  */
 export async function setupNativeShell(onResume: () => void) {
   if (!isNativeApp()) return;
   document.documentElement.classList.add("native-app");
-  const [{ StatusBar }, { App }] = await Promise.all([
-    import("@capacitor/status-bar"),
-    import("@capacitor/app"),
-  ]);
+  const [{ StatusBar }, { App }, { Haptics, ImpactStyle }, { setNativeTap }] =
+    await Promise.all([
+      import("@capacitor/status-bar"),
+      import("@capacitor/app"),
+      import("@capacitor/haptics"),
+      import("./game-feel"),
+    ]);
   await StatusBar.hide().catch(() => {});
+  setNativeTap((strength) => {
+    void Haptics.impact({
+      style:
+        strength >= 0.66
+          ? ImpactStyle.Heavy
+          : strength >= 0.33
+            ? ImpactStyle.Medium
+            : ImpactStyle.Light,
+    }).catch(() => {});
+  });
   await App.addListener("resume", onResume);
 }
