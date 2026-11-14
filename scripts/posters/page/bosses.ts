@@ -14,6 +14,55 @@ export interface Cutout {
   canvas: HTMLCanvasElement;
   face: { x: number; y: number };
   body: { x: number; y: number };
+  /** Every piece on its own, back to front, in canvas px (for the poster painter). */
+  layers: Layer[];
+}
+export interface Layer {
+  name: string;
+  x: number;
+  y: number;
+  c: HTMLCanvasElement;
+  alpha: number;
+  add: boolean;
+}
+/**
+ * Draw one piece with the context's current transform, and keep a copy of
+ * it on its own canvas (its box in the cutout) as a layer.
+ */
+function piece(
+  ctx: CanvasRenderingContext2D,
+  layers: Layer[],
+  name: string,
+  add: boolean,
+  src: CanvasImageSource,
+  sx: number,
+  sy: number,
+  sw: number,
+  sh: number,
+  dx: number,
+  dy: number,
+) {
+  ctx.drawImage(src, sx, sy, sw, sh, dx, dy, sw, sh);
+  const m = ctx.getTransform();
+  const pts = [
+    [dx, dy],
+    [dx + sw, dy],
+    [dx, dy + sh],
+    [dx + sw, dy + sh],
+  ].map(([x, y]) => m.transformPoint(new DOMPoint(x, y)));
+  const x0 = Math.floor(Math.min(...pts.map((p) => p.x))) - 1,
+    y0 = Math.floor(Math.min(...pts.map((p) => p.y))) - 1,
+    x1 = Math.ceil(Math.max(...pts.map((p) => p.x))) + 1,
+    y1 = Math.ceil(Math.max(...pts.map((p) => p.y))) + 1;
+  if (x1 - x0 < 2 || y1 - y0 < 2) return;
+  const c = document.createElement("canvas");
+  c.width = x1 - x0;
+  c.height = y1 - y0;
+  const g = c.getContext("2d")!;
+  g.imageSmoothingQuality = "high";
+  g.setTransform(new DOMMatrix().translate(-x0, -y0).multiply(m));
+  g.drawImage(src, sx, sy, sw, sh, dx, dy, sw, sh);
+  layers.push({ name, x: x0, y: y0, c, alpha: ctx.globalAlpha, add });
 }
 export interface CutoutOpts {
   /** poster px per world px */
@@ -63,6 +112,7 @@ interface Pl {
 
 /** Draw atlas placements whose frame origin is a 0-1 fraction (ox, oy). */
 function drawFrac(
+  layers: Layer[],
   ctx: CanvasRenderingContext2D,
   atlas: HTMLCanvasElement,
   frames: Record<string, Frame>,
@@ -80,7 +130,11 @@ function drawFrac(
     ctx.translate(cx + p.x * k, cy + p.y * k);
     ctx.rotate(p.rot);
     ctx.scale((p.sx * k) / f.q, (p.sy * k) / f.q);
-    ctx.drawImage(
+    piece(
+      ctx,
+      layers,
+      p.piece,
+      !!(p.add || p.glow),
       atlas,
       f.x,
       f.y,
@@ -88,8 +142,6 @@ function drawFrac(
       f.h,
       -f.ox * f.w,
       -f.oy * f.h,
-      f.w,
-      f.h,
     );
     ctx.restore();
   }
@@ -112,7 +164,9 @@ const baseCue = (): LumiCue => ({
   roarAge: 99,
 });
 
-export function lumiwick(o: CutoutOpts): Cutout {
+export function lumiwick(
+  o: CutoutOpts & { patch?: Record<string, unknown> },
+): Cutout {
   const density = Math.max(1, o.k * 1.15);
   const atlas = paintLumiwickAtlas(density);
   const cue = baseCue();
@@ -122,6 +176,7 @@ export function lumiwick(o: CutoutOpts): Cutout {
     cue.windup = o.t ?? 0.8;
   }
   const P = lumiwickPose(cue);
+  if (o.patch) Object.assign(P, o.patch);
   const placed = lumiwickPlacements(P, o.facing ?? 0, { x: 0, y: 1 });
   const W = Math.ceil(520 * o.k),
     H = Math.ceil(620 * o.k);
@@ -131,11 +186,22 @@ export function lumiwick(o: CutoutOpts): Cutout {
   c.width = W;
   c.height = H;
   const ctx = c.getContext("2d")!;
-  drawFrac(ctx, atlas.canvas, atlas.frames, placed.placements, cx, cy, o.k);
+  const layers: Layer[] = [];
+  drawFrac(
+    layers,
+    ctx,
+    atlas.canvas,
+    atlas.frames,
+    placed.placements,
+    cx,
+    cy,
+    o.k,
+  );
   return {
     canvas: c,
     face: eyesOr(placed.eyes, placed.head, cx, cy, o.k),
     body: { x: cx + placed.heart.x * o.k, y: cy + placed.heart.y * o.k },
+    layers,
   };
 }
 
@@ -185,6 +251,7 @@ export function tidelotl(
   c.height = H;
   const ctx = c.getContext("2d")!;
   const painted = new Map<string, ReturnType<typeof paintLotlPiece>>();
+  const layers: Layer[] = [];
   for (const pl of layout.placements) {
     if (/shadow|puddle/i.test(pl.piece)) continue;
     const pc = byName.get(pl.piece);
@@ -201,13 +268,26 @@ export function tidelotl(
     ctx.translate(cx + pl.x * o.k, cy + pl.y * o.k);
     ctx.rotate(pl.rot);
     ctx.scale((pl.sx * o.k) / im.q, (pl.sy * o.k) / im.q);
-    ctx.drawImage(im.canvas, -im.ox, -im.oy);
+    piece(
+      ctx,
+      layers,
+      pl.piece,
+      false,
+      im.canvas,
+      0,
+      0,
+      im.canvas.width,
+      im.canvas.height,
+      -im.ox,
+      -im.oy,
+    );
     ctx.restore();
   }
   return {
     canvas: c,
     face: { x: cx + layout.head.x * o.k, y: cy + layout.head.y * o.k },
     body: { x: cx + layout.pearl.x * o.k, y: cy + layout.pearl.y * o.k },
+    layers,
   };
 }
 
@@ -263,6 +343,7 @@ export function inkpurr(
   c.width = W;
   c.height = H;
   const ctx = c.getContext("2d")!;
+  const layers: Layer[] = [];
   for (const p of [...placed.placements].sort((a, b) => a.z - b.z)) {
     if (/shadow|puddle/i.test(p.piece)) continue;
     const sp: any = specs.get(p.piece);
@@ -286,13 +367,26 @@ export function inkpurr(
     ctx.translate(cx + p.x * o.k, cy + p.y * o.k);
     ctx.rotate(p.rot);
     ctx.scale((p.sx * o.k) / f.q, (p.sy * o.k) / f.q);
-    ctx.drawImage(f.src, -f.ox, -f.oy);
+    piece(
+      ctx,
+      layers,
+      p.piece,
+      !!p.glow,
+      f.src,
+      0,
+      0,
+      f.src.width,
+      f.src.height,
+      -f.ox,
+      -f.oy,
+    );
     ctx.restore();
   }
   return {
     canvas: c,
     face: eyesOr(placed.eyes, placed.head, cx, cy, o.k),
     body: { x: cx + placed.body.x * o.k, y: cy + placed.body.y * o.k },
+    layers,
   };
 }
 
@@ -348,6 +442,7 @@ export function cragmuff(
   c.height = H;
   const ctx = c.getContext("2d")!;
   const SC = CRAGMUFF_SCALE * o.k;
+  const layers: Layer[] = [];
   const draw = (list: any[], add: boolean) => {
     for (const p of list) {
       const f = A.pieces[p.piece];
@@ -358,7 +453,11 @@ export function cragmuff(
       ctx.translate(cx + p.x * SC, cy + p.y * SC);
       ctx.rotate(p.rot);
       ctx.scale((p.sx * SC) / f.q, (p.sy * SC) / f.q);
-      ctx.drawImage(
+      piece(
+        ctx,
+        layers,
+        p.piece,
+        !!(add || p.glow),
         page,
         f.sx,
         f.sy,
@@ -366,8 +465,6 @@ export function cragmuff(
         f.h,
         -f.ox * f.q,
         -f.oy * f.q,
-        f.w,
-        f.h,
       );
       ctx.restore();
     }
@@ -386,5 +483,6 @@ export function cragmuff(
     canvas: c,
     face: { x: cx + head.x * SC, y: cy + head.y * SC },
     body: { x: cx + core.x * SC, y: cy + core.y * SC },
+    layers,
   };
 }

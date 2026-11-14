@@ -10,7 +10,6 @@
  * Every size is in "u" (1 u = 1/1024 of the poster's height) so the same
  * scene draws a 1536x1024 splash and a 600x900 portrait.
  */
-import type { Cutout } from "./bosses";
 
 export type Particle =
   | "embers"
@@ -49,27 +48,44 @@ export interface Theme {
   stone: string;
 }
 
+export type Setting = "sunset" | "sea" | "night" | "canyon";
 export interface Scene {
   W: number;
   H: number;
   arena: HTMLImageElement;
-  cutout: Cutout;
   theme: Theme;
   seed: number;
-  /** The boss's box in the poster (fractions): centre x, centre y, height; max width. */
-  place: { cx: number; cy: number; h: number; maxW: number };
-  /** Where the light breaks through, in fractions. */
+  setting: Setting;
+  /** The painted boss (transparent), its face (eyes' midpoint) and body in its px, and the face's half-size. */
+  boss: HTMLCanvasElement;
+  face: { x: number; y: number };
+  body: { x: number; y: number };
+  faceR: [number, number];
+  /**
+   * The boss's box in the poster (fractions): centre x and y, height, max
+   * width; faceY puts the face at that height instead of centring; ground
+   * stands its feet on the floor at that height.
+   */
+  place: {
+    cx: number;
+    cy: number;
+    h: number;
+    maxW: number;
+    faceY?: number;
+    ground?: number;
+  };
+  /** The key light's source in the sky, in fractions. */
   sun: { x: number; y: number };
-  /** Horizon line (fraction of H): the floor starts here. */
+  /** Horizon line (fraction of H). */
   horizon: number;
-  /** Ribbon spin: 1 counter-clockwise rise, -1 the other way. */
+  /** Ribbon spin: 1 one way, -1 the other. */
   spin?: number;
-  /** Extra drawing after the sky (moon, lanterns ...). */
-  extraSky?: (ctx: CanvasRenderingContext2D, s: Scene, u: number) => void;
 }
 
 export interface Result {
   canvas: HTMLCanvasElement;
+  /** The boss's box, as fractions of the poster. */
+  box: [number, number, number, number];
   /** The boss's face and body centre, as fractions of the poster. */
   face: [number, number];
   body: [number, number];
@@ -85,7 +101,7 @@ export function rng(seed: number) {
     return ((s >>> 0) % 1e9) / 1e9;
   };
 }
-type Ctx = CanvasRenderingContext2D;
+export type Ctx = CanvasRenderingContext2D;
 const TAU = Math.PI * 2;
 export function canvas(w: number, h: number) {
   const c = document.createElement("canvas");
@@ -93,8 +109,8 @@ export function canvas(w: number, h: number) {
   c.height = Math.max(1, Math.round(h));
   return c;
 }
-const ctxOf = (c: HTMLCanvasElement) => c.getContext("2d")!;
-function blurred(src: HTMLCanvasElement, px: number) {
+export const ctxOf = (c: HTMLCanvasElement) => c.getContext("2d")!;
+export function blurred(src: HTMLCanvasElement, px: number) {
   const c = canvas(src.width, src.height);
   const g = ctxOf(c);
   g.filter = `blur(${px}px)`;
@@ -107,7 +123,7 @@ export function rgba(hex: string, a: number) {
   const n = parseInt(h, 16);
   return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
 }
-function mix(a: string, b: string, t: number) {
+export function mix(a: string, b: string, t: number) {
   const pa = parseInt(a.slice(1), 16),
     pb = parseInt(b.slice(1), 16);
   const ch = (s: number) =>
@@ -116,7 +132,7 @@ function mix(a: string, b: string, t: number) {
 }
 
 /** The boss trimmed to its pixels. */
-function trim(c: HTMLCanvasElement) {
+export function trim(c: HTMLCanvasElement) {
   const d = ctxOf(c).getImageData(0, 0, c.width, c.height).data;
   let x0 = c.width,
     y0 = c.height,
@@ -135,7 +151,7 @@ function trim(c: HTMLCanvasElement) {
 
 // ───────────────────────── stone texture ─────────────────────────
 /** A tileable-ish stone swatch from the arena's border (walls, rubble), tinted. */
-function stoneSwatch(arena: HTMLImageElement, tint: string) {
+export function stoneSwatch(arena: HTMLImageElement, tint: string) {
   const c = canvas(512, 256);
   const g = ctxOf(c);
   // the top border strip and the left one, side by side
@@ -163,7 +179,7 @@ function stoneSwatch(arena: HTMLImageElement, tint: string) {
 }
 
 // ───────────────────────── sky ─────────────────────────
-function drawSky(g: Ctx, s: Scene, u: number) {
+export function drawSky(g: Ctx, s: Scene, u: number) {
   const { W, H, theme: t } = s;
   const sg = g.createLinearGradient(0, 0, 0, H * s.horizon);
   sg.addColorStop(0, t.sky[0]);
@@ -197,7 +213,7 @@ function drawSky(g: Ctx, s: Scene, u: number) {
  * big in the middle, each lit from the sun's side, painted top to bottom so
  * the lower puffs overlap the upper ones; then softened.
  */
-function cloudBank(
+export function cloudBank(
   s: Scene,
   u: number,
   r: () => number,
@@ -218,6 +234,7 @@ function cloudBank(
   const lx = s.sun.x * W,
     ly = s.sun.y * H;
   const puffs: { x: number; y: number; r: number }[] = [];
+  const cl: { x: number; y: number; w: number; h: number }[] = [];
   const clusters = Math.max(
     2,
     Math.round(((o.x1 - o.x0) * W) / (o.size * u * 2.6)),
@@ -227,20 +244,33 @@ function cloudBank(
     const cw = o.size * u * (1.6 + r() * 1.4);
     const ch = o.size * u * (0.9 + r() * 0.9) * o.rows * 0.7;
     const base = o.y * H + (r() - 0.5) * o.size * u * 0.6;
-    for (let j = 0; j < 34; j++) {
+    cl.push({ x: cx, y: base, w: cw, h: ch });
+    for (let j = 0; j < 60; j++) {
       const a = Math.PI * (0.04 + 0.92 * r());
       const d = Math.sqrt(r());
       const x = cx + Math.cos(a) * cw * d;
       const y = base - Math.sin(a) * ch * d;
       const big = 1 - d * 0.65;
-      puffs.push({ x, y, r: o.size * u * (0.18 + r() * 0.32) * (0.5 + big) });
+      puffs.push({ x, y, r: o.size * u * (0.12 + r() * 0.3) * (0.5 + big) });
     }
   }
   // the mass in its middle tone
-  g.fillStyle = t.cloud[1];
+  // soft-edged puffs, so the mass billows instead of reading as balls
   for (const p of puffs) {
+    const sg = g.createRadialGradient(
+      p.x,
+      p.y,
+      p.r * 0.55,
+      p.x,
+      p.y,
+      p.r * 1.15,
+    );
+    sg.addColorStop(0, rgba(t.cloud[1], 1));
+    sg.addColorStop(0.7, rgba(t.cloud[1], 0.85));
+    sg.addColorStop(1, rgba(t.cloud[1], 0));
+    g.fillStyle = sg;
     g.beginPath();
-    g.arc(p.x, p.y, p.r, 0, TAU);
+    g.arc(p.x, p.y, p.r * 1.15, 0, TAU);
     g.fill();
   }
   g.globalCompositeOperation = "source-atop";
@@ -273,6 +303,16 @@ function cloudBank(
     g.fillRect(p.x - p.r, p.y, p.r * 2, p.r * 1.6);
   }
   g.globalCompositeOperation = "source-over";
+  // shadowed bellies under each mass
+  g.globalCompositeOperation = "source-atop";
+  for (const k of cl) {
+    const bg = g.createLinearGradient(0, k.y - k.h * 0.55, 0, k.y + k.h * 0.1);
+    bg.addColorStop(0, rgba(t.cloud[2], 0));
+    bg.addColorStop(1, rgba(t.cloud[2], 0.6));
+    g.fillStyle = bg;
+    g.fillRect(k.x - k.w * 1.3, k.y - k.h * 0.6, k.w * 2.6, k.h * 0.9);
+  }
+  g.globalCompositeOperation = "source-over";
   // the base dissolves into the mist below
   g.globalCompositeOperation = "source-atop";
   const fade = g.createLinearGradient(
@@ -293,7 +333,7 @@ function cloudBank(
 }
 
 /** High streaky clouds swirling around the light. */
-function wisps(g: Ctx, s: Scene, u: number, r: () => number) {
+export function wisps(g: Ctx, s: Scene, u: number, r: () => number) {
   const { W, H, theme: t } = s;
   const c = canvas(W, H);
   const k = ctxOf(c);
@@ -324,7 +364,7 @@ function wisps(g: Ctx, s: Scene, u: number, r: () => number) {
   g.drawImage(blurred(c, 7 * u), 0, 0);
 }
 
-function godRays(g: Ctx, s: Scene, u: number, r: () => number) {
+export function godRays(g: Ctx, s: Scene, u: number, r: () => number) {
   const { W, H, theme: t } = s;
   const c = canvas(W, H);
   const k = ctxOf(c);
@@ -354,7 +394,7 @@ function godRays(g: Ctx, s: Scene, u: number, r: () => number) {
 }
 
 // ───────────────────────── ruins ─────────────────────────
-interface Proj {
+export interface Proj {
   /** ground line (screen y), centre x, vanishing height above ground, scale */
   gy: number;
   cx: number;
@@ -362,322 +402,17 @@ interface Proj {
   sc: number;
 }
 /** World (x on the ground line, h above it, in u at this layer's scale) → screen. */
-function P(p: Proj, x: number, h: number): [number, number] {
+export function P(p: Proj, x: number, h: number): [number, number] {
   const hh = h * p.sc;
   const f = Math.max(0.05, 1 - hh / p.vp);
   return [p.cx + (x - p.cx) * f, p.gy - hh];
 }
-function polyPath(path: Path2D, pts: [number, number][]) {
+export function polyPath(path: Path2D, pts: [number, number][]) {
   pts.forEach(([x, y], i) => (i ? path.lineTo(x, y) : path.moveTo(x, y)));
   path.closePath();
 }
-/** A broken colonnade or tower block at ground x (screen px), width w and height h (u). */
-function ruinPath(
-  p: Proj,
-  x: number,
-  w: number,
-  h: number,
-  u: number,
-  r: () => number,
-  kind: "tower" | "arches" | "wall",
-) {
-  const path = new Path2D();
-  const U = u * p.sc;
-  const ww = w * U;
-  const pt = (dx: number, hh: number) => P(p, x + dx, hh * u);
-  if (kind === "tower") {
-    // a tall block with crenels and arched windows
-    const top: [number, number][] = [];
-    const n = 4 + Math.floor(r() * 3);
-    for (let i = 0; i <= n; i++) {
-      const dx = (ww * i) / n;
-      const up = i % 2 === 0 ? 0 : 14;
-      top.push(pt(dx, h + up));
-      if (i < n) top.push(pt(dx + ww / n, h + up));
-    }
-    // broken corner
-    const outline: [number, number][] = [
-      pt(0, -40),
-      pt(0, h),
-      ...top.slice(1, -1),
-      pt(ww, h - r() * 30),
-      pt(ww, -40),
-    ];
-    polyPath(path, outline);
-    // windows (holes)
-    const rows = Math.max(1, Math.floor(h / 120));
-    for (let j = 0; j < rows; j++) {
-      const wy = 50 + j * 110;
-      if (wy + 60 > h - 20) break;
-      for (const fx of [0.3, 0.7]) {
-        if (ww < 60 * U && fx === 0.7) continue;
-        const cx = ww * fx,
-          hw = Math.min(16 * U, ww * 0.12);
-        const win: [number, number][] = [pt(cx - hw, wy)];
-        for (let k = 0; k <= 8; k++) {
-          const a = Math.PI - (Math.PI * k) / 8;
-          win.push(pt(cx + Math.cos(a) * hw, wy + 50 + (Math.sin(a) * hw) / U));
-        }
-        win.push(pt(cx + hw, wy));
-        polyPath(path, win.reverse());
-      }
-    }
-  } else if (kind === "arches") {
-    const n = 2 + Math.floor(r() * 3);
-    const bay = ww / n;
-    const pier = bay * 0.22;
-    const heights = Array.from({ length: n + 1 }, () => h * (0.75 + r() * 0.3));
-    const outline: [number, number][] = [pt(0, -40)];
-    outline.push(pt(0, heights[0]));
-    for (let i = 1; i <= n; i++) {
-      outline.push(
-        pt(
-          bay * i - (i === n ? 0 : 0),
-          Math.min(heights[i - 1], heights[i]) + 18 * r(),
-        ),
-      );
-      outline.push(pt(bay * i, heights[i]));
-    }
-    outline.push(pt(ww, -40));
-    polyPath(path, outline);
-    for (let i = 0; i < n; i++) {
-      const l = bay * i + pier / 2,
-        rr = bay * (i + 1) - pier / 2;
-      const spring = Math.min(heights[i], heights[i + 1]) * 0.55;
-      const hw = (rr - l) / 2;
-      const hole: [number, number][] = [pt(l, -40), pt(l, spring)];
-      for (let k = 1; k < 10; k++) {
-        const a = Math.PI - (Math.PI * k) / 10;
-        hole.push(
-          pt(l + hw + Math.cos(a) * hw, spring + (Math.sin(a) * hw) / U),
-        );
-      }
-      hole.push(pt(rr, spring), pt(rr, -40));
-      polyPath(path, hole.reverse());
-    }
-  } else {
-    const n = 6;
-    const outline: [number, number][] = [pt(0, -40)];
-    for (let i = 0; i <= n; i++)
-      outline.push(pt((ww * i) / n, h * (0.5 + r() * 0.5)));
-    outline.push(pt(ww, -40));
-    polyPath(path, outline);
-  }
-  return path;
-}
-
-function ruinsLayer(
-  s: Scene,
-  u: number,
-  r: () => number,
-  stone: HTMLCanvasElement,
-  o: {
-    gy: number;
-    sc: number;
-    haze: number;
-    blur: number;
-    count: number;
-    spread: number;
-  },
-) {
-  const { W, H, theme: t } = s;
-  const c = canvas(W, H);
-  const g = ctxOf(c);
-  const p: Proj = {
-    gy: o.gy * H,
-    cx: W / 2,
-    vp: 2700 * u * Math.sqrt(o.sc),
-    sc: o.sc,
-  };
-  const pat = g.createPattern(stone, "repeat")!;
-  pat.setTransform(new DOMMatrix().scale(0.9 * o.sc * u * 1.6));
-  const lx = s.sun.x * W;
-  for (let i = 0; i < o.count; i++) {
-    const side = i % 2 === 0 ? -1 : 1;
-    // from the edge inward
-    const d = r() * o.spread;
-    const w = 60 + r() * 120;
-    const x =
-      side < 0 ? d * W - w * u * o.sc * 0.5 : W - d * W - w * u * o.sc * 0.5;
-    const kinds = ["tower", "arches", "arches", "wall"] as const;
-    const kind = kinds[Math.floor(r() * kinds.length)];
-    // a bowl: tall at the frame's edges, low toward the middle
-    const edge = Math.min(
-      1,
-      Math.abs(x + (w * u * o.sc) / 2 - W / 2) / (W / 2),
-    );
-    const hk = 0.3 + 0.7 * Math.pow(edge, 0.9);
-    const h =
-      (kind === "tower"
-        ? 380 + r() * 380
-        : kind === "arches"
-          ? 220 + r() * 200
-          : 90 + r() * 120) * hk;
-    const path = ruinPath(p, x, w, h, u, r, kind);
-    // rim on the side facing the light: the shape lit, then the body shifted away
-    const toLight = Math.sign(lx - (x + (w * u * o.sc) / 2)) || 1;
-    g.save();
-    g.fillStyle = t.rim;
-    g.fill(path, "evenodd");
-    g.translate(-toLight * 3 * u * o.sc, 1.5 * u * o.sc);
-    g.fillStyle = mix(t.stone, t.haze, 0.2);
-    g.fill(path, "evenodd");
-    g.globalAlpha = 0.5;
-    g.fillStyle = pat;
-    g.fill(path, "evenodd");
-    g.globalAlpha = 1;
-    // courses of stone
-    g.save();
-    g.clip(path, "evenodd");
-    g.strokeStyle = "rgba(0,0,0,0.22)";
-    g.lineWidth = Math.max(1, 1.5 * u * o.sc);
-    const [x0p] = P(p, x - 50 * u, 0);
-    for (let hh = 30; hh < h + 40; hh += 34 + r() * 10) {
-      const [, yy] = P(p, x, hh * u);
-      g.beginPath();
-      g.moveTo(x0p - 200 * u, yy);
-      g.lineTo(x0p + w * u * o.sc + 400 * u, yy);
-      g.stroke();
-    }
-    g.restore();
-    // shade: darker low, and on the side away from the light
-    const sh = g.createLinearGradient(0, p.gy - 700 * u * o.sc, 0, p.gy);
-    sh.addColorStop(0, "rgba(0,0,0,0.05)");
-    sh.addColorStop(1, "rgba(0,0,0,0.45)");
-    g.fillStyle = sh;
-    g.fill(path, "evenodd");
-    g.restore();
-  }
-  // sunlit tops, haze toward the distance colour, and mist up from the feet
-  g.globalCompositeOperation = "source-atop";
-  const top = g.createLinearGradient(
-    0,
-    o.gy * H - 900 * u * o.sc,
-    0,
-    o.gy * H - 200 * u * o.sc,
-  );
-  top.addColorStop(0, rgba(t.rim, 0.4));
-  top.addColorStop(1, rgba(t.rim, 0));
-  g.fillStyle = top;
-  g.fillRect(0, 0, W, H);
-  g.fillStyle = rgba(t.haze, o.haze);
-  g.fillRect(0, 0, W, H);
-  const mist = g.createLinearGradient(
-    0,
-    o.gy * H - 260 * u * o.sc,
-    0,
-    o.gy * H,
-  );
-  mist.addColorStop(0, rgba(t.haze, 0));
-  mist.addColorStop(1, rgba(t.haze, Math.min(1, o.haze + 0.5)));
-  g.fillStyle = mist;
-  g.fillRect(0, 0, W, H);
-  return o.blur ? blurred(c, o.blur * u) : c;
-}
-
-/** Tall towers at both edges reaching up out of frame, leaning in: the camera looks up. */
-function edgeTowers(
-  s: Scene,
-  u: number,
-  r: () => number,
-  stone: HTMLCanvasElement,
-) {
-  const { W, H, theme: t } = s;
-  const c = canvas(W, H);
-  const g = ctxOf(c);
-  const p: Proj = { gy: (s.horizon + 0.2) * H, cx: W / 2, vp: 2300 * u, sc: 1 };
-  const pat = g.createPattern(stone, "repeat")!;
-  pat.setTransform(new DOMMatrix().scale(1.2 * u));
-  for (const side of [-1, 1]) {
-    // the tower: shaft, a ledge, a narrower upper stage with windows
-    for (let i = 0; i < 2; i++) {
-      const w = (i ? 70 : 110) + r() * 40;
-      const x =
-        side < 0
-          ? (i ? 0.1 : -0.02) * W + r() * 20 * u
-          : W - ((i ? 0.1 : -0.02) * W + r() * 20 * u) - w * u;
-      const h = (i ? 820 : 1150) + r() * 120;
-      const path = ruinPath(p, x, w, h, u, r, "tower");
-      const toLight = Math.sign(s.sun.x * W - (x + (w * u) / 2)) || 1;
-      g.save();
-      g.globalAlpha = 1;
-      g.fillStyle = t.rim;
-      g.fill(path, "evenodd");
-      g.translate(-toLight * 4 * u, 2 * u);
-      g.fillStyle = mix(t.stone, t.haze, 0.1);
-      g.fill(path, "evenodd");
-      g.globalAlpha = 0.55;
-      g.fillStyle = pat;
-      g.fill(path, "evenodd");
-      g.globalAlpha = 1;
-      g.clip(path, "evenodd");
-      g.strokeStyle = "rgba(0,0,0,0.25)";
-      g.lineWidth = 1.6 * u;
-      for (let hh = 30; hh < h; hh += 38) {
-        const [, yy] = P(p, x, hh * u);
-        g.beginPath();
-        g.moveTo(0, yy);
-        g.lineTo(W, yy);
-        g.stroke();
-      }
-      // shade on the side away from the light
-      const [ax] = P(p, x, 300 * u);
-      const sg = g.createLinearGradient(ax, 0, ax + w * u, 0);
-      sg.addColorStop(toLight > 0 ? 0 : 1, "rgba(0,0,0,0.45)");
-      sg.addColorStop(toLight > 0 ? 1 : 0, "rgba(0,0,0,0)");
-      g.fillStyle = sg;
-      g.fillRect(0, 0, W, H);
-      g.restore();
-      // a long banner in the element's colour hanging from the upper stage
-      if (i === 0 || r() < 0.5) {
-        const by = 560 + r() * 200,
-          bl = 260 + r() * 120;
-        const bxw = w * (0.5 + r() * 0.1);
-        const bx0 = x + (w * u - bxw * u) / 2;
-        const tl = P(p, bx0, by * u),
-          tr = P(p, bx0 + bxw * u, by * u);
-        const bl0 = P(p, bx0, (by - bl) * u),
-          br0 = P(p, bx0 + bxw * u, (by - bl) * u),
-          tip = P(p, bx0 + (bxw * u) / 2, (by - bl - 40) * u);
-        const ban = new Path2D();
-        polyPath(ban, [tl, tr, br0, tip, bl0]);
-        const col = t.ribbons[0][0];
-        const bg = g.createLinearGradient(tl[0], 0, tr[0], 0);
-        bg.addColorStop(0, mix(col, "#000000", 0.45));
-        bg.addColorStop(0.5, mix(col, "#000000", 0.1));
-        bg.addColorStop(1, mix(col, "#000000", 0.5));
-        g.fillStyle = bg;
-        g.fill(ban);
-        g.strokeStyle = rgba(t.rim, 0.8);
-        g.lineWidth = 2.5 * u;
-        g.stroke(ban);
-        // an emblem
-        const mx = (tl[0] + tr[0]) / 2,
-          my = tl[1] + (bl0[1] - tl[1]) * 0.35;
-        g.fillStyle = rgba(t.rim, 0.75);
-        g.beginPath();
-        g.moveTo(mx, my - bxw * u * 0.3);
-        g.lineTo(mx + bxw * u * 0.22, my);
-        g.lineTo(mx, my + bxw * u * 0.3);
-        g.lineTo(mx - bxw * u * 0.22, my);
-        g.closePath();
-        g.fill();
-      }
-    }
-  }
-  g.globalCompositeOperation = "source-atop";
-  g.fillStyle = rgba(t.haze, 0.3);
-  g.fillRect(0, 0, W, H);
-  const mist = g.createLinearGradient(0, s.horizon * H - 200 * u, 0, H);
-  mist.addColorStop(0, rgba(t.haze, 0));
-  mist.addColorStop(1, rgba(t.haze, 0.9));
-  g.fillStyle = mist;
-  g.fillRect(0, 0, W, H);
-  return blurred(c, 0.6 * u);
-}
-
 // ───────────────────────── floor ─────────────────────────
-function drawFloor(g: Ctx, s: Scene, u: number) {
+export function drawFloor(g: Ctx, s: Scene, u: number) {
   const { W, H, arena, theme: t } = s;
   const y0 = Math.round(s.horizon * H);
   const rows = H - y0;
@@ -704,7 +439,7 @@ function drawFloor(g: Ctx, s: Scene, u: number) {
 }
 
 // ───────────────────────── rocks ─────────────────────────
-function rock(
+export function rock(
   g: Ctx,
   s: Scene,
   pat: CanvasPattern,
@@ -797,7 +532,7 @@ function rock(
 }
 
 // ───────────────────────── ribbons ─────────────────────────
-interface Ribbon {
+export interface Ribbon {
   /** z > 0 in front of the boss; a: brightness 0-1. */
   pts: { x: number; y: number; z: number; w: number; a: number }[];
   col: [string, string, string];
@@ -807,7 +542,7 @@ interface Ribbon {
  * rises as it turns, swelling and thinning, brightest in its middle.
  * `off` shifts a strand of a bundle sideways (px) and in phase.
  */
-function spiral(
+export function spiral(
   cx: number,
   cy: number,
   rx: number,
@@ -821,6 +556,7 @@ function spiral(
   wob: number,
   ph: number,
   off = 0,
+  curl = 0,
 ): Ribbon {
   const pts = [];
   const N = 160;
@@ -843,9 +579,35 @@ function spiral(
     const w = width * env * (0.45 + 0.55 * Math.sin(a * 1.3 + ph) ** 2);
     pts.push({ x, y, z: Math.sin(a), w, a: Math.pow(env, 0.6) });
   }
+  if (curl) {
+    // the tail curls up on itself, like a brush flick
+    const n = pts.length;
+    let px = pts[n - 1].x,
+      py = pts[n - 1].y;
+    let th = Math.atan2(py - pts[n - 4].y, px - pts[n - 4].x);
+    let step = Math.hypot(px - pts[n - 4].x, py - pts[n - 4].y) / 3;
+    const z = pts[n - 1].z;
+    for (let j = 1; j <= 46; j++) {
+      th += curl * (0.05 + j * 0.006);
+      step *= 0.965;
+      px += Math.cos(th) * step;
+      py += Math.sin(th) * step;
+      const f = j / 46;
+      pts.push({
+        x: px,
+        y: py,
+        z,
+        w: width * 0.55 * (1 - f) * (0.5 + 0.5 * Math.sin(f * Math.PI + 0.6)),
+        a: 0.9 * (1 - f * 0.6),
+      });
+    }
+    // swell the end that leads into the curl
+    for (let j = 0; j < 30; j++)
+      pts[n - 30 + j].w = Math.max(pts[n - 30 + j].w, width * 0.55 * (j / 30));
+  }
   return { pts, col };
 }
-function ribbonPath(pts: Ribbon["pts"], scale: number) {
+export function ribbonPath(pts: Ribbon["pts"], scale: number) {
   const L: [number, number][] = [],
     R: [number, number][] = [];
   for (let i = 0; i < pts.length; i++) {
@@ -869,7 +631,7 @@ function ribbonPath(pts: Ribbon["pts"], scale: number) {
  * short pieces so each fades with its brightness; front pieces fade out
  * over the face (`hole`: an ellipse x, y, rx, ry).
  */
-function drawRibbons(
+export function drawRibbons(
   g: Ctx,
   s: Scene,
   u: number,
@@ -893,12 +655,12 @@ function drawRibbons(
       const m = seg[step >> 1];
       if (m.z > 0 !== front) continue;
       let a = m.a * (front ? 1 : 0.7);
-      if (hole && front) {
+      if (hole) {
         const d = Math.hypot(
           (m.x - hole[0]) / hole[2],
           (m.y - hole[1]) / hole[3],
         );
-        a *= Math.min(1, Math.max(0.08, (d - 0.7) / 0.6));
+        a *= Math.min(1, Math.max(0, (d - 1.05) / 0.5));
       }
       if (a < 0.02) continue;
       gg.fillStyle = rgba(rb.col[0], (front ? 0.38 : 0.55) * a);
@@ -970,7 +732,7 @@ function drawRibbons(
 }
 
 // ───────────────────────── particles ─────────────────────────
-function sparkle(
+export function sparkle(
   g: Ctx,
   x: number,
   y: number,
@@ -999,7 +761,7 @@ function sparkle(
   g.fill();
   g.restore();
 }
-function bokeh(
+export function bokeh(
   g: Ctx,
   x: number,
   y: number,
@@ -1019,7 +781,7 @@ function bokeh(
   g.fill();
   g.restore();
 }
-function particle(
+export function particle(
   g: Ctx,
   s: Scene,
   kind: Particle,
@@ -1204,7 +966,7 @@ function particle(
 
 // ───────────────────────── the boss ─────────────────────────
 /** Draw the boss with a mild low-angle keystone (its foot nearer, a touch wider). */
-function keystone(src: HTMLCanvasElement, amount: number) {
+export function keystone(src: HTMLCanvasElement, amount: number) {
   const c = canvas(src.width * (1 + amount), src.height);
   const g = ctxOf(c);
   const H = src.height;
@@ -1215,7 +977,7 @@ function keystone(src: HTMLCanvasElement, amount: number) {
   }
   return c;
 }
-function rimLight(
+export function rimLight(
   boss: HTMLCanvasElement,
   dx: number,
   dy: number,
@@ -1236,442 +998,4 @@ function rimLight(
   m.globalCompositeOperation = "destination-in";
   m.drawImage(boss, 0, 0);
   return out;
-}
-
-// ───────────────────────── the scene ─────────────────────────
-export function compose(s: Scene): Result {
-  const { W, H, theme: t } = s;
-  const u = H / 1024;
-  const r = rng(s.seed);
-  const out = canvas(W, H);
-  const g = ctxOf(out);
-  g.imageSmoothingQuality = "high";
-  const stone = stoneSwatch(s.arena, t.stone);
-  const pat = g.createPattern(stone, "repeat")!;
-  pat.setTransform(new DOMMatrix().scale(0.6 * u + 0.2));
-
-  // the boss's spot
-  const cut = s.cutout;
-  const bb = trim(cut.canvas);
-  let k = (s.place.h * H) / bb.h;
-  if (bb.w * k > s.place.maxW * W) k = (s.place.maxW * W) / bb.w;
-  const bw = bb.w * k,
-    bh = bb.h * k;
-  const bx = s.place.cx * W - bw / 2,
-    by = s.place.cy * H - bh / 2;
-  const toPoster = (p: { x: number; y: number }) => ({
-    x: bx + (p.x - bb.x) * k,
-    y: by + (p.y - bb.y) * k,
-  });
-  const face = toPoster(cut.face),
-    body = toPoster(cut.body);
-  const bcx = bx + bw / 2,
-    bcy = by + bh / 2;
-
-  // 1 sky, light and rays
-  drawSky(g, s, u);
-  wisps(g, s, u, r);
-  s.extraSky?.(g, s, u);
-  godRays(g, s, u, r);
-  // 2 far clouds and far ruins
-  const far = cloudBank(s, u, r, {
-    y: s.horizon - 0.1,
-    x0: -0.1,
-    x1: 1.1,
-    size: 80,
-    rows: 2,
-    alpha: 0.7,
-    blur: 5,
-    haze: 0.5,
-  });
-  g.globalAlpha = far.alpha;
-  g.drawImage(far.c, 0, 0);
-  g.globalAlpha = 1;
-  g.drawImage(
-    ruinsLayer(s, u, r, stone, {
-      gy: s.horizon + 0.0,
-      sc: 0.32,
-      haze: 0.55,
-      blur: 0.8,
-      count: 44,
-      spread: 0.5,
-    }),
-    0,
-    0,
-  );
-  g.drawImage(
-    ruinsLayer(s, u, r, stone, {
-      gy: s.horizon + 0.04,
-      sc: 0.5,
-      haze: 0.38,
-      blur: 0.4,
-      count: 22,
-      spread: 0.42,
-    }),
-    0,
-    0,
-  );
-  // 3 the floor in steep perspective
-  drawFloor(g, s, u);
-  // 4 mid ruins, leaning in, and the mist at their feet
-  g.drawImage(
-    ruinsLayer(s, u, r, stone, {
-      gy: s.horizon + 0.12,
-      sc: 0.78,
-      haze: 0.18,
-      blur: 0,
-      count: 10,
-      spread: 0.24,
-    }),
-    0,
-    0,
-  );
-  g.drawImage(edgeTowers(s, u, r, stone), 0, 0);
-  for (const [x0, x1] of [
-    [-0.2, 0.36],
-    [0.64, 1.2],
-  ]) {
-    const mid = cloudBank(s, u, r, {
-      y: s.horizon + 0.1,
-      x0,
-      x1,
-      size: 110,
-      rows: 2,
-      alpha: 1,
-      blur: 1.2,
-      haze: 0.05,
-    });
-    g.globalAlpha = mid.alpha;
-    g.drawImage(mid.c, 0, 0);
-    g.globalAlpha = 1;
-  }
-  // the near ruins framing the edges
-
-  // 5 far floating debris
-  {
-    const c = canvas(W, H);
-    const cg = ctxOf(c);
-    for (let i = 0; i < 14; i++) {
-      const x = r() * W,
-        y = r() * H * 0.85;
-      if (Math.abs(x - bcx) < bw * 0.45 && Math.abs(y - bcy) < bh * 0.45)
-        continue;
-      rock(cg, s, pat, x, y, (7 + r() * 26) * u, r() * TAU, r, r() < 0.45);
-    }
-    cg.globalCompositeOperation = "source-atop";
-    cg.fillStyle = rgba(t.haze, 0.42);
-    cg.fillRect(0, 0, W, H);
-    g.drawImage(c, 0, 0);
-  }
-  // haze over everything behind the boss, brightest near the light
-  const hz = g.createRadialGradient(
-    s.sun.x * W,
-    s.sun.y * H,
-    0,
-    s.sun.x * W,
-    s.sun.y * H,
-    Math.max(W, H) * 0.7,
-  );
-  hz.addColorStop(0, rgba(t.light, 0.16));
-  hz.addColorStop(1, rgba(t.haze, 0));
-  g.fillStyle = hz;
-  g.fillRect(0, 0, W, H);
-
-  // 6 ribbons around the boss
-  const spin = s.spin ?? 1;
-  const ribbons: Ribbon[] = [];
-  const cols = t.ribbons;
-  const R0 = Math.max(bw, bh * 0.75);
-  // three bundles of silky strands winding up around the boss
-  for (let i = 0; i < 3; i++) {
-    const col = cols[i % cols.length];
-    const rx = R0 * (0.58 + i * 0.12 + r() * 0.08);
-    const ry = rx * (0.2 + r() * 0.12);
-    const tilt = spin * (i === 1 ? 0.32 : -0.22) + (r() - 0.5) * 0.2;
-    const t0 = r() * TAU;
-    const span = TAU * (1.05 + r() * 0.35);
-    const yy = bcy + bh * (0.32 - i * 0.22);
-    const ph = r() * TAU;
-    const strands = 4;
-    for (let k = 0; k < strands; k++) {
-      const off = (k - (strands - 1) / 2) * 7 * u;
-      const wide = k === 1 ? 1 : 0.18 + r() * 0.2;
-      ribbons.push(
-        spiral(
-          bcx,
-          yy,
-          rx,
-          ry,
-          tilt,
-          t0 + k * 0.05,
-          t0 + spin * span - k * 0.12,
-          bh * (0.28 + r() * 0.12),
-          (17 + r() * 8) * u * wide,
-          col,
-          0.16,
-          ph + k * 0.4,
-          off * (k === 1 ? 0 : 1.6),
-        ),
-      );
-    }
-  }
-  // two long sweeping streaks across the frame
-  for (let i = 0; i < 2; i++) {
-    const col = cols[(i + 1) % cols.length];
-    const ph = r() * TAU;
-    for (let k = 0; k < 2; k++)
-      ribbons.push(
-        spiral(
-          bcx,
-          bcy + bh * (i ? -0.15 : 0.25),
-          R0 * (1.2 + i * 0.2),
-          R0 * 0.3,
-          spin * (i ? 0.5 : -0.35),
-          Math.PI * (0.1 + i),
-          Math.PI * (1.1 + i),
-          bh * 0.1,
-          (5 - k * 2.5) * u,
-          col,
-          0.16,
-          ph,
-          k * 8 * u,
-        ),
-      );
-  }
-  const hole: [number, number, number, number] = [
-    face.x,
-    face.y,
-    Math.min(bw * 0.4, bh * 0.4),
-    bh * 0.24,
-  ];
-  // behind the boss: glow, back ribbons, aura
-  const aura = g.createRadialGradient(bcx, bcy, 0, bcx, bcy, R0 * 0.9);
-  aura.addColorStop(0, rgba(t.aura, 0.5));
-  aura.addColorStop(0.45, rgba(t.aura, 0.2));
-  aura.addColorStop(1, rgba(t.aura, 0));
-  g.globalCompositeOperation = "screen";
-  g.fillStyle = aura;
-  g.fillRect(0, 0, W, H);
-  g.globalCompositeOperation = "source-over";
-  drawRibbons(g, s, u, ribbons, false);
-  // back particles
-  for (let i = 0; i < 26; i++) {
-    const kind = t.particles[i % t.particles.length];
-    const a = r() * TAU,
-      d = R0 * (0.45 + r() * 0.75);
-    particle(
-      g,
-      s,
-      kind,
-      bcx + Math.cos(a) * d * 1.2,
-      bcy + Math.sin(a) * d * 0.75,
-      (3 + r() * 5) * u,
-      r,
-    );
-  }
-
-  // 7 the boss: its shape lit by the scene
-  const big = canvas(bw, bh);
-  {
-    const bgc = ctxOf(big);
-    bgc.imageSmoothingQuality = "high";
-    bgc.drawImage(cut.canvas, bb.x, bb.y, bb.w, bb.h, 0, 0, bw, bh);
-  }
-  const ks = 0.06;
-  const boss = keystone(big, ks);
-  const ox = bx - (boss.width - bw) / 2;
-  // dark soft contact shadow / depth separation
-  g.save();
-  g.filter = `blur(${18 * u}px)`;
-  g.globalAlpha = 0.35;
-  g.globalCompositeOperation = "multiply";
-  g.drawImage(boss, ox + 10 * u, by + 14 * u);
-  g.restore();
-  // outer glow (bloom behind the silhouette)
-  g.save();
-  g.filter = `blur(${26 * u}px)`;
-  g.globalCompositeOperation = "lighter";
-  g.globalAlpha = 0.32;
-  const tinted = canvas(boss.width, boss.height);
-  {
-    const tg = ctxOf(tinted);
-    tg.drawImage(boss, 0, 0);
-    tg.globalCompositeOperation = "source-in";
-    tg.fillStyle = t.aura;
-    tg.fillRect(0, 0, tinted.width, tinted.height);
-  }
-  g.drawImage(tinted, ox, by);
-  g.restore();
-  g.drawImage(boss, ox, by);
-  // rim from the light behind: up and toward the sun
-  const ldx = s.sun.x * W - bcx,
-    ldy = s.sun.y * H - bcy;
-  const ll = Math.hypot(ldx, ldy) || 1;
-  const rim = rimLight(
-    boss,
-    (ldx / ll) * 7 * u,
-    (ldy / ll) * 7 * u,
-    t.rim,
-    1.6 * u,
-  );
-  g.globalCompositeOperation = "lighter";
-  g.globalAlpha = 0.95;
-  g.drawImage(rim, ox, by);
-  // a cooler counter rim from below (bounce of the ribbons)
-  const rim2 = rimLight(boss, -(ldx / ll) * 4 * u, 5 * u, cols[0][1], 2 * u);
-  g.globalAlpha = 0.45;
-  g.drawImage(rim2, ox, by);
-  // soft bloom on the boss's bright parts
-  g.globalAlpha = 0.08;
-  g.filter = `blur(${10 * u}px)`;
-  g.drawImage(boss, ox, by);
-  g.filter = "none";
-  g.globalAlpha = 1;
-  g.globalCompositeOperation = "source-over";
-
-  // 8 front ribbons, sparkles and particles
-  drawRibbons(g, s, u, ribbons, true, hole, { img: boss, x: ox, y: by });
-  for (const rb of ribbons)
-    for (let i = 0; i < rb.pts.length; i += 9) {
-      const p = rb.pts[i];
-      if (r() < 0.55 || p.w < 1) continue;
-      const jx = (r() - 0.5) * 30 * u,
-        jy = (r() - 0.5) * 30 * u;
-      if (r() < 0.35)
-        sparkle(g, p.x + jx, p.y + jy, (2.5 + r() * 4) * u, t.spark, 0.9);
-      else bokeh(g, p.x + jx, p.y + jy, (2 + r() * 4) * u, rb.col[1], 0.9);
-    }
-  for (let i = 0; i < 40; i++) {
-    const kind = t.particles[i % t.particles.length];
-    const x = r() * W,
-      y = r() * H;
-    if (Math.hypot((x - face.x) / (bw * 0.35), (y - face.y) / (bh * 0.25)) < 1)
-      continue;
-    particle(g, s, kind, x, y, (3 + r() * 7) * u, r);
-  }
-  for (let i = 0; i < 18; i++)
-    sparkle(g, r() * W, r() * H, (2 + r() * 5) * u, t.spark, 0.4 + r() * 0.5);
-  for (let i = 0; i < 22; i++)
-    bokeh(g, r() * W, r() * H, (6 + r() * 18) * u, t.spark, 0.25 + r() * 0.35);
-
-  // 9 near debris, out of focus, at the frame's edges
-  const near = canvas(W, H);
-  const ng = ctxOf(near);
-  const corners: [number, number][] = [
-    [0.04, 0.9],
-    [0.96, 0.88],
-    [0.02, 0.18],
-    [0.98, 0.12],
-    [0.15, 0.97],
-    [0.85, 1.0],
-  ];
-  for (const [fx, fy] of corners)
-    rock(
-      ng,
-      s,
-      pat,
-      fx * W + (r() - 0.5) * 60 * u,
-      fy * H,
-      (40 + r() * 45) * u,
-      r() * TAU,
-      r,
-      r() < 0.5,
-    );
-  g.drawImage(blurred(near, 5 * u), 0, 0);
-  {
-    const cl = canvas(W, H);
-    const cc = ctxOf(cl);
-    for (const side of [-1, 1])
-      for (let i = 0; i < 5; i++) {
-        const x =
-          side < 0
-            ? (0.02 + i * 0.07 + r() * 0.03) * W
-            : W - (0.02 + i * 0.07 + r() * 0.03) * W;
-        const y = H * (1.02 - (4 - i) * 0.035 + r() * 0.02) - (4 - i) * 26 * u;
-        rock(
-          cc,
-          s,
-          pat,
-          x,
-          y,
-          (55 + (4 - i) * 14 + r() * 20) * u * Math.min(1, (W / H) * 1.2),
-          (r() - 0.5) * 0.6,
-          r,
-          r() < 0.4,
-        );
-      }
-    cc.globalCompositeOperation = "source-atop";
-    cc.fillStyle = rgba(t.shade, 0.5);
-    cc.fillRect(0, 0, W, H);
-    g.drawImage(blurred(cl, 1.2 * u), 0, 0);
-  }
-  // mid-distance debris in focus around the boss
-  for (let i = 0; i < 8; i++) {
-    const a = r() * TAU;
-    const x = bcx + Math.cos(a) * R0 * (0.7 + r() * 0.35) * 1.15,
-      y = bcy + Math.sin(a) * R0 * (0.55 + r() * 0.3);
-    if (Math.hypot((x - face.x) / (bw * 0.4), (y - face.y) / (bh * 0.3)) < 1)
-      continue;
-    rock(g, s, pat, x, y, (16 + r() * 26) * u, r() * TAU, r, r() < 0.6);
-  }
-  // foreground mist at the bottom
-  const fg = cloudBank(s, u, r, {
-    y: 1.08,
-    x0: -0.2,
-    x1: 1.2,
-    size: 120,
-    rows: 1,
-    alpha: 0.9,
-    blur: 6,
-    haze: 0,
-  });
-  g.globalAlpha = fg.alpha;
-  g.drawImage(fg.c, 0, 0);
-  g.globalAlpha = 1;
-
-  // 10 grade: contrast and colour (the picture overlaid on itself), light wash, vignette
-  {
-    const copy = canvas(W, H);
-    ctxOf(copy).drawImage(out, 0, 0);
-    g.globalCompositeOperation = "overlay";
-    g.globalAlpha = 0.35;
-    g.drawImage(copy, 0, 0);
-    g.globalAlpha = 1;
-    g.globalCompositeOperation = "source-over";
-  }
-  const wash = g.createRadialGradient(
-    s.sun.x * W,
-    s.sun.y * H,
-    0,
-    s.sun.x * W,
-    s.sun.y * H,
-    Math.max(W, H),
-  );
-  wash.addColorStop(0, rgba(t.light, 0.1));
-  wash.addColorStop(0.5, rgba(t.light, 0.05));
-  wash.addColorStop(1, rgba(t.light, 0));
-  g.globalCompositeOperation = "screen";
-  g.fillStyle = wash;
-  g.fillRect(0, 0, W, H);
-  g.globalCompositeOperation = "multiply";
-  const vg = g.createRadialGradient(
-    W / 2,
-    H * 0.48,
-    Math.min(W, H) * 0.35,
-    W / 2,
-    H * 0.5,
-    Math.hypot(W, H) * 0.62,
-  );
-  vg.addColorStop(0, "#ffffff");
-  vg.addColorStop(0.6, mix("#ffffff", t.shade, 0.35));
-  vg.addColorStop(1, t.shade);
-  g.fillStyle = vg;
-  g.fillRect(0, 0, W, H);
-  g.globalCompositeOperation = "source-over";
-
-  return {
-    canvas: out,
-    face: [face.x / W, face.y / H],
-    body: [body.x / W, body.y / H],
-  };
 }

@@ -1,9 +1,13 @@
 /**
- * Each boss's poster: its cutout and pose, its arena, its element's light.
- * `renderPoster(id)` draws the splash (1536x1024), the portrait (600x900)
- * and the thumb (320x213), and says where the face and body landed.
+ * Each boss's poster: its pose, its painter look (looks.ts), its arena and
+ * setting, its element's colours. `renderPoster(id)` paints the boss once,
+ * composes the splash (1536x1024) and the portrait (600x900) around it, and
+ * crops the thumb (320x213) from the splash around the boss.
  */
-import { compose, canvas, rgba, type Scene, type Theme } from "./compose";
+import { canvas, type Scene, type Theme } from "./compose";
+import { compose } from "./scene";
+import { paintBoss } from "./paint";
+import { LOOKS } from "./looks";
 import * as B from "./bosses";
 import type { Cutout } from "./bosses";
 
@@ -11,71 +15,44 @@ import arenaEmber from "../../../apps/client/src/art/raid-arenas/emberwing.webp"
 import arenaTide from "../../../apps/client/src/art/raid-arenas/tidewyrm.webp";
 import arenaGloom from "../../../apps/client/src/art/raid-arenas/gloomshade.webp";
 import arenaCrag from "../../../apps/client/src/art/raid-arenas/grumblecrag.webp";
-import arenaPrism from "../../../apps/client/src/art/raid-arenas/prismatail.webp";
-import arenaSomn from "../../../apps/client/src/art/raid-arenas/somnara.webp";
 
+type Frame = Pick<Scene, "place" | "sun" | "horizon" | "spin">;
 export interface PosterDef {
   arena: string;
   theme: Theme;
+  setting: Scene["setting"];
   /** The cutout at k (poster px per world px). */
   cutout: (k: number) => Cutout | Promise<Cutout>;
-  /** k for the splash; the portrait reuses the same cutout. */
+  /** k: the cutout's scale, about the splash's size (the portrait reuses it). */
   k: number;
   seed: number;
-  splash: Pick<Scene, "place" | "sun" | "horizon" | "spin">;
-  portrait: Pick<Scene, "place" | "sun" | "horizon" | "spin">;
-  extraSky?: Scene["extraSky"];
+  splash: Frame;
+  portrait: Frame;
 }
 
-const crescent = (col: string, x: number, y: number, R: number) =>
-  ((g: CanvasRenderingContext2D, s: Scene, u: number) => {
-    const cx = x * s.W,
-      cy = y * s.H,
-      r = R * u;
-    g.save();
-    g.globalCompositeOperation = "screen";
-    const gl = g.createRadialGradient(cx, cy, 0, cx, cy, r * 3.2);
-    gl.addColorStop(0, rgba(col, 0.55));
-    gl.addColorStop(1, rgba(col, 0));
-    g.fillStyle = gl;
-    g.fillRect(cx - r * 4, cy - r * 4, r * 8, r * 8);
-    g.globalCompositeOperation = "source-over";
-    const m = canvas(r * 2.4, r * 2.4);
-    const mg = m.getContext("2d")!;
-    const mgr = mg.createRadialGradient(
-      r * 0.9,
-      r * 0.9,
-      0,
-      r * 1.2,
-      r * 1.2,
-      r,
-    );
-    mgr.addColorStop(0, "#fffbe8");
-    mgr.addColorStop(1, col);
-    mg.fillStyle = mgr;
-    mg.beginPath();
-    mg.arc(r * 1.2, r * 1.2, r, 0, Math.PI * 2);
-    mg.fill();
-    mg.globalCompositeOperation = "destination-out";
-    mg.beginPath();
-    mg.arc(r * 1.65, r * 0.9, r * 0.86, 0, Math.PI * 2);
-    mg.fill();
-    g.drawImage(m, cx - r * 1.2, cy - r * 1.2);
-    g.restore();
-  }) as Scene["extraSky"];
+// the key light is upper left in every scene (looks.ts KEY)
+const SUN = { x: 0.2, y: 0.12 };
 
 export const POSTERS: Record<string, PosterDef> = {
   emberwing: {
     arena: arenaEmber,
+    setting: "sunset",
     seed: 11,
-    k: 3.1,
+    k: 3.9,
     cutout: (k) =>
-      B.lumiwick({ k, facing: 0, action: "ember-rain", t: 0.9, phase: 2 }),
+      B.lumiwick({
+        k,
+        facing: 0,
+        action: "ember-rain",
+        t: 0.9,
+        phase: 2,
+        patch: { heat: 0, flare: 0.15, fl: 0.9 },
+      }),
     theme: {
-      sky: ["#2a0f3e", "#7a2350", "#e2603a", "#ffc070"],
-      light: "#ffcf7a",
-      haze: "#e88a5c",
-      cloud: ["#fff0c8", "#f39a6a", "#7a3150"],
+      sky: ["#311447", "#8a2f5e", "#ec7448", "#ffd08a"],
+      light: "#ffd890",
+      haze: "#e89a72",
+      cloud: ["#fff1d0", "#f2a07a", "#8a3a5a"],
       ribbons: [
         ["#ff5a1a", "#ffa032", "#fff2b0"],
         ["#ff3060", "#ff8a4a", "#ffe6c0"],
@@ -85,97 +62,98 @@ export const POSTERS: Record<string, PosterDef> = {
       aura: "#ff9a3a",
       crack: "#ff7a1a",
       shade: "#3a0e22",
-      particles: ["embers", "embers", "lanterns", "motes"],
+      particles: ["embers", "embers", "motes"],
       spark: "#ffd27a",
-      stone: "#6a3a3a",
+      stone: "#8a5a52",
     },
     splash: {
-      place: { cx: 0.5, cy: 0.5, h: 0.8, maxW: 0.5 },
-      sun: { x: 0.5, y: 0.2 },
-      horizon: 0.74,
+      place: { cx: 0.52, cy: 0.5, h: 0.8, maxW: 0.5 },
+      sun: { x: 0.18, y: 0.28 },
+      horizon: 0.7,
     },
     portrait: {
-      place: { cx: 0.5, cy: 0.47, h: 0.72, maxW: 0.9 },
-      sun: { x: 0.5, y: 0.2 },
-      horizon: 0.78,
+      place: { cx: 0.5, cy: 0.5, h: 0.78, maxW: 0.96, faceY: 0.4 },
+      sun: { x: 0.15, y: 0.2 },
+      horizon: 0.74,
     },
   },
   tidewyrm: {
     arena: arenaTide,
+    setting: "sea",
     seed: 23,
-    k: 2.6,
+    k: 3.3,
     cutout: (k) =>
       B.tidelotl({ k, facing: 1, action: "hightide", t: 0.9, phase: 2 }),
     theme: {
-      sky: ["#06223a", "#0d5872", "#2fb2c0", "#bff4ee"],
-      light: "#d8fff6",
-      haze: "#5cc8cc",
-      cloud: ["#f4ffff", "#8fdcdc", "#2a6a82"],
+      sky: ["#0a3a5c", "#1f7d98", "#5cc8cf", "#d4fbf2"],
+      light: "#f0fff4",
+      haze: "#7fd2d2",
+      cloud: ["#ffffff", "#a8e4e2", "#3a7a90"],
       ribbons: [
         ["#00a8ff", "#3ee6ff", "#e8ffff"],
         ["#00e0c0", "#7affe6", "#f0fffa"],
         ["#ff70b0", "#ffb0d8", "#fff0f8"],
       ],
-      rim: "#e6ffff",
+      rim: "#f0ffff",
       aura: "#4ae0ff",
       crack: "#5af0ff",
-      shade: "#03192c",
+      shade: "#04203a",
       particles: ["droplets", "bubbles", "droplets", "motes"],
-      spark: "#b8fbff",
-      stone: "#2a5a66",
+      spark: "#d8ffff",
+      stone: "#4a7a80",
     },
-    extraSky: crescent("#e8fff8", 0.8, 0.14, 46),
     splash: {
-      place: { cx: 0.5, cy: 0.52, h: 0.74, maxW: 0.62 },
-      sun: { x: 0.52, y: 0.2 },
-      horizon: 0.74,
+      place: { cx: 0.52, cy: 0.44, h: 0.66, maxW: 0.58 },
+      sun: SUN,
+      horizon: 0.58,
     },
     portrait: {
-      place: { cx: 0.46, cy: 0.47, h: 0.6, maxW: 1.08 },
-      sun: { x: 0.5, y: 0.2 },
-      horizon: 0.78,
+      place: { cx: 0.47, cy: 0.45, h: 0.6, maxW: 1.1, faceY: 0.42 },
+      sun: { x: 0.15, y: 0.1 },
+      horizon: 0.6,
     },
   },
   gloomshade: {
     arena: arenaGloom,
+    setting: "night",
     seed: 37,
-    k: 3.0,
+    k: 4.4,
     cutout: (k) =>
       B.inkpurr({ k, facing: 1, action: "hands", t: 0.9, phase: 2 }),
     theme: {
-      sky: ["#0c0624", "#2c1660", "#7a46c0", "#e0b8ff"],
-      light: "#f2d8ff",
-      haze: "#7e5cc0",
-      cloud: ["#f0e0ff", "#9a78d8", "#2e1a5a"],
+      sky: ["#070418", "#1c1046", "#4a2c8a", "#a684d8"],
+      light: "#f4e6c8",
+      haze: "#5a4490",
+      cloud: ["#e6dcff", "#7c64b8", "#22164a"],
       ribbons: [
         ["#8a3cff", "#c08aff", "#f6eaff"],
         ["#ff3cc8", "#ff8ae0", "#fff0fb"],
         ["#ffc23c", "#ffe08a", "#fffbea"],
       ],
-      rim: "#f0dcff",
+      rim: "#f4e6ff",
       aura: "#a060ff",
       crack: "#c080ff",
-      shade: "#0a0420",
+      shade: "#070214",
       particles: ["ink", "motes", "ink", "stars"],
-      spark: "#e8d0ff",
-      stone: "#3e2e66",
+      spark: "#efdcff",
+      stone: "#4a3c70",
     },
-    extraSky: crescent("#ffe9a8", 0.34, 0.1, 44),
     splash: {
-      place: { cx: 0.5, cy: 0.53, h: 0.72, maxW: 0.6 },
-      sun: { x: 0.5, y: 0.22 },
-      horizon: 0.74,
+      place: { cx: 0.52, cy: 0.52, h: 0.72, maxW: 0.6 },
+      sun: { x: 0.2, y: 0.14 },
+      horizon: 0.72,
     },
     portrait: {
-      place: { cx: 0.48, cy: 0.47, h: 0.62, maxW: 1.02 },
-      sun: { x: 0.5, y: 0.2 },
-      horizon: 0.78,
+      place: { cx: 0.42, cy: 0.5, h: 0.66, maxW: 1.05, faceY: 0.44 },
+      sun: { x: 0.18, y: 0.1 },
+      horizon: 0.76,
     },
   },
   grumblecrag: {
     arena: arenaCrag,
+    setting: "canyon",
     seed: 41,
-    k: 2.6,
+    k: 4.7,
     cutout: (k) =>
       B.cragmuff({
         k,
@@ -185,36 +163,35 @@ export const POSTERS: Record<string, PosterDef> = {
         phase: 3,
       }),
     theme: {
-      sky: ["#1e1630", "#6a4060", "#d88a58", "#ffd8a0"],
-      light: "#ffe2a8",
-      haze: "#c89070",
-      cloud: ["#fff4e0", "#e0a888", "#5a3a40"],
+      sky: ["#24306a", "#6a5c96", "#f0a860", "#ffe6a8"],
+      light: "#fff0c0",
+      haze: "#d8a882",
+      cloud: ["#fff6e4", "#e8b898", "#7a5050"],
       ribbons: [
         ["#ff9a00", "#ffc23a", "#fff6c8"],
         ["#ffcf40", "#ffe68a", "#fffbe8"],
         ["#e06a1a", "#ffa04a", "#ffe8c8"],
       ],
-      rim: "#fff2c0",
+      rim: "#fff2c8",
       aura: "#ffb040",
       crack: "#ffb020",
       shade: "#2a1606",
       particles: ["crystals", "motes", "crystals", "motes"],
       spark: "#ffe6a0",
-      stone: "#7a6248",
+      stone: "#a8764a",
     },
     splash: {
-      place: { cx: 0.5, cy: 0.54, h: 0.7, maxW: 0.64 },
-      sun: { x: 0.5, y: 0.2 },
-      horizon: 0.74,
+      place: { cx: 0.52, cy: 0.55, h: 0.66, maxW: 0.6, ground: 0.9 },
+      sun: SUN,
+      horizon: 0.62,
     },
     portrait: {
-      place: { cx: 0.4, cy: 0.48, h: 0.56, maxW: 1.2 },
-      sun: { x: 0.5, y: 0.2 },
-      horizon: 0.78,
+      place: { cx: 0.42, cy: 0.5, h: 0.58, maxW: 1.15, ground: 0.84 },
+      sun: { x: 0.15, y: 0.1 },
+      horizon: 0.6,
     },
   },
 };
-export const ARENAS = { prismatail: arenaPrism, somnara: arenaSomn };
 
 function loadImage(src: string) {
   return new Promise<HTMLImageElement>((ok, no) => {
@@ -224,9 +201,18 @@ function loadImage(src: string) {
     im.src = src;
   });
 }
-function shrink(src: HTMLCanvasElement, w: number, h: number) {
-  // halve in steps for a clean small picture
-  let cur = src;
+/** Downscale in halving steps (clean), then to the exact size. */
+function resample(
+  src: HTMLCanvasElement,
+  sx: number,
+  sy: number,
+  sw: number,
+  sh: number,
+  w: number,
+  h: number,
+) {
+  let cur = canvas(sw, sh);
+  cur.getContext("2d")!.drawImage(src, sx, sy, sw, sh, 0, 0, sw, sh);
   while (cur.width / 2 > w * 1.2) {
     const c = canvas(cur.width / 2, cur.height / 2);
     const g = c.getContext("2d")!;
@@ -237,35 +223,64 @@ function shrink(src: HTMLCanvasElement, w: number, h: number) {
   const out = canvas(w, h);
   const g = out.getContext("2d")!;
   g.imageSmoothingQuality = "high";
-  const sw = cur.width,
-    sh = (cur.width * h) / w;
-  g.drawImage(cur, 0, (cur.height - sh) / 2, sw, sh, 0, 0, w, h);
+  g.drawImage(cur, 0, 0, w, h);
   return out;
 }
 
 export async function renderPoster(id: string, def: PosterDef = POSTERS[id]) {
   const arena = await loadImage(def.arena);
-  const cutout = await def.cutout(def.k);
+  const cut = await def.cutout(def.k);
+  const look = LOOKS[id];
+  const fr: [number, number] = [look.face[0] * def.k, look.face[1] * def.k];
+  const bossPx = Math.max(cut.canvas.width, cut.canvas.height);
+  const painted = paintBoss(
+    cut,
+    look.mats,
+    look.light,
+    { x: cut.face.x, y: cut.face.y + fr[1] * 0.3, rx: fr[0], ry: fr[1] },
+    bossPx / 2200,
+  );
+  const base = {
+    arena,
+    theme: def.theme,
+    setting: def.setting,
+    boss: painted,
+    face: cut.face,
+    body: cut.body,
+    faceR: fr,
+  };
   const splash = compose({
     W: 1536,
     H: 1024,
-    arena,
-    cutout,
-    theme: def.theme,
     seed: def.seed,
-    extraSky: def.extraSky,
+    ...base,
     ...def.splash,
   });
   const portrait = compose({
     W: 600,
     H: 900,
-    arena,
-    cutout,
-    theme: def.theme,
     seed: def.seed + 1,
-    extraSky: def.extraSky,
+    ...base,
     ...def.portrait,
   });
-  const thumb = shrink(splash.canvas, 320, 213);
-  return { splash, portrait, thumb };
+  // the thumb: cropped around the boss (about two thirds of its height), the face inside
+  const S = splash.canvas;
+  const [bx, by, bw, bh] = splash.box;
+  let ch = (bh * S.height) / 0.68,
+    cw = (ch * 320) / 213;
+  if (cw > S.width) {
+    cw = S.width;
+    ch = (cw * 213) / 320;
+  }
+  let cx = (bx + bw / 2) * S.width,
+    cy = (by + bh / 2) * S.height;
+  const fx = splash.face[0] * S.width,
+    fy = splash.face[1] * S.height;
+  cx = Math.min(Math.max(cx, fx - cw * 0.3), fx + cw * 0.3);
+  cy = Math.min(Math.max(cy, fy - ch * 0.25), fy + ch * 0.25);
+  const x0 = Math.min(Math.max(0, cx - cw / 2), S.width - cw),
+    y0 = Math.min(Math.max(0, cy - ch / 2), S.height - ch);
+  const thumb = resample(S, x0, y0, cw, ch, 320, 213);
+  const thumbFace: [number, number] = [(fx - x0) / cw, (fy - y0) / ch];
+  return { splash, portrait, thumb, thumbFace, painted };
 }

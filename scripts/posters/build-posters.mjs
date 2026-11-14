@@ -42,6 +42,7 @@ try {
   const ids = args.length
     ? args
     : await page.evaluate(() => window.posterIds());
+  const report = {};
   for (const id of ids) {
     const t = Date.now();
     const r = await page.evaluate(
@@ -58,11 +59,22 @@ try {
       save(`${id}-portrait.webp`, r.portrait),
       save(`${id}-thumb.webp`, r.thumb),
     ];
+    report[id] = {
+      face: r.face,
+      body: r.body,
+      box: r.box,
+      portraitFace: r.portraitFace,
+      thumbFace: r.thumbFace,
+      sizes,
+    };
     const f = (p) => p.map((v) => v.toFixed(2)).join(", ");
     console.log(
-      `${id}: ${sizes.join(" / ")} bytes, face [${f(r.face)}], body [${f(r.body)}], portrait face [${f(r.portraitFace)}] (${Date.now() - t} ms)`,
+      `${id}: ${sizes.join(" / ")} bytes, face [${f(r.face)}], body [${f(r.body)}], box [${f(r.box)}], portrait face [${f(r.portraitFace)}], thumb face [${f(r.thumbFace)}] (${Date.now() - t} ms)`,
     );
   }
+  // where the faces landed (for BOSS_FRAMES and the face check), next to previews only
+  if (oi >= 0)
+    writeFileSync(`${out}/faces.json`, JSON.stringify(report, null, 1));
 } finally {
   await browser.close();
   await server.close();

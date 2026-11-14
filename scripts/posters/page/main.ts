@@ -31,7 +31,9 @@ w.buildPoster = async (
     thumb: encode(p.thumb, budget.thumb),
     face: p.splash.face,
     body: p.splash.body,
+    box: p.splash.box,
     portraitFace: p.portrait.face,
+    thumbFace: p.thumbFace,
   };
 };
 w.ready = true;
