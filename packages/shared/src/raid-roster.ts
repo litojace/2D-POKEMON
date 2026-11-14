@@ -57,7 +57,8 @@ export const RAID_BOSSES: Record<RaidBossId, RaidBossInfo> = {
   },
   gloomshade: {
     id: "gloomshade",
-    name: "Gloomshade",
+    // The id stays "gloomshade" (stats, progress, database rows); players see Inkpurr.
+    name: "Inkpurr",
     epithet: "Lights out",
     element: "Shadow",
     color: "#9c7bff",
@@ -65,7 +66,7 @@ export const RAID_BOSSES: Record<RaidBossId, RaidBossInfo> = {
     stars: 2,
     signature: "Find the one that casts a shadow",
     blurb:
-      "A floppy-eared puff of shadow with a crescent-moon tail. Keep the lanterns lit, find the real one among its copies, and spread out when the curse creeps.",
+      "A round, cat-eared sprite of living ink with a crescent-moon tail. Keep the lanterns lit, find the real one among its copies, and spread out when the curse creeps.",
     playable: true,
   },
   somnara: {

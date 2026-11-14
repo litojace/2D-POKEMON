@@ -401,7 +401,7 @@ export const RAID_ATTACKS: Record<
   },
   snuff: {
     name: "Lantern Snuff",
-    tip: "A lantern dims and goes out. Hit it twice to relight it: lantern light is where the real Gloomshade casts a shadow.",
+    tip: "A lantern dims and goes out. Hit it twice to relight it: lantern light is where the real Inkpurr casts a shadow.",
     practice: "A lantern goes out. Hit it twice to relight it.",
   },
   curse: {
@@ -411,7 +411,7 @@ export const RAID_ATTACKS: Record<
   },
   split: {
     name: "Mirror Split",
-    tip: "Only the real Gloomshade casts a shadow in lantern light, and its moon tail flickers. Hitting a copy curses you.",
+    tip: "Only the real Inkpurr casts a shadow in lantern light, and its moon tail flickers. Hitting a copy curses you.",
     practice: "It splits into copies. Find the one with a shadow in the light.",
   },
   pulse: {
@@ -621,7 +621,8 @@ export const TIDEWYRM = {
  */
 export const GLOOMSHADE = {
   id: "gloomshade",
-  name: "Gloomshade",
+  // The internal id stays "gloomshade" (stats, progress, database rows); players see Inkpurr.
+  name: "Inkpurr",
   // Finding the real one costs a solo raider more time than a party, so
   // more of its health comes with each extra raider than for the others.
   health: { base: 1050, perExtraPlayer: 1000, gilded: 1.12 },
@@ -1016,11 +1017,11 @@ export const RAID_BOSS_PERKS: Partial<
     },
     mystowl: {
       skill: "Third-Eye Ray",
-      text: "Passes through copies: aimed at the real Gloomshade, it marks it for everyone.",
+      text: "Passes through copies: aimed at the real Inkpurr, it marks it for everyone.",
     },
     duskveil: {
       skill: "Haunted Lantern",
-      text: "Hung near the real Gloomshade, its light reveals it to the team for 6 seconds.",
+      text: "Hung near the real Inkpurr, its light reveals it to the team for 6 seconds.",
     },
     pyranda: {
       skill: "Chestnut Mortar",
@@ -1032,11 +1033,11 @@ export const RAID_BOSS_PERKS: Partial<
     },
     wombolder: {
       skill: "Landslide",
-      text: "Its eruption shakes off every copy: only the real Gloomshade remains until it splits again.",
+      text: "Its eruption shakes off every copy: only the real Inkpurr remains until it splits again.",
     },
     shadopus: {
       skill: "Ink Cloud",
-      text: "While you are hidden, Gloomshade's attacks never pick you as their target.",
+      text: "While you are hidden, Inkpurr's attacks never pick you as their target.",
     },
   },
   somnara: {
@@ -1169,13 +1170,13 @@ export const RAID_BOSS_CHAPTERS: Partial<
       name: "Dusk",
       objective: "Keep the lanterns lit. Stand on lit tiles.",
       detail:
-        "Shadow Lunges come from the nearest shadow, not from Gloomshade. Grasping Hands darken half the floor: stand on a lit tile. When a lantern goes out, hit it twice to relight it. Keep hitting Gloomshade to fill its stagger bar and expose its core.",
+        "Shadow Lunges come from the nearest shadow, not from Inkpurr. Grasping Hands darken half the floor: stand on a lit tile. When a lantern goes out, hit it twice to relight it. Keep hitting Inkpurr to fill its stagger bar and expose its core.",
     },
     {
       name: "Midnight",
       objective: "Find the real one. Spread out from curses.",
       detail:
-        "It splits into copies: only the real Gloomshade casts a shadow in lantern light, and its moon tail flickers. Hitting a copy curses you; six hits on the real one in a row exposes it. Creeping Curse spreads between raiders who stand close: lantern light cleanses it.",
+        "It splits into copies: only the real Inkpurr casts a shadow in lantern light, and its moon tail flickers. Hitting a copy curses you; six hits on the real one in a row exposes it. Creeping Curse spreads between raiders who stand close: lantern light cleanses it.",
     },
     {
       name: "Witching Hour",

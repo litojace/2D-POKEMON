@@ -20,6 +20,11 @@ const sql = [
 ]
   .map((f) => readFileSync(`supabase/migrations/${f}`, "utf8"))
   .join("\n");
+/** Every migration, in order (later ones rename and re-tune). */
+const every = readdirSync("supabase/migrations")
+  .sort()
+  .map((f: string) => readFileSync(`supabase/migrations/${f}`, "utf8"))
+  .join("\n");
 /** Rows of the arena_raid_rewards seeds (SQL doubles a quote inside a name). */
 const seeded = [
   ...sql.matchAll(

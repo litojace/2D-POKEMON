@@ -1,4 +1,11 @@
-import { paintVectorGloom } from "./boss-vector-gloom-rig";
+import { paintInkpurr } from "./boss-inkpurr-rig";
+import {
+  SPLAT_SECONDS,
+  TENDRIL_LET_GO,
+  drawStreak,
+  drawTendril,
+  type InkStreak,
+} from "./raid-inkpurr-fx";
 import { groundHeight } from "../../../packages/shared/src/world-art";
 import { bossLife } from "./raid-boss-life";
 import type Phaser from "phaser";
@@ -80,6 +87,17 @@ class GloomMotion {
   roarAt = -10;
   motes: Mote[] = [];
   serial = 0;
+  /** Snuffs being cast (by warning id): which lantern, when it started and lands. */
+  snuffs = new Map<
+    number,
+    { lantern: number; start: number; at: number; puffed?: boolean }
+  >();
+  /** Lunges being warned (by warning id): their lane as it stands. */
+  lunges = new Map<number, InkStreak>();
+  /** Lunges that have landed: their ink streak and splat. */
+  streaks: InkStreak[] = [];
+  /** The real one's left paw (where the snuff's tendril grows from). */
+  paw?: { x: number; y: number };
   puff(
     x: number,
     y: number,
@@ -700,7 +718,8 @@ export function drawGloomshade(
   const revealed = (r.revealUntil ?? 0) > state.time;
   const stagger = r.staggerUntil > state.time;
   const hurt = Math.max(0, 1 - (t - m.hurtAt) / 0.24);
-  const fade = dead ? (reduced ? 1 : Math.min(1, (t - m.deathAt) / 2.4)) : 0;
+  // dawn: it melts into its puddle, and the puddle fades (the pose times both)
+  const fade = dead ? (reduced ? 1 : Math.min(1, (t - m.deathAt) / 3.4)) : 0;
   // The attack being wound up (its warning) and the last one cast: every
   // copy shares the real one's casting pose (the tells are elsewhere).
   const wind = r.warnings.find(
@@ -716,10 +735,38 @@ export function drawGloomshade(
     { x: boss.x, y: boss.y, real: true, id: 0 },
   ];
   const appear = Math.min(1, (t - m.splitAt) / 0.4);
+  // Inkpurr's ink lunges (raid-inkpurr-fx.ts): each lane is followed while it
+  // is warned; when it lands, an ink streak races down it and leaves a splat.
+  const low = fxFor(g.scene).density < 0.5;
+  const ids = new Set(r.warnings.map((w) => w.id));
+  for (const w of r.warnings)
+    if (w.kind === "lunge")
+      m.lunges.set(w.id, {
+        x: w.x,
+        y: w.y,
+        tx: w.tx,
+        ty: w.ty,
+        hw: w.radius,
+        t0: w.at,
+      });
+    else if (w.kind === "snuff" && w.lantern !== undefined)
+      m.snuffs.set(w.id, {
+        lantern: w.lantern,
+        start: w.startedAt ?? w.at - 1.5,
+        at: w.at,
+      });
+  for (const [id, L] of m.lunges)
+    if (!ids.has(id) || state.time >= L.t0) {
+      m.lunges.delete(id);
+      if (live && state.time - L.t0 < SPLAT_SECONDS) m.streaks.push(L);
+    }
+  m.streaks = m.streaks.filter((s) => state.time - s.t0 < SPLAT_SECONDS);
+  for (const s of m.streaks) drawStreak(g, s, state.time, reduced, low);
+  const lamps = r.lanterns ?? [];
   for (const b of bodies) {
     const shake = b.real ? Math.sin(hurt * Math.PI * 3) * hurt * 6 * motion : 0;
     // Each body (the real one and every copy) sorts with the raiders.
-    shade(at ? at(`shade-${b.id}`, b.y + 12) : g, {
+    const placed = shade(at ? at(`shade-${b.id}`, b.y + 12) : g, {
       key: `shade-${b.id}`,
       x: b.x + shake,
       y: b.y,
@@ -740,7 +787,9 @@ export function drawGloomshade(
       // Hollow trait: the real one's shadow is fainter.
       shadowAlpha: r.trait === "hollow" ? 0.22 : 0.4,
       flicker: b.real && !reduced,
-      alpha: (b.real ? 1 : appear) * (1 - fade),
+      alpha: b.real ? 1 : appear * (1 - fade),
+      // a copy is drawn exactly alike, minus the idle drips
+      cheap: !b.real,
       hurt: b.real ? hurt : 0,
       gilded: !!r.gilded,
       stagger: b.real && stagger,
@@ -748,6 +797,35 @@ export function drawGloomshade(
       dead: b.real && dead,
       deadAge: dead ? t - m.deathAt : 0,
     });
+    if (b.real && placed) m.paw = placed.paw;
+  }
+  // The snuff: a tendril of ink from its paw coils round the lantern and
+  // squeezes while the timer runs; then it lets go, with a puff of smoke.
+  for (const [id, s] of m.snuffs) {
+    const l = lamps[s.lantern],
+      left = s.at - state.time;
+    if (!l || (!ids.has(id) && left > 0) || left < -TENDRIL_LET_GO) {
+      m.snuffs.delete(id);
+      continue;
+    }
+    if (left <= 0 && !ids.has(id) && !s.puffed && live) {
+      s.puffed = true;
+      m.puff(l.x, l.y - 44, 10, 0xb4acd7, reduced, 40);
+      m.puff(l.x, l.y - 40, 5, LAMP, reduced, 70);
+    }
+    const from = m.paw ?? { x: boss.x, y: boss.y - 60 };
+    drawTendril(
+      // one layer per lantern (layers live as long as the scene), sorted just in front of its post
+      at ? at(`ink-tendril-${s.lantern}`, l.y + 31) : g,
+      from,
+      { x: l.x, y: l.y - 40 },
+      state.time - s.start,
+      s.at - s.start,
+      left,
+      t,
+      reduced,
+      low,
+    );
   }
   // Found: a golden ring and arrow over the real one.
   if ((revealed || exposed) && !dead) {
@@ -815,6 +893,7 @@ interface ShadeLook {
   shadow?: { x: number; y: number };
   shadowAlpha: number;
   flicker: boolean;
+  cheap?: boolean;
   alpha: number;
   hurt: number;
   gilded: boolean;
@@ -823,26 +902,14 @@ interface ShadeLook {
   dead: boolean;
   deadAge: number;
 }
-/** From the boss's position to the floor under its paws (world pixels). */
+/** From the boss's position to the floor under its puddle (world pixels). */
 const FEET = 16;
 /**
- * One body (the real one or a copy): the vector shadow cat
- * (boss-vector-gloom.ts), and, for the real one in lantern light, its shadow
- * stretched away from the light along the floor.
+ * One body (the real one or a copy): Inkpurr (boss-inkpurr-rig.ts). The real
+ * one standing in lantern light also casts its shadow along the floor, away
+ * from the light (`shadow`); copies never do.
  */
 function shade(g: G, o: ShadeLook) {
-  if (o.alpha <= 0.01) return;
-  if (o.shadow) {
-    const d = Math.hypot(o.x - o.shadow.x, o.y - o.shadow.y) || 1;
-    const sx = (o.x - o.shadow.x) / d,
-      sy = (o.y - o.shadow.y) / d;
-    for (let k = 0; k < 5; k++)
-      g.fillStyle(NIGHT, o.shadowAlpha * o.alpha).fillEllipse(
-        o.x + sx * (18 + k * 14),
-        o.y + 18 + sy * (8 + k * 10),
-        96 - k * 8,
-        32 - k * 3,
-      );
-  }
-  paintVectorGloom(g, o.key, { ...o, y: o.y + FEET });
+  if (o.alpha <= 0.01) return false;
+  return paintInkpurr(g, o.key, { ...o, y: o.y + FEET });
 }

@@ -119,7 +119,9 @@ export function gloomTargets(
   if (set !== shadeSet) {
     shadeSet = set;
     const letters = shuffled(LETTERS.slice(0, bodies.length), random);
-    shadeLabels = new Map(bodies.map((b, i) => [b.id, `Shade ${letters[i]}`]));
+    shadeLabels = new Map(
+      bodies.map((b, i) => [b.id, `Inkpurr ${letters[i]}`]),
+    );
   }
   const targets: RaidTarget[] = [
     ...bodies.map((b) => ({
@@ -128,7 +130,7 @@ export function gloomTargets(
       x: b.x,
       y: b.y,
       feetY: b.y,
-      label: bodies.length > 1 ? shadeLabels.get(b.id)! : "Gloomshade",
+      label: bodies.length > 1 ? shadeLabels.get(b.id)! : "Inkpurr",
     })),
     ...(r.lanterns ?? []).flatMap((l, i) =>
       l.lit

@@ -97,7 +97,7 @@ describe("mission completion instructions", () => {
     ).toBe(true);
     expect(
       examples.some(
-        (text) => text.includes("Gloomshade") && text.includes("copy"),
+        (text) => text.includes("Inkpurr") && text.includes("copy"),
       ),
     ).toBe(true);
     expect(

@@ -67,7 +67,7 @@ const all = async (page: Page) => {
   for (const id of ALL) out[id] = await vector(page, id);
   return out;
 };
-/** Gloomshade's vector bodies (boss-vector-gloom-rig.ts): one rig per body. */
+/** Inkpurr's bodies (boss id "gloomshade", boss-inkpurr-rig.ts): one rig per body. */
 const gloomRoots = (page: Page) =>
   page.evaluate(() =>
     (window as any).__bossReview.rows[0].g.scene.children.list
@@ -611,9 +611,12 @@ test("all seven bosses turn to each of the four main facings, with no face from 
       expect(Math.sign(t.parts.head.x - t.parts.body.x)).toBe(
         view === "right" ? 1 : -1,
       );
-    for (const id of ["gloomshade", "somnara", "fizz", "crackle"] as const)
-      if (view === "back") expect(rigs[id]!.parts.eyen, id).toBeUndefined();
-      else expect(rigs[id]!.parts.eyen, id).toBeTruthy();
+    for (const id of ["gloomshade", "somnara", "fizz", "crackle"] as const) {
+      // Inkpurr (id "gloomshade") draws its eyes as one face piece
+      const eye = id === "gloomshade" ? "eyes" : "eyen";
+      if (view === "back") expect(rigs[id]!.parts[eye], id).toBeUndefined();
+      else expect(rigs[id]!.parts[eye], id).toBeTruthy();
+    }
     const pr = rigs.prismatail!;
     if (view === "front") expect(pr.parts.eyen && pr.parts.eyef).toBeTruthy();
     if (view === "back") expect(pr.parts.eyen ?? pr.parts.beak).toBeUndefined();
