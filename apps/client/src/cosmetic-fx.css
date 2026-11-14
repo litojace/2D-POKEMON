@@ -377,3 +377,31 @@
 .raid-cosmetic-preview:has(> .tier-fx)::after {
   z-index: 5;
 }
+
+/* ── The Shop and Wardrobe catalogue keeps still ──
+   Dozens of tiles turning, orbiting and glowing at once cost phones' GPUs
+   too much. In the catalogue (.fit-room > .ui-split-main, STILL_TILES in
+   cosmetic-fx-preview.ts) frames rest in their still pose, the one reduced
+   motion shows, and effect canvases draw one chosen moment. The stage on
+   the left still plays everything: choosing a tile shows it moving there. */
+.fit-room > .ui-split-main .raid-cosmetic-preview,
+.fit-room > .ui-split-main .raid-cosmetic-preview::before,
+.fit-room > .ui-split-main .raid-cosmetic-preview::after,
+.fit-room > .ui-split-main .raid-cosmetic-preview *,
+.fit-room > .ui-split-main .raid-cosmetic-preview *::before,
+.fit-room > .ui-split-main .raid-cosmetic-preview *::after {
+  animation: none !important;
+}
+/* Nothing turns, so no layer of its own for the sparks and rays. */
+.fit-room
+  > .ui-split-main
+  .raid-cosmetic-preview
+  > :is(.tier-orbit, .tier-rays) {
+  will-change: auto;
+}
+/* Rare's sheen, caught mid-sweep so the polished edge reads as Rare. */
+.fit-room > .ui-split-main .raid-cosmetic-preview[data-tier="rare"] > .tier-fx {
+  background-position:
+    40% 0,
+    0 0;
+}
