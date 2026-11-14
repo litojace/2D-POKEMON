@@ -1,6 +1,6 @@
 # Separate game accounts
 
-Element Arena follows AMATYC's Supabase auth pattern: email/password signup and login, email confirmation, optional Google sign-in (hidden until you turn it on), password recovery, and optional remembered sessions. Create a **new Supabase project for the game**. Its accounts remain separate from AMATYC. No administrator or default password is shipped.
+Element Arena follows AMATYC's Supabase auth pattern: email/password signup and login, email confirmation, optional Sign in with Apple (hidden until you turn it on), password recovery, and optional remembered sessions. Create a **new Supabase project for the game**. Its accounts remain separate from AMATYC. No administrator or default password is shipped.
 
 ## Database
 
@@ -40,7 +40,7 @@ Supabase's default email sender only delivers to addresses belonging to your pro
 
 Under Authentication → URL Configuration, set Site URL to `https://parena.litojace.com`.
 
-Email confirmation, password recovery and Google sign-in all return to the **site root** with a marker, for example `https://parena.litojace.com/?auth=email-confirmed` (also `?auth=reset-password` and `?auth=auth-callback`). The root is served by both the Web Service and the Static Site, so a missing rewrite rule can never turn an email link into a "Not Found" page. Supabase always accepts a redirect on the same scheme, host and port as the Site URL, so production needs no extra entry. For local development, allow:
+Email confirmation, password recovery and Sign in with Apple on the website all return to the **site root** with a marker, for example `https://parena.litojace.com/?auth=email-confirmed` (also `?auth=reset-password` and `?auth=auth-callback`). The root is served by both the Web Service and the Static Site, so a missing rewrite rule can never turn an email link into a "Not Found" page. Supabase always accepts a redirect on the same scheme, host and port as the Site URL, so production needs no extra entry. For local development, allow:
 
 ```text
 http://localhost:5173/**
@@ -72,28 +72,19 @@ from public.arena_admins a join auth.users u on u.id = a.user_id;
 
 Refresh the game. **Admin** appears in navigation. **Solo test mode** is available to every signed-in player. Admin membership grants/revocations are done only through trusted SQL administration. The web dashboard cannot promote players or suspend administrators, preventing accidental self-lockout.
 
-## Google sign-in (optional, off by default)
+## Google sign-in (removed)
 
-The "Continue with Google" button is hidden until you turn it on. To set it up:
+The game no longer offers Google sign-in (November 2026). If it was set up before:
 
-1. In [Google Cloud Console](https://console.cloud.google.com/), create (or pick) a project and open **Google Auth Platform**.
-   - **Branding:** app name (Element Arena), support email, and the `litojace.com` domain.
-   - **Audience:** choose **External**. While it's in "Testing", only the test users you list can sign in; publish the app to let anyone in.
-   - **Data Access:** add the `openid` scope (email and profile are there by default). Don't add other scopes.
-2. In **Clients**, create an OAuth client of type **Web application**.
-   - Authorized JavaScript origins: `https://parena.litojace.com`
-   - Authorized redirect URIs: the callback Supabase shows on its Google provider page, normally `https://YOUR_GAME_PROJECT.supabase.co/auth/v1/callback`
-   - Save the client ID and client secret.
-3. In Supabase, open **Authentication → Sign In / Providers → Google**, enable it and paste the client ID and client secret. Keep the secret in Supabase, never in the repository.
-4. In Supabase **Authentication → URL Configuration**, make sure the Site URL is `https://parena.litojace.com` and `https://parena.litojace.com/auth/callback` is in the redirect URLs (it already is if email confirmation works).
-5. In Render, add the environment variable `VITE_GOOGLE_SIGN_IN` = `on` to the web service and redeploy. It's read when the site is built, so a redeploy is needed.
-6. Test it: log out, choose **Continue with Google**, and check you land back in the game signed in.
+1. In Render, remove the `VITE_GOOGLE_SIGN_IN` variable from the web service (and the Static Site, if you use one). The button is gone from the code either way.
+2. In Supabase, open **Authentication → Sign In / Providers → Google** and turn it off, so nobody can still sign in with Google through Supabase directly.
+3. In [Google Cloud Console](https://console.cloud.google.com/), delete the OAuth client the game used.
 
-To hide it again, remove the variable (or set it to anything but `on`) and redeploy. See [Supabase's Google guide](https://supabase.com/docs/guides/auth/social-login/auth-google).
+Players who made their account with Google and never set a password can get back in with **Forgot password?** on the log-in screen, using their Google email address: the reset link lets them choose a password.
 
 ## Sign in with Apple (optional, off by default)
 
-The App Store asks any app that offers Google sign-in to offer a sign-in that collects only a name and email too (App Review Guideline 4.8); Sign in with Apple is the one Apple's reviewers accept. The "Continue with Apple" button is hidden until you turn it on. On the website it works like Google: the player goes to Apple's page and comes back signed in. To set it up (an Apple Developer account is needed):
+The "Continue with Apple" button is hidden until you turn it on. On the website the player goes to Apple's page and comes back signed in. To set it up (an Apple Developer account is needed):
 
 1. In [Certificates, Identifiers & Profiles](https://developer.apple.com/account/resources/identifiers/list), open **Identifiers** and create (or pick) an **App ID** for the game, for example `com.litojace.elementarena`, with **Sign in with Apple** ticked. The iPhone app will use this ID later.
 2. Create a **Services ID**, for example `com.litojace.elementarena.web`. Tick **Sign in with Apple**, choose **Configure**, pick the App ID above as the primary one, and enter:
@@ -105,7 +96,7 @@ The App Store asks any app that offers Google sign-in to offer a sign-in that co
 6. In Render, add `VITE_APPLE_SIGN_IN` = `on` to the web service (and the Static Site, if you use one) and redeploy. It's read when the site is built.
 7. Test it: log out, choose **Continue with Apple**, and check you land back in the game signed in. If the player chose **Hide My Email**, Supabase gets an `@privaterelay.appleid.com` address; that's normal. A player who hides their name starts as "Trainer" and can change it from the player card.
 
-To hide it again, remove the variable (or set it to anything but `on`) and redeploy. If you turn Google on, turn Apple on too. The iPhone app has its own Apple sign-in (Apple's sheet, not a web page), which needs the app's bundle ID in **Client IDs** as well; see [the iPhone app](ios-app.md#one-time-setup).
+To hide it again, remove the variable (or set it to anything but `on`) and redeploy. The iPhone app has its own Apple sign-in (Apple's sheet, not a web page), which needs the app's bundle ID in **Client IDs** as well; see [the iPhone app](ios-app.md#one-time-setup).
 
 ## Deleting an account
 
@@ -121,7 +112,7 @@ Players delete their own account from their player card: **Delete account** at t
 
 Players see each other's names and meet strangers in the Plaza, so the App Store asks for a name filter and a way to block people (App Review Guideline 1.2). Both need [migration 110](../supabase/migrations/110_blocks_and_name_filter.sql) (after 109).
 
-**Name filter.** A trigger on `arena_profiles` checks every new name, however it's set: sign-up, a guest's nickname, a Google or Apple name, a name change, or an admin's rename. A refused name picked at sign-up becomes "Trainer"; a refused change says "That name isn't allowed." Names in use before the migration stay until they change. The check reads names the way people try to get around filters: case, accents, look-alike digits (`5h1t`), and spaces or dots between letters (`f.u c k`). Short words that hide inside ordinary ones ("ass" in "class", "cock" in "peacock") are refused only as words of their own. It also refuses "admin", "moderator", "official", "staff" and the game's name, so nobody poses as the team. The words are in `arena_name_words`; the client has the same lists in `packages/shared/src/name-filter.ts` to answer before it asks, and `tests/integration/name-filter.test.ts` fails if the two differ. To add a word, add it to both and to the test's examples. It catches the common cases, not every spelling: players can still report a name, and admins can rename.
+**Name filter.** A trigger on `arena_profiles` checks every new name, however it's set: sign-up, a guest's nickname, an Apple (or older Google) name, a name change, or an admin's rename. A refused name picked at sign-up becomes "Trainer"; a refused change says "That name isn't allowed." Names in use before the migration stay until they change. The check reads names the way people try to get around filters: case, accents, look-alike digits (`5h1t`), and spaces or dots between letters (`f.u c k`). Short words that hide inside ordinary ones ("ass" in "class", "cock" in "peacock") are refused only as words of their own. It also refuses "admin", "moderator", "official", "staff" and the game's name, so nobody poses as the team. The words are in `arena_name_words`; the client has the same lists in `packages/shared/src/name-filter.ts` to answer before it asks, and `tests/integration/name-filter.test.ts` fails if the two differ. To add a word, add it to both and to the test's examples. It catches the common cases, not every spelling: players can still report a name, and admins can rename.
 
 **Blocking.** Tap someone in the Plaza for **Block** (and **Report**), or use **Block** on a Recent player or in a friend's options (Friends sheet). Blocking asks first, then:
 
@@ -143,7 +134,7 @@ Remember me uses persistent browser storage; unchecked sessions stay per-tab. Si
 
 Run `npm run test`, `npm run typecheck`, and `npm run build`. Isolated PGlite PostgreSQL tests execute the real migration and check privilege escalation, title ownership, retirement/revocation, suspension and auditing. HTTP/Socket.IO tests use an injected test account provider; there is no production bypass setting.
 
-Real email confirmation, Google OAuth, recovery, and deployed Supabase integration require a configured-project test. After setup: register a regular player and verify admin/solo denial; grant your admin via SQL; create and assign a title; equip it as the player; suspend/reactivate the player; test two-account multiplayer, logout, reload recovery and password reset.
+Real email confirmation, Sign in with Apple, recovery, and deployed Supabase integration require a configured-project test. After setup: register a regular player and verify admin/solo denial; grant your admin via SQL; create and assign a title; equip it as the player; suspend/reactivate the player; test two-account multiplayer, logout, reload recovery and password reset.
 
 ## Admin tools
 

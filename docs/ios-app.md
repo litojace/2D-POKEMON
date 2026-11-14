@@ -37,9 +37,8 @@ in iPhone mode. Supporting iPad means testing its window sizes first.
   delivers updates.
 - **Coming back from the background reconnects at once.** iOS pauses an app
   soon after you switch away, which drops its game connection.
-- **Sign in with Apple** opens Apple's own sheet. **Google sign-in is hidden**
-  in the app: Google refuses to show its sign-in page inside apps. Email,
-  password and guest play work as on the website.
+- **Sign in with Apple** opens Apple's own sheet. Email, password and guest
+  play work as on the website.
 - Email links (confirm your email, reset your password) open the **website**
   in Safari. The player then logs in to the app with their email and password.
 - **Settings → App icon** switches the Home Screen icon between the default
@@ -138,7 +137,8 @@ iOS 26 SDK) and Node 22.
    - **Privacy:** the privacy policy URL, `https://parena.litojace.com/privacy.html` (`apps/client/public/privacy.html`; the game links to it from the menu and the sign-in panel), and the privacy
      answers: email address and user ID (accounts), gameplay content
      (matches, progress), and performance data (`arena-perf` logs frame
-     rates, device memory and cores, not linked to the player).
+     rates, device memory and cores without the account; `arena-load` logs
+     load times with it, so answer "linked").
    - **Age rating** questionnaire: choose **13+**. The game asks for a
      birth month and year before anyone makes an account and refuses
      under-13s (`apps/client/src/age-gate.ts`), and the privacy policy says
