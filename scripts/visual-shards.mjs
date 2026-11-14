@@ -1,18 +1,20 @@
 // Splits the visual suite into CI shards of about equal running time
 // (.github/workflows/ci.yml). Playwright's own --shard splits by test count,
-// and our tests take from 3 seconds to 7 minutes, so count-based shards came
-// out 5 to 30 minutes long and the slowest set the pace.
+// and our tests take from 3 seconds to several minutes, so count-based
+// shards came out 10 to 30 minutes long and the slowest set the pace.
 //
-// Every test is placed by its recorded duration (tests/visual/durations.json)
-// onto the least-loaded shard; a test with no recorded time (a new one)
-// counts as the median. The test list comes from Playwright itself (--list),
-// so every current test lands in exactly one shard, whatever the durations
-// file says. Shards run one worker, as the config does: two workers per
-// runner made CI slower and timed tests out (Nov 2026), since GitHub's
-// runners are already busy with one Chromium rendering in software.
+// - The timing and frame-rate specs (TIMING_SPECS, the list in CLAUDE.md)
+//   get a shard of their own, on one worker, so nothing shares their machine.
+// - Every other test is placed by its recorded duration
+//   (tests/visual/durations.json) onto the least-loaded of the balanced
+//   shards, which run two workers each (4-CPU runners). A test with no
+//   recorded time (a new one) counts as the median.
+// - The test list comes from Playwright itself (--list), so every current
+//   test lands in exactly one shard, whatever the durations file says.
 //
 // Usage (prints a --grep pattern matching exactly that shard's tests):
-//   node scripts/visual-shards.mjs <index> <count>     e.g. 3 9
+//   node scripts/visual-shards.mjs timing
+//   node scripts/visual-shards.mjs <index> <count>     e.g. 3 8
 //   node scripts/visual-shards.mjs --plan <count>      minutes per shard
 //   node scripts/visual-shards.mjs --update <report.json>
 //     refresh tests/visual/durations.json from a JSON report
@@ -20,6 +22,18 @@
 import { execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+
+export const TIMING_SPECS = [
+  "battle-performance.spec.ts",
+  "pvp-performance.spec.ts",
+  "roster-smooth.spec.ts",
+  "graphics-quality.spec.ts",
+  "ui-motion.spec.ts",
+  "touch-recovery.spec.ts",
+  "cosmetic-displays.spec.ts",
+];
+/** Two workers per balanced shard: each test costs half its time. */
+export const BALANCED_WORKERS = 2;
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const DURATIONS = `${root}tests/visual/durations.json`;
@@ -69,6 +83,8 @@ export function balance(tests, durations, count) {
   }
   return shards;
 }
+
+export const isTiming = (t) => TIMING_SPECS.includes(t.file);
 
 /** Every test in the suite, from Playwright's own list. */
 function listTests() {
@@ -134,22 +150,36 @@ function main(args) {
   }
   const tests = listTests();
   const durations = readDurations();
+  const timing = tests.filter(isTiming);
+  const rest = tests.filter((t) => !isTiming(t));
   if (args[0] === "--plan") {
     const count = Number(args[1]);
-    balance(tests, durations, count).forEach((shard, k) =>
+    const minutes = (s) => (s / 60).toFixed(1);
+    const timingSeconds = timing.reduce(
+      (sum, t) => sum + (secondsOf(t, durations) ?? 0),
+      0,
+    );
+    console.log(
+      `timing: ${timing.length} tests, ${minutes(timingSeconds)} min on 1 worker`,
+    );
+    balance(rest, durations, count).forEach((s, i) =>
       console.log(
-        `${k + 1} of ${count}: ${shard.tests.length} tests, ${(shard.seconds / 60).toFixed(1)} min`,
+        `${i + 1} of ${count}: ${s.tests.length} tests, ${minutes(s.seconds)} min of tests, about ${minutes(s.seconds / BALANCED_WORKERS)} min on ${BALANCED_WORKERS} workers`,
       ),
     );
     return;
   }
-  const index = Number(args[0]),
-    count = Number(args[1]);
-  if (!(count >= 1 && index >= 1 && index <= count))
-    throw new Error(
-      "Usage: visual-shards.mjs <index> <count> | --plan <count>",
-    );
-  const chosen = balance(tests, durations, count)[index - 1].tests;
+  let chosen;
+  if (args[0] === "timing") chosen = timing;
+  else {
+    const index = Number(args[0]),
+      count = Number(args[1]);
+    if (!(count >= 1 && index >= 1 && index <= count))
+      throw new Error(
+        "Usage: visual-shards.mjs <index> <count> | timing | --plan <count>",
+      );
+    chosen = balance(rest, durations, count)[index - 1].tests;
+  }
   if (!chosen.length) throw new Error("This shard has no tests.");
   process.stdout.write(grepFor(chosen));
 }

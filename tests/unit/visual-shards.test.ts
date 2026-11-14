@@ -3,6 +3,7 @@ import {
   balance,
   durationsFromReport,
   grepFor,
+  isTiming,
   keyOf,
   testsIn,
 } from "../../scripts/visual-shards.mjs";
@@ -75,7 +76,13 @@ describe("the --grep pattern", () => {
   });
 });
 
-describe("reports", () => {
+describe("timing specs and reports", () => {
+  it("keeps the timing and frame-rate specs (CLAUDE.md) apart", () => {
+    expect(isTiming(t("battle-performance.spec.ts", "x"))).toBe(true);
+    expect(isTiming(t("cosmetic-displays.spec.ts", "x"))).toBe(true);
+    expect(isTiming(t("bistro.spec.ts", "x"))).toBe(false);
+  });
+
   it("reads each test's passing attempt from a JSON report, describes included", () => {
     const report = {
       suites: [
