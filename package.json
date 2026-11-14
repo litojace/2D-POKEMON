@@ -19,6 +19,7 @@
     "test": "vitest run",
     "start": "node apps/server/dist/apps/server/src/index.js",
     "test:visual": "playwright test --config tests/visual/playwright.config.ts",
+    "build-posters": "node scripts/posters/build-posters.mjs",
     "ios:build": "node scripts/check-native-env.mjs && npm run build -w packages/shared && npm run build:ios -w apps/client && npm exec -w apps/client -- cap sync ios",
     "ios:open": "npm exec -w apps/client -- cap open ios"
   },
