@@ -214,9 +214,13 @@ export function drawPrismatail(
       open: at.open,
       dim: at.dim,
       shine: at.shine,
+      // the face: beams and motes keep clear of it
+      head: at.head,
+      headR: at.headR,
     });
     if (!pose.dead)
-      paintBossAura(g, "prismatail", at.heart.x, at.heart.y, life, 1);
+      // the shared cast aura, kept soft: the shell's facets must stay readable
+      paintBossAura(g, "prismatail", at.heart.x, at.heart.y, life, 0.4);
   }
   return pose.cues;
 }

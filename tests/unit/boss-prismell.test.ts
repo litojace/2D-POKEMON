@@ -498,3 +498,74 @@ describe("Prismell's briefing picture, painted", () => {
     m.resetPrismellGuide();
   });
 });
+
+describe("Prismell's light never hides its shell or face", () => {
+  it("keeps the light over the shell soft during the glare, the charge and the open heart", async () => {
+    // the summed additive light covering the shell's middle (the rays sit outside it)
+    const onShell = (o: Partial<PrismellCue>, f = 1, ph = 3) => {
+      const pl = place(o, f, ph);
+      return pl.glows
+        .filter((g) => g.piece === "glow")
+        .filter(
+          (g) =>
+            Math.hypot(g.x - pl.shell.x, g.y - pl.shell.y) <
+            32 * Math.abs(g.sx),
+        )
+        .reduce((s, g) => s + g.alpha, 0);
+    };
+    for (const f of [0, 1, 2, 6])
+      for (const o of [
+        { windKind: "glare", windup: 1 },
+        { castKind: "glare", castAge: 0.3 },
+        { windKind: "prism-lance", windup: 1 },
+        { windKind: "refraction", windup: 1 },
+        { exposed: true },
+        { stagger: true, exposed: true },
+        { roarAge: 0.6 },
+      ] as Partial<PrismellCue>[])
+        expect(onShell(o, f), JSON.stringify(o)).toBeLessThanOrEqual(0.45);
+    // the glare's rays start outside the shell
+    const pl = place({ windKind: "glare", windup: 1 });
+    for (const r of pl.glows.filter((g) => g.piece === "ray"))
+      expect(Math.hypot(r.x - pl.shell.x, r.y - pl.shell.y)).toBeGreaterThan(
+        55,
+      );
+  });
+
+  it("starts the lance beam past the head, in every facing", async () => {
+    const { prismellBeamStart } =
+      await import("../../apps/client/src/prismell-attack-fx");
+    const segToHead = (
+      a: { x: number; y: number },
+      b: { x: number; y: number },
+      h: { x: number; y: number },
+    ) => {
+      const dx = b.x - a.x,
+        dy = b.y - a.y,
+        t = Math.max(
+          0,
+          Math.min(
+            1,
+            ((h.x - a.x) * dx + (h.y - a.y) * dy) / (dx * dx + dy * dy),
+          ),
+        );
+      return Math.hypot(a.x + dx * t - h.x, a.y + dy * t - h.y);
+    };
+    let crossed = 0;
+    for (let f = 0; f < 8; f++)
+      for (const spread of [-0.35, 0, 0.35]) {
+        // the boss faces its target: screen angle = 90° − facing·45°
+        const angle = Math.PI / 2 - (f * Math.PI) / 4 + spread;
+        const pl = place({ windKind: "prism-lance", windup: 0.9 }, f);
+        const to = { x: Math.cos(angle) * 700, y: Math.sin(angle) * 700 };
+        if (segToHead(pl.heart, to, pl.head) < pl.headR) crossed++;
+        const start = prismellBeamStart(pl.heart, to, pl.head, pl.headR);
+        expect(
+          segToHead(start, to, pl.head),
+          `facing ${f}`,
+        ).toBeGreaterThanOrEqual(pl.headR - 0.01);
+      }
+    // the check means something: from the heart, many beams would cross the face
+    expect(crossed).toBeGreaterThan(4);
+  });
+});

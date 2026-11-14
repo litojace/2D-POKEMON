@@ -60,6 +60,9 @@ export interface PrismellPoints {
   dim: number;
   /** The shell's showing-off shine (0-1). */
   shine: number;
+  /** The head's middle and its radius (the face box): beams never cross it. */
+  head?: Pt;
+  headR?: number;
 }
 const points = new WeakMap<Phaser.Scene, PrismellPoints>();
 /** The rig's latest heart and shell (raid-prismatail-art.ts records them each frame). */
@@ -153,6 +156,30 @@ function diamond(
     true,
   );
 }
+/**
+ * Where a beam from `from` to `to` may start so it never crosses the head:
+ * if the line passes through the head's circle (radius r), it starts where it
+ * leaves the circle (the near part reads as hidden behind the head).
+ */
+export function prismellBeamStart(from: Pt, to: Pt, head?: Pt, r = 0): Pt {
+  if (!head || r <= 0) return from;
+  const dx = to.x - from.x,
+    dy = to.y - from.y,
+    L2 = dx * dx + dy * dy || 1;
+  const fx = from.x - head.x,
+    fy = from.y - head.y;
+  const b = (fx * dx + fy * dy) / L2,
+    c = (fx * fx + fy * fy - r * r) / L2;
+  const disc = b * b - c;
+  if (disc <= 0) return from;
+  const t1 = -b + Math.sqrt(disc);
+  if (t1 <= 0) return from;
+  const t = Math.min(1, t1);
+  return { x: from.x + dx * t, y: from.y + dy * t };
+}
+/** Is a point inside the head's circle? */
+const onHead = (p: PrismellPoints, x: number, y: number) =>
+  !!p.head && Math.hypot(x - p.head.x, y - p.head.y) < (p.headR ?? 0);
 /** A beam of split light: a soft white body, a rainbow band and a hot core. */
 function prismBeam(
   fx: PrismellFxEngine,
@@ -222,34 +249,31 @@ export function drawPrismellFx(
       for (let i = 0; i < n; i++) {
         const a = (i * TAU) / n + t * 3.2,
           rr = 18 + 46 * (1 - ((k * 2.5 + i / n) % 1));
-        diamond(
-          g,
-          p.heart.x + Math.cos(a) * rr,
-          p.heart.y + Math.sin(a) * rr * 0.8,
-          3.2,
-          PRISM_COLORS[i % 6],
-          0.5 + 0.5 * k,
-          a,
-        );
+        const mx = p.heart.x + Math.cos(a) * rr,
+          my = p.heart.y + Math.sin(a) * rr * 0.8;
+        if (onHead(p, mx, my)) continue;
+        diamond(g, mx, my, 3.2, PRISM_COLORS[i % 6], 0.5 + 0.5 * k, a);
       }
-      glow(p.heart.x, p.heart.y, 10 + 12 * k, 0xfff0c8, 0.12 + 0.28 * k);
+      glow(p.heart.x, p.heart.y, 8 + 8 * k, 0xfff0c8, 0.08 + 0.14 * k);
       // the sight line: a thin split ray reaching down the lane
       const reach = Math.min(1, k * 1.4),
         tx = p.heart.x + (w.tx - p.heart.x) * reach,
         ty = p.heart.y + (w.ty - p.heart.y) * reach;
-      for (let i = 0; i < 3; i++)
-        g.lineStyle(
-          1.6,
-          [0xff899e, 0xffd778, 0x80e1ff][i],
-          0.3 + 0.3 * k,
-        ).lineBetween(p.heart.x + (i - 1) * 2, p.heart.y, tx + (i - 1) * 2, ty);
+      const s0 = prismellBeamStart(p.heart, { x: tx, y: ty }, p.head, p.headR);
+      if (Math.hypot(tx - s0.x, ty - s0.y) > 4)
+        for (let i = 0; i < 3; i++)
+          g.lineStyle(
+            1.6,
+            [0xff899e, 0xffd778, 0x80e1ff][i],
+            0.3 + 0.3 * k,
+          ).lineBetween(s0.x + (i - 1) * 2, s0.y, tx + (i - 1) * 2, ty);
     } else if (w.kind === "fan-display") {
       const count = w.prismCount ?? 6,
         index = w.prismIndex ?? 0;
       memo.fans.set(w.id, { index, count });
       const hot = PRISM_COLORS[index];
       // the shell blazes in the striking slice's colour, shards circling it
-      glow(p.shell.x, p.shell.y, 40 + 24 * k, hot, 0.2 + 0.3 * k);
+      glow(p.shell.x, p.shell.y, 40 + 24 * k, hot, 0.12 + 0.16 * k);
       for (let i = 0; i < count; i++) {
         const a = (i * TAU) / count,
           spin = a + t * 0.9,
@@ -272,16 +296,17 @@ export function drawPrismellFx(
       }
     } else if (w.kind === "glare") {
       // the shell's light swells, ring after ring
-      glow(p.shell.x, p.shell.y, 40 + 50 * k, WHITE, 0.15 + 0.35 * k);
-      for (let i = 0; i < 2; i++) {
-        const u = (k * 3 + i * 0.5) % 1;
-        g.lineStyle(3, 0xfff6d8, (1 - u) * 0.7 * k).strokeEllipse(
-          p.shell.x,
-          p.shell.y,
-          60 + u * 120,
-          50 + u * 100,
-        );
+      glow(p.shell.x, p.shell.y, 34 + 14 * k, WHITE, 0.06 + 0.14 * k);
+      for (let i = 0; i < 3; i++) {
+        const u = (k * 3 + i / 3) % 1;
+        g.lineStyle(
+          4 - u * 2,
+          0xfff6d8,
+          (1 - u) * (0.4 + 0.5 * k),
+        ).strokeEllipse(p.shell.x, p.shell.y, 140 + u * 150, 120 + u * 120);
       }
+      // a warm glow round the outside of the shell, not over it
+      glow(p.shell.x, p.shell.y - 70, 26 + 14 * k, 0xfff1c0, 0.2 + 0.3 * k);
     } else if (w.kind === "halo-crush") {
       // a golden halo lifts off the shell, hangs, then flies to its mark
       const rise = clamp(k / 0.3),
@@ -326,7 +351,16 @@ export function drawPrismellFx(
     if ((c.kind === "prism-lance" || c.kind === "refraction") && u < 0.45) {
       const a = 1 - u / 0.45;
       const from = fromBoss(c) ? p.heart : { x: c.x, y: c.y - 20 };
-      prismBeam(fx, glow, from, { x: c.tx, y: c.ty }, 22, a, low);
+      const to = { x: c.tx, y: c.ty };
+      prismBeam(
+        fx,
+        glow,
+        prismellBeamStart(from, to, p.head, p.headR),
+        to,
+        22,
+        a,
+        low,
+      );
       if (u < 0.12)
         fx.trail(`prismell-lance-${c.id}`, 1, () =>
           fx.burst({
@@ -371,10 +405,12 @@ export function drawPrismellFx(
           c.y + Math.sin(ang) * d,
         );
       }
-      glow(p.shell.x, p.shell.y, 60, hot, 0.45 * a);
+      glow(p.shell.x, p.shell.y, 60, hot, 0.25 * a);
     } else if (c.kind === "glare" && u < 0.55) {
       const a = 1 - u / 0.55;
-      glow(p.shell.x, p.shell.y, 110 + 120 * u, WHITE, 0.6 * a);
+      // the full flash lasts only an instant; the ring outside carries the rest
+      if (u < 0.12)
+        glow(p.shell.x, p.shell.y, 120, WHITE, 0.55 * (1 - u / 0.12));
       g.lineStyle(6, 0xfff6d8, 0.8 * a).strokeEllipse(
         p.shell.x,
         p.shell.y,
