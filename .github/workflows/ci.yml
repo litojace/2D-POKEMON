@@ -26,16 +26,16 @@ jobs:
       - run: node scripts/verify-pwa.mjs
   visual:
     # The real client in Chromium with no server: one fighter on the select
-    # screen, arenas filling their frames, dialogs fitting a phone.
-    # Shards of about equal running time (scripts/visual-shards.mjs, from the
-    # durations in tests/visual/durations.json): the timing and frame-rate
-    # specs alone on one worker, every other test spread over seven shards
-    # of two workers each (4-CPU runners). Playwright's own --shard splits by
-    # test count, and with tests of 3 s to 7 min that made shards of 5 to 17
-    # minutes; GitHub also runs only about ten of this repository's jobs at
-    # once, so eight shards plus verify (twice: push and pull request) fit
-    # without waiting. It runs for main (what Render deploys), pull requests
-    # and manual runs, not again for the same commit on work.
+    # screen, arenas filling their frames, dialogs fitting a phone. Split
+    # across eighteen runners (one worker each, so timing checks keep a
+    # machine to themselves): twelve shards of the suite, and six of the
+    # panel-scroll sweeps, whose twenty tests take about an hour between them
+    # and would otherwise all land in one shard. Shards split by test count,
+    # not duration, so the slowest sets the pace: six and four shards took
+    # about 30 minutes (10 to 30 per shard, Nov 2026); twelve and six aim for
+    # about 15. Eighteen runners plus verify stay under the free plan's 20
+    # jobs at once. It runs for main (what Render deploys), pull requests and
+    # manual runs, not again for the same commit on work.
     if: github.event_name != 'push' || github.ref == 'refs/heads/main'
     name: visual (${{ matrix.part }})
     runs-on: ubuntu-latest
@@ -43,14 +43,24 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { part: "timing", shard: "timing", workers: 1 }
-          - { part: "1 of 7", shard: "1 7", workers: 2 }
-          - { part: "2 of 7", shard: "2 7", workers: 2 }
-          - { part: "3 of 7", shard: "3 7", workers: 2 }
-          - { part: "4 of 7", shard: "4 7", workers: 2 }
-          - { part: "5 of 7", shard: "5 7", workers: 2 }
-          - { part: "6 of 7", shard: "6 7", workers: 2 }
-          - { part: "7 of 7", shard: "7 7", workers: 2 }
+          - { part: "1 of 12", args: "--grep-invert 'scroll to their end' --shard=1/12" }
+          - { part: "2 of 12", args: "--grep-invert 'scroll to their end' --shard=2/12" }
+          - { part: "3 of 12", args: "--grep-invert 'scroll to their end' --shard=3/12" }
+          - { part: "4 of 12", args: "--grep-invert 'scroll to their end' --shard=4/12" }
+          - { part: "5 of 12", args: "--grep-invert 'scroll to their end' --shard=5/12" }
+          - { part: "6 of 12", args: "--grep-invert 'scroll to their end' --shard=6/12" }
+          - { part: "7 of 12", args: "--grep-invert 'scroll to their end' --shard=7/12" }
+          - { part: "8 of 12", args: "--grep-invert 'scroll to their end' --shard=8/12" }
+          - { part: "9 of 12", args: "--grep-invert 'scroll to their end' --shard=9/12" }
+          - { part: "10 of 12", args: "--grep-invert 'scroll to their end' --shard=10/12" }
+          - { part: "11 of 12", args: "--grep-invert 'scroll to their end' --shard=11/12" }
+          - { part: "12 of 12", args: "--grep-invert 'scroll to their end' --shard=12/12" }
+          - { part: "sweeps 1 of 6", args: "panel-scroll --shard=1/6" }
+          - { part: "sweeps 2 of 6", args: "panel-scroll --shard=2/6" }
+          - { part: "sweeps 3 of 6", args: "panel-scroll --shard=3/6" }
+          - { part: "sweeps 4 of 6", args: "panel-scroll --shard=4/6" }
+          - { part: "sweeps 5 of 6", args: "panel-scroll --shard=5/6" }
+          - { part: "sweeps 6 of 6", args: "panel-scroll --shard=6/6" }
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -59,8 +69,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
-      # The pattern goes straight to Playwright: npm would re-quote it.
-      - run: npx playwright test --config tests/visual/playwright.config.ts --workers=${{ matrix.workers }} --grep "$(node scripts/visual-shards.mjs ${{ matrix.shard }})"
+      - run: npm run test:visual -- ${{ matrix.args }}
       - if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
@@ -87,17 +96,6 @@ jobs:
       - run: npx playwright merge-reports --reporter html ./all-blob-reports
         env:
           PLAYWRIGHT_HTML_OPEN: never
-      # Fresh durations for scripts/visual-shards.mjs: download the
-      # visual-durations artifact and commit it as tests/visual/durations.json
-      # when shards drift apart.
-      - run: |
-          npx playwright merge-reports --reporter json ./all-blob-reports > visual-results.json
-          node scripts/visual-shards.mjs --update visual-results.json
-      - uses: actions/upload-artifact@v4
-        with:
-          name: visual-durations
-          path: tests/visual/durations.json
-          retention-days: 14
       - uses: actions/upload-artifact@v4
         with:
           name: visual-report
