@@ -469,6 +469,11 @@
 .plaza-layer .pz-act.big small {
   color: #2a1a00aa;
 }
+/* The keyboard keys (Shift, Space) only where there is a keyboard to press:
+   a touch screen shows the action's name alone. */
+.plaza-layer.coarse .pz-act small {
+  display: none;
+}
 .plaza-layer .pz-act:active {
   transform: scale(0.92);
 }
@@ -847,15 +852,20 @@
 .plaza-layer.phone .pz-actions {
   align-items: flex-end;
 }
+/* Dash and Jump, sized for a thumb in a hurry (they were 54 and 68 px).
+   --pz-jump also lifts the round buttons above them (and the toast, below). */
+.plaza-layer.phone {
+  --pz-jump: 80px;
+}
 .plaza-layer.phone .pz-act {
-  width: 54px;
-  height: 54px;
-  font-size: 13px;
+  width: 64px;
+  height: 64px;
+  font-size: 14px;
 }
 .plaza-layer.phone .pz-act.big {
-  width: 68px;
-  height: 68px;
-  font-size: 14px;
+  width: var(--pz-jump);
+  height: var(--pz-jump);
+  font-size: 16px;
 }
 .plaza-layer.phone .pz-act small {
   font-size: 10px;
@@ -866,13 +876,13 @@
   font-size: 12px;
   align-self: center;
 }
-/* Phones: the round buttons in a row over Dash and Jump (Jump is 68 px). */
+/* Phones: the round buttons in a row over Dash and Jump. */
 .plaza-layer.phone .pz-left,
 .plaza-layer.coarse.screen.phone .pz-left {
   left: auto;
   right: var(--hud-x-r);
   top: auto;
-  bottom: calc(var(--hud-y-b) + 68px + var(--hud-gap));
+  bottom: calc(var(--hud-y-b) + var(--pz-jump) + var(--hud-gap));
   flex-direction: row;
 }
 .plaza-layer.phone .pz-round {
@@ -900,12 +910,13 @@
 }
 
 /* ---------- below the line: the Plaza inside the game ---------- */
-/* Phones: the game's toast rises over the Dash and Jump row (Jump is 68px):
+/* Phones: the game's toast rises over the Dash and Jump row (Jump is 80px,
+   --pz-jump on .plaza-layer.phone, which the toast sits outside of):
    at the bottom it ran into the action button that grows left of them by
    the Volt Boba, the Photo Spot or the gate. */
 @media (max-height: 500px) {
   body.hub-plaza #toast {
-    bottom: calc(max(14px, var(--safe-bottom, 0px)) + 68px + 10px);
+    bottom: calc(max(14px, var(--safe-bottom, 0px)) + 80px + 10px);
   }
 }
 .plaza-layer {
