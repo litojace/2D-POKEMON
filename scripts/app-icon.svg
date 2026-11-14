@@ -44,17 +44,21 @@
     </clipPath>
   </defs>
 
-  <polygon points="-40,-40 560,-40 500,210 560,240 488,520 540,550 470,800 530,830 470,1064 -40,1064" fill="url(#warm)"/>
-  <polygon points="1064,-40 560,-40 500,210 560,240 488,520 540,550 470,800 530,830 470,1064 1064,1064" fill="url(#cool)"/>
+  <!-- Left out of the dark and tinted icons, where iOS draws its own background. -->
+  <g id="backdrop">
+    <polygon points="-40,-40 560,-40 500,210 560,240 488,520 540,550 470,800 530,830 470,1064 -40,1064" fill="url(#warm)"/>
+    <polygon points="1064,-40 560,-40 500,210 560,240 488,520 540,550 470,800 530,830 470,1064 1064,1064" fill="url(#cool)"/>
+  </g>
 
-  <!-- Each face's centre sits near an edge (x 40 and 984, y 520), so its inner half shows. -->
+  <!-- Each face's centre sits near an edge (x 40 and 984, y 520), so its inner half shows.
+       The groups marked data-face shrink toward the centre in Android's maskable icon. -->
   <g clip-path="url(#fire-side)">
-    <g filter="url(#lift)">
+    <g data-face="" filter="url(#lift)">
       <svg data-fighter="pyranda" x="-710" y="-170" width="1500" height="1500" viewBox="0 -12 200 200" overflow="visible"></svg>
     </g>
   </g>
   <g clip-path="url(#ice-side)">
-    <g filter="url(#lift)">
+    <g data-face="" filter="url(#lift)">
       <!-- Mirrored to face Pyranda: translate(2x + width). -->
       <g transform="translate(1968 0) scale(-1 1)">
         <svg data-fighter="glacelle" x="234" y="-170" width="1500" height="1500" viewBox="0 -12 200 200" overflow="visible"></svg>
@@ -62,13 +66,15 @@
     </g>
   </g>
 
-  <g fill="none" stroke-linejoin="miter" stroke-miterlimit="10">
+  <g id="bolt" fill="none" stroke-linejoin="miter" stroke-miterlimit="10">
     <polyline points="560,-40 500,210 560,240 488,520 540,550 470,800 530,830 470,1064" stroke="#fff" stroke-width="56" filter="url(#blur)" opacity=".6"/>
     <polyline points="560,-40 500,210 560,240 488,520 540,550 470,800 530,830 470,1064" stroke="#fffbe6" stroke-width="20"/>
   </g>
 
   <!-- The clash: a glow and an eight-point star at the centre. -->
-  <circle cx="512" cy="520" r="200" fill="url(#flash)"/>
-  <polygon points="718,562 570,559 628,695 525,589 470,726 473,578 337,636 443,533 306,478 454,481 396,345 499,451 554,314 551,462 687,404 581,507" fill="#fff" filter="url(#blur)" opacity=".8"/>
-  <polygon points="718,562 570,559 628,695 525,589 470,726 473,578 337,636 443,533 306,478 454,481 396,345 499,451 554,314 551,462 687,404 581,507" fill="#fffef4"/>
+  <g id="clash">
+    <circle cx="512" cy="520" r="200" fill="url(#flash)"/>
+    <polygon points="718,562 570,559 628,695 525,589 470,726 473,578 337,636 443,533 306,478 454,481 396,345 499,451 554,314 551,462 687,404 581,507" fill="#fff" filter="url(#blur)" opacity=".8"/>
+    <polygon points="718,562 570,559 628,695 525,589 470,726 473,578 337,636 443,533 306,478 454,481 396,345 499,451 554,314 551,462 687,404 581,507" fill="#fffef4"/>
+  </g>
 </svg>
