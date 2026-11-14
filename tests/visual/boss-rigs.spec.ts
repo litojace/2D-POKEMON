@@ -27,7 +27,7 @@ async function review(page: Page) {
 /** The root names of the rigs: one per boss; Gloomshade's real body and each
  * Storm Twin have their own. */
 const ROOTS = {
-  grumblecrag: "vector-boss-grumblecrag",
+  grumblecrag: "cragmuff-boss",
   tidewyrm: "vector-boss-tidewyrm",
   gloomshade: "vector-boss-gloomshade:shade-0",
   somnara: "vector-boss-somnara",
@@ -50,7 +50,7 @@ const vector = (page: Page, id: Rig = "grumblecrag") =>
     // hold thin lines (Graphics), which have no texture
     for (const o of root.list.flatMap((c: any) => c.list ?? []))
       if (o.visible && o.type === "Image")
-        parts[o.name.replace("vector-part-", "")] = {
+        parts[o.name.replace(/^(vector-part-|cragmuff-)/, "")] = {
           x: o.x,
           y: o.y,
           rotation: o.rotation,
@@ -103,7 +103,10 @@ test("all seven bosses' rigs animate, hold a pause and keep combat snapshots imm
   for (const id of ALL) {
     expect(start[id], id).not.toBeNull();
     expect(start[id]!.visible, id).toBe(true);
-    expect(Object.keys(start[id]!.parts).length, id).toBeGreaterThan(10);
+    // Cragmuff stands in a handful of images (one picture for its legs, one for its fleece)
+    expect(Object.keys(start[id]!.parts).length, id).toBeGreaterThan(
+      id === "grumblecrag" ? 6 : 10,
+    );
   }
   await page.evaluate(() => {
     const r = (window as any).__bossReview;
@@ -138,12 +141,13 @@ test("all seven bosses' rigs animate, hold a pause and keep combat snapshots imm
   // every boss winds up visibly
   for (const id of ALL)
     expect(moved(gathered[id], start[id]), id).toBeGreaterThan(2);
-  // Ground Slam: Grumblecrag's fists rise overhead and burn.
+  // Ground Slam: Cragmuff rears up on its hind legs (its own drawing), horns glowing.
   const v0 = start.grumblecrag!,
     v1 = gathered.grumblecrag!;
-  expect(v1.parts.fistL.y).toBeLessThan(v0.parts.fistL.y - 40);
-  expect(v1.parts.fistR.y).toBeLessThan(v0.parts.fistR.y - 40);
-  expect(v1.parts["glow-fistL"]).toBeTruthy();
+  expect(v0.parts.body.frame).toMatch(/^body_/);
+  expect(v1.parts.body.frame).toMatch(/^bodyR_/);
+  expect(v1.parts.head.y).toBeLessThan(v0.parts.head.y - 15);
+  expect(v1.parts.hglow0).toBeTruthy();
   // Fan Display: Prismatail's train spreads and shines, its neck lifts.
   const spread = (v: any) =>
     Math.abs(
@@ -168,8 +172,10 @@ test("all seven bosses' rigs animate, hold a pause and keep combat snapshots imm
     r.frame(1, 1.55, false);
   });
   const striking = await all(page);
-  expect(striking.grumblecrag!.parts.fistL.y).toBeGreaterThan(
-    v1.parts.fistL.y + 40,
+  // ...and stomps back down
+  expect(striking.grumblecrag!.parts.body.frame).toMatch(/^body_/);
+  expect(striking.grumblecrag!.parts.head.y).toBeGreaterThan(
+    v1.parts.head.y + 15,
   );
   for (const id of ALL)
     for (const p of Object.values(striking[id]!.parts) as any[])
@@ -218,7 +224,7 @@ test("all seven bosses' rigs animate, hold a pause and keep combat snapshots imm
   });
   const retry = await all(page);
   for (const [id, keys] of [
-    ["grumblecrag", ["fistL", "fistR", "head", "torso"]],
+    ["grumblecrag", ["legs", "body", "head", "eyes"]],
     ["tidewyrm", ["cran", "snout", "jaw", "seg20"]],
     ["prismatail", ["body", "brooch", "head", "shard4"]],
     ["emberwing", ["body", "chest", "f-head"]],
@@ -600,10 +606,10 @@ test("all seven bosses turn to each of the four main facings, with no face from 
     for (const id of ALL)
       expect(rigs[id]!.facing, `${id} ${view}`).toBe(facing);
     const v = rigs.grumblecrag!;
-    if (view === "front") expect(v.parts.eyeL && v.parts.eyeR).toBeTruthy();
-    if (view === "back") expect(v.parts.eyeL ?? v.parts.eyeR).toBeUndefined();
+    if (view === "front") expect(v.parts.eyes.frame).toMatch(/^eyes_0_/);
+    if (view === "back") expect(v.parts.eyes).toBeUndefined();
     if (view === "left" || view === "right")
-      expect(Math.sign(v.parts.head.x - v.parts.pelvis.x)).toBe(
+      expect(Math.sign(v.parts.head.x - v.parts.body.x)).toBe(
         view === "right" ? 1 : -1,
       );
     const t = rigs.tidewyrm!;

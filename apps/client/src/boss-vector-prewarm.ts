@@ -6,7 +6,7 @@
 import type Phaser from "phaser";
 import type { RaidBossId } from "../../../packages/shared/src/raid-roster";
 import type { Phase } from "./boss-vector-grumble";
-import { prewarmAtlas as grumblecrag } from "./boss-vector-rig";
+import { prewarmAtlas as grumblecrag } from "./boss-cragmuff-rig";
 import { prewarmAtlas as tidewyrm } from "./boss-vector-tide-rig";
 import { prewarmAtlas as gloomshade } from "./boss-vector-gloom-rig";
 import { prewarmAtlas as somnara } from "./boss-vector-somnara-rig";

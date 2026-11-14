@@ -1,6 +1,6 @@
 /**
- * Grumblecrag's attack effects in battle, from the vector boss demo (the
- * "Grumblecrag Vector" artifact, 9 Nov): dust, flying rocks, cracks, shock
+ * Cragmuff's attack effects in battle (the "grumblecrag" raid; first made
+ * for the stone golem's vector demo, 9 Nov): dust, flying rocks, cracks, shock
  * rings, debris, embers, lava geysers and the shared meteor, growing hotter
  * with each phase. They replace the shared boss cast effect (rings, ribbons
  * and the spell flipbook) for this boss only.
@@ -21,7 +21,7 @@ import type { RaidWarning } from "../../../packages/shared/src/raid";
 import type { BossCast } from "./boss-performance";
 import type { Fx } from "./fx-engine";
 import { CRYSTAL, ROCK, type Phase } from "./boss-vector-grumble";
-import { GRUMBLE_FEET } from "./boss-vector-rig";
+import { CRAGMUFF_FEET as GRUMBLE_FEET } from "./boss-cragmuff";
 
 type Glow = (
   x: number,
@@ -128,6 +128,15 @@ function palette(phase: number): Palette {
   };
 }
 
+/** Cragmuff's fleece, for the tufts a hit knocks off (drawn like the chips). */
+const WOOL: Palette = {
+  rock: 0xb9ae94,
+  rockLight: 0xf3ecda,
+  rockLine: 0x4f4636,
+  hot: 0xffb43c,
+  glow: 0xffbe50,
+  phase: 1,
+};
 /** One rock: a lumpy outline, a lit top, a dark rim. */
 function rock(
   g: G,
@@ -616,8 +625,9 @@ function moments(
   const many = low ? 0.5 : 1;
   for (const m of mine.moments) {
     if (m.kind === "roar") roar(fx, glow, m, pal, low);
+    // a hit knocks tufts of stone wool off Cragmuff's fleece
     else if (m.kind === "hurt")
-      chips(fx, m.x, m.y, 115, Math.round(6 * many), m.age, m.seed, pal, 1.05);
+      chips(fx, m.x, m.y, 115, Math.round(6 * many), m.age, m.seed, WOOL, 1.05);
     else if (m.kind === "stagger") {
       chips(fx, m.x, m.y, 90, Math.round(12 * many), m.age, m.seed, pal, 1.1);
       dustRing(fx, m.x, m.y, 150, Math.round(14 * many), m.age, m.seed, 1.2);
