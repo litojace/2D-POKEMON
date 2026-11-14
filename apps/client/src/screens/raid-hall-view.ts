@@ -310,7 +310,7 @@ export const BOSS_FRAMES: Record<
   { body: [number, number]; face: [number, number]; zoom: number }
 > = {
   grumblecrag: { body: [0.55, 0.4], face: [0.56, 0.26], zoom: 1.8 },
-  tidewyrm: { body: [0.64, 0.4], face: [0.71, 0.33], zoom: 1.9 },
+  tidewyrm: { body: [0.47, 0.62], face: [0.56, 0.64], zoom: 1.9 },
   gloomshade: { body: [0.58, 0.5], face: [0.53, 0.5], zoom: 1.7 },
   somnara: { body: [0.38, 0.4], face: [0.31, 0.33], zoom: 1.6 },
   prismatail: { body: [0.57, 0.45], face: [0.63, 0.2], zoom: 2 },
