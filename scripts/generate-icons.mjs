@@ -3,14 +3,14 @@
 //   node scripts/generate-icons.mjs
 //
 // - the iPhone app icon (1024 x 1024) in the Xcode asset catalog,
-// - the iPhone launch screen: the icon's fighter, whole, at a fifth of the
-//   square on the app's background colour #0b1020 (capacitor.config.ts),
-// - the PWA icons in apps/client/public/icons. The maskable one (Android
-//   may crop it to a circle of 80% of its width) shows the fighter whole and
-//   smaller, so the circle never cuts the ears.
+// - the iPhone launch screen: the icon's fighters, whole and facing each
+//   other, on the app's background colour #0b1020 (capacitor.config.ts),
+// - the PWA icons in apps/client/public/icons. Android may crop the
+//   maskable one to a circle of 80% of its width; the faces' inner halves,
+//   which carry the eyes, stay inside it.
 //
-// The icon's <svg id="hero" data-fighter="..."> is filled with that
-// fighter's portrait.svg, so the icon follows any redraw of the fighter.
+// Each empty <svg data-fighter="..."> in the icon is filled with that
+// fighter's portrait.svg, so the icon follows any redraw of the fighters.
 //
 // The SVG is drawn by the Chromium that Playwright uses (set PW_CHROMIUM to
 // use another binary). Every PNG is written as plain RGB, without an alpha
@@ -21,29 +21,44 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { deflateSync, crc32 } from "node:zlib";
 
 const source = readFileSync(new URL("./app-icon.svg", import.meta.url), "utf8");
-const hero = source.match(/<svg id="hero" data-fighter="(\w+)"[^>]*>/);
-if (!hero)
-  throw new Error('app-icon.svg needs <svg id="hero" data-fighter="...">');
-const portrait = readFileSync(
-  `apps/client/public/assets/fighters/${hero[1]}/portrait.svg`,
-  "utf8",
-);
-/** The portrait's drawing, without its own <svg> element. */
-const fighter = portrait.slice(
-  portrait.indexOf(">") + 1,
-  portrait.lastIndexOf("</svg>"),
-);
-const portraitBox = portrait.match(/viewBox="([^"]+)"/)[1];
-/** The icon, with the hero element given new attributes (or kept as is). */
-const icon = (attributes = hero[0]) =>
-  source.replace(hero[0] + "</svg>", attributes + fighter + "</svg>");
-const svg = icon();
-// Whole fighter inside the maskable safe circle (radius 410 of 1024).
-const maskable = icon(
-  `<svg id="hero" x="187" y="190" width="650" height="650" viewBox="${portraitBox}">`,
-);
-// Whole fighter alone, for the launch screen.
-const fighterOnly = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${portraitBox}" width="1024" height="1024">${fighter}</svg>`;
+/** A fighter's drawing, without its own <svg> element, and its viewBox. */
+function portrait(name) {
+  const file = readFileSync(
+    `apps/client/public/assets/fighters/${name}/portrait.svg`,
+    "utf8",
+  );
+  return {
+    art: file.slice(file.indexOf(">") + 1, file.lastIndexOf("</svg>")),
+    box: file.match(/viewBox="([^"]+)"/)[1],
+  };
+}
+const fighters = [
+  ...source.matchAll(/<svg data-fighter="(\w+)"[^>]*>(?=<\/svg>)/g),
+];
+if (fighters.length === 0)
+  throw new Error(
+    'app-icon.svg needs at least one empty <svg data-fighter="...">',
+  );
+let svg = source;
+for (const [element, name] of fighters)
+  svg = svg.replace(
+    element + "</svg>",
+    element + portrait(name).art + "</svg>",
+  );
+const maskable = svg;
+// The launch screen: the fighters whole, side by side, the later ones
+// mirrored to face the first.
+const width = 1024 / fighters.length;
+const fightersOnly = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">${fighters
+  .map(([, name], i) => {
+    const { art, box } = portrait(name);
+    const x = i * width;
+    const drawing = `<svg x="${x}" y="${(1024 - width) / 2}" width="${width}" height="${width}" viewBox="${box}">${art}</svg>`;
+    return i === 0
+      ? drawing
+      : `<g transform="translate(${2 * x + width} 0) scale(-1 1)">${drawing}</g>`;
+  })
+  .join("")}</svg>`;
 
 const assets = "apps/client/ios/App/App/Assets.xcassets/";
 const pwa = "apps/client/public/icons/";
@@ -131,7 +146,7 @@ writeFileSync(
   assets + "AppIcon.appiconset/AppIcon-512@2x.png",
   await render(svg, 1024),
 );
-const splash = await render(fighterOnly, 546, 2732);
+const splash = await render(fightersOnly, 820, 2732);
 for (const name of [
   "splash-2732x2732.png",
   "splash-2732x2732-1.png",
@@ -148,5 +163,5 @@ writeFileSync(pwa + "arena-maskable-512.png", await render(maskable, 512));
 
 await browser.close();
 console.log(
-  `Rendered the app icon, launch screen and PWA icons from scripts/app-icon.svg (${hero[1]}).`,
+  `Rendered the app icon, launch screen and PWA icons from scripts/app-icon.svg (${fighters.map(([, name]) => name).join(" vs ")}).`,
 );

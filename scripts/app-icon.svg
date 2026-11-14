@@ -1,53 +1,74 @@
 <!--
-  Element Arena's app icon: Pyranda's face, close up, in a fire glow on a
-  cool blue background (warm fighter on a complementary colour, so the
-  outline stays clear at home-screen size).
+  Element Arena's app icon: Pyranda (fire) and Glacelle (ice) press in from
+  the edges, split by a white lightning bolt, with a burst where they clash.
 
-  `node scripts/generate-icons.mjs` renders it to the iPhone app icon and the
-  PWA icons. The <svg id="hero"> element is filled in at render time with
-  the fighter art named by data-fighter
+  `node scripts/generate-icons.mjs` renders it to the iPhone app icon, the
+  launch screen and the PWA icons. Each empty <svg data-fighter="name"> is
+  filled at render time with that fighter's art
   (apps/client/public/assets/fighters/<name>/portrait.svg), so the icon
-  follows any redraw of that fighter. Its viewBox is the crop of the
-  portrait. For Android's maskable icon the generator shrinks #hero to fit
-  the middle 80% circle.
+  follows any redraw of the fighters. The launch screen shows the same
+  fighters whole, facing each other.
 
   No text, square and opaque: iOS rounds the corners itself.
 -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
   <defs>
-    <radialGradient id="sky" cx="50%" cy="40%" r="78%">
-      <stop offset="0" stop-color="#2bb3d9"/>
-      <stop offset=".55" stop-color="#1b4fa8"/>
-      <stop offset="1" stop-color="#0e1a4f"/>
-    </radialGradient>
-    <radialGradient id="glow">
-      <stop offset="0" stop-color="#fff6c8" stop-opacity=".9"/>
-      <stop offset=".5" stop-color="#ffe17b" stop-opacity=".35"/>
+    <linearGradient id="warm" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffb347"/>
+      <stop offset=".6" stop-color="#ff5a2b"/>
+      <stop offset="1" stop-color="#b3123f"/>
+    </linearGradient>
+    <linearGradient id="cool" x1="1" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7ff0ff"/>
+      <stop offset=".55" stop-color="#2a8cff"/>
+      <stop offset="1" stop-color="#2a2fb8"/>
+    </linearGradient>
+    <radialGradient id="flash">
+      <stop offset="0" stop-color="#fff"/>
+      <stop offset=".25" stop-color="#fff8d0"/>
+      <stop offset=".6" stop-color="#ffe17b" stop-opacity=".5"/>
       <stop offset="1" stop-color="#ffe17b" stop-opacity="0"/>
     </radialGradient>
-    <filter id="lift" x="-30%" y="-30%" width="160%" height="160%">
-      <feDropShadow dx="0" dy="16" stdDeviation="16" flood-color="#0a0630" flood-opacity=".5"/>
+    <filter id="blur" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="18"/>
     </filter>
+    <filter id="lift" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="14" stdDeviation="14" flood-color="#0a0630" flood-opacity=".45"/>
+    </filter>
+    <!-- The two sides of the bolt (the same zigzag as the polylines below). -->
+    <clipPath id="fire-side">
+      <polygon points="-40,-40 560,-40 500,210 560,240 488,520 540,550 470,800 530,830 470,1064 -40,1064"/>
+    </clipPath>
+    <clipPath id="ice-side">
+      <polygon points="1064,-40 560,-40 500,210 560,240 488,520 540,550 470,800 530,830 470,1064 1064,1064"/>
+    </clipPath>
   </defs>
 
-  <rect width="1024" height="1024" fill="url(#sky)"/>
-  <!-- Twelve soft rays from behind the head. -->
-  <g fill="#fff" opacity=".07">
-    <polygon points="512,470 1408,389 1408,551"/>
-    <polygon points="512,470 1329,848 1248,988"/>
-    <polygon points="512,470 1030,1206 890,1287"/>
-    <polygon points="512,470 593,1366 431,1366"/>
-    <polygon points="512,470 134,1287 -6,1206"/>
-    <polygon points="512,470 -224,988 -305,848"/>
-    <polygon points="512,470 -384,551 -384,389"/>
-    <polygon points="512,470 -305,92 -224,-48"/>
-    <polygon points="512,470 -6,-266 134,-347"/>
-    <polygon points="512,470 431,-426 593,-426"/>
-    <polygon points="512,470 890,-347 1030,-266"/>
-    <polygon points="512,470 1248,-48 1329,92"/>
+  <polygon points="-40,-40 560,-40 500,210 560,240 488,520 540,550 470,800 530,830 470,1064 -40,1064" fill="url(#warm)"/>
+  <polygon points="1064,-40 560,-40 500,210 560,240 488,520 540,550 470,800 530,830 470,1064 1064,1064" fill="url(#cool)"/>
+
+  <!-- Each face's centre sits near an edge (x 40 and 984, y 520), so its inner half shows. -->
+  <g clip-path="url(#fire-side)">
+    <g filter="url(#lift)">
+      <svg data-fighter="pyranda" x="-710" y="-170" width="1500" height="1500" viewBox="0 -12 200 200" overflow="visible"></svg>
+    </g>
   </g>
-  <circle cx="512" cy="470" r="400" fill="url(#glow)" opacity=".85"/>
-  <g filter="url(#lift)">
-    <svg id="hero" data-fighter="pyranda" x="-30" y="40" width="1084" height="1084" viewBox="12 -16 176 176" overflow="visible"></svg>
+  <g clip-path="url(#ice-side)">
+    <g filter="url(#lift)">
+      <!-- Mirrored to face Pyranda: translate(2x + width). -->
+      <g transform="translate(1968 0) scale(-1 1)">
+        <svg data-fighter="glacelle" x="234" y="-170" width="1500" height="1500" viewBox="0 -12 200 200" overflow="visible"></svg>
+      </g>
+    </g>
   </g>
+
+  <g fill="none" stroke-linejoin="miter" stroke-miterlimit="10">
+    <polyline points="560,-40 500,210 560,240 488,520 540,550 470,800 530,830 470,1064" stroke="#fff" stroke-width="56" filter="url(#blur)" opacity=".6"/>
+    <polyline points="560,-40 500,210 560,240 488,520 540,550 470,800 530,830 470,1064" stroke="#fffbe6" stroke-width="20"/>
+  </g>
+
+  <!-- The clash: a glow and an eight-point star at the centre. -->
+  <circle cx="512" cy="520" r="200" fill="url(#flash)"/>
+  <polygon points="718,562 570,559 628,695 525,589 470,726 473,578 337,636 443,533 306,478 454,481 396,345 499,451 554,314 551,462 687,404 581,507" fill="#fff" filter="url(#blur)" opacity=".8"/>
+  <polygon points="718,562 570,559 628,695 525,589 470,726 473,578 337,636 443,533 306,478 454,481 396,345 499,451 554,314 551,462 687,404 581,507" fill="#fffef4"/>
 </svg>
