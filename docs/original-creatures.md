@@ -30,7 +30,7 @@ The written art direction guided the initial articulated pass. The user later su
 - `apps/client/src/fighter-selection.ts`, `main.ts`, `style.css`: compact roster/filter/details, asset-backed portraits, original branding and integrated rendering.
 - `apps/client/src/element-effects.ts`, `ability-icons.ts`: eight elemental glyph families and explicit artwork for thirty-two skills, plus basic/universal actions.
 - `apps/client/public/assets/fighters/{id}/`: SVG portrait, selection art and animation metadata for every fighter.
-- `scripts/export-fighters.ts`, `generate-icons.py`: reproducible original assets and install icons. Client HTML, account/install/offline UI and manifest names updated.
+- `scripts/export-fighters.ts`, `generate-icons.mjs`: reproducible original assets and install icons. Client HTML, account/install/offline UI and manifest names updated.
 - Tests cover definitions, migration, asset validation, art keys, selection, all eight practice fighters, combat and animation state handling. Preview pages remain development-only.
 
 ## Completed fighter implementations and gameplay prototypes

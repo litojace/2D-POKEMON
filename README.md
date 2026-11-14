@@ -142,7 +142,7 @@ npm run test:visual
 
 CI runs them on ten runners at once (six shards of the suite and four of the slow panel-scroll sweeps) and merges the shards' results into one HTML report, the `visual-report` artifact. To run one shard locally: `npm run test:visual -- --grep-invert 'scroll to their end' --shard=1/6`.
 
-The asset export regenerates the original SVG prototypes and creates metadata for new folders. Existing manifests and rendered/artist portraits are preserved. `scripts/generate-icons.py` uses Pillow to regenerate the original elemental PWA emblem.
+The asset export regenerates the original SVG prototypes and creates metadata for new folders. Existing manifests and rendered/artist portraits are preserved. `node scripts/generate-icons.mjs` renders the app icon (`scripts/app-icon.svg`, original art) to the iPhone app icon, launch screen and PWA icons.
 
 Development-only previews:
 
