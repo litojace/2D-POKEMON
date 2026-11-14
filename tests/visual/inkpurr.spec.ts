@@ -109,17 +109,20 @@ test("Inkpurr's atlas is drawn when the scene is created, inside its budget", as
     const { prewarmBossAtlas } = await import(
       `/@fs${root}/apps/client/src/boss-vector-prewarm.ts`
     );
+    const t0 = performance.now();
     prewarmBossAtlas(scene, "gloomshade", 2);
+    const ms = Math.round(performance.now() - t0);
     const tex = scene.textures.get("inkpurr-atlas");
     const src = tex.getSourceImage();
     return {
       exists: scene.textures.exists("inkpurr-atlas"),
+      ms,
       bytes: src.width * src.height * 4,
       frames: tex.getFrameNames().length,
     };
   }, process.cwd());
   console.log(
-    `inkpurr atlas ${(atlas.bytes / 1048576).toFixed(2)} MB, ${atlas.frames} frames`,
+    `inkpurr atlas ${(atlas.bytes / 1048576).toFixed(2)} MB, ${atlas.frames} frames, built in ${atlas.ms} ms`,
   );
   expect(atlas.exists).toBe(true);
   expect(atlas.bytes).toBeLessThanOrEqual(8 * 1024 * 1024);
@@ -349,6 +352,62 @@ test("found, its core opens with the weak point's ring; staggered it is dizzy; a
     Math.max(0, ...Object.values(gone.parts).map((p: any) => p.alpha)) *
       gone.alpha,
   ).toBeLessThan(0.05);
+  expect(errors).toEqual([]);
+});
+
+test("its snuff reaches a tendril to the lantern and its lunge leaves an ink streak, with no objects of their own", async ({
+  page,
+}) => {
+  const errors = await review(page);
+  const look = (o: {
+    warnings: string;
+    from: number;
+    to: number;
+    then?: number;
+  }) =>
+    page.evaluate((o) => {
+      const r = (window as any).__bossReview,
+        row = r.rows.find((x: any) => x.id === "gloomshade"),
+        boss = row.state.players.find((p: any) => p.raidBoss),
+        scene = row.g.scene;
+      row.state.raid.decoys = [];
+      row.state.raid.lanterns = [
+        { x: boss.x - 230, y: boss.y - 40, lit: true, hits: 0 },
+      ];
+      row.state.raid.warnings = new Function("boss", `return ${o.warnings}`)(
+        boss,
+      );
+      for (let t = o.from; t <= o.to; t += 0.05)
+        r.frame(1, t, false, ["gloomshade"]);
+      if (o.then !== undefined) {
+        row.state.raid.warnings = [];
+        for (let t = o.to + 0.05; t <= o.then; t += 0.04)
+          r.frame(1, t, false, ["gloomshade"]);
+      }
+      return {
+        commands: row.g.commandBuffer.length,
+        objects: scene.children.list.length,
+      };
+    }, o);
+  const base = await look({ warnings: "[]", from: 1, to: 1.2 });
+  // halfway through a snuff: the tendril has coiled round the lamp
+  const snuff = await look({
+    warnings: `[{ id: 801, kind: "snuff", lantern: 0, startedAt: 10, at: 11.5, x: boss.x - 230, y: boss.y - 40, tx: boss.x - 230, ty: boss.y - 40, radius: 150 }]`,
+    from: 10,
+    to: 11,
+  });
+  expect(snuff.commands).toBeGreaterThan(base.commands + 20);
+  // a lunge just landed: the streak races down its lane
+  const lunge = await look({
+    warnings: `[{ id: 802, kind: "lunge", startedAt: 20, at: 21.2, x: boss.x + 200, y: boss.y + 60, tx: boss.x - 560, ty: boss.y - 40, radius: 34 }]`,
+    from: 20,
+    to: 21.15,
+    then: 21.32,
+  });
+  expect(lunge.commands).toBeGreaterThan(base.commands + 10);
+  // drawn into the raid's own graphics: no new scene objects
+  expect(lunge.objects).toBe(base.objects);
+  await page.screenshot({ path: test.info().outputPath("inkpurr-streak.png") });
   expect(errors).toEqual([]);
 });
 
