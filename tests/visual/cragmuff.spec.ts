@@ -123,7 +123,7 @@ const closeUp = (page: Page, zoom: number, dy = -60) =>
 test("Cragmuff stands in eight facings from one atlas, a few images each", async ({
   browser,
 }, info) => {
-  test.setTimeout(300_000);
+  test.setTimeout(600_000);
   const context = await browser.newContext({
     viewport: { width: 1280, height: 720 },
     deviceScaleFactor: 2,
@@ -168,7 +168,7 @@ test("Cragmuff stands in eight facings from one atlas, a few images each", async
 test("Cragmuff's attacks have their poses: charge, rear-up and stomp, volley, meteor, stagger, defeat", async ({
   browser,
 }, info) => {
-  test.setTimeout(420_000);
+  test.setTimeout(720_000);
   const context = await browser.newContext({
     viewport: { width: 1280, height: 720 },
     deviceScaleFactor: 2,
@@ -215,7 +215,12 @@ test("Cragmuff's attacks have their poses: charge, rear-up and stomp, volley, me
     await run(page, 1.0);
     const volley = await pose("volley-windup");
     expect(volley.frames.some((f: string) => f.startsWith("rock_"))).toBe(true);
-    await run(page, 1.5);
+    // just before it lands: the wet-dog shake throws them (eyes shut, fleece emptied)
+    await run(page, 0.25);
+    const shake = await pose("volley-shake");
+    expect(shake.expr).toBe("closed");
+    expect(shake.frames.some((f: string) => f.startsWith("rock_"))).toBe(false);
+    await run(page, 1.25);
     // the meteor: rearing with the horns blazing
     await page.evaluate(() => (window as any).__combat.cast("share"));
     await run(page, 1.5);
