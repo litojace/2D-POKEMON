@@ -17,9 +17,13 @@ its stable storage ID: the 1536×1024 landscape hero, 600×900 portrait and
 
 `BOSS_FRAMES` in `screens/raid-hall-view.ts` supplies the body and face focal
 points for the approved illustrations, including the zoom used on phones.
-`docs/ui-remodel/tools/boss-portraits.sh` regenerates the current portrait
-crops. The optional `boss-art.py` utility can instead frame a supplied whole
-creature box when preparing future illustrations.
+The portraits and thumbnails are cut by `docs/ui-remodel/tools/boss-art.py`
+from a box around the whole creature (tails, ribbons, gills, hats) and its
+face's x: the whole boss always fits, and within the room left over the cut
+slides so the face sits as near the middle as it can. Where the painting runs
+out, a soft filled strip sits under the card's name. The exact
+boxes are in the commit that added them; `boss-portraits.sh` is the older
+centre-strip cut and trims wide bosses.
 
 The illustrations contain no UI or text. Original generation PNGs remain in
 the chat's image artifacts; the repository contains optimized WebP exports.
