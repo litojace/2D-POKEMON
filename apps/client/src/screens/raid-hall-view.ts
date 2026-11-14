@@ -311,11 +311,11 @@ export const BOSS_FRAMES: Record<
 > = {
   grumblecrag: { body: [0.55, 0.4], face: [0.56, 0.26], zoom: 1.8 },
   tidewyrm: { body: [0.47, 0.62], face: [0.56, 0.64], zoom: 1.9 },
-  gloomshade: { body: [0.52, 0.55], face: [0.6, 0.62], zoom: 1.7 },
+  gloomshade: { body: [0.5, 0.37], face: [0.6, 0.28], zoom: 1.3 },
   somnara: { body: [0.38, 0.4], face: [0.31, 0.33], zoom: 1.6 },
   prismatail: { body: [0.57, 0.45], face: [0.63, 0.2], zoom: 2 },
-  emberwing: { body: [0.52, 0.5], face: [0.52, 0.47], zoom: 1.8 },
-  "storm-twins": { body: [0.52, 0.4], face: [0.5, 0.35], zoom: 1.2 },
+  emberwing: { body: [0.42, 0.33], face: [0.45, 0.3], zoom: 1.4 },
+  "storm-twins": { body: [0.48, 0.38], face: [0.48, 0.38], zoom: 1 },
 };
 /**
  * The stage: the boss's painting framed vertically on the boss (a poster),

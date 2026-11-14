@@ -5,11 +5,11 @@ the approved mountain-coliseum illustration. The remaining images follow the
 same painterly style, using each boss's existing battle atlas as identity reference:
 
 - Tidewyrm: a moonlit tidal vortex and drowned temple.
-- Gloomshade: haunted ruins, shadow hands and its golden crescent tail.
+- Gloomshade (Inkpurr): a lantern-lit courtyard at night, ink hands and its golden crescent tail.
 - Somnara: clouds, dream ripples and the cottage on its back.
 - Prismatail: a mirror temple and a crystal fan scattering sunlight.
-- Emberwing: volcanic ruins and a ring of fire, with room for both wings.
-- Storm Twins: gold and blue spirits joined by lightning in a storm temple.
+- Emberwing (Lumiwick): a volcanic terrace with its three braziers, both paper ribbons out.
+- Storm Twins: gold and blue spirits joined by lightning over a rain-soaked storm arena.
 
 The illustrations contain no repeated titles or UI text. Game encounters and
 boss animation assets are unchanged. The approved splash is used in the boss
@@ -25,3 +25,9 @@ Asset locations: `apps/client/src/art/raid-splash/`, mapping in
 `apps/client/src/raid-splash-art.ts`. Original generation files remain in the session
 workspace's `generated_images` directory; the repository contains optimized WebP
 exports only.
+
+Lumiwick, Inkpurr and Storm Twins were repainted in a realistic hand-painted
+style (November 2026). Their thumbnails and card portraits are cut by
+`docs/ui-remodel/tools/boss-art.py` from a box around the whole boss, so tails,
+ribbons and tendrils are never trimmed in the cards; the stage framing points
+are in `BOSS_FRAMES` (`apps/client/src/screens/raid-hall-view.ts`).

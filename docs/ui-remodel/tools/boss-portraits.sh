@@ -4,6 +4,8 @@
 # centred on the boss's "body" point in BOSS_FRAMES
 # (apps/client/src/screens/raid-hall-view.ts). Needs ImageMagick.
 # Run from the repo root after changing a painting or a framing point.
+# Emberwing, Gloomshade and Storm Twins are cut by boss-art.py instead (it
+# frames the whole boss, ribbons and tails included), so they are not here.
 set -e
 DIR=apps/client/src/art/raid-splash
 # id  body-x (fraction of the painting's width)
@@ -16,9 +18,6 @@ while read -r id x; do
 done <<'LIST'
 grumblecrag 0.55
 tidewyrm 0.64
-gloomshade 0.58
 somnara 0.38
 prismatail 0.57
-emberwing 0.52
-storm-twins 0.52
 LIST
