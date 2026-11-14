@@ -10,7 +10,7 @@ import { RAID_BOSSES, type RaidBossId } from "./raid-roster.js";
 import type { CharacterId } from "./index.js";
 export * from "./raid-roster.js";
 export const RAID = {
-  name: "Grumblecrag",
+  name: "Cragmuff",
   maxPeril: 3,
   timeLimit: 600,
   /** Every boss's health × this (they went down in about a minute). */
@@ -268,7 +268,7 @@ export const RAID_ATTACKS: Record<
     practice: "Embers rain down on staggered circles. Step between them.",
   },
   "wing-gust": {
-    name: "Wing Gust",
+    name: "Hot Gust",
     tip: "Leave the arrow cone or dash into the gust to resist its push. Avoid being pushed into fire.",
     practice: "The cone pushes you away. Dash toward the boss as it lands.",
   },
@@ -279,7 +279,7 @@ export const RAID_ATTACKS: Record<
   },
   "scorched-earth": {
     name: "Scorched Earth",
-    tip: "Avoid growing fire patches. Grounding Emberwing shrinks all fire; Tidefin\u2019s Undertow puts out the patches along its current.",
+    tip: "Avoid growing fire patches. Grounding Lumiwick shrinks all fire; Tidefin\u2019s Undertow puts out the patches along its current.",
     practice: "Fire patches grow over time. Ground the boss to shrink them.",
   },
   "heat-mark": {
@@ -290,7 +290,7 @@ export const RAID_ATTACKS: Record<
   },
   "brazier-lighting": {
     name: "Brazier Lighting",
-    tip: "Stand inside a brazier ring for 2 seconds. Light all three together to ground Emberwing. Solo flames last 11 seconds. Fireproof halves the lighting time.",
+    tip: "Stand inside a brazier ring for 2 seconds. Light all three together to ground Lumiwick. Solo flames last 11 seconds. Fireproof halves the lighting time.",
     practice:
       "Run the triangle and light all three braziers before the first goes out.",
   },
@@ -401,7 +401,7 @@ export const RAID_ATTACKS: Record<
   },
   snuff: {
     name: "Lantern Snuff",
-    tip: "A lantern dims and goes out. Hit it twice to relight it: lantern light is where the real Gloomshade casts a shadow.",
+    tip: "A lantern dims and goes out. Hit it twice to relight it: lantern light is where the real Inkpurr casts a shadow.",
     practice: "A lantern goes out. Hit it twice to relight it.",
   },
   curse: {
@@ -411,7 +411,7 @@ export const RAID_ATTACKS: Record<
   },
   split: {
     name: "Mirror Split",
-    tip: "Only the real Gloomshade casts a shadow in lantern light, and its moon tail flickers. Hitting a copy curses you.",
+    tip: "Only the real Inkpurr casts a shadow in lantern light, and its moon tail flickers. Hitting a copy curses you.",
     practice: "It splits into copies. Find the one with a shadow in the light.",
   },
   pulse: {
@@ -502,7 +502,7 @@ export const raidAttacksOf = (boss: RaidBossId) =>
  */
 export const GRUMBLECRAG = {
   id: "grumblecrag",
-  name: "Grumblecrag",
+  name: "Cragmuff",
   health: { base: 1450, perExtraPlayer: 900, gilded: 1.12 },
   /** Boss damage at Peril 1, 2 and 3 (index = Peril). */
   perilDamage: [1, 1, 1.25, 1.5],
@@ -545,7 +545,7 @@ export const GRUMBLECRAG = {
  */
 export const TIDEWYRM = {
   id: "tidewyrm",
-  name: "Tidewyrm",
+  name: "Tidelotl",
   health: { base: 1350, perExtraPlayer: 850, gilded: 1.12 },
   perilDamage: [1, 1, 1.25, 1.5],
   cadence: { normal: 5, restless: 4.4, finalPhase: 0.85 },
@@ -621,7 +621,8 @@ export const TIDEWYRM = {
  */
 export const GLOOMSHADE = {
   id: "gloomshade",
-  name: "Gloomshade",
+  // The internal id stays "gloomshade" (stats, progress, database rows); players see Inkpurr.
+  name: "Inkpurr",
   // Finding the real one costs a solo raider more time than a party, so
   // more of its health comes with each extra raider than for the others.
   health: { base: 1050, perExtraPlayer: 1000, gilded: 1.12 },
@@ -846,11 +847,11 @@ export const RAID_PERKS: Partial<
   },
   astrabun: {
     skill: "Mochi Pound",
-    text: "The last pound of a chain on Grumblecrag adds 15 stagger.",
+    text: "The last pound of a chain on Cragmuff adds 15 stagger.",
   },
   wombolder: {
     skill: "Burrow Rush and Landslide",
-    text: "Charge Grumblecrag into a pillar for 25 extra stagger.",
+    text: "Charge Cragmuff into a pillar for 25 extra stagger.",
   },
   pangrove: {
     skill: "Curl & Roll",
@@ -905,11 +906,11 @@ export const RAID_BOSS_PERKS: Partial<
     },
     auralynx: {
       skill: "Facet Guard",
-      text: "Reflecting a Dive Bomb adds 20 stagger to Emberwing.",
+      text: "Reflecting a Dive Bomb adds 20 stagger to Lumiwick.",
     },
     lumoth: {
       skill: "Wing Dust",
-      text: "Your wing dust deals full damage to an airborne Emberwing.",
+      text: "Your wing dust deals full damage to an airborne Lumiwick.",
     },
     pyranda: {
       skill: "Chestnut Mortar",
@@ -921,11 +922,11 @@ export const RAID_BOSS_PERKS: Partial<
     },
     halcyra: {
       skill: "Aura Quill and Focus Shot",
-      text: "Your shots deal full damage to an airborne Emberwing.",
+      text: "Your shots deal full damage to an airborne Lumiwick.",
     },
     astrabun: {
       skill: "Full Moon",
-      text: "Your crash reaches an airborne Emberwing at full damage and adds 20 stagger.",
+      text: "Your crash reaches an airborne Lumiwick at full damage and adds 20 stagger.",
     },
     mossloth: {
       skill: "Overgrowth",
@@ -970,7 +971,7 @@ export const RAID_BOSS_PERKS: Partial<
   tidewyrm: {
     voltkit: {
       skill: "Static Lance",
-      text: "Hits on a stranded Tidewyrm add extra stagger (water conducts).",
+      text: "Hits on a stranded Tidelotl add extra stagger (water conducts).",
     },
     cindrake: {
       skill: "Magma Bomb",
@@ -994,15 +995,15 @@ export const RAID_BOSS_PERKS: Partial<
     },
     glacelle: {
       skill: "Frost Bloom",
-      text: "Blooming on a stranded Tidewyrm freezes it there 2 seconds longer.",
+      text: "Blooming on a stranded Tidelotl freezes it there 2 seconds longer.",
     },
     pangrove: {
       skill: "Tongue Grapple",
-      text: "Latching onto a stranded Tidewyrm adds extra stagger.",
+      text: "Latching onto a stranded Tidelotl adds extra stagger.",
     },
     mossloth: {
       skill: "Seedling",
-      text: "A seedling going off by a stranded Tidewyrm keeps it stranded 1 second longer.",
+      text: "A seedling going off by a stranded Tidelotl keeps it stranded 1 second longer.",
     },
   },
   gloomshade: {
@@ -1016,11 +1017,11 @@ export const RAID_BOSS_PERKS: Partial<
     },
     mystowl: {
       skill: "Third-Eye Ray",
-      text: "Passes through copies: aimed at the real Gloomshade, it marks it for everyone.",
+      text: "Passes through copies: aimed at the real Inkpurr, it marks it for everyone.",
     },
     duskveil: {
       skill: "Haunted Lantern",
-      text: "Hung near the real Gloomshade, its light reveals it to the team for 6 seconds.",
+      text: "Hung near the real Inkpurr, its light reveals it to the team for 6 seconds.",
     },
     pyranda: {
       skill: "Chestnut Mortar",
@@ -1032,11 +1033,11 @@ export const RAID_BOSS_PERKS: Partial<
     },
     wombolder: {
       skill: "Landslide",
-      text: "Its eruption shakes off every copy: only the real Gloomshade remains until it splits again.",
+      text: "Its eruption shakes off every copy: only the real Inkpurr remains until it splits again.",
     },
     shadopus: {
       skill: "Ink Cloud",
-      text: "While you are hidden, Gloomshade's attacks never pick you as their target.",
+      text: "While you are hidden, Inkpurr's attacks never pick you as their target.",
     },
   },
   somnara: {
@@ -1107,19 +1108,19 @@ export const RAID_BOSS_CHAPTERS: Partial<
       name: "Takeoff",
       objective: "Sidestep dives. Jump the expanding flame ring.",
       detail:
-        "Emberwing stays on the ground while you learn its attacks. Avoid the locked dive lane and its burning trail, step between falling embers, and dash toward the boss to resist Wing Gust.",
+        "Lumiwick floats low over the terrace while you learn its attacks. Avoid the locked dive lane and its burning trail, step between falling embers, and dash toward the boss to resist Hot Gust.",
     },
     {
       name: "High Flight",
-      objective: "Light all three braziers together to ground Emberwing.",
+      objective: "Light all three braziers together to ground Lumiwick.",
       detail:
-        "Stand on a brazier for 2 seconds. Team flames last 5 seconds; solo flames last 11 seconds. Once two burn, Emberwing rains fire on the last one: light it from its clear side. Grounding exposes Emberwing for 5 seconds and shrinks fire patches. Melee cannot hit it in the air; ranged damage is halved. Spread out for Heat Marks.",
+        "Stand on a brazier for 2 seconds. Team flames last 5 seconds; solo flames last 11 seconds. Once two burn, Lumiwick rains fire on the last one: light it from its clear side. Grounding exposes Lumiwick for 5 seconds and shrinks fire patches. Melee cannot hit it in the air; ranged damage is halved. Spread out for Heat Marks.",
     },
     {
       name: "Blazing Sky",
       objective: "Ground it twice to keep the heart open.",
       detail:
-        "Team braziers stay lit for 3.5 seconds (4.5 for a pair), while solo keeps the longer timer. Dives turn and come back. Fire spreads faster. Bring Emberwing down three times this chapter and it stays grounded and exposed for 20 seconds. Fireproof halves lighting time and reduces floor-fire damage by 50%.",
+        "Team braziers stay lit for 3.5 seconds (4.5 for a pair), while solo keeps the longer timer. Dives turn and come back. Fire spreads faster. Bring Lumiwick down three times this chapter and it stays grounded and exposed for 20 seconds. Fireproof halves lighting time and reduces floor-fire damage by 50%.",
     },
   ],
   "storm-twins": [
@@ -1149,7 +1150,7 @@ export const RAID_BOSS_CHAPTERS: Partial<
       name: "Low Tide",
       objective: "Lead the dive onto an island. Jump the low wave.",
       detail:
-        "When a ripple follows you, walk it onto an island and step off: Tidewyrm surfaces stranded on dry land, open to attack. Jump the low waves and weave through bubbles.",
+        "When a ripple follows you, walk it onto an island and step off: Tidelotl surfaces stranded on dry land, open to attack. Jump the low waves and weave through bubbles.",
     },
     {
       name: "Turning Tide",
@@ -1169,13 +1170,13 @@ export const RAID_BOSS_CHAPTERS: Partial<
       name: "Dusk",
       objective: "Keep the lanterns lit. Stand on lit tiles.",
       detail:
-        "Shadow Lunges come from the nearest shadow, not from Gloomshade. Grasping Hands darken half the floor: stand on a lit tile. When a lantern goes out, hit it twice to relight it. Keep hitting Gloomshade to fill its stagger bar and expose its core.",
+        "Shadow Lunges come from the nearest shadow, not from Inkpurr. Grasping Hands darken half the floor: stand on a lit tile. When a lantern goes out, hit it twice to relight it. Keep hitting Inkpurr to fill its stagger bar and expose its core.",
     },
     {
       name: "Midnight",
       objective: "Find the real one. Spread out from curses.",
       detail:
-        "It splits into copies: only the real Gloomshade casts a shadow in lantern light, and its moon tail flickers. Hitting a copy curses you; six hits on the real one in a row exposes it. Creeping Curse spreads between raiders who stand close: lantern light cleanses it.",
+        "It splits into copies: only the real Inkpurr casts a shadow in lantern light, and its moon tail flickers. Hitting a copy curses you; six hits on the real one in a row exposes it. Creeping Curse spreads between raiders who stand close: lantern light cleanses it.",
     },
     {
       name: "Witching Hour",
@@ -1430,7 +1431,7 @@ export const RAID_REWARDS: RaidReward[] = [
     id: "wingbreaker",
     boss: "emberwing",
     slot: "title",
-    name: "Wingbreaker",
+    name: "Wicksnuffer",
     description: "Title",
     goal: "Clear 3 times",
     rule: { kind: "clears", n: 3, legacyPeril: 3 },
@@ -1459,7 +1460,7 @@ export const RAID_REWARDS: RaidReward[] = [
     slot: "victory",
     name: "Feather Fall",
     description: "Fiery feathers fan out and drift gently around you",
-    goal: "Feat: ground Emberwing within 20 seconds of takeoff three times",
+    goal: "Feat: ground Lumiwick within 20 seconds of takeoff three times",
     rule: { kind: "feat" },
   },
   {
@@ -1475,7 +1476,7 @@ export const RAID_REWARDS: RaidReward[] = [
     id: "lone-phoenix",
     boss: "emberwing",
     slot: "title",
-    name: "Lone Phoenix",
+    name: "Lone Lantern",
     description: "Title",
     goal: "Clear solo without going down",
     rule: { kind: "solo", peril: 3 },
@@ -1687,7 +1688,7 @@ export const RAID_REWARDS: RaidReward[] = [
     slot: "title",
     name: "Gilded Cragbreaker",
     description: "Title",
-    goal: "Defeat a rare Gilded Grumblecrag",
+    goal: "Defeat a rare Gilded Cragmuff",
     rule: { kind: "gilded" },
   },
   {
@@ -1777,7 +1778,7 @@ export const RAID_REWARDS: RaidReward[] = [
     slot: "victory",
     name: "Splashdown",
     description: "A wave rises and crashes in a burst of spray behind you",
-    goal: "Feat: strand Tidewyrm 4 times in one run",
+    goal: "Feat: strand Tidelotl 4 times in one run",
     rule: { kind: "feat" },
   },
   {
@@ -1804,7 +1805,7 @@ export const RAID_REWARDS: RaidReward[] = [
     slot: "title",
     name: "Shipwright",
     description: "Title",
-    goal: "Strand Tidewyrm 30 times (wins and losses)",
+    goal: "Strand Tidelotl 30 times (wins and losses)",
     rule: { kind: "stat", stat: "pillars", n: 30 },
   },
   {
@@ -2058,8 +2059,8 @@ export const RAID_TRAITS = {
     text: "Fire patches last longer, but less Ember Rain falls.",
   },
   molting: {
-    name: "Molting",
-    text: "Dives come more often, but fallen feathers grant 10 ultimate charge.",
+    name: "Fraying",
+    text: "Dives come more often, but fallen tassels grant 10 ultimate charge.",
   },
   dazzling: {
     name: "Dazzling",

@@ -85,7 +85,7 @@ export function raidCue(state: Snapshot, myId: string) {
     if (w?.kind === "dive-bomb")
       return "Dive locked — sidestep the lane and avoid its burning trail!";
     if (w?.kind === "wing-gust")
-      return "Wing Gust — leave the cone or dash into the wind!";
+      return "Hot Gust — leave the cone or dash into the wind!";
     if ((r.flameRings?.length ?? 0) > 0 || w?.kind === "flame-ring")
       return "Flame Ring — jump as the expanding edge reaches you!";
     if (w?.kind === "ember-rain")

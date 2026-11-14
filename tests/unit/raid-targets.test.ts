@@ -28,7 +28,7 @@ const state = (o: any = {}) =>
 describe("raid targets (phones)", () => {
   beforeEach(() => resetRaidTargets());
 
-  it("lists Gloomshade's bodies alike, and only the unlit lanterns", () => {
+  it("lists Inkpurr's bodies alike, and only the unlit lanterns", () => {
     const t = gloomTargets(state(), { x: 620, y: 470 })!;
     expect(t.map((x) => x.kind).sort()).toEqual([
       "lantern",
@@ -43,7 +43,7 @@ describe("raid targets (phones)", () => {
     const real = t.find((x) => x.id === "shade:boss")!;
     const copy = t.find((x) => x.id === "shade:7")!;
     expect(Object.keys(real).sort()).toEqual(Object.keys(copy).sort());
-    expect(real.label).toMatch(/^Shade [A-C]$/);
+    expect(real.label).toMatch(/^Inkpurr [A-C]$/);
   });
 
   it("hands the letters out at random, so no label points at the real one", () => {
@@ -60,7 +60,7 @@ describe("raid targets (phones)", () => {
     expect(realLabels.size).toBeGreaterThan(1);
   });
 
-  it("keeps its letters while the bodies stay, and is Gloomshade alone otherwise", () => {
+  it("keeps its letters while the bodies stay, and is Inkpurr alone otherwise", () => {
     const a = gloomTargets(state(), { x: 0, y: 0 })!;
     const b = gloomTargets(state(), { x: 1600, y: 900 })!;
     for (const x of a)
@@ -70,7 +70,7 @@ describe("raid targets (phones)", () => {
       y: 0,
     })!;
     expect(alone.filter((x) => x.kind === "shade")).toEqual([
-      expect.objectContaining({ id: "shade:boss", label: "Gloomshade" }),
+      expect.objectContaining({ id: "shade:boss", label: "Inkpurr" }),
     ]);
     expect(
       gloomTargets({ ...state(), raid: { boss: "somnara" } } as any, {
@@ -99,7 +99,7 @@ describe("raid targets (phones)", () => {
     const t = raidTargets(tide([{ playerId: "p2", x: 520, y: 500 }]), me)!;
     expect(t.map((x) => [x.id, x.kind, x.label])).toEqual([
       ["bubble:p2", "bubble", "Free Kai"],
-      ["boss", "boss", "Tidewyrm"],
+      ["boss", "boss", "Tidelotl"],
     ]);
   });
 });

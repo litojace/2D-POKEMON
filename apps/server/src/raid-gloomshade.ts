@@ -181,7 +181,7 @@ export class GloomshadeArena extends RaidArena {
   }
   protected override finishMessage(won: boolean) {
     return won
-      ? "Dawn breaks. Gloomshade fades with the night. You did it!"
+      ? "Dawn breaks. Inkpurr melts away with the night. You did it!"
       : "The night goes on. Change your build and try again.";
   }
   protected override onChapter() {
@@ -932,7 +932,7 @@ export class GloomshadeArena extends RaidArena {
       );
       if (off < 0.25 && Math.hypot(boss.x - p.x, boss.y - p.y) < 900) {
         r.revealUntil = Math.max(r.revealUntil ?? 0, this.time + G.revealRay);
-        r.message = `${p.name}'s Third-Eye Ray marks the real Gloomshade!`;
+        r.message = `${p.name}'s Third-Eye Ray marks the real Inkpurr!`;
       }
     }
     // Duskveil's Haunted Lantern hung by the real one lights it up.
@@ -941,7 +941,7 @@ export class GloomshadeArena extends RaidArena {
       Math.hypot(aim.x - boss.x, aim.y - boss.y) < 160
     ) {
       r.revealUntil = Math.max(r.revealUntil ?? 0, this.time + G.revealMark);
-      r.message = `${p.name}'s Haunted Lantern reveals the real Gloomshade!`;
+      r.message = `${p.name}'s Haunted Lantern reveals the real Inkpurr!`;
     }
   }
 

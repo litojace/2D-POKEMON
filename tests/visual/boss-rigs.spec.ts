@@ -27,7 +27,7 @@ async function review(page: Page) {
 /** The root names of the rigs: one per boss; Gloomshade's real body and each
  * Storm Twin have their own. */
 const ROOTS = {
-  grumblecrag: "vector-boss-grumblecrag",
+  grumblecrag: "cragmuff-boss",
   tidewyrm: "vector-boss-tidewyrm",
   gloomshade: "vector-boss-gloomshade:shade-0",
   somnara: "vector-boss-somnara",
@@ -50,7 +50,7 @@ const vector = (page: Page, id: Rig = "grumblecrag") =>
     // hold thin lines (Graphics), which have no texture
     for (const o of root.list.flatMap((c: any) => c.list ?? []))
       if (o.visible && o.type === "Image")
-        parts[o.name.replace("vector-part-", "")] = {
+        parts[o.name.replace(/^(vector-part-|cragmuff-)/, "")] = {
           x: o.x,
           y: o.y,
           rotation: o.rotation,
@@ -67,7 +67,7 @@ const all = async (page: Page) => {
   for (const id of ALL) out[id] = await vector(page, id);
   return out;
 };
-/** Gloomshade's vector bodies (boss-vector-gloom-rig.ts): one rig per body. */
+/** Inkpurr's bodies (boss id "gloomshade", boss-inkpurr-rig.ts): one rig per body. */
 const gloomRoots = (page: Page) =>
   page.evaluate(() =>
     (window as any).__bossReview.rows[0].g.scene.children.list
@@ -103,7 +103,11 @@ test("all seven bosses' rigs animate, hold a pause and keep combat snapshots imm
   for (const id of ALL) {
     expect(start[id], id).not.toBeNull();
     expect(start[id]!.visible, id).toBe(true);
-    expect(Object.keys(start[id]!.parts).length, id).toBeGreaterThan(10);
+    // Lumiwick (Emberwing's id) is a simple round lantern and Cragmuff stands
+    // in a handful of images (one picture for its legs, one for its fleece).
+    expect(Object.keys(start[id]!.parts).length, id).toBeGreaterThan(
+      id === "emberwing" || id === "grumblecrag" ? 6 : 10,
+    );
   }
   await page.evaluate(() => {
     const r = (window as any).__bossReview;
@@ -138,12 +142,13 @@ test("all seven bosses' rigs animate, hold a pause and keep combat snapshots imm
   // every boss winds up visibly
   for (const id of ALL)
     expect(moved(gathered[id], start[id]), id).toBeGreaterThan(2);
-  // Ground Slam: Grumblecrag's fists rise overhead and burn.
+  // Ground Slam: Cragmuff rears up on its hind legs (its own drawing), horns glowing.
   const v0 = start.grumblecrag!,
     v1 = gathered.grumblecrag!;
-  expect(v1.parts.fistL.y).toBeLessThan(v0.parts.fistL.y - 40);
-  expect(v1.parts.fistR.y).toBeLessThan(v0.parts.fistR.y - 40);
-  expect(v1.parts["glow-fistL"]).toBeTruthy();
+  expect(v0.parts.body.frame).toMatch(/^body_/);
+  expect(v1.parts.body.frame).toMatch(/^bodyR_/);
+  expect(v1.parts.head.y).toBeLessThan(v0.parts.head.y - 15);
+  expect(v1.parts.hglow0).toBeTruthy();
   // Fan Display: Prismatail's train spreads and shines, its neck lifts.
   const spread = (v: any) =>
     Math.abs(
@@ -157,9 +162,9 @@ test("all seven bosses' rigs animate, hold a pause and keep combat snapshots imm
     start.prismatail!.parts.head.y,
   );
   expect(gathered.prismatail!.parts.shine0).toBeTruthy();
-  // Flame Ring: Emberwing's fire flares up around it.
-  expect(start.emberwing!.parts.aura).toBeUndefined();
-  expect(gathered.emberwing!.parts.aura).toBeTruthy();
+  // Flame Ring: Lumiwick (Emberwing's id) hugs itself, ribbons wrapped.
+  expect(start.emberwing!.parts.armL.frame).toMatch(/_rest_/);
+  expect(gathered.emberwing!.parts.armL.frame).toMatch(/_wrap_/);
   await page.evaluate(() => {
     const r = (window as any).__bossReview;
     for (const row of r.rows) row.state.raid.warnings = [];
@@ -168,8 +173,10 @@ test("all seven bosses' rigs animate, hold a pause and keep combat snapshots imm
     r.frame(1, 1.55, false);
   });
   const striking = await all(page);
-  expect(striking.grumblecrag!.parts.fistL.y).toBeGreaterThan(
-    v1.parts.fistL.y + 40,
+  // ...and stomps back down
+  expect(striking.grumblecrag!.parts.body.frame).toMatch(/^body_/);
+  expect(striking.grumblecrag!.parts.head.y).toBeGreaterThan(
+    v1.parts.head.y + 15,
   );
   for (const id of ALL)
     for (const p of Object.values(striking[id]!.parts) as any[])
@@ -218,10 +225,10 @@ test("all seven bosses' rigs animate, hold a pause and keep combat snapshots imm
   });
   const retry = await all(page);
   for (const [id, keys] of [
-    ["grumblecrag", ["fistL", "fistR", "head", "torso"]],
-    ["tidewyrm", ["cran", "snout", "jaw", "seg20"]],
+    ["grumblecrag", ["legs", "body", "head", "eyes"]],
+    ["tidewyrm", ["head", "body", "mouth", "tail"]],
     ["prismatail", ["body", "brooch", "head", "shard4"]],
-    ["emberwing", ["body", "chest", "f-head"]],
+    ["emberwing", ["body", "eyes", "curl"]],
   ] as const)
     for (const k of keys) {
       expect(retry[id]!.parts[k].x, `${id} ${k}`).toBeCloseTo(
@@ -354,19 +361,21 @@ for (const mobile of [false, true])
           }),
         )
         .toBe(true);
-      // one atlas of vector pieces, and no painted Emberwing at all
+      // one atlas of code-drawn pieces, and no painted Emberwing at all
       const textures = await page.evaluate(() =>
         (window as any).__paintedBattle.textures
           .getTextureKeys()
           .filter(
             (k: string) =>
-              k.startsWith("raid-painted-") || k.startsWith("vember-"),
+              k.startsWith("raid-painted-") ||
+              k.startsWith("vember-") ||
+              k.startsWith("lumiwick-"),
           ),
       );
-      expect(textures).toEqual(["vember-atlas-1"]);
+      expect(textures).toEqual(["lumiwick-atlas"]);
       await snap(page, info, `painted-raid-${mobile ? "iphone" : "desktop"}`);
       // Reproduce the real server steering back toward centre while a locked
-      // Wing Gust points north. The bird must keep showing its BACK (facing 4).
+      // Hot Gust points north. The lantern must keep showing its BACK (facing 4).
       await page.evaluate(async () => {
         const { createBossCombatDemo } = await import("/boss-combat-demo.ts");
         const w = window as any;
@@ -406,7 +415,7 @@ for (const mobile of [false, true])
           clearInterval(w.__turnTimer);
           return {
             facing: root?.getData("facing"),
-            // from behind: its head drawn from the back, and no eyes
+            // from behind: its back view, and no face
             parts: root?.list[0].list
               .filter((o: any) => o.type === "Image" && o.visible)
               .map((o: any) => [o.name, o.frame.name]),
@@ -417,17 +426,17 @@ for (const mobile of [false, true])
         .poll(
           async () =>
             (await read()).parts.find(
-              ([n]: [string]) => n === "vector-part-f-head",
+              ([n]: [string]) => n === "vector-part-body",
             )?.[1],
         )
-        .toMatch(/^head_back/);
+        .toBe("body_4");
       const locked = await read();
       expect(locked.facing).toBe(4);
       expect(
-        locked.parts.find(([n]: [string]) => n === "vector-part-f-head")?.[1],
-      ).toMatch(/^head_back/);
+        locked.parts.find(([n]: [string]) => n === "vector-part-body")?.[1],
+      ).toBe("body_4");
       expect(
-        locked.parts.some(([n]: [string]) => n.startsWith("vector-part-f-eye")),
+        locked.parts.some(([n]: [string]) => n.startsWith("vector-part-eyes")),
       ).toBe(false);
       await snap(
         page,
@@ -440,13 +449,13 @@ for (const mobile of [false, true])
     }
   });
 
-// Tidewyrm is vector art now (vector-tide.spec.ts covers its rig in depth):
-// stranded, its whole body lies on the island's sand, facing either way.
+// Tidewyrm is drawn as Tidelotl (tidelotl.spec.ts covers its rig in depth):
+// stranded, its whole body lies belly-flat on the island's sand, facing either way.
 test("stranded Tidewyrm is one complete grounded creature in both directions", async ({
   page,
 }, info) => {
   const errors = await review(page);
-  // Standing in the water, side-on: how high its body reaches (the yardstick).
+  // Floating in the water, side-on: how high its head reaches (the yardstick).
   await page.evaluate(() => {
     const r = (window as any).__bossReview,
       row = r.rows.find((o: any) => o.id === "tidewyrm"),
@@ -455,14 +464,6 @@ test("stranded Tidewyrm is one complete grounded creature in both directions", a
     r.frame(1, 5.5, true);
   });
   const up = (await vector(page, "tidewyrm"))!;
-  const top = (parts: Record<string, any>) =>
-    Math.max(
-      ...Object.entries(parts)
-        .filter(([id]) => /^seg\d+$/.test(id))
-        .map(([, p]) => -p.y),
-    );
-  const standing = top(up.parts);
-  expect(standing).toBeGreaterThan(80);
   for (const facing of [1, -1]) {
     await page.evaluate((facing) => {
       const r = (window as any).__bossReview,
@@ -477,17 +478,16 @@ test("stranded Tidewyrm is one complete grounded creature in both directions", a
       r.frame(1, facing > 0 ? 6 : 6.25, true);
     }, facing);
     const v = (await vector(page, "tidewyrm"))!;
-    const segs = Object.entries(v.parts)
-      .filter(([id]) => /^seg\d+$/.test(id))
-      .map(([, p]) => p);
     expect(v.visible).toBe(true);
     // turned to the side it faces, the head out ahead of the body
     expect(v.facing).toBe(facing > 0 ? 2 : 6);
-    expect(Math.sign(v.parts.snout.x - v.parts.seg15.x)).toBe(facing);
-    // the whole body is out on the sand (none of it under water), lying low
-    expect(segs).toHaveLength(30);
-    expect(top(v.parts)).toBeLessThan(standing * 0.75);
-    expect(v.parts.cran.y).toBeGreaterThan(up.parts.cran.y + standing * 0.3);
+    expect(Math.sign(v.parts.head.x - v.parts.body.x)).toBe(facing);
+    // out on the sand: legs splayed, tail flopped, nothing under water
+    expect(v.parts.legFL.frame).toMatch(/_F_splay$/);
+    expect(v.parts.tail.frame).toMatch(/_flop$/);
+    expect(v.parts.fade).toBeUndefined();
+    // belly-flat: the head sits lower than when it floats
+    expect(v.parts.head.y).toBeGreaterThan(up.parts.head.y - 10);
     // one creature: every visible piece within a body's length of the boss
     for (const p of Object.values(v.parts) as any[])
       expect(Math.hypot(p.x, p.y)).toBeLessThan(260);
@@ -600,24 +600,26 @@ test("all seven bosses turn to each of the four main facings, with no face from 
     for (const id of ALL)
       expect(rigs[id]!.facing, `${id} ${view}`).toBe(facing);
     const v = rigs.grumblecrag!;
-    if (view === "front") expect(v.parts.eyeL && v.parts.eyeR).toBeTruthy();
-    if (view === "back") expect(v.parts.eyeL ?? v.parts.eyeR).toBeUndefined();
+    if (view === "front") expect(v.parts.eyes.frame).toMatch(/^eyes_0_/);
+    if (view === "back") expect(v.parts.eyes).toBeUndefined();
     if (view === "left" || view === "right")
-      expect(Math.sign(v.parts.head.x - v.parts.pelvis.x)).toBe(
+      expect(Math.sign(v.parts.head.x - v.parts.body.x)).toBe(
         view === "right" ? 1 : -1,
       );
     const t = rigs.tidewyrm!;
     if (view === "front")
-      expect(t.parts["eye-1"] && t.parts.eye1 && t.parts.pearl).toBeTruthy();
-    if (view === "back")
-      expect(t.parts["eye-1"] ?? t.parts.eye1).toBeUndefined();
+      expect(t.parts.eyen && t.parts.eyef && t.parts.pearl).toBeTruthy();
+    if (view === "back") expect(t.parts.eyen ?? t.parts.mouth).toBeUndefined();
     if (view === "left" || view === "right")
-      expect(Math.sign(t.parts.snout.x - t.parts.seg15.x)).toBe(
+      expect(Math.sign(t.parts.head.x - t.parts.body.x)).toBe(
         view === "right" ? 1 : -1,
       );
-    for (const id of ["gloomshade", "somnara", "fizz", "crackle"] as const)
-      if (view === "back") expect(rigs[id]!.parts.eyen, id).toBeUndefined();
-      else expect(rigs[id]!.parts.eyen, id).toBeTruthy();
+    for (const id of ["gloomshade", "somnara", "fizz", "crackle"] as const) {
+      // Inkpurr (id "gloomshade") draws its eyes as one face piece
+      const eye = id === "gloomshade" ? "eyes" : "eyen";
+      if (view === "back") expect(rigs[id]!.parts[eye], id).toBeUndefined();
+      else expect(rigs[id]!.parts[eye], id).toBeTruthy();
+    }
     const pr = rigs.prismatail!;
     if (view === "front") expect(pr.parts.eyen && pr.parts.eyef).toBeTruthy();
     if (view === "back") expect(pr.parts.eyen ?? pr.parts.beak).toBeUndefined();
@@ -626,16 +628,17 @@ test("all seven bosses turn to each of the four main facings, with no face from 
         view === "right" ? 1 : -1,
       );
     const e = rigs.emberwing!;
-    if (view === "front")
-      expect(e.parts["f-eyen"] && e.parts["f-eyef"]).toBeTruthy();
-    if (view === "back")
-      expect(e.parts["f-eyen"] ?? e.parts["f-eyef"]).toBeUndefined();
-    if (view === "left" || view === "right")
-      expect(Math.sign(e.parts["f-beak"].x - e.parts.body.x)).toBe(
+    if (view === "front") expect(e.parts.eyes.frame).toMatch(/^eyes_0_/);
+    if (view === "back") expect(e.parts.eyes).toBeUndefined();
+    if (view === "left" || view === "right") {
+      // the side view, mirrored for the left
+      expect(e.parts.eyes.frame).toMatch(/^eyes_2_/);
+      expect(Math.sign(e.parts.body.sx * e.parts.body.sy)).toBe(
         view === "right" ? 1 : -1,
       );
+    }
   }
-  // Server position changes must turn the whole phoenix away while travelling,
+  // Server position changes must turn the whole lantern away while travelling,
   // even though its last attack aim still points right.
   await page.evaluate(() => {
     const r = (window as any).__bossReview,
@@ -650,7 +653,7 @@ test("all seven bosses turn to each of the four main facings, with no face from 
   expect(errors).toEqual([]);
 });
 
-test("phoenix back and profile keep flapping, then land facing the same way", async ({
+test("lantern back and profile keep fluttering, then sink low facing the same way", async ({
   page,
 }) => {
   const errors = await review(page);
@@ -678,9 +681,9 @@ test("phoenix back and profile keep flapping, then land facing the same way", as
     }, clock);
     const second = (await vector(page, "emberwing"))!;
     expect(second.facing).toBe(facing);
-    // the wings beat
-    expect(second.parts.wing1.rotation).not.toBeCloseTo(
-      first.parts.wing1.rotation,
+    // the ribbons drift
+    expect(second.parts.armL.rotation).not.toBeCloseTo(
+      first.parts.armL.rotation,
       3,
     );
     await page.evaluate((clock) => {
@@ -690,10 +693,8 @@ test("phoenix back and profile keep flapping, then land facing the same way", as
     }, clock);
     const grounded = (await vector(page, "emberwing"))!;
     expect(grounded.facing).toBe(facing);
-    // down on its legs
-    expect(grounded.parts["f-head"].y).toBeGreaterThan(
-      second.parts["f-head"].y + 20,
-    );
+    // it floats low over the terrace until it flies again
+    expect(grounded.parts.body.y).toBeGreaterThan(second.parts.body.y + 20);
   }
   expect(errors).toEqual([]);
 });

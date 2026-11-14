@@ -25,7 +25,7 @@ test("worn skins and the boss's atlas are ready before the battle's first frame"
         .replace(
           marker,
           marker +
-            " window.__atCreate = { skins: this.textures.getTextureKeys().filter((k) => k.includes('~')).length, atlas: this.textures.exists('vember-atlas-1') };",
+            " window.__atCreate = { skins: this.textures.getTextureKeys().filter((k) => k.includes('~')).length, atlas: this.textures.exists('lumiwick-atlas') };",
         ),
     });
   });
@@ -69,5 +69,36 @@ test("worn skins and the boss's atlas are ready before the battle's first frame"
   expect(seen.skins).toBe(seen.skinsNow);
   expect(seen.lateSkins).toBe(0);
   expect(seen.atlas).toBe(true);
+  expect(errors).toEqual([]);
+});
+
+// Cragmuff (the "grumblecrag" raid) paints its atlas when the arena scene is
+// created, behind the loading screen.
+test("Cragmuff's atlas is painted before the battle's first frame", async ({
+  page,
+}) => {
+  const marker = "prewarmBossAtlas(this, state.raid.boss, state.raid.phase);";
+  await page.route(/\/apps\/client\/src\/main\.ts(?:\?|$)/, async (route) => {
+    const response = await route.fetch(),
+      body = await response.text();
+    expect(body).toContain(marker);
+    await route.fulfill({
+      response,
+      body: body.replace(
+        marker,
+        marker +
+          " window.__atCreate = { atlas: this.textures.exists('cragmuff-atlas') };",
+      ),
+    });
+  });
+  const errors = await openHub(page);
+  await page.evaluate(() =>
+    (window as any).__room("raid", { boss: "grumblecrag" }),
+  );
+  await openPlayPanel(page);
+  await page.click("#play-create");
+  await pushUntilBattle(page);
+  const seen = await page.evaluate(() => (window as any).__atCreate);
+  expect(seen?.atlas).toBe(true);
   expect(errors).toEqual([]);
 });

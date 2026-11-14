@@ -180,15 +180,13 @@ test("locked bosses keep their navigation and unlock instruction visible", async
     await expect(room.locator(".rh-card.is-locked")).toHaveCount(6);
     await expect(
       room.locator('[data-raid-card="emberwing"] .ui-tag'),
-    ).toHaveText("Clear Grumblecrag first");
+    ).toHaveText("Clear Cragmuff first");
     await room.locator('[data-raid-card="emberwing"]').click();
-    await expect(room.locator(".rh-stage-name")).toHaveText("Emberwing");
+    await expect(room.locator(".rh-stage-name")).toHaveText("Lumiwick");
     await expect(room.locator("[data-raid-start]")).toBeDisabled();
     await expect(room.locator("[data-raid-practice]")).toBeDisabled();
     const notice = room.locator(".rh-foot-note.is-reason");
-    await expect(notice).toHaveText(
-      "Clear Grumblecrag once to unlock Emberwing.",
-    );
+    await expect(notice).toHaveText("Clear Cragmuff once to unlock Lumiwick.");
     await expect(notice).toBeInViewport();
     await room.locator('[data-ui-raid-tab="attacks"]').click();
     for (const skill of await room.locator("[data-raid-attack]").all())

@@ -219,8 +219,8 @@ describe("the rest of the profile", () => {
     expect(page).toContain("Tier ");
     expect(page).toContain("40 more for Candidate Master");
     expect(page.match(/data-profile-boss=/g)).toHaveLength(7);
-    expect(page).toContain("Grumblecrag: 4 clears");
-    expect(page).toContain("Emberwing: 1 clear.");
+    expect(page).toContain("Cragmuff: 4 clears");
+    expect(page).toContain("Lumiwick: 1 clear.");
     expect(page).toContain("1 / 2 · each one gives its title");
     expect(page).toContain('class="is-earned"><b>First Victory');
     for (const go of ["ranks", "journey", "raids"])
@@ -243,16 +243,33 @@ describe("the rest of the profile", () => {
 
 describe("your name", () => {
   it("is cleaned and checked like the database does", () => {
-    expect(checkName("  Nova   Star ", "tester")).toEqual({ name: "Nova Star", problem: "" });
+    expect(checkName("  Nova   Star ", "tester")).toEqual({
+      name: "Nova Star",
+      problem: "",
+    });
     expect(checkName("Bénédicte", "tester").problem).toBe("");
-    expect(checkName("", "tester").problem).toBe("A name is 1 to 20 characters.");
-    expect(checkName("   ", "tester").problem).toBe("A name is 1 to 20 characters.");
-    expect(checkName("A".repeat(21), "tester").problem).toBe("A name is 1 to 20 characters.");
+    expect(checkName("", "tester").problem).toBe(
+      "A name is 1 to 20 characters.",
+    );
+    expect(checkName("   ", "tester").problem).toBe(
+      "A name is 1 to 20 characters.",
+    );
+    expect(checkName("A".repeat(21), "tester").problem).toBe(
+      "A name is 1 to 20 characters.",
+    );
     expect(checkName("A".repeat(20), "tester").problem).toBe("");
-    expect(checkName("Ben\u200bny", "tester").problem).toBe("That name has characters that can't be shown.");
-    expect(checkName("Ben\nny", "tester").problem).toBe("That name has characters that can't be shown.");
-    expect(checkName("!!! ...", "tester").problem).toBe("Use at least one letter or number.");
-    expect(checkName(" tester ", "tester").problem).toBe("That is already your name.");
+    expect(checkName("Ben\u200bny", "tester").problem).toBe(
+      "That name has characters that can't be shown.",
+    );
+    expect(checkName("Ben\nny", "tester").problem).toBe(
+      "That name has characters that can't be shown.",
+    );
+    expect(checkName("!!! ...", "tester").problem).toBe(
+      "Use at least one letter or number.",
+    );
+    expect(checkName(" tester ", "tester").problem).toBe(
+      "That is already your name.",
+    );
     expect(checkName("Sh1t Happens", "tester").problem).toBe(
       "That name isn't allowed. Please choose another.",
     );
@@ -260,21 +277,38 @@ describe("your name", () => {
   });
   it("is locked until the server says, counted on the server's clock", () => {
     const now = Date.parse("2026-11-06T12:00:00Z");
-    const status = (nextAt: string | null) => ({ changedAt: null, nextAt, now: "", days: 14 });
+    const status = (nextAt: string | null) => ({
+      changedAt: null,
+      nextAt,
+      now: "",
+      days: 14,
+    });
     expect(nameLockedFor(null, now)).toBeNull();
     expect(nameLockedFor(status(null), now)).toBeNull();
     expect(nameLockedFor(status("2026-11-06T11:00:00Z"), now)).toBeNull();
-    expect(nameLockedFor(status("2026-11-16T12:00:00Z"), now)).toBe(10 * 86_400_000);
+    expect(nameLockedFor(status("2026-11-16T12:00:00Z"), now)).toBe(
+      10 * 86_400_000,
+    );
   });
   it("shows Change name, or when you can next", () => {
     const open = html();
     expect(open).toContain("You can change it once every 14 days");
-    expect(open).toMatch(/<button type="button" class="ui-btn is-s" data-profile-rename>/);
+    expect(open).toMatch(
+      /<button type="button" class="ui-btn is-s" data-profile-rename>/,
+    );
     // The form is in the markup, hidden, with your name in it.
-    expect(open).toContain('data-profile-name-form hidden><input name="name" maxlength="20"');
+    expect(open).toContain(
+      'data-profile-name-form hidden><input name="name" maxlength="20"',
+    );
     expect(open).toContain('value="tester"');
-    const later = new Date(Date.now() + 3 * 86_400_000 + 3_600_000).toISOString();
-    const locked = html(data({ nameStatus: { changedAt: null, nextAt: later, now: "", days: 14 } }));
+    const later = new Date(
+      Date.now() + 3 * 86_400_000 + 3_600_000,
+    ).toISOString();
+    const locked = html(
+      data({
+        nameStatus: { changedAt: null, nextAt: later, now: "", days: 14 },
+      }),
+    );
     expect(locked).toMatch(/You can change it again in 3 d (0|1) h/);
     expect(locked).toMatch(/class="ui-btn is-s" disabled data-profile-rename/);
   });
@@ -283,10 +317,12 @@ describe("your name", () => {
 describe("deleting your account", () => {
   it("is offered to players and guests, never to administrators", () => {
     expect(html()).toContain("data-profile-delete>");
-    expect(html(data({ guest: true, role: "Guest" }))).toContain("data-profile-delete>");
-    expect(html(data({ canDelete: false, role: "Administrator" }))).not.toContain(
-      "data-profile-delete",
+    expect(html(data({ guest: true, role: "Guest" }))).toContain(
+      "data-profile-delete>",
     );
+    expect(
+      html(data({ canDelete: false, role: "Administrator" })),
+    ).not.toContain("data-profile-delete");
   });
   it("can still be reached when the records can't load", () => {
     const page = html(data({ progress: null, progressProblem: "Down." }));
@@ -303,8 +339,14 @@ describe("deleting your account", () => {
     expect(open).toContain(`Type <b>${DELETE_WORD}</b> to confirm`);
     expect(open).toMatch(/can(&#39;|&#039;|')t be undone/);
     expect(html(data({ guest: true }), v)).toContain("Your guest pass");
-    const busy = html(data(), { ...v, deleteBusy: true, deleteMessage: "Deleting your account…" });
-    expect(busy).toMatch(/class="ui-btn is-s is-danger" disabled aria-busy="true"><span>Delete forever/);
+    const busy = html(data(), {
+      ...v,
+      deleteBusy: true,
+      deleteMessage: "Deleting your account…",
+    });
+    expect(busy).toMatch(
+      /class="ui-btn is-s is-danger" disabled aria-busy="true"><span>Delete forever/,
+    );
     expect(busy).toContain("Deleting your account…");
   });
 });

@@ -31,20 +31,20 @@ export interface RaidBossInfo {
 export const RAID_BOSSES: Record<RaidBossId, RaidBossInfo> = {
   grumblecrag: {
     id: "grumblecrag",
-    name: "Grumblecrag",
-    epithet: "The living mountain",
+    name: "Cragmuff",
+    epithet: "The crystal-horned ram",
     element: "Earth",
     color: "#d9a35b",
     day: 6,
     stars: 1,
     signature: "Bait its charge into a pillar",
     blurb:
-      "A grumpy mountain that woke up on the wrong side of the valley. Lead its charges into pillars to crack the armor and strike the glowing core.",
+      "A grumpy, stubborn mountain ram in a coat of mossy stone wool, with curled horns of glowing amber crystal. Lead its charges into pillars to knock it dizzy and strike the crystal core on its chest.",
     playable: true,
   },
   tidewyrm: {
     id: "tidewyrm",
-    name: "Tidewyrm",
+    name: "Tidelotl",
     epithet: "The rising tide",
     element: "Water",
     color: "#4fd6c8",
@@ -52,12 +52,13 @@ export const RAID_BOSSES: Record<RaidBossId, RaidBossInfo> = {
     stars: 2,
     signature: "Strand it on an island",
     blurb:
-      "A sleepy sea serpent with a pearl on its brow. Lure its dive onto dry land, share the islands when the tide rises, and pop your friends out of bubbles.",
+      "A mischievous axolotl who calls itself lord of the tides, with a pearl on its brow. Lure its dive onto dry land, share the islands when the tide rises, and pop your friends out of bubbles.",
     playable: true,
   },
   gloomshade: {
     id: "gloomshade",
-    name: "Gloomshade",
+    // The id stays "gloomshade" (stats, progress, database rows); players see Inkpurr.
+    name: "Inkpurr",
     epithet: "Lights out",
     element: "Shadow",
     color: "#9c7bff",
@@ -65,7 +66,7 @@ export const RAID_BOSSES: Record<RaidBossId, RaidBossInfo> = {
     stars: 2,
     signature: "Find the one that casts a shadow",
     blurb:
-      "A floppy-eared puff of shadow with a crescent-moon tail. Keep the lanterns lit, find the real one among its copies, and spread out when the curse creeps.",
+      "A round, cat-eared sprite of living ink with a crescent-moon tail. Keep the lanterns lit, find the real one among its copies, and spread out when the curse creeps.",
     playable: true,
   },
   somnara: {
@@ -96,7 +97,7 @@ export const RAID_BOSSES: Record<RaidBossId, RaidBossInfo> = {
   },
   emberwing: {
     id: "emberwing",
-    name: "Emberwing",
+    name: "Lumiwick",
     epithet: "Ground the sky",
     element: "Fire",
     color: "#ff8a4f",
@@ -104,7 +105,7 @@ export const RAID_BOSSES: Record<RaidBossId, RaidBossInfo> = {
     stars: 3,
     signature: "Light three braziers at once",
     blurb:
-      "A plump, smug fire bird that refuses to land. Light all three braziers together to knock it out of the sky.",
+      "A smug sky-lantern spirit that refuses to come down. Light all three braziers together to pull it out of the sky.",
     playable: true,
   },
   "storm-twins": {

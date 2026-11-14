@@ -2,7 +2,7 @@
  * Emberwing's Sky Terrace, drawn to match the painted lava terrace: carved
  * basalt brazier daises with flame glyphs, wrought-iron braziers with
  * layered fire, heat-split burning ground, a charred dive lane, a ring of
- * fire and a molting feather.
+ * fire and a fallen tassel (the Fraying trait).
  *
  * Every piece is a pure Canvas 2D drawer `(ctx, k)` (k = atlas pixels per
  * world unit), drawn ONCE into one atlas when the raid's scene starts
@@ -1229,42 +1229,55 @@ export function terracePieces(): TerracePiece[] {
     0.25,
   );
 
-  // ── Molting feather: a glowing quill
+  // ── Fraying (the "molting" trait): a tassel fallen from Lumiwick's ribbons
   piece("feather", 24, 52, 0.5, 0.5, (ctx, k) => {
     ctx.scale(k, k);
     ctx.translate(12, 26);
+    // a stub of red ribbon with a gold edge
+    ctx.fillStyle = "#d8401c";
     ctx.beginPath();
-    ctx.moveTo(0, -23);
-    ctx.bezierCurveTo(8, -14, 9, 6, 2, 18);
-    ctx.lineTo(-1, 18);
-    ctx.bezierCurveTo(-9, 6, -7, -14, 0, -23);
+    ctx.moveTo(-3.5, -24);
+    ctx.quadraticCurveTo(-1, -19, -3, -14);
+    ctx.lineTo(3, -14);
+    ctx.quadraticCurveTo(5, -19, 3.5, -24);
     ctx.closePath();
-    const g = ctx.createLinearGradient(0, -23, 0, 18);
-    g.addColorStop(0, "#fff1bf");
-    g.addColorStop(0.35, "#ffbe6c");
-    g.addColorStop(0.8, "#f0702e");
-    g.addColorStop(1, "#a8361a");
+    ctx.fill();
+    ctx.strokeStyle = "#ffd36a";
+    ctx.lineWidth = 0.9;
+    ctx.stroke();
+    // the bundle of paper strands, flame-shaped
+    ctx.beginPath();
+    ctx.moveTo(-4, -9);
+    ctx.bezierCurveTo(-10, 0, -8, 12, -1, 22);
+    ctx.lineTo(1, 22);
+    ctx.bezierCurveTo(8, 12, 10, 0, 4, -9);
+    ctx.closePath();
+    const g = ctx.createLinearGradient(0, -9, 0, 22);
+    g.addColorStop(0, "#ff8a3a");
+    g.addColorStop(0.5, "#e2401a");
+    g.addColorStop(1, "#ffb84a");
     ctx.fillStyle = g;
     ctx.fill();
     ctx.save();
     ctx.clip();
-    ctx.strokeStyle = "rgba(140,50,20,0.45)";
-    ctx.lineWidth = 0.6;
-    for (let y = -18; y < 16; y += 2.6) {
+    ctx.strokeStyle = "rgba(255,214,110,0.75)";
+    ctx.lineWidth = 0.8;
+    for (const x of [-4, -1.3, 1.3, 4]) {
       ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(-9, y + 5);
-      ctx.moveTo(0, y);
-      ctx.lineTo(9, y + 5);
+      ctx.moveTo(x * 0.6, -8);
+      ctx.quadraticCurveTo(x * 1.2, 6, x * 0.4, 22);
       ctx.stroke();
     }
     ctx.restore();
-    ctx.strokeStyle = "#fff6d6";
-    ctx.lineWidth = 1.3;
+    // the gold bead it hung from
+    const b = ctx.createRadialGradient(-1.2, -12.2, 0.4, 0, -11, 4.6);
+    b.addColorStop(0, "#fff6c8");
+    b.addColorStop(0.55, "#f0b23a");
+    b.addColorStop(1, "#8a4c0c");
+    ctx.fillStyle = b;
     ctx.beginPath();
-    ctx.moveTo(0.5, -21);
-    ctx.quadraticCurveTo(1.5, 0, 0, 24);
-    ctx.stroke();
+    ctx.arc(0, -11, 4.4, 0, Math.PI * 2);
+    ctx.fill();
   });
   return out;
 }

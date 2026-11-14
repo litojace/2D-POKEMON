@@ -1,10 +1,10 @@
 import type { RaidBossId } from "../../../packages/shared/src/raid-roster";
-import { grumbleGuideImage } from "./boss-vector-grumble";
-import { tideGuideImage } from "./boss-vector-tide";
-import { gloomGuideImage } from "./boss-vector-gloom";
+import { cragmuffGuideImage } from "./boss-cragmuff";
+import { tidelotlGuideImage } from "./boss-tidelotl";
+import { inkGuideImage } from "./boss-inkpurr";
 import { somnaraGuideImage } from "./boss-vector-somnara";
 import { prismaGuideImage } from "./boss-vector-prisma";
-import { emberGuideImage } from "./boss-vector-ember";
+import { lumiwickGuideImage } from "./boss-lumiwick-guide";
 import { twinsGuideImage } from "./boss-vector-twins";
 
 /** The boss for a briefing diagram: each boss draws itself once into a
@@ -31,18 +31,18 @@ export function raidGuideSprite(
       cores?: readonly (readonly [number, number])[];
     } =
       boss === "tidewyrm"
-        ? tideGuideImage(exposed)
+        ? tidelotlGuideImage(exposed)
         : boss === "gloomshade"
-          ? gloomGuideImage(exposed)
+          ? inkGuideImage(exposed)
           : boss === "somnara"
             ? somnaraGuideImage(exposed)
             : boss === "prismatail"
               ? prismaGuideImage(exposed)
               : boss === "emberwing"
-                ? emberGuideImage(exposed)
+                ? lumiwickGuideImage(exposed)
                 : boss === "storm-twins"
                   ? twinsGuideImage(exposed)
-                  : grumbleGuideImage(exposed),
+                  : cragmuffGuideImage(exposed),
     [sx, sy, w, h] = art.crop,
     scale = Math.min(90 / w, 80 / h),
     frameX = -45 + (90 - w * scale) / 2,

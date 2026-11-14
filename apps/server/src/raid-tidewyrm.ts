@@ -114,7 +114,7 @@ export class TidewyrmArena extends RaidArena {
   }
   protected override finishMessage(won: boolean) {
     return won
-      ? "The tide goes out. Tidewyrm drifts off to sleep. You did it!"
+      ? "The tide goes out. Tidelotl sinks off for a sulky nap. You did it!"
       : "The tide keeps rising. Change your build and try again.";
   }
   protected override onChapter() {
@@ -585,7 +585,7 @@ export class TidewyrmArena extends RaidArena {
       if (w.targetId && r.contributions?.[w.targetId])
         r.contributions[w.targetId].pillars++;
     }
-    r.message = "STRANDED! Tidewyrm is on dry land. Hit it now!";
+    r.message = "STRANDED! Tidelotl is flopping on dry land. Hit it now!";
     this.nextAttack = Math.max(
       this.nextAttack,
       r.exposedUntil + (this.smart() ? 0.4 : 1),
@@ -981,7 +981,7 @@ export class TidewyrmArena extends RaidArena {
       ) {
         r.exposedUntil += FROST_HOLD;
         this.nextAttack = Math.max(this.nextAttack, r.exposedUntil + 1);
-        r.message = "Frozen fast! Tidewyrm stays stranded a little longer.";
+        r.message = "Frozen fast! Tidelotl stays stranded a little longer.";
       }
       // Pangrove's Tongue Grapple latches onto a stranded Tidewyrm: extra stagger.
       if (
@@ -1000,7 +1000,7 @@ export class TidewyrmArena extends RaidArena {
       ) {
         r.exposedUntil += ROOT_HOLD;
         this.nextAttack = Math.max(this.nextAttack, r.exposedUntil + 1);
-        r.message = "Rooted! Tidewyrm stays stranded a little longer.";
+        r.message = "Rooted! Tidelotl stays stranded a little longer.";
       }
     }
     super.damage(target, amount, owner, ability);

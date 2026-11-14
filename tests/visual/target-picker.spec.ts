@@ -302,10 +302,11 @@ async function tapWorld(page: Page, x: number, y: number) {
   await page.touchscreen.tap(screen.x, screen.y);
 }
 
-// Gloomshade's copies are not players, so phones used to aim only at the real
-// one, and the find-the-real-one puzzle vanished. Every body (the real one and
-// its copies alike, labels at random) and every unlit lantern can be picked.
-test("phones pick among Gloomshade's bodies and its unlit lanterns", async ({
+// Inkpurr's copies (boss id "gloomshade") are not players, so phones used to
+// aim only at the real one, and the find-the-real-one puzzle vanished. Every
+// body (the real one and its copies alike, labels at random) and every unlit
+// lantern can be picked.
+test("phones pick among Inkpurr's bodies and its unlit lanterns", async ({
   browser,
 }, info) => {
   const size = { width: 844, height: 390 };
@@ -340,7 +341,7 @@ test("phones pick among Gloomshade's bodies and its unlit lanterns", async ({
     // Three bodies and the lantern; the real body's button looks like the rest.
     await expect(picker.locator("button")).toHaveCount(4);
     const labels = await picker.locator("button").allTextContents();
-    expect(labels.filter((t) => /Shade [A-C]/.test(t))).toHaveLength(3);
+    expect(labels.filter((t) => /Inkpurr [A-C]/.test(t))).toHaveLength(3);
     expect(labels.filter((t) => /Lantern NW/.test(t))).toHaveLength(1);
     const lantern = await page.evaluate(
       () => (window as any).__snap.raid.lanterns[0],

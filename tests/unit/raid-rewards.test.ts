@@ -20,6 +20,11 @@ const sql = [
 ]
   .map((f) => readFileSync(`supabase/migrations/${f}`, "utf8"))
   .join("\n");
+/** Every migration, in order (later ones rename and re-tune). */
+const every = readdirSync("supabase/migrations")
+  .sort()
+  .map((f: string) => readFileSync(`supabase/migrations/${f}`, "utf8"))
+  .join("\n");
 /** Rows of the arena_raid_rewards seeds (SQL doubles a quote inside a name). */
 const seeded = [
   ...sql.matchAll(
@@ -43,6 +48,24 @@ for (const [, rule, id] of readdirSync("supabase/migrations")
   const row = seeded.find((r) => r.id === id);
   if (row) row.rule = JSON.parse(rule);
 }
+const later = readdirSync("supabase/migrations")
+  .sort()
+  .map((f: string) => readFileSync(`supabase/migrations/${f}`, "utf8"))
+  .join("\n");
+// ...or rename a reward or a boss for players (112: Emberwing drawn as Lumiwick).
+for (const [, name, id] of later.matchAll(
+  /update public\.arena_raid_rewards set name = '((?:[^']|'')+)' where id = '([a-z-]+)';/g,
+)) {
+  const row = seeded.find((r) => r.id === id);
+  if (row) row.name = name.replace(/''/g, "'");
+}
+const bossNames = new Map(
+  [
+    ...later.matchAll(
+      /update public\.arena_raid_bosses set name = '((?:[^']|'')+)' where id = '([a-z-]+)';/g,
+    ),
+  ].map(([, name, id]) => [id, name.replace(/''/g, "'")]),
+);
 
 describe("raid rewards", () => {
   it("matches the database seed exactly", () => {
@@ -91,9 +114,14 @@ describe("raid rewards", () => {
       const enabled = new RegExp(`set playable = true where id = '${id}'`).test(
         sql,
       );
-      expect(sql).toContain(
-        `('${id}', '${RAID_BOSSES[id].name}', ${id === "grumblecrag"})`,
-      );
+      // seeded under its first name, renamed by a later migration if it changed
+      const seededName = [
+        ...sql.matchAll(
+          new RegExp(`\\('${id}', '((?:[^']|'')+)', (true|false)\\)`, "g"),
+        ),
+      ][0]?.[1];
+      expect(seededName, id).toBeTruthy();
+      expect(bossNames.get(id) ?? seededName).toBe(RAID_BOSSES[id].name);
       expect(id === "grumblecrag" || enabled, id).toBe(
         RAID_BOSSES[id].playable,
       );
