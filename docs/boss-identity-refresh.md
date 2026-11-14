@@ -39,7 +39,7 @@ replacement is wired into battle, guide sprites and prewarming.
 ## Database
 
 Migrations 112–115 already rename the four renamed bosses and their titles.
-`20261114095946_boss_identity_refresh.sql` reconciles roster names and old
+`116_boss_identity_refresh.sql` reconciles roster names and old
 boss names in title descriptions after those migrations. It updates
 existing rows only, is repeatable, and preserves all boss/reward/title IDs
 and ownership links. This refresh does not apply migrations to a live DB.

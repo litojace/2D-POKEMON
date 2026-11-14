@@ -27,7 +27,7 @@ it("reconciles display names repeatedly without changing progress or reward link
         ('00000000-0000-4000-8000-000000000002', 'emberwing');
     `);
     const migration = await readFile(
-      "supabase/migrations/20261114095946_boss_identity_refresh.sql",
+      "supabase/migrations/116_boss_identity_refresh.sql",
       "utf8",
     );
     const before = {
