@@ -203,7 +203,11 @@ test("Prismell's attacks have their poses: lance, fan, glare, halo, the open hea
       return rig(page);
     };
     // Prism Lance: it hunkers down, glaring, the heart's light gathering
-    await page.evaluate(() => (window as any).__combat.cast("prism-lance"));
+    await page.evaluate(() => {
+      const c = (window as any).__combat;
+      c.arena.raid.exposedUntil = 0;
+      c.cast("prism-lance");
+    });
     await run(page, 0.8);
     const lance = await pose("lance-windup", 2.2, -66);
     expect(lance.expr).toBe("glare");
@@ -221,7 +225,12 @@ test("Prismell's attacks have their poses: lance, fan, glare, halo, the open hea
     expect(fan.shell!.tint).not.toBe(0xffffff);
     await run(page, 2);
     // Glare: the shell flashes, spokes of light all round
-    await page.evaluate(() => (window as any).__combat.cast("glare"));
+    // (the raiders may have relayed the light meanwhile: close the heart first)
+    await page.evaluate(() => {
+      const c = (window as any).__combat;
+      c.arena.raid.exposedUntil = 0;
+      c.cast("glare");
+    });
     await run(page, 0.8);
     const glare = await pose("glare-windup");
     expect(
@@ -277,6 +286,74 @@ test("Prismell's attacks have their poses: lance, fan, glare, halo, the open hea
     const down = await pose("defeat");
     expect(down.frames.some((f: string) => /^shellD_/.test(f))).toBe(true);
     expect(down.frames.some((f: string) => f.startsWith("eyes_"))).toBe(false);
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});
+
+test("Prismell's lance beam stays clear of its face, and the glare keeps the shell's facets", async ({
+  browser,
+}, info) => {
+  test.setTimeout(720_000);
+  const context = await browser.newContext({
+    viewport: { width: 1280, height: 720 },
+    deviceScaleFactor: 2,
+  });
+  try {
+    const page = await context.newPage();
+    const errors = await raid(page);
+    await run(page, 0.3);
+    // the lance in four facings: wind-up, then the beam just after it fires
+    // (the raiders hold their places, so the snail keeps facing its target)
+    for (const view of ["left", "front", "right", "back"] as const) {
+      const name = view;
+      await page.evaluate((v) => (window as any).__combat.face(v), view);
+      await run(page, 0.2);
+      await page.evaluate(() => {
+        const c = (window as any).__combat;
+        c.arena.raid.exposedUntil = 0;
+        c.cast("prism-lance");
+      });
+      await run(page, 0.85, 2);
+      await closeUp(page, 2.4, -60);
+      await snap(page, info, `prismell-lance-${name}-windup`);
+      await closeUp(page, 1);
+      await run(page, 0.35, 2);
+      await closeUp(page, 2.4, -60);
+      await snap(page, info, `prismell-lance-${name}-beam`);
+      await closeUp(page, 1);
+      const r = await rig(page);
+      expect(r.visible).toBe(true);
+      await run(page, 1.2);
+    }
+    // the glare: wind-up, the moment it fires, and just after
+    await face(page, Math.PI / 2);
+    await run(page, 0.3);
+    // (the raiders may have relayed the light meanwhile: close the heart first)
+    await page.evaluate(() => {
+      const c = (window as any).__combat;
+      c.arena.raid.exposedUntil = 0;
+      c.cast("glare");
+    });
+    await run(page, 0.8, 2);
+    await closeUp(page, 2.4, -60);
+    await snap(page, info, "prismell-glare-windup-close");
+    await closeUp(page, 1);
+    await run(page, 0.3, 2);
+    await closeUp(page, 2.4, -60);
+    await snap(page, info, "prismell-glare-after-close");
+    await closeUp(page, 1);
+    await run(page, 1.5);
+    // the heart open (relay landed)
+    await page.evaluate(() => {
+      const a = (window as any).__combat.arena;
+      a.raid.exposedUntil = a.time + 5;
+    });
+    await run(page, 0.5);
+    await closeUp(page, 2.4, -60);
+    await snap(page, info, "prismell-exposed-close");
+    await closeUp(page, 1);
     expect(errors).toEqual([]);
   } finally {
     await context.close();

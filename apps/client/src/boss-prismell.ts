@@ -21,6 +21,7 @@ import {
   ATT,
   FACING,
   SHELL_GLINTS,
+  HR,
   buildPrismellAtlas,
   paintPrismellPieces,
   eyeLayout,
@@ -150,7 +151,7 @@ export function prismellPose(c: PrismellCue) {
   } else if (kind === "glare") {
     // the shell flashes brighter and brighter; it squeezes its own eyes shut
     P.flash = w;
-    P.shine = w;
+    P.shine = 0.5 * w;
     P.sy += 0.04 * w;
     P.hy += 2 * w;
     P.look = w > 0.2 ? "closed" : "glare";
@@ -504,14 +505,14 @@ export function prismellPlacements(
     glow(
       "coreGlow",
       core,
-      P.open ? 22 : 12 + 3 * phase + 6 * P.charge,
-      (P.open ? 0.22 + 0.08 * pulse : 0.12 + 0.04 * phase + 0.22 * P.charge) *
+      P.open ? 20 : 12 + 3 * phase + 4 * P.charge,
+      (P.open ? 0.16 + 0.06 * pulse : 0.1 + 0.03 * phase + 0.12 * P.charge) *
         (1 - P.dim),
       P.open ? 0xffd6a0 : 0xffc4e6,
     );
   const shellMid = pt(shellM, 0, 0);
   if (P.shine > 0.02)
-    glow("shine", shellMid, 40 + 16 * P.shine, 0.22 * P.shine, 0xd8ccff);
+    glow("shine", shellMid, 40 + 12 * P.shine, 0.12 * P.shine, 0xd8ccff);
   if (P.hot >= 0 && P.hotGlow > 0.02)
     glow(
       "hot",
@@ -522,11 +523,12 @@ export function prismellPlacements(
     );
   if (P.flash > 0.02) {
     // the glare: a white flash with spokes of light round the shell
-    glow("flash", shellMid, 46 + 44 * P.flash, 0.2 + 0.35 * P.flash, 0xfffbe8);
+    // a light veil on the shell (its facets stay readable); the rays outside carry the warning
+    glow("flash", shellMid, 40 + 16 * P.flash, 0.06 + 0.12 * P.flash, 0xfffbe8);
     const n = 8;
     for (let i = 0; i < n; i++) {
       const a = (i * TAU) / n + P.t * 0.4;
-      const r = 40 * PRISMELL_SCALE;
+      const r = 74 * PRISMELL_SCALE;
       put(
         `ray${i}`,
         "ray",
@@ -537,7 +539,7 @@ export function prismellPlacements(
         {
           rot: a,
           sx: 0.9,
-          sy: 0.6 + 0.9 * P.flash,
+          sy: 0.5 + 0.7 * P.flash,
           alpha: P.flash * 0.7,
           glow: true,
           tint: 0xfff6d8,
@@ -603,6 +605,8 @@ export function prismellPlacements(
     view: v,
     mirrored: F.m,
     head: headPt,
+    /** The head's radius with a margin: the face box effects keep clear of. */
+    headR: (HR + 4) * PRISMELL_SCALE,
     heart: core,
     shell: shellMid,
     shellTop: pt(shellM, 0, A.shellTop),

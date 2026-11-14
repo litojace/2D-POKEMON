@@ -150,6 +150,7 @@ export function paintPrismell(g: Phaser.GameObjects.Graphics, o: PrismellLook) {
     open: P.open,
     dim: P.dim,
     shine: P.shine,
+    headR: placed.headR,
   };
 }
 
