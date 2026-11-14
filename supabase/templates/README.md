@@ -11,7 +11,12 @@ files: paste each one into **Supabase → Authentication → Emails → Template
 
 - `{{ .ConfirmationURL }}` and `{{ .Email }}` are Supabase template variables;
   keep them as they are.
-- The logo loads from `https://parena.litojace.com/icons/arena-192.png`, so
-  keep that file deployed.
-- Light colours only on purpose: Gmail and Outlook recolour dark email
-  backgrounds unpredictably in dark mode.
+- Images load from the live site: `/icons/arena-192.png` and
+  `/email/hero.jpg` (in `apps/client/public`). **Deploy them before pasting
+  the templates**, or the banner shows as a broken image.
+- Dark design on purpose, like the game. Mail apps that only recolour light
+  backgrounds leave it alone; apps that invert everything flip text and
+  background together, so it stays readable.
+- `hero-source.html` builds the banner from the creature portraits and the
+  plaza background. To change it, edit that file, open it in Chromium at
+  600x240 and screenshot `.b` at 2x, then save as JPEG (about 85 quality).
