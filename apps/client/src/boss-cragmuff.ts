@@ -600,9 +600,10 @@ const GUIDE_GEM = (ATT[1] as unknown as { gem: { x: number; y: number } }).gem;
 /**
  * The boss as an image URL for the briefing diagrams (drawn once per look),
  * with the crop around it and where its core sits. The URL is empty without
- * a canvas (outside a browser).
+ * a canvas (outside a browser). With `paint` false it only answers what is
+ * known: the briefing paints later, off its render (raid-guide-sprites.ts).
  */
-export function cragmuffGuideImage(exposed = false) {
+export function cragmuffGuideImage(exposed = false, paint = true) {
   const width = 360,
     height = 340,
     k = 1.25,
@@ -610,6 +611,7 @@ export function cragmuffGuideImage(exposed = false) {
     groundY = 300;
   const key = exposed ? "exposed" : "calm";
   if (
+    paint &&
     !guideUrls[key] &&
     typeof document !== "undefined" &&
     typeof document.createElement === "function"
@@ -618,11 +620,12 @@ export function cragmuffGuideImage(exposed = false) {
       const art = document.createElement("canvas");
       art.width = width;
       art.height = height;
-      const a = art.getContext("2d");
+      // CPU canvases: the picture is read back into a PNG anyway
+      const a = art.getContext("2d", { willReadFrequently: true });
       const out = document.createElement("canvas");
       out.width = width;
       out.height = height;
-      const o = out.getContext("2d");
+      const o = out.getContext("2d", { willReadFrequently: true });
       if (a && o) {
         paintCragmuffPicture(a, cx, groundY, k, exposed);
         // a soft dark outline, as the battle pieces have

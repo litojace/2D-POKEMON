@@ -34,7 +34,9 @@ import {
   TSIGN,
   armStates,
   buildInkAtlas,
+  buildInkPieces,
   makeView,
+  paintedInkAtlas,
   VIEWS,
   yS,
 } from "./boss-inkpurr-paint";
@@ -719,8 +721,9 @@ export function drawPlacements(
   }
 }
 
-let guideAtlas: InkAtlas | undefined;
 let guideUrls: Partial<Record<"calm" | "exposed", string>> = {};
+/** Pieces painted for the guide (tests count them: never the whole atlas). */
+export const inkGuideStats = { pieces: 0 };
 const guideCue = (exposed: boolean): InkCue => ({
   clock: 0,
   phase: 1,
@@ -737,9 +740,11 @@ const guideCue = (exposed: boolean): InkCue => ({
 });
 /**
  * Inkpurr as an image URL for the briefing diagrams (drawn once per look),
- * at three-quarter; `exposed` opens its core. Empty outside a browser.
+ * at three-quarter; `exposed` opens its core. Empty outside a browser. With
+ * `paint` false it only answers what is known: the briefing paints later,
+ * off its render (raid-guide-sprites.ts).
  */
-export function inkGuideImage(exposed = false) {
+export function inkGuideImage(exposed = false, paint = true) {
   const width = 300,
     height = 260,
     k = 1.35,
@@ -752,18 +757,26 @@ export function inkGuideImage(exposed = false) {
     clock: 0,
   });
   if (
+    paint &&
     !guideUrls[key] &&
     typeof document !== "undefined" &&
     typeof document.createElement === "function"
   ) {
     try {
-      guideAtlas ??= paintInkAtlas();
+      // the battle atlas if it is still in memory, else only this pose's pieces
+      const battle = paintedInkAtlas() as InkAtlas | undefined;
+      const names = new Set(placed.placements.map((p) => p.piece));
+      if (!battle) inkGuideStats.pieces += names.size;
+      const sheet = battle ?? (buildInkPieces(names) as InkAtlas);
       const canvas = document.createElement("canvas");
       canvas.width = width;
       canvas.height = height;
-      const ctx = canvas.getContext("2d");
+      const ctx = canvas.getContext(
+        "2d",
+        battle ? undefined : { willReadFrequently: true },
+      );
       if (ctx) {
-        drawPlacements(ctx, guideAtlas, placed.placements, cx, cy, k);
+        drawPlacements(ctx, sheet, placed.placements, cx, cy, k);
         guideUrls[key] = canvas.toDataURL("image/png");
       }
     } catch {

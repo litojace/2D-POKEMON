@@ -728,7 +728,7 @@ let guideUrls: Partial<Record<"calm" | "exposed", string>> = {};
  * Prismell as an image URL for the briefing diagrams (drawn once per look),
  * at three-quarter; `exposed` opens its heart. Empty outside a browser.
  */
-export function prismellGuideImage(exposed = false) {
+export function prismellGuideImage(exposed = false, paint = true) {
   const width = 300,
     height = 260,
     k = 1.2,
@@ -738,6 +738,7 @@ export function prismellGuideImage(exposed = false) {
   const P = prismellPose(prismellRestCue(exposed));
   const placed = prismellPlacements(P, 1, 1);
   if (
+    paint &&
     !guideUrls[key] &&
     typeof document !== "undefined" &&
     typeof document.createElement === "function"

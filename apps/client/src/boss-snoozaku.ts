@@ -689,7 +689,7 @@ const GUIDE_HEART = (ATT[1] as unknown as Att).heart;
  * with the crop around it and where its star-heart sits. The URL is empty
  * without a canvas (outside a browser).
  */
-export function snoozakuGuideImage(exposed = false) {
+export function snoozakuGuideImage(exposed = false, paint = true) {
   const width = 360,
     height = 380,
     k = 1.2,
@@ -697,6 +697,7 @@ export function snoozakuGuideImage(exposed = false) {
     groundY = 350;
   const key = exposed ? "exposed" : "calm";
   if (
+    paint &&
     !guideUrls[key] &&
     typeof document !== "undefined" &&
     typeof document.createElement === "function"
