@@ -655,7 +655,7 @@ function defeatTip(state: Snapshot) {
   if (r.boss === "gloomshade")
     return Object.values(r.contributions ?? {}).some((c) => c.pillars > 0)
       ? "Look for the one with a shadow in lantern light, then hit it six times in a row to expose its core."
-      : "Relight dark lanterns with two hits: their light cleanses curses and shows which Gloomshade is real.";
+      : "Relight dark lanterns with two hits: their light cleanses curses and shows which Inkpurr is real.";
   if (r.boss === "tidewyrm")
     return Object.values(r.contributions ?? {}).some((c) => c.pillars > 0)
       ? "Save ultimates for when it's stranded. Get onto an island as soon as the water's edge glows."

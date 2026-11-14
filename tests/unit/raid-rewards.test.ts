@@ -20,6 +20,11 @@ const sql = [
 ]
   .map((f) => readFileSync(`supabase/migrations/${f}`, "utf8"))
   .join("\n");
+/** Every migration, in order (later ones rename and re-tune). */
+const every = readdirSync("supabase/migrations")
+  .sort()
+  .map((f: string) => readFileSync(`supabase/migrations/${f}`, "utf8"))
+  .join("\n");
 /** Rows of the arena_raid_rewards seeds (SQL doubles a quote inside a name). */
 const seeded = [
   ...sql.matchAll(
@@ -91,9 +96,15 @@ describe("raid rewards", () => {
       const enabled = new RegExp(`set playable = true where id = '${id}'`).test(
         sql,
       );
-      expect(sql).toContain(
-        `('${id}', '${RAID_BOSSES[id].name}', ${id === "grumblecrag"})`,
-      );
+      // A boss given a new look keeps its id; a later migration renames it.
+      const renamed = new RegExp(
+        `set name = '${RAID_BOSSES[id].name}' where id = '${id}'`,
+      ).test(every);
+      expect(sql).toContain(`('${id}', '`);
+      if (!renamed)
+        expect(sql).toContain(
+          `('${id}', '${RAID_BOSSES[id].name}', ${id === "grumblecrag"})`,
+        );
       expect(id === "grumblecrag" || enabled, id).toBe(
         RAID_BOSSES[id].playable,
       );
