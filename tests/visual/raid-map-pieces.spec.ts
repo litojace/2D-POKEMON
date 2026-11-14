@@ -302,7 +302,8 @@ test("Tidewyrm's islands, cracks, sinking, High Tide and capacity are painted pi
   );
   p = await pieces(page);
   report.flood = p.frames.length;
-  expect(count(p.frames, "flood")).toBe(1);
+  // (the flood piece three times over: a clearly visible tint)
+  expect(count(p.frames, "flood")).toBe(3);
   expect(count(p.frames, "swell")).toBe(7);
   expect(count(p.frames, `surf${R}`)).toBe(4);
   expect(count(p.frames, "pipOn") + count(p.frames, "pipOff")).toBe(8);

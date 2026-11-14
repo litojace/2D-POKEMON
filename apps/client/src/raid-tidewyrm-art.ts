@@ -1,4 +1,5 @@
 import { paintTidelotl } from "./boss-tidelotl-rig";
+import { fxFor } from "./fx-engine";
 import { groundHeight } from "../../../packages/shared/src/world-art";
 import { bossLife } from "./raid-boss-life";
 import { bossSurface } from "./boss-materials";
@@ -154,11 +155,14 @@ export function drawLagoon(
       1,
       (t - ((r.floodUntil ?? 0) - TIDEWYRM.highTide.seconds)) / 0.6,
     );
+    // A clearly visible tint: the flood piece three times over.
     L.put("flood", FLOOD.x, FLOOD.y, { a: Math.max(0.3, rise) });
+    L.put("flood", FLOOD.x, FLOOD.y, { a: rise });
+    L.put("flood", FLOOD.x, FLOOD.y, { a: 0.8 * rise });
     // Rolling swell rows across the flood (the same 180 px drift as before).
     const off = (m * t * 50) % 180;
     for (let j = 0; j < 7; j++)
-      L.put("swell", 60 + off - 90, 70 + j * 116 - 24, { a: 0.45 * rise });
+      L.put("swell", 60 + off - 90, 70 + j * 116 - 24, { a: 0.7 * rise });
   }
   const riseOf = Math.min(
     1,
@@ -529,18 +533,53 @@ function whirlpool(
   t: number,
   reduced: boolean,
 ) {
-  const spin = reduced ? 0 : t * 3;
-  g.fillStyle(0x0b4d5c, 0.35 * strength).fillCircle(x, y, radius * 2.4);
-  for (let arm = 0; arm < 4; arm++)
-    for (let k = 0; k < 14; k++) {
-      const a = spin + arm * (Math.PI / 2) + k * 0.32,
-        d = radius * 2.4 * (1 - k / 14);
-      g.fillStyle(0xd9f5f0, 0.5 * strength * (k / 14)).fillCircle(
-        x + Math.cos(a) * d,
-        y + Math.sin(a) * d * 0.8,
-        2 + k * 0.25,
-      );
+  const spin = reduced ? 0 : t * 3,
+    R = radius * 2.4;
+  // A funnel of darker water, deepest at the centre (flattened for the floor).
+  for (let i = 0; i < 6; i++) {
+    const k = 1 - i / 6;
+    g.fillStyle(0x062e44, 0.22 * strength).fillEllipse(
+      x,
+      y,
+      R * 2 * k,
+      R * 1.6 * k,
+    );
+  }
+  // Spiral arms of foam winding in, thick in the middle of each arm.
+  for (let arm = 0; arm < 6; arm++) {
+    let px = 0,
+      py = 0;
+    for (let k = 0; k <= 12; k++) {
+      const u = k / 12,
+        a = spin + (arm * Math.PI) / 3 + u * 3.4,
+        d = R * (1 - u * 0.92),
+        qx = x + Math.cos(a) * d,
+        qy = y + Math.sin(a) * d * 0.8;
+      if (k > 0)
+        g.lineStyle(
+          2 + 5 * Math.sin(u * Math.PI) * (arm % 2 ? 0.6 : 1),
+          0xe6fcfa,
+          0.9 * strength * Math.sin(u * Math.PI),
+        ).lineBetween(px, py, qx, qy);
+      px = qx;
+      py = qy;
     }
+  }
+  // Flecks of foam riding the current, and the bright eye of the funnel.
+  for (let i = 0; i < 20; i++) {
+    const u = (i * 0.137 + (reduced ? 0 : t * 0.25)) % 1,
+      a = spin * 1.2 + i * 2.4 + u * 4,
+      d = R * (1 - u * 0.9);
+    g.fillStyle(0xffffff, 0.7 * strength * Math.sin(u * Math.PI)).fillCircle(
+      x + Math.cos(a) * d,
+      y + Math.sin(a) * d * 0.8,
+      1.2 + 1.6 * (1 - u),
+    );
+  }
+  g.lineStyle(3, 0xc8faff, 0.55 * strength)
+    .beginPath()
+    .arc(x, y, radius * 0.45, spin * 2, spin * 2 + 4.2, false)
+    .strokePath();
 }
 
 /** Live attacks: waves, bubbles, the whirlpool and prisons. */
@@ -580,6 +619,31 @@ export function drawTideAttacks(g: G, state: Snapshot, reduced: boolean) {
           wave.pos + wave.dir * (h / 2),
           wave.high ? 9 : 6,
         );
+    }
+    // Painted water inside the band: a darker trough at its back, a glassy
+    // strip just behind the crest, and lace foam between the crest's beads.
+    {
+      const front = wave.pos + wave.dir * (h / 2),
+        back = wave.pos - wave.dir * (h / 2),
+        len = horizontal ? 828 : 1528;
+      const strip = (at: number, w: number, color: number, alpha: number) =>
+        horizontal
+          ? g.fillStyle(color, alpha).fillRect(at - w / 2, 36, w, len)
+          : g.fillStyle(color, alpha).fillRect(36, at - w / 2, len, w);
+      strip(back + wave.dir * 8, 14, 0x0a3550, 0.25);
+      strip(front - wave.dir * 22, 6, 0xffffff, 0.28);
+      for (let k = 0; k < len; k += 13) {
+        const j = Math.sin(k * 12.9898) * 43758.5453,
+          r = j - Math.floor(j),
+          wob = reduced ? 0 : Math.sin(t * 7 + k) * 2;
+        const off = front - wave.dir * (4 + r * 12) + wob,
+          along = 36 + k + r * 6;
+        g.fillStyle(0xffffff, 0.45 + 0.4 * r).fillCircle(
+          horizontal ? off : along,
+          horizontal ? along : off,
+          1.2 + r * 2.4,
+        );
+      }
     }
     if (wave.high) {
       // Exact band edges in the danger colour.
@@ -710,6 +774,19 @@ export function drawTidewyrm(
     m.surfacedAt = m.time;
     cues.push("slam");
     m.splash(boss.x, boss.y, 26, reduced);
+    if (!reduced)
+      fxFor(g.scene).burst({
+        x: boss.x,
+        y: boss.y,
+        count: 18,
+        kind: "drop",
+        color: [0xe6fbff, 0x9fe8f4],
+        speed: [60, 190],
+        up: [160, 320],
+        life: [0.5, 0.9],
+        size: [2, 4],
+        grav: 700,
+      });
   }
   if (!m.submerged && r.submerged && live)
     m.splash(boss.x, boss.y, 12, reduced);
@@ -752,10 +829,51 @@ export function drawTidewyrm(
     for (const d of m!.drops) {
       const x = d.x + d.vx * d.age,
         y = d.y + d.vy * d.age + 380 * d.age * d.age;
-      g.fillStyle(0xe6fbff, 0.9 * (1 - d.age / d.life)).fillCircle(
-        x,
-        y,
-        d.size,
+      const a = 0.9 * (1 - d.age / d.life);
+      g.fillStyle(0x96e1f0, a).fillCircle(x, y, d.size);
+      g.fillStyle(0xebfcff, a).fillCircle(
+        x - d.size * 0.15,
+        y - d.size * 0.15,
+        d.size * 0.7,
+      );
+      if (d.size > 2)
+        g.fillStyle(0xffffff, a).fillCircle(
+          x - d.size * 0.35,
+          y - d.size * 0.4,
+          d.size * 0.3,
+        );
+    }
+    // The crown of water thrown up as it surfaces (half a second).
+    const ca = t - m!.surfacedAt;
+    if (ca >= 0 && ca < 0.55 && !reduced) {
+      const u = ca / 0.55,
+        grow = Math.sin(Math.min(1, u * 1.4) * Math.PI * 0.5),
+        fade = 1 - u * u;
+      for (let i = 0; i < 13; i++) {
+        const f = i / 12,
+          sx = boss.x - 62 + f * 124,
+          h = (46 + Math.sin(f * Math.PI) * 52) * grow,
+          lean = (sx - boss.x) * 0.4,
+          w = 6;
+        g.fillStyle(0xaaeef8, 0.8 * fade).fillTriangle(
+          sx - w,
+          boss.y + 4,
+          sx + lean,
+          boss.y + 4 - h,
+          sx + w,
+          boss.y + 4,
+        );
+        g.fillStyle(0xffffff, 0.85 * fade).fillCircle(
+          sx + lean * 1.1,
+          boss.y - h - 4,
+          2.4,
+        );
+      }
+      g.lineStyle(4, 0xffffff, 0.7 * fade).strokeEllipse(
+        boss.x,
+        boss.y + 4,
+        130 + 60 * u,
+        groundHeight(130 + 60 * u),
       );
     }
   };

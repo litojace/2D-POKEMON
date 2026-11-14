@@ -1,4 +1,5 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page, type TestInfo } from "@playwright/test";
+import { openHub, openPlayPanel, pushUntilBattle, snap } from "./helpers";
 
 // Tidewyrm is drawn as Tidelotl, the axolotl (boss-tidelotl.ts,
 // boss-tidelotl-rig.ts): its pieces are painted once into two atlases when
@@ -455,4 +456,126 @@ test.describe("face", () => {
     }
     expect(errors).toEqual([]);
   });
+});
+
+// ── the water effects in the real raid scene ──
+async function lagoon(page: Page) {
+  await page.route(/\/apps\/client\/src\/main\.ts(?:\?|$)/, async (route) => {
+    const response = await route.fetch(),
+      body = await response.text();
+    const marker =
+      "gameInstance.events.once(Phaser.Core.Events.POST_RENDER, syncBattleLoop);";
+    expect(body).toContain(marker);
+    await route.fulfill({
+      response,
+      body: body.replace(marker, "window.__mapGame=gameInstance;" + marker),
+    });
+  });
+  const errors = await openHub(page);
+  page.on("console", (m) => {
+    if (m.type() === "error") errors.push(m.text());
+  });
+  await page.evaluate(() => {
+    const w = window as any;
+    w.__room("raid", { boss: "tidewyrm" });
+    w.__snap.remaining = 300;
+    const s = w.__snap,
+      r = s.raid,
+      b = s.players.find((p: any) => p.raidBoss);
+    r.trait = undefined;
+    r.islands.forEach((i: any) => (i.radius = 78));
+    b.x = 800;
+    b.y = 450;
+    r.submerged = false;
+  });
+  await openPlayPanel(page);
+  await page.click("#play-create");
+  await pushUntilBattle(page);
+  return errors;
+}
+/** Change the snapshot, show it, and count what the frame draws. */
+async function stage(page: Page, setup: string, wait = 600) {
+  const frame = await page.evaluate((setup) => {
+    const w = window as any,
+      s = w.__snap;
+    new Function("s", "r", setup)(s, s.raid);
+    w.__push();
+    return w.__mapGame.loop.frame;
+  }, setup);
+  await page.waitForFunction(
+    (frame) => (window as any).__mapGame.loop.frame >= frame + 2,
+    frame,
+  );
+  await page.waitForTimeout(wait);
+  return page.evaluate(() => {
+    const scene = (window as any).__mapGame.scene.getScene("arena");
+    let images = 0;
+    const walk = (list: any[], shown: boolean) => {
+      for (const o of list) {
+        const on = shown && o.visible !== false && (o.alpha ?? 1) > 0;
+        if (o.list) walk(o.list, on);
+        else if (on && (o.type === "Image" || o.type === "Sprite")) images++;
+      }
+    };
+    walk(scene.children.list, true);
+    return images;
+  });
+}
+const lagoonShot = (page: Page, info: TestInfo, name: string) =>
+  snap(page, info, `tidelotl-${name}`);
+
+test("the water effects are painted in the real raid scene (waves, whirlpool, flood, splash)", async ({
+  page,
+}, info) => {
+  test.setTimeout(240_000);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const errors = await lagoon(page);
+  const calm =
+    "r.warnings = []; r.waves = []; r.undertow = undefined; r.floodUntil = 0; r.submerged = false;";
+  const counts: Record<string, number> = {};
+  counts.idle = await stage(page, calm);
+  await lagoonShot(page, info, "idle");
+  counts.wave = await stage(
+    page,
+    calm +
+      "r.waves = [{ id: 1, axis: 'x', dir: 1, pos: 560, speed: 0, width: 70, high: false }];",
+  );
+  await lagoonShot(page, info, "wave-low");
+  counts.highWave = await stage(
+    page,
+    calm +
+      "r.phase = 2; r.waves = [{ id: 2, axis: 'y', dir: -1, pos: 640, speed: 0, width: 70, high: true }];",
+  );
+  await lagoonShot(page, info, "wave-high");
+  counts.undertow = await stage(
+    page,
+    calm + "r.undertow = { x: 800, y: 450, until: s.time + 30, radius: 75 };",
+  );
+  await lagoonShot(page, info, "undertow");
+  counts.highTide = await stage(
+    page,
+    calm + "r.floodUntil = s.time + 30;",
+    1200,
+  );
+  await lagoonShot(page, info, "high-tide");
+  // surfacing: the crown of water as it bursts up
+  await stage(page, calm + "r.submerged = true;", 300);
+  // (held: this machine draws too few frames a second to catch it in passing)
+  await page.evaluate(() => {
+    const w = window as any,
+      game = w.__mapGame;
+    game.loop.sleep();
+    w.__snap.raid.submerged = false;
+    w.__push();
+    const t = performance.now();
+    game.step(t, 16);
+    for (let i = 1; i <= 9; i++) game.step(t + i * 20, 20);
+  });
+  await lagoonShot(page, info, "surfacing");
+  await page.evaluate(() => (window as any).__mapGame.loop.wake());
+  console.log("tidelotl scene images per frame", JSON.stringify(counts));
+  // the polish stays cheap: a handful of images over the calm frame at most
+  for (const k of ["wave", "highWave", "undertow", "highTide"] as const)
+    expect(counts[k] - counts.idle, k).toBeLessThanOrEqual(12);
+  expect(errors).toEqual([]);
 });
