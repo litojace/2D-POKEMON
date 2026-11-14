@@ -89,6 +89,7 @@ import { fadeIn } from "../ui/motion";
 import { setInner } from "../ui/patch";
 import { sceneDensity } from "../render-budget";
 import { FrameCap } from "../frame-cap";
+import { rumble } from "../game-feel";
 
 const svgUrl = (s) =>
   "data:image/svg+xml;charset=utf-8," + encodeURIComponent(s);
@@ -7084,7 +7085,7 @@ export function openFarm(options) {
       timer: setTimeout(() => {
         if (tapG && tapG.mode === "pending") {
           tapG.mode = "paint";
-          navigator.vibrate?.(12);
+          rumble(20, 0.25); // 12 ms on Android, as before; a light tap on iPhone
           holdPaint = true;
           press(tapG.ev);
           holdPaint = false;

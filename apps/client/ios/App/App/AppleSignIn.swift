@@ -9,6 +9,25 @@ class ArenaViewController: CAPBridgeViewController {
         bridge?.registerPluginInstance(AppleSignInPlugin())
         bridge?.registerPluginInstance(AppIconPlugin())
     }
+
+    /// The touch controls sit near the screen's edges in landscape: a swipe
+    /// from an edge first goes to the game, and a second swipe opens Home,
+    /// the app switcher or Control Center, so a thumb can't leave a match
+    /// by accident.
+    override var preferredScreenEdgesDeferringSystemGestures: UIRectEdge {
+        .all
+    }
+
+    /// The home bar fades out while nobody touches near it.
+    override var prefersHomeIndicatorAutoHidden: Bool {
+        true
+    }
+
+    override open func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        setNeedsUpdateOfScreenEdgesDeferringSystemGestures()
+        setNeedsUpdateOfHomeIndicatorAutoHidden()
+    }
 }
 
 /// Sign in with Apple, natively (docs/ios-app.md).
