@@ -548,11 +548,11 @@ describe("Somnara stand-ins and a full raid", () => {
   });
 });
 
-// Somnara is vector art (boss-vector-somnara-rig.ts): record what the battle
-// tells the rig each frame instead of drawing it.
+// Somnara's raid shows Snoozaku (boss-snoozaku-rig.ts): record what the
+// battle tells the rig each frame instead of drawing it.
 const somnaraLooks = vi.hoisted(() => [] as any[]);
-vi.mock("../../apps/client/src/boss-vector-somnara-rig", () => ({
-  paintVectorSomnara: (_g: unknown, look: unknown) => {
+vi.mock("../../apps/client/src/boss-snoozaku-rig", () => ({
+  paintSnoozaku: (_g: unknown, look: unknown) => {
     somnaraLooks.push(look);
     return false;
   },
@@ -567,7 +567,7 @@ it("restores Somnara's normal pose on a daily retry with the same seed", () => {
   a.raid.result = "victory";
   for (let frame = 1; frame <= 40; frame++)
     drawSomnara(g, a.snapshot(), false, frame * 0.05);
-  // beaten: it sinks into a deep sleep
+  // beaten: it curls up asleep
   expect(somnaraLooks.at(-1).dead).toBe(true);
   expect(somnaraLooks.at(-1).deadAge).toBeGreaterThan(1);
   a.start();
@@ -579,5 +579,6 @@ it("restores Somnara's normal pose on a daily retry with the same seed", () => {
   expect(look.dead).toBe(false);
   expect(look.hurt).toBe(0);
   expect(look.roarAge).toBeGreaterThan(5);
-  expect(look.y).toBeCloseTo(a.boss()!.y + 26);
+  expect(look.y).toBeCloseTo(a.boss()!.y);
+  expect(look.nightmareAge).toBeGreaterThan(5);
 });

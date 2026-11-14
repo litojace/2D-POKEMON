@@ -230,7 +230,7 @@ export class PrismatailArena extends RaidArena {
       this.heroes().some((p) => p.id === owner)
     ) {
       this.inkUntil = this.time + 3;
-      this.raid.message = "Ink in its eyes! Prismatail can't Glare for now.";
+      this.raid.message = "Ink on its shell! Prismell can't Glare for now.";
     }
     super.damage(target, amount, owner, ability);
     // Only the light puzzle opens this boss; chip damage cannot bypass it via stagger.
@@ -500,7 +500,7 @@ export class PrismatailArena extends RaidArena {
       return;
     }
     if (w.kind === "glare" && this.inkUntil > this.time) {
-      this.raid.message = "Prismatail's Glare fizzles behind the ink!";
+      this.raid.message = "Prismell's Glare fizzles behind the ink!";
       this.hitBy = undefined;
       this.countDodges();
       return;

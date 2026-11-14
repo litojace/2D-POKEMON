@@ -1,6 +1,10 @@
 import { drawBossSpellFlipbook } from "./boss-spell-flipbook";
 import { drawGrumbleAttacks } from "./grumble-attack-fx";
 import { drawLumiwickAttacks } from "./lumiwick-attack-fx";
+import { drawTidelotlAttacks } from "./tidelotl-attack-fx";
+import { drawSnoozakuAttacks } from "./snoozaku-attack-fx";
+import { cloudDeckNightmares } from "./raid-somnara-art";
+import { drawPrismellAttacks } from "./prismell-attack-fx";
 import { lowGraphics } from "./graphics-quality";
 import type Phaser from "phaser";
 import type { Snapshot } from "@arena/shared";
@@ -241,7 +245,11 @@ function castEffect(
     });
     ribbon(fx.g, points, color, hot, id === "gloomshade" ? 7 : 11, fade * 0.85);
   }
-  if (["wing-gust", "bubbles", "volley"].includes(e.kind)) {
+  // (Tidelotl blows its own bubbles: tidelotl-attack-fx.ts)
+  if (
+    ["wing-gust", "bubbles", "volley"].includes(e.kind) &&
+    !(id === "tidewyrm" && e.kind === "bubbles")
+  ) {
     const reach = radius * (1 - Math.pow(1 - Math.min(1, k * 2.8), 3));
     for (let i = -2; i <= 2; i++) {
       const angle = e.angle + i * (e.spread ?? 0.45) * 0.38;
@@ -256,35 +264,7 @@ function castEffect(
     }
   }
   if (id === "tidewyrm") {
-    for (let i = 0; i < 7; i++) {
-      const angle = (i * TAU) / 7 + e.id,
-        rr = ringRadius * (0.65 + hash(i) * 0.3);
-      const px = x + Math.cos(angle) * rr,
-        py = y + Math.sin(angle) * rr * 0.55;
-      const height = Math.sin(k * Math.PI) * (25 + hash(i + 3) * 80);
-      ribbon(
-        fx.g,
-        [
-          { x: px - 5, y: py },
-          { x: px - 3, y: py - height * 0.6 },
-          { x: px + 6, y: py - height },
-        ],
-        color,
-        hot,
-        4 * (1 - k) + 1,
-        fade * 0.8,
-      );
-      fx.g.fillStyle(hot, fade).fillEllipse(px + 6, py - height, 4, 8);
-    }
-    for (let i = 0; i < 3; i++)
-      ribbon(
-        fx.g,
-        curve(x, y, ringRadius * 0.8, (i * TAU) / 3 + k * 3, 1.35, 0.55),
-        color,
-        hot,
-        4,
-        fade * 0.6,
-      );
+    // Tidelotl's casts land as painted water (tidelotl-attack-fx.ts)
   } else if (id === "gloomshade") {
     for (let i = 0; i < 3; i++) {
       const r = radius * (0.4 + i * 0.17),
@@ -299,25 +279,6 @@ function castEffect(
       );
       const tip = curve(x, y - 16, r, angle + 1.4, 0, 0.7)[0];
       star(fx.g, tip.x, tip.y, 6, hot, fade, k * 4);
-    }
-  } else if (id === "somnara") {
-    const points = Array.from({ length: 7 }, (_, i) => {
-      const angle = (i * TAU) / 7 + k * 0.6;
-      return {
-        x: x + Math.cos(angle) * ringRadius * 0.8,
-        y:
-          y -
-          30 +
-          Math.sin(angle) * ringRadius * 0.5 -
-          Math.sin(k * Math.PI) * 28,
-      };
-    });
-    for (let i = 0; i < points.length; i++) {
-      const p = points[i],
-        q = points[(i + 2) % points.length];
-      fx.g.lineStyle(1, color, fade * 0.5).lineBetween(p.x, p.y, q.x, q.y);
-      star(fx.g, p.x, p.y, 8 - (i % 3), hot, fade, k * 0.5);
-      glow(p.x, p.y, 13, color, fade * 0.4);
     }
   } else if (id === "prismatail") {
     const spectrum = [0xffd884, 0x83eaff, 0xd29eff, 0xa5ffdb, 0xffacda];
@@ -413,11 +374,58 @@ export function drawBossBattleEffects(
       );
       continue;
     }
-    // Lumiwick's attacks start from the lantern (its hem, its eyes) every
-    // frame; the shared impacts below still mark where each one lands.
-    if (r.boss === "emberwing")
+    // Snoozaku has its own attack effects (the baku demo's): the dream-trunk
+    // over its lane, shooting stars, the snore's waves, drawn every frame.
+    if (r.boss === "somnara") {
+      space(g, (fx, glow) =>
+        drawSnoozakuAttacks(
+          fx,
+          glow,
+          state,
+          boss,
+          life.action.casts,
+          clock,
+          lowGraphics(),
+          cloudDeckNightmares(),
+        ),
+      );
+      continue;
+    }
+    // Lumiwick has its own attack effects too (the sky-lantern demo's): from
+    // the lantern itself and where each attack lands, never the shared rings
+    // and spell flipbook.
+    if (r.boss === "emberwing") {
       space(g, (fx, glow) =>
         drawLumiwickAttacks(
+          g.scene,
+          fx,
+          glow,
+          state,
+          boss,
+          life.action.casts,
+          lowGraphics(),
+        ),
+      );
+      continue;
+    }
+    // Tidelotl's attacks start from its mouth and land as painted water.
+    if (r.boss === "tidewyrm")
+      space(g, (fx, glow) =>
+        drawTidelotlAttacks(
+          g.scene,
+          fx,
+          glow,
+          state,
+          boss,
+          life.action.casts,
+          lowGraphics(),
+        ),
+      );
+    // Prismell's attacks start from its shell (the heart, the coil) every
+    // frame; the shared impacts below still mark where each one lands.
+    if (r.boss === "prismatail")
+      space(g, (fx, glow) =>
+        drawPrismellAttacks(
           g.scene,
           fx,
           glow,

@@ -42,6 +42,16 @@ type RGB = [number, number, number];
 type Ramp = [number, string][];
 /** Atlas px per rig unit of the piece being painted (blur radii are in canvas px). */
 let PQ = 1;
+/**
+ * Paint into canvases the CPU rasterises (the briefing's picture, which is
+ * read back into a PNG anyway): its blurs and soft outlines cost a fraction
+ * of the GPU path where the GPU is emulated, and the picture looks the same.
+ * The battle atlas is painted the same way (each piece is read back to trim
+ * it); its texture uploads the finished canvas once.
+ */
+let SOFT = false;
+const ctx2d = (c: HTMLCanvasElement) =>
+  c.getContext("2d", SOFT ? { willReadFrequently: true } : undefined)!;
 const rng = (seed: number) => () => {
   seed = (seed + 0x6d2b79f5) | 0;
   let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
@@ -130,12 +140,15 @@ function flamePath(a: P2, b: P2, c: P2, w: number, wave = 0, phase = 0) {
   path.closePath();
   return path;
 }
-let grain: HTMLCanvasElement | null = null;
+const grains: { gpu?: HTMLCanvasElement; cpu?: HTMLCanvasElement } = {};
+/** The grain tile, on the same kind of canvas as the piece it textures. */
 function grainCanvas() {
-  if (grain) return grain;
+  const kind = SOFT ? "cpu" : "gpu",
+    known = grains[kind];
+  if (known) return known;
   const c = document.createElement("canvas");
   c.width = c.height = 96;
-  const g = c.getContext("2d")!,
+  const g = ctx2d(c),
     r = rng(77);
   for (let i = 0; i < 520; i++) {
     g.fillStyle =
@@ -144,7 +157,7 @@ function grainCanvas() {
         : `rgba(255,236,196,${0.03 + r() * 0.04})`;
     g.fillRect(r() * 96, r() * 96, 1 + r() * 1.6, 1 + r() * 1.2);
   }
-  return (grain = c);
+  return (grains[kind] = c);
 }
 const hasFilter = () => {
   try {
@@ -175,7 +188,7 @@ function innerGlow(
   const c = document.createElement("canvas");
   c.width = ctx.canvas.width;
   c.height = ctx.canvas.height;
-  const g = c.getContext("2d")!;
+  const g = ctx2d(c);
   g.fillStyle = "#000";
   g.fillRect(0, 0, c.width, c.height);
   g.setTransform(ctx.getTransform());
@@ -1508,12 +1521,109 @@ export interface LumiAtlas {
   frames: Record<string, AtlasFrame>;
   bytes: number;
 }
+/** One piece painted, outlined and grained into its own canvas: its whole box plus a pad. */
+export interface LumiPiece {
+  canvas: HTMLCanvasElement;
+  w: number;
+  h: number;
+  /** Canvas px per rig unit. */
+  q: number;
+  /** The piece's origin (its local 0,0) in canvas px. */
+  ox: number;
+  oy: number;
+}
+/**
+ * Pieces painted lately, held weakly: the briefing's picture and the battle
+ * atlas reuse each other's pieces while they are still in memory, and add
+ * nothing to keep when neither is open.
+ */
+const lately = new Map<
+  string,
+  {
+    ref: WeakRef<HTMLCanvasElement>;
+    w: number;
+    h: number;
+    q: number;
+    ox: number;
+    oy: number;
+  }
+>();
+/** Paint one piece at `density` (no pixel is read back). */
+export function paintLumiwickPiece(
+  base: PieceSpec,
+  density = 1,
+  soft = false,
+): LumiPiece {
+  const key = `${base.name}@${density}`,
+    known = lately.get(key),
+    kept = known?.ref.deref();
+  if (known && kept && kept.width === known.w)
+    return { ...known, canvas: kept };
+  const pad = 6;
+  const s = { ...base, q: base.q * density };
+  const w = Math.ceil((s.box[2] - s.box[0]) * s.q) + pad * 2,
+    h = Math.ceil((s.box[3] - s.box[1]) * s.q) + pad * 2;
+  const c = document.createElement("canvas");
+  c.width = w;
+  c.height = h;
+  SOFT = soft;
+  const g = ctx2d(c);
+  PQ = s.q;
+  g.translate(pad - s.box[0] * s.q, pad - s.box[1] * s.q);
+  g.scale(s.q, s.q);
+  g.lineJoin = "round";
+  s.paint(g);
+  let src = c;
+  if (s.outline !== false) {
+    const d = document.createElement("canvas");
+    d.width = w;
+    d.height = h;
+    const dg = ctx2d(d);
+    dg.shadowColor = s.lineColor || "rgba(74,18,6,0.95)";
+    dg.shadowBlur = (s.line || 1.6) * s.q;
+    dg.drawImage(c, 0, 0);
+    dg.shadowBlur = (s.line || 1.6) * s.q * 0.45;
+    dg.drawImage(c, 0, 0);
+    dg.shadowColor = "transparent";
+    dg.drawImage(c, 0, 0);
+    if (s.grain !== false) {
+      dg.globalCompositeOperation = "source-atop";
+      dg.fillStyle = dg.createPattern(grainCanvas(), "repeat")!;
+      dg.fillRect(0, 0, w, h);
+    }
+    src = d;
+  }
+  SOFT = false;
+  const out = {
+    w,
+    h,
+    q: s.q,
+    ox: pad - s.box[0] * s.q,
+    oy: pad - s.box[1] * s.q,
+  };
+  lately.set(key, { ...out, ref: new WeakRef(src) });
+  return { ...out, canvas: src };
+}
+/** The last battle atlas: its canvas held weakly (the battle's texture keeps it), its small frame table not. */
+let lastAtlas:
+  | {
+      ref: WeakRef<HTMLCanvasElement>;
+      frames: Record<string, AtlasFrame>;
+      bytes: number;
+    }
+  | undefined;
+/** The battle atlas, if one was painted and is still in memory (the briefing reuses it). */
+export function paintedLumiwickAtlas(): LumiAtlas | undefined {
+  const canvas = lastAtlas?.ref.deref();
+  return canvas && canvas.width > 0 && lastAtlas
+    ? { canvas, frames: lastAtlas.frames, bytes: lastAtlas.bytes }
+    : undefined;
+}
 /**
  * Paint every piece once, trim it, shelf-pack the lot into one canvas.
- * Runs at scene creation (and for the briefing's guide image).
+ * Runs at scene creation.
  */
 export function paintLumiwickAtlas(density = 1): LumiAtlas {
-  const pad = 6;
   const done: {
     name: string;
     img: HTMLCanvasElement;
@@ -1522,39 +1632,16 @@ export function paintLumiwickAtlas(density = 1): LumiAtlas {
     oy: number;
   }[] = [];
   for (const base of lumiwickPieces()) {
-    // density > 1 only for posters (the splash art); battle keeps 1
-    const s = { ...base, q: base.q * density };
-    const w = Math.ceil((s.box[2] - s.box[0]) * s.q) + pad * 2,
-      h = Math.ceil((s.box[3] - s.box[1]) * s.q) + pad * 2;
-    const c = document.createElement("canvas");
-    c.width = w;
-    c.height = h;
-    const g = c.getContext("2d")!;
-    PQ = s.q;
-    g.translate(pad - s.box[0] * s.q, pad - s.box[1] * s.q);
-    g.scale(s.q, s.q);
-    g.lineJoin = "round";
-    s.paint(g);
-    let src = c;
-    if (s.outline !== false) {
-      const d = document.createElement("canvas");
-      d.width = w;
-      d.height = h;
-      const dg = d.getContext("2d")!;
-      dg.shadowColor = s.lineColor || "rgba(74,18,6,0.95)";
-      dg.shadowBlur = (s.line || 1.6) * s.q;
-      dg.drawImage(c, 0, 0);
-      dg.shadowBlur = (s.line || 1.6) * s.q * 0.45;
-      dg.drawImage(c, 0, 0);
-      dg.shadowColor = "transparent";
-      dg.drawImage(c, 0, 0);
-      if (s.grain !== false) {
-        dg.globalCompositeOperation = "source-atop";
-        dg.fillStyle = dg.createPattern(grainCanvas(), "repeat")!;
-        dg.fillRect(0, 0, w, h);
-      }
-      src = d;
-    }
+    // density > 1 only for posters (the splash art); battle keeps 1. CPU
+    // canvases: each piece is read back right here to trim it.
+    const {
+      canvas: src,
+      w,
+      h,
+      q,
+      ox,
+      oy,
+    } = paintLumiwickPiece(base, density, true);
     const data = src.getContext("2d")!.getImageData(0, 0, w, h).data;
     let x0 = w,
       y0 = h,
@@ -1580,14 +1667,10 @@ export function paintLumiwickAtlas(density = 1): LumiAtlas {
     const img = document.createElement("canvas");
     img.width = tw;
     img.height = th;
-    img.getContext("2d")!.drawImage(src, x0, y0, tw, th, 0, 0, tw, th);
-    done.push({
-      name: s.name,
-      img,
-      q: s.q,
-      ox: pad - s.box[0] * s.q - x0,
-      oy: pad - s.box[1] * s.q - y0,
-    });
+    img
+      .getContext("2d", { willReadFrequently: true })!
+      .drawImage(src, x0, y0, tw, th, 0, 0, tw, th);
+    done.push({ name: base.name, img, q, ox: ox - x0, oy: oy - y0 });
   }
   done.sort((a, b) => b.img.height - a.img.height);
   const W = 2048;
@@ -1608,7 +1691,7 @@ export function paintLumiwickAtlas(density = 1): LumiAtlas {
   const canvas = document.createElement("canvas");
   canvas.width = W;
   canvas.height = Math.max(1, py + shelf + 1);
-  const ctx = canvas.getContext("2d")!;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true })!;
   const frames: Record<string, AtlasFrame> = {};
   for (const s of spots) {
     ctx.drawImage(s.d.img, s.x, s.y);
@@ -1622,5 +1705,7 @@ export function paintLumiwickAtlas(density = 1): LumiAtlas {
       oy: s.d.oy / s.d.img.height,
     };
   }
-  return { canvas, frames, bytes: canvas.width * canvas.height * 4 };
+  const bytes = canvas.width * canvas.height * 4;
+  if (density === 1) lastAtlas = { ref: new WeakRef(canvas), frames, bytes };
+  return { canvas, frames, bytes };
 }
