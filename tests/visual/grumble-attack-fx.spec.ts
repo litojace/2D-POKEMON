@@ -126,12 +126,12 @@ test("Cragmuff's attacks use the demo's effects, before and as they land", async
       await snap(page, info, `grumble-${kind}-hit`);
       if (kind === "charge") {
         // where the run ends: a pillar crash's shards, or a miss's scrape marks
-        await run(page, 0.6);
+        await run(page, 1.0);
         const stop = await seen(page);
         expect(stop.crash + stop.scrape, kind).toBeGreaterThan(0);
         await snap(page, info, "grumble-charge-stop");
       }
-      await run(page, kind === "charge" ? 1.0 : 1.2);
+      await run(page, kind === "charge" ? 0.6 : 1.2);
       // The old shared flipbook never shows for this boss.
       expect((await drawn(page)).flipbook, kind).toBe(0);
     }

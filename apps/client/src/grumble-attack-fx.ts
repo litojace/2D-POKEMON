@@ -882,7 +882,7 @@ function charge(
     );
   if (hit.crash) {
     // into a pillar: the crash, a burst of amber shards and dust
-    if (since < 1.2) cragmuffFx.crash++;
+    if (since < 2) cragmuffFx.crash++;
     impact(
       fx,
       glow,

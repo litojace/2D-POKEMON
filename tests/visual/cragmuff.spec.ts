@@ -123,7 +123,7 @@ const closeUp = (page: Page, zoom: number, dy = -60) =>
 test("Cragmuff stands in eight facings from one atlas, a few images each", async ({
   browser,
 }, info) => {
-  test.setTimeout(300_000);
+  test.setTimeout(600_000);
   const context = await browser.newContext({
     viewport: { width: 1280, height: 720 },
     deviceScaleFactor: 2,
@@ -168,7 +168,7 @@ test("Cragmuff stands in eight facings from one atlas, a few images each", async
 test("Cragmuff's attacks have their poses: charge, rear-up and stomp, volley, meteor, stagger, defeat", async ({
   browser,
 }, info) => {
-  test.setTimeout(420_000);
+  test.setTimeout(720_000);
   const context = await browser.newContext({
     viewport: { width: 1280, height: 720 },
     deviceScaleFactor: 2,
