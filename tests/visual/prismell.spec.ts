@@ -29,7 +29,13 @@ async function raid(page: Page) {
   await pushUntilBattle(page);
   await page.evaluate(async () => {
     const { createBossCombatDemo } = await import("/boss-combat-demo.ts");
-    (window as any).__combat = createBossCombatDemo("prismatail", true, false);
+    const c = createBossCombatDemo("prismatail", true, false);
+    // Hold the light relay off: the circling raiders could otherwise carry
+    // the light to the heart mid-test (the mirrors are laid out from a random
+    // seed), and a completed relay clears the warnings, so a wind-up being
+    // checked would vanish. The tests open the heart by hand where needed.
+    (c.arena as any).relayAt = 1e9;
+    (window as any).__combat = c;
   });
   return errors;
 }
@@ -225,7 +231,6 @@ test("Prismell's attacks have their poses: lance, fan, glare, halo, the open hea
     expect(fan.shell!.tint).not.toBe(0xffffff);
     await run(page, 2);
     // Glare: the shell flashes, spokes of light all round
-    // (the raiders may have relayed the light meanwhile: close the heart first)
     await page.evaluate(() => {
       const c = (window as any).__combat;
       c.arena.raid.exposedUntil = 0;
@@ -330,7 +335,6 @@ test("Prismell's lance beam stays clear of its face, and the glare keeps the she
     // the glare: wind-up, the moment it fires, and just after
     await face(page, Math.PI / 2);
     await run(page, 0.3);
-    // (the raiders may have relayed the light meanwhile: close the heart first)
     await page.evaluate(() => {
       const c = (window as any).__combat;
       c.arena.raid.exposedUntil = 0;
