@@ -132,6 +132,15 @@ describe("match reports exported to GitHub", () => {
     );
     expect(md).toContain("40/min (max 60 px), ⚠️ 2 unexplained | 0 |");
     expect(md).toContain("| ios app, 4 cores | 2f04ba3 |");
+    // A fast screen shows its refresh rate (battles hold it to ~60 fps).
+    const android = toReport(
+      entry(
+        'arena-perf {"fps":59.9,"cores":10,"memory":8,"os":"android","hz":120,"mode":"duel","character":"mossloth"}',
+      ),
+    );
+    expect(renderReadme([android])).toContain(
+      "| android, 10 cores, 8 GB, 120 Hz |",
+    );
   });
 
   it("flags what needs looking into, with where to start", () => {

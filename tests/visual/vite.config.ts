@@ -27,7 +27,6 @@ export default defineConfig({
     "import.meta.env.VITE_SUPABASE_ANON_KEY": JSON.stringify("offline"),
     "import.meta.env.VITE_SERVER_URL": JSON.stringify(""),
     "import.meta.env.VITE_SITE_URL": JSON.stringify(""),
-    "import.meta.env.VITE_GOOGLE_SIGN_IN": JSON.stringify(""),
   },
   server: { port: 4179, strictPort: true, fs: { allow: [here("../..")] } },
   logLevel: "warn",

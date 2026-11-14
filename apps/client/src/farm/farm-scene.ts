@@ -88,6 +88,7 @@ import "./farm.css";
 import { fadeIn } from "../ui/motion";
 import { setInner } from "../ui/patch";
 import { sceneDensity } from "../render-budget";
+import { FrameCap } from "../frame-cap";
 
 const svgUrl = (s) =>
   "data:image/svg+xml;charset=utf-8," + encodeURIComponent(s);
@@ -5722,11 +5723,13 @@ export function openFarm(options) {
   }
   let crowAsked = 0,
     lastDraw = 0;
+  // A 120 Hz phone: about 60 frames a second, as everywhere (frame-cap.ts).
+  const cap = new FrameCap();
   let pendingT = 0,
     pendingAsked = 0;
   function step(now) {
     raf = requestAnimationFrame(step);
-    if (low && now - lastDraw < 30) return;
+    if (low ? now - lastDraw < 30 : !cap.draw(now)) return;
     lastDraw = now;
     if (probe) {
       if (document.hidden || covered()) probe.pause();

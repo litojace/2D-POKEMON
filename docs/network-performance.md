@@ -40,6 +40,9 @@ input stands for exactly one simulated step, exactly as the client predicts:
   reconnect never replays a stale cast or stale movement.
 - Activity ("participated") counts when an input arrives, even if the match
   ends before the next tick.
+- A tick with nothing queued runs your last input again; that step is owed
+  and the late inputs are folded in when they arrive, and the phone is told
+  (`Fighter.owed`) so it predicts the same steps (section 12).
 
 ### 2. Adaptive, never-jumping remote playback
 
@@ -144,15 +147,30 @@ Auto watches frame times during live play only: it ignores a 3 s warm-up,
 frame gaps over 250 ms (loading, stalls, background tabs) and every frame
 while a menu or dialog is open or the round is not being played. It steps
 down after two consecutive slow 4 s windows (median slower than ~45 fps, or
-a fifth of the window's time spent in frames missing 30 fps), steps up after
-five comfortable ones, and does not retry a level it had to leave twice. The
-level is remembered per device. Before it has learned a device, Auto starts
-at Low when the device reports 2 GB of memory or less, or Auto already found
-it slow in the Plaza (the Plaza's own rule, `autoChoosesLow`), so an older
-phone's first battle does not lag while Auto measures; it steps up after a
-comfortable stretch if the device copes. Other devices start at High. Manual High/Low always win; choosing Auto
-again re-measures. Reduced motion keeps its own stricter limits at every
-level.
+a tenth of the window's time spent in frames missing 30 fps) and steps up
+after five comfortable ones (90% of frames at ~58 fps or better and at most
+2% of the time stuttering). A level it had to leave is not tried again on
+that device for a week. The level is remembered per device. Before it has
+learned a device, Auto starts at Low when the device reports 2 GB of memory
+or less, or Auto already found it slow in the Plaza (the Plaza's own rule,
+`autoChoosesLow`), so an older phone's first battle does not lag while Auto
+measures; at Medium on Android; at High otherwise. It steps up after a
+comfortable stretch if the device copes. Manual High/Low always win;
+choosing Auto again forgets what it learned and re-measures. Reduced motion
+keeps its own stricter limits at every level.
+
+Made more careful on 13 Nov 2026, from the match reports' one Android phone
+(10 cores, 8 GB, a 120 Hz screen): at Low it ran at 61–107 fps and spent
+1–18% of the time in frames missing 30 fps, and its player had set Low by
+hand. Auto would not have helped: a fifth of the time was its threshold for
+"slow", so it would have stayed at High, and a window counted as
+comfortable on pace alone, however much it stuttered, so a 120 Hz phone
+could step up into a level that stutters. Retrying a level it had left, once
+or twice every session, meant a lagging battle each time. Android starts at
+Medium because its graphics chips vary the most and Medium looks almost the
+same as High; a phone that copes is at High within its first battle. The
+frame cap (section 13) also makes frame times on a 120 Hz screen comparable
+with everyone else's.
 
 The "fifth of the time" was "a fifth of the frames" until 10 Nov 2026. A
 phone that runs at 60 fps but drops to 25 fps for half a second after each
@@ -373,6 +391,87 @@ fails without `carryCurrent`). The match reports on the `perf-reports`
 branch (section 10) now also show the round trip p50/p95, late snapshots,
 corrections a minute (and the largest) and the wait from a skill press to
 its confirmation.
+
+### 12. Late inputs: the "unexplained" jumps in Hard-bot fights
+
+On 11–13 Nov 2026 the reports' Android phone (10 cores, 8 GB, Wi-Fi,
+always against the Hard bot) showed 8–37 "unexplained" corrections a
+minute on build 7c17f1d and 28–74 on ea78f6e, up to 120–400 px apart from
+where hits landed. Nothing in the bot, prediction or movement code changed
+between those builds. Across all 30 reports, the unexplained rate followed
+the **lead** (correlation 0.78; lead 213–224 ms on the first build,
+234–254 ms on the second, round trips about 12 ms longer) and not the
+frame rate (0.22). The lead counts your unanswered inputs, so it grows when
+inputs wait on the way or in the server's queue.
+
+`scripts/perf/correction-sim.ts` reproduces it when the phone's uplink
+holds packets now and then (Wi-Fi power saving does this on phones:
+`STALL_CHANCE`, `STALL_MS`). With 3% of inputs held for 120 ms while just
+walking: 63–73 corrections a minute, all "other", 8–28 px, and the lead up
+from 133 ms (no holds) to 177–188 ms. Raising the bot to Hard (`BOT_LEVEL=hard`) or the
+frame rate to 120 (`FPS=120`) adds hits and statuses, not unexplained
+corrections, and steady jitter alone (in order, as over TCP) adds almost
+none.
+
+The cause: on a tick with none of your inputs queued, the server runs your
+last input again (it is late, not lost), so it takes a step the phone had
+not predicted, while `ack` stands still. Every snapshot during the hold put
+the phone one step further ahead, and catching up (a burst, or the
+once-a-second trim of a standing queue) pulled it back, or lost a step for
+good. Both read as "other".
+
+The fix keeps one step per input, on both sides:
+
+- The server counts each repeated tick as owed and, when the late inputs
+  arrive, folds that many into one tick (merged, as a burst always was).
+  After `staleTicks` with nothing (a pause or a hidden tab, not a hiccup)
+  it forgets the debt, and so it does when a burst is used up and part of
+  the debt is still unpaid two ticks later: then the phone itself froze,
+  its input clock (which catches up at most 100 ms) skipped those ticks,
+  and no inputs are coming for them. Kept, that debt would have had the
+  phone predict every later input a step short. The fighter carries the count (`Fighter.owed`, only
+  while it is above 0).
+- The phone replays its pending inputs as the server will step them
+  (`serverSteps` and `newestStep`, predict-fighter.ts): the owed inputs take
+  no step of their own and go in with the next one.
+
+Same simulator, same holds: walking 63–73 → 8–10 corrections a minute
+(what is left: a direction change during a hold), a Hard fight's
+unexplained 48 → 15 a minute, and the lead 185 → 139 ms (133 without holds).
+A phone on an older build (no `owed`) against the new server does slightly
+worse than before (about 80 a minute walking) until it updates.
+`tests/unit/correction-sim.test.ts` and `tests/unit/input-queue.test.ts`
+hold this; both fail without it.
+
+The same reports showed "hit while drawn far away" (`hitsFar`, up to
+400 px). Some may come from the same holds (you were drawn steps from
+where the server had you), but that is not measured; the largest are
+knockbacks, which no prediction can show in advance (section 11). The
+next reports will tell.
+
+### 13. 60 frames a second on fast screens
+
+Phones with 90–144 Hz screens call the game's animation loops that often.
+The game looks no smoother past 60 (the server moves everything 30 times a
+second), but a 120 Hz phone draws twice the pixels a second, and its
+graphics chip heats up and slows down. The reports' Android phone ran
+battles at 61–107 fps with frameP95 19–33 ms: fast frames mixed with slow
+ones.
+
+`frame-cap.ts` holds the battle (wrapping Phaser's step from `postBoot`),
+the Plaza, the Farm and the Bistro to about 60 fps on screens of 100 Hz or
+more, on every system (iPhones with ProMotion too, where the browser runs
+pages at 120). It learns the refresh from the frames themselves and draws
+once about 1/60 s has passed since the last frame drawn: every other
+refresh at 120 Hz, never two skipped in a row, and a late frame at once.
+Skipped frames' time goes to the next frame drawn, so the game's clocks
+(inputs, animation) keep real time. A 90 Hz screen is left alone: a cap
+there means 45 fps or an uneven 60. Low in the Plaza, Farm and Bistro keeps
+its 30 fps. Reports now carry the screen's refresh rate (`hz`), shown
+under Device, so a capped 120 Hz phone can be told from a 60 Hz one. It is
+left out when the measure cannot be a screen's (below 30 or above 250 Hz):
+a device too slow to draw every refresh measures its own pace, and two
+calls of Phaser's step in one frame (0.05 ms apart) are not counted.
 
 ## Results
 

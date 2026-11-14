@@ -161,11 +161,11 @@
           form we can't read.
         </li>
         <li>
-          <strong>Sign in with Apple or Google:</strong> the email address and
-          name they share with us. With Apple's "Hide My Email", we get a
-          private relay address instead of your real one. In the iPhone app, we
-          also keep a token from Apple so we can disconnect Sign in with Apple
-          when you delete your account.
+          <strong>Sign in with Apple:</strong> the email address and name Apple
+          shares with us. With Apple's "Hide My Email", we get a private relay
+          address instead of your real one. In the iPhone app, we also keep a
+          token from Apple so we can disconnect Sign in with Apple when you
+          delete your account.
         </li>
         <li>
           <strong>Guest play:</strong> no email at all; we keep an anonymous
@@ -217,6 +217,12 @@
           <strong>Performance reports:</strong> after a match, the game sends
           frame rates, slowest frames, graphics level, device memory and number
           of processor cores. These reports don't include your account.
+        </li>
+        <li>
+          <strong>Load times:</strong> when a battle starts, the game sends how
+          long it took to load, with your device memory and number of processor
+          cores. These are logged with your account ID, like connection logs, so
+          we can fix slow loading.
         </li>
         <li>
           <strong>IP addresses:</strong> our game server uses your IP address
@@ -286,9 +292,8 @@
           (United States).
         </li>
         <li>
-          <strong>Apple</strong> and <strong>Google</strong>, only if you choose
-          to sign in with them. Their own privacy policies apply to that
-          sign-in.
+          <strong>Apple</strong>, only if you choose to sign in with Apple.
+          Apple's own privacy policy applies to that sign-in.
         </li>
       </ul>
       <p>
@@ -316,7 +321,7 @@
         </li>
       </ul>
 
-      <h2>Deleting your account</h2>
+      <h2 id="deleting-your-account">Deleting your account</h2>
       <p>
         Open your <strong>player card</strong> (tap your name at the top of the
         screen), choose <strong>Delete account</strong> at the bottom, and type

@@ -78,6 +78,7 @@ import "./plaza.css";
 import { fadeIn } from "../ui/motion";
 import { setInner } from "../ui/patch";
 import { sceneDensity } from "../render-budget";
+import { FrameCap } from "../frame-cap";
 
 const esc = (s) =>
   String(s).replace(
@@ -3677,9 +3678,11 @@ export function openPlaza(options) {
   // events (the Orb Shower).
   const DASH_EVERY = PLAZA.dashEvery;
   let lastDraw = 0;
+  // A 120 Hz phone: about 60 frames a second, as everywhere (frame-cap.ts).
+  const cap = new FrameCap();
   function step(now) {
     raf = requestAnimationFrame(step);
-    if (low && now - lastDraw < 30) return;
+    if (low ? now - lastDraw < 30 : !cap.draw(now)) return;
     lastDraw = now;
     if (probe) {
       if (covered() || document.hidden) probe.pause();
