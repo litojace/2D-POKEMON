@@ -1,5 +1,4 @@
 import { expect, test, type Page } from "@playwright/test";
-import { RAID_BOSSES } from "../../packages/shared/src/raid-roster";
 import {
   openHub,
   pushUntilBattle,
@@ -97,9 +96,7 @@ for (const viewport of [
       await waitForLobby(page);
       await page.click("#leave");
       await expectHub(page, "rewards");
-      await expect(page.locator(".rh-stage-name")).toHaveText(
-        RAID_BOSSES.prismatail.name,
-      );
+      await expect(page.locator(".rh-stage-name")).toHaveText("Prismell");
 
       // The battle Settings exit follows the same origin. A failed leave keeps
       // the current room and its return destination intact for the next try.

@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { MISSIONS } from "../../packages/shared/src/shop";
 import { CHARACTERS } from "@arena/shared";
-import { RAID_BOSSES } from "../../packages/shared/src/raid-roster";
 import {
   missionFeatExamples,
   missionHelp,
@@ -103,16 +102,12 @@ describe("mission completion instructions", () => {
     ).toBe(true);
     expect(
       examples.some(
-        (text) =>
-          text.includes(RAID_BOSSES.somnara.name) &&
-          text.includes("wrong runes"),
+        (text) => text.includes("Snoozaku") && text.includes("wrong runes"),
       ),
     ).toBe(true);
     expect(
       examples.some(
-        (text) =>
-          text.includes(RAID_BOSSES.prismatail.name) &&
-          text.includes("8 seconds"),
+        (text) => text.includes("Prismell") && text.includes("8 seconds"),
       ),
     ).toBe(true);
     expect(
