@@ -266,6 +266,9 @@ export function renderRaidUI(
       : 0;
   const active = document.activeElement;
   const focusId = active && previousCard?.contains(active) ? active.id : "";
+  // The same panel redrawn (a rite picked, a teammate ready) keeps still: a
+  // new card would replay its entrance pop and shift everything on it.
+  const samePanel = !!previousCard && overlay.dataset.raidPhase === state.phase;
   // The briefing and the results use the hub's shared panel, tags and
   // buttons (UI remodel step 5); the rites, countdown and pause keep the
   // match's own card.
@@ -278,6 +281,7 @@ export function renderRaidUI(
   );
   overlay.dataset.raidPhase = state.phase;
   const card = overlay.querySelector<HTMLElement>(".raid-overlay, .rc-card");
+  if (replaced && samePanel) card?.classList.add("is-redrawn");
   // Leave native touch scrolling alone while snapshots keep the same DOM.
   const scroller =
     overlay.querySelector<HTMLElement>(".rc-body") ??

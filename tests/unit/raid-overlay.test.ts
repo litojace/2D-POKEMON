@@ -71,7 +71,11 @@ it.each(["finished", "briefing", "intermission"])(
       },
       contains: () => false,
     };
-    const card = { scrollTop: 0, contains: () => false };
+    const card = {
+      scrollTop: 0,
+      contains: () => false,
+      classList: { add: vi.fn() },
+    };
     const overlay = {
       style: {},
       dataset: {},
@@ -129,5 +133,9 @@ it.each(["finished", "briefing", "intermission"])(
     render();
     expect(position).toBe(120);
     expect(scrollWrites).toBe(1);
+    // Redrawn in the same phase: the card skips its entrance pop, which
+    // would otherwise shift everything on it.
+    expect(card.classList.add).toHaveBeenCalledTimes(1);
+    expect(card.classList.add).toHaveBeenCalledWith("is-redrawn");
   },
 );

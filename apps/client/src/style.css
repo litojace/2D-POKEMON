@@ -3856,8 +3856,9 @@ html.zoom-locked dialog :is(input, textarea) {
   dialog[open]::backdrop {
     animation: ea-fade 0.24s ease-out;
   }
-  /* The countdown card updates every second, so it stays still. */
-  .overlay-card:not(:empty):not(.countdown-card) {
+  /* The countdown card updates every second, so it stays still, and so does
+     a card redrawn in place (raid-ui.ts: a rite picked). */
+  .overlay-card:not(:empty):not(.countdown-card):not(.is-redrawn) {
     animation: ea-pop 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
   }
   /* Room list rows and the header menu panel. */

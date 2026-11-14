@@ -339,6 +339,13 @@ for (const size of [
       await expect(cards).toHaveCount(6);
       await expect(page.locator(".raid-draft")).toBeVisible();
       await page.waitForTimeout(400);
+      // Settle the card's entrance pop (a scale and a slide) before measuring:
+      // whether it has run yet depends on the machine's frame timing, so a
+      // card that replays it on every pick only failed on some machines.
+      // Settled first, a replayed pop now moves the cards on every machine.
+      await page
+        .locator(".raid-draft")
+        .evaluate((e) => e.getAnimations().forEach((a) => a.finish()));
       const before = await places();
       // The six cards end above the chapter tip and timer row: a fixed-height
       // panel used to let them overflow onto it on desktop screens.
