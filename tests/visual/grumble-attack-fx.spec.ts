@@ -46,6 +46,12 @@ const run = (page: Page, seconds: number) =>
       );
     }
   }, seconds);
+/** What Cragmuff's effects drew in the last frame (by effect). */
+const seen = (page: Page) =>
+  page.evaluate(async () => {
+    const { cragmuffFx } = await import("/cragmuff-fx.ts");
+    return { ...cragmuffFx };
+  });
 /** Seconds until the boss's newest warning lands. */
 const untilHit = (page: Page) =>
   page.evaluate(() => {
@@ -85,23 +91,73 @@ test("Cragmuff's attacks use the demo's effects, before and as they land", async
     const errors = await raid(page);
     await page.evaluate(() => (window as any).__combat.face("front"));
     await run(page, 0.5);
-    for (const kind of ["volley", "share", "slam", "eruption", "charge"]) {
+    for (const kind of [
+      "volley",
+      "share",
+      "slam",
+      "eruption",
+      "debris",
+      "charge",
+    ]) {
       await page.evaluate((kind) => (window as any).__combat.cast(kind), kind);
       const lead = await untilHit(page);
       expect(lead, kind).toBeGreaterThan(0.5);
       // Just before it lands: the volley's stones and the meteor are in the air.
       await run(page, lead - 0.25);
+      const before = await seen(page);
+      // the ram demo's effects: stones and wool shaken from the fleece, the
+      // crystal meteor forming, a crack racing to the eruption, roof rocks falling
+      if (kind === "volley") {
+        expect(before.stones, kind).toBeGreaterThan(0);
+        expect(before.wool, kind).toBeGreaterThan(0);
+      }
+      if (kind === "share") expect(before.meteor, kind).toBe(1);
+      if (kind === "eruption") expect(before.cracks, kind).toBeGreaterThan(0);
+      if (kind === "debris") expect(before.debris, kind).toBeGreaterThan(0);
       await snap(page, info, `grumble-${kind}-before`);
       // As it lands, and a little after.
       await run(page, 0.45);
       const hit = await drawn(page);
       expect(hit.flipbook, kind).toBe(0);
       expect(hit.sprites, kind).toBeGreaterThan(0);
+      const after = await seen(page);
+      if (kind === "eruption") expect(after.spikes, kind).toBeGreaterThan(0);
+
       await snap(page, info, `grumble-${kind}-hit`);
-      await run(page, kind === "charge" ? 1.6 : 1.2);
+      if (kind === "charge") {
+        // where the run ends: a pillar crash's shards, or a miss's scrape marks
+        await run(page, 1.0);
+        const stop = await seen(page);
+        expect(stop.crash + stop.scrape, kind).toBeGreaterThan(0);
+        await snap(page, info, "grumble-charge-stop");
+      }
+      await run(page, kind === "charge" ? 0.6 : 1.2);
       // The old shared flipbook never shows for this boss.
       expect((await drawn(page)).flipbook, kind).toBe(0);
     }
+    // A raider behind the middle pillar: the stones that fly at it stop at its footprint.
+    await page.evaluate(() => {
+      const c = (window as any).__combat,
+        a = c.arena,
+        boss = a.boss(),
+        hero = a.heroes()[0];
+      boss.x = 1230;
+      boss.y = 450;
+      hero.x = 620;
+      hero.y = 450;
+      c.cast("volley");
+    });
+    await run(page, (await untilHit(page)) - 0.2);
+    expect((await seen(page)).stopped).toBeGreaterThan(0);
+    await snap(page, info, "grumble-volley-pillar");
+    await run(page, 1.2);
+    // Chapter 3's closing ring: crystals stand on it.
+    await page.evaluate(() => {
+      (window as any).__combat.arena.raid.closingRadius = 420;
+    });
+    await run(page, 0.2);
+    expect((await seen(page)).ring).toBeGreaterThan(3);
+    await snap(page, info, "grumble-closing-ring");
     // Phase 3: hot cracks and embers.
     await page.evaluate(() => {
       (window as any).__combat.arena.raid.phase = 3;

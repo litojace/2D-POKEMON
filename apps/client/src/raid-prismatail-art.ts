@@ -1,4 +1,5 @@
-import { paintVectorPrisma } from "./boss-vector-prisma-rig";
+import { paintPrismell } from "./boss-prismell-rig";
+import { notePrismell } from "./prismell-attack-fx";
 import { paintBossAura } from "./boss-spell-art";
 import { groundHeight } from "../../../packages/shared/src/world-art";
 import { bossLife } from "./raid-boss-life";
@@ -141,11 +142,11 @@ const steps = new WeakMap<
   { x: number; y: number; time: number; walk: number }
 >();
 /**
- * Prismatail as vector art (boss-vector-prisma.ts): a crystal peacock posed
- * from the battle's own state. The attack being wound up (its warning) and
- * the last one cast drive its windups and follow-through; a light relay opens
- * its heart; it cries out with its fan up at a new phase and fades to a dim
- * husk when beaten.
+ * Prismell (the "prismatail" raid): the prism-shelled snail (boss-prismell.ts)
+ * posed from the battle's own state. The attack being wound up (its warning)
+ * and the last one cast drive its windups and follow-through; a light relay
+ * opens its heart; it shows its shell off at a new phase, and when beaten the
+ * shell's light goes out and it tucks itself away inside.
  */
 export function drawPrismatail(
   g: G,
@@ -181,8 +182,8 @@ export function drawPrismatail(
       (w.startedAt ?? w.at - 1.5) <= state.time,
   );
   const cast = life.action.casts[life.action.casts.length - 1];
-  g.fillStyle(0x101a2d, 0.32).fillEllipse(boss.x, boss.y + 8, 150, 38);
-  const at = paintVectorPrisma(g, {
+  g.fillStyle(0x101a2d, 0.32).fillEllipse(boss.x, boss.y + 6, 172, 40);
+  const at = paintPrismell(g, {
     x: boss.x,
     y: boss.y,
     angle: boss.angle,
@@ -202,8 +203,24 @@ export function drawPrismatail(
     deadAge: pose.deathAge,
     walk: pose.dead || exposed || stagger ? 0 : walk,
     prismHot: wind?.kind === "fan-display" ? (wind.prismIndex ?? 0) : undefined,
+    scramble: !!r.mirrors?.some((m) => (m.scrambleAt ?? 0) > state.time),
   });
-  if (at && !pose.dead)
-    paintBossAura(g, "prismatail", at.heart.x, at.heart.y, life, 1);
+  if (at) {
+    // where the shell and its heart are, for the attack effects (prismell-attack-fx.ts)
+    notePrismell(g.scene, {
+      heart: at.heart,
+      shell: at.shell,
+      shellTop: at.shellTop,
+      open: at.open,
+      dim: at.dim,
+      shine: at.shine,
+      // the face: beams and motes keep clear of it
+      head: at.head,
+      headR: at.headR,
+    });
+    if (!pose.dead)
+      // the shared cast aura, kept soft: the shell's facets must stay readable
+      paintBossAura(g, "prismatail", at.heart.x, at.heart.y, life, 0.4);
+  }
   return pose.cues;
 }

@@ -146,7 +146,7 @@ export class SomnaraArena extends RaidArena {
   }
   protected override finishMessage(won: boolean) {
     return won
-      ? "Somnara wakes! A little house lights up among the stars."
+      ? "Snoozaku wakes! Its star-heart twinkles over the clouds."
       : "The dream drifts on. Listen for the runes and try again.";
   }
   override feat() {
@@ -337,7 +337,7 @@ export class SomnaraArena extends RaidArena {
         S.sequence.expose + (r.trait === "deep-slumber" ? 2 : 0),
       );
       r.exposedUntil = this.time + expose;
-      r.message = "Dream solved! Somnara wakes — strike the shining heart!";
+      r.message = "Dream solved! Snoozaku wakes — strike the shining heart!";
       this.nextAttack = Math.max(
         this.nextAttack,
         r.exposedUntil + (this.smart() ? 0.4 : 0.8),

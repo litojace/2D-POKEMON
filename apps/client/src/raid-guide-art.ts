@@ -15,14 +15,6 @@ export function raidGuideTidewyrm(exposed = false) {
 export function raidGuideGloomshade(exposed = false, shadow = true) {
   return raidGuideSprite("gloomshade", exposed, shadow);
 }
-export function raidGuideSomnara(exposed = false) {
-  return raidCrest("somnara")
-    .replace(/<svg[^>]*>/, '<g transform="translate(-45 -50) scale(.9)">')
-    .replace(
-      "</svg>",
-      `${exposed ? '<circle cy="8" r="15" fill="none" stroke="#82ffe7"/>' : ""}</g>`,
-    );
-}
 /** The boss's miniature for lobbies and results. */
 export function raidGuideBossFor(boss: string, exposed = false) {
   return boss === "storm-twins"
@@ -41,7 +33,7 @@ export function raidGuideBossFor(boss: string, exposed = false) {
             )
             .replace("</svg>", "</g>")
         : boss === "somnara"
-          ? raidGuideSomnara(exposed)
+          ? raidGuideSprite("somnara", exposed)
           : boss === "tidewyrm"
             ? raidGuideTidewyrm(exposed)
             : boss === "gloomshade"

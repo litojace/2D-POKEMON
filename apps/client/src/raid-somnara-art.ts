@@ -1,4 +1,4 @@
-import { paintVectorSomnara } from "./boss-vector-somnara-rig";
+import { paintSnoozaku } from "./boss-snoozaku-rig";
 import { bossLife } from "./raid-boss-life";
 import type Phaser from "phaser";
 import type { Snapshot } from "@arena/shared";
@@ -77,7 +77,7 @@ export function padAtPoint(x: number, y: number) {
 }
 /** The server marks a correct step with a value-0 mint "heal" at the raider on the pad. */
 const STEP_COLOR = 0x99efdd;
-/** The Nightmare: a 500-wide violet raid-impact at the whale. */
+/** The Nightmare: a 500-wide violet raid-impact at the baku. */
 const NIGHTMARE = { color: 0xc090ff, radius: 500 };
 type Event = Snapshot["events"][number];
 /** The pad a correct step was made on, or undefined if the event is not one. */
@@ -109,7 +109,11 @@ interface PadFx {
 const deckFx: {
   pads: PadFx[];
   night: { x: number; y: number; at?: number }[];
-} = { pads: [], night: [] };
+  /** Nightmares seen so far (the baku jolts awake at each). */
+  nightmares: number;
+} = { pads: [], night: [], nightmares: 0 };
+/** How many Nightmares this client has seen (Snoozaku's jolt, its effects). */
+export const cloudDeckNightmares = () => deckFx.nightmares;
 /**
  * A server event in a Somnara raid: a correct step flashes its pad mint, the
  * Nightmare sends its shockwave and cracks the pad a raider stood on. True
@@ -123,6 +127,7 @@ export function noteCloudDeckEvent(event: Event, state: Snapshot | undefined) {
   for (const rune of padsUnderRaiders(state))
     deckFx.pads.push({ rune, kind: "bad" });
   deckFx.night.push({ x: event.x, y: event.y });
+  deckFx.nightmares++;
   deckFx.pads = deckFx.pads.slice(-8);
   deckFx.night = deckFx.night.slice(-3);
   return true;
@@ -366,7 +371,7 @@ export function drawCloudDeck(
       T.put("arrowHead", x0 + 10, y - 33);
     }
   }
-  // The Nightmare's shockwave: radius 500 at the whale, growing to 625 in 0.4 s.
+  // The Nightmare's shockwave: radius 500 at the baku, growing to 625 in 0.4 s.
   for (const n of deckFx.night) {
     const k = clamp01((clock - n.at!) / 0.4);
     T.put("nightRing", n.x, n.y, {
@@ -427,7 +432,7 @@ export function drawSomnaraWarning(
   }
   return w.kind === "whale-song";
 }
-interface WhaleMemory {
+interface BakuMemory {
   serverTime: number;
   seed: number;
   hp: number;
@@ -438,15 +443,18 @@ interface WhaleMemory {
   time: number;
   hurtAt: number;
   roarAt: number;
+  nightAt: number;
+  nights: number;
   deathAt?: number;
 }
-const memory = new WeakMap<G, WhaleMemory>();
+const memory = new WeakMap<G, BakuMemory>();
 /**
- * Somnara, the dream whale: vector art (boss-vector-somnara.ts) posed from the
- * battle's own state: asleep and drifting at rest, each attack's windup (its
- * warning) and follow-through (its cast), drowsy-eyed through a dream, woken
- * wide-eyed with its star-heart open, dizzy when staggered, a flinch when hit,
- * a yawn into each new phase, and sinking into a deep sleep when beaten.
+ * Snoozaku, the dream-eating baku (Somnara's raid): its painted rig
+ * (boss-snoozaku*.ts) posed from the battle's own state: drowsy and dozing
+ * at rest, each attack's windup (its warning) and follow-through (its cast),
+ * asleep and dreaming through a dream, jolted by a Nightmare, woken
+ * wide-eyed with its star-heart open, dizzy when staggered, a flinch when
+ * hit, a yawn into each new phase, and curled up asleep when beaten.
  */
 export function drawSomnara(
   g: G,
@@ -475,6 +483,8 @@ export function drawSomnara(
       time: 0,
       hurtAt: -10,
       roarAt: -10,
+      nightAt: -10,
+      nights: deckFx.nightmares,
     };
     memory.set(g, m);
   }
@@ -496,6 +506,8 @@ export function drawSomnara(
     m.deathAt = m.time;
     cues.push("fall");
   }
+  if (deckFx.nightmares > m.nights) m.nightAt = m.time;
+  m.nights = deckFx.nightmares;
   m.hp = boss.hp;
   m.exposed = exposed;
   m.phase = r.phase;
@@ -504,9 +516,9 @@ export function drawSomnara(
     t = m.time;
   const deathAt = m.deathAt;
   const dead = deathAt !== undefined;
-  g.fillStyle(0x08102a, 0.27).fillEllipse(boss.x, boss.y + 26, 217, 49);
+  g.fillStyle(0x08102a, 0.27).fillEllipse(boss.x, boss.y + 26, 184, 44);
   // The attack being wound up (its warning) and the last one cast; through a
-  // dream it watches, drowsy-eyed, its nightcap's bobble aglow.
+  // dream it sleeps, its nightcap's pompom aglow.
   const wind = r.warnings.find(
     (w) =>
       (!w.casterId || w.casterId === boss.id) &&
@@ -515,11 +527,11 @@ export function drawSomnara(
   );
   const cast = life.action.casts[life.action.casts.length - 1];
   const dreaming = !wind && !!r.dream;
-  paintVectorSomnara(g, {
+  paintSnoozaku(g, {
     x: boss.x,
-    y: boss.y + 26,
+    y: boss.y,
     angle: boss.angle,
-    clock: t,
+    time: t,
     phase: r.phase,
     reduced,
     gilded: !!r.gilded,
@@ -528,11 +540,12 @@ export function drawSomnara(
     castKind: cast?.kind,
     castAge: cast?.age ?? 99,
     roarAge: t - m.roarAt,
+    nightmareAge: t - m.nightAt,
     exposed,
     stagger,
     hurt: Math.max(0, 1 - (t - m.hurtAt) / 0.24),
     dead,
-    deadAge: dead ? (reduced ? 9 : t - deathAt) : undefined,
+    deadAge: dead ? (reduced ? 9 : t - deathAt) : 0,
   });
   return cues;
 }

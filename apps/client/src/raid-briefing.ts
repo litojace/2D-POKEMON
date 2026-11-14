@@ -128,7 +128,7 @@ export function bossBriefing(boss: RaidBossId, solo: boolean): BossBriefing {
           ),
           step(
             "Attack during the opening",
-            "Complete the sequence, then use your strongest skills while Somnara is exposed.",
+            "Complete the sequence, then use your strongest skills while Snoozaku is exposed.",
             "Repeat when a new dream sequence appears.",
             "opening",
           ),

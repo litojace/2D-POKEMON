@@ -62,7 +62,7 @@ const qbez3 = (a: V3, b: V3, c: V3, t: number): V3 => ({
   y: (1 - t) * (1 - t) * a.y + 2 * (1 - t) * t * b.y + t * t * c.y,
   z: (1 - t) * (1 - t) * a.z + 2 * (1 - t) * t * b.z + t * t * c.z,
 });
-const PITCH = 14 * DEG,
+export const PITCH = 14 * DEG,
   CP = Math.cos(PITCH),
   SP = Math.sin(PITCH);
 const LIGHT = norm3(-0.58, 0.62, 0.52);
@@ -397,7 +397,10 @@ function rimLight(ctx: Ctx, E: E2, a0: number) {
     c = document.createElement("canvas");
   c.width = ctx.canvas.width;
   c.height = ctx.canvas.height;
-  const g = c.getContext("2d");
+  // the same kind of canvas as the piece (a CPU one is never read back from the GPU)
+  const g = c.getContext("2d", {
+    willReadFrequently: !!ctx.getContextAttributes?.()?.willReadFrequently,
+  });
   if (!g) return;
   g.setTransform(m);
   g.translate(cx, cy);
@@ -1859,60 +1862,255 @@ export function paintTail(ctx: Ctx, k: { v: number; pose: string }) {
 }
 
 // ════════════════ effect sprites for the rig ════════════════
-/** Lace foam where the body meets the water: the far half (behind) or the near half (in front). */
-export function paintFoam(ctx: Ctx, k: { front: number }) {
-  const r = rng(k.front ? 17 : 19),
-    a0 = k.front ? 0 : Math.PI,
-    a1 = a0 + Math.PI;
+// ── the water round the body (painted once; the rig places, scales and fades them) ──
+/** The waterline's unit ellipse: the veil and the ripples are painted round it. */
+export const VEIL = { rx: 50, ry: 11, depth: 17, wide: 1.3 };
+const lowerHalf = (p: Path2D, rx: number, ry: number) =>
+  p.ellipse(0, 0, rx, ry, 0, 0, Math.PI, false);
+/**
+ * The water over the part of the body under the surface: a crescent from the
+ * near half of the waterline down round the belly, clear at the line and
+ * deepening below it, with a dark refraction band and a bright meniscus
+ * right at the line. Scaled per frame to the waterline of the head or body.
+ */
+export function paintVeil(ctx: Ctx) {
+  const { rx, ry, depth, wide } = VEIL;
+  // the crescent between the waterline's near half and a wider, deeper curve
+  const crescent = (k: number) => {
+    const p = new Path2D();
+    lowerHalf(p, rx * wide, ry + depth);
+    p.ellipse(
+      0,
+      0,
+      rx * (1 + (wide - 1) * k),
+      ry + depth * k,
+      0,
+      Math.PI,
+      0,
+      true,
+    );
+    p.closePath();
+    return p;
+  };
+  ctx.save();
+  // stacked crescents: the water gets denser the further below the line
+  soft(ctx, 1.4, () => {
+    for (let i = 0; i < 7; i++) {
+      const k = i / 7;
+      ctx.fillStyle = `rgba(${26 - i * 2},${128 - i * 5},${150 - i * 4},${i ? 0.2 : 0.46})`;
+      ctx.fill(crescent(k));
+    }
+  });
+  // refraction: the belly's light breaks into a few wavering streaks
+  ctx.save();
+  ctx.clip(crescent(0));
+  const r = rng(41);
   ctx.lineCap = "round";
-  ctx.strokeStyle = `rgba(255,255,255,${k.front ? 0.3 : 0.22})`;
-  ctx.lineWidth = 9;
-  ctx.beginPath();
-  ctx.ellipse(0, 0, 60, 22, 0, a0, a1);
-  ctx.stroke();
-  for (let i = 0; i < 120; i++) {
-    const a = a0 + r() * Math.PI,
-      kk = 1 + (r() - 0.45) * 0.16;
-    ctx.fillStyle = `rgba(255,255,255,${0.45 + r() * 0.5})`;
+  for (let i = 0; i < 9; i++) {
+    const y = ry * 0.4 + r() * (depth * 0.7),
+      x0 = (r() - 0.5) * rx * 1.6,
+      len = 6 + r() * 14;
+    ctx.strokeStyle = `rgba(190,255,250,${0.14 + r() * 0.16})`;
+    ctx.lineWidth = 0.7 + r() * 0.6;
     ctx.beginPath();
-    ctx.arc(
-      Math.cos(a) * 60 * kk,
-      Math.sin(a) * 22 * kk,
-      0.8 + r() * 2.4,
+    ctx.moveTo(x0, y);
+    ctx.quadraticCurveTo(x0 + len / 2, y - 1.4, x0 + len, y + 0.4);
+    ctx.stroke();
+  }
+  ctx.restore();
+  // a dark band just under the line (the surface bends the light away)
+  soft(ctx, 1, () => {
+    ctx.strokeStyle = "rgba(6,70,92,0.42)";
+    ctx.lineWidth = 2.6;
+    ctx.beginPath();
+    ctx.ellipse(0, 1.6, rx * 0.985, ry, 0, 0.12, Math.PI - 0.12);
+    ctx.stroke();
+  });
+  // the meniscus: water climbing the skin, bright where it catches the sky
+  soft(ctx, 1.6, () => {
+    ctx.strokeStyle = "rgba(210,255,255,0.55)";
+    ctx.lineWidth = 3.4;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, rx, ry, 0, 0.05, Math.PI - 0.05);
+    ctx.stroke();
+  });
+  const mg = ctx.createLinearGradient(-rx, 0, rx, 0);
+  mg.addColorStop(0, "rgba(255,255,255,0.25)");
+  mg.addColorStop(0.3, "rgba(255,255,255,0.95)");
+  mg.addColorStop(0.55, "rgba(240,255,255,0.7)");
+  mg.addColorStop(1, "rgba(255,255,255,0.3)");
+  ctx.strokeStyle = mg;
+  ctx.lineWidth = 1.3;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, rx, ry, 0, 0.08, Math.PI - 0.08);
+  ctx.stroke();
+  ctx.restore();
+}
+/** One clumpy lump of foam: overlapping suds, a blue-grey underside, a lit top. */
+export function paintFoamClump(ctx: Ctx, k: { seed: number }) {
+  const r = rng(70 + k.seed * 13),
+    n = 6 + Math.floor(r() * 4),
+    blobs: { x: number; y: number; r: number }[] = [];
+  for (let i = 0; i < n; i++) {
+    const a = r() * TAU,
+      d = Math.sqrt(r());
+    blobs.push({
+      x: Math.cos(a) * d * 6.5,
+      y: Math.sin(a) * d * 2.6,
+      r: 1.6 + r() * 2.4,
+    });
+  }
+  soft(ctx, 0.9, () => {
+    ctx.fillStyle = "rgba(40,120,140,0.45)";
+    for (const b of blobs) {
+      ctx.beginPath();
+      ctx.ellipse(b.x, b.y + 1.3, b.r * 1.1, b.r * 0.8, 0, 0, TAU);
+      ctx.fill();
+    }
+  });
+  for (const b of blobs) {
+    ctx.fillStyle = "rgba(214,244,248,0.96)";
+    ctx.beginPath();
+    ctx.ellipse(b.x, b.y, b.r, b.r * 0.82, 0, 0, TAU);
+    ctx.fill();
+  }
+  for (const b of blobs) {
+    ctx.fillStyle = "rgba(255,255,255,0.95)";
+    ctx.beginPath();
+    ctx.ellipse(
+      b.x - b.r * 0.2,
+      b.y - b.r * 0.25,
+      b.r * 0.6,
+      b.r * 0.45,
+      0,
       0,
       TAU,
     );
     ctx.fill();
   }
-  ctx.strokeStyle = "rgba(255,255,255,0.9)";
-  ctx.lineWidth = 2.2;
-  ctx.beginPath();
-  ctx.ellipse(0, 0, 58, 21, 0, a0 + 0.08, a1 - 0.08);
-  ctx.stroke();
+  // a few loose bubbles round the lump
+  for (let i = 0; i < 4; i++) {
+    const a = r() * TAU;
+    ctx.strokeStyle = "rgba(255,255,255,0.8)";
+    ctx.lineWidth = 0.5;
+    ctx.beginPath();
+    ctx.arc(Math.cos(a) * 9, Math.sin(a) * 3.6, 0.7 + r() * 0.6, 0, TAU);
+    ctx.stroke();
+  }
 }
-/** The soft fade where gill tips, chin and tail meet the water. */
-export function paintFade(ctx: Ctx) {
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(-110, -10, 220, 50);
-  ctx.clip();
-  ctx.scale(1, 0.28);
-  const g = ctx.createRadialGradient(0, 0, 60, 0, 0, 100);
-  g.addColorStop(0, "rgba(62,184,198,0)");
-  g.addColorStop(0.72, "rgba(62,184,198,0.55)");
-  g.addColorStop(0.92, "rgba(70,190,204,0.9)");
-  g.addColorStop(1, "rgba(70,190,204,0)");
-  ctx.fillStyle = g;
-  ctx.beginPath();
-  ctx.arc(0, 0, 100, 0, TAU);
-  ctx.fill();
-  ctx.restore();
-  ctx.globalCompositeOperation = "destination-in";
-  const v = ctx.createLinearGradient(0, -10, 0, 6);
-  v.addColorStop(0, "rgba(0,0,0,0)");
-  v.addColorStop(1, "rgba(0,0,0,1)");
-  ctx.fillStyle = v;
-  ctx.fillRect(-110, -10, 220, 50);
+/** A strip of frothy foam: a soft band with cloudy, uneven suds along it. */
+export function paintFoamLace(ctx: Ctx, k: { seed: number }) {
+  const r = rng(90 + k.seed * 7),
+    blobs: { x: number; y: number; rx: number; ry: number }[] = [];
+  for (let i = 0; i < 9; i++) {
+    const x = -12 + (i / 8) * 24 + (r() - 0.5) * 3;
+    blobs.push({
+      x,
+      y: (r() - 0.5) * 1.6,
+      rx: (1.6 + r() * 2.4) * (1 - Math.abs(x) / 22),
+      ry: (1.1 + r() * 1.3) * (1 - Math.abs(x) / 24),
+    });
+  }
+  soft(ctx, 1.4, () => {
+    ctx.strokeStyle = "rgba(220,248,250,0.55)";
+    ctx.lineWidth = 3.6;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(-13, 0.3);
+    ctx.quadraticCurveTo(0, -0.8, 13, 0.4);
+    ctx.stroke();
+    ctx.fillStyle = "rgba(30,110,132,0.4)";
+    for (const b of blobs) {
+      ctx.beginPath();
+      ctx.ellipse(b.x, b.y + 1.2, b.rx, b.ry, 0, 0, TAU);
+      ctx.fill();
+    }
+  });
+  for (const b of blobs) {
+    if (r() < 0.2) continue;
+    ctx.fillStyle = "rgba(226,248,250,0.92)";
+    ctx.beginPath();
+    ctx.ellipse(b.x, b.y, b.rx, b.ry, 0, 0, TAU);
+    ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,0.95)";
+    ctx.beginPath();
+    ctx.ellipse(
+      b.x - b.rx * 0.2,
+      b.y - b.ry * 0.3,
+      b.rx * 0.55,
+      b.ry * 0.45,
+      0,
+      0,
+      TAU,
+    );
+    ctx.fill();
+  }
+  for (let i = 0; i < 5; i++) {
+    ctx.strokeStyle = "rgba(255,255,255,0.75)";
+    ctx.lineWidth = 0.45;
+    ctx.beginPath();
+    ctx.arc(-12 + r() * 24, (r() - 0.5) * 6, 0.6 + r() * 0.7, 0, TAU);
+    ctx.stroke();
+  }
+}
+/**
+ * Half of a ripple ring on the water (the near half, or the far half drawn
+ * thinner and dimmer): a hand-drawn line that swells and breaks, with a
+ * darker trough just inside it.
+ */
+export function paintRipple(ctx: Ctx, k: { front: number }) {
+  const RX = 100,
+    RY = 50,
+    a0 = k.front ? 0 : Math.PI,
+    r = rng(k.front ? 51 : 53),
+    N = 48;
+  ctx.lineCap = "round";
+  soft(ctx, 1.2, () => {
+    ctx.strokeStyle = `rgba(8,80,104,${k.front ? 0.4 : 0.25})`;
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.ellipse(0, 1.5, RX - 3, RY - 2, 0, a0 + 0.1, a0 + Math.PI - 0.1);
+    ctx.stroke();
+  });
+  // broken, swelling crest: short arcs of varying weight with gaps between
+  let i = 0;
+  while (i < N) {
+    const run = 3 + Math.floor(r() * 6),
+      w = (k.front ? 2.4 : 1.6) * (0.8 + r() * 1.1),
+      al = (k.front ? 0.85 : 0.6) * (0.6 + r() * 0.4);
+    const s = a0 + (i / N) * Math.PI,
+      e = a0 + (Math.min(N, i + run) / N) * Math.PI;
+    ctx.strokeStyle = `rgba(235,255,255,${al})`;
+    ctx.lineWidth = w;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, RX, RY, 0, s, e);
+    ctx.stroke();
+    i += run + (r() < 0.55 ? 1 : 2);
+  }
+}
+/** A wide soft V of churned water left behind as it swims. */
+export function paintWake(ctx: Ctx) {
+  const r = rng(61);
+  for (const s of [-1, 1]) {
+    soft(ctx, 1.5, () => {
+      ctx.strokeStyle = "rgba(225,252,255,0.7)";
+      ctx.lineWidth = 5;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(0, s * 4);
+      ctx.quadraticCurveTo(-40, s * 12, -84, s * 30);
+      ctx.stroke();
+    });
+    for (let i = 0; i < 40; i++) {
+      const t = r(),
+        x = -t * 84,
+        y = s * (4 + t * 26) + (r() - 0.5) * 5;
+      ctx.fillStyle = `rgba(255,255,255,${(0.95 - t * 0.55) * (0.55 + r() * 0.45)})`;
+      ctx.beginPath();
+      ctx.arc(x, y, (0.6 + r() * 1.6) * (1 - t * 0.5), 0, TAU);
+      ctx.fill();
+    }
+  }
 }
 /** A curved streak of swirling water (phases 2 and 3, and the spin smear). */
 export function paintSwirl(ctx: Ctx) {
