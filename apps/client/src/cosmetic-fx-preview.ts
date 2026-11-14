@@ -18,6 +18,12 @@ import { FX_GRAVITY, drawAnyParticle, type FxParticle } from "./skins/skin-fx";
  * play, looping, drawn by the same code as in a match. Each thumbnail also
  * gets its tier (data-tier) so frames and cards can dress up by rarity.
  * Only thumbnails on screen animate, at 30 frames a second.
+ *
+ * The Shop and Wardrobe catalogue is the exception: dozens of tiles at once
+ * cost phones' GPUs too much, so each tile there draws one still moment
+ * picked to show the effect clearly (FROZEN_AT) and never animates. The
+ * stage on the left keeps the live effect, so choosing a tile shows it
+ * playing there.
  */
 type Kind = "aura" | "entrance" | "victory" | "skin";
 interface Live {
@@ -30,7 +36,32 @@ interface Live {
   start: number;
   last: number;
   cycle: number;
+  /** A catalogue tile: drawn once, at FROZEN_AT, never animated. */
+  frozen: boolean;
+  /** The canvas size the still was drawn at ("w x h"), "" when not drawn. */
+  drawnAt: string;
 }
+/** The Shop and Wardrobe catalogue (everything in the room but the stage). */
+const STILL_TILES = ".fit-room > .ui-split-main";
+/**
+ * The moment (seconds into the effect) a catalogue tile shows: auras mid
+ * turn, an entrance's burst just open (later, its rings leave the tile),
+ * a victory pose with its particles in the air, Colors with their motifs
+ * and glints out.
+ */
+const FROZEN_AT: Record<Kind, number> = {
+  aura: 1.2,
+  entrance: 0.2,
+  victory: 1.2,
+  skin: 1.6,
+};
+/** Steps the frozen moment is simulated in (the live loop's longest step). */
+const FROZEN_STEP = 0.05;
+/** Graphics that draw nothing: the steps before a frozen moment. */
+const noGraphics: ReturnType<typeof canvasGraphics> = new Proxy(
+  {},
+  { get: () => () => noGraphics },
+) as ReturnType<typeof canvasGraphics>;
 const slotOf = (id: string) =>
   LOOK_ITEM_BY_ID[id]?.slot ??
   RAID_COSMETICS[id as keyof typeof RAID_COSMETICS]?.slot ??
@@ -93,11 +124,22 @@ function victoryFallback(
   return true;
 }
 
-function size(canvas: HTMLCanvasElement, el: HTMLElement) {
-  const r = el.getBoundingClientRect();
+/**
+ * The thumbnail's size in canvas pixels. A still is drawn once, so it reads
+ * the layout size: a box measured while the panel scales in would leave it
+ * drawn small and blurry for good.
+ */
+function sizeOf(live: Live) {
+  const r = live.frozen
+    ? { width: live.el.offsetWidth, height: live.el.offsetHeight }
+    : live.el.getBoundingClientRect();
   const dpr = Math.min(2, devicePixelRatio || 1);
-  const w = Math.max(1, Math.round(r.width * dpr)),
-    h = Math.max(1, Math.round(r.height * dpr));
+  return {
+    w: Math.max(1, Math.round(r.width * dpr)),
+    h: Math.max(1, Math.round(r.height * dpr)),
+  };
+}
+function size(canvas: HTMLCanvasElement, { w, h }: { w: number; h: number }) {
   if (canvas.width !== w || canvas.height !== h) {
     canvas.width = w;
     canvas.height = h;
@@ -105,30 +147,39 @@ function size(canvas: HTMLCanvasElement, el: HTMLElement) {
   return { w, h };
 }
 
-function draw(live: Live, now: number) {
-  const { w, h } = size(live.front, live.el);
-  size(live.back, live.el);
-  const back = live.back.getContext("2d")!,
-    front = live.front.getContext("2d")!;
-  back.setTransform(1, 0, 0, 1, 0, 0);
-  front.setTransform(1, 0, 0, 1, 0, 0);
-  back.clearRect(0, 0, w, h);
-  front.clearRect(0, 0, w, h);
-  // World units around the fighter's feet, fitted to the thumbnail.
-  const scale =
-    live.kind === "aura"
-      ? Math.min((w * 0.86) / 128, h / 110)
-      : live.kind === "entrance"
-        ? Math.min(w / 104, h / 92)
-        : live.kind === "skin"
-          ? h / 100
-          : Math.min(w / 165, h / 118);
-  const feetY =
-    h * (live.kind === "aura" ? 0.65 : live.kind === "skin" ? 0.98 : 0.82);
-  for (const c of [back, front])
-    c.setTransform(scale, 0, 0, scale, w / 2, feetY);
-  const gb = canvasGraphics(back),
+/**
+ * One frame of the effect at `now`. With `paint` false it only moves the
+ * effect on (particles, cycles) without drawing: the steps before a frozen
+ * moment.
+ */
+function draw(live: Live, now: number, paint = true) {
+  let gb = noGraphics,
+    gf = noGraphics;
+  if (paint) {
+    const { w, h } = size(live.front, sizeOf(live));
+    size(live.back, { w, h });
+    const back = live.back.getContext("2d")!,
+      front = live.front.getContext("2d")!;
+    back.setTransform(1, 0, 0, 1, 0, 0);
+    front.setTransform(1, 0, 0, 1, 0, 0);
+    back.clearRect(0, 0, w, h);
+    front.clearRect(0, 0, w, h);
+    // World units around the fighter's feet, fitted to the thumbnail.
+    const scale =
+      live.kind === "aura"
+        ? Math.min((w * 0.86) / 128, h / 110)
+        : live.kind === "entrance"
+          ? Math.min(w / 104, h / 92)
+          : live.kind === "skin"
+            ? h / 100
+            : Math.min(w / 165, h / 118);
+    const feetY =
+      h * (live.kind === "aura" ? 0.65 : live.kind === "skin" ? 0.98 : 0.82);
+    for (const c of [back, front])
+      c.setTransform(scale, 0, 0, scale, w / 2, feetY);
+    gb = canvasGraphics(back);
     gf = canvasGraphics(front);
+  }
   const dt = Math.min(0.05, Math.max(0, (now - live.last) / 1000));
   live.last = now;
   const still = reduced.matches;
@@ -203,8 +254,53 @@ function draw(live: Live, now: number) {
   }
   if (!still) step(live, dt);
   // Particles a finale emits behind the fighter stay on the back canvas.
-  for (const p of live.particles)
-    drawAnyParticle(p.behind ? gb : gf, p, 1 - p.age / p.life);
+  if (paint)
+    for (const p of live.particles)
+      drawAnyParticle(p.behind ? gb : gf, p, 1 - p.age / p.life);
+}
+/**
+ * A catalogue tile's still: the effect run from its start to FROZEN_AT
+ * without drawing, then drawn once. With reduced motion, the same still
+ * the live thumbnails show.
+ */
+function drawFrozen(live: Live) {
+  live.particles = [];
+  live.cycle = -1;
+  live.start = live.last = 0;
+  if (!reduced.matches) {
+    const end = FROZEN_AT[live.kind];
+    for (let t = 0; t < end - 1e-6; t += FROZEN_STEP)
+      draw(live, t * 1000, false);
+    draw(live, end * 1000);
+  } else draw(live, 0);
+  live.drawnAt = `${live.front.width}x${live.front.height}`;
+}
+/**
+ * Stills waiting to be drawn, a few per frame so opening a tab of tiles
+ * never stalls one frame.
+ */
+const frozenQueue = new Set<Live>();
+let frozenFrame = 0;
+function drawFrozenQueue() {
+  frozenFrame = 0;
+  const until = performance.now() + 6;
+  for (const live of frozenQueue) {
+    frozenQueue.delete(live);
+    if (!live.el.isConnected) {
+      release(live);
+      continue;
+    }
+    drawFrozen(live);
+    if (performance.now() > until) break;
+  }
+  if (frozenQueue.size) frozenFrame = requestAnimationFrame(drawFrozenQueue);
+}
+function queueFrozen(live: Live) {
+  // Already drawn at this size: nothing to do.
+  const { w, h } = sizeOf(live);
+  if (live.drawnAt === `${w}x${h}`) return;
+  frozenQueue.add(live);
+  if (!frozenFrame) frozenFrame = requestAnimationFrame(drawFrozenQueue);
 }
 function step(live: Live, dt: number) {
   for (const p of live.particles) {
@@ -232,15 +328,28 @@ function tick(now: number) {
 }
 function release(live: Live) {
   visible.delete(live);
+  frozenQueue.delete(live);
   lives.delete(live.el);
   onScreen.unobserve(live.el);
+  resized.unobserve(live.el);
 }
+/** A still tile that changes size (a turned phone) is drawn again. */
+const resized = new ResizeObserver((entries) => {
+  for (const e of entries) {
+    const live = lives.get(e.target as HTMLElement);
+    if (live?.drawnAt && live.el.isConnected) queueFrozen(live);
+  }
+});
 const onScreen = new IntersectionObserver((entries) => {
   for (const e of entries) {
     const live = lives.get(e.target as HTMLElement);
     if (!live) continue;
     if (!live.el.isConnected) {
       release(live);
+      continue;
+    }
+    if (live.frozen) {
+      if (e.isIntersecting) queueFrozen(live);
       continue;
     }
     if (e.isIntersecting) {
@@ -301,9 +410,12 @@ function attach(el: HTMLElement) {
     start: now,
     last: now,
     cycle: -1,
+    frozen: !!el.closest(STILL_TILES),
+    drawnAt: "",
   };
   lives.set(el, live);
   onScreen.observe(el);
+  if (live.frozen) resized.observe(el);
 }
 function scan(root: ParentNode) {
   if (
@@ -341,11 +453,7 @@ export function watchCosmeticPreviews(root: HTMLElement = document.body) {
               ":scope > .fx-live, :scope > .tier-fx, :scope > .tier-orbit, :scope > .tier-rays",
             ).forEach((n) => n.remove());
             const live = lives.get(el);
-            if (live) {
-              visible.delete(live);
-              lives.delete(el);
-              onScreen.unobserve(el);
-            }
+            if (live) release(live);
             attach(el);
           }
         }
@@ -369,6 +477,11 @@ export function watchCosmeticPreviews(root: HTMLElement = document.body) {
   });
   reduced.addEventListener("change", () => {
     for (const live of visible) draw(live, performance.now());
+    for (const live of lives.values())
+      if (live.frozen && live.drawnAt) {
+        live.drawnAt = "";
+        if (live.el.isConnected) queueFrozen(live);
+      }
     if (!reduced.matches && visible.size && !frame)
       frame = requestAnimationFrame(tick);
   });
