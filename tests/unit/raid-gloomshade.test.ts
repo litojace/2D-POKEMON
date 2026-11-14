@@ -409,6 +409,13 @@ describe("a whole run", () => {
       a.add("b" + i, "Bot " + i, c);
     a.configure(3, false);
     a.start();
+    // One fight every run: the raid's seed picks the boss's attacks and the
+    // stand-ins' choices. With a fresh random seed each start, about one run
+    // in 70 lost the whole party before the third chapter (3 of 200), so the
+    // test failed by luck; every seed from 1 to 100 gets through. It's set
+    // before the stand-ins, whose brains take their seeds from the raid's
+    // (as in raid-emberwing.test.ts).
+    a.raid.seed = 1;
     for (const p of a.heroes()) a.standIn(p.id);
     a.phase = "playing";
     a.deadline = 480;
