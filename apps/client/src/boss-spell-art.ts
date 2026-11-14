@@ -1,6 +1,8 @@
 import { drawBossSpellFlipbook } from "./boss-spell-flipbook";
 import { drawGrumbleAttacks } from "./grumble-attack-fx";
 import { drawLumiwickAttacks } from "./lumiwick-attack-fx";
+import { drawSnoozakuAttacks } from "./snoozaku-attack-fx";
+import { cloudDeckNightmares } from "./raid-somnara-art";
 import { lowGraphics } from "./graphics-quality";
 import type Phaser from "phaser";
 import type { Snapshot } from "@arena/shared";
@@ -300,25 +302,6 @@ function castEffect(
       const tip = curve(x, y - 16, r, angle + 1.4, 0, 0.7)[0];
       star(fx.g, tip.x, tip.y, 6, hot, fade, k * 4);
     }
-  } else if (id === "somnara") {
-    const points = Array.from({ length: 7 }, (_, i) => {
-      const angle = (i * TAU) / 7 + k * 0.6;
-      return {
-        x: x + Math.cos(angle) * ringRadius * 0.8,
-        y:
-          y -
-          30 +
-          Math.sin(angle) * ringRadius * 0.5 -
-          Math.sin(k * Math.PI) * 28,
-      };
-    });
-    for (let i = 0; i < points.length; i++) {
-      const p = points[i],
-        q = points[(i + 2) % points.length];
-      fx.g.lineStyle(1, color, fade * 0.5).lineBetween(p.x, p.y, q.x, q.y);
-      star(fx.g, p.x, p.y, 8 - (i % 3), hot, fade, k * 0.5);
-      glow(p.x, p.y, 13, color, fade * 0.4);
-    }
   } else if (id === "prismatail") {
     const spectrum = [0xffd884, 0x83eaff, 0xd29eff, 0xa5ffdb, 0xffacda];
     for (let i = 0; i < 10; i++) {
@@ -409,6 +392,23 @@ export function drawBossBattleEffects(
           life.action.casts,
           clock,
           lowGraphics(),
+        ),
+      );
+      continue;
+    }
+    // Snoozaku has its own attack effects (the baku demo's): the dream-trunk
+    // over its lane, shooting stars, the snore's waves, drawn every frame.
+    if (r.boss === "somnara") {
+      space(g, (fx, glow) =>
+        drawSnoozakuAttacks(
+          fx,
+          glow,
+          state,
+          boss,
+          life.action.casts,
+          clock,
+          lowGraphics(),
+          cloudDeckNightmares(),
         ),
       );
       continue;

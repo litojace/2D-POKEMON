@@ -536,11 +536,18 @@ function baseVictory(
       return true;
     }
     case "sweet-dreams": {
+      // Snoozaku's reward: a little dream baku in a nightcap drifts up behind you.
       const rise = Math.min(1, t / 0.8), wx = x + Math.sin(t * 1.8) * 30 * sc, wy = y - (45 + rise * 65) * sc;
       under.fillStyle(0xc9a3ff, 0.18 * fade).fillEllipse(x, y + 6 * sc, 136 * sc, 34 * sc);
-      under.fillStyle(0x8977c5, fade).fillEllipse(wx, wy, 70 * sc, 38 * sc).fillTriangle(wx + 24 * sc, wy, wx + 48 * sc, wy - 18 * sc, wx + 40 * sc, wy + 10 * sc);
-      under.fillStyle(0xd6c9f0, fade).fillEllipse(wx - 3 * sc, wy + 9 * sc, 55 * sc, 17 * sc);
-      under.lineStyle(1.5 * sc, 0x283452, fade).lineBetween(wx - 22 * sc, wy - 2 * sc, wx - 15 * sc, wy - 2 * sc);
+      under.fillStyle(0x9a91e0, fade).fillEllipse(wx - 6 * sc, wy + 4 * sc, 62 * sc, 36 * sc);
+      under.fillStyle(0xf6e6c8, fade).fillEllipse(wx - 12 * sc, wy + 4 * sc, 20 * sc, 34 * sc);
+      under.fillStyle(0x9a91e0, fade).fillCircle(wx + 20 * sc, wy - 8 * sc, 17 * sc);
+      under.fillStyle(0xfff1dc, fade).fillCircle(wx + 8 * sc, wy - 18 * sc, 6 * sc);
+      under.fillStyle(0x9a91e0, fade).fillCircle(wx + 34 * sc, wy - 2 * sc, 6 * sc).fillCircle(wx + 37 * sc, wy + 5 * sc, 5.5 * sc);
+      under.fillStyle(0xe7b8dc, fade).fillCircle(wx + 38 * sc, wy + 10 * sc, 4.5 * sc);
+      under.fillStyle(0x433d9a, fade).fillTriangle(wx + 6 * sc, wy - 20 * sc, wx + 34 * sc, wy - 22 * sc, wx + 8 * sc, wy - 46 * sc);
+      under.fillStyle(0xfff4dc, fade).fillCircle(wx + 6 * sc, wy - 46 * sc, 4.5 * sc).fillEllipse(wx + 20 * sc, wy - 21 * sc, 30 * sc, 8 * sc);
+      under.lineStyle(1.5 * sc, 0x283452, fade).lineBetween(wx + 20 * sc, wy - 8 * sc, wx + 27 * sc, wy - 7 * sc);
       if (chance(12, dt)) emit({ x: wx + rnd(-50, 50) * sc, y: wy + rnd(-30, 25) * sc, vx: rnd(-15, 15), vy: rnd(-35, -10), life: 1, size: 2.5 * sc, color: 0xffdf8d, shape: "star" });
       return true;
     }

@@ -71,15 +71,15 @@ export const RAID_BOSSES: Record<RaidBossId, RaidBossInfo> = {
   },
   somnara: {
     id: "somnara",
-    name: "Somnara",
-    epithet: "The dream whale",
+    name: "Snoozaku",
+    epithet: "The dream-eating baku",
     element: "Psychic",
     color: "#c9a3ff",
     day: 3,
     stars: 2,
     signature: "Step the runes only the Dreamer sees",
     blurb:
-      "A huge sleepy sky whale with a tiny house on its back. One raider sees its dream; the team must step the runes in order to wake it.",
+      "A chubby, sleepy baku in a starry nightcap that snacks on dreams. One raider sees its dream; the team must step the runes in order to wake it.",
     playable: true,
   },
   prismatail: {

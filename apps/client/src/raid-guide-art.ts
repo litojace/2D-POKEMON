@@ -24,10 +24,6 @@ export function raidGuideGloomshade(exposed = false, shadow = true) {
     : "";
   return `<g stroke="#18122b" stroke-width="2" stroke-linejoin="round">${shadow ? '<ellipse cx="6" cy="38" rx="38" ry="8" fill="#071325" opacity=".55" stroke="none"/>' : ""}<circle cx="-38" cy="12" r="8" fill="#2b2245"/><circle cx="-46" cy="6" r="6" fill="#2b2245"/><path d="M-50-20a16 16 0 1 0 0 32a20 20 0 0 1 0-32Z" fill="#ffd65b"/>${[-24, -12, 0, 12, 24].map((x) => `<circle cx="${x}" cy="28" r="9" fill="#18122b"/>`).join("")}<ellipse cx="-30" cy="0" rx="11" ry="26" fill="#2b2245"/><ellipse cx="30" cy="0" rx="11" ry="26" fill="#2b2245"/><circle cy="-4" r="34" fill="#2b2245"/><ellipse cx="-6" cy="-20" rx="22" ry="12" fill="#4a3d72" opacity=".6" stroke="none"/><ellipse cx="-11" cy="-8" rx="7" ry="9" fill="#fff3c4" stroke="none"/><ellipse cx="13" cy="-8" rx="7" ry="9" fill="#fff3c4" stroke="none"/><ellipse cx="-10" cy="-7" rx="3.5" ry="5" fill="#18122b" stroke="none"/><ellipse cx="14" cy="-7" rx="3.5" ry="5" fill="#18122b" stroke="none"/><circle cx="-8" cy="-11" r="1.6" fill="#fff" stroke="none"/><circle cx="16" cy="-11" r="1.6" fill="#fff" stroke="none"/><path d="M-3 6q4 4 8 0" fill="none" stroke="#fff3c4"/>${core}</g>`;
 }
-/** Somnara's sleepy whale, cloud cap and tiny cottage. */
-export function raidGuideSomnara(exposed = false) {
-  return `<g stroke="#283452" stroke-width="2" stroke-linejoin="round"><ellipse cy="35" rx="48" ry="9" fill="#0b1430" opacity=".4"/><path d="m30-4 28-16-8 20 10 16-28-9" fill="#7061ac"/><ellipse cy="5" rx="45" ry="27" fill="#8977c5"/><ellipse cy="17" rx="38" ry="14" fill="#c3b3eb"/><ellipse cx="7" cy="-21" rx="23" ry="7" fill="#99c6bf"/><path d="M-2-24v-15h18v15M-6-38l13-12 14 12Z" fill="#f0d6b9"/><path d="m-18-24-12-13-8 10" fill="#d3d8ed"/><circle cx="-37" cy="-27" r="7" fill="#d3d8ed"/><path d="M-32 0q5 5 10 0M-32 14q7 6 14 0" fill="none"/>${exposed ? '<path d="m-8 9 3 6 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1Z" fill="#ffdf8d"/>' : '<path d="m-8-7 1 3 3 1-3 1-1 3-1-3-3-1 3-1Z" fill="#f6e8ff"/>'}</g>`;
-}
 /** The boss's miniature for lobbies and results. */
 export function raidGuideBossFor(boss: string, exposed = false) {
   return boss === "storm-twins"
@@ -46,7 +42,7 @@ export function raidGuideBossFor(boss: string, exposed = false) {
             )
             .replace("</svg>", "</g>")
         : boss === "somnara"
-          ? raidGuideSomnara(exposed)
+          ? raidGuideSprite("somnara", exposed)
           : boss === "tidewyrm"
             ? raidGuideTidewyrm(exposed)
             : boss === "gloomshade"

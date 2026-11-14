@@ -2,7 +2,7 @@ import type { RaidBossId } from "../../../packages/shared/src/raid-roster";
 import { cragmuffGuideImage } from "./boss-cragmuff";
 import { tidelotlGuideImage } from "./boss-tidelotl";
 import { inkGuideImage } from "./boss-inkpurr";
-import { somnaraGuideImage } from "./boss-vector-somnara";
+import { snoozakuGuideImage } from "./boss-snoozaku";
 import { prismaGuideImage } from "./boss-vector-prisma";
 import { lumiwickGuideImage } from "./boss-lumiwick-guide";
 import { twinsGuideImage } from "./boss-vector-twins";
@@ -35,7 +35,7 @@ export function raidGuideSprite(
         : boss === "gloomshade"
           ? inkGuideImage(exposed)
           : boss === "somnara"
-            ? somnaraGuideImage(exposed)
+            ? snoozakuGuideImage(exposed)
             : boss === "prismatail"
               ? prismaGuideImage(exposed)
               : boss === "emberwing"

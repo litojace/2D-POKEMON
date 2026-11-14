@@ -30,7 +30,7 @@ const ROOTS = {
   grumblecrag: "cragmuff-boss",
   tidewyrm: "vector-boss-tidewyrm",
   gloomshade: "vector-boss-gloomshade:shade-0",
-  somnara: "vector-boss-somnara",
+  somnara: "snoozaku-boss",
   prismatail: "vector-boss-prismatail",
   emberwing: "vector-boss-emberwing",
   fizz: "vector-boss-twin-0",
@@ -50,7 +50,7 @@ const vector = (page: Page, id: Rig = "grumblecrag") =>
     // hold thin lines (Graphics), which have no texture
     for (const o of root.list.flatMap((c: any) => c.list ?? []))
       if (o.visible && o.type === "Image")
-        parts[o.name.replace(/^(vector-part-|cragmuff-)/, "")] = {
+        parts[o.name.replace(/^(vector-part-|cragmuff-|snoozaku-)/, "")] = {
           x: o.x,
           y: o.y,
           rotation: o.rotation,
@@ -103,10 +103,11 @@ test("all seven bosses' rigs animate, hold a pause and keep combat snapshots imm
   for (const id of ALL) {
     expect(start[id], id).not.toBeNull();
     expect(start[id]!.visible, id).toBe(true);
-    // Lumiwick (Emberwing's id) is a simple round lantern and Cragmuff stands
-    // in a handful of images (one picture for its legs, one for its fleece).
+    // Lumiwick (Emberwing's id) is a simple round lantern; Cragmuff and
+    // Snoozaku (Somnara's id) stand in a handful of images (one picture for
+    // their legs, one for the body).
     expect(Object.keys(start[id]!.parts).length, id).toBeGreaterThan(
-      id === "emberwing" || id === "grumblecrag" ? 6 : 10,
+      id === "emberwing" || id === "grumblecrag" || id === "somnara" ? 6 : 10,
     );
   }
   await page.evaluate(() => {
@@ -277,10 +278,11 @@ test("copies, submerging and fades cannot leave stale boss sprites on cleared la
     s.players.find((p: any) => p.raidBoss).hp = 0;
     for (let n = 1; n <= 40; n++) r.frame(1, 0.8 + n * 0.05, false);
   });
-  // beaten, Somnara sinks into a deep sleep, whole
+  // beaten, Snoozaku (Somnara's id) curls up asleep, whole: paws tucked, eyes shut
   const asleep = (await vector(page, "somnara"))!;
   expect(asleep.visible).toBe(true);
-  expect(asleep.parts.eyen.frame).toBe("eye_front_closed");
+  expect(asleep.parts.eyes.frame).toMatch(/^eyes_\d_closed$/);
+  expect(asleep.parts.paws).toBeTruthy();
   expect(asleep.parts.head.alpha).toBe(1);
   await page.evaluate(() => {
     const r = (window as any).__bossReview;
@@ -615,8 +617,9 @@ test("all seven bosses turn to each of the four main facings, with no face from 
         view === "right" ? 1 : -1,
       );
     for (const id of ["gloomshade", "somnara", "fizz", "crackle"] as const) {
-      // Inkpurr (id "gloomshade") draws its eyes as one face piece
-      const eye = id === "gloomshade" ? "eyes" : "eyen";
+      // Inkpurr (id "gloomshade") and Snoozaku (id "somnara") draw their
+      // eyes as one face piece
+      const eye = id === "gloomshade" || id === "somnara" ? "eyes" : "eyen";
       if (view === "back") expect(rigs[id]!.parts[eye], id).toBeUndefined();
       else expect(rigs[id]!.parts[eye], id).toBeTruthy();
     }

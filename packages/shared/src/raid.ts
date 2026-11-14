@@ -425,9 +425,9 @@ export const RAID_ATTACKS: Record<
     practice: "Jump the three soft rings. Each hit adds Drowsy.",
   },
   "tail-splash": {
-    name: "Tail Splash",
-    tip: "Leave the marked rectangle before Somnara's tail splashes down.",
-    practice: "A wide rectangle marks the tail's reach. Step outside it.",
+    name: "Trunk Slam",
+    tip: "Leave the marked lane before Snoozaku's dream-trunk slams down.",
+    practice: "A wide lane marks the trunk's reach. Step outside it.",
   },
   "dream-bubbles": {
     name: "Dream Bubbles",
@@ -440,8 +440,8 @@ export const RAID_ATTACKS: Record<
     practice: "A constellation flashes; stars land on each marked point.",
   },
   "whale-song": {
-    name: "Whale Song",
-    tip: "Stay inside the moving teal Quiet Zone until the song ends. Everyone fits, but it is small.",
+    name: "Thunder Snore",
+    tip: "Stay inside the moving teal Quiet Zone until the snore ends. Everyone fits, but it is small.",
     practice: "Follow the moving Quiet Zone for four seconds.",
   },
   "dream-sequence": {
@@ -1190,13 +1190,13 @@ export const RAID_BOSS_CHAPTERS: Partial<
       name: "Dozing",
       objective: "Read the dream. Step the runes in order.",
       detail:
-        "Only the Dreamer sees the sequence. Call Circle, Star, Moon and Wave with 1–4 or the rune buttons, then enter the pads in order to expose Somnara for 6 seconds. Jump Lullaby Rings and pop Dream Bubbles. Three Drowsy stacks put you to sleep; allies can tap you awake.",
+        "Only the Dreamer sees the sequence. Call Circle, Star, Moon and Wave with 1–4 or the rune buttons, then enter the pads in order to expose Snoozaku for 6 seconds. Jump Lullaby Rings and pop Dream Bubbles. Three Drowsy stacks put you to sleep; allies can tap you awake.",
     },
     {
       name: "Deep Sleep",
       objective: "Remember the stars. Follow the Quiet Zone.",
       detail:
-        "Sequences get longer. Falling Stars land at the constellation points, and Whale Song hurts everyone outside its moving teal Quiet Zone. Solo sequences are shorter and give you 14 seconds.",
+        "Sequences get longer. Falling Stars land at the constellation points, and Thunder Snore hurts everyone outside its moving teal Quiet Zone. Solo sequences are shorter and give you 14 seconds.",
     },
     {
       name: "Waking Dream",
@@ -1984,7 +1984,7 @@ export const RAID_REWARDS: RaidReward[] = [
     boss: "somnara",
     slot: "victory",
     name: "Sweet Dreams",
-    description: "A little dream whale swims through a starry cloud behind you",
+    description: "A little dream baku drifts through a starry cloud behind you",
     goal: "Feat: solve a dream and finish with no wrong runes or timeouts",
     rule: { kind: "feat" },
   },
