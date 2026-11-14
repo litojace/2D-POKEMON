@@ -377,6 +377,12 @@ const onScreen = new IntersectionObserver((entries) => {
   }
   if (visible.size && !frame && !reduced.matches)
     frame = requestAnimationFrame(tick);
+  // Stills come in now, as live thumbnails do (within the same budget):
+  // waiting a frame left a newly opened tab blank for that frame.
+  if (frozenQueue.size) {
+    cancelAnimationFrame(frozenFrame);
+    drawFrozenQueue();
+  }
 });
 
 /**
