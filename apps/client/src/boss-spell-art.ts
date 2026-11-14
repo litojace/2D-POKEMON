@@ -1,6 +1,7 @@
 import { drawBossSpellFlipbook } from "./boss-spell-flipbook";
 import { drawGrumbleAttacks } from "./grumble-attack-fx";
 import { drawLumiwickAttacks } from "./lumiwick-attack-fx";
+import { drawTidelotlAttacks } from "./tidelotl-attack-fx";
 import { lowGraphics } from "./graphics-quality";
 import type Phaser from "phaser";
 import type { Snapshot } from "@arena/shared";
@@ -241,7 +242,11 @@ function castEffect(
     });
     ribbon(fx.g, points, color, hot, id === "gloomshade" ? 7 : 11, fade * 0.85);
   }
-  if (["wing-gust", "bubbles", "volley"].includes(e.kind)) {
+  // (Tidelotl blows its own bubbles: tidelotl-attack-fx.ts)
+  if (
+    ["wing-gust", "bubbles", "volley"].includes(e.kind) &&
+    !(id === "tidewyrm" && e.kind === "bubbles")
+  ) {
     const reach = radius * (1 - Math.pow(1 - Math.min(1, k * 2.8), 3));
     for (let i = -2; i <= 2; i++) {
       const angle = e.angle + i * (e.spread ?? 0.45) * 0.38;
@@ -256,35 +261,7 @@ function castEffect(
     }
   }
   if (id === "tidewyrm") {
-    for (let i = 0; i < 7; i++) {
-      const angle = (i * TAU) / 7 + e.id,
-        rr = ringRadius * (0.65 + hash(i) * 0.3);
-      const px = x + Math.cos(angle) * rr,
-        py = y + Math.sin(angle) * rr * 0.55;
-      const height = Math.sin(k * Math.PI) * (25 + hash(i + 3) * 80);
-      ribbon(
-        fx.g,
-        [
-          { x: px - 5, y: py },
-          { x: px - 3, y: py - height * 0.6 },
-          { x: px + 6, y: py - height },
-        ],
-        color,
-        hot,
-        4 * (1 - k) + 1,
-        fade * 0.8,
-      );
-      fx.g.fillStyle(hot, fade).fillEllipse(px + 6, py - height, 4, 8);
-    }
-    for (let i = 0; i < 3; i++)
-      ribbon(
-        fx.g,
-        curve(x, y, ringRadius * 0.8, (i * TAU) / 3 + k * 3, 1.35, 0.55),
-        color,
-        hot,
-        4,
-        fade * 0.6,
-      );
+    // Tidelotl's casts land as painted water (tidelotl-attack-fx.ts)
   } else if (id === "gloomshade") {
     for (let i = 0; i < 3; i++) {
       const r = radius * (0.4 + i * 0.17),
@@ -418,6 +395,19 @@ export function drawBossBattleEffects(
     if (r.boss === "emberwing")
       space(g, (fx, glow) =>
         drawLumiwickAttacks(
+          g.scene,
+          fx,
+          glow,
+          state,
+          boss,
+          life.action.casts,
+          lowGraphics(),
+        ),
+      );
+    // Tidelotl's attacks start from its mouth and land as painted water.
+    if (r.boss === "tidewyrm")
+      space(g, (fx, glow) =>
+        drawTidelotlAttacks(
           g.scene,
           fx,
           glow,
