@@ -7,12 +7,14 @@
  * milliseconds a frame and never while an attack is winding up, and uploads
  * it once when it is done, so the whole body changes colour together and no
  * second atlas is ever held. Each frame only moves, turns, scales, fades and
- * crops (at the waterline) images from the two atlases. Glows go through
- * the effects engine.
+ * crops (under each part's waterline) images from the two atlases, the
+ * water round it included: veil, foam, ripple rings and wake are painted
+ * pieces too. Glows and splash drops go through the effects engine.
  */
 import type Phaser from "phaser";
 import { addCanvasTexture, updateCanvasTexture } from "./canvas-texture";
 import { fxFor } from "./fx-engine";
+import { raidMapLow } from "./raid-map-atlas";
 import {
   LOTL_SCALE,
   lotlFacing,
@@ -23,6 +25,8 @@ import {
   pack,
   type LotlCue,
   type LotlPiece,
+  type LotlPlacement,
+  type LotlWater,
 } from "./boss-tidelotl";
 
 const MAIN = "lotl-main",
@@ -149,11 +153,210 @@ interface Rig {
   facing?: number;
   spin: number;
   clock: number;
+  sea: Sea;
+}
+/** The water's memory: rings left on the surface, the trail of foam, its speed. */
+interface Sea {
+  /** Ripple rings (the layer's coordinates, so they stay where they were made). */
+  rings: { x: number; y: number; at: number; big: number }[];
+  puffs: {
+    x: number;
+    y: number;
+    at: number;
+    side: number;
+    dx: number;
+    dy: number;
+  }[];
+  nextRing: number;
+  nextPuff: number;
+  px?: number;
+  py?: number;
+  vx: number;
+  vy: number;
+  facing?: number;
+  surfaced: boolean;
 }
 const rigs = new WeakMap<Phaser.GameObjects.Graphics, Rig>();
 const clamp = (v: number, a = 0, b = 1) => Math.max(a, Math.min(b, v));
-/** Below this local y the water hides the body (the fade and foam cover the cut). */
-const WATER_Y = 6;
+/** The water's pieces keep their own colours whatever tints the body. */
+const UNTINTED = /^(swirl|foam|lace|ripple|veil|wake)/;
+const RING_LIFE = 1.9,
+  PUFF_LIFE = 1.3;
+/**
+ * The living water round it, beyond what the pose places: ripple rings that
+ * spread from where it floats (more often while it swims or attacks), a
+ * wake and a trail of foam behind it as it swims, foam flecks drifting off,
+ * and a ring and a splash when it turns or bursts up. Rings and foam stay
+ * where they were made while it moves on. Low keeps fewer; reduced motion
+ * keeps two still rings and no trail.
+ */
+function seaPlacements(
+  scene: Phaser.Scene,
+  rig: Rig,
+  o: TidelotlLook,
+  water: LotlWater | undefined,
+  dt: number,
+  turned: boolean,
+) {
+  const S = rig.sea,
+    back: LotlPlacement[] = [],
+    front: LotlPlacement[] = [],
+    t = o.clock,
+    low = raidMapLow();
+  // its speed over the water (smoothed), from where the layer puts it
+  if (S.px !== undefined && dt > 0) {
+    const k = clamp(dt * 6);
+    S.vx += ((o.x - S.px) / dt - S.vx) * k;
+    S.vy += ((o.y - S.py!) / dt - S.vy) * k;
+  }
+  S.px = o.x;
+  S.py = o.y;
+  if (!water) {
+    S.rings.length = S.puffs.length = 0;
+    S.surfaced = false;
+    return { back, front };
+  }
+  const pl = (
+    key: string,
+    piece: string,
+    x: number,
+    y: number,
+    sx: number,
+    sy: number,
+    alpha: number,
+    rot = 0,
+  ): LotlPlacement => ({ key, piece, x, y, rot, sx, sy, alpha });
+  const ring = (
+    key: string,
+    x: number,
+    y: number,
+    q: number,
+    big: number,
+    a: number,
+  ) => {
+    const rx = water.rx * 1.06 + 4 + q * (60 + 40 * big),
+      ry = water.ry * 1.2 + 3 + q * (26 + 16 * big);
+    back.push(pl(`${key}b`, "rippleBack", x, y, rx / 100, ry / 50, a * 0.8));
+    front.push(pl(`${key}f`, "rippleFront", x, y, rx / 100, ry / 50, a));
+  };
+  if (o.reduced) {
+    // still water: two rings, no trail
+    ring("rr0", water.cx, water.cy, 0.25, 0, 0.55);
+    ring("rr1", water.cx, water.cy, 0.62, 0, 0.3);
+    return { back, front };
+  }
+  const speed = Math.hypot(S.vx, S.vy),
+    moving = clamp((speed - 18) / 70),
+    attacking = !!o.windKind || (!!o.castKind && o.castAge < 0.8);
+  // a ring when it turns or bursts up; more often while it swims or attacks
+  if (o.rise < 0.4 && !S.surfaced) {
+    S.surfaced = true;
+    S.rings.push(
+      { x: o.x, y: o.y, at: t, big: 1 },
+      { x: o.x, y: o.y, at: t - 0.35, big: 1 },
+    );
+  } else if (o.rise >= 1) S.surfaced = false;
+  if (turned) {
+    S.rings.push({ x: o.x, y: o.y, at: t, big: 0.6 });
+    fxFor(scene).burst({
+      x: o.x + water.cx,
+      y: o.y + water.cy,
+      count: low ? 3 : 7,
+      kind: "drop",
+      color: [0xe6fbff, 0x9fe8f4],
+      speed: [30, 90],
+      up: [80, 160],
+      life: [0.35, 0.6],
+      size: [1.5, 3],
+      grav: 700,
+    });
+  }
+  if (t >= S.nextRing) {
+    S.rings.push({ x: o.x, y: o.y, at: t, big: attacking ? 0.5 : 0 });
+    S.nextRing = t + (attacking ? 0.45 : moving > 0.3 ? 0.6 : 1.3);
+  }
+  S.nextRing = Math.min(S.nextRing, t + 1.3);
+  const maxRings = low ? 2 : 4;
+  S.rings = S.rings
+    .filter((r) => t - r.at < RING_LIFE && t >= r.at - 1)
+    .slice(-maxRings);
+  S.rings.forEach((r, i) => {
+    const q = clamp((t - r.at) / RING_LIFE),
+      a =
+        Math.pow(1 - q, 1.4) *
+        Math.min(1, q * 8 + 0.15) *
+        (0.75 + 0.25 * r.big);
+    ring(`rg${i}`, r.x - o.x + water.cx, r.y - o.y + water.cy, q, r.big, a);
+  });
+  // swimming: a wake opening behind it, and a trail of foam left on the water
+  const dir = Math.atan2(S.vy, S.vx);
+  if (moving > 0.02) {
+    const fx = Math.cos(dir),
+      fy = Math.sin(dir) * 0.6;
+    back.push(
+      pl(
+        "wake",
+        "wake",
+        water.cx + fx * water.rx * 0.3,
+        water.cy + fy * water.ry * 1.5,
+        (water.rx * 2 + 70) / 90,
+        0.55 + 0.45 * Math.abs(Math.cos(dir)),
+        0.85 * moving,
+        Math.atan2(Math.sin(dir) * 0.6, Math.cos(dir)),
+      ),
+    );
+    if (t >= S.nextPuff) {
+      S.nextPuff = t + 0.16;
+      const side = S.puffs.length % 2 ? 1 : -1;
+      S.puffs.push({
+        x: o.x + water.cx - fx * water.rx * 1.05,
+        y: o.y + water.cy - fy * water.ry * 1.6,
+        at: t,
+        side,
+        dx: -Math.sin(dir) * side,
+        dy: Math.cos(dir) * side * 0.6,
+      });
+    }
+  }
+  S.puffs = S.puffs.filter((p) => t - p.at < PUFF_LIFE).slice(low ? -4 : -8);
+  S.puffs.forEach((p, i) => {
+    const q = (t - p.at) / PUFF_LIFE,
+      sc = 0.9 + q * 0.9;
+    back.push(
+      pl(
+        `pf${i}`,
+        `foam${i % 3}`,
+        p.x - o.x + p.dx * q * 18,
+        p.y - o.y + p.dy * q * 18,
+        sc,
+        sc * 0.8,
+        (1 - q) * Math.min(1, q * 6),
+        p.side * 0.3,
+      ),
+    );
+  });
+  // flecks of foam drifting off the waterline
+  if (!low)
+    for (let i = 0; i < 4; i++) {
+      const q = (t * 0.22 + i * 0.25) % 1,
+        a = i * 1.9 + Math.floor(t * 0.22 + i * 0.25) * 2.4,
+        rr = 1.05 + q * 0.45,
+        x = water.cx + Math.cos(a) * water.rx * rr,
+        y = water.cy + Math.sin(a) * (water.ry * rr + 4);
+      (Math.sin(a) > 0 ? front : back).push(
+        pl(
+          `fk${i}`,
+          `foam${i % 3}`,
+          x,
+          y,
+          0.42,
+          0.36,
+          0.9 * Math.sin(q * Math.PI),
+        ),
+      );
+    }
+  return { back, front };
+}
 
 /**
  * Show Tidelotl for this frame in the graphics layer `g`. Returns where its
@@ -195,7 +398,23 @@ export function paintTidelotl(g: Phaser.GameObjects.Graphics, o: TidelotlLook) {
     spinning || sweep ? facing : Math.round(facing) % 8,
     phase,
     wet,
+    raidMapLow(),
   );
+  const shown = Math.round(facing) % 8,
+    turned =
+      rig.sea.facing !== undefined &&
+      rig.sea.facing !== shown &&
+      !spinning &&
+      !sweep;
+  rig.sea.facing = shown;
+  const sea = seaPlacements(scene, rig, o, layout.water, dt, turned);
+  // the far halves of rings and the trail lie under it (after its shadow)
+  const all = [
+    ...layout.placements.slice(0, 1),
+    ...sea.back,
+    ...layout.placements.slice(1),
+    ...sea.front,
+  ];
 
   rig.frame = scene.game.loop.frame;
   rig.root.setData("facing", Math.round(facing) % 8);
@@ -210,7 +429,7 @@ export function paintTidelotl(g: Phaser.GameObjects.Graphics, o: TidelotlLook) {
         : 0xffffff;
   const seen = new Set<string>();
   let order = 0;
-  for (const p of layout.placements) {
+  for (const p of all) {
     const atlas = A.main.slots.has(p.piece) ? A.main : A.skin,
       slot = atlas.slots.get(p.piece);
     if (!slot) continue;
@@ -233,18 +452,12 @@ export function paintTidelotl(g: Phaser.GameObjects.Graphics, o: TidelotlLook) {
       .setRotation(p.rot)
       .setScale(isx, isy)
       .setAlpha(clamp(p.alpha))
-      .setTint(
-        p.piece.startsWith("swirl") ||
-          p.piece.startsWith("foam") ||
-          p.piece === "fade"
-          ? 0xffffff
-          : tint,
-      );
-    // in the water: keep only what is above the waterline
-    if (p.water && isy > 0) {
+      .setTint(UNTINTED.test(p.piece) ? 0xffffff : tint);
+    // in the water: keep only what is above the depth where the water turns opaque
+    if (p.cut !== undefined && isy > 0) {
       const fh = slot.h,
         top = p.y - slot.oy * fh * isy,
-        keep = clamp((WATER_Y - top) / (fh * isy || 1));
+        keep = clamp((p.cut - top) / (fh * isy || 1));
       if (keep <= 0) img.setVisible(false);
       else if (keep < 1) img.setCrop(0, 0, slot.w, fh * keep);
       else if (img.isCropped) img.setCrop();
@@ -296,6 +509,15 @@ function createRig(g: Phaser.GameObjects.Graphics): Rig {
     frame: -1,
     spin: 0,
     clock: 0,
+    sea: {
+      rings: [],
+      puffs: [],
+      nextRing: 0,
+      nextPuff: 0,
+      vx: 0,
+      vy: 0,
+      surfaced: false,
+    },
   };
   rigs.set(g, rig);
   const dispose = () => {

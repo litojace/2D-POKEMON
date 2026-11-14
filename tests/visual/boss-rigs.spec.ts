@@ -266,7 +266,8 @@ test("copies, submerging and fades cannot leave stale boss sprites on cleared la
     const r = (window as any).__bossReview;
     r.rows.find((o: any) => o.id === "gloomshade").state.raid.decoys = [];
     r.rows.find((o: any) => o.id === "tidewyrm").state.raid.submerged = true;
-    r.frame(1, 0.8, false);
+    // (Tidelotl is seen sinking for half a second before only its shadow shows)
+    for (let n = 0; n < 14; n++) r.frame(1, 0.8 + n * 0.05, false);
   });
   expect(
     (await gloomRoots(page)).find((r) => r.name.endsWith("shade-42"))?.visible,
@@ -489,7 +490,7 @@ test("stranded Tidewyrm is one complete grounded creature in both directions", a
     // out on the sand: legs splayed, tail flopped, nothing under water
     expect(v.parts.legFL.frame).toMatch(/_F_splay$/);
     expect(v.parts.tail.frame).toMatch(/_flop$/);
-    expect(v.parts.fade).toBeUndefined();
+    expect(v.parts.veilh).toBeUndefined();
     // belly-flat: the head sits lower than when it floats
     expect(v.parts.head.y).toBeGreaterThan(up.parts.head.y - 10);
     // one creature: every visible piece within a body's length of the boss
