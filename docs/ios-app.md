@@ -23,7 +23,7 @@ app talks to the same game server on Render and the same Supabase project.
 | `apps/server/src/apple.ts`                  | Trading Apple's sign-in code for a refresh token, and revoking it.                                                          |
 | `supabase/migrations/111_apple_tokens.sql`  | Where the server keeps those tokens.                                                                                        |
 | `scripts/check-native-env.mjs`              | Stops the build if the app's settings are missing.                                                                          |
-| `scripts/generate-icons.py ios`             | Draws the app icon (1024 × 1024) and launch screen from the game's emblem.                                                  |
+| `node scripts/generate-icons.mjs`           | Draws the app icon (default, dark and tinted), launch screen and PWA icons from `scripts/app-icon.svg`.                     |
 
 The app is **iPhone only** for now (no iPad build): iPads can still run it
 in iPhone mode. Supporting iPad means testing its window sizes first.
@@ -42,6 +42,28 @@ in iPhone mode. Supporting iPad means testing its window sizes first.
   password and guest play work as on the website.
 - Email links (confirm your email, reset your password) open the **website**
   in Safari. The player then logs in to the app with their email and password.
+- **Settings → App icon** switches the Home Screen icon between the default
+  (Pyranda vs Glacelle) and three alternates; iOS confirms the change with its
+  own alert. It takes the place of **Settings → Display**, since the app is
+  always full screen.
+
+### Alternate app icons
+
+Each alternate is an icon set in `Assets.xcassets` (`AppIcon-Pyranda`,
+`AppIcon-SplitFace`, `AppIcon-StareDown`), drawn from `scripts/app-icons/`
+by `node scripts/generate-icons.mjs` with dark and tinted versions, as
+Apple asks of alternates too. `ios/App/App/AppIcon.swift` switches the icon
+(`setAlternateIconName`), and `apps/client/src/app-icon-setting.ts` draws
+the picker.
+
+To add one: draw its SVG in `scripts/app-icons/`, then add its set name in
+three places: `ALTERNATES` in the generator, `APP_ICONS` in
+`app-icon-setting.ts`, and the **Alternate App Icon Sets** build setting
+(`ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES`, Debug and Release) in the
+Xcode project. `tests/unit/app-icons.test.ts` fails until all three agree.
+The same icons can be tested on the App Store with
+[product page optimization](https://developer.apple.com/app-store/product-page-optimization/),
+which only offers icons built into the app.
 
 ## One-time setup
 

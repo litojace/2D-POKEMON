@@ -1,0 +1,59 @@
+<!--
+  Alternate app icon "Stare-down": giant faces of Pyranda and Glacelle run off
+  opposite corners, split by a diagonal lightning bolt.
+  scripts/generate-icons.mjs renders it (default, dark and tinted) to its
+  AppIcon set; players pick it in Settings. Each empty <svg data-fighter> is
+  filled with that fighter's portrait.svg at render time.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="warm" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffb347"/>
+      <stop offset=".6" stop-color="#ff5a2b"/>
+      <stop offset="1" stop-color="#b3123f"/>
+    </linearGradient>
+    <linearGradient id="cool" x1="1" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7ff0ff"/>
+      <stop offset=".55" stop-color="#2a8cff"/>
+      <stop offset="1" stop-color="#2a2fb8"/>
+    </linearGradient>
+    <filter id="blur" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="18"/>
+    </filter>
+    <filter id="lift" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="14" stdDeviation="14" flood-color="#0a0630" flood-opacity=".45"/>
+    </filter>
+    <clipPath id="fire-side">
+      <polygon points="-40,-40 1064,-40 700,330 760,380 330,720 390,770 -40,1064 -40,1064"/>
+    </clipPath>
+    <clipPath id="ice-side">
+      <polygon points="1064,-40 1064,-40 700,330 760,380 330,720 390,770 -40,1064 1064,1064"/>
+    </clipPath>
+  </defs>
+
+  <!-- Left out of the dark and tinted icons, where iOS draws its own background. -->
+  <g id="backdrop">
+    <polygon points="-40,-40 1064,-40 700,330 760,380 330,720 390,770 -40,1064 -40,1064" fill="url(#warm)"/>
+    <polygon points="1064,-40 1064,-40 700,330 760,380 330,720 390,770 -40,1064 1064,1064" fill="url(#cool)"/>
+  </g>
+
+  <!-- Pyranda's eyes sit near (330, 330) and Glacelle's near (700, 700). -->
+  <g clip-path="url(#fire-side)">
+    <g filter="url(#lift)">
+      <svg data-fighter="pyranda" x="-342" y="-342" width="1400" height="1400" viewBox="0 -12 200 200" overflow="visible"></svg>
+    </g>
+  </g>
+  <g clip-path="url(#ice-side)">
+    <g filter="url(#lift)">
+      <!-- Mirrored: translate(2x + width). -->
+      <g transform="translate(1400 0) scale(-1 1)">
+        <svg data-fighter="glacelle" x="0" y="28" width="1400" height="1400" viewBox="0 -12 200 200" overflow="visible"></svg>
+      </g>
+    </g>
+  </g>
+
+  <g id="bolt" fill="none" stroke-linejoin="miter" stroke-miterlimit="10">
+    <polyline points="1064,-40 700,330 760,380 330,720 390,770 -40,1064" stroke="#fff" stroke-width="80" filter="url(#blur)" opacity="0.9"/>
+    <polyline points="1064,-40 700,330 760,380 330,720 390,770 -40,1064" stroke="#fffbe6" stroke-width="26"/>
+  </g>
+</svg>
