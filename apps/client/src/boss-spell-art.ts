@@ -413,9 +413,10 @@ export function drawBossBattleEffects(
       );
       continue;
     }
-    // Lumiwick's attacks start from the lantern (its hem, its eyes) every
-    // frame; the shared impacts below still mark where each one lands.
-    if (r.boss === "emberwing")
+    // Lumiwick has its own attack effects too (the sky-lantern demo's): from
+    // the lantern itself and where each attack lands, never the shared rings
+    // and spell flipbook.
+    if (r.boss === "emberwing") {
       space(g, (fx, glow) =>
         drawLumiwickAttacks(
           g.scene,
@@ -427,6 +428,8 @@ export function drawBossBattleEffects(
           lowGraphics(),
         ),
       );
+      continue;
+    }
     if (!life.action.casts.length) continue;
     space(g, (fx, glow) => {
       for (const event of life.action.casts) {

@@ -500,17 +500,19 @@ test("stranded Tidewyrm is one complete grounded creature in both directions", a
   expect(errors).toEqual([]);
 });
 
+// Gloomshade still lands its casts with the shared impacts and flipbook
+// (Grumblecrag and Lumiwick draw their own; see their attack-fx specs).
 test("confirmed casts have flipbook impacts, interrupted casts do not, and pause freezes the effect", async ({
   page,
 }) => {
   const errors = await review(page);
   await page.evaluate(() => {
     const r = (window as any).__bossReview,
-      row = r.rows.find((o: any) => o.id === "emberwing");
+      row = r.rows.find((o: any) => o.id === "gloomshade");
     row.state.raid.warnings = [
       {
         id: 1,
-        kind: "flame-ring",
+        kind: "pulse",
         startedAt: 0,
         at: 1,
         x: 0,
@@ -536,11 +538,11 @@ test("confirmed casts have flipbook impacts, interrupted casts do not, and pause
   expect(await count()).toBe(0);
   await page.evaluate(() => {
     const r = (window as any).__bossReview,
-      row = r.rows.find((o: any) => o.id === "emberwing");
+      row = r.rows.find((o: any) => o.id === "gloomshade");
     row.state.raid.warnings = [
       {
         id: 2,
-        kind: "flame-ring",
+        kind: "pulse",
         startedAt: 1.1,
         at: 2,
         x: 0,
