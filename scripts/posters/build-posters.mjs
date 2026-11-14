@@ -19,6 +19,9 @@ const oi = args.indexOf("--out");
 const out =
   oi >= 0 ? args.splice(oi, 2)[1] : `${root}apps/client/src/art/raid-splash`;
 mkdirSync(out, { recursive: true });
+// --rigs <dir>: read rig painters that are not on this branch yet from there
+const ri = args.indexOf("--rigs");
+if (ri >= 0) process.env.POSTER_RIGS = args.splice(ri, 2)[1];
 const ref = `${root}apps/client/src/art/raid-splash/storm-twins`;
 const budget = {
   splash: statSync(`${ref}.webp`).size,

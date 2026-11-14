@@ -11,6 +11,8 @@ export interface Look {
   light: Light;
   /** The face's half-size around the eyes, in world px (mouth included below). */
   face: [number, number];
+  /** How strongly the rig's own glows show (1 = as in battle). */
+  glow?: number;
 }
 const light = (o: Partial<Light>): Light => ({
   key: KEY,
@@ -140,6 +142,67 @@ export const LOOKS: Record<string, Look> = {
         { tex: "horn", spec: 0.6, shin: 30, round: 0.8, glitter: 0.004 },
       ],
       [/leg/, { round: 0.6, spec: 0.1 }],
+      [/eyes|mouth/, { keep: true }],
+    ],
+  },
+  prismatail: {
+    face: [46, 40],
+    glow: 0.3,
+    light: light({
+      keyTint: [1.06, 1.03, 1.0],
+      shadowTint: [0.74, 0.72, 0.95],
+      rimColor: [1, 0.95, 0.85],
+      bounceColor: [0.8, 0.6, 1],
+    }),
+    mats: [
+      [
+        /shell/,
+        {
+          spec: 0.9,
+          shin: 70,
+          glitter: 0.004,
+          rim: 0.9,
+          round: 0.9,
+          strength: 0.65,
+        },
+      ],
+      [/shield|heart/, { spec: 1, shin: 90, strength: 0.5 }],
+      [
+        /body|neck|head/,
+        {
+          spec: 0.35,
+          shin: 30,
+          sss: [0.18, 0.12, 0.3],
+          sssK: 0.2,
+          rim: 0.8,
+          strength: 0.7,
+        },
+      ],
+      [/ant/, { spec: 0.5, round: 0.7 }],
+      [/eyes|mouth/, { keep: true }],
+    ],
+  },
+  somnara: {
+    face: [62, 52],
+    light: light({
+      keyTint: [1.0, 0.98, 1.08],
+      shadowTint: [0.58, 0.55, 0.88],
+      rimColor: [0.95, 0.9, 1],
+      bounceColor: [0.6, 0.5, 1],
+    }),
+    mats: [
+      [/wisp/, { strength: 0.3, spec: 0 }],
+      [
+        /body|over|head|legs|trunk/,
+        {
+          spec: 0.14,
+          shin: 18,
+          rim: 0.75,
+          sss: [0.12, 0.08, 0.22],
+          sssK: 0.15,
+        },
+      ],
+      [/cap/, { tex: "fleece", spec: 0.1, rim: 0.6 }],
       [/eyes|mouth/, { keep: true }],
     ],
   },

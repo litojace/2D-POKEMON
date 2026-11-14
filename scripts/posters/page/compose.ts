@@ -48,7 +48,8 @@ export interface Theme {
   stone: string;
 }
 
-export type Setting = "sunset" | "sea" | "night" | "canyon";
+export type Setting =
+  "sunset" | "sea" | "night" | "canyon" | "temple" | "dreamnight";
 export interface Scene {
   W: number;
   H: number;

@@ -51,6 +51,8 @@ interface FacadeOpts {
   lit?: boolean;
   moss?: boolean;
   lanterns?: boolean;
+  /** Stained glass in the windows (lit in prism colours). */
+  glass?: boolean;
 }
 /**
  * A ruined building face: storeys of arcades with recessed arches, cornices
@@ -137,9 +139,14 @@ function facade(
       polyPath(ap, arch);
       const [ax, ay0] = pt(l, spring + hw / U);
       const [, ay1] = pt(l, b0);
-      const litWin = o.lit && r() < 0.4;
+      const litWin = (o.lit && r() < 0.4) || (o.glass && r() < 0.8);
       const gr = g.createLinearGradient(0, ay0, 0, ay1);
-      if (litWin) {
+      if (litWin && o.glass) {
+        const hue = Math.floor(r() * 360);
+        gr.addColorStop(0, `hsla(${hue},85%,82%,0.95)`);
+        gr.addColorStop(0.5, `hsla(${(hue + 60) % 360},80%,72%,0.9)`);
+        gr.addColorStop(1, `hsla(${(hue + 140) % 360},75%,70%,0.9)`);
+      } else if (litWin) {
         gr.addColorStop(0, "rgba(255,190,90,0.95)");
         gr.addColorStop(1, "rgba(255,130,40,0.9)");
       } else {
@@ -540,11 +547,13 @@ function farMasses(
       // a flat top, a jagged hanging root, a tower or two on top
       g.moveTo(cx - w / 2, cy);
       g.lineTo(cx + w / 2, cy);
-      for (let k = 0; k <= 6; k++)
-        g.lineTo(
-          cx + w / 2 - (w * k) / 6,
-          cy + h * (0.4 + r() * 0.6) * Math.sin((Math.PI * k) / 6) + 2,
-        );
+      g.quadraticCurveTo(
+        cx + w * 0.3,
+        cy + h * 0.5,
+        cx + (r() - 0.5) * w * 0.2,
+        cy + h * (0.8 + r() * 0.5),
+      );
+      g.quadraticCurveTo(cx - w * 0.3, cy + h * 0.5, cx - w / 2, cy);
       g.closePath();
       g.fill();
       for (let k = 0; k < 2; k++) {
@@ -776,9 +785,14 @@ export function compose(s: Scene): Result {
 
   // ── 1 the sky
   drawSky(g, s, u);
-  if (s.setting === "night") stars(g, s, u, r);
+  if (s.setting === "night" || s.setting === "dreamnight") stars(g, s, u, r);
   wisps(g, s, u, r);
   if (s.setting === "night") moon(g, s, u);
+  if (s.setting === "dreamnight") {
+    moon(g, s, u, 2.6);
+    fallingStars(g, s, u, r);
+  }
+  if (s.setting === "temple") rainbowShafts(g, s, u, r);
   godRays(g, s, u, r);
 
   // ── 2 the far distance
@@ -813,7 +827,74 @@ export function compose(s: Scene): Result {
     [0.0, 0.3],
     [0.7, 1.0],
   ];
-  if (s.setting === "canyon") {
+  if (s.setting === "temple") {
+    g.drawImage(
+      ruins(s, u, r, stone, {
+        gy: s.horizon + 0.0,
+        sc: 0.36,
+        haze: 0.4,
+        blur: 0.5,
+        count: 18,
+        xs: [[0, 1]],
+        tall: [300, 520],
+        opts: { glass: true, banner: true },
+      }),
+      0,
+      0,
+    );
+    drawFloor(g, s, u);
+    g.drawImage(
+      ruins(s, u, r, stone, {
+        gy: s.horizon + 0.1,
+        sc: 0.75,
+        haze: 0.12,
+        blur: 0,
+        count: 6,
+        xs: xsSides,
+        tall: [700, 1000],
+        opts: { glass: true, banner: true },
+      }),
+      0,
+      0,
+    );
+    for (let i = 0; i < 6; i++) {
+      const side = i % 2 ? 1 : -1;
+      crystalCluster(
+        g,
+        side < 0 ? (0.05 + r() * 0.2) * W : (0.75 + r() * 0.2) * W,
+        (s.horizon + 0.12 + r() * 0.06) * H,
+        (18 + r() * 16) * u,
+        ["#9ad8ff", "#ffb0e8", "#c8a8ff", "#a8ffd8"][i % 4],
+        r,
+      );
+    }
+  } else if (s.setting === "dreamnight") {
+    const sea = cloudBank(s, u, r, {
+      y: s.horizon + 0.12,
+      x0: -0.2,
+      x1: 1.2,
+      size: 120,
+      rows: 2,
+      alpha: 1,
+      blur: 1.5,
+      haze: 0.15,
+    });
+    g.drawImage(sea.c, 0, 0);
+    g.drawImage(
+      ruins(s, u, r, stone, {
+        gy: s.horizon + 0.08,
+        sc: 0.55,
+        haze: 0.2,
+        blur: 0,
+        count: 6,
+        xs: xsSides,
+        tall: [420, 720],
+        opts: { lit: true, banner: true, waterfall: true },
+      }),
+      0,
+      0,
+    );
+  } else if (s.setting === "canyon") {
     g.drawImage(cliffs(s, u, r, stone, 0.1), 0, 0);
     drawFloor(g, s, u);
     g.drawImage(
@@ -959,6 +1040,19 @@ export function compose(s: Scene): Result {
     g.globalAlpha = mid.alpha;
     g.drawImage(mid.c, 0, 0);
     g.globalAlpha = 1;
+  }
+  if (s.setting === "dreamnight") {
+    const sea = cloudBank(s, u, r, {
+      y: 1.04,
+      x0: -0.2,
+      x1: 1.2,
+      size: 150,
+      rows: 2,
+      alpha: 1,
+      blur: 1.5,
+      haze: 0,
+    });
+    g.drawImage(sea.c, 0, 0);
   }
   if (s.setting === "sunset") {
     const sea = cloudBank(s, u, r, {
@@ -1152,7 +1246,7 @@ export function compose(s: Scene): Result {
     sg.save();
     // squashed and thrown down-right, away from the key light
     sg.translate(ox + boss.width * 0.12, groundY);
-    sg.transform(1, 0, 0.9, 0.22, 0, 0);
+    sg.transform(1, 0, -0.9, 0.22, 0, 0);
     sg.drawImage(flat, 0, -boss.height);
     sg.restore();
     const contact = sg.createRadialGradient(
@@ -1173,7 +1267,12 @@ export function compose(s: Scene): Result {
     sg.fillRect(bcx - bw, groundY - bw, bw * 2, bw * 2);
     sg.restore();
     g.save();
-    g.globalAlpha = s.place.ground !== undefined ? 0.55 : 0.22;
+    g.globalAlpha =
+      s.setting === "dreamnight"
+        ? 0.3
+        : s.place.ground !== undefined
+          ? 0.5
+          : 0.22;
     g.globalCompositeOperation = "multiply";
     g.drawImage(blurred(sh, (s.place.ground !== undefined ? 6 : 22) * u), 0, 0);
     g.restore();
@@ -1211,6 +1310,40 @@ export function compose(s: Scene): Result {
     g.restore();
   }
   g.drawImage(boss, ox, by);
+  // a glossy floor: the scene above mirrored below the boss's feet
+  if (s.setting === "temple" && s.place.ground !== undefined) {
+    const yg = Math.round(s.place.ground * H);
+    const hh = H - yg;
+    const refl = canvas(W, hh);
+    const rg = ctxOf(refl);
+    rg.translate(0, hh);
+    rg.scale(1, -1);
+    rg.drawImage(out, 0, yg - hh, W, hh, 0, -hh * 0, W, hh);
+    rg.setTransform(1, 0, 0, 1, 0, 0);
+    rg.globalCompositeOperation = "destination-in";
+    const fade = rg.createLinearGradient(0, 0, 0, hh);
+    fade.addColorStop(0, "rgba(0,0,0,0.6)");
+    fade.addColorStop(1, "rgba(0,0,0,0.12)");
+    rg.fillStyle = fade;
+    rg.fillRect(0, 0, W, hh);
+    g.drawImage(blurred(refl, 1.4 * u), 0, yg);
+    // floor seams in perspective and a sheen
+    g.strokeStyle = rgba(t.rim, 0.25);
+    g.lineWidth = Math.max(1, 1.2 * u);
+    for (let i = -12; i <= 12; i++) {
+      g.beginPath();
+      g.moveTo(W / 2 + i * 40 * u, yg - 40 * u);
+      g.lineTo(W / 2 + i * 220 * u, H);
+      g.stroke();
+    }
+    for (let k2 = 1; k2 < 7; k2++) {
+      const yy = yg + hh * Math.pow(k2 / 7, 1.6);
+      g.beginPath();
+      g.moveTo(0, yy);
+      g.lineTo(W, yy);
+      g.stroke();
+    }
+  }
 
   // ── 8 front ribbons, sparkles, particles (never over the face)
   drawRibbons(g, s, u, ribbons, true, hole, { img: boss, x: ox, y: by });
@@ -1247,6 +1380,16 @@ export function compose(s: Scene): Result {
 
   // ── 9 the foreground, per setting
   if (s.setting === "sea") waves(g, s, u, r);
+  else if (s.setting === "dreamnight")
+    for (let i = 0; i < 16; i++) {
+      const x = r() * W,
+        y = r() * H;
+      if (
+        !inFace(x, y, 1.6) &&
+        !(Math.abs(x - bcx) < bw * 0.45 && Math.abs(y - bcy) < bh * 0.45)
+      )
+        particle(g, s, "bubbles", x, y, (10 + r() * 30) * u, r);
+    }
   else if (s.setting === "sunset")
     skyLanterns(
       g,
@@ -1257,7 +1400,18 @@ export function compose(s: Scene): Result {
       true,
       (x, y) => Math.abs(x - bcx) < bw * 0.62 && Math.abs(y - bcy) < bh * 0.6,
     );
-  if (s.setting !== "sea") {
+  if (s.setting === "temple") {
+    for (const side of [-1, 1])
+      for (let i = 0; i < 3; i++)
+        crystalCluster(
+          g,
+          side < 0 ? (0.02 + i * 0.07) * W : W - (0.02 + i * 0.07) * W,
+          H * (0.98 - i * 0.02),
+          (40 - i * 8) * u,
+          ["#9ad8ff", "#ffb0e8", "#c8a8ff"][i],
+          r,
+        );
+  } else if (s.setting !== "sea" && s.setting !== "dreamnight") {
     const cl = canvas(W, H);
     const cc = ctxOf(cl);
     const n = s.setting === "sunset" ? 2 : 4;
@@ -1301,7 +1455,11 @@ export function compose(s: Scene): Result {
     if (inFace(x, y, 2) || Math.abs(x - bcx) < bw * 0.45) continue;
     rock(g, s, pat, x, y, (14 + r() * 22) * u, r() * TAU, r, r() < 0.6);
   }
-  if (s.setting !== "sea" && s.place.ground === undefined) {
+  if (
+    s.setting !== "sea" &&
+    s.setting !== "temple" &&
+    s.place.ground === undefined
+  ) {
     const fgc = cloudBank(s, u, r, {
       y: 1.08,
       x0: -0.2,
@@ -1361,10 +1519,63 @@ export function compose(s: Scene): Result {
   };
 }
 
-function moon(g: Ctx, s: Scene, u: number) {
+/** Rainbow refractions: spectral shafts falling from the key light. */
+function rainbowShafts(g: Ctx, s: Scene, u: number, r: () => number) {
+  const { W, H } = s;
+  const c = canvas(W, H);
+  const k = ctxOf(c);
+  const lx = s.sun.x * W,
+    ly = s.sun.y * H;
+  for (let i = 0; i < 6; i++) {
+    const a = 0.35 + i * 0.16 + r() * 0.08;
+    const len = Math.hypot(W, H) * 1.2,
+      wd = (30 + r() * 50) * u;
+    k.save();
+    k.translate(lx, ly);
+    k.rotate(a);
+    const gr = k.createLinearGradient(0, -wd, 0, wd);
+    ["#ff6a6a", "#ffc46a", "#fff36a", "#7aff8a", "#6ad8ff", "#9a7aff"].forEach(
+      (col, j) => gr.addColorStop(j / 5, rgba(col, 0.22)),
+    );
+    k.fillStyle = gr;
+    k.fillRect(0, -wd, len, wd * 2);
+    k.restore();
+  }
+  g.save();
+  g.globalCompositeOperation = "screen";
+  g.drawImage(blurred(c, 8 * u), 0, 0);
+  g.restore();
+}
+/** Shooting stars streaking down across the night. */
+function fallingStars(g: Ctx, s: Scene, u: number, r: () => number) {
+  const { W, H } = s;
+  g.save();
+  g.globalCompositeOperation = "lighter";
+  for (let i = 0; i < 9; i++) {
+    const x = (0.25 + r() * 0.75) * W,
+      y = r() * H * 0.45;
+    const L = (80 + r() * 200) * u;
+    const a = Math.PI * (0.78 + r() * 0.08);
+    const ex = x + Math.cos(a) * L,
+      ey = y - Math.sin(a) * L * -1;
+    const gr = g.createLinearGradient(x, y, ex, ey);
+    gr.addColorStop(0, "rgba(255,250,230,0.95)");
+    gr.addColorStop(1, "rgba(200,170,255,0)");
+    g.strokeStyle = gr;
+    g.lineWidth = (1.5 + r() * 2) * u;
+    g.beginPath();
+    g.moveTo(x, y);
+    g.lineTo(ex, ey);
+    g.stroke();
+    sparkle(g, x, y, (3 + r() * 3) * u, "#fff4d0", 0.95);
+  }
+  g.restore();
+}
+
+function moon(g: Ctx, s: Scene, u: number, size = 1) {
   const cx = s.sun.x * s.W,
     cy = s.sun.y * s.H,
-    R = 46 * u;
+    R = 46 * u * size;
   g.save();
   g.globalCompositeOperation = "screen";
   const gl = g.createRadialGradient(cx, cy, 0, cx, cy, R * 5);

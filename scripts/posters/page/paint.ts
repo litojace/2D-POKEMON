@@ -471,6 +471,8 @@ export function paintBoss(
   L: Light,
   faceBox: { x: number; y: number; rx: number; ry: number },
   scale: number,
+  /** How strongly the rig's own glows are added on top. */
+  glowK = 1,
 ): HTMLCanvasElement {
   const W = cut.canvas.width,
     H = cut.canvas.height;
@@ -571,6 +573,7 @@ export function paintBoss(
     g.save();
     g.globalCompositeOperation = "lighter";
     g.globalAlpha =
+      glowK *
       Math.min(1, layer.alpha) *
       (avoided(layer.x + layer.c.width / 2, layer.y + layer.c.height / 2)
         ? 0.3

@@ -15,6 +15,10 @@ import arenaEmber from "../../../apps/client/src/art/raid-arenas/emberwing.webp"
 import arenaTide from "../../../apps/client/src/art/raid-arenas/tidewyrm.webp";
 import arenaGloom from "../../../apps/client/src/art/raid-arenas/gloomshade.webp";
 import arenaCrag from "../../../apps/client/src/art/raid-arenas/grumblecrag.webp";
+import arenaPrism from "../../../apps/client/src/art/raid-arenas/prismatail.webp";
+import arenaSomn from "../../../apps/client/src/art/raid-arenas/somnara.webp";
+// the newest bosses' rigs load on demand (they may come from build-posters --rigs)
+const NB = () => import("./bosses-new");
 
 type Frame = Pick<Scene, "place" | "sun" | "horizon" | "spin">;
 export interface PosterDef {
@@ -191,6 +195,90 @@ export const POSTERS: Record<string, PosterDef> = {
       horizon: 0.6,
     },
   },
+  prismatail: {
+    arena: arenaPrism,
+    setting: "temple",
+    seed: 53,
+    k: 4.2,
+    cutout: async (k) =>
+      (await NB()).prismell({
+        k,
+        facing: 1,
+        action: "prism-lance",
+        t: 0.9,
+        phase: 2,
+      }),
+    theme: {
+      sky: ["#2e2460", "#7a5aa8", "#e8b890", "#ffeccc"],
+      light: "#ffe2a8",
+      haze: "#b8a0cc",
+      cloud: ["#ffffff", "#e8dcf8", "#9a8ac8"],
+      ribbons: [
+        ["#ff70c8", "#ffb0e8", "#fff0fb"],
+        ["#60c8ff", "#a8e8ff", "#f0fbff"],
+        ["#ffd060", "#ffe8a0", "#fffbe8"],
+      ],
+      rim: "#fffbe8",
+      aura: "#a080e0",
+      crack: "#b8e0ff",
+      shade: "#3a2a5a",
+      particles: ["prisms", "motes", "prisms", "stars"],
+      spark: "#ffffff",
+      stone: "#d8c49a",
+    },
+    splash: {
+      place: { cx: 0.52, cy: 0.55, h: 0.66, maxW: 0.6, ground: 0.84 },
+      sun: SUN,
+      horizon: 0.6,
+    },
+    portrait: {
+      place: { cx: 0.38, cy: 0.5, h: 0.6, maxW: 1.1, ground: 0.78 },
+      sun: { x: 0.15, y: 0.1 },
+      horizon: 0.56,
+    },
+  },
+  somnara: {
+    arena: arenaSomn,
+    setting: "dreamnight",
+    seed: 61,
+    k: 3.5,
+    cutout: async (k) =>
+      (await NB()).snoozaku({
+        k,
+        facing: 1,
+        action: "tail-splash",
+        t: 0.9,
+        phase: 2,
+      }),
+    theme: {
+      sky: ["#040620", "#121448", "#3a2c84", "#8a74c8"],
+      light: "#ffe6b0",
+      haze: "#4a3c88",
+      cloud: ["#f0e8ff", "#9a88d8", "#2a2060"],
+      ribbons: [
+        ["#9a6aff", "#c8a8ff", "#f6f0ff"],
+        ["#ff8ad8", "#ffc0ec", "#fff2fb"],
+        ["#ffd870", "#fff0b0", "#fffcf0"],
+      ],
+      rim: "#f8f0ff",
+      aura: "#8060d8",
+      crack: "#c8a8ff",
+      shade: "#050318",
+      particles: ["stars", "bubbles", "motes", "stars"],
+      spark: "#fff4d8",
+      stone: "#5a4a8a",
+    },
+    splash: {
+      place: { cx: 0.52, cy: 0.52, h: 0.7, maxW: 0.6, ground: 0.88 },
+      sun: { x: 0.2, y: 0.2 },
+      horizon: 0.66,
+    },
+    portrait: {
+      place: { cx: 0.4, cy: 0.5, h: 0.62, maxW: 1.1, ground: 0.84 },
+      sun: { x: 0.2, y: 0.14 },
+      horizon: 0.68,
+    },
+  },
 };
 
 function loadImage(src: string) {
@@ -239,6 +327,7 @@ export async function renderPoster(id: string, def: PosterDef = POSTERS[id]) {
     look.light,
     { x: cut.face.x, y: cut.face.y + fr[1] * 0.3, rx: fr[0], ry: fr[1] },
     bossPx / 2200,
+    look.glow ?? 1,
   );
   const base = {
     arena,

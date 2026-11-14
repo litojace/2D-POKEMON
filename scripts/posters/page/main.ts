@@ -36,4 +36,5 @@ w.buildPoster = async (
     thumbFace: p.thumbFace,
   };
 };
+w.NB = () => import("./bosses-new");
 w.ready = true;

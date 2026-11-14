@@ -29,7 +29,7 @@ export interface Layer {
  * Draw one piece with the context's current transform, and keep a copy of
  * it on its own canvas (its box in the cutout) as a layer.
  */
-function piece(
+export function piece(
   ctx: CanvasRenderingContext2D,
   layers: Layer[],
   name: string,
@@ -74,7 +74,7 @@ export interface CutoutOpts {
 }
 
 /** The eyes' midpoint (canvas px), else the head. */
-function eyesOr(
+export function eyesOr(
   eyes: { x: number; y: number }[] | undefined,
   head: { x: number; y: number },
   cx: number,
