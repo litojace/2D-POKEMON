@@ -185,9 +185,8 @@ for (const size of SIZES)
       );
       await centred(page, '.rh-head .ui-chip[aria-pressed="true"]', "All chip");
       await snap(page, info, `raid-hall-${size.name}`);
-      // Vertical cards in an even grid (owner's note, 5 Nov): four to a
-      // row, every card the same size, taller than wide; a tall screen
-      // shows both rows whole.
+      // Desktop keeps two rows; phones have one swipeable row, fully
+      // contained vertically instead of clipping a second row below it.
       const cards = await room
         .locator(".rh-grid > .rh-card")
         .evaluateAll((els) =>
@@ -198,11 +197,22 @@ for (const size of SIZES)
               w: r.width,
               h: r.height,
               b: r.bottom,
+              t: r.top,
             };
           }),
         );
       expect(cards).toHaveLength(8);
-      expect(new Set(cards.map((c) => c.x)).size).toBe(4);
+      expect(new Set(cards.map((c) => c.x)).size).toBe(size.phone ? 8 : 4);
+      if (size.phone) {
+        const gallery = await box(page, ".rh-grid");
+        expect(new Set(cards.map((c) => Math.round(c.t))).size).toBe(1);
+        for (const c of cards) {
+          expect(c.t).toBeGreaterThanOrEqual(gallery.y - 1);
+          expect(c.b).toBeLessThanOrEqual(gallery.y + gallery.height + 1);
+        }
+        const body = await box(page, ".rh-hall-body");
+        expect(gallery.height / body.height).toBeGreaterThan(0.85);
+      }
       for (const c of cards) {
         expect(Math.abs(c.w - cards[0].w)).toBeLessThan(1);
         expect(Math.abs(c.h - cards[0].h)).toBeLessThan(1);
@@ -248,17 +258,16 @@ for (const size of SIZES)
         await art.evaluate((i: HTMLImageElement) => i.naturalWidth),
       ).toBeGreaterThanOrEqual(1200);
       {
-        // The painting is framed vertically on the boss (owner's note,
-        // 4 Nov): it fills the stage at its own shape, the boss's body in
-        // the middle; a phone zooms in on its face.
+        // Keep the face inside a filled stage with minimal zoom.
+        // The source painting keeps its original ratio.
         const f = await bossFraming(page);
         expect(f.covers).toBe(true);
         expect(Math.abs(f.ratio - 1536 / 1024)).toBeLessThan(0.02);
-        expect(f.x).toBeGreaterThan(0.25);
-        expect(f.x).toBeLessThan(0.75);
-        expect(f.y).toBeGreaterThan(0.2);
-        expect(f.y).toBeLessThan(0.7);
-        if (size.phone) expect(f.zoom).toBeGreaterThan(1.5);
+        expect(f.x).toBeGreaterThan(0.19);
+        expect(f.x).toBeLessThan(0.81);
+        expect(f.y).toBeGreaterThan(0.15);
+        expect(f.y).toBeLessThan(0.65);
+        expect(f.zoom).toBeLessThan(1.12);
       }
       if (size.height > 1000) {
         // A tall window (the owner's, 4 Nov: its right side was mostly

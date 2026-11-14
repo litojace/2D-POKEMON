@@ -202,15 +202,12 @@
 }
 
 /* -------------------------------------------------------- boss page */
-/* The stage: the boss's painting framed vertically on the boss, like a
-   poster (BOSS_FRAMES in raid-hall-view.ts). The picture covers the stage
-   at --z times its height, and is moved so the framing point (--px, --py)
-   sits in the middle, never leaving a gap at an edge. Phones zoom in on
-   the face. */
+/* Frame the whole creature with minimal zoom. Keep the face safely inside
+   the image without forcing it into the center or enlarging the painting. */
 .rh-stage {
   container-type: size;
   background: var(--ui-bg-0);
-  --z: 1.04;
+  --z: var(--fz);
   --px: var(--cx);
   --py: var(--cy);
   --at-y: 45cqh;
@@ -227,9 +224,12 @@
   height: var(--h);
   width: calc(var(--h) * 1.5);
   left: clamp(
-    calc(100cqw - var(--h) * 1.5),
+    max(
+      calc(100cqw - var(--h) * 1.5),
+      calc(20cqw - var(--fx) * var(--h) * 1.5)
+    ),
     calc(50cqw - var(--px) * var(--h) * 1.5),
-    0px
+    min(0px, calc(80cqw - var(--fx) * var(--h) * 1.5))
   );
   top: clamp(
     calc(100cqh - var(--h)),
@@ -679,8 +679,43 @@ button.rh-reward:focus-visible {
   .rh-head > .ui-chips .ui-chip {
     padding: 0 8px;
   }
+  /* One balanced row on landscape phones; the next card peeks in to
+     invite a swipe. Only this gallery scrolls sideways, not the panel. */
+  .rh-room .rh-hall-body {
+    display: flex;
+    flex-direction: column;
+  }
+  .rh-notes {
+    flex: none;
+  }
   .ui-grid.rh-grid {
-    --gap: 6px;
+    --gap: 8px;
+    flex: 1 1 0;
+    min-height: 0;
+    min-width: 0;
+    grid-auto-flow: column;
+    grid-template-columns: none;
+    grid-template-rows: minmax(0, 1fr);
+    grid-auto-columns: clamp(
+      120px,
+      min(26cqw, calc((100cqh - 4px) / 1.25)),
+      210px
+    );
+    grid-auto-rows: auto;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x proximity;
+    scroll-padding-inline: 2px;
+    padding: 2px;
+    scrollbar-width: thin;
+    scrollbar-color: #ffd65b66 transparent;
+  }
+  .rh-notes:not(:empty) ~ .rh-grid {
+    grid-auto-rows: auto;
+  }
+  .rh-grid > .rh-card {
+    scroll-snap-align: start;
   }
   .rh-card {
     border-radius: var(--rad-md);
@@ -697,12 +732,24 @@ button.rh-reward:focus-visible {
     font-size: 10px;
     padding: 1px 4px;
   }
+  .rh-card-art img {
+    object-position: 50% 10%;
+  }
+  /* The expanded painting gives Snoozaku more scenery around it
+     while still covering the card from edge to edge. */
+  .rh-card[data-raid-card="somnara"] .rh-card-art img {
+    object-position: 68% top;
+    transform: scale(1.2);
+    transform-origin: center top;
+  }
   .rh-card-text {
-    padding: 6px 7px;
+    padding: 10px;
     gap: 2px;
   }
   .rh-card-name {
-    font-size: 15px;
+    font-size: clamp(18px, 2.6vw, 22px);
+    line-height: 1.05;
+    text-shadow: 0 2px 8px #03081699;
   }
   .rh-card-line,
   .rh-card-foot {
@@ -723,12 +770,9 @@ button.rh-reward:focus-visible {
   .rh-practice > .ui-btn {
     display: none;
   }
-  /* The phone's stage is a narrow strip: it zooms in on the boss's face. */
+  /* Phones keep the same wider framing and safe face position. */
   .rh-stage {
     --z: var(--fz);
-    --px: var(--fx);
-    --py: var(--fy);
-    --at-y: 40cqh;
   }
   .rh-stage-info {
     left: 8px;

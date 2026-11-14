@@ -27,6 +27,7 @@ import {
 } from "../../../../packages/shared/src/raid";
 import { raidGoals, type RaidGoal } from "../raid-presentation";
 import { raidPortraitImage, raidSplashImage } from "../raid-splash-art";
+import snoozakuMobile from "../art/raid-splash/somnara-mobile.webp";
 import { fighterAvatar } from "../fighter-art";
 import { friendStatus } from "./friends-view";
 import { itemPicture } from "../shop-ui";
@@ -242,9 +243,14 @@ function bossCard(id: RaidBossId, d: RaidData) {
         : tag("New", "new");
   const tricks = bossTricks(id).slice(0, 3);
   const label = `${b.name}, ${b.stars} ${b.stars === 1 ? "star" : "stars"}, ${b.element}${locked ? ", locked: clear Cragmuff first" : !b.playable ? ", coming soon" : clears ? `, ${clears} ${clears === 1 ? "clear" : "clears"}` : ", new"}`;
-  // A vertical card: the boss's portrait fills it, its name and details
-  // over the foot of the picture.
-  return `<button type="button" class="rh-card${locked ? " is-locked" : ""}${b.playable ? "" : " is-soon"}" style="--boss:${b.color}" data-raid-card="${id}" aria-label="${esc(label)}"><span class="rh-card-art">${raidPortraitImage(id)}</span><span class="rh-card-top">${corner}${stars(b.stars)}</span><span class="rh-card-text"><b class="rh-card-name">${esc(b.name)}</b><small class="ui-note rh-card-line">${esc(b.element)} · ${esc(b.signature)}</small><span class="rh-card-foot"><span class="rh-tricks" title="Fighters with a trick here">${tricks.map((t) => fighterChip(t.character, `rh-${id}-${t.character}`)).join("")}</span><span class="ui-note">${p ? `${earned} / ${total} rewards` : `${total} rewards`}</span></span></span></button>`;
+  // Snoozaku's expanded painting allows a wider mobile crop with real scenery
+  // at both edges. Other cards and room banners keep their portrait assets.
+  const portrait = raidPortraitImage(id);
+  const art =
+    id === "somnara"
+      ? `<picture><source media="(max-height: 500px)" srcset="${snoozakuMobile}">${portrait}</picture>`
+      : portrait;
+  return `<button type="button" class="rh-card${locked ? " is-locked" : ""}${b.playable ? "" : " is-soon"}" style="--boss:${b.color}" data-raid-card="${id}" aria-label="${esc(label)}"><span class="rh-card-art">${art}</span><span class="rh-card-top">${corner}${stars(b.stars)}</span><span class="rh-card-text"><b class="rh-card-name">${esc(b.name)}</b><small class="ui-note rh-card-line">${esc(b.element)} · ${esc(b.signature)}</small><span class="rh-card-foot"><span class="rh-tricks" title="Fighters with a trick here">${tricks.map((t) => fighterChip(t.character, `rh-${id}-${t.character}`)).join("")}</span><span class="ui-note">${p ? `${earned} / ${total} rewards` : `${total} rewards`}</span></span></span></button>`;
 }
 function practiceCard() {
   return `<button type="button" class="rh-card rh-practice" data-raid-practice-card aria-label="Attack practice: drill any boss attack on its own"><span class="rh-practice-icon" aria-hidden="true">${menuIcon("target")}</span><span class="rh-card-text"><b class="ui-h">Attack practice</b><small class="ui-note">Drill any boss attack on its own. Nothing to lose.</small></span><span class="ui-btn is-s" aria-hidden="true">Choose an attack</span></button>`;
@@ -300,34 +306,32 @@ function rewardTotal(p: RaidProgress) {
 /* -------------------------------------------------------- boss page */
 
 /**
- * Each boss's vertical framing of its (wide) painting, in fractions of the
- * picture: `body` is the point kept in the middle of a tall stage (head and
- * body together, like a poster), `face` the point a phone's small stage
- * zooms in on, by `zoom` (raid-hall.css does the arithmetic). The body
- * point keeps as much of the boss as a tall stage can hold, its face side
- * first (owner's notes, 14 Nov); the face point is the face itself.
+ * Focal points in the wide paintings. Every boss page frames `body`
+ * with minimal zoom; `face` keeps the face safely inside the frame.
+ * Storm Twins uses the midpoint between the two faces to keep the pair.
  */
 export const BOSS_FRAMES: Record<
   RaidBossId,
   { body: [number, number]; face: [number, number]; zoom: number }
 > = {
-  grumblecrag: { body: [0.47, 0.45], face: [0.53, 0.3], zoom: 1.6 },
-  tidewyrm: { body: [0.62, 0.48], face: [0.643, 0.35], zoom: 1.6 },
-  gloomshade: { body: [0.5, 0.44], face: [0.6, 0.3], zoom: 1.6 },
-  somnara: { body: [0.62, 0.4], face: [0.62, 0.3], zoom: 1.6 },
-  prismatail: { body: [0.475, 0.44], face: [0.654, 0.4], zoom: 1.5 },
-  emberwing: { body: [0.42, 0.39], face: [0.497, 0.36], zoom: 1.6 },
-  "storm-twins": { body: [0.487, 0.43], face: [0.547, 0.43], zoom: 1.2 },
+  grumblecrag: { body: [0.47, 0.45], face: [0.54, 0.35], zoom: 1.04 },
+  tidewyrm: { body: [0.62, 0.48], face: [0.65, 0.36], zoom: 1.04 },
+  gloomshade: { body: [0.54, 0.44], face: [0.62, 0.3], zoom: 1.04 },
+  somnara: { body: [0.57, 0.4], face: [0.64, 0.335], zoom: 1.07 },
+  prismatail: { body: [0.475, 0.44], face: [0.675, 0.42], zoom: 1.04 },
+  emberwing: { body: [0.42, 0.39], face: [0.508, 0.315], zoom: 1.04 },
+  "storm-twins": { body: [0.487, 0.43], face: [0.552, 0.41], zoom: 1.04 },
 };
 /**
  * The stage: the boss's painting framed vertically on the boss (a poster),
- * its name and how to win over the foot of it. Phones zoom in on the face.
+ * its name and how to win over the foot of it. The face stays safely inside the frame.
  */
 function stage(id: RaidBossId) {
   const b = RAID_BOSSES[id];
   const f = BOSS_FRAMES[id];
+  const art = raidSplashImage(id, true);
   const vars = `--el:${b.color};--cx:${f.body[0]};--cy:${f.body[1]};--fx:${f.face[0]};--fy:${f.face[1]};--fz:${f.zoom}`;
-  return `<section class="ui-split-stage rh-stage" style="${vars}" aria-label="${esc(b.name)}"><span class="rh-poster">${raidSplashImage(id, true)}</span><div class="rh-stage-info"><span class="rh-row">${elementTag(b.element)}${stars(b.stars)}</span><b class="rh-stage-name">${esc(b.name)}</b><small class="ui-note rh-stage-line">${esc(b.epithet)}</small><p class="rh-win"><span class="ui-kicker">How to win</span><b>${esc(b.signature)}</b></p></div></section>`;
+  return `<section class="ui-split-stage rh-stage" style="${vars}" aria-label="${esc(b.name)}"><span class="rh-poster">${art}</span><div class="rh-stage-info"><span class="rh-row">${elementTag(b.element)}${stars(b.stars)}</span><b class="rh-stage-name">${esc(b.name)}</b><small class="ui-note rh-stage-line">${esc(b.epithet)}</small><p class="rh-win"><span class="ui-kicker">How to win</span><b>${esc(b.signature)}</b></p></div></section>`;
 }
 function seat(s: RaidSeat, i: number) {
   const sub = s.me

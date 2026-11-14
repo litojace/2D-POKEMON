@@ -101,15 +101,15 @@ for (const viewport of [
           expect(inside(stage, { x: 0, y: 0, ...viewport })).toBe(true);
           // The stage and the action bar sit side by side, never on top.
           expect(stage.x + stage.width).toBeLessThanOrEqual(foot.x + 1);
-          // Each boss's vertical framing (owner's note, 4 Nov): the
-          // painting fills the stage and the boss's framing point (its
-          // body, or its face on a phone) stays well inside it.
+          // The face stays safely inside the frame, while the wider
+          // camera preserves the creature and surrounding scenery.
           const f = await bossFraming(page);
           expect(f.covers, `${boss} fills its stage`).toBe(true);
-          expect(f.x, `${boss} framed across`).toBeGreaterThan(0.25);
-          expect(f.x, `${boss} framed across`).toBeLessThan(0.75);
-          expect(f.y, `${boss} framed down`).toBeGreaterThan(0.2);
-          expect(f.y, `${boss} framed down`).toBeLessThan(0.7);
+          expect(f.x, `${boss}: face clears left edge`).toBeGreaterThan(0.19);
+          expect(f.x, `${boss}: face clears right edge`).toBeLessThan(0.81);
+          expect(f.y, `${boss}: face clears top edge`).toBeGreaterThan(0.15);
+          expect(f.y, `${boss}: face clears caption`).toBeLessThan(0.65);
+          expect(f.zoom, `${boss}: restrained zoom`).toBeLessThan(1.12);
         }
         expect(
           await room.evaluate((el) => el.scrollWidth - el.clientWidth),
