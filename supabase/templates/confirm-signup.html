@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <meta name="supported-color-schemes" content="light" />
+    <title>Confirm your Element Arena account</title>
+  </head>
+  <body style="margin:0;padding:0;background-color:#f2f4f8;">
+    <!-- Preview text shown next to the subject in the inbox -->
+    <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">
+      One click to confirm your email and start battling.
+    </div>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f2f4f8;">
+      <tr>
+        <td align="center" style="padding:32px 16px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;background-color:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #dde1ea;">
+            <!-- Header -->
+            <tr>
+              <td align="center" style="background-color:#0b1020;padding:28px 24px;">
+                <img src="https://parena.litojace.com/icons/arena-192.png" width="72" height="72" alt="Element Arena" style="display:block;border:0;border-radius:16px;" />
+                <div style="font-family:Helvetica,Arial,sans-serif;font-size:20px;font-weight:bold;color:#ffd65b;letter-spacing:0.5px;padding-top:12px;">
+                  Element Arena
+                </div>
+              </td>
+            </tr>
+            <!-- Body -->
+            <tr>
+              <td style="padding:32px 32px 8px 32px;font-family:Helvetica,Arial,sans-serif;color:#161b2b;">
+                <h1 style="margin:0 0 16px 0;font-size:22px;line-height:1.3;font-weight:bold;color:#161b2b;">
+                  Confirm your email address
+                </h1>
+                <p style="margin:0 0 16px 0;font-size:16px;line-height:1.6;color:#4f5a70;">
+                  Welcome to Element Arena! Please confirm that
+                  <strong style="color:#161b2b;">{{ .Email }}</strong> is your email address to finish creating your account.
+                </p>
+              </td>
+            </tr>
+            <!-- Button -->
+            <tr>
+              <td align="center" style="padding:8px 32px 24px 32px;">
+                <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                  <tr>
+                    <td align="center" bgcolor="#ffd65b" style="border-radius:8px;">
+                      <a href="{{ .ConfirmationURL }}" target="_blank" style="display:inline-block;padding:14px 32px;font-family:Helvetica,Arial,sans-serif;font-size:16px;font-weight:bold;color:#0b1020;text-decoration:none;border-radius:8px;">
+                        Confirm email address
+                      </a>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <!-- Fallback link -->
+            <tr>
+              <td style="padding:0 32px 24px 32px;font-family:Helvetica,Arial,sans-serif;">
+                <p style="margin:0 0 8px 0;font-size:13px;line-height:1.6;color:#4f5a70;">
+                  If the button doesn't work, copy and paste this link into your browser:
+                </p>
+                <p style="margin:0;font-size:13px;line-height:1.6;word-break:break-all;">
+                  <a href="{{ .ConfirmationURL }}" target="_blank" style="color:#0b5cad;text-decoration:underline;">{{ .ConfirmationURL }}</a>
+                </p>
+              </td>
+            </tr>
+            <!-- Security note -->
+            <tr>
+              <td style="padding:0 32px 32px 32px;font-family:Helvetica,Arial,sans-serif;">
+                <p style="margin:0;padding-top:16px;border-top:1px solid #dde1ea;font-size:13px;line-height:1.6;color:#4f5a70;">
+                  For your security, this link can only be used once and expires after a short time.
+                  If you didn't create an Element Arena account, you can safely ignore this email.
+                </p>
+              </td>
+            </tr>
+          </table>
+          <!-- Footer -->
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;">
+            <tr>
+              <td align="center" style="padding:20px 16px 0 16px;font-family:Helvetica,Arial,sans-serif;font-size:12px;line-height:1.6;color:#7a8499;">
+                Element Arena &middot;
+                <a href="https://parena.litojace.com" target="_blank" style="color:#7a8499;text-decoration:underline;">parena.litojace.com</a>
+                &middot;
+                <a href="https://parena.litojace.com/privacy.html" target="_blank" style="color:#7a8499;text-decoration:underline;">Privacy</a>
+                <br />
+                This is an automated message. Please don't reply.
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
