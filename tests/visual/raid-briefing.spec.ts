@@ -64,6 +64,17 @@ for (const size of [
           ".raid-guide-scene image[data-guide-sprite]",
         );
         expect(await sprites.count()).toBeGreaterThan(0);
+        // The pictures are painted off the briefing's render and filled in a
+        // moment later (raid-guide-sprites.ts).
+        await expect
+          .poll(() =>
+            sprites.evaluateAll((images) =>
+              images.every((el) =>
+                el.getAttribute("href")?.startsWith("data:image/png"),
+              ),
+            ),
+          )
+          .toBe(true);
         // Decode the same atlases used by SVG <image>, including cold-cache phones.
         await sprites.evaluateAll(async (images) => {
           await Promise.all(

@@ -333,3 +333,83 @@ test("reduced motion holds a still pose, windups included", async ({
   expect((await rig(page)).parts.armL.frame).toMatch(/_point_/);
   expect(errors).toEqual([]);
 });
+
+test("each attack lands with Lumiwick's own effects, never the shared flipbook", async ({
+  page,
+}) => {
+  const errors = await review(page);
+  /** Run one attack: its warning for `dur` seconds, then its cast; collect what the floor effects drew. */
+  const attack = (kind: string, dur: number, extra = "") =>
+    page.evaluate(
+      ({ kind, dur, extra }) => {
+        const r = (window as any).__bossReview,
+          row = r.rows.find((x: any) => x.id === "emberwing"),
+          boss = row.state.players.find((p: any) => p.raidBoss);
+        const t0 = (r.__lumiClock = (r.__lumiClock ?? 0) + 10);
+        row.state.raid.airborne = true;
+        row.state.raid.warnings = [
+          {
+            id: Math.round(t0),
+            kind,
+            startedAt: t0,
+            at: t0 + dur,
+            x: boss.x - 260,
+            y: boss.y + 140,
+            tx: boss.x - 260,
+            ty: boss.y + 140,
+            radius:
+              kind === "wing-gust" ? 470 : kind === "heat-mark" ? 140 : 60,
+            spread: 0.6,
+          },
+        ];
+        if (extra) new Function("row", "boss", extra)(row, boss);
+        const seen = new Set<string>();
+        let flipbook = 0;
+        const look = () => {
+          for (const k of Object.keys(r.game.registry.get("lumiwick-fx") ?? {}))
+            seen.add(k);
+          flipbook = Math.max(
+            flipbook,
+            row.g.scene.children.list.filter(
+              (o: any) => o.name === "boss-spell-flipbook" && o.visible,
+            ).length,
+          );
+        };
+        let t = t0;
+        for (; t < t0 + dur - 0.02; t += 0.05) {
+          r.frame(1, t, false, ["emberwing"]);
+          look();
+        }
+        row.state.raid.warnings = [];
+        for (let n = 0; n < 20; n++) {
+          r.frame(1, (t += 0.05), false, ["emberwing"]);
+          look();
+        }
+        return { seen: [...seen].sort(), flipbook };
+      },
+      { kind, dur, extra },
+    );
+  const rain = await attack("ember-rain", 1.2);
+  expect(rain.seen).toEqual(
+    expect.arrayContaining(["rain-fall", "rain-impact"]),
+  );
+  const mark = await attack("heat-mark", 3);
+  expect(mark.seen).toEqual(expect.arrayContaining(["brand", "pillar"]));
+  const gust = await attack("wing-gust", 1.1);
+  expect(gust.seen).toContain("gust");
+  const dive = await attack("dive-bomb", 1.15);
+  expect(dive.seen).toEqual(
+    expect.arrayContaining(["dive-sparks", "dive-shock"]),
+  );
+  const wax = await attack("scorched-earth", 1.4);
+  expect(wax.seen).toContain("wax-splash");
+  const ring = await attack(
+    "flame-ring",
+    1,
+    "row.state.raid.flameRings = [{ id: 1, x: boss.x, y: boss.y, radius: 220, startedAt: 0 }]",
+  );
+  expect(ring.seen).toContain("shimmer");
+  for (const a of [rain, mark, gust, dive, wax, ring])
+    expect(a.flipbook).toBe(0);
+  expect(errors).toEqual([]);
+});

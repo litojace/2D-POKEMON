@@ -72,27 +72,27 @@ export const RAID_BOSSES: Record<RaidBossId, RaidBossInfo> = {
   somnara: {
     id: "somnara",
     name: "Snoozaku",
-    epithet: "The dream tapir",
+    epithet: "The dream-eating baku",
     element: "Psychic",
     color: "#c9a3ff",
     day: 3,
     stars: 2,
     signature: "Step the runes only the Dreamer sees",
     blurb:
-      "A sleepy violet tapir with an ivory saddle and a starry nightcap, guarding a marble deck above the clouds. One raider sees its dream; the team must step the runes in order to wake it.",
+      "A chubby, sleepy baku in a starry nightcap that snacks on dreams. One raider sees its dream; the team must step the runes in order to wake it.",
     playable: true,
   },
   prismatail: {
     id: "prismatail",
     name: "Prismell",
-    epithet: "Carry the light",
+    epithet: "The prism-shelled snail",
     element: "Light",
     color: "#ffe27a",
     day: 0,
     stars: 3,
     signature: "Relay the sunbeam to its heart",
     blurb:
-      "A gentle lavender snail with an iridescent spiral shell and a shielded heart, guarding the sunlit crystal atrium. Pass the sunbeam raider to raider until it reaches the boss and shatters the shield.",
+      "A proud, sparkly snail in a spiral shell of prism crystal that splits the light into rainbows. Its heart glows in the coil behind a shield: pass the sunbeam raider to raider until it reaches the heart and shatters the shield.",
     playable: true,
   },
   emberwing: {
