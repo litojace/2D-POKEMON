@@ -6,6 +6,7 @@ import {
   pushUntilBattle,
   snap,
   openPlayPanel,
+  settle,
 } from "./helpers";
 
 const buffValues: Record<string, string[]> = {
@@ -335,10 +336,21 @@ for (const size of [
             ];
           }),
         );
+      // A pick redraws the same panel; its pop-in mustn't play again (it
+      // moved the cards while it ran).
+      const popping = () =>
+        page
+          .locator(".raid-draft")
+          .evaluate(
+            (e) =>
+              e.getAnimations().filter((a) => a.playState === "running").length,
+          );
       await show(offer, []);
       await expect(cards).toHaveCount(6);
       await expect(page.locator(".raid-draft")).toBeVisible();
-      await page.waitForTimeout(400);
+      // Measure where the panel ends up once it has popped in (this page
+      // draws no frames between steps, so its pop wouldn't finish by itself).
+      await settle(page);
       const before = await places();
       // The six cards end above the chapter tip and timer row: a fixed-height
       // panel used to let them overflow onto it on desktop screens.
@@ -361,6 +373,7 @@ for (const size of [
       await expect(core).toHaveAttribute("aria-pressed", "true");
       await expect(core.locator(".raid-rite-check")).toBeVisible();
       await expect(cards).toHaveCount(6);
+      expect(await popping()).toBe(0);
       expect(await places()).toEqual(before);
       for (const id of offer.filter((id) => id !== "core"))
         await expect(page.locator(`[data-raid-rite="${id}"]`)).toBeEnabled();
@@ -379,6 +392,7 @@ for (const size of [
       await expect(
         page.locator('[data-raid-rite][aria-pressed="true"]'),
       ).toHaveCount(2);
+      expect(await popping()).toBe(0);
       expect(await places()).toEqual(before);
       await snap(page, info, `rite-locked-${size.width}x${size.height}`);
       expect(errors).toEqual([]);

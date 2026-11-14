@@ -16,12 +16,34 @@ export function fillLiveSeconds(root: HTMLElement, seconds: number) {
     if (slot.textContent !== text) slot.textContent = text;
   });
 }
+/**
+ * The overlay card pops in (style.css, `ea-pop`). Writing new markup makes a
+ * new card, which would replay the pop on every snapshot that changes the
+ * same panel (a rite picked, a player getting ready). When the panel is the
+ * same one, the new card's pop carries on from where the old one was, or
+ * stays finished.
+ */
+function popOf(card: Element | null | undefined) {
+  return card
+    ?.getAnimations?.()
+    .find(
+      (a): a is CSSAnimation =>
+        "animationName" in a && (a as CSSAnimation).animationName === "ea-pop",
+    );
+}
 export function setOverlayMarkup(
   element: HTMLElement,
   markup: string,
   scrollKey?: string,
+  /** Same value as last time: the same panel, so it doesn't pop in again. */
+  panelKey = scrollKey,
 ) {
   if (markupByElement.get(element) === markup) return false;
+  const samePanel =
+    panelKey !== undefined && element.dataset?.popKey === panelKey;
+  const previousPop = samePanel
+    ? popOf(element.firstElementChild)?.currentTime
+    : undefined;
   const previousScroll = scrollKey
     ? element.querySelector<HTMLElement>(".panel-scroll")
     : null;
@@ -33,6 +55,13 @@ export function setOverlayMarkup(
   const focusId = active && element.contains(active) ? active.id : "";
   element.innerHTML = markup;
   markupByElement.set(element, markup);
+  if (panelKey !== undefined) element.dataset.popKey = panelKey;
+  else if (element.dataset?.popKey) delete element.dataset.popKey;
+  if (samePanel) {
+    const pop = popOf(element.firstElementChild);
+    if (pop && typeof previousPop === "number") pop.currentTime = previousPop;
+    else pop?.finish();
+  }
   if (scrollKey) {
     element.dataset.panelKey = scrollKey;
     const scroller = element.querySelector<HTMLElement>(".panel-scroll");
