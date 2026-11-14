@@ -1476,7 +1476,9 @@ export const RAID_REWARDS: RaidReward[] = [
     id: "lone-phoenix",
     boss: "emberwing",
     slot: "title",
-    name: "Lone Lantern",
+    // Not "Lone Lantern": that's Gloomshade's solo title, and titles are
+    // granted by name (arena_record_raid joins rewards to titles by name).
+    name: "Lone Wick",
     description: "Title",
     goal: "Clear solo without going down",
     rule: { kind: "solo", peril: 3 },
