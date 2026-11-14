@@ -11,6 +11,10 @@
 //     down (Apple: "avoid excessively bright images"),
 //   - tinted: the dark icon as a grayscale image (gray + alpha), which iOS
 //     colours with the tint the player picks,
+// - the alternate app icons players pick in Settings → App icon (ALTERNATES
+//   below, from scripts/app-icons): each its own icon set, with the same
+//   three appearances, and a 144 px thumbnail in public/icons/app-icons for
+//   the picker (with one of the default icon),
 // - the iPhone launch screen: the icon's fighters, whole and facing each
 //   other, on the app's background colour #0b1020 (capacitor.config.ts),
 // - the PWA icons in apps/client/public/icons. Android may crop the maskable
@@ -24,7 +28,7 @@
 // use another binary). Apple's guidance for the appearances:
 // https://developer.apple.com/documentation/xcode/configuring-your-app-icon
 import { chromium } from "@playwright/test";
-import { readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { deflateSync, crc32 } from "node:zlib";
 
 /** How much the faces and clash shrink in the maskable icon, about the clash point. */
@@ -33,8 +37,21 @@ const CLASH = [512, 520];
 /** The dark icon's bolt and clash opacity (the default icon's are 1). */
 const DARK_BOLT = 0.7;
 const DARK_CLASH = 0.45;
+/**
+ * The alternate app icons players can pick in Settings, as [asset catalog
+ * set, source in scripts/app-icons]. apps/client/src/app-icon-setting.ts
+ * lists the same sets, and the Xcode build setting
+ * ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES names them;
+ * tests/unit/app-icons.test.ts checks all three agree.
+ */
+const ALTERNATES = [
+  ["AppIcon-Pyranda", "pyranda.svg"],
+  ["AppIcon-SplitFace", "split-face.svg"],
+  ["AppIcon-StareDown", "stare-down.svg"],
+];
+/** The Settings picker's thumbnails: 72 pt at 2x, in public/icons/app-icons. */
+const THUMBNAIL = 144;
 
-const source = readFileSync(new URL("./app-icon.svg", import.meta.url), "utf8");
 /** A fighter's drawing, without its own <svg> element, and its viewBox. */
 function portrait(name) {
   const file = readFileSync(
@@ -46,29 +63,55 @@ function portrait(name) {
     box: file.match(/viewBox="([^"]+)"/)[1],
   };
 }
-const fighters = [
-  ...source.matchAll(/<svg data-fighter="(\w+)"[^>]*>(?=<\/svg>)/g),
-];
-if (fighters.length === 0)
-  throw new Error(
-    'app-icon.svg needs at least one empty <svg data-fighter="...">',
-  );
-let svg = source;
-for (const [element, name] of fighters)
-  svg = svg.replace(
-    element + "</svg>",
-    element + portrait(name).art + "</svg>",
-  );
-
+/** An icon SVG with every empty <svg data-fighter> drawn in, and the names. */
+function withFighters(text, file) {
+  const found = [
+    ...text.matchAll(/<svg data-fighter="(\w+)"[^>]*>(?=<\/svg>)/g),
+  ];
+  if (found.length === 0)
+    throw new Error(
+      `${file} needs at least one empty <svg data-fighter="...">`,
+    );
+  for (const [element, name] of found)
+    text = text.replace(
+      element + "</svg>",
+      element + portrait(name).art + "</svg>",
+    );
+  return { svg: text, names: found.map(([, name]) => name) };
+}
 /** `text` with `from` replaced by `to`, which must occur exactly `count` times. */
-function swap(text, from, to, count = 1) {
+function swap(text, from, to, count = 1, file = "app-icon.svg") {
   const found = text.split(from).length - 1;
   if (found !== count)
-    throw new Error(
-      `app-icon.svg: expected ${count} of ${from}, found ${found}`,
-    );
+    throw new Error(`${file}: expected ${count} of ${from}, found ${found}`);
   return text.replaceAll(from, to);
 }
+/** The dark appearance: no #backdrop; #bolt and #clash, where drawn, toned down. */
+function darken(svg, file) {
+  let dark = swap(
+    svg,
+    '<g id="backdrop">',
+    '<g id="backdrop" display="none">',
+    1,
+    file,
+  );
+  if (svg.includes('<g id="bolt" '))
+    dark = swap(dark, '<g id="bolt" ', `<g id="bolt" opacity="${DARK_BOLT}" `);
+  if (svg.includes('<g id="clash">'))
+    dark = swap(
+      dark,
+      '<g id="clash">',
+      `<g id="clash" opacity="${DARK_CLASH}">`,
+    );
+  return dark;
+}
+
+const main = withFighters(
+  readFileSync(new URL("./app-icon.svg", import.meta.url), "utf8"),
+  "app-icon.svg",
+);
+const svg = main.svg;
+const fighters = main.names;
 const [cx, cy] = CLASH;
 // The clash shrinks with the faces, so it doesn't cover their inner eyes.
 const shrink = `transform="translate(${cx} ${cy}) scale(${MASKABLE_FACE_SCALE}) translate(${-cx} ${-cy})"`;
@@ -79,15 +122,13 @@ let maskable = swap(
   fighters.length,
 );
 maskable = swap(maskable, '<g id="clash">', `<g id="clash" ${shrink}>`);
-let dark = swap(svg, '<g id="backdrop">', '<g id="backdrop" display="none">');
-dark = swap(dark, '<g id="bolt" ', `<g id="bolt" opacity="${DARK_BOLT}" `);
-dark = swap(dark, '<g id="clash">', `<g id="clash" opacity="${DARK_CLASH}">`);
+const dark = darken(svg, "app-icon.svg");
 
 // The launch screen: the fighters whole, side by side, the later ones
 // mirrored to face the first.
 const width = 1024 / fighters.length;
 const fightersOnly = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">${fighters
-  .map(([, name], i) => {
+  .map((name, i) => {
     const { art, box } = portrait(name);
     const x = i * width;
     const drawing = `<svg x="${x}" y="${(1024 - width) / 2}" width="${width}" height="${width}" viewBox="${box}">${art}</svg>`;
@@ -201,36 +242,63 @@ async function render(
   return png(canvas, canvas, Buffer.from(base64, "base64"), channels);
 }
 
-const appIcon = assets + "AppIcon.appiconset/";
-const appearances = [
-  ["AppIcon-512@2x.png", null, await render(svg, 1024)],
-  ["AppIcon-dark.png", "dark", await render(dark, 1024, { format: "rgba" })],
-  [
-    "AppIcon-tinted.png",
-    "tinted",
-    await render(dark, 1024, { format: "gray-alpha" }),
-  ],
-];
-for (const [file, , image] of appearances) writeFileSync(appIcon + file, image);
-writeFileSync(
-  appIcon + "Contents.json",
-  JSON.stringify(
-    {
-      images: appearances.map(([filename, value]) => ({
-        ...(value && {
-          appearances: [{ appearance: "luminosity", value }],
-        }),
-        filename,
-        idiom: "universal",
-        platform: "ios",
-        size: "1024x1024",
-      })),
-      info: { author: "xcode", version: 1 },
-    },
-    null,
-    2,
-  ) + "\n",
-);
+/**
+ * Writes an app icon set: its default, dark and tinted 1024 px images and the
+ * Contents.json that names them. `files` are the three file names.
+ */
+async function writeIconSet(set, light, dark, files) {
+  const folder = `${assets}${set}.appiconset/`;
+  mkdirSync(folder, { recursive: true });
+  const appearances = [
+    [files[0], null, await render(light, 1024)],
+    [files[1], "dark", await render(dark, 1024, { format: "rgba" })],
+    [files[2], "tinted", await render(dark, 1024, { format: "gray-alpha" })],
+  ];
+  for (const [file, , image] of appearances)
+    writeFileSync(folder + file, image);
+  writeFileSync(
+    folder + "Contents.json",
+    JSON.stringify(
+      {
+        images: appearances.map(([filename, value]) => ({
+          ...(value && {
+            appearances: [{ appearance: "luminosity", value }],
+          }),
+          filename,
+          idiom: "universal",
+          platform: "ios",
+          size: "1024x1024",
+        })),
+        info: { author: "xcode", version: 1 },
+      },
+      null,
+      2,
+    ) + "\n",
+  );
+}
+
+await writeIconSet("AppIcon", svg, dark, [
+  "AppIcon-512@2x.png",
+  "AppIcon-dark.png",
+  "AppIcon-tinted.png",
+]);
+mkdirSync(pwa + "app-icons", { recursive: true });
+writeFileSync(`${pwa}app-icons/AppIcon.png`, await render(svg, THUMBNAIL));
+for (const [set, file] of ALTERNATES) {
+  const alternate = withFighters(
+    readFileSync(new URL(`./app-icons/${file}`, import.meta.url), "utf8"),
+    file,
+  );
+  await writeIconSet(set, alternate.svg, darken(alternate.svg, file), [
+    `${set}.png`,
+    `${set}-dark.png`,
+    `${set}-tinted.png`,
+  ]);
+  writeFileSync(
+    `${pwa}app-icons/${set}.png`,
+    await render(alternate.svg, THUMBNAIL),
+  );
+}
 
 const splash = await render(fightersOnly, 820, { canvas: 2732 });
 for (const name of [
@@ -249,5 +317,5 @@ writeFileSync(pwa + "arena-maskable-512.png", await render(maskable, 512));
 
 await browser.close();
 console.log(
-  `Rendered the app icon (default, dark, tinted), launch screen and PWA icons from scripts/app-icon.svg (${fighters.map(([, name]) => name).join(" vs ")}).`,
+  `Rendered the app icon (${fighters.join(" vs ")}) and ${ALTERNATES.length} alternates, each default, dark and tinted, with their Settings thumbnails; the launch screen; and the PWA icons.`,
 );

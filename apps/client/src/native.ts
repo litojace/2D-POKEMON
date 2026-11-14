@@ -9,7 +9,8 @@
  * - coming back from the background reconnects at once (iOS pauses the
  *   app, and its game connection, soon after you switch away);
  * - Sign in with Apple is Apple's own sheet (ios/App/App/AppleSignIn.swift),
- *   not a web page.
+ *   not a web page;
+ * - Settings → App icon switches the Home Screen icon (AppIcon.swift).
  */
 import { Capacitor, registerPlugin } from "@capacitor/core";
 
@@ -81,6 +82,32 @@ export async function signInWithAppleNatively(): Promise<NativeAppleSignIn | nul
     if ((error as { code?: string }).code === "cancelled") return null;
     throw error;
   }
+}
+
+interface AppIconPlugin {
+  getIcon(): Promise<{ supported: boolean; name?: string }>;
+  setIcon(options: { name?: string }): Promise<void>;
+}
+const AppIcon = registerPlugin<AppIconPlugin>("AppIcon");
+
+/**
+ * The Home Screen icon in use (ios/App/App/AppIcon.swift): the alternate
+ * icon set's name, or null for the default icon. Null as a whole outside the
+ * app, or where iOS can't change the icon.
+ */
+export async function appIconState(): Promise<{ name: string | null } | null> {
+  if (!isNativeApp()) return null;
+  try {
+    const { supported, name } = await AppIcon.getIcon();
+    return supported ? { name: name ?? null } : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Switch the Home Screen icon (null: the default). iOS confirms it itself. */
+export async function setAppIcon(name: string | null) {
+  await AppIcon.setIcon(name ? { name } : {});
 }
 
 /**
