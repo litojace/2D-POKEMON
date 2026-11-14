@@ -102,7 +102,7 @@ describe("mission completion instructions", () => {
     ).toBe(true);
     expect(
       examples.some(
-        (text) => text.includes("Somnara") && text.includes("wrong runes"),
+        (text) => text.includes("Snoozaku") && text.includes("wrong runes"),
       ),
     ).toBe(true);
     expect(

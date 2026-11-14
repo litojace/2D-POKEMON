@@ -468,7 +468,7 @@ test("Somnara's rune pads, steps, Quiet Zone, lullaby, bubbles and markers are p
   expect(count(p.frames, "mist")).toBe(10);
   await shot(page, info, "som-bubbles");
 
-  // The Whale Song: the Quiet Zone at the server's radius; one raider asleep.
+  // The Thunder Snore (id whale-song): the Quiet Zone at the server's radius; one raider asleep.
   await show(
     page,
     base +

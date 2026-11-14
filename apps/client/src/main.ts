@@ -4247,7 +4247,7 @@ class ArenaScene extends Phaser.Scene {
       label.hidden = !!court;
       label.innerHTML =
         arena === "cloud-deck"
-          ? "CLOUD DECK <span>SOMNARA’S DREAM</span>"
+          ? "CLOUD DECK <span>SNOOZAKU’S DREAM</span>"
           : `${ARENAS[arena].name.toUpperCase()} <span>ELEMENT ARENA</span>`;
     }
     const key = this.floorTexture(
