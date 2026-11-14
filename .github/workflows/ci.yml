@@ -27,15 +27,16 @@ jobs:
   visual:
     # The real client in Chromium with no server: one fighter on the select
     # screen, arenas filling their frames, dialogs fitting a phone.
-    # Shards of about equal running time (scripts/visual-shards.mjs, from the
-    # durations in tests/visual/durations.json): the timing and frame-rate
-    # specs alone on one worker, every other test spread over seven shards
-    # of two workers each (4-CPU runners). Playwright's own --shard splits by
-    # test count, and with tests of 3 s to 7 min that made shards of 5 to 17
-    # minutes; GitHub also runs only about ten of this repository's jobs at
-    # once, so eight shards plus verify (twice: push and pull request) fit
-    # without waiting. It runs for main (what Render deploys), pull requests
-    # and manual runs, not again for the same commit on work.
+    # Nine shards of about equal running time (scripts/visual-shards.mjs, from
+    # the durations in tests/visual/durations.json), one worker each, so
+    # timing checks keep a machine to themselves. Playwright's own --shard
+    # splits by test count, and with tests of 3 s to 7 min that made shards of
+    # 5 to 30 minutes. GitHub runs only about ten of this repository's jobs at
+    # once, so nine shards plus verify fit (verify also runs for the push, a
+    # few minutes). Two workers per runner were tried and made CI slower and
+    # time tests out: one Chromium rendering in software already keeps a
+    # runner busy. It runs for main (what Render deploys), pull requests and
+    # manual runs, not again for the same commit on work.
     if: github.event_name != 'push' || github.ref == 'refs/heads/main'
     name: visual (${{ matrix.part }})
     runs-on: ubuntu-latest
@@ -43,14 +44,15 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { part: "timing", shard: "timing", workers: 1 }
-          - { part: "1 of 7", shard: "1 7", workers: 2 }
-          - { part: "2 of 7", shard: "2 7", workers: 2 }
-          - { part: "3 of 7", shard: "3 7", workers: 2 }
-          - { part: "4 of 7", shard: "4 7", workers: 2 }
-          - { part: "5 of 7", shard: "5 7", workers: 2 }
-          - { part: "6 of 7", shard: "6 7", workers: 2 }
-          - { part: "7 of 7", shard: "7 7", workers: 2 }
+          - { part: "1 of 9", shard: "1 9" }
+          - { part: "2 of 9", shard: "2 9" }
+          - { part: "3 of 9", shard: "3 9" }
+          - { part: "4 of 9", shard: "4 9" }
+          - { part: "5 of 9", shard: "5 9" }
+          - { part: "6 of 9", shard: "6 9" }
+          - { part: "7 of 9", shard: "7 9" }
+          - { part: "8 of 9", shard: "8 9" }
+          - { part: "9 of 9", shard: "9 9" }
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -60,7 +62,7 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       # The pattern goes straight to Playwright: npm would re-quote it.
-      - run: npx playwright test --config tests/visual/playwright.config.ts --workers=${{ matrix.workers }} --grep "$(node scripts/visual-shards.mjs ${{ matrix.shard }})"
+      - run: npx playwright test --config tests/visual/playwright.config.ts --grep "$(node scripts/visual-shards.mjs ${{ matrix.shard }})"
       - if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
