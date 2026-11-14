@@ -155,6 +155,12 @@ describe("Prismell's placements", () => {
     const lance = prismellPose(cue({ windKind: "prism-lance", windup: 0.9 }));
     expect(lance.charge).toBeGreaterThan(0.8);
     expect(lance.look).toBe("glare");
+    // a blink at rest never closes the wind-up glare (3.6 s is mid-blink)
+    expect(prismellPose(cue({ clock: 3.6 })).look).toBe("closed");
+    expect(
+      prismellPose(cue({ clock: 3.6, windKind: "prism-lance", windup: 0.9 }))
+        .look,
+    ).toBe("glare");
     expect(
       prismellPose(cue({ windKind: "refraction", windup: 0.9 })).charge,
     ).toBeGreaterThan(0.8);

@@ -281,7 +281,8 @@ export function prismellPose(c: PrismellCue) {
     P.blink = false;
     P.alpha = 1 - 0.15 * smooth(2, 3.4, a);
   }
-  if (P.blink && (P.look === "idle" || P.look === "glare")) P.look = "closed";
+  // it blinks only at rest: a wind-up glare holds until the attack lands
+  if (P.blink && P.look === "idle") P.look = "closed";
   return P;
 }
 
