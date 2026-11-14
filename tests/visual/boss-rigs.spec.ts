@@ -219,7 +219,7 @@ test("all seven bosses' rigs animate, hold a pause and keep combat snapshots imm
   const retry = await all(page);
   for (const [id, keys] of [
     ["grumblecrag", ["fistL", "fistR", "head", "torso"]],
-    ["tidewyrm", ["cran", "snout", "jaw", "seg20"]],
+    ["tidewyrm", ["head", "body", "mouth", "tail"]],
     ["prismatail", ["body", "brooch", "head", "shard4"]],
     ["emberwing", ["body", "chest", "f-head"]],
   ] as const)
@@ -440,13 +440,13 @@ for (const mobile of [false, true])
     }
   });
 
-// Tidewyrm is vector art now (vector-tide.spec.ts covers its rig in depth):
-// stranded, its whole body lies on the island's sand, facing either way.
+// Tidewyrm is drawn as Tidelotl (tidelotl.spec.ts covers its rig in depth):
+// stranded, its whole body lies belly-flat on the island's sand, facing either way.
 test("stranded Tidewyrm is one complete grounded creature in both directions", async ({
   page,
 }, info) => {
   const errors = await review(page);
-  // Standing in the water, side-on: how high its body reaches (the yardstick).
+  // Floating in the water, side-on: how high its head reaches (the yardstick).
   await page.evaluate(() => {
     const r = (window as any).__bossReview,
       row = r.rows.find((o: any) => o.id === "tidewyrm"),
@@ -455,14 +455,6 @@ test("stranded Tidewyrm is one complete grounded creature in both directions", a
     r.frame(1, 5.5, true);
   });
   const up = (await vector(page, "tidewyrm"))!;
-  const top = (parts: Record<string, any>) =>
-    Math.max(
-      ...Object.entries(parts)
-        .filter(([id]) => /^seg\d+$/.test(id))
-        .map(([, p]) => -p.y),
-    );
-  const standing = top(up.parts);
-  expect(standing).toBeGreaterThan(80);
   for (const facing of [1, -1]) {
     await page.evaluate((facing) => {
       const r = (window as any).__bossReview,
@@ -477,17 +469,16 @@ test("stranded Tidewyrm is one complete grounded creature in both directions", a
       r.frame(1, facing > 0 ? 6 : 6.25, true);
     }, facing);
     const v = (await vector(page, "tidewyrm"))!;
-    const segs = Object.entries(v.parts)
-      .filter(([id]) => /^seg\d+$/.test(id))
-      .map(([, p]) => p);
     expect(v.visible).toBe(true);
     // turned to the side it faces, the head out ahead of the body
     expect(v.facing).toBe(facing > 0 ? 2 : 6);
-    expect(Math.sign(v.parts.snout.x - v.parts.seg15.x)).toBe(facing);
-    // the whole body is out on the sand (none of it under water), lying low
-    expect(segs).toHaveLength(30);
-    expect(top(v.parts)).toBeLessThan(standing * 0.75);
-    expect(v.parts.cran.y).toBeGreaterThan(up.parts.cran.y + standing * 0.3);
+    expect(Math.sign(v.parts.head.x - v.parts.body.x)).toBe(facing);
+    // out on the sand: legs splayed, tail flopped, nothing under water
+    expect(v.parts.legFL.frame).toMatch(/_F_splay$/);
+    expect(v.parts.tail.frame).toMatch(/_flop$/);
+    expect(v.parts.fade).toBeUndefined();
+    // belly-flat: the head sits lower than when it floats
+    expect(v.parts.head.y).toBeGreaterThan(up.parts.head.y - 10);
     // one creature: every visible piece within a body's length of the boss
     for (const p of Object.values(v.parts) as any[])
       expect(Math.hypot(p.x, p.y)).toBeLessThan(260);
@@ -608,11 +599,10 @@ test("all seven bosses turn to each of the four main facings, with no face from 
       );
     const t = rigs.tidewyrm!;
     if (view === "front")
-      expect(t.parts["eye-1"] && t.parts.eye1 && t.parts.pearl).toBeTruthy();
-    if (view === "back")
-      expect(t.parts["eye-1"] ?? t.parts.eye1).toBeUndefined();
+      expect(t.parts.eyen && t.parts.eyef && t.parts.pearl).toBeTruthy();
+    if (view === "back") expect(t.parts.eyen ?? t.parts.mouth).toBeUndefined();
     if (view === "left" || view === "right")
-      expect(Math.sign(t.parts.snout.x - t.parts.seg15.x)).toBe(
+      expect(Math.sign(t.parts.head.x - t.parts.body.x)).toBe(
         view === "right" ? 1 : -1,
       );
     for (const id of ["gloomshade", "somnara", "fizz", "crackle"] as const)

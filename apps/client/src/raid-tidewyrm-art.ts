@@ -1,4 +1,4 @@
-import { paintVectorTide } from "./boss-vector-tide-rig";
+import { paintTidelotl } from "./boss-tidelotl-rig";
 import { groundHeight } from "../../../packages/shared/src/world-art";
 import { bossLife } from "./raid-boss-life";
 import { bossSurface } from "./boss-materials";
@@ -15,9 +15,9 @@ import {
 import { FLOOD, lagoonName, lagoonPieces } from "./raid-lagoon-pieces";
 
 /**
- * Tidewyrm and the Lagoon Court, drawn live each frame: the islands (they
+ * Tidewyrm (shown as Tidelotl) and the Lagoon Court, drawn live each frame: the islands (they
  * crack and sink), the flood, waves, bubbles, prisons, the whirlpool, every
- * warning, and the sea serpent itself. Warning edges are exact server radii;
+ * warning, and Tidelotl itself. Warning edges are exact server radii;
  * only fills pulse, so the danger boundary never moves.
  */
 type G = Phaser.GameObjects.Graphics;
@@ -381,15 +381,22 @@ export function drawTidewyrmWarning(
         )
         .strokePath();
     }
-    // A fin cuts the water at the centre.
-    g.fillStyle(DEEP, murky ? 0.4 : 0.85).fillTriangle(
-      w.x - 10,
-      w.y + 4,
-      w.x + 2,
-      w.y - 22,
-      w.x + 12,
-      w.y + 4,
-    );
+    // Tidelotl's two top gill fronds cut the water at the centre.
+    for (const s of [-1, 1]) {
+      g.fillStyle(FIN, murky ? 0.4 : 0.9).fillTriangle(
+        w.x + s * 6,
+        w.y + 4,
+        w.x + s * 20,
+        w.y - 20,
+        w.x + s * 16,
+        w.y + 4,
+      );
+      g.fillStyle(0xffe0ec, murky ? 0.3 : 0.75).fillCircle(
+        w.x + s * 20,
+        w.y - 20,
+        3,
+      );
+    }
     return true;
   }
   if (w.kind === "wave") {
@@ -659,7 +666,7 @@ export function drawTideAttacks(g: G, state: Snapshot, reduced: boolean) {
   }
 }
 
-/** The serpent: surfacing, stranded on an island, swimming under water, defeated. */
+/** Tidelotl: surfacing, stranded on an island, swimming under water, defeated. */
 export function drawTidewyrm(
   g: G,
   state: Snapshot,
@@ -785,9 +792,9 @@ export function drawTidewyrm(
   );
   const cast = life.action.casts[life.action.casts.length - 1];
   const islands = (r.islands ?? []).filter((i) => !i.sunk && !i.gone);
-  const head = paintVectorTide(g, {
+  const head = paintTidelotl(g, {
     x: boss.x + Math.sin(hurt * Math.PI * 3) * hurt * 6 * motion,
-    y: boss.y + 30,
+    y: boss.y + 12,
     angle: boss.angle,
     clock: t,
     phase: r.phase,
@@ -813,8 +820,8 @@ export function drawTidewyrm(
       for (let i = 0; i < 3; i++) {
         const a = t * 4 + (i * Math.PI * 2) / 3;
         g.fillStyle(0xfff1a0, 1).fillCircle(
-          head.head.x + Math.cos(a) * 34,
-          head.head.y - 46 + Math.sin(a) * 8,
+          head.top.x + Math.cos(a) * 40,
+          head.top.y - 8 + Math.sin(a) * 9,
           4,
         );
       }
@@ -822,8 +829,8 @@ export function drawTidewyrm(
       for (let i = 0; i < 4; i++) {
         const a = t * 4 + (i * Math.PI * 2) / 4;
         g.fillStyle(0xfff1a0, 1).fillCircle(
-          head.head.x + Math.cos(a) * 30,
-          head.head.y - 30 + Math.sin(a) * 8,
+          head.top.x + Math.cos(a) * 36,
+          head.top.y - 4 + Math.sin(a) * 9,
           3.5,
         );
       }
