@@ -74,6 +74,18 @@ for (const viewport of [
       );
       // English only, and the joystick only on touch screens.
       await expect(page.locator(".pz-joy")).toBeVisible({ visible: phone });
+      // Dash and Jump show their keyboard keys only where there is a
+      // keyboard, and on phones they are sized for a thumb.
+      for (const id of ["#pz-dash", "#pz-jump"])
+        await expect(page.locator(`${id} small`)).toBeVisible({
+          visible: !phone,
+        });
+      if (phone) {
+        const size = (s: string) =>
+          page.locator(s).evaluate((el) => el.getBoundingClientRect().width);
+        expect(await size("#pz-dash")).toBeGreaterThanOrEqual(64);
+        expect(await size("#pz-jump")).toBeGreaterThanOrEqual(80);
+      }
       await page.waitForTimeout(800);
       await snap(
         page,
