@@ -23,7 +23,7 @@ app talks to the same game server on Render and the same Supabase project.
 | `apps/server/src/apple.ts`                  | Trading Apple's sign-in code for a refresh token, and revoking it.                                                          |
 | `supabase/migrations/111_apple_tokens.sql`  | Where the server keeps those tokens.                                                                                        |
 | `scripts/check-native-env.mjs`              | Stops the build if the app's settings are missing.                                                                          |
-| `scripts/generate-icons.py ios`             | Draws the app icon (1024 × 1024) and launch screen from the game's emblem.                                                  |
+| `node scripts/generate-icons.mjs`           | Draws the app icon, launch screen and PWA icons from `scripts/app-icon.svg` (no alpha, as Apple asks).                      |
 
 The app is **iPhone only** for now (no iPad build): iPads can still run it
 in iPhone mode. Supporting iPad means testing its window sizes first.
