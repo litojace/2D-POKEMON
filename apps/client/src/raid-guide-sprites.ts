@@ -1,6 +1,6 @@
 import type { RaidBossId } from "../../../packages/shared/src/raid-roster";
 import { grumbleGuideImage } from "./boss-vector-grumble";
-import { tideGuideImage } from "./boss-vector-tide";
+import { tidelotlGuideImage } from "./boss-tidelotl";
 import { gloomGuideImage } from "./boss-vector-gloom";
 import { somnaraGuideImage } from "./boss-vector-somnara";
 import { prismaGuideImage } from "./boss-vector-prisma";
@@ -31,7 +31,7 @@ export function raidGuideSprite(
       cores?: readonly (readonly [number, number])[];
     } =
       boss === "tidewyrm"
-        ? tideGuideImage(exposed)
+        ? tidelotlGuideImage(exposed)
         : boss === "gloomshade"
           ? gloomGuideImage(exposed)
           : boss === "somnara"

@@ -99,7 +99,7 @@ describe("raid targets (phones)", () => {
     const t = raidTargets(tide([{ playerId: "p2", x: 520, y: 500 }]), me)!;
     expect(t.map((x) => [x.id, x.kind, x.label])).toEqual([
       ["bubble:p2", "bubble", "Free Kai"],
-      ["boss", "boss", "Tidewyrm"],
+      ["boss", "boss", "Tidelotl"],
     ]);
   });
 });
