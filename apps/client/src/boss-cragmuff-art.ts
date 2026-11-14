@@ -154,6 +154,12 @@ function leafPath(x, y, tx, ty, w, shape = "leaf", bend = 0) {
 }
 /** Atlas px per rig px of the piece being painted (blur radii and shadows are in canvas px). */
 let PQ = 1;
+/**
+ * Paint helper canvases the CPU rasterises: set while painting the briefing's
+ * picture (read back into a PNG) and each atlas piece (read back to trim it):
+ * their blurs cost a fraction of the GPU path where the GPU is emulated.
+ */
+let SOFT = false;
 function norm2(x, y) {
   const l = Math.hypot(x, y) || 1;
   return { x: x / l, y: y / l };
@@ -168,7 +174,7 @@ function grainCanvas() {
   if (GRAIN) return GRAIN;
   const c = document.createElement("canvas");
   c.width = c.height = 96;
-  const g = c.getContext("2d"),
+  const g = c.getContext("2d", { willReadFrequently: true }),
     r = rng(77);
   for (let i = 0; i < 520; i++) {
     const v = r();
@@ -212,7 +218,7 @@ function newPage() {
   curPage = document.createElement("canvas");
   curPage.width = PAGE_W;
   curPage.height = 2048;
-  curCtx = curPage.getContext("2d");
+  curCtx = curPage.getContext("2d", { willReadFrequently: true });
   pageBuf.push({ c: curPage, used: 0 });
   packX = packY = shelfH = 0;
 }
@@ -224,19 +230,23 @@ function piece(name, box, q, draw, opt = {}) {
   const c = document.createElement("canvas");
   c.width = w;
   c.height = h;
-  const g = c.getContext("2d");
+  // CPU canvases: every piece is read back below to trim it, and their blurs
+  // cost a fraction of the GPU path where the GPU is emulated
+  const g = c.getContext("2d", { willReadFrequently: true });
   PQ = q;
   g.translate(pad - box[0] * q, pad - box[1] * q);
   g.scale(q, q);
   g.lineJoin = "round";
+  SOFT = true;
   draw(g, opt.k || {});
+  SOFT = false;
   let src = c;
   if (opt.outline !== false) {
     // soft outline: the piece's own silhouette, dark and blurred, behind it
     const d = document.createElement("canvas");
     d.width = w;
     d.height = h;
-    const dg = d.getContext("2d");
+    const dg = d.getContext("2d", { willReadFrequently: true });
     dg.shadowColor = opt.lineColor || "rgba(74,18,6,0.95)";
     dg.shadowBlur = (opt.line || 1.6) * q;
     dg.drawImage(c, 0, 0);
@@ -282,7 +292,9 @@ function piece(name, box, q, draw, opt = {}) {
   const img = document.createElement("canvas");
   img.width = tw;
   img.height = th;
-  img.getContext("2d").drawImage(src, x0, y0, tw, th, 0, 0, tw, th);
+  img
+    .getContext("2d", { willReadFrequently: true })
+    .drawImage(src, x0, y0, tw, th, 0, 0, tw, th);
   PENDING.push({
     name,
     img,
@@ -325,10 +337,12 @@ function finishAtlas() {
       const big = document.createElement("canvas");
       big.width = PAGE_W;
       big.height = Math.max(curPage.height * 2, bestY + th + 1);
-      big.getContext("2d").drawImage(curPage, 0, 0);
+      big
+        .getContext("2d", { willReadFrequently: true })
+        .drawImage(curPage, 0, 0);
       curPage.width = curPage.height = 1;
       curPage = big;
-      curCtx = big.getContext("2d");
+      curCtx = big.getContext("2d", { willReadFrequently: true });
       pageBuf[0].c = big;
     }
     const px = bestX * CW,
@@ -352,7 +366,7 @@ function finishAtlas() {
     const c = document.createElement("canvas");
     c.width = PAGE_W;
     c.height = Math.max(1, p.used + 1);
-    c.getContext("2d").drawImage(p.c, 0, 0);
+    c.getContext("2d", { willReadFrequently: true }).drawImage(p.c, 0, 0);
     p.c.width = p.c.height = 1;
     return c;
   });
@@ -432,7 +446,7 @@ function innerGlow(ctx, path, color, blur, dx = 0, dy = 0) {
   const c = document.createElement("canvas");
   c.width = ctx.canvas.width;
   c.height = ctx.canvas.height;
-  const g = c.getContext("2d");
+  const g = c.getContext("2d", SOFT ? { willReadFrequently: true } : undefined);
   g.fillStyle = "#000";
   g.fillRect(0, 0, c.width, c.height);
   g.setTransform(ctx.getTransform());
@@ -2596,6 +2610,7 @@ export function paintCragmuffPicture(
 ) {
   const v = 1,
     A = ATT[v];
+  SOFT = true;
   ctx.save();
   ctx.translate(cx, groundY);
   ctx.scale(k, k);
@@ -2624,5 +2639,6 @@ export function paintCragmuffPicture(
   paintHornSet(ctx, { v, ph: phase, part: "front" });
   ctx.restore();
   ctx.restore();
+  SOFT = false;
   return { core: { x: cx + A.gem.x * k, y: groundY + A.gem.y * k } };
 }

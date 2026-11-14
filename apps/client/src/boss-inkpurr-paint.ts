@@ -80,13 +80,23 @@ const qbez = (a, b, c, t) => ({
 });
 /** Atlas px per rig px of the piece being painted (blur radii and shadows are in canvas px). */
 let PQ = 1;
+/**
+ * Paint into canvases the CPU rasterises (the briefing's picture, which is
+ * read back into a PNG anyway): blurs and soft outlines cost a fraction of
+ * the GPU path where the GPU is emulated. The battle atlas is painted the same
+ * way: its texture uploads the finished canvas once.
+ */
+let SOFT = false;
+const ctx2d = (c) =>
+  c.getContext("2d", SOFT ? { willReadFrequently: true } : undefined);
 // ── paper grain (one small pattern, laid over every painted piece) ──
-let GRAIN = null;
+const GRAINS = {};
 function grainCanvas() {
-  if (GRAIN) return GRAIN;
+  const kind = SOFT ? "cpu" : "gpu";
+  if (GRAINS[kind]) return GRAINS[kind];
   const c = document.createElement("canvas");
   c.width = c.height = 96;
-  const g = c.getContext("2d"),
+  const g = ctx2d(c),
     r = rng(77);
   for (let i = 0; i < 520; i++) {
     const v = r();
@@ -109,7 +119,7 @@ function grainCanvas() {
     g.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l);
     g.stroke();
   }
-  return (GRAIN = c);
+  return (GRAINS[kind] = c);
 }
 
 const B_TOP = 80,
@@ -210,7 +220,7 @@ function innerGlow(ctx, path, color, blur, dx = 0, dy = 0) {
   const c = document.createElement("canvas");
   c.width = ctx.canvas.width;
   c.height = ctx.canvas.height;
-  const g = c.getContext("2d");
+  const g = ctx2d(c);
   g.fillStyle = "#000";
   g.fillRect(0, 0, c.width, c.height);
   g.setTransform(ctx.getTransform());
@@ -1630,11 +1640,52 @@ const HANGS = [
 
 /** Every piece the battle uses, drawn into one canvas (DPR-independent). */
 export function buildInkAtlas(qScale = 1) {
-  return packPieces(
-    inkPieceSpecs(qScale)
-      .map((p) => paintPiece(p.name, p.box, p.q, p.draw, p.opt))
-      .filter(Boolean),
-  );
+  // all on CPU canvases (fast where the GPU is emulated); the texture uploads it once
+  SOFT = true;
+  let atlas;
+  try {
+    atlas = packPieces(
+      inkPieceSpecs(qScale)
+        .map((p) => paintPiece(p.name, p.box, p.q, p.draw, p.opt))
+        .filter(Boolean),
+    );
+  } finally {
+    SOFT = false;
+  }
+  if (qScale === 1)
+    lastAtlas = {
+      ref: new WeakRef(atlas.canvas),
+      frames: atlas.frames,
+      bytes: atlas.bytes,
+    };
+  return atlas;
+}
+/** The last battle atlas: its canvas held weakly (the battle's texture keeps it), its small frame table not. */
+let lastAtlas;
+/** The battle atlas, if one was painted and is still in memory (the briefing reuses it). */
+export function paintedInkAtlas() {
+  const canvas = lastAtlas?.ref.deref();
+  return canvas && canvas.width > 0
+    ? { canvas, frames: lastAtlas.frames, bytes: lastAtlas.bytes }
+    : undefined;
+}
+/**
+ * Only the named pieces, at the battle's density, in a small atlas of their
+ * own (the briefing's picture, read back into a PNG): all CPU canvases,
+ * never the whole set.
+ */
+export function buildInkPieces(names) {
+  SOFT = true;
+  try {
+    return packPieces(
+      inkPieceSpecs(1)
+        .filter((p) => names.has(p.name))
+        .map((p) => paintPiece(p.name, p.box, p.q, p.draw, p.opt))
+        .filter(Boolean),
+    );
+  } finally {
+    SOFT = false;
+  }
 }
 /** The list of pieces (name, box in rig units, atlas px per rig unit, painter, options). */
 export function inkPieceSpecs(qScale = 1) {
@@ -1760,7 +1811,7 @@ export function paintPieceCanvas(name, box, q, draw, opt, rect) {
   const c = document.createElement("canvas");
   c.width = w;
   c.height = h;
-  const g = c.getContext("2d");
+  const g = ctx2d(c);
   if (!g) return null;
   PQ = q;
   g.translate(pad - box[0] * q - rx, pad - box[1] * q - ry);
@@ -1772,7 +1823,7 @@ export function paintPieceCanvas(name, box, q, draw, opt, rect) {
     const d = document.createElement("canvas");
     d.width = w;
     d.height = h;
-    const dg = d.getContext("2d");
+    const dg = ctx2d(d);
     dg.shadowColor = opt.lineColor || "rgba(4,2,12,0.95)";
     dg.shadowBlur = (opt.line || 1.6) * q;
     dg.drawImage(c, 0, 0);
@@ -1791,6 +1842,25 @@ export function paintPieceCanvas(name, box, q, draw, opt, rect) {
 }
 /** Paint one piece trimmed to its stored rectangle (the full box when the table has none). */
 function paintPiece(name, box, q, draw, opt) {
+  const key = `${name}@${q}`,
+    known = LATELY.get(key),
+    kept = known?.ref.deref();
+  if (known && kept && kept.width === known.w)
+    return { ...known.piece, src: kept };
+  const piece = paintFresh(name, box, q, draw, opt);
+  if (piece) {
+    const { src, ...rest } = piece;
+    LATELY.set(key, { ref: new WeakRef(src), w: src.width, piece: rest });
+  }
+  return piece;
+}
+/**
+ * Pieces painted lately, held weakly: the briefing's picture and the battle
+ * atlas reuse each other's pieces while they are still in memory, and keep
+ * nothing alive once neither needs them.
+ */
+const LATELY = new Map();
+function paintFresh(name, box, q, draw, opt) {
   const { pad, w: fw, h: fh } = pieceCanvasSize(box, q);
   const t = INK_TRIMS[name];
   const rect = t && t[0] + t[2] <= fw && t[1] + t[3] <= fh ? t : [0, 0, fw, fh];
@@ -1829,7 +1899,7 @@ function packPieces(list) {
   const canvas = document.createElement("canvas");
   canvas.width = W;
   canvas.height = Math.max(1, y + shelf);
-  const ctx = canvas.getContext("2d");
+  const ctx = ctx2d(canvas);
   if (ctx)
     for (const p of list) {
       const f = frames[p.name];

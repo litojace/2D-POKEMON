@@ -15,13 +15,18 @@ import { expect, it } from "vitest";
  */
 const SRC = join(__dirname, "../../apps/client/src");
 const FILES = readdirSync(SRC).filter(
-  (f) => /^skill-fx-.*\.ts$/.test(f) || f === "fx-physics.ts",
+  (f) =>
+    /^skill-fx-.*\.ts$/.test(f) ||
+    f === "fx-physics.ts" ||
+    // the bosses' attack effects keep to the same rule
+    /-attack-fx\.ts$/.test(f),
 );
 const OWN_OBJECTS =
   /\.add\.(graphics|image|sprite|text|circle|rectangle|ellipse|particles|container|line|polygon|arc|star|triangle|zone)\s*\(|new\s+Phaser\./;
 
 it("finds the skill effect files", () => {
   expect(FILES.length).toBeGreaterThanOrEqual(11);
+  expect(FILES).toContain("prismell-attack-fx.ts");
 });
 
 it("draws skill effects through the effects engine, not with their own scene objects", () => {

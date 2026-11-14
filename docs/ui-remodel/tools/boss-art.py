@@ -24,7 +24,15 @@ A splash that is already a 1536x1024 WebP is copied as it is, so it is not
 compressed twice.
 
 Usage (from the repo root; needs Pillow):
-  python3 docs/ui-remodel/tools/boss-art.py <id> <painting> x0 y0 x1 y1
+  python3 docs/ui-remodel/tools/boss-art.py <id> <painting> x0 y0 x1 y1 [margin] [face-x]
+
+margin (default 1.1) is how much wider than the box the cuts are; a boss that
+fills the painting's width takes a smaller one (1.03) so less is filled.
+
+face-x is where the boss's face is across the painting (for two bosses, the
+point between their faces). The whole box always comes first; within the
+room a cut has to spare, it slides toward the face so the face sits as near
+the middle as it can without trimming the boss (owner's notes, 14 Nov).
 """
 import shutil
 import sys
@@ -66,6 +74,8 @@ def fill_edges(img, box):
 def main():
     bid, path = sys.argv[1], sys.argv[2]
     bx0, by0, bx1, by1 = (float(v) for v in sys.argv[3:7])
+    m = float(sys.argv[7]) if len(sys.argv) > 7 else 1.1
+    fx = float(sys.argv[8]) if len(sys.argv) > 8 else None
     src = Image.open(path)
     if src.size != (W, H):
         # Cover 1536x1024 from the middle; the box follows.
@@ -75,6 +85,7 @@ def main():
         src = src.convert("RGB").resize((sw, sh), Image.LANCZOS)
         src = src.crop((round(ox), round(oy), round(ox) + W, round(oy) + H))
         bx0, bx1 = bx0 * s - ox, bx1 * s - ox
+        fx = None if fx is None else fx * s - ox
         by0, by1 = by0 * s - oy, by1 * s - oy
         src.save(f"{OUT}/{bid}.webp", quality=82, method=6)
     elif path.lower().endswith(".webp"):
@@ -85,21 +96,29 @@ def main():
     bw, bh = bx1 - bx0, by1 - by0
     cx, cy = (bx0 + bx1) / 2, (by0 + by1) / 2
 
-    # Thumb: 3:2 around the box, 5% margin, kept inside the painting.
-    tw = max(bw * 1.1, bh * 1.1 * 1.5)
+    def toward_face(w):
+        """The cut's middle: the face if the whole box still fits, else as near."""
+        if fx is None:
+            return cx
+        pad = max(0, w - bw) / 4  # keep half the spare room as a margin
+        lo, hi = bx1 + pad - w / 2, bx0 - pad + w / 2
+        return min(max(fx, lo), hi) if lo <= hi else cx
+
+    # Thumb: 3:2 around the box with the margin, kept inside the painting.
+    tw = max(bw * m, bh * m * 1.5)
     tw = min(tw, W)
     th = tw / 1.5
-    tx = min(max(cx - tw / 2, 0), W - tw)
+    tx = min(max(toward_face(tw) - tw / 2, 0), W - tw)
     ty = min(max(cy - th / 2, 0), H - th)
     img.crop((round(tx), round(ty), round(tx + tw), round(ty + th))).resize(
         (320, 213), Image.LANCZOS
     ).save(f"{OUT}/{bid}-thumb.webp", quality=80, method=6)
 
-    # Portrait: the card's 1:1.3 window holds the box with a 5% margin.
-    vw = max(bw * 1.1, bh * 1.1 / CARD)
+    # Portrait: the card's 1:1.3 window holds the box with the margin.
+    vw = max(bw * m, bh * m / CARD)
     vw = min(vw, W)
     vh = vw * CARD
-    vx = min(max(cx - vw / 2, 0), W - vw)
+    vx = min(max(toward_face(vw) - vw / 2, 0), W - vw)
     if vh <= H:  # keep the window inside the painting when it fits
         vy = min(max(cy - vh / 2, 0), H - vh)
     else:
