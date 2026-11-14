@@ -1,4 +1,4 @@
-import { paintVectorGloom } from "./boss-vector-gloom-rig";
+import { paintInkpurr } from "./boss-inkpurr-rig";
 import { groundHeight } from "../../../packages/shared/src/world-art";
 import { bossLife } from "./raid-boss-life";
 import type Phaser from "phaser";
@@ -700,7 +700,8 @@ export function drawGloomshade(
   const revealed = (r.revealUntil ?? 0) > state.time;
   const stagger = r.staggerUntil > state.time;
   const hurt = Math.max(0, 1 - (t - m.hurtAt) / 0.24);
-  const fade = dead ? (reduced ? 1 : Math.min(1, (t - m.deathAt) / 2.4)) : 0;
+  // dawn: it melts into its puddle, and the puddle fades (the pose times both)
+  const fade = dead ? (reduced ? 1 : Math.min(1, (t - m.deathAt) / 3.4)) : 0;
   // The attack being wound up (its warning) and the last one cast: every
   // copy shares the real one's casting pose (the tells are elsewhere).
   const wind = r.warnings.find(
@@ -740,7 +741,9 @@ export function drawGloomshade(
       // Hollow trait: the real one's shadow is fainter.
       shadowAlpha: r.trait === "hollow" ? 0.22 : 0.4,
       flicker: b.real && !reduced,
-      alpha: (b.real ? 1 : appear) * (1 - fade),
+      alpha: b.real ? 1 : appear * (1 - fade),
+      // a copy is drawn exactly alike, minus the idle drips
+      cheap: !b.real,
       hurt: b.real ? hurt : 0,
       gilded: !!r.gilded,
       stagger: b.real && stagger,
@@ -815,6 +818,7 @@ interface ShadeLook {
   shadow?: { x: number; y: number };
   shadowAlpha: number;
   flicker: boolean;
+  cheap?: boolean;
   alpha: number;
   hurt: number;
   gilded: boolean;
@@ -823,26 +827,14 @@ interface ShadeLook {
   dead: boolean;
   deadAge: number;
 }
-/** From the boss's position to the floor under its paws (world pixels). */
+/** From the boss's position to the floor under its puddle (world pixels). */
 const FEET = 16;
 /**
- * One body (the real one or a copy): the vector shadow cat
- * (boss-vector-gloom.ts), and, for the real one in lantern light, its shadow
- * stretched away from the light along the floor.
+ * One body (the real one or a copy): Inkpurr (boss-inkpurr-rig.ts). The real
+ * one standing in lantern light also casts its shadow along the floor, away
+ * from the light (`shadow`); copies never do.
  */
 function shade(g: G, o: ShadeLook) {
   if (o.alpha <= 0.01) return;
-  if (o.shadow) {
-    const d = Math.hypot(o.x - o.shadow.x, o.y - o.shadow.y) || 1;
-    const sx = (o.x - o.shadow.x) / d,
-      sy = (o.y - o.shadow.y) / d;
-    for (let k = 0; k < 5; k++)
-      g.fillStyle(NIGHT, o.shadowAlpha * o.alpha).fillEllipse(
-        o.x + sx * (18 + k * 14),
-        o.y + 18 + sy * (8 + k * 10),
-        96 - k * 8,
-        32 - k * 3,
-      );
-  }
-  paintVectorGloom(g, o.key, { ...o, y: o.y + FEET });
+  paintInkpurr(g, o.key, { ...o, y: o.y + FEET });
 }
