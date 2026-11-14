@@ -98,7 +98,7 @@ export function raidHudView(state: Snapshot, me: Fighter): RaidHudView {
     staggerLabel:
       r.boss === "emberwing"
         ? r.permanentGround
-          ? "WINGS BROKEN · HEART OPEN"
+          ? "PAPER TORN · HEART OPEN"
           : r.airborne
             ? `AIRBORNE · ${lit}/3 BRAZIERS`
             : exposed

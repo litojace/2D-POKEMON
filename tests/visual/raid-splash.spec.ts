@@ -182,7 +182,7 @@ test("locked bosses keep their navigation and unlock instruction visible", async
       room.locator('[data-raid-card="emberwing"] .ui-tag'),
     ).toHaveText("Clear Grumblecrag first");
     await room.locator('[data-raid-card="emberwing"]').click();
-    await expect(room.locator(".rh-stage-name")).toHaveText("Emberwing");
+    await expect(room.locator(".rh-stage-name")).toHaveText("Lumiwick");
     await expect(room.locator("[data-raid-start]")).toBeDisabled();
     await expect(room.locator("[data-raid-practice]")).toBeDisabled();
     const notice = room.locator(".rh-foot-note.is-reason");

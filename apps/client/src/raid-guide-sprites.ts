@@ -4,7 +4,7 @@ import { tideGuideImage } from "./boss-vector-tide";
 import { gloomGuideImage } from "./boss-vector-gloom";
 import { somnaraGuideImage } from "./boss-vector-somnara";
 import { prismaGuideImage } from "./boss-vector-prisma";
-import { emberGuideImage } from "./boss-vector-ember";
+import { lumiwickGuideImage } from "./boss-lumiwick-guide";
 import { twinsGuideImage } from "./boss-vector-twins";
 
 /** The boss for a briefing diagram: each boss draws itself once into a
@@ -39,7 +39,7 @@ export function raidGuideSprite(
             : boss === "prismatail"
               ? prismaGuideImage(exposed)
               : boss === "emberwing"
-                ? emberGuideImage(exposed)
+                ? lumiwickGuideImage(exposed)
                 : boss === "storm-twins"
                   ? twinsGuideImage(exposed)
                   : grumbleGuideImage(exposed),

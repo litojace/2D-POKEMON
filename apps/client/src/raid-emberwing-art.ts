@@ -1,4 +1,5 @@
-import { paintVectorEmber } from "./boss-vector-ember-rig";
+import { paintLumiwick } from "./boss-lumiwick-rig";
+import { noteLumiwick } from "./lumiwick-attack-fx";
 import { paintSkyTerrace } from "./raid-emberwing-terrace-rig";
 import { bossLife } from "./raid-boss-life";
 import type Phaser from "phaser";
@@ -145,24 +146,25 @@ export function drawEmberwingWarning(g: G, state: Snapshot, w: RaidWarning) {
   }
   return w.kind === "brazier-lighting";
 }
-interface EmberState {
+interface LumiState {
   motion: RaidBossMotion;
   flight: number;
   clock: number;
-  /** When it was last grounded by the braziers (for its crash and daze). */
+  airborne: boolean;
+  /** When the braziers last brought it down, and when it last took off (battle seconds). */
   groundedAt: number;
+  takeoffAt: number;
   exposed: boolean;
-  ash: { x: number; y: number; vx: number; vy: number; age: number }[];
 }
-const controllers = new WeakMap<G, EmberState>();
+const controllers = new WeakMap<G, LumiState>();
 /** How long it stays dazed after the braziers bring it down. */
 const DAZE = 2.4;
 /**
- * Emberwing: a vector fire phoenix (boss-vector-ember.ts) that flies and
- * lands, reading the battle's own state: each attack's windup (its warning)
- * and follow-through (the cast), grounded and dazed with its heart open when
- * the braziers are lit, a screech at a new phase, a flinch when hit, and a
- * fall to grey ash when beaten.
+ * Lumiwick (Emberwing's id): a sky-lantern spirit (boss-lumiwick.ts) that
+ * floats, reading the battle's own state: each attack's windup (its warning)
+ * and follow-through (the cast), dropped onto the floor with its flame heart
+ * open when the braziers are lit, a flare at a new phase, a flinch when hit,
+ * and its flame guttering out when beaten.
  */
 export function drawEmberwing(
   g: G,
@@ -179,9 +181,10 @@ export function drawEmberwing(
       motion: new RaidBossMotion(),
       flight: r.airborne ? 1 : 0,
       clock,
+      airborne: !!r.airborne,
       groundedAt: -10,
+      takeoffAt: -10,
       exposed: false,
-      ash: [],
     };
     controllers.set(g, c);
   }
@@ -197,16 +200,20 @@ export function drawEmberwing(
   const t = life.time;
   const exposed = !!r.permanentGround || r.exposedUntil > state.time;
   if (exposed && !c.exposed) c.groundedAt = t;
+  if (!exposed && c.exposed) c.takeoffAt = t;
+  if (r.airborne && !c.airborne && !exposed && t - c.takeoffAt > 2)
+    c.takeoffAt = t;
   c.exposed = exposed;
+  c.airborne = !!r.airborne;
   const dazed =
     (exposed && !r.permanentGround && t - c.groundedAt < DAZE) ||
     r.staggerUntil > state.time;
-  // its shadow on the floor: smaller and fainter the higher it flies
+  // its shadow on the floor: smaller and fainter the higher it floats
   g.fillStyle(0x10192a, 0.3 - c.flight * 0.08).fillEllipse(
     boss.x,
     boss.y + 4,
-    170 - c.flight * 35,
-    45 - c.flight * 10,
+    150 - c.flight * 30,
+    40 - c.flight * 8,
   );
   // the attack being wound up (its warning) and the last one cast
   const wind = r.warnings.find(
@@ -217,10 +224,10 @@ export function drawEmberwing(
       (w.startedAt ?? w.at - 1.5) <= state.time,
   );
   const cast = life.action.casts[life.action.casts.length - 1];
-  const head = paintVectorEmber(g, {
+  const drawn = paintLumiwick(g, {
     x: boss.x,
     y: boss.y,
-    // it turns to where it flies, and to its attack's aim
+    // it turns to where it floats, and to its attack's aim
     angle: life.heading,
     clock: t,
     phase: r.phase,
@@ -232,28 +239,21 @@ export function drawEmberwing(
     castKind: cast?.kind,
     castAge: cast?.age ?? 99,
     exposed: exposed && !pose.dead,
+    groundAge: t - c.groundedAt,
+    takeoffAge: t - c.takeoffAt,
     stagger: dazed && !pose.dead,
     hurt: pose.hurt,
     dead: pose.dead,
     deadAge: pose.deathAge,
     roarAge: pose.transform > 0 ? (1 - pose.transform) * 1.6 : 99,
   });
-  // beaten, it crumbles: grey ash drifts up from where it fell
-  if (head && pose.dead && !reduced) {
-    if (pose.deathAge < 2.4 && c.ash.length < 40 && Math.random() < 0.6)
-      c.ash.push({
-        x: boss.x + (Math.random() - 0.5) * 90,
-        y: boss.y - 30 - Math.random() * 60,
-        vx: (Math.random() - 0.5) * 12,
-        vy: -18 - Math.random() * 22,
-        age: 0,
-      });
-  }
-  c.ash = c.ash.filter((a) => (a.age += dt) < 1.6);
-  for (const a of c.ash)
-    g.fillStyle(
-      a.age < 0.4 ? 0xffa060 : 0x8d8a92,
-      0.7 * (1 - a.age / 1.6),
-    ).fillCircle(a.x + a.vx * a.age, a.y + a.vy * a.age, 2.5);
+  // where its attack effects start from (lumiwick-attack-fx.ts)
+  if (drawn)
+    noteLumiwick(g.scene, {
+      hem: { x: boss.x + drawn.hem.x, y: boss.y + drawn.hem.y },
+      eyes: drawn.eyes.map((e) => ({ x: boss.x + e.x, y: boss.y + e.y })),
+      flame: drawn.flame,
+      lit: drawn.lit,
+    });
   return pose.cues;
 }

@@ -268,7 +268,7 @@ export const RAID_ATTACKS: Record<
     practice: "Embers rain down on staggered circles. Step between them.",
   },
   "wing-gust": {
-    name: "Wing Gust",
+    name: "Hot Gust",
     tip: "Leave the arrow cone or dash into the gust to resist its push. Avoid being pushed into fire.",
     practice: "The cone pushes you away. Dash toward the boss as it lands.",
   },
@@ -279,7 +279,7 @@ export const RAID_ATTACKS: Record<
   },
   "scorched-earth": {
     name: "Scorched Earth",
-    tip: "Avoid growing fire patches. Grounding Emberwing shrinks all fire; Tidefin\u2019s Undertow puts out the patches along its current.",
+    tip: "Avoid growing fire patches. Grounding Lumiwick shrinks all fire; Tidefin\u2019s Undertow puts out the patches along its current.",
     practice: "Fire patches grow over time. Ground the boss to shrink them.",
   },
   "heat-mark": {
@@ -290,7 +290,7 @@ export const RAID_ATTACKS: Record<
   },
   "brazier-lighting": {
     name: "Brazier Lighting",
-    tip: "Stand inside a brazier ring for 2 seconds. Light all three together to ground Emberwing. Solo flames last 11 seconds. Fireproof halves the lighting time.",
+    tip: "Stand inside a brazier ring for 2 seconds. Light all three together to ground Lumiwick. Solo flames last 11 seconds. Fireproof halves the lighting time.",
     practice:
       "Run the triangle and light all three braziers before the first goes out.",
   },
@@ -905,11 +905,11 @@ export const RAID_BOSS_PERKS: Partial<
     },
     auralynx: {
       skill: "Facet Guard",
-      text: "Reflecting a Dive Bomb adds 20 stagger to Emberwing.",
+      text: "Reflecting a Dive Bomb adds 20 stagger to Lumiwick.",
     },
     lumoth: {
       skill: "Wing Dust",
-      text: "Your wing dust deals full damage to an airborne Emberwing.",
+      text: "Your wing dust deals full damage to an airborne Lumiwick.",
     },
     pyranda: {
       skill: "Chestnut Mortar",
@@ -921,11 +921,11 @@ export const RAID_BOSS_PERKS: Partial<
     },
     halcyra: {
       skill: "Aura Quill and Focus Shot",
-      text: "Your shots deal full damage to an airborne Emberwing.",
+      text: "Your shots deal full damage to an airborne Lumiwick.",
     },
     astrabun: {
       skill: "Full Moon",
-      text: "Your crash reaches an airborne Emberwing at full damage and adds 20 stagger.",
+      text: "Your crash reaches an airborne Lumiwick at full damage and adds 20 stagger.",
     },
     mossloth: {
       skill: "Overgrowth",
@@ -1107,19 +1107,19 @@ export const RAID_BOSS_CHAPTERS: Partial<
       name: "Takeoff",
       objective: "Sidestep dives. Jump the expanding flame ring.",
       detail:
-        "Emberwing stays on the ground while you learn its attacks. Avoid the locked dive lane and its burning trail, step between falling embers, and dash toward the boss to resist Wing Gust.",
+        "Lumiwick floats low over the terrace while you learn its attacks. Avoid the locked dive lane and its burning trail, step between falling embers, and dash toward the boss to resist Hot Gust.",
     },
     {
       name: "High Flight",
-      objective: "Light all three braziers together to ground Emberwing.",
+      objective: "Light all three braziers together to ground Lumiwick.",
       detail:
-        "Stand on a brazier for 2 seconds. Team flames last 5 seconds; solo flames last 11 seconds. Once two burn, Emberwing rains fire on the last one: light it from its clear side. Grounding exposes Emberwing for 5 seconds and shrinks fire patches. Melee cannot hit it in the air; ranged damage is halved. Spread out for Heat Marks.",
+        "Stand on a brazier for 2 seconds. Team flames last 5 seconds; solo flames last 11 seconds. Once two burn, Lumiwick rains fire on the last one: light it from its clear side. Grounding exposes Lumiwick for 5 seconds and shrinks fire patches. Melee cannot hit it in the air; ranged damage is halved. Spread out for Heat Marks.",
     },
     {
       name: "Blazing Sky",
       objective: "Ground it twice to keep the heart open.",
       detail:
-        "Team braziers stay lit for 3.5 seconds (4.5 for a pair), while solo keeps the longer timer. Dives turn and come back. Fire spreads faster. Bring Emberwing down three times this chapter and it stays grounded and exposed for 20 seconds. Fireproof halves lighting time and reduces floor-fire damage by 50%.",
+        "Team braziers stay lit for 3.5 seconds (4.5 for a pair), while solo keeps the longer timer. Dives turn and come back. Fire spreads faster. Bring Lumiwick down three times this chapter and it stays grounded and exposed for 20 seconds. Fireproof halves lighting time and reduces floor-fire damage by 50%.",
     },
   ],
   "storm-twins": [
@@ -1430,7 +1430,7 @@ export const RAID_REWARDS: RaidReward[] = [
     id: "wingbreaker",
     boss: "emberwing",
     slot: "title",
-    name: "Wingbreaker",
+    name: "Wicksnuffer",
     description: "Title",
     goal: "Clear 3 times",
     rule: { kind: "clears", n: 3, legacyPeril: 3 },
@@ -1459,7 +1459,7 @@ export const RAID_REWARDS: RaidReward[] = [
     slot: "victory",
     name: "Feather Fall",
     description: "Fiery feathers fan out and drift gently around you",
-    goal: "Feat: ground Emberwing within 20 seconds of takeoff three times",
+    goal: "Feat: ground Lumiwick within 20 seconds of takeoff three times",
     rule: { kind: "feat" },
   },
   {
@@ -1475,7 +1475,7 @@ export const RAID_REWARDS: RaidReward[] = [
     id: "lone-phoenix",
     boss: "emberwing",
     slot: "title",
-    name: "Lone Phoenix",
+    name: "Lone Lantern",
     description: "Title",
     goal: "Clear solo without going down",
     rule: { kind: "solo", peril: 3 },
@@ -2058,8 +2058,8 @@ export const RAID_TRAITS = {
     text: "Fire patches last longer, but less Ember Rain falls.",
   },
   molting: {
-    name: "Molting",
-    text: "Dives come more often, but fallen feathers grant 10 ultimate charge.",
+    name: "Fraying",
+    text: "Dives come more often, but fallen tassels grant 10 ultimate charge.",
   },
   dazzling: {
     name: "Dazzling",

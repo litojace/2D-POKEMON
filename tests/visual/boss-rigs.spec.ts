@@ -103,7 +103,11 @@ test("all seven bosses' rigs animate, hold a pause and keep combat snapshots imm
   for (const id of ALL) {
     expect(start[id], id).not.toBeNull();
     expect(start[id]!.visible, id).toBe(true);
-    expect(Object.keys(start[id]!.parts).length, id).toBeGreaterThan(10);
+    // Lumiwick (Emberwing's id) is a simple round lantern: body, face, two
+    // ribbons, wick, curl and halo
+    expect(Object.keys(start[id]!.parts).length, id).toBeGreaterThan(
+      id === "emberwing" ? 6 : 10,
+    );
   }
   await page.evaluate(() => {
     const r = (window as any).__bossReview;
@@ -157,9 +161,9 @@ test("all seven bosses' rigs animate, hold a pause and keep combat snapshots imm
     start.prismatail!.parts.head.y,
   );
   expect(gathered.prismatail!.parts.shine0).toBeTruthy();
-  // Flame Ring: Emberwing's fire flares up around it.
-  expect(start.emberwing!.parts.aura).toBeUndefined();
-  expect(gathered.emberwing!.parts.aura).toBeTruthy();
+  // Flame Ring: Lumiwick (Emberwing's id) hugs itself, ribbons wrapped.
+  expect(start.emberwing!.parts.armL.frame).toMatch(/_rest_/);
+  expect(gathered.emberwing!.parts.armL.frame).toMatch(/_wrap_/);
   await page.evaluate(() => {
     const r = (window as any).__bossReview;
     for (const row of r.rows) row.state.raid.warnings = [];
@@ -221,7 +225,7 @@ test("all seven bosses' rigs animate, hold a pause and keep combat snapshots imm
     ["grumblecrag", ["fistL", "fistR", "head", "torso"]],
     ["tidewyrm", ["cran", "snout", "jaw", "seg20"]],
     ["prismatail", ["body", "brooch", "head", "shard4"]],
-    ["emberwing", ["body", "chest", "f-head"]],
+    ["emberwing", ["body", "eyes", "curl"]],
   ] as const)
     for (const k of keys) {
       expect(retry[id]!.parts[k].x, `${id} ${k}`).toBeCloseTo(
@@ -354,19 +358,21 @@ for (const mobile of [false, true])
           }),
         )
         .toBe(true);
-      // one atlas of vector pieces, and no painted Emberwing at all
+      // one atlas of code-drawn pieces, and no painted Emberwing at all
       const textures = await page.evaluate(() =>
         (window as any).__paintedBattle.textures
           .getTextureKeys()
           .filter(
             (k: string) =>
-              k.startsWith("raid-painted-") || k.startsWith("vember-"),
+              k.startsWith("raid-painted-") ||
+              k.startsWith("vember-") ||
+              k.startsWith("lumiwick-"),
           ),
       );
-      expect(textures).toEqual(["vember-atlas-1"]);
+      expect(textures).toEqual(["lumiwick-atlas"]);
       await snap(page, info, `painted-raid-${mobile ? "iphone" : "desktop"}`);
       // Reproduce the real server steering back toward centre while a locked
-      // Wing Gust points north. The bird must keep showing its BACK (facing 4).
+      // Hot Gust points north. The lantern must keep showing its BACK (facing 4).
       await page.evaluate(async () => {
         const { createBossCombatDemo } = await import("/boss-combat-demo.ts");
         const w = window as any;
@@ -406,7 +412,7 @@ for (const mobile of [false, true])
           clearInterval(w.__turnTimer);
           return {
             facing: root?.getData("facing"),
-            // from behind: its head drawn from the back, and no eyes
+            // from behind: its back view, and no face
             parts: root?.list[0].list
               .filter((o: any) => o.type === "Image" && o.visible)
               .map((o: any) => [o.name, o.frame.name]),
@@ -417,17 +423,17 @@ for (const mobile of [false, true])
         .poll(
           async () =>
             (await read()).parts.find(
-              ([n]: [string]) => n === "vector-part-f-head",
+              ([n]: [string]) => n === "vector-part-body",
             )?.[1],
         )
-        .toMatch(/^head_back/);
+        .toBe("body_4");
       const locked = await read();
       expect(locked.facing).toBe(4);
       expect(
-        locked.parts.find(([n]: [string]) => n === "vector-part-f-head")?.[1],
-      ).toMatch(/^head_back/);
+        locked.parts.find(([n]: [string]) => n === "vector-part-body")?.[1],
+      ).toBe("body_4");
       expect(
-        locked.parts.some(([n]: [string]) => n.startsWith("vector-part-f-eye")),
+        locked.parts.some(([n]: [string]) => n.startsWith("vector-part-eyes")),
       ).toBe(false);
       await snap(
         page,
@@ -626,16 +632,17 @@ test("all seven bosses turn to each of the four main facings, with no face from 
         view === "right" ? 1 : -1,
       );
     const e = rigs.emberwing!;
-    if (view === "front")
-      expect(e.parts["f-eyen"] && e.parts["f-eyef"]).toBeTruthy();
-    if (view === "back")
-      expect(e.parts["f-eyen"] ?? e.parts["f-eyef"]).toBeUndefined();
-    if (view === "left" || view === "right")
-      expect(Math.sign(e.parts["f-beak"].x - e.parts.body.x)).toBe(
+    if (view === "front") expect(e.parts.eyes.frame).toMatch(/^eyes_0_/);
+    if (view === "back") expect(e.parts.eyes).toBeUndefined();
+    if (view === "left" || view === "right") {
+      // the side view, mirrored for the left
+      expect(e.parts.eyes.frame).toMatch(/^eyes_2_/);
+      expect(Math.sign(e.parts.body.sx * e.parts.body.sy)).toBe(
         view === "right" ? 1 : -1,
       );
+    }
   }
-  // Server position changes must turn the whole phoenix away while travelling,
+  // Server position changes must turn the whole lantern away while travelling,
   // even though its last attack aim still points right.
   await page.evaluate(() => {
     const r = (window as any).__bossReview,
@@ -650,7 +657,7 @@ test("all seven bosses turn to each of the four main facings, with no face from 
   expect(errors).toEqual([]);
 });
 
-test("phoenix back and profile keep flapping, then land facing the same way", async ({
+test("lantern back and profile keep fluttering, then sink low facing the same way", async ({
   page,
 }) => {
   const errors = await review(page);
@@ -678,9 +685,9 @@ test("phoenix back and profile keep flapping, then land facing the same way", as
     }, clock);
     const second = (await vector(page, "emberwing"))!;
     expect(second.facing).toBe(facing);
-    // the wings beat
-    expect(second.parts.wing1.rotation).not.toBeCloseTo(
-      first.parts.wing1.rotation,
+    // the ribbons drift
+    expect(second.parts.armL.rotation).not.toBeCloseTo(
+      first.parts.armL.rotation,
       3,
     );
     await page.evaluate((clock) => {
@@ -690,10 +697,8 @@ test("phoenix back and profile keep flapping, then land facing the same way", as
     }, clock);
     const grounded = (await vector(page, "emberwing"))!;
     expect(grounded.facing).toBe(facing);
-    // down on its legs
-    expect(grounded.parts["f-head"].y).toBeGreaterThan(
-      second.parts["f-head"].y + 20,
-    );
+    // it floats low over the terrace until it flies again
+    expect(grounded.parts.body.y).toBeGreaterThan(second.parts.body.y + 20);
   }
   expect(errors).toEqual([]);
 });
