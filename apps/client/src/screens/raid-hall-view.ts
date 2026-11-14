@@ -186,7 +186,7 @@ export function startState(view: RaidView, d: RaidData) {
   const reason = !b.playable
     ? `${b.name} is coming soon.`
     : !raidUnlocked(d.progress, view.boss)
-      ? `Clear Grumblecrag once to unlock ${b.name}.`
+      ? `Clear Cragmuff once to unlock ${b.name}.`
       : d.inRoom
         ? "Leave your current room first."
         : !d.leader
@@ -236,12 +236,12 @@ function bossCard(id: RaidBossId, d: RaidData) {
   const corner = !b.playable
     ? tag("Coming soon")
     : locked
-      ? `<span class="ui-tag is-lock">${lockIcon}Clear Grumblecrag first</span>`
+      ? `<span class="ui-tag is-lock">${lockIcon}Clear Cragmuff first</span>`
       : clears
         ? tag(`${clears} ${clears === 1 ? "clear" : "clears"}`, "ok")
         : tag("New", "new");
   const tricks = bossTricks(id).slice(0, 3);
-  const label = `${b.name}, ${b.stars} ${b.stars === 1 ? "star" : "stars"}, ${b.element}${locked ? ", locked: clear Grumblecrag first" : !b.playable ? ", coming soon" : clears ? `, ${clears} ${clears === 1 ? "clear" : "clears"}` : ", new"}`;
+  const label = `${b.name}, ${b.stars} ${b.stars === 1 ? "star" : "stars"}, ${b.element}${locked ? ", locked: clear Cragmuff first" : !b.playable ? ", coming soon" : clears ? `, ${clears} ${clears === 1 ? "clear" : "clears"}` : ", new"}`;
   // A vertical card: the boss's portrait fills it, its name and details
   // over the foot of the picture.
   return `<button type="button" class="rh-card${locked ? " is-locked" : ""}${b.playable ? "" : " is-soon"}" style="--boss:${b.color}" data-raid-card="${id}" aria-label="${esc(label)}"><span class="rh-card-art">${raidPortraitImage(id)}</span><span class="rh-card-top">${corner}${stars(b.stars)}</span><span class="rh-card-text"><b class="rh-card-name">${esc(b.name)}</b><small class="ui-note rh-card-line">${esc(b.element)} · ${esc(b.signature)}</small><span class="rh-card-foot"><span class="rh-tricks" title="Fighters with a trick here">${tricks.map((t) => fighterChip(t.character, `rh-${id}-${t.character}`)).join("")}</span><span class="ui-note">${p ? `${earned} / ${total} rewards` : `${total} rewards`}</span></span></span></button>`;

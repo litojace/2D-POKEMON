@@ -107,7 +107,7 @@ for (const size of SIZES)
           ).toBe(true);
         if (kind === "raid") {
           await expect(seats.locator(".room-banner-name")).toHaveText(
-            "Grumblecrag",
+            "Cragmuff",
           );
           await expect(seats.locator(".room-seat")).toHaveCount(4);
           await expect(seats.locator("[data-room-invite]")).toHaveCount(2);
@@ -123,7 +123,7 @@ for (const size of SIZES)
           ).toBeLessThan(2);
         }
         await expect(picker.locator(".ui-kicker")).toContainText(
-          kind === "raid" ? "Raid room · Grumblecrag" : "2v2 Teams",
+          kind === "raid" ? "Raid room · Cragmuff" : "2v2 Teams",
         );
         // Details · Lock in · Ready, bottom right; the corner leaves.
         const acts = picker.locator(".ui-panel-foot .ui-actions > .ui-btn");

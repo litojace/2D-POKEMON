@@ -31,15 +31,15 @@ export interface RaidBossInfo {
 export const RAID_BOSSES: Record<RaidBossId, RaidBossInfo> = {
   grumblecrag: {
     id: "grumblecrag",
-    name: "Grumblecrag",
-    epithet: "The living mountain",
+    name: "Cragmuff",
+    epithet: "The crystal-horned ram",
     element: "Earth",
     color: "#d9a35b",
     day: 6,
     stars: 1,
     signature: "Bait its charge into a pillar",
     blurb:
-      "A grumpy mountain that woke up on the wrong side of the valley. Lead its charges into pillars to crack the armor and strike the glowing core.",
+      "A grumpy, stubborn mountain ram in a coat of mossy stone wool, with curled horns of glowing amber crystal. Lead its charges into pillars to knock it dizzy and strike the crystal core on its chest.",
     playable: true,
   },
   tidewyrm: {

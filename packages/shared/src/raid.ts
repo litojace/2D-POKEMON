@@ -10,7 +10,7 @@ import { RAID_BOSSES, type RaidBossId } from "./raid-roster.js";
 import type { CharacterId } from "./index.js";
 export * from "./raid-roster.js";
 export const RAID = {
-  name: "Grumblecrag",
+  name: "Cragmuff",
   maxPeril: 3,
   timeLimit: 600,
   /** Every boss's health × this (they went down in about a minute). */
@@ -502,7 +502,7 @@ export const raidAttacksOf = (boss: RaidBossId) =>
  */
 export const GRUMBLECRAG = {
   id: "grumblecrag",
-  name: "Grumblecrag",
+  name: "Cragmuff",
   health: { base: 1450, perExtraPlayer: 900, gilded: 1.12 },
   /** Boss damage at Peril 1, 2 and 3 (index = Peril). */
   perilDamage: [1, 1, 1.25, 1.5],
@@ -846,11 +846,11 @@ export const RAID_PERKS: Partial<
   },
   astrabun: {
     skill: "Mochi Pound",
-    text: "The last pound of a chain on Grumblecrag adds 15 stagger.",
+    text: "The last pound of a chain on Cragmuff adds 15 stagger.",
   },
   wombolder: {
     skill: "Burrow Rush and Landslide",
-    text: "Charge Grumblecrag into a pillar for 25 extra stagger.",
+    text: "Charge Cragmuff into a pillar for 25 extra stagger.",
   },
   pangrove: {
     skill: "Curl & Roll",
@@ -1687,7 +1687,7 @@ export const RAID_REWARDS: RaidReward[] = [
     slot: "title",
     name: "Gilded Cragbreaker",
     description: "Title",
-    goal: "Defeat a rare Gilded Grumblecrag",
+    goal: "Defeat a rare Gilded Cragmuff",
     rule: { kind: "gilded" },
   },
   {
