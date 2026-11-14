@@ -892,7 +892,7 @@ export const RAID_BOSS_PERKS: Partial<
     },
     shadopus: {
       skill: "Ink Jet",
-      text: "A hit on Prismatail blots out any Glare in the next 3 seconds.",
+      text: "A hit on Prismell blots out any Glare in the next 3 seconds.",
     },
   },
   emberwing: {
@@ -1094,7 +1094,7 @@ export const RAID_BOSS_CHAPTERS: Partial<
       name: "High Noon",
       objective: "Follow reflected lanes. Escape through the halo gap.",
       detail:
-        "Prismatail moves farther from the skylight. Refraction shows both sides of the bounce before firing. The closing halo leaves a teal gap. The Polished rite prevents beam burn and extends your relay range.",
+        "Prismell moves farther from the skylight. Refraction shows both sides of the bounce before firing. The closing halo leaves a teal gap. The Polished rite prevents beam burn and extends your relay range.",
     },
     {
       name: "Solar Crown",
@@ -1559,7 +1559,7 @@ export const RAID_REWARDS: RaidReward[] = [
     boss: "prismatail",
     slot: "victory",
     name: "Rainbow Fan",
-    description: "A fan of rainbow crystal feathers blooms behind you",
+    description: "A fan of rainbow crystal shards blooms behind you",
     goal: "Feat: shatter the shield within 8 seconds three times",
     rule: { kind: "feat" },
   },

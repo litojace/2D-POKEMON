@@ -4,6 +4,7 @@ import { drawLumiwickAttacks } from "./lumiwick-attack-fx";
 import { drawTidelotlAttacks } from "./tidelotl-attack-fx";
 import { drawSnoozakuAttacks } from "./snoozaku-attack-fx";
 import { cloudDeckNightmares } from "./raid-somnara-art";
+import { drawPrismellAttacks } from "./prismell-attack-fx";
 import { lowGraphics } from "./graphics-quality";
 import type Phaser from "phaser";
 import type { Snapshot } from "@arena/shared";
@@ -411,6 +412,20 @@ export function drawBossBattleEffects(
     if (r.boss === "tidewyrm")
       space(g, (fx, glow) =>
         drawTidelotlAttacks(
+          g.scene,
+          fx,
+          glow,
+          state,
+          boss,
+          life.action.casts,
+          lowGraphics(),
+        ),
+      );
+    // Prismell's attacks start from its shell (the heart, the coil) every
+    // frame; the shared impacts below still mark where each one lands.
+    if (r.boss === "prismatail")
+      space(g, (fx, glow) =>
+        drawPrismellAttacks(
           g.scene,
           fx,
           glow,

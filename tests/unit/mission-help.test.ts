@@ -107,7 +107,7 @@ describe("mission completion instructions", () => {
     ).toBe(true);
     expect(
       examples.some(
-        (text) => text.includes("Prismatail") && text.includes("8 seconds"),
+        (text) => text.includes("Prismell") && text.includes("8 seconds"),
       ),
     ).toBe(true);
     expect(

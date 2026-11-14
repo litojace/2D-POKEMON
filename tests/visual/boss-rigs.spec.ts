@@ -31,7 +31,7 @@ const ROOTS = {
   tidewyrm: "vector-boss-tidewyrm",
   gloomshade: "vector-boss-gloomshade:shade-0",
   somnara: "snoozaku-boss",
-  prismatail: "vector-boss-prismatail",
+  prismatail: "prismell-boss",
   emberwing: "vector-boss-emberwing",
   fizz: "vector-boss-twin-0",
   crackle: "vector-boss-twin-1",
@@ -50,7 +50,7 @@ const vector = (page: Page, id: Rig = "grumblecrag") =>
     // hold thin lines (Graphics), which have no texture
     for (const o of root.list.flatMap((c: any) => c.list ?? []))
       if (o.visible && o.type === "Image")
-        parts[o.name.replace(/^(vector-part-|cragmuff-|snoozaku-)/, "")] = {
+        parts[o.name.replace(/^(vector-part-|cragmuff-|snoozaku-|prismell-)/, "")] = {
           x: o.x,
           y: o.y,
           rotation: o.rotation,
@@ -103,11 +103,16 @@ test("all seven bosses' rigs animate, hold a pause and keep combat snapshots imm
   for (const id of ALL) {
     expect(start[id], id).not.toBeNull();
     expect(start[id]!.visible, id).toBe(true);
-    // Lumiwick (Emberwing's id) is a simple round lantern; Cragmuff and
-    // Snoozaku (Somnara's id) stand in a handful of images (one picture for
-    // their legs, one for the body).
+    // Lumiwick (Emberwing's id) is a simple round lantern; Cragmuff,
+    // Snoozaku (Somnara's id) and Prismell (Prismatail's id) stand in a
+    // handful of images each.
     expect(Object.keys(start[id]!.parts).length, id).toBeGreaterThan(
-      id === "emberwing" || id === "grumblecrag" || id === "somnara" ? 6 : 10,
+      id === "emberwing" ||
+        id === "grumblecrag" ||
+        id === "somnara" ||
+        id === "prismatail"
+        ? 6
+        : 10,
     );
   }
   await page.evaluate(() => {
@@ -150,19 +155,16 @@ test("all seven bosses' rigs animate, hold a pause and keep combat snapshots imm
   expect(v1.parts.body.frame).toMatch(/^bodyR_/);
   expect(v1.parts.head.y).toBeLessThan(v0.parts.head.y - 15);
   expect(v1.parts.hglow0).toBeTruthy();
-  // Fan Display: Prismatail's train spreads and shines, its neck lifts.
-  const spread = (v: any) =>
-    Math.abs(
-      Math.atan2(
-        Math.sin(v.parts.shard0.rotation - v.parts.shard4.rotation),
-        Math.cos(v.parts.shard0.rotation - v.parts.shard4.rotation),
-      ),
-    );
-  expect(spread(gathered.prismatail)).toBeGreaterThan(spread(start.prismatail));
+  // Fan Display: Prismell rears up and shows its shell off, eyes shut in
+  // pride, the shell lit in the striking slice's colour.
   expect(gathered.prismatail!.parts.head.y).toBeLessThan(
     start.prismatail!.parts.head.y,
   );
-  expect(gathered.prismatail!.parts.shine0).toBeTruthy();
+  expect(gathered.prismatail!.parts.shell.y).toBeLessThan(
+    start.prismatail!.parts.shell.y,
+  );
+  expect(gathered.prismatail!.parts.eyes.frame).toMatch(/_closed$/);
+  expect(gathered.prismatail!.parts.hot).toBeTruthy();
   // Flame Ring: Lumiwick (Emberwing's id) hugs itself, ribbons wrapped.
   expect(start.emberwing!.parts.armL.frame).toMatch(/_rest_/);
   expect(gathered.emberwing!.parts.armL.frame).toMatch(/_wrap_/);
@@ -228,7 +230,7 @@ test("all seven bosses' rigs animate, hold a pause and keep combat snapshots imm
   for (const [id, keys] of [
     ["grumblecrag", ["legs", "body", "head", "eyes"]],
     ["tidewyrm", ["head", "body", "mouth", "tail"]],
-    ["prismatail", ["body", "brooch", "head", "shard4"]],
+    ["prismatail", ["body", "shell", "head", "eyes"]],
     ["emberwing", ["body", "eyes", "curl"]],
   ] as const)
     for (const k of keys) {
@@ -625,11 +627,13 @@ test("all seven bosses turn to each of the four main facings, with no face from 
       if (view === "back") expect(rigs[id]!.parts[eye], id).toBeUndefined();
       else expect(rigs[id]!.parts[eye], id).toBeTruthy();
     }
+    // Prismell (Prismatail's look): its face rides on its head
     const pr = rigs.prismatail!;
-    if (view === "front") expect(pr.parts.eyen && pr.parts.eyef).toBeTruthy();
-    if (view === "back") expect(pr.parts.eyen ?? pr.parts.beak).toBeUndefined();
+    if (view === "front") expect(pr.parts.eyes.frame).toMatch(/^eyes_0_/);
+    if (view === "back")
+      expect(pr.parts.eyes ?? pr.parts.mouth).toBeUndefined();
     if (view === "left" || view === "right")
-      expect(Math.sign(pr.parts.beak.x - pr.parts.body.x)).toBe(
+      expect(Math.sign(pr.parts.head.x - pr.parts.shell.x)).toBe(
         view === "right" ? 1 : -1,
       );
     const e = rigs.emberwing!;

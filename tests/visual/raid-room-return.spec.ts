@@ -96,7 +96,7 @@ for (const viewport of [
       await waitForLobby(page);
       await page.click("#leave");
       await expectHub(page, "rewards");
-      await expect(page.locator(".rh-stage-name")).toHaveText("Prismatail");
+      await expect(page.locator(".rh-stage-name")).toHaveText("Prismell");
 
       // The battle Settings exit follows the same origin. A failed leave keeps
       // the current room and its return destination intact for the next try.
