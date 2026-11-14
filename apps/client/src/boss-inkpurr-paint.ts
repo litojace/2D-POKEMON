@@ -83,7 +83,8 @@ let PQ = 1;
 /**
  * Paint into canvases the CPU rasterises (the briefing's picture, which is
  * read back into a PNG anyway): blurs and soft outlines cost a fraction of
- * the GPU path where the GPU is emulated. The battle atlas keeps the default.
+ * the GPU path where the GPU is emulated. The battle atlas is painted the same
+ * way: its texture uploads the finished canvas once.
  */
 let SOFT = false;
 const ctx2d = (c) =>
@@ -1639,11 +1640,18 @@ const HANGS = [
 
 /** Every piece the battle uses, drawn into one canvas (DPR-independent). */
 export function buildInkAtlas(qScale = 1) {
-  const atlas = packPieces(
-    inkPieceSpecs(qScale)
-      .map((p) => paintPiece(p.name, p.box, p.q, p.draw, p.opt))
-      .filter(Boolean),
-  );
+  // all on CPU canvases (fast where the GPU is emulated); the texture uploads it once
+  SOFT = true;
+  let atlas;
+  try {
+    atlas = packPieces(
+      inkPieceSpecs(qScale)
+        .map((p) => paintPiece(p.name, p.box, p.q, p.draw, p.opt))
+        .filter(Boolean),
+    );
+  } finally {
+    SOFT = false;
+  }
   if (qScale === 1)
     lastAtlas = {
       ref: new WeakRef(atlas.canvas),
@@ -1663,7 +1671,8 @@ export function paintedInkAtlas() {
 }
 /**
  * Only the named pieces, at the battle's density, in a small atlas of their
- * own (the briefing's picture): CPU canvases, never the whole set.
+ * own (the briefing's picture, read back into a PNG): all CPU canvases,
+ * never the whole set.
  */
 export function buildInkPieces(names) {
   SOFT = true;

@@ -46,7 +46,8 @@ let PQ = 1;
  * Paint into canvases the CPU rasterises (the briefing's picture, which is
  * read back into a PNG anyway): its blurs and soft outlines cost a fraction
  * of the GPU path where the GPU is emulated, and the picture looks the same.
- * The battle atlas keeps the default canvases.
+ * The battle atlas is painted the same way (each piece is read back to trim
+ * it); its texture uploads the finished canvas once.
  */
 let SOFT = false;
 const ctx2d = (c: HTMLCanvasElement) =>
@@ -1631,8 +1632,16 @@ export function paintLumiwickAtlas(density = 1): LumiAtlas {
     oy: number;
   }[] = [];
   for (const base of lumiwickPieces()) {
-    // density > 1 only for posters (the splash art); battle keeps 1
-    const { canvas: src, w, h, q, ox, oy } = paintLumiwickPiece(base, density);
+    // density > 1 only for posters (the splash art); battle keeps 1. CPU
+    // canvases: each piece is read back right here to trim it.
+    const {
+      canvas: src,
+      w,
+      h,
+      q,
+      ox,
+      oy,
+    } = paintLumiwickPiece(base, density, true);
     const data = src.getContext("2d")!.getImageData(0, 0, w, h).data;
     let x0 = w,
       y0 = h,
@@ -1658,7 +1667,9 @@ export function paintLumiwickAtlas(density = 1): LumiAtlas {
     const img = document.createElement("canvas");
     img.width = tw;
     img.height = th;
-    img.getContext("2d")!.drawImage(src, x0, y0, tw, th, 0, 0, tw, th);
+    img
+      .getContext("2d", { willReadFrequently: true })!
+      .drawImage(src, x0, y0, tw, th, 0, 0, tw, th);
     done.push({ name: base.name, img, q, ox: ox - x0, oy: oy - y0 });
   }
   done.sort((a, b) => b.img.height - a.img.height);
@@ -1680,7 +1691,7 @@ export function paintLumiwickAtlas(density = 1): LumiAtlas {
   const canvas = document.createElement("canvas");
   canvas.width = W;
   canvas.height = Math.max(1, py + shelf + 1);
-  const ctx = canvas.getContext("2d")!;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true })!;
   const frames: Record<string, AtlasFrame> = {};
   for (const s of spots) {
     ctx.drawImage(s.d.img, s.x, s.y);
