@@ -166,6 +166,11 @@ export function paintInkpurr(
     core,
     moon: { x: o.x + placed.moon.x, y: o.y + placed.moon.y },
     paw: { x: o.x + placed.paw.x, y: o.y + placed.paw.y },
+    // its brow gem (the head, in the views that hide the face)
+    gem: {
+      x: o.x + (placed.gem ?? placed.head).x,
+      y: o.y + (placed.gem ?? placed.head).y,
+    },
     images: seen.size,
   };
 }

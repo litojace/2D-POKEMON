@@ -1,10 +1,27 @@
 import { paintInkpurr } from "./boss-inkpurr-rig";
 import {
+  BEAM_SECONDS,
+  BLOB_STAGGER,
+  BURST_SECONDS,
+  FIZZLE_SECONDS,
+  GRAB_SECONDS,
+  PULSE_WAVE_SECONDS,
   SPLAT_SECONDS,
   TENDRIL_LET_GO,
+  curseBeam,
+  curseWisp,
   drawStreak,
   drawTendril,
+  foundBurst,
+  handsGrab,
+  handsOnTile,
+  inkGhost,
+  pulseFizzle,
+  pulseWave,
+  splitAppear,
+  splitBlobs,
   type InkStreak,
+  type SplitBlob,
 } from "./raid-inkpurr-fx";
 import { groundHeight } from "../../../packages/shared/src/world-art";
 import { bossLife } from "./raid-boss-life";
@@ -98,6 +115,27 @@ class GloomMotion {
   streaks: InkStreak[] = [];
   /** The real one's left paw (where the snuff's tendril grows from). */
   paw?: { x: number; y: number };
+  /** Where the real one stood last frame (a split's ink leaves from there). */
+  last?: { x: number; y: number };
+  /** Grasping Hands being warned (by id): the tiles that grab in the end. */
+  hands = new Map<number, { parity: number; at: number }>();
+  /** Hands that have landed: their grab. */
+  grabs: { parity: number; t0: number }[] = [];
+  /** Pulses being warned (by id): their radius. */
+  pulses = new Map<number, number>();
+  /** Pulses that have landed: the real one's wave and the copies' fizzles. */
+  waves: {
+    x: number;
+    y: number;
+    r: number;
+    t0: number;
+    copies: { x: number; y: number }[];
+  }[] = [];
+  /** The last split's blobs, and how long each body waits to pop up (by id; 0 the real one). */
+  blobs: SplitBlob[] = [];
+  popDelay = new Map<number, number>();
+  /** Found: gold bursts where the copies popped. */
+  bursts: { x: number; y: number; t0: number; size: number }[] = [];
   puff(
     x: number,
     y: number,
@@ -164,7 +202,8 @@ export function drawLanternYard(
   paintYard(g, state, reduced, clock, (i) =>
     at ? at(`lantern-${i}`, lanterns[i].y + 30) : g,
   );
-  // Curses: purple wisps circle the raider, one per stack; Haunted glows.
+  // Curses: ink wisps circle the raider, one per stack; Haunted glows.
+  const low = fxFor(g.scene).density < 0.5;
   for (const p of state.players) {
     const c = r.curses?.[p.id];
     if (!c || p.raidBoss || p.hp <= 0) continue;
@@ -175,17 +214,27 @@ export function drawLanternYard(
       const beat = reduced ? 1 : 0.8 + Math.sin(t * 6) * 0.2;
       g.fillStyle(CURSE, 0.16 * beat).fillCircle(p.x, p.y - 20, 52);
       g.lineStyle(3, CURSE, 0.9).strokeCircle(p.x, p.y - 20, 52);
-      // A little ghost bobbing above them.
-      ghost(g, p.x + 34, p.y - 92 + (reduced ? 0 : Math.sin(t * 3) * 5), 0.9);
+      // A little ink ghost bobbing above them.
+      inkGhost(
+        g,
+        p.x + 54,
+        p.y - 50 + (reduced ? 0 : Math.sin(t * 3) * 5),
+        1.2,
+        0.95,
+        reduced ? 0 : Math.sin(t * 2) * 0.12,
+        low,
+      );
     }
     const stacks = haunted ? GLOOMSHADE.curse.haunted : c.stacks;
-    for (let s = 0; s < stacks; s++) {
-      const a = spin + (s * Math.PI * 2) / Math.max(1, stacks);
-      const wx = p.x + Math.cos(a) * 34,
-        wy = p.y - 20 + Math.sin(a) * 14;
-      g.fillStyle(CURSE, 0.35).fillCircle(wx, wy, 9);
-      g.fillStyle(0xe0ccff, 0.95).fillCircle(wx, wy, 4.5);
-    }
+    for (let s = 0; s < stacks; s++)
+      curseWisp(
+        g,
+        p.x,
+        p.y - 20,
+        spin + (s * Math.PI * 2) / Math.max(1, stacks),
+        reduced,
+        low,
+      );
     // Stack pips over the head: three makes Haunted.
     for (let s = 0; s < GLOOMSHADE.curse.haunted; s++)
       g.fillStyle(s < stacks ? CURSE : 0x0c1b32, 0.95).fillCircle(
@@ -426,18 +475,6 @@ function paintYard(
   }
 }
 
-function ghost(g: G, x: number, y: number, alpha: number) {
-  g.fillStyle(0xe0ccff, alpha).fillCircle(x, y, 10);
-  g.fillStyle(0xe0ccff, alpha).fillRect(x - 10, y, 20, 9);
-  g.fillStyle(0xe0ccff, alpha)
-    .fillTriangle(x - 10, y + 9, x - 4, y + 9, x - 7, y + 14)
-    .fillTriangle(x - 3, y + 9, x + 3, y + 9, x, y + 14)
-    .fillTriangle(x + 4, y + 9, x + 10, y + 9, x + 7, y + 14);
-  g.fillStyle(SHADE_EDGE, alpha)
-    .fillCircle(x - 3.5, y - 1, 2)
-    .fillCircle(x + 3.5, y - 1, 2);
-}
-
 /** Every Gloomshade warning. Returns false for kinds it doesn't draw. */
 export function drawGloomshadeWarning(
   g: G,
@@ -449,6 +486,7 @@ export function drawGloomshadeWarning(
   const t = state.time;
   const pulse = reduced ? 1 : 0.86 + Math.sin(t * 8) * 0.14;
   const progress = progressOf(w, t);
+  const low = fxFor(g.scene).density < 0.5;
   if (w.kind === "lunge") {
     const locked = w.lockAt !== undefined && t >= w.lockAt;
     const color = locked ? DANGER : 0xffd982;
@@ -528,10 +566,17 @@ export function drawGloomshadeWarning(
           w - 6,
           h - 6,
         );
-        // Little shadow hands rising out of the stone.
-        const rise = Math.min(1, progress * 1.3);
-        for (const k of [-1, 1])
-          hand(g, (c + 0.5) * tw + k * 40, (rr + 0.5) * th + 30, 26 * rise);
+        // Ink hands rising out of the stone (raid-inkpurr-fx.ts).
+        handsOnTile(
+          g,
+          (c + 0.5) * tw,
+          (rr + 0.5) * th + 30,
+          Math.min(1, progress * 1.3),
+          t,
+          c * 3 + rr,
+          reduced,
+          low,
+        );
       }
     if (shifting) {
       // A turn-around arrow in the corner: this board will flip.
@@ -575,7 +620,16 @@ export function drawGloomshadeWarning(
         false,
       )
       .strokePath();
-    ghost(g, x, y - 100 + (1 - progress) * -30, 0.5 + progress * 0.5);
+    // the little ink ghost coming down on them (beside the name tag)
+    inkGhost(
+      g,
+      x + 52,
+      y - 56 - (1 - progress) * 50,
+      1.4,
+      0.5 + progress * 0.5,
+      0,
+      low,
+    );
     return true;
   }
   if (w.kind === "split") {
@@ -623,22 +677,6 @@ export function drawGloomshadeWarning(
   return false;
 }
 
-function hand(g: G, x: number, y: number, h: number) {
-  if (h <= 1) return;
-  g.fillStyle(SHADE_EDGE, 0.95).fillRoundedRect(x - 9, y - h, 18, h, 6);
-  for (let f = 0; f < 4; f++)
-    g.fillStyle(SHADE_EDGE, 0.95).fillRoundedRect(
-      x - 10 + f * 5.5,
-      y - h - 10,
-      4.5,
-      12,
-      2,
-    );
-  g.fillStyle(CURSE, 0.7)
-    .fillCircle(x - 3, y - h + 6, 2)
-    .fillCircle(x + 3, y - h + 6, 2);
-}
-
 /** Gloomshade and its copies: drifting, splitting, found, staggered, fading at dawn. */
 export function drawGloomshade(
   g: G,
@@ -679,20 +717,52 @@ export function drawGloomshade(
       cues.push("roar");
     }
   if (m.seen.size > 200) m.seen = new Set(r.warnings.map((w) => w.id));
-  // New copies: a split. Copies that vanished burst into motes.
+  const low = fxFor(g.scene).density < 0.5;
+  // New copies: a split. The ink of every body before it (all alike)
+  // divides into glossy blobs that arc out to every spot, the real one's
+  // included, and each body pops up where its blob lands. Blobs leave in
+  // order across the yard, never in an order that singles the real one out.
   const now = new Map((r.decoys ?? []).map((d) => [d.id, { x: d.x, y: d.y }]));
   const fresh = [...now.keys()].filter((id) => !m!.copies.has(id));
-  if (fresh.length && live) {
+  const split = fresh.length > 0 && live;
+  if (split) {
     m.splitAt = m.time;
     cues.push("slam");
-    m.puff(boss.x, boss.y - 30, 18, CURSE, reduced);
+    const before = [m.last ?? { x: boss.x, y: boss.y }, ...m.copies.values()]
+      .map((b) => ({ x: b.x, y: b.y }))
+      .sort((a, b) => a.x - b.x);
+    const spots = [
+      { id: 0, x: boss.x, y: boss.y },
+      ...(r.decoys ?? []).map((d) => ({ id: d.id, x: d.x, y: d.y })),
+    ].sort((a, b) => a.x - b.x);
+    m.popDelay = new Map(spots.map((s, k) => [s.id, k * BLOB_STAGGER]));
+    m.blobs = spots.map((s, k) => {
+      const f = before[k % before.length];
+      return {
+        from: { x: f.x, y: f.y - 70 },
+        to: { x: s.x, y: s.y },
+        delay: k * BLOB_STAGGER,
+        arc: 120 + k * 20,
+      };
+    });
+    for (const f of before) m.puff(f.x, f.y - 30, low ? 8 : 14, CURSE, reduced);
   }
-  for (const [id, c] of m.copies)
-    if (!now.has(id) && live) m.puff(c.x, c.y - 30, 12, 0x9c7bff, reduced);
-  m.copies = now;
+  // Found: the copies vanish in a gold burst. A copy popped by a hit (or a
+  // split's old copies) bursts into violet motes.
   // (A relit lantern's sparks are the yard's: drawLanternYard.)
   const exposed = r.exposedUntil > state.time;
-  if (exposed && !m.exposed && live) cues.push("crash");
+  const found = exposed && !m.exposed && live;
+  if (found) {
+    cues.push("crash");
+    m.bursts.push({ x: boss.x, y: boss.y - 60, t0: m.time, size: 1.4 });
+  }
+  for (const [id, c] of m.copies)
+    if (!now.has(id) && live && !split)
+      if (found) {
+        m.bursts.push({ x: c.x, y: c.y - 40, t0: m.time, size: 1 });
+        m.puff(c.x, c.y - 40, low ? 6 : 12, MOON, reduced);
+      } else m.puff(c.x, c.y - 30, 12, 0x9c7bff, reduced);
+  m.copies = now;
   m.exposed = exposed;
   if (boss.hp < m.hp && boss.hp > 0) {
     m.hurtAt = m.time;
@@ -734,10 +804,8 @@ export function drawGloomshade(
     ...(r.decoys ?? []).map((d) => ({ x: d.x, y: d.y, real: false, id: d.id })),
     { x: boss.x, y: boss.y, real: true, id: 0 },
   ];
-  const appear = Math.min(1, (t - m.splitAt) / 0.4);
   // Inkpurr's ink lunges (raid-inkpurr-fx.ts): each lane is followed while it
   // is warned; when it lands, an ink streak races down it and leaves a splat.
-  const low = fxFor(g.scene).density < 0.5;
   const ids = new Set(r.warnings.map((w) => w.id));
   for (const w of r.warnings)
     if (w.kind === "lunge")
@@ -755,6 +823,57 @@ export function drawGloomshade(
         start: w.startedAt ?? w.at - 1.5,
         at: w.at,
       });
+    else if (w.kind === "hands")
+      m.hands.set(w.id, {
+        // the tiles that grab: flipped once on Peril 2+
+        parity: w.shiftAt !== undefined ? 1 - (w.parity ?? 0) : (w.parity ?? 0),
+        at: w.at,
+      });
+    else if (w.kind === "pulse") m.pulses.set(w.id, w.radius);
+  // Hands that land grab; a pulse that lands rolls out from the real one
+  // only once the game has shown which one that is (revealUntil), and each
+  // copy's ring fizzles.
+  for (const [id, h] of m.hands)
+    if (!ids.has(id)) {
+      m.hands.delete(id);
+      if (live && state.time >= h.at - 0.1)
+        m.grabs.push({ parity: h.parity, t0: m.time });
+    }
+  for (const [id, radius] of m.pulses)
+    if (!ids.has(id)) {
+      m.pulses.delete(id);
+      if (live && (r.revealUntil ?? 0) > state.time)
+        m.waves.push({
+          x: boss.x,
+          y: boss.y,
+          r: radius,
+          t0: m.time,
+          copies: (r.decoys ?? []).map((d) => ({ x: d.x, y: d.y })),
+        });
+    }
+  m.grabs = m.grabs.filter((h) => t - h.t0 < GRAB_SECONDS);
+  m.waves = m.waves.filter(
+    (w) => t - w.t0 < Math.max(PULSE_WAVE_SECONDS, FIZZLE_SECONDS),
+  );
+  m.bursts = m.bursts.filter((b) => t - b.t0 < BURST_SECONDS);
+  const tw = 1600 / GLOOMSHADE.hands.cols,
+    th = 900 / GLOOMSHADE.hands.rows;
+  for (const h of m.grabs)
+    for (let c = 0; c < GLOOMSHADE.hands.cols; c++)
+      for (let rr = 0; rr < GLOOMSHADE.hands.rows; rr++)
+        if (handsTileDark((c + 0.5) * tw, (rr + 0.5) * th, h.parity))
+          handsGrab(
+            g,
+            (c + 0.5) * tw,
+            (rr + 0.5) * th + 30,
+            t - h.t0,
+            reduced,
+            low,
+          );
+  for (const w of m.waves) {
+    pulseWave(g, w.x, w.y, w.r, t - w.t0, reduced, low);
+    for (const c of w.copies) pulseFizzle(g, c.x, c.y, w.r, t - w.t0, reduced);
+  }
   for (const [id, L] of m.lunges)
     if (!ids.has(id) || state.time >= L.t0) {
       m.lunges.delete(id);
@@ -763,6 +882,7 @@ export function drawGloomshade(
   m.streaks = m.streaks.filter((s) => state.time - s.t0 < SPLAT_SECONDS);
   for (const s of m.streaks) drawStreak(g, s, state.time, reduced, low);
   const lamps = r.lanterns ?? [];
+  const gems: { x: number; y: number }[] = [];
   for (const b of bodies) {
     const shake = b.real ? Math.sin(hurt * Math.PI * 3) * hurt * 6 * motion : 0;
     // Each body (the real one and every copy) sorts with the raiders.
@@ -787,7 +907,9 @@ export function drawGloomshade(
       // Hollow trait: the real one's shadow is fainter.
       shadowAlpha: r.trait === "hollow" ? 0.22 : 0.4,
       flicker: b.real && !reduced,
-      alpha: b.real ? 1 : appear * (1 - fade),
+      alpha:
+        splitAppear(t - m.splitAt, m.popDelay.get(b.id) ?? 0, reduced) *
+        (b.real ? 1 : 1 - fade),
       // a copy is drawn exactly alike, minus the idle drips
       cheap: !b.real,
       hurt: b.real ? hurt : 0,
@@ -798,7 +920,24 @@ export function drawGloomshade(
       deadAge: dead ? t - m.deathAt : 0,
     });
     if (b.real && placed) m.paw = placed.paw;
+    if (placed) gems.push(placed.gem);
   }
+  m.last = { x: boss.x, y: boss.y };
+  // In the air, in front of everyone: the split's blobs, the curse's beam
+  // from every body's gem alike, and the found bursts.
+  const air = at ? at("ink-air", 1000) : g;
+  splitBlobs(air, m.blobs, t - m.splitAt, reduced, low);
+  for (const w of r.warnings) {
+    if (w.kind !== "curse") continue;
+    const target = state.players.find((p) => p.id === w.targetId && p.hp > 0);
+    const age = state.time - (w.startedAt ?? w.at - 1);
+    if (!target || age < 0 || age > BEAM_SECONDS) continue;
+    const k = Math.sin((age / BEAM_SECONDS) * Math.PI);
+    for (const gem of gems)
+      curseBeam(air, gem, { x: target.x, y: target.y - 50 }, k, low);
+  }
+  for (const b of m.bursts)
+    foundBurst(air, b.x, b.y, t - b.t0, b.size, reduced, low);
   // The snuff: a tendril of ink from its paw coils round the lantern and
   // squeezes while the timer runs; then it lets go, with a puff of smoke.
   for (const [id, s] of m.snuffs) {
