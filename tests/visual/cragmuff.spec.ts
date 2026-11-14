@@ -148,6 +148,11 @@ test("Cragmuff stands in eight facings from one atlas, a few images each", async
         expect(r.frames.some((f: string) => f.startsWith("eyes_"))).toBe(false);
       await closeUp(page, 3.2, -55);
       await snap(page, info, `cragmuff-facing-${i * 45}`);
+      if ([0, 1, 2, 7].includes(i)) {
+        // the face close up: eyes level, nose and mouth on the face's midline
+        await closeUp(page, 7, -40);
+        await snap(page, info, `cragmuff-face-${i * 45}`);
+      }
       await closeUp(page, 1);
     }
     expect(seen).toEqual([0, 1, 2, 3, 4, 5, 6, 7]);
@@ -173,16 +178,21 @@ test("Cragmuff's attacks have their poses: charge, rear-up and stomp, volley, me
     const errors = await raid(page);
     await face(page, Math.PI);
     await run(page, 0.4);
-    const pose = async (name: string, zoom = 2.2) => {
+    const pose = async (name: string, zoom = 2.2, faceDy?: number) => {
       await closeUp(page, zoom, -50);
       await snap(page, info, `cragmuff-${name}`);
+      if (faceDy !== undefined) {
+        // and the face close up, for the eye, nose and mouth check
+        await closeUp(page, 6, faceDy);
+        await snap(page, info, `cragmuff-${name}-face`);
+      }
       await closeUp(page, 1);
       return rig(page);
     };
     // charge wind-up (side view): head down, the glare still shows over the horn
     await page.evaluate(() => (window as any).__combat.cast("charge"));
     await run(page, 1.0);
-    const wind = await pose("charge-windup", 3);
+    const wind = await pose("charge-windup", 3, -30);
     expect(
       wind.frames.some((f: string) => /^eyes_\d_(glare|closed)$/.test(f)),
     ).toBe(true);
@@ -192,7 +202,7 @@ test("Cragmuff's attacks have their poses: charge, rear-up and stomp, volley, me
     await run(page, 0.6);
     await page.evaluate(() => (window as any).__combat.cast("slam"));
     await run(page, 0.8);
-    const rear = await pose("slam-rear");
+    const rear = await pose("slam-rear", 2.2, -75);
     expect(rear.frames.some((f: string) => f.startsWith("bodyR_"))).toBe(true);
     await run(page, 0.5);
     const stomp = await pose("slam-stomp");
@@ -220,7 +230,7 @@ test("Cragmuff's attacks have their poses: charge, rear-up and stomp, volley, me
       a.raid.staggerUntil = a.time + 5;
     });
     await run(page, 0.6);
-    const stagger = await pose("stagger", 3);
+    const stagger = await pose("stagger", 3, -20);
     expect(stagger.expr).toBe("dizzy");
     expect(stagger.frames).toContain("gem_open");
     // phase 3: cracks and crystals in the fleece
@@ -240,7 +250,7 @@ test("Cragmuff's attacks have their poses: charge, rear-up and stomp, volley, me
       a.raid.result = "victory";
     });
     await run(page, 3.4);
-    const down = await pose("defeat");
+    const down = await pose("defeat", 2.2, -30);
     expect(down.frames.some((f: string) => /^hornsFd_/.test(f))).toBe(true);
     expect(errors).toEqual([]);
   } finally {
