@@ -17,6 +17,10 @@ files: paste each one into **Supabase → Authentication → Emails → Template
 - Dark design on purpose, like the game. Mail apps that only recolour light
   backgrounds leave it alone; apps that invert everything flip text and
   background together, so it stays readable.
-- `hero-source.html` builds the banner from the creature portraits and the
-  plaza background. To change it, edit that file, open it in Chromium at
-  600x240 and screenshot `.b` at 2x, then save as JPEG (about 85 quality).
+- The banner is drawn from the game's own creature art (`creatureSvg` in
+  `apps/client/src/creature-design.ts`), so faces and Shop skins match the
+  game. To change it: edit the cast (champion, facing, mood, skin) in
+  `banner/gen.ts` and the layout in `banner/hero.html`, then
+  `npx tsx supabase/templates/banner/gen.ts`, open `banner/hero.html` in
+  Chromium at 600x240, screenshot `.b` at 2x and save it as JPEG (about 85
+  quality) to `apps/client/public/email/hero.jpg`.
