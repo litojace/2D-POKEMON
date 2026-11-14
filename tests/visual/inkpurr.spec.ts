@@ -443,3 +443,268 @@ test("with reduced motion it holds still: no bob, no flicker", async ({
   expect(new Set(looks).size).toBe(1);
   expect(errors).toEqual([]);
 });
+
+/**
+ * Run `body` in the page with the review harness and the raid art at hand:
+ * `frame(t, reduced?)` draws one frame of the real art; `count(colour)`
+ * counts how often a colour is set in the frame's drawing (each effect
+ * piece sets its own colour once), `warn(w, reduced?)` and `yard(reduced?)`
+ * add the warnings and the yard as the battle draws them.
+ */
+const ink = <T>(page: Page, body: string) =>
+  page.evaluate(
+    async ({ body, root }) => {
+      const r = (window as any).__bossReview,
+        row = r.rows.find((x: any) => x.id === "gloomshade"),
+        boss = row.state.players.find((p: any) => p.raidBoss),
+        scene = row.g.scene;
+      const art = await import(
+        `/@fs${root}/apps/client/src/raid-gloomshade-art.ts`
+      );
+      const fx = await import(`/@fs${root}/apps/client/src/raid-inkpurr-fx.ts`);
+      const engine = await import(`/@fs${root}/apps/client/src/fx-engine.ts`);
+      const count = (colour: number) =>
+        row.g.commandBuffer.filter((v: number) => v === colour).length;
+      const frame = (t: number, reduced = false) =>
+        r.frame(1, t, reduced, ["gloomshade"]);
+      const warn = (w: any, reduced = false) =>
+        art.drawGloomshadeWarning(row.g, row.state, w, reduced);
+      const yard = (reduced = false) =>
+        art.drawLanternYard(row.g, row.state, reduced);
+      const roots = () =>
+        Object.fromEntries(
+          scene.children.list
+            .filter((o: any) => o.name.startsWith("vector-boss-gloomshade:"))
+            .map((o: any) => [
+              o.name.split(":")[1],
+              o.visible && o.alpha > 0.5,
+            ]),
+        );
+      return new Function(
+        "r",
+        "row",
+        "boss",
+        "scene",
+        "fx",
+        "engine",
+        "count",
+        "frame",
+        "warn",
+        "yard",
+        "roots",
+        body,
+      )(r, row, boss, scene, fx, engine, count, frame, warn, yard, roots);
+    },
+    { body, root: process.cwd() },
+  ) as Promise<T>;
+const INK_SETUP = `
+  const s = row.state, raid = s.raid;
+  raid.decoys = []; raid.warnings = []; raid.lanterns = [];
+  raid.exposedUntil = 0; raid.staggerUntil = 0; raid.revealUntil = 0; raid.result = null;
+  boss.hp = Math.max(1, boss.hp);
+  const hero = s.players.find((p) => !p.raidBoss);
+  hero.x = boss.x - 260; hero.y = boss.y + 40; hero.hp = Math.max(1, hero.hp);
+`;
+
+test("its grasping hands rise from every dark tile and grab when they land", async ({
+  page,
+}) => {
+  const errors = await review(page);
+  const out = await ink<any>(
+    page,
+    INK_SETUP +
+      `
+    const w = { id: 901, kind: "hands", parity: 0, startedAt: 10, at: 11.45, x: 0, y: 0, tx: 0, ty: 0, radius: 0 };
+    const dark = 20; // an 8 x 5 board: every other tile
+    raid.warnings = [w];
+    frame(10.7); warn(w);
+    const rising = count(fx.HAND_INK);
+    engine.fxFor(scene).density = 0.3;
+    frame(10.75); warn(w);
+    const low = count(fx.HAND_INK);
+    engine.fxFor(scene).density = 1;
+    for (let t = 10.8; t < 11.45; t += 0.05) frame(t);
+    // it lands: the warning goes, the same tiles' hands close and sink away
+    raid.warnings = [];
+    frame(11.46);
+    const grab = count(fx.HAND_INK);
+    for (let t = 11.5; t < 12.4; t += 0.05) frame(t);
+    const after = count(fx.HAND_INK);
+    return { dark, rising, low, grab, after };
+  `,
+  );
+  expect(out.rising).toBe(out.dark * 2);
+  expect(out.low).toBe(out.dark);
+  expect(out.grab).toBe(out.dark * 2);
+  expect(out.after).toBe(0);
+  expect(errors).toEqual([]);
+});
+
+test("the curse beams from every body's gem alike, an ink ghost comes down, and ink wisps circle the cursed", async ({
+  page,
+}) => {
+  const errors = await review(page);
+  const out = await ink<any>(
+    page,
+    INK_SETUP +
+      `
+    raid.decoys = [{ id: 7, x: boss.x + 230, y: boss.y + 20 }, { id: 8, x: boss.x - 40, y: boss.y + 170 }];
+    frame(5);
+    const w = { id: 902, kind: "curse", targetId: hero.id, startedAt: 6, at: 7.05, x: hero.x, y: hero.y, tx: hero.x, ty: hero.y, radius: 120 };
+    raid.warnings = [w];
+    frame(6.3);
+    const beams = count(0xffe296);
+    warn(w);
+    const ghost = count(fx.GHOST_INK);
+    frame(6.9);
+    const late = count(0xffe296);
+    raid.warnings = [];
+    raid.curses = { [hero.id]: { stacks: 2, hauntedUntil: 0 } };
+    frame(7.2); yard();
+    const wisps = count(fx.GHOST_INK);
+    raid.curses = { [hero.id]: { stacks: 3, hauntedUntil: 20 } };
+    frame(7.3); yard();
+    const haunted = count(fx.GHOST_INK);
+    return { beams, ghost, late, wisps, haunted };
+  `,
+  );
+  // one beam from each of the three bodies, real or copy
+  expect(out.beams).toBe(3);
+  expect(out.ghost).toBe(1);
+  // the beam lasts only the start of the warning
+  expect(out.late).toBe(0);
+  // a wisp per stack; Haunted: three wisps and the bobbing ghost
+  expect(out.wisps).toBe(2);
+  expect(out.haunted).toBe(4);
+  expect(errors).toEqual([]);
+});
+
+test("the pulse rolls out from the real one only once the game shows it; the copies' rings fizzle", async ({
+  page,
+}) => {
+  const errors = await review(page);
+  const out = await ink<any>(
+    page,
+    INK_SETUP +
+      `
+    raid.decoys = [{ id: 7, x: boss.x + 230, y: boss.y }, { id: 8, x: boss.x - 230, y: boss.y }, { id: 9, x: boss.x, y: boss.y + 180 }];
+    frame(5);
+    const pulse = (id, t0) => ({ id, kind: "pulse", startedAt: t0, at: t0 + 1.4, x: boss.x, y: boss.y, tx: boss.x, ty: boss.y, radius: 260 });
+    const waves = [], fizzles = [];
+    // while it is warned: no wave anywhere
+    raid.warnings = [pulse(903, 6)];
+    for (let t = 6; t < 7.4; t += 0.05) { frame(t); waves.push(count(fx.PULSE_BAND)); }
+    // gone, but not shown by the game (no reveal): still none
+    raid.warnings = [];
+    for (let t = 7.4; t < 7.8; t += 0.05) { frame(t); waves.push(count(fx.PULSE_BAND)); }
+    const early = Math.max(...waves);
+    // landed and shown: one wave (the real one's), a fizzle on each copy
+    raid.warnings = [pulse(904, 8)];
+    for (let t = 8; t < 9.4; t += 0.05) frame(t);
+    raid.warnings = []; raid.revealUntil = 10.9;
+    frame(9.42);
+    const wave = count(fx.PULSE_BAND), fizzle = count(fx.FIZZLE);
+    for (let t = 9.46; t < 10.4; t += 0.05) frame(t);
+    return { early, wave, fizzle, after: count(fx.PULSE_BAND) };
+  `,
+  );
+  expect(out.early).toBe(0);
+  expect(out.wave).toBe(1);
+  expect(out.fizzle).toBe(3);
+  expect(out.after).toBe(0);
+  expect(errors).toEqual([]);
+});
+
+test("a split throws glossy blobs to every spot, and every body pops up alike as its blob lands", async ({
+  page,
+}) => {
+  const errors = await review(page);
+  const out = await ink<any>(
+    page,
+    INK_SETUP +
+      `
+    frame(5); frame(5.05);
+    // the real one moves to the middle spot; copies left and right
+    const x0 = boss.x;
+    boss.x = x0 + 20;
+    raid.decoys = [{ id: 11, x: x0 - 260, y: boss.y + 30 }, { id: 12, x: x0 + 300, y: boss.y - 20 }];
+    const order = [], blobs = [];
+    let first;
+    for (let n = 0; n < 24; n++) {
+      frame(5.1 + n * 0.05);
+      blobs.push(count(fx.BLOB_INK));
+      const shown = roots();
+      const on = Object.keys(shown).filter((k) => shown[k] && !order.includes(k));
+      order.push(...on.sort());
+    }
+    const all = roots();
+    return { order, blobs, all };
+  `,
+  );
+  // blobs fly first, then splash
+  expect(Math.max(...out.blobs)).toBeGreaterThan(0);
+  expect(out.blobs[3]).toBeGreaterThan(0);
+  // they pop up left to right across the yard: the real one (in the middle) is never first
+  expect(out.order).toEqual(["shade-11", "shade-0", "shade-12"]);
+  expect(out.all).toEqual({
+    "shade-0": true,
+    "shade-11": true,
+    "shade-12": true,
+  });
+  expect(errors).toEqual([]);
+});
+
+test("found: the copies vanish in gold bursts; a copy popped by a hit only puffs", async ({
+  page,
+}) => {
+  const errors = await review(page);
+  const out = await ink<any>(
+    page,
+    INK_SETUP +
+      `
+    raid.decoys = [{ id: 7, x: boss.x + 230, y: boss.y }, { id: 8, x: boss.x - 230, y: boss.y }, { id: 9, x: boss.x, y: boss.y + 180 }];
+    frame(5);
+    // a hit pops one copy: no gold
+    raid.decoys = raid.decoys.slice(1);
+    frame(5.05);
+    const popped = count(fx.FOUND_GOLD);
+    // six in a row: the rest vanish, gold where each copy was and on the real one
+    raid.decoys = []; raid.exposedUntil = 10;
+    frame(5.1);
+    const found = count(fx.FOUND_GOLD);
+    for (let t = 5.15; t < 6; t += 0.05) frame(t);
+    return { popped, found, after: count(fx.FOUND_GOLD) };
+  `,
+  );
+  expect(out.popped).toBe(0);
+  // each burst sets the gold twice (its glow and its ring): two copies and the real one
+  expect(out.found).toBe(6);
+  expect(out.after).toBe(0);
+  expect(errors).toEqual([]);
+});
+
+test("its effects thin out on Low graphics and hold still with reduced motion", async ({
+  page,
+}) => {
+  const errors = await review(page);
+  const out = await ink<any>(
+    page,
+    INK_SETUP +
+      `
+    const w = { id: 905, kind: "hands", parity: 1, startedAt: 10, at: 11.45, x: 0, y: 0, tx: 0, ty: 0, radius: 0 };
+    raid.curses = { [hero.id]: { stacks: 3, hauntedUntil: 99 } };
+    const look = (t, reduced) => { frame(t, reduced); warn(w, reduced); yard(reduced); return row.g.commandBuffer.length; };
+    raid.warnings = [w];
+    const high = look(11, false);
+    engine.fxFor(scene).density = 0.3;
+    const low = look(11, false);
+    engine.fxFor(scene).density = 1;
+    // (the warning's own fill follows its timer; everything else holds)
+    const buf = (t) => { frame(t, true); yard(true); return JSON.stringify(Array.from(row.g.commandBuffer)); };
+    return { high, low, same: buf(11.2) === buf(11.27) };
+  `,
+  );
+  expect(out.low).toBeLessThan(out.high * 0.7);
+  expect(out.same).toBe(true);
+  expect(errors).toEqual([]);
+});
