@@ -399,7 +399,7 @@ function rimLight(ctx: Ctx, E: E2, a0: number) {
   c.height = ctx.canvas.height;
   // the same kind of canvas as the piece (a CPU one is never read back from the GPU)
   const g = c.getContext("2d", {
-    willReadFrequently: !!ctx.getContextAttributes?.().willReadFrequently,
+    willReadFrequently: !!ctx.getContextAttributes?.()?.willReadFrequently,
   });
   if (!g) return;
   g.setTransform(m);
