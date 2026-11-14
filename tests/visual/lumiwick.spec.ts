@@ -60,11 +60,13 @@ const rig = (page: Page) =>
   page.evaluate(() => {
     const r = (window as any).__bossReview,
       scene = r.rows[0].g.scene,
-      root = scene.children.list.find((o: any) => o.name === "lumiwick-boss");
+      root = scene.children.list.find(
+        (o: any) => o.name === "vector-boss-emberwing",
+      );
     const parts: Record<string, any> = {};
     for (const o of root?.list[0]?.list ?? [])
       if (o.visible && o.type === "Image")
-        parts[o.name.replace("lumiwick-part-", "")] = {
+        parts[o.name.replace("vector-part-", "")] = {
           x: o.x,
           y: o.y,
           rotation: o.rotation,
@@ -83,8 +85,8 @@ const rig = (page: Page) =>
       facing: root?.getData("facing"),
       action: root?.getData("action"),
       ring:
-        root?.list.find((o: any) => o.name === "lumiwick-front")?.commandBuffer
-          .length ?? -1,
+        root?.list.find((o: any) => o.name === "vector-boss-front")
+          ?.commandBuffer.length ?? -1,
       parts,
       atlasBytes: tex ? tex.width * tex.height * 4 : 0,
       oldAtlases: r.game.textures

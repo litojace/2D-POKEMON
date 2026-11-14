@@ -1512,7 +1512,7 @@ export interface LumiAtlas {
  * Paint every piece once, trim it, shelf-pack the lot into one canvas.
  * Runs at scene creation (and for the briefing's guide image).
  */
-export function paintLumiwickAtlas(): LumiAtlas {
+export function paintLumiwickAtlas(density = 1): LumiAtlas {
   const pad = 6;
   const done: {
     name: string;
@@ -1521,7 +1521,9 @@ export function paintLumiwickAtlas(): LumiAtlas {
     ox: number;
     oy: number;
   }[] = [];
-  for (const s of lumiwickPieces()) {
+  for (const base of lumiwickPieces()) {
+    // density > 1 only for posters (the splash art); battle keeps 1
+    const s = { ...base, q: base.q * density };
     const w = Math.ceil((s.box[2] - s.box[0]) * s.q) + pad * 2,
       h = Math.ceil((s.box[3] - s.box[1]) * s.q) + pad * 2;
     const c = document.createElement("canvas");

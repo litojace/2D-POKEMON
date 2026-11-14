@@ -98,7 +98,7 @@ export function paintLumiwick(
     let img = rig.images.get(p.key);
     if (!img) {
       img = scene.add.image(0, 0, LUMI_ATLAS, p.piece);
-      img.setName(`lumiwick-part-${p.key}`);
+      img.setName(`vector-part-${p.key}`);
       rig.images.set(p.key, img);
     } else if (img.frame.name !== p.piece) img.setTexture(LUMI_ATLAS, p.piece);
     seen.add(p.key);
@@ -132,10 +132,10 @@ export function paintLumiwick(
 function createRig(g: Phaser.GameObjects.Graphics): Rig {
   const scene = g.scene;
   const actor = scene.add.container(0, 0);
-  const front = scene.add.graphics().setName("lumiwick-front");
+  const front = scene.add.graphics().setName("vector-boss-front");
   const root = scene.add
     .container(0, 0, [actor, front])
-    .setName("lumiwick-boss");
+    .setName("vector-boss-emberwing");
   const rig: Rig = { root, actor, front, images: new Map(), frame: -1 };
   rigs.set(g, rig);
   const dispose = () => {

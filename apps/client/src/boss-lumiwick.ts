@@ -103,7 +103,8 @@ const ATT = VIEW_YAW.map((yaw) => {
     shR: V.P(armRoot("R")),
     crown: V.P({ x: 0, y: L_TOP - 2, z: 0 }),
     hem: V.P({ x: 0, y: L_BOT - 2, z: 0 }),
-    heart: V.P({ x: 0, y: L_BOT + 4, z: 0 }),
+    // the flame heart sits on the open hem, below the face
+    heart: V.P({ x: 0, y: L_BOT - 24, z: 0 }),
     curlTip: V.P({ x: 0, y: 30, z: 13 }),
   };
 });
@@ -740,11 +741,6 @@ export function lumiwickAction(c: LumiCue): { id: string; t: number } {
       id: "grounded",
       t: c.reduced ? ACTIONS.grounded.key : Math.min(6.6, 1.35 + c.groundAge),
     };
-  if (c.takeoffAge < 1.6)
-    return {
-      id: "takeoff",
-      t: c.reduced ? ACTIONS.takeoff.key : 0.4 + c.takeoffAge,
-    };
   if (c.roarAge < 2.3)
     return { id: "roar", t: c.reduced ? ACTIONS.roar.key : c.roarAge };
   if (c.windKind && ACTIONS[c.windKind]?.wind) {
@@ -756,6 +752,12 @@ export function lumiwickAction(c: LumiCue): { id: string; t: number } {
     if (c.castAge < A.dur - A.wind![1])
       return { id: c.castKind, t: c.reduced ? A.key : A.wind![1] + c.castAge };
   }
+  // an attack outranks the take-off it may follow
+  if (c.takeoffAge < 1.6)
+    return {
+      id: "takeoff",
+      t: c.reduced ? ACTIONS.takeoff.key : 0.4 + c.takeoffAge,
+    };
   if (c.stagger)
     return { id: "stagger", t: c.reduced ? 1.2 : 1.2 + (c.clock % 1.6) };
   return { id: "idle", t: 0 };
@@ -1160,7 +1162,7 @@ export function lumiwickPlacements(
           h.y,
           0,
           P.heart,
-          pulse * lerp(0.7, 1.25, P.heart),
+          pulse * lerp(0.5, 0.8, P.heart),
         );
       }
       res.heart = { ...pt(m, h.x, h.y), open: P.heart };

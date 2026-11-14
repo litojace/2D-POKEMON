@@ -25,7 +25,7 @@ test("worn skins and the boss's atlas are ready before the battle's first frame"
         .replace(
           marker,
           marker +
-            " window.__atCreate = { skins: this.textures.getTextureKeys().filter((k) => k.includes('~')).length, atlas: this.textures.exists('vember-atlas-1') };",
+            " window.__atCreate = { skins: this.textures.getTextureKeys().filter((k) => k.includes('~')).length, atlas: this.textures.exists('lumiwick-atlas') };",
         ),
     });
   });
