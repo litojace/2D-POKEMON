@@ -44,7 +44,7 @@ export const RAID_BOSSES: Record<RaidBossId, RaidBossInfo> = {
   },
   tidewyrm: {
     id: "tidewyrm",
-    name: "Tidewyrm",
+    name: "Tidelotl",
     epithet: "The rising tide",
     element: "Water",
     color: "#4fd6c8",
@@ -52,7 +52,7 @@ export const RAID_BOSSES: Record<RaidBossId, RaidBossInfo> = {
     stars: 2,
     signature: "Strand it on an island",
     blurb:
-      "A sleepy sea serpent with a pearl on its brow. Lure its dive onto dry land, share the islands when the tide rises, and pop your friends out of bubbles.",
+      "A mischievous axolotl who calls itself lord of the tides, with a pearl on its brow. Lure its dive onto dry land, share the islands when the tide rises, and pop your friends out of bubbles.",
     playable: true,
   },
   gloomshade: {

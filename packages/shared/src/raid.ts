@@ -545,7 +545,7 @@ export const GRUMBLECRAG = {
  */
 export const TIDEWYRM = {
   id: "tidewyrm",
-  name: "Tidewyrm",
+  name: "Tidelotl",
   health: { base: 1350, perExtraPlayer: 850, gilded: 1.12 },
   perilDamage: [1, 1, 1.25, 1.5],
   cadence: { normal: 5, restless: 4.4, finalPhase: 0.85 },
@@ -970,7 +970,7 @@ export const RAID_BOSS_PERKS: Partial<
   tidewyrm: {
     voltkit: {
       skill: "Static Lance",
-      text: "Hits on a stranded Tidewyrm add extra stagger (water conducts).",
+      text: "Hits on a stranded Tidelotl add extra stagger (water conducts).",
     },
     cindrake: {
       skill: "Magma Bomb",
@@ -994,15 +994,15 @@ export const RAID_BOSS_PERKS: Partial<
     },
     glacelle: {
       skill: "Frost Bloom",
-      text: "Blooming on a stranded Tidewyrm freezes it there 2 seconds longer.",
+      text: "Blooming on a stranded Tidelotl freezes it there 2 seconds longer.",
     },
     pangrove: {
       skill: "Tongue Grapple",
-      text: "Latching onto a stranded Tidewyrm adds extra stagger.",
+      text: "Latching onto a stranded Tidelotl adds extra stagger.",
     },
     mossloth: {
       skill: "Seedling",
-      text: "A seedling going off by a stranded Tidewyrm keeps it stranded 1 second longer.",
+      text: "A seedling going off by a stranded Tidelotl keeps it stranded 1 second longer.",
     },
   },
   gloomshade: {
@@ -1149,7 +1149,7 @@ export const RAID_BOSS_CHAPTERS: Partial<
       name: "Low Tide",
       objective: "Lead the dive onto an island. Jump the low wave.",
       detail:
-        "When a ripple follows you, walk it onto an island and step off: Tidewyrm surfaces stranded on dry land, open to attack. Jump the low waves and weave through bubbles.",
+        "When a ripple follows you, walk it onto an island and step off: Tidelotl surfaces stranded on dry land, open to attack. Jump the low waves and weave through bubbles.",
     },
     {
       name: "Turning Tide",
@@ -1777,7 +1777,7 @@ export const RAID_REWARDS: RaidReward[] = [
     slot: "victory",
     name: "Splashdown",
     description: "A wave rises and crashes in a burst of spray behind you",
-    goal: "Feat: strand Tidewyrm 4 times in one run",
+    goal: "Feat: strand Tidelotl 4 times in one run",
     rule: { kind: "feat" },
   },
   {
@@ -1804,7 +1804,7 @@ export const RAID_REWARDS: RaidReward[] = [
     slot: "title",
     name: "Shipwright",
     description: "Title",
-    goal: "Strand Tidewyrm 30 times (wins and losses)",
+    goal: "Strand Tidelotl 30 times (wins and losses)",
     rule: { kind: "stat", stat: "pillars", n: 30 },
   },
   {

@@ -78,7 +78,7 @@ function tideTargets(
               x: boss.x,
               y: boss.y,
               feetY: boss.y,
-              label: "Tidewyrm",
+              label: "Tidelotl",
             },
           ]
         : []),

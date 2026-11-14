@@ -237,7 +237,7 @@ describe("a boss page", () => {
   it("says why a raid can't start, and what Solo and With party do", () => {
     const v = raidView("tidewyrm", { mode: "boss" });
     expect(startState(v, data()).reason).toBe(
-      "Clear Grumblecrag once to unlock Tidewyrm.",
+      "Clear Grumblecrag once to unlock Tidelotl.",
     );
     const g = raidView("grumblecrag", { mode: "boss" });
     expect(startState(g, data()).ok).toBe(true);
