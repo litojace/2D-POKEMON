@@ -42,6 +42,7 @@ export function raidSplashImage(id: RaidBossId, hero = false) {
 /**
  * Each boss's vertical card picture (600 x 900), cut from its painting on
  * the boss (docs/ui-remodel/tools/boss-portraits.sh): the Raid Hall's cards.
+ * boss-art.py also supports framing a whole-creature box for future art.
  */
 export const RAID_PORTRAIT: Record<RaidBossId, string> = {
   grumblecrag: card0,

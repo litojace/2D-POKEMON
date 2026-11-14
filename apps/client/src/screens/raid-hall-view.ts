@@ -303,19 +303,21 @@ function rewardTotal(p: RaidProgress) {
  * Each boss's vertical framing of its (wide) painting, in fractions of the
  * picture: `body` is the point kept in the middle of a tall stage (head and
  * body together, like a poster), `face` the point a phone's small stage
- * zooms in on, by `zoom` (raid-hall.css does the arithmetic).
+ * zooms in on, by `zoom` (raid-hall.css does the arithmetic). The body
+ * point keeps as much of the boss as a tall stage can hold, its face side
+ * first (owner's notes, 14 Nov); the face point is the face itself.
  */
 export const BOSS_FRAMES: Record<
   RaidBossId,
   { body: [number, number]; face: [number, number]; zoom: number }
 > = {
-  grumblecrag: { body: [0.52, 0.57], face: [0.66, 0.53], zoom: 1.8 },
-  tidewyrm: { body: [0.52, 0.44], face: [0.56, 0.51], zoom: 1.9 },
-  gloomshade: { body: [0.52, 0.52], face: [0.64, 0.61], zoom: 1.7 },
-  somnara: { body: [0.52, 0.53], face: [0.64, 0.47], zoom: 1.6 },
-  prismatail: { body: [0.52, 0.51], face: [0.68, 0.59], zoom: 2 },
-  emberwing: { body: [0.52, 0.5], face: [0.52, 0.55], zoom: 1.8 },
-  "storm-twins": { body: [0.52, 0.4], face: [0.5, 0.35], zoom: 1.2 },
+  grumblecrag: { body: [0.47, 0.45], face: [0.53, 0.3], zoom: 1.6 },
+  tidewyrm: { body: [0.62, 0.48], face: [0.643, 0.35], zoom: 1.6 },
+  gloomshade: { body: [0.5, 0.44], face: [0.6, 0.3], zoom: 1.6 },
+  somnara: { body: [0.62, 0.4], face: [0.62, 0.3], zoom: 1.6 },
+  prismatail: { body: [0.475, 0.44], face: [0.654, 0.4], zoom: 1.5 },
+  emberwing: { body: [0.42, 0.39], face: [0.497, 0.36], zoom: 1.6 },
+  "storm-twins": { body: [0.487, 0.43], face: [0.547, 0.43], zoom: 1.2 },
 };
 /**
  * The stage: the boss's painting framed vertically on the boss (a poster),

@@ -4,25 +4,16 @@ import { raidGuideSprite } from "./raid-guide-sprites";
 import { raidCrest } from "./raid-crests";
 import { fighterArt, scopeIds } from "./fighter-art";
 
-// Miniature diagrams use the same fighter artwork, boss silhouette and warning colors as combat.
+// Miniature helpers keep their public names for existing diagrams, while
+// using the replacement creatures instead of retired inline golem/serpent art.
 export function raidGuideBoss(exposed = false) {
-  const glow = exposed ? "#82ffe7" : "#ffce75";
-  return `<g stroke="#202e43" stroke-width="2" stroke-linejoin="round"><ellipse cy="35" rx="40" ry="9" fill="#071325" opacity=".5"/><path d="m-28-22 17-15 32 4 12 27-7 33-23 8-28-13Z" fill="#52657b"/><path d="m-28-22 17-15 32 4 7 13-26-1Z" fill="#8a9eb1"/><path d="m-27-22-1-20 8-15 8 29m31-1 8-33 10 17-1 24" fill="${glow}"/><path d="m-47 5 5-18 18 2 3 29-19 5Zm70-16 18-2 7 18-7 18-19-5Z" fill="#52657b"/><path d="m-19-15 13-5 23 6-3 16-29 1Z" fill="#202e43"/><path d="m-13-8 8 3m11 0 8-3" stroke="${glow}" stroke-width="3"/><path d="m0 5 12 9-3 16-10 6-10-10 1-14Z" fill="${glow}"/>${exposed ? '<circle cy="19" r="22" fill="none" stroke="#82ffe7" opacity=".7"/>' : ""}</g>`;
+  return raidGuideSprite("grumblecrag", exposed);
 }
-/** Tidewyrm in miniature: a coiled sea serpent with a pearl on its brow. */
 export function raidGuideTidewyrm(exposed = false) {
-  const pearl = exposed ? "#bff6ff" : "#fff3f8";
-  return `<g stroke="#13606b" stroke-width="2" stroke-linejoin="round"><ellipse cy="38" rx="44" ry="9" fill="#071325" opacity=".45"/><path d="M-40 34q8-14 22-4t22-6 16-26" fill="none" stroke="#13606b" stroke-width="20" stroke-linecap="round"/><path d="M-40 34q8-14 22-4t22-6 16-26" fill="none" stroke="#2fb7a6" stroke-width="16" stroke-linecap="round"/><path d="m-6 12 4-16 10 10Zm-20 14 2-14 10 8Z" fill="#ffa8c8"/><ellipse cx="22" cy="-14" rx="24" ry="19" fill="#2fb7a6"/><ellipse cx="30" cy="-8" rx="14" ry="9" fill="#8ff0d8" stroke="none"/><path d="M4-22-14-36l4 18Z" fill="#ffa8c8"/><circle cx="20" cy="-17" r="4" fill="#fff" stroke="none"/><circle cx="31" cy="-17" r="4" fill="#fff" stroke="none"/><path d="M15-19h10m1 0h10" stroke-width="2.5"/><circle cx="24" cy="-31" r="5.5" fill="${pearl}"/>${exposed ? '<circle cx="24" cy="-31" r="12" fill="none" stroke="#bff6ff" opacity=".7"/>' : ""}<path d="M-56 38q10-6 20 0t20 0 20 0 20 0 20 0" fill="none" stroke="#d9f5f0" stroke-width="2" opacity=".7"/></g>`;
+  return raidGuideSprite("tidewyrm", exposed);
 }
-/**
- * Gloomshade in miniature: a floppy-eared shadow puff with a crescent-moon
- * tail. `shadow` draws its ground shadow: the tell that marks the real one.
- */
 export function raidGuideGloomshade(exposed = false, shadow = true) {
-  const core = exposed
-    ? '<circle cy="20" r="10" fill="#ffd65b" opacity=".45" stroke="none"/><circle cy="20" r="5" fill="#fff1c2"/>'
-    : "";
-  return `<g stroke="#18122b" stroke-width="2" stroke-linejoin="round">${shadow ? '<ellipse cx="6" cy="38" rx="38" ry="8" fill="#071325" opacity=".55" stroke="none"/>' : ""}<circle cx="-38" cy="12" r="8" fill="#2b2245"/><circle cx="-46" cy="6" r="6" fill="#2b2245"/><path d="M-50-20a16 16 0 1 0 0 32a20 20 0 0 1 0-32Z" fill="#ffd65b"/>${[-24, -12, 0, 12, 24].map((x) => `<circle cx="${x}" cy="28" r="9" fill="#18122b"/>`).join("")}<ellipse cx="-30" cy="0" rx="11" ry="26" fill="#2b2245"/><ellipse cx="30" cy="0" rx="11" ry="26" fill="#2b2245"/><circle cy="-4" r="34" fill="#2b2245"/><ellipse cx="-6" cy="-20" rx="22" ry="12" fill="#4a3d72" opacity=".6" stroke="none"/><ellipse cx="-11" cy="-8" rx="7" ry="9" fill="#fff3c4" stroke="none"/><ellipse cx="13" cy="-8" rx="7" ry="9" fill="#fff3c4" stroke="none"/><ellipse cx="-10" cy="-7" rx="3.5" ry="5" fill="#18122b" stroke="none"/><ellipse cx="14" cy="-7" rx="3.5" ry="5" fill="#18122b" stroke="none"/><circle cx="-8" cy="-11" r="1.6" fill="#fff" stroke="none"/><circle cx="16" cy="-11" r="1.6" fill="#fff" stroke="none"/><path d="M-3 6q4 4 8 0" fill="none" stroke="#fff3c4"/>${core}</g>`;
+  return raidGuideSprite("gloomshade", exposed, shadow);
 }
 /** The boss's miniature for lobbies and results. */
 export function raidGuideBossFor(boss: string, exposed = false) {
