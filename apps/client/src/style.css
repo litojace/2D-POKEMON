@@ -12905,6 +12905,41 @@ body.battle-active.court-view #game canvas {
 .prefs-graphics-note b {
   color: var(--accent);
 }
+/* Settings → App icon (iPhone app): the Home Screen icon choices. */
+.prefs-app-icons {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+.framed-dialog .prefs-app-icons > button {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  min-width: 0;
+  margin: 0;
+  padding: 8px 4px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  font: 700 12px/1.15 var(--body);
+  color: var(--text-dim);
+  background: transparent;
+  box-shadow: none;
+}
+.prefs-app-icons img {
+  width: 56px;
+  height: 56px;
+  max-width: 100%;
+  /* The rounded square iOS gives app icons. */
+  border-radius: 22.37%;
+}
+.framed-dialog .prefs-app-icons > button[aria-checked="true"] {
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+}
+.framed-dialog .prefs-app-icons > button > span {
+  overflow-wrap: anywhere;
+}
 /* The browser draws without the graphics card (gpu-check.ts): how to fix it. */
 .prefs-gpu-off {
   margin: 10px 0 0;
@@ -13059,6 +13094,32 @@ body.battle-active.court-view #game canvas {
     font-size: 12px;
   }
   .prefs-graphics-note {
+    display: none;
+  }
+  /* App icon (iPhone app): one line across both columns, icons only (each
+     button keeps its name in aria-label). */
+  .prefs-card.prefs-app-icon {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .framed-dialog .prefs-card.prefs-app-icon > h3 {
+    margin: 0;
+  }
+  .prefs-app-icons {
+    display: flex;
+    gap: 4px;
+  }
+  .framed-dialog .prefs-app-icons > button {
+    padding: 3px;
+  }
+  .prefs-app-icons img {
+    width: 40px;
+    height: 40px;
+  }
+  .framed-dialog .prefs-app-icons > button > span {
     display: none;
   }
   .credits-hero {
