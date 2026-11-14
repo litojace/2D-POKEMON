@@ -22,7 +22,7 @@
  * Undertow added about 70 a minute of ~7 px.
  */
 import { Arena } from "../../apps/server/src/simulation.js";
-import { BotBrain } from "../../apps/server/src/bot.js";
+import { BotBrain, type BotDifficulty } from "../../apps/server/src/bot.js";
 import {
   CHARACTERS,
   RULES,
@@ -39,7 +39,9 @@ import {
 } from "../../packages/shared/src/index.js";
 import {
   carryCurrent,
+  newestStep,
   predictFighter,
+  serverSteps,
 } from "../../apps/client/src/predict-fighter.js";
 import {
   correctionCause,
@@ -62,8 +64,15 @@ class Link<T> {
     private latency: number,
     private jitter: number,
     private random: () => number,
+    /** Now and then the link holds packets (Wi-Fi power saving, a busy
+     * radio): this share of sends starts a hold of `stallMs`, and the
+     * packets behind it queue up (in order, as over TCP). */
+    private stallChance = 0,
+    private stallMs = 0,
   ) {}
   send(now: number, value: T) {
+    if (this.stallChance && this.random() < this.stallChance)
+      this.last = Math.max(this.last, now + this.latency + this.stallMs);
     const at = Math.max(
       this.last,
       now + this.latency + this.random() * this.jitter,
@@ -96,17 +105,33 @@ export function simulateCorrections(o: {
   noBasic?: boolean;
   /** Replay without carryCurrent (the behaviour before it). */
   noCarry?: boolean;
+  /** The bot's level (the match reports' fights are mostly "hard"). */
+  level?: BotDifficulty;
+  /** Replay every pending input as a step, ignoring Fighter.owed (before it). */
+  noOwed?: boolean;
+  /** Uplink holds: chance per input and length (ms). */
+  stallChance?: number;
+  stallMs?: number;
+  /** The phone's frame rate (a 120 Hz Android phone draws up to 120). */
+  fps?: number;
 }) {
   const seconds = o.seconds ?? 120;
   const random = rng(o.seed ?? 11);
   const arena = new Arena("CORSIM", "duel");
   const me = arena.add("me", "Me", o.me ?? "tidefin");
   const bot = arena.add("bot", "Bot", o.bot ?? "cindrake");
-  if (!o.noBot) arena.bots.set("bot", new BotBrain("bot", "normal", 4242));
+  if (!o.noBot)
+    arena.bots.set("bot", new BotBrain("bot", o.level ?? "normal", 4242));
   arena.start();
   arena.phase = "playing";
   arena.deadline = 1e9;
-  const up = new Link<Input>(o.latency ?? 33, o.jitter ?? 4, random);
+  const up = new Link<Input>(
+    o.latency ?? 33,
+    o.jitter ?? 4,
+    random,
+    o.stallChance,
+    o.stallMs,
+  );
   const down = new Link<WireSnapshot>(o.latency ?? 33, o.jitter ?? 4, random);
   const cache = new MetaCache();
   const kit = kitOf(me.character, me.rites);
@@ -114,6 +139,7 @@ export function simulateCorrections(o: {
     previous: Snapshot | undefined,
     local: Fighter | undefined,
     pending: Input[] = [],
+    owed = 0,
     seq = 0,
     cursor = 0,
     serverClock = 0,
@@ -123,8 +149,9 @@ export function simulateCorrections(o: {
     dx = 0,
     dy = 0;
   const corrections: Correction[] = [];
-  let snapshots = 0;
-  const frameMs = 1000 / 60;
+  let snapshots = 0,
+    pendingSum = 0;
+  const frameMs = 1000 / (o.fps ?? 60);
   for (let now = 0; now < seconds * 1000; now += frameMs) {
     while (serverClock + 1000 / RULES.tick <= now) {
       serverClock += 1000 / RULES.tick;
@@ -148,9 +175,11 @@ export function simulateCorrections(o: {
       const server = state.players.find((p) => p.id === "me")!;
       const before = local && { x: local.x, y: local.y };
       pending = pending.filter((i) => i.seq > server.ack);
+      pendingSum += pending.length;
       local = structuredClone(server);
       if (!o.noCarry) carryCurrent(local, state.time);
-      for (const [i, input] of pending.entries())
+      owed = o.noOwed ? 0 : (server.owed ?? 0);
+      for (const [i, input] of serverSteps(pending, owed).entries())
         predictFighter(local, input, state.time + (i + 1) / RULES.tick, false);
       if (!before) continue;
       const px = Math.hypot(local.x - before.x, local.y - before.y);
@@ -193,20 +222,29 @@ export function simulateCorrections(o: {
       up.send(now, input);
       pending.push(input);
       if (pending.length > 90) pending.shift();
-      predictFighter(
-        local,
-        input,
-        state.time + pending.length / RULES.tick,
-        false,
-      );
+      const next = newestStep(pending, owed);
+      if (next)
+        predictFighter(
+          local,
+          next.input,
+          state.time + next.tick / RULES.tick,
+          false,
+        );
     }
   }
-  return { seconds, snapshots, corrections };
+  // As the match reports' lead: pending inputs at a snapshot, plus the
+  // snapshot's age on average (half a snapshot interval).
+  const lead = snapshots
+    ? Math.round(
+        ((pendingSum / snapshots) * 1000) / RULES.tick + 500 / RULES.snapshot,
+      )
+    : 0;
+  return { seconds, snapshots, corrections, lead };
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   const [secs, lat, mine, theirs] = process.argv.slice(2);
-  const { seconds, snapshots, corrections } = simulateCorrections({
+  const { seconds, snapshots, corrections, lead } = simulateCorrections({
     seconds: Number(secs ?? 120),
     latency: Number(lat ?? 33),
     me: (mine as CharacterId) ?? "tidefin",
@@ -215,6 +253,13 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     noSkill: process.env.NO_SKILL === "1",
     noBasic: process.env.NO_BASIC === "1",
     noCarry: process.env.NO_CARRY === "1",
+    noOwed: process.env.NO_OWED === "1",
+    level: (process.env.BOT_LEVEL as BotDifficulty | undefined) ?? "normal",
+    fps: Number(process.env.FPS ?? 60),
+    seed: Number(process.env.SEED ?? 11),
+    jitter: Number(process.env.JITTER ?? 4),
+    stallChance: Number(process.env.STALL_CHANCE ?? 0),
+    stallMs: Number(process.env.STALL_MS ?? 0),
   });
   const by = new Map<string, Correction[]>();
   for (const c of corrections) {
@@ -223,7 +268,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     by.get(key)!.push(c);
   }
   console.log(
-    `${corrections.length} corrections over 4 px in ${seconds} s (${(corrections.length / (seconds / 60)).toFixed(1)}/min), ${snapshots} snapshots`,
+    `${corrections.length} corrections over 4 px in ${seconds} s (${(corrections.length / (seconds / 60)).toFixed(1)}/min), ${snapshots} snapshots, lead ${lead} ms`,
   );
   for (const [key, list] of [...by].sort((a, b) => b[1].length - a[1].length)) {
     const px = list.map((c) => c.px).sort((a, b) => a - b);

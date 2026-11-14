@@ -101,12 +101,23 @@ const PULL_GAP = 6;
  * Clients send every tick while playing (even when idle), so inputs that
  * stop for `staleTicks` mean a lost connection: the fighter stops walking
  * instead of running on its last input until the socket times out.
+ *
+ * A tick with nothing queued runs your last input again (the next one is
+ * late, not lost: Wi-Fi often holds a phone's packets for a moment), so it
+ * took a step your phone will predict for the late input. That step is
+ * owed: when the late inputs arrive, that many are folded into one tick
+ * (merged, as a burst is), so the server takes one step per input, as the
+ * phone predicts. Without this, every hiccup left the fighter a step ahead
+ * of the phone and every later catch-up a step behind: "unexplained" jumps
+ * in the match reports (docs/network-performance.md, section 12).
  */
 export const INPUT_QUEUE = {
   depth: 2,
   cap: 8,
   standingTicks: 30,
   staleTicks: 15,
+  /** Ticks an unpaid debt waits for the rest of a burst (see drainInputs). */
+  unpaidTicks: 2,
 };
 export class Arena {
   activityStatus?: "saving" | "saved" | "unavailable";
@@ -157,6 +168,10 @@ export class Arena {
       standing: number;
       minDepth: number;
       idle: number;
+      /** Ticks that ran the last input again with nothing queued. */
+      owed: number;
+      /** Ticks in a row a debt was left unpaid with the queue emptied. */
+      unpaid: number;
     }
   >();
   nextPracticeZone = 0;
@@ -567,6 +582,8 @@ export class Arena {
         standing: 0,
         minDepth: Infinity,
         idle: 0,
+        owed: 0,
+        unpaid: 0,
       };
       this.inputQueues.set(p.id, q);
     }
@@ -590,11 +607,12 @@ export class Arena {
   clearInputQueue(id?: string) {
     if (id === undefined) this.inputQueues.clear();
     else this.inputQueues.delete(id);
+    for (const p of this.players) if (id === undefined || p.id === id) delete p.owed;
   }
   /** Apply this tick's queued inputs. Call before tick(). */
   drainInputs() {
     if (this.phase !== "playing") {
-      if (this.inputQueues.size) this.inputQueues.clear();
+      if (this.inputQueues.size) this.clearInputQueue();
       return;
     }
     for (const [id, q] of this.inputQueues) {
@@ -605,14 +623,31 @@ export class Arena {
       }
       q.minDepth = Math.min(q.minDepth, q.inputs.length);
       if (!q.inputs.length) {
-        if (++q.idle === INPUT_QUEUE.staleTicks)
+        if (++q.idle === INPUT_QUEUE.staleTicks) {
           p.lastInput = { ...p.lastInput, dx: 0, dy: 0, basic: false };
+          // A pause, not a hiccup: the inputs for these ticks were never
+          // made (a hidden tab), so the next ones are not late.
+          q.owed = 0;
+        } else if (q.idle < INPUT_QUEUE.staleTicks) q.owed++;
+        this.showOwed(p, q.owed);
         continue;
       }
       q.idle = 0;
       // Burst: catch up to the newest inputs now (merged as they always
       // were), keeping at most `depth` waiting.
       let apply = Math.max(1, q.inputs.length - INPUT_QUEUE.depth);
+      // Late inputs whose steps a repeated tick already took: fold them in.
+      apply = Math.max(apply, Math.min(q.inputs.length, 1 + q.owed));
+      q.owed = Math.max(0, q.owed - (apply - 1));
+      // The burst is used up and some of the debt is left: the rest may
+      // still be on its way (a tick later), but if the phone itself froze,
+      // its input clock skipped those ticks and no inputs are coming for
+      // them. Unpaid for `unpaidTicks` ticks, the debt is forgotten (else
+      // the phone would predict every later input a step short).
+      if (q.owed > 0 && q.inputs.length <= apply) {
+        if (++q.unpaid > INPUT_QUEUE.unpaidTicks) q.owed = q.unpaid = 0;
+      } else q.unpaid = 0;
+      this.showOwed(p, q.owed);
       // A queue that never emptied for a second adds standing latency:
       // apply one extra input to shorten it.
       if (++q.standing >= INPUT_QUEUE.standingTicks) {
@@ -623,6 +658,11 @@ export class Arena {
       for (let i = 0; i < apply && q.inputs.length; i++)
         this.submit(p, q.inputs.shift()!);
     }
+  }
+  /** Tell the phone how many late inputs will be folded (Fighter.owed). */
+  private showOwed(p: Fighter, owed: number) {
+    if (owed > 0) p.owed = owed;
+    else delete p.owed;
   }
   submit(p: Fighter, input: Input) {
     if (this.phase !== "playing" || input.seq <= p.ack) return;

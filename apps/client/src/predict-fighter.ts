@@ -90,6 +90,65 @@ export function carryCurrent(p: Fighter, snapshotTime: number) {
     )
       s.until = snapshotTime + 1;
 }
+/**
+ * Several inputs folded into one server tick, merged as Arena.submit merges
+ * them: the newest movement and aim, every press (Basic, dash, jump) kept,
+ * the newest skill.
+ */
+export function foldInputs(inputs: readonly Input[]): Input {
+  const last = inputs[inputs.length - 1];
+  let skill = -1,
+    ex: boolean | undefined;
+  for (const i of inputs)
+    if (i.skill >= 0) {
+      skill = i.skill;
+      ex = i.ex;
+    }
+  const out: Input = {
+    ...last,
+    basic: inputs.some((i) => i.basic),
+    dash: inputs.some((i) => i.dash),
+    jump: inputs.some((i) => i.jump),
+    skill,
+  };
+  if (ex) out.ex = true;
+  else delete out.ex;
+  return out;
+}
+
+/**
+ * Your unanswered inputs as the server will step them, one tick each after
+ * the snapshot. On ticks when none of your inputs had arrived (Wi-Fi held
+ * them), the server ran your last one again: `owed` such steps
+ * (Fighter.owed). The late inputs those ticks stood in for take no step of
+ * their own: the server folds them into the next one (Arena.drainInputs).
+ * Predicting them as steps put you a step ahead of the server per held
+ * tick, and the catch-up pulled you back: the "unexplained" corrections.
+ */
+export function serverSteps(pending: readonly Input[], owed = 0): Input[] {
+  const fold = Math.max(0, Math.floor(owed));
+  if (pending.length <= fold) return [];
+  if (!fold) return pending.slice();
+  return [foldInputs(pending.slice(0, fold + 1)), ...pending.slice(fold + 1)];
+}
+
+/**
+ * The step a new input (just added at the end of `pending`) takes: the
+ * input to predict and its tick after the snapshot, or undefined while it is
+ * one of the inputs the server folds into a later tick.
+ */
+export function newestStep(
+  pending: readonly Input[],
+  owed = 0,
+): { input: Input; tick: number } | undefined {
+  const fold = Math.max(0, Math.floor(owed));
+  const tick = pending.length - fold;
+  if (tick < 1) return;
+  if (tick === 1 && fold)
+    return { input: foldInputs(pending.slice(0, fold + 1)), tick };
+  return { input: pending[pending.length - 1], tick };
+}
+
 /** Local movement prediction must obey the same knockout rules as the server. */
 export function predictFighter(
   p: Fighter,
