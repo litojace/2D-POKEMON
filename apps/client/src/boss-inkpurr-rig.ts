@@ -165,6 +165,7 @@ export function paintInkpurr(
     head: { x: o.x + placed.head.x, y: o.y + placed.head.y },
     core,
     moon: { x: o.x + placed.moon.x, y: o.y + placed.moon.y },
+    paw: { x: o.x + placed.paw.x, y: o.y + placed.paw.y },
     images: seen.size,
   };
 }

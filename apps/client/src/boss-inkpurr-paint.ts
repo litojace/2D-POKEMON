@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { INK_TRIMS } from "./boss-inkpurr-trims";
 /**
  * Inkpurr's painters, ported from the approved demo (scratchpad hd-ink):
  * pure canvas drawing (ctx, k) for every piece, in every one of the five
@@ -1739,18 +1740,30 @@ export function inkPieceSpecs(qScale = 1) {
   piece("star", [-12, -12, 12, 12], fq * 1.5, paintStar, { outline: false });
   return pieces;
 }
-/** Paint one piece in its own canvas, outline and grain it, trim it to its pixels. */
-function paintPiece(name, box, q, draw, opt) {
+/** A piece's full canvas size (its box at its density, plus a pad for the outline). */
+export function pieceCanvasSize(box, q) {
   const pad = 6;
-  const w = Math.ceil((box[2] - box[0]) * q) + pad * 2,
-    h = Math.ceil((box[3] - box[1]) * q) + pad * 2;
+  return {
+    pad,
+    w: Math.ceil((box[2] - box[0]) * q) + pad * 2,
+    h: Math.ceil((box[3] - box[1]) * q) + pad * 2,
+  };
+}
+/**
+ * Paint one piece, outlined and grained, into a canvas covering only `rect`
+ * ([x, y, w, h] inside its full canvas): its painted pixels, measured once
+ * offline (boss-inkpurr-trims.ts). No pixel is ever read back.
+ */
+export function paintPieceCanvas(name, box, q, draw, opt, rect) {
+  const { pad, w: fw, h: fh } = pieceCanvasSize(box, q);
+  const [rx, ry, w, h] = rect ?? [0, 0, fw, fh];
   const c = document.createElement("canvas");
   c.width = w;
   c.height = h;
   const g = c.getContext("2d");
   if (!g) return null;
   PQ = q;
-  g.translate(pad - box[0] * q, pad - box[1] * q);
+  g.translate(pad - box[0] * q - rx, pad - box[1] * q - ry);
   g.scale(q, q);
   g.lineJoin = "round";
   draw(g, opt.k || {});
@@ -1774,36 +1787,25 @@ function paintPiece(name, box, q, draw, opt) {
     }
     src = d;
   }
-  const data = src.getContext("2d").getImageData(0, 0, w, h).data;
-  let x0 = w,
-    y0 = h,
-    x1 = -1,
-    y1 = -1;
-  for (let y = 0; y < h; y++) {
-    const row = y * w * 4;
-    for (let x = 0; x < w; x++)
-      if (data[row + x * 4 + 3] > 3) {
-        if (x < x0) x0 = x;
-        if (x > x1) x1 = x;
-        if (y < y0) y0 = y;
-        if (y > y1) y1 = y;
-      }
-  }
-  if (x1 < 0) return null;
-  x0 = Math.max(0, x0 - 1);
-  y0 = Math.max(0, y0 - 1);
-  x1 = Math.min(w - 1, x1 + 1);
-  y1 = Math.min(h - 1, y1 + 1);
+  return { src, w, h, pad };
+}
+/** Paint one piece trimmed to its stored rectangle (the full box when the table has none). */
+function paintPiece(name, box, q, draw, opt) {
+  const { pad, w: fw, h: fh } = pieceCanvasSize(box, q);
+  const t = INK_TRIMS[name];
+  const rect = t && t[0] + t[2] <= fw && t[1] + t[3] <= fh ? t : [0, 0, fw, fh];
+  const out = paintPieceCanvas(name, box, q, draw, opt, rect);
+  if (!out) return null;
   return {
     name,
-    src,
-    sx: x0,
-    sy: y0,
-    w: x1 - x0 + 1,
-    h: y1 - y0 + 1,
+    src: out.src,
+    sx: 0,
+    sy: 0,
+    w: rect[2],
+    h: rect[3],
     q,
-    ox: (pad - box[0] * q - x0) / q,
-    oy: (pad - box[1] * q - y0) / q,
+    ox: (pad - box[0] * q - rect[0]) / q,
+    oy: (pad - box[1] * q - rect[1]) / q,
   };
 }
 /** Shelf-pack the pieces (tallest first) into one canvas. */

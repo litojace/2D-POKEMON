@@ -472,6 +472,7 @@ export function inkPlacements(P: InkPose, o: InkLookOpts) {
     mouth?: { x: number; y: number };
     eyes: { x: number; y: number }[];
     moonGlow: number;
+    paw: { x: number; y: number };
   } = {
     head: pt(m, 0, yS(40)),
     body: pt(m, 0, 0),
@@ -480,6 +481,7 @@ export function inkPlacements(P: InkPose, o: InkLookOpts) {
     moon: pt(m, 0, 0),
     eyes: [],
     moonGlow: 0,
+    paw: pt(m, 0, 0),
   };
   // the tail with its crescent, and the crescent's own light (it flickers on the real one only)
   const tr =
@@ -495,7 +497,8 @@ export function inkPlacements(P: InkPose, o: InkLookOpts) {
     x: tp.x + te.x * ca - te.y * sa,
     y: tp.y + te.x * sa + te.y * ca,
   };
-  const tz = v === 2 ? -999 : Math.min(A.tailZ, A.moonZ);
+  // from the side and from ¾ behind, the tail reads best leaving from behind the body: only its swing and crescent show past the outline
+  const tz = v === 2 || v === 3 ? -999 : Math.min(A.tailZ, A.moonZ);
   put("tail", `tail_${v}`, m, tp.x, tp.y, tz, { rot: tr, alpha: solid });
   const hot = (MOON_BY_PHASE[phase] + 0.4 * P.moon) * P.moonFlick * solid;
   put("moon", "moonHot", m, moonAt.x, moonAt.y, tz + 0.01, {
@@ -530,9 +533,25 @@ export function inkPlacements(P: InkPose, o: InkLookOpts) {
       m,
       sh.x,
       sh.y,
-      (AZ[v] as Record<string, number>)[side + pose],
+      // in profile the near paw at rest tucks against the body (a stub otherwise)
+      v === 2 && side === "R" && pose === "rest"
+        ? -500
+        : (AZ[v] as Record<string, number>)[side + pose],
       { rot, flip: mirror, alpha: solid },
     );
+    // where its left paw's tip is (the snuff's tendril grows out of it)
+    if (side === "L") {
+      const e = ARM_POSES[pose].s[0][3],
+        s0 = SH(side),
+        Vv = makeView(VIEWS[v].yaw);
+      const tip = Vv.P({ x: s0.x + e[0], y: s0.y + e[1], z: s0.z + e[2] }),
+        root = Vv.P(s0);
+      const dx = tip.x - root.x,
+        dy = tip.y - root.y,
+        c = Math.cos(rot),
+        s = Math.sin(rot);
+      out.paw = pt(m, sh.x + dx * c - dy * s, sh.y + dx * s + dy * c);
+    }
   }
   // the body (ears, gloss and rim baked in), the phase's dark, the hanging drips as one strip
   const bm = mul(mul(mul(m, T(0, baseY)), S(sx, sy)), T(0, -baseY));
