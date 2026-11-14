@@ -1551,8 +1551,9 @@ export function prismaPlacements(
 
 // ───────────────────────── the atlas ─────────────────────────
 /** Draw the pieces into one canvas (the atlas), returning each piece's spot. */
-export function packPrisma(phase: Phase, k: number) {
+export function packPrisma(phase: Phase, k: number, only?: Set<string>) {
   const list = prismaPieces(phase)
+    .filter((p) => !only || only.has(p.name))
     .map((p) => ({ p, w: Math.ceil(p.w * k + 2), h: Math.ceil(p.h * k + 2) }))
     .sort((a, b) => b.h - a.h);
   const width = 1024,
@@ -1597,7 +1598,7 @@ let guideUrls: Partial<Record<"calm" | "exposed", string>> = {};
  * in three-quarter view with its fan up; `exposed` opens its heart.
  * Empty without a canvas (outside a browser).
  */
-export function prismaGuideImage(exposed = false) {
+export function prismaGuideImage(exposed = false, paint = true) {
   const width = 340,
     height = 280,
     k = 1,
@@ -1615,21 +1616,27 @@ export function prismaGuideImage(exposed = false) {
     });
   const placed = prismaPlacements(P, 0.6, 1);
   if (
+    paint &&
     !guideUrls[key] &&
     typeof document !== "undefined" &&
     typeof document.createElement === "function"
   ) {
     try {
       const pk = 2;
-      const packed = packPrisma(1, pk);
+      // only the pieces this pose uses, on CPU canvases (read back into a PNG anyway)
+      const packed = packPrisma(
+        1,
+        pk,
+        new Set(placed.placements.map((q) => q.piece)),
+      );
       const sheet = document.createElement("canvas");
       sheet.width = packed.width;
       sheet.height = Math.max(1, packed.height);
-      const sctx = sheet.getContext("2d");
+      const sctx = sheet.getContext("2d", { willReadFrequently: true });
       const canvas = document.createElement("canvas");
       canvas.width = width;
       canvas.height = height;
-      const ctx = canvas.getContext("2d");
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
       if (sctx && ctx) {
         paintPrisma(sctx, packed.spots, pk);
         const spot = new Map(packed.spots.map((s) => [s.piece.name, s]));

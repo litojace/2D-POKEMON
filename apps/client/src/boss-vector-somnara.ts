@@ -1473,8 +1473,9 @@ export function somnaraPieces(phase: Phase): Piece[] {
 
 // ───────────────────────── the atlas ─────────────────────────
 /** Lay the pieces out on shelves of one canvas `k` px per unit wide. */
-export function packPieces(phase: Phase, k: number) {
+export function packPieces(phase: Phase, k: number, only?: Set<string>) {
   const list = somnaraPieces(phase)
+    .filter((p) => !only || only.has(p.name))
     .map((p) => ({ p, w: Math.ceil(p.w * k + 2), h: Math.ceil(p.h * k + 2) }))
     .sort((a, b) => b.h - a.h);
   const width = 1024,
@@ -1519,7 +1520,7 @@ let guideUrls: Partial<Record<"calm" | "exposed", string>> = {};
  * at three-quarter; `exposed` shows it woken with its star-heart open. Empty
  * without a canvas (outside a browser).
  */
-export function somnaraGuideImage(exposed = false) {
+export function somnaraGuideImage(exposed = false, paint = true) {
   const width = 420,
     height = 300,
     k = 0.85,
@@ -1538,21 +1539,27 @@ export function somnaraGuideImage(exposed = false) {
   });
   const placed = somnaraPlacements(P, 0.95);
   if (
+    paint &&
     !guideUrls[key] &&
     typeof document !== "undefined" &&
     typeof document.createElement === "function"
   ) {
     try {
       const pk = 2;
-      const packed = packPieces(1, pk);
+      // only the pieces this pose uses, on CPU canvases (read back into a PNG anyway)
+      const packed = packPieces(
+        1,
+        pk,
+        new Set(placed.placements.map((q) => q.piece)),
+      );
       const sheet = document.createElement("canvas");
       sheet.width = packed.width;
       sheet.height = Math.max(1, packed.height);
-      const sctx = sheet.getContext("2d");
+      const sctx = sheet.getContext("2d", { willReadFrequently: true });
       const canvas = document.createElement("canvas");
       canvas.width = width;
       canvas.height = height;
-      const ctx = canvas.getContext("2d");
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
       if (sctx && ctx) {
         paintPieces(sctx, packed.spots, pk);
         const spot = new Map(packed.spots.map((s) => [s.piece.name, s]));

@@ -981,8 +981,11 @@ export interface Painted {
   ox: number;
   oy: number;
 }
-/** Paint one piece: its own canvas, a soft darker outline, trimmed to its pixels. */
-export function paintPiece(p: LotlPiece, phase: number): Painted | null {
+/**
+ * Paint one piece into its own (CPU) canvas with a soft darker outline: the
+ * whole box plus a pad, untrimmed, so no pixel is read back.
+ */
+export function paintPieceFull(p: LotlPiece, phase: number): Painted | null {
   const w = Math.ceil((p.box[2] - p.box[0]) * p.q) + PAD * 2,
     h = Math.ceil((p.box[3] - p.box[1]) * p.q) + PAD * 2;
   const c = document.createElement("canvas");
@@ -1012,6 +1015,20 @@ export function paintPiece(p: LotlPiece, phase: number): Painted | null {
     c.width = c.height = 0;
     src = d;
   }
+  return {
+    canvas: src,
+    q: p.q,
+    ox: PAD - p.box[0] * p.q,
+    oy: PAD - p.box[1] * p.q,
+  };
+}
+/** Paint one piece: its own canvas, a soft darker outline, trimmed to its pixels. */
+export function paintPiece(p: LotlPiece, phase: number): Painted | null {
+  const full = paintPieceFull(p, phase);
+  if (!full) return null;
+  const src = full.canvas,
+    w = src.width,
+    h = src.height;
   const data = src.getContext("2d")!.getImageData(0, 0, w, h).data;
   let x0 = w,
     y0 = h,
@@ -1081,11 +1098,24 @@ export function pack(list: { name: string; p: Painted }[]) {
 
 let guideUrls: Partial<Record<"calm" | "exposed", string>> = {};
 /**
+ * The crop around each look: its pixels (alpha over 12), measured once from
+ * the painted picture so that no pixel is read back at runtime
+ * (tests/visual/raid-guide-pictures.spec.ts checks it still fits).
+ */
+export const LOTL_GUIDE_CROPS = {
+  calm: [92, 88, 188, 176],
+  exposed: [80, 155, 218, 110],
+} as const;
+/** Pieces painted for the guide (tests count them: only the pose's own). */
+export const tidelotlGuideStats = { pieces: 0 };
+/**
  * Tidelotl as an image URL for the briefing diagrams (drawn once per look):
  * standing at three-quarter view, or (`exposed`) stranded belly-flat with its
- * pearl open. Empty without a canvas (outside a browser).
+ * pearl open. Empty without a canvas (outside a browser). With `paint` false
+ * it only answers what is known: the briefing paints later, off its render
+ * (raid-guide-sprites.ts).
  */
-export function tidelotlGuideImage(exposed = false) {
+export function tidelotlGuideImage(exposed = false, paint = true) {
   const width = 360,
     height = 300,
     k = 0.8,
@@ -1115,12 +1145,12 @@ export function tidelotlGuideImage(exposed = false) {
       mouth: "smirk",
     });
   const layout = tidelotlPlacements(P, 1, 1, false);
-  let crop: [number, number, number, number] = [60, 40, 240, 210];
   const core: [number, number] = [
     cx + layout.pearl.x * k,
     cy + layout.pearl.y * k,
   ];
   if (
+    paint &&
     !guideUrls[key] &&
     typeof document !== "undefined" &&
     typeof document.createElement === "function"
@@ -1136,7 +1166,10 @@ export function tidelotlGuideImage(exposed = false) {
         for (const pl of layout.placements) {
           const pc = byName.get(pl.piece);
           if (!pc) continue;
-          if (!painted.has(pl.piece)) painted.set(pl.piece, paintPiece(pc, 1));
+          if (!painted.has(pl.piece)) {
+            painted.set(pl.piece, paintPieceFull(pc, 1));
+            tidelotlGuideStats.pieces++;
+          }
           const im = painted.get(pl.piece);
           if (!im) continue;
           ctx.save();
@@ -1147,22 +1180,7 @@ export function tidelotlGuideImage(exposed = false) {
           ctx.drawImage(im.canvas, -im.ox, -im.oy);
           ctx.restore();
         }
-        const d = ctx.getImageData(0, 0, width, height).data;
-        let x0 = width,
-          y0 = height,
-          x1 = 0,
-          y1 = 0;
-        for (let y = 0; y < height; y++)
-          for (let x = 0; x < width; x++)
-            if (d[(y * width + x) * 4 + 3] > 12) {
-              x0 = Math.min(x0, x);
-              x1 = Math.max(x1, x);
-              y0 = Math.min(y0, y);
-              y1 = Math.max(y1, y);
-            }
-        if (x1 > x0) crop = [x0, y0, x1 - x0 + 1, y1 - y0 + 1];
         guideUrls[key] = canvas.toDataURL("image/png");
-        guideCrops[key] = crop;
       }
     } catch {
       /* No drawing surface: the diagram shows no picture. */
@@ -1172,13 +1190,10 @@ export function tidelotlGuideImage(exposed = false) {
     url: guideUrls[key] ?? "",
     width,
     height,
-    crop: guideCrops[key] ?? crop,
+    crop: LOTL_GUIDE_CROPS[key] as readonly [number, number, number, number],
     core,
   };
 }
-const guideCrops: Partial<
-  Record<"calm" | "exposed", [number, number, number, number]>
-> = {};
 /** Forget the drawn pictures (tests). */
 export function resetTidelotlGuide() {
   guideUrls = {};

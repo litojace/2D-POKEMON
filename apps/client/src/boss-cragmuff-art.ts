@@ -154,6 +154,12 @@ function leafPath(x, y, tx, ty, w, shape = "leaf", bend = 0) {
 }
 /** Atlas px per rig px of the piece being painted (blur radii and shadows are in canvas px). */
 let PQ = 1;
+/**
+ * Paint helper canvases the CPU rasterises: set while painting the briefing's
+ * picture, which is read back into a PNG anyway (its blurs cost a fraction of
+ * the GPU path where the GPU is emulated). The battle atlas keeps the default.
+ */
+let SOFT = false;
 function norm2(x, y) {
   const l = Math.hypot(x, y) || 1;
   return { x: x / l, y: y / l };
@@ -432,7 +438,7 @@ function innerGlow(ctx, path, color, blur, dx = 0, dy = 0) {
   const c = document.createElement("canvas");
   c.width = ctx.canvas.width;
   c.height = ctx.canvas.height;
-  const g = c.getContext("2d");
+  const g = c.getContext("2d", SOFT ? { willReadFrequently: true } : undefined);
   g.fillStyle = "#000";
   g.fillRect(0, 0, c.width, c.height);
   g.setTransform(ctx.getTransform());
@@ -2596,6 +2602,7 @@ export function paintCragmuffPicture(
 ) {
   const v = 1,
     A = ATT[v];
+  SOFT = true;
   ctx.save();
   ctx.translate(cx, groundY);
   ctx.scale(k, k);
@@ -2624,5 +2631,6 @@ export function paintCragmuffPicture(
   paintHornSet(ctx, { v, ph: phase, part: "front" });
   ctx.restore();
   ctx.restore();
+  SOFT = false;
   return { core: { x: cx + A.gem.x * k, y: groundY + A.gem.y * k } };
 }
