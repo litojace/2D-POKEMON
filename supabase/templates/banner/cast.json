@@ -1,0 +1,71 @@
+[
+  {
+    "name": "court",
+    "court": "classic"
+  },
+  {
+    "name": "cindrake",
+    "id": "cindrake",
+    "state": "skill3",
+    "angle": "RIGHT",
+    "phase": 0.5,
+    "skin": "cindrake-blue-flame",
+    "size": 360
+  },
+  {
+    "name": "terradon",
+    "id": "terradon",
+    "state": "hurt",
+    "angle": "LEFT",
+    "phase": 0.25,
+    "skin": "terradon-snowball",
+    "size": 360
+  },
+  {
+    "name": "voltkit",
+    "id": "voltkit",
+    "state": "victory",
+    "angle": "FRONT",
+    "phase": 0.2,
+    "skin": null,
+    "size": 360
+  },
+  {
+    "name": "mystowl",
+    "id": "mystowl",
+    "state": "skill1",
+    "angle": "LEFT",
+    "phase": 0.4,
+    "skin": "mystowl-witchs-familiar",
+    "size": 360
+  },
+  {
+    "name": "tidefin",
+    "id": "tidefin",
+    "state": "victory",
+    "angle": "LEFT",
+    "phase": 0.5,
+    "skin": "tidefin-koi-pond",
+    "size": 360,
+    "feet": 0.62
+  },
+  {
+    "name": "lumoth",
+    "id": "lumoth",
+    "state": "victory",
+    "angle": "LEFT",
+    "phase": 0.25,
+    "skin": "lumoth-paper-lantern",
+    "size": 360,
+    "feet": 0.62
+  },
+  {
+    "name": "coilemur",
+    "id": "coilemur",
+    "state": "victory",
+    "angle": "RIGHT",
+    "phase": 0.25,
+    "skin": "coilemur-firecracker",
+    "size": 360
+  }
+]
