@@ -360,6 +360,7 @@ import { ConnectionWatch, dropMessage } from "./connection-loss";
 import { watchSceneSwitch } from "./scene-switch-place";
 // Last: the hub's aero glass overrides the panels' own fills.
 import "./ui/aero.css";
+import "./ui/phone-fit.css";
 const audio = new AudioManager();
 audio.start();
 const allAbilities = new Map(
