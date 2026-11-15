@@ -125,17 +125,19 @@ export type LobbyAction =
   | "leave-party"
   | "farm"
   | "more-play";
+/**
+ * Six, so each is a finger (44 pt) tall on every phone. The Wardrobe is the
+ * Shop's other tab (the same screen), and the Journey has its card on the
+ * Lobby at every size.
+ */
 const RAIL: [LobbyAction, string, Parameters<typeof menuIcon>[0]][] = [
   ["fighters", "Fighters", "user"],
-  ["wardrobe", "Wardrobe", "wardrobe"],
   ["shop", "Shop", "shop"],
   ["raids", "Raids", "bestiary"],
-  ["journey", "Journey", "sparkle"],
   ["missions", "Missions", "missions"],
   ["ranks", "Ranks", "leaderboard"],
   ["friends", "Friends", "friends"],
 ];
-const EMOTES = ["👋", "❤️", "😂", "GG", "🔥"] as const;
 
 /** Another party member, as they stand on your Lobby stage. */
 export interface LobbyPartyMember {
@@ -276,10 +278,6 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
   <button type="button" class="lobby-card lobby-missions-card" data-lobby-action="missions" id="lobby-missions-card"></button>
   <button type="button" class="lobby-card lobby-friends-card" data-lobby-action="friends" id="lobby-friends-card"><span class="lobby-card-kicker">Friends</span><b id="lobby-friends-online">Friends online</b><small>Invite, join or watch</small></button>
 </aside>
-<div class="lobby-emotes" role="group" aria-label="Emotes" data-open="false">
-  <button type="button" class="lobby-emote-toggle" aria-expanded="false" aria-label="Emotes" title="Emotes">😊<span aria-hidden="true">Emotes</span></button>
-  <div class="lobby-emote-list">${EMOTES.map((e) => `<button type="button" data-lobby-emote="${e}" aria-label="Emote ${e}">${e}</button>`).join("")}</div>
-</div>
 <div class="lobby-play">
   <div class="lobby-mode-menu" id="lobby-mode-menu" role="menu" aria-label="Game mode" hidden>${LOBBY_MODES.map(
     (m) =>
@@ -297,8 +295,7 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
   const $ = <T extends HTMLElement>(id: string) =>
     layer.querySelector<T>(`#${id}`)!;
   const menu = $("lobby-mode-menu"),
-    modeToggle = $<HTMLButtonElement>("lobby-mode"),
-    emotes = layer.querySelector<HTMLElement>(".lobby-emotes")!;
+    modeToggle = $<HTMLButtonElement>("lobby-mode");
   const setMenu = (open: boolean) => {
     menu.hidden = !open;
     modeToggle.setAttribute("aria-expanded", String(open));
@@ -307,23 +304,17 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
         .querySelector<HTMLButtonElement>(`[data-lobby-mode="${mode}"]`)
         ?.focus({ preventScroll: true });
   };
-  const setEmotes = (open: boolean) => {
-    emotes.dataset.open = String(open);
-    emotes
-      .querySelector(".lobby-emote-toggle")!
-      .setAttribute("aria-expanded", String(open));
-  };
   let bubbleTimer: ReturnType<typeof setTimeout> | undefined;
-  /** The bubble over your fighter: an emote, or a line it says. */
-  const say = (text: string, line: boolean, ms: number) => {
+  /** The bubble over your fighter: a line it says. */
+  const say = (text: string, ms: number) => {
     const bubble = $<HTMLOutputElement>("lobby-emote-bubble");
     bubble.textContent = text;
-    bubble.classList.toggle("is-line", line);
+    bubble.classList.add("is-line");
     bubble.hidden = false;
-    const spot = line ? linePlace(bubble) : undefined;
-    bubble.style.top = spot ? `${spot.top}px` : "";
-    bubble.style.left = spot ? `${spot.left}px` : "";
-    bubble.style.setProperty("--tail", spot ? `${spot.tail}px` : "0px");
+    const spot = linePlace(bubble);
+    bubble.style.top = `${spot.top}px`;
+    bubble.style.left = `${spot.left}px`;
+    bubble.style.setProperty("--tail", `${spot.tail}px`);
     bubble.classList.remove("is-popping");
     void bubble.offsetWidth;
     bubble.classList.add("is-popping");
@@ -393,7 +384,6 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
     lastQuip = quip.text;
     say(
       quip.text,
-      true,
       Math.min(4200, Math.max(2600, 1600 + quip.text.length * 50)),
     );
     if (now < movingUntil || options.reduced) return;
@@ -417,17 +407,10 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
       target.closest<HTMLElement>("[data-lobby-step]")?.dataset.lobbyStep;
     const pick = target.closest<HTMLElement>("[data-lobby-mode]")?.dataset
       .lobbyMode as LobbyMode | undefined;
-    const emote =
-      target.closest<HTMLElement>("[data-lobby-emote]")?.dataset.lobbyEmote;
     if (target.closest("#lobby-mode")) return setMenu(menu.hidden);
     // A tap anywhere else closes the menu, and so does its own "Join or
     // watch", which opens the play drawer over it.
     if (!target.closest("#lobby-mode-menu") || action) setMenu(false);
-    // The emotes, like the mode menu, close on a tap anywhere else.
-    if (emotes.dataset.open === "true" && !target.closest(".lobby-emotes"))
-      setEmotes(false);
-    if (target.closest(".lobby-emote-toggle"))
-      return setEmotes(emotes.dataset.open !== "true");
     if (pick) {
       mode = pick;
       saveLobbyMode(mode);
@@ -439,11 +422,6 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
         );
       setMenu(false);
       modeToggle.focus({ preventScroll: true });
-      return;
-    }
-    if (emote) {
-      say(emote, false, 2600);
-      setEmotes(false);
       return;
     }
     if (target.closest("#lobby-fighter-tap")) return poke();

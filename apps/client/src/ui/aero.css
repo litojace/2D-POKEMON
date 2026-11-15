@@ -43,7 +43,6 @@
     .lobby-rail button,
     .lobby-card,
     .lobby-mode,
-    .lobby-emotes button,
     .lobby-party-bar,
     .lobby-mode-menu
   ),
@@ -64,7 +63,6 @@
     .lobby-rail button,
     .lobby-card,
     .lobby-mode,
-    .lobby-emotes button,
     .lobby-party-bar,
     .lobby-mode-menu
   ),
@@ -75,10 +73,7 @@
 /* Hover and keyboard focus: the rim lights up gold. */
 :root body.hub-active .header-menu > summary:is(:hover, :focus-visible),
 .lobby-layer
-  :is(.lobby-rail button, .lobby-card, .lobby-mode, .lobby-emotes button):is(
-    :hover,
-    :focus-visible
-  ),
+  :is(.lobby-rail button, .lobby-card, .lobby-mode):is(:hover, :focus-visible),
 .plaza-layer
   :is(.pz-round, .pz-act:not(.big, .pz-interact, .cd)):is(
     :hover,
