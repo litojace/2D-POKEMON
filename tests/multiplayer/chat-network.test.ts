@@ -47,7 +47,9 @@ async function setup(
       friends:
         token === lead.token
           ? [{ id: pal.account.id, name: pal.account.displayName }]
-          : [{ id: lead.account.id, name: lead.account.displayName }],
+          : token === pal.token
+            ? [{ id: lead.account.id, name: lead.account.displayName }]
+            : [],
       incoming: [],
       outgoing: [],
     };
@@ -181,4 +183,54 @@ it("room chat: typing before the battle reaches everyone in the room", async () 
   expect(
     await request(f.a.s, "chat-send", { channel: "room", quick: "attack" }),
   ).toEqual({ ok: false, error: "Calls are for battles." });
+});
+
+it("Nearby on the Plaza: quick chat only, to everyone in the copy, with the Plaza's emote", async () => {
+  const f = await setup();
+  for (const who of [f.a, f.b])
+    expect(
+      (await request(who.s, "plaza-join", { character: "voltkit" })).ok,
+    ).toBe(true);
+  expect(
+    await request(f.a.s, "chat-send", { channel: "place", text: "hello" }),
+  ).toEqual({ ok: false, error: "Here you can use quick chat." });
+  expect(
+    await request(f.a.s, "chat-send", { channel: "place", quick: "wave" }),
+  ).toEqual({ ok: true });
+  await settle();
+  for (const who of [f.a, f.b])
+    expect(who.heard.map((l) => [l.channel, l.quick])).toEqual([
+      ["place", "wave"],
+    ]);
+  // Not on the Plaza: not in it.
+  expect(f.x.heard).toEqual([]);
+  // The wave also pops over the sender's head in the Plaza's own state.
+  const plazaWorld = server!.plaza as unknown as {
+    visitors: Map<string, { emote: number }>;
+  };
+  expect(plazaWorld.visitors.get(f.a.s.id!)?.emote).toBe(1); // 👋 is first
+});
+
+it("Nearby on a farm: your own or a friend's, never a stranger's", async () => {
+  const f = await setup();
+  expect(
+    (await request(f.a.s, "chat-farm", { owner: f.lead.account.id })).ok,
+  ).toBe(true);
+  expect(
+    (await request(f.b.s, "chat-farm", { owner: f.lead.account.id })).ok,
+  ).toBe(true);
+  expect(
+    await request(f.x.s, "chat-farm", { owner: f.lead.account.id }),
+  ).toEqual({ ok: false, error: "Only friends can visit." });
+  expect(
+    await request(f.b.s, "chat-send", { channel: "place", quick: "party" }),
+  ).toEqual({ ok: true });
+  await settle();
+  expect(f.a.heard.map((l) => l.quick)).toEqual(["party"]);
+  expect(f.x.heard).toEqual([]);
+  // Leaving the farm leaves its chat.
+  await request(f.b.s, "chat-farm", { owner: null });
+  expect(
+    (await request(f.b.s, "chat-send", { channel: "place", quick: "wave" })).ok,
+  ).toBe(false);
 });

@@ -3,6 +3,7 @@ import {
   quickKind,
   quickRefusal,
   quickSeenInBattle,
+  quickText,
   typingRefusal,
   type ChatChannel,
   type ChatLine,
@@ -10,6 +11,21 @@ import {
   type ChatQuick,
 } from "../../../packages/shared/src/chat.js";
 import { filterChat } from "../../../packages/shared/src/chat-filter.js";
+import {
+  PLAZA_EMOTES,
+  type PlazaEmote,
+} from "../../../packages/shared/src/plaza.js";
+
+/**
+ * The Plaza's own emote for a quick line, if it has one: the Plaza shows it
+ * over the sender's head through its snapshots, as before chat.
+ */
+export function plazaEmoteFor(quick: ChatQuick): PlazaEmote | null {
+  const text = quickText(quick);
+  return (PLAZA_EMOTES as readonly string[]).includes(text)
+    ? (text as PlazaEmote)
+    : null;
+}
 
 /**
  * In-game chat on the server (docs/chat-plan.md): pure state, no sockets,

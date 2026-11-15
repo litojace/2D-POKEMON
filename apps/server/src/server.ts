@@ -62,7 +62,12 @@ import {
 import { PlazaWorld, type PlazaEvent } from "./plaza.js";
 import { PLAZA, type PlazaRecord } from "../../../packages/shared/src/plaza.js";
 import { Parties, type Party, type PartyAppearance } from "./party.js";
-import { ChatHub, type ChatMember, type ChatRoute } from "./chat.js";
+import {
+  ChatHub,
+  plazaEmoteFor,
+  type ChatMember,
+  type ChatRoute,
+} from "./chat.js";
 import { PlazaAppearance } from "./plaza-appearance.js";
 import { MatchLedger, matchSummary } from "./match-summary.js";
 import {
@@ -273,6 +278,8 @@ export function createArenaServer(
   const roomInviteCooldowns = new Map<string, number>();
   const roomInvitesPending = new Set<string>();
   const parties = new Parties();
+  /** Which farm each socket is on, for chat's Nearby channel (socket id → owner). */
+  const farmHere = new Map<string, string>();
   /** In-game chat (docs/chat-plan.md): party and room channels. */
   const chat = new ChatHub({
     freeText: () => options.chatFreeText ?? process.env.CHAT_FREE_TEXT === "on",
@@ -2114,8 +2121,65 @@ export function createArenaServer(
           members,
         };
       }
+      if (channel === "place") {
+        // The Plaza: everyone in the same copy.
+        const copy = plaza.plazaOf(socket.id);
+        if (copy !== undefined)
+          return {
+            channel,
+            key: `place:plaza:${copy}`,
+            inBattle: false,
+            members: plaza
+              .mates(socket.id)
+              .map((m) => chatMember(m.accountId, m.name)),
+          };
+        // A farm: everyone who said they are on it (checked when they did).
+        const owner = farmHere.get(socket.id);
+        if (owner) {
+          const members = new Map<string, ChatMember>();
+          for (const [id, o] of farmHere) {
+            const who = io.sockets.sockets.get(id)?.data.account as
+              Account | undefined;
+            if (o === owner && who)
+              members.set(who.id, chatMember(who.id, who.displayName));
+          }
+          return {
+            channel,
+            key: `place:farm:${owner}`,
+            inBattle: false,
+            members: [...members.values()],
+          };
+        }
+      }
       return null;
     };
+    socket.on("chat-farm", async (data: unknown, cb: unknown) => {
+      if (!allowed(10) || !requirePlayer(cb)) return;
+      const owner = (data as { owner?: unknown } | null)?.owner;
+      if (owner === null || owner === undefined) {
+        farmHere.delete(socket.id);
+        return reply(cb, { ok: true });
+      }
+      if (typeof owner !== "string" || !/^[0-9a-f-]{36}$/i.test(owner))
+        return fail(cb, "Choose a farm.");
+      const me = account()!;
+      // Your own farm, or a friend's (as the farm's own visits).
+      if (owner !== me.id) {
+        try {
+          const list = (await accounts.rpc(
+            socket.data.accessToken,
+            "arena_friends",
+            {},
+          )) as { friends?: { id?: unknown }[] } | null;
+          if (!list?.friends?.some((f) => f?.id === owner))
+            return fail(cb, "Only friends can visit.");
+        } catch {
+          return fail(cb, "Couldn't check that farm. Try again.");
+        }
+      }
+      farmHere.set(socket.id, owner);
+      reply(cb, { ok: true });
+    });
     socket.on("chat-send", (data: unknown, cb: unknown) => {
       if (!allowed(10) || !requirePlayer(cb)) return;
       const input = (data ?? {}) as {
@@ -2133,6 +2197,11 @@ export function createArenaServer(
           : { text: input.text },
       );
       if (!sent.ok) return fail(cb, sent.error);
+      // On the Plaza an emote also pops over your head for everyone, the
+      // way the Plaza's own emotes always have (older apps see it too).
+      const pop = sent.line.quick && plazaEmoteFor(sent.line.quick);
+      if (route.channel === "place" && pop)
+        plaza.emote(socket.id, pop, Date.now());
       for (const id of sent.deliver)
         for (const s of accountSockets(id)) s.emit("chat", sent.line);
       reply(cb, { ok: true });
@@ -2416,6 +2485,7 @@ export function createArenaServer(
         chat.forget(who.id);
       }
       plaza.leave(socket.id);
+      farmHere.delete(socket.id);
       laggingSockets.delete(socket.id);
       stopWatching();
       const s = getSession(socket.id);
