@@ -87,9 +87,25 @@ export async function openPlayPanel(page: Page) {
   await expect(page.locator("#lobby-mode-menu")).toBeHidden();
 }
 
-/** A button on the Lobby's menu rail: fighters, wardrobe, shop, raids, journey, missions, ranks, friends. */
+/**
+ * A Lobby screen. The menu rail has fighters, shop, raids, missions, ranks
+ * and friends; the Wardrobe is the Shop's other tab, and the Journey opens
+ * from its card.
+ */
 export async function hubMenu(page: Page, action: string) {
+  if (action === "wardrobe") return openWardrobe(page);
+  if (action === "journey") return page.click("#lobby-journey-card");
   await page.click(`.lobby-rail [data-lobby-action="${action}"]`);
+}
+
+/** The Wardrobe: the Shop's other tab. */
+export async function openWardrobe(page: Page) {
+  await page.click('.lobby-rail [data-lobby-action="shop"]');
+  await page.click('.fit-room [data-ui-mode="wardrobe"]');
+  await expect(page.locator(".fit-room")).toHaveAttribute(
+    "data-fit-mode",
+    "wardrobe",
+  );
 }
 
 /**

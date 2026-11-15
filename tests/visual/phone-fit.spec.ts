@@ -1,5 +1,5 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
-import { openHub, openPlayPanel, settle, snap } from "./helpers";
+import { hubMenu, openHub, openPlayPanel, settle, snap } from "./helpers";
 import { fakeFarm } from "./farm-fake";
 import { fakeBistro } from "./bistro-fake";
 
@@ -296,7 +296,7 @@ async function look(page: Page, inset: number[]) {
 }
 
 const rail = (action: string) => async (page: Page) => {
-  await page.click(`.lobby-rail [data-lobby-action="${action}"]`);
+  await hubMenu(page, action);
   await expect(page.locator(".ui-panel-host .ui-panel").first()).toBeVisible();
 };
 const HUB: [string, (page: Page) => Promise<void>][] = [
