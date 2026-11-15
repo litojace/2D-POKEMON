@@ -7,6 +7,7 @@
  */
 import type Phaser from "phaser";
 import { addCanvasTexture } from "./canvas-texture";
+import { keepPrepainted, takePrepainted } from "./boss-prepaint";
 import { paintLumiwickAtlas, type AtlasFrame } from "./boss-lumiwick-paint";
 import {
   lumiwickFacing,
@@ -47,13 +48,16 @@ const rigs = new WeakMap<Phaser.GameObjects.Graphics, Rig>();
 export function prewarmLumiwick(scene: Phaser.Scene) {
   atlas(scene);
 }
+/** Paint the atlas ahead, in the raid room (boss-prepaint.ts). */
+export const prepaintLumiwick = () =>
+  keepPrepainted("emberwing", paintLumiwickAtlas);
 /** The atlas's size in bytes (RGBA), once painted. */
 export const lumiwickAtlasBytes = (scene: Phaser.Scene) =>
   atlases.get(scene.textures)?.bytes ?? 0;
 function atlas(scene: Phaser.Scene) {
   const known = atlases.get(scene.textures);
   if (known && scene.textures.exists(LUMI_ATLAS)) return known.frames;
-  const painted = paintLumiwickAtlas();
+  const painted = takePrepainted("emberwing", paintLumiwickAtlas);
   const texture = addCanvasTexture(scene.textures, LUMI_ATLAS, painted.canvas);
   for (const [name, f] of Object.entries(painted.frames))
     texture?.add(name, 0, f.x, f.y, f.w, f.h);

@@ -8,6 +8,7 @@
  */
 import type Phaser from "phaser";
 import { addCanvasTexture } from "./canvas-texture";
+import { keepPrepainted, takePrepainted } from "./boss-prepaint";
 import { buildAtlas } from "./boss-cragmuff-art";
 import { nextFacing } from "./boss-vector-grumble";
 import {
@@ -56,9 +57,12 @@ const clamp = (v: number, a = 0, b = 1) => Math.max(a, Math.min(b, v));
 export const prewarmAtlas = (scene: Phaser.Scene, _phase?: Phase) => {
   atlas(scene);
 };
+const paintAtlas = () => buildAtlas(1);
+/** Paint the atlas ahead, in the raid room (boss-prepaint.ts). */
+export const prepaintAtlas = () => keepPrepainted("grumblecrag", paintAtlas);
 function atlas(scene: Phaser.Scene) {
   if (scene.textures.exists(CRAGMUFF_ATLAS)) return CRAGMUFF_ATLAS;
-  const A = buildAtlas(1);
+  const A = takePrepainted("grumblecrag", paintAtlas);
   const canvas: HTMLCanvasElement = A.pages[0];
   cragmuffAtlasBytes = canvas.width * canvas.height * 4;
   // A plain image source (canvas-texture.ts): no pixel read-back.
