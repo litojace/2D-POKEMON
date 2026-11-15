@@ -156,7 +156,20 @@ it("logs how long a player's device took to load the battle", async () => {
   await emit(two, "join", { name: "Two", code: created.code });
   const arena = server!.rooms.get(created.code!)!;
   arena.start();
-  const report = { ms: 8421, fighters: 2, memory: 2, cores: 8 };
+  const report = {
+    ms: 8421,
+    fighters: 2,
+    memory: 2,
+    cores: 8,
+    // Where the time went, and on what.
+    boot: 900,
+    assets: 6000,
+    scene: 1521,
+    density: 1.5,
+    build: "abc1234",
+    os: "android" as const,
+    app: false,
+  };
   // Outside a room, or malformed: nothing is logged.
   stranger.emit("battle-loaded", report);
   one.emit("battle-loaded", { ...report, ms: -1 });
