@@ -64,7 +64,7 @@ import {
   type OnlineList,
 } from "../../../packages/shared/src/accounts.js";
 /** The newest database migration the server expects. */
-export const LATEST_MIGRATION = "20261114095946_boss_identity_refresh.sql";
+export const LATEST_MIGRATION = "20261115200000_chat_restrictions.sql";
 /** The migration that last redefined the raid appearance functions. */
 export const RAID_FUNCTIONS_MIGRATION = "018_collection_equipping.sql";
 export interface AccountProvider {
@@ -78,6 +78,11 @@ export interface AccountProvider {
   social?: SocialStore;
   /** Sign in with Apple tokens, for revoking on deletion (migration 111). */
   apple?: AppleTokenStore;
+  /**
+   * Until when an admin stopped this player typing in chat (ISO time), or
+   * null (migration 20261115200000; null until it runs).
+   */
+  chatStoppedUntil?(accountId: string): Promise<string | null>;
   rpc(
     token: string,
     name: string,
@@ -214,6 +219,16 @@ export function createAccountProvider(): AccountProvider {
           ? { sub: t.sub, clientId: t.clientId, refreshToken: t.refreshToken }
           : null;
       },
+    },
+    async chatStoppedUntil(accountId) {
+      try {
+        const result = await admin().rpc("arena_chat_stopped_until", {
+          p_player: accountId,
+        });
+        return result.error ? null : ((result.data as string | null) ?? null);
+      } catch {
+        return null;
+      }
     },
     async recordRaid(receipt) {
       const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -1536,6 +1551,26 @@ export function installAccountRoutes(
           p_offset: offset,
         }),
       );
+    }),
+  );
+  app.post(
+    "/api/admin/chat-ban",
+    route(true, async (req, res, token) => {
+      const data = z
+        .object({
+          playerId: z.string().uuid(),
+          hours: z.number().int().min(0).max(8760),
+          reason: z.string().trim().max(300).optional(),
+        })
+        .strict()
+        .parse(req.body);
+      await provider.rpc(token, "arena_admin_chat_ban", {
+        p_player: data.playerId,
+        p_hours: data.hours,
+        p_reason: data.reason ?? null,
+      });
+      onPlayerChanged(data.playerId);
+      res.json({ ok: true });
     }),
   );
   app.post(
