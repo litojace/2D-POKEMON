@@ -7,7 +7,7 @@
  * arc into 100 segments whatever its size (a 3-pixel spark too), allocates a
  * new object for every point of every path on every frame, and fills every
  * path with earcut, a general polygon triangulator that allocates a linked
- * list per call. Measured in a duel (tests/visual/zz-android-profile, 4× CPU
+ * list per call. Measured in a duel (Chromium, phone viewport, 4× CPU
  * throttle): that was a quarter of the battle's JavaScript time and most of
  * its 28 MB a second of garbage, which the garbage collector then pays for
  * in pauses mid-fight.
