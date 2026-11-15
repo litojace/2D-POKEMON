@@ -274,9 +274,11 @@ export function mountChat(hooks: ChatHooks): ChatView {
   document.addEventListener("keydown", (e) => {
     if (button.hidden) return;
     if (e.key === "Escape" && !drawer.hidden) return setOpen(false);
-    // Enter opens the chat (desktop) unless something else has the keys.
+    // Enter opens the chat (desktop) unless something else has the keys:
+    // a box being typed in, or a focused control Enter presses (a button,
+    // a link, the Lobby's fighter), which keeps its own Enter.
     const busy = (e.target as HTMLElement | null)?.closest?.(
-      "input, textarea, select, [contenteditable], dialog",
+      "input, textarea, select, [contenteditable], dialog, button, a[href], summary, [role=button], [role=tab], [role=menuitem]",
     );
     if (e.key === "Enter" && drawer.hidden && !busy) {
       setOpen(true);
