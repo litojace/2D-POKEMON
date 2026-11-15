@@ -1141,7 +1141,13 @@ test("Bistro board: deliver a catering order, a regular's visit, claim the leagu
   await page.click('#bs-sheet [data-regular="mira"]');
   await flush(page);
   expect(await B(page, "return srv.S.regulars.mira")).toBe(1);
-  expect(await B(page, "return srv.S.counter[0].servings")).toBe(2);
+  // Two left: on the counter, or kept for a guest who ordered meanwhile.
+  expect(
+    await B(
+      page,
+      "return (srv.S.counter[0]?.servings ?? 0) + (srv.S.held.goicuon ?? 0)",
+    ),
+  ).toBe(2);
   // Last week's league: second place.
   await page.click('#bs-sheet [data-tab="league"]');
   await snap(page, info, "bistro-league");
