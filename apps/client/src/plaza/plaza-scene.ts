@@ -10,6 +10,7 @@
  * the same shared step. Ported drawing code is not type-checked line by
  * line; the typed entry point is plaza-screen.ts.
  */
+import { syncHubGraphics } from "../hub-graphics";
 import {
   ORB_SHOWER,
   PLAZA,
@@ -143,6 +144,7 @@ export function openPlaza(options) {
   /** Low graphics (slow phones): no ambient animals or night glow, 30 fps. */
   let low = !!options.low;
   layer.dataset.graphics = low ? "low" : "high";
+  syncHubGraphics();
   layer.dataset.frozen = "false";
   // Auto (Settings → Graphics) watches the frame rate and may switch to Low.
   let probe =
@@ -877,6 +879,7 @@ export function openPlaza(options) {
   function goLow() {
     low = true;
     layer.dataset.graphics = "low";
+    syncHubGraphics();
     for (const list of [DUCKS, FISH, HENS, PIGEONS, BUTTER, SMOKE])
       list.length = 0;
     flock = null;
@@ -4082,6 +4085,7 @@ export function openPlaza(options) {
       hideAlbum();
       album.close();
       layer.remove();
+      syncHubGraphics();
     },
     _dbg: {
       /** The painted ground's colour at a world point (tests). */
