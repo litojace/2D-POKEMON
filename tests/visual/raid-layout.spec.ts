@@ -1,4 +1,3 @@
-import { raidAttacksOf, type RaidBossId } from "../../packages/shared/src/raid";
 import { expect, test, type Page } from "@playwright/test";
 
 import {
@@ -283,19 +282,16 @@ for (const size of [
         }
         await expect.poll(() => floorHudGap(page)).toBeGreaterThanOrEqual(5);
         const camera = await cameraSignature(page);
-        await page.evaluate(
-          (drill) => {
-            const w = window as any;
-            w.__snap.raid.drill = drill;
-            const hero = w.__snap.players.find((p: any) => p.id === "me");
-            hero.x = 1500;
-            hero.y = 800;
-            w.__snap.time += 1;
-            w.__push();
-          },
-          raidAttacksOf(boss as RaidBossId)[0],
-        );
-        await expect(page.locator("#raid-drill")).toBeVisible();
+        // The raid camera fits the whole court: a raider running to a
+        // corner doesn't move it.
+        await page.evaluate(() => {
+          const w = window as any;
+          const hero = w.__snap.players.find((p: any) => p.id === "me");
+          hero.x = 1500;
+          hero.y = 800;
+          w.__snap.time += 1;
+          w.__push();
+        });
         await expect.poll(() => cameraSignature(page)).toEqual(camera);
         if (boss === "prismatail") {
           // Review screenshots show the loaded floor art and the boss's vector rig.
@@ -315,17 +311,8 @@ for (const size of [
               }),
             )
             .toBe(true);
-          await snap(
-            page,
-            info,
-            `raid-practice-wide-${size.width}x${size.height}`,
-          );
+          await snap(page, info, `raid-art-wide-${size.width}x${size.height}`);
         }
-        await page.evaluate(() => {
-          const w = window as any;
-          w.__snap.raid.drill = null;
-          w.__push();
-        });
       }
 
       if (mobile) {

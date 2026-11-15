@@ -1,10 +1,5 @@
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
-import {
-  closeRaidHall,
-  openHub,
-  pushUntilBattle,
-  openPlayPanel,
-} from "./helpers";
+import { closeRaids, openHub, pushUntilBattle, openPlayPanel } from "./helpers";
 
 /**
  * Repeatable client performance scenarios (Chromium + CDP):
@@ -336,8 +331,8 @@ test("keeps memory steady across repeated battles, Lobby, Shop and Wardrobe", as
       await stopFight(page);
       await page.click("#battle-menu");
       await page.click("#exit-room");
-      // A raid exit returns to the Raid Hall; close it to see the Lobby.
-      if (cycle % 2) await closeRaidHall(page);
+      // A raid exit returns to the boss list; close it to see the Lobby.
+      if (cycle % 2) await closeRaids(page);
       await page.evaluate(() => {
         const d = document.querySelector<HTMLDialogElement>("#dialog");
         if (d?.open)

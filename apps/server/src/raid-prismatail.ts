@@ -147,10 +147,8 @@ export class PrismatailArena extends RaidArena {
   protected override onChapter() {
     this.clearAttacks();
     // A new chapter never inherits a solved board: the last path scrambles.
-    if (!this.raid.drill) {
-      this.scramble(this.time + P.scramble.warn);
-      this.relayAt = this.time + P.relayRestart;
-    }
+    this.scramble(this.time + P.scramble.warn);
+    this.relayAt = this.time + P.relayRestart;
   }
   /**
    * Mirrors flash, then turn back 2–3 steps at `at`: the ones that carried
@@ -320,10 +318,7 @@ export class PrismatailArena extends RaidArena {
   }
   /** Lances go after whoever carries the light: hold the relay, or dodge. */
   protected override chooseTarget(kind: RaidAttack, alive: Fighter[]) {
-    if (
-      (kind === "prism-lance" || kind === "refraction") &&
-      this.cunning() > 0
-    ) {
+    if (kind === "prism-lance" || kind === "refraction") {
       const carriers = alive.filter((p) => this.carriers.has(p.id));
       if (carriers.length) return super.chooseTarget(kind, carriers);
     }
@@ -331,7 +326,7 @@ export class PrismatailArena extends RaidArena {
   }
   /** Where a lance aims: a carrier where they stand, anyone else ahead. */
   private lanceAim(target: Fighter, delay: number): Point {
-    return this.cunning() > 0 && !this.carriers.has(target.id)
+    return !this.carriers.has(target.id)
       ? leadPoint(target, delay)
       : { x: target.x, y: target.y };
   }
@@ -342,7 +337,6 @@ export class PrismatailArena extends RaidArena {
   private fanSlice(boss: Fighter, count: number) {
     const r = this.raid,
       seeded = (r.seed + this.attacks) % count;
-    if (this.cunning() <= 0) return seeded;
     const alive = this.heroes().filter((p) => p.hp > 0),
       reach = SLOWEST_RAIDER * (P.fan.delay - REACTION);
     let best = seeded,
@@ -365,7 +359,6 @@ export class PrismatailArena extends RaidArena {
    */
   private haloGap(centre: Point, target: Fighter) {
     const toward = Math.atan2(450 - centre.y, 800 - centre.x);
-    if (this.cunning() <= 0) return toward;
     const others = this.heroes().filter(
         (p) =>
           p.hp > 0 &&
@@ -496,13 +489,11 @@ export class PrismatailArena extends RaidArena {
       this.projectiles = this.projectiles.filter((p) => p !== voidOrb);
       this.raid.message = "Void Orb swallowed a prism lance!";
       this.hitBy = undefined;
-      this.countDodges();
       return;
     }
     if (w.kind === "glare" && this.inkUntil > this.time) {
       this.raid.message = "Prismell's Glare fizzles behind the ink!";
       this.hitBy = undefined;
-      this.countDodges();
       return;
     }
     for (const p of this.heroes()) {
@@ -520,8 +511,6 @@ export class PrismatailArena extends RaidArena {
             Math.PI / 2
         ) {
           (this.raid.blinded ??= {})[p.id] = this.time + P.glare.blind;
-          this.struck.add(p.id);
-          if (this.raid.drillStats) this.raid.drillStats.hits++;
         }
         continue;
       }
@@ -560,7 +549,6 @@ export class PrismatailArena extends RaidArena {
       }
     }
     this.hitBy = undefined;
-    this.countDodges();
     if (w.kind !== "glare") {
       this.event("raid-impact", w, 0xffd778, undefined, boss.id);
       this.events[this.events.length - 1].raidRadius = Math.min(180, w.radius);
@@ -623,11 +611,7 @@ export class PrismatailArena extends RaidArena {
   }
   private relay(dt: number, boss: Fighter) {
     const r = this.raid;
-    if (
-      this.time < this.relayAt ||
-      r.exposedUntil > this.time ||
-      (r.drill && r.drill !== "light-relay")
-    ) {
+    if (this.time < this.relayAt || r.exposedUntil > this.time) {
       this.burnAt.clear();
       this.carriers.clear();
       return;
@@ -716,13 +700,12 @@ export class PrismatailArena extends RaidArena {
       r.shieldBreaks = (r.shieldBreaks ?? 0) + 1;
       if (this.time - r.lightStartedAt <= 8)
         r.quickBreaks = (r.quickBreaks ?? 0) + 1;
-      if (!r.drill)
-        for (const p of living)
-          if (
-            paths.some((path) => path.some((n) => n.id === p.id)) &&
-            r.contributions?.[p.id]
-          )
-            r.contributions[p.id].pillars++;
+      for (const p of living)
+        if (
+          paths.some((path) => path.some((n) => n.id === p.id)) &&
+          r.contributions?.[p.id]
+        )
+          r.contributions[p.id].pillars++;
 
       this.burnAt.clear();
       this.carriers.clear();
@@ -732,7 +715,7 @@ export class PrismatailArena extends RaidArena {
           .filter((n) => n.id.startsWith("mirror-"))
           .map((n) => Number(n.id.slice(7))),
       );
-      this.scrambleArmed = !r.drill;
+      this.scrambleArmed = true;
       r.exposedUntil =
         this.time + P.expose + (r.trait === "kaleidoscope" ? 1 : 0);
       r.staggerUntil = 0;
@@ -743,7 +726,6 @@ export class PrismatailArena extends RaidArena {
       r.lightStartedAt = undefined;
       this.arrivals = [];
       this.held = 0;
-      if (r.drillStats) r.drillStats.dodges++;
     }
   }
   protected override worldStep(dt: number, boss: Fighter) {

@@ -5,8 +5,7 @@ balanced vertically. Desktop keeps its existing four-column, two-row grid.
 Card width responds to both available width and height; the gallery scrolls
 horizontally within its own box. Safe-area insets continue to come from the
 shared lobby/panel layout, including the Dynamic Island and home indicator.
-Only the seven boss cards appear in the gallery; practice is accessed from
-inside a boss page. Boss entry and tab navigation use a short 260 ms slide
+Only the seven boss cards appear in the gallery. Boss entry and tab navigation use a short 260 ms slide
 and fade, reversed for Back/earlier tabs. Returning restores the gallery's
 horizontal scroll and card focus. Navigation responds immediately, cancels
 superseded animations, and skips motion with reduced motion or Low graphics.

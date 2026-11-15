@@ -24,7 +24,7 @@ describe("startup bundle", () => {
       "shop-preview.ts",
     ]);
   });
-  it("opens the Raid Hall, the fitting room and the Journey on demand", () => {
+  it("opens the raid screens, the fitting room and the Journey on demand", () => {
     const accounts = readFileSync(join(SRC, "accounts.ts"), "utf8");
     for (const screen of ["raid-hall", "fitting-room", "journey"]) {
       expect(accounts).not.toMatch(

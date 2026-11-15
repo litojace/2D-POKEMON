@@ -110,7 +110,7 @@ export async function fakeFarm(page: Page) {
           leaves: 30,
           xp: 16,
           bonus: null,
-          who: "Raid Hall",
+          who: "Bistro",
           face: "auralynx",
           waitUntil: null,
         },

@@ -67,7 +67,6 @@ export class SomnaraArena extends RaidArena {
   private ringHits = new Map<number, Set<string>>();
   private runeCallAt = new Map<string, number>();
   private trailAt = new Map<string, number>();
-  private songHits = new Set<string>();
   /** Exposed after a dream: when its one lullaby goes out. */
   private thrashAt = Infinity;
   private thrashRings = new Set<number>();
@@ -104,7 +103,6 @@ export class SomnaraArena extends RaidArena {
       dreamMistakes: 0,
     });
     this.sequence = [];
-    this.songHits.clear();
     this.thrashAt = Infinity;
     this.thrashRings.clear();
     this.previousDreamer = "";
@@ -126,7 +124,6 @@ export class SomnaraArena extends RaidArena {
       drowsy: {},
     });
     this.sequence = [];
-    this.songHits.clear();
     this.thrashAt = Infinity;
     this.thrashRings.clear();
     this.sharedUntil = 0;
@@ -185,7 +182,6 @@ export class SomnaraArena extends RaidArena {
       ]);
   }
   private beginDream() {
-    this.struck.clear();
     const alive = this.heroes().filter((p) => p.hp > 0);
     if (!alive.length) return;
     const candidates = alive.filter((p) => p.id !== this.previousDreamer);
@@ -326,7 +322,7 @@ export class SomnaraArena extends RaidArena {
     }
     d.step++;
     this.nextStepAt = this.time + S.sequence.stepGap;
-    if (!r.drill && r.contributions?.[owner]) r.contributions[owner].pillars++;
+    if (r.contributions?.[owner]) r.contributions[owner].pillars++;
     this.event("heal", at, 0x99efdd, 0, owner);
     if (d.step === d.length) {
       r.dreamsSolved = (r.dreamsSolved ?? 0) + 1;
@@ -345,7 +341,6 @@ export class SomnaraArena extends RaidArena {
       // Live raids: halfway through it thrashes once (a softer lullaby), so
       // melee steps out or jumps once; the damage window stays.
       if (this.smart()) this.thrashAt = this.time + expose / 2 - 0.55;
-      this.countDodges();
       return false;
     }
     return true;
@@ -585,8 +580,6 @@ export class SomnaraArena extends RaidArena {
           teach;
       }
     } else if (kind === "whale-song") {
-      this.songHits.clear();
-      this.struck.clear();
       const radius =
         S.song.radius[Math.min(3, Math.max(1, r.peril))] +
         (r.trait === "starry-night" ? 35 : 0);
@@ -606,9 +599,6 @@ export class SomnaraArena extends RaidArena {
   protected override resolveWarning(w: RaidWarning, boss: Fighter) {
     const r = this.raid;
     if (w.kind === "whale-song") {
-      this.struck = new Set(this.songHits);
-      this.countDodges();
-      this.songHits.clear();
       r.quietZone = undefined;
       return;
     }
@@ -665,7 +655,6 @@ export class SomnaraArena extends RaidArena {
           );
       }
       this.hitBy = undefined;
-      this.countDodges();
       this.event(
         "raid-impact",
         { x: w.x, y: w.y },
@@ -713,7 +702,6 @@ export class SomnaraArena extends RaidArena {
       this.hitBy = "whale-song";
       for (const p of this.heroes())
         if (p.hp > 0 && Math.hypot(p.x - q.x, p.y - q.y) > r.quietZone.radius) {
-          this.songHits.add(p.id);
           this.damage(p, (S.song.damage / S.song.seconds) * dt, boss.id);
         }
       this.hitBy = undefined;

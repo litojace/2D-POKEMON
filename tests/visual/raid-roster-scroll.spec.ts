@@ -1,8 +1,8 @@
 import { expect, test } from "@playwright/test";
 import { openHub, snap, hubMenu } from "./helpers";
 
-// The Raid Hall (UI remodel step 5) replaced the Raid Hub's boss rail: a
-// lower boss opens from its card, and "‹ Raid Hall" comes back to that card,
+// The boss list (UI remodel step 5) replaced the Raid Hub's boss rail: a
+// lower boss opens from its card, and "‹ All bosses" comes back to that card,
 // in view and focused, with the panel itself never scrolling. What the old
 // rail test checked (the place you were stays, the pictures stay) holds for
 // the hall's grid.

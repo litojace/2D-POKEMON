@@ -10,7 +10,7 @@
  * and radial gradients. Gradients are defined once per page in a hidden
  * <svg> (ensureSkillArtDefs), so icons repeat without duplicate ids.
  */
-type Element =
+export type Element =
   | "electric"
   | "fire"
   | "water"
@@ -28,7 +28,7 @@ interface Theme {
   /** The near-white highlight. */
   hot: string;
 }
-const THEMES: Record<Element, Theme> = {
+export const THEMES: Record<Element, Theme> = {
   electric: {
     bg: ["#4b3d98", "#1b1848", "#06071a"],
     accent: ["#e08a12", "#ffd84a", "#fff3a6"],
@@ -108,9 +108,9 @@ export function ensureSkillArtDefs() {
 }
 
 // ── Drawing helpers ──────────────────────────────────────────────────────
-const n = (v: number) => Math.round(v * 10) / 10;
+export const n = (v: number) => Math.round(v * 10) / 10;
 /** A stroke with a soft halo (wide translucent copies underneath). */
-function glow(
+export function glow(
   d: string,
   color: string,
   width: number,
@@ -124,7 +124,7 @@ function glow(
   );
 }
 /** A jagged lightning path through the given points (deterministic jitter). */
-function bolt(points: [number, number][], jag = 5, seed = 1) {
+export function bolt(points: [number, number][], jag = 5, seed = 1) {
   let s = seed;
   const rand = () => (s = (s * 9301 + 49297) % 233280) / 233280 - 0.5;
   let d = `M${points[0][0]} ${points[0][1]}`;
@@ -144,18 +144,18 @@ function bolt(points: [number, number][], jag = 5, seed = 1) {
   }
   return d;
 }
-const sparks = (pts: [number, number, number][], color: string) =>
+export const sparks = (pts: [number, number, number][], color: string) =>
   pts
     .map(
       ([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}" fill="${color}"/>`,
     )
     .join("");
 /** Four-point star glint. */
-const glint = (x: number, y: number, r: number, color: string) =>
+export const glint = (x: number, y: number, r: number, color: string) =>
   `<path d="M${x} ${y - r} Q${x + r * 0.18} ${y - r * 0.18} ${x + r} ${y} Q${x + r * 0.18} ${y + r * 0.18} ${x} ${y + r} Q${x - r * 0.18} ${y + r * 0.18} ${x - r} ${y} Q${x - r * 0.18} ${y - r * 0.18} ${x} ${y - r}Z" fill="${color}"/>`;
-const halo = (el: Element, x: number, y: number, r: number, o = 1) =>
+export const halo = (el: Element, x: number, y: number, r: number, o = 1) =>
   `<circle cx="${x}" cy="${y}" r="${r}" fill="url(#sa-glow-${el})" opacity="${o}"/>`;
-const floorGlow = (
+export const floorGlow = (
   el: Element,
   x: number,
   y: number,
@@ -164,7 +164,7 @@ const floorGlow = (
   o = 1,
 ) =>
   `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="url(#sa-glow-${el})" opacity="${o}"/>`;
-const backdrop = (el: Element) =>
+export const backdrop = (el: Element) =>
   `<rect width="128" height="128" fill="url(#sa-bg-${el})"/>`;
 
 // ── The eighty moves ─────────────────────────────────────────────────────

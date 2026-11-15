@@ -42,8 +42,6 @@ it("uses the raid's shared result, even when another raider is named as winner",
   expect(battleMusic(a.snapshot(), "p1")).toBe("victory");
   a.raid.result = "defeat";
   expect(battleMusic(a.snapshot(), "p1")).toBe("defeat");
-  a.raid.drill = "slam";
-  expect(battleMusic(a.snapshot(), "p1")).toBe("raid");
 });
 it("keeps rounds and training on battle music, and gives draws and spectators a neutral ending", () => {
   const s = match();
