@@ -40,7 +40,11 @@
       .auth-secondary,
       .auth-legal a,
       .prefs-choice > button,
-      .prefs-switch
+      .prefs-switch,
+      .chat-tab,
+      .chat-close,
+      .chat-chip,
+      .chat-send
     ) {
     position: relative;
   }
@@ -83,7 +87,12 @@
       .auth-legal a,
       .prefs-choice > button,
       .prefs-switch,
-      .password-toggle
+      .password-toggle,
+      #chat-button,
+      .chat-tab,
+      .chat-close,
+      .chat-chip,
+      .chat-send
     )::after {
     content: "";
     position: absolute;

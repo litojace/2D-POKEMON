@@ -40,6 +40,9 @@ export function placeSwitch(
   return { x: (left + right) / 2, tight };
 }
 
+/** The gap between the player card and the chat button (px). */
+export const CHAT_GAP = 12;
+
 /** The tabs' width when narrowed (match .hub-scenes.is-tight in lobby.css). */
 const TIGHT_TAB = 40;
 
@@ -61,18 +64,28 @@ export function watchSceneSwitch(nav: HTMLElement) {
       return;
     }
     const right = Math.min(...pills.map((r) => r.left));
+    // The chat button rides 12 px right of the card, in the same gap: the
+    // switch then centres in what is left (chat/chat-ui.ts).
+    let left = cardBox.right;
+    const chat = document.getElementById("chat-button");
+    if (chat && !chat.hidden && chat.dataset.place === "hub") {
+      const size = chat.getBoundingClientRect();
+      chat.style.setProperty(
+        "--chat-x",
+        `${Math.round(cardBox.right + CHAT_GAP)}px`,
+      );
+      chat.style.setProperty(
+        "--chat-y",
+        `${Math.round(cardBox.top + (cardBox.height - size.height) / 2)}px`,
+      );
+      left = cardBox.right + CHAT_GAP + size.width;
+    }
     const tabs = nav.querySelectorAll("button").length;
     nav.classList.remove("is-tight");
     const width = nav.getBoundingClientRect().width;
     const tabWidth = nav.querySelector("button")?.getBoundingClientRect().width;
     const tightWidth = width - tabs * Math.max(0, (tabWidth ?? 0) - TIGHT_TAB);
-    const spot = placeSwitch(
-      innerWidth,
-      cardBox.right,
-      right,
-      width,
-      tightWidth,
-    );
+    const spot = placeSwitch(innerWidth, left, right, width, tightWidth);
     nav.classList.toggle("is-tight", spot.tight);
     nav.style.setProperty("--hub-scenes-x", `${Math.round(spot.x)}px`);
   };
@@ -88,6 +101,7 @@ export function watchSceneSwitch(nav: HTMLElement) {
       "#account-coins",
       "#account-leaves",
       "#home-settings",
+      "#chat-button",
     ]) {
       const e = document.querySelector(s);
       if (e) sizes.observe(e);
