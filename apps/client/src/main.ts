@@ -18,6 +18,7 @@ import {
   NetMeter,
   PERF_MIN_SECONDS,
   deviceKind,
+  loadPhases,
   perfMode,
 } from "./battle-perf";
 import { correctionCause } from "./networking/correction-cause";
@@ -360,6 +361,7 @@ import { ConnectionWatch, dropMessage } from "./connection-loss";
 import { watchSceneSwitch } from "./scene-switch-place";
 // Last: the hub's aero glass overrides the panels' own fills.
 import "./ui/aero.css";
+import "./ui/phone-fit.css";
 const audio = new AudioManager();
 audio.start();
 const allAbilities = new Map(
@@ -4573,6 +4575,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     }
   }
   preload() {
+    battleLoadMarks.preload ||= performance.now();
     if (state?.raid) {
       queueBossArt(this, state.raid.boss);
       queueBossSpellArt(this);
@@ -4597,6 +4600,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     this.load.on(Ph.Loader.Events.COMPLETE, () => this.fighters.settled());
   }
   create() {
+    battleLoadMarks.create ||= performance.now();
     scene = this;
     // The boss's pieces are drawn once into an atlas: now, not on its first frame.
     if (state?.raid) prewarmBossAtlas(this, state.raid.boss, state.raid.phase);
@@ -6686,6 +6690,8 @@ function fitRenderer() {
 }
 /** When this battle renderer started loading (for reportBattleLoad). */
 let battleLoadStarted = 0;
+/** When this renderer's scene reached preload() and create() (reportBattleLoad). */
+const battleLoadMarks = { preload: 0, create: 0 };
 /** Longest the briefing holds "I'm ready" back while the arena loads. */
 const ARENA_WAIT_MAX_MS = 20_000;
 let arenaWaitSince = 0;
@@ -6750,13 +6756,20 @@ function reportBattleLoad(fighters: number) {
   battleLoadStarted = 0;
   if (!started || !myId || !connected) return;
   const nav = navigator as Navigator & { deviceMemory?: number };
+  const now = performance.now();
   socket.emit("battle-loaded", {
-    ms: Math.min(600_000, Math.round(performance.now() - started)),
+    ms: Math.min(600_000, Math.round(now - started)),
     fighters,
     ...(typeof nav.deviceMemory === "number"
       ? { memory: nav.deviceMemory }
       : {}),
     ...(nav.hardwareConcurrency ? { cores: nav.hardwareConcurrency } : {}),
+    // Which part was slow, and on what (an Android phone took 0.9-1.8 s
+    // where an iPhone took 0.2-0.35 s, Nov 2026).
+    ...loadPhases(started, battleLoadMarks, now),
+    density: renderScale(),
+    build: BUILD,
+    ...deviceKind(),
   });
 }
 /**
@@ -6786,6 +6799,7 @@ function ensureBattleRenderer() {
   }
   const Phaser = Ph;
   battleLoadStarted = performance.now();
+  battleLoadMarks.preload = battleLoadMarks.create = 0;
   releaseHubArt();
   arenaCssArea = $("game").clientWidth * $("game").clientHeight;
   const dpr = renderScale();

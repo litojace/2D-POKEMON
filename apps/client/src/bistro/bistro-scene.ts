@@ -1207,6 +1207,9 @@ export function openBistro(o: BistroOptions): BistroHandle {
     const box = layer.getBoundingClientRect();
     wallet.style.top = `${menu.top - box.top}px`;
     wallet.style.height = `${menu.height}px`;
+    // On phones the wallet is at least a finger tall, centred on the menu
+    // button whatever their heights (ui/phone-fit.css).
+    wallet.style.setProperty("--bs-wallet-h", `${menu.height}px`);
     wallet.style.right = `${box.right - menu.left + 8}px`;
   };
   wallet.addEventListener("click", () => {
