@@ -359,6 +359,8 @@ import { ConnectionWatch, dropMessage } from "./connection-loss";
 import { watchSceneSwitch } from "./scene-switch-place";
 // Last: the hub's aero glass overrides the panels' own fills.
 import "./ui/aero.css";
+import "./ui/light-effects.css";
+import { syncUiEffects } from "./ui/ui-effects";
 const audio = new AudioManager();
 audio.start();
 const allAbilities = new Map(
@@ -1875,6 +1877,8 @@ const WORLD_NAMES: Record<World, string> = {
   plaza: "Plaza",
   bistro: "Bistro",
 };
+// Light or full menus from the first screen on (ui/ui-effects.ts).
+syncUiEffects();
 const worlds = worldLoader();
 /** The hub world wanted on screen whose code is still on the way (or failed). */
 let worldWait: World | null = null;
@@ -1931,6 +1935,7 @@ let wantedPlazaClosed = false;
  * is not in a room (and not about to resume or join one); closed otherwise.
  */
 function syncHub() {
+  syncUiEffects();
   const hub =
     !!accountsUI?.account &&
     connected &&
@@ -3856,6 +3861,7 @@ function bindGraphicsCard() {
     b.onclick = () => {
       const value = b.dataset.graphics as GraphicsSetting;
       setGraphicsSetting(value);
+      syncUiEffects();
       // Picking Auto again measures battles afresh too.
       if (value === "auto") battleQuality.reset(resetBattleQuality);
       for (const other of Array.from(
