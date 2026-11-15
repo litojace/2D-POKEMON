@@ -90,3 +90,77 @@ test("the briefing holds I'm ready until the arena has loaded, and loads only th
   });
   expect(errors).toEqual([]);
 });
+
+test("a briefing that comes before Phaser has loaded holds I'm ready too, and counts the wait", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 844, height: 390 });
+  // Phaser loads after the first screen (phaser-runtime.ts); here it is held
+  // back until the briefing is up, as on a slow phone network.
+  let release!: () => void;
+  const held = new Promise<void>((r) => (release = r));
+  let asked = 0;
+  await page.route(
+    /\/node_modules\/\.vite\/deps\/phaser\.js/,
+    async (route) => {
+      asked++;
+      await held;
+      await route.continue();
+    },
+  );
+  const errors = await openHub(page);
+  await page.evaluate(() => {
+    const w = window as any;
+    w.__events = [];
+    w.__emit = (event: string, data: unknown) =>
+      w.__events.push({ event, data });
+    w.__room("pvp", { mode: "duel", phase: "briefing" });
+  });
+  await openPlayPanel(page);
+  await page.click("#play-create");
+  const ready = page.locator("#instructions-ready");
+  await expect
+    .poll(
+      async () => {
+        await page.evaluate(() => (window as any).__push());
+        return ready.count();
+      },
+      { timeout: 60_000, intervals: [300] },
+    )
+    .toBe(1);
+  expect(asked).toBeGreaterThan(0);
+  await page.waitForTimeout(1500);
+  await page.evaluate(() => (window as any).__push());
+  await expect(ready).toHaveText("Loading the arena…");
+  await expect(ready).toBeDisabled();
+  release();
+  await expect
+    .poll(
+      async () => {
+        await page.evaluate(() => (window as any).__push());
+        return ready.textContent();
+      },
+      { timeout: 90_000, intervals: [300] },
+    )
+    .toBe("I’m ready");
+  await expect(ready).toBeEnabled();
+  // The report's load time includes the 1.5 s spent waiting for Phaser.
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          (window as any).__events.filter(
+            (e: any) => e.event === "battle-loaded",
+          ).length,
+      ),
+    )
+    .toBe(1);
+  const report = await page.evaluate(
+    () =>
+      (window as any).__events.find((e: any) => e.event === "battle-loaded")
+        .data,
+  );
+  expect(report.ms).toBeGreaterThanOrEqual(1500);
+  expect(report.boot).toBeGreaterThanOrEqual(1500);
+  expect(errors).toEqual([]);
+});

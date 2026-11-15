@@ -187,7 +187,8 @@ import { PRIVACY_URL, isNativeApp, setupNativeShell } from "./native";
 import { appIconCardHTML, bindAppIconCard } from "./app-icon-setting";
 import { abilityIcon } from "./ability-icons";
 import { TouchControls } from "./touch-controls";
-import Phaser from "phaser";
+import type Phaser from "phaser";
+import { loadPhaser, phaser, whenPhaser } from "./phaser-runtime";
 import { io } from "socket.io-client";
 import {
   CHARACTERS,
@@ -1254,6 +1255,8 @@ function roomData(watch: boolean): RoomData {
 /** Draw the room (or a watched room): seats patched in place, the picker
  * opened once and refreshed after. */
 function renderRoom(watch: boolean) {
+  // A match follows: have the battle renderer ready (phaser-runtime.ts).
+  warmPhaser(0);
   const menu = $("menu");
   const d = roomData(watch);
   const seats = roomSeatsMarkup(d);
@@ -1882,6 +1885,21 @@ const WORLD_NAMES: Record<World, string> = {
 // Light or full menus from the first screen on (ui/ui-effects.ts).
 syncUiEffects();
 const worlds = worldLoader();
+let phaserWarm: ReturnType<typeof setTimeout> | undefined;
+/** Load Phaser `ms` from now, while the page is idle (phaser-runtime.ts). */
+function warmPhaser(ms: number) {
+  if (phaser() || phaserWarm !== undefined) return;
+  phaserWarm = setTimeout(() => {
+    const load = () =>
+      void loadPhaser().catch(() => {
+        // Offline or a new deploy: a battle asks again when it needs it.
+        phaserWarm = undefined;
+      });
+    if (ms && typeof requestIdleCallback === "function")
+      requestIdleCallback(load, { timeout: 4000 });
+    else load();
+  }, ms);
+}
 /** The hub world wanted on screen whose code is still on the way (or failed). */
 let worldWait: World | null = null;
 /**
@@ -1963,6 +1981,8 @@ function syncHub() {
     .connection?.saveData;
   if (hub && !saveData) worlds.warm();
   else worlds.stopWarming();
+  // The battle renderer too, a moment after the hub shows.
+  if (hub) warmPhaser(1500);
   // A scene hiding after the next one showed may have taken the hub's top
   // bar style away (each checks only some of the others): in the hub it is on.
   if (hub) document.body.classList.add("hub-screen");
@@ -4065,7 +4085,19 @@ const attacking = (rig: FighterVisual | undefined) =>
   !!rig &&
   (rig.controller.state === "basic" ||
     rig.controller.state.startsWith("skill"));
-class ArenaScene extends Phaser.Scene {
+/**
+ * ArenaScene's base until Phaser has loaded (phaser-runtime.ts), which then
+ * puts Phaser.Scene in its place: `super` is looked up when it runs, and no
+ * scene exists before a battle, by when Phaser is here.
+ */
+class SceneUntilPhaser {}
+let Ph!: typeof Phaser;
+whenPhaser((lib) => {
+  Ph = lib;
+  Object.setPrototypeOf(ArenaScene, lib.Scene);
+  Object.setPrototypeOf(ArenaScene.prototype, lib.Scene.prototype);
+});
+class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
   graphics!: Phaser.GameObjects.Graphics;
   /** A raid boss, sorted with the fighters by where it stands. */
   bossGraphics!: Phaser.GameObjects.Graphics;
@@ -4571,7 +4603,7 @@ class ArenaScene extends Phaser.Scene {
     // fighter, a skin or boss art) settles what was requested: art still
     // missing may be asked for again. The scene's loader drops its
     // listeners when the scene shuts down.
-    this.load.on(Phaser.Loader.Events.COMPLETE, () => this.fighters.settled());
+    this.load.on(Ph.Loader.Events.COMPLETE, () => this.fighters.settled());
   }
   create() {
     battleLoadMarks.create ||= performance.now();
@@ -4626,8 +4658,8 @@ class ArenaScene extends Phaser.Scene {
       for (const label of this.labels.values()) label.remove();
       this.labels.clear();
     };
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, clearDom);
-    this.events.once(Phaser.Scenes.Events.DESTROY, clearDom);
+    this.events.once(Ph.Scenes.Events.SHUTDOWN, clearDom);
+    this.events.once(Ph.Scenes.Events.DESTROY, clearDom);
     this.graphics = battleCurves(this.add.graphics());
     this.bossGraphics = this.add.graphics();
     // Keys and mouse buttons are read through the player's bindings (see pressAction).
@@ -5469,8 +5501,8 @@ class ArenaScene extends Phaser.Scene {
       const prismAim = state ? prismatailAim(state, local) : undefined;
       if (prismAim) aimAt = prismAim;
       aimAt = {
-        x: Phaser.Math.Clamp(aimAt.x, 0, RULES.width),
-        y: Phaser.Math.Clamp(aimAt.y, 0, RULES.height),
+        x: Ph.Math.Clamp(aimAt.x, 0, RULES.width),
+        y: Ph.Math.Clamp(aimAt.y, 0, RULES.height),
       };
       this.aimPoint = aimAt;
       const input: Input = {
@@ -5964,7 +5996,7 @@ class ArenaScene extends Phaser.Scene {
         if (tier) {
           const colour =
             tier.name === "Crystal" && !reducedMotion
-              ? Phaser.Display.Color.HSVToRGB((_time / 2400) % 1, 0.45, 1).color
+              ? Ph.Display.Color.HSVToRGB((_time / 2400) % 1, 0.45, 1).color
               : Number.parseInt(tier.color.slice(1), 16);
           g.lineStyle(2, colour, 0.75).strokeEllipse(
             x,
@@ -6294,10 +6326,10 @@ class ArenaScene extends Phaser.Scene {
           const wob = reducedMotion ? 0 : Math.sin(_time / 60) * 8;
           const mx = (x + to.x) / 2 + wob,
             my = (y + to.y) / 2 - 24;
-          const curve = new Phaser.Curves.QuadraticBezier(
-            new Phaser.Math.Vector2(x, y - 14 - jump),
-            new Phaser.Math.Vector2(mx, my),
-            new Phaser.Math.Vector2(to.x, to.y - 14),
+          const curve = new Ph.Curves.QuadraticBezier(
+            new Ph.Math.Vector2(x, y - 14 - jump),
+            new Ph.Math.Vector2(mx, my),
+            new Ph.Math.Vector2(to.x, to.y - 14),
           );
           g.lineStyle(9, 0x2a1240, 0.9);
           curve.draw(g, 16);
@@ -6596,7 +6628,7 @@ function drawComboMark(
 /** Paint a fighter solid white for this frame (the rig resets tint each render). */
 function flashWhite(root: Phaser.GameObjects.Container) {
   for (const child of root.list) {
-    if (child instanceof Phaser.GameObjects.Container) flashWhite(child);
+    if (child instanceof Ph.GameObjects.Container) flashWhite(child);
     else (child as Phaser.GameObjects.Image).setTintFill?.(0xffffff);
   }
 }
@@ -6664,18 +6696,21 @@ function fitRenderer() {
 }
 /** When this battle renderer started loading (for reportBattleLoad). */
 let battleLoadStarted = 0;
+/** When a battle began waiting for Phaser to load, if it is waiting (else 0). */
+let phaserWaitStarted = 0;
 /** When this renderer's scene reached preload() and create() (reportBattleLoad). */
 const battleLoadMarks = { preload: 0, create: 0 };
 /** Longest the briefing holds "I'm ready" back while the arena loads. */
 const ARENA_WAIT_MAX_MS = 20_000;
 let arenaWaitSince = 0;
 /**
- * The battle renderer is still loading these fighters. Never blocks for
- * good: no renderer (nothing to wait for) or a load past ARENA_WAIT_MAX_MS
- * lets the player confirm anyway.
+ * The battle renderer is still loading these fighters (or Phaser itself,
+ * which loads after the first screen). Never blocks for good: no renderer
+ * (nothing to wait for) or a load past ARENA_WAIT_MAX_MS lets the player
+ * confirm anyway.
  */
 function arenaLoading(s: Snapshot) {
-  if (!gameInstance || scene?.fightersReady(s)) {
+  if ((!gameInstance && !phaserWaitStarted) || scene?.fightersReady(s)) {
     arenaWaitSince = 0;
     return false;
   }
@@ -6763,7 +6798,28 @@ function releaseHubArt() {
 function ensureBattleRenderer() {
   if (gameInstance || $("game").clientWidth < 1 || $("game").clientHeight < 1)
     return;
-  battleLoadStarted = performance.now();
+  // Phaser loads after the first screen (phaser-runtime.ts); a battle that
+  // comes before the hub's warm-up finished waits for it, then asks again.
+  if (!phaser()) {
+    // The wait counts towards the battle's load time (reportBattleLoad).
+    phaserWaitStarted ||= performance.now();
+    void loadPhaser().then(
+      () => {
+        ensureBattleRenderer();
+        // No renderer after all (the battle closed meanwhile): a later one
+        // starts its own count.
+        phaserWaitStarted = 0;
+      },
+      (error: unknown) => {
+        phaserWaitStarted = 0;
+        console.error("The battle renderer could not load.", error);
+      },
+    );
+    return;
+  }
+  const Phaser = Ph;
+  battleLoadStarted = phaserWaitStarted || performance.now();
+  phaserWaitStarted = 0;
   battleLoadMarks.preload = battleLoadMarks.create = 0;
   releaseHubArt();
   arenaCssArea = $("game").clientWidth * $("game").clientHeight;
@@ -6811,6 +6867,7 @@ function ensureBattleRenderer() {
 /** A hidden battle canvas must not compete with the menu or Shop preview. */
 function syncBattleLoop() {
   if (!gameInstance) return;
+  const Phaser = Ph;
   if ($("battle").hidden) {
     // Sleeping retains every fighter and arena texture. Release them before
     // opening the hub or the Shop so iOS does not have to evict the whole web app.
