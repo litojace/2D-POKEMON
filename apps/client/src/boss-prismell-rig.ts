@@ -9,6 +9,7 @@
  */
 import type Phaser from "phaser";
 import { addCanvasTexture } from "./canvas-texture";
+import { keepPrepainted, takePrepainted } from "./boss-prepaint";
 import {
   PRISMELL_SCALE,
   paintPrismellAtlas,
@@ -50,9 +51,12 @@ const clamp = (v: number, a = 0, b = 1) => Math.max(a, Math.min(b, v));
 export const prewarmAtlas = (scene: Phaser.Scene) => {
   atlas(scene);
 };
+/** Paint the atlas ahead, in the raid room (boss-prepaint.ts). */
+export const prepaintAtlas = () =>
+  keepPrepainted("prismatail", paintPrismellAtlas);
 function atlas(scene: Phaser.Scene) {
   if (scene.textures.exists(PRISMELL_ATLAS)) return PRISMELL_ATLAS;
-  const A = paintPrismellAtlas();
+  const A = takePrepainted("prismatail", paintPrismellAtlas);
   prismellAtlasBytes = A.bytes;
   // A plain image source (canvas-texture.ts): no pixel read-back.
   const texture = addCanvasTexture(scene.textures, PRISMELL_ATLAS, A.canvas);
