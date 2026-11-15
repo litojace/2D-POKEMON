@@ -37,10 +37,14 @@ function legacyAuthPages(): Plugin {
 /**
  * The scripts the game page loads to start: its entry and everything that
  * entry imports statically (Phaser, the libraries). Recorded while bundling
- * so the service worker precaches exactly these; scripts loaded later (the
- * Farm, Plaza and Bistro, the shop preview) are cached when first used.
+ * so the service worker precaches exactly these, and the Lobby panels that
+ * load on first use (PRECACHED_PANELS); scripts loaded later (the Farm,
+ * Plaza and Bistro, the shop preview) are cached when first used.
  */
 const startupScripts = new Set<string>();
+/** Panels split out of the startup bundle, precached all the same. */
+const PRECACHED_PANELS =
+  /\/src\/screens\/(raid-hall|fitting-room|journey)\.ts$/;
 function startupScriptList(): Plugin {
   return {
     name: "startup-script-list",
@@ -57,7 +61,17 @@ function startupScriptList(): Plugin {
       if (!entries.length) return;
       startupScripts.clear();
       const byFile = new Map(chunks.map((chunk) => [chunk.fileName, chunk]));
-      const queue = entries.map((chunk) => chunk.fileName);
+      // The Lobby's panels that load on first use (accounts.ts) and Phaser
+      // are installed ahead of time too: they open at once, offline as
+      // well, without the game parsing them at startup.
+      const lazyPanels = chunks.filter(
+        (chunk) =>
+          PRECACHED_PANELS.test(chunk.facadeModuleId ?? "") ||
+          // Phaser loads after the first screen (phaser-runtime.ts), but
+          // every battle needs it, offline too.
+          chunk.name === "phaser",
+      );
+      const queue = [...entries, ...lazyPanels].map((chunk) => chunk.fileName);
       while (queue.length) {
         const file = queue.pop()!;
         if (startupScripts.has(file)) continue;

@@ -5,16 +5,16 @@ import {
   NAME_NOT_ALLOWED,
 } from "../../../packages/shared/src/name-filter";
 import { framedAvatar } from "./portraits";
-import { openFittingRoom, type FittingRoom } from "./screens/fitting-room";
+import type { FittingRoom } from "./screens/fitting-room";
 import type { FitMode, ShopSection } from "./screens/fitting-room-view";
-import { openJourney, type JourneyScreen } from "./screens/journey";
+import type { JourneyScreen } from "./screens/journey";
 import type { JourneyTab } from "./screens/journey-view";
 import {
   playerLevel,
   JOURNEY_ITEM_BY_ID,
 } from "../../../packages/shared/src/journey";
 import { formSubmitButton } from "./dialog";
-import { openRaids, type RaidScreen } from "./screens/raid-hall";
+import type { RaidScreen } from "./screens/raid-hall";
 import type { RaidSeat, RaidTab } from "./screens/raid-hall-view";
 import { iconLabel } from "./menu-icons";
 import { coinChip, compactCoins, leafChip, coins } from "./shop-ui";
@@ -851,6 +851,10 @@ export class AccountUI {
     if (!this.ensurePlayer()) return;
     this.toLobbyScreen();
     const accountId = this.account?.id;
+    // The Raid Hall's code and styles load the first time it opens, not
+    // with the game (a phone starts faster).
+    const { openRaids } = await import("./screens/raid-hall");
+    if (this.account?.id !== accountId) return;
     if (this.raidScreen?.isOpen) {
       this.raidScreen.show(boss, tab);
     } else {
@@ -963,6 +967,10 @@ export class AccountUI {
     if (!this.ensurePlayer()) return;
     // It lives in the Lobby: come back to it, and close any old dialog.
     this.toLobbyScreen();
+    // Its code and styles load the first time it opens, not with the game.
+    const accountId = this.account?.id;
+    const { openFittingRoom } = await import("./screens/fitting-room");
+    if (this.account?.id !== accountId) return;
     if (this.fittingRoom?.isOpen) this.fittingRoom.show(mode, section);
     else {
       this.fitLoading = !this.economy;
@@ -1096,6 +1104,9 @@ export class AccountUI {
     if (!this.ensurePlayer()) return;
     this.toLobbyScreen();
     const accountId = this.account?.id;
+    // Its code and styles load the first time it opens, not with the game.
+    const { openJourney } = await import("./screens/journey");
+    if (this.account?.id !== accountId) return;
     if (!this.journeyScreen?.isOpen) {
       this.journeyLoading = !this.economy;
       this.journeyProblem = "";
