@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { box, inside, openHub, snap, hubMenu } from "./helpers";
+import { box, inside, openHub, snap, hubMenu, settle } from "./helpers";
 import { bossFraming } from "./raid-frames";
 for (const viewport of [
   { width: 1440, height: 900 },
@@ -71,6 +71,9 @@ for (const viewport of [
         await card.click();
         await room.locator('[data-ui-raid-tab="attacks"]').click();
         await expect(room.locator("[data-raid-attack]")).toHaveCount(6);
+        // Boss page and tab changes glide in (51a08969): measure where they
+        // land, not mid-glide.
+        await settle(page);
         const narrow = viewport.width <= 700;
         const art = room.locator(".rh-poster img");
         if (!narrow) {
