@@ -2197,6 +2197,11 @@ export function createArenaServer(
           : { text: input.text },
       );
       if (!sent.ok) return fail(cb, sent.error);
+      // In a room the line names the speaker's fighter (a bubble over them).
+      if (route.channel === "room") {
+        const session = getSession(socket.id);
+        if (session) sent.line.fighter = session.id;
+      }
       // On the Plaza an emote also pops over your head for everyone, the
       // way the Plaza's own emotes always have (older apps see it too).
       const pop = sent.line.quick && plazaEmoteFor(sent.line.quick);
