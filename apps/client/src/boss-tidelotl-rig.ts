@@ -13,6 +13,7 @@
  */
 import type Phaser from "phaser";
 import { addCanvasTexture, updateCanvasTexture } from "./canvas-texture";
+import { keepPrepainted, takePrepainted } from "./boss-prepaint";
 import { fxFor } from "./fx-engine";
 import { raidMapLow } from "./raid-map-atlas";
 import {
@@ -77,20 +78,29 @@ function addFrames(scene: Phaser.Scene, a: Atlas) {
 export function prewarmAtlas(scene: Phaser.Scene, phase: number) {
   atlasFor(scene, phase);
 }
-function atlasFor(scene: Phaser.Scene, phase: number): SceneAtlas | undefined {
-  let A = atlases.get(scene);
-  if (A && scene.textures.exists(MAIN) && scene.textures.exists(SKIN)) return A;
-  if (typeof document === "undefined") return undefined;
+/** Both pages (body and the phase's skin), painted and packed. */
+function paintPages(phase: number) {
   const all = pieceList();
   const paintAll = (list: LotlPiece[]) =>
     list.flatMap((p) => {
       const out = paintPiece(p, phase);
       return out ? [{ name: p.name, p: out }] : [];
     });
+  return {
+    m: pack(paintAll(all.filter((p) => !p.skin))),
+    s: pack(paintAll(all.filter((p) => p.skin))),
+  };
+}
+/** Paint both pages ahead, in the raid room (boss-prepaint.ts). */
+export const prepaintAtlas = (phase = 1) =>
+  keepPrepainted(`tidewyrm:${phase}`, () => paintPages(phase));
+function atlasFor(scene: Phaser.Scene, phase: number): SceneAtlas | undefined {
+  let A = atlases.get(scene);
+  if (A && scene.textures.exists(MAIN) && scene.textures.exists(SKIN)) return A;
+  if (typeof document === "undefined") return undefined;
   for (const key of [MAIN, SKIN])
     if (scene.textures.exists(key)) scene.textures.remove(key);
-  const m = pack(paintAll(all.filter((p) => !p.skin))),
-    s = pack(paintAll(all.filter((p) => p.skin)));
+  const { m, s } = takePrepainted(`tidewyrm:${phase}`, () => paintPages(phase));
   A = {
     main: { ...m, key: MAIN },
     skin: { ...s, key: SKIN },

@@ -12,6 +12,7 @@
  */
 import type Phaser from "phaser";
 import { addCanvasTexture } from "./canvas-texture";
+import { keepPrepainted, takePrepainted } from "./boss-prepaint";
 import {
   inkPlacements,
   inkPose,
@@ -20,6 +21,7 @@ import {
   type InkCue,
   type InkFrame,
 } from "./boss-inkpurr";
+import { paintedInkAtlas } from "./boss-inkpurr-paint";
 
 export interface InkpurrLook extends Omit<InkCue, "clock"> {
   /** The floor under the body. */
@@ -61,11 +63,17 @@ export let inkAtlasBytes = 0;
 export const prewarmAtlas = (scene: Phaser.Scene) => {
   atlas(scene);
 };
+/** Paint the atlas ahead, in the raid room (boss-prepaint.ts). */
+export const prepaintAtlas = () => keepPrepainted("gloomshade", inkAtlas);
+/** The last battle's atlas if it's still in memory (a rematch), else a new one. */
+const inkAtlas = () =>
+  (paintedInkAtlas() as ReturnType<typeof paintInkAtlas> | undefined) ??
+  paintInkAtlas();
 function atlas(scene: Phaser.Scene) {
   const known = frames.get(scene);
   if (known && scene.textures.exists(INK_ATLAS)) return known;
   if (scene.textures.exists(INK_ATLAS)) scene.textures.remove(INK_ATLAS);
-  const built = paintInkAtlas();
+  const built = takePrepainted("gloomshade", inkAtlas);
   inkAtlasBytes = built.bytes;
   // A plain image source (canvas-texture.ts): no pixel read-back each frame.
   const texture = addCanvasTexture(scene.textures, INK_ATLAS, built.canvas);
