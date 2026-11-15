@@ -377,9 +377,9 @@ test("tap a message to mute or report it; the gear turns chat off", async ({
     await snap(page, info, "chat-report-844x390");
     await drawer.locator('[data-chat-act="send"]').click();
     await expect(drawer.locator(".chat-note")).toContainText("Report sent");
-    expect(await page.evaluate(() => (window as any).__chatSent)).toEqual([
-      ["chat-report", { channel: "party", id: 2 }],
-    ]);
+    await expect
+      .poll(() => page.evaluate(() => (window as any).__chatSent))
+      .toEqual([["chat-report", { channel: "party", id: 2 }]]);
     // Mute: their lines go, and new ones don't come.
     await drawer.locator('.chat-line[data-line="1"] .chat-say').click();
     await drawer.locator('[data-chat-act="mute"]').click();
@@ -404,9 +404,9 @@ test("tap a message to mute or report it; the gear turns chat off", async ({
     await expect(
       page.locator('#chat-drawer [data-chat-mode="off"]'),
     ).toHaveAttribute("aria-checked", "true");
-    expect(
-      await page.evaluate(() => (window as any).__chatSent.at(-1)),
-    ).toEqual(["chat-mode", { mode: "off" }]);
+    await expect
+      .poll(() => page.evaluate(() => (window as any).__chatSent.at(-1)))
+      .toEqual(["chat-mode", { mode: "off" }]);
     expect(
       await page.evaluate(() => localStorage.getItem("ea-chat-mode")),
     ).toBe("off");
