@@ -7,14 +7,19 @@
  * tiny on the wire, and reads the same for everyone.
  *
  * Who may type:
- * - party and room: players with an account (not guests) whose chat setting
- *   is "free", outside a battle;
+ * - party, room and friend: players with an account (not guests) whose chat
+ *   setting is "free", outside a battle;
  * - place (the Plaza, a Farm): quick chat only, as these are strangers;
  * - in a battle: quick chat only; opponents see emotes, not phrases.
  */
 
-export type ChatChannel = "party" | "room" | "place";
-export const CHAT_CHANNELS: readonly ChatChannel[] = ["party", "room", "place"];
+export type ChatChannel = "party" | "room" | "place" | "friend";
+export const CHAT_CHANNELS: readonly ChatChannel[] = [
+  "party",
+  "room",
+  "place",
+  "friend",
+];
 
 /** free: type and quick chat; quick: quick chat only; off: nothing shown. */
 export type ChatMode = "free" | "quick" | "off";
@@ -157,4 +162,6 @@ export interface ChatLine {
   quick?: ChatQuick;
   /** In a room: the speaker's fighter, for a bubble over them in battle. */
   fighter?: string;
+  /** Between friends: who it was sent to. */
+  to?: string;
 }

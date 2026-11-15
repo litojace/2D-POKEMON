@@ -64,8 +64,11 @@ import { PLAZA, type PlazaRecord } from "../../../packages/shared/src/plaza.js";
 import { Parties, type Party, type PartyAppearance } from "./party.js";
 import { ChatReports, reportContext } from "./chat-moderation.js";
 import {
+  CHAT_LIMITS,
   CHAT_MODES,
+  type ChatLine,
   type ChatMode,
+  type ChatQuick,
 } from "../../../packages/shared/src/chat.js";
 import {
   ChatHub,
@@ -292,6 +295,8 @@ export function createArenaServer(
   const chatStops = new Map<string, number>();
   /** Each online account's chat setting (free, quick only, off). */
   const chatModes = new Map<string, ChatMode>();
+  /** Each online account's friends (id → name), for friends' messages. */
+  const chatFriends = new Map<string, Map<string, string>>();
   const chat = new ChatHub({
     // Typed lines are on unless CHAT_FREE_TEXT=off (a switch to pause them).
     freeText: () =>
@@ -310,6 +315,24 @@ export function createArenaServer(
     const who = socket.data.account as Account | undefined;
     const token = socket.data.accessToken as string | undefined;
     if (!who || !token) return;
+    // Their friends, who they may message.
+    void Promise.resolve()
+      .then(() => accounts.rpc(token, "arena_friends", {}))
+      .then((list) => {
+        const friends = (
+          list as { friends?: { id?: unknown; name?: unknown }[] } | null
+        )?.friends;
+        if (!Array.isArray(friends)) return;
+        chatFriends.set(
+          who.id,
+          new Map(
+            friends
+              .filter((f) => typeof f?.id === "string")
+              .map((f) => [f.id as string, String(f.name ?? "")]),
+          ),
+        );
+      })
+      .catch(() => {});
     // And whether an admin stopped them typing.
     void accounts.chatStoppedUntil?.(who.id).then((until) => {
       const ms = until ? Date.parse(until) : NaN;
@@ -2115,9 +2138,22 @@ export function createArenaServer(
       };
     };
     /** Who hears this socket in a channel, from the server's own state. */
-    const chatRoute = (channel: unknown): ChatRoute | null => {
+    const chatRoute = (channel: unknown, to?: unknown): ChatRoute | null => {
       const me = account();
       if (!me) return null;
+      if (channel === "friend") {
+        // A friend, by the server's own list (blocking ends a friendship).
+        const name =
+          typeof to === "string" ? chatFriends.get(me.id)?.get(to) : undefined;
+        if (name === undefined || typeof to !== "string") return null;
+        const [lo, hi] = [me.id, to].sort();
+        return {
+          channel,
+          key: `friend:${lo}:${hi}`,
+          inBattle: false,
+          members: [chatMember(me.id, me.displayName), chatMember(to, name)],
+        };
+      }
       if (channel === "party") {
         const party = parties.of(me.id);
         if (!party) return null;
@@ -2208,14 +2244,15 @@ export function createArenaServer(
       farmHere.set(socket.id, owner);
       reply(cb, { ok: true });
     });
-    socket.on("chat-send", (data: unknown, cb: unknown) => {
+    socket.on("chat-send", async (data: unknown, cb: unknown) => {
       if (!allowed(10) || !requirePlayer(cb)) return;
       const input = (data ?? {}) as {
         channel?: unknown;
+        to?: unknown;
         text?: unknown;
         quick?: unknown;
       };
-      const route = chatRoute(input.channel);
+      const route = chatRoute(input.channel, input.to);
       if (!route) return fail(cb, "There's no one to chat with here.");
       const sent = chat.send(
         account()!.id,
@@ -2235,9 +2272,71 @@ export function createArenaServer(
       const pop = sent.line.quick && plazaEmoteFor(sent.line.quick);
       if (route.channel === "place" && pop)
         plaza.emote(socket.id, pop, Date.now());
+      // Between friends the line is kept (the last 200 a pair), so a friend
+      // reads it later; its id is then the stored one, negated, so a page
+      // that loads it again knows it. Not kept until the migration runs.
+      if (route.channel === "friend") {
+        const to = route.members.find((m) => m.accountId !== account()!.id)!;
+        sent.line.to = to.accountId;
+        try {
+          const id = await accounts.friendMessages?.save(
+            account()!.id,
+            to.accountId,
+            sent.line.quick
+              ? { quick: sent.line.quick }
+              : { text: sent.line.text },
+          );
+          if (id) sent.line.id = -id;
+        } catch {
+          // Kept in memory only.
+        }
+      }
       for (const id of sent.deliver)
         for (const s of accountSockets(id)) s.emit("chat", sent.line);
       reply(cb, { ok: true });
+    });
+    /** A friend's kept messages, as chat lines. */
+    const friendHistory = async (route: ChatRoute, me: string) => {
+      const friend = route.members.find((m) => m.accountId !== me)!;
+      const names = new Map(route.members.map((m) => [m.accountId, m.name]));
+      try {
+        const rows = await accounts.friendMessages!.history(
+          me,
+          friend.accountId,
+          CHAT_LIMITS.history,
+        );
+        return rows.map((r): ChatLine => ({
+          id: -r.id,
+          channel: "friend",
+          from: { id: r.from, name: names.get(r.from) ?? "" },
+          at: r.at,
+          to: r.from === me ? friend.accountId : me,
+          ...(r.quick
+            ? { quick: r.quick as ChatQuick }
+            : { text: r.text ?? "" }),
+        }));
+      } catch {
+        return chat.history(route.key, me);
+      }
+    };
+    // Unread friends' messages (a dot on the chat); reading a friend clears it.
+    socket.on("chat-unread", async (_data: unknown, cb: unknown) => {
+      if (!allowed(5) || !account() || typeof cb !== "function") return;
+      try {
+        cb({
+          ok: true,
+          unread: (await accounts.friendMessages?.unread(account()!.id)) ?? {},
+        });
+      } catch {
+        cb({ ok: true, unread: {} });
+      }
+    });
+    socket.on("chat-read", (data: unknown) => {
+      if (!allowed(10) || !account()) return;
+      const to = (data as { to?: unknown } | null)?.to;
+      if (typeof to !== "string" || !chatFriends.get(account()!.id)?.has(to))
+        return;
+      void accounts.friendMessages?.read(account()!.id, to).catch(() => {});
     });
     // The player's chat setting (Settings): free, quick chat only, or off.
     socket.on("chat-mode", (data: unknown, cb: unknown) => {
@@ -2254,11 +2353,12 @@ export function createArenaServer(
       if (!allowed(5) || !requirePlayer(cb)) return;
       const input = (data ?? {}) as {
         channel?: unknown;
+        to?: unknown;
         id?: unknown;
         reason?: unknown;
       };
       const me = account()!;
-      const route = chatRoute(input.channel);
+      const route = chatRoute(input.channel, input.to);
       const kept = route ? chat.history(route.key, me.id) : [];
       const at = kept.findIndex((l) => l.id === input.id);
       const line = kept[at];
@@ -2284,13 +2384,19 @@ export function createArenaServer(
       if (pausedNow) connectionLog("chat-paused", { account: line.from.id });
       reply(cb, { ok: true });
     });
-    socket.on("chat-history", (data: unknown, cb: unknown) => {
+    socket.on("chat-history", async (data: unknown, cb: unknown) => {
       if (!allowed(10) || !account()) return;
-      const route = chatRoute((data as { channel?: unknown } | null)?.channel);
+      const input = (data ?? {}) as { channel?: unknown; to?: unknown };
+      const route = chatRoute(input.channel, input.to);
       if (typeof cb !== "function") return;
+      const me = account()!.id;
       cb({
         ok: true,
-        lines: route ? chat.history(route.key, account()!.id) : [],
+        lines: !route
+          ? []
+          : route.channel === "friend" && accounts.friendMessages
+            ? await friendHistory(route, me)
+            : chat.history(route.key, me),
       });
     });
     // ───────────── Plaza (hub redesign phase 3) ─────────────
@@ -2563,6 +2669,7 @@ export function createArenaServer(
         chat.forget(who.id);
         chatStops.delete(who.id);
         chatModes.delete(who.id);
+        chatFriends.delete(who.id);
       }
       plaza.leave(socket.id);
       farmHere.delete(socket.id);
