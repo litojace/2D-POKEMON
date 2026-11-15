@@ -149,6 +149,38 @@ test("chat on a 568x320 phone: no room beside the card, so the button sits under
         name,
       ).toBe(true);
     }
+    // The most tabs at once (a party on the Plaza, and Friends) stay in
+    // their row, clear of the gear, with nothing scrolled out of sight.
+    await scene(page, "plaza");
+    await expect(page.locator(".plaza-layer #pz-cv")).toBeVisible();
+    await page.evaluate(
+      ([me, pal]) =>
+        (window as any).__sock.fire("party", {
+          code: "PARTY2",
+          leader: me,
+          members: [
+            { id: me, name: "tester", character: "voltkit" },
+            { id: pal, name: "Pal", character: "tidefin" },
+          ],
+        }),
+      [ME, PAL],
+    );
+    await page.click("#chat-button");
+    await expect
+      .poll(async () => Math.round((await box(page, "#chat-drawer")).x))
+      .toBe(0);
+    await expect(page.locator("#chat-drawer .chat-tab")).toHaveCount(3);
+    const row = await page.evaluate(() => {
+      const tabs = document.querySelector("#chat-drawer .chat-tabs")!;
+      return {
+        overflow: tabs.scrollWidth - tabs.clientWidth,
+        gap:
+          document.querySelector(".chat-gear")!.getBoundingClientRect().left -
+          tabs.lastElementChild!.getBoundingClientRect().right,
+      };
+    });
+    expect(row.overflow).toBeLessThanOrEqual(0);
+    expect(row.gap).toBeGreaterThanOrEqual(4);
   } finally {
     await context.close();
   }

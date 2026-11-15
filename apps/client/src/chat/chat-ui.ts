@@ -269,7 +269,7 @@ export function mountChat(hooks: ChatHooks): ChatView {
     tabs.innerHTML = open
       .map(
         (c) =>
-          `<button type="button" role="tab" class="chat-tab" data-chat-tab="${c}" aria-selected="${c === active}">${LABEL[c]}${unseen[c] && c !== active ? `<i>${Math.min(unseen[c], 9)}${unseen[c] > 9 ? "+" : ""}</i>` : ""}</button>`,
+          `<button type="button" role="tab" class="chat-tab" data-chat-tab="${c}" aria-selected="${c === active}"${c === "friend" ? ` aria-label="${LABEL[c]}"` : ""}>${c === "friend" ? `${menuIcon("friends")}<span>${LABEL[c]}</span>` : LABEL[c]}${unseen[c] && c !== active ? `<i>${Math.min(unseen[c], 9)}${unseen[c] > 9 ? "+" : ""}</i>` : ""}</button>`,
       )
       .join("");
   }

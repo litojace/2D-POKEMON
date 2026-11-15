@@ -141,6 +141,44 @@
   background: #ffd65b;
   color: #2a1a00;
 }
+.chat-tab svg {
+  display: none;
+  width: 18px;
+  height: 18px;
+}
+/* A narrow drawer (small phones) keeps every tab in its row: tighter tabs,
+   Friends as its icon, and a row that scrolls if a name still doesn't fit. */
+@media (max-width: 640px) {
+  .chat-tabs {
+    align-items: center;
+    height: 44px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .chat-tabs::-webkit-scrollbar {
+    display: none;
+  }
+  .chat-tab {
+    flex: none;
+    min-width: 44px;
+    padding: 0 6px;
+    font-size: 13px;
+    letter-spacing: 0.04em;
+  }
+  .chat-tab[data-chat-tab="friend"] {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    padding: 0 8px;
+  }
+  .chat-tab[data-chat-tab="friend"] svg {
+    display: block;
+  }
+  .chat-tab[data-chat-tab="friend"] span {
+    display: none;
+  }
+}
 .chat-tab i {
   margin-left: 6px;
   font-style: normal;
