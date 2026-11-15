@@ -473,6 +473,32 @@ left out when the measure cannot be a screen's (below 30 or above 250 Hz):
 a device too slow to draw every refresh measures its own pace, and two
 calls of Phaser's step in one frame (0.05 ms apart) are not counted.
 
+### 14. Battle style recalculation
+
+The battle HUD is page elements over the canvas: skill buttons with a
+cooldown sweep and countdown, nameplates, the enemy pointer. They change
+about 26 times a second while skills cool down. Each change costs the
+browser a style recalculation, normally of the few elements that changed.
+
+Five `:has()` selectors elsewhere in the stylesheets (the Settings grid,
+the Admin dialog, the Plaza and Farm glass at Low) made Chromium restyle
+about 140 elements on every one of those changes, though none of them
+applies in a battle: `.prefs-grid:has(> .prefs-display) > :first-child`,
+`.prefs-grid:has(> .prefs-graphics)` (twice), `dialog:has(.admin-tabs) *`
+and `body:has(:is(.plaza-layer, .farm-layer)[data-graphics="low"]) …`.
+They are classes now, set where the content is built (`prefs-grid
+has-display has-graphics`, `dialog.has-dialog-tabs`, `body.hub-graphics-low`
+from `hub-graphics.ts`), with the same specificity
+(`tests/unit/hub-graphics.test.ts` keeps them off `:has()`).
+
+Measured 15 Nov 2026 in a duel at a phone viewport (Chromium tracing, two
+runs each): style recalculation 5.4–5.7 ms a frame before, 2.5–2.7 after;
+140 elements a recalculation before, 17 after; 60% fewer paints. Removing
+every `:has()` rule would reach 5 elements; the rest are small. A new
+`:has()` whose subject sits under a broad combinator (`*`, `> :first-child`)
+or whose anchor is `body` or a dialog can bring this back: check a battle
+trace (`UpdateLayoutTree` element counts) when adding one.
+
 ## Results
 
 All measurements were taken on one Linux container (Intel Xeon 2.8 GHz). The
