@@ -40,7 +40,7 @@ export function missionHelp(id: string) {
     minutes:
       "Finish matches or raids. Combat time adds together across finished games, including leftover seconds from short games; progress shows whole minutes. Time in menus does not count. You do not need to reach the target in one game.",
     "raid-play":
-      "Finish a raid by defeating the boss or reaching a defeat result. A defeat must last at least 20 seconds to count. Leaving early or using attack practice does not count.",
+      "Finish a raid by defeating the boss or reaching a defeat result. A defeat must last at least 20 seconds to count. Leaving early does not count.",
     "raid-solo":
       "Start a Boss Raid with only yourself in the party and defeat the boss. Clearing a raid with another player does not count as solo.",
     "raid-solo-p2":

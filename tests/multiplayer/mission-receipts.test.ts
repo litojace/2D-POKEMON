@@ -179,7 +179,7 @@ it("keeps a departed raid teammate in the receipt so a co-op clear cannot become
     payload.players.find((p) => p.accountId === peer.account.id),
   ).toMatchObject({ abandoned: true });
 });
-it("never reports solo practice or attack drills as daily mission activity", async () => {
+it("never reports solo practice as daily mission activity", async () => {
   const { connect, recordActivity } = await setup();
   const { socket } = await connect();
   const created = await emit(socket, "practice", {
@@ -190,19 +190,6 @@ it("never reports solo practice or attack drills as daily mission activity", asy
   a.players[0].stats.skills = 100;
   a.playTime = 120;
   a.forfeit(created.id!);
-  server!.step();
-  expect(recordActivity).not.toHaveBeenCalled();
-  await emit(socket, "leave");
-  const raid = await emit(socket, "create", {
-    name: "Tester",
-    mode: "raid",
-    boss: "grumblecrag",
-  });
-  expect((await emit(socket, "raid-drill", { kind: "charge" })).ok).toBe(true);
-  const b = server!.rooms.get(raid.code!) as RaidArena;
-  b.raid.elapsed = 120;
-  b.heroes()[0].stats.skills = 100;
-  b.endRound(0);
   server!.step();
   expect(recordActivity).not.toHaveBeenCalled();
 });

@@ -1,8 +1,7 @@
 # Living raid bosses
 
-All seven raid encounters now use detailed painted anatomy in the style of the
-Raid Hall sculptures, with living colours, mineral facets, scales, fur, feathers,
-and translucent storm glass.
+All seven raid encounters now use detailed painted anatomy, with living
+colours, mineral facets, scales, fur, feathers, and translucent storm glass.
 
 [Actual animated rigs](living-bosses-motion.mp4) ·
 [All seven bosses](living-bosses.webp) ·

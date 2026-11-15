@@ -153,7 +153,7 @@ type Hooks = {
   startAdventure?: (mode: string) => void;
   startRaid?: (
     boss: RaidBossId,
-    options: { solo?: boolean; drill?: string; returnTab?: RaidTab },
+    options: { solo?: boolean; returnTab?: RaidTab },
   ) => void;
   /** Your Lobby party for the raid seats, and whether you can start. */
   raidParty?: () => { party: RaidSeat[]; leader: boolean; inRoom: boolean };
@@ -843,7 +843,7 @@ export class AccountUI {
   private raidLoading = false;
   private raidFriends: Friend[] | null = null;
   /**
-   * Raids: the Raid Hall and a boss's page, a panel inside the Lobby. It
+   * Raids: the boss list and a boss's page, a panel inside the Lobby. It
    * opens at once with what is known, then shows the server's fresh copy of
    * your raid records and your friends.
    */
@@ -851,7 +851,7 @@ export class AccountUI {
     if (!this.ensurePlayer()) return;
     this.toLobbyScreen();
     const accountId = this.account?.id;
-    // The Raid Hall's code and styles load the first time it opens, not
+    // The raid screens' code and styles load the first time they open, not
     // with the game (a phone starts faster).
     const { openRaids } = await import("./screens/raid-hall");
     if (this.account?.id !== accountId) return;

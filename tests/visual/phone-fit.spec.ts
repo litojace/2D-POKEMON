@@ -324,7 +324,7 @@ const HUB: [string, (page: Page) => Promise<void>][] = [
   ["missions", rail("missions")],
   ["ranks", rail("ranks")],
   ["friends", rail("friends")],
-  ["raid hall", rail("raids")],
+  ["raid list", rail("raids")],
   [
     "boss page",
     async (page) => {

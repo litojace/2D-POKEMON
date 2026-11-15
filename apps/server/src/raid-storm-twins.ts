@@ -172,7 +172,7 @@ export class StormTwinsArena extends RaidArena {
       this.has(p, "brace")
     ) {
       const twin = this.twins().find((t) => t.id === owner);
-      if (twin && !this.raid.drill) {
+      if (twin) {
         this.addBossStagger(twin, TRICKS.blockStagger);
         this.raid.message = `${p.name} braces and stops ${twin.name}'s rush!`;
       }
@@ -331,10 +331,7 @@ export class StormTwinsArena extends RaidArena {
       });
     if (kind === "polarity") {
       const alive = this.heroes().filter((p) => p.hp > 0),
-        signs =
-          this.cunning() > 0
-            ? polaritySigns(alive, r.seed)
-            : alive.map((_, i) => ((i + r.seed) % 2 ? 1 : -1) as 1 | -1);
+        signs = polaritySigns(alive, r.seed);
       r.polarities = alive.map((p, i) => ({
         playerId: p.id,
         sign: signs[i],
@@ -357,10 +354,7 @@ export class StormTwinsArena extends RaidArena {
     if (kind === "link-beam") {
       if (actors.length < 2) return this.startAttack("thunderclap", target);
       const [a, b] = actors,
-        group =
-          this.cunning() > 0
-            ? biggestGroup(this.heroes().filter((p) => p.hp > 0))
-            : undefined;
+        group = biggestGroup(this.heroes().filter((p) => p.hp > 0));
       let post = r.phase >= 2 ? (r.seed + this.attacks) % 4 : undefined;
       if (group && post !== undefined) {
         // Bend the beam through the copper post nearest the group.
@@ -467,15 +461,10 @@ export class StormTwinsArena extends RaidArena {
   }
   /**
    * Where each twin rushes: through a different raider each, where they are
-   * heading, and on to the ring's edge (practice keeps the mirrored lanes).
+   * heading, and on to the ring's edge.
    */
   private rushEnds(actors: Fighter[], target: Fighter): Point[] {
     const box = S.rush.box;
-    if (this.cunning() <= 0)
-      return actors.map((p, i) => ({
-        x: Math.max(box.x0, Math.min(box.x1, 1600 - p.x)),
-        y: Math.max(box.y0, Math.min(box.y1, 900 - p.y + (i ? -140 : 140))),
-      }));
     const alive = this.heroes().filter((p) => p.hp > 0),
       others = alive.filter((p) => p !== target),
       second = others.length ? this.chooseTarget("twin-rush", others) : target,
@@ -584,7 +573,6 @@ export class StormTwinsArena extends RaidArena {
         )
           this.damage(p, S.clap.damage, caster.id);
     this.hitBy = undefined;
-    this.countDodges();
     this.event("raid-impact", w, 0x8fdfff, undefined, caster.id);
     this.events[this.events.length - 1].raidRadius = w.radius;
   }
@@ -622,10 +610,8 @@ export class StormTwinsArena extends RaidArena {
       if (cancel.has(m.playerId) && !m.cancelled) {
         m.cancelled = true;
         const p = alive.find((p) => p.id === m.playerId)!;
-        if (!r.drill && r.contributions?.[p.id])
-          r.contributions[p.id].pillars++;
+        if (r.contributions?.[p.id]) r.contributions[p.id].pillars++;
         this.event("heal", p, 0x8cead0, 0, p.id);
-        if (r.drillStats) r.drillStats.dodges++;
       }
     for (const m of marks) {
       if (m.until > this.time || m.cancelled) continue;
@@ -709,8 +695,6 @@ export class StormTwinsArena extends RaidArena {
     if (beam) {
       const [a, b] = this.twins();
       if (a.hp <= 0 || b.hp <= 0 || beam.until <= this.time) {
-        this.struck = new Set(this.beamHits);
-        this.countDodges();
         r.stormBeam = undefined;
         this.beamHits.clear();
       } else {
@@ -809,8 +793,6 @@ export class StormTwinsArena extends RaidArena {
           ),
       );
       if (!r.stormRushes.length) {
-        this.struck = new Set(this.rushHits);
-        this.countDodges();
         this.rushHits.clear();
       }
     }

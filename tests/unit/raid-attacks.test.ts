@@ -5,9 +5,6 @@ import { RaidArena } from "../../apps/server/src/raid";
 import { CHARACTERS, blankInput, type CharacterId } from "@arena/shared";
 import {
   GRUMBLECRAG,
-  RAID_BOSSES,
-  raidAttacksOf,
-  type RaidBossId,
   raidPattern,
   type RaidWarning,
 } from "../../packages/shared/src/raid";
@@ -246,28 +243,7 @@ describe("difficulty and champions", () => {
   });
 });
 
-describe("pings, practice and stand-ins", () => {
-  it.each(Object.keys(RAID_BOSSES) as RaidBossId[])(
-    "%s practice accepts movement immediately without a countdown or rite choice",
-    (boss) => {
-      const a = createRaidArena("DRILL", boss);
-      const hero = a.add("p0", "Learner", "voltkit");
-      expect(a.startDrill(raidAttacksOf(boss)[0])).toBe(true);
-      expect(a.phase).toBe("playing");
-      expect(a.raid.offers).toEqual({});
-      const y = hero.y;
-      hero.lastInput = { ...blankInput(), dy: 1 };
-      a.tick();
-      expect(hero.y).toBeGreaterThan(y);
-      expect(a.raid.elapsed).toBeGreaterThan(0);
-      expect(a.raid.warnings).toHaveLength(0);
-      expect(a.stopDrill()).toBe(true);
-      expect(a.phase).toBe("lobby");
-      expect(a.startDrill(raidAttacksOf(boss)[0])).toBe(true);
-      expect(a.phase).toBe("playing");
-    },
-  );
-
+describe("pings and stand-ins", () => {
   it("shows a ping for a few seconds and limits spam", () => {
     const a = raid(["voltkit", "cindrake"]);
     expect(a.ping("p0", "stack")).toBe(true);
@@ -278,28 +254,6 @@ describe("pings, practice and stand-ins", () => {
     for (let i = 0; i < 130; i++) a.tick();
     expect(a.raid.pings).toHaveLength(0);
     expect(a.ping("boss-or-stranger", "stack")).toBe(false);
-  });
-  it("practice repeats one attack, counts hits without hurting anyone, then returns to the lobby", () => {
-    const a = new RaidArena("DRILL");
-    a.add("p0", "Learner", "voltkit");
-    expect(a.startDrill("volley")).toBe(true);
-    expect(a.phase).toBe("playing");
-    for (let i = 0; i < 30 * 12; i++) a.tick();
-    expect(a.phase).toBe("playing");
-    const stats = a.raid.drillStats!;
-    expect(stats.hits + stats.dodges).toBeGreaterThan(0);
-    const p = a.heroes()[0];
-    expect(p.hp).toBe(CHARACTERS.voltkit.health);
-    const boss = a.boss()!,
-      before = boss.hp;
-    a.damage(boss, 500, p.id);
-    expect(boss.hp).toBe(before);
-    expect(a.raid.result).toBeNull();
-    expect(a.setDrill("charge")).toBe(true);
-    expect(a.raid.drill).toBe("charge");
-    expect(a.stopDrill()).toBe(true);
-    expect(a.phase).toBe("lobby");
-    expect(a.boss()).toBeUndefined();
   });
   it("an AI stand-in dodges telegraphs, stacks for meteors and hands back control", () => {
     const a = raid(["voltkit", "cindrake"]);
@@ -360,16 +314,6 @@ describe("boss target choice", () => {
   };
   const alive = (a: RaidArena) => a.heroes().filter((p) => p.hp > 0);
 
-  it("practice keeps a plain rotation", () => {
-    const a = raid(["voltkit", "cindrake"]);
-    a.raid.drill = "slam" as never;
-    const picks = new Set<string>();
-    for (let i = 0; i < 4; i++) {
-      (a as unknown as { attacks: number }).attacks = i;
-      picks.add(smart(a).chooseTarget("slam", alive(a)).id);
-    }
-    expect(picks.size).toBe(2);
-  });
   it("turns on whoever is hurting it most", () => {
     const a = party(3);
     smart(a).threat.set("p2", 400);

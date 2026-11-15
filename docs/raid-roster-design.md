@@ -2,13 +2,13 @@
 
 Status: **All seven bosses are implemented, including Storm Twins. Apply migration 021_storm_twins.sql after 020_emberwing.sql to enable Storm Twins records and eleven rewards.** The Raid Hub, Raid of the Day, five cosmetic slots, coins, daily missions and Shop are implemented. Balance values still need live play feedback.
 
-Somnara's sequence is generated privately on the server, omitted from public and spectator snapshots, and delivered only to the Dreamer (or through Lucid/Mind Maze). Its camera keeps all four pads visible. Tests cover solo/co-op rune entry, backwards dreams, sleep/wake, champion tricks, practice, daily rotation, socket privacy, reward persistence and desktop/mobile controls.
+Somnara's sequence is generated privately on the server, omitted from public and spectator snapshots, and delivered only to the Dreamer (or through Lucid/Mind Maze). Its camera keeps all four pads visible. Tests cover solo/co-op rune entry, backwards dreams, sleep/wake, champion tricks, daily rotation, socket privacy, reward persistence and desktop/mobile controls.
 
-Prismatail fights in the Sun Atrium. Light passes through raiders and directional mirror posts; ordinary attacks turn a mirror 45°. Solar Crown requires two team paths within three seconds, or a continuous two-second solo path. The mobile camera keeps the complete relay visible, with compact Look away and Turn mirror controls. Six practice drills, champion tricks, traits, Polished, eleven rewards and Sunday daily rotation are implemented. Lightkeeper credits one relay per participating raider when the shield breaks, never per simulation frame. The two-player final phase uses both beams too; a Radiant Flare carrier can relay both during its four-second effect. Tests cover party sizes 1–4 on all Perils, attack geometry, mirror repair by stand-ins, socket state, database permissions and reward equipping. Balance still needs human play feedback.
+Prismatail fights in the Sun Atrium. Light passes through raiders and directional mirror posts; ordinary attacks turn a mirror 45°. Solar Crown requires two team paths within three seconds, or a continuous two-second solo path. The mobile camera keeps the complete relay visible, with compact Look away and Turn mirror controls. Champion tricks, traits, Polished, eleven rewards and Sunday daily rotation are implemented. Lightkeeper credits one relay per participating raider when the shield breaks, never per simulation frame. The two-player final phase uses both beams too; a Radiant Flare carrier can relay both during its four-second effect. Tests cover party sizes 1–4 on all Perils, attack geometry, mirror repair by stand-ins, socket state, database permissions and reward equipping. Balance still needs human play feedback.
 
-Emberwing uses the Sky Terrace and three braziers in a triangle. Flying blocks melee and ground-only attacks; ranged damage is halved, except Lumoth’s Wing Dust, Halcyra’s Aura Quill and Focus Shot, and Astrabun’s Full Moon. A grounded window lasts six seconds (eight with Updraft); two groundings in Blazing Sky leave the heart permanently exposed. The compact HUD shows flight and brazier progress. Fireproof, all seven practice choices, eight champion tricks and eleven rewards are implemented. Stand-ins use separate brazier targets; tests walk slow Terradon parties of 1–4 through the final-phase route on every Peril. Grounding clears dive trails and shrinks growing fire patches. The Flashfire speed title uses the existing four-minute solo Peril 2 target provisionally, pending human clear times.
+Emberwing uses the Sky Terrace and three braziers in a triangle. Flying blocks melee and ground-only attacks; ranged damage is halved, except Lumoth’s Wing Dust, Halcyra’s Aura Quill and Focus Shot, and Astrabun’s Full Moon. A grounded window lasts six seconds (eight with Updraft); two groundings in Blazing Sky leave the heart permanently exposed. The compact HUD shows flight and brazier progress. Fireproof, eight champion tricks and eleven rewards are implemented. Stand-ins use separate brazier targets; tests walk slow Terradon parties of 1–4 through the final-phase route on every Peril. Grounding clears dive trails and shrinks growing fire patches. The Flashfire speed title uses the existing four-minute solo Peril 2 target provisionally, pending human clear times.
 
-Storm Twins fight in the Conductor Ring as two independently damageable enemies, Fizz and Crackle. Each has separate health, stagger and exposed windows; the shared health bar retains the two rite thresholds. During Supercell, finishing one starts a 15/12/8-second revival timer (solo adds three seconds; In-sync adds three). The fallen twin revives at 35% unless both fall in time. Opposite Polarity signs cancel within range; a cancelled teammate can help an odd party's remaining raider without repeat credit. Solo (or the last standing co-op raider) gets a reachable opposite-sign floor pad. Six attacks, seven champion tricks, three traits, Grounded, six practice drills, Thursday daily rotation, touch target selection and eleven rewards are implemented. Tests cover all party sizes and Perils, revival and simultaneous finishes, stand-ins, multiplayer startup, persistence, permissions and equipping. Flashpoint uses the existing four-minute solo Peril 2 speed target provisionally, pending human clear times. Cross-boss rewards described later remain planned unless separately marked implemented.
+Storm Twins fight in the Conductor Ring as two independently damageable enemies, Fizz and Crackle. Each has separate health, stagger and exposed windows; the shared health bar retains the two rite thresholds. During Supercell, finishing one starts a 15/12/8-second revival timer (solo adds three seconds; In-sync adds three). The fallen twin revives at 35% unless both fall in time. Opposite Polarity signs cancel within range; a cancelled teammate can help an odd party's remaining raider without repeat credit. Solo (or the last standing co-op raider) gets a reachable opposite-sign floor pad. Six attacks, seven champion tricks, three traits, Grounded, Thursday daily rotation, touch target selection and eleven rewards are implemented. Tests cover all party sizes and Perils, revival and simultaneous finishes, stand-ins, multiplayer startup, persistence, permissions and equipping. Flashpoint uses the existing four-minute solo Peril 2 speed target provisionally, pending human clear times. Cross-boss rewards described later remain planned unless separately marked implemented.
 
 Decisions so far (Oct 17):
 
@@ -95,8 +95,8 @@ going straight to a room.
 1. **Overview:** a flavour blurb, the three chapters and their goals, an
    illustration of the signature mechanic, and the champion tricks that
    apply (§6).
-2. **Attacks:** every attack with its warning shape, a tip, and _Practice
-   this_.
+2. **Attacks:** every attack with its own illustrated icon (its warning
+   shape and the dodge), what it does and a tip.
 3. **Rewards:** the full ladder with exact progress, equip buttons, and a
    preview of each cosmetic on your current champion.
 4. **Records:** best time per party size, clears per Peril, today's board
@@ -149,7 +149,7 @@ The same as Grumblecrag unless a boss says otherwise:
   combat limit.
 - Peril damage ×1 / ×1.1 / ×1.2.
 - Health locks at the starting party size.
-- Stagger meter, downed/crawl/revive, team signals, practice drills,
+- Stagger meter, downed/crawl/revive, team signals,
   stand-in AI for disconnects, "what downed you" tips, contribution stats.
 - Traits (one rolled per run, three per boss) and rare Gilded runs.
 - **Team signals:** the third key changes meaning per boss.
@@ -222,9 +222,6 @@ while in water.
 - High Tide capacity doesn't matter.
 - At Peril 3, islands sink faster to compensate.
 
-**Practice drills:** Dive & Surface, Tidal Wave, High Tide, Undertow,
-Bubble Prison.
-
 ### 5.2 Gloomshade — "Lights Out" (Shadow, ★★)
 
 **Look:** a big floppy-eared puff of shadow with too many blinking eyes and
@@ -279,9 +276,6 @@ light heals 1%/s.
   longer you stand still.
 - Decoys are reduced by one.
 
-**Practice drills:** Shadow Lunge, Grasping Hands, Creeping Curse, Mirror
-Split, Nightmare Pulse.
-
 ### 5.3 Emberwing — "Ground the Sky" (Fire, ★★★)
 
 **Look:** a plump, fluffy fire-crested bird with stubby legs, a tiny beak,
@@ -334,9 +328,6 @@ light braziers twice as fast.
 
 **Solo version:** braziers stay lit for 12 s (8 s on Peril 3), so one raider
 can run the triangle.
-
-**Practice drills:** Dive Bomb, Wing Gust, Flame Ring, Heat Mark, Brazier
-lighting.
 
 **Engine note:** this boss needs an "airborne" state (no melee hits, ranged
 damage halved, a drawn shadow on the ground). Its engine work is mid-sized.
@@ -397,8 +388,6 @@ Polarity mismatch only does normal damage to you.
   cancel.
 - Chain Lightning has no one to jump to.
 - Kill windows get 3 extra seconds.
-
-**Practice drills:** Link Beam, Chain Lightning, Twin Rush, Polarity.
 
 **Engine note:** this is the first fight with **two boss entities**. It
 needs separate targeting, health, stagger and hit radius for each twin.
@@ -466,9 +455,6 @@ first rune of every sequence, even when you're not the Dreamer.
 - You get 14 s to step the sequence.
 - Sequences are one rune shorter than a team's.
 
-**Practice drills:** Lullaby Rings, Falling Stars, Whale Song, Dream
-Sequence.
-
 **Engine note:**
 
 - The Dreamer-only sequence must be sent privately to that one player, not
@@ -533,9 +519,6 @@ range is +60.
 - Mirror posts are hit-to-rotate. Each hit turns a post 45°, and the posts
   plus you make the chain.
 - Split Light becomes one beam that must be held for 2 s.
-
-**Practice drills:** Prism Lance, Fan Display, Glare, Halo Crush, Light
-Relay.
 
 **Engine note:**
 
@@ -830,7 +813,7 @@ the streak is a record, not a reward.
 **Server (`apps/server/src/raid/`)**
 
 - `core.ts`: chapters, downs and revives, stagger, rites, contributions,
-  receipts, practice, stand-ins, solo rules (including no Peril 3 solo
+  receipts, stand-ins, solo rules (including no Peril 3 solo
   self-revive).
 - One module per boss implementing `startAttack`, `tick`, hit rules,
   feature updates and `standInHints`. Examples of hints: "island on High
@@ -938,7 +921,7 @@ the Raid of the Day rotates through the bosses that are built.
 - **Bots:**
   - Bot matches pay only through missions that ask for them (e.g. "Beat a
     Hard bot").
-  - Practice and drills pay nothing.
+  - Practice pays nothing.
 - **Mostly-idle matches** (under 20 s of active play) pay nothing.
 
 Rough pace: a typical evening earns about **500 coins**:
