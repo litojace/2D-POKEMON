@@ -27,7 +27,10 @@
  * Phaser's renderer first (tests/unit/graphics-render.test.ts fails on
  * another version, on purpose).
  */
-import Phaser from "phaser";
+import type Phaser from "phaser";
+
+/** The loaded Phaser library (it loads on demand: phaser-runtime.ts). */
+let P: typeof Phaser;
 
 /** The Phaser version this renderer was copied from. */
 export const GRAPHICS_RENDER_PHASER = "3.90.0";
@@ -220,7 +223,7 @@ export function renderGraphics(
     src,
   ) as Pipeline;
   renderer.pipelines.preBatch(src);
-  const calcMatrix = Phaser.GameObjects.GetCalcMatrix(
+  const calcMatrix = P.GameObjects.GetCalcMatrix(
     src,
     camera,
     parentMatrix as Matrix,
@@ -230,7 +233,7 @@ export function renderGraphics(
   let lineWidth = 1;
   const fillTint = pipeline.fillTint;
   const strokeTint = pipeline.strokeTint;
-  const getTint = Phaser.Renderer.WebGL.Utils.getTintAppendFloatAlpha;
+  const getTint = P.Renderer.WebGL.Utils.getTintAppendFloatAlpha;
   const PI2 = Math.PI * 2;
   // Screen pixels per unit of the Graphics' own space (for arc segments).
   // Recomputed when the Graphics' own transform commands change it.
@@ -501,10 +504,11 @@ const replacements: Record<string, unknown> = {
  * Use this renderer for every Phaser Graphics (on Phaser 3.90.0 only).
  * `on = false` puts Phaser's own back (for measuring one against the other).
  */
-export function installGraphicsRenderer(on = true) {
-  if (Phaser.VERSION !== GRAPHICS_RENDER_PHASER) return false;
-  tempMatrix ??= new Phaser.GameObjects.Components.TransformMatrix();
-  const proto = Phaser.GameObjects.Graphics.prototype as unknown as Record<
+export function installGraphicsRenderer(lib: typeof Phaser, on = true) {
+  if (lib.VERSION !== GRAPHICS_RENDER_PHASER) return false;
+  P = lib;
+  tempMatrix ??= new P.GameObjects.Components.TransformMatrix();
+  const proto = P.GameObjects.Graphics.prototype as unknown as Record<
     string,
     unknown
   >;

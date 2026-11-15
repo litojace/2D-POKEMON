@@ -64,6 +64,19 @@ assert(
   "Game entry navigation must remain network-only",
 );
 assert(urls.every((url) => existsSync(root + url)));
+// Phaser loads after the first screen (phaser-runtime.ts), not with the
+// page, yet stays installed for offline battles; so do the Lobby panels
+// that load on first use.
+const entry = readFileSync(root + "index.html", "utf8");
+assert(
+  !/assets\/phaser-[\w-]+\.js/.test(entry),
+  "Phaser must not load with the page (phaser-runtime.ts)",
+);
+for (const chunk of ["phaser", "raid-hall", "fitting-room", "journey"])
+  assert(
+    urls.some((url) => new RegExp(`^assets/${chunk}-[\\w-]+\\.js$`).test(url)),
+    `${chunk} must stay available offline`,
+  );
 // Links in old emails land on these paths; each must be the game page.
 const page = readFileSync(root + "index.html", "utf8");
 for (const path of ["email-confirmed", "reset-password", "auth/callback"]) {

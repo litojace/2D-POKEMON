@@ -245,7 +245,7 @@ describe("rendering", () => {
     };
   }
   function draw(commands: number[], scale = 1) {
-    installGraphicsRenderer();
+    installGraphicsRenderer(Phaser);
     calc = new Matrix(scale, 0, 0, scale, 0, 0);
     const p = pipeline();
     const renderer = {
@@ -314,7 +314,7 @@ describe("rendering", () => {
   });
 
   it("draws ellipses with the same commands as Phaser's fillEllipse", () => {
-    installGraphicsRenderer();
+    installGraphicsRenderer(Phaser);
     const g = { commandBuffer: [] as number[] };
     Phaser.GameObjects.Graphics.prototype.fillEllipse.call(
       g,

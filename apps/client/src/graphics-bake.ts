@@ -1,4 +1,5 @@
-import Phaser from "phaser";
+import type Phaser from "phaser";
+import { phaser } from "./phaser-runtime";
 
 /**
  * `Graphics.generateTexture` draws through one static camera shared by every
@@ -23,8 +24,11 @@ export function generateGraphicsTexture(
 
 /** Drop the shared bake camera's references to game objects and scenes. */
 export function releaseBakeCamera() {
+  // (Before Phaser has loaded, nothing has baked.)
+  const lib = phaser();
+  if (!lib) return;
   const camera = (
-    Phaser.GameObjects.Graphics as unknown as {
+    lib.GameObjects.Graphics as unknown as {
       TargetCamera?: {
         renderList: unknown[];
         scene?: unknown;
