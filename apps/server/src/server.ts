@@ -310,29 +310,40 @@ export function createArenaServer(
       return null;
     },
   });
+  /**
+   * Read this account's friends, who they may message (kept per account;
+   * read again whenever the chat's Friends tab opens, so a friend added a
+   * moment ago is there).
+   */
+  const loadChatFriends = async (socket: import("socket.io").Socket) => {
+    const who = socket.data.account as Account | undefined;
+    const token = socket.data.accessToken as string | undefined;
+    if (!who || !token) return;
+    try {
+      const list = await accounts.rpc(token, "arena_friends", {});
+      const friends = (
+        list as { friends?: { id?: unknown; name?: unknown }[] } | null
+      )?.friends;
+      if (!Array.isArray(friends)) return;
+      chatFriends.set(
+        who.id,
+        new Map(
+          friends
+            .filter((f) => typeof f?.id === "string")
+            .map((f) => [f.id as string, String(f.name ?? "")]),
+        ),
+      );
+    } catch {
+      // Kept as it was.
+    }
+  };
   /** Read who this account blocked, so chat delivers nothing between them. */
   const loadChatBlocks = async (socket: import("socket.io").Socket) => {
     const who = socket.data.account as Account | undefined;
     const token = socket.data.accessToken as string | undefined;
     if (!who || !token) return;
     // Their friends, who they may message.
-    void Promise.resolve()
-      .then(() => accounts.rpc(token, "arena_friends", {}))
-      .then((list) => {
-        const friends = (
-          list as { friends?: { id?: unknown; name?: unknown }[] } | null
-        )?.friends;
-        if (!Array.isArray(friends)) return;
-        chatFriends.set(
-          who.id,
-          new Map(
-            friends
-              .filter((f) => typeof f?.id === "string")
-              .map((f) => [f.id as string, String(f.name ?? "")]),
-          ),
-        );
-      })
-      .catch(() => {});
+    void loadChatFriends(socket);
     // And whether an admin stopped them typing.
     void accounts.chatStoppedUntil?.(who.id).then((until) => {
       const ms = until ? Date.parse(until) : NaN;
@@ -2275,7 +2286,9 @@ export function createArenaServer(
       // Between friends the line is kept (the last 200 a pair), so a friend
       // reads it later; its id is then the stored one, negated, so a page
       // that loads it again knows it. Not kept until the migration runs.
+      let kept: boolean | undefined;
       if (route.channel === "friend") {
+        kept = false;
         const to = route.members.find((m) => m.accountId !== account()!.id)!;
         sent.line.to = to.accountId;
         try {
@@ -2286,14 +2299,18 @@ export function createArenaServer(
               ? { quick: sent.line.quick }
               : { text: sent.line.text },
           );
-          if (id) sent.line.id = -id;
+          if (id) {
+            sent.line.id = -id;
+            kept = true;
+          }
         } catch {
           // Kept in memory only.
         }
       }
       for (const id of sent.deliver)
         for (const s of accountSockets(id)) s.emit("chat", sent.line);
-      reply(cb, { ok: true });
+      // A friend's line says whether it was kept (read later) or only shown.
+      reply(cb, kept === undefined ? { ok: true } : { ok: true, kept });
     });
     /** A friend's kept messages, as chat lines. */
     const friendHistory = async (route: ChatRoute, me: string) => {
@@ -2320,8 +2337,39 @@ export function createArenaServer(
       }
     };
     // Unread friends' messages (a dot on the chat); reading a friend clears it.
+    // The chat's Friends tab: your friends (read afresh), who is online, and
+    // how many messages each sent that you haven't read.
+    socket.on("chat-friends", async (_data: unknown, cb: unknown) => {
+      if (!allowed(10) || typeof cb !== "function") return;
+      if (!account()) return cb({ ok: true, friends: [] });
+      const me = account()!;
+      await loadChatFriends(socket);
+      let unread: Record<string, number> = {};
+      try {
+        unread = (await accounts.friendMessages?.unread(me.id)) ?? {};
+      } catch {
+        // Nothing kept yet (the database update hasn't run).
+      }
+      cb({
+        ok: true,
+        friends: [...(chatFriends.get(me.id) ?? new Map<string, string>())]
+          .map(([id, name]) => ({
+            id,
+            name,
+            online: accountSockets(id).length > 0,
+            unread: Math.max(0, Number(unread[id]) || 0),
+          }))
+          .sort(
+            (a, b) =>
+              b.unread - a.unread ||
+              Number(b.online) - Number(a.online) ||
+              a.name.localeCompare(b.name),
+          ),
+      });
+    });
     socket.on("chat-unread", async (_data: unknown, cb: unknown) => {
-      if (!allowed(5) || !account() || typeof cb !== "function") return;
+      if (!allowed(10) || typeof cb !== "function") return;
+      if (!account()) return cb({ ok: true, unread: {} });
       try {
         cb({
           ok: true,

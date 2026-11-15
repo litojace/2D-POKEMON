@@ -2942,6 +2942,8 @@ export interface Reply {
   /** A Plaza treat: the crop thrown, and the treats you have left. */
   crop?: string;
   treats?: number;
+  /** A message to a friend: kept (read later), or only shown live. */
+  kept?: boolean;
 }
 export const normalize = (x: number, y: number): Vec => {
   const length = Math.hypot(x, y);

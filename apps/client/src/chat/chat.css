@@ -418,6 +418,99 @@ button.chat-say:focus-visible {
     min-width: 44px;
   }
 }
+/* Friends (chat-ui.ts): the list of friends, then one conversation. */
+.chat-drawer.is-listing .chat-quick,
+.chat-drawer.is-listing .chat-form {
+  display: none;
+}
+.chat-friend button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  color: #eef2ff;
+  font:
+    600 15px/1.2 "Barlow",
+    system-ui,
+    sans-serif;
+  text-align: left;
+  cursor: pointer;
+}
+.chat-friend button:hover,
+.chat-friend button:focus-visible {
+  background: rgba(255, 255, 255, 0.06);
+}
+.chat-friend i {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #56627a;
+}
+.chat-friend i.is-online {
+  background: #5fe08a;
+}
+.chat-friend b {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chat-friend em {
+  min-width: 20px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: #ff5c6c;
+  color: #fff;
+  font:
+    800 12px/1.2 "Barlow",
+    system-ui,
+    sans-serif;
+  font-style: normal;
+  text-align: center;
+}
+.chat-with {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 0;
+  font:
+    700 15px/1.2 "Barlow",
+    system-ui,
+    sans-serif;
+}
+.chat-with[hidden] {
+  display: none;
+}
+.chat-with b {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chat-back {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  color: #eef2ff;
+  cursor: pointer;
+}
+.chat-back svg {
+  width: 18px;
+  height: 18px;
+}
 /* The keyboard is up: the lines and the box get the little room left. */
 .chat-drawer.is-typing .chat-quick {
   display: none;

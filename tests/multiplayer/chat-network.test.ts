@@ -411,7 +411,7 @@ it("friends message each other; strangers can't; kept messages come back with un
       to: f.pal.account.id,
       text: "hey pal",
     }),
-  ).toEqual({ ok: true });
+  ).toEqual({ ok: true, kept: true });
   await settle();
   // Both see it, with the stored id (negated) and who it went to.
   for (const who of [f.a, f.b])
@@ -449,9 +449,21 @@ it("friends message each other; strangers can't; kept messages come back with un
     ok: true,
     unread: { [f.lead.account.id]: 1 },
   });
+  // The Friends tab: each friend, online or not, with their unread count.
+  expect(await request(f.b.s, "chat-friends")).toMatchObject({
+    ok: true,
+    friends: [{ id: f.lead.account.id, online: true, unread: 1 }],
+  });
   f.b.s.emit("chat-read", { to: f.lead.account.id });
   await settle();
   expect(await request(f.b.s, "chat-unread")).toEqual({ ok: true, unread: {} });
+  expect(
+    (
+      (await request(f.b.s, "chat-friends")) as {
+        friends: { unread: number }[];
+      }
+    ).friends[0].unread,
+  ).toBe(0);
 });
 
 it("before the friends' messages migration runs, friends still message live", async () => {
@@ -463,7 +475,7 @@ it("before the friends' messages migration runs, friends still message live", as
       to: f.lead.account.id,
       quick: "wave",
     }),
-  ).toEqual({ ok: true });
+  ).toEqual({ ok: true, kept: false });
   await settle();
   expect(f.a.heard.map((l) => [l.channel, l.quick, l.to])).toEqual([
     ["friend", "wave", f.lead.account.id],

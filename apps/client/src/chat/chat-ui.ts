@@ -6,9 +6,11 @@
  *   (placed by scene-switch-place.ts, which already measures that bar), and
  *   top left in a room. Its dot counts lines that came while it was shut.
  * - The drawer slides in from the left over the screen's left side, so the
- *   PLAY and Ready buttons on the right stay free. Tabs: the party and the
- *   room, whichever you are in. A row of quick-chat chips sits over the
- *   typing box, so a line can go without the keyboard.
+ *   PLAY and Ready buttons on the right stay free. Tabs: the party, the
+ *   room or Nearby, whichever you are in, and Friends (signed-in players):
+ *   your friends, each with their unread count, and a conversation with one.
+ *   A row of quick-chat chips sits over the typing box, so a line can go
+ *   without the keyboard.
  * - With the keyboard up (iPhone), the drawer shrinks to the room above it:
  *   measured from visualViewport when it resizes, never every frame.
  *
@@ -33,18 +35,30 @@ interface Reply {
   ok: boolean;
   error?: string;
 }
+export interface ChatFriend {
+  id: string;
+  name: string;
+  online: boolean;
+  unread: number;
+}
 export interface ChatHooks {
+  /** `to`: the friend, on the Friends tab. */
   send(
     channel: ChatChannel,
     body: { text: string } | { quick: ChatQuick },
-  ): Promise<Reply>;
-  history(channel: ChatChannel): Promise<ChatLine[]>;
+    to?: string,
+  ): Promise<Reply & { kept?: boolean }>;
+  history(channel: ChatChannel, to?: string): Promise<ChatLine[]>;
+  /** Your friends for the Friends tab (null: couldn't load them). */
+  friends(): Promise<ChatFriend[] | null>;
+  /** You read everything this friend sent so far. */
+  read(friendId: string): void;
   /** The signed-in player, or null. */
   me(): { id: string; guest: boolean } | null;
   /** Block a player (it asks first); resolves true once blocked. */
   block(accountId: string, name: string): Promise<boolean>;
   /** Report a line: the server attaches the lines it kept. */
-  report(channel: ChatChannel, lineId: number): Promise<Reply>;
+  report(channel: ChatChannel, lineId: number, to?: string): Promise<Reply>;
   /** The player picked a chat setting (keep it, tell the server). */
   setMode(mode: ChatMode): void;
 }
@@ -57,6 +71,10 @@ export interface ChatView {
   setFreeText(on: boolean): void;
   /** The player's chat setting (Settings): free, quick chat only, off. */
   setMode(mode: ChatMode): void;
+  /** Unread friends' messages, by friend (on connecting). */
+  setUnread(byFriend: Record<string, number>): void;
+  /** Open the chat on a conversation with this friend (the Friends list). */
+  openFriend(id: string, name: string): void;
   /** Put the hub button at this spot (px from the top left). */
   placeButton(x: number, y: number): void;
   isOpen(): boolean;
@@ -67,7 +85,9 @@ const LABEL: Record<ChatChannel, string> = {
   party: "Party",
   room: "Room",
   place: "Nearby",
+  friend: "Friends",
 };
+const CHANNELS: ChatChannel[] = ["party", "room", "place", "friend"];
 /** The quick chips under the lines: emotes, then phrases. */
 const CHIPS: ChatQuick[] = [
   ...(Object.keys(CHAT_EMOTES) as ChatQuick[]),
@@ -75,7 +95,7 @@ const CHIPS: ChatQuick[] = [
 ];
 
 const MODE_NOTE: Record<ChatMode, string> = {
-  free: "Type with your party and room; quick chat everywhere. Tap a message to mute, block or report.",
+  free: "Type with your party, room and friends; quick chat everywhere. Tap a message to mute, block or report.",
   quick:
     "Only preset phrases and emotes: no typed messages, from you or to you.",
   off: "No chat at all. Your team's raid signals still show on the arena.",
@@ -112,7 +132,7 @@ export function mountChat(hooks: ChatHooks): ChatView {
     )
     .join(
       "",
-    )}</div><p class="chat-mode-note"></p></div><ol class="chat-lines" aria-live="polite"></ol><p class="chat-empty" hidden></p><div class="chat-quick" role="group" aria-label="Quick chat">${CHIPS.map((q) => `<button type="button" class="chat-chip" data-chat-quick="${q}">${quickText(q)}</button>`).join("")}</div><form class="chat-form"><input id="chat-input" class="chat-input" type="text" enterkeyhint="send" autocomplete="off" autocapitalize="sentences" maxlength="${CHAT_LIMITS.length}" aria-label="Message"><button type="submit" class="chat-send" aria-label="Send">Send</button></form><p class="chat-note" role="status"></p>`;
+    )}</div><p class="chat-mode-note"></p></div><div class="chat-with" hidden><button type="button" class="chat-back" aria-label="All friends">${menuIcon("back")}</button><b></b></div><ol class="chat-lines" aria-live="polite"></ol><p class="chat-empty" hidden></p><div class="chat-quick" role="group" aria-label="Quick chat">${CHIPS.map((q) => `<button type="button" class="chat-chip" data-chat-quick="${q}">${quickText(q)}</button>`).join("")}</div><form class="chat-form"><input id="chat-input" class="chat-input" type="text" enterkeyhint="send" autocomplete="off" autocapitalize="sentences" maxlength="${CHAT_LIMITS.length}" aria-label="Message"><button type="submit" class="chat-send" aria-label="Send">Send</button></form><p class="chat-note" role="status"></p>`;
   document.body.append(button, drawer);
   const tabs = drawer.querySelector<HTMLElement>(".chat-tabs")!;
   const list = drawer.querySelector<HTMLOListElement>(".chat-lines")!;
@@ -128,9 +148,36 @@ export function mountChat(hooks: ChatHooks): ChatView {
     party: [],
     room: [],
     place: [],
+    friend: [],
   };
-  const unseen: Record<ChatChannel, number> = { party: 0, room: 0, place: 0 };
-  const loaded = new Set<ChatChannel>();
+  const unseen: Record<ChatChannel, number> = {
+    party: 0,
+    room: 0,
+    place: 0,
+    friend: 0,
+  };
+  const loaded = new Set<string>();
+  // Friends: a conversation per friend, and how many each sent unread.
+  const friendLines = new Map<string, ChatLine[]>();
+  const friendUnseen = new Map<string, number>();
+  let friends: ChatFriend[] | null = null;
+  /** The friend whose conversation is open (null: the list of friends). */
+  let friendTo: { id: string; name: string } | null = null;
+  const countFriends = () => {
+    let n = 0;
+    for (const v of friendUnseen.values()) n += v;
+    unseen.friend = n;
+  };
+  /** The lines a channel shows now (a friend's: the open conversation). */
+  const linesOf = (c: ChatChannel) =>
+    c !== "friend"
+      ? lines[c]
+      : friendTo
+        ? (friendLines.get(friendTo.id) ?? [])
+        : [];
+  /** Who the other side of a friend's line is. */
+  const otherOf = (l: ChatLine) =>
+    l.from.id === hooks.me()?.id ? (l.to ?? "") : l.from.id;
   let open: ChatChannel[] = [];
   let active: ChatChannel | null = null;
   let place: ChatPlace = "none";
@@ -170,7 +217,7 @@ export function mountChat(hooks: ChatHooks): ChatView {
     return li;
   }
   const shown = (c: ChatChannel) =>
-    lines[c].filter((l) => !muted.has(l.from.id));
+    linesOf(c).filter((l) => !muted.has(l.from.id));
 
   /** The menu under a line: mute, block, report (with a second step). */
   function lineMenu(li: HTMLElement, l: ChatLine) {
@@ -202,7 +249,11 @@ export function mountChat(hooks: ChatHooks): ChatView {
         menu.querySelector("b")!.textContent = l.from.name;
       } else if (act === "cancel") menu.remove();
       else if (act === "send" && active) {
-        const reply = await hooks.report(active, l.id);
+        const reply = await hooks.report(
+          active,
+          l.id,
+          active === "friend" ? friendTo?.id : undefined,
+        );
         menu.remove();
         say(
           reply.ok
@@ -223,16 +274,63 @@ export function mountChat(hooks: ChatHooks): ChatView {
       .join("");
   }
 
+  /** The Friends tab without a conversation open: your friends. */
+  function friendRows() {
+    return (friends ?? []).map((f) => {
+      const li = document.createElement("li");
+      li.className = "chat-friend";
+      const b = document.createElement("button");
+      b.type = "button";
+      b.dataset.chatFriend = f.id;
+      b.dataset.name = f.name;
+      const n = friendUnseen.get(f.id) ?? 0;
+      b.setAttribute(
+        "aria-label",
+        `${f.name}, ${f.online ? "online" : "offline"}${n ? `, ${n} new` : ""}`,
+      );
+      const dot = document.createElement("i");
+      dot.className = f.online ? "is-online" : "";
+      const name = document.createElement("b");
+      name.textContent = f.name;
+      b.append(dot, name);
+      if (n) {
+        const count = document.createElement("em");
+        count.textContent = n > 9 ? "9+" : String(n);
+        b.append(count);
+      }
+      li.append(b);
+      return li;
+    });
+  }
+
   function renderLines() {
-    list.replaceChildren(...(active ? shown(active) : []).map(lineElement));
-    list.scrollTop = list.scrollHeight;
-    empty.hidden = mode !== "off" && !!active && shown(active).length > 0;
+    const listing = active === "friend" && !friendTo && mode !== "off";
+    drawer.classList.toggle("is-listing", listing);
+    const head = drawer.querySelector<HTMLElement>(".chat-with")!;
+    head.hidden = !(active === "friend" && friendTo);
+    if (friendTo) head.querySelector("b")!.textContent = friendTo.name;
+    list.replaceChildren(
+      ...(listing
+        ? friendRows()
+        : (active ? shown(active) : []).map(lineElement)),
+    );
+    list.scrollTop = listing ? 0 : list.scrollHeight;
+    empty.hidden =
+      mode !== "off" &&
+      !!active &&
+      (listing ? !!friends?.length : shown(active).length > 0);
     empty.textContent =
       mode === "off"
         ? "Chat is off. Turn it on with the gear above."
         : !active
           ? "Invite a friend to a party, or join a room, to chat."
-          : "No messages yet. Say hi!";
+          : listing
+            ? friends === null
+              ? "Loading your friends…"
+              : friends.length
+                ? ""
+                : "Add friends (Menu → Friends) to message them here."
+            : "No messages yet. Say hi!";
   }
 
   function renderForm() {
@@ -248,23 +346,28 @@ export function mountChat(hooks: ChatHooks): ChatView {
     // Your own setting first, then the server's switch, then the channel.
     const refusal = !active
       ? "Nobody to chat with yet."
-      : mode !== "free"
-        ? own
-        : !freeText
-          ? "Quick chat only for now."
-          : own;
+      : active === "friend" && !friendTo
+        ? "Choose a friend."
+        : mode !== "free"
+          ? own
+          : !freeText
+            ? "Quick chat only for now."
+            : own;
     input.disabled = !!refusal;
     input.placeholder = refusal ?? "Message";
     form.querySelector<HTMLButtonElement>(".chat-send")!.disabled = !!refusal;
     for (const b of Array.from(
       quick.querySelectorAll<HTMLButtonElement>("button"),
     ))
-      b.disabled = !active || mode === "off";
+      b.disabled =
+        !active || mode === "off" || (active === "friend" && !friendTo);
   }
 
   function renderBadge() {
     const total = open.reduce(
-      (n, c) => n + (drawer.hidden || c !== active ? unseen[c] : 0),
+      // (Friends counts every friend's unread, the open one aside.)
+      (n, c) =>
+        n + (drawer.hidden || c !== active || c === "friend" ? unseen[c] : 0),
       0,
     );
     unread.hidden = total === 0;
@@ -272,20 +375,70 @@ export function mountChat(hooks: ChatHooks): ChatView {
     button.setAttribute("aria-label", total ? `Chat, ${total} new` : "Chat");
   }
 
+  /** Kept lines first, then any that came while they loaded. */
+  const merge = (older: ChatLine[], now: ChatLine[]) => {
+    const seen = new Set(now.map((l) => l.id));
+    // Stored friends' lines have negative ids (newer: further below zero),
+    // live ones positive: order by time, then id.
+    return [...older.filter((l) => !seen.has(l.id)), ...now]
+      .sort((a, b) => a.at - b.at || Math.abs(a.id) - Math.abs(b.id))
+      .slice(-CHAT_LIMITS.history);
+  };
   async function load(c: ChatChannel) {
+    if (c === "friend") return;
     if (loaded.has(c)) return;
     loaded.add(c);
     const history = await hooks.history(c);
-    const seen = new Set(lines[c].map((l) => l.id));
-    lines[c] = [...history.filter((l) => !seen.has(l.id)), ...lines[c]]
-      .sort((a, b) => a.id - b.id)
-      .slice(-CHAT_LIMITS.history);
+    lines[c] = merge(history, lines[c]);
     if (c === active) renderLines();
+  }
+  async function loadFriend(id: string) {
+    const key = `friend:${id}`;
+    if (!loaded.has(key)) {
+      loaded.add(key);
+      const history = await hooks.history("friend", id);
+      friendLines.set(id, merge(history, friendLines.get(id) ?? []));
+    }
+    if (active === "friend" && friendTo?.id === id) renderLines();
+  }
+  async function loadFriends() {
+    const got = await hooks.friends();
+    if (got) {
+      friends = got;
+      for (const f of got) {
+        // The open conversation is read as it comes.
+        if (f.id === friendTo?.id && !drawer.hidden) continue;
+        if (f.unread) friendUnseen.set(f.id, f.unread);
+        else friendUnseen.delete(f.id);
+      }
+    } else friends ??= [];
+    countFriends();
+    if (active === "friend") renderLines();
+    renderTabs();
+    renderBadge();
+  }
+  /** Open one friend's conversation (null: back to the list). */
+  function talkTo(f: { id: string; name: string } | null) {
+    friendTo = f;
+    if (f) {
+      if (friendUnseen.delete(f.id)) hooks.read(f.id);
+      countFriends();
+      void loadFriend(f.id);
+    }
+    renderTabs();
+    renderLines();
+    renderForm();
+    renderBadge();
   }
 
   function select(c: ChatChannel | null) {
     active = c;
-    if (c) {
+    if (c === "friend") {
+      // The list is read again each time (a friend added a moment ago).
+      void loadFriends();
+      if (friendTo && friendUnseen.delete(friendTo.id)) hooks.read(friendTo.id);
+      countFriends();
+    } else if (c) {
       unseen[c] = 0;
       void load(c);
     }
@@ -355,9 +508,19 @@ export function mountChat(hooks: ChatHooks): ChatView {
     );
     if (!say || !active) return;
     const li = say.closest<HTMLElement>(".chat-line")!;
-    const l = lines[active].find((x) => String(x.id) === li.dataset.line);
+    const l = linesOf(active).find((x) => String(x.id) === li.dataset.line);
     if (l) lineMenu(li, l);
   });
+  list.addEventListener("click", (e) => {
+    const pick = (e.target as HTMLElement).closest<HTMLElement>(
+      "[data-chat-friend]",
+    );
+    if (pick)
+      talkTo({ id: pick.dataset.chatFriend!, name: pick.dataset.name ?? "" });
+  });
+  drawer
+    .querySelector(".chat-back")!
+    .addEventListener("click", () => talkTo(null));
   tabs.addEventListener("click", (e) => {
     const tab = (e.target as HTMLElement).closest<HTMLElement>(
       "[data-chat-tab]",
@@ -369,20 +532,34 @@ export function mountChat(hooks: ChatHooks): ChatView {
       "[data-chat-quick]",
     );
     if (!chip || !active) return;
-    const reply = await hooks.send(active, {
-      quick: chip.dataset.chatQuick as ChatQuick,
-    });
+    const to = active === "friend" ? friendTo : null;
+    if (active === "friend" && !to) return;
+    const reply = await hooks.send(
+      active,
+      { quick: chip.dataset.chatQuick as ChatQuick },
+      to?.id,
+    );
     if (!reply.ok) say(reply.error ?? "Couldn't send. Try again.");
+    else offlineNote(to, reply.kept);
   });
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     if (!active || input.disabled) return;
     const checked = filterChat(input.value);
     if (!checked.ok) return say(checked.error);
-    const reply = await hooks.send(active, { text: input.value });
+    const to = active === "friend" ? friendTo : null;
+    if (active === "friend" && !to) return;
+    const reply = await hooks.send(active, { text: input.value }, to?.id);
     if (!reply.ok) return say(reply.error ?? "Couldn't send. Try again.");
     input.value = "";
+    offlineNote(to, reply.kept);
   });
+  /** A line to an offline friend that wasn't kept: they won't see it. */
+  function offlineNote(to: { id: string } | null, kept?: boolean) {
+    if (!to || kept !== false) return;
+    const f = friends?.find((x) => x.id === to.id);
+    if (f && !f.online) say(`${f.name} is offline and won't see this one.`);
+  }
   // Typing in the box doesn't steer the fighter or open other shortcuts.
   input.addEventListener("keydown", (e) => {
     e.stopPropagation();
@@ -418,18 +595,28 @@ export function mountChat(hooks: ChatHooks): ChatView {
     sync(next, channels) {
       place = next;
       const was = open.join();
-      open = (["party", "room", "place"] as ChatChannel[]).filter(
-        (c) => channels[c],
-      );
-      // A channel that closed forgets its lines (a party ended, a room left).
-      for (const c of ["party", "room", "place"] as ChatChannel[])
+      open = CHANNELS.filter((c) => channels[c]);
+      // A channel that closed forgets its lines (a party ended, a room left;
+      // Friends: you signed out).
+      for (const c of CHANNELS)
         if (!channels[c]) {
           lines[c] = [];
           unseen[c] = 0;
           loaded.delete(c);
         }
-      // A channel that just opened (you joined a room) comes first.
-      const fresh = open.find((c) => !was.split(",").includes(c));
+      if (!channels.friend) {
+        friendLines.clear();
+        friendUnseen.clear();
+        for (const k of [...loaded])
+          if (k.startsWith("friend:")) loaded.delete(k);
+        friends = null;
+        friendTo = null;
+      }
+      // A channel that just opened (you joined a room) comes first; Friends
+      // never pushes ahead of the others.
+      const fresh = open.find(
+        (c) => c !== "friend" && !was.split(",").includes(c),
+      );
       if (fresh && was) active = fresh;
       button.hidden = place === "none" || !hooks.me();
       button.dataset.place = place;
@@ -441,11 +628,32 @@ export function mountChat(hooks: ChatHooks): ChatView {
     receive(line) {
       if (!open.includes(line.channel)) return;
       if (muted.has(line.from.id) || mode === "off") return;
-      const list0 = lines[line.channel];
+      const mine = line.from.id === hooks.me()?.id;
+      const friend = line.channel === "friend" ? otherOf(line) : "";
+      if (line.channel === "friend" && !friend) return;
+      let list0 =
+        line.channel === "friend"
+          ? friendLines.get(friend)
+          : lines[line.channel];
+      if (!list0) friendLines.set(friend, (list0 = []));
       if (list0.some((l) => l.id === line.id)) return;
       list0.push(line);
       if (list0.length > CHAT_LIMITS.history) list0.shift();
-      const mine = line.from.id === hooks.me()?.id;
+      if (line.channel === "friend") {
+        const here =
+          !drawer.hidden && active === "friend" && friendTo?.id === friend;
+        if (here) {
+          if (!mine) hooks.read(friend);
+        } else {
+          if (!mine)
+            friendUnseen.set(friend, (friendUnseen.get(friend) ?? 0) + 1);
+          countFriends();
+          if (!drawer.hidden && active === "friend" && !friendTo) renderLines();
+          renderTabs();
+          renderBadge();
+          return;
+        }
+      }
       if (!drawer.hidden && line.channel === active) {
         const atEnd =
           list.scrollHeight - list.scrollTop - list.clientHeight < 40;
@@ -457,6 +665,20 @@ export function mountChat(hooks: ChatHooks): ChatView {
       } else if (!mine) unseen[line.channel]++;
       renderTabs();
       renderBadge();
+    },
+    setUnread(byFriend) {
+      friendUnseen.clear();
+      for (const [id, n] of Object.entries(byFriend))
+        if (n > 0 && id !== friendTo?.id) friendUnseen.set(id, n);
+      countFriends();
+      renderTabs();
+      renderBadge();
+    },
+    openFriend(id, name) {
+      if (!open.includes("friend")) return;
+      setOpen(true);
+      select("friend");
+      talkTo({ id, name });
     },
     setFreeText(on) {
       freeText = on;

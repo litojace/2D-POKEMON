@@ -191,12 +191,15 @@ for (const size of SIZES)
       await scene(page, "lobby");
       await expect(page.locator("#lobby-play")).toBeVisible();
 
-      // No party: the drawer says how to get someone to talk to.
+      // No party: only Friends, and no friends yet, so it says how.
       await page.click("#chat-button");
+      await expect(page.locator("#chat-drawer .chat-tab")).toHaveText([
+        "Friends",
+      ]);
       await expect(page.locator("#chat-drawer .chat-empty")).toContainText(
-        "Invite a friend to a party",
+        "Add friends (Menu → Friends) to message them here.",
       );
-      await expect(page.locator("#chat-input")).toBeDisabled();
+      await expect(page.locator("#chat-drawer .chat-form")).toBeHidden();
       await page.click("#chat-drawer .chat-close");
       await expect(page.locator("#chat-drawer")).toBeHidden();
 
@@ -414,6 +417,164 @@ test("tap a message to mute or report it; the gear turns chat off", async ({
       "Chat is off. Turn it on with the gear above.",
     );
     await expect(page.locator("#chat-input")).toBeDisabled();
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});
+
+test("Friends in the chat: unread counts, a conversation, Message from the Friends list", async ({
+  browser,
+}, info) => {
+  test.setTimeout(240_000);
+  const FAR = "33333333-3333-4333-8333-333333333333";
+  const { context, page } = await phone(browser, SIZES[1]);
+  try {
+    const errors = await openHub(page);
+    await page.evaluate(
+      ([me, pal, far]) => {
+        const w = window as any;
+        w.__chatSent = [];
+        w.__unread = { [pal]: 2 };
+        w.__friends = {
+          code: "a1b2c3d4",
+          friends: [
+            {
+              id: pal,
+              name: "Pal",
+              title: null,
+              titleColor: null,
+              online: true,
+            },
+            {
+              id: far,
+              name: "Faraway",
+              title: null,
+              titleColor: null,
+              online: false,
+            },
+          ],
+          incoming: [],
+          outgoing: [],
+        };
+        const before = w.__reply;
+        w.__reply = (ev: string, data: any) => {
+          if (ev === "chat-unread") return { ok: true, unread: w.__unread };
+          if (ev === "chat-friends")
+            return {
+              ok: true,
+              friends: [
+                {
+                  id: pal,
+                  name: "Pal",
+                  online: true,
+                  unread: w.__unread[pal] ?? 0,
+                },
+                { id: far, name: "Faraway", online: false, unread: 0 },
+              ],
+            };
+          if (ev === "chat-history")
+            return {
+              ok: true,
+              lines:
+                data.to === pal
+                  ? [
+                      {
+                        id: -1,
+                        channel: "friend",
+                        from: { id: pal, name: "Pal" },
+                        to: me,
+                        at: 1000,
+                        text: "you up?",
+                      },
+                      {
+                        id: -2,
+                        channel: "friend",
+                        from: { id: pal, name: "Pal" },
+                        to: me,
+                        at: 2000,
+                        quick: "wave",
+                      },
+                    ]
+                  : [],
+            };
+          if (ev === "chat-send") {
+            w.__chatSent.push([ev, data]);
+            return { ok: true, kept: data.to === pal };
+          }
+          return before?.(ev, data);
+        };
+        const emit = w.__emit;
+        w.__emit = (ev: string, data: unknown) => {
+          if (ev === "chat-read") w.__chatSent.push([ev, data]);
+          emit?.(ev, data);
+        };
+        // On connecting: two unread from Pal light the chat's dot.
+        w.__sock.fire("chat-config", { freeText: true });
+      },
+      [ME, PAL, FAR],
+    );
+    await expect(page.locator("#chat-button .chat-unread")).toHaveText("2");
+    await page.click("#chat-button");
+    const drawer = page.locator("#chat-drawer");
+    // The list: Pal first with 2 new, Faraway offline; no box until you pick.
+    await expect(drawer.locator(".chat-friend")).toHaveText([
+      "Pal2",
+      "Faraway",
+    ]);
+    await expect(drawer.locator(".chat-form")).toBeHidden();
+    await snap(page, info, "chat-friends-844x390");
+    await drawer.locator(`[data-chat-friend="${PAL}"]`).click();
+    // The conversation: their kept lines, read on opening.
+    await expect(drawer.locator(".chat-with b")).toHaveText("Pal");
+    await expect(drawer.locator(".chat-line")).toHaveText([
+      "Palyou up?",
+      "Pal👋",
+    ]);
+    await expect(page.locator("#chat-button .chat-unread")).toBeHidden();
+    await page.fill("#chat-input", "on my way");
+    await page.press("#chat-input", "Enter");
+    await expect
+      .poll(() => page.evaluate(() => (window as any).__chatSent))
+      .toEqual([
+        ["chat-read", { to: PAL }],
+        ["chat-send", { channel: "friend", text: "on my way", to: PAL }],
+      ]);
+    // Their next line comes straight into the open conversation (and is read).
+    await page.evaluate(
+      ([me, pal]) =>
+        (window as any).__sock.fire("chat", {
+          id: -3,
+          channel: "friend",
+          from: { id: pal, name: "Pal" },
+          to: me,
+          at: Date.now(),
+          text: "cool",
+        }),
+      [ME, PAL],
+    );
+    await expect(drawer.locator(".chat-line")).toHaveCount(3);
+    await snap(page, info, "chat-friend-talk-844x390");
+    // Back to the list; a line from someone else while there counts on them.
+    await drawer.locator(".chat-back").click();
+    await expect(drawer.locator(".chat-friend")).toHaveCount(2);
+    await page.click("#chat-drawer .chat-close");
+
+    // The Friends list: Message opens the chat on that friend.
+    await page.click('.lobby-rail [data-lobby-action="friends"]');
+    const sheet = page.locator(".friends-sheet");
+    await sheet.locator(`[data-friend-menu="${FAR}"]`).click();
+    await sheet.locator(`[data-friend-message="${FAR}"]`).click();
+    await expect(drawer).toBeVisible();
+    await expect(drawer.locator(".chat-with b")).toHaveText("Faraway");
+    await expect(drawer.locator(".chat-empty")).toHaveText(
+      "No messages yet. Say hi!",
+    );
+    // Not kept (the database update hasn't run) and they're offline: said so.
+    await drawer.locator('[data-chat-quick="wave"]').click();
+    await expect(drawer.locator(".chat-note")).toHaveText(
+      "Faraway is offline and won't see this one.",
+    );
     expect(errors).toEqual([]);
   } finally {
     await context.close();

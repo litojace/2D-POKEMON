@@ -364,7 +364,7 @@ import {
 import { RITE_EFFECTS, riteEffect, riteIcon } from "./rite-icons";
 import { ConnectionWatch, dropMessage } from "./connection-loss";
 import { watchSceneSwitch } from "./scene-switch-place";
-import { mountChat, type ChatPlace } from "./chat/chat-ui";
+import { mountChat, type ChatFriend, type ChatPlace } from "./chat/chat-ui";
 import { mountBattleChat } from "./chat/battle-chat";
 import {
   CHAT_MODES,
@@ -496,12 +496,24 @@ const socket = io(import.meta.env.VITE_SERVER_URL || undefined, {
 });
 let accountsUI: AccountUI;
 const chat = mountChat({
-  send: (channel, body) => request("chat-send", { channel, ...body }),
-  history: async (channel) => {
-    const reply = (await request("chat-history", { channel })) as {
-      lines?: ChatLine[];
-    };
+  send: (channel, body, to) =>
+    request("chat-send", { channel, ...body, ...(to ? { to } : {}) }),
+  history: async (channel, to) => {
+    const reply = (await request("chat-history", {
+      channel,
+      ...(to ? { to } : {}),
+    })) as { lines?: ChatLine[] };
     return Array.isArray(reply.lines) ? reply.lines : [];
+  },
+  friends: async () => {
+    const reply = (await request("chat-friends", {}, true)) as {
+      ok: boolean;
+      friends?: ChatFriend[];
+    };
+    return reply.ok && Array.isArray(reply.friends) ? reply.friends : null;
+  },
+  read: (to) => {
+    if (socket.connected) socket.emit("chat-read", { to });
   },
   me: () =>
     accountsUI?.account
@@ -517,7 +529,8 @@ const chat = mountChat({
       return false;
     }
   },
-  report: (channel, id) => request("chat-report", { channel, id }),
+  report: (channel, id, to) =>
+    request("chat-report", { channel, id, ...(to ? { to } : {}) }),
   // The chat's gear: on, quick chat only, off (kept on this device).
   setMode: (mode) => {
     try {
@@ -773,7 +786,12 @@ function toast(message: string) {
   $("toast").classList.add("show");
   setTimeout(() => $("toast").classList.remove("show"), 4500);
 }
-function request(event: string, data: unknown = {}): Promise<Reply> {
+/** Ask the server; `quiet`: a background read that never shows a toast. */
+function request(
+  event: string,
+  data: unknown = {},
+  quiet = false,
+): Promise<Reply> {
   if (!socket.connected) return Promise.resolve({ ok: false });
   const connectionId = socket.id;
   return new Promise((resolve) =>
@@ -785,10 +803,10 @@ function request(event: string, data: unknown = {}): Promise<Reply> {
         if (!socket.connected || socket.id !== connectionId)
           return resolve({ ok: false });
         if (error) {
-          toast("Server did not respond. Check your connection.");
+          if (!quiet) toast("Server did not respond. Check your connection.");
           resolve({ ok: false });
         } else {
-          if (!reply.ok && reply.error) toast(reply.error);
+          if (!reply.ok && reply.error && !quiet) toast(reply.error);
           resolve(reply);
         }
       }),
@@ -2088,6 +2106,8 @@ function syncChat(hub: boolean) {
     // Nearby: the Plaza's copy, or the farm you are on.
     place:
       hub && (hubScene === "plaza" || (hubScene === "farm" && !!farmChatOwner)),
+    // Friends: anyone signed in with an account (guests have no friends).
+    friend: !!accountsUI?.account && !accountsUI.account.guest,
   });
   placeSceneSwitch?.();
 }
@@ -3648,9 +3668,17 @@ socket.on("chat", (line: ChatLine) => {
       plaza?.say(line.from.id, text);
   } else if (hubScene === "farm") farmScreen?.say(line.from.id, text);
 });
-socket.on("chat-config", (data: { freeText?: unknown } | null) =>
-  chat.setFreeText(data?.freeText === true),
-);
+socket.on("chat-config", (data: { freeText?: unknown } | null) => {
+  chat.setFreeText(data?.freeText === true);
+  // Friends' messages that came while you were away (a dot on the chat).
+  const me = accountsUI?.account;
+  if (me && !me.guest)
+    void request("chat-unread", {}, true).then((reply) => {
+      const unread = (reply as { unread?: unknown }).unread;
+      if (reply.ok && unread && typeof unread === "object")
+        chat.setUnread(unread as Record<string, number>);
+    });
+});
 socket.on("party-room", (data: unknown) => {
   const parsed = partyRoomSchema.safeParse(data);
   if (!parsed.success || myId || !party) return;
@@ -7072,6 +7100,7 @@ accountsUI = new AccountUI({
   inviteFriend: (playerId) => request("room-invite", { playerId }),
   // In a private room Friends takes the picker's place; closing it brings
   // the picker back (UI remodel step 6).
+  messageFriend: (id, name) => chat.openFriend(id, name),
   friendsHost: () =>
     myId && !watching
       ? ($("menu").querySelector<HTMLElement>(":scope > .room-screen") ??

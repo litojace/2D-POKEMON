@@ -134,6 +134,8 @@ type Hooks = {
   inviteFriend?: (id: string) => Promise<{ ok: boolean; error?: string }>;
   /** Where Friends opens while you are in a private room (its picker's place). */
   friendsHost?: () => HTMLElement | undefined;
+  /** Open the chat on a conversation with a friend (chat/chat-ui.ts). */
+  messageFriend?: (id: string, name: string) => void;
   /** Friends closed (a room puts its picker back). */
   onFriendsClosed?: () => void;
   notify: (message: string) => void;
@@ -1389,6 +1391,7 @@ export class AccountUI {
         return {
           ...this.friendsData,
           blocked: this.blocked,
+          canMessage: !!this.hooks.messageFriend,
           room,
           party: {
             size: Math.max(1, party?.party.length ?? 1),
@@ -1442,6 +1445,7 @@ export class AccountUI {
       },
       block: (id, name) => this.block(id, name),
       unblock: (id) => this.unblock(id),
+      message: (id, name) => this.hooks.messageFriend?.(id, name),
       inviteToParty: async (id) => ok(await this.hooks.inviteToParty?.(id)),
       inviteToRoom: async (id) => ok(await this.hooks.inviteFriend?.(id)),
       join: (code) => this.hooks.joinRoom?.(code),
