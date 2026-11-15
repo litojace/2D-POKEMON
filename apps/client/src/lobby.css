@@ -1572,7 +1572,7 @@ body:not(.hub-active) #account-leaves {
 /* Short landscape screens: Settings shows everything without scrolling, so
    Display is one line like Motion and Graphics, and Sound spans the column. */
 @media (orientation: landscape) and (max-height: 500px) {
-  .prefs-grid:has(> .prefs-display) > :first-child {
+  .prefs-grid.has-display > :first-child {
     grid-row: span 3;
   }
   .prefs-card.prefs-display {
