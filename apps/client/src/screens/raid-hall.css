@@ -799,6 +799,11 @@ button.rh-reward:focus-visible {
     width: 36px;
     height: 36px;
   }
+  /* A hair more room in the small box: at 56% the Conductor's spark reached
+     the box's edge at some scroll positions (a sub-pixel apart). */
+  .rh-reward-art > .raid-cosmetic-preview[data-frame-stars="0"] {
+    width: 54%;
+  }
   .rh-attack {
     min-height: 44px;
     padding: 6px 8px;

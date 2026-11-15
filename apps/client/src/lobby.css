@@ -1476,7 +1476,7 @@ body:not(.hub-active) #account-leaves {
     --hub-card-art: 32px;
     --hub-card-row: 15px;
     --hub-card-gap: 1px;
-    --hub-card-title: 9px;
+    --hub-card-title: 10px;
   }
   :root body.hub-active #account-profile {
     grid-template-columns: var(--hub-card-art) minmax(0, 1fr) 36px;
