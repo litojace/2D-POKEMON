@@ -45,6 +45,9 @@ import {
   startCooking,
   stir,
   takeServing,
+  holdServing,
+  unholdServing,
+  useHeld,
   tryPlace,
   upgradeStaff,
   BISTRO_TRADE,
@@ -68,10 +71,16 @@ export type BistroAction = BistroDo & { at?: number };
 type BistroDo =
   | { a: "cook"; stove: number; dish: DishId }
   | { a: "stir"; stove: number }
+  /** A guest's order: its serving leaves the counter, kept for them (migration 118). */
+  | { a: "hold"; dish: DishId }
+  /** They left without it: back on the counter. */
+  | { a: "unhold"; dish: DishId }
   | { a: "plate"; stove: number }
   | {
       a: "serve";
       dish: DishId;
+      /** Their serving was kept for them (a hold): it isn't taken again. */
+      held?: boolean;
       vip: boolean;
       combo: number;
       hearts: number;
@@ -186,8 +195,12 @@ export function applyLocal(
         : { ok: false, error: "Not the golden moment." };
     case "plate":
       return r(plate(s, x.stove, now));
+    case "hold":
+      return r(holdServing(s, x.dish));
+    case "unhold":
+      return r(unholdServing(s, x.dish));
     case "serve": {
-      if (takeServing(s, x.dish) < 0)
+      if (!(x.held && useHeld(s, x.dish)) && takeServing(s, x.dish) < 0)
         return { ok: false, error: "None left on the counter." };
       const bill = payment(x.dish, {
         level: dishLevel(s, x.dish),
@@ -544,9 +557,19 @@ export class BistroSync {
     this.hooks.onDo?.();
     return r;
   }
+  /**
+   * Does the server keep guests' servings (migration 118)? Then an order
+   * tells it (a hold), so its counter is the one on screen; an older server
+   * only hears of a serving when the guest pays, and the page keeps it.
+   */
+  holds() {
+    return this.S.held !== undefined;
+  }
   /** A guest's order: their serving leaves the counter until they pay or leave. */
   reserve(guest: number, dish: DishId): boolean {
-    if (takeServing(this.S, dish) < 0) return false;
+    if (this.holds()) {
+      if (!this.do({ a: "hold", dish }).ok) return false;
+    } else if (takeServing(this.S, dish) < 0) return false;
     this.reserved.set(guest, dish);
     return true;
   }
@@ -554,13 +577,20 @@ export class BistroSync {
     const dish = this.reserved.get(guest);
     if (!dish) return;
     this.reserved.delete(guest);
-    this.giveBack(dish);
+    if (this.holds()) this.do({ a: "unhold", dish });
+    else this.giveBack(dish);
+  }
+  /** Let go of the orders of guests no longer here (a page closed long ago). */
+  keepOnly(guests: number[]) {
+    for (const g of [...this.reserved.keys()])
+      if (!guests.includes(g)) this.release(g);
   }
   /** The guest paid: their sale goes to the server. */
   pay(guest: number, sale: Omit<Extract<BistroAction, { a: "serve" }>, "a">) {
     const dish = this.reserved.get(guest) ?? sale.dish;
-    this.reserved.delete(guest);
-    this.giveBack(dish);
+    const kept = this.reserved.delete(guest);
+    if (this.holds()) return this.do({ a: "serve", ...sale, dish, held: kept });
+    if (kept) this.giveBack(dish);
     return this.do({ a: "serve", ...sale, dish });
   }
   /** Orders still waiting to be paid (they keep their servings). */
@@ -707,10 +737,55 @@ export class BistroSync {
     // Sent and not yet answered, then queued: run again on top.
     for (const x of [...(this.pending?.actions ?? []), ...this.outbox])
       applyLocal(this.S, x, now, this.extras);
-    for (const [guest, dish] of [...this.reserved])
-      if (takeServing(this.S, dish) < 0) this.reserved.delete(guest);
+    if (this.holds()) this.reconcileHolds(now);
+    else
+      for (const [guest, dish] of [...this.reserved])
+        if (takeServing(this.S, dish) < 0) this.reserved.delete(guest);
     this.ready = true;
     this.hooks.onAdopt({ away: got.away, errors, payday: got.payday });
+  }
+  /**
+   * The server's held servings against the guests' orders here: an order
+   * it doesn't hold yet (made before it could, or lost) is held now; one it
+   * holds for a guest no longer here goes back on the counter.
+   */
+  /** Holds sent for a dish the server still didn't keep (it refused them). */
+  private holdTries = new Map<DishId, number>();
+  private reconcileHolds(now: number) {
+    const want = new Map<DishId, number>();
+    for (const d of this.reserved.values()) want.set(d, (want.get(d) ?? 0) + 1);
+    const dishes = new Set<DishId>([
+      ...want.keys(),
+      ...(Object.keys(this.S.held ?? {}) as DishId[]),
+    ]);
+    let sent = false;
+    for (const d of dishes) {
+      let diff = (want.get(d) ?? 0) - (this.S.held?.[d] ?? 0);
+      if (diff <= 0) this.holdTries.delete(d);
+      // Asked twice and still not kept (none left there): let it go, not
+      // ask at every answer.
+      const tries = this.holdTries.get(d) ?? 0;
+      if (diff > 0) this.holdTries.set(d, tries + 1);
+      for (; diff > 0; diff--) {
+        const x: BistroAction = { a: "hold", dish: d, at: Math.round(now) };
+        if (tries < 2 && applyLocal(this.S, x, now, this.extras).ok) {
+          this.outbox.push(x);
+          sent = true;
+        } else {
+          // None left to keep: that guest's order is let go.
+          const g = [...this.reserved].find(([, dish]) => dish === d)?.[0];
+          if (g !== undefined) this.reserved.delete(g);
+        }
+      }
+      for (; diff < 0; diff++) {
+        const x: BistroAction = { a: "unhold", dish: d, at: Math.round(now) };
+        if (applyLocal(this.S, x, now, this.extras).ok) {
+          this.outbox.push(x);
+          sent = true;
+        }
+      }
+    }
+    if (sent) this.schedule(150);
   }
   /** Keep "last seen" fresh while the bistro is open. */
   ping() {
