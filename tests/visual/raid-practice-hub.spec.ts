@@ -7,6 +7,7 @@ import {
   pushUntilBattle,
   snap,
   hubMenu,
+  settle,
 } from "./helpers";
 for (const viewport of [
   { width: 1440, height: 900 },
@@ -34,8 +35,11 @@ for (const viewport of [
       await hubMenu(page, "raids");
       await expect(page.locator("#raid-join-code")).toHaveCount(0);
       // Attack practice (UI remodel step 5): the boss page's Attacks tab,
-      // where Practice drills the picked attack.
-      await page.click("[data-raid-practice-card]");
+      // where Practice drills the picked attack. The hall's own "Attack
+      // practice" card went in 51a08969; the tab is the way in now.
+      await page.click('[data-raid-card="grumblecrag"]');
+      await page.click('[data-ui-raid-tab="attacks"]');
+      await settle(page);
       await expect(
         page.locator('[data-ui-raid-tab="attacks"]'),
       ).toHaveAttribute("aria-selected", "true");
