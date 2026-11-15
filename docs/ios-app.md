@@ -155,7 +155,7 @@ iOS 26 SDK) and Node 22.
      it isn't for children under 13. Also: cartoon fighting. **Messaging and
      Chat: yes** (party, room and nearby chat; text filtered on the server,
      links and contact details refused; quick chat only with strangers and
-     for guests; report from a message, block, mute, chat off in Settings;
+     for guests; report from a message, block, mute, chat off with the gear in the chat;
      docs/chat-plan.md). User-generated content: chat only, not stored.
      Social media: no (no feed). Apple lists Messaging and Chat under 4+, so
      the rating stays 13+ from the age gate. App Privacy: add "Other User

@@ -43,7 +43,9 @@
       .chat-close,
       .chat-chip,
       .chat-send,
-      .chat-menu button
+      .chat-menu button,
+      .chat-gear,
+      .chat-modes button
     ) {
     position: relative;
   }
@@ -91,7 +93,9 @@
       .chat-close,
       .chat-chip,
       .chat-send,
-      .chat-menu button
+      .chat-menu button,
+      .chat-gear,
+      .chat-modes button
     )::after {
     content: "";
     position: absolute;

@@ -322,7 +322,7 @@ for (const size of SIZES)
     }
   });
 
-test("tap a message to mute or report it; Settings turns chat off", async ({
+test("tap a message to mute or report it; the gear turns chat off", async ({
   browser,
 }, info) => {
   test.setTimeout(240_000);
@@ -396,23 +396,22 @@ test("tap a message to mute or report it; Settings turns chat off", async ({
     await expect(drawer.locator(".chat-line")).toHaveCount(0);
     await page.click("#chat-drawer .chat-close");
 
-    // Settings → Chat → Off: nothing shows, the box says so.
-    await page.evaluate(() => document.getElementById("settings")!.click());
-    await page.click('[data-chat-mode="off"]');
-    await expect(page.locator('[data-chat-mode="off"]')).toHaveAttribute(
-      "aria-checked",
-      "true",
-    );
+    // The chat's gear → Off: nothing shows, the box says so.
+    await page.click("#chat-button");
+    await page.click("#chat-drawer .chat-gear");
+    await snap(page, info, "chat-settings-844x390");
+    await page.click('#chat-drawer [data-chat-mode="off"]');
+    await expect(
+      page.locator('#chat-drawer [data-chat-mode="off"]'),
+    ).toHaveAttribute("aria-checked", "true");
     expect(
       await page.evaluate(() => (window as any).__chatSent.at(-1)),
     ).toEqual(["chat-mode", { mode: "off" }]);
     expect(
       await page.evaluate(() => localStorage.getItem("ea-chat-mode")),
     ).toBe("off");
-    await page.keyboard.press("Escape");
-    await page.click("#chat-button");
     await expect(drawer.locator(".chat-empty")).toHaveText(
-      "Chat is off. Turn it on in Settings.",
+      "Chat is off. Turn it on with the gear above.",
     );
     await expect(page.locator("#chat-input")).toBeDisabled();
     expect(errors).toEqual([]);

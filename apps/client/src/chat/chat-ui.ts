@@ -45,6 +45,8 @@ export interface ChatHooks {
   block(accountId: string, name: string): Promise<boolean>;
   /** Report a line: the server attaches the lines it kept. */
   report(channel: ChatChannel, lineId: number): Promise<Reply>;
+  /** The player picked a chat setting (keep it, tell the server). */
+  setMode(mode: ChatMode): void;
 }
 export interface ChatView {
   /** Where the button shows, and which channels are open now. */
@@ -72,6 +74,13 @@ const CHIPS: ChatQuick[] = [
   ...(Object.keys(CHAT_PHRASES) as ChatQuick[]),
 ];
 
+const MODE_NOTE: Record<ChatMode, string> = {
+  free: "Type with your party and room; quick chat everywhere. Tap a message to mute, block or report.",
+  quick:
+    "Only preset phrases and emotes: no typed messages, from you or to you.",
+  off: "No chat at all. Your team's raid signals still show on the arena.",
+};
+
 export function mountChat(hooks: ChatHooks): ChatView {
   const button = document.createElement("button");
   button.type = "button";
@@ -90,7 +99,20 @@ export function mountChat(hooks: ChatHooks): ChatView {
   drawer.hidden = true;
   drawer.setAttribute("role", "dialog");
   drawer.setAttribute("aria-label", "Chat");
-  drawer.innerHTML = `<header class="chat-head"><div class="chat-tabs" role="tablist" aria-label="Chat channels"></div><button type="button" class="chat-close" aria-label="Close chat">${menuIcon("cancel")}</button></header><ol class="chat-lines" aria-live="polite"></ol><p class="chat-empty" hidden></p><div class="chat-quick" role="group" aria-label="Quick chat">${CHIPS.map((q) => `<button type="button" class="chat-chip" data-chat-quick="${q}">${quickText(q)}</button>`).join("")}</div><form class="chat-form"><input id="chat-input" class="chat-input" type="text" enterkeyhint="send" autocomplete="off" autocapitalize="sentences" maxlength="${CHAT_LIMITS.length}" aria-label="Message"><button type="submit" class="chat-send" aria-label="Send">Send</button></form><p class="chat-note" role="status"></p>`;
+  drawer.innerHTML = `<header class="chat-head"><div class="chat-tabs" role="tablist" aria-label="Chat channels"></div><button type="button" class="chat-gear" aria-label="Chat settings" aria-expanded="false">${menuIcon("settings")}</button><button type="button" class="chat-close" aria-label="Close chat">${menuIcon("cancel")}</button></header><div class="chat-prefs" hidden><div class="chat-modes" role="radiogroup" aria-label="Chat">${(
+    [
+      ["free", "On"],
+      ["quick", "Quick only"],
+      ["off", "Off"],
+    ] as const
+  )
+    .map(
+      ([m, label]) =>
+        `<button type="button" role="radio" data-chat-mode="${m}" aria-checked="false">${label}</button>`,
+    )
+    .join(
+      "",
+    )}</div><p class="chat-mode-note"></p></div><ol class="chat-lines" aria-live="polite"></ol><p class="chat-empty" hidden></p><div class="chat-quick" role="group" aria-label="Quick chat">${CHIPS.map((q) => `<button type="button" class="chat-chip" data-chat-quick="${q}">${quickText(q)}</button>`).join("")}</div><form class="chat-form"><input id="chat-input" class="chat-input" type="text" enterkeyhint="send" autocomplete="off" autocapitalize="sentences" maxlength="${CHAT_LIMITS.length}" aria-label="Message"><button type="submit" class="chat-send" aria-label="Send">Send</button></form><p class="chat-note" role="status"></p>`;
   document.body.append(button, drawer);
   const tabs = drawer.querySelector<HTMLElement>(".chat-tabs")!;
   const list = drawer.querySelector<HTMLOListElement>(".chat-lines")!;
@@ -99,6 +121,8 @@ export function mountChat(hooks: ChatHooks): ChatView {
   const form = drawer.querySelector<HTMLFormElement>(".chat-form")!;
   const input = drawer.querySelector<HTMLInputElement>(".chat-input")!;
   const note = drawer.querySelector<HTMLElement>(".chat-note")!;
+  const gear = drawer.querySelector<HTMLButtonElement>(".chat-gear")!;
+  const prefs = drawer.querySelector<HTMLElement>(".chat-prefs")!;
 
   const lines: Record<ChatChannel, ChatLine[]> = {
     party: [],
@@ -205,7 +229,7 @@ export function mountChat(hooks: ChatHooks): ChatView {
     empty.hidden = mode !== "off" && !!active && shown(active).length > 0;
     empty.textContent =
       mode === "off"
-        ? "Chat is off. Turn it on in Settings."
+        ? "Chat is off. Turn it on with the gear above."
         : !active
           ? "Invite a friend to a party, or join a room, to chat."
           : "No messages yet. Say hi!";
@@ -302,6 +326,26 @@ export function mountChat(hooks: ChatHooks): ChatView {
   }
 
   button.addEventListener("click", () => setOpen(drawer.hidden));
+  // The chat's own settings: on, quick chat only, off.
+  const renderPrefs = () => {
+    for (const b of Array.from(
+      prefs.querySelectorAll<HTMLButtonElement>("[data-chat-mode]"),
+    ))
+      b.setAttribute("aria-checked", String(b.dataset.chatMode === mode));
+    prefs.querySelector(".chat-mode-note")!.textContent = MODE_NOTE[mode];
+  };
+  gear.addEventListener("click", () => {
+    prefs.hidden = !prefs.hidden;
+    gear.setAttribute("aria-expanded", String(!prefs.hidden));
+    renderPrefs();
+  });
+  prefs.addEventListener("click", (e) => {
+    const pick = (e.target as HTMLElement).closest<HTMLElement>(
+      "[data-chat-mode]",
+    )?.dataset.chatMode as ChatMode | undefined;
+    if (!pick || pick === mode) return;
+    hooks.setMode(pick);
+  });
   drawer
     .querySelector(".chat-close")!
     .addEventListener("click", () => setOpen(false));
@@ -422,6 +466,7 @@ export function mountChat(hooks: ChatHooks): ChatView {
       mode = next;
       renderLines();
       renderForm();
+      renderPrefs();
     },
     placeButton(x, y) {
       button.style.setProperty("--chat-x", `${Math.round(x)}px`);
