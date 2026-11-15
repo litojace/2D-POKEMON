@@ -62,6 +62,7 @@ import {
 import { PlazaWorld, type PlazaEvent } from "./plaza.js";
 import { PLAZA, type PlazaRecord } from "../../../packages/shared/src/plaza.js";
 import { Parties, type Party, type PartyAppearance } from "./party.js";
+import { ChatHub, type ChatMember, type ChatRoute } from "./chat.js";
 import { PlazaAppearance } from "./plaza-appearance.js";
 import { MatchLedger, matchSummary } from "./match-summary.js";
 import {
@@ -142,6 +143,12 @@ export const BACKPRESSURE = { bytes: 16 * 1024, messages: 4 };
 export function createArenaServer(
   options: {
     reconnectMs?: number;
+    /**
+     * Typed chat lines on (quick chat is always on). Defaults to the
+     * CHAT_FREE_TEXT environment switch ("on"); off until reporting ships
+     * (docs/chat-plan.md).
+     */
+    chatFreeText?: boolean;
     autoTick?: boolean;
     accounts?: AccountProvider;
     /** Collect tick/broadcast/CPU/memory/byte measurements (see diagnostics.ts). */
@@ -266,6 +273,28 @@ export function createArenaServer(
   const roomInviteCooldowns = new Map<string, number>();
   const roomInvitesPending = new Set<string>();
   const parties = new Parties();
+  /** In-game chat (docs/chat-plan.md): party and room channels. */
+  const chat = new ChatHub({
+    freeText: () => options.chatFreeText ?? process.env.CHAT_FREE_TEXT === "on",
+  });
+  /** Read who this account blocked, so chat delivers nothing between them. */
+  const loadChatBlocks = async (socket: import("socket.io").Socket) => {
+    const who = socket.data.account as Account | undefined;
+    const token = socket.data.accessToken as string | undefined;
+    if (!who || !token) return;
+    try {
+      const list = await accounts.rpc(token, "arena_blocked_players", {});
+      if (!Array.isArray(list)) return;
+      chat.setBlocks(
+        who.id,
+        list
+          .map((b) => (b as { id?: unknown } | null)?.id)
+          .filter((id): id is string => typeof id === "string"),
+      );
+    } catch {
+      // Kept as it was; the next change to the list tries again.
+    }
+  };
   /** The connected sockets of an account (a replaced tab has no account). */
   const accountSockets = (accountId: string) =>
     [...io.sockets.sockets.values()].filter(
@@ -490,8 +519,11 @@ export function createArenaServer(
         if (
           id === target ||
           (target.startsWith("code:") && friendCode(id) === target.slice(5))
-        )
+        ) {
           socket.emit("friends-changed");
+          // A block or unblock changes who hears whom in chat.
+          if (id === target) void loadChatBlocks(socket);
+        }
       }
     },
   );
@@ -1043,6 +1075,7 @@ export function createArenaServer(
       arena.players = arena.players.filter((p) => p.id !== session.id);
     if (![...sessions.values()].some((s) => s.code === arena.code)) {
       rooms.delete(arena.code);
+      chat.drop(`room:${arena.code}`);
       // Anyone watching is told the room has closed.
       for (const [id, w] of watchers)
         if (w.code === arena.code) {
@@ -1055,6 +1088,7 @@ export function createArenaServer(
   }
   io.on("connection", (socket) => {
     claimAccount(socket);
+    void loadChatBlocks(socket);
     const signedIn = socket.data.account as Account | undefined;
     if (signedIn && !signedIn.guest)
       void presenceHistory.touch(signedIn.id, socket.data.accessToken);
@@ -1341,8 +1375,10 @@ export function createArenaServer(
       const result = parties.leave(accountId);
       for (const s of accountSockets(accountId)) s.emit("party", null);
       if (!result) return;
-      if (result.disbanded) emitParty(result.disbanded, true);
-      else emitParty(result.party);
+      if (result.disbanded) {
+        emitParty(result.disbanded, true);
+        chat.drop(`party:${result.disbanded.code}`);
+      } else emitParty(result.party);
     };
     socket.on("party-leave", (_data: unknown, cb: unknown) => {
       if (!account()) return fail(cb, "Please log in to play.");
@@ -1402,6 +1438,7 @@ export function createArenaServer(
         socket.data.accessToken = token;
         socket.data.account = next;
         claimAccount(socket);
+        if (!current) void loadChatBlocks(socket);
         if (!next.guest) void presenceHistory.touch(next.id, token as string);
         socket.data.expiredChecks = 0;
         reply(cb, { ok: true });
@@ -2023,6 +2060,90 @@ export function createArenaServer(
       }
       next();
     });
+    // ───────────── Chat (docs/chat-plan.md) ─────────────
+    /** A player as chat sees them. */
+    const chatMember = (
+      accountId: string,
+      name: string,
+      team?: number,
+    ): ChatMember => {
+      const live = accountSockets(accountId)[0]?.data.account as
+        Account | undefined;
+      return {
+        accountId,
+        name,
+        guest: !!live?.guest,
+        mode: "free",
+        ...(team !== undefined ? { team } : {}),
+      };
+    };
+    /** Who hears this socket in a channel, from the server's own state. */
+    const chatRoute = (channel: unknown): ChatRoute | null => {
+      const me = account();
+      if (!me) return null;
+      if (channel === "party") {
+        const party = parties.of(me.id);
+        if (!party) return null;
+        return {
+          channel,
+          key: `party:${party.code}`,
+          inBattle: false,
+          members: party.members.map((m) => chatMember(m.id, m.name)),
+        };
+      }
+      if (channel === "room") {
+        const session = getSession(socket.id);
+        const arena = session && rooms.get(session.code);
+        if (!arena) return null;
+        const owners = fighterAccounts.get(arena);
+        const members: ChatMember[] = [];
+        for (const p of arena.players) {
+          const accountId = owners?.get(p.id);
+          // Bots have no account; a player still in a room has a session.
+          if (!accountId || arena.bots.has(p.id)) continue;
+          if (![...sessions.values()].some((s) => s.id === p.id)) continue;
+          const team = arena instanceof RaidArena ? 0 : arena.teamOf(p);
+          members.push(chatMember(accountId, p.name, team));
+        }
+        return {
+          channel,
+          key: `room:${arena.code}`,
+          inBattle: arena.phase !== "lobby" && arena.phase !== "finished",
+          members,
+        };
+      }
+      return null;
+    };
+    socket.on("chat-send", (data: unknown, cb: unknown) => {
+      if (!allowed(10) || !requirePlayer(cb)) return;
+      const input = (data ?? {}) as {
+        channel?: unknown;
+        text?: unknown;
+        quick?: unknown;
+      };
+      const route = chatRoute(input.channel);
+      if (!route) return fail(cb, "There's no one to chat with here.");
+      const sent = chat.send(
+        account()!.id,
+        route,
+        input.quick !== undefined
+          ? { quick: input.quick }
+          : { text: input.text },
+      );
+      if (!sent.ok) return fail(cb, sent.error);
+      for (const id of sent.deliver)
+        for (const s of accountSockets(id)) s.emit("chat", sent.line);
+      reply(cb, { ok: true });
+    });
+    socket.on("chat-history", (data: unknown, cb: unknown) => {
+      if (!allowed(10) || !account()) return;
+      const route = chatRoute((data as { channel?: unknown } | null)?.channel);
+      if (typeof cb !== "function") return;
+      cb({
+        ok: true,
+        lines: route ? chat.history(route.key, account()!.id) : [],
+      });
+    });
     // ───────────── Plaza (hub redesign phase 3) ─────────────
     socket.on("plaza-join", (data: unknown, cb: unknown) => {
       if (!allowed(10) || !requirePlayer(cb)) return;
@@ -2288,7 +2409,10 @@ export function createArenaServer(
         );
       if (who && !who.guest && !stillOnline)
         void presenceHistory.touch(who.id, socket.data.accessToken, true);
-      if (who && !stillOnline) leaveParty(who.id);
+      if (who && !stillOnline) {
+        leaveParty(who.id);
+        chat.forget(who.id);
+      }
       plaza.leave(socket.id);
       laggingSockets.delete(socket.id);
       stopWatching();
