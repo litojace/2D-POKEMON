@@ -41,7 +41,6 @@ async function boxes(page: Page) {
       .querySelectorAll(".lobby-card")
       .forEach((c, i) => add(`card${i}`, c));
     add("play", document.querySelector(".lobby-play"));
-    add("emotes", document.querySelector(".lobby-emotes"));
     return out;
   });
 }
@@ -265,15 +264,15 @@ for (const view of [
 }
 
 // The rail keeps 12px under the player card (its frame's star row hangs
-// below the card), the emote tile is the rail's last tile in the bottom-left
-// corner, and the emotes open up that column instead of over the fighter's
-// arrows.
+// below the card) and runs down to PLAY's bottom line: six buttons, each a
+// finger (44 pt) tall, on the shortest phone too.
 for (const view of [
   { width: 932, height: 430, inset: { left: 59, right: 59, bottom: 21 } },
+  { width: 852, height: 393, inset: { left: 59, right: 59, bottom: 21 } },
   { width: 667, height: 375, inset: null },
   { width: 1024, height: 768, inset: null },
 ]) {
-  test(`the rail and the emote tile share a column at ${view.width}x${view.height}`, async ({
+  test(`the rail's six buttons are a finger tall at ${view.width}x${view.height}`, async ({
     browser,
   }) => {
     const touch = view.width < 1100;
@@ -301,33 +300,19 @@ for (const view of [
       const card = await rect("#account-profile"),
         first = await rect(".lobby-rail button"),
         last = await rect(".lobby-rail button:last-child"),
-        tile = await rect(".lobby-emote-toggle"),
         play = await rect("#lobby-play");
       expect(first.t - card.b, "rail under the card").toBeGreaterThanOrEqual(
         12,
       );
-      expect([tile.l, tile.w], "tile in the rail's column").toEqual([
-        first.l,
-        first.w,
-      ]);
-      expect(tile.t - last.b, "tile under the rail").toBeGreaterThanOrEqual(10);
-      expect(
-        Math.abs(tile.b - play.b),
-        "tile on PLAY's bottom line",
-      ).toBeLessThan(1);
-      await page.click(".lobby-emote-toggle");
-      const list = await rect(".lobby-emote-list");
-      expect(list.t, "emotes under the card").toBeGreaterThanOrEqual(card.b);
-      for (const arrow of ['[data-lobby-step="-1"]', '[data-lobby-step="1"]']) {
-        const a = await rect(arrow);
-        expect(
-          list.r <= a.l || a.r <= list.l || list.b <= a.t || a.b <= list.t,
-          `emotes clear of ${arrow}`,
-        ).toBe(true);
-      }
-      await expect(page.locator(".lobby-rail")).toBeHidden();
-      await page.click('[data-lobby-emote="👋"]');
-      await expect(page.locator("#lobby-emote-bubble")).toHaveText("👋");
+      expect(last.b - play.b, "rail down to PLAY's bottom line").toBeLessThan(
+        1,
+      );
+      const heights = await page
+        .locator(".lobby-rail button")
+        .evaluateAll((bs) => bs.map((b) => b.getBoundingClientRect().height));
+      expect(heights).toHaveLength(6);
+      for (const h of heights)
+        expect(h, "a rail button's height").toBeGreaterThanOrEqual(44);
       expect(errors).toEqual([]);
     } finally {
       await context.close();
@@ -676,10 +661,8 @@ for (const view of [
 }
 
 // A sheet on the narrowest phone leaves ~200 px beside it: the fighter
-// stands there with its name (the seats and arrows ran off the screen), and
-// the emote tile stays in the rail's column (moved beside the sheet it
-// landed on PLAY).
-test("a sheet on a 667x375 phone keeps the fighter on screen and the emote tile in the rail", async ({
+// stands there with its name (the seats and arrows ran off the screen).
+test("a sheet on a 667x375 phone keeps the fighter on screen", async ({
   browser,
 }) => {
   const context = await browser.newContext({
@@ -713,18 +696,12 @@ test("a sheet on a 667x375 phone keeps the fighter on screen and the emote tile 
         nameplate: r(".lobby-nameplate"),
         fighter: r(".lobby-fighter"),
         play: r(".lobby-play"),
-        tile: r(".lobby-emote-toggle"),
-        rail: r(".lobby-rail button"),
       };
     });
     for (const k of ["nameplate", "fighter"] as const) {
       expect(m[k].right, `${k} on screen`).toBeLessThanOrEqual(667);
       expect(m[k].bottom, `${k} above PLAY`).toBeLessThanOrEqual(m.play.top);
     }
-    expect(m.tile.left, "emote tile in the rail's column").toBeCloseTo(
-      m.rail.left,
-      0,
-    );
     await expect(page.locator(".lobby-slot-wrap").first()).toBeHidden();
     await expect(page.locator('[data-lobby-step="1"]')).toBeHidden();
     // Closing the sheet brings the seats and arrows back.
@@ -738,7 +715,7 @@ test("a sheet on a 667x375 phone keeps the fighter on screen and the emote tile 
 
 // A tap on the Lobby's background, outside the open screen, closes it, as
 // the lit rail button does. A tap in the screen, a drag out of it, or a
-// tap on another control (the mode button, the emotes) doesn't.
+// tap on another control (the mode button) doesn't.
 test("a tap on the Lobby's background closes the open screen", async ({
   page,
 }) => {
@@ -781,18 +758,7 @@ test("a tap on the Lobby's background closes the open screen", async ({
   await expect(page.locator("#lobby-mode-menu")).toBeVisible();
   await page.click("#lobby-mode");
   await expect(page.locator("#lobby-mode-menu")).toBeHidden();
-  await page.click(".lobby-emote-toggle");
-  await expect(page.locator(".lobby-emotes")).toHaveAttribute(
-    "data-open",
-    "true",
-  );
   await expect(sheet).toBeVisible();
-  // The emote list, like the mode menu, closes on a tap anywhere else.
-  await page.mouse.click(head!.x + 8, head!.y + head!.height / 2);
-  await expect(page.locator(".lobby-emotes")).toHaveAttribute(
-    "data-open",
-    "false",
-  );
   // The bare spot closes the screen and puts out its rail button.
   await page.mouse.click(spot!.x, spot!.y);
   await expect(sheet).toHaveCount(0);

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { openLobby } from "./helpers";
+import { hubMenu, openLobby } from "./helpers";
 import { shopServer } from "./shop-server";
 
 // WebKit can start Scene.create before Game.isRunning, after the host's
@@ -26,7 +26,7 @@ for (const size of [
         // Cover both the original and an equipped Mythical on first open.
         await shopServer(page, { cleared: mode === "shop" ? ["voltkit"] : [] });
         const errors = await openLobby(page);
-        await page.click(`.lobby-rail [data-lobby-action="${mode}"]`);
+        await hubMenu(page, mode);
         const stage = page.locator(".fit-stage .shop-live-stage");
         await expect(stage).toHaveClass(/is-ready/, { timeout: 60_000 });
         await expect(stage).not.toHaveAttribute("aria-busy", "true");

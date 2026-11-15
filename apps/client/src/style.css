@@ -15633,13 +15633,22 @@ body.battle-active:not(.touch-mode)
 
 /* Big phones: the side safe areas exist for the camera island (mid-height)
    and rounded corners, not for thumbs at the bottom. Let the joystick and
-   skills sit closer to the edges so they cover less of the arena. Phones
-   without side insets keep their 16px gutter. */
+   skills sit closer to the edges so they cover less of the arena, but not
+   over the island or notch: it reaches about 11 px less than the safe inset
+   from the edge (59 → 48 px on a Dynamic Island iPhone), and Dash sits at
+   that height, so the controls keep 2 px clear of it (tests/visual/
+   touch-cutout.spec.ts). Phones without side insets keep their 16px gutter. */
 @media (orientation: landscape) {
   body.battle-active.touch-mode .touch-pad,
   body.battle-active.touch-mode.compact-landscape .touch-pad {
-    left: calc(max(10px, var(--safe-left) * 0.4) + 6px);
-    right: calc(max(10px, var(--safe-right) * 0.4) + 6px);
+    left: max(
+      calc(max(10px, var(--safe-left) * 0.4) + 6px),
+      calc(var(--safe-left) - 9px)
+    );
+    right: max(
+      calc(max(10px, var(--safe-right) * 0.4) + 6px),
+      calc(var(--safe-right) - 9px)
+    );
   }
 }
 

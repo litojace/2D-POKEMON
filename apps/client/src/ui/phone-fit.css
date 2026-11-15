@@ -24,7 +24,6 @@
       #account-profile,
       .header-menu > summary,
       .lobby-step,
-      .lobby-emotes .lobby-emote-toggle,
       #lobby-mode,
       .home-panel-close,
       .raid-ping-menu > summary,
@@ -141,23 +140,11 @@
   :root body .fr-add-toggle {
     margin-right: 6px;
   }
-  /* Emotes, under the rail: its hit area reaches down more than up, so the
-     rail's last button keeps its half of the gap between them. */
-  :root body .lobby-emotes .lobby-emote-toggle::after {
-    content: "";
-    position: absolute;
-    left: 50%;
-    top: -5px;
-    width: max(100%, 44px);
-    height: max(100%, 44px);
-    transform: translateX(-50%);
-  }
 
   /* ----------------------------- hit areas that run to the neighbours */
-  /* The Lobby's rail: eight buttons in a column shorter than 8 × 44 on
-     every phone, so each one's hit area is 44 wide and runs half way to
-     the next, 2 to 4 px away (no dead gap between them; an ::after is placed
-     from inside the 1 px border). */
+  /* The Lobby's rail: six buttons, 44 tall and 36 wide, 4 px apart. Each
+     one's hit area is 44 wide and runs half way to the next (no dead gap
+     between them; an ::after is placed from inside the 1 px border). */
   :root body .lobby-rail button::after {
     content: "";
     position: absolute;
