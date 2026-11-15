@@ -83,8 +83,7 @@
       .auth-legal a,
       .prefs-choice > button,
       .prefs-switch,
-      .password-toggle,
-
+      .password-toggle
     )::after {
     content: "";
     position: absolute;
