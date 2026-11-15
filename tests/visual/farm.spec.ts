@@ -2758,6 +2758,17 @@ test("a friend on your farm: they stand by the gate, emotes show, and a Harvest 
       party: true,
       partyLeft: 1800,
     };
+    const w = window as any;
+    w.__chatFarm = [];
+    const reply = w.__reply;
+    w.__reply = (ev: string, data: unknown) => {
+      if (ev === "chat-farm") {
+        w.__chatFarm.push(data);
+        return { ok: true };
+      }
+      if (ev === "chat-history") return { ok: true, lines: [] };
+      return reply?.(ev, data);
+    };
     const f = window.fetch;
     (window as any).__pings = [];
     window.fetch = (input: any, init?: any) => {
@@ -2771,14 +2782,31 @@ test("a friend on your farm: they stand by the gate, emotes show, and a Harvest 
   const pill = page.locator("#fm-here");
   await expect(pill).toContainText("Mai is here");
   await expect(pill).toContainText("Harvest Party: +1 crop a harvest");
-  await pill.locator('[data-emote="heart"]').click();
-  await expect
-    .poll(() =>
-      page.evaluate(() =>
-        (window as any).__pings.some((p: any) => p.emote === "heart"),
-      ),
-    )
-    .toBe(true);
+  // Emotes moved into chat (docs/chat-plan.md): no emote buttons here; the
+  // farm's Nearby chat carries them, as bubbles over the friend.
+  await expect(pill.locator("[data-emote]")).toHaveCount(0);
+  await expect(page.locator('[data-chat-tab="place"]')).toHaveCount(0);
+  await page.click("#chat-button");
+  await expect(page.locator('[data-chat-tab="place"]')).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
+  expect(
+    await page.evaluate(() =>
+      (window as any).__chatFarm.some((d: any) => d?.owner),
+    ),
+  ).toBe(true);
+  await page.evaluate(() =>
+    (window as any).__sock.fire("chat", {
+      id: 7,
+      channel: "place",
+      from: { id: "00000000-0000-4000-8000-0000000000a1", name: "Mai" },
+      at: Date.now(),
+      quick: "party",
+    }),
+  );
+  await expect(page.locator("#chat-drawer .chat-line")).toHaveText("Mai🎉");
+  await page.click("#chat-drawer .chat-close");
   await page.evaluate(() => (window as any).__farm.look(780, 760));
   await page.waitForTimeout(400);
   await snap(page, info, "farm-party");

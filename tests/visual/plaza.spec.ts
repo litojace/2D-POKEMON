@@ -808,3 +808,75 @@ test("the Emote button lights up, and a second tap or a tap on the Plaza closes 
   await expect(page.locator("#pz-album")).toBeVisible();
   expect(errors).toEqual([]);
 });
+
+// Emotes go through chat's Nearby channel (docs/chat-plan.md): a wheel
+// emote is a quick line (the server pops it over your head, as before), the
+// chat's Nearby tab shows it, and a player's phrase pops over them.
+test("Nearby chat on the Plaza: the wheel sends quick chat, phrases pop over the speaker", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const errors = await openPlaza(page);
+  await page.click("#pz-wheel-btn");
+  await page.click('#pz-wheel [data-emote="👋"]');
+  // The Plaza's own state carries it, for everyone (older apps too).
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () => (window as any).__plazaWorld.visitors.get("local")?.emote,
+      ),
+    )
+    .toBe(1);
+  await page.click("#chat-button");
+  await expect(page.locator('[data-chat-tab="place"]')).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
+  await expect(page.locator("#chat-drawer .chat-line")).toHaveText("tester👋");
+  // Typing waits for an account's own channels: here it is quick chat.
+  await expect(page.locator("#chat-input")).toBeDisabled();
+  await page.click("#chat-drawer .chat-close");
+  // Another player joins; their "Hi!" pops over their head.
+  const pal = "22222222-2222-4222-8222-222222222222";
+  await page.evaluate((pal) => {
+    const w = (window as any).__plazaWorld;
+    const me = w.bodyOf("local");
+    w.join("pal", pal, {
+      name: "Pal",
+      title: null,
+      titleColor: null,
+      level: 3,
+      character: "tidefin",
+      skin: null,
+    });
+    w.visitors.get("pal").body.x = me.x + 60;
+    w.visitors.get("pal").body.y = me.y;
+  }, pal);
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        [...(window as any).__plaza.others.values()].some(
+          (b: any) => b.name === "Pal",
+        ),
+      ),
+    )
+    .toBe(true);
+  await page.evaluate((pal) => {
+    (window as any).__sock.fire("chat", {
+      id: 99,
+      channel: "place",
+      from: { id: pal, name: "Pal" },
+      at: Date.now(),
+      quick: "hi",
+    });
+  }, pal);
+  expect(
+    await page.evaluate(
+      () =>
+        [...(window as any).__plaza.others.values()].find(
+          (b: any) => b.name === "Pal",
+        )?.emote,
+    ),
+  ).toBe("Hi!");
+  expect(errors).toEqual([]);
+});
