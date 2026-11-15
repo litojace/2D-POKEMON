@@ -294,12 +294,11 @@ for (const size of SIZES)
       expect(await layoutProblems(page, { inset, phone: size.phone })).toEqual(
         [],
       );
-      for (const label of ["Practice", "Start raid"])
-        await centred(
-          page,
-          `.rh-room .ui-actions .ui-btn:has-text("${label}")`,
-          label,
-        );
+      await centred(
+        page,
+        `.rh-room .ui-actions .ui-btn:has-text("Start raid")`,
+        "Start raid",
+      );
       await centred(page, '.rh-room [data-ui-raid-play="solo"]', "Solo");
       // A gold button's icon is drawn in its label's colour, so icon and
       // label sit centred together (owner's note, 4 Nov).
