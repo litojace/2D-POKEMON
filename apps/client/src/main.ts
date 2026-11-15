@@ -147,7 +147,7 @@ import {
 } from "./animation/pipeline";
 import { rigAssets, skinSuffix } from "./animation/assets";
 import { loadRigTextures } from "./animation/rig-textures";
-import { prewarmBossAtlas } from "./boss-vector-prewarm";
+import { prewarmBossAtlas, syncBossPrepaint } from "./boss-vector-prewarm";
 import { prewarmRaidArena } from "./raid-arena-prewarm";
 import { PillarRig, prewarmPillars } from "./raid-grumble-pillars-rig";
 import { IMPACT_RADIUS } from "./raid-grumble-pillars";
@@ -2518,6 +2518,8 @@ function requestRaidHud(event: string, data?: unknown): Promise<unknown> {
   });
 }
 function renderMenu(revealSelection = false) {
+  // In a raid room, the boss's atlas is painted ahead (boss-prepaint.ts).
+  syncBossPrepaint(state);
   document.body.classList.remove("practice-active");
   audio.setTheme("lobby");
   pwa.sync();
@@ -3684,6 +3686,7 @@ socket.on("state", (snapshot: WireSnapshot) => {
     !state.arcade
   )
     void reportMatch(state.matchId);
+  syncBossPrepaint(state);
   if (state.phase === "lobby") renderMenu();
   else renderBattle();
 });
