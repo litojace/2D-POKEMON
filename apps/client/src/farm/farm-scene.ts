@@ -88,7 +88,7 @@ import {
 import "./farm.css";
 import { fadeIn } from "../ui/motion";
 import { setInner } from "../ui/patch";
-import { sceneDensity } from "../render-budget";
+import { memoryConstrained, sceneDensity } from "../render-budget";
 import { FrameCap } from "../frame-cap";
 import { rumble } from "../game-feel";
 
@@ -1203,6 +1203,16 @@ export function openFarm(options) {
   }
   /* ---------- background ---------- */
   const bg = document.createElement("canvas");
+  /** Cancels the hidden farm's pending ground release (hide/show). */
+  let idleRelease;
+  const requestIdle = (run) => {
+    if (typeof requestIdleCallback === "function") {
+      const id = requestIdleCallback(run, { timeout: 3000 });
+      return () => cancelIdleCallback(id);
+    }
+    const id = setTimeout(run, 1000);
+    return () => clearTimeout(id);
+  };
   bg.width = BW;
   bg.height = BH;
   function paintBg() {
@@ -7526,11 +7536,25 @@ export function openFarm(options) {
       void flush();
       leave();
       layer.style.display = "none";
+      // Where memory is short (an iPhone), the painted ground (up to
+      // 2480 × 1460, 13.8 MB) is painted again on return instead of kept,
+      // released once the page is idle (not in the tap that switched tabs).
+      if (memoryConstrained() && inited)
+        idleRelease = requestIdle(() => {
+          if (hiddenAway) bg.width = bg.height = 0;
+        });
     },
     /** Back on the farm: just as you left it, then refreshed. */
     show() {
       if (!hiddenAway) return;
       hiddenAway = false;
+      idleRelease?.();
+      idleRelease = undefined;
+      if (!bg.width && inited) {
+        bg.width = BW;
+        bg.height = BH;
+        paintBg();
+      }
       layer.style.display = "";
       onResize();
       enter();

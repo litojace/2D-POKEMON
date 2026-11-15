@@ -64,13 +64,29 @@ test("the briefing holds I'm ready until the arena has loaded, and loads only th
     [...FIGHTER_IDS],
   );
   expect(loaded.sort()).toEqual(["cindrake", "voltkit"]);
-  // The device told the server how long that took.
-  const reports = await page.evaluate(() =>
-    (window as any).__events
-      .filter((e: any) => e.event === "battle-loaded")
-      .map((e: any) => e.data),
-  );
+  // The device told the server how long that took (on the arena's next
+  // frame, which a busy machine may not have drawn yet).
+  const sent = () =>
+    page.evaluate(() =>
+      (window as any).__events
+        .filter((e: any) => e.event === "battle-loaded")
+        .map((e: any) => e.data),
+    );
+  await expect.poll(async () => (await sent()).length).toBe(1);
+  const reports = await sent();
   expect(reports).toHaveLength(1);
   expect(reports[0]).toMatchObject({ fighters: 2, ms: expect.any(Number) });
+  // Where the time went: starting the renderer, the fighters' art, the
+  // scene. Together they are the whole load.
+  const { ms, boot, assets, scene } = reports[0];
+  for (const phase of [boot, assets, scene])
+    expect(phase).toBeGreaterThanOrEqual(0);
+  expect(Math.abs(boot + assets + scene - ms)).toBeLessThanOrEqual(3);
+  expect(reports[0]).toMatchObject({
+    density: expect.any(Number),
+    build: expect.any(String),
+    os: expect.any(String),
+    app: expect.any(Boolean),
+  });
   expect(errors).toEqual([]);
 });

@@ -13,7 +13,8 @@
    blur at High graphics and drop it at Low (chosen in Settings, or picked
    automatically when the frame rate can't keep up), with a deeper tint.
 
-   Loaded after every other stylesheet but ui/light-effects.css (main.ts). */
+   Loaded after every other stylesheet but ui/light-effects.css and
+   ui/phone-fit.css (main.ts). */
 :root {
   --aero-tint: rgba(13, 20, 38, 0.62);
   /* Without blur the scene shows through sharp: a deeper tint. */

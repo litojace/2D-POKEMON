@@ -36,6 +36,26 @@ export const battleLoadSchema = z
     memory: z.number().min(0).max(1024).optional(),
     /** navigator.hardwareConcurrency, where offered. */
     cores: z.number().int().min(1).max(1024).optional(),
+    /**
+     * Where the time went (ms), in order: starting the renderer (the WebGL
+     * context and Phaser, up to the scene's preload), loading the fighters'
+     * art (preload to create), and building the scene (create to the first
+     * frame with every fighter ready: atlases, effect sprites, the court).
+     */
+    boot: z.number().int().min(0).max(600_000).optional(),
+    assets: z.number().int().min(0).max(600_000).optional(),
+    scene: z.number().int().min(0).max(600_000).optional(),
+    /** Canvas pixels per CSS pixel the battle drew at. */
+    density: z.number().min(0.1).max(8).optional(),
+    /** As in battle-perf: the build, the system family, the installed app. */
+    build: z
+      .string()
+      .regex(/^[a-z0-9-]{1,16}$/)
+      .optional(),
+    os: z
+      .enum(["ios", "android", "mac", "windows", "linux", "other"])
+      .optional(),
+    app: z.boolean().optional(),
   })
   .strict();
 export type BattleLoad = z.infer<typeof battleLoadSchema>;
@@ -98,7 +118,9 @@ export const battlePerfSchema = z
       .regex(/^[a-z0-9-]{1,16}$/)
       .optional(),
     /** The system family, coarsely, and whether it ran as the installed app. */
-    os: z.enum(["ios", "android", "mac", "windows", "linux", "other"]).optional(),
+    os: z
+      .enum(["ios", "android", "mac", "windows", "linux", "other"])
+      .optional(),
     app: z.boolean().optional(),
     /** The browser drew without the graphics card (client gpu-check.ts). */
     gpu: z.literal("software").optional(),

@@ -279,3 +279,28 @@ export function deviceKind(
               : "other";
   return { os, app: !!standalone };
 }
+
+/**
+ * Where a battle's load time went (the "arena-load" report): starting the
+ * renderer (until the scene's preload), loading the fighters' art (preload to
+ * create) and building the scene (create to the first frame with every
+ * fighter ready). A phase whose mark is missing or out of order is left out.
+ */
+export function loadPhases(
+  started: number,
+  marks: { preload: number; create: number },
+  ready: number,
+) {
+  const ms = (from: number, to: number) =>
+    from > 0 && to >= from
+      ? Math.min(600_000, Math.round(to - from))
+      : undefined;
+  const boot = marks.preload ? ms(started, marks.preload) : undefined;
+  const assets = marks.create ? ms(marks.preload, marks.create) : undefined;
+  const scene = ms(marks.create, ready);
+  return {
+    ...(boot !== undefined ? { boot } : {}),
+    ...(assets !== undefined ? { assets } : {}),
+    ...(scene !== undefined ? { scene } : {}),
+  };
+}
