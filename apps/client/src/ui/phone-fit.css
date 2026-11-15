@@ -190,11 +190,6 @@
   :root body .ui-chip:first-child::after {
     left: min(-8px, calc(100% - 43px));
   }
-  /* Tabs: a finger tall (they were 34 px). */
-  :root body .ui-tabs > button,
-  :root body .farm-layer.phone .fm-sheet .sh-tabs button {
-    min-height: 44px;
-  }
   /* A finger tall: the fighter's skills, the Play drawer's quiet buttons,
      the rules folds of Ranks and of a room. */
   :root
@@ -256,5 +251,14 @@
 @container (max-width: 96px) {
   .ui-foot-info > :not(.ui-avatar, .ui-seg) {
     display: none;
+  }
+}
+/* Tabs: a finger tall (they were 34 px), where the screen has the room. A
+   view under 320 px tall (the keyboard up, a split screen) keeps 34 px tabs:
+   the 10 px matter more to a boss page's list there (raid-splash at 844x280). */
+@media (max-height: 500px) and (min-height: 320px) {
+  :root body .ui-tabs > button,
+  :root body .farm-layer.phone .fm-sheet .sh-tabs button {
+    min-height: 44px;
   }
 }
