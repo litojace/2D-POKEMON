@@ -54,7 +54,7 @@ for (const viewport of [
             : fetch(input, init);
       });
       await hubMenu(page, "raids");
-      // The Raid Hall's cards (UI remodel step 5) use the small pictures.
+      // The boss list's cards (UI remodel step 5) use the small pictures.
       const room = page.locator(".rh-room");
       await expect(room.locator(".rh-card-art img")).toHaveCount(7);
       for (const boss of [

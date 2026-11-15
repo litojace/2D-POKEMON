@@ -297,8 +297,7 @@ export const RAID_ATTACKS: Record<
   "link-beam": {
     name: "Link Beam",
     tip: "Jump across the bright ribbon or leave its path. From phase 2 copper posts bend it. Facet Guard reflects it into a twin.",
-    summary:
-      "The ribbon brightens, then sweeps. Jump across it or stay clear.",
+    summary: "The ribbon brightens, then sweeps. Jump across it or stay clear.",
   },
   "chain-lightning": {
     name: "Chain Lightning",
@@ -380,8 +379,7 @@ export const RAID_ATTACKS: Record<
   undertow: {
     name: "Undertow",
     tip: "Dash away from the whirlpool and keep walking outward. Touching its centre hurts.",
-    summary:
-      "A whirlpool pulls everyone to the centre. Walk and dash outward.",
+    summary: "A whirlpool pulls everyone to the centre. Walk and dash outward.",
   },
   prison: {
     name: "Bubble Prison",

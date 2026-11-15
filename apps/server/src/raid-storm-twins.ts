@@ -610,8 +610,7 @@ export class StormTwinsArena extends RaidArena {
       if (cancel.has(m.playerId) && !m.cancelled) {
         m.cancelled = true;
         const p = alive.find((p) => p.id === m.playerId)!;
-        if (r.contributions?.[p.id])
-          r.contributions[p.id].pillars++;
+        if (r.contributions?.[p.id]) r.contributions[p.id].pillars++;
         this.event("heal", p, 0x8cead0, 0, p.id);
       }
     for (const m of marks) {

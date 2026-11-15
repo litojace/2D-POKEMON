@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Raids: the Raid Hall and a boss's page (UI remodel step 5, docs/ui-remodel/
+   Raids: the boss list and a boss's page (UI remodel step 5, docs/ui-remodel/
    PLAN.md). Markup: screens/raid-hall-view.ts. Layout only on top of the
    shared components (ui/components.css). Class names start with rh- so
    nothing here meets the old Raid Hub rules.

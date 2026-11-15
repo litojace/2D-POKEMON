@@ -65,11 +65,11 @@ export async function openPlaza(page: Page) {
 }
 
 /**
- * Leaving a raid room returns to the Raid Hall (that boss's page, opened
+ * Leaving a raid room returns to the boss list (that boss's page, opened
  * after the Lobby is back), not to the Lobby: close it with Back to the
  * Lobby and wait until it has gone.
  */
-export async function closeRaidHall(page: Page) {
+export async function closeRaids(page: Page) {
   const hall = page.locator(".ui-panel.rh-room:not([data-ui-leaving])");
   await expect(hall).toBeVisible({ timeout: 20_000 });
   await hall.locator("[data-ui-close]").first().click();

@@ -1,5 +1,5 @@
 /**
- * Raids (UI remodel step 5, docs/ui-remodel/PLAN.md): the Raid Hall (every
+ * Raids (UI remodel step 5, docs/ui-remodel/PLAN.md): the boss list (every
  * boss as a card) and a boss's page (its art on the stage; Party · Attacks ·
  * Rewards · Guide). Markup and rules only (no DOM);
  * screens/raid-hall.ts wires it up.
@@ -290,7 +290,7 @@ function hallMarkup(view: RaidView, d: RaidData) {
         "Try another filter, or run a favourite again.",
         button("Show all", { size: "s", attrs: { "data-raid-filter": "all" } }),
       );
-  return `<section class="ui-panel rh-room" role="dialog" aria-label="Raids" data-raid-mode="hall"><header class="ui-panel-head rh-head"><div class="ui-heading"><span class="ui-kicker">Raid Hall · ${RAID_BOSS_ORDER.length} bosses · solo or up to ${RAID_SEATS}${totals ? ` · ${totals}` : ""}</span><h2 class="ui-title">Raids</h2></div>${filters}${iconButton("cancel", "Back to the Lobby", { class: "ui-close", "data-ui-close": true })}</header><div class="ui-panel-body rh-body rh-hall-body" data-raid-region="body"><div class="rh-notes">${notes}</div>${grid}</div></section>`;
+  return `<section class="ui-panel rh-room" role="dialog" aria-label="Raids" data-raid-mode="hall"><header class="ui-panel-head rh-head"><div class="ui-heading"><span class="ui-kicker">${RAID_BOSS_ORDER.length} bosses · solo or up to ${RAID_SEATS}${totals ? ` · ${totals}` : ""}</span><h2 class="ui-title">Raids</h2></div>${filters}${iconButton("cancel", "Back to the Lobby", { class: "ui-close", "data-ui-close": true })}</header><div class="ui-panel-body rh-body rh-hall-body" data-raid-region="body"><div class="rh-notes">${notes}</div>${grid}</div></section>`;
 }
 function rewardTotal(p: RaidProgress) {
   const earned = RAID_BOSS_ORDER.reduce(
@@ -512,7 +512,7 @@ function bossMarkup(view: RaidView, d: RaidData) {
       }),
     ),
   );
-  return `<section class="ui-panel is-split rh-room" role="dialog" aria-label="${esc(b.name)}" data-raid-mode="boss" data-raid-boss="${view.boss}" style="--boss:${b.color}">${stage(view.boss)}<div class="ui-split-main"><header class="ui-panel-head rh-head">${button("Raid Hall", { size: "s", icon: "back", attrs: { "data-raid-back": true } })}${view.tab === "guide" ? "" : `<span class="ui-note rh-hint">${esc(b.blurb)}</span>`}${iconButton("cancel", "Back to the Lobby", { class: "ui-close", "data-ui-close": true })}</header>${tabRow}<div class="ui-panel-body rh-body" data-raid-region="body" data-tab="${view.tab}">${body}</div>${foot}</div></section>`;
+  return `<section class="ui-panel is-split rh-room" role="dialog" aria-label="${esc(b.name)}" data-raid-mode="boss" data-raid-boss="${view.boss}" style="--boss:${b.color}">${stage(view.boss)}<div class="ui-split-main"><header class="ui-panel-head rh-head">${button("All bosses", { size: "s", icon: "back", attrs: { "data-raid-back": true } })}${view.tab === "guide" ? "" : `<span class="ui-note rh-hint">${esc(b.blurb)}</span>`}${iconButton("cancel", "Back to the Lobby", { class: "ui-close", "data-ui-close": true })}</header>${tabRow}<div class="ui-panel-body rh-body" data-raid-region="body" data-tab="${view.tab}">${body}</div>${foot}</div></section>`;
 }
 
 /** The whole screen: the hall, or one boss's page. */

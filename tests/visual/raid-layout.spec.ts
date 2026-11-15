@@ -311,11 +311,7 @@ for (const size of [
               }),
             )
             .toBe(true);
-          await snap(
-            page,
-            info,
-            `raid-art-wide-${size.width}x${size.height}`,
-          );
+          await snap(page, info, `raid-art-wide-${size.width}x${size.height}`);
         }
       }
 

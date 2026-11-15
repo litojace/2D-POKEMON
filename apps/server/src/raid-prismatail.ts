@@ -611,10 +611,7 @@ export class PrismatailArena extends RaidArena {
   }
   private relay(dt: number, boss: Fighter) {
     const r = this.raid;
-    if (
-      this.time < this.relayAt ||
-      r.exposedUntil > this.time
-    ) {
+    if (this.time < this.relayAt || r.exposedUntil > this.time) {
       this.burnAt.clear();
       this.carriers.clear();
       return;

@@ -350,8 +350,7 @@ export class TidewyrmArena extends RaidArena {
     const x = axis === "x" ? (dir > 0 ? 0 : W) : W / 2,
       y = axis === "y" ? (dir > 0 ? 0 : H) : H / 2;
     // Live raids, chapter 3: a low wave, then a high one from a side edge.
-    const double =
-      from === undefined && this.smart() && r.phase === 3;
+    const double = from === undefined && this.smart() && r.phase === 3;
     Object.assign(
       this.warn(
         "wave",
@@ -506,8 +505,7 @@ export class TidewyrmArena extends RaidArena {
       };
       this.undertowHit.clear();
       // Storm Surge: the Undertow leads into a wave as it lets go.
-      if (r.phase === 3)
-        this.startWave(false, T.undertow.seconds + 0.4);
+      if (r.phase === 3) this.startWave(false, T.undertow.seconds + 0.4);
       return;
     }
     if (w.kind === "prison") {

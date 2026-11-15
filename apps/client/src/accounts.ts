@@ -843,7 +843,7 @@ export class AccountUI {
   private raidLoading = false;
   private raidFriends: Friend[] | null = null;
   /**
-   * Raids: the Raid Hall and a boss's page, a panel inside the Lobby. It
+   * Raids: the boss list and a boss's page, a panel inside the Lobby. It
    * opens at once with what is known, then shows the server's fresh copy of
    * your raid records and your friends.
    */

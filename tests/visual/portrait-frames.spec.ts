@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import {
   box,
-  closeRaidHall,
+  closeRaids,
   inside,
   openHub,
   snap,
@@ -291,8 +291,8 @@ for (const size of [
           ),
         ).toHaveCount(1);
         await page.click("#leave");
-        // A raid exit returns to the Raid Hall; close it to see the Lobby.
-        if (kind === "raid") await closeRaidHall(page);
+        // A raid exit returns to the boss list; close it to see the Lobby.
+        if (kind === "raid") await closeRaids(page);
         if (await page.locator("dialog[open]").count()) await closePanel(page);
         await expect(page.locator("#lobby-play")).toBeVisible();
         await page.evaluate(() => {

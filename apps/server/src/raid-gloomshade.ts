@@ -756,8 +756,7 @@ export class GloomshadeArena extends RaidArena {
     l.lit = true;
     l.hits = 0;
     this.event("heal", l, 0xffd65b, 0, by?.id);
-    if (by && r.contributions?.[by.id])
-      r.contributions[by.id].pillars++;
+    if (by && r.contributions?.[by.id]) r.contributions[by.id].pillars++;
   }
   private stepCurses(dt: number, boss: Fighter) {
     const r = this.raid;
@@ -841,19 +840,14 @@ export class GloomshadeArena extends RaidArena {
     const before = target.hp;
     super.damage(target, amount, owner, ability);
     // Wombolder's Landslide shakes off every copy.
-    if (
-      target.raidBoss &&
-      ability?.id === "landslide" &&
-      r.decoys?.length
-    ) {
+    if (target.raidBoss && ability?.id === "landslide" && r.decoys?.length) {
       r.decoys = [];
       r.streak = 0;
       r.message = "The ground erupts! Every copy is shaken off.";
     }
     // Six hits in a row on the real one expose it, and the copies vanish.
     // Only while there are copies to tell it apart from: that's the puzzle.
-    if (!target.raidBoss || target.hp >= before || !r.decoys?.length)
-      return;
+    if (!target.raidBoss || target.hp >= before || !r.decoys?.length) return;
     if (this.time - (this.lastHitAt.get(owner) ?? -9) < STREAK_GAP) return;
     this.lastHitAt.set(owner, this.time);
     if (r.exposedUntil > this.time) return;

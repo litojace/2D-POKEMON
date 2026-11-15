@@ -23,7 +23,7 @@ import {
 import { esc } from "../../apps/client/src/ui/components";
 import { BOSS_ATTACK_ART } from "../../apps/client/src/boss-attack-art";
 
-// Raids (UI remodel step 5): the Raid Hall and the boss pages. The reward
+// Raids (UI remodel step 5): the boss list and the boss pages. The reward
 // checks come from the old Raid Hub's tests (raid-lobby.test.ts): what they
 // checked stays, on the new markup.
 const progress = (extra: Partial<RaidProgress> = {}): RaidProgress => ({
@@ -61,7 +61,7 @@ const rewards = (p: RaidProgress) =>
     data({ progress: p }),
   );
 
-describe("the Raid Hall", () => {
+describe("the boss list", () => {
   it("shows only the seven bosses; the others open after Grumblecrag", () => {
     const html = raidMarkup(raidView(), data());
     expect(count(html, /data-raid-card="/g)).toBe(RAID_BOSS_ORDER.length);

@@ -238,7 +238,7 @@ for (const size of SIZES)
       const cal = await swipe(page, "#probe-box > div");
       expect(cal.first, "the swipe itself").toBeGreaterThan(10);
       await page.evaluate(() => document.getElementById("probe-box")!.remove());
-      // The Raid Hall.
+      // The boss list.
       await page.click('.lobby-rail [data-lobby-action="raids"]');
       await expect(page.locator(".rh-grid")).toBeVisible();
       await page.waitForTimeout(600);
@@ -341,7 +341,7 @@ for (const size of SIZES)
             w.__push();
           });
       }
-      // Back from the raid: the room and the Raid Hall scroll again.
+      // Back from the raid: the room and the boss list scroll again.
       await page.evaluate(() => {
         const w = window as any;
         w.__snap.phase = "lobby";
@@ -358,7 +358,7 @@ for (const size of SIZES)
         page,
         ".roster-room [data-roster-card]",
       );
-      // Leaving a raid room goes back to its boss page; its Raid Hall
+      // Leaving a raid room goes back to its boss page; its boss list
       // button goes on to the hall.
       await page.click("#leave");
       await expect(

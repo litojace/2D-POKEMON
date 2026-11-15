@@ -24,9 +24,39 @@ const economy = (extra: Partial<Economy> = {}): Economy => ({
   streak: 2,
   today: { raidClears: 1, pvpMatches: 3 },
   missions: [
-    { day: "2026-10-21", slot: 0, id: "play-2", text: "Play 2 matches", tier: "easy", progress: 2, target: 2, coins: 40, done: true },
-    { day: "2026-10-21", slot: 1, id: "pvp-wins-2", text: "Win 2 <b>matches</b>", tier: "medium", progress: 1, target: 2, coins: 70, done: false },
-    { day: "2026-10-21", slot: 2, id: "raid-p3", text: "Clear any raid on Peril 3", tier: "hard", progress: 0, target: 1, coins: 120, done: false },
+    {
+      day: "2026-10-21",
+      slot: 0,
+      id: "play-2",
+      text: "Play 2 matches",
+      tier: "easy",
+      progress: 2,
+      target: 2,
+      coins: 40,
+      done: true,
+    },
+    {
+      day: "2026-10-21",
+      slot: 1,
+      id: "pvp-wins-2",
+      text: "Win 2 <b>matches</b>",
+      tier: "medium",
+      progress: 1,
+      target: 2,
+      coins: 70,
+      done: false,
+    },
+    {
+      day: "2026-10-21",
+      slot: 2,
+      id: "raid-p3",
+      text: "Clear any raid on Peril 3",
+      tier: "hard",
+      progress: 0,
+      target: 1,
+      coins: 120,
+      done: false,
+    },
   ],
   ...extra,
 });
@@ -35,7 +65,12 @@ const html = (e: Economy | null, view: Partial<MissionsView> = {}) =>
 const count = (s: string, re: RegExp) => (s.match(re) ?? []).length;
 const six = (e = economy()) => [
   ...e.missions,
-  ...e.missions.map((m) => ({ ...m, slot: m.slot + 3, done: false, progress: 0 })),
+  ...e.missions.map((m) => ({
+    ...m,
+    slot: m.slot + 3,
+    done: false,
+    progress: 0,
+  })),
 ];
 
 describe("the Missions sheet", () => {
@@ -45,7 +80,12 @@ describe("the Missions sheet", () => {
     expect(s).toMatch(/Daily · new in \d+( h \d+)? min/);
     expect(s).not.toMatch(/undefined|NaN|\[object/);
     expect(html(null)).toContain("Log in");
-    expect(missionsMarkup(missionsView(), { economy: null, problem: "Database is old." })).toContain("Database is old.");
+    expect(
+      missionsMarkup(missionsView(), {
+        economy: null,
+        problem: "Database is old.",
+      }),
+    ).toContain("Database is old.");
   });
   it("escapes mission text", () => {
     const s = html(economy());
@@ -55,7 +95,8 @@ describe("the Missions sheet", () => {
   it("shows each mission's difficulty, progress, coins and XP, and Paid for finished ones", () => {
     const s = html(economy());
     expect(count(s, /class="missions-row/g)).toBe(3);
-    for (const tier of ["easy", "medium", "hard"]) expect(s).toContain(`data-tier="${tier}"`);
+    for (const tier of ["easy", "medium", "hard"])
+      expect(s).toContain(`data-tier="${tier}"`);
     expect(s).toContain("2/2");
     expect(s).toContain("1/2");
     expect(s).toContain("+50 XP");
@@ -83,7 +124,11 @@ describe("the Missions sheet", () => {
   });
   it("keeps the old one-change allowance until migration 023 is applied", () => {
     for (const rerolled of [false, true]) {
-      const e = economy({ rerollLimit: undefined, rerollsUsed: undefined, rerolled });
+      const e = economy({
+        rerollLimit: undefined,
+        rerollsUsed: undefined,
+        rerolled,
+      });
       expect(changesLeft(e)).toBe(rerolled ? 0 : 1);
       expect(html(e)).toContain("1 free mission change per day");
       expect(html(e).includes("data-mission-change")).toBe(!rerolled);
@@ -100,9 +145,13 @@ describe("the Missions sheet", () => {
     expect(count(closed, /aria-expanded="false"/g)).toBe(3);
     for (const slot of [0, 1, 2]) {
       expect(closed).toContain(`aria-controls="mission-guide-${slot}"`);
-      expect(count(closed, new RegExp(`id="mission-guide-${slot}"`, "g"))).toBe(1);
+      expect(count(closed, new RegExp(`id="mission-guide-${slot}"`, "g"))).toBe(
+        1,
+      );
     }
-    expect(closed).toContain("How to complete: Win 2 &lt;b&gt;matches&lt;/b&gt;");
+    expect(closed).toContain(
+      "How to complete: Win 2 &lt;b&gt;matches&lt;/b&gt;",
+    );
     expect(closed).toContain("Solo test mode does not count");
     expect(count(closed, /class="missions-guide"[^>]*hidden/g)).toBe(3);
     const open = html(economy(), { help: 1 });
@@ -114,7 +163,9 @@ describe("the Missions sheet", () => {
     const s = html(economy(), { busy: 1 });
     expect(count(s, /data-mission-change="\d" disabled/g)).toBe(2);
     expect(s).toContain('aria-busy="true"');
-    expect(html(economy(), { status: "New mission ready." })).toContain("New mission ready.");
+    expect(html(economy(), { status: "New mission ready." })).toContain(
+      "New mission ready.",
+    );
   });
   it("shows six missions, the all-six bonus and the 7-day streak", () => {
     for (let used = 0; used <= 5; used++) {
@@ -123,14 +174,20 @@ describe("the Missions sheet", () => {
       expect(count(s, /class="missions-row/g)).toBe(6);
       expect(s).toContain("1/6</b> done");
       expect(s).toContain("all 6:");
-      expect(s).toContain(`${5 - used} change${5 - used === 1 ? "" : "s"} left`);
+      expect(s).toContain(
+        `${5 - used} change${5 - used === 1 ? "" : "s"} left`,
+      );
       expect(s).toContain("Finish all 6 every day: the 7th day pays +300.");
       expect(count(s, /data-mission-change=/g)).toBe(used === 5 ? 0 : 5);
       for (let slot = 0; slot < 6; slot++)
         expect(count(s, new RegExp(`id="mission-guide-${slot}"`, "g"))).toBe(1);
     }
     const complete = html(
-      economy({ missions: six().map((m) => ({ ...m, done: true, progress: m.target })), streak: 7, rerollLimit: 5 }),
+      economy({
+        missions: six().map((m) => ({ ...m, done: true, progress: m.target })),
+        streak: 7,
+        rerollLimit: 5,
+      }),
     );
     expect(complete).toContain("All done for today");
     expect(complete).toContain("all 6 paid");
@@ -143,10 +200,16 @@ describe("the Missions sheet", () => {
     expect(lit(economy({ streak: 2 }))).toBe(2);
     // A full week paid yesterday: today starts again.
     expect(lit(economy({ streak: 7 }))).toBe(0);
-    const allDone = economy().missions.map((m) => ({ ...m, done: true, progress: m.target }));
+    const allDone = economy().missions.map((m) => ({
+      ...m,
+      done: true,
+      progress: m.target,
+    }));
     expect(lit(economy({ streak: 7, missions: allDone }))).toBe(7);
   });
   it("tells how many coins today's raids and real matches still pay", () => {
-    expect(html(economy())).toContain("raid clears 1/5 paid, matches against players 3/10 paid");
+    expect(html(economy())).toContain(
+      "raid clears 1/5 paid, matches against players 3/10 paid",
+    );
   });
 });

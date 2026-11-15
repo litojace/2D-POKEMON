@@ -940,9 +940,7 @@ export class RaidArena extends Arena {
   // ------------------------------------------------------------ Star tier
   /** This run's difficulty row (Peril 1-2 keep the old rules). */
   protected tier(): RaidTier {
-    return this.raid.peril >= 3
-      ? raidTier(this.raid.boss)
-      : LEGACY_TIER;
+    return this.raid.peril >= 3 ? raidTier(this.raid.boss) : LEGACY_TIER;
   }
   /** Boss damage × this: the tier, plus the soft enrage. */
   protected bossDamage() {
@@ -1785,10 +1783,7 @@ export class RaidArena extends Arena {
       if (w.kind === "volley") {
         for (const p of this.heroes())
           if (p.hp > 0 && this.inVolley(w, p)) {
-            if (
-              p.character === "auralynx" &&
-              this.has(p, "counter")
-            ) {
+            if (p.character === "auralynx" && this.has(p, "counter")) {
               // Auralynx's Facet Guard sends the stones back.
               r.stagger = Math.min(100, r.stagger + 12);
               r.message = `${p.name}'s guard reflects the volley!`;
@@ -2224,8 +2219,7 @@ export class RaidArena extends Arena {
     const boss = this.boss();
     if (!boss) return;
     if (this.bossHealth() <= 0) return this.finish(true);
-    if (this.raid.elapsed >= RAID.timeLimit)
-      return this.finish(false);
+    if (this.raid.elapsed >= RAID.timeLimit) return this.finish(false);
     const next =
       this.bossHealth() <= this.raid.maxHp * 0.33 + 1e-6
         ? 3

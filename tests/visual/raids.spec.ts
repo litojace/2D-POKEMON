@@ -11,7 +11,7 @@ import {
   setInsets,
 } from "./ui-measure";
 
-// UI remodel step 5 (docs/ui-remodel/PLAN.md): the Raid Hall and a boss's
+// UI remodel step 5 (docs/ui-remodel/PLAN.md): the boss list and a boss's
 // page, a panel inside the Lobby. Measured at the four review sizes with the
 // shared layout rules (ui-measure.ts); labels are checked for centring on
 // the pixels.
@@ -139,7 +139,7 @@ async function centred(
 }
 
 for (const size of SIZES)
-  test(`the Raid Hall and a boss page at ${size.name}`, async ({
+  test(`the boss list and a boss page at ${size.name}`, async ({
     browser,
   }, info) => {
     test.setTimeout(150_000);
@@ -409,9 +409,7 @@ for (const size of SIZES)
     }
   });
 
-test("Start raid and Invite go to the game's own calls", async ({
-  page,
-}) => {
+test("Start raid and Invite go to the game's own calls", async ({ page }) => {
   await withRaids(page);
   const errors = await openLobby(page);
   await page.evaluate(() => {
@@ -574,10 +572,7 @@ test("phones the size of an iPhone SE keep the boss page's actions in reach", as
     const room = page.locator(".rh-room");
     await room.locator('[data-raid-card="grumblecrag"]').click();
     const main = await box(page, ".rh-room .ui-split-main");
-    for (const sel of [
-      "[data-raid-start]",
-      '[data-ui-raid-play="party"]',
-    ])
+    for (const sel of ["[data-raid-start]", '[data-ui-raid-play="party"]'])
       expect(inside(await box(page, sel), main)).toBe(true);
     // The Lobby doesn't stay scrolled: bringing a card into view used to
     // scroll it up under the header now and then and leave it there.

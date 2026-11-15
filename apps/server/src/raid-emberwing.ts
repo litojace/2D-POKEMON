@@ -135,8 +135,7 @@ export class EmberwingArena extends RaidArena {
     if (this.time - (r.takeoffAt ?? this.time) <= 20)
       r.quickGroundings = (r.quickGroundings ?? 0) + 1;
     r.permanentGround =
-      r.phase === 3 &&
-      (r.chapterGroundings ?? 0) >= E.permanentGround.after;
+      r.phase === 3 && (r.chapterGroundings ?? 0) >= E.permanentGround.after;
     if (r.permanentGround)
       this.groundedUntil = this.time + E.permanentGround.seconds;
     r.exposedUntil = this.time + E.expose + (r.trait === "updraft" ? 2 : 0);
@@ -172,8 +171,7 @@ export class EmberwingArena extends RaidArena {
         return;
       if (!SKYWARD.has(ability?.id ?? "")) amount *= 0.5;
     }
-    const crash =
-      target.raidBoss && r.airborne && ability?.id === "full-moon";
+    const crash = target.raidBoss && r.airborne && ability?.id === "full-moon";
     super.damage(target, amount, owner, ability);
     if (crash) {
       r.stagger = Math.min(100, r.stagger + MOON_STAGGER);
@@ -212,10 +210,7 @@ export class EmberwingArena extends RaidArena {
       for (let k = 0; k <= a.range; k += a.radius)
         this.water(p.x + d.x * k, p.y + d.y * k, a.radius);
     }
-    if (
-      a.id === "heat-cracks" &&
-      this.raid.airborne
-    )
+    if (a.id === "heat-cracks" && this.raid.airborne)
       this.raid.braziers?.forEach((b, i) => {
         if (Math.hypot(b.x - p.x, b.y - p.y) <= a.radius + E.brazierRadius)
           this.light(i, p);
@@ -623,10 +618,7 @@ export class EmberwingArena extends RaidArena {
       )
         this.ground();
       // The second flame catches: it turns on the last lighter at once.
-      else if (
-        !this.lighterCalled &&
-        this.lastBrazier() !== undefined
-      ) {
+      else if (!this.lighterCalled && this.lastBrazier() !== undefined) {
         this.lighterCalled = true;
         this.nextAttack = Math.min(this.nextAttack, this.time + 0.4);
       }

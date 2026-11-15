@@ -18,17 +18,14 @@ import "./raid-hall.css";
 
 /**
  * Raids' behaviour (UI remodel step 5). Markup comes from raid-hall-view.ts.
- * It opens inside the Lobby as a panel (openHubPanel): the Raid Hall, and a
+ * It opens inside the Lobby as a panel (openHubPanel): the boss list, and a
  * boss's page with its art on the stage. Start raid goes through the game's
  * own room calls (hooks.start); Invite asks the server to invite
  * a friend to your Lobby party, and the page shows its answer.
  */
 export interface RaidHooks {
   data(): RaidData;
-  start(
-    boss: RaidBossId,
-    o: { solo?: boolean; returnTab: RaidTab },
-  ): void;
+  start(boss: RaidBossId, o: { solo?: boolean; returnTab: RaidTab }): void;
   /** Invite a friend to your Lobby party; resolves with the server's answer. */
   invite(id: string): Promise<{ ok: boolean; error?: string }>;
   /** Friends (to invite from somewhere else), the Wardrobe (to wear rewards). */

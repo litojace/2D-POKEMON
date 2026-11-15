@@ -8,7 +8,7 @@ import {
 } from "./helpers";
 
 // Solo raiders get one self-revive, except against ★★★ bosses (raid-solo.ts):
-// the raid hall, the room and the briefing say so before the fight.
+// the boss list, the room and the briefing say so before the fight.
 const RAIDS = {
   clears: 4,
   highestPeril: 3,
@@ -21,7 +21,7 @@ const RAIDS = {
   loadout: {},
 };
 
-test("the raid hall warns that solo ★★★ has no revive", async ({
+test("the boss list warns that solo ★★★ has no revive", async ({
   page,
 }, info) => {
   test.setTimeout(150_000);
