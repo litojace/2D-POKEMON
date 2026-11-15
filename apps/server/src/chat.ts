@@ -67,6 +67,11 @@ export class ChatHub {
     } = {},
   ) {}
 
+  /** Typed lines are on (quick chat is always on). */
+  get freeText() {
+    return this.options.freeText?.() ?? true;
+  }
+
   private now() {
     return this.options.now?.() ?? Date.now();
   }

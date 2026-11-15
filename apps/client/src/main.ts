@@ -360,6 +360,9 @@ import {
 import { RITE_EFFECTS, riteEffect, riteIcon } from "./rite-icons";
 import { ConnectionWatch, dropMessage } from "./connection-loss";
 import { watchSceneSwitch } from "./scene-switch-place";
+import { mountChat, type ChatPlace } from "./chat/chat-ui";
+import type { ChatLine } from "../../../packages/shared/src/chat";
+import "./chat/chat.css";
 // Last: the hub's aero glass overrides the panels' own fills.
 import "./ui/aero.css";
 import "./ui/light-effects.css";
@@ -479,6 +482,19 @@ const socket = io(import.meta.env.VITE_SERVER_URL || undefined, {
   auth: { accessToken: null },
 });
 let accountsUI: AccountUI;
+const chat = mountChat({
+  send: (channel, body) => request("chat-send", { channel, ...body }),
+  history: async (channel) => {
+    const reply = (await request("chat-history", { channel })) as {
+      lines?: ChatLine[];
+    };
+    return Array.isArray(reply.lines) ? reply.lines : [];
+  },
+  me: () =>
+    accountsUI?.account
+      ? { id: accountsUI.account.id, guest: !!accountsUI.account.guest }
+      : null,
+});
 let authConnectionAttempt = 0;
 const connectionWatch = new ConnectionWatch();
 document.addEventListener("visibilitychange", () =>
@@ -1984,6 +2000,20 @@ function syncHub() {
   // A scene hiding after the next one showed may have taken the hub's top
   // bar style away (each checks only some of the others): in the hub it is on.
   if (hub) document.body.classList.add("hub-screen");
+  syncChat(hub);
+}
+/** The chat button's place and channels (chat/chat-ui.ts). */
+function syncChat(hub: boolean) {
+  const inRoom = !!myId && !!state;
+  const fighting =
+    inRoom && state!.phase !== "lobby" && state!.phase !== "finished";
+  const place: ChatPlace = hub
+    ? "hub"
+    : inRoom && !fighting && !state!.practice
+      ? "room"
+      : "none";
+  chat.sync(place, { party: !!party, room: inRoom && !state!.practice });
+  placeSceneSwitch?.();
 }
 /** The new Plaza (hub redesign phase 3): the server moves everyone in it. */
 function syncPlaza(want: boolean, hub = want) {
@@ -3494,6 +3524,11 @@ socket.on("party", (data: unknown) => {
   syncHub();
   accountsUI.refreshRaids();
 });
+// In-game chat (docs/chat-plan.md).
+socket.on("chat", (line: ChatLine) => chat.receive(line));
+socket.on("chat-config", (data: { freeText?: unknown } | null) =>
+  chat.setFreeText(data?.freeText === true),
+);
 socket.on("party-room", (data: unknown) => {
   const parsed = partyRoomSchema.safeParse(data);
   if (!parsed.success || myId || !party) return;

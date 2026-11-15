@@ -31,6 +31,7 @@ async function boxes(page: Page) {
       .querySelectorAll(".lobby-card")
       .forEach((c, i) => add(`card${i}`, c));
     add("play", document.querySelector(".lobby-play"));
+    add("chat", document.querySelector("#chat-button"));
     return out;
   });
 }
@@ -161,8 +162,13 @@ for (const size of SMALL)
             const by = (n: string) => b.find((x) => x.name === n)!;
             const s = by("scenes"),
               p = by("profile"),
-              c = by("coins");
-            return Math.min(s.x - (p.x + p.w), c.x - (s.x + s.w));
+              c = by("coins"),
+              chat = by("chat");
+            // The chat button sits beside the card when the switch has room
+            // for it, under the card when not (scene-switch-place.ts).
+            const leftOf =
+              chat && chat.y < s.y + s.h ? chat.x + chat.w : p.x + p.w;
+            return Math.min(s.x - leftOf, c.x - (s.x + s.w));
           },
           { timeout: 15_000 },
         )

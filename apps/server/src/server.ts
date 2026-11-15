@@ -1089,6 +1089,8 @@ export function createArenaServer(
   io.on("connection", (socket) => {
     claimAccount(socket);
     void loadChatBlocks(socket);
+    // Whether typed lines are on, so the chat box shows the right state.
+    socket.emit("chat-config", { freeText: chat.freeText });
     const signedIn = socket.data.account as Account | undefined;
     if (signedIn && !signedIn.guest)
       void presenceHistory.touch(signedIn.id, socket.data.accessToken);
