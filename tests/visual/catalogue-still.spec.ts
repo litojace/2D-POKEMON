@@ -223,7 +223,7 @@ test("Raid Hub, Journey and reward reveal tiles keep still; the chosen one plays
     await page.locator(".rh-room .ui-close").click();
 
     // Journey: still, until an item is picked.
-    await page.click('.lobby-rail [data-lobby-action="journey"]');
+    await page.click("#lobby-journey-card");
     await page.click('[data-ui-jtab="levels"]');
     const item = (id: string) =>
       `.journey-room [data-journey-item="${id}"] .raid-cosmetic-preview`;

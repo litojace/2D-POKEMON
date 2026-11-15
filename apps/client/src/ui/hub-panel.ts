@@ -36,12 +36,7 @@ export interface HubPanel {
 const CONTROLS =
   'button, a, input, select, textarea, label, summary, [role="button"], [contenteditable]';
 /** Lobby parts a full panel covers: out of the tab order while it's open. */
-const COVERED = [
-  ".lobby-stage",
-  ".lobby-cards",
-  ".lobby-emotes",
-  ".lobby-play",
-];
+const COVERED = [".lobby-stage", ".lobby-cards", ".lobby-play"];
 let current:
   { panel: HubPanel; close: (replaced?: boolean) => void } | undefined;
 /** Lobby parts a screen that was replaced still covers, for the next one. */
@@ -86,8 +81,8 @@ export function openHubPanel(html: string, o: HubPanelOptions = {}): HubPanel {
   let covered: HTMLElement[] = handoff;
   handoff = [];
   let closed = false;
-  // The Lobby's stage (fighter, party, nameplate) and the emotes under it
-  // glide to their new place when a sheet opens or closes.
+  // The Lobby's stage (fighter, party, nameplate) glides to its new place
+  // when a sheet opens or closes.
   const gliders = () =>
     [
       {
@@ -95,7 +90,6 @@ export function openHubPanel(html: string, o: HubPanelOptions = {}): HubPanel {
         anchor: host.querySelector<HTMLElement>("#lobby-fighter"),
         scale: true,
       },
-      { el: host.querySelector<HTMLElement>(":scope > .lobby-emotes")! },
     ].filter((t) => t.el);
 
   const mount = (markup: string) => {

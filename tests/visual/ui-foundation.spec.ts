@@ -59,7 +59,6 @@ async function lobbyBoxes(page: Page) {
       ".lobby-nameplate",
       ".lobby-cards",
       ".lobby-play",
-      ".lobby-emotes",
     ].flatMap((s) => {
       const e = document.querySelector(s);
       if (!e) return [];

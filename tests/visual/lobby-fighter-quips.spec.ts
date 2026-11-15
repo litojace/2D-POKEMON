@@ -266,10 +266,6 @@ test("the Lobby fighter answers the keyboard, and Low graphics hops the artwork"
   const first = await page.locator(bubble).textContent();
   for (let i = 0; i < 4; i++) await page.keyboard.press("Enter");
   expect(await page.locator(bubble).textContent()).not.toBe(first);
-  // An emote still shows as an emote, not a line.
-  await page.click(".lobby-emote-toggle");
-  await page.locator("[data-lobby-emote]").first().click();
-  await expect(page.locator(bubble)).not.toHaveClass(/is-line/);
   expect(errors).toEqual([]);
 });
 

@@ -148,15 +148,13 @@ export function openFittingRoom(
     const key = FOCUS_KEYS.find((k) => target.hasAttribute(k))!;
     return `[${key}="${CSS.escape(target.getAttribute(key)!)}"]`;
   };
+  /** The rail's Shop button is lit on both tabs (Shop and Wardrobe). */
   const syncRail = () => {
-    for (const id of ["shop", "wardrobe"]) {
-      const b = document.querySelector<HTMLElement>(
-        `.lobby-rail [data-lobby-action="${id}"]`,
-      );
-      if (!b) continue;
-      if (!closed && id === view.mode) b.setAttribute("aria-current", "page");
-      else b.removeAttribute("aria-current");
-    }
+    const b = document.querySelector<HTMLElement>(
+      '.lobby-rail [data-lobby-action="shop"]',
+    );
+    if (!closed) b?.setAttribute("aria-current", "page");
+    else b?.removeAttribute("aria-current");
   };
   function render(resetScroll = false) {
     if (closed) return;
@@ -660,7 +658,7 @@ export function openFittingRoom(
   const html = fittingRoomMarkup(view, data());
   template = parse(html);
   panel = openHubPanel(html, {
-    rail: view.mode,
+    rail: "shop",
     onClose: () => {
       closed = true;
       stageSize.disconnect();
