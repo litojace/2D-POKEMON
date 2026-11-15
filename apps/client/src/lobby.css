@@ -1476,7 +1476,7 @@ body:not(.hub-active) #account-leaves {
     --hub-card-art: 32px;
     --hub-card-row: 15px;
     --hub-card-gap: 1px;
-    --hub-card-title: 9px;
+    --hub-card-title: 10px;
   }
   :root body.hub-active #account-profile {
     grid-template-columns: var(--hub-card-art) minmax(0, 1fr) 36px;
@@ -1572,7 +1572,7 @@ body:not(.hub-active) #account-leaves {
 /* Short landscape screens: Settings shows everything without scrolling, so
    Display is one line like Motion and Graphics, and Sound spans the column. */
 @media (orientation: landscape) and (max-height: 500px) {
-  .prefs-grid:has(> .prefs-display) > :first-child {
+  .prefs-grid.has-display > :first-child {
     grid-row: span 3;
   }
   .prefs-card.prefs-display {

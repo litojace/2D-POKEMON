@@ -18,6 +18,7 @@ import {
   NetMeter,
   PERF_MIN_SECONDS,
   deviceKind,
+  loadPhases,
   perfMode,
 } from "./battle-perf";
 import { correctionCause } from "./networking/correction-cause";
@@ -147,7 +148,7 @@ import {
 } from "./animation/pipeline";
 import { rigAssets, skinSuffix } from "./animation/assets";
 import { loadRigTextures } from "./animation/rig-textures";
-import { prewarmBossAtlas } from "./boss-vector-prewarm";
+import { prewarmBossAtlas, syncBossPrepaint } from "./boss-vector-prewarm";
 import { prewarmRaidArena } from "./raid-arena-prewarm";
 import { PillarRig, prewarmPillars } from "./raid-grumble-pillars-rig";
 import { IMPACT_RADIUS } from "./raid-grumble-pillars";
@@ -186,7 +187,9 @@ import { PRIVACY_URL, isNativeApp, setupNativeShell } from "./native";
 import { appIconCardHTML, bindAppIconCard } from "./app-icon-setting";
 import { abilityIcon } from "./ability-icons";
 import { TouchControls } from "./touch-controls";
-import Phaser from "phaser";
+import type Phaser from "phaser";
+import { loadPhaser, phaser, whenPhaser } from "./phaser-runtime";
+import { installGraphicsRenderer } from "./graphics-render";
 import { io } from "socket.io-client";
 import {
   CHARACTERS,
@@ -359,6 +362,9 @@ import { ConnectionWatch, dropMessage } from "./connection-loss";
 import { watchSceneSwitch } from "./scene-switch-place";
 // Last: the hub's aero glass overrides the panels' own fills.
 import "./ui/aero.css";
+import "./ui/light-effects.css";
+import { syncUiEffects } from "./ui/ui-effects";
+import "./ui/phone-fit.css";
 const audio = new AudioManager();
 audio.start();
 const allAbilities = new Map(
@@ -1247,6 +1253,8 @@ function roomData(watch: boolean): RoomData {
 /** Draw the room (or a watched room): seats patched in place, the picker
  * opened once and refreshed after. */
 function renderRoom(watch: boolean) {
+  // A match follows: have the battle renderer ready (phaser-runtime.ts).
+  warmPhaser(0);
   const menu = $("menu");
   const d = roomData(watch);
   const seats = roomSeatsMarkup(d);
@@ -1872,7 +1880,24 @@ const WORLD_NAMES: Record<World, string> = {
   plaza: "Plaza",
   bistro: "Bistro",
 };
+// Light or full menus from the first screen on (ui/ui-effects.ts).
+syncUiEffects();
 const worlds = worldLoader();
+let phaserWarm: ReturnType<typeof setTimeout> | undefined;
+/** Load Phaser `ms` from now, while the page is idle (phaser-runtime.ts). */
+function warmPhaser(ms: number) {
+  if (phaser() || phaserWarm !== undefined) return;
+  phaserWarm = setTimeout(() => {
+    const load = () =>
+      void loadPhaser().catch(() => {
+        // Offline or a new deploy: a battle asks again when it needs it.
+        phaserWarm = undefined;
+      });
+    if (ms && typeof requestIdleCallback === "function")
+      requestIdleCallback(load, { timeout: 4000 });
+    else load();
+  }, ms);
+}
 /** The hub world wanted on screen whose code is still on the way (or failed). */
 let worldWait: World | null = null;
 /**
@@ -1928,6 +1953,7 @@ let wantedPlazaClosed = false;
  * is not in a room (and not about to resume or join one); closed otherwise.
  */
 function syncHub() {
+  syncUiEffects();
   const hub =
     !!accountsUI?.account &&
     connected &&
@@ -1953,6 +1979,8 @@ function syncHub() {
     .connection?.saveData;
   if (hub && !saveData) worlds.warm();
   else worlds.stopWarming();
+  // The battle renderer too, a moment after the hub shows.
+  if (hub) warmPhaser(1500);
   // A scene hiding after the next one showed may have taken the hub's top
   // bar style away (each checks only some of the others): in the hub it is on.
   if (hub) document.body.classList.add("hub-screen");
@@ -2468,6 +2496,8 @@ async function startRaid(
   if (options.solo) await request("ready");
 }
 function renderMenu(revealSelection = false) {
+  // In a raid room, the boss's atlas is painted ahead (boss-prepaint.ts).
+  syncBossPrepaint(state);
   document.body.classList.remove("practice-active");
   audio.setTheme("lobby");
   pwa.sync();
@@ -3632,6 +3662,7 @@ socket.on("state", (snapshot: WireSnapshot) => {
     !state.arcade
   )
     void reportMatch(state.matchId);
+  syncBossPrepaint(state);
   if (state.phase === "lobby") renderMenu();
   else renderBattle();
 });
@@ -3804,6 +3835,7 @@ function bindGraphicsCard() {
     b.onclick = () => {
       const value = b.dataset.graphics as GraphicsSetting;
       setGraphicsSetting(value);
+      syncUiEffects();
       // Picking Auto again measures battles afresh too.
       if (value === "auto") battleQuality.reset(resetBattleQuality);
       for (const other of Array.from(
@@ -3852,7 +3884,7 @@ function showSettings() {
   settingsOpen = true;
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
   dialog(
-    `<div class="settings-screen"><h2>Settings</h2>${state?.practice && touch.enabled ? `<div class="settings-quick-actions"><button id="settings-practice" class="secondary btn-secondary">${iconLabel("target", "Practice")}</button></div>` : ""}<p class="prefs-note">Online matches keep running while this is open.</p><div class="prefs-grid"><section class="prefs-card" aria-labelledby="prefs-sound"><h3 id="prefs-sound">${menuIcon("sound")}Sound</h3>${prefSlider("music", "Music", audio.music, { min: 0, max: 1, step: 0.01 })}${prefSlider("effects", "Sound effects", audio.effects, { min: 0, max: 1, step: 0.01 })}</section><section class="prefs-card" aria-labelledby="prefs-motion"><h3 id="prefs-motion">${menuIcon("motion")}Motion</h3><p class="prefs-status"><b class="${reduced ? "is-on" : ""}">Reduced motion ${reduced ? "on" : "off"}</b><span>Follows your device's accessibility setting.</span></p></section>${state ? "" : isNativeApp() ? graphicsCard() + appIconCardHTML() : displayCard() + graphicsCard()}</div><div class="settings-actions"><button id="open-controls" class="secondary btn-secondary">${iconLabel("keyboard", "Controls &amp; key bindings")}</button>${myId ? leaveButton() : watching ? `<button id="exit-room" class="secondary btn-secondary leave-button">${iconLabel("stop-watching", "Stop watching")}</button>` : ""}<button id="settings-report" class="quiet">${iconLabel("report", "Report a problem")}</button><button id="settings-credits" class="quiet">${iconLabel("star", "Credits")}</button></div></div>`,
+    `<div class="settings-screen"><h2>Settings</h2>${state?.practice && touch.enabled ? `<div class="settings-quick-actions"><button id="settings-practice" class="secondary btn-secondary">${iconLabel("target", "Practice")}</button></div>` : ""}<p class="prefs-note">Online matches keep running while this is open.</p><div class="prefs-grid${state ? "" : isNativeApp() ? " has-graphics" : " has-display has-graphics"}"><section class="prefs-card" aria-labelledby="prefs-sound"><h3 id="prefs-sound">${menuIcon("sound")}Sound</h3>${prefSlider("music", "Music", audio.music, { min: 0, max: 1, step: 0.01 })}${prefSlider("effects", "Sound effects", audio.effects, { min: 0, max: 1, step: 0.01 })}</section><section class="prefs-card" aria-labelledby="prefs-motion"><h3 id="prefs-motion">${menuIcon("motion")}Motion</h3><p class="prefs-status"><b class="${reduced ? "is-on" : ""}">Reduced motion ${reduced ? "on" : "off"}</b><span>Follows your device's accessibility setting.</span></p></section>${state ? "" : isNativeApp() ? graphicsCard() + appIconCardHTML() : displayCard() + graphicsCard()}</div><div class="settings-actions"><button id="open-controls" class="secondary btn-secondary">${iconLabel("keyboard", "Controls &amp; key bindings")}</button>${myId ? leaveButton() : watching ? `<button id="exit-room" class="secondary btn-secondary leave-button">${iconLabel("stop-watching", "Stop watching")}</button>` : ""}<button id="settings-report" class="quiet">${iconLabel("report", "Report a problem")}</button><button id="settings-credits" class="quiet">${iconLabel("star", "Credits")}</button></div></div>`,
   );
   bindGraphicsCard();
   void bindAppIconCard(toast);
@@ -4002,7 +4034,19 @@ const attacking = (rig: FighterVisual | undefined) =>
   !!rig &&
   (rig.controller.state === "basic" ||
     rig.controller.state.startsWith("skill"));
-class ArenaScene extends Phaser.Scene {
+/**
+ * ArenaScene's base until Phaser has loaded (phaser-runtime.ts), which then
+ * puts Phaser.Scene in its place: `super` is looked up when it runs, and no
+ * scene exists before a battle, by when Phaser is here.
+ */
+class SceneUntilPhaser {}
+let Ph!: typeof Phaser;
+whenPhaser((lib) => {
+  Ph = lib;
+  Object.setPrototypeOf(ArenaScene, lib.Scene);
+  Object.setPrototypeOf(ArenaScene.prototype, lib.Scene.prototype);
+});
+class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
   graphics!: Phaser.GameObjects.Graphics;
   /** A raid boss, sorted with the fighters by where it stands. */
   bossGraphics!: Phaser.GameObjects.Graphics;
@@ -4486,6 +4530,7 @@ class ArenaScene extends Phaser.Scene {
     }
   }
   preload() {
+    battleLoadMarks.preload ||= performance.now();
     if (state?.raid) {
       queueBossArt(this, state.raid.boss);
       queueBossSpellArt(this);
@@ -4507,9 +4552,10 @@ class ArenaScene extends Phaser.Scene {
     // fighter, a skin or boss art) settles what was requested: art still
     // missing may be asked for again. The scene's loader drops its
     // listeners when the scene shuts down.
-    this.load.on(Phaser.Loader.Events.COMPLETE, () => this.fighters.settled());
+    this.load.on(Ph.Loader.Events.COMPLETE, () => this.fighters.settled());
   }
   create() {
+    battleLoadMarks.create ||= performance.now();
     scene = this;
     // The boss's pieces are drawn once into an atlas: now, not on its first frame.
     if (state?.raid) prewarmBossAtlas(this, state.raid.boss, state.raid.phase);
@@ -4561,8 +4607,8 @@ class ArenaScene extends Phaser.Scene {
       for (const label of this.labels.values()) label.remove();
       this.labels.clear();
     };
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, clearDom);
-    this.events.once(Phaser.Scenes.Events.DESTROY, clearDom);
+    this.events.once(Ph.Scenes.Events.SHUTDOWN, clearDom);
+    this.events.once(Ph.Scenes.Events.DESTROY, clearDom);
     this.graphics = battleCurves(this.add.graphics());
     this.bossGraphics = this.add.graphics();
     // Keys and mouse buttons are read through the player's bindings (see pressAction).
@@ -5404,8 +5450,8 @@ class ArenaScene extends Phaser.Scene {
       const prismAim = state ? prismatailAim(state, local) : undefined;
       if (prismAim) aimAt = prismAim;
       aimAt = {
-        x: Phaser.Math.Clamp(aimAt.x, 0, RULES.width),
-        y: Phaser.Math.Clamp(aimAt.y, 0, RULES.height),
+        x: Ph.Math.Clamp(aimAt.x, 0, RULES.width),
+        y: Ph.Math.Clamp(aimAt.y, 0, RULES.height),
       };
       this.aimPoint = aimAt;
       const input: Input = {
@@ -5899,7 +5945,7 @@ class ArenaScene extends Phaser.Scene {
         if (tier) {
           const colour =
             tier.name === "Crystal" && !reducedMotion
-              ? Phaser.Display.Color.HSVToRGB((_time / 2400) % 1, 0.45, 1).color
+              ? Ph.Display.Color.HSVToRGB((_time / 2400) % 1, 0.45, 1).color
               : Number.parseInt(tier.color.slice(1), 16);
           g.lineStyle(2, colour, 0.75).strokeEllipse(
             x,
@@ -6229,10 +6275,10 @@ class ArenaScene extends Phaser.Scene {
           const wob = reducedMotion ? 0 : Math.sin(_time / 60) * 8;
           const mx = (x + to.x) / 2 + wob,
             my = (y + to.y) / 2 - 24;
-          const curve = new Phaser.Curves.QuadraticBezier(
-            new Phaser.Math.Vector2(x, y - 14 - jump),
-            new Phaser.Math.Vector2(mx, my),
-            new Phaser.Math.Vector2(to.x, to.y - 14),
+          const curve = new Ph.Curves.QuadraticBezier(
+            new Ph.Math.Vector2(x, y - 14 - jump),
+            new Ph.Math.Vector2(mx, my),
+            new Ph.Math.Vector2(to.x, to.y - 14),
           );
           g.lineStyle(9, 0x2a1240, 0.9);
           curve.draw(g, 16);
@@ -6531,7 +6577,7 @@ function drawComboMark(
 /** Paint a fighter solid white for this frame (the rig resets tint each render). */
 function flashWhite(root: Phaser.GameObjects.Container) {
   for (const child of root.list) {
-    if (child instanceof Phaser.GameObjects.Container) flashWhite(child);
+    if (child instanceof Ph.GameObjects.Container) flashWhite(child);
     else (child as Phaser.GameObjects.Image).setTintFill?.(0xffffff);
   }
 }
@@ -6599,16 +6645,21 @@ function fitRenderer() {
 }
 /** When this battle renderer started loading (for reportBattleLoad). */
 let battleLoadStarted = 0;
+/** When a battle began waiting for Phaser to load, if it is waiting (else 0). */
+let phaserWaitStarted = 0;
+/** When this renderer's scene reached preload() and create() (reportBattleLoad). */
+const battleLoadMarks = { preload: 0, create: 0 };
 /** Longest the briefing holds "I'm ready" back while the arena loads. */
 const ARENA_WAIT_MAX_MS = 20_000;
 let arenaWaitSince = 0;
 /**
- * The battle renderer is still loading these fighters. Never blocks for
- * good: no renderer (nothing to wait for) or a load past ARENA_WAIT_MAX_MS
- * lets the player confirm anyway.
+ * The battle renderer is still loading these fighters (or Phaser itself,
+ * which loads after the first screen). Never blocks for good: no renderer
+ * (nothing to wait for) or a load past ARENA_WAIT_MAX_MS lets the player
+ * confirm anyway.
  */
 function arenaLoading(s: Snapshot) {
-  if (!gameInstance || scene?.fightersReady(s)) {
+  if ((!gameInstance && !phaserWaitStarted) || scene?.fightersReady(s)) {
     arenaWaitSince = 0;
     return false;
   }
@@ -6663,13 +6714,20 @@ function reportBattleLoad(fighters: number) {
   battleLoadStarted = 0;
   if (!started || !myId || !connected) return;
   const nav = navigator as Navigator & { deviceMemory?: number };
+  const now = performance.now();
   socket.emit("battle-loaded", {
-    ms: Math.min(600_000, Math.round(performance.now() - started)),
+    ms: Math.min(600_000, Math.round(now - started)),
     fighters,
     ...(typeof nav.deviceMemory === "number"
       ? { memory: nav.deviceMemory }
       : {}),
     ...(nav.hardwareConcurrency ? { cores: nav.hardwareConcurrency } : {}),
+    // Which part was slow, and on what (an Android phone took 0.9-1.8 s
+    // where an iPhone took 0.2-0.35 s, Nov 2026).
+    ...loadPhases(started, battleLoadMarks, now),
+    density: renderScale(),
+    build: BUILD,
+    ...deviceKind(),
   });
 }
 /**
@@ -6689,8 +6747,33 @@ function releaseHubArt() {
 function ensureBattleRenderer() {
   if (gameInstance || $("game").clientWidth < 1 || $("game").clientHeight < 1)
     return;
-  battleLoadStarted = performance.now();
+  // Phaser loads after the first screen (phaser-runtime.ts); a battle that
+  // comes before the hub's warm-up finished waits for it, then asks again.
+  if (!phaser()) {
+    // The wait counts towards the battle's load time (reportBattleLoad).
+    phaserWaitStarted ||= performance.now();
+    void loadPhaser().then(
+      () => {
+        ensureBattleRenderer();
+        // No renderer after all (the battle closed meanwhile): a later one
+        // starts its own count.
+        phaserWaitStarted = 0;
+      },
+      (error: unknown) => {
+        phaserWaitStarted = 0;
+        console.error("The battle renderer could not load.", error);
+      },
+    );
+    return;
+  }
+  const Phaser = Ph;
+  battleLoadStarted = phaserWaitStarted || performance.now();
+  phaserWaitStarted = 0;
+  battleLoadMarks.preload = battleLoadMarks.create = 0;
   releaseHubArt();
+  // Effects, rings and auras are Graphics paths redrawn every frame: draw
+  // them without Phaser's per-point garbage (graphics-render.ts).
+  installGraphicsRenderer(Phaser);
   arenaCssArea = $("game").clientWidth * $("game").clientHeight;
   const dpr = renderScale();
   gameInstance = new Phaser.Game({
@@ -6736,6 +6819,7 @@ function ensureBattleRenderer() {
 /** A hidden battle canvas must not compete with the menu or Shop preview. */
 function syncBattleLoop() {
   if (!gameInstance) return;
+  const Phaser = Ph;
   if ($("battle").hidden) {
     // Sleeping retains every fighter and arena texture. Release them before
     // opening the hub or the Shop so iOS does not have to evict the whole web app.

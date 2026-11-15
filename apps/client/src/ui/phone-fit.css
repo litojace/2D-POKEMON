@@ -1,0 +1,263 @@
+/* ==========================================================================
+   Phones in landscape: every control takes a finger, every word can be read
+   (mobile UI audit, Nov 2026; checked by tests/visual/phone-fit.spec.ts at
+   667×375, 844×390, 852×393 with the Dynamic Island and 932×430).
+
+   - A finger is 44 pt. A control drawn smaller keeps its look and gets a hit
+     area of at least 44 × 44 around its centre (an invisible ::after), the
+     same way .ui-btn and .ui-icon-btn already do (ui/components.css). Where
+     neighbours sit closer than 44 pt (the Lobby's rail, the element chips),
+     each one's hit area runs to its neighbour, so no tap lands between two.
+   - No text under 10 px.
+
+   Loaded after every other stylesheet; `:root body` outranks the screens'
+   own phone rules.
+   ========================================================================== */
+@media (max-height: 500px) {
+  /* ------------------------------------------------ hit areas, centred */
+  :root
+    body
+    :is(
+      #hub-scenes > button,
+      #account-coins > *,
+      #account-leaves > *,
+      #account-profile,
+      .header-menu > summary,
+      .lobby-step,
+      .lobby-emotes .lobby-emote-toggle,
+      #lobby-mode,
+      .home-panel-close,
+      .raid-ping-menu > summary,
+      .plaza-layer .pz-quests h5 button,
+      .farm-layer .sh-head .x,
+      .farm-layer .acts .btn-s,
+      .fit-fighter,
+      .ui-seg > button,
+      .pf-title-chip,
+      .ui-chip,
+      .auth-tabs button,
+      .auth-submit,
+      .auth-secondary,
+      .auth-legal a,
+      .prefs-choice > button,
+      .prefs-switch
+    ) {
+    position: relative;
+  }
+  :root body .auth-legal a {
+    display: inline-block;
+  }
+  /* The Bistro's wallet and Popularity chip: a finger tall themselves (an
+     invisible hit area round them would count as their content overflowing,
+     tests/visual/bistro-layout.spec.ts). The wallet stays centred on the
+     menu button beside it (bistro-scene.ts sets its top and height). */
+  :root body .bistro-layer.phone .bs-wallet {
+    min-height: 44px;
+    margin-top: calc(min(var(--bs-wallet-h, 44px) - 44px, 0px) / 2);
+  }
+  :root body .bistro-layer.phone button.bs-chip {
+    height: 44px;
+  }
+  :root
+    body
+    :is(
+      #account-coins > *,
+      #account-leaves > *,
+      #account-profile,
+      .header-menu > summary,
+      .lobby-step,
+      #lobby-mode,
+      .home-panel-close,
+      .raid-ping-menu > summary,
+      .plaza-layer .pz-quests h5 button,
+      .plaza-layer .pz-clock,
+      .farm-layer .sh-head .x,
+      .farm-layer .acts .btn-s,
+      .farm-layer .fm-orb,
+      .fit-fighter,
+      .ui-seg > button,
+      .pf-title-chip,
+      .auth-tabs button,
+      .auth-submit,
+      .auth-secondary,
+      .auth-legal a,
+      .prefs-choice > button,
+      .prefs-switch,
+      .password-toggle
+    )::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: max(100%, 44px);
+    height: max(100%, 44px);
+    transform: translate(-50%, -50%);
+  }
+  /* .ui-btn's own hit area is 44 tall but only as wide as the button; these
+     square ones are narrower than a finger. */
+  /* The scene tabs are narrower than a finger on the smallest phones. */
+  :root body #hub-scenes > button::after {
+    content: "";
+    position: absolute;
+    left: min(-1px, calc(100% - 43px));
+    right: -1px;
+    top: 50%;
+    height: max(100%, 44px);
+    transform: translateY(-50%);
+  }
+  /* (A hit area may reach left and up freely, but not past the right
+     edge: that would count as the label overflowing its button, which the
+     layout checks catch, tests/visual/ui-measure.ts. right: -1px is the
+     border's outer edge.) */
+  :root body :is(.fit-awaken, .fit-plays) .ui-btn::after {
+    left: min(-1px, calc(100% - 43px));
+    right: -1px;
+  }
+  /* The awakening stages stand 6 px apart, I at the bottom: each takes
+     half of each gap (an ::after is placed from inside the 1 px border),
+     the end ones a finger's reach outwards. */
+  :root body .fit-awaken .ui-btn::after {
+    top: -4px;
+    bottom: -4px;
+    height: auto;
+    transform: none;
+  }
+  :root body .fit-awaken .ui-btn:first-child::after {
+    bottom: min(-4px, calc(50% - 22px));
+  }
+  :root body .fit-awaken .ui-btn:last-child::after {
+    top: min(-4px, calc(50% - 22px));
+  }
+  /* Friends' Add sits clear of Close, so each keeps its half of the gap. */
+  :root body .fr-add-toggle {
+    margin-right: 6px;
+  }
+  /* Emotes, under the rail: its hit area reaches down more than up, so the
+     rail's last button keeps its half of the gap between them. */
+  :root body .lobby-emotes .lobby-emote-toggle::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: -5px;
+    width: max(100%, 44px);
+    height: max(100%, 44px);
+    transform: translateX(-50%);
+  }
+
+  /* ----------------------------- hit areas that run to the neighbours */
+  /* The Lobby's rail: eight buttons in a column shorter than 8 × 44 on
+     every phone, so each one's hit area is 44 wide and runs half way to
+     the next, 2 to 4 px away (no dead gap between them; an ::after is placed
+     from inside the 1 px border). */
+  :root body .lobby-rail button::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: -3px;
+    bottom: -3px;
+    width: max(100%, 44px);
+    transform: translateX(-50%);
+  }
+  :root body .lobby-rail button:first-child::after {
+    top: min(-3px, calc(50% - 22px));
+  }
+  :root body .lobby-rail button:last-child::after {
+    bottom: min(-3px, calc(50% - 22px));
+  }
+  /* Chips in a row that scrolls sideways: the row clips what sticks out of
+     it, so it gets room round its chips (padding in, the same margin out:
+     nothing moves). Each chip's hit area is a finger tall and covers the gap
+     before it (none reaches past its right edge: see the fitting room's
+     buttons above); the first one's reaches back far enough to make it a
+     finger wide. */
+  :root body .ui-chips {
+    padding: 9px 6px 9px 12px;
+    margin: -9px -6px -9px -12px;
+  }
+  :root body .rh-head > .ui-chips {
+    margin-left: auto;
+  }
+  :root body .ui-chip::after {
+    content: "";
+    position: absolute;
+    left: -8px;
+    right: -1px;
+    top: 50%;
+    height: max(100%, 44px);
+    transform: translateY(-50%);
+  }
+  :root body .ui-chip:first-child::after {
+    left: min(-8px, calc(100% - 43px));
+  }
+  /* A finger tall: the fighter's skills, the Play drawer's quiet buttons,
+     the rules folds of Ranks and of a room. */
+  :root
+    body
+    :is(
+      .roster-skill,
+      .home-play-drawer button.quiet,
+      .rk-rules > summary,
+      .room-rules > summary
+    ) {
+    min-height: 44px;
+  }
+
+  /* --------------------------------------------- no text under 10 px */
+  :root
+    body
+    :is(
+      .fit-slot small,
+      .fit-slot b,
+      .journey-ring-text small,
+      .journey-tier em,
+      .bistro-layer .bs-rail button span,
+      .bistro-layer #bs-board-btn span,
+      .bistro-layer .bs-badge .xpbar span,
+      .farm-layer .fm-badge .xpbar span,
+      .room-seat .ui-tag,
+      .rh-card-top .ui-tag,
+      .lobby-card-kicker,
+      .lobby-mode-text small,
+      .recap thead th,
+      .home-play-drawer .room-note,
+      .roster-combo-tag,
+      .pf-mastery-chip .ui-ring b
+    ) {
+    font-size: 10px;
+  }
+
+  /* At 10 px, "Clear Cragmuff first" still fits its card. */
+  :root body .rh-card-top .ui-tag {
+    letter-spacing: 0.02em;
+    padding: 0 5px;
+  }
+  :root body .lobby-slot small {
+    font-size: clamp(10px, calc(var(--seat) * 0.075), 14px);
+  }
+
+  /* ------------------------------------------------ the room's roster */
+  /* "FIGHTERS" keeps its width; the element chips scroll beside it (it ran
+     under them on a 667 px screen). */
+  :root body .roster-head > .ui-heading {
+    flex: none;
+  }
+  /* The action bar's info shows only the fighter's face when three
+     buttons leave it too little room for words. */
+  :root body .ui-panel-foot > .ui-foot-info {
+    container-type: inline-size;
+  }
+}
+@container (max-width: 96px) {
+  .ui-foot-info > :not(.ui-avatar, .ui-seg) {
+    display: none;
+  }
+}
+/* Tabs: a finger tall (they were 34 px), where the screen has the room. A
+   view under 320 px tall (the keyboard up, a split screen) keeps 34 px tabs:
+   the 10 px matter more to a boss page's list there (raid-splash at 844x280). */
+@media (max-height: 500px) and (min-height: 320px) {
+  :root body .ui-tabs > button,
+  :root body .farm-layer.phone .fm-sheet .sh-tabs button {
+    min-height: 44px;
+  }
+}

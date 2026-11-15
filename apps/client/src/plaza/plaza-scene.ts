@@ -10,6 +10,7 @@
  * the same shared step. Ported drawing code is not type-checked line by
  * line; the typed entry point is plaza-screen.ts.
  */
+import { syncHubGraphics } from "../hub-graphics";
 import {
   ORB_SHOWER,
   PLAZA,
@@ -77,7 +78,7 @@ import { bakeSprite } from "./plaza-sprite";
 import "./plaza.css";
 import { fadeIn } from "../ui/motion";
 import { setInner } from "../ui/patch";
-import { sceneDensity } from "../render-budget";
+import { memoryConstrained, sceneDensity } from "../render-budget";
 import { FrameCap } from "../frame-cap";
 
 const esc = (s) =>
@@ -143,6 +144,7 @@ export function openPlaza(options) {
   /** Low graphics (slow phones): no ambient animals or night glow, 30 fps. */
   let low = !!options.low;
   layer.dataset.graphics = low ? "low" : "high";
+  syncHubGraphics();
   layer.dataset.frozen = "false";
   // Auto (Settings → Graphics) watches the frame rate and may switch to Low.
   let probe =
@@ -221,6 +223,16 @@ export function openPlaza(options) {
 
   /* ---------- background prerender ---------- */
   const bg = document.createElement("canvas");
+  /** Cancels the hidden Plaza's pending ground release (hide/show). */
+  let idleRelease;
+  const requestIdle = (run) => {
+    if (typeof requestIdleCallback === "function") {
+      const id = requestIdleCallback(run, { timeout: 3000 });
+      return () => cancelIdleCallback(id);
+    }
+    const id = setTimeout(run, 1000);
+    return () => clearTimeout(id);
+  };
   bg.width = W;
   bg.height = H;
   function paintBg() {
@@ -867,6 +879,7 @@ export function openPlaza(options) {
   function goLow() {
     low = true;
     layer.dataset.graphics = "low";
+    syncHubGraphics();
     for (const list of [DUCKS, FISH, HENS, PIGEONS, BUTTER, SMOKE])
       list.length = 0;
     flock = null;
@@ -4006,11 +4019,30 @@ export function openPlaza(options) {
       keys.clear();
       probe?.pause();
       layer.style.display = "none";
+      // Where memory is short (an iPhone), the painted ground (a 2700 × 1700
+      // canvas, 17.5 MB) is painted again on return instead of kept behind
+      // the Lobby, the Farm or the Bistro, as the Bistro does its room.
+      // (Once the page is idle, not in the tap that switched tabs.)
+      if (memoryConstrained())
+        idleRelease = requestIdle(() => {
+          if (away) bg.width = bg.height = 0;
+        });
     },
     /** Back: drawn at once as you left it; the server's state follows. */
     show() {
       if (!away) return;
       away = false;
+      idleRelease?.();
+      idleRelease = undefined;
+      if (!bg.width) {
+        bg.width = W;
+        bg.height = H;
+        // (paintBg reseeds the scene's random numbers; the rest of the
+        // scene's sequence carries on as if it had not run again.)
+        const kept = seed;
+        paintBg();
+        seed = kept;
+      }
       layer.style.display = "";
       running = true;
       frozen = false;
@@ -4053,6 +4085,7 @@ export function openPlaza(options) {
       hideAlbum();
       album.close();
       layer.remove();
+      syncHubGraphics();
     },
     _dbg: {
       /** The painted ground's colour at a world point (tests). */

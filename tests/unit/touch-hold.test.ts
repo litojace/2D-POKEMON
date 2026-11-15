@@ -35,11 +35,14 @@ describe("menus and selection", () => {
     );
     expect(block).toMatch(/img,\s*a,\s*svg \{\s*-webkit-user-drag: none;/);
     // Modal dialogs too (Chrome lets their text be selected otherwise).
+    // The Admin panel is the dialog holding the admin tabs: dialog.ts marks
+    // it has-dialog-tabs (a :has() there restyled half the page on every
+    // battle HUD change).
     expect(block).toMatch(
       /dialog,\s*dialog \* \{\s*-webkit-user-select: none;\s*user-select: none;/,
     );
     expect(block).toMatch(
-      /:is\(input, textarea, select, \[contenteditable="true"\]\),\s*dialog:has\(\.admin-tabs\),\s*dialog:has\(\.admin-tabs\) \* \{\s*-webkit-user-select: text;\s*user-select: text;/,
+      /:is\(input, textarea, select, \[contenteditable="true"\]\),\s*dialog\.has-dialog-tabs,\s*dialog\.has-dialog-tabs \* \{\s*-webkit-user-select: text;\s*user-select: text;/,
     );
   });
 });

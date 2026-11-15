@@ -1207,6 +1207,9 @@ export function openBistro(o: BistroOptions): BistroHandle {
     const box = layer.getBoundingClientRect();
     wallet.style.top = `${menu.top - box.top}px`;
     wallet.style.height = `${menu.height}px`;
+    // On phones the wallet is at least a finger tall, centred on the menu
+    // button whatever their heights (ui/phone-fit.css).
+    wallet.style.setProperty("--bs-wallet-h", `${menu.height}px`);
     wallet.style.right = `${box.right - menu.left + 8}px`;
   };
   wallet.addEventListener("click", () => {
@@ -5218,7 +5221,8 @@ export function openBistro(o: BistroOptions): BistroHandle {
   };
   let chefSent = false;
   let leavesShown = -1;
-  const SILENT = new Set(["serve", "leave", "sync", "chef"]);
+  // (A guest's order kept or let go: squared again at the next answer.)
+  const SILENT = new Set(["serve", "leave", "sync", "chef", "hold", "unhold"]);
   function adopted(info: {
     away: AwayReport | null;
     errors: { action: BistroAction; error: string }[];
@@ -5446,6 +5450,9 @@ export function openBistro(o: BistroOptions): BistroHandle {
   setRoomSize(sizeOf(S.sizeLv));
   resize();
   if (kept && cached) restoreFloor(kept.floor, Date.now() - kept.at);
+  // Orders of guests who didn't come back (the page closed long ago) are
+  // let go: their servings go back on the counter.
+  if (kept) sync.keepOnly(customers.map((c) => c.id));
   raf = requestAnimationFrame(frame);
   const onVis = () => {
     // Hidden: send what is queued (the time away starts now). Back: the
