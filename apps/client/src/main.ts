@@ -6690,6 +6690,8 @@ function fitRenderer() {
 }
 /** When this battle renderer started loading (for reportBattleLoad). */
 let battleLoadStarted = 0;
+/** When a battle began waiting for Phaser to load, if it had to (else 0). */
+let phaserWaitStarted = 0;
 /** When this renderer's scene reached preload() and create() (reportBattleLoad). */
 const battleLoadMarks = { preload: 0, create: 0 };
 /** Longest the briefing holds "I'm ready" back while the arena loads. */
@@ -6792,13 +6794,25 @@ function ensureBattleRenderer() {
   // Phaser loads after the first screen (phaser-runtime.ts); a battle that
   // comes before the hub's warm-up finished waits for it, then asks again.
   if (!phaser()) {
-    void loadPhaser().then(ensureBattleRenderer, (error: unknown) =>
-      console.error("The battle renderer could not load.", error),
+    // The wait counts towards the battle's load time (reportBattleLoad).
+    phaserWaitStarted ||= performance.now();
+    void loadPhaser().then(
+      () => {
+        ensureBattleRenderer();
+        // No renderer after all (the battle closed meanwhile): a later one
+        // starts its own count.
+        phaserWaitStarted = 0;
+      },
+      (error: unknown) => {
+        phaserWaitStarted = 0;
+        console.error("The battle renderer could not load.", error);
+      },
     );
     return;
   }
   const Phaser = Ph;
-  battleLoadStarted = performance.now();
+  battleLoadStarted = phaserWaitStarted || performance.now();
+  phaserWaitStarted = 0;
   battleLoadMarks.preload = battleLoadMarks.create = 0;
   releaseHubArt();
   arenaCssArea = $("game").clientWidth * $("game").clientHeight;
