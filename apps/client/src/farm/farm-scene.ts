@@ -9,6 +9,7 @@
  * the farm systems (phase 5). Ported drawing code is not type-checked line
  * by line; the typed entry point is farm-screen.ts.
  */
+import { syncHubGraphics } from "../hub-graphics";
 import {
   CROPS,
   CROP_BY_ID,
@@ -5590,12 +5591,14 @@ export function openFarm(options) {
    *  for a few seconds and switches to Low (remembered) when it's too slow. */
   let low = !!options.low;
   layer.dataset.graphics = low ? "low" : "high";
+  syncHubGraphics();
   layer.dataset.frozen = "false";
   let probe =
     graphicsSetting() === "auto" && !low ? new FrameRateProbe() : undefined;
   function goLow() {
     low = true;
     layer.dataset.graphics = "low";
+    syncHubGraphics();
     for (const list of [hens, FDUCKS, BUTTER]) list.length = 0;
     onResize();
   }
@@ -7566,6 +7569,7 @@ export function openFarm(options) {
       coverWatch.disconnect();
       removeEventListener("resize", onResize);
       layer.remove();
+      syncHubGraphics();
     },
     /** Debug handle for tests. */
     _dbg: {

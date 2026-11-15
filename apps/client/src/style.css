@@ -2717,7 +2717,7 @@ body.battle-still .spectator {
 }
 /* Eight fighters as two rows of four when the roster has room, else four rows of two. */
 /* Admin panel: compact player rows, title dropdown, reports inbox. */
-dialog:has(.admin-tabs) {
+dialog.has-dialog-tabs {
   width: min(760px, 94vw);
   max-height: 90vh;
   overflow: auto;
@@ -3794,8 +3794,8 @@ svg {
   -webkit-user-drag: none;
 }
 :is(input, textarea, select, [contenteditable="true"]),
-dialog:has(.admin-tabs),
-dialog:has(.admin-tabs) * {
+dialog.has-dialog-tabs,
+dialog.has-dialog-tabs * {
   -webkit-user-select: text;
   user-select: text;
   -webkit-touch-callout: default;
@@ -13066,11 +13066,13 @@ body.battle-active.court-view #game canvas {
   .prefs-status > span {
     display: none;
   }
-  /* Sound on the left, Motion and Graphics stacked on the right. */
-  .prefs-grid:has(> .prefs-graphics) {
+  /* Sound on the left, Motion and Graphics stacked on the right. (A class
+     set with the cards, not :has(): see "Battle style recalculation" in
+     docs/network-performance.md.) */
+  .prefs-grid.has-graphics {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .prefs-grid:has(> .prefs-graphics) > :first-child {
+  .prefs-grid.has-graphics > :first-child {
     grid-row: span 2;
   }
   /* Graphics: one line too (name, then Auto / High / Low). */
