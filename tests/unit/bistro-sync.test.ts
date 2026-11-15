@@ -233,3 +233,112 @@ describe("bistro sync: the server's clock", () => {
     vi.useRealTimers();
   });
 });
+
+describe("bistro sync: guests' orders held on the server (migration 109)", () => {
+  const counterOf = (n: number) => [
+    { dish: "pho" as const, servings: n, perfect: false },
+    null,
+    null,
+    null,
+  ];
+  const run = (held: Record<string, number> | undefined) => {
+    let srv: Record<string, unknown> = { ...server(), counter: counterOf(3) };
+    if (held) srv.held = held;
+    const sent: BistroAction[] = [];
+    let refuse = false;
+    const api = {
+      load: async () => srv,
+      act: async (_id: string, actions: BistroAction[]) => {
+        sent.push(...actions);
+        // As the server: a hold keeps one (unless refused), an unhold lets go.
+        const h = { ...((srv.held as Record<string, number>) ?? {}) };
+        const results = actions.map((a) => {
+          if (a.a === "hold" && !refuse) h[a.dish] = (h[a.dish] ?? 0) + 1;
+          else if (a.a === "hold")
+            return { ok: false, error: "None left on the counter." };
+          if (a.a === "unhold") h[a.dish] = Math.max(0, (h[a.dish] ?? 0) - 1);
+          if (a.a === "serve" && a.held)
+            h[a.dish] = Math.max(0, (h[a.dish] ?? 0) - 1);
+          return { ok: true };
+        });
+        if (held) srv = { ...srv, held: h };
+        return { bistro: srv, results };
+      },
+    };
+    return {
+      sync: new BistroSync(api, hooks()),
+      sent,
+      set: (next: Record<string, unknown>) => (srv = { ...srv, ...next }),
+      refuse: () => (refuse = true),
+    };
+  };
+  it("an older server: the page keeps the serving; nothing is held", async () => {
+    vi.useFakeTimers();
+    const { sync, sent } = run(undefined);
+    await sync.load();
+    expect(sync.holds()).toBe(false);
+    expect(sync.reserve(1, "pho")).toBe(true);
+    expect(sync.S.counter[0]?.servings).toBe(2);
+    sync.pay(1, { dish: "pho", vip: false, combo: 1, hearts: 3, quick: false });
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(sent.map((a) => a.a)).toEqual(["serve"]);
+    expect((sent[0] as { held?: boolean }).held).toBeUndefined();
+    vi.useRealTimers();
+  });
+  it("a server that holds: an order is a hold, the pay uses it, a guest who leaves lets it go", async () => {
+    vi.useFakeTimers();
+    const { sync, sent } = run({});
+    await sync.load();
+    expect(sync.holds()).toBe(true);
+    expect(sync.reserve(1, "pho")).toBe(true);
+    expect(sync.reserve(2, "pho")).toBe(true);
+    expect(sync.S.counter[0]?.servings).toBe(1);
+    expect(sync.S.held).toEqual({ pho: 2 });
+    sync.pay(1, { dish: "pho", vip: false, combo: 1, hearts: 3, quick: false });
+    sync.release(2);
+    expect(sync.S.held).toEqual({});
+    expect(sync.S.counter[0]?.servings).toBe(2);
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(sent.map((a) => a.a)).toEqual(["hold", "hold", "serve", "unhold"]);
+    expect((sent[2] as { held?: boolean }).held).toBe(true);
+    vi.useRealTimers();
+  });
+  it("squares the guests' orders with what the server holds, both ways", async () => {
+    vi.useFakeTimers();
+    const { sync, sent, set } = run({});
+    await sync.load();
+    // An order made here that the server doesn't hold (say, from before it
+    // could): held on the next answer.
+    (sync as unknown as { reserved: Map<number, string> }).reserved.set(
+      7,
+      "pho",
+    );
+    set({ held: { pho: 0 } });
+    sync.do({ a: "sync" });
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(sent.filter((a) => a.a === "hold")).toHaveLength(1);
+    // The server holds one for a guest no longer here: it goes back.
+    set({ held: { pho: 2 } });
+    sync.do({ a: "sync" });
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(sent.filter((a) => a.a === "unhold")).toHaveLength(1);
+    vi.useRealTimers();
+  });
+  it("a hold the server keeps refusing is let go, not asked for at every answer", async () => {
+    vi.useFakeTimers();
+    const { sync, sent, refuse } = run({});
+    await sync.load();
+    refuse();
+    (sync as unknown as { reserved: Map<number, string> }).reserved.set(
+      7,
+      "pho",
+    );
+    for (let i = 0; i < 6; i++) {
+      sync.do({ a: "sync" });
+      await vi.advanceTimersByTimeAsync(1000);
+    }
+    expect(sent.filter((a) => a.a === "hold").length).toBeLessThanOrEqual(2);
+    expect(sync.reservedCount()).toBe(0);
+    vi.useRealTimers();
+  });
+});

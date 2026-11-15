@@ -1141,6 +1141,12 @@ export interface BistroState {
   /** Stoves bought and not placed, by model (migration 103). */
   stoveStore: Partial<Record<StoveModel, number>>;
   counter: (CounterSlot | null)[];
+  /**
+   * Servings guests have ordered, off the counter and kept for them until
+   * they pay or leave (migration 109). A server without it sends none:
+   * then the page keeps its guests' servings by itself.
+   */
+  held?: Partial<Record<DishId, number>>;
   staff: Staff[];
   kitchenLv: number;
   shiftLv: number;
@@ -1384,6 +1390,11 @@ export function sanitize(raw: unknown): BistroState {
         perfect: st?.perfect === true,
         ...(num(st?.dur, 0) > 0 ? { dur: num(st?.dur, 0) } : {}),
       }));
+  }
+  if (r.held && typeof r.held === "object") {
+    s.held = {};
+    for (const [k, v] of Object.entries(r.held as Record<string, unknown>))
+      if (isDish(k) && num(v, 0) > 0) s.held[k] = Math.floor(num(v, 0));
   }
   if (r.stoveStore && typeof r.stoveStore === "object") {
     s.stoveStore = {};
@@ -2763,6 +2774,30 @@ export function counterAdd(s: BistroState, dish: DishId, n: number) {
   s.counter[i] = c
     ? { ...c, servings: c.servings + n }
     : { dish, servings: n, perfect: false };
+}
+/** A guest orders: one serving leaves the counter, kept for them. */
+export function holdServing(s: BistroState, dish: DishId): Result {
+  if (takeServing(s, dish) < 0) return fail("None left on the counter.");
+  s.held = s.held ?? {};
+  s.held[dish] = (s.held[dish] ?? 0) + 1;
+  return { ok: true };
+}
+/** A guest leaves without it: their serving goes back on the counter. */
+export function unholdServing(s: BistroState, dish: DishId): Result {
+  const n = s.held?.[dish] ?? 0;
+  if (n < 1) return fail("Nothing held.");
+  if (n === 1) delete s.held![dish];
+  else s.held![dish] = n - 1;
+  counterAdd(s, dish, 1);
+  return { ok: true };
+}
+/** A guest pays for the serving kept for them (false: none was kept). */
+export function useHeld(s: BistroState, dish: DishId): boolean {
+  const n = s.held?.[dish] ?? 0;
+  if (n < 1) return false;
+  if (n === 1) delete s.held![dish];
+  else s.held![dish] = n - 1;
+  return true;
 }
 /** A skipped (or expired) order gives back what was put aside for it. */
 export function returnAside(s: BistroState, o: CateringOrder) {

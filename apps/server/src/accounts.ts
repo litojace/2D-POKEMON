@@ -59,7 +59,7 @@ import {
   type OnlineList,
 } from "../../../packages/shared/src/accounts.js";
 /** The newest database migration the server expects. */
-export const LATEST_MIGRATION = "107_bistro_cook_times.sql";
+export const LATEST_MIGRATION = "109_bistro_held_orders.sql";
 /** The migration that last redefined the raid appearance functions. */
 export const RAID_FUNCTIONS_MIGRATION = "018_collection_equipping.sql";
 export interface AccountProvider {
@@ -758,6 +758,9 @@ export function installAccountRoutes(
         "stovebuy",
         "stoveplace",
         "stovemove",
+        // A guest's order kept off the counter, and let go (migration 109).
+        "hold",
+        "unhold",
         "sync",
       ]),
       stove: z
@@ -772,6 +775,7 @@ export function installAccountRoutes(
       combo: z.number().int().min(1).max(5).optional(),
       hearts: z.number().int().min(1).max(3).optional(),
       quick: z.boolean().optional(),
+      held: z.boolean().optional(),
       kind: bistroId.optional(),
       id: z
         .union([

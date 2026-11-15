@@ -103,7 +103,9 @@ export async function fakeBistro(page: Page) {
       const url = String(input);
       if (!url.includes("/api/bistro")) return fetch(input, init);
       const R = await rules();
-      if (!server.S) server.S = R.defaultState();
+      // A server that keeps guests' servings (migration 109).
+      if (!server.S) server.S = { ...R.defaultState(), held: {} };
+      if (!server.S.held) server.S.held = {};
       const json = (v: unknown) =>
         new Response(JSON.stringify(v), {
           headers: { "Content-Type": "application/json" },
@@ -155,6 +157,7 @@ export async function fakeBistro(page: Page) {
           return r;
         });
         R.autoKitchen(server.S, t, undefined, low);
+        server.lastResults = results;
         return json({ bistro: state(), results, away });
       }
       if (url.endsWith("/api/bistro/friends")) return json(server.friends);
