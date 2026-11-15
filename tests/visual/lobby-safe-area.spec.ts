@@ -31,7 +31,6 @@ async function boxes(page: Page) {
       .querySelectorAll(".lobby-card")
       .forEach((c, i) => add(`card${i}`, c));
     add("play", document.querySelector(".lobby-play"));
-    add("emotes", document.querySelector(".lobby-emotes"));
     return out;
   });
 }
