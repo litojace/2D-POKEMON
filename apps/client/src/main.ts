@@ -189,6 +189,7 @@ import { abilityIcon } from "./ability-icons";
 import { TouchControls } from "./touch-controls";
 import type Phaser from "phaser";
 import { loadPhaser, phaser, whenPhaser } from "./phaser-runtime";
+import { installGraphicsRenderer } from "./graphics-render";
 import { io } from "socket.io-client";
 import {
   CHARACTERS,
@@ -6822,6 +6823,9 @@ function ensureBattleRenderer() {
   phaserWaitStarted = 0;
   battleLoadMarks.preload = battleLoadMarks.create = 0;
   releaseHubArt();
+  // Effects, rings and auras are Graphics paths redrawn every frame: draw
+  // them without Phaser's per-point garbage (graphics-render.ts).
+  installGraphicsRenderer(Phaser);
   arenaCssArea = $("game").clientWidth * $("game").clientHeight;
   const dpr = renderScale();
   gameInstance = new Phaser.Game({
