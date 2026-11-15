@@ -361,7 +361,12 @@ import { RITE_EFFECTS, riteEffect, riteIcon } from "./rite-icons";
 import { ConnectionWatch, dropMessage } from "./connection-loss";
 import { watchSceneSwitch } from "./scene-switch-place";
 import { mountChat, type ChatPlace } from "./chat/chat-ui";
-import type { ChatLine } from "../../../packages/shared/src/chat";
+import {
+  quickText,
+  type ChatLine,
+  type ChatQuick,
+} from "../../../packages/shared/src/chat";
+import { PLAZA_EMOTES } from "../../../packages/shared/src/plaza";
 import "./chat/chat.css";
 // Last: the hub's aero glass overrides the panels' own fills.
 import "./ui/aero.css";
@@ -2002,6 +2007,8 @@ function syncHub() {
   if (hub) document.body.classList.add("hub-screen");
   syncChat(hub);
 }
+/** The farm whose Nearby chat this page is in (chat-farm). */
+let farmChatOwner: string | null = null;
 /** The chat button's place and channels (chat/chat-ui.ts). */
 function syncChat(hub: boolean) {
   const inRoom = !!myId && !!state;
@@ -2012,7 +2019,13 @@ function syncChat(hub: boolean) {
     : inRoom && !fighting && !state!.practice
       ? "room"
       : "none";
-  chat.sync(place, { party: !!party, room: inRoom && !state!.practice });
+  chat.sync(place, {
+    party: !!party,
+    room: inRoom && !state!.practice,
+    // Nearby: the Plaza's copy, or the farm you are on.
+    place:
+      hub && (hubScene === "plaza" || (hubScene === "farm" && !!farmChatOwner)),
+  });
   placeSceneSwitch?.();
 }
 /** The new Plaza (hub redesign phase 3): the server moves everyone in it. */
@@ -2066,6 +2079,12 @@ function syncPlaza(want: boolean, hub = want) {
       (await accountsUI.api("/api/plaza")) as PlazaProgress,
     goFarm: () => setHubScene("farm"),
     isBlocked: (accountId) => accountsUI.isBlocked(accountId),
+    // Emotes go through chat's Nearby channel (docs/chat-plan.md).
+    quickChat: (quick: ChatQuick) =>
+      void request("chat-send", { channel: "place", quick }).then((r) => {
+        if (!r.ok && r.error) toast(r.error);
+      }),
+    myAccountId: () => accountsUI.account?.id,
     onPlayer: async (action, playerId, name) => {
       if (action === "friend") {
         await accountsUI.friendRequest({ playerId });
@@ -2311,12 +2330,27 @@ function syncFarm(want: boolean, hub = want) {
         friend,
       })) as FarmGiftResult,
     inviteLink: (code) => farmInviteUrl(location.origin, code),
-    here: async (owner, emote) =>
-      (await accountsUI.api("/api/farm/here", {
+    here: async (owner, emote) => {
+      // In chat's Nearby channel for this farm (once per farm).
+      const farm = owner ?? accountsUI.account?.id ?? null;
+      if (farm && farm !== farmChatOwner) {
+        farmChatOwner = farm;
+        void request("chat-farm", { owner: farm }).then((r) => {
+          if (!r.ok && farmChatOwner === farm) farmChatOwner = null;
+          syncHub();
+        });
+      }
+      return (await accountsUI.api("/api/farm/here", {
         ...(owner ? { owner } : {}),
         ...(emote ? { emote } : {}),
-      })) as FarmHere,
+      })) as FarmHere;
+    },
     gone: async () => {
+      if (farmChatOwner) {
+        farmChatOwner = null;
+        void request("chat-farm", { owner: null });
+        syncHub();
+      }
       await accountsUI.api("/api/farm/gone", {});
     },
     tour: async () =>
@@ -3525,7 +3559,17 @@ socket.on("party", (data: unknown) => {
   accountsUI.refreshRaids();
 });
 // In-game chat (docs/chat-plan.md).
-socket.on("chat", (line: ChatLine) => chat.receive(line));
+socket.on("chat", (line: ChatLine) => {
+  chat.receive(line);
+  // Nearby lines pop over the speaker's head. On the Plaza the server
+  // already pops its own emotes through the Plaza's state.
+  if (line.channel !== "place") return;
+  const text = line.quick ? quickText(line.quick) : (line.text ?? "");
+  if (hubScene === "plaza") {
+    if (!(line.quick && (PLAZA_EMOTES as readonly string[]).includes(text)))
+      plaza?.say(line.from.id, text);
+  } else if (hubScene === "farm") farmScreen?.say(line.from.id, text);
+});
 socket.on("chat-config", (data: { freeText?: unknown } | null) =>
   chat.setFreeText(data?.freeText === true),
 );

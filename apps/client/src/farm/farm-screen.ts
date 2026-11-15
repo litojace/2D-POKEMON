@@ -113,6 +113,8 @@ export interface FarmScreen {
   /** Bring it back as you left it, then refresh. */
   show(): void;
   close(): void;
+  /** A Nearby chat line from someone on the farm: a bubble over them. */
+  say(accountId: string, text: string): void;
 }
 export function openFarmScreen(options: FarmScreenOptions): FarmScreen {
   document.body.classList.add("hub-screen", "hub-farm");
@@ -171,6 +173,7 @@ export function openFarmScreen(options: FarmScreenOptions): FarmScreen {
   };
   return {
     refresh: () => scene.refresh(),
+    say: (accountId: string, text: string) => scene.say(accountId, text),
     hide() {
       scene.hide();
       away();
