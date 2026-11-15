@@ -495,8 +495,6 @@ let state: Snapshot | undefined,
   scene: ArenaScene | undefined;
 /** Your late inputs the server will fold into one tick (Fighter.owed). */
 let owedSteps = 0;
-let raidPracticeReturn:
-  { boss: RaidBossId; tab: RaidTab; leaveRoom: boolean } | undefined;
 let raidRoomReturn:
   { code: string; boss: RaidBossId; tab: RaidTab } | undefined;
 let accountShown = "";
@@ -904,7 +902,6 @@ window.addEventListener("keydown", (e) => {
     typingIn(e.target) ||
     actionFor(controlPrefs().bindings, e.code) ||
     !state?.raid ||
-    state.raid.drill ||
     !["playing", "countdown"].includes(state.phase)
   )
     return;
@@ -2438,34 +2435,15 @@ function stepHomeFighter(direction: -1 | 1) {
   renderMenu();
   syncHub();
 }
-/** Start a raid or safe attack practice from the Raid Hub. */
+/** Start a raid from the Raid Hub. */
 async function startRaid(
   boss: RaidBossId,
-  options: { solo?: boolean; drill?: string; returnTab?: RaidTab },
+  options: { solo?: boolean; returnTab?: RaidTab },
 ) {
   if (!accountsUI.ensurePlayer()) return;
-  if (myId && options.drill && state?.raid?.boss === boss) {
-    raidPracticeReturn = {
-      boss,
-      tab: options.returnTab ?? "party",
-      leaveRoom: false,
-    };
-    const reply = await request("raid-drill", { kind: options.drill });
-    if (!reply.ok) {
-      raidPracticeReturn = undefined;
-      return toast(reply.error ?? "The host starts practice from the lobby.");
-    }
-    $<HTMLDialogElement>("dialog").close();
-    settingsOpen = false;
-    menuOpen = false;
-    return;
-  }
   if (myId) return toast("Leave your current room first.");
   if (!connected) return toast("Waiting for the server connection.");
   if (watching) await stopWatching();
-  raidPracticeReturn = options.drill
-    ? { boss, tab: options.returnTab ?? "party", leaveRoom: true }
-    : undefined;
   audio.unlock();
   $<HTMLDialogElement>("dialog").close();
   settingsOpen = false;
@@ -2480,42 +2458,14 @@ async function startRaid(
     boss,
   });
   identity(reply);
-  if (!reply.ok) {
-    raidPracticeReturn = undefined;
-    return;
-  }
+  if (!reply.ok) return;
   raidRoomReturn = {
     code: reply.code!,
     boss,
     tab: options.returnTab ?? "party",
   };
   await request("select", selected);
-  if (options.drill) {
-    const drill = await request("raid-drill", { kind: options.drill });
-    if (!drill.ok) {
-      raidPracticeReturn = undefined;
-      toast(drill.error ?? "Could not start practice.");
-    }
-  } else if (options.solo) await request("ready");
-}
-function requestRaidHud(event: string, data?: unknown): Promise<unknown> {
-  const endsHubPractice =
-    event === "raid-drill" &&
-    !!data &&
-    typeof data === "object" &&
-    (data as { kind?: unknown }).kind === null;
-  return request(event, data).then(async (reply) => {
-    if (endsHubPractice && reply.ok && raidPracticeReturn) {
-      const destination = raidPracticeReturn;
-      if (destination.leaveRoom) {
-        await leave();
-      } else {
-        raidPracticeReturn = undefined;
-        await accountsUI.showRaids(destination.boss, destination.tab);
-      }
-    }
-    return reply;
-  });
+  if (options.solo) await request("ready");
 }
 function renderMenu(revealSelection = false) {
   document.body.classList.remove("practice-active");
@@ -2737,12 +2687,11 @@ async function leave(returnToHub = true) {
     return;
   }
   const returnToRaidHub = returnToHub
-    ? (raidPracticeReturn ??
-      (state?.raid
-        ? raidRoomReturn?.code === state.code
-          ? raidRoomReturn
-          : { boss: state.raid.boss, tab: "party" as const }
-        : undefined))
+    ? state?.raid
+      ? raidRoomReturn?.code === state.code
+        ? raidRoomReturn
+        : { boss: state.raid.boss, tab: "party" as const }
+      : undefined
     : undefined;
   const reply = await request("leave", {
     token: sessionStorage.getItem("arena-token"),
@@ -2751,7 +2700,6 @@ async function leave(returnToHub = true) {
     toast("Could not leave the room yet. Reconnect and try again.");
     return;
   }
-  raidPracticeReturn = undefined;
   raidRoomReturn = undefined;
   sessionStorage.removeItem("arena-token");
   lobbySelection.reset();
@@ -3164,7 +3112,7 @@ function renderBattle() {
     renderRaidUI(
       state,
       me,
-      requestRaidHud,
+      request,
       async () => {
         const progress = (await accountsUI.api(
           "/api/raids",

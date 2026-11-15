@@ -42,7 +42,7 @@ Audited all 30 daily missions and all four seasonal weekly goals through the tru
 
 All four weekly goals reach their targets and award their 250 seasonal XP once: five completed games, 50 skill casts, two regular raid clears or Boss Rush legs, and three weekly arcade games. Their existing participation and 20-second requirements remain. Boss Rush reports aggregate skill/ultimate/time counters once at the end of the expedition, including a partial run.
 
-Regression tests also cover idle and abandoned seats, per-slot time resets, the Pacific daily reset, the per-result 30-minute cap, reapplying the migration, five free mission changes, reward permissions, the all-six bonus and the seventh-day streak bonus. Socket tests verify Easy/Normal/Hard bot receipts, actual skill and ultimate casts, PvP team/free-for-all wins and knockout history, co-op departures, economy refresh notifications, and exclusion of solo practice and raid attack drills. Existing boss simulation tests cover all seven boss feats.
+Regression tests also cover idle and abandoned seats, per-slot time resets, the Pacific daily reset, the per-result 30-minute cap, reapplying the migration, five free mission changes, reward permissions, the all-six bonus and the seventh-day streak bonus. Socket tests verify Easy/Normal/Hard bot receipts, actual skill and ultimate casts, PvP team/free-for-all wins and knockout history, co-op departures, economy refresh notifications, and exclusion of solo practice. Existing boss simulation tests cover all seven boss feats.
 
 ## Activation and limits
 

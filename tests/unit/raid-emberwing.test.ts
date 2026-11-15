@@ -68,7 +68,6 @@ const resolve = (a: EmberwingArena) => {
   const warnings = [...a.raid.warnings];
   a.raid.warnings = [];
   for (const w of warnings) {
-    (a as any).struck.clear();
     (a as any).resolveWarning(w, a.boss()!);
   }
 };
@@ -418,18 +417,7 @@ describe("Emberwing attacks and champion answers", () => {
     expect(p.ult).toBeGreaterThanOrEqual(35);
     expect(a.raid.emberFeathers).toEqual([]);
   });
-  it("practises braziers without crediting real progress, and clears mechanics on retry and drill switches", () => {
-    const a = setup();
-    a.raid.drill = "brazier-lighting";
-    a.raid.drillStats = { hits: 0, dodges: 0 };
-    lightAll(a);
-    expect(a.raid.drillStats.dodges).toBe(1);
-    expect(a.raid.contributions!.p0.pillars).toBe(0);
-    a.setDrill("ember-rain");
-    expect(a.raid.emberPatches).toEqual([]);
-    expect(a.raid.airborne).toBe(false);
-    a.stopDrill();
-    expect(a.phase).toBe("lobby");
+  it("clears its mechanics on a forfeit and a retry", () => {
     const b = setup();
     b.tick();
     b.forfeit("p0");

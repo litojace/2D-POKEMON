@@ -227,7 +227,7 @@ describe("Somnara's encounter", () => {
       random.mockRestore();
     }
   });
-  it("clears private dreams, sleep and attacks on chapter breaks, practice switches and retry", () => {
+  it("clears private dreams, sleep and attacks on chapter breaks and retry", () => {
     const a = setup();
     attack(a, "dream-sequence");
     addStacks(a, "p0");
@@ -238,11 +238,6 @@ describe("Somnara's encounter", () => {
     expect(a.raid.dream).toBeUndefined();
     expect(a.dreamFor("p0")).toBeUndefined();
     expect(a.heroes()[0].statuses.some((s) => s.kind === "sleep")).toBe(false);
-    a.phase = "playing";
-    a.raid.drill = "dream-sequence";
-    attack(a, "dream-sequence");
-    expect(a.setDrill("lullaby")).toBe(true);
-    expect(a.raid.dream).toBeUndefined();
   });
 });
 
@@ -443,21 +438,6 @@ describe("Somnara's attacks, controls and progression", () => {
         expect(w.y).toBeLessThanOrEqual(800);
       }
     }
-  });
-  it("counts a full Whale Song practice channel as one hit or dodge per raider", () => {
-    const a = setup(["voltkit", "terradon"]);
-    a.raid.drill = "whale-song";
-    a.raid.drillStats = { hits: 0, dodges: 0 };
-    attack(a, "whale-song");
-    const [safe, outside] = a.heroes();
-    outside.x = 1500;
-    outside.y = 800;
-    for (let i = 0; i < 125; i++) {
-      if (a.raid.quietZone)
-        Object.assign(safe, quietZoneAt(a.raid.quietZone, a.time));
-      a.tick();
-    }
-    expect(a.raid.drillStats).toEqual({ hits: 1, dodges: 1 });
   });
   it("offers 1–4 only to the active Dreamer and keeps other controls untouched", () => {
     const a = setup(["voltkit", "lumoth"]);

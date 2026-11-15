@@ -6,7 +6,6 @@ import { openHubPanel, type HubPanel } from "../ui/hub-panel";
 import { parse, patch } from "../ui/patch";
 import { enter, whenSettled } from "../ui/motion";
 import {
-  practiceAttack,
   raidMarkup,
   raidView,
   startState,
@@ -20,15 +19,15 @@ import "./raid-hall.css";
 /**
  * Raids' behaviour (UI remodel step 5). Markup comes from raid-hall-view.ts.
  * It opens inside the Lobby as a panel (openHubPanel): the Raid Hall, and a
- * boss's page with its art on the stage. Start raid and Practice go through
- * the game's own room calls (hooks.start); Invite asks the server to invite
+ * boss's page with its art on the stage. Start raid goes through the game's
+ * own room calls (hooks.start); Invite asks the server to invite
  * a friend to your Lobby party, and the page shows its answer.
  */
 export interface RaidHooks {
   data(): RaidData;
   start(
     boss: RaidBossId,
-    o: { solo?: boolean; drill?: string; returnTab: RaidTab },
+    o: { solo?: boolean; returnTab: RaidTab },
   ): void;
   /** Invite a friend to your Lobby party; resolves with the server's answer. */
   invite(id: string): Promise<{ ok: boolean; error?: string }>;
@@ -56,7 +55,6 @@ const FOCUS_KEYS = [
   "data-raid-open-seat",
   "data-raid-back",
   "data-raid-start",
-  "data-raid-practice",
 ];
 
 export function openRaids(
@@ -205,12 +203,6 @@ export function openRaids(
     } else if (d.raidAttack) {
       view.attack = d.raidAttack as RaidAttack;
       render();
-    } else if (d.raidPractice) {
-      const s = startState(view, hooks.data());
-      const attack = practiceAttack(view);
-      if (!s.ok || !attack) return;
-      panel.close();
-      hooks.start(view.boss, { drill: attack, returnTab: view.tab });
     } else if (d.raidStart) start(d.raidStart === "solo");
     else if (d.raidInvite) void invite(d.raidInvite);
     else if (d.raidOpenSeat !== undefined) {

@@ -124,7 +124,8 @@ for (const viewport of [
         await room.locator("[data-raid-back]").click();
       }
       await room.locator('[data-raid-card="grumblecrag"]').click();
-      await expect(room.locator("[data-raid-practice]")).toBeEnabled();
+      await expect(room.locator("[data-raid-start]")).toBeEnabled();
+      await expect(room.locator("[data-raid-practice]")).toHaveCount(0);
       const actions = await box(page, ".rh-room .ui-panel-foot");
       await room.locator('[data-ui-raid-tab="guide"]').click();
       await expect(room.locator(".rh-chapters > li")).toHaveCount(3);
@@ -184,13 +185,14 @@ test("locked bosses keep their navigation and unlock instruction visible", async
     await room.locator('[data-raid-card="emberwing"]').click();
     await expect(room.locator(".rh-stage-name")).toHaveText("Lumiwick");
     await expect(room.locator("[data-raid-start]")).toBeDisabled();
-    await expect(room.locator("[data-raid-practice]")).toBeDisabled();
     const notice = room.locator(".rh-foot-note.is-reason");
     await expect(notice).toHaveText("Clear Cragmuff once to unlock Lumiwick.");
     await expect(notice).toBeInViewport();
     await room.locator('[data-ui-raid-tab="attacks"]').click();
+    // A locked boss's attacks can still be read before the fight.
     for (const skill of await room.locator("[data-raid-attack]").all())
-      await expect(skill).toBeDisabled();
+      await expect(skill).toBeEnabled();
+    await expect(room.locator(".rh-attack-big .boss-attack-art")).toBeVisible();
     await room.locator('[data-ui-raid-tab="guide"]').click();
     await room
       .locator(".rh-body")

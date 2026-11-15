@@ -4,7 +4,7 @@ import type { MusicTheme } from "./music-score";
 /** The local player's final outcome; rounds and training keep their battle track. */
 export function battleMusic(state: Snapshot, playerId: string): MusicTheme {
   const background = state.raid ? "raid" : "pvp";
-  if (state.phase !== "finished" || state.practice || state.raid?.drill)
+  if (state.phase !== "finished" || state.practice)
     return background;
   if (state.raid) return state.raid.result ?? "draw";
   const index = state.players.findIndex((p) => p.id === playerId);

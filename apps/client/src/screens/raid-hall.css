@@ -18,7 +18,7 @@
 .rh-note.is-problem {
   color: #ffb4bc;
 }
-/* Seven vertical boss cards and Attack practice, four to a row: two even
+/* Seven vertical boss cards, four to a row: two even
    rows. A row is half the hall's height (no scrolling on a tall screen)
    but never squatter than 1 : 1.15, so the cards stay portrait and the
    hall scrolls a little on a short one. */
@@ -522,8 +522,8 @@ button.rh-reward:focus-visible {
   padding: 8px 10px;
 }
 .rh-attack.is-mini .rh-attack-icon {
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
 }
 .rh-attack.is-mini .rh-attack-text b {
   white-space: nowrap;
@@ -534,7 +534,39 @@ button.rh-reward:focus-visible {
 .rh-attack.is-mini:focus-visible {
   border-color: var(--ui-accent);
 }
-/* Attacks: one row each; the picked one is what Practice drills. */
+/* Attacks, like a champion's Skills tab: the picked one large (its art,
+   what it does, how to beat it), then every attack as a row. */
+.rh-attack-big {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.rh-attack-art {
+  width: 120px;
+  height: 120px;
+}
+.rh-attack-art > svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.rh-attack-big-text {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.rh-attack-big-text p {
+  margin: 0;
+}
+.rh-attack-tip {
+  font-size: var(--fs-small);
+}
+.rh-attack-tip .ui-kicker {
+  display: block;
+  margin-bottom: 2px;
+}
 .rh-attacks {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -556,22 +588,14 @@ button.rh-reward:focus-visible {
   border-color: var(--ui-accent);
   background: #ffd65b14;
 }
-.rh-attack:disabled {
-  opacity: 0.55;
-  cursor: default;
-}
 .rh-attack-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  background: color-mix(in srgb, var(--boss) 22%, var(--ui-bg-0));
-  color: var(--ui-text);
+  width: 48px;
+  height: 48px;
 }
 .rh-attack-icon svg {
-  width: 20px;
-  height: 20px;
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 .rh-attack-text {
   display: grid;
@@ -805,8 +829,20 @@ button.rh-reward:focus-visible {
     gap: 8px;
   }
   .rh-attack-icon {
-    width: 30px;
-    height: 30px;
+    width: 32px;
+    height: 32px;
+  }
+  .rh-attack-big {
+    grid-template-columns: 72px minmax(0, 1fr);
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+  .rh-attack-art {
+    width: 72px;
+    height: 72px;
+  }
+  .rh-attack-big .ui-h {
+    font-size: 15px;
   }
   .rh-attack-text b {
     font-size: 13px;

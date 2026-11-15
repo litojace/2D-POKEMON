@@ -153,7 +153,7 @@ type Hooks = {
   startAdventure?: (mode: string) => void;
   startRaid?: (
     boss: RaidBossId,
-    options: { solo?: boolean; drill?: string; returnTab?: RaidTab },
+    options: { solo?: boolean; returnTab?: RaidTab },
   ) => void;
   /** Your Lobby party for the raid seats, and whether you can start. */
   raidParty?: () => { party: RaidSeat[]; leader: boolean; inRoom: boolean };

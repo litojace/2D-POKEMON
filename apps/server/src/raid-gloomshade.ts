@@ -170,8 +170,7 @@ export class GloomshadeArena extends RaidArena {
   protected override canStartAttack() {
     return (
       super.canStartAttack() &&
-      (!!this.raid.drill ||
-        this.heroes().some((p) => p.hp > 0 && !this.inked(p)))
+      this.heroes().some((p) => p.hp > 0 && !this.inked(p))
     );
   }
   override feat() {
@@ -194,7 +193,7 @@ export class GloomshadeArena extends RaidArena {
     r.decoys = [];
     r.curses = {};
     r.streak = 0;
-    this.splitWhenCovered = r.phase === 3 && !r.drill;
+    this.splitWhenCovered = r.phase === 3;
   }
   protected override clearAttacks() {
     super.clearAttacks();
@@ -202,16 +201,6 @@ export class GloomshadeArena extends RaidArena {
     r.decoys = [];
     r.lights = [];
     r.curses = {};
-  }
-  protected override drillReset() {
-    const r = this.raid;
-    if ((r.lanterns ?? []).every((l) => !l.lit))
-      for (const l of r.lanterns ?? []) {
-        l.lit = true;
-        l.hits = 0;
-      }
-    // Practice: copies vanish before each new split.
-    if (r.drill === "split") r.decoys = [];
   }
 
   // ------------------------------------------------------------- Helpers
@@ -287,7 +276,7 @@ export class GloomshadeArena extends RaidArena {
     this.targets = spots;
     this.driftAt = this.time + G.driftEvery;
     r.streak = 0;
-    if (!r.drill) this.splits++;
+    this.splits++;
     r.message = "It splits! Only the real one casts a shadow in lantern light.";
     this.event("raid-impact", boss, 0x9c7bff, undefined, boss.id);
     this.events[this.events.length - 1].raidRadius = 120;
@@ -300,7 +289,6 @@ export class GloomshadeArena extends RaidArena {
     r.streak = 0;
     this.event("raid-impact", d, 0x9c7bff, undefined, r.bossId);
     this.events[this.events.length - 1].raidRadius = 60;
-    if (r.drill) return;
     this.decoyHits++;
     this.addCurse(by);
     r.message = `${by.name} hit a copy! A Curse Puff clings to them.`;
@@ -520,7 +508,6 @@ export class GloomshadeArena extends RaidArena {
         )
           this.damage(p, G.lunge.damage, boss.id, ability);
       this.hitBy = undefined;
-      this.countDodges();
       return;
     }
     if (w.kind === "hands") {
@@ -531,7 +518,6 @@ export class GloomshadeArena extends RaidArena {
         if (p.hp > 0 && handsTileDark(p.x, p.y, parity))
           this.damage(p, G.hands.damage, boss.id, ability);
       this.hitBy = undefined;
-      this.countDodges();
       this.event(
         "raid-impact",
         { x: 800, y: 450 },
@@ -555,7 +541,6 @@ export class GloomshadeArena extends RaidArena {
             )
               this.damage(p, G.snuff.damage, boss.id, ability);
           this.hitBy = undefined;
-          this.countDodges();
         }
         l.lit = false;
         l.hits = 0;
@@ -567,7 +552,6 @@ export class GloomshadeArena extends RaidArena {
       const p = this.heroes().find((q) => q.id === w.targetId && q.hp > 0);
       if (p) {
         this.addCurse(p);
-        if (r.drill) this.struck.add(p.id);
         r.message =
           r.partySize > 1
             ? `${p.name} is cursed! Spread out, and find lantern light.`
@@ -586,13 +570,12 @@ export class GloomshadeArena extends RaidArena {
         )
           this.damage(p, G.pulse.damage, boss.id, { ...ability, ground: true });
       this.hitBy = undefined;
-      this.countDodges();
       // The real ring gives it away for a moment.
       r.revealUntil = Math.max(r.revealUntil ?? 0, this.time + 1.5);
       this.event("raid-impact", boss, 0xb88aff, undefined, boss.id);
       this.events[this.events.length - 1].raidRadius = w.radius;
       // Witching Hour: pulses come in pairs.
-      if (r.phase >= 3 && !w.followUp && !r.drill) {
+      if (r.phase >= 3 && !w.followUp) {
         // Live raids space the pair by the jump cooldown: both can be jumped.
         const gap = this.smart() ? RULES.jumpCooldown + 0.3 : G.pulse.pairGap;
         Object.assign(
@@ -623,7 +606,7 @@ export class GloomshadeArena extends RaidArena {
     // Witching Hour: copies return when the core closes again.
     if (this.exposedByStreak && r.exposedUntil <= this.time) {
       this.exposedByStreak = false;
-      if (r.phase >= 3 && !r.drill) this.splitWhenCovered = true;
+      if (r.phase >= 3) this.splitWhenCovered = true;
     }
     if (
       this.splitWhenCovered &&
@@ -773,7 +756,7 @@ export class GloomshadeArena extends RaidArena {
     l.lit = true;
     l.hits = 0;
     this.event("heal", l, 0xffd65b, 0, by?.id);
-    if (by && !r.drill && r.contributions?.[by.id])
+    if (by && r.contributions?.[by.id])
       r.contributions[by.id].pillars++;
   }
   private stepCurses(dt: number, boss: Fighter) {
@@ -861,8 +844,7 @@ export class GloomshadeArena extends RaidArena {
     if (
       target.raidBoss &&
       ability?.id === "landslide" &&
-      r.decoys?.length &&
-      !r.drill
+      r.decoys?.length
     ) {
       r.decoys = [];
       r.streak = 0;
@@ -870,7 +852,7 @@ export class GloomshadeArena extends RaidArena {
     }
     // Six hits in a row on the real one expose it, and the copies vanish.
     // Only while there are copies to tell it apart from: that's the puzzle.
-    if (!target.raidBoss || target.hp >= before || r.drill || !r.decoys?.length)
+    if (!target.raidBoss || target.hp >= before || !r.decoys?.length)
       return;
     if (this.time - (this.lastHitAt.get(owner) ?? -9) < STREAK_GAP) return;
     this.lastHitAt.set(owner, this.time);

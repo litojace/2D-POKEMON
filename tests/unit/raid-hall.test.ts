@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Friend } from "../../packages/shared/src/accounts";
 import {
+  RAID_ATTACKS,
   RAID_BOSSES,
   RAID_BOSS_ORDER,
   raidAttacksOf,
@@ -10,7 +11,7 @@ import {
   bossTricks,
   canInvite,
   hallBosses,
-  practiceAttack,
+  shownAttack,
   raidMarkup,
   raidSeats,
   raidUnlocked,
@@ -19,6 +20,8 @@ import {
   startState,
   type RaidData,
 } from "../../apps/client/src/screens/raid-hall-view";
+import { esc } from "../../apps/client/src/ui/components";
+import { BOSS_ATTACK_ART } from "../../apps/client/src/boss-attack-art";
 
 // Raids (UI remodel step 5): the Raid Hall and the boss pages. The reward
 // checks come from the old Raid Hub's tests (raid-lobby.test.ts): what they
@@ -155,23 +158,41 @@ describe("fresh records patch the screen in place", () => {
 });
 
 describe("a boss page", () => {
-  it("has the four tabs, and Practice drills the picked attack", () => {
+  it("has the four tabs, no practice, and shows the picked attack large", () => {
     const view = raidView("grumblecrag", { mode: "boss" });
     const html = raidMarkup(view, data());
     for (const tab of ["party", "attacks", "rewards", "guide"])
       expect(html).toContain(`data-ui-raid-tab="${tab}"`);
-    expect(practiceAttack(view)).toBe(raidAttacksOf("grumblecrag")[0]);
+    expect(html).not.toContain("data-raid-practice");
+    expect(html).not.toMatch(/practi[cs]e/i);
+    expect(shownAttack(view)).toBe(raidAttacksOf("grumblecrag")[0]);
     view.attack = raidAttacksOf("grumblecrag")[2];
-    expect(practiceAttack(view)).toBe(raidAttacksOf("grumblecrag")[2]);
+    expect(shownAttack(view)).toBe(raidAttacksOf("grumblecrag")[2]);
     // An attack of another boss falls back to this boss's first.
     view.attack = raidAttacksOf("tidewyrm")[0];
-    expect(practiceAttack(view)).toBe(raidAttacksOf("grumblecrag")[0]);
+    expect(shownAttack(view)).toBe(raidAttacksOf("grumblecrag")[0]);
     view.tab = "attacks";
-    view.attack = null;
+    view.attack = raidAttacksOf("grumblecrag")[1];
     const attacks = raidMarkup(view, data());
     expect(count(attacks, /data-raid-attack="/g)).toBe(
       raidAttacksOf("grumblecrag").length,
     );
+    // The big card: its art, what it does and how to beat it.
+    const pick = raidAttacksOf("grumblecrag")[1];
+    expect(attacks).toContain(`class="rh-attack-big"`);
+    expect(attacks).toContain(`data-attack-art="${pick}"`);
+    expect(attacks).toContain(esc(RAID_ATTACKS[pick].tip));
+    expect(attacks).not.toMatch(/practi[cs]e/i);
+  });
+  it("draws every boss attack as its own illustrated icon", () => {
+    for (const boss of RAID_BOSS_ORDER) {
+      const view = raidView(boss, { mode: "boss", tab: "attacks" });
+      const html = raidMarkup(view, data());
+      for (const a of raidAttacksOf(boss)) {
+        expect(BOSS_ATTACK_ART, a).toContain(a);
+        expect(html, a).toContain(`data-attack-art="${a}"`);
+      }
+    }
   });
   it("seats you and your party, with open seats to fill", () => {
     const alone = raidSeats(data());

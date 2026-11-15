@@ -165,8 +165,8 @@ Lobby (hub after login: fighter, party slots, PLAY bottom right)
 │  ├─ Shop ──────┴► Fitting room: one screen, Shop | Wardrobe switch
 │  │                 Shop: Today · Skins · Mythic Hall · Collections ──► Buy ──► Confirm
 │  │                 Wardrobe: Skin · Colors · Aura · Entrance · Victory · Frame ──► Equip
-│  ├─ Raids ─────► Raid Hall (boss cards + Attack practice)
-│  │                 └─ Boss page (Party · Attacks/practice · Rewards · Guide)
+│  ├─ Raids ─────► Raid Hall (boss cards)
+│  │                 └─ Boss page (Party · Attacks · Rewards · Guide)
 │  │                      ├─ Start raid ──► Raid room ──► Briefing ──► (match) ──► Results
 │  │                      └─ Practice ──► attack drill (existing)
 │  ├─ Journey ───► Season road · Levels · Weekly arcade      (sheet or panel)
@@ -322,9 +322,10 @@ Wardrobe only swaps the catalogue; the stage, try-on and action bar stay.
 
 - **Raid Hall:** seven boss cards (art, name, stars, element, the
   signature mechanic, clears or New, rewards earned, three fighters with a
-  trick there) plus an Attack practice card. Locked bosses say why ("Clear
-  Grumblecrag first"). Filters: Not cleared, stars.
-- **Boss page:** the boss art on the stage; tabs Party · Attacks/practice ·
+  trick there). Locked bosses say why ("Clear Grumblecrag first").
+  Filters: Not cleared, stars. (Attack practice was removed in November
+  2026; the Attacks tab shows each attack's own icon and how to beat it.)
+- **Boss page:** the boss art on the stage; tabs Party · Attacks ·
   Rewards · Guide. Party shows four seats (you, members, open seats to
   invite), online friends with an Invite button, the fighters with a trick
   here, and the next rewards with progress. Bottom right: Solo / With party,
@@ -730,7 +731,7 @@ which waits for the owner's look at its mockup (above).
   back to the boss page on the tab you left from.
 - **Raid Hall:** the seven bosses as cards of one size (splash art, name,
   stars, element, the signature mechanic, clears or New, rewards earned,
-  three fighters with a trick there) and an Attack practice card. Locked
+  three fighters with a trick there). Locked
   bosses say "Clear Grumblecrag first". Filters All · Not cleared · ★ ·
   ★★ · ★★★, with an empty state and "Show all" when nothing is left.
 - **Boss page:** the split panel from steps 2 and 3, with the boss's art

@@ -221,242 +221,242 @@ export type RaidAttack =
   | "thunderclap";
 export const RAID_ATTACKS: Record<
   RaidAttack,
-  { name: string; tip: string; practice: string }
+  { name: string; tip: string; summary: string }
 > = {
   "prism-lance": {
     name: "Prism Lance",
     tip: "Sidestep the thin red lane after it locks.",
-    practice: "A locked straight beam. Step sideways.",
+    summary: "A locked straight beam. Step sideways.",
   },
   "fan-display": {
     name: "Fan Display",
     tip: "The numbered color on the crest is the only cone that fires. Leave that cone.",
-    practice:
+    summary:
       "Six numbered cones appear; only the crest\u2019s matching color fires.",
   },
   glare: {
     name: "Glare",
     tip: "Aim away from the boss when the eye warning fills. On touch, hold Look away. Mystowl\u2019s Wing Cloak shelters allies inside.",
-    practice:
+    summary:
       "Turn away before the white crest flashes to avoid 1.5 seconds of blindness.",
   },
   refraction: {
     name: "Refraction",
     tip: "Lances bounce off mirror posts. Both segments are marked before they fire.",
-    practice: "Leave both marked beam segments.",
+    summary: "Leave both marked beam segments.",
   },
   "halo-crush": {
     name: "Halo Crush",
     tip: "The ring closes around the marked point. Move through the teal gap or dash clear.",
-    practice: "A closing halo has one marked safe gap.",
+    summary: "A closing halo has one marked safe gap.",
   },
   "light-relay": {
     name: "Light Relay",
     tip: "Stand between the skylight and a mirror. Hit mirrors to rotate them 45\u00b0. Chain light into the heart. Hold a connected chain for 1.2 seconds (solo 1 second, 2 in the final phase); in the final phase teams need both paths within 3 seconds. Mirrors that carried the light flash and turn after each exposure.",
-    practice:
+    summary:
       "Connect skylight \u2192 raider \u2192 mirrors \u2192 heart. Hit a mirror to turn its arrow.",
   },
   "dive-bomb": {
     name: "Dive Bomb",
     tip: "Sidestep the locked lane. The dive leaves a burning trail for 4 seconds. Auralynx can reflect it with Facet Guard.",
-    practice:
+    summary:
       "A locked lane marks the dive. Step sideways; avoid the burning trail.",
   },
   "ember-rain": {
     name: "Ember Rain",
     tip: "Keep moving between the small marked circles. Each ember lands separately.",
-    practice: "Embers rain down on staggered circles. Step between them.",
+    summary: "Embers rain down on staggered circles. Step between them.",
   },
   "wing-gust": {
     name: "Hot Gust",
     tip: "Leave the arrow cone or dash into the gust to resist its push. Avoid being pushed into fire.",
-    practice: "The cone pushes you away. Dash toward the boss as it lands.",
+    summary: "The cone pushes you away. Dash toward the boss as it lands.",
   },
   "flame-ring": {
     name: "Flame Ring",
     tip: "Jump as the expanding edge reaches you. Standing inside the ring after it passes is safe.",
-    practice: "Jump over the expanding ring of fire.",
+    summary: "Jump over the expanding ring of fire.",
   },
   "scorched-earth": {
     name: "Scorched Earth",
     tip: "Avoid growing fire patches. Grounding Lumiwick shrinks all fire; Tidefin\u2019s Undertow puts out the patches along its current.",
-    practice: "Fire patches grow over time. Ground the boss to shrink them.",
+    summary: "Fire patches grow over time. Ground the boss to shrink them.",
   },
   "heat-mark": {
     name: "Heat Mark",
     tip: "Spread out from marked allies before the 3-second timer expires. Each marked raider takes their own hit; standing in another blast adds damage.",
-    practice:
+    summary:
       "A blast follows you for 3 seconds. Spread out, then stay clear of other marked raiders.",
   },
   "brazier-lighting": {
     name: "Brazier Lighting",
     tip: "Stand inside a brazier ring for 2 seconds. Light all three together to ground Lumiwick. Solo flames last 11 seconds. Fireproof halves the lighting time.",
-    practice:
+    summary:
       "Run the triangle and light all three braziers before the first goes out.",
   },
   "link-beam": {
     name: "Link Beam",
     tip: "Jump across the bright ribbon or leave its path. From phase 2 copper posts bend it. Facet Guard reflects it into a twin.",
-    practice:
+    summary:
       "The ribbon brightens, then sweeps. Jump across it or stay clear.",
   },
   "chain-lightning": {
     name: "Chain Lightning",
     tip: "Spread more than 200px apart. The strike jumps up to three raiders. Voltkit absorbs it for 15 ultimate charge; Grounded prevents it jumping from you.",
-    practice: "A marked raider starts a chain. Spread out so it cannot jump.",
+    summary: "A marked raider starts a chain. Spread out so it cannot jump.",
   },
   "static-field": {
     name: "Static Field",
     tip: "Avoid the crackling circle or jump across it. Standing inside hurts and slows you.",
-    practice: "A static field remains on the floor. Jump while crossing it.",
+    summary: "A static field remains on the floor. Jump while crossing it.",
   },
   "twin-rush": {
     name: "Twin Rush",
     tip: "Leave both locked lanes before the twins rush through. The crossing point is dangerous.",
-    practice: "Two lanes cross. Sidestep before both twins dash.",
+    summary: "Two lanes cross. Sidestep before both twins dash.",
   },
   polarity: {
     name: "Polarity",
     tip: "Stand within 125px of an opposite sign before the 4-second timer ends. Same signs together take double damage. Solo: enter your opposite-sign floor pad. Terradon\u2019s Shell Up blocks the blast.",
-    practice: "Pair with an opposite sign. Solo: reach the matching floor pad.",
+    summary: "Pair with an opposite sign. Solo: reach the matching floor pad.",
   },
   thunderclap: {
     name: "Thunderclap",
     tip: "The twin with less health marks a circle. Jump as it fills or step outside.",
-    practice: "A ring fills around the weaker twin. Jump or leave it.",
+    summary: "A ring fills around the weaker twin. Jump or leave it.",
   },
   charge: {
     name: "Mountain Charge",
     tip: "When you're targeted, stand so a pillar is between you and the boss, then step aside as the lane locks.",
-    practice: "A lane locks onto you, then the boss rushes down it.",
+    summary: "A lane locks onto you, then the boss rushes down it.",
   },
   slam: {
     name: "Ground Slam",
     tip: "Jump just as the ring fills, or walk out of the circle. From phase 2 a second slam follows.",
-    practice: "A ring fills around the boss. Jump or leave it.",
+    summary: "A ring fills around the boss. Jump or leave it.",
   },
   debris: {
     name: "Falling Debris",
     tip: "Keep moving: debris lands where you were standing.",
-    practice: "Rocks fall on everyone's position. Keep moving.",
+    summary: "Rocks fall on everyone's position. Keep moving.",
   },
   volley: {
     name: "Rock Volley",
     tip: "Get out of the cone or put a pillar between you and the boss. Auralynx's Facet Guard blocks it.",
-    practice: "A cone of stones. Leave it or hide behind a pillar.",
+    summary: "A cone of stones. Leave it or hide behind a pillar.",
   },
   eruption: {
     name: "Chasing Eruption",
     tip: "The eruptions follow one raider: keep running in one direction and don't drag them through your team.",
-    practice: "Eruptions chase you three times. Keep running.",
+    summary: "Eruptions chase you three times. Keep running.",
   },
   share: {
     name: "Shared Meteor",
     tip: "Gather on the marked raider so the meteor's damage is split. Alone, step out of the circle once it locks.",
-    practice: "A meteor marks you. Alone, leave the circle after it locks.",
+    summary: "A meteor marks you. Alone, leave the circle after it locks.",
   },
   dive: {
     name: "Dive & Surface",
     tip: "When the ripple follows you, lead it onto an island, then step off before it locks. It surfaces stranded on dry land.",
-    practice:
+    summary:
       "A ripple follows you, then locks. Lead it onto an island and step off.",
   },
   wave: {
     name: "Tidal Wave",
     tip: "A low wave (chapter 1) can be jumped. A high wave can't: be standing on an island when it passes.",
-    practice:
+    summary:
       "A wave sweeps the arena. Jump a low one; stand on an island for a high one.",
   },
   bubbles: {
     name: "Bubble Barrage",
     tip: "Step between the slow bubbles or pop them with your attacks. A hit roots you for a moment.",
-    practice: "A fan of slow bubbles. Weave through or pop them.",
+    summary: "A fan of slow bubbles. Weave through or pop them.",
   },
   hightide: {
     name: "High Tide",
     tip: "Get onto an island before the water rises. Two fit on an island; a third gets pushed off.",
-    practice: "The floor floods for a few seconds. Stand on an island.",
+    summary: "The floor floods for a few seconds. Stand on an island.",
   },
   undertow: {
     name: "Undertow",
     tip: "Dash away from the whirlpool and keep walking outward. Touching its centre hurts.",
-    practice:
+    summary:
       "A whirlpool pulls everyone to the centre. Walk and dash outward.",
   },
   prison: {
     name: "Bubble Prison",
     tip: "Teammates pop the bubble with three hits. Alone, mash your attack to break out before it reaches the boss's mouth.",
-    practice:
+    summary:
       "A bubble seals you and drifts to the boss. Mash attack (or have friends pop it).",
   },
   lunge: {
     name: "Shadow Lunge",
     tip: "A dark line reaches you from the nearest shadow, not from the boss. Sidestep off the line.",
-    practice: "A dark line from a shadow to you. Sidestep it.",
+    summary: "A dark line from a shadow to you. Sidestep it.",
   },
   hands: {
     name: "Grasping Hands",
     tip: "Half the floor's tiles darken: stand on a lit tile. The pattern flips once, so watch it.",
-    practice: "Tiles darken in a checkerboard. Stand on a lit one.",
+    summary: "Tiles darken in a checkerboard. Stand on a lit one.",
   },
   snuff: {
     name: "Lantern Snuff",
     tip: "A lantern dims and goes out. Hit it twice to relight it: lantern light is where the real Inkpurr casts a shadow.",
-    practice: "A lantern goes out. Hit it twice to relight it.",
+    summary: "A lantern goes out. Hit it twice to relight it.",
   },
   curse: {
     name: "Creeping Curse",
     tip: "Spread out: the curse spreads to anyone near a cursed raider. Three stacks haunts you. Stand in lantern light to cleanse it.",
-    practice: "A curse marks you. Stand in lantern light to cleanse it.",
+    summary: "A curse marks you. Stand in lantern light to cleanse it.",
   },
   split: {
     name: "Mirror Split",
     tip: "Only the real Inkpurr casts a shadow in lantern light, and its moon tail flickers. Hitting a copy curses you.",
-    practice: "It splits into copies. Find the one with a shadow in the light.",
+    summary: "It splits into copies. Find the one with a shadow in the light.",
   },
   pulse: {
     name: "Nightmare Pulse",
     tip: "Every copy sends a ring, but only the real one's hurts: jump it. The pulse also shows you which one is real.",
-    practice: "Rings from every copy. Jump the real one's.",
+    summary: "Rings from every copy. Jump the real one's.",
   },
   lullaby: {
     name: "Lullaby Rings",
     tip: "Jump the expanding rings or keep out of their path. Three Drowsy stacks put you to sleep; a teammate can hit you awake without hurting you.",
-    practice: "Jump the three soft rings. Each hit adds Drowsy.",
+    summary: "Jump the three soft rings. Each hit adds Drowsy.",
   },
   "tail-splash": {
     name: "Trunk Slam",
     tip: "Leave the marked lane before Snoozaku's dream-trunk slams down.",
-    practice: "A wide lane marks the trunk's reach. Step outside it.",
+    summary: "A wide lane marks the trunk's reach. Step outside it.",
   },
   "dream-bubbles": {
     name: "Dream Bubbles",
     tip: "Pop the drifting bubbles with an attack or outrun them. Touching one adds Drowsy.",
-    practice: "Slow bubbles follow you. Pop them or keep moving.",
+    summary: "Slow bubbles follow you. Pop them or keep moving.",
   },
   "falling-stars": {
     name: "Falling Stars",
     tip: "Remember the constellation and stand between the marked stars before they land.",
-    practice: "A constellation flashes; stars land on each marked point.",
+    summary: "A constellation flashes; stars land on each marked point.",
   },
   "whale-song": {
     name: "Thunder Snore",
     tip: "Stay inside the moving teal Quiet Zone until the snore ends. Everyone fits, but it is small.",
-    practice: "Follow the moving Quiet Zone for four seconds.",
+    summary: "Follow the moving Quiet Zone for four seconds.",
   },
   "dream-sequence": {
     name: "Dream Sequence",
     tip: "The Dreamer sees the runes privately. Call them with 1–4 or the rune buttons, then enter the matching pads in order. Leave a pad before entering it again. A backwards arrow means read right to left.",
-    practice:
+    summary:
       "Read your private sequence and step on the pads in order. Solo gives you 14 seconds.",
   },
   nightmare: {
     name: "Nightmare",
     tip: "A wrong rune or expired sequence bursts across the team. A fresh Dreamer gets a new sequence; listen for their calls.",
-    practice: "Get the rune sequence right before its timer expires.",
+    summary: "Get the rune sequence right before its timer expires.",
   },
 };
-/** Six attacks per boss, in Hub/practice order. Brazier lighting is an arena mechanic. */
+/** Six attacks per boss, in Hub order. Brazier lighting is an arena mechanic. */
 export const RAID_BOSS_ATTACKS: Record<RaidBossId, RaidAttack[]> = {
   "storm-twins": [
     "link-beam",
@@ -2347,9 +2347,6 @@ export interface RaidState {
   >;
   /** Quick team signals (Stack on me, Revive me, Bait here). */
   pings?: { id: number; playerId: string; kind: RaidPingKind; until: number }[];
-  /** Practice: the boss repeats one attack, and hits only count. */
-  drill?: RaidAttack | null;
-  drillStats?: { hits: number; dodges: number };
   /** Heroes an AI is playing for while their player reconnects. */
   standIns?: string[];
   wards: { x: number; y: number; until: number }[];

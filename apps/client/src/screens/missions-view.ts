@@ -101,7 +101,7 @@ function missionRow(
   const examples = missionFeatExamples(m.id);
   // Always in the markup (hidden when closed), so opening it changes one
   // attribute and the row's button keeps focus.
-  const guide = `<div class="missions-guide" id="mission-guide-${m.slot}" role="region" aria-label="How to complete: ${esc(m.text)}"${open ? "" : " hidden"}><p>${esc(missionHelp(m.id))}</p>${examples.length ? `<ul>${examples.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>` : ""}<p class="ui-note">Finish the match or raid to save progress. Solo test mode and attack practice do not count.</p></div>`;
+  const guide = `<div class="missions-guide" id="mission-guide-${m.slot}" role="region" aria-label="How to complete: ${esc(m.text)}"${open ? "" : " hidden"}><p>${esc(missionHelp(m.id))}</p>${examples.length ? `<ul>${examples.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>` : ""}<p class="ui-note">Finish the match or raid to save progress. Solo test mode does not count.</p></div>`;
   return `<li class="missions-row${m.done ? " is-done" : ""}" data-tier="${m.tier}" data-mission-slot="${m.slot}"><button type="button" class="missions-main" data-mission-help="${m.slot}" aria-expanded="${open}" aria-controls="mission-guide-${m.slot}" aria-label="${esc(m.text)}: ${n} of ${m.target}. How to complete it"><span class="missions-top"><b>${esc(m.text)}</b><span class="ui-num">${n}/${m.target}</span></span>${bar(n, m.target, { label: `${m.text} progress`, color: m.done ? "var(--ui-ok)" : "var(--tier)" })}<span class="missions-pay"><span class="missions-diff">${TIER_LABEL[m.tier]}</span>${price(m.coins)}<span>+${MISSION_XP} XP</span>${together ? tag("With others") : ""}</span></button>${side}${guide}</li>`;
 }
 

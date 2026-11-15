@@ -13,7 +13,6 @@ import { createRaidArena } from "./raid-bosses.js";
 import type { ActivityReceipt } from "../../../packages/shared/src/shop.js";
 import {
   DREAM_RUNES,
-  RAID_ATTACKS,
   RAID_PINGS,
   RAID_COSMETICS,
   raidAttacksOf,
@@ -702,12 +701,11 @@ export function createArenaServer(
   }
   function broadcast(arena: Arena) {
     const started = diagnostics.now();
-    // Wins and real attempts (not practice, not instant quits) are saved:
+    // Wins and real attempts (not instant quits) are saved:
     // losses still count towards titles and tell us which attacks are unfair.
     if (
       arena instanceof RaidArena &&
       arena.raid.result &&
-      !arena.raid.drill &&
       (arena.raid.result === "victory" || arena.raid.elapsed >= 20) &&
       arena.raid.resultId &&
       raidSaves.get(arena) !== arena.raid.resultId
@@ -1778,36 +1776,9 @@ export function createArenaServer(
         false,
       ),
     );
-    socket.on("raid-drill", (data: unknown, cb: unknown) =>
-      withRoom(cb, (a, id) => {
-        const result = z
-          .object({
-            kind: z
-              .enum(Object.keys(RAID_ATTACKS) as [RaidAttack, ...RaidAttack[]])
-              .nullable(),
-          })
-          .strict()
-          .safeParse(data);
-        if (
-          !(a instanceof RaidArena) ||
-          !result.success ||
-          (result.data.kind !== null &&
-            !raidAttacksOf(a.raid.boss).includes(result.data.kind))
-        )
-          return fail(cb, "Choose an attack to practise.");
-        if (a.players[0]?.id !== id)
-          return fail(cb, "The host picks the practice attack.");
-        const kind = result.data.kind;
-        const ok =
-          kind === null
-            ? a.stopDrill()
-            : a.raid.drill
-              ? a.setDrill(kind)
-              : a.startDrill(kind);
-        if (!ok) return fail(cb, "Practice opens from the raid lobby.");
-        reply(cb, { ok: true });
-        broadcast(a);
-      }),
+    // Boss practice was removed; an old cached client may still ask for it.
+    socket.on("raid-drill", (_data: unknown, cb: unknown) =>
+      fail(cb, "Boss practice is no longer available. Refresh the game."),
     );
     socket.on("ready", (_data: unknown, cb: unknown) =>
       withRoom(cb, (a, id) => {
@@ -1993,12 +1964,6 @@ export function createArenaServer(
     );
     socket.on("lobby", (_data: unknown, cb: unknown) =>
       withRoom(cb, (a) => {
-        if (a instanceof RaidArena && a.raid.drill) {
-          a.stopDrill();
-          reply(cb, { ok: true });
-          broadcast(a);
-          return;
-        }
         if (a.phase !== "finished") return fail(cb, "Finish the match first.");
         // Raid stand-ins hand back their seats in the lobby.
         if (a instanceof RaidArena)

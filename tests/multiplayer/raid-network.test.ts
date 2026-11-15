@@ -289,7 +289,7 @@ it("only reports an equipped slot after the database really kept it", async () =
   expect(stale.status).toBe(503);
   expect((await stale.json()).error).toContain(RAID_FUNCTIONS_MIGRATION);
 });
-it("opens Tidewyrm in its own arena and checks practice attacks belong to the boss", async () => {
+it("opens Tidewyrm in its own arena, and turns down an old client's boss practice", async () => {
   const { connect } = await setup(),
     host = await connect();
   const created = await emit(host, "create", { name: "Raider", mode: "raid", boss: "tidewyrm" });
@@ -297,22 +297,22 @@ it("opens Tidewyrm in its own arena and checks practice attacks belong to the bo
   const a = server!.rooms.get(created.code!) as RaidArena;
   expect(a).toBeInstanceOf(TidewyrmArena);
   expect(a.raid.boss).toBe("tidewyrm");
-  // Grumblecrag's charge can't be practised here; Tidewyrm's dive can.
-  expect((await emit(host, "raid-drill", { kind: "charge" })).ok).toBe(false);
-  expect((await emit(host, "raid-drill", { kind: "dive" })).ok).toBe(true);
-  expect(a.raid.drill).toBe("dive");
+  // Boss practice is gone; a cached old client gets a clear answer.
+  const drill = await emit(host, "raid-drill", { kind: "dive" });
+  expect(drill.ok).toBe(false);
+  expect(drill.error).toContain("no longer available");
+  expect(a.phase).toBe("lobby");
+  a.start();
   expect(a.arenaId).toBe("lagoon");
 });
-it("opens Gloomshade in the Lantern Yard and practises its own attacks", async () => {
+it("opens Gloomshade in the Lantern Yard", async () => {
   const { connect } = await setup(),
     host = await connect();
   const created = await emit(host, "create", { name: "Raider", mode: "raid", boss: "gloomshade" });
   expect(created.ok).toBe(true);
   const a = server!.rooms.get(created.code!) as RaidArena;
   expect(a).toBeInstanceOf(GloomshadeArena);
-  expect((await emit(host, "raid-drill", { kind: "dive" })).ok).toBe(false);
-  expect((await emit(host, "raid-drill", { kind: "split" })).ok).toBe(true);
-  expect(a.raid.drill).toBe("split");
+  a.start();
   expect(a.arenaId).toBe("lantern-yard");
 });
 
@@ -367,33 +367,26 @@ it("sends Somnara's dream only to its authenticated Dreamer, with Lucid/reveal e
   expect(ally.raidDream).toBeUndefined(); expect(publicView.raidDream).toBeUndefined();
 });
 
-it("opens Prismatail for a co-op party, validates its drills, and broadcasts the relay state", async () => {
+it("opens Prismatail for a co-op party and broadcasts the relay state", async () => {
   const {connect,accounts}=await setup();accounts.provider.rpc=async()=>({clears:1,highestPeril:3,cosmetics:[],weekly:[],bosses:{grumblecrag:{clears:1,highestPeril:3}}});
   const host=await connect(),peer=await connect();
   const created=await emit(host,'create',{name:'Light host',mode:'raid',boss:'prismatail'});expect(created.ok).toBe(true);
   const joined=await emit(peer,'join',{name:'Light friend',code:created.code});expect(joined.ok).toBe(true);
   const a=server!.rooms.get(created.code!) as RaidArena;expect(a.constructor.name).toBe('PrismatailArena');
-  expect((await emit(peer,'raid-drill',{kind:'light-relay'})).ok).toBe(false);
-  expect((await emit(host,'raid-drill',{kind:'dream-sequence'})).ok).toBe(false);
-  expect((await emit(host,'raid-drill',{kind:'light-relay'})).ok).toBe(true);
-  a.phase='playing';a.raid.phase=3;a.heroes().forEach((p,i)=>{p.x=470;p.y=i?600:300});(a as any).started=true;(a as any).nextAttack=Infinity;
+  a.start();a.phase='playing';a.raid.phase=3;a.heroes().forEach((p,i)=>{p.x=470;p.y=i?600:300});(a as any).started=true;(a as any).nextAttack=Infinity;
   const pending=new Promise<any>((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('No Prismatail relay snapshot')),2000);peer.on('state',s=>{if(s.raid?.lightLinks?.length){clearTimeout(timer);resolve(s);}})});
   for(let i=0;i<70;i++)server!.step();const snapshot=await pending;
   expect(snapshot.arena).toBe('sun-atrium');expect(snapshot.raid.mirrors).toHaveLength(4);expect(snapshot.raid.lightLinks.some((s:any)=>s.beam===1)).toBe(true);expect(snapshot.raidDream).toBeUndefined();
-  expect((await emit(host,'raid-drill',{kind:null})).ok).toBe(true);
 });
 
-it("creates Emberwing in the Sky Terrace, restricts practice to the host, and sends airborne brazier state",async()=>{
+it("creates Emberwing in the Sky Terrace and sends airborne brazier state",async()=>{
  const {connect,accounts}=await setup();accounts.provider.rpc=async()=>({clears:1,highestPeril:3,cosmetics:[],weekly:[],bosses:{grumblecrag:{clears:1,highestPeril:3}}});
  const host=await connect(),peer=await connect();const created=await emit(host,'create',{name:'Fire host',mode:'raid',boss:'emberwing'});expect(created.ok).toBe(true);
  expect((await emit(peer,'join',{name:'Fire friend',code:created.code})).ok).toBe(true);
  const a=server!.rooms.get(created.code!)as RaidArena;expect(a.constructor.name).toBe('EmberwingArena');
- expect((await emit(peer,'raid-drill',{kind:'wing-gust'})).ok).toBe(false);expect((await emit(host,'raid-drill',{kind:'light-relay'})).ok).toBe(false);
- expect((await emit(host,'raid-drill',{kind:'brazier-lighting'})).ok).toBe(false);
- expect((await emit(host,'raid-drill',{kind:'wing-gust'})).ok).toBe(true);a.phase='playing';a.raid.phase=2;(a as any).takeoff();(a as any).started=true;(a as any).nextAttack=Infinity;
+ a.start();a.phase='playing';a.raid.phase=2;(a as any).takeoff();(a as any).started=true;(a as any).nextAttack=Infinity;
  const pending=new Promise<any>((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('No Emberwing snapshot')),2000);peer.on('state',s=>{if(s.raid?.airborne&&s.raid?.braziers?.length===3){clearTimeout(timer);resolve(s);}})});
  for(let i=0;i<10;i++)server!.step();const snapshot=await pending;expect(snapshot.arena).toBe('sky-terrace');expect(snapshot.raid.braziers.every((b:any)=>Number.isFinite(b.progress))).toBe(true);expect(snapshot.raidDream).toBeUndefined();
- expect((await emit(host,'raid-drill',{kind:null})).ok).toBe(true);expect(a.raid.airborne).toBe(false);
 });
 
 it("starts Storm Twins with both NPCs acknowledged, broadcasts separate health, and records only a real two-twin victory",async()=>{

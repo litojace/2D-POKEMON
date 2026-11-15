@@ -1,7 +1,7 @@
 /**
  * Raids (UI remodel step 5, docs/ui-remodel/PLAN.md): the Raid Hall (every
- * boss as a card, plus Attack practice) and a boss's page (its art on the
- * stage; Party · Attacks · Rewards · Guide). Markup and rules only (no DOM);
+ * boss as a card) and a boss's page (its art on the stage; Party · Attacks ·
+ * Rewards · Guide). Markup and rules only (no DOM);
  * screens/raid-hall.ts wires it up.
  *
  * Raids have one difficulty: a boss's "difficulty" is its 1–3 stars. The
@@ -32,6 +32,7 @@ import { fighterAvatar } from "../fighter-art";
 import { friendStatus } from "./friends-view";
 import { itemPicture } from "../shop-ui";
 import { menuIcon } from "../menu-icons";
+import { bossAttackArt } from "../boss-attack-art";
 import {
   actionBar,
   actions,
@@ -55,7 +56,7 @@ import { cosmeticTier } from "../../../../packages/shared/src/cosmetic-tier";
 export type RaidTab = "party" | "attacks" | "rewards" | "guide";
 export const RAID_TABS: [RaidTab, string][] = [
   ["party", "Party"],
-  ["attacks", "Attacks · practice"],
+  ["attacks", "Attacks"],
   ["rewards", "Rewards"],
   ["guide", "Guide"],
 ];
@@ -75,7 +76,7 @@ export interface RaidView {
   boss: RaidBossId;
   tab: RaidTab;
   filter: RaidFilter;
-  /** The attack Practice drills (Attacks tab); the boss's first by default. */
+  /** The attack shown large on the Attacks tab; the boss's first by default. */
   attack: RaidAttack | null;
   /** Solo (straight in) or With party (a room your party follows you into). */
   play: "solo" | "party";
@@ -206,8 +207,8 @@ export function startState(view: RaidView, d: RaidData) {
   const warn = !reason && play === "solo" && !soloRevives(view.boss);
   return { play, ok: !reason, reason, note, soloLocked: size > 1, warn };
 }
-/** The attack Practice drills: the picked one, or the boss's first. */
-export const practiceAttack = (view: RaidView) =>
+/** The attack the Attacks tab shows large: the picked one, or the boss's first. */
+export const shownAttack = (view: RaidView) =>
   view.attack && raidAttacksOf(view.boss).includes(view.attack)
     ? view.attack
     : raidAttacksOf(view.boss)[0];
@@ -404,26 +405,31 @@ function partyTab(view: RaidView, d: RaidData) {
 <p class="ui-note rh-status" role="status">${esc(view.status)}</p>
 <div class="rh-section"><h3 class="ui-h">Good picks here</h3><small class="ui-note">Fighters with a trick against ${esc(b.name)}</small></div>
 <div class="rh-picks">${tricks.map((t) => `<div class="rh-pick">${fighterChip(t.character, `rh-pick-${t.character}`, 40)}<span><b>${esc(CHARACTERS[t.character].name)}</b><small class="ui-note">${esc(t.skill)}: ${esc(t.text)}</small></span></div>`).join("")}</div>
-<div class="rh-section rh-strip-head"><h3 class="ui-h">Its attacks</h3><small class="ui-note">Pick one to practise it</small></div>
+<div class="rh-section rh-strip-head"><h3 class="ui-h">Its attacks</h3><small class="ui-note">Tap one to see how to dodge it</small></div>
 <div class="rh-strip" role="group" aria-label="${esc(b.name)} attacks">${raidAttacksOf(
     view.boss,
   )
     .map(
       (a) =>
-        `<button type="button" class="rh-attack is-mini" data-raid-attack-go="${a}" aria-label="Practise ${esc(RAID_ATTACKS[a].name)}: ${esc(RAID_ATTACKS[a].practice)}" title="${esc(RAID_ATTACKS[a].practice)}"><span class="rh-attack-icon" aria-hidden="true">${menuIcon(ATTACK_ICONS[a] ?? "target")}</span><span class="rh-attack-text"><b>${esc(RAID_ATTACKS[a].name)}</b></span></button>`,
+        `<button type="button" class="rh-attack is-mini" data-raid-attack-go="${a}" aria-label="${esc(RAID_ATTACKS[a].name)}: ${esc(RAID_ATTACKS[a].summary)}" title="${esc(RAID_ATTACKS[a].summary)}"><span class="rh-attack-icon" aria-hidden="true">${attackIcon(a)}</span><span class="rh-attack-text"><b>${esc(RAID_ATTACKS[a].name)}</b></span></button>`,
     )
     .join("")}</div>`;
 }
-function attacksTab(view: RaidView, d: RaidData) {
+/** A boss attack's illustrated icon (every Hub attack has one). */
+const attackIcon = (a: RaidAttack) => bossAttackArt(a) ?? "";
+/** Attacks, like a champion's Skills tab: the picked one large, then a row each. */
+function attacksTab(view: RaidView) {
   const b = RAID_BOSSES[view.boss];
-  const pick = practiceAttack(view);
-  const locked = b.playable && !raidUnlocked(d.progress, view.boss);
-  return `<p class="ui-note">${raidAttacksOf(view.boss).length} attacks. Pick one, then Practice drills it on its own: nothing to lose, no rewards.</p><div class="rh-attacks" role="group" aria-label="${esc(b.name)} attacks">${raidAttacksOf(
+  const pick = shownAttack(view);
+  const big = pick
+    ? `<div class="rh-attack-big" aria-live="polite"><span class="rh-attack-art">${attackIcon(pick)}</span><span class="rh-attack-big-text"><b class="ui-h">${esc(RAID_ATTACKS[pick].name)}</b><p class="ui-note">${esc(RAID_ATTACKS[pick].summary)}</p><p class="rh-attack-tip"><span class="ui-kicker">How to beat it</span>${esc(RAID_ATTACKS[pick].tip)}</p></span></div>`
+    : "";
+  return `${big}<div class="rh-attacks" role="group" aria-label="${esc(b.name)} attacks">${raidAttacksOf(
     view.boss,
   )
     .map(
       (a) =>
-        `<button type="button" class="rh-attack" data-raid-attack="${a}" aria-pressed="${a === pick}"${locked ? " disabled" : ""}><span class="rh-attack-icon" aria-hidden="true">${menuIcon(ATTACK_ICONS[a] ?? "target")}</span><span class="rh-attack-text"><b>${esc(RAID_ATTACKS[a].name)}</b><small>${esc(RAID_ATTACKS[a].practice)}</small></span></button>`,
+        `<button type="button" class="rh-attack" data-raid-attack="${a}" aria-pressed="${a === pick}"><span class="rh-attack-icon" aria-hidden="true">${attackIcon(a)}</span><span class="rh-attack-text"><b>${esc(RAID_ATTACKS[a].name)}</b><small>${esc(RAID_ATTACKS[a].summary)}</small></span></button>`,
     )
     .join("")}</div>`;
 }
@@ -475,7 +481,7 @@ function bossMarkup(view: RaidView, d: RaidData) {
   );
   const body = {
     party: () => partyTab(view, d),
-    attacks: () => attacksTab(view, d),
+    attacks: () => attacksTab(view),
     rewards: () => rewardsTab(view, d),
     guide: () => guideTab(view),
   }[view.tab]();
@@ -494,20 +500,11 @@ function bossMarkup(view: RaidView, d: RaidData) {
     "How to raid",
     "raid-play",
   );
-  const attack = practiceAttack(view);
   const foot = actionBar(
     s.ok
       ? `${mode}<small class="ui-note rh-foot-note${s.warn ? " is-warning" : ""}">${esc(s.note)}</small>`
       : `<small class="ui-note rh-foot-note is-reason" role="status">${esc(s.reason)}</small>`,
     actions(
-      button("Practice", {
-        icon: "target",
-        disabled: !s.ok || !attack,
-        attrs: {
-          "data-raid-practice": attack ?? "",
-          title: attack ? `Practise ${RAID_ATTACKS[attack].name}` : undefined,
-        },
-      }),
       button("Start raid", {
         kind: "primary",
         disabled: !s.ok,
@@ -522,53 +519,3 @@ function bossMarkup(view: RaidView, d: RaidData) {
 export function raidMarkup(view: RaidView, d: RaidData) {
   return view.mode === "hall" ? hallMarkup(view, d) : bossMarkup(view, d);
 }
-
-/** One icon per boss attack, from the game's menu icons. */
-const ATTACK_ICONS: Partial<
-  Record<RaidAttack, Parameters<typeof menuIcon>[0]>
-> = {
-  charge: "motion",
-  slam: "battle",
-  debris: "sparkle",
-  volley: "swipe",
-  eruption: "target",
-  share: "target",
-  dive: "swipe",
-  wave: "swipe",
-  bubbles: "sparkle",
-  hightide: "swipe",
-  undertow: "motion",
-  prison: "target",
-  "prism-lance": "motion",
-  "fan-display": "swipe",
-  glare: "search",
-  refraction: "sparkle",
-  "halo-crush": "target",
-  "light-relay": "sparkle",
-  "dive-bomb": "motion",
-  "ember-rain": "sparkle",
-  "wing-gust": "swipe",
-  "flame-ring": "target",
-  "scorched-earth": "sparkle",
-  "heat-mark": "target",
-  "brazier-lighting": "sparkle",
-  "link-beam": "motion",
-  "chain-lightning": "motion",
-  "static-field": "target",
-  "twin-rush": "motion",
-  polarity: "fullscreen",
-  thunderclap: "target",
-  lunge: "motion",
-  hands: "battle",
-  snuff: "target",
-  curse: "sparkle",
-  split: "fullscreen",
-  pulse: "motion",
-  lullaby: "sound",
-  "tail-splash": "swipe",
-  "dream-bubbles": "sparkle",
-  "falling-stars": "sparkle",
-  "whale-song": "sound",
-  "dream-sequence": "sparkle",
-  nightmare: "search",
-};

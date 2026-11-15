@@ -30,10 +30,9 @@ for (const viewport of [{width:844,height:390},{width:1280,height:589},{width:84
       const gear=await page.locator('#battle-menu').boundingBox();
       expect(geometry.hud.right).toBeLessThanOrEqual(gear!.x+1);
       expect(geometry.hud.right).toBeLessThanOrEqual(viewport.width);
-      // Practice, a downed twin and a full party use the same bounded row.
+      // A downed twin and a full party use the same bounded row.
       await page.evaluate(()=>{
         const w=window as any,s=w.__snap;
-        s.raid.drill="twin-rush";
         const hero=s.players.find((p:any)=>p.id==="me");
         for(let i=2;i<=4;i++)s.players.push({...hero,id:`p${i}`,name:`Raider ${i}`});
         s.raid.partySize=4;
@@ -42,7 +41,6 @@ for (const viewport of [{width:844,height:390},{width:1280,height:589},{width:84
         twin.reviveAt=s.time+9;
         w.__push();
       });
-      await expect(page.locator('#raid-drill')).toBeVisible();
       const bounded=()=>page.locator('#raid-hud').evaluate((hud)=>{
         const h=hud.getBoundingClientRect();
         return [...hud.querySelectorAll('.raid-twin-health,.raid-twin-track,.raid-twin-bar > div:first-child,.raid-callout')].every(el=>{
@@ -51,7 +49,7 @@ for (const viewport of [{width:844,height:390},{width:1280,height:589},{width:84
       });
       await expect.poll(bounded).toBe(true);
       await expect(page.locator('.raid-twin-bar').nth(1)).toContainText('REVIVES IN 9s');
-      await snap(page,info,`twins-practice-${viewport.width}x${viewport.height}`);
+      await snap(page,info,`twins-downed-${viewport.width}x${viewport.height}`);
       if(viewport.width===844 && viewport.height===390){
         await page.setViewportSize({width:844,height:280});
         await expect.poll(bounded).toBe(true);

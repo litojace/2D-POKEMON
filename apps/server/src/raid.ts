@@ -190,8 +190,6 @@ export class RaidArena extends Arena {
   protected threat = new Map<string, number>();
   protected lastTargetId: string | undefined;
   chargeMisses = 0;
-  /** Raiders hit by the attack that is resolving (practice dodge count). */
-  protected struck = new Set<string>();
   /** This chapter's attack deck (the next cards, top first). */
   protected deck: RaidAttack[] = [];
   protected deckCycle = 0;
@@ -315,7 +313,6 @@ export class RaidArena extends Arena {
     r.enrageAt = undefined;
     this.resetBrain();
     r.pings = [];
-    r.drillStats = r.drill ? { hits: 0, dodges: 0 } : undefined;
     this.downCauses = {};
     this.pingAt.clear();
     r.warnings = [];
@@ -483,21 +480,8 @@ export class RaidArena extends Arena {
     )
       return;
     const r = this.raid;
-    if (r.drill) {
-      // Practice: the boss can't be hurt, and its hits only count.
-      if (target.raidBoss || !source?.raidBoss) return;
-      if (ability?.ground && target.jumpUntil > this.time) return;
-      if (!this.struck.has(target.id)) {
-        this.struck.add(target.id);
-        if (r.drillStats) r.drillStats.hits++;
-        this.event("hit", target, 0xff8c99, 0, owner);
-      }
-      return;
-    }
     if (source?.raidBoss) {
       amount *= this.bossDamage();
-      if (!(ability?.ground && target.jumpUntil > this.time))
-        this.struck.add(target.id);
     }
     if (target.raidBoss) {
       const exposed = this.bossExposed(target);
@@ -518,7 +502,7 @@ export class RaidArena extends Arena {
         this.coreAt.set(source.id, this.time + 1);
       }
       this.addBossStagger(target, Math.min(1.3, amount * 0.025));
-      if (source && !r.drill && r.boss === "grumblecrag")
+      if (source && r.boss === "grumblecrag")
         this.crackTricks(target, source, ability);
       // Bosses cannot be displaced or stun-locked by normal fighter kits.
       ability = ability ? { ...ability, knockback: 0 } : undefined;
@@ -941,8 +925,8 @@ export class RaidArena extends Arena {
     const r = this.raid,
       cadence = this.def().cadence;
     const base = r.trait === "restless" ? cadence.restless : cadence.normal;
-    const final = r.phase === 3 && !r.drill ? base * cadence.finalPhase : base;
-    if (r.drill || r.peril < 3) return final;
+    const final = r.phase === 3 ? base * cadence.finalPhase : base;
+    if (r.peril < 3) return final;
     // Live raids: the star tier, party pressure (4 raiders: ×0.85) and the
     // soft enrage all shorten the gap. Telegraphs stay as long as they were.
     const party = 1 - 0.05 * (Math.max(1, r.partySize) - 1);
@@ -954,9 +938,9 @@ export class RaidArena extends Arena {
     );
   }
   // ------------------------------------------------------------ Star tier
-  /** This run's difficulty row (Peril 1-2 and practice keep the old rules). */
+  /** This run's difficulty row (Peril 1-2 keep the old rules). */
   protected tier(): RaidTier {
-    return this.raid.peril >= 3 && !this.raid.drill
+    return this.raid.peril >= 3
       ? raidTier(this.raid.boss)
       : LEGACY_TIER;
   }
@@ -983,7 +967,6 @@ export class RaidArena extends Arena {
     const r = this.raid;
     if (
       r.peril < 3 ||
-      r.drill ||
       RAID_JUMP_ATTACKS.has(kind) ||
       RAID_DURATION_ATTACKS.has(kind) ||
       kind === "wave"
@@ -1045,7 +1028,7 @@ export class RaidArena extends Arena {
     delay: number,
   ) {
     const r = this.raid;
-    if (r.peril < 3 || r.drill) return { x: target.x, y: target.y };
+    if (r.peril < 3) return { x: target.x, y: target.y };
     if (RAID_CLUSTER_ATTACKS.has(kind)) {
       const near = this.heroes().filter(
         (p) =>
@@ -1058,13 +1041,6 @@ export class RaidArena extends Arena {
         };
     }
     return this.lead(target, this.telegraph(kind, delay));
-  }
-  /** Practice: count everyone a resolved attack missed. */
-  protected countDodges() {
-    const stats = this.raid.drillStats;
-    if (!this.raid.drill || !stats) return;
-    for (const p of this.heroes())
-      if (p.hp > 0 && !this.struck.has(p.id)) stats.dodges++;
   }
   protected startAttack(kind: RaidAttack, target: Fighter) {
     const r = this.raid,
@@ -1141,25 +1117,10 @@ export class RaidArena extends Arena {
     this.followWarnings(boss);
     this.lockWarnings(boss);
     this.playEchoes();
-    if (r.drill) {
-      if (
-        this.time >= this.nextAttack &&
-        this.canStartAttack() &&
-        !r.warnings.length
-      ) {
-        const alive = this.heroes().filter((p) => p.hp > 0);
-        if (!alive.length) return;
-        this.attacks++;
-        this.startAttack(r.drill, this.chooseTarget(r.drill, alive));
-        this.nextAttack = this.time + 3.2;
-        this.drillReset();
-      }
-    } else if (this.time >= this.nextAttack && this.canStartAttack())
-      this.tryAttack();
+    if (this.time >= this.nextAttack && this.canStartAttack()) this.tryAttack();
     const due = r.warnings.filter((w) => w.at <= this.time);
     r.warnings = r.warnings.filter((w) => w.at > this.time);
     for (const w of due) {
-      this.struck.clear();
       this.currentCast = this.castOf.get(w) ?? 0;
       this.resolving = true;
       this.resolveWarning(w, boss);
@@ -1174,7 +1135,7 @@ export class RaidArena extends Arena {
   protected resolving = false;
   /** Live raids think (Peril 3); Peril 1-2 keep the old fixed rotation. */
   protected smart() {
-    return this.raid.peril >= 3 && !this.raid.drill;
+    return this.raid.peril >= 3;
   }
   // ------------------------------------------------------ Choosing attacks
   /** Start the next attack if the tier lets one more be live. */
@@ -1697,10 +1658,10 @@ export class RaidArena extends Arena {
   }
   /** Arena upkeep that carries on even while the boss is staggered. */
   protected worldStep(_dt: number, _boss: Fighter) {}
-  /** How cleverly the boss picks targets and aims: 0 in practice, more on higher Peril. */
+  /** How cleverly the boss picks targets and aims: more on higher Peril. */
   protected cunning() {
     const r = this.raid;
-    return r.drill ? 0 : r.peril >= 3 ? 1 : r.peril === 2 ? 0.8 : 0.5;
+    return r.peril >= 3 ? 1 : r.peril === 2 ? 0.8 : 0.5;
   }
   /**
    * Who the next attack goes after. Practice keeps a plain rotation. In a
@@ -1715,7 +1676,7 @@ export class RaidArena extends Arena {
     const r = this.raid,
       c = this.cunning(),
       rotation = alive[(this.attacks + r.seed) % alive.length];
-    if (alive.length < 2 || c <= 0) return rotation;
+    if (alive.length < 2) return rotation;
     const boss = this.boss()!;
     const total = alive.reduce(
       (sum, p) => sum + (this.threat.get(p.id) ?? 0),
@@ -1776,12 +1737,6 @@ export class RaidArena extends Arena {
   protected canStartAttack() {
     return !this.charging;
   }
-  /** Practice: restore what the attack uses up. */
-  protected drillReset() {
-    // Broken pillars come back so charges can be baited again.
-    if (this.raid.pillars.every((p) => p.broken))
-      this.raid.pillars.forEach((p) => (p.broken = false));
-  }
   /** Follow a target until the warning locks, then keep a readable dodge window. */
   protected followWarnings(boss: Fighter) {
     const r = this.raid;
@@ -1832,8 +1787,7 @@ export class RaidArena extends Arena {
           if (p.hp > 0 && this.inVolley(w, p)) {
             if (
               p.character === "auralynx" &&
-              this.has(p, "counter") &&
-              !r.drill
+              this.has(p, "counter")
             ) {
               // Auralynx's Facet Guard sends the stones back.
               r.stagger = Math.min(100, r.stagger + 12);
@@ -1841,7 +1795,7 @@ export class RaidArena extends Arena {
               this.event("hit", boss, 0xc9f4ff, 0, p.id);
               continue;
             }
-            if (this.curled(p) && !r.drill) {
+            if (this.curled(p)) {
               // Pangrove curled into a ball: the stones glance off its plates.
               r.message = `The volley glances off ${p.name}'s scales!`;
               this.event("hit", p, 0x7fcf6a, 0, boss.id);
@@ -1850,7 +1804,7 @@ export class RaidArena extends Arena {
             this.damage(p, BOSS.volley.damage, boss.id, ability);
           }
         // The final phase chains a volley straight into eruptions.
-        if (r.phase === 3 && r.peril >= 2 && !r.drill) {
+        if (r.phase === 3 && r.peril >= 2) {
           const target = this.heroes().find(
             (p) => p.id === w.targetId && p.hp > 0,
           );
@@ -1870,7 +1824,7 @@ export class RaidArena extends Arena {
             : (BOSS.share.damage / Math.max(1, inside.length)) *
               (warded ? 1 - BOSS.share.wardReduction : 1);
         for (const p of inside) this.damage(p, each, boss.id, ability);
-        if (inside.length > 1 && !r.drill)
+        if (inside.length > 1)
           r.message = `Meteor shared by ${inside.length} raiders!`;
         // Chapter 3: stack, then scatter. Eruptions chase the stack's middle.
         const target = this.heroes().find((p) => p.id === w.targetId);
@@ -1906,7 +1860,6 @@ export class RaidArena extends Arena {
             this.damage(p, damage, boss.id, ability);
       }
       this.hitBy = undefined;
-      this.countDodges();
       this.event("raid-impact", w, 0xffbd6a, undefined, boss.id);
       this.events[this.events.length - 1].raidRadius = w.radius;
       if (w.kind === "eruption" && (w.chain ?? 1) > 1) {
@@ -1927,7 +1880,7 @@ export class RaidArena extends Arena {
             { targetId: target.id, chain: (w.chain ?? 1) - 1, teach: w.teach },
           );
       }
-      if (w.kind === "slam" && r.phase >= 2 && !w.followUp && !r.drill) {
+      if (w.kind === "slam" && r.phase >= 2 && !w.followUp) {
         // Longer than the shared jump cooldown: both hits can be avoided fairly.
         Object.assign(
           this.warn(
@@ -1967,34 +1920,30 @@ export class RaidArena extends Arena {
       );
       if (pillar) {
         pillar.broken = true;
-        if (c.targetId && r.contributions?.[c.targetId] && !r.drill)
+        if (c.targetId && r.contributions?.[c.targetId])
           r.contributions[c.targetId].pillars++;
-        if (!r.drill) this.chargeBaits++;
-        if (!r.drill) this.pillarBreaks++;
+        this.chargeBaits++;
+        this.pillarBreaks++;
         const live = this.smart();
         this.nextAttack = Math.max(
           this.nextAttack,
           this.time + (live ? BOSS.pillar.pause : 3),
         );
-        if (!r.drill) {
-          r.stagger = Math.min(100, r.stagger + 42);
-          r.exposedUntil =
-            this.time +
-            (live
-              ? this.window(
-                  r.trait === "fractured"
-                    ? BOSS.pillar.fractured
-                    : BOSS.pillar.expose,
-                )
-              : r.trait === "fractured"
-                ? 10
-                : 8);
-          r.message = "ARMOR BROKEN! Hit the glowing core.";
-        }
+        r.stagger = Math.min(100, r.stagger + 42);
+        r.exposedUntil =
+          this.time +
+          (live
+            ? this.window(
+                r.trait === "fractured"
+                  ? BOSS.pillar.fractured
+                  : BOSS.pillar.expose,
+              )
+            : r.trait === "fractured"
+              ? 10
+              : 8);
+        r.message = "ARMOR BROKEN! Hit the glowing core.";
         this.event("raid-impact", pillar, 0xffd65b, undefined, boss.id);
         this.events[this.events.length - 1].raidRadius = 100;
-        this.struck = new Set(c.hit);
-        this.countDodges();
         this.charging = undefined;
       } else {
         this.hitBy = "charge";
@@ -2005,7 +1954,7 @@ export class RaidArena extends Arena {
             Math.hypot(p.x - boss.x, p.y - boss.y) < 100
           ) {
             c.hit.add(p.id);
-            if (p.character === "terradon" && !r.drill) {
+            if (p.character === "terradon") {
               // Terradon's shell stops the charge head-on.
               this.damage(p, BOSS.charge.damage / 2, boss.id);
               r.stagger = Math.min(100, r.stagger + 20);
@@ -2018,9 +1967,7 @@ export class RaidArena extends Arena {
         this.hitBy = undefined;
         if (this.charging && (len < 10 || this.time >= this.charging.until)) {
           // The charge ran its course without meeting a pillar.
-          if (!r.drill) this.chargeMisses++;
-          this.struck = new Set(c.hit);
-          this.countDodges();
+          this.chargeMisses++;
           this.charging = undefined;
           // Chapter 2+ it turns and comes back (alone: only in chapter 3).
           if (this.smart() && r.phase >= (r.partySize > 1 ? 2 : 3) && !c.back)
@@ -2028,7 +1975,7 @@ export class RaidArena extends Arena {
         }
       }
     }
-    if (r.peril >= 3 && r.phase === 3 && !r.drill) {
+    if (r.peril >= 3 && r.phase === 3) {
       const ring = BOSS.ring;
       const radius = Math.max(
         ring.end,
@@ -2101,43 +2048,6 @@ export class RaidArena extends Arena {
       kind,
       until: this.time + RAID_PING_SECONDS,
     });
-    return true;
-  }
-  /** Practice room: the boss repeats one attack; hits only count. */
-  startDrill(kind: RaidAttack) {
-    if (!["lobby", "finished"].includes(this.phase) || !this.heroes().length)
-      return false;
-    this.raid.drill = kind;
-    this.start();
-    this.raid.message = `Practice · ${RAID_ATTACKS[kind].name}`;
-    this.instructionsReady = this.players.map((p) => p.id);
-    this.phase = "playing";
-    this.deadline = this.time + RAID.timeLimit;
-    return true;
-  }
-  setDrill(kind: RaidAttack) {
-    const r = this.raid;
-    if (!r.drill || this.phase === "finished") return false;
-    r.drill = kind;
-    r.warnings = [];
-    r.drillStats = { hits: 0, dodges: 0 };
-    r.message = `Practice · ${RAID_ATTACKS[kind].name}`;
-    this.clearAttacks();
-    this.attacks = 0;
-    this.nextAttack = this.time + 1.5;
-    return true;
-  }
-  /** Leave practice for the raid lobby. */
-  stopDrill() {
-    const r = this.raid;
-    if (!r.drill) return false;
-    r.drill = null;
-    r.drillStats = undefined;
-    r.warnings = [];
-    this.clearAttacks();
-    this.players = this.players.filter((p) => !p.raidBoss);
-    this.phase = "lobby";
-    for (const p of this.players) p.ready = false;
     return true;
   }
   /** An AI plays a disconnected raider's champion until they return. */
@@ -2314,7 +2224,7 @@ export class RaidArena extends Arena {
     const boss = this.boss();
     if (!boss) return;
     if (this.bossHealth() <= 0) return this.finish(true);
-    if (this.raid.elapsed >= RAID.timeLimit && !this.raid.drill)
+    if (this.raid.elapsed >= RAID.timeLimit)
       return this.finish(false);
     const next =
       this.bossHealth() <= this.raid.maxHp * 0.33 + 1e-6
@@ -2403,7 +2313,7 @@ export class RaidArena extends Arena {
   ): Input | undefined {
     return undefined;
   }
-  /** Stop any attack that is playing out (practice switches, results). */
+  /** Stop any attack that is playing out (chapter changes, results). */
   protected clearAttacks() {
     this.charging = undefined;
   }

@@ -29,7 +29,7 @@ const ROOT_HOLD = 1;
 
 /**
  * Tidewyrm, "The Rising Tide" (docs/raid-roster-design.md §5.1). It shares
- * the raid core (chapters, rites, downs, stagger, practice, stand-ins) and
+ * the raid core (chapters, rites, downs, stagger, stand-ins) and
  * brings its own arena: the Lagoon Court with four raised islands.
  *
  * Signature: it dives, a ripple follows one raider and locks, and it
@@ -126,7 +126,7 @@ export class TidewyrmArena extends RaidArena {
     }
     this.clearAttacks();
     this.sinkAt =
-      r.phase === 3 && r.peril >= 3 && !r.drill
+      r.phase === 3 && r.peril >= 3
         ? this.time + (r.partySize === 1 ? T.soloSinkEvery : T.sinkEvery)
         : Infinity;
   }
@@ -141,13 +141,6 @@ export class TidewyrmArena extends RaidArena {
     r.prisons = [];
     this.waveHits.clear();
     this.rootedUntil.clear();
-  }
-  protected override drillReset() {
-    // Practice: sunk islands come back so dives can be stranded again.
-    for (const i of this.raid.islands ?? []) {
-      if (i.sunk && !i.gone) i.sunk = false;
-      i.cracks = 0;
-    }
   }
   protected override canStartAttack() {
     const r = this.raid;
@@ -358,7 +351,7 @@ export class TidewyrmArena extends RaidArena {
       y = axis === "y" ? (dir > 0 ? 0 : H) : H / 2;
     // Live raids, chapter 3: a low wave, then a high one from a side edge.
     const double =
-      from === undefined && this.smart() && r.phase === 3 && !r.drill;
+      from === undefined && this.smart() && r.phase === 3;
     Object.assign(
       this.warn(
         "wave",
@@ -435,7 +428,6 @@ export class TidewyrmArena extends RaidArena {
         )
           this.damage(p, T.tailSweep.damage, boss.id, this.splash(true));
       this.hitBy = undefined;
-      this.countDodges();
       this.event("raid-impact", w, 0x7fe9ff, undefined, boss.id);
       this.events[this.events.length - 1].raidRadius = w.radius;
       return;
@@ -477,7 +469,7 @@ export class TidewyrmArena extends RaidArena {
       this.event("raid-impact", T.home, 0x4fd6e6, undefined, boss.id);
       this.events[this.events.length - 1].raidRadius = 600;
       // Storm Surge: High Tide leads straight into a dive.
-      if (r.phase === 3 && !r.drill) {
+      if (r.phase === 3) {
         const alive = this.heroes().filter((p) => p.hp > 0);
         // Live raids: whoever is in the water farthest from a free island.
         const room = (p: Fighter) =>
@@ -514,7 +506,7 @@ export class TidewyrmArena extends RaidArena {
       };
       this.undertowHit.clear();
       // Storm Surge: the Undertow leads into a wave as it lets go.
-      if (r.phase === 3 && !r.drill)
+      if (r.phase === 3)
         this.startWave(false, T.undertow.seconds + 0.4);
       return;
     }
@@ -556,7 +548,6 @@ export class TidewyrmArena extends RaidArena {
       )
         this.damage(p, T.dive.damage, boss.id, this.splash());
     this.hitBy = undefined;
-    this.countDodges();
     this.event("raid-impact", w, 0x7fe9ff, undefined, boss.id);
     this.events[this.events.length - 1].raidRadius = w.radius;
     const islands = r.islands ?? [];
@@ -579,12 +570,10 @@ export class TidewyrmArena extends RaidArena {
           ? this.window(T.dive.strand)
           : T.dive.strand) +
       (r.trait === "murky" ? 1 : 0);
-    if (!r.drill) {
-      r.strands = (r.strands ?? 0) + 1;
-      r.stagger = Math.min(100, r.stagger + T.dive.strandStagger);
-      if (w.targetId && r.contributions?.[w.targetId])
-        r.contributions[w.targetId].pillars++;
-    }
+    r.strands = (r.strands ?? 0) + 1;
+    r.stagger = Math.min(100, r.stagger + T.dive.strandStagger);
+    if (w.targetId && r.contributions?.[w.targetId])
+      r.contributions[w.targetId].pillars++;
     r.message = "STRANDED! Tidelotl is flopping on dry land. Hit it now!";
     this.nextAttack = Math.max(
       this.nextAttack,
@@ -698,14 +687,12 @@ export class TidewyrmArena extends RaidArena {
         // Low waves are jumped; high waves only spare raiders on an island.
         const safe = wave.high ? this.onIsland(p) : p.jumpUntil > this.time;
         if (safe) continue;
-        this.struck.add(p.id);
         this.damage(p, T.wave.damage, boss.id, this.splash());
-        if (!r.drill)
-          move(
-            p,
-            wave.axis === "x" ? wave.dir * 60 : 0,
-            wave.axis === "y" ? wave.dir * 60 : 0,
-          );
+        move(
+          p,
+          wave.axis === "x" ? wave.dir * 60 : 0,
+          wave.axis === "y" ? wave.dir * 60 : 0,
+        );
       }
       this.hitBy = undefined;
       this.waveHits.set(wave.id, hit);
@@ -717,7 +704,6 @@ export class TidewyrmArena extends RaidArena {
       if (gone) this.waveHits.delete(w.id);
       return !gone;
     });
-    if (before && !r.waves.length) this.countDodges();
   }
   private stepBubbles(dt: number, boss: Fighter) {
     const r = this.raid;
@@ -762,7 +748,7 @@ export class TidewyrmArena extends RaidArena {
       this.hitBy = "bubbles";
       this.damage(victim, T.bubbles.damage, boss.id, this.splash());
       this.hitBy = undefined;
-      if (!this.hasRite(victim, "footing") && !r.drill)
+      if (!this.hasRite(victim, "footing"))
         this.rootedUntil.set(victim.id, this.time + T.bubbles.root);
     }
     r.bubbles = left;
@@ -838,11 +824,6 @@ export class TidewyrmArena extends RaidArena {
       if (this.time >= prison.until) {
         // Reached the mouth.
         this.freeFromPrison(p.id, false);
-        if (r.drill) {
-          this.struck.add(p.id);
-          if (r.drillStats) r.drillStats.hits++;
-          continue;
-        }
         this.hitBy = "prison";
         this.damage(p, p.hp + 999, boss.id);
         this.hitBy = undefined;
@@ -857,7 +838,6 @@ export class TidewyrmArena extends RaidArena {
     if (!p || !popped) return;
     p.immuneUntil = this.time + 1;
     this.event("heal", p, 0xbff6ff, 0, p.id);
-    if (r.drill && r.drillStats) r.drillStats.dodges++;
   }
   private stepUndertow(dt: number, boss: Fighter) {
     const r = this.raid,
@@ -865,7 +845,6 @@ export class TidewyrmArena extends RaidArena {
     if (!u) return;
     if (u.until <= this.time) {
       r.undertow = undefined;
-      this.countDodges();
       return;
     }
     const pull =
@@ -883,7 +862,6 @@ export class TidewyrmArena extends RaidArena {
       }
       if (dist < u.radius + RULES.radius && !this.undertowHit.has(p.id)) {
         this.undertowHit.add(p.id);
-        this.struck.add(p.id);
         this.hitBy = "undertow";
         this.damage(p, T.undertow.damage, boss.id, this.splash());
         this.hitBy = undefined;
@@ -895,12 +873,11 @@ export class TidewyrmArena extends RaidArena {
     if (!r.floodUntil || r.floodUntil <= this.time) {
       if (r.floodUntil) {
         r.floodUntil = 0;
-        this.countDodges();
       }
       return;
     }
     // Two fit on an island; later arrivals get pushed off (solo: no limit).
-    if (r.partySize > 1 && !r.drill)
+    if (r.partySize > 1)
       for (const island of this.dryIslands()) {
         const on = this.heroes()
           .filter(
@@ -922,9 +899,8 @@ export class TidewyrmArena extends RaidArena {
     this.hitBy = "hightide";
     for (const p of this.heroes()) {
       if (p.hp <= 0 || this.onIsland(p)) continue;
-      this.struck.add(p.id);
       this.damage(p, T.highTide.dps * dt, boss.id);
-      if (!r.drill) this.status(p, "slow", 0.3);
+      this.status(p, "slow", 0.3);
     }
     this.hitBy = undefined;
   }
@@ -968,16 +944,14 @@ export class TidewyrmArena extends RaidArena {
       if (
         ability?.id === "static-lance" &&
         this.strandedOn >= 0 &&
-        r.exposedUntil > this.time &&
-        !r.drill
+        r.exposedUntil > this.time
       )
         r.stagger = Math.min(100, r.stagger + T.lanceStagger);
       // Glacelle's Frost Bloom freezes a stranded Tidewyrm there for longer.
       if (
         ability?.id === "frost-bloom" &&
         this.strandedOn >= 0 &&
-        r.exposedUntil > this.time &&
-        !r.drill
+        r.exposedUntil > this.time
       ) {
         r.exposedUntil += FROST_HOLD;
         this.nextAttack = Math.max(this.nextAttack, r.exposedUntil + 1);
@@ -987,16 +961,14 @@ export class TidewyrmArena extends RaidArena {
       if (
         ability?.id === "tongue-grapple" &&
         this.strandedOn >= 0 &&
-        r.exposedUntil > this.time &&
-        !r.drill
+        r.exposedUntil > this.time
       )
         r.stagger = Math.min(100, r.stagger + T.lanceStagger);
       // A Mossloth seedling going off roots a stranded Tidewyrm where it lies.
       if (
         ability?.id === "seedling" &&
         this.strandedOn >= 0 &&
-        r.exposedUntil > this.time &&
-        !r.drill
+        r.exposedUntil > this.time
       ) {
         r.exposedUntil += ROOT_HOLD;
         this.nextAttack = Math.max(this.nextAttack, r.exposedUntil + 1);

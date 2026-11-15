@@ -7,21 +7,17 @@ import {
   hubMenu,
 } from "./helpers";
 
-async function prepareRaid(page: Page, lobby = false, drill?: string) {
+async function prepareRaid(page: Page, lobby = false) {
   await page.evaluate(
-    ({ lobby, drill }) => {
+    ({ lobby }) => {
       const w = window as any;
       w.__room("raid", { boss: "prismatail" });
       if (lobby) {
         w.__snap.phase = "lobby";
         w.__snap.players = w.__snap.players.filter((p: any) => !p.raidBoss);
       }
-      if (drill) {
-        w.__snap.raid.drill = drill;
-        w.__snap.raid.drillStats = { hits: 0, dodges: 0 };
-      }
     },
-    { lobby, drill },
+    { lobby },
   );
 }
 async function waitForLobby(page: Page) {
@@ -130,17 +126,6 @@ for (const viewport of [
         info,
         `raid-room-return-${viewport.width}x${viewport.height}`,
       );
-
-      // Ending practice from the boss page returns to its Attacks tab.
-      await page.click('[data-ui-raid-tab="attacks"]');
-      const attack = page.locator("[data-raid-practice]");
-      const kind = (await attack.getAttribute("data-raid-practice"))!;
-      await prepareRaid(page, false, kind);
-      await attack.click();
-      await pushUntilBattle(page);
-      await page.click(".raid-drill-picker > summary");
-      await page.click("#raid-drill-leave");
-      await expectHub(page, "attacks");
 
       // A later PvP room must not inherit the previous raid's destination.
       await page.click(".rh-room .ui-close");

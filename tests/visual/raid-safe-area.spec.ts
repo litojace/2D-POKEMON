@@ -21,7 +21,7 @@ for(const viewport of [{width:844,height:390},{width:1280,height:589},{width:844
    });
    for(const boss of bosses){
     await page.evaluate((boss)=>{
-     const w=window as any;w.__room("raid",{boss});w.__snap.raid.drill=boss==='storm-twins'?'twin-rush':null;
+     const w=window as any;w.__room("raid",{boss});
      const friend=w.__snap.players.find((p:any)=>p.id==='p2');
      w.__snap.players.push({...friend,id:'p3',name:'A very long teammate name',x:700},{...friend,id:'p4',name:'Fourth raider',x:900});
      w.__raidBasePlayers=w.__snap.players;

@@ -103,7 +103,7 @@ describe("the Missions sheet", () => {
       expect(count(closed, new RegExp(`id="mission-guide-${slot}"`, "g"))).toBe(1);
     }
     expect(closed).toContain("How to complete: Win 2 &lt;b&gt;matches&lt;/b&gt;");
-    expect(closed).toContain("Solo test mode and attack practice do not count");
+    expect(closed).toContain("Solo test mode does not count");
     expect(count(closed, /class="missions-guide"[^>]*hidden/g)).toBe(3);
     const open = html(economy(), { help: 1 });
     expect(count(open, /aria-expanded="true"/g)).toBe(1);
