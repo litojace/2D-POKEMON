@@ -6711,55 +6711,6 @@ body.lobby-active::before {
   line-height: 1.4;
   max-width: 460px;
 }
-/* Team signals: Stack / Revive / Bait. */
-#raid-pings {
-  display: none;
-}
-.battle-raid #raid-pings:not([hidden]) {
-  position: absolute;
-  left: 8px;
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: 26;
-  display: grid;
-  gap: 6px;
-}
-#raid-pings button {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 40px;
-  padding: 6px 10px;
-  border-radius: 10px;
-  border: 1px solid #ffd65b55;
-  background: #0c1b32e6;
-  color: #ffe7a3;
-  font-size: 11px;
-  font-weight: 700;
-}
-#raid-pings button[data-raid-ping="revive"] {
-  color: #9bffc4;
-  border-color: #7dffb055;
-}
-#raid-pings button[data-raid-ping="bait"] {
-  color: #ffc28a;
-  border-color: #ffa94d55;
-}
-#raid-pings svg {
-  width: 18px;
-  height: 18px;
-  flex: none;
-}
-@media (max-width: 900px), (max-height: 600px) {
-  #raid-pings button span {
-    display: none;
-  }
-  #raid-pings button {
-    padding: 6px;
-    min-width: 40px;
-    justify-content: center;
-  }
-}
 /* Bestiary & rewards buttons carry the book icon. */
 
 /* Settings: one column of actions under the controls button. */
@@ -11652,10 +11603,6 @@ body.battle-active:not(.touch-mode).battle-raid
   ) {
   top: calc(var(--desktop-raid-hud-height, 100px) + 20px);
 }
-body.battle-active:not(.touch-mode).battle-raid #raid-pings:not([hidden]) {
-  left: auto;
-  right: 12px;
-}
 
 /* Taller PC windows: use letterboxing above and below the full-size court. */
 body.battle-active:not(.touch-mode) #battle.desktop-hud-outside .arena-frame {
@@ -14022,67 +13969,12 @@ body.battle-active.touch-mode.pvp-knocked-out #battle-menu {
     padding: 0 6px;
     transform: none;
   }
-  /* One compact signal control replaces the permanently expanded three-button rail. */
-  .touch-mode.battle-raid #raid-pings:not([hidden]) {
-    position: fixed;
-    top: calc(var(--safe-top) + var(--desktop-raid-hud-height, 24px) + 88px);
-    left: calc(var(--safe-left) + 6px);
-    transform: none;
-  }
-  .touch-mode .raid-ping-menu > summary {
-    display: grid;
-    place-items: center;
-    width: 40px;
-    height: 40px;
-    border: 1px solid #ffe09966;
-    border-radius: 50%;
-    color: #ffe099;
-    background: #102039ed;
-    list-style: none;
-    cursor: pointer;
-    touch-action: manipulation;
-  }
-  .raid-ping-menu > summary::-webkit-details-marker {
-    display: none;
-  }
-  .touch-mode .raid-ping-menu > summary svg {
-    width: 20px;
-    height: 20px;
-  }
-  .touch-mode .raid-ping-options {
-    position: absolute;
-    top: 0;
-    left: 46px;
-    min-width: 148px;
-    padding: 6px;
-    border: 1px solid #ffe09966;
-    border-radius: 10px;
-    background: #102039f5;
-  }
-  .touch-mode #raid-pings .raid-ping-options button {
-    width: 100%;
-    justify-content: start;
-    min-height: 40px;
-  }
-  .touch-mode #raid-pings .raid-ping-options button span {
-    display: inline;
-  }
-}
-.raid-ping-options {
-  display: grid;
-  gap: 6px;
-}
-body:not(.touch-mode) .raid-ping-menu > summary {
-  display: none;
 }
 @media (orientation: landscape) and (max-height: 350px) {
   .touch-mode.battle-raid .raid-status-row .raid-callout {
     font-size: 8px;
     line-height: 10px;
   }
-}
-.raid-ping-menu:not([open]) .raid-ping-options {
-  display: none;
 }
 @media (orientation: landscape) and (max-height: 350px) {
   body.battle-active.touch-mode.battle-raid
@@ -14352,10 +14244,6 @@ body.battle-active:not(.touch-mode).battle-raid .raid-party-bars small {
   .touch-mode #raid-dream-panel .dream-private-runes i {
     width: min(14px, 1.8vw);
     height: min(14px, 1.8vw);
-  }
-  .touch-mode.battle-raid #raid-pings:not([hidden]) {
-    top: calc(var(--safe-top) + var(--desktop-raid-hud-height, 45px) + 64px);
-    left: calc(var(--safe-left) + 112px);
   }
 }
 @media (orientation: landscape) and (max-height: 350px) {

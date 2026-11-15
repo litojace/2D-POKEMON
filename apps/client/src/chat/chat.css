@@ -319,3 +319,158 @@
 .chat-drawer.is-typing .chat-quick {
   display: none;
 }
+
+/* ── Quick chat in a battle (chat/battle-chat.ts) ─────────────────────────
+   One button top left, opposite the scoreboard's right side; in a raid it
+   sits where the raid's signals button was, under the raid's HUD. Clear of
+   the camera cutout (mid-height on the sides, touch-cutout.spec.ts) and of
+   the joystick (bottom left). */
+.battle-chat {
+  position: fixed;
+  top: max(10px, calc(var(--safe-top, 0px) + 8px));
+  left: max(12px, calc(var(--safe-left, 0px) + 4px));
+  z-index: 56;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid #91b6de66;
+  border-radius: 50%;
+  background: #102039ed;
+  color: #eef2ff;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.battle-chat[hidden],
+.battle-chat-grid[hidden],
+.battle-chat-feed[hidden] {
+  display: none;
+}
+.battle-chat svg {
+  width: 22px;
+  height: 22px;
+}
+.battle-chat[aria-expanded="true"] {
+  border-color: #ffd65b;
+  color: #ffd65b;
+}
+.battle-chat[data-raid="true"] {
+  top: calc(var(--safe-top, 0px) + var(--desktop-raid-hud-height, 24px) + 88px);
+}
+.battle-chat-grid {
+  position: fixed;
+  top: max(10px, calc(var(--safe-top, 0px) + 8px));
+  left: calc(max(12px, calc(var(--safe-left, 0px) + 4px)) + 52px);
+  z-index: 57;
+  display: grid;
+  grid-template-columns: repeat(4, auto);
+  gap: 4px;
+  padding: 6px;
+  border: 1px solid #91b6de66;
+  border-radius: 14px;
+  background: #102039f5;
+}
+/* In a raid: a row higher than the button, so it stays clear of the
+   joystick below (still under the boss's bar). */
+.battle-chat[data-raid="true"] + .battle-chat-grid {
+  top: calc(var(--safe-top, 0px) + var(--desktop-raid-hud-height, 24px) + 32px);
+}
+.battle-chat-grid button {
+  min-width: 44px;
+  height: 44px;
+  padding: 0 10px;
+  border: 1px solid rgba(139, 174, 229, 0.25);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #eef2ff;
+  font:
+    700 13px/1 "Barlow",
+    system-ui,
+    sans-serif;
+  white-space: nowrap;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.battle-chat-grid button.is-emote {
+  font-size: 20px;
+}
+.battle-chat-grid button.is-ping {
+  border-color: #ffd65b88;
+  color: #ffe7a3;
+}
+.battle-chat-grid button.is-mute {
+  grid-column: 1 / -1;
+  color: #a0afc8;
+}
+.battle-chat-grid button[aria-pressed="true"] {
+  color: #ff9aa5;
+}
+/* The last three lines, under the button, fading out. */
+.battle-chat-feed {
+  position: fixed;
+  top: calc(max(10px, calc(var(--safe-top, 0px) + 8px)) + 52px);
+  left: max(12px, calc(var(--safe-left, 0px) + 4px));
+  z-index: 55;
+  display: grid;
+  gap: 2px;
+  max-width: 220px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  pointer-events: none;
+}
+.battle-chat[data-raid="true"] ~ .battle-chat-feed {
+  top: calc(
+    var(--safe-top, 0px) + var(--desktop-raid-hud-height, 24px) + 140px
+  );
+}
+.battle-chat-feed li {
+  padding: 3px 8px;
+  border-radius: 8px;
+  background: rgba(10, 19, 37, 0.72);
+  color: #eef2ff;
+  font:
+    600 12px/1.3 "Barlow",
+    system-ui,
+    sans-serif;
+  animation: battle-chat-line 5s ease-in forwards;
+}
+.battle-chat-feed li b {
+  color: #8fc3ff;
+}
+.battle-chat-feed li.is-rival b {
+  color: #ff9aa5;
+}
+@keyframes battle-chat-line {
+  0%,
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+/* The bubble over a fighter's nameplate (it moves with the plate). */
+.battle-nameplate > .chat-bubble {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  padding: 4px 9px;
+  border-radius: 10px;
+  background: #fff;
+  color: #1d2433;
+  font:
+    700 12px/1.2 "Barlow",
+    system-ui,
+    sans-serif;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translate(-50%, 0);
+  pointer-events: none;
+}
+.battle-nameplate > .chat-bubble.is-emote {
+  padding: 2px 7px;
+  font-size: 18px;
+}

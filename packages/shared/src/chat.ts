@@ -155,4 +155,6 @@ export interface ChatLine {
   text?: string;
   /** A quick line's id. */
   quick?: ChatQuick;
+  /** In a room: the speaker's fighter, for a bubble over them in battle. */
+  fighter?: string;
 }

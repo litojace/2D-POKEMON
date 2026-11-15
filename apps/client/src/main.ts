@@ -106,7 +106,11 @@ import {
   type HubScene,
 } from "./hub-scene";
 import { plazaOutfitKey } from "./plaza/plaza-outfit";
-import { bossClears, pacificDate } from "../../../packages/shared/src/raid";
+import {
+  bossClears,
+  pacificDate,
+  raidPingLabel,
+} from "../../../packages/shared/src/raid";
 import { resultXp } from "./adventure-ui";
 import { arcadeWeek, ARCADE_EVENTS } from "../../../packages/shared/src/arcade";
 import { drawArcade } from "./arcade-art";
@@ -361,7 +365,9 @@ import { RITE_EFFECTS, riteEffect, riteIcon } from "./rite-icons";
 import { ConnectionWatch, dropMessage } from "./connection-loss";
 import { watchSceneSwitch } from "./scene-switch-place";
 import { mountChat, type ChatPlace } from "./chat/chat-ui";
+import { mountBattleChat } from "./chat/battle-chat";
 import {
+  quickKind,
   quickText,
   type ChatLine,
   type ChatQuick,
@@ -499,6 +505,12 @@ const chat = mountChat({
     accountsUI?.account
       ? { id: accountsUI.account.id, guest: !!accountsUI.account.guest }
       : null,
+});
+/** Quick chat in a battle (chat/battle-chat.ts). */
+const battleChat = mountBattleChat({
+  send: (quick) => request("chat-send", { channel: "room", quick }),
+  ping: (kind) => void request("raid-ping", { kind }),
+  pingLabel: (kind) => raidPingLabel(kind, state?.raid?.boss ?? "grumblecrag"),
 });
 let authConnectionAttempt = 0;
 const connectionWatch = new ConnectionWatch();
@@ -2019,6 +2031,16 @@ function syncChat(hub: boolean) {
     : inRoom && !fighting && !state!.practice
       ? "room"
       : "none";
+  // Quick chat in a battle with other people in it (not practice, not a
+  // bot match, not a raid alone).
+  battleChat.sync(
+    fighting &&
+      !state!.practice &&
+      !state!.vsBot &&
+      state!.players.length > 1 &&
+      (!state!.raid || state!.raid.partySize > 1),
+    !!state?.raid,
+  );
   chat.sync(place, {
     party: !!party,
     room: inRoom && !state!.practice,
@@ -3561,6 +3583,21 @@ socket.on("party", (data: unknown) => {
 // In-game chat (docs/chat-plan.md).
 socket.on("chat", (line: ChatLine) => {
   chat.receive(line);
+  // In a battle: a bubble over the speaker, and the feed under the button.
+  if (line.channel === "room" && line.fighter && state) {
+    const speaker = state.players.find((p) => p.id === line.fighter);
+    const me = state.players.find((p) => p.id === myId);
+    const plate = document.querySelector<HTMLElement>(
+      `.battle-nameplate[data-fighter="${CSS.escape(line.fighter)}"]`,
+    );
+    battleChat.receive(
+      line.quick ? quickText(line.quick) : (line.text ?? ""),
+      line.from.name,
+      plate,
+      !!state.raid || (!!speaker && !!me && teamOf(speaker) === teamOf(me)),
+      !!line.quick && quickKind(line.quick) === "emote",
+    );
+  }
   // Nearby lines pop over the speaker's head. On the Plaza the server
   // already pops its own emotes through the Plaza's state.
   if (line.channel !== "place") return;
@@ -6446,6 +6483,8 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       if (!label) {
         label = document.createElement("div");
         label.className = "player-nameplate battle-nameplate";
+        // Quick chat in a battle finds the speaker's plate by this.
+        label.dataset.fighter = p.id;
         $("game").parentElement!.append(label);
         this.labels.set(p.id, label);
       }
