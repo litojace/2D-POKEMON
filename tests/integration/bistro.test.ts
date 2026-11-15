@@ -1772,3 +1772,88 @@ describe("a big room's long day away (migration 106)", () => {
     );
   }, 60000);
 });
+
+describe("guests' orders held (migration 118)", () => {
+  const counter = async (id: string) =>
+    (await open(id)).counter.map((c: any) =>
+      c ? `${c.dish}:${c.servings}` : "-",
+    );
+  it("a hold takes the serving off the counter; the guest pays with it, or it goes back", async () => {
+    await open(cal);
+    await setCoins(cal, 9000, 8);
+    await sql(
+      "update public.arena_bistro_counter set dish = case slot when 0 then 'caphe' when 1 then 'goicuon' when 2 then 'banhmi' when 3 then 'pho' end, servings = case slot when 0 then 19 else 1 end, perfect = false where player_id = $1",
+      [cal],
+    );
+    // (Seen just now: no time away to work out first, and no cook.)
+    await sql(
+      "update public.arena_bistros set held = '{}'::jsonb, sale_budget = 10, sale_at = now(), last_seen = now() where player_id = $1",
+      [cal],
+    );
+    await sql(
+      "delete from public.arena_bistro_staff where player_id = $1 and role = 'cook'",
+      [cal],
+    );
+    let r = await act(cal, [
+      { a: "hold", dish: "goicuon" },
+      { a: "hold", dish: "banhmi" },
+      { a: "hold", dish: "pho" },
+      { a: "hold", dish: "pho" },
+    ]);
+    expect(r.results.map((x: any) => x.ok)).toEqual([true, true, true, false]);
+    expect(r.results[3].error).toBe("None left on the counter.");
+    expect(r.bistro.held).toEqual({ goicuon: 1, banhmi: 1, pho: 1 });
+    expect(await counter(cal)).toEqual(["caphe:19", "-", "-", "-"]);
+    // The counter has room on the server too: a fourth dish is plated.
+    await sql(
+      "update public.arena_bistro_stoves set dish = 'buncha', started_at = now() - interval '10 minutes', dur_ms = 1000, perfect = false where player_id = $1 and idx = 0",
+      [cal],
+    );
+    r = await act(cal, [{ a: "plate", stove: 0 }]);
+    expect(r.results[0].ok).toBe(true);
+    expect(r.bistro.counter.some((c: any) => c?.dish === "buncha")).toBe(true);
+    // Paying with what was kept takes nothing more off the counter.
+    const before = await counter(cal);
+    r = await act(cal, [
+      {
+        a: "serve",
+        dish: "goicuon",
+        held: true,
+        vip: false,
+        combo: 1,
+        hearts: 3,
+        quick: false,
+      },
+    ]);
+    expect(r.results[0].ok).toBe(true);
+    expect(r.bistro.held).toEqual({ banhmi: 1, pho: 1 });
+    expect(await counter(cal)).toEqual(before);
+    // A guest who leaves: their serving goes back on the counter.
+    r = await act(cal, [
+      { a: "unhold", dish: "pho" },
+      { a: "unhold", dish: "pho" },
+    ]);
+    expect(r.results.map((x: any) => x.ok)).toEqual([true, false]);
+    expect(r.results[1].error).toBe("Nothing held.");
+    expect(r.bistro.held).toEqual({ banhmi: 1 });
+    expect(
+      r.bistro.counter.some((c: any) => c?.dish === "pho" && c.servings === 1),
+    ).toBe(true);
+    // Without held (an older page), serve takes off the counter as before.
+    r = await act(cal, [
+      {
+        a: "serve",
+        dish: "caphe",
+        vip: false,
+        combo: 1,
+        hearts: 3,
+        quick: false,
+      },
+    ]);
+    expect(r.results[0].ok).toBe(true);
+    expect(
+      r.bistro.counter.find((c: any) => c?.dish === "caphe").servings,
+    ).toBe(18);
+    expect(r.bistro.held).toEqual({ banhmi: 1 });
+  });
+});

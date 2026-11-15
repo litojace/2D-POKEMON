@@ -650,6 +650,58 @@ test("Bistro: a server answer (coins coming in) leaves the guests, staff and sto
   expect(errors).toEqual([]);
 });
 
+test("Bistro: servings held for guests' orders leave the counter on the server too, so a dish can be plated", async ({
+  page,
+}) => {
+  const errors = await openBistro(page);
+  // Coffee and three dishes on the counter, one serving each; a fourth
+  // dish done on a stove.
+  await B(
+    page,
+    `const S = srv.S; S.level = 8; S.coins = 9000;
+     S.counter = [{ dish: 'caphe', servings: 19, perfect: false }, { dish: 'goicuon', servings: 1, perfect: false },
+                  { dish: 'banhmi', servings: 1, perfect: false }, { dish: 'pho', servings: 1, perfect: false }];
+     S.stoves[0] = { ...S.stoves[0], dish: 'buncha', start: srv.now() - 600000, dur: 1000, perfect: false };
+     return b.load()`,
+  );
+  // Three guests order the three: their slots look empty.
+  expect(
+    await B(
+      page,
+      "const s = b.sync(); return s.reserve(901, 'goicuon') && s.reserve(902, 'banhmi') && s.reserve(903, 'pho')",
+    ),
+  ).toBe(true);
+  await B(page, "return b.sync().flush()");
+  // The dish on the stove goes on the counter, here and on the server.
+  await B(page, "b.plate(0); return b.sync().flush()");
+  await expect.poll(() => B(page, "return srv.S.stoves[0].dish")).toBeNull();
+  expect(
+    await B(page, "return srv.S.counter.some((c) => c && c.dish === 'buncha')"),
+  ).toBe(true);
+  expect(await B(page, "return b.state().stoves[0].dish")).toBeNull();
+  // The guests pay: their servings were theirs already.
+  await B(
+    page,
+    `const s = b.sync();
+     for (const [g, d] of [[901, 'goicuon'], [902, 'banhmi'], [903, 'pho']])
+       s.pay(g, { dish: d, vip: false, combo: 1, hearts: 3, quick: false });
+     return s.flush()`,
+  );
+  await expect
+    .poll(() =>
+      B(
+        page,
+        "return srv.requests.flatMap((r) => r.actions).filter((a) => a.a === 'serve').length",
+      ),
+    )
+    .toBe(3);
+  const results = (await B(page, "return srv.lastResults ?? []")) as {
+    ok: boolean;
+  }[];
+  expect(results.every((r) => r.ok)).toBe(true);
+  expect(errors).toEqual([]);
+});
+
 test("Bistro fits a phone in landscape", async ({ page }, info) => {
   await page.setViewportSize({ width: 844, height: 390 });
   const errors = await openBistro(page);
@@ -1089,7 +1141,13 @@ test("Bistro board: deliver a catering order, a regular's visit, claim the leagu
   await page.click('#bs-sheet [data-regular="mira"]');
   await flush(page);
   expect(await B(page, "return srv.S.regulars.mira")).toBe(1);
-  expect(await B(page, "return srv.S.counter[0].servings")).toBe(2);
+  // Two left: on the counter, or kept for a guest who ordered meanwhile.
+  expect(
+    await B(
+      page,
+      "return (srv.S.counter[0]?.servings ?? 0) + (srv.S.held.goicuon ?? 0)",
+    ),
+  ).toBe(2);
   // Last week's league: second place.
   await page.click('#bs-sheet [data-tab="league"]');
   await snap(page, info, "bistro-league");
