@@ -907,6 +907,9 @@ export function installAccountRoutes(
         "stovebuy",
         "stoveplace",
         "stovemove",
+        // A guest's order kept off the counter, and let go (migration 118).
+        "hold",
+        "unhold",
         "sync",
       ]),
       stove: z
@@ -921,6 +924,7 @@ export function installAccountRoutes(
       combo: z.number().int().min(1).max(5).optional(),
       hearts: z.number().int().min(1).max(3).optional(),
       quick: z.boolean().optional(),
+      held: z.boolean().optional(),
       kind: bistroId.optional(),
       id: z
         .union([
