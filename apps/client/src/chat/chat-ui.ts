@@ -22,6 +22,7 @@ import {
   typingRefusal,
   type ChatChannel,
   type ChatLine,
+  type ChatMode,
   type ChatQuick,
 } from "../../../../packages/shared/src/chat";
 import { filterChat } from "../../../../packages/shared/src/chat-filter";
@@ -40,6 +41,10 @@ export interface ChatHooks {
   history(channel: ChatChannel): Promise<ChatLine[]>;
   /** The signed-in player, or null. */
   me(): { id: string; guest: boolean } | null;
+  /** Block a player (it asks first); resolves true once blocked. */
+  block(accountId: string, name: string): Promise<boolean>;
+  /** Report a line: the server attaches the lines it kept. */
+  report(channel: ChatChannel, lineId: number): Promise<Reply>;
 }
 export interface ChatView {
   /** Where the button shows, and which channels are open now. */
@@ -48,6 +53,8 @@ export interface ChatView {
   receive(line: ChatLine): void;
   /** Typed lines on or off on the server (quick chat is always on). */
   setFreeText(on: boolean): void;
+  /** The player's chat setting (Settings): free, quick chat only, off. */
+  setMode(mode: ChatMode): void;
   /** Put the hub button at this spot (px from the top left). */
   placeButton(x: number, y: number): void;
   isOpen(): boolean;
@@ -104,6 +111,9 @@ export function mountChat(hooks: ChatHooks): ChatView {
   let active: ChatChannel | null = null;
   let place: ChatPlace = "none";
   let freeText = false;
+  let mode: ChatMode = "free";
+  /** Players muted on this device for this session (their lines hidden). */
+  const muted = new Set<string>();
   let noteTimer = 0;
 
   const say = (text: string) => {
@@ -115,14 +125,69 @@ export function mountChat(hooks: ChatHooks): ChatView {
   function lineElement(l: ChatLine) {
     const li = document.createElement("li");
     li.className = "chat-line";
-    if (l.from.id === hooks.me()?.id) li.classList.add("is-mine");
+    li.dataset.line = String(l.id);
+    const mine = l.from.id === hooks.me()?.id;
+    if (mine) li.classList.add("is-mine");
     if (l.quick) li.classList.add("is-quick");
+    // Someone else's line is a button: tap it to mute, block or report.
+    const body = document.createElement(mine ? "div" : "button");
+    body.className = "chat-say";
+    if (!mine) {
+      (body as HTMLButtonElement).type = "button";
+      body.dataset.from = l.from.id;
+      body.setAttribute("aria-haspopup", "true");
+    }
     const who = document.createElement("b");
     who.textContent = l.from.name;
     const what = document.createElement("span");
     what.textContent = l.quick ? quickText(l.quick) : (l.text ?? "");
-    li.append(who, what);
+    body.append(who, what);
+    li.append(body);
     return li;
+  }
+  const shown = (c: ChatChannel) =>
+    lines[c].filter((l) => !muted.has(l.from.id));
+
+  /** The menu under a line: mute, block, report (with a second step). */
+  function lineMenu(li: HTMLElement, l: ChatLine) {
+    list.querySelector(".chat-menu")?.remove();
+    const menu = document.createElement("li");
+    menu.className = "chat-menu";
+    const plain = () => {
+      menu.innerHTML = `<button type="button" data-chat-act="mute">Mute</button><button type="button" data-chat-act="block">Block</button><button type="button" data-chat-act="report">Report</button>`;
+    };
+    plain();
+    menu.addEventListener("click", async (e) => {
+      const act = (e.target as HTMLElement).closest<HTMLElement>(
+        "[data-chat-act]",
+      )?.dataset.chatAct;
+      if (!act) return;
+      if (act === "mute") {
+        muted.add(l.from.id);
+        menu.remove();
+        renderLines();
+        say(`${l.from.name} is muted until you restart the game.`);
+      } else if (act === "block") {
+        menu.remove();
+        if (await hooks.block(l.from.id, l.from.name)) {
+          muted.add(l.from.id);
+          renderLines();
+        }
+      } else if (act === "report") {
+        menu.innerHTML = `<p>Report this message from <b></b>? The last messages go with it.</p><button type="button" data-chat-act="send">Report</button><button type="button" data-chat-act="cancel">Cancel</button>`;
+        menu.querySelector("b")!.textContent = l.from.name;
+      } else if (act === "cancel") menu.remove();
+      else if (act === "send" && active) {
+        const reply = await hooks.report(active, l.id);
+        menu.remove();
+        say(
+          reply.ok
+            ? "Report sent. Thank you: we look at every report."
+            : (reply.error ?? "Couldn't send the report. Try again."),
+        );
+      }
+    });
+    li.after(menu);
   }
 
   function renderTabs() {
@@ -135,33 +200,42 @@ export function mountChat(hooks: ChatHooks): ChatView {
   }
 
   function renderLines() {
-    list.replaceChildren(...(active ? lines[active] : []).map(lineElement));
+    list.replaceChildren(...(active ? shown(active) : []).map(lineElement));
     list.scrollTop = list.scrollHeight;
-    empty.hidden = !!active && lines[active].length > 0;
-    empty.textContent = !active
-      ? "Invite a friend to a party, or join a room, to chat."
-      : "No messages yet. Say hi!";
+    empty.hidden = mode !== "off" && !!active && shown(active).length > 0;
+    empty.textContent =
+      mode === "off"
+        ? "Chat is off. Turn it on in Settings."
+        : !active
+          ? "Invite a friend to a party, or join a room, to chat."
+          : "No messages yet. Say hi!";
   }
 
   function renderForm() {
     const me = hooks.me();
+    const own = active
+      ? typingRefusal({
+          channel: active,
+          inBattle: false,
+          guest: !!me?.guest,
+          mode,
+        })
+      : null;
+    // Your own setting first, then the server's switch, then the channel.
     const refusal = !active
       ? "Nobody to chat with yet."
-      : !freeText
-        ? "Quick chat only for now."
-        : typingRefusal({
-            channel: active,
-            inBattle: false,
-            guest: !!me?.guest,
-            mode: "free",
-          });
+      : mode !== "free"
+        ? own
+        : !freeText
+          ? "Quick chat only for now."
+          : own;
     input.disabled = !!refusal;
     input.placeholder = refusal ?? "Message";
     form.querySelector<HTMLButtonElement>(".chat-send")!.disabled = !!refusal;
     for (const b of Array.from(
       quick.querySelectorAll<HTMLButtonElement>("button"),
     ))
-      b.disabled = !active;
+      b.disabled = !active || mode === "off";
   }
 
   function renderBadge() {
@@ -231,6 +305,15 @@ export function mountChat(hooks: ChatHooks): ChatView {
   drawer
     .querySelector(".chat-close")!
     .addEventListener("click", () => setOpen(false));
+  list.addEventListener("click", (e) => {
+    const say = (e.target as HTMLElement).closest<HTMLElement>(
+      ".chat-say[data-from]",
+    );
+    if (!say || !active) return;
+    const li = say.closest<HTMLElement>(".chat-line")!;
+    const l = lines[active].find((x) => String(x.id) === li.dataset.line);
+    if (l) lineMenu(li, l);
+  });
   tabs.addEventListener("click", (e) => {
     const tab = (e.target as HTMLElement).closest<HTMLElement>(
       "[data-chat-tab]",
@@ -313,6 +396,7 @@ export function mountChat(hooks: ChatHooks): ChatView {
     },
     receive(line) {
       if (!open.includes(line.channel)) return;
+      if (muted.has(line.from.id) || mode === "off") return;
       const list0 = lines[line.channel];
       if (list0.some((l) => l.id === line.id)) return;
       list0.push(line);
@@ -332,6 +416,11 @@ export function mountChat(hooks: ChatHooks): ChatView {
     },
     setFreeText(on) {
       freeText = on;
+      renderForm();
+    },
+    setMode(next) {
+      mode = next;
+      renderLines();
       renderForm();
     },
     placeButton(x, y) {

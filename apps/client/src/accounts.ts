@@ -1755,7 +1755,7 @@ export class AccountUI {
                         .map(([k, v]) => `${escape(k)}: ${escape(String(v))}`)
                         .join(" · ")}</small>`
                     : ""
-                }<button type="button" class="${r.status === "open" ? "secondary" : "quiet"}" data-resolve="${r.status === "open"}">${r.status === "open" ? "Mark resolved" : "Reopen"}</button></article>`,
+                }${chatTarget(r.context) ? `<button type="button" class="secondary" data-chat-stop="${chatTarget(r.context)}">Stop their chat for 24 h</button>` : ""}<button type="button" class="${r.status === "open" ? "secondary" : "quiet"}" data-resolve="${r.status === "open"}">${r.status === "open" ? "Mark resolved" : "Reopen"}</button></article>`,
             )
             .join("") ||
           `<p>No ${view.status === "all" ? "" : view.status + " "}reports.</p>`
@@ -1818,6 +1818,27 @@ export class AccountUI {
           });
         element("report-next").onclick = () =>
           void this.showAdmin({ reportOffset: view.reportOffset + 50 });
+        // A chat report: stop the reported player typing for a day.
+        document
+          .querySelectorAll<HTMLButtonElement>("[data-chat-stop]")
+          .forEach((button) => {
+            button.onclick = async () => {
+              button.disabled = true;
+              try {
+                await this.api("/api/admin/chat-ban", {
+                  playerId: button.dataset.chatStop,
+                  hours: 24,
+                  reason: "From a chat report",
+                });
+                await this.showAdmin({
+                  message: "Their chat is stopped for 24 hours.",
+                });
+              } catch (error) {
+                fail(error);
+                button.disabled = false;
+              }
+            };
+          });
         document
           .querySelectorAll<HTMLButtonElement>("[data-resolve]")
           .forEach((button) => {
@@ -2029,4 +2050,14 @@ export class AccountUI {
       );
     }
   }
+}
+
+/** The reported player of a chat report ("Name (uuid)" in its context). */
+function chatTarget(context: Record<string, string> | undefined) {
+  if (context?.source !== "chat") return null;
+  return (
+    /\(([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\)$/i.exec(
+      context.reported ?? "",
+    )?.[1] ?? null
+  );
 }

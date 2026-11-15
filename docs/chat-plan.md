@@ -60,6 +60,18 @@ right of the profile chip. The gap there is 64 px at 667×375, 92 px at
 from the left, `min(360px, 46vw)` wide. In a battle there is no drawer: a
 quick-chat button sits top left, opposite the settings button.
 
+## Status
+
+- Typed lines are on by default; `CHAT_FREE_TEXT=off` on the server pauses
+  them at once (quick chat keeps working).
+- Migration `20261115200000_chat_restrictions.sql` (admin chat stops) is in
+  the repo but not applied: until it runs, nobody is stopped and the admin's
+  "Stop their chat for 24 h" says the database needs the update.
+- Retention (owner, 15 Nov 2026: "the best option for the game"): party,
+  room and Nearby chat aren't stored; a reported message stays with its
+  report; friends' messages (step 7) keep the last 200 per conversation
+  while both accounts exist.
+
 ## Steps
 
 1. Shared catalogue and filter (this file, `chat.ts`, `chat-filter.ts`).

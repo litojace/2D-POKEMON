@@ -367,8 +367,10 @@ import { watchSceneSwitch } from "./scene-switch-place";
 import { mountChat, type ChatPlace } from "./chat/chat-ui";
 import { mountBattleChat } from "./chat/battle-chat";
 import {
+  CHAT_MODES,
   quickKind,
   quickText,
+  type ChatMode,
   type ChatLine,
   type ChatQuick,
 } from "../../../packages/shared/src/chat";
@@ -505,6 +507,33 @@ const chat = mountChat({
     accountsUI?.account
       ? { id: accountsUI.account.id, guest: !!accountsUI.account.guest }
       : null,
+  block: async (accountId, name) => {
+    try {
+      const done = await accountsUI.block(accountId, name);
+      if (done) toast(`${name} is blocked.`);
+      return done;
+    } catch (error) {
+      toast(error instanceof Error ? error.message : "Couldn't block them.");
+      return false;
+    }
+  },
+  report: (channel, id) => request("chat-report", { channel, id }),
+});
+/** Settings → Chat: free, quick chat only, or off (kept on this device). */
+const CHAT_MODE_KEY = "ea-chat-mode";
+function chatMode(): ChatMode {
+  try {
+    const saved = localStorage.getItem(CHAT_MODE_KEY) as ChatMode | null;
+    return saved && CHAT_MODES.includes(saved) ? saved : "free";
+  } catch {
+    return "free";
+  }
+}
+chat.setMode(chatMode());
+/** The server learns the setting on every connection. */
+socket.on("connect", () => {
+  const mode = chatMode();
+  if (mode !== "free") socket.emit("chat-mode", { mode }, () => {});
 });
 /** Quick chat in a battle (chat/battle-chat.ts). */
 const battleChat = mountBattleChat({
@@ -2034,7 +2063,8 @@ function syncChat(hub: boolean) {
   // Quick chat in a battle with other people in it (not practice, not a
   // bot match, not a raid alone).
   battleChat.sync(
-    fighting &&
+    chatMode() !== "off" &&
+      fighting &&
       !state!.practice &&
       !state!.vsBot &&
       state!.players.length > 1 &&
@@ -3925,6 +3955,42 @@ function leaveButton() {
   }
   return `<button id="exit-room" class="secondary btn-secondary leave-button is-costly"><span>${buttonIcon("leave")}Leave match</span><small>Counts as a forfeit</small></button>`;
 }
+/** Settings → Chat: who can reach you in chat (docs/chat-plan.md). */
+function chatCard() {
+  const setting = chatMode();
+  const option = (value: ChatMode, label: string) =>
+    `<button type="button" role="radio" data-chat-mode="${value}" aria-checked="${setting === value}">${label}</button>`;
+  return `<section class="prefs-card prefs-chat" aria-labelledby="prefs-chat"><h3 id="prefs-chat">${menuIcon("chat")}Chat</h3><div class="prefs-choice" role="radiogroup" aria-labelledby="prefs-chat">${option("free", "On")}${option("quick", "Quick only")}${option("off", "Off")}</div><p class="prefs-chat-note">${chatModeNote(setting)}</p></section>`;
+}
+function chatModeNote(mode: ChatMode) {
+  return mode === "off"
+    ? "You see and send no chat. Your team's raid signals still show on the arena."
+    : mode === "quick"
+      ? "Only preset phrases and emotes: no typed messages, from you or to you."
+      : "Typed messages with your party and room; quick chat everywhere. Tap a message to mute, block or report.";
+}
+function bindChatCard() {
+  for (const b of Array.from(
+    document.querySelectorAll<HTMLButtonElement>("[data-chat-mode]"),
+  ))
+    b.onclick = () => {
+      const mode = b.dataset.chatMode as ChatMode;
+      try {
+        localStorage.setItem(CHAT_MODE_KEY, mode);
+      } catch {
+        /* No storage: for this visit. */
+      }
+      void request("chat-mode", { mode });
+      chat.setMode(mode);
+      for (const other of Array.from(
+        document.querySelectorAll<HTMLButtonElement>("[data-chat-mode]"),
+      ))
+        other.setAttribute("aria-checked", String(other === b));
+      const note = document.querySelector(".prefs-chat-note");
+      if (note) note.textContent = chatModeNote(mode);
+      syncHub();
+    };
+}
 /** Settings → Graphics: Auto, High or Low for the Plaza and the Farm (graphics-quality.ts). */
 function graphicsCard() {
   const setting = graphicsSetting();
@@ -4000,7 +4066,7 @@ function showSettings() {
   settingsOpen = true;
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
   dialog(
-    `<div class="settings-screen"><h2>Settings</h2>${state?.practice && touch.enabled ? `<div class="settings-quick-actions"><button id="settings-practice" class="secondary btn-secondary">${iconLabel("target", "Practice")}</button></div>` : ""}<p class="prefs-note">Online matches keep running while this is open.</p><div class="prefs-grid${state ? "" : isNativeApp() ? " has-graphics" : " has-display has-graphics"}"><section class="prefs-card" aria-labelledby="prefs-sound"><h3 id="prefs-sound">${menuIcon("sound")}Sound</h3>${prefSlider("music", "Music", audio.music, { min: 0, max: 1, step: 0.01 })}${prefSlider("effects", "Sound effects", audio.effects, { min: 0, max: 1, step: 0.01 })}</section><section class="prefs-card" aria-labelledby="prefs-motion"><h3 id="prefs-motion">${menuIcon("motion")}Motion</h3><p class="prefs-status"><b class="${reduced ? "is-on" : ""}">Reduced motion ${reduced ? "on" : "off"}</b><span>Follows your device's accessibility setting.</span></p></section>${state ? "" : isNativeApp() ? graphicsCard() + appIconCardHTML() : displayCard() + graphicsCard()}</div><div class="settings-actions"><button id="open-controls" class="secondary btn-secondary">${iconLabel("keyboard", "Controls &amp; key bindings")}</button>${myId ? leaveButton() : watching ? `<button id="exit-room" class="secondary btn-secondary leave-button">${iconLabel("stop-watching", "Stop watching")}</button>` : ""}<button id="settings-report" class="quiet">${iconLabel("report", "Report a problem")}</button><button id="settings-credits" class="quiet">${iconLabel("star", "Credits")}</button></div></div>`,
+    `<div class="settings-screen"><h2>Settings</h2>${state?.practice && touch.enabled ? `<div class="settings-quick-actions"><button id="settings-practice" class="secondary btn-secondary">${iconLabel("target", "Practice")}</button></div>` : ""}<p class="prefs-note">Online matches keep running while this is open.</p><div class="prefs-grid${state ? "" : isNativeApp() ? " has-graphics" : " has-display has-graphics"}"><section class="prefs-card" aria-labelledby="prefs-sound"><h3 id="prefs-sound">${menuIcon("sound")}Sound</h3>${prefSlider("music", "Music", audio.music, { min: 0, max: 1, step: 0.01 })}${prefSlider("effects", "Sound effects", audio.effects, { min: 0, max: 1, step: 0.01 })}</section><section class="prefs-card" aria-labelledby="prefs-motion"><h3 id="prefs-motion">${menuIcon("motion")}Motion</h3><p class="prefs-status"><b class="${reduced ? "is-on" : ""}">Reduced motion ${reduced ? "on" : "off"}</b><span>Follows your device's accessibility setting.</span></p></section>${chatCard()}${state ? "" : isNativeApp() ? graphicsCard() + appIconCardHTML() : displayCard() + graphicsCard()}</div><div class="settings-actions"><button id="open-controls" class="secondary btn-secondary">${iconLabel("keyboard", "Controls &amp; key bindings")}</button>${myId ? leaveButton() : watching ? `<button id="exit-room" class="secondary btn-secondary leave-button">${iconLabel("stop-watching", "Stop watching")}</button>` : ""}<button id="settings-report" class="quiet">${iconLabel("report", "Report a problem")}</button><button id="settings-credits" class="quiet">${iconLabel("star", "Credits")}</button></div></div>`,
   );
   bindGraphicsCard();
   void bindAppIconCard(toast);
@@ -4021,6 +4087,7 @@ function showSettings() {
     };
   bindDisplayCard();
   $("open-controls").onclick = showControls;
+  bindChatCard();
   $("settings-report").onclick = () => accountsUI.showReport(reportContext());
   $("settings-credits").onclick = showCredits;
   const exitRoom = $("exit-room");

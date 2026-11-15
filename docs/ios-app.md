@@ -152,8 +152,15 @@ iOS 26 SDK) and Node 22.
    - **Age rating** questionnaire: choose **13+**. The game asks for a
      birth month and year before anyone makes an account and refuses
      under-13s (`apps/client/src/age-gate.ts`), and the privacy policy says
-     it isn't for children under 13. Also: cartoon fighting; players see
-     each other's names and emotes (no chat); blocking and reporting exist.
+     it isn't for children under 13. Also: cartoon fighting. **Messaging and
+     Chat: yes** (party, room and nearby chat; text filtered on the server,
+     links and contact details refused; quick chat only with strangers and
+     for guests; report from a message, block, mute, chat off in Settings;
+     docs/chat-plan.md). User-generated content: chat only, not stored.
+     Social media: no (no feed). Apple lists Messaging and Chat under 4+, so
+     the rating stays 13+ from the age gate. App Privacy: add "Other User
+     Content" (chat messages, sent to other players, not kept, not linked to
+     tracking).
    - **App Review notes:** a demo account (email and password), and that
      _Battle an AI bot_ plays a full match alone. The game server must be
      awake and healthy while Apple reviews.
