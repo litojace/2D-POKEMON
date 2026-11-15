@@ -1,4 +1,4 @@
-import { paintVectorGrumble } from "./boss-vector-rig";
+import { paintCragmuff } from "./boss-cragmuff-rig";
 import { paintBossAura } from "./boss-spell-art";
 import { groundHeight } from "../../../packages/shared/src/world-art";
 import { bossLife } from "./raid-boss-life";
@@ -10,9 +10,9 @@ import { RaidBossMotion } from "./raid-boss-motion";
 const motions = new WeakMap<Phaser.GameObjects.Graphics, RaidBossMotion>();
 
 /**
- * Grumblecrag in battle: the vector rig (boss-vector-rig.ts) posed from the
- * server's warnings and casts, over its shadow and floor effects. Returns the
- * motion's sound cues.
+ * Cragmuff (the "grumblecrag" raid) in battle: the ram's rig
+ * (boss-cragmuff-rig.ts) posed from the server's warnings and casts, over its
+ * shadow and floor effects. Returns the motion's sound cues.
  */
 export function drawRaidBoss(
   g: Phaser.GameObjects.Graphics,
@@ -33,7 +33,8 @@ export function drawRaidBoss(
   const stagger = r.staggerUntil > state.time && !pose.dead;
   const exposed =
     (r.phase === 3 || r.exposedUntil > state.time || stagger) && !pose.dead;
-  const face = r.gilded ? 0xe4c47c : 0x8a9eb1;
+  // fleece-coloured chips (gold when gilded), amber when the crystals burn
+  const face = r.gilded ? 0xe4c47c : 0xb3a88e;
   const hot = r.phase === 3 ? 0xff7751 : 0xffce75;
   const poly = (
     cx: number,
@@ -83,12 +84,10 @@ export function drawRaidBoss(
   const cast = life.action.casts[life.action.casts.length - 1];
   const motion = reduced ? 0 : 1;
   const recoil = Math.sin(pose.hurt * Math.PI * 3) * pose.hurt * 6 * motion;
-  const core = paintVectorGrumble(g, {
+  const core = paintCragmuff(g, {
     x: boss.x + recoil + Math.sin(pose.time * 17) * pose.crash * 5 * motion,
     y: boss.y,
     angle: boss.angle,
-    lookX: life.lookX,
-    lookY: life.lookY,
     time: pose.time,
     breath: life.breath,
     phase: r.phase,
@@ -100,17 +99,19 @@ export function drawRaidBoss(
     impact,
     debris: pose.dead ? 0 : pose.debris,
     transform: pose.dead ? 0 : pose.transform,
+    crash: pose.dead ? 0 : pose.crash,
     windKind: wind?.kind,
     windup: life.windup,
     castKind: cast?.kind,
     castAge: cast?.age ?? 99,
     stagger,
     exposed,
+    dazed: r.exposedUntil > state.time && !stagger && !pose.dead,
     hurt: pose.hurt,
     dead: pose.dead,
-    collapse: pose.collapse,
     deathAge: pose.deathAge,
   });
+
   // The cast aura every boss gathers around its core.
   if (core && !pose.dead) paintBossAura(g, "grumblecrag", core.x, core.y, life);
   for (const f of pose.fragments) {

@@ -67,7 +67,7 @@ export function renderPrismatailControls(
   }
   if (!panel.childElementCount) {
     panel.innerHTML =
-      '<button type="button" data-prism-turn title="Attack the nearby mirror to rotate it 45°"><span aria-hidden="true">↻</span> Turn mirror</button><button type="button" data-prism-away aria-pressed="false" title="Hold to aim away from Prismatail during Glare"><span aria-hidden="true">◉</span> Look away</button>';
+      '<button type="button" data-prism-turn title="Attack the nearby mirror to rotate it 45°"><span aria-hidden="true">↻</span> Turn mirror</button><button type="button" data-prism-away aria-pressed="false" title="Hold to aim away from Prismell during Glare"><span aria-hidden="true">◉</span> Look away</button>';
     panel.querySelector<HTMLButtonElement>("[data-prism-turn]")!.onclick =
       () => {
         turningBasicAt = undefined;

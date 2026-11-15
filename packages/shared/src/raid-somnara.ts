@@ -28,11 +28,11 @@ export const SOMNARA = {
   ] as const,
   padRadius: 56,
   sequence: {
-    seconds: 10,
-    soloSeconds: 14,
+    seconds: 9,
+    soloSeconds: 13,
     expose: 6,
     stepGap: 0.3,
-    nightmare: 18,
+    nightmare: 26,
   },
   lullaby: {
     delay: 1.1,
@@ -41,13 +41,31 @@ export const SOMNARA = {
     speed: 240,
     width: 22,
     radius: 820,
-    damage: 6,
+    damage: 14,
   },
   tail: { delay: 1.25, length: 340, width: 115, damage: 26 },
-  bubbles: { delay: 0.9, speed: 115, radius: 24, seconds: 8, count: 3 },
+  bubbles: {
+    delay: 0.9,
+    speed: 135,
+    radius: 24,
+    seconds: 8,
+    count: 3,
+    /** With three or more raiders, or alone on a live raid. */
+    partyCount: 4,
+    /** Alone, mid-dream: they wait at the next pad until a raider is this close. */
+    guard: 170,
+  },
   stars: { delay: 1.5, radius: 64, damage: 22 },
   song: { seconds: 4, damage: 30, radius: [0, 175, 150, 125], travel: 100 },
-  drowsy: { stacks: 3, seconds: 12, sleep: 2 },
+  /** Whale Song's Quiet Zone opens this far from the party's centre (px). */
+  quiet: { near: 300, far: 450 },
+  drowsy: { stacks: 3, seconds: 12, sleep: 2.5 },
+  /** While a dream runs it keeps attacking, this much slower. */
+  dreamCadence: 1.35,
+  /** Live raids, alone: time between attacks × this, dream or not. */
+  soloCadence: 0.65,
+  /** Exposed after a solved dream: one lullaby halfway through, at this damage share. */
+  thrash: 0.6,
 } as const;
 
 export function somnaraSequenceLength(

@@ -70,7 +70,7 @@ it("refuses an id that isn't on the roster before the database", async () => {
   const { token } = accounts.add(false);
   for (const body of [
     {},
-    { fighter: "pikachu" },
+    { fighter: "notachampion" },
     { fighter: 3 },
     { fighter: "voltkit", extra: 1 },
   ])

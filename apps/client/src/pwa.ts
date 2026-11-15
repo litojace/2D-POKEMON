@@ -3,6 +3,7 @@ import { lockLandscape } from "./orientation";
 import { registerSW } from "virtual:pwa-register";
 import { safeToUpdate, peerMatchActive } from "./pwa-policy";
 import { fullscreenHelp, fullscreenPlatform } from "./fullscreen-help";
+import { isNativeApp } from "./native";
 interface InstallPrompt extends Event {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: string }>;
@@ -12,6 +13,8 @@ export function setupPWA(
   openDialog: (html: string) => void,
   notify: (text: string) => void,
 ) {
+  // The iPhone app updates through the App Store: no worker, no banner.
+  if (isNativeApp()) return { sync() {} };
   let install: InstallPrompt | undefined;
   let registration: ServiceWorkerRegistration | undefined;
   let lastCheck = 0;

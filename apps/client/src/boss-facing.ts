@@ -45,6 +45,8 @@ export class BossFacing {
   private castX = 0;
   private castY = 1;
   private hasCastAim = false;
+  /** The direction it faces (screen radians): its travel, or its aim. */
+  heading = Math.PI / 2;
 
   reset(boss: Fighter, time: number) {
     this.x = boss.x;
@@ -53,6 +55,7 @@ export class BossFacing {
     this.dx = Math.cos(boss.angle);
     this.dy = Math.sin(boss.angle);
     this.view = bossView(this.dx, this.dy);
+    this.heading = boss.angle;
     this.movedAt = this.turnedAt = -Infinity;
     this.hasCastAim = false;
   }
@@ -105,6 +108,9 @@ export class BossFacing {
       }
     }
     const travelling = !attacking && state.time - this.movedAt < 0.35;
+    this.heading = travelling
+      ? Math.atan2(this.dy, this.dx)
+      : Math.atan2(aimY, aimX);
     const next = bossView(
       travelling ? this.dx : aimX,
       travelling ? this.dy : aimY,

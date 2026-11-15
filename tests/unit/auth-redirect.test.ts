@@ -78,7 +78,9 @@ it("reports expired or reused links instead of claiming success", () => {
   expect(authErrorMessage("reset-password", "otp_expired")).toMatch(
     /Forgot password/,
   );
-  expect(authErrorMessage("auth-callback", "access_denied")).toMatch(/Google/);
+  expect(authErrorMessage("auth-callback", "access_denied")).toMatch(
+    /Sign-in didn't finish/,
+  );
 });
 
 it("clears Supabase's error from the address but keeps everything else", () => {

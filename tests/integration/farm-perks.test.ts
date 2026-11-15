@@ -73,7 +73,7 @@ afterAll(async () => db.close());
 it("Early Sun speeds up only the time Lumoth farms", async () => {
   let f = await farm();
   expect(f.farmer).toBe("voltkit");
-  expect((await act([{ a: "farmer", id: "pikachu" }])).results[0]).toEqual({
+  expect((await act([{ a: "farmer", id: "notachampion" }])).results[0]).toEqual({
     ok: false,
     error: "Choose a valid champion",
   });

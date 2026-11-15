@@ -64,9 +64,7 @@ describe("mission completion instructions", () => {
     expect(missionHelp("raid-solo-p2")).toContain(
       "without anyone in the party being downed",
     );
-    expect(missionHelp("daily-1")).toContain(
-      "as Voltkit or Auralynx",
-    );
+    expect(missionHelp("daily-1")).toContain("as Voltkit or Auralynx");
   });
   it("explains casts, ultimates and time tracking without counting basic attacks or menus", () => {
     expect(missionHelp("skills-30")).toContain("Basic attacks do not count");
@@ -89,32 +87,32 @@ describe("mission completion instructions", () => {
     expect(examples).toHaveLength(7);
     expect(
       examples.some(
-        (text) => text.includes("Grumblecrag") && text.includes("pillar"),
+        (text) => text.includes("Cragmuff") && text.includes("pillar"),
       ),
     ).toBe(true);
     expect(
       examples.some(
-        (text) => text.includes("Tidewyrm") && text.includes("4 times"),
+        (text) => text.includes("Tidelotl") && text.includes("4 times"),
       ),
     ).toBe(true);
     expect(
       examples.some(
-        (text) => text.includes("Gloomshade") && text.includes("copy"),
+        (text) => text.includes("Inkpurr") && text.includes("copy"),
       ),
     ).toBe(true);
     expect(
       examples.some(
-        (text) => text.includes("Somnara") && text.includes("wrong runes"),
+        (text) => text.includes("Snoozaku") && text.includes("wrong runes"),
       ),
     ).toBe(true);
     expect(
       examples.some(
-        (text) => text.includes("Prismatail") && text.includes("8 seconds"),
+        (text) => text.includes("Prismell") && text.includes("8 seconds"),
       ),
     ).toBe(true);
     expect(
       examples.some(
-        (text) => text.includes("Emberwing") && text.includes("20 seconds"),
+        (text) => text.includes("Lumiwick") && text.includes("20 seconds"),
       ),
     ).toBe(true);
     expect(

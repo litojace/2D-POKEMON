@@ -13,12 +13,34 @@ export function apiClock(): RequestHandler {
   };
 }
 
+/** Where the iPhone app's pages come from (Capacitor's iOS scheme). */
+export const NATIVE_APP_ORIGIN = "capacitor://localhost";
+/**
+ * The other sites allowed to call the API and open the game socket:
+ * CLIENT_ORIGIN (one origin, or several separated by commas), plus the
+ * iPhone app. Allowing an origin grants nothing by itself: every request
+ * still needs the player's login token in a header, and no cookies are
+ * used, so another page can't act for a player.
+ */
+export function clientOrigins(
+  value = process.env.CLIENT_ORIGIN,
+): readonly string[] {
+  const list = (value ?? "")
+    .split(",")
+    .map((o) => o.trim().replace(/\/+$/, ""))
+    .filter(Boolean);
+  return [...new Set([...list, NATIVE_APP_ORIGIN])];
+}
+
 /** The static frontend uses bearer tokens, not cross-site cookies. */
-export function apiCors(clientOrigin?: string): RequestHandler {
+export function apiCors(
+  allowed: readonly string[] = clientOrigins(),
+): RequestHandler {
   return (req, res, next) => {
     const origin = req.get("origin");
     res.vary("Origin");
-    if (origin && origin === clientOrigin) {
+    const ok = !!origin && allowed.includes(origin);
+    if (ok) {
       res.setHeader("Access-Control-Allow-Origin", origin);
       res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
       res.setHeader(
@@ -31,7 +53,7 @@ export function apiCors(clientOrigin?: string): RequestHandler {
       res.setHeader("Access-Control-Max-Age", "600");
     }
     if (req.method === "OPTIONS") {
-      res.sendStatus(origin && origin === clientOrigin ? 204 : 403);
+      res.sendStatus(ok ? 204 : 403);
       return;
     }
     next();

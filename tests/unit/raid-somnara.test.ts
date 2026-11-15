@@ -1,4 +1,4 @@
-import { RAID } from "../../packages/shared/src/raid";
+import { RAID, RAID_TIERS } from "../../packages/shared/src/raid";
 import { drawSomnara } from "../../apps/client/src/raid-somnara-art";
 import { describe, it, expect, vi } from "vitest";
 import {
@@ -104,7 +104,7 @@ describe("Somnara's encounter", () => {
         expect(RAID_BOSS_ATTACKS.somnara).toContain(kind);
     }
   });
-  it("gives solo shorter sequences and 14 seconds; teams get 10 seconds", () => {
+  it("gives solo shorter sequences and 13 seconds; teams get 9 seconds", () => {
     for (const peril of [1, 2, 3]) {
       expect(somnaraSequenceLength(2, peril, 1, "starry-night")).toBe(
         somnaraSequenceLength(2, peril, 4, "starry-night") - 1,
@@ -116,7 +116,13 @@ describe("Somnara's encounter", () => {
     ] as CharacterId[][]) {
       const a = setup(chars);
       attack(a, "dream-sequence");
-      expect(a.raid.dream!.until - a.time).toBe(chars.length === 1 ? 14 : 10);
+      expect(a.raid.dream!.until - a.time).toBe(
+        chars.length === 1
+          ? SOMNARA.sequence.soloSeconds
+          : SOMNARA.sequence.seconds,
+      );
+      expect(SOMNARA.sequence.soloSeconds).toBe(13);
+      expect(SOMNARA.sequence.seconds).toBe(9);
       const seq = sequence(a);
       expect(seq.every((r, i) => !i || r !== seq[i - 1])).toBe(true);
     }
@@ -198,7 +204,11 @@ describe("Somnara's encounter", () => {
     attack(a, "dream-sequence");
     expect(a.raid.dream!.backwards).toBe(false);
     solve(a);
-    expect(a.raid.exposedUntil - a.time).toBeCloseTo(8, 1);
+    // Six seconds plus two for Deep Slumber, on the ★★ tier's windows.
+    expect(a.raid.exposedUntil - a.time).toBeCloseTo(
+      8 * RAID_TIERS[2].windows,
+      1,
+    );
     a.raid.phase = 3;
     const random = vi
       .spyOn(crypto, "getRandomValues")
@@ -237,7 +247,7 @@ describe("Somnara's encounter", () => {
 });
 
 describe("Drowsy, sleep, bubbles and champion tricks", () => {
-  it("sleeps after three stacks, stops moving, and wakes naturally after two seconds", () => {
+  it("sleeps after three stacks, stops moving, and wakes naturally after two and a half seconds", () => {
     const a = setup();
     const p = a.heroes()[0];
     addStacks(a, p.id);
@@ -247,7 +257,9 @@ describe("Drowsy, sleep, bubbles and champion tricks", () => {
     p.lastInput = { ...blankInput(), dx: 1 };
     run(a, 0.5);
     expect(p.x).toBe(x);
-    run(a, 1.7);
+    run(a, 1.5);
+    expect(a.has(p, "sleep")).toBe(true);
+    run(a, 0.7);
     expect(a.has(p, "sleep")).toBe(false);
   });
   it("wakes from an ally's melee hit without taking friendly damage or losing Shell Up", () => {
@@ -536,31 +548,37 @@ describe("Somnara stand-ins and a full raid", () => {
   });
 });
 
+// Somnara's raid shows Snoozaku (boss-snoozaku-rig.ts): record what the
+// battle tells the rig each frame instead of drawing it.
+const somnaraLooks = vi.hoisted(() => [] as any[]);
+vi.mock("../../apps/client/src/boss-snoozaku-rig", () => ({
+  paintSnoozaku: (_g: unknown, look: unknown) => {
+    somnaraLooks.push(look);
+    return false;
+  },
+}));
 it("restores Somnara's normal pose on a daily retry with the same seed", () => {
   const a = setup();
   const seed = a.raid.seed;
-  const bodies: number[] = [];
-  const g: any = new Proxy(
-    {},
-    {
-      get:
-        (_, method) =>
-        (...args: number[]) => {
-          if (method === "fillEllipse" && args[2] === 250 && args[3] === 144)
-            bodies.push(args[1]);
-          return g;
-        },
-    },
-  );
+  const g: any = new Proxy({}, { get: () => () => g });
   drawSomnara(g, a.snapshot(), false, 0);
+  expect(somnaraLooks.at(-1).dead).toBe(false);
   a.phase = "finished";
   a.raid.result = "victory";
   for (let frame = 1; frame <= 40; frame++)
     drawSomnara(g, a.snapshot(), false, frame * 0.05);
-  expect(bodies.at(-1)!).toBeLessThan(a.boss()!.y - 100);
+  // beaten: it curls up asleep
+  expect(somnaraLooks.at(-1).dead).toBe(true);
+  expect(somnaraLooks.at(-1).deadAge).toBeGreaterThan(1);
   a.start();
   a.raid.seed = seed;
   a.phase = "playing";
   drawSomnara(g, a.snapshot(), false, 3);
-  expect(bodies.at(-1)).toBeCloseTo(a.boss()!.y - 62);
+  // a fresh fight: awake again, not hurt, no yawn
+  const look = somnaraLooks.at(-1);
+  expect(look.dead).toBe(false);
+  expect(look.hurt).toBe(0);
+  expect(look.roarAge).toBeGreaterThan(5);
+  expect(look.y).toBeCloseTo(a.boss()!.y);
+  expect(look.nightmareAge).toBeGreaterThan(5);
 });

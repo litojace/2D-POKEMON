@@ -72,6 +72,8 @@ export interface ProfileData {
   raids: RaidProgress | null;
   /** When you can next change your name (null until loaded, or unknown). */
   nameStatus: NameStatus | null;
+  /** Players can delete their account here; administrators can't. */
+  canDelete: boolean;
 }
 export interface ProfileView {
   /** The title being equipped ("" for no title), while the server answers. */
@@ -86,6 +88,12 @@ export interface ProfileView {
   nameBusy: boolean;
   /** The last name answer ("Name changed." or the reason). */
   nameMessage: string;
+  /** The delete-account form is open. */
+  deleting: boolean;
+  /** The account is being deleted. */
+  deleteBusy: boolean;
+  /** Why it wasn't deleted (or what to type). */
+  deleteMessage: string;
 }
 export const profileView = (): ProfileView => ({
   equipping: null,
@@ -94,7 +102,13 @@ export const profileView = (): ProfileView => ({
   renaming: false,
   nameBusy: false,
   nameMessage: "",
+  deleting: false,
+  deleteBusy: false,
+  deleteMessage: "",
 });
+
+/** What a player types to delete their account. */
+export const DELETE_WORD = "DELETE";
 
 /**
  * When you can next change your name: null when you can now (or before the
@@ -269,10 +283,23 @@ function nameRow(d: ProfileData, view: ProfileView) {
   return `${section("Name", note, "pf-name-h")}<div class="pf-name" aria-labelledby="pf-name-h"><div class="pf-name-row"${view.renaming ? " hidden" : ""}><b class="pf-name-now">${esc(d.name)}</b>${button("Change name", { size: "s", disabled: !!locked, attrs: { "data-profile-rename": true, title: locked ? note : undefined } })}</div>${form}<p class="ui-note pf-name-message" role="status">${esc(view.nameMessage)}</p></div>`;
 }
 
+/**
+ * Delete your account (App Store 5.1.1(v)): a quiet row at the end of the
+ * card; the form asks you to type DELETE, since it can't be undone.
+ */
+function deleteRow(d: ProfileData, view: ProfileView) {
+  if (!d.canDelete) return "";
+  const what = d.guest
+    ? "Your guest pass, records, titles and everything you've earned are removed for good."
+    : "Your login, records, titles, coins, skins, farm, bistro and friends are removed for good. Matches and raids you played stay for the other players, under \u201cDeleted player\u201d.";
+  const form = `<form class="pf-delete-form" data-profile-delete-form${view.deleting ? "" : " hidden"}><p class="ui-note">${esc(what)} This can't be undone.</p><label class="pf-delete-label"><span>Type <b>${DELETE_WORD}</b> to confirm</span><input name="confirm" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Type ${DELETE_WORD} to confirm"${view.deleteBusy ? " disabled" : ""}></label><span class="pf-delete-actions">${button("Cancel", { size: "s", disabled: view.deleteBusy, attrs: { "data-profile-delete-cancel": true } })}<button type="submit" class="ui-btn is-s is-danger"${view.deleteBusy ? ' disabled aria-busy="true"' : ""}><span>Delete forever</span></button></span></form>`;
+  return `${section("Delete account", "Remove your account and its data", "pf-delete-h")}<div class="pf-delete" aria-labelledby="pf-delete-h">${view.deleting ? "" : button("Delete account", { size: "s", kind: "danger", attrs: { "data-profile-delete": true } })}${form}<p class="ui-note pf-delete-message" role="status">${esc(view.deleteMessage)}</p></div>`;
+}
+
 function main(d: ProfileData, view: ProfileView) {
   if (!d.progress && d.progressProblem)
-    return `${tiles(d)}${emptyState("Your records aren't available", d.progressProblem, button("Try again", { size: "s", attrs: { "data-profile-retry": true } }))}`;
-  return `${tiles(d)}${d.guest ? saveAccount(view) : ""}${nameRow(d, view)}${section("Title", "Tap to wear it · saved at once", "pf-titles-h")}${titleChips(d, view)}${section("Fighter mastery", "Badges for matches played", "pf-mastery-h")}${masteryGrid(d)}${summaries(d)}${section("Raid trophies", "Clears per boss", "pf-trophy-h")}${trophies(d)}${achievements(d)}<div class="pf-links">${button("Ranks", { icon: "leaderboard", attrs: { "data-profile-go": "ranks" } })}${button("Journey", { icon: "sparkle", attrs: { "data-profile-go": "journey" } })}${button("Raid rewards", { icon: "bestiary", attrs: { "data-profile-go": "raids" } })}</div><p class="ui-note pf-who">${esc(d.role)}${d.email ? ` · ${esc(d.email)}` : ""}</p>`;
+    return `${tiles(d)}${emptyState("Your records aren't available", d.progressProblem, button("Try again", { size: "s", attrs: { "data-profile-retry": true } }))}${deleteRow(d, view)}`;
+  return `${tiles(d)}${d.guest ? saveAccount(view) : ""}${nameRow(d, view)}${section("Title", "Tap to wear it · saved at once", "pf-titles-h")}${titleChips(d, view)}${section("Fighter mastery", "Badges for matches played", "pf-mastery-h")}${masteryGrid(d)}${summaries(d)}${section("Raid trophies", "Clears per boss", "pf-trophy-h")}${trophies(d)}${achievements(d)}<div class="pf-links">${button("Ranks", { icon: "leaderboard", attrs: { "data-profile-go": "ranks" } })}${button("Journey", { icon: "sparkle", attrs: { "data-profile-go": "journey" } })}${button("Raid rewards", { icon: "bestiary", attrs: { "data-profile-go": "raids" } })}</div><p class="ui-note pf-who">${esc(d.role)}${d.email ? ` · ${esc(d.email)}` : ""}</p>${deleteRow(d, view)}`;
 }
 
 export function profileMarkup(view: ProfileView, d: ProfileData) {

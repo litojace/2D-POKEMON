@@ -71,7 +71,7 @@ export type BistroAction = BistroDo & { at?: number };
 type BistroDo =
   | { a: "cook"; stove: number; dish: DishId }
   | { a: "stir"; stove: number }
-  /** A guest's order: its serving leaves the counter, kept for them (migration 109). */
+  /** A guest's order: its serving leaves the counter, kept for them (migration 118). */
   | { a: "hold"; dish: DishId }
   /** They left without it: back on the counter. */
   | { a: "unhold"; dish: DishId }
@@ -558,7 +558,7 @@ export class BistroSync {
     return r;
   }
   /**
-   * Does the server keep guests' servings (migration 109)? Then an order
+   * Does the server keep guests' servings (migration 118)? Then an order
    * tells it (a hold), so its counter is the one on screen; an older server
    * only hears of a serving when the guest pays, and the page keeps it.
    */

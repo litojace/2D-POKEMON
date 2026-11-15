@@ -5,6 +5,10 @@ export interface LightPoint {
 }
 export interface PrismMirror extends LightPoint {
   angle: number;
+  /** A scramble is coming: the mirror flashes until then, then turns. */
+  scrambleAt?: number;
+  /** How many 45° steps it turns back when it scrambles. */
+  scrambleTurns?: number;
 }
 export interface LightLink extends LightPoint {
   tx: number;
@@ -24,13 +28,29 @@ export const PRISMATAIL = {
   ],
   range: 300,
   heartRange: 260,
-  burn: 3,
-  expose: 6,
+  burn: 6,
+  expose: 5,
+  /** Seconds a connected chain must hold before the shield breaks. */
+  hold: { party: 1.2, solo: 1, soloFinal: 2 },
+  /** After an exposure, the skylight returns this much later. */
+  relayRestart: 3,
+  /**
+   * When an exposure ends, mirrors that carried the light (1 in the first
+   * chapter, 2 later) flash for `warn` seconds and turn back 2 or 3 steps.
+   */
+  scramble: { warn: 1.5, mirrors: [1, 2, 2], turns: [2, 3] },
   lance: { delay: 1.1, width: 26, damage: 25 },
   fan: { delay: 1.45, radius: 650, damage: 24 },
   glare: { delay: 1, blind: 1.5 },
-  halo: { delay: 2, radius: 150, width: 38, gap: 0.65, damage: 28 },
+  halo: { delay: 1.75, radius: 150, width: 38, gap: 0.65, damage: 28 },
 } as const;
+/** How long the light relay must stay connected to break the shield. */
+export const prismRelayHold = (phase: number, partySize: number) =>
+  partySize > 1
+    ? PRISMATAIL.hold.party
+    : phase >= 3
+      ? PRISMATAIL.hold.soloFinal
+      : PRISMATAIL.hold.solo;
 export const PRISM_COLORS = [
   0xff899e, 0xffd778, 0x9aefb5, 0x80e1ff, 0xa5adff, 0xe5a0ff, 0xffb784,
   0xc4f8ef,

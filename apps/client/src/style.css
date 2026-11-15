@@ -5523,6 +5523,54 @@ body.battle-raid:not(.touch-mode) #battle {
   border-left: 3px solid var(--rite-color);
   border-radius: 12px;
 }
+/* A picked rite stays in its place, checked and greyed out; once every pick
+   is made the rest grey out further (raid-rite-cards.ts). */
+.raid-rite-options > button {
+  position: relative;
+}
+#arena-overlay .raid-draft .raid-rite-options > button:disabled {
+  cursor: default;
+  opacity: 1;
+}
+#arena-overlay .raid-draft .raid-rite-options > button:disabled > * {
+  filter: grayscale(1);
+  opacity: 0.3;
+}
+#arena-overlay .raid-draft .raid-rite-options > button.is-picked {
+  border-color: #6fdc9a99;
+  box-shadow: inset 0 0 0 1px #6fdc9a66;
+}
+#arena-overlay .raid-draft .raid-rite-options > button.is-picked > * {
+  opacity: 0.55;
+}
+#arena-overlay
+  .raid-draft
+  .raid-rite-options
+  > button.is-picked
+  > .raid-rite-check {
+  filter: none;
+  opacity: 1;
+}
+.raid-rite-check {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  color: #08240f;
+  background: #6fdc9a;
+  box-shadow: 0 0 0 3px #0c1626;
+}
+.raid-rite-check > svg {
+  width: 18px;
+  height: 18px;
+}
+.raid-rite-locked {
+  color: #6fdc9a;
+}
 .raid-rite-options .raid-rite-icon {
   width: 64px;
   height: 64px;
@@ -11012,7 +11060,10 @@ body.battle-active .ability.ult-ready,
 }
 #arena-overlay .raid-draft.action-overlay {
   width: min(1140px, 100%);
-  height: min(620px, 100%);
+  /* As tall as its six cards need, up to the screen: a fixed 620px left the
+     cards overflowing onto the chapter tip and timer below. */
+  height: auto;
+  max-height: 100%;
   padding: 24px 28px 18px;
   grid-template-rows: auto auto minmax(0, 1fr) auto;
   gap: 8px;
@@ -11110,7 +11161,11 @@ body.battle-active .ability.ult-ready,
 #arena-overlay .raid-draft .raid-rite-options > button:nth-child(3)::before {
   content: "03";
 }
-#arena-overlay .raid-draft .panel-actions .raid-rite-options > button:hover,
+#arena-overlay
+  .raid-draft
+  .panel-actions
+  .raid-rite-options
+  > button:hover:not(:disabled),
 #arena-overlay
   .raid-draft
   .panel-actions
@@ -12513,6 +12568,25 @@ dialog .auth-panel {
   width: 17px;
   height: 17px;
 }
+/* The iPhone app has no install prompt (native.ts). */
+.native-app #install-app {
+  display: none;
+}
+/* Sign in with Apple: Apple's white button on the dark panel (its button
+   guidelines: black, white or white with an outline; logo and title). */
+.auth-apple {
+  border-color: #fff;
+  background: #fff;
+  color: #000;
+}
+.auth-apple:hover {
+  background: #e8e8ed;
+}
+.auth-apple svg {
+  width: 16px;
+  height: 19px;
+  margin-top: -2px;
+}
 .auth-message {
   margin: 0;
   color: #ffd68a;
@@ -12554,6 +12628,16 @@ dialog .auth-panel {
 .auth-guest .auth-secondary {
   width: auto;
   padding: 0 16px;
+}
+/* The privacy policy link: stays on short screens too (App Store 5.1.1). */
+.auth-legal {
+  margin: -4px 0 0;
+  font-size: 12px;
+  line-height: 1.2;
+  text-align: center;
+}
+.auth-legal a {
+  color: #9fb3d6;
 }
 .auth-note {
   margin: -6px 0 0;
@@ -12821,6 +12905,41 @@ body.battle-active.court-view #game canvas {
 .prefs-graphics-note b {
   color: var(--accent);
 }
+/* Settings → App icon (iPhone app): the Home Screen icon choices. */
+.prefs-app-icons {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+.framed-dialog .prefs-app-icons > button {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  min-width: 0;
+  margin: 0;
+  padding: 8px 4px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  font: 700 12px/1.15 var(--body);
+  color: var(--text-dim);
+  background: transparent;
+  box-shadow: none;
+}
+.prefs-app-icons img {
+  width: 56px;
+  height: 56px;
+  max-width: 100%;
+  /* The rounded square iOS gives app icons. */
+  border-radius: 22.37%;
+}
+.framed-dialog .prefs-app-icons > button[aria-checked="true"] {
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+}
+.framed-dialog .prefs-app-icons > button > span {
+  overflow-wrap: anywhere;
+}
 /* The browser draws without the graphics card (gpu-check.ts): how to fix it. */
 .prefs-gpu-off {
   margin: 10px 0 0;
@@ -12975,6 +13094,32 @@ body.battle-active.court-view #game canvas {
     font-size: 12px;
   }
   .prefs-graphics-note {
+    display: none;
+  }
+  /* App icon (iPhone app): one line across both columns, icons only (each
+     button keeps its name in aria-label). */
+  .prefs-card.prefs-app-icon {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .framed-dialog .prefs-card.prefs-app-icon > h3 {
+    margin: 0;
+  }
+  .prefs-app-icons {
+    display: flex;
+    gap: 4px;
+  }
+  .framed-dialog .prefs-app-icons > button {
+    padding: 3px;
+  }
+  .prefs-app-icons img {
+    width: 40px;
+    height: 40px;
+  }
+  .framed-dialog .prefs-app-icons > button > span {
     display: none;
   }
   .credits-hero {
@@ -15577,8 +15722,9 @@ body #arena-overlay .raid-draft .panel-actions .raid-rite-trigger {
   white-space: nowrap;
 }
 
-/* Landscape phones and short windows: art and chips side by side. */
-@media (orientation: landscape) and (max-height: 600px), (max-width: 559px) {
+/* Landscape phones and short windows (up to 700px tall, where six full
+   cards no longer fit above the timer): art and chips side by side. */
+@media (orientation: landscape) and (max-height: 700px), (max-width: 559px) {
   body #arena-overlay .raid-draft .panel-actions .raid-rite-options {
     gap: 8px;
   }
@@ -15823,4 +15969,25 @@ body.battle-active:not(.touch-mode)
   .hub-world-spinner {
     animation: none;
   }
+}
+
+/* Solo against a ★★★ boss: no self-revive (raid-solo.ts). */
+.raid-solo-warning {
+  margin: 0 0 8px;
+  padding: 8px 12px;
+  border: 1px solid #ff8a7a66;
+  border-radius: 10px;
+  color: #ffc9c0;
+  background: #3a161480;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+}
+.raid-solo-warning::before,
+.rh-foot-note.is-warning::before {
+  content: "⚠ ";
+}
+.rh-foot-note.is-warning {
+  color: #ffb4a8;
+  font-weight: 600;
 }

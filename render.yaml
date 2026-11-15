@@ -24,3 +24,12 @@ services:
         value: 22.16.0
       - key: RECONNECT_MS
         value: 60000
+      # Sign in with Apple in the iPhone app (docs/ios-app.md).
+      - key: APPLE_TEAM_ID
+        sync: false
+      - key: APPLE_KEY_ID
+        sync: false
+      - key: APPLE_PRIVATE_KEY
+        sync: false
+      - key: APPLE_APP_BUNDLE_ID
+        sync: false

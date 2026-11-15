@@ -3,6 +3,10 @@ import { paintKit } from "./arena-courts";
 import type { RaidFloorId } from "./raid-floors";
 import type { RaidBossId } from "../../../packages/shared/src/raid-roster";
 import { GLOOMSHADE } from "../../../packages/shared/src/raid";
+import { paintRingInlay } from "./raid-ring-pieces";
+import { engravedRing } from "./raid-emberwing-terrace";
+import { paintConstellationInlay } from "./raid-cloud-deck-pieces";
+import { paintAtriumInlay } from "./raid-prismatail-atrium";
 import grumblecrag from "./art/raid-arenas/grumblecrag.webp";
 import tidewyrm from "./art/raid-arenas/tidewyrm.webp";
 import gloomshade from "./art/raid-arenas/gloomshade.webp";
@@ -123,59 +127,18 @@ export function paintIllustratedRaidFloor(
     ring(800, 430, 120, "#c8b7ec55");
     ring(800, 430, 150, "#c8b7ec33");
   } else if (id === "sky-terrace") {
-    ring(800, 450, 260, "#c39a6966", 3);
+    // The ritual circle as a worn bronze inlay in the slabs.
+    engravedRing(c, 800, 450, 260);
   } else if (id === "sun-atrium") {
-    ring(1000, 450, 210, "#997546aa", 3);
-    ring(1000, 450, 310, "#997546aa", 3);
-    const colors = [
-      "#d97c91",
-      "#e0ba70",
-      "#80b9a8",
-      "#70a9c7",
-      "#8d8dc0",
-      "#b18dbd",
-    ];
-    for (let i = 0; i < 12; i++) {
-      const a = (i * Math.PI) / 6,
-        x = 1000 + Math.cos(a) * 310,
-        y = 450 + Math.sin(a) * 310;
-      c.fillStyle = colors[i % 6];
-      c.beginPath();
-      c.moveTo(x, y - 10);
-      c.lineTo(x + 6, y);
-      c.lineTo(x, y + 10);
-      c.lineTo(x - 6, y);
-      c.closePath();
-      c.fill();
-    }
+    // Gold rings, glass and the mirrors' tracks (raid-prismatail-atrium.ts).
+    paintAtriumInlay(c);
   } else if (id === "conductor-ring") {
-    for (const [rx, ry] of [
-      [730, 380],
-      [710, 360],
-      [500, 285],
-    ]) {
-      c.strokeStyle = rx === 710 ? "#a5daf055" : "#c4906366";
-      c.lineWidth = rx === 730 ? 4 : 2;
-      c.beginPath();
-      c.ellipse(800, 450, rx, ry, 0, 0, Math.PI * 2);
-      c.stroke();
-    }
-    ring(800, 450, 150, "#a5daf044");
+    // The same rings at the same radii, inlaid: a riveted copper rail, the
+    // live filament, a copper inlay and the etched inner circle.
+    paintRingInlay(c);
   } else if (id === "cloud-deck") {
-    ring(800, 450, 275, "#c9a3ff77", 2.5);
-    c.fillStyle = "#e6e4ff99";
-    for (let i = 0; i < 12; i++) {
-      const a = (i * Math.PI) / 6;
-      c.beginPath();
-      c.arc(
-        800 + Math.cos(a) * 275,
-        450 + Math.sin(a) * 275,
-        3.5,
-        0,
-        Math.PI * 2,
-      );
-      c.fill();
-    }
+    // The constellation ring around the whale, as a gold inlay with star gems.
+    paintConstellationInlay(c);
   }
   // A restrained rim makes the world boundary clear without hiding live warnings.
   c.strokeStyle = "#c7c1b444";

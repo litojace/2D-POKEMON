@@ -1,27 +1,31 @@
-# Raid Hub boss illustrations
+# Raid boss splash art
 
-All seven bosses have a dedicated static introduction image. Grumblecrag uses
-the approved mountain-coliseum illustration. The remaining images follow the
-same painterly style, using each boss's existing battle atlas as identity reference:
+The approved seven-poster set uses hand-painted fantasy art with each boss's
+current identity and its own arena:
 
-- Tidewyrm: a moonlit tidal vortex and drowned temple.
-- Gloomshade: haunted ruins, shadow hands and its golden crescent tail.
-- Somnara: clouds, dream ripples and the cottage on its back.
-- Prismatail: a mirror temple and a crystal fan scattering sunlight.
-- Emberwing: volcanic ruins and a ring of fire, with room for both wings.
-- Storm Twins: gold and blue spirits joined by lightning in a storm temple.
+- Cragmuff (`grumblecrag`): cracked stone coliseum, amber crystals and impact dust.
+- Tidelotl (`tidewyrm`): turquoise lagoon, submerged masonry and pink coral.
+- Inkpurr (`gloomshade`): lantern courtyard, wet living ink and shadow hands.
+- Snoozaku (`somnara`): lavender marble Cloud Deck, gold star inlays and dream runes.
+- Prismell (`prismatail`): sunlit crystal atrium, opalescent shell and prism mirrors.
+- Lumiwick (`emberwing`): volcanic terrace, three braziers and luminous paper ribbons.
+- Storm Twins (`storm-twins`): rain-soaked conductor arena, gold/cyan lightning and four pylons.
 
-The illustrations contain no repeated titles or UI text. Game encounters and
-boss animation assets are unchanged. The approved splash is used in the boss
-showcase; the overview grid and roster use separate 320px thumbnails. Boss-specific
-thumbnail framing keeps faces recognizable. Images are WebP, decoded asynchronously;
-only the selected showcase uses the full-size illustration. Thumbnails load lazily.
+Each boss has three WebP files in `apps/client/src/art/raid-splash/`, named by
+its stable storage ID: the 1536×1024 landscape hero, 600×900 portrait and
+320×213 thumbnail. `raid-splash-art.ts` maps them to the existing raid IDs.
 
-PC keeps the image at its natural 3:2 aspect ratio. Landscape phones reserve a wider
-image column so the camera does not zoom into a face; very short screens contain
-the complete picture inside the space above the action footer. Portrait uses 3:2.
+`BOSS_FRAMES` in `screens/raid-hall-view.ts` supplies the body and face focal
+points for the approved illustrations, including the zoom used on phones.
+The portraits and thumbnails are cut by `docs/ui-remodel/tools/boss-art.py`
+from a box around the whole creature (tails, ribbons, gills, hats) and its
+face's x: the whole boss always fits, and within the room left over the cut
+slides so the face sits as near the middle as it can. Where the painting runs
+out, a soft filled strip sits under the card's name. The exact
+boxes are in the commit that added them; `boss-portraits.sh` is the older
+centre-strip cut and trims wide bosses.
 
-Asset locations: `apps/client/src/art/raid-splash/`, mapping in
-`apps/client/src/raid-splash-art.ts`. Original generation files remain in the session
-workspace's `generated_images` directory; the repository contains optimized WebP
-exports only.
+The illustrations contain no UI or text. Original generation PNGs remain in
+the chat's image artifacts; the repository contains optimized WebP exports.
+See [boss-identity-refresh.md](boss-identity-refresh.md) for the identity map,
+retired assets, migration and the two combat rigs still awaiting replacement.

@@ -4,8 +4,11 @@ import {
   raidChapters,
   DREAM_RUNE_NAMES,
   raidPingLabel,
+  RAID_BOSSES,
   RAID_REWARDS,
+  EMBERWING,
   type RaidBossId,
+  type RaidWarning,
   type RaidContribution,
   type RaidProgress,
   type RaidReward,
@@ -19,13 +22,32 @@ const escape = (s: string) =>
       ]!,
   );
 
+/**
+ * With several attacks live at once, the warning to call out: the soonest
+ * one aimed at me, else the soonest to land.
+ */
+export function cueWarning(
+  state: Snapshot,
+  myId: string,
+): RaidWarning | undefined {
+  const all = state.raid?.warnings ?? [];
+  if (all.length < 2) return all[0];
+  const mine = all.filter((w) => w.targetId === myId);
+  return (mine.length ? mine : all).reduce((a, b) => (b.at < a.at ? b : a));
+}
+
 export function raidCue(state: Snapshot, myId: string) {
   const r = state.raid!;
   if (state.phase !== "playing")
     return raidChapters(r.boss)[r.phase - 1].objective;
   if (r.staggerUntil > state.time)
     return "Core exposed — unleash your ultimates!";
-  const w = r.warnings[0];
+  // The soft enrage is announced for a few seconds when it starts or grows.
+  if ((r.enrage ?? 0) > 0 && state.time - (r.enrageAt ?? -99) < 3)
+    return r.enrage === 1
+      ? `${RAID_BOSSES[r.boss].name} grows furious — faster, harder attacks!`
+      : `${RAID_BOSSES[r.boss].name}'s fury builds (${r.enrage}/4)!`;
+  const w = cueWarning(state, myId);
   if (r.boss === "storm-twins") {
     const fallen = r.twins?.find(
       (t) => (state.players.find((p) => p.id === t.id)?.hp ?? 0) <= 0,
@@ -63,7 +85,7 @@ export function raidCue(state: Snapshot, myId: string) {
     if (w?.kind === "dive-bomb")
       return "Dive locked — sidestep the lane and avoid its burning trail!";
     if (w?.kind === "wing-gust")
-      return "Wing Gust — leave the cone or dash into the wind!";
+      return "Hot Gust — leave the cone or dash into the wind!";
     if ((r.flameRings?.length ?? 0) > 0 || w?.kind === "flame-ring")
       return "Flame Ring — jump as the expanding edge reaches you!";
     if (w?.kind === "ember-rain")
@@ -77,7 +99,7 @@ export function raidCue(state: Snapshot, myId: string) {
     )
       return `Updraft — braziers ready in ${Math.ceil(2 - (state.time - (r.takeoffAt ?? 0)))}s. Get into position!`;
     if (r.airborne)
-      return `Airborne · ${(r.braziers ?? []).filter((b) => b.litUntil > state.time).length}/3 braziers lit · stand in the rings${r.phase === 3 ? ` · ${r.chapterGroundings ?? 0}/2 groundings` : ""}`;
+      return `Airborne · ${(r.braziers ?? []).filter((b) => b.litUntil > state.time).length}/3 braziers lit · stand in the rings${r.phase === 3 ? ` · ${r.chapterGroundings ?? 0}/${EMBERWING.permanentGround.after} groundings` : ""}`;
     return "Sidestep dives, jump flame rings, and keep out of burning ground.";
   }
   if (r.boss === "prismatail") {
@@ -95,6 +117,8 @@ export function raidCue(state: Snapshot, myId: string) {
       return "Refraction — leave both marked lanes!";
     if (w?.kind === "prism-lance")
       return "Lance locked — sidestep the thin lane!";
+    if (r.mirrors?.some((m) => (m.scrambleAt ?? 0) > state.time))
+      return "Mirrors flashing — they will turn; get ready to re-aim them!";
     const arrivals = (r.lightArrivals ?? []).filter((t) => t >= 0);
     if (r.phase === 3 && r.partySize > 1 && arrivals.length)
       return `Split Light · ${arrivals.length}/2 paths · pair within ${Math.max(0, Math.ceil(3 - (state.time - Math.min(...arrivals))))}s!`;
@@ -190,7 +214,7 @@ function tidewyrmCue(state: Snapshot, myId: string) {
   const wave = (r.waves ?? [])[0];
   if (wave)
     return wave.high ? "High wave — be on an island!" : "Low wave — jump it!";
-  const w = r.warnings[0];
+  const w = cueWarning(state, myId);
   if (!w) return "";
   if (w.kind === "dive") {
     const locked = w.lockAt !== undefined && state.time >= w.lockAt;
@@ -233,7 +257,7 @@ function gloomshadeCue(state: Snapshot, myId: string) {
   const mine = r.curses?.[myId];
   if (mine && mine.hauntedUntil > state.time)
     return "Haunted — get into lantern light to cleanse it!";
-  const w = r.warnings[0];
+  const w = cueWarning(state, myId);
   if (w?.kind === "hands")
     return w.shiftAt !== undefined && state.time < w.shiftAt
       ? "Grasping Hands — the tiles will flip! Watch for the flicker."
@@ -274,7 +298,7 @@ function somnaraCue(state: Snapshot, myId: string) {
   const drowsy = r.drowsy?.[myId];
   if (drowsy && drowsy.sleepUntil > state.time)
     return "Asleep — a teammate can tap you awake without hurting you!";
-  if (r.quietZone) return "Whale Song — follow the moving teal Quiet Zone!";
+  if (r.quietZone) return "Thunder Snore — follow the moving teal Quiet Zone!";
   if (r.warnings.some((w) => w.kind === "falling-stars"))
     return "Falling Stars — stand between the constellation points!";
   const dream = r.dream,
@@ -295,11 +319,11 @@ function somnaraCue(state: Snapshot, myId: string) {
       : "Listen to the Dreamer's rune calls, then enter the pads in order.";
   }
   if (r.exposedUntil > state.time)
-    return "Dream solved — strike Somnara's shining heart!";
+    return "Dream solved — strike Snoozaku's shining heart!";
   if (r.warnings.some((w) => w.kind === "lullaby") || r.dreamRings?.length)
     return "Lullaby Rings — jump! Three Drowsy stacks put you to sleep.";
   if (r.warnings.some((w) => w.kind === "tail-splash"))
-    return "Tail Splash — leave the marked lane!";
+    return "Trunk Slam — leave the marked lane!";
   if (r.dreamBubbles?.length) return "Pop the Dream Bubbles or outrun them.";
   return "";
 }

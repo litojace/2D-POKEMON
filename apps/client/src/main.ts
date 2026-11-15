@@ -9,6 +9,9 @@ import {
 import { softwareRendering } from "./gpu-check";
 import { raidCameraView } from "./raid-camera";
 import { BattleQualityGovernor, resetBattleQuality } from "./battle-quality";
+import { capGameFrames, screenHz, type FrameCap } from "./frame-cap";
+/** The battle's frame cap: it also knows the screen's refresh (reports). */
+let battleFrames: FrameCap | undefined;
 import {
   BattlePerfMeter,
   BUILD,
@@ -25,9 +28,14 @@ import { battleCurves } from "./battle-curves";
 import { generateGraphicsTexture } from "./graphics-bake";
 import { RoomInvites } from "./room-invites";
 import { PvpSpectator } from "./pvp-spectator";
-import { carryCurrent, predictFighter } from "./predict-fighter";
+import {
+  carryCurrent,
+  newestStep,
+  predictFighter,
+  serverSteps,
+} from "./predict-fighter";
 import { startPingBadge } from "./ping-badge";
-import { TargetLock, drawTargetReticle } from "./target-lock";
+import { TargetLock, drawTargetReticle, type Targetable } from "./target-lock";
 import { renderTargetPicker } from "./target-picker";
 import {
   CastPredictor,
@@ -102,6 +110,14 @@ import { resultXp } from "./adventure-ui";
 import { arcadeWeek, ARCADE_EVENTS } from "../../../packages/shared/src/arcade";
 import { drawArcade } from "./arcade-art";
 import { stormTarget } from "./storm-twins-controls";
+import { raidTargets, type RaidTarget } from "./raid-targets";
+/** Target row colours for the raid targets that are not fighters. */
+const TARGET_COLORS: Record<RaidTarget["kind"], string> = {
+  shade: "#8a6ad6",
+  lantern: "#ffd27a",
+  boss: "#4fb8d8",
+  bubble: "#9fe6ff",
+};
 import { prismatailAim } from "./prismatail-controls";
 import { dreamRuneKey } from "./somnara-controls";
 import { battleMusic } from "./battle-music";
@@ -129,7 +145,17 @@ import {
   fighterTextureKeys,
   type FighterVisual,
 } from "./animation/pipeline";
-import { rigAssets } from "./animation/assets";
+import { rigAssets, skinSuffix } from "./animation/assets";
+import { loadRigTextures } from "./animation/rig-textures";
+import { prewarmBossAtlas } from "./boss-vector-prewarm";
+import { prewarmRaidArena } from "./raid-arena-prewarm";
+import { PillarRig, prewarmPillars } from "./raid-grumble-pillars-rig";
+import { IMPACT_RADIUS } from "./raid-grumble-pillars";
+import { prewarmTerrace } from "./raid-emberwing-terrace-rig";
+import { setRaidMapLow } from "./raid-map-atlas";
+import { prewarmLagoon } from "./raid-tidewyrm-art";
+import { noteCloudDeckEvent, prewarmCloudDeck } from "./raid-somnara-art";
+import { isMirrorTurnImpact } from "./raid-prismatail-atrium";
 import { FighterLoading, neededFighters } from "./animation/fighter-loading";
 import {
   setOverlayMarkup,
@@ -156,6 +182,8 @@ import {
   playRewindDive,
 } from "./skill-effects";
 import { setupPWA } from "./pwa";
+import { PRIVACY_URL, isNativeApp, setupNativeShell } from "./native";
+import { appIconCardHTML, bindAppIconCard } from "./app-icon-setting";
 import { abilityIcon } from "./ability-icons";
 import { TouchControls } from "./touch-controls";
 import Phaser from "phaser";
@@ -319,11 +347,9 @@ import {
   isCourt,
   paintCourtBlock,
   paintCourtFloor,
-  paintCourtRubble,
   paintCourtStands,
   paintCourtApron,
   COURT_APRON,
-  RUBBLE_PAD,
   SHIFTING_BLOCK,
   STANDS,
   type CourtId,
@@ -467,6 +493,8 @@ let state: Snapshot | undefined,
   local: Fighter | undefined,
   pending: Input[] = [],
   scene: ArenaScene | undefined;
+/** Your late inputs the server will fold into one tick (Fighter.owed). */
+let owedSteps = 0;
 let raidPracticeReturn:
   { boss: RaidBossId; tab: RaidTab; leaveRoom: boolean } | undefined;
 let raidRoomReturn:
@@ -496,7 +524,7 @@ const escape = (s: string) =>
       ]!,
   );
 document.querySelector("#app")!.innerHTML =
-  `<header class="topbar"><nav class="hub-scenes" id="hub-scenes" role="group" aria-label="Scene" hidden></nav><a class="brand" href="#"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 64 64"><defs><linearGradient id="element-crest" x2="0" y2="1"><stop stop-color="#fff1a3"/><stop offset="1" stop-color="#d9a340"/></linearGradient></defs><path fill="url(#element-crest)" fill-rule="evenodd" d="M32 2 42 21 62 32 43 43 32 62 21 43 2 32 21 21Zm0 14L16 32l16 16 16-16Z"/></svg></span> ELEMENT<span>ARENA</span></a><div class="top-links"><div id="account-nav" class="account-nav"></div><button type="button" class="quiet home-settings" id="home-settings" aria-label="Settings" title="Settings">${menuIcon("settings")}</button><details class="header-menu" id="header-menu"><summary><i class="menu-burger" aria-hidden="true">☰</i><i class="menu-gear" aria-hidden="true">${menuIcon("settings")}</i> <span>Menu</span></summary><div class="header-menu-panel"><button class="quiet" id="help">${menuIcon("help")}<span>How to play</span></button><button class="quiet" id="settings">${menuIcon("settings")}<span>Settings</span></button><button class="quiet" id="leaderboard">${menuIcon("leaderboard")}<span>Leaderboard</span></button><button class="quiet" id="install-app">${menuIcon("fullscreen")}<span>Want fullscreen?</span></button><button class="quiet" id="report-problem">${menuIcon("report")}<span>Report a problem</span></button><button class="quiet" id="menu-logout">${menuIcon("leave")}<span>Log out</span></button><span class="connection" id="connection">Connecting</span></div></details></div></header><main><section id="menu"></section><section id="battle" hidden>${stadiumCrowd()}<div id="practice-controls" class="practice-controls" hidden></div><div id="hud" class="hud"></div><div class="arena-stage"><div class="arena-frame"><div id="game"></div><div id="arena-overlay"></div><div id="spectate" class="spectate-banner" role="status" hidden></div><span class="map-label">ELEMENTAL COLISEUM <span>01 / CHAMPIONS COURT</span></span></div></div><div id="mobile-controls"></div><div id="abilities" class="ability-bar"></div><div class="battle-footer"><span id="control-hints"></span><span id="network">AUTHORITATIVE ONLINE MATCH</span><button class="quiet" id="battle-menu" aria-label="Battle settings" title="Battle settings (Esc / controller Menu)">${menuIcon("settings")}</button></div></section></main><div id="toast" role="status"></div><dialog id="dialog"></dialog>`;
+  `<header class="topbar"><nav class="hub-scenes" id="hub-scenes" role="group" aria-label="Scene" hidden></nav><a class="brand" href="#"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 64 64"><defs><linearGradient id="element-crest" x2="0" y2="1"><stop stop-color="#fff1a3"/><stop offset="1" stop-color="#d9a340"/></linearGradient></defs><path fill="url(#element-crest)" fill-rule="evenodd" d="M32 2 42 21 62 32 43 43 32 62 21 43 2 32 21 21Zm0 14L16 32l16 16 16-16Z"/></svg></span> ELEMENT<span>ARENA</span></a><div class="top-links"><div id="account-nav" class="account-nav"></div><button type="button" class="quiet home-settings" id="home-settings" aria-label="Settings" title="Settings">${menuIcon("settings")}</button><details class="header-menu" id="header-menu"><summary><i class="menu-burger" aria-hidden="true">☰</i><i class="menu-gear" aria-hidden="true">${menuIcon("settings")}</i> <span>Menu</span></summary><div class="header-menu-panel"><button class="quiet" id="help">${menuIcon("help")}<span>How to play</span></button><button class="quiet" id="settings">${menuIcon("settings")}<span>Settings</span></button><button class="quiet" id="leaderboard">${menuIcon("leaderboard")}<span>Leaderboard</span></button><button class="quiet" id="install-app">${menuIcon("fullscreen")}<span>Want fullscreen?</span></button><button class="quiet" id="report-problem">${menuIcon("report")}<span>Report a problem</span></button><button class="quiet" id="privacy-policy">${menuIcon("help")}<span>Privacy policy</span></button><button class="quiet" id="menu-logout">${menuIcon("leave")}<span>Log out</span></button><span class="connection" id="connection">Connecting</span></div></details></div></header><main><section id="menu"></section><section id="battle" hidden>${stadiumCrowd()}<div id="practice-controls" class="practice-controls" hidden></div><div id="hud" class="hud"></div><div class="arena-stage"><div class="arena-frame"><div id="game"></div><div id="arena-overlay"></div><div id="spectate" class="spectate-banner" role="status" hidden></div><span class="map-label">ELEMENTAL COLISEUM <span>01 / CHAMPIONS COURT</span></span></div></div><div id="mobile-controls"></div><div id="abilities" class="ability-bar"></div><div class="battle-footer"><span id="control-hints"></span><span id="network">AUTHORITATIVE ONLINE MATCH</span><button class="quiet" id="battle-menu" aria-label="Battle settings" title="Battle settings (Esc / controller Menu)">${menuIcon("settings")}</button></div></section></main><div id="toast" role="status"></div><dialog id="dialog"></dialog>`;
 // Measure wrapped HUDs for phone spacing and desktop boss-specific controls.
 let measuredRaidHud: HTMLElement | null = null;
 let battleLayoutFrame = 0;
@@ -695,6 +723,7 @@ function identity(reply: Reply) {
   myId = reply.id!;
   seq = 0;
   pending = [];
+  owedSteps = 0;
   eventId = 0;
   scene?.hydrateNextSnapshot();
   local = undefined;
@@ -1105,6 +1134,12 @@ const pwa = setupPWA(() => state?.phase, dialog, toast);
 wireRotateGate();
 watchRotation();
 watchScreenPin();
+// The iPhone app (native.ts): iOS pauses it soon after you switch away, which
+// drops the game connection; coming back reconnects at once.
+void setupNativeShell(() => {
+  const token = (socket.auth as { accessToken?: string | null }).accessToken;
+  if (token && !socket.connected) socket.connect();
+});
 watchCosmeticPreviews();
 // Remember a room from an invite link (?room=ABC123) before the first render.
 if (captureInvite()) inviteHinted = false;
@@ -1975,10 +2010,30 @@ function syncPlaza(want: boolean, hub = want) {
     loadProgress: async () =>
       (await accountsUI.api("/api/plaza")) as PlazaProgress,
     goFarm: () => setHubScene("farm"),
-    onPlayer: async (action, playerId) => {
+    isBlocked: (accountId) => accountsUI.isBlocked(accountId),
+    onPlayer: async (action, playerId, name) => {
       if (action === "friend") {
         await accountsUI.friendRequest({ playerId });
         return;
+      }
+      if (action === "report") {
+        accountsUI.showReport(
+          { ...reportContext(), player: playerId, playerName: name },
+          "player",
+        );
+        return true;
+      }
+      if (action === "block") {
+        try {
+          const done = await accountsUI.block(playerId, name);
+          if (done) toast(`${name} is blocked.`);
+          return done;
+        } catch (error) {
+          toast(
+            error instanceof Error ? error.message : "Couldn't block them.",
+          );
+          return false;
+        }
       }
       const reply = await request("party-invite", {
         playerId,
@@ -2706,6 +2761,7 @@ async function leave(returnToHub = true) {
   myId = "";
   local = undefined;
   pending = [];
+  owedSteps = 0;
   screen = "";
   renderMenu();
   $<HTMLDialogElement>("dialog").close();
@@ -3396,6 +3452,7 @@ socket.on("disconnect", (reason: string) => {
     : "RECONNECTING…";
   $("connection").classList.remove("online");
   pending = [];
+  owedSteps = 0;
   const message = dropMessage(drop);
   if (message && !replacedAccount) toast(message);
 });
@@ -3414,6 +3471,7 @@ socket.on("session-replaced", () => {
   myId = watching = "";
   local = undefined;
   pending = [];
+  owedSteps = 0;
   remoteFrames.clear();
   timeline.clear();
   shotTimeline.clear();
@@ -3508,6 +3566,7 @@ socket.on("access-revoked", ({ error }: { error: string }) => {
   myId = "";
   local = undefined;
   pending = [];
+  owedSteps = 0;
   screen = "";
   renderMenu();
   toast(error);
@@ -3572,6 +3631,7 @@ socket.on("state", (snapshot: WireSnapshot) => {
   pending = pending.filter((i) => i.seq > me.ack);
   if (me.hp <= 0 || me.out) {
     pending = [];
+    owedSteps = 0;
     if (previous?.players.some((p) => p.id === myId && p.hp > 0 && !p.out)) {
       stopControls();
       exArmedUntil = 0;
@@ -3587,10 +3647,14 @@ socket.on("state", (snapshot: WireSnapshot) => {
     me.hp > 0
       ? { x: local.x, y: local.y }
       : undefined;
-  timeline.snapshot(pending.length, receivedAt);
+  // Late inputs the server will fold into one tick take no step of their
+  // own (serverSteps, Fighter.owed).
+  owedSteps = me.owed ?? 0;
+  const steps = serverSteps(pending, owedSteps);
+  timeline.snapshot(steps.length, receivedAt);
   local = structuredClone(me);
   carryCurrent(local, state.time);
-  for (const [i, input] of pending.entries())
+  for (const [i, input] of steps.entries())
     predict(local, input, state.time + (i + 1) / RULES.tick);
   if (predicted)
     netMeter.correction(
@@ -3840,9 +3904,10 @@ function showSettings() {
   settingsOpen = true;
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
   dialog(
-    `<div class="settings-screen"><h2>Settings</h2>${state?.practice && touch.enabled ? `<div class="settings-quick-actions"><button id="settings-practice" class="secondary btn-secondary">${iconLabel("target", "Practice")}</button></div>` : ""}<p class="prefs-note">Online matches keep running while this is open.</p><div class="prefs-grid"><section class="prefs-card" aria-labelledby="prefs-sound"><h3 id="prefs-sound">${menuIcon("sound")}Sound</h3>${prefSlider("music", "Music", audio.music, { min: 0, max: 1, step: 0.01 })}${prefSlider("effects", "Sound effects", audio.effects, { min: 0, max: 1, step: 0.01 })}</section><section class="prefs-card" aria-labelledby="prefs-motion"><h3 id="prefs-motion">${menuIcon("motion")}Motion</h3><p class="prefs-status"><b class="${reduced ? "is-on" : ""}">Reduced motion ${reduced ? "on" : "off"}</b><span>Follows your device's accessibility setting.</span></p></section>${state ? "" : displayCard() + graphicsCard()}</div><div class="settings-actions"><button id="open-controls" class="secondary btn-secondary">${iconLabel("keyboard", "Controls &amp; key bindings")}</button>${myId ? leaveButton() : watching ? `<button id="exit-room" class="secondary btn-secondary leave-button">${iconLabel("stop-watching", "Stop watching")}</button>` : ""}<button id="settings-report" class="quiet">${iconLabel("report", "Report a problem")}</button><button id="settings-credits" class="quiet">${iconLabel("star", "Credits")}</button></div></div>`,
+    `<div class="settings-screen"><h2>Settings</h2>${state?.practice && touch.enabled ? `<div class="settings-quick-actions"><button id="settings-practice" class="secondary btn-secondary">${iconLabel("target", "Practice")}</button></div>` : ""}<p class="prefs-note">Online matches keep running while this is open.</p><div class="prefs-grid"><section class="prefs-card" aria-labelledby="prefs-sound"><h3 id="prefs-sound">${menuIcon("sound")}Sound</h3>${prefSlider("music", "Music", audio.music, { min: 0, max: 1, step: 0.01 })}${prefSlider("effects", "Sound effects", audio.effects, { min: 0, max: 1, step: 0.01 })}</section><section class="prefs-card" aria-labelledby="prefs-motion"><h3 id="prefs-motion">${menuIcon("motion")}Motion</h3><p class="prefs-status"><b class="${reduced ? "is-on" : ""}">Reduced motion ${reduced ? "on" : "off"}</b><span>Follows your device's accessibility setting.</span></p></section>${state ? "" : isNativeApp() ? graphicsCard() + appIconCardHTML() : displayCard() + graphicsCard()}</div><div class="settings-actions"><button id="open-controls" class="secondary btn-secondary">${iconLabel("keyboard", "Controls &amp; key bindings")}</button>${myId ? leaveButton() : watching ? `<button id="exit-room" class="secondary btn-secondary leave-button">${iconLabel("stop-watching", "Stop watching")}</button>` : ""}<button id="settings-report" class="quiet">${iconLabel("report", "Report a problem")}</button><button id="settings-credits" class="quiet">${iconLabel("star", "Credits")}</button></div></div>`,
   );
   bindGraphicsCard();
+  void bindAppIconCard(toast);
   for (const kind of ["music", "effects"] as const)
     $(kind).oninput = () => {
       audio.unlock();
@@ -3865,7 +3930,10 @@ function showSettings() {
   const exitRoom = $("exit-room");
   if (exitRoom) exitRoom.onclick = () => void leave();
 }
-/** Settings → Display: full screen on and off (where the browser allows it). */
+/**
+ * Settings → Display: full screen on and off (where the browser allows it).
+ * Not in the iPhone app, which is always full screen: App icon takes its place.
+ */
 const fullscreenSupported = () =>
   !!document.documentElement.requestFullscreen &&
   document.fullscreenEnabled !== false;
@@ -3950,6 +4018,10 @@ function reportContext(): Record<string, string> {
   return context;
 }
 $("report-problem").onclick = () => accountsUI.showReport(reportContext());
+$("privacy-policy").onclick = () => {
+  headerMenu.open = false;
+  window.open(PRIVACY_URL, "_blank", "noopener");
+};
 $("leaderboard").onclick = () => void accountsUI.showLeaderboard();
 // In the hub the header's log-out button is folded into this menu.
 $("menu-logout").onclick = () => {
@@ -4033,15 +4105,10 @@ class ArenaScene extends Phaser.Scene {
   courtAprons = new Map<CourtId, Phaser.GameObjects.Image>();
   /** Grumblecrag's raid plays on the Coliseum court (no stands strip). */
   courtRaid = false;
-  raidPillarShadows: Phaser.GameObjects.Ellipse[] = [];
+  /** Its pillars, shadows, rubble and crumbles (raid-grumble-pillars-rig.ts). */
+  pillarRig?: PillarRig;
   /** Shared floor textures continue into dim, non-playable scenery around the court. */
   raidSurround: Phaser.GameObjects.Image[] = [];
-  /** Transparent rubble over the current raid material. */
-  rubble: Phaser.GameObjects.Image[] = [];
-  /** Each pillar's broken state last frame, to animate the change. */
-  pillarBroken: boolean[] = [];
-  /** Pillars mid-crumble or mid-rise (their tweens own them meanwhile). */
-  pillarMoving = new Set<number>();
   /** Bake an arena's floor once (2x on dense screens); returns its texture key. */
   floorTexture(id: string) {
     const key = `arena-floor-${id}`;
@@ -4174,14 +4241,13 @@ class ArenaScene extends Phaser.Scene {
     this.floorArena = id;
     this.activeCourt = court;
     this.courtRaid = !!court && raid;
-    this.pillarBroken = [];
     const standsOn = !!court && !raid;
     const label = document.querySelector<HTMLElement>(".map-label");
     if (label) {
       label.hidden = !!court;
       label.innerHTML =
         arena === "cloud-deck"
-          ? "CLOUD DECK <span>SOMNARA’S DREAM</span>"
+          ? "CLOUD DECK <span>SNOOZAKU’S DREAM</span>"
           : `${ARENAS[arena].name.toUpperCase()} <span>ELEMENT ARENA</span>`;
     }
     const key = this.floorTexture(
@@ -4209,8 +4275,10 @@ class ArenaScene extends Phaser.Scene {
     for (const image of this.raidSurround)
       image.setTexture(key).setDisplaySize(1600, 900).setVisible(raid);
     if (court) this.ensureBlocks(court);
+    // Grumblecrag's raid shows its own pillars (the PvP blocks stay as they are).
     for (const [cid, list] of this.courtBlocks)
-      for (const b of list) b.img.setVisible(cid === court && !b.shifting);
+      for (const b of list)
+        b.img.setVisible(cid === court && !b.shifting && !this.courtRaid);
     if (standsOn && court && !this.stands.has(court)) {
       const bake = floorBake(),
         skey = `court-stands-${court}`;
@@ -4258,213 +4326,10 @@ class ArenaScene extends Phaser.Scene {
     for (const [cid, img] of this.courtAprons)
       img.setVisible(standsOn && cid === court);
 
-    if (this.courtRaid && !this.rubble.length)
-      this.rubble = courtBlocks("classic").map((o, i) =>
-        this.rubbleImage(o, i),
-      );
-    for (const img of this.rubble) img.setVisible(false);
-    if (this.courtRaid && !this.raidPillarShadows.length) {
-      this.raidPillarShadows = courtBlocks("classic").map((o) =>
-        this.add
-          .ellipse(
-            o.x + o.w / 2 + 8,
-            o.y + o.h - 5,
-            o.w + 25,
-            o.h * 0.45,
-            0x080b13,
-            0.28,
-          )
-          .setDepth(-9.5),
-      );
-    }
-    for (const shadow of this.raidPillarShadows)
-      shadow.setVisible(this.courtRaid);
+    if (this.courtRaid) this.pillarRig ??= new PillarRig(this, fighterDepth);
+    this.pillarRig?.setVisible(this.courtRaid);
     // The frame grows to show the stands on desktop (see .court-view in CSS).
     document.body.classList.toggle("court-view", standsOn);
-  }
-  /** Small stone and dust pictures for crumbling pillars (made once). */
-  private crumbleTextures() {
-    if (this.textures.exists("crumble-dust")) return;
-    const dust = document.createElement("canvas");
-    dust.width = dust.height = 64;
-    const d = dust.getContext("2d")!;
-    const g = d.createRadialGradient(32, 32, 0, 32, 32, 32);
-    g.addColorStop(0, "rgba(226,212,182,0.9)");
-    g.addColorStop(0.55, "rgba(206,190,156,0.45)");
-    g.addColorStop(1, "rgba(206,190,156,0)");
-    d.fillStyle = g;
-    d.fillRect(0, 0, 64, 64);
-    addCanvasTexture(this.textures, "crumble-dust", dust);
-    for (let k = 0; k < 3; k++) {
-      const c = document.createElement("canvas");
-      c.width = c.height = 24;
-      const x = c.getContext("2d")!;
-      const pts = [
-        [4, 8 + k],
-        [11 - k, 3],
-        [20, 6 + k],
-        [21 - k, 15],
-        [13, 21 - k],
-        [3 + k, 17],
-      ];
-      x.fillStyle = "#8b7e64";
-      x.beginPath();
-      pts.forEach(([px, py], n) =>
-        n ? x.lineTo(px, py + 2) : x.moveTo(px, py + 2),
-      );
-      x.fill();
-      x.fillStyle = ["#e9e0cc", "#d9cdb2", "#c9bd9f"][k];
-      x.beginPath();
-      pts.forEach(([px, py], n) =>
-        n ? x.lineTo(px, py - 1) : x.moveTo(px, py - 1),
-      );
-      x.fill();
-      addCanvasTexture(this.textures, `crumble-chunk-${k}`, c);
-    }
-  }
-  /**
-   * A pillar Grumblecrag charged into: it shudders, drops into its rubble and
-   * throws stones and dust (reduced motion: the dust alone).
-   */
-  private crumblePillar(
-    i: number,
-    img: Phaser.GameObjects.Image,
-    o: { x: number; y: number; w: number; h: number },
-  ) {
-    this.crumbleTextures();
-    const rubble = this.rubble[i];
-    const depth = fighterDepth(o.y + o.h) + 0.0001;
-    const foot = o.y + o.h;
-    this.pillarMoving.add(i);
-    rubble?.setVisible(true).setAlpha(0);
-    const done = () => {
-      img.setVisible(false).setAlpha(1).setPosition(baseX, baseY);
-      rubble?.setAlpha(1);
-      this.pillarMoving.delete(i);
-    };
-    const baseX = img.x,
-      baseY = img.y;
-    // Dust rolling out from the base.
-    for (let k = 0; k < (reducedMotion ? 3 : 7); k++) {
-      const puff = this.add
-        .image(
-          o.x + o.w * (0.1 + 0.8 * Math.random()),
-          foot - Math.random() * 20,
-          "crumble-dust",
-        )
-        .setDepth(depth)
-        .setScale(0.6, 0.45)
-        .setAlpha(0.8);
-      this.tweens.add({
-        targets: puff,
-        x: puff.x + (Math.random() - 0.5) * 120,
-        y: puff.y - 10 - Math.random() * 25,
-        scaleX: 2.2,
-        scaleY: 1.5,
-        alpha: 0,
-        duration: 650 + Math.random() * 350,
-        ease: "Quad.Out",
-        onComplete: () => puff.destroy(),
-      });
-    }
-    if (reducedMotion) {
-      done();
-      return;
-    }
-    // Shudder, then sink into the heap while the rubble shows through.
-    this.tweens.chain({
-      targets: img,
-      tweens: [
-        { x: baseX + 3, duration: 40, yoyo: true, repeat: 2 },
-        { y: baseY + 26, alpha: 0, duration: 340, ease: "Quad.In" },
-      ],
-      onComplete: done,
-    });
-    this.tweens.add({ targets: rubble, alpha: 1, delay: 160, duration: 300 });
-    // Stones thrown off the top, landing around the footprint.
-    // The stone's top face starts at its footprint's back edge (stoneBase).
-    const top = o.y;
-    for (let k = 0; k < 12; k++) {
-      const sx = o.x + Math.random() * o.w,
-        sy = top + Math.random() * (o.h * 0.6);
-      const lx = sx + (Math.random() - 0.5) * 150,
-        ly = foot - 6 + (Math.random() - 0.3) * 50;
-      const stone = this.add
-        .image(sx, sy, `crumble-chunk-${k % 3}`)
-        .setDepth(fighterDepth(ly) + 0.0001)
-        .setScale(0.6 + Math.random() * 0.6)
-        .setRotation(Math.random() * 6);
-      this.tweens.add({ targets: stone, x: lx, duration: 520, ease: "Linear" });
-      this.tweens.add({
-        targets: stone,
-        y: ly,
-        rotation: stone.rotation + (Math.random() - 0.5) * 8,
-        duration: 520,
-        ease: "Bounce.Out",
-        delay: 60,
-      });
-      this.tweens.add({
-        targets: stone,
-        alpha: 0,
-        delay: 900 + Math.random() * 400,
-        duration: 400,
-        onComplete: () => stone.destroy(),
-      });
-    }
-  }
-  /** All pillars broken: they grow back out of their rubble. */
-  private raisePillar(i: number, img: Phaser.GameObjects.Image) {
-    const rubble = this.rubble[i];
-    if (reducedMotion) return;
-    const baseY = img.y;
-    this.pillarMoving.add(i);
-    img
-      .setVisible(true)
-      .setAlpha(0)
-      .setY(baseY + 24);
-    this.tweens.add({
-      targets: img,
-      y: baseY,
-      alpha: 1,
-      duration: 420,
-      ease: "Back.Out",
-      onComplete: () => {
-        rubble?.setVisible(false);
-        this.pillarMoving.delete(i);
-      },
-    });
-    if (rubble) this.tweens.add({ targets: rubble, alpha: 0, duration: 300 });
-  }
-  /**
-   * Transparent rubble sits directly on the raid's current floor, so loading
-   * the painted material cannot leave a rectangular patch of the old court.
-   */
-  private rubbleImage(
-    o: { x: number; y: number; w: number; h: number },
-    index: number,
-  ) {
-    const bake = floorBake(),
-      key = `court-rubble-${index}`;
-    const x = o.x - RUBBLE_PAD,
-      y = o.y - RUBBLE_PAD,
-      w = o.w + RUBBLE_PAD * 2 + 32,
-      h = o.h + RUBBLE_PAD * 2 + 8;
-    if (!this.textures.exists(key)) {
-      const canvas = document.createElement("canvas");
-      canvas.width = Math.ceil(w * bake);
-      canvas.height = Math.ceil(h * bake);
-      const ctx = canvas.getContext("2d")!;
-      ctx.scale(bake, bake);
-      ctx.translate(-x, -y);
-      paintCourtRubble(ctx, o, index);
-      addCanvasTexture(this.textures, key, canvas);
-    }
-    return this.add
-      .image(x, y, key)
-      .setOrigin(0)
-      .setScale(1 / bake)
-      .setDepth(-9)
-      .setVisible(false);
   }
   /**
    * Blocks on show each frame: the Shifting Ruins block only while it's up,
@@ -4472,6 +4337,16 @@ class ArenaScene extends Phaser.Scene {
    * behind (see Fx.at).
    */
   private updateBlocks(t: number, pillars?: readonly { broken: boolean }[]) {
+    if (this.courtRaid && this.pillarRig) {
+      const fronts = this.pillarRig.update(
+        this.time.now,
+        pillars ?? [],
+        reducedMotion,
+        battleQuality.current() === "low",
+      );
+      fxFor(this).setOccluders(fronts, fighterDepth);
+      return;
+    }
     const list = this.activeCourt && this.courtBlocks.get(this.activeCourt);
     // Effects pass behind the blocks on show (see Fx.at); none off the courts.
     fxFor(this).setOccluders(
@@ -4481,23 +4356,11 @@ class ArenaScene extends Phaser.Scene {
       fighterDepth,
     );
     if (!list) return;
-    for (const [i, { img, o, shifting }] of list.entries()) {
+    for (const { img, shifting } of list) {
       if (shifting) img.setVisible(shiftingUp(ARENAS["shifting-ruins"], t));
-      if (this.courtRaid) {
-        const broken = !!pillars?.[i]?.broken,
-          was = this.pillarBroken[i];
-        this.pillarBroken[i] = broken;
-        this.raidPillarShadows[i]?.setVisible(!broken);
-        if (was !== undefined && broken && !was) this.crumblePillar(i, img, o);
-        else if (was && !broken) this.raisePillar(i, img);
-        if (this.pillarMoving.has(i)) continue;
-        img.setVisible(!broken);
-        this.rubble[i]?.setVisible(broken).setAlpha(1);
-      }
       // The stone fills its footprint, so whatever stands behind it is clear
-      // of the picture: blocks stay solid (alpha 1; the crumble tweens own it
-      // while a pillar falls).
-      if (!this.pillarMoving.has(i)) img.setAlpha(1);
+      // of the picture: blocks stay solid.
+      img.setAlpha(1);
     }
   }
   /** Knockout moment: camera push-in multiplier and its end time. */
@@ -4618,6 +4481,7 @@ class ArenaScene extends Phaser.Scene {
     fx.density = knobs.particles;
     fx.trailScale = knobs.trails;
     fx.glowBudget = knobs.glowBudget;
+    setRaidMapLow(knobs.stillBackground);
     this.perfOverlay?.update(
       now,
       battlePerf.summary(1000),
@@ -4682,6 +4546,15 @@ class ArenaScene extends Phaser.Scene {
     if (state)
       for (const id of this.fighters.toRequest(neededFighters(state.players)))
         queueFighterAssets(this, id, this.fighters.assetsFor(id));
+    // The Shop skins they wear load here too, behind the loading screen: a
+    // rig would otherwise ask for them on its first frame, mid-battle (a
+    // stall while they rasterize, then the skin popping in).
+    if (state)
+      for (const p of state.players) {
+        const look = p.championLooks?.[p.character];
+        if (!p.raidBoss && look && skinSuffix(p.character, look))
+          loadRigTextures(this, rigAssets(p.character, look));
+      }
     // Every load that finishes (this one, and later ones started for a new
     // fighter, a skin or boss art) settles what was requested: art still
     // missing may be asked for again. The scene's loader drops its
@@ -4690,6 +4563,18 @@ class ArenaScene extends Phaser.Scene {
   }
   create() {
     scene = this;
+    // The boss's pieces are drawn once into an atlas: now, not on its first frame.
+    if (state?.raid) prewarmBossAtlas(this, state.raid.boss, state.raid.phase);
+    // So are the arena's pieces (lanterns, conductor posts, light, marks).
+    if (state?.raid) prewarmRaidArena(this, state.raid);
+    // So are its arena's (pillars, braziers and burning ground).
+    if (state?.raid?.boss === "grumblecrag") prewarmPillars(this);
+    if (state?.raid?.boss === "emberwing") prewarmTerrace(this);
+    // So are the arena's painted pieces (islands, rune pads and the rest).
+    if (state?.raid) {
+      prewarmLagoon(this, state);
+      prewarmCloudDeck(this, state);
+    }
     battleQuality.restart();
     battlePerf.reset();
     netMeter.reset();
@@ -4716,7 +4601,6 @@ class ArenaScene extends Phaser.Scene {
     // (the first hit, the first skill, the first pillar to crumble).
     fxFor(this);
     prepareSurfaceTextures(this);
-    this.crumbleTextures();
     // The floor picture: showArena bakes the room's court (once per arena,
     // at floorBake's density) on the first frame. No stand-in court is
     // painted first: that was a whole extra full-court canvas per battle.
@@ -4742,7 +4626,8 @@ class ArenaScene extends Phaser.Scene {
       const hit = targetLock.pickAt(
         pointer.worldX,
         pointer.worldY,
-        visibleEnemies(local, local),
+        (raidTargets(state, local) as Targetable[] | undefined) ??
+          visibleEnemies(local, local),
       );
       if (hit) targetLock.toggle(hit.id);
     });
@@ -4751,8 +4636,11 @@ class ArenaScene extends Phaser.Scene {
   /** The phone target row (two or more enemies) and the lock's lifetime. */
   syncTargetPicker() {
     const me = state?.players.find((p) => p.id === myId);
+    const extra = state && me ? raidTargets(state, me) : undefined;
     targetLock.keepIf(
-      (id) => !!state?.players.some((p) => p.id === id && !p.out),
+      (id) =>
+        !!state?.players.some((p) => p.id === id && !p.out) ||
+        !!extra?.some((t) => t.id === id),
     );
     const frame = document.getElementById("game")?.parentElement;
     if (!frame) return;
@@ -4763,17 +4651,29 @@ class ArenaScene extends Phaser.Scene {
       state?.phase === "playing" &&
       state.raid?.boss !== "storm-twins";
     const myTeam = me ? teamOf(me) : undefined;
-    const enemies = show
-      ? state!.players
-          .filter((p) => p.id !== myId && !p.out && teamOf(p) !== myTeam)
-          .map((p) => ({
-            id: p.id,
-            name: p.raidBoss && state!.raid ? state!.raid.name : p.name,
-            color: `#${CHARACTERS[p.character].color.toString(16).padStart(6, "0")}`,
-            available:
-              p.hp > 0 && !p.statuses.some((s) => s.kind === "stealth"),
-          }))
-      : [];
+    const enemies = !show
+      ? []
+      : extra
+        ? // Gloomshade's bodies (alike, by letter) and unlit lanterns;
+          // Tidewyrm and the bubbles holding teammates.
+          extra
+            .slice()
+            .sort((a, b) => a.label.localeCompare(b.label))
+            .map((t) => ({
+              id: t.id,
+              name: t.label,
+              color: TARGET_COLORS[t.kind],
+              available: true,
+            }))
+        : state!.players
+            .filter((p) => p.id !== myId && !p.out && teamOf(p) !== myTeam)
+            .map((p) => ({
+              id: p.id,
+              name: p.raidBoss && state!.raid ? state!.raid.name : p.name,
+              color: `#${CHARACTERS[p.character].color.toString(16).padStart(6, "0")}`,
+              available:
+                p.hp > 0 && !p.statuses.some((s) => s.kind === "stealth"),
+            }));
     renderTargetPicker(frame, show, enemies, targetLock.id, (id) =>
       targetLock.toggle(id),
     );
@@ -4894,7 +4794,23 @@ class ArenaScene extends Phaser.Scene {
   effect(event: Snapshot["events"][number]) {
     // Effects pose only fighters whose art has loaded (readyRig); sounds,
     // impacts and the other fighters' poses play as usual meanwhile.
-    if (event.kind === "raid-impact") {
+    // Somnara's correct steps and Nightmare are drawn with its arena's pieces.
+    const deck = noteCloudDeckEvent(event, state);
+    if (
+      event.kind === "raid-impact" &&
+      this.courtRaid &&
+      this.pillarRig &&
+      event.raidRadius === IMPACT_RADIUS &&
+      event.color === 0xffd65b
+    )
+      // A pillar breaking: its ring is drawn with the pillars.
+      this.pillarRig.impact(event.x, event.y, this.time.now, reducedMotion);
+    else if (
+      event.kind === "raid-impact" &&
+      !deck &&
+      // A mirror turning rings its own chime (raid-prismatail-atrium.ts).
+      !isMirrorTurnImpact(state?.raid, event)
+    ) {
       const ring = this.add
         .circle(event.x, event.y, event.raidRadius ?? 90, event.color, 0.12)
         .setStrokeStyle(4, event.color, 0.9);
@@ -5483,8 +5399,18 @@ class ArenaScene extends Phaser.Scene {
         (touch.enabled ? touch.focused : document.hasFocus()) &&
         !document.hidden;
       const enemies = visibleEnemies(local, local);
+      // Gloomshade's bodies are aimed at alike (real or copy), and its unlit
+      // lanterns can be locked on to (raid-targets.ts).
+      // Tidewyrm's bubbles holding teammates can be locked on to too.
+      const extra = raidTargets(state, local);
+      const found = extra?.filter(
+        (t) => t.kind === "shade" || t.kind === "boss",
+      );
+      const bodies = found?.length ? found : undefined;
       // A locked enemy (touch or controller) before the nearest one.
-      const target = targetLock.resolve(enemies) ?? enemies[0];
+      const target =
+        targetLock.resolve<Targetable>(extra ?? enemies) ??
+        (bodies ? bodies[0] : enemies[0]);
       const combatActive = active && local.hp > 0 && !local.out;
       let skill = combatActive ? this.actions.skill : -1;
       // EX skills: the ultimate button before the meter is full arms an EX
@@ -5524,7 +5450,7 @@ class ArenaScene extends Phaser.Scene {
       } else if (usingPad && target) aimAt = target;
       else if (usingPad) aimAt = this.aimPoint;
       else if (controlPrefs().aimAssist && skill < 0)
-        aimAt = assistAim(aimAt, enemies);
+        aimAt = assistAim(aimAt, bodies ?? enemies);
       const stormAim = state ? stormTarget(state) : undefined;
       if (stormAim) aimAt = stormAim;
       const prismAim = state ? prismatailAim(state, local) : undefined;
@@ -5560,11 +5486,12 @@ class ArenaScene extends Phaser.Scene {
       this.predictCasts(
         local,
         input,
-        state.time + (pending.length + 1) / RULES.tick,
+        state.time + Math.max(1, pending.length + 1 - owedSteps) / RULES.tick,
       );
       pending.push(input);
       if (pending.length > 90) pending.shift();
-      predict(local, input, state.time + pending.length / RULES.tick);
+      const next = newestStep(pending, owedSteps);
+      if (next) predict(local, next.input, state.time + next.tick / RULES.tick);
     }
     const g = this.graphics;
     g.clear();
@@ -5574,6 +5501,20 @@ class ArenaScene extends Phaser.Scene {
     const boss = state.raid ? state.players.find((p) => p.raidBoss) : undefined;
     this.bossGraphics.setDepth(boss ? fighterDepth(boss.y) : 0);
     this.layersUsed.clear();
+    // A locked Gloomshade body (real or copy, alike), unlit lantern or
+    // Tidewyrm bubble (phones).
+    if (touch.enabled && targetLock.id && local) {
+      const locked = raidTargets(state, local)?.find(
+        (t) => t.id === targetLock.id,
+      );
+      if (locked)
+        drawTargetReticle(
+          g,
+          locked.x,
+          locked.feetY,
+          reducedMotion ? 0 : _time / 1000,
+        );
+    }
     const raidCues =
       drawRaidArena(
         g,
@@ -6762,6 +6703,7 @@ function reportBattlePerf() {
     build: BUILD,
     errors,
     ...(softwareRendering() ? { gpu: "software" as const } : {}),
+    ...(screenHz(battleFrames) ? { hz: screenHz(battleFrames) } : {}),
   });
 }
 /**
@@ -6825,6 +6767,14 @@ function ensureBattleRenderer() {
     render: { pixelArt: false, antialias: true },
     // The camera maps the authoritative 1600x900 world onto the buffer.
     input: { activePointers: 4 },
+    // A 120 Hz phone draws the battle at about 60 frames a second, like
+    // every other screen (frame-cap.ts): half the drawing for no visible
+    // loss, so its graphics chip stays cool and the battle does not stutter.
+    callbacks: {
+      postBoot: (game) => {
+        battleFrames = capGameFrames(game);
+      },
+    },
   });
   // A player can return home while the first texture load is still finishing.
   gameInstance.events.once(Phaser.Core.Events.POST_RENDER, syncBattleLoop);

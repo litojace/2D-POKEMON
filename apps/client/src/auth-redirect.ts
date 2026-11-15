@@ -68,7 +68,7 @@ export function authErrorMessage(kind: AuthReturn | undefined, code: string) {
       ? "This password reset link has expired or was already used. Use “Forgot password?” to get a new one."
       : "That password reset link didn't work. Use “Forgot password?” to get a new one.";
   if (kind === "auth-callback")
-    return "Google sign-in didn't finish. Please try again.";
+    return "Sign-in didn't finish. Please try again.";
   return expired
     ? "This email link has expired or was already used. If you already confirmed your email, just log in."
     : "That email link didn't work. Please try again.";

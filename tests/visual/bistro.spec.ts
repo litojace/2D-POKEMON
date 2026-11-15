@@ -608,6 +608,7 @@ test("Bistro: a server answer (coins coming in) leaves the guests, staff and sto
           id: c.id,
           x: c.gx,
           y: c.gy,
+          state: c.state,
           sat: c.sat,
           ordered: c.orderedAt,
         })),
@@ -627,7 +628,13 @@ test("Bistro: a server answer (coins coming in) leaves the guests, staff and sto
         jumped.push(
           `guest ${g.id}${g.id === up ? " (standing on their chair)" : ""} moved`,
         );
-      if (g.sat !== o.sat || g.ordered !== o.ordered)
+      // The room keeps running during the sync: a guest who sits down sets
+      // `sat`, and one who orders sets `orderedAt` (from 0). Those are their
+      // own steps; a restart is a timer replaced while nothing else changed.
+      if (
+        g.state === o.state &&
+        (g.sat !== o.sat || (o.ordered !== 0 && g.ordered !== o.ordered))
+      )
         jumped.push(`guest ${g.id}'s wait started again`);
     }
     z.staff.forEach((w: any, i: number) => {

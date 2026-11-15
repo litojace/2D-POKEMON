@@ -337,6 +337,30 @@ describe("recent players", () => {
       "Nobody yet",
     );
   });
+  it("offers Block on every recent player and on a friend's options", () => {
+    const html = markup(view({ tab: "recent" }), data({ recent }));
+    for (const id of ["a", "b", "c", "d"])
+      expect(html).toContain(`data-friend-block="${id}"`);
+    expect(html).toContain('data-friend-name="Wren"');
+    const friends = markup(view({ menu: "town" }));
+    expect(friends).toContain('data-friend-block="town"');
+  });
+  it("lists blocked players under Recent with Unblock, and not among the recent", () => {
+    const html = markup(
+      view({ tab: "recent" }),
+      data({ recent, blocked: [{ id: "b", name: "Wren" }] }),
+    );
+    expect(html).toContain("Blocked · 1");
+    expect(html).toContain('data-friend-unblock="b"');
+    expect(html).not.toContain('data-friend-add-id="b"');
+    expect(html).toContain("Last 30 days · 3");
+    // Blocked players show even when nobody else is recent.
+    const only = markup(
+      view({ tab: "recent" }),
+      data({ recent: [], blocked: [{ id: "z", name: "Zed" }] }),
+    );
+    expect(only).toContain('data-friend-unblock="z"');
+  });
 });
 
 describe("online … ago, on the server's clock", () => {

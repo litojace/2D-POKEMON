@@ -1143,7 +1143,7 @@ export interface BistroState {
   counter: (CounterSlot | null)[];
   /**
    * Servings guests have ordered, off the counter and kept for them until
-   * they pay or leave (migration 109). A server without it sends none:
+   * they pay or leave (migration 118). A server without it sends none:
    * then the page keeps its guests' servings by itself.
    */
   held?: Partial<Record<DishId, number>>;

@@ -597,35 +597,41 @@ if (typeof module !== "undefined") module.exports = KIT;
  */
 const EMBER = (() => {
   "use strict";
-  const { TAU, DEG, clamp, lerp, smooth, project, rotY, depth, after, makeFace, drawEye, drawBrow, BROWS, along, pieceOf, tuft, furPath, grad, radial, paintSoft, glowPiece, adder } = KIT;
+  const { TAU, DEG, clamp, lerp, smooth, gauss, project, rotY, depth, after, makeFace, drawEye, drawBrow, BROWS, along, pieceOf, tuft, furPath, grad, radial, paintSoft, glowPiece, adder } = KIT;
 
   // ════════════════════════ the face: construction ════════════════════════
-  const A = 26;
-  const TOP = -0.94 * A, BOT = 0.86 * A;
-  const se = (v) => { const t = clamp(Math.abs((v + 0.04 * A) / (0.9 * A))); return Math.pow(1 - Math.pow(t, 2.2), 1 / 2.2); };
-  /** The profile of the feathered skull (the beak stands proud of it). */
-  const centreLine = (v) => 0.92 * A * se(v);
+  // A raptor's head: narrower than it is tall, a heavy brow ridge shading the
+  // eyes, the cere and a big hooked beak standing out of the profile, the eyes
+  // on the sides of the skull and angled forward.
+  const A = 24;
+  const TOP = -0.88 * A, BOT = 0.8 * A;
+  const MID = (TOP + BOT) / 2, HALF = (BOT - TOP) / 2;
+  const se = (v) => { const t = clamp(Math.abs((v - MID) / HALF)); const e = v > MID ? 1.9 : 2.9; return Math.pow(1 - Math.pow(t, e), 1 / e); };
+  const LINES = { brow: -0.3 * A, eye: -0.07 * A, beak: 0.26 * A };
+  /** THE CENTRE LINE: the skull, the brow ridge standing over the eye, then the cere. */
+  const centreLine = (v) => A * (0.8 * se(v) + 0.1 * gauss((v - LINES.brow) / A, 0.16) * Math.pow(se(v), 0.5) + 0.2 * gauss((v - LINES.beak) / A, 0.26) * Math.pow(se(v), 0.4));
+  const taper = (v) => 1 - 0.16 * smooth(MID, BOT, v);
   function skullEdge(view, v) {
-    const s = se(v), cheek = 1 + 0.07 * smooth(-0.1 * A, 0.5 * A, v);
-    if (view === "side") return [-1.0 * A * s, centreLine(v)];
-    if (view === "tq") return [-1.0 * A * s * cheek, 0.97 * A * s * cheek];
-    return [-0.99 * A * s * cheek, 0.99 * A * s * cheek];
+    const s = se(v);
+    if (view === "side") return [-0.9 * A * s, centreLine(v)];
+    if (view === "tq") return [-0.92 * A * s * taper(v), lerp(0.82 * A * s * taper(v), centreLine(v), 0.5)];
+    if (view === "backtq") return [-0.95 * A * s, lerp(0.84 * A * s, centreLine(v), 0.3)];
+    return [-0.8 * A * s * taper(v), 0.8 * A * s * taper(v)];
   }
-  const LINES = { brow: -0.3 * A, eye: -0.03 * A, beak: 0.3 * A };
-  const EYE = { front: { hw: 6.2, hh: 5.3 }, near: { hw: 6.2, hh: 5.3 }, far: { hw: 4.2, hh: 5.1 }, side: { hw: 5.4, hh: 5.3 } };
+  const EYE = { front: { hw: 5.0, hh: 4.8 }, near: { hw: 5.8, hh: 4.9 }, far: { hw: 3.9, hh: 4.8 }, side: { hw: 5.2, hh: 4.9 } };
   const LOOKS = ["idle", "glare", "wide", "hurt", "dizzy", "closed"];
   const MOUTHS = ["closed", "open"];
   const BROW = { idle: "angry", glare: "angry", wide: "raised", hurt: "pinch", dizzy: "raised", closed: "calm" };
-  const eyeGeom = (v, look) => ({ r: look === "wide" ? 2.7 : 3.5, gx: v === "far" ? 0.2 : v === "front" ? 0.7 : 1, gy: look === "wide" ? 0.2 : look === "glare" ? 1.5 : 0.9 });
+  const eyeGeom = (v, look) => ({ r: look === "wide" ? 2.6 : 3.2, gx: v === "far" ? 0.2 : v === "front" ? 0.9 : 1.1, gy: look === "wide" ? 0.2 : look === "glare" ? 1.4 : 0.9 });
   const SPEC = {
     A, top: TOP, bot: BOT, lines: LINES,
-    eyeAz: 36 * DEG, eyeOrbit: 0.66 * A, lag: 12 * DEG, farLift: 6 * DEG, nod: 0.42 * A, margin: 0.05 * A,
+    eyeAz: 52 * DEG, eyeOrbit: 0.74 * A, lag: 12 * DEG, farLift: 6 * DEG, nod: 0.42 * A, margin: 0.05 * A,
     eye: EYE, eyeGeom, centreLine, skullEdge,
     tuckCap: 0.35, bridgeHalf: 0.5,
     headPiece: (view) => "head_" + view,
     lit: (look) => look === "idle" || look === "glare" || look === "wide", eyeGlowPiece: "glow_fire",
     glint: (look) => look === "idle" || look === "glare" || look === "wide", glintR: 4.6,
-    brow: (look) => ({ kind: BROW[look], dy: look === "glare" ? 1.6 : look === "wide" ? -1.6 : 0.6, dx: 0.5 }),
+    brow: (look) => ({ kind: BROW[look], dy: look === "glare" ? 2 : look === "wide" ? -1.2 : 1.1, dx: 0.6 }),
     centre: [
       // the beak: under the near eye at three-quarter so its base tucks the far eye's corner
       { id: "beak", line: LINES.beak, sideInset: 1.5, layer: (v) => (v === "tq" ? "mid" : "top"), piece: (v, e) => `beak_${v}_${e.mouth === "open" ? "open" : "closed"}` },
@@ -744,7 +750,7 @@ const EMBER = (() => {
   };
   const feather = (pal) => ({ edge: pal.edge, light: pal.light, base: pal.base, dark: pal.dark, rim: pal.rim });
   function headPiece(view, pal) {
-    return pieceOf("head_" + view, 3.2 * A, 3.5 * A, 0.5, 0.6, (c) => {
+    return pieceOf("head_" + view, 3.4 * A, 3.7 * A, 0.5, 0.6, (c) => {
       const faceSide = view === "front" || view === "tq" || view === "side";
       // the flame crest, behind the skull
       const crest = new Path2D();
@@ -758,22 +764,28 @@ const EMBER = (() => {
       for (let v = TOP; v <= BOT; v += 1) pts.push({ x: skullEdge(view, v)[1], y: v });
       for (let v = BOT; v >= TOP; v -= 1) pts.push({ x: skullEdge(view, v)[0], y: v });
       const path = new Path2D();
-      furPath(path, pts, { seed: 5 + view.length, tooth: 5, depth: 1.3, mask: (x, y) => (view === "side" && x > 0.3 * A ? 0.15 : 1) });
+      furPath(path, pts, { seed: 5 + view.length, tooth: 5, depth: 0.75, mask: (x, y) => ((view === "side" || view === "tq") && x > 0.3 * A && y > TOP * 0.6 ? 0.1 : 1) });
       const T = (x, y, deg, len, w, bend) => tuft(path, x * A, y * A, deg * DEG, len * A, w * A, bend);
       if (view === "front" || view === "back") for (const s of [-1, 1]) { T(s * 0.92, 0.1, 90 - s * 70, 0.34, 0.13, s * 0.25); T(s * 0.9, 0.3, 90 - s * 54, 0.4, 0.14, s * 0.22); T(s * 0.76, 0.5, 90 - s * 36, 0.3, 0.12, s * 0.2); }
       else if (view === "tq" || view === "backtq") { const k = view === "tq" ? -1 : 1; T(k * 0.94, 0.1, 90 + k * -72, 0.36, 0.13, k * 0.25); T(k * 0.9, 0.32, 90 - k * 54, 0.42, 0.14, k * 0.22); T(k * 0.74, 0.52, 90 - k * 34, 0.32, 0.12, k * 0.2); T(-k * 0.8, 0.46, 90 + k * 40, 0.2, 0.1, -k * 0.2); }
       else { T(-0.6, 0.24, 160, 0.36, 0.14, -0.25); T(-0.44, 0.46, 140, 0.4, 0.14, -0.22); T(-0.2, 0.62, 118, 0.3, 0.12, -0.2); }
-      const cu = view === "front" ? 0 : view === "tq" ? 0.44 * A : 0.62 * A;
+      // where the eyes sit in this drawing (head units): the brow ridge and markings follow them
       paintSoft(c, path, feather(pal), TOP - 2, BOT + 6, {
-        edge: 1.9, strands: 70, x0: -1.3 * A, x1: 1.3 * A, seed: 9,
-        keep: (x, y) => !faceSide || ((x - cu) / (0.8 * A)) ** 2 + ((y - 0.15 * A) / (0.62 * A)) ** 2 > 1,
+        edge: 1.9, strands: 60, x0: -1.2 * A, x1: 1.2 * A, seed: 9,
+        keep: (x, y) => !faceSide || y < LINES.eye - 0.1 * A,
         inside: (cc) => {
           if (!faceSide) return;
-          // the cream face: a lobe round each eye, running down to the chin
-          const lobe = (x, y, rx, ry) => { cc.save(); cc.translate(x, y); cc.fillStyle = radial(cc, 0, 0, rx * 0.3, rx, [pal.cream[0], pal.cream[1], pal.cream[1] + "00"]); cc.scale(1, ry / rx); cc.beginPath(); cc.arc(0, 0, rx, 0, TAU); cc.fill(); cc.restore(); };
-          if (view === "front") { lobe(-0.4 * A, LINES.eye, 0.52 * A, 0.5 * A); lobe(0.4 * A, LINES.eye, 0.52 * A, 0.5 * A); lobe(0, 0.42 * A, 0.74 * A, 0.56 * A); }
-          else if (view === "tq") { lobe(-0.04 * A, LINES.eye, 0.52 * A, 0.5 * A); lobe(0.64 * A, LINES.eye, 0.36 * A, 0.48 * A); lobe(0.36 * A, 0.42 * A, 0.7 * A, 0.56 * A); }
-          else { lobe(0.5 * A, LINES.eye, 0.5 * A, 0.5 * A); lobe(0.62 * A, 0.4 * A, 0.56 * A, 0.54 * A); }
+          // the pale throat: a soft cream patch under the beak (a horizontal band
+          // across the face reads as a grin, and a hard edge as teeth)
+          const tx = view === "front" ? 0 : view === "tq" ? 0.3 * A : 0.32 * A;
+          cc.save(); cc.translate(tx, 0.64 * A); cc.scale(1, 0.62);
+          cc.fillStyle = radial(cc, 0, 0, 0.1 * A, 0.5 * A, [[0, pal.cream[0]], [0.6, pal.cream[1]], [1, pal.cream[1] + "00"]]);
+          cc.beginPath(); cc.arc(0, 0, 0.5 * A, 0, TAU); cc.fill(); cc.restore();
+          // fine chevrons on the throat, as on the chest
+          cc.strokeStyle = pal.cream[2]; cc.lineWidth = 0.7; cc.globalAlpha = 0.6;
+          const cx0 = tx;
+          for (let r = 0; r < 2; r++) for (let i = -1; i <= 1; i++) { cc.beginPath(); cc.arc(cx0 + (i * 0.16 + (r % 2) * 0.08) * A, (0.62 + r * 0.1) * A, 0.06 * A, 0.3, Math.PI - 0.3); cc.stroke(); }
+          cc.globalAlpha = 1;
         },
       });
     });
@@ -791,30 +803,42 @@ const EMBER = (() => {
       });
     });
   }
-  /** The beak, anchored where the centre line meets the beak line. */
+  /** The beak, anchored where the centre line meets the beak line: a raptor's hook, with a cere at its base. */
   function beakPiece(view, open, pal) {
-    return pieceOf(`beak_${view}_${open ? "open" : "closed"}`, 1.5 * A, 1.3 * A, 0.4, 0.3, (c) => {
-      const gold = (y0, y1) => grad(c, 0, y0, 0, y1, ["#ffe680", "#f6bd2c", "#d98a12"]);
-      c.strokeStyle = "#7a4a06";
-      c.lineWidth = 1.1;
+    return pieceOf(`beak_${view}_${open ? "open" : "closed"}`, 1.7 * A, 1.5 * A, 0.4, 0.3, (c) => {
+      const gold = (y0, y1) => grad(c, 0, y0, 0, y1, ["#ffe680", "#f6bd2c", "#c97a0c"]);
+      c.strokeStyle = "#6a3a04";
+      c.lineWidth = 1.2;
       const part = (pts, y0, y1) => { c.beginPath(); pts(); c.closePath(); c.fillStyle = gold(y0, y1); c.fill(); c.stroke(); };
       const mouth = (pts) => { c.beginPath(); pts(); c.closePath(); c.fillStyle = "#8a1c1c"; c.fill(); c.stroke(); };
-      const a = A, drop = open ? 0.2 * a : 0;
+      const a = A, drop = open ? 0.22 * a : 0;
+      const cere = (x, y, w, h) => { c.beginPath(); c.ellipse(x, y, w, h, 0, 0, TAU); c.fillStyle = "#f2a82a"; c.fill(); c.stroke(); };
       if (view === "front") {
-        if (open) mouth(() => { c.moveTo(-0.2 * a, 0.02 * a); c.lineTo(0.2 * a, 0.02 * a); c.lineTo(0.1 * a, 0.36 * a); c.lineTo(-0.1 * a, 0.36 * a); });
-        part(() => { c.moveTo(-0.13 * a, 0.16 * a + drop); c.quadraticCurveTo(0, 0.2 * a + drop, 0.13 * a, 0.16 * a + drop); c.quadraticCurveTo(0.06 * a, 0.36 * a + drop, 0, 0.38 * a + drop); c.quadraticCurveTo(-0.06 * a, 0.36 * a + drop, -0.13 * a, 0.16 * a + drop); }, 0.1 * a, 0.5 * a);
-        part(() => { c.moveTo(-0.23 * a, -0.14 * a); c.quadraticCurveTo(0, -0.26 * a, 0.23 * a, -0.14 * a); c.quadraticCurveTo(0.16 * a, 0.16 * a, 0, 0.3 * a); c.quadraticCurveTo(-0.16 * a, 0.16 * a, -0.23 * a, -0.14 * a); }, -0.2 * a, 0.3 * a);
-        c.strokeStyle = "rgba(255,250,210,0.9)"; c.lineWidth = 1.2; c.beginPath(); c.moveTo(0, -0.16 * a); c.lineTo(0, 0.16 * a); c.stroke(); // the ridge
-        c.fillStyle = "#7a4a06"; for (const s of [-1, 1]) { c.beginPath(); c.arc(s * 0.08 * a, -0.08 * a, 0.7, 0, TAU); c.fill(); }
+        if (open) mouth(() => { c.moveTo(-0.2 * a, 0.06 * a); c.lineTo(0.2 * a, 0.06 * a); c.lineTo(0.1 * a, 0.36 * a + drop * 0.6); c.lineTo(-0.1 * a, 0.36 * a + drop * 0.6); });
+        part(() => { c.moveTo(-0.14 * a, 0.16 * a + drop); c.quadraticCurveTo(0, 0.2 * a + drop, 0.14 * a, 0.16 * a + drop); c.quadraticCurveTo(0.06 * a, 0.34 * a + drop, 0, 0.36 * a + drop); c.quadraticCurveTo(-0.06 * a, 0.34 * a + drop, -0.14 * a, 0.16 * a + drop); }, 0.1 * a, 0.5 * a);
+        // the upper mandible: broad at the cere, curving down to a sharp hook
+        part(() => { c.moveTo(-0.26 * a, -0.12 * a); c.quadraticCurveTo(0, -0.24 * a, 0.26 * a, -0.12 * a); c.quadraticCurveTo(0.2 * a, 0.16 * a, 0.05 * a, 0.36 * a); c.lineTo(0, 0.46 * a); c.lineTo(-0.05 * a, 0.36 * a); c.quadraticCurveTo(-0.2 * a, 0.16 * a, -0.26 * a, -0.12 * a); }, -0.2 * a, 0.46 * a);
+        cere(0, -0.12 * a, 0.2 * a, 0.06 * a);
+        c.strokeStyle = "rgba(255,250,210,0.9)"; c.lineWidth = 1.2; c.beginPath(); c.moveTo(0, -0.08 * a); c.lineTo(0, 0.28 * a); c.stroke(); // the ridge
+        c.fillStyle = "#6a3a04"; for (const s of [-1, 1]) { c.beginPath(); c.arc(s * 0.09 * a, -0.12 * a, 0.75, 0, TAU); c.fill(); }
         return;
       }
-      // three-quarter and profile: the same hook, longer in profile
-      const L = view === "side" ? 0.62 * a : 0.44 * a, b = view === "side" ? -0.06 * a : -0.2 * a;
-      if (open) mouth(() => { c.moveTo(b, 0); c.lineTo(b + L * 0.8, 0.04 * a); c.lineTo(b + L * 0.6, 0.12 * a + drop); c.lineTo(b, 0.14 * a + drop * 0.6); });
-      part(() => { c.moveTo(b, 0.08 * a + drop * 0.5); c.quadraticCurveTo(b + L * 0.5, 0.08 * a + drop, b + L * 0.74, 0.12 * a + drop * 1.2); c.quadraticCurveTo(b + L * 0.5, 0.26 * a + drop, b - 0.02 * a, 0.22 * a + drop * 0.6); }, 0.05 * a, 0.3 * a + drop);
-      part(() => { c.moveTo(b, -0.16 * a); c.quadraticCurveTo(b + L * 0.72, -0.24 * a, b + L, 0.16 * a); c.quadraticCurveTo(b + L * 0.86, 0.14 * a, b + L * 0.8, 0.07 * a); c.quadraticCurveTo(b + L * 0.4, 0.1 * a, b, 0.1 * a); }, -0.2 * a, 0.16 * a);
-      c.strokeStyle = "rgba(255,250,210,0.9)"; c.lineWidth = 1.1; c.beginPath(); c.moveTo(b + 2, -0.1 * a); c.quadraticCurveTo(b + L * 0.6, -0.14 * a, b + L * 0.86, 0.02 * a); c.stroke();
-      c.fillStyle = "#7a4a06"; c.beginPath(); c.arc(b + L * 0.32, -0.05 * a, 0.75, 0, TAU); c.fill();
+      // three-quarter and profile: the hook, longer in profile
+      const L = view === "side" ? 0.7 * a : 0.5 * a, b = view === "side" ? -0.08 * a : -0.2 * a;
+      if (open) mouth(() => { c.moveTo(b, 0.02 * a); c.lineTo(b + L * 0.78, 0.08 * a); c.lineTo(b + L * 0.6, 0.16 * a + drop); c.lineTo(b, 0.16 * a + drop * 0.6); });
+      // lower mandible
+      part(() => { c.moveTo(b, 0.1 * a + drop * 0.5); c.quadraticCurveTo(b + L * 0.5, 0.11 * a + drop, b + L * 0.7, 0.15 * a + drop * 1.2); c.quadraticCurveTo(b + L * 0.5, 0.27 * a + drop, b - 0.02 * a, 0.24 * a + drop * 0.6); }, 0.05 * a, 0.32 * a + drop);
+      // upper mandible: a deep curve over to the hooked tip
+      part(() => {
+        c.moveTo(b, -0.2 * a);
+        c.bezierCurveTo(b + L * 0.55, -0.26 * a, b + L * 1.02, -0.1 * a, b + L * 0.98, 0.18 * a);
+        c.quadraticCurveTo(b + L * 0.96, 0.3 * a, b + L * 0.86, 0.34 * a); // the hook's point
+        c.quadraticCurveTo(b + L * 0.86, 0.16 * a, b + L * 0.72, 0.12 * a);
+        c.quadraticCurveTo(b + L * 0.4, 0.12 * a, b, 0.12 * a);
+      }, -0.24 * a, 0.34 * a);
+      cere(b + 0.05 * a, -0.12 * a, 0.12 * a, 0.09 * a);
+      c.strokeStyle = "rgba(255,250,210,0.9)"; c.lineWidth = 1.1; c.beginPath(); c.moveTo(b + 0.14 * a, -0.17 * a); c.bezierCurveTo(b + L * 0.5, -0.2 * a, b + L * 0.85, -0.08 * a, b + L * 0.9, 0.12 * a); c.stroke();
+      c.fillStyle = "#6a3a04"; c.beginPath(); c.arc(b + 0.08 * a, -0.12 * a, 0.85, 0, TAU); c.fill(); // nostril in the cere
     });
   }
   function emberPieces(phase) {
@@ -823,7 +847,12 @@ const EMBER = (() => {
     for (const v of ["front", "tq", "side", "backtq", "back"]) list.push(headPiece(v, pal));
     for (const v of ["front", "near", "far", "side"]) {
       for (const l of LOOKS) list.push(eyePiece(v, l, pal));
-      for (const k of Object.keys(BROWS)) list.push(pieceOf(`brow_${v}_${k}`, 14, 9, 0.5, 0.5, (c) => { if (v === "far") c.scale(-1, 1); drawBrow(c, { front: 8, near: 8, far: 5.4, side: 7 }[v] / 2, BROWS[k], pal.brow, BROWS[k][4]); }));
+      for (const k of Object.keys(BROWS)) list.push(pieceOf(`brow_${v}_${k}`, 18, 12, 0.5, 0.5, (c) => {
+        if (v === "far") c.scale(-1, 1);
+        const b = BROWS[k], s2 = [b[0] * 1.1, b[1] * 1.1, b[2] * 1.15, b[3] * 1.9];
+        drawBrow(c, { front: 12, near: 12, far: 7.6, side: 11 }[v] / 2, s2, pal.edge, Math.min(1, b[4] + 0.35)); // the ridge: dark, heavy
+        drawBrow(c, { front: 12, near: 12, far: 7.6, side: 11 }[v] / 2 - 1, [s2[0] - 0.5, s2[1] - 0.6, s2[2] - 0.5, s2[3] * 0.4], pal.light, 0.5); // lit along its top
+      }));
     }
     for (const v of ["front", "tq", "side"]) list.push(beakPiece(v, false, pal), beakPiece(v, true, pal));
     list.push(
@@ -900,7 +929,7 @@ const EMBER = (() => {
   const boss = {
     id: "emberwing",
     title: "Emberwing",
-    lede: "A fire phoenix. Fierce amber eyes under a black lid that drops to the inner corner, a cream face, a flame crest, and a hooked gold beak whose base tucks the far eye.",
+    lede: "A fire phoenix with a raptor's head: fierce amber eyes on the sides of a narrow skull under a heavy brow ridge, a pale face below them, a flame crest, and a big hooked gold beak whose base tucks the far eye.",
     attacks: [["dive-bomb", "Dive Bomb"], ["ember-rain", "Ember Rain"], ["wing-gust", "Wing Gust"], ["flame-ring", "Flame Ring"], ["scorched-earth", "Scorched Earth"], ["heat-mark", "Heat Mark"]],
     pose: emberPose, placements: emberPlacements, pieces: emberPieces, faces: [FACE], looks: LOOKS, mouths: MOUTHS,
     stage: { w: 440, h: 300, ground: 0.84, closeW: 96, closeH: 86, sheetGap: 300, sheetH: 270, closeGap: 84, closeSheetH: 96, champion: [-170, 30], shadow: [56, 15], floor: ["#160a08", "#2a120c", "255,140,60"] },

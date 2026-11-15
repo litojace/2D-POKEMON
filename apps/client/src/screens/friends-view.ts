@@ -58,6 +58,8 @@ export interface FriendsData {
   party: FriendsParty;
   /** Set while you are in a private room (the sheet opens there). */
   room?: FriendsRoom;
+  /** The players you blocked (migration 110); shown under Recent. */
+  blocked?: readonly { id: string; name: string }[];
 }
 export interface FriendsView {
   tab: FriendsTab;
@@ -328,6 +330,19 @@ function actionButton(a: FriendAction | null, f: Friend, view: FriendsView) {
   }
 }
 
+/** Block a player (it asks first); a quiet red button. */
+const blockButton = (p: { id: string; name: string }, busy: boolean) =>
+  button("Block", {
+    size: "s",
+    kind: "danger",
+    disabled: busy,
+    attrs: {
+      "data-friend-block": p.id,
+      "data-friend-name": p.name,
+      "aria-label": `Block ${p.name}`,
+    },
+  });
+
 function friendRow(f: Friend, d: FriendsData, view: FriendsView, now: number) {
   const pinned = view.pins.has(f.id);
   const open = view.menu === f.id;
@@ -368,7 +383,8 @@ function friendRow(f: Friend, d: FriendsData, view: FriendsView, now: number) {
           size: "s",
           disabled: busy,
           attrs: { "data-friend-remove": f.id },
-        })
+        }) +
+        blockButton(f, busy)
   }</div>`;
   return rowShell({
     id: f.id,
@@ -421,7 +437,25 @@ function recentRow(p: RecentPlayer, view: FriendsView, now: number) {
     lead: portrait({ id: p.id, name: p.name, fighter: p.fighter }, dot),
     name: p.name,
     sub: `${when} · ${meet}`,
-    acts: act,
+    acts: act + blockButton(p, busy),
+  });
+}
+
+function blockedRow(p: { id: string; name: string }, view: FriendsView) {
+  return rowShell({
+    id: p.id,
+    cls: "is-blocked",
+    lead: portrait({ id: p.id, name: p.name }),
+    name: p.name,
+    sub: "Blocked",
+    acts: button("Unblock", {
+      size: "s",
+      disabled: waiting(view, p.id),
+      attrs: {
+        "data-friend-unblock": p.id,
+        "aria-label": `Unblock ${p.name}`,
+      },
+    }),
   });
 }
 
@@ -461,6 +495,20 @@ function requestsTab(d: FriendsData, view: FriendsView) {
   return `<ul class="fr-list">${list.incoming.length ? kicker("For you", list.incoming.length) + list.incoming.map((r) => requestRow(r, true, view)).join("") : ""}${list.outgoing.length ? kicker("Sent", list.outgoing.length, true) + list.outgoing.map((r) => requestRow(r, false, view)).join("") : ""}</ul>`;
 }
 function recentTab(d: FriendsData, view: FriendsView, now: number) {
+  const blocked = d.blocked ?? [];
+  const blockedList = blocked.length
+    ? `<ul class="fr-list fr-blocked">${kicker("Blocked", blocked.length, true)}${blocked.map((p) => blockedRow(p, view)).join("")}</ul>`
+    : "";
+  return (
+    recentPlayers(d, view, now, new Set(blocked.map((b) => b.id))) + blockedList
+  );
+}
+function recentPlayers(
+  d: FriendsData,
+  view: FriendsView,
+  now: number,
+  blocked: ReadonlySet<string>,
+) {
   if (d.recent === null)
     return d.recentProblem
       ? emptyState(
@@ -472,12 +520,14 @@ function recentTab(d: FriendsData, view: FriendsView, now: number) {
           }),
         )
       : emptyState("Loading recent players", "One moment…");
-  if (!d.recent.length)
+  // Players you blocked are listed under Blocked instead.
+  const recent = d.recent.filter((p) => !blocked.has(p.id));
+  if (!recent.length)
     return emptyState(
       "Nobody yet",
       "Players from your matches in the last 30 days show up here.",
     );
-  return `<ul class="fr-list">${kicker("Last 30 days", d.recent.length)}${d.recent.map((p) => recentRow(p, view, now)).join("")}</ul>`;
+  return `<ul class="fr-list">${kicker("Last 30 days", recent.length)}${recent.map((p) => recentRow(p, view, now)).join("")}</ul>`;
 }
 
 /** The add-by-code row (the head's + opens it). */

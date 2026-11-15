@@ -2344,14 +2344,6 @@ export const FIGHTER_IDS = [
 ] as const satisfies readonly CharacterId[];
 /** Older internal IDs, accepted so stale clients and saved sessions keep working. */
 const legacyIds: Record<string, CharacterId> = {
-  pikachu: "voltkit",
-  charizard: "cindrake",
-  greninja: "tidefin",
-  lucario: "auralynx",
-  eevee: "lumoth",
-  mewtwo: "mystowl",
-  snorlax: "terradon",
-  gengar: "duskveil",
   thornback: "mystowl",
   frostfang: "terradon",
   voltling: "voltkit",
@@ -2450,6 +2442,12 @@ export interface Fighter extends Vec {
   vy: number;
   angle: number;
   ack: number;
+  /**
+   * Ticks the server ran this fighter's last input again because the next
+   * had not arrived (Arena.drainInputs); that many late inputs will be
+   * folded into one tick. Absent when none.
+   */
+  owed?: number;
   cooldowns: number[];
   /** Ultimate meter, 0 to RULES.ultMax. Carries over between rounds. */
   ult?: number;
@@ -3579,7 +3577,7 @@ export const ARENAS: Record<ArenaId, ArenaDef> = {
     hazards: [],
   },
   "conductor-ring": { id: "conductor-ring", name: "Conductor Ring", tip: "Balance both twins’ health, pair opposite signs, then finish them together.", obstacles: [], hazards: [] },
-  "sky-terrace": { id: "sky-terrace", name: "Sky Terrace", tip: "Light three braziers together to ground Emberwing.", obstacles: [], hazards: [] },
+  "sky-terrace": { id: "sky-terrace", name: "Sky Terrace", tip: "Light three braziers together to ground Lumiwick.", obstacles: [], hazards: [] },
   "sun-atrium": { id: "sun-atrium", name: "Sun Atrium", tip: "Relay skylight through the mirror posts into the heart.", obstacles: [], hazards: [] },
   "cloud-deck": { id: "cloud-deck", name: "Cloud Deck", tip: "Follow the Dreamer and step the four rune pads in order.", obstacles: [], hazards: [] },
 };

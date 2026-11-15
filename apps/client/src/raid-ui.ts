@@ -52,9 +52,11 @@ import {
 } from "../../../packages/shared/src/raid";
 import { raidGuideBossFor } from "./raid-guide-art";
 import { raidBriefingGuide } from "./raid-briefing";
+import { SOLO_NO_REVIVE, soloRevives } from "./raid-solo";
 import {
   raidRiteChoices,
   raidRiteDetails,
+  riteDisplayOrder,
   bindRaidRiteDetails,
 } from "./raid-rite-cards";
 import { drawRaidBoss } from "./raid-boss-art";
@@ -167,14 +169,16 @@ export function renderRaidUI(
     title = `${RAID_TRAITS[r.trait].name} ${RAID_BOSSES[r.boss].name}`;
     const waiting = state.instructionsReady.includes(me.id);
     body = `<div class="rc-body" tabindex="0" role="region" aria-label="Raid instructions">${raidBriefingGuide(r.boss, me.character, r.partySize === 1)}<details class="rc-extra" id="raid-briefing-extra"><summary>Your fighter, team &amp; modifiers</summary><p><b>${escape(RAID_TRAITS[r.trait].name)}</b> · ${escape(RAID_TRAITS[r.trait].text)}</p>${perkLines(state, me.id)}${r.partySize > 1 ? `<p class="raid-signals">Team signals: ${(Object.keys(RAID_PINGS) as RaidPingKind[]).map((k) => `<b>${RAID_PINGS[k].key}</b> ${raidPingLabel(k, r.boss)}`).join(" · ")} (or use the on-screen buttons)</p>` : ""}</details></div>`;
-    actions = `<p class="ui-note rc-meta">Three phases · one shared fight · ${r.partySize === 1 ? "Solo · one self-revive" : "Team · stand beside fallen allies to revive"}</p>${uiActions(uiButton(waiting ? "Waiting for the team…" : "I’m ready", { kind: "primary", icon: waiting ? undefined : "battle", disabled: waiting, attrs: { id: "raid-instructions", "aria-label": waiting ? "Waiting for the team" : "I’m ready — start raid" } }))}`;
+    actions = `<p class="ui-note rc-meta">Three phases · one shared fight · ${r.partySize === 1 ? (soloRevives(r.boss) ? "Solo · one self-revive" : "Solo") : "Team · stand beside fallen allies to revive"}</p>${r.partySize === 1 && !soloRevives(r.boss) ? `<p class="raid-solo-warning" role="note">${SOLO_NO_REVIVE}</p>` : ""}${uiActions(uiButton(waiting ? "Waiting for the team…" : "I’m ready", { kind: "primary", icon: waiting ? undefined : "battle", disabled: waiting, attrs: { id: "raid-instructions", "aria-label": waiting ? "Waiting for the team" : "I’m ready — start raid" } }))}`;
   } else if (state.phase === "intermission") {
     // Rites are chosen once, before the fight (RAID_RITE_PICKS each).
     const picked = Math.min(RAID_RITE_PICKS, (r.rites[me.id] ?? []).length);
     title = `Choose ${RAID_RITE_PICKS} rites · ${picked}/${RAID_RITE_PICKS}`;
     body = `<p class="raid-phase-objective">${raidChapters(r.boss)[r.phase - 1].detail}</p><details class="raid-team-summary"><summary>Team rites</summary><div class="raid-team-builds" aria-label="Team rites"></div></details>`;
     const offers = r.offers[me.id] ?? [];
-    actions = `<div class="raid-rite-intro"><span>Grow stronger each chapter</span><span class="raid-choice-timer" role="timer" aria-label="Time left to choose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></svg><span>Choose in</span><strong>${LIVE_SECONDS}</strong></span>${raidRiteDetails(offers)}</div><div class="raid-rite-options">${raidRiteChoices(offers)}</div>`;
+    const mine = r.rites[me.id] ?? [];
+    const order = riteDisplayOrder(offers, mine);
+    actions = `<div class="raid-rite-intro">${offers.length ? "<span>Grow stronger each chapter</span>" : '<span class="raid-rite-locked">Rites locked in · waiting for the team</span>'}<span class="raid-choice-timer" role="timer" aria-label="Time left to choose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></svg><span>Choose in</span><strong>${LIVE_SECONDS}</strong></span>${raidRiteDetails(order)}</div><div class="raid-rite-options">${raidRiteChoices(order, mine, !offers.length)}</div>`;
   } else if (state.phase === "countdown") {
     title = LIVE_COUNTDOWN;
     body = `<p>${raidChapters(r.boss)[r.phase - 1].objective}</p>`;
@@ -271,6 +275,9 @@ export function renderRaidUI(
     shared
       ? `<div class="ui rc-card ${state.phase === "finished" ? "is-results" : "is-briefing"}" role="dialog" aria-label="${escape(title)}"><header class="rc-head"><span class="ui-kicker">Boss raid · co-op</span><h2 class="ui-title">${title}</h2></header>${state.phase === "finished" ? `<div class="rc-body panel-scroll" tabindex="0" role="region" aria-label="Raid details">${body}</div>` : body}<footer class="rc-foot">${actions}</footer></div>`
       : `<div class="overlay-card raid-overlay${state.phase === "intermission" ? " raid-draft action-overlay" : ""}"><span class="eyebrow">Boss raid · co-op</span><h2>${title}</h2>${actions ? `<div class="panel-scroll" tabindex="0" role="region" aria-label="Raid details">${body}</div><div class="panel-actions">${actions}</div>` : body}</div>`,
+    undefined,
+    // Picking a rite redraws the same panel: it doesn't pop in again.
+    `raid:${state.phase}`,
   );
   overlay.dataset.raidPhase = state.phase;
   const card = overlay.querySelector<HTMLElement>(".raid-overlay, .rc-card");
@@ -339,12 +346,12 @@ export function drawRaidArena(
   const tide = r.boss === "tidewyrm",
     gloom = r.boss === "gloomshade",
     dream = r.boss === "somnara";
-  if (r.boss === "storm-twins") drawConductorRing(g, state, reduced, at);
+  if (r.boss === "storm-twins") drawConductorRing(g, state, reduced, at, clock);
   if (r.boss === "emberwing") drawSkyTerrace(g, state, reduced, at);
-  if (r.boss === "prismatail") drawSunAtrium(g, state, reduced, at);
-  if (dream) drawCloudDeck(g, state, reduced);
-  if (tide) drawLagoon(g, state, reduced);
-  if (gloom) drawLanternYard(g, state, reduced, at);
+  if (r.boss === "prismatail") drawSunAtrium(g, state, reduced, at, clock);
+  if (dream) drawCloudDeck(g, state, reduced, clock);
+  if (tide) drawLagoon(g, state, reduced, clock);
+  if (gloom) drawLanternYard(g, state, reduced, at, clock);
   for (const w of r.warnings) {
     if (r.boss === "storm-twins" && drawStormWarning(g, state, w)) continue;
     if (r.boss === "emberwing" && drawEmberwingWarning(g, state, w)) continue;
@@ -643,7 +650,7 @@ function defeatTip(state: Snapshot) {
   if (r.boss === "storm-twins")
     return "Lower both health bars before finishing either twin. Pair opposite Polarity signs, then finish both during the countdown.";
   if (r.boss === "emberwing")
-    return "Light all three braziers together to ground Emberwing. Solo flames last longer. Spread out for Heat Marks and save ultimates for the open heart.";
+    return "Light all three braziers together to ground Lumiwick. Solo flames last longer. Spread out for Heat Marks and save ultimates for the open heart.";
   if (r.boss === "prismatail")
     return "Stand inside the skylight ring, connect to the mirror posts, and hit a mirror to turn its arrow. Save ultimates for the open heart.";
   if (r.boss === "somnara")
@@ -651,7 +658,7 @@ function defeatTip(state: Snapshot) {
   if (r.boss === "gloomshade")
     return Object.values(r.contributions ?? {}).some((c) => c.pillars > 0)
       ? "Look for the one with a shadow in lantern light, then hit it six times in a row to expose its core."
-      : "Relight dark lanterns with two hits: their light cleanses curses and shows which Gloomshade is real.";
+      : "Relight dark lanterns with two hits: their light cleanses curses and shows which Inkpurr is real.";
   if (r.boss === "tidewyrm")
     return Object.values(r.contributions ?? {}).some((c) => c.pillars > 0)
       ? "Save ultimates for when it's stranded. Get onto an island as soon as the water's edge glows."

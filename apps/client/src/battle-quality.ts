@@ -15,17 +15,23 @@
  * warm-up after the battle (re)starts, any frame gap over 250 ms (loading,
  * a stall, a background tab) and every frame while a menu or dialog is open
  * or the round is not being played. A 4-second window is slow when its
- * median frame is slow, or when a fifth of its time went to frames that
+ * median frame is slow, or when a tenth of its time went to frames that
  * missed 30 fps: the stutter each skill causes on an older phone. (Counting
- * a fifth of the frames instead missed it: slow frames are long, so few.)
- * It steps down one level after two consecutive slow windows and steps back
- * up only after five comfortable ones; a level it had to leave twice is not
- * retried this session. The settled level is remembered on this device.
+ * frames instead missed it: slow frames are long, so few.) A window is
+ * comfortable only when it keeps pace and hardly stutters at all. It steps
+ * down one level after two consecutive slow windows and steps back up only
+ * after five comfortable ones. A level it had to leave is not tried again
+ * on this device for a week (`BATTLE_PROBE.ceilingDays`), so a phone does
+ * not lag once a session finding out again. The settled level is
+ * remembered on this device.
  *
  * Settings → Graphics: High always draws everything; Low always draws the
- * lightest level; Auto (default) adapts, starting at Low on a device with
- * 2 GB of memory or less (or one Auto found slow in the Plaza) and at High
- * otherwise. Reduced motion keeps its own, stricter effect limits at every
+ * lightest level; Auto (default) adapts. Before it has learned a device it
+ * starts at Low on one with 2 GB of memory or less (or one Auto found slow
+ * in the Plaza), at Medium on an Android phone or tablet (their graphics
+ * chips vary the most: the match reports' one Android phone stuttered even
+ * at Low), and at High otherwise. Picking Auto again forgets what it
+ * learned. Reduced motion keeps its own, stricter effect limits at every
  * level.
  */
 import {
@@ -92,13 +98,20 @@ export const BATTLE_PROBE = {
   /** A window is slow when its median frame is longer than this (≈45 fps)… */
   slowMedian: 1000 / 45,
   /** …or this share of its time went to frames longer than `jank` ms
-   * (missed 30 fps): the stutter after each skill on an older phone. */
-  jankShare: 0.2,
+   * (missed 30 fps): the stutter after each skill on an older phone. (A
+   * fifth until 13 Nov 2026: the reports' Android phone stuttered up to
+   * 18% of the time, at Low, and Auto would never have left High.) */
+  jankShare: 0.1,
   jank: 34,
-  /** Comfortable: 90% of frames within this (≈58 fps). */
+  /** Comfortable: 90% of frames within this (≈58 fps)… */
   fastP90: 1000 / 58,
+  /** …and at most this share of the time stuttering. (Pace alone let a
+   * 120 Hz phone count as comfortable while it stuttered.) */
+  fastJank: 0.02,
   slowWindows: 2,
   fastWindows: 5,
+  /** A level Auto had to leave is not tried again for this long. */
+  ceilingDays: 7,
 };
 
 const KEY = "ea-battle-quality";
@@ -118,13 +131,63 @@ function write(level: BattleQuality) {
     /* Optional. */
   }
 }
+const CEILING_KEY = "ea-battle-ceiling";
+/** The highest level Auto may use on this device, if it had to leave one. */
+export interface BattleCeiling {
+  level: BattleQuality;
+  /** When it was set (ms since 1970). */
+  at: number;
+}
+function readCeiling(): BattleCeiling | null {
+  try {
+    const v = JSON.parse(localStorage.getItem(CEILING_KEY) ?? "null") as {
+      level?: unknown;
+      at?: unknown;
+    } | null;
+    if (
+      v &&
+      (v.level === "medium" || v.level === "low") &&
+      typeof v.at === "number"
+    )
+      return { level: v.level, at: v.at };
+  } catch {
+    /* Optional. */
+  }
+  return null;
+}
+function writeCeiling(ceiling: BattleCeiling | null) {
+  try {
+    if (ceiling) localStorage.setItem(CEILING_KEY, JSON.stringify(ceiling));
+    else localStorage.removeItem(CEILING_KEY);
+  } catch {
+    /* Optional. */
+  }
+}
 /** Forget what Auto learned (picking Auto again in Settings). */
 export function resetBattleQuality() {
   try {
     localStorage.removeItem(KEY);
+    localStorage.removeItem(CEILING_KEY);
   } catch {
     /* Optional. */
   }
+}
+
+/** An Android phone or tablet (Chrome, Samsung Internet, the installed app). */
+export function isAndroid(
+  nav: { userAgent?: string } | undefined = typeof navigator === "undefined"
+    ? undefined
+    : navigator,
+) {
+  return /\bAndroid\b/i.test(nav?.userAgent ?? "");
+}
+/** Where Auto starts on a device it has not learned yet (see the top). */
+export function autoStartLevel(
+  startsLow: () => boolean = autoChoosesLow,
+  android: () => boolean = isAndroid,
+): BattleQuality {
+  if (startsLow()) return "low";
+  return android() ? "medium" : "high";
 }
 
 export class BattleQualityGovernor {
@@ -142,18 +205,38 @@ export class BattleQualityGovernor {
     remembered: BattleQuality | null = read(),
     private remember: (level: BattleQuality) => void = write,
     /**
-     * Where Auto starts before it has learned this device: Low when the
-     * device reports 2 GB of memory or less, or Auto already found it slow
-     * in the Plaza (the Plaza's own rule, graphics-quality.ts), so an older
-     * phone's first battle does not lag while Auto measures. It steps up
-     * after a comfortable stretch if the device copes.
+     * Where Auto starts before it has learned this device (autoStartLevel):
+     * Low when the device reports 2 GB of memory or less, or Auto already
+     * found it slow in the Plaza (graphics-quality.ts), so an older phone's
+     * first battle does not lag while Auto measures; Medium on Android. It
+     * steps up after a comfortable stretch if the device copes.
      */
-    private startsLow: () => boolean = autoChoosesLow,
+    private startAt: () => BattleQuality = autoStartLevel,
+    /** The level Auto had to leave lately, and storing a new one. */
+    private ceilingStore: {
+      read: () => BattleCeiling | null;
+      write: (c: BattleCeiling | null) => void;
+    } = { read: readCeiling, write: writeCeiling },
+    private clock: () => number = Date.now,
   ) {
-    this.level = remembered ?? this.firstLevel();
+    this.level = this.capped(remembered ?? this.firstLevel());
   }
   private firstLevel(): BattleQuality {
-    return this.startsLow() ? "low" : "high";
+    return this.startAt();
+  }
+  /** The highest level allowed now (a level left within the week is not). */
+  private ceiling(): BattleQuality {
+    const c = this.ceilingStore.read();
+    if (!c) return "high";
+    if (this.clock() - c.at > BATTLE_PROBE.ceilingDays * 86_400_000) {
+      this.ceilingStore.write(null);
+      return "high";
+    }
+    return c.level;
+  }
+  private capped(level: BattleQuality): BattleQuality {
+    const max = BATTLE_LEVELS.indexOf(this.ceiling());
+    return BATTLE_LEVELS[Math.max(max, BATTLE_LEVELS.indexOf(level))];
   }
   /** The level to draw at now (manual settings win over Auto). */
   current(): BattleQuality {
@@ -168,7 +251,7 @@ export class BattleQualityGovernor {
   /** Forget the learned level (Settings → Auto picked again). */
   reset(forget: () => void) {
     forget();
-    this.level = this.firstLevel();
+    this.level = this.capped(this.firstLevel());
     this.left.clear();
     this.slow = this.fast = 0;
     this.restart();
@@ -218,18 +301,23 @@ export class BattleQualityGovernor {
     this.counted = 0;
     const isSlow =
       median > BATTLE_PROBE.slowMedian || jank >= BATTLE_PROBE.jankShare;
-    const isFast = !isSlow && p90 <= BATTLE_PROBE.fastP90;
+    const isFast =
+      !isSlow && p90 <= BATTLE_PROBE.fastP90 && jank <= BATTLE_PROBE.fastJank;
     this.slow = isSlow ? this.slow + 1 : 0;
     this.fast = isFast ? this.fast + 1 : 0;
     const index = BATTLE_LEVELS.indexOf(this.level);
     if (this.slow >= BATTLE_PROBE.slowWindows && index < 2) {
       this.left.set(this.level, (this.left.get(this.level) ?? 0) + 1);
-      return this.change(BATTLE_LEVELS[index + 1]);
+      const down = BATTLE_LEVELS[index + 1];
+      // Do not try the level it left again for a while (not even next
+      // session): finding out again is a lagging battle.
+      this.ceilingStore.write({ level: down, at: this.clock() });
+      return this.change(down);
     }
     if (this.fast >= BATTLE_PROBE.fastWindows && index > 0) {
       const up = BATTLE_LEVELS[index - 1];
       // Do not keep bouncing between two levels.
-      if ((this.left.get(up) ?? 0) >= 2) return;
+      if ((this.left.get(up) ?? 0) >= 1 || this.capped(up) !== up) return;
       return this.change(up);
     }
   }

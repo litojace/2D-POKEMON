@@ -95,7 +95,7 @@ describe("raid boss HUD", () => {
     const hud = fakeHud(),
       a = arena("grumblecrag");
     expect(paint(hud, a)).toBe(true);
-    expect(hud.part("title").textContent).toBe("GRUMBLECRAG");
+    expect(hud.part("title").textContent).toBe("CRAGMUFF");
     expect(hud.part("phase").textContent).toBe("Phase 1/3");
     expect(hud.part("phase").attrs.get("aria-label")).toBe("Phase 1 of 3");
     expect(hud.part("fill").style.width).toBe("100%");
@@ -146,7 +146,7 @@ describe("raid boss HUD", () => {
     expect(hud.part("mark0").classes.has("is-passed")).toBe(true);
     expect(hud.part("mark1").classes.has("is-passed")).toBe(true);
     expect(hud.part("title").textContent).toBe(
-      "✦ GILDED GRUMBLECRAG · EXPOSED",
+      "✦ GILDED CRAGMUFF · EXPOSED",
     );
     expect(hud.part("stagger").style.width).toBe("100%");
     expect(hud.part("stagger-label").textContent).toBe(

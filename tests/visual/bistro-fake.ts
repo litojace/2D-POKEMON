@@ -103,7 +103,7 @@ export async function fakeBistro(page: Page) {
       const url = String(input);
       if (!url.includes("/api/bistro")) return fetch(input, init);
       const R = await rules();
-      // A server that keeps guests' servings (migration 109).
+      // A server that keeps guests' servings (migration 118).
       if (!server.S) server.S = { ...R.defaultState(), held: {} };
       if (!server.S.held) server.S.held = {};
       const json = (v: unknown) =>

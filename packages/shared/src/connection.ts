@@ -102,6 +102,9 @@ export const battlePerfSchema = z
     app: z.boolean().optional(),
     /** The browser drew without the graphics card (client gpu-check.ts). */
     gpu: z.literal("software").optional(),
+    /** The screen's refresh rate (Hz) as the battle measured it; battles
+     * on screens of 100 Hz or more are held to about 60 fps (frame-cap.ts). */
+    hz: z.number().int().min(1).max(1000).optional(),
   })
   .strict();
 export type BattlePerf = z.infer<typeof battlePerfSchema>;

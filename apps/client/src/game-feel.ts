@@ -92,7 +92,19 @@ export const KO_FEEL = {
   tweenSlowdown: 0.3,
 };
 
-/** Best-effort vibration: controller rumble, else phone vibration (Android). */
+/**
+ * The iPhone app's haptics (native.ts sets it): iPhones have no web
+ * vibration, so the app taps the Taptic Engine instead. `strength` is 0–1.
+ */
+let nativeTap: ((strength: number) => void) | null = null;
+export function setNativeTap(tap: ((strength: number) => void) | null) {
+  nativeTap = tap;
+}
+
+/**
+ * Best-effort vibration: controller rumble, else the iPhone app's haptics,
+ * else phone vibration (Android).
+ */
 export function rumble(ms: number, strength: number) {
   if (ms <= 0 || strength <= 0 || typeof navigator === "undefined") return;
   try {
@@ -116,6 +128,10 @@ export function rumble(ms: number, strength: number) {
           .catch(() => {});
         return;
       }
+    }
+    if (nativeTap) {
+      nativeTap(strength);
+      return;
     }
     // iPhone Safari has no web vibration; Android Chrome does.
     navigator.vibrate?.(Math.round(ms * 0.6));

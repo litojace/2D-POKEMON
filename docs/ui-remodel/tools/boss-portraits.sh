@@ -4,6 +4,8 @@
 # centred on the boss's "body" point in BOSS_FRAMES
 # (apps/client/src/screens/raid-hall-view.ts). Needs ImageMagick.
 # Run from the repo root after changing a painting or a framing point.
+# Superseded by boss-art.py (whole boss, face as central as fits); this centre
+# strip trims wide bosses, so rerunning it undoes those cuts.
 set -e
 DIR=apps/client/src/art/raid-splash
 # id  body-x (fraction of the painting's width)
@@ -14,11 +16,11 @@ while read -r id x; do
     -resize 600x900 -quality 82 "$DIR/$id-portrait.webp"
   echo "$id: x=$x left=$left"
 done <<'LIST'
-grumblecrag 0.55
-tidewyrm 0.64
-gloomshade 0.58
-somnara 0.38
-prismatail 0.57
-emberwing 0.52
-storm-twins 0.52
+grumblecrag 0.43
+tidewyrm 0.61
+gloomshade 0.57
+somnara 0.54
+prismatail 0.46
+emberwing 0.49
+storm-twins 0.50
 LIST

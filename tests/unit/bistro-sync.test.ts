@@ -234,7 +234,7 @@ describe("bistro sync: the server's clock", () => {
   });
 });
 
-describe("bistro sync: guests' orders held on the server (migration 109)", () => {
+describe("bistro sync: guests' orders held on the server (migration 118)", () => {
   const counterOf = (n: number) => [
     { dish: "pho" as const, servings: n, perfect: false },
     null,

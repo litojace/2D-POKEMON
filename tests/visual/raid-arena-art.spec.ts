@@ -76,15 +76,26 @@ for (const viewport of [
           expect(requests.every((r) => r.includes("grumblecrag.webp"))).toBe(
             true,
           );
+          // Broken pillars are rubble from the pillars' atlas, lying on the
+          // illustrated floor (transparent around it), with no shadow.
           const rubble = await page.evaluate(() => {
             const scene = (window as any).__raidArtGame.scene.getScene("arena"),
-              c = scene.textures.get("court-rubble-0").getSourceImage();
+              shown = (n: string) =>
+                scene.children.list.find((o: any) => o.name === n)?.visible,
+              c = scene.textures.get("grumble-pillars-atlas").getSourceImage();
             return {
               alpha: c.getContext("2d").getImageData(0, 0, 1, 1).data[3],
-              shadow: scene.raidPillarShadows[0].visible,
+              rubble: shown("pillar-rubble0"),
+              stone: shown("pillar-block0"),
+              shadow: shown("pillar-shadow0"),
             };
           });
-          expect(rubble).toEqual({ alpha: 0, shadow: false });
+          expect(rubble).toEqual({
+            alpha: 0,
+            rubble: true,
+            stone: false,
+            shadow: false,
+          });
         }
         // Red live warnings remain a separate layer over the static materials.
         await page.evaluate(() => {
@@ -150,7 +161,8 @@ for (const viewport of [
         await page.evaluate(() =>
           (window as any).__raidArtGame.scene
             .getScene("arena")
-            .raidPillarShadows.every((s: any) => !s.visible),
+            .children.list.filter((o: any) => o.name?.startsWith("pillar-"))
+            .every((o: any) => !o.visible),
         ),
       ).toBe(true);
       expect(

@@ -1,17 +1,17 @@
 import type { RaidBossId } from "../../../packages/shared/src/raid";
-import hero0 from "./art/raid-splash/grumblecrag.webp";
+import hero0 from "./art/raid-splash/grumblecrag-lower.webp";
 import thumb0 from "./art/raid-splash/grumblecrag-thumb.webp";
-import hero1 from "./art/raid-splash/tidewyrm.webp";
+import hero1 from "./art/raid-splash/tidewyrm-lower.webp";
 import thumb1 from "./art/raid-splash/tidewyrm-thumb.webp";
-import hero2 from "./art/raid-splash/gloomshade.webp";
+import hero2 from "./art/raid-splash/gloomshade-lower.webp";
 import thumb2 from "./art/raid-splash/gloomshade-thumb.webp";
-import hero3 from "./art/raid-splash/somnara.webp";
+import hero3 from "./art/raid-splash/somnara-lower.webp";
 import thumb3 from "./art/raid-splash/somnara-thumb.webp";
-import hero4 from "./art/raid-splash/prismatail.webp";
+import hero4 from "./art/raid-splash/prismatail-lower.webp";
 import thumb4 from "./art/raid-splash/prismatail-thumb.webp";
-import hero5 from "./art/raid-splash/emberwing.webp";
+import hero5 from "./art/raid-splash/emberwing-lower.webp";
 import thumb5 from "./art/raid-splash/emberwing-thumb.webp";
-import hero6 from "./art/raid-splash/storm-twins.webp";
+import hero6 from "./art/raid-splash/storm-twins-lower.webp";
 import thumb6 from "./art/raid-splash/storm-twins-thumb.webp";
 
 import card0 from "./art/raid-splash/grumblecrag-portrait.webp";
@@ -42,6 +42,7 @@ export function raidSplashImage(id: RaidBossId, hero = false) {
 /**
  * Each boss's vertical card picture (600 x 900), cut from its painting on
  * the boss (docs/ui-remodel/tools/boss-portraits.sh): the Raid Hall's cards.
+ * boss-art.py also supports framing a whole-creature box for future art.
  */
 export const RAID_PORTRAIT: Record<RaidBossId, string> = {
   grumblecrag: card0,

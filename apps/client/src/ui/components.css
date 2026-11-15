@@ -318,6 +318,31 @@
   display: grid;
   place-items: center;
 }
+/* The age question before a new account (age-gate.ts). */
+.age-gate .age-gate-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 12px 0 4px;
+}
+.age-gate label {
+  display: grid;
+  gap: 4px;
+  font-size: var(--fs-small);
+  color: var(--ui-dim);
+}
+.age-gate select {
+  height: 44px;
+  padding: 0 10px;
+  border-radius: var(--rad-sm);
+  border: 1px solid var(--ui-line-2);
+  background: var(--ui-bg-0);
+  color: var(--ui-text);
+  /* 16px: iOS zooms into smaller fields. */
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 600;
+}
 .ui-modal {
   width: min(440px, 100% - 32px);
   background: var(--ui-bg-1);

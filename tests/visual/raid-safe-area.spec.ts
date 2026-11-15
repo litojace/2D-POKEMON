@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { raidAttacksOf, type RaidBossId } from "../../packages/shared/src/raid";
+import { RAID_BOSSES, raidAttacksOf, type RaidBossId } from "../../packages/shared/src/raid";
 import { openHub, pushUntilBattle, snap, openPlayPanel } from "./helpers";
 const bosses=["grumblecrag","tidewyrm","gloomshade","somnara","prismatail","emberwing","storm-twins"];
 for(const viewport of [{width:844,height:390},{width:1280,height:589},{width:844,height:280},{width:1440,height:900}]) {
@@ -27,7 +27,7 @@ for(const viewport of [{width:844,height:390},{width:1280,height:589},{width:844
      w.__raidBasePlayers=w.__snap.players;
      w.__push();
     },boss);
-    await expect(page.locator('.raid-boss-heading > b')).toContainText(boss==='storm-twins'?'STORM TWINS':boss==='grumblecrag'?'GRUMBLECRAG':boss.toUpperCase());
+    await expect(page.locator('.raid-boss-heading > b')).toContainText(RAID_BOSSES[boss as RaidBossId].name.toUpperCase());
     await expect.poll(async()=>{const g=await inspect();return g.hud.right<=g.gear.x+1}).toBe(true);
     const g=await inspect();
     if(mobile){expect(g.game.x).toBeCloseTo(0,0);expect(g.game.y).toBeCloseTo(0,0);expect(g.game.width).toBeCloseTo(viewport.width,0);expect(g.game.height).toBeCloseTo(viewport.height,0);expect(g.hud.x).toBeGreaterThanOrEqual(44);expect(g.hud.right).toBeLessThanOrEqual(viewport.width-44);}

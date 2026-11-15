@@ -10,6 +10,7 @@
  * Markup and rules only (no DOM); main.ts gathers the room's data and wires
  * the clicks (data-room-*, data-team, data-mutator).
  */
+import { SOLO_NO_REVIVE, soloRevives } from "../raid-solo";
 import { CHARACTERS, type CharacterId } from "@arena/shared";
 import {
   RAID_BOSSES,
@@ -155,7 +156,9 @@ function notes(d: RoomData) {
     d.mode === "raid"
       ? [
           d.seats.length === 1
-            ? "One solo self-revive"
+            ? d.boss && !soloRevives(d.boss)
+              ? SOLO_NO_REVIVE
+              : "One solo self-revive"
             : "Stand near allies to revive",
           "Separate from PvP rating",
         ]

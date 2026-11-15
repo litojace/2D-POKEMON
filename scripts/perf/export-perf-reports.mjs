@@ -70,6 +70,7 @@ export const KEEP = {
     "build",
     "os",
     "app",
+    "hz",
   ],
   "arena-disconnect": [
     "reason",
@@ -216,6 +217,7 @@ const device = (r) =>
     r.os ? `${r.os}${r.app ? " app" : ""}` : "",
     r.cores !== undefined ? `${r.cores} cores` : "",
     r.memory !== undefined ? `${r.memory} GB` : "",
+    r.hz !== undefined ? `${r.hz} Hz` : "",
   ]
     .filter(Boolean)
     .join(", ") || "–";

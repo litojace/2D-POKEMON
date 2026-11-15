@@ -164,6 +164,14 @@ for (const mode of ["login", "signup"] as const) {
       await form.locator('[name="confirmPassword"]').fill("example-password");
     }
     await form.locator('button[type="submit"]').click();
+    if (mode === "signup") {
+      // A new account asks for a birth month and year first (age-gate.ts).
+      const age = page.locator("[data-age-gate]");
+      await age.locator('[name="month"]').selectOption("6");
+      await age.locator('[name="year"]').selectOption("2000");
+      await age.locator('button[type="submit"]').click();
+      await expect(age).toHaveCount(0);
+    }
     await page.waitForFunction(() => !!(window as any).__releaseProfile);
     // Let the queued auth event run while the first profile request is pending.
     await page.waitForTimeout(100);

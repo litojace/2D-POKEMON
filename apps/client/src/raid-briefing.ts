@@ -128,7 +128,7 @@ export function bossBriefing(boss: RaidBossId, solo: boolean): BossBriefing {
           ),
           step(
             "Attack during the opening",
-            "Complete the sequence, then use your strongest skills while Somnara is exposed.",
+            "Complete the sequence, then use your strongest skills while Snoozaku is exposed.",
             "Repeat when a new dream sequence appears.",
             "opening",
           ),
@@ -164,11 +164,11 @@ export function bossBriefing(boss: RaidBossId, solo: boolean): BossBriefing {
       };
     case "emberwing":
       return {
-        goal: "Light all three braziers at the same time to bring Emberwing down.",
+        goal: "Light all three braziers at the same time to bring Lumiwick down.",
         steps: [
           step(
             "Stand on a brazier",
-            "Stay inside a brazier’s circle for 1.5 seconds.",
+            "Stay inside a brazier’s circle for 2 seconds.",
             "Move to the next brazier when this one lights.",
             "braziers",
           ),
@@ -177,12 +177,12 @@ export function bossBriefing(boss: RaidBossId, solo: boolean): BossBriefing {
             solo
               ? "Move quickly between braziers before the first fire goes out."
               : "Split up so all three braziers are burning at the same time.",
-            "All three lit → Emberwing lands.",
+            "All three lit → Lumiwick drops.",
             "ground-bird",
           ),
           step(
             "Attack the exposed heart",
-            "Use your strongest skills while Emberwing is on the ground.",
+            "Use your strongest skills while Lumiwick is on the ground.",
             "When it takes off, light the braziers again.",
             "opening",
           ),

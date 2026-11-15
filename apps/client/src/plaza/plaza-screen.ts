@@ -27,8 +27,17 @@ export interface PlazaScreenOptions {
   goFarm(): void;
   toast(message: string): void;
   onLeaves(balance: number): void;
-  /** Add a player you tapped as a friend, or invite them to your party. */
-  onPlayer(action: "friend" | "party", accountId: string): Promise<void>;
+  /**
+   * A player you tapped: add as a friend, invite to your party, block (it
+   * asks first) or report. Resolves true when the card should close.
+   */
+  onPlayer(
+    action: "friend" | "party" | "block" | "report",
+    accountId: string,
+    name: string,
+  ): Promise<boolean | void>;
+  /** Players you blocked aren't shown on the Plaza (migration 110). */
+  isBlocked?(accountId: string): boolean;
   /** The server closed the Plaza (a room opened) or refused the join. */
   onClose(failed: boolean): void;
   /** Fewer particles (reduced motion). */

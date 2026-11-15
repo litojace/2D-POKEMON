@@ -466,14 +466,15 @@ function voidMoments(ctx: FxContext, art: SkinArt, stage: number) {
       const land = 0.22;
       const tipY = k < land ? feet - 120 * sc + (k / land) * 120 * sc : feet;
       const alpha = k > 0.8 ? (1 - k) / 0.2 : 1;
-      runeSword(g, sx, tipY - (k < land ? 0 : 6 * sc), len, sc, color, hot, alpha);
+      // Behind the fighter, like every victory effect: never over its face.
+      runeSword(under, sx, tipY - (k < land ? 0 : 6 * sc), len, sc, color, hot, alpha);
       if (k >= land) {
         const kk = (k - land) / (1 - land);
-        g.lineStyle(2 * sc, color, 0.7 * (1 - kk)).strokeEllipse(sx, feet, (16 + kk * 50) * sc, (16 + kk * 50) * sc * flat);
+        under.lineStyle(2 * sc, color, 0.7 * (1 - kk)).strokeEllipse(sx, feet, (16 + kk * 50) * sc, (16 + kk * 50) * sc * flat);
         if (k - (ctx.dt * 1000) / WIN_MS < land)
           for (let i = 0; i < 12; i++) {
             const a = -Math.PI * (0.1 + 0.8 * Math.random());
-            ctx.emit({ x: sx, y: feet - 4 * sc, vx: Math.cos(a) * 120, vy: Math.sin(a) * 160, life: 0.6, size: 2 * sc, color: i % 2 ? color : hot, shape: "spark" });
+            ctx.emit({ x: sx, y: feet - 4 * sc, vx: Math.cos(a) * 120, vy: Math.sin(a) * 160, life: 0.6, size: 2 * sc, color: i % 2 ? color : hot, shape: "spark", behind: true });
           }
       }
     }
@@ -585,7 +586,7 @@ function moments(ctx: FxContext, art: SkinArt, stage: number) {
   const color = art.skill;
   if (color === undefined) return;
   const colors = art.trail?.colors.length ? art.trail.colors : [color];
-  const burst = (n: number, speed: number, shape: FxShape, dy = -10, life = 0.7) => {
+  const burst = (n: number, speed: number, shape: FxShape, dy = -10, life = 0.7, behind = false) => {
     for (let i = 0; i < n; i++) {
       const a = (i / n) * Math.PI * 2 + Math.random() * 0.3;
       const v = speed * (0.6 + Math.random() * 0.5);
@@ -599,6 +600,7 @@ function moments(ctx: FxContext, art: SkinArt, stage: number) {
         color: i % 2 ? color : pick(colors),
         shape,
         spin: (Math.random() - 0.5) * 10,
+        behind,
       });
     }
   };
@@ -609,7 +611,8 @@ function moments(ctx: FxContext, art: SkinArt, stage: number) {
   // III) ultimate; the Void Knights' gate, planted sword and signature
   // strike follow over the next frames (voidMoments).
   if (ctx.greeting) burst(14, 150, "spark", -14, 0.7);
-  if (ctx.celebrating) burst(10, 90, "star", -30, 1.1);
+  // The victory burst stays behind the fighter, off its face.
+  if (ctx.celebrating) burst(10, 90, "star", -30, 1.1, true);
   if (ctx.ultimate && stage >= 3) burst(20, 170, "star", -10, 0.6);
 }
 

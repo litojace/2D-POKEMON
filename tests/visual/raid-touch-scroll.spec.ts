@@ -22,8 +22,14 @@ const SIZES = [
   { name: "1440x900", width: 1440, height: 900, phone: false },
 ];
 
-/** Touch input: a finger from (x, y) up by `dist` px. */
-async function finger(page: Page, x: number, y: number, dist: number) {
+/** Touch input: move a finger up or left from (x, y) by `dist` px. */
+async function finger(
+  page: Page,
+  x: number,
+  y: number,
+  dist: number,
+  axis: "x" | "y" = "y",
+) {
   const cdp = await page.context().newCDPSession(page);
   await cdp.send("Input.dispatchTouchEvent", {
     type: "touchStart",
@@ -32,7 +38,12 @@ async function finger(page: Page, x: number, y: number, dist: number) {
   for (let i = 1; i <= 10; i++)
     await cdp.send("Input.dispatchTouchEvent", {
       type: "touchMove",
-      touchPoints: [{ x, y: y - (dist * i) / 10 }],
+      touchPoints: [
+        {
+          x: axis === "x" ? x - (dist * i) / 10 : x,
+          y: axis === "y" ? y - (dist * i) / 10 : y,
+        },
+      ],
     });
   await cdp.send("Input.dispatchTouchEvent", {
     type: "touchEnd",
@@ -43,20 +54,25 @@ async function finger(page: Page, x: number, y: number, dist: number) {
 }
 
 /**
- * Swipe `sel`'s scroller up to its end, the finger landing at a different
+ * Swipe `sel`'s scroller along its axis, the finger landing at a different
  * spot each time (cards, art, tags, text), and say where it got to.
  */
-async function swipe(page: Page, sel: string) {
+async function swipe(page: Page, sel: string, axis: "x" | "y" = "y") {
   const el = page.locator(sel).first();
   await expect(el).toBeVisible();
-  const box = await el.evaluate((node) => {
+  const box = await el.evaluate((node, axis) => {
     // The element itself, or the nearest ancestor, that scrolls.
     let s: HTMLElement | null = node as HTMLElement;
     while (s) {
-      const o = getComputedStyle(s).overflowY;
+      const o =
+        axis === "x"
+          ? getComputedStyle(s).overflowX
+          : getComputedStyle(s).overflowY;
       if (
         (o === "auto" || o === "scroll") &&
-        s.scrollHeight > s.clientHeight + 4
+        (axis === "x"
+          ? s.scrollWidth - s.clientWidth
+          : s.scrollHeight - s.clientHeight) > 4
       )
         break;
       s = s.parentElement;
@@ -64,17 +80,25 @@ async function swipe(page: Page, sel: string) {
     const target = s ?? (node as HTMLElement);
     target.setAttribute("data-swipe-probe", "");
     target.scrollTop = 0;
+    target.scrollLeft = 0;
     const t = target.getBoundingClientRect();
     return {
-      overflow: target.scrollHeight - target.clientHeight,
+      overflow:
+        axis === "x"
+          ? target.scrollWidth - target.clientWidth
+          : target.scrollHeight - target.clientHeight,
       left: t.left,
       width: t.width,
       top: Math.max(t.top, 0),
       bottom: Math.min(t.bottom, innerHeight),
     };
-  });
+  }, axis);
   const probe = page.locator("[data-swipe-probe]");
-  const at = () => probe.evaluate((n) => (n as HTMLElement).scrollTop);
+  const at = () =>
+    probe.evaluate(
+      (n, axis) => (axis === "x" ? n.scrollLeft : n.scrollTop),
+      axis,
+    );
   const spots = [0.2, 0.5, 0.8, 0.35, 0.65, 0.5, 0.25, 0.75];
   const stuck: string[] = [];
   let first = 0;
@@ -82,8 +106,14 @@ async function swipe(page: Page, sel: string) {
     const before = await at();
     if (before >= box.overflow - 2) break;
     const h = box.bottom - box.top;
-    const x = Math.round(box.left + box.width * spots[i]);
-    const y = Math.round(box.bottom - Math.min(24, h / 5));
+    const x = Math.round(
+      axis === "x"
+        ? box.left + box.width - 24
+        : box.left + box.width * spots[i],
+    );
+    const y = Math.round(
+      axis === "x" ? box.top + h * spots[i] : box.bottom - Math.min(24, h / 5),
+    );
     const hit = await page.evaluate(
       ([x, y]) => {
         const e = document.elementFromPoint(x, y);
@@ -93,7 +123,13 @@ async function swipe(page: Page, sel: string) {
       },
       [x, y],
     );
-    await finger(page, x, y, Math.round(Math.max(30, h * 0.6)));
+    await finger(
+      page,
+      x,
+      y,
+      Math.round(Math.max(30, (axis === "x" ? box.width : h) * 0.6)),
+      axis,
+    );
     const after = await at();
     if (i === 0) first = after - before;
     if (after - before < 4) stuck.push(`${hit} @${x},${y}`);
@@ -206,7 +242,7 @@ for (const size of SIZES)
       await page.click('.lobby-rail [data-lobby-action="raids"]');
       await expect(page.locator(".rh-grid")).toBeVisible();
       await page.waitForTimeout(600);
-      results.hall = await swipe(page, ".rh-grid > *");
+      results.hall = await swipe(page, ".rh-grid > *", size.phone ? "x" : "y");
       cuts.hall = await clipped(page, ".rh-room");
       // The boss page, each tab.
       await page.evaluate(() =>
@@ -331,7 +367,11 @@ for (const size of SIZES)
       await page.click("[data-raid-back]");
       await expect(page.locator(".rh-grid")).toBeVisible();
       await page.waitForTimeout(600);
-      results["hall-after"] = await swipe(page, ".rh-grid > *");
+      results["hall-after"] = await swipe(
+        page,
+        ".rh-grid > *",
+        size.phone ? "x" : "y",
+      );
       console.log(`TOUCH ${size.name}`, JSON.stringify(results));
       console.log(`CUTS ${size.name}`, JSON.stringify(cuts));
       for (const [name, c] of Object.entries(cuts))

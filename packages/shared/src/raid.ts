@@ -6,11 +6,11 @@ import { prismatailPattern } from "./raid-prismatail.js";
 export * from "./raid-prismatail.js";
 import { somnaraPattern, type DreamRune } from "./raid-somnara.js";
 export * from "./raid-somnara.js";
-import type { RaidBossId } from "./raid-roster.js";
+import { RAID_BOSSES, type RaidBossId } from "./raid-roster.js";
 import type { CharacterId } from "./index.js";
 export * from "./raid-roster.js";
 export const RAID = {
-  name: "Grumblecrag",
+  name: "Cragmuff",
   maxPeril: 3,
   timeLimit: 600,
   /** Every boss's health × this (they went down in about a minute). */
@@ -22,12 +22,128 @@ export const RAID = {
   reviveRange: 100,
   selfReviveDelay: 6,
   staggerSeconds: 6,
-  /** Solo raiders get one self-revive (raids are always Peril 3 now). */
-  soloSelfReviveMaxPeril: 3,
+  /** Peril 1-2 (practice and tests only): solo raiders get one self-revive.
+   * Live raids read `raidSoloRevive(boss)` from the star tier instead. */
+  soloSelfReviveMaxPeril: 2,
   /** Solo raiders face this share of the boss's health. */
   soloHealth: 0.85,
   phases: ["Wake the mountain", "Break the armor", "Heart of the mountain"],
 } as const;
+/**
+ * One difficulty per star tier (docs/boss-raid.md "Difficulty"). Every raid
+ * runs at Peril 3; the boss's stars (`RAID_BOSSES[boss].stars`) pick the row.
+ */
+export interface RaidTier {
+  /** Boss health × this, on top of the Peril 3 formula. */
+  readonly health: number;
+  /** Boss damage × this (replaces the Peril 3 multiplier). */
+  readonly damage: number;
+  /** Seconds between attacks × this. */
+  readonly cadence: number;
+  /** Most damaging attacks live at once, in chapters 1, 2 and 3. */
+  readonly concurrency: readonly [number, number, number];
+  /** Telegraphs of 1.4 s or more × this (never below `RAID_TELEGRAPH_FLOOR`). */
+  readonly telegraph: number;
+  /** Predictive aim: share of the raider's travel led, and the most it leads (px). */
+  readonly leadFraction: number;
+  readonly leadCap: number;
+  /** Exposure, strand and grounded windows × this. */
+  readonly windows: number;
+  /** Seconds of combat before the soft enrage starts. */
+  readonly enrageAt: number;
+  /** Solo raiders' one self-revive (none when undefined). */
+  readonly soloRevive?: { readonly seconds: number; readonly hp: number };
+  /** Seconds a teammate kneels to revive, and the immunity after it. */
+  readonly reviveSeconds: number;
+  readonly reviveImmunity: number;
+  /** First chapter where single-target attacks hit two raiders (3+ raiders). */
+  readonly pressureFrom: number;
+}
+export const RAID_TIERS: Record<1 | 2 | 3, RaidTier> = {
+  1: {
+    health: 1.15,
+    damage: 1.75,
+    cadence: 0.85,
+    concurrency: [1, 2, 2],
+    telegraph: 0.95,
+    leadFraction: 0.55,
+    leadCap: 110,
+    windows: 0.9,
+    enrageAt: 270,
+    soloRevive: { seconds: 8, hp: 0.3 },
+    reviveSeconds: 3.5,
+    reviveImmunity: 1.5,
+    pressureFrom: 2,
+  },
+  2: {
+    health: 1.25,
+    damage: 1.95,
+    cadence: 0.78,
+    concurrency: [2, 2, 2],
+    telegraph: 0.88,
+    leadFraction: 0.7,
+    leadCap: 140,
+    windows: 0.8,
+    enrageAt: 300,
+    soloRevive: { seconds: 8, hp: 0.25 },
+    reviveSeconds: 4,
+    reviveImmunity: 1.25,
+    pressureFrom: 2,
+  },
+  3: {
+    health: 1.35,
+    damage: 2.15,
+    cadence: 0.72,
+    concurrency: [2, 2, 3],
+    telegraph: 0.82,
+    leadFraction: 0.8,
+    leadCap: 160,
+    windows: 0.72,
+    enrageAt: 330,
+    reviveSeconds: 4.5,
+    reviveImmunity: 1,
+    pressureFrom: 1,
+  },
+};
+/** No shortened telegraph is ever below this (seconds of server time). */
+export const RAID_TELEGRAPH_FLOOR = 0.9;
+/** Soft enrage: a step every `every` seconds past `enrageAt`, up to `steps`. */
+export const RAID_ENRAGE = {
+  every: 30,
+  steps: 4,
+  cadence: 0.94,
+  damage: 0.08,
+} as const;
+/** The difficulty row for a boss. */
+export const raidTier = (boss: RaidBossId): RaidTier =>
+  RAID_TIERS[RAID_BOSSES[boss]?.stars ?? 1];
+/**
+ * A solo raider's self-revive against this boss: seconds down before they
+ * stand again, and the share of health they come back with. Undefined when
+ * there is none (★★★ bosses), so the client can warn before the fight.
+ */
+export function raidSoloRevive(
+  boss: RaidBossId,
+): { seconds: number; hp: number } | undefined {
+  const revive = raidTier(boss).soloRevive;
+  return revive ? { seconds: revive.seconds, hp: revive.hp } : undefined;
+}
+/** A telegraph's length on this tier: 1.4 s or more is shortened, never below the floor. */
+export function raidTelegraph(boss: RaidBossId, seconds: number) {
+  return seconds >= 1.4
+    ? Math.max(RAID_TELEGRAPH_FLOOR, seconds * raidTier(boss).telegraph)
+    : seconds;
+}
+/** Soft enrage steps after `elapsed` seconds of combat (0 before it starts). */
+export function raidEnrageSteps(boss: RaidBossId, elapsed: number) {
+  const start = raidTier(boss).enrageAt;
+  return elapsed < start
+    ? 0
+    : Math.min(
+        RAID_ENRAGE.steps,
+        1 + Math.floor((elapsed - start) / RAID_ENRAGE.every),
+      );
+}
 export const RAID_CHAPTERS = [
   {
     name: "Wake the mountain",
@@ -136,7 +252,7 @@ export const RAID_ATTACKS: Record<
   },
   "light-relay": {
     name: "Light Relay",
-    tip: "Stand between the skylight and a mirror. Hit mirrors to rotate them 45\u00b0. Chain light into the heart. In the final phase, solo holds one beam for 2 seconds; teams need both paths within 3 seconds.",
+    tip: "Stand between the skylight and a mirror. Hit mirrors to rotate them 45\u00b0. Chain light into the heart. Hold a connected chain for 1.2 seconds (solo 1 second, 2 in the final phase); in the final phase teams need both paths within 3 seconds. Mirrors that carried the light flash and turn after each exposure.",
     practice:
       "Connect skylight \u2192 raider \u2192 mirrors \u2192 heart. Hit a mirror to turn its arrow.",
   },
@@ -152,7 +268,7 @@ export const RAID_ATTACKS: Record<
     practice: "Embers rain down on staggered circles. Step between them.",
   },
   "wing-gust": {
-    name: "Wing Gust",
+    name: "Hot Gust",
     tip: "Leave the arrow cone or dash into the gust to resist its push. Avoid being pushed into fire.",
     practice: "The cone pushes you away. Dash toward the boss as it lands.",
   },
@@ -163,7 +279,7 @@ export const RAID_ATTACKS: Record<
   },
   "scorched-earth": {
     name: "Scorched Earth",
-    tip: "Avoid growing fire patches. Grounding Emberwing shrinks all fire; Tidefin\u2019s Undertow puts out the patches along its current.",
+    tip: "Avoid growing fire patches. Grounding Lumiwick shrinks all fire; Tidefin\u2019s Undertow puts out the patches along its current.",
     practice: "Fire patches grow over time. Ground the boss to shrink them.",
   },
   "heat-mark": {
@@ -174,7 +290,7 @@ export const RAID_ATTACKS: Record<
   },
   "brazier-lighting": {
     name: "Brazier Lighting",
-    tip: "Stand inside a brazier ring for 1.5 seconds. Light all three together to ground Emberwing. Solo flames last 8 seconds. Fireproof halves the lighting time.",
+    tip: "Stand inside a brazier ring for 2 seconds. Light all three together to ground Lumiwick. Solo flames last 11 seconds. Fireproof halves the lighting time.",
     practice:
       "Run the triangle and light all three braziers before the first goes out.",
   },
@@ -285,7 +401,7 @@ export const RAID_ATTACKS: Record<
   },
   snuff: {
     name: "Lantern Snuff",
-    tip: "A lantern dims and goes out. Hit it twice to relight it: lantern light is where the real Gloomshade casts a shadow.",
+    tip: "A lantern dims and goes out. Hit it twice to relight it: lantern light is where the real Inkpurr casts a shadow.",
     practice: "A lantern goes out. Hit it twice to relight it.",
   },
   curse: {
@@ -295,7 +411,7 @@ export const RAID_ATTACKS: Record<
   },
   split: {
     name: "Mirror Split",
-    tip: "Only the real Gloomshade casts a shadow in lantern light, and its moon tail flickers. Hitting a copy curses you.",
+    tip: "Only the real Inkpurr casts a shadow in lantern light, and its moon tail flickers. Hitting a copy curses you.",
     practice: "It splits into copies. Find the one with a shadow in the light.",
   },
   pulse: {
@@ -309,9 +425,9 @@ export const RAID_ATTACKS: Record<
     practice: "Jump the three soft rings. Each hit adds Drowsy.",
   },
   "tail-splash": {
-    name: "Tail Splash",
-    tip: "Leave the marked rectangle before Somnara's tail splashes down.",
-    practice: "A wide rectangle marks the tail's reach. Step outside it.",
+    name: "Trunk Slam",
+    tip: "Leave the marked lane before Snoozaku's dream-trunk slams down.",
+    practice: "A wide lane marks the trunk's reach. Step outside it.",
   },
   "dream-bubbles": {
     name: "Dream Bubbles",
@@ -324,8 +440,8 @@ export const RAID_ATTACKS: Record<
     practice: "A constellation flashes; stars land on each marked point.",
   },
   "whale-song": {
-    name: "Whale Song",
-    tip: "Stay inside the moving teal Quiet Zone until the song ends. Everyone fits, but it is small.",
+    name: "Thunder Snore",
+    tip: "Stay inside the moving teal Quiet Zone until the snore ends. Everyone fits, but it is small.",
     practice: "Follow the moving Quiet Zone for four seconds.",
   },
   "dream-sequence": {
@@ -386,15 +502,31 @@ export const raidAttacksOf = (boss: RaidBossId) =>
  */
 export const GRUMBLECRAG = {
   id: "grumblecrag",
-  name: "Grumblecrag",
+  name: "Cragmuff",
   health: { base: 1450, perExtraPlayer: 900, gilded: 1.12 },
   /** Boss damage at Peril 1, 2 and 3 (index = Peril). */
   perilDamage: [1, 1, 1.25, 1.5],
   /** Seconds between attacks, and the final phase's faster rhythm. */
   cadence: { normal: 5.2, restless: 4.4, finalPhase: 0.85 },
-  charge: { damage: 28, width: 80, delay: 1.7, lock: 1, speed: 650 },
+  charge: {
+    damage: 28,
+    width: 80,
+    delay: 1.6,
+    lock: 0.95,
+    speed: 700,
+    /** Chapter 2+: a charge that misses a pillar turns and comes back. */
+    returnDelay: 0.9,
+    /** From the third pillar it breaks in a chapter, it locks this much later. */
+    lateLock: 0.15,
+  },
   slam: { damage: 27, radius: 240, finalRadius: 320, delay: 1.25 },
-  debris: { damage: 20, radius: 95, delay: 1.65 },
+  debris: { damage: 20, radius: 95, delay: 1.45 },
+  /** A charge into a pillar: seconds exposed (Fractured: longer), then a pause. */
+  pillar: { expose: 7, fractured: 9, pause: 2 },
+  /** Chapter 3: the cracked core takes this much damage (a pillar still opens it to 1.6). */
+  crackedCore: 1.2,
+  /** Peril 3, chapter 3: the closing ring (px, px/s, damage per second outside). */
+  ring: { start: 500, end: 240, shrink: 2.5, dps: 9 },
   volley: { damage: 18, range: 560, spread: 0.9, delay: 1.4 },
   eruption: { damage: 22, radius: 100, delay: 1.25, gap: 0.75 },
   share: {
@@ -413,7 +545,7 @@ export const GRUMBLECRAG = {
  */
 export const TIDEWYRM = {
   id: "tidewyrm",
-  name: "Tidewyrm",
+  name: "Tidelotl",
   health: { base: 1350, perExtraPlayer: 850, gilded: 1.12 },
   perilDamage: [1, 1, 1.25, 1.5],
   cadence: { normal: 5, restless: 4.4, finalPhase: 0.85 },
@@ -433,39 +565,52 @@ export const TIDEWYRM = {
   home: { x: 800, y: 450 },
   dive: {
     follow: 1.4,
-    lock: 0.8,
+    lock: 0.7,
+    /** Live raids, solo (you also have to lure it): a longer freeze. */
+    soloLock: 0.8,
     damage: 26,
     radius: 110,
     /** Seconds stranded (exposed) on an island; longer on Peril 1. */
-    strand: 5,
+    strand: 4.25,
     strandPeril1: 7,
-    strandStagger: 35,
+    strandStagger: 30,
     /** Strands an island survives before it sinks for the chapter. */
     cracks: 2,
   },
-  wave: { delay: 1.4, speed: 520, ripSpeed: 400, width: 70, damage: 22 },
+  /** Live raids, chapter 3: a second, high wave from a side edge this much later. */
+  wave: {
+    delay: 1.4,
+    speed: 560,
+    ripSpeed: 400,
+    width: 70,
+    damage: 22,
+    secondGap: 2.3,
+  },
+  /** Live raids: as a strand ends it sweeps its tail round the island (jump it). */
+  tailSweep: { radius: 130, delay: 1, damage: 16 },
   bubbles: {
     delay: 0.9,
-    speed: 150,
+    speed: 170,
     radius: 20,
     damage: 10,
     root: 0.8,
     life: 5,
     spread: 0.9,
   },
-  highTide: { delay: 2, seconds: 5, springSeconds: 7, dps: 7 },
+  highTide: { delay: 2, seconds: 5, springSeconds: 7, dps: 9 },
   undertow: {
     delay: 1.2,
     seconds: 3,
-    pull: 120,
+    pull: 140,
     ripPull: 160,
     centreRadius: 75,
     damage: 24,
   },
-  prison: { delay: 1, seconds: 6, hits: 3, presses: 8, radius: 34 },
+  /** Bubble Prison: three teammate hits pop it; alone, `presses` presses of attack. */
+  prison: { delay: 1, seconds: 5.5, hits: 3, presses: 12, radius: 34 },
   /** Peril 3, last chapter: an island sinks for good this often (min 2 left). */
-  sinkEvery: 45,
-  soloSinkEvery: 35,
+  sinkEvery: 40,
+  soloSinkEvery: 32,
   minIslands: 2,
   /** Voltkit's Static Lance on a stranded Tidewyrm (water conducts). */
   lanceStagger: 15,
@@ -476,7 +621,8 @@ export const TIDEWYRM = {
  */
 export const GLOOMSHADE = {
   id: "gloomshade",
-  name: "Gloomshade",
+  // The internal id stays "gloomshade" (stats, progress, database rows); players see Inkpurr.
+  name: "Inkpurr",
   // Finding the real one costs a solo raider more time than a party, so
   // more of its health comes with each extra raider than for the others.
   health: { base: 1050, perExtraPlayer: 1000, gilded: 1.12 },
@@ -507,25 +653,45 @@ export const GLOOMSHADE = {
   ],
   driftSpeed: 150,
   driftEvery: 3.5,
-  lunge: { delay: 1.2, width: 34, length: 760, damage: 25 },
+  /** Chapter 2+ (live raids): a second lunge from another shadow, `cross` s later. */
+  lunge: {
+    delay: 1.2,
+    width: 34,
+    length: 760,
+    damage: 28,
+    cross: 0.5,
+    /** Live raids, a party of 3+: this many copies lunge too, `copyGap` s apart. */
+    copies: 3,
+    copyGap: 0.3,
+  },
   /** Grasping Hands: the floor as a checkerboard of tiles. */
-  hands: { cols: 8, rows: 5, delay: 1.6, shiftAt: 0.7, damage: 20 },
-  snuff: { delay: 1.5, finalDelay: 0.75 },
+  hands: { cols: 8, rows: 5, delay: 1.45, shiftAt: 0.7, damage: 20 },
+  /** A lantern going out bursts on everyone in its light (live raids). */
+  snuff: { delay: 1.5, finalDelay: 0.9, damage: 14 },
   curse: {
     radius: 120,
+    /** Seconds near a cursed raider before it spreads (live raids, a party of 3+: `partySpread`). */
     spreadSeconds: 2,
+    partySpread: 1.5,
     restlessSpread: 3,
     haunted: 3,
     hauntSeconds: 6,
-    dps: 5,
+    dps: 8,
+    /** Live raids, a party of 3+: damage a second per stack before it haunts. */
+    creep: 3,
     cleanseSeconds: 2,
     soloStill: 2.5,
   },
-  split: { delay: 1.2, copies: 3, peril3Copies: 4 },
+  /** One more copy with three or more raiders (live raids). */
+  split: { delay: 1.2, copies: 3, peril3Copies: 4, partyCopy: 3 },
   pulse: { delay: 1.4, radius: 260, damage: 24, pairGap: 1.2 },
   /** Hits on the real one in a row that expose it. */
   exposeHits: 6,
-  exposeSeconds: 5,
+  exposeSeconds: 4.5,
+  /** The streak breaks if nobody hits the real one for this long (live raids). */
+  streakGap: 1,
+  /** Live raids, a party of 3+: faster attacks and a shorter exposure. */
+  party: { cadence: 0.8, expose: 0.8 },
   /** Voltkit's Ball Lightning lights its landing spot this long. */
   sparkLight: 3,
   /** Mystowl's Third-Eye Ray and Duskveil's Haunted Lantern reveal the real one. */
@@ -628,7 +794,7 @@ export function raidPattern(
 }
 /** How many eruptions chase their target. */
 export const eruptionChain = (phase: number, peril: number) =>
-  phase === 1 ? 2 : phase === 2 && peril < 2 ? 2 : 3;
+  phase === 1 ? (peril >= 3 ? 3 : 2) : phase === 2 && peril < 2 ? 2 : 3;
 /** Quick signals for teams without voice chat. */
 export type RaidPingKind = "stack" | "revive" | "bait";
 export const RAID_PINGS: Record<RaidPingKind, { label: string; key: string }> =
@@ -681,11 +847,11 @@ export const RAID_PERKS: Partial<
   },
   astrabun: {
     skill: "Mochi Pound",
-    text: "The last pound of a chain on Grumblecrag adds 15 stagger.",
+    text: "The last pound of a chain on Cragmuff adds 15 stagger.",
   },
   wombolder: {
     skill: "Burrow Rush and Landslide",
-    text: "Charge Grumblecrag into a pillar for 25 extra stagger.",
+    text: "Charge Cragmuff into a pillar for 25 extra stagger.",
   },
   pangrove: {
     skill: "Curl & Roll",
@@ -726,7 +892,7 @@ export const RAID_BOSS_PERKS: Partial<
     },
     shadopus: {
       skill: "Ink Jet",
-      text: "A hit on Prismatail blots out any Glare in the next 3 seconds.",
+      text: "A hit on Prismell blots out any Glare in the next 3 seconds.",
     },
   },
   emberwing: {
@@ -740,11 +906,11 @@ export const RAID_BOSS_PERKS: Partial<
     },
     auralynx: {
       skill: "Facet Guard",
-      text: "Reflecting a Dive Bomb adds 20 stagger to Emberwing.",
+      text: "Reflecting a Dive Bomb adds 20 stagger to Lumiwick.",
     },
     lumoth: {
       skill: "Wing Dust",
-      text: "Your wing dust deals full damage to an airborne Emberwing.",
+      text: "Your wing dust deals full damage to an airborne Lumiwick.",
     },
     pyranda: {
       skill: "Chestnut Mortar",
@@ -756,11 +922,11 @@ export const RAID_BOSS_PERKS: Partial<
     },
     halcyra: {
       skill: "Aura Quill and Focus Shot",
-      text: "Your shots deal full damage to an airborne Emberwing.",
+      text: "Your shots deal full damage to an airborne Lumiwick.",
     },
     astrabun: {
       skill: "Full Moon",
-      text: "Your crash reaches an airborne Emberwing at full damage and adds 20 stagger.",
+      text: "Your crash reaches an airborne Lumiwick at full damage and adds 20 stagger.",
     },
     mossloth: {
       skill: "Overgrowth",
@@ -805,7 +971,7 @@ export const RAID_BOSS_PERKS: Partial<
   tidewyrm: {
     voltkit: {
       skill: "Static Lance",
-      text: "Hits on a stranded Tidewyrm add extra stagger (water conducts).",
+      text: "Hits on a stranded Tidelotl add extra stagger (water conducts).",
     },
     cindrake: {
       skill: "Magma Bomb",
@@ -829,15 +995,15 @@ export const RAID_BOSS_PERKS: Partial<
     },
     glacelle: {
       skill: "Frost Bloom",
-      text: "Blooming on a stranded Tidewyrm freezes it there 2 seconds longer.",
+      text: "Blooming on a stranded Tidelotl freezes it there 2 seconds longer.",
     },
     pangrove: {
       skill: "Tongue Grapple",
-      text: "Latching onto a stranded Tidewyrm adds extra stagger.",
+      text: "Latching onto a stranded Tidelotl adds extra stagger.",
     },
     mossloth: {
       skill: "Seedling",
-      text: "A seedling going off by a stranded Tidewyrm keeps it stranded 1 second longer.",
+      text: "A seedling going off by a stranded Tidelotl keeps it stranded 1 second longer.",
     },
   },
   gloomshade: {
@@ -851,11 +1017,11 @@ export const RAID_BOSS_PERKS: Partial<
     },
     mystowl: {
       skill: "Third-Eye Ray",
-      text: "Passes through copies: aimed at the real Gloomshade, it marks it for everyone.",
+      text: "Passes through copies: aimed at the real Inkpurr, it marks it for everyone.",
     },
     duskveil: {
       skill: "Haunted Lantern",
-      text: "Hung near the real Gloomshade, its light reveals it to the team for 6 seconds.",
+      text: "Hung near the real Inkpurr, its light reveals it to the team for 6 seconds.",
     },
     pyranda: {
       skill: "Chestnut Mortar",
@@ -867,11 +1033,11 @@ export const RAID_BOSS_PERKS: Partial<
     },
     wombolder: {
       skill: "Landslide",
-      text: "Its eruption shakes off every copy: only the real Gloomshade remains until it splits again.",
+      text: "Its eruption shakes off every copy: only the real Inkpurr remains until it splits again.",
     },
     shadopus: {
       skill: "Ink Cloud",
-      text: "While you are hidden, Gloomshade's attacks never pick you as their target.",
+      text: "While you are hidden, Inkpurr's attacks never pick you as their target.",
     },
   },
   somnara: {
@@ -922,13 +1088,13 @@ export const RAID_BOSS_CHAPTERS: Partial<
       name: "Dawn",
       objective: "Carry skylight through mirrors into the shielded heart.",
       detail:
-        "Stand within the skylight ring to take the beam. Light travels up to 300px between raiders and mirror posts, and 260px into the heart. Hit a mirror to turn its arrow 45°. A connected chain shatters the shield for 6 seconds. Carrying light burns 3 health per second.",
+        "Stand within the skylight ring to take the beam. Light travels up to 300px between raiders and mirror posts, and 260px into the heart. Hit a mirror to turn its arrow 45°. A chain held for 1.2 seconds (1 second solo) shatters the shield for 5 seconds. Carrying light burns 6 health per second, and lances seek whoever carries it. When the heart closes, the mirrors that carried the light flash, then turn.",
     },
     {
       name: "High Noon",
       objective: "Follow reflected lanes. Escape through the halo gap.",
       detail:
-        "Prismatail moves farther from the skylight. Refraction shows both sides of the bounce before firing. The closing halo leaves a teal gap. The Polished rite prevents beam burn and extends your relay range.",
+        "Prismell moves farther from the skylight. Refraction shows both sides of the bounce before firing. The closing halo leaves a teal gap. The Polished rite prevents beam burn and extends your relay range.",
     },
     {
       name: "Solar Crown",
@@ -942,19 +1108,19 @@ export const RAID_BOSS_CHAPTERS: Partial<
       name: "Takeoff",
       objective: "Sidestep dives. Jump the expanding flame ring.",
       detail:
-        "Emberwing stays on the ground while you learn its attacks. Avoid the locked dive lane and its burning trail, step between falling embers, and dash toward the boss to resist Wing Gust.",
+        "Lumiwick floats low over the terrace while you learn its attacks. Avoid the locked dive lane and its burning trail, step between falling embers, and dash toward the boss to resist Hot Gust.",
     },
     {
       name: "High Flight",
-      objective: "Light all three braziers together to ground Emberwing.",
+      objective: "Light all three braziers together to ground Lumiwick.",
       detail:
-        "Stand on a brazier for 1.5 seconds. Team flames last 6 seconds; solo flames last 8 seconds. Grounding exposes Emberwing for 6 seconds and shrinks fire patches. Melee cannot hit it in the air; ranged damage is halved. Spread out for Heat Marks.",
+        "Stand on a brazier for 2 seconds. Team flames last 5 seconds; solo flames last 11 seconds. Once two burn, Lumiwick rains fire on the last one: light it from its clear side. Grounding exposes Lumiwick for 5 seconds and shrinks fire patches. Melee cannot hit it in the air; ranged damage is halved. Spread out for Heat Marks.",
     },
     {
       name: "Blazing Sky",
       objective: "Ground it twice to keep the heart open.",
       detail:
-        "Team braziers stay lit for 4 seconds, while solo keeps the longer timer. Fire spreads faster. Bring Emberwing down twice this chapter and it stays grounded, exposed for the rest of the fight. Fireproof halves lighting time and reduces floor-fire damage by 50%.",
+        "Team braziers stay lit for 3.5 seconds (4.5 for a pair), while solo keeps the longer timer. Dives turn and come back. Fire spreads faster. Bring Lumiwick down three times this chapter and it stays grounded and exposed for 20 seconds. Fireproof halves lighting time and reduces floor-fire damage by 50%.",
     },
   ],
   "storm-twins": [
@@ -969,13 +1135,13 @@ export const RAID_BOSS_CHAPTERS: Partial<
       name: "Storm",
       objective: "Pair opposite signs. Follow the beam around copper posts.",
       detail:
-        "Polarity marks everyone for 4 seconds: stand near an opposite sign to cancel it. Same signs together take double damage. Solo gets an opposite-sign floor pad. Static Fields slow and hurt; jump while crossing them. Each twin staggers separately.",
+        "Polarity marks everyone for 4 seconds: stand near an opposite sign to cancel it. Raiders standing together get the same sign, and same signs together take double damage. Solo gets an opposite-sign floor pad. Static Fields slow and hurt; jump while crossing them. Each twin staggers separately.",
     },
     {
       name: "Supercell",
       objective: "Bring both low, then defeat them within the countdown.",
       detail:
-        "When one twin falls, finish the other within 8 seconds. Solo gets 3 more seconds. If time expires, the fallen twin returns at 35% health. Keep both low before dealing a finishing blow. Touch players can tap Fizz or Crackle to switch targets.",
+        "When one twin falls, finish the other within 7 seconds. Solo gets 3 more seconds. If time expires, the fallen twin returns at 50% health. Keep both low before dealing a finishing blow. Touch players can tap Fizz or Crackle to switch targets.",
     },
   ],
   grumblecrag: RAID_CHAPTERS,
@@ -984,7 +1150,7 @@ export const RAID_BOSS_CHAPTERS: Partial<
       name: "Low Tide",
       objective: "Lead the dive onto an island. Jump the low wave.",
       detail:
-        "When a ripple follows you, walk it onto an island and step off: Tidewyrm surfaces stranded on dry land, open to attack. Jump the low waves and weave through bubbles.",
+        "When a ripple follows you, walk it onto an island and step off: Tidelotl surfaces stranded on dry land, open to attack. Jump the low waves and weave through bubbles.",
     },
     {
       name: "Turning Tide",
@@ -1004,13 +1170,13 @@ export const RAID_BOSS_CHAPTERS: Partial<
       name: "Dusk",
       objective: "Keep the lanterns lit. Stand on lit tiles.",
       detail:
-        "Shadow Lunges come from the nearest shadow, not from Gloomshade. Grasping Hands darken half the floor: stand on a lit tile. When a lantern goes out, hit it twice to relight it. Keep hitting Gloomshade to fill its stagger bar and expose its core.",
+        "Shadow Lunges come from the nearest shadow, not from Inkpurr. Grasping Hands darken half the floor: stand on a lit tile. When a lantern goes out, hit it twice to relight it. Keep hitting Inkpurr to fill its stagger bar and expose its core.",
     },
     {
       name: "Midnight",
       objective: "Find the real one. Spread out from curses.",
       detail:
-        "It splits into copies: only the real Gloomshade casts a shadow in lantern light, and its moon tail flickers. Hitting a copy curses you; six hits on the real one in a row exposes it. Creeping Curse spreads between raiders who stand close: lantern light cleanses it.",
+        "It splits into copies: only the real Inkpurr casts a shadow in lantern light, and its moon tail flickers. Hitting a copy curses you; six hits on the real one in a row exposes it. Creeping Curse spreads between raiders who stand close: lantern light cleanses it.",
     },
     {
       name: "Witching Hour",
@@ -1024,13 +1190,13 @@ export const RAID_BOSS_CHAPTERS: Partial<
       name: "Dozing",
       objective: "Read the dream. Step the runes in order.",
       detail:
-        "Only the Dreamer sees the sequence. Call Circle, Star, Moon and Wave with 1–4 or the rune buttons, then enter the pads in order to expose Somnara for 6 seconds. Jump Lullaby Rings and pop Dream Bubbles. Three Drowsy stacks put you to sleep; allies can tap you awake.",
+        "Only the Dreamer sees the sequence. Call Circle, Star, Moon and Wave with 1–4 or the rune buttons, then enter the pads in order to expose Snoozaku for 6 seconds. Jump Lullaby Rings and pop Dream Bubbles. Three Drowsy stacks put you to sleep; allies can tap you awake.",
     },
     {
       name: "Deep Sleep",
       objective: "Remember the stars. Follow the Quiet Zone.",
       detail:
-        "Sequences get longer. Falling Stars land at the constellation points, and Whale Song hurts everyone outside its moving teal Quiet Zone. Solo sequences are shorter and give you 14 seconds.",
+        "Sequences get longer. Falling Stars land at the constellation points, and Thunder Snore hurts everyone outside its moving teal Quiet Zone. Solo sequences are shorter and give you 14 seconds.",
     },
     {
       name: "Waking Dream",
@@ -1265,7 +1431,7 @@ export const RAID_REWARDS: RaidReward[] = [
     id: "wingbreaker",
     boss: "emberwing",
     slot: "title",
-    name: "Wingbreaker",
+    name: "Wicksnuffer",
     description: "Title",
     goal: "Clear 3 times",
     rule: { kind: "clears", n: 3, legacyPeril: 3 },
@@ -1294,7 +1460,7 @@ export const RAID_REWARDS: RaidReward[] = [
     slot: "victory",
     name: "Feather Fall",
     description: "Fiery feathers fan out and drift gently around you",
-    goal: "Feat: ground Emberwing within 20 seconds of takeoff three times",
+    goal: "Feat: ground Lumiwick within 20 seconds of takeoff three times",
     rule: { kind: "feat" },
   },
   {
@@ -1310,7 +1476,9 @@ export const RAID_REWARDS: RaidReward[] = [
     id: "lone-phoenix",
     boss: "emberwing",
     slot: "title",
-    name: "Lone Phoenix",
+    // Not "Lone Lantern": that's Gloomshade's solo title, and titles are
+    // granted by name (arena_record_raid joins rewards to titles by name).
+    name: "Lone Wick",
     description: "Title",
     goal: "Clear solo without going down",
     rule: { kind: "solo", peril: 3 },
@@ -1393,7 +1561,7 @@ export const RAID_REWARDS: RaidReward[] = [
     boss: "prismatail",
     slot: "victory",
     name: "Rainbow Fan",
-    description: "A fan of rainbow crystal feathers blooms behind you",
+    description: "A fan of rainbow crystal shards blooms behind you",
     goal: "Feat: shatter the shield within 8 seconds three times",
     rule: { kind: "feat" },
   },
@@ -1522,7 +1690,7 @@ export const RAID_REWARDS: RaidReward[] = [
     slot: "title",
     name: "Gilded Cragbreaker",
     description: "Title",
-    goal: "Defeat a rare Gilded Grumblecrag",
+    goal: "Defeat a rare Gilded Cragmuff",
     rule: { kind: "gilded" },
   },
   {
@@ -1612,7 +1780,7 @@ export const RAID_REWARDS: RaidReward[] = [
     slot: "victory",
     name: "Splashdown",
     description: "A wave rises and crashes in a burst of spray behind you",
-    goal: "Feat: strand Tidewyrm 4 times in one run",
+    goal: "Feat: strand Tidelotl 4 times in one run",
     rule: { kind: "feat" },
   },
   {
@@ -1639,7 +1807,7 @@ export const RAID_REWARDS: RaidReward[] = [
     slot: "title",
     name: "Shipwright",
     description: "Title",
-    goal: "Strand Tidewyrm 30 times (wins and losses)",
+    goal: "Strand Tidelotl 30 times (wins and losses)",
     rule: { kind: "stat", stat: "pillars", n: 30 },
   },
   {
@@ -1818,7 +1986,7 @@ export const RAID_REWARDS: RaidReward[] = [
     boss: "somnara",
     slot: "victory",
     name: "Sweet Dreams",
-    description: "A little dream whale swims through a starry cloud behind you",
+    description: "A little dream baku drifts through a starry cloud behind you",
     goal: "Feat: solve a dream and finish with no wrong runes or timeouts",
     rule: { kind: "feat" },
   },
@@ -1893,8 +2061,8 @@ export const RAID_TRAITS = {
     text: "Fire patches last longer, but less Ember Rain falls.",
   },
   molting: {
-    name: "Molting",
-    text: "Dives come more often, but fallen feathers grant 10 ultimate charge.",
+    name: "Fraying",
+    text: "Dives come more often, but fallen tassels grant 10 ultimate charge.",
   },
   dazzling: {
     name: "Dazzling",
@@ -2197,6 +2365,10 @@ export interface RaidState {
   result: "victory" | "defeat" | null;
   revives: number;
   downs: number;
+  /** Soft enrage steps reached (0-4): faster attacks that hit harder. */
+  enrage?: number;
+  /** Server time of the last enrage step (the client announces it). */
+  enrageAt?: number;
   closingRadius?: number;
   /** Tidewyrm: the islands of the Lagoon Court. */
   islands?: RaidIsland[];

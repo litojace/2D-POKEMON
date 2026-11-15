@@ -7,29 +7,36 @@
  */
 const PRISMA = (() => {
   "use strict";
-  const { TAU, DEG, clamp, lerp, smooth, project, rotY, depth, after, makeFace, drawEye, drawBrow, BROWS, along, pieceOf, tuft, furPath, grad, radial, paintSoft, glowPiece, adder } = KIT;
+  const { TAU, DEG, clamp, lerp, smooth, gauss, project, rotY, depth, after, makeFace, drawEye, drawBrow, BROWS, along, pieceOf, tuft, furPath, grad, radial, paintSoft, glowPiece, adder } = KIT;
 
   // ════════════════════════ the face: construction ════════════════════════
+  // A swan's head: small, longer than it is tall, the crown rounding down the
+  // back into the neck and the brow sloping forward into the beak. From the
+  // front it is narrow, the eyes on its sides (a bird's, not an owl's).
   const A = 17;
-  const TOP = -0.92 * A, BOT = 0.8 * A;
-  const se = (v) => { const t = clamp(Math.abs((v + 0.06 * A) / (0.86 * A))); const e = v > -0.06 * A ? 1.8 : 2.4; return Math.pow(1 - Math.pow(t, e), 1 / e); };
-  /** A swan's profile: a smooth brow running straight into the beak. */
-  const centreLine = (v) => 0.9 * A * se(v) + 0.06 * A * smooth(-0.1 * A, 0.4 * A, v);
+  const TOP = -0.74 * A, BOT = 0.56 * A;
+  const MID = (TOP + BOT) / 2, HALF = (BOT - TOP) / 2;
+  const se = (v) => { const t = clamp(Math.abs((v - MID) / HALF)); const e = v > MID ? 1.7 : 2.3; return Math.pow(1 - Math.pow(t, e), 1 / e); };
+  /** THE CENTRE LINE: a sloping brow, then the beak's base standing out below the eye. */
+  const centreLine = (v) => A * (0.78 * se(v) + 0.3 * gauss((v - 0.08 * A) / A, 0.3) * Math.pow(se(v), 0.4));
+  const taper = (v) => 1 - 0.18 * smooth(MID, BOT, v); // the narrow chin
   function skullEdge(view, v) {
     const s = se(v);
-    if (view === "side") return [-1.0 * A * s, centreLine(v)];
-    if (view === "tq") return [-1.0 * A * s, 0.96 * A * s];
-    return [-0.97 * A * s, 0.97 * A * s];
+    if (view === "side") return [-0.8 * A * s, centreLine(v)];
+    if (view === "tq") return [-0.9 * A * s, lerp(0.8 * A * s, centreLine(v), 0.55)];
+    if (view === "backtq") return [-0.9 * A * s, lerp(0.76 * A * s, centreLine(v), 0.3)];
+    return [-0.58 * A * s * taper(v), 0.58 * A * s * taper(v)];
   }
-  const LINES = { brow: -0.34 * A, eye: -0.06 * A, beak: 0.27 * A };
-  const EYE = { front: { hw: 4.6, hh: 3.8 }, near: { hw: 4.6, hh: 3.8 }, far: { hw: 3.1, hh: 3.7 }, side: { hw: 4.4, hh: 3.8 } };
+  const LINES = { brow: -0.36 * A, eye: -0.1 * A, beak: 0.12 * A };
+  // the front eye is seen across the cheek: drawn narrower, never squeezed
+  const EYE = { front: { hw: 2.3, hh: 2.5 }, near: { hw: 3.5, hh: 2.6 }, far: { hw: 2.3, hh: 2.5 }, side: { hw: 3.6, hh: 2.6 } };
   const LOOKS = ["idle", "glare", "wide", "hurt", "dizzy", "closed"];
   const MOUTHS = ["closed", "open"];
   const BROW = { idle: "calm", glare: "angry", wide: "raised", hurt: "pinch", dizzy: "raised", closed: "calm" };
-  const eyeGeom = (v, look) => ({ r: look === "wide" ? 2 : 2.6, gx: v === "far" ? 0.15 : v === "front" ? 0.5 : 0.8, gy: look === "wide" ? 0.1 : look === "glare" ? 1.1 : 0.6 });
+  const eyeGeom = (v, look) => ({ r: look === "wide" ? 1.6 : 1.85, gx: v === "far" ? 0.1 : v === "front" ? -0.35 : 0.7, gy: look === "wide" ? 0.1 : look === "glare" ? 0.7 : 0.4 });
   const SPEC = {
     A, top: TOP, bot: BOT, lines: LINES,
-    eyeAz: 40 * DEG, eyeOrbit: 0.7 * A, lag: 12 * DEG, farLift: 6 * DEG, nod: 0.4 * A, margin: 0.05 * A,
+    eyeAz: 38 * DEG, eyeOrbit: 0.78 * A, lag: 12 * DEG, farLift: 6 * DEG, nod: 0.4 * A, margin: 0.02 * A,
     eye: EYE, eyeGeom, centreLine, skullEdge, tuckCap: 0.35, bridgeHalf: 0.4,
     headPiece: (view) => "head_" + view,
     lit: (look) => look === "glare", eyeGlowPiece: "glow_prism", eyeGlowScale: 0.5,
@@ -126,7 +133,7 @@ const PRISMA = (() => {
     const hs = project(headW), hz = depth(headW) + 8;
     const back = Math.min(...neck.map(depth)) - 0.5;
     neck.forEach((w, i) => {
-      const k = lerp(1.25, 0.86, i / 9);
+      const k = lerp(1.25, 0.74, Math.pow(i / 9, 1.3));
       add("neck" + i, "neck_f", w, { sx: k, sy: k, bias: Math.min(0, hz - 1 - depth(w)) });
       add("necke" + i, "neck_e", w, { sx: k, sy: k, bias: back - depth(w) });
     });
@@ -137,7 +144,7 @@ const PRISMA = (() => {
     const cr = Math.cos(P.headRoll), sr = Math.sin(P.headRoll), cv = TOP + 2;
     const lean = Math.sin(yaw + P.headYaw) * -0.14 * A;
     const cx = hs.x + lean * cr - cv * sr, cy = hs.y + lean * sr + cv * cr;
-    list.push({ key: "crown", piece: "crown", x: cx, y: cy, rot: P.headRoll, sx: 1, sy: 1, alpha: P.alpha, z: hz + 0.5, glow: false, face: true });
+    list.push({ key: "crown", piece: "crown", x: cx, y: cy, rot: P.headRoll, sx: 0.78, sy: 0.78, alpha: P.alpha, z: hz + 0.5, glow: false, face: true });
     if (P.crown > 0.02) list.push({ key: "crownglow", piece: "glow_prism", x: cx, y: cy - 12, rot: 0, sx: 1.3, sy: 1.3, alpha: P.crown, z: hz + 0.6, glow: true });
     if (P.stars) KIT.stars(list, hs, hz, t, A * 2.3, 20);
     list.sort((p, q) => p.z - q.z);
@@ -151,29 +158,32 @@ const PRISMA = (() => {
     3: { cream: { edge: "#8a6a3a", light: "#ffffff", base: "#fff2dc", dark: "#f0d4a8", rim: "#ffffff" }, teal: ["#a0f6f0", "#28c8d4", "#0e80a0"], tealEdge: "#0a4468", gold: ["#fff8c0", "#ffd650", "#d89a1c"], ink: "#101826", iris: ["#10a0b0", "#50e6e0", "#d6fffa"], brow: "#0c6480" },
   };
   function headPiece(view, pal) {
-    return pieceOf("head_" + view, 3.4 * A, 3.2 * A, 0.5, 0.52, (c) => {
+    return pieceOf("head_" + view, 3.4 * A, 3.2 * A, 0.5, 0.56, (c) => {
       const faceSide = view === "front" || view === "tq" || view === "side";
-      // teal crest feathers: sweeping back from the crown and nape, behind the skull
+      // a short teal crest swept back from the nape, behind the skull
       const crest = new Path2D();
       const F = (x, y, deg, len, w, bend) => tuft(crest, x * A, y * A, deg * DEG, len * A, w * A, bend);
-      if (view === "front" || view === "back") for (const s of [-1, 1]) { F(s * 0.5, -0.6, -90 - s * 40, 0.5, 0.2, -s * 0.2); F(s * 0.82, -0.2, -90 - s * 76, 0.46, 0.2, -s * 0.2); F(s * 0.86, 0.2, 90 + s * -64, 0.4, 0.18, s * 0.2); }
-      else { const k = view === "backtq" ? -1 : 1; F(-k * 0.3, -0.8, -90 - k * 50, 0.6, 0.2, -k * 0.25); F(-k * 0.66, -0.52, -90 - k * 74, 0.7, 0.22, -k * 0.2); F(-k * 0.86, -0.1, 180 * (k > 0 ? 1 : 0) + k * 6, 0.66, 0.22, -k * 0.2); F(-k * 0.8, 0.3, 90 + k * 62, 0.5, 0.2, -k * 0.2); }
-      c.strokeStyle = pal.tealEdge; c.lineWidth = 1.5; c.stroke(crest);
-      c.fillStyle = grad(c, 0, -1.3 * A, 0, 0.8 * A, pal.teal); c.fill(crest);
+      if (view === "front" || view === "back") for (const s of [-1, 1]) F(s * 0.3, -0.7, -90 - s * 34, 0.34, 0.1, -s * 0.2);
+      else { const k = 1; F(-k * 0.5, -0.6, 90 + k * 115, 0.58, 0.13, k * 0.22); F(-k * 0.72, -0.32, 90 + k * 100, 0.5, 0.12, k * 0.2); F(-k * 0.8, 0.0, 90 + k * 88, 0.36, 0.1, k * 0.18); }
+      c.strokeStyle = pal.tealEdge; c.lineWidth = 1.3; c.stroke(crest);
+      c.fillStyle = grad(c, 0, -1.2 * A, 0, 0.4 * A, pal.teal); c.fill(crest);
       const pts = [];
       for (let v = TOP; v <= BOT; v += 0.5) pts.push({ x: skullEdge(view, v)[1], y: v });
       for (let v = BOT; v >= TOP; v -= 0.5) pts.push({ x: skullEdge(view, v)[0], y: v });
       const path = new Path2D();
-      furPath(path, pts, { seed: 3 + view.length, tooth: 4, depth: 0.35, mask: (x) => (view === "side" && x > 0 ? 0.1 : 1) });
+      // smooth feathers: only the faintest fringe, none along the brow and beak base
+      furPath(path, pts, { seed: 3 + view.length, tooth: 4, depth: 0.25, mask: (x) => ((view === "side" || view === "tq") && x > 0 ? 0 : 1) });
       paintSoft(c, path, pal.cream, TOP - 2, BOT + 4, {
-        edge: 1.5, rimAlpha: 0.5,
+        edge: 1.4, rimAlpha: 0.5,
         inside: (cc) => {
-          // the teal cap over the crown and down the back of the head
+          // the teal cap over the crown, running down the back of the head into the neck
           const cap = (x, y, rx, ry) => { cc.save(); cc.translate(x, y); cc.fillStyle = radial(cc, 0, 0, 0, rx, [[0, pal.teal[0]], [0.72, pal.teal[1]], [1, pal.teal[1] + "00"]]); cc.scale(1, ry / rx); cc.beginPath(); cc.arc(0, 0, rx, 0, TAU); cc.fill(); cc.restore(); };
-          if (!faceSide) { cap(0, -0.2 * A, 1.3 * A, 1.3 * A); return; }
-          if (view === "front") cap(0, -0.98 * A, 1.25 * A, 0.74 * A);
-          else if (view === "tq") { cap(-0.4 * A, -0.98 * A, 1.2 * A, 0.7 * A); cap(-1.25 * A, 0, 0.62 * A, 1.0 * A); }
-          else { cap(-0.5 * A, -0.98 * A, 1.2 * A, 0.7 * A); cap(-1.2 * A, 0, 0.7 * A, 1.1 * A); }
+          if (!faceSide) { cap(0, -0.3 * A, 1.0 * A, 1.1 * A); return; }
+          if (view === "front") cap(0, -0.96 * A, 0.95 * A, 0.6 * A);
+          else if (view === "tq") { cap(-0.36 * A, -0.92 * A, 0.95 * A, 0.6 * A); cap(-1.0 * A, -0.1 * A, 0.55 * A, 0.95 * A); }
+          else { cap(-0.42 * A, -0.92 * A, 0.95 * A, 0.6 * A); cap(-0.95 * A, -0.1 * A, 0.6 * A, 1.0 * A); }
+          // a fine liner of feathers from the eye back towards the nape (as in the art)
+          if (view !== "front") { cc.strokeStyle = pal.teal[2]; cc.globalAlpha = 0.5; cc.lineWidth = 0.8; cc.beginPath(); cc.moveTo(-0.1 * A, LINES.eye + 0.5); cc.quadraticCurveTo(-0.45 * A, LINES.eye - 0.5, -0.7 * A, LINES.eye + 1.5); cc.stroke(); cc.globalAlpha = 1; }
         },
       });
     });
@@ -183,9 +193,9 @@ const PRISMA = (() => {
       const { hw, hh } = EYE[view], g = eyeGeom(view, look), face = view === "far" ? -1 : 1;
       if (view === "far") c.scale(-1, 1);
       drawEye(c, {
-        hw, hh, ink: pal.ink, weight: 1.8,
+        hw, hh, ink: pal.ink, weight: 1.5,
         look: look === "hurt" || look === "dizzy" || look === "closed" ? look : "open",
-        lid: look === "idle" ? [-0.74, -0.46] : look === "glare" ? [-0.6, 0.1] : null, bow: look === "glare" ? 0.4 : 0.9,
+        lid: look === "idle" ? [-0.55, -0.25] : look === "glare" ? [-0.45, 0.2] : null, bow: look === "glare" ? 0.35 : 0.7,
         sclera: ["#ffffff", "#f2fbff", "#cfe6ee"], shade: "rgba(20,90,110,0.45)", spiral: "#0f7f86",
         iris: { x: g.gx * face, y: g.gy, r: g.r, ring: "#0a4a56", stops: pal.iris, pupil: "#06181e", pupilR: 0.45 },
       });
@@ -196,21 +206,22 @@ const PRISMA = (() => {
       const a = A, drop = open ? 0.2 * a : 0;
       c.strokeStyle = "#7a4a06";
       c.lineWidth = 0.95;
-      const part = (pts) => { c.beginPath(); pts(); c.closePath(); c.fillStyle = grad(c, 0, -0.2 * a, 0, 0.5 * a, pal.gold); c.fill(); c.stroke(); };
+      const part = (pts) => { c.beginPath(); pts(); c.closePath(); c.fillStyle = grad(c, 0, -0.2 * a, 0, 0.4 * a, ["#ffe39a", "#f6a92e", "#d0701a"]); c.fill(); c.stroke(); };
       const mouth = (pts) => { c.beginPath(); pts(); c.closePath(); c.fillStyle = "#a02c3c"; c.fill(); c.stroke(); };
       if (view === "front") {
         if (open) mouth(() => { c.moveTo(-0.15 * a, 0); c.lineTo(0.15 * a, 0); c.lineTo(0.07 * a, 0.42 * a); c.lineTo(-0.07 * a, 0.42 * a); });
-        part(() => { c.moveTo(-0.1 * a, 0.18 * a + drop); c.quadraticCurveTo(0, 0.22 * a + drop, 0.1 * a, 0.18 * a + drop); c.quadraticCurveTo(0.04 * a, 0.4 * a + drop, 0, 0.42 * a + drop); c.quadraticCurveTo(-0.04 * a, 0.4 * a + drop, -0.1 * a, 0.18 * a + drop); });
-        part(() => { c.moveTo(-0.19 * a, -0.14 * a); c.quadraticCurveTo(0, -0.24 * a, 0.19 * a, -0.14 * a); c.quadraticCurveTo(0.12 * a, 0.2 * a, 0, 0.36 * a); c.quadraticCurveTo(-0.12 * a, 0.2 * a, -0.19 * a, -0.14 * a); });
+        part(() => { c.moveTo(-0.1 * a, 0.18 * a + drop); c.quadraticCurveTo(0, 0.22 * a + drop, 0.1 * a, 0.18 * a + drop); c.quadraticCurveTo(0.04 * a, 0.3 * a + drop, 0, 0.32 * a + drop); c.quadraticCurveTo(-0.04 * a, 0.3 * a + drop, -0.1 * a, 0.18 * a + drop); });
+        part(() => { c.moveTo(-0.17 * a, -0.14 * a); c.quadraticCurveTo(0, -0.24 * a, 0.17 * a, -0.14 * a); c.quadraticCurveTo(0.12 * a, 0.16 * a, 0, 0.36 * a); c.quadraticCurveTo(-0.12 * a, 0.16 * a, -0.17 * a, -0.14 * a); });
         c.strokeStyle = "rgba(255,252,220,0.9)"; c.beginPath(); c.moveTo(0, -0.14 * a); c.lineTo(0, 0.2 * a); c.stroke();
         return;
       }
-      const L = view === "side" ? 0.78 * a : 0.54 * a, b = view === "side" ? -0.06 * a : -0.2 * a;
-      if (open) mouth(() => { c.moveTo(b, 0); c.lineTo(b + L * 0.8, 0.05 * a); c.lineTo(b + L * 0.62, 0.12 * a + drop); c.lineTo(b, 0.14 * a + drop * 0.6); });
-      part(() => { c.moveTo(b, 0.07 * a + drop * 0.5); c.quadraticCurveTo(b + L * 0.5, 0.08 * a + drop, b + L * 0.78, 0.13 * a + drop * 1.2); c.quadraticCurveTo(b + L * 0.5, 0.22 * a + drop, b - 0.02 * a, 0.2 * a + drop * 0.6); });
-      part(() => { c.moveTo(b, -0.15 * a); c.quadraticCurveTo(b + L * 0.7, -0.14 * a, b + L, 0.17 * a); c.quadraticCurveTo(b + L * 0.88, 0.13 * a, b + L * 0.8, 0.08 * a); c.quadraticCurveTo(b + L * 0.4, 0.1 * a, b, 0.09 * a); });
-      c.strokeStyle = "rgba(255,252,220,0.9)"; c.beginPath(); c.moveTo(b + 1.5, -0.09 * a); c.quadraticCurveTo(b + L * 0.6, -0.08 * a, b + L * 0.86, 0.05 * a); c.stroke();
-      c.fillStyle = "#7a4a06"; c.beginPath(); c.arc(b + L * 0.3, -0.04 * a, 0.6, 0, TAU); c.fill();
+      // short and strong, the upper mandible arching over into a small hook
+      const L = view === "side" ? 0.62 * a : 0.46 * a, b = view === "side" ? -0.06 * a : -0.16 * a, d = 0.17 * a;
+      if (open) mouth(() => { c.moveTo(b, 0.02 * a); c.lineTo(b + L * 0.8, 0.12 * a); c.lineTo(b + L * 0.6, 0.18 * a + drop); c.lineTo(b, 0.16 * a + drop * 0.6); });
+      part(() => { c.moveTo(b, 0.1 * a + drop * 0.5); c.quadraticCurveTo(b + L * 0.45, 0.13 * a + drop, b + L * 0.7, 0.16 * a + drop * 1.1); c.quadraticCurveTo(b + L * 0.4, 0.24 * a + drop, b - 0.02 * a, 0.22 * a + drop * 0.6); });
+      part(() => { c.moveTo(b, -0.16 * a); c.bezierCurveTo(b + L * 0.5, -0.2 * a, b + L * 0.95, -0.08 * a, b + L, d); c.quadraticCurveTo(b + L * 0.86, d * 0.82, b + L * 0.78, 0.12 * a); c.quadraticCurveTo(b + L * 0.4, 0.11 * a, b, 0.11 * a); });
+      c.strokeStyle = "rgba(255,248,210,0.85)"; c.beginPath(); c.moveTo(b + 1.2, -0.11 * a); c.quadraticCurveTo(b + L * 0.55, -0.13 * a, b + L * 0.85, -0.01 * a); c.stroke();
+      c.fillStyle = "#7a4a06"; c.beginPath(); c.arc(b + L * 0.28, -0.05 * a, 0.55, 0, TAU); c.fill();
     });
   }
   /** A crystal: a long faceted shard along +x, in a gold setting. */
@@ -238,7 +249,7 @@ const PRISMA = (() => {
     for (const v of ["front", "tq", "side", "backtq", "back"]) list.push(headPiece(v, pal));
     for (const v of ["front", "near", "far", "side"]) {
       for (const l of LOOKS) list.push(eyePiece(v, l, pal));
-      for (const k of Object.keys(BROWS)) list.push(pieceOf(`brow_${v}_${k}`, 12, 8, 0.5, 0.5, (c) => { if (v === "far") c.scale(-1, 1); const s = BROWS[k]; drawBrow(c, { front: 6.4, near: 6.4, far: 4.4, side: 6 }[v] / 2, [s[0] * 0.7, s[1] * 0.7, s[2] * 0.7, s[3] * 0.8], pal.brow, Math.min(1, s[4] + 0.25)); }));
+      for (const k of Object.keys(BROWS)) list.push(pieceOf(`brow_${v}_${k}`, 12, 8, 0.5, 0.5, (c) => { if (v === "far") c.scale(-1, 1); const s = BROWS[k]; drawBrow(c, { front: 5, near: 5, far: 3.4, side: 4.6 }[v] / 2, [s[0] * 0.55, s[1] * 0.55, s[2] * 0.5, s[3] * 0.6], pal.brow, Math.min(0.7, s[4] * 0.8 + 0.1)); }));
     }
     for (const v of ["front", "tq", "side"]) list.push(beakPiece(v, false, pal), beakPiece(v, true, pal));
     for (let i = 0; i < 3; i++) list.push(shardPiece(i, pal));
@@ -295,7 +306,7 @@ const PRISMA = (() => {
   const boss = {
     id: "prismatail",
     title: "Prismatail",
-    lede: "A crystal peacock with a swan's head on a long neck: a teal almond eye under a black liner, a slender gold beak whose base tucks the far eye, and a crown that rides the head.",
+    lede: "A crystal peacock with a swan's head on a long neck: a small, sleek head that slopes into a long gold beak, teal almond eyes set on its sides under a black liner, the beak's base tucking the far eye, and a crown that rides the head.",
     attacks: [["prism-lance", "Prism Lance"], ["fan-display", "Fan Display"], ["glare", "Glare"], ["refraction", "Refraction"], ["halo-crush", "Halo Crush"], ["light-relay", "Light Relay"]],
     pose: prismaPose, placements: prismaPlacements, pieces: prismaPieces, faces: [FACE], looks: LOOKS, mouths: MOUTHS,
     stage: { w: 400, h: 300, ground: 0.86, closeW: 64, closeH: 58, sheetGap: 280, sheetH: 250, closeGap: 60, closeSheetH: 72, champion: [-150, 30], shadow: [50, 14], floor: ["#0a1418", "#12262c", "170,235,255"] },

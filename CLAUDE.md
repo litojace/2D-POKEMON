@@ -4,7 +4,7 @@
 
 The full visual suite (`tests/visual`, Playwright) has 75 files and is slow
 on one machine: the config runs **one worker** on purpose, and the
-`panel-scroll` sweeps alone take over half an hour. CI splits it into ten
+`panel-scroll` sweeps alone take over half an hour. CI splits it into eighteen
 shards (`.github/workflows/ci.yml`). Locally, don't run all of it: run what
 the change touches, in parallel, in the background.
 

@@ -1,5 +1,10 @@
-import { describe, expect, it } from "vitest";
-import { hitFeel, hitStrength } from "../../apps/client/src/game-feel";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  hitFeel,
+  hitStrength,
+  rumble,
+  setNativeTap,
+} from "../../apps/client/src/game-feel";
 
 describe("hit feel", () => {
   it("grades hits by damage, and any knockout is critical", () => {
@@ -43,4 +48,37 @@ it("never freezes a live match for any participant, while keeping hit confirmati
       expect(feel.shake).toBeLessThanOrEqual(0.0025);
     }
   expect(hitFeel("critical", "victim", true, true).shake).toBe(0);
+});
+
+describe("rumble", () => {
+  afterEach(() => {
+    setNativeTap(null);
+    vi.unstubAllGlobals();
+  });
+  const phone = () => {
+    const vibrate = vi.fn();
+    vi.stubGlobal("navigator", { vibrate, getGamepads: () => [] });
+    return vibrate;
+  };
+  it("vibrates the phone in a browser (Android)", () => {
+    const vibrate = phone();
+    rumble(100, 0.5);
+    expect(vibrate).toHaveBeenCalledWith(60);
+  });
+  it("taps the iPhone app's haptics instead, with the hit's strength", () => {
+    const vibrate = phone();
+    const tap = vi.fn();
+    setNativeTap(tap);
+    rumble(100, 0.8);
+    expect(tap).toHaveBeenCalledWith(0.8);
+    expect(vibrate).not.toHaveBeenCalled();
+  });
+  it("does nothing for a hit with no rumble", () => {
+    phone();
+    const tap = vi.fn();
+    setNativeTap(tap);
+    rumble(0, 0.8);
+    rumble(100, 0);
+    expect(tap).not.toHaveBeenCalled();
+  });
 });
