@@ -6696,7 +6696,7 @@ function fitRenderer() {
 }
 /** When this battle renderer started loading (for reportBattleLoad). */
 let battleLoadStarted = 0;
-/** When a battle began waiting for Phaser to load, if it had to (else 0). */
+/** When a battle began waiting for Phaser to load, if it is waiting (else 0). */
 let phaserWaitStarted = 0;
 /** When this renderer's scene reached preload() and create() (reportBattleLoad). */
 const battleLoadMarks = { preload: 0, create: 0 };
@@ -6704,12 +6704,13 @@ const battleLoadMarks = { preload: 0, create: 0 };
 const ARENA_WAIT_MAX_MS = 20_000;
 let arenaWaitSince = 0;
 /**
- * The battle renderer is still loading these fighters. Never blocks for
- * good: no renderer (nothing to wait for) or a load past ARENA_WAIT_MAX_MS
- * lets the player confirm anyway.
+ * The battle renderer is still loading these fighters (or Phaser itself,
+ * which loads after the first screen). Never blocks for good: no renderer
+ * (nothing to wait for) or a load past ARENA_WAIT_MAX_MS lets the player
+ * confirm anyway.
  */
 function arenaLoading(s: Snapshot) {
-  if (!gameInstance || scene?.fightersReady(s)) {
+  if ((!gameInstance && !phaserWaitStarted) || scene?.fightersReady(s)) {
     arenaWaitSince = 0;
     return false;
   }
