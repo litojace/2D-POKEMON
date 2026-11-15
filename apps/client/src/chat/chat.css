@@ -3,12 +3,13 @@
    over the screen's left side, so PLAY, Ready and the right-hand rails
    stay in reach. */
 .chat-button {
+  --chat-size: 44px;
   position: fixed;
   z-index: 72;
   display: grid;
   place-items: center;
-  width: 44px;
-  height: 44px;
+  width: var(--chat-size);
+  height: var(--chat-size);
   padding: 0;
   border: 1px solid rgba(139, 174, 229, 0.25);
   border-radius: 50%;
@@ -22,10 +23,21 @@
 .chat-button[hidden] {
   display: none;
 }
-/* In the hub: placed beside the player card (scene-switch-place.ts). */
+/* In the hub: 12 px right of the player card, from the same numbers the
+   card is placed and sized by (lobby.css, the top bar's padding), so it
+   moves with the card. On screens too narrow for it there,
+   scene-switch-place.ts drops it under the card (data-row="below"). */
 .chat-button[data-place="hub"] {
-  top: var(--chat-y, var(--hub-top, 10px));
-  left: var(--chat-x, 260px);
+  top: calc(
+    var(--hub-top, 10px) + (var(--hub-card-h, 52px) - var(--chat-size)) / 2
+  );
+  left: calc(
+    max(14px, var(--safe-left, 0px)) + var(--hub-card-w, 236px) + 12px
+  );
+}
+.chat-button[data-place="hub"][data-row="below"] {
+  top: var(--chat-y);
+  left: var(--chat-x);
 }
 /* In a room: top left, in the bar over the seats. */
 .chat-button[data-place="room"] {
@@ -286,8 +298,7 @@
    phone-fit.css), tighter rows. */
 @media (max-height: 500px) {
   .chat-button {
-    width: 40px;
-    height: 40px;
+    --chat-size: 40px;
   }
   .chat-button svg {
     width: 20px;

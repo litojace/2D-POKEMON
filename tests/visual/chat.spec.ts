@@ -81,6 +81,79 @@ async function checkButton(page: Page, card: string) {
   expect(scenes.x - (b.x + b.width)).toBeGreaterThanOrEqual(8);
 }
 
+test("chat on a 568x320 phone: no room beside the card, so the button sits under it", async ({
+  browser,
+}) => {
+  test.setTimeout(240_000);
+  const { context, page } = await phone(browser, {
+    name: "568x320",
+    width: 568,
+    height: 320,
+    inset: [0, 0, 0],
+  });
+  try {
+    await openHub(page);
+    await fakeFarm(page);
+    await fakeBistro(page);
+    await page.evaluate(() => localStorage.setItem("ea-plaza-help", "1"));
+    for (const [name, card] of [
+      ["lobby", "#account-profile"],
+      ["plaza", "#account-profile"],
+      ["farm", "#fm-badge"],
+      ["bistro", "#bs-badge"],
+    ]) {
+      await scene(page, name);
+      await expect(page.locator(card)).toBeVisible({ timeout: 30_000 });
+      await page.waitForTimeout(1500);
+      // Clear of the card, the switch and the pills.
+      await expect
+        .poll(async () =>
+          page.evaluate((card) => {
+            const r = (s: string) =>
+              document.querySelector(s)?.getBoundingClientRect();
+            const b = r("#chat-button")!;
+            const clash = [
+              card,
+              "#hub-scenes",
+              "#account-coins",
+              "#account-leaves",
+              "#home-settings",
+            ]
+              .map((s) => [s, r(s)] as const)
+              .filter(
+                ([, o]) =>
+                  o &&
+                  o.width &&
+                  b.left < o.right - 1 &&
+                  o.left < b.right - 1 &&
+                  b.top < o.bottom - 1 &&
+                  o.top < b.bottom - 1,
+              )
+              .map(([s]) => s);
+            return clash;
+          }, card),
+        )
+        .toEqual([]);
+      // Nothing on the screen covers its middle.
+      expect(
+        await page.evaluate(() => {
+          const b = document
+            .getElementById("chat-button")!
+            .getBoundingClientRect();
+          const hit = document.elementFromPoint(
+            b.left + b.width / 2,
+            b.top + b.height / 2,
+          );
+          return !!hit?.closest("#chat-button");
+        }),
+        name,
+      ).toBe(true);
+    }
+  } finally {
+    await context.close();
+  }
+});
+
 for (const size of SIZES)
   test(`chat at ${size.name}: the button on every hub scene, the drawer, a room`, async ({
     browser,
