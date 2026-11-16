@@ -853,12 +853,24 @@ button.rh-reward:focus-visible {
   .rh-attack-text b {
     font-size: 13px;
   }
+  /* The three chapters side by side, each number beside its name: one
+     short row instead of three cards stacked (the Guide was 4.4 screens
+     tall on a 393 px phone). */
   .rh-chapters {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 4px;
   }
   .rh-chapters li {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-content: start;
+    column-gap: 6px;
     padding: 6px 8px;
+  }
+  .rh-chapters li > small {
+    grid-column: 1 / -1;
+  }
+  .rh-blurb {
+    font-size: var(--fs-body);
   }
   /* Phones: the Attacks tab is one tap away; the strip would only add
      scrolling. */

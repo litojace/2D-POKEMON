@@ -155,3 +155,92 @@ test.describe("glass", () => {
     expect(rtabs.y).toBeLessThan(rback.y + rback.height);
   });
 });
+
+// Shorter screens on a phone held sideways (MOBILE-GLASS.md, "What changed").
+test.describe("phone: less scrolling", () => {
+  test("the Shop folds its empty action bar and shows four tiles a row", async ({
+    page,
+  }, info) => {
+    await page.setViewportSize(PHONE);
+    await openLobby(page);
+    await setInsets(page, ISLAND);
+    await hubMenu(page, "shop");
+    await expect(page.locator(".fit-room")).toBeVisible();
+    // Nothing picked: no bar, the list takes the room.
+    await expect(page.locator(".fit-room .ui-panel-foot")).toBeHidden();
+    await page.click('[data-ui-section="mythic"]');
+    const cols = await page
+      .locator(".fit-grid")
+      .first()
+      .evaluate(
+        (el) => getComputedStyle(el).gridTemplateColumns.split(" ").length,
+      );
+    expect(cols).toBe(4);
+    await snap(page, info, "phone-shop-mythic");
+    // A pick brings the bar back, Buy in it.
+    await page.click('[data-ui-section="today"]');
+    await page.click(".fit-deal");
+    await expect(page.locator(".fit-room .ui-panel-foot")).toBeVisible();
+    await expect(page.locator("[data-fit-buy]")).toBeVisible();
+  });
+
+  test("a 667 px phone keeps three tiles a row", async ({ page }) => {
+    await page.setViewportSize({ width: 667, height: 375 });
+    await openLobby(page);
+    await hubMenu(page, "shop");
+    await page.click('[data-ui-section="mythic"]');
+    const cols = await page
+      .locator(".fit-grid")
+      .first()
+      .evaluate(
+        (el) => getComputedStyle(el).gridTemplateColumns.split(" ").length,
+      );
+    expect(cols).toBe(3);
+  });
+
+  test("the raid Guide's chapters share one row", async ({ page }, info) => {
+    await page.setViewportSize(PHONE);
+    await openLobby(page);
+    await setInsets(page, ISLAND);
+    await hubMenu(page, "raids");
+    await page.click('[data-raid-card="grumblecrag"]');
+    await page.click('[data-ui-raid-tab="guide"]');
+    const tops = await page
+      .locator(".rh-chapters > li")
+      .evaluateAll((els) => els.map((e) => e.getBoundingClientRect().top));
+    expect(tops).toHaveLength(3);
+    expect(new Set(tops).size).toBe(1);
+    await snap(page, info, "phone-raid-guide");
+  });
+
+  test("the player card's mastery and trophies swipe in one row each", async ({
+    page,
+  }, info) => {
+    await page.setViewportSize(PHONE);
+    await openLobby(page);
+    await setInsets(page, ISLAND);
+    await page.click("#account-profile");
+    for (const row of [".pf-mastery", ".pf-trophies"]) {
+      const list = page.locator(row);
+      await expect(list).toBeVisible();
+      const tops = await list
+        .locator(":scope > li")
+        .evaluateAll((els) => els.map((e) => e.getBoundingClientRect().top));
+      expect(new Set(tops).size, `${row} is one row`).toBe(1);
+      // It scrolls sideways, and its box is as tall as its badges.
+      const m = await list.evaluate((el) => ({
+        wide: el.scrollWidth > el.clientWidth,
+        whole: el.clientHeight >= el.scrollHeight - 1,
+        height: el.getBoundingClientRect().height,
+      }));
+      expect(m.wide).toBe(true);
+      expect(m.whole).toBe(true);
+      expect(m.height).toBeGreaterThan(40);
+    }
+    // Nothing after a row starts inside it.
+    const mastery = await box(page, ".pf-mastery");
+    const next = await box(page, ".pf-minis");
+    expect(next.y).toBeGreaterThanOrEqual(mastery.y + mastery.height);
+    await snap(page, info, "phone-profile");
+  });
+});

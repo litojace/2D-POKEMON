@@ -868,3 +868,12 @@
     gap: 6px;
   }
 }
+/* Wider phones (iPhone Pro, most Androids held sideways): four tiles a row
+   in the catalogue grids, a quarter fewer rows to scroll (Mythic Hall 6 →
+   3.6 screens). A 667 px phone keeps three, so names stay whole. */
+@media (max-height: 500px) and (min-width: 800px) {
+  .fit-grid[style*="--cols:5"],
+  .fit-grid[style*="--cols:4"] {
+    --cols: 4 !important;
+  }
+}

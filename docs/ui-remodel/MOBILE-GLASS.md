@@ -57,24 +57,27 @@ tall on the boss page: less than half the panel.
 **Scroll depth** (content height ÷ visible height of the panel's list;
 1.0 = no scrolling):
 
-| Screen                     | Before |
-| -------------------------- | -----: |
-| Shop › Mythic Hall         |    6.0 |
-| Raids › boss › Guide       |    4.4 |
-| Shop › Skins               |    3.6 |
-| Raid room fighter list     |    3.2 |
-| Player card                |    3.1 |
-| Raids › boss › Rewards     |    3.1 |
-| Ranks (ladder)             |    2.9 |
-| Friends                    |    2.8 |
-| Fighter › Skins            |    2.7 |
-| Raids › boss › Attacks     |    2.7 |
-| Lobby mode menu            |    2.6 |
-| Shop › Today / Collections |    2.4 |
-| Fighter › Skills           |    2.4 |
-| Raids › boss › Party       |    2.4 |
-| Missions                   |    2.3 |
-| Play drawer (more ways)    |    2.1 |
+| Screen                  | Before | After |
+| ----------------------- | -----: | ----: |
+| Shop › Mythic Hall      |    6.0 |   3.6 |
+| Raids › boss › Guide    |    4.4 |   2.9 |
+| Shop › Skins            |    3.6 |   2.0 |
+| Raid room fighter list  |    3.2 |     — |
+| Player card             |    3.1 |   2.4 |
+| Raids › boss › Rewards  |    3.1 |   2.4 |
+| Ranks (ladder)          |    2.9 |     — |
+| Friends                 |    2.8 |     — |
+| Fighter › Skins         |    2.7 |     — |
+| Raids › boss › Attacks  |    2.7 |   2.1 |
+| Lobby mode menu         |    2.6 |     — |
+| Shop › Today            |    2.4 |   2.0 |
+| Shop › Collections      |    2.4 |   1.7 |
+| Fighter › Skills        |    2.4 |     — |
+| Raids › boss › Party    |    2.4 |   1.9 |
+| Missions                |    2.3 |     — |
+| Play drawer (more ways) |    2.1 |     — |
+
+“After” is measured after both phone passes below; “—” is not changed by them.
 
 ## What changed in this pass
 
@@ -131,6 +134,26 @@ follows when a token is changed at run time), Low graphics drops the blur,
 the toast ends above an open panel, the tabs share the Back row and still
 work. All four tests were checked to fail on the old `components.css`.
 
+## Phone pass, part 2: shorter screens
+
+All on phones held sideways only (`max-height: 500px`); desktop is as it
+was. Tested in `tests/visual/glass.spec.ts` ("phone: less scrolling"); each
+test was checked to fail without its fix.
+
+- **The Shop's empty action bar folds away.** Before you pick something
+  the bar only said "Try anything on" (48 px). It now hides until there is
+  an action (`data-idle` on the bar, a kit rule any screen can use), and
+  comes back with Buy or Equip when you tap an item. Shop lists: 214 → 262 px.
+- **Four tiles a row** in the Shop's catalogue grids on phones at least
+  800 px wide (iPhone Pro, most Androids). A 667 px phone keeps three so
+  names stay whole. Mythic Hall 6.0 → 3.6 screens, Skins 3.6 → 2.0.
+- **Raid Guide:** the three chapters side by side, each number beside its
+  name; the boss's description at body size. 4.4 → 2.9 screens.
+- **Player card:** fighter mastery (18 badges) and raid trophies (7 cards)
+  each take one row that swipes sideways, the last one peeking in at the
+  edge. 3.1 → 2.4 screens. (`panel-scroll.spec.ts` swipes every sideways
+  box with real touch input.)
+
 ## Everything else that now lives in one place
 
 A second pass (same day) moved the other repeated values onto tokens in
@@ -179,18 +202,15 @@ is left").
 
 ## What is left, by value on a phone
 
-1. **Shop › Mythic Hall (6 screens).** One fighter's mythic per row with
-   its stages, all open. Make it a one-row carousel of fighters with the
-   chosen one's stages under it, as the Skins tab picks a fighter first.
-2. **Raids › Guide (4.4) and Rewards (3.1).** The guide's chapters are all
-   open; show them as collapsed rows (one open at a time) on phones. Rewards
-   could be a horizontal strip like Party's.
-3. **Player card (3.1).** Stats, name, title, mastery and trophies in one
-   long column. Split into tabs in the head (Overview · Titles · Mastery ·
-   Trophies) with the same "tabs in the head row" rule.
-4. **Shop action bar on Today/Skins** shows only "TRY ANYTHING ON" (48 px)
-   until something is picked. Hide the bar until there is an action, or put
-   that line in the head.
+1. **Shop › Mythic Hall (3.6 screens).** Still the longest. A fighter row
+   (as Skins has) with the chosen fighter's Mythical and its three stages
+   would make it about one screen, but it hides the other 17 from a scroll,
+   so it is a design choice for the owner.
+2. **Raids › Rewards (2.4).** Could be a sideways strip like the trophies.
+3. **Player card (2.4).** Tabs in the head (Overview · Titles · Mastery ·
+   Trophies) would end the scrolling.
+4. **Ranks ladder (2.9) and Friends (2.8)** are lists: they should scroll.
+   Your rank row is already pinned.
 5. **Raid room** keeps its own HUD row (chat left, coins and profile right)
    and a darker room backdrop, so its glass shows less of a scene than the
    Lobby's. Give it the Lobby's backdrop.
@@ -199,8 +219,10 @@ is left").
    `missions.css` (2), `profile.css`, `raid-hall.css` (3), `roster.css` (2),
    `ranks.css` (2), `journey.css` (4). Move each to `--fs-micro` and check it
    fits (some are counts inside small badges).
-7. **Shop › Skins filter row:** the "8 skins" count is drawn over the last
-   rarity chip at 852×393 ("Rar 8 skins"). It was like this before.
+7. **Shop › Skins filter row:** at 852×393 the rarity chips are cut by
+   the row's scroll fade just before the "8 skins" count, so it reads "Rar
+   8 skins". Nothing overlaps (the chips swipe sideways), but the count
+   could move to its own line on phones.
 8. **Chat drawer** (`chat/chat.css`) is its own near-solid navy
    (`rgba(10,19,37,.95)`); it opens over matches, so if it moves to the
    tokens it should take `--glass-thick` without blur.

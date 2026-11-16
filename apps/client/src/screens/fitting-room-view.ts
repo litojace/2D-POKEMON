@@ -952,9 +952,14 @@ function shopFoot(view: FitView, d: FitData) {
   const e = d.economy;
   const id = view.selected;
   if (!e || !id)
+    // Nothing picked yet: an action bar with nothing to act on, which
+    // phones fold away (data-idle, ui/components.css).
     return actionBar(
       `${footText("Try anything on", "Tap an item to see it on your fighter. Try-ons are free.")}${status}`,
       "",
+    ).replace(
+      '<footer class="ui-panel-foot"',
+      '<footer class="ui-panel-foot" data-idle',
     );
   const set = SHOP_BUNDLES.find((b) => b.id === id);
   const p = purchase(id, e);

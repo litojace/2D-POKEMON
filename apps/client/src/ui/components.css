@@ -232,6 +232,15 @@
   }
 }
 
+/* Phones: an action bar with nothing to act on yet (data-idle: the Shop
+   before you pick something) folds away, and the list takes its 48 px.
+   It comes back with the item you tap. */
+@media (max-height: 500px) {
+  .ui-panel-foot[data-idle] {
+    display: none;
+  }
+}
+
 /* A split panel: a stage on the left (the fighter, large) beside the
    panel's own head, body and action bar. Same outer box as a panel, so Close
    still sits in its top-right corner; the two halves draw the surfaces. */
