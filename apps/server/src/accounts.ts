@@ -772,15 +772,22 @@ export function installAccountRoutes(
         "shoo",
         "farmer",
         "perk",
-        "decor",
-        "decor-remove",
+        "decor-place",
+        "decor-move",
+        "decor-store",
         "buy-pasture",
         "milk",
         "sell-milk",
         "harvest-giant",
       ]),
       plot: z.number().int().min(0).max(49).optional(),
-      slot: z.number().int().min(0).max(7).optional(),
+      // A decoration: where it stands on the farm (world px, a 10 px grid
+      // the database checks), mirrored or not, and which one to move or
+      // put away.
+      x: z.number().int().min(0).max(1760).optional(),
+      y: z.number().int().min(0).max(1080).optional(),
+      flip: z.boolean().optional(),
+      piece: z.number().int().min(1).max(2_000_000_000).optional(),
       item: z
         .string()
         .max(32)

@@ -22,8 +22,8 @@ export interface PathWorld {
   doghouse: { x: number; y: number };
   /** The scarecrow's spot, when there is one. */
   scarecrow: Point | null;
-  /** Spots with a decoration. */
-  decor: Point[];
+  /** The ground each decoration takes (decorBox in the shared rules). */
+  decor: Rect[];
   /** The gate's x (the middle of the front fence). */
   gateX: number;
   width: number;
@@ -85,8 +85,11 @@ export function blocked(
   if (s && Math.abs(x - s[0]) < 26 + m && Math.abs(y - s[1]) < 16 + m)
     return true;
   return w.decor.some(
-    ([dx, dy]) =>
-      Math.abs(x - dx) < 42 + m && y > dy - 22 - m && y < dy + 12 + m,
+    (b) =>
+      x > b.x0 - 10 - m &&
+      x < b.x1 + 10 + m &&
+      y > b.y0 - 10 - m &&
+      y < b.y1 + 8 + m,
   );
 }
 

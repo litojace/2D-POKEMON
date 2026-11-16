@@ -75,7 +75,13 @@ export async function fakeFarm(page: Page) {
       // No farmer before migration 046: set by the perk test.
       farmer: undefined as string | undefined,
       perksUsed: [] as string[],
-      decor: [] as { slot: number; item: string }[],
+      decor: [] as {
+        id: number;
+        item: string;
+        x: number;
+        y: number;
+        flip: boolean;
+      }[],
       charm: 0,
       decorCredits: {} as Record<string, number>,
       // The Cow Pasture (migration 049).
@@ -352,31 +358,65 @@ export async function fakeFarm(page: Page) {
           // what it replaces, or what is put away, is stored.
           const store = (id: string) =>
             (farm.decorCredits[id] = (farm.decorCredits[id] ?? 0) + 1);
-          if (a.a === "decor") {
-            const old = farm.decor.find((d: any) => d.slot === a.slot)?.item;
-            farm.decor = farm.decor.filter((d: any) => d.slot !== a.slot);
-            farm.decor.push({ slot: a.slot, item: a.item });
-            farm.charm += 1;
+          // Anywhere on the farm (20261116120000), checked with the shared
+          // rules the database mirrors.
+          const R = w.__farm?.rules;
+          const item = R?.FARM_DECOR.find((d: any) => d.id === a.item);
+          if (a.a === "decor-place") {
+            if (!item) return { ok: false, error: "Unknown decoration" };
             const free = (farm.decorCredits[a.item] ?? 0) > 0;
+            if (!free && farm.level < item.level)
+              return {
+                ok: false,
+                error: `Unlocks at farm level ${item.level}`,
+              };
+            if (farm.decor.length >= R.decorCap(farm.level))
+              return {
+                ok: false,
+                error: `Your farm has room for ${R.decorCap(farm.level)} decorations`,
+              };
+            const why = R.decorFits(a.item, a.x, a.y, farm.decor);
+            if (why) return { ok: false, error: why };
+            if (!free && farm.leaves < item.price)
+              return { ok: false, error: "Not enough Gold Leaves" };
             if (free && !--farm.decorCredits[a.item])
               delete farm.decorCredits[a.item];
-            if (!free) farm.leaves -= 300;
-            if (old) store(old);
+            if (!free) farm.leaves -= item.price;
+            const id = (w.__fakeDecorId = (w.__fakeDecorId ?? 100) + 1);
+            farm.decor.push({
+              id,
+              item: a.item,
+              x: a.x,
+              y: a.y,
+              flip: !!a.flip,
+            });
+            farm.charm += item.charm;
             return {
               ok: true,
               decor: a.item,
-              slot: a.slot,
-              cost: free ? 0 : 300,
-              ...(old ? { stored: old } : {}),
+              piece: id,
+              x: a.x,
+              y: a.y,
+              cost: free ? 0 : item.price,
             };
           }
-          if (a.a === "decor-remove") {
-            const old = farm.decor.find((d: any) => d.slot === a.slot)?.item;
-            if (!old) return { ok: false, error: "Nothing there" };
-            farm.decor = farm.decor.filter((d: any) => d.slot !== a.slot);
-            farm.charm -= 1;
-            store(old);
-            return { ok: true, removed: a.slot, stored: old };
+          const piece = farm.decor.find((d: any) => d.id === a.piece);
+          if (a.a === "decor-move") {
+            if (!piece) return { ok: false, error: "Nothing there" };
+            const why = R.decorFits(piece.item, a.x, a.y, farm.decor, piece.id);
+            if (why) return { ok: false, error: why };
+            Object.assign(piece, { x: a.x, y: a.y, flip: !!a.flip });
+            return { ok: true, moved: piece.id, x: a.x, y: a.y };
+          }
+          if (a.a === "decor-store") {
+            if (!piece) return { ok: false, error: "Nothing there" };
+            farm.decor = farm.decor.filter((d: any) => d !== piece);
+            farm.charm -= R.FARM_DECOR.find(
+              (d: any) => d.id === piece.item,
+            ).charm;
+            farm.decorCredits[piece.item] =
+              (farm.decorCredits[piece.item] ?? 0) + 1;
+            return { ok: true, stored: piece.item, piece: piece.id };
           }
           if (a.a === "farmer") {
             farm.farmer = a.id;
