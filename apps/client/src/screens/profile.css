@@ -123,7 +123,7 @@
   text-align: center;
 }
 .pf-tile > b {
-  font-size: 34px;
+  font-size: calc(34px * var(--text-scale, 1));
   line-height: 1;
 }
 .pf-tile > small {
@@ -276,7 +276,7 @@
   opacity: 0.6;
 }
 .pf-mastery-chip .ui-ring b {
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale, 1));
 }
 
 /* Journey and Ranked: two equal cards that open their screens. */
@@ -370,7 +370,7 @@
   right: 6px;
   bottom: 2px;
   color: #fff;
-  font-size: 20px;
+  font-size: calc(20px * var(--text-scale, 1));
   line-height: 1;
   text-shadow: 0 2px 4px #000;
 }
@@ -534,7 +534,7 @@
     min-height: 110px;
   }
   .pf-tile > b {
-    font-size: 44px;
+    font-size: calc(44px * var(--text-scale, 1));
   }
   .pf-mastery-chip {
     padding: 12px 4px;
@@ -581,7 +581,7 @@
     gap: 2px;
   }
   .pf-tile > b {
-    font-size: 20px;
+    font-size: calc(20px * var(--text-scale, 1));
   }
   .pf-tile > small {
     font-size: var(--fs-micro);
@@ -625,7 +625,7 @@
     gap: 4px;
   }
   .pf-trophy > b {
-    font-size: 15px;
+    font-size: calc(15px * var(--text-scale, 1));
   }
   .pf-achievements {
     grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));

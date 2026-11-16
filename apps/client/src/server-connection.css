@@ -363,16 +363,16 @@
     gap: 7px;
   }
   .server-startup-brand h1 {
-    font-size: 23px;
+    font-size: calc(23px * var(--text-scale, 1));
   }
   .server-startup-loading {
     gap: 6px;
   }
   .server-startup-loading h2 {
-    font-size: 13px;
+    font-size: calc(13px * var(--text-scale, 1));
   }
   .server-startup-loading p {
-    font-size: 11px;
+    font-size: calc(11px * var(--text-scale, 1));
   }
   .server-startup[data-status="failed"] .server-startup-loading {
     grid-template-columns: minmax(0, 1fr) auto;

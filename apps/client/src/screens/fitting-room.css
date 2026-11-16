@@ -123,7 +123,7 @@
 .fit-stage-name {
   font-family: var(--font-display);
   font-weight: 800;
-  font-size: 40px;
+  font-size: calc(40px * var(--text-scale, 1));
   line-height: 0.95;
   text-transform: uppercase;
   letter-spacing: 0.02em;
@@ -271,7 +271,7 @@
 @media (max-width: 1060px) and (min-height: 501px) {
   .fit-head .ui-tabs > button[role="tab"] {
     padding-inline: 5px;
-    font-size: 14px;
+    font-size: calc(14px * var(--text-scale, 1));
     letter-spacing: 0;
   }
 }
@@ -417,7 +417,7 @@
   text-overflow: ellipsis;
 }
 .fit-deal-price {
-  font-size: 26px;
+  font-size: calc(26px * var(--text-scale, 1));
   margin-top: 6px;
 }
 .fit-deal-timer {
@@ -464,7 +464,7 @@
   min-width: 0;
 }
 .fit-bundle-price {
-  font-size: 22px;
+  font-size: calc(22px * var(--text-scale, 1));
 }
 .fit-earn {
   display: flex;
@@ -539,7 +539,7 @@
 .fit-none {
   font-style: normal;
   color: var(--ui-faint);
-  font-size: 28px;
+  font-size: calc(28px * var(--text-scale, 1));
 }
 .fit-slot small {
   font-size: var(--fs-micro);
@@ -548,7 +548,7 @@
   letter-spacing: 0.06em;
 }
 .fit-slot b {
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   max-width: 100%;
   white-space: nowrap;
   overflow: hidden;
@@ -778,14 +778,14 @@
   }
   .fit-head .ui-seg.is-display > button {
     height: 26px;
-    font-size: 12px;
+    font-size: calc(12px * var(--text-scale, 1));
     padding: 0 9px;
   }
   .fit-head .ui-tabs {
     margin-left: 0;
   }
   .fit-head .ui-tabs > button[role="tab"] {
-    font-size: 12px;
+    font-size: calc(12px * var(--text-scale, 1));
     padding: 6px 6px 5px;
   }
   .fit-head .ui-tabs .ui-tag,
@@ -815,10 +815,10 @@
     display: none;
   }
   .fit-deal-name {
-    font-size: 22px;
+    font-size: calc(22px * var(--text-scale, 1));
   }
   .fit-deal-price {
-    font-size: 18px;
+    font-size: calc(18px * var(--text-scale, 1));
     margin-top: 0;
   }
   .fit-deal-timer {
@@ -834,7 +834,7 @@
     display: none;
   }
   .fit-bundle-price {
-    font-size: 16px;
+    font-size: calc(16px * var(--text-scale, 1));
   }
   .fit-fighter {
     width: 40px;

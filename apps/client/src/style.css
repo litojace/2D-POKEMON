@@ -73,7 +73,7 @@
   margin-bottom: 14px;
 }
 #practice-stats {
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale, 1));
   color: var(--muted);
 }
 .practice-actions {
@@ -83,7 +83,7 @@
   flex-wrap: wrap;
 }
 .practice-actions label {
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   display: flex;
   align-items: center;
   gap: 8px;
@@ -105,7 +105,7 @@
   border-radius: 5px;
 }
 .practice-controls p {
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale, 1));
   margin-bottom: 0;
 }
 * {
@@ -170,7 +170,7 @@ button:active {
 .brand {
   font-weight: 800;
   letter-spacing: -0.5px;
-  font-size: 21px;
+  font-size: calc(21px * var(--text-scale, 1));
   color: #fff;
   text-decoration: none;
   display: flex;
@@ -189,7 +189,7 @@ button:active {
   width: 36px;
   height: 36px;
   border-radius: 10px;
-  font-size: 27px;
+  font-size: calc(27px * var(--text-scale, 1));
   margin-right: 5px;
 }
 .top-links {
@@ -200,11 +200,11 @@ button:active {
 .quiet {
   background: none;
   color: var(--muted);
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   padding: 8px;
 }
 .connection {
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
   letter-spacing: 1px;
   color: #a09d7f;
 }
@@ -226,7 +226,7 @@ main {
   padding: 48px 5vw 35px;
 }
 .eyebrow {
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
   letter-spacing: 2px;
   font-weight: 700;
   color: var(--lime);
@@ -253,7 +253,7 @@ h1 em {
   color: var(--lime);
 }
 p {
-  font-size: 13px;
+  font-size: calc(13px * var(--text-scale, 1));
   line-height: 1.8;
   color: var(--muted);
 }
@@ -268,21 +268,21 @@ p {
   height: 150px;
   border-radius: 50%;
   color: var(--lime);
-  font-size: 50px;
+  font-size: calc(50px * var(--text-scale, 1));
   transform: rotate(9deg);
   margin-right: 25px;
 }
 .arena-badge span {
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
   letter-spacing: 2px;
 }
 .arena-badge small {
-  font-size: 8px;
+  font-size: calc(8px * var(--text-scale, 1));
   color: var(--muted);
   letter-spacing: 2px;
 }
 h2 {
-  font-size: 22px;
+  font-size: calc(22px * var(--text-scale, 1));
   letter-spacing: -0.6px;
   margin: 0 0 16px;
 }
@@ -302,11 +302,11 @@ h2 {
   gap: 24px;
 }
 .skill-preview h3 {
-  font-size: 18px;
+  font-size: calc(18px * var(--text-scale, 1));
   margin: 10px 0 2px;
 }
 .skill-preview p {
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
 }
 @media (max-width: 600px) {
   .skill-preview {
@@ -316,7 +316,7 @@ h2 {
 }
 kbd {
   font:
-    600 10px "DM Sans",
+    600 calc(10px * var(--text-scale, 1)) "DM Sans",
     sans-serif;
   background: #ffffff0a;
   border: 1px solid #ffffff20;
@@ -328,7 +328,7 @@ kbd {
   white-space: nowrap;
 }
 .universal {
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
   margin: 14px 0 0;
 }
 .universal b {
@@ -344,7 +344,7 @@ kbd {
 }
 .room-panel h2 {
   font:
-    700 28px/1.15 "Barlow Condensed",
+    700 calc(28px * var(--text-scale, 1))/1.15 "Barlow Condensed",
     Impact,
     sans-serif;
   margin-top: 16px;
@@ -352,7 +352,7 @@ kbd {
 }
 .room-panel label {
   display: block;
-  font-size: 9px;
+  font-size: calc(9px * var(--text-scale, 1));
   color: #c2cfe3;
   letter-spacing: 1.5px;
   margin: 24px 0 10px;
@@ -367,7 +367,7 @@ input:not([type="range"]):not([type="checkbox"]):not([type="color"]):not(
   border-radius: 6px;
   width: 100%;
   outline: 0;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
 }
 /* iOS zooms into any focused field under 16px; phones get 16px fields instead. */
 @media (pointer: coarse) {
@@ -376,7 +376,7 @@ input:not([type="range"]):not([type="checkbox"]):not([type="color"]):not(
     ),
   select,
   textarea {
-    font-size: 16px;
+    font-size: calc(16px * var(--text-scale, 1));
   }
 }
 .account-nav,
@@ -406,7 +406,7 @@ input:not([type="range"]):not([type="checkbox"]):not([type="color"]):not(
 .account-form label {
   display: grid;
   gap: 8px;
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale, 1));
   color: #c1cfe4;
   letter-spacing: 0;
   margin: 0;
@@ -434,7 +434,7 @@ input:not([type="range"]):not([type="checkbox"]):not([type="color"]):not(
 }
 .admin-pagination {
   justify-content: space-between;
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale, 1));
   color: var(--muted);
 }
 input:focus {
@@ -448,7 +448,7 @@ input::placeholder {
   display: inline-block;
   padding: 14px 18px;
   border-radius: 6px;
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale, 1));
   font-weight: 700;
 }
 .primary {
@@ -479,7 +479,7 @@ input::placeholder {
   display: block;
   color: #93a8c6;
   line-height: 1.9;
-  font-size: 9px;
+  font-size: calc(9px * var(--text-scale, 1));
   margin-top: 25px;
   text-align: center;
 }
@@ -515,12 +515,12 @@ input::placeholder {
   display: block;
 }
 .players strong {
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale, 1));
 }
 .players small {
   display: block;
   color: var(--muted);
-  font-size: 9px;
+  font-size: calc(9px * var(--text-scale, 1));
   margin-top: 4px;
 }
 .players strong small {
@@ -528,17 +528,17 @@ input::placeholder {
 }
 .players b {
   margin-left: auto;
-  font-size: 8px;
+  font-size: calc(8px * var(--text-scale, 1));
   letter-spacing: 0.5px;
   color: var(--lime);
 }
 .players .waiting {
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
   color: #93a8c6;
   padding: 23px 0;
 }
 .waiting > span {
-  font-size: 25px;
+  font-size: calc(25px * var(--text-scale, 1));
 }
 .full {
   width: 100%;
@@ -556,17 +556,17 @@ input::placeholder {
   display: flex;
   align-items: center;
   gap: 12px;
-  font-size: 14px;
+  font-size: calc(14px * var(--text-scale, 1));
   margin-bottom: 8px;
 }
 .health-card > div > span {
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
   color: var(--muted);
 }
 .health-card strong {
   margin-left: auto;
   color: var(--element);
-  font-size: 14px;
+  font-size: calc(14px * var(--text-scale, 1));
 }
 .health-track {
   height: 9px;
@@ -583,7 +583,7 @@ input::placeholder {
 .health-card > small {
   display: inline-block;
   margin-top: 6px;
-  font-size: 9px;
+  font-size: calc(9px * var(--text-scale, 1));
   color: var(--muted);
 }
 .health-card > small:last-child {
@@ -596,13 +596,13 @@ input::placeholder {
 .timer-wrap > span {
   display: block;
   color: var(--muted);
-  font-size: 8px;
+  font-size: calc(8px * var(--text-scale, 1));
   letter-spacing: 2px;
 }
 .timer-wrap strong {
   display: block;
   font:
-    700 38px "Barlow Condensed",
+    700 calc(38px * var(--text-scale, 1)) "Barlow Condensed",
     monospace;
   color: #eef4e9;
 }
@@ -669,7 +669,7 @@ body.is-blinded #game::after {
   position: absolute;
   bottom: 13px;
   left: 18px;
-  font-size: 8px;
+  font-size: calc(8px * var(--text-scale, 1));
   letter-spacing: 2px;
   color: #cee0b97f;
   pointer-events: none;
@@ -677,7 +677,7 @@ body.is-blinded #game::after {
 .map-label > span {
   margin-left: 12px;
   color: #c7d6b543;
-  font-size: 7px;
+  font-size: calc(7px * var(--text-scale, 1));
 }
 .ability-bar {
   display: flex;
@@ -706,7 +706,7 @@ body.is-blinded #game::after {
 .ability span,
 .movement-ability span,
 .basic-hint span {
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
   position: relative;
   z-index: 1;
   white-space: nowrap;
@@ -715,7 +715,7 @@ body.is-blinded #game::after {
 .movement-ability small,
 .basic-hint small {
   display: block;
-  font-size: 7px;
+  font-size: calc(7px * var(--text-scale, 1));
   color: var(--lime);
   margin-top: 5px;
   letter-spacing: 1px;
@@ -739,13 +739,13 @@ body.is-blinded #game::after {
 }
 .basic-hint small {
   color: var(--muted);
-  font-size: 6px;
+  font-size: calc(6px * var(--text-scale, 1));
 }
 .battle-footer {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 8px;
+  font-size: calc(8px * var(--text-scale, 1));
   color: #9aacc9;
   margin-top: 9px;
 }
@@ -754,7 +754,7 @@ body.is-blinded #game::after {
   margin: 0 7px 0 4px;
 }
 .battle-footer > span:nth-child(2) {
-  font-size: 7px;
+  font-size: calc(7px * var(--text-scale, 1));
   letter-spacing: 1px;
 }
 #arena-overlay {
@@ -780,13 +780,13 @@ body.is-blinded #game::after {
 }
 .overlay-card h2 {
   font:
-    700 44px "Barlow Condensed",
+    700 calc(44px * var(--text-scale, 1)) "Barlow Condensed",
     sans-serif;
   margin: 12px 0;
 }
 .overlay-card > div {
   color: var(--muted);
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
 }
 .overlay-card button {
   margin: 20px 5px 0;
@@ -801,7 +801,7 @@ body.is-blinded #game::after {
   margin: 12px auto 2px;
   color: var(--accent);
   font-weight: 700;
-  font-size: 14px;
+  font-size: calc(14px * var(--text-scale, 1));
 }
 .brief-goal svg {
   flex: none;
@@ -812,13 +812,13 @@ body.is-blinded #game::after {
   margin: 4px auto;
   max-width: 480px;
   color: #b9c8de;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   line-height: 1.4;
 }
 .brief-arena b {
   margin-right: 6px;
   color: #d9e6f5;
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale, 1));
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
@@ -839,7 +839,7 @@ body.is-blinded #game::after {
   border-radius: 999px;
   background: #ffffff0d;
   color: #d9e6f5;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
 }
 .brief-keys kbd {
   min-width: 26px;
@@ -849,7 +849,7 @@ body.is-blinded #game::after {
   background: #0b1430;
   color: #fff;
   font: inherit;
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale, 1));
   font-weight: 800;
   letter-spacing: 0.04em;
   text-align: center;
@@ -858,14 +858,14 @@ body.is-blinded #game::after {
   display: none;
 }
 .mobile-howto {
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   color: #b9c8de;
 }
 .arena-brief {
   margin: 14px auto 4px;
   max-width: 520px;
   color: #d9e6f5;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   line-height: 1.45;
 }
 .arena-brief b {
@@ -873,14 +873,14 @@ body.is-blinded #game::after {
   color: var(--accent);
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale, 1));
   margin-bottom: 2px;
 }
 /* Rites: round upgrades chosen between rounds. */
 .rite-intro {
   margin: 0 0 12px;
   color: #d9e6f5;
-  font-size: 13px;
+  font-size: calc(13px * var(--text-scale, 1));
 }
 .rite-choices {
   display: grid;
@@ -931,11 +931,11 @@ body.is-blinded #game::after {
   position: absolute;
   top: 8px;
   right: 8px;
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
   padding: 2px 6px;
 }
 .rite-tier {
-  font-size: 9px;
+  font-size: calc(9px * var(--text-scale, 1));
   letter-spacing: 0.12em;
   color: #9aacc9;
 }
@@ -943,16 +943,16 @@ body.is-blinded #game::after {
   color: #ffb347;
 }
 .rite-card b {
-  font-size: 16px;
+  font-size: calc(16px * var(--text-scale, 1));
 }
 .rite-card small {
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   line-height: 1.4;
   color: #c3d0e2;
 }
 .rite-timer {
   margin: 12px 0 0;
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale, 1));
 }
 .rite-owned {
   display: flex;
@@ -964,7 +964,7 @@ body.is-blinded #game::after {
 }
 .rite-owned em {
   font-style: normal;
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
   letter-spacing: 0.08em;
   text-transform: uppercase;
   margin-right: 4px;
@@ -975,7 +975,7 @@ body.is-blinded #game::after {
   border: 1px solid #ffffff26;
   background: #0d1a2e;
   color: #e5efda;
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale, 1));
 }
 .rite-chip.major {
   border-color: #ffb347aa;
@@ -995,11 +995,11 @@ body.is-blinded #game::after {
     gap: 3px;
   }
   .rite-card b {
-    font-size: 14px;
+    font-size: calc(14px * var(--text-scale, 1));
     padding-right: 22px;
   }
   .rite-card small {
-    font-size: 11px;
+    font-size: calc(11px * var(--text-scale, 1));
     line-height: 1.3;
   }
   .rite-card kbd {
@@ -1008,7 +1008,7 @@ body.is-blinded #game::after {
   }
   .rite-intro {
     margin-bottom: 8px;
-    font-size: 12px;
+    font-size: calc(12px * var(--text-scale, 1));
   }
   .rite-timer {
     margin-top: 8px;
@@ -1020,7 +1020,7 @@ body.is-blinded #game::after {
     display: none;
   }
   .battle-active.touch-mode .overlay-card:has(.rite-choices) h2 {
-    font-size: 22px;
+    font-size: calc(22px * var(--text-scale, 1));
     margin: 0 0 4px;
   }
 }
@@ -1037,12 +1037,12 @@ dialog::backdrop {
   backdrop-filter: blur(5px);
 }
 dialog h2 {
-  font-size: 28px;
+  font-size: calc(28px * var(--text-scale, 1));
   margin: 18px 0;
 }
 dialog label {
   display: block;
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
   letter-spacing: 1px;
   color: #c1cfe4;
   margin: 25px 0;
@@ -1059,12 +1059,12 @@ dialog input[type="range"] {
   right: 12px;
   color: #c8d7c5;
   background: transparent;
-  font-size: 26px;
+  font-size: calc(26px * var(--text-scale, 1));
 }
 .controls-list {
   display: grid;
   gap: 12px;
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale, 1));
   color: var(--muted);
   margin: 25px 0;
 }
@@ -1101,7 +1101,7 @@ dialog input[type="range"] {
     height: 72px;
   }
   .brand {
-    font-size: 16px;
+    font-size: calc(16px * var(--text-scale, 1));
   }
   .top-links {
     gap: 6px;
@@ -1110,7 +1110,7 @@ dialog input[type="range"] {
     display: none;
   }
   .quiet {
-    font-size: 10px;
+    font-size: calc(10px * var(--text-scale, 1));
   }
   main {
     padding: 30px 20px;
@@ -1119,7 +1119,7 @@ dialog input[type="range"] {
     margin-bottom: 25px;
   }
   .intro p {
-    font-size: 11px;
+    font-size: calc(11px * var(--text-scale, 1));
   }
   .room-panel {
     grid-row: 1;
@@ -1133,17 +1133,17 @@ dialog input[type="range"] {
   }
   .health-card > div:first-child {
     flex-wrap: wrap;
-    font-size: 11px;
+    font-size: calc(11px * var(--text-scale, 1));
     gap: 4px;
   }
   .health-card > div:first-child > span {
     display: none;
   }
   .timer-wrap strong {
-    font-size: 30px;
+    font-size: calc(30px * var(--text-scale, 1));
   }
   .timer-wrap > span {
-    font-size: 6px;
+    font-size: calc(6px * var(--text-scale, 1));
     letter-spacing: 0;
   }
   .ability {
@@ -1159,10 +1159,10 @@ dialog input[type="range"] {
     padding: 15px;
   }
   .overlay-card h2 {
-    font-size: 25px;
+    font-size: calc(25px * var(--text-scale, 1));
   }
   .ability span {
-    font-size: 9px;
+    font-size: calc(9px * var(--text-scale, 1));
   }
   .basic-hint {
     display: none;
@@ -1250,7 +1250,7 @@ dialog input[type="range"] {
 .touch-note {
   display: none;
   color: var(--muted);
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
 }
 .touch-enabled .touch-note {
   display: inline;
@@ -1353,7 +1353,7 @@ dialog input[type="range"] {
     0 3px 8px #0004;
 }
 .touch-buttons button[data-action] .touch-key {
-  font-size: 8px;
+  font-size: calc(8px * var(--text-scale, 1));
   letter-spacing: 0.08em;
   font-weight: 700;
 }
@@ -1379,7 +1379,7 @@ dialog input[type="range"] {
 .touch-key {
   position: absolute;
   bottom: 3px;
-  font-size: 9px;
+  font-size: calc(9px * var(--text-scale, 1));
   opacity: 0.7;
   pointer-events: none;
 }
@@ -1388,7 +1388,7 @@ dialog input[type="range"] {
   inset: 0;
   display: grid;
   place-items: center;
-  font-size: 16px;
+  font-size: calc(16px * var(--text-scale, 1));
   font-weight: bold;
   text-shadow: 0 2px 4px black;
   pointer-events: none;
@@ -1496,7 +1496,7 @@ body.battle-active.touch-mode {
   background: #101c3599;
   border-radius: 9px;
   padding: 7px;
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
   min-height: 32px;
 }
 .battle-active.touch-mode .battle-footer {
@@ -1522,7 +1522,7 @@ body.battle-active.touch-mode {
   background: #14294af5;
 }
 .battle-active.touch-mode .overlay-card h2 {
-  font-size: 26px;
+  font-size: calc(26px * var(--text-scale, 1));
 }
 .battle-active.touch-mode .overlay-card .controls-list {
   display: none;
@@ -1537,7 +1537,7 @@ body.battle-active.touch-mode {
   max-height: 100px;
   overflow: auto;
   opacity: 0.85;
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
   padding: 8px;
 }
 @media (orientation: portrait) {
@@ -1546,7 +1546,7 @@ body.battle-active.touch-mode {
     align-items: center;
     justify-content: center;
     gap: 8px;
-    font-size: 12px;
+    font-size: calc(12px * var(--text-scale, 1));
     font-weight: 600;
     color: var(--text);
     padding: 8px 0;
@@ -1600,7 +1600,7 @@ body.battle-active.touch-mode {
 }
 @media (max-height: 450px) {
   .battle-active.touch-mode .hud {
-    font-size: 10px;
+    font-size: calc(10px * var(--text-scale, 1));
   }
   .battle-active.touch-mode .hud .fighter-info {
     padding: 0;
@@ -1609,7 +1609,7 @@ body.battle-active.touch-mode {
     top: 58px;
   }
   .battle-active.touch-mode .overlay-card p {
-    font-size: 11px;
+    font-size: calc(11px * var(--text-scale, 1));
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -1629,19 +1629,19 @@ body.battle-active.touch-mode {
   background: #1b3039f5;
   border: 1px solid color-mix(in srgb, var(--ui-accent) 33.3%, transparent);
   box-shadow: 0 6px 30px #0008;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
 }
 #pwa-banner[hidden] {
   display: none;
 }
 #pwa-banner button {
   margin-left: 12px;
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale, 1));
 }
 .battle-active #pwa-banner {
   top: calc(var(--safe-top) + 4px);
   bottom: auto;
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
   padding: 4px;
   pointer-events: none;
   opacity: 0.6;
@@ -1669,7 +1669,7 @@ body.battle-active.touch-mode {
 }
 .battle-active.touch-mode .health-card > div:first-child {
   flex-wrap: nowrap;
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale, 1));
   gap: 4px;
   margin-bottom: 5px;
 }
@@ -1683,20 +1683,20 @@ body.battle-active.touch-mode {
   display: none;
 }
 .battle-active.touch-mode .health-card strong {
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale, 1));
 }
 .battle-active.touch-mode .health-track {
   height: 6px;
 }
 .battle-active.touch-mode .health-card > small {
-  font-size: 8px;
+  font-size: calc(8px * var(--text-scale, 1));
   margin-top: 3px;
 }
 .battle-active.touch-mode .timer-wrap strong {
-  font-size: 24px;
+  font-size: calc(24px * var(--text-scale, 1));
 }
 .battle-active.touch-mode .timer-wrap > span {
-  font-size: 6px;
+  font-size: calc(6px * var(--text-scale, 1));
   letter-spacing: 0;
 }
 .battle-active.touch-mode .mobile-tools {
@@ -1780,7 +1780,7 @@ dialog {
     gap: 14px;
   }
   .brand {
-    font-size: 18px;
+    font-size: calc(18px * var(--text-scale, 1));
   }
   .top-links {
     width: 100%;
@@ -1831,7 +1831,7 @@ dialog {
   border-radius: 9px;
   background: #253a5c;
   padding: 10px 13px;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   font-weight: 600;
   min-height: 40px;
   user-select: none;
@@ -1870,7 +1870,7 @@ dialog {
   padding: 12px 13px;
   min-height: 44px;
   border-radius: 7px;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   color: #dce7fa;
   width: 100%;
 }
@@ -1882,7 +1882,7 @@ dialog {
   margin: 7px 8px 2px;
   padding: 10px 0 3px;
   border-top: 1px solid #ffffff15;
-  font-size: 8px;
+  font-size: calc(8px * var(--text-scale, 1));
 }
 @media (min-width: 701px) {
   .header-menu-panel {
@@ -1987,7 +1987,7 @@ dialog {
 }
 .practice-settings > summary {
   cursor: pointer;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   font-weight: 600;
   list-style: none;
   color: var(--accent);
@@ -2030,11 +2030,11 @@ dialog {
 }
 .battle-active.touch-mode #mobile-fullscreen::before {
   content: "⛶";
-  font-size: 18px;
+  font-size: calc(18px * var(--text-scale, 1));
 }
 .battle-active.touch-mode #mobile-settings::before {
   content: "⚙";
-  font-size: 18px;
+  font-size: calc(18px * var(--text-scale, 1));
 }
 .battle-active.touch-mode .battle-footer {
   bottom: calc(var(--safe-bottom) + 7px);
@@ -2051,7 +2051,7 @@ dialog {
 }
 .battle-active.touch-mode #battle-menu::before {
   content: "☰";
-  font-size: 16px;
+  font-size: calc(16px * var(--text-scale, 1));
 }
 .battle-active.touch-mode #practice-controls {
   top: auto;
@@ -2068,7 +2068,7 @@ dialog {
   z-index: 26;
 }
 .battle-active.touch-mode .practice-settings > summary {
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
   height: 30px;
   padding: 6px 9px;
 }
@@ -2226,7 +2226,7 @@ body.battle-still .spectator {
 }
 .battle-active.touch-mode .battle-dock #battle-menu {
   width: auto;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   padding: 8px 14px;
 }
 .battle-active.touch-mode .battle-dock #battle-menu::before {
@@ -2239,7 +2239,7 @@ body.battle-still .spectator {
   display: flex;
   align-items: center;
   padding: 8px 14px;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   color: var(--accent);
 }
 .battle-active.touch-mode .battle-dock .practice-panel {
@@ -2267,7 +2267,7 @@ body.battle-still .spectator {
     0 75%,
     0 25%
   );
-  font-size: 24px;
+  font-size: calc(24px * var(--text-scale, 1));
   color: #fff7c8;
   box-shadow: 0 0 20px #ad9cea33;
 }
@@ -2284,7 +2284,7 @@ body.battle-still .spectator {
   filter: drop-shadow(0 15px 12px #030b2266);
 }
 .selected-art > span {
-  font-size: 8px;
+  font-size: calc(8px * var(--text-scale, 1));
   letter-spacing: 2px;
   color: #a4b9d1;
 }
@@ -2334,7 +2334,7 @@ body.battle-still .spectator {
     height: 145px;
   }
   .selected-art > span {
-    font-size: 6px;
+    font-size: calc(6px * var(--text-scale, 1));
     letter-spacing: 1px;
   }
 }
@@ -2447,14 +2447,14 @@ body.battle-still .spectator {
   border-radius: 20px;
   color: #ffe083;
   background: #101c35de;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
 }
 .enemy-bearing[hidden] {
   display: none;
 }
 .enemy-bearing span {
   display: inline-block;
-  font-size: 20px;
+  font-size: calc(20px * var(--text-scale, 1));
 }
 .player-nameplate {
   position: absolute;
@@ -2527,7 +2527,7 @@ body.battle-still .spectator {
 .player-name {
   display: block;
   color: var(--text);
-  font: 700 12px/1.4 sans-serif;
+  font: 700 calc(12px * var(--text-scale, 1))/1.4 sans-serif;
   text-shadow:
     0 1px 3px #000,
     0 0 5px #000;
@@ -2535,7 +2535,7 @@ body.battle-still .spectator {
 .player-title {
   display: block;
   color: var(--title-color);
-  font: 700 11px/1.5 sans-serif;
+  font: 700 calc(11px * var(--text-scale, 1))/1.5 sans-serif;
   letter-spacing: 0.3px;
   text-shadow: 0 0 8px var(--title-color);
 }
@@ -2566,7 +2566,7 @@ body.battle-still .spectator {
 .title-legendary::after {
   content: "✦";
   color: #ffe995;
-  font-size: 9px;
+  font-size: calc(9px * var(--text-scale, 1));
   margin: 0 5px;
   animation: title-sparkle 2s ease-in-out infinite;
 }
@@ -2666,7 +2666,7 @@ body.battle-still .spectator {
   border-radius: 999px;
   background: var(--element);
   color: #10192b;
-  font-size: 9px;
+  font-size: calc(9px * var(--text-scale, 1));
   font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -2739,7 +2739,7 @@ dialog.has-dialog-tabs {
   border-radius: 999px;
   background: #13223e;
   color: #c1cfe4;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   cursor: pointer;
 }
 .admin-tab.active,
@@ -2759,7 +2759,7 @@ dialog.has-dialog-tabs {
   border-radius: 999px;
   background: #ff5d6c;
   color: #fff;
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
 }
 .admin-tab.active .admin-count {
   background: #14243b;
@@ -2790,19 +2790,19 @@ dialog.has-dialog-tabs {
   gap: 8px;
 }
 .admin-row-head strong {
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale, 1));
 }
 .admin-row-head small {
   margin-left: auto;
   color: var(--muted);
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale, 1));
 }
 .admin-badge {
   padding: 2px 7px;
   border-radius: 999px;
   background: #f7d78033;
   color: #f7d780;
-  font-size: 9px;
+  font-size: calc(9px * var(--text-scale, 1));
   font-weight: 800;
   letter-spacing: 0.06em;
 }
@@ -2824,7 +2824,7 @@ dialog.has-dialog-tabs {
   border: 1px solid var(--chip);
   border-radius: 999px;
   color: var(--chip);
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale, 1));
   font-weight: 700;
 }
 .title-chip button {
@@ -2837,7 +2837,7 @@ dialog.has-dialog-tabs {
   border-radius: 50%;
   background: #ffffff14;
   color: var(--text);
-  font-size: 14px;
+  font-size: calc(14px * var(--text-scale, 1));
   line-height: 1;
   cursor: pointer;
 }
@@ -2851,7 +2851,7 @@ dialog.has-dialog-tabs {
   border-radius: 999px;
   background: #13223e;
   color: #c1cfe4;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
 }
 .admin-actions {
   display: flex;
@@ -2860,7 +2860,7 @@ dialog.has-dialog-tabs {
 }
 .admin-actions button {
   padding: 8px 14px;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
 }
 .danger-button {
   padding: 8px 14px;
@@ -2886,7 +2886,7 @@ dialog.has-dialog-tabs {
   border: 1px solid #ff5d6c55;
   border-radius: 8px;
   background: #ff5d6c12;
-  font-size: 13px;
+  font-size: calc(13px * var(--text-scale, 1));
 }
 .admin-confirm[hidden] {
   display: none;
@@ -2897,7 +2897,7 @@ dialog.has-dialog-tabs {
 .admin-confirm label {
   display: grid;
   gap: 6px;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   color: #c1cfe4;
 }
 .new-title-form {
@@ -2919,7 +2919,7 @@ dialog.has-dialog-tabs {
 }
 .new-title-form button {
   padding: 9px 14px;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
 }
 .report-card.resolved {
   opacity: 0.7;
@@ -2927,12 +2927,12 @@ dialog.has-dialog-tabs {
 .report-card > button {
   justify-self: start;
   padding: 8px 14px;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
 }
 .report-category {
   padding: 3px 9px;
   border-radius: 999px;
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
   font-weight: 800;
   letter-spacing: 0.04em;
   background: #63dce833;
@@ -2957,7 +2957,7 @@ dialog.has-dialog-tabs {
 }
 .report-context {
   color: var(--muted);
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
   overflow-wrap: anywhere;
 }
 .account-form textarea {
@@ -2974,7 +2974,7 @@ dialog.has-dialog-tabs {
   justify-self: end;
   margin-top: -8px;
   color: var(--muted);
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
 }
 .report-thanks {
   padding: 14px;
@@ -2988,7 +2988,7 @@ dialog.has-dialog-tabs {
   border-radius: 8px;
   background: #f7d7801a;
   color: #f7d780;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
 }
 .admin-title-tools {
   display: grid;
@@ -3002,7 +3002,7 @@ dialog.has-dialog-tabs {
   border-radius: 999px;
   background: #13223e;
   color: #ffb3ba;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
 }
 .fullscreen-steps {
   margin: 0.4rem 0 0.8rem;
@@ -3032,11 +3032,11 @@ dialog.has-dialog-tabs {
   gap: 6px 14px;
   margin-top: 14px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
 }
 .online-summary b {
   color: #fff;
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale, 1));
 }
 .online-summary button {
   margin-left: auto;
@@ -3081,7 +3081,7 @@ dialog.has-dialog-tabs {
   border-radius: 999px;
   background: #ffffff12;
   color: #c1cfe4;
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -3096,14 +3096,14 @@ dialog.has-dialog-tabs {
   align-items: center;
   gap: 8px;
   color: #c1cfe4;
-  font-size: 13px;
+  font-size: calc(13px * var(--text-scale, 1));
 }
 .online-activity code {
   padding: 1px 6px;
   border-radius: 4px;
   background: #0d1a30;
   color: #f7d780;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   letter-spacing: 0.08em;
 }
 .online-activity button {
@@ -3111,7 +3111,7 @@ dialog.has-dialog-tabs {
 }
 .online-note {
   color: var(--muted);
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale, 1));
 }
 .briefing-versus {
   display: flex;
@@ -3134,16 +3134,16 @@ dialog.has-dialog-tabs {
   filter: drop-shadow(0 8px 8px #0008);
 }
 .vs-fighter b {
-  font-size: 14px;
+  font-size: calc(14px * var(--text-scale, 1));
 }
 .vs-fighter span {
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale, 1));
   color: var(--element);
   letter-spacing: 0.06em;
 }
 .vs-mark {
   font:
-    900 22px/1 system-ui,
+    900 calc(22px * var(--text-scale, 1))/1 system-ui,
     sans-serif;
   color: #f7d780;
   letter-spacing: 0.08em;
@@ -3175,10 +3175,10 @@ dialog.has-dialog-tabs {
     grid-row: span 2;
   }
   .vs-fighter b {
-    font-size: 12px;
+    font-size: calc(12px * var(--text-scale, 1));
   }
   .vs-mark {
-    font-size: 16px;
+    font-size: calc(16px * var(--text-scale, 1));
   }
 }
 @media (max-width: 700px) {
@@ -3206,10 +3206,10 @@ dialog.has-dialog-tabs {
   text-align: center;
 }
 .bot-level b {
-  font-size: 13px;
+  font-size: calc(13px * var(--text-scale, 1));
 }
 .bot-level small {
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
   color: var(--muted);
 }
 .bot-level.active {
@@ -3331,7 +3331,7 @@ dialog.has-dialog-tabs {
   background: #101c35d9;
   border: 1px solid #5ab0ff88;
   color: #cfe6ff;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   font-weight: 700;
   letter-spacing: 0.04em;
   white-space: nowrap;
@@ -3370,11 +3370,11 @@ body::before {
   margin: 8px auto 0;
   max-width: 520px;
   color: var(--muted);
-  font-size: 14px;
+  font-size: calc(14px * var(--text-scale, 1));
   letter-spacing: 0.04em;
 }
 .result-score b {
-  font-size: 34px;
+  font-size: calc(34px * var(--text-scale, 1));
   font-weight: 800;
   line-height: 1;
   color: #fff;
@@ -3389,7 +3389,7 @@ body::before {
 .result-score i {
   font-style: normal;
   color: #ffffff55;
-  font-size: 22px;
+  font-size: calc(22px * var(--text-scale, 1));
 }
 .result-score span {
   min-width: 0;
@@ -3547,7 +3547,7 @@ body.battle-active:not(.touch-mode) .battle-footer {
     padding: 16px 28px;
   }
   .overlay-card h2 {
-    font-size: 32px;
+    font-size: calc(32px * var(--text-scale, 1));
     margin: 4px 0 8px;
   }
   .briefing-versus {
@@ -3580,7 +3580,7 @@ body.battle-active:not(.touch-mode) .battle-footer {
     display: none;
   }
   .overlay-card h2 {
-    font-size: 26px;
+    font-size: calc(26px * var(--text-scale, 1));
     margin: 0 0 4px;
   }
   .vs-fighter svg {
@@ -3605,7 +3605,7 @@ dialog:has(.bindings) {
   gap: 8px;
 }
 .cast-mode legend {
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
   letter-spacing: 1px;
   color: #c1cfe4;
   margin-bottom: 8px;
@@ -3621,7 +3621,7 @@ dialog label.choice {
   border: 1px solid #ffffff14;
   border-radius: 8px;
   background: #ffffff06;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   letter-spacing: 0;
   cursor: pointer;
 }
@@ -3652,10 +3652,10 @@ dialog label.choice.assist {
   grid-template-columns: minmax(0, 1fr) 92px 92px;
   gap: 8px;
   align-items: center;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
 }
 .binding-head {
-  font-size: 9px;
+  font-size: calc(9px * var(--text-scale, 1));
   letter-spacing: 1px;
   color: var(--muted);
   text-transform: uppercase;
@@ -3665,14 +3665,14 @@ dialog label.choice.assist {
 }
 .binding-group {
   margin: 10px 0 2px;
-  font-size: 9px;
+  font-size: calc(9px * var(--text-scale, 1));
   letter-spacing: 1.5px;
   color: var(--lime);
   text-transform: uppercase;
 }
 button.binding {
   font:
-    600 11px "DM Sans",
+    600 calc(11px * var(--text-scale, 1)) "DM Sans",
     sans-serif;
   color: #dce5f6;
   background: #ffffff0a;
@@ -3692,7 +3692,7 @@ button.binding.listening {
   border-color: var(--lime);
   background: color-mix(in srgb, var(--ui-accent) 11%, transparent);
   color: var(--lime);
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
   animation: binding-pulse 1s ease-in-out infinite;
 }
 @keyframes binding-pulse {
@@ -3707,14 +3707,14 @@ button.binding.listening {
 }
 .binding-note {
   min-height: 2.8em;
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale, 1));
   color: var(--muted);
 }
 .pad-map {
   margin: 14px 0;
   padding-top: 14px;
   border-top: 1px solid #ffffff12;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
 }
 .pad-map small {
   color: var(--muted);
@@ -3725,7 +3725,7 @@ button.binding.listening {
   margin: 12px 0 0;
   grid-template-columns: 1fr 1fr;
   gap: 6px 14px;
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale, 1));
 }
 .pad-map .controls-list > span {
   grid-template-columns: 68px minmax(0, 1fr);
@@ -3942,10 +3942,10 @@ html.scroll-locked {
   margin: 16px auto 10px;
   border-collapse: collapse;
   font-variant-numeric: tabular-nums;
-  font-size: 13px;
+  font-size: calc(13px * var(--text-scale, 1));
 }
 .recap thead th {
-  font-size: 9px;
+  font-size: calc(9px * var(--text-scale, 1));
   letter-spacing: 1px;
   color: var(--muted);
   font-weight: 600;
@@ -3976,7 +3976,7 @@ html.scroll-locked {
 .recap tbody th small {
   margin-left: 6px;
   color: var(--muted);
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
 }
 .recap tbody th small.who {
   display: block;
@@ -4007,7 +4007,7 @@ html.scroll-locked {
   border-radius: 4px;
   background: #ffd166;
   color: #1b2340;
-  font-size: 9px;
+  font-size: calc(9px * var(--text-scale, 1));
   font-style: normal;
   font-weight: 800;
   letter-spacing: 0.5px;
@@ -4018,7 +4018,7 @@ html.scroll-locked {
   justify-content: center;
   gap: 4px 16px;
   margin: 0 auto 16px;
-  font-size: 13px;
+  font-size: calc(13px * var(--text-scale, 1));
 }
 .records b {
   color: #fff;
@@ -4027,12 +4027,12 @@ html.scroll-locked {
 .records .muted,
 .records.muted {
   color: var(--muted);
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
 }
 @media (max-height: 500px) {
   .recap {
     margin: 4px auto 2px;
-    font-size: 12px;
+    font-size: calc(12px * var(--text-scale, 1));
   }
   .recap thead th {
     padding-bottom: 2px;
@@ -4047,23 +4047,23 @@ html.scroll-locked {
   }
   .records {
     margin-bottom: 6px;
-    font-size: 12px;
+    font-size: calc(12px * var(--text-scale, 1));
   }
   .battle-active.touch-mode .overlay-card:has(.recap) .eyebrow {
     display: none;
   }
   .battle-active.touch-mode .overlay-card:has(.recap) h2 {
-    font-size: 22px;
+    font-size: calc(22px * var(--text-scale, 1));
     margin: 0 0 2px;
   }
   .battle-active.touch-mode .overlay-card:has(.recap) .result-score b {
-    font-size: 26px;
+    font-size: calc(26px * var(--text-scale, 1));
   }
 }
 @container (max-height: 470px) {
   .recap {
     margin: 6px auto 4px;
-    font-size: 12px;
+    font-size: calc(12px * var(--text-scale, 1));
   }
   .recap tbody th,
   .recap td {
@@ -4097,7 +4097,7 @@ html.scroll-locked {
 }
 /* ---- Party rules (lobby) ---- */
 .party-note {
-  font-size: 13px;
+  font-size: calc(13px * var(--text-scale, 1));
 }
 /* Free-for-all standings on the result card. */
 .standings {
@@ -4115,7 +4115,7 @@ html.scroll-locked {
   gap: 10px;
   padding: 4px 10px;
   border-radius: 8px;
-  font-size: 14px;
+  font-size: calc(14px * var(--text-scale, 1));
 }
 .standings li:first-child {
   background: #ffd16622;
@@ -4125,7 +4125,7 @@ html.scroll-locked {
 }
 .standings li span {
   color: var(--muted);
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
 }
 .standings li b {
   overflow: hidden;
@@ -4135,12 +4135,12 @@ html.scroll-locked {
 .standings li small {
   color: var(--muted);
   font-weight: 400;
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale, 1));
 }
 .standings li em {
   font-style: normal;
   font-weight: 800;
-  font-size: 20px;
+  font-size: calc(20px * var(--text-scale, 1));
   font-variant-numeric: tabular-nums;
 }
 /* Free-for-all briefing: three or four smaller fighters in a row. */
@@ -4157,7 +4157,7 @@ html.scroll-locked {
   height: 57px;
 }
 .briefing-versus.ffa .vs-mark {
-  font-size: 16px;
+  font-size: calc(16px * var(--text-scale, 1));
 }
 @media (max-height: 500px) {
   .briefing-versus.ffa .vs-fighter {
@@ -4204,7 +4204,7 @@ body.spectating #control-hints {
 .teamup-note {
   margin: 10px auto 4px;
   max-width: 560px;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   line-height: 1.45;
   color: #d9e6f5;
 }
@@ -4221,7 +4221,7 @@ body.spectating #control-hints {
 /* ---- Friends ---- */
 button.small {
   padding: 6px 10px;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
 }
 .records .add-friend {
   margin: 0;
@@ -4415,7 +4415,7 @@ button.small {
 }
 .rite-head .rite-tier em {
   font-style: normal;
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
   letter-spacing: 0.04em;
   text-transform: none;
   font-weight: 700;
@@ -4594,7 +4594,7 @@ dialog:has(.illustrated-guide) {
 }
 .guide-section-heading h3 {
   margin: 5px 0 0;
-  font-size: 20px;
+  font-size: calc(20px * var(--text-scale, 1));
 }
 .guide-grid {
   display: grid;
@@ -4621,12 +4621,12 @@ dialog:has(.illustrated-guide) {
   padding: 12px 14px 14px;
 }
 .guide-caption h3 {
-  font: 700 14px var(--font-body, sans-serif);
+  font: 700 calc(14px * var(--text-scale, 1)) var(--font-body, sans-serif);
   color: #f2f5ff;
   margin: 0 0 6px;
 }
 .guide-caption p {
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   line-height: 1.55;
   color: #b8c7dc;
   margin: 0;
@@ -4676,7 +4676,7 @@ dialog:has(.illustrated-guide) {
   left: 68%;
   top: 50px;
   color: #ffd66c;
-  font-size: 28px;
+  font-size: calc(28px * var(--text-scale, 1));
 }
 .guide-ground-zone {
   position: absolute;
@@ -4746,7 +4746,7 @@ dialog:has(.illustrated-guide) {
   grid-column: 1;
   grid-row: 2;
   text-align: center;
-  font-size: 28px;
+  font-size: calc(28px * var(--text-scale, 1));
   color: #c6e7ff;
   line-height: 20px;
 }
@@ -4754,7 +4754,7 @@ dialog:has(.illustrated-guide) {
   grid-column: 2;
   grid-row: 2;
   text-align: center;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   font-weight: 800;
   color: var(--accent);
   padding-top: 5px;
@@ -4796,7 +4796,7 @@ dialog:has(.illustrated-guide) {
   width: 100%;
   text-align: center;
   bottom: 14px;
-  font-size: 9px;
+  font-size: calc(9px * var(--text-scale, 1));
   letter-spacing: 1.5px;
   color: #ffe08a;
 }
@@ -4804,7 +4804,7 @@ dialog:has(.illustrated-guide) {
   position: absolute;
   left: 18%;
   top: 28px;
-  font-size: 36px;
+  font-size: calc(36px * var(--text-scale, 1));
   font-weight: 900;
   font-style: italic;
   color: #b2dbff;
@@ -4850,7 +4850,7 @@ dialog:has(.illustrated-guide) {
 .guide-orb-label {
   position: static;
   display: block;
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
   font-weight: 800;
   letter-spacing: 0.5px;
   line-height: 1.3;
@@ -4889,7 +4889,7 @@ dialog:has(.illustrated-guide) {
   left: 0;
   width: 100%;
   text-align: center;
-  font-size: 9px;
+  font-size: calc(9px * var(--text-scale, 1));
   letter-spacing: 1.5px;
   color: #ffb0c3;
 }
@@ -4914,13 +4914,13 @@ dialog:has(.illustrated-guide) {
   top: 42px;
   left: 43%;
   color: var(--accent);
-  font-size: 20px;
+  font-size: calc(20px * var(--text-scale, 1));
 }
 .guide-rank-star {
   position: absolute;
   top: 24px;
   right: 13%;
-  font-size: 50px;
+  font-size: calc(50px * var(--text-scale, 1));
   color: var(--accent);
   text-shadow: 0 0 20px color-mix(in srgb, var(--ui-accent) 53.3%, transparent);
 }
@@ -4930,7 +4930,7 @@ dialog:has(.illustrated-guide) {
   bottom: 16px;
   width: 100%;
   text-align: center;
-  font-size: 9px;
+  font-size: calc(9px * var(--text-scale, 1));
   font-weight: 700;
   color: #ffe49c;
   letter-spacing: 1px;
@@ -4942,16 +4942,16 @@ dialog:has(.illustrated-guide) {
   border: 1px solid #ed708c44;
   border-radius: 10px;
   padding: 12px;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   line-height: 1.5;
   background: #db5b7810;
 }
 .guide-overtime > span:first-child {
-  font-size: 26px;
+  font-size: calc(26px * var(--text-scale, 1));
   color: #f3a9ba;
 }
 .guide-rank-note {
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale, 1));
   color: #9cacc7;
 }
 @media (max-width: 480px) {
@@ -4965,10 +4965,10 @@ dialog:has(.illustrated-guide) {
     padding: 10px;
   }
   .guide-caption h3 {
-    font-size: 12px;
+    font-size: calc(12px * var(--text-scale, 1));
   }
   .guide-caption p {
-    font-size: 11px;
+    font-size: calc(11px * var(--text-scale, 1));
   }
   .guide-fighter {
     width: 76px;
@@ -5001,7 +5001,7 @@ dialog:has(.illustrated-guide) {
     height: 42px;
   }
   .guide-clock {
-    font-size: 10px;
+    font-size: calc(10px * var(--text-scale, 1));
   }
   .guide-ultimate {
     width: 54px;
@@ -5012,7 +5012,7 @@ dialog:has(.illustrated-guide) {
   }
   .guide-ex {
     left: 9%;
-    font-size: 28px;
+    font-size: calc(28px * var(--text-scale, 1));
   }
   .guide-ex + .guide-move {
     width: 52px;
@@ -5025,7 +5025,7 @@ dialog:has(.illustrated-guide) {
   }
 
   .guide-orb-label {
-    font-size: 8px;
+    font-size: calc(8px * var(--text-scale, 1));
     letter-spacing: 0.2px;
   }
 
@@ -5040,15 +5040,15 @@ dialog:has(.illustrated-guide) {
     height: 28px;
   }
   .guide-rank-star {
-    font-size: 40px;
+    font-size: calc(40px * var(--text-scale, 1));
     right: 7%;
   }
   .guide-rank-path {
-    font-size: 14px;
+    font-size: calc(14px * var(--text-scale, 1));
     left: 42%;
   }
   .guide-rank-label {
-    font-size: 8px;
+    font-size: calc(8px * var(--text-scale, 1));
     letter-spacing: 0;
   }
   .guide-safe-ring {
@@ -5066,7 +5066,7 @@ dialog:has(.illustrated-guide) {
   .guide-meter b {
     width: auto;
     right: 0;
-    font-size: 8px;
+    font-size: calc(8px * var(--text-scale, 1));
   }
 }
 
@@ -5124,11 +5124,11 @@ dialog:has(.illustrated-guide) {
   justify-content: space-between;
   gap: 10px;
   color: #ffdc92;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
 }
 .raid-boss-heading span {
   color: #a8bbd5;
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
 }
 .raid-boss-health {
   position: relative;
@@ -5173,7 +5173,7 @@ dialog:has(.illustrated-guide) {
   top: 6px;
   right: 0;
   color: #a7f4e5;
-  font-size: 7px;
+  font-size: calc(7px * var(--text-scale, 1));
   letter-spacing: 1px;
 }
 .raid-party-bars {
@@ -5185,7 +5185,7 @@ dialog:has(.illustrated-guide) {
   display: grid;
   flex: 1;
   min-width: 0;
-  font-size: 9px;
+  font-size: calc(9px * var(--text-scale, 1));
   gap: 3px;
 }
 .raid-party-bars b {
@@ -5200,14 +5200,14 @@ dialog:has(.illustrated-guide) {
 }
 .raid-party-bars small {
   color: #a6b9d2;
-  font-size: 8px;
+  font-size: calc(8px * var(--text-scale, 1));
 }
 .raid-party-bars .downed {
   color: #f5acac;
 }
 .raid-callout {
   color: #f7d998;
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
   line-height: 1.4;
   margin: 9px 0 0;
 }
@@ -5232,7 +5232,7 @@ dialog:has(.illustrated-guide) {
 .raid-team small,
 .raid-small {
   color: #a8bbd5;
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale, 1));
   line-height: 1.6;
 }
 .raid-instructions {
@@ -5256,11 +5256,11 @@ dialog:has(.illustrated-guide) {
   height: 36px;
 }
 .raid-instructions b {
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
 }
 .raid-instructions small {
   color: #b5c5db;
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale, 1));
   line-height: 1.5;
 }
 /* A fixed icon track keeps every title and wrapped description aligned. */
@@ -5312,13 +5312,13 @@ dialog:has(.illustrated-guide) {
 }
 .raid-rite-copy b {
   color: #f1f5ff;
-  font-size: 14px;
+  font-size: calc(14px * var(--text-scale, 1));
   font-weight: 700;
   line-height: 1.3;
 }
 .raid-rite-copy small {
   color: #b4c7dd;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   font-weight: 400;
   line-height: 1.5;
 }
@@ -5356,17 +5356,17 @@ dialog:has(.illustrated-guide) {
   background: radial-gradient(ellipse, #c1a16a40, transparent 70%);
 }
 .raid-bestiary-art span {
-  font-size: 80px;
+  font-size: calc(80px * var(--text-scale, 1));
   color: #e7bd72;
   text-shadow: 0 0 25px #cf975c;
 }
 .raid-bestiary-art b {
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
   letter-spacing: 3px;
   color: #ffdf9d;
 }
 .raid-board p {
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   line-height: 1.6;
 }
 .raid-board {
@@ -5377,10 +5377,10 @@ dialog:has(.illustrated-guide) {
 }
 @media (max-width: 600px) {
   .raid-boss-heading {
-    font-size: 10px;
+    font-size: calc(10px * var(--text-scale, 1));
   }
   .raid-boss-heading span {
-    font-size: 8px;
+    font-size: calc(8px * var(--text-scale, 1));
   }
   .raid-instructions {
     gap: 6px;
@@ -5389,10 +5389,10 @@ dialog:has(.illustrated-guide) {
     padding: 8px;
   }
   .raid-instructions b {
-    font-size: 10px;
+    font-size: calc(10px * var(--text-scale, 1));
   }
   .raid-instructions small {
-    font-size: 9px;
+    font-size: calc(9px * var(--text-scale, 1));
   }
 }
 @media (orientation: landscape) and (max-height: 600px) {
@@ -5409,7 +5409,7 @@ dialog:has(.illustrated-guide) {
     display: none;
   }
   .raid-stagger span {
-    font-size: 6px;
+    font-size: calc(6px * var(--text-scale, 1));
     top: 4px;
   }
   .raid-boss-health {
@@ -5420,7 +5420,7 @@ dialog:has(.illustrated-guide) {
     margin-bottom: 8px;
   }
   .raid-overlay p {
-    font-size: 11px;
+    font-size: calc(11px * var(--text-scale, 1));
   }
   .raid-instructions {
     margin: 8px 0;
@@ -5461,10 +5461,10 @@ body.battle-raid:not(.touch-mode) #battle {
     height: 26px;
   }
   .raid-rite-copy b {
-    font-size: 13px;
+    font-size: calc(13px * var(--text-scale, 1));
   }
   .raid-rite-copy small {
-    font-size: 11px;
+    font-size: calc(11px * var(--text-scale, 1));
   }
   .raid-instructions > span {
     grid-template-rows: 25px auto 1fr;
@@ -5664,7 +5664,7 @@ body.battle-raid:not(.touch-mode) #battle {
 .raid-guide-scene text {
   fill: #b8d6db;
   font:
-    700 9px Inter,
+    700 calc(9px * var(--text-scale, 1)) Inter,
     sans-serif;
   text-anchor: middle;
   letter-spacing: 1px;
@@ -5673,7 +5673,7 @@ body.battle-raid:not(.touch-mode) #battle {
   width: min(720px, 100%);
 }
 .raid-overlay:has(.raid-guide-scene) h2 {
-  font-size: 34px;
+  font-size: calc(34px * var(--text-scale, 1));
   margin: 8px 0;
 }
 .raid-guide-charger {
@@ -5748,7 +5748,7 @@ body.battle-raid:not(.touch-mode) #battle {
     height: 74px;
   }
   .raid-overlay:has(.raid-guide-scene) h2 {
-    font-size: 26px;
+    font-size: calc(26px * var(--text-scale, 1));
   }
   .raid-overlay:has(.raid-guide-scene) .raid-instructions {
     margin: 8px 0;
@@ -5780,11 +5780,11 @@ body.battle-raid:not(.touch-mode) #battle {
     align-self: center;
   }
   .raid-instructions b {
-    font-size: 13px;
+    font-size: calc(13px * var(--text-scale, 1));
     align-self: end;
   }
   .raid-instructions small {
-    font-size: 11px;
+    font-size: calc(11px * var(--text-scale, 1));
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -5804,7 +5804,7 @@ body.battle-raid:not(.touch-mode) #battle {
 .raid-peril-label {
   display: block;
   margin: 0 0 7px;
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
   letter-spacing: 0.3px;
   color: #acbdd3;
 }
@@ -5821,7 +5821,7 @@ body.battle-raid:not(.touch-mode) #battle {
   background: #12223a;
   color: #edf3ff;
   font:
-    600 12px Inter,
+    600 calc(12px * var(--text-scale, 1)) Inter,
     sans-serif;
   cursor: pointer;
 }
@@ -5840,7 +5840,7 @@ body.battle-raid:not(.touch-mode) #battle {
 }
 .raid-unlock-note {
   margin: 8px 0 0;
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
   line-height: 1.5;
   color: #94a9c5;
 }
@@ -5885,12 +5885,12 @@ body.battle-raid:not(.touch-mode) #battle {
   flex: 0 0 18px;
 }
 .raid-choice-timer > span {
-  font-size: 9px;
+  font-size: calc(9px * var(--text-scale, 1));
   font-weight: 700;
   letter-spacing: 0.8px;
 }
 .raid-choice-timer strong {
-  font-size: 16px;
+  font-size: calc(16px * var(--text-scale, 1));
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   line-height: 1.2;
@@ -5901,14 +5901,14 @@ body.battle-raid:not(.touch-mode) #battle {
   color: #ffb5bb;
 }
 .rite-timer .live-seconds {
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale, 1));
   font-weight: 800;
   color: #ffe399;
   font-variant-numeric: tabular-nums;
 }
 @media (orientation: landscape) and (max-height: 600px) {
   .raid-overlay:has(.raid-rite-options) h2 {
-    font-size: 30px;
+    font-size: calc(30px * var(--text-scale, 1));
     margin: 8px 0;
   }
   .raid-rite-intro {
@@ -5941,7 +5941,7 @@ body.battle-raid:not(.touch-mode) #battle {
 .raid-rite-intro > span:first-child {
   flex: 1;
   min-width: 120px;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   line-height: 1.5;
 }
 .raid-choice-timer {
@@ -5985,7 +5985,7 @@ body.battle-raid:not(.touch-mode) #battle {
     height: 16px;
   }
   .raid-choice-timer strong {
-    font-size: 15px;
+    font-size: calc(15px * var(--text-scale, 1));
   }
   .raid-rite-copy {
     padding: 0;
@@ -6023,7 +6023,7 @@ body.battle-raid:not(.touch-mode) #battle {
   display: block;
   min-width: 4.5ch;
   text-align: right;
-  font-size: 23px;
+  font-size: calc(23px * var(--text-scale, 1));
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   line-height: 1;
@@ -6038,7 +6038,7 @@ body.battle-raid:not(.touch-mode) #battle {
     gap: 6px;
   }
   .raid-elapsed b {
-    font-size: 21px;
+    font-size: calc(21px * var(--text-scale, 1));
   }
   .raid-elapsed > svg {
     width: 16px;
@@ -6053,7 +6053,7 @@ body.battle-raid:not(.touch-mode) #battle {
   height: 42px;
 }
 .raid-reward > small {
-  font-size: 9px;
+  font-size: calc(9px * var(--text-scale, 1));
   line-height: 1.4;
   color: #91a6c1;
 }
@@ -6150,7 +6150,7 @@ body.battle-active {
   border-radius: 10px;
   background: #12223a;
   color: #edf3ff;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   font-weight: 600;
   text-align: left;
 }
@@ -6206,11 +6206,11 @@ body.battle-active {
   gap: 4px;
 }
 .raid-peril-options b {
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   line-height: 1.3;
 }
 .raid-peril-options small {
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
   line-height: 1.4;
   color: #a9bbd4;
 }
@@ -6222,7 +6222,7 @@ body.battle-active {
   border: 1px solid #7996bb44;
   border-radius: 8px;
   color: #c4d0e4;
-  font-size: 13px;
+  font-size: calc(13px * var(--text-scale, 1));
   font-weight: 800;
 }
 .raid-peril-options > button[aria-selected="true"] {
@@ -6242,7 +6242,7 @@ body.battle-active {
 }
 .raid-peril-check {
   text-align: center;
-  font-size: 14px;
+  font-size: calc(14px * var(--text-scale, 1));
 }
 
 /* Frosted lobby navigation lets the coliseum show through without losing contrast. */
@@ -6287,7 +6287,7 @@ body.lobby-active::before {
   scrollbar-gutter: stable;
 }
 .raid-overlay .raid-phase-objective {
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   line-height: 1.6;
   text-align: left;
   color: #c0d0e4;
@@ -6308,14 +6308,14 @@ body.lobby-active::before {
   align-items: baseline;
 }
 .raid-team-builds b {
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale, 1));
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   color: #e7eef9;
 }
 .raid-team-builds span {
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
   line-height: 1.5;
   color: #a9c0d7;
   overflow-wrap: anywhere;
@@ -6343,12 +6343,12 @@ body.lobby-active::before {
 }
 /* Champion, then award chips beside it; chips wrap below when narrow. */
 .raid-next-reward > span {
-  font-size: 9px;
+  font-size: calc(9px * var(--text-scale, 1));
   letter-spacing: 1px;
   color: #c9b68c;
 }
 .raid-next-reward > b {
-  font-size: 14px;
+  font-size: calc(14px * var(--text-scale, 1));
   color: #ffe099;
   line-height: 1.4;
 }
@@ -6372,7 +6372,7 @@ body.lobby-active::before {
   background: #e7c578;
 }
 .raid-next-reward p {
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale, 1));
   line-height: 1.5;
   margin: 0;
 }
@@ -6387,7 +6387,7 @@ body.lobby-active::before {
 }
 @media (orientation: landscape) and (max-height: 600px) {
   .raid-overlay .raid-phase-objective {
-    font-size: 11px;
+    font-size: calc(11px * var(--text-scale, 1));
     margin: 8px 0;
   }
 }
@@ -6406,12 +6406,12 @@ body.lobby-active::before {
   background: #0c1b32df;
 }
 .touch-mode .raid-boss-heading {
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
   line-height: 1.2;
   gap: 8px;
 }
 .touch-mode .raid-boss-heading span {
-  font-size: 8px;
+  font-size: calc(8px * var(--text-scale, 1));
 }
 .touch-mode .raid-boss-health {
   height: 5px;
@@ -6428,7 +6428,7 @@ body.lobby-active::before {
   right: auto;
   width: 100px;
   text-align: right;
-  font-size: 6px;
+  font-size: calc(6px * var(--text-scale, 1));
   line-height: 8px;
   letter-spacing: 0.4px;
   white-space: nowrap;
@@ -6440,7 +6440,7 @@ body.lobby-active::before {
 .touch-mode .raid-party-bars > span {
   grid-template-rows: auto 3px;
   gap: 2px;
-  font-size: 8px;
+  font-size: calc(8px * var(--text-scale, 1));
 }
 .touch-mode .raid-party-bars i {
   height: 3px;
@@ -6450,7 +6450,7 @@ body.lobby-active::before {
 }
 .touch-mode .raid-party-bars :is(.downed, .is-targeted) small {
   display: block;
-  font-size: 7px;
+  font-size: calc(7px * var(--text-scale, 1));
   line-height: 1.2;
 }
 .touch-mode .raid-party-bars[data-party-size="1"] {
@@ -6462,7 +6462,7 @@ body.lobby-active::before {
   align-items: center;
 }
 .touch-mode .raid-status-row .raid-callout {
-  font-size: 9px;
+  font-size: calc(9px * var(--text-scale, 1));
   line-height: 1.3;
 }
 .touch-mode .raid-elapsed {
@@ -6473,7 +6473,7 @@ body.lobby-active::before {
   height: 11px;
 }
 .touch-mode .raid-elapsed b {
-  font-size: 14px;
+  font-size: calc(14px * var(--text-scale, 1));
   letter-spacing: 0;
 }
 
@@ -6486,13 +6486,13 @@ body.lobby-active::before {
   width: min(1040px, 100%);
 }
 .raid-draft h2 {
-  font-size: 30px;
+  font-size: calc(30px * var(--text-scale, 1));
   margin: 6px 0;
   line-height: 1.15;
 }
 .raid-draft .raid-phase-objective {
   margin: 8px 0;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   line-height: 1.5;
 }
 .raid-draft .raid-rite-intro {
@@ -6511,7 +6511,7 @@ body.lobby-active::before {
 .raid-team-summary > summary {
   padding: 10px 0;
   min-height: 36px;
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale, 1));
   color: #b7cbe1;
   cursor: pointer;
 }
@@ -6557,13 +6557,13 @@ body.lobby-active::before {
     text-align: center;
   }
   .raid-draft .raid-rite-copy b {
-    font-size: 14px;
+    font-size: calc(14px * var(--text-scale, 1));
     line-height: 1.3;
     text-align: center;
     align-self: center;
   }
   .raid-draft .raid-rite-copy small {
-    font-size: 12px;
+    font-size: calc(12px * var(--text-scale, 1));
     line-height: 1.5;
     min-height: 0;
     text-align: center;
@@ -6574,15 +6574,15 @@ body.lobby-active::before {
     padding: 10px 18px;
   }
   .raid-draft > .eyebrow {
-    font-size: 8px;
+    font-size: calc(8px * var(--text-scale, 1));
     line-height: 1.2;
   }
   .raid-overlay.raid-draft h2 {
-    font-size: 23px;
+    font-size: calc(23px * var(--text-scale, 1));
     margin: 4px 0;
   }
   .raid-draft .raid-phase-objective {
-    font-size: 11px;
+    font-size: calc(11px * var(--text-scale, 1));
     line-height: 1.35;
     margin: 6px 0;
   }
@@ -6590,7 +6590,7 @@ body.lobby-active::before {
     margin: 6px 0 8px;
   }
   .raid-draft .raid-rite-intro > span:first-child {
-    font-size: 11px;
+    font-size: calc(11px * var(--text-scale, 1));
   }
   .raid-draft .raid-choice-timer {
     min-height: 28px;
@@ -6618,10 +6618,10 @@ body.lobby-active::before {
     gap: 3px;
   }
   .raid-draft .raid-rite-copy b {
-    font-size: 12px;
+    font-size: calc(12px * var(--text-scale, 1));
   }
   .raid-draft .raid-rite-copy small {
-    font-size: 11px;
+    font-size: calc(11px * var(--text-scale, 1));
     line-height: 1.4;
   }
   .raid-draft .raid-team-summary {
@@ -6633,7 +6633,7 @@ body.lobby-active::before {
     padding: 14px;
   }
   .raid-draft h2 {
-    font-size: 25px;
+    font-size: calc(25px * var(--text-scale, 1));
   }
   .raid-draft .raid-rite-options {
     gap: 8px;
@@ -6651,10 +6651,10 @@ body.lobby-active::before {
     padding: 10px;
   }
   .raid-draft h2 {
-    font-size: 23px;
+    font-size: calc(23px * var(--text-scale, 1));
   }
   .raid-draft .raid-phase-objective {
-    font-size: 11px;
+    font-size: calc(11px * var(--text-scale, 1));
     line-height: 1.4;
     margin: 6px 0;
   }
@@ -6707,12 +6707,12 @@ body.lobby-active::before {
 }
 .raid-perks h3 {
   margin: 0 0 4px;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
 }
 .raid-perks ul {
   margin: 0;
   padding-left: 18px;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   line-height: 1.5;
 }
 /* "What downed you" in the downed banner. */
@@ -6722,7 +6722,7 @@ body.lobby-active::before {
 .battle-raid .spectate-banner small {
   display: block;
   margin-top: 4px;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   font-weight: 500;
   line-height: 1.4;
   max-width: 460px;
@@ -6758,7 +6758,7 @@ button.leave-button.secondary {
 }
 button.leave-button.quiet {
   padding: 12px 16px;
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale, 1));
 }
 .leave-button:hover:not(:disabled),
 .leave-button:focus-visible {
@@ -6780,7 +6780,7 @@ button.leave-button.quiet {
   gap: 8px;
 }
 .leave-button.is-costly small {
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
   font-weight: 500;
   color: #ffb3bb;
 }
@@ -6896,7 +6896,7 @@ button.small .button-icon {
 .raid-boss-head p {
   margin: 4px 0 0;
   color: #c1cfe4;
-  font-size: 13px;
+  font-size: calc(13px * var(--text-scale, 1));
 }
 .raid-cosmetic-preview[data-cosmetic="rockslide-flex"] {
   align-items: start;
@@ -6928,15 +6928,15 @@ button.small .button-icon {
     border-radius: 10px;
   }
   .raid-boss-head h2 {
-    font-size: 22px;
+    font-size: calc(22px * var(--text-scale, 1));
     line-height: 1.15;
     margin: 2px 0;
   }
   .raid-boss-head .eyebrow {
-    font-size: 9px;
+    font-size: calc(9px * var(--text-scale, 1));
   }
   .raid-boss-head p {
-    font-size: 11px;
+    font-size: calc(11px * var(--text-scale, 1));
     margin: 2px 0 0;
   }
 }
@@ -6950,10 +6950,10 @@ button.small .button-icon {
     height: 56px;
   }
   .raid-boss-head h2 {
-    font-size: 23px;
+    font-size: calc(23px * var(--text-scale, 1));
   }
   .raid-boss-head p {
-    font-size: 11px;
+    font-size: calc(11px * var(--text-scale, 1));
   }
 }
 
@@ -7298,7 +7298,7 @@ button.small .button-icon {
   border: 1px solid color-mix(in srgb, var(--ui-accent) 33.3%, transparent);
   color: #ffe39a;
   font-weight: 700;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   line-height: 1.2;
   white-space: nowrap;
 }
@@ -7362,7 +7362,7 @@ button.small .button-icon {
     flex-wrap: nowrap;
   }
   body:not(.battle-active) .brand {
-    font-size: 16px;
+    font-size: calc(16px * var(--text-scale, 1));
     gap: 5px;
     flex: none;
   }
@@ -7400,7 +7400,7 @@ button.small .button-icon {
     padding: 14px;
   }
   #menu .room-panel h2 {
-    font-size: 24px;
+    font-size: calc(24px * var(--text-scale, 1));
     margin: 8px 0 12px;
   }
   #menu .selected-art :is(svg, .creature-portrait) {
@@ -7416,7 +7416,7 @@ button.small .button-icon {
   }
   dialog h2 {
     margin: 6px 0 10px;
-    font-size: 26px;
+    font-size: calc(26px * var(--text-scale, 1));
   }
   dialog > p,
   .settings-screen > p {
@@ -7911,7 +7911,7 @@ h3 {
   letter-spacing: 0.2px;
 }
 .eyebrow {
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   font-weight: 700;
   letter-spacing: 0.2px;
   text-transform: none;
@@ -7930,13 +7930,13 @@ h3 {
 }
 .room-panel label,
 dialog label {
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   font-weight: 600;
   letter-spacing: 0;
   color: #c1cfe4;
 }
 :is(.element-pill) {
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
   font-weight: 700;
 }
 
@@ -7953,7 +7953,7 @@ dialog label {
     inset 0 -3px 0 var(--gold-edge),
     inset 0 1px 0 #fff6cf,
     0 8px 18px -10px var(--accent);
-  font: 800 18px/1.1 var(--display);
+  font: 800 calc(18px * var(--text-scale, 1))/1.1 var(--display);
   letter-spacing: 0.4px;
 }
 .primary:hover:not(:disabled) {
@@ -7987,7 +7987,7 @@ dialog label {
   color: #e2ebf8;
   background: var(--glass);
   box-shadow: inset 0 1px 0 #ffffff10;
-  font: 700 17px/1.1 var(--display);
+  font: 700 calc(17px * var(--text-scale, 1))/1.1 var(--display);
   letter-spacing: 0.3px;
 }
 .secondary:not(.leave-button):hover:not(:disabled) {
@@ -8000,7 +8000,7 @@ dialog label {
 button.leave-button.quiet,
 button.leave-button.secondary {
   border-radius: 999px;
-  font: 700 16px/1.1 var(--display);
+  font: 700 calc(16px * var(--text-scale, 1))/1.1 var(--display);
   letter-spacing: 0.3px;
 }
 .quiet {
@@ -8027,11 +8027,11 @@ button.leave-button.secondary {
     box-shadow 0.15s ease;
 }
 .bot-level b {
-  font: 700 18px/1.1 var(--display);
+  font: 700 calc(18px * var(--text-scale, 1))/1.1 var(--display);
   letter-spacing: 0.3px;
 }
 .bot-level small {
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale, 1));
   color: #8fa3c2;
 }
 .bot-level:hover:not(.active):not(:disabled) {
@@ -8125,7 +8125,7 @@ input[type="range"] {
     0 20px 50px -20px #000a;
 }
 .room-panel h2 {
-  font-size: 32px;
+  font-size: calc(32px * var(--text-scale, 1));
   font-weight: 800;
   letter-spacing: 0.3px;
 }
@@ -8154,7 +8154,7 @@ dialog::backdrop {
   background: var(--icon-btn-bg);
   box-shadow: inset 0 0 0 1px var(--icon-btn-line);
   color: #dbe6f6;
-  font-size: 22px;
+  font-size: calc(22px * var(--text-scale, 1));
   line-height: 1;
 }
 .close:hover:not(:disabled) {
@@ -8176,7 +8176,7 @@ dialog::backdrop {
   border-radius: 999px;
   background: var(--glass);
   box-shadow: inset 0 0 0 1px var(--glass-line);
-  font: 700 16px/1 var(--display);
+  font: 700 calc(16px * var(--text-scale, 1))/1 var(--display);
   letter-spacing: 0.3px;
   padding: 10px 16px;
 }
@@ -8189,15 +8189,15 @@ dialog::backdrop {
 }
 .header-menu-panel .quiet {
   border-radius: 10px;
-  font-size: 13px;
+  font-size: calc(13px * var(--text-scale, 1));
 }
 .selected-art > span {
   letter-spacing: 0.3px;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   font-weight: 600;
 }
 .room-panel h2 {
-  font-size: 30px;
+  font-size: calc(30px * var(--text-scale, 1));
 }
 
 /* Tab shelves (Raid Hub boss pages, admin): like the Shop's tabs. */
@@ -8219,7 +8219,7 @@ dialog::backdrop {
   border-radius: 8px 8px 0 0;
   background: transparent;
   color: #9fb2cf;
-  font: 700 18px/1 var(--display);
+  font: 700 calc(18px * var(--text-scale, 1))/1 var(--display);
   letter-spacing: 0.3px;
 }
 .admin-tab:hover:not(.active) {
@@ -8270,7 +8270,7 @@ dialog::backdrop {
 .guide-card h3,
 .guide-card h4 {
   font-family: var(--display);
-  font-size: 18px;
+  font-size: calc(18px * var(--text-scale, 1));
   letter-spacing: 0.2px;
 }
 
@@ -8283,7 +8283,7 @@ dialog::backdrop {
 .recap th {
   letter-spacing: 0.2px;
   text-transform: none;
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale, 1));
 }
 
 /* Password field's show/hide button: round, inside the round field. */
@@ -8309,7 +8309,7 @@ dialog::backdrop {
 }
 .raid-rite-options > button.secondary b {
   font-family: var(--display);
-  font-size: 19px;
+  font-size: calc(19px * var(--text-scale, 1));
   letter-spacing: 0.2px;
 }
 .leave-button.is-costly {
@@ -8406,13 +8406,13 @@ dialog::backdrop {
 }
 .rotate-gate-card h2 {
   margin: 8px 0 0;
-  font: 800 34px/1.05 var(--display);
+  font: 800 calc(34px * var(--text-scale, 1))/1.05 var(--display);
   letter-spacing: 0.3px;
   color: var(--text);
 }
 .rotate-gate-card p {
   margin: 0;
-  font-size: 14px;
+  font-size: calc(14px * var(--text-scale, 1));
   color: #9fb2cf;
 }
 .rotate-gate-card .primary {
@@ -8512,11 +8512,11 @@ dialog:is(:has(.admin-tabs), :has(#admin-message)) {
 }
 .dream-strip > span,
 .dream-strip small {
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
   white-space: nowrap;
 }
 .dream-strip > b {
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   min-width: 23px;
   text-align: right;
   color: #ffe19b;
@@ -8554,7 +8554,7 @@ dialog:is(:has(.admin-tabs), :has(#admin-message)) {
 }
 .dream-rune-buttons kbd {
   font-family: inherit;
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
   font-weight: 600;
   line-height: 1;
   opacity: 0.7;
@@ -8630,7 +8630,7 @@ dialog:is(:has(.admin-tabs), :has(#admin-message)) {
   right: 5px;
   top: 4px;
   color: #ffdf8d;
-  font-size: 22px;
+  font-size: calc(22px * var(--text-scale, 1));
   line-height: 1;
   pointer-events: none;
 }
@@ -8672,7 +8672,7 @@ dialog:is(:has(.admin-tabs), :has(#admin-message)) {
     padding: 10px 18px;
   }
   #arena-overlay .raid-briefing h2 {
-    font-size: 26px;
+    font-size: calc(26px * var(--text-scale, 1));
     line-height: 1.1;
     margin: 4px 0 8px;
   }
@@ -8728,7 +8728,7 @@ dialog.framed-dialog > .dialog-toolbar > button:not(.close) {
   border-radius: 10px;
   background: transparent;
   color: #b8cce8;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   line-height: 1.2;
 }
 dialog.framed-dialog > .dialog-toolbar > button:focus-visible {
@@ -8767,7 +8767,7 @@ dialog.framed-dialog > .dialog-content {
   min-height: 44px;
   margin: 0;
   padding: 10px 14px;
-  font-size: 14px;
+  font-size: calc(14px * var(--text-scale, 1));
   line-height: 1.25;
 }
 /* Tab bars have their own row, so scrolled cards cannot paint above or
@@ -8805,7 +8805,7 @@ dialog.framed-dialog > .dialog-toolbar > .dialog-tabs {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 22px;
+  font-size: calc(22px * var(--text-scale, 1));
   line-height: 1.15;
   margin: 0;
 }
@@ -8882,7 +8882,7 @@ dialog.framed-dialog > .dialog-toolbar > .dialog-tabs {
   }
   #arena-overlay .action-overlay > h2 {
     margin: 4px 0 8px;
-    font-size: 26px;
+    font-size: calc(26px * var(--text-scale, 1));
     line-height: 1.1;
   }
   .panel-actions {
@@ -8890,7 +8890,7 @@ dialog.framed-dialog > .dialog-toolbar > .dialog-tabs {
   }
   #arena-overlay .panel-actions button {
     padding: 8px 12px;
-    font-size: 13px;
+    font-size: calc(13px * var(--text-scale, 1));
   }
 }
 /* Rites remain selectable while phase objectives and collected rites scroll. */
@@ -8922,10 +8922,10 @@ dialog.framed-dialog > .dialog-toolbar > .dialog-tabs {
     right: 6px;
   }
   .panel-actions .rite-card b {
-    font-size: 13px;
+    font-size: calc(13px * var(--text-scale, 1));
   }
   .panel-actions .rite-card small {
-    font-size: 11px;
+    font-size: calc(11px * var(--text-scale, 1));
     line-height: 1.35;
   }
   .panel-actions .raid-rite-options > button {
@@ -8939,7 +8939,7 @@ dialog.framed-dialog > .dialog-content:focus-visible {
 }
 @media (orientation: landscape) and (max-height: 600px) {
   #arena-overlay .raid-draft.action-overlay > h2 {
-    font-size: 23px;
+    font-size: calc(23px * var(--text-scale, 1));
     margin: 4px 0;
   }
   .raid-draft.action-overlay .panel-scroll {
@@ -9027,13 +9027,13 @@ dialog.framed-dialog > .dialog-content:focus-visible {
   border-radius: 10px;
   color: #ffebaf;
   background: #14223bea;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   line-height: 1.2;
   touch-action: none;
   white-space: nowrap;
 }
 #raid-prism-controls button span {
-  font-size: 19px;
+  font-size: calc(19px * var(--text-scale, 1));
   line-height: 1;
 }
 #raid-prism-controls button:disabled {
@@ -9105,7 +9105,7 @@ dialog.framed-dialog > .dialog-content:focus-visible {
   #raid-prism-controls button {
     min-height: 40px;
     padding: 4px 8px;
-    font-size: 11px;
+    font-size: calc(11px * var(--text-scale, 1));
   }
 }
 
@@ -9157,15 +9157,15 @@ dialog.framed-dialog > .dialog-content:focus-visible {
   justify-content: space-between;
   gap: 6px;
   color: var(--twin-color);
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale, 1));
   line-height: 1.2;
   margin-bottom: 3px;
 }
 .raid-twin-bar b {
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
 }
 .raid-twin-bar span {
-  font-size: 9px;
+  font-size: calc(9px * var(--text-scale, 1));
   letter-spacing: 0.03em;
 }
 .raid-twin-track {
@@ -9208,7 +9208,7 @@ dialog.framed-dialog > .dialog-content:focus-visible {
   border: 1px solid #ffe18b77;
   background: #14243bea;
   color: #ffe7a7;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   line-height: 1.2;
   touch-action: manipulation;
   white-space: nowrap;
@@ -9240,10 +9240,10 @@ dialog.framed-dialog > .dialog-content:focus-visible {
     margin-top: 2px;
   }
   .raid-twin-bar b {
-    font-size: 10px;
+    font-size: calc(10px * var(--text-scale, 1));
   }
   .raid-twin-bar span {
-    font-size: 8px;
+    font-size: calc(8px * var(--text-scale, 1));
   }
 }
 .raid-cosmetic-preview[data-cosmetic="static-colors"] > svg,
@@ -9475,7 +9475,7 @@ dialog.framed-dialog > .dialog-content:focus-visible {
   border: 1px solid #9ff3d855;
   border-radius: 7px;
   color: #b2f4df;
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
   white-space: nowrap;
 }
 .journey-level {
@@ -9501,12 +9501,12 @@ dialog.framed-dialog > .dialog-content:focus-visible {
   color: #bbffe8;
 }
 .journey-level-badge small {
-  font-size: 9px;
+  font-size: calc(9px * var(--text-scale, 1));
   letter-spacing: 0.15em;
 }
 .journey-level-badge b {
   font:
-    700 30px/1 "Barlow Condensed",
+    700 calc(30px * var(--text-scale, 1))/1 "Barlow Condensed",
     sans-serif;
 }
 .journey-level-line {
@@ -9519,7 +9519,7 @@ dialog.framed-dialog > .dialog-content:focus-visible {
 .journey-level-line small {
   white-space: nowrap;
   color: #afc8d5;
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale, 1));
 }
 .journey-level progress {
   display: block;
@@ -9531,7 +9531,7 @@ dialog.framed-dialog > .dialog-content:focus-visible {
 }
 .journey-level > div > small {
   display: block;
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale, 1));
   color: #b5c9d5;
 }
 .journey-level.is-compact {
@@ -9546,13 +9546,13 @@ dialog.framed-dialog > .dialog-content:focus-visible {
   border-radius: 10px;
 }
 .journey-level.is-compact .journey-level-badge b {
-  font-size: 21px;
+  font-size: calc(21px * var(--text-scale, 1));
 }
 .journey-level.is-compact .journey-level-badge small {
-  font-size: 7px;
+  font-size: calc(7px * var(--text-scale, 1));
 }
 .journey-level.is-compact .journey-level-line b {
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
 }
 /* Daily Spark: the first 500 XP each day count double. */
 .journey-level-line small,
@@ -9570,7 +9570,7 @@ dialog.framed-dialog > .dialog-content:focus-visible {
   display: block;
   color: #a8efd8;
   font:
-    700 22px/1 "Barlow Condensed",
+    700 calc(22px * var(--text-scale, 1))/1 "Barlow Condensed",
     sans-serif;
   margin-bottom: 12px;
   animation: xp-arrive 0.35s ease-out;
@@ -9579,11 +9579,11 @@ dialog.framed-dialog > .dialog-content:focus-visible {
   transition: width 0.6s ease;
 }
 .journey-xp-pending {
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale, 1));
   color: #a8bbd3;
 }
 .arcade-rating-note {
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   line-height: 1.7;
   color: #c9b5e2;
 }
@@ -9607,7 +9607,7 @@ dialog.framed-dialog > .dialog-content:focus-visible {
     min-height: 47px;
   }
   .journey-level-badge b {
-    font-size: 24px;
+    font-size: calc(24px * var(--text-scale, 1));
   }
   .journey-result-xp {
     padding: 10px;
@@ -9660,21 +9660,21 @@ dialog.framed-dialog > .dialog-content:focus-visible {
   background: #ffe09b0a;
   color: #ffe09b;
   font:
-    700 17px/1.3 "Barlow Condensed",
+    700 calc(17px * var(--text-scale, 1))/1.3 "Barlow Condensed",
     sans-serif;
 }
 .journey-level-up small {
   display: block;
   margin-top: 5px;
   font:
-    400 10px/1.5 "DM Sans",
+    400 calc(10px * var(--text-scale, 1))/1.5 "DM Sans",
     sans-serif;
   color: #dce8e0;
 }
 .journey-xp-breakdown {
   display: block;
   color: #a9c6ce;
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
   margin: -5px 0 10px;
 }
 
@@ -9688,7 +9688,7 @@ dialog.framed-dialog > .dialog-content:focus-visible {
   min-height: 44px;
   padding: 12px 22px;
   border-radius: var(--radius-sm);
-  font: 800 20px/1.1 var(--display);
+  font: 800 calc(20px * var(--text-scale, 1))/1.1 var(--display);
   letter-spacing: 0.8px;
   text-transform: uppercase;
   transition:
@@ -9778,7 +9778,7 @@ body.home-active .topbar {
 }
 body.home-active .brand {
   flex: 0 0 132px;
-  font: 800 20px/1 var(--display);
+  font: 800 calc(20px * var(--text-scale, 1))/1 var(--display);
   letter-spacing: 0.6px;
   gap: 4px;
 }
@@ -9806,7 +9806,7 @@ body.home-active #account-profile {
   gap: 10px;
   padding: 0;
   color: var(--text);
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale, 1));
 }
 body.home-active .account-avatar {
   display: block;
@@ -9834,7 +9834,7 @@ body.home-active .nav-level {
   border: 1px solid color-mix(in srgb, var(--ui-accent) 25.1%, transparent);
   border-radius: 4px;
   color: var(--accent);
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   line-height: 1.2;
 }
 body.home-active #account-coins {
@@ -9851,7 +9851,7 @@ body.home-active .coin-chip {
   box-shadow: none;
 }
 body.home-active .coin-chip b {
-  font-size: 24px;
+  font-size: calc(24px * var(--text-scale, 1));
 }
 body.home-active #account-admin,
 body.home-active #account-logout {
@@ -9868,7 +9868,7 @@ body.home-active #account-logout > span {
 }
 body.home-active #account-login {
   margin-left: auto;
-  font-size: 14px;
+  font-size: calc(14px * var(--text-scale, 1));
 }
 body.home-active .home-settings {
   display: grid;
@@ -9887,7 +9887,7 @@ body.home-active .header-menu summary {
   padding: 10px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--line);
-  font-size: 18px;
+  font-size: calc(18px * var(--text-scale, 1));
   background: transparent;
 }
 body.home-active .header-menu summary > span {
@@ -9936,7 +9936,7 @@ body.home-active .header-menu summary > span {
   border-bottom: 1px solid var(--line);
 }
 .home-drawer-head .eyebrow {
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   letter-spacing: 2px;
 }
 .home-drawer-head .eyebrow::before {
@@ -9944,7 +9944,7 @@ body.home-active .header-menu summary > span {
 }
 .home-drawer-head h2 {
   margin: 7px 0 0;
-  font: 800 34px/1 var(--display);
+  font: 800 calc(34px * var(--text-scale, 1))/1 var(--display);
   text-transform: uppercase;
 }
 .home-panel-close {
@@ -9953,7 +9953,7 @@ body.home-active .header-menu summary > span {
   flex: none;
   padding: 0;
   font:
-    400 26px/1 "DM Sans",
+    400 calc(26px * var(--text-scale, 1))/1 "DM Sans",
     sans-serif;
 }
 .home-drawer-scroll {
@@ -9981,7 +9981,7 @@ body.home-active .header-menu summary > span {
   margin-top: 20px;
 }
 .home-play-options h3 {
-  font-size: 22px;
+  font-size: calc(22px * var(--text-scale, 1));
   text-transform: uppercase;
   margin: 0 0 12px;
 }
@@ -10034,7 +10034,7 @@ body.home-active .header-menu summary > span {
   body.home-active #account-profile {
     max-width: 42vw;
     gap: 8px;
-    font-size: 13px;
+    font-size: calc(13px * var(--text-scale, 1));
   }
   body.home-active .account-avatar {
     flex-basis: 30px;
@@ -10050,7 +10050,7 @@ body.home-active .header-menu summary > span {
     padding: 7px;
   }
   body.home-active .nav-level {
-    font-size: 11px;
+    font-size: calc(11px * var(--text-scale, 1));
     padding: 4px 6px;
   }
   body.home-active .coin-chip {
@@ -10058,7 +10058,7 @@ body.home-active .header-menu summary > span {
     padding: 4px 8px;
   }
   body.home-active .coin-chip b {
-    font-size: 21px;
+    font-size: calc(21px * var(--text-scale, 1));
   }
   body.home-active #account-admin,
   body.home-active #account-logout {
@@ -10085,11 +10085,11 @@ body.home-active .header-menu summary > span {
     gap: 12px;
   }
   .home-drawer-head h2 {
-    font-size: 24px;
+    font-size: calc(24px * var(--text-scale, 1));
     margin-top: 4px;
   }
   .home-drawer-head .eyebrow {
-    font-size: 11px;
+    font-size: calc(11px * var(--text-scale, 1));
   }
   .home-panel-close {
     min-height: 36px;
@@ -10105,7 +10105,7 @@ body.home-active .header-menu summary > span {
     margin-top: 10px;
   }
   .home-play-options h3 {
-    font-size: 20px;
+    font-size: calc(20px * var(--text-scale, 1));
     margin-bottom: 8px;
   }
 }
@@ -10215,7 +10215,7 @@ body.battle-active:not(.battle-raid) .hud.hud-teams {
 }
 .health-card > div:first-child {
   gap: 8px;
-  font-size: 14px;
+  font-size: calc(14px * var(--text-scale, 1));
   margin-bottom: 7px;
 }
 .health-card b {
@@ -10225,12 +10225,12 @@ body.battle-active:not(.battle-raid) .hud.hud-teams {
   min-width: 0;
 }
 .health-card > div:first-child > span {
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   white-space: nowrap;
 }
 .health-card strong {
   flex: none;
-  font: 700 18px/1 var(--display);
+  font: 700 calc(18px * var(--text-scale, 1))/1 var(--display);
 }
 .health-card .health-track {
   height: 7px;
@@ -10246,7 +10246,7 @@ body.battle-active:not(.battle-raid) .hud.hud-teams {
   );
 }
 .health-card > small {
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale, 1));
   margin-top: 5px;
   line-height: 1.3;
 }
@@ -10263,7 +10263,7 @@ body.battle-active:not(.battle-raid) .hud.hud-teams {
 }
 .health-card .hud-ultimate > span {
   flex: none;
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
   letter-spacing: 0.5px;
   color: var(--text-dim);
   white-space: nowrap;
@@ -10296,12 +10296,12 @@ body.battle-active:not(.battle-raid) .hud.hud-teams {
   padding: 4px 8px;
 }
 .timer-wrap > span {
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale, 1));
   letter-spacing: 0.7px;
   line-height: 1.4;
 }
 .timer-wrap strong {
-  font-size: 38px;
+  font-size: calc(38px * var(--text-scale, 1));
   line-height: 1.1;
 }
 body.battle-active:not(.touch-mode) .ability-bar {
@@ -10337,7 +10337,7 @@ body.battle-active:not(.touch-mode)
   top: 5px;
   min-width: 20px;
   padding: 2px 4px;
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale, 1));
   background: var(--bg-0);
   border: 1px solid var(--line);
   z-index: 3;
@@ -10351,7 +10351,7 @@ body.battle-active:not(.touch-mode)
   gap: 2px;
   width: 100%;
   white-space: normal;
-  font-size: 14px;
+  font-size: calc(14px * var(--text-scale, 1));
 }
 body.battle-active:not(.touch-mode) .ability .skill-icon,
 body.battle-active:not(.touch-mode) .basic-hint .skill-icon {
@@ -10362,13 +10362,13 @@ body.battle-active:not(.touch-mode) .basic-hint .skill-icon {
 body.battle-active:not(.touch-mode)
   :is(.ability, .movement-ability, .basic-hint)
   small {
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale, 1));
   line-height: 1.1;
   margin-top: 2px;
   letter-spacing: 0;
 }
 body.battle-active:not(.touch-mode) .basic-hint small {
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
 }
 body.battle-active:not(.touch-mode) .ability .cooldown-fill {
   display: none;
@@ -10435,11 +10435,11 @@ body.battle-active:not(.touch-mode) .ability .cooldown-fill {
   background: radial-gradient(circle, #121a33eb, #0b1020dd);
 }
 .touch-buttons .touch-cooldown {
-  font: 800 18px/1 var(--display);
+  font: 800 calc(18px * var(--text-scale, 1))/1 var(--display);
   color: var(--text);
 }
 .touch-buttons .touch-key {
-  font: 700 11px/1 var(--display);
+  font: 700 calc(11px * var(--text-scale, 1))/1 var(--display);
   letter-spacing: 0.4px;
   opacity: 1;
 }
@@ -10462,17 +10462,17 @@ body.battle-active.touch-mode .health-card {
   border-radius: var(--radius-sm);
 }
 body.battle-active.touch-mode .health-card > div:first-child {
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   margin-bottom: 4px;
 }
 body.battle-active.touch-mode .health-card b {
   max-width: none;
 }
 body.battle-active.touch-mode .health-card strong {
-  font-size: 14px;
+  font-size: calc(14px * var(--text-scale, 1));
 }
 body.battle-active.touch-mode .health-card > small {
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
   margin-top: 3px;
 }
 body.battle-active.touch-mode .health-card .health-track {
@@ -10483,17 +10483,17 @@ body.battle-active.touch-mode .hud-ultimate {
   padding-top: 3px;
 }
 body.battle-active.touch-mode .hud-ultimate > span {
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
 }
 body.battle-active.touch-mode .timer-wrap {
   min-width: 0;
   padding: 4px 0;
 }
 body.battle-active.touch-mode .timer-wrap strong {
-  font-size: 30px;
+  font-size: calc(30px * var(--text-scale, 1));
 }
 body.battle-active.touch-mode .timer-wrap > span {
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
   letter-spacing: 0;
 }
 @media (max-width: 700px) {
@@ -10501,17 +10501,17 @@ body.battle-active.touch-mode .timer-wrap > span {
     padding: 5px;
   }
   body.battle-active.touch-mode .health-card > div:first-child {
-    font-size: 11px;
+    font-size: calc(11px * var(--text-scale, 1));
     gap: 3px;
   }
   body.battle-active.touch-mode .hud.hud-teams .health-card > div:first-child {
     flex-wrap: wrap;
   }
   body.battle-active.touch-mode .hud.hud-teams .health-card strong {
-    font-size: 12px;
+    font-size: calc(12px * var(--text-scale, 1));
   }
   body.battle-active.touch-mode .hud.hud-teams .health-card > small {
-    font-size: 9px;
+    font-size: calc(9px * var(--text-scale, 1));
   }
   body.battle-active.touch-mode .hud.hud-teams .hud-ultimate {
     flex-wrap: wrap;
@@ -10589,7 +10589,7 @@ body.battle-active.touch-mode:not(.battle-raid) #round-label {
   left: 50%;
   top: 0;
   transform: translateX(-50%);
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
 }
 body.battle-active.touch-mode:not(.battle-raid) .timer-wrap strong {
   margin-top: 13px;
@@ -10601,7 +10601,7 @@ body.battle-active.touch-mode:not(.battle-raid) #phase-label {
   transform: translateX(-50%);
   top: 47px;
   white-space: nowrap;
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
 }
 @media (max-width: 700px) {
   body.battle-active.touch-mode:not(.battle-raid) #round-label {
@@ -10611,7 +10611,7 @@ body.battle-active.touch-mode:not(.battle-raid) #phase-label {
   }
   body.battle-active.touch-mode:not(.battle-raid) .timer-wrap strong {
     margin-top: 23px;
-    font-size: 26px;
+    font-size: calc(26px * var(--text-scale, 1));
   }
   body.battle-active.touch-mode:not(.battle-raid) #phase-label {
     top: 58px;
@@ -10662,7 +10662,7 @@ body.battle-active.touch-mode:not(.battle-raid) #phase-label {
       );
   }
   body.battle-active.touch-mode:not(.battle-raid) #phase-label {
-    font-size: 9px;
+    font-size: calc(9px * var(--text-scale, 1));
   }
 }
 /* Share the last row between HP and ultimate rather than making the HUD taller. */
@@ -10702,23 +10702,23 @@ body.battle-active:not(.touch-mode) .timer-wrap {
   padding: 2px 6px;
 }
 body.battle-active:not(.touch-mode) .timer-wrap > span {
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale, 1));
   line-height: 1.2;
 }
 body.battle-active:not(.touch-mode) .timer-wrap strong {
-  font-size: 34px;
+  font-size: calc(34px * var(--text-scale, 1));
   line-height: 1;
 }
 body.battle-active:not(.touch-mode) .battle-footer {
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   gap: 12px;
 }
 body.battle-active:not(.touch-mode) .battle-footer > span:nth-child(2) {
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale, 1));
   letter-spacing: 0.3px;
 }
 body.battle-active:not(.touch-mode) #battle-menu {
-  font-size: 13px;
+  font-size: calc(13px * var(--text-scale, 1));
 }
 @media (max-width: 1100px) {
   body.battle-active:not(.touch-mode) .battle-footer {
@@ -10803,7 +10803,7 @@ body.battle-active:not(.touch-mode) .practice-settings > summary {
   margin: 0;
   border-radius: var(--radius-sm);
   background: var(--bg-1);
-  font-size: 13px;
+  font-size: calc(13px * var(--text-scale, 1));
 }
 body.battle-active:not(.touch-mode) .practice-panel {
   position: absolute;
@@ -10903,7 +10903,7 @@ body.battle-active .ability.ult-ready,
 .touch-buttons button.ult-ready .touch-cooldown {
   position: absolute;
   inset: auto 0 3px;
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
   line-height: 12px;
   letter-spacing: 0.6px;
 }
@@ -10994,7 +10994,7 @@ body.battle-active .ability.ult-ready,
 #arena-overlay .raid-draft > .eyebrow {
   grid-row: 1;
   margin: 0;
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
 }
 #arena-overlay .raid-draft > h2 {
   grid-row: 2;
@@ -11067,7 +11067,7 @@ body.battle-active .ability.ult-ready,
   top: 14px;
   left: 16px;
   color: var(--text-dim);
-  font: 600 16px/1 var(--display);
+  font: 600 calc(16px * var(--text-scale, 1))/1 var(--display);
   opacity: 0.6;
 }
 #arena-overlay .raid-draft .raid-rite-options > button:nth-child(1)::before {
@@ -11122,7 +11122,7 @@ body.battle-active .ability.ult-ready,
 }
 #arena-overlay .raid-draft .panel-actions .raid-rite-copy b {
   grid-column: auto;
-  font: 700 28px/1.15 var(--display);
+  font: 700 calc(28px * var(--text-scale, 1))/1.15 var(--display);
   text-align: center;
 }
 #arena-overlay .raid-draft .panel-actions .raid-rite-copy small {
@@ -11132,7 +11132,7 @@ body.battle-active .ability.ult-ready,
   margin: 0 auto;
   color: var(--text-dim);
   font:
-    400 15px/1.5 "DM Sans",
+    400 calc(15px * var(--text-scale, 1))/1.5 "DM Sans",
     sans-serif;
   text-align: center;
 }
@@ -11149,7 +11149,7 @@ body.battle-active .ability.ult-ready,
   flex: none;
   min-width: 0;
   color: var(--text-dim);
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
 }
 #arena-overlay .raid-draft .raid-choice-timer {
   grid-template-columns: 18px auto 100px;
@@ -11175,7 +11175,7 @@ body.battle-active .ability.ult-ready,
   max-width: 90ch;
   margin: 3px auto;
   color: var(--text-dim);
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   line-height: 1.4;
 }
 #arena-overlay .raid-draft .raid-team-summary {
@@ -11199,7 +11199,7 @@ body.battle-active .ability.ult-ready,
   border: 1px solid var(--line);
   border-radius: 18px;
   background: var(--bg-1);
-  font: 600 24px/1.3 var(--display);
+  font: 600 calc(24px * var(--text-scale, 1))/1.3 var(--display);
 }
 /* The icon and its enclosing card use the same existing rite colour. */
 #arena-overlay .raid-draft .raid-rite-options > .raid-rite-shelter {
@@ -11246,7 +11246,7 @@ body.battle-active .ability.ult-ready,
   }
   #arena-overlay .raid-draft > h2 {
     margin: 0 0 3px;
-    font-size: 26px;
+    font-size: calc(26px * var(--text-scale, 1));
   }
   #arena-overlay .raid-draft > .panel-actions {
     gap: 10px;
@@ -11272,17 +11272,17 @@ body.battle-active .ability.ult-ready,
     gap: 5px;
   }
   #arena-overlay .raid-draft .panel-actions .raid-rite-copy b {
-    font-size: 23px;
+    font-size: calc(23px * var(--text-scale, 1));
   }
   #arena-overlay .raid-draft .panel-actions .raid-rite-copy small {
-    font-size: 13px;
+    font-size: calc(13px * var(--text-scale, 1));
     line-height: 1.4;
   }
   #arena-overlay .raid-draft .raid-rite-intro {
     gap: 4px;
   }
   #arena-overlay .raid-draft .raid-rite-intro > span:first-child {
-    font-size: 11px;
+    font-size: calc(11px * var(--text-scale, 1));
     line-height: 1.3;
   }
   #arena-overlay .raid-draft .raid-choice-timer {
@@ -11295,7 +11295,7 @@ body.battle-active .ability.ult-ready,
     padding: 3px 8px 0;
   }
   #arena-overlay .raid-draft .raid-phase-objective {
-    font-size: 11px;
+    font-size: calc(11px * var(--text-scale, 1));
   }
 }
 @media (orientation: landscape) and (max-height: 430px) {
@@ -11337,7 +11337,7 @@ body.battle-active .ability.ult-ready,
   }
   #arena-overlay .raid-draft > h2 {
     grid-row: 1;
-    font-size: 25px;
+    font-size: calc(25px * var(--text-scale, 1));
     margin: 0;
   }
   #arena-overlay .raid-draft > .panel-actions {
@@ -11379,10 +11379,10 @@ body.battle-active .ability.ult-ready,
     height: 28px;
   }
   #arena-overlay .raid-draft .panel-actions .raid-rite-copy b {
-    font-size: 19px;
+    font-size: calc(19px * var(--text-scale, 1));
   }
   #arena-overlay .raid-draft .panel-actions .raid-rite-copy small {
-    font-size: 11.5px;
+    font-size: calc(11.5px * var(--text-scale, 1));
     line-height: 1.35;
   }
   #arena-overlay .raid-draft .raid-rite-intro {
@@ -11397,7 +11397,7 @@ body.battle-active .ability.ult-ready,
     transform: translateY(-50%);
     max-width: calc(50% - 120px);
     text-align: left;
-    font-size: 9px;
+    font-size: calc(9px * var(--text-scale, 1));
     line-height: 1.2;
   }
 }
@@ -11417,7 +11417,7 @@ body.battle-active .ability.ult-ready,
   gap: 5px;
 }
 #account-coins .coin-chip b {
-  font-size: 16px;
+  font-size: calc(16px * var(--text-scale, 1));
   line-height: 1.2;
 }
 #account-coins .coin-chip .button-icon {
@@ -11430,7 +11430,7 @@ body.battle-active .ability.ult-ready,
     padding: 3px 8px;
   }
   #account-coins .coin-chip b {
-    font-size: 15px;
+    font-size: calc(15px * var(--text-scale, 1));
   }
   #account-coins .coin-chip .button-icon {
     width: 13px;
@@ -11481,7 +11481,7 @@ body.battle-active:not(.touch-mode) .topbar:has(.header-menu[open]) {
 }
 body.battle-active:not(.touch-mode) .topbar:has(.header-menu[open]) > .brand {
   display: flex;
-  font-size: 20px;
+  font-size: calc(20px * var(--text-scale, 1));
 }
 body.battle-active:not(.touch-mode)
   .topbar:has(.header-menu[open])
@@ -11508,7 +11508,7 @@ body.battle-active:not(.touch-mode)
   > button {
   min-width: 0;
   justify-content: flex-start;
-  font-size: 13px;
+  font-size: calc(13px * var(--text-scale, 1));
 }
 body.battle-active:not(.touch-mode)
   .topbar:has(.header-menu[open])
@@ -11563,7 +11563,7 @@ body.battle-active:not(.touch-mode)
   kbd {
   top: 4px;
   padding: 1px 3px;
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
   line-height: 1.2;
 }
 /* The generic PvP HUD must not reserve an invisible row in raid battles. */
@@ -11589,11 +11589,11 @@ body.battle-active:not(.touch-mode).battle-raid #raid-hud {
 body.battle-active:not(.touch-mode) .raid-boss-heading {
   grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 8px;
-  font-size: 13px;
+  font-size: calc(13px * var(--text-scale, 1));
   line-height: 1.3;
 }
 body.battle-active:not(.touch-mode) .raid-boss-heading > span {
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale, 1));
 }
 body.battle-active:not(.touch-mode) .raid-boss-health {
   height: 7px;
@@ -11605,7 +11605,7 @@ body.battle-active:not(.touch-mode) .raid-stagger {
 }
 body.battle-active:not(.touch-mode) .raid-stagger span {
   top: 4px;
-  font-size: 7px;
+  font-size: calc(7px * var(--text-scale, 1));
 }
 body.battle-active:not(.touch-mode) .raid-party-bars {
   position: absolute;
@@ -11624,10 +11624,10 @@ body.battle-active:not(.touch-mode) .raid-party-bars > span {
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
   background: #0c1b32ed;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
 }
 body.battle-active:not(.touch-mode) .raid-party-bars small {
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale, 1));
 }
 body.battle-active:not(.touch-mode) .raid-status-row {
   margin-top: 4px;
@@ -11635,11 +11635,11 @@ body.battle-active:not(.touch-mode) .raid-status-row {
 }
 body.battle-active:not(.touch-mode) .raid-callout {
   margin: 0;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   line-height: 1.35;
 }
 body.battle-active:not(.touch-mode) .raid-elapsed b {
-  font-size: 20px;
+  font-size: calc(20px * var(--text-scale, 1));
 }
 body.battle-active:not(.touch-mode) .raid-elapsed > svg {
   width: 16px;
@@ -11820,7 +11820,7 @@ body.lobby-active #account-profile .account-name,
 body.hub-screen #account-profile .account-name {
   grid-area: name;
   font:
-    800 17px/1 "Barlow Condensed",
+    800 calc(17px * var(--text-scale, 1))/1 "Barlow Condensed",
     sans-serif;
   letter-spacing: 0.02em;
 }
@@ -11851,7 +11851,7 @@ body.hub-screen .nav-title {
   display: block;
   grid-area: title;
   font:
-    700 11px/1 "DM Sans",
+    700 calc(11px * var(--text-scale, 1))/1 "DM Sans",
     sans-serif;
 }
 /* Coins: pushed to the right, a glass pill. */
@@ -11977,7 +11977,7 @@ body.hub-screen .menu-gear svg {
 .play-start h3 {
   margin: 0 0 4px;
   font:
-    700 13px/1 "DM Sans",
+    700 calc(13px * var(--text-scale, 1))/1 "DM Sans",
     sans-serif;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -12025,7 +12025,7 @@ body.hub-screen .menu-gear svg {
 .play-start .mode-card b {
   overflow: hidden;
   font:
-    600 15px/1.2 "DM Sans",
+    600 calc(15px * var(--text-scale, 1))/1.2 "DM Sans",
     sans-serif;
   letter-spacing: 0;
   text-overflow: ellipsis;
@@ -12034,7 +12034,7 @@ body.hub-screen .menu-gear svg {
 .play-start .mode-card small {
   overflow: hidden;
   font:
-    400 12px/1.3 "DM Sans",
+    400 calc(12px * var(--text-scale, 1))/1.3 "DM Sans",
     sans-serif;
   color: #93a4c0;
   text-overflow: ellipsis;
@@ -12156,7 +12156,7 @@ body.gate-active main {
 .gate-kicker {
   color: #f2c25b;
   font:
-    700 12px/1 "DM Sans",
+    700 calc(12px * var(--text-scale, 1))/1 "DM Sans",
     sans-serif;
   letter-spacing: 0.2em;
   text-transform: uppercase;
@@ -12182,7 +12182,7 @@ body.gate-active main {
   max-width: 460px;
   color: #d6def0;
   font:
-    400 17px/1.5 "DM Sans",
+    400 calc(17px * var(--text-scale, 1))/1.5 "DM Sans",
     sans-serif;
   text-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
 }
@@ -12245,7 +12245,7 @@ body.gate-active main {
   }
   .gate-lead,
   .gate-invite {
-    font-size: 15px;
+    font-size: calc(15px * var(--text-scale, 1));
   }
   .gate-card {
     max-height: calc(100dvh - 32px);
@@ -12282,14 +12282,14 @@ dialog .auth-panel {
 }
 .auth-title {
   font:
-    700 24px/1.15 "DM Sans",
+    700 calc(24px * var(--text-scale, 1))/1.15 "DM Sans",
     sans-serif;
   letter-spacing: -0.01em;
 }
 .auth-head p {
   margin: 0;
   color: #9fb0cc;
-  font-size: 14px;
+  font-size: calc(14px * var(--text-scale, 1));
   line-height: 1.45;
 }
 .auth-tabs {
@@ -12306,7 +12306,7 @@ dialog .auth-panel {
   background: none;
   color: #9fb0cc;
   font:
-    600 14px/1 "DM Sans",
+    600 calc(14px * var(--text-scale, 1))/1 "DM Sans",
     sans-serif;
   cursor: pointer;
 }
@@ -12329,7 +12329,7 @@ dialog .auth-panel {
 .auth-field > span:first-child {
   color: #c9d4e8;
   font:
-    600 13px/1 "DM Sans",
+    600 calc(13px * var(--text-scale, 1))/1 "DM Sans",
     sans-serif;
 }
 /* Matches the global input rule's specificity plus the panel class, so it wins. */
@@ -12346,7 +12346,7 @@ dialog .auth-panel {
   background: rgba(5, 10, 22, 0.6);
   color: #fff;
   font:
-    400 15px/1 "DM Sans",
+    400 calc(15px * var(--text-scale, 1))/1 "DM Sans",
     sans-serif;
   transition:
     border-color 0.15s,
@@ -12406,7 +12406,7 @@ dialog .auth-panel {
   align-items: center;
   gap: 8px;
   color: #c9d4e8;
-  font-size: 13px;
+  font-size: calc(13px * var(--text-scale, 1));
   cursor: pointer;
 }
 .auth-check input {
@@ -12422,7 +12422,7 @@ dialog .auth-panel {
   background: none;
   color: #f2c25b;
   font:
-    600 13px/1 "DM Sans",
+    600 calc(13px * var(--text-scale, 1))/1 "DM Sans",
     sans-serif;
   cursor: pointer;
 }
@@ -12441,7 +12441,7 @@ dialog .auth-panel {
   background: var(--btn-primary-bg);
   color: var(--ui-accent-ink);
   font:
-    700 15px/1 "DM Sans",
+    700 calc(15px * var(--text-scale, 1))/1 "DM Sans",
     sans-serif;
   box-shadow: 0 8px 24px rgba(242, 185, 59, 0.28);
   cursor: pointer;
@@ -12471,7 +12471,7 @@ dialog .auth-panel {
   background: rgba(255, 255, 255, 0.04);
   color: var(--ui-text);
   font:
-    600 14px/1 "DM Sans",
+    600 calc(14px * var(--text-scale, 1))/1 "DM Sans",
     sans-serif;
   cursor: pointer;
 }
@@ -12504,7 +12504,7 @@ dialog .auth-panel {
 .auth-message {
   margin: 0;
   color: #ffd68a;
-  font-size: 13px;
+  font-size: calc(13px * var(--text-scale, 1));
   text-align: center;
 }
 .auth-message:empty {
@@ -12516,14 +12516,14 @@ dialog .auth-panel {
   border-radius: 10px;
   background: rgba(255, 120, 90, 0.12);
   color: #ffb4a0;
-  font-size: 13px;
+  font-size: calc(13px * var(--text-scale, 1));
 }
 .auth-divider {
   display: flex;
   align-items: center;
   gap: 12px;
   color: #6f809c;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   text-transform: uppercase;
   letter-spacing: 0.12em;
 }
@@ -12546,7 +12546,7 @@ dialog .auth-panel {
 /* The privacy policy link: stays on short screens too (App Store 5.1.1). */
 .auth-legal {
   margin: -4px 0 0;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   line-height: 1.2;
   text-align: center;
 }
@@ -12556,7 +12556,7 @@ dialog .auth-panel {
 .auth-note {
   margin: -6px 0 0;
   color: #7d8ea9;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   line-height: 1.4;
 }
 @media (max-height: 560px) {
@@ -12569,7 +12569,7 @@ dialog .auth-panel {
     display: none;
   }
   .auth-title {
-    font-size: 20px;
+    font-size: calc(20px * var(--text-scale, 1));
   }
   .auth-tabs button {
     min-height: 36px;
@@ -12607,7 +12607,7 @@ dialog .auth-panel {
     height: 32px;
   }
   .gate-kicker {
-    font-size: 10px;
+    font-size: calc(10px * var(--text-scale, 1));
     letter-spacing: 0.14em;
   }
   .gate-intro h1 {
@@ -12625,11 +12625,11 @@ dialog .auth-panel {
     display: none;
   }
   .auth-title {
-    font-size: 18px;
+    font-size: calc(18px * var(--text-scale, 1));
   }
   .auth-tabs button {
     min-height: 34px;
-    font-size: 13px;
+    font-size: calc(13px * var(--text-scale, 1));
   }
   .auth-form {
     gap: 8px 12px;
@@ -12638,14 +12638,14 @@ dialog .auth-panel {
     gap: 4px;
   }
   .auth-field > span:first-child {
-    font-size: 12px;
+    font-size: calc(12px * var(--text-scale, 1));
   }
   .auth-panel
     input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not(
       [type="color"]
     ) {
     min-height: 36px;
-    font-size: 14px;
+    font-size: calc(14px * var(--text-scale, 1));
   }
   .auth-submit,
   .auth-secondary,
@@ -12699,7 +12699,7 @@ body.battle-active.court-view #game canvas {
    icon, sliders that show their value, and the actions in the footer. */
 .prefs-note {
   margin: 0 0 12px;
-  font-size: 13px;
+  font-size: calc(13px * var(--text-scale, 1));
   color: var(--text-dim);
 }
 .prefs-grid,
@@ -12722,7 +12722,7 @@ body.battle-active.court-view #game canvas {
   align-items: center;
   gap: 8px;
   margin: 0 0 10px;
-  font: 700 20px/1.1 var(--display);
+  font: 700 calc(20px * var(--text-scale, 1))/1.1 var(--display);
   letter-spacing: 0.03em;
   text-transform: uppercase;
   color: var(--text);
@@ -12735,13 +12735,13 @@ body.battle-active.court-view #game canvas {
 }
 .prefs-card > p {
   margin: 0;
-  font-size: 13px;
+  font-size: calc(13px * var(--text-scale, 1));
   line-height: 1.5;
   color: var(--text-dim);
 }
 .prefs-card > .prefs-note {
   margin: -4px 0 6px;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
 }
 .framed-dialog label.prefs-slider {
   display: grid;
@@ -12758,13 +12758,13 @@ body.battle-active.court-view #game canvas {
   margin: 0;
 }
 .prefs-slider-label {
-  font: 600 14px/1.3 var(--body);
+  font: 600 calc(14px * var(--text-scale, 1))/1.3 var(--body);
   color: var(--text);
 }
 .prefs-slider > output {
   min-width: 4ch;
   text-align: right;
-  font: 700 14px/1.3 var(--body);
+  font: 700 calc(14px * var(--text-scale, 1))/1.3 var(--body);
   font-variant-numeric: tabular-nums;
   color: var(--accent);
 }
@@ -12777,7 +12777,7 @@ body.battle-active.court-view #game canvas {
   padding: 4px 10px;
   border: 1px solid var(--line);
   border-radius: 999px;
-  font: 700 12px/1.2 var(--body);
+  font: 700 calc(12px * var(--text-scale, 1))/1.2 var(--body);
   color: var(--text-dim);
   background: #ffffff0a;
 }
@@ -12806,7 +12806,7 @@ body.battle-active.court-view #game canvas {
   padding: 6px 8px;
   border: 1px solid transparent;
   border-radius: 9px;
-  font: 700 14px/1.1 var(--body);
+  font: 700 calc(14px * var(--text-scale, 1))/1.1 var(--body);
   color: var(--text-dim);
   background: transparent;
   box-shadow: none;
@@ -12834,7 +12834,7 @@ body.battle-active.court-view #game canvas {
   padding: 8px 4px;
   border: 1px solid transparent;
   border-radius: 12px;
-  font: 700 12px/1.15 var(--body);
+  font: 700 calc(12px * var(--text-scale, 1))/1.15 var(--body);
   color: var(--text-dim);
   background: transparent;
   box-shadow: none;
@@ -12862,7 +12862,7 @@ body.battle-active.court-view #game canvas {
   border-radius: 10px;
   background: #ffb44a1a;
   color: var(--text);
-  font-size: 13px;
+  font-size: calc(13px * var(--text-scale, 1));
   line-height: 1.4;
 }
 .prefs-gpu-off b {
@@ -12905,7 +12905,7 @@ body.battle-active.court-view #game canvas {
 }
 .credits-hero b {
   display: block;
-  font: 700 28px/1 var(--display);
+  font: 700 calc(28px * var(--text-scale, 1))/1 var(--display);
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--accent);
@@ -12913,7 +12913,7 @@ body.battle-active.court-view #game canvas {
 .credits-hero small {
   display: block;
   margin-top: 4px;
-  font-size: 13px;
+  font-size: calc(13px * var(--text-scale, 1));
   color: var(--text-dim);
 }
 .credits-tags {
@@ -12928,7 +12928,7 @@ body.battle-active.court-view #game canvas {
   padding: 4px 10px;
   border: 1px solid var(--line);
   border-radius: 999px;
-  font: 600 12px/1.2 var(--body);
+  font: 600 calc(12px * var(--text-scale, 1))/1.2 var(--body);
   color: var(--text);
   background: #ffffff0a;
 }
@@ -12937,7 +12937,7 @@ body.battle-active.court-view #game canvas {
 @media (orientation: landscape) and (max-height: 500px) {
   .prefs-note {
     margin-bottom: 8px;
-    font-size: 12px;
+    font-size: calc(12px * var(--text-scale, 1));
   }
   .prefs-grid,
   .credits-grid {
@@ -12947,7 +12947,7 @@ body.battle-active.court-view #game canvas {
     padding: 8px 12px;
   }
   .framed-dialog .prefs-card > h3 {
-    font-size: 16px;
+    font-size: calc(16px * var(--text-scale, 1));
     margin-bottom: 2px;
   }
   .prefs-card > h3 > .menu-option-icon {
@@ -12956,7 +12956,7 @@ body.battle-active.court-view #game canvas {
   }
   .prefs-card > .prefs-note {
     margin: 0 0 2px;
-    font-size: 11px;
+    font-size: calc(11px * var(--text-scale, 1));
   }
   .framed-dialog label.prefs-slider {
     grid-template-columns: 8.5rem minmax(0, 1fr) 4.5ch;
@@ -12966,7 +12966,7 @@ body.battle-active.court-view #game canvas {
   }
   .prefs-slider-label,
   .prefs-slider > output {
-    font-size: 12px;
+    font-size: calc(12px * var(--text-scale, 1));
   }
   .prefs-slider > input {
     grid-column: 2;
@@ -13014,7 +13014,7 @@ body.battle-active.court-view #game canvas {
   .framed-dialog .prefs-graphics .prefs-choice > button {
     min-height: 28px;
     padding: 3px 6px;
-    font-size: 12px;
+    font-size: calc(12px * var(--text-scale, 1));
   }
   .prefs-graphics-note {
     display: none;
@@ -13060,7 +13060,7 @@ body.battle-active.court-view #game canvas {
   padding: 10px 0;
   border-block: 1px solid #8baee526;
   color: #acbdd7;
-  font-size: 13px;
+  font-size: calc(13px * var(--text-scale, 1));
 }
 .raid-briefing-extra > summary {
   cursor: pointer;
@@ -13179,7 +13179,7 @@ body.battle-active.court-view #game canvas {
   .touch-mode .raid-party-bars small {
     display: block;
     visibility: hidden;
-    font-size: 7px;
+    font-size: calc(7px * var(--text-scale, 1));
     line-height: 8px;
   }
   .touch-mode .raid-party-bars :is(.downed, .is-targeted) small {
@@ -13213,7 +13213,7 @@ body.battle-active.court-view #game canvas {
     > button {
     flex: 1;
     padding: 6px;
-    font-size: 11px;
+    font-size: calc(11px * var(--text-scale, 1));
   }
 }
 @media (orientation: landscape) and (max-height: 350px) {
@@ -13221,11 +13221,11 @@ body.battle-active.court-view #game canvas {
     padding-block: 4px;
   }
   .touch-mode .raid-boss-heading {
-    font-size: 9px;
+    font-size: calc(9px * var(--text-scale, 1));
     line-height: 1.1;
   }
   .touch-mode .raid-boss-heading > span {
-    font-size: 7px;
+    font-size: calc(7px * var(--text-scale, 1));
   }
   .touch-mode .raid-boss-health {
     height: 4px;
@@ -13253,7 +13253,7 @@ body.battle-active.court-view #game canvas {
     margin-top: 2px;
   }
   .touch-mode .raid-status-row .raid-callout {
-    font-size: 8px;
+    font-size: calc(8px * var(--text-scale, 1));
   }
 }
 
@@ -13304,7 +13304,7 @@ body.battle-active.court-view #game canvas {
 #arena-overlay .raid-draft .panel-actions .raid-rite-trigger {
   color: var(--text-dim);
   font:
-    500 13px/1.3 "DM Sans",
+    500 calc(13px * var(--text-scale, 1))/1.3 "DM Sans",
     sans-serif;
 }
 #arena-overlay .raid-draft .raid-rite-intro {
@@ -13321,7 +13321,7 @@ body.battle-active.court-view #game canvas {
   max-width: none;
   justify-self: start;
   text-align: left;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
 }
 .raid-rite-more {
   position: static;
@@ -13340,7 +13340,7 @@ body.battle-active.court-view #game canvas {
   background: var(--bg-1);
   color: var(--text);
   font:
-    600 12px/1.2 "DM Sans",
+    600 calc(12px * var(--text-scale, 1))/1.2 "DM Sans",
     sans-serif;
   list-style: none;
   cursor: pointer;
@@ -13384,7 +13384,7 @@ body.battle-active.court-view #game canvas {
 }
 #arena-overlay .raid-draft .raid-rite-reference > h3 {
   margin: 0 0 12px;
-  font: 700 23px/1.2 var(--display);
+  font: 700 calc(23px * var(--text-scale, 1))/1.2 var(--display);
 }
 .raid-rite-reference > ul {
   display: grid;
@@ -13408,13 +13408,13 @@ body.battle-active.court-view #game canvas {
 }
 #arena-overlay .raid-draft .raid-rite-reference h4 {
   margin: 0 0 5px;
-  font: 700 20px/1.2 var(--display);
+  font: 700 calc(20px * var(--text-scale, 1))/1.2 var(--display);
 }
 #arena-overlay .raid-draft .raid-rite-reference p {
   margin: 0;
   color: var(--text-dim);
   font:
-    400 14px/1.5 "DM Sans",
+    400 calc(14px * var(--text-scale, 1))/1.5 "DM Sans",
     sans-serif;
 }
 @media (orientation: landscape) and (max-height: 600px) {
@@ -13433,19 +13433,19 @@ body.battle-active.court-view #game canvas {
     gap: 8px;
   }
   #arena-overlay .raid-draft .panel-actions .raid-rite-heading > b {
-    font-size: 22px;
+    font-size: calc(22px * var(--text-scale, 1));
   }
   #arena-overlay .raid-draft .panel-actions .raid-rite-copy {
     gap: 6px;
   }
   #arena-overlay .raid-draft .panel-actions .raid-rite-trigger {
-    font-size: 12px;
+    font-size: calc(12px * var(--text-scale, 1));
   }
   .raid-rite-reference {
     padding: 12px 16px;
   }
   #arena-overlay .raid-draft .raid-rite-reference p {
-    font-size: 12px;
+    font-size: calc(12px * var(--text-scale, 1));
   }
 }
 @media (orientation: landscape) and (max-height: 350px) {
@@ -13461,16 +13461,16 @@ body.battle-active.court-view #game canvas {
     height: 48px;
   }
   #arena-overlay .raid-draft .panel-actions .raid-rite-heading > b {
-    font-size: 19px;
+    font-size: calc(19px * var(--text-scale, 1));
   }
   #arena-overlay .raid-draft .panel-actions .raid-rite-copy {
     gap: 3px;
   }
   #arena-overlay .raid-draft .panel-actions .raid-rite-trigger {
-    font-size: 11px;
+    font-size: calc(11px * var(--text-scale, 1));
   }
   #arena-overlay .raid-draft .raid-rite-intro > span:first-child {
-    font-size: 10px;
+    font-size: calc(10px * var(--text-scale, 1));
   }
   .raid-rite-reference {
     padding: 10px 12px;
@@ -13512,14 +13512,14 @@ body.battle-active.court-view #game canvas {
 }
 .raid-rite-buff-value {
   font:
-    800 29px/1.05 "DM Sans",
+    800 calc(29px * var(--text-scale, 1))/1.05 "DM Sans",
     sans-serif;
   letter-spacing: -1px;
   font-variant-numeric: tabular-nums;
 }
 .raid-rite-buff-unit {
   font:
-    600 11px/1.3 "DM Sans",
+    600 calc(11px * var(--text-scale, 1))/1.3 "DM Sans",
     sans-serif;
   color: var(--rite-color);
 }
@@ -13542,10 +13542,10 @@ body.battle-active.court-view #game canvas {
     height: 116px;
   }
   .raid-rite-buff-value {
-    font-size: 24px;
+    font-size: calc(24px * var(--text-scale, 1));
   }
   .raid-rite-buff-unit {
-    font-size: 10px;
+    font-size: calc(10px * var(--text-scale, 1));
   }
   #arena-overlay .raid-draft .panel-actions .raid-rite-copy {
     gap: 6px;
@@ -13562,10 +13562,10 @@ body.battle-active.court-view #game canvas {
   }
   #arena-overlay .raid-draft .panel-actions .raid-rite-heading > b {
     max-width: 9ch;
-    font-size: 19px;
+    font-size: calc(19px * var(--text-scale, 1));
   }
   .raid-rite-buff-value {
-    font-size: 22px;
+    font-size: calc(22px * var(--text-scale, 1));
   }
   #arena-overlay .raid-draft .panel-actions .raid-rite-copy {
     gap: 2px;
@@ -13595,7 +13595,7 @@ body.battle-active.court-view #game canvas {
   border-radius: 10px;
   background: #273651;
   color: #ffe390;
-  font: 700 26px/1 var(--display);
+  font: 700 calc(26px * var(--text-scale, 1))/1 var(--display);
 }
 .spectate-banner.pvp-spectator button:disabled {
   opacity: 0.3;
@@ -13610,7 +13610,7 @@ body.battle-active.court-view #game canvas {
 .spectator-copy small {
   color: #a6bad4;
   font:
-    500 10px/1.2 "DM Sans",
+    500 calc(10px * var(--text-scale, 1))/1.2 "DM Sans",
     sans-serif;
 }
 .spectator-copy b {
@@ -13618,7 +13618,7 @@ body.battle-active.court-view #game canvas {
   text-overflow: ellipsis;
   white-space: nowrap;
   font:
-    700 14px/1.3 "DM Sans",
+    700 calc(14px * var(--text-scale, 1))/1.3 "DM Sans",
     sans-serif;
 }
 body.pvp-knocked-out #mobile-controls .joystick-area,
@@ -13683,7 +13683,7 @@ body.battle-active:not(.touch-mode) .raid-stagger {
     padding: 3px 7px;
   }
   .touch-mode .raid-boss-heading {
-    font-size: 10px;
+    font-size: calc(10px * var(--text-scale, 1));
     line-height: 11px;
   }
   .touch-mode .raid-boss-heading > b {
@@ -13692,7 +13692,7 @@ body.battle-active:not(.touch-mode) .raid-stagger {
     text-overflow: ellipsis;
   }
   .touch-mode .raid-boss-heading > span {
-    font-size: 8px;
+    font-size: calc(8px * var(--text-scale, 1));
     line-height: 11px;
   }
   .touch-mode .raid-boss-health {
@@ -13738,7 +13738,7 @@ body.battle-active:not(.touch-mode) .raid-stagger {
     white-space: nowrap;
     visibility: hidden;
     line-height: 10px;
-    font-size: 7px;
+    font-size: calc(7px * var(--text-scale, 1));
   }
   .touch-mode .raid-party-bars :is(.downed, .is-targeted, .has-alert) small {
     visibility: visible;
@@ -13752,11 +13752,11 @@ body.battle-active:not(.touch-mode) .raid-stagger {
     height: 20px;
     min-height: 20px;
     margin: 0;
-    font-size: 9px;
+    font-size: calc(9px * var(--text-scale, 1));
     line-height: 10px;
   }
   .touch-mode .raid-elapsed b {
-    font-size: 12px;
+    font-size: calc(12px * var(--text-scale, 1));
   }
   .touch-mode .raid-twin-health {
     margin: 3px 0 2px;
@@ -13767,10 +13767,10 @@ body.battle-active:not(.touch-mode) .raid-stagger {
     line-height: 10px;
   }
   .touch-mode .raid-twin-bar b {
-    font-size: 9px;
+    font-size: calc(9px * var(--text-scale, 1));
   }
   .touch-mode .raid-twin-bar span {
-    font-size: 7px;
+    font-size: calc(7px * var(--text-scale, 1));
   }
   .touch-mode .raid-twin-track {
     height: 3px;
@@ -13810,11 +13810,11 @@ body.battle-active:not(.touch-mode) .raid-stagger {
     height: 14px;
   }
   .touch-mode #raid-dream-panel .dream-strip > b {
-    font-size: 11px;
+    font-size: calc(11px * var(--text-scale, 1));
     line-height: 12px;
   }
   .touch-mode #raid-dream-panel .dream-strip small {
-    font-size: 9px;
+    font-size: calc(9px * var(--text-scale, 1));
     line-height: 12px;
   }
   .touch-mode #raid-dream-panel .dream-rune-buttons {
@@ -13834,11 +13834,11 @@ body.battle-active:not(.touch-mode) .raid-stagger {
     padding-block: 2px;
   }
   .touch-mode .raid-boss-heading {
-    font-size: 9px;
+    font-size: calc(9px * var(--text-scale, 1));
     line-height: 9px;
   }
   .touch-mode .raid-boss-heading > span {
-    font-size: 7px;
+    font-size: calc(7px * var(--text-scale, 1));
     line-height: 9px;
   }
   .touch-mode .raid-boss-health {
@@ -13858,7 +13858,7 @@ body.battle-active:not(.touch-mode) .raid-stagger {
   .touch-mode .raid-status-row .raid-callout {
     height: 16px;
     min-height: 16px;
-    font-size: 8px;
+    font-size: calc(8px * var(--text-scale, 1));
     line-height: 8px;
   }
 }
@@ -13903,7 +13903,7 @@ body.battle-active.touch-mode.pvp-knocked-out #battle-menu {
   min-height: 36px;
   padding: 2px;
   margin-left: auto;
-  font-size: 22px;
+  font-size: calc(22px * var(--text-scale, 1));
   line-height: 1;
 }
 /* Ally HP sits in the left gutter below the boss, with no extra HUD row. */
@@ -13925,7 +13925,7 @@ body.battle-active.touch-mode.pvp-knocked-out #battle-menu {
     padding-inline: 3px;
     border-radius: 3px;
     background: #0c1b32e8;
-    font-size: 9px;
+    font-size: calc(9px * var(--text-scale, 1));
   }
   .touch-mode.battle-raid #raid-hud .raid-party-bars small {
     max-width: 60px;
@@ -13934,7 +13934,7 @@ body.battle-active.touch-mode.pvp-knocked-out #battle-menu {
 @media (orientation: landscape) and (max-height: 350px) {
   .touch-mode.battle-raid #raid-hud .raid-party-bars > span {
     grid-template-rows: 8px 2px;
-    font-size: 8px;
+    font-size: calc(8px * var(--text-scale, 1));
   }
   .touch-mode.battle-raid #raid-hud .raid-party-bars b,
   .touch-mode.battle-raid
@@ -13984,7 +13984,7 @@ body.battle-active.touch-mode.pvp-knocked-out #battle-menu {
   .touch-mode.battle-raid .raid-status-row .raid-callout {
     height: 20px;
     min-height: 20px;
-    font-size: 9px;
+    font-size: calc(9px * var(--text-scale, 1));
     line-height: 10px;
   }
   body.battle-active.touch-mode.battle-raid
@@ -14008,10 +14008,10 @@ body.battle-active.touch-mode.pvp-knocked-out #battle-menu {
     padding: 4px 6px;
     gap: 4px;
     border-radius: 8px;
-    font-size: 10px;
+    font-size: calc(10px * var(--text-scale, 1));
   }
   .touch-mode #raid-prism-controls button span {
-    font-size: 14px;
+    font-size: calc(14px * var(--text-scale, 1));
   }
   body.battle-active.touch-mode.battle-raid #raid-dream-panel:not([hidden]) {
     top: auto;
@@ -14027,7 +14027,7 @@ body.battle-active.touch-mode.pvp-knocked-out #battle-menu {
 }
 @media (orientation: landscape) and (max-height: 350px) {
   .touch-mode.battle-raid .raid-status-row .raid-callout {
-    font-size: 8px;
+    font-size: calc(8px * var(--text-scale, 1));
     line-height: 10px;
   }
 }
@@ -14073,7 +14073,7 @@ body.battle-active.touch-mode .battle-dock .practice-settings > summary {
   padding: 0;
   color: #fff7dc;
   background: none;
-  font-size: 13px;
+  font-size: calc(13px * var(--text-scale, 1));
   line-height: 16px;
   white-space: nowrap;
   overflow: hidden;
@@ -14082,7 +14082,7 @@ body.battle-active.touch-mode .battle-dock .practice-settings > summary {
 }
 .battle-raid #raid-hud .raid-boss-heading > span {
   grid-area: peril;
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale, 1));
   line-height: 16px;
   text-align: right;
 }
@@ -14114,7 +14114,7 @@ body.battle-active.touch-mode .battle-dock .practice-settings > summary {
   text-overflow: ellipsis;
   text-align: center;
   color: #ffdc72;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   line-height: 16px;
 }
 .battle-raid #raid-hud .raid-elapsed {
@@ -14188,7 +14188,7 @@ body.battle-active:not(.touch-mode).battle-raid .raid-elapsed {
 }
 body.battle-active:not(.touch-mode).battle-raid .raid-elapsed b {
   min-width: 0;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
 }
 body.battle-active:not(.touch-mode).battle-raid .raid-elapsed > svg {
   display: none;
@@ -14204,7 +14204,7 @@ body.battle-active:not(.touch-mode).battle-raid .raid-party-bars > span {
   grid-template-rows: 12px 3px;
   gap: 2px 3px;
   padding: 3px 5px;
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
 }
 body.battle-active:not(.touch-mode).battle-raid .raid-party-bars b {
   grid-column: 1;
@@ -14221,7 +14221,7 @@ body.battle-active:not(.touch-mode).battle-raid .raid-party-bars small {
   max-width: 68px;
   overflow: hidden;
   white-space: nowrap;
-  font-size: 8px;
+  font-size: calc(8px * var(--text-scale, 1));
 }
 @media (orientation: landscape) {
   body.battle-active.touch-mode.battle-raid #battle:not([hidden]) {
@@ -14232,16 +14232,16 @@ body.battle-active:not(.touch-mode).battle-raid .raid-party-bars small {
     height: 14px;
   }
   .touch-mode.battle-raid #raid-hud .raid-boss-heading > b {
-    font-size: 11px;
+    font-size: calc(11px * var(--text-scale, 1));
     line-height: 14px;
   }
   .touch-mode.battle-raid #raid-hud .raid-boss-heading > span {
-    font-size: 10px;
+    font-size: calc(10px * var(--text-scale, 1));
     line-height: 14px;
   }
   .touch-mode.battle-raid #raid-hud .raid-callout {
     min-height: 14px;
-    font-size: 10px;
+    font-size: calc(10px * var(--text-scale, 1));
     line-height: 14px;
   }
   .touch-mode.battle-raid #raid-hud .raid-elapsed {
@@ -14264,7 +14264,7 @@ body.battle-active:not(.touch-mode).battle-raid .raid-party-bars small {
   }
   .touch-mode.battle-raid #raid-hud .raid-elapsed b {
     min-width: 0;
-    font-size: 11px;
+    font-size: calc(11px * var(--text-scale, 1));
   }
   body.battle-active.touch-mode.battle-raid
     :is(#raid-prism-controls, #raid-storm-targets):not([hidden]) {
@@ -14307,12 +14307,12 @@ body.battle-active:not(.touch-mode).battle-raid .raid-party-bars small {
     height: 12px;
   }
   .touch-mode.battle-raid #raid-hud .raid-boss-heading > b {
-    font-size: 10px;
+    font-size: calc(10px * var(--text-scale, 1));
     line-height: 12px;
   }
   .touch-mode.battle-raid #raid-hud .raid-callout {
     min-height: 12px;
-    font-size: 9px;
+    font-size: calc(9px * var(--text-scale, 1));
     line-height: 12px;
   }
   .touch-mode.battle-raid #raid-hud .raid-boss-heading > span {
@@ -14367,11 +14367,11 @@ body.battle-active:not(.touch-mode).battle-raid
   white-space: normal;
 }
 .raid-rite-buff-value {
-  font-size: 24px;
+  font-size: calc(24px * var(--text-scale, 1));
   letter-spacing: -0.5px;
 }
 .raid-rite-buff-unit {
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
 }
 #arena-overlay .raid-draft .raid-rite-heading {
   align-items: center;
@@ -14386,12 +14386,12 @@ body.battle-active:not(.touch-mode).battle-raid
     gap: 4px;
   }
   .raid-rite-buff-value {
-    font-size: 20px;
+    font-size: calc(20px * var(--text-scale, 1));
   }
 }
 @media (orientation: landscape) and (max-height: 450px) {
   .raid-rite-buff-value {
-    font-size: 22px;
+    font-size: calc(22px * var(--text-scale, 1));
   }
 }
 @media (orientation: landscape) and (max-height: 350px) {
@@ -14414,7 +14414,7 @@ body.battle-active:not(.touch-mode).battle-raid
   }
   #arena-overlay .raid-draft .panel-actions .raid-rite-heading > b {
     max-width: 7ch;
-    font-size: 18px;
+    font-size: calc(18px * var(--text-scale, 1));
   }
 }
 
@@ -14674,11 +14674,11 @@ body.battle-active:not(.touch-mode).battle-raid .arena-frame {
 .touch-buttons .touch-ultimate:not(.ult-ready) .touch-key {
   position: absolute;
   bottom: clamp(7px, 20%, 12px);
-  font-size: 9px;
+  font-size: calc(9px * var(--text-scale, 1));
   opacity: 1;
 }
 .touch-buttons .touch-ultimate:not(.ult-ready) .touch-cooldown {
-  font-size: 18px;
+  font-size: calc(18px * var(--text-scale, 1));
   line-height: 1;
   transform: translateY(-3px);
 }
@@ -14748,7 +14748,7 @@ body.battle-active.battle-raid #spectate:not(.pvp-spectator) {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 14px;
+  font-size: calc(14px * var(--text-scale, 1));
   line-height: 18px;
 }
 .raid-revive-head > svg {
@@ -14782,14 +14782,14 @@ body.battle-active.battle-raid #spectate:not(.pvp-spectator) {
 .raid-revive-instruction {
   margin: 0;
   color: #e6edf8;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   font-weight: 500;
   line-height: 16px;
 }
 .battle-raid .spectate-banner .raid-revive-cause {
   margin-top: 4px;
   color: #a9bad2;
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale, 1));
   line-height: 14px;
 }
 body.battle-raid.raid-downed #mobile-controls .touch-buttons {
@@ -14845,7 +14845,7 @@ body.battle-raid #battle #raid-hud#raid-hud .raid-boss-heading > b {
   white-space: nowrap;
   text-overflow: ellipsis;
   color: #fff3d6;
-  font: 700 17px/1.1 var(--display);
+  font: 700 calc(17px * var(--text-scale, 1))/1.1 var(--display);
   letter-spacing: 0.14em;
   text-shadow:
     0 2px 6px #000d,
@@ -14858,7 +14858,7 @@ body.battle-raid #battle #raid-hud#raid-hud .raid-boss-heading > span {
   border-radius: 999px;
   background: #0a1222cc;
   color: #e9cf95;
-  font: 700 10px/14px var(--body);
+  font: 700 calc(10px * var(--text-scale, 1))/14px var(--body);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   white-space: nowrap;
@@ -14942,7 +14942,7 @@ body.battle-raid #battle #raid-hud#raid-hud .raid-boss-pct {
   right: 6px;
   transform: translateY(-50%);
   color: #fff;
-  font: 700 10px/1 var(--body);
+  font: 700 calc(10px * var(--text-scale, 1))/1 var(--body);
   font-variant-numeric: tabular-nums;
   text-shadow:
     0 1px 2px #000,
@@ -15009,7 +15009,7 @@ body.battle-raid #battle #raid-hud#raid-hud .raid-twin-bar > div:first-child {
 }
 body.battle-raid #battle #raid-hud#raid-hud .raid-twin-bar > div:first-child b {
   color: #fff;
-  font: 700 10px/1 var(--body);
+  font: 700 calc(10px * var(--text-scale, 1))/1 var(--body);
   letter-spacing: 0.06em;
   text-transform: uppercase;
   text-shadow:
@@ -15023,7 +15023,7 @@ body.battle-raid
   > div:first-child
   span {
   color: #ffe9b0;
-  font: 700 9px/1 var(--body);
+  font: 700 calc(9px * var(--text-scale, 1))/1 var(--body);
   text-shadow: 0 1px 2px #000;
 }
 body.battle-raid #battle #raid-hud#raid-hud .raid-twin-stagger {
@@ -15051,7 +15051,7 @@ body.battle-raid #battle #raid-hud#raid-hud .raid-callout {
   text-overflow: ellipsis;
   text-align: center;
   color: #ffdc72;
-  font: 600 12px/16px var(--body);
+  font: 600 calc(12px * var(--text-scale, 1))/16px var(--body);
   text-shadow: 0 1px 3px #000c;
   -webkit-line-clamp: unset;
   display: block;
@@ -15065,7 +15065,7 @@ body.battle-raid.touch-mode #battle #raid-hud#raid-hud {
   padding: 2px 0;
 }
 body.battle-raid.touch-mode #battle #raid-hud#raid-hud .raid-boss-heading > b {
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   line-height: 12px;
 }
 body.battle-raid.touch-mode
@@ -15074,7 +15074,7 @@ body.battle-raid.touch-mode
   .raid-boss-heading
   > span {
   padding: 0 6px;
-  font-size: 8px;
+  font-size: calc(8px * var(--text-scale, 1));
   line-height: 10px;
 }
 body.battle-raid.touch-mode
@@ -15101,7 +15101,7 @@ body.battle-raid.touch-mode
   .raid-twin-bar
   > div:first-child
   b {
-  font-size: 8px;
+  font-size: calc(8px * var(--text-scale, 1));
 }
 body.battle-raid.touch-mode
   #battle
@@ -15109,11 +15109,11 @@ body.battle-raid.touch-mode
   .raid-twin-bar
   > div:first-child
   span {
-  font-size: 7px;
+  font-size: calc(7px * var(--text-scale, 1));
 }
 body.battle-raid.touch-mode #battle #raid-hud#raid-hud .raid-callout {
   margin: 0;
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
   line-height: 12px;
 }
 @media (orientation: landscape) and (max-height: 350px) {
@@ -15125,7 +15125,7 @@ body.battle-raid.touch-mode #battle #raid-hud#raid-hud .raid-callout {
     #raid-hud#raid-hud
     .raid-boss-heading
     > b {
-    font-size: 11px;
+    font-size: calc(11px * var(--text-scale, 1));
     line-height: 11px;
   }
   body.battle-raid.touch-mode
@@ -15135,7 +15135,7 @@ body.battle-raid.touch-mode #battle #raid-hud#raid-hud .raid-callout {
     height: 9px;
   }
   body.battle-raid.touch-mode #battle #raid-hud#raid-hud .raid-callout {
-    font-size: 9px;
+    font-size: calc(9px * var(--text-scale, 1));
     line-height: 11px;
   }
 }
@@ -15193,7 +15193,7 @@ body.battle-raid.touch-mode #battle #raid-hud#raid-hud .raid-callout {
   background: #0b1222e6;
   color: #d6deec;
   font:
-    700 10px/14px "DM Sans",
+    700 calc(10px * var(--text-scale, 1))/14px "DM Sans",
     sans-serif;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0;
@@ -15250,7 +15250,7 @@ body.battle-raid.touch-mode #battle #raid-hud#raid-hud .raid-callout {
   background: #14243bea;
   color: #f4efe2;
   font:
-    600 12px/1 "DM Sans",
+    600 calc(12px * var(--text-scale, 1))/1 "DM Sans",
     sans-serif;
   touch-action: manipulation;
 }
@@ -15293,7 +15293,7 @@ body:not(.battle-raid) #battle-menu .ping-badge {
     height: 28px;
     min-height: 28px;
     padding: 0 9px;
-    font-size: 11px;
+    font-size: calc(11px * var(--text-scale, 1));
   }
 }
 /* Phones: no room for the number by the gear (fighter cards, target row),
@@ -15392,11 +15392,11 @@ body
 }
 body #arena-overlay .raid-draft .panel-actions .raid-rite-heading > b {
   max-width: none;
-  font-size: 22px;
+  font-size: calc(22px * var(--text-scale, 1));
   line-height: 1.1;
 }
 body #arena-overlay .raid-draft .panel-actions .raid-rite-trigger {
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   line-height: 1.3;
   max-width: 100%;
   overflow: hidden;
@@ -15442,10 +15442,10 @@ body #arena-overlay .raid-draft .panel-actions .raid-rite-trigger {
     padding: 2px 6px;
   }
   body #arena-overlay .raid-draft .panel-actions .raid-rite-heading > b {
-    font-size: 17px;
+    font-size: calc(17px * var(--text-scale, 1));
   }
   body #arena-overlay .raid-draft .panel-actions .raid-rite-trigger {
-    font-size: 11px;
+    font-size: calc(11px * var(--text-scale, 1));
   }
 }
 /* Portrait phones: two columns. */
@@ -15467,7 +15467,7 @@ body #arena-overlay .raid-draft .panel-actions .raid-rite-trigger {
     display: none;
   }
   body #arena-overlay .raid-draft .panel-actions .raid-rite-heading > b {
-    font-size: 15px;
+    font-size: calc(15px * var(--text-scale, 1));
   }
   body #arena-overlay .raid-draft .panel-actions .raid-rite-options > button {
     padding: 4px 6px;
@@ -15477,7 +15477,7 @@ body #arena-overlay .raid-draft .panel-actions .raid-rite-trigger {
     height: 33px;
   }
   body #arena-overlay .raid-draft .panel-actions .raid-rite-buff-value {
-    font-size: 20px;
+    font-size: calc(20px * var(--text-scale, 1));
   }
   /* Teammates' picks show once you have chosen; its whole strip goes. */
   body #arena-overlay .raid-draft > .panel-scroll {
@@ -15572,7 +15572,7 @@ body.battle-active:not(.touch-mode)
   padding: 1px 6px;
   border-radius: 999px;
   background: #060a16cc;
-  font: 800 10px/12px var(--display);
+  font: 800 calc(10px * var(--text-scale, 1))/12px var(--display);
   letter-spacing: 0.4px;
   white-space: nowrap;
   transform: translateX(-50%);
@@ -15634,7 +15634,7 @@ body.battle-active:not(.touch-mode)
     max(16px, var(--safe-bottom, 0px)) max(16px, var(--safe-left, 0px));
   background: #0b1020;
   color: #dfe6f5;
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale, 1));
   text-align: center;
 }
 .hub-world-wait p {
@@ -15670,7 +15670,7 @@ body.battle-active:not(.touch-mode)
   border-radius: 10px;
   color: #ffc9c0;
   background: #3a161480;
-  font-size: 13px;
+  font-size: calc(13px * var(--text-scale, 1));
   font-weight: 600;
   text-align: center;
 }

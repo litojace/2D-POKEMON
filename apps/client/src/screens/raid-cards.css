@@ -121,7 +121,7 @@ body.touch-mode.chat-corner #arena-overlay > .rc-card {
   color: var(--ui-accent);
   font-family: var(--font-display);
   font-weight: 800;
-  font-size: 17px;
+  font-size: calc(17px * var(--text-scale, 1));
 }
 .rc-step-head h3 {
   font-family: var(--font-display);
@@ -206,7 +206,7 @@ body.touch-mode.chat-corner #arena-overlay > .rc-card {
   background: var(--fill-card);
 }
 .rc-stat b {
-  font-size: 28px;
+  font-size: calc(28px * var(--text-scale, 1));
   line-height: 1;
   color: var(--ui-accent);
 }
@@ -287,7 +287,7 @@ body.touch-mode.chat-corner #arena-overlay > .rc-card {
   text-align: right;
   font-family: var(--font-display);
   font-weight: 800;
-  font-size: 20px;
+  font-size: calc(20px * var(--text-scale, 1));
   color: var(--ui-text);
 }
 .rc-score td.is-zero {
@@ -426,7 +426,7 @@ body.touch-mode.chat-corner #arena-overlay > .rc-card {
   .rc-step-n {
     width: 22px;
     height: 22px;
-    font-size: 13px;
+    font-size: calc(13px * var(--text-scale, 1));
   }
   .rc-steps .raid-guide-scene {
     height: 64px;
@@ -447,7 +447,7 @@ body.touch-mode.chat-corner #arena-overlay > .rc-card {
     padding: 4px;
   }
   .rc-stat b {
-    font-size: 20px;
+    font-size: calc(20px * var(--text-scale, 1));
   }
   .rc-contrib {
     padding: 8px;
@@ -462,7 +462,7 @@ body.touch-mode.chat-corner #arena-overlay > .rc-card {
     padding: 4px 8px;
   }
   .rc-score td {
-    font-size: 16px;
+    font-size: calc(16px * var(--text-scale, 1));
   }
   .rc-portrait {
     width: 42px;

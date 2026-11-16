@@ -63,7 +63,7 @@ body.battle-active.touch-mode #battle #hud.hud-badge {
   align-items: baseline;
   gap: 5px;
   margin: 0;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   white-space: nowrap;
 }
 #hud.hud-badge .health-card.right > div:first-child {
@@ -77,7 +77,7 @@ body.battle-active.touch-mode #battle #hud.hud-badge {
 }
 #hud.hud-badge .health-card strong[id^="score-"] {
   font:
-    700 15px "Barlow Condensed",
+    700 calc(15px * var(--text-scale, 1)) "Barlow Condensed",
     sans-serif;
   color: var(--element);
   margin: 0;
@@ -134,7 +134,7 @@ body.battle-active.touch-mode #battle #hud.hud-badge {
 #hud.hud-badge #timer {
   margin: 0;
   font:
-    700 18px "Barlow Condensed",
+    700 calc(18px * var(--text-scale, 1)) "Barlow Condensed",
     sans-serif;
   line-height: 1;
 }
@@ -148,7 +148,7 @@ body.battle-active.touch-mode #battle #hud.hud-badge {
   white-space: nowrap;
   line-height: 1;
   margin: 2px 0 0;
-  font-size: 8px;
+  font-size: calc(8px * var(--text-scale, 1));
   letter-spacing: 0.8px;
   color: #9fb0d0;
 }
@@ -165,7 +165,7 @@ body.battle-active.touch-mode #battle #hud.hud-badge {
   border-radius: 999px;
   background: #0b1428d9;
   color: var(--ui-accent);
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
   letter-spacing: 0.6px;
   white-space: nowrap;
 }

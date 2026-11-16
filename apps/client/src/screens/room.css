@@ -157,7 +157,7 @@
 .room-banner-name {
   font-family: var(--font-display);
   font-weight: 800;
-  font-size: 30px;
+  font-size: calc(30px * var(--text-scale, 1));
   line-height: 1;
   text-transform: uppercase;
   letter-spacing: 0.02em;
@@ -238,7 +238,7 @@ button.room-seat.is-open:focus-visible {
   border: 2px dashed var(--ui-line-2);
   display: grid;
   place-items: center;
-  font-size: 20px;
+  font-size: calc(20px * var(--text-scale, 1));
   color: var(--ui-dim);
 }
 .room-seat-text {
@@ -360,13 +360,13 @@ button.room-seat.is-open:focus-visible {
     padding: 4px 8px;
   }
   .room-banner-name {
-    font-size: 18px;
+    font-size: calc(18px * var(--text-scale, 1));
   }
   .room-head {
     min-height: 0;
   }
   .room-head .ui-h {
-    font-size: 13px;
+    font-size: calc(13px * var(--text-scale, 1));
   }
   .room-head .ui-note {
     font-size: var(--fs-micro);
@@ -381,10 +381,10 @@ button.room-seat.is-open:focus-visible {
   .room-plus {
     width: 30px;
     height: 30px;
-    font-size: 15px;
+    font-size: calc(15px * var(--text-scale, 1));
   }
   .room-seat-text b {
-    font-size: 12px;
+    font-size: calc(12px * var(--text-scale, 1));
   }
   .room-seat-text small {
     font-size: var(--fs-micro);

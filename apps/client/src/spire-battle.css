@@ -16,7 +16,7 @@ body.battle-raid
 /* Who each wave sends (one line between floors). */
 .spire-plan-line {
   margin: 4px 0 0;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   color: #c8bfe6;
 }
 .spire-waves {
@@ -90,11 +90,11 @@ body.battle-raid
   border-radius: 999px;
   background: #a78bff44;
   color: #efe9ff;
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale, 1));
 }
 .raid-rite-copy small.spire-blessing-tag {
   color: #c9b2ff;
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale, 1));
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }

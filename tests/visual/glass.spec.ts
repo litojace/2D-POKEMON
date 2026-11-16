@@ -98,6 +98,35 @@ test.describe("glass", () => {
       .toBe("rgb(255, 214, 91)");
   });
 
+  test("one knob scales every text size", async ({ page }) => {
+    await page.setViewportSize(PHONE);
+    await openLobby(page);
+    await hubMenu(page, "missions");
+    // A token size (the panel title), a px size from style.css (the
+    // scene switch) and one from lobby.css (the rail's labels are hidden on
+    // phones, so the player card's name).
+    const probes = [
+      ".missions-sheet .ui-title",
+      "#hub-scenes button",
+      "#account-profile",
+    ];
+    const sizes = () =>
+      page.evaluate(
+        (sel) =>
+          sel.map((s) =>
+            parseFloat(getComputedStyle(document.querySelector(s)!).fontSize),
+          ),
+        probes,
+      );
+    const before = await sizes();
+    await page.evaluate(() =>
+      document.documentElement.style.setProperty("--text-scale", "1.5"),
+    );
+    const after = await sizes();
+    for (let i = 0; i < probes.length; i++)
+      expect(after[i], probes[i]).toBeCloseTo(before[i] * 1.5, 0);
+  });
+
   test("Low graphics: no blur, a deeper tint", async ({ page }) => {
     await page.addInitScript(() => localStorage.setItem("ea-graphics", "low"));
     await page.setViewportSize(PHONE);

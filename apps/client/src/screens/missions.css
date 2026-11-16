@@ -15,7 +15,7 @@
   font-size: var(--fs-small);
 }
 .missions-sum .ui-price {
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale, 1));
 }
 .missions-list {
   display: grid;
@@ -75,7 +75,7 @@
 .missions-top .ui-num {
   flex: none;
   color: var(--ui-dim);
-  font-size: 16px;
+  font-size: calc(16px * var(--text-scale, 1));
 }
 .missions-pay {
   display: flex;
@@ -88,7 +88,7 @@
 }
 .missions-pay .ui-price {
   color: var(--ui-text);
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale, 1));
 }
 .missions-diff {
   padding: 1px 6px;
@@ -108,7 +108,7 @@
   display: grid;
   justify-items: center;
   color: var(--ui-ok);
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale, 1));
   font-weight: 700;
 }
 .missions-paid svg {
@@ -175,7 +175,7 @@
   border: 1px solid var(--ui-accent);
   background: transparent;
   color: var(--ui-accent);
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale, 1));
   font-style: normal;
   font-weight: 800;
 }
@@ -202,17 +202,17 @@
     padding: 5px 0 5px 8px;
   }
   .missions-top b {
-    font-size: 13px;
+    font-size: calc(13px * var(--text-scale, 1));
   }
   .missions-top .ui-num {
-    font-size: 14px;
+    font-size: calc(14px * var(--text-scale, 1));
   }
   .missions-pay {
     gap: 6px;
     font-size: var(--fs-micro);
   }
   .missions-pay .ui-price {
-    font-size: 13px;
+    font-size: calc(13px * var(--text-scale, 1));
   }
   .missions-guide {
     margin: 0 8px 6px;

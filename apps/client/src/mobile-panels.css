@@ -16,7 +16,7 @@
     min-height: 38px !important;
     padding: 6px 10px !important;
     gap: 9px !important;
-    font-size: 13px !important;
+    font-size: calc(13px * var(--text-scale, 1)) !important;
   }
   .header-menu-panel .menu-option-icon {
     width: 17px;

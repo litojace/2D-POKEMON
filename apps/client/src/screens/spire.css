@@ -21,7 +21,7 @@
 }
 .rh-stars.spire-floors {
   letter-spacing: 0;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
 }
 
 /* The page's stage: the tower, lit to your highest floor. */
@@ -60,7 +60,7 @@
 }
 .sp-stat b {
   font-family: var(--font-display);
-  font-size: 26px;
+  font-size: calc(26px * var(--text-scale, 1));
   line-height: 1;
 }
 .sp-stat small {
@@ -110,7 +110,7 @@
 }
 .sp-floor-num {
   font-family: var(--font-display);
-  font-size: 22px;
+  font-size: calc(22px * var(--text-scale, 1));
   font-weight: 800;
   text-align: center;
   color: var(--boss);
@@ -202,7 +202,7 @@
 }
 .sp-stacks {
   color: var(--boss);
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
 }
 
 /* ------------------------------------------------- phones, sideways */
@@ -217,11 +217,11 @@
     padding: 4px 8px;
   }
   .sp-stat b {
-    font-size: 18px;
+    font-size: calc(18px * var(--text-scale, 1));
   }
   .sp-how li {
     padding: 4px 8px;
-    font-size: 13px;
+    font-size: calc(13px * var(--text-scale, 1));
   }
   .sp-floor {
     grid-template-columns: 28px minmax(0, 1fr) auto auto;
@@ -230,7 +230,7 @@
     padding: 3px 8px;
   }
   .sp-floor-num {
-    font-size: 16px;
+    font-size: calc(16px * var(--text-scale, 1));
   }
   .sp-floor-state {
     display: none;
@@ -261,7 +261,7 @@
 }
 @media (max-width: 700px) {
   .sp-floor .sp-reward .ui-price {
-    font-size: 12px;
+    font-size: calc(12px * var(--text-scale, 1));
   }
 }
 
