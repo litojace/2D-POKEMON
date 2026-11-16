@@ -105,3 +105,56 @@ registerRoute(
 self.addEventListener("message", (event) => {
   if (event.data?.type === "SKIP_WAITING") void self.skipWaiting();
 });
+
+/**
+ * Friends' messages while you're away (the server's push.ts): the
+ * notification says who, never what. A newer one from the same friend
+ * replaces the last (its tag). Tapping it opens the game on that friend.
+ */
+interface FriendPush {
+  kind?: string;
+  title?: string;
+  body?: string;
+  tag?: string;
+  friend?: { id: string; name: string };
+}
+self.addEventListener("push", (event) => {
+  let data: FriendPush = {};
+  try {
+    data = (event.data?.json() as FriendPush) ?? {};
+  } catch {
+    /* Not ours. */
+  }
+  if (data.kind !== "friend-message" || !data.friend?.id) return;
+  event.waitUntil(
+    self.registration.showNotification(data.title || "Element Arena", {
+      body: data.body || `New message from ${data.friend.name}`,
+      tag: data.tag || `friend-${data.friend.id}`,
+      icon: "/icons/arena-192.png",
+      data: { friend: data.friend },
+    }),
+  );
+});
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const friend = (event.notification.data as FriendPush | null)?.friend;
+  event.waitUntil(
+    (async () => {
+      const tabs = (await self.clients.matchAll({
+        type: "window",
+        includeUncontrolled: true,
+      })) as WindowClient[];
+      // A tab already open: bring it forward on that friend.
+      const tab = tabs.find((t) => t.visibilityState === "visible") ?? tabs[0];
+      if (tab) {
+        await tab.focus().catch(() => {});
+        if (friend) tab.postMessage({ type: "open-friend", friend });
+        return;
+      }
+      const url = friend
+        ? `/?friend=${encodeURIComponent(friend.id)}&name=${encodeURIComponent(friend.name)}`
+        : "/";
+      await self.clients.openWindow(url);
+    })(),
+  );
+});
