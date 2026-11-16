@@ -363,3 +363,127 @@ it("a player an admin stopped can't type until then, but quick chat works", asyn
     (await request(sa, "chat-send", { channel: "party", text: "hi" })).ok,
   ).toBe(true);
 });
+
+it("friends message each other; strangers can't; kept messages come back with unread counts", async () => {
+  const f = await setup();
+  // A store standing in for the database (migration 20261115230000).
+  const kept: {
+    id: number;
+    from: string;
+    to: string;
+    at: number;
+    text: string | null;
+    quick: string | null;
+  }[] = [];
+  const read = new Map<string, number>();
+  f.accounts.provider.friendMessages = {
+    async save(from, to, body) {
+      kept.push({
+        id: kept.length + 1,
+        from,
+        to,
+        at: Date.now(),
+        text: body.text ?? null,
+        quick: body.quick ?? null,
+      });
+      return kept.length;
+    },
+    async history(me, friend) {
+      return kept.filter(
+        (m) => [m.from, m.to].sort().join() === [me, friend].sort().join(),
+      );
+    },
+    async unread(me) {
+      const out: Record<string, number> = {};
+      for (const m of kept)
+        if (m.to === me && m.id > (read.get(`${me}:${m.from}`) ?? 0))
+          out[m.from] = (out[m.from] ?? 0) + 1;
+      return out;
+    },
+    async read(me, friend) {
+      read.set(`${me}:${friend}`, kept.length);
+    },
+  };
+  await settle();
+  expect(
+    await request(f.a.s, "chat-send", {
+      channel: "friend",
+      to: f.pal.account.id,
+      text: "hey pal",
+    }),
+  ).toEqual({ ok: true, kept: true });
+  await settle();
+  // Both see it, with the stored id (negated) and who it went to.
+  for (const who of [f.a, f.b])
+    expect(who.heard.map((l) => [l.channel, l.id, l.to, l.text])).toEqual([
+      ["friend", -1, f.pal.account.id, "hey pal"],
+    ]);
+  // A stranger is no one's friend here.
+  expect(
+    (
+      await request(f.x.s, "chat-send", {
+        channel: "friend",
+        to: f.lead.account.id,
+        text: "hi",
+      })
+    ).ok,
+  ).toBe(false);
+  expect(
+    (
+      await request(f.a.s, "chat-send", {
+        channel: "friend",
+        to: f.stranger.account.id,
+        text: "hi",
+      })
+    ).ok,
+  ).toBe(false);
+  // Read back from the store, and counted unread until read.
+  const back = await request(f.b.s, "chat-history", {
+    channel: "friend",
+    to: f.lead.account.id,
+  });
+  expect(back.lines?.map((l) => [l.id, l.from.id, l.text])).toEqual([
+    [-1, f.lead.account.id, "hey pal"],
+  ]);
+  expect(await request(f.b.s, "chat-unread")).toEqual({
+    ok: true,
+    unread: { [f.lead.account.id]: 1 },
+  });
+  // The Friends tab: each friend, online or not, with their unread count.
+  expect(await request(f.b.s, "chat-friends")).toMatchObject({
+    ok: true,
+    friends: [{ id: f.lead.account.id, online: true, unread: 1 }],
+  });
+  f.b.s.emit("chat-read", { to: f.lead.account.id });
+  await settle();
+  expect(await request(f.b.s, "chat-unread")).toEqual({ ok: true, unread: {} });
+  expect(
+    (
+      (await request(f.b.s, "chat-friends")) as {
+        friends: { unread: number }[];
+      }
+    ).friends[0].unread,
+  ).toBe(0);
+});
+
+it("before the friends' messages migration runs, friends still message live", async () => {
+  const f = await setup();
+  await settle();
+  expect(
+    await request(f.b.s, "chat-send", {
+      channel: "friend",
+      to: f.lead.account.id,
+      quick: "wave",
+    }),
+  ).toEqual({ ok: true, kept: false });
+  await settle();
+  expect(f.a.heard.map((l) => [l.channel, l.quick, l.to])).toEqual([
+    ["friend", "wave", f.lead.account.id],
+  ]);
+  expect(f.a.heard[0].id).toBeGreaterThan(0);
+  const back = await request(f.a.s, "chat-history", {
+    channel: "friend",
+    to: f.pal.account.id,
+  });
+  expect(back.lines?.map((l) => l.quick)).toEqual(["wave"]);
+});

@@ -64,7 +64,7 @@ import {
   type OnlineList,
 } from "../../../packages/shared/src/accounts.js";
 /** The newest database migration the server expects. */
-export const LATEST_MIGRATION = "20261115200000_chat_restrictions.sql";
+export const LATEST_MIGRATION = "20261115230000_chat_friend_messages.sql";
 /** The migration that last redefined the raid appearance functions. */
 export const RAID_FUNCTIONS_MIGRATION = "018_collection_equipping.sql";
 export interface AccountProvider {
@@ -83,11 +83,38 @@ export interface AccountProvider {
    * null (migration 20261115200000; null until it runs).
    */
   chatStoppedUntil?(accountId: string): Promise<string | null>;
+  /**
+   * Friends' messages, kept (migration 20261115230000). Each call fails
+   * (throws) until the migration runs; the game then keeps them in memory.
+   */
+  friendMessages?: FriendMessageStore;
   rpc(
     token: string,
     name: string,
     args: Record<string, unknown>,
   ): Promise<unknown>;
+}
+/** One kept message between friends, as the database returns it. */
+export interface StoredFriendMessage {
+  id: number;
+  from: string;
+  at: number;
+  text: string | null;
+  quick: string | null;
+}
+export interface FriendMessageStore {
+  save(
+    from: string,
+    to: string,
+    body: { text?: string; quick?: string },
+  ): Promise<number>;
+  history(
+    me: string,
+    friend: string,
+    limit: number,
+  ): Promise<StoredFriendMessage[]>;
+  unread(me: string): Promise<Record<string, number>>;
+  read(me: string, friend: string): Promise<void>;
 }
 export interface AppleToken {
   sub: string;
@@ -218,6 +245,39 @@ export function createAccountProvider(): AccountProvider {
         return t?.sub && t.clientId && t.refreshToken
           ? { sub: t.sub, clientId: t.clientId, refreshToken: t.refreshToken }
           : null;
+      },
+    },
+    friendMessages: {
+      async save(from, to, body) {
+        const r = await admin().rpc("arena_dm_save", {
+          p_from: from,
+          p_to: to,
+          p_body: body.text ?? null,
+          p_quick: body.quick ?? null,
+        });
+        if (r.error) throw new Error(r.error.message);
+        return Number(r.data);
+      },
+      async history(me, friend, limit) {
+        const r = await admin().rpc("arena_dm_history", {
+          p_me: me,
+          p_friend: friend,
+          p_limit: limit,
+        });
+        if (r.error) throw new Error(r.error.message);
+        return (r.data as StoredFriendMessage[] | null) ?? [];
+      },
+      async unread(me) {
+        const r = await admin().rpc("arena_dm_unread", { p_me: me });
+        if (r.error) throw new Error(r.error.message);
+        return (r.data as Record<string, number> | null) ?? {};
+      },
+      async read(me, friend) {
+        const r = await admin().rpc("arena_dm_read", {
+          p_me: me,
+          p_friend: friend,
+        });
+        if (r.error) throw new Error(r.error.message);
       },
     },
     async chatStoppedUntil(accountId) {
