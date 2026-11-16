@@ -1,3 +1,5 @@
+import type { NightLight } from "../world-light";
+
 /**
  * The farm's "feel" layer: particles for taps and harvests, the light of the
  * time of day, cloud shadows and confetti. Everything here is drawing only;
@@ -448,7 +450,15 @@ export function gradeView(
   g: CanvasRenderingContext2D,
   w: number,
   h: number,
-  o: { night: number; golden: number; warm: number; low: boolean },
+  o: {
+    night: number;
+    golden: number;
+    warm: number;
+    low: boolean;
+    /** The night as a light map (not at Low), and the lights to cut in it. */
+    map?: NightLight;
+    lights?: (map: NightLight) => void;
+  },
 ) {
   g.save();
   if (!o.low && (o.warm > 0.01 || o.golden > 0.01)) {
@@ -483,8 +493,15 @@ export function gradeView(
     const r = 255 - 150 * n,
       gg = 255 - 132 * n - 22 * gd,
       b = 255 - 62 * n - 60 * gd;
-    g.fillStyle = `rgb(${Math.round(r)},${Math.round(gg)},${Math.round(b)})`;
-    g.fillRect(0, 0, w, h);
+    if (o.map && o.lights && n > 0.01) {
+      g.globalCompositeOperation = "source-over";
+      o.map.begin(g, [r, gg, b]);
+      o.lights(o.map);
+      o.map.end(g);
+    } else {
+      g.fillStyle = `rgb(${Math.round(r)},${Math.round(gg)},${Math.round(b)})`;
+      g.fillRect(0, 0, w, h);
+    }
   }
   if (!o.low) {
     g.globalCompositeOperation = "source-over";

@@ -10,6 +10,7 @@
  * by line; the typed entry point is farm-screen.ts.
  */
 import { syncHubGraphics } from "../hub-graphics";
+import { NightLight, ShadowLayer, sunLight } from "../world-light";
 import {
   CROPS,
   CROP_BY_ID,
@@ -1776,6 +1777,76 @@ export function openFarm(options) {
       ctx.globalAlpha = 1;
     }
     ctx.restore();
+  }
+  /* Shadows that follow the sun (not at Low): long and to the left in the
+     morning, short at noon, long and to the right at golden hour, none in
+     rain or at night. Drawn on the ground before anything standing. */
+  const shadowLayer = new ShadowLayer(),
+    nightLight = new NightLight();
+  function farmSun() {
+    const w = F.weather.cur;
+    const sun = sunLight(TOD, nightLevel(TOD));
+    if (w === "rain" || w === "storm") sun.alpha = 0;
+    else if (w === "cloud" || w === "frost") sun.alpha *= 0.5;
+    return sun;
+  }
+  function drawCastShadows(s) {
+    if (!shadowLayer.begin(ctx, farmSun())) return;
+    const L = shadowLayer;
+    const tree = (o) => {
+      const t = o.t;
+      if (t.pine) L.sprite(t.pine, o.x, o.y + 4);
+      else {
+        L.sprite(t.trunk, o.x, o.y + 4);
+        L.sprite(t.canopy, o.x, o.y + 4, t.h - 10);
+      }
+    };
+    TREES.forEach(tree);
+    for (const m of MARGIN) {
+      if (m.t) tree(m);
+      else if (m.b) L.sprite(m.b, m.x, m.y + 4);
+    }
+    L.sprite(HOUSE_SPR(), HOUSE.x, HOUSE.y);
+    L.sprite(GFX.windmillBody(), MILL.x, MILL.y);
+    L.sprite(GFX.board(), BOARDP.x, BOARDP.y);
+    L.sprite(GFX.stall(), STALL.x, STALL.y);
+    L.sprite(GFX.barn(), BARN.x, BARN.y);
+    L.sprite(GFX.well(), WELL.x, WELL.y);
+    L.sprite(GFX.doghouse(), DOGH.x, DOGH.y);
+    if (s.me) {
+      if (F.scarecrow) L.sprite(GFX.scarecrow(), 288, 562);
+      F.decor.forEach((d, k) => {
+        if (d === "lamp")
+          L.sprite(GFX.lamp(), DECO_SLOTS[k][0], DECO_SLOTS[k][1] + 4);
+      });
+    }
+    L.end(ctx);
+  }
+  /** The night's lights on the light map (world coordinates). */
+  function farmLights(nl, k) {
+    ctx.save();
+    ctx.translate(VW / 2, VH / 2);
+    ctx.scale(Z, Z);
+    ctx.translate(-cam.x, -cam.y);
+    nl.follow(ctx);
+    ctx.restore();
+    const hs = HOUSE_SPR();
+    for (const [wx, wy, ww, wh] of hs.win ?? [])
+      nl.light(
+        HOUSE.x + wx + ww / 2,
+        HOUSE.y + wy + wh + 10,
+        120,
+        0.45 * k,
+        0.75,
+      );
+    nl.light(BARN.x, BARN.y - 60, 200, 0.4 * k, 0.7);
+    nl.light(STALL.x, STALL.y - 40, 190, 0.45 * k, 0.7);
+    nl.light(WELL.x, WELL.y - 20, 110, 0.25 * k, 0.75);
+    if (cur().me)
+      F.decor.forEach((d, i) => {
+        if (d === "lamp")
+          nl.light(DECO_SLOTS[i][0], DECO_SLOTS[i][1] - 6, 150, 0.5 * k, 0.6);
+      });
   }
   function drawTreeS(tr, time, shadowK) {
     if (!(tr.shake > 0))
@@ -4909,6 +4980,7 @@ export function openFarm(options) {
     s.plots.forEach((p, i) => drawPlot(ctx, i, p, time, s));
     drawArea(ctx);
     drawRainSplashes(ctx, time);
+    if (!low) drawCastShadows(s);
     const items = [];
     // Trees and the back row stand in the depth order too, so nothing
     // walking behind them is drawn over them.
@@ -5435,7 +5507,14 @@ export function openFarm(options) {
       warm = wet || w === "frost" ? 0 : (1 - n) * (1 - golden);
     // The Moonlit weather paints its own night (after dark only): no second
     // darkening.
-    gradeView(ctx, VW, VH, { night: w === "moon" ? 0 : n, golden, warm, low });
+    gradeView(ctx, VW, VH, {
+      night: w === "moon" ? 0 : n,
+      golden,
+      warm,
+      low,
+      map: low ? undefined : nightLight,
+      lights: (nl) => farmLights(nl, n),
+    });
     const lit = Math.max(
       n,
       w === "moon" ? 0.85 * n : 0,
