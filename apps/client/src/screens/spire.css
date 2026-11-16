@@ -76,6 +76,67 @@
   color: #d6def0;
 }
 
+/* The zone picker (Climb tab): one finger-tall button per released zone,
+   sharing the row; more zones scroll sideways instead of crowding phones. */
+.sp-zone-picker {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: thin;
+}
+.sp-zone {
+  flex: 1 0 150px;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 6px 12px;
+  border-radius: var(--rad-md);
+  border: 1px solid var(--ui-line);
+  background: var(--fill-card);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.sp-zone.is-on {
+  border-color: color-mix(in srgb, var(--boss) 75%, transparent);
+  background: color-mix(in srgb, var(--boss) 16%, var(--ui-bg-1));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--boss) 40%, transparent);
+}
+.sp-zone:disabled {
+  cursor: default;
+  opacity: 0.66;
+}
+.sp-zone:focus-visible {
+  outline: 2px solid var(--boss);
+  outline-offset: -2px;
+}
+.sp-zone-num {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 800;
+  text-align: center;
+  color: var(--boss);
+}
+.sp-zone-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.sp-zone-text b,
+.sp-zone-text small {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sp-zone-head small {
+  font-weight: 400;
+}
+
 /* Floors: one row each, with its Echoes, reward and state. */
 .sp-floors {
   display: grid;
@@ -222,6 +283,16 @@
   }
   .sp-floor-num {
     font-size: calc(16px * var(--text-scale, 1));
+  }
+  .sp-zone {
+    /* A finger tall after the phone UI scale (tests: 44 px drawn). */
+    min-height: 46px;
+    padding: 3px 8px;
+    grid-template-columns: 24px minmax(0, 1fr) auto;
+    gap: 6px;
+  }
+  .sp-zone-num {
+    font-size: 16px;
   }
   .sp-floor-state {
     display: none;
@@ -537,34 +608,6 @@
   padding-inline: 16px;
 }
 
-/* Additional zones reuse the same compact, finger-sized mobile controls. */
-.sp-zone-picker {
-  display: flex;
-  gap: 6px;
-  overflow-x: auto;
-  margin-bottom: 8px;
-  padding-bottom: 4px;
-  scrollbar-width: thin;
-}
-.sp-zone-picker button {
-  flex: none;
-  min-height: 44px;
-  padding: 8px 12px;
-  border: 1px solid var(--ui-line);
-  border-radius: 8px;
-  background: #151a2d;
-  color: #e8dcff;
-  white-space: nowrap;
-  cursor: pointer;
-}
-.sp-zone-picker button[aria-pressed="true"] {
-  border-color: #c3a1ff;
-  background: #65438b70;
-}
-.sp-zone-picker button:focus-visible {
-  outline: 2px solid #ffda73;
-  outline-offset: -2px;
-}
 .sp-floor-zone {
   display: grid;
   gap: 8px;

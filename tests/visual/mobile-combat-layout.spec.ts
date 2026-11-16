@@ -32,9 +32,18 @@ for (const size of [{width:844,height:390},{width:932,height:430},{width:844,hei
       expect(Math.min(...gaps)).toBeGreaterThanOrEqual(8);
       expect(targets.attack.r).toBeGreaterThan(targets["0"].r*1.4);
       expect(targets["3"].r).toBeGreaterThan(targets["0"].r);
-      // The ultimate stays clear of the target picker above it.
-      const picker = await page.locator("#target-picker").boundingBox();
-      if (picker) expect(targets["3"].y - targets["3"].r).toBeGreaterThanOrEqual(picker.y + picker.height + 8);
+      // The target portraits (three enemies) sit on an arc beside the ring,
+      // clear of every button in it, all one reach from the basic attack.
+      const portraits = await page.locator("#target-picker button").evaluateAll((buttons) => buttons.map((b) => {
+        const r = b.getBoundingClientRect();
+        return {x:r.x+r.width/2,y:r.y+r.height/2,r:r.width/2};
+      }));
+      expect(portraits).toHaveLength(3);
+      const reach = portraits.map((p) => Math.hypot(p.x-targets.attack.x,p.y-targets.attack.y));
+      for (const [i,p] of portraits.entries()) {
+        expect(reach[i]).toBeCloseTo(reach[0],0);
+        for (const t of Object.values(targets)) expect(Math.hypot(p.x-t.x,p.y-t.y)-p.r-t.r).toBeGreaterThanOrEqual(5);
+      }
       for (const [id,t] of Object.entries(targets)) {
         expect(t.r*2).toBeGreaterThanOrEqual(44);
         expect(t.x-t.r).toBeGreaterThanOrEqual(0);

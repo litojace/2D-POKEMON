@@ -40,6 +40,8 @@ import {
   spireStartFrom,
   spireWaves,
   spireBlessingOffer as blessingOffer,
+  SPIRE_BUILT_ZONES,
+  spireZonesOpen,
 } from "../../packages/shared/src/spire";
 
 const DT = 1 / RULES.tick;
@@ -117,7 +119,8 @@ describe("Spire floors (zone 1)", () => {
     expect(SPIRE_FLOORS[5].elite?.mechanic).toBe("eruption");
     expect(SPIRE_FLOORS[10].kind).toBe("boss");
     expect(SPIRE_FLOORS[10].boss).toBe("grumblecrag");
-    expect(SPIRE_BUILT_TOP).toBe(10);
+    // Zone 2 is built on top of it.
+    expect(SPIRE_BUILT_TOP).toBe(20);
   });
   it("gets harder floor by floor in the tuning table", () => {
     const level = { easy: 0, normal: 1, hard: 2 };
@@ -136,7 +139,7 @@ describe("Spire floors (zone 1)", () => {
   });
   it("loads every champion of the zone before the climb (the roster)", () => {
     const roster = spireRoster(1);
-    for (const f of Object.values(SPIRE_FLOORS))
+    for (const f of Object.values(SPIRE_FLOORS).filter((f) => f.zone === 1))
       for (const e of [
         ...f.waves.flat(),
         ...(f.elite ? [f.elite.captain, ...f.elite.escorts] : []),
@@ -150,16 +153,21 @@ describe("Spire floors (zone 1)", () => {
       expect(n + spireCourtCap(n)).toBeLessThanOrEqual(SPIRE_PARTY.court);
   });
   it("keeps SPIRE_REWARDS identical to the database's rows", () => {
-    const sql = readFileSync(
+    // Zone 1's rows, then each later zone's own migration.
+    const sql = [
       "supabase/migrations/20261116150000_spire.sql",
-      "utf8",
-    );
-    const block = sql.slice(
-      sql.indexOf("insert into public.arena_spire_rewards"),
-      sql.indexOf(";", sql.indexOf("insert into public.arena_spire_rewards")),
-    );
+      "supabase/migrations/20261116180000_spire_zone2.sql",
+    ]
+      .map((f) => readFileSync(f, "utf8"))
+      .join("\n");
+    const blocks = [
+      ...sql.matchAll(/insert into public\.arena_spire_rewards[^;]*;/g),
+    ].map((m) => m[0]);
+    expect(blocks).toHaveLength(2);
     const rows = [
-      ...block.matchAll(/\((\d+), (\d+), '(\w+)', '([^']+)', (\d+)\)/g),
+      ...blocks
+        .join("\n")
+        .matchAll(/\((\d+), (\d+), '(\w+)', '([^']+)', (\d+)\)/g),
     ].map((m) => ({
       season: Number(m[1]),
       floor: Number(m[2]),
@@ -187,21 +195,75 @@ describe("where a party climbs", () => {
   });
   it("needs a Cragmuff clear from every climber", () => {
     expect(spireStartFrom([m(1), m(1, false)])).toMatchObject({ ok: false });
-    expect(spireStartFrom([m(1)])).toMatchObject({
-      ok: true,
-      ceiling: SPIRE_BUILT_TOP,
-    });
+    // Without a Tidelotl clear, floor 20 (its Ascendant) stays shut.
+    expect(spireStartFrom([m(1)])).toMatchObject({ ok: true, ceiling: 19 });
+    expect(
+      spireStartFrom([
+        { checkpoint: 1, clears: { grumblecrag: 1, tidewyrm: 1 } },
+      ]),
+    ).toMatchObject({ ok: true, ceiling: SPIRE_BUILT_TOP });
   });
   it("never starts above what is built", () => {
-    expect(spireStartFrom([m(11)]).startFloor).toBeLessThanOrEqual(
+    expect(spireStartFrom([m(21)]).startFloor).toBeLessThanOrEqual(
       SPIRE_BUILT_TOP,
     );
-    // Zone 1 conquered (checkpoint 11) but zone 2 isn't built: floor 1,
-    // never straight onto the boss floor.
-    expect(spireStartFrom([m(11)]).startFloor).toBe(1);
-    expect(spireStartCheckpoint(11)).toBe(1);
-    expect(spireStartCheckpoint(11, 20)).toBe(11);
+    // Zone 2 conquered (checkpoint 21) but zone 3 isn't built: floor 11,
+    // never straight onto a boss floor.
+    expect(spireStartFrom([m(21)]).startFloor).toBe(11);
+    expect(spireStartCheckpoint(21)).toBe(11);
+    expect(spireStartCheckpoint(11)).toBe(11);
+    expect(spireStartCheckpoint(11, 10)).toBe(1);
     expect(spireStartCheckpoint(5)).toBe(1);
+  });
+});
+
+describe("choosing a zone (one climb, one zone)", () => {
+  const m = (checkpoint: number, clears: Record<string, number> = {}) => ({
+    checkpoint,
+    clears: { grumblecrag: 1, ...clears },
+  });
+  it("climbs zone 1 from floor 1 to its boss, whatever the party's checkpoints", () => {
+    expect(spireStartFrom([m(11), m(1)], 1)).toEqual({
+      ok: true,
+      startFloor: 1,
+      ceiling: 10,
+    });
+    // Replaying zone 1 with checkpoint 11.
+    expect(spireStartFrom([m(11)], 1)).toMatchObject({
+      ok: true,
+      startFloor: 1,
+      ceiling: 10,
+    });
+  });
+  it("climbs zone 2 from floor 11 once every member earned checkpoint 11", () => {
+    expect(spireStartFrom([m(11), m(11)], 2)).toEqual({
+      ok: true,
+      startFloor: 11,
+      ceiling: 19,
+    });
+    expect(
+      spireStartFrom([m(11, { tidewyrm: 1 }), m(11, { tidewyrm: 2 })], 2),
+    ).toMatchObject({ ok: true, startFloor: 11, ceiling: 20 });
+    // Floor 20 needs every member's Tidelotl clear.
+    expect(spireStartFrom([m(11, { tidewyrm: 1 }), m(11)], 2).ceiling).toBe(19);
+    // Someone hasn't reached floor 11: refused (never started lower in
+    // zone 2's room).
+    const low = spireStartFrom([m(11), m(1)], 2);
+    expect(low.ok).toBe(false);
+    expect(low.reason).toMatch(/floor 11/);
+    expect(spireStartFrom([m(1)], 2).ok).toBe(false);
+    // Still needs Cragmuff.
+    expect(spireStartFrom([{ checkpoint: 11, clears: {} }], 2).ok).toBe(false);
+  });
+  it("refuses a zone that isn't built", () => {
+    expect(spireStartFrom([m(21)], 3)).toMatchObject({ ok: false });
+    expect(spireStartFrom([], 3)).toMatchObject({ ok: false });
+    expect(SPIRE_BUILT_ZONES).toEqual([1, 2]);
+  });
+  it("offers zone 1 always and zone 2 from checkpoint 11", () => {
+    expect(spireZonesOpen(1)).toEqual([1]);
+    expect(spireZonesOpen(11)).toEqual([1, 2]);
+    expect(spireZonesOpen(21)).toEqual([1, 2]);
   });
 });
 
@@ -708,8 +770,8 @@ describe("the boss floor (floor 10: the Ascendant Cragmuff)", () => {
     expect(a.raid.result).toBe("victory");
     expect(a.phase).toBe("finished");
     expect(a.raid.message).toMatch(/Zone 1 conquered/);
-    // Climb again: from where this climb started (never floor 10 or 11:
-    // zone 2 isn't built), no blessings, the Ascendant gone.
+    // Climb again: from where this climb started (never floor 10, nor 11:
+    // this room climbs zone 1), no blessings, the Ascendant gone.
     a.retry();
     expect(s.startFloor).toBe(9);
     expect(s.floor).toBe(9);
