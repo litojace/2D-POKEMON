@@ -118,7 +118,7 @@
   min-height: 84px;
   padding: var(--sp-2);
   border-radius: var(--rad-md);
-  background: var(--ui-bg-1);
+  background: var(--fill-card);
   border: 1px solid var(--ui-line);
   text-align: center;
 }
@@ -151,7 +151,7 @@
   min-height: calc(var(--ctl-s) + 16px);
   padding: 8px 8px 8px 12px;
   border-radius: var(--rad-md);
-  background: var(--ui-bg-1);
+  background: var(--fill-card);
   border: 1px solid var(--ui-line);
 }
 .pf-name-row {
@@ -162,7 +162,7 @@
 }
 .pf-name-form {
   grid-template-columns: minmax(0, 1fr) var(--act-s) var(--act-s);
-  border-color: #ffd65b66;
+  border-color: color-mix(in srgb, var(--ui-accent) 40%, transparent);
 }
 .pf-name-form > .ui-btn {
   width: 100%;
@@ -187,7 +187,7 @@
   padding: 0 10px;
   border-radius: var(--rad-sm);
   border: 1px solid var(--ui-line-2);
-  background: var(--ui-bg-0);
+  background: var(--fill-well);
   color: var(--ui-text);
   font: inherit;
   font-weight: 700;
@@ -218,7 +218,7 @@
   padding: 0 14px;
   border-radius: var(--rad-pill);
   border: 1px solid color-mix(in srgb, var(--title) 45%, var(--ui-line-2));
-  background: var(--ui-bg-1);
+  background: var(--fill-card);
   color: var(--title);
   font-family: var(--font-display);
   font-weight: 700;
@@ -269,7 +269,7 @@
   gap: 4px;
   padding: 8px 4px;
   border-radius: var(--rad-md);
-  background: var(--ui-bg-1);
+  background: var(--fill-card);
   border: 1px solid var(--ui-line);
 }
 .pf-mastery-chip.is-none > .ui-avatar {
@@ -291,7 +291,7 @@
   min-width: 0;
   padding: 12px 14px;
   border-radius: var(--rad-md);
-  background: var(--ui-bg-1);
+  background: var(--fill-card);
   border: 1px solid var(--ui-line);
   color: inherit;
   font: inherit;
@@ -339,7 +339,7 @@
   border-radius: var(--rad-sm);
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--boss) 50%, var(--ui-line-2));
-  background: var(--ui-bg-1);
+  background: var(--fill-card);
   cursor: pointer;
 }
 .pf-trophy > img {
@@ -394,7 +394,7 @@
   gap: 2px;
   padding: 8px 10px;
   border-radius: var(--rad-sm);
-  background: var(--ui-bg-1);
+  background: var(--fill-card);
   border: 1px solid var(--ui-line);
   color: var(--ui-dim);
 }
@@ -406,8 +406,12 @@
   font-size: var(--fs-small);
 }
 .pf-achievements > li.is-earned {
-  border-color: #43d97166;
-  background: linear-gradient(110deg, #43d9711a, var(--ui-bg-1) 60%);
+  border-color: color-mix(in srgb, var(--ui-ok) 40%, transparent);
+  background: linear-gradient(
+    110deg,
+    color-mix(in srgb, var(--ui-ok) 10.2%, transparent),
+    var(--ui-bg-1) 60%
+  );
 }
 .pf-achievements > li.is-earned > b::before {
   content: "✓ ";
@@ -415,18 +419,6 @@
 }
 
 /* Ranks, Journey and Raid rewards: three equal buttons. */
-.pf-links {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: var(--act-w);
-  justify-content: start;
-  gap: var(--sp-2);
-  margin-top: var(--sp-1);
-}
-.pf-links > .ui-btn {
-  width: 100%;
-  min-width: 0;
-}
 .pf-who:empty {
   display: none;
 }
@@ -444,7 +436,7 @@
   width: 100%;
   padding: 10px 12px;
   border-radius: var(--rad-md);
-  background: var(--ui-bg-1);
+  background: var(--fill-card);
   border: 1px solid #ff6b6b66;
 }
 .pf-delete-form[hidden] {
@@ -465,7 +457,7 @@
   padding: 0 10px;
   border-radius: var(--rad-sm);
   border: 1px solid var(--ui-line-2);
-  background: var(--ui-bg-0);
+  background: var(--fill-well);
   color: var(--ui-text);
   font: inherit;
   font-weight: 700;
@@ -494,8 +486,12 @@
   gap: 6px;
   padding: 10px 12px;
   border-radius: var(--rad-md);
-  border: 1px solid #ffd65b66;
-  background: linear-gradient(110deg, #ffd65b1a, var(--ui-bg-1) 60%);
+  border: 1px solid color-mix(in srgb, var(--ui-accent) 40%, transparent);
+  background: linear-gradient(
+    110deg,
+    color-mix(in srgb, var(--ui-accent) 10.2%, transparent),
+    var(--ui-bg-1) 60%
+  );
 }
 .pf-save-text {
   display: grid;
@@ -512,7 +508,7 @@
   padding: 0 10px;
   border-radius: var(--rad-sm);
   border: 1px solid var(--ui-line-2);
-  background: var(--ui-bg-0);
+  background: var(--fill-well);
   color: var(--ui-text);
   font: inherit;
 }
@@ -618,7 +614,7 @@
     --size: 22px !important;
   }
   .pf-mastery-chip .ui-ring b {
-    font-size: 9px;
+    font-size: var(--fs-micro);
   }
   .pf-mini {
     padding: 8px 10px;
@@ -637,12 +633,5 @@
   }
   .pf-achievements > li {
     padding: 5px 8px;
-  }
-  /* Three equal links across the column: "Raid rewards" and its icon need
-     more than the phones' 104 px action width. */
-  .pf-links {
-    grid-auto-flow: row;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 6px;
   }
 }

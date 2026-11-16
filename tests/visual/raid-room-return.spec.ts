@@ -5,6 +5,8 @@ import {
   snap,
   openPlayPanel,
   hubMenu,
+  pickRoomMode,
+  createRoom,
 } from "./helpers";
 
 async function prepareRaid(page: Page, lobby = false) {
@@ -133,8 +135,8 @@ for (const viewport of [
         (window as any).__room("pvp", { mode: "duel", phase: "lobby" }),
       );
       await openPlayPanel(page);
-      await page.click('[data-mode="duel"]');
-      await page.click("#play-create");
+      await pickRoomMode(page, "duel");
+      await createRoom(page);
       await waitForLobby(page);
       await page.click("#leave");
       await expect(page.locator("#lobby-play")).toBeVisible();

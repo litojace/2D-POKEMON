@@ -26,7 +26,7 @@ body.battle-active #battle #hud.hud-badge {
   border-radius: 999px;
   background: #0b1428d9;
   box-shadow: 0 4px 14px #0006;
-  color: #eef2ff;
+  color: var(--ui-text);
   pointer-events: none;
 }
 body.battle-active.touch-mode #battle #hud.hud-badge {
@@ -164,7 +164,7 @@ body.battle-active.touch-mode #battle #hud.hud-badge {
   padding: 3px 10px;
   border-radius: 999px;
   background: #0b1428d9;
-  color: #ffd65b;
+  color: var(--ui-accent);
   font-size: 10px;
   letter-spacing: 0.6px;
   white-space: nowrap;
@@ -202,13 +202,13 @@ body.battle-active.touch-mode #battle #hud.hud-badge {
   width: 24px;
   height: 24px;
   font-size: 0;
-  filter: drop-shadow(0 0 4px var(--bearing-color, #ffd65b))
+  filter: drop-shadow(0 0 4px var(--bearing-color, var(--ui-accent)))
     drop-shadow(0 1px 1px #000c);
 }
 .enemy-bearing.is-orbit span::before {
   content: "";
   margin-left: 4px;
-  border-left: 14px solid var(--bearing-color, #ffd65b);
+  border-left: 14px solid var(--bearing-color, var(--ui-accent));
   border-top: 9px solid transparent;
   border-bottom: 9px solid transparent;
 }

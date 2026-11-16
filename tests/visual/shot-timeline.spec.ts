@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { CHARACTERS } from "../../packages/shared/src/index";
-import { openHub, openPlayPanel, pushUntilBattle } from "./helpers";
+import { openHub, openPlayPanel, pushUntilBattle, createRoom } from "./helpers";
 
 /**
  * Shots are drawn on your timeline (apps/client/src/networking/timeline-lead.ts):
@@ -35,7 +35,7 @@ test("shots run on from their snapshot to where the server will have them", asyn
     }),
   );
   await openPlayPanel(page);
-  await page.click("#play-create");
+  await createRoom(page);
   await pushUntilBattle(page);
   const speed = 300;
   const drawn = await page.evaluate(

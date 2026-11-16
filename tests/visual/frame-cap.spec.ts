@@ -1,5 +1,10 @@
 import { expect, test } from "@playwright/test";
-import { openHub, openPlayPanel, pushUntilBattle } from "./helpers";
+import {
+  openHub,
+  openPlayPanel,
+  pushUntilBattle,
+  startPractice,
+} from "./helpers";
 
 // A 120 Hz phone: the battle draws about 60 frames a second (frame-cap.ts).
 // The browser here refreshes at 60 Hz, so a 120 Hz screen is faked: every
@@ -57,7 +62,7 @@ test("a 120 Hz screen draws the battle at about 60 frames a second", async ({
     const errors = await openHub(page);
     await page.evaluate(() => (window as any).__room("practice"));
     await openPlayPanel(page);
-    await page.click("#practice");
+    await startPractice(page);
     await pushUntilBattle(page);
     // Let the cap learn the screen, then count three seconds.
     await page.waitForTimeout(1500);

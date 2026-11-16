@@ -55,10 +55,10 @@
   gap: var(--sp-3);
   padding: var(--sp-3);
   border-radius: var(--rad-xl);
-  border: 1px solid var(--ui-line-2);
-  background: var(--ui-glass);
-  box-shadow: var(--shadow-2);
-  backdrop-filter: blur(10px);
+  border: 1px solid var(--glass-rim);
+  background: var(--glass-regular);
+  -webkit-backdrop-filter: var(--glass-blur-panel);
+  backdrop-filter: var(--glass-blur-panel);
   overflow: hidden;
   font-family: var(--font-body);
   color: var(--ui-text);
@@ -83,7 +83,7 @@
   overflow: hidden;
   border: 1px solid
     color-mix(in srgb, var(--el, var(--ui-accent)) 45%, transparent);
-  background: var(--ui-bg-1);
+  background: var(--fill-card);
 }
 .room-banner > img {
   position: absolute;
@@ -103,13 +103,21 @@
   height: 116px;
   background:
     radial-gradient(ellipse 80% 90% at 0% 0%, #4fa8ff40, transparent 70%),
-    radial-gradient(ellipse 80% 90% at 100% 100%, #ffd65b30, transparent 70%),
+    radial-gradient(
+      ellipse 80% 90% at 100% 100%,
+      color-mix(in srgb, var(--ui-accent) 18.8%, transparent),
+      transparent 70%
+    ),
     var(--ui-bg-1);
 }
 .room-banner.is-teams {
   background:
     radial-gradient(ellipse 80% 90% at 0% 0%, #4fa8ff55, transparent 70%),
-    radial-gradient(ellipse 80% 90% at 100% 100%, #ef4f6155, transparent 70%),
+    radial-gradient(
+      ellipse 80% 90% at 100% 100%,
+      color-mix(in srgb, var(--ui-danger) 33.3%, transparent),
+      transparent 70%
+    ),
     var(--ui-bg-1);
 }
 .room-banner-text {
@@ -189,7 +197,7 @@
   padding: 6px 10px 6px 7px;
   border-radius: var(--rad-md);
   border: 1px solid var(--ui-line);
-  background: var(--ui-bg-1);
+  background: var(--fill-card);
   color: inherit;
   font: inherit;
   text-align: left;
@@ -251,7 +259,7 @@ button.room-seat.is-open:focus-visible {
   margin: 0;
   padding: 8px 10px;
   border-radius: var(--rad-md);
-  background: var(--ui-bg-1);
+  background: var(--fill-card);
   border: 1px solid var(--ui-line);
   color: var(--ui-dim);
   font-size: var(--fs-small);
@@ -260,7 +268,7 @@ button.room-seat.is-open:focus-visible {
   padding: 8px 10px;
   border-radius: var(--rad-md);
   border: 1px solid var(--ui-line);
-  background: var(--ui-bg-1);
+  background: var(--fill-card);
   font-size: var(--fs-small);
 }
 .room-rules > summary {
@@ -290,7 +298,7 @@ button.room-seat.is-open:focus-visible {
   padding: 8px 10px;
   border-radius: var(--rad-md);
   border: 1px solid var(--ui-line);
-  background: var(--ui-bg-1);
+  background: var(--fill-card);
 }
 .room-notes {
   flex: none;
@@ -307,7 +315,9 @@ button.room-seat.is-open:focus-visible {
 }
 [data-graphics="low"] .room-seats,
 .room-screen[data-graphics="low"] .room-seats {
+  -webkit-backdrop-filter: none;
   backdrop-filter: none;
+  background: var(--glass-solid);
 }
 
 /* ------------------------------------------------- phones, sideways */
@@ -359,7 +369,7 @@ button.room-seat.is-open:focus-visible {
     font-size: 13px;
   }
   .room-head .ui-note {
-    font-size: 10px;
+    font-size: var(--fs-micro);
   }
   .room-seat {
     min-height: 40px;
@@ -377,10 +387,10 @@ button.room-seat.is-open:focus-visible {
     font-size: 12px;
   }
   .room-seat-text small {
-    font-size: 10px;
+    font-size: var(--fs-micro);
   }
   .room-seat .ui-tag {
-    font-size: 9px;
+    font-size: var(--fs-micro);
     padding: 0 5px;
   }
   .room-notes,

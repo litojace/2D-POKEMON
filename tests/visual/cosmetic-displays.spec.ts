@@ -61,6 +61,9 @@ window.fetch=async(input,init)=>{
       await page.click('[data-fit-awaken="2"]');
       await expect(stage).toHaveClass(/is-ready/);
       await snap(page, info, `mythic-depth-tidefin-${size.width}`);
+      // A phone's Mythic Hall shows one fighter at a time: pick Cindrake.
+      const cindrake = page.locator(".fit-body [data-fit-fighter=cindrake]");
+      if (await cindrake.count()) await cindrake.click();
       await page.click(".fit-room [data-ui-item=cindrake-sunforged]");
       await page.click('[data-fit-awaken="2"]');
       await expect(stage).toHaveClass(/is-ready/);

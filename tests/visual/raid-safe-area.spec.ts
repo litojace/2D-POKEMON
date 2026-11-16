@@ -4,7 +4,13 @@ import {
   raidAttacksOf,
   type RaidBossId,
 } from "../../packages/shared/src/raid";
-import { openHub, pushUntilBattle, snap, openPlayPanel } from "./helpers";
+import {
+  openHub,
+  pushUntilBattle,
+  snap,
+  openPlayPanel,
+  createRoom,
+} from "./helpers";
 const bosses = [
   "grumblecrag",
   "tidewyrm",
@@ -50,7 +56,7 @@ for (const viewport of [
         (window as any).__room("raid", { boss: "tidewyrm" }),
       );
       await openPlayPanel(page);
-      await page.click("#play-create");
+      await createRoom(page);
       await pushUntilBattle(page);
       const inspect = () =>
         page.locator("#battle").evaluate((battle) => {

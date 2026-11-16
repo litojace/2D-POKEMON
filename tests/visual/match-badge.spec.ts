@@ -1,5 +1,11 @@
 import { expect, test, type Page } from "@playwright/test";
-import { openHub, openPlayPanel, pushUntilBattle, snap } from "./helpers";
+import {
+  openHub,
+  openPlayPanel,
+  pushUntilBattle,
+  snap,
+  createRoom,
+} from "./helpers";
 import { ISLAND, setInsets } from "./ui-measure";
 import { decodePng } from "./png";
 
@@ -29,7 +35,7 @@ async function match(
     [mode, myName] as const,
   );
   await openPlayPanel(page);
-  await page.click("#play-create");
+  await createRoom(page);
   await pushUntilBattle(page);
   await page.evaluate((remaining) => {
     const w = window as any;
@@ -372,7 +378,7 @@ test("Practice keeps the full cards", async ({ browser }) => {
     await openHub(page);
     await page.evaluate(() => (window as any).__room("practice", {}));
     await openPlayPanel(page);
-    await page.click("#play-create");
+    await createRoom(page);
     await pushUntilBattle(page);
     await expect(page.locator("#hud")).not.toHaveClass(/hud-badge/);
     await expect(page.locator("#hud .health-track").first()).toBeVisible();

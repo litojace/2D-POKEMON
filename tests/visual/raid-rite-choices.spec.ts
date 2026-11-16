@@ -7,6 +7,7 @@ import {
   snap,
   openPlayPanel,
   settle,
+  createRoom,
 } from "./helpers";
 
 const buffValues: Record<string, string[]> = {
@@ -57,7 +58,7 @@ for (const size of [
         (window as any).__room("raid", { boss: "grumblecrag" }),
       );
       await openPlayPanel(page);
-      await page.click("#play-create");
+      await createRoom(page);
       await pushUntilBattle(page);
       await page.evaluate(() => {
         const w = window as any,
@@ -301,7 +302,7 @@ for (const size of [
         (window as any).__room("raid", { boss: "grumblecrag" }),
       );
       await openPlayPanel(page);
-      await page.click("#play-create");
+      await createRoom(page);
       await pushUntilBattle(page);
       const offer = [
         "shelter",

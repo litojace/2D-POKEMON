@@ -7,6 +7,8 @@ import {
   pushUntilBattle,
   snap,
   type Box,
+  pickRoomMode,
+  createRoom,
 } from "./helpers";
 
 // The Journey's Lv 55–100 cosmetics (migration 051): each one in the
@@ -337,8 +339,8 @@ for (const size of SIZES) {
         w.__snap.players.find((p: any) => p.id === "me").raidLook = look;
       }, OUTFIT);
       await openPlayPanel(page);
-      await page.click('[data-mode="duel"]');
-      await page.click("#play-create");
+      await pickRoomMode(page, "duel");
+      await createRoom(page);
       await expect
         .poll(async () => {
           await page.evaluate(() => (window as any).__push());

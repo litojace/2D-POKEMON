@@ -137,7 +137,10 @@ for (const size of SIZES)
                 `${Math.round(e.getBoundingClientRect().width)}x${Math.round(e.getBoundingClientRect().height)}`,
             ),
           );
-        expect(new Set(sizes).size, section).toBe(1);
+        // A phone's Mythic Hall shows one fighter's Mythical, not a grid.
+        if (size.phone && section === "mythic")
+          await expect(page.locator(".fit-mythic-one")).toBeVisible();
+        else expect(new Set(sizes).size, section).toBe(1);
         await snap(page, info, `fitting-room-shop-${section}-${size.name}`);
       }
 
@@ -504,17 +507,18 @@ test("the open screen's rail icon lights up, and a second tap on it closes the s
 }) => {
   await shopServer(page);
   const errors = await openLobby(page);
+  // The open screen's button is solid gold in the rail's glass capsule.
   const rim = (action: string) =>
     page
       .locator(`.lobby-rail [data-lobby-action="${action}"]`)
-      .evaluate((b) => getComputedStyle(b).borderTopColor);
+      .evaluate((b) => getComputedStyle(b).backgroundColor);
   const shop = page.locator('.lobby-rail [data-lobby-action="shop"]');
   await shop.click();
   await expect(page.locator(".fit-room")).toBeVisible();
   await expect(shop).toHaveAttribute("aria-current", "page");
-  // Off the button, so its hover rim (gold too) can't stand in for it.
+  // Off the button, so its hover fill can't stand in for it.
   await page.mouse.move(700, 450);
-  // Once its 0.15 s border transition has run.
+  // Once its 0.15 s colour transition has run.
   await expect.poll(() => rim("shop")).toBe("rgb(255, 214, 91)");
   expect(await rim("fighters")).not.toBe("rgb(255, 214, 91)");
   // Still lit on the Wardrobe tab, and a second tap there closes it too.

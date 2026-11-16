@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { CHARACTERS, type CharacterId } from "../../packages/shared/src/index";
-import { openHub, openPlayPanel, pushUntilBattle } from "./helpers";
+import { openHub, openPlayPanel, pushUntilBattle, createRoom } from "./helpers";
 
 /**
  * Effect budget: no champion's skills may ask the GPU for much more than
@@ -102,7 +102,7 @@ for (const [g, group] of GROUPS.entries())
         (window as any).__room("pvp", { mode: "duel", phase: "playing" }),
       );
       await openPlayPanel(page);
-      await page.click("#play-create");
+      await createRoom(page);
       await pushUntilBattle(page);
       // Each frame, the heaviest effect work so far for the current cast.
       await page.evaluate(() => {

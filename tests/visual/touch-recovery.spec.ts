@@ -1,5 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
-import { openHub, pushUntilBattle, openPlayPanel } from "./helpers";
+import {
+  openHub,
+  pushUntilBattle,
+  openPlayPanel,
+  startPractice,
+} from "./helpers";
 async function mount(page: Page) {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
@@ -157,7 +162,7 @@ test("trusted iOS-style touch recovers visible standalone play even if document 
     const errors = await openHub(page);
     await page.evaluate(() => (window as any).__room("practice"));
     await openPlayPanel(page);
-    await page.click("#practice");
+    await startPractice(page);
     await pushUntilBattle(page);
     await page.evaluate(() => {
       Object.defineProperty(document, "hasFocus", {

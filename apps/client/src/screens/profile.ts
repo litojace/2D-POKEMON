@@ -6,6 +6,7 @@ import {
   profileMarkup,
   profileView,
   type ProfileData,
+  type ProfileTab,
   type ProfileView,
 } from "./profile-view";
 import { esc } from "../ui/components";
@@ -53,9 +54,14 @@ export function openProfile(hooks: ProfileHooks): ProfileScreen {
   let closed = false;
   const root = () => panel.root;
 
+  // A phone held sideways shows the card's column as tabs; turning a
+  // tablet or resizing a window across the line redraws it.
+  const compactQuery = matchMedia("(max-height: 500px)");
+  const data = () => ({ ...hooks.data(), compact: compactQuery.matches });
+  const onCompact = () => render();
   function render() {
     if (closed) return;
-    const next = parse(profileMarkup(view, hooks.data()));
+    const next = parse(profileMarkup(view, data()));
     patch(root(), template, next);
     template = next;
   }
@@ -198,7 +204,14 @@ export function openProfile(hooks: ProfileHooks): ProfileScreen {
     const t = (event.target as Element).closest<HTMLButtonElement>("button");
     if (!t || !root().contains(t) || t.disabled) return;
     const d = t.dataset;
-    if (d.profileTitle !== undefined) void equip(d.profileTitle);
+    if (d.uiProfileTab) {
+      view.tab = d.uiProfileTab as ProfileTab;
+      render();
+      root()
+        .querySelector<HTMLElement>("[data-profile-main]")
+        ?.scrollTo({ top: 0 });
+      focusOn(`[data-ui-profile-tab="${view.tab}"]`);
+    } else if (d.profileTitle !== undefined) void equip(d.profileTitle);
     else if (d.profileRename !== undefined) nameForm(true);
     else if (d.profileNameCancel !== undefined) nameForm(false);
     else if (d.profileDelete !== undefined) deleteForm(true);
@@ -282,7 +295,7 @@ export function openProfile(hooks: ProfileHooks): ProfileScreen {
     next.focus();
   };
 
-  const html = profileMarkup(view, hooks.data());
+  const html = profileMarkup(view, data());
   template = parse(html);
   // The name's countdown is redrawn while the card is open.
   const tick = setInterval(render, 30_000);
@@ -290,10 +303,12 @@ export function openProfile(hooks: ProfileHooks): ProfileScreen {
     onClose: () => {
       closed = true;
       clearInterval(tick);
+      compactQuery.removeEventListener("change", onCompact);
       hooks.onClose?.();
     },
   });
   root().addEventListener("click", onClick);
+  compactQuery.addEventListener("change", onCompact);
   root().addEventListener("submit", onSubmit);
   root().addEventListener("keydown", onKey);
   focusOn('.pf-titles > [aria-pressed="true"]');

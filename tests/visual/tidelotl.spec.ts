@@ -1,5 +1,11 @@
 import { expect, test, type Page, type TestInfo } from "@playwright/test";
-import { openHub, openPlayPanel, pushUntilBattle, snap } from "./helpers";
+import {
+  openHub,
+  openPlayPanel,
+  pushUntilBattle,
+  snap,
+  createRoom,
+} from "./helpers";
 
 // Tidewyrm is drawn as Tidelotl, the axolotl (boss-tidelotl.ts,
 // boss-tidelotl-rig.ts): its pieces are painted once into two atlases when
@@ -630,7 +636,7 @@ async function lagoon(page: Page) {
     r.submerged = false;
   });
   await openPlayPanel(page);
-  await page.click("#play-create");
+  await createRoom(page);
   await pushUntilBattle(page);
   return errors;
 }

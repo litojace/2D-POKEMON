@@ -82,7 +82,7 @@
 .sp-how li {
   padding: 8px 12px;
   border-radius: var(--rad-md);
-  background: var(--ui-bg-1);
+  background: var(--fill-card);
   border: 1px solid var(--ui-line);
   color: #d6def0;
 }
@@ -104,7 +104,7 @@
   padding: 6px 12px;
   border-radius: var(--rad-md);
   border: 1px solid var(--ui-line);
-  background: var(--ui-bg-1);
+  background: var(--fill-card);
 }
 .sp-floor.is-next {
   border-color: color-mix(in srgb, var(--boss) 65%, transparent);
@@ -186,7 +186,7 @@
   padding: 10px 12px;
   border-radius: var(--rad-md);
   border: 1px solid color-mix(in srgb, var(--boss) 30%, transparent);
-  background: var(--ui-bg-1);
+  background: var(--fill-card);
 }
 .sp-blessing-icon {
   display: grid;

@@ -290,8 +290,6 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
   </div>
 </section>
 <aside class="lobby-cards" aria-label="Today">
-  <button type="button" class="lobby-card lobby-raid-card" data-lobby-action="raids"><span class="lobby-card-kicker">Raids</span><b>Seven bosses</b><small>Solo or co-op · 1–4 players</small></button>
-  <button type="button" class="lobby-card lobby-farm-card" data-lobby-action="farm" id="lobby-farm-card"><span class="lobby-card-kicker">Elemental Farm</span><span class="lobby-card-row"><b>Grow crops</b><small>Enter →</small></span><small id="lobby-farm-leaves">Earn Gold Leaves</small></button>
   <button type="button" class="lobby-card" data-lobby-action="journey" id="lobby-journey-card"></button>
   <button type="button" class="lobby-card lobby-missions-card" data-lobby-action="missions" id="lobby-missions-card"></button>
   <button type="button" class="lobby-card lobby-friends-card" data-lobby-action="friends" id="lobby-friends-card"><span class="lobby-card-kicker">Friends</span><b id="lobby-friends-online">Friends online</b><small>Invite, join or watch</small></button>
@@ -569,11 +567,6 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
       layer.dataset.graphics = lowGraphics() ? "low" : "auto";
       $("lobby-party-bar").hidden = view.partySize < 2;
       $("lobby-party-size").textContent = `Party · ${view.partySize}/4`;
-      const leaves = view.economy?.leaves?.balance;
-      $("lobby-farm-leaves").textContent =
-        leaves === undefined
-          ? "Earn Gold Leaves"
-          : `${leaves.toLocaleString("en-US")} Gold Leaves`;
       // In place (ui/patch.ts): updates come often (friends online, the
       // economy) and the cards' pictures and progress bars stay as they are.
       setInner($("lobby-journey-card"), journeyCard(view.economy?.journey));

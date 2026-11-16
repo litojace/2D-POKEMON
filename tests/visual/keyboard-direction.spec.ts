@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { openHub, pushUntilBattle, openPlayPanel } from "./helpers";
+import { openHub, pushUntilBattle, openPlayPanel, startPractice } from "./helpers";
 
 // Opposite directions held together: the key pressed last wins. Holding A
 // and then pressing D used to cancel to a standstill until A was released.
@@ -12,7 +12,7 @@ test("pressing the opposite direction turns at once instead of stopping", async 
   });
   await page.evaluate(() => (window as any).__room("practice", { arena: "classic", pos: [800, 760, 1300, 200] }));
   await openPlayPanel(page);
-  await page.click("#practice");
+  await startPractice(page);
   await pushUntilBattle(page);
   await page.evaluate(() => {
     const w = window as any;

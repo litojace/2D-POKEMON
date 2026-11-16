@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { box, inside, openHub, pushUntilBattle, snap, openPlayPanel } from "./helpers";
+import { box, inside, openHub, pushUntilBattle, snap, openPlayPanel, createRoom, startPractice } from "./helpers";
 
 const COURTS = ["classic", "tide-pools", "ember-forge", "shifting-ruins"] as const;
 const SIZES = [
@@ -14,7 +14,7 @@ for (const size of SIZES)
       const errors = await openHub(page);
       await page.evaluate((arena) => (window as any).__room("practice", { arena, pos: [535, 226, 1065, 676] }), arena);
       await openPlayPanel(page);
-      await page.click("#practice");
+      await startPractice(page);
       await pushUntilBattle(page);
       const settings = await box(page, "#battle-menu"), stage = await box(page, "#game");
       expect(settings.y).toBeGreaterThanOrEqual(stage.y);
@@ -40,7 +40,7 @@ for (const boss of ["tidewyrm", "gloomshade", "storm-twins", "emberwing", "prism
     const errors = await openHub(page);
     await page.evaluate((boss) => (window as any).__room("raid", { boss, pos: [500, 450, 700, 600] }), boss);
     await openPlayPanel(page);
-    await page.click("#play-create");
+    await createRoom(page);
     await pushUntilBattle(page);
     await expect(page.locator("body")).toHaveClass(/battle-raid/);
     const game = await box(page, "#game");
@@ -55,7 +55,7 @@ test("Grumblecrag raid plays on the court with broken pillars", async ({ page },
   const errors = await openHub(page);
   await page.evaluate(() => (window as any).__room("raid", { boss: "grumblecrag", broken: [0, 4], pos: [535, 226, 700, 700] }));
   await openPlayPanel(page);
-  await page.click("#play-create");
+  await createRoom(page);
   await pushUntilBattle(page);
   await expect(page.locator("body")).toHaveClass(/battle-raid/);
   // Raids show no stands strip, so the frame keeps its 16:9 layout.
@@ -80,7 +80,7 @@ test("a block's picture is exactly its solid area", async ({ page }, info) => {
   };
   await enter([shot]);
   await openPlayPanel(page);
-  await page.click("#practice");
+  await startPractice(page);
   await pushUntilBattle(page);
   await page.waitForTimeout(1500);
   // World → screen: on desktop the court view shows x 0–1600, y −96–900.

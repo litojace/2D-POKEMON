@@ -1,5 +1,11 @@
 import { expect, test, type Page } from "@playwright/test";
-import { openHub, openPlayPanel, pushUntilBattle, snap } from "./helpers";
+import {
+  openHub,
+  openPlayPanel,
+  pushUntilBattle,
+  snap,
+  createRoom,
+} from "./helpers";
 
 // Cragmuff, the crystal-horned mountain ram (the "grumblecrag" raid), in the
 // real raid scene: its atlas is painted once when the scene starts, and
@@ -25,7 +31,7 @@ async function raid(page: Page) {
     }),
   );
   await openPlayPanel(page);
-  await page.click("#play-create");
+  await createRoom(page);
   await pushUntilBattle(page);
   await page.evaluate(async () => {
     const { createBossCombatDemo } = await import("/boss-combat-demo.ts");

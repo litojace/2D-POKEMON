@@ -247,7 +247,7 @@ async function pushUntilBattle(page) {
 async function openPlayPanel(page) {
   await page.click("#lobby-mode");
   await page.click('#lobby-mode-menu [data-lobby-action="more-play"]');
-  await page.locator("#practice").waitFor({ state: "visible" });
+  await page.locator("#join").waitFor({ state: "visible" });
 }
 
 const SCREENS = {
@@ -292,7 +292,10 @@ const SCREENS = {
     }
   },
   async wardrobe(page, shot) {
-    await hubMenu(page, "wardrobe");
+    // The Wardrobe is the Shop's other tab.
+    await hubMenu(page, "shop");
+    await page.locator(".fit-room").waitFor({ state: "visible" });
+    await page.click('[data-ui-mode="wardrobe"]');
     await page.locator(".fit-room").waitFor({ state: "visible" });
     await page.waitForTimeout(1800);
     await shot("wardrobe");
@@ -358,7 +361,7 @@ const SCREENS = {
   async "raid-briefing"(page, shot) {
     await page.evaluate(() => window.__room("raid", { boss: "grumblecrag" }));
     await openPlayPanel(page);
-    await page.click("#play-create");
+    await page.evaluate(() => document.getElementById("play-create").click());
     await pushUntilBattle(page);
     await page.evaluate(() => {
       const w = window;
@@ -383,7 +386,8 @@ const SCREENS = {
     await shot("raid-results");
   },
   async journey(page, shot) {
-    await hubMenu(page, "journey");
+    // Journey opens from its card beside the fighter.
+    await page.click("#lobby-journey-card");
     await page.waitForTimeout(1500);
     await shot("journey-levels");
     for (const tab of ["season", "arcade"]) {

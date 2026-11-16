@@ -1,27 +1,38 @@
-/* ── Glass for the hub (Lobby, Plaza, Farm and their shared header) ──
+/* ── Glass: the game's one look outside matches ──
    Flat, quiet and a little see-through, in the spirit of the gacha RPGs'
    menus (dark ink panels with a fine champagne-gold hairline) and of
    Valorant's lobby rework (nothing decorative that doesn't help you read):
    a deep ink tint with the scene blurred behind it, one 1px warm-gold rim,
    no gloss, bevel, glow or drop shadow. Hover and focus brighten the rim to
-   the game's gold. The coin and leaf pills keep their gold and green rims;
-   the Raid and Farm cards keep their colour.
+   the game's gold. The coin and leaf pills keep their gold and green rims.
+
+   ONE PLACE: the colours, thicknesses and blur are the --glass-* and
+   --fill-* tokens in ui/tokens.css. This file only says which surfaces are
+   glass; new screens get the look by using .ui-panel / .ui-sheet /
+   .ui-modal (ui/components.css), which already read those tokens. To
+   change the look of every menu in the game, change the tokens.
+
+   Thicknesses (Apple's materials, HIG "Materials"): thin for the HUD and
+   the Lobby's cards, regular for panels and sheets (lots of text), thick
+   for dialogs, menus and toasts that sit over everything.
 
    Blur over the Lobby is cheap: its backdrop is a still painting. The
    Plaza and the Farm draw a canvas that changes every frame, so every
    blurred panel over them is blurred again every frame. They keep the
    blur at High graphics and drop it at Low (chosen in Settings, or picked
    automatically when the frame rate can't keep up), with a deeper tint.
+   Dialogs, menus and toasts can open over a match: thick glass, never
+   blurred, so they add no per-frame cost there.
 
    Loaded after every other stylesheet but ui/light-effects.css and
    ui/phone-fit.css (main.ts). */
 :root {
-  --aero-tint: rgba(13, 20, 38, 0.62);
-  /* Without blur the scene shows through sharp: a deeper tint. */
+  /* The names this file used before the tokens; kept for older rules. */
+  --aero-tint: var(--glass-thin);
   --aero-tint-solid: rgba(12, 18, 34, 0.9);
-  --aero-rim: rgba(226, 200, 140, 0.42);
-  --aero-rim-on: #ffd65b;
-  --aero-blur: blur(16px) saturate(1.3);
+  --aero-rim: var(--glass-rim);
+  --aero-rim-on: var(--glass-rim-on);
+  --aero-blur: var(--glass-blur);
 }
 
 /* The Lobby's own colour tokens become glass (its cards mix --lobby-glass
@@ -40,7 +51,7 @@
 :root .hub-scenes,
 .lobby-layer
   :is(
-    .lobby-rail button,
+    .lobby-rail,
     .lobby-card,
     .lobby-mode,
     .lobby-party-bar,
@@ -60,7 +71,7 @@
 :root .hub-scenes,
 .lobby-layer
   :is(
-    .lobby-rail button,
+    .lobby-rail,
     .lobby-card,
     .lobby-mode,
     .lobby-party-bar,
@@ -72,8 +83,7 @@
 }
 /* Hover and keyboard focus: the rim lights up gold. */
 :root body.hub-active .header-menu > summary:is(:hover, :focus-visible),
-.lobby-layer
-  :is(.lobby-rail button, .lobby-card, .lobby-mode):is(:hover, :focus-visible),
+.lobby-layer :is(.lobby-card, .lobby-mode):is(:hover, :focus-visible),
 .plaza-layer
   :is(.pz-round, .pz-act:not(.big, .pz-interact, .cd)):is(
     :hover,
@@ -84,14 +94,14 @@
 /* The open mode menu is the one thing over the scene there: a touch
    deeper, so its rows read at a glance. */
 .lobby-layer .lobby-mode-menu {
-  background-color: rgba(13, 20, 38, 0.82);
+  background-color: var(--glass-thick);
 }
 
 /* Flat call-to-action buttons: one solid colour, no bevel or shadow; a
    press shrinks them a touch instead of sinking them. */
 .lobby-layer .lobby-play-button,
 .plaza-layer .pz-act.big {
-  background: #ffd04a;
+  background: var(--cta-bg);
   box-shadow: none;
 }
 .plaza-layer .pz-act.big {
@@ -124,22 +134,14 @@
   backdrop-filter: none;
 }
 
-/* The rail button of the screen that is open lights up gold (rim, a soft
-   glow, the icon and its label), so you can tell which screen you are in;
-   a second tap on it closes the screen (lobby-screen.ts). */
+/* The rail button of the screen that is open is solid gold with a dark
+   icon and label, as the scene switch shows the scene you are in; a second
+   tap on it closes the screen (lobby-screen.ts). */
 .lobby-layer .lobby-rail button[aria-current="page"] {
-  border-color: var(--aero-rim-on);
-  background-color: rgba(255, 214, 91, 0.18);
-  box-shadow:
-    inset 0 0 0 1px rgba(255, 214, 91, 0.35),
-    0 0 14px rgba(255, 214, 91, 0.35);
+  background: var(--ui-accent);
 }
-.lobby-layer .lobby-rail button[aria-current="page"] svg {
-  color: #ffd65b;
-  filter: drop-shadow(0 0 4px rgba(255, 214, 91, 0.7));
-}
-.lobby-layer .lobby-rail button[aria-current="page"] span {
-  color: #ffe58f;
+.lobby-layer .lobby-rail button[aria-current="page"] :is(svg, span) {
+  color: var(--ui-accent-ink);
 }
 
 /* The same on the Plaza's Emote button while its wheel is open (a second
@@ -147,17 +149,83 @@
    graphics tint above. */
 :root .plaza-layer .pz-round[aria-expanded="true"] {
   border-color: var(--aero-rim-on);
-  background-color: rgba(255, 214, 91, 0.18);
+  background-color: color-mix(in srgb, var(--ui-accent) 18%, transparent);
   box-shadow:
-    inset 0 0 0 1px rgba(255, 214, 91, 0.35),
-    0 0 14px rgba(255, 214, 91, 0.35);
+    inset 0 0 0 1px color-mix(in srgb, var(--ui-accent) 35%, transparent),
+    0 0 14px color-mix(in srgb, var(--ui-accent) 35%, transparent);
 }
 .plaza-layer .pz-round[aria-expanded="true"] svg {
-  color: #ffd65b;
-  filter: drop-shadow(0 0 4px rgba(255, 214, 91, 0.7));
+  color: var(--ui-accent);
+  filter: drop-shadow(
+    0 0 4px color-mix(in srgb, var(--ui-accent) 70%, transparent)
+  );
 }
 .plaza-layer .pz-round[aria-expanded="true"] small {
-  color: #ffe58f;
+  color: var(--ui-accent-hi);
+}
+
+/* ── The older screens, on the same glass ──
+   Dialogs (Settings, Help, Credits, the party invite, sign-in…), the Play
+   drawer, the header menu and the toast were drawn before the tokens, in
+   solid navy. Here they take thick glass and the gold rim. :root and [open]
+   outweigh style.css's many dialog rules without !important. */
+:root dialog[open],
+:root .home-drawer,
+:root .header-menu-panel {
+  background: var(--glass-thick);
+  border-color: var(--glass-rim);
+}
+:root .home-drawer {
+  box-shadow: none;
+}
+/* Bars on a dialog's edge and the cards inside it: see-through fills, so
+   the dialog reads as one sheet of glass. */
+:root dialog[open] .dialog-footer,
+:root dialog[open].framed-dialog .dialog-tabs:not(.dialog-toolbar > *) {
+  background: var(--fill-bar);
+  border-color: var(--ui-line);
+}
+:root dialog[open] .prefs-card {
+  background: var(--fill-card);
+}
+/* The dim behind a dialog or the Play drawer: light enough that the
+   scene still shows round the glass (it was 73–80 % black, which made
+   every dialog look solid). Not while the "turn your phone" cover is up:
+   there the dialog is hidden and its backdrop stays clear (style.css). */
+@media not ((orientation: portrait) and (pointer: coarse) and (hover: none)) {
+  :root:not(.ipad-gate) dialog[open]::backdrop,
+  :root .home-panel-scrim {
+    background: var(--scrim);
+  }
+}
+@media (orientation: landscape) {
+  :root.ipad-gate dialog[open]::backdrop {
+    background: var(--scrim);
+  }
+}
+/* The toast: a thick-glass pill with a gold edge. */
+:root #toast {
+  background: var(--glass-thick);
+  border: 1px solid var(--glass-rim-on);
+}
+
+/* The room before a match sits on the Plaza picture as the Lobby does:
+   blurred and dimmed about as much (the Lobby's backdrop is blur 5 px,
+   60 % brightness), instead of 85-95 % dark, so its glass reads as glass.
+   The picture is still: the blur is drawn once. */
+html:has(body.lobby-active) {
+  --backdrop-dim-top: rgba(11, 20, 36, 0.55);
+  --backdrop-dim-mid: rgba(11, 20, 36, 0.35);
+  --backdrop-dim-bottom: rgba(11, 20, 36, 0.65);
+}
+html:has(body.lobby-active)::before {
+  filter: blur(5px) saturate(1.05);
+  transform: scale(1.04);
+}
+/* The room's own fill (style.css body.lobby-active) was solid navy over the
+   picture; it keeps its glow in your fighter's colour, over the picture. */
+:root body.lobby-active {
+  background-color: transparent;
 }
 
 /* ── The same glass in battle (PvP, practice and raids), without blur ──

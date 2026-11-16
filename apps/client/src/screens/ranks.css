@@ -138,7 +138,7 @@
   min-height: var(--ctl-s);
   border-radius: var(--rad-sm);
   border: 1px solid var(--ui-line-2);
-  background: var(--ui-bg-2);
+  background: var(--fill-card-hi);
   color: var(--ui-text);
   font-family: var(--font-display);
   font-weight: 800;
@@ -197,7 +197,7 @@
   text-transform: uppercase;
   letter-spacing: 0.1em;
   color: var(--ui-dim);
-  background: var(--ui-bg-1);
+  background: var(--fill-card);
 }
 .rk-head > span:first-child {
   text-align: center;
@@ -222,7 +222,7 @@
   border-top: 1px solid var(--ui-line);
 }
 .rk-list > .rk-row.is-me {
-  background: #ffd65b12;
+  background: color-mix(in srgb, var(--ui-accent) 7.1%, transparent);
 }
 /* The place fills its cell's height; the number or medal sits in its middle. */
 .rk-place {
@@ -247,8 +247,13 @@
   font-size: 16px;
   font-style: normal;
   line-height: 1;
-  color: #2a1a00;
-  background: radial-gradient(circle at 35% 30%, #fff6cf, #ffd65b 55%, #b8860b);
+  color: var(--ui-accent-ink);
+  background: radial-gradient(
+    circle at 35% 30%,
+    #fff6cf,
+    var(--ui-accent) 55%,
+    #b8860b
+  );
   box-shadow: 0 2px 6px #0008;
 }
 .rk-medal.is-2 {
@@ -438,7 +443,7 @@
   }
   .rk-head {
     height: 24px;
-    font-size: 10px;
+    font-size: var(--fs-micro);
   }
   .rk-row {
     height: 40px;
@@ -469,6 +474,16 @@
     font-size: var(--fs-micro);
   }
   .rk-wl.is-long {
-    font-size: 9px;
+    font-size: var(--fs-micro);
+  }
+}
+
+/* Phones: the card's ladder shows your rank and the ranks either side of
+   it (the one below, the one to reach next), so the card fits its column
+   instead of scrolling. Desktop and an unranked player see every rank. */
+@media (max-height: 500px) {
+  .rk-ladder:has(> .is-cur)
+    > li:not(.is-cur):not(:has(+ .is-cur)):not(.is-cur + li) {
+    display: none;
   }
 }

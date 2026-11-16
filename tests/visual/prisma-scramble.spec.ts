@@ -1,5 +1,11 @@
 import { test, expect, type Page } from "@playwright/test";
-import { openHub, pushUntilBattle, snap, openPlayPanel } from "./helpers";
+import {
+  openHub,
+  pushUntilBattle,
+  snap,
+  openPlayPanel,
+  createRoom,
+} from "./helpers";
 import { decodePng } from "./png";
 
 /*
@@ -67,7 +73,7 @@ test("a mirror about to scramble flashes and shows where it will point", async (
     }),
   );
   await openPlayPanel(page);
-  await page.click("#play-create");
+  await createRoom(page);
   await pushUntilBattle(page);
   const set = (scramble: boolean) =>
     page.evaluate((scramble) => {

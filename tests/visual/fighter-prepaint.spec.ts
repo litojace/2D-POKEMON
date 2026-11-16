@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { openHub, openPlayPanel } from "./helpers";
+import { openHub, openPlayPanel, createRoom } from "./helpers";
 
 // In the menus and in a room, the fighters' rig layers are rasterized ahead
 // (fighter-prepaint.ts), so the battle hands them to WebGL instead of
@@ -115,7 +115,7 @@ test("the room rasterizes its fighters ahead and the battle loads none of their 
     (window as any).__room("pvp", { mode: "duel", phase: "lobby" }),
   );
   await openPlayPanel(page);
-  await page.click("#play-create");
+  await createRoom(page);
   const held = await prepaintModule(page);
   await untilPainted(page, held, ["voltkit", "cindrake"]);
 

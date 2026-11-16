@@ -44,6 +44,7 @@ import {
   emptyState,
   esc,
   panelHead,
+  tabs,
   ring,
   tag,
 } from "../ui/components";
@@ -74,6 +75,9 @@ export interface ProfileData {
   nameStatus: NameStatus | null;
   /** Players can delete their account here; administrators can't. */
   canDelete: boolean;
+  /** A phone held sideways (max-height 500 px): the card's column becomes
+   * tabs (Overview, Titles, Mastery, Trophies) instead of one long scroll. */
+  compact?: boolean;
 }
 export interface ProfileView {
   /** The title being equipped ("" for no title), while the server answers. */
@@ -94,7 +98,16 @@ export interface ProfileView {
   deleteBusy: boolean;
   /** Why it wasn't deleted (or what to type). */
   deleteMessage: string;
+  /** The tab open on a phone. */
+  tab: ProfileTab;
 }
+export type ProfileTab = "overview" | "titles" | "mastery" | "trophies";
+const PROFILE_TABS: [ProfileTab, string][] = [
+  ["overview", "Overview"],
+  ["titles", "Titles"],
+  ["mastery", "Mastery"],
+  ["trophies", "Trophies"],
+];
 export const profileView = (): ProfileView => ({
   equipping: null,
   status: "",
@@ -105,6 +118,7 @@ export const profileView = (): ProfileView => ({
   deleting: false,
   deleteBusy: false,
   deleteMessage: "",
+  tab: "overview",
 });
 
 /** What a player types to delete their account. */
@@ -299,7 +313,20 @@ function deleteRow(d: ProfileData, view: ProfileView) {
 function main(d: ProfileData, view: ProfileView) {
   if (!d.progress && d.progressProblem)
     return `${tiles(d)}${emptyState("Your records aren't available", d.progressProblem, button("Try again", { size: "s", attrs: { "data-profile-retry": true } }))}${deleteRow(d, view)}`;
-  return `${tiles(d)}${d.guest ? saveAccount(view) : ""}${nameRow(d, view)}${section("Title", "Tap to wear it · saved at once", "pf-titles-h")}${titleChips(d, view)}${section("Fighter mastery", "Badges for matches played", "pf-mastery-h")}${masteryGrid(d)}${summaries(d)}${section("Raid trophies", "Clears per boss", "pf-trophy-h")}${trophies(d)}${achievements(d)}<div class="pf-links">${button("Ranks", { icon: "leaderboard", attrs: { "data-profile-go": "ranks" } })}${button("Journey", { icon: "sparkle", attrs: { "data-profile-go": "journey" } })}${button("Raid rewards", { icon: "bestiary", attrs: { "data-profile-go": "raids" } })}</div><p class="ui-note pf-who">${esc(d.role)}${d.email ? ` · ${esc(d.email)}` : ""}</p>${deleteRow(d, view)}`;
+  const titles = `${section("Title", "Tap to wear it · saved at once", "pf-titles-h")}${titleChips(d, view)}`;
+  const mastery = `${section("Fighter mastery", "Badges for matches played", "pf-mastery-h")}${masteryGrid(d)}`;
+  const trophy = `${section("Raid trophies", "Clears per boss", "pf-trophy-h")}${trophies(d)}${achievements(d)}`;
+  const who = `<p class="ui-note pf-who">${esc(d.role)}${d.email ? ` · ${esc(d.email)}` : ""}</p>`;
+  const overview = `${tiles(d)}${d.guest ? saveAccount(view) : ""}${nameRow(d, view)}`;
+  // A phone: one tab at a time (its tabs sit in the head).
+  if (d.compact)
+    return {
+      overview: `${overview}${summaries(d)}${who}${deleteRow(d, view)}`,
+      titles,
+      mastery,
+      trophies: trophy,
+    }[view.tab];
+  return `${overview}${titles}${mastery}${summaries(d)}${trophy}${who}${deleteRow(d, view)}`;
 }
 
 export function profileMarkup(view: ProfileView, d: ProfileData) {
@@ -308,5 +335,17 @@ export function profileMarkup(view: ProfileView, d: ProfileData) {
     icon: "share",
     attrs: { "data-profile-share": true },
   });
-  return `<section class="ui-panel profile-panel" role="dialog" aria-label="Player card">${panelHead(d.name, "Player card", tools)}<div class="ui-panel-body pf-body">${playerCard(d)}<div class="pf-main" data-profile-main>${main(d, view)}</div></div></section>`;
+  const tabRow =
+    d.compact && (d.progress || !d.progressProblem)
+      ? tabs(
+          PROFILE_TABS.map(([id, label]) => ({
+            id,
+            label,
+            selected: view.tab === id,
+          })),
+          "Player card",
+          "profile-tab",
+        )
+      : "";
+  return `<section class="ui-panel profile-panel${tabRow ? " has-tabs" : ""}" role="dialog" aria-label="Player card">${panelHead(d.name, "Player card", tabRow + tools)}<div class="ui-panel-body pf-body">${playerCard(d)}<div class="pf-main" data-profile-main${tabRow ? ` role="tabpanel" data-tab="${view.tab}"` : ""}>${main(d, view)}</div></div></section>`;
 }

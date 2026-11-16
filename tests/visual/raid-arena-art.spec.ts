@@ -1,5 +1,11 @@
 import { test, expect } from "@playwright/test";
-import { openHub, pushUntilBattle, snap, openPlayPanel } from "./helpers";
+import {
+  openHub,
+  pushUntilBattle,
+  snap,
+  openPlayPanel,
+  createRoom,
+} from "./helpers";
 const floors = {
   grumblecrag: "raid-coliseum",
   tidewyrm: "lagoon",
@@ -51,7 +57,7 @@ for (const viewport of [
         (window as any).__room("raid", { boss: "grumblecrag", broken: [0, 4] }),
       );
       await openPlayPanel(page);
-      await page.click("#play-create");
+      await createRoom(page);
       await pushUntilBattle(page);
       for (const [boss, floor] of Object.entries(floors)) {
         if (boss !== "grumblecrag")

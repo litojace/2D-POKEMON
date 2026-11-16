@@ -63,6 +63,7 @@ import {
   actions,
   attrs,
   avatar,
+  bar,
   button,
   chips,
   emptyState,
@@ -140,6 +141,9 @@ export interface FitData {
   low?: boolean;
   /** Today's picks seen already (the NEW tag on Today goes). */
   seenDay?: string;
+  /** A phone held sideways (max-height 500 px): Mythic Hall picks one
+   * fighter at a time instead of the grid of all of them. */
+  compact?: boolean;
 }
 
 export function fitView(
@@ -682,10 +686,19 @@ const section = (title: string, note = "") =>
 const grid = (tiles: string, cols = 4, cls = "") =>
   `<div class="ui-grid fit-grid${cls ? ` ${cls}` : ""}" style="--cols:${cols}">${tiles}</div>`;
 
-function fighterRow(view: FitView, d: FitData, label: string) {
+function fighterRow(
+  view: FitView,
+  d: FitData,
+  label: string,
+  /** A mark on a fighter's avatar and words added to its name for screen
+   * readers (Mythic Hall: whose Mythical you own). */
+  mark?: (c: CharacterId) => { badge: string; say: string } | null,
+) {
   return `<div class="ui-chips fit-fighters" role="group" aria-label="${esc(label)}">${FIGHTERS.map(
-    (c) =>
-      `<button type="button" class="fit-fighter" data-fit-fighter="${c}" aria-pressed="${c === view.champion}" aria-label="${esc(CHARACTERS[c].name)}" style="--el:${elVar(c)}">${avatar(fighterAvatar(c, `fit-fighter-${c}`, d.economy?.looks[c] ?? null), { element: CHARACTERS[c].element, size: 34 })}<span>${esc(CHARACTERS[c].name)}</span></button>`,
+    (c) => {
+      const m = mark?.(c);
+      return `<button type="button" class="fit-fighter" data-fit-fighter="${c}" aria-pressed="${c === view.champion}" aria-label="${esc(CHARACTERS[c].name + (m ? `, ${m.say}` : ""))}" style="--el:${elVar(c)}">${avatar(fighterAvatar(c, `fit-fighter-${c}`, d.economy?.looks[c] ?? null), { element: CHARACTERS[c].element, size: 34 })}${m?.badge ?? ""}<span>${esc(CHARACTERS[c].name)}</span></button>`;
+    },
   ).join("")}</div>`;
 }
 
@@ -814,6 +827,7 @@ function collectionReward(
   return `<div class="fit-set-reward" data-fit-reward="${frame.id}"><span class="fit-set-reward-art">${pictureOf(frame.id, view, d, `fit-reward-${collection}`)}</span><p class="ui-note">${text}</p></div>`;
 }
 function mythicBody(view: FitView, d: FitData) {
+  if (d.compact) return mythicPick(view, d);
   const e = d.economy!;
   const skins = CHAMPION_SKINS.filter(
     (s) => s.rarity === "mythical" && ownershipMatch(s.id, view, d),
@@ -826,6 +840,80 @@ function mythicBody(view: FitView, d: FitData) {
       ? grid(skins.map((s) => mythicTile(s.id, view, d)).join(""))
       : noMatch()
   }`;
+}
+/**
+ * Mythic Hall on a phone: the fighter row (a gold mark on those whose
+ * Mythical you own, a ring on a trial under way), then the chosen fighter's
+ * Mythical with its three awakening stages. One screen instead of a grid
+ * of eighteen tall tiles; the row still shows where you stand overall.
+ */
+function mythicPick(view: FitView, d: FitData) {
+  const e = d.economy!;
+  const mythicOf = (c: CharacterId) =>
+    CHAMPION_SKINS.find((s) => s.champion === c && s.rarity === "mythical");
+  const row = fighterRow(view, d, "Fighter", (c) => {
+    const m = mythicOf(c);
+    if (!m) return null;
+    if (e.owned.includes(m.id))
+      return {
+        badge: '<i class="fit-fighter-mark is-owned" aria-hidden="true"></i>',
+        say: "Mythical owned",
+      };
+    const wins = trialWins(e, c);
+    return wins > 0 && trialLocked(m.id, e)
+      ? {
+          badge: '<i class="fit-fighter-mark is-trial" aria-hidden="true"></i>',
+          say: `Mythic Trial ${wins} of ${MYTHIC_TRIAL_WINS} wins`,
+        }
+      : null;
+  });
+  const have = CHAMPION_SKINS.filter(
+    (s) => s.rarity === "mythical" && e.owned.includes(s.id),
+  ).length;
+  const all = CHAMPION_SKINS.filter((s) => s.rarity === "mythical").length;
+  const intro = `<p class="ui-note">${
+    e.mythicTesting
+      ? "Testing: Mythic Trials and Awakening stages are open."
+      : `One Mythical per fighter · ${have}/${all} yours. Pick a fighter.`
+  }</p>`;
+  const m = mythicOf(view.champion);
+  if (!m)
+    return `${intro}${row}${emptyState(
+      "No Mythical yet",
+      `${CHARACTERS[view.champion].name} has no Mythical in the Shop yet.`,
+    )}`;
+  return `${intro}${row}<div class="fit-mythic-one">${mythicTile(m.id, view, d)}${mythicStages(m.id, e)}</div>${collectionReward("void", view, d)}`;
+}
+/** A Mythical's three awakening stages, with where you are. */
+function mythicStages(id: string, e: Economy) {
+  const champ = CHAMPION_SKIN_BY_ID[id]!.champion;
+  const owned = e.owned.includes(id) || e.mythicTesting;
+  const a = e.awakening[id];
+  const wins = a?.wins ?? 0;
+  const reached = owned ? reachedStage(id, e) : 0;
+  const open = trialLocked(id, e)
+    ? `Mythic Trial: ${trialWins(e, champ)}/${MYTHIC_TRIAL_WINS} wins with ${esc(CHARACTERS[champ].name)}`
+    : owned
+      ? "Yours"
+      : "Open to buy";
+  const steps: [number, string][] = [
+    [1, open],
+    [2, `${AWAKENING.stage2Wins} wins wearing it`],
+    [3, `${AWAKENING.stage3Wins} wins and a raid clear`],
+  ];
+  return `<div class="fit-mythic-stages"><ol>${steps
+    .map(
+      ([n, text]) =>
+        `<li${n <= reached ? ' class="is-reached"' : ""}><b>Stage ${"I".repeat(n)}</b><small>${text}</small></li>`,
+    )
+    .join("")}</ol>${
+    owned && !e.mythicTesting
+      ? bar(wins, AWAKENING.stage3Wins, {
+          label: `Awakening: ${wins} of ${AWAKENING.stage3Wins} wins`,
+        }) +
+        `<small class="ui-note">${wins}/${AWAKENING.stage3Wins} wins${a?.peril3 ? " · raid cleared" : ""}</small>`
+      : ""
+  }</div>`;
 }
 function mythicTile(id: string, view: FitView, d: FitData) {
   const e = d.economy!;
@@ -952,9 +1040,14 @@ function shopFoot(view: FitView, d: FitData) {
   const e = d.economy;
   const id = view.selected;
   if (!e || !id)
+    // Nothing picked yet: an action bar with nothing to act on, which
+    // phones fold away (data-idle, ui/components.css).
     return actionBar(
       `${footText("Try anything on", "Tap an item to see it on your fighter. Try-ons are free.")}${status}`,
       "",
+    ).replace(
+      '<footer class="ui-panel-foot"',
+      '<footer class="ui-panel-foot" data-idle',
     );
   const set = SHOP_BUNDLES.find((b) => b.id === id);
   const p = purchase(id, e);

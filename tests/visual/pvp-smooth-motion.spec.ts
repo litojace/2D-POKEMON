@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { openHub, pushUntilBattle, openPlayPanel } from "./helpers";
+import { openHub, pushUntilBattle, openPlayPanel, createRoom } from "./helpers";
 
 test("live PvP hits do not freeze everyone and unchanged nameplates keep their text nodes", async ({ page }) => {
   await page.setViewportSize({ width: 844, height: 390 });
@@ -13,7 +13,7 @@ test("live PvP hits do not freeze everyone and unchanged nameplates keep their t
   const errors = await openHub(page);
   await page.evaluate(() => (window as any).__room("pvp", { mode: "ffa", phase: "playing" }));
   await openPlayPanel(page);
-  await page.click("#play-create");
+  await createRoom(page);
   await pushUntilBattle(page);
   await expect(page.locator(".battle-nameplate")).toHaveCount(4);
   const hit = await page.evaluate(() => {

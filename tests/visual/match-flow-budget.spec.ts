@@ -1,6 +1,12 @@
 import { expect, test, type Page } from "@playwright/test";
 import { battlePerfSchema } from "../../packages/shared/src/connection";
-import { openHub, openPlayPanel, pushUntilBattle, snap } from "./helpers";
+import {
+  openHub,
+  openPlayPanel,
+  pushUntilBattle,
+  snap,
+  createRoom,
+} from "./helpers";
 
 /**
  * A match in its real order — dressed fighters from the first snapshot, the
@@ -135,7 +141,7 @@ for (const quality of ["high", "low"] as const)
         w.__snap = w.__pack();
       });
       await openPlayPanel(page);
-      await page.click("#play-create");
+      await createRoom(page);
       await pushUntilBattle(page);
       await page.evaluate(() => {
         const w = window as any;
