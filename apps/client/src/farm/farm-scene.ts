@@ -97,6 +97,7 @@ import { setInner } from "../ui/patch";
 import { memoryConstrained, sceneDensity } from "../render-budget";
 import { FrameCap } from "../frame-cap";
 import { rumble } from "../game-feel";
+import { bubbleLines } from "../chat/bubble-text";
 
 const svgUrl = (s) =>
   "data:image/svg+xml;charset=utf-8," + encodeURIComponent(s);
@@ -3208,15 +3209,26 @@ export function openFarm(options) {
               [...a.emote].length > 2
                 ? "700 14px system-ui, sans-serif"
                 : "20px system-ui, 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif";
-            const w = Math.max(44, ctx.measureText(a.emote).width + 20);
+            // Sized to its text, wrapped past 150 px: it never runs out.
+            const lines = bubbleLines(
+              a.emote,
+              (t) => ctx.measureText(t).width,
+              150,
+            );
+            const w = Math.max(
+              44,
+              Math.max(...lines.map((t) => ctx.measureText(t).width)) + 20,
+            );
+            const h = 32 + (lines.length - 1) * 17;
             ctx.fillStyle = "#fff";
             ctx.beginPath();
-            ctx.roundRect(-w / 2, -18, w, 32, 12);
+            ctx.roundRect(-w / 2, 14 - h, w, h, 12);
             ctx.fill();
             ctx.fillStyle = "#1d2433";
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
-            ctx.fillText(a.emote, 0, -2);
+            for (let i = 0; i < lines.length; i++)
+              ctx.fillText(lines[i], 0, 14 - h + 16 + i * 17);
             ctx.textBaseline = "alphabetic";
             ctx.restore();
           }

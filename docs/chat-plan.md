@@ -64,9 +64,12 @@ quick-chat button sits top left, opposite the settings button.
 
 - Typed lines are on by default; `CHAT_FREE_TEXT=off` on the server pauses
   them at once (quick chat keeps working).
-- Migration `20261115200000_chat_restrictions.sql` (admin chat stops) is in
-  the repo but not applied: until it runs, nobody is stopped and the admin's
-  "Stop their chat for 24 h" says the database needs the update.
+- Both chat migrations are applied (16 Nov 2026, at the owner's ask):
+  `20261115200000_chat_restrictions.sql` (an admin's "Stop their chat for
+  24 h") and `20261115230000_chat_friend_messages.sql` (friends' messages
+  kept). Applied through the Supabase migration tool, so their recorded
+  versions are that day's timestamps (`chat_restrictions`,
+  `chat_friend_messages`), as for the earlier migrations.
 - Retention (owner, 15 Nov 2026: "the best option for the game"): party,
   room and Nearby chat aren't stored; a reported message stays with its
   report; friends' messages (step 7) keep the last 200 per conversation

@@ -11,6 +11,9 @@
  * line; the typed entry point is plaza-screen.ts.
  */
 import { CHAT_EMOTES } from "../../../../packages/shared/src/chat";
+import { bubbleLines } from "../chat/bubble-text";
+/** A chat bubble's text is at most this wide; longer lines wrap. */
+const BUBBLE_TEXT_W = 150;
 import { syncHubGraphics } from "../hub-graphics";
 import { goldenLevel } from "../farm/farm-feel";
 import { NightLight, ShadowLayer, sunLight } from "../world-light";
@@ -2707,9 +2710,33 @@ export function openPlaza(options) {
       );
       g.globalAlpha = a;
       const by = ny - 26;
+      g.font =
+        b.emote.length > 2
+          ? "800 17px 'Barlow Condensed', sans-serif"
+          : "19px sans-serif";
+      // Sized to its text (wrapped past BUBBLE_TEXT_W), so a phrase never
+      // runs out of the bubble; worked out once per line said.
+      if (b.bubbleFor !== b.emote) {
+        b.bubbleFor = b.emote;
+        b.bubbleLines = bubbleLines(
+          b.emote,
+          (t) => g.measureText(t).width,
+          BUBBLE_TEXT_W,
+        );
+        b.bubbleW = Math.max(
+          46,
+          Math.ceil(
+            Math.max(...b.bubbleLines.map((t) => g.measureText(t).width)),
+          ) + 22,
+        );
+      }
+      const rows = b.bubbleLines.length,
+        bw = b.bubbleW,
+        bh = 32 + (rows - 1) * 18,
+        top = by + 13 - bh;
       g.fillStyle = "#fff";
       g.beginPath();
-      g.roundRect(b.x - 23, by - 19, 46, 32, 11);
+      g.roundRect(b.x - bw / 2, top, bw, bh, 11);
       g.fill();
       g.beginPath();
       g.moveTo(b.x - 5, by + 13);
@@ -2717,11 +2744,8 @@ export function openPlaza(options) {
       g.lineTo(b.x, by + 19);
       g.fill();
       g.fillStyle = "#111";
-      g.font =
-        b.emote.length > 2
-          ? "800 17px 'Barlow Condensed', sans-serif"
-          : "19px sans-serif";
-      g.fillText(b.emote, b.x, by + 4);
+      for (let i = 0; i < rows; i++)
+        g.fillText(b.bubbleLines[i], b.x, top + 23 + i * 18);
       g.globalAlpha = 1;
     }
   }

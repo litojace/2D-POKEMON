@@ -154,6 +154,11 @@ import {
 import { rigAssets, skinSuffix } from "./animation/assets";
 import { loadRigTextures } from "./animation/rig-textures";
 import { prewarmBossAtlas, syncBossPrepaint } from "./boss-vector-prewarm";
+import {
+  addPrepaintedLayers,
+  holdFighterPrepaint,
+  syncFighterPrepaint,
+} from "./fighter-prepaint";
 import { prewarmRaidArena } from "./raid-arena-prewarm";
 import { PillarRig, prewarmPillars } from "./raid-grumble-pillars-rig";
 import { IMPACT_RADIUS } from "./raid-grumble-pillars";
@@ -2644,9 +2649,31 @@ async function startRaid(
   await request("select", selected);
   if (options.solo) await request("ready");
 }
+/**
+ * Rasterize ahead the fighters the next battle will load (fighter-prepaint.ts):
+ * everyone in the room, or your own pick in the menus. A battle that is on
+ * stops it and takes what was painted.
+ */
+function syncFighterArt() {
+  if (state && state.phase !== "lobby") return holdFighterPrepaint();
+  const room = (state?.players ?? [])
+    .filter((p) => !p.raidBoss)
+    .map((p) => ({
+      character: p.character,
+      look: p.championLooks?.[p.character] ?? null,
+    }));
+  syncFighterPrepaint([
+    ...room,
+    {
+      character: selected,
+      look: accountsUI?.economy?.looks?.[selected] ?? null,
+    },
+  ]);
+}
 function renderMenu(revealSelection = false) {
   // In a raid room, the boss's atlas is painted ahead (boss-prepaint.ts).
   syncBossPrepaint(state);
+  syncFighterArt();
   document.body.classList.remove("practice-active");
   audio.setTheme("lobby");
   pwa.sync();
@@ -3850,6 +3877,7 @@ socket.on("state", (snapshot: WireSnapshot) => {
   )
     void reportMatch(state.matchId);
   syncBossPrepaint(state);
+  syncFighterArt();
   if (state.phase === "lobby") renderMenu();
   else renderBattle();
 });
@@ -4584,6 +4612,9 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
   /** Queue whichever of this snapshot's fighters are still missing. */
   private requestFighters(s: Snapshot) {
     if (this.fightersReady(s)) return;
+    // Layers rasterized ahead (fighter-prepaint.ts) are added at once.
+    for (const id of neededFighters(s.players))
+      addPrepaintedLayers(this, this.fighters.assetsFor(id));
     const ids = this.fighters.toRequest(neededFighters(s.players));
     if (!ids.length) return;
     for (const id of ids)
@@ -4723,6 +4754,11 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       queueBossSpellArt(this);
     }
     // Only the fighters in this room: the rest load if they ever appear.
+    // Their layers rasterized ahead (fighter-prepaint.ts) are added now;
+    // the loader skips those and loads only what's missing.
+    if (state)
+      for (const id of neededFighters(state.players))
+        addPrepaintedLayers(this, this.fighters.assetsFor(id));
     if (state)
       for (const id of this.fighters.toRequest(neededFighters(state.players)))
         queueFighterAssets(this, id, this.fighters.assetsFor(id));
@@ -4732,8 +4768,11 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     if (state)
       for (const p of state.players) {
         const look = p.championLooks?.[p.character];
-        if (!p.raidBoss && look && skinSuffix(p.character, look))
-          loadRigTextures(this, rigAssets(p.character, look));
+        if (!p.raidBoss && look && skinSuffix(p.character, look)) {
+          const layers = rigAssets(p.character, look);
+          addPrepaintedLayers(this, layers);
+          loadRigTextures(this, layers);
+        }
       }
     // Every load that finishes (this one, and later ones started for a new
     // fighter, a skin or boss art) settles what was requested: art still

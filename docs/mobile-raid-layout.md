@@ -15,9 +15,14 @@ Opening a boss frames its body on both desktop and phone with minimal zoom
 center; its horizontal position stays between 20% and 80% of the stage so it
 clears both edges. Zoom no longer increases to force the face into the center.
 Storm Twins uses the midpoint between both faces. Cards/thumbnails use their
-whole-creature crops. Snoozaku's mobile gallery card instead uses the wide
+whole-creature crops. Snoozaku's gallery card instead uses the wide
 painting with expanded scenery, showing the creature at a smaller scale with real scenery
-covering both edges; desktop cards and room banners keep the portrait asset.
+covering both edges on mobile and desktop; room banners keep the portrait asset.
+Gallery artwork uses small optical scale adjustments: Tidelotl 1.06,
+Lumiwick 1.08, and Snoozaku 1.12 on its wider source (previously 1.20 on
+mobile and a tightly cropped portrait on desktop). The other four cards
+retain their scale. Lumiwick and Snoozaku scale from the top to protect
+the flame/nightcap. These card adjustments do not alter detail-page framing.
 
 The detail paintings use `*-lower.webp` variants with painted scenery added
 above the original composition. The approved creature, horizontal framing and
