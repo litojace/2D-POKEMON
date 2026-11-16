@@ -80,7 +80,9 @@ export function spireCue(state: Snapshot) {
   const r = state.raid!,
     s = r.spire!;
   if (s.clearedAt !== undefined)
-    return `Floor ${s.floor} cleared! The stairs open…`;
+    return s.kind === "boss"
+      ? `${r.name} kneels! Floor ${s.floor} cleared.`
+      : `Floor ${s.floor} cleared! The stairs open…`;
   if (state.phase !== "playing")
     return SPIRE_FLOORS[s.floor]?.name ?? "The Spire";
   if (s.kind === "elite") {

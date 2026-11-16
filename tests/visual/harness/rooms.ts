@@ -58,6 +58,11 @@ function spire(o: RoomOptions) {
   a.add("me", "tester", "voltkit");
   if ((o.seats ?? 1) > 1) a.add("p2", "Kai", "cindrake");
   const floor = o.floor ?? 1;
+  if (floor === 10) {
+    spireBoss(a, o);
+    crypto.getRandomValues = random;
+    return a;
+  }
   a.configureSpire({
     startFloor: Math.min(floor, o.stage === "intermission" ? floor - 1 : floor),
     ceiling: 9,
@@ -122,6 +127,60 @@ function spire(o: RoomOptions) {
     w.__snap = packSnapshot(a.snapshot());
     w.__push();
   };
+  return a;
+}
+/**
+ * Floor 10: a real climb from floor 9 (cleared), on to the Ascendant
+ * Cragmuff in the same room: its briefing, the fight a few seconds in, or
+ * the results once it falls (zone 1 conquered).
+ */
+function spireBoss(a: any, o: RoomOptions) {
+  a.configureSpire({ startFloor: 9, ceiling: 10 });
+  a.start();
+  for (const p of a.heroes()) a.acknowledgeInstructions(p.id);
+  const tick = (s: number) => {
+    for (let t = 0; t < s; t += 1 / 30) {
+      for (const p of a.heroes()) if (p.hp > 0) p.hp = Math.max(p.hp, 60);
+      a.tick(1 / 30);
+    }
+  };
+  while (a.phase !== "playing") a.tick(1 / 30);
+  for (let i = 0; i < 20 && a.raid.spire.floor === 9; i++) {
+    tick(1);
+    for (const p of a.players) if (p.echo) p.hp = 0;
+    tick(1.8);
+  }
+  a.raid.spire.blessings.me = { keen: 1, fleet: 1 };
+  if (a.raid.spire.saves[0]) {
+    a.raid.spire.saves[0].status = "saved";
+    a.raid.spire.saves[0].claims = [{ playerId: "me", coins: 35, titles: [] }];
+  }
+  const stage = o.stage ?? "playing";
+  w.__spireArena = a;
+  w.__spireStep = (s: number) => {
+    tick(s);
+    w.__snap = packSnapshot(a.snapshot());
+    w.__push();
+  };
+  if (stage === "briefing") return a;
+  for (const p of a.heroes()) a.acknowledgeInstructions(p.id);
+  for (const p of a.heroes()) {
+    const offer = a.raid.spire.offers[p.id];
+    if (offer?.[0]) a.pickRite(p.id, offer[0]);
+  }
+  while (a.phase !== "playing") a.tick(1 / 30);
+  const [me, kai] = a.heroes();
+  Object.assign(me, { x: 760, y: 300 });
+  if (kai) Object.assign(kai, { x: 700, y: 620 });
+  tick(o.stage === "finished" ? 2 : 6);
+  if (stage === "finished") {
+    a.boss().hp = 0;
+    tick(3);
+    a.raid.spire.saves.at(-1).status = "saved";
+    a.raid.spire.saves.at(-1).claims = [
+      { playerId: "me", coins: 120, titles: ["Earthshaker of the Spire"] },
+    ];
+  }
   return a;
 }
 function room(kind: "practice" | "raid" | "pvp" | "spire", o: RoomOptions) {

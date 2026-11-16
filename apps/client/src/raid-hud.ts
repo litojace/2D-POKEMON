@@ -50,12 +50,13 @@ export interface RaidHudView {
   elapsed: string;
   twins: TwinBarView[];
   /** The Spire: its line ("Floor 7 · Wave 2/3 · 2 Echoes") replaces the phase. */
-  spire?: { line: string; bar: "floor" | "elite" };
+  spire?: { line: string; bar: "floor" | "elite" | "boss" };
 }
 
 /** Everything the HUD shows for this snapshot. Moves the damage trails along. */
 export function raidHudView(state: Snapshot, me: Fighter): RaidHudView {
-  if (state.raid?.spire) return spireHudView(state);
+  const climb = state.raid?.spire;
+  if (climb && climb.kind !== "boss") return spireHudView(state);
   const r = state.raid!,
     boss = state.players.find((p) => p.id === r.bossId),
     stormTwins = r.boss === "storm-twins";
@@ -122,6 +123,21 @@ export function raidHudView(state: Snapshot, me: Fighter): RaidHudView {
     cue: raidCue(state, me.id),
     elapsed: time(r.elapsed),
     twins,
+    // The Spire's boss floor: the raid's boss bar, the floor and its clock.
+    ...(climb
+      ? {
+          key: `spire|boss|${r.boss}`,
+          cue:
+            climb.clearedAt !== undefined
+              ? spireCue(state)
+              : raidCue(state, me.id),
+          elapsed: time(Math.max(0, climb.limit - r.elapsed)),
+          spire: {
+            line: `Floor ${climb.floor} · Phase ${r.phase}/3`,
+            bar: "boss" as const,
+          },
+        }
+      : {}),
   };
 }
 
@@ -172,7 +188,7 @@ function skeleton(view: RaidHudView) {
         .join("")}</div>`
     : "";
   const spire = view.spire;
-  return `<div class="raid-boss-heading"><b data-hud="title"></b><span class="raid-boss-phase" data-hud="phase"></span></div>${twins}<div class="raid-boss-health${spire?.bar === "floor" ? " is-spire-floor" : ""}" role="progressbar" aria-label="${spire?.bar === "floor" ? "Floor progress" : "Boss health"}" aria-valuemin="0" aria-valuemax="100" data-hud="health"><i class="raid-boss-trail" data-hud="trail"></i><i class="raid-boss-fill" data-hud="fill"></i>${spire ? "" : MARKS.map((mark, i) => `<span class="raid-health-mark" style="left:${mark}%" aria-hidden="true" data-hud="mark${i}"></span>`).join("")}<span class="raid-boss-pct" aria-hidden="true" data-hud="pct"></span></div><div class="raid-stagger"${view.stormTwins || spire?.bar === "floor" ? " hidden" : ""}><i data-hud="stagger"></i><span data-hud="stagger-label"></span></div><div class="raid-status-row"><p class="raid-callout" role="status" data-hud="cue"></p><div class="raid-elapsed" role="timer" aria-label="${spire ? "Time left on this floor" : "Raid elapsed time"}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></svg><b data-hud="elapsed"></b></div></div>`;
+  return `<div class="raid-boss-heading"><b data-hud="title"></b><span class="raid-boss-phase" data-hud="phase"></span></div>${twins}<div class="raid-boss-health${spire?.bar === "floor" ? " is-spire-floor" : ""}" role="progressbar" aria-label="${spire?.bar === "floor" ? "Floor progress" : "Boss health"}" aria-valuemin="0" aria-valuemax="100" data-hud="health"><i class="raid-boss-trail" data-hud="trail"></i><i class="raid-boss-fill" data-hud="fill"></i>${spire && spire.bar !== "boss" ? "" : MARKS.map((mark, i) => `<span class="raid-health-mark" style="left:${mark}%" aria-hidden="true" data-hud="mark${i}"></span>`).join("")}<span class="raid-boss-pct" aria-hidden="true" data-hud="pct"></span></div><div class="raid-stagger"${view.stormTwins || spire?.bar === "floor" ? " hidden" : ""}><i data-hud="stagger"></i><span data-hud="stagger-label"></span></div><div class="raid-status-row"><p class="raid-callout" role="status" data-hud="cue"></p><div class="raid-elapsed" role="timer" aria-label="${spire ? "Time left on this floor" : "Raid elapsed time"}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></svg><b data-hud="elapsed"></b></div></div>`;
 }
 
 interface Mounted {

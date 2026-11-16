@@ -428,6 +428,12 @@ describe("the elite (floor 5)", () => {
     expect(elite.raidBoss).toBeFalsy();
     expect(a.raid.bossId).toBe(elite.id);
     expect(a.raid.maxHp).toBe(elite.hp);
+    // Drawn bigger, hit bigger (what you see is what you hit).
+    expect(a.hitRadius(elite)).toBeCloseTo(
+      RULES.radius * SPIRE_PARTY.eliteScale,
+      6,
+    );
+    expect(a.hitRadius(a.heroes()[0])).toBe(RULES.radius);
     const kinds = new Set<string>();
     run(a, 20, () => a.raid.warnings.forEach((w) => kinds.add(w.kind)));
     expect([...kinds]).toEqual(["eruption"]);

@@ -155,7 +155,11 @@ import {
 } from "./animation/pipeline";
 import { rigAssets, skinSuffix } from "./animation/assets";
 import { loadRigTextures } from "./animation/rig-textures";
-import { prewarmBossAtlas, syncBossPrepaint } from "./boss-vector-prewarm";
+import {
+  bossLookOf,
+  prewarmBossAtlas,
+  syncBossPrepaint,
+} from "./boss-vector-prewarm";
 import {
   addPrepaintedLayers,
   holdFighterPrepaint,
@@ -348,7 +352,14 @@ import type { PlazaProgress } from "../../../packages/shared/src/plaza";
 import { CHAMPION_SKIN_BY_ID } from "../../../packages/shared/src/shop";
 import { prepareSurfaceTextures, surfaceBurst } from "./court-surface-fx";
 import { fxFor } from "./fx-engine";
-import { ECHO_SKILL_COLOR, ECHO_TINT, ECHO_TINT_HURT } from "./spire-art";
+import {
+  ECHO_SKILL_COLOR,
+  ECHO_TINT,
+  ECHO_TINT_HURT,
+  drawEliteCrown,
+  echoShown,
+} from "./spire-art";
+import { SPIRE_PARTY } from "../../../packages/shared/src/spire";
 import { isRaidFloor, paintRaidFloor } from "./raid-floors";
 import {
   isIllustratedRaidFloor,
@@ -4836,7 +4847,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         this,
         state.raid.boss,
         state.raid.phase,
-        state.raid.variant,
+        bossLookOf(state.raid),
       );
     // So are the arena's pieces (lanterns, conductor posts, light, marks).
     if (state?.raid) prewarmRaidArena(this, state.raid);
@@ -6102,6 +6113,8 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         y = pos.y,
         c = CHARACTERS[p.character];
       if (serverPlayer.raidBoss) continue;
+      // A climb's Echoes fade out once it ends (not frozen over the results).
+      const shown = echoShown(state, serverPlayer, sampledAt);
       const serverTime = state.time;
       const airborne = serverPlayer.jumpUntil - serverTime;
       // Static Glide keeps a fighter airborne longer than a jump: it lifts,
@@ -6193,11 +6206,13 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
           reducedMotion,
         );
       }
-      const giant = state.mutators?.includes("giants")
-        ? MUTATOR_RULES.giants
-        : 1;
+      // The Spire's elite captain stands bigger than a champion (its hit
+      // area grows the same on the server: SpireArena.hitRadius).
+      const giant =
+        (state.mutators?.includes("giants") ? MUTATOR_RULES.giants : 1) *
+        (serverPlayer.elite ? SPIRE_PARTY.eliteScale : 1);
       const feetY = y + WORLD_ART.fighterFeet * view.fighterY * 0.7 * giant;
-      g.fillStyle(0x081f19, 0.45).fillEllipse(
+      g.fillStyle(0x081f19, 0.45 * shown).fillEllipse(
         x,
         feetY,
         48 - jump * 0.2,
@@ -6214,9 +6229,9 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
                 ? 0x5ab0ff
                 : 0xff5d6c
               : c.color,
-        isTeams() || serverPlayer.echo ? 0.8 : 0.55,
+        (isTeams() || serverPlayer.echo ? 0.8 : 0.55) * shown,
       ).strokeEllipse(x, feetY, 72, groundHeight(72));
-      if (serverPlayer.echo && serverPlayer.hp > 0) {
+      if (serverPlayer.echo && serverPlayer.hp > 0 && shown >= 1) {
         // An Echo: a violet ring (the captain's doubled) and a dark wisp
         // under it, through the effects engine (Low's budget sees it).
         g.lineStyle(
@@ -6274,7 +6289,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
           38,
         );
       }
-      const rig = this.readyRig(p.id, p.character);
+      const rig = shown > 0 ? this.readyRig(p.id, p.character) : undefined;
       if (rig) {
         // The rig keeps this as its base scale (squash and stretch multiply it).
         rig.root.setScale(
@@ -6297,14 +6312,32 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
           x,
           y - jump,
           this.feelClock,
-          serverPlayer.statuses.some((s) => s.kind === "stealth")
+          (serverPlayer.statuses.some((s) => s.kind === "stealth")
             ? p.id === myId
               ? 0.5
               : 0.12
-            : 1,
+            : 1) * shown,
           reducedMotion,
         );
         if ((this.flashUntil.get(p.id) ?? 0) > feelNow) flashWhite(rig.root);
+        // The captain: a crown of violet crystals over its head (in front
+        // of the rig) and a small halo through the effects engine.
+        if (
+          serverPlayer.elite &&
+          serverPlayer.hp > 0 &&
+          shown >= 1 &&
+          rig.front
+        )
+          drawEliteCrown(
+            rig.front,
+            fxFor(this),
+            x,
+            y -
+              jump -
+              (fighterPack(p.character)?.kind === "layered" ? 30 : 46) * giant,
+            giant,
+            reducedMotion ? 0 : _time / 1000,
+          );
         // After render (it clears the rig's layers): the aura's near items
         // pass in front of the fighter, the rest go round behind.
         if (p.raidLook?.aura)
@@ -6320,7 +6353,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
             18 / 48,
             0,
           );
-      } else {
+      } else if (shown > 0) {
         // Its art is still loading (or failed): a plain stand-in in the
         // fighter's colour where the rig would stand, never missing textures.
         const alpha = serverPlayer.statuses.some((s) => s.kind === "stealth")
@@ -6723,7 +6756,8 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
           outsideView(x, y, this.scale.width, this.scale.height, view)) ||
         serverPlayer.statuses.some(
           (s) => s.kind === "stealth" && p.id !== myId,
-        );
+        ) ||
+        shown <= 0;
       label.hidden = hidden;
       setHudStyle(label, "opacity", p.hp > 0 ? "1" : "0.4");
       label.classList.toggle(

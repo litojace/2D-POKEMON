@@ -3,7 +3,10 @@
  * on its Raid Hub card and page, and one small icon per blessing (on the
  * page's codex and the blessing cards between floors).
  */
+import type Phaser from "phaser";
+import type { Fighter, Snapshot } from "@arena/shared";
 import type { SpireBlessingId } from "../../../packages/shared/src/spire";
+import type { Fx } from "./fx-engine";
 
 /** The Spire's colour (Echoes, its card, its cards between floors). */
 export const SPIRE_COLOR = "#a78bff";
@@ -49,4 +52,49 @@ const ICONS: Record<SpireBlessingId, string> = {
 /** A blessing's icon (line art in the current colour). */
 export function spireBlessingIcon(id: SpireBlessingId) {
   return `<svg class="spire-blessing-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${ICONS[id]}</svg>`;
+}
+
+/** How long a climb's last Echoes take to fade once it ends (ms). */
+export const ECHO_FADE_MS = 700;
+let climbEnd: { id: string; at: number } | undefined;
+/**
+ * How much of a fighter shows: 1, or for an Echo after its climb ended a
+ * fade from 1 to 0 (it doesn't stand frozen on the court over the results).
+ * `now` is the frame's clock in ms.
+ */
+export function echoShown(state: Snapshot, p: Fighter, now: number) {
+  if (!p.echo || state.phase !== "finished" || !state.raid?.spire) return 1;
+  const id = state.raid.resultId ?? `${state.code}:${state.raid.spire.floor}`;
+  if (climbEnd?.id !== id) climbEnd = { id, at: now };
+  return Math.max(0, 1 - (now - climbEnd.at) / ECHO_FADE_MS);
+}
+/**
+ * The elite captain's crown: five violet crystal points over its head
+ * (drawn in the frame's graphics layer) and one small halo through the
+ * effects engine, so Low's glow budget sees it.
+ */
+export function drawEliteCrown(
+  g: Phaser.GameObjects.Graphics,
+  fx: Fx,
+  x: number,
+  y: number,
+  scale: number,
+  clock: number,
+) {
+  const bob = Math.sin(clock * 3) * 2,
+    w = 30 * scale,
+    h = 15 * scale,
+    top = y + bob;
+  fx.glow(x, top - h * 0.4, 18 * scale, ECHO_SKILL_COLOR, 0.45);
+  const points: { x: number; y: number }[] = [{ x: x - w / 2, y: top }];
+  for (let i = 0; i < 5; i++) {
+    const px = x - w / 2 + (w * (i + 0.5)) / 5;
+    points.push({ x: px - w / 10, y: top - h * 0.35 });
+    points.push({ x: px, y: top - h * (i === 2 ? 1.25 : i % 2 ? 0.8 : 1) });
+    points.push({ x: px + w / 10, y: top - h * 0.35 });
+  }
+  points.push({ x: x + w / 2, y: top });
+  g.fillStyle(0x2a1d55, 0.95).fillPoints(points, true);
+  g.lineStyle(2, 0xd8c8ff, 0.95).strokePoints(points, true);
+  g.fillStyle(0xfff3c4, 0.95).fillCircle(x, top - h * 0.2, 2.6 * scale);
 }

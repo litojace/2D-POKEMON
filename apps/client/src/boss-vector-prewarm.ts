@@ -52,6 +52,15 @@ const PREWARM: Record<
   emberwing: (scene) => prewarmLumiwick(scene),
   "storm-twins": twins,
 };
+/**
+ * The look to paint ahead for a raid room: its own variant, or for a Spire
+ * climb its zone's Ascendant (floor 10 is fought in the same room, so its
+ * atlas is ready long before; the wave floors draw no boss).
+ */
+export const bossLookOf = (raid: {
+  variant?: RaidVariant;
+  spire?: unknown;
+}): RaidVariant | undefined => (raid.spire ? "ascendant" : raid.variant);
 /** Draw this boss's atlas (its evolved form's) for the phase the raid is in. */
 export function prewarmBossAtlas(
   scene: Phaser.Scene,
@@ -89,7 +98,7 @@ let planned: { boss: string; cancel: () => void } | undefined;
  */
 export function syncBossPrepaint(state: Snapshot | undefined) {
   const boss = state?.phase === "lobby" ? state.raid?.boss : undefined;
-  const variant = boss ? state?.raid?.variant : undefined;
+  const variant = boss && state?.raid ? bossLookOf(state.raid) : undefined;
   const plan = variant ? `${boss}:${variant}` : boss;
   if (!boss) {
     planned?.cancel();
