@@ -25,7 +25,7 @@ import {
 } from "../../../../packages/shared/src/spire";
 import { fighterAvatar } from "../fighter-art";
 import { menuIcon } from "../menu-icons";
-import { SPIRE_COLOR, spireBlessingIcon, spireTowerArt } from "../spire-art";
+import { SPIRE_COLOR, spireBlessingIcon } from "../spire-art";
 import spirePoster from "../art/spire/tower-portrait.webp";
 import {
   actionBar,
@@ -235,9 +235,8 @@ function blessingsTab() {
   }).join("");
   return `<p class="ui-note">After every floor each climber picks one of three. Picking one you hold stacks it. Blessings end with the climb.</p><div class="sp-blessings">${cards}</div>`;
 }
-function stage(d: SpireData) {
-  const { highest } = spireStanding(d);
-  return `<section class="ui-split-stage rh-stage sp-stage" style="--el:${SPIRE_COLOR}" aria-label="The Spire"><span class="sp-poster">${spireTowerArt(highest, "spire-page")}</span><div class="rh-stage-info"><span class="rh-row">${tag("Zone 1 · Earth")}</span><b class="rh-stage-name">The Spire</b><small class="ui-note rh-stage-line">Climb past the Echoes</small><p class="rh-win"><span class="ui-kicker">Roles</span><b>${Object.values(
+function stage() {
+  return `<section class="ui-split-stage rh-stage sp-stage" style="--el:${SPIRE_COLOR}" aria-label="The Spire"><span class="sp-poster"><img src="${spirePoster}" alt="" width="900" height="1350" decoding="async" /></span><div class="rh-stage-info"><span class="rh-row">${tag("Zone 1 · Earth")}</span><b class="rh-stage-name">The Spire</b><small class="ui-note rh-stage-line">Climb past the Echoes</small><p class="rh-win"><span class="ui-kicker">Roles</span><b>${Object.values(
     SPIRE_ROLES,
   )
     .map((r) => esc(r.name))
@@ -290,5 +289,5 @@ export function spireMarkup(view: SpireView, d: SpireData) {
     d.loading && !d.spire
       ? `<p class="ui-note" role="status">Loading your climb…</p>`
       : "";
-  return `<section class="ui-panel is-split rh-room sp-room" role="dialog" aria-label="The Spire" data-raid-mode="spire" style="--boss:${SPIRE_COLOR}">${stage(d)}<div class="ui-split-main"><header class="ui-panel-head rh-head">${button("All bosses", { size: "s", icon: "back", attrs: { "data-raid-back": true } })}<span class="ui-note rh-hint">Ten floors a zone: waves, an elite on 5, a boss on 10.</span>${iconButton("cancel", "Back to the Lobby", { class: "ui-close", "data-ui-close": true })}</header>${tabRow}<div class="ui-panel-body rh-body sp-body" data-raid-region="body" data-tab="${tab}">${loading}${body}<p class="ui-note rh-status" role="status">${esc(view.status)}</p></div>${foot}</div></section>`;
+  return `<section class="ui-panel is-split rh-room sp-room" role="dialog" aria-label="The Spire" data-raid-mode="spire" style="--boss:${SPIRE_COLOR}">${stage()}<div class="ui-split-main"><header class="ui-panel-head rh-head">${button("All bosses", { size: "s", icon: "back", attrs: { "data-raid-back": true } })}<span class="ui-note rh-hint">Ten floors a zone: waves, an elite on 5, a boss on 10.</span>${iconButton("cancel", "Back to the Lobby", { class: "ui-close", "data-ui-close": true })}</header>${tabRow}<div class="ui-panel-body rh-body sp-body" data-raid-region="body" data-tab="${tab}">${loading}${body}<p class="ui-note rh-status" role="status">${esc(view.status)}</p></div>${foot}</div></section>`;
 }
