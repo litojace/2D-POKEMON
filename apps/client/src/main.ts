@@ -134,7 +134,7 @@ import "./screens/room.css";
 import { renderRaidUI, drawRaidArena, raidLookList } from "./raid-ui";
 import { illustratedHelp } from "./illustrated-help";
 import { buttonIcon, iconLabel, menuIcon } from "./menu-icons";
-import type { RaidBossId } from "../../../packages/shared/src/raid";
+import type { RaidBossId, RaidSlot } from "../../../packages/shared/src/raid";
 import type { RaidTab } from "./screens/raid-hall-view";
 import type { SpireTab } from "./screens/spire-view";
 import { LobbySelection } from "./lobby-selection";
@@ -285,6 +285,8 @@ import { watchScrollRows } from "./ui/scroll-rows";
 import { watchScreenPin } from "./screen-pin";
 import { watchCosmeticPreviews } from "./cosmetic-fx-preview";
 import { openHubPanelNow } from "./ui/hub-panel";
+import { createGuide } from "./getting-started-screen";
+import { playerLevel } from "../../../packages/shared/src/journey";
 import { openRoster, type RosterScreen } from "./screens/roster";
 import { showRewardReveal, takeNewRewards } from "./reward-reveal";
 import {
@@ -650,7 +652,7 @@ const escape = (s: string) =>
       ]!,
   );
 document.querySelector("#app")!.innerHTML =
-  `<header class="topbar"><nav class="hub-scenes" id="hub-scenes" role="group" aria-label="Scene" hidden></nav><a class="brand" href="#"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 64 64"><defs><linearGradient id="element-crest" x2="0" y2="1"><stop stop-color="#fff1a3"/><stop offset="1" stop-color="#d9a340"/></linearGradient></defs><path fill="url(#element-crest)" fill-rule="evenodd" d="M32 2 42 21 62 32 43 43 32 62 21 43 2 32 21 21Zm0 14L16 32l16 16 16-16Z"/></svg></span> ELEMENT<span>ARENA</span></a><div class="top-links"><div id="account-nav" class="account-nav"></div><button type="button" class="quiet home-settings" id="home-settings" aria-label="Settings" title="Settings">${menuIcon("settings")}</button><details class="header-menu" id="header-menu"><summary><i class="menu-burger" aria-hidden="true">☰</i><i class="menu-gear" aria-hidden="true">${menuIcon("settings")}</i> <span>Menu</span></summary><div class="header-menu-panel"><button class="quiet" id="help">${menuIcon("help")}<span>How to play</span></button><button class="quiet" id="settings">${menuIcon("settings")}<span>Settings</span></button><button class="quiet" id="leaderboard">${menuIcon("leaderboard")}<span>Leaderboard</span></button><button class="quiet" id="install-app">${menuIcon("fullscreen")}<span>Want fullscreen?</span></button><button class="quiet" id="report-problem">${menuIcon("report")}<span>Report a problem</span></button><button class="quiet" id="privacy-policy">${menuIcon("help")}<span>Privacy policy</span></button><button class="quiet" id="menu-logout">${menuIcon("leave")}<span>Log out</span></button><span class="connection" id="connection">Connecting</span></div></details></div></header><main><section id="menu"></section><section id="battle" hidden>${stadiumCrowd()}<div id="practice-controls" class="practice-controls" hidden></div><div id="hud" class="hud"></div><div class="arena-stage"><div class="arena-frame"><div id="game"></div><div id="arena-overlay"></div><div id="spectate" class="spectate-banner" role="status" hidden></div><span class="map-label">ELEMENTAL COLISEUM <span>01 / CHAMPIONS COURT</span></span></div></div><div id="mobile-controls"></div><div id="abilities" class="ability-bar"></div><div class="battle-footer"><span id="control-hints"></span><span id="network">AUTHORITATIVE ONLINE MATCH</span><button class="quiet" id="battle-menu" aria-label="Battle settings" title="Battle settings (Esc / controller Menu)">${menuIcon("settings")}</button></div></section></main><div id="toast" role="status"></div><dialog id="dialog"></dialog>`;
+  `<header class="topbar"><nav class="hub-scenes" id="hub-scenes" role="group" aria-label="Scene" hidden></nav><a class="brand" href="#"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 64 64"><defs><linearGradient id="element-crest" x2="0" y2="1"><stop stop-color="#fff1a3"/><stop offset="1" stop-color="#d9a340"/></linearGradient></defs><path fill="url(#element-crest)" fill-rule="evenodd" d="M32 2 42 21 62 32 43 43 32 62 21 43 2 32 21 21Zm0 14L16 32l16 16 16-16Z"/></svg></span> ELEMENT<span>ARENA</span></a><div class="top-links"><div id="account-nav" class="account-nav"></div><button type="button" class="quiet home-settings" id="home-settings" aria-label="Settings" title="Settings">${menuIcon("settings")}</button><details class="header-menu" id="header-menu"><summary><i class="menu-burger" aria-hidden="true">☰</i><i class="menu-gear" aria-hidden="true">${menuIcon("settings")}</i> <span>Menu</span></summary><div class="header-menu-panel"><button class="quiet" id="help">${menuIcon("help")}<span>How to play</span></button><button class="quiet" id="guide-open">${menuIcon("sparkle")}<span>Getting started</span></button><button class="quiet" id="settings">${menuIcon("settings")}<span>Settings</span></button><button class="quiet" id="leaderboard">${menuIcon("leaderboard")}<span>Leaderboard</span></button><button class="quiet" id="install-app">${menuIcon("fullscreen")}<span>Want fullscreen?</span></button><button class="quiet" id="report-problem">${menuIcon("report")}<span>Report a problem</span></button><button class="quiet" id="privacy-policy">${menuIcon("help")}<span>Privacy policy</span></button><button class="quiet" id="menu-logout">${menuIcon("leave")}<span>Log out</span></button><span class="connection" id="connection">Connecting</span></div></details></div></header><main><section id="menu"></section><section id="battle" hidden>${stadiumCrowd()}<div id="practice-controls" class="practice-controls" hidden></div><div id="hud" class="hud"></div><div class="arena-stage"><div class="arena-frame"><div id="game"></div><div id="arena-overlay"></div><div id="spectate" class="spectate-banner" role="status" hidden></div><span class="map-label">ELEMENTAL COLISEUM <span>01 / CHAMPIONS COURT</span></span></div></div><div id="mobile-controls"></div><div id="abilities" class="ability-bar"></div><div class="battle-footer"><span id="control-hints"></span><span id="network">AUTHORITATIVE ONLINE MATCH</span><button class="quiet" id="battle-menu" aria-label="Battle settings" title="Battle settings (Esc / controller Menu)">${menuIcon("settings")}</button></div></section></main><div id="toast" role="status"></div><dialog id="dialog"></dialog>`;
 // Measure wrapped HUDs for phone spacing and desktop boss-specific controls.
 let measuredRaidHud: HTMLElement | null = null;
 let battleLayoutFrame = 0;
@@ -2295,6 +2297,7 @@ let placeSceneSwitch: (() => void) | undefined;
 function setHubScene(scene: HubScene) {
   if (!sceneAvailable(scene) || scene === hubScene) return;
   hubScene = scene;
+  if (scene === "farm" || scene === "bistro") guide.mark(scene);
   saveHubScene(scene);
   homeNavigation.close();
   syncHub();
@@ -2332,8 +2335,31 @@ function lobbyView() {
     economy: accountsUI.economy ?? undefined,
     friendRequests: lobbyFriends.requests,
     friendsOnline: lobbyFriends.online,
+    guide: guide.view(),
   };
 }
+/** Getting started (getting-started.ts): a new player's first steps. */
+const guide = createGuide({
+  account: () => accountsUI.account?.id,
+  facts: () => {
+    const journey = accountsUI.economy?.journey;
+    return {
+      level: journey ? playerLevel(journey.xp).level : undefined,
+      cragmuffClears: accountsUI.raidClears.grumblecrag ?? 0,
+      wearing:
+        Object.values(accountsUI.raidLook ?? {}).some(Boolean) ||
+        !!accountsUI.account?.title,
+    };
+  },
+  go: (step) => {
+    if (step === "bot") void lobbyPlay("bot-easy");
+    else if (step === "raid") void accountsUI.showRaids("grumblecrag", "party");
+    else if (step === "wear") void accountsUI.showWardrobe();
+    else setHubScene(step);
+  },
+  changed: () => syncLobby(!!lobby),
+  toast: (text) => toast(text),
+});
 function syncLobby(want: boolean) {
   if (!want) {
     if (lobby) {
@@ -2604,6 +2630,7 @@ function lobbyAction(action: LobbyAction) {
   if (action !== "shop" && action !== "wardrobe") openHubPanelNow()?.close();
   if (action === "fighters") openRosterScreen();
   else if (action === "more-play") homeNavigation.open("play");
+  else if (action === "guide") guide.open();
   else if (action === "wardrobe") void accountsUI.showWardrobe();
   else if (action === "shop") void accountsUI.showShop();
   else if (action === "raids") void showRaidBestiary();
@@ -3426,7 +3453,13 @@ function renderBattle() {
         // Let the victory screen land, then turn the new cards over.
         if (fresh.length) {
           const champion = me.character;
-          setTimeout(() => void showRewardReveal(fresh, champion), 1800);
+          setTimeout(
+            () =>
+              void showRewardReveal(fresh, champion, document.body, (r) =>
+                accountsUI.wearLook(r.slot as RaidSlot, r.id),
+              ),
+            1800,
+          );
         }
         return progress;
       },
@@ -3587,6 +3620,8 @@ function renderBattle() {
       if (state.arcade)
         details +=
           '<p class="arcade-rating-note">Weekly arcade · XP and mission progress · PvP rating stays separate.</p>';
+      // A finished match against a bot: Getting started's first step.
+      if (state.vsBot) guide.mark("bot");
       actions = `<div class="result-actions"><button class="primary btn-primary" id="rematch">${me.ready ? "Waiting for opponent…" : iconLabel("again", "Rematch")}</button><button class="secondary btn-secondary" id="share-result">${iconLabel("share", "Share result")}</button><button class="secondary btn-secondary${state.vsBot ? " leave-button" : ""}" id="return">${state.vsBot ? iconLabel("home", "Back to menu") : iconLabel("back", "Return to lobby")}</button></div>`;
     }
     const markup = `<div class="overlay-card${actions ? " action-overlay" : state.phase === "countdown" ? " countdown-card" : ""}"><span class="eyebrow">Element Arena</span><h2>${heading}</h2><div${actions ? ' class="panel-scroll" tabindex="0" role="region" aria-label="Match details"' : ""}>${details}</div>${actions ? `<div class="panel-actions">${actions}</div>` : ""}</div>`;
@@ -4318,6 +4353,12 @@ $("leaderboard").onclick = () => void accountsUI.showLeaderboard();
 $("menu-logout").onclick = () => {
   headerMenu.open = false;
   document.getElementById("account-logout")?.click();
+};
+$("guide-open").onclick = () => {
+  $<HTMLDetailsElement>("header-menu").open = false;
+  if (!accountsUI.ensurePlayer()) return;
+  if (myId) return toast("Finish or leave this room first.");
+  guide.reopen();
 };
 $("help").onclick = () =>
   dialog(

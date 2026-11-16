@@ -146,6 +146,13 @@
   color: #b0c2dd;
   font-size: calc(12px * var(--text-scale, 1));
 }
+/* "Wear it now" beside Later / Next. */
+.reveal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
 .reveal-hint {
   margin: 0;
   color: #8fa3c2;

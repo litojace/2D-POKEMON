@@ -957,6 +957,22 @@ export class AccountUI {
   private fitProblem = "";
   private fitLoading = false;
   private fitRequest = 0;
+  /**
+   * Wear an item you own in its appearance slot (the reward reveal's "Wear
+   * it now"); the server checks you own it.
+   */
+  async wearLook(slot: RaidSlot, item: string) {
+    const account = this.account?.id;
+    const result = (await this.api("/api/raids/equip", { slot, item })) as {
+      progress?: RaidProgress;
+    };
+    if (this.account?.id !== account) return;
+    this.raidLook = result.progress
+      ? raidLookOf(result.progress)
+      : ({ ...(this.raidLook ?? {}), [slot]: item } as RaidLoadout);
+    this.syncAvatar();
+    this.hooks.onChange();
+  }
   /** The Wardrobe: the fitting room on your items (owner's decision 3). */
   async showWardrobe() {
     return this.showFittingRoom("wardrobe");
