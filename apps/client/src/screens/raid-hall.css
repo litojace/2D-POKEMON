@@ -87,7 +87,7 @@
   --card-zoom: 1.12;
 }
 .rh-card[data-raid-card="somnara"] .rh-card-art img {
-  object-position: 68% top;
+  object-position: 52% top;
   transform-origin: center top;
 }
 .rh-card[data-raid-card="emberwing"] .rh-card-art img {
@@ -746,7 +746,7 @@ button.rh-reward:focus-visible {
   }
   /* Keep the wider Snoozaku framing consistent with desktop. */
   .rh-card[data-raid-card="somnara"] .rh-card-art img {
-    object-position: 68% top;
+    object-position: 52% top;
   }
   .rh-card-text {
     padding: 10px;
