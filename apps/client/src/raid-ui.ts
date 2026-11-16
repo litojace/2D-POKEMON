@@ -45,12 +45,15 @@ import {
   RAID_RITES,
   RAID_TRAITS,
   RAID_BOSSES,
+  isRaider,
   type RaidAttack,
   type RaidLoadout,
   type RaidPingKind,
   type RaidProgress,
 } from "../../../packages/shared/src/raid";
 import { raidGuideBossFor } from "./raid-guide-art";
+import { spireOverlay } from "./spire-ui";
+import { drawSpireCourt } from "./spire-battle";
 import { raidBriefingGuide } from "./raid-briefing";
 import { SOLO_NO_REVIVE, soloRevives } from "./raid-solo";
 import {
@@ -165,7 +168,11 @@ export function renderRaidUI(
   let title = "",
     body = "",
     actions = "";
-  if (state.phase === "briefing") {
+  // A Spire climb: its own briefing, blessing cards and results.
+  const spire = r.spire ? spireOverlay(state, me) : undefined;
+  const kicker = spire?.kicker ?? "Boss raid · co-op";
+  if (spire) ({ title, body, actions } = spire);
+  else if (state.phase === "briefing") {
     title = `${RAID_TRAITS[r.trait].name} ${RAID_BOSSES[r.boss].name}`;
     const waiting = state.instructionsReady.includes(me.id);
     body = `<div class="rc-body" tabindex="0" role="region" aria-label="Raid instructions">${raidBriefingGuide(r.boss, me.character, r.partySize === 1)}<details class="rc-extra" id="raid-briefing-extra"><summary>Your fighter, team &amp; modifiers</summary><p><b>${escape(RAID_TRAITS[r.trait].name)}</b> · ${escape(RAID_TRAITS[r.trait].text)}</p>${perkLines(state, me.id)}${r.partySize > 1 ? `<p class="raid-signals">Team signals: ${(Object.keys(RAID_PINGS) as RaidPingKind[]).map((k) => `<b>${RAID_PINGS[k].key}</b> ${raidPingLabel(k, r.boss)}`).join(" · ")} (or use the on-screen buttons)</p>` : ""}</details></div>`;
@@ -202,7 +209,7 @@ export function renderRaidUI(
                   : r.boss === "gloomshade"
                     ? "The night goes on"
                     : "The mountain still stands";
-    const heroes = state.players.filter((p) => !p.raidBoss && !p.out);
+    const heroes = state.players.filter((p) => isRaider(p) && !p.out);
     const readyCount = heroes.filter((p) => p.ready).length;
     const retryWait = me.ready || !heroes.every((p) => p.connected);
     actions = `<p class="ui-note rc-meta">${heroes.length === 1 ? "Same champion and challenge · choose fresh rites" : `${readyCount}/${heroes.length} ready · everyone confirms to run again`}</p>${uiActions(
@@ -243,7 +250,7 @@ export function renderRaidUI(
           : "";
     body = `<div class="rc-summary"><span class="rc-art" aria-hidden="true"><svg viewBox="-65 -65 130 115">${raidGuideBossFor(r.boss)}</svg></span><div class="rc-stats"><span class="rc-stat"><b class="ui-num">${time(r.elapsed)}</b><small>${r.result === "victory" ? "Clear time" : "Time survived"}</small></span><span class="rc-stat"><b class="ui-num">${r.revives}</b><small>Revives</small></span><span class="rc-stat"><b class="ui-num">${r.downs}</b><small>Downs</small></span></div></div>${raidContributions(state, me.id)}${saved ? `<p class="rc-save${r.rewardStatus === "saved" ? " is-saved" : r.rewardStatus === "unavailable" ? " is-error" : ""}" role="status">${saved}</p>` : ""}${r.result === "victory" ? "" : `<p class="rc-tip">${defeatTip(state)}</p>`}${!heroes.every((p) => p.connected) ? '<p class="rc-tip">A teammate is disconnected. Return to the lobby to refill the party.</p>' : ""}`;
   }
-  if (state.phase === "finished")
+  if (state.phase === "finished" && !spire)
     body += resultXp(
       journey,
       r.resultId ? `raid:${r.resultId}` : undefined,
@@ -273,8 +280,8 @@ export function renderRaidUI(
   const replaced = setOverlayMarkup(
     overlay,
     shared
-      ? `<div class="ui rc-card ${state.phase === "finished" ? "is-results" : "is-briefing"}" role="dialog" aria-label="${escape(title)}"><header class="rc-head"><span class="ui-kicker">Boss raid · co-op</span><h2 class="ui-title">${title}</h2></header>${state.phase === "finished" ? `<div class="rc-body panel-scroll" tabindex="0" role="region" aria-label="Raid details">${body}</div>` : body}<footer class="rc-foot">${actions}</footer></div>`
-      : `<div class="overlay-card raid-overlay${state.phase === "intermission" ? " raid-draft action-overlay" : ""}"><span class="eyebrow">Boss raid · co-op</span><h2>${title}</h2>${actions ? `<div class="panel-scroll" tabindex="0" role="region" aria-label="Raid details">${body}</div><div class="panel-actions">${actions}</div>` : body}</div>`,
+      ? `<div class="ui rc-card ${state.phase === "finished" ? "is-results" : "is-briefing"}" role="dialog" aria-label="${escape(title)}"><header class="rc-head"><span class="ui-kicker">${escape(kicker)}</span><h2 class="ui-title">${title}</h2></header>${state.phase === "finished" ? `<div class="rc-body panel-scroll" tabindex="0" role="region" aria-label="Raid details">${body}</div>` : body}<footer class="rc-foot">${actions}</footer></div>`
+      : `<div class="overlay-card raid-overlay${state.phase === "intermission" ? " raid-draft action-overlay" : ""}"><span class="eyebrow">${escape(kicker)}</span><h2>${title}</h2>${actions ? `<div class="panel-scroll" tabindex="0" role="region" aria-label="Raid details">${body}</div><div class="panel-actions">${actions}</div>` : body}</div>`,
     undefined,
     // Picking a rite redraws the same panel: it doesn't pop in again.
     `raid:${state.phase}`,
@@ -303,7 +310,7 @@ export function renderRaidUI(
     setOverlayMarkup(
       builds,
       state.players
-        .filter((p) => !p.raidBoss && !p.out)
+        .filter((p) => isRaider(p) && !p.out)
         .map(
           (p) =>
             `<div><b>${escape(p.name)}</b><span>${(r.rites[p.id] ?? []).map((id) => RAID_RITES[id].name).join(" · ") || "Choosing rites"}${r.offers[p.id]?.length && r.rites[p.id]?.length ? " · Choosing…" : ""}</span></div>`,
@@ -346,6 +353,7 @@ export function drawRaidArena(
   const tide = r.boss === "tidewyrm",
     gloom = r.boss === "gloomshade",
     dream = r.boss === "somnara";
+  if (r.spire) drawSpireCourt(g, state, reduced);
   if (r.boss === "storm-twins") drawConductorRing(g, state, reduced, at, clock);
   if (r.boss === "emberwing") drawSkyTerrace(g, state, reduced, at);
   if (r.boss === "prismatail") drawSunAtrium(g, state, reduced, at, clock);
@@ -684,17 +692,21 @@ export function downedCard(state: Snapshot, myId: string) {
   const cause = down?.cause;
   const causeText = cause
     ? `Hit by ${RAID_ATTACKS[cause].name}`
-    : r.closingRadius
-      ? "Outside the closing ring"
-      : "";
+    : r.spire
+      ? "Downed by the Echoes"
+      : r.closingRadius
+        ? "Outside the closing ring"
+        : "";
   const tip = cause
     ? RAID_ATTACKS[cause].tip
-    : "Stay inside the shrinking ring.";
+    : r.spire
+      ? "Watch an Echo's wind-up and dodge it, as you would in a match."
+      : "Stay inside the shrinking ring.";
   return `<div class="raid-revive-head">${menuIcon("motion")}<b>${head}</b><span>${percent}%</span></div><div class="raid-revive-progress" role="progressbar" aria-label="Revive progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}"><i style="width:${percent}%"></i></div><p class="raid-revive-instruction">${instruction}</p>${causeText ? `<small class="raid-revive-cause" title="${escape(tip)}">${escape(causeText)}</small>` : ""}`;
 }
 /** What the party's champions can do against this boss. */
 function perkLines(state: Snapshot, myId: string) {
-  const party = state.players.filter((p) => !p.raidBoss && !p.out);
+  const party = state.players.filter((p) => isRaider(p) && !p.out);
   const lines = party
     .map((p) => {
       const perk = raidPerksOf(state.raid!.boss)[p.character];

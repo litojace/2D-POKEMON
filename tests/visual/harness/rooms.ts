@@ -9,6 +9,7 @@ export {
   MetaTracker,
 } from "../../../packages/shared/src/index";
 export { createRaidArena } from "../../../apps/server/src/raid-bosses";
+import { SpireArena } from "../../../apps/server/src/spire";
 export { dressUp } from "../../../scripts/perf/workloads";
 export { resultXp } from "../../../apps/client/src/adventure-ui";
 import { createRaidArena } from "../../../apps/server/src/raid-bosses";
@@ -33,8 +34,98 @@ export interface RoomOptions {
   character?: CharacterId;
   /** Practice: the player's basic shots, frozen in flight at these points. */
   shots?: [number, number][];
+  /** Spire: the floor, and how far into it (a real climb, run on the page). */
+  floor?: number;
+  stage?: "briefing" | "playing" | "intermission" | "finished";
 }
-function room(kind: "practice" | "raid" | "pvp", o: RoomOptions) {
+/**
+ * A real Spire climb (the server's SpireArena on the page): the floor's
+ * Echoes on the court after a few seconds, the blessing cards after it is
+ * cleared, or the results after a defeat. window.__spireStep(seconds) runs
+ * it on and pushes the new snapshot.
+ */
+function spire(o: RoomOptions) {
+  let seed = 4242;
+  const random = crypto.getRandomValues.bind(crypto);
+  crypto.getRandomValues = ((b: Uint32Array) => {
+    for (let i = 0; i < b.length; i++) {
+      seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+      b[i] = seed;
+    }
+    return b;
+  }) as typeof crypto.getRandomValues;
+  const a: any = new SpireArena("SPIRE42");
+  a.add("me", "tester", "voltkit");
+  if ((o.seats ?? 1) > 1) a.add("p2", "Kai", "cindrake");
+  const floor = o.floor ?? 1;
+  a.configureSpire({
+    startFloor: Math.min(floor, o.stage === "intermission" ? floor - 1 : floor),
+    ceiling: 9,
+  });
+  a.start();
+  crypto.getRandomValues = random;
+  const stage = o.stage ?? "playing";
+  if (stage === "briefing") return a;
+  for (const p of a.heroes()) a.acknowledgeInstructions(p.id);
+  const tick = (s: number) => {
+    for (let t = 0; t < s; t += 1 / 30) {
+      for (const p of a.heroes()) if (p.hp > 0) p.hp = Math.max(p.hp, 60);
+      a.tick(1 / 30);
+    }
+  };
+  while (a.phase !== "playing") a.tick(1 / 30);
+  if (stage === "playing") {
+    // The court a few seconds in: Echoes out, fighting.
+    tick(3.2);
+    const [me, kai] = a.heroes();
+    Object.assign(me, { x: 660, y: 250 });
+    if (kai) Object.assign(kai, { x: 640, y: 660 });
+    tick(0.4);
+  } else if (stage === "intermission") {
+    for (let i = 0; i < 12 && a.phase === "playing"; i++) {
+      tick(1);
+      for (const p of a.players) if (p.echo) p.hp = 0;
+      tick(1.8);
+    }
+    while (a.phase === "playing") tick(0.5);
+    a.raid.spire.blessings.me = { keen: 1 };
+  } else if (stage === "finished") {
+    tick(2);
+    a.raid.spire.best = Math.max(0, floor - 1);
+    a.raid.spire.saves =
+      floor > 1
+        ? [
+            {
+              floor: floor - 1,
+              status: "saved",
+              claims: [{ playerId: "me", coins: 25, titles: [] }],
+            },
+          ]
+        : [];
+    a.raid.spire.blessings.me = { keen: 2, fleet: 1, leech: 1 };
+    // Down for good (no self-revive this time).
+    a.selfUsed = true;
+    for (let i = 0; i < 600 && a.phase !== "finished"; i++) {
+      for (const p of a.heroes())
+        if (p.hp > 0)
+          a.damage(
+            p,
+            999,
+            a.players.find((e: any) => e.echo && e.hp > 0)?.id ?? "",
+          );
+      a.tick(1 / 30);
+    }
+  }
+  w.__spireArena = a;
+  w.__spireStep = (s: number) => {
+    tick(s);
+    w.__snap = packSnapshot(a.snapshot());
+    w.__push();
+  };
+  return a;
+}
+function room(kind: "practice" | "raid" | "pvp" | "spire", o: RoomOptions) {
+  if (kind === "spire") return spire(o);
   if (kind === "raid") {
     const a: any = createRaidArena("RAID42", o.boss ?? "grumblecrag");
     a.add("me", "tester", "voltkit");
@@ -90,7 +181,10 @@ function room(kind: "practice" | "raid" | "pvp", o: RoomOptions) {
   return a;
 }
 /** Prepare a room; the next create/practice request joins it. */
-w.__room = (kind: "practice" | "raid" | "pvp", o: RoomOptions = {}) => {
+w.__room = (
+  kind: "practice" | "raid" | "pvp" | "spire",
+  o: RoomOptions = {},
+) => {
   const a = room(kind, o);
   w.__reply = (ev: string, data: unknown) => {
     if (ev === "select") {

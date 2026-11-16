@@ -182,6 +182,8 @@ class FrameFighterVisual implements FighterVisual {
     )
       this.sprite.anims.pause();
     else if (this.sprite.anims.isPaused) this.sprite.anims.resume();
-    this.sprite.setTint(state === "hurt" ? 0xffbaba : 0xffffff);
+    this.sprite.setTint(
+      state === "hurt" ? (pose.hurtTint ?? 0xffbaba) : (pose.tint ?? 0xffffff),
+    );
   }
 }

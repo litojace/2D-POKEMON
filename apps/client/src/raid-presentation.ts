@@ -12,6 +12,7 @@ import {
   type RaidContribution,
   type RaidProgress,
   type RaidReward,
+  isRaider,
 } from "../../../packages/shared/src/raid";
 const escape = (s: string) =>
   s.replace(
@@ -429,7 +430,7 @@ export function raidContributions(state: Snapshot, myId?: string) {
   const r = state.raid!;
   const roles = raidRoles(r.contributions ?? {}, r.boss);
   const raiders = state.players
-    .filter((p) => !p.raidBoss)
+    .filter((p) => isRaider(p))
     .map((p, i) => ({
       p,
       i,

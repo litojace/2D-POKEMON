@@ -17,6 +17,7 @@ import {
   type RaidBossId,
 } from "../../../../packages/shared/src/raid";
 import { raidPortraitImage } from "../raid-splash-art";
+import { SPIRE_COLOR, spireTowerArt } from "../spire-art";
 import { menuIcon } from "../menu-icons";
 import { button, elementTag, esc, tag } from "../ui/components";
 
@@ -47,6 +48,8 @@ export interface RoomData {
   watch: boolean;
   code: string;
   boss?: RaidBossId;
+  /** A Spire climb (a raid room): why it could not start, if it couldn't. */
+  spire?: { problem?: string };
   /** Round wins needed (PvP). */
   rounds: number;
   seats: RoomSeat[];
@@ -83,6 +86,7 @@ export function roomSize(mode: RoomMode) {
 }
 /** The picker's kicker for this room ("Raid room · Grumblecrag"…). */
 export function roomKicker(d: RoomData) {
+  if (d.spire) return "Spire room · from the party's lowest checkpoint";
   return d.mode === "raid" && d.boss
     ? `Raid room · ${RAID_BOSSES[d.boss].name}`
     : `Private ${MODE_NAMES[d.mode]} · ${firstTo(d.rounds)}`;
@@ -118,6 +122,8 @@ function openSeat(
     : `<button type="button" class="room-seat is-open" data-room-invite${o.first ? ' id="invite-friends"' : ""} aria-label="Invite a friend: ${esc(label)}">${inner}</button>`;
 }
 function banner(d: RoomData) {
+  if (d.spire)
+    return `<div class="room-banner is-boss is-spire" style="--el:${SPIRE_COLOR}">${spireTowerArt(0, "room-spire")}<span class="room-banner-text"><span class="room-row">${elementTag("Earth")}</span><b class="room-banner-name">The Spire</b><small class="ui-note room-banner-line">Beat the Echoes, floor by floor</small></span></div>`;
   if (d.mode === "raid" && d.boss) {
     const b = RAID_BOSSES[d.boss];
     return `<div class="room-banner is-boss" style="--el:${b.color}">${raidPortraitImage(d.boss)}<span class="room-banner-text"><span class="room-row">${elementTag(b.element)}<span class="room-stars" aria-label="Difficulty ${b.stars} of 3">${"★".repeat(b.stars)}<i aria-hidden="true">${"★".repeat(3 - b.stars)}</i></span></span><b class="room-banner-name">${esc(b.name)}</b><small class="ui-note room-banner-line">${esc(b.signature)}</small></span></div>`;
@@ -152,8 +158,15 @@ function rules(d: RoomData) {
   return `<details class="room-rules"${on.length ? " open" : ""}><summary>${menuIcon("settings")}<span>Party rules${on.length ? ` · ${on.length} on` : d.host ? " · optional" : ""}</span></summary>${body}</details>`;
 }
 function notes(d: RoomData) {
-  const lines =
-    d.mode === "raid"
+  const lines = d.spire
+    ? [
+        ...(d.spire.problem ? [d.spire.problem] : []),
+        d.seats.length === 1
+          ? "One self-revive a floor"
+          : "Stand near allies to revive",
+        "Each cleared floor is saved",
+      ]
+    : d.mode === "raid"
       ? [
           d.seats.length === 1
             ? d.boss && !soloRevives(d.boss)
@@ -217,7 +230,11 @@ function seats(d: RoomData) {
         { watch: d.watch, first: k === 0 },
       ),
   ).join("");
-  const title = d.mode === "raid" ? "Raid party" : "Players";
+  const title = d.spire
+    ? "Climbing party"
+    : d.mode === "raid"
+      ? "Raid party"
+      : "Players";
   return `${head(title, `${readyCount(d)}/${d.seats.length} ready · ${room}`)}<div class="room-seat-list">${d.seats.map(seat).join("")}${open}</div>`;
 }
 
