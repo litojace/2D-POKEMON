@@ -316,6 +316,20 @@ button.chat-say:focus-visible {
 .chat-menu button[data-chat-act="send"] {
   color: #ffb4bc;
 }
+/* A time before a stretch of chat (chat-time.ts): small, centred, quiet. */
+.chat-stamp {
+  margin: 8px 0 2px;
+  color: #8193b2;
+  font:
+    600 11px/1.2 "Barlow",
+    system-ui,
+    sans-serif;
+  letter-spacing: 0.03em;
+  text-align: center;
+}
+.chat-stamp:first-child {
+  margin-top: 0;
+}
 .chat-line b {
   margin-right: 6px;
   color: #8fc3ff;
