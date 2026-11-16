@@ -880,9 +880,9 @@ export class SpireGloomArena extends SpireRules(
   constructor(code: string) {
     super(code, "gloomshade");
   }
-  // TODO(lead): once the boss branch lands, reset the Ascendant Inkpurr's
-  // reads here each floor, as SpireTideArena does (its own reset method).
-  protected override resetAscendantReads() {}
+  protected override resetAscendantReads() {
+    this.resetInkReads();
+  }
   protected override clearBossCourt() {
     super.clearBossCourt();
     const r = this.raid;

@@ -102,17 +102,12 @@ export const SPIRE_ZONES: Record<number, SpireZone> = {
     boss: "gloomshade",
     court: "lantern-yard",
     ascendant: "Ascendant Inkpurr",
-    // TODO(lead): placeholder until the boss branch lands. Replace with the
-    // Ascendant Inkpurr's own new attack ids (ASCENDANT_INKPURR's moves in
-    // packages/shared/src/raid-ascendant.ts), and floor 30's description.
-    ascendantMoves: ["split", "pulse"],
+    ascendantMoves: ["nightfall", "pounce"],
     bossName: "Inkpurr",
     bossLead:
       "Inkpurr, evolved. Its raid's rules still hold (find the real one by its shadow in lantern light, keep the lanterns lit, never hit a copy), pushed further: new attacks, combos and fewer openings.",
-    // TODO(lead): written before the boss branch; check it against the
-    // Ascendant Inkpurr's real reads once it lands.
     bossReads:
-      "Its attacks land where you usually dodge, standing still to attack draws a punish, an attack may turn into another halfway (shown in full), and it hunts whoever kneels to revive.",
+      "Pounces land where you usually dodge and its moonlight pools sit away from there, standing still to attack draws a pounce, a lunge may sink into the dark and become a pounce (shown in full), and it hunts whoever kneels to revive.",
     // Shadow (Duskveil, Shadopus) and their night kin, Mystowl: the owl
     // that hunts in the dark (its Third-Eye Ray is Inkpurr's own counter).
     kin: ["duskveil", "shadopus", "mystowl"],
@@ -628,8 +623,7 @@ export const SPIRE_FLOORS: Record<number, SpireFloor> = {
     zone: 3,
     kind: "boss",
     name: "Ascendant Inkpurr",
-    // TODO(lead): name the Ascendant Inkpurr's new attacks (boss branch).
-    description: "New attacks: shown in its briefing",
+    description: "New attacks: Nightfall, Shade Pounce",
     waves: [],
     boss: "gloomshade",
   },

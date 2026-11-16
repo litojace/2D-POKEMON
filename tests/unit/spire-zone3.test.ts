@@ -25,6 +25,7 @@ import { createRaidArena } from "../../apps/server/src/raid-bosses";
 import { RAID_SLOWEST_SPEED } from "../../apps/server/src/raid-ai";
 import {
   GLOOMSHADE,
+  RAID_ATTACKS,
   RAID_TELEGRAPH_FLOOR,
   handsTileDark,
   type RaidWarning,
@@ -44,7 +45,11 @@ import {
 import { spireCourtWalls } from "../../packages/shared/src/spire-court";
 import { raidTargets } from "../../apps/client/src/raid-targets";
 import { spireCue } from "../../apps/client/src/spire-battle";
-import { spireSummitFloorId } from "../../apps/client/src/spire-court-rig";
+import {
+  hasSpireSummitArena,
+  spireSummitFloorId,
+  spireSummitFloorOf,
+} from "../../apps/client/src/spire-court-rig";
 
 const DT = 1 / RULES.tick;
 const EPS = 1e-6;
@@ -128,7 +133,13 @@ describe("Spire floors (zone 3, the Lantern Yard)", () => {
     // Its briefing is its own, never zone 1's or 2's.
     expect(SPIRE_ZONES[3].bossLead).toMatch(/Inkpurr/);
     expect(SPIRE_ZONES[3].bossLead).not.toMatch(/Cragmuff|Tidelotl/);
-    expect(SPIRE_ZONES[3].ascendantMoves.length).toBeGreaterThan(0);
+    expect(SPIRE_ZONES[3].ascendantMoves).toEqual(["nightfall", "pounce"]);
+    expect(
+      SPIRE_ZONES[3].ascendantMoves.map((m) => RAID_ATTACKS[m].name),
+    ).toEqual(["Nightfall", "Shade Pounce"]);
+    expect(SPIRE_FLOORS[30].description).toBe(
+      "New attacks: Nightfall, Shade Pounce",
+    );
     expect(SPIRE_BUILT_TOP).toBe(30);
   });
   it("has wave floors 21–24 and 26–29, the elite on 25 and the boss on 30", () => {
@@ -591,8 +602,11 @@ describe("the boss floor (floor 30: the Ascendant Inkpurr, in the Lantern Yard)"
     expect(a.raid.result).toBe("defeat");
     expect(a.raid.message).toMatch(/Ascendant Inkpurr stands unbroken/);
   });
-  it("is painted ahead with the texture floor 30 shows (the yard, until its summit grade)", () => {
-    expect(spireSummitFloorId(3)).toBe(SPIRE_ZONES[3].court);
+  it("is painted ahead with the texture floor 30 shows (the yard's summit)", () => {
+    expect(spireSummitFloorId(3)).toBe(
+      spireSummitFloorOf(SPIRE_ZONES[3].court),
+    );
+    expect(hasSpireSummitArena(SPIRE_ZONES[3].court)).toBe(true);
   });
 });
 
