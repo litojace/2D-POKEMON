@@ -315,9 +315,24 @@ export function paintSpireFloorId(ctx: CanvasRenderingContext2D, id: string) {
 export const SPIRE_SUMMIT_FLOOR = "spire-summit";
 /** Floor 20's: Tidelotl's lagoon, with its own (night-sea) summit grade. */
 export const SPIRE_LAGOON_SUMMIT_FLOOR = "spire-summit-lagoon";
-/** A boss floor's court texture id, by its zone (unknown zones: zone 1's). */
+/**
+ * Floor 30's court until it has a summit grade of its own: Inkpurr's Lantern
+ * Yard as its raid paints it (the floor showArena picks for that arena).
+ * TODO(art): replace with the yard's summit floor id (and pick it in
+ * spireSummitFloorOf and main.ts's showArena), so the prewarm below stays
+ * the texture floor 30 shows.
+ */
+export const SPIRE_YARD_BOSS_FLOOR = "lantern-yard";
+/**
+ * A boss floor's court texture id, by its zone (unknown zones: zone 1's):
+ * main.ts paints it while the stairs below the boss floor are open.
+ */
 export const spireSummitFloorId = (zone: number) =>
-  zone === 2 ? SPIRE_LAGOON_SUMMIT_FLOOR : SPIRE_SUMMIT_FLOOR;
+  zone === 3
+    ? SPIRE_YARD_BOSS_FLOOR
+    : zone === 2
+      ? SPIRE_LAGOON_SUMMIT_FLOOR
+      : SPIRE_SUMMIT_FLOOR;
 export const isSpireSummitFloorId = (id: string) =>
   id === SPIRE_SUMMIT_FLOOR || id === SPIRE_LAGOON_SUMMIT_FLOOR;
 /** The raid picture under a summit floor, and its grade. */

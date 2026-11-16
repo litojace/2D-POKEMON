@@ -784,3 +784,74 @@ test("floor 20: the lagoon's summit grade, painted on floor 19, nothing fetched 
     await context.close();
   }
 });
+
+test("floor 30: Inkpurr's Lantern Yard painted while floor 29's stairs are open, nothing fetched mid-fight", async ({
+  browser,
+}, info) => {
+  test.setTimeout(180_000);
+  const context = await browser.newContext({
+    viewport: { width: 844, height: 390 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  try {
+    const page = await context.newPage();
+    await hookGame(page);
+    const art: { url: string; floor: number }[] = [];
+    let floorNow = 29;
+    page.on("request", (r) => {
+      if (r.url().includes("/raid-arenas/"))
+        art.push({ url: r.url(), floor: floorNow });
+    });
+    const errors = await openHub(page);
+    // A real zone-3 room (harness/rooms.ts), on floor 29 with floor 30 open.
+    await climb(page, 29, 30);
+    const scene = () =>
+      page.evaluate(() => {
+        const s = (window as any).__spireGame.scene.getScene("arena");
+        return {
+          floor: s.floor.texture.key as string,
+          artwork: s.floor.texture.getSourceImage().dataset?.raidArtwork as
+            string | undefined,
+          floors: (s.textures.getTextureKeys() as string[]).filter((k) =>
+            k.startsWith("arena-floor-"),
+          ),
+        };
+      });
+    expect((await scene()).floor).toBe("arena-floor-spire-z3");
+    // Beat floor 29: its stairs open.
+    for (let i = 0; i < 12; i++) {
+      const cleared = await page.evaluate(() => {
+        const w = window as any;
+        for (const p of w.__spireArena.players) if (p.echo) p.hp = 0;
+        w.__spireStep(1.8);
+        return w.__snap.raid.spire.clearedAt !== undefined;
+      });
+      if (cleared) break;
+    }
+    // While they are open, floor 30's court is painted.
+    await expect
+      .poll(async () => (await scene()).floors)
+      .toContain("arena-floor-lantern-yard:art");
+    const ready = (await scene()).floors;
+    // Up to floor 30: the Ascendant Inkpurr's briefing, in its yard.
+    floorNow = 30;
+    await page.evaluate(() => (window as any).__spireStep(3));
+    await expect
+      .poll(() => page.evaluate(() => (window as any).__snap.raid.spire.floor))
+      .toBe(30);
+    await expect
+      .poll(async () => (await scene()).floor)
+      .not.toBe("arena-floor-spire-z3");
+    const thirty = await scene();
+    // The court it shows was ready before the stairs were climbed.
+    expect(ready).toContain(thirty.floor);
+    expect(art.some((a) => a.url.includes("gloomshade"))).toBe(true);
+    expect(art.every((a) => a.floor === 29)).toBe(true);
+    await page.waitForTimeout(500);
+    await snap(page, info, "spire-court-floor-30-yard-844x390");
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});
