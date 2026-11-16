@@ -24,6 +24,8 @@ import {
 } from "./boss-cragmuff-art";
 
 export type Phase = 1 | 2 | 3;
+/** The raid's Cragmuff, or its evolved form (the Spire's Ascendant Cragmuff). */
+export type CragmuffLookId = "raid" | "ascendant";
 export const CRAGMUFF_SCALE: number = BOSS_SCALE;
 /** The floor under the boss, below its position (the old rig's feet). */
 export const CRAGMUFF_FEET = 51;
@@ -376,7 +378,9 @@ export function cragmuffPlacements(
   phase: Phase,
   clock: number,
   reduced = false,
+  look: CragmuffLookId = "raid",
 ) {
+  const ascendant = look === "ascendant";
   const F = FACING[((facing % 8) + 8) % 8],
     v: number = F.v,
     A = ATT[v] as unknown as Record<
@@ -448,8 +452,9 @@ export function cragmuffPlacements(
   if (rearOn)
     for (const k of ["BL", "BR"] as const)
       hooves.push(ap(body, A[k].x, A[k].y + LEG_L));
-  if (phase >= 2) {
+  if (phase >= 2 || ascendant) {
     // cracks and crystals in one picture; rearing, it rides up with the chest
+    // (Ascendant: magma veins from chapter 1)
     const m = rearOn
       ? mul(
           body,
@@ -526,6 +531,9 @@ export function cragmuffPlacements(
   headItems.push(place("head", `head_${v}`, head));
   if (!faceOver) face();
   horns("F");
+  // Ascendant: the crest of crystals on its crown (dims with the horns)
+  if (ascendant)
+    headItems.push(place("crest", `crest_${v}`, head, 1 - P.dim * 0.6));
   if (faceOver) face();
   // from behind the head is behind the body
   if (v >= 3) out.unshift(...headItems);

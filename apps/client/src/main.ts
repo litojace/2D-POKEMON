@@ -4745,7 +4745,13 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     battleLoadMarks.create ||= performance.now();
     scene = this;
     // The boss's pieces are drawn once into an atlas: now, not on its first frame.
-    if (state?.raid) prewarmBossAtlas(this, state.raid.boss, state.raid.phase);
+    if (state?.raid)
+      prewarmBossAtlas(
+        this,
+        state.raid.boss,
+        state.raid.phase,
+        state.raid.variant,
+      );
     // So are the arena's pieces (lanterns, conductor posts, light, marks).
     if (state?.raid) prewarmRaidArena(this, state.raid);
     // So are its arena's (pillars, braziers and burning ground).

@@ -5,6 +5,7 @@
  */
 import type Phaser from "phaser";
 import type { RaidBossId } from "../../../packages/shared/src/raid-roster";
+import type { RaidVariant } from "../../../packages/shared/src/raid-ascendant";
 import type { Phase } from "./boss-vector-grumble";
 import {
   prewarmAtlas as grumblecrag,
@@ -29,31 +30,40 @@ import { forgetPrepainted } from "./boss-prepaint";
 import type { Snapshot } from "@arena/shared";
 import { prewarmAtlas as twins } from "./boss-vector-twins-rig";
 
-const PREWARM: Record<RaidBossId, (scene: Phaser.Scene, phase: Phase) => void> =
-  {
-    grumblecrag,
-    tidewyrm,
-    // Inkpurr (Gloomshade's look): one atlas for every phase.
-    gloomshade: (scene) => inkpurr(scene),
-    // Snoozaku (Somnara's look): one atlas for every phase.
-    somnara: (scene) => snoozaku(scene),
-    // Prismell (Prismatail's look) paints one atlas for every phase; its
-    // arena pieces (mirrors, skylights, beams) have an atlas too.
-    prismatail: (scene) => {
-      prismell(scene);
-      prewarmAtriumAtlas(scene);
-    },
-    // Lumiwick (Emberwing's id) paints one atlas for every phase.
-    emberwing: (scene) => prewarmLumiwick(scene),
-    "storm-twins": twins,
-  };
-/** Draw this boss's atlas for the phase the raid is in. */
+const PREWARM: Record<
+  RaidBossId,
+  (scene: Phaser.Scene, phase: Phase, variant?: RaidVariant) => void
+> = {
+  // Cragmuff, or its Ascendant form (its own atlas).
+  grumblecrag: (scene, phase, variant) =>
+    grumblecrag(scene, phase, variant === "ascendant" ? "ascendant" : "raid"),
+  tidewyrm,
+  // Inkpurr (Gloomshade's look): one atlas for every phase.
+  gloomshade: (scene) => inkpurr(scene),
+  // Snoozaku (Somnara's look): one atlas for every phase.
+  somnara: (scene) => snoozaku(scene),
+  // Prismell (Prismatail's look) paints one atlas for every phase; its
+  // arena pieces (mirrors, skylights, beams) have an atlas too.
+  prismatail: (scene) => {
+    prismell(scene);
+    prewarmAtriumAtlas(scene);
+  },
+  // Lumiwick (Emberwing's id) paints one atlas for every phase.
+  emberwing: (scene) => prewarmLumiwick(scene),
+  "storm-twins": twins,
+};
+/** Draw this boss's atlas (its evolved form's) for the phase the raid is in. */
 export function prewarmBossAtlas(
   scene: Phaser.Scene,
   boss: RaidBossId,
   phase: number,
+  variant?: RaidVariant,
 ) {
-  PREWARM[boss]?.(scene, Math.max(1, Math.min(3, Math.round(phase))) as Phase);
+  PREWARM[boss]?.(
+    scene,
+    Math.max(1, Math.min(3, Math.round(phase))) as Phase,
+    variant,
+  );
 }
 
 /**
@@ -61,8 +71,9 @@ export function prewarmBossAtlas(
  * (boss-prepaint.ts). Snoozaku's and the Storm Twins' paint in a few
  * milliseconds, and Prismell's atrium pieces too: they stay as they were.
  */
-const PREPAINT: Partial<Record<RaidBossId, () => void>> = {
-  grumblecrag: prepaintCragmuff,
+const PREPAINT: Partial<Record<RaidBossId, (variant?: RaidVariant) => void>> = {
+  grumblecrag: (variant) =>
+    prepaintCragmuff(variant === "ascendant" ? "ascendant" : "raid"),
   tidewyrm: () => prepaintTidelotl(1),
   gloomshade: prepaintInkpurr,
   prismatail: prepaintPrismell,
@@ -70,7 +81,7 @@ const PREPAINT: Partial<Record<RaidBossId, () => void>> = {
 };
 /** Wait this long after the room appears, so its entrance isn't held up. */
 export const PREPAINT_DELAY_MS = 700;
-let planned: { boss: RaidBossId; cancel: () => void } | undefined;
+let planned: { boss: string; cancel: () => void } | undefined;
 
 /**
  * Keep the raid room's boss painted ahead while the player waits there; drop
@@ -78,6 +89,8 @@ let planned: { boss: RaidBossId; cancel: () => void } | undefined;
  */
 export function syncBossPrepaint(state: Snapshot | undefined) {
   const boss = state?.phase === "lobby" ? state.raid?.boss : undefined;
+  const variant = boss ? state?.raid?.variant : undefined;
+  const plan = variant ? `${boss}:${variant}` : boss;
   if (!boss) {
     planned?.cancel();
     planned = undefined;
@@ -87,12 +100,12 @@ export function syncBossPrepaint(state: Snapshot | undefined) {
     forgetPrepainted();
     return;
   }
-  if (planned?.boss === boss) return;
+  if (planned?.boss === plan) return;
   planned?.cancel();
   forgetPrepainted(boss);
   const paint = PREPAINT[boss];
   if (!paint) {
-    planned = { boss, cancel: () => {} };
+    planned = { boss: plan!, cancel: () => {} };
     return;
   }
   let idle = 0,
@@ -100,7 +113,7 @@ export function syncBossPrepaint(state: Snapshot | undefined) {
   const run = () => {
     idle = 0;
     // Painting takes up to a second on a slow phone: wait for a quiet moment.
-    paint();
+    paint(variant);
   };
   timer = window.setTimeout(() => {
     timer = 0;
@@ -116,7 +129,7 @@ export function syncBossPrepaint(state: Snapshot | undefined) {
     else run();
   }, PREPAINT_DELAY_MS);
   planned = {
-    boss,
+    boss: plan!,
     cancel: () => {
       if (timer) clearTimeout(timer);
       const w = window as Window & {

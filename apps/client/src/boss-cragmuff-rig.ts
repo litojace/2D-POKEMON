@@ -5,6 +5,10 @@
  * which and where). Glows go in their own additive layer. Like the other
  * bosses' rigs, the images live in a container that follows the boss's
  * graphics layer, just above it, and go away with that layer.
+ *
+ * Ascendant Cragmuff (`look: "ascendant"`, the Spire's evolved form) has its
+ * own atlas, painted the same way once: obsidian fleece, magma crystal, a
+ * crest of crystals and magma veins from chapter 1 (boss-cragmuff-art.ts).
  */
 import type Phaser from "phaser";
 import { addCanvasTexture } from "./canvas-texture";
@@ -17,10 +21,14 @@ import {
   cragmuffPlacements,
   cragmuffPose,
   type CragmuffCue,
+  type CragmuffLookId,
   type Phase,
 } from "./boss-cragmuff";
 
 export const CRAGMUFF_ATLAS = "cragmuff-atlas";
+/** Each look's atlas texture. */
+export const cragmuffAtlasKey = (look: CragmuffLookId = "raid") =>
+  look === "ascendant" ? `${CRAGMUFF_ATLAS}-ascendant` : CRAGMUFF_ATLAS;
 
 export interface CragmuffLook extends Omit<CragmuffCue, "stride" | "speed"> {
   /** The boss's position in the graphics layer (the floor is FEET below). */
@@ -29,6 +37,8 @@ export interface CragmuffLook extends Omit<CragmuffCue, "stride" | "speed"> {
   /** Where it faces (screen radians). */
   angle: number;
   gilded: boolean;
+  /** The raid's look, or Ascendant Cragmuff's. */
+  look?: CragmuffLookId;
 }
 
 type Frame = { w: number; h: number; q: number; ox: number; oy: number };
@@ -39,6 +49,8 @@ interface Rig {
   glows: Phaser.GameObjects.Container;
   front: Phaser.GameObjects.Graphics;
   images: Map<string, Sorted>;
+  look: CragmuffLookId;
+  dispose: () => void;
   frame: number;
   facing?: number;
   clock: number;
@@ -48,33 +60,45 @@ interface Rig {
   stride: number;
 }
 const rigs = new WeakMap<Phaser.GameObjects.Graphics, Rig>();
-const frames = new Map<string, Frame>();
-/** Bytes held by the atlas (for the budget checks). */
+const frames: Record<CragmuffLookId, Map<string, Frame>> = {
+  raid: new Map(),
+  ascendant: new Map(),
+};
+/** Bytes held by the last atlas made (for the budget checks). */
 export let cragmuffAtlasBytes = 0;
 const clamp = (v: number, a = 0, b = 1) => Math.max(a, Math.min(b, v));
 
 /** Paint the atlas now (while the battle loads), not on the first frame. */
-export const prewarmAtlas = (scene: Phaser.Scene, _phase?: Phase) => {
-  atlas(scene);
+export const prewarmAtlas = (
+  scene: Phaser.Scene,
+  _phase?: Phase,
+  look: CragmuffLookId = "raid",
+) => {
+  atlas(scene, look);
 };
-const paintAtlas = () => buildAtlas(1);
+const paintAtlas = (look: CragmuffLookId) => () => buildAtlas(1, look);
+const prepaintKey = (look: CragmuffLookId) =>
+  look === "ascendant" ? "grumblecrag:ascendant" : "grumblecrag";
 /** Paint the atlas ahead, in the raid room (boss-prepaint.ts). */
-export const prepaintAtlas = () => keepPrepainted("grumblecrag", paintAtlas);
-function atlas(scene: Phaser.Scene) {
-  if (scene.textures.exists(CRAGMUFF_ATLAS)) return CRAGMUFF_ATLAS;
-  const A = takePrepainted("grumblecrag", paintAtlas);
+export const prepaintAtlas = (look: CragmuffLookId = "raid") =>
+  keepPrepainted(prepaintKey(look), paintAtlas(look));
+function atlas(scene: Phaser.Scene, look: CragmuffLookId) {
+  const key = cragmuffAtlasKey(look);
+  if (scene.textures.exists(key) && frames[look].size) return key;
+  const A = takePrepainted(prepaintKey(look), paintAtlas(look));
   const canvas: HTMLCanvasElement = A.pages[0];
   cragmuffAtlasBytes = canvas.width * canvas.height * 4;
+  if (scene.textures.exists(key)) scene.textures.remove(key);
   // A plain image source (canvas-texture.ts): no pixel read-back.
-  const texture = addCanvasTexture(scene.textures, CRAGMUFF_ATLAS, canvas);
+  const texture = addCanvasTexture(scene.textures, key, canvas);
   for (const [name, p] of Object.entries(
     A.pieces as Record<string, (Frame & { sx: number; sy: number }) | null>,
   )) {
     if (!p) continue;
     texture?.add(name, 0, p.sx, p.sy, p.w, p.h);
-    frames.set(name, { w: p.w, h: p.h, q: p.q, ox: p.ox, oy: p.oy });
+    frames[look].set(name, { w: p.w, h: p.h, q: p.q, ox: p.ox, oy: p.oy });
   }
-  return CRAGMUFF_ATLAS;
+  return key;
 }
 
 /**
@@ -86,7 +110,13 @@ export function paintCragmuff(g: Phaser.GameObjects.Graphics, o: CragmuffLook) {
   const scene = g.scene;
   if (!scene?.sys?.isActive?.()) return false;
   const phase = clamp(Math.round(o.phase), 1, 3) as Phase;
-  const rig = rigs.get(g) ?? createRig(g);
+  const look: CragmuffLookId = o.look === "ascendant" ? "ascendant" : "raid";
+  let rig = rigs.get(g) ?? createRig(g, look);
+  // A new look (the Spire swapping in its Ascendant): a fresh set of images.
+  if (rig.look !== look) {
+    rig.dispose();
+    rig = createRig(g, look);
+  }
   const dt = clamp(o.time - rig.clock, 0, 0.1);
   const first = rig.facing === undefined;
   const facing = nextFacing(o.angle, rig.facing);
@@ -99,8 +129,9 @@ export function paintCragmuff(g: Phaser.GameObjects.Graphics, o: CragmuffLook) {
   rig.y = o.y;
   rig.clock = o.time;
   const P = cragmuffPose({ ...o, stride: rig.stride, speed: rig.speed });
-  const placed = cragmuffPlacements(P, facing, phase, o.time, o.reduced);
-  const sheet = atlas(scene);
+  const placed = cragmuffPlacements(P, facing, phase, o.time, o.reduced, look);
+  const sheet = atlas(scene, look);
+  const sizes = frames[look];
   const SC = CRAGMUFF_SCALE;
   rig.frame = scene.game.loop.frame;
   rig.root.setData("facing", facing);
@@ -125,7 +156,7 @@ export function paintCragmuff(g: Phaser.GameObjects.Graphics, o: CragmuffLook) {
     layer: Phaser.GameObjects.Container,
   ) => {
     for (const p of list) {
-      const f = frames.get(p.piece);
+      const f = sizes.get(p.piece);
       if (!f) continue;
       let img = rig.images.get(p.key);
       if (!img) {
@@ -165,7 +196,7 @@ export function paintCragmuff(g: Phaser.GameObjects.Graphics, o: CragmuffLook) {
   };
 }
 
-function createRig(g: Phaser.GameObjects.Graphics): Rig {
+function createRig(g: Phaser.GameObjects.Graphics, look: CragmuffLookId): Rig {
   const scene = g.scene;
   const actor = scene.add.container(0, 0);
   const glows = scene.add.container(0, 0).setBlendMode("ADD");
@@ -179,6 +210,8 @@ function createRig(g: Phaser.GameObjects.Graphics): Rig {
     glows,
     front,
     images: new Map(),
+    look,
+    dispose: () => {},
     frame: -1,
     clock: 0,
     x: 0,
@@ -191,7 +224,7 @@ function createRig(g: Phaser.GameObjects.Graphics): Rig {
     scene.events.off("prerender", sync);
     g.off("destroy", dispose);
     root.destroy();
-    rigs.delete(g);
+    if (rigs.get(g) === rig) rigs.delete(g);
   };
   // Follow the layer (camera, scale) and show only when drawn this frame.
   const sync = () => {
@@ -208,5 +241,6 @@ function createRig(g: Phaser.GameObjects.Graphics): Rig {
   };
   scene.events.on("prerender", sync);
   g.once("destroy", dispose);
+  rig.dispose = dispose;
   return rig;
 }

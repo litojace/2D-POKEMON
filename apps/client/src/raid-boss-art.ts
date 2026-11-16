@@ -1,5 +1,5 @@
 import { paintCragmuff } from "./boss-cragmuff-rig";
-import { paintBossAura } from "./boss-spell-art";
+import { paintAscendantAura, paintBossAura } from "./boss-spell-art";
 import { groundHeight } from "../../../packages/shared/src/world-art";
 import { bossLife } from "./raid-boss-life";
 import { rockGrain } from "./boss-materials";
@@ -33,9 +33,17 @@ export function drawRaidBoss(
   const stagger = r.staggerUntil > state.time && !pose.dead;
   const exposed =
     (r.phase === 3 || r.exposedUntil > state.time || stagger) && !pose.dead;
-  // fleece-coloured chips (gold when gilded), amber when the crystals burn
-  const face = r.gilded ? 0xe4c47c : 0xb3a88e;
-  const hot = r.phase === 3 ? 0xff7751 : 0xffce75;
+  const ascendant = r.variant === "ascendant";
+  // fleece-coloured chips (gold when gilded, obsidian when Ascendant), amber
+  // (Ascendant: magma) when the crystals burn
+  const face = ascendant ? 0x4a4460 : r.gilded ? 0xe4c47c : 0xb3a88e;
+  const hot = ascendant
+    ? r.phase === 3
+      ? 0xff4a1c
+      : 0xff8a32
+    : r.phase === 3
+      ? 0xff7751
+      : 0xffce75;
   const poly = (
     cx: number,
     cy: number,
@@ -93,6 +101,7 @@ export function drawRaidBoss(
     phase: r.phase,
     reduced,
     gilded: !!r.gilded,
+    look: ascendant ? "ascendant" : "raid",
     charge: pose.dead ? 0 : pose.charge,
     charging: pose.charging && !pose.dead,
     slam: pose.dead ? 0 : pose.slam,
@@ -100,7 +109,8 @@ export function drawRaidBoss(
     debris: pose.dead ? 0 : pose.debris,
     transform: pose.dead ? 0 : pose.transform,
     crash: pose.dead ? 0 : pose.crash,
-    windKind: wind?.kind,
+    // The fissure erupts from a stomp, like an eruption.
+    windKind: wind?.kind === "fissure" ? "eruption" : wind?.kind,
     windup: life.windup,
     castKind: cast?.kind,
     castAge: cast?.age ?? 99,
@@ -112,6 +122,9 @@ export function drawRaidBoss(
     deathAge: pose.deathAge,
   });
 
+  // Ascendant Cragmuff's own aura: heat from the floor and rising embers.
+  if (ascendant && core && !pose.dead)
+    paintAscendantAura(g, boss.x, boss.y, core, pose.time, r.phase, reduced);
   // The cast aura every boss gathers around its core.
   if (core && !pose.dead) paintBossAura(g, "grumblecrag", core.x, core.y, life);
   for (const f of pose.fragments) {
