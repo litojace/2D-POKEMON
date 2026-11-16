@@ -221,3 +221,20 @@
   ) {
   border-color: var(--aero-rim-on);
 }
+
+/* The raid's briefing and results card (screens/raid-cards.css), over the
+   court: the same no-blur glass. Its hairlines (--ui-line, --ui-line-2:
+   tiles, scoreboard rows, footer) turn a soft gold; the tiles keep their
+   fills so the numbers read on a busy arena. */
+:root #arena-overlay > .rc-card {
+  --ui-line: rgba(226, 200, 140, 0.2);
+  --ui-line-2: var(--aero-rim);
+  background: var(--aero-tint-solid);
+  border-color: var(--aero-rim);
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+:root #arena-overlay > .rc-card .rc-foot {
+  background: transparent;
+}
