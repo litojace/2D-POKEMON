@@ -48,6 +48,8 @@
   display: grid;
   align-content: start;
   gap: var(--sp-3);
+  /* A tab's contents glide in sideways: never a sideways scroller. */
+  overflow-x: hidden;
 }
 .sp-stats {
   display: grid;
