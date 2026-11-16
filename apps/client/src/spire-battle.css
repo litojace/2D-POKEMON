@@ -13,7 +13,12 @@ body.battle-raid
   background: linear-gradient(180deg, #d9ccff 0%, #9b7bff 52%, #5f43b8 100%);
 }
 
-/* Who each wave sends. */
+/* Who each wave sends (one line between floors). */
+.spire-plan-line {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: #c8bfe6;
+}
 .spire-waves {
   display: grid;
   gap: 4px;
@@ -65,6 +70,14 @@ body.battle-raid
 .raid-rite-options > button.spire-blessing-card {
   --rite-color: #c9b2ff;
   --rite-rgb: 167, 139, 255;
+}
+.spire-blessing-badge {
+  justify-self: center;
+}
+@media (max-width: 559px) {
+  .spire-blessing-badge {
+    justify-self: start;
+  }
 }
 .spire-blessing-badge > svg.spire-blessing-icon {
   color: #e6dcff;

@@ -45,6 +45,15 @@ export function spireFloorPlan(f: SpireFloor | undefined) {
     )
     .join("")}</ol>`;
 }
+/** Who a floor sends, in one line ("Terradon, Tidefin · Pangrove, …"). */
+export function spireFloorLine(f: SpireFloor | undefined) {
+  if (!f) return "";
+  if (f.kind === "elite" && f.elite)
+    return `${f.elite.name}, with Cragmuff's eruptions`;
+  return f.waves
+    .map((w) => w.map((e) => CHARACTERS[e.character].name).join(", "))
+    .join(" · ");
+}
 /** One blessing card (picked: checked and greyed, like a rite). */
 export function spireBlessingCard(
   id: SpireBlessingId,
@@ -116,7 +125,7 @@ export function spireOverlay(state: Snapshot, me: Fighter) {
     title = locked
       ? `Blessing chosen · Floor ${s.floor} next`
       : `Choose a blessing · Floor ${s.floor} next`;
-    body = `<p class="raid-phase-objective"><b>${escape(floor?.name ?? "")}</b> · ${floor?.kind === "elite" ? "Elite floor" : `${s.waves} waves`}</p>${spireFloorPlan(floor)}<details class="raid-team-summary"><summary>Your blessings</summary><div class="spire-team" aria-label="Team blessings">${heroes.map((p) => `<div><b>${escape(p.name)}</b><span>${escape(held(state, p.id))}${s.offers[p.id]?.length ? " · Choosing…" : ""}</span></div>`).join("")}</div></details>`;
+    body = `<p class="raid-phase-objective"><b>${escape(floor?.name ?? "")}</b> · ${floor?.kind === "elite" ? "Elite floor" : `${s.waves} waves`}</p><p class="spire-plan-line">${escape(spireFloorLine(floor))}</p><details class="raid-team-summary"><summary>Your blessings</summary><div class="spire-team" aria-label="Team blessings">${heroes.map((p) => `<div><b>${escape(p.name)}</b><span>${escape(held(state, p.id))}${s.offers[p.id]?.length ? " · Choosing…" : ""}</span></div>`).join("")}</div></details>`;
     const cards = offered.ids
       .map((id) =>
         spireBlessingCard(id, offered.before[id] ?? 0, {
