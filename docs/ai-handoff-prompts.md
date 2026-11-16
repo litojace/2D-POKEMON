@@ -23,7 +23,7 @@ Cấu trúc:
   - Ánh sáng dùng chung: apps/client/src/world-light.ts (bóng đổ theo mặt trời ShadowLayer, bản đồ ánh sáng đêm NightLight; tắt ở mức đồ hoạ Low).
 - apps/server: server Node (Express). Chỉ kiểm tra dữ liệu gửi lên (zod, apps/server/src/accounts.ts) rồi gọi hàm RPC của Supabase.
 - packages/shared/src: LUẬT DÙNG CHUNG (farm.ts, bistro.ts, ...). Client chạy trước để phản hồi ngay; database chạy ĐÚNG luật đó và là nguồn sự thật.
-- supabase/migrations: SQL. Migration mới đặt tên kiểu timestamp `YYYYMMDDHHMMSS_ten.sql`, sau migration mới nhất. Mỗi migration phải "Safe to run again" (chạy lại không hỏng dữ liệu). Hàm cũ muốn đổi: rename hàm cũ rồi tạo hàm mới bọc nó (xem 20261116120000_farm_free_decor.sql làm mẫu).
+- supabase/migrations: SQL. Migration mới đặt tên kiểu timestamp `YYYYMMDDHHMMSS_ten.sql`, sau migration mới nhất. Mỗi migration phải "Safe to run again" (chạy lại không hỏng dữ liệu): khi merge vào main nó TỰ CHẠY trên database thật (docs/auto-migrations.md); kiểm tra bằng `node scripts/check-migrations.mjs <file>`. Không sửa migration đã chạy, thêm file mới. Hàm cũ muốn đổi: rename hàm cũ rồi tạo hàm mới bọc nó (xem 20261116120000_farm_free_decor.sql làm mẫu).
 - docs/: tài liệu thiết kế. Đọc docs/hub-redesign/README.md (Farm, Plaza), docs/hub-redesign/NUMBERS.md (con số kinh tế), docs/bistro-gdd.md (Bistro), docs/network-performance.md (hiệu năng).
 
 Quy tắc BẮT BUỘC:
@@ -35,7 +35,7 @@ Quy tắc BẮT BUỘC:
 6. Test: đọc CLAUDE.md, phần "Running tests quickly". Chạy unit/integration các file liên quan; test hình (Playwright) chỉ các spec liên quan, có fake server trong trang (tests/visual/farm-fake.ts, bistro-fake.ts): cập nhật fake khi thêm action mới. Không chạy toàn bộ bộ test hình. Không sửa source khi test hình đang chạy. Chạy `npm run -s typecheck && npm run -s build`. Prettier chỉ trên file đã sửa.
 7. Một test hình không được qua nhờ may mắn: phá tính năng thử, thấy test fail, rồi trả lại.
 8. Commit trên nhánh được giao (không push thẳng main), message rõ ràng. Không tạo pull request trừ khi chủ game yêu cầu.
-9. Khi xong: báo cáo bằng tiếng Việt, ngắn gọn: đã làm gì, test nào qua/fail (kèm output), việc chủ game phải làm khi deploy (vd. chạy migration nào), và câu hỏi còn mở. Gửi ảnh chụp màn hình (VISUAL_SHOTS=<thư mục>).
+9. Khi xong: báo cáo bằng tiếng Việt, ngắn gọn: đã làm gì, test nào qua/fail (kèm output), việc chủ game phải làm khi deploy, và câu hỏi còn mở. Gửi ảnh chụp màn hình (VISUAL_SHOTS=<thư mục>).
 10. Trước khi code phần lớn, nếu có quyết định thuộc về chủ game (giá, cân bằng, tên gọi) mà không suy ra được từ tài liệu: đề xuất mặc định hợp lý, ghi rõ, và hỏi trong báo cáo thay vì dừng lại.
 
 Hiện trạng gần nhất (tháng 11/2026):
@@ -158,6 +158,5 @@ Không sửa apps/ trong bước này. Lưu bản mẫu ở docs/visual-study/ (
 
 ## Ghi chú cho chủ game
 
-- Mỗi khi AI báo xong một việc có **migration mới**, nhớ chạy migration đó trên Supabase **cùng lúc** deploy server mới; nếu không, người chơi sẽ gặp lỗi ở tính năng đó.
-- Việc đang chờ deploy hiện tại: `supabase/migrations/20261116120000_farm_free_decor.sql` (đặt trang trí tự do cho Farm).
+- Migration mới **tự chạy** trên Supabase khi được merge vào `main` (xem `docs/auto-migrations.md`; cần secret `SUPABASE_DB_URL` trên GitHub). Code cần migration đó phải được merge cùng lúc.
 - Nếu AI hỏi về giá, cân bằng hay tên gọi, đó là quyết định của bạn; các con số kinh tế hiện tại ở `docs/hub-redesign/NUMBERS.md` và `docs/bistro-gdd.md`.

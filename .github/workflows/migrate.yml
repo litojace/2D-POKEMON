@@ -1,0 +1,47 @@
+name: Production migrations
+# A push to main that adds or changes a migration runs the ones production
+# hasn't run yet (docs/auto-migrations.md). Render deploys the same push, so
+# the database and the server move together, within a few minutes.
+on:
+  push:
+    branches: [main]
+    paths: ["supabase/migrations/**"]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Only list what would run"
+        type: boolean
+        default: true
+# One at a time, never cancelled half way.
+concurrency:
+  group: production-migrations
+  cancel-in-progress: false
+permissions:
+  contents: read
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    # Settings → Environments → production can require an approval first.
+    environment: production
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: List what production hasn't run
+        id: pending
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          node scripts/migrate-production.mjs --dry-run | tee pending.txt
+          echo "files=$(sed -n 's/^Would run [0-9]* migration(s): //p' pending.txt | tr -d ',')" >> "$GITHUB_OUTPUT"
+      - name: Run every migration on an empty database first
+        run: node scripts/check-migrations.mjs ${{ steps.pending.outputs.files }}
+      - name: Apply to production
+        if: github.event_name == 'push' || !inputs.dry_run
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: node scripts/migrate-production.mjs

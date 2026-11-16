@@ -114,3 +114,12 @@ must stay within what we already ship. Details and measurements:
   rate, slowest frames, stutter share, graphics level, device memory and
   cores; no account). Opening the game with `?perf=1` shows the same numbers
   over the battle, for a player to screenshot.
+
+## Database migrations reach production on their own
+
+A push to `main` that adds a file in `supabase/migrations/` applies it to the
+production Supabase database (`.github/workflows/migrate.yml`,
+`docs/auto-migrations.md`). So a new migration must be safe to run again
+(`scripts/check-migrations.mjs <file>` runs it twice on an empty database),
+must ship in the same push as the code that needs it, and a migration that
+already ran is never edited: add a new one.
