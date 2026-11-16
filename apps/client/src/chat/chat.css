@@ -699,7 +699,13 @@ button.chat-say:focus-visible {
     700 12px/1.2 "Barlow",
     system-ui,
     sans-serif;
-  white-space: nowrap;
+  /* Sized to its text up to 160 px, then wrapped: never past its edges. */
+  width: max-content;
+  max-width: 160px;
+  /* (The nameplate's own nowrap would otherwise carry over.) */
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: center;
   opacity: 0;
   transform: translate(-50%, 0);
   pointer-events: none;
