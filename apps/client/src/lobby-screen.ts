@@ -95,14 +95,32 @@ export const LOBBY_MODES: readonly {
   },
 ];
 const MODE_KEY = "arena-lobby-mode";
-export function savedLobbyMode(): LobbyMode {
+/** The mode this device picked last, or null if it never picked one. */
+export function chosenLobbyMode(): LobbyMode | null {
   try {
     const value = localStorage.getItem(MODE_KEY);
     if (LOBBY_MODES.some((m) => m.id === value)) return value as LobbyMode;
   } catch {
     /* Optional preference. */
   }
-  return "duel";
+  return null;
+}
+/**
+ * What PLAY starts: the mode picked last, or, for a new player, a match
+ * against an Easy bot. A 1v1 Duel is a private room that waits for a
+ * second player: a first tap shouldn't leave a newcomer waiting alone.
+ */
+export function savedLobbyMode(): LobbyMode {
+  return chosenLobbyMode() ?? "bot-easy";
+}
+/**
+ * A party can't play a bot match: when nobody picked a mode, PLAY gives it
+ * the room that fits its size instead of an error.
+ */
+export function partyLobbyMode(mode: LobbyMode, size: number): LobbyMode {
+  if (size < 2 || chosenLobbyMode()) return mode;
+  if (!mode.startsWith("bot-") && mode !== "practice") return mode;
+  return size === 2 ? "duel" : size === 3 ? "ffa" : "teams";
 }
 function saveLobbyMode(mode: LobbyMode) {
   try {

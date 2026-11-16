@@ -2806,6 +2806,16 @@ test("a friend on your farm: they stand by the gate, emotes show, and a Harvest 
     }),
   );
   await expect(page.locator("#chat-drawer .chat-line")).toHaveText("Mai🎉");
+  // A phrase: the bubble widens to it (farm-party shows it).
+  await page.evaluate(() =>
+    (window as any).__sock.fire("chat", {
+      id: 8,
+      channel: "place",
+      from: { id: "00000000-0000-4000-8000-0000000000a1", name: "Mai" },
+      at: Date.now(),
+      quick: "wait",
+    }),
+  );
   await page.click("#chat-drawer .chat-close");
   await page.evaluate(() => (window as any).__farm.look(780, 760));
   await page.waitForTimeout(400);

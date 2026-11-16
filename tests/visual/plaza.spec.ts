@@ -836,7 +836,7 @@ test("the Emote button lights up, and a second tap or a tap on the Plaza closes 
 // chat's Nearby tab shows it, and a player's phrase pops over them.
 test("Nearby chat on the Plaza: the wheel sends quick chat, phrases pop over the speaker", async ({
   page,
-}) => {
+}, info) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   const errors = await openPlaza(page);
   await page.click("#pz-wheel-btn");
@@ -900,5 +900,32 @@ test("Nearby chat on the Plaza: the wheel sends quick chat, phrases pop over the
         )?.emote,
     ),
   ).toBe("Hi!");
+  // A longer phrase: the bubble is sized to it, never the text past it.
+  await page.evaluate((pal) => {
+    (window as any).__sock.fire("chat", {
+      id: 100,
+      channel: "place",
+      from: { id: pal, name: "Pal" },
+      at: Date.now(),
+      quick: "wp",
+    });
+  }, pal);
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const b = [...(window as any).__plaza.others.values()].find(
+          (x: any) => x.name === "Pal",
+        );
+        if (b?.bubbleFor !== "Well played!") return null;
+        const g = document.createElement("canvas").getContext("2d")!;
+        g.font = "800 17px 'Barlow Condensed', sans-serif";
+        const text = Math.max(
+          ...b.bubbleLines.map((t: string) => g.measureText(t).width),
+        );
+        return { lines: b.bubbleLines, room: b.bubbleW - text >= 20 };
+      }),
+    )
+    .toEqual({ lines: ["Well played!"], room: true });
+  await snap(page, info, "plaza-chat-bubble");
   expect(errors).toEqual([]);
 });
