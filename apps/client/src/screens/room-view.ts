@@ -18,6 +18,10 @@ import {
 } from "../../../../packages/shared/src/raid";
 import { raidPortraitImage } from "../raid-splash-art";
 import { SPIRE_COLOR, spireTowerArt } from "../spire-art";
+import {
+  SPIRE_ZONES,
+  spireZoneStart,
+} from "../../../../packages/shared/src/spire";
 import { menuIcon } from "../menu-icons";
 import { button, elementTag, esc, tag } from "../ui/components";
 
@@ -48,8 +52,8 @@ export interface RoomData {
   watch: boolean;
   code: string;
   boss?: RaidBossId;
-  /** A Spire climb (a raid room): why it could not start, if it couldn't. */
-  spire?: { problem?: string };
+  /** A Spire climb (a raid room): its zone, and why it could not start, if it couldn't. */
+  spire?: { problem?: string; zone?: number };
   /** Round wins needed (PvP). */
   rounds: number;
   seats: RoomSeat[];
@@ -86,7 +90,12 @@ export function roomSize(mode: RoomMode) {
 }
 /** The picker's kicker for this room ("Raid room · Grumblecrag"…). */
 export function roomKicker(d: RoomData) {
-  if (d.spire) return "Spire room · from the party's lowest checkpoint";
+  if (d.spire) {
+    const zone = d.spire.zone ?? 1;
+    return zone > 1
+      ? `Spire room · zone ${zone} from floor ${spireZoneStart(zone)} · everyone needs that checkpoint`
+      : "Spire room · zone 1 from floor 1";
+  }
   return d.mode === "raid" && d.boss
     ? `Raid room · ${RAID_BOSSES[d.boss].name}`
     : `Private ${MODE_NAMES[d.mode]} · ${firstTo(d.rounds)}`;
@@ -123,7 +132,7 @@ function openSeat(
 }
 function banner(d: RoomData) {
   if (d.spire)
-    return `<div class="room-banner is-boss is-spire" style="--el:${SPIRE_COLOR}">${spireTowerArt(0, "room-spire")}<span class="room-banner-text"><span class="room-row">${elementTag("Earth")}</span><b class="room-banner-name">The Spire</b><small class="ui-note room-banner-line">Beat the Echoes, floor by floor</small></span></div>`;
+    return `<div class="room-banner is-boss is-spire" style="--el:${SPIRE_COLOR}">${spireTowerArt(0, "room-spire")}<span class="room-banner-text"><span class="room-row">${elementTag((SPIRE_ZONES[d.spire.zone ?? 1] ?? SPIRE_ZONES[1]).element)}</span><b class="room-banner-name">The Spire</b><small class="ui-note room-banner-line">${esc(`Zone ${d.spire.zone ?? 1} · ${(SPIRE_ZONES[d.spire.zone ?? 1] ?? SPIRE_ZONES[1]).name} · beat the Echoes, floor by floor`)}</small></span></div>`;
   if (d.mode === "raid" && d.boss) {
     const b = RAID_BOSSES[d.boss];
     return `<div class="room-banner is-boss" style="--el:${b.color}">${raidPortraitImage(d.boss)}<span class="room-banner-text"><span class="room-row">${elementTag(b.element)}<span class="room-stars" aria-label="Difficulty ${b.stars} of 3">${"★".repeat(b.stars)}<i aria-hidden="true">${"★".repeat(3 - b.stars)}</i></span></span><b class="room-banner-name">${esc(b.name)}</b><small class="ui-note room-banner-line">${esc(b.signature)}</small></span></div>`;

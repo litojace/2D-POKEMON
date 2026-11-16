@@ -4,11 +4,15 @@
  * Hub (raid-hall.ts) wires it up, with the shared components and styles.
  *
  * The Spire opens with a Cragmuff clear (the server checks it again before
- * a climb starts). A climb starts from your checkpoint (the first floor of
- * the zone you reached) and saves each floor as it is cleared.
+ * a climb starts). One climb is one zone: you pick the zone on the Climb tab
+ * (zone 1 always, a later zone once you reached its first floor), the climb
+ * starts at its first floor and saves each floor as it is cleared.
  */
 import { CHARACTERS, type CharacterId } from "@arena/shared";
-import type { RaidProgress } from "../../../../packages/shared/src/raid";
+import {
+  RAID_ATTACKS,
+  type RaidProgress,
+} from "../../../../packages/shared/src/raid";
 import {
   SPIRE_BLESSINGS,
   SPIRE_BLESSING_IDS,
@@ -20,8 +24,12 @@ import {
   spireBlessingText,
   spireRewardsOf,
   spireStartCheckpoint,
+  spireZoneStart,
+  spireZoneTop,
+  spireZonesOpen,
   type SpireFloor,
   type SpireProgress,
+  type SpireZone,
 } from "../../../../packages/shared/src/spire";
 import { fighterAvatar } from "../fighter-art";
 import { menuIcon } from "../menu-icons";
@@ -64,6 +72,8 @@ export interface SpireData {
 }
 export interface SpireView {
   spireTab?: SpireTab;
+  /** The zone picked to climb (default: the highest open to you). */
+  spireZone?: number;
   play: "solo" | "party";
   status: string;
 }
@@ -91,11 +101,25 @@ export function spireStanding(d: Pick<SpireData, "spire">) {
     claimed: new Set(s?.claimed ?? []),
   };
 }
+/**
+ * The zone a climb will be for: the one picked if it is open to you, else
+ * the highest open one (zone 1 always is; zone 2 from checkpoint 11).
+ */
+export function spireZoneChoice(
+  view: Pick<SpireView, "spireZone">,
+  d: Pick<SpireData, "spire">,
+) {
+  const open = spireZonesOpen(d.spire?.checkpoint ?? 1);
+  const zone = open.includes(view.spireZone ?? 0)
+    ? view.spireZone!
+    : open[open.length - 1];
+  return { open, zone, start: spireZoneStart(zone) };
+}
 /** Start climb: whether it can go now, and what it will do. */
 export function spireStartState(view: SpireView, d: SpireData) {
   const size = Math.max(1, d.party.length);
   const play: SpireView["play"] = size > 1 ? "party" : view.play;
-  const { checkpoint } = spireStanding(d);
+  const { zone, start } = spireZoneChoice(view, d);
   const reason = !spireUnlocked(d)
     ? "Clear Cragmuff once to open the Spire."
     : d.inRoom
@@ -103,15 +127,17 @@ export function spireStartState(view: SpireView, d: SpireData) {
       : !d.leader
         ? "Your party leader starts the climb."
         : "";
-  const from = checkpoint;
+  const from = start;
   const note = reason
     ? reason
     : play === "solo"
-      ? `Just you · from floor ${from} · one self-revive a floor`
+      ? `Just you · zone ${zone} from floor ${from} · one self-revive a floor`
       : size > 1
-        ? `${size} of ${SPIRE_SEATS} seats · from your party's lowest checkpoint`
-        : `A room for up to ${SPIRE_SEATS} · invite friends there`;
-  return { play, ok: !reason, reason, note, soloLocked: size > 1 };
+        ? from > 1
+          ? `${size} of ${SPIRE_SEATS} seats · zone ${zone} from floor ${from} · everyone needs checkpoint ${from}`
+          : `${size} of ${SPIRE_SEATS} seats · zone ${zone} from floor ${from}`
+        : `A room for up to ${SPIRE_SEATS} · zone ${zone} from floor ${from}`;
+  return { play, ok: !reason, reason, note, soloLocked: size > 1, zone };
 }
 
 const lockIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>`;
@@ -172,18 +198,40 @@ function seats(d: SpireData) {
       "",
     )}${Array.from({ length: open }, () => `<div class="rh-seat is-open"><span class="rh-plus" aria-hidden="true">+</span><b>Open seat</b><small class="ui-note">Invite from the Lobby</small></div>`).join("")}</div>`;
 }
-function climbTab(d: SpireData) {
+/** The zone picker: zone 1 always, a later zone once its checkpoint is earned. */
+function zonePicker(view: SpireView, d: SpireData) {
+  const { open, zone } = spireZoneChoice(view, d);
+  const zones = Object.values(SPIRE_ZONES)
+    .filter((z) => spireZoneTop(z.id) <= SPIRE_BUILT_TOP)
+    .sort((a, b) => a.id - b.id);
+  const items = zones
+    .map((z) => {
+      const ok = open.includes(z.id);
+      const on = ok && z.id === zone;
+      const from = spireZoneStart(z.id);
+      const state = ok
+        ? `Floors ${from}–${spireZoneTop(z.id)}`
+        : `Conquer zone ${z.id - 1} first`;
+      const label = `Zone ${z.id}, ${z.name}, ${z.element}. ${ok ? `Floors ${from} to ${spireZoneTop(z.id)}, ${z.ascendant} at the top` : `Locked: conquer zone ${z.id - 1} first`}`;
+      return `<button type="button" class="sp-zone${on ? " is-on" : ""}${ok ? "" : " is-locked"}" data-ui-spire-zone="${z.id}" aria-pressed="${on}"${ok ? "" : " disabled"} aria-label="${esc(label)}"><span class="sp-zone-num ui-num">${z.id}</span><span class="sp-zone-text"><b>${esc(z.name)}</b><small class="ui-note">${esc(z.element)} · ${esc(state)}</small></span>${ok ? "" : `<span class="sp-lock" aria-hidden="true">${lockIcon}</span>`}</button>`;
+    })
+    .join("");
+  return `<div class="sp-zones" role="group" aria-label="Zone to climb">${items}</div>`;
+}
+function climbTab(view: SpireView, d: SpireData) {
   const { highest, checkpoint, attempts } = spireStanding(d);
   const stats = `<div class="sp-stats"><span class="sp-stat"><b class="ui-num">${highest}</b><small>Highest floor</small></span><span class="sp-stat"><b class="ui-num">${checkpoint}</b><small>Checkpoint</small></span><span class="sp-stat"><b class="ui-num">${attempts}</b><small>Climbs</small></span></div>`;
-  const how = `<ul class="sp-how"><li><b>Waves of Echoes.</b> Shadow copies of the champions, with their whole kits. Beat every wave to open the stairs.</li><li><b>A blessing a floor.</b> After each floor, pick one of three. They stack, and last until the climb ends.</li><li><b>Every floor counts.</b> A cleared floor is saved at once and pays its first-clear reward, even if the climb ends later.</li><li><b>Checkpoints.</b> A new climb starts at the first floor of the zone you reached, with no blessings. A party climbs from its lowest checkpoint.</li></ul>`;
-  return `${stats}${seats(d)}<div class="rh-section"><h3 class="ui-h">How the climb works</h3></div>${how}`;
+  const how = `<ul class="sp-how"><li><b>Waves of Echoes.</b> Shadow copies of the champions, with their whole kits. Beat every wave to open the stairs.</li><li><b>A blessing a floor.</b> After each floor, pick one of three. They stack, and last until the climb ends.</li><li><b>Every floor counts.</b> A cleared floor is saved at once and pays its first-clear reward, even if the climb ends later.</li><li><b>One zone a climb.</b> A climb starts at the first floor of the zone you pick, with no blessings, and ends at its boss. Conquer a zone to open the next; you can always climb an earlier one again. Everyone in a party needs the zone's checkpoint.</li></ul>`;
+  return `${stats}<div class="rh-section"><h3 class="ui-h">Zone</h3></div>${zonePicker(view, d)}${seats(d)}<div class="rh-section"><h3 class="ui-h">How the climb works</h3></div>${how}`;
 }
 function floorState(f: SpireFloor, d: SpireData) {
-  const { highest, claimed } = spireStanding(d);
-  if (f.kind === "boss" && f.floor > SPIRE_BUILT_TOP)
-    return { key: "soon", label: "Coming soon" };
+  const { highest, claimed, checkpoint } = spireStanding(d);
+  if (f.floor > SPIRE_BUILT_TOP) return { key: "soon", label: "Coming soon" };
   if (claimed.has(f.floor) || f.floor <= highest)
     return { key: "done", label: "Cleared" };
+  // A later zone opens once the one below it is conquered.
+  if (spireZoneStart(f.zone) > checkpoint)
+    return { key: "locked", label: `Conquer zone ${f.zone - 1} first` };
   // A boss floor also needs that boss's raid cleared (the server checks too).
   const boss = f.kind === "boss" ? f.boss : undefined;
   if (
@@ -194,9 +242,11 @@ function floorState(f: SpireFloor, d: SpireData) {
   if (f.floor === highest + 1) return { key: "next", label: "Next" };
   return { key: "locked", label: `Clear floor ${f.floor - 1} first` };
 }
-function floorsTab(d: SpireData) {
-  const zone = SPIRE_ZONES[1];
-  const rows = Object.values(SPIRE_FLOORS)
+/** The Ascendant's line on its floor: its name and new attacks. */
+const ascendantLine = (zone: SpireZone) =>
+  `${zone.ascendant} · new attacks: ${zone.ascendantMoves.map((k) => RAID_ATTACKS[k].name).join(", ")}`;
+function floorRows(zone: SpireZone, d: SpireData) {
+  return Object.values(SPIRE_FLOORS)
     .filter((f) => f.zone === zone.id)
     .map((f) => {
       const state = floorState(f, d);
@@ -208,7 +258,7 @@ function floorsTab(d: SpireData) {
             : tag(`${f.waves.length} waves`);
       const who =
         f.kind === "boss"
-          ? `<small class="ui-note">${esc(zone.ascendant)} · new attacks: Avalanche Charge, Twin Slam</small>`
+          ? `<small class="ui-note">${esc(ascendantLine(zone))}</small>`
           : `<span class="rh-tricks">${floorRoster(f)
               .map((c) => chip(c, `sp-f${f.floor}-${c}`, 24))
               .join("")}</span>`;
@@ -223,7 +273,18 @@ function floorsTab(d: SpireData) {
       return `<li class="sp-floor is-${state.key}" data-spire-floor="${f.floor}"><span class="sp-floor-num ui-num">${f.floor}</span><span class="sp-floor-main"><span class="sp-floor-name"><b>${esc(f.name)}</b>${kind}</span>${who}<small class="ui-note sp-floor-state">${esc(state.label)}</small></span>${reward}${mark}</li>`;
     })
     .join("");
-  return `<p class="ui-note">${esc(zone.name)} · ${esc(zone.element)}. First-clear rewards are paid once, the first time you clear each floor.</p><ol class="sp-floors" aria-label="Floors of the Spire">${rows}</ol>`;
+}
+function floorsTab(d: SpireData) {
+  const zones = Object.values(SPIRE_ZONES)
+    .filter((z) => spireZoneTop(z.id) <= SPIRE_BUILT_TOP)
+    .sort((a, b) => a.id - b.id);
+  const lists = zones
+    .map(
+      (z) =>
+        `<section class="sp-zone-floors" data-spire-zone-floors="${z.id}" aria-label="${esc(`Zone ${z.id}: ${z.name}`)}"><h3 class="ui-h sp-zone-head"><span class="ui-num">Zone ${z.id}</span> · ${esc(z.name)} <small class="ui-note">${esc(z.element)} · floors ${spireZoneStart(z.id)}–${spireZoneTop(z.id)}</small></h3><ol class="sp-floors" start="${spireZoneStart(z.id)}" aria-label="${esc(`Floors of zone ${z.id}`)}">${floorRows(z, d)}</ol></section>`,
+    )
+    .join("");
+  return `<p class="ui-note">First-clear rewards are paid once, the first time you clear each floor.</p>${lists}`;
 }
 function blessingsTab() {
   const cards = SPIRE_BLESSING_IDS.map((id) => {
@@ -235,9 +296,10 @@ function blessingsTab() {
   }).join("");
   return `<p class="ui-note">After every floor each climber picks one of three. Picking one you hold stacks it. Blessings end with the climb.</p><div class="sp-blessings">${cards}</div>`;
 }
-function stage(d: SpireData) {
+function stage(view: SpireView, d: SpireData) {
   const { highest } = spireStanding(d);
-  return `<section class="ui-split-stage rh-stage sp-stage" style="--el:${SPIRE_COLOR}" aria-label="The Spire"><span class="sp-poster">${spireTowerArt(highest, "spire-page")}</span><div class="rh-stage-info"><span class="rh-row">${tag("Zone 1 · Earth")}</span><b class="rh-stage-name">The Spire</b><small class="ui-note rh-stage-line">Climb past the Echoes</small><p class="rh-win"><span class="ui-kicker">Roles</span><b>${Object.values(
+  const z = SPIRE_ZONES[spireZoneChoice(view, d).zone] ?? SPIRE_ZONES[1];
+  return `<section class="ui-split-stage rh-stage sp-stage" style="--el:${SPIRE_COLOR}" aria-label="The Spire"><span class="sp-poster">${spireTowerArt(Math.max(0, Math.min(10, highest - spireZoneStart(z.id) + 1)), "spire-page")}</span><div class="rh-stage-info"><span class="rh-row">${tag(`Zone ${z.id} · ${z.element}`)}</span><b class="rh-stage-name">The Spire</b><small class="ui-note rh-stage-line">Climb past the Echoes</small><p class="rh-win"><span class="ui-kicker">Roles</span><b>${Object.values(
     SPIRE_ROLES,
   )
     .map((r) => esc(r.name))
@@ -258,7 +320,7 @@ export function spireMarkup(view: SpireView, d: SpireData) {
       ? floorsTab(d)
       : tab === "blessings"
         ? blessingsTab()
-        : climbTab(d);
+        : climbTab(view, d);
   const mode = segmented(
     [
       {
@@ -290,5 +352,5 @@ export function spireMarkup(view: SpireView, d: SpireData) {
     d.loading && !d.spire
       ? `<p class="ui-note" role="status">Loading your climb…</p>`
       : "";
-  return `<section class="ui-panel is-split rh-room sp-room" role="dialog" aria-label="The Spire" data-raid-mode="spire" style="--boss:${SPIRE_COLOR}">${stage(d)}<div class="ui-split-main"><header class="ui-panel-head rh-head">${button("All bosses", { size: "s", icon: "back", attrs: { "data-raid-back": true } })}<span class="ui-note rh-hint">Ten floors a zone: waves, an elite on 5, a boss on 10.</span>${iconButton("cancel", "Back to the Lobby", { class: "ui-close", "data-ui-close": true })}</header>${tabRow}<div class="ui-panel-body rh-body sp-body" data-raid-region="body" data-tab="${tab}">${loading}${body}<p class="ui-note rh-status" role="status">${esc(view.status)}</p></div>${foot}</div></section>`;
+  return `<section class="ui-panel is-split rh-room sp-room" role="dialog" aria-label="The Spire" data-raid-mode="spire" style="--boss:${SPIRE_COLOR}">${stage(view, d)}<div class="ui-split-main"><header class="ui-panel-head rh-head">${button("All bosses", { size: "s", icon: "back", attrs: { "data-raid-back": true } })}<span class="ui-note rh-hint">Ten floors a zone: waves, an elite on 5, a boss on 10.</span>${iconButton("cancel", "Back to the Lobby", { class: "ui-close", "data-ui-close": true })}</header>${tabRow}<div class="ui-panel-body rh-body sp-body" data-raid-region="body" data-tab="${tab}">${loading}${body}<p class="ui-note rh-status" role="status">${esc(view.status)}</p></div>${foot}</div></section>`;
 }

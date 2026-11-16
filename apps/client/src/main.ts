@@ -360,7 +360,11 @@ import {
   drawEliteCrown,
   echoShown,
 } from "./spire-art";
-import { SPIRE_PARTY } from "../../../packages/shared/src/spire";
+import {
+  SPIRE_PARTY,
+  SPIRE_ZONES,
+  spireZoneStart,
+} from "../../../packages/shared/src/spire";
 import { spireCourtWalls } from "../../../packages/shared/src/spire-court";
 import {
   SPIRE_SUMMIT_FLOOR,
@@ -374,6 +378,13 @@ import {
   type SpireCourtView,
 } from "./spire-court-rig";
 import { paintSpireSummitGrade, spireFloorTint } from "./spire-court-art";
+/**
+ * A zone's boss floor texture, painted while the stairs below it are open:
+ * zone 1 fights on the Coliseum with the summit grade, zone 2 in Tidelotl's
+ * lagoon (the floor showArena picks from the snapshot's arena id).
+ */
+const spireBossFloor = (zone: number) =>
+  SPIRE_ZONES[zone]?.court === "lagoon" ? "lagoon" : SPIRE_SUMMIT_FLOOR;
 import { isRaidFloor, paintRaidFloor } from "./raid-floors";
 import {
   isIllustratedRaidFloor,
@@ -1341,7 +1352,9 @@ function roomData(watch: boolean): RoomData {
     watch,
     code: s.code,
     boss: s.raid?.boss,
-    spire: s.raid?.spire ? { problem: s.raid.spire.problem } : undefined,
+    spire: s.raid?.spire
+      ? { problem: s.raid.spire.problem, zone: s.raid.spire.zone }
+      : undefined,
     rounds: roundsNeeded(s.mutators),
     seats: players.map((p, i) => {
       const character = p.id === myId ? selected : p.character;
@@ -2711,7 +2724,13 @@ function syncFighterArt() {
   ]);
 }
 /** Start a Spire climb from the Raid Hub (a raid room; the server checks where it starts). */
-async function startSpire(options: { solo?: boolean; returnTab?: SpireTab }) {
+async function startSpire(options: {
+  solo?: boolean;
+  returnTab?: SpireTab;
+  /** The zone to climb (the server checks every climber has earned it). */
+  zone?: number;
+}) {
+  const zone = SPIRE_ZONES[options.zone ?? 1] ? (options.zone ?? 1) : 1;
   if (!accountsUI.ensurePlayer()) return;
   if (myId) return toast("Leave your current room first.");
   if (!connected) return toast("Waiting for the server connection.");
@@ -2727,13 +2746,13 @@ async function startSpire(options: { solo?: boolean; returnTab?: SpireTab }) {
       localStorage.getItem("arena-name") ??
       "Player",
     mode: "raid",
-    spire: 0,
+    spire: spireZoneStart(zone),
   });
   identity(reply);
   if (!reply.ok) return;
   raidRoomReturn = {
     code: reply.code!,
-    boss: "grumblecrag",
+    boss: SPIRE_ZONES[zone].boss,
     tab: "party",
     spire: options.returnTab ?? "climb",
   };
@@ -4698,7 +4717,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       if (next && ahead !== this.spirePrepared) {
         this.spirePrepared = ahead;
         this.spireRig.prepare(next);
-        if (next.kind === "boss") this.floorTexture(SPIRE_SUMMIT_FLOOR);
+        if (next.kind === "boss") this.floorTexture(spireBossFloor(next.zone));
       }
       if (spire.kind !== "boss") {
         fxFor(this).setOccluders(this.spireRig.fronts, fighterDepth);

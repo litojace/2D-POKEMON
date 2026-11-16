@@ -95,7 +95,11 @@ for (const size of SIZES)
       await snap(page, info, `spire-page-climb-${size.name}`);
       await room.locator('[data-ui-spire-tab="floors"]').click();
       const floors = room.locator("[data-spire-floor]");
-      await expect(floors).toHaveCount(10);
+      // Zone 1's ten floors, then zone 2's (locked: checkpoint 1).
+      await expect(floors).toHaveCount(20);
+      await expect(room.locator('[data-spire-floor="11"]')).toHaveClass(
+        /is-locked/,
+      );
       await expect(room.locator('[data-spire-floor="1"]')).toHaveClass(
         /is-done/,
       );
@@ -425,8 +429,11 @@ test("floor 10: the Ascendant's briefing, the fight and zone 1 conquered", async
     await expect(results.locator(".spire-rewards")).toContainText(
       "Earthshaker of the Spire",
     );
-    // No checkpoint at floor 11 until zone 2 exists.
-    await expect(results.locator(".rc-stat").nth(1)).toContainText("1");
+    // Zone 1 conquered: the checkpoint moves on to floor 11 (zone 2).
+    await expect(results.locator(".rc-stat").nth(1)).toContainText("11");
+    await expect(results.locator(".spire-conquered")).toContainText(
+      "Zone 2 opens at floor 11",
+    );
     await expect(results.locator(".rc-stat").first()).toContainText("10");
     await expect(results.locator("#raid-retry")).toHaveText(/Climb again/);
     await page.waitForTimeout(400);
@@ -472,3 +479,227 @@ test("Echoes fade from the court once the climb ends", async ({
     await context.close();
   }
 });
+
+// ------------------------------------------------------------------ Zone 2
+const CLEARED_BOTH = {
+  ...CLEARED,
+  bosses: {
+    ...CLEARED.bosses,
+    tidewyrm: { clears: 1, highestPeril: 3, bestSeconds: 260, runs: 2 },
+  },
+};
+const CLIMB_ZONE2 = {
+  season: 0,
+  highestFloor: 12,
+  checkpoint: 11,
+  attempts: 5,
+  claimed: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+  clears: { grumblecrag: 2, tidewyrm: 1 },
+};
+const ZONE2_SIZES = [
+  { name: "desktop", width: 1440, height: 900, phone: false },
+  { name: "844x390", width: 844, height: 390, phone: true },
+  { name: "667x375", width: 667, height: 375, phone: true },
+];
+for (const size of ZONE2_SIZES)
+  test(`zone 2 (the Lagoon): the zone picker, its floors, the elite, the Ascendant Tidelotl and zone 2 conquered at ${size.name}`, async ({
+    browser,
+  }, info) => {
+    test.setTimeout(240_000);
+    const context = await browser.newContext({
+      viewport: { width: size.width, height: size.height },
+      isMobile: size.phone,
+      hasTouch: size.phone,
+    });
+    try {
+      const page = await context.newPage();
+      await withRecords(page, CLEARED_BOTH, CLIMB_ZONE2);
+      const errors = await openHub(page);
+      await page.click('.lobby-rail [data-lobby-action="raids"]');
+      const room = page.locator(".rh-room");
+      await room.locator("[data-raid-spire]").click();
+      await expect(room).toHaveAttribute("data-raid-mode", "spire");
+      // The zone picker: zone 2 picked (checkpoint 11), zone 1 open too.
+      const zone1 = room.locator('[data-ui-spire-zone="1"]'),
+        zone2 = room.locator('[data-ui-spire-zone="2"]');
+      await expect(zone2).toHaveAttribute("aria-pressed", "true");
+      await expect(zone1).toBeEnabled();
+      await expect(room.locator(".rh-foot-note")).toContainText(
+        "zone 2 from floor 11",
+      );
+      for (const z of [zone1, zone2]) {
+        const b = await z.boundingBox();
+        expect(b!.height).toBeGreaterThanOrEqual(44);
+      }
+      await zone2.scrollIntoViewIfNeeded();
+      await settle(page);
+      expect(await layoutProblems(page, { phone: size.phone })).toEqual([]);
+      await snap(page, info, `spire-z2-picker-${size.name}`);
+      // Replay zone 1: the start follows the pick.
+      await zone1.click();
+      await expect(zone1).toHaveAttribute("aria-pressed", "true");
+      await expect(room.locator(".rh-foot-note")).toContainText(
+        "zone 1 from floor 1",
+      );
+      await zone2.click();
+      await expect(zone2).toHaveAttribute("aria-pressed", "true");
+      // The floors, zone by zone.
+      await room.locator('[data-ui-spire-tab="floors"]').click();
+      await expect(room.locator("[data-spire-floor]")).toHaveCount(20);
+      await expect(room.locator('[data-spire-floor="12"]')).toHaveClass(
+        /is-done/,
+      );
+      await expect(room.locator('[data-spire-floor="13"]')).toHaveClass(
+        /is-next/,
+      );
+      await expect(room.locator('[data-spire-floor="20"]')).toContainText(
+        "Ascendant Tidelotl",
+      );
+      const head2 = room.locator('[data-spire-zone-floors="2"] .sp-zone-head');
+      await expect(head2).toContainText("Lagoon");
+      // (After the tab's glide: scrolling mid-glide left a stale band in
+      // software Chromium, as the Floors tab's own test notes.)
+      await settle(page);
+      await head2.scrollIntoViewIfNeeded();
+      await page.waitForTimeout(300);
+      expect(await layoutProblems(page, { phone: size.phone })).toEqual([]);
+      await snap(page, info, `spire-z2-floors-${size.name}`);
+      await page
+        .locator(".rh-room [data-ui-close]")
+        .click()
+        .catch(() => {});
+
+      // Floor 11: Water Echoes on the Spire's court.
+      await climb(page, { floor: 11, seats: 2 });
+      await expect(page.locator('#raid-hud [data-hud="phase"]')).toHaveText(
+        /^Floor 11 · Wave 1\/3 · \d Echo(es)?$/,
+      );
+      await expect(page.locator('#raid-hud [data-hud="title"]')).toHaveText(
+        "THE SPIRE · FLOOR 11",
+      );
+      const court = await page.evaluate(() => {
+        const s = (window as any).__snap;
+        return {
+          zone: s.raid.spire.zone,
+          boss: s.raid.boss,
+          islands: s.raid.islands ?? null,
+        };
+      });
+      expect(court).toEqual({ zone: 2, boss: "tidewyrm", islands: null });
+      await page.evaluate(() => (window as any).__spireStep(0.5));
+      await page.waitForTimeout(500);
+      await snap(page, info, `spire-z2-floor11-${size.name}`);
+
+      // Floor 15: the captain, with Tidelotl's bubble volleys.
+      await page.evaluate(() => {
+        const w = window as any;
+        w.__room("spire", { floor: 15, stage: "playing" });
+        w.__push();
+      });
+      await expect(page.locator('#raid-hud [data-hud="title"]')).toHaveText(
+        "FLOOR 15 · ECHO CAPTAIN GLACELLE",
+      );
+      for (let i = 0; i < 20; i++) {
+        const bubbles = await page.evaluate(() => {
+          const w = window as any;
+          w.__spireStep(0.4);
+          return (w.__snap.raid.bubbles ?? []).length;
+        });
+        if (bubbles) break;
+      }
+      await expect
+        .poll(() =>
+          page.evaluate(
+            () => ((window as any).__snap.raid.bubbles ?? []).length,
+          ),
+        )
+        .toBeGreaterThan(0);
+      await expect(page.locator("#raid-hud .raid-callout")).toHaveText(
+        /bubble|Bubble|borrowed Tidelotl/,
+      );
+      await page.waitForTimeout(400);
+      await snap(page, info, `spire-z2-elite-${size.name}`);
+
+      // Floor 20: the Ascendant Tidelotl's briefing, in the lagoon.
+      await page.evaluate(() => {
+        const w = window as any;
+        w.__room("spire", { floor: 20, stage: "briefing" });
+        w.__push();
+      });
+      const brief = page.locator(".rc-card.is-briefing");
+      await expect(brief.locator("h2")).toHaveText(
+        "Floor 20 · Ascendant Tidelotl",
+      );
+      await expect(brief.locator(".spire-new-attacks li")).toHaveCount(2);
+      await expect(brief.locator(".spire-new-attacks")).toContainText(
+        "Breaker Wall",
+      );
+      await expect(brief).toContainText("Tidelotl, evolved");
+      await expect(brief).toContainText("Tidelotl's raid, step by step");
+      await expect(page.locator("#raid-instructions")).toBeInViewport();
+      await settle(page);
+      await snap(page, info, `spire-z2-boss-briefing-${size.name}`);
+
+      // The fight: the lagoon court, the raid's bar, the floor and its clock.
+      await page.evaluate(() => {
+        const w = window as any;
+        w.__room("spire", { floor: 20, stage: "playing" });
+        w.__push();
+      });
+      await expect(page.locator('#raid-hud [data-hud="title"]')).toHaveText(
+        /^ASCENDANT TIDELOTL/,
+      );
+      await expect(page.locator('#raid-hud [data-hud="phase"]')).toHaveText(
+        "Floor 20 · Phase 1/3",
+      );
+      const fight = await page.evaluate(() => {
+        const s = (window as any).__snap;
+        return {
+          arena: s.arena,
+          variant: s.raid.variant,
+          boss: s.players.find((p: any) => p.raidBoss)?.name,
+          islands: (s.raid.islands ?? []).length,
+        };
+      });
+      expect(fight).toEqual({
+        arena: "lagoon",
+        variant: "ascendant",
+        boss: "Ascendant Tidelotl",
+        islands: 4,
+      });
+      for (let i = 0; i < 20; i++) {
+        const live = await page.evaluate(() => {
+          const w = window as any;
+          w.__spireStep(0.5);
+          return w.__snap.raid.warnings.length;
+        });
+        if (live) break;
+      }
+      await page.waitForTimeout(400);
+      await snap(page, info, `spire-z2-boss-fight-${size.name}`);
+
+      // It falls: zone 2 conquered, floor 20's title.
+      await page.evaluate(() => {
+        const w = window as any;
+        w.__room("spire", { floor: 20, stage: "finished" });
+        w.__push();
+      });
+      const results = page.locator(".rc-card.is-results");
+      await expect(results.locator("h2")).toHaveText("Zone 2 conquered!");
+      await expect(results.locator(".spire-conquered")).toContainText(
+        "Ascendant Tidelotl defeated",
+      );
+      await expect(results.locator(".spire-conquered")).toContainText(
+        "More floors are coming",
+      );
+      await expect(results.locator(".spire-rewards")).toContainText(
+        "Tidecaller of the Spire",
+      );
+      await expect(results.locator("#raid-retry")).toBeInViewport();
+      await settle(page);
+      await snap(page, info, `spire-z2-results-${size.name}`);
+      expect(errors).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });

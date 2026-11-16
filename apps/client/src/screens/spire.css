@@ -81,6 +81,69 @@
   color: #d6def0;
 }
 
+/* The zone picker (Climb tab): one finger-tall button per zone. */
+.sp-zones {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+}
+.sp-zone {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 6px 12px;
+  border-radius: var(--rad-md);
+  border: 1px solid var(--ui-line);
+  background: var(--fill-card);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.sp-zone.is-on {
+  border-color: color-mix(in srgb, var(--boss) 75%, transparent);
+  background: color-mix(in srgb, var(--boss) 16%, var(--ui-bg-1));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--boss) 40%, transparent);
+}
+.sp-zone:disabled {
+  cursor: default;
+  opacity: 0.66;
+}
+.sp-zone:focus-visible {
+  outline: 2px solid var(--boss);
+  outline-offset: 2px;
+}
+.sp-zone-num {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 800;
+  text-align: center;
+  color: var(--boss);
+}
+.sp-zone-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.sp-zone-text b,
+.sp-zone-text small {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sp-zone-floors {
+  display: grid;
+  gap: 6px;
+}
+.sp-zone-head {
+  margin: 4px 0 0;
+}
+.sp-zone-head small {
+  font-weight: 400;
+}
+
 /* Floors: one row each, with its Echoes, reward and state. */
 .sp-floors {
   display: grid;
@@ -230,6 +293,16 @@
     padding: 3px 8px;
   }
   .sp-floor-num {
+    font-size: 16px;
+  }
+  .sp-zone {
+    /* A finger tall after the phone UI scale (tests: 44 px drawn). */
+    min-height: 46px;
+    padding: 3px 8px;
+    grid-template-columns: 24px minmax(0, 1fr) auto;
+    gap: 6px;
+  }
+  .sp-zone-num {
     font-size: 16px;
   }
   .sp-floor-state {

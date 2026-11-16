@@ -9,6 +9,7 @@ import {
 import {
   spireStartState,
   spireUnlocked,
+  spireZoneChoice,
 } from "../../apps/client/src/screens/spire-view";
 
 // The Spire in the Raid Hub: the last tile of the boss list, locked until
@@ -105,7 +106,10 @@ describe("the Spire page", () => {
   });
   it("lists each floor with its state and first-clear reward", () => {
     const html = page("floors");
-    expect((html.match(/data-spire-floor=/g) ?? []).length).toBe(10);
+    // Both zones, each under its own heading.
+    expect((html.match(/data-spire-floor=/g) ?? []).length).toBe(20);
+    expect(html).toContain('data-spire-zone-floors="1"');
+    expect(html).toContain('data-spire-zone-floors="2"');
     expect(html).toMatch(/sp-floor is-done" data-spire-floor="4"/);
     expect(html).toMatch(/sp-floor is-next" data-spire-floor="5"/);
     expect(html).toMatch(/sp-floor is-locked" data-spire-floor="6"/);
@@ -116,7 +120,7 @@ describe("the Spire page", () => {
     expect(html).toContain("Earthshaker of the Spire");
     expect(html).toContain("Echo Breaker");
   });
-  it("shows floor 10 cleared, and checkpoint 1 until zone 2 exists", () => {
+  it("shows floor 10 cleared, and opens zone 2 from checkpoint 11", () => {
     const done = data({
       spire: climb({
         highestFloor: 10,
@@ -126,10 +130,57 @@ describe("the Spire page", () => {
     });
     const html = page("floors", done);
     expect(html).toMatch(/sp-floor is-done" data-spire-floor="10"/);
-    expect(page("climb", done)).toContain("from floor 1");
-    expect(spireStartState({ play: "solo", status: "" }, done).note).toContain(
-      "from floor 1",
+    expect(html).toMatch(/sp-floor is-next" data-spire-floor="11"/);
+    // The climb starts in zone 2 by default; zone 1 can be picked again.
+    expect(page("climb", done)).toContain("from floor 11");
+    expect(spireStartState({ play: "solo", status: "" }, done)).toMatchObject({
+      ok: true,
+      zone: 2,
+    });
+    expect(
+      spireStartState({ play: "solo", status: "", spireZone: 1 }, done),
+    ).toMatchObject({ ok: true, zone: 1 });
+    expect(
+      spireStartState({ play: "solo", status: "", spireZone: 1 }, done).note,
+    ).toContain("from floor 1 ");
+  });
+  it("offers zone 1 always and zone 2 once its checkpoint is earned (the zone picker)", () => {
+    const climbPage = (d: RaidData, zone?: number) =>
+      raidMarkup(
+        raidView("grumblecrag", {
+          mode: "spire",
+          spireTab: "climb",
+          spireZone: zone,
+        }),
+        d,
+      );
+    // Checkpoint 1: zone 2 is shown, locked.
+    const fresh = climbPage(data());
+    expect(fresh).toMatch(/data-ui-spire-zone="1" aria-pressed="true"/);
+    expect(fresh).toMatch(
+      /data-ui-spire-zone="2" aria-pressed="false" disabled/,
     );
+    expect(fresh).toContain("Conquer zone 1 first");
+    // Asking for zone 2 without the checkpoint still climbs zone 1.
+    expect(spireZoneChoice({ spireZone: 2 }, data())).toMatchObject({
+      zone: 1,
+      start: 1,
+    });
+    const at11 = data({ spire: climb({ highestFloor: 12, checkpoint: 11 }) });
+    const open = climbPage(at11);
+    expect(open).toMatch(/data-ui-spire-zone="2" aria-pressed="true"/);
+    expect(open).not.toMatch(/data-ui-spire-zone="2"[^>]*disabled/);
+    expect(open).toContain("Zone 2 · Water");
+    expect(climbPage(at11, 1)).toMatch(
+      /data-ui-spire-zone="1" aria-pressed="true"/,
+    );
+    expect(climbPage(at11, 1)).toContain("Zone 1 · Earth");
+    // Zone 2's floors are locked until then, Tidelotl's Ascendant at the top.
+    const floors = page("floors");
+    expect(floors).toMatch(/sp-floor is-locked" data-spire-floor="11"/);
+    expect(floors).toContain("Ascendant Tidelotl");
+    expect(floors).toContain("Breaker Wall");
+    expect(floors).toContain("Tidecaller of the Spire");
   });
   it("shows every blessing in its codex", () => {
     expect(

@@ -334,3 +334,137 @@ for (const s of SIZES)
       await context.close();
     }
   });
+
+// Zone 2 (the Lagoon) on the same screens: the zone picker and the floors
+// by zone in the hub, floor 11's HUD, the elite's, the Ascendant Tidelotl's
+// briefing and boss bar, and zone 2 conquered.
+const ZONE2 = {
+  raids: {
+    ...RECORDS.raids,
+    bosses: {
+      ...RECORDS.raids.bosses,
+      tidewyrm: { clears: 1, highestPeril: 3, bestSeconds: 260, runs: 2 },
+    },
+  },
+  spire: {
+    season: 0,
+    highestFloor: 12,
+    checkpoint: 11,
+    attempts: 5,
+    claimed: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+    clears: { grumblecrag: 2, tidewyrm: 1 },
+  },
+};
+for (const s of SIZES)
+  test(`the Spire's zone 2 on touch screens at ${s.name}`, async ({
+    browser,
+  }, info) => {
+    test.setTimeout(240_000);
+    const context = await browser.newContext({
+      viewport: { width: s.width, height: s.height },
+      isMobile: true,
+      hasTouch: true,
+    });
+    try {
+      const page = await context.newPage();
+      await page.addInitScript((r) => {
+        const w = window as any;
+        w.__raids = r.raids;
+        w.__spire = r.spire;
+      }, ZONE2);
+      const errors = await openHub(page);
+      await setInsets(page, s.inset);
+      const phone = s.height < 500;
+      await page.click('.lobby-rail [data-lobby-action="raids"]');
+      await page.locator(".rh-room [data-raid-spire]").click();
+      // The zone picker: both zones, finger-sized, inside the safe area.
+      const picker = page.locator(".rh-room .sp-zones");
+      await picker.scrollIntoViewIfNeeded();
+      await settle(page);
+      await expect(picker.locator("[data-ui-spire-zone]")).toHaveCount(2);
+      await expect(
+        picker.locator('[data-ui-spire-zone="2"][aria-pressed="true"]'),
+      ).toBeVisible();
+      inSafe(await boxOf(page, ".rh-room .sp-zones"), s, "zone picker");
+      expect(await layoutProblems(page, { inset: s.inset, phone })).toEqual([]);
+      await touchTargets(page, ".rh-room .sp-zones");
+      await touchTargets(page, ".rh-room .ui-panel-foot");
+      await snap(page, info, `spire-z2-safe-picker-${s.name}`);
+      // The floors tab: zone 2's heading and rows.
+      await page.locator('[data-ui-spire-tab="floors"]').click();
+      const head = page.locator('[data-spire-zone-floors="2"] .sp-zone-head');
+      await head.scrollIntoViewIfNeeded();
+      await settle(page);
+      expect(await layoutProblems(page, { inset: s.inset, phone })).toEqual([]);
+      await snap(page, info, `spire-z2-safe-floors-${s.name}`);
+
+      // Floor 11 with a teammate: the HUD line.
+      await page.evaluate(() =>
+        (window as any).__room("spire", {
+          stage: "playing",
+          floor: 11,
+          seats: 2,
+        }),
+      );
+      await page
+        .locator(".rh-room [data-ui-close]")
+        .click()
+        .catch(() => {});
+      await openPlayPanel(page);
+      await createRoom(page);
+      await pushUntilBattle(page);
+      await setInsets(page, s.inset);
+      await expect(page.locator('#raid-hud [data-hud="phase"]')).toHaveText(
+        /^Floor 11 · Wave/,
+      );
+      await hudFits(page, s);
+      await snap(page, info, `spire-z2-safe-wave-${s.name}`);
+
+      // The elite's HUD (its name in the title).
+      await page.evaluate(() => {
+        const w = window as any;
+        w.__room("spire", { floor: 15, stage: "playing" });
+        w.__push();
+      });
+      await expect(page.locator('#raid-hud [data-hud="phase"]')).toHaveText(
+        "Floor 15 · Elite",
+      );
+      await hudFits(page, s);
+      await snap(page, info, `spire-z2-safe-elite-${s.name}`);
+
+      // The Ascendant Tidelotl's briefing, its boss bar, and the results.
+      await page.evaluate(() => {
+        const w = window as any;
+        w.__room("spire", { floor: 20, stage: "briefing" });
+        w.__push();
+      });
+      await expect(page.locator(".rc-card.is-briefing h2")).toHaveText(
+        "Floor 20 · Ascendant Tidelotl",
+      );
+      await cardFits(page, s, ".rc-card.is-briefing", "#raid-instructions");
+      await snap(page, info, `spire-z2-safe-briefing-${s.name}`);
+      await page.evaluate(() => {
+        const w = window as any;
+        w.__room("spire", { floor: 20, stage: "playing" });
+        w.__push();
+      });
+      await expect(page.locator('#raid-hud [data-hud="phase"]')).toHaveText(
+        "Floor 20 · Phase 1/3",
+      );
+      await hudFits(page, s);
+      await snap(page, info, `spire-z2-safe-boss-${s.name}`);
+      await page.evaluate(() => {
+        const w = window as any;
+        w.__room("spire", { floor: 20, stage: "finished" });
+        w.__push();
+      });
+      await expect(page.locator(".rc-card.is-results h2")).toHaveText(
+        "Zone 2 conquered!",
+      );
+      await cardFits(page, s, ".rc-card.is-results", "#raid-retry");
+      await snap(page, info, `spire-z2-safe-results-${s.name}`);
+      expect(errors).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });

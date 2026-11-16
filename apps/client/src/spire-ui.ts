@@ -4,13 +4,11 @@
  * raid rite flow and its "rite" message), the countdown, and the results.
  */
 import { CHARACTERS, type Fighter, type Snapshot } from "@arena/shared";
-import {
-  RAID_ATTACKS,
-  type RaidAttack,
-} from "../../../packages/shared/src/raid";
+import { RAID_ATTACKS } from "../../../packages/shared/src/raid";
 import {
   SPIRE_BLESSINGS,
   SPIRE_BLESSING_IDS,
+  SPIRE_ELITE_MECHANICS,
   SPIRE_FLOORS,
   SPIRE_ROLES,
   SPIRE_ZONES,
@@ -40,22 +38,29 @@ const clock = (s: number) =>
     .toString()
     .padStart(2, "0")}`;
 
-/** What the Ascendant brings that its raid didn't (the floor-10 briefing). */
-const ASCENDANT_NEW: RaidAttack[] = ["avalanche", "fissure", "twin-slam"];
+/** The floor's zone (its Ascendant, what it brings, how it reads you). */
+const zoneOf = (f: SpireFloor) => SPIRE_ZONES[f.zone] ?? SPIRE_ZONES[1];
 /** The zone's Ascendant boss for a boss floor. */
-const ascendantOf = (f: SpireFloor) =>
-  SPIRE_ZONES[f.zone]?.ascendant ?? "The Ascendant";
+const ascendantOf = (f: SpireFloor) => zoneOf(f).ascendant;
+/** What the Ascendant brings that its raid didn't (the boss floor's briefing). */
+const ascendantNew = (f: SpireFloor) => zoneOf(f).ascendantMoves;
 
 /** Who a floor sends: each wave's Echoes and their roles. */
 export function spireFloorPlan(f: SpireFloor | undefined) {
   if (!f) return "";
   if (f.kind === "boss")
-    return `<ol class="spire-waves spire-new-attacks" aria-label="New attacks">${ASCENDANT_NEW.map(
-      (k) =>
-        `<li><b>${escape(RAID_ATTACKS[k].name)}</b><span>${escape(RAID_ATTACKS[k].summary)}</span></li>`,
-    ).join("")}</ol>`;
-  if (f.kind === "elite" && f.elite)
-    return `<ol class="spire-waves"><li><b>The captain</b><span>${escape(f.elite.name)} · plays Cragmuff's <b>eruptions</b> (they chase you: keep moving)</span></li><li><b>At half health</b><span>${f.elite.escorts.map((e) => `${escape(CHARACTERS[e.character].name)} (${SPIRE_ROLES[e.role].name})`).join(", ")} join it</span></li></ol>`;
+    return `<ol class="spire-waves spire-new-attacks" aria-label="New attacks">${ascendantNew(
+      f,
+    )
+      .map(
+        (k) =>
+          `<li><b>${escape(RAID_ATTACKS[k].name)}</b><span>${escape(RAID_ATTACKS[k].summary)}</span></li>`,
+      )
+      .join("")}</ol>`;
+  if (f.kind === "elite" && f.elite) {
+    const m = SPIRE_ELITE_MECHANICS[f.elite.mechanic];
+    return `<ol class="spire-waves"><li><b>The captain</b><span>${escape(f.elite.name)} · plays ${escape(m.boss)}'s <b>${escape(m.name)}</b> (${escape(m.hint)})</span></li><li><b>At half health</b><span>${f.elite.escorts.map((e) => `${escape(CHARACTERS[e.character].name)} (${SPIRE_ROLES[e.role].name})`).join(", ")} join it</span></li></ol>`;
+  }
   return `<ol class="spire-waves">${f.waves
     .map(
       (w, i) =>
@@ -67,9 +72,13 @@ export function spireFloorPlan(f: SpireFloor | undefined) {
 export function spireFloorLine(f: SpireFloor | undefined) {
   if (!f) return "";
   if (f.kind === "boss")
-    return `${ascendantOf(f)} · ${ASCENDANT_NEW.map((k) => RAID_ATTACKS[k].name).join(", ")}`;
-  if (f.kind === "elite" && f.elite)
-    return `${f.elite.name}, with Cragmuff's eruptions`;
+    return `${ascendantOf(f)} · ${ascendantNew(f)
+      .map((k) => RAID_ATTACKS[k].name)
+      .join(", ")}`;
+  if (f.kind === "elite" && f.elite) {
+    const m = SPIRE_ELITE_MECHANICS[f.elite.mechanic];
+    return `${f.elite.name}, with ${m.boss}'s ${m.name}`;
+  }
   return f.waves
     .map((w) => w.map((e) => CHARACTERS[e.character].name).join(", "))
     .join(" · ");
@@ -131,7 +140,7 @@ export function spireOverlay(state: Snapshot, me: Fighter) {
         : "No self-revive in this fight: dodge carefully."
       : "Stand beside a fallen ally to revive them.";
     title = `Floor ${s.floor} · ${escape(ascendantOf(floor))}`;
-    body = `<div class="rc-body spire-briefing spire-boss-briefing" tabindex="0" role="region" aria-label="Boss floor briefing"><p class="spire-lead">The top of ${escape(SPIRE_ZONES[floor.zone]?.name ?? "the zone")}: Cragmuff, evolved. Its raid's rules still hold (bait charges into pillars, hit the core when it opens), pushed further: new attacks, combos and fewer openings.</p><span class="ui-kicker">New attacks</span>${spireFloorPlan(floor)}<ul class="spire-rules"><li>${menuIcon("motion")}<span><b>It reads you.</b> Eruptions land where you usually dodge, standing still to attack draws a stomp, a slam may turn into another attack halfway (shown in full), and it hunts whoever kneels to revive.</span></li><li>${menuIcon("sparkle")}<span>Your <b>blessings</b> fight with you. You pick one more before the fight.</span></li><li>${menuIcon("again")}<span>${revive} A defeat ends the climb.</span></li></ul><details class="rc-extra" id="raid-briefing-extra"><summary>Cragmuff's raid, step by step</summary>${raidBriefingGuide(r.boss, me.character, solo)}</details></div>`;
+    body = `<div class="rc-body spire-briefing spire-boss-briefing" tabindex="0" role="region" aria-label="Boss floor briefing"><p class="spire-lead">The top of ${escape(zoneOf(floor).name)}: ${escape(zoneOf(floor).bossLead)}</p><span class="ui-kicker">New attacks</span>${spireFloorPlan(floor)}<ul class="spire-rules"><li>${menuIcon("motion")}<span><b>It reads you.</b> ${escape(zoneOf(floor).bossReads)}</span></li><li>${menuIcon("sparkle")}<span>Your <b>blessings</b> fight with you. You pick one more before the fight.</span></li><li>${menuIcon("again")}<span>${revive} A defeat ends the climb.</span></li></ul><details class="rc-extra" id="raid-briefing-extra"><summary>${escape(zoneOf(floor).bossName)}'s raid, step by step</summary>${raidBriefingGuide(r.boss, me.character, solo)}</details></div>`;
     acts = `<p class="ui-note rc-meta">Boss floor · starts in <span class="spire-briefing-timer">${LIVE_SECONDS}</span> · ${solo ? "Solo" : `${r.partySize} climbers`}</p>${actions(button(waiting ? "Waiting for the team…" : "I’m ready", { kind: "primary", icon: waiting ? undefined : "battle", disabled: waiting, attrs: { id: "raid-instructions", "aria-label": waiting ? "Waiting for the team" : `I’m ready — fight ${ascendantOf(floor)}` } }))}`;
   } else if (state.phase === "briefing") {
     const waiting = state.instructionsReady.includes(me.id);
@@ -176,8 +185,9 @@ export function spireOverlay(state: Snapshot, me: Fighter) {
   } else if (state.phase === "finished") {
     const won = r.result === "victory";
     const top = SPIRE_FLOORS[s.best];
-    // The zone's boss beaten, nothing built above it: the zone is conquered.
-    const conquered = won && top?.kind === "boss" && !SPIRE_FLOORS[s.best + 1];
+    // The zone's boss beaten: the zone is conquered (a climb ends there).
+    const conquered = won && top?.kind === "boss";
+    const nextZone = conquered ? SPIRE_FLOORS[s.best + 1] : undefined;
     title = conquered
       ? `Zone ${top.zone} conquered!`
       : won
@@ -203,14 +213,17 @@ export function spireOverlay(state: Snapshot, me: Fighter) {
       coins || titles.length
         ? `<div class="spire-rewards" role="status"><span class="ui-kicker">First clears</span>${coins ? `<span class="ui-price"><i class="ui-coin" aria-hidden="true"></i><span>${coins}<span class="sr-only"> coins</span></span></span>` : ""}${titles.map((t) => `<span class="ui-tag">${menuIcon("leaderboard")}${escape(t)}</span>`).join("")}</div>`
         : "";
+    // This room climbs its zone again from its start; the account's
+    // checkpoint moves on to the next zone once this one is conquered.
     const next = spireStartCheckpoint(
       Math.max(s.startFloor, s.best + 1),
       s.ceiling,
     );
+    const checkpoint = conquered ? spireStartCheckpoint(s.best + 1) : next;
     const banner = conquered
-      ? `<p class="spire-conquered" role="status">${menuIcon("leaderboard")}<span><b>${escape(ascendantOf(top))} defeated.</b> ${escape(SPIRE_ZONES[top.zone]?.name ?? "")} is yours. More floors are coming.</span></p>`
+      ? `<p class="spire-conquered" role="status">${menuIcon("leaderboard")}<span><b>${escape(ascendantOf(top))} defeated.</b> ${escape(zoneOf(top).name)} is yours. ${nextZone ? `Zone ${nextZone.zone} opens at floor ${nextZone.floor}: pick it in the Spire to climb on.` : "More floors are coming."}</span></p>`
       : "";
-    body = `${banner}<div class="rc-summary spire-summary"><div class="rc-stats"><span class="rc-stat"><b class="ui-num">${s.best || "—"}</b><small>Best floor</small></span><span class="rc-stat"><b class="ui-num">${next}</b><small>Checkpoint</small></span><span class="rc-stat"><b class="ui-num">${clock(s.climbSeconds)}</b><small>Climb time</small></span><span class="rc-stat"><b class="ui-num">${r.downs}</b><small>Downs</small></span></div></div>${rewards}<p class="spire-held"><span class="ui-kicker">Blessings</span>${escape(held(state, me.id))}</p>${saved ? `<p class="rc-save${!saving && !failed ? " is-saved" : failed ? " is-error" : ""}" role="status">${saved}</p>` : ""}${conquered ? "" : `<p class="rc-tip">${escape(r.message)}</p>`}`;
+    body = `${banner}<div class="rc-summary spire-summary"><div class="rc-stats"><span class="rc-stat"><b class="ui-num">${s.best || "—"}</b><small>Best floor</small></span><span class="rc-stat"><b class="ui-num">${checkpoint}</b><small>Checkpoint</small></span><span class="rc-stat"><b class="ui-num">${clock(s.climbSeconds)}</b><small>Climb time</small></span><span class="rc-stat"><b class="ui-num">${r.downs}</b><small>Downs</small></span></div></div>${rewards}<p class="spire-held"><span class="ui-kicker">Blessings</span>${escape(held(state, me.id))}</p>${saved ? `<p class="rc-save${!saving && !failed ? " is-saved" : failed ? " is-error" : ""}" role="status">${saved}</p>` : ""}${conquered ? "" : `<p class="rc-tip">${escape(r.message)}</p>`}`;
     const readyCount = heroes.filter((p) => p.ready).length;
     const retryWait = me.ready || !heroes.every((p) => p.connected);
     acts = `<p class="ui-note rc-meta">${heroes.length === 1 ? `A new climb from floor ${next} · no blessings` : `${readyCount}/${heroes.length} ready · everyone confirms to climb again`}</p>${actions(
