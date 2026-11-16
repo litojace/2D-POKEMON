@@ -65,11 +65,11 @@ export async function openPlaza(page: Page) {
 }
 
 /**
- * Leaving a raid room returns to the Raid Hall (that boss's page, opened
+ * Leaving a raid room returns to the boss list (that boss's page, opened
  * after the Lobby is back), not to the Lobby: close it with Back to the
  * Lobby and wait until it has gone.
  */
-export async function closeRaidHall(page: Page) {
+export async function closeRaids(page: Page) {
   const hall = page.locator(".ui-panel.rh-room:not([data-ui-leaving])");
   await expect(hall).toBeVisible({ timeout: 20_000 });
   await hall.locator("[data-ui-close]").first().click();
@@ -87,9 +87,25 @@ export async function openPlayPanel(page: Page) {
   await expect(page.locator("#lobby-mode-menu")).toBeHidden();
 }
 
-/** A button on the Lobby's menu rail: fighters, wardrobe, shop, raids, journey, missions, ranks, friends. */
+/**
+ * A Lobby screen. The menu rail has fighters, shop, raids, missions, ranks
+ * and friends; the Wardrobe is the Shop's other tab, and the Journey opens
+ * from its card.
+ */
 export async function hubMenu(page: Page, action: string) {
+  if (action === "wardrobe") return openWardrobe(page);
+  if (action === "journey") return page.click("#lobby-journey-card");
   await page.click(`.lobby-rail [data-lobby-action="${action}"]`);
+}
+
+/** The Wardrobe: the Shop's other tab. */
+export async function openWardrobe(page: Page) {
+  await page.click('.lobby-rail [data-lobby-action="shop"]');
+  await page.click('.fit-room [data-ui-mode="wardrobe"]');
+  await expect(page.locator(".fit-room")).toHaveAttribute(
+    "data-fit-mode",
+    "wardrobe",
+  );
 }
 
 /**

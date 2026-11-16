@@ -41,7 +41,6 @@ const MOON_STAGGER = 20;
 export class EmberwingArena extends RaidArena {
   private floorAt = new Map<string, number>();
   private brazierTargets = new Map<string, number>();
-  private ringStruck = new Map<number, Set<string>>();
   private ringHits = new Map<number, Set<string>>();
   /** The dive under way turns and comes back at this raider when it ends. */
   private returnPass?: { targetId?: string };
@@ -94,7 +93,6 @@ export class EmberwingArena extends RaidArena {
       p.litUntil = 0;
     });
     this.brazierTargets.clear();
-    this.ringStruck.clear();
     this.floorAt.clear();
     this.ringHits.clear();
     this.returnPass = undefined;
@@ -137,9 +135,7 @@ export class EmberwingArena extends RaidArena {
     if (this.time - (r.takeoffAt ?? this.time) <= 20)
       r.quickGroundings = (r.quickGroundings ?? 0) + 1;
     r.permanentGround =
-      r.phase === 3 &&
-      (r.chapterGroundings ?? 0) >= E.permanentGround.after &&
-      !r.drill;
+      r.phase === 3 && (r.chapterGroundings ?? 0) >= E.permanentGround.after;
     if (r.permanentGround)
       this.groundedUntil = this.time + E.permanentGround.seconds;
     r.exposedUntil = this.time + E.expose + (r.trait === "updraft" ? 2 : 0);
@@ -155,8 +151,6 @@ export class EmberwingArena extends RaidArena {
     r.emberDive = undefined;
     r.flameRings = [];
     this.ringHits.clear();
-    this.ringStruck.clear();
-    if (r.drill === "brazier-lighting" && r.drillStats) r.drillStats.dodges++;
     r.message = r.permanentGround
       ? `PAPER TORN! The heart stays open for ${E.permanentGround.seconds} seconds!`
       : "GROUNDED! Fire shrinks — strike the exposed heart!";
@@ -177,8 +171,7 @@ export class EmberwingArena extends RaidArena {
         return;
       if (!SKYWARD.has(ability?.id ?? "")) amount *= 0.5;
     }
-    const crash =
-      target.raidBoss && r.airborne && ability?.id === "full-moon" && !r.drill;
+    const crash = target.raidBoss && r.airborne && ability?.id === "full-moon";
     super.damage(target, amount, owner, ability);
     if (crash) {
       r.stagger = Math.min(100, r.stagger + MOON_STAGGER);
@@ -192,7 +185,7 @@ export class EmberwingArena extends RaidArena {
     b.litUntil =
       this.time +
       brazierLifetime(this.raid.partySize, this.raid.phase, this.raid.peril);
-    if (!this.raid.drill && this.raid.contributions?.[by.id])
+    if (this.raid.contributions?.[by.id])
       this.raid.contributions[by.id].pillars++;
     this.event("heal", b, 0xffd778, 0, by.id);
   }
@@ -217,10 +210,7 @@ export class EmberwingArena extends RaidArena {
       for (let k = 0; k <= a.range; k += a.radius)
         this.water(p.x + d.x * k, p.y + d.y * k, a.radius);
     }
-    if (
-      a.id === "heat-cracks" &&
-      (this.raid.airborne || this.raid.drill === "brazier-lighting")
-    )
+    if (a.id === "heat-cracks" && this.raid.airborne)
       this.raid.braziers?.forEach((b, i) => {
         if (Math.hypot(b.x - p.x, b.y - p.y) <= a.radius + E.brazierRadius)
           this.light(i, p);
@@ -240,7 +230,7 @@ export class EmberwingArena extends RaidArena {
       return;
     }
     // Two braziers burn: whatever it planned, it rains on the last lighter.
-    if (this.lastBrazier() !== undefined && this.cunning() > 0) {
+    if (this.lastBrazier() !== undefined) {
       this.lighterRain();
       return;
     }
@@ -250,15 +240,12 @@ export class EmberwingArena extends RaidArena {
     boss.angle = Math.atan2(target.y - boss.y, target.x - boss.x);
     if (kind === "dive-bomb") {
       // It dives where a running raider is heading.
-      const aim =
-        this.cunning() > 0
-          ? leadPoint(target, E.dive.delay, {
-              x0: 90,
-              y0: 90,
-              x1: 1510,
-              y1: 810,
-            })
-          : target;
+      const aim = leadPoint(target, E.dive.delay, {
+        x0: 90,
+        y0: 90,
+        x1: 1510,
+        y1: 810,
+      });
       Object.assign(
         this.warn(
           kind,
@@ -440,7 +427,7 @@ export class EmberwingArena extends RaidArena {
   protected override resolveWarning(w: RaidWarning, boss: Fighter) {
     const r = this.raid;
     if (w.kind === "dive-bomb") {
-      if (!w.followUp && r.phase >= 2 && this.cunning() > 0 && !r.drill)
+      if (!w.followUp && r.phase >= 2)
         this.returnPass = { targetId: w.targetId };
       this.charging = {
         tx: w.tx,
@@ -515,7 +502,6 @@ export class EmberwingArena extends RaidArena {
         );
     }
     this.hitBy = undefined;
-    this.countDodges();
     this.event("raid-impact", w, 0xffa56b, undefined, boss.id);
     this.events[this.events.length - 1].raidRadius = w.radius;
   }
@@ -548,12 +534,10 @@ export class EmberwingArena extends RaidArena {
         this.time >= c.until ||
         Math.hypot(boss.x - c.tx, boss.y - c.ty) < 5
       ) {
-        this.struck = new Set(c.hit);
-        this.countDodges();
         this.charging = undefined;
         r.emberDive = undefined;
         this.warnReturn(boss);
-        if (r.trait === "molting" && !r.drill)
+        if (r.trait === "molting")
           (r.emberFeathers ??= []).push({
             id: ++this.serial,
             x: Math.max(90, Math.min(1510, boss.x - d.y * 85)),
@@ -592,7 +576,7 @@ export class EmberwingArena extends RaidArena {
       !r.airborne &&
       !r.permanentGround &&
       r.exposedUntil <= this.time &&
-      (r.phase >= 2 || r.drill === "brazier-lighting") &&
+      r.phase >= 2 &&
       !this.charging
     )
       this.takeoff();
@@ -634,12 +618,7 @@ export class EmberwingArena extends RaidArena {
       )
         this.ground();
       // The second flame catches: it turns on the last lighter at once.
-      else if (
-        !this.lighterCalled &&
-        this.lastBrazier() !== undefined &&
-        this.cunning() > 0 &&
-        !r.drill
-      ) {
+      else if (!this.lighterCalled && this.lastBrazier() !== undefined) {
         this.lighterCalled = true;
         this.nextAttack = Math.min(this.nextAttack, this.time + 0.4);
       }
@@ -710,8 +689,6 @@ export class EmberwingArena extends RaidArena {
       const before = ring.radius;
       ring.radius = (this.time - ring.startedAt) * E.ring.speed;
       const hits = this.ringHits.get(ring.id) ?? new Set<string>();
-      const struck = this.ringStruck.get(ring.id) ?? new Set<string>();
-      this.ringStruck.set(ring.id, struck);
       this.ringHits.set(ring.id, hits);
       for (const p of this.heroes()) {
         const distance = Math.hypot(p.x - ring.x, p.y - ring.y);
@@ -724,16 +701,12 @@ export class EmberwingArena extends RaidArena {
           continue;
         hits.add(p.id);
         if (p.jumpUntil > this.time) continue;
-        struck.add(p.id);
         this.hitBy = "flame-ring";
         this.damage(p, E.ring.damage, boss.id);
         this.hitBy = undefined;
       }
       if (ring.radius > E.ring.maxRadius) {
-        this.struck = new Set(struck);
-        this.countDodges();
         this.ringHits.delete(ring.id);
-        this.ringStruck.delete(ring.id);
       }
     }
     r.flameRings = (r.flameRings ?? []).filter(

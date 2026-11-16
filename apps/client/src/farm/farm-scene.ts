@@ -91,6 +91,7 @@ import { setInner } from "../ui/patch";
 import { memoryConstrained, sceneDensity } from "../render-budget";
 import { FrameCap } from "../frame-cap";
 import { rumble } from "../game-feel";
+import { bubbleLines } from "../chat/bubble-text";
 
 const svgUrl = (s) =>
   "data:image/svg+xml;charset=utf-8," + encodeURIComponent(s);
@@ -3073,7 +3074,7 @@ export function openFarm(options) {
     }
     el.hidden = false;
     const t = tour?.find((x) => x.id === V.id);
-    el.innerHTML = `<img src="${options.art(V.fighter)}" alt=""><div><b>${esc(V.name)}'s Farm</b><small>${V.dog ? `${I("dog")} ${DOG[V.dog]?.name ?? "A dog"} is on guard. Sneaking may get you caught` : "No guard dog"}</small></div>${options.here ? emoteButtons() : ""}${options.like ? `<button type="button" data-like="${esc(V.id)}" ${t?.liked ? "disabled" : ""}>${t?.liked ? "Liked" : "❤ Like"}</button>` : ""}<button type="button" data-home>← My farm</button>`;
+    el.innerHTML = `<img src="${options.art(V.fighter)}" alt=""><div><b>${esc(V.name)}'s Farm</b><small>${V.dog ? `${I("dog")} ${DOG[V.dog]?.name ?? "A dog"} is on guard. Sneaking may get you caught` : "No guard dog"}</small></div>${options.like ? `<button type="button" data-like="${esc(V.id)}" ${t?.liked ? "disabled" : ""}>${t?.liked ? "Liked" : "❤ Like"}</button>` : ""}<button type="button" data-home>← My farm</button>`;
   }
   async function visitFriend(id) {
     try {
@@ -3185,15 +3186,31 @@ export function openFarm(options) {
             ctx.save();
             ctx.translate(x, y - 128);
             ctx.scale(s, s);
+            // An emote, or a quick-chat phrase in smaller letters.
+            ctx.font =
+              [...a.emote].length > 2
+                ? "700 14px system-ui, sans-serif"
+                : "20px system-ui, 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif";
+            // Sized to its text, wrapped past 150 px: it never runs out.
+            const lines = bubbleLines(
+              a.emote,
+              (t) => ctx.measureText(t).width,
+              150,
+            );
+            const w = Math.max(
+              44,
+              Math.max(...lines.map((t) => ctx.measureText(t).width)) + 20,
+            );
+            const h = 32 + (lines.length - 1) * 17;
             ctx.fillStyle = "#fff";
             ctx.beginPath();
-            ctx.roundRect(-22, -18, 44, 32, 12);
+            ctx.roundRect(-w / 2, 14 - h, w, h, 12);
             ctx.fill();
-            ctx.font =
-              "20px system-ui, 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif";
+            ctx.fillStyle = "#1d2433";
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
-            ctx.fillText(a.emote, 0, -2);
+            for (let i = 0; i < lines.length; i++)
+              ctx.fillText(lines[i], 0, 14 - h + 16 + i * 17);
             ctx.textBaseline = "alphabetic";
             ctx.restore();
           }
@@ -3210,15 +3227,8 @@ export function openFarm(options) {
     }
     el.hidden = false;
     const names = here.present.map((p) => esc(p.name)).join(", ");
-    el.innerHTML = `<div><b>${names} ${here.present.length > 1 ? "are" : "is"} here</b><small>${party ? `Harvest Party: +${PARTY.bonus} crop a harvest · ${Math.ceil(here.partyLeft / 60)} min left today` : "No party minutes left today"}</small></div>${emoteButtons()}`;
+    el.innerHTML = `<div><b>${names} ${here.present.length > 1 ? "are" : "is"} here</b><small>${party ? `Harvest Party: +${PARTY.bonus} crop a harvest · ${Math.ceil(here.partyLeft / 60)} min left today` : "No party minutes left today"}</small></div>`;
   }
-  const emoteButtons = () =>
-    `<span class="fm-emotes">${Object.entries(EMO)
-      .map(
-        ([k, e]) =>
-          `<button type="button" data-emote="${k}" aria-label="${k}">${e}</button>`,
-      )
-      .join("")}</span>`;
   async function loadTour() {
     if (!options.tour) return;
     try {
@@ -6907,18 +6917,7 @@ export function openFarm(options) {
     if (e.target.closest("[data-home]")) void goHome();
     const like = e.target.closest("[data-like]");
     if (like) void likeFarm(like.dataset.like);
-    const em = e.target.closest("[data-emote]");
-    if (em) sendEmote(em.dataset.emote);
   });
-  $("fm-here").addEventListener("click", (e) => {
-    const em = e.target.closest("[data-emote]");
-    if (em) sendEmote(em.dataset.emote);
-  });
-  function sendEmote(k) {
-    sfx("tick");
-    feel.text(cam.x, cam.y - 40, EMO[k] ?? "", "#fff", 40);
-    void ping(k);
-  }
   $("fm-chips").addEventListener("click", (e) => {
     const b = e.target.closest("[data-orb]");
     if (!b) return;
@@ -7528,6 +7527,13 @@ export function openFarm(options) {
   layer.focus({ preventScroll: true });
   return {
     refresh,
+    /** A Nearby chat line from someone on this farm: a bubble over them. */
+    say(accountId, text) {
+      const a = present.get(accountId);
+      if (!a) return;
+      a.emote = text;
+      a.emoteT = performance.now();
+    },
     /** Behind the Lobby or the Plaza: paused (no drawing, sound or polls)
      *  and gone from your farm for visiting friends, but kept as it is. */
     hide() {

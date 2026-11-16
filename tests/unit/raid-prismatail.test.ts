@@ -81,13 +81,12 @@ const attack = (a: PrismatailArena, kind: RaidAttack) =>
   (a as any).startAttack(kind, a.heroes()[0]);
 const resolve = (a: PrismatailArena) => {
   for (const w of a.raid.warnings) {
-    (a as any).struck.clear();
     (a as any).resolveWarning(w, a.boss()!);
   }
   a.raid.warnings = [];
 };
 describe("Prismatail light relay", () => {
-  it("uses its own Sun Atrium, health scaling, chapters, drills and rite", () => {
+  it("uses its own Sun Atrium, health scaling, chapters and rite", () => {
     const a = setup(4);
     expect(a).toBeInstanceOf(PrismatailArena);
     expect(a.arenaId).toBe("sun-atrium");
@@ -227,17 +226,7 @@ describe("Prismatail light relay", () => {
     a.raid.result = "victory";
     expect(a.feat()).toBe(true);
   });
-  it("never credits practice, and clears mechanics for drill changes, results and retries", () => {
-    const a = setup();
-    a.raid.drill = "light-relay";
-    run(a, 3);
-    expect(a.raid.contributions!.p0.pillars).toBe(0);
-    expect(a.raid.drillStats?.dodges ?? 0).toBe(0);
-    a.setDrill("glare");
-    expect(a.raid.lightLinks).toEqual([]);
-    expect(a.raid.lightHold).toBe(0);
-    a.stopDrill();
-    expect(a.phase).toBe("lobby");
+  it("clears its mechanics on a forfeit and a retry", () => {
     const b = setup();
     run(b, 2.3);
     b.forfeit("p0");
@@ -542,11 +531,6 @@ describe("Prismatail AI: scrambled mirrors, held relays and steered attacks", ()
         m.scrambleAt !== undefined ? [i] : [],
       ),
     ).toHaveLength(1);
-    // Practice never scrambles.
-    const c = setup();
-    c.raid.drill = "light-relay";
-    run(c, 3.5 + P.expose);
-    expect(c.raid.mirrors!.every((m) => m.scrambleAt === undefined)).toBe(true);
   });
   it("holds 1.2 s with a party, 1 s solo and 2 s solo in the last chapter, and returns 3 s after an exposure", () => {
     expect(P.hold).toEqual({ party: 1.2, solo: 1, soloFinal: 2 });

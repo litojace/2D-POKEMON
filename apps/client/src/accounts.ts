@@ -5,16 +5,16 @@ import {
   NAME_NOT_ALLOWED,
 } from "../../../packages/shared/src/name-filter";
 import { framedAvatar } from "./portraits";
-import { openFittingRoom, type FittingRoom } from "./screens/fitting-room";
+import type { FittingRoom } from "./screens/fitting-room";
 import type { FitMode, ShopSection } from "./screens/fitting-room-view";
-import { openJourney, type JourneyScreen } from "./screens/journey";
+import type { JourneyScreen } from "./screens/journey";
 import type { JourneyTab } from "./screens/journey-view";
 import {
   playerLevel,
   JOURNEY_ITEM_BY_ID,
 } from "../../../packages/shared/src/journey";
 import { formSubmitButton } from "./dialog";
-import { openRaids, type RaidScreen } from "./screens/raid-hall";
+import type { RaidScreen } from "./screens/raid-hall";
 import type { RaidSeat, RaidTab } from "./screens/raid-hall-view";
 import { iconLabel } from "./menu-icons";
 import { coinChip, compactCoins, leafChip, coins } from "./shop-ui";
@@ -134,6 +134,8 @@ type Hooks = {
   inviteFriend?: (id: string) => Promise<{ ok: boolean; error?: string }>;
   /** Where Friends opens while you are in a private room (its picker's place). */
   friendsHost?: () => HTMLElement | undefined;
+  /** Open the chat on a conversation with a friend (chat/chat-ui.ts). */
+  messageFriend?: (id: string, name: string) => void;
   /** Friends closed (a room puts its picker back). */
   onFriendsClosed?: () => void;
   notify: (message: string) => void;
@@ -153,7 +155,7 @@ type Hooks = {
   startAdventure?: (mode: string) => void;
   startRaid?: (
     boss: RaidBossId,
-    options: { solo?: boolean; drill?: string; returnTab?: RaidTab },
+    options: { solo?: boolean; returnTab?: RaidTab },
   ) => void;
   /** Your Lobby party for the raid seats, and whether you can start. */
   raidParty?: () => { party: RaidSeat[]; leader: boolean; inRoom: boolean };
@@ -843,7 +845,7 @@ export class AccountUI {
   private raidLoading = false;
   private raidFriends: Friend[] | null = null;
   /**
-   * Raids: the Raid Hall and a boss's page, a panel inside the Lobby. It
+   * Raids: the boss list and a boss's page, a panel inside the Lobby. It
    * opens at once with what is known, then shows the server's fresh copy of
    * your raid records and your friends.
    */
@@ -851,6 +853,10 @@ export class AccountUI {
     if (!this.ensurePlayer()) return;
     this.toLobbyScreen();
     const accountId = this.account?.id;
+    // The raid screens' code and styles load the first time they open, not
+    // with the game (a phone starts faster).
+    const { openRaids } = await import("./screens/raid-hall");
+    if (this.account?.id !== accountId) return;
     if (this.raidScreen?.isOpen) {
       this.raidScreen.show(boss, tab);
     } else {
@@ -963,6 +969,10 @@ export class AccountUI {
     if (!this.ensurePlayer()) return;
     // It lives in the Lobby: come back to it, and close any old dialog.
     this.toLobbyScreen();
+    // Its code and styles load the first time it opens, not with the game.
+    const accountId = this.account?.id;
+    const { openFittingRoom } = await import("./screens/fitting-room");
+    if (this.account?.id !== accountId) return;
     if (this.fittingRoom?.isOpen) this.fittingRoom.show(mode, section);
     else {
       this.fitLoading = !this.economy;
@@ -1096,6 +1106,9 @@ export class AccountUI {
     if (!this.ensurePlayer()) return;
     this.toLobbyScreen();
     const accountId = this.account?.id;
+    // Its code and styles load the first time it opens, not with the game.
+    const { openJourney } = await import("./screens/journey");
+    if (this.account?.id !== accountId) return;
     if (!this.journeyScreen?.isOpen) {
       this.journeyLoading = !this.economy;
       this.journeyProblem = "";
@@ -1378,6 +1391,7 @@ export class AccountUI {
         return {
           ...this.friendsData,
           blocked: this.blocked,
+          canMessage: !!this.hooks.messageFriend,
           room,
           party: {
             size: Math.max(1, party?.party.length ?? 1),
@@ -1431,6 +1445,7 @@ export class AccountUI {
       },
       block: (id, name) => this.block(id, name),
       unblock: (id) => this.unblock(id),
+      message: (id, name) => this.hooks.messageFriend?.(id, name),
       inviteToParty: async (id) => ok(await this.hooks.inviteToParty?.(id)),
       inviteToRoom: async (id) => ok(await this.hooks.inviteFriend?.(id)),
       join: (code) => this.hooks.joinRoom?.(code),
@@ -1744,7 +1759,7 @@ export class AccountUI {
                         .map(([k, v]) => `${escape(k)}: ${escape(String(v))}`)
                         .join(" · ")}</small>`
                     : ""
-                }<button type="button" class="${r.status === "open" ? "secondary" : "quiet"}" data-resolve="${r.status === "open"}">${r.status === "open" ? "Mark resolved" : "Reopen"}</button></article>`,
+                }${chatTarget(r.context) ? `<button type="button" class="secondary" data-chat-stop="${chatTarget(r.context)}">Stop their chat for 24 h</button>` : ""}<button type="button" class="${r.status === "open" ? "secondary" : "quiet"}" data-resolve="${r.status === "open"}">${r.status === "open" ? "Mark resolved" : "Reopen"}</button></article>`,
             )
             .join("") ||
           `<p>No ${view.status === "all" ? "" : view.status + " "}reports.</p>`
@@ -1807,6 +1822,27 @@ export class AccountUI {
           });
         element("report-next").onclick = () =>
           void this.showAdmin({ reportOffset: view.reportOffset + 50 });
+        // A chat report: stop the reported player typing for a day.
+        document
+          .querySelectorAll<HTMLButtonElement>("[data-chat-stop]")
+          .forEach((button) => {
+            button.onclick = async () => {
+              button.disabled = true;
+              try {
+                await this.api("/api/admin/chat-ban", {
+                  playerId: button.dataset.chatStop,
+                  hours: 24,
+                  reason: "From a chat report",
+                });
+                await this.showAdmin({
+                  message: "Their chat is stopped for 24 hours.",
+                });
+              } catch (error) {
+                fail(error);
+                button.disabled = false;
+              }
+            };
+          });
         document
           .querySelectorAll<HTMLButtonElement>("[data-resolve]")
           .forEach((button) => {
@@ -2018,4 +2054,14 @@ export class AccountUI {
       );
     }
   }
+}
+
+/** The reported player of a chat report ("Name (uuid)" in its context). */
+function chatTarget(context: Record<string, string> | undefined) {
+  if (context?.source !== "chat") return null;
+  return (
+    /\(([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\)$/i.exec(
+      context.reported ?? "",
+    )?.[1] ?? null
+  );
 }

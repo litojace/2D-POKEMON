@@ -29,6 +29,8 @@ export interface FriendsHooks {
   /** Block a player (asks first); resolves true once blocked. */
   block(id: string, name: string): Promise<boolean>;
   unblock(id: string): Promise<void>;
+  /** Open the chat on a conversation with this friend. */
+  message?(id: string, name: string): void;
   inviteToParty(id: string): Promise<Reply>;
   inviteToRoom(id: string): Promise<Reply>;
   join(code: string): void;
@@ -228,6 +230,12 @@ export function openFriends(hooks: FriendsHooks): FriendsScreen {
         view.menu = view.removing = null;
         return `${name} is blocked.`;
       });
+    } else if (d.friendMessage) {
+      const id = d.friendMessage,
+        name = d.friendName ?? "";
+      view.menu = view.removing = null;
+      render();
+      hooks.message?.(id, name);
     } else if (d.friendUnblock) {
       const id = d.friendUnblock;
       void act(id, async () => {

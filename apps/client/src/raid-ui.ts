@@ -707,7 +707,7 @@ function perkLines(state: Snapshot, myId: string) {
     ? `<div class="raid-perks"><h3>Champion tricks</h3><ul>${lines}</ul></div>`
     : "";
 }
-/** Ping buttons (Stack, Revive, Bait) and the practice bar. */
+/** Ping buttons (Stack, Revive, Bait) and the bosses' own controls. */
 function raidControls(
   state: Snapshot,
   me: Fighter,
@@ -720,73 +720,8 @@ function raidControls(
   renderSomnaraControls(state, me, frame, request);
   renderPrismatailControls(state, me, frame);
   renderStormTargets(state, frame);
-  let pings = document.getElementById("raid-pings");
-  if (!pings) {
-    pings = document.createElement("div");
-    pings.id = "raid-pings";
-    pings.setAttribute("role", "group");
-    pings.setAttribute("aria-label", "Team signals");
-    frame.append(pings);
-  }
-  // The third signal changes meaning per boss ("Island here" on Tidewyrm).
-  if (pings.dataset.boss !== r.boss) {
-    pings.dataset.boss = r.boss;
-    const buttons = (Object.keys(RAID_PINGS) as RaidPingKind[])
-      .map(
-        (kind) =>
-          `<button type="button" data-raid-ping="${kind}" title="${raidPingLabel(kind, r.boss)} (${RAID_PINGS[kind].key})">${pingIcon(kind)}<span>${raidPingLabel(kind, r.boss)}</span></button>`,
-      )
-      .join("");
-    pings.innerHTML = `<details class="raid-ping-menu" ${document.body.classList.contains("touch-mode") ? "" : "open"}><summary aria-label="Team signals" title="Team signals">${menuIcon("friends")}</summary><div class="raid-ping-options">${buttons}</div></details>`;
-  }
-  for (const b of Array.from(
-    pings.querySelectorAll<HTMLButtonElement>("[data-raid-ping]"),
-  ))
-    b.onclick = () => {
-      void request("raid-ping", { kind: b.dataset.raidPing });
-      if (document.body.classList.contains("touch-mode"))
-        pings!.querySelector<HTMLDetailsElement>("details")!.open = false;
-    };
-  const live = state.phase === "playing" || state.phase === "countdown";
-  pings.hidden = !live || !!r.drill || r.partySize < 2;
-  let drill = document.getElementById("raid-drill");
-  if (!drill) {
-    drill = document.createElement("div");
-    drill.id = "raid-drill";
-  }
-  const battle = document.getElementById("battle");
-  if (battle && drill.parentElement !== battle) battle.append(drill);
-  drill.hidden = !r.drill;
-  if (!r.drill) return;
-  const host = state.players[0]?.id === me.id;
-  const stats = `Dodged ${r.drillStats?.dodges ?? 0} · Hit ${r.drillStats?.hits ?? 0}`;
-  const counter = drill.querySelector(".raid-drill-count");
-  if (counter) counter.textContent = stats;
-  const key = `${r.drill}|${host}`;
-  if (drill.dataset.key === key) return;
-  drill.dataset.key = key;
-  const expanded =
-    drill.querySelector<HTMLDetailsElement>("details")?.open ?? false;
-  drill.innerHTML = `<div class="raid-drill-head"><b>Practice · ${RAID_ATTACKS[r.drill].name}</b><span class="raid-drill-count">${stats}</span></div><details class="raid-drill-picker"><summary>Change attack / instructions</summary><div class="raid-drill-body"><p>${escape(RAID_ATTACKS[r.drill].tip)}</p><div class="raid-drill-options">${raidAttacksOf(
-    r.boss,
-  )
-    .map(
-      (id) =>
-        `<button type="button" class="${id === r.drill ? "is-active" : ""}" aria-pressed="${id === r.drill}" data-raid-drill="${id}" ${host ? "" : "disabled"}>${RAID_ATTACKS[id].name}</button>`,
-    )
-    .join(
-      "",
-    )}</div></div><button type="button" class="quiet leave-button" id="raid-drill-leave">${host ? iconLabel("leave", "Leave practice") : "Host ends practice"}</button></details>`;
-  drill.querySelector<HTMLDetailsElement>("details")!.open = expanded;
-  for (const b of Array.from(
-    drill.querySelectorAll<HTMLButtonElement>("[data-raid-drill]"),
-  ))
-    b.onclick = () => void request("raid-drill", { kind: b.dataset.raidDrill });
-  const leave = drill.querySelector<HTMLButtonElement>("#raid-drill-leave");
-  if (leave) {
-    leave.disabled = !host;
-    leave.onclick = () => void request("raid-drill", { kind: null });
-  }
+  // The team signals (Stack, Revive, Bait…) are in the battle's quick chat
+  // (chat/battle-chat.ts); Z, X and C still send them from a keyboard.
 }
 export function pingIcon(kind: RaidPingKind) {
   const path =

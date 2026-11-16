@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { box, inside, openLobby, snap } from "./helpers";
+import { box, inside, openLobby, openWardrobe, snap } from "./helpers";
 import { ISLAND, closeSpot, layoutProblems, setInsets } from "./ui-measure";
 import { exposeAccount, shopServer } from "./shop-server";
 
@@ -144,8 +144,9 @@ for (const size of SIZES)
       // The Wardrobe: same stage and action bar, owned items only.
       await page.click('[data-ui-mode="wardrobe"]');
       await expect(room).toHaveAttribute("data-fit-mode", "wardrobe");
+      // The rail's Shop button stays lit on both tabs.
       await expect(
-        page.locator('.lobby-rail [data-lobby-action="wardrobe"]'),
+        page.locator('.lobby-rail [data-lobby-action="shop"]'),
       ).toHaveAttribute("aria-current", "page");
       await expect(page.locator(".fit-slot")).toHaveCount(6);
       await page.click('[data-fit-fighter="voltkit"]');
@@ -263,7 +264,7 @@ test("the Wardrobe: try several things, then Equip once or Revert", async ({
     ],
   });
   const errors = await openLobby(page);
-  await page.click('.lobby-rail [data-lobby-action="wardrobe"]');
+  await openWardrobe(page);
   const room = page.locator(".fit-room");
   await expect(room).toHaveAttribute("data-fit-mode", "wardrobe");
   // Two try-ons, then Revert: nothing is sent, the stage is back.
@@ -431,8 +432,8 @@ test("opening another screen from the rail replaces the fitting room", async ({
   const errors = await openLobby(page);
   await page.click('.lobby-rail [data-lobby-action="shop"]');
   await expect(page.locator(".fit-room")).toBeVisible();
-  // Shop ⇄ Wardrobe from the rail switches in place.
-  await page.click('.lobby-rail [data-lobby-action="wardrobe"]');
+  // Shop ⇄ Wardrobe switches in place.
+  await page.click('.fit-room [data-ui-mode="wardrobe"]');
   await expect(page.locator(".fit-room")).toHaveAttribute(
     "data-fit-mode",
     "wardrobe",
@@ -507,18 +508,21 @@ test("the open screen's rail icon lights up, and a second tap on it closes the s
     page
       .locator(`.lobby-rail [data-lobby-action="${action}"]`)
       .evaluate((b) => getComputedStyle(b).borderTopColor);
-  const wardrobe = page.locator('.lobby-rail [data-lobby-action="wardrobe"]');
-  await wardrobe.click();
+  const shop = page.locator('.lobby-rail [data-lobby-action="shop"]');
+  await shop.click();
   await expect(page.locator(".fit-room")).toBeVisible();
-  await expect(wardrobe).toHaveAttribute("aria-current", "page");
+  await expect(shop).toHaveAttribute("aria-current", "page");
   // Off the button, so its hover rim (gold too) can't stand in for it.
   await page.mouse.move(700, 450);
   // Once its 0.15 s border transition has run.
-  await expect.poll(() => rim("wardrobe")).toBe("rgb(255, 214, 91)");
-  expect(await rim("shop")).not.toBe("rgb(255, 214, 91)");
-  await wardrobe.click();
+  await expect.poll(() => rim("shop")).toBe("rgb(255, 214, 91)");
+  expect(await rim("fighters")).not.toBe("rgb(255, 214, 91)");
+  // Still lit on the Wardrobe tab, and a second tap there closes it too.
+  await page.click('.fit-room [data-ui-mode="wardrobe"]');
+  await expect(shop).toHaveAttribute("aria-current", "page");
+  await shop.click();
   await expect(page.locator(".fit-room")).toHaveCount(0);
-  await expect(wardrobe).not.toHaveAttribute("aria-current", "page");
+  await expect(shop).not.toHaveAttribute("aria-current", "page");
   // A sheet too.
   const missions = page.locator('.lobby-rail [data-lobby-action="missions"]');
   await missions.click();
@@ -546,7 +550,7 @@ for (const size of [SIZES[0], SIZES[2]])
     try {
       const page = await context.newPage();
       const errors = await openLobby(page);
-      await page.click('.lobby-rail [data-lobby-action="wardrobe"]');
+      await openWardrobe(page);
       await expect(page.locator(".fit-awaken .ui-btn")).toHaveCount(3);
       const stages = await page
         .locator(".fit-awaken .ui-btn")

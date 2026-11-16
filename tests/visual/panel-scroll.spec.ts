@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { openHub, openPlayPanel, pushUntilBattle } from "./helpers";
+import { hubMenu, openHub, openPlayPanel, pushUntilBattle } from "./helpers";
 import { ISLAND, setInsets } from "./ui-measure";
 import { fingerWorks, scrollSweep } from "./scroll-sweep";
 
@@ -25,7 +25,7 @@ type Screen = {
   open: (page: Page) => Promise<void>;
 };
 const rail = (action: string) => async (page: Page) => {
-  await page.click(`.lobby-rail [data-lobby-action="${action}"]`);
+  await hubMenu(page, action);
 };
 const settle = (page: Page, ms = 700) => page.waitForTimeout(ms);
 const HUB = ".ui-panel-host";
@@ -147,7 +147,7 @@ const HUB_SCREENS: Screen[] = [
       await page.click(`[data-ui-jtab="${tab}"]`);
     },
   })),
-  { name: "raid hall", root: HUB, open: rail("raids") },
+  { name: "raid list", root: HUB, open: rail("raids") },
   ...(["party", "attacks", "rewards", "guide"] as const).map((tab) => ({
     name: `boss ${tab}`,
     root: HUB,

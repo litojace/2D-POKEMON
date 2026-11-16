@@ -1,7 +1,8 @@
 # Boss Raid
 
-Open **Raids** from the town menu. The Hub offers all seven bosses, with ordinary
-solo and 1–4-player co-op raids. Open a boss for chapters, attacks, rewards and
+Open **Raids** from the Lobby. The Hub offers all seven bosses, with ordinary
+solo and 1–4-player co-op raids. Open a boss for chapters, attacks (each with
+its own illustrated icon, what it does and how to beat it), rewards and
 records, then **Create raid room** and invite friends, or **Play solo now**.
 New bosses unlock after a first Grumblecrag clear. Boss Rush and Raid of the Day
 have been retired; apply migration 028 after 027. Earned rewards remain owned.
@@ -80,7 +81,7 @@ Normal crowd control adds stagger rather than stun-locking the boss. The boss ca
 
 ## Tidewyrm
 
-A sleepy sea serpent fought in the **Lagoon Court**: shallow water with four raised islands you can stand on (no walls). Its numbers live in `TIDEWYRM` and its attack order in `tidewyrmPattern` (`packages/shared/src/raid.ts`); the fight is `TidewyrmArena` in `apps/server/src/raid-tidewyrm.ts`, which reuses the raid core (chapters, rites, downs, stagger, practice, stand-ins).
+A sleepy sea serpent fought in the **Lagoon Court**: shallow water with four raised islands you can stand on (no walls). Its numbers live in `TIDEWYRM` and its attack order in `tidewyrmPattern` (`packages/shared/src/raid.ts`); the fight is `TidewyrmArena` in `apps/server/src/raid-tidewyrm.ts`, which reuses the raid core (chapters, rites, downs, stagger, stand-ins).
 
 - **Dive & Surface (signature):** it dives (can't be hit under water) and a ripple follows one raider for 1.4 s, then locks for 0.7 s. It surfaces there with a splash ring. It goes after raiders out in the water, away from the islands (never one already on an island), so the team has to carry the ripple onto one; stranded on the same island twice running, it stops chasing raiders near it. Alone, the splash freezes 0.8 s before it lands. Surfacing **on an island strands it**: exposed for 4.25 s (× the tier's windows; 7 on Peril 1), stagger, and a strand counted for the raider it chased. As a strand runs out it sweeps its tail round the island: jump it or stand clear. An island sinks after two strands until the next chapter. Tidefin's Tide Double clone carries the ripple.
 - **Tidal Wave:** a band sweeps across from the edge nearest the raiders in the water. Chapter 1 waves are low (jump them); from chapter 2 they're high (only an island is safe). In chapter 3 a low wave is followed 2.3 s later by a high one from a side edge.
@@ -153,7 +154,6 @@ The other bosses' tricks are listed in their sections above and in [raid-roster-
 - **Team signals:** *Stack on me*, *Revive me* and *Bait here*, from the buttons on the left of the arena or the **Z**, **X** and **C** keys (when those keys aren't bound to anything). A marker appears over your head for a few seconds and teammates see it in the callout line. One signal per second.
 - **What downed you:** the downed banner names the attack that downed you and how to avoid it. A lost run's result screen gives the tip for the attack that downed the team most.
 - **Stand-ins:** if a raider disconnects mid-run while at least one other player is still connected, an AI plays their champion (dodging telegraphs, stacking for meteors, reviving allies) until they reconnect, instead of pausing everyone. A solo raid still pauses. If they don't return in time, their seat is dropped as before.
-- **Practice:** in the raid lobby, the host can open *Practice the boss's attacks*. The boss repeats one chosen attack; nobody is hurt and the boss can't be damaged, and a bar counts hits and dodges. The host can switch attacks or leave practice for the lobby. Practice is never saved.
 
 ## Rewards and records
 
@@ -195,7 +195,7 @@ The Raid Hub boss page shows boss information, clears, highest Peril, best activ
 
 Core Peril 1 raids work without reward storage, but clears cannot be persisted or higher Perils unlocked until the migration and server credential are configured. The result screen explicitly reports storage failures. A server restart before saving an unavailable reward is not a durable queue; do the setup before inviting players to earn rewards.
 
-Migration 008 also saves real attempts that were lost (20 seconds or more of combat; practice never), with the chapter reached, per-player stats and which attacks downed people. Losses never count as clears or reach the weekly board. To see it, run this in Supabase's SQL Editor:
+Migration 008 also saves real attempts that were lost (20 seconds or more of combat), with the chapter reached, per-player stats and which attacks downed people. Losses never count as clears or reach the weekly board. To see it, run this in Supabase's SQL Editor:
 
 ```sql
 -- How far runs get, by Peril and party size.

@@ -72,7 +72,6 @@ const resolve = (a: StormTwinsArena) => {
   const warnings = [...a.raid.warnings];
   a.raid.warnings = [];
   for (const w of warnings) {
-    (a as any).struck.clear();
     (a as any).resolveWarning(w, a.boss()!);
   }
 };
@@ -406,20 +405,6 @@ describe("Polarity fairness and champion tricks", () => {
     );
     expect(Math.hypot(f.x - c.x, f.y - c.y)).toBeLessThan(before);
   });
-  it("practice cancellations never grant reward progress", () => {
-    const a = setup();
-    a.raid.drill = "polarity";
-    a.raid.drillStats = { hits: 0, dodges: 0 };
-    attack(a, "polarity");
-    Object.assign(a.heroes()[0], a.raid.polarityPad!);
-    run(a, 0.1);
-    expect(a.raid.contributions!.p0.pillars).toBe(0);
-    expect(a.raid.drillStats.dodges).toBe(1);
-    a.setDrill("link-beam");
-    expect(a.raid.polarities).toEqual([]);
-    a.stopDrill();
-    expect(a.players).toHaveLength(1);
-  });
 });
 describe("Storm Twins attacks and presentation", () => {
   it("bends the warning and active Link Beam through the same copper post", () => {
@@ -642,14 +627,9 @@ describe("Storm Twins AI: smart polarity, aimed rushes and sweeping beams", () =
       // ...and yet within reach before the marks expire.
       expect(gap).toBeLessThan(222 * (S.polarity.seconds - 0.45));
     }
-    // A pair always gets opposite signs; practice keeps alternating seats.
+    // A pair always gets opposite signs.
     const two = polaritySigns(pairs.slice(0, 2), 3);
     expect(two[0]).not.toBe(two[1]);
-    const b = setup(4);
-    b.raid.drill = "polarity";
-    b.heroes().forEach((p, i) => Object.assign(p, pairs[i]));
-    attack(b, "polarity");
-    expect(b.raid.polarities!.map((m) => m.sign)).toEqual([1, -1, 1, -1]);
   });
   it("keeps every raider able to reach an opposite sign, even spread across the ring", () => {
     const spread = [

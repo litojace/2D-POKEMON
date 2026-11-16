@@ -6,7 +6,7 @@ import {
 import { cosmeticLayer, type Skin } from "./cosmetics";
 import { profilePartOrder, profileEmissionPoint } from "../creature-profile";
 import { drawElementGlyph } from "../element-effects";
-import Phaser from "phaser";
+import type Phaser from "phaser";
 import { CHARACTERS, type CharacterId } from "@arena/shared";
 import { moodFor, squashFor } from "./expression";
 import {

@@ -39,7 +39,7 @@ for (const viewport of [
         };
       });
       await hubMenu(page, "raids");
-      // The Raid Hall (UI remodel step 5): every boss, nothing retired.
+      // The boss list (UI remodel step 5): every boss, nothing retired.
       await expect(page.locator(".rh-room [data-raid-card]")).toHaveCount(7);
       await expect(
         page.locator(".raid-week, .raid-today, #raid-daily"),

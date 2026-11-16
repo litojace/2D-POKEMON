@@ -83,12 +83,13 @@ for (const size of SIZES)
       const inset = size.island ? ISLAND : undefined;
       if (inset) await setInsets(page, inset);
       await withJourney(page);
-      await page.click('.lobby-rail [data-lobby-action="journey"]');
+      await page.click("#lobby-journey-card");
       const room = page.locator(".journey-room");
       await expect(room).toHaveAttribute("data-journey-tab", "season");
+      // Opened from its card: no rail button stands for it.
       await expect(
-        page.locator('.lobby-rail [data-lobby-action="journey"]'),
-      ).toHaveAttribute("aria-current", "page");
+        page.locator('.lobby-rail [aria-current="page"]'),
+      ).toHaveCount(0);
       // A full panel: the Lobby behind it is covered and holds still.
       await expect(page.locator(".lobby-layer")).toHaveClass(/is-covered/);
 
@@ -241,7 +242,7 @@ test("Journey rewards equip through the shared appearance route", async ({
       return fetch(input, init);
     };
   });
-  await page.click('.lobby-rail [data-lobby-action="journey"]');
+  await page.click("#lobby-journey-card");
   await page.click('[data-ui-jtab="levels"]');
   // Not yours yet: Locked.
   await page.click('[data-journey-item="solar-aura"]');
@@ -278,7 +279,7 @@ test("Journey rewards equip through the shared appearance route", async ({
 test("the Journey works from the keyboard", async ({ page }) => {
   const errors = await openLobby(page);
   await withJourney(page);
-  await page.focus('.lobby-rail [data-lobby-action="journey"]');
+  await page.focus("#lobby-journey-card");
   await page.keyboard.press("Enter");
   await expect(page.locator(".journey-room")).toBeFocused();
   await page.keyboard.press("Tab");
@@ -310,9 +311,7 @@ test("the Journey works from the keyboard", async ({ page }) => {
   ).toHaveAttribute("aria-pressed", "true");
   await page.keyboard.press("Escape");
   await expect(page.locator(".journey-room")).toHaveCount(0);
-  await expect(
-    page.locator('.lobby-rail [data-lobby-action="journey"]'),
-  ).toBeFocused();
+  await expect(page.locator("#lobby-journey-card")).toBeFocused();
   expect(errors).toEqual([]);
 });
 
@@ -325,7 +324,7 @@ test("the Journey with reduced motion and Low graphics", async ({
     await page.addInitScript(() => localStorage.setItem("ea-graphics", "low"));
     const errors = await openLobby(page);
     await withJourney(page);
-    await page.click('.lobby-rail [data-lobby-action="journey"]');
+    await page.click("#lobby-journey-card");
     const room = page.locator(".journey-room");
     await expect(room).toHaveAttribute("data-graphics", "low");
     // Pictures only: no live fighter renderer in the panel.
@@ -360,7 +359,7 @@ for (const size of [SIZES[0], SIZES[3]])
       const errors = await openLobby(page);
       if (size.island) await setInsets(page, ISLAND);
       await withJourney(page);
-      await page.click('.lobby-rail [data-lobby-action="journey"]');
+      await page.click("#lobby-journey-card");
       // The Journey's data has arrived (the 30-tier season road).
       await expect(page.locator(".journey-room .journey-tier")).toHaveCount(30);
       const season = await clippedFrames(page, FRAME_BOX);

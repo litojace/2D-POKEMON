@@ -6711,131 +6711,6 @@ body.lobby-active::before {
   line-height: 1.4;
   max-width: 460px;
 }
-/* Team signals: Stack / Revive / Bait. */
-#raid-pings,
-#raid-drill {
-  display: none;
-}
-.battle-raid #raid-pings:not([hidden]) {
-  position: absolute;
-  left: 8px;
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: 26;
-  display: grid;
-  gap: 6px;
-}
-#raid-pings button {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 40px;
-  padding: 6px 10px;
-  border-radius: 10px;
-  border: 1px solid #ffd65b55;
-  background: #0c1b32e6;
-  color: #ffe7a3;
-  font-size: 11px;
-  font-weight: 700;
-}
-#raid-pings button[data-raid-ping="revive"] {
-  color: #9bffc4;
-  border-color: #7dffb055;
-}
-#raid-pings button[data-raid-ping="bait"] {
-  color: #ffc28a;
-  border-color: #ffa94d55;
-}
-#raid-pings svg {
-  width: 18px;
-  height: 18px;
-  flex: none;
-}
-@media (max-width: 900px), (max-height: 600px) {
-  #raid-pings button span {
-    display: none;
-  }
-  #raid-pings button {
-    padding: 6px;
-    min-width: 40px;
-    justify-content: center;
-  }
-}
-/* Practice bar. */
-.battle-raid #raid-drill:not([hidden]) {
-  position: absolute;
-  left: 50%;
-  bottom: 10px;
-  transform: translateX(-50%);
-  z-index: 26;
-  display: block;
-  width: min(640px, calc(100% - 20px));
-  padding: 10px 12px;
-  border-radius: 12px;
-  border: 1px solid #d7b16f66;
-  background: #0c1b32ed;
-}
-.raid-drill-head {
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  font-size: 12px;
-}
-.raid-drill-head span {
-  color: #9bffc4;
-  font-variant-numeric: tabular-nums;
-}
-#raid-drill p {
-  margin: 4px 0 8px;
-  font-size: 11px;
-  color: #a9bbd5;
-}
-.raid-drill-options {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-.raid-drill-options button {
-  padding: 6px 9px;
-  border-radius: 8px;
-  border: 1px solid #8baee555;
-  background: #1b2d4c;
-  color: #dce7fa;
-  font-size: 11px;
-}
-.raid-drill-options button.is-active {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-.raid-practice {
-  margin: 10px 0;
-}
-.raid-practice summary {
-  cursor: pointer;
-  font-weight: 700;
-  font-size: 13px;
-}
-.raid-practice p {
-  font-size: 12px;
-  color: #a9bbd5;
-}
-.raid-practice-options {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 8px;
-}
-.raid-practice-options button {
-  display: grid;
-  gap: 3px;
-  text-align: left;
-  padding: 9px 10px;
-}
-.raid-practice-options small {
-  font-size: 10px;
-  color: #a9bbd5;
-  font-weight: 500;
-}
-
 /* Bestiary & rewards buttons carry the book icon. */
 
 /* Settings: one column of actions under the controls button. */
@@ -6917,11 +6792,6 @@ button.small .button-icon {
   height: 14px;
 }
 /* Leave buttons sized like their neighbours where those are compact. */
-.raid-drill-options button.leave-button {
-  padding: 6px 9px;
-  border-radius: 8px;
-  font-size: 11px;
-}
 /* Profile title picker: every title drawn as it looks in the arena. */
 
 /* ---------------------------------------------------------------------------
@@ -11733,10 +11603,6 @@ body.battle-active:not(.touch-mode).battle-raid
   ) {
   top: calc(var(--desktop-raid-hud-height, 100px) + 20px);
 }
-body.battle-active:not(.touch-mode).battle-raid #raid-pings:not([hidden]) {
-  left: auto;
-  right: 12px;
-}
 
 /* Taller PC windows: use letterboxing above and below the full-size court. */
 body.battle-active:not(.touch-mode) #battle.desktop-hud-outside .arena-frame {
@@ -14103,67 +13969,12 @@ body.battle-active.touch-mode.pvp-knocked-out #battle-menu {
     padding: 0 6px;
     transform: none;
   }
-  /* One compact signal control replaces the permanently expanded three-button rail. */
-  .touch-mode.battle-raid #raid-pings:not([hidden]) {
-    position: fixed;
-    top: calc(var(--safe-top) + var(--desktop-raid-hud-height, 24px) + 88px);
-    left: calc(var(--safe-left) + 6px);
-    transform: none;
-  }
-  .touch-mode .raid-ping-menu > summary {
-    display: grid;
-    place-items: center;
-    width: 40px;
-    height: 40px;
-    border: 1px solid #ffe09966;
-    border-radius: 50%;
-    color: #ffe099;
-    background: #102039ed;
-    list-style: none;
-    cursor: pointer;
-    touch-action: manipulation;
-  }
-  .raid-ping-menu > summary::-webkit-details-marker {
-    display: none;
-  }
-  .touch-mode .raid-ping-menu > summary svg {
-    width: 20px;
-    height: 20px;
-  }
-  .touch-mode .raid-ping-options {
-    position: absolute;
-    top: 0;
-    left: 46px;
-    min-width: 148px;
-    padding: 6px;
-    border: 1px solid #ffe09966;
-    border-radius: 10px;
-    background: #102039f5;
-  }
-  .touch-mode #raid-pings .raid-ping-options button {
-    width: 100%;
-    justify-content: start;
-    min-height: 40px;
-  }
-  .touch-mode #raid-pings .raid-ping-options button span {
-    display: inline;
-  }
-}
-.raid-ping-options {
-  display: grid;
-  gap: 6px;
-}
-body:not(.touch-mode) .raid-ping-menu > summary {
-  display: none;
 }
 @media (orientation: landscape) and (max-height: 350px) {
   .touch-mode.battle-raid .raid-status-row .raid-callout {
     font-size: 8px;
     line-height: 10px;
   }
-}
-.raid-ping-menu:not([open]) .raid-ping-options {
-  display: none;
 }
 @media (orientation: landscape) and (max-height: 350px) {
   body.battle-active.touch-mode.battle-raid
@@ -14434,10 +14245,6 @@ body.battle-active:not(.touch-mode).battle-raid .raid-party-bars small {
     width: min(14px, 1.8vw);
     height: min(14px, 1.8vw);
   }
-  .touch-mode.battle-raid #raid-pings:not([hidden]) {
-    top: calc(var(--safe-top) + var(--desktop-raid-hud-height, 45px) + 64px);
-    left: calc(var(--safe-left) + 112px);
-  }
 }
 @media (orientation: landscape) and (max-height: 350px) {
   .touch-mode.battle-raid #raid-hud .raid-boss-health,
@@ -14472,44 +14279,6 @@ body.battle-active:not(.touch-mode).battle-raid
   right: calc((100% - var(--desktop-arena-width, 100%)) / 2 + 8px);
   left: auto;
   transform: none;
-}
-body.battle-active.battle-raid #raid-drill:not([hidden]) {
-  max-height: 50dvh;
-  overflow: auto;
-  padding: 8px 12px;
-  border-radius: 12px;
-  z-index: 45;
-}
-#raid-drill .raid-drill-head {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 3px 12px;
-  font-size: 11px;
-}
-#raid-drill .raid-drill-picker {
-  margin-top: 6px;
-}
-#raid-drill .raid-drill-picker > summary {
-  min-height: 32px;
-  padding-top: 3px;
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 1.5;
-  color: #ffdf81;
-}
-#raid-drill .raid-drill-options {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-#raid-drill .raid-drill-options button {
-  min-height: 36px;
-  border-radius: 8px;
-  font-size: 11px;
-}
-#raid-drill p {
-  font-size: 12px;
 }
 #arena-overlay .raid-draft .panel-actions .raid-rite-icon--buff {
   display: flex;
@@ -14645,24 +14414,6 @@ body.battle-active:not(.touch-mode)
 
 /* Keep the PC picker beside the skill row without letting the arena clip it. */
 @media (min-width: 760px) and (pointer: fine) {
-  body.battle-active:not(.touch-mode).battle-raid
-    #battle
-    #raid-drill:not([hidden]) {
-    position: absolute;
-    inset: auto auto calc(var(--desktop-arena-bottom, 32px) + 4px)
-      calc((100% - var(--desktop-arena-width, 100%)) / 2 + 12px);
-    width: min(300px, 32vw);
-    max-height: 36dvh;
-    transform: none;
-  }
-  body.battle-active:not(.touch-mode).battle-raid
-    #battle.desktop-hud-outside
-    #raid-drill:not([hidden]) {
-    bottom: calc(
-      var(--desktop-arena-bottom, 0px) -
-        var(--desktop-outside-skills-height, 0px) - 18px
-    );
-  }
   body.battle-active:not(.touch-mode).battle-raid #raid-hud .raid-callout {
     grid-column: 1 / -1;
     grid-row: 2;
@@ -14672,74 +14423,6 @@ body.battle-active:not(.touch-mode)
     left: 28px;
     z-index: 2;
     pointer-events: none;
-  }
-}
-
-/* Mobile practice picker sits in the lower control band and opens upward. */
-body.battle-active.touch-mode.battle-raid #battle #raid-drill:not([hidden]) {
-  position: fixed;
-  inset: auto auto calc(var(--safe-bottom) + 12px) 50%;
-  width: min(190px, calc(100vw - var(--safe-left) - var(--safe-right) - 24px));
-  max-height: min(28dvh, 210px);
-  padding: 5px 6px;
-  transform: translateX(-50%);
-  overflow: auto;
-  overscroll-behavior: contain;
-}
-body.battle-active.touch-mode.battle-raid #raid-drill .raid-drill-head {
-  flex-wrap: nowrap;
-  align-items: center;
-  gap: 4px;
-  font-size: 9px;
-}
-body.battle-active.touch-mode.battle-raid #raid-drill .raid-drill-head b {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-body.battle-active.touch-mode.battle-raid #raid-drill .raid-drill-count {
-  flex: 0 0 auto;
-  font-size: 9px;
-}
-body.battle-active.touch-mode.battle-raid
-  #raid-drill
-  .raid-drill-picker
-  > summary {
-  min-height: 32px;
-  font-size: 12px;
-  white-space: nowrap;
-}
-body.battle-active.touch-mode.battle-raid #raid-drill .raid-drill-options {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 4px;
-}
-body.battle-active.touch-mode.battle-raid
-  #raid-drill
-  .raid-drill-options
-  button {
-  width: 100%;
-  min-width: 0;
-  min-height: 27px;
-  padding: 3px 5px;
-  font-size: 9px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-body.battle-active.touch-mode.battle-raid #raid-drill #raid-drill-leave {
-  grid-column: 1 / -1;
-}
-body.battle-active.touch-mode.battle-raid #raid-drill p {
-  margin: 2px 0 5px;
-  font-size: 9px;
-  line-height: 1.25;
-}
-@media (orientation: landscape) {
-  body.battle-active.touch-mode.battle-raid #raid-drill:not([hidden]) {
-    bottom: calc(var(--safe-bottom) + 12px);
-    max-height: min(48dvh, 210px);
   }
 }
 
@@ -14862,61 +14545,6 @@ button[data-raid-boss="prismatail"] .raid-splash-image {
   object-position: 60% 40%;
 }
 
-/* Keep practice controls readable, with the exit outside the scrolling list. */
-body.battle-active.battle-raid #raid-drill .raid-drill-body {
-  max-height: max(72px, calc(36dvh - 112px));
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  padding: 4px 2px 8px;
-  scrollbar-gutter: stable;
-}
-body.battle-active.battle-raid #raid-drill #raid-drill-leave {
-  width: 100%;
-  min-height: 36px;
-  margin-top: 4px;
-  border-radius: 8px;
-  font-size: 11px;
-}
-body.battle-active.touch-mode.battle-raid #battle #raid-drill:not([hidden]) {
-  width: min(250px, calc(100vw - var(--safe-left) - var(--safe-right) - 24px));
-  max-height: min(65dvh, 300px);
-  padding: 7px 9px;
-}
-body.battle-active.touch-mode.battle-raid
-  #battle
-  #raid-drill:has(details[open]) {
-  width: min(320px, calc(100vw - var(--safe-left) - var(--safe-right) - 24px));
-}
-body.battle-active.touch-mode.battle-raid #raid-drill .raid-drill-head {
-  flex-wrap: wrap;
-  gap: 2px 8px;
-  font-size: 11px;
-}
-body.battle-active.touch-mode.battle-raid #raid-drill .raid-drill-head b {
-  white-space: normal;
-}
-body.battle-active.touch-mode.battle-raid #raid-drill .raid-drill-count {
-  font-size: 10px;
-}
-body.battle-active.touch-mode.battle-raid #raid-drill .raid-drill-body {
-  max-height: max(60px, calc(min(65dvh, 300px) - 116px));
-}
-body.battle-active.touch-mode.battle-raid
-  #raid-drill
-  .raid-drill-options
-  button {
-  min-height: 36px;
-  font-size: 11px;
-  line-height: 1.25;
-  white-space: normal;
-  overflow: visible;
-  padding: 5px;
-}
-body.battle-active.touch-mode.battle-raid #raid-drill p {
-  font-size: 11px;
-  line-height: 1.4;
-}
-
 /* Keep the optional Practice shortcut beside the note on short screens. */
 @media (orientation: landscape) and (max-height: 500px) {
   .settings-screen > .settings-quick-actions {
@@ -14932,19 +14560,6 @@ body.battle-active.touch-mode.battle-raid #raid-drill p {
   .settings-screen > .prefs-grid {
     clear: both;
   }
-}
-
-/* Six practice attacks form two even rows without crowding their labels. */
-body.battle-active.battle-raid #raid-drill .raid-drill-options,
-body.battle-active.touch-mode.battle-raid #raid-drill .raid-drill-options {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-body.battle-active.battle-raid #raid-drill .raid-drill-options button {
-  min-width: 0;
-  padding-inline: 4px;
-  white-space: normal;
-  line-height: 1.25;
 }
 
 /* Raid scenery fills the viewport; the camera keeps the fighting floor below HP. */
@@ -15906,13 +15521,22 @@ body.battle-active:not(.touch-mode)
 
 /* Big phones: the side safe areas exist for the camera island (mid-height)
    and rounded corners, not for thumbs at the bottom. Let the joystick and
-   skills sit closer to the edges so they cover less of the arena. Phones
-   without side insets keep their 16px gutter. */
+   skills sit closer to the edges so they cover less of the arena, but not
+   over the island or notch: it reaches about 11 px less than the safe inset
+   from the edge (59 → 48 px on a Dynamic Island iPhone), and Dash sits at
+   that height, so the controls keep 2 px clear of it (tests/visual/
+   touch-cutout.spec.ts). Phones without side insets keep their 16px gutter. */
 @media (orientation: landscape) {
   body.battle-active.touch-mode .touch-pad,
   body.battle-active.touch-mode.compact-landscape .touch-pad {
-    left: calc(max(10px, var(--safe-left) * 0.4) + 6px);
-    right: calc(max(10px, var(--safe-right) * 0.4) + 6px);
+    left: max(
+      calc(max(10px, var(--safe-left) * 0.4) + 6px),
+      calc(var(--safe-left) - 9px)
+    );
+    right: max(
+      calc(max(10px, var(--safe-right) * 0.4) + 6px),
+      calc(var(--safe-right) - 9px)
+    );
   }
 }
 

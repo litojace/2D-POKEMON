@@ -66,6 +66,7 @@ import {
 import { setupHomeNavigation } from "./home-navigation";
 import {
   openLobby,
+  partyLobbyMode,
   type LobbyAction,
   type LobbyHandle,
   type LobbyMode,
@@ -106,7 +107,11 @@ import {
   type HubScene,
 } from "./hub-scene";
 import { plazaOutfitKey } from "./plaza/plaza-outfit";
-import { bossClears, pacificDate } from "../../../packages/shared/src/raid";
+import {
+  bossClears,
+  pacificDate,
+  raidPingLabel,
+} from "../../../packages/shared/src/raid";
 import { resultXp } from "./adventure-ui";
 import { arcadeWeek, ARCADE_EVENTS } from "../../../packages/shared/src/arcade";
 import { drawArcade } from "./arcade-art";
@@ -192,7 +197,9 @@ import { PRIVACY_URL, isNativeApp, setupNativeShell } from "./native";
 import { appIconCardHTML, bindAppIconCard } from "./app-icon-setting";
 import { abilityIcon } from "./ability-icons";
 import { TouchControls } from "./touch-controls";
-import Phaser from "phaser";
+import type Phaser from "phaser";
+import { loadPhaser, phaser, whenPhaser } from "./phaser-runtime";
+import { installGraphicsRenderer } from "./graphics-render";
 import { io } from "socket.io-client";
 import {
   CHARACTERS,
@@ -363,6 +370,18 @@ import {
 import { RITE_EFFECTS, riteEffect, riteIcon } from "./rite-icons";
 import { ConnectionWatch, dropMessage } from "./connection-loss";
 import { watchSceneSwitch } from "./scene-switch-place";
+import { mountChat, type ChatFriend, type ChatPlace } from "./chat/chat-ui";
+import { mountBattleChat } from "./chat/battle-chat";
+import {
+  CHAT_MODES,
+  quickKind,
+  quickText,
+  type ChatMode,
+  type ChatLine,
+  type ChatQuick,
+} from "../../../packages/shared/src/chat";
+import { PLAZA_EMOTES } from "../../../packages/shared/src/plaza";
+import "./chat/chat.css";
 // Last: the hub's aero glass overrides the panels' own fills.
 import "./ui/aero.css";
 import "./ui/light-effects.css";
@@ -482,6 +501,76 @@ const socket = io(import.meta.env.VITE_SERVER_URL || undefined, {
   auth: { accessToken: null },
 });
 let accountsUI: AccountUI;
+const chat = mountChat({
+  send: (channel, body, to) =>
+    request("chat-send", { channel, ...body, ...(to ? { to } : {}) }),
+  history: async (channel, to) => {
+    const reply = (await request("chat-history", {
+      channel,
+      ...(to ? { to } : {}),
+    })) as { lines?: ChatLine[] };
+    return Array.isArray(reply.lines) ? reply.lines : [];
+  },
+  friends: async () => {
+    const reply = (await request("chat-friends", {}, true)) as {
+      ok: boolean;
+      friends?: ChatFriend[];
+    };
+    return reply.ok && Array.isArray(reply.friends) ? reply.friends : null;
+  },
+  read: (to) => {
+    if (socket.connected) socket.emit("chat-read", { to });
+  },
+  me: () =>
+    accountsUI?.account
+      ? { id: accountsUI.account.id, guest: !!accountsUI.account.guest }
+      : null,
+  block: async (accountId, name) => {
+    try {
+      const done = await accountsUI.block(accountId, name);
+      if (done) toast(`${name} is blocked.`);
+      return done;
+    } catch (error) {
+      toast(error instanceof Error ? error.message : "Couldn't block them.");
+      return false;
+    }
+  },
+  report: (channel, id, to) =>
+    request("chat-report", { channel, id, ...(to ? { to } : {}) }),
+  // The chat's gear: on, quick chat only, off (kept on this device).
+  setMode: (mode) => {
+    try {
+      localStorage.setItem(CHAT_MODE_KEY, mode);
+    } catch {
+      /* No storage: for this visit. */
+    }
+    void request("chat-mode", { mode });
+    chat.setMode(mode);
+    syncHub();
+  },
+});
+/** The chat setting: free, quick chat only, or off (kept on this device). */
+const CHAT_MODE_KEY = "ea-chat-mode";
+function chatMode(): ChatMode {
+  try {
+    const saved = localStorage.getItem(CHAT_MODE_KEY) as ChatMode | null;
+    return saved && CHAT_MODES.includes(saved) ? saved : "free";
+  } catch {
+    return "free";
+  }
+}
+chat.setMode(chatMode());
+/** The server learns the setting on every connection. */
+socket.on("connect", () => {
+  const mode = chatMode();
+  if (mode !== "free") socket.emit("chat-mode", { mode }, () => {});
+});
+/** Quick chat in a battle (chat/battle-chat.ts). */
+const battleChat = mountBattleChat({
+  send: (quick) => request("chat-send", { channel: "room", quick }),
+  ping: (kind) => void request("raid-ping", { kind }),
+  pingLabel: (kind) => raidPingLabel(kind, state?.raid?.boss ?? "grumblecrag"),
+});
 let authConnectionAttempt = 0;
 const connectionWatch = new ConnectionWatch();
 document.addEventListener("visibilitychange", () =>
@@ -504,8 +593,6 @@ let state: Snapshot | undefined,
   scene: ArenaScene | undefined;
 /** Your late inputs the server will fold into one tick (Fighter.owed). */
 let owedSteps = 0;
-let raidPracticeReturn:
-  { boss: RaidBossId; tab: RaidTab; leaveRoom: boolean } | undefined;
 let raidRoomReturn:
   { code: string; boss: RaidBossId; tab: RaidTab } | undefined;
 let accountShown = "";
@@ -705,7 +792,12 @@ function toast(message: string) {
   $("toast").classList.add("show");
   setTimeout(() => $("toast").classList.remove("show"), 4500);
 }
-function request(event: string, data: unknown = {}): Promise<Reply> {
+/** Ask the server; `quiet`: a background read that never shows a toast. */
+function request(
+  event: string,
+  data: unknown = {},
+  quiet = false,
+): Promise<Reply> {
   if (!socket.connected) return Promise.resolve({ ok: false });
   const connectionId = socket.id;
   return new Promise((resolve) =>
@@ -717,10 +809,10 @@ function request(event: string, data: unknown = {}): Promise<Reply> {
         if (!socket.connected || socket.id !== connectionId)
           return resolve({ ok: false });
         if (error) {
-          toast("Server did not respond. Check your connection.");
+          if (!quiet) toast("Server did not respond. Check your connection.");
           resolve({ ok: false });
         } else {
-          if (!reply.ok && reply.error) toast(reply.error);
+          if (!reply.ok && reply.error && !quiet) toast(reply.error);
           resolve(reply);
         }
       }),
@@ -913,7 +1005,6 @@ window.addEventListener("keydown", (e) => {
     typingIn(e.target) ||
     actionFor(controlPrefs().bindings, e.code) ||
     !state?.raid ||
-    state.raid.drill ||
     !["playing", "countdown"].includes(state.phase)
   )
     return;
@@ -1259,6 +1350,8 @@ function roomData(watch: boolean): RoomData {
 /** Draw the room (or a watched room): seats patched in place, the picker
  * opened once and refreshed after. */
 function renderRoom(watch: boolean) {
+  // A match follows: have the battle renderer ready (phaser-runtime.ts).
+  warmPhaser(0);
   const menu = $("menu");
   const d = roomData(watch);
   const seats = roomSeatsMarkup(d);
@@ -1887,6 +1980,21 @@ const WORLD_NAMES: Record<World, string> = {
 // Light or full menus from the first screen on (ui/ui-effects.ts).
 syncUiEffects();
 const worlds = worldLoader();
+let phaserWarm: ReturnType<typeof setTimeout> | undefined;
+/** Load Phaser `ms` from now, while the page is idle (phaser-runtime.ts). */
+function warmPhaser(ms: number) {
+  if (phaser() || phaserWarm !== undefined) return;
+  phaserWarm = setTimeout(() => {
+    const load = () =>
+      void loadPhaser().catch(() => {
+        // Offline or a new deploy: a battle asks again when it needs it.
+        phaserWarm = undefined;
+      });
+    if (ms && typeof requestIdleCallback === "function")
+      requestIdleCallback(load, { timeout: 4000 });
+    else load();
+  }, ms);
+}
 /** The hub world wanted on screen whose code is still on the way (or failed). */
 let worldWait: World | null = null;
 /**
@@ -1968,9 +2076,46 @@ function syncHub() {
     .connection?.saveData;
   if (hub && !saveData) worlds.warm();
   else worlds.stopWarming();
+  // The battle renderer too, a moment after the hub shows.
+  if (hub) warmPhaser(1500);
   // A scene hiding after the next one showed may have taken the hub's top
   // bar style away (each checks only some of the others): in the hub it is on.
   if (hub) document.body.classList.add("hub-screen");
+  syncChat(hub);
+}
+/** The farm whose Nearby chat this page is in (chat-farm). */
+let farmChatOwner: string | null = null;
+/** The chat button's place and channels (chat/chat-ui.ts). */
+function syncChat(hub: boolean) {
+  const inRoom = !!myId && !!state;
+  const fighting =
+    inRoom && state!.phase !== "lobby" && state!.phase !== "finished";
+  const place: ChatPlace = hub
+    ? "hub"
+    : inRoom && !fighting && !state!.practice
+      ? "room"
+      : "none";
+  // Quick chat in a battle with other people in it (not practice, not a
+  // bot match, not a raid alone).
+  battleChat.sync(
+    chatMode() !== "off" &&
+      fighting &&
+      !state!.practice &&
+      !state!.vsBot &&
+      state!.players.length > 1 &&
+      (!state!.raid || state!.raid.partySize > 1),
+    !!state?.raid,
+  );
+  chat.sync(place, {
+    party: !!party,
+    room: inRoom && !state!.practice,
+    // Nearby: the Plaza's copy, or the farm you are on.
+    place:
+      hub && (hubScene === "plaza" || (hubScene === "farm" && !!farmChatOwner)),
+    // Friends: anyone signed in with an account (guests have no friends).
+    friend: !!accountsUI?.account && !accountsUI.account.guest,
+  });
+  placeSceneSwitch?.();
 }
 /** The new Plaza (hub redesign phase 3): the server moves everyone in it. */
 function syncPlaza(want: boolean, hub = want) {
@@ -2023,6 +2168,12 @@ function syncPlaza(want: boolean, hub = want) {
       (await accountsUI.api("/api/plaza")) as PlazaProgress,
     goFarm: () => setHubScene("farm"),
     isBlocked: (accountId) => accountsUI.isBlocked(accountId),
+    // Emotes go through chat's Nearby channel (docs/chat-plan.md).
+    quickChat: (quick: ChatQuick) =>
+      void request("chat-send", { channel: "place", quick }).then((r) => {
+        if (!r.ok && r.error) toast(r.error);
+      }),
+    myAccountId: () => accountsUI.account?.id,
     onPlayer: async (action, playerId, name) => {
       if (action === "friend") {
         await accountsUI.friendRequest({ playerId });
@@ -2268,12 +2419,27 @@ function syncFarm(want: boolean, hub = want) {
         friend,
       })) as FarmGiftResult,
     inviteLink: (code) => farmInviteUrl(location.origin, code),
-    here: async (owner, emote) =>
-      (await accountsUI.api("/api/farm/here", {
+    here: async (owner, emote) => {
+      // In chat's Nearby channel for this farm (once per farm).
+      const farm = owner ?? accountsUI.account?.id ?? null;
+      if (farm && farm !== farmChatOwner) {
+        farmChatOwner = farm;
+        void request("chat-farm", { owner: farm }).then((r) => {
+          if (!r.ok && farmChatOwner === farm) farmChatOwner = null;
+          syncHub();
+        });
+      }
+      return (await accountsUI.api("/api/farm/here", {
         ...(owner ? { owner } : {}),
         ...(emote ? { emote } : {}),
-      })) as FarmHere,
+      })) as FarmHere;
+    },
     gone: async () => {
+      if (farmChatOwner) {
+        farmChatOwner = null;
+        void request("chat-farm", { owner: null });
+        syncHub();
+      }
       await accountsUI.api("/api/farm/gone", {});
     },
     tour: async () =>
@@ -2407,11 +2573,12 @@ function lobbyAction(action: LobbyAction) {
   else void accountsUI.showFriends();
 }
 /** PLAY: the remembered mode, through the same controls as the Play panel. */
-async function lobbyPlay(mode: LobbyMode) {
+async function lobbyPlay(chosen: LobbyMode) {
   audio.unlock();
   if (!accountsUI.ensurePlayer()) return;
   if (!connected) return toast("Waiting for the server connection.");
   const size = party?.members.length ?? 0;
+  const mode = partyLobbyMode(chosen, size);
   if (size > 1) {
     if (!partyLeader())
       return toast(
@@ -2450,34 +2617,15 @@ function stepHomeFighter(direction: -1 | 1) {
   renderMenu();
   syncHub();
 }
-/** Start a raid or safe attack practice from the Raid Hub. */
+/** Start a raid from the Raid Hub. */
 async function startRaid(
   boss: RaidBossId,
-  options: { solo?: boolean; drill?: string; returnTab?: RaidTab },
+  options: { solo?: boolean; returnTab?: RaidTab },
 ) {
   if (!accountsUI.ensurePlayer()) return;
-  if (myId && options.drill && state?.raid?.boss === boss) {
-    raidPracticeReturn = {
-      boss,
-      tab: options.returnTab ?? "party",
-      leaveRoom: false,
-    };
-    const reply = await request("raid-drill", { kind: options.drill });
-    if (!reply.ok) {
-      raidPracticeReturn = undefined;
-      return toast(reply.error ?? "The host starts practice from the lobby.");
-    }
-    $<HTMLDialogElement>("dialog").close();
-    settingsOpen = false;
-    menuOpen = false;
-    return;
-  }
   if (myId) return toast("Leave your current room first.");
   if (!connected) return toast("Waiting for the server connection.");
   if (watching) await stopWatching();
-  raidPracticeReturn = options.drill
-    ? { boss, tab: options.returnTab ?? "party", leaveRoom: true }
-    : undefined;
   audio.unlock();
   $<HTMLDialogElement>("dialog").close();
   settingsOpen = false;
@@ -2492,42 +2640,14 @@ async function startRaid(
     boss,
   });
   identity(reply);
-  if (!reply.ok) {
-    raidPracticeReturn = undefined;
-    return;
-  }
+  if (!reply.ok) return;
   raidRoomReturn = {
     code: reply.code!,
     boss,
     tab: options.returnTab ?? "party",
   };
   await request("select", selected);
-  if (options.drill) {
-    const drill = await request("raid-drill", { kind: options.drill });
-    if (!drill.ok) {
-      raidPracticeReturn = undefined;
-      toast(drill.error ?? "Could not start practice.");
-    }
-  } else if (options.solo) await request("ready");
-}
-function requestRaidHud(event: string, data?: unknown): Promise<unknown> {
-  const endsHubPractice =
-    event === "raid-drill" &&
-    !!data &&
-    typeof data === "object" &&
-    (data as { kind?: unknown }).kind === null;
-  return request(event, data).then(async (reply) => {
-    if (endsHubPractice && reply.ok && raidPracticeReturn) {
-      const destination = raidPracticeReturn;
-      if (destination.leaveRoom) {
-        await leave();
-      } else {
-        raidPracticeReturn = undefined;
-        await accountsUI.showRaids(destination.boss, destination.tab);
-      }
-    }
-    return reply;
-  });
+  if (options.solo) await request("ready");
 }
 /**
  * Rasterize ahead the fighters the next battle will load (fighter-prepaint.ts):
@@ -2773,12 +2893,11 @@ async function leave(returnToHub = true) {
     return;
   }
   const returnToRaidHub = returnToHub
-    ? (raidPracticeReturn ??
-      (state?.raid
-        ? raidRoomReturn?.code === state.code
-          ? raidRoomReturn
-          : { boss: state.raid.boss, tab: "party" as const }
-        : undefined))
+    ? state?.raid
+      ? raidRoomReturn?.code === state.code
+        ? raidRoomReturn
+        : { boss: state.raid.boss, tab: "party" as const }
+      : undefined
     : undefined;
   const reply = await request("leave", {
     token: sessionStorage.getItem("arena-token"),
@@ -2787,7 +2906,6 @@ async function leave(returnToHub = true) {
     toast("Could not leave the room yet. Reconnect and try again.");
     return;
   }
-  raidPracticeReturn = undefined;
   raidRoomReturn = undefined;
   sessionStorage.removeItem("arena-token");
   lobbySelection.reset();
@@ -3200,7 +3318,7 @@ function renderBattle() {
     renderRaidUI(
       state,
       me,
-      requestRaidHud,
+      request,
       async () => {
         const progress = (await accountsUI.api(
           "/api/raids",
@@ -3551,6 +3669,44 @@ socket.on("party", (data: unknown) => {
     toast(`${party.members.at(-1)!.name} joined your party.`);
   syncHub();
   accountsUI.refreshRaids();
+});
+// In-game chat (docs/chat-plan.md).
+socket.on("chat", (line: ChatLine) => {
+  chat.receive(line);
+  // In a battle: a bubble over the speaker, and the feed under the button.
+  if (line.channel === "room" && line.fighter && state) {
+    const speaker = state.players.find((p) => p.id === line.fighter);
+    const me = state.players.find((p) => p.id === myId);
+    const plate = document.querySelector<HTMLElement>(
+      `.battle-nameplate[data-fighter="${CSS.escape(line.fighter)}"]`,
+    );
+    battleChat.receive(
+      line.quick ? quickText(line.quick) : (line.text ?? ""),
+      line.from.name,
+      plate,
+      !!state.raid || (!!speaker && !!me && teamOf(speaker) === teamOf(me)),
+      !!line.quick && quickKind(line.quick) === "emote",
+    );
+  }
+  // Nearby lines pop over the speaker's head. On the Plaza the server
+  // already pops its own emotes through the Plaza's state.
+  if (line.channel !== "place") return;
+  const text = line.quick ? quickText(line.quick) : (line.text ?? "");
+  if (hubScene === "plaza") {
+    if (!(line.quick && (PLAZA_EMOTES as readonly string[]).includes(text)))
+      plaza?.say(line.from.id, text);
+  } else if (hubScene === "farm") farmScreen?.say(line.from.id, text);
+});
+socket.on("chat-config", (data: { freeText?: unknown } | null) => {
+  chat.setFreeText(data?.freeText === true);
+  // Friends' messages that came while you were away (a dot on the chat).
+  const me = accountsUI?.account;
+  if (me && !me.guest)
+    void request("chat-unread", {}, true).then((reply) => {
+      const unread = (reply as { unread?: unknown }).unread;
+      if (reply.ok && unread && typeof unread === "object")
+        chat.setUnread(unread as Record<string, number>);
+    });
 });
 socket.on("party-room", (data: unknown) => {
   const parsed = partyRoomSchema.safeParse(data);
@@ -4093,7 +4249,19 @@ const attacking = (rig: FighterVisual | undefined) =>
   !!rig &&
   (rig.controller.state === "basic" ||
     rig.controller.state.startsWith("skill"));
-class ArenaScene extends Phaser.Scene {
+/**
+ * ArenaScene's base until Phaser has loaded (phaser-runtime.ts), which then
+ * puts Phaser.Scene in its place: `super` is looked up when it runs, and no
+ * scene exists before a battle, by when Phaser is here.
+ */
+class SceneUntilPhaser {}
+let Ph!: typeof Phaser;
+whenPhaser((lib) => {
+  Ph = lib;
+  Object.setPrototypeOf(ArenaScene, lib.Scene);
+  Object.setPrototypeOf(ArenaScene.prototype, lib.Scene.prototype);
+});
+class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
   graphics!: Phaser.GameObjects.Graphics;
   /** A raid boss, sorted with the fighters by where it stands. */
   bossGraphics!: Phaser.GameObjects.Graphics;
@@ -4610,7 +4778,7 @@ class ArenaScene extends Phaser.Scene {
     // fighter, a skin or boss art) settles what was requested: art still
     // missing may be asked for again. The scene's loader drops its
     // listeners when the scene shuts down.
-    this.load.on(Phaser.Loader.Events.COMPLETE, () => this.fighters.settled());
+    this.load.on(Ph.Loader.Events.COMPLETE, () => this.fighters.settled());
   }
   create() {
     battleLoadMarks.create ||= performance.now();
@@ -4665,8 +4833,8 @@ class ArenaScene extends Phaser.Scene {
       for (const label of this.labels.values()) label.remove();
       this.labels.clear();
     };
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, clearDom);
-    this.events.once(Phaser.Scenes.Events.DESTROY, clearDom);
+    this.events.once(Ph.Scenes.Events.SHUTDOWN, clearDom);
+    this.events.once(Ph.Scenes.Events.DESTROY, clearDom);
     this.graphics = battleCurves(this.add.graphics());
     this.bossGraphics = this.add.graphics();
     // Keys and mouse buttons are read through the player's bindings (see pressAction).
@@ -5508,8 +5676,8 @@ class ArenaScene extends Phaser.Scene {
       const prismAim = state ? prismatailAim(state, local) : undefined;
       if (prismAim) aimAt = prismAim;
       aimAt = {
-        x: Phaser.Math.Clamp(aimAt.x, 0, RULES.width),
-        y: Phaser.Math.Clamp(aimAt.y, 0, RULES.height),
+        x: Ph.Math.Clamp(aimAt.x, 0, RULES.width),
+        y: Ph.Math.Clamp(aimAt.y, 0, RULES.height),
       };
       this.aimPoint = aimAt;
       const input: Input = {
@@ -6003,7 +6171,7 @@ class ArenaScene extends Phaser.Scene {
         if (tier) {
           const colour =
             tier.name === "Crystal" && !reducedMotion
-              ? Phaser.Display.Color.HSVToRGB((_time / 2400) % 1, 0.45, 1).color
+              ? Ph.Display.Color.HSVToRGB((_time / 2400) % 1, 0.45, 1).color
               : Number.parseInt(tier.color.slice(1), 16);
           g.lineStyle(2, colour, 0.75).strokeEllipse(
             x,
@@ -6333,10 +6501,10 @@ class ArenaScene extends Phaser.Scene {
           const wob = reducedMotion ? 0 : Math.sin(_time / 60) * 8;
           const mx = (x + to.x) / 2 + wob,
             my = (y + to.y) / 2 - 24;
-          const curve = new Phaser.Curves.QuadraticBezier(
-            new Phaser.Math.Vector2(x, y - 14 - jump),
-            new Phaser.Math.Vector2(mx, my),
-            new Phaser.Math.Vector2(to.x, to.y - 14),
+          const curve = new Ph.Curves.QuadraticBezier(
+            new Ph.Math.Vector2(x, y - 14 - jump),
+            new Ph.Math.Vector2(mx, my),
+            new Ph.Math.Vector2(to.x, to.y - 14),
           );
           g.lineStyle(9, 0x2a1240, 0.9);
           curve.draw(g, 16);
@@ -6425,6 +6593,8 @@ class ArenaScene extends Phaser.Scene {
       if (!label) {
         label = document.createElement("div");
         label.className = "player-nameplate battle-nameplate";
+        // Quick chat in a battle finds the speaker's plate by this.
+        label.dataset.fighter = p.id;
         $("game").parentElement!.append(label);
         this.labels.set(p.id, label);
       }
@@ -6635,7 +6805,7 @@ function drawComboMark(
 /** Paint a fighter solid white for this frame (the rig resets tint each render). */
 function flashWhite(root: Phaser.GameObjects.Container) {
   for (const child of root.list) {
-    if (child instanceof Phaser.GameObjects.Container) flashWhite(child);
+    if (child instanceof Ph.GameObjects.Container) flashWhite(child);
     else (child as Phaser.GameObjects.Image).setTintFill?.(0xffffff);
   }
 }
@@ -6703,18 +6873,21 @@ function fitRenderer() {
 }
 /** When this battle renderer started loading (for reportBattleLoad). */
 let battleLoadStarted = 0;
+/** When a battle began waiting for Phaser to load, if it is waiting (else 0). */
+let phaserWaitStarted = 0;
 /** When this renderer's scene reached preload() and create() (reportBattleLoad). */
 const battleLoadMarks = { preload: 0, create: 0 };
 /** Longest the briefing holds "I'm ready" back while the arena loads. */
 const ARENA_WAIT_MAX_MS = 20_000;
 let arenaWaitSince = 0;
 /**
- * The battle renderer is still loading these fighters. Never blocks for
- * good: no renderer (nothing to wait for) or a load past ARENA_WAIT_MAX_MS
- * lets the player confirm anyway.
+ * The battle renderer is still loading these fighters (or Phaser itself,
+ * which loads after the first screen). Never blocks for good: no renderer
+ * (nothing to wait for) or a load past ARENA_WAIT_MAX_MS lets the player
+ * confirm anyway.
  */
 function arenaLoading(s: Snapshot) {
-  if (!gameInstance || scene?.fightersReady(s)) {
+  if ((!gameInstance && !phaserWaitStarted) || scene?.fightersReady(s)) {
     arenaWaitSince = 0;
     return false;
   }
@@ -6802,9 +6975,33 @@ function releaseHubArt() {
 function ensureBattleRenderer() {
   if (gameInstance || $("game").clientWidth < 1 || $("game").clientHeight < 1)
     return;
-  battleLoadStarted = performance.now();
+  // Phaser loads after the first screen (phaser-runtime.ts); a battle that
+  // comes before the hub's warm-up finished waits for it, then asks again.
+  if (!phaser()) {
+    // The wait counts towards the battle's load time (reportBattleLoad).
+    phaserWaitStarted ||= performance.now();
+    void loadPhaser().then(
+      () => {
+        ensureBattleRenderer();
+        // No renderer after all (the battle closed meanwhile): a later one
+        // starts its own count.
+        phaserWaitStarted = 0;
+      },
+      (error: unknown) => {
+        phaserWaitStarted = 0;
+        console.error("The battle renderer could not load.", error);
+      },
+    );
+    return;
+  }
+  const Phaser = Ph;
+  battleLoadStarted = phaserWaitStarted || performance.now();
+  phaserWaitStarted = 0;
   battleLoadMarks.preload = battleLoadMarks.create = 0;
   releaseHubArt();
+  // Effects, rings and auras are Graphics paths redrawn every frame: draw
+  // them without Phaser's per-point garbage (graphics-render.ts).
+  installGraphicsRenderer(Phaser);
   arenaCssArea = $("game").clientWidth * $("game").clientHeight;
   const dpr = renderScale();
   gameInstance = new Phaser.Game({
@@ -6850,6 +7047,7 @@ function ensureBattleRenderer() {
 /** A hidden battle canvas must not compete with the menu or Shop preview. */
 function syncBattleLoop() {
   if (!gameInstance) return;
+  const Phaser = Ph;
   if ($("battle").hidden) {
     // Sleeping retains every fighter and arena texture. Release them before
     // opening the hub or the Shop so iOS does not have to evict the whole web app.
@@ -6943,6 +7141,7 @@ accountsUI = new AccountUI({
   inviteFriend: (playerId) => request("room-invite", { playerId }),
   // In a private room Friends takes the picker's place; closing it brings
   // the picker back (UI remodel step 6).
+  messageFriend: (id, name) => chat.openFriend(id, name),
   friendsHost: () =>
     myId && !watching
       ? ($("menu").querySelector<HTMLElement>(":scope > .room-screen") ??
