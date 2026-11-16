@@ -181,7 +181,7 @@
   background: #0b1020b3;
   color: var(--ui-accent);
   letter-spacing: 1px;
-  font-size: 14px;
+  font-size: calc(14px * var(--text-scale, 1));
 }
 .rh-stars i {
   font-style: normal;
@@ -279,7 +279,7 @@
 .rh-stage-name {
   font-family: var(--font-display);
   font-weight: 800;
-  font-size: 40px;
+  font-size: calc(40px * var(--text-scale, 1));
   line-height: 0.95;
   text-transform: uppercase;
   letter-spacing: 0.02em;
@@ -344,7 +344,7 @@
   border: 2px dashed var(--ui-line-2);
   display: grid;
   place-items: center;
-  font-size: 24px;
+  font-size: calc(24px * var(--text-scale, 1));
   color: var(--ui-dim);
 }
 .rh-invites {
@@ -463,7 +463,7 @@ button.rh-reward:focus-visible {
   display: grid;
   gap: 4px;
   margin-top: 4px;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   line-height: 1.35;
   color: var(--ui-dim);
 }
@@ -636,7 +636,7 @@ button.rh-reward:focus-visible {
   min-width: 0;
 }
 .rh-attack-text b {
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale, 1));
 }
 .rh-attack-text small {
   color: var(--ui-dim);
@@ -793,7 +793,7 @@ button.rh-reward:focus-visible {
     gap: 2px;
   }
   .rh-stage-name {
-    font-size: 20px;
+    font-size: calc(20px * var(--text-scale, 1));
   }
   .rh-stage-line,
   .rh-hint {
@@ -811,7 +811,7 @@ button.rh-reward:focus-visible {
     width: 34px;
     height: 34px;
     margin-bottom: 0;
-    font-size: 18px;
+    font-size: calc(18px * var(--text-scale, 1));
   }
   .rh-seat small {
     display: none;
@@ -883,10 +883,10 @@ button.rh-reward:focus-visible {
     height: 72px;
   }
   .rh-attack-big .ui-h {
-    font-size: 15px;
+    font-size: calc(15px * var(--text-scale, 1));
   }
   .rh-attack-text b {
-    font-size: 13px;
+    font-size: calc(13px * var(--text-scale, 1));
   }
   /* The three chapters side by side, each number beside its name: one
      short row instead of three cards stacked (the Guide was 4.4 screens

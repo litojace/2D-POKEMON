@@ -20,13 +20,13 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-  font-size: 14px;
+  font-size: calc(14px * var(--text-scale, 1));
 }
 .plaza-layer .pz-hud > * {
   pointer-events: auto;
 }
 .plaza-layer.phone .pz-hud {
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
 }
 .plaza-layer .pz-banner {
   position: absolute;
@@ -149,7 +149,7 @@
   border-radius: 999px;
   color: #fff;
   font-weight: 700;
-  font-size: 13px;
+  font-size: calc(13px * var(--text-scale, 1));
   cursor: pointer;
 }
 /* Today's quests: a compact list (desktop 208px wide, rows 0.26em apart,
@@ -402,7 +402,7 @@
   border-radius: 50%;
   border: 1px solid #ffffff2e;
   background: #1a2547;
-  font-size: 22px;
+  font-size: calc(22px * var(--text-scale, 1));
   cursor: pointer;
   transform: rotate(calc(var(--a) * 45deg - 90deg)) translate(76px)
     rotate(calc(var(--a) * -45deg + 90deg));
@@ -805,7 +805,7 @@
 }
 /* From the prototype's mobile.css */
 .plaza-layer.phone .pz-hud {
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
 }
 .plaza-layer.phone .pz-feed {
   display: none;
@@ -817,7 +817,7 @@
   display: none;
 }
 .plaza-layer.phone .pz-clock {
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale, 1));
   width: 5.2em;
 }
 /* Phones: the quests go left, under the player card and exactly as wide
@@ -828,7 +828,7 @@
   right: auto;
   top: var(--hud-row2);
   width: var(--hub-card-w);
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale, 1));
 }
 .plaza-layer.phone .pz-quests.min {
   display: flex;
@@ -841,7 +841,7 @@
   margin: 0;
 }
 .plaza-layer.phone .pz-q {
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
 }
 /* At the card's width a long quest wraps instead of losing its end. */
 .plaza-layer.phone .pz-q > span:first-child {
@@ -852,7 +852,7 @@
 .plaza-layer.phone .pz-quests h5 button {
   min-width: 32px;
   min-height: 28px;
-  font-size: 13px;
+  font-size: calc(13px * var(--text-scale, 1));
 }
 .plaza-layer.phone .pz-actions {
   align-items: flex-end;
@@ -865,20 +865,20 @@
 .plaza-layer.phone .pz-act {
   width: 64px;
   height: 64px;
-  font-size: 14px;
+  font-size: calc(14px * var(--text-scale, 1));
 }
 .plaza-layer.phone .pz-act.big {
   width: var(--pz-jump);
   height: var(--pz-jump);
-  font-size: 16px;
+  font-size: calc(16px * var(--text-scale, 1));
 }
 .plaza-layer.phone .pz-act small {
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
 }
 .plaza-layer.phone .pz-interact {
   width: 13em;
   height: 42px;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   align-self: center;
 }
 /* Phones: the round buttons in a row over Dash and Jump. */
@@ -893,14 +893,14 @@
 .plaza-layer.phone .pz-round {
   width: 46px;
   height: 46px;
-  font-size: 13px;
+  font-size: calc(13px * var(--text-scale, 1));
 }
 .plaza-layer.phone .pz-round small {
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
 }
 .plaza-layer.phone .pz-runcard {
   bottom: 90px;
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale, 1));
 }
 .plaza-layer.phone .pz-wheel {
   scale: 0.85;
@@ -911,7 +911,7 @@
 }
 .plaza-layer.phone .pz-interact kbd,
 .plaza-layer.phone .pz-quests h5 span {
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale, 1));
 }
 
 /* ---------- below the line: the Plaza inside the game ---------- */
@@ -1149,14 +1149,14 @@
   margin: 10px 2px 0;
   height: 26px;
   font-family: "Caveat", "Comic Sans MS", cursive;
-  font-size: 22px;
+  font-size: calc(22px * var(--text-scale, 1));
   line-height: 26px;
   color: #2a2a2a;
 }
 .plaza-layer .polaroid small {
   margin: 4px 2px 0;
   height: 16px;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   line-height: 16px;
   color: #6b6b6b;
 }
@@ -1177,7 +1177,7 @@
   border: 0;
   border-radius: 10px;
   font-family: var(--body, "DM Sans", sans-serif);
-  font-size: 14px;
+  font-size: calc(14px * var(--text-scale, 1));
   font-weight: 800;
   line-height: 40px;
   text-align: center;
@@ -1237,13 +1237,13 @@
 .plaza-layer.phone .polaroid p {
   margin: 6px 2px 0;
   height: 18px;
-  font-size: 16px;
+  font-size: calc(16px * var(--text-scale, 1));
   line-height: 18px;
 }
 .plaza-layer.phone .polaroid small {
   margin: 2px 2px 0;
   height: 14px;
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale, 1));
   line-height: 14px;
 }
 .plaza-layer.phone .polaroid .acts {
@@ -1253,7 +1253,7 @@
 }
 .plaza-layer.phone .polaroid .acts > * {
   height: 38px;
-  font-size: 13px;
+  font-size: calc(13px * var(--text-scale, 1));
   line-height: 38px;
 }
 
@@ -1341,7 +1341,7 @@
   border-radius: 10px;
   background: #ffffff12;
   color: var(--dim);
-  font-size: 16px;
+  font-size: calc(16px * var(--text-scale, 1));
   line-height: 36px;
   text-align: center;
   cursor: pointer;
@@ -1447,7 +1447,7 @@
 .plaza-layer.phone .pz-album-panel .x {
   width: 30px;
   height: 30px;
-  font-size: 14px;
+  font-size: calc(14px * var(--text-scale, 1));
   line-height: 30px;
 }
 .plaza-layer.phone .pz-album-grid button.slot {

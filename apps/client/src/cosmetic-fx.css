@@ -253,7 +253,7 @@
   border-radius: 999px;
   background: color-mix(in srgb, var(--tier) 18%, #0b1222);
   color: color-mix(in srgb, var(--tier) 80%, #fff);
-  font: 700 10px/16px var(--body, sans-serif);
+  font: 700 calc(10px * var(--text-scale, 1))/16px var(--body, sans-serif);
   letter-spacing: 0.06em;
   text-transform: uppercase;
   white-space: nowrap;

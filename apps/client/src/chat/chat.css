@@ -65,7 +65,7 @@
   background: #ff5d6c;
   color: #fff;
   font:
-    700 11px/18px "Barlow",
+    700 calc(11px * var(--text-scale, 1))/18px "Barlow",
     system-ui,
     sans-serif;
   text-align: center;
@@ -131,7 +131,7 @@
   background: none;
   color: var(--ui-dim);
   font:
-    800 14px/1 "Barlow Condensed",
+    800 calc(14px * var(--text-scale, 1))/1 "Barlow Condensed",
     sans-serif;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -163,7 +163,7 @@
     flex: none;
     min-width: 44px;
     padding: 0 6px;
-    font-size: 13px;
+    font-size: calc(13px * var(--text-scale, 1));
     letter-spacing: 0.04em;
   }
   .chat-tab[data-chat-tab="friend"] {
@@ -207,7 +207,7 @@
   background: none;
   color: var(--ui-dim);
   font:
-    700 13px/1 "Barlow",
+    700 calc(13px * var(--text-scale, 1))/1 "Barlow",
     system-ui,
     sans-serif;
   cursor: pointer;
@@ -221,7 +221,7 @@
   margin: 6px 0 0;
   color: var(--ui-dim);
   font:
-    500 12px/1.35 "Barlow",
+    500 calc(12px * var(--text-scale, 1))/1.35 "Barlow",
     system-ui,
     sans-serif;
 }
@@ -258,7 +258,7 @@
 .chat-line {
   padding: 3px 0;
   font:
-    500 14px/1.35 "Barlow",
+    500 calc(14px * var(--text-scale, 1))/1.35 "Barlow",
     system-ui,
     sans-serif;
   overflow-wrap: anywhere;
@@ -295,7 +295,7 @@ button.chat-say:focus-visible {
   flex-basis: 100%;
   margin: 0;
   font:
-    500 13px/1.35 "Barlow",
+    500 calc(13px * var(--text-scale, 1))/1.35 "Barlow",
     system-ui,
     sans-serif;
 }
@@ -308,7 +308,7 @@ button.chat-say:focus-visible {
   background: rgba(255, 255, 255, 0.06);
   color: var(--ui-text);
   font:
-    700 13px/1 "Barlow",
+    700 calc(13px * var(--text-scale, 1))/1 "Barlow",
     system-ui,
     sans-serif;
   cursor: pointer;
@@ -322,7 +322,7 @@ button.chat-say:focus-visible {
   margin: 8px 0 2px;
   color: #8193b2;
   font:
-    600 11px/1.2 "Barlow",
+    600 calc(11px * var(--text-scale, 1))/1.2 "Barlow",
     system-ui,
     sans-serif;
   letter-spacing: 0.03em;
@@ -340,14 +340,14 @@ button.chat-say:focus-visible {
   color: var(--ui-accent);
 }
 .chat-line.is-quick span {
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale, 1));
 }
 .chat-empty {
   flex: 1;
   margin: 8px 0;
   color: var(--ui-dim);
   font:
-    500 13px/1.4 "Barlow",
+    500 calc(13px * var(--text-scale, 1))/1.4 "Barlow",
     system-ui,
     sans-serif;
 }
@@ -382,7 +382,7 @@ button.chat-say:focus-visible {
   background: rgba(255, 255, 255, 0.06);
   color: var(--ui-text);
   font:
-    600 13px/1 "Barlow",
+    600 calc(13px * var(--text-scale, 1))/1 "Barlow",
     system-ui,
     sans-serif;
   white-space: nowrap;
@@ -408,7 +408,7 @@ button.chat-say:focus-visible {
   background: rgba(255, 255, 255, 0.06);
   color: var(--ui-text);
   font:
-    500 16px/1 "Barlow",
+    500 calc(16px * var(--text-scale, 1))/1 "Barlow",
     system-ui,
     sans-serif;
 }
@@ -427,7 +427,7 @@ button.chat-say:focus-visible {
   background: var(--ui-accent);
   color: var(--ui-accent-ink);
   font:
-    800 14px/1 "Barlow Condensed",
+    800 calc(14px * var(--text-scale, 1))/1 "Barlow Condensed",
     sans-serif;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -438,7 +438,7 @@ button.chat-say:focus-visible {
   margin: 4px 0 0;
   color: #ffb4bc;
   font:
-    500 12px/1.3 "Barlow",
+    500 calc(12px * var(--text-scale, 1))/1.3 "Barlow",
     system-ui,
     sans-serif;
 }
@@ -460,7 +460,7 @@ button.chat-say:focus-visible {
     margin: 6px 0 4px;
   }
   .chat-line {
-    font-size: 13px;
+    font-size: calc(13px * var(--text-scale, 1));
   }
   /* A finger tall: each line someone else said opens its menu. */
   button.chat-say {
@@ -488,7 +488,7 @@ button.chat-say:focus-visible {
   background: none;
   color: var(--ui-text);
   font:
-    600 15px/1.2 "Barlow",
+    600 calc(15px * var(--text-scale, 1))/1.2 "Barlow",
     system-ui,
     sans-serif;
   text-align: left;
@@ -522,7 +522,7 @@ button.chat-say:focus-visible {
   background: #ff5c6c;
   color: #fff;
   font:
-    800 12px/1.2 "Barlow",
+    800 calc(12px * var(--text-scale, 1))/1.2 "Barlow",
     system-ui,
     sans-serif;
   font-style: normal;
@@ -534,7 +534,7 @@ button.chat-say:focus-visible {
   gap: 8px;
   margin: 8px 0 0;
   font:
-    700 15px/1.2 "Barlow",
+    700 calc(15px * var(--text-scale, 1))/1.2 "Barlow",
     system-ui,
     sans-serif;
 }
@@ -635,7 +635,7 @@ button.chat-say:focus-visible {
   background: rgba(255, 255, 255, 0.06);
   color: var(--ui-text);
   font:
-    700 13px/1 "Barlow",
+    700 calc(13px * var(--text-scale, 1))/1 "Barlow",
     system-ui,
     sans-serif;
   white-space: nowrap;
@@ -643,7 +643,7 @@ button.chat-say:focus-visible {
   touch-action: manipulation;
 }
 .battle-chat-grid button.is-emote {
-  font-size: 20px;
+  font-size: calc(20px * var(--text-scale, 1));
 }
 .battle-chat-grid button.is-ping {
   border-color: color-mix(in srgb, var(--ui-accent) 53.3%, transparent);
@@ -681,7 +681,7 @@ button.chat-say:focus-visible {
   background: rgba(10, 19, 37, 0.72);
   color: var(--ui-text);
   font:
-    600 12px/1.3 "Barlow",
+    600 calc(12px * var(--text-scale, 1))/1.3 "Barlow",
     system-ui,
     sans-serif;
   animation: battle-chat-line 5s ease-in forwards;
@@ -711,7 +711,7 @@ button.chat-say:focus-visible {
   background: #fff;
   color: #1d2433;
   font:
-    700 12px/1.2 "Barlow",
+    700 calc(12px * var(--text-scale, 1))/1.2 "Barlow",
     system-ui,
     sans-serif;
   /* Sized to its text up to 160 px, then wrapped: never past its edges. */
@@ -727,5 +727,5 @@ button.chat-say:focus-visible {
 }
 .battle-nameplate > .chat-bubble.is-emote {
   padding: 2px 7px;
-  font-size: 18px;
+  font-size: calc(18px * var(--text-scale, 1));
 }

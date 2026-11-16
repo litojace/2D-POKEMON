@@ -54,7 +54,7 @@ body.lobby-active #account-profile:has(.portrait-frame) {
   background: #0b1222e6;
   box-shadow: 0 0 0 1px #e9c97a66;
   color: #ffd76a;
-  font: 700 9px / 1.25 var(--display, sans-serif);
+  font: 700 calc(9px * var(--text-scale, 1)) / 1.25 var(--display, sans-serif);
   letter-spacing: 0.5px;
   white-space: nowrap;
   pointer-events: none;
@@ -70,7 +70,7 @@ body.lobby-active #account-profile:has(.portrait-frame) {
   filter: drop-shadow(0 0 6px #ffcf4add) saturate(1.2);
 }
 .account-avatar .portrait-frame .frame-stars {
-  font-size: 7px;
+  font-size: calc(7px * var(--text-scale, 1));
   bottom: -24%;
 }
 
@@ -123,7 +123,7 @@ body.lobby-active #account-profile:has(.portrait-frame) {
   height: 100%;
 }
 .portrait-frame .frame-stars {
-  font-size: 7px;
+  font-size: calc(7px * var(--text-scale, 1));
   letter-spacing: 0.2px;
 }
 /* Extra room below the circle keeps badges/stars away from the next row. */

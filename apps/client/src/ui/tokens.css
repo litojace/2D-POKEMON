@@ -67,14 +67,19 @@
   /* Type: Barlow Condensed for names, numbers and buttons; DM Sans to read. */
   --font-display: "Barlow Condensed", "Arial Narrow", sans-serif;
   --font-body: "DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --fs-micro: 11px;
-  --fs-small: 12px;
-  --fs-body: 14px;
-  --fs-lead: 16px;
-  --fs-h4: 18px;
-  --fs-h3: 22px;
-  --fs-h2: 28px;
-  --fs-h1: 36px;
+  /* One knob for every text size in the game: the type scale below and
+     every font-size the stylesheets write in px are multiplied by it. 1 is
+     the game as designed; 1.15 would make all text 15 % larger (a "Larger
+     text" setting would set it on <html>). */
+  --text-scale: 1;
+  --fs-micro: calc(11px * var(--text-scale, 1));
+  --fs-small: calc(12px * var(--text-scale, 1));
+  --fs-body: calc(14px * var(--text-scale, 1));
+  --fs-lead: calc(16px * var(--text-scale, 1));
+  --fs-h4: calc(18px * var(--text-scale, 1));
+  --fs-h3: calc(22px * var(--text-scale, 1));
+  --fs-h2: calc(28px * var(--text-scale, 1));
+  --fs-h1: calc(36px * var(--text-scale, 1));
   /* Controls: two heights. Buttons in an action group share one width, so a
      row of buttons is always equal (owner's note, 3 Nov 2026). */
   --ctl-m: 44px;
@@ -214,14 +219,14 @@
   :root {
     /* 11 px is the floor: Apple's smallest text style (Caption 2) is 11 pt,
        and a CSS px is a point on iPhone. */
-    --fs-micro: 11px;
-    --fs-small: 11px;
-    --fs-body: 12px;
-    --fs-lead: 14px;
-    --fs-h4: 15px;
-    --fs-h3: 18px;
-    --fs-h2: 22px;
-    --fs-h1: 26px;
+    --fs-micro: calc(11px * var(--text-scale, 1));
+    --fs-small: calc(11px * var(--text-scale, 1));
+    --fs-body: calc(12px * var(--text-scale, 1));
+    --fs-lead: calc(14px * var(--text-scale, 1));
+    --fs-h4: calc(15px * var(--text-scale, 1));
+    --fs-h3: calc(18px * var(--text-scale, 1));
+    --fs-h2: calc(22px * var(--text-scale, 1));
+    --fs-h1: calc(26px * var(--text-scale, 1));
     --ctl-m: 36px;
     --ctl-s: 28px;
     --act-w: 104px;

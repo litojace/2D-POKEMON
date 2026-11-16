@@ -123,7 +123,7 @@
 }
 .lobby-rail span {
   font:
-    700 10px/1 "DM Sans",
+    700 calc(10px * var(--text-scale, 1))/1 "DM Sans",
     sans-serif;
   letter-spacing: 0.02em;
   color: #c9d6ee;
@@ -141,7 +141,7 @@
   background: var(--ui-danger);
   color: #fff;
   font:
-    800 11px/1 "DM Sans",
+    800 calc(11px * var(--text-scale, 1))/1 "DM Sans",
     sans-serif;
   font-style: normal;
   font-variant-numeric: tabular-nums;
@@ -365,7 +365,7 @@
   background: #fff;
   color: #1a2547;
   font:
-    800 26px/1 "Barlow Condensed",
+    800 calc(26px * var(--text-scale, 1))/1 "Barlow Condensed",
     sans-serif;
   transform: translateX(-50%);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
@@ -397,7 +397,7 @@
   backdrop-filter: blur(10px) saturate(1.3);
   color: #f4f7ff;
   font:
-    700 15px/1.2 "DM Sans",
+    700 calc(15px * var(--text-scale, 1))/1.2 "DM Sans",
     sans-serif;
   text-align: center;
   text-wrap: balance;
@@ -413,7 +413,7 @@
   .lobby-emote-bubble.is-line {
     max-width: calc(100cqw - 8px);
     padding: 6px 10px 7px;
-    font-size: 14px;
+    font-size: calc(14px * var(--text-scale, 1));
   }
 }
 /* The tail: the lower half of a turned square of the same glass and rim. */
@@ -528,7 +528,7 @@
   border-radius: 50%;
   background: var(--lobby-glass);
   font:
-    700 24px/1 "DM Sans",
+    700 calc(24px * var(--text-scale, 1))/1 "DM Sans",
     sans-serif;
 }
 .lobby-name {
@@ -544,7 +544,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font:
-    800 34px/1 "Barlow Condensed",
+    800 calc(34px * var(--text-scale, 1))/1 "Barlow Condensed",
     sans-serif;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -560,7 +560,7 @@
   background: var(--lobby-glass);
   color: var(--element, var(--ui-accent));
   font:
-    800 11px/1 "DM Sans",
+    800 calc(11px * var(--text-scale, 1))/1 "DM Sans",
     sans-serif;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -634,7 +634,7 @@
   border-radius: 999px;
   background: var(--lobby-glass);
   font:
-    700 12px/1 "DM Sans",
+    700 calc(12px * var(--text-scale, 1))/1 "DM Sans",
     sans-serif;
   pointer-events: auto;
 }
@@ -649,7 +649,7 @@
   background: color-mix(in srgb, var(--ui-danger) 20%, transparent);
   color: #ffb3bb;
   font:
-    700 11px/1 "DM Sans",
+    700 calc(11px * var(--text-scale, 1))/1 "DM Sans",
     sans-serif;
 }
 
@@ -684,14 +684,14 @@
   white-space: nowrap;
   color: var(--ui-accent);
   font:
-    800 11px/1.1 "Barlow Condensed",
+    800 calc(11px * var(--text-scale, 1))/1.1 "Barlow Condensed",
     sans-serif;
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 .lobby-card b {
   font:
-    800 19px/1.1 "Barlow Condensed",
+    800 calc(19px * var(--text-scale, 1))/1.1 "Barlow Condensed",
     sans-serif;
   letter-spacing: 0.02em;
 }
@@ -700,7 +700,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--ui-dim);
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   font-variant-numeric: tabular-nums;
 }
 .lobby-card-row {
@@ -767,7 +767,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font:
-    800 18px/1 "Barlow Condensed",
+    800 calc(18px * var(--text-scale, 1))/1 "Barlow Condensed",
     sans-serif;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -777,7 +777,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--ui-dim);
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale, 1));
 }
 .lobby-mode-caret {
   color: var(--ui-dim);
@@ -806,7 +806,7 @@
     0 14px 26px rgba(0, 0, 0, 0.4);
   color: var(--ui-accent-ink) !important;
   font:
-    800 40px/1 "Barlow Condensed",
+    800 calc(40px * var(--text-scale, 1))/1 "Barlow Condensed",
     sans-serif !important;
   letter-spacing: 0.1em;
 }
@@ -955,14 +955,14 @@
 }
 .lobby-mode-menu b {
   font:
-    800 15px/1 "Barlow Condensed",
+    800 calc(15px * var(--text-scale, 1))/1 "Barlow Condensed",
     sans-serif;
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 .lobby-mode-menu small {
   color: var(--ui-dim);
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale, 1));
 }
 .lobby-mode-menu button:hover,
 .lobby-mode-menu button:focus-visible {
@@ -1021,10 +1021,10 @@
     right: -5px;
     min-width: 16px;
     height: 16px;
-    font-size: 9px;
+    font-size: calc(9px * var(--text-scale, 1));
   }
   .lobby-party-bar {
-    font-size: 10px;
+    font-size: calc(10px * var(--text-scale, 1));
   }
   .lobby-nameplate {
     grid-template-columns: 32px 150px 32px;
@@ -1033,15 +1033,15 @@
   .lobby-step {
     width: 32px;
     height: 32px;
-    font-size: 18px;
+    font-size: calc(18px * var(--text-scale, 1));
   }
   .lobby-name h2 {
     max-width: 150px;
-    font-size: 22px;
+    font-size: calc(22px * var(--text-scale, 1));
   }
   .lobby-name .element-pill {
     height: 18px;
-    font-size: 9px;
+    font-size: calc(9px * var(--text-scale, 1));
   }
   .lobby-party {
     row-gap: 4px;
@@ -1056,13 +1056,13 @@
     border-radius: 12px;
   }
   .lobby-card b {
-    font-size: 15px;
+    font-size: calc(15px * var(--text-scale, 1));
   }
   .lobby-card small {
-    font-size: 10px;
+    font-size: calc(10px * var(--text-scale, 1));
   }
   .lobby-card-kicker {
-    font-size: 9px;
+    font-size: calc(9px * var(--text-scale, 1));
   }
   .lobby-spark {
     display: none;
@@ -1083,10 +1083,10 @@
     height: 16px;
   }
   .lobby-mode-text b {
-    font-size: 14px;
+    font-size: calc(14px * var(--text-scale, 1));
   }
   .lobby-mode-text small {
-    font-size: 9px;
+    font-size: calc(9px * var(--text-scale, 1));
   }
   .lobby-play {
     gap: 6px;
@@ -1094,7 +1094,7 @@
   .lobby-play-button {
     height: 50px;
     border-radius: 14px;
-    font-size: 28px !important;
+    font-size: calc(28px * var(--text-scale, 1)) !important;
   }
   .lobby-play {
     --lobby-play-button-h: 50px;
@@ -1175,7 +1175,7 @@
   background: none;
   color: var(--ui-dim);
   font:
-    800 16px/1 "Barlow Condensed",
+    800 calc(16px * var(--text-scale, 1))/1 "Barlow Condensed",
     sans-serif;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -1278,7 +1278,7 @@ body.hub-active #account-profile .nav-level {
   background: color-mix(in srgb, var(--ui-accent) 14%, transparent);
   color: var(--ui-accent);
   font:
-    800 13px/1 "Barlow Condensed",
+    800 calc(13px * var(--text-scale, 1))/1 "Barlow Condensed",
     sans-serif;
   font-variant-numeric: tabular-nums;
 }
@@ -1309,7 +1309,7 @@ body.hub-active #account-leaves > * {
   gap: 5px;
 }
 #account-leaves .coin-chip b {
-  font-size: 16px;
+  font-size: calc(16px * var(--text-scale, 1));
   line-height: 1.2;
 }
 #account-leaves .coin-chip .button-icon {
@@ -1335,7 +1335,7 @@ body:not(.hub-active) #account-leaves {
   .hub-scenes button {
     width: 64px;
     height: 32px;
-    font-size: 13px;
+    font-size: calc(13px * var(--text-scale, 1));
   }
   /* Phones: a little smaller, so the farm badge fits under the card with
      a gap and still keeps clear of the plots. */
@@ -1352,14 +1352,14 @@ body:not(.hub-active) #account-leaves {
     grid-template-columns: var(--hub-card-art) minmax(0, 1fr) 36px;
   }
   :root body.hub-active #account-profile .account-name {
-    font-size: 15px;
+    font-size: calc(15px * var(--text-scale, 1));
   }
   /* 15px tall with 1px under the text: the 10px digits sit exactly in the
      middle (3px above, 3px below the cap height). */
   body.hub-active #account-profile .nav-level {
     width: 36px;
     padding-bottom: 1px;
-    font-size: 10px;
+    font-size: calc(10px * var(--text-scale, 1));
   }
   body.hub-active #account-coins > *,
   body.hub-active #account-leaves > * {
@@ -1382,7 +1382,7 @@ body:not(.hub-active) #account-leaves {
   }
   #account-coins .coin-chip b,
   #account-leaves .coin-chip b {
-    font-size: 14px;
+    font-size: calc(14px * var(--text-scale, 1));
   }
 }
 /* The narrowest phones (iPhone SE, 640–700 px Android): the scene switch
@@ -1399,7 +1399,7 @@ body:not(.hub-active) #account-leaves {
   }
   #account-coins .coin-chip b,
   #account-leaves .coin-chip b {
-    font-size: 13px;
+    font-size: calc(13px * var(--text-scale, 1));
   }
 }
 
@@ -1512,21 +1512,21 @@ body:not(.hub-active) #account-leaves {
 @media (max-height: 500px) {
   .hub-scenes button {
     width: 54px;
-    font-size: 12.5px;
+    font-size: calc(12.5px * var(--text-scale, 1));
     letter-spacing: 0.06em;
   }
 }
 @media (max-height: 500px) and (max-width: 760px) {
   .hub-scenes button {
     width: 50px;
-    font-size: 12px;
+    font-size: calc(12px * var(--text-scale, 1));
     letter-spacing: 0.05em;
   }
 }
 /* Even the gap is too small (scene-switch-place.ts): 40px tabs. */
 .hub-scenes.is-tight button {
   width: 40px;
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale, 1));
   letter-spacing: 0.03em;
 }
 /* The narrowest phones (568 px, iPhone SE first generation): a slimmer

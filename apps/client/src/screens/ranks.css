@@ -68,7 +68,7 @@
   line-height: 1;
 }
 .rk-rating b {
-  font-size: 32px;
+  font-size: calc(32px * var(--text-scale, 1));
 }
 .rk-rating small {
   font-size: var(--fs-small);
@@ -229,12 +229,12 @@
   align-self: stretch;
   display: grid;
   place-items: center;
-  font-size: 18px;
+  font-size: calc(18px * var(--text-scale, 1));
   line-height: 1;
   white-space: nowrap;
 }
 .rk-place.is-long {
-  font-size: 14px;
+  font-size: calc(14px * var(--text-scale, 1));
 }
 .rk-medal {
   display: grid;
@@ -244,7 +244,7 @@
   border-radius: 50%;
   font-family: var(--font-display);
   font-weight: 800;
-  font-size: 16px;
+  font-size: calc(16px * var(--text-scale, 1));
   font-style: normal;
   line-height: 1;
   color: var(--ui-accent-ink);
@@ -276,7 +276,7 @@
   );
   font-family: var(--font-display);
   font-weight: 800;
-  font-size: 17px;
+  font-size: calc(17px * var(--text-scale, 1));
   line-height: 1;
   color: var(--ui-text);
 }
@@ -315,7 +315,7 @@
   font-variant-numeric: tabular-nums;
 }
 .rk-rating-cell {
-  font-size: 20px;
+  font-size: calc(20px * var(--text-scale, 1));
 }
 .rk-wl {
   overflow: hidden;
@@ -324,7 +324,7 @@
   color: var(--ui-dim);
 }
 .rk-wl.is-long {
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale, 1));
 }
 .rk-foot {
   padding: 10px 14px;
@@ -354,7 +354,7 @@
     height: 84px;
   }
   .rk-rating b {
-    font-size: 28px;
+    font-size: calc(28px * var(--text-scale, 1));
   }
   .rk-ladder li {
     min-height: 22px;
@@ -375,7 +375,7 @@
     font-size: var(--fs-h2);
   }
   .rk-rating b {
-    font-size: 40px;
+    font-size: calc(40px * var(--text-scale, 1));
   }
   .rk-line {
     font-size: var(--fs-body);
@@ -422,7 +422,7 @@
     font-size: var(--fs-h4);
   }
   .rk-rating b {
-    font-size: 20px;
+    font-size: calc(20px * var(--text-scale, 1));
   }
   .rk-ladder li {
     min-height: 22px;
@@ -454,21 +454,21 @@
   .rk-avatar {
     width: 28px;
     height: 28px;
-    font-size: 14px;
+    font-size: calc(14px * var(--text-scale, 1));
   }
   .rk-place {
-    font-size: 14px;
+    font-size: calc(14px * var(--text-scale, 1));
   }
   .rk-place.is-long {
-    font-size: 11px;
+    font-size: calc(11px * var(--text-scale, 1));
   }
   .rk-medal {
     width: 24px;
     height: 24px;
-    font-size: 13px;
+    font-size: calc(13px * var(--text-scale, 1));
   }
   .rk-rating-cell {
-    font-size: 15px;
+    font-size: calc(15px * var(--text-scale, 1));
   }
   .rk-wl {
     font-size: var(--fs-micro);

@@ -428,7 +428,7 @@
   color: var(--ui-text);
   /* 16px: iOS zooms into smaller fields. */
   font-family: inherit;
-  font-size: 16px;
+  font-size: calc(16px * var(--text-scale, 1));
   font-weight: 600;
 }
 .ui-modal {
@@ -874,7 +874,7 @@
   border-radius: 10px;
   background: var(--ui-danger);
   color: #fff;
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale, 1));
   font-weight: 700;
   display: grid;
   place-items: center;
@@ -1081,7 +1081,7 @@
 .ui-tile-name {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 17px;
+  font-size: calc(17px * var(--text-scale, 1));
   line-height: 1.1;
   white-space: nowrap;
   overflow: hidden;
@@ -1097,7 +1097,7 @@
 .ui-tile-foot {
   align-self: end;
   margin-top: 4px;
-  font-size: 14px;
+  font-size: calc(14px * var(--text-scale, 1));
   display: flex;
   align-items: center;
   gap: 6px;
@@ -1152,13 +1152,13 @@
     margin-bottom: 2px;
   }
   .ui-tile-name {
-    font-size: 13px;
+    font-size: calc(13px * var(--text-scale, 1));
   }
   .ui-tile-sub {
     display: none;
   }
   .ui-tile-foot {
-    font-size: 11px;
+    font-size: calc(11px * var(--text-scale, 1));
     margin-top: 1px;
     min-height: 14px;
   }
@@ -1298,7 +1298,7 @@
     linear-gradient(135deg, #ffe48a, #b8791a 60%, #ffe48a) border-box;
   box-shadow: 0 12px 30px -10px #000c;
   color: #fff1c4;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   font-weight: 600;
   text-align: center;
   pointer-events: none;

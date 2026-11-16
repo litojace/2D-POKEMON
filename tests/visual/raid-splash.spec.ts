@@ -56,7 +56,10 @@ for (const viewport of [
       await hubMenu(page, "raids");
       // The boss list's cards (UI remodel step 5) use the small pictures.
       const room = page.locator(".rh-room");
-      await expect(room.locator(".rh-card-art img")).toHaveCount(7);
+      // Seven boss cards (the Spire's card has its own painting).
+      await expect(
+        room.locator("[data-raid-card] .rh-card-art img"),
+      ).toHaveCount(7);
       for (const boss of [
         "grumblecrag",
         "tidewyrm",

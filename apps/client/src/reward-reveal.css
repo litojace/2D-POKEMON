@@ -24,7 +24,7 @@
 .reveal-eyebrow {
   margin: 0;
   color: #ffd76a;
-  font: 700 12px/1.2 var(--display, sans-serif);
+  font: 700 calc(12px * var(--text-scale, 1))/1.2 var(--display, sans-serif);
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
@@ -58,7 +58,7 @@
     #182a4e 20px
   );
   color: var(--reveal);
-  font: 800 72px/1 var(--display, sans-serif);
+  font: 800 calc(72px * var(--text-scale, 1))/1 var(--display, sans-serif);
 }
 .reveal-front {
   transform: rotateY(180deg);
@@ -112,7 +112,7 @@
   border-radius: 999px;
   background: #0a1222cc;
   color: #e9cf95;
-  font: 700 10px/16px var(--body, sans-serif);
+  font: 700 calc(10px * var(--text-scale, 1))/16px var(--body, sans-serif);
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -134,22 +134,22 @@
 }
 .reveal-title-art {
   color: #fff3d6;
-  font: 800 20px/1.15 var(--display, sans-serif);
+  font: 800 calc(20px * var(--text-scale, 1))/1.15 var(--display, sans-serif);
   letter-spacing: 0.06em;
   text-shadow: 0 0 14px var(--reveal);
 }
 .reveal-name {
   color: #fff3d6;
-  font: 800 18px/1.15 var(--display, sans-serif);
+  font: 800 calc(18px * var(--text-scale, 1))/1.15 var(--display, sans-serif);
 }
 .reveal-source {
   color: #b0c2dd;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
 }
 .reveal-hint {
   margin: 0;
   color: #8fa3c2;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
 }
 @media (prefers-reduced-motion: reduce) {
   .reveal-face {

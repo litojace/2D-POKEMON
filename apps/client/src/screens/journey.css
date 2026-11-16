@@ -94,7 +94,7 @@
   line-height: 1;
 }
 .journey-ring-text b {
-  font-size: 30px;
+  font-size: calc(30px * var(--text-scale, 1));
 }
 .journey-ring-text small {
   font-size: var(--fs-micro);
@@ -121,7 +121,7 @@
 }
 .journey-tier-count {
   flex: none;
-  font-size: 20px;
+  font-size: calc(20px * var(--text-scale, 1));
 }
 .journey-banner-spark {
   display: grid;
@@ -132,7 +132,7 @@
   text-align: right;
 }
 .journey-banner-spark b {
-  font-size: 26px;
+  font-size: calc(26px * var(--text-scale, 1));
   line-height: 1;
   color: var(--ui-accent);
 }
@@ -181,7 +181,7 @@ button.journey-tier {
   cursor: pointer;
 }
 .journey-tier small {
-  font-size: 13px;
+  font-size: calc(13px * var(--text-scale, 1));
   color: var(--ui-dim);
 }
 .journey-tier-art {
@@ -196,7 +196,7 @@ button.journey-tier {
   height: 30px;
 }
 .journey-tier em {
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale, 1));
   font-style: normal;
   line-height: 1.15;
   color: var(--ui-dim);
@@ -436,12 +436,12 @@ button.journey-prize {
   text-align: center;
 }
 .journey-arcade-art span {
-  font-size: 56px;
+  font-size: calc(56px * var(--text-scale, 1));
   line-height: 1;
 }
 .journey-arcade-art b {
   font-family: var(--font-display);
-  font-size: 20px;
+  font-size: calc(20px * var(--text-scale, 1));
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -502,7 +502,7 @@ button.journey-prize {
     display: none;
   }
   .journey-room .ui-panel-head .ui-tabs > button {
-    font-size: 13px;
+    font-size: calc(13px * var(--text-scale, 1));
   }
   .journey-banner {
     gap: 10px;
@@ -515,7 +515,7 @@ button.journey-prize {
     inset: 3px;
   }
   .journey-ring-text b {
-    font-size: 19px;
+    font-size: calc(19px * var(--text-scale, 1));
   }
   .journey-ring-text small {
     font-size: var(--fs-micro);
@@ -524,10 +524,10 @@ button.journey-prize {
     gap: 3px;
   }
   .journey-banner-main .ui-h {
-    font-size: 15px;
+    font-size: calc(15px * var(--text-scale, 1));
   }
   .journey-tier-count {
-    font-size: 14px;
+    font-size: calc(14px * var(--text-scale, 1));
   }
   .journey-banner-spark {
     padding-left: 10px;
@@ -536,7 +536,7 @@ button.journey-prize {
     font-size: var(--fs-micro);
   }
   .journey-banner-spark b {
-    font-size: 16px;
+    font-size: calc(16px * var(--text-scale, 1));
   }
   .journey-banner-spark small {
     font-size: var(--fs-micro);
@@ -550,7 +550,7 @@ button.journey-prize {
     width: 84px;
   }
   .journey-tier small {
-    font-size: 11px;
+    font-size: calc(11px * var(--text-scale, 1));
   }
   .journey-tier-art {
     width: 40px;
@@ -593,10 +593,10 @@ button.journey-prize {
     height: 96px;
   }
   .journey-arcade-art span {
-    font-size: 36px;
+    font-size: calc(36px * var(--text-scale, 1));
   }
   .journey-arcade-art b {
-    font-size: 14px;
+    font-size: calc(14px * var(--text-scale, 1));
   }
   .journey-arcade-cards {
     gap: var(--sp-2);
@@ -610,9 +610,6 @@ button.journey-prize {
   }
 }
 
-/* Wider phones held sideways: this week's goals beside the level road, as
-   on a desktop, instead of one under the other (the Season tab was 4.2
-   screens tall at 852×393). A 667 px phone keeps one column. */
 /* Each goal paid the same "+250 season XP": on a phone it is said once,
    in the section's head, and a goal's own line shows only when it's paid. */
 .journey-goal-xp {
@@ -634,7 +631,11 @@ button.journey-prize {
     gap: 4px;
   }
 }
-@media (max-height: 500px) and (min-width: 760px) {
+/* Phones held sideways: this week's goals beside the level road, as on a
+   desktop, instead of one under the other (the Season tab was 4.2 screens
+   tall at 852×393, 4.05 at 667×375). The narrowest (under 600 px) keep one
+   column. */
+@media (max-height: 500px) {
   .journey-two {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
@@ -645,6 +646,11 @@ button.journey-prize {
     grid-auto-rows: 100px;
   }
   .journey-goals {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-height: 500px) and (max-width: 600px) {
+  .journey-two {
     grid-template-columns: minmax(0, 1fr);
   }
 }
