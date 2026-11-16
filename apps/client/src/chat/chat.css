@@ -146,6 +146,50 @@
   font-style: normal;
   color: #ff8b96;
 }
+.chat-prefs {
+  margin: 8px 0 0;
+  padding: 8px;
+  border: 1px solid rgba(139, 174, 229, 0.3);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+}
+.chat-prefs[hidden] {
+  display: none;
+}
+.chat-modes {
+  display: flex;
+  gap: 4px;
+}
+.chat-modes button {
+  flex: 1;
+  height: 40px;
+  border: 1px solid rgba(139, 174, 229, 0.25);
+  border-radius: 10px;
+  background: none;
+  color: #a0afc8;
+  font:
+    700 13px/1 "Barlow",
+    system-ui,
+    sans-serif;
+  cursor: pointer;
+}
+.chat-modes button[aria-checked="true"] {
+  border-color: #ffd65b;
+  background: #ffd65b;
+  color: #2a1a00;
+}
+.chat-mode-note {
+  margin: 6px 0 0;
+  color: #a0afc8;
+  font:
+    500 12px/1.35 "Barlow",
+    system-ui,
+    sans-serif;
+}
+.chat-gear[aria-expanded="true"] {
+  color: #ffd65b;
+}
+.chat-gear,
 .chat-close {
   display: grid;
   place-items: center;
@@ -158,6 +202,7 @@
   color: #eef2ff;
   cursor: pointer;
 }
+.chat-gear svg,
 .chat-close svg {
   width: 18px;
   height: 18px;
@@ -178,6 +223,60 @@
     system-ui,
     sans-serif;
   overflow-wrap: anywhere;
+}
+/* Someone else's line is a button (tap: mute, block, report). */
+.chat-say {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+button.chat-say:hover,
+button.chat-say:focus-visible {
+  background: rgba(255, 255, 255, 0.05);
+}
+.chat-menu {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 2px 0 6px;
+  padding: 6px;
+  border: 1px solid rgba(139, 174, 229, 0.3);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+}
+.chat-menu p {
+  flex-basis: 100%;
+  margin: 0;
+  font:
+    500 13px/1.35 "Barlow",
+    system-ui,
+    sans-serif;
+}
+.chat-menu button {
+  min-width: 64px;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid rgba(139, 174, 229, 0.3);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #eef2ff;
+  font:
+    700 13px/1 "Barlow",
+    system-ui,
+    sans-serif;
+  cursor: pointer;
+}
+.chat-menu button[data-chat-act="report"],
+.chat-menu button[data-chat-act="send"] {
+  color: #ffb4bc;
 }
 .chat-line b {
   margin-right: 6px;
@@ -309,6 +408,10 @@
   }
   .chat-line {
     font-size: 13px;
+  }
+  /* A finger tall: each line someone else said opens its menu. */
+  button.chat-say {
+    min-height: 44px;
   }
   /* Each chip a finger wide, so their hit areas never overlap. */
   .chat-chip {

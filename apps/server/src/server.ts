@@ -62,6 +62,11 @@ import {
 import { PlazaWorld, type PlazaEvent } from "./plaza.js";
 import { PLAZA, type PlazaRecord } from "../../../packages/shared/src/plaza.js";
 import { Parties, type Party, type PartyAppearance } from "./party.js";
+import { ChatReports, reportContext } from "./chat-moderation.js";
+import {
+  CHAT_MODES,
+  type ChatMode,
+} from "../../../packages/shared/src/chat.js";
 import {
   ChatHub,
   plazaEmoteFor,
@@ -281,14 +286,36 @@ export function createArenaServer(
   /** Which farm each socket is on, for chat's Nearby channel (socket id → owner). */
   const farmHere = new Map<string, string>();
   /** In-game chat (docs/chat-plan.md): party and room channels. */
+  /** Reports from chat, and the pause after several (chat-moderation.ts). */
+  const chatReports = new ChatReports();
+  /** Until when an admin stopped each online account typing (ms). */
+  const chatStops = new Map<string, number>();
+  /** Each online account's chat setting (free, quick only, off). */
+  const chatModes = new Map<string, ChatMode>();
   const chat = new ChatHub({
-    freeText: () => options.chatFreeText ?? process.env.CHAT_FREE_TEXT === "on",
+    // Typed lines are on unless CHAT_FREE_TEXT=off (a switch to pause them).
+    freeText: () =>
+      options.chatFreeText ?? process.env.CHAT_FREE_TEXT !== "off",
+    typingStopped: (id) => {
+      if (chatReports.isPaused(id))
+        return "After several reports you can't type for a while. Quick chat still works.";
+      const until = chatStops.get(id);
+      if (until && until > Date.now())
+        return `An admin stopped your chat until ${new Date(until).toUTCString().slice(5, 22)} UTC. Quick chat still works.`;
+      return null;
+    },
   });
   /** Read who this account blocked, so chat delivers nothing between them. */
   const loadChatBlocks = async (socket: import("socket.io").Socket) => {
     const who = socket.data.account as Account | undefined;
     const token = socket.data.accessToken as string | undefined;
     if (!who || !token) return;
+    // And whether an admin stopped them typing.
+    void accounts.chatStoppedUntil?.(who.id).then((until) => {
+      const ms = until ? Date.parse(until) : NaN;
+      if (Number.isFinite(ms)) chatStops.set(who.id, ms);
+      else chatStops.delete(who.id);
+    });
     try {
       const list = await accounts.rpc(token, "arena_blocked_players", {});
       if (!Array.isArray(list)) return;
@@ -400,6 +427,7 @@ export function createArenaServer(
       if (!ownsConnection(socket)) return;
       socket.data.account = account;
       socket.data.expiredChecks = 0;
+      void loadChatBlocks(socket);
       if (!account.guest)
         void presenceHistory.touch(account.id, socket.data.accessToken);
       const session = getSession(socket.id);
@@ -2082,7 +2110,7 @@ export function createArenaServer(
         accountId,
         name,
         guest: !!live?.guest,
-        mode: "free",
+        mode: chatModes.get(accountId) ?? "free",
         ...(team !== undefined ? { team } : {}),
       };
     };
@@ -2209,6 +2237,51 @@ export function createArenaServer(
         plaza.emote(socket.id, pop, Date.now());
       for (const id of sent.deliver)
         for (const s of accountSockets(id)) s.emit("chat", sent.line);
+      reply(cb, { ok: true });
+    });
+    // The player's chat setting (Settings): free, quick chat only, or off.
+    socket.on("chat-mode", (data: unknown, cb: unknown) => {
+      if (!allowed(10) || !account()) return;
+      const mode = (data as { mode?: unknown } | null)?.mode;
+      if (!CHAT_MODES.includes(mode as ChatMode))
+        return fail(cb, "Choose free, quick or off.");
+      chatModes.set(account()!.id, mode as ChatMode);
+      reply(cb, { ok: true });
+    });
+    // Report a line (App Store Review Guideline 1.2): the server attaches the
+    // lines it kept itself, so a report can't be made up.
+    socket.on("chat-report", async (data: unknown, cb: unknown) => {
+      if (!allowed(5) || !requirePlayer(cb)) return;
+      const input = (data ?? {}) as {
+        channel?: unknown;
+        id?: unknown;
+        reason?: unknown;
+      };
+      const me = account()!;
+      const route = chatRoute(input.channel);
+      const kept = route ? chat.history(route.key, me.id) : [];
+      const at = kept.findIndex((l) => l.id === input.id);
+      const line = kept[at];
+      if (!route || !line) return fail(cb, "That message is gone.");
+      if (line.from.id === me.id) return fail(cb, "That's your own message.");
+      const reason =
+        typeof input.reason === "string"
+          ? input.reason.trim().slice(0, 900)
+          : "";
+      try {
+        await accounts.rpc(socket.data.accessToken, "arena_submit_report", {
+          p_category: "player",
+          p_message: `Chat: ${line.from.name}${reason ? `: ${reason}` : " (reported from chat)"}`,
+          p_context: reportContext(route.key, line.from, kept.slice(0, at + 1)),
+        });
+      } catch (error) {
+        return fail(
+          cb,
+          error instanceof Error ? error.message : "Couldn't send the report.",
+        );
+      }
+      const { pausedNow } = chatReports.record(me.id, line.from.id);
+      if (pausedNow) connectionLog("chat-paused", { account: line.from.id });
       reply(cb, { ok: true });
     });
     socket.on("chat-history", (data: unknown, cb: unknown) => {
@@ -2488,6 +2561,8 @@ export function createArenaServer(
       if (who && !stillOnline) {
         leaveParty(who.id);
         chat.forget(who.id);
+        chatStops.delete(who.id);
+        chatModes.delete(who.id);
       }
       plaza.leave(socket.id);
       farmHere.delete(socket.id);

@@ -38,7 +38,10 @@ async function setup(
       ids,
     ]),
   );
-  accounts.provider.rpc = async (token, name) => {
+  const rpcs: { token: string; name: string; args: any }[] = [];
+  accounts.provider.rpc = async (token, name, args) => {
+    rpcs.push({ token, name, args });
+    if (name === "arena_submit_report") return 1;
     if (name === "arena_blocked_players")
       return (blocks.get(token) ?? []).map((id) => ({ id, name: "x" }));
     if (name !== "arena_friends") return {};
@@ -79,7 +82,7 @@ async function setup(
   const a = await connect(lead.token),
     b = await connect(pal.token),
     x = await connect(stranger.token);
-  return { accounts, blocks, lead, pal, stranger, a, b, x, connect };
+  return { accounts, blocks, rpcs, lead, pal, stranger, a, b, x, connect };
 }
 
 async function partyUp(f: Awaited<ReturnType<typeof setup>>) {
@@ -233,4 +236,130 @@ it("Nearby on a farm: your own or a friend's, never a stranger's", async () => {
   expect(
     (await request(f.b.s, "chat-send", { channel: "place", quick: "wave" })).ok,
   ).toBe(false);
+});
+
+it("a report carries the lines the server kept, never ones the reporter makes up", async () => {
+  const f = await setup();
+  await partyUp(f);
+  await request(f.b.s, "chat-send", { channel: "party", text: "hello there" });
+  await new Promise((r) => setTimeout(r, 1300));
+  await request(f.b.s, "chat-send", { channel: "party", text: "you are shit" });
+  await settle();
+  const rude = f.a.heard.find((l) => l.text === "you are ****")!;
+  expect(rude).toBeTruthy();
+  expect(
+    await request(f.a.s, "chat-report", {
+      channel: "party",
+      id: rude.id,
+      reason: "insults",
+    }),
+  ).toEqual({ ok: true });
+  const sent = f.rpcs.find((r) => r.name === "arena_submit_report")!;
+  expect(sent.token).toBe(f.lead.token);
+  expect(sent.args.p_category).toBe("player");
+  expect(sent.args.p_message).toBe(
+    `Chat: ${f.pal.account.displayName}: insults`,
+  );
+  expect(sent.args.p_context).toMatchObject({
+    source: "chat",
+    reported: `${f.pal.account.displayName} (${f.pal.account.id})`,
+  });
+  const lines = Object.entries(sent.args.p_context)
+    .filter(([k]) => k.startsWith("line"))
+    .map(([, v]) => v);
+  expect(lines).toHaveLength(2);
+  expect(lines[1]).toContain("you are ****");
+  // A line that isn't there, or your own, can't be reported.
+  expect(
+    await request(f.a.s, "chat-report", { channel: "party", id: 99999 }),
+  ).toEqual({ ok: false, error: "That message is gone." });
+  const mine = f.b.heard.find((l) => l.from.id === f.pal.account.id)!;
+  expect(
+    await request(f.b.s, "chat-report", { channel: "party", id: mine.id }),
+  ).toEqual({ ok: false, error: "That's your own message." });
+});
+
+it("chat set to off: nothing reaches you; quick only: you can't type", async () => {
+  const f = await setup();
+  await partyUp(f);
+  expect(await request(f.b.s, "chat-mode", { mode: "off" })).toEqual({
+    ok: true,
+  });
+  await request(f.a.s, "chat-send", { channel: "party", text: "anyone?" });
+  await settle();
+  expect(f.b.heard).toEqual([]);
+  await request(f.b.s, "chat-mode", { mode: "quick" });
+  expect(
+    await request(f.b.s, "chat-send", { channel: "party", text: "hi" }),
+  ).toEqual({ ok: false, error: "Your chat is set to quick chat only." });
+  expect(
+    (await request(f.b.s, "chat-send", { channel: "party", quick: "hi" })).ok,
+  ).toBe(true);
+  expect((await request(f.b.s, "chat-mode", { mode: "loud" })).ok).toBe(false);
+});
+
+it("a player an admin stopped can't type until then, but quick chat works", async () => {
+  const until = new Date(Date.now() + 3_600_000).toISOString();
+  const accounts = fakeAccounts();
+  const a = accounts.add(false),
+    b = accounts.add(false);
+  accounts.provider.chatStoppedUntil = async (id) =>
+    id === b.account.id ? until : null;
+  accounts.provider.rpc = async (token, name) =>
+    name === "arena_friends"
+      ? {
+          code: "ABCDEF12",
+          friends: [
+            token === a.token
+              ? { id: b.account.id, name: b.account.displayName }
+              : { id: a.account.id, name: a.account.displayName },
+          ],
+          incoming: [],
+          outgoing: [],
+        }
+      : name === "arena_blocked_players"
+        ? []
+        : {};
+  server = createArenaServer({
+    accounts: accounts.provider,
+    autoTick: false,
+    chatFreeText: true,
+  });
+  await new Promise<void>((r) => server!.http.listen(0, "127.0.0.1", r));
+  const url = `http://127.0.0.1:${(server.http.address() as { port: number }).port}`;
+  const connect = async (token: string) => {
+    const s = io(url, {
+      auth: { accessToken: token },
+      transports: ["websocket"],
+      reconnection: false,
+    });
+    sockets.push(s);
+    await new Promise<void>((r) => s.once("connect", () => r()));
+    return s;
+  };
+  const sa = await connect(a.token),
+    sb = await connect(b.token);
+  await settle();
+  const invite = await new Promise<{ code: string }>((resolve) => {
+    sb.once("room-invite", resolve);
+    void request(sa, "party-invite", {
+      playerId: b.account.id,
+      character: "voltkit",
+    });
+  });
+  await request(sb, "party-accept", { code: invite.code, character: "lumoth" });
+  const typed = await request(sb, "chat-send", {
+    channel: "party",
+    text: "hi",
+  });
+  expect(typed.ok).toBe(false);
+  expect(typed.error).toMatch(
+    /^An admin stopped your chat until .* UTC\. Quick chat still works\.$/,
+  );
+  expect(
+    (await request(sb, "chat-send", { channel: "party", quick: "hi" })).ok,
+  ).toBe(true);
+  expect(
+    (await request(sa, "chat-send", { channel: "party", text: "hi" })).ok,
+  ).toBe(true);
 });

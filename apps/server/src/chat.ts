@@ -80,6 +80,11 @@ export class ChatHub {
       now?: () => number;
       /** Typed lines on (the CHAT_FREE_TEXT switch); quick chat always on. */
       freeText?: () => boolean;
+      /**
+       * Why this account may not type now (paused by reports, stopped by an
+       * admin), or null. Quick chat stays open to them.
+       */
+      typingStopped?: (accountId: string) => string | null;
     } = {},
   ) {}
 
@@ -141,6 +146,8 @@ export class ChatHub {
         };
       const refused = typingRefusal(context);
       if (refused) return { ok: false, error: refused };
+      const stopped = this.options.typingStopped?.(senderId);
+      if (stopped) return { ok: false, error: stopped };
       const filtered = filterChat(input.text);
       if (!filtered.ok) return filtered;
       pace.typed = pace.typed.filter((t) => now - t < CHAT_LIMITS.burstMs);
@@ -173,6 +180,11 @@ export class ChatHub {
     return (this.lines.get(key) ?? []).filter(
       (l) => !this.blocks(l.from.id, viewerId),
     );
+  }
+
+  /** A kept line of a channel, as this account sees it (for a report). */
+  keptLine(key: string, id: number, viewerId: string) {
+    return this.history(key, viewerId).find((l) => l.id === id);
   }
 
   /** A party ended, a room closed: its lines go. */

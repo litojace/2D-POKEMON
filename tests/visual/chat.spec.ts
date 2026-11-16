@@ -321,3 +321,101 @@ for (const size of SIZES)
       await context.close();
     }
   });
+
+test("tap a message to mute or report it; the gear turns chat off", async ({
+  browser,
+}, info) => {
+  test.setTimeout(240_000);
+  const { context, page } = await phone(browser, SIZES[1]);
+  try {
+    const errors = await openHub(page);
+    await page.evaluate(
+      ([me, pal]) => {
+        const w = window as any;
+        w.__chatSent = [];
+        const before = w.__reply;
+        w.__reply = (ev: string, data: any) => {
+          if (ev === "chat-report" || ev === "chat-mode") {
+            w.__chatSent.push([ev, data]);
+            return { ok: true };
+          }
+          if (ev === "chat-history") return { ok: true, lines: [] };
+          return before?.(ev, data);
+        };
+        w.__sock.fire("chat-config", { freeText: true });
+        w.__sock.fire("party", {
+          code: "PARTY3",
+          leader: me,
+          members: [
+            { id: me, name: "tester", character: "voltkit" },
+            { id: pal, name: "Pal", character: "tidefin" },
+          ],
+        });
+        for (const [id, text] of [
+          [1, "hello"],
+          [2, "you are ****"],
+        ] as const)
+          w.__sock.fire("chat", {
+            id,
+            channel: "party",
+            from: { id: pal, name: "Pal" },
+            at: Date.now(),
+            text,
+          });
+      },
+      [ME, PAL],
+    );
+    await page.click("#chat-button");
+    const drawer = page.locator("#chat-drawer");
+    await expect(drawer.locator(".chat-line")).toHaveCount(2);
+    // Report the rude line: asked first, then sent with the line's id.
+    await drawer.locator('.chat-line[data-line="2"] .chat-say').click();
+    await drawer.locator('[data-chat-act="report"]').click();
+    await expect(drawer.locator(".chat-menu p")).toContainText(
+      "Report this message from Pal?",
+    );
+    await snap(page, info, "chat-report-844x390");
+    await drawer.locator('[data-chat-act="send"]').click();
+    await expect(drawer.locator(".chat-note")).toContainText("Report sent");
+    await expect
+      .poll(() => page.evaluate(() => (window as any).__chatSent))
+      .toEqual([["chat-report", { channel: "party", id: 2 }]]);
+    // Mute: their lines go, and new ones don't come.
+    await drawer.locator('.chat-line[data-line="1"] .chat-say').click();
+    await drawer.locator('[data-chat-act="mute"]').click();
+    await expect(drawer.locator(".chat-line")).toHaveCount(0);
+    await page.evaluate((pal) => {
+      (window as any).__sock.fire("chat", {
+        id: 3,
+        channel: "party",
+        from: { id: pal, name: "Pal" },
+        at: Date.now(),
+        text: "still here?",
+      });
+    }, PAL);
+    await expect(drawer.locator(".chat-line")).toHaveCount(0);
+    await page.click("#chat-drawer .chat-close");
+
+    // The chat's gear → Off: nothing shows, the box says so.
+    await page.click("#chat-button");
+    await page.click("#chat-drawer .chat-gear");
+    await snap(page, info, "chat-settings-844x390");
+    await page.click('#chat-drawer [data-chat-mode="off"]');
+    await expect(
+      page.locator('#chat-drawer [data-chat-mode="off"]'),
+    ).toHaveAttribute("aria-checked", "true");
+    await expect
+      .poll(() => page.evaluate(() => (window as any).__chatSent.at(-1)))
+      .toEqual(["chat-mode", { mode: "off" }]);
+    expect(
+      await page.evaluate(() => localStorage.getItem("ea-chat-mode")),
+    ).toBe("off");
+    await expect(drawer.locator(".chat-empty")).toHaveText(
+      "Chat is off. Turn it on with the gear above.",
+    );
+    await expect(page.locator("#chat-input")).toBeDisabled();
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});

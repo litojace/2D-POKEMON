@@ -367,8 +367,10 @@ import { watchSceneSwitch } from "./scene-switch-place";
 import { mountChat, type ChatPlace } from "./chat/chat-ui";
 import { mountBattleChat } from "./chat/battle-chat";
 import {
+  CHAT_MODES,
   quickKind,
   quickText,
+  type ChatMode,
   type ChatLine,
   type ChatQuick,
 } from "../../../packages/shared/src/chat";
@@ -505,6 +507,44 @@ const chat = mountChat({
     accountsUI?.account
       ? { id: accountsUI.account.id, guest: !!accountsUI.account.guest }
       : null,
+  block: async (accountId, name) => {
+    try {
+      const done = await accountsUI.block(accountId, name);
+      if (done) toast(`${name} is blocked.`);
+      return done;
+    } catch (error) {
+      toast(error instanceof Error ? error.message : "Couldn't block them.");
+      return false;
+    }
+  },
+  report: (channel, id) => request("chat-report", { channel, id }),
+  // The chat's gear: on, quick chat only, off (kept on this device).
+  setMode: (mode) => {
+    try {
+      localStorage.setItem(CHAT_MODE_KEY, mode);
+    } catch {
+      /* No storage: for this visit. */
+    }
+    void request("chat-mode", { mode });
+    chat.setMode(mode);
+    syncHub();
+  },
+});
+/** The chat setting: free, quick chat only, or off (kept on this device). */
+const CHAT_MODE_KEY = "ea-chat-mode";
+function chatMode(): ChatMode {
+  try {
+    const saved = localStorage.getItem(CHAT_MODE_KEY) as ChatMode | null;
+    return saved && CHAT_MODES.includes(saved) ? saved : "free";
+  } catch {
+    return "free";
+  }
+}
+chat.setMode(chatMode());
+/** The server learns the setting on every connection. */
+socket.on("connect", () => {
+  const mode = chatMode();
+  if (mode !== "free") socket.emit("chat-mode", { mode }, () => {});
 });
 /** Quick chat in a battle (chat/battle-chat.ts). */
 const battleChat = mountBattleChat({
@@ -2034,7 +2074,8 @@ function syncChat(hub: boolean) {
   // Quick chat in a battle with other people in it (not practice, not a
   // bot match, not a raid alone).
   battleChat.sync(
-    fighting &&
+    chatMode() !== "off" &&
+      fighting &&
       !state!.practice &&
       !state!.vsBot &&
       state!.players.length > 1 &&
