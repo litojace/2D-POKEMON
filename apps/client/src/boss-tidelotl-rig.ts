@@ -10,6 +10,11 @@
  * crops (under each part's waterline) images from the two atlases, the
  * water round it included: veil, foam, ripple rings and wake are painted
  * pieces too. Glows and splash drops go through the effects engine.
+ *
+ * Ascendant Tidelotl (`look: "ascendant"`, the Spire's evolved form) has its
+ * own pair of atlases, painted the same way once: abyssal skin with
+ * bioluminescent spots, sea-glass gills and a crown of coral and glowing
+ * pearls (boss-tidelotl-paint.ts).
  */
 import type Phaser from "phaser";
 import { addCanvasTexture, updateCanvasTexture } from "./canvas-texture";
@@ -25,6 +30,7 @@ import {
   paintPiece,
   pack,
   type LotlCue,
+  type LotlLookId,
   type LotlPiece,
   type LotlPlacement,
   type LotlWater,
@@ -32,6 +38,11 @@ import {
 
 const MAIN = "lotl-main",
   SKIN = "lotl-skin";
+/** Each look's two atlas textures (the raid's, or Ascendant Tidelotl's). */
+export const tidelotlAtlasKeys = (look: LotlLookId = "raid") =>
+  look === "ascendant"
+    ? { main: `${MAIN}-ascendant`, skin: `${SKIN}-ascendant` }
+    : { main: MAIN, skin: SKIN };
 
 export interface TidelotlLook extends Omit<LotlCue, "clock"> {
   x: number;
@@ -42,6 +53,8 @@ export interface TidelotlLook extends Omit<LotlCue, "clock"> {
   gilded: boolean;
   /** Is there water (true) or an island's sand (false) at this floor spot? */
   wet: (x: number, y: number) => boolean;
+  /** The raid's look, or Ascendant Tidelotl's. */
+  look?: LotlLookId;
 }
 
 // ── the atlases ──
@@ -63,27 +76,37 @@ interface Atlas {
 interface SceneAtlas {
   main: Atlas;
   skin: Atlas;
+  look: LotlLookId;
   phase: number;
   /** A phase repaint under way: the skin pieces still to paint. */
   job?: { phase: number; todo: LotlPiece[] };
   bytes: number;
 }
-const atlases = new WeakMap<Phaser.Scene, SceneAtlas>();
-const pieceList = () => tidelotlPieces();
+const atlases = new WeakMap<
+  Phaser.Scene,
+  Partial<Record<LotlLookId, SceneAtlas>>
+>();
+const pieceList = (look: LotlLookId) => tidelotlPieces(look);
 function addFrames(scene: Phaser.Scene, a: Atlas) {
   const tex = addCanvasTexture(scene.textures, a.key, a.page);
   for (const [name, s] of a.slots) tex?.add(name, 0, s.sx, s.sy, s.w, s.h);
 }
-/** Paint both atlases now (while the battle loads), for the raid's phase. */
-export function prewarmAtlas(scene: Phaser.Scene, phase: number) {
-  atlasFor(scene, phase);
+/** Paint both atlases now (while the battle loads), for the raid's phase and look. */
+export function prewarmAtlas(
+  scene: Phaser.Scene,
+  phase: number,
+  look: LotlLookId = "raid",
+) {
+  atlasFor(scene, phase, look);
 }
+const prepaintKey = (phase: number, look: LotlLookId) =>
+  look === "ascendant" ? `tidewyrm:ascendant:${phase}` : `tidewyrm:${phase}`;
 /** Both pages (body and the phase's skin), painted and packed. */
-function paintPages(phase: number) {
-  const all = pieceList();
+function paintPages(phase: number, look: LotlLookId) {
+  const all = pieceList(look);
   const paintAll = (list: LotlPiece[]) =>
     list.flatMap((p) => {
-      const out = paintPiece(p, phase);
+      const out = paintPiece(p, phase, look);
       return out ? [{ name: p.name, p: out }] : [];
     });
   return {
@@ -92,24 +115,34 @@ function paintPages(phase: number) {
   };
 }
 /** Paint both pages ahead, in the raid room (boss-prepaint.ts). */
-export const prepaintAtlas = (phase = 1) =>
-  keepPrepainted(`tidewyrm:${phase}`, () => paintPages(phase));
-function atlasFor(scene: Phaser.Scene, phase: number): SceneAtlas | undefined {
-  let A = atlases.get(scene);
-  if (A && scene.textures.exists(MAIN) && scene.textures.exists(SKIN)) return A;
+export const prepaintAtlas = (phase = 1, look: LotlLookId = "raid") =>
+  keepPrepainted(prepaintKey(phase, look), () => paintPages(phase, look));
+function atlasFor(
+  scene: Phaser.Scene,
+  phase: number,
+  look: LotlLookId,
+): SceneAtlas | undefined {
+  const keys = tidelotlAtlasKeys(look);
+  const all = atlases.get(scene) ?? {};
+  let A = all[look];
+  if (A && scene.textures.exists(keys.main) && scene.textures.exists(keys.skin))
+    return A;
   if (typeof document === "undefined") return undefined;
-  for (const key of [MAIN, SKIN])
+  for (const key of [keys.main, keys.skin])
     if (scene.textures.exists(key)) scene.textures.remove(key);
-  const { m, s } = takePrepainted(`tidewyrm:${phase}`, () => paintPages(phase));
+  const { m, s } = takePrepainted(prepaintKey(phase, look), () =>
+    paintPages(phase, look),
+  );
   A = {
-    main: { ...m, key: MAIN },
-    skin: { ...s, key: SKIN },
+    main: { ...m, key: keys.main },
+    skin: { ...s, key: keys.skin },
+    look,
     phase,
     bytes: (m.page.width * m.page.height + s.page.width * s.page.height) * 4,
   };
   addFrames(scene, A.main);
   addFrames(scene, A.skin);
-  atlases.set(scene, A);
+  atlases.set(scene, { ...all, [look]: A });
   return A;
 }
 /** Repaint skin pieces for a new phase into their own slots, within `ms`; upload once when all are done. */
@@ -121,7 +154,7 @@ function stepRepaint(scene: Phaser.Scene, A: SceneAtlas, ms: number) {
   while (J.todo.length && performance.now() < until) {
     const p = J.todo.shift()!,
       s = A.skin.slots.get(p.name),
-      out = paintPiece(p, J.phase);
+      out = paintPiece(p, J.phase, A.look);
     if (!s || !out) continue;
     g.save();
     g.beginPath();
@@ -139,16 +172,22 @@ function stepRepaint(scene: Phaser.Scene, A: SceneAtlas, ms: number) {
   if (!J.todo.length) {
     A.phase = J.phase;
     A.job = undefined;
-    updateCanvasTexture(scene.textures, SKIN);
+    updateCanvasTexture(scene.textures, A.skin.key);
   }
 }
-/** The atlas's memory in bytes (both pages), for tests. */
-export function tidelotlAtlasBytes(scene: Phaser.Scene) {
-  return atlases.get(scene)?.bytes ?? 0;
+/** The atlas's memory in bytes (both pages, of one look), for tests. */
+export function tidelotlAtlasBytes(
+  scene: Phaser.Scene,
+  look: LotlLookId = "raid",
+) {
+  return atlases.get(scene)?.[look]?.bytes ?? 0;
 }
 /** The phase the skin atlas currently shows, for tests. */
-export function tidelotlSkinPhase(scene: Phaser.Scene) {
-  const A = atlases.get(scene);
+export function tidelotlSkinPhase(
+  scene: Phaser.Scene,
+  look: LotlLookId = "raid",
+) {
+  const A = atlases.get(scene)?.[look];
   return A ? (A.job ? -A.job.phase : A.phase) : 0;
 }
 
@@ -164,6 +203,8 @@ interface Rig {
   spin: number;
   clock: number;
   sea: Sea;
+  look: LotlLookId;
+  dispose: () => void;
 }
 /** The water's memory: rings left on the surface, the trail of foam, its speed. */
 interface Sea {
@@ -377,13 +418,19 @@ export function paintTidelotl(g: Phaser.GameObjects.Graphics, o: TidelotlLook) {
   const scene = g.scene;
   if (!scene?.sys?.isActive?.()) return false;
   const phase = clamp(Math.round(o.phase), 1, 3);
-  const A = atlasFor(scene, phase);
+  const look: LotlLookId = o.look === "ascendant" ? "ascendant" : "raid";
+  const A = atlasFor(scene, phase, look);
   if (!A) return false;
   // a new phase repaints the skin, but never while an attack winds up
   if (phase !== A.phase && (!A.job || A.job.phase !== phase))
-    A.job = { phase, todo: pieceList().filter((p) => p.skin) };
+    A.job = { phase, todo: pieceList(look).filter((p) => p.skin) };
   if (A.job && !o.windKind) stepRepaint(scene, A, o.reduced ? 12 : 4);
-  const rig = rigs.get(g) ?? createRig(g);
+  let rig = rigs.get(g) ?? createRig(g, look);
+  // A new look (a Spire floor swapping in its Ascendant): a fresh set of images.
+  if (rig.look !== look) {
+    rig.dispose();
+    rig = createRig(g, look);
+  }
   const dt = clamp(o.clock - rig.clock, 0, 0.1);
   rig.clock = o.clock;
   rig.facing = lotlFacing(o.angle, rig.facing);
@@ -409,6 +456,7 @@ export function paintTidelotl(g: Phaser.GameObjects.Graphics, o: TidelotlLook) {
     phase,
     wet,
     raidMapLow(),
+    look,
   );
   const shown = Math.round(facing) % 8,
     turned =
@@ -504,7 +552,7 @@ export function paintTidelotl(g: Phaser.GameObjects.Graphics, o: TidelotlLook) {
   };
 }
 
-function createRig(g: Phaser.GameObjects.Graphics): Rig {
+function createRig(g: Phaser.GameObjects.Graphics, look: LotlLookId): Rig {
   const scene = g.scene;
   const actor = scene.add.container(0, 0);
   const front = scene.add.graphics().setName("vector-boss-front");
@@ -519,6 +567,8 @@ function createRig(g: Phaser.GameObjects.Graphics): Rig {
     frame: -1,
     spin: 0,
     clock: 0,
+    look,
+    dispose: () => {},
     sea: {
       rings: [],
       puffs: [],
@@ -534,7 +584,7 @@ function createRig(g: Phaser.GameObjects.Graphics): Rig {
     scene.events.off("prerender", sync);
     g.off("destroy", dispose);
     root.destroy();
-    rigs.delete(g);
+    if (rigs.get(g) === rig) rigs.delete(g);
   };
   const sync = () => {
     if (scene.game.loop.frame - rig.frame > 120) {
@@ -550,5 +600,6 @@ function createRig(g: Phaser.GameObjects.Graphics): Rig {
   };
   scene.events.on("prerender", sync);
   g.once("destroy", dispose);
+  rig.dispose = dispose;
   return rig;
 }

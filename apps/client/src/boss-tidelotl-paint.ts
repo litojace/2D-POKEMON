@@ -197,13 +197,132 @@ const PHASE_SPOTS: Record<
     glow: true,
   },
 };
-/** The phase being painted (set by the atlas builder around skin pieces). */
+/**
+ * Ascendant Tidelotl's look (the Spire's evolved form): abyssal skin, deep
+ * teal darkening to midnight each phase, lit by bioluminescent spots from
+ * the first; gill fronds from deep indigo to glowing sea-glass cyan.
+ */
+export type LotlLookId = "raid" | "ascendant";
+const ASC_SKIN: Record<number, Ramp> = {
+  1: [
+    [0, "#021c26"],
+    [0.2, "#06323e"],
+    [0.42, "#0b4c58"],
+    [0.62, "#156a72"],
+    [0.8, "#2d9197"],
+    [0.92, "#5fc2c2"],
+    [1, "#b8f6ee"],
+  ],
+  2: [
+    [0, "#01121c"],
+    [0.2, "#042633"],
+    [0.42, "#083d4c"],
+    [0.62, "#105868"],
+    [0.8, "#227d8e"],
+    [0.92, "#52b1bf"],
+    [1, "#aaf0f2"],
+  ],
+  3: [
+    [0, "#020a1e"],
+    [0.2, "#061a3a"],
+    [0.42, "#0b2c58"],
+    [0.62, "#144478"],
+    [0.8, "#2866a0"],
+    [0.92, "#5d9fd0"],
+    [1, "#b4e0ff"],
+  ],
+};
+const ASC_BELLY: Ramp = [
+  [0, "#4f7684"],
+  [0.3, "#7fa3ae"],
+  [0.6, "#a9c6cc"],
+  [0.85, "#cfe3e4"],
+  [1, "#e6f6f4"],
+];
+const ASC_GILL: Ramp = [
+  [0, "#1c1660"],
+  [0.25, "#30309a"],
+  [0.5, "#3f6fd0"],
+  [0.75, "#4fc6e6"],
+  [0.9, "#8ff6ee"],
+  [1, "#e6fffb"],
+];
+const ASC_GILL_LIT: Ramp = [
+  [0, "#22188a"],
+  [0.25, "#3a44d6"],
+  [0.5, "#3aa0ff"],
+  [0.72, "#5ef0f0"],
+  [0.88, "#b6fff6"],
+  [1, "#ffffff"],
+];
+const ASC_SPOTS: typeof PHASE_SPOTS = {
+  1: {
+    dark: "rgba(0,22,34,0.45)",
+    pale: "rgba(140,255,236,0.85)",
+    darkShare: 0.5,
+    glow: true,
+  },
+  2: {
+    dark: "rgba(0,16,30,0.45)",
+    pale: "rgba(150,255,240,0.92)",
+    darkShare: 0.42,
+    glow: true,
+  },
+  3: {
+    dark: "rgba(0,10,34,0.42)",
+    pale: "rgba(170,240,255,0.95)",
+    darkShare: 0.36,
+    glow: true,
+  },
+};
+/** Accents that are pink on the raid's Tidelotl (fins, toes, glows). */
+const ACCENTS = {
+  raid: {
+    finMid: [255, 190, 214] as RGB,
+    finTip: [255, 170, 205] as RGB,
+    finGlow: "rgba(255,150,195,0.7)",
+    finEdge: "rgba(214,98,150,0.6)",
+    toe: ["#fff0f5", "#ffadc7", "#e06d98"],
+    gillGlow: "rgba(255,120,190,0.35)",
+    spotGlow: "rgba(90,240,255,0.7)",
+  },
+  ascendant: {
+    finMid: [110, 236, 250] as RGB,
+    finTip: [140, 120, 255] as RGB,
+    finGlow: "rgba(90,255,230,0.75)",
+    finEdge: "rgba(110,90,230,0.7)",
+    toe: ["#eafffb", "#7fe8e0", "#2c8f9c"],
+    gillGlow: "rgba(90,255,235,0.45)",
+    spotGlow: "rgba(80,255,225,0.8)",
+  },
+};
+/** The phase and look being painted (set by the atlas builder around each piece). */
 let phaseNow = 1;
+let lookNow: LotlLookId = "raid";
 let skin: Ramp = PHASE_SKIN[1];
+let acc = ACCENTS.raid;
 export function paintingPhase(phase: number) {
   phaseNow = phase;
-  skin = PHASE_SKIN[phase] ?? PHASE_SKIN[1];
+  const ramps = lookNow === "ascendant" ? ASC_SKIN : PHASE_SKIN;
+  skin = ramps[phase] ?? ramps[1];
 }
+export function paintingLook(look: LotlLookId) {
+  lookNow = look;
+  acc = ACCENTS[look];
+  paintingPhase(phaseNow);
+}
+const spotsNow = () =>
+  (lookNow === "ascendant" ? ASC_SPOTS : PHASE_SPOTS)[phaseNow] ??
+  PHASE_SPOTS[1];
+const bellyRamp = () => (lookNow === "ascendant" ? ASC_BELLY : R_BELLY);
+const gillRamp = (lit: number) =>
+  lookNow === "ascendant"
+    ? lit
+      ? ASC_GILL_LIT
+      : ASC_GILL
+    : lit
+      ? R_GILL_LIT
+      : R_GILL;
 /** Atlas px per rig px of the piece being painted (blur radii are in canvas px). */
 let PQ = 1;
 export function paintingDensity(q: number) {
@@ -376,10 +495,10 @@ function spotAt(
   rot: number,
   dark: boolean,
 ) {
-  const S = PHASE_SPOTS[phaseNow];
+  const S = spotsNow();
   if (!dark && S.glow)
     soft(ctx, 2.2, () => {
-      ctx.fillStyle = "rgba(90,240,255,0.7)";
+      ctx.fillStyle = acc.spotGlow;
       ctx.beginPath();
       ctx.ellipse(x, y, rx * 2, ry * 2, rot, 0, TAU);
       ctx.fill();
@@ -495,9 +614,9 @@ function paintSkinBall(ctx: Ctx, V: View, s: Ell, o: BallOpts) {
         cp.y,
         hx * 0.95,
       );
-      cg.addColorStop(0, rgba(ramp(R_BELLY, 1)));
-      cg.addColorStop(0.5, rgba(ramp(R_BELLY, 0.86)));
-      cg.addColorStop(1, rgba(ramp(R_BELLY, 0.55)));
+      cg.addColorStop(0, rgba(ramp(bellyRamp(), 1)));
+      cg.addColorStop(0.5, rgba(ramp(bellyRamp(), 0.86)));
+      cg.addColorStop(1, rgba(ramp(bellyRamp(), 0.55)));
       soft(ctx, 2.6, () => {
         ctx.fillStyle = cg;
         ctx.fill(cap);
@@ -511,7 +630,7 @@ function paintSkinBall(ctx: Ctx, V: View, s: Ell, o: BallOpts) {
       n = V.N(ellNormal(pt, s));
     if (n.z < 0.22) continue;
     const q = V.P(pt),
-      dark = rr() < PHASE_SPOTS[phaseNow].darkShare,
+      dark = rr() < spotsNow().darkShare,
       sz = (dark ? 2.5 : 2) + rr() * 2;
     spotAt(
       ctx,
@@ -1293,6 +1412,145 @@ export function paintPearl(ctx: Ctx, k: { v: number }) {
   ctx.restore();
 }
 
+// ── Ascendant Tidelotl's crown: a circlet of coral and glowing pearls ──
+/** The circlet's axis (tilted back) and its angle from it: above the brow pearl in front. */
+const CROWN_AXIS = norm3(0, 1, -0.25),
+  CROWN_ANGLE = 40 * DEG,
+  CROWN_N = 24;
+/** A point of the circlet (`t` 0-1 round it, 0 at the front), on the head. */
+function crownPoint(t: number) {
+  const a = CROWN_AXIS,
+    u = { x: 1, y: 0, z: 0 },
+    // perpendicular to the axis, forward and up: t = 0 is the front of the head
+    w = norm3(0, -a.z, a.y),
+    th = t * TAU,
+    c = Math.cos(CROWN_ANGLE),
+    sn = Math.sin(CROWN_ANGLE);
+  const d = norm3(
+    a.x * c + (w.x * Math.cos(th) + u.x * Math.sin(th)) * sn,
+    a.y * c + (w.y * Math.cos(th) + u.y * Math.sin(th)) * sn,
+    a.z * c + (w.z * Math.cos(th) + u.z * Math.sin(th)) * sn,
+  );
+  return onEll(d, HEAD);
+}
+/**
+ * The crown in one view: `front` paints the half facing the camera (over
+ * the head), otherwise the far half (under it), so the head hides what it
+ * should. A thin dark band carries five coral tines (glowing tips) and
+ * pearls of sea-glass light between them; nothing comes down over the face.
+ */
+export function paintCrown(ctx: Ctx, k: { v: number; front: boolean }) {
+  const V = makeView(HEAD_YAW[k.v]);
+  const lift = (p: V3, n: V3, s: number): V3 => ({
+    x: p.x + n.x * s,
+    y: p.y + n.y * s,
+    z: p.z + n.z * s,
+  });
+  const facing = (p: V3) => V.N(ellNormal(p, HEAD)).z >= 0;
+  ctx.save();
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  // the band, just proud of the skin
+  for (let i = 0; i < CROWN_N; i++) {
+    const a = crownPoint(i / CROWN_N),
+      b = crownPoint((i + 1) / CROWN_N),
+      mid = crownPoint((i + 0.5) / CROWN_N);
+    if (facing(mid) !== k.front) continue;
+    const na = ellNormal(a, HEAD),
+      nb = ellNormal(b, HEAD);
+    const qa = V.P(lift(a, na, 2)),
+      qb = V.P(lift(b, nb, 2));
+    ctx.strokeStyle = "#0b1834";
+    ctx.lineWidth = 5.4;
+    ctx.beginPath();
+    ctx.moveTo(qa.x, qa.y);
+    ctx.lineTo(qb.x, qb.y);
+    ctx.stroke();
+    ctx.strokeStyle = "#2f5d8a";
+    ctx.lineWidth = 2.6;
+    ctx.stroke();
+  }
+  // coral tines: five, rising out of the band and branching
+  const TINES = [0, 0.16, 0.84, 0.32, 0.68];
+  for (const t of TINES) {
+    const base = crownPoint(t),
+      n = ellNormal(base, HEAD);
+    if (facing(base) !== k.front) continue;
+    const up = norm3(n.x * 0.55, n.y * 0.55 + 0.85, n.z * 0.55);
+    const L = t === 0 ? 24 : 18;
+    const at = (s: number, side = 0): V3 => ({
+      x: base.x + up.x * s + n.x * side * 0.2 + (t < 0.5 ? 1 : -1) * side,
+      y: base.y + up.y * s,
+      z: base.z + up.z * s + side * 0.3,
+    });
+    const q0 = V.P(base),
+      q1 = V.P(at(L)),
+      qm = V.P(at(L * 0.5)),
+      qb1 = V.P(at(L * 0.85, 7)),
+      qb2 = V.P(at(L * 0.75, -6));
+    const seg = (a: Pt, b: Pt, w: number, color: string) => {
+      ctx.strokeStyle = color;
+      ctx.lineWidth = w;
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.stroke();
+    };
+    // dark outline, coral body, then a lit edge
+    seg(q0, q1, 7, "#140a2a");
+    seg(qm, qb1, 5.2, "#140a2a");
+    seg(qm, qb2, 5, "#140a2a");
+    seg(q0, q1, 4.4, "#5b2aa8");
+    seg(qm, qb1, 3, "#5b2aa8");
+    seg(qm, qb2, 2.8, "#5b2aa8");
+    seg(q0, qm, 1.4, "#9b7bff");
+    for (const tip of [q1, qb1, qb2])
+      soft(ctx, 2.4, () => {
+        ctx.fillStyle = "rgba(90,255,230,0.9)";
+        ctx.beginPath();
+        ctx.arc(tip.x, tip.y, 3.4, 0, TAU);
+        ctx.fill();
+      });
+    for (const tip of [q1, qb1, qb2]) {
+      ctx.fillStyle = "#e9fffb";
+      ctx.beginPath();
+      ctx.arc(tip.x, tip.y, 1.5, 0, TAU);
+      ctx.fill();
+    }
+  }
+  // glowing pearls between the tines
+  for (const t of [0.08, 0.24, 0.4, 0.5, 0.6, 0.76, 0.92]) {
+    const p = crownPoint(t),
+      n = ellNormal(p, HEAD);
+    if (facing(p) !== k.front) continue;
+    const q = V.P(lift(p, n, 3.5)),
+      vz = clamp(V.N(n).z * 0.5 + 0.6, 0.35, 1),
+      r = 3.6 * vz + 0.6;
+    soft(ctx, 2.6, () => {
+      ctx.fillStyle = "rgba(110,250,255,0.55)";
+      ctx.beginPath();
+      ctx.arc(q.x, q.y, r * 1.9, 0, TAU);
+      ctx.fill();
+    });
+    const g = ctx.createRadialGradient(
+      q.x - r * 0.35,
+      q.y - r * 0.4,
+      0,
+      q.x,
+      q.y,
+      r,
+    );
+    g.addColorStop(0, "#ffffff");
+    g.addColorStop(0.5, "#c9fff8");
+    g.addColorStop(1, "#4fc8e0");
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(q.x, q.y, r, 0, TAU);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
 // ── gill fronds: a curved stem with many fine wispy filaments ──
 export function gillGeom(v: number, side: "L" | "R", i: number) {
   const V = makeView(HEAD_YAW[v]),
@@ -1323,7 +1581,7 @@ export function paintGill(
   k: { v: number; side: "L" | "R"; i: number; lit: number },
 ) {
   const { R, C, T, G } = gillGeom(k.v, k.side, k.i);
-  const RAMP = k.lit ? R_GILL_LIT : R_GILL;
+  const RAMP = gillRamp(k.lit);
   ctx.save();
   ctx.translate(-R.x, -R.y);
   ctx.lineCap = "round";
@@ -1419,7 +1677,7 @@ export function paintGill(
   });
   if (k.lit)
     soft(ctx, 5, () => {
-      ctx.strokeStyle = "rgba(255,120,190,0.35)";
+      ctx.strokeStyle = acc.gillGlow;
       ctx.lineWidth = w * 0.5;
       ctx.stroke(outer);
     });
@@ -1657,9 +1915,9 @@ export function paintLeg(
   toes.sort((a, b) => a.y - b.y);
   for (const q of toes) {
     const tg = ctx.createRadialGradient(q.x - 1.2, q.y - 1.8, 0, q.x, q.y, 6.5);
-    tg.addColorStop(0, "#fff0f5");
-    tg.addColorStop(0.55, "#ffadc7");
-    tg.addColorStop(1, "#e06d98");
+    tg.addColorStop(0, acc.toe[0]);
+    tg.addColorStop(0.55, acc.toe[1]);
+    tg.addColorStop(1, acc.toe[2]);
     ctx.fillStyle = tg;
     ctx.beginPath();
     ctx.arc(q.x, q.y, 5.2, 0, TAU);
@@ -1780,14 +2038,14 @@ export function paintTail(ctx: Ctx, k: { v: number; pose: string }) {
   const tip = spine[N];
   const fg = ctx.createLinearGradient(R0.x, R0.y, tip.x, tip.y);
   fg.addColorStop(0, rgba(ramp(skin, 0.55)));
-  fg.addColorStop(0.6, rgba(mix(ramp(skin, 0.72), [255, 190, 214], 0.2)));
-  fg.addColorStop(1, rgba(mix(ramp(skin, 0.7), [255, 170, 205], 0.6)));
+  fg.addColorStop(0.6, rgba(mix(ramp(skin, 0.72), acc.finMid, 0.2)));
+  fg.addColorStop(1, rgba(mix(ramp(skin, 0.7), acc.finTip, 0.6)));
   ctx.fillStyle = fg;
   ctx.fill(fin);
   ctx.save();
   ctx.clip(fin);
   soft(ctx, 3, () => {
-    ctx.strokeStyle = "rgba(255,150,195,0.7)";
+    ctx.strokeStyle = acc.finGlow;
     ctx.lineWidth = 7;
     ctx.stroke(fin);
   });
@@ -1807,7 +2065,7 @@ export function paintTail(ctx: Ctx, k: { v: number; pose: string }) {
     ctx.stroke();
   }
   ctx.restore();
-  ctx.strokeStyle = "rgba(214,98,150,0.6)";
+  ctx.strokeStyle = acc.finEdge;
   ctx.lineWidth = 1.1;
   ctx.stroke(fin);
   const core = ribbon(ctop, cbot);
@@ -1831,7 +2089,7 @@ export function paintTail(ctx: Ctx, k: { v: number; pose: string }) {
       y: lerp(ctop[i].y, cbot[i].y, 0.25 + rr() * 0.4),
     };
     const r0 = 1.6 + rr() * 1.6;
-    spotAt(ctx, q.x, q.y, r0, r0, 0, rr() < PHASE_SPOTS[phaseNow].darkShare);
+    spotAt(ctx, q.x, q.y, r0, r0, 0, rr() < spotsNow().darkShare);
   }
   ctx.strokeStyle = "rgba(255,255,255,0.6)";
   ctx.lineWidth = 2;

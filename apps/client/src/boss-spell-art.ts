@@ -233,6 +233,48 @@ export function paintAscendantAura(
   });
 }
 
+/**
+ * Ascendant Tidelotl's aura, always on while it is up: abyssal light pooled
+ * on the water under it, a slow ring of sea-glass glow, and bioluminescent
+ * motes drifting up from its crown (fewer on Low). Like Ascendant
+ * Cragmuff's it shows which boss this is, so it is essential, and small:
+ * one wide floor glow and a few motes.
+ */
+export function paintAscendantTideAura(
+  g: G,
+  x: number,
+  y: number,
+  crown: { x: number; y: number },
+  time: number,
+  phase: number,
+  reduced: boolean,
+) {
+  const low = lowGraphics();
+  space(g, (fx, glow) => {
+    const t = reduced ? 0 : time,
+      deep = 0.55 + 0.15 * phase,
+      pulse = 0.85 + 0.15 * Math.sin(t * 2.1);
+    const fy = y + 14;
+    glow(x, fy, 92, 0x1fc8e6, 0.14 * deep * pulse, true);
+    const ring = 84 + ((t * 22) % 40);
+    fx.floor
+      .lineStyle(2.2, 0x5ff6ff, 0.32 * deep * (1 - (ring - 84) / 40))
+      .strokeEllipse(x, fy, ring * 2, ring * 0.8);
+    if (reduced) return;
+    const count = low ? 3 : 5 + phase;
+    for (let i = 0; i < count; i++) {
+      const k = (t * 0.45 + i / count) % 1,
+        side = hash(i * 2.7) - 0.5;
+      const px = crown.x + side * 110 + Math.sin(k * 5 + i) * 10,
+        py = crown.y + 50 - k * 120;
+      const c = i % 3 ? 0x5ff6ff : 0x9b7bff,
+        a = Math.sin(k * Math.PI) * 0.8;
+      fx.g.fillStyle(c, a).fillCircle(px, py, 2.2);
+      if (i % 2 === 0) glow(px, py, 7, c, a * 0.35);
+    }
+  });
+}
+
 function castEffect(
   fx: Fx,
   glow: (
