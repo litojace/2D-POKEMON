@@ -24,6 +24,11 @@ jobs:
     # Settings → Environments → production can require an approval first.
     environment: production
     timeout-minutes: 20
+    # "bash" (not the default "bash -e") also fails a step when the first
+    # command of a pipe fails, e.g. the listing before "| tee".
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

@@ -23,6 +23,29 @@ if (!url) {
   );
   process.exit(1);
 }
+// The password must never reach a log: hide it in GitHub's output, and check
+// the string's shape before psql sees it (psql prints the host it couldn't
+// find, which for a malformed string holds part of the password).
+const BAD_URL =
+  "SUPABASE_DB_URL doesn't look like postgresql://USER:PASSWORD@HOST:PORT/postgres. Remove the [ ] around the password, and write any @ : / ? # [ ] % in the password as %40 %3A %2F %3F %23 %5B %5D %25 (or choose a password of letters and digits). See docs/auto-migrations.md.";
+{
+  const m =
+    /^postgres(?:ql)?:\/\/([^:/@]+):(.*)@([^@/]+)$|^postgres(?:ql)?:\/\/([^:/@]+):(.*)@([^@/]+)\/[^@]*$/.exec(
+      url,
+    );
+  const pass = m ? (m[2] ?? m[5]) : null;
+  if (process.env.GITHUB_ACTIONS && pass) {
+    console.log(`::add-mask::${pass}`);
+    try {
+      console.log(`::add-mask::${decodeURIComponent(pass)}`);
+    } catch {}
+  }
+  const host = m ? (m[3] ?? m[6]) : "";
+  if (!m || /[@\[\]\s]/.test(pass) || !/^[a-z0-9.-]+(:[0-9]+)?$/i.test(host)) {
+    console.error(BAD_URL);
+    process.exit(1);
+  }
+}
 // Errors and warnings only, not every "already exists, skipping" (set in
 // the session: the pooler may not pass connection options through).
 const QUIET = "set client_min_messages = warning;";
