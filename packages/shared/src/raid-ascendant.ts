@@ -147,6 +147,16 @@ export const RAID_ASCENDANT_ATTACKS: Partial<Record<string, RaidAttack[]>> = {
     "breaker",
     "geyser",
   ],
+  gloomshade: [
+    "lunge",
+    "hands",
+    "snuff",
+    "curse",
+    "split",
+    "pulse",
+    "nightfall",
+    "pounce",
+  ],
 };
 
 /** Ascendant Cragmuff's three chapters. */
@@ -294,5 +304,184 @@ export const ASCENDANT_TIDELOTL_CHAPTERS = [
     objective: "Strand it. Survive the combinations.",
     detail:
       "Its rhythm quickens. As a strand ends it sweeps its tail twice, the second ring wider. High Tide leads into a dive, the Undertow into a wave.",
+  },
+] as const;
+
+/**
+ * Ascendant Inkpurr's own numbers (damage before the tier multiplier), the
+ * Spire's thirtieth floor (Gloomshade's id). Its ordinary attacks keep
+ * GLOOMSHADE's numbers.
+ */
+export const ASCENDANT_INKPURR = {
+  name: "Ascendant Inkpurr",
+  /** Health added per extra raider (the raid's own: 1000). */
+  perExtraPlayer: 650,
+  /** Seconds a teammate kneels to revive (the Ascendant tier: 4.5). */
+  reviveSeconds: 5.5,
+  /**
+   * Nightfall: the dark swallows the yard. Only lit lanterns and the pools
+   * of moonlight it leaves (one near each raider, `near`-`far` px away and
+   * always within reach) are safe; the dark hurts and adds a curse stack.
+   * The pools stay lit `linger` s after it lands (they cleanse like lanterns).
+   */
+  nightfall: {
+    delay: 1.7,
+    damage: 26,
+    poolRadius: 115,
+    near: 150,
+    far: 230,
+    /** A teaching Nightfall's pools sit this close. */
+    teachNear: 90,
+    linger: 4,
+    /**
+     * The court under a phone's touch controls (world px: x0, y0, x1, y1),
+     * each control's box at 667x375 and 844x390 together, measured in the
+     * visual harness: the joystick, dash, jump, the skills, the ultimate,
+     * the attack button and the target portraits round it. A pool's centre
+     * never sits within `controlMargin` of one, and at most `coverMax` of
+     * its disc lies under them; a raider deep in that corner walks farther
+     * (up to `farthest` px) and Nightfall waits for them.
+     */
+    phoneControls: [
+      [-260, 560, 183, 835],
+      [1528, 455, 1868, 600],
+      [1534, 630, 1874, 774],
+      [1124, 686, 1486, 848],
+      [1078, 497, 1440, 660],
+      [1188, 337, 1550, 501],
+      [1381, 305, 1750, 479],
+      [1269, 497, 1714, 745],
+      [1184, 156, 1294, 296],
+      [1316, 156, 1426, 266],
+      [1405, 164, 1560, 299],
+      [1533, 164, 1643, 274],
+      [1574, 186, 1769, 341],
+      [-298, 155, 22, 286],
+    ] as readonly (readonly [number, number, number, number])[],
+    controlMargin: 20,
+    coverMax: 0.4,
+    farthest: 560,
+  },
+  /**
+   * Shade Pounce: every body leaps onto a raider, one after another (`gap`
+   * apart): the copies first (each at the raider nearest it), the real one
+   * last. A copy's landing curses; the real one's hurts more, and if it lands
+   * in lantern light its shadow gives it away (`reveal` s). Without copies
+   * the real one pounces twice; leaps at the same raider chase them.
+   */
+  pounce: {
+    delay: 1.45,
+    radius: 105,
+    gap: 0.5,
+    damage: 30,
+    copyDamage: 20,
+    /** At most this many copies leap with it. */
+    copies: 3,
+    /** Leaps at one raider land this many radii apart, along their dodge. */
+    chase: 1.4,
+    reveal: 1.2,
+  },
+  /** A lunge whose lanes sink part-way and turn into a Shade Pounce. */
+  feint: {
+    /** Chance a lunge is a feint, by chapter. */
+    chance: [0.2, 0.3, 0.4],
+    /** Share of the lunge's follow shown before it turns. */
+    turnAt: 0.5,
+  },
+  /** A pair's seconds between attacks × this (the raid speeds up only for 3+: GLOOMSHADE.party). */
+  pairCadence: 0.65,
+  /** In a party under three, this many copies lunge with it (the raid: none). */
+  copyLunges: 3,
+  /**
+   * Alone and in a pair, its splits make this many more copies than the
+   * raid's (which makes one fewer alone, and one more only from 3 raiders).
+   */
+  extraCopies: [3, 1],
+  /** Reading habits (as Ascendant Cragmuff reads them). */
+  habit: { samples: 3, consistency: 0.55, offset: 0.5 },
+  /** Standing still to attack: seconds still, and seconds since the last hit. */
+  anchor: { still: 1.2, hit: 1.0, speed: 40 },
+  /**
+   * Pressure by chapter: seconds between attacks × this (the tier's cadence
+   * and the party's are applied first).
+   */
+  cadence: [0.8, 0.72, 0.64],
+  /**
+   * First chapter of each combo: a lunge ends in a pounce on its raider, a
+   * snuffed lantern's darkness lunges at whoever stood in its light, and a
+   * Nightfall that has landed sends every body pouncing.
+   */
+  combosFrom: { lunge: 1, snuff: 2, nightfall: 2 },
+  /**
+   * Overlap: from chapter `from`, with `raiders` or more alive, a Shade
+   * Pounce may bring Grasping Hands (`chance` of its casts): the board closes
+   * just after the last leap, laid so every raider keeps a reachable lit
+   * tile outside every circle, or there are no hands.
+   */
+  overlap: { from: 2, raiders: 2, chance: 0.5 },
+  /** Exposure and stagger windows × (1 + this per extra raider). */
+  partyWindows: 0.1,
+  /** Its attacks hit harder by this share per extra raider (instead of more health). */
+  partyDamage: 0.05,
+} as const;
+
+/** Ascendant Inkpurr's attack order for a chapter (it splits from chapter 1). */
+export function ascendantInkpurrPattern(phase: number): RaidAttack[] {
+  if (phase === 1)
+    return [
+      "lunge",
+      "hands",
+      "pounce",
+      "snuff",
+      "nightfall",
+      "split",
+      "lunge",
+      "pounce",
+    ];
+  if (phase === 2)
+    return [
+      "split",
+      "lunge",
+      "nightfall",
+      "curse",
+      "pounce",
+      "hands",
+      "snuff",
+      "pulse",
+      "pounce",
+    ];
+  return [
+    "nightfall",
+    "pulse",
+    "pounce",
+    "lunge",
+    "curse",
+    "snuff",
+    "hands",
+    "pounce",
+    "lunge",
+  ];
+}
+
+/** Ascendant Inkpurr's three chapters. */
+export const ASCENDANT_INKPURR_CHAPTERS = [
+  {
+    name: "Eclipsed Yard",
+    objective: "Get into the light before Nightfall. Step out of every pounce.",
+    detail:
+      "It splits early. Nightfall darkens the yard: only lit lanterns and the pools of moonlight are safe, and the pools never sit where you stand. Bodies pounce one after another; the real one lands last. A lunge ends in a pounce on whoever it chased.",
+  },
+  {
+    name: "Ink Tide",
+    objective:
+      "Keep the lanterns lit. Watch the board and the pounces at once.",
+    detail:
+      "Once Nightfall lands every body pounces, and a snuffed lantern's darkness lunges at whoever stood in its light. With friends close by, a pounce may bring Grasping Hands: a lit tile outside every circle is always within reach. It hunts whoever kneels to revive.",
+  },
+  {
+    name: "Midnight Ascendant",
+    objective: "Survive the combinations. Catch its shadow in the light.",
+    detail:
+      "Its rhythm quickens. A lunge may sink into the dark halfway and become a pounce: react to what is drawn now. A real one that lands in lantern light casts a shadow: hit it before it fades. Standing still to attack draws a pounce.",
   },
 ] as const;

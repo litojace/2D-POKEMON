@@ -52,6 +52,11 @@ import {
   snuffBlend,
   yardPieces,
 } from "./raid-yard-pieces";
+import {
+  drawAscendantInkWarning,
+  drawMoonPools,
+} from "./ascendant-inkpurr-art";
+import { paintAscendantInkAuras } from "./boss-spell-art";
 
 /**
  * Gloomshade and the Lantern Yard each frame: the night closing in,
@@ -377,7 +382,8 @@ function paintYard(
   // Ball Lightning's patches of light: cool white, fading out.
   for (const b of r.lights ?? []) {
     const left = b.until - t;
-    if (left <= 0) continue;
+    // (Nightfall's lingering pools: ascendant-inkpurr-art.ts.)
+    if (left <= 0 || b.moon) continue;
     const fade = Math.min(1, left / 0.6);
     const pop = reduced
       ? 1
@@ -396,6 +402,9 @@ function paintYard(
         add: true,
       });
   }
+
+  // Nightfall's pools, lingering as light once it has landed.
+  drawMoonPools(g, state, reduced);
 
   // The posts, each on its own sorted layer.
   for (const [i, l] of lanterns.entries()) {
@@ -487,6 +496,9 @@ export function drawGloomshadeWarning(
   const pulse = reduced ? 1 : 0.86 + Math.sin(t * 8) * 0.14;
   const progress = progressOf(w, t);
   const low = fxFor(g.scene).density < 0.5;
+  // Ascendant Inkpurr's Nightfall and Shade Pounce.
+  if (w.kind === "nightfall" || w.kind === "pounce")
+    return drawAscendantInkWarning(g, state, w, reduced);
   if (w.kind === "lunge") {
     const locked = w.lockAt !== undefined && t >= w.lockAt;
     const color = locked ? DANGER : 0xffd982;
@@ -914,6 +926,7 @@ export function drawGloomshade(
       cheap: !b.real,
       hurt: b.real ? hurt : 0,
       gilded: !!r.gilded,
+      ascendant: r.variant === "ascendant",
       stagger: b.real && stagger,
       exposed: b.real && exposed,
       dead: b.real && dead,
@@ -923,6 +936,9 @@ export function drawGloomshade(
     if (placed) gems.push(placed.gem);
   }
   m.last = { x: boss.x, y: boss.y };
+  // Ascendant Inkpurr: the same aura round every body (copies included).
+  if (r.variant === "ascendant" && !dead)
+    paintAscendantInkAuras(g, bodies, t, r.phase, reduced);
   // In the air, in front of everyone: the split's blobs, the curse's beam
   // from every body's gem alike, and the found bursts.
   const air = at ? at("ink-air", 1000) : g;
@@ -1036,6 +1052,7 @@ interface ShadeLook {
   alpha: number;
   hurt: number;
   gilded: boolean;
+  ascendant?: boolean;
   stagger: boolean;
   exposed: boolean;
   dead: boolean;
