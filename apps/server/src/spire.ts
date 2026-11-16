@@ -31,9 +31,11 @@ import {
   RULES,
   blocked,
   maxHealth,
+  useObstacles,
   type Ability,
   type CharacterId,
   type Fighter,
+  type Rect,
 } from "../../../packages/shared/src/index.js";
 import {
   ASCENDANT_CRAGMUFF,
@@ -60,6 +62,11 @@ import {
   type SpireFloorReceipt,
   type SpireState,
 } from "../../../packages/shared/src/spire.js";
+import {
+  spireCourtWalls,
+  spireEchoSpawnCandidate,
+  spireRaiderSpawn,
+} from "../../../packages/shared/src/spire-court.js";
 import { BotBrain } from "./bot.js";
 import { RaidArena, raidJitter } from "./raid.js";
 import { AscendantCragmuffRules } from "./raid-ascendant-cragmuff.js";
@@ -201,6 +208,17 @@ export class SpireArena extends AscendantCragmuffRules(RaidArena) {
   override hitRadius(p: Fighter) {
     return p.elite ? RULES.radius * SPIRE_PARTY.eliteScale : super.hitRadius(p);
   }
+  /**
+   * Wave and elite floors are fought on the Spire's court: its floor's
+   * layout and the stairs (packages/shared/src/spire-court.ts, which the
+   * client predicts and paints with). The boss floor keeps its raid's walls.
+   */
+  override walls() {
+    const list = spireCourtWalls(this.spire?.state);
+    if (!list) return super.walls();
+    useObstacles(list);
+    return list as Rect[];
+  }
   override snapshot(remaining = 0) {
     // Echo brains are not a "bot match".
     return { ...super.snapshot(remaining), vsBot: null };
@@ -245,6 +263,9 @@ export class SpireArena extends AscendantCragmuffRules(RaidArena) {
     this.resetReads();
     this.projectiles = [];
     this.zones = [];
+    // The Spire's court has no Cragmuff pillars; the boss floor's court does.
+    if (def?.kind === "boss") this.setupArena();
+    else r.pillars = [];
     // The Ascendant's rules are on for its floor only.
     r.variant = def?.kind === "boss" ? "ascendant" : undefined;
     r.name = def?.kind === "boss" ? ASCENDANT_CRAGMUFF.name : "The Spire";
@@ -252,8 +273,7 @@ export class SpireArena extends AscendantCragmuffRules(RaidArena) {
     this.heroes().forEach((p, i) => {
       Object.assign(p, {
         hp: maxHealth(p.character, this.mode),
-        x: 260 + (i % 2) * 85,
-        y: 330 + Math.floor(i / 2) * 160,
+        ...spireRaiderSpawn(i),
         vx: 0,
         vy: 0,
         angle: 0,
@@ -344,19 +364,7 @@ export class SpireArena extends AscendantCragmuffRules(RaidArena) {
     for (let i = 0; i < 24; i++) {
       const j = (k: number) =>
         raidJitter(this.spire.seed, this.serial * 31 + k, i);
-      const x = elite
-        ? 1150 + j(1) * 150
-        : echo.role === "front"
-          ? 1100 + j(1) * 220
-          : echo.role === "caster"
-            ? 1330 + j(1) * 170
-            : 850 + j(1) * 550;
-      const y =
-        echo.role === "skirmisher" && !elite
-          ? j(2) < 0.5
-            ? 120 + j(3) * 60
-            : 720 + j(3) * 60
-          : 160 + j(2) * 580;
+      const { x, y } = spireEchoSpawnCandidate(echo.role, elite, j);
       if (blocked(x, y, RULES.radius + 6)) continue;
       const fromHero = Math.min(
         9999,
