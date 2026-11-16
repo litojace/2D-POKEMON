@@ -49,6 +49,17 @@ doesn't count as played. The owner's and testers' accounts are included.
 - Saved matches: 117 duels against a bot, 15 duels between players, no
   2v2 or free-for-all. Raids: 116 runs, half of them Cragmuff.
 
-What changed after this run: PLAY starts a new player against an Easy bot
-instead of opening a private 1v1 room that waits for a second player.
+What changed after this run:
+
+- PLAY starts a new player against an Easy bot instead of opening a
+  private 1v1 room that waits for a second player.
+- **Getting started** (`apps/client/src/getting-started.ts`): an account
+  at level 5 or below sees five steps on the Lobby, in the Journey card's
+  place: play a match against a bot, defeat Cragmuff, wear the first
+  reward, visit the Farm, open the Bistro. Each has a Go button; the guide
+  can be hidden, and the Menu's _Getting started_ brings it back. Steps the
+  server knows (a Cragmuff clear, something worn) come from the account;
+  the others are remembered per account in the browser.
+- The reward reveal offers **Wear it now** for an appearance reward.
+
 Compare the guest rows on the next run.
