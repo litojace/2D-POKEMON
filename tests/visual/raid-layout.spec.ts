@@ -7,6 +7,7 @@ import {
   pushUntilBattle,
   snap,
   openPlayPanel,
+  createRoom,
 } from "./helpers";
 
 /** Peril · NAME · Phase in one centred row, the bar below, the callout under it. */
@@ -102,7 +103,7 @@ for (const size of [
         (window as any).__room("raid", { boss: "grumblecrag" }),
       );
       await openPlayPanel(page);
-      await page.click("#play-create");
+      await createRoom(page);
       await pushUntilBattle(page);
 
       for (const boss of [

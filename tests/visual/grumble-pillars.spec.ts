@@ -1,5 +1,11 @@
 import { expect, test, type Page } from "@playwright/test";
-import { openHub, openPlayPanel, pushUntilBattle, snap } from "./helpers";
+import {
+  openHub,
+  openPlayPanel,
+  pushUntilBattle,
+  snap,
+  createRoom,
+} from "./helpers";
 
 // Grumblecrag's pillars are drawn like the painted cave
 // (raid-grumble-pillars.ts): one atlas drawn while the battle scene is
@@ -38,7 +44,7 @@ async function enter(page: Page) {
     }),
   );
   await openPlayPanel(page);
-  await page.click("#play-create");
+  await createRoom(page);
   await pushUntilBattle(page);
   // The scene clock the pillars run on, frozen on demand to look mid-change.
   await page.evaluate(() => {

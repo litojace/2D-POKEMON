@@ -1,5 +1,12 @@
 import { expect, test, type Page } from "@playwright/test";
-import { openHub, openPlayPanel, pushUntilBattle, snap } from "./helpers";
+import {
+  openHub,
+  openPlayPanel,
+  pushUntilBattle,
+  snap,
+  pickRoomMode,
+  createRoom,
+} from "./helpers";
 
 /**
  * Quick chat in a battle (chat/battle-chat.ts, docs/chat-plan.md): the
@@ -29,12 +36,12 @@ async function battle(page: Page, kind: "pvp" | "raid") {
   }, kind);
   if (kind === "pvp") {
     await openPlayPanel(page);
-    await page.click('#menu [data-mode="teams"]');
+    await pickRoomMode(page, "teams");
   } else {
     await page.evaluate(() => ((window as any).__snap.raid.partySize = 2));
     await openPlayPanel(page);
   }
-  await page.click("#play-create");
+  await createRoom(page);
   await pushUntilBattle(page);
   return errors;
 }

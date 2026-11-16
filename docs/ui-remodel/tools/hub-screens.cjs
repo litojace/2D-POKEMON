@@ -247,7 +247,7 @@ async function pushUntilBattle(page) {
 async function openPlayPanel(page) {
   await page.click("#lobby-mode");
   await page.click('#lobby-mode-menu [data-lobby-action="more-play"]');
-  await page.locator("#practice").waitFor({ state: "visible" });
+  await page.locator("#join").waitFor({ state: "visible" });
 }
 
 const SCREENS = {
@@ -358,7 +358,7 @@ const SCREENS = {
   async "raid-briefing"(page, shot) {
     await page.evaluate(() => window.__room("raid", { boss: "grumblecrag" }));
     await openPlayPanel(page);
-    await page.click("#play-create");
+    await page.evaluate(() => document.getElementById("play-create").click());
     await pushUntilBattle(page);
     await page.evaluate(() => {
       const w = window;

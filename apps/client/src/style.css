@@ -9988,6 +9988,18 @@ body.home-active .header-menu summary > span {
 .home-play-drawer .room-note {
   margin-top: 18px;
 }
+/* Join or watch: a name, a room code, Join and Watch. The drawer fits
+   them instead of a full-height half of the screen (the room types and bot
+   levels it used to repeat are the Lobby's mode menu). */
+.home-drawer.home-play-drawer {
+  bottom: auto;
+  width: min(460px, calc(100vw - var(--safe-left) - var(--safe-right) - 20px));
+  max-height: calc(100dvh - var(--safe-top) - var(--safe-bottom) - 20px);
+}
+.home-play-drawer .home-play-options {
+  grid-template-columns: minmax(0, 1fr);
+  margin-top: 12px;
+}
 @media (orientation: landscape) and (max-height: 600px), (max-width: 1000px) {
   body.home-active {
     --home-top: calc(50px + var(--safe-top));

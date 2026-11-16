@@ -1,5 +1,11 @@
 import { expect, test, type Page } from "@playwright/test";
-import { openHub, openPlayPanel, pushUntilBattle, snap } from "./helpers";
+import {
+  openHub,
+  openPlayPanel,
+  pushUntilBattle,
+  snap,
+  createRoom,
+} from "./helpers";
 
 // Gloomshade's Lantern Yard and the Storm Twins' conductor ring draw their
 // pieces as images from one atlas each (raid-piece-stage.ts): lantern posts,
@@ -41,7 +47,7 @@ async function openRaid(page: Page, boss: string) {
     );
   }, boss);
   await openPlayPanel(page);
-  await page.click("#play-create");
+  await createRoom(page);
   await pushUntilBattle(page);
   return errors;
 }

@@ -1,5 +1,13 @@
 import { expect, test, type Page } from "@playwright/test";
-import { asRgb, box, inside, openHub, snap } from "./helpers";
+import {
+  asRgb,
+  box,
+  inside,
+  openHub,
+  snap,
+  pickRoomMode,
+  createRoom,
+} from "./helpers";
 import {
   ISLAND,
   closeSpot,
@@ -52,8 +60,8 @@ async function enterRoom(page: Page, kind: "raid" | "duel" | "teams" | "ffa") {
   } else {
     await page.click("#lobby-mode");
     await page.click('#lobby-mode-menu [data-lobby-action="more-play"]');
-    await page.click(`#menu [data-mode="${kind}"]`);
-    await page.click("#play-create");
+    await pickRoomMode(page, kind);
+    await createRoom(page);
   }
   await expect
     .poll(async () => {

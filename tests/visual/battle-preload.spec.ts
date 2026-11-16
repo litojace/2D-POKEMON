@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { openHub, openPlayPanel, pushUntilBattle } from "./helpers";
+import { openHub, openPlayPanel, pushUntilBattle, createRoom } from "./helpers";
 
 // What a battle needs is ready behind the loading screen, not on its first
 // frames: the Shop skins the fighters wear (a rig used to ask for them on
@@ -44,7 +44,7 @@ test("worn skins and the boss's atlas are ready before the battle's first frame"
     w.__snap = m.packSnapshot(a.snapshot());
   });
   await openPlayPanel(page);
-  await page.click("#play-create");
+  await createRoom(page);
   await pushUntilBattle(page);
   const seen = await page.evaluate(async () => {
     const w = window as any,
@@ -96,7 +96,7 @@ test("Cragmuff's atlas is painted before the battle's first frame", async ({
     (window as any).__room("raid", { boss: "grumblecrag" }),
   );
   await openPlayPanel(page);
-  await page.click("#play-create");
+  await createRoom(page);
   await pushUntilBattle(page);
   const seen = await page.evaluate(() => (window as any).__atCreate);
   expect(seen?.atlas).toBe(true);

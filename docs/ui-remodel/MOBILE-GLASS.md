@@ -174,12 +174,14 @@ online; hidden on phones), the coin pill (opens the Shop, as in most mobile
 games), the two party seats' Invite. On phones the Lobby now shows Journey
 and Daily missions beside the fighter (it showed Journey and the Farm card).
 
-Not removed yet: the Play drawer ("Join or watch" in the mode menu) repeats
-every mode the mode menu already has (four rooms, three bot levels, the
-practice room) above what only it has (join or watch by room code, your
-display name). 58 visual test files reach matches through those drawer
-buttons, so cutting them means moving the tests to the mode menu first; it
-is listed below.
+The Play drawer ("Join or watch" in the mode menu) repeated every mode the
+mode menu has (four room types, three bot levels, the practice room) above
+what only it has. It now shows only that: your name, a room code, Join and
+Watch, in a drawer that fits them (460 px wide, as tall as its content).
+The repeated buttons stay in the page, hidden: PLAY starts every match
+through them (`lobbyPlay` in `main.ts`), so there is still one code path.
+Tests that only need a match press them through `createRoom()`,
+`startPractice()` and `pickRoomMode()` in `tests/visual/helpers.ts`.
 
 ## Mythic Hall picks one fighter on a phone (owner, 16 Nov)
 
@@ -249,9 +251,6 @@ is left").
 
 ## What is left, by value on a phone
 
-0. **The Play drawer's repeated modes** (see "Duplicate buttons"): move
-   the visual tests to the mode menu, then keep only Join / Watch and the
-   name in the drawer.
 1. **Shop › Mythic Hall:** done (one fighter at a time on phones, above).
 2. **Raids › Rewards (2.4).** Could be a sideways strip like the trophies.
 3. **Player card (2.4).** Tabs in the head (Overview · Titles · Mastery ·

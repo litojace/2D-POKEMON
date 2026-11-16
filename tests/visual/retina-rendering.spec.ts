@@ -1,5 +1,10 @@
 import { expect, test } from "@playwright/test";
-import { openHub, openPlayPanel, pushUntilBattle } from "./helpers";
+import {
+  openHub,
+  openPlayPanel,
+  pushUntilBattle,
+  startPractice,
+} from "./helpers";
 
 for (const mobile of [false, true])
   test(`${mobile ? "installed iPhone" : "Retina desktop"} smooths battle fighters`, async ({
@@ -57,7 +62,7 @@ for (const mobile of [false, true])
       };
       await page.evaluate(() => (window as any).__room("practice"));
       await openPlayPanel(page);
-      await page.click("#practice");
+      await startPractice(page);
       await pushUntilBattle(page);
       expectSmooth(await audit());
       expect(errors).toEqual([]);

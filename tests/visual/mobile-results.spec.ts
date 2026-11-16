@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { box, inside, openHub, pushUntilBattle, snap, openPlayPanel } from "./helpers";
+import { box, inside, openHub, pushUntilBattle, snap, openPlayPanel, startPractice } from "./helpers";
 
 // A short visible viewport includes Safari's expanded address/tab bars.
 for (const size of [
@@ -20,7 +20,7 @@ for (const size of [
       const errors = await openHub(page);
       await page.evaluate(() => (window as any).__room("practice"));
       await openPlayPanel(page);
-      await page.click("#practice");
+      await startPractice(page);
       await pushUntilBattle(page);
       await page.evaluate(() => {
         const w = window as any;

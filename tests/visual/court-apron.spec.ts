@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { openHub, pushUntilBattle, snap, openPlayPanel } from "./helpers";
+import { openHub, pushUntilBattle, snap, openPlayPanel, createRoom } from "./helpers";
 
 for(const size of [{width:844,height:390},{width:844,height:280}]) {
   test(`mobile camera reveals themed foreground at the lower court edge ${size.height}`,async({browser},info)=>{
@@ -15,7 +15,7 @@ for(const size of [{width:844,height:390},{width:844,height:280}]) {
       });
       const errors=await openHub(page);
       await page.evaluate(()=> (window as any).__room("pvp",{mode:"duel",phase:"playing",arena:"classic",pos:[800,882,1300,300]}));
-      await openPlayPanel(page);await page.click("#play-create");
+      await openPlayPanel(page);await createRoom(page);
       await pushUntilBattle(page);
       for(const arena of ["classic","tide-pools","ember-forge","shifting-ruins"]){
         await page.evaluate((arena)=>{

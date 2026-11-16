@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { openHub, openPlayPanel, openPlaza, pushUntilBattle, snap } from "./helpers";
+import { openHub, openPlayPanel, openPlaza, pushUntilBattle, snap, startPractice } from "./helpers";
 
 // Settings → Graphics (Auto / High / Low) and Auto's own switch.
 const canvas = (page: import("@playwright/test").Page) =>
@@ -60,7 +60,7 @@ test("Low draws an Android battle at 1.5×, High at 2×, switching mid-battle", 
     const errors = await openHub(page);
     await page.evaluate(() => (window as any).__room("practice"));
     await openPlayPanel(page);
-    await page.click("#practice");
+    await startPractice(page);
     await pushUntilBattle(page);
     const battle = () =>
       page.evaluate(() => {

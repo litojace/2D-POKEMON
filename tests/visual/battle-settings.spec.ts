@@ -1,5 +1,12 @@
 import { expect, test } from "@playwright/test";
-import { box, openHub, pushUntilBattle, openPlayPanel } from "./helpers";
+import {
+  box,
+  openHub,
+  pushUntilBattle,
+  openPlayPanel,
+  startPractice,
+  createRoom,
+} from "./helpers";
 
 test("one corner gear opens Settings and the separate Practice panel on a short phone", async ({
   browser,
@@ -14,7 +21,7 @@ test("one corner gear opens Settings and the separate Practice panel on a short 
     const errors = await openHub(page);
     await page.evaluate(() => (window as any).__room("practice"));
     await openPlayPanel(page);
-    await page.click("#practice");
+    await startPractice(page);
     await pushUntilBattle(page);
     await expect(page.locator("#mobile-fullscreen")).toBeHidden();
     await expect(page.locator("#practice-settings > summary")).toBeHidden();
@@ -55,7 +62,7 @@ test("desktop uses one round corner gear with the clock directly below it", asyn
       (window as any).__room("raid", { boss: "prismatail" }),
     );
     await openPlayPanel(page);
-    await page.click("#play-create");
+    await createRoom(page);
     await pushUntilBattle(page);
     const gear = await box(page, "#battle-menu"),
       clock = await box(page, ".raid-elapsed"),

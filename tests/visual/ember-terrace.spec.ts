@@ -1,5 +1,11 @@
 import { expect, test, type Page } from "@playwright/test";
-import { openHub, openPlayPanel, pushUntilBattle, snap } from "./helpers";
+import {
+  openHub,
+  openPlayPanel,
+  pushUntilBattle,
+  snap,
+  createRoom,
+} from "./helpers";
 
 // Emberwing's Sky Terrace is drawn like the painted lava terrace
 // (raid-emberwing-terrace.ts): one atlas drawn while the battle scene is
@@ -38,7 +44,7 @@ async function enter(page: Page) {
     }),
   );
   await openPlayPanel(page);
-  await page.click("#play-create");
+  await createRoom(page);
   await pushUntilBattle(page);
   return errors;
 }

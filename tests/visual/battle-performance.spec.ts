@@ -1,5 +1,11 @@
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
-import { closeRaids, openHub, pushUntilBattle, openPlayPanel } from "./helpers";
+import {
+  closeRaids,
+  openHub,
+  pushUntilBattle,
+  openPlayPanel,
+  createRoom,
+} from "./helpers";
 
 /**
  * Repeatable client performance scenarios (Chromium + CDP):
@@ -87,7 +93,7 @@ async function enterBattle(page: Page, scenario: Scenario) {
     scenario,
   );
   await openPlayPanel(page);
-  await page.click("#play-create");
+  await createRoom(page);
   await pushUntilBattle(page);
 }
 /** Run a real fight in the page and stream compact snapshots at 15 Hz. */

@@ -1,5 +1,10 @@
 import { expect, test } from "@playwright/test";
-import { openHub, openPlayPanel, pushUntilBattle } from "./helpers";
+import {
+  openHub,
+  openPlayPanel,
+  pushUntilBattle,
+  startPractice,
+} from "./helpers";
 
 // In a battle on a phone held sideways, the touch controls sit closer to
 // the edges than the safe area (style.css, "Big phones"), but never over the
@@ -41,7 +46,7 @@ for (const phone of PHONES)
       const errors = await openHub(page);
       await page.evaluate(() => (window as any).__room("practice"));
       await openPlayPanel(page);
-      await page.click("#practice");
+      await startPractice(page);
       await pushUntilBattle(page);
       await expect(
         page.locator('.touch-buttons [data-action="dash"]'),

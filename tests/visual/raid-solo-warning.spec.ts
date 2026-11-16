@@ -5,6 +5,7 @@ import {
   openPlayPanel,
   pushUntilBattle,
   snap,
+  createRoom,
 } from "./helpers";
 
 // Solo raiders get one self-revive, except against ★★★ bosses (raid-solo.ts):
@@ -69,7 +70,7 @@ test("the briefing warns that solo ★★★ has no revive", async ({
     (window as any).__room("raid", { boss: "grumblecrag" }),
   );
   await openPlayPanel(page);
-  await page.click("#play-create");
+  await createRoom(page);
   await pushUntilBattle(page);
   const brief = (boss: string) =>
     page.evaluate((boss) => {

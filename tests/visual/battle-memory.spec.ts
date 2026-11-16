@@ -1,5 +1,10 @@
 import { expect, test } from "@playwright/test";
-import { openLobby, openPlayPanel, pushUntilBattle } from "./helpers";
+import {
+  openLobby,
+  openPlayPanel,
+  pushUntilBattle,
+  createRoom,
+} from "./helpers";
 
 // An older iPhone ends a page that holds too much memory (a white screen,
 // then a reload). The battle keeps its budget small there: a 1.5× canvas,
@@ -58,7 +63,7 @@ test("an iPhone battle keeps a small memory budget and hands its WebGL context b
         (window as any).__room("pvp", { mode: "duel", phase: "playing" }),
       );
       await openPlayPanel(page);
-      await page.click("#play-create");
+      await createRoom(page);
     } else {
       // A rematch from the room lobby builds the battle renderer again.
       await page.evaluate(() => ((window as any).__snap.phase = "playing"));
