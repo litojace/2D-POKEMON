@@ -1,7 +1,7 @@
 /**
  * Telegraph fairness for the ★★★ bosses' attacks (Prismatail, Emberwing,
  * Storm Twins) and for the Ascendant forms past them (Ascendant Cragmuff,
- * the Spire's tenth floor). Every warning they draw must:
+ * the Spire's tenth floor; Ascendant Tidelotl, its twentieth). Every warning they draw must:
  * - stay on screen at least 0.9 s of server time;
  * - stop moving at least 0.6 s before it lands;
  * - leave every raider a spot they can reach at the slowest champion's
@@ -52,6 +52,9 @@ function inside(w: RaidWarning, p: Point) {
       return segment(p, w) <= 100 + SLACK;
     case "fissure":
       return segment(p, w) <= (w.width ?? 0) / 2 + RADIUS + SLACK;
+    case "breaker":
+      // The whole court but its calm lanes (and the islands).
+      return !breakerSafe(p, w.tx !== w.x ? "x" : "y", w.gaps!, w.gapWidth!);
     case "volley": {
       const aim = Math.atan2(w.ty - w.y, w.tx - w.x);
       return (
@@ -90,6 +93,21 @@ function inside(w: RaidWarning, p: Point) {
     default:
       return dist <= w.radius + RADIUS + SLACK;
   }
+}
+/** Tidelotl's islands this run (a Breaker Wall spares raiders on them). */
+let islands: { x: number; y: number; radius: number }[] = [];
+/** Inside a Breaker Wall's calm lane (with room to spare), or on an island. */
+function breakerSafe(
+  p: Point,
+  axis: "x" | "y",
+  gaps: number[],
+  gapWidth: number,
+) {
+  const across = axis === "x" ? p.y : p.x;
+  return (
+    gaps.some((c) => Math.abs(across - c) <= gapWidth / 2 - RADIUS - SLACK) ||
+    islands.some((i) => Math.hypot(p.x - i.x, p.y - i.y) < i.radius - SLACK)
+  );
 }
 /** The nearest spot within `reach` outside every danger, or undefined. */
 function safeSpot(from: Point, reach: number, danger: (p: Point) => boolean) {
@@ -541,6 +559,98 @@ describe("Ascendant Cragmuff telegraphs are fair", () => {
           expect(run.shown.map((w) => w.kind)).toEqual(
             expect.arrayContaining(["slam"]),
           );
+        check(run, `seed ${seed}`);
+      }
+      expect(feints).toBe(SEEDS.length);
+    });
+  }
+});
+
+describe("Ascendant Tidelotl telegraphs are fair", () => {
+  const ascendant = (size: number, phase: number, seed: number) => {
+    const a = arena("tidewyrm", size, phase, seed, ["terradon"], "ascendant");
+    a.raid.trait = "murky";
+    islands = (a.raid.islands ?? []).filter((i) => !i.sunk);
+    // Every raider has a habit the boss has learnt (the reads it aims at).
+    a.heroes().forEach((p, i) => {
+      const angle = seed + i * 2.1;
+      for (let k = 0; k < 4; k++)
+        (a as any).noteTideDodge(p.id, Math.cos(angle), Math.sin(angle));
+    });
+    return a;
+  };
+  /** A Breaker Wall on the floor: everywhere it has yet to pass, but its lanes. */
+  const walls = (a: RaidArena) => () =>
+    (a.raid.waves ?? [])
+      .filter((w) => w.gaps)
+      .map(
+        (w) => (p: Point) =>
+          ((w.axis === "x" ? p.x : p.y) - w.pos) * w.dir >
+            -(w.width / 2 + RADIUS + SLACK) &&
+          !breakerSafe(p, w.axis, w.gaps!, w.gapWidth!),
+      );
+  for (const size of [1, 2, 3, 4]) {
+    it(`Breaker Wall (stand in a calm lane), ${size} raider(s)`, () => {
+      for (const seed of SEEDS) {
+        const a = ascendant(size, 1, seed);
+        const run = dodge(
+          a,
+          () => (a as any).startAttack("breaker", a.heroes()[0]),
+          { seconds: 5.5, hazards: walls(a) },
+        );
+        expect(run.shown.map((w) => w.kind)).toEqual(["breaker"]);
+        expect(a.raid.waves ?? []).toHaveLength(0);
+        check(run, `seed ${seed}`);
+      }
+    });
+    it(`Breaker Wall, then its geysers (chapter 3), ${size} raider(s)`, () => {
+      for (const seed of SEEDS) {
+        const a = ascendant(size, 3, seed);
+        const run = dodge(
+          a,
+          () => {
+            (a as any).currentCast = ++(a as any).castSerial;
+            (a as any).startAttack("breaker", a.heroes()[0]);
+            (a as any).currentCast = 0;
+          },
+          { seconds: 8.5, hazards: walls(a) },
+        );
+        expect(run.shown.filter((w) => w.kind === "geyser")).toHaveLength(3);
+        check(run, `seed ${seed}`);
+      }
+    });
+    it(`habit-aimed and led Geyser Lines, ${size} raider(s)`, () => {
+      for (const seed of SEEDS) {
+        const a = ascendant(size, 2, seed);
+        const target = a.heroes()[seed % size];
+        if (seed % 2) Object.assign(target, { vx: 0, vy: 0 });
+        const run = dodge(a, () => (a as any).startAttack("geyser", target), {
+          seconds: 3.5,
+        });
+        expect(run.shown.filter((w) => w.kind === "geyser")).toHaveLength(3);
+        check(run, `seed ${seed}`);
+      }
+    });
+    it(`a feint: a dive whose ripple turns into a Geyser Line, ${size} raider(s)`, () => {
+      let feints = 0;
+      for (const seed of SEEDS) {
+        const a = ascendant(size, 2, seed) as any;
+        a.tideFeintRoll = () => true;
+        a.seenAttacks.set("dive", 2);
+        const target = a.heroes()[seed % size];
+        const run = dodge(
+          a,
+          () => {
+            a.currentCast = ++a.castSerial;
+            a.startAttack("dive", target);
+            a.settleWarnings();
+            a.currentCast = 0;
+          },
+          { seconds: 4 },
+        );
+        feints += a.tideReads.feints;
+        // The dive never lands once it has turned: only geysers hit.
+        expect(run.shown.map((w) => w.kind)).toContain("geyser");
         check(run, `seed ${seed}`);
       }
       expect(feints).toBe(SEEDS.length);
