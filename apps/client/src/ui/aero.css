@@ -52,7 +52,7 @@
 :root .hub-scenes,
 .lobby-layer
   :is(
-    .lobby-rail button,
+    .lobby-rail,
     .lobby-card,
     .lobby-mode,
     .lobby-party-bar,
@@ -72,7 +72,7 @@
 :root .hub-scenes,
 .lobby-layer
   :is(
-    .lobby-rail button,
+    .lobby-rail,
     .lobby-card,
     .lobby-mode,
     .lobby-party-bar,
@@ -84,8 +84,7 @@
 }
 /* Hover and keyboard focus: the rim lights up gold. */
 :root body.hub-active .header-menu > summary:is(:hover, :focus-visible),
-.lobby-layer
-  :is(.lobby-rail button, .lobby-card, .lobby-mode):is(:hover, :focus-visible),
+.lobby-layer :is(.lobby-card, .lobby-mode):is(:hover, :focus-visible),
 .plaza-layer
   :is(.pz-round, .pz-act:not(.big, .pz-interact, .cd)):is(
     :hover,
@@ -136,24 +135,14 @@
   backdrop-filter: none;
 }
 
-/* The rail button of the screen that is open lights up gold (rim, a soft
-   glow, the icon and its label), so you can tell which screen you are in;
-   a second tap on it closes the screen (lobby-screen.ts). */
+/* The rail button of the screen that is open is solid gold with a dark
+   icon and label, as the scene switch shows the scene you are in; a second
+   tap on it closes the screen (lobby-screen.ts). */
 .lobby-layer .lobby-rail button[aria-current="page"] {
-  border-color: var(--aero-rim-on);
-  background-color: color-mix(in srgb, var(--ui-accent) 18%, transparent);
-  box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--ui-accent) 35%, transparent),
-    0 0 14px color-mix(in srgb, var(--ui-accent) 35%, transparent);
+  background: var(--ui-accent);
 }
-.lobby-layer .lobby-rail button[aria-current="page"] svg {
-  color: var(--ui-accent);
-  filter: drop-shadow(
-    0 0 4px color-mix(in srgb, var(--ui-accent) 70%, transparent)
-  );
-}
-.lobby-layer .lobby-rail button[aria-current="page"] span {
-  color: var(--ui-accent-hi);
+.lobby-layer .lobby-rail button[aria-current="page"] :is(svg, span) {
+  color: var(--ui-accent-ink);
 }
 
 /* The same on the Plaza's Emote button while its wheel is open (a second

@@ -79,12 +79,23 @@
    tall even on the shortest phone; they shrink only on a shorter window,
    never below 28px. */
 .lobby-rail {
+  /* One glass capsule holding the six buttons, as the Lobby / Plaza / Farm
+     switch holds its four (owner, 16 Nov: six separate tiles didn't match
+     the rest of the HUD). It is as tall as its buttons, never taller than
+     the room between the header and the bottom edge, where they shrink. */
+  --rail-pad: 4px;
   left: var(--lobby-gutter);
   top: var(--lobby-top);
-  bottom: var(--lobby-bottom);
+  width: var(--lobby-rail);
+  max-height: calc(100% - var(--lobby-top) - var(--lobby-bottom));
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 2px;
+  padding: var(--rail-pad);
+  border: 1px solid var(--lobby-line);
+  border-radius: calc(var(--lobby-rail) / 2);
+  background: var(--lobby-glass);
+  backdrop-filter: blur(6px);
 }
 .lobby-rail button {
   position: relative;
@@ -93,21 +104,17 @@
   align-content: center;
   gap: 2px;
   flex: 0 1 var(--lobby-rail-btn);
-  width: var(--lobby-rail);
+  width: 100%;
   min-height: 28px;
   padding: 0;
-  border: 1px solid var(--lobby-line);
-  border-radius: 14px;
-  background: var(--lobby-glass);
-  backdrop-filter: blur(6px);
-  transition:
-    transform 0.15s ease,
-    border-color 0.15s ease;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  transition: background-color 0.15s ease;
 }
 .lobby-rail button:hover,
 .lobby-rail button:focus-visible {
-  border-color: var(--ui-accent);
-  transform: translateX(2px);
+  background: rgba(255, 255, 255, 0.08);
 }
 .lobby-rail svg {
   width: 22px;
@@ -993,9 +1000,6 @@
     --lobby-play-h: 98px;
     --lobby-rail-btn: 48px;
   }
-  .lobby-rail {
-    gap: 6px;
-  }
   .lobby-friends-card {
     display: none !important;
   }
@@ -1017,10 +1021,7 @@
     --lobby-cards: 196px;
   }
   .lobby-rail {
-    gap: 4px;
-  }
-  .lobby-rail button {
-    border-radius: 10px;
+    --rail-pad: 3px;
   }
   .lobby-rail svg {
     width: 18px;
@@ -1125,13 +1126,11 @@
   }
   .lobby-rail {
     display: grid;
-    grid-template-columns: repeat(2, 36px);
-    grid-auto-rows: 44px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-rows: 40px;
     align-content: start;
-    gap: 4px;
-  }
-  .lobby-rail button {
-    width: 36px;
+    gap: 2px;
+    border-radius: 20px;
   }
 }
 @media (max-height: 420px) {

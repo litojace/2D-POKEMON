@@ -74,6 +74,30 @@ test.describe("glass", () => {
     ).toBe("rgba(4, 8, 20, 0.5)");
   });
 
+  test("the Lobby's rail is one glass capsule, the open screen gold", async ({
+    page,
+  }) => {
+    await page.setViewportSize(PHONE);
+    await openLobby(page);
+    const rail = ".lobby-rail";
+    expect(await bg(page, rail)).toBe("rgba(13, 20, 38, 0.62)");
+    expect(await rim(page, rail)).toBe("rgba(226, 200, 140, 0.42)");
+    // Its buttons have no box of their own…
+    expect(await bg(page, `${rail} button`)).toBe("rgba(0, 0, 0, 0)");
+    // …and every one sits inside the capsule.
+    const outer = await box(page, rail);
+    for (const b of await page.locator(`${rail} button`).all()) {
+      const r = (await b.boundingBox())!;
+      expect(r.x).toBeGreaterThanOrEqual(outer.x);
+      expect(r.x + r.width).toBeLessThanOrEqual(outer.x + outer.width + 0.5);
+    }
+    await hubMenu(page, "missions");
+    // Once its colour change (0.15 s) has run.
+    await expect
+      .poll(() => bg(page, `${rail} [aria-current="page"]`))
+      .toBe("rgb(255, 214, 91)");
+  });
+
   test("Low graphics: no blur, a deeper tint", async ({ page }) => {
     await page.addInitScript(() => localStorage.setItem("ea-graphics", "low"));
     await page.setViewportSize(PHONE);

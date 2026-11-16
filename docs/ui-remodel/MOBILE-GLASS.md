@@ -154,6 +154,15 @@ test was checked to fail without its fix.
   edge. 3.1 → 2.4 screens. (`panel-scroll.spec.ts` swipes every sideways
   box with real touch input.)
 
+## The Lobby's rail (owner, 16 Nov)
+
+The six buttons on the Lobby's left were six separate rounded tiles, the
+only square-ish boxes in a HUD of pills and circles. They are now one glass
+capsule (the same glass and gold rim as the Lobby / Plaza / Farm switch),
+the buttons inside without boxes of their own, and the open screen's button
+solid gold with a dark icon, as the switch marks the scene you are in.
+Sizes and hit areas are unchanged, so nothing beside the rail moved.
+
 ## Everything else that now lives in one place
 
 A second pass (same day) moved the other repeated values onto tokens in
