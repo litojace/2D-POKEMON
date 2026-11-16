@@ -8,6 +8,9 @@ import {
   controlExtent,
   mobileLayout,
   lockSlots,
+  LOCK_HUD_BOTTOM,
+  LOCK_ROW_REACH,
+  LOCK_PAD_EDGE,
   safeViewport,
   controlPreferences,
   DEFAULT_CONTROLS,
@@ -23,7 +26,7 @@ export class TouchControls {
   readonly input = new TouchInputState();
   enabled: boolean;
   readonly available: boolean;
-  /** How many target portraits fit on the arc by the basic attack. */
+  /** How many target portraits fit in the row over the combat cluster. */
   lockSlots = 0;
   /** Where the target portraits live: the touch pad, beside the cluster. */
   get lockHost() {
@@ -424,9 +427,15 @@ export class TouchControls {
       "--combat-cluster-height",
       layout.height + "px",
     );
-    // The target portraits' arc (target-picker.ts), from the cluster's
-    // bottom-right corner, which is the touch pad's in a battle.
-    const slots = lockSlots(layout);
+    // The target portraits' row (target-picker.ts), from the cluster's
+    // bottom-right corner, which is the touch pad's in a battle: below the
+    // top HUD and on the right of the screen. The cluster's top is measured
+    // here, once per resize (never per frame).
+    const clusterTop = this.enabled ? cluster.getBoundingClientRect().top : 0;
+    const slots = lockSlots(layout, {
+      top: insets.top + LOCK_HUD_BOTTOM - clusterTop,
+      reach: viewport.width * LOCK_ROW_REACH - LOCK_PAD_EDGE,
+    });
     this.lockSlots = slots.length;
     const pad = cluster.parentElement!;
     slots.forEach((slot, i) => {

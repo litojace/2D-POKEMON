@@ -8,8 +8,8 @@ import {
 } from "./helpers";
 
 // Phones aim at the nearest enemy; with two or more enemies the player can
-// lock on to another one (a target portrait beside the basic attack, or a
-// tap on the fighter).
+// lock on to another one (a target portrait in the row over the combat
+// buttons, or a tap on the fighter).
 async function ffa(page: Page) {
   await page.route(/\/apps\/client\/src\/main\.ts(?:\?|$)/, async (route) => {
     const response = await route.fetch(),
@@ -126,7 +126,7 @@ async function portraitsClear(
       ),
       controls: [
         ...document.querySelectorAll(
-          "#mobile-controls .touch-buttons button, #mobile-controls .joystick, #battle-menu, #battle-menu .ping-badge, #battle-chat, #raid-hud, #raid-hud *, #hud > *, #hud .scoreboard",
+          "#mobile-controls .touch-buttons button, #mobile-controls .joystick, #battle-menu, #battle-menu .ping-badge, #battle-chat, #raid-hud, #raid-hud *, #hud > *, #hud .scoreboard, #hud .timer-wrap",
         ),
       ]
         .filter(shown)
@@ -173,6 +173,26 @@ async function portraitsClear(
         `portrait ${b.label} on ${o.label}`,
       ).toBeGreaterThanOrEqual(43.5);
   }
+  // One straight row (owner, 16 Nov 2026: the arc looked crooked): every
+  // centre at one height, the same gap between neighbours, just over the
+  // combat buttons, its right end on the ultimate's right edge.
+  const shownPortraits = rows.picker
+    .filter((b) => b.right > b.x)
+    .map((b) => ({ x: (b.x + b.right) / 2, y: (b.y + b.bottom) / 2 }))
+    .sort((a, b) => a.x - b.x);
+  for (const p of shownPortraits)
+    expect(Math.abs(p.y - shownPortraits[0].y)).toBeLessThanOrEqual(1);
+  const gaps = shownPortraits.slice(1).map((p, i) => p.x - shownPortraits[i].x);
+  for (const g of gaps) expect(Math.abs(g - gaps[0])).toBeLessThanOrEqual(1);
+  const ult = rows.controls.find((c) => c.name === "3")!;
+  const rowRight = rows.picker.reduce((m, b) => Math.max(m, b.right), 0);
+  expect(Math.abs(rowRight - ult.right)).toBeLessThanOrEqual(1);
+  const clusterTop = Math.min(
+    ...rows.controls.filter((c) => c.round).map((c) => c.y),
+  );
+  const rowBottom = rows.picker.reduce((m, b) => Math.max(m, b.bottom), 0);
+  expect(rowBottom).toBeLessThanOrEqual(clusterTop - 5.5);
+  expect(rowBottom).toBeGreaterThanOrEqual(clusterTop - 8);
   return rows.picker;
 }
 
@@ -510,7 +530,7 @@ test("phones pick among Inkpurr's bodies and its unlit lanterns", async ({
       "NW",
     ]);
     await portraitsClear(page, size);
-    // The raid's bar and timer too, at every size (four portraits: the arc
+    // The raid's bar and timer too, at every size (four portraits: the row
     // is full).
     expect(await sweep(page, "target-portraits-gloom", info)).toEqual(
       Object.fromEntries(SIZES.map((s) => [`${s.width}x${s.height}`, 4])),
