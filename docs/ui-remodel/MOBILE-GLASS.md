@@ -65,8 +65,11 @@ tall on the boss page: less than half the panel.
 | Raid room fighter list  |    3.2 |     — |
 | Player card (Overview)  |    3.1 |   1.2 |
 | Raids › boss › Rewards  |    3.1 |   1.9 |
-| Ranks (ladder)          |    2.9 |     — |
-| Friends                 |    2.8 |     — |
+| Ranks (ladder)          |    2.9 |   2.9 |
+| Ranks (your rank card)  |    1.9 |   1.2 |
+| Friends                 |    2.8 |   2.2 |
+| Journey › Season        |    4.2 |   2.8 |
+| Journey › Levels        |    3.6 |   2.8 |
 | Fighter › Skins         |    2.7 |     — |
 | Raids › boss › Attacks  |    2.7 |   2.1 |
 | Lobby mode menu         |    2.6 |     — |
@@ -191,6 +194,26 @@ without one (every title's picture is the same trophy); each card is a line
 shorter, its progress bar a hairline along its foot, and an open card takes
 the whole row. 2.4 → 1.9 screens on 852×393.
 
+## The last phone pass (owner, 16 Nov)
+
+- **Friends:** the tabs take the head row beside Add and Close (the first
+  tab says Friends). The list 155 → 199 px; 2.8 → 2.2 screens.
+- **Ranks:** the card's ladder shows your rank and the ones either side
+  (1.9 → 1.2 screens). The leaderboard is a list of 20 and scrolls, with
+  your row pinned under it.
+- **Journey:** on phones at least 760 px wide this week's goals sit beside
+  the level road, as on a desktop; "+250 XP each" is said once in the goals'
+  head; the Levels tab's rewards are a little smaller. Season 4.2 → 2.8,
+  Levels 3.6 → 2.8 on 852×393. A 667 px phone keeps one column (about 4
+  screens each): too narrow for two.
+- **Text floor:** every size under 11 px now reads `--fs-micro` (11 px on
+  phones), and `phone-fit.css`'s floor is that token.
+- **The room before a match** sits on the Plaza picture, blurred and dimmed
+  like the Lobby (it was 85–95 % dark), so its glass reads as glass.
+- **Chat drawer** on thick glass and the gold rim, never blurred.
+- **Shop › Skins:** on a phone the count comes before the rarity chips.
+- **Wardrobe** measured: 1.5–1.6 screens, no text under 11 px.
+
 ## The player card in tabs on a phone (owner, 16 Nov)
 
 On a phone held sideways the card's column is four tabs in the head, beside
@@ -273,23 +296,9 @@ is left").
 1. **Shop › Mythic Hall:** done (one fighter at a time on phones, above).
 2. **Raids › Rewards:** done (grouped, titles three a row on phones, above).
 3. **Player card:** done (tabs on phones, above).
-4. **Ranks ladder (2.9) and Friends (2.8)** are lists: they should scroll.
-   Your rank row is already pinned.
-5. **Raid room** keeps its own HUD row (chat left, coins and profile right)
-   and a darker room backdrop, so its glass shows less of a scene than the
-   Lobby's. Give it the Lobby's backdrop.
-6. **Hard-coded tiny text** still under 11 px: `components.css` (`.ui-tag`
-   10 px), `phone-fit.css`, `fitting-room.css` (4), `room.css` (3),
-   `missions.css` (2), `profile.css`, `raid-hall.css` (3), `roster.css` (2),
-   `ranks.css` (2), `journey.css` (4). Move each to `--fs-micro` and check it
-   fits (some are counts inside small badges).
-7. **Shop › Skins filter row:** at 852×393 the rarity chips are cut by
-   the row's scroll fade just before the "8 skins" count, so it reads "Rar
-   8 skins". Nothing overlaps (the chips swipe sideways), but the count
-   could move to its own line on phones.
-8. **Chat drawer** (`chat/chat.css`) is its own near-solid navy
-   (`rgba(10,19,37,.95)`); it opens over matches, so if it moves to the
-   tokens it should take `--glass-thick` without blur.
-9. **Wardrobe and Journey** did not open in the capture script (its
-   selectors predate the current screens), so they were not measured here;
-   their visual specs pass.
+4. **Ranks' leaderboard (2.9) and Friends (2.2)** are lists and scroll;
+   that is right for a list.
+5. **Journey on a 667 px phone** (about 4 screens a tab): one column there.
+   A per-tab layout for the narrowest phones would be the next step.
+6. **About 1,000 font sizes in px** across the older stylesheets (mostly the
+   match HUD, the Farm and the Bistro) are not on the type scale yet.
