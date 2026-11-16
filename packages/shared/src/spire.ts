@@ -5,22 +5,25 @@
  * database agree on: floors, the one tuning table, blessings, rewards,
  * progress and the snapshot's `raid.spire`.
  *
- * Zone 1 is built: floors 1–9 in the Raid Coliseum and the Ascendant
- * Cragmuff on floor 10, fought in the same room (the Spire's arena turns the
- * Ascendant's rules on for that floor: apps/server/src/spire.ts). Clearing
- * floor 10 ends the climb with zone 1 conquered; the checkpoint at floor 11
- * is only granted once zone 2 exists (`spireStartCheckpoint`, and the
- * database's arena_record_spire_floor).
+ * Zones 1 and 2 are built. One climb is one zone: a room is made for a
+ * zone (its first floor is the start) and its boss floor ends the climb.
+ * Zone 1: floors 1–9 on the Spire's court and the Ascendant Cragmuff on
+ * floor 10. Zone 2: floors 11–19 (Water) and the Ascendant Tidelotl on
+ * floor 20, in the lagoon. Each boss is fought in the same room (the zone's
+ * arena turns the Ascendant's rules on for that floor:
+ * apps/server/src/spire.ts). Clearing zone 1's boss grants checkpoint 11
+ * (`spireStartCheckpoint`, and the database's arena_record_spire_floor).
  */
 import type { CharacterId } from "./index.js";
+import type { RaidAttack } from "./raid.js";
 import type { RaidBossId } from "./raid-roster.js";
 
 /** Season 0 for now (a reset would bump it). */
 export const SPIRE_SEASON = 0;
 /** Floors per zone; floor 10 of each is its boss, floor 5 its elite. */
 export const SPIRE_ZONE_FLOORS = 10;
-/** The highest floor that can be played today (zone 1's boss). */
-export const SPIRE_BUILT_TOP = 10;
+/** The highest floor that can be played today (zone 2's boss). */
+export const SPIRE_BUILT_TOP = 20;
 /** Party size, like raids. */
 export const SPIRE_SEATS = 4;
 
@@ -43,12 +46,19 @@ export interface SpireZone {
   id: number;
   name: string;
   element: string;
-  /** The raid boss of the zone: its clear opens floor 10, its arena is the court. */
+  /** The raid boss of the zone: its clear opens the boss floor; its arena is the boss floor's court. */
   boss: RaidBossId;
-  /** The arena the zone's floors are fought in. */
-  court: "classic";
-  /** Its Ascendant boss name (floor 10). */
+  /** The arena the zone's boss floor is fought in (wave floors: the Spire's court). */
+  court: "classic" | "lagoon";
+  /** Its Ascendant boss name (the boss floor). */
   ascendant: string;
+  /** The Ascendant's new attacks (the boss floor's briefing and the Floors list). */
+  ascendantMoves: readonly RaidAttack[];
+  /** The boss floor's briefing: what its raid asked, and how the Ascendant reads you. */
+  bossLead: string;
+  bossReads: string;
+  /** Short name of the boss in its raid ("Cragmuff"). */
+  bossName: string;
   /** The champions its waves lean on (the zone's own element and kin). */
   kin: readonly CharacterId[];
 }
@@ -60,9 +70,74 @@ export const SPIRE_ZONES: Record<number, SpireZone> = {
     boss: "grumblecrag",
     court: "classic",
     ascendant: "Ascendant Cragmuff",
+    ascendantMoves: ["avalanche", "fissure", "twin-slam"],
+    bossName: "Cragmuff",
+    bossLead:
+      "Cragmuff, evolved. Its raid's rules still hold (bait charges into pillars, hit the core when it opens), pushed further: new attacks, combos and fewer openings.",
+    bossReads:
+      "Eruptions land where you usually dodge, standing still to attack draws a stomp, a slam may turn into another attack halfway (shown in full), and it hunts whoever kneels to revive.",
     kin: ["terradon", "wombolder", "pangrove"],
   },
+  2: {
+    id: 2,
+    name: "Lagoon",
+    element: "Water",
+    boss: "tidewyrm",
+    court: "lagoon",
+    ascendant: "Ascendant Tidelotl",
+    ascendantMoves: ["breaker", "geyser"],
+    bossName: "Tidelotl",
+    bossLead:
+      "Tidelotl, evolved. Its raid's rules still hold (lure its dive onto an island, share the islands when the tide rises, pop bubbles), pushed further: new attacks, combos and fewer openings.",
+    bossReads:
+      "Geysers rise where you usually dodge, standing still to attack draws a Geyser Line, a dive may sink away and become geysers (shown in full), and it hunts whoever kneels to revive.",
+    // Water (Tidefin, Glacelle) and their marsh kin, Mossloth.
+    kin: ["tidefin", "glacelle", "mossloth"],
+  },
 };
+/** The first floor of each built zone: where a climb may start. */
+export const spireZoneStart = (zone: number) =>
+  (Math.max(1, zone) - 1) * SPIRE_ZONE_FLOORS + 1;
+/** A zone's boss floor (its top). */
+export const spireZoneTop = (zone: number) =>
+  Math.max(1, zone) * SPIRE_ZONE_FLOORS;
+export const SPIRE_BUILT_ZONES = Object.values(SPIRE_ZONES)
+  .map((z) => z.id)
+  .filter((id) => spireZoneTop(id) <= SPIRE_BUILT_TOP)
+  .sort((a, b) => a - b);
+/** The zone whose boss is this raid boss (each zone has its own). */
+export const spireZoneOfBoss = (boss: RaidBossId) =>
+  Object.values(SPIRE_ZONES).find((z) => z.boss === boss)?.id;
+/**
+ * The boss mechanic an elite captain borrows: its raid's attack, played
+ * through the raid warning system, and how the briefing names it.
+ */
+export const SPIRE_ELITE_MECHANICS = {
+  eruption: {
+    attack: "eruption",
+    boss: "Cragmuff",
+    name: "eruptions",
+    hint: "they chase you: keep moving",
+    cue: "Eruptions chase you — keep moving!",
+  },
+  bubbles: {
+    attack: "bubbles",
+    boss: "Tidelotl",
+    name: "bubble volleys",
+    hint: "weave between the slow bubbles or pop them: a hit roots you",
+    cue: "Bubbles coming — weave through or pop them!",
+  },
+} as const satisfies Record<
+  string,
+  {
+    attack: RaidAttack;
+    boss: string;
+    name: string;
+    hint: string;
+    cue: string;
+  }
+>;
+export type SpireEliteMechanic = keyof typeof SPIRE_ELITE_MECHANICS;
 export interface SpireFloor {
   floor: number;
   zone: number;
@@ -74,7 +149,7 @@ export interface SpireFloor {
   elite?: {
     captain: SpireEcho;
     name: string;
-    mechanic: "eruption";
+    mechanic: SpireEliteMechanic;
     /** Escorts that join when the captain drops to half health. */
     escorts: SpireEcho[];
   };
@@ -228,6 +303,146 @@ export const SPIRE_FLOORS: Record<number, SpireFloor> = {
     waves: [],
     boss: "grumblecrag",
   },
+  // Zone 2, the Lagoon: Water-leaning (Tidefin, Glacelle) with their marsh
+  // kin Mossloth, plus one off-element champion per floor.
+  11: {
+    floor: 11,
+    zone: 2,
+    kind: "wave",
+    name: "The Tidegate",
+    waves: [
+      [e("mossloth", "front"), e("glacelle", "caster")],
+      [e("tidefin", "skirmisher"), e("shadopus", "skirmisher")],
+      [e("mossloth", "front"), e("tidefin", "front")],
+    ],
+  },
+  12: {
+    floor: 12,
+    zone: 2,
+    kind: "wave",
+    name: "Brine Steps",
+    waves: [
+      [e("tidefin", "front"), e("mossloth", "front")],
+      [e("glacelle", "caster"), e("sunbara", "front")],
+      [e("mossloth", "front"), e("tidefin", "skirmisher")],
+    ],
+  },
+  13: {
+    floor: 13,
+    zone: 2,
+    kind: "wave",
+    name: "Kelp Hollow",
+    waves: [
+      [e("mossloth", "front"), e("pyranda", "caster")],
+      [e("tidefin", "skirmisher"), e("glacelle", "caster")],
+      [e("mossloth", "front"), e("tidefin", "front"), e("pyranda", "caster")],
+    ],
+  },
+  14: {
+    floor: 14,
+    zone: 2,
+    kind: "wave",
+    name: "Coral Gallery",
+    waves: [
+      [e("mossloth", "front"), e("terradon", "front"), e("glacelle", "caster")],
+      [e("tidefin", "skirmisher"), e("mossloth", "front")],
+      [e("tidefin", "front"), e("terradon", "front"), e("glacelle", "caster")],
+    ],
+  },
+  15: {
+    floor: 15,
+    zone: 2,
+    kind: "elite",
+    name: "The Drowned Ring",
+    waves: [],
+    elite: {
+      captain: e("glacelle", "front"),
+      name: "Echo Captain Glacelle",
+      mechanic: "bubbles",
+      escorts: [e("tidefin", "skirmisher")],
+    },
+  },
+  16: {
+    floor: 16,
+    zone: 2,
+    kind: "wave",
+    name: "Mist Terrace",
+    waves: [
+      [e("mossloth", "front"), e("coilemur", "skirmisher")],
+      [e("tidefin", "skirmisher"), e("glacelle", "caster")],
+      [
+        e("mossloth", "front"),
+        e("tidefin", "front"),
+        e("coilemur", "skirmisher"),
+      ],
+    ],
+  },
+  17: {
+    floor: 17,
+    zone: 2,
+    kind: "wave",
+    name: "Riptide Run",
+    waves: [
+      [
+        e("glacelle", "caster"),
+        e("mossloth", "front"),
+        e("cindrake", "skirmisher"),
+      ],
+      [
+        e("tidefin", "skirmisher"),
+        e("mossloth", "front"),
+        e("tidefin", "front"),
+      ],
+      [e("glacelle", "caster"), e("cindrake", "skirmisher")],
+    ],
+  },
+  18: {
+    floor: 18,
+    zone: 2,
+    kind: "wave",
+    name: "Pearl Choir",
+    waves: [
+      [e("mossloth", "front"), e("auralynx", "front"), e("glacelle", "caster")],
+      [
+        e("tidefin", "skirmisher"),
+        e("auralynx", "front"),
+        e("tidefin", "skirmisher"),
+      ],
+      [
+        e("mossloth", "front"),
+        e("glacelle", "caster"),
+        e("tidefin", "skirmisher"),
+      ],
+    ],
+  },
+  19: {
+    floor: 19,
+    zone: 2,
+    kind: "wave",
+    name: "Stair of Spray",
+    waves: [
+      [
+        e("mossloth", "front"),
+        e("tidefin", "skirmisher"),
+        e("wombolder", "front"),
+      ],
+      [
+        e("glacelle", "caster"),
+        e("wombolder", "front"),
+        e("tidefin", "skirmisher"),
+      ],
+      [e("mossloth", "front"), e("mossloth", "front"), e("glacelle", "caster")],
+    ],
+  },
+  // The Ascendant Tidelotl, in the lagoon, in the climb's own room.
+  20: {
+    floor: 20,
+    zone: 2,
+    kind: "boss",
+    name: "Ascendant Tidelotl",
+    waves: [],
+    boss: "tidewyrm",
+  },
 };
 export const spireFloor = (floor: number): SpireFloor | undefined =>
   SPIRE_FLOORS[floor];
@@ -290,6 +505,22 @@ export const SPIRE_TUNING: Record<
   9: { difficulty: "normal", power: 0.5, armour: 1, limit: 180 },
   // The boss floor: the raid's own time limit (no extra wave for big parties).
   10: { difficulty: "hard", power: 1, armour: 1, limit: 600 },
+  // Zone 2: a climb starts at 11 with no blessings, against champions far
+  // deadlier per point than zone 1's Earth front-liners (casters, an
+  // assassin, a controller), so the numbers start below floor 9's and each
+  // Echo grows a little stronger floor by floor. By simulation
+  // (tests/unit/spire-zone2.test.ts) a solo bot clears floor 11 about two
+  // times in three and floor 19 about one in five; floor 9 one in three.
+  11: { difficulty: "normal", power: 0.44, armour: 1.36, limit: 180 },
+  12: { difficulty: "normal", power: 0.45, armour: 1.34, limit: 180 },
+  13: { difficulty: "normal", power: 0.46, armour: 1.32, limit: 180 },
+  14: { difficulty: "normal", power: 0.47, armour: 1.3, limit: 180 },
+  15: { difficulty: "normal", power: 0.55, armour: 0.58, limit: 240 },
+  16: { difficulty: "normal", power: 0.48, armour: 1.28, limit: 180 },
+  17: { difficulty: "normal", power: 0.49, armour: 1.26, limit: 180 },
+  18: { difficulty: "normal", power: 0.5, armour: 1.24, limit: 180 },
+  19: { difficulty: "normal", power: 0.52, armour: 1.22, limit: 180 },
+  20: { difficulty: "hard", power: 1, armour: 1, limit: 600 },
 };
 /** Party scaling, and the cap on fighters on the court. */
 export const SPIRE_PARTY = {
@@ -537,6 +768,24 @@ export const SPIRE_REWARDS: SpireReward[] = [
     item: "Earthshaker of the Spire",
     amount: 0,
   },
+  // Zone 2 (migration 20261116180000_spire_zone2.sql).
+  { season: 0, floor: 11, kind: "coins", item: "coins", amount: 40 },
+  { season: 0, floor: 12, kind: "coins", item: "coins", amount: 40 },
+  { season: 0, floor: 13, kind: "coins", item: "coins", amount: 45 },
+  { season: 0, floor: 14, kind: "coins", item: "coins", amount: 45 },
+  { season: 0, floor: 15, kind: "coins", item: "coins", amount: 100 },
+  { season: 0, floor: 16, kind: "coins", item: "coins", amount: 50 },
+  { season: 0, floor: 17, kind: "coins", item: "coins", amount: 50 },
+  { season: 0, floor: 18, kind: "coins", item: "coins", amount: 55 },
+  { season: 0, floor: 19, kind: "coins", item: "coins", amount: 55 },
+  { season: 0, floor: 20, kind: "coins", item: "coins", amount: 200 },
+  {
+    season: 0,
+    floor: 20,
+    kind: "title",
+    item: "Tidecaller of the Spire",
+    amount: 0,
+  },
 ];
 export const spireRewardsOf = (floor: number, season = SPIRE_SEASON) =>
   SPIRE_REWARDS.filter((r) => r.floor === floor && r.season === season);
@@ -559,19 +808,39 @@ export interface SpireMember {
   clears: Partial<Record<RaidBossId, number>>;
 }
 /**
- * Where a party may climb: from the lowest checkpoint among its members, up
- * to the lowest ceiling (each boss floor needs every member to have cleared
- * that boss's raid once; nothing is open above SPIRE_BUILT_TOP). The
- * Spire opens with a Cragmuff clear.
+ * Where a party may climb. The Spire opens with a Cragmuff clear; each boss
+ * floor needs every member to have cleared that boss's raid once (the
+ * ceiling stops below the first boss floor someone hasn't unlocked), and
+ * nothing is open above SPIRE_BUILT_TOP.
+ *
+ * One climb is one zone. With `zone` (a room made for that zone) the climb
+ * starts at the zone's first floor, never past its boss, and every member
+ * must have earned that checkpoint (a party climbs at its lowest
+ * checkpoint: a zone above someone's is refused, never started lower in
+ * the wrong zone's room). Without it, the lowest checkpoint among the party.
  */
-export function spireStartFrom(members: readonly SpireMember[]): {
+export function spireStartFrom(
+  members: readonly SpireMember[],
+  zone?: number,
+): {
   ok: boolean;
   startFloor: number;
   ceiling: number;
   reason?: string;
 } {
-  if (!members.length)
-    return { ok: true, startFloor: 1, ceiling: SPIRE_BUILT_TOP };
+  const from = zone === undefined ? 1 : spireZoneStart(zone);
+  const top =
+    zone === undefined
+      ? SPIRE_BUILT_TOP
+      : Math.min(SPIRE_BUILT_TOP, spireZoneTop(zone));
+  if (zone !== undefined && !SPIRE_BUILT_ZONES.includes(zone))
+    return {
+      ok: false,
+      startFloor: 1,
+      ceiling: 0,
+      reason: "That part of the Spire isn't open yet.",
+    };
+  if (!members.length) return { ok: true, startFloor: from, ceiling: top };
   if (members.some((m) => !(m.clears.grumblecrag ?? 0)))
     return {
       ok: false,
@@ -579,13 +848,28 @@ export function spireStartFrom(members: readonly SpireMember[]): {
       ceiling: 0,
       reason: "Every climber must clear Cragmuff once to enter the Spire.",
     };
-  let ceiling = SPIRE_BUILT_TOP;
-  for (const zone of Object.values(SPIRE_ZONES)) {
-    const bossFloor = zone.id * SPIRE_ZONE_FLOORS;
-    if (members.some((m) => !(m.clears[zone.boss] ?? 0))) {
-      ceiling = Math.min(ceiling, bossFloor - 1);
+  let ceiling = top;
+  for (const z of Object.values(SPIRE_ZONES).sort((a, b) => a.id - b.id)) {
+    if (members.some((m) => !(m.clears[z.boss] ?? 0))) {
+      ceiling = Math.min(ceiling, spireZoneTop(z.id) - 1);
       break;
     }
+  }
+  const lowest = Math.max(
+    1,
+    Math.min(
+      ...members.map((m) => spireStartCheckpoint(Math.max(1, m.checkpoint))),
+    ),
+  );
+  if (zone !== undefined) {
+    if (lowest < from)
+      return {
+        ok: false,
+        startFloor: 1,
+        ceiling: 0,
+        reason: `Every climber must reach floor ${from} first: conquer zone ${zone - 1}.`,
+      };
+    return { ok: true, startFloor: from, ceiling: Math.max(from, ceiling) };
   }
   const startFloor = Math.max(
     1,
@@ -596,6 +880,14 @@ export function spireStartFrom(members: readonly SpireMember[]): {
     ),
   );
   return { ok: true, startFloor: Math.min(startFloor, ceiling), ceiling };
+}
+/**
+ * The zones a player may start a climb in (zone 1 always; a later zone
+ * once its checkpoint is earned and it is built).
+ */
+export function spireZonesOpen(checkpoint: number) {
+  const cp = spireStartCheckpoint(Math.max(1, checkpoint));
+  return SPIRE_BUILT_ZONES.filter((z) => spireZoneStart(z) <= cp);
 }
 /** One cleared floor, saved at once (even if the climb fails later). */
 export interface SpireFloorReceipt {
@@ -623,6 +915,8 @@ export interface SpireFloorResult {
 /** `raid.spire` in a snapshot: everything the client shows of a climb. */
 export interface SpireState {
   season: number;
+  /** The zone this climb (and room) is for: its first floor is the start. */
+  zone: number;
   /** The floor being fought (or next, between floors). */
   floor: number;
   startFloor: number;

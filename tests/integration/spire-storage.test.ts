@@ -6,9 +6,10 @@ import {
   type SpireMember,
 } from "../../packages/shared/src/spire";
 
-// The Spire's storage (migration 20261116150000): each cleared floor is
-// saved at once, first-clear coins and titles are paid once per player, and
-// the server reads checkpoints and raid clears before a climb.
+// The Spire's storage (migrations 20261116150000 and, for zone 2,
+// 20261116180000): each cleared floor is saved at once, first-clear coins
+// and titles are paid once per player, and the server reads checkpoints and
+// raid clears before a climb.
 let db: PGlite;
 const ana = "00000000-0000-4000-8000-0000000051a1";
 const bo = "00000000-0000-4000-8000-0000000051a2";
@@ -69,7 +70,12 @@ beforeAll(async () => {
     .filter((f) => f.endsWith(".sql"))
     .sort())
     await db.exec(await readFile("supabase/migrations/" + f, "utf8"));
-  // Safe to run again.
+  // Safe to run again, in order (zone 1's file leaves zone 2's rewards be).
+  for (const f of [
+    "20261116150000_spire.sql",
+    "20261116180000_spire_zone2.sql",
+  ])
+    await db.exec(await readFile("supabase/migrations/" + f, "utf8"));
   await db.exec(
     await readFile("supabase/migrations/20261116150000_spire.sql", "utf8"),
   );
@@ -155,7 +161,7 @@ it("pays each member of a party, and only their own first clears", async () => {
   expect(await balance(bo)).toBe(before.bo + 20);
 });
 
-it("pays floor 10's title once, and keeps checkpoint 1 until zone 2 exists", async () => {
+it("pays floor 10's title once, and opens checkpoint 11 (zone 2)", async () => {
   const before = await balance(ana);
   for (const f of [6, 7, 8, 9]) await record(floor(run(4), f));
   const boss = await record(floor(run(4), 10));
@@ -179,21 +185,68 @@ it("pays floor 10's title once, and keeps checkpoint 1 until zone 2 exists", asy
   const p = await progress(ana);
   expect(p.highestFloor).toBe(10);
   expect(p.claimed).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
-  // Zone 1 is conquered, but floor 11 doesn't exist yet: climbs start at 1.
-  expect(p.checkpoint).toBe(1);
-  // Once zone 2's floors exist, the same clear opens checkpoint 11.
-  await db.exec(
-    `reset role;insert into public.arena_spire_rewards(season,floor,kind,item,amount) values(0,11,'coins','coins',1)`,
+  // Zone 1 is conquered: climbs may start at floor 11 (zone 2).
+  expect(p.checkpoint).toBe(11);
+  // Zone 2's floors pay their own first clears; floor 20 its title.
+  const before2 = await balance(ana);
+  for (const f of [11, 12, 13, 14, 15, 16, 17, 18, 19])
+    await record({ ...floor(run(7), f), startFloor: 11 });
+  const top = await record({ ...floor(run(7), 20), startFloor: 11 });
+  expect(top.newClaims).toEqual([
+    {
+      accountId: ana,
+      floor: 20,
+      coins: 200,
+      titles: ["Tidecaller of the Spire"],
+    },
+  ]);
+  expect(await balance(ana)).toBe(
+    before2 + 40 + 40 + 45 + 45 + 100 + 50 + 50 + 55 + 55 + 200,
   );
-  const next = (
-    await db.query<{ c: number }>(
-      "select public.arena_spire_checkpoint(0, 10) as c",
-    )
-  ).rows[0].c;
+  const p2 = await progress(ana);
+  expect(p2.highestFloor).toBe(20);
+  // Zone 3 isn't built: the checkpoint stays at 11.
+  expect(p2.checkpoint).toBe(11);
+  // Replaying zone 1 keeps the highest floor and the checkpoint.
+  await record(floor(run(8), 3));
+  expect(await progress(ana)).toMatchObject({
+    highestFloor: 20,
+    checkpoint: 11,
+  });
+});
+
+it("gives checkpoint 11 to players who conquered zone 1 before zone 2 existed", async () => {
+  // As before zone 2's migration ran: floor 10 cleared, checkpoint 1.
+  const old = "00000000-0000-4000-8000-0000000051a3";
   await db.exec(
-    "reset role;delete from public.arena_spire_rewards where season=0 and floor=11",
+    `reset role;insert into auth.users values('${old}','{"display_name":"Old"}')`,
   );
-  expect(next).toBe(11);
+  await as(old);
+  await db.query("select public.arena_me()");
+  await db.exec(
+    `reset role;insert into public.arena_spire_progress(player_id,season,highest_floor,checkpoint,attempts)
+     values('${old}',0,10,1,3),('${bo}',0,4,1,1)
+     on conflict (player_id, season) do update set highest_floor=excluded.highest_floor, checkpoint=excluded.checkpoint`,
+  );
+  await db.exec(
+    await readFile(
+      "supabase/migrations/20261116180000_spire_zone2.sql",
+      "utf8",
+    ),
+  );
+  expect(await progress(old)).toMatchObject({
+    highestFloor: 10,
+    checkpoint: 11,
+    attempts: 3,
+  });
+  // Below floor 10 nothing changes.
+  expect((await progress(bo)).checkpoint).toBe(1);
+  // Its server-side read agrees: Old may start zone 2.
+  const [m] = await server<(SpireMember & { id: string })[]>(
+    `select public.arena_spire_start(array['${old}']::uuid[]) as v`,
+  );
+  expect(m.checkpoint).toBe(11);
+  await db.exec(`reset role;delete from auth.users where id='${old}'`);
 });
 
 it("rejects broken receipts", async () => {
@@ -216,7 +269,7 @@ it("reads checkpoints and raid clears before a climb (lowest among the party)", 
     `select public.arena_spire_start(array['${ana}','${bo}']::uuid[]) as v`,
   );
   expect(members.map((m) => [m.id, m.checkpoint, m.clears])).toEqual([
-    [ana, 1, {}],
+    [ana, 11, {}],
     [bo, 1, { grumblecrag: 1 }],
   ]);
   // Ana has no Cragmuff clear: the party can't climb yet.
@@ -226,6 +279,8 @@ it("reads checkpoints and raid clears before a climb (lowest among the party)", 
     ok: true,
     startFloor: 1,
   });
+  // Zone 2 needs floor 11 from Bo too.
+  expect(spireStartFrom([members[1]], 2)).toMatchObject({ ok: false });
   expect((await progress(bo)).clears).toEqual({ grumblecrag: 1 });
 });
 

@@ -72,8 +72,9 @@ revoke all on public.arena_spire_progress, public.arena_spire_runs,
   public.arena_spire_players, public.arena_spire_claims,
   public.arena_spire_rewards from anon, authenticated;
 
--- Season 0's first-clear rewards (SPIRE_REWARDS).
-delete from public.arena_spire_rewards where season = 0;
+-- Season 0's first-clear rewards (SPIRE_REWARDS, zone 1; later zones add
+-- theirs in their own migrations, which running this again leaves alone).
+delete from public.arena_spire_rewards where season = 0 and floor between 1 and 10;
 insert into public.arena_spire_rewards(season, floor, kind, item, amount) values
   (0, 1, 'coins', 'coins', 20),
   (0, 2, 'coins', 'coins', 20),
