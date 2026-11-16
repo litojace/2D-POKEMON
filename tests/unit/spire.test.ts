@@ -339,7 +339,21 @@ describe("Echoes in a raid room (the guards)", () => {
     // The stand-in brain leaves an Echo's input alone.
     const input = { ...blankInput(), dx: 0.3, dy: -0.4 };
     const live = echoes(a).find((p) => p.hp > 0) ?? e;
+    live.hp = 100;
+    // Even with a raid warning under it (raider dodging is not for Echoes).
+    a.raid.warnings.push({
+      id: 999,
+      kind: "eruption",
+      x: live.x,
+      y: live.y,
+      tx: live.x,
+      ty: live.y,
+      radius: 100,
+      at: a.time + 1,
+      startedAt: a.time,
+    });
     expect(a.botInput(live, { ...input })).toEqual(input);
+    a.raid.warnings = [];
     // A snapshot with Echo brains is still not a bot match.
     expect(a.bots.size).toBeGreaterThan(0);
     expect(a.snapshot().vsBot).toBeNull();
