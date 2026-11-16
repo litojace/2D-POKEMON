@@ -363,17 +363,20 @@ import {
 import { SPIRE_PARTY } from "../../../packages/shared/src/spire";
 import { spireCourtWalls } from "../../../packages/shared/src/spire-court";
 import {
-  SPIRE_SUMMIT_FLOOR,
   SpireCourtRig,
   isSpireFloorId,
+  isSpireSummitFloorId,
   nextSpireCourtView,
   paintSpireFloorId,
   prewarmSpireCourt,
   spireCourtView,
   spireFloorId,
+  spireSummitArt,
+  spireSummitFloorId,
+  spireSummitFloorOf,
   type SpireCourtView,
 } from "./spire-court-rig";
-import { paintSpireSummitGrade, spireFloorTint } from "./spire-court-art";
+import { spireFloorTint } from "./spire-court-art";
 import { isRaidFloor, paintRaidFloor } from "./raid-floors";
 import {
   isIllustratedRaidFloor,
@@ -4436,11 +4439,11 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         ctx.scale(bake, bake);
         paintSpireFloorId(ctx, id);
         addCanvasTexture(this.textures, key, canvas);
-      } else if (isIllustratedRaidFloor(id) || id === SPIRE_SUMMIT_FLOOR) {
+      } else if (isIllustratedRaidFloor(id) || isSpireSummitFloorId(id)) {
         // The Spire's boss floor: its raid's court with the summit grade.
-        const summit = id === SPIRE_SUMMIT_FLOOR;
+        const summit = isSpireSummitFloorId(id) ? spireSummitArt(id) : null;
         const picture: IllustratedRaidFloor = summit
-          ? "raid-coliseum"
+          ? summit.picture
           : (id as IllustratedRaidFloor);
         const canvas = document.createElement("canvas");
         canvas.width = RULES.width * bake;
@@ -4449,14 +4452,14 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         ctx.scale(bake, bake);
         if (isRaidFloor(picture)) paintRaidFloor(ctx, picture);
         else paintCourtFloor(ctx, "classic", true);
-        if (summit) paintSpireSummitGrade(ctx);
+        summit?.grade(ctx);
         addCanvasTexture(this.textures, key, canvas);
         loadRaidArenaArt(picture, (image) => {
           if (!this.textures?.exists(key)) return;
           ctx.save();
           ctx.setTransform(bake, 0, 0, bake, 0, 0);
           paintIllustratedRaidFloor(ctx, picture, image);
-          if (summit) paintSpireSummitGrade(ctx);
+          summit?.grade(ctx);
           ctx.restore();
           canvas.dataset.raidArtwork = id;
           // A new texture rather than re-uploading the old one in place: on
@@ -4575,8 +4578,8 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     const key = this.floorTexture(
       spireCourt
         ? spireFloorId(spireCourt)
-        : spire && this.courtRaid
-          ? SPIRE_SUMMIT_FLOOR
+        : spire && (this.courtRaid || arena === "lagoon")
+          ? spireSummitFloorOf(arena)
           : this.courtRaid
             ? "raid-coliseum"
             : court
@@ -4588,7 +4591,11 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       .setTexture(key)
       .setScale(1 / (this.floorScale.get(key) ?? 1))
       // The Spire's platform takes the light of its height.
-      .setTint(spireCourt ? spireFloorTint(spireCourt.floor) : 0xffffff);
+      .setTint(
+        spireCourt
+          ? spireFloorTint(spireCourt.floor, spireCourt.zone)
+          : 0xffffff,
+      );
     this.releaseFloor(previous);
     // Round the Spire's courts: its sky, not the raid's dimmed floor.
     if (spire) this.spireRig ??= new SpireCourtRig(this, fighterDepth);
@@ -4698,7 +4705,8 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       if (next && ahead !== this.spirePrepared) {
         this.spirePrepared = ahead;
         this.spireRig.prepare(next);
-        if (next.kind === "boss") this.floorTexture(SPIRE_SUMMIT_FLOOR);
+        if (next.kind === "boss")
+          this.floorTexture(spireSummitFloorId(next.zone));
       }
       if (spire.kind !== "boss") {
         fxFor(this).setOccluders(this.spireRig.fronts, fighterDepth);
