@@ -25,6 +25,17 @@
 #arena-overlay > .rc-card.is-results {
   width: min(880px, 100%);
 }
+/* Phones: a chat button in the top-left corner (the battle's quick chat
+   in the briefing, the room's chat on the results; main.ts sets
+   chat-corner) used to sit over the card's title and first step. The card
+   starts 8px right of it: the buttons' right edge is at most
+   max(16px, safe-left + 12px) + 44px, the card's own edge at safe-left +
+   12px (the overlay's inset and padding, style.css). */
+body.touch-mode.chat-corner #arena-overlay > .rc-card {
+  --rc-chat-room: max(52px, calc(56px - var(--safe-left, 0px)));
+  margin-left: var(--rc-chat-room);
+  max-width: calc(100% - var(--rc-chat-room));
+}
 .rc-head {
   flex: none;
   display: grid;

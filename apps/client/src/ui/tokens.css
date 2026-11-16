@@ -127,6 +127,8 @@
   --muted: var(--text-dim);
   --lime: var(--accent);
   --stadium-red: var(--danger);
+  /* In landscape on iPhones, notch-insets.ts replaces --safe-left/right
+     inline so only the notch's side keeps the full inset. */
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-right: env(safe-area-inset-right, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);

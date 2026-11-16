@@ -288,6 +288,7 @@ import { fighterPack } from "./animation/pack-config";
 import { fullscreenLandscape } from "./orientation";
 import { wireRotateGate } from "./rotate-gate";
 import { watchRotation } from "./orientation-settle";
+import { watchNotchInsets } from "./notch-insets";
 import { watchScreenPin } from "./screen-pin";
 import { watchCosmeticPreviews } from "./cosmetic-fx-preview";
 import { openHubPanelNow } from "./ui/hub-panel";
@@ -1248,6 +1249,7 @@ document.addEventListener("visibilitychange", stopControls);
 const pwa = setupPWA(() => state?.phase, dialog, toast);
 wireRotateGate();
 watchRotation();
+watchNotchInsets();
 watchScreenPin();
 // The iPhone app (native.ts): iOS pauses it soon after you switch away, which
 // drops the game connection; coming back reconnects at once.
@@ -2131,6 +2133,14 @@ function syncChat(hub: boolean) {
     // Friends: anyone signed in with an account (guests have no friends).
     friend: !!accountsUI?.account && !accountsUI.account.guest,
   });
+  // Either chat button is up in the screen's top-left corner: the raid's
+  // briefing and results cards keep clear of it on phones (raid-cards.css).
+  document.body.classList.toggle(
+    "chat-corner",
+    ["battle-chat", "chat-button"].some(
+      (id) => document.getElementById(id)?.hidden === false,
+    ),
+  );
   placeSceneSwitch?.();
 }
 /** The new Plaza (hub redesign phase 3): the server moves everyone in it. */
