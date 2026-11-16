@@ -6,11 +6,18 @@ services:
     numInstances: 1
     buildCommand: npm ci --include=dev && npm run build
     startCommand: npm run start
+    # New migrations reach the database before the new server goes live
+    # (docs/auto-migrations.md). Needs SUPABASE_DB_URL below; without it,
+    # this does nothing and GitHub Actions applies them instead.
+    preDeployCommand: node scripts/migrate-production.mjs --verify --if-configured
     healthCheckPath: /api/health
     envVars:
       - key: SUPABASE_URL
         sync: false
       - key: SUPABASE_ANON_KEY
+        sync: false
+      # The database's Session pooler connection string, for migrations only.
+      - key: SUPABASE_DB_URL
         sync: false
       - key: VITE_SUPABASE_URL
         sync: false

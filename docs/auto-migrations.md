@@ -7,17 +7,25 @@ and the server change within a few minutes of each other.
 
 ## How it works
 
-`.github/workflows/migrate.yml`:
+`scripts/migrate-production.mjs` runs the migrations production hasn't run
+yet, in file name order. It stops at the first file that fails: nothing after
+it runs, and the failed file isn't recorded, so the next run tries it again.
+With `--verify` it first runs every migration on an empty database in memory,
+and the pending ones twice (`scripts/check-migrations.mjs`, PGlite, the same
+setup as `tests/integration`), so SQL that fails, or can't run twice, never
+reaches production.
 
-1. Lists what production hasn't run (`scripts/migrate-production.mjs --dry-run`).
-2. Runs every migration in order on an empty database in memory, then the
-   pending ones a second time (`scripts/check-migrations.mjs`, PGlite, the same
-   setup as `tests/integration`). SQL that fails, or that can't run twice,
-   stops here and never reaches production.
-3. Applies the pending files to production with `psql`, one by one, in file
-   name order (`scripts/migrate-production.mjs`). It stops at the first file
-   that fails: nothing after it runs, and the failed file isn't recorded, so
-   the next run tries it again.
+Two places run it on each push to `main`:
+
+1. **Render, before the new game server goes live**, as the web service's
+   pre-deploy command (below). It doesn't wait for GitHub's runners, and the new server
+   never starts on a database that lacks its migration: if a migration fails,
+   Render stops the deploy and the old server keeps running.
+2. **GitHub Actions** (`.github/workflows/migrate.yml`), as a fallback and for
+   checking by hand. Its job can wait a while when CI fills GitHub's runners.
+
+A database lock keeps the two from running at once; whichever comes second
+finds nothing to do.
 
 What has run is recorded on the database itself, in
 `arena_ops.migration_files` (out of the API's reach). The files in
@@ -25,29 +33,31 @@ What has run is recorded on the database itself, in
 (checked against the database on 16 Nov 2026); they are recorded without
 running.
 
-Runs never overlap and are never cancelled half way. Each run writes what it
-did in the run's summary on GitHub (Actions → Production migrations).
-
 ## Set up (once)
 
 1. Supabase dashboard → project **2D-POKEMON** → **Connect** → **Session
    pooler** → copy the URI. Replace `[YOUR-PASSWORD]` with the database
    password (Project Settings → Database → Reset database password if it is
    lost; the game server does not use it, it uses the API keys). Use the
-   **Session pooler** address, not the direct `db.<ref>.supabase.co` one:
-   GitHub's runners have no IPv6. Remove the `[ ]` around the password. In
-   the password, write `@` as `%40`, `:` as `%3A`, `/` as `%2F`, `?` as
+   **Session pooler** address, not the direct `db.<ref>.supabase.co` one: it
+   works from machines without IPv6. Remove the `[ ]` around the password.
+   In the password, write `@` as `%40`, `:` as `%3A`, `/` as `%2F`, `?` as
    `%3F`, `#` as `%23`, `[` as `%5B`, `]` as `%5D` and `%` as `%25`; simplest
    is a password of letters and digits only.
-2. GitHub → repository → **Settings → Secrets and variables → Actions → New
-   repository secret**: name `SUPABASE_DB_URL`, value the URI.
-3. Optional: **Settings → Environments → production → Required reviewers**:
-   each run then waits for your approval before it touches the database.
-4. Check it: **Actions → Production migrations → Run workflow** with "Only list
-   what would run" ticked. It should say production is up to date.
+2. **GitHub** → repository → **Settings → Secrets and variables → Actions →
+   New repository secret**: name `SUPABASE_DB_URL`, value the URI.
+3. **Render** → service **element-arena** (the game server, not the static
+   site):
+   - **Environment** → add `SUPABASE_DB_URL` with the same URI.
+   - **Settings → Build & Deploy → Pre-Deploy Command**:
+     `node scripts/migrate-production.mjs --verify --if-configured`
+4. Optional: GitHub **Settings → Environments → production → Required
+   reviewers**: the GitHub run then waits for your approval (Render's doesn't).
+5. Check it: GitHub **Actions → Production migrations → Run workflow** with
+   "Only list what would run" ticked. It should say production is up to date.
 
-Until the secret exists, the workflow fails at its first step and changes
-nothing.
+Without the Render settings, migrations still run from GitHub, only later
+when CI is busy.
 
 ## Rules for migrations
 
