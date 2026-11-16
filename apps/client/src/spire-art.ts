@@ -15,6 +15,16 @@ export const ECHO_SKILL_COLOR = 0xa98bff;
 /** The tint on an Echo's rig (dark violet), and lighter when it is hit. */
 export const ECHO_TINT = 0x8a7ab8;
 export const ECHO_TINT_HURT = 0xd8c8ff;
+/**
+ * An Echo's tint on its zone's court. Zone 3's court is dark slate, where
+ * the usual dark violet shade sinks into the floor: there Echoes are pale
+ * violet ghosts instead (and flush pink when hit).
+ */
+export function spireEchoTint(zone?: number) {
+  return zone === 3
+    ? { tint: 0xe0d6ff, hurtTint: 0xffc2d6 }
+    : { tint: ECHO_TINT, hurtTint: ECHO_TINT_HURT };
+}
 
 /**
  * The tower: ten floors of stone narrowing to a crystal tip, lit up to the

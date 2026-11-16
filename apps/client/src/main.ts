@@ -356,8 +356,7 @@ import { prepareSurfaceTextures, surfaceBurst } from "./court-surface-fx";
 import { fxFor } from "./fx-engine";
 import {
   ECHO_SKILL_COLOR,
-  ECHO_TINT,
-  ECHO_TINT_HURT,
+  spireEchoTint,
   drawEliteCrown,
   echoShown,
 } from "./spire-art";
@@ -369,6 +368,7 @@ import {
 import { spireCourtWalls } from "../../../packages/shared/src/spire-court";
 import {
   SpireCourtRig,
+  hasSpireSummitArena,
   isSpireFloorId,
   isSpireSummitFloorId,
   nextSpireCourtView,
@@ -4606,7 +4606,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     const key = this.floorTexture(
       spireCourt
         ? spireFloorId(spireCourt)
-        : spire && (this.courtRaid || arena === "lagoon")
+        : spire && (this.courtRaid || hasSpireSummitArena(arena))
           ? spireSummitFloorOf(arena)
           : this.courtRaid
             ? "raid-coliseum"
@@ -6309,10 +6309,9 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
           : 0;
       const pose = {
         hp: p.hp,
-        // Spire Echoes: the champion in a dark violet shade.
-        ...(serverPlayer.echo
-          ? { tint: ECHO_TINT, hurtTint: ECHO_TINT_HURT }
-          : {}),
+        // Spire Echoes: the champion in a dark violet shade (pale on
+        // zone 3's dark court).
+        ...(serverPlayer.echo ? spireEchoTint(this.spireView?.zone) : {}),
         look: p.raidLook,
         skin: p.championLooks?.[p.character] ?? null,
         ambient: ambient.has(p.id),
