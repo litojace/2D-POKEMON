@@ -543,12 +543,33 @@ test("townsfolk keep a quiet Plaza lively, marked as bots, with no card", async 
   // Tapping one opens no player card (no Add friend for an NPC). Stand
   // below the dancer, so they're mid-screen and not under the top bar.
   await page.evaluate(() => (window as any).__plazaPosition(1480, 840));
-  await page.waitForTimeout(4000);
-  const spot = await page.evaluate(() => {
-    const p = (window as any).__plaza,
-      dancer = [...p.others.values()].find((b: any) => b.name === "Dancer");
-    return p.worldClient(dancer.x, dancer.y - 30);
-  });
+  // The page takes the server's move a moment later (up to ~4 s here), then
+  // its camera eases over, slowly on a CPU renderer and sometimes pausing a
+  // second mid-way; it settles with the dancer at y ≈ 270. A fixed wait
+  // raced that (y 135-146 read mid-ease): wait for the view instead.
+  const dancerSpot = () =>
+    page.evaluate(() => {
+      const p = (window as any).__plaza,
+        dancer = [...p.others.values()].find((b: any) => b.name === "Dancer");
+      return p.worldClient(dancer.x, dancer.y - 30) as { x: number; y: number };
+    });
+  await expect
+    .poll(async () => (await dancerSpot()).y, { timeout: 30_000 })
+    .toBeGreaterThan(150);
+  // Then still (two reads half a second apart), so the tap lands on them.
+  let prev = await dancerSpot();
+  await expect
+    .poll(
+      async () => {
+        const now = await dancerSpot();
+        const moved = Math.abs(now.y - prev.y);
+        prev = now;
+        return moved;
+      },
+      { timeout: 30_000, intervals: [500] },
+    )
+    .toBeLessThanOrEqual(1);
+  const spot = prev;
   expect(spot.y).toBeGreaterThan(150);
   expect(spot.y).toBeLessThan(700);
   expect(
