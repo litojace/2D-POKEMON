@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   collectTests,
-  durationsFromReport,
+  durationKey,
+  recordDuration,
+  sortedDurations,
   planShards,
   testKey,
   unlistable,
@@ -52,37 +54,18 @@ describe("visual shards", () => {
     expect(() => planShards(["a"], {}, 0)).toThrow();
   });
 
-  it("reads tests and durations from a Playwright JSON report", () => {
+  it("reads the test list from a Playwright --list JSON report", () => {
     const report = {
       suites: [
         {
           title: "farm.spec.ts",
           file: "farm.spec.ts",
-          specs: [
-            {
-              title: "top",
-              file: "farm.spec.ts",
-              tests: [
-                {
-                  results: [
-                    { status: "failed", duration: 9000 },
-                    { status: "passed", duration: 12345 },
-                  ],
-                },
-              ],
-            },
-          ],
+          specs: [{ title: "top", file: "farm.spec.ts" }],
           suites: [
             {
               title: "on a phone",
               file: "farm.spec.ts",
-              specs: [
-                {
-                  title: "inner",
-                  file: "farm.spec.ts",
-                  tests: [{ results: [{ status: "passed", duration: 800 }] }],
-                },
-              ],
+              specs: [{ title: "inner", file: "farm.spec.ts" }],
             },
           ],
         },
@@ -92,10 +75,19 @@ describe("visual shards", () => {
       "farm.spec.ts › top",
       "farm.spec.ts › on a phone › inner",
     ]);
-    expect(durationsFromReport(report)).toEqual({
-      "farm.spec.ts › on a phone › inner": 0.8,
-      "farm.spec.ts › top": 12.3,
-    });
+  });
+
+  it("the durations reporter keys tests as the list does and keeps a retry's passing time", () => {
+    const key = durationKey(["", "", "farm.spec.ts", "on a phone", "inner"]);
+    expect(key).toBe("farm.spec.ts › on a phone › inner");
+    const times: Record<string, number> = {};
+    const passed = new Set<string>();
+    recordDuration(times, passed, "b", { status: "failed", duration: 9000 });
+    recordDuration(times, passed, "b", { status: "passed", duration: 12345 });
+    recordDuration(times, passed, "a", { status: "passed", duration: 800 });
+    recordDuration(times, passed, "a", { status: "failed", duration: 99000 });
+    expect(sortedDurations(times)).toEqual({ a: 0.8, b: 12.3 });
+    expect(Object.keys(sortedDurations(times))).toEqual(["a", "b"]);
   });
 
   it("spots titles a --test-list line can't carry", () => {

@@ -87,9 +87,11 @@ jobs:
       # How long each test took, for the shard plan: download the
       # visual-durations artifact over tests/visual/durations.json and commit
       # it when the shards drift apart (new or slower tests).
-      - run: |
-          npx playwright merge-reports --reporter json ./all-blob-reports > visual-results.json
-          node scripts/visual-shards.mjs --durations visual-results.json durations.json
+      # (Not the JSON reporter: with every screenshot inline it is longer
+      # than Node allows in one string.)
+      - run: npx playwright merge-reports --reporter ./scripts/visual-durations-reporter.mjs ./all-blob-reports
+        env:
+          VISUAL_DURATIONS_OUT: durations.json
       - uses: actions/upload-artifact@v4
         with:
           name: visual-durations

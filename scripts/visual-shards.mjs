@@ -13,9 +13,10 @@
 //
 //   node scripts/visual-shards.mjs <shard> <total> <out-file>   this shard's list
 //   node scripts/visual-shards.mjs --plan <total>                 every shard's estimate
-//   node scripts/visual-shards.mjs --durations <report.json> <out-file>
-//       durations from a Playwright JSON report (CI's visual-report job
-//       uploads one as the visual-durations artifact; commit it to refresh)
+//
+// Fresh durations come from scripts/visual-durations-reporter.mjs, which CI's
+// visual-report job runs over the merged blobs and uploads as the
+// visual-durations artifact: commit it over tests/visual/durations.json.
 import { execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -85,19 +86,25 @@ export function planShards(keys, durations, total) {
   return shards;
 }
 
-/** Seconds per test from a JSON report of a real run: the last attempt that passed. */
-export function durationsFromReport(report) {
-  const out = {};
-  for (const t of collectTests(report)) {
-    const results = t.tests.flatMap((x) => x.results ?? []);
-    const passed = results.filter((r) => r.status === "passed");
-    const pick = (passed.length ? passed : results).at(-1);
-    if (pick && typeof pick.duration === "number") {
-      out[testKey(t.file, t.titles)] = Math.round(pick.duration / 100) / 10;
-    }
-  }
+/** The durations key of a test from its titlePath(): ["", project, file, ...titles]. */
+export const durationKey = (titlePath) =>
+  testKey(titlePath[2], titlePath.slice(3));
+
+/**
+ * Note one attempt's time in seconds. A test's passing attempt wins over a
+ * failed one (a retried test keeps the time of the run that passed).
+ */
+export function recordDuration(times, passed, key, result) {
+  if (typeof result.duration !== "number") return;
+  const ok = result.status === "passed";
+  if (passed.has(key) && !ok) return;
+  if (ok) passed.add(key);
+  times[key] = Math.round(result.duration / 100) / 10;
+}
+
+export function sortedDurations(times) {
   return Object.fromEntries(
-    Object.entries(out).sort(([a], [b]) => (a < b ? -1 : 1)),
+    Object.entries(times).sort(([a], [b]) => (a < b ? -1 : 1)),
   );
 }
 
@@ -131,15 +138,6 @@ function readDurations() {
 }
 
 function main(argv) {
-  if (argv[0] === "--durations") {
-    const [, report, out] = argv;
-    const d = durationsFromReport(JSON.parse(readFileSync(report, "utf8")));
-    writeFileSync(out, JSON.stringify(d, null, 2) + "\n");
-    console.error(
-      `${Object.keys(d).length} tests, ${Math.round(Object.values(d).reduce((a, b) => a + b, 0) / 60)} min in all`,
-    );
-    return;
-  }
   const durations = readDurations();
   if (argv[0] === "--plan") {
     const total = Number(argv[1]);
