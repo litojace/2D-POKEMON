@@ -6,7 +6,7 @@ import {
   type SpireMember,
 } from "../../packages/shared/src/spire";
 
-// The Spire's storage (migration 20261116120000): each cleared floor is
+// The Spire's storage (migration 20261116150000): each cleared floor is
 // saved at once, first-clear coins and titles are paid once per player, and
 // the server reads checkpoints and raid clears before a climb.
 let db: PGlite;
@@ -71,7 +71,7 @@ beforeAll(async () => {
     await db.exec(await readFile("supabase/migrations/" + f, "utf8"));
   // Safe to run again.
   await db.exec(
-    await readFile("supabase/migrations/20261116120000_spire.sql", "utf8"),
+    await readFile("supabase/migrations/20261116150000_spire.sql", "utf8"),
   );
   await db.exec(
     `reset role;insert into auth.users values('${ana}','{"display_name":"Ana"}'),('${bo}','{"display_name":"Bo"}')`,

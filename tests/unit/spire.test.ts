@@ -151,7 +151,7 @@ describe("Spire floors (zone 1)", () => {
   });
   it("keeps SPIRE_REWARDS identical to the database's rows", () => {
     const sql = readFileSync(
-      "supabase/migrations/20261116120000_spire.sql",
+      "supabase/migrations/20261116150000_spire.sql",
       "utf8",
     );
     const block = sql.slice(
