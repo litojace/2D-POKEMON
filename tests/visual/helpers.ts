@@ -186,3 +186,20 @@ export const inside = (inner: Box, outer: Box) =>
   inner.y >= outer.y - 1 &&
   inner.x + inner.width <= outer.x + outer.width + 1 &&
   inner.y + inner.height <= outer.y + outer.height + 1;
+
+/**
+ * A computed colour in rgb()/rgba() form. Colours made with color-mix()
+ * (the see-through shades of a token, ui/tokens.css) come back from
+ * getComputedStyle as `color(srgb r g b / a)`; this writes them the way
+ * plain colours come back, so a test can compare either.
+ */
+export const asRgb = (css: string) =>
+  css.replace(
+    /color\(srgb ([\d.]+) ([\d.]+) ([\d.]+)(?: \/ ([\d.]+))?\)/g,
+    (_, r, g, b, a) => {
+      const c = [r, g, b].map((v) => Math.round(parseFloat(v) * 255));
+      return a === undefined
+        ? `rgb(${c.join(", ")})`
+        : `rgba(${c.join(", ")}, ${parseFloat(a)})`;
+    },
+  );

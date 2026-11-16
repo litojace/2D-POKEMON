@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { openPlaza, snap } from "./helpers";
+import { asRgb, openPlaza, snap } from "./helpers";
 
 // Hub redesign phase 3: the new Plaza. The harness runs the real PlazaWorld
 // in the page (harness/plaza-sim.ts) in place of the game server.
@@ -778,7 +778,8 @@ test("the Emote button lights up, and a second tap or a tap on the Plaza closes 
   const errors = await openPlaza(page);
   const btn = page.locator("#pz-wheel-btn"),
     wheel = page.locator("#pz-wheel");
-  const bg = () => btn.evaluate((el) => getComputedStyle(el).backgroundColor);
+  const bg = async () =>
+    asRgb(await btn.evaluate((el) => getComputedStyle(el).backgroundColor));
   const unlit = await bg();
   await btn.click();
   await expect(wheel).toBeVisible();
