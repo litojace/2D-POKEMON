@@ -104,6 +104,17 @@ for (const size of SIZES)
       expect(
         await layoutProblems(page, { phone: size.phone, inset: size.inset }),
       ).toEqual([]);
+      // The whole ascent trail is visible before scrolling on mobile.
+      if (size.phone) {
+        const trail = await room.locator(".sp-route").boundingBox();
+        const body = await room
+          .locator('[data-raid-region="body"]')
+          .boundingBox();
+        expect(trail!.y).toBeGreaterThanOrEqual(body!.y);
+        expect(trail!.y + trail!.height).toBeLessThanOrEqual(
+          body!.y + body!.height,
+        );
+      }
       await snap(page, info, `spire-page-climb-${size.name}`);
       // Milestones preview floors, never change the actual checkpoint start.
       await expect(room.locator(".sp-preview")).toContainText(
