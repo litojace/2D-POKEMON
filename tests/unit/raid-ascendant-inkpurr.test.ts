@@ -24,6 +24,7 @@ import {
   POUNCE_LEAP,
   inMoonPool,
   onLitTile,
+  poolUnderControls,
 } from "../../apps/server/src/raid-ascendant-inkpurr";
 import { AscendantCragmuffRules } from "../../apps/server/src/raid-ascendant-cragmuff";
 import {
@@ -415,12 +416,9 @@ describe("Ascendant Inkpurr's kit", () => {
 });
 
 describe("Nightfall", () => {
-  it("lays a pool near every raider: never under their feet, inside the court, always within reach", () => {
-    const reach =
-      RAID_SLOWEST_SPEED * (A.nightfall.delay - RAID_REACTION) -
-      RULES.radius -
-      10;
-    let checked = 0;
+  it("lays a pool near every raider: never under their feet or the phone's controls, inside the court, always within reach", () => {
+    let checked = 0,
+      longer = 0;
     for (const size of [1, 2, 3, 4])
       for (let seed = 1; seed <= 40; seed++) {
         const a = arena(size, 2);
@@ -436,7 +434,12 @@ describe("Nightfall", () => {
             for (let k = 0; k < 4; k++)
               a.noteInkDodge(p.id, Math.cos(seed + k * 0.1), Math.sin(seed));
         for (const teach of [false, true]) {
-          const pools = a.moonPools(teach);
+          a.raid.warnings = [];
+          const w = a.warnNightfall(teach);
+          const pools = w.pools!;
+          const delay = w.at - w.startedAt!;
+          expect(delay).toBeGreaterThanOrEqual(A.nightfall.delay);
+          if (delay > A.nightfall.delay) longer++;
           expect(pools.length).toBeGreaterThan(0);
           expect(pools.length).toBeLessThanOrEqual(size);
           for (const q of pools) {
@@ -444,12 +447,24 @@ describe("Nightfall", () => {
             expect(q.x + q.radius).toBeLessThanOrEqual(RULES.width);
             expect(q.y - q.radius).toBeGreaterThanOrEqual(0);
             expect(q.y + q.radius).toBeLessThanOrEqual(RULES.height);
+            // Never under a phone's touch controls (most of it shows).
+            expect(
+              poolUnderControls(q.x, q.y, q.radius),
+              `pool at ${q.x | 0},${q.y | 0}`,
+            ).toBeLessThanOrEqual(A.nightfall.coverMax);
+            for (const [x0, y0, x1, y1] of A.nightfall.phoneControls)
+              expect(
+                q.x > x0 && q.x < x1 && q.y > y0 && q.y < y1,
+                `pool centre ${q.x | 0},${q.y | 0} under a control`,
+              ).toBe(false);
           }
+          // Within reach of the slowest champion seeing it late...
+          const reach =
+            RAID_SLOWEST_SPEED * (delay - RAID_REACTION) - RULES.radius - 10;
           for (const p of a.heroes()) {
             const d = Math.min(
               ...pools.map((q) => Math.hypot(q.x - p.x, q.y - p.y) - q.radius),
             );
-            // Within reach of the slowest champion seeing it late...
             expect(d).toBeLessThanOrEqual(reach);
             checked++;
           }
@@ -458,11 +473,17 @@ describe("Nightfall", () => {
             a.heroes().filter((p: Fighter) => !inMoonPool(p.x, p.y, pools))
               .length,
           ).toBeGreaterThan(0);
+          expect(a.safeSpotExists([w])).toBe(true);
         }
-        const w = a.warnNightfall(false);
-        expect(a.safeSpotExists([w])).toBe(true);
       }
     expect(checked).toBeGreaterThan(300);
+    // Deep in the controls' corner a raider walks farther, and Nightfall waits.
+    expect(longer).toBeGreaterThan(0);
+    const a = arena(1, 2);
+    place(a.heroes()[0], 1450, 760);
+    const w = a.warnNightfall(false);
+    expect(w.at - w.startedAt!).toBeGreaterThan(A.nightfall.delay);
+    expect(a.safeSpotExists([w])).toBe(true);
   });
   it("the dark hurts and curses; a pool or lantern light spares you; the pools stay lit", () => {
     const a = arena(4, 1);
@@ -473,7 +494,7 @@ describe("Nightfall", () => {
     place(p3, 500, 700);
     cast(a, "nightfall", p0);
     const w = of(a, "nightfall")[0];
-    expect(w.at - w.startedAt!).toBe(A.nightfall.delay);
+    expect(w.at - w.startedAt!).toBeGreaterThanOrEqual(A.nightfall.delay);
     const pools = w.pools!;
     // p0 into a pool, p1 into a lit lantern's light, p2 and p3 stay in the dark.
     place(p0, pools[0].x, pools[0].y);

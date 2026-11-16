@@ -88,6 +88,32 @@ export function onLitTile(w: RaidWarning, x: number, y: number, margin = 12) {
   ].every(([dx, dy]) => !handsTileDark(x + dx, y + dy, parity));
 }
 
+/**
+ * How much of a pool (centre, radius) lies under a phone's touch controls
+ * (0-1), or 1 when its centre is within the margin of one
+ * (ASCENDANT_INKPURR.nightfall.phoneControls).
+ */
+export function poolUnderControls(x: number, y: number, radius: number) {
+  const N = A.nightfall,
+    m = N.controlMargin;
+  const under = (px: number, py: number, pad: number) =>
+    N.phoneControls.some(
+      ([x0, y0, x1, y1]) =>
+        px > x0 - pad && px < x1 + pad && py > y0 - pad && py < y1 + pad,
+    );
+  if (under(x, y, m)) return 1;
+  let hit = 0,
+    all = 0;
+  for (let k = 1; k <= 3; k++)
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * Math.PI * 2,
+        d = (radius * k) / 3;
+      all++;
+      if (under(x + Math.cos(a) * d, y + Math.sin(a) * d, 0)) hit++;
+    }
+  return hit / all;
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type InkClass = new (...args: any[]) => GloomshadeArena;
 
@@ -481,16 +507,29 @@ export function AscendantInkpurrRules<B extends InkClass>(Base: B) {
      */
     protected warnNightfall(teach: boolean) {
       const pools = this.moonPools(teach);
+      // Long enough for the farthest raider to walk well into a pool.
+      const walk = Math.max(
+        0,
+        ...this.heroes()
+          .filter((p) => p.hp > 0)
+          .map((p) =>
+            Math.min(
+              ...pools.map(
+                (q) =>
+                  Math.hypot(q.x - p.x, q.y - p.y) -
+                  q.radius +
+                  RULES.radius +
+                  12,
+              ),
+            ),
+          ),
+      );
+      const delay = Math.max(
+        A.nightfall.delay,
+        walk / RAID_SLOWEST_SPEED + RAID_REACTION + 0.15,
+      );
       return Object.assign(
-        this.warn(
-          "nightfall",
-          W / 2,
-          H / 2,
-          W / 2,
-          H / 2,
-          0,
-          A.nightfall.delay,
-        ),
+        this.warn("nightfall", W / 2, H / 2, W / 2, H / 2, 0, delay),
         { pools, teach },
       );
     }
@@ -520,29 +559,43 @@ export function AscendantInkpurrRules<B extends InkClass>(Base: B) {
             : { x: 1, y: 0 };
         let best: Pool | undefined,
           score = -Infinity;
-        for (let i = 0; i < 24; i++) {
-          const a = (i / 24) * Math.PI * 2,
-            dx = Math.cos(a),
-            dy = Math.sin(a);
-          for (const d of [far, (near + far) / 2, near]) {
-            const x = p.x + dx * d,
-              y = p.y + dy * d;
-            if (x < pad || x > W - pad || y < pad || y > H - pad) continue;
-            // Away from the habit (or the boss), clear of other raiders' feet.
-            let s = dx * away.x + dy * away.y + d / 1000;
-            if (
-              alive.some(
-                (q) =>
-                  Math.hypot(q.x - x, q.y - y) < N.poolRadius + RULES.radius,
+        // Clear of the phone's touch controls; deeper in their corner the
+        // pool may sit farther (Nightfall then waits for the walk). The last
+        // pass, if ever needed, ignores the controls: a pool always exists.
+        const rings = [
+          [far, (near + far) / 2, near],
+          [far + 50, far + 100, far + 150, far + 200],
+          [N.farthest - 50, N.farthest],
+        ];
+        for (let pass = 0; pass <= rings.length && !best; pass++)
+          for (let i = 0; i < 24; i++) {
+            const a = (i / 24) * Math.PI * 2,
+              dx = Math.cos(a),
+              dy = Math.sin(a);
+            for (const d of rings[Math.min(pass, rings.length - 1)]) {
+              const x = p.x + dx * d,
+                y = p.y + dy * d;
+              if (x < pad || x > W - pad || y < pad || y > H - pad) continue;
+              if (
+                pass < rings.length &&
+                poolUnderControls(x, y, N.poolRadius) > N.coverMax
               )
-            )
-              s -= 1.5;
-            if (s > score) {
-              score = s;
-              best = { x, y, radius: N.poolRadius };
+                continue;
+              // Away from the habit (or the boss), clear of other raiders' feet.
+              let s = dx * away.x + dy * away.y + d / 1000;
+              if (
+                alive.some(
+                  (q) =>
+                    Math.hypot(q.x - x, q.y - y) < N.poolRadius + RULES.radius,
+                )
+              )
+                s -= 1.5;
+              if (s > score) {
+                score = s;
+                best = { x, y, radius: N.poolRadius };
+              }
             }
           }
-        }
         if (habit) this.inkReads.pools++;
         pools.push(
           best ?? {

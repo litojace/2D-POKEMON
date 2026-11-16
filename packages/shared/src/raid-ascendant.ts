@@ -315,7 +315,7 @@ export const ASCENDANT_TIDELOTL_CHAPTERS = [
 export const ASCENDANT_INKPURR = {
   name: "Ascendant Inkpurr",
   /** Health added per extra raider (the raid's own: 1000). */
-  perExtraPlayer: 550,
+  perExtraPlayer: 650,
   /** Seconds a teammate kneels to revive (the Ascendant tier: 4.5). */
   reviveSeconds: 5.5,
   /**
@@ -333,6 +333,34 @@ export const ASCENDANT_INKPURR = {
     /** A teaching Nightfall's pools sit this close. */
     teachNear: 90,
     linger: 4,
+    /**
+     * The court under a phone's touch controls (world px: x0, y0, x1, y1),
+     * each control's box at 667x375 and 844x390 together, measured in the
+     * visual harness: the joystick, dash, jump, the skills, the ultimate,
+     * the attack button and the target portraits round it. A pool's centre
+     * never sits within `controlMargin` of one, and at most `coverMax` of
+     * its disc lies under them; a raider deep in that corner walks farther
+     * (up to `farthest` px) and Nightfall waits for them.
+     */
+    phoneControls: [
+      [-260, 560, 183, 835],
+      [1528, 455, 1868, 600],
+      [1534, 630, 1874, 774],
+      [1124, 686, 1486, 848],
+      [1078, 497, 1440, 660],
+      [1188, 337, 1550, 501],
+      [1381, 305, 1750, 479],
+      [1269, 497, 1714, 745],
+      [1184, 156, 1294, 296],
+      [1316, 156, 1426, 266],
+      [1405, 164, 1560, 299],
+      [1533, 164, 1643, 274],
+      [1574, 186, 1769, 341],
+      [-298, 155, 22, 286],
+    ] as readonly (readonly [number, number, number, number])[],
+    controlMargin: 20,
+    coverMax: 0.4,
+    farthest: 560,
   },
   /**
    * Shade Pounce: every body leaps onto a raider, one after another (`gap`
@@ -394,7 +422,7 @@ export const ASCENDANT_INKPURR = {
   /** Exposure and stagger windows × (1 + this per extra raider). */
   partyWindows: 0.1,
   /** Its attacks hit harder by this share per extra raider (instead of more health). */
-  partyDamage: 0.1,
+  partyDamage: 0.05,
 } as const;
 
 /** Ascendant Inkpurr's attack order for a chapter (it splits from chapter 1). */

@@ -182,7 +182,7 @@ for (const s of SIZES)
       });
       await stand(page, [
         [760, 520],
-        [1040, 380],
+        [1380, 640],
       ]);
       await page.evaluate(() => (window as any).__combat.cast("nightfall"));
       await run(page, 0.9, 1);
@@ -209,6 +209,40 @@ for (const s of SIZES)
         hidden({ x: pc.x, y: pc.y, r: 16 * pc.scale + 4 }, boxes, s),
         "pool crescent",
       ).toBeUndefined();
+      // Phones: no pool's centre under a touch button, and most of each
+      // pool in sight (Kai stands deep in the controls' corner).
+      if (s.phone) {
+        const controls = boxes.filter((b) =>
+          /touch|joystick|^$/.test(String(b.what)),
+        );
+        for (const q of night.pools) {
+          const ring = [{ x: q.x, y: q.y }];
+          for (let k = 1; k <= 3; k++)
+            for (let i = 0; i < 12; i++) {
+              const a = (i / 12) * Math.PI * 2;
+              ring.push({
+                x: q.x + (Math.cos(a) * q.radius * k) / 3,
+                y: q.y + (Math.sin(a) * q.radius * k) / 3,
+              });
+            }
+          const pts = await onScreen(page, ring);
+          const under = (p: { x: number; y: number }) =>
+            controls.some(
+              (b) => p.x > b.x && p.x < b.right && p.y > b.y && p.y < b.bottom,
+            ) ||
+            p.x < 0 ||
+            p.y < 0 ||
+            p.x > s.width ||
+            p.y > s.height;
+          expect(under(pts[0]), `pool ${q.x | 0},${q.y | 0} centre`).toBe(
+            false,
+          );
+          const covered = pts.slice(1).filter(under).length / (pts.length - 1);
+          expect(covered, `pool ${q.x | 0},${q.y | 0} hidden`).toBeLessThan(
+            0.5,
+          );
+        }
+      }
       await snap(page, info, `asc-ink-nightfall-${s.name}`);
       // Landed: the pools linger as moonlight.
       await run(page, 1.3, 1);
