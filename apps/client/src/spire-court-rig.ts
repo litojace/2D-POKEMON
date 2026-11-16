@@ -30,11 +30,13 @@ import {
   packSpirePieces,
   paintSpireAtlas,
   paintSpireFloor,
+  paintLagoonSummitGrade,
   paintSpireSky,
+  paintSpireSummitGrade,
   spireFloorPieces,
   spireStairsGlow,
   spireStarSpots,
-  spireTheme,
+  spireZoneTheme,
 } from "./spire-court-art";
 import type { Fx } from "./fx-engine";
 
@@ -62,7 +64,7 @@ export function prepareSpireCourt(scene: Phaser.Scene, v: SpireCourtView) {
     const ctx = canvas.getContext("2d");
     if (ctx) {
       ctx.setTransform(k, 0, 0, k, -S.x * k, -S.y * k);
-      paintSpireSky(ctx, spireTheme(v.zone), v.floor);
+      paintSpireSky(ctx, spireZoneTheme(v.zone), v.floor);
     }
     const texture = addCanvasTexture(scene.textures, sky, canvas);
     // Four bands round the court (each reaches 4 px under it: no seams).
@@ -227,7 +229,7 @@ export class SpireCourtRig {
       const g = spireStairsGlow();
       const pulse = reduced ? 1 : 0.8 + 0.2 * Math.sin(now / 260);
       fx.at(372 + 156);
-      fx.glow(g.x, g.y, 46, spireTheme(this.view.zone).glow, 0.55 * pulse);
+      fx.glow(g.x, g.y, 46, spireZoneTheme(this.view.zone).glow, 0.55 * pulse);
       fx.at(null);
     }
     for (const s of this.stars)
@@ -267,29 +269,60 @@ export class SpireCourtRig {
   }
 }
 
-/** The court a snapshot's climb is on (undefined: not a Spire room). */
+/**
+ * The court a snapshot's climb is on (undefined: not a Spire room). Its
+ * zone (its look: spireZoneTheme) is the snapshot's when it carries one,
+ * else the floor's (floors 11-20: zone 2).
+ */
 export function spireCourtView(
-  raid: { spire?: { floor: number; kind: SpireFloorKind } } | undefined,
+  raid:
+    | { spire?: { floor: number; kind: SpireFloorKind; zone?: number } }
+    | undefined,
 ): SpireCourtView | undefined {
   const s = raid?.spire;
   if (!s) return undefined;
-  return { zone: spireZoneOf(s.floor), floor: s.floor, kind: s.kind };
+  return { zone: s.zone ?? spireZoneOf(s.floor), floor: s.floor, kind: s.kind };
 }
-/** The floor after `v` (painted while the stairs are open), if built. */
+/**
+ * The floor after `v` (painted while the stairs are open). A floor not in
+ * SPIRE_FLOORS takes its place in its zone (10th: boss, 5th: elite, else
+ * waves); the caller only asks for floors the party may climb to.
+ */
 export function nextSpireCourtView(
   v: SpireCourtView,
 ): SpireCourtView | undefined {
-  const next = SPIRE_FLOORS[v.floor + 1];
-  return next
-    ? { zone: next.zone, floor: next.floor, kind: next.kind }
-    : undefined;
+  const floor = v.floor + 1,
+    next = SPIRE_FLOORS[floor];
+  if (next) return { zone: next.zone, floor, kind: next.kind };
+  const place = ((floor - 1) % 10) + 1;
+  return {
+    zone: spireZoneOf(floor),
+    floor,
+    kind: place === 10 ? "boss" : place === 5 ? "elite" : "wave",
+  };
 }
+/** A boss floor's court texture by its raid's arena (the lagoon: floor 20's). */
+export const spireSummitFloorOf = (arena: string) =>
+  arena === "lagoon" ? SPIRE_LAGOON_SUMMIT_FLOOR : SPIRE_SUMMIT_FLOOR;
 /** A Spire floor texture id ("spire-z1": the zone's platform floor). */
 export const spireFloorId = (v: SpireCourtView) => `spire-z${v.zone}`;
 export const isSpireFloorId = (id: string) => /^spire-z\d+$/.test(id);
 /** Paint a Spire floor texture (1600 × 900 world px, context pre-scaled). */
 export function paintSpireFloorId(ctx: CanvasRenderingContext2D, id: string) {
-  paintSpireFloor(ctx, spireTheme(Number(id.slice(7)) || 1));
+  paintSpireFloor(ctx, spireZoneTheme(Number(id.slice(7)) || 1));
 }
 /** The boss floor's court: its raid's picture, with the summit grade. */
 export const SPIRE_SUMMIT_FLOOR = "spire-summit";
+/** Floor 20's: Tidelotl's lagoon, with its own (night-sea) summit grade. */
+export const SPIRE_LAGOON_SUMMIT_FLOOR = "spire-summit-lagoon";
+/** A boss floor's court texture id, by its zone (unknown zones: zone 1's). */
+export const spireSummitFloorId = (zone: number) =>
+  zone === 2 ? SPIRE_LAGOON_SUMMIT_FLOOR : SPIRE_SUMMIT_FLOOR;
+export const isSpireSummitFloorId = (id: string) =>
+  id === SPIRE_SUMMIT_FLOOR || id === SPIRE_LAGOON_SUMMIT_FLOOR;
+/** The raid picture under a summit floor, and its grade. */
+export function spireSummitArt(id: string) {
+  return id === SPIRE_LAGOON_SUMMIT_FLOOR
+    ? { picture: "lagoon" as const, grade: paintLagoonSummitGrade }
+    : { picture: "raid-coliseum" as const, grade: paintSpireSummitGrade };
+}

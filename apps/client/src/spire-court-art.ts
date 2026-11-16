@@ -58,6 +58,32 @@ export interface SpireZoneTheme {
   /** Clouds low and high, and the light on the platform (warm or cool). */
   cloud: [string, string];
   light: string;
+  /**
+   * Shade and lit edges painted over the stone ("r,g,b"). Unset: the warm
+   * browns and creams zone 1 was painted with (`tone`).
+   */
+  ink?: string;
+  shine?: string;
+  /** The height's dusk over stone ("r,g,b"; unset: zone 1's violet). */
+  dusk?: string;
+  /** The low sun's haze ("r,g,b"), and the warm light the floor's grade adds. */
+  sun?: string;
+  warmth?: number;
+  /** The floor's tint at the zone's top ([r, g, b]; unset: zone 1's violet dusk). */
+  duskTint?: [number, number, number];
+  /**
+   * A water zone: channels and tide pools in the paving, and the sea far
+   * below the tower (mist, gulls and spray low down; at the top a moonlit
+   * sea with bioluminescent specks) instead of a cloud sea.
+   */
+  sea?: {
+    /** Water: shallow, deep, and the foam and lit edges. */
+    shallow: string;
+    deep: string;
+    foam: string;
+    /** Bioluminescence (high floors). */
+    bio: string;
+  };
 }
 export const SPIRE_ZONE_THEMES: Record<number, SpireZoneTheme> = {
   // Zone 1, Earth: warm sandstone and amber crystal, a golden afternoon
@@ -78,19 +104,63 @@ export const SPIRE_ZONE_THEMES: Record<number, SpireZoneTheme> = {
     cloud: ["#fff6e6", "#7d6aa0"],
     light: "255,214,150",
   },
+  // Zone 2, Water: pale sea-glass marble and aquamarine crystal, water
+  // channels and tide pools in the paving, a sea mist far below with gulls
+  // in it; near the top a deep night sea glowing with bioluminescence.
+  2: {
+    zone: 2,
+    slab: ["#dcefe8", "#8fbcb5"],
+    grout: "#2a5360",
+    rim: ["#f2f8f5", "#9ab7b7"],
+    carve: "#143c4a",
+    top: ["#f1f8f5", "#c0d8d4"],
+    front: ["#8cadb0", "#517780"],
+    crystal: ["#e6fffb", "#33d0c0", "#0a6b78"],
+    glow: 0x4ff0dc,
+    rune: "#7ef4e4",
+    skyLow: ["#74b2d3", "#e3f2ee"],
+    skyHigh: ["#030a1c", "#10384f"],
+    cloud: ["#eef9f8", "#3a6480"],
+    light: "214,244,255",
+    ink: "10,34,46",
+    shine: "238,252,250",
+    dusk: "8,28,72",
+    sun: "236,248,255",
+    warmth: 0.06,
+    duskTint: [176, 198, 236],
+    sea: {
+      shallow: "#46aebb",
+      deep: "#0b3f5e",
+      foam: "#eafcff",
+      bio: "#6ff7e6",
+    },
+  },
 };
-export const spireTheme = (zone: number) =>
+/** A zone's look (zone 1 Earth, zone 2 Water); unknown zones take zone 1's. */
+export const spireZoneTheme = (zone: number): SpireZoneTheme =>
   SPIRE_ZONE_THEMES[zone] ?? SPIRE_ZONE_THEMES[1];
+export const spireTheme = spireZoneTheme;
+/**
+ * A shade or highlight literal in the zone's tones: zone 1 keeps the warm
+ * literal exactly; a zone with `ink`/`shine` swaps its colour (dark ones to
+ * ink, light ones to shine) and keeps its alpha.
+ */
+function tone(t: SpireZoneTheme, literal: string) {
+  if (!t.ink || !t.shine) return literal;
+  const [r, g, b, a] = literal.match(/[\d.]+/g)!.map(Number);
+  return `rgba(${0.3 * r + 0.59 * g + 0.11 * b < 128 ? t.ink : t.shine},${a})`;
+}
 /**
  * The light on the platform's floor by height (a tint on its picture, so
  * it costs nothing): full afternoon light low down, a cool dusk near the
  * top. The floor's pieces get the same dusk painted into their stone only
  * (duskStone), so crystals and the carved number keep their own light.
  */
-export function spireFloorTint(floor: number) {
+export function spireFloorTint(floor: number, zone = 1) {
   const h = spireHeight(floor);
+  const [r, g, b] = spireZoneTheme(zone).duskTint ?? [206, 194, 230];
   const lerp = (a: number, b: number) => Math.round(a + (b - a) * h);
-  return (lerp(255, 206) << 16) | (lerp(255, 194) << 8) | lerp(255, 230);
+  return (lerp(255, r) << 16) | (lerp(255, g) << 8) | lerp(255, b);
 }
 /** 0 on a zone's first floor, 1 at its top (the boss floor). */
 export const spireHeight = (floor: number) =>
@@ -158,14 +228,14 @@ function ringPaving(c: Ctx, t: SpireZoneTheme) {
       c.closePath();
       c.fill();
       // The edge nearer the middle catches the light; the outer one shades.
-      c.strokeStyle = "rgba(255,246,226,0.22)";
+      c.strokeStyle = tone(t, "rgba(255,246,226,0.22)");
       c.lineWidth = 1.4;
       c.beginPath();
       c.moveTo(...pts[0]);
       c.lineTo(...pts[1]);
       c.lineTo(...pts[2]);
       c.stroke();
-      c.strokeStyle = "rgba(30,18,6,0.3)";
+      c.strokeStyle = tone(t, "rgba(30,18,6,0.3)");
       c.beginPath();
       c.moveTo(...pts[3]);
       c.lineTo(...pts[4]);
@@ -177,7 +247,7 @@ function ringPaving(c: Ctx, t: SpireZoneTheme) {
           a0 + (a1 - a0) * R(),
           r0 + depth * (0.2 + R() * 0.6),
         );
-        c.fillStyle = "rgba(30,18,6,0.2)";
+        c.fillStyle = tone(t, "rgba(30,18,6,0.2)");
         ell(c, px, py, 1.5 + R() * 2, 1 + R());
         c.fill();
       }
@@ -305,11 +375,11 @@ function runeRing(c: Ctx, t: SpireZoneTheme) {
     gEll(c, x, y, rr);
     c.stroke();
   }
-  c.strokeStyle = "rgba(255,246,222,0.55)";
+  c.strokeStyle = tone(t, "rgba(255,246,222,0.55)");
   c.lineWidth = 2;
   gEll(c, x, y, r + 22);
   c.stroke();
-  c.strokeStyle = "rgba(40,24,10,0.5)";
+  c.strokeStyle = tone(t, "rgba(40,24,10,0.5)");
   gEll(c, x, y, r - 10);
   c.stroke();
   // Runes in the groove, inlaid with the zone's metal.
@@ -319,7 +389,7 @@ function runeRing(c: Ctx, t: SpireZoneTheme) {
     const a = (k / 24) * Math.PI * 2;
     const rx = x + Math.cos(a) * (r + 6),
       ry = y + Math.sin(a) * (r + 6) * K;
-    c.strokeStyle = "rgba(20,10,0,0.6)";
+    c.strokeStyle = tone(t, "rgba(20,10,0,0.6)");
     c.lineWidth = 3.2;
     rune(c, rx + 0.8, ry + 0.8, 7 * (0.75 + 0.25 * Math.abs(Math.cos(a))), k);
     c.strokeStyle = t.rune;
@@ -332,12 +402,107 @@ function runeRing(c: Ctx, t: SpireZoneTheme) {
   c.lineWidth = 4;
   gEll(c, x, y, r * 0.58);
   c.stroke();
-  c.strokeStyle = "rgba(255,246,222,0.4)";
+  c.strokeStyle = tone(t, "rgba(255,246,222,0.4)");
   c.lineWidth = 1.5;
   gEll(c, x, y, r * 0.58 + 3);
   c.stroke();
   // A faint glow from the inlay.
   lights(c, [[x, y, r * 1.25, 0.22, t.light]]);
+}
+/**
+ * A water zone's waterways (decoration: walkable, nothing collides): four
+ * shallow channels cut along the ring's spokes, and a tide pool in each
+ * corner of the platform beyond the octagon. Low and calm, so they never
+ * read as a warning.
+ */
+function waterways(c: Ctx, t: SpireZoneTheme) {
+  const sea = t.sea;
+  if (!sea) return;
+  const { x, y, r } = SPIRE_RING;
+  const at = (a: number, rr: number): [number, number] => [
+    x + Math.cos(a) * rr,
+    y + Math.sin(a) * rr * K,
+  ];
+  c.save();
+  c.lineCap = "round";
+  for (let k = 0; k < 8; k += 2) {
+    const a = (k / 8) * Math.PI * 2 + Math.PI / 8;
+    const [x0, y0] = at(a, r + 40),
+      [x1, y1] = at(a, 470);
+    const line = (width: number, style: string | CanvasGradient, dy = 0) => {
+      c.strokeStyle = style;
+      c.lineWidth = width;
+      c.beginPath();
+      c.moveTo(x0, y0 + dy);
+      c.lineTo(x1, y1 + dy);
+      c.stroke();
+    };
+    // The cut: a dark inner wall, a pale marble lip, then the water.
+    line(26, tone(t, "rgba(30,18,6,0.22)"), 2);
+    line(23, mix(t.rim[1], t.slab[0], 0.55));
+    line(17, mix(t.carve, sea.deep, 0.5));
+    const water = c.createLinearGradient(x0, y0, x1, y1);
+    water.addColorStop(0, sea.shallow);
+    water.addColorStop(1, mix(sea.shallow, sea.deep, 0.45));
+    line(14, water, 1);
+    // Light on the water: a broken glint down its middle.
+    c.setLineDash([5, 9, 12, 30]);
+    c.lineDashOffset = k * 7;
+    line(1.4, rgba(sea.foam, 0.32), -1);
+    c.setLineDash([]);
+  }
+  c.restore();
+  // Tide pools in the corners, each in a rim of pale stones.
+  reseed(7457);
+  for (const [px, py] of [
+    [118, 112],
+    [W - 118, 112],
+    [118, H - 104],
+    [W - 118, H - 104],
+  ]) {
+    const rx = 34;
+    c.fillStyle = tone(t, "rgba(30,18,6,0.35)");
+    gEll(c, px + 2, py + 3, rx + 7);
+    c.fill();
+    const w = c.createRadialGradient(px - 8, py - 6, 4, px, py, rx + 2);
+    w.addColorStop(0, sea.deep);
+    w.addColorStop(0.7, mix(sea.deep, sea.shallow, 0.6));
+    w.addColorStop(1, sea.shallow);
+    c.fillStyle = w;
+    gEll(c, px, py, rx + 2);
+    c.fill();
+    // Sand and a shell on the bottom, a ripple and a sky reflection.
+    for (let k = 0; k < 6; k++) {
+      c.fillStyle = rgba(sea.foam, 0.18);
+      ell(
+        c,
+        px + (R() - 0.5) * rx * 1.2,
+        py + (R() - 0.5) * rx * 0.6,
+        2 + R() * 3,
+        1.5 + R() * 1.5,
+      );
+      c.fill();
+    }
+    c.strokeStyle = rgba(sea.foam, 0.4);
+    c.lineWidth = 1.2;
+    gEll(c, px - 4, py - 2, rx * 0.55);
+    c.stroke();
+    c.fillStyle = rgba(sea.foam, 0.22);
+    ell(c, px - rx * 0.35, py - rx * 0.3 * K, rx * 0.4, rx * 0.12);
+    c.fill();
+    // The rim: pale stones, lit on top.
+    for (let k = 0; k < 14; k++) {
+      const a = (k / 14) * Math.PI * 2 + R() * 0.2;
+      const sx = px + Math.cos(a) * (rx + 5),
+        sy = py + Math.sin(a) * (rx + 5) * K;
+      c.fillStyle = mix(t.rim[0], t.rim[1], 0.2 + R() * 0.5);
+      ell(c, sx, sy, 6 + R() * 3, 4 + R() * 2);
+      c.fill();
+      c.fillStyle = tone(t, "rgba(255,248,230,0.5)");
+      ell(c, sx - 1, sy - 2, 3, 1.4);
+      c.fill();
+    }
+  }
 }
 /** The platform's coping: big dressed stones round the edge, a lip you can stand on. */
 function coping(c: Ctx, t: SpireZoneTheme) {
@@ -351,7 +516,7 @@ function coping(c: Ctx, t: SpireZoneTheme) {
   c.fillRect(0, 0, B, H);
   c.fillRect(W - B, 0, B, H);
   reseed(4417);
-  c.strokeStyle = "rgba(40,24,10,0.45)";
+  c.strokeStyle = tone(t, "rgba(40,24,10,0.45)");
   c.lineWidth = 2;
   for (let x = 0; x < W;) {
     const step = 70 + R() * 50;
@@ -373,14 +538,14 @@ function coping(c: Ctx, t: SpireZoneTheme) {
     c.stroke();
   }
   // Lit top edge of each stone, shaded inner edge where it meets the floor.
-  c.fillStyle = "rgba(255,248,230,0.45)";
+  c.fillStyle = tone(t, "rgba(255,248,230,0.45)");
   c.fillRect(0, 0, W, 2);
   c.fillRect(0, H - B, W, 2);
-  c.fillStyle = "rgba(30,18,6,0.4)";
+  c.fillStyle = tone(t, "rgba(30,18,6,0.4)");
   c.fillRect(B, B, W - 2 * B, 3);
   c.fillRect(B, B, 3, H - 2 * B);
   c.fillRect(W - B - 3, B, 3, H - 2 * B);
-  c.fillStyle = "rgba(30,18,6,0.5)";
+  c.fillStyle = tone(t, "rgba(30,18,6,0.5)");
   c.fillRect(0, H - 3, W, 3);
   grain(c, 0, 0, W, B, 0.3, 4418, [
     [30, 1],
@@ -401,8 +566,8 @@ export function paintSpireFloor(c: Ctx, t: SpireZoneTheme) {
   c.clip();
   ringPaving(c, t);
   const inner = c.createRadialGradient(W / 2, H / 2, 80, W / 2, H / 2, 820);
-  inner.addColorStop(0, "rgba(255,244,220,0.16)");
-  inner.addColorStop(1, "rgba(255,244,220,0)");
+  inner.addColorStop(0, tone(t, "rgba(255,244,220,0.16)"));
+  inner.addColorStop(1, tone(t, "rgba(255,244,220,0)"));
   c.fillStyle = inner;
   c.fillRect(0, 0, W, H);
   c.restore();
@@ -412,7 +577,7 @@ export function paintSpireFloor(c: Ctx, t: SpireZoneTheme) {
   c.rect(0, 0, W, H);
   octagon(c, OCT.inset, OCT.chamfer);
   c.clip("evenodd");
-  c.fillStyle = "rgba(60,36,14,0.16)";
+  c.fillStyle = tone(t, "rgba(60,36,14,0.16)");
   c.fillRect(0, 0, W, H);
   c.restore();
   // The octagon: a band of kerb stones with a carved line.
@@ -425,11 +590,11 @@ export function paintSpireFloor(c: Ctx, t: SpireZoneTheme) {
   c.lineWidth = 10;
   octagon(c, OCT.inset, OCT.chamfer);
   c.stroke();
-  c.strokeStyle = "rgba(255,248,230,0.4)";
+  c.strokeStyle = tone(t, "rgba(255,248,230,0.4)");
   c.lineWidth = 1.5;
   octagon(c, OCT.inset - 5, OCT.chamfer);
   c.stroke();
-  c.strokeStyle = "rgba(40,24,10,0.45)";
+  c.strokeStyle = tone(t, "rgba(40,24,10,0.45)");
   octagon(c, OCT.inset + 5, OCT.chamfer);
   c.stroke();
   // Crystal studs at the octagon's corners.
@@ -458,12 +623,13 @@ export function paintSpireFloor(c: Ctx, t: SpireZoneTheme) {
     c.fill();
   }
   runeRing(c, t);
+  waterways(c, t);
   // Dust and grit, a few fallen crystal shards near the edges.
   paintKit.pebbles(
     c,
     260,
-    "rgba(255,240,210,0.35)",
-    "rgba(60,36,14,0.3)",
+    tone(t, "rgba(255,240,210,0.35)"),
+    tone(t, "rgba(60,36,14,0.3)"),
     7321,
   );
   reseed(7333);
@@ -501,7 +667,7 @@ export function paintSpireFloor(c: Ctx, t: SpireZoneTheme) {
     [380, 200, 620, 0.2, t.light],
     [1250, 680, 420, 0.08, t.light],
   ]);
-  grade(c, 0.3, 0.42);
+  grade(c, t.warmth ?? 0.3, 0.42);
 }
 
 // ───────────────────────────── Sky ─────────────────────────────
@@ -524,7 +690,8 @@ export function paintSpireSky(c: Ctx, t: SpireZoneTheme, floor: number) {
   const top = mix(t.skyLow[0], t.skyHigh[0], h),
     horizon = mix(t.skyLow[1], t.skyHigh[1], h);
   // The cloud sea's top: level with the court low down, far below it near the top.
-  const cloudTop = 260 + h * 1000;
+  // (A water zone's sea, with a mist over it, sinks a little less.)
+  const cloudTop = t.sea ? 300 + h * 760 : 260 + h * 1000;
   const g = c.createLinearGradient(0, S.y, 0, cloudTop + 120);
   g.addColorStop(0, top);
   g.addColorStop(0.65, mix(top, horizon, 0.55));
@@ -563,8 +730,8 @@ export function paintSpireSky(c: Ctx, t: SpireZoneTheme, floor: number) {
     const sx = -300,
       sy = 120;
     const glow = c.createRadialGradient(sx, sy, 10, sx, sy, 700);
-    glow.addColorStop(0, `rgba(255,236,190,${0.55 * a})`);
-    glow.addColorStop(1, "rgba(255,236,190,0)");
+    glow.addColorStop(0, `rgba(${t.sun ?? "255,236,190"},${0.55 * a})`);
+    glow.addColorStop(1, `rgba(${t.sun ?? "255,236,190"},0)`);
     c.fillStyle = glow;
     c.fillRect(sx - 700, sy - 700, 1400, 1400);
   }
@@ -589,15 +756,17 @@ export function paintSpireSky(c: Ctx, t: SpireZoneTheme, floor: number) {
         120 + R() * 140,
         0.22 * (1 - h),
       );
+  if (t.sea) paintSeaBelow(c, t, h, cloudTop, puff, floor);
   // The far cloud sea behind the tower.
-  for (let row = 0; row < 5; row++)
-    for (let k = 0; k < 16; k++)
-      puff(
-        S.x + (k + R() * 0.8) * (S.w / 15),
-        cloudTop + row * 90 + R() * 40,
-        170 + R() * 110,
-        0.55 + row * 0.08,
-      );
+  else
+    for (let row = 0; row < 5; row++)
+      for (let k = 0; k < 16; k++)
+        puff(
+          S.x + (k + R() * 0.8) * (S.w / 15),
+          cloudTop + row * 90 + R() * 40,
+          170 + R() * 110,
+          0.55 + row * 0.08,
+        );
   // The tower's face under the court: dressed stone courses, darker going
   // down, sinking into the clouds.
   const faceTop = H - 2,
@@ -613,7 +782,7 @@ export function paintSpireSky(c: Ctx, t: SpireZoneTheme, floor: number) {
   c.lineTo(70, faceTop + face);
   c.closePath();
   c.fill();
-  c.strokeStyle = "rgba(30,18,6,0.4)";
+  c.strokeStyle = tone(t, "rgba(30,18,6,0.4)");
   c.lineWidth = 3;
   reseed(9300);
   for (let y = faceTop + 34; y < faceTop + face; y += 34) {
@@ -630,12 +799,12 @@ export function paintSpireSky(c: Ctx, t: SpireZoneTheme, floor: number) {
     }
   }
   // Under the coping: a deep shadow line, then a row of corbels.
-  c.fillStyle = "rgba(20,10,4,0.55)";
+  c.fillStyle = tone(t, "rgba(20,10,4,0.55)");
   c.fillRect(-6, faceTop, W + 12, 10);
   for (let x = 30; x < W; x += 80) {
     c.fillStyle = mix(t.front[0], "#000000", 0.25);
     c.fillRect(x, faceTop + 10, 26, 22);
-    c.fillStyle = "rgba(255,240,210,0.2)";
+    c.fillStyle = tone(t, "rgba(255,240,210,0.2)");
     c.fillRect(x, faceTop + 10, 26, 3);
   }
   // Glowing crystal seams on the tower (the zone's mark).
@@ -657,6 +826,112 @@ export function paintSpireSky(c: Ctx, t: SpireZoneTheme, floor: number) {
       150 + R() * 120,
       0.7,
     );
+}
+/**
+ * A water zone's view down: the sea far below the tower from `top` (the
+ * horizon), glinting, with a mist bank over it and gulls wheeling in the
+ * mist low down; higher up a moon path on a night sea and bioluminescent
+ * specks along the swell. Painted once per floor with the sky.
+ */
+function paintSeaBelow(
+  c: Ctx,
+  t: SpireZoneTheme,
+  h: number,
+  top: number,
+  puff: (x: number, y: number, r: number, a: number) => void,
+  floor: number,
+) {
+  const sea = t.sea!,
+    S = SPIRE_SKY,
+    bottom = S.y + S.h;
+  if (top >= bottom) return;
+  const night = Math.min(1, h * 1.3);
+  const horizonCol = mix(mix(t.skyLow[1], t.skyHigh[1], h), sea.shallow, 0.35);
+  const g = c.createLinearGradient(0, top, 0, bottom);
+  g.addColorStop(0, horizonCol);
+  g.addColorStop(0.25, mix(sea.shallow, sea.deep, 0.35 + 0.5 * night));
+  g.addColorStop(1, mix(sea.deep, "#000814", 0.6 * night));
+  c.fillStyle = g;
+  c.fillRect(S.x, top, S.w, bottom - top);
+  // Glints on the swell: short strokes, longer and further apart near us.
+  reseed(9500 + floor);
+  c.lineCap = "round";
+  for (let k = 0; k < 220; k++) {
+    const d = R(),
+      y = top + 6 + d * d * (bottom - top),
+      len = 8 + d * 40;
+    const x = S.x + R() * S.w;
+    c.strokeStyle = rgba(sea.foam, (0.18 + 0.3 * R()) * (1 - 0.6 * night));
+    c.lineWidth = 1 + d * 2;
+    c.beginPath();
+    c.moveTo(x, y);
+    c.lineTo(x + len, y + (R() - 0.5) * 2);
+    c.stroke();
+  }
+  // The moon's path on a night sea.
+  if (h > 0.45) {
+    const a = (h - 0.45) / 0.55;
+    for (let k = 0; k < 40; k++) {
+      const d = k / 40,
+        y = top + 4 + d * d * (bottom - top);
+      const w = 14 + d * 120;
+      c.fillStyle = `rgba(240,246,255,${(0.5 - 0.35 * d) * a})`;
+      c.fillRect(
+        1900 - w / 2 + (R() - 0.5) * w * 0.6,
+        y,
+        w * (0.3 + R() * 0.4),
+        2 + d * 3,
+      );
+    }
+  }
+  // Bioluminescence along the swell (it shows once the sea is dark).
+  if (h > 0.3) {
+    const a = Math.min(1, (h - 0.3) / 0.5);
+    for (let k = 0; k < 140; k++) {
+      const d = R(),
+        x = S.x + R() * S.w,
+        y = top + 10 + d * (bottom - top);
+      const r = 2 + d * 5;
+      const b = c.createRadialGradient(x, y, 0, x, y, r * 2.4);
+      b.addColorStop(0, rgba(sea.bio, 0.7 * a));
+      b.addColorStop(1, rgba(sea.bio, 0));
+      c.fillStyle = b;
+      c.fillRect(x - r * 2.4, y - r * 2.4, r * 4.8, r * 4.8);
+    }
+  }
+  // The mist bank on the water (thin by night).
+  for (let row = 0; row < 3; row++)
+    for (let k = 0; k < 14; k++)
+      puff(
+        S.x + (k + R() * 0.8) * (S.w / 13),
+        top - 30 + row * 70 + R() * 40,
+        150 + R() * 110,
+        (0.4 + row * 0.08) * (1 - 0.45 * night),
+      );
+  // Gulls wheeling in the mist, while it is still light.
+  if (h < 0.7) {
+    const a = 1 - h / 0.7;
+    c.strokeStyle = `rgba(40,62,78,${0.75 * a})`;
+    c.lineJoin = "round";
+    for (let k = 0; k < 9; k++) {
+      const x = S.x + 120 + R() * (S.w - 240),
+        y = top - 220 + R() * 260,
+        span = 12 + R() * 12;
+      // (Never over the court itself.)
+      if (x > -40 && x < W + 40 && y > -40 && y < H + 40) continue;
+      c.lineWidth = 2.6;
+      c.beginPath();
+      c.moveTo(x - span, y - span * 0.35);
+      c.quadraticCurveTo(x - span * 0.45, y - span * 0.5, x, y);
+      c.quadraticCurveTo(
+        x + span * 0.45,
+        y - span * 0.5,
+        x + span,
+        y - span * 0.35,
+      );
+      c.stroke();
+    }
+  }
 }
 function rgba(col: string, a: number) {
   const m = col.startsWith("rgb")
@@ -732,7 +1007,7 @@ function crystal(
   c.lineTo(tip.x, tip.y);
   c.lineTo(x + lean * 0.1, y + 2);
   c.stroke();
-  c.fillStyle = "rgba(255,255,240,0.7)";
+  c.fillStyle = tone(t, "rgba(255,255,240,0.7)");
   c.beginPath();
   c.moveTo(x - w * 0.3 + lean * 0.3, y - h * 0.6);
   c.lineTo(tip.x - 1, tip.y + 6);
@@ -801,9 +1076,9 @@ function courses(
         sw = Math.min(x + w, cx + 24 + R() * 26) - sx;
       c.fillStyle = mix(t.front[0], t.front[1], 0.2 + R() * 0.5);
       c.fillRect(sx, y + r * ch, sw, ch);
-      c.fillStyle = "rgba(255,244,220,0.25)";
+      c.fillStyle = tone(t, "rgba(255,244,220,0.25)");
       c.fillRect(sx + 1, y + r * ch + 1, sw - 2, 2);
-      c.fillStyle = "rgba(30,18,6,0.4)";
+      c.fillStyle = tone(t, "rgba(30,18,6,0.4)");
       c.fillRect(sx, y + r * ch + ch - 2, sw, 2);
       c.fillRect(sx + sw - 1.5, y + r * ch, 1.5, ch);
       cx = sx + sw;
@@ -811,7 +1086,7 @@ function courses(
   }
   const ao = c.createLinearGradient(0, y, 0, y + h);
   ao.addColorStop(0, "rgba(0,0,0,0)");
-  ao.addColorStop(1, "rgba(30,18,6,0.38)");
+  ao.addColorStop(1, tone(t, "rgba(30,18,6,0.38)"));
   c.fillStyle = ao;
   c.fillRect(x, y, w, h);
 }
@@ -821,13 +1096,41 @@ function courses(
  * it, so they keep their own warm light on every floor. The atlas spot's
  * clip keeps the fill inside the piece.
  */
-function duskStone(c: Ctx, h: number) {
+function duskStone(c: Ctx, t: SpireZoneTheme, h: number) {
   if (h <= 0) return;
   c.save();
   c.globalCompositeOperation = "source-atop";
-  c.fillStyle = `rgba(34,24,72,${0.36 * h})`;
+  c.fillStyle = `rgba(${t.dusk ?? "34,24,72"},${0.36 * h})`;
   c.fillRect(-4000, -4000, 8000, 8000);
   c.restore();
+}
+/**
+ * A water zone's high floors: bioluminescent specks on a block's front
+ * face (painted after its dusk: they light themselves), more the higher.
+ */
+function bioSpecks(
+  c: Ctx,
+  t: SpireZoneTheme,
+  x: number,
+  y: number,
+  w: number,
+  hgt: number,
+  h: number,
+) {
+  if (!t.sea || h < 0.3) return;
+  const n = Math.round(4 + 10 * h),
+    a = Math.min(1, (h - 0.3) / 0.5);
+  for (let k = 0; k < n; k++) {
+    const sx = x + 4 + R() * (w - 8),
+      sy = y + hgt * (0.35 + R() * 0.6),
+      r = 1.2 + R() * 1.6;
+    const g = c.createRadialGradient(sx, sy, 0, sx, sy, r * 3);
+    g.addColorStop(0, rgba(t.sea.bio, 0.9 * a));
+    g.addColorStop(0.35, rgba(t.sea.bio, 0.5 * a));
+    g.addColorStop(1, rgba(t.sea.bio, 0));
+    c.fillStyle = g;
+    c.fillRect(sx - r * 3, sy - r * 3, r * 6, r * 6);
+  }
 }
 /**
  * One block on its footprint, drawn in world coordinates: the top face over
@@ -872,9 +1175,10 @@ function paintBlock(
       [18, 1],
       [4, 0.5],
     ]);
-    c.fillStyle = "rgba(255,248,230,0.45)";
+    c.fillStyle = tone(t, "rgba(255,248,230,0.45)");
     c.fillRect(x + 10, top + 1, w - 20, 2.5);
-    duskStone(c, h);
+    duskStone(c, t, h);
+    bioSpecks(c, t, x, front, w, BLOCK_H, h);
     cluster(c, t, x + w / 2, top + depth * 0.62, Math.min(w, 70) * 0.7, 3, h);
     return;
   }
@@ -893,14 +1197,14 @@ function paintBlock(
   c.strokeStyle = rgba(t.carve, 0.45);
   c.lineWidth = 1.5;
   c.strokeRect(x + 7, top + 6, w - 14, depth - 12);
-  c.fillStyle = "rgba(255,250,236,0.55)";
+  c.fillStyle = tone(t, "rgba(255,250,236,0.55)");
   c.fillRect(x, top, w, 3);
   c.fillRect(x, top, 3, depth);
-  c.fillStyle = "rgba(40,24,10,0.35)";
+  c.fillStyle = tone(t, "rgba(40,24,10,0.35)");
   c.fillRect(x + w - 3, top, 3, depth);
   c.fillStyle = mix(t.top[0], "#ffffff", 0.2);
   c.fillRect(x, front - 2, w, 3);
-  c.fillStyle = "rgba(30,18,6,0.4)";
+  c.fillStyle = tone(t, "rgba(30,18,6,0.4)");
   c.fillRect(x, front + 1, w, 2);
   // A rune on the front, inlaid with the zone's crystal.
   c.save();
@@ -912,7 +1216,8 @@ function paintBlock(
   c.lineWidth = 1.8;
   rune(c, x + w / 2, front + BLOCK_H / 2, 9, seed);
   c.restore();
-  duskStone(c, h);
+  duskStone(c, t, h);
+  bioSpecks(c, t, x, front, w, BLOCK_H, h);
   if (style === "wall") {
     // Crystal clusters along the wall's length.
     const n = Math.max(2, Math.floor(depth / 70));
@@ -948,7 +1253,7 @@ function shadowFrame(foot: Rect) {
     h: foot.h + 40,
   };
 }
-function paintShadow(c: Ctx, foot: Rect, k: number) {
+function paintShadow(c: Ctx, t: SpireZoneTheme, foot: Rect, k: number) {
   const o = stoneBase(foot);
   const dx = SUNV.x * BLOCK_H,
     dy = SUNV.y * BLOCK_H;
@@ -956,7 +1261,7 @@ function paintShadow(c: Ctx, foot: Rect, k: number) {
   // place (canvas shadows are in device pixels: the atlas scale is k).
   const off = 4000;
   c.save();
-  c.shadowColor = "rgba(30,18,6,0.4)";
+  c.shadowColor = tone(t, "rgba(30,18,6,0.4)");
   c.shadowBlur = 10 * k;
   c.shadowOffsetX = off * k;
   c.fillStyle = "#000";
@@ -972,8 +1277,8 @@ function paintShadow(c: Ctx, foot: Rect, k: number) {
   c.restore();
   // Contact shade right at its foot.
   const g = c.createLinearGradient(0, foot.y + foot.h, 0, foot.y + foot.h + 12);
-  g.addColorStop(0, "rgba(30,18,6,0.45)");
-  g.addColorStop(1, "rgba(30,18,6,0)");
+  g.addColorStop(0, tone(t, "rgba(30,18,6,0.45)"));
+  g.addColorStop(1, tone(t, "rgba(30,18,6,0)"));
   c.fillStyle = g;
   c.fillRect(foot.x - 4, foot.y + foot.h, foot.w + 8, 12);
 }
@@ -1012,7 +1317,7 @@ function paintStairs(c: Ctx, t: SpireZoneTheme, lit: boolean, h = 0) {
     tg.addColorStop(1, t.top[1]);
     c.fillStyle = tg;
     c.fillRect(inner.x, ty, inner.w, tread);
-    c.fillStyle = "rgba(255,250,236,0.5)";
+    c.fillStyle = tone(t, "rgba(255,250,236,0.5)");
     c.fillRect(inner.x, fy - 2, inner.w, 2);
     // The riser below its nosing (faces the camera).
     const rg = c.createLinearGradient(0, fy, 0, fy + SPIRE_STAIRS_RISE);
@@ -1063,7 +1368,7 @@ function paintStairs(c: Ctx, t: SpireZoneTheme, lit: boolean, h = 0) {
     c.lineTo(x - 1, s.y + s.h - SPIRE_STAIRS_RISE - 6);
     c.closePath();
     c.fill();
-    c.fillStyle = "rgba(30,18,6,0.35)";
+    c.fillStyle = tone(t, "rgba(30,18,6,0.35)");
     c.fillRect(x + w - 2, topY, 2, s.y + s.h - topY);
   }
   // Newel posts at the foot, each with a crystal lamp.
@@ -1128,7 +1433,7 @@ function paintStairs(c: Ctx, t: SpireZoneTheme, lit: boolean, h = 0) {
     g.addColorStop(1, t.front[1]);
     c.fillStyle = g;
     c.fillRect(px, landing - rise + 30, postW, rise - 30 + 4);
-    c.fillStyle = "rgba(30,18,6,0.3)";
+    c.fillStyle = tone(t, "rgba(30,18,6,0.3)");
     for (let y = landing - rise + 50; y < landing; y += 20)
       c.fillRect(px, y, postW, 1.5);
   }
@@ -1143,7 +1448,7 @@ function paintStairs(c: Ctx, t: SpireZoneTheme, lit: boolean, h = 0) {
     0,
   );
   c.stroke();
-  c.strokeStyle = "rgba(255,250,236,0.55)";
+  c.strokeStyle = tone(t, "rgba(255,250,236,0.55)");
   c.lineWidth = 2;
   c.beginPath();
   c.arc(
@@ -1155,7 +1460,7 @@ function paintStairs(c: Ctx, t: SpireZoneTheme, lit: boolean, h = 0) {
   );
   c.stroke();
   // The height's dusk on the stone; then what lights itself.
-  duskStone(c, h);
+  duskStone(c, t, h);
   if (lit) {
     c.fillStyle = og;
     c.beginPath();
@@ -1205,7 +1510,7 @@ function paintNumber(c: Ctx, t: SpireZoneTheme, floor: number, k: number) {
   c.strokeText(text, 0, 0);
   c.restore();
   // The light lip on the groove's lower-right edge.
-  c.fillStyle = "rgba(255,248,230,0.9)";
+  c.fillStyle = tone(t, "rgba(255,248,230,0.9)");
   c.fillText(text, 3.5, 4);
   // The groove itself: deep and dark, a little wider than the number, so
   // it reads on every floor (whatever the light).
@@ -1255,7 +1560,7 @@ export function spireFloorPieces(
       out.push({
         name: `shadow${i}`,
         ...sf,
-        paint: (c) => paintShadow(c, foot, k),
+        paint: (c) => paintShadow(c, t, foot, k),
       });
       const bf = at(blockFrame(foot));
       out.push({
@@ -1278,7 +1583,7 @@ export function spireFloorPieces(
     out.push({
       name: "stairs-shadow",
       ...shadowFrame(SPIRE_STAIRS),
-      paint: (c) => paintShadow(c, SPIRE_STAIRS, k),
+      paint: (c) => paintShadow(c, t, SPIRE_STAIRS, k),
     });
     out.push({
       name: "number",
@@ -1398,5 +1703,56 @@ export function paintSpireSummitGrade(c: Ctx) {
   m.addColorStop(1, "rgba(170,160,255,0)");
   c.fillStyle = m;
   c.fillRect(0, 0, W, H);
+  c.restore();
+}
+
+// ──────────────────────── The summit (floor 20) ────────────────────────
+
+/**
+ * Floor 20 keeps Tidelotl's lagoon court; painted over it once, a summit
+ * grade of its own: a deep night sea (cool and dim, abyssal blue pressing
+ * in from the edges) under a moon at the upper right, its light rippling
+ * across the water. Warnings are drawn live on top, so they keep their
+ * colours.
+ */
+export function paintLagoonSummitGrade(c: Ctx) {
+  c.save();
+  c.globalCompositeOperation = "multiply";
+  c.fillStyle = "#6a86b4";
+  c.fillRect(0, 0, W, H);
+  c.globalCompositeOperation = "source-over";
+  const v = c.createRadialGradient(
+    W / 2,
+    H / 2,
+    H * 0.32,
+    W / 2,
+    H / 2,
+    H * 1.02,
+  );
+  v.addColorStop(0, "rgba(2,12,34,0)");
+  v.addColorStop(1, "rgba(2,12,34,0.58)");
+  c.fillStyle = v;
+  c.fillRect(0, 0, W, H);
+  // Moonlight from the upper right, and its path rippling across the court.
+  c.globalCompositeOperation = "screen";
+  const m = c.createRadialGradient(W, 0, 40, W, 0, 950);
+  m.addColorStop(0, "rgba(160,205,255,0.26)");
+  m.addColorStop(1, "rgba(160,205,255,0)");
+  c.fillStyle = m;
+  c.fillRect(0, 0, W, H);
+  reseed(20801);
+  c.strokeStyle = "rgba(190,225,255,0.10)";
+  c.lineCap = "round";
+  for (let k = 0; k < 46; k++) {
+    // Along the diagonal from the moon toward the lower left.
+    const d = R(),
+      x = W - d * W * 0.9 + (R() - 0.5) * 260,
+      y = d * H * 0.9 + (R() - 0.5) * 120;
+    c.lineWidth = 2 + R() * 2;
+    c.beginPath();
+    c.moveTo(x, y);
+    c.lineTo(x + 26 + R() * 40, y + (R() - 0.5) * 3);
+    c.stroke();
+  }
   c.restore();
 }

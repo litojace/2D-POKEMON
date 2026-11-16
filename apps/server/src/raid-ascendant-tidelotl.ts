@@ -7,7 +7,8 @@
  *   can't be jumped, crossed by lanes of calm water: stand in one, or on an
  *   island) and the Geyser Line (three geysers in a row, marked at once,
  *   erupting one after another).
- * - Combos: bubble fans chain into geysers from chapter 2; in chapter 3 a
+ * - Combos (ASCENDANT_TIDELOTL.combosFrom): bubble fans and dives that
+ *   surface in the water chain into geysers; from chapter 2 a
  *   Breaker Wall that has crossed is followed by geysers, and a strand ends
  *   with two tail sweeps (the second ring wider, a jump cooldown later).
  * - Fewer openings: the Ascendant tier's windows (strands and staggers).
@@ -143,6 +144,54 @@ export function AscendantTidelotlRules<B extends TideClass>(Base: B) {
           (T.health.base + T.health.perExtraPlayer * extra),
       );
     }
+    /** Tighter rhythm by chapter (see ASCENDANT_TIDELOTL.cadence). */
+    protected override cadence() {
+      const base = super.cadence();
+      if (!this.tideAscendant() || !this.smart()) return base;
+      return base * A.cadence[Math.max(0, Math.min(2, this.raid.phase - 1))];
+    }
+    /** A party meets harder hits (see ASCENDANT_TIDELOTL.partyDamage). */
+    protected override bossDamage() {
+      const base = super.bossDamage();
+      if (!this.tideAscendant() || !this.smart()) return base;
+      return base * (1 + A.partyDamage * Math.max(0, this.raid.partySize - 1));
+    }
+    /** A party's longer punish windows (see ASCENDANT_TIDELOTL.partyWindows). */
+    protected override window(seconds: number) {
+      const base = super.window(seconds);
+      if (!this.tideAscendant() || !this.smart()) return base;
+      return base * (1 + A.partyWindows * Math.max(0, this.raid.partySize - 1));
+    }
+    /** May a Geyser Line or bubble fan start alongside an exclusive now? */
+    protected tideOverlaps() {
+      const r = this.raid,
+        O = A.overlap;
+      return (
+        this.tideAscendant() &&
+        this.smart() &&
+        r.phase >= O.from &&
+        this.heroes().filter((p) => p.hp > 0).length >= O.raiders
+      );
+    }
+    /**
+     * High Tide, the Undertow and a prison leave the floor's busy rule to
+     * the overlap rules (see ASCENDANT_TIDELOTL.overlap).
+     */
+    protected override busy() {
+      if (!this.tideOverlaps()) return super.busy();
+      const r = this.raid,
+        warnings = r.warnings,
+        undertow = r.undertow;
+      const open = A.overlap.with;
+      r.warnings = warnings.filter((w) => !open.includes(w.kind));
+      if (open.includes("undertow")) r.undertow = undefined;
+      try {
+        return super.busy();
+      } finally {
+        r.warnings = warnings;
+        r.undertow = undertow;
+      }
+    }
     /** A Breaker Wall's warning keeps its length (like the Tidal Wave's). */
     protected override telegraph(kind: RaidAttack, seconds: number) {
       return kind === "breaker" && this.tideAscendant()
@@ -200,7 +249,7 @@ export function AscendantTidelotlRules<B extends TideClass>(Base: B) {
             { followUp: true },
           );
       }
-      // Chapter 3: once the wall has crossed, geysers under a raider.
+      // Once the wall has crossed (combosFrom.breaker), geysers under a raider.
       const chase = this.breakerChase;
       if (chase && !(r.waves ?? []).some((w) => w.id === chase.wave)) {
         this.breakerChase = undefined;
@@ -387,7 +436,7 @@ export function AscendantTidelotlRules<B extends TideClass>(Base: B) {
         this.waveHits.set(id, new Set());
         this.event("raid-impact", w, 0x2fe0ff, undefined, boss.id);
         this.events[this.events.length - 1].raidRadius = w.radius;
-        if (r.phase === 3 && this.smart())
+        if (r.phase >= A.combosFrom.breaker && this.smart())
           this.breakerChase = { wave: id, cast: this.currentCast };
         return;
       }
@@ -405,11 +454,11 @@ export function AscendantTidelotlRules<B extends TideClass>(Base: B) {
         return;
       }
       super.resolveWarning(w, boss);
-      // A dive that surfaces in the water (a missed lure) from chapter 2:
+      // A dive that surfaces in the water (a missed lure, combosFrom.dive):
       // geysers rise under the raider it followed.
       if (
         w.kind === "dive" &&
-        r.phase >= 2 &&
+        r.phase >= A.combosFrom.dive &&
         this.smart() &&
         this.strandedOn < 0 &&
         !r.submerged
@@ -420,8 +469,12 @@ export function AscendantTidelotlRules<B extends TideClass>(Base: B) {
         if (target)
           for (const g of this.warnGeysers(target, false)) g.followUp = true;
       }
-      // Bubble fans chain into geysers from chapter 2.
-      if (w.kind === "bubbles" && r.phase >= 2 && this.smart()) {
+      // Bubble fans chain into geysers (combosFrom.bubbles).
+      if (
+        w.kind === "bubbles" &&
+        r.phase >= A.combosFrom.bubbles &&
+        this.smart()
+      ) {
         const target = this.heroes().find(
           (p) => p.id === w.targetId && p.hp > 0,
         );
@@ -615,14 +668,18 @@ export function AscendantTidelotlRules<B extends TideClass>(Base: B) {
       }
       return super.chooseTarget(kind, alive);
     }
-    /** Geyser Lines go at a second raider too (3+ raiders). */
+    /**
+     * Geyser Lines go at a second raider too, bubble fans from an earlier
+     * chapter (see ASCENDANT_TIDELOTL.echo).
+     */
     protected override pressured(kind: RaidAttack, alive: Fighter[]) {
+      if (super.pressured(kind, alive)) return true;
+      if (!this.tideAscendant() || !this.smart()) return false;
+      if (kind === "geyser") return alive.length >= A.echo.geyserRaiders;
       return (
-        super.pressured(kind, alive) ||
-        (this.tideAscendant() &&
-          kind === "geyser" &&
-          this.smart() &&
-          alive.length >= 3)
+        kind === "bubbles" &&
+        alive.length >= 3 &&
+        this.raid.phase >= A.echo.bubblesFrom
       );
     }
 
