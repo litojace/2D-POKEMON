@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { openHub, pushUntilBattle, snap, openPlayPanel } from "./helpers";
+import { openHub, pushUntilBattle, snap, openPlayPanel, createRoom } from "./helpers";
 
 // Every raid boss is vector art: a rig per boss (boss-vector-*-rig.ts), drawn
 // from one atlas of pieces per phase. These checks run all seven together in
@@ -350,7 +350,7 @@ for (const mobile of [false, true])
         }),
       );
       await openPlayPanel(page);
-      await page.click("#play-create");
+      await createRoom(page);
       await pushUntilBattle(page);
       await expect
         .poll(() =>

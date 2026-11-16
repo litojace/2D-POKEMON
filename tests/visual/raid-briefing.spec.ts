@@ -6,6 +6,7 @@ import {
   pushUntilBattle,
   snap,
   openPlayPanel,
+  createRoom,
 } from "./helpers";
 for (const size of [
   { width: 1440, height: 900 },
@@ -32,7 +33,7 @@ for (const size of [
         (window as any).__room("raid", { boss: "prismatail" }),
       );
       await openPlayPanel(page);
-      await page.click("#play-create");
+      await createRoom(page);
       await pushUntilBattle(page);
       for (const boss of [
         "prismatail",

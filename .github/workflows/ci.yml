@@ -29,40 +29,21 @@ jobs:
   visual:
     # The real client in Chromium with no server: one fighter on the select
     # screen, arenas filling their frames, dialogs fitting a phone. Split
-    # across eighteen runners (one worker each, so timing checks keep a
-    # machine to themselves): twelve shards of the suite, and six of the
-    # panel-scroll sweeps, whose twenty tests take about an hour between them
-    # and would otherwise all land in one shard. Shards split by test count,
-    # not duration, so the slowest sets the pace: six and four shards took
-    # about 30 minutes (10 to 30 per shard, Nov 2026); twelve and six aim for
-    # about 15. Eighteen runners plus verify stay under the free plan's 20
-    # jobs at once. It runs for main (what Render deploys), pull requests and
-    # manual runs, not again for the same commit on work.
+    # across eighteen runners, one worker each, so timing checks keep a
+    # machine to themselves. The shards are cut by running time, not test
+    # count (scripts/visual-shards.mjs, from tests/visual/durations.json): by
+    # count, the shard that drew the raid fights and panel sweeps took 21
+    # minutes while others took 4 (Nov 2026); by time, all aim for the same
+    # share, about 12. Eighteen runners plus verify stay under the free plan's
+    # 20 jobs at once. It runs for main (what Render deploys), pull requests
+    # and manual runs, not again for the same commit on work.
     if: github.event_name != 'push' || github.ref == 'refs/heads/main'
-    name: visual (${{ matrix.part }})
+    name: visual (${{ matrix.shard }} of 18)
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - { part: "1 of 12", args: "--grep-invert 'scroll to their end' --shard=1/12" }
-          - { part: "2 of 12", args: "--grep-invert 'scroll to their end' --shard=2/12" }
-          - { part: "3 of 12", args: "--grep-invert 'scroll to their end' --shard=3/12" }
-          - { part: "4 of 12", args: "--grep-invert 'scroll to their end' --shard=4/12" }
-          - { part: "5 of 12", args: "--grep-invert 'scroll to their end' --shard=5/12" }
-          - { part: "6 of 12", args: "--grep-invert 'scroll to their end' --shard=6/12" }
-          - { part: "7 of 12", args: "--grep-invert 'scroll to their end' --shard=7/12" }
-          - { part: "8 of 12", args: "--grep-invert 'scroll to their end' --shard=8/12" }
-          - { part: "9 of 12", args: "--grep-invert 'scroll to their end' --shard=9/12" }
-          - { part: "10 of 12", args: "--grep-invert 'scroll to their end' --shard=10/12" }
-          - { part: "11 of 12", args: "--grep-invert 'scroll to their end' --shard=11/12" }
-          - { part: "12 of 12", args: "--grep-invert 'scroll to their end' --shard=12/12" }
-          - { part: "sweeps 1 of 6", args: "panel-scroll --shard=1/6" }
-          - { part: "sweeps 2 of 6", args: "panel-scroll --shard=2/6" }
-          - { part: "sweeps 3 of 6", args: "panel-scroll --shard=3/6" }
-          - { part: "sweeps 4 of 6", args: "panel-scroll --shard=4/6" }
-          - { part: "sweeps 5 of 6", args: "panel-scroll --shard=5/6" }
-          - { part: "sweeps 6 of 6", args: "panel-scroll --shard=6/6" }
+        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -71,7 +52,12 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
-      - run: npm run test:visual -- ${{ matrix.args }}
+      - run: node scripts/visual-shards.mjs ${{ matrix.shard }} 18 visual-shard.txt
+      - run: npm run test:visual -- --test-list visual-shard.txt
+        env:
+          # Without --shard every blob is report.zip, and the report job's
+          # download (merge-multiple) would write them over each other.
+          PLAYWRIGHT_BLOB_OUTPUT_NAME: report-${{ matrix.shard }}.zip
       - if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
@@ -98,6 +84,19 @@ jobs:
       - run: npx playwright merge-reports --reporter html ./all-blob-reports
         env:
           PLAYWRIGHT_HTML_OPEN: never
+      # How long each test took, for the shard plan: download the
+      # visual-durations artifact over tests/visual/durations.json and commit
+      # it when the shards drift apart (new or slower tests).
+      # (Not the JSON reporter: with every screenshot inline it is longer
+      # than Node allows in one string.)
+      - run: npx playwright merge-reports --reporter ./scripts/visual-durations-reporter.mjs ./all-blob-reports
+        env:
+          VISUAL_DURATIONS_OUT: durations.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: visual-durations
+          path: durations.json
+          retention-days: 30
       - uses: actions/upload-artifact@v4
         with:
           name: visual-report

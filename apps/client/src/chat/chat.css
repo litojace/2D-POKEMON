@@ -5,7 +5,7 @@
 .chat-button {
   --chat-size: 44px;
   position: fixed;
-  z-index: 72;
+  z-index: var(--z-chat-button);
   display: grid;
   place-items: center;
   width: var(--chat-size);
@@ -15,7 +15,7 @@
   border-radius: 50%;
   background: rgba(14, 26, 49, 0.84);
   backdrop-filter: blur(6px);
-  color: #eef2ff;
+  color: var(--ui-text);
   cursor: pointer;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
@@ -51,8 +51,8 @@
 .chat-button:hover,
 .chat-button:focus-visible,
 .chat-button[aria-expanded="true"] {
-  border-color: #ffd65b;
-  color: #ffd65b;
+  border-color: var(--ui-accent);
+  color: var(--ui-accent);
 }
 .chat-unread {
   position: absolute;
@@ -80,7 +80,7 @@
   top: 0;
   bottom: var(--chat-keyboard, 0px);
   left: 0;
-  z-index: 90;
+  z-index: var(--z-modal);
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
@@ -88,10 +88,11 @@
   padding: max(8px, calc(var(--safe-top, 0px) + 6px)) 10px
     max(8px, calc(var(--safe-bottom, 0px) + 4px))
     calc(var(--safe-left, 0px) + 10px);
-  border-right: 1px solid rgba(139, 174, 229, 0.3);
-  background: rgba(10, 19, 37, 0.95);
-  backdrop-filter: blur(8px);
-  color: #eef2ff;
+  /* Thick glass (ui/tokens.css), never blurred: it opens over matches,
+     where a blur is redrawn every frame (CLAUDE.md, older phones). */
+  border-right: 1px solid var(--glass-rim);
+  background: var(--glass-thick);
+  color: var(--ui-text);
   box-shadow: 8px 0 24px rgba(0, 0, 0, 0.35);
   animation: chat-in 0.18s ease-out;
 }
@@ -128,7 +129,7 @@
   border: 1px solid rgba(139, 174, 229, 0.25);
   border-radius: 999px;
   background: none;
-  color: #a0afc8;
+  color: var(--ui-dim);
   font:
     800 14px/1 "Barlow Condensed",
     sans-serif;
@@ -137,9 +138,9 @@
   cursor: pointer;
 }
 .chat-tab[aria-selected="true"] {
-  border-color: #ffd65b;
-  background: #ffd65b;
-  color: #2a1a00;
+  border-color: var(--ui-accent);
+  background: var(--ui-accent);
+  color: var(--ui-accent-ink);
 }
 .chat-tab svg {
   display: none;
@@ -204,7 +205,7 @@
   border: 1px solid rgba(139, 174, 229, 0.25);
   border-radius: 10px;
   background: none;
-  color: #a0afc8;
+  color: var(--ui-dim);
   font:
     700 13px/1 "Barlow",
     system-ui,
@@ -212,20 +213,20 @@
   cursor: pointer;
 }
 .chat-modes button[aria-checked="true"] {
-  border-color: #ffd65b;
-  background: #ffd65b;
-  color: #2a1a00;
+  border-color: var(--ui-accent);
+  background: var(--ui-accent);
+  color: var(--ui-accent-ink);
 }
 .chat-mode-note {
   margin: 6px 0 0;
-  color: #a0afc8;
+  color: var(--ui-dim);
   font:
     500 12px/1.35 "Barlow",
     system-ui,
     sans-serif;
 }
 .chat-gear[aria-expanded="true"] {
-  color: #ffd65b;
+  color: var(--ui-accent);
 }
 .chat-gear,
 .chat-close {
@@ -237,7 +238,7 @@
   border: 0;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.06);
-  color: #eef2ff;
+  color: var(--ui-text);
   cursor: pointer;
 }
 .chat-gear svg,
@@ -305,7 +306,7 @@ button.chat-say:focus-visible {
   border: 1px solid rgba(139, 174, 229, 0.3);
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.06);
-  color: #eef2ff;
+  color: var(--ui-text);
   font:
     700 13px/1 "Barlow",
     system-ui,
@@ -336,7 +337,7 @@ button.chat-say:focus-visible {
   font-weight: 700;
 }
 .chat-line.is-mine b {
-  color: #ffd65b;
+  color: var(--ui-accent);
 }
 .chat-line.is-quick span {
   font-size: 15px;
@@ -344,7 +345,7 @@ button.chat-say:focus-visible {
 .chat-empty {
   flex: 1;
   margin: 8px 0;
-  color: #a0afc8;
+  color: var(--ui-dim);
   font:
     500 13px/1.4 "Barlow",
     system-ui,
@@ -379,7 +380,7 @@ button.chat-say:focus-visible {
   border: 1px solid rgba(139, 174, 229, 0.25);
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.06);
-  color: #eef2ff;
+  color: var(--ui-text);
   font:
     600 13px/1 "Barlow",
     system-ui,
@@ -405,7 +406,7 @@ button.chat-say:focus-visible {
   border: 1px solid rgba(139, 174, 229, 0.35);
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.06);
-  color: #eef2ff;
+  color: var(--ui-text);
   font:
     500 16px/1 "Barlow",
     system-ui,
@@ -415,7 +416,7 @@ button.chat-say:focus-visible {
   color: #8592ab;
 }
 .chat-input:focus-visible {
-  outline: 2px solid #ffd65b;
+  outline: 2px solid var(--ui-accent);
   outline-offset: 1px;
 }
 .chat-send {
@@ -423,8 +424,8 @@ button.chat-say:focus-visible {
   padding: 0 14px;
   border: 0;
   border-radius: 12px;
-  background: #ffd65b;
-  color: #2a1a00;
+  background: var(--ui-accent);
+  color: var(--ui-accent-ink);
   font:
     800 14px/1 "Barlow Condensed",
     sans-serif;
@@ -485,7 +486,7 @@ button.chat-say:focus-visible {
   border: 0;
   border-radius: 10px;
   background: none;
-  color: #eef2ff;
+  color: var(--ui-text);
   font:
     600 15px/1.2 "Barlow",
     system-ui,
@@ -556,7 +557,7 @@ button.chat-say:focus-visible {
   border: 0;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.06);
-  color: #eef2ff;
+  color: var(--ui-text);
   cursor: pointer;
 }
 .chat-back svg {
@@ -586,7 +587,7 @@ button.chat-say:focus-visible {
   border: 1px solid #91b6de66;
   border-radius: 50%;
   background: #102039ed;
-  color: #eef2ff;
+  color: var(--ui-text);
   cursor: pointer;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
@@ -601,8 +602,8 @@ button.chat-say:focus-visible {
   height: 22px;
 }
 .battle-chat[aria-expanded="true"] {
-  border-color: #ffd65b;
-  color: #ffd65b;
+  border-color: var(--ui-accent);
+  color: var(--ui-accent);
 }
 .battle-chat[data-raid="true"] {
   top: calc(var(--safe-top, 0px) + var(--desktop-raid-hud-height, 24px) + 88px);
@@ -632,7 +633,7 @@ button.chat-say:focus-visible {
   border: 1px solid rgba(139, 174, 229, 0.25);
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.06);
-  color: #eef2ff;
+  color: var(--ui-text);
   font:
     700 13px/1 "Barlow",
     system-ui,
@@ -645,12 +646,12 @@ button.chat-say:focus-visible {
   font-size: 20px;
 }
 .battle-chat-grid button.is-ping {
-  border-color: #ffd65b88;
+  border-color: color-mix(in srgb, var(--ui-accent) 53.3%, transparent);
   color: #ffe7a3;
 }
 .battle-chat-grid button.is-mute {
   grid-column: 1 / -1;
-  color: #a0afc8;
+  color: var(--ui-dim);
 }
 .battle-chat-grid button[aria-pressed="true"] {
   color: #ff9aa5;
@@ -678,7 +679,7 @@ button.chat-say:focus-visible {
   padding: 3px 8px;
   border-radius: 8px;
   background: rgba(10, 19, 37, 0.72);
-  color: #eef2ff;
+  color: var(--ui-text);
   font:
     600 12px/1.3 "Barlow",
     system-ui,

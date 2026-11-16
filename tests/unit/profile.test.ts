@@ -223,9 +223,38 @@ describe("the rest of the profile", () => {
     expect(page).toContain("Lumiwick: 1 clear.");
     expect(page).toContain("1 / 2 · each one gives its title");
     expect(page).toContain('class="is-earned"><b>First Victory');
-    for (const go of ["ranks", "journey", "raids"])
+    // The Ranked and Journey tiles open those; the trophies open a boss's
+    // rewards. No second row of the same links.
+    for (const go of ["ranks", "journey"])
       expect(page).toContain(`data-profile-go="${go}"`);
+    expect(page).not.toContain('data-profile-go="raids"');
+    expect(page).not.toContain("pf-links");
     expect(page).toContain("Player · t@example.com");
+  });
+  it("is four tabs on a phone, one shown at a time", () => {
+    const tabsOf = (page: string) =>
+      [...page.matchAll(/data-ui-profile-tab="([a-z]+)"/g)].map((m) => m[1]);
+    // A desktop: one column, no tabs.
+    expect(tabsOf(html())).toEqual([]);
+    const phone = data({ compact: true });
+    const overview = html(phone);
+    expect(tabsOf(overview)).toEqual([
+      "overview",
+      "titles",
+      "mastery",
+      "trophies",
+    ]);
+    expect(overview).toContain('data-tab="overview"');
+    expect(overview).toContain('class="pf-tile');
+    expect(overview).not.toContain("pf-mastery-chip");
+    const mastery = html(phone, { ...profileView(), tab: "mastery" });
+    expect(mastery.match(/class="pf-mastery-chip/g)).toHaveLength(18);
+    expect(mastery).not.toContain("data-profile-boss=");
+    const trophies = html(phone, { ...profileView(), tab: "trophies" });
+    expect(trophies.match(/data-profile-boss=/g)).toHaveLength(7);
+    expect(html(phone, { ...profileView(), tab: "titles" })).toContain(
+      "pf-title-chip",
+    );
   });
   it("asks a guest to save their account, and nobody else", () => {
     expect(html(data({ guest: true, role: "Guest" }))).toContain(

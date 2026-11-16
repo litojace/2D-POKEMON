@@ -1,5 +1,10 @@
 import { expect, test } from "@playwright/test";
-import { openLobby, openPlayPanel, pushUntilBattle } from "./helpers";
+import {
+  openLobby,
+  openPlayPanel,
+  pushUntilBattle,
+  startPractice,
+} from "./helpers";
 import { fakeBistro } from "./bistro-fake";
 
 // A large iPad (long side 1180 pt or more, 4 GB or more) draws the hub's
@@ -60,7 +65,7 @@ for (const d of DEVICES)
       await page.click('#hub-scenes [data-hub-scene="lobby"]');
       await page.evaluate(() => (window as any).__room("practice"));
       await openPlayPanel(page);
-      await page.click("#practice");
+      await startPractice(page);
       await pushUntilBattle(page);
       await expect.poll(() => density("#game canvas")).toBeCloseTo(d.battle, 1);
       expect(errors).toEqual([]);

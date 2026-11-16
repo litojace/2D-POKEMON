@@ -7,6 +7,7 @@ import {
   snap,
   openPlayPanel,
   hubMenu,
+  createRoom,
 } from "./helpers";
 const pal = "22222222-2222-4222-8222-222222222222";
 test("raid room invites open Friends instead of displaying a room code", async ({
@@ -27,7 +28,7 @@ test("raid room invites open Friends instead of displaying a room code", async (
       w.__snap.players = w.__snap.players.filter((p: any) => !p.raidBoss);
     });
     await openPlayPanel(page);
-    await page.click("#play-create");
+    await createRoom(page);
     await expect
       .poll(async () => {
         await page.evaluate(() => (window as any).__push());

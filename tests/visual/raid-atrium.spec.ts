@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { openHub, openPlayPanel, pushUntilBattle } from "./helpers";
+import { openHub, openPlayPanel, pushUntilBattle, createRoom } from "./helpers";
 
 // Prismatail's Sun Atrium (raid-prismatail-atrium.ts): its mirrors,
 // skylights, light-relay beams, Sun Pillars and Blinded marker are images
@@ -84,7 +84,7 @@ async function battle(page: Page) {
     (window as any).__room("raid", { boss: "prismatail" }),
   );
   await openPlayPanel(page);
-  await page.click("#play-create");
+  await createRoom(page);
   await pushUntilBattle(page);
   return { errors, consoleErrors };
 }

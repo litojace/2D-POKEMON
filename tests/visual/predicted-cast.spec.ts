@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { openHub, pushUntilBattle, openPlayPanel } from "./helpers";
+import { openHub, pushUntilBattle, openPlayPanel, startPractice } from "./helpers";
 
 // Predicted casts: your own skill starts on the key press, not one network
 // round trip later. The offline harness never sends the server's "cast"
@@ -21,7 +21,7 @@ async function practice(page: Page, character = "voltkit") {
   });
   await page.evaluate((character) => (window as any).__room("practice", { arena: "classic", pos: [800, 760, 1300, 200], character }), character);
   await openPlayPanel(page);
-  await page.click("#practice");
+  await startPractice(page);
   await pushUntilBattle(page);
   await page.evaluate(() => {
     const w = window as any;

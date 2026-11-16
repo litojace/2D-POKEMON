@@ -1,5 +1,11 @@
 import { expect, test, type Page } from "@playwright/test";
-import { hubMenu, openHub, openPlayPanel, pushUntilBattle } from "./helpers";
+import {
+  hubMenu,
+  openHub,
+  openPlayPanel,
+  pushUntilBattle,
+  startPractice,
+} from "./helpers";
 import { ISLAND, setInsets } from "./ui-measure";
 import { fingerWorks, scrollSweep } from "./scroll-sweep";
 
@@ -409,7 +415,7 @@ for (const size of SIZES) {
     try {
       await page.evaluate(() => (window as any).__room("practice"));
       await openPlayPanel(page);
-      await page.click("#practice");
+      await startPractice(page);
       await pushUntilBattle(page);
       await page.click("#battle-menu");
       await settle(page);

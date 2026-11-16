@@ -82,10 +82,31 @@ export async function closeRaids(page: Page) {
 export async function openPlayPanel(page: Page) {
   await page.click("#lobby-mode");
   await page.click('#lobby-mode-menu [data-lobby-action="more-play"]');
-  await expect(page.locator("#practice")).toBeVisible();
+  await expect(page.locator("#join")).toBeVisible();
   // The mode menu closes as the play drawer opens over it.
   await expect(page.locator("#lobby-mode-menu")).toBeHidden();
 }
+
+/*
+ * The play drawer shows only Join / Watch and your name; the room types,
+ * bot levels and the practice room are the Lobby's mode menu. Their buttons
+ * stay in the drawer, hidden, because PLAY starts matches through them
+ * (lobbyPlay in main.ts). Tests that only need a match press them directly:
+ * the same handlers PLAY runs.
+ */
+const pressHidden = (page: Page, selector: string) =>
+  page.evaluate((s) => {
+    const b = document.querySelector<HTMLButtonElement>(s);
+    if (!b) throw new Error(`no ${s}`);
+    b.click();
+  }, selector);
+/** Create a private room (the fake server decides what kind). */
+export const createRoom = (page: Page) => pressHidden(page, "#play-create");
+/** The practice room. */
+export const startPractice = (page: Page) => pressHidden(page, "#practice");
+/** Choose the room type a created room will have. */
+export const pickRoomMode = (page: Page, mode: string) =>
+  pressHidden(page, `#menu [data-mode="${mode}"]`);
 
 /**
  * A Lobby screen. The menu rail has fighters, shop, raids, missions, ranks
@@ -186,3 +207,20 @@ export const inside = (inner: Box, outer: Box) =>
   inner.y >= outer.y - 1 &&
   inner.x + inner.width <= outer.x + outer.width + 1 &&
   inner.y + inner.height <= outer.y + outer.height + 1;
+
+/**
+ * A computed colour in rgb()/rgba() form. Colours made with color-mix()
+ * (the see-through shades of a token, ui/tokens.css) come back from
+ * getComputedStyle as `color(srgb r g b / a)`; this writes them the way
+ * plain colours come back, so a test can compare either.
+ */
+export const asRgb = (css: string) =>
+  css.replace(
+    /color\(srgb ([\d.]+) ([\d.]+) ([\d.]+)(?: \/ ([\d.]+))?\)/g,
+    (_, r, g, b, a) => {
+      const c = [r, g, b].map((v) => Math.round(parseFloat(v) * 255));
+      return a === undefined
+        ? `rgb(${c.join(", ")})`
+        : `rgba(${c.join(", ")}, ${parseFloat(a)})`;
+    },
+  );

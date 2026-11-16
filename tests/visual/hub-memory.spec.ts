@@ -1,5 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
-import { openLobby, openPlayPanel, pushUntilBattle } from "./helpers";
+import {
+  openLobby,
+  openPlayPanel,
+  pushUntilBattle,
+  createRoom,
+} from "./helpers";
 import { fakeFarm } from "./farm-fake";
 import { fakeBistro } from "./bistro-fake";
 
@@ -118,7 +123,7 @@ test("an iPhone lets the hidden Plaza's and Farm's grounds go, and a raid's canv
     (window as any).__room("raid", { boss: "tidewyrm" }),
   );
   await openPlayPanel(page);
-  await page.click("#play-create");
+  await createRoom(page);
   await pushUntilBattle(page);
   expect(await page.evaluate(() => (window as any).__liveContexts())).toBe(1);
   await page.evaluate(() => {

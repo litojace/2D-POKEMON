@@ -221,6 +221,18 @@ for (const size of SIZES)
     try {
       const page = await context.newPage();
       const { errors, panel } = await open(page, size);
+      // A phone shows the card's column as tabs (Overview, Titles, Mastery,
+      // Trophies); a desktop shows it all in one column.
+      const tab = async (t: string) => {
+        if (!size.phone) return;
+        await panel.locator(`[data-ui-profile-tab="${t}"]`).click();
+        await expect(
+          panel.locator(`[data-profile-main][data-tab="${t}"]`),
+        ).toBeVisible();
+      };
+      if (size.phone)
+        await expect(panel.locator(".ui-panel-head .ui-tabs")).toBeVisible();
+      else await expect(panel.locator("[data-ui-profile-tab]")).toHaveCount(0);
       // The card: your fighter in your look, title, name, level, rank, mastery.
       const card = panel.locator(".pf-card");
       await expect(card.locator('[data-fighter="voltkit"]')).toHaveCount(1);
@@ -240,14 +252,18 @@ for (const size of SIZES)
         "50%",
         "5",
       ]);
+      await tab("titles");
       await expect(panel.locator(".pf-title-chip")).toHaveCount(
         TITLES.length + 1,
       );
       await expect(panel.locator(".pf-title-chip.is-on")).toHaveText(
         "Cragbreaker",
       );
+      await tab("mastery");
       await expect(panel.locator(".pf-mastery-chip")).toHaveCount(18);
+      await tab("overview");
       await expect(panel.locator(".pf-mini")).toHaveCount(2);
+      await tab("trophies");
       await expect(panel.locator(".pf-trophy")).toHaveCount(7);
       await expect(
         panel.locator('.pf-trophy[data-profile-boss="grumblecrag"] b'),
@@ -266,6 +282,20 @@ for (const size of SIZES)
         }),
       ).toEqual([]);
       expect(await spills(page, ".profile-panel")).toEqual([]);
+      // Every tab fits its column, nothing cut off or spilling.
+      if (size.phone)
+        for (const t of ["overview", "titles", "mastery"]) {
+          await tab(t);
+          expect(
+            await layoutProblems(page, {
+              inset: size.island ? ISLAND : undefined,
+              phone: size.phone,
+            }),
+            t,
+          ).toEqual([]);
+          expect(await spills(page, ".profile-panel"), t).toEqual([]);
+        }
+      await tab("overview");
 
       // Centred: the card's words in the card, each number and label in its
       // tile, Share card, the title chips, the links.
@@ -293,26 +323,24 @@ for (const size of SIZES)
         1,
         size.phone ? { across: true } : {},
       );
-      await centred(page, '.pf-title-chip[data-profile-title=""]', "No title");
       await centred(page, "[data-profile-rename]", "Change name");
       await boxCentred(page, ".pf-name-now", ".pf-name-row", "name", "y");
+      await tab("titles");
+      await centred(page, '.pf-title-chip[data-profile-title=""]', "No title");
       await centred(page, ".pf-title-chip.is-on", "worn title");
-      for (const go of ["ranks", "journey", "raids"])
-        await centred(
-          page,
-          `.pf-links [data-profile-go="${go}"]`,
-          `${go} link`,
-        );
+      // No row of Ranks / Journey / Raid rewards links: the Journey and
+      // Ranked tiles and the trophies above open those already.
+      await expect(panel.locator(".pf-links")).toHaveCount(0);
       // One size each: tiles, title chips' height, mastery chips, trophies,
-      // the two summaries, the links; the tiles share a top edge.
-      expect(await sizes(page, ".pf-tile"), "tiles").toHaveLength(1);
+      // the two summaries; the tiles share a top edge.
+      await tab("mastery");
       expect(
         await sizes(page, ".pf-mastery-chip"),
         "mastery chips",
       ).toHaveLength(1);
+      await tab("trophies");
       expect(await sizes(page, ".pf-trophy"), "trophies").toHaveLength(1);
-      expect(await sizes(page, ".pf-mini"), "summaries").toHaveLength(1);
-      expect(await sizes(page, ".pf-links > .ui-btn"), "links").toHaveLength(1);
+      await tab("titles");
       const chipHeights = await page.evaluate(
         () =>
           new Set(
@@ -322,9 +350,13 @@ for (const size of SIZES)
           ).size,
       );
       expect(chipHeights, "title chips' height").toBe(1);
+      await tab("overview");
+      expect(await sizes(page, ".pf-tile"), "tiles").toHaveLength(1);
+      expect(await sizes(page, ".pf-mini"), "summaries").toHaveLength(1);
       const tiles = await rowsEven(page, ".pf-tile");
       expect(tiles.heights).toHaveLength(1);
       // Eighteen fighters in two even rows of nine.
+      await tab("mastery");
       const rows = await page.evaluate(() => {
         const tops = Array.from(
           document.querySelectorAll(".pf-mastery-chip"),
@@ -334,10 +366,11 @@ for (const size of SIZES)
         );
       });
       expect(rows).toEqual([9, 9]);
+      await tab("overview");
       // The card keeps its place; the column beside it scrolls to its end.
       const main = panel.locator(".pf-main");
       await main.evaluate((e) => (e.scrollTop = e.scrollHeight));
-      await expect(panel.locator(".pf-links")).toBeInViewport();
+      await expect(panel.locator(".pf-who")).toBeInViewport();
       await expect(card).toBeInViewport();
       expect(
         await layoutProblems(page, {
@@ -658,6 +691,8 @@ test("a locked name says when; a refusal says why", async ({ browser }) => {
       w.__refuseName = true;
     });
     await page.keyboard.press("Escape");
+    // Gone (its close glides out) before it opens again with the new answer.
+    await expect(panel).toHaveCount(0);
     await page.click("#account-profile");
     await expect(panel.locator("[data-profile-rename]")).toBeEnabled();
     await panel.locator("[data-profile-rename]").click();

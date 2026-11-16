@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { openHub, openPlayPanel, pushUntilBattle } from "./helpers";
+import { openHub, openPlayPanel, pushUntilBattle, createRoom } from "./helpers";
 
 // While the player waits in a raid room, the boss's atlas is painted ahead
 // (boss-prepaint.ts), so the battle doesn't paint it behind the loading
@@ -23,7 +23,7 @@ for (const boss of ["tidewyrm", "emberwing"])
       w.__snap = m.packSnapshot(a.snapshot());
     }, boss);
     await openPlayPanel(page);
-    await page.click("#play-create");
+    await createRoom(page);
     // The same module instances the client uses: import the very URLs the
     // page loaded them from (served from /@fs/<the checkout>/…).
     const client = (file: string) =>

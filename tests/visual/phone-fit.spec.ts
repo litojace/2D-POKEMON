@@ -1,5 +1,13 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
-import { hubMenu, openHub, openPlayPanel, settle, snap } from "./helpers";
+import {
+  hubMenu,
+  openHub,
+  openPlayPanel,
+  settle,
+  snap,
+  pickRoomMode,
+  createRoom,
+} from "./helpers";
 import { fakeFarm } from "./farm-fake";
 import { fakeBistro } from "./bistro-fake";
 
@@ -418,8 +426,8 @@ for (const size of SIZES) {
           (window as any).__room("pvp", { mode: "teams", phase: "lobby" }),
         );
         await openPlayPanel(page);
-        await page.click('#menu [data-mode="teams"]');
-        await page.click("#play-create");
+        await pickRoomMode(page, "teams");
+        await createRoom(page);
         await expect
           .poll(async () => {
             await page.evaluate(() => (window as any).__push());

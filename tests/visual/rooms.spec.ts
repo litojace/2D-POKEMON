@@ -1,5 +1,13 @@
 import { expect, test, type Page } from "@playwright/test";
-import { box, inside, openHub, snap } from "./helpers";
+import {
+  asRgb,
+  box,
+  inside,
+  openHub,
+  snap,
+  pickRoomMode,
+  createRoom,
+} from "./helpers";
 import {
   ISLAND,
   closeSpot,
@@ -52,8 +60,8 @@ async function enterRoom(page: Page, kind: "raid" | "duel" | "teams" | "ffa") {
   } else {
     await page.click("#lobby-mode");
     await page.click('#lobby-mode-menu [data-lobby-action="more-play"]');
-    await page.click(`#menu [data-mode="${kind}"]`);
-    await page.click("#play-create");
+    await pickRoomMode(page, kind);
+    await createRoom(page);
   }
   await expect
     .poll(async () => {
@@ -135,13 +143,16 @@ for (const size of SIZES)
         );
         // Leaving is red (owner, 6 Nov): the icon and its outline.
         expect(
-          await picker.locator("#leave").evaluate((el) => {
-            const cs = getComputedStyle(el);
-            return [
-              getComputedStyle(el.querySelector("svg")!).color,
-              cs.borderTopColor,
-            ];
-          }),
+          await picker
+            .locator("#leave")
+            .evaluate((el) => {
+              const cs = getComputedStyle(el);
+              return [
+                getComputedStyle(el.querySelector("svg")!).color,
+                cs.borderTopColor,
+              ];
+            })
+            .then((c) => c.map(asRgb)),
         ).toEqual(["rgb(255, 138, 151)", "rgba(239, 79, 97, 0.533)"]);
         await page.evaluate(() => document.fonts.ready);
         await page.waitForTimeout(500);

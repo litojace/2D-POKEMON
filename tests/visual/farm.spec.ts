@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { openLobby, snap } from "./helpers";
+import { asRgb, openLobby, snap } from "./helpers";
 import { fakeFarm } from "./farm-fake";
 
 type Box = { name: string; x: number; y: number; w: number; h: number };
@@ -2925,14 +2925,14 @@ test("a tap on the farm closes the open sheet or orb card and does nothing else"
     await expect(sheet).toBeVisible();
     await expect(shop).toHaveAttribute("aria-expanded", "true");
     expect(
-      await shop.evaluate((el) => getComputedStyle(el).boxShadow),
+      asRgb(await shop.evaluate((el) => getComputedStyle(el).boxShadow)),
     ).toContain("rgba(255, 214, 91, 0.35)");
     // The lit button closes it again.
     await shop.click();
     await expect(sheet).toBeHidden();
     await expect(shop).toHaveAttribute("aria-expanded", "false");
     expect(
-      await shop.evaluate((el) => getComputedStyle(el).boxShadow),
+      asRgb(await shop.evaluate((el) => getComputedStyle(el).boxShadow)),
     ).not.toContain("rgba(255, 214, 91");
 
     // A ripe plot under an open sheet: the tap only closes the sheet.

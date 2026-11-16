@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { openHub, openPlayPanel } from "./helpers";
+import { openHub, openPlayPanel, createRoom } from "./helpers";
 import { FIGHTER_IDS } from "../../packages/shared/src/index";
 
 test("the briefing holds I'm ready until the arena has loaded, and loads only the room's fighters", async ({
@@ -28,7 +28,7 @@ test("the briefing holds I'm ready until the arena has loaded, and loads only th
   // A slower CPU, as on an older phone, so the load takes a few seconds.
   const cdp = await page.context().newCDPSession(page);
   await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
-  await page.click("#play-create");
+  await createRoom(page);
   const ready = page.locator("#instructions-ready");
   await expect
     .poll(
@@ -117,7 +117,7 @@ test("a briefing that comes before Phaser has loaded holds I'm ready too, and co
     w.__room("pvp", { mode: "duel", phase: "briefing" });
   });
   await openPlayPanel(page);
-  await page.click("#play-create");
+  await createRoom(page);
   const ready = page.locator("#instructions-ready");
   await expect
     .poll(

@@ -2,7 +2,7 @@
 .server-startup {
   position: fixed;
   inset: 0;
-  z-index: 2147482000;
+  z-index: var(--z-system, 2147482000);
   isolation: isolate;
   display: grid;
   place-items: center;

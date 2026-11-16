@@ -5,6 +5,7 @@ import {
   openPlaza,
   pushUntilBattle,
   snap,
+  startPractice,
 } from "./helpers";
 import { LARGE_IPAD_PIXEL_BUDGET } from "../../apps/client/src/render-budget";
 
@@ -78,7 +79,7 @@ test("iOS Home Screen resumes the hub and releases the old battle canvas on retu
     await expect(page.locator("#lobby-play")).toBeVisible();
     await page.evaluate(() => (window as any).__room("practice"));
     await openPlayPanel(page);
-    await page.click("#practice");
+    await startPractice(page);
     await pushUntilBattle(page);
     await expect(page.locator("#game canvas")).toHaveCount(1);
     await page.evaluate(() => {
@@ -119,7 +120,7 @@ test("a lost drawing context shows recovery and restores without navigation", as
     const errors = await openHub(page);
     await page.evaluate(() => (window as any).__room("practice"));
     await openPlayPanel(page);
-    await page.click("#practice");
+    await startPractice(page);
     await pushUntilBattle(page);
     const supported = await page.evaluate(() => {
       const canvas = document.querySelector<HTMLCanvasElement>("#game canvas")!;

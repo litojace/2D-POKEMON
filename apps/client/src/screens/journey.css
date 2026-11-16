@@ -97,7 +97,7 @@
   font-size: 30px;
 }
 .journey-ring-text small {
-  font-size: 10px;
+  font-size: var(--fs-micro);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--ui-dim);
@@ -172,7 +172,7 @@
   padding: 6px 4px;
   border-radius: var(--rad-md);
   border: 1px solid var(--ui-line);
-  background: var(--ui-bg-1);
+  background: var(--fill-card);
   color: inherit;
   font: inherit;
   text-align: center;
@@ -261,7 +261,7 @@ button.journey-tier {
   gap: 5px;
   padding: 10px 12px;
   border-radius: var(--rad-md);
-  background: var(--ui-bg-1);
+  background: var(--fill-card);
   border: 1px solid var(--ui-line);
 }
 .journey-goal .journey-row {
@@ -276,7 +276,7 @@ button.journey-tier {
   align-content: start;
   padding: 12px 14px;
   border-radius: var(--rad-lg);
-  background: var(--ui-bg-1);
+  background: var(--fill-card);
   border: 1px solid var(--ui-line);
 }
 .journey-levelroad .journey-section {
@@ -305,8 +305,8 @@ button.journey-lvl {
   cursor: pointer;
 }
 .journey-lvl.is-next {
-  border-color: #ffd65b88;
-  background: #ffd65b10;
+  border-color: color-mix(in srgb, var(--ui-accent) 53.3%, transparent);
+  background: color-mix(in srgb, var(--ui-accent) 6.3%, transparent);
 }
 .journey-lvl[aria-pressed="true"] {
   border-color: var(--season);
@@ -344,7 +344,7 @@ button.journey-lvl {
   padding: 8px;
   border-radius: var(--rad-md);
   border: 1px solid var(--ui-line);
-  background: var(--ui-bg-1);
+  background: var(--fill-card);
   color: inherit;
   font: inherit;
   text-align: center;
@@ -456,7 +456,7 @@ button.journey-prize {
   align-content: start;
   padding: 12px 14px;
   border-radius: var(--rad-md);
-  background: var(--ui-bg-1);
+  background: var(--fill-card);
   border: 1px solid var(--ui-line);
   font-size: var(--fs-small);
 }
@@ -470,7 +470,7 @@ button.journey-prize {
   height: 48px;
   overflow: hidden;
   border-radius: var(--rad-sm);
-  background: var(--ui-bg-1);
+  background: var(--fill-card);
 }
 .journey-foot-text {
   display: grid;
@@ -518,7 +518,7 @@ button.journey-prize {
     font-size: 19px;
   }
   .journey-ring-text small {
-    font-size: 7px;
+    font-size: var(--fs-micro);
   }
   .journey-banner-main {
     gap: 3px;
@@ -533,13 +533,13 @@ button.journey-prize {
     padding-left: 10px;
   }
   .journey-banner-spark .ui-kicker {
-    font-size: 9px;
+    font-size: var(--fs-micro);
   }
   .journey-banner-spark b {
     font-size: 16px;
   }
   .journey-banner-spark small {
-    font-size: 9px;
+    font-size: var(--fs-micro);
   }
   .journey-tier {
     width: 64px;
@@ -561,7 +561,7 @@ button.journey-prize {
     height: 22px;
   }
   .journey-tier em {
-    font-size: 9px;
+    font-size: var(--fs-micro);
   }
   .journey-tick {
     top: 3px;
@@ -607,5 +607,44 @@ button.journey-prize {
   .journey-foot-art {
     width: 34px;
     height: 34px;
+  }
+}
+
+/* Wider phones held sideways: this week's goals beside the level road, as
+   on a desktop, instead of one under the other (the Season tab was 4.2
+   screens tall at 852×393). A 667 px phone keeps one column. */
+/* Each goal paid the same "+250 season XP": on a phone it is said once,
+   in the section's head, and a goal's own line shows only when it's paid. */
+.journey-goal-xp {
+  display: none;
+}
+@media (max-height: 500px) {
+  .journey-goal-xp {
+    display: inline;
+    margin-right: auto;
+    white-space: nowrap;
+  }
+  .journey-section > .ui-h {
+    white-space: nowrap;
+  }
+  .journey-goal:not(.is-done) > small {
+    display: none;
+  }
+  .journey-goal {
+    gap: 4px;
+  }
+}
+@media (max-height: 500px) and (min-width: 760px) {
+  .journey-two {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  /* The Levels tab's rewards a little shorter (the picture keeps its 44 px:
+     a frame needs it whole). */
+  .journey-prizes {
+    grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+    grid-auto-rows: 100px;
+  }
+  .journey-goals {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

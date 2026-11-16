@@ -1,5 +1,11 @@
 import { expect, test } from "@playwright/test";
-import { openHub, pushUntilBattle, snap, openPlayPanel } from "./helpers";
+import {
+  openHub,
+  pushUntilBattle,
+  snap,
+  openPlayPanel,
+  createRoom,
+} from "./helpers";
 
 for (const viewport of [
   { width: 1440, height: 900 },
@@ -50,7 +56,7 @@ for (const viewport of [
         });
       });
       await openPlayPanel(page);
-      await page.click("#play-create");
+      await createRoom(page);
       await pushUntilBattle(page);
       await expect(
         page.locator(".battle-nameplate .fighter-health"),

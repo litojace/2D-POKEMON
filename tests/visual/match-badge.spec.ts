@@ -1,5 +1,11 @@
 import { expect, test, type Page } from "@playwright/test";
-import { openHub, openPlayPanel, pushUntilBattle, snap } from "./helpers";
+import {
+  openHub,
+  openPlayPanel,
+  pushUntilBattle,
+  snap,
+  createRoom,
+} from "./helpers";
 import { ISLAND, setInsets } from "./ui-measure";
 import { decodePng } from "./png";
 
@@ -29,7 +35,7 @@ async function match(
     [mode, myName] as const,
   );
   await openPlayPanel(page);
-  await page.click("#play-create");
+  await createRoom(page);
   await pushUntilBattle(page);
   await page.evaluate((remaining) => {
     const w = window as any;
@@ -372,7 +378,7 @@ test("Practice keeps the full cards", async ({ browser }) => {
     await openHub(page);
     await page.evaluate(() => (window as any).__room("practice", {}));
     await openPlayPanel(page);
-    await page.click("#play-create");
+    await createRoom(page);
     await pushUntilBattle(page);
     await expect(page.locator("#hud")).not.toHaveClass(/hud-badge/);
     await expect(page.locator("#hud .health-track").first()).toBeVisible();
@@ -435,11 +441,13 @@ for (const size of [
           gear.x + gear.width <= box.x ||
           box.y + box.height <= gear.y,
       ).toBe(true);
+      // The court itself fills the whole screen, under the island too, as
+      // in raids (style.css); only the HUD keeps to the safe area.
       const frame = (await page.locator(".arena-frame").boundingBox())!;
-      expect(frame.x).toBeGreaterThanOrEqual(inset.left);
-      expect(frame.x + frame.width).toBeLessThanOrEqual(
-        size.width - inset.right + 0.5,
-      );
+      expect(frame.x).toBeCloseTo(0, 0);
+      expect(frame.y).toBeCloseTo(0, 0);
+      expect(frame.width).toBeCloseTo(size.width, 0);
+      expect(frame.height).toBeCloseTo(size.height, 0);
       expect(errors).toEqual([]);
     } finally {
       await context.close();

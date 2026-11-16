@@ -14,16 +14,28 @@
   max-width: 100%;
   max-height: 100%;
   min-height: 0;
-  background: var(--ui-glass);
-  border: 1px solid var(--ui-line-2);
+  /* Thick glass without blur: it sits over the moving arena, where a blur
+     would be redrawn every frame (older phones, CLAUDE.md). */
+  background: var(--glass-thick);
+  border: 1px solid var(--glass-rim);
   border-radius: var(--rad-xl);
   box-shadow: var(--shadow-2);
-  backdrop-filter: blur(10px);
   overflow: hidden;
   text-align: left;
 }
 #arena-overlay > .rc-card.is-results {
   width: min(880px, 100%);
+}
+/* Phones: a chat button in the top-left corner (the battle's quick chat
+   in the briefing, the room's chat on the results; main.ts sets
+   chat-corner) used to sit over the card's title and first step. The card
+   starts 8px right of it: the buttons' right edge is at most
+   max(16px, safe-left + 12px) + 44px, the card's own edge at safe-left +
+   12px (the overlay's inset and padding, style.css). */
+body.touch-mode.chat-corner #arena-overlay > .rc-card {
+  --rc-chat-room: max(52px, calc(56px - var(--safe-left, 0px)));
+  margin-left: var(--rc-chat-room);
+  max-width: calc(100% - var(--rc-chat-room));
 }
 .rc-head {
   flex: none;
@@ -89,7 +101,7 @@
   padding: 12px;
   border-radius: var(--rad-md);
   border: 1px solid var(--ui-line);
-  background: var(--ui-bg-1);
+  background: var(--fill-card);
 }
 .rc-step-head {
   display: flex;
@@ -123,7 +135,7 @@
   margin: 8px 0;
   border-radius: var(--rad-sm);
   border: 1px solid var(--ui-line);
-  background: var(--ui-bg-0);
+  background: var(--fill-well);
 }
 .rc-step-action {
   color: var(--ui-text);
@@ -191,7 +203,7 @@
   padding: 10px 8px;
   border-radius: var(--rad-md);
   border: 1px solid var(--ui-line);
-  background: var(--ui-bg-1);
+  background: var(--fill-card);
 }
 .rc-stat b {
   font-size: 28px;
@@ -211,7 +223,7 @@
   padding: 12px;
   border-radius: var(--rad-lg);
   border: 1px solid var(--ui-line);
-  background: var(--ui-bg-1);
+  background: var(--fill-card);
 }
 .rc-contrib-top {
   display: flex;
@@ -248,7 +260,7 @@
 .rc-score tbody :is(th, td) {
   padding: 8px 10px;
   vertical-align: middle;
-  background: var(--ui-bg-2);
+  background: var(--fill-card-hi);
   border-block: 1px solid var(--ui-line);
 }
 .rc-score tbody th {
@@ -353,7 +365,7 @@
   width: 48px;
   height: 4px;
   border-radius: 2px;
-  background: var(--ui-bg-0);
+  background: var(--fill-well);
   overflow: hidden;
 }
 .rc-share-bar i {
@@ -365,7 +377,7 @@
   padding: 8px 12px;
   border-radius: var(--rad-md);
   border: 1px solid var(--ui-line);
-  background: var(--ui-bg-1);
+  background: var(--fill-card);
   color: var(--ui-dim);
   font-size: var(--fs-small);
 }
@@ -375,7 +387,7 @@
 }
 .rc-save.is-error {
   color: #ffb4bc;
-  border-color: #ef4f6155;
+  border-color: color-mix(in srgb, var(--ui-danger) 33.3%, transparent);
 }
 .rc-tip {
   color: var(--ui-dim);

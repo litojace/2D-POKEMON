@@ -1,5 +1,11 @@
 import { expect, test } from "@playwright/test";
-import { openHub, pushUntilBattle, snap, openPlayPanel } from "./helpers";
+import {
+  openHub,
+  pushUntilBattle,
+  snap,
+  openPlayPanel,
+  createRoom,
+} from "./helpers";
 
 for (const viewport of [
   { width: 844, height: 390 },
@@ -28,7 +34,7 @@ for (const viewport of [
         w.__snap.raid.partySize = 1;
       });
       await openPlayPanel(page);
-      await page.click("#play-create");
+      await createRoom(page);
       await pushUntilBattle(page);
       const geometry = await page.locator("#raid-hud").evaluate((hud) => {
         const measure = (el: Element) => {

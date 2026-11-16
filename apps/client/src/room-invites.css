@@ -14,7 +14,7 @@
   inset: auto calc(16px + var(--safe-right, 0px))
     calc(16px + var(--safe-bottom, 0px)) auto;
   margin: 0;
-  z-index: 200;
+  z-index: var(--z-notice);
   width: min(
     340px,
     calc(100vw - var(--safe-left, 0px) - var(--safe-right, 0px) - 24px)
@@ -25,7 +25,7 @@
   overflow: auto;
   box-sizing: border-box;
   padding: 16px;
-  border: 1px solid #ffd65b88;
+  border: 1px solid color-mix(in srgb, var(--ui-accent) 53.3%, transparent);
   border-radius: 16px;
   color: #edf3ff;
   background: #14213a;

@@ -378,7 +378,7 @@ function rewardCard(g: RaidGoal, d: RaidData, scope: string, open: boolean) {
     open && g.text === r.goal
       ? ""
       : `<small class="ui-note">${esc(g.text)}</small>`;
-  return `<button type="button" class="rh-reward${g.done ? " is-done" : ""}${open ? " is-open" : ""}" data-raid-reward="${esc(r.id)}" aria-expanded="${open}"${open ? ` aria-controls="${scope}-${esc(r.id)}-more"` : ""} title="${esc(open ? "Tap to close" : r.goal)}"><span class="rh-reward-art">${art}</span><span class="rh-reward-text"><b>${esc(g.name)}</b>${rarity || line ? `<span class="rh-reward-line">${rarity}${line}</span>` : ""}${bar(g.value, g.max, { label: `${g.name} progress`, color: g.done ? "var(--ui-ok)" : "var(--boss)" })}${open ? more : ""}</span>${g.done ? `<span class="rh-check" role="img" aria-label="Earned">${menuIcon("check")}</span>` : ""}</button>`;
+  return `<button type="button" class="rh-reward${g.done ? " is-done" : ""}${open ? " is-open" : ""}" data-raid-reward="${esc(r.id)}" data-reward-kind="${r.slot === "title" ? "title" : "look"}" aria-expanded="${open}"${open ? ` aria-controls="${scope}-${esc(r.id)}-more"` : ""} title="${esc(open ? "Tap to close" : r.goal)}"><span class="rh-reward-art">${art}</span><span class="rh-reward-text"><b>${esc(g.name)}</b>${rarity || line ? `<span class="rh-reward-line">${rarity}${line}</span>` : ""}${bar(g.value, g.max, { label: `${g.name} progress`, color: g.done ? "var(--ui-ok)" : "var(--boss)" })}${open ? more : ""}</span>${g.done ? `<span class="rh-check" role="img" aria-label="Earned">${menuIcon("check")}</span>` : ""}</button>`;
 }
 function partyTab(view: RaidView, d: RaidData) {
   const b = RAID_BOSSES[view.boss];
@@ -454,7 +454,13 @@ function rewardsTab(view: RaidView, d: RaidData) {
     return `<p class="ui-note">${d.loading ? "Loading your progress…" : "Log in to see your progress."}</p>`;
   const goals = raidGoals(d.progress, view.boss);
   const { earned, total } = rewardCounts(d.progress, view.boss);
-  return `<div class="rh-section"><h3 class="ui-h">${earned} of ${total} earned</h3>${button("Wardrobe", { size: "s", icon: "wardrobe", attrs: { "data-raid-wardrobe": true } })}</div><p class="ui-note">Wear what you earn in the Wardrobe; it shows on all your fighters. Appearance only, no stat changes.</p><div class="rh-rewards is-all">${goals.map((g) => rewardCard(g, d, "rh-all", view.reward === g.reward.id)).join("")}</div>`;
+  return `<div class="rh-section"><h3 class="ui-h">${earned} of ${total} earned</h3>${button("Wardrobe", { size: "s", icon: "wardrobe", attrs: { "data-raid-wardrobe": true } })}</div><p class="ui-note">Wear what you earn in the Wardrobe; it shows on all your fighters. Appearance only, no stat changes.</p><div class="rh-rewards is-all">${[
+    // Looks first, then titles (on a phone they sit three a row).
+    ...goals.filter((g) => g.reward.slot !== "title"),
+    ...goals.filter((g) => g.reward.slot === "title"),
+  ]
+    .map((g) => rewardCard(g, d, "rh-all", view.reward === g.reward.id))
+    .join("")}</div>`;
 }
 function guideTab(view: RaidView) {
   const b = RAID_BOSSES[view.boss];

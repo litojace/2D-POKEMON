@@ -6,6 +6,8 @@ import {
   openHub,
   snap,
   openPlayPanel,
+  pickRoomMode,
+  createRoom,
 } from "./helpers";
 
 async function frameFixtures(page: Page) {
@@ -233,8 +235,8 @@ for (const size of [
           pal.raidClears = { grumblecrag: 50 };
         }, kind);
         await openPlayPanel(page);
-        await page.click('[data-mode="duel"]');
-        await page.click("#play-create");
+        await pickRoomMode(page, "duel");
+        await createRoom(page);
         await expect
           .poll(async () => {
             await page.evaluate(() => (window as any).__push());

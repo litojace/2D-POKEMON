@@ -288,6 +288,7 @@ import { fighterPack } from "./animation/pack-config";
 import { fullscreenLandscape } from "./orientation";
 import { wireRotateGate } from "./rotate-gate";
 import { watchRotation } from "./orientation-settle";
+import { watchNotchInsets } from "./notch-insets";
 import { watchScreenPin } from "./screen-pin";
 import { watchCosmeticPreviews } from "./cosmetic-fx-preview";
 import { openHubPanelNow } from "./ui/hub-panel";
@@ -1262,6 +1263,7 @@ document.addEventListener("visibilitychange", stopControls);
 const pwa = setupPWA(() => state?.phase, dialog, toast);
 wireRotateGate();
 watchRotation();
+watchNotchInsets();
 watchScreenPin();
 // The iPhone app (native.ts): iOS pauses it soon after you switch away, which
 // drops the game connection; coming back reconnects at once.
@@ -2145,6 +2147,14 @@ function syncChat(hub: boolean) {
     // Friends: anyone signed in with an account (guests have no friends).
     friend: !!accountsUI?.account && !accountsUI.account.guest,
   });
+  // Either chat button is up in the screen's top-left corner: the raid's
+  // briefing and results cards keep clear of it on phones (raid-cards.css).
+  document.body.classList.toggle(
+    "chat-corner",
+    ["battle-chat", "chat-button"].some(
+      (id) => document.getElementById(id)?.hidden === false,
+    ),
+  );
   placeSceneSwitch?.();
 }
 /** The new Plaza (hub redesign phase 3): the server moves everyone in it. */
@@ -2822,7 +2832,12 @@ function renderMenu(revealSelection = false) {
     syncHomePresentation();
     return;
   }
-  const panelMarkup = `${startRoomSection(roomMode)}<label for="name">Your display name</label><input id="name" maxlength="20" placeholder="Enter your name" value="${escape(accountsUI?.account?.displayName ?? localStorage.getItem("arena-name") ?? "")}" autocomplete="nickname"><div class="home-play-options"><section><h3>Join your crew</h3><label for="code">Room code</label><div class="join-row"><input id="code" maxlength="6" placeholder="ABC123" aria-label="Room code"><button id="join" class="secondary btn-secondary">${iconLabel("enter", "Join")}</button></div><button id="watch" class="quiet full">${iconLabel("watch", "Watch this room instead")}</button></section><section><h3>Sharpen your skills</h3><div class="bot-picker" role="radiogroup" aria-label="Bot difficulty">${BOT_LEVELS.map(([id, label, hint]) => `<button type="button" role="radio" class="bot-level${botLevel === id ? " active" : ""}" data-bot="${id}" aria-checked="${botLevel === id}"><b>${label}</b><small>${hint}</small></button>`).join("")}</div><button class="secondary btn-secondary full" id="bot-match">${iconLabel("bot", "Battle an AI bot")}</button>${accountsUI?.account ? '<button class="quiet full" id="practice">' + iconLabel("target", "Solo test mode") + "</button>" : ""}</section></div><small class="room-note">Free to play · Login required<br>Keyboard + mouse · Controller · Touch</small>`;
+  // The drawer ("Join or watch" in the Lobby's mode menu) shows only what
+  // the mode menu doesn't: a room code to join or watch, and your name. The
+  // room types, bot levels and the practice room are the mode menu's; their
+  // buttons stay here, hidden, because PLAY starts a match through them
+  // (lobbyPlay) and they keep one code path for every way in.
+  const panelMarkup = `<label for="name">Your display name</label><input id="name" maxlength="20" placeholder="Enter your name" value="${escape(accountsUI?.account?.displayName ?? localStorage.getItem("arena-name") ?? "")}" autocomplete="nickname"><div class="home-play-options"><section><label for="code">Room code</label><div class="join-row"><input id="code" maxlength="6" placeholder="ABC123" aria-label="Room code"><button id="join" class="secondary btn-secondary">${iconLabel("enter", "Join")}</button></div><button id="watch" class="quiet full">${iconLabel("watch", "Watch this room instead")}</button></section></div><div class="play-engine" hidden>${startRoomSection(roomMode)}<div class="bot-picker" role="radiogroup" aria-label="Bot difficulty">${BOT_LEVELS.map(([id, label, hint]) => `<button type="button" role="radio" class="bot-level${botLevel === id ? " active" : ""}" data-bot="${id}" aria-checked="${botLevel === id}"><b>${label}</b><small>${hint}</small></button>`).join("")}</div><button class="secondary btn-secondary full" id="bot-match">${iconLabel("bot", "Battle an AI bot")}</button>${accountsUI?.account ? '<button class="quiet full" id="practice">' + iconLabel("target", "Solo test mode") + "</button>" : ""}</div>`;
   updateMenuShell(
     $("menu"),
     panelMarkup,

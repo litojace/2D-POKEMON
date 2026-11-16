@@ -1,5 +1,11 @@
 import { expect, test, type Page } from "@playwright/test";
-import { openHub, pushUntilBattle, snap, openPlayPanel } from "./helpers";
+import {
+  openHub,
+  pushUntilBattle,
+  snap,
+  openPlayPanel,
+  createRoom,
+} from "./helpers";
 
 // Phones aim at the nearest enemy; with two or more enemies the player can
 // lock on to another one (a target row, or a tap on the fighter).
@@ -24,7 +30,7 @@ async function ffa(page: Page) {
     w.__room("pvp", { mode: "ffa", phase: "playing" });
   });
   await openPlayPanel(page);
-  await page.click("#play-create");
+  await createRoom(page);
   await pushUntilBattle(page);
   // Spread the fighters out (all on a phone's screen): Kai nearest to you,
   // Rae and Mina farther.
@@ -278,7 +284,7 @@ async function raidBattle(page: Page, boss: string, keep: string[]) {
     [boss, keep] as const,
   );
   await openPlayPanel(page);
-  await page.click("#play-create");
+  await createRoom(page);
   await pushUntilBattle(page);
   return errors;
 }

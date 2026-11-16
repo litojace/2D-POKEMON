@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { openHub, pushUntilBattle, openPlayPanel } from "./helpers";
+import { openHub, pushUntilBattle, openPlayPanel, createRoom } from "./helpers";
 
 test("profiles a four-player PvP snapshot/render stream", async ({
   browser,
@@ -33,7 +33,7 @@ test("profiles a four-player PvP snapshot/render stream", async ({
       (window as any).__room("pvp", { mode: "ffa", phase: "playing" }),
     );
     await openPlayPanel(page);
-    await page.click("#play-create");
+    await createRoom(page);
     await pushUntilBattle(page);
     await page.evaluate(async () => {
       const w = window as any,

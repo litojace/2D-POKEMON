@@ -7,6 +7,7 @@ import {
   pushUntilBattle,
   settle,
   snap,
+  createRoom,
 } from "./helpers";
 import { layoutProblems } from "./ui-measure";
 import { decodePng } from "./png";
@@ -181,7 +182,7 @@ async function climb(
     o,
   );
   await openPlayPanel(page);
-  await page.click("#play-create");
+  await createRoom(page);
   await pushUntilBattle(page);
 }
 

@@ -1,5 +1,11 @@
 import { expect, test, type Page, type TestInfo } from "@playwright/test";
-import { openHub, pushUntilBattle, snap, openPlayPanel } from "./helpers";
+import {
+  openHub,
+  pushUntilBattle,
+  snap,
+  openPlayPanel,
+  createRoom,
+} from "./helpers";
 
 // Tidewyrm's Lagoon Court and Somnara's Cloud Deck draw their arena pieces
 // (islands, flood, rune pads, Quiet Zone, bubbles, markers...) from one atlas
@@ -33,7 +39,7 @@ async function raid(page: Page, boss: string, setup = "") {
     [boss, setup] as const,
   );
   await openPlayPanel(page);
-  await page.click("#play-create");
+  await createRoom(page);
   await pushUntilBattle(page);
   return errors;
 }

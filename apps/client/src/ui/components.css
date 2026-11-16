@@ -76,7 +76,7 @@
 .lobby-layer > .ui-panel-host {
   position: absolute;
   inset: 0;
-  z-index: 40;
+  z-index: var(--z-panel);
   pointer-events: none;
 }
 .ui-panel-host > .ui-panel {
@@ -96,14 +96,16 @@
   bottom: var(--lobby-bottom, 16px);
   left: calc(var(--lobby-gutter, 16px) + var(--lobby-rail, 60px) + var(--sp-3));
   right: var(--lobby-gutter-r, 16px);
-  z-index: 40;
+  z-index: var(--z-panel);
   display: flex;
   flex-direction: column;
-  background: var(--ui-glass);
-  border: 1px solid var(--ui-line-2);
+  /* Glass (tokens.css --glass-*, the Lobby's look). */
+  background: var(--glass-regular);
+  border: 1px solid var(--glass-rim);
   border-radius: var(--rad-xl);
-  box-shadow: var(--shadow-2);
-  backdrop-filter: blur(10px);
+  box-shadow: none;
+  -webkit-backdrop-filter: var(--glass-blur-panel);
+  backdrop-filter: var(--glass-blur-panel);
   overflow: hidden;
   font-family: var(--font-body);
   font-size: var(--fs-body);
@@ -199,7 +201,7 @@
   min-height: 72px;
   padding: var(--sp-3) var(--sp-4);
   border-top: 1px solid var(--ui-line);
-  background: #0b1020f2;
+  background: var(--fill-bar);
 }
 .ui-panel-foot > .ui-foot-info {
   flex: 1;
@@ -230,6 +232,15 @@
   }
 }
 
+/* Phones: an action bar with nothing to act on yet (data-idle: the Shop
+   before you pick something) folds away, and the list takes its 48 px.
+   It comes back with the item you tap. */
+@media (max-height: 500px) {
+  .ui-panel-foot[data-idle] {
+    display: none;
+  }
+}
+
 /* A split panel: a stage on the left (the fighter, large) beside the
    panel's own head, body and action bar. Same outer box as a panel, so Close
    still sits in its top-right corner; the two halves draw the surfaces. */
@@ -249,9 +260,8 @@
   position: relative;
   min-width: 0;
   min-height: 0;
-  border: 1px solid var(--ui-line-2);
+  border: 1px solid var(--glass-rim);
   border-radius: var(--rad-xl);
-  box-shadow: var(--shadow-2);
   overflow: hidden;
 }
 .ui-split-stage {
@@ -264,8 +274,9 @@
 .ui-split-main {
   display: flex;
   flex-direction: column;
-  background: var(--ui-glass);
-  backdrop-filter: blur(10px);
+  background: var(--glass-regular);
+  -webkit-backdrop-filter: var(--glass-blur-panel);
+  backdrop-filter: var(--glass-blur-panel);
 }
 /* Desktop: the main column (tabs, lists, catalogue) reads best at a set
    width; the stage grows with the screen instead (never below --stage-w).
@@ -288,14 +299,91 @@
   }
 }
 
+/* Phones held sideways: a split panel whose head holds only "‹ Back" and
+   Close (the hint beside Back is hidden there) puts its tab row in that
+   same row, as the hero pages of landscape mobile games do. The list gets
+   the tab row's 45 px back: about a quarter more of it in view on a
+   393 px-tall phone (raid boss page, fighter detail). The head becomes
+   transparent to layout, so Back and the tabs share one grid row; Close
+   keeps its corner (it is placed against .ui-split-main, which starts at
+   the same top-right corner). */
+@media (max-height: 500px) {
+  .ui-split-main:has(> .ui-panel-head > .ui-btn:first-child):has(
+      > .ui-panel-head + .ui-tabs
+    ) {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-rows: var(--head-h) minmax(0, 1fr) auto;
+    --close-gap: calc((var(--head-h) - var(--close)) / 2);
+  }
+  .ui-split-main:has(> .ui-panel-head > .ui-btn:first-child):has(
+      > .ui-panel-head + .ui-tabs
+    )
+    > .ui-panel-head {
+    display: contents;
+  }
+  .ui-split-main:has(> .ui-panel-head > .ui-btn:first-child):has(
+      > .ui-panel-head + .ui-tabs
+    )
+    > .ui-panel-head
+    > .ui-btn:first-child {
+    grid-row: 1;
+    grid-column: 1;
+    align-self: center;
+    margin-left: 10px;
+  }
+  .ui-split-main:has(> .ui-panel-head > .ui-btn:first-child):has(
+      > .ui-panel-head + .ui-tabs
+    )
+    > .ui-panel-head
+    > .ui-note {
+    display: none;
+  }
+  .ui-split-main:has(> .ui-panel-head > .ui-btn:first-child):has(
+      > .ui-panel-head + .ui-tabs
+    )
+    > .ui-tabs {
+    grid-row: 1;
+    grid-column: 2;
+    align-items: stretch;
+    margin-left: 6px;
+    padding-right: calc(var(--close) + 2 * var(--close-gap));
+  }
+  .ui-split-main:has(> .ui-panel-head > .ui-btn:first-child):has(
+      > .ui-panel-head + .ui-tabs
+    )
+    > :is(.ui-panel-body, .ui-panel-foot) {
+    grid-column: 1 / -1;
+  }
+  /* The tab row's underline runs under Back too. */
+  .ui-split-main:has(> .ui-panel-head > .ui-btn:first-child):has(
+      > .ui-panel-head + .ui-tabs
+    )
+    > .ui-panel-body {
+    border-top: 1px solid var(--ui-line);
+  }
+  .ui-split-main:has(> .ui-panel-head > .ui-btn:first-child):has(
+      > .ui-panel-head + .ui-tabs
+    )
+    > .ui-tabs {
+    border-bottom: 0;
+  }
+}
+
 /* Low graphics (Settings → Graphics, as in the Plaza and Farm): no blur
    behind panels and no motion inside them. ui/hub-panel.ts sets the
    attribute. Screens appear at once in every setting: nothing waits on an
    animation to become visible. */
 .ui-panel[data-graphics="low"],
 .ui-panel[data-graphics="low"] * {
+  -webkit-backdrop-filter: none !important;
   backdrop-filter: none !important;
   animation: none !important;
+}
+/* Without blur the scene would show through sharp: a deeper tint. */
+.ui-panel[data-graphics="low"]:not(.is-split),
+.ui-panel[data-graphics="low"] > .ui-split-main {
+  background: var(--glass-solid);
 }
 @media (prefers-reduced-motion: reduce) {
   .ui-panel,
@@ -312,8 +400,8 @@
   position: fixed;
   inset: 0;
   /* Over the hub's HUD (z-index 70–71), so a purchase can't be half-seen. */
-  z-index: 90;
-  background: #05081299;
+  z-index: var(--z-modal);
+  background: var(--scrim);
   backdrop-filter: blur(2px);
   display: grid;
   place-items: center;
@@ -336,7 +424,7 @@
   padding: 0 10px;
   border-radius: var(--rad-sm);
   border: 1px solid var(--ui-line-2);
-  background: var(--ui-bg-0);
+  background: var(--fill-well);
   color: var(--ui-text);
   /* 16px: iOS zooms into smaller fields. */
   font-family: inherit;
@@ -345,8 +433,8 @@
 }
 .ui-modal {
   width: min(440px, 100% - 32px);
-  background: var(--ui-bg-1);
-  border: 1px solid var(--ui-line-2);
+  background: var(--glass-thick);
+  border: 1px solid var(--glass-rim);
   border-radius: var(--rad-xl);
   box-shadow: var(--shadow-2);
   overflow: hidden;
@@ -391,7 +479,7 @@
   margin: 8px 0 4px;
   padding: 10px 12px;
   border-radius: var(--rad-md);
-  background: var(--ui-bg-0);
+  background: var(--fill-well);
   font-size: var(--fs-small);
 }
 .ui-ledger dt {
@@ -412,7 +500,7 @@
   justify-content: end;
   padding: var(--sp-3) var(--sp-4);
   border-top: 1px solid var(--ui-line);
-  background: var(--ui-bg-0);
+  background: var(--fill-bar);
 }
 @media (max-height: 500px) {
   .ui-modal.has-art {
@@ -489,6 +577,10 @@
   display: inline-flex;
   padding: 3px;
   gap: 2px;
+  /* Solid, not a see-through fill: the gold pill's rounded edge blends with
+     what is under it, and through glass that is the scene, lighter on one
+     side than the other. The pill then read off-centre (by 5.5 px in CI's
+     Chromium on the Ranks switch). A solid track keeps both edges alike. */
   background: var(--ui-bg-1);
   border: 1px solid var(--ui-line);
   border-radius: var(--rad-pill);
@@ -547,7 +639,7 @@
   padding: 0 12px;
   border-radius: var(--rad-pill);
   border: 1px solid var(--ui-line-2);
-  background: var(--ui-bg-1);
+  background: var(--fill-card);
   font-size: var(--fs-small);
   font-weight: 700;
   color: var(--ui-dim);
@@ -558,7 +650,7 @@
 .ui-chip[aria-pressed="true"] {
   border-color: var(--ui-accent);
   color: var(--ui-accent);
-  background: #ffd65b14;
+  background: color-mix(in srgb, var(--ui-accent) 7.8%, transparent);
 }
 .ui-chip svg {
   width: 16px;
@@ -574,7 +666,7 @@
   padding: 0 14px;
   border-radius: var(--rad-sm);
   border: 1px solid var(--ui-line-2);
-  background: var(--ui-bg-2);
+  background: var(--fill-card-hi);
   color: var(--ui-text);
   font-family: var(--font-display);
   font-weight: 800;
@@ -643,13 +735,8 @@
 }
 .ui-btn.is-primary {
   border: 0;
-  background: linear-gradient(
-    180deg,
-    var(--ui-accent-hi),
-    var(--ui-accent) 45%,
-    var(--ui-accent-lo)
-  );
-  color: var(--ui-accent-ink);
+  background: var(--btn-primary-bg);
+  color: var(--btn-primary-ink);
   box-shadow:
     0 3px 0 var(--ui-accent-deep),
     inset 0 2px 0 #fff8;
@@ -669,7 +756,7 @@
 }
 .ui-btn.is-danger {
   background: transparent;
-  border-color: #ef4f6188;
+  border-color: color-mix(in srgb, var(--ui-danger) 53.3%, transparent);
   color: #ff8a97;
   box-shadow: none;
 }
@@ -677,8 +764,8 @@
    outline and icon, never a solid red block (red is also boss warnings),
    as the match's own leave buttons (.leave-button in style.css). */
 .ui-icon-btn.is-danger {
-  border-color: #ef4f6188;
-  background: #ef4f6114;
+  border-color: color-mix(in srgb, var(--ui-danger) 53.3%, transparent);
+  background: color-mix(in srgb, var(--ui-danger) 7.8%, transparent);
 }
 .ui-icon-btn.is-danger,
 .ui-icon-btn.is-danger svg {
@@ -686,8 +773,8 @@
 }
 :is(.ui-btn, .ui-icon-btn).is-danger:hover:not([disabled]),
 :is(.ui-btn, .ui-icon-btn).is-danger:focus-visible {
-  border-color: #ef4f61cc;
-  background: #ef4f6126;
+  border-color: color-mix(in srgb, var(--ui-danger) 80%, transparent);
+  background: color-mix(in srgb, var(--ui-danger) 14.9%, transparent);
   color: #ffc2c8;
 }
 .ui-icon-btn.is-danger:hover svg,
@@ -724,8 +811,8 @@
   width: var(--ctl-m);
   height: var(--ctl-m);
   border-radius: 50%;
-  border: 1px solid var(--ui-line-2);
-  background: #0b1020b3;
+  border: 1px solid var(--icon-btn-line);
+  background: var(--icon-btn-bg);
   display: grid;
   place-items: center;
   flex: none;
@@ -810,7 +897,7 @@
   height: 18px;
   padding: 0 6px;
   border-radius: var(--rad-xs);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -823,7 +910,7 @@
   color: var(--ui-accent-ink);
 }
 .ui-tag.is-ok {
-  background: #43d97126;
+  background: color-mix(in srgb, var(--ui-ok) 14.9%, transparent);
   color: var(--ui-ok);
 }
 .ui-tag.is-sale {
@@ -945,6 +1032,7 @@
   position: absolute;
   inset: 4px;
   border-radius: 50%;
+  /* Solid: it hides the middle of the ring's conic gradient. */
   background: var(--ui-bg-0);
 }
 .ui-ring > * {
@@ -963,7 +1051,7 @@
   text-align: left;
   padding: 8px;
   border-radius: var(--rad-md);
-  background: var(--ui-bg-1);
+  background: var(--fill-card);
   border: 1px solid color-mix(in srgb, var(--r) 45%, transparent);
   min-width: 0;
   transition: transform var(--dur-1) var(--ease-pop);
@@ -1078,7 +1166,7 @@
     top: 7px;
     right: 7px;
     height: 15px;
-    font-size: 8px;
+    font-size: var(--fs-micro);
   }
 }
 .ui-grid {
@@ -1101,7 +1189,7 @@
   min-height: 60px;
   padding: 8px 10px;
   border-radius: var(--rad-md);
-  background: var(--ui-bg-1);
+  background: var(--fill-card);
   border: 1px solid var(--ui-line);
 }
 .ui-row-main {
@@ -1200,7 +1288,7 @@
   position: fixed;
   left: 50%;
   bottom: calc(24px + var(--safe-bottom));
-  z-index: 95;
+  z-index: var(--z-toast);
   max-width: calc(100vw - var(--safe-left) - var(--safe-right) - 32px);
   padding: 10px 18px;
   border-radius: var(--rad-pill);
@@ -1235,15 +1323,20 @@ body[data-hub-scene="lobby"] #toast {
     top: calc(var(--safe-top) + 54px);
   }
 }
-/* With a screen open, the toast sits just above its action bar (the Lobby's
-   bottom margin + the 72 px bar, 48 px on phones), clear of the head. */
-body[data-hub-scene="lobby"]:has(.ui-panel) #toast {
-  top: auto;
-  bottom: calc(max(18px, var(--safe-bottom) + 6px) + 72px + 10px);
+/* With a screen open, the toast sits on the HUD row above it, as mobile
+   games show notices: over the Lobby / Plaza / Farm switch for a moment,
+   never over the screen's own list. (It used to sit above the action bar,
+   which on a phone is the middle of the list: rows went unreadable while it
+   showed.) It never takes taps, so the switch underneath still works. */
+body[data-hub-scene="lobby"]:has(.ui-panel) #toast,
+body.lobby-active:has(.room-screen .ui-panel) #toast {
+  top: calc(var(--safe-top) + 18px);
+  bottom: auto;
 }
 @media (max-height: 500px) {
-  body[data-hub-scene="lobby"]:has(.ui-panel) #toast {
-    bottom: calc(max(8px, var(--safe-bottom) + 4px) + 48px + 6px);
+  body[data-hub-scene="lobby"]:has(.ui-panel) #toast,
+  body.lobby-active:has(.room-screen .ui-panel) #toast {
+    top: calc(var(--safe-top) + 10px);
   }
 }
 body[data-hub-scene="lobby"] #toast.show {

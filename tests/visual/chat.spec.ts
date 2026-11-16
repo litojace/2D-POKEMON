@@ -1,5 +1,11 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
-import { openHub, openPlayPanel, snap } from "./helpers";
+import {
+  openHub,
+  openPlayPanel,
+  snap,
+  pickRoomMode,
+  createRoom,
+} from "./helpers";
 import { fakeFarm } from "./farm-fake";
 import { fakeBistro } from "./bistro-fake";
 
@@ -229,7 +235,7 @@ for (const size of SIZES)
         "Friends",
       ]);
       await expect(page.locator("#chat-drawer .chat-empty")).toContainText(
-        "Add friends (Menu → Friends) to message them here.",
+        "Add friends from Friends on the Lobby's left to message them here.",
       );
       await expect(page.locator("#chat-drawer .chat-form")).toBeHidden();
       await page.click("#chat-drawer .chat-close");
@@ -326,8 +332,8 @@ for (const size of SIZES)
         (window as any).__room("pvp", { mode: "teams", phase: "lobby" }),
       );
       await openPlayPanel(page);
-      await page.click('#menu [data-mode="teams"]');
-      await page.click("#play-create");
+      await pickRoomMode(page, "teams");
+      await createRoom(page);
       await expect
         .poll(async () => {
           await page.evaluate(() => (window as any).__push());

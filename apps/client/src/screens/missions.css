@@ -30,7 +30,7 @@
   grid-template-columns: minmax(0, 1fr) 64px;
   align-items: center;
   border-radius: var(--rad-md);
-  background: var(--ui-bg-1);
+  background: var(--fill-card);
   border: 1px solid var(--ui-line);
   border-left: 3px solid var(--tier);
 }
@@ -95,7 +95,7 @@
   border-radius: 5px;
   background: color-mix(in srgb, var(--tier) 16%, transparent);
   color: var(--tier);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -150,7 +150,7 @@
   gap: var(--sp-3);
   padding: 10px 12px;
   border-radius: var(--rad-md);
-  background: var(--ui-bg-1);
+  background: var(--fill-card);
   font-size: var(--fs-small);
 }
 .missions-streak-days {
@@ -209,7 +209,7 @@
   }
   .missions-pay {
     gap: 6px;
-    font-size: 10px;
+    font-size: var(--fs-micro);
   }
   .missions-pay .ui-price {
     font-size: 13px;
