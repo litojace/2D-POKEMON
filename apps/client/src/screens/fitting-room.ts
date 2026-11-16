@@ -114,7 +114,16 @@ export function openFittingRoom(
   });
   const low = lowGraphics();
   let seen = seenDay();
-  const data = (): FitData => ({ ...hooks.data(), low, seenDay: seen });
+  // A phone held sideways gets the one-fighter Mythic Hall; turning a
+  // tablet or resizing a window across the line redraws it.
+  const compactQuery = matchMedia("(max-height: 500px)");
+  const data = (): FitData => ({
+    ...hooks.data(),
+    low,
+    seenDay: seen,
+    compact: compactQuery.matches,
+  });
+  const onCompact = () => render();
   let template: HTMLElement;
   let panel: HubPanel;
   let closed = false;
@@ -661,6 +670,7 @@ export function openFittingRoom(
     rail: "shop",
     onClose: () => {
       closed = true;
+      compactQuery.removeEventListener("change", onCompact);
       stageSize.disconnect();
       clearInterval(clock);
       preview?.();
@@ -678,6 +688,7 @@ export function openFittingRoom(
   root().addEventListener("keyup", onKeyUp);
   // Countdowns (server time) move on while the screen is open.
   const clock = setInterval(() => render(), 30_000);
+  compactQuery.addEventListener("change", onCompact);
   afterRender();
   stageSize.observe(root());
 

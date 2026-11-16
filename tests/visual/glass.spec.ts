@@ -192,7 +192,7 @@ test.describe("phone: less scrolling", () => {
     await expect(page.locator(".fit-room")).toBeVisible();
     // Nothing picked: no bar, the list takes the room.
     await expect(page.locator(".fit-room .ui-panel-foot")).toBeHidden();
-    await page.click('[data-ui-section="mythic"]');
+    await page.click('[data-ui-section="skins"]');
     const cols = await page
       .locator(".fit-grid")
       .first()
@@ -200,19 +200,19 @@ test.describe("phone: less scrolling", () => {
         (el) => getComputedStyle(el).gridTemplateColumns.split(" ").length,
       );
     expect(cols).toBe(4);
-    await snap(page, info, "phone-shop-mythic");
     // A pick brings the bar back, Buy in it.
     await page.click('[data-ui-section="today"]');
     await page.click(".fit-deal");
     await expect(page.locator(".fit-room .ui-panel-foot")).toBeVisible();
     await expect(page.locator("[data-fit-buy]")).toBeVisible();
+    await snap(page, info, "phone-shop-today");
   });
 
   test("a 667 px phone keeps three tiles a row", async ({ page }) => {
     await page.setViewportSize({ width: 667, height: 375 });
     await openLobby(page);
     await hubMenu(page, "shop");
-    await page.click('[data-ui-section="mythic"]');
+    await page.click('[data-ui-section="skins"]');
     const cols = await page
       .locator(".fit-grid")
       .first()
@@ -220,6 +220,41 @@ test.describe("phone: less scrolling", () => {
         (el) => getComputedStyle(el).gridTemplateColumns.split(" ").length,
       );
     expect(cols).toBe(3);
+  });
+
+  test("Mythic Hall picks one fighter and shows its three stages", async ({
+    page,
+  }, info) => {
+    await page.setViewportSize(PHONE);
+    await openLobby(page);
+    await setInsets(page, ISLAND);
+    await hubMenu(page, "shop");
+    await page.click('[data-ui-section="mythic"]');
+    const body = page.locator('[data-fit-region=body][data-section="mythic"]');
+    await expect(body.locator(".fit-fighters")).toBeVisible();
+    // One Mythical, the chosen fighter's, with Stage I, II and III.
+    await expect(body.locator(".fit-mythic-one .ui-tile")).toHaveCount(1);
+    await expect(body.locator(".fit-mythic-stages li")).toHaveText([
+      /^Stage I(?!I)/,
+      /^Stage II(?!I)/,
+      /^Stage III/,
+    ]);
+    // The whole hall fits in about a screen and a half.
+    const m = await page
+      .locator(".fit-body")
+      .evaluate((el) => el.scrollHeight / el.clientHeight);
+    expect(m).toBeLessThan(1.8);
+    await snap(page, info, "phone-mythic-pick");
+    // Another fighter: its own Mythical, which tries on as before.
+    await body.locator("[data-fit-fighter=cindrake]").click();
+    const tile = body.locator(".fit-mythic-one .ui-tile");
+    await expect(tile).toHaveAttribute("data-ui-item", "cindrake-sunforged");
+    await tile.click();
+    await expect(page.locator(".fit-room .ui-panel-foot")).toBeVisible();
+    // Desktop keeps the grid of all of them.
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await expect(body.locator(".fit-mythic-one")).toHaveCount(0);
+    await expect(body.locator(".fit-grid > .ui-tile")).not.toHaveCount(0);
   });
 
   test("the raid Guide's chapters share one row", async ({ page }, info) => {

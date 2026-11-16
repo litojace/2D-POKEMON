@@ -59,7 +59,7 @@ tall on the boss page: less than half the panel.
 
 | Screen                  | Before | After |
 | ----------------------- | -----: | ----: |
-| Shop › Mythic Hall      |    6.0 |   3.6 |
+| Shop › Mythic Hall      |    6.0 |   1.4 |
 | Raids › boss › Guide    |    4.4 |   2.9 |
 | Shop › Skins            |    3.6 |   2.0 |
 | Raid room fighter list  |    3.2 |     — |
@@ -154,6 +154,17 @@ test was checked to fail without its fix.
   edge. 3.1 → 2.4 screens. (`panel-scroll.spec.ts` swipes every sideways
   box with real touch input.)
 
+## Mythic Hall picks one fighter on a phone (owner, 16 Nov)
+
+The combined option the owner chose: on a phone held sideways, Mythic Hall
+is the fighter row (a pink dot on fighters whose Mythical you own, a pink
+ring on a trial under way, and "1/18 yours" above it) and the chosen
+fighter's Mythical beside its three awakening stages, the reached ones lit,
+with the wins bar. Tapping the Mythical tries it on and brings the Buy or
+Equip bar, as before. Desktop keeps the grid of all eighteen. Mythic Hall
+on 852×393: 6.0 → 1.4 screens. (`fitting-room.ts` passes `compact` from a
+`(max-height: 500px)` media query and redraws when it changes.)
+
 ## The Lobby's rail (owner, 16 Nov)
 
 The six buttons on the Lobby's left were six separate rounded tiles, the
@@ -211,10 +222,7 @@ is left").
 
 ## What is left, by value on a phone
 
-1. **Shop › Mythic Hall (3.6 screens).** Still the longest. A fighter row
-   (as Skins has) with the chosen fighter's Mythical and its three stages
-   would make it about one screen, but it hides the other 17 from a scroll,
-   so it is a design choice for the owner.
+1. **Shop › Mythic Hall:** done (one fighter at a time on phones, above).
 2. **Raids › Rewards (2.4).** Could be a sideways strip like the trophies.
 3. **Player card (2.4).** Tabs in the head (Overview · Titles · Mastery ·
    Trophies) would end the scrolling.

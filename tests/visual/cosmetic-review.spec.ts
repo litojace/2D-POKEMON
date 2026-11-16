@@ -165,6 +165,9 @@ for (const size of [
           "All stages unlocked for testing.",
         );
       await snap(page, info, `compact-mythical-${size.width}x${size.height}`);
+      // A phone's Mythic Hall shows one fighter at a time: pick Cindrake.
+      const cindrake = page.locator(".fit-body [data-fit-fighter=cindrake]");
+      if (await cindrake.count()) await cindrake.click();
       await page.click(".fit-room [data-ui-item=cindrake-sunforged]");
       await expect(stage).not.toHaveAttribute("aria-busy", "true");
       // Short of coins: Earn coins beside a disabled Buy, in the action bar.
@@ -190,6 +193,8 @@ for (const size of [
         `compact-mythical-purchase-${size.width}x${size.height}`,
       );
       // Effects are tried on the worn skin (Tidefin wears Abyssal Reaver, Stage III).
+      const tidefin = page.locator(".fit-body [data-fit-fighter=tidefin]");
+      if (await tidefin.count()) await tidefin.click();
       await page.click(".fit-room [data-ui-item=tidefin-moontide]");
       await page.click("[data-ui-section=collections]");
       await page.click("[data-fit-collection=galaxy]");
