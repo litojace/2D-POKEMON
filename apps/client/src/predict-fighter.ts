@@ -13,6 +13,7 @@ import {
   type Ability,
   type Fighter,
   type Input,
+  dashCooldownOf,
 } from "../../../packages/shared/src/index";
 import { canCastSkill } from "./cast-prediction";
 
@@ -173,7 +174,7 @@ export function predictFighter(
     p.dashX = (d.x || d.y ? d.x : Math.cos(p.angle)) * RULES.dashSpeed;
     p.dashY = (d.x || d.y ? d.y : Math.sin(p.angle)) * RULES.dashSpeed;
     p.dashUntil = time + RULES.dashDuration;
-    p.dashAt = time + RULES.dashCooldown;
+    p.dashAt = time + dashCooldownOf(p);
   }
   advanceMovement(p, input, 1 / RULES.tick, time);
   const kit = kitOf(p.character, p.rites);

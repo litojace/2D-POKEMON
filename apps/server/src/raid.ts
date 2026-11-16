@@ -53,11 +53,12 @@ import {
   type RaidTier,
   RAID_ENRAGE,
   RAID_TELEGRAPH_FLOOR,
-  raidEnrageSteps,
-  raidSoloRevive,
-  raidTelegraph,
-  raidTier,
+  raidTierOf,
+  tierEnrageSteps,
+  tierTelegraph,
+  isRaider,
 } from "../../../packages/shared/src/raid.js";
+import type { SpireRun } from "./spire.js";
 import { BotBrain } from "./bot.js";
 import {
   RAID_CLUSTER_ATTACKS,
@@ -72,6 +73,7 @@ import {
   RAID_REACTION,
   RAID_SLOWEST_SPEED,
   buildRaidDeck,
+  raidChargeKind,
   raidShapeHits,
   raidShapeOf,
   type RaidReaction,
@@ -157,6 +159,8 @@ export function raidJitter(seed: number, attack: number, index: number) {
 }
 export class RaidArena extends Arena {
   raid: RaidState;
+  /** A Spire climb this room is running (its floors, Echoes and blessings). */
+  spire?: SpireRun;
   protected nextAttack = 0;
   protected phaseElapsed = 0;
   protected attacks = 0;
@@ -248,7 +252,7 @@ export class RaidArena extends Arena {
     };
   }
   heroes() {
-    return this.players.filter((p) => !p.raidBoss && !p.out);
+    return this.players.filter((p) => isRaider(p) && !p.out);
   }
   boss() {
     return this.players.find((p) => p.raidBoss);
@@ -277,47 +281,21 @@ export class RaidArena extends Arena {
     );
   }
   override start() {
-    this.players = this.players.filter((p) => !p.raidBoss && !p.out);
+    this.players = this.players.filter((p) => isRaider(p) && !p.out);
     super.start();
     const r = this.raid;
     r.result = null;
-    r.closingRadius = undefined;
-    this.phaseElapsed = 0;
     r.resultId = undefined;
     r.rewardStatus = undefined;
     r.elapsed = 0;
-    r.phase = 1;
-    r.stagger = 0;
-    r.staggerUntil = 0;
-    r.exposedUntil = 0;
     r.partySize = this.players.length;
     r.daily = false;
     r.day = pacificDate();
     r.seed = randomInt(1 << 30);
     r.trait = raidTraitFor(r.boss, r.seed);
     r.gilded = randomInt(20) === 0;
-    this.chargeBaits = 0;
-    this.threat.clear();
-    this.lastTargetId = undefined;
-    this.chargeMisses = 0;
-    const def = this.def();
-    r.maxHp = Math.round(
-      (def.health.base + def.health.perExtraPlayer * (r.partySize - 1)) *
-        RAID.healthScale *
-        (RAID.perilHealth[r.peril] ?? 1) *
-        this.tier().health *
-        (r.partySize === 1 ? RAID.soloHealth : 1) *
-        (r.gilded ? def.health.gilded : 1),
-    );
-    r.enrage = 0;
-    r.enrageAt = undefined;
-    this.resetBrain();
-    r.pings = [];
+    r.maxHp = this.bossMaxHp();
     this.downCauses = {};
-    this.pingAt.clear();
-    r.warnings = [];
-    r.wards = [];
-    r.downed = {};
     r.rites = {};
     r.offers = {};
     r.contributions = Object.fromEntries(
@@ -326,10 +304,57 @@ export class RaidArena extends Arena {
         { damage: 0, revives: 0, pillars: 0, downs: 0 },
       ]),
     );
-    this.seenAttacks.clear();
-    this.rescueCredit.clear();
     r.downs = 0;
     r.revives = 0;
+    this.resetFight();
+    this.players.forEach((p, i) => {
+      p.team = 0;
+      p.x = 260 + (i % 2) * 85;
+      p.y = 330 + Math.floor(i / 2) * 160;
+    });
+    this.spawnBoss();
+  }
+  /** The boss's health for this party, tier and look. */
+  protected bossMaxHp() {
+    const r = this.raid,
+      def = this.def();
+    return Math.round(
+      (def.health.base + def.health.perExtraPlayer * (r.partySize - 1)) *
+        RAID.healthScale *
+        (RAID.perilHealth[r.peril] ?? 1) *
+        this.tier().health *
+        (r.partySize === 1 ? RAID.soloHealth : 1) *
+        (r.gilded ? def.health.gilded : 1),
+    );
+  }
+  /**
+   * A fresh fight: chapter 1, no stagger or enrage, the boss's brain and
+   * deck reset, the arena's features standing again (a run's start, and a
+   * Spire boss floor in the middle of a climb).
+   */
+  protected resetFight() {
+    const r = this.raid;
+    r.closingRadius = undefined;
+    this.phaseElapsed = 0;
+    r.phase = 1;
+    this.round = 1;
+    r.stagger = 0;
+    r.staggerUntil = 0;
+    r.exposedUntil = 0;
+    this.chargeBaits = 0;
+    this.threat.clear();
+    this.lastTargetId = undefined;
+    this.chargeMisses = 0;
+    r.enrage = 0;
+    r.enrageAt = undefined;
+    this.resetBrain();
+    r.pings = [];
+    this.pingAt.clear();
+    r.warnings = [];
+    r.wards = [];
+    r.downed = {};
+    this.seenAttacks.clear();
+    this.rescueCredit.clear();
     this.setupArena();
     this.downAt.clear();
     this.crawl.clear();
@@ -339,11 +364,10 @@ export class RaidArena extends Arena {
     this.charging = undefined;
     this.attacks = 0;
     this.started = false;
-    this.players.forEach((p, i) => {
-      p.team = 0;
-      p.x = 260 + (i % 2) * 85;
-      p.y = 330 + Math.floor(i / 2) * 160;
-    });
+  }
+  /** The boss steps onto the court at the start of a run. */
+  protected spawnBoss() {
+    const r = this.raid;
     const boss = super.add(r.bossId, RAID_BOSSES[r.boss].name, "terradon");
     const home = this.bossHome();
     Object.assign(boss, {
@@ -507,6 +531,7 @@ export class RaidArena extends Arena {
       // Bosses cannot be displaced or stun-locked by normal fighter kits.
       ability = ability ? { ...ability, knockback: 0 } : undefined;
     } else if (
+      isRaider(target) &&
       r.wards.some(
         (w) =>
           w.until > this.time &&
@@ -528,7 +553,8 @@ export class RaidArena extends Arena {
         0,
         before - Math.max(0, target.hp),
       );
-    if (!target.raidBoss && target.hp < before) {
+    // Raiders go down (Spire Echoes and the boss don't).
+    if (isRaider(target) && target.hp < before) {
       this.damageAt.set(target.id, this.time);
       if (target.hp <= 0) {
         r.downs++;
@@ -763,7 +789,8 @@ export class RaidArena extends Arena {
           down.progress +
             (dt / this.tier().reviveSeconds) *
               spring *
-              (fast ? 1 + riteValue("rescue", this.raid.phase) : 1),
+              (fast ? 1 + riteValue("rescue", this.raid.phase) : 1) *
+              this.reviveRate(rescuers),
         );
         if (down.progress >= 1) {
           for (const id of credit)
@@ -780,6 +807,10 @@ export class RaidArena extends Arena {
       !heroes.some((p) => this.raid.downed[p.id]?.self && !this.selfUsed)
     )
       this.finish(false);
+  }
+  /** Revive speed × this for these rescuers (Spire blessings). */
+  protected reviveRate(_rescuers: Fighter[]) {
+    return 1;
   }
   protected warn(
     kind: RaidAttack,
@@ -940,7 +971,9 @@ export class RaidArena extends Arena {
   // ------------------------------------------------------------ Star tier
   /** This run's difficulty row (Peril 1-2 keep the old rules). */
   protected tier(): RaidTier {
-    return this.raid.peril >= 3 ? raidTier(this.raid.boss) : LEGACY_TIER;
+    return this.raid.peril >= 3
+      ? raidTierOf(this.raid.boss, this.raid.variant)
+      : LEGACY_TIER;
   }
   /** Boss damage × this: the tier, plus the soft enrage. */
   protected bossDamage() {
@@ -951,7 +984,10 @@ export class RaidArena extends Arena {
   /** A solo raider's self-revive this run (none against ★★★ bosses). */
   protected soloRevive() {
     const r = this.raid;
-    if (r.peril >= 3) return raidSoloRevive(r.boss);
+    if (r.peril >= 3) {
+      const revive = this.tier().soloRevive;
+      return revive ? { seconds: revive.seconds, hp: revive.hp } : undefined;
+    }
     return r.peril <= RAID.soloSelfReviveMaxPeril
       ? { seconds: RAID.selfReviveDelay, hp: 0.45 }
       : undefined;
@@ -970,7 +1006,7 @@ export class RaidArena extends Arena {
       kind === "wave"
     )
       return seconds;
-    return raidTelegraph(r.boss, seconds);
+    return tierTelegraph(this.tier(), seconds);
   }
   // ---------------------------------------------------------- Predictive aim
   /** Remember each raider's velocity for a moment (steady-movement check). */
@@ -1087,7 +1123,11 @@ export class RaidArena extends Arena {
     } else if (kind === "debris") this.warnDebris(teach);
     else if (kind === "volley") this.warnVolley(target, teach);
     else if (kind === "eruption")
-      this.warnEruption(target, eruptionChain(r.phase, r.peril), teach);
+      this.warnEruption(
+        target,
+        eruptionChain(r.phase, r.peril, r.variant),
+        teach,
+      );
     else this.warnShare(target, teach);
   }
   protected attacksStep(dt: number) {
@@ -1572,7 +1612,7 @@ export class RaidArena extends Arena {
    * locks (only when that stays fair: see `lockWarnings`).
    */
   protected leadsOnLock(kind: RaidAttack) {
-    return kind === "charge" || kind === "lunge" || kind === "dive";
+    return raidChargeKind(kind) || kind === "lunge" || kind === "dive";
   }
   protected locked = new WeakSet<RaidWarning>();
   /**
@@ -1590,20 +1630,24 @@ export class RaidArena extends Arena {
         continue;
       this.locked.add(w);
       if (!this.leadsOnLock(w.kind)) continue;
-      // ★ bosses teach their locks plainly in chapter 1.
-      if (RAID_BOSSES[this.raid.boss].stars === 1 && this.raid.phase === 1)
+      // ★ bosses teach their locks plainly in chapter 1 (not their evolved forms).
+      if (
+        RAID_BOSSES[this.raid.boss].stars === 1 &&
+        this.raid.phase === 1 &&
+        !this.raid.variant
+      )
         continue;
       const target = this.heroes().find((p) => p.id === w.targetId && p.hp > 0);
       if (!target || (target.clone && target.clone.until > this.time)) continue;
       // A charge also travels: the boss reaches a raider a little later.
-      const travel =
-        w.kind === "charge"
-          ? Math.hypot(target.x - boss.x, target.y - boss.y) / BOSS.charge.speed
-          : 0;
+      const charge = raidChargeKind(w.kind);
+      const travel = charge
+        ? Math.hypot(target.x - boss.x, target.y - boss.y) / BOSS.charge.speed
+        : 0;
       const left = w.at - this.time + travel;
       const half =
         raidShapeOf(w.kind) === "line"
-          ? w.kind === "charge"
+          ? charge
             ? 100 - RULES.radius
             : (w.width ?? 0) / 2 || w.radius
           : w.radius;
@@ -1613,11 +1657,10 @@ export class RaidArena extends Arena {
       if (at.x === target.x && at.y === target.y) continue;
       if (raidShapeOf(w.kind) === "line") {
         const d = normalize(at.x - w.x || 1, at.y - w.y);
-        const len =
-          w.kind === "charge" ? 1000 : Math.hypot(w.tx - w.x, w.ty - w.y);
+        const len = charge ? 1000 : Math.hypot(w.tx - w.x, w.ty - w.y);
         w.tx = w.x + d.x * len;
         w.ty = w.y + d.y * len;
-        if (w.kind === "charge") {
+        if (charge) {
           w.tx = Math.max(90, Math.min(1510, w.tx));
           w.ty = Math.max(90, Math.min(810, w.ty));
           boss.angle = Math.atan2(w.ty - w.y, w.tx - w.x);
@@ -1633,7 +1676,7 @@ export class RaidArena extends Arena {
   protected stepEnrage() {
     const r = this.raid;
     if (!this.smart()) return;
-    const steps = raidEnrageSteps(r.boss, r.elapsed);
+    const steps = tierEnrageSteps(this.tier(), r.elapsed);
     if (steps <= (r.enrage ?? 0)) return;
     r.enrage = steps;
     r.enrageAt = this.time;
@@ -1729,7 +1772,7 @@ export class RaidArena extends Arena {
   /** This chapter's attack order. */
   protected pattern() {
     const r = this.raid;
-    return raidPattern(r.phase, r.peril, r.partySize, r.boss);
+    return raidPattern(r.phase, r.peril, r.partySize, r.boss, r.variant);
   }
   /** No new attack while one is still playing out (Grumblecrag: a charge). */
   protected canStartAttack() {
@@ -1741,7 +1784,7 @@ export class RaidArena extends Arena {
     for (const w of r.warnings) {
       const target = this.heroes().find((p) => p.id === w.targetId && p.hp > 0);
       if (!target) continue;
-      if (w.kind === "charge") {
+      if (raidChargeKind(w.kind)) {
         if (w.lockAt === undefined || this.time >= w.lockAt) continue;
         const direction = normalize(target.x - boss.x, target.y - boss.y);
         w.tx = Math.max(90, Math.min(1510, boss.x + direction.x * 1000));
@@ -2011,7 +2054,7 @@ export class RaidArena extends Arena {
     this.raid.message = "It turns — the charge comes back!";
   }
   /** How much a hit on the boss counts: exposed ×1.6, cracked ×1.2, armored ×0.72. */
-  protected coreMultiplier(target: Fighter) {
+  protected coreMultiplier(target: Fighter): number {
     const r = this.raid;
     const open = r.exposedUntil > this.time || r.staggerUntil > this.time;
     if (open || (this.alwaysExposed() && !this.smart()))
@@ -2064,7 +2107,8 @@ export class RaidArena extends Arena {
   }
   /** Stand-ins dodge telegraphs, share meteors and revive allies. */
   override botInput(bot: Fighter, input: Input) {
-    if (bot.hp <= 0 || bot.raidBoss) return input;
+    // Spire Echoes play their own kit: the stand-in brain is for raiders.
+    if (bot.hp <= 0 || bot.raidBoss || bot.echo) return input;
     const r = this.raid;
     const go = (x: number, y: number, away: boolean) => {
       const d = normalize(x - bot.x, y - bot.y);
@@ -2123,7 +2167,7 @@ export class RaidArena extends Arena {
         }
         continue;
       }
-      if (w.kind === "charge") {
+      if (raidChargeKind(w.kind)) {
         const lx = w.tx - w.x,
           ly = w.ty - w.y,
           len = Math.hypot(lx, ly) || 1;
@@ -2167,6 +2211,8 @@ export class RaidArena extends Arena {
     this.raid.message = this.finishMessage(won);
     this.raid.warnings = [];
     this.clearAttacks();
+    // Echo brains go with the fight (rooms with bots can't return to a lobby).
+    for (const p of this.players) if (p.echo) this.bots.delete(p.id);
   }
   override endRound(team: number | null) {
     this.finish(team === 0);
@@ -2210,12 +2256,20 @@ export class RaidArena extends Arena {
       this.raid.pings = (this.raid.pings ?? []).filter(
         (q) => q.until > this.time,
       );
-      this.attacksStep(dt);
+      if (this.fighting()) this.attacksStep(dt);
     }
     super.tick(dt);
     if (this.phase !== "playing") return;
     this.resolveDowns(dt);
     if (this.raid.result) return;
+    this.stepOutcome();
+  }
+  /** Is there a boss on the court to run attacks for? (Spire wave floors: no.) */
+  protected fighting() {
+    return true;
+  }
+  /** After a tick: the run is won or lost, or the boss enters a new chapter. */
+  protected stepOutcome() {
     const boss = this.boss();
     if (!boss) return;
     if (this.bossHealth() <= 0) return this.finish(true);
@@ -2230,7 +2284,9 @@ export class RaidArena extends Arena {
       this.phaseElapsed = 0;
       this.raid.phase = next;
       this.round = next;
-      this.raid.message = raidChapters(this.raid.boss)[next - 1].objective;
+      this.raid.message = raidChapters(this.raid.boss, this.raid.variant)[
+        next - 1
+      ].objective;
       this.attacks = 0;
       this.deck = [];
       this.deckCycle = 0;

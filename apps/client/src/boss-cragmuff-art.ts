@@ -464,7 +464,7 @@ function innerGlow(ctx, path, color, blur, dx = 0, dy = 0) {
 }
 
 // ── palette: mossy grey-beige stone wool, cocoa face, amber crystal ──
-const R_WOOL = [
+const RAID_WOOL = [
   [0, "#47412f"],
   [0.22, "#646048"],
   [0.45, "#878066"],
@@ -472,20 +472,20 @@ const R_WOOL = [
   [0.84, "#c8bea2"],
   [1, "#e8e0c8"],
 ];
-const R_SKIN = [
+const RAID_SKIN = [
   [0, "#46342a"],
   [0.35, "#6a5244"],
   [0.65, "#8d725f"],
   [0.88, "#b0947c"],
   [1, "#d0b49a"],
 ];
-const R_MUZ = [
+const RAID_MUZ = [
   [0, "#8c745e"],
   [0.45, "#bba183"],
   [0.8, "#dcc6a8"],
   [1, "#f2e4cc"],
 ];
-const R_AMBER = [
+const RAID_AMBER = [
   [0, "#6a2a05"],
   [0.25, "#a9500b"],
   [0.5, "#e2861a"],
@@ -493,14 +493,114 @@ const R_AMBER = [
   [0.88, "#ffe07e"],
   [1, "#fff8d6"],
 ];
-const R_DIMAMB = [
+const RAID_DIMAMB = [
   [0, "#3a2c22"],
   [0.35, "#5e4a3a"],
   [0.65, "#87725c"],
   [1, "#b8a68c"],
 ];
-const C_INK = "#24160f";
-const MOSS = "rgba(104,136,62,";
+/**
+ * The two looks the atlas can be painted in. The raid's Cragmuff: mossy
+ * stone wool and amber crystal. Ascendant Cragmuff (the Spire's evolved
+ * form): obsidian fleece with a violet sheen, a basalt face, molten magma
+ * crystal and veins of it already open in chapter 1 (`ahead` paints each
+ * chapter's cracks, clusters and horn sprouts one chapter early).
+ */
+const LOOKS = {
+  raid: {
+    wool: RAID_WOOL,
+    skin: RAID_SKIN,
+    muz: RAID_MUZ,
+    amber: RAID_AMBER,
+    dim: RAID_DIMAMB,
+    ink: "#24160f",
+    moss: "rgba(104,136,62,",
+    rim: "rgba(255,226,170,0.9)",
+    sky: "rgba(255,244,222,0.5)",
+    crack: [
+      "rgba(255,150,40,0.85)",
+      "rgba(255,196,80,1)",
+      "rgba(255,250,214,1)",
+    ],
+    line: "rgba(44,34,24,0.95)",
+    glow: [
+      ["rgba(255,226,140,1)", "rgba(255,160,50,0.6)", "rgba(255,100,20,0)"],
+      ["rgba(255,255,235,1)", "rgba(255,220,120,0.75)", "rgba(255,140,30,0)"],
+    ],
+    ahead: 0,
+  },
+  ascendant: {
+    wool: [
+      [0, "#0d0b13"],
+      [0.22, "#1a1723"],
+      [0.45, "#2a2637"],
+      [0.66, "#3d384f"],
+      [0.84, "#5b536f"],
+      [1, "#8a80a3"],
+    ],
+    skin: [
+      [0, "#1d1513"],
+      [0.35, "#352622"],
+      [0.65, "#4f3b32"],
+      [0.88, "#6d5447"],
+      [1, "#8c6e5d"],
+    ],
+    muz: [
+      [0, "#55453e"],
+      [0.45, "#7a675c"],
+      [0.8, "#9c887a"],
+      [1, "#bba798"],
+    ],
+    amber: [
+      [0, "#470a02"],
+      [0.25, "#8c1c05"],
+      [0.5, "#d6420c"],
+      [0.72, "#ff7a1e"],
+      [0.88, "#ffc04a"],
+      [1, "#fff1b8"],
+    ],
+    dim: [
+      [0, "#1b1414"],
+      [0.35, "#2d2222"],
+      [0.65, "#493a36"],
+      [1, "#6d5b54"],
+    ],
+    ink: "#120a08",
+    moss: "rgba(214,74,28,",
+    rim: "rgba(255,128,52,0.85)",
+    sky: "rgba(176,164,230,0.38)",
+    crack: [
+      "rgba(255,82,24,0.85)",
+      "rgba(255,146,54,1)",
+      "rgba(255,236,170,1)",
+    ],
+    line: "rgba(8,5,12,0.95)",
+    glow: [
+      ["rgba(255,196,110,1)", "rgba(255,98,30,0.62)", "rgba(220,40,10,0)"],
+      ["rgba(255,246,214,1)", "rgba(255,160,70,0.78)", "rgba(230,60,16,0)"],
+    ],
+    ahead: 1,
+  },
+};
+let LOOK = LOOKS.raid;
+let R_WOOL = LOOK.wool,
+  R_SKIN = LOOK.skin,
+  R_MUZ = LOOK.muz,
+  R_AMBER = LOOK.amber,
+  R_DIMAMB = LOOK.dim,
+  C_INK = LOOK.ink,
+  MOSS = LOOK.moss;
+/** Paint with this look from now on (the atlas sets it, then puts the raid's back). */
+function useLook(name) {
+  LOOK = LOOKS[name] || LOOKS.raid;
+  R_WOOL = LOOK.wool;
+  R_SKIN = LOOK.skin;
+  R_MUZ = LOOK.muz;
+  R_AMBER = LOOK.amber;
+  R_DIMAMB = LOOK.dim;
+  C_INK = LOOK.ink;
+  MOSS = LOOK.moss;
+}
 
 // ── fleece: a cloud of spheres on an ellipsoid ──
 /** Body lobes (body-local centre, radius, normal), from a fixed Fibonacci spread. */
@@ -786,8 +886,8 @@ function paintBody(ctx, k) {
   ctx.restore();
   innerGlow(ctx, sil, "rgba(48,38,26,0.5)", 22, 0, -12);
   innerGlow(ctx, sil, "rgba(48,38,26,0.3)", 18, 10, 0);
-  innerGlow(ctx, sil, "rgba(255,226,170,0.9)", 4, -3, 0); // rim light, right
-  innerGlow(ctx, sil, "rgba(255,244,222,0.5)", 7, 2.5, 3); // sky light, upper left
+  innerGlow(ctx, sil, LOOK.rim, 4, -3, 0); // rim light, right
+  innerGlow(ctx, sil, LOOK.sky, 7, 2.5, 3); // sky light, upper left
   // 4 the seam of light over the sleeping core (front and turned views)
   const gn = rotN(norm3(0, -0.3, 1), rear);
   if (V.N(gn).z > 0.2) {
@@ -836,7 +936,7 @@ function paintOverlay(ctx, k) {
   ctx.lineJoin = "round";
   const runs = [];
   for (const c of CRACKS) {
-    if (c.ph > k.ph) continue;
+    if (c.ph > k.ph + LOOK.ahead) continue;
     let cur = null;
     for (const pt of c.pts) {
       if (faces(V, pt.n, 0.12)) {
@@ -859,7 +959,7 @@ function paintOverlay(ctx, k) {
   soft(ctx, 3, () => {
     for (const r of runs)
       if (r.q.length > 1) {
-        ctx.strokeStyle = "rgba(255,150,40,0.85)";
+        ctx.strokeStyle = LOOK.crack[0];
         ctx.lineWidth = 9 * r.w;
         path(r.q);
         ctx.stroke();
@@ -867,18 +967,18 @@ function paintOverlay(ctx, k) {
   });
   for (const r of runs)
     if (r.q.length > 1) {
-      ctx.strokeStyle = "rgba(255,196,80,1)";
+      ctx.strokeStyle = LOOK.crack[1];
       ctx.lineWidth = 3.2 * r.w;
       path(r.q);
       ctx.stroke();
-      ctx.strokeStyle = "rgba(255,250,214,1)";
+      ctx.strokeStyle = LOOK.crack[2];
       ctx.lineWidth = 1.2 * r.w;
       path(r.q);
       ctx.stroke();
     }
   ctx.restore();
   for (const cl of CLUSTERS) {
-    if (cl.ph > k.ph) continue;
+    if (cl.ph > k.ph + LOOK.ahead) continue;
     const b = onBody(cl.d, 6),
       cz = V.N(b.n).z;
     if (cz < 0.12) continue;
@@ -1348,7 +1448,11 @@ function paintHorn(ctx, k) {
     ctx.fill();
   }
   // 6 sprouts: little crystal points standing off the outer curve (phases 2-3)
-  for (const [s, sz] of SPROUTS[k.ph]) {
+  const sprouts =
+    LOOK.ahead && k.ph >= 3
+      ? [...SPROUTS[3], [0.5, 0.85], [0.7, 0.9]]
+      : SPROUTS[Math.min(3, k.ph + LOOK.ahead)];
+  for (const [s, sz] of sprouts) {
     const i = Math.round(s * N);
     if (!want(Math.min(N - 1, i))) continue;
     const d = D[i],
@@ -1412,6 +1516,41 @@ function crystalPoint(ctx, b, d, len, w, R, dark) {
   ctx.moveTo(b.x + d.x * len * 0.15, b.y + d.y * len * 0.15);
   ctx.lineTo(tip.x, tip.y);
   ctx.stroke();
+}
+
+/**
+ * Ascendant Cragmuff's crest (head-local, like the horns): five magma
+ * crystals rising from the crown tuft between the horns, the middle one
+ * tallest and swept back, two short ones toward the brow.
+ */
+const CREST = [
+  { b: { x: 0, y: 40, z: -6 }, t: { x: 0, y: 86, z: -22 }, w: 7 },
+  { b: { x: 12, y: 37, z: -4 }, t: { x: 27, y: 70, z: -16 }, w: 5.4 },
+  { b: { x: -12, y: 37, z: -4 }, t: { x: -27, y: 70, z: -16 }, w: 5.4 },
+  { b: { x: 7, y: 38, z: 7 }, t: { x: 12, y: 59, z: 12 }, w: 3.8 },
+  { b: { x: -7, y: 38, z: 7 }, t: { x: -12, y: 59, z: 12 }, w: 3.8 },
+];
+function paintCrest(ctx, k) {
+  const V = headView(FACE_YAW[k.v]);
+  const items = CREST.map((c) => ({ c, b: V.P(c.b), t: V.P(c.t) })).sort(
+    (a, b) => a.b.z + a.t.z - (b.b.z + b.t.z),
+  );
+  // a hot glow where they break out of the fleece (painted once, not a sprite)
+  const root = V.P({ x: 0, y: 40, z: -2 });
+  const g = ctx.createRadialGradient(root.x, root.y, 0, root.x, root.y, 26);
+  g.addColorStop(0, "rgba(255,150,60,0.55)");
+  g.addColorStop(1, "rgba(255,80,20,0)");
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.arc(root.x, root.y, 26, 0, TAU);
+  ctx.fill();
+  for (const { c, b, t } of items) {
+    const dx = t.x - b.x,
+      dy = t.y - b.y,
+      len = Math.max(8, Math.hypot(dx, dy));
+    const d = norm2(dx || 0.001, dy || -1);
+    crystalPoint(ctx, b, d, len, c.w, R_AMBER, "#3a0802");
+  }
 }
 
 /** Both horns' back (or front) parts in one image, for a view and phase. */
@@ -2373,12 +2512,25 @@ const QUAL = {
 const ATLAS_BUDGET = 8 * 1024 * 1024;
 const BODY_BOX = [-150, -200, 150, 40],
   REAR_BOX = [-170, -270, 170, 60];
-function buildAtlas(qScale = 1) {
+/**
+ * Paint every piece once into one atlas page. `look` "ascendant" paints
+ * Ascendant Cragmuff: its palette, chapter 1's magma veins, and its crest of
+ * crystals (`crest_<view>`); the raid's look is put back afterwards.
+ */
+function buildAtlas(qScale = 1, look = "raid") {
+  useLook(look);
+  try {
+    return paintAtlasPieces(qScale, look === "ascendant");
+  } finally {
+    useLook("raid");
+  }
+}
+function paintAtlasPieces(qScale, ascendant) {
   ATLAS = { pages: [], pieces: {}, stats: { pieces: 0, px: 0 } };
   pageBuf = [];
   PENDING.length = 0;
   const Q = (k) => QUAL[k] * qScale;
-  const LINE = "rgba(44,34,24,0.95)";
+  const LINE = LOOK.line;
   for (let v = 0; v < 5; v++) {
     piece(`body_${v}`, BODY_BOX, Q("body"), paintBody, {
       k: { v },
@@ -2395,10 +2547,16 @@ function buildAtlas(qScale = 1) {
       line: 1.6,
       lineColor: LINE,
     });
-    for (const ph of [2, 3])
+    for (const ph of ascendant ? [1, 2, 3] : [2, 3])
       piece(`over_${v}_${ph}`, BODY_BOX, Q("over"), paintOverlay, {
         k: { v, ph },
         outline: false,
+      });
+    if (ascendant)
+      piece(`crest_${v}`, [-60, -120, 60, -10], Q("horn"), paintCrest, {
+        k: { v },
+        line: 1.4,
+        lineColor: LINE,
       });
     piece(`head_${v}`, [-90, -95, 90, 70], Q("head"), paintHead, {
       k: { v },
@@ -2458,9 +2616,9 @@ function buildAtlas(qScale = 1) {
     outline: false,
     k: {
       stops: [
-        [0, "rgba(255,226,140,1)"],
-        [0.3, "rgba(255,160,50,0.6)"],
-        [1, "rgba(255,100,20,0)"],
+        [0, LOOK.glow[0][0]],
+        [0.3, LOOK.glow[0][1]],
+        [1, LOOK.glow[0][2]],
       ],
     },
   });
@@ -2468,9 +2626,9 @@ function buildAtlas(qScale = 1) {
     outline: false,
     k: {
       stops: [
-        [0, "rgba(255,255,235,1)"],
-        [0.25, "rgba(255,220,120,0.75)"],
-        [1, "rgba(255,140,30,0)"],
+        [0, LOOK.glow[1][0]],
+        [0.25, LOOK.glow[1][1]],
+        [1, LOOK.glow[1][2]],
       ],
     },
   });
@@ -2588,6 +2746,7 @@ export {
   mouthLayout,
   paintEyes,
   paintHead,
+  paintCrest,
   paintHornSet,
   paintMouth,
   paintBody,

@@ -201,8 +201,9 @@ for (const size of SIZES)
             };
           }),
         );
-      expect(cards).toHaveLength(7);
-      expect(new Set(cards.map((c) => c.x)).size).toBe(size.phone ? 7 : 4);
+      // Seven bosses and the Spire (the last tile).
+      expect(cards).toHaveLength(8);
+      expect(new Set(cards.map((c) => c.x)).size).toBe(size.phone ? 8 : 4);
       if (size.phone) {
         const gallery = await box(page, ".rh-grid");
         expect(new Set(cards.map((c) => Math.round(c.t))).size).toBe(1);

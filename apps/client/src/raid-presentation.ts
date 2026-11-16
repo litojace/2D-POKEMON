@@ -12,6 +12,8 @@ import {
   type RaidContribution,
   type RaidProgress,
   type RaidReward,
+  raidBossName,
+  isRaider,
 } from "../../../packages/shared/src/raid";
 const escape = (s: string) =>
   s.replace(
@@ -39,14 +41,14 @@ export function cueWarning(
 export function raidCue(state: Snapshot, myId: string) {
   const r = state.raid!;
   if (state.phase !== "playing")
-    return raidChapters(r.boss)[r.phase - 1].objective;
+    return raidChapters(r.boss, r.variant)[r.phase - 1].objective;
   if (r.staggerUntil > state.time)
     return "Core exposed — unleash your ultimates!";
   // The soft enrage is announced for a few seconds when it starts or grows.
   if ((r.enrage ?? 0) > 0 && state.time - (r.enrageAt ?? -99) < 3)
     return r.enrage === 1
-      ? `${RAID_BOSSES[r.boss].name} grows furious — faster, harder attacks!`
-      : `${RAID_BOSSES[r.boss].name}'s fury builds (${r.enrage}/4)!`;
+      ? `${raidBossName(r)} grows furious — faster, harder attacks!`
+      : `${raidBossName(r)}'s fury builds (${r.enrage}/4)!`;
   const w = cueWarning(state, myId);
   if (r.boss === "storm-twins") {
     const fallen = r.twins?.find(
@@ -142,6 +144,16 @@ export function raidCue(state: Snapshot, myId: string) {
         : `${state.players.find((p) => p.id === w.targetId)?.name ?? "An ally"} is`;
     return `${who} targeted${w.teach ? " — lead the charge into a pillar!" : " — bait the charge!"}`;
   }
+  if (w?.kind === "avalanche")
+    return w.targetId === myId
+      ? "Avalanche on you — leave the lane, then stay off it!"
+      : "Avalanche — clear the lane; it splits into magma!";
+  if (w?.kind === "fissure")
+    return "The lane erupts — stay off the magma line!";
+  if (w?.kind === "twin-slam")
+    return !r.warnings.some((v) => v.kind === "twin-slam" && v.chain === 2)
+      ? "Second ring — jump again or leave it!"
+      : "Twin Slam — jump ring 1, then ring 2!";
   if (w?.kind === "slam")
     return w.followUp
       ? "Second slam — jump again or leave the circle!"
@@ -189,7 +201,7 @@ export function raidCue(state: Snapshot, myId: string) {
       : r.boss === "gloomshade"
         ? "Found it — strike the glowing core!"
         : "Armor broken — strike the glowing core!";
-  return raidChapters(r.boss)[r.phase - 1].objective;
+  return raidChapters(r.boss, r.variant)[r.phase - 1].objective;
 }
 /** Tidewyrm's callouts, most urgent first. */
 function tidewyrmCue(state: Snapshot, myId: string) {
@@ -429,7 +441,7 @@ export function raidContributions(state: Snapshot, myId?: string) {
   const r = state.raid!;
   const roles = raidRoles(r.contributions ?? {}, r.boss);
   const raiders = state.players
-    .filter((p) => !p.raidBoss)
+    .filter((p) => isRaider(p))
     .map((p, i) => ({
       p,
       i,

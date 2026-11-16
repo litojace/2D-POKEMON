@@ -63,6 +63,10 @@ const LIFE: Partial<Record<RaidWarning["kind"], number>> = {
   eruption: 1.25,
   share: 1.7,
   debris: 1.3,
+  // Ascendant Cragmuff
+  avalanche: 2.4,
+  "twin-slam": 1.5,
+  fissure: 1.4,
 };
 interface Hit {
   cast: BossCast;
@@ -307,6 +311,9 @@ export const cragmuffFx = {
   ring: 0,
   scrape: 0,
   crash: 0,
+  /** Ascendant Cragmuff: a lane splitting into magma, and its eruption. */
+  seam: 0,
+  fissure: 0,
 };
 // ───────────────────────── Cragmuff's crystal pieces (from the ram demo) ─────────────────────────
 const AMBER = { lit: 0xffe07e, mid: 0xffb43c, dark: 0xa9500b, line: 0x5a2206 };
@@ -723,6 +730,15 @@ export function drawGrumbleAttacks(
         u = clamp(((state.time - start) / Math.max(0.1, w.at - start)) * 1.12);
       crackRace(fx, glow, boss.x, boss.y + GRUMBLE_FEET, w.x, w.y, u, 1, w.id);
     } else if (w.kind === "debris") debrisFall(fx, glow, w, state.time, pal);
+    else if (w.kind === "avalanche" || w.kind === "fissure") {
+      // The lane splitting open: a crack racing down it while the
+      // avalanche winds up, then the whole seam glowing hotter until it erupts.
+      const start = w.startedAt ?? w.at - 1,
+        u = clamp((state.time - start) / Math.max(0.1, w.at - start));
+      if (w.kind === "avalanche")
+        crackRace(fx, glow, w.x, w.y + 20, w.tx, w.ty, u * 0.85, 0.6, w.id);
+      else magmaSeam(fx, glow, w, u, low);
+    }
   }
   if (r.closingRadius) closingSpikes(fx, glow, r.closingRadius, low);
   // The hits, each kept for as long as its effect lasts. Their clock stops
@@ -818,8 +834,74 @@ export function drawGrumbleAttacks(
         pal,
         low,
       );
-    else if (c.kind === "charge") charge(fx, glow, hit, boss, pal, low, r);
+    else if (c.kind === "charge" || c.kind === "avalanche")
+      charge(fx, glow, hit, boss, pal, low, r);
+    else if (c.kind === "twin-slam") {
+      impact(fx, glow, c.x, c.y, c.radius, 1, age, seed, pal, low);
+      dustRing(fx, c.x, c.y, c.radius * 0.85, low ? 6 : 12, age, seed, 1.0);
+    } else if (c.kind === "fissure") fissureBurst(fx, glow, c, age, seed, low);
   }
+}
+
+/** Points every `step` px along a line, from its start (the boss's end). */
+function along(x0: number, y0: number, x1: number, y1: number, step: number) {
+  const l = Math.hypot(x1 - x0, y1 - y0),
+    n = Math.max(1, Math.floor(l / step));
+  return Array.from({ length: n }, (_, i) => {
+    const f = (i + 0.5) / n;
+    return { x: x0 + (x1 - x0) * f, y: y0 + (y1 - y0) * f, f };
+  });
+}
+/**
+ * A fissure's warning: a dark seam down the middle of the drawn lane,
+ * glowing hotter (wider, brighter) as it nears erupting. Inside the lane,
+ * like every effect: the red edges raid-ui.ts draws are the damage.
+ */
+function magmaSeam(
+  fx: Fx,
+  glow: Glow,
+  w: RaidWarning,
+  u: number,
+  low: boolean,
+) {
+  cragmuffFx.seam++;
+  const dx = w.tx - w.x,
+    dy = w.ty - w.y,
+    l = Math.hypot(dx, dy) || 1;
+  const n = Math.max(3, Math.round(l / 40));
+  const pts = Array.from({ length: n + 1 }, (_, i) => {
+    const f = i / n,
+      j = i && i < n ? (hash(w.id * 7 + i) - 0.5) * 26 : 0;
+    return { x: w.x + dx * f - (dy / l) * j, y: w.y + dy * f + (dx / l) * j };
+  });
+  fx.floorSolid.lineStyle(10 + 6 * u, 0x1e0e08, 0.85).strokePoints(pts, false);
+  fx.floor
+    .lineStyle(3 + 5 * u, AMBER.mid, 0.5 + 0.45 * u)
+    .strokePoints(pts, false);
+  fx.floor.lineStyle(1.6, AMBER.lit, 0.4 + 0.6 * u).strokePoints(pts, false);
+  // Hot spots along it (half as many on Low): a warning, essential.
+  for (const [i, p] of along(w.x, w.y, w.tx, w.ty, low ? 260 : 130).entries())
+    glow(
+      p.x,
+      p.y,
+      26 + 18 * u,
+      AMBER.mid,
+      (0.25 + 0.5 * u) * (i % 2 ? 0.8 : 1),
+      true,
+    );
+}
+/** The fissure erupting: crystal spikes up the line, the far end last. */
+function fissureBurst(
+  fx: Fx,
+  glow: Glow,
+  c: BossCast,
+  age: number,
+  seed: number,
+  low: boolean,
+) {
+  cragmuffFx.fissure++;
+  for (const [i, p] of along(c.x, c.y, c.tx, c.ty, low ? 280 : 140).entries())
+    spikes(fx, glow, p.x, p.y, age - p.f * 0.18, seed + i * 31, 0.62, low);
 }
 
 /** The charge: a dust trail and speed lines behind the boss, then the crash where it stops. */

@@ -52,6 +52,8 @@ import {
   type RarityName,
 } from "../ui/components";
 import { cosmeticTier } from "../../../../packages/shared/src/cosmetic-tier";
+import type { SpireProgress } from "../../../../packages/shared/src/spire";
+import { spireCard, spireMarkup, type SpireTab } from "./spire-view";
 
 export type RaidTab = "party" | "attacks" | "rewards" | "guide";
 export const RAID_TABS: [RaidTab, string][] = [
@@ -72,7 +74,10 @@ export const RAID_FILTERS: [RaidFilter, string, string][] = [
 export const RAID_SEATS = 4;
 
 export interface RaidView {
-  mode: "hall" | "boss";
+  /** The boss list, a boss's page, or the Spire's page. */
+  mode: "hall" | "boss" | "spire";
+  /** The Spire page's tab. */
+  spireTab?: SpireTab;
   boss: RaidBossId;
   tab: RaidTab;
   filter: RaidFilter;
@@ -97,6 +102,8 @@ export interface RaidSeat {
 export interface RaidData {
   /** Saved raid progress; null when signed out or unavailable. */
   progress: RaidProgress | null;
+  /** Your Spire climb (GET /api/spire); null when unavailable. */
+  spire?: SpireProgress | null;
   loading: boolean;
   problem: string;
   me: { name: string; character: CharacterId };
@@ -283,13 +290,19 @@ function hallMarkup(view: RaidView, d: RaidData) {
       ? `<p class="ui-note rh-note">Log in to save clears and rewards.</p>`
       : "",
   ].join("");
-  const grid = shown.length
-    ? `<div class="ui-grid rh-grid" role="group" aria-label="Bosses">${shown.map((id) => bossCard(id, d)).join("")}</div>`
-    : emptyState(
-        "Every boss here is cleared",
-        "Try another filter, or run a favourite again.",
-        button("Show all", { size: "s", attrs: { "data-raid-filter": "all" } }),
-      );
+  // The Spire is the last tile of the hall (all bosses shown).
+  const spire = view.filter === "all" ? spireCard(d) : "";
+  const grid =
+    shown.length || spire
+      ? `<div class="ui-grid rh-grid" role="group" aria-label="Bosses">${shown.map((id) => bossCard(id, d)).join("")}${spire}</div>`
+      : emptyState(
+          "Every boss here is cleared",
+          "Try another filter, or run a favourite again.",
+          button("Show all", {
+            size: "s",
+            attrs: { "data-raid-filter": "all" },
+          }),
+        );
   return `<section class="ui-panel rh-room" role="dialog" aria-label="Raids" data-raid-mode="hall"><header class="ui-panel-head rh-head"><div class="ui-heading"><span class="ui-kicker">${RAID_BOSS_ORDER.length} bosses · solo or up to ${RAID_SEATS}${totals ? ` · ${totals}` : ""}</span><h2 class="ui-title">Raids</h2></div>${filters}${iconButton("cancel", "Back to the Lobby", { class: "ui-close", "data-ui-close": true })}</header><div class="ui-panel-body rh-body rh-hall-body" data-raid-region="body"><div class="rh-notes">${notes}</div>${grid}</div></section>`;
 }
 function rewardTotal(p: RaidProgress) {
@@ -517,5 +530,9 @@ function bossMarkup(view: RaidView, d: RaidData) {
 
 /** The whole screen: the hall, or one boss's page. */
 export function raidMarkup(view: RaidView, d: RaidData) {
-  return view.mode === "hall" ? hallMarkup(view, d) : bossMarkup(view, d);
+  return view.mode === "hall"
+    ? hallMarkup(view, d)
+    : view.mode === "spire"
+      ? spireMarkup(view, d)
+      : bossMarkup(view, d);
 }
