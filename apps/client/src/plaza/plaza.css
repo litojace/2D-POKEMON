@@ -55,14 +55,14 @@
   color: #fff;
   text-shadow:
     0 4px 0 #0007,
-    0 0 30px var(--zc, #ffd65b);
+    0 0 30px var(--zc, var(--ui-accent));
 }
 .plaza-layer .pz-banner span {
   display: inline-block;
   margin-top: 0.5em;
   font-weight: 700;
   font-size: 1.05em;
-  color: var(--zc, #ffd65b);
+  color: var(--zc, var(--ui-accent));
   background: #0b1020b3;
   border-radius: 999px;
   padding: 0.2em 0.9em;
@@ -75,7 +75,7 @@
   background: linear-gradient(
     90deg,
     transparent,
-    var(--zc, #ffd65b),
+    var(--zc, var(--ui-accent)),
     transparent
   );
 }
@@ -205,11 +205,11 @@
 .plaza-layer .pz-q .bar i {
   display: block;
   height: 100%;
-  background: linear-gradient(90deg, #43d971, #b6f36b);
+  background: linear-gradient(90deg, var(--ui-ok), #b6f36b);
 }
 .plaza-layer .pz-q .rw {
   font-weight: 800;
-  color: #ffd65b;
+  color: var(--ui-accent);
   white-space: nowrap;
   font-size: 0.92em;
 }
@@ -222,15 +222,15 @@
   border-radius: 999px;
   padding: 0.15em 0.7em;
   font-weight: 800;
-  background: linear-gradient(180deg, #ffe58f, #ffd65b);
-  color: #2a1a00;
+  background: var(--btn-primary-bg);
+  color: var(--ui-accent-ink);
   cursor: pointer;
   font-size: 0.9em;
   animation: pz-glowp 1.4s ease-in-out infinite;
 }
 @keyframes pz-glowp {
   50% {
-    box-shadow: 0 0 14px #ffd65b;
+    box-shadow: 0 0 14px var(--ui-accent);
   }
 }
 .plaza-layer .pz-quests.min .pz-q {
@@ -281,7 +281,7 @@
   flex: none;
 }
 .plaza-layer .pz-feed div b {
-  color: #ffd65b;
+  color: var(--ui-accent);
 }
 .plaza-layer .pz-feed div.out {
   opacity: 0;
@@ -412,8 +412,8 @@
   transition: background 0.15s;
 }
 .plaza-layer .pz-wheel button:hover {
-  background: #ffd65b;
-  color: #2a1a00;
+  background: var(--ui-accent);
+  color: var(--ui-accent-ink);
 }
 @keyframes pz-wheel {
   from {
@@ -459,15 +459,20 @@
   width: 6em;
   height: 6em;
   font-size: 1.05em;
-  background: linear-gradient(180deg, #ffe58f, #ffd65b 50%, #e9b52c);
-  color: #2a1a00;
+  background: linear-gradient(
+    180deg,
+    var(--ui-accent-hi),
+    var(--ui-accent) 50%,
+    #e9b52c
+  );
+  color: var(--ui-accent-ink);
   border-color: #fff8;
   box-shadow:
     0 6px 0 #a87a12,
     0 12px 24px #0008;
 }
 .plaza-layer .pz-act.big small {
-  color: #2a1a00aa;
+  color: color-mix(in srgb, var(--ui-accent-ink) 66.7%, transparent);
 }
 /* The keyboard keys (Shift, Space) only where there is a keyboard to press:
    a touch screen shows the action's name alone. */
@@ -570,8 +575,8 @@
 .plaza-layer .pz-start > span {
   display: inline-block;
   margin: 0.4em 0 0.8em;
-  background: #ffd65b;
-  color: #2a1a00;
+  background: var(--ui-accent);
+  color: var(--ui-accent-ink);
   font-weight: 800;
   border-radius: 999px;
   padding: 0.3em 1.2em;
@@ -921,7 +926,7 @@
 }
 .plaza-layer {
   /* The prototype's colour tokens the Plaza uses that the game doesn't define. */
-  --dim: #a0afc8;
+  --dim: var(--ui-dim);
   --line-2: #ffffff33;
   /* One frame for the whole HUD, the header's own (style.css: its sides
      are max(14px, safe area), its top max(10px, safe area)). These are
@@ -938,11 +943,11 @@
   --hud-clock-h: 32px;
   position: fixed;
   inset: 0;
-  z-index: 60;
+  z-index: var(--z-hub);
   overflow: hidden;
   background: #24452a;
-  color: #eef2ff;
-  font-family: "DM Sans", system-ui, sans-serif;
+  color: var(--ui-text);
+  font-family: var(--font-body);
   outline: none;
   -webkit-user-select: none;
   user-select: none;
@@ -1065,8 +1070,8 @@
   min-height: 40px;
 }
 .plaza-layer .pz-card .pc-acts button[data-pc="party"] {
-  background: linear-gradient(180deg, #ffe58f, #ffd65b);
-  color: #2a1a00;
+  background: var(--btn-primary-bg);
+  color: var(--ui-accent-ink);
 }
 .plaza-layer .pz-card .pc-acts button:disabled {
   opacity: 0.5;
@@ -1185,8 +1190,8 @@
   color: #fff;
 }
 .plaza-layer .polaroid .acts > .pz-main {
-  background: #ffd65b;
-  color: #2a1a00;
+  background: var(--ui-accent);
+  color: var(--ui-accent-ink);
 }
 .plaza-layer .polaroid .acts > .pz-delete {
   background: #3b1d2c;
@@ -1366,7 +1371,7 @@
   cursor: pointer;
 }
 .plaza-layer .pz-album-grid button.slot:hover {
-  outline: 2px solid #ffd65b;
+  outline: 2px solid var(--ui-accent);
   outline-offset: 2px;
 }
 .plaza-layer .pz-album-grid .slot img {

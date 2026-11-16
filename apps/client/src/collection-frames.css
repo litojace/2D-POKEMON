@@ -111,15 +111,15 @@
   > .tier-fx {
   background: conic-gradient(
     from var(--tier-turn),
-    #ffd65b,
+    var(--ui-accent),
     #ff5a3a,
     #fff1b8,
     #c4161c,
-    #ffd65b
+    var(--ui-accent)
   );
   box-shadow:
     0 0 12px #ff5a3aaa,
-    inset 0 0 6px #ffd65b88;
+    inset 0 0 6px color-mix(in srgb, var(--ui-accent) 53.3%, transparent);
 }
 .raid-cosmetic-preview[data-cosmetic="festival-frame"][data-tier="epic"]
   > .tier-orbit {
@@ -267,7 +267,7 @@
     from var(--tier-turn),
     #ff4fd8,
     #2ff3ff,
-    #ffd65b,
+    var(--ui-accent),
     #7a2bd6,
     #ff4fd8
   );

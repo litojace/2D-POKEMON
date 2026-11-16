@@ -578,11 +578,11 @@
 /* Crescent (Gloomshade): a starry night band ringed in gold, ghostly shadow wisps curling off it and a golden moon on top. */
 .raid-cosmetic-preview[data-cosmetic="crescent"] {
   --frame-a: #7b5cd6;
-  --frame-b: #ffd65b;
+  --frame-b: var(--ui-accent);
   --frame-c: #1a1236;
   --frame-d: #c9b6ff;
   --frame-glow: #7b5cd6cc;
-  --frame-ray: #ffd65b55;
+  --frame-ray: color-mix(in srgb, var(--ui-accent) 33.3%, transparent);
   --frame-ray2: #7b5cd666;
   --frame-disc: radial-gradient(circle at 50% 35%, #2a2358, #07061a 85%);
 }
@@ -625,11 +625,11 @@
 /* Stained glass (Prismatail): a leaded rose window of rainbow panes with pointed cusps, and a prism splitting light at the crown. */
 .raid-cosmetic-preview[data-cosmetic="stained-glass"] {
   --frame-a: #ff5a7a;
-  --frame-b: #ffd65b;
+  --frame-b: var(--ui-accent);
   --frame-c: #4fd0e6;
   --frame-d: #a46bff;
-  --frame-glow: #ffd65b99;
-  --frame-ray: #ffd65b55;
+  --frame-glow: color-mix(in srgb, var(--ui-accent) 60%, transparent);
+  --frame-ray: color-mix(in srgb, var(--ui-accent) 33.3%, transparent);
   --frame-ray2: #4fd0e655;
   --frame-disc: conic-gradient(
     from 20deg,

@@ -305,8 +305,8 @@ button.journey-lvl {
   cursor: pointer;
 }
 .journey-lvl.is-next {
-  border-color: #ffd65b88;
-  background: #ffd65b10;
+  border-color: color-mix(in srgb, var(--ui-accent) 53.3%, transparent);
+  background: color-mix(in srgb, var(--ui-accent) 6.3%, transparent);
 }
 .journey-lvl[aria-pressed="true"] {
   border-color: var(--season);

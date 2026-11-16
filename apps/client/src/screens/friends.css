@@ -93,11 +93,15 @@
   opacity: 0.7;
 }
 .fr-row.is-pinned > .ui-row {
-  border-color: #ffd65b55;
+  border-color: color-mix(in srgb, var(--ui-accent) 33.3%, transparent);
 }
 .fr-row.is-request > .ui-row {
-  border-color: #ffd65b66;
-  background: linear-gradient(110deg, #ffd65b1a, var(--ui-bg-1) 60%);
+  border-color: color-mix(in srgb, var(--ui-accent) 40%, transparent);
+  background: linear-gradient(
+    110deg,
+    color-mix(in srgb, var(--ui-accent) 10.2%, transparent),
+    var(--ui-bg-1) 60%
+  );
 }
 /* Every action in the rows, and the code's Copy / Share, is one size
    (owner's rule): a fixed width, label centred. */
@@ -208,7 +212,7 @@
   padding: var(--sp-2) 10px;
   border-radius: var(--rad-md);
   background: var(--fill-card);
-  border: 1px solid #ffd65b55;
+  border: 1px solid color-mix(in srgb, var(--ui-accent) 33.3%, transparent);
 }
 .fr-add[hidden] {
   display: none;

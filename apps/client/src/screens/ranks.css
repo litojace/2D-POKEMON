@@ -222,7 +222,7 @@
   border-top: 1px solid var(--ui-line);
 }
 .rk-list > .rk-row.is-me {
-  background: #ffd65b12;
+  background: color-mix(in srgb, var(--ui-accent) 7.1%, transparent);
 }
 /* The place fills its cell's height; the number or medal sits in its middle. */
 .rk-place {
@@ -247,8 +247,13 @@
   font-size: 16px;
   font-style: normal;
   line-height: 1;
-  color: #2a1a00;
-  background: radial-gradient(circle at 35% 30%, #fff6cf, #ffd65b 55%, #b8860b);
+  color: var(--ui-accent-ink);
+  background: radial-gradient(
+    circle at 35% 30%,
+    #fff6cf,
+    var(--ui-accent) 55%,
+    #b8860b
+  );
   box-shadow: 0 2px 6px #0008;
 }
 .rk-medal.is-2 {

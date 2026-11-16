@@ -2,7 +2,7 @@
 #reward-reveal {
   position: fixed;
   inset: 0;
-  z-index: 2000;
+  z-index: var(--z-reveal);
   display: grid;
   place-items: center;
   padding: calc(var(--safe-top, 0px) + 12px) calc(var(--safe-right, 0px) + 12px)

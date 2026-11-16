@@ -586,7 +586,7 @@ button.rh-reward:focus-visible {
 }
 .rh-attack[aria-pressed="true"] {
   border-color: var(--ui-accent);
-  background: #ffd65b14;
+  background: color-mix(in srgb, var(--ui-accent) 7.8%, transparent);
 }
 .rh-attack-icon {
   width: 48px;
@@ -700,7 +700,8 @@ button.rh-reward:focus-visible {
     scroll-padding-inline: 2px;
     padding: 2px;
     scrollbar-width: thin;
-    scrollbar-color: #ffd65b66 transparent;
+    scrollbar-color: color-mix(in srgb, var(--ui-accent) 40%, transparent)
+      transparent;
   }
   .rh-notes:not(:empty) ~ .rh-grid {
     grid-auto-rows: auto;

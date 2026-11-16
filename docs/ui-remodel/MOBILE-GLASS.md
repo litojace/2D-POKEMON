@@ -131,10 +131,41 @@ follows when a token is changed at run time), Low graphics drops the blur,
 the toast ends above an open panel, the tabs share the Back row and still
 work. All four tests were checked to fail on the old `components.css`.
 
+## Everything else that now lives in one place
+
+A second pass (same day) moved the other repeated values onto tokens in
+`ui/tokens.css`, keeping every colour as it was (screens pixel-compared
+before and after: only the animated fighters, the toast's timing and the
+Plaza camera differed).
+
+| What                                  | Token(s)                                                                                                  | Before                                                                                                                          |
+| ------------------------------------- | --------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| The game's gold and its shades        | `--ui-accent`, `--ui-accent-hi`, `--ui-accent-ink`                                                        | `#ffd65b` written out about 270 times (with and without alpha: `#ffd65b40`, `rgba(255,214,91,.35)`), `#ffe58f` 12, `#2a1a00` 44 |
+| Text, dim text, owned/online, alerts  | `--ui-text`, `--ui-dim`, `--ui-ok`, `--ui-danger`                                                         | 63 literal colours                                                                                                              |
+| Fonts                                 | `--font-display`, `--font-body` (`--display` / `--body` now point at them)                                | two font stacks with different fallbacks, plus 5 literal `"DM Sans"` rules                                                      |
+| The gold main-action button           | `--btn-primary-bg`, `--btn-primary-ink`; PLAY's flat gold `--cta-bg`                                      | 9 slightly different gold gradients (Buy, Create room, Claim, the Farm's and the Bistro's buttons, sign-in)                     |
+| Round icon buttons (Close everywhere) | `--icon-btn-bg`, `--icon-btn-line`                                                                        | the dialogs' Close and the panels' Close had different fills and rims                                                           |
+| What sits over what                   | `--z-panel` 40 … `--z-hub` 60, `--z-hud` 70, `--z-drawer` 81, `--z-modal` 90, `--z-toast` 95 … `--z-gate` | 22 bare numbers across 10 files                                                                                                 |
+
+Alpha shades are written as `color-mix(in srgb, var(--ui-accent) 25%,
+transparent)`, so changing `--ui-accent` also changes every glow, rim and
+tint made from it. The four dev preview pages (`camera-`, `raid-`,
+`readiness-`, `touch-preview.html`) now load `tokens.css` before
+`style.css`, which already depended on it.
+
+Not moved, on purpose: colours inside canvas and SVG art (fighters, crops,
+skill icons). They are paintings, not UI, and the canvas can't read CSS
+variables. About 1,000 font sizes are still written in px; moving them to
+the type scale changes sizes, so it is a design pass of its own (see "What
+is left").
+
 ## How to use it
 
 - **Change the look of every menu:** edit the `--glass-*` / `--fill-*`
-  tokens in `ui/tokens.css`. Nothing else.
+  tokens in `ui/tokens.css`. Nothing else. The same goes for the gold
+  (`--ui-accent`), the fonts, the main button, Close and the layers.
+- **New CSS:** never write `#ffd65b` or another token's value; write
+  `var(--ui-accent)` (or `color-mix(...)` for a see-through shade).
 - **A new screen:** build it from `openHubPanel` (`ui/hub-panel.ts`) and the
   kit classes (`.ui-panel`, `.ui-sheet`, `.ui-modal`, `.ui-tile`, `.ui-row`,
   `.ui-btn`…). It is glass with no extra CSS. For a card inside it use

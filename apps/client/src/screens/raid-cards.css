@@ -376,7 +376,7 @@
 }
 .rc-save.is-error {
   color: #ffb4bc;
-  border-color: #ef4f6155;
+  border-color: color-mix(in srgb, var(--ui-danger) 33.3%, transparent);
 }
 .rc-tip {
   color: var(--ui-dim);

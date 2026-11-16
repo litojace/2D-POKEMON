@@ -347,7 +347,7 @@
 }
 .fit-fighter[aria-pressed="true"] {
   border-color: var(--ui-accent);
-  background: #ffd65b14;
+  background: color-mix(in srgb, var(--ui-accent) 7.8%, transparent);
 }
 .fit-fighter[aria-pressed="true"] > span:last-child {
   color: var(--ui-accent);
@@ -363,9 +363,13 @@
   padding: 10px;
   border-radius: var(--rad-lg);
   border: 2px solid var(--ui-accent);
-  background: linear-gradient(110deg, #ffd65b26, var(--ui-bg-1) 55%);
+  background: linear-gradient(
+    110deg,
+    color-mix(in srgb, var(--ui-accent) 14.9%, transparent),
+    var(--ui-bg-1) 55%
+  );
   box-shadow:
-    0 0 0 2px #ffd65b33,
+    0 0 0 2px color-mix(in srgb, var(--ui-accent) 20%, transparent),
     var(--shadow-1);
 }
 .fit-deal[aria-pressed="true"] {
@@ -556,7 +560,7 @@
 }
 .fit-slot[aria-selected="true"] {
   border-color: var(--ui-accent);
-  background: #ffd65b14;
+  background: color-mix(in srgb, var(--ui-accent) 7.8%, transparent);
 }
 /* A slot with a change not yet saved. */
 .fit-slot[data-changed="true"]::after {

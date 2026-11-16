@@ -154,7 +154,7 @@
   display: grid;
   place-items: center;
   font-size: 1.25em;
-  background: var(--wc, #ffd65b33);
+  background: var(--wc, color-mix(in srgb, var(--ui-accent) 20%, transparent));
   box-shadow: 0 0 16px var(--wc, transparent);
 }
 .farm-layer .fm-weather b {
@@ -221,7 +221,7 @@
   line-height: 1;
 }
 .farm-layer .fm-chip.warn {
-  border-color: #ffd65b88;
+  border-color: color-mix(in srgb, var(--ui-accent) 53.3%, transparent);
 }
 .farm-layer .fm-chip.off .ci {
   filter: grayscale(1);
@@ -281,8 +281,8 @@
   height: 1.6em;
   padding: 0 0.35em;
   border-radius: 99px;
-  background: #ffd65b;
-  color: #2a1a00;
+  background: var(--ui-accent);
+  color: var(--ui-accent-ink);
   font-size: 0.7em;
   display: grid;
   place-items: center;
@@ -303,8 +303,13 @@
   white-space: nowrap;
 }
 .farm-layer .fm-tool[aria-pressed="true"] {
-  background: linear-gradient(180deg, #ffe58f, #ffd65b 55%, #e9b52c);
-  color: #2a1a00;
+  background: linear-gradient(
+    180deg,
+    var(--ui-accent-hi),
+    var(--ui-accent) 55%,
+    #e9b52c
+  );
+  color: var(--ui-accent-ink);
   transform: translateY(-5px);
   box-shadow:
     0 6px 0 #a87a12,
@@ -312,7 +317,7 @@
   border-color: #fff8;
 }
 .farm-layer .fm-tool[aria-pressed="true"] span {
-  color: #2a1a00;
+  color: var(--ui-accent-ink);
 }
 .farm-layer .fm-tool:hover {
   transform: translateY(-3px);
@@ -356,7 +361,7 @@
   transition: opacity 0.6s;
 }
 .farm-layer .fm-log div b {
-  color: #ffd65b;
+  color: var(--ui-accent);
 }
 .farm-layer .fm-log div.good b {
   color: #7ff0a2;
@@ -403,8 +408,8 @@
   border-radius: 999px;
   padding: 0.45em 1em;
   font-weight: 800;
-  background: #ffd65b;
-  color: #2a1a00;
+  background: var(--ui-accent);
+  color: var(--ui-accent-ink);
   cursor: pointer;
 }
 .farm-layer.phone .fm-visit {
@@ -462,7 +467,7 @@
   background: linear-gradient(
     90deg,
     #ff6f6f,
-    #ffd65b,
+    var(--ui-accent),
     #7ff0a2,
     #6bb8ff,
     #c47dff
@@ -517,11 +522,11 @@
   display: grid;
   place-items: center;
   border-radius: 50%;
-  border: 3px solid #ffd65b;
+  border: 3px solid var(--ui-accent);
   background: radial-gradient(circle at 50% 35%, #3a4a86, #172040);
   box-shadow:
     0 6px 16px #0008,
-    0 0 0 4px #ffd65b33;
+    0 0 0 4px color-mix(in srgb, var(--ui-accent) 20%, transparent);
   cursor: grab;
   touch-action: none;
 }
@@ -577,8 +582,8 @@
   min-width: 1.6em;
   padding: 1px 6px;
   border-radius: 99px;
-  background: #ffd65b;
-  color: #2a1a00;
+  background: var(--ui-accent);
+  color: var(--ui-accent-ink);
   font-size: 12px;
   font-weight: 800;
   box-shadow: 0 0 0 2px #0b1020;
@@ -608,8 +613,8 @@
   min-width: 1.6em;
   padding: 1px 6px;
   border-radius: 99px;
-  background: #ffd65b;
-  color: #2a1a00;
+  background: var(--ui-accent);
+  color: var(--ui-accent-ink);
   font-size: 12px;
   font-weight: 800;
   box-shadow: 0 0 0 2px #0b1020;
@@ -678,10 +683,10 @@
   top: 2px;
   right: 4px;
   font-size: 0.7em;
-  color: #ffd65b;
+  color: var(--ui-accent);
 }
 .farm-layer .fm-pop .opt:hover {
-  border-color: #ffd65b;
+  border-color: var(--ui-accent);
 }
 .farm-layer .fm-pop .opt[disabled] {
   opacity: 0.35;
@@ -696,7 +701,7 @@
 }
 .farm-layer .fm-pop .opt.locked small,
 .farm-layer .fm-pop .opt .lv {
-  color: #ffd65b;
+  color: var(--ui-accent);
   font-weight: 800;
 }
 @keyframes fm-feedin {
@@ -750,7 +755,7 @@
   letter-spacing: 0.14em;
   text-transform: uppercase;
   font-size: 0.78em;
-  color: #ffd65b;
+  color: var(--ui-accent);
 }
 .farm-layer .sh-head h4 {
   margin: 0;
@@ -794,8 +799,8 @@
   white-space: nowrap;
 }
 .farm-layer .sh-tabs button[aria-selected="true"] {
-  color: #ffd65b;
-  border-bottom-color: #ffd65b;
+  color: var(--ui-accent);
+  border-bottom-color: var(--ui-accent);
 }
 .farm-layer .sh-body {
   overflow: auto;
@@ -827,7 +832,7 @@
   font-size: 0.85em;
 }
 .farm-layer .restock b {
-  color: #ffd65b;
+  color: var(--ui-accent);
   font-variant-numeric: tabular-nums;
 }
 .farm-layer .item {
@@ -886,11 +891,11 @@
   vertical-align: 1px;
 }
 .farm-layer .tag.common {
-  background: #a0afc833;
+  background: color-mix(in srgb, var(--ui-dim) 20%, transparent);
   color: #c9d4ef;
 }
 .farm-layer .tag.uncommon {
-  background: #43d97133;
+  background: color-mix(in srgb, var(--ui-ok) 20%, transparent);
   color: #7ff0a2;
 }
 .farm-layer .tag.rare {
@@ -898,8 +903,12 @@
   color: #9fd0ff;
 }
 .farm-layer .tag.legendary {
-  background: linear-gradient(90deg, #ffd65b55, #ff9bd255);
-  color: #ffe58f;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--ui-accent) 33.3%, transparent),
+    #ff9bd255
+  );
+  color: var(--ui-accent-hi);
 }
 .farm-layer .item .acts {
   display: flex;
@@ -914,8 +923,8 @@
   font-size: 0.82em;
   cursor: pointer;
   white-space: nowrap;
-  background: linear-gradient(180deg, #ffe58f, #ffd65b);
-  color: #2a1a00;
+  background: var(--btn-primary-bg);
+  color: var(--ui-accent-ink);
   box-shadow: 0 3px 0 #a87a12;
 }
 .farm-layer .btn-s.ghost {
@@ -925,7 +934,7 @@
   border: 1px solid #ffffff22;
 }
 .farm-layer .btn-s.green {
-  background: linear-gradient(180deg, #8ff5ae, #43d971);
+  background: linear-gradient(180deg, #8ff5ae, var(--ui-ok));
   color: #062b12;
   box-shadow: 0 3px 0 #1d7a3c;
 }
@@ -944,7 +953,7 @@
 .farm-layer .stock {
   font-size: 0.72em;
   font-weight: 800;
-  color: #ffd65b;
+  color: var(--ui-accent);
 }
 .farm-layer .stock.out {
   color: #ff8a8a;
@@ -998,10 +1007,10 @@
   height: 1.9em;
 }
 .farm-layer .oneed.ok {
-  border-color: #43d97188;
+  border-color: color-mix(in srgb, var(--ui-ok) 53.3%, transparent);
 }
 .farm-layer .oneed.no {
-  border-color: #ef4f6188;
+  border-color: color-mix(in srgb, var(--ui-danger) 53.3%, transparent);
   color: #ffb3b3;
 }
 .farm-layer .order .rw {
@@ -1012,7 +1021,7 @@
 }
 .farm-layer .order .rw span {
   font-weight: 800;
-  color: #ffd65b;
+  color: var(--ui-accent);
 }
 .farm-layer .order.wait {
   opacity: 0.6;
@@ -1031,15 +1040,15 @@
   padding: 0 0.45em;
 }
 .farm-layer .trend.up {
-  background: #43d97126;
+  background: color-mix(in srgb, var(--ui-ok) 14.9%, transparent);
   color: #7ff0a2;
 }
 .farm-layer .trend.down {
-  background: #ef4f6126;
+  background: color-mix(in srgb, var(--ui-danger) 14.9%, transparent);
   color: #ff9b9b;
 }
 .farm-layer .trend.fire {
-  background: linear-gradient(90deg, #ff7a45, #ffd65b);
+  background: linear-gradient(90deg, #ff7a45, var(--ui-accent));
   color: #2a1200;
 }
 .farm-layer .cap {
@@ -1051,7 +1060,7 @@
 .farm-layer .cap i {
   display: block;
   height: 100%;
-  background: linear-gradient(90deg, #7ff0a2, #ffd65b);
+  background: linear-gradient(90deg, #7ff0a2, var(--ui-accent));
 }
 .farm-layer .book {
   display: grid;
@@ -1093,7 +1102,7 @@
   white-space: nowrap;
 }
 .farm-layer .bk .gt.on {
-  background: linear-gradient(90deg, #ffd65b, #ff9b3d);
+  background: linear-gradient(90deg, var(--ui-accent), #ff9b3d);
   color: #2a1d3a;
 }
 .farm-layer .bk span {
@@ -1144,7 +1153,7 @@
   background: #ffffff08;
 }
 .farm-layer .mile.done {
-  background: #43d97118;
+  background: color-mix(in srgb, var(--ui-ok) 9.4%, transparent);
   color: #b6f3c6;
 }
 .farm-layer .dogcard {
@@ -1184,7 +1193,7 @@
 }
 .farm-layer .dogcard.active {
   border-color: #7ff0a288;
-  background: #43d97112;
+  background: color-mix(in srgb, var(--ui-ok) 7.1%, transparent);
 }
 .farm-layer .fr {
   display: grid;
@@ -1213,7 +1222,7 @@
   font-size: 0.78em;
 }
 .farm-layer .fr .bd {
-  color: #ffd65b;
+  color: var(--ui-accent);
   font-weight: 700;
 }
 .farm-layer .fm-modal {
@@ -1273,10 +1282,10 @@
   font-weight: 800;
   font-size: 5.2em;
   line-height: 0.9;
-  color: #ffd65b;
+  color: var(--ui-accent);
   text-shadow:
     0 5px 0 #a87a12,
-    0 0 30px #ffd65b88;
+    0 0 30px color-mix(in srgb, var(--ui-accent) 53.3%, transparent);
 }
 .farm-layer .lvcard h5 {
   margin: 0.1em 0 0.7em;
@@ -1312,8 +1321,8 @@
   padding: 0.8em 2em;
   font-weight: 800;
   font-size: 1em;
-  background: linear-gradient(180deg, #ffe58f, #ffd65b);
-  color: #2a1a00;
+  background: var(--btn-primary-bg);
+  color: var(--ui-accent-ink);
   box-shadow: 0 5px 0 #a87a12;
   cursor: pointer;
 }
@@ -1359,7 +1368,7 @@
 .farm-layer .lm.can {
   background: #7cc45e;
   cursor: pointer;
-  box-shadow: 0 0 0 2px #ffd65b inset;
+  box-shadow: 0 0 0 2px var(--ui-accent) inset;
 }
 .farm-layer .lm.can:hover {
   background: #9be07a;
@@ -1459,8 +1468,8 @@
   cursor: pointer;
 }
 .farm-layer .fm-zoom button:hover {
-  background: #ffd65b;
-  color: #2a1a00;
+  background: var(--ui-accent);
+  color: var(--ui-accent-ink);
 }
 .farm-layer.phone .fm-zoom {
   right: 8px;
@@ -1501,7 +1510,7 @@
   opacity: 0.7;
 }
 .farm-layer .fm-tool[aria-pressed="true"] kbd {
-  color: #2a1a00;
+  color: var(--ui-accent-ink);
 }
 .farm-layer.phone .fm-tool kbd,
 .farm-layer.coarse .fm-tool kbd {
@@ -1802,12 +1811,12 @@
   100% {
     box-shadow:
       0 4px 12px #0008,
-      0 0 0 0 #ffd65b00;
+      0 0 0 0 color-mix(in srgb, var(--ui-accent) 0%, transparent);
   }
   50% {
     box-shadow:
       0 4px 12px #0008,
-      0 0 14px 3px #ffd65b99;
+      0 0 14px 3px color-mix(in srgb, var(--ui-accent) 60%, transparent);
   }
 }
 @keyframes orb-warn {
@@ -1952,7 +1961,7 @@
 }
 /* crop mastery rows */
 .farm-layer .item.mast .stars {
-  color: #ffd65b;
+  color: var(--ui-accent);
   letter-spacing: 0.05em;
   margin-left: 0.3em;
   font-size: 0.9em;
@@ -1963,7 +1972,7 @@
 }
 .farm-layer .lvcard .lv-max {
   margin: 0.4em 0 0;
-  color: #ffd65b;
+  color: var(--ui-accent);
   font-weight: 700;
   font-size: 0.9em;
 }
@@ -2375,7 +2384,7 @@
   --rg: #5fb8ff;
 }
 .farm-layer .fm-pop .opt.sp.r-legendary {
-  --rg: #ffd65b;
+  --rg: var(--ui-accent);
 }
 .farm-layer .fm-pop .opt.sp img {
   box-sizing: border-box;
@@ -2639,14 +2648,14 @@ body.hub-farm:has(.fm-hint:not(.done)) #toast {
 }
 .farm-layer {
   /* The prototype's colour tokens the farm uses that the game doesn't define. */
-  --dim: #a0afc8;
+  --dim: var(--ui-dim);
   --line-2: #ffffff33;
   position: fixed;
   inset: 0;
-  z-index: 60;
+  z-index: var(--z-hub);
   overflow: hidden;
   background: #2f5a26;
-  color: #eef2ff;
+  color: var(--ui-text);
   font-family: "DM Sans", system-ui, sans-serif;
   outline: none;
 }
@@ -2722,13 +2731,13 @@ body.hub-farm:has(.fm-hint:not(.done)) #toast {
 /* The open sheet's button lights up gold like the Lobby's rail (rim, a
    soft glow and its label); a second tap on it closes the sheet. */
 .farm-layer .fm-rail button[aria-expanded="true"] {
-  border-color: #ffd65b;
+  border-color: var(--ui-accent);
   box-shadow:
-    inset 0 0 0 1px rgba(255, 214, 91, 0.35),
-    0 0 14px rgba(255, 214, 91, 0.35);
+    inset 0 0 0 1px color-mix(in srgb, var(--ui-accent) 35%, transparent),
+    0 0 14px color-mix(in srgb, var(--ui-accent) 35%, transparent);
 }
 .farm-layer .fm-rail button[aria-expanded="true"] span {
-  color: #ffd65b;
+  color: var(--ui-accent);
 }
 @media (hover: hover) and (pointer: fine) {
   .farm-layer .fm-rail button:hover {
@@ -2743,11 +2752,11 @@ body.hub-farm:has(.fm-hint:not(.done)) #toast {
   width: 9px;
   height: 9px;
   border-radius: 50%;
-  background: #ef4f61;
+  background: var(--ui-danger);
   box-shadow: 0 0 0 2px #0b1020;
 }
 .farm-layer .fm-rail [data-sheet="shop"] {
-  --ac: #ffd65b;
+  --ac: var(--ui-accent);
 }
 .farm-layer .fm-rail [data-sheet="book"] {
   --ac: #5fb8ff;
@@ -2855,7 +2864,7 @@ body.hub-farm:has(.fm-hint:not(.done)) #toast {
   text-align: center;
 }
 .farm-layer .fm-invite-steps div.got {
-  outline: 2px solid #ffd65b;
+  outline: 2px solid var(--ui-accent);
 }
 /* The Supply Balloon's crates (migration 058). */
 .farm-layer .fm-crates {
@@ -2936,7 +2945,7 @@ body.hub-farm:has(.fm-hint:not(.done)) #toast {
   font-size: 1.6em;
 }
 .farm-layer .fm-shelf.picked {
-  outline: 2px solid #ffd65b;
+  outline: 2px solid var(--ui-accent);
 }
 .farm-layer .fm-shelf.sold {
   border-color: #7ff0a2;
@@ -2969,7 +2978,7 @@ body.hub-farm:has(.fm-hint:not(.done)) #toast {
   border: 1px solid #ffffff33;
 }
 .farm-layer .fm-stall-form input[type="range"] {
-  accent-color: #ffd65b;
+  accent-color: var(--ui-accent);
 }
 .farm-layer img.mini {
   width: 1.1em;
@@ -2978,7 +2987,7 @@ body.hub-farm:has(.fm-hint:not(.done)) #toast {
   vertical-align: -0.2em;
 }
 .farm-layer .item.mine b {
-  color: #ffd65b;
+  color: var(--ui-accent);
 }
 /* Friends on your farm and emotes (migration 061). */
 .farm-layer .fm-here {

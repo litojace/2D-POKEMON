@@ -103,13 +103,21 @@
   height: 116px;
   background:
     radial-gradient(ellipse 80% 90% at 0% 0%, #4fa8ff40, transparent 70%),
-    radial-gradient(ellipse 80% 90% at 100% 100%, #ffd65b30, transparent 70%),
+    radial-gradient(
+      ellipse 80% 90% at 100% 100%,
+      color-mix(in srgb, var(--ui-accent) 18.8%, transparent),
+      transparent 70%
+    ),
     var(--ui-bg-1);
 }
 .room-banner.is-teams {
   background:
     radial-gradient(ellipse 80% 90% at 0% 0%, #4fa8ff55, transparent 70%),
-    radial-gradient(ellipse 80% 90% at 100% 100%, #ef4f6155, transparent 70%),
+    radial-gradient(
+      ellipse 80% 90% at 100% 100%,
+      color-mix(in srgb, var(--ui-danger) 33.3%, transparent),
+      transparent 70%
+    ),
     var(--ui-bg-1);
 }
 .room-banner-text {

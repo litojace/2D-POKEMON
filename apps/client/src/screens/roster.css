@@ -359,7 +359,7 @@
 }
 .roster-skill[aria-pressed="true"] {
   border-color: var(--ui-accent);
-  background: #ffd65b14;
+  background: color-mix(in srgb, var(--ui-accent) 7.8%, transparent);
 }
 .roster-key {
   font-family: var(--font-display);

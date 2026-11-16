@@ -103,7 +103,7 @@
    press shrinks them a touch instead of sinking them. */
 .lobby-layer .lobby-play-button,
 .plaza-layer .pz-act.big {
-  background: #ffd04a;
+  background: var(--cta-bg);
   box-shadow: none;
 }
 .plaza-layer .pz-act.big {
@@ -141,17 +141,19 @@
    a second tap on it closes the screen (lobby-screen.ts). */
 .lobby-layer .lobby-rail button[aria-current="page"] {
   border-color: var(--aero-rim-on);
-  background-color: rgba(255, 214, 91, 0.18);
+  background-color: color-mix(in srgb, var(--ui-accent) 18%, transparent);
   box-shadow:
-    inset 0 0 0 1px rgba(255, 214, 91, 0.35),
-    0 0 14px rgba(255, 214, 91, 0.35);
+    inset 0 0 0 1px color-mix(in srgb, var(--ui-accent) 35%, transparent),
+    0 0 14px color-mix(in srgb, var(--ui-accent) 35%, transparent);
 }
 .lobby-layer .lobby-rail button[aria-current="page"] svg {
-  color: #ffd65b;
-  filter: drop-shadow(0 0 4px rgba(255, 214, 91, 0.7));
+  color: var(--ui-accent);
+  filter: drop-shadow(
+    0 0 4px color-mix(in srgb, var(--ui-accent) 70%, transparent)
+  );
 }
 .lobby-layer .lobby-rail button[aria-current="page"] span {
-  color: #ffe58f;
+  color: var(--ui-accent-hi);
 }
 
 /* The same on the Plaza's Emote button while its wheel is open (a second
@@ -159,17 +161,19 @@
    graphics tint above. */
 :root .plaza-layer .pz-round[aria-expanded="true"] {
   border-color: var(--aero-rim-on);
-  background-color: rgba(255, 214, 91, 0.18);
+  background-color: color-mix(in srgb, var(--ui-accent) 18%, transparent);
   box-shadow:
-    inset 0 0 0 1px rgba(255, 214, 91, 0.35),
-    0 0 14px rgba(255, 214, 91, 0.35);
+    inset 0 0 0 1px color-mix(in srgb, var(--ui-accent) 35%, transparent),
+    0 0 14px color-mix(in srgb, var(--ui-accent) 35%, transparent);
 }
 .plaza-layer .pz-round[aria-expanded="true"] svg {
-  color: #ffd65b;
-  filter: drop-shadow(0 0 4px rgba(255, 214, 91, 0.7));
+  color: var(--ui-accent);
+  filter: drop-shadow(
+    0 0 4px color-mix(in srgb, var(--ui-accent) 70%, transparent)
+  );
 }
 .plaza-layer .pz-round[aria-expanded="true"] small {
-  color: #ffe58f;
+  color: var(--ui-accent-hi);
 }
 
 /* ── The older screens, on the same glass ──

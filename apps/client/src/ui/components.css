@@ -76,7 +76,7 @@
 .lobby-layer > .ui-panel-host {
   position: absolute;
   inset: 0;
-  z-index: 40;
+  z-index: var(--z-panel);
   pointer-events: none;
 }
 .ui-panel-host > .ui-panel {
@@ -96,7 +96,7 @@
   bottom: var(--lobby-bottom, 16px);
   left: calc(var(--lobby-gutter, 16px) + var(--lobby-rail, 60px) + var(--sp-3));
   right: var(--lobby-gutter-r, 16px);
-  z-index: 40;
+  z-index: var(--z-panel);
   display: flex;
   flex-direction: column;
   /* Glass (tokens.css --glass-*, the Lobby's look). */
@@ -391,7 +391,7 @@
   position: fixed;
   inset: 0;
   /* Over the hub's HUD (z-index 70–71), so a purchase can't be half-seen. */
-  z-index: 90;
+  z-index: var(--z-modal);
   background: var(--scrim);
   backdrop-filter: blur(2px);
   display: grid;
@@ -637,7 +637,7 @@
 .ui-chip[aria-pressed="true"] {
   border-color: var(--ui-accent);
   color: var(--ui-accent);
-  background: #ffd65b14;
+  background: color-mix(in srgb, var(--ui-accent) 7.8%, transparent);
 }
 .ui-chip svg {
   width: 16px;
@@ -722,13 +722,8 @@
 }
 .ui-btn.is-primary {
   border: 0;
-  background: linear-gradient(
-    180deg,
-    var(--ui-accent-hi),
-    var(--ui-accent) 45%,
-    var(--ui-accent-lo)
-  );
-  color: var(--ui-accent-ink);
+  background: var(--btn-primary-bg);
+  color: var(--btn-primary-ink);
   box-shadow:
     0 3px 0 var(--ui-accent-deep),
     inset 0 2px 0 #fff8;
@@ -748,7 +743,7 @@
 }
 .ui-btn.is-danger {
   background: transparent;
-  border-color: #ef4f6188;
+  border-color: color-mix(in srgb, var(--ui-danger) 53.3%, transparent);
   color: #ff8a97;
   box-shadow: none;
 }
@@ -756,8 +751,8 @@
    outline and icon, never a solid red block (red is also boss warnings),
    as the match's own leave buttons (.leave-button in style.css). */
 .ui-icon-btn.is-danger {
-  border-color: #ef4f6188;
-  background: #ef4f6114;
+  border-color: color-mix(in srgb, var(--ui-danger) 53.3%, transparent);
+  background: color-mix(in srgb, var(--ui-danger) 7.8%, transparent);
 }
 .ui-icon-btn.is-danger,
 .ui-icon-btn.is-danger svg {
@@ -765,8 +760,8 @@
 }
 :is(.ui-btn, .ui-icon-btn).is-danger:hover:not([disabled]),
 :is(.ui-btn, .ui-icon-btn).is-danger:focus-visible {
-  border-color: #ef4f61cc;
-  background: #ef4f6126;
+  border-color: color-mix(in srgb, var(--ui-danger) 80%, transparent);
+  background: color-mix(in srgb, var(--ui-danger) 14.9%, transparent);
   color: #ffc2c8;
 }
 .ui-icon-btn.is-danger:hover svg,
@@ -803,8 +798,8 @@
   width: var(--ctl-m);
   height: var(--ctl-m);
   border-radius: 50%;
-  border: 1px solid var(--ui-line-2);
-  background: #0b1020b3;
+  border: 1px solid var(--icon-btn-line);
+  background: var(--icon-btn-bg);
   display: grid;
   place-items: center;
   flex: none;
@@ -902,7 +897,7 @@
   color: var(--ui-accent-ink);
 }
 .ui-tag.is-ok {
-  background: #43d97126;
+  background: color-mix(in srgb, var(--ui-ok) 14.9%, transparent);
   color: var(--ui-ok);
 }
 .ui-tag.is-sale {
@@ -1280,7 +1275,7 @@
   position: fixed;
   left: 50%;
   bottom: calc(24px + var(--safe-bottom));
-  z-index: 95;
+  z-index: var(--z-toast);
   max-width: calc(100vw - var(--safe-left) - var(--safe-right) - 32px);
   padding: 10px 18px;
   border-radius: var(--rad-pill);

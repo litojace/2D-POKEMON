@@ -162,7 +162,7 @@
 }
 .pf-name-form {
   grid-template-columns: minmax(0, 1fr) var(--act-s) var(--act-s);
-  border-color: #ffd65b66;
+  border-color: color-mix(in srgb, var(--ui-accent) 40%, transparent);
 }
 .pf-name-form > .ui-btn {
   width: 100%;
@@ -406,8 +406,12 @@
   font-size: var(--fs-small);
 }
 .pf-achievements > li.is-earned {
-  border-color: #43d97166;
-  background: linear-gradient(110deg, #43d9711a, var(--ui-bg-1) 60%);
+  border-color: color-mix(in srgb, var(--ui-ok) 40%, transparent);
+  background: linear-gradient(
+    110deg,
+    color-mix(in srgb, var(--ui-ok) 10.2%, transparent),
+    var(--ui-bg-1) 60%
+  );
 }
 .pf-achievements > li.is-earned > b::before {
   content: "✓ ";
@@ -494,8 +498,12 @@
   gap: 6px;
   padding: 10px 12px;
   border-radius: var(--rad-md);
-  border: 1px solid #ffd65b66;
-  background: linear-gradient(110deg, #ffd65b1a, var(--ui-bg-1) 60%);
+  border: 1px solid color-mix(in srgb, var(--ui-accent) 40%, transparent);
+  background: linear-gradient(
+    110deg,
+    color-mix(in srgb, var(--ui-accent) 10.2%, transparent),
+    var(--ui-bg-1) 60%
+  );
 }
 .pf-save-text {
   display: grid;
