@@ -66,9 +66,10 @@ describe("the boss list", () => {
     const html = raidMarkup(raidView(), data());
     expect(count(html, /data-raid-card="/g)).toBe(RAID_BOSS_ORDER.length);
     expect(html).not.toContain("data-raid-practice-card");
-    // New players: one open boss, the rest say why they are locked.
+    // New players: one open boss, the rest (and the Spire, the last tile)
+    // say why they are locked.
     expect(count(html, /Clear Cragmuff first/g)).toBe(
-      RAID_BOSS_ORDER.length - 1,
+      RAID_BOSS_ORDER.length - 1 + 1,
     );
     expect(raidUnlocked(null, "grumblecrag")).toBe(true);
     expect(raidUnlocked(progress(), "tidewyrm")).toBe(false);
@@ -79,7 +80,8 @@ describe("the boss list", () => {
     const open = raidMarkup(raidView(), data({ progress: after }));
     expect(open).not.toContain("Clear Cragmuff first");
     expect(open).toContain("3 clears");
-    expect(count(open, />New</g)).toBe(RAID_BOSS_ORDER.length - 1);
+    // The other bosses, and the Spire nobody has climbed yet.
+    expect(count(open, />New</g)).toBe(RAID_BOSS_ORDER.length - 1 + 1);
   });
   it("filters by not cleared and by stars", () => {
     const p = progress({

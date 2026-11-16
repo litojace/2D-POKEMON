@@ -10,6 +10,12 @@ import {
 } from "../../../packages/shared/src/arcade.js";
 import { RaidArena } from "./raid.js";
 import { createRaidArena } from "./raid-bosses.js";
+import { SpireArena } from "./spire.js";
+import {
+  SPIRE_BUILT_TOP,
+  spireStartFrom,
+  type SpireMember,
+} from "../../../packages/shared/src/spire.js";
 import type { ActivityReceipt } from "../../../packages/shared/src/shop.js";
 import {
   DREAM_RUNES,
@@ -100,6 +106,8 @@ const createSchema = identitySchema
       .enum(RAID_BOSS_ORDER as [RaidBossId, ...RaidBossId[]])
       .refine((id: RaidBossId) => RAID_BOSSES[id].playable)
       .optional(),
+    // The Spire (season 0): a climb in a raid room.
+    spire: z.literal(0).optional(),
   })
   .strict();
 const teamSchema = z
@@ -798,14 +806,119 @@ export function createArenaServer(
       });
   }
   function startArena(a: Arena) {
+    if (a instanceof SpireArena) return void startSpire(a);
     a.start();
+  }
+  /** Climbs being checked against storage (one at a time per room). */
+  const spireChecks = new WeakSet<SpireArena>();
+  /**
+   * A climb starts where the party may climb: the lowest checkpoint among
+   * its members, below the lowest boss floor someone hasn't unlocked (each
+   * read from storage, never from a client). Without storage: floor 1.
+   */
+  async function startSpire(a: SpireArena) {
+    if (spireChecks.has(a)) return;
+    spireChecks.add(a);
+    const owners = fighterAccounts.get(a);
+    const ids = a
+      .heroes()
+      .map((p) => owners?.get(p.id))
+      .filter((id): id is string => !!id);
+    let members: SpireMember[] | null = null;
+    try {
+      members = accounts.spireStart ? await accounts.spireStart(ids) : null;
+    } catch {
+      members = null;
+    }
+    spireChecks.delete(a);
+    if (
+      rooms.get(a.code) !== a ||
+      a.phase !== "lobby" ||
+      !a.players.length ||
+      !a.players.every((p) => p.ready && p.connected)
+    )
+      return;
+    const plan = members
+      ? spireStartFrom(members)
+      : { ok: true, startFloor: 1, ceiling: SPIRE_BUILT_TOP };
+    if (!plan.ok) {
+      a.spire.state.problem = plan.reason;
+      for (const p of a.players) p.ready = false;
+      return broadcast(a);
+    }
+    a.configureSpire(plan);
+    a.start();
+    broadcast(a);
+  }
+  /** Save each floor a climb cleared, at once (the climb may still fail). */
+  function saveSpireFloors(arena: SpireArena) {
+    const owners = fighterAccounts.get(arena);
+    for (const floor of arena.spire.pending.splice(0)) {
+      const runId = floor.runId;
+      const save = arena.spire.state.saves.find(
+        (s) => s.floor === floor.floor && s.status === "saving",
+      );
+      const accountOf = (id: string) => owners?.get(id) ?? "";
+      const players = floor.players
+        .map((p) => ({
+          accountId: accountOf(p.accountId),
+          character: p.character,
+        }))
+        .filter((p) => p.accountId);
+      const receipt = {
+        ...floor,
+        players,
+        blessings: Object.fromEntries(
+          Object.entries(floor.blessings)
+            .filter(([id]) => accountOf(id))
+            .map(([id, b]) => [accountOf(id), b]),
+        ),
+      };
+      void (
+        accounts.recordSpireFloor && players.length
+          ? accounts.recordSpireFloor(receipt)
+          : Promise.reject(new Error("Spire progress needs server storage."))
+      )
+        .then((result) => {
+          if (arena.spire.runId !== runId || !save) return;
+          const fighterOf = new Map(
+            [...(owners ?? new Map<string, string>())].map(([f, acc]) => [
+              acc,
+              f,
+            ]),
+          );
+          save.status = "saved";
+          save.claims = result.newClaims
+            .filter((c) => fighterOf.has(c.accountId))
+            .map((c) => ({
+              playerId: fighterOf.get(c.accountId)!,
+              coins: c.coins,
+              titles: c.titles,
+            }));
+          for (const socket of io.sockets.sockets.values())
+            if (players.some((p) => p.accountId === socket.data.account?.id)) {
+              socket.emit("account-changed");
+              socket.emit("economy-changed");
+            }
+          broadcast(arena);
+        })
+        .catch(() => {
+          if (arena.spire.runId !== runId || !save) return;
+          save.status = "unavailable";
+          broadcast(arena);
+        });
+    }
   }
   function broadcast(arena: Arena) {
     const started = diagnostics.now();
     // Wins and real attempts (not instant quits) are saved:
     // losses still count towards titles and tell us which attacks are unfair.
+    if (arena instanceof SpireArena && arena.spire.pending.length)
+      saveSpireFloors(arena);
+    // Raid clears (not Spire climbs: those save floor by floor, above).
     if (
       arena instanceof RaidArena &&
+      !arena.spire &&
       arena.raid.result &&
       (arena.raid.result === "victory" || arena.raid.elapsed >= 20) &&
       arena.raid.resultId &&
@@ -1552,7 +1665,9 @@ export function createArenaServer(
         return fail(cb, "Choose this week’s arcade event in 1v1 or 2v2.");
       const arena =
         result.data.mode === "raid"
-          ? createRaidArena(code, result.data.boss)
+          ? result.data.spire !== undefined
+            ? new SpireArena(code)
+            : createRaidArena(code, result.data.boss)
           : result.data.arcade
             ? new ArcadeArena(
                 code,
@@ -2665,6 +2780,7 @@ export function createArenaServer(
           bots: a.bots.size,
           ...(bot ? { botLevel: bot.difficulty } : {}),
           ...(a instanceof RaidArena ? { boss: a.raid.boss } : {}),
+          ...(a instanceof SpireArena ? { spire: a.spire.state.floor } : {}),
           character: a.players.find((p) => p.id === id)?.character,
           // Who you fought (champions only), and a tag shared by every
           // player's report of this match, to read both sides together.

@@ -18,6 +18,7 @@ import {
   raidBossName,
 } from "../../../packages/shared/src/raid";
 import type { Fighter, Snapshot } from "@arena/shared";
+import { spireCue, spireFloorProgress, spireHudLine } from "./spire-battle";
 
 const escape = (s: string) =>
   s.replace(
@@ -48,10 +49,13 @@ export interface RaidHudView {
   cue: string;
   elapsed: string;
   twins: TwinBarView[];
+  /** The Spire: its line ("Floor 7 · Wave 2/3 · 2 Echoes") replaces the phase. */
+  spire?: { line: string; bar: "floor" | "elite" };
 }
 
 /** Everything the HUD shows for this snapshot. Moves the damage trails along. */
 export function raidHudView(state: Snapshot, me: Fighter): RaidHudView {
+  if (state.raid?.spire) return spireHudView(state);
   const r = state.raid!,
     boss = state.players.find((p) => p.id === r.bossId),
     stormTwins = r.boss === "storm-twins";
@@ -121,6 +125,42 @@ export function raidHudView(state: Snapshot, me: Fighter): RaidHudView {
   };
 }
 
+/**
+ * The Spire's HUD: wave floors show the floor's progress (no boss); the
+ * elite keeps a boss bar and its stagger.
+ */
+export function spireHudView(state: Snapshot): RaidHudView {
+  const r = state.raid!,
+    s = r.spire!,
+    elite =
+      s.kind === "elite"
+        ? state.players.find((p) => p.id === s.eliteId)
+        : undefined;
+  const health = elite
+    ? Math.max(
+        0,
+        Math.min(100, (Math.max(0, elite.hp) / Math.max(1, r.maxHp)) * 100),
+      )
+    : spireFloorProgress(state);
+  return {
+    key: `spire|${s.kind}|${elite ? "elite" : "floor"}`,
+    stormTwins: false,
+    title: elite
+      ? `FLOOR ${s.floor} · ${elite.name.toUpperCase()}`
+      : `THE SPIRE · FLOOR ${s.floor}`,
+    phase: 1,
+    health,
+    trail: healthTrail(elite ? `spire:elite` : `spire:floor`, health),
+    stagger: r.staggerUntil > state.time ? 100 : r.stagger,
+    staggerLabel:
+      r.staggerUntil > state.time ? "REELING · HIT IT NOW" : "STAGGER",
+    cue: spireCue(state),
+    elapsed: time(Math.max(0, s.limit - r.elapsed)),
+    twins: [],
+    spire: { line: spireHudLine(state), bar: elite ? "elite" : "floor" },
+  };
+}
+
 /** The HUD's structure for a boss: values are filled in by `paintRaidHud`. */
 function skeleton(view: RaidHudView) {
   const twins = view.stormTwins
@@ -131,7 +171,8 @@ function skeleton(view: RaidHudView) {
         })
         .join("")}</div>`
     : "";
-  return `<div class="raid-boss-heading"><b data-hud="title"></b><span class="raid-boss-phase" data-hud="phase"></span></div>${twins}<div class="raid-boss-health" role="progressbar" aria-label="Boss health" aria-valuemin="0" aria-valuemax="100" data-hud="health"><i class="raid-boss-trail" data-hud="trail"></i><i class="raid-boss-fill" data-hud="fill"></i>${MARKS.map((mark, i) => `<span class="raid-health-mark" style="left:${mark}%" aria-hidden="true" data-hud="mark${i}"></span>`).join("")}<span class="raid-boss-pct" aria-hidden="true" data-hud="pct"></span></div><div class="raid-stagger"${view.stormTwins ? " hidden" : ""}><i data-hud="stagger"></i><span data-hud="stagger-label"></span></div><div class="raid-status-row"><p class="raid-callout" role="status" data-hud="cue"></p><div class="raid-elapsed" role="timer" aria-label="Raid elapsed time"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></svg><b data-hud="elapsed"></b></div></div>`;
+  const spire = view.spire;
+  return `<div class="raid-boss-heading"><b data-hud="title"></b><span class="raid-boss-phase" data-hud="phase"></span></div>${twins}<div class="raid-boss-health${spire?.bar === "floor" ? " is-spire-floor" : ""}" role="progressbar" aria-label="${spire?.bar === "floor" ? "Floor progress" : "Boss health"}" aria-valuemin="0" aria-valuemax="100" data-hud="health"><i class="raid-boss-trail" data-hud="trail"></i><i class="raid-boss-fill" data-hud="fill"></i>${spire ? "" : MARKS.map((mark, i) => `<span class="raid-health-mark" style="left:${mark}%" aria-hidden="true" data-hud="mark${i}"></span>`).join("")}<span class="raid-boss-pct" aria-hidden="true" data-hud="pct"></span></div><div class="raid-stagger"${view.stormTwins || spire?.bar === "floor" ? " hidden" : ""}><i data-hud="stagger"></i><span data-hud="stagger-label"></span></div><div class="raid-status-row"><p class="raid-callout" role="status" data-hud="cue"></p><div class="raid-elapsed" role="timer" aria-label="${spire ? "Time left on this floor" : "Raid elapsed time"}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></svg><b data-hud="elapsed"></b></div></div>`;
 }
 
 interface Mounted {
@@ -191,8 +232,13 @@ export function paintRaidHud(hud: HTMLElement, view: RaidHudView): boolean {
   }
   m = m!;
   write(m, "title", "text", view.title);
-  write(m, "phase", "text", `Phase ${view.phase}/3`);
-  write(m, "phase", "aria-label", `Phase ${view.phase} of 3`);
+  write(m, "phase", "text", view.spire?.line ?? `Phase ${view.phase}/3`);
+  write(
+    m,
+    "phase",
+    "aria-label",
+    view.spire?.line ?? `Phase ${view.phase} of 3`,
+  );
   view.twins.forEach((t, i) => {
     write(m, `t${i}-status`, "text", t.status);
     write(m, `t${i}-track`, "aria-valuenow", `${Math.round(t.percent)}`);
@@ -207,7 +253,11 @@ export function paintRaidHud(hud: HTMLElement, view: RaidHudView): boolean {
     m,
     "health",
     "aria-valuetext",
-    `${rounded}% health. Rite choices open at 67% and 33% health.`,
+    view.spire?.bar === "floor"
+      ? `${rounded}% of the floor beaten.`
+      : view.spire
+        ? `${rounded}% health.`
+        : `${rounded}% health. Rite choices open at 67% and 33% health.`,
   );
   write(m, "trail", "width", `${view.trail}%`);
   write(m, "fill", "width", `${view.health}%`);

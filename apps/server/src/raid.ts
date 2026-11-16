@@ -56,7 +56,9 @@ import {
   raidTierOf,
   tierEnrageSteps,
   tierTelegraph,
+  isRaider,
 } from "../../../packages/shared/src/raid.js";
+import type { SpireRun } from "./spire.js";
 import { BotBrain } from "./bot.js";
 import {
   RAID_CLUSTER_ATTACKS,
@@ -157,6 +159,8 @@ export function raidJitter(seed: number, attack: number, index: number) {
 }
 export class RaidArena extends Arena {
   raid: RaidState;
+  /** A Spire climb this room is running (its floors, Echoes and blessings). */
+  spire?: SpireRun;
   protected nextAttack = 0;
   protected phaseElapsed = 0;
   protected attacks = 0;
@@ -248,7 +252,7 @@ export class RaidArena extends Arena {
     };
   }
   heroes() {
-    return this.players.filter((p) => !p.raidBoss && !p.out);
+    return this.players.filter((p) => isRaider(p) && !p.out);
   }
   boss() {
     return this.players.find((p) => p.raidBoss);
@@ -277,7 +281,7 @@ export class RaidArena extends Arena {
     );
   }
   override start() {
-    this.players = this.players.filter((p) => !p.raidBoss && !p.out);
+    this.players = this.players.filter((p) => isRaider(p) && !p.out);
     super.start();
     const r = this.raid;
     r.result = null;
@@ -344,6 +348,11 @@ export class RaidArena extends Arena {
       p.x = 260 + (i % 2) * 85;
       p.y = 330 + Math.floor(i / 2) * 160;
     });
+    this.spawnBoss();
+  }
+  /** The boss steps onto the court at the start of a run. */
+  protected spawnBoss() {
+    const r = this.raid;
     const boss = super.add(r.bossId, RAID_BOSSES[r.boss].name, "terradon");
     const home = this.bossHome();
     Object.assign(boss, {
@@ -507,6 +516,7 @@ export class RaidArena extends Arena {
       // Bosses cannot be displaced or stun-locked by normal fighter kits.
       ability = ability ? { ...ability, knockback: 0 } : undefined;
     } else if (
+      isRaider(target) &&
       r.wards.some(
         (w) =>
           w.until > this.time &&
@@ -528,7 +538,8 @@ export class RaidArena extends Arena {
         0,
         before - Math.max(0, target.hp),
       );
-    if (!target.raidBoss && target.hp < before) {
+    // Raiders go down (Spire Echoes and the boss don't).
+    if (isRaider(target) && target.hp < before) {
       this.damageAt.set(target.id, this.time);
       if (target.hp <= 0) {
         r.downs++;
@@ -763,7 +774,8 @@ export class RaidArena extends Arena {
           down.progress +
             (dt / this.tier().reviveSeconds) *
               spring *
-              (fast ? 1 + riteValue("rescue", this.raid.phase) : 1),
+              (fast ? 1 + riteValue("rescue", this.raid.phase) : 1) *
+              this.reviveRate(rescuers),
         );
         if (down.progress >= 1) {
           for (const id of credit)
@@ -780,6 +792,10 @@ export class RaidArena extends Arena {
       !heroes.some((p) => this.raid.downed[p.id]?.self && !this.selfUsed)
     )
       this.finish(false);
+  }
+  /** Revive speed × this for these rescuers (Spire blessings). */
+  protected reviveRate(_rescuers: Fighter[]) {
+    return 1;
   }
   protected warn(
     kind: RaidAttack,
@@ -2076,7 +2092,8 @@ export class RaidArena extends Arena {
   }
   /** Stand-ins dodge telegraphs, share meteors and revive allies. */
   override botInput(bot: Fighter, input: Input) {
-    if (bot.hp <= 0 || bot.raidBoss) return input;
+    // Spire Echoes play their own kit: the stand-in brain is for raiders.
+    if (bot.hp <= 0 || bot.raidBoss || bot.echo) return input;
     const r = this.raid;
     const go = (x: number, y: number, away: boolean) => {
       const d = normalize(x - bot.x, y - bot.y);
@@ -2179,6 +2196,8 @@ export class RaidArena extends Arena {
     this.raid.message = this.finishMessage(won);
     this.raid.warnings = [];
     this.clearAttacks();
+    // Echo brains go with the fight (rooms with bots can't return to a lobby).
+    for (const p of this.players) if (p.echo) this.bots.delete(p.id);
   }
   override endRound(team: number | null) {
     this.finish(team === 0);
@@ -2222,12 +2241,20 @@ export class RaidArena extends Arena {
       this.raid.pings = (this.raid.pings ?? []).filter(
         (q) => q.until > this.time,
       );
-      this.attacksStep(dt);
+      if (this.fighting()) this.attacksStep(dt);
     }
     super.tick(dt);
     if (this.phase !== "playing") return;
     this.resolveDowns(dt);
     if (this.raid.result) return;
+    this.stepOutcome();
+  }
+  /** Is there a boss on the court to run attacks for? (Spire wave floors: no.) */
+  protected fighting() {
+    return true;
+  }
+  /** After a tick: the run is won or lost, or the boss enters a new chapter. */
+  protected stepOutcome() {
     const boss = this.boss();
     if (!boss) return;
     if (this.bossHealth() <= 0) return this.finish(true);
