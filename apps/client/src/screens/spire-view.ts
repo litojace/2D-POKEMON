@@ -145,26 +145,51 @@ function zonePicker(model: SpireModel) {
     .join("");
   return `<div class="sp-zone-picker" role="group" aria-label="Zone to climb">${items}</div>`;
 }
+// Small decorative UI glyphs; encounter types and state still come from the model.
+const milestoneCrest = (kind: "boss" | "elite" | "checkpoint") => {
+  const path = {
+    boss: '<path d="m3 6 4 4 5-7 5 7 4-4-2 13H5Z"/><path d="M6 15h12"/>',
+    elite: '<path d="m12 2 8 10-8 10-8-10Z"/><path d="M12 7v10M8 12h8"/>',
+    checkpoint: '<path d="M6 22V3m0 1c5-4 7 4 13 0v10c-6 4-8-4-13 0"/>',
+  }[kind];
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${path}</svg>`;
+};
 function floorRoute(model: SpireModel) {
   const { activeGroup, selected, checkpoint, groups } = model;
-  return `<div class="sp-route-wrap"><div class="sp-route-heading"><b>Floor milestones${groups.length > 1 ? ` · Zone ${activeGroup.zone.id}` : ""}</b><small class="ui-note">◆ Elite · ★ Boss · ◇ Checkpoint</small></div><div class="sp-route" role="group" aria-label="Preview a floor">${activeGroup.floors
+  const cleared = activeGroup.floors.filter(
+    (f) => f.state.key === "done",
+  ).length;
+  return `<div class="sp-route-wrap"><div class="sp-route-heading"><b><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 20h6v-6h6V8h6M4 7l4-4 4 4M8 3v9"/></svg>Floor milestones${groups.length > 1 ? ` · Zone ${activeGroup.zone.id}` : ""}</b><small class="ui-note"><strong>${cleared}</strong> / ${activeGroup.floors.length} cleared</small></div><div class="sp-route" role="group" aria-label="Preview a floor">${activeGroup.floors
     .map(({ floor: f, state, kind }) => {
-      const mark =
+      const camp = f.floor === checkpoint;
+      const crest =
+        f.kind === "boss" || f.kind === "elite"
+          ? milestoneCrest(f.kind)
+          : camp
+            ? milestoneCrest("checkpoint")
+            : state.key === "done"
+              ? menuIcon("check")
+              : state.key === "locked" || state.key === "soon"
+                ? lockIcon
+                : "";
+      const caption =
         f.kind === "boss"
-          ? "★"
+          ? "Boss"
           : f.kind === "elite"
-            ? "◆"
-            : f.floor === checkpoint
-              ? "◇"
-              : "";
-      return `<button type="button" class="sp-milestone is-${state.key}${f.floor === checkpoint ? " is-checkpoint" : ""}" data-spire-preview="${f.floor}" aria-pressed="${selected.floor.floor === f.floor}" aria-label="Floor ${f.floor}, ${kind}, ${state.label}${f.floor === checkpoint ? ", checkpoint" : ""}"><span>${f.floor}</span><small aria-hidden="true">${mark}</small></button>`;
+            ? "Elite"
+            : camp
+              ? "Camp"
+              : state.key === "next"
+                ? "Next"
+                : "";
+      return `<button type="button" class="sp-milestone is-${f.kind} is-${state.key}${camp ? " is-checkpoint" : ""}" data-spire-preview="${f.floor}" aria-pressed="${selected.floor.floor === f.floor}" aria-label="Floor ${f.floor}, ${kind}, ${state.label}${camp ? ", checkpoint" : ""}"><span class="sp-route-link" aria-hidden="true"></span><span class="sp-node" aria-hidden="true"><span class="sp-node-number">${f.floor}</span>${crest ? `<span class="sp-node-crest">${crest}</span>` : ""}</span><small class="sp-node-caption" aria-hidden="true">${caption || "&nbsp;"}</small></button>`;
     })
     .join("")}</div></div>`;
 }
 function climbTab(model: SpireModel, d: SpireData) {
   const { checkpoint, attempts, complete, total } = model;
   const how = `<details class="sp-guide"><summary>How to play</summary><ul class="sp-how"><li><b>Waves of Echoes.</b> Shadow copies of the champions, with their whole kits. Beat every wave to open the stairs.</li><li><b>A blessing a floor.</b> After each floor, pick one of three. They stack, and last until the climb ends.</li><li><b>Every floor counts.</b> A cleared floor is saved at once and pays its first-clear reward, even if the climb ends later.</li><li><b>One zone a climb.</b> A new climb starts at the first floor of the zone you pick, with no blessings, and ends at its boss. Conquer a zone to open the next; you can always climb an earlier one again. Everyone in a party needs the zone's checkpoint.</li></ul></details>`;
-  return `${complete ? `<p class="sp-conquered">All ${total} floors conquered! Pick a zone to climb again.</p>` : ""}${zonePicker(model)}${floorPreview(model)}${floorRoute(model)}<p class="ui-note sp-start-note">${attempts} climbs · Checkpoint ${checkpoint}. Floor previews do not change where a climb starts.</p>${seats(d)}${how}`;
+  return `${complete ? `<p class="sp-conquered">All ${total} floors conquered! Pick a zone to climb again.</p>` : ""}${zonePicker(model)}${floorRoute(model)}${floorPreview(model)}<p class="ui-note sp-start-note">${attempts} climbs · Checkpoint ${checkpoint}. Floor previews do not change where a climb starts.</p>${seats(d)}${how}`;
 }
 function floorsTab(model: SpireModel) {
   return `<p class="ui-note">First-clear rewards are paid once, the first time you clear each floor.</p>${model.groups
