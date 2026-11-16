@@ -282,6 +282,7 @@ import { fighterPack } from "./animation/pack-config";
 import { fullscreenLandscape } from "./orientation";
 import { wireRotateGate } from "./rotate-gate";
 import { watchRotation } from "./orientation-settle";
+import { watchNotchInsets } from "./notch-insets";
 import { watchScreenPin } from "./screen-pin";
 import { watchCosmeticPreviews } from "./cosmetic-fx-preview";
 import { openHubPanelNow } from "./ui/hub-panel";
@@ -1233,6 +1234,7 @@ document.addEventListener("visibilitychange", stopControls);
 const pwa = setupPWA(() => state?.phase, dialog, toast);
 wireRotateGate();
 watchRotation();
+watchNotchInsets();
 watchScreenPin();
 // The iPhone app (native.ts): iOS pauses it soon after you switch away, which
 // drops the game connection; coming back reconnects at once.
