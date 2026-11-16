@@ -28,6 +28,12 @@ source. Its horizontal object position offsets the covered image by the
 silhouette center's distance from source center, keeping equal clearance
 at both card edges across different card ratios. Scaling stays centered
 on the card horizontally, so changing zoom preserves that balance.
+The gallery's vertical spacing also accounts for the silhouettes: Tidelotl,
+Inkpurr and Lumiwick sit slightly lower (25% object position on desktop,
+top on landscape phones), while Storm Twins sits slightly higher (45% on
+desktop, 25% on phones) to clear the name. Cragmuff, Snoozaku and Prismell
+keep their prior vertical position; all horizontal framing and zoom stay
+unchanged by this spacing adjustment.
 
 The detail paintings use `*-lower.webp` variants with painted scenery added
 above the original composition. The approved creature, horizontal framing and

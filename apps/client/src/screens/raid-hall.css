@@ -98,6 +98,17 @@
 .rh-card[data-raid-card="emberwing"] .rh-card-art img {
   transform-origin: center top;
 }
+/* Balance the space above the name without changing scale or horizontal
+   framing. Floating silhouettes sit slightly lower; the twins' tendrils
+   get more clearance above the footer. */
+.rh-card[data-raid-card="tidewyrm"] .rh-card-art img,
+.rh-card[data-raid-card="gloomshade"] .rh-card-art img,
+.rh-card[data-raid-card="emberwing"] .rh-card-art img {
+  object-position: 50% 25%;
+}
+.rh-card[data-raid-card="storm-twins"] .rh-card-art img {
+  object-position: 50% 45%;
+}
 .rh-card:hover .rh-card-art img {
   transform: scale(calc(var(--card-zoom) * 1.03));
 }
@@ -748,6 +759,14 @@ button.rh-reward:focus-visible {
   }
   .rh-card-art img {
     object-position: 50% 10%;
+  }
+  .rh-card[data-raid-card="tidewyrm"] .rh-card-art img,
+  .rh-card[data-raid-card="gloomshade"] .rh-card-art img,
+  .rh-card[data-raid-card="emberwing"] .rh-card-art img {
+    object-position: 50% top;
+  }
+  .rh-card[data-raid-card="storm-twins"] .rh-card-art img {
+    object-position: 50% 25%;
   }
   .rh-card-text {
     padding: 10px;
