@@ -78,6 +78,7 @@ export interface RaidView {
   mode: "hall" | "boss" | "spire";
   /** The Spire page's tab. */
   spireTab?: SpireTab;
+  spireFloor?: number;
   boss: RaidBossId;
   tab: RaidTab;
   filter: RaidFilter;

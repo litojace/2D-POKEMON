@@ -270,3 +270,278 @@
 .sp-room .ui-tabs > button {
   min-height: 44px;
 }
+
+/* Saved ascent remains visible beside every tab, without covering the summit. */
+.sp-ascent {
+  position: absolute;
+  z-index: 1;
+  left: 20px;
+  right: 20px;
+  bottom: 180px;
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid #c3a4ff66;
+  border-radius: var(--rad-md);
+  background: #11152bd9;
+  color: #ede4ff;
+}
+.sp-ascent .sp-stat {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: none;
+}
+.sp-ascent .sp-stat b small {
+  font: inherit;
+  font-size: 14px;
+  color: #c9b8e7;
+}
+.sp-ascent > small {
+  font-size: 12px;
+}
+.sp-ascent progress {
+  width: 100%;
+  height: 6px;
+  border: 0;
+  border-radius: 4px;
+  overflow: hidden;
+  accent-color: #c4a0ff;
+  background: #ffffff24;
+}
+.sp-ascent progress::-webkit-progress-bar {
+  background: #ffffff24;
+}
+.sp-ascent progress::-webkit-progress-value {
+  background: #c4a0ff;
+}
+.sp-ascent progress::-moz-progress-bar {
+  background: #c4a0ff;
+}
+.sp-tower-trail {
+  position: absolute;
+  z-index: 1;
+  right: 12px;
+  top: 24%;
+  bottom: 42%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  width: 8px;
+  background: linear-gradient(
+    90deg,
+    transparent 3px,
+    #e6d5ff55 3px,
+    #e6d5ff55 5px,
+    transparent 5px
+  );
+}
+.sp-tower-trail span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #252138;
+  border: 1px solid #c6b9e3;
+}
+.sp-tower-trail .is-done {
+  background: #ceabff;
+  box-shadow: 0 0 6px #bf8dff;
+}
+.sp-tower-trail .is-next {
+  background: #fff1b5;
+  box-shadow: 0 0 8px #ffd976;
+}
+.sp-tower-trail .is-checkpoint {
+  border: 2px solid #ffda73;
+}
+.sp-preview {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid #b391ed66;
+  border-radius: var(--rad-md);
+  background: linear-gradient(120deg, #7c54b52e, #18233777);
+}
+.sp-preview-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.sp-preview-heading > div {
+  min-width: 0;
+}
+.sp-preview h3 {
+  margin: 2px 0 0;
+  font-size: 22px;
+  overflow-wrap: anywhere;
+}
+.sp-preview p {
+  margin: 0;
+}
+.sp-enemies {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  font-size: 12px;
+}
+.sp-enemy {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.sp-preview-reward {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.sp-preview-reward .ui-price {
+  font-size: 14px;
+}
+.sp-route-wrap {
+  min-width: 0;
+}
+.sp-route-heading {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+.sp-route-heading small {
+  font-size: 11px;
+}
+.sp-route {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  padding: 2px 2px 6px;
+  scrollbar-width: thin;
+}
+.sp-milestone {
+  position: relative;
+  flex: 1 0 44px;
+  min-width: 44px;
+  min-height: 44px;
+  display: grid;
+  place-content: center;
+  border: 1px solid var(--ui-line);
+  border-radius: 8px;
+  background: #151a2d;
+  color: #d5dcec;
+  font-weight: 800;
+  cursor: pointer;
+}
+.sp-milestone small {
+  font-size: 9px;
+  line-height: 10px;
+  color: #ffda73;
+}
+.sp-milestone small:empty {
+  display: none;
+}
+.sp-milestone.is-done {
+  background: #65438b70;
+  color: #edddff;
+}
+.sp-milestone.is-next {
+  border-color: #c3a1ff;
+}
+.sp-milestone.is-checkpoint {
+  border-bottom: 3px solid #ffda73;
+}
+.sp-milestone[aria-pressed="true"] {
+  background: #a680e7;
+  color: #100e24;
+  outline: 2px solid #dfccff;
+  outline-offset: -2px;
+}
+.sp-milestone:focus-visible {
+  outline: 2px solid #ffda73;
+  outline-offset: -2px;
+}
+.sp-start-note {
+  margin: 0;
+}
+.sp-guide {
+  border-top: 1px solid var(--ui-line);
+}
+.sp-guide summary {
+  min-height: 44px;
+  align-content: center;
+  cursor: pointer;
+  font-weight: 700;
+}
+.sp-guide[open] summary {
+  margin-bottom: 6px;
+}
+.sp-conquered {
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #77d7a522;
+  color: #b9f6d5;
+}
+@media (max-height: 500px) {
+  .sp-ascent {
+    left: 8px;
+    right: 8px;
+    bottom: 64px;
+    padding: 7px 8px;
+    gap: 4px;
+  }
+  .sp-ascent .sp-stat b {
+    font-size: 20px;
+  }
+  .sp-ascent .sp-stat small,
+  .sp-ascent > small {
+    font-size: 10px;
+  }
+  .sp-preview {
+    padding: 8px;
+    gap: 4px;
+  }
+  .sp-preview h3 {
+    font-size: 18px;
+  }
+  .sp-preview .ui-note {
+    font-size: 11px;
+  }
+  .sp-preview > p:nth-of-type(2) {
+    display: none;
+  }
+  .sp-preview .ui-kicker {
+    font-size: 10px;
+  }
+  .sp-enemies {
+    gap: 4px 8px;
+    font-size: 11px;
+  }
+}
+@media (max-height: 320px) {
+  .sp-ascent {
+    bottom: 56px;
+  }
+  .sp-ascent .sp-stat {
+    display: none;
+  }
+  .sp-tower-trail {
+    display: none;
+  }
+}
+
+/* The checkpoint belongs on the action itself, including on short phones. */
+.sp-room .ui-actions {
+  grid-auto-columns: max-content;
+}
+.sp-room .ui-actions > .ui-btn {
+  min-width: 144px;
+  padding-inline: 16px;
+}

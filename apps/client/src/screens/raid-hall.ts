@@ -52,6 +52,7 @@ const FOCUS_KEYS = [
   "data-raid-card",
   "data-raid-spire",
   "data-ui-spire-tab",
+  "data-spire-preview",
   "data-ui-raid-filter",
   "data-ui-raid-tab",
   "data-ui-raid-play",
@@ -146,6 +147,7 @@ export function openRaids(
       hallScroll = q<HTMLElement>(".rh-grid")?.scrollLeft ?? 0;
     view.mode = "spire";
     view.spireTab = tab;
+    view.spireFloor = undefined;
     view.status = "";
     render(true);
     q<HTMLElement>('[role="tab"][aria-selected="true"]')?.focus({
@@ -198,7 +200,13 @@ export function openRaids(
     const d = t.dataset;
     if (d.raidCard) openBoss(d.raidCard as RaidBossId);
     else if (d.raidSpire !== undefined) openSpire();
-    else if (d.uiSpireTab) {
+    else if (d.spirePreview) {
+      view.spireFloor = Number(d.spirePreview);
+      render();
+      q<HTMLElement>(`[data-spire-preview="${view.spireFloor}"]`)?.focus({
+        preventScroll: true,
+      });
+    } else if (d.uiSpireTab) {
       const tabs: SpireTab[] = ["climb", "floors", "blessings"];
       const direction =
         tabs.indexOf(d.uiSpireTab as SpireTab) <

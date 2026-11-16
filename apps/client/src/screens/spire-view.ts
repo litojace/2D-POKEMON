@@ -64,6 +64,8 @@ export interface SpireData {
 }
 export interface SpireView {
   spireTab?: SpireTab;
+  /** Floor preview only; starting a climb always uses the checkpoint. */
+  spireFloor?: number;
   play: "solo" | "party";
   status: string;
 }
@@ -172,11 +174,75 @@ function seats(d: SpireData) {
       "",
     )}${Array.from({ length: open }, () => `<div class="rh-seat is-open"><span class="rh-plus" aria-hidden="true">+</span><b>Open seat</b><small class="ui-note">Invite from the Lobby</small></div>`).join("")}</div>`;
 }
-function climbTab(d: SpireData) {
+/** Floors available in the current build, including completed and gated floors. */
+const builtFloors = () =>
+  Object.values(SPIRE_FLOORS)
+    .filter((f) => f.floor <= SPIRE_BUILT_TOP)
+    .sort((a, b) => a.floor - b.floor);
+export function spirePreview(view: SpireView, d: SpireData) {
+  const floors = builtFloors();
+  const { highest } = spireStanding(d);
+  const next = floors.find((f) => f.floor > highest);
+  const selected =
+    floors.find((f) => f.floor === view.spireFloor) ??
+    next ??
+    floors[floors.length - 1];
+  return { floors, next, selected };
+}
+function floorKind(f: SpireFloor) {
+  return f.kind === "boss"
+    ? "Boss"
+    : f.kind === "elite"
+      ? "Elite"
+      : `${f.waves.length} waves`;
+}
+function floorPreview(view: SpireView, d: SpireData) {
+  const { next, selected: f } = spirePreview(view, d);
+  const zone = SPIRE_ZONES[f.zone];
+  const state = floorState(f, d);
+  const claimed = spireStanding(d).claimed.has(f.floor);
+  const roster = floorRoster(f);
+  const enemies =
+    f.kind === "boss"
+      ? esc(zone.ascendant)
+      : roster
+          .map(
+            (c) =>
+              `<span class="sp-enemy">${chip(c, `sp-preview-${f.floor}-${c}`, 24)}<span>${esc(CHARACTERS[c].name)}</span></span>`,
+          )
+          .join("");
+  const challenge =
+    f.kind === "boss"
+      ? "Ascendant boss encounter"
+      : f.elite
+        ? `${f.elite.name} · reinforcements and eruption attacks`
+        : "Defeat every Echo wave to open the stairs";
+  const title = titleOf(f.floor);
+  return `<article class="sp-preview is-${state.key}" aria-label="Floor ${f.floor} preview"><div class="sp-preview-heading"><div><small class="ui-kicker">${f === next ? "Next uncleared" : "Floor preview"} · Floor ${f.floor}</small><h3 class="ui-h">${esc(f.name)}</h3></div>${tag(floorKind(f))}</div><p class="ui-note">${esc(zone.name)} · ${esc(zone.element)} · ${esc(state.label)}</p><p class="ui-note">${esc(challenge)}</p><div class="sp-enemies">${enemies}</div><div class="sp-preview-reward"><small class="ui-note">${claimed ? "First-clear reward claimed" : "First-clear reward"}</small>${price(coinsOf(f.floor))}${title ? `<span class="ui-tag sp-preview-title">${esc(title)}</span>` : ""}</div></article>`;
+}
+function floorRoute(view: SpireView, d: SpireData) {
+  const { floors, selected } = spirePreview(view, d);
+  const { checkpoint } = spireStanding(d);
+  return `<div class="sp-route-wrap"><div class="sp-route-heading"><b>Floor milestones</b><small class="ui-note">◆ Elite · ★ Boss · ◇ Checkpoint</small></div><div class="sp-route" role="group" aria-label="Preview a floor">${floors
+    .map((f) => {
+      const state = floorState(f, d);
+      const mark =
+        f.kind === "boss"
+          ? "★"
+          : f.kind === "elite"
+            ? "◆"
+            : f.floor === checkpoint
+              ? "◇"
+              : "";
+      return `<button type="button" class="sp-milestone is-${state.key}${f.floor === checkpoint ? " is-checkpoint" : ""}" data-spire-preview="${f.floor}" aria-pressed="${selected.floor === f.floor}" aria-label="Floor ${f.floor}, ${floorKind(f)}, ${state.label}${f.floor === checkpoint ? ", checkpoint" : ""}"><span>${f.floor}</span><small aria-hidden="true">${mark}</small></button>`;
+    })
+    .join("")}</div></div>`;
+}
+function climbTab(view: SpireView, d: SpireData) {
   const { highest, checkpoint, attempts } = spireStanding(d);
-  const stats = `<div class="sp-stats"><span class="sp-stat"><b class="ui-num">${highest}</b><small>Highest floor</small></span><span class="sp-stat"><b class="ui-num">${checkpoint}</b><small>Checkpoint</small></span><span class="sp-stat"><b class="ui-num">${attempts}</b><small>Climbs</small></span></div>`;
-  const how = `<ul class="sp-how"><li><b>Waves of Echoes.</b> Shadow copies of the champions, with their whole kits. Beat every wave to open the stairs.</li><li><b>A blessing a floor.</b> After each floor, pick one of three. They stack, and last until the climb ends.</li><li><b>Every floor counts.</b> A cleared floor is saved at once and pays its first-clear reward, even if the climb ends later.</li><li><b>Checkpoints.</b> A new climb starts at the first floor of the zone you reached, with no blessings. A party climbs from its lowest checkpoint.</li></ul>`;
-  return `${stats}${seats(d)}<div class="rh-section"><h3 class="ui-h">How the climb works</h3></div>${how}`;
+  const complete = highest >= SPIRE_BUILT_TOP;
+  const how = `<details class="sp-guide"><summary>How to play</summary><ul class="sp-how"><li><b>Waves of Echoes.</b> Shadow copies of the champions, with their whole kits. Beat every wave to open the stairs.</li><li><b>A blessing a floor.</b> After each floor, pick one of three. They stack, and last until the climb ends.</li><li><b>Every floor counts.</b> A cleared floor is saved at once and pays its first-clear reward, even if the climb ends later.</li><li><b>Checkpoints.</b> A new climb starts at the first floor of the zone you reached, with no blessings. A party climbs from its lowest checkpoint.</li></ul></details>`;
+  return `${complete ? `<p class="sp-conquered">All ${SPIRE_BUILT_TOP} floors conquered! Replay from your checkpoint.</p>` : ""}${floorPreview(view, d)}${floorRoute(view, d)}<p class="ui-note sp-start-note">${attempts} climbs · Checkpoint ${checkpoint}. Floor previews do not change where a climb starts.</p>${seats(d)}${how}`;
 }
 function floorState(f: SpireFloor, d: SpireData) {
   const { highest, claimed } = spireStanding(d);
@@ -235,8 +301,19 @@ function blessingsTab() {
   }).join("");
   return `<p class="ui-note">After every floor each climber picks one of three. Picking one you hold stacks it. Blessings end with the climb.</p><div class="sp-blessings">${cards}</div>`;
 }
-function stage() {
-  return `<section class="ui-split-stage rh-stage sp-stage" style="--el:${SPIRE_COLOR}" aria-label="The Spire"><span class="sp-poster"><img src="${spirePoster}" alt="" width="900" height="1350" decoding="async" /></span><div class="rh-stage-info"><span class="rh-row">${tag("Zone 1 · Earth")}</span><b class="rh-stage-name">The Spire</b><small class="ui-note rh-stage-line">Climb past the Echoes</small><p class="rh-win"><span class="ui-kicker">Roles</span><b>${Object.values(
+function stage(d: SpireData) {
+  const { highest, checkpoint } = spireStanding(d);
+  const cleared = Math.min(SPIRE_BUILT_TOP, Math.max(0, highest));
+  const next = builtFloors().find((f) => f.floor > highest);
+  const zone = SPIRE_ZONES[(next ?? builtFloors().at(-1)!).zone];
+  const trail = builtFloors()
+    .map(
+      (f) =>
+        `<span class="${f.floor <= highest ? "is-done" : ""}${f.floor === next?.floor ? " is-next" : ""}${f.floor === checkpoint ? " is-checkpoint" : ""}"></span>`,
+    )
+    .reverse()
+    .join("");
+  return `<section class="ui-split-stage rh-stage sp-stage" style="--el:${SPIRE_COLOR}" aria-label="The Spire"><span class="sp-poster"><img src="${spirePoster}" alt="" width="900" height="1350" decoding="async" /></span><div class="sp-ascent"><span class="sp-stat"><b class="ui-num">${cleared}<small> / ${SPIRE_BUILT_TOP}</small></b><small>Floors cleared</small></span><progress max="${SPIRE_BUILT_TOP}" value="${cleared}" aria-label="Floors cleared"></progress><small>${next ? `Next: floor ${next.floor}` : "Spire conquered"} · Checkpoint ${checkpoint}</small></div><div class="sp-tower-trail" aria-hidden="true">${trail}</div><div class="rh-stage-info"><span class="rh-row">${tag(`Zone ${zone.id} · ${zone.element}`)}</span><b class="rh-stage-name">The Spire</b><small class="ui-note rh-stage-line">Climb past the Echoes</small><p class="rh-win"><span class="ui-kicker">Roles</span><b>${Object.values(
     SPIRE_ROLES,
   )
     .map((r) => esc(r.name))
@@ -257,7 +334,7 @@ export function spireMarkup(view: SpireView, d: SpireData) {
       ? floorsTab(d)
       : tab === "blessings"
         ? blessingsTab()
-        : climbTab(d);
+        : climbTab(view, d);
   const mode = segmented(
     [
       {
@@ -278,16 +355,21 @@ export function spireMarkup(view: SpireView, d: SpireData) {
       ? `${mode}<small class="ui-note rh-foot-note">${esc(s.note)}</small>`
       : `<small class="ui-note rh-foot-note is-reason" role="status">${esc(s.reason)}</small>`,
     actions(
-      button("Start climb", {
-        kind: "primary",
-        disabled: !s.ok,
-        attrs: { "data-raid-start": s.play },
-      }),
+      button(
+        s.play === "solo"
+          ? `Climb from floor ${spireStanding(d).checkpoint}`
+          : "Start party climb",
+        {
+          kind: "primary",
+          disabled: !s.ok,
+          attrs: { "data-raid-start": s.play },
+        },
+      ),
     ),
   );
   const loading =
     d.loading && !d.spire
       ? `<p class="ui-note" role="status">Loading your climb…</p>`
       : "";
-  return `<section class="ui-panel is-split rh-room sp-room" role="dialog" aria-label="The Spire" data-raid-mode="spire" style="--boss:${SPIRE_COLOR}">${stage()}<div class="ui-split-main"><header class="ui-panel-head rh-head">${button("All bosses", { size: "s", icon: "back", attrs: { "data-raid-back": true } })}<span class="ui-note rh-hint">Ten floors a zone: waves, an elite on 5, a boss on 10.</span>${iconButton("cancel", "Back to the Lobby", { class: "ui-close", "data-ui-close": true })}</header>${tabRow}<div class="ui-panel-body rh-body sp-body" data-raid-region="body" data-tab="${tab}">${loading}${body}<p class="ui-note rh-status" role="status">${esc(view.status)}</p></div>${foot}</div></section>`;
+  return `<section class="ui-panel is-split rh-room sp-room" role="dialog" aria-label="The Spire" data-raid-mode="spire" style="--boss:${SPIRE_COLOR}">${stage(d)}<div class="ui-split-main"><header class="ui-panel-head rh-head">${button("All bosses", { size: "s", icon: "back", attrs: { "data-raid-back": true } })}<span class="ui-note rh-hint">Ten floors a zone: waves, an elite on 5, a boss on 10.</span>${iconButton("cancel", "Back to the Lobby", { class: "ui-close", "data-ui-close": true })}</header>${tabRow}<div class="ui-panel-body rh-body sp-body" data-raid-region="body" data-tab="${tab}">${loading}${body}<p class="ui-note rh-status" role="status">${esc(view.status)}</p></div>${foot}</div></section>`;
 }

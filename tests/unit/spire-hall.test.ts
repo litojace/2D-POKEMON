@@ -8,6 +8,8 @@ import {
 } from "../../apps/client/src/screens/raid-hall-view";
 import {
   spireStartState,
+  spirePreview,
+  spireMarkup,
   spireUnlocked,
 } from "../../apps/client/src/screens/spire-view";
 
@@ -150,5 +152,63 @@ describe("the Spire page", () => {
     expect(locked).toMatch(
       /data-raid-start="solo" disabled|disabled[^>]*data-raid-start/,
     );
+  });
+});
+
+describe("Spire progress and floor previews", () => {
+  const view = { play: "solo" as const, status: "" };
+  it("opens the next uncleared floor while preserving the restart checkpoint", () => {
+    expect(spirePreview(view, data()).selected.floor).toBe(5);
+    const html = spireMarkup(view, data());
+    expect(html).toContain("Next uncleared · Floor 5");
+    expect(html).toContain("The Captain&#39;s Ring");
+    expect(html).toContain("Echo Captain Wombolder");
+    expect(html).toContain("Climb from floor 1");
+    expect(html).toContain('value="4" aria-label="Floors cleared"');
+    expect(html).toContain(
+      '<details class="sp-guide"><summary>How to play</summary>',
+    );
+  });
+  it("previews a locked boss and its title without changing where you start", () => {
+    const html = spireMarkup({ ...view, spireFloor: 10 }, data());
+    expect(html).toContain("Floor preview · Floor 10");
+    expect(html).toContain("Ascendant Cragmuff");
+    expect(html).toContain("Earthshaker of the Spire");
+    expect(html).toContain("Clear floor 9 first");
+    expect(html).toContain("Climb from floor 1");
+    expect(html).not.toContain("Climb from floor 10");
+    expect(html).toContain('data-spire-preview="10" aria-pressed="true"');
+  });
+  it("marks claimed rewards, rather than presenting them as available again", () => {
+    const html = spireMarkup({ ...view, spireFloor: 1 }, data());
+    expect(html).toContain("First-clear reward claimed");
+    expect(html).toContain("Floor preview · Floor 1");
+  });
+  it("shows a fresh climb and handles a fully conquered tower without a phantom floor", () => {
+    const fresh = data({ spire: climb({ highestFloor: 0, claimed: [] }) });
+    expect(spirePreview(view, fresh).selected.floor).toBe(1);
+    const done = data({ spire: climb({ highestFloor: 10, checkpoint: 11 }) });
+    expect(spirePreview(view, done).next).toBeUndefined();
+    const html = spireMarkup(view, done);
+    expect(html).toContain("All 10 floors conquered!");
+    expect(html).toContain("Spire conquered");
+    expect(html).not.toContain("Next uncleared");
+    expect(html).toContain("Climb from floor 1");
+  });
+  it("falls back to the next floor for an invalid preview", () => {
+    expect(
+      spirePreview({ ...view, spireFloor: 999 }, data()).selected.floor,
+    ).toBe(5);
+    expect(
+      spirePreview({ ...view, spireFloor: NaN }, data()).selected.floor,
+    ).toBe(5);
+  });
+  it("keeps party starts tied to the party checkpoint rather than the preview", () => {
+    const html = spireMarkup(
+      { ...view, play: "party", spireFloor: 10 },
+      data(),
+    );
+    expect(html).toContain("Start party climb");
+    expect(html).not.toContain("Climb from floor 10");
   });
 });

@@ -9,17 +9,25 @@ import {
   snap,
   createRoom,
 } from "./helpers";
-import { layoutProblems } from "./ui-measure";
+import { layoutProblems, setInsets, ISLAND, type Insets } from "./ui-measure";
 import { decodePng } from "./png";
 
 // The Spire: its tile and page in the Raid Hub (locked until a Cragmuff
 // clear), and a climb on the court: the Echoes, the elite, the blessing
 // cards between floors and the results. The battles are real climbs run on
 // the page (harness/rooms.ts "spire").
-const SIZES = [
+const SIZES: {
+  name: string;
+  width: number;
+  height: number;
+  phone: boolean;
+  inset?: Insets;
+}[] = [
   { name: "desktop", width: 1440, height: 900, phone: false },
   { name: "phone", width: 844, height: 390, phone: true },
   { name: "short-phone", width: 740, height: 340, phone: true },
+  { name: "phone-island", width: 852, height: 393, phone: true, inset: ISLAND },
+  { name: "small-phone", width: 667, height: 375, phone: true },
 ];
 const CLEARED = {
   clears: 2,
@@ -64,6 +72,7 @@ for (const size of SIZES)
       const page = await context.newPage();
       await withRecords(page, CLEARED, CLIMB);
       const errors = await openHub(page);
+      if (size.inset) await setInsets(page, size.inset);
       await page.click('.lobby-rail [data-lobby-action="raids"]');
       const room = page.locator(".rh-room");
       // The last tile of the boss list, with your climb on it.
@@ -91,8 +100,46 @@ for (const size of SIZES)
       await expect(room.locator('[data-raid-start="solo"]')).toBeEnabled();
       await expect(room.locator(".sp-stat").first()).toContainText("3");
       await settle(page);
-      expect(await layoutProblems(page, { phone: size.phone })).toEqual([]);
+      expect(
+        await layoutProblems(page, { phone: size.phone, inset: size.inset }),
+      ).toEqual([]);
       await snap(page, info, `spire-page-climb-${size.name}`);
+      // Milestones preview floors, never change the actual checkpoint start.
+      await expect(room.locator(".sp-preview")).toContainText(
+        "Next uncleared · Floor 4",
+      );
+      await expect(room.locator(".sp-ascent progress")).toHaveAttribute(
+        "value",
+        "3",
+      );
+      const bossPreview = room.locator('[data-spire-preview="10"]');
+      await bossPreview.scrollIntoViewIfNeeded();
+      await bossPreview.click();
+      await expect(room.locator(".sp-preview")).toContainText(
+        "Ascendant Cragmuff",
+      );
+      await expect(room.locator(".sp-preview")).toContainText(
+        "Earthshaker of the Spire",
+      );
+      await expect(bossPreview).toHaveAttribute("aria-pressed", "true");
+      await expect(bossPreview).toBeFocused();
+      await expect(room.locator("[data-raid-start]")).toHaveText(
+        "Climb from floor 1",
+      );
+      const claimed = room.locator('[data-spire-preview="1"]');
+      await claimed.scrollIntoViewIfNeeded();
+      await claimed.click();
+      await expect(room.locator(".sp-preview")).toContainText(
+        "First-clear reward claimed",
+      );
+      const guide = room.locator(".sp-guide");
+      await expect(guide).not.toHaveAttribute("open", "");
+      await guide.locator("summary").click();
+      await expect(guide).toHaveAttribute("open", "");
+      await expect(guide).toContainText(
+        "A new climb starts at the first floor",
+      );
+
       await room.locator('[data-ui-spire-tab="floors"]').click();
       const floors = room.locator("[data-spire-floor]");
       await expect(floors).toHaveCount(10);
@@ -108,7 +155,9 @@ for (const size of SIZES)
       await expect(room.locator('[data-spire-floor="10"]')).toHaveClass(
         /is-locked/,
       );
-      expect(await layoutProblems(page, { phone: size.phone })).toEqual([]);
+      expect(
+        await layoutProblems(page, { phone: size.phone, inset: size.inset }),
+      ).toEqual([]);
       // Row 1 is painted where it stands (no stale band over it: switching
       // tabs once left the old tab's picture there in Chromium).
       const row1 = await box(page, '[data-spire-floor="1"]');
@@ -127,7 +176,9 @@ for (const size of SIZES)
       await snap(page, info, `spire-page-floors-${size.name}`);
       await room.locator('[data-ui-spire-tab="blessings"]').click();
       await expect(room.locator("[data-spire-blessing-info]")).toHaveCount(10);
-      expect(await layoutProblems(page, { phone: size.phone })).toEqual([]);
+      expect(
+        await layoutProblems(page, { phone: size.phone, inset: size.inset }),
+      ).toEqual([]);
       await snap(page, info, `spire-page-blessings-${size.name}`);
       // Back to the list, on the Spire tile.
       await room.locator("[data-raid-back]").click();
