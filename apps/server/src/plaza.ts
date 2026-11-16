@@ -284,6 +284,18 @@ export class PlazaWorld {
   accountOf(key: string) {
     return this.visitors.get(key)?.accountId;
   }
+  /** Everyone in the same copy as this visitor (chat's Nearby channel). */
+  mates(key: string) {
+    const me = this.visitors.get(key);
+    if (!me) return [];
+    return [...this.visitors.values()]
+      .filter((v) => v.plaza === me.plaza)
+      .map((v) => ({
+        key: v.key,
+        accountId: v.accountId,
+        name: v.profile.name,
+      }));
+  }
   keys() {
     return [...this.visitors.keys()];
   }

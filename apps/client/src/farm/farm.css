@@ -2987,24 +2987,6 @@ body.hub-farm:has(.fm-hint:not(.done)) #toast {
 .farm-layer .fm-here > div {
   display: grid;
 }
-.farm-layer .fm-emotes {
-  display: inline-flex;
-  gap: 0.2em;
-}
-.farm-layer .fm-emotes button {
-  width: 2em;
-  height: 2em;
-  padding: 0;
-  border-radius: 50%;
-  border: 1px solid #ffffff2a;
-  background: #ffffff14;
-  font-size: 1em;
-  cursor: pointer;
-}
-.farm-layer .fm-emotes button:active {
-  transform: scale(0.9);
-}
-
 /* The Lobby's coins don't belong to the Farm (Gold Leaves do): on the farm
    only the leaf pill shows, pushed right beside the menu. */
 body.hub-farm #account-coins {

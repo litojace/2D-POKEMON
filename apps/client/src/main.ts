@@ -107,7 +107,11 @@ import {
   type HubScene,
 } from "./hub-scene";
 import { plazaOutfitKey } from "./plaza/plaza-outfit";
-import { bossClears, pacificDate } from "../../../packages/shared/src/raid";
+import {
+  bossClears,
+  pacificDate,
+  raidPingLabel,
+} from "../../../packages/shared/src/raid";
 import { resultXp } from "./adventure-ui";
 import { arcadeWeek, ARCADE_EVENTS } from "../../../packages/shared/src/arcade";
 import { drawArcade } from "./arcade-art";
@@ -361,6 +365,18 @@ import {
 import { RITE_EFFECTS, riteEffect, riteIcon } from "./rite-icons";
 import { ConnectionWatch, dropMessage } from "./connection-loss";
 import { watchSceneSwitch } from "./scene-switch-place";
+import { mountChat, type ChatFriend, type ChatPlace } from "./chat/chat-ui";
+import { mountBattleChat } from "./chat/battle-chat";
+import {
+  CHAT_MODES,
+  quickKind,
+  quickText,
+  type ChatMode,
+  type ChatLine,
+  type ChatQuick,
+} from "../../../packages/shared/src/chat";
+import { PLAZA_EMOTES } from "../../../packages/shared/src/plaza";
+import "./chat/chat.css";
 // Last: the hub's aero glass overrides the panels' own fills.
 import "./ui/aero.css";
 import "./ui/light-effects.css";
@@ -480,6 +496,76 @@ const socket = io(import.meta.env.VITE_SERVER_URL || undefined, {
   auth: { accessToken: null },
 });
 let accountsUI: AccountUI;
+const chat = mountChat({
+  send: (channel, body, to) =>
+    request("chat-send", { channel, ...body, ...(to ? { to } : {}) }),
+  history: async (channel, to) => {
+    const reply = (await request("chat-history", {
+      channel,
+      ...(to ? { to } : {}),
+    })) as { lines?: ChatLine[] };
+    return Array.isArray(reply.lines) ? reply.lines : [];
+  },
+  friends: async () => {
+    const reply = (await request("chat-friends", {}, true)) as {
+      ok: boolean;
+      friends?: ChatFriend[];
+    };
+    return reply.ok && Array.isArray(reply.friends) ? reply.friends : null;
+  },
+  read: (to) => {
+    if (socket.connected) socket.emit("chat-read", { to });
+  },
+  me: () =>
+    accountsUI?.account
+      ? { id: accountsUI.account.id, guest: !!accountsUI.account.guest }
+      : null,
+  block: async (accountId, name) => {
+    try {
+      const done = await accountsUI.block(accountId, name);
+      if (done) toast(`${name} is blocked.`);
+      return done;
+    } catch (error) {
+      toast(error instanceof Error ? error.message : "Couldn't block them.");
+      return false;
+    }
+  },
+  report: (channel, id, to) =>
+    request("chat-report", { channel, id, ...(to ? { to } : {}) }),
+  // The chat's gear: on, quick chat only, off (kept on this device).
+  setMode: (mode) => {
+    try {
+      localStorage.setItem(CHAT_MODE_KEY, mode);
+    } catch {
+      /* No storage: for this visit. */
+    }
+    void request("chat-mode", { mode });
+    chat.setMode(mode);
+    syncHub();
+  },
+});
+/** The chat setting: free, quick chat only, or off (kept on this device). */
+const CHAT_MODE_KEY = "ea-chat-mode";
+function chatMode(): ChatMode {
+  try {
+    const saved = localStorage.getItem(CHAT_MODE_KEY) as ChatMode | null;
+    return saved && CHAT_MODES.includes(saved) ? saved : "free";
+  } catch {
+    return "free";
+  }
+}
+chat.setMode(chatMode());
+/** The server learns the setting on every connection. */
+socket.on("connect", () => {
+  const mode = chatMode();
+  if (mode !== "free") socket.emit("chat-mode", { mode }, () => {});
+});
+/** Quick chat in a battle (chat/battle-chat.ts). */
+const battleChat = mountBattleChat({
+  send: (quick) => request("chat-send", { channel: "room", quick }),
+  ping: (kind) => void request("raid-ping", { kind }),
+  pingLabel: (kind) => raidPingLabel(kind, state?.raid?.boss ?? "grumblecrag"),
+});
 let authConnectionAttempt = 0;
 const connectionWatch = new ConnectionWatch();
 document.addEventListener("visibilitychange", () =>
@@ -701,7 +787,12 @@ function toast(message: string) {
   $("toast").classList.add("show");
   setTimeout(() => $("toast").classList.remove("show"), 4500);
 }
-function request(event: string, data: unknown = {}): Promise<Reply> {
+/** Ask the server; `quiet`: a background read that never shows a toast. */
+function request(
+  event: string,
+  data: unknown = {},
+  quiet = false,
+): Promise<Reply> {
   if (!socket.connected) return Promise.resolve({ ok: false });
   const connectionId = socket.id;
   return new Promise((resolve) =>
@@ -713,10 +804,10 @@ function request(event: string, data: unknown = {}): Promise<Reply> {
         if (!socket.connected || socket.id !== connectionId)
           return resolve({ ok: false });
         if (error) {
-          toast("Server did not respond. Check your connection.");
+          if (!quiet) toast("Server did not respond. Check your connection.");
           resolve({ ok: false });
         } else {
-          if (!reply.ok && reply.error) toast(reply.error);
+          if (!reply.ok && reply.error && !quiet) toast(reply.error);
           resolve(reply);
         }
       }),
@@ -1985,6 +2076,41 @@ function syncHub() {
   // A scene hiding after the next one showed may have taken the hub's top
   // bar style away (each checks only some of the others): in the hub it is on.
   if (hub) document.body.classList.add("hub-screen");
+  syncChat(hub);
+}
+/** The farm whose Nearby chat this page is in (chat-farm). */
+let farmChatOwner: string | null = null;
+/** The chat button's place and channels (chat/chat-ui.ts). */
+function syncChat(hub: boolean) {
+  const inRoom = !!myId && !!state;
+  const fighting =
+    inRoom && state!.phase !== "lobby" && state!.phase !== "finished";
+  const place: ChatPlace = hub
+    ? "hub"
+    : inRoom && !fighting && !state!.practice
+      ? "room"
+      : "none";
+  // Quick chat in a battle with other people in it (not practice, not a
+  // bot match, not a raid alone).
+  battleChat.sync(
+    chatMode() !== "off" &&
+      fighting &&
+      !state!.practice &&
+      !state!.vsBot &&
+      state!.players.length > 1 &&
+      (!state!.raid || state!.raid.partySize > 1),
+    !!state?.raid,
+  );
+  chat.sync(place, {
+    party: !!party,
+    room: inRoom && !state!.practice,
+    // Nearby: the Plaza's copy, or the farm you are on.
+    place:
+      hub && (hubScene === "plaza" || (hubScene === "farm" && !!farmChatOwner)),
+    // Friends: anyone signed in with an account (guests have no friends).
+    friend: !!accountsUI?.account && !accountsUI.account.guest,
+  });
+  placeSceneSwitch?.();
 }
 /** The new Plaza (hub redesign phase 3): the server moves everyone in it. */
 function syncPlaza(want: boolean, hub = want) {
@@ -2037,6 +2163,12 @@ function syncPlaza(want: boolean, hub = want) {
       (await accountsUI.api("/api/plaza")) as PlazaProgress,
     goFarm: () => setHubScene("farm"),
     isBlocked: (accountId) => accountsUI.isBlocked(accountId),
+    // Emotes go through chat's Nearby channel (docs/chat-plan.md).
+    quickChat: (quick: ChatQuick) =>
+      void request("chat-send", { channel: "place", quick }).then((r) => {
+        if (!r.ok && r.error) toast(r.error);
+      }),
+    myAccountId: () => accountsUI.account?.id,
     onPlayer: async (action, playerId, name) => {
       if (action === "friend") {
         await accountsUI.friendRequest({ playerId });
@@ -2282,12 +2414,27 @@ function syncFarm(want: boolean, hub = want) {
         friend,
       })) as FarmGiftResult,
     inviteLink: (code) => farmInviteUrl(location.origin, code),
-    here: async (owner, emote) =>
-      (await accountsUI.api("/api/farm/here", {
+    here: async (owner, emote) => {
+      // In chat's Nearby channel for this farm (once per farm).
+      const farm = owner ?? accountsUI.account?.id ?? null;
+      if (farm && farm !== farmChatOwner) {
+        farmChatOwner = farm;
+        void request("chat-farm", { owner: farm }).then((r) => {
+          if (!r.ok && farmChatOwner === farm) farmChatOwner = null;
+          syncHub();
+        });
+      }
+      return (await accountsUI.api("/api/farm/here", {
         ...(owner ? { owner } : {}),
         ...(emote ? { emote } : {}),
-      })) as FarmHere,
+      })) as FarmHere;
+    },
     gone: async () => {
+      if (farmChatOwner) {
+        farmChatOwner = null;
+        void request("chat-farm", { owner: null });
+        syncHub();
+      }
       await accountsUI.api("/api/farm/gone", {});
     },
     tour: async () =>
@@ -3495,6 +3642,44 @@ socket.on("party", (data: unknown) => {
     toast(`${party.members.at(-1)!.name} joined your party.`);
   syncHub();
   accountsUI.refreshRaids();
+});
+// In-game chat (docs/chat-plan.md).
+socket.on("chat", (line: ChatLine) => {
+  chat.receive(line);
+  // In a battle: a bubble over the speaker, and the feed under the button.
+  if (line.channel === "room" && line.fighter && state) {
+    const speaker = state.players.find((p) => p.id === line.fighter);
+    const me = state.players.find((p) => p.id === myId);
+    const plate = document.querySelector<HTMLElement>(
+      `.battle-nameplate[data-fighter="${CSS.escape(line.fighter)}"]`,
+    );
+    battleChat.receive(
+      line.quick ? quickText(line.quick) : (line.text ?? ""),
+      line.from.name,
+      plate,
+      !!state.raid || (!!speaker && !!me && teamOf(speaker) === teamOf(me)),
+      !!line.quick && quickKind(line.quick) === "emote",
+    );
+  }
+  // Nearby lines pop over the speaker's head. On the Plaza the server
+  // already pops its own emotes through the Plaza's state.
+  if (line.channel !== "place") return;
+  const text = line.quick ? quickText(line.quick) : (line.text ?? "");
+  if (hubScene === "plaza") {
+    if (!(line.quick && (PLAZA_EMOTES as readonly string[]).includes(text)))
+      plaza?.say(line.from.id, text);
+  } else if (hubScene === "farm") farmScreen?.say(line.from.id, text);
+});
+socket.on("chat-config", (data: { freeText?: unknown } | null) => {
+  chat.setFreeText(data?.freeText === true);
+  // Friends' messages that came while you were away (a dot on the chat).
+  const me = accountsUI?.account;
+  if (me && !me.guest)
+    void request("chat-unread", {}, true).then((reply) => {
+      const unread = (reply as { unread?: unknown }).unread;
+      if (reply.ok && unread && typeof unread === "object")
+        chat.setUnread(unread as Record<string, number>);
+    });
 });
 socket.on("party-room", (data: unknown) => {
   const parsed = partyRoomSchema.safeParse(data);
@@ -6369,6 +6554,8 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       if (!label) {
         label = document.createElement("div");
         label.className = "player-nameplate battle-nameplate";
+        // Quick chat in a battle finds the speaker's plate by this.
+        label.dataset.fighter = p.id;
         $("game").parentElement!.append(label);
         this.labels.set(p.id, label);
       }
@@ -6915,6 +7102,7 @@ accountsUI = new AccountUI({
   inviteFriend: (playerId) => request("room-invite", { playerId }),
   // In a private room Friends takes the picker's place; closing it brings
   // the picker back (UI remodel step 6).
+  messageFriend: (id, name) => chat.openFriend(id, name),
   friendsHost: () =>
     myId && !watching
       ? ($("menu").querySelector<HTMLElement>(":scope > .room-screen") ??

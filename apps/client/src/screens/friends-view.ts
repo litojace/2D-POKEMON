@@ -60,6 +60,8 @@ export interface FriendsData {
   room?: FriendsRoom;
   /** The players you blocked (migration 110); shown under Recent. */
   blocked?: readonly { id: string; name: string }[];
+  /** Friends can be messaged in the chat (its Friends tab). */
+  canMessage?: boolean;
 }
 export interface FriendsView {
   tab: FriendsTab;
@@ -374,7 +376,18 @@ function friendRow(f: Friend, d: FriendsData, view: FriendsView, now: number) {
           disabled: busy,
           attrs: { "data-friend-remove-ok": f.id },
         })
-      : button(pinned ? "Unpin" : "Pin", {
+      : (d.canMessage
+          ? button("Message", {
+              size: "s",
+              icon: "chat",
+              attrs: {
+                "data-friend-message": f.id,
+                "data-friend-name": f.name,
+                "aria-label": `Message ${f.name}`,
+              },
+            })
+          : "") +
+        button(pinned ? "Unpin" : "Pin", {
           size: "s",
           icon: "star",
           attrs: { "data-friend-pin": f.id, "aria-pressed": String(pinned) },

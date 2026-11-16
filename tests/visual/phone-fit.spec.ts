@@ -1,5 +1,5 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
-import { openHub, openPlayPanel, settle, snap } from "./helpers";
+import { hubMenu, openHub, openPlayPanel, settle, snap } from "./helpers";
 import { fakeFarm } from "./farm-fake";
 import { fakeBistro } from "./bistro-fake";
 
@@ -296,7 +296,7 @@ async function look(page: Page, inset: number[]) {
 }
 
 const rail = (action: string) => async (page: Page) => {
-  await page.click(`.lobby-rail [data-lobby-action="${action}"]`);
+  await hubMenu(page, action);
   await expect(page.locator(".ui-panel-host .ui-panel").first()).toBeVisible();
 };
 const HUB: [string, (page: Page) => Promise<void>][] = [
@@ -309,6 +309,36 @@ const HUB: [string, (page: Page) => Promise<void>][] = [
     },
   ],
   ["play panel", openPlayPanel],
+  [
+    "chat",
+    async (page) => {
+      // A party to talk to, a few lines, the drawer open (chat/chat-ui.ts).
+      await page.evaluate(() => {
+        const w = window as any;
+        const me = "11111111-1111-4111-8111-111111111111",
+          pal = "22222222-2222-4222-8222-222222222222";
+        w.__sock.fire("chat-config", { freeText: true });
+        w.__sock.fire("party", {
+          code: "PARTY2",
+          leader: me,
+          members: [
+            { id: me, name: "tester", character: "voltkit" },
+            { id: pal, name: "Pal", character: "tidefin" },
+          ],
+        });
+        for (let i = 1; i <= 3; i++)
+          w.__sock.fire("chat", {
+            id: i,
+            channel: "party",
+            from: { id: pal, name: "Pal" },
+            at: Date.now(),
+            text: `Line ${i}: ready for a raid?`,
+          });
+      });
+      await page.click("#chat-button");
+      await expect(page.locator("#chat-drawer")).toBeVisible();
+    },
+  ],
   ["fighters", rail("fighters")],
   [
     "fighter detail",

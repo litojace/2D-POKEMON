@@ -257,7 +257,7 @@ for (const size of SIZES) {
       const page = await context.newPage();
       await fixtures(page);
       const errors = await openHub(page);
-      await page.click('.lobby-rail [data-lobby-action="journey"]');
+      await page.click("#lobby-journey-card");
       const room = page.locator(".journey-room");
       await page.click('[data-ui-jtab="levels"]');
       await expect(room.locator(".journey-ring-text b")).toHaveText("100");

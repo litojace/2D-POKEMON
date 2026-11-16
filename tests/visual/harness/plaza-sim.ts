@@ -1,6 +1,11 @@
 // The Plaza server, in the page: the real PlazaWorld with the player in it.
 import { PlazaWorld } from "../../../apps/server/src/plaza";
-import { PLAZA, PLAZA_QUESTS } from "../../../packages/shared/src/plaza";
+import {
+  PLAZA,
+  PLAZA_EMOTES,
+  PLAZA_QUESTS,
+} from "../../../packages/shared/src/plaza";
+import { quickText } from "../../../packages/shared/src/chat";
 
 const w = window as unknown as Record<string, any>;
 const world = new PlazaWorld();
@@ -15,7 +20,10 @@ w.__plazaPosition = (x: number, y: number) => {
 w.__plazaProgress = {
   day: "2026-11-02",
   quests: Object.fromEntries(
-    PLAZA_QUESTS.map((q) => [q.id, { n: q.id === "cheers" ? 6 : 0, done: q.id === "photo" }]),
+    PLAZA_QUESTS.map((q) => [
+      q.id,
+      { n: q.id === "cheers" ? 6 : 0, done: q.id === "photo" },
+    ]),
   ),
   orbsToday: 0,
   bestLapMs: 7420,
@@ -65,10 +73,31 @@ const handle = (ev: string, data: any) => {
     world.leave(ME);
     return { ok: true };
   }
-  if (ev === "plaza-emote") return { ok: world.emote(ME, data.emote, Date.now()) };
+  if (ev === "plaza-emote")
+    return { ok: world.emote(ME, data.emote, Date.now()) };
+  // Chat's Nearby channel (server.ts): a quick line, and the Plaza's own
+  // emote over your head when it has one.
+  if (ev === "chat-send") {
+    const text = data.quick ? quickText(data.quick) : null;
+    if (!text) return { ok: false, error: "Here you can use quick chat." };
+    if ((PLAZA_EMOTES as readonly string[]).includes(text))
+      world.emote(ME, text, Date.now());
+    w.__chatSerial = (w.__chatSerial ?? 0) + 1;
+    setTimeout(() =>
+      w.__sock?.fire("chat", {
+        id: w.__chatSerial,
+        channel: "place",
+        from: { id: "11111111-1111-4111-8111-111111111111", name: "tester" },
+        at: Date.now(),
+        quick: data.quick,
+      }),
+    );
+    return { ok: true };
+  }
   if (ev === "plaza-act") {
     if (data.spot === "cafe") {
-      if (!world.at(ME, "cafe")) return { ok: false, error: "Walk up to the Volt Boba truck first." };
+      if (!world.at(ME, "cafe"))
+        return { ok: false, error: "Walk up to the Volt Boba truck first." };
       world.boost(ME);
       w.__plazaProgress.leaves -= PLAZA.boba.leaves;
       return { ok: true, leaves: w.__plazaProgress.leaves };
@@ -78,8 +107,10 @@ const handle = (ev: string, data: any) => {
   return undefined;
 };
 const before = { reply: w.__reply, emit: w.__emit };
-w.__reply = (ev: string, data: unknown) =>
-  ev.startsWith("plaza-") ? handle(ev, data) : before.reply?.(ev, data);
+w.__reply = (ev: string, data: any) =>
+  ev.startsWith("plaza-") || (ev === "chat-send" && data?.channel === "place")
+    ? handle(ev, data)
+    : before.reply?.(ev, data);
 w.__emit = (ev: string, data: any) => {
   if (ev === "plaza-input") world.input(ME, data.dx, data.dy);
   else if (ev === "plaza-jump") world.jump(ME);

@@ -10,6 +10,7 @@
  * the same shared step. Ported drawing code is not type-checked line by
  * line; the typed entry point is plaza-screen.ts.
  */
+import { CHAT_EMOTES } from "../../../../packages/shared/src/chat";
 import { syncHubGraphics } from "../hub-graphics";
 import {
   ORB_SHOWER,
@@ -90,6 +91,10 @@ const esc = (s) =>
       ],
   );
 const EMOTE_KEYS = PLAZA_EMOTES;
+/** Each Plaza emote's quick-chat id (chat.ts). */
+const CHAT_EMOTE_OF = Object.fromEntries(
+  Object.entries(CHAT_EMOTES).map(([id, e]) => [e, id]),
+);
 
 const PLAZA_HTML = `<div class="pz" id="pz">
   <canvas id="pz-cv" aria-label="Plaza"></canvas>
@@ -103,7 +108,7 @@ const PLAZA_HTML = `<div class="pz" id="pz">
     <div class="pz-runcard glass" id="pz-runcard" hidden></div>
     <div class="pz-joy" id="pz-joy"><div class="ring" id="pz-ring"><div class="knob" id="pz-knob"></div></div></div>
     <div class="pz-left">
-      <button type="button" class="pz-round" id="pz-wheel-btn" aria-label="Emotes">${I("smile")}<small>Emote</small></button>
+      <button type="button" class="pz-round" id="pz-wheel-btn" aria-label="Quick chat">${I("smile")}<small>Chat</small></button>
       <button type="button" class="pz-round" id="pz-treat" aria-label="Throw a treat (T)">${I("berry")}<small id="pz-treats">0</small></button>
       <button type="button" class="pz-round" id="pz-album-btn" aria-label="Photo album">${I("album")}<small>Album</small></button>
     </div>
@@ -1359,7 +1364,17 @@ export function openPlaza(options) {
     if (now - emoteAt < 1000) return;
     emoteAt = now;
     showEmote(P, e);
-    socket.emit("plaza-emote", { emote: e });
+    // Through chat (Nearby): the server pops it over your head for everyone
+    // in the Plaza, as before, and it shows in the chat's Nearby tab.
+    const quick = e === "GG" ? "gg" : CHAT_EMOTE_OF[e];
+    if (options.quickChat && quick) options.quickChat(quick);
+    else socket.emit("plaza-emote", { emote: e });
+  }
+  /** A Nearby line said by someone here: a bubble over their head. */
+  function say(accountId, text) {
+    if (accountId === options.myAccountId?.()) return showEmote(P, text);
+    for (const [id, b] of others)
+      if (profiles.get(id)?.accountId === accountId) return showEmote(b, text);
   }
   function showEmote(b, e) {
     b.emote = e;
@@ -4055,6 +4070,7 @@ export function openPlaza(options) {
         .then(setProgress)
         .catch(() => {});
     },
+    say,
     /** Your fighter or skin changed. */
     look(character, skin) {
       P.character = character;

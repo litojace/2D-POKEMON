@@ -720,35 +720,8 @@ function raidControls(
   renderSomnaraControls(state, me, frame, request);
   renderPrismatailControls(state, me, frame);
   renderStormTargets(state, frame);
-  let pings = document.getElementById("raid-pings");
-  if (!pings) {
-    pings = document.createElement("div");
-    pings.id = "raid-pings";
-    pings.setAttribute("role", "group");
-    pings.setAttribute("aria-label", "Team signals");
-    frame.append(pings);
-  }
-  // The third signal changes meaning per boss ("Island here" on Tidewyrm).
-  if (pings.dataset.boss !== r.boss) {
-    pings.dataset.boss = r.boss;
-    const buttons = (Object.keys(RAID_PINGS) as RaidPingKind[])
-      .map(
-        (kind) =>
-          `<button type="button" data-raid-ping="${kind}" title="${raidPingLabel(kind, r.boss)} (${RAID_PINGS[kind].key})">${pingIcon(kind)}<span>${raidPingLabel(kind, r.boss)}</span></button>`,
-      )
-      .join("");
-    pings.innerHTML = `<details class="raid-ping-menu" ${document.body.classList.contains("touch-mode") ? "" : "open"}><summary aria-label="Team signals" title="Team signals">${menuIcon("friends")}</summary><div class="raid-ping-options">${buttons}</div></details>`;
-  }
-  for (const b of Array.from(
-    pings.querySelectorAll<HTMLButtonElement>("[data-raid-ping]"),
-  ))
-    b.onclick = () => {
-      void request("raid-ping", { kind: b.dataset.raidPing });
-      if (document.body.classList.contains("touch-mode"))
-        pings!.querySelector<HTMLDetailsElement>("details")!.open = false;
-    };
-  const live = state.phase === "playing" || state.phase === "countdown";
-  pings.hidden = !live || r.partySize < 2;
+  // The team signals (Stack, Revive, Bait…) are in the battle's quick chat
+  // (chat/battle-chat.ts); Z, X and C still send them from a keyboard.
 }
 export function pingIcon(kind: RaidPingKind) {
   const path =

@@ -1,3 +1,4 @@
+import type { ChatQuick } from "../../../../packages/shared/src/chat";
 import type { Socket } from "socket.io-client";
 import type { CharacterId, Reply } from "@arena/shared";
 import type { PlazaProgress } from "../../../../packages/shared/src/plaza";
@@ -38,6 +39,10 @@ export interface PlazaScreenOptions {
   ): Promise<boolean | void>;
   /** Players you blocked aren't shown on the Plaza (migration 110). */
   isBlocked?(accountId: string): boolean;
+  /** Send an emote as quick chat in chat's Nearby channel (chat.ts id). */
+  quickChat?(quick: ChatQuick): void;
+  /** Your account, to find your own fighter for a Nearby bubble. */
+  myAccountId?(): string | undefined;
   /** The server closed the Plaza (a room opened) or refused the join. */
   onClose(failed: boolean): void;
   /** Fewer particles (reduced motion). */
@@ -55,11 +60,14 @@ export interface PlazaScreen {
     skin: { skin: string; stage?: number } | null,
   ): void;
   close(): void;
+  /** A Nearby chat line: a bubble over the speaker's head. */
+  say(accountId: string, text: string): void;
 }
 export function openPlazaScreen(options: PlazaScreenOptions): PlazaScreen {
   document.body.classList.add("hub-screen", "hub-plaza");
   const scene = openPlaza(options) as {
     look(character: string, skin: unknown): void;
+    say(accountId: string, text: string): void;
     hide(): void;
     show(): void;
     close(): void;
@@ -105,6 +113,7 @@ export function openPlazaScreen(options: PlazaScreenOptions): PlazaScreen {
   options.socket.on("connect", rejoin);
   join();
   return {
+    say: (accountId, text) => scene.say(accountId, text),
     look(next, skin) {
       scene.look(next, skin);
       character = next;

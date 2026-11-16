@@ -13,7 +13,7 @@
   --lobby-gutter-r: max(14px, var(--safe-right, 0px));
   --lobby-bottom: max(14px, var(--safe-bottom, 0px));
   --lobby-rail: 60px;
-  /* A rail button's height, and the emote tile's under the rail. */
+  /* A rail button's height. */
   --lobby-rail-btn: 56px;
   --lobby-cards: 272px;
   /* The mode button (56px), the gap (8px) and PLAY (76px). */
@@ -67,13 +67,14 @@
   z-index: 1;
 }
 
-/* Menu rail: one column from under the player card down to the emote
-   tile in the bottom-left corner (12px above it). Its buttons shrink to
-   fit when the screen is short (phones), never below 28px. */
+/* Menu rail: one column from under the player card down to the
+   bottom-left corner (PLAY's bottom line). Six buttons, a finger (44 pt)
+   tall even on the shortest phone; they shrink only on a shorter window,
+   never below 28px. */
 .lobby-rail {
   left: var(--lobby-gutter);
   top: var(--lobby-top);
-  bottom: calc(var(--lobby-bottom) + var(--lobby-rail-btn) + 12px);
+  bottom: var(--lobby-bottom);
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -721,72 +722,6 @@
   color: #a0afc8 !important;
 }
 
-/* Emotes: a tile in the rail's column, in the bottom-left corner (on
-   PLAY's bottom line). The emotes open up that column in the rail's place
-   (a row to the right ran into the fighter's arrows on phones and
-   tablets), the way the mode menu takes the cards' place. */
-.lobby-emotes {
-  left: var(--lobby-gutter);
-  bottom: var(--lobby-bottom);
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.lobby-emotes button {
-  display: grid;
-  place-items: center;
-  width: 46px;
-  height: 46px;
-  padding: 0;
-  border: 1px solid var(--lobby-line);
-  border-radius: 50%;
-  background: var(--lobby-glass);
-  font:
-    800 20px/1 "Barlow Condensed",
-    sans-serif;
-}
-.lobby-emotes .lobby-emote-toggle {
-  align-content: center;
-  gap: 2px;
-  width: var(--lobby-rail);
-  height: var(--lobby-rail-btn);
-  border-radius: 14px;
-  font-size: 22px;
-}
-.lobby-emotes .lobby-emote-toggle span {
-  font:
-    700 10px/1 "DM Sans",
-    sans-serif;
-  letter-spacing: 0.02em;
-  color: #c9d6ee;
-}
-.lobby-emote-list {
-  position: absolute;
-  left: 0;
-  bottom: calc(100% + 12px);
-  display: none;
-  flex-direction: column;
-  gap: 8px;
-  height: calc(
-    100dvh - var(--lobby-top) - var(--lobby-bottom) - var(--lobby-rail-btn) -
-      12px
-  );
-}
-.lobby-emotes[data-open="true"] .lobby-emote-list {
-  display: flex;
-}
-.lobby-emotes .lobby-emote-list button {
-  flex: 0 1 var(--lobby-rail-btn);
-  width: var(--lobby-rail);
-  height: auto;
-  min-height: 28px;
-  border-radius: 14px;
-  font-size: 22px;
-}
-.lobby-layer:has(.lobby-emotes[data-open="true"]) .lobby-rail {
-  visibility: hidden;
-}
-
 /* Mode and PLAY (bottom right). */
 .lobby-play {
   right: var(--lobby-gutter-r);
@@ -1065,28 +1000,14 @@
        of a frame's star row hanging below it. */
     --lobby-top: calc(var(--hub-card-h) + 22px + var(--hub-drop, 0px));
     --lobby-rail: 36px;
-    --lobby-rail-btn: 34px;
+    --lobby-rail-btn: 44px;
     --lobby-cards: 196px;
   }
   .lobby-rail {
     gap: 4px;
   }
-  .lobby-rail button,
-  .lobby-emotes .lobby-emote-toggle {
+  .lobby-rail button {
     border-radius: 10px;
-  }
-  .lobby-emotes .lobby-emote-toggle,
-  .lobby-emotes .lobby-emote-list button {
-    font-size: 17px;
-  }
-  .lobby-emote-list {
-    gap: 4px;
-  }
-  .lobby-emotes .lobby-emote-list button {
-    border-radius: 10px;
-  }
-  .lobby-emotes .lobby-emote-toggle span {
-    display: none;
   }
   .lobby-rail svg {
     width: 18px;
@@ -1146,11 +1067,6 @@
   .lobby-spark {
     display: none;
   }
-  .lobby-emotes button {
-    width: 36px;
-    height: 36px;
-    font-size: 16px;
-  }
   .lobby-mode {
     grid-template-columns: 26px minmax(0, 1fr) 14px;
     gap: 8px;
@@ -1188,22 +1104,6 @@
     min-height: 38px;
   }
 }
-/* Short phones (360–380 px tall): the emote tile is as tall as a rail
-   button is at its least, still 12px under the rail, so all eight rail
-   buttons keep 28px above it. */
-@media (max-height: 400px) {
-  .lobby-rail {
-    bottom: calc(var(--lobby-bottom) + 28px + 12px);
-    gap: 2px;
-  }
-  .lobby-emotes .lobby-emote-toggle {
-    height: 28px;
-  }
-  .lobby-emote-list {
-    gap: 2px;
-    height: calc(100dvh - var(--lobby-top) - var(--lobby-bottom) - 40px);
-  }
-}
 /* The shortest (320 px): two columns of full-size buttons. --lobby-rail is
    the whole rail's width, so the stage and the panels move over with it. */
 @media (max-height: 340px) {
@@ -1213,28 +1113,12 @@
   .lobby-rail {
     display: grid;
     grid-template-columns: repeat(2, 36px);
-    grid-auto-rows: 34px;
+    grid-auto-rows: 44px;
     align-content: start;
     gap: 4px;
   }
-  .lobby-rail button,
-  .lobby-emotes .lobby-emote-toggle,
-  .lobby-emotes .lobby-emote-list button {
+  .lobby-rail button {
     width: 36px;
-  }
-  .lobby-emotes .lobby-emote-toggle {
-    height: 34px;
-  }
-  .lobby-emote-list {
-    display: none;
-    grid-template-columns: repeat(2, 36px);
-    grid-auto-rows: 34px;
-    align-content: end;
-    gap: 4px;
-    height: auto;
-  }
-  .lobby-emotes[data-open="true"] .lobby-emote-list {
-    display: grid;
   }
 }
 @media (max-height: 420px) {

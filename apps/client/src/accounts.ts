@@ -134,6 +134,8 @@ type Hooks = {
   inviteFriend?: (id: string) => Promise<{ ok: boolean; error?: string }>;
   /** Where Friends opens while you are in a private room (its picker's place). */
   friendsHost?: () => HTMLElement | undefined;
+  /** Open the chat on a conversation with a friend (chat/chat-ui.ts). */
+  messageFriend?: (id: string, name: string) => void;
   /** Friends closed (a room puts its picker back). */
   onFriendsClosed?: () => void;
   notify: (message: string) => void;
@@ -1389,6 +1391,7 @@ export class AccountUI {
         return {
           ...this.friendsData,
           blocked: this.blocked,
+          canMessage: !!this.hooks.messageFriend,
           room,
           party: {
             size: Math.max(1, party?.party.length ?? 1),
@@ -1442,6 +1445,7 @@ export class AccountUI {
       },
       block: (id, name) => this.block(id, name),
       unblock: (id) => this.unblock(id),
+      message: (id, name) => this.hooks.messageFriend?.(id, name),
       inviteToParty: async (id) => ok(await this.hooks.inviteToParty?.(id)),
       inviteToRoom: async (id) => ok(await this.hooks.inviteFriend?.(id)),
       join: (code) => this.hooks.joinRoom?.(code),
@@ -1755,7 +1759,7 @@ export class AccountUI {
                         .map(([k, v]) => `${escape(k)}: ${escape(String(v))}`)
                         .join(" · ")}</small>`
                     : ""
-                }<button type="button" class="${r.status === "open" ? "secondary" : "quiet"}" data-resolve="${r.status === "open"}">${r.status === "open" ? "Mark resolved" : "Reopen"}</button></article>`,
+                }${chatTarget(r.context) ? `<button type="button" class="secondary" data-chat-stop="${chatTarget(r.context)}">Stop their chat for 24 h</button>` : ""}<button type="button" class="${r.status === "open" ? "secondary" : "quiet"}" data-resolve="${r.status === "open"}">${r.status === "open" ? "Mark resolved" : "Reopen"}</button></article>`,
             )
             .join("") ||
           `<p>No ${view.status === "all" ? "" : view.status + " "}reports.</p>`
@@ -1818,6 +1822,27 @@ export class AccountUI {
           });
         element("report-next").onclick = () =>
           void this.showAdmin({ reportOffset: view.reportOffset + 50 });
+        // A chat report: stop the reported player typing for a day.
+        document
+          .querySelectorAll<HTMLButtonElement>("[data-chat-stop]")
+          .forEach((button) => {
+            button.onclick = async () => {
+              button.disabled = true;
+              try {
+                await this.api("/api/admin/chat-ban", {
+                  playerId: button.dataset.chatStop,
+                  hours: 24,
+                  reason: "From a chat report",
+                });
+                await this.showAdmin({
+                  message: "Their chat is stopped for 24 hours.",
+                });
+              } catch (error) {
+                fail(error);
+                button.disabled = false;
+              }
+            };
+          });
         document
           .querySelectorAll<HTMLButtonElement>("[data-resolve]")
           .forEach((button) => {
@@ -2029,4 +2054,14 @@ export class AccountUI {
       );
     }
   }
+}
+
+/** The reported player of a chat report ("Name (uuid)" in its context). */
+function chatTarget(context: Record<string, string> | undefined) {
+  if (context?.source !== "chat") return null;
+  return (
+    /\(([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\)$/i.exec(
+      context.reported ?? "",
+    )?.[1] ?? null
+  );
 }

@@ -62,6 +62,20 @@ import {
 import { PlazaWorld, type PlazaEvent } from "./plaza.js";
 import { PLAZA, type PlazaRecord } from "../../../packages/shared/src/plaza.js";
 import { Parties, type Party, type PartyAppearance } from "./party.js";
+import { ChatReports, reportContext } from "./chat-moderation.js";
+import {
+  CHAT_LIMITS,
+  CHAT_MODES,
+  type ChatLine,
+  type ChatMode,
+  type ChatQuick,
+} from "../../../packages/shared/src/chat.js";
+import {
+  ChatHub,
+  plazaEmoteFor,
+  type ChatMember,
+  type ChatRoute,
+} from "./chat.js";
 import { PlazaAppearance } from "./plaza-appearance.js";
 import { MatchLedger, matchSummary } from "./match-summary.js";
 import {
@@ -142,6 +156,12 @@ export const BACKPRESSURE = { bytes: 16 * 1024, messages: 4 };
 export function createArenaServer(
   options: {
     reconnectMs?: number;
+    /**
+     * Typed chat lines on (quick chat is always on). Defaults to the
+     * CHAT_FREE_TEXT environment switch ("on"); off until reporting ships
+     * (docs/chat-plan.md).
+     */
+    chatFreeText?: boolean;
     autoTick?: boolean;
     accounts?: AccountProvider;
     /** Collect tick/broadcast/CPU/memory/byte measurements (see diagnostics.ts). */
@@ -266,6 +286,83 @@ export function createArenaServer(
   const roomInviteCooldowns = new Map<string, number>();
   const roomInvitesPending = new Set<string>();
   const parties = new Parties();
+  /** Which farm each socket is on, for chat's Nearby channel (socket id → owner). */
+  const farmHere = new Map<string, string>();
+  /** In-game chat (docs/chat-plan.md): party and room channels. */
+  /** Reports from chat, and the pause after several (chat-moderation.ts). */
+  const chatReports = new ChatReports();
+  /** Until when an admin stopped each online account typing (ms). */
+  const chatStops = new Map<string, number>();
+  /** Each online account's chat setting (free, quick only, off). */
+  const chatModes = new Map<string, ChatMode>();
+  /** Each online account's friends (id → name), for friends' messages. */
+  const chatFriends = new Map<string, Map<string, string>>();
+  const chat = new ChatHub({
+    // Typed lines are on unless CHAT_FREE_TEXT=off (a switch to pause them).
+    freeText: () =>
+      options.chatFreeText ?? process.env.CHAT_FREE_TEXT !== "off",
+    typingStopped: (id) => {
+      if (chatReports.isPaused(id))
+        return "After several reports you can't type for a while. Quick chat still works.";
+      const until = chatStops.get(id);
+      if (until && until > Date.now())
+        return `An admin stopped your chat until ${new Date(until).toUTCString().slice(5, 22)} UTC. Quick chat still works.`;
+      return null;
+    },
+  });
+  /**
+   * Read this account's friends, who they may message (kept per account;
+   * read again whenever the chat's Friends tab opens, so a friend added a
+   * moment ago is there).
+   */
+  const loadChatFriends = async (socket: import("socket.io").Socket) => {
+    const who = socket.data.account as Account | undefined;
+    const token = socket.data.accessToken as string | undefined;
+    if (!who || !token) return;
+    try {
+      const list = await accounts.rpc(token, "arena_friends", {});
+      const friends = (
+        list as { friends?: { id?: unknown; name?: unknown }[] } | null
+      )?.friends;
+      if (!Array.isArray(friends)) return;
+      chatFriends.set(
+        who.id,
+        new Map(
+          friends
+            .filter((f) => typeof f?.id === "string")
+            .map((f) => [f.id as string, String(f.name ?? "")]),
+        ),
+      );
+    } catch {
+      // Kept as it was.
+    }
+  };
+  /** Read who this account blocked, so chat delivers nothing between them. */
+  const loadChatBlocks = async (socket: import("socket.io").Socket) => {
+    const who = socket.data.account as Account | undefined;
+    const token = socket.data.accessToken as string | undefined;
+    if (!who || !token) return;
+    // Their friends, who they may message.
+    void loadChatFriends(socket);
+    // And whether an admin stopped them typing.
+    void accounts.chatStoppedUntil?.(who.id).then((until) => {
+      const ms = until ? Date.parse(until) : NaN;
+      if (Number.isFinite(ms)) chatStops.set(who.id, ms);
+      else chatStops.delete(who.id);
+    });
+    try {
+      const list = await accounts.rpc(token, "arena_blocked_players", {});
+      if (!Array.isArray(list)) return;
+      chat.setBlocks(
+        who.id,
+        list
+          .map((b) => (b as { id?: unknown } | null)?.id)
+          .filter((id): id is string => typeof id === "string"),
+      );
+    } catch {
+      // Kept as it was; the next change to the list tries again.
+    }
+  };
   /** The connected sockets of an account (a replaced tab has no account). */
   const accountSockets = (accountId: string) =>
     [...io.sockets.sockets.values()].filter(
@@ -364,6 +461,7 @@ export function createArenaServer(
       if (!ownsConnection(socket)) return;
       socket.data.account = account;
       socket.data.expiredChecks = 0;
+      void loadChatBlocks(socket);
       if (!account.guest)
         void presenceHistory.touch(account.id, socket.data.accessToken);
       const session = getSession(socket.id);
@@ -490,8 +588,11 @@ export function createArenaServer(
         if (
           id === target ||
           (target.startsWith("code:") && friendCode(id) === target.slice(5))
-        )
+        ) {
           socket.emit("friends-changed");
+          // A block or unblock changes who hears whom in chat.
+          if (id === target) void loadChatBlocks(socket);
+        }
       }
     },
   );
@@ -1043,6 +1144,7 @@ export function createArenaServer(
       arena.players = arena.players.filter((p) => p.id !== session.id);
     if (![...sessions.values()].some((s) => s.code === arena.code)) {
       rooms.delete(arena.code);
+      chat.drop(`room:${arena.code}`);
       // Anyone watching is told the room has closed.
       for (const [id, w] of watchers)
         if (w.code === arena.code) {
@@ -1055,6 +1157,9 @@ export function createArenaServer(
   }
   io.on("connection", (socket) => {
     claimAccount(socket);
+    void loadChatBlocks(socket);
+    // Whether typed lines are on, so the chat box shows the right state.
+    socket.emit("chat-config", { freeText: chat.freeText });
     const signedIn = socket.data.account as Account | undefined;
     if (signedIn && !signedIn.guest)
       void presenceHistory.touch(signedIn.id, socket.data.accessToken);
@@ -1341,8 +1446,10 @@ export function createArenaServer(
       const result = parties.leave(accountId);
       for (const s of accountSockets(accountId)) s.emit("party", null);
       if (!result) return;
-      if (result.disbanded) emitParty(result.disbanded, true);
-      else emitParty(result.party);
+      if (result.disbanded) {
+        emitParty(result.disbanded, true);
+        chat.drop(`party:${result.disbanded.code}`);
+      } else emitParty(result.party);
     };
     socket.on("party-leave", (_data: unknown, cb: unknown) => {
       if (!account()) return fail(cb, "Please log in to play.");
@@ -1402,6 +1509,7 @@ export function createArenaServer(
         socket.data.accessToken = token;
         socket.data.account = next;
         claimAccount(socket);
+        if (!current) void loadChatBlocks(socket);
         if (!next.guest) void presenceHistory.touch(next.id, token as string);
         socket.data.expiredChecks = 0;
         reply(cb, { ok: true });
@@ -2023,6 +2131,322 @@ export function createArenaServer(
       }
       next();
     });
+    // ───────────── Chat (docs/chat-plan.md) ─────────────
+    /** A player as chat sees them. */
+    const chatMember = (
+      accountId: string,
+      name: string,
+      team?: number,
+    ): ChatMember => {
+      const live = accountSockets(accountId)[0]?.data.account as
+        Account | undefined;
+      return {
+        accountId,
+        name,
+        guest: !!live?.guest,
+        mode: chatModes.get(accountId) ?? "free",
+        ...(team !== undefined ? { team } : {}),
+      };
+    };
+    /** Who hears this socket in a channel, from the server's own state. */
+    const chatRoute = (channel: unknown, to?: unknown): ChatRoute | null => {
+      const me = account();
+      if (!me) return null;
+      if (channel === "friend") {
+        // A friend, by the server's own list (blocking ends a friendship).
+        const name =
+          typeof to === "string" ? chatFriends.get(me.id)?.get(to) : undefined;
+        if (name === undefined || typeof to !== "string") return null;
+        const [lo, hi] = [me.id, to].sort();
+        return {
+          channel,
+          key: `friend:${lo}:${hi}`,
+          inBattle: false,
+          members: [chatMember(me.id, me.displayName), chatMember(to, name)],
+        };
+      }
+      if (channel === "party") {
+        const party = parties.of(me.id);
+        if (!party) return null;
+        return {
+          channel,
+          key: `party:${party.code}`,
+          inBattle: false,
+          members: party.members.map((m) => chatMember(m.id, m.name)),
+        };
+      }
+      if (channel === "room") {
+        const session = getSession(socket.id);
+        const arena = session && rooms.get(session.code);
+        if (!arena) return null;
+        const owners = fighterAccounts.get(arena);
+        const members: ChatMember[] = [];
+        for (const p of arena.players) {
+          const accountId = owners?.get(p.id);
+          // Bots have no account; a player still in a room has a session.
+          if (!accountId || arena.bots.has(p.id)) continue;
+          if (![...sessions.values()].some((s) => s.id === p.id)) continue;
+          const team = arena instanceof RaidArena ? 0 : arena.teamOf(p);
+          members.push(chatMember(accountId, p.name, team));
+        }
+        return {
+          channel,
+          key: `room:${arena.code}`,
+          inBattle: arena.phase !== "lobby" && arena.phase !== "finished",
+          members,
+        };
+      }
+      if (channel === "place") {
+        // The Plaza: everyone in the same copy.
+        const copy = plaza.plazaOf(socket.id);
+        if (copy !== undefined)
+          return {
+            channel,
+            key: `place:plaza:${copy}`,
+            inBattle: false,
+            members: plaza
+              .mates(socket.id)
+              .map((m) => chatMember(m.accountId, m.name)),
+          };
+        // A farm: everyone who said they are on it (checked when they did).
+        const owner = farmHere.get(socket.id);
+        if (owner) {
+          const members = new Map<string, ChatMember>();
+          for (const [id, o] of farmHere) {
+            const who = io.sockets.sockets.get(id)?.data.account as
+              Account | undefined;
+            if (o === owner && who)
+              members.set(who.id, chatMember(who.id, who.displayName));
+          }
+          return {
+            channel,
+            key: `place:farm:${owner}`,
+            inBattle: false,
+            members: [...members.values()],
+          };
+        }
+      }
+      return null;
+    };
+    socket.on("chat-farm", async (data: unknown, cb: unknown) => {
+      if (!allowed(10) || !requirePlayer(cb)) return;
+      const owner = (data as { owner?: unknown } | null)?.owner;
+      if (owner === null || owner === undefined) {
+        farmHere.delete(socket.id);
+        return reply(cb, { ok: true });
+      }
+      if (typeof owner !== "string" || !/^[0-9a-f-]{36}$/i.test(owner))
+        return fail(cb, "Choose a farm.");
+      const me = account()!;
+      // Your own farm, or a friend's (as the farm's own visits).
+      if (owner !== me.id) {
+        try {
+          const list = (await accounts.rpc(
+            socket.data.accessToken,
+            "arena_friends",
+            {},
+          )) as { friends?: { id?: unknown }[] } | null;
+          if (!list?.friends?.some((f) => f?.id === owner))
+            return fail(cb, "Only friends can visit.");
+        } catch {
+          return fail(cb, "Couldn't check that farm. Try again.");
+        }
+      }
+      farmHere.set(socket.id, owner);
+      reply(cb, { ok: true });
+    });
+    socket.on("chat-send", async (data: unknown, cb: unknown) => {
+      if (!allowed(10) || !requirePlayer(cb)) return;
+      const input = (data ?? {}) as {
+        channel?: unknown;
+        to?: unknown;
+        text?: unknown;
+        quick?: unknown;
+      };
+      const route = chatRoute(input.channel, input.to);
+      if (!route) return fail(cb, "There's no one to chat with here.");
+      const sent = chat.send(
+        account()!.id,
+        route,
+        input.quick !== undefined
+          ? { quick: input.quick }
+          : { text: input.text },
+      );
+      if (!sent.ok) return fail(cb, sent.error);
+      // In a room the line names the speaker's fighter (a bubble over them).
+      if (route.channel === "room") {
+        const session = getSession(socket.id);
+        if (session) sent.line.fighter = session.id;
+      }
+      // On the Plaza an emote also pops over your head for everyone, the
+      // way the Plaza's own emotes always have (older apps see it too).
+      const pop = sent.line.quick && plazaEmoteFor(sent.line.quick);
+      if (route.channel === "place" && pop)
+        plaza.emote(socket.id, pop, Date.now());
+      // Between friends the line is kept (the last 200 a pair), so a friend
+      // reads it later; its id is then the stored one, negated, so a page
+      // that loads it again knows it. Not kept until the migration runs.
+      let kept: boolean | undefined;
+      if (route.channel === "friend") {
+        kept = false;
+        const to = route.members.find((m) => m.accountId !== account()!.id)!;
+        sent.line.to = to.accountId;
+        try {
+          const id = await accounts.friendMessages?.save(
+            account()!.id,
+            to.accountId,
+            sent.line.quick
+              ? { quick: sent.line.quick }
+              : { text: sent.line.text },
+          );
+          if (id) {
+            sent.line.id = -id;
+            kept = true;
+          }
+        } catch {
+          // Kept in memory only.
+        }
+      }
+      for (const id of sent.deliver)
+        for (const s of accountSockets(id)) s.emit("chat", sent.line);
+      // A friend's line says whether it was kept (read later) or only shown.
+      reply(cb, kept === undefined ? { ok: true } : { ok: true, kept });
+    });
+    /** A friend's kept messages, as chat lines. */
+    const friendHistory = async (route: ChatRoute, me: string) => {
+      const friend = route.members.find((m) => m.accountId !== me)!;
+      const names = new Map(route.members.map((m) => [m.accountId, m.name]));
+      try {
+        const rows = await accounts.friendMessages!.history(
+          me,
+          friend.accountId,
+          CHAT_LIMITS.history,
+        );
+        return rows.map((r): ChatLine => ({
+          id: -r.id,
+          channel: "friend",
+          from: { id: r.from, name: names.get(r.from) ?? "" },
+          at: r.at,
+          to: r.from === me ? friend.accountId : me,
+          ...(r.quick
+            ? { quick: r.quick as ChatQuick }
+            : { text: r.text ?? "" }),
+        }));
+      } catch {
+        return chat.history(route.key, me);
+      }
+    };
+    // Unread friends' messages (a dot on the chat); reading a friend clears it.
+    // The chat's Friends tab: your friends (read afresh), who is online, and
+    // how many messages each sent that you haven't read.
+    socket.on("chat-friends", async (_data: unknown, cb: unknown) => {
+      if (!allowed(10) || typeof cb !== "function") return;
+      if (!account()) return cb({ ok: true, friends: [] });
+      const me = account()!;
+      await loadChatFriends(socket);
+      let unread: Record<string, number> = {};
+      try {
+        unread = (await accounts.friendMessages?.unread(me.id)) ?? {};
+      } catch {
+        // Nothing kept yet (the database update hasn't run).
+      }
+      cb({
+        ok: true,
+        friends: [...(chatFriends.get(me.id) ?? new Map<string, string>())]
+          .map(([id, name]) => ({
+            id,
+            name,
+            online: accountSockets(id).length > 0,
+            unread: Math.max(0, Number(unread[id]) || 0),
+          }))
+          .sort(
+            (a, b) =>
+              b.unread - a.unread ||
+              Number(b.online) - Number(a.online) ||
+              a.name.localeCompare(b.name),
+          ),
+      });
+    });
+    socket.on("chat-unread", async (_data: unknown, cb: unknown) => {
+      if (!allowed(10) || typeof cb !== "function") return;
+      if (!account()) return cb({ ok: true, unread: {} });
+      try {
+        cb({
+          ok: true,
+          unread: (await accounts.friendMessages?.unread(account()!.id)) ?? {},
+        });
+      } catch {
+        cb({ ok: true, unread: {} });
+      }
+    });
+    socket.on("chat-read", (data: unknown) => {
+      if (!allowed(10) || !account()) return;
+      const to = (data as { to?: unknown } | null)?.to;
+      if (typeof to !== "string" || !chatFriends.get(account()!.id)?.has(to))
+        return;
+      void accounts.friendMessages?.read(account()!.id, to).catch(() => {});
+    });
+    // The player's chat setting (Settings): free, quick chat only, or off.
+    socket.on("chat-mode", (data: unknown, cb: unknown) => {
+      if (!allowed(10) || !account()) return;
+      const mode = (data as { mode?: unknown } | null)?.mode;
+      if (!CHAT_MODES.includes(mode as ChatMode))
+        return fail(cb, "Choose free, quick or off.");
+      chatModes.set(account()!.id, mode as ChatMode);
+      reply(cb, { ok: true });
+    });
+    // Report a line (App Store Review Guideline 1.2): the server attaches the
+    // lines it kept itself, so a report can't be made up.
+    socket.on("chat-report", async (data: unknown, cb: unknown) => {
+      if (!allowed(5) || !requirePlayer(cb)) return;
+      const input = (data ?? {}) as {
+        channel?: unknown;
+        to?: unknown;
+        id?: unknown;
+        reason?: unknown;
+      };
+      const me = account()!;
+      const route = chatRoute(input.channel, input.to);
+      const kept = route ? chat.history(route.key, me.id) : [];
+      const at = kept.findIndex((l) => l.id === input.id);
+      const line = kept[at];
+      if (!route || !line) return fail(cb, "That message is gone.");
+      if (line.from.id === me.id) return fail(cb, "That's your own message.");
+      const reason =
+        typeof input.reason === "string"
+          ? input.reason.trim().slice(0, 900)
+          : "";
+      try {
+        await accounts.rpc(socket.data.accessToken, "arena_submit_report", {
+          p_category: "player",
+          p_message: `Chat: ${line.from.name}${reason ? `: ${reason}` : " (reported from chat)"}`,
+          p_context: reportContext(route.key, line.from, kept.slice(0, at + 1)),
+        });
+      } catch (error) {
+        return fail(
+          cb,
+          error instanceof Error ? error.message : "Couldn't send the report.",
+        );
+      }
+      const { pausedNow } = chatReports.record(me.id, line.from.id);
+      if (pausedNow) connectionLog("chat-paused", { account: line.from.id });
+      reply(cb, { ok: true });
+    });
+    socket.on("chat-history", async (data: unknown, cb: unknown) => {
+      if (!allowed(10) || !account()) return;
+      const input = (data ?? {}) as { channel?: unknown; to?: unknown };
+      const route = chatRoute(input.channel, input.to);
+      if (typeof cb !== "function") return;
+      const me = account()!.id;
+      cb({
+        ok: true,
+        lines: !route
+          ? []
+          : route.channel === "friend" && accounts.friendMessages
+            ? await friendHistory(route, me)
+            : chat.history(route.key, me),
+      });
+    });
     // ───────────── Plaza (hub redesign phase 3) ─────────────
     socket.on("plaza-join", (data: unknown, cb: unknown) => {
       if (!allowed(10) || !requirePlayer(cb)) return;
@@ -2288,8 +2712,15 @@ export function createArenaServer(
         );
       if (who && !who.guest && !stillOnline)
         void presenceHistory.touch(who.id, socket.data.accessToken, true);
-      if (who && !stillOnline) leaveParty(who.id);
+      if (who && !stillOnline) {
+        leaveParty(who.id);
+        chat.forget(who.id);
+        chatStops.delete(who.id);
+        chatModes.delete(who.id);
+        chatFriends.delete(who.id);
+      }
       plaza.leave(socket.id);
+      farmHere.delete(socket.id);
       laggingSockets.delete(socket.id);
       stopWatching();
       const s = getSession(socket.id);

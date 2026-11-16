@@ -1,0 +1,710 @@
+/* In-game chat (chat/chat-ui.ts, docs/chat-plan.md): the button and the
+   drawer. The button matches the hub's top-bar pills; the drawer slides in
+   over the screen's left side, so PLAY, Ready and the right-hand rails
+   stay in reach. */
+.chat-button {
+  --chat-size: 44px;
+  position: fixed;
+  z-index: 72;
+  display: grid;
+  place-items: center;
+  width: var(--chat-size);
+  height: var(--chat-size);
+  padding: 0;
+  border: 1px solid rgba(139, 174, 229, 0.25);
+  border-radius: 50%;
+  background: rgba(14, 26, 49, 0.84);
+  backdrop-filter: blur(6px);
+  color: #eef2ff;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.chat-button[hidden] {
+  display: none;
+}
+/* In the hub: 12 px right of the player card, from the same numbers the
+   card is placed and sized by (lobby.css, the top bar's padding), so it
+   moves with the card. On screens too narrow for it there,
+   scene-switch-place.ts drops it under the card (data-row="below"). */
+.chat-button[data-place="hub"] {
+  top: calc(
+    var(--hub-top, 10px) + (var(--hub-card-h, 52px) - var(--chat-size)) / 2
+  );
+  left: calc(
+    max(14px, var(--safe-left, 0px)) + var(--hub-card-w, 236px) + 12px
+  );
+}
+.chat-button[data-place="hub"][data-row="below"] {
+  top: var(--chat-y);
+  left: var(--chat-x);
+}
+/* In a room: top left, in the bar over the seats. */
+.chat-button[data-place="room"] {
+  top: max(10px, calc(var(--safe-top, 0px) + 10px));
+  left: max(16px, calc(var(--safe-left, 0px) + 12px));
+}
+.chat-button svg {
+  width: 22px;
+  height: 22px;
+}
+.chat-button:hover,
+.chat-button:focus-visible,
+.chat-button[aria-expanded="true"] {
+  border-color: #ffd65b;
+  color: #ffd65b;
+}
+.chat-unread {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 9px;
+  background: #ff5d6c;
+  color: #fff;
+  font:
+    700 11px/18px "Barlow",
+    system-ui,
+    sans-serif;
+  text-align: center;
+  pointer-events: none;
+}
+.chat-unread[hidden] {
+  display: none;
+}
+
+.chat-drawer {
+  position: fixed;
+  top: 0;
+  bottom: var(--chat-keyboard, 0px);
+  left: 0;
+  z-index: 90;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  width: calc(min(360px, 46vw) + var(--safe-left, 0px));
+  padding: max(8px, calc(var(--safe-top, 0px) + 6px)) 10px
+    max(8px, calc(var(--safe-bottom, 0px) + 4px))
+    calc(var(--safe-left, 0px) + 10px);
+  border-right: 1px solid rgba(139, 174, 229, 0.3);
+  background: rgba(10, 19, 37, 0.95);
+  backdrop-filter: blur(8px);
+  color: #eef2ff;
+  box-shadow: 8px 0 24px rgba(0, 0, 0, 0.35);
+  animation: chat-in 0.18s ease-out;
+}
+.chat-drawer[hidden] {
+  display: none;
+}
+@keyframes chat-in {
+  from {
+    transform: translateX(-24px);
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .chat-drawer {
+    animation: none;
+  }
+}
+.chat-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.chat-tabs {
+  flex: 1;
+  display: flex;
+  gap: 4px;
+  min-width: 0;
+}
+.chat-tab {
+  position: relative;
+  min-width: 64px;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid rgba(139, 174, 229, 0.25);
+  border-radius: 999px;
+  background: none;
+  color: #a0afc8;
+  font:
+    800 14px/1 "Barlow Condensed",
+    sans-serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.chat-tab[aria-selected="true"] {
+  border-color: #ffd65b;
+  background: #ffd65b;
+  color: #2a1a00;
+}
+.chat-tab svg {
+  display: none;
+  width: 18px;
+  height: 18px;
+}
+/* A narrow drawer (small phones) keeps every tab in its row: tighter tabs,
+   Friends as its icon, and a row that scrolls if a name still doesn't fit. */
+@media (max-width: 640px) {
+  .chat-tabs {
+    align-items: center;
+    height: 44px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .chat-tabs::-webkit-scrollbar {
+    display: none;
+  }
+  .chat-tab {
+    flex: none;
+    min-width: 44px;
+    padding: 0 6px;
+    font-size: 13px;
+    letter-spacing: 0.04em;
+  }
+  .chat-tab[data-chat-tab="friend"] {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    padding: 0 8px;
+  }
+  .chat-tab[data-chat-tab="friend"] svg {
+    display: block;
+  }
+  .chat-tab[data-chat-tab="friend"] span {
+    display: none;
+  }
+}
+.chat-tab i {
+  margin-left: 6px;
+  font-style: normal;
+  color: #ff8b96;
+}
+.chat-prefs {
+  margin: 8px 0 0;
+  padding: 8px;
+  border: 1px solid rgba(139, 174, 229, 0.3);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+}
+.chat-prefs[hidden] {
+  display: none;
+}
+.chat-modes {
+  display: flex;
+  gap: 4px;
+}
+.chat-modes button {
+  flex: 1;
+  height: 40px;
+  border: 1px solid rgba(139, 174, 229, 0.25);
+  border-radius: 10px;
+  background: none;
+  color: #a0afc8;
+  font:
+    700 13px/1 "Barlow",
+    system-ui,
+    sans-serif;
+  cursor: pointer;
+}
+.chat-modes button[aria-checked="true"] {
+  border-color: #ffd65b;
+  background: #ffd65b;
+  color: #2a1a00;
+}
+.chat-mode-note {
+  margin: 6px 0 0;
+  color: #a0afc8;
+  font:
+    500 12px/1.35 "Barlow",
+    system-ui,
+    sans-serif;
+}
+.chat-gear[aria-expanded="true"] {
+  color: #ffd65b;
+}
+.chat-gear,
+.chat-close {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  color: #eef2ff;
+  cursor: pointer;
+}
+.chat-gear svg,
+.chat-close svg {
+  width: 18px;
+  height: 18px;
+}
+.chat-lines {
+  flex: 1;
+  min-height: 0;
+  margin: 8px 0 6px;
+  padding: 0 2px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  list-style: none;
+}
+.chat-line {
+  padding: 3px 0;
+  font:
+    500 14px/1.35 "Barlow",
+    system-ui,
+    sans-serif;
+  overflow-wrap: anywhere;
+}
+/* Someone else's line is a button (tap: mute, block, report). */
+.chat-say {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+button.chat-say:hover,
+button.chat-say:focus-visible {
+  background: rgba(255, 255, 255, 0.05);
+}
+.chat-menu {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 2px 0 6px;
+  padding: 6px;
+  border: 1px solid rgba(139, 174, 229, 0.3);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+}
+.chat-menu p {
+  flex-basis: 100%;
+  margin: 0;
+  font:
+    500 13px/1.35 "Barlow",
+    system-ui,
+    sans-serif;
+}
+.chat-menu button {
+  min-width: 64px;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid rgba(139, 174, 229, 0.3);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #eef2ff;
+  font:
+    700 13px/1 "Barlow",
+    system-ui,
+    sans-serif;
+  cursor: pointer;
+}
+.chat-menu button[data-chat-act="report"],
+.chat-menu button[data-chat-act="send"] {
+  color: #ffb4bc;
+}
+.chat-line b {
+  margin-right: 6px;
+  color: #8fc3ff;
+  font-weight: 700;
+}
+.chat-line.is-mine b {
+  color: #ffd65b;
+}
+.chat-line.is-quick span {
+  font-size: 15px;
+}
+.chat-empty {
+  flex: 1;
+  margin: 8px 0;
+  color: #a0afc8;
+  font:
+    500 13px/1.4 "Barlow",
+    system-ui,
+    sans-serif;
+}
+.chat-empty[hidden] {
+  display: none;
+}
+.chat-empty:not([hidden]) + .chat-quick {
+  margin-top: auto;
+}
+/* The empty note takes the list's room when shown. */
+.chat-lines:has(+ .chat-empty:not([hidden])) {
+  display: none;
+}
+.chat-quick {
+  display: flex;
+  gap: 4px;
+  margin: 0 -2px 6px;
+  padding: 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  overscroll-behavior: contain;
+}
+.chat-quick::-webkit-scrollbar {
+  display: none;
+}
+.chat-chip {
+  flex: none;
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid rgba(139, 174, 229, 0.25);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #eef2ff;
+  font:
+    600 13px/1 "Barlow",
+    system-ui,
+    sans-serif;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.chat-chip:disabled,
+.chat-send:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.chat-form {
+  display: flex;
+  gap: 6px;
+}
+/* 16px text: iOS doesn't zoom into the box when it takes focus. */
+.chat-input {
+  flex: 1;
+  min-width: 0;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid rgba(139, 174, 229, 0.35);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #eef2ff;
+  font:
+    500 16px/1 "Barlow",
+    system-ui,
+    sans-serif;
+}
+.chat-input::placeholder {
+  color: #8592ab;
+}
+.chat-input:focus-visible {
+  outline: 2px solid #ffd65b;
+  outline-offset: 1px;
+}
+.chat-send {
+  height: 40px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 12px;
+  background: #ffd65b;
+  color: #2a1a00;
+  font:
+    800 14px/1 "Barlow Condensed",
+    sans-serif;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.chat-note {
+  min-height: 0;
+  margin: 4px 0 0;
+  color: #ffb4bc;
+  font:
+    500 12px/1.3 "Barlow",
+    system-ui,
+    sans-serif;
+}
+.chat-note:empty {
+  display: none;
+}
+
+/* Phones in landscape: a 40 px button (its 44 pt hit area comes from
+   phone-fit.css), tighter rows. */
+@media (max-height: 500px) {
+  .chat-button {
+    --chat-size: 40px;
+  }
+  .chat-button svg {
+    width: 20px;
+    height: 20px;
+  }
+  .chat-lines {
+    margin: 6px 0 4px;
+  }
+  .chat-line {
+    font-size: 13px;
+  }
+  /* A finger tall: each line someone else said opens its menu. */
+  button.chat-say {
+    min-height: 44px;
+  }
+  /* Each chip a finger wide, so their hit areas never overlap. */
+  .chat-chip {
+    min-width: 44px;
+  }
+}
+/* Friends (chat-ui.ts): the list of friends, then one conversation. */
+.chat-drawer.is-listing .chat-quick,
+.chat-drawer.is-listing .chat-form {
+  display: none;
+}
+.chat-friend button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  color: #eef2ff;
+  font:
+    600 15px/1.2 "Barlow",
+    system-ui,
+    sans-serif;
+  text-align: left;
+  cursor: pointer;
+}
+.chat-friend button:hover,
+.chat-friend button:focus-visible {
+  background: rgba(255, 255, 255, 0.06);
+}
+.chat-friend i {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #56627a;
+}
+.chat-friend i.is-online {
+  background: #5fe08a;
+}
+.chat-friend b {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chat-friend em {
+  min-width: 20px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: #ff5c6c;
+  color: #fff;
+  font:
+    800 12px/1.2 "Barlow",
+    system-ui,
+    sans-serif;
+  font-style: normal;
+  text-align: center;
+}
+.chat-with {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 0;
+  font:
+    700 15px/1.2 "Barlow",
+    system-ui,
+    sans-serif;
+}
+.chat-with[hidden] {
+  display: none;
+}
+.chat-with b {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chat-back {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  color: #eef2ff;
+  cursor: pointer;
+}
+.chat-back svg {
+  width: 18px;
+  height: 18px;
+}
+/* The keyboard is up: the lines and the box get the little room left. */
+.chat-drawer.is-typing .chat-quick {
+  display: none;
+}
+
+/* ── Quick chat in a battle (chat/battle-chat.ts) ─────────────────────────
+   One button top left, opposite the scoreboard's right side; in a raid it
+   sits where the raid's signals button was, under the raid's HUD. Clear of
+   the camera cutout (mid-height on the sides, touch-cutout.spec.ts) and of
+   the joystick (bottom left). */
+.battle-chat {
+  position: fixed;
+  top: max(10px, calc(var(--safe-top, 0px) + 8px));
+  left: max(12px, calc(var(--safe-left, 0px) + 4px));
+  z-index: 56;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid #91b6de66;
+  border-radius: 50%;
+  background: #102039ed;
+  color: #eef2ff;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.battle-chat[hidden],
+.battle-chat-grid[hidden],
+.battle-chat-feed[hidden] {
+  display: none;
+}
+.battle-chat svg {
+  width: 22px;
+  height: 22px;
+}
+.battle-chat[aria-expanded="true"] {
+  border-color: #ffd65b;
+  color: #ffd65b;
+}
+.battle-chat[data-raid="true"] {
+  top: calc(var(--safe-top, 0px) + var(--desktop-raid-hud-height, 24px) + 88px);
+}
+.battle-chat-grid {
+  position: fixed;
+  top: max(10px, calc(var(--safe-top, 0px) + 8px));
+  left: calc(max(12px, calc(var(--safe-left, 0px) + 4px)) + 52px);
+  z-index: 57;
+  display: grid;
+  grid-template-columns: repeat(4, auto);
+  gap: 4px;
+  padding: 6px;
+  border: 1px solid #91b6de66;
+  border-radius: 14px;
+  background: #102039f5;
+}
+/* In a raid: a row higher than the button, so it stays clear of the
+   joystick below (still under the boss's bar). */
+.battle-chat[data-raid="true"] + .battle-chat-grid {
+  top: calc(var(--safe-top, 0px) + var(--desktop-raid-hud-height, 24px) + 32px);
+}
+.battle-chat-grid button {
+  min-width: 44px;
+  height: 44px;
+  padding: 0 10px;
+  border: 1px solid rgba(139, 174, 229, 0.25);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #eef2ff;
+  font:
+    700 13px/1 "Barlow",
+    system-ui,
+    sans-serif;
+  white-space: nowrap;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.battle-chat-grid button.is-emote {
+  font-size: 20px;
+}
+.battle-chat-grid button.is-ping {
+  border-color: #ffd65b88;
+  color: #ffe7a3;
+}
+.battle-chat-grid button.is-mute {
+  grid-column: 1 / -1;
+  color: #a0afc8;
+}
+.battle-chat-grid button[aria-pressed="true"] {
+  color: #ff9aa5;
+}
+/* The last three lines, under the button, fading out. */
+.battle-chat-feed {
+  position: fixed;
+  top: calc(max(10px, calc(var(--safe-top, 0px) + 8px)) + 52px);
+  left: max(12px, calc(var(--safe-left, 0px) + 4px));
+  z-index: 55;
+  display: grid;
+  gap: 2px;
+  max-width: 220px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  pointer-events: none;
+}
+.battle-chat[data-raid="true"] ~ .battle-chat-feed {
+  top: calc(
+    var(--safe-top, 0px) + var(--desktop-raid-hud-height, 24px) + 140px
+  );
+}
+.battle-chat-feed li {
+  padding: 3px 8px;
+  border-radius: 8px;
+  background: rgba(10, 19, 37, 0.72);
+  color: #eef2ff;
+  font:
+    600 12px/1.3 "Barlow",
+    system-ui,
+    sans-serif;
+  animation: battle-chat-line 5s ease-in forwards;
+}
+.battle-chat-feed li b {
+  color: #8fc3ff;
+}
+.battle-chat-feed li.is-rival b {
+  color: #ff9aa5;
+}
+@keyframes battle-chat-line {
+  0%,
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+/* The bubble over a fighter's nameplate (it moves with the plate). */
+.battle-nameplate > .chat-bubble {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  padding: 4px 9px;
+  border-radius: 10px;
+  background: #fff;
+  color: #1d2433;
+  font:
+    700 12px/1.2 "Barlow",
+    system-ui,
+    sans-serif;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translate(-50%, 0);
+  pointer-events: none;
+}
+.battle-nameplate > .chat-bubble.is-emote {
+  padding: 2px 7px;
+  font-size: 18px;
+}
