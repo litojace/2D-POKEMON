@@ -4,26 +4,20 @@
    of the shared components and the Raid Hub's rh- rules; sp- classes only.
    ========================================================================== */
 
-/* The card: the tower drawn in SVG, standing in for a boss painting. */
+/* The card uses a painted poster; the page keeps the lit-floor diagram. */
 .spire-card-art {
   display: block;
   background: #0a0818;
 }
-.spire-card-art > svg,
 .sp-poster > svg {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
 }
-.rh-spire-card .spire-card-art > svg {
-  transition: transform var(--dur-3);
-}
-.rh-spire-card:hover .spire-card-art > svg {
-  transform: scale(1.03);
-}
-.rh-spire-card.is-locked .spire-card-art > svg {
-  filter: grayscale(0.6) brightness(0.55);
+.rh-spire-card .spire-card-art img {
+  /* Keep the crystal summit visible when a short mobile card crops the sky. */
+  object-position: center top;
 }
 .rh-stars.spire-floors {
   letter-spacing: 0;

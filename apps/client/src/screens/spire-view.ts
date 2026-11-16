@@ -26,6 +26,7 @@ import {
 import { fighterAvatar } from "../fighter-art";
 import { menuIcon } from "../menu-icons";
 import { SPIRE_COLOR, spireBlessingIcon, spireTowerArt } from "../spire-art";
+import spirePoster from "../art/spire/tower-portrait.webp";
 import {
   actionBar,
   actions,
@@ -144,7 +145,7 @@ export function spireCard(d: SpireData) {
     ? `Floor ${highest} · Checkpoint ${checkpoint}`
     : "Echo waves, an elite and the Ascendant bosses";
   const label = `The Spire, ${open ? `floor ${highest}, checkpoint ${checkpoint}` : "locked: clear Cragmuff first"}`;
-  return `<button type="button" class="rh-card rh-spire-card${open ? "" : " is-locked"}" style="--boss:${SPIRE_COLOR}" data-raid-spire aria-label="${esc(label)}"><span class="rh-card-art spire-card-art">${spireTowerArt(highest, "spire-card")}</span><span class="rh-card-top">${corner}<span class="rh-stars spire-floors" aria-hidden="true">${SPIRE_BUILT_TOP} floors</span></span><span class="rh-card-text"><b class="rh-card-name">The Spire</b><small class="ui-note rh-card-line">${esc(line)}</small><span class="rh-card-foot"><span class="ui-note">Climb · blessings · rewards</span></span></span></button>`;
+  return `<button type="button" class="rh-card rh-spire-card${open ? "" : " is-locked"}" style="--boss:${SPIRE_COLOR}" data-raid-spire aria-label="${esc(label)}"><span class="rh-card-art spire-card-art"><img src="${spirePoster}" alt="" width="900" height="1350" decoding="async" /></span><span class="rh-card-top">${corner}<span class="rh-stars spire-floors" aria-hidden="true">${SPIRE_BUILT_TOP} floors</span></span><span class="rh-card-text"><b class="rh-card-name">The Spire</b><small class="ui-note rh-card-line">${esc(line)}</small><span class="rh-card-foot"><span class="ui-note">Climb · blessings · rewards</span></span></span></button>`;
 }
 
 /* ------------------------------------------------------------- tabs */
