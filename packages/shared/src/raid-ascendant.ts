@@ -5,10 +5,19 @@
  * combos, shorter openings and a boss that reads the fight. A raid becomes
  * one with `RaidState.variant`; the difficulty row is `RAID_ASCENDANT_TIER`.
  */
-import type { RaidAttack, RaidTier } from "./raid.js";
+import type { RaidAttack, RaidBossId, RaidTier } from "./raid.js";
 
 /** An evolved form of a raid boss (none: the ordinary raid). */
 export type RaidVariant = "ascendant";
+
+/**
+ * Is this raid the Ascendant form of `boss`? Each Ascendant's rules layer
+ * acts only then, so one arena can carry several layers (the Spire's zones).
+ */
+export const isAscendant = (
+  r: { variant?: RaidVariant; boss: RaidBossId },
+  boss: RaidBossId,
+) => r.variant === "ascendant" && r.boss === boss;
 
 /**
  * The Ascendant difficulty row: built from ★★★ (RAID_TIERS[3]) and pushed
@@ -128,6 +137,16 @@ export const RAID_ASCENDANT_ATTACKS: Partial<Record<string, RaidAttack[]>> = {
     "avalanche",
     "twin-slam",
   ],
+  tidewyrm: [
+    "dive",
+    "wave",
+    "bubbles",
+    "hightide",
+    "undertow",
+    "prison",
+    "breaker",
+    "geyser",
+  ],
 };
 
 /** Ascendant Cragmuff's three chapters. */
@@ -149,5 +168,104 @@ export const ASCENDANT_CRAGMUFF_CHAPTERS = [
     objective: "Open the core with pillars. Survive the combinations.",
     detail:
       "The cracked core takes no extra damage now: bait charges into pillars to open it. Twin Slams call down debris, meteors scatter into eruptions, and the ring of spikes closes in.",
+  },
+] as const;
+
+/**
+ * Ascendant Tidelotl's own numbers (damage before the tier multiplier), the
+ * Spire's twentieth floor. Its ordinary attacks keep TIDEWYRM's numbers.
+ */
+export const ASCENDANT_TIDELOTL = {
+  name: "Ascendant Tidelotl",
+  /**
+   * Health added per extra raider (Tidelotl's raid: 850). Its attacks mostly
+   * need the whole floor, so a party meets far fewer overlapping attacks
+   * than against Ascendant Cragmuff; more health per raider evens that out.
+   */
+  perExtraPlayer: 1900,
+  /** Seconds a teammate kneels to revive (the Ascendant tier: 4.5). */
+  reviveSeconds: 6.5,
+  /**
+   * Breaker Wall: a towering wave that sweeps the whole court from one edge
+   * (it can't be jumped). Lanes of calm water cross it (`gapWidth` wide,
+   * `spacing` apart): stand in one, or on an island, as it passes.
+   */
+  breaker: {
+    delay: 1.6,
+    width: 90,
+    speed: 560,
+    damage: 30,
+    gapWidth: 170,
+    spacing: 420,
+  },
+  /**
+   * Geyser Line: three geysers in a row under a raider, all marked at once,
+   * erupting one after another (`gap` apart) along where they run or
+   * usually dodge.
+   */
+  geyser: { radius: 85, delay: 1.5, step: 150, count: 3, gap: 0.5, damage: 26 },
+  /** Chapter 3: once a Breaker Wall has crossed, geysers erupt this much later. */
+  breakerGeysers: 0.5,
+  /** A dive whose ripple turns, part-way through its follow, into a Geyser Line. */
+  feint: {
+    /** Chance a dive is a feint, by chapter. */
+    chance: [0.2, 0.3, 0.4],
+    /** Share of the ripple's follow shown before it turns. */
+    turnAt: 0.5,
+  },
+  /** Reading habits (as Ascendant Cragmuff reads them). */
+  habit: { samples: 3, consistency: 0.55, offset: 0.5 },
+  /** Standing still to attack: seconds still, and seconds since the last hit. */
+  anchor: { still: 1.2, hit: 1.0, speed: 40 },
+  /** As a strand ends it sweeps its tail twice: a wider second ring. */
+  secondSweep: { radius: 175 },
+} as const;
+
+/** Ascendant Tidelotl's attack order for a chapter. */
+export function ascendantTidelotlPattern(phase: number): RaidAttack[] {
+  if (phase === 1)
+    return ["dive", "bubbles", "breaker", "dive", "geyser", "wave", "bubbles"];
+  if (phase === 2)
+    return [
+      "dive",
+      "hightide",
+      "breaker",
+      "bubbles",
+      "prison",
+      "dive",
+      "geyser",
+      "undertow",
+    ];
+  return [
+    "hightide",
+    "dive",
+    "breaker",
+    "undertow",
+    "prison",
+    "geyser",
+    "bubbles",
+    "dive",
+  ];
+}
+
+/** Ascendant Tidelotl's three chapters. */
+export const ASCENDANT_TIDELOTL_CHAPTERS = [
+  {
+    name: "Abyssal Swell",
+    objective: "Lead dives onto islands. Find the calm lane in a Breaker Wall.",
+    detail:
+      "A Breaker Wall can't be jumped: stand in a lane of calm water, or on an island, as it passes. It reads you: geysers rise where you usually dodge, and standing still to attack draws a Geyser Line.",
+  },
+  {
+    name: "Lightless Deep",
+    objective: "Strand it fast. Watch for a ripple that turns.",
+    detail:
+      "A dive's ripple may sink away and become a Geyser Line: the new warning is shown in full, so react to what is drawn now. Bubble fans chain into geysers, and it hunts whoever kneels to revive.",
+  },
+  {
+    name: "Ascendant Tide",
+    objective: "Strand it. Survive the combinations.",
+    detail:
+      "When a Breaker Wall has crossed, geysers erupt under you: move off them. As a strand ends it sweeps its tail twice, the second ring wider. High Tide leads into a dive, the Undertow into a wave.",
   },
 ] as const;

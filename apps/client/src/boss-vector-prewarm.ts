@@ -37,7 +37,9 @@ const PREWARM: Record<
   // Cragmuff, or its Ascendant form (its own atlas).
   grumblecrag: (scene, phase, variant) =>
     grumblecrag(scene, phase, variant === "ascendant" ? "ascendant" : "raid"),
-  tidewyrm,
+  // Tidelotl, or its Ascendant form (its own atlases).
+  tidewyrm: (scene, phase, variant) =>
+    tidewyrm(scene, phase, variant === "ascendant" ? "ascendant" : "raid"),
   // Inkpurr (Gloomshade's look): one atlas for every phase.
   gloomshade: (scene) => inkpurr(scene),
   // Snoozaku (Somnara's look): one atlas for every phase.
@@ -83,7 +85,8 @@ export function prewarmBossAtlas(
 const PREPAINT: Partial<Record<RaidBossId, (variant?: RaidVariant) => void>> = {
   grumblecrag: (variant) =>
     prepaintCragmuff(variant === "ascendant" ? "ascendant" : "raid"),
-  tidewyrm: () => prepaintTidelotl(1),
+  tidewyrm: (variant) =>
+    prepaintTidelotl(1, variant === "ascendant" ? "ascendant" : "raid"),
   gloomshade: prepaintInkpurr,
   prismatail: prepaintPrismell,
   emberwing: prepaintLumiwick,

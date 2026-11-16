@@ -13,8 +13,8 @@
  *  5. attacks dodged by jumping land at least the jump cooldown apart.
  *
  * Phones depend on the 0.9 s floor: interpolation and a slow connection can
- * eat a third of it. Ascendant forms ("grumblecrag:ascendant", the Spire's
- * boss floors) keep the same rules.
+ * eat a third of it. Ascendant forms ("grumblecrag:ascendant",
+ * "tidewyrm:ascendant", the Spire's boss floors) keep the same rules.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { RULES, type CharacterId, type Fighter } from "@arena/shared";
@@ -63,6 +63,7 @@ type Boss = RaidBossId | `${RaidBossId}:${RaidVariant}`;
 const BOSSES: Boss[] = [
   ...(Object.keys(RAID_BOSSES) as RaidBossId[]),
   "grumblecrag:ascendant",
+  "tidewyrm:ascendant",
 ];
 const spatial = (w: RaidWarning) =>
   ["circle", "line", "cone"].includes(raidShapeOf(w.kind));
@@ -370,6 +371,8 @@ const DODGE: [Boss, RaidAttack, number][] = [
   ["grumblecrag:ascendant", "charge", 1],
   ["grumblecrag:ascendant", "avalanche", 1],
   ["grumblecrag:ascendant", "avalanche", 2],
+  ["tidewyrm:ascendant", "geyser", 1],
+  ["tidewyrm:ascendant", "geyser", 3],
 ];
 describe("a dodger who reacts in 0.45 s at the slowest speed is never hit", () => {
   it.each(DODGE)("%s %s (chapter %i), standing still", (boss, kind, phase) => {
