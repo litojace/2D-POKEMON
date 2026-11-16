@@ -2510,11 +2510,19 @@ export interface RaidState {
   quickBreaks?: number;
   blinded?: Record<string, number>;
   sunPillars?: { x: number; y: number; until: number; owner: string }[];
+  /** The Spire: this room is a climb (floors, Echo waves, blessings). */
+  spire?: import("./spire.js").SpireState;
   message: string;
   resultId?: string;
   rewardStatus?: "saving" | "saved" | "unavailable";
   contributions?: Record<string, RaidContribution>;
 }
+/**
+ * A raider: not the boss and not one of the Spire's Echoes (team-1
+ * champions). Raids filter their heroes with it, server and client alike.
+ */
+export const isRaider = (p: { raidBoss?: boolean; echo?: boolean }) =>
+  !p.raidBoss && !p.echo;
 export interface RaidReceipt {
   id: string;
   boss: RaidBossId;
