@@ -285,43 +285,17 @@ export class RaidArena extends Arena {
     super.start();
     const r = this.raid;
     r.result = null;
-    r.closingRadius = undefined;
-    this.phaseElapsed = 0;
     r.resultId = undefined;
     r.rewardStatus = undefined;
     r.elapsed = 0;
-    r.phase = 1;
-    r.stagger = 0;
-    r.staggerUntil = 0;
-    r.exposedUntil = 0;
     r.partySize = this.players.length;
     r.daily = false;
     r.day = pacificDate();
     r.seed = randomInt(1 << 30);
     r.trait = raidTraitFor(r.boss, r.seed);
     r.gilded = randomInt(20) === 0;
-    this.chargeBaits = 0;
-    this.threat.clear();
-    this.lastTargetId = undefined;
-    this.chargeMisses = 0;
-    const def = this.def();
-    r.maxHp = Math.round(
-      (def.health.base + def.health.perExtraPlayer * (r.partySize - 1)) *
-        RAID.healthScale *
-        (RAID.perilHealth[r.peril] ?? 1) *
-        this.tier().health *
-        (r.partySize === 1 ? RAID.soloHealth : 1) *
-        (r.gilded ? def.health.gilded : 1),
-    );
-    r.enrage = 0;
-    r.enrageAt = undefined;
-    this.resetBrain();
-    r.pings = [];
+    r.maxHp = this.bossMaxHp();
     this.downCauses = {};
-    this.pingAt.clear();
-    r.warnings = [];
-    r.wards = [];
-    r.downed = {};
     r.rites = {};
     r.offers = {};
     r.contributions = Object.fromEntries(
@@ -330,10 +304,57 @@ export class RaidArena extends Arena {
         { damage: 0, revives: 0, pillars: 0, downs: 0 },
       ]),
     );
-    this.seenAttacks.clear();
-    this.rescueCredit.clear();
     r.downs = 0;
     r.revives = 0;
+    this.resetFight();
+    this.players.forEach((p, i) => {
+      p.team = 0;
+      p.x = 260 + (i % 2) * 85;
+      p.y = 330 + Math.floor(i / 2) * 160;
+    });
+    this.spawnBoss();
+  }
+  /** The boss's health for this party, tier and look. */
+  protected bossMaxHp() {
+    const r = this.raid,
+      def = this.def();
+    return Math.round(
+      (def.health.base + def.health.perExtraPlayer * (r.partySize - 1)) *
+        RAID.healthScale *
+        (RAID.perilHealth[r.peril] ?? 1) *
+        this.tier().health *
+        (r.partySize === 1 ? RAID.soloHealth : 1) *
+        (r.gilded ? def.health.gilded : 1),
+    );
+  }
+  /**
+   * A fresh fight: chapter 1, no stagger or enrage, the boss's brain and
+   * deck reset, the arena's features standing again (a run's start, and a
+   * Spire boss floor in the middle of a climb).
+   */
+  protected resetFight() {
+    const r = this.raid;
+    r.closingRadius = undefined;
+    this.phaseElapsed = 0;
+    r.phase = 1;
+    this.round = 1;
+    r.stagger = 0;
+    r.staggerUntil = 0;
+    r.exposedUntil = 0;
+    this.chargeBaits = 0;
+    this.threat.clear();
+    this.lastTargetId = undefined;
+    this.chargeMisses = 0;
+    r.enrage = 0;
+    r.enrageAt = undefined;
+    this.resetBrain();
+    r.pings = [];
+    this.pingAt.clear();
+    r.warnings = [];
+    r.wards = [];
+    r.downed = {};
+    this.seenAttacks.clear();
+    this.rescueCredit.clear();
     this.setupArena();
     this.downAt.clear();
     this.crawl.clear();
@@ -343,12 +364,6 @@ export class RaidArena extends Arena {
     this.charging = undefined;
     this.attacks = 0;
     this.started = false;
-    this.players.forEach((p, i) => {
-      p.team = 0;
-      p.x = 260 + (i % 2) * 85;
-      p.y = 330 + Math.floor(i / 2) * 160;
-    });
-    this.spawnBoss();
   }
   /** The boss steps onto the court at the start of a run. */
   protected spawnBoss() {
