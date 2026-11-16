@@ -57,8 +57,8 @@
   border-radius: var(--rad-xl);
   border: 1px solid var(--glass-rim);
   background: var(--glass-regular);
-  -webkit-backdrop-filter: var(--glass-blur);
-  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur-panel);
+  backdrop-filter: var(--glass-blur-panel);
   overflow: hidden;
   font-family: var(--font-body);
   color: var(--ui-text);

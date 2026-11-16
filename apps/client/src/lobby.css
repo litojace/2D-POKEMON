@@ -36,7 +36,14 @@
   cursor: pointer;
 }
 .lobby-backdrop {
-  position: absolute;
+  /* Fixed, not absolute: it reaches 58 px past the right edge and 47 px past
+     the bottom (inset -28 px, scale 1.04), and as an absolute child that
+     made the Lobby a box the browser could scroll (overflow: hidden still
+     scrolls). A tap on a tab while a screen glided in scrolled the whole
+     Lobby that far, and it stayed there (raid-splash.spec.ts). A fixed
+     backdrop adds nothing to the Lobby's scroll area and draws the same
+     (the Lobby itself is fixed to the whole screen). */
+  position: fixed;
   inset: -28px;
   background: #0b1020 url("/assets/backgrounds/plaza-lobby-f340a3b8.webp")
     center 42% / cover no-repeat;

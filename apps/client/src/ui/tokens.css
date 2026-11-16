@@ -105,6 +105,9 @@
      through sharp, so the tint is deeper. */
   --glass-solid: rgba(12, 18, 34, 0.94);
   --glass-blur: blur(16px) saturate(1.3);
+  /* Panels are big: a lighter blur, the one they had before the tokens.
+     A blur costs per pixel of what it covers, and older phones pay it. */
+  --glass-blur-panel: blur(10px);
   /* One warm-gold hairline round every glass surface; gold when lit. */
   --glass-rim: rgba(226, 200, 140, 0.42);
   --glass-rim-on: #ffd65b;

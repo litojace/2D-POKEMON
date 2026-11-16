@@ -104,8 +104,8 @@
   border: 1px solid var(--glass-rim);
   border-radius: var(--rad-xl);
   box-shadow: none;
-  -webkit-backdrop-filter: var(--glass-blur);
-  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur-panel);
+  backdrop-filter: var(--glass-blur-panel);
   overflow: hidden;
   font-family: var(--font-body);
   font-size: var(--fs-body);
@@ -275,8 +275,8 @@
   display: flex;
   flex-direction: column;
   background: var(--glass-regular);
-  -webkit-backdrop-filter: var(--glass-blur);
-  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur-panel);
+  backdrop-filter: var(--glass-blur-panel);
 }
 /* Desktop: the main column (tabs, lists, catalogue) reads best at a set
    width; the stage grows with the screen instead (never below --stage-w).
