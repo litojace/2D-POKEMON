@@ -164,6 +164,12 @@ import {
 } from "../../../packages/shared/src/accounts.js";
 import { z, ZodError } from "zod";
 import type { Request, Response, NextFunction } from "express";
+import {
+  FriendPush,
+  validDevice,
+  webPushSender,
+  type PushSender,
+} from "./push.js";
 type Session = {
   accountId: string;
   id: string;
@@ -198,6 +204,11 @@ export function createArenaServer(
      * to console.log on a live server (autoTick), and to nothing in tests.
      */
     connectionLog?: (event: string, details: Record<string, unknown>) => void;
+    /**
+     * Sends friends'-message notifications (push.ts). Defaults to Web Push
+     * with the PUSH_VAPID_* keys, or none without them; null turns it off.
+     */
+    push?: PushSender | null;
   } = {},
 ) {
   const connectionLog =
@@ -212,6 +223,17 @@ export function createArenaServer(
   );
   const app = express();
   const accounts = options.accounts ?? createAccountProvider();
+  /** Notifications of friends' messages to players who are away (push.ts). */
+  const pushSender =
+    options.push === undefined
+      ? options.autoTick === false
+        ? null
+        : webPushSender()
+      : options.push;
+  const friendPush =
+    pushSender && accounts.pushDevices
+      ? new FriendPush(accounts.pushDevices, pushSender)
+      : null;
   const fighterAppearance = new FighterAppearance(accounts);
   const portraitChoice = new PortraitChoice(accounts);
   app.use("/api", apiCors(clientOrigins()));
@@ -2445,6 +2467,15 @@ export function createArenaServer(
       }
       for (const id of sent.deliver)
         for (const s of accountSockets(id)) s.emit("chat", sent.line);
+      // A friend who is away (no device connected) gets a notification, if
+      // they turned them on: who it's from, never the words.
+      if (route.channel === "friend" && sent.line.to) {
+        const to = sent.line.to;
+        if (!accountSockets(to).length)
+          void friendPush
+            ?.notify(to, { id: account()!.id, name: account()!.displayName })
+            .catch(() => {});
+      }
       // A friend's line says whether it was kept (read later) or only shown.
       reply(cb, kept === undefined ? { ok: true } : { ok: true, kept });
     });
@@ -2521,6 +2552,38 @@ export function createArenaServer(
       if (typeof to !== "string" || !chatFriends.get(account()!.id)?.has(to))
         return;
       void accounts.friendMessages?.read(account()!.id, to).catch(() => {});
+      friendPush?.read(account()!.id, to);
+    });
+    // Notifications of friends' messages (push.ts): the key to subscribe
+    // with (null: the server sends none), then this device on or off.
+    socket.on("push-config", (_data: unknown, cb: unknown) => {
+      if (!allowed(10) || typeof cb !== "function") return;
+      cb({ ok: true, key: friendPush?.publicKey ?? null });
+    });
+    socket.on("push-subscribe", async (data: unknown, cb: unknown) => {
+      if (!allowed(5) || !requirePlayer(cb)) return;
+      const device = validDevice(data);
+      if (!friendPush || !accounts.pushDevices)
+        return fail(cb, "Notifications aren't available right now.");
+      if (!device) return fail(cb, "This browser can't get notifications.");
+      try {
+        await accounts.pushDevices.save(account()!.id, device);
+        reply(cb, { ok: true });
+      } catch {
+        fail(cb, "Couldn't turn notifications on. Try again.");
+      }
+    });
+    socket.on("push-unsubscribe", async (data: unknown, cb: unknown) => {
+      if (!allowed(5) || !account()) return;
+      const endpoint = (data as { endpoint?: unknown } | null)?.endpoint;
+      if (typeof endpoint !== "string" || endpoint.length > 1000)
+        return fail(cb, "Nothing to turn off.");
+      try {
+        await accounts.pushDevices?.remove(endpoint);
+        reply(cb, { ok: true });
+      } catch {
+        fail(cb, "Couldn't turn notifications off. Try again.");
+      }
     });
     // The player's chat setting (Settings): free, quick chat only, or off.
     socket.on("chat-mode", (data: unknown, cb: unknown) => {

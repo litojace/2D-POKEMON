@@ -1,4 +1,5 @@
 import { appleConfig, exchangeAppleCode, revokeAppleToken } from "./apple.js";
+import type { PushDevice, PushStore } from "./push.js";
 import { clientOrigins } from "./api-cors.js";
 import type {
   PlazaProgress,
@@ -99,6 +100,8 @@ export interface AccountProvider {
    * (throws) until the migration runs; the game then keeps them in memory.
    */
   friendMessages?: FriendMessageStore;
+  /** Devices to notify of friends' messages (migration 20261116100000). */
+  pushDevices?: PushStore;
   rpc(
     token: string,
     name: string,
@@ -289,6 +292,28 @@ export function createAccountProvider(): AccountProvider {
           p_friend: friend,
         });
         if (r.error) throw new Error(r.error.message);
+      },
+    },
+    pushDevices: {
+      async save(player, d) {
+        const r = await admin().rpc("arena_push_save", {
+          p_player: player,
+          p_endpoint: d.endpoint,
+          p_p256dh: d.p256dh,
+          p_auth: d.auth,
+        });
+        if (r.error) throw new Error(r.error.message);
+      },
+      async remove(endpoint) {
+        const r = await admin().rpc("arena_push_remove", {
+          p_endpoint: endpoint,
+        });
+        if (r.error) throw new Error(r.error.message);
+      },
+      async list(player) {
+        const r = await admin().rpc("arena_push_list", { p_player: player });
+        if (r.error) throw new Error(r.error.message);
+        return (r.data as PushDevice[] | null) ?? [];
       },
     },
     async chatStoppedUntil(accountId) {
