@@ -577,7 +577,11 @@
   display: inline-flex;
   padding: 3px;
   gap: 2px;
-  background: var(--fill-card);
+  /* Solid, not a see-through fill: the gold pill's rounded edge blends with
+     what is under it, and through glass that is the scene, lighter on one
+     side than the other. The pill then read off-centre (by 5.5 px in CI's
+     Chromium on the Ranks switch). A solid track keeps both edges alike. */
+  background: var(--ui-bg-1);
   border: 1px solid var(--ui-line);
   border-radius: var(--rad-pill);
   flex: none;
