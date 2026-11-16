@@ -324,7 +324,8 @@ for (const size of SIZES)
       expect(chipHeights, "title chips' height").toBe(1);
       const tiles = await rowsEven(page, ".pf-tile");
       expect(tiles.heights).toHaveLength(1);
-      // Eighteen fighters in two even rows of nine.
+      // Eighteen fighters in two even rows of nine; on a phone, one row
+      // that swipes sideways (MOBILE-GLASS.md, phone pass part 2).
       const rows = await page.evaluate(() => {
         const tops = Array.from(
           document.querySelectorAll(".pf-mastery-chip"),
@@ -333,7 +334,7 @@ for (const size of SIZES)
           (t) => tops.filter((x) => x === t).length,
         );
       });
-      expect(rows).toEqual([9, 9]);
+      expect(rows).toEqual(size.phone ? [18] : [9, 9]);
       // The card keeps its place; the column beside it scrolls to its end.
       const main = panel.locator(".pf-main");
       await main.evaluate((e) => (e.scrollTop = e.scrollHeight));
