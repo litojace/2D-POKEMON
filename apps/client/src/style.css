@@ -15215,67 +15215,123 @@ body.battle-raid.touch-mode #battle #raid-hud#raid-hud .raid-callout {
   --ping: #ff5d6c;
 }
 
-/* Phones: the target row (two or more enemies), right side above the skill
-   cluster, like the Storm Twins target buttons. */
 #target-picker[hidden] {
   display: none;
 }
+/* The target portraits (target-picker.ts): round buttons on an arc beside
+   the basic attack. The box is a point at the touch pad's bottom-right
+   corner (the cluster's), so it covers nothing; each portrait sits at its
+   slot's centre (--lock-N-r/-b from the cluster edges, set on resize by
+   touch-controls.ts). 44 px to tap, a 38 px disc to see. */
 #target-picker {
-  position: fixed;
-  z-index: 27;
-  top: max(
-    var(--target-row-top, calc(var(--safe-top, 0px) + 62px)),
-    calc(
-      100dvh - var(--safe-bottom, 0px) - var(--combat-cluster-height, 192px) -
-        60px
-    )
-  );
-  right: calc(var(--safe-right, 0px) + 6px);
-  display: flex;
-  gap: 6px;
-  max-width: calc(
-    100vw - var(--safe-left, 0px) - var(--safe-right, 0px) - 220px
-  );
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 0;
+  height: 0;
+  z-index: 2;
+  pointer-events: none;
 }
 #target-picker button {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  height: 34px;
-  min-height: 34px;
-  padding: 0 10px;
-  border-radius: 999px;
-  border: 1px solid #ff5d6c66;
-  background: #14243bea;
-  color: #f4efe2;
-  font:
-    600 calc(12px * var(--text-scale, 1))/1 "DM Sans",
-    sans-serif;
-  touch-action: manipulation;
-}
-#target-picker button > i {
-  flex: none;
-  width: 10px;
-  height: 10px;
+  position: absolute;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  min-height: 0;
+  padding: 0;
+  margin: 0;
+  border: 0;
   border-radius: 50%;
-  background: var(--target-color);
-  box-shadow: 0 0 0 2px #0b1222;
+  background: none;
+  pointer-events: auto;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
-#target-picker button > span {
-  min-width: 0;
-  max-width: 96px;
+#target-picker button[data-slot="0"] {
+  right: calc(var(--lock-0-r) - 22px);
+  bottom: calc(var(--lock-0-b) - 22px);
+}
+#target-picker button[data-slot="1"] {
+  right: calc(var(--lock-1-r) - 22px);
+  bottom: calc(var(--lock-1-b) - 22px);
+}
+#target-picker button[data-slot="2"] {
+  right: calc(var(--lock-2-r) - 22px);
+  bottom: calc(var(--lock-2-b) - 22px);
+}
+#target-picker button[data-slot="3"] {
+  right: calc(var(--lock-3-r) - 22px);
+  bottom: calc(var(--lock-3-b) - 22px);
+}
+#target-picker .target-face {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
   overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
+  border-radius: 50%;
+  border: 2px solid var(--target-color);
+  background: radial-gradient(
+      circle at 50% 30%,
+      color-mix(in srgb, var(--target-color) 45%, #14243b),
+      #0b1222 80%
+    )
+    #0b1222;
+  box-shadow: 0 1px 4px #000a;
+  color: #f4efe2;
+  opacity: var(--hud-opacity, 0.85);
 }
-#target-picker button[aria-pressed="true"] {
-  border-color: #ff5d6c;
-  background: #4a1a26f0;
-  box-shadow: 0 0 12px #ff5d6c66;
+#target-picker .target-face img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
-#target-picker button:disabled {
-  opacity: 0.4;
+#target-picker .target-face b {
+  font:
+    800 calc(15px * var(--text-scale, 1))/1 "DM Sans",
+    sans-serif;
+  text-shadow: 0 1px 2px #000;
+}
+#target-picker [data-kind="lantern"] .target-face {
+  color: var(--target-color);
+}
+#target-picker [data-kind="lantern"] .target-face svg {
+  width: 20px;
+  height: 20px;
+  margin-top: -6px;
+}
+#target-picker [data-kind="lantern"] .target-face b {
+  position: absolute;
+  bottom: 3px;
+  color: #f4efe2;
+  font-size: calc(9px * var(--text-scale, 1));
+  letter-spacing: 0.02em;
+}
+/* A bubble holds a teammate: their face behind a glassy sheen. */
+#target-picker [data-kind="bubble"] .target-face::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 32% 28%, #ffffffb0 0 12%, transparent 13%),
+    radial-gradient(circle, transparent 58%, #9fe6ff88 100%);
+}
+#target-picker button[aria-pressed="true"] .target-face {
+  opacity: 1;
+  border-color: #fff;
+  box-shadow:
+    0 0 0 3px #ff5d6c,
+    0 0 12px 2px #ff5d6ccc;
+}
+#target-picker button:disabled .target-face {
+  opacity: 0.35;
+  filter: grayscale(1);
 }
 /* PvP: the fighter cards reach the gear, so the badge sits under it (raids
    keep it beside the gear: the raid timer is under it). */
@@ -15283,18 +15339,6 @@ body:not(.battle-raid) #battle-menu .ping-badge {
   top: calc(100% + 4px);
   right: 50%;
   translate: 50% 0;
-}
-/* Short phones: the row fits between the fighter cards and the ULT button. */
-@media (max-height: 320px) {
-  #target-picker {
-    --target-row-top: calc(var(--safe-top, 0px) + 57px);
-  }
-  #target-picker button {
-    height: 28px;
-    min-height: 28px;
-    padding: 0 9px;
-    font-size: calc(11px * var(--text-scale, 1));
-  }
 }
 /* Phones: no room for the number by the gear (fighter cards, target row),
    so the badge is just its coloured dot on the gear's corner. */

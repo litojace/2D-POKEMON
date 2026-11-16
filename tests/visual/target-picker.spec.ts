@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page, type TestInfo } from "@playwright/test";
 import {
   openHub,
   pushUntilBattle,
@@ -8,7 +8,8 @@ import {
 } from "./helpers";
 
 // Phones aim at the nearest enemy; with two or more enemies the player can
-// lock on to another one (a target row, or a tap on the fighter).
+// lock on to another one (a target portrait beside the basic attack, or a
+// tap on the fighter).
 async function ffa(page: Page) {
   await page.route(/\/apps\/client\/src\/main\.ts(?:\?|$)/, async (route) => {
     const response = await route.fetch(),
@@ -69,6 +70,112 @@ const aimNear = async (page: Page, x: number, y: number) =>
     )
     .toBeLessThan(2);
 
+/**
+ * The target portraits: round, 44 px to tap, faces or marks with no text,
+ * on screen, never on each other, any touch control, the gear, the chat
+ * button or the top HUD (scoreboard, raid bar, timer), and on the right of
+ * the screen, away from the court's middle and the joystick. Returns their
+ * boxes.
+ */
+async function portraitsClear(
+  page: Page,
+  size: { width: number; height: number },
+) {
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          [...document.querySelectorAll("#target-picker button")].filter(
+            (b) => b.getBoundingClientRect().width > 0,
+          ).length,
+      ),
+    )
+    .toBeGreaterThanOrEqual(2);
+  const rows = await page.evaluate(() => {
+    const r = (el: Element) => {
+      const b = el.getBoundingClientRect();
+      return {
+        name:
+          (el as HTMLElement).id ||
+          (el as HTMLElement).dataset.action ||
+          (el as HTMLElement).dataset.skill ||
+          el.className.toString(),
+        x: b.x,
+        y: b.y,
+        right: b.right,
+        bottom: b.bottom,
+        // The combat buttons are discs (and so are the portraits).
+        round: el.matches(".touch-buttons button"),
+      };
+    };
+    const shown = (el: Element) =>
+      el.getClientRects().length > 0 &&
+      getComputedStyle(el).visibility !== "hidden";
+    return {
+      picker: [...document.querySelectorAll("#target-picker button")].map(
+        (b) => ({
+          ...r(b),
+          text: b.textContent!.replace(/\s/g, ""),
+          face: (() => {
+            const f = b.querySelector(".target-face")!.getBoundingClientRect();
+            return { w: f.width, h: f.height };
+          })(),
+          label: b.getAttribute("aria-label"),
+          img: !!b.querySelector("img"),
+        }),
+      ),
+      controls: [
+        ...document.querySelectorAll(
+          "#mobile-controls .touch-buttons button, #mobile-controls .joystick, #battle-menu, #battle-menu .ping-badge, #battle-chat, #raid-hud, #raid-hud *, #hud > *, #hud .scoreboard",
+        ),
+      ]
+        .filter(shown)
+        .map(r),
+    };
+  });
+  const apart = (
+    a: { x: number; y: number; right: number; bottom: number },
+    b: { x: number; y: number; right: number; bottom: number },
+  ) => a.right <= b.x || b.right <= a.x || a.bottom <= b.y || b.bottom <= a.y;
+  const discsApart = (
+    a: { x: number; y: number; right: number; bottom: number },
+    b: { x: number; y: number; right: number; bottom: number },
+  ) =>
+    Math.hypot(
+      (a.x + a.right - b.x - b.right) / 2,
+      (a.y + a.bottom - b.y - b.bottom) / 2,
+    ) >=
+    (a.right - a.x + b.right - b.x) / 2;
+  for (const [i, b] of rows.picker.entries()) {
+    expect(b.right - b.x).toBeCloseTo(44, 0);
+    expect(b.bottom - b.y).toBeCloseTo(44, 0);
+    expect(b.face.w).toBeGreaterThanOrEqual(36);
+    expect(b.face.w).toBeLessThanOrEqual(40);
+    expect(b.label).toBeTruthy();
+    // A face, or one short mark (a body's letter, a lantern's corner).
+    if (!b.img) expect(b.text.length).toBeLessThanOrEqual(2);
+    expect(b.x).toBeGreaterThanOrEqual(0);
+    expect(b.right).toBeLessThanOrEqual(size.width);
+    expect(b.y).toBeGreaterThanOrEqual(0);
+    expect(b.bottom).toBeLessThanOrEqual(size.height);
+    // The right half, above the middle third's bottom: never the court's
+    // centre or the joystick.
+    expect(b.x).toBeGreaterThan(size.width * 0.55);
+    for (const c of rows.controls)
+      expect(
+        c.round ? discsApart(b, c) : apart(b, c),
+        `portrait ${b.label} on ${c.name}`,
+      ).toBe(true);
+    // Round buttons (a touch lands inside the circle): never on each other.
+    for (const o of rows.picker.slice(i + 1))
+      expect(
+        Math.hypot(b.x - o.x, b.y - o.y),
+        `portrait ${b.label} on ${o.label}`,
+      ).toBeGreaterThanOrEqual(43.5);
+  }
+  return rows.picker;
+}
+
 for (const size of [
   { width: 844, height: 390 },
   { width: 844, height: 280 },
@@ -85,44 +192,13 @@ for (const size of [
       const page = await context.newPage();
       const errors = await ffa(page);
       const picker = page.locator("#target-picker");
-      await expect(picker).toBeVisible();
+      await expect(picker.locator("button").first()).toBeVisible();
       await expect(picker.locator("button")).toHaveCount(3);
-      // It fits on screen and clear of every touch control.
-      const rows = await page.evaluate(() => {
-        const r = (el: Element) => {
-          const b = el.getBoundingClientRect();
-          return { x: b.x, y: b.y, right: b.right, bottom: b.bottom };
-        };
-        return {
-          picker: [...document.querySelectorAll("#target-picker button")].map(
-            r,
-          ),
-          controls: [
-            ...document.querySelectorAll(
-              "#mobile-controls button, #mobile-controls .joystick, #battle-menu, #battle-menu .ping-badge",
-            ),
-          ].map(r),
-          hud: [...document.querySelectorAll("#hud > *")]
-            .filter((el) => el.getClientRects().length)
-            .map(r),
-        };
-      });
-      for (const b of rows.picker) {
-        expect(b.x).toBeGreaterThanOrEqual(0);
-        expect(b.right).toBeLessThanOrEqual(size.width);
-        expect(b.y).toBeGreaterThanOrEqual(0);
-        expect(b.bottom).toBeLessThanOrEqual(size.height);
-        for (const c of [...rows.controls, ...rows.hud])
-          expect(
-            b.right <= c.x ||
-              c.right <= b.x ||
-              b.bottom <= c.y ||
-              c.bottom <= b.y,
-          ).toBe(true);
-      }
+      // Small round portraits, clear of every control (portraitsClear).
+      await portraitsClear(page, size);
       // Automatic: the nearest enemy (Kai).
       await aimNear(page, 650, 380);
-      // Lock on to Rae from the row.
+      // Lock on to Rae from her portrait.
       await picker.locator('button[data-target-id="p3"]').tap();
       await expect(
         picker.locator('button[data-target-id="p3"]'),
@@ -170,7 +246,82 @@ for (const size of [
   });
 }
 
-test("the target row is for touch play only", async ({ page }) => {
+const SIZES = [
+  { width: 667, height: 375 },
+  { width: 844, height: 390 },
+  { width: 852, height: 393 },
+  { width: 932, height: 430 },
+  { width: 844, height: 280 },
+  // iPad landscape (Air / 10th gen), and the 9.7-inch one.
+  { width: 1180, height: 820 },
+  { width: 1024, height: 768 },
+];
+/** The controls re-lay out on the frame after a resize (slow here). */
+async function settleResize(
+  page: Page,
+  size: { width: number; height: number },
+) {
+  await expect.poll(() => page.evaluate(() => innerWidth)).toBe(size.width);
+  for (let i = 0; i < 2; i++)
+    await page.evaluate(
+      () =>
+        new Promise((done) =>
+          requestAnimationFrame(() => requestAnimationFrame(done)),
+        ),
+    );
+  await page.waitForTimeout(300);
+}
+/** The same battle at every phone size and on iPads (a turn, a resize). */
+async function sweep(page: Page, label: string, info: TestInfo) {
+  const boxes: Record<string, number> = {};
+  for (const size of SIZES) {
+    await page.setViewportSize(size);
+    await settleResize(page, size);
+    const picker = await portraitsClear(page, size);
+    boxes[`${size.width}x${size.height}`] = picker.length;
+    await snap(page, info, `${label}-${size.width}x${size.height}`);
+  }
+  return boxes;
+}
+
+// Portraits instead of the old row of name pills: they never sit on a
+// control or the top HUD at any phone size or on an iPad.
+test("the target portraits clear every control at every phone size and on iPad", async ({
+  browser,
+}, info) => {
+  const context = await browser.newContext({
+    viewport: { width: 844, height: 390 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  try {
+    const page = await context.newPage();
+    const errors = await ffa(page);
+    await expect(page.locator("#target-picker button")).toHaveCount(3);
+    // Faces for fighters, in the scoreboard's order from left to right.
+    await expect(page.locator("#target-picker button img")).toHaveCount(3);
+    expect(await sweep(page, "target-portraits-ffa", info)).toEqual(
+      Object.fromEntries(SIZES.map((s) => [`${s.width}x${s.height}`, 3])),
+    );
+    const order = await page
+      .locator("#target-picker button")
+      .evaluateAll((bs) =>
+        bs
+          .map((b) => ({
+            id: (b as HTMLElement).dataset.targetId,
+            x: b.getBoundingClientRect().x,
+          }))
+          .sort((a, b) => a.x - b.x)
+          .map((b) => b.id),
+      );
+    expect(order).toEqual(["p2", "p3", "p4"]);
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});
+
+test("the target portraits are for touch play only", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await ffa(page);
   await page.waitForTimeout(500);
@@ -180,7 +331,7 @@ test("the target row is for touch play only", async ({ page }) => {
 // Owner, 7 Nov 2026: the row only answered when standing still. A browser
 // makes a click only from the first finger on the screen, and while moving
 // that finger is on the joystick; the row now answers the touch itself.
-test("the target row answers a second finger while the other moves", async ({
+test("a target portrait answers a second finger while the other moves", async ({
   browser,
 }) => {
   const context = await browser.newContext({
@@ -220,7 +371,7 @@ test("the target row answers a second finger while the other moves", async ({
     await touch("touchStart", [thumb]);
     await touch("touchMove", [{ ...thumb, x: thumb.x + 10 }]);
     await expect.poll(moving).toBe(true);
-    // A second finger taps Rae on the row: locked, still moving.
+    // A second finger taps Rae's portrait: locked, still moving.
     const tap = async () => {
       await touch("touchStart", [
         { ...thumb, x: thumb.x + 10 },
@@ -343,12 +494,29 @@ test("phones pick among Inkpurr's bodies and its unlit lanterns", async ({
       w.__push();
     });
     const picker = page.locator("#target-picker");
-    await expect(picker).toBeVisible();
+    await expect(picker.locator("button").first()).toBeVisible();
     // Three bodies and the lantern; the real body's button looks like the rest.
     await expect(picker.locator("button")).toHaveCount(4);
-    const labels = await picker.locator("button").allTextContents();
-    expect(labels.filter((t) => /Inkpurr [A-C]/.test(t))).toHaveLength(3);
-    expect(labels.filter((t) => /Lantern NW/.test(t))).toHaveLength(1);
+    const labels = await picker
+      .locator("button")
+      .evaluateAll((bs) => bs.map((b) => b.getAttribute("aria-label") ?? ""));
+    expect(labels.filter((t) => /^Inkpurr [A-C]$/.test(t))).toHaveLength(3);
+    expect(labels.filter((t) => t === "Lantern NW")).toHaveLength(1);
+    // Marks, not names: each body's letter, the lantern's corner.
+    expect((await picker.locator("button").allTextContents()).sort()).toEqual([
+      "A",
+      "B",
+      "C",
+      "NW",
+    ]);
+    await portraitsClear(page, size);
+    // The raid's bar and timer too, at every size (four portraits: the arc
+    // is full).
+    expect(await sweep(page, "target-portraits-gloom", info)).toEqual(
+      Object.fromEntries(SIZES.map((s) => [`${s.width}x${s.height}`, 4])),
+    );
+    await page.setViewportSize(size);
+    await settleResize(page, size);
     const lantern = await page.evaluate(
       () => (window as any).__snap.raid.lanterns[0],
     );
@@ -361,10 +529,10 @@ test("phones pick among Inkpurr's bodies and its unlit lanterns", async ({
     ).toHaveAttribute("aria-pressed", "true");
     await aimNear(page, 1100, 520);
     await snap(page, info, "gloom-target-copy");
-    // The lantern from the row: aim goes to its glass.
+    // The lantern from its portrait: aim goes to its glass.
     await picker.locator('button[data-target-id="lantern:0"]').tap();
     await aimNear(page, lantern.x, lantern.y);
-    // Relit: it leaves the row, and aim falls back to the nearest body.
+    // Relit: its portrait goes, and aim falls back to the nearest body.
     await page.evaluate(() => {
       const w = window as any;
       w.__snap.raid.lanterns[0].lit = true;
@@ -372,13 +540,13 @@ test("phones pick among Inkpurr's bodies and its unlit lanterns", async ({
     });
     await expect(picker.locator("button")).toHaveCount(3);
     await aimNear(page, 640, 380);
-    // A popped copy leaves the row.
+    // A popped copy's portrait goes (one body left: none).
     await page.evaluate(() => {
       const w = window as any;
       w.__snap.raid.decoys = [];
       w.__push();
     });
-    await expect(picker).toBeHidden();
+    await expect(picker.locator("button").first()).toBeHidden();
     await aimNear(page, 900, 420);
     expect(errors).toEqual([]);
   } finally {
@@ -411,11 +579,11 @@ test("phones can aim at the bubble holding a teammate", async ({ browser }) => {
       w.__push();
     });
     const picker = page.locator("#target-picker");
-    // The battle is live once it sends inputs (the row being hidden says
+    // The battle is live once it sends inputs (no portraits says
     // nothing yet: it is hidden before the battle starts, too).
     await expect.poll(() => lastAim(page), { timeout: 60_000 }).toBeTruthy();
     // One enemy, no bubble: no row, aim on the boss.
-    await expect(picker).toBeHidden();
+    await expect(picker.locator("button").first()).toBeHidden();
     await aimNear(page, 900, 330);
     await page.evaluate(() => {
       const w = window as any,
@@ -434,7 +602,10 @@ test("phones can aim at the bubble holding a teammate", async ({ browser }) => {
       w.__push();
     });
     await expect(picker.locator("button")).toHaveCount(2);
-    await expect(picker).toContainText("Free Kai");
+    // The bubble shows the teammate inside it (their face), named aloud.
+    const bubble = picker.locator('button[data-target-id="bubble:p2"]');
+    await expect(bubble).toHaveAttribute("aria-label", "Free Kai");
+    await expect(bubble.locator("img")).toHaveCount(1);
     // Still the boss until you choose.
     await aimNear(page, 900, 330);
     await tapWorld(page, 760, 545);
@@ -448,7 +619,7 @@ test("phones can aim at the bubble holding a teammate", async ({ browser }) => {
       w.__snap.raid.prisons = [];
       w.__push();
     });
-    await expect(picker).toBeHidden();
+    await expect(picker.locator("button").first()).toBeHidden();
     await aimNear(page, 900, 330);
     expect(errors).toEqual([]);
   } finally {

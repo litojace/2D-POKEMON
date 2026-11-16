@@ -37,7 +37,7 @@ import {
 } from "./predict-fighter";
 import { startPingBadge } from "./ping-badge";
 import { TargetLock, drawTargetReticle, type Targetable } from "./target-lock";
-import { renderTargetPicker } from "./target-picker";
+import { renderTargetPicker, type PickerEnemy } from "./target-picker";
 import {
   CastPredictor,
   canBasic,
@@ -270,7 +270,7 @@ import {
   leadProjectile,
 } from "./networking/timeline-lead";
 import { AccountUI } from "./accounts";
-import { framedAvatar } from "./portraits";
+import { framedAvatar, portraitAvatar } from "./portraits";
 import { waitForServer, onServerStartupRetry } from "./server-connection";
 import "./ui/tokens.css";
 import "./style.css";
@@ -1570,6 +1570,20 @@ function identityOf(p: Fighter, character = p.character): Fighter {
             : p.raidClears,
       }
     : { ...p, character };
+}
+/** Target portraits' faces (data URLs), built once per look and kept. */
+const targetFaces = new Map<string, string>();
+function targetFace(p: Fighter) {
+  const look = p.championLooks?.[p.character];
+  const key = `${p.character}|${look?.skin ?? ""}|${look?.stage ?? ""}|${p.raidLook?.skin ?? ""}`;
+  let url = targetFaces.get(key);
+  if (!url) {
+    url =
+      "data:image/svg+xml;charset=utf-8," +
+      encodeURIComponent(portraitAvatar(p, `target-${targetFaces.size}`));
+    targetFaces.set(key, url);
+  }
+  return url;
 }
 let lastWornKey = "{}";
 /** Your fighter's colour on the page (the room, the hub). */
@@ -5052,8 +5066,8 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         !!state?.players.some((p) => p.id === id && !p.out) ||
         !!extra?.some((t) => t.id === id),
     );
-    const frame = document.getElementById("game")?.parentElement;
-    if (!frame) return;
+    const host = touch.lockHost;
+    if (!host) return;
     const show =
       touch.enabled &&
       !!me &&
@@ -5061,7 +5075,13 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       state?.phase === "playing" &&
       state.raid?.boss !== "storm-twins";
     const myTeam = me ? teamOf(me) : undefined;
-    const enemies = !show
+    const away = (t: { x: number; y: number }) =>
+      me ? Math.hypot(t.x - me.x, t.y - me.y) : 0;
+    const face = (id: string | undefined) => {
+      const p = id ? state?.players.find((f) => f.id === id) : undefined;
+      return p ? targetFace(p) : undefined;
+    };
+    const enemies: PickerEnemy[] = !show
       ? []
       : extra
         ? // Gloomshade's bodies (alike, by letter) and unlit lanterns;
@@ -5074,6 +5094,14 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
               name: t.label,
               color: TARGET_COLORS[t.kind],
               available: true,
+              kind: t.kind,
+              distance: away(t),
+              ...(t.kind === "bubble"
+                ? { art: face(t.id.slice("bubble:".length)) }
+                : t.kind === "boss"
+                  ? { art: face(t.id) }
+                  : // "Inkpurr B" → B; "Lantern NW" → NW
+                    { glyph: t.label.split(" ").at(-1) }),
             }))
         : state!.players
             .filter((p) => p.id !== myId && !p.out && teamOf(p) !== myTeam)
@@ -5083,9 +5111,17 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
               color: `#${CHARACTERS[p.character].color.toString(16).padStart(6, "0")}`,
               available:
                 p.hp > 0 && !p.statuses.some((s) => s.kind === "stealth"),
+              kind: p.raidBoss ? ("boss" as const) : ("fighter" as const),
+              art: targetFace(p),
+              distance: away(p),
             }));
-    renderTargetPicker(frame, show, enemies, targetLock.id, (id) =>
-      targetLock.toggle(id),
+    renderTargetPicker(
+      host,
+      show,
+      enemies,
+      targetLock.id,
+      touch.lockSlots,
+      (id) => targetLock.toggle(id),
     );
   }
   /** Start your own basic, skill or dash feedback on the press (see cast-prediction). */
