@@ -159,3 +159,65 @@
 .plaza-layer .pz-round[aria-expanded="true"] small {
   color: #ffe58f;
 }
+
+/* ── The same glass in battle (PvP, practice and raids), without blur ──
+   The court changes every frame, so a blurred panel over it would be
+   blurred again every frame: battles stay blur-free (light-effects.css,
+   docs/network-performance.md). They take the rest of the look: the
+   deeper no-blur tint, the warm-gold hairline, no drop shadow. Skill and
+   attack buttons and the joystick keep their element colours, as the
+   Lobby's PLAY button keeps its gold. The #battle id (and :root) outrank
+   the battle rules in style.css, match-badge.css and chat/chat.css. */
+:root
+  body.battle-active
+  #battle
+  :is(
+    #hud.hud-badge,
+    #hud.hud-badge #phase-label,
+    #battle-menu,
+    #spectate,
+    .overlay-card,
+    .practice-panel,
+    .raid-elapsed b,
+    .touch-buttons button:is([data-action="jump"], [data-action="dash"])
+  ) {
+  background: var(--aero-tint-solid);
+  border-color: var(--aero-rim);
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+/* The battle chat lives on <body>, beside #battle (chat/battle-chat.ts). */
+:root body.battle-active :is(#battle-chat, #battle-chat-grid) {
+  background: var(--aero-tint-solid);
+  border-color: var(--aero-rim);
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+/* The phase note under the badge has no frame of its own: the rim is an
+   outline, so the note keeps its size. */
+:root body.battle-active #battle #hud.hud-badge #phase-label:not([hidden]) {
+  outline: 1px solid var(--aero-rim);
+  outline-offset: -1px;
+}
+/* The battle settings (the shared dialog, opened from the gear). */
+:root body.battle-active dialog#dialog[open] {
+  background: var(--aero-tint-solid);
+  border-color: var(--aero-rim);
+  box-shadow: none;
+}
+:root body.battle-active dialog#dialog[open] .dialog-footer {
+  background: transparent;
+  border-top-color: var(--aero-rim);
+}
+/* Hover, keyboard focus and an open chat: the rim lights up gold. */
+:root
+  body.battle-active
+  :is(#battle #battle-menu, #battle-chat):is(
+    :hover,
+    :focus-visible,
+    [aria-expanded="true"]
+  ) {
+  border-color: var(--aero-rim-on);
+}
