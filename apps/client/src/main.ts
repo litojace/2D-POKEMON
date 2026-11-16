@@ -66,6 +66,7 @@ import {
 import { setupHomeNavigation } from "./home-navigation";
 import {
   openLobby,
+  partyLobbyMode,
   type LobbyAction,
   type LobbyHandle,
   type LobbyMode,
@@ -2420,11 +2421,12 @@ function lobbyAction(action: LobbyAction) {
   else void accountsUI.showFriends();
 }
 /** PLAY: the remembered mode, through the same controls as the Play panel. */
-async function lobbyPlay(mode: LobbyMode) {
+async function lobbyPlay(chosen: LobbyMode) {
   audio.unlock();
   if (!accountsUI.ensurePlayer()) return;
   if (!connected) return toast("Waiting for the server connection.");
   const size = party?.members.length ?? 0;
+  const mode = partyLobbyMode(chosen, size);
   if (size > 1) {
     if (!partyLeader())
       return toast(
