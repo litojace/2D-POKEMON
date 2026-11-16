@@ -147,6 +147,8 @@
   align-items: stretch;
   gap: var(--sp-2);
   overflow-x: auto;
+  /* Sideways only (ui/scroll-rows.ts). */
+  overflow-y: hidden;
   overscroll-behavior-x: contain;
   padding: 4px 2px 10px;
   scrollbar-width: thin;

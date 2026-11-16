@@ -4,8 +4,12 @@
  * In landscape, iOS reports the same left and right safe-area inset (44–59px)
  * even though the notch or Dynamic Island is on one side only, so the page
  * used to leave that gap on both sides. Here the side away from the notch
- * keeps just CORNER_ROOM, enough to clear the screen's rounded corners for
- * the HUD (which adds its own margin on top), and the game gets the rest.
+ * keeps CORNER_ROOM, room for the screen's rounded corners, and the game
+ * gets the rest. Many screens put their HUD right at --safe-* (the hub's
+ * header: max(14px, safe area)), so CORNER_ROOM alone must clear a corner:
+ * an iPhone's corners are arcs about 55pt across, and at 16px the gear's
+ * 44px circle in the top corner came within 4px of the arc and looked cut
+ * (seen on an iPhone); at 32px it keeps about 15px.
  *
  * Which side the notch is on comes from `window.orientation`: 90 means the
  * phone was turned counterclockwise, its top (and notch) to the left; -90
@@ -21,7 +25,7 @@
  */
 
 /** What the side away from the notch keeps (px), for the rounded corners. */
-export const CORNER_ROOM = 16;
+export const CORNER_ROOM = 32;
 
 export type NotchSide = "left" | "right" | null;
 

@@ -1,4 +1,4 @@
-import { scrollRows } from "./scroll-rows";
+import { scanRows } from "./scroll-rows";
 import { lowGraphics } from "../graphics-quality";
 import { confirmModal, type ConfirmOptions } from "./components";
 import { enter, fadeIn, glide, leave, stagger } from "./motion";
@@ -172,7 +172,6 @@ export function openHubPanel(html: string, o: HubPanelOptions = {}): HubPanel {
     gone?.disconnect();
     host.removeEventListener("pointerdown", press);
     host.removeEventListener("click", outside);
-    rows();
     document.removeEventListener("keydown", onKey);
     if (replaced) handoff = covered;
     else {
@@ -229,8 +228,9 @@ export function openHubPanel(html: string, o: HubPanelOptions = {}): HubPanel {
     host.addEventListener("pointerdown", press);
     host.addEventListener("click", outside);
   }
-  // Chip rows scroll sideways with a mouse too (wheel and drag).
-  const rows = scrollRows(wrap);
+  // Its sideways rows: fades, wheel and mouse drag (ui/scroll-rows.ts
+  // wires every row in the page; this one at once, not a frame later).
+  scanRows(wrap);
   // Bubble phase: menus inside the Lobby close first and mark it handled.
   document.addEventListener("keydown", onKey);
   // Focus moves into the screen (keyboard and screen readers start there);
