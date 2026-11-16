@@ -30,7 +30,7 @@
   grid-template-columns: minmax(0, 1fr) 64px;
   align-items: center;
   border-radius: var(--rad-md);
-  background: var(--ui-bg-1);
+  background: var(--fill-card);
   border: 1px solid var(--ui-line);
   border-left: 3px solid var(--tier);
 }
@@ -150,7 +150,7 @@
   gap: var(--sp-3);
   padding: 10px 12px;
   border-radius: var(--rad-md);
-  background: var(--ui-bg-1);
+  background: var(--fill-card);
   font-size: var(--fs-small);
 }
 .missions-streak-days {

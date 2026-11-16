@@ -335,7 +335,7 @@
   padding: 4px 2px 5px;
   border-radius: var(--rad-md);
   border: 1px solid var(--ui-line);
-  background: var(--ui-bg-1);
+  background: var(--fill-card);
 }
 .fit-fighter > span:last-child {
   font-size: 10px;
@@ -445,7 +445,7 @@
   width: 56px;
   height: 56px;
   border-radius: var(--rad-sm);
-  background: var(--ui-bg-0);
+  background: var(--fill-well);
   display: grid;
   place-items: center;
   overflow: hidden;
@@ -515,14 +515,14 @@
   padding: 8px 4px;
   border-radius: var(--rad-md);
   border: 1px solid var(--ui-line);
-  background: var(--ui-bg-1);
+  background: var(--fill-card);
   min-width: 0;
 }
 .fit-slot-art {
   width: 44px;
   height: 44px;
   border-radius: var(--rad-sm);
-  background: var(--ui-bg-2);
+  background: var(--fill-card-hi);
   display: grid;
   place-items: center;
   overflow: hidden;

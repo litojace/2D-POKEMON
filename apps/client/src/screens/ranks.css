@@ -138,7 +138,7 @@
   min-height: var(--ctl-s);
   border-radius: var(--rad-sm);
   border: 1px solid var(--ui-line-2);
-  background: var(--ui-bg-2);
+  background: var(--fill-card-hi);
   color: var(--ui-text);
   font-family: var(--font-display);
   font-weight: 800;
@@ -197,7 +197,7 @@
   text-transform: uppercase;
   letter-spacing: 0.1em;
   color: var(--ui-dim);
-  background: var(--ui-bg-1);
+  background: var(--fill-card);
 }
 .rk-head > span:first-child {
   text-align: center;

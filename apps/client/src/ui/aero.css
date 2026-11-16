@@ -1,4 +1,4 @@
-/* ── Glass for the hub (Lobby, Plaza, Farm and their shared header) ──
+/* ── Glass: the game's one look outside matches ──
    Flat, quiet and a little see-through, in the spirit of the gacha RPGs'
    menus (dark ink panels with a fine champagne-gold hairline) and of
    Valorant's lobby rework (nothing decorative that doesn't help you read):
@@ -7,21 +7,33 @@
    the game's gold. The coin and leaf pills keep their gold and green rims;
    the Raid and Farm cards keep their colour.
 
+   ONE PLACE: the colours, thicknesses and blur are the --glass-* and
+   --fill-* tokens in ui/tokens.css. This file only says which surfaces are
+   glass; new screens get the look by using .ui-panel / .ui-sheet /
+   .ui-modal (ui/components.css), which already read those tokens. To
+   change the look of every menu in the game, change the tokens.
+
+   Thicknesses (Apple's materials, HIG "Materials"): thin for the HUD and
+   the Lobby's cards, regular for panels and sheets (lots of text), thick
+   for dialogs, menus and toasts that sit over everything.
+
    Blur over the Lobby is cheap: its backdrop is a still painting. The
    Plaza and the Farm draw a canvas that changes every frame, so every
    blurred panel over them is blurred again every frame. They keep the
    blur at High graphics and drop it at Low (chosen in Settings, or picked
    automatically when the frame rate can't keep up), with a deeper tint.
+   Dialogs, menus and toasts can open over a match: thick glass, never
+   blurred, so they add no per-frame cost there.
 
    Loaded after every other stylesheet but ui/light-effects.css and
    ui/phone-fit.css (main.ts). */
 :root {
-  --aero-tint: rgba(13, 20, 38, 0.62);
-  /* Without blur the scene shows through sharp: a deeper tint. */
+  /* The names this file used before the tokens; kept for older rules. */
+  --aero-tint: var(--glass-thin);
   --aero-tint-solid: rgba(12, 18, 34, 0.9);
-  --aero-rim: rgba(226, 200, 140, 0.42);
-  --aero-rim-on: #ffd65b;
-  --aero-blur: blur(16px) saturate(1.3);
+  --aero-rim: var(--glass-rim);
+  --aero-rim-on: var(--glass-rim-on);
+  --aero-blur: var(--glass-blur);
 }
 
 /* The Lobby's own colour tokens become glass (its cards mix --lobby-glass
@@ -84,7 +96,7 @@
 /* The open mode menu is the one thing over the scene there: a touch
    deeper, so its rows read at a glance. */
 .lobby-layer .lobby-mode-menu {
-  background-color: rgba(13, 20, 38, 0.82);
+  background-color: var(--glass-thick);
 }
 
 /* Flat call-to-action buttons: one solid colour, no bevel or shadow; a
@@ -158,4 +170,49 @@
 }
 .plaza-layer .pz-round[aria-expanded="true"] small {
   color: #ffe58f;
+}
+
+/* ── The older screens, on the same glass ──
+   Dialogs (Settings, Help, Credits, the party invite, sign-in…), the Play
+   drawer, the header menu and the toast were drawn before the tokens, in
+   solid navy. Here they take thick glass and the gold rim. :root and [open]
+   outweigh style.css's many dialog rules without !important. */
+:root dialog[open],
+:root .home-drawer,
+:root .header-menu-panel {
+  background: var(--glass-thick);
+  border-color: var(--glass-rim);
+}
+:root .home-drawer {
+  box-shadow: none;
+}
+/* Bars on a dialog's edge and the cards inside it: see-through fills, so
+   the dialog reads as one sheet of glass. */
+:root dialog[open] .dialog-footer,
+:root dialog[open].framed-dialog .dialog-tabs:not(.dialog-toolbar > *) {
+  background: var(--fill-bar);
+  border-color: var(--ui-line);
+}
+:root dialog[open] .prefs-card {
+  background: var(--fill-card);
+}
+/* The dim behind a dialog or the Play drawer: light enough that the
+   scene still shows round the glass (it was 73–80 % black, which made
+   every dialog look solid). Not while the "turn your phone" cover is up:
+   there the dialog is hidden and its backdrop stays clear (style.css). */
+@media not ((orientation: portrait) and (pointer: coarse) and (hover: none)) {
+  :root:not(.ipad-gate) dialog[open]::backdrop,
+  :root .home-panel-scrim {
+    background: var(--scrim);
+  }
+}
+@media (orientation: landscape) {
+  :root.ipad-gate dialog[open]::backdrop {
+    background: var(--scrim);
+  }
+}
+/* The toast: a thick-glass pill with a gold edge. */
+:root #toast {
+  background: var(--glass-thick);
+  border: 1px solid var(--glass-rim-on);
 }

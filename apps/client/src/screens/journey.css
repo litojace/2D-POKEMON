@@ -172,7 +172,7 @@
   padding: 6px 4px;
   border-radius: var(--rad-md);
   border: 1px solid var(--ui-line);
-  background: var(--ui-bg-1);
+  background: var(--fill-card);
   color: inherit;
   font: inherit;
   text-align: center;
@@ -261,7 +261,7 @@ button.journey-tier {
   gap: 5px;
   padding: 10px 12px;
   border-radius: var(--rad-md);
-  background: var(--ui-bg-1);
+  background: var(--fill-card);
   border: 1px solid var(--ui-line);
 }
 .journey-goal .journey-row {
@@ -276,7 +276,7 @@ button.journey-tier {
   align-content: start;
   padding: 12px 14px;
   border-radius: var(--rad-lg);
-  background: var(--ui-bg-1);
+  background: var(--fill-card);
   border: 1px solid var(--ui-line);
 }
 .journey-levelroad .journey-section {
@@ -344,7 +344,7 @@ button.journey-lvl {
   padding: 8px;
   border-radius: var(--rad-md);
   border: 1px solid var(--ui-line);
-  background: var(--ui-bg-1);
+  background: var(--fill-card);
   color: inherit;
   font: inherit;
   text-align: center;
@@ -456,7 +456,7 @@ button.journey-prize {
   align-content: start;
   padding: 12px 14px;
   border-radius: var(--rad-md);
-  background: var(--ui-bg-1);
+  background: var(--fill-card);
   border: 1px solid var(--ui-line);
   font-size: var(--fs-small);
 }
@@ -470,7 +470,7 @@ button.journey-prize {
   height: 48px;
   overflow: hidden;
   border-radius: var(--rad-sm);
-  background: var(--ui-bg-1);
+  background: var(--fill-card);
 }
 .journey-foot-text {
   display: grid;

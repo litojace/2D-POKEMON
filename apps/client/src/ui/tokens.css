@@ -93,6 +93,31 @@
      pages). */
   --stage-w: 440px;
   --split-main: clamp(720px, 48vw, 920px);
+  /* Glass: the Lobby's see-through look, the one material for every surface
+     outside matches (ui/aero.css applies it). Change these and the whole
+     game follows. Three thicknesses, as Apple's materials: the thinner, the
+     more of the scene shows through; text-heavy surfaces use thicker glass
+     so they stay readable (HIG, "Materials"). */
+  --glass-thin: rgba(13, 20, 38, 0.62); /* HUD pills, Lobby cards, rail */
+  --glass-regular: rgba(12, 18, 35, 0.7); /* panels and sheets */
+  --glass-thick: rgba(11, 16, 32, 0.88); /* dialogs, menus, toasts */
+  /* No blur (Low graphics, or over a moving scene): the scene shows
+     through sharp, so the tint is deeper. */
+  --glass-solid: rgba(12, 18, 34, 0.94);
+  --glass-blur: blur(16px) saturate(1.3);
+  /* One warm-gold hairline round every glass surface; gold when lit. */
+  --glass-rim: rgba(226, 200, 140, 0.42);
+  --glass-rim-on: #ffd65b;
+  /* Fills inside glass (cards, rows, wells): see-through too, so the glass
+     reads as one sheet instead of solid blocks on it. Same colours as
+     --ui-bg-0/1/2 over a panel. */
+  --fill-well: rgba(4, 7, 16, 0.42);
+  --fill-card: rgba(70, 100, 180, 0.14);
+  --fill-card-hi: rgba(80, 110, 200, 0.26);
+  /* The dim behind a dialog. */
+  --scrim: rgba(4, 8, 20, 0.5);
+  /* Bars stuck to a glass edge (action bar, dialog footer, tab rows). */
+  --fill-bar: rgba(6, 10, 22, 0.38);
   /* Depth and motion. */
   --shadow-1: 0 4px 12px #0007;
   --shadow-2: 0 14px 34px #000a;
@@ -154,7 +179,9 @@
 /* Phones held sideways: the same layout, one step smaller. */
 @media (max-height: 500px) {
   :root {
-    --fs-micro: 10px;
+    /* 11 px is the floor: Apple's smallest text style (Caption 2) is 11 pt,
+       and a CSS px is a point on iPhone. */
+    --fs-micro: 11px;
     --fs-small: 11px;
     --fs-body: 12px;
     --fs-lead: 14px;

@@ -14,11 +14,12 @@
   max-width: 100%;
   max-height: 100%;
   min-height: 0;
-  background: var(--ui-glass);
-  border: 1px solid var(--ui-line-2);
+  /* Thick glass without blur: it sits over the moving arena, where a blur
+     would be redrawn every frame (older phones, CLAUDE.md). */
+  background: var(--glass-thick);
+  border: 1px solid var(--glass-rim);
   border-radius: var(--rad-xl);
   box-shadow: var(--shadow-2);
-  backdrop-filter: blur(10px);
   overflow: hidden;
   text-align: left;
 }
@@ -89,7 +90,7 @@
   padding: 12px;
   border-radius: var(--rad-md);
   border: 1px solid var(--ui-line);
-  background: var(--ui-bg-1);
+  background: var(--fill-card);
 }
 .rc-step-head {
   display: flex;
@@ -123,7 +124,7 @@
   margin: 8px 0;
   border-radius: var(--rad-sm);
   border: 1px solid var(--ui-line);
-  background: var(--ui-bg-0);
+  background: var(--fill-well);
 }
 .rc-step-action {
   color: var(--ui-text);
@@ -191,7 +192,7 @@
   padding: 10px 8px;
   border-radius: var(--rad-md);
   border: 1px solid var(--ui-line);
-  background: var(--ui-bg-1);
+  background: var(--fill-card);
 }
 .rc-stat b {
   font-size: 28px;
@@ -211,7 +212,7 @@
   padding: 12px;
   border-radius: var(--rad-lg);
   border: 1px solid var(--ui-line);
-  background: var(--ui-bg-1);
+  background: var(--fill-card);
 }
 .rc-contrib-top {
   display: flex;
@@ -248,7 +249,7 @@
 .rc-score tbody :is(th, td) {
   padding: 8px 10px;
   vertical-align: middle;
-  background: var(--ui-bg-2);
+  background: var(--fill-card-hi);
   border-block: 1px solid var(--ui-line);
 }
 .rc-score tbody th {
@@ -353,7 +354,7 @@
   width: 48px;
   height: 4px;
   border-radius: 2px;
-  background: var(--ui-bg-0);
+  background: var(--fill-well);
   overflow: hidden;
 }
 .rc-share-bar i {
@@ -365,7 +366,7 @@
   padding: 8px 12px;
   border-radius: var(--rad-md);
   border: 1px solid var(--ui-line);
-  background: var(--ui-bg-1);
+  background: var(--fill-card);
   color: var(--ui-dim);
   font-size: var(--fs-small);
 }

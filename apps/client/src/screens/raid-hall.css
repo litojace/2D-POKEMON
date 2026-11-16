@@ -46,7 +46,7 @@
   padding: 0;
   border-radius: var(--rad-lg);
   border: 1px solid color-mix(in srgb, var(--boss) 45%, transparent);
-  background: var(--ui-bg-1);
+  background: var(--fill-card);
   text-align: left;
   transition:
     border-color var(--dur-1),
@@ -173,7 +173,7 @@
    the image without forcing it into the center or enlarging the painting. */
 .rh-stage {
   container-type: size;
-  background: var(--ui-bg-0);
+  background: var(--fill-well);
   --z: var(--fz);
   --px: var(--cx);
   --py: var(--cy);
@@ -281,7 +281,7 @@
   min-width: 0;
   padding: 12px 6px 10px;
   border-radius: var(--rad-md);
-  background: var(--ui-bg-1);
+  background: var(--fill-card);
   border: 1px solid var(--ui-line);
   text-align: center;
 }
@@ -352,7 +352,7 @@
   align-items: center;
   padding: 8px 10px;
   border-radius: var(--rad-md);
-  background: var(--ui-bg-1);
+  background: var(--fill-card);
   border: 1px solid var(--ui-line);
   min-width: 0;
 }
@@ -384,7 +384,7 @@
   min-width: 0;
   padding: 8px 10px;
   border-radius: var(--rad-md);
-  background: var(--ui-bg-1);
+  background: var(--fill-card);
   border: 1px solid color-mix(in srgb, var(--boss) 40%, transparent);
 }
 .rh-reward.is-done {
@@ -581,7 +581,7 @@ button.rh-reward:focus-visible {
   padding: 10px 12px;
   border-radius: var(--rad-md);
   border: 1px solid var(--ui-line);
-  background: var(--ui-bg-1);
+  background: var(--fill-card);
   text-align: left;
 }
 .rh-attack[aria-pressed="true"] {
@@ -626,7 +626,7 @@ button.rh-reward:focus-visible {
   gap: 2px;
   padding: 10px 12px;
   border-radius: var(--rad-md);
-  background: var(--ui-bg-1);
+  background: var(--fill-card);
   border: 1px solid var(--ui-line);
   counter-increment: chapter;
 }
