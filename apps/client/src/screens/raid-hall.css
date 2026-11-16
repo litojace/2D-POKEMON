@@ -84,14 +84,30 @@
   --card-zoom: 1.08;
 }
 .rh-card[data-raid-card="somnara"] {
-  --card-zoom: 1.12;
+  --card-zoom: 1.08;
+}
+.rh-card[data-raid-card="somnara"] .rh-card-art {
+  container-type: size;
 }
 .rh-card[data-raid-card="somnara"] .rh-card-art img {
-  object-position: 52% top;
+  /* Full silhouette x=568..1067 in the 1536 px source: center it rather
+     than its face. Account for the covered image width at every card ratio. */
+  object-position: calc(50% - max(100cqw, 150cqh) * 0.0322265625) top;
   transform-origin: center top;
 }
 .rh-card[data-raid-card="emberwing"] .rh-card-art img {
   transform-origin: center top;
+}
+/* Balance the space above the name without changing scale or horizontal
+   framing. Floating silhouettes sit slightly lower; the twins' tendrils
+   get more clearance above the footer. */
+.rh-card[data-raid-card="tidewyrm"] .rh-card-art img,
+.rh-card[data-raid-card="gloomshade"] .rh-card-art img,
+.rh-card[data-raid-card="emberwing"] .rh-card-art img {
+  object-position: 50% 25%;
+}
+.rh-card[data-raid-card="storm-twins"] .rh-card-art img {
+  object-position: 50% 45%;
 }
 .rh-card:hover .rh-card-art img {
   transform: scale(calc(var(--card-zoom) * 1.03));
@@ -744,9 +760,13 @@ button.rh-reward:focus-visible {
   .rh-card-art img {
     object-position: 50% 10%;
   }
-  /* Keep the wider Snoozaku framing consistent with desktop. */
-  .rh-card[data-raid-card="somnara"] .rh-card-art img {
-    object-position: 52% top;
+  .rh-card[data-raid-card="tidewyrm"] .rh-card-art img,
+  .rh-card[data-raid-card="gloomshade"] .rh-card-art img,
+  .rh-card[data-raid-card="emberwing"] .rh-card-art img {
+    object-position: 50% top;
+  }
+  .rh-card[data-raid-card="storm-twins"] .rh-card-art img {
+    object-position: 50% 25%;
   }
   .rh-card-text {
     padding: 10px;
