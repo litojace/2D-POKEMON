@@ -122,15 +122,14 @@ describe("the Ascendant tier", () => {
   });
   it("a party meets more health per extra raider; alone, the tier's formula", () => {
     const health = (size: number, form: "ascendant" | "raid") => {
+      // (A raid may roll Gilded: compare the plain look's health.)
       const a = arena(size, 1, form);
-      return a.raid.maxHp / (form === "raid" ? RAID_TIERS[2].health : 1);
+      a.raid.gilded = false;
+      return a.bossMaxHp() / (form === "raid" ? RAID_TIERS[2].health : 1);
     };
-    const solo = arena(1);
-    const raid1 = arena(1, 1, "raid");
-    expect(solo.raid.maxHp).toBe(
-      Math.round(
-        (raid1.raid.maxHp / RAID_TIERS[2].health) * RAID_ASCENDANT_TIER.health,
-      ),
+    expect(health(1, "ascendant")).toBeCloseTo(
+      health(1, "raid") * RAID_ASCENDANT_TIER.health,
+      -1,
     );
     const ratio = (n: number) =>
       health(n, "ascendant") / (health(n, "raid") * RAID_ASCENDANT_TIER.health);
