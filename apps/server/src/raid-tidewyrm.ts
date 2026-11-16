@@ -13,6 +13,7 @@ import {
   type RaidAttack,
   type RaidIsland,
   type RaidWarning,
+  type RaidWave,
   riteValue,
 } from "../../../packages/shared/src/raid.js";
 import { RaidArena, type RaidBossNumbers } from "./raid.js";
@@ -38,11 +39,11 @@ const ROOT_HOLD = 1;
  */
 export class TidewyrmArena extends RaidArena {
   /** Surfaced in water: it lingers, then swims home under water. */
-  private lingerUntil = 0;
+  protected lingerUntil = 0;
   /** Swimming back home under water after a strand or a splash. */
-  private returning = false;
+  protected returning = false;
   /** Waves: who each one has already hit. */
-  private waveHits = new Map<number, Set<string>>();
+  protected waveHits = new Map<number, Set<string>>();
   private undertowHit = new Set<string>();
   private rootedUntil = new Map<string, number>();
   /** Bubble Prison: who popped whose bubble recently, and mash state. */
@@ -54,11 +55,11 @@ export class TidewyrmArena extends RaidArena {
   /** Peril 3, last chapter: when the next island sinks for good. */
   private sinkAt = Infinity;
   /** Which island the boss is stranded on, if any. */
-  private strandedOn = -1;
+  protected strandedOn = -1;
   /** Islands of the last strands (newest last): it learns to avoid a repeat. */
   private strandLog: number[] = [];
   /** The tail sweep for this strand has been telegraphed. */
-  private swept = false;
+  protected swept = false;
 
   protected override def(): RaidBossNumbers {
     return T;
@@ -112,7 +113,7 @@ export class TidewyrmArena extends RaidArena {
   override feat() {
     return this.raid.result === "victory" && (this.raid.strands ?? 0) >= 4;
   }
-  protected override finishMessage(won: boolean) {
+  protected override finishMessage(won: boolean): string {
     return won
       ? "The tide goes out. Tidelotl sinks off for a sulky nap. You did it!"
       : "The tide keeps rising. Change your build and try again.";
@@ -154,7 +155,7 @@ export class TidewyrmArena extends RaidArena {
 
   // ---------------------------------------------------------------- Islands
   /** Islands still above water. */
-  private dryIslands() {
+  protected dryIslands() {
     return (this.raid.islands ?? []).filter((i) => !i.sunk && !i.gone);
   }
   /** The dry island a point stands on, if any. */
@@ -163,7 +164,7 @@ export class TidewyrmArena extends RaidArena {
       (i) => Math.hypot(x - i.x, y - i.y) < i.radius,
     );
   }
-  private onIsland(p: Fighter) {
+  protected onIsland(p: Fighter) {
     return !!this.islandAt(p.x, p.y);
   }
   protected override onMechanic(p: Fighter) {
@@ -289,7 +290,7 @@ export class TidewyrmArena extends RaidArena {
     } else super.startAttack(kind, target);
   }
   /** It dives: a ripple follows the raider (or Tidefin's clone), then locks. */
-  private startDive(target: Fighter, teach: boolean) {
+  protected startDive(target: Fighter, teach: boolean) {
     const r = this.raid;
     r.submerged = true;
     this.lingerUntil = 0;
@@ -579,7 +580,7 @@ export class TidewyrmArena extends RaidArena {
     );
   }
   /** How the splash and other water hits look to the damage rules. */
-  private splash(ground = false): Ability {
+  protected splash(ground = false): Ability {
     return { ...CHARACTERS.tidefin.skills[3], ground, knockback: 0 };
   }
 
@@ -675,17 +676,16 @@ export class TidewyrmArena extends RaidArena {
     for (const wave of r.waves ?? []) {
       wave.pos += wave.dir * wave.speed * dt;
       const hit = this.waveHits.get(wave.id) ?? new Set<string>();
-      this.hitBy = "wave";
+      const blow = this.waveHit(wave);
+      this.hitBy = blow.kind;
       for (const p of this.heroes()) {
         if (p.hp <= 0 || hit.has(p.id)) continue;
         const along = wave.axis === "x" ? p.x : p.y;
         if (Math.abs(along - wave.pos) > wave.width / 2 + RULES.radius)
           continue;
         hit.add(p.id);
-        // Low waves are jumped; high waves only spare raiders on an island.
-        const safe = wave.high ? this.onIsland(p) : p.jumpUntil > this.time;
-        if (safe) continue;
-        this.damage(p, T.wave.damage, boss.id, this.splash());
+        if (this.waveSpares(wave, p)) continue;
+        this.damage(p, blow.damage, boss.id, this.splash());
         move(
           p,
           wave.axis === "x" ? wave.dir * 60 : 0,
@@ -702,6 +702,14 @@ export class TidewyrmArena extends RaidArena {
       if (gone) this.waveHits.delete(w.id);
       return !gone;
     });
+  }
+  /** What a wave does to a raider it catches (its attack and damage). */
+  protected waveHit(_wave: RaidWave): { kind: RaidAttack; damage: number } {
+    return { kind: "wave", damage: T.wave.damage };
+  }
+  /** Low waves are jumped; high waves only spare raiders on an island. */
+  protected waveSpares(wave: RaidWave, p: Fighter) {
+    return wave.high ? this.onIsland(p) : p.jumpUntil > this.time;
   }
   private stepBubbles(dt: number, boss: Fighter) {
     const r = this.raid;

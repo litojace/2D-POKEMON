@@ -17,7 +17,8 @@
  *   full) and the raider kneeling to revive as the first target.
  *
  * The rules are a layer (`AscendantCragmuffRules`) over a raid arena, on
- * while `raid.variant` is "ascendant" and the raid's own hooks otherwise.
+ * while the raid is Cragmuff's Ascendant form (`isAscendant`) and the raid's
+ * own hooks otherwise.
  * `AscendantCragmuffArena` is that layer always on: createRaidArena(code,
  * "grumblecrag", { variant: "ascendant" }) (server code only: clients can't
  * ask for a variant). The Spire's arena carries the same layer and turns it
@@ -37,6 +38,7 @@ import {
   GRUMBLECRAG as BOSS,
   RAID,
   RAID_TRAITS,
+  isAscendant,
   type RaidAttack,
   type RaidWarning,
 } from "../../../packages/shared/src/raid.js";
@@ -79,7 +81,7 @@ export function AscendantCragmuffRules<B extends RaidClass>(Base: B) {
 
     /** Are the Ascendant's rules on? (Off: every hook is the raid's own.) */
     protected ascendant() {
-      return this.raid.variant === "ascendant";
+      return isAscendant(this.raid, "grumblecrag");
     }
     /** A new fight: forget the last one's reads. */
     protected resetReads() {
