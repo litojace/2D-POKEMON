@@ -2117,6 +2117,14 @@ function syncChat(hub: boolean) {
     // Friends: anyone signed in with an account (guests have no friends).
     friend: !!accountsUI?.account && !accountsUI.account.guest,
   });
+  // Either chat button is up in the screen's top-left corner: the raid's
+  // briefing and results cards keep clear of it on phones (raid-cards.css).
+  document.body.classList.toggle(
+    "chat-corner",
+    ["battle-chat", "chat-button"].some(
+      (id) => document.getElementById(id)?.hidden === false,
+    ),
+  );
   placeSceneSwitch?.();
 }
 /** The new Plaza (hub redesign phase 3): the server moves everyone in it. */
