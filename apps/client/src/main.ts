@@ -360,10 +360,24 @@ import {
   echoShown,
 } from "./spire-art";
 import { SPIRE_PARTY } from "../../../packages/shared/src/spire";
+import { spireCourtWalls } from "../../../packages/shared/src/spire-court";
+import {
+  SPIRE_SUMMIT_FLOOR,
+  SpireCourtRig,
+  isSpireFloorId,
+  nextSpireCourtView,
+  paintSpireFloorId,
+  prewarmSpireCourt,
+  spireCourtView,
+  spireFloorId,
+  type SpireCourtView,
+} from "./spire-court-rig";
+import { paintSpireSummitGrade, spireFloorTint } from "./spire-court-art";
 import { isRaidFloor, paintRaidFloor } from "./raid-floors";
 import {
   isIllustratedRaidFloor,
   loadRaidArenaArt,
+  type IllustratedRaidFloor,
   paintIllustratedRaidFloor,
   prefetchRaidArena,
 } from "./raid-arena-art";
@@ -4374,6 +4388,11 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
   pillarRig?: PillarRig;
   /** Shared floor textures continue into dim, non-playable scenery around the court. */
   raidSurround: Phaser.GameObjects.Image[] = [];
+  /** The Spire's court: sky, cover, stairs and number (spire-court-rig.ts). */
+  spireRig?: SpireCourtRig;
+  /** The Spire floor on show, and the next one already painted. */
+  spireView?: SpireCourtView;
+  spirePrepared = "";
   /** Bake an arena's floor once (2x on dense screens); returns its texture key. */
   floorTexture(id: string) {
     const key = `arena-floor-${id}`;
@@ -4394,20 +4413,35 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         ctx.scale(bake, bake);
         paintCourtFloor(ctx, court, bare);
         addCanvasTexture(this.textures, key, canvas);
-      } else if (isIllustratedRaidFloor(id)) {
+      } else if (isSpireFloorId(id)) {
         const canvas = document.createElement("canvas");
         canvas.width = RULES.width * bake;
         canvas.height = RULES.height * bake;
         const ctx = canvas.getContext("2d")!;
         ctx.scale(bake, bake);
-        if (isRaidFloor(id)) paintRaidFloor(ctx, id);
-        else paintCourtFloor(ctx, "classic", true);
+        paintSpireFloorId(ctx, id);
         addCanvasTexture(this.textures, key, canvas);
-        loadRaidArenaArt(id, (image) => {
+      } else if (isIllustratedRaidFloor(id) || id === SPIRE_SUMMIT_FLOOR) {
+        // The Spire's boss floor: its raid's court with the summit grade.
+        const summit = id === SPIRE_SUMMIT_FLOOR;
+        const picture: IllustratedRaidFloor = summit
+          ? "raid-coliseum"
+          : (id as IllustratedRaidFloor);
+        const canvas = document.createElement("canvas");
+        canvas.width = RULES.width * bake;
+        canvas.height = RULES.height * bake;
+        const ctx = canvas.getContext("2d")!;
+        ctx.scale(bake, bake);
+        if (isRaidFloor(picture)) paintRaidFloor(ctx, picture);
+        else paintCourtFloor(ctx, "classic", true);
+        if (summit) paintSpireSummitGrade(ctx);
+        addCanvasTexture(this.textures, key, canvas);
+        loadRaidArenaArt(picture, (image) => {
           if (!this.textures?.exists(key)) return;
           ctx.save();
           ctx.setTransform(bake, 0, 0, bake, 0, 0);
-          paintIllustratedRaidFloor(ctx, id, image);
+          paintIllustratedRaidFloor(ctx, picture, image);
+          if (summit) paintSpireSummitGrade(ctx);
           ctx.restore();
           canvas.dataset.raidArtwork = id;
           // A new texture rather than re-uploading the old one in place: on
@@ -4494,34 +4528,57 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     return made;
   }
   /** Duels play on the painted courts; raids keep their own floors. */
-  showArena(arena: ArenaId, raid: boolean) {
+  showArena(arena: ArenaId, raid: boolean, spire?: SpireCourtView) {
+    // The Spire's wave and elite floors have their own court; its boss
+    // floor keeps the raid's (with the summit grade and the Spire's sky).
+    const spireCourt = spire && spire.kind !== "boss" ? spire : undefined;
     // Every raid but Grumblecrag's brings its own arena; its pillars are the
     // Coliseum's blocks, so it fights on that court.
     const court =
-      isCourt(arena) && (!raid || arena === "classic") ? arena : undefined;
-    const id = court
-      ? `court-${court}${raid ? ":raid" : ""}`
-      : `${arena}${raid ? ":raid" : ""}`;
+      !spireCourt && isCourt(arena) && (!raid || arena === "classic")
+        ? arena
+        : undefined;
+    const id = spire
+      ? `spire-${spire.zone}-${spire.floor}-${spire.kind}`
+      : court
+        ? `court-${court}${raid ? ":raid" : ""}`
+        : `${arena}${raid ? ":raid" : ""}`;
     if (id === this.floorArena || !this.floor) return;
     this.floorArena = id;
+    this.spireView = spire;
     this.activeCourt = court;
     this.courtRaid = !!court && raid;
     const standsOn = !!court && !raid;
     const label = document.querySelector<HTMLElement>(".map-label");
     if (label) {
-      label.hidden = !!court;
+      label.hidden = !!court || !!spire;
       label.innerHTML =
         arena === "cloud-deck"
           ? "CLOUD DECK <span>SNOOZAKU’S DREAM</span>"
           : `${ARENAS[arena].name.toUpperCase()} <span>ELEMENT ARENA</span>`;
     }
     const key = this.floorTexture(
-      this.courtRaid ? "raid-coliseum" : court ? `court-${court}` : arena,
+      spireCourt
+        ? spireFloorId(spireCourt)
+        : spire && this.courtRaid
+          ? SPIRE_SUMMIT_FLOOR
+          : this.courtRaid
+            ? "raid-coliseum"
+            : court
+              ? `court-${court}`
+              : arena,
     );
     const previous = this.floor.texture.key;
-    this.floor.setTexture(key).setScale(1 / (this.floorScale.get(key) ?? 1));
+    this.floor
+      .setTexture(key)
+      .setScale(1 / (this.floorScale.get(key) ?? 1))
+      // The Spire's platform takes the light of its height.
+      .setTint(spireCourt ? spireFloorTint(spireCourt.floor) : 0xffffff);
     this.releaseFloor(previous);
-    if (raid && !this.raidSurround.length) {
+    // Round the Spire's courts: its sky, not the raid's dimmed floor.
+    if (spire) this.spireRig ??= new SpireCourtRig(this, fighterDepth);
+    this.spireRig?.show(spire);
+    if (raid && !spire && !this.raidSurround.length) {
       for (const x of [-1600, 0, 1600])
         for (const y of [-900, 0, 900]) {
           if (!x && !y) continue;
@@ -4538,7 +4595,10 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         }
     }
     for (const image of this.raidSurround)
-      image.setTexture(key).setDisplaySize(1600, 900).setVisible(raid);
+      image
+        .setTexture(key)
+        .setDisplaySize(1600, 900)
+        .setVisible(raid && !spire);
     if (court) this.ensureBlocks(court);
     // Grumblecrag's raid shows its own pillars (the PvP blocks stay as they are).
     for (const [cid, list] of this.courtBlocks)
@@ -4602,6 +4662,34 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
    * behind (see Fx.at).
    */
   private updateBlocks(t: number, pillars?: readonly { broken: boolean }[]) {
+    const spire = this.spireView;
+    if (spire && this.spireRig) {
+      const s = state?.raid?.spire;
+      const cleared = !!s && s.clearedAt !== undefined && s.kind !== "boss";
+      this.spireRig.update(
+        this.time.now,
+        cleared,
+        reducedMotion,
+        battleQuality.current() === "low",
+        fxFor(this),
+      );
+      // While the stairs are open, the next floor is painted (never mid-fight).
+      const after =
+        s && s.clearedAt !== undefined ? nextSpireCourtView(spire) : undefined;
+      // (Only a floor this party may climb to.)
+      const next =
+        after && after.floor <= (s?.ceiling ?? 0) ? after : undefined;
+      const ahead = next ? `${next.floor}` : "";
+      if (next && ahead !== this.spirePrepared) {
+        this.spirePrepared = ahead;
+        this.spireRig.prepare(next);
+        if (next.kind === "boss") this.floorTexture(SPIRE_SUMMIT_FLOOR);
+      }
+      if (spire.kind !== "boss") {
+        fxFor(this).setOccluders(this.spireRig.fronts, fighterDepth);
+        return;
+      }
+    }
     if (this.courtRaid && this.pillarRig) {
       const fronts = this.pillarRig.update(
         this.time.now,
@@ -4854,6 +4942,9 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     // So are its arena's (pillars, braziers and burning ground).
     if (state?.raid?.boss === "grumblecrag") prewarmPillars(this);
     if (state?.raid?.boss === "emberwing") prewarmTerrace(this);
+    // The Spire's court: the floor it starts on (the next one is painted
+    // while its stairs are open; the boss floor's pillars just above).
+    prewarmSpireCourt(this, spireCourtView(state?.raid));
     // So are the arena's painted pieces (islands, rune pads and the rest).
     if (state?.raid) {
       prewarmLagoon(this, state);
@@ -5654,18 +5745,23 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     // Walls for prediction (the Shifting Ruins block comes and goes) and the floor.
     useObstacles(
       state.raid
-        ? state.arena === "lagoon" ||
-          state.arena === "lantern-yard" ||
-          state.arena === "cloud-deck" ||
-          state.arena === "sun-atrium" ||
-          state.arena === "sky-terrace" ||
-          state.arena === "conductor-ring"
-          ? []
-          : OBSTACLES.filter((_, i) => !state!.raid!.pillars[i]?.broken)
+        ? (spireCourtWalls(state.raid.spire) ??
+            (state.arena === "lagoon" ||
+            state.arena === "lantern-yard" ||
+            state.arena === "cloud-deck" ||
+            state.arena === "sun-atrium" ||
+            state.arena === "sky-terrace" ||
+            state.arena === "conductor-ring"
+              ? []
+              : OBSTACLES.filter((_, i) => !state!.raid!.pillars[i]?.broken)))
         : obstaclesAt(state.arena, arenaClock()),
     );
     useSpeedScale(state.mutators?.includes("speed") ? MUTATOR_RULES.speed : 1);
-    this.showArena(state.arena ?? "classic", !!state.raid);
+    this.showArena(
+      state.arena ?? "classic",
+      !!state.raid,
+      spireCourtView(state.raid),
+    );
     // Duel courts have their own background sound (crowd, sea, forge, wind).
     audio.setAmbience(
       this.activeCourt && !this.courtRaid ? this.activeCourt : null,
