@@ -272,34 +272,41 @@ test.describe("phone: less scrolling", () => {
     await snap(page, info, "phone-raid-guide");
   });
 
-  test("the player card's mastery and trophies swipe in one row each", async ({
+  test("the player card is four tabs on a phone, each without scrolling", async ({
     page,
   }, info) => {
     await page.setViewportSize(PHONE);
     await openLobby(page);
     await setInsets(page, ISLAND);
     await page.click("#account-profile");
-    for (const row of [".pf-mastery", ".pf-trophies"]) {
-      const list = page.locator(row);
-      await expect(list).toBeVisible();
-      const tops = await list
-        .locator(":scope > li")
-        .evaluateAll((els) => els.map((e) => e.getBoundingClientRect().top));
-      expect(new Set(tops).size, `${row} is one row`).toBe(1);
-      // It scrolls sideways, and its box is as tall as its badges.
-      const m = await list.evaluate((el) => ({
-        wide: el.scrollWidth > el.clientWidth,
-        whole: el.clientHeight >= el.scrollHeight - 1,
-        height: el.getBoundingClientRect().height,
-      }));
-      expect(m.wide).toBe(true);
-      expect(m.whole).toBe(true);
-      expect(m.height).toBeGreaterThan(40);
+    const panel = page.locator(".profile-panel");
+    // The tabs share the head with the name, Share card and Close.
+    const head = await box(page, ".profile-panel .ui-panel-head");
+    const tabs = await box(page, ".profile-panel .ui-panel-head .ui-tabs");
+    expect(tabs.y).toBeGreaterThanOrEqual(head.y);
+    expect(tabs.y + tabs.height).toBeLessThanOrEqual(head.y + head.height + 1);
+    for (const [t, shows] of [
+      ["overview", ".pf-tile"],
+      ["titles", ".pf-title-chip"],
+      ["mastery", ".pf-mastery-chip"],
+      ["trophies", ".pf-trophy"],
+    ]) {
+      await panel.locator(`[data-ui-profile-tab="${t}"]`).click();
+      await expect(
+        panel.locator(`[data-ui-profile-tab="${t}"]`),
+      ).toHaveAttribute("aria-selected", "true");
+      await expect(panel.locator(shows).first()).toBeVisible();
+      const m = await panel
+        .locator("[data-profile-main]")
+        .evaluate((el) => el.scrollHeight / el.clientHeight);
+      // Overview holds the name and account rows: a little over a screen.
+      expect(m, t).toBeLessThan(t === "overview" ? 1.4 : 1.05);
     }
-    // Nothing after a row starts inside it.
-    const mastery = await box(page, ".pf-mastery");
-    const next = await box(page, ".pf-minis");
-    expect(next.y).toBeGreaterThanOrEqual(mastery.y + mastery.height);
-    await snap(page, info, "phone-profile");
+    await snap(page, info, "phone-profile-trophies");
+    // A desktop keeps the one column, no tabs.
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await expect(panel.locator("[data-ui-profile-tab]")).toHaveCount(0);
+    await expect(panel.locator(".pf-mastery-chip")).toHaveCount(18);
+    await expect(panel.locator(".pf-trophy")).toHaveCount(7);
   });
 });

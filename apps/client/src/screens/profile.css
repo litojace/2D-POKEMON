@@ -634,41 +634,4 @@
   .pf-achievements > li {
     padding: 5px 8px;
   }
-  /* Three equal links across the column: "Raid rewards" and its icon need
-     more than the phones' 104 px action width. */
-}
-
-/* Phones: fighter mastery and raid trophies each take one row that swipes
-   sideways (the last badge or card peeks in at the edge), as collection
-   rows do in mobile games, instead of two rows each. The card was 3.1
-   screens tall on a 393 px phone. */
-@media (max-height: 500px) {
-  .pf-mastery,
-  .pf-trophies {
-    grid-auto-flow: column;
-    grid-template-columns: none;
-    overflow-x: auto;
-    overscroll-behavior-x: contain;
-    scroll-snap-type: x proximity;
-    scrollbar-width: none;
-  }
-  /* A sideways scroller may shrink to nothing in the column's grid (its
-     automatic minimum height is 0): every row keeps its content's height. */
-  .pf-main {
-    grid-auto-rows: max-content;
-  }
-  .pf-mastery::-webkit-scrollbar,
-  .pf-trophies::-webkit-scrollbar {
-    display: none;
-  }
-  .pf-mastery {
-    grid-auto-columns: calc((100% - 9 * 4px) / 9.5);
-  }
-  .pf-trophies {
-    grid-auto-columns: calc((100% - 4 * 4px) / 4.5);
-  }
-  .pf-mastery > li,
-  .pf-trophies > li {
-    scroll-snap-align: start;
-  }
 }

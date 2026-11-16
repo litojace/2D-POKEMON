@@ -63,7 +63,7 @@ tall on the boss page: less than half the panel.
 | Raids › boss › Guide    |    4.4 |   2.9 |
 | Shop › Skins            |    3.6 |   2.0 |
 | Raid room fighter list  |    3.2 |     — |
-| Player card             |    3.1 |   2.4 |
+| Player card (Overview)  |    3.1 |   1.2 |
 | Raids › boss › Rewards  |    3.1 |   2.4 |
 | Ranks (ladder)          |    2.9 |     — |
 | Friends                 |    2.8 |     — |
@@ -183,6 +183,17 @@ through them (`lobbyPlay` in `main.ts`), so there is still one code path.
 Tests that only need a match press them through `createRoom()`,
 `startPractice()` and `pickRoomMode()` in `tests/visual/helpers.ts`.
 
+## The player card in tabs on a phone (owner, 16 Nov)
+
+On a phone held sideways the card's column is four tabs in the head, beside
+the name, Share card and Close: **Overview** (the numbers, your name, the
+Journey and Ranked summaries, the account rows), **Titles**, **Mastery**
+(the two rows of nine badges; the sideways row is gone) and **Trophies**
+(the seven bosses and your achievements). Titles, Mastery and Trophies fit
+without scrolling; Overview is 1.2 screens (it was all 3.1 in one column).
+Desktop keeps the one column. `profile.ts` passes `compact` from the same
+media query as the Shop.
+
 ## Mythic Hall picks one fighter on a phone (owner, 16 Nov)
 
 The combined option the owner chose: on a phone held sideways, Mythic Hall
@@ -253,8 +264,7 @@ is left").
 
 1. **Shop › Mythic Hall:** done (one fighter at a time on phones, above).
 2. **Raids › Rewards (2.4).** Could be a sideways strip like the trophies.
-3. **Player card (2.4).** Tabs in the head (Overview · Titles · Mastery ·
-   Trophies) would end the scrolling.
+3. **Player card:** done (tabs on phones, above).
 4. **Ranks ladder (2.9) and Friends (2.8)** are lists: they should scroll.
    Your rank row is already pinned.
 5. **Raid room** keeps its own HUD row (chat left, coins and profile right)
