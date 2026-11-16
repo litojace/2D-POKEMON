@@ -206,7 +206,22 @@ export function openRaids(
           ? -1
           : 1;
       view.spireTab = d.uiSpireTab as SpireTab;
-      render(true, direction);
+      // Only the tab's contents change: patch them in and glide them, not
+      // the whole column. (Gliding the column with its scroller inside left
+      // a stale band painted over the Floors tab's first rows in Chromium.)
+      render();
+      const body = q<HTMLElement>("[data-raid-region=body]");
+      body?.scrollTo({ top: 0 });
+      for (const animation of navigation) animation.cancel();
+      navigation = [];
+      for (const child of Array.from(body?.children ?? [])) {
+        const animation = enter(
+          child,
+          { opacity: 0, transform: `translateX(${direction * 24}px)` },
+          { duration: 260 },
+        );
+        if (animation) navigation.push(animation);
+      }
       q<HTMLElement>(`[data-ui-spire-tab="${view.spireTab}"]`)?.focus({
         preventScroll: true,
       });
