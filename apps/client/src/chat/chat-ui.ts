@@ -29,6 +29,7 @@ import {
 } from "../../../../packages/shared/src/chat";
 import { filterChat } from "../../../../packages/shared/src/chat-filter";
 import { menuIcon } from "../menu-icons";
+import { needsStamp, stampLong, stampText } from "./chat-time";
 
 export type ChatPlace = "hub" | "room" | "none";
 interface Reply {
@@ -197,6 +198,7 @@ export function mountChat(hooks: ChatHooks): ChatView {
     const li = document.createElement("li");
     li.className = "chat-line";
     li.dataset.line = String(l.id);
+    li.dataset.at = String(l.at);
     const mine = l.from.id === hooks.me()?.id;
     if (mine) li.classList.add("is-mine");
     if (l.quick) li.classList.add("is-quick");
@@ -215,6 +217,30 @@ export function mountChat(hooks: ChatHooks): ChatView {
     body.append(who, what);
     li.append(body);
     return li;
+  }
+  /** A small centred time before a line that starts a stretch (chat-time.ts). */
+  function stampElement(at: number) {
+    const li = document.createElement("li");
+    li.className = "chat-stamp";
+    li.setAttribute("role", "separator");
+    const t = document.createElement("time");
+    t.dateTime = new Date(at).toISOString();
+    t.textContent = stampText(at);
+    t.title = stampLong(at);
+    li.setAttribute("aria-label", stampLong(at));
+    li.append(t);
+    return li;
+  }
+  /** Lines with their time stamps between them. */
+  function withStamps(lines: ChatLine[]) {
+    const out: HTMLElement[] = [];
+    let prev: number | null = null;
+    for (const l of lines) {
+      if (needsStamp(l.at, prev)) out.push(stampElement(l.at));
+      out.push(lineElement(l));
+      prev = l.at;
+    }
+    return out;
   }
   const shown = (c: ChatChannel) =>
     linesOf(c).filter((l) => !muted.has(l.from.id));
@@ -310,15 +336,15 @@ export function mountChat(hooks: ChatHooks): ChatView {
     head.hidden = !(active === "friend" && friendTo);
     if (friendTo) head.querySelector("b")!.textContent = friendTo.name;
     list.replaceChildren(
-      ...(listing
-        ? friendRows()
-        : (active ? shown(active) : []).map(lineElement)),
+      ...(listing ? friendRows() : withStamps(active ? shown(active) : [])),
     );
-    list.scrollTop = listing ? 0 : list.scrollHeight;
     empty.hidden =
       mode !== "off" &&
       !!active &&
       (listing ? !!friends?.length : shown(active).length > 0);
+    // After the note: while it shows, the list is hidden (no height), and
+    // scrolling it then left a channel's loaded history at its oldest line.
+    list.scrollTop = listing ? 0 : list.scrollHeight;
     empty.textContent =
       mode === "off"
         ? "Chat is off. Turn it on with the gear above."
@@ -657,9 +683,23 @@ export function mountChat(hooks: ChatHooks): ChatView {
       if (!drawer.hidden && line.channel === active) {
         const atEnd =
           list.scrollHeight - list.scrollTop - list.clientHeight < 40;
+        const rows = list.querySelectorAll<HTMLElement>(".chat-line");
+        const prev = rows[rows.length - 1];
+        const before = prev ? Number(prev.dataset.at) : null;
+        if (needsStamp(line.at, Number.isFinite(before) ? before : null))
+          list.append(stampElement(line.at));
         list.append(lineElement(line));
-        if (list.children.length > CHAT_LIMITS.history)
-          list.firstElementChild?.remove();
+        // Past the history's length, the oldest line goes (with its stamp).
+        if (list.querySelectorAll(".chat-line").length > CHAT_LIMITS.history) {
+          list.querySelector(".chat-line")?.remove();
+          // A stamp left with no line of its own (the next has its own).
+          const first = list.firstElementChild;
+          if (
+            first?.classList.contains("chat-stamp") &&
+            first.nextElementSibling?.classList.contains("chat-stamp")
+          )
+            first.remove();
+        }
         empty.hidden = true;
         if (atEnd || mine) list.scrollTop = list.scrollHeight;
       } else if (!mine) unseen[line.channel]++;

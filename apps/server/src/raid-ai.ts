@@ -23,6 +23,7 @@ export const RAID_IMPACT_GAP = 0.5;
 /** Attacks a raider answers by jumping: never shortened, spaced by the jump cooldown. */
 export const RAID_JUMP_ATTACKS = new Set<RaidAttack>([
   "slam",
+  "twin-slam",
   "pulse",
   "lullaby",
   "flame-ring",
@@ -45,6 +46,7 @@ export const RAID_DURATION_ATTACKS = new Set<RaidAttack>([
  */
 export const RAID_EXCLUSIVE_ATTACKS = new Set<RaidAttack>([
   "charge",
+  "avalanche",
   "share",
   "dive",
   "wave",
@@ -94,6 +96,7 @@ export const RAID_PRESSURE_ATTACKS = new Set<RaidAttack>([
 /** Line attacks: a raider who just spent their dash is a tempting target. */
 export const RAID_LINE_ATTACKS = new Set<RaidAttack>([
   "charge",
+  "avalanche",
   "lunge",
   "dive-bomb",
   "twin-rush",
@@ -110,6 +113,10 @@ export const RAID_CLUSTER_ATTACKS = new Set<RaidAttack>([
   "halo-crush",
 ]);
 
+/** Grumblecrag's charges: the boss itself runs down the lane. */
+export const raidChargeKind = (kind: RaidAttack) =>
+  kind === "charge" || kind === "avalanche";
+
 export type RaidShape = "circle" | "line" | "cone" | "ring" | "field";
 /** The family a warning's shape belongs to (overlaps mix families). */
 export function raidShapeOf(kind: RaidAttack): RaidShape {
@@ -117,6 +124,8 @@ export function raidShapeOf(kind: RaidAttack): RaidShape {
   if (
     [
       "charge",
+      "avalanche",
+      "fissure",
       "lunge",
       "tail-splash",
       "twin-rush",
@@ -179,8 +188,9 @@ export function raidShapeHits(
   if (shape === "field") return true;
   if (shape === "line") {
     // A charge hits within 100 px of Grumblecrag's centre along its path.
-    const half =
-      w.kind === "charge" ? 100 - RULES.radius : (w.width ?? 0) / 2 || w.radius;
+    const half = raidChargeKind(w.kind)
+      ? 100 - RULES.radius
+      : (w.width ?? 0) / 2 || w.radius;
     return segmentDistance(x, y, w.x, w.y, w.tx, w.ty) < half + pad;
   }
   if (shape === "cone") {

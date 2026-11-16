@@ -52,6 +52,8 @@ import {
   type RarityName,
 } from "../ui/components";
 import { cosmeticTier } from "../../../../packages/shared/src/cosmetic-tier";
+import type { SpireProgress } from "../../../../packages/shared/src/spire";
+import { spireCard, spireMarkup, type SpireTab } from "./spire-view";
 
 export type RaidTab = "party" | "attacks" | "rewards" | "guide";
 export const RAID_TABS: [RaidTab, string][] = [
@@ -72,7 +74,10 @@ export const RAID_FILTERS: [RaidFilter, string, string][] = [
 export const RAID_SEATS = 4;
 
 export interface RaidView {
-  mode: "hall" | "boss";
+  /** The boss list, a boss's page, or the Spire's page. */
+  mode: "hall" | "boss" | "spire";
+  /** The Spire page's tab. */
+  spireTab?: SpireTab;
   boss: RaidBossId;
   tab: RaidTab;
   filter: RaidFilter;
@@ -97,6 +102,8 @@ export interface RaidSeat {
 export interface RaidData {
   /** Saved raid progress; null when signed out or unavailable. */
   progress: RaidProgress | null;
+  /** Your Spire climb (GET /api/spire); null when unavailable. */
+  spire?: SpireProgress | null;
   loading: boolean;
   problem: string;
   me: { name: string; character: CharacterId };
@@ -244,12 +251,12 @@ function bossCard(id: RaidBossId, d: RaidData) {
         : tag("New", "new");
   const tricks = bossTricks(id).slice(0, 3);
   const label = `${b.name}, ${b.stars} ${b.stars === 1 ? "star" : "stars"}, ${b.element}${locked ? ", locked: clear Cragmuff first" : !b.playable ? ", coming soon" : clears ? `, ${clears} ${clears === 1 ? "clear" : "clears"}` : ", new"}`;
-  // Snoozaku's expanded painting allows a wider mobile crop with real scenery
-  // at both edges. Other cards and room banners keep their portrait assets.
+  // Snoozaku's wider painting keeps its nightcap and body inside the gallery
+  // card at both sizes. Room banners still use their portrait assets.
   const portrait = raidPortraitImage(id);
   const art =
     id === "somnara"
-      ? `<picture><source media="(max-height: 500px)" srcset="${snoozakuMobile}">${portrait}</picture>`
+      ? `<img class="raid-splash-image" src="${snoozakuMobile}" alt="" width="1536" height="1024" decoding="async" loading="lazy">`
       : portrait;
   return `<button type="button" class="rh-card${locked ? " is-locked" : ""}${b.playable ? "" : " is-soon"}" style="--boss:${b.color}" data-raid-card="${id}" aria-label="${esc(label)}"><span class="rh-card-art">${art}</span><span class="rh-card-top">${corner}${stars(b.stars)}</span><span class="rh-card-text"><b class="rh-card-name">${esc(b.name)}</b><small class="ui-note rh-card-line">${esc(b.element)} · ${esc(b.signature)}</small><span class="rh-card-foot"><span class="rh-tricks" title="Fighters with a trick here">${tricks.map((t) => fighterChip(t.character, `rh-${id}-${t.character}`)).join("")}</span><span class="ui-note">${p ? `${earned} / ${total} rewards` : `${total} rewards`}</span></span></span></button>`;
 }
@@ -283,13 +290,19 @@ function hallMarkup(view: RaidView, d: RaidData) {
       ? `<p class="ui-note rh-note">Log in to save clears and rewards.</p>`
       : "",
   ].join("");
-  const grid = shown.length
-    ? `<div class="ui-grid rh-grid" role="group" aria-label="Bosses">${shown.map((id) => bossCard(id, d)).join("")}</div>`
-    : emptyState(
-        "Every boss here is cleared",
-        "Try another filter, or run a favourite again.",
-        button("Show all", { size: "s", attrs: { "data-raid-filter": "all" } }),
-      );
+  // The Spire is the last tile of the hall (all bosses shown).
+  const spire = view.filter === "all" ? spireCard(d) : "";
+  const grid =
+    shown.length || spire
+      ? `<div class="ui-grid rh-grid" role="group" aria-label="Bosses">${shown.map((id) => bossCard(id, d)).join("")}${spire}</div>`
+      : emptyState(
+          "Every boss here is cleared",
+          "Try another filter, or run a favourite again.",
+          button("Show all", {
+            size: "s",
+            attrs: { "data-raid-filter": "all" },
+          }),
+        );
   return `<section class="ui-panel rh-room" role="dialog" aria-label="Raids" data-raid-mode="hall"><header class="ui-panel-head rh-head"><div class="ui-heading"><span class="ui-kicker">${RAID_BOSS_ORDER.length} bosses · solo or up to ${RAID_SEATS}${totals ? ` · ${totals}` : ""}</span><h2 class="ui-title">Raids</h2></div>${filters}${iconButton("cancel", "Back to the Lobby", { class: "ui-close", "data-ui-close": true })}</header><div class="ui-panel-body rh-body rh-hall-body" data-raid-region="body"><div class="rh-notes">${notes}</div>${grid}</div></section>`;
 }
 function rewardTotal(p: RaidProgress) {
@@ -523,5 +536,9 @@ function bossMarkup(view: RaidView, d: RaidData) {
 
 /** The whole screen: the hall, or one boss's page. */
 export function raidMarkup(view: RaidView, d: RaidData) {
-  return view.mode === "hall" ? hallMarkup(view, d) : bossMarkup(view, d);
+  return view.mode === "hall"
+    ? hallMarkup(view, d)
+    : view.mode === "spire"
+      ? spireMarkup(view, d)
+      : bossMarkup(view, d);
 }

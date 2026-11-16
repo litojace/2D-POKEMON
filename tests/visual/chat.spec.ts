@@ -618,3 +618,123 @@ test("Friends in the chat: unread counts, a conversation, Message from the Frien
     await context.close();
   }
 });
+
+test("times in the chat: a stamp before each stretch, as the big chat apps do", async ({
+  browser,
+}, info) => {
+  test.setTimeout(120_000);
+  const { context, page } = await phone(browser, SIZES[1]);
+  try {
+    const errors = await openHub(page);
+    await page.evaluate(
+      ([me, pal]) => {
+        const w = window as any;
+        // Local times around today's date, whatever the clock says.
+        const day = new Date();
+        day.setHours(0, 0, 0, 0);
+        const at = (daysBack: number, h: number, m: number) =>
+          day.getTime() - daysBack * 86_400_000 + (h * 60 + m) * 60_000;
+        w.__at = at;
+        const line = (id: number, t: number, text: string) => ({
+          id,
+          channel: "party",
+          from: { id: pal, name: "Pal" },
+          at: t,
+          text,
+        });
+        const before = w.__reply;
+        w.__reply = (ev: string, data: any) =>
+          ev === "chat-history"
+            ? {
+                ok: true,
+                lines: [
+                  line(1, at(3, 8, 0), "three days ago"),
+                  line(2, at(3, 8, 1), "a minute later"),
+                  line(3, at(1, 20, 0), "yesterday"),
+                  line(4, at(0, 9, 0), "this morning"),
+                  line(5, at(0, 9, 10), "ten minutes on"),
+                ],
+              }
+            : before?.(ev, data);
+        w.__sock.fire("chat-config", { freeText: true });
+        w.__sock.fire("party", {
+          code: "PARTY4",
+          leader: me,
+          members: [
+            { id: me, name: "tester", character: "voltkit" },
+            { id: pal, name: "Pal", character: "tidefin" },
+          ],
+        });
+      },
+      [ME, PAL],
+    );
+    await page.click("#chat-button");
+    const drawer = page.locator("#chat-drawer");
+    await expect(drawer.locator(".chat-line")).toHaveCount(5);
+    // Loaded history opens at its newest line, not its oldest.
+    await expect
+      .poll(() =>
+        drawer
+          .locator(".chat-lines")
+          .evaluate((l) => l.scrollHeight - l.scrollTop - l.clientHeight),
+      )
+      .toBeLessThanOrEqual(2);
+    // A stamp before the first line, a new day, and a 5-minute gap; none
+    // before "a minute later".
+    await expect(drawer.locator(".chat-stamp")).toHaveText([
+      /^(Sun|Mon|Tue|Wed|Thu|Fri|Sat) 8:00\sAM$/,
+      /^Yesterday 8:00\sPM$/,
+      /^9:00\sAM$/,
+      /^9:10\sAM$/,
+    ]);
+    expect(
+      await drawer
+        .locator(".chat-lines > li")
+        .evaluateAll((els) =>
+          els.map((e) =>
+            e.classList.contains("chat-stamp") ? "|" : e.textContent,
+          ),
+        ),
+    ).toEqual([
+      "|",
+      "Palthree days ago",
+      "Pala minute later",
+      "|",
+      "Palyesterday",
+      "|",
+      "Palthis morning",
+      "|",
+      "Palten minutes on",
+    ]);
+    // Screen readers hear the full date.
+    await expect(drawer.locator(".chat-stamp").nth(1)).toHaveAttribute(
+      "aria-label",
+      /\d{4}/,
+    );
+    // New lines: one soon after gets no stamp; one 10 minutes on does.
+    for (const [id, m, text] of [
+      [6, 11, "right after"],
+      [7, 21, "later on"],
+    ] as const)
+      await page.evaluate(
+        ([id, m, text, pal]) => {
+          const w = window as any;
+          w.__sock.fire("chat", {
+            id,
+            channel: "party",
+            from: { id: pal, name: "Pal" },
+            at: w.__at(0, 9, m),
+            text,
+          });
+        },
+        [id, m, text, PAL] as const,
+      );
+    await expect(drawer.locator(".chat-line")).toHaveCount(7);
+    await expect(drawer.locator(".chat-stamp")).toHaveCount(5);
+    await expect(drawer.locator(".chat-stamp").last()).toHaveText(/^9:21\sAM$/);
+    await snap(page, info, "chat-times-844x390");
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});

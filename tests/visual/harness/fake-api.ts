@@ -32,7 +32,7 @@ const API: Record<string, unknown> = {
     rerolled: false,
     streak: 1,
     today: { raidClears: 0, pvpMatches: 0 },
-    leaves: { balance: 1234, tradedToday: 0, tradeCap: 40, tradeLeaves: 100, tradeCoins: 5 },
+    leaves: { balance: 1234, tradedToday: 0, tradeCap: 60, tradeLeaves: 100, tradeCoins: 5 },
   },
   "/api/progress": {
     matches: 31,
@@ -106,6 +106,7 @@ window.fetch = async (input, init) => {
     // give them friends and requests, and window.__raids for their raid
     // progress (its loadout is the equipped raid look); window.__board,
     // __friendsBoard and __recent replace Ranks' boards and Recent players;
+    // __spire the Spire climb (GET /api/spire);
     // __accountPatch changes the account (title, titles, guest) and
     // __progress the records (the profile, step 7); __nameStatus when the
     // name can next change.
@@ -114,6 +115,7 @@ window.fetch = async (input, init) => {
       __plazaProgress?: unknown;
       __friends?: unknown;
       __raids?: unknown;
+      __spire?: unknown;
       __board?: unknown;
       __friendsBoard?: unknown;
       __recent?: unknown;
@@ -132,6 +134,8 @@ window.fetch = async (input, init) => {
             ? w.__friends
             : url.pathname === "/api/raids" && w.__raids
               ? w.__raids
+              : url.pathname === "/api/spire" && w.__spire
+              ? w.__spire
               : url.pathname === "/api/account/name" && w.__nameStatus
                 ? w.__nameStatus
                 : url.pathname === "/api/account" && w.__accountPatch

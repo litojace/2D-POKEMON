@@ -15,7 +15,7 @@
 | **Server quyết định**                   | Luật nằm ở `packages/shared/src/bistro.ts`, database Supabase chạy **đúng luật đó** (migration 068). Client chạy trước để phản hồi ngay, server trả lời thì client lấy theo. Mọi tính năng mới đều phải có cả hai nửa và test so sánh hai nửa. |
 | **Tự động khi offline là "linh hồn"**   | Nhân viên vẫn làm khi người chơi vắng mặt (đến hết ca 2–8 giờ). Không cơ chế mới nào được làm nhà hàng **dừng hẳn** khi vắng mặt; chỉ được làm **chậm lại** để người chơi muốn quay về chăm sóc.                                               |
 | **Chơi trên điện thoại**                | Một thao tác = một lần chạm. Không bắt người chơi chăm từng chỉ số nhỏ: gộp, hiển thị bằng bong bóng trên đầu nhân vật.                                                                                                                        |
-| **Kinh tế hai đồng tiền**               | Bistro coins (xu nhà hàng) dùng trong Bistro; đổi sang Gold Leaves có giới hạn (100 xu → 20 lá, tối đa 300 lá/ngày). Nguyên liệu mới **không** được trở thành đường lách giới hạn này.                                                         |
+| **Kinh tế hai đồng tiền**               | Bistro coins (xu nhà hàng) dùng trong Bistro; đổi sang Gold Leaves có giới hạn (100 xu → 20 lá, tối đa 600 lá/ngày). Nguyên liệu mới **không** được trở thành đường lách giới hạn này.                                                         |
 
 ### Vòng lặp chính
 

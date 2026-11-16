@@ -5,11 +5,13 @@ import {
   PLAZA_EMOTES,
   PLAZA_QUESTS,
 } from "../../../packages/shared/src/plaza";
-import { quickText } from "../../../packages/shared/src/chat";
+import { CHAT_LIMITS, quickText } from "../../../packages/shared/src/chat";
 
 const w = window as unknown as Record<string, any>;
 const world = new PlazaWorld();
 const ME = "local";
+/** Nearby lines said here, as the server's ChatHub keeps them. */
+const placeLines: unknown[] = [];
 w.__plazaWorld = world;
 /** Move the player (tests). */
 w.__plazaPosition = (x: number, y: number) => {
@@ -83,17 +85,20 @@ const handle = (ev: string, data: any) => {
     if ((PLAZA_EMOTES as readonly string[]).includes(text))
       world.emote(ME, text, Date.now());
     w.__chatSerial = (w.__chatSerial ?? 0) + 1;
-    setTimeout(() =>
-      w.__sock?.fire("chat", {
-        id: w.__chatSerial,
-        channel: "place",
-        from: { id: "11111111-1111-4111-8111-111111111111", name: "tester" },
-        at: Date.now(),
-        quick: data.quick,
-      }),
-    );
+    const line = {
+      id: w.__chatSerial,
+      channel: "place",
+      from: { id: "11111111-1111-4111-8111-111111111111", name: "tester" },
+      at: Date.now(),
+      quick: data.quick,
+    };
+    placeLines.push(line);
+    if (placeLines.length > CHAT_LIMITS.history) placeLines.shift();
+    setTimeout(() => w.__sock?.fire("chat", line));
     return { ok: true };
   }
+  // The Nearby lines the server keeps (the drawer reads them on opening).
+  if (ev === "chat-history") return { ok: true, lines: [...placeLines] };
   if (ev === "plaza-act") {
     if (data.spot === "cafe") {
       if (!world.at(ME, "cafe"))
@@ -108,7 +113,8 @@ const handle = (ev: string, data: any) => {
 };
 const before = { reply: w.__reply, emit: w.__emit };
 w.__reply = (ev: string, data: any) =>
-  ev.startsWith("plaza-") || (ev === "chat-send" && data?.channel === "place")
+  ev.startsWith("plaza-") ||
+  ((ev === "chat-send" || ev === "chat-history") && data?.channel === "place")
     ? handle(ev, data)
     : before.reply?.(ev, data);
 w.__emit = (ev: string, data: any) => {

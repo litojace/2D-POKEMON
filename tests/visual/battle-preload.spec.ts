@@ -10,7 +10,7 @@ test("worn skins and the boss's atlas are ready before the battle's first frame"
 }) => {
   // Read what the arena scene holds the moment it is created, right after it
   // has prepared the boss's atlas.
-  const marker = "prewarmBossAtlas(this, state.raid.boss, state.raid.phase);";
+  const marker = "if (state?.raid) prewarmRaidArena(this, state.raid);";
   await page.route(/\/apps\/client\/src\/main\.ts(?:\?|$)/, async (route) => {
     const response = await route.fetch(),
       body = await response.text();
@@ -77,7 +77,7 @@ test("worn skins and the boss's atlas are ready before the battle's first frame"
 test("Cragmuff's atlas is painted before the battle's first frame", async ({
   page,
 }) => {
-  const marker = "prewarmBossAtlas(this, state.raid.boss, state.raid.phase);";
+  const marker = "if (state?.raid) prewarmRaidArena(this, state.raid);";
   await page.route(/\/apps\/client\/src\/main\.ts(?:\?|$)/, async (route) => {
     const response = await route.fetch(),
       body = await response.text();

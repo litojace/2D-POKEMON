@@ -163,6 +163,16 @@ const HUB_SCREENS: Screen[] = [
       await page.click(`[data-ui-raid-tab="${tab}"]`);
     },
   })),
+  // The Spire's page (the last tile of the raid list), each tab.
+  ...(["climb", "floors", "blessings"] as const).map((tab) => ({
+    name: `spire ${tab}`,
+    root: HUB,
+    open: async (page: Page) => {
+      await rail("raids")(page);
+      await page.click("[data-raid-spire]");
+      await page.click(`[data-ui-spire-tab="${tab}"]`);
+    },
+  })),
   // Step 6: Ranks (both boards) and the Friends sheet (each tab), filled
   // with more than fits: fifty friends, many requests, a long board.
   ...(["everyone", "friends"] as const).map((scope) => ({

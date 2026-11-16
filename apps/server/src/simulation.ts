@@ -39,6 +39,7 @@ import {
   RING,
   ringRadius,
   RULES,
+  dashCooldownOf,
   SKILL_SLOTS,
   STATUS_RULES,
   ULT_SLOT,
@@ -1021,6 +1022,10 @@ export class Arena {
   }
   damageLimit(target: Fighter) {
     return target.hp;
+  }
+  /** Skill cooldowns × this for a fighter (modes may shorten them: Spire blessings). */
+  protected cooldownScale(_p: Fighter) {
+    return 1;
   }
   /** Modes can adjust what a bot decided (raids: dodge boss telegraphs). */
   botInput(_bot: Fighter, input: Input) {
@@ -2643,7 +2648,7 @@ export class Arena {
         p.dashX = (d.x || d.y ? d.x : Math.cos(p.angle)) * RULES.dashSpeed;
         p.dashY = (d.x || d.y ? d.y : Math.sin(p.angle)) * RULES.dashSpeed;
         p.dashUntil = this.time + RULES.dashDuration;
-        p.dashAt = freeCooldowns ? 0 : this.time + RULES.dashCooldown;
+        p.dashAt = freeCooldowns ? 0 : this.time + dashCooldownOf(p);
         this.event("dash", p, CHARACTERS[p.character].color, undefined, p.id);
       }
       if (
@@ -2734,7 +2739,8 @@ export class Arena {
               : this.time +
                 a.cooldown *
                   (this.rule("turbo") ? MUTATOR_RULES.turboCooldown : 1) *
-                  (this.gift(p, "Light") ?? 1);
+                  (this.gift(p, "Light") ?? 1) *
+                  this.cooldownScale(p);
           p.stats.skills++;
           p.recoveryUntil =
             this.time +

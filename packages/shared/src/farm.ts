@@ -671,7 +671,12 @@ export const farmPerkOf = (farmer: string) => FARM_PERK_OF[farmer] ?? farmer;
 /** A farmer's perk, or null when it has none. */
 export const farmPerk = (farmer: string | null | undefined) =>
   farmer ? (FARM_PERKS[farmPerkOf(farmer)] ?? null) : null;
-/** Decorations (migration 048): 8 spots; every 2 Charm is +1% farm XP, up to 25%. */
+/**
+ * Decorations (migration 048) and Charm: every 2 Charm is +1% farm XP, up to
+ * 25%. Since 20261116120000 they stand anywhere on the farm's land (they used
+ * 8 fixed spots): `w` is half the width of the ground a decoration takes and
+ * `d` how deep it is behind the point it stands on (world px).
+ */
 export const FARM_DECOR: readonly {
   id: string;
   name: string;
@@ -679,6 +684,8 @@ export const FARM_DECOR: readonly {
   charm: number;
   level: number;
   icon: string;
+  w: number;
+  d: number;
 }[] = [
   {
     id: "rock",
@@ -687,6 +694,18 @@ export const FARM_DECOR: readonly {
     charm: 1,
     level: 1,
     icon: "rock",
+    w: 26,
+    d: 14,
+  },
+  {
+    id: "hay",
+    name: "Hay Bale",
+    price: 400,
+    charm: 1,
+    level: 2,
+    icon: "wheat",
+    w: 34,
+    d: 16,
   },
   {
     id: "bush6",
@@ -695,6 +714,18 @@ export const FARM_DECOR: readonly {
     charm: 1,
     level: 3,
     icon: "rose",
+    w: 34,
+    d: 16,
+  },
+  {
+    id: "mailbox",
+    name: "Mailbox",
+    price: 500,
+    charm: 1,
+    level: 4,
+    icon: "sign",
+    w: 14,
+    d: 8,
   },
   {
     id: "bush7",
@@ -703,6 +734,28 @@ export const FARM_DECOR: readonly {
     charm: 1,
     level: 5,
     icon: "fern",
+    w: 34,
+    d: 16,
+  },
+  {
+    id: "bench",
+    name: "Park Bench",
+    price: 700,
+    charm: 1,
+    level: 6,
+    icon: "decor",
+    w: 46,
+    d: 12,
+  },
+  {
+    id: "flowers",
+    name: "Flower Bush",
+    price: 650,
+    charm: 1,
+    level: 7,
+    icon: "flower",
+    w: 34,
+    d: 16,
   },
   {
     id: "crates",
@@ -711,6 +764,8 @@ export const FARM_DECOR: readonly {
     charm: 1,
     level: 8,
     icon: "crate",
+    w: 32,
+    d: 16,
   },
   {
     id: "lamp",
@@ -719,6 +774,8 @@ export const FARM_DECOR: readonly {
     charm: 2,
     level: 12,
     icon: "lamp",
+    w: 14,
+    d: 8,
   },
   {
     id: "planter",
@@ -727,6 +784,18 @@ export const FARM_DECOR: readonly {
     charm: 3,
     level: 16,
     icon: "flower",
+    w: 50,
+    d: 14,
+  },
+  {
+    id: "mintree",
+    name: "Mint Tree",
+    price: 3000,
+    charm: 3,
+    level: 19,
+    icon: "fern",
+    w: 46,
+    d: 20,
   },
   {
     id: "pine",
@@ -735,6 +804,28 @@ export const FARM_DECOR: readonly {
     charm: 2,
     level: 22,
     icon: "pine",
+    w: 34,
+    d: 18,
+  },
+  {
+    id: "autumn",
+    name: "Maple Tree",
+    price: 3600,
+    charm: 3,
+    level: 25,
+    icon: "apple",
+    w: 46,
+    d: 20,
+  },
+  {
+    id: "cherry",
+    name: "Cherry Tree",
+    price: 3900,
+    charm: 3,
+    level: 27,
+    icon: "flower",
+    w: 46,
+    d: 20,
   },
   {
     id: "apple",
@@ -743,6 +834,18 @@ export const FARM_DECOR: readonly {
     charm: 4,
     level: 30,
     icon: "apple",
+    w: 46,
+    d: 20,
+  },
+  {
+    id: "orange",
+    name: "Orange Tree",
+    price: 4800,
+    charm: 4,
+    level: 36,
+    icon: "apple",
+    w: 46,
+    d: 20,
   },
   {
     id: "tower",
@@ -751,6 +854,8 @@ export const FARM_DECOR: readonly {
     charm: 10,
     level: 45,
     icon: "gazebo",
+    w: 72,
+    d: 34,
   },
   {
     id: "plum",
@@ -759,6 +864,8 @@ export const FARM_DECOR: readonly {
     charm: 12,
     level: 60,
     icon: "house",
+    w: 88,
+    d: 40,
   },
   {
     id: "statue",
@@ -767,9 +874,141 @@ export const FARM_DECOR: readonly {
     charm: 15,
     level: 75,
     icon: "statue",
+    w: 38,
+    d: 18,
   },
 ];
-export const DECOR_SLOTS = 8;
+/** How many decorations a farm has room for at a level. */
+export const decorCap = (level: number) =>
+  Math.min(60, 10 + Math.max(1, Math.floor(level)));
+/** Decorations snap to this grid (world px). */
+export const DECOR_GRID = 10;
+/** The land decorations may stand on (world px, the farm scene's). */
+export const DECOR_AREA = { x0: 20, x1: 1740, y0: 120, y1: 1060 } as const;
+export type DecorBlock =
+  | { k: "rect"; x0: number; x1: number; y0: number; y1: number }
+  | { k: "oval"; x: number; y: number; rx: number; ry: number };
+/**
+ * What decorations can't stand on: the field and its fence, the lane in
+ * front of it, the back row (home, mill, orders board, market, barn), the
+ * pasture, the well, the doghouse and the dog's spot, the scarecrow's spot,
+ * the path down from the gate, the pond and the farm's own trees.
+ * The database checks the same list (arena_farm_decor_fits).
+ */
+export const DECOR_BLOCKS: readonly DecorBlock[] = [
+  { k: "rect", x0: 314, x1: 1456, y0: 338, y1: 770 },
+  { k: "rect", x0: 380, x1: 1480, y0: 770, y1: 842 },
+  { k: "rect", x0: 20, x1: 1460, y0: 120, y1: 360 },
+  { k: "rect", x0: 1450, x1: 1750, y0: 390, y1: 690 },
+  { k: "rect", x0: 80, x1: 220, y0: 630, y1: 726 },
+  { k: "rect", x0: 1470, x1: 1680, y0: 754, y1: 840 },
+  { k: "rect", x0: 250, x1: 326, y0: 520, y1: 576 },
+  { k: "rect", x0: 830, x1: 940, y0: 770, y1: 1060 },
+  { k: "oval", x: 250, y: 990, rx: 190, ry: 82 },
+  ...(
+    [
+      [338, 230],
+      [812, 190],
+      [44, 400],
+      [1480, 340],
+      [1700, 330],
+      [70, 210],
+      [640, 1050],
+      [1120, 1060],
+      [1450, 1040],
+      [1720, 1000],
+      [40, 1060],
+    ] as const
+  ).map(([x, y]) => ({ k: "oval" as const, x, y, rx: 52, ry: 26 })),
+];
+/** A decoration on the farm (its id is the database's). */
+export interface FarmDecorPiece {
+  id: number;
+  item: string;
+  x: number;
+  y: number;
+  flip?: boolean;
+}
+const DECOR_BY_ID = new Map(FARM_DECOR.map((d) => [d.id, d]));
+/** The ground a decoration takes standing at (x, y). */
+export function decorBox(item: string, x: number, y: number) {
+  const d = DECOR_BY_ID.get(item);
+  const w = d?.w ?? 30,
+    dd = d?.d ?? 14;
+  return { x0: x - w, x1: x + w, y0: y - dd, y1: y + 4 };
+}
+/**
+ * Whether a decoration fits at (x, y): null when it does, otherwise why not.
+ * `placed` is what already stands on the farm; `except` is the one being
+ * moved. The database runs the same check (arena_farm_decor_fits).
+ */
+export function decorFits(
+  item: string,
+  x: number,
+  y: number,
+  placed: readonly FarmDecorPiece[],
+  except?: number,
+): string | null {
+  if (
+    !Number.isInteger(x) ||
+    !Number.isInteger(y) ||
+    x % DECOR_GRID !== 0 ||
+    y % DECOR_GRID !== 0
+  )
+    return "Choose a spot on the farm";
+  const b = decorBox(item, x, y),
+    A = DECOR_AREA;
+  if (b.x0 < A.x0 || b.x1 > A.x1 || b.y0 < A.y0 || b.y1 > A.y1)
+    return "Choose a spot on the farm";
+  for (const k of DECOR_BLOCKS) {
+    if (k.k === "rect") {
+      if (b.x0 < k.x1 && k.x0 < b.x1 && b.y0 < k.y1 && k.y0 < b.y1)
+        return "Something is in the way";
+    } else {
+      const cx = Math.min(Math.max(k.x, b.x0), b.x1),
+        cy = Math.min(Math.max(k.y, b.y0), b.y1);
+      if (((cx - k.x) / k.rx) ** 2 + ((cy - k.y) / k.ry) ** 2 < 1)
+        return "Something is in the way";
+    }
+  }
+  for (const p of placed) {
+    if (p.id === except) continue;
+    const o = decorBox(p.item, p.x, p.y);
+    if (b.x0 < o.x1 && o.x0 < b.x1 && b.y0 < o.y1 && o.y0 < b.y1)
+      return "Too close to another decoration";
+  }
+  return null;
+}
+/**
+ * The free spot nearest (x, y) for a decoration, searching outward on the
+ * grid, or null when none is within `reach` px.
+ */
+export function nearestDecorSpot(
+  item: string,
+  x: number,
+  y: number,
+  placed: readonly FarmDecorPiece[],
+  except?: number,
+  reach = 600,
+): { x: number; y: number } | null {
+  const G = DECOR_GRID,
+    x0 = Math.round(x / G) * G,
+    y0 = Math.round(y / G) * G;
+  for (let r = 0; r <= reach; r += G) {
+    let best: { x: number; y: number; d: number } | null = null;
+    for (let dx = -r; dx <= r; dx += G)
+      for (let dy = -r; dy <= r; dy += G) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+        const px = x0 + dx,
+          py = y0 + dy;
+        if (decorFits(item, px, py, placed, except)) continue;
+        const d = dx * dx + dy * dy;
+        if (!best || d < best.d) best = { x: px, y: py, d };
+      }
+    if (best) return { x: best.x, y: best.y };
+  }
+  return null;
+}
 export const charmBonus = (charm: number) =>
   Math.min(25, Math.floor(charm / 2));
 /** The Cow Pasture (migration 049; milk times from 064). */
@@ -927,8 +1166,8 @@ export function mutationMultiplier(key: string) {
         .reduce((x, m) => x * (MUTATIONS.find((v) => v.id === m)?.mult ?? 1), 1)
     : 1;
 }
-/** 100 Gold Leaves trade for 5 coins, up to 40 coins a day (migration 036). */
-export const LEAF_TRADE = { leaves: 100, coins: 5, dailyCoins: 40 } as const;
+/** 100 Gold Leaves trade for 5 coins, up to 60 coins a Pacific day. */
+export const LEAF_TRADE = { leaves: 100, coins: 5, dailyCoins: 60 } as const;
 
 /** The stage of the crop art (0 seed … 4 ripe) at a growth fraction. */
 export function cropStage(progress: number) {
@@ -1009,8 +1248,8 @@ export interface FarmState {
   }[];
   /** Crows on plots: plot index → when it landed (migration 045). */
   crows?: Record<string, string>;
-  /** Decorations in the 8 spots, Charm and free decorations (migration 048). */
-  decor?: { slot: number; item: string }[];
+  /** Decorations on the farm, Charm and stored decorations (migration 048; anywhere since 20261116120000). */
+  decor?: FarmDecorPiece[];
   charm?: number;
   decorCredits?: Record<string, number>;
   /** The Cow Pasture, when its milk is ready and Storm Milk's price today (migration 049). */
@@ -1116,8 +1355,10 @@ export type FarmAction =
   | { a: "shoo"; plot: number }
   | { a: "farmer"; id: string }
   | { a: "perk" }
-  | { a: "decor"; slot: number; item: string }
-  | { a: "decor-remove"; slot: number }
+  /** Decorations (20261116120000): place one (stored copies first), move one, or put one away. */
+  | { a: "decor-place"; item: string; x: number; y: number; flip?: boolean }
+  | { a: "decor-move"; piece: number; x: number; y: number; flip?: boolean }
+  | { a: "decor-store"; piece: number }
   | { a: "fertilize"; plot: number; kind: FertilizerKind }
   | { a: "buy-seeds"; crop: string; qty: number }
   | { a: "sell"; crop: string; mutation: string; qty: number }

@@ -1180,8 +1180,9 @@ it("passes farm actions and leaf trades to the database only when the request is
           { a: "shoo", plot: 4 },
           { a: "farmer", id: "lumoth" },
           { a: "perk" },
-          { a: "decor", slot: 2, item: "lamp" },
-          { a: "decor-remove", slot: 2 },
+          { a: "decor-place", item: "lamp", x: 100, y: 900, flip: true },
+          { a: "decor-move", piece: 7, x: 110, y: 900 },
+          { a: "decor-store", piece: 7 },
           { a: "buy-pasture" },
           { a: "milk" },
           { a: "sell-milk", qty: 2 },
@@ -1190,6 +1191,7 @@ it("passes farm actions and leaf trades to the database only when the request is
     ).status,
   ).toBe(200);
   expect((await send("/api/leaves/trade", { lots: 2 })).status).toBe(200);
+  expect((await send("/api/leaves/trade", { lots: 12 })).status).toBe(200);
   expect(calls).toEqual([
     ["arena_farm", {}],
     [
@@ -1207,8 +1209,9 @@ it("passes farm actions and leaf trades to the database only when the request is
           { a: "shoo", plot: 4 },
           { a: "farmer", id: "lumoth" },
           { a: "perk" },
-          { a: "decor", slot: 2, item: "lamp" },
-          { a: "decor-remove", slot: 2 },
+          { a: "decor-place", item: "lamp", x: 100, y: 900, flip: true },
+          { a: "decor-move", piece: 7, x: 110, y: 900 },
+          { a: "decor-store", piece: 7 },
           { a: "buy-pasture" },
           { a: "milk" },
           { a: "sell-milk", qty: 2 },
@@ -1216,6 +1219,7 @@ it("passes farm actions and leaf trades to the database only when the request is
       },
     ],
     ["arena_trade_leaves", { p_lots: 2 }],
+    ["arena_trade_leaves", { p_lots: 12 }],
   ]);
   // The client can't pick a time, a price or a balance, or send junk.
   for (const body of [
@@ -1229,8 +1233,24 @@ it("passes farm actions and leaf trades to the database only when the request is
     { request, actions: [{ a: "hire-dog", dog: "wolf", days: 1 }] },
     { request, actions: [{ a: "hire-dog", dog: "gold", days: 2 }] },
     { request, actions: [{ a: "farmer", id: "notachampion" }] },
-    { request, actions: [{ a: "decor", slot: 8, item: "lamp" }] },
-    { request, actions: [{ a: "decor", slot: 1, item: "Lamp;drop" }] },
+    { request, actions: [{ a: "decor", slot: 1, item: "lamp" }] },
+    {
+      request,
+      actions: [{ a: "decor-place", item: "Lamp;drop", x: 100, y: 900 }],
+    },
+    {
+      request,
+      actions: [{ a: "decor-place", item: "lamp", x: 100.5, y: 900 }],
+    },
+    {
+      request,
+      actions: [{ a: "decor-place", item: "lamp", x: 99999, y: 900 }],
+    },
+    { request, actions: [{ a: "decor-move", piece: -1, x: 100, y: 900 }] },
+    {
+      request,
+      actions: [{ a: "decor-move", piece: 7, x: 100, y: 900, flip: "yes" }],
+    },
     { request, actions: [{ a: "catch", plot: 1, area: 9 }] },
     { request, actions: [{ a: "plant", plot: 1, crop: "Wheat;drop" }] },
     { request, actions: [{ a: "harvest", plot: 1 }], leaves: 1e9 },
@@ -1242,7 +1262,7 @@ it("passes farm actions and leaf trades to the database only when the request is
     expect((await send("/api/farm/act", body)).status).toBe(400);
   for (const body of [
     { lots: 0 },
-    { lots: 9 },
+    { lots: 13 },
     { lots: 1.5 },
     {},
     { lots: 1, coins: 5 },
@@ -1323,7 +1343,7 @@ it("passes farm actions and leaf trades to the database only when the request is
       )
     ).status,
   ).toBe(401);
-  expect(calls).toHaveLength(3);
+  expect(calls).toHaveLength(4);
   // Every champion in the roster can be your farmer, the newest ten too.
   for (const id of [
     "pangrove",

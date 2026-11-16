@@ -3034,3 +3034,57 @@ body.hub-farm #account-leaves {
     background: rgba(14, 26, 49, 0.95);
   }
 }
+
+/* Decorating anywhere (20261116120000): the bar under the farm while a
+   decoration is placed or moved. */
+.farm-layer .fm-deco-bar {
+  position: absolute;
+  left: 50%;
+  bottom: var(--hud-y-b);
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 18px;
+  max-width: calc(100% - 24px);
+  z-index: 6;
+}
+.farm-layer .fm-deco-bar[hidden] {
+  display: none;
+}
+.farm-layer .fm-deco-bar .db-msg {
+  display: grid;
+  min-width: 0;
+  margin-right: 4px;
+  color: #fff;
+  line-height: 1.2;
+}
+.farm-layer .fm-deco-bar .db-msg b {
+  font-size: 0.95em;
+  white-space: nowrap;
+}
+.farm-layer .fm-deco-bar .db-msg small {
+  color: #c9d3f0;
+  font-size: 0.78em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.farm-layer .fm-deco-bar .db-msg small.bad {
+  color: #ff9a8a;
+}
+.farm-layer .fm-deco-bar .ico.leaf {
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.15em;
+}
+.farm-layer.phone .fm-deco-bar {
+  bottom: 6px;
+  gap: 5px;
+  padding: 6px 8px;
+  border-radius: 14px;
+}
+.farm-layer.phone .fm-deco-bar .btn-s {
+  padding: 0.5em 0.65em;
+}

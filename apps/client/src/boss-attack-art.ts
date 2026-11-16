@@ -214,6 +214,37 @@ const art: Partial<Record<RaidAttack, { el: Element; draw: () => string }>> = {
       raider(66, 104, 0.9) +
       arrow(56, 108, 40, 116),
   },
+  // Ascendant Cragmuff · Earth: a locked lane that splits into magma.
+  avalanche: {
+    el: "earth",
+    draw: () =>
+      danger(lane(26, 34, 104, 100, 26)) +
+      `<path d="M30 38 L44 50 L40 56 L58 66 L54 72 L74 82 L70 88 L98 96" fill="none" stroke="#2a130a" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>` +
+      glow(
+        "M30 38 L44 50 L40 56 L58 66 L54 72 L74 82 L70 88 L98 96",
+        F.accent[1],
+        2.4,
+        F.accent[0],
+      ) +
+      floorGlow("fire", 60, 70, 34, 12, 0.7) +
+      rock(30, 36, 17, 2, "#3a3046", "#1a1422") +
+      `<path d="M22 26 l-6 -10 M30 22 l-2 -11 M38 24 l3 -10" stroke="${F.accent[2]}" stroke-width="3" stroke-linecap="round"/>` +
+      raider(96, 64, 0.85) +
+      arrow(92, 70, 112, 46),
+  },
+  "twin-slam": {
+    el: "earth",
+    draw: () =>
+      danger(ell(40, 90, 30, 12), 0.28) +
+      danger(ell(94, 74, 24, 10), 0.22) +
+      dots(40, 104, 1, WHITE) +
+      dots(94, 86, 2, WHITE) +
+      halo("earth", 40, 70, 22) +
+      rock(40, 68, 15, 4, "#3a3046", "#1a1422") +
+      glow("M30 46 V38 M40 42 V32 M50 46 V38", F.accent[1], 2, F.accent[0]) +
+      jumper(94, 76, 18, 0.85) +
+      arrow(94, 44, 94, 32),
+  },
   eruption: {
     el: "earth",
     draw: () =>

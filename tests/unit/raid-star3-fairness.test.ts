@@ -1,16 +1,23 @@
 /**
  * Telegraph fairness for the ★★★ bosses' attacks (Prismatail, Emberwing,
- * Storm Twins). Every warning they draw must:
+ * Storm Twins) and for the Ascendant forms past them (Ascendant Cragmuff,
+ * the Spire's tenth floor). Every warning they draw must:
  * - stay on screen at least 0.9 s of server time;
  * - stop moving at least 0.6 s before it lands;
  * - leave every raider a spot they can reach at the slowest champion's
  *   pace (222 px/s) after a 0.45 s reaction.
  * A scripted dodger proves the last one: it waits out the reaction time,
  * picks the nearest spot outside every live warning within reach, moves
- * there, and must take no damage from the boss at all.
+ * there, and must take no damage from the boss at all. Rings (slams) are
+ * answered the way a player answers them: by jumping as they land.
  */
 import { describe, it, expect } from "vitest";
-import { blankInput, type CharacterId, type Fighter } from "@arena/shared";
+import {
+  RULES,
+  blankInput,
+  type CharacterId,
+  type Fighter,
+} from "@arena/shared";
 import { createRaidArena } from "../../apps/server/src/raid-bosses";
 import type { RaidArena } from "../../apps/server/src/raid";
 import { fanEscape } from "../../apps/server/src/raid-prismatail";
@@ -22,6 +29,7 @@ import {
   stormSegmentDistance,
   type RaidAttack,
   type RaidBossId,
+  type RaidVariant,
   type RaidWarning,
 } from "../../packages/shared/src/raid";
 
@@ -38,6 +46,20 @@ const segment = (p: Point, w: RaidWarning) =>
 function inside(w: RaidWarning, p: Point) {
   const dist = Math.hypot(p.x - w.x, p.y - w.y);
   switch (w.kind) {
+    case "charge":
+    case "avalanche":
+      // Grumblecrag hits within 100 px of its centre as it runs the lane.
+      return segment(p, w) <= 100 + SLACK;
+    case "fissure":
+      return segment(p, w) <= (w.width ?? 0) / 2 + RADIUS + SLACK;
+    case "volley": {
+      const aim = Math.atan2(w.ty - w.y, w.tx - w.x);
+      return (
+        dist <= w.radius + RADIUS + SLACK &&
+        angleDifference(Math.atan2(p.y - w.y, p.x - w.x), aim) <=
+          (w.spread ?? 0.45) + Math.atan2(RADIUS + SLACK, Math.max(dist, 1))
+      );
+    }
     case "prism-lance":
     case "refraction":
     case "dive-bomb":
@@ -94,7 +116,12 @@ interface Run {
 function dodge(
   a: RaidArena,
   start: () => void,
-  opts: { seconds?: number; hazards?: () => ((p: Point) => boolean)[] } = {},
+  opts: {
+    seconds?: number;
+    hazards?: () => ((p: Point) => boolean)[];
+    /** Jump rings as they land instead of walking out of them. */
+    jump?: boolean;
+  } = {},
 ): Run {
   const bosses = new Set(a.players.filter((p) => p.raidBoss).map((p) => p.id));
   const hits: string[] = [],
@@ -106,7 +133,15 @@ function dodge(
     owner: string,
     ability?: any,
   ) => {
-    if (!target.raidBoss && bosses.has(owner) && amount > 0 && target.hp > 0)
+    // A ground hit (a slam ring) misses a raider in the air.
+    const jumped = !!ability?.ground && target.jumpUntil > a.time;
+    if (
+      !target.raidBoss &&
+      bosses.has(owner) &&
+      amount > 0 &&
+      target.hp > 0 &&
+      !jumped
+    )
       hits.push(
         `${target.id} hit by ${(a as any).hitBy ?? "?"} at ${a.time.toFixed(2)}`,
       );
@@ -134,9 +169,26 @@ function dodge(
       w.prismIndex,
       w.beamPost,
     ]);
+  const ring = (w: RaidWarning) =>
+    !!opts.jump && (w.kind === "slam" || w.kind === "twin-slam");
   start();
   for (let t = 0; t < (opts.seconds ?? 4); t += 1 / 30) {
     const r = a.raid;
+    // A ring about to land: jump it (the jump cooldown applies).
+    for (const p of a.heroes().filter((p) => p.hp > 0))
+      if (
+        a.time >= p.jumpAt &&
+        a.time >= p.jumpUntil &&
+        r.warnings.some(
+          (w) =>
+            ring(w) &&
+            w.at - a.time <= 0.25 &&
+            Math.hypot(p.x - w.x, p.y - w.y) <= w.radius + RADIUS,
+        )
+      ) {
+        p.jumpUntil = a.time + RULES.jumpDuration;
+        p.jumpAt = a.time + RULES.jumpCooldown;
+      }
     for (const w of r.warnings) {
       const s = sig(w),
         known = seen.get(w.id);
@@ -158,11 +210,12 @@ function dodge(
     );
     if (ready.length) {
       ready.forEach((w) => decided.add(w.id));
-      const soonest = Math.min(...r.warnings.map((w) => w.at)),
+      const walk = r.warnings.filter((w) => !ring(w));
+      const soonest = Math.min(...walk.map((w) => w.at)),
         reach = PACE * (soonest - a.time),
         extra = opts.hazards?.() ?? [];
       const danger = (p: Point) =>
-        r.warnings.some((w) => inside(w, p)) || extra.some((h) => h(p));
+        walk.some((w) => inside(w, p)) || extra.some((h) => h(p));
       for (const p of a.heroes().filter((p) => p.hp > 0)) {
         const spot = safeSpot(p, reach, danger);
         if (!spot) {
@@ -197,8 +250,9 @@ function arena(
   phase: number,
   seed: number,
   chars: CharacterId[] = ["terradon"],
+  variant?: RaidVariant,
 ) {
-  const a = createRaidArena("FAIR", boss);
+  const a = createRaidArena("FAIR", boss, { variant });
   for (let i = 0; i < size; i++)
     a.add(`p${i}`, `Raider ${i}`, chars[i % chars.length]);
   a.configure(3, false);
@@ -380,4 +434,116 @@ describe("Storm Twins telegraphs are fair", () => {
         expect(S.link.hold).toBeGreaterThanOrEqual(0.6);
       }
     });
+});
+
+describe("Ascendant Cragmuff telegraphs are fair", () => {
+  const ascendant = (size: number, phase: number, seed: number) => {
+    const a = arena(
+      "grumblecrag",
+      size,
+      phase,
+      seed,
+      ["terradon"],
+      "ascendant",
+    );
+    // Every raider has a habit the boss has learnt (the reads it aims at).
+    a.heroes().forEach((p, i) => {
+      const angle = seed + i * 2.1;
+      for (let k = 0; k < 4; k++)
+        (a as any).noteDodge(p.id, Math.cos(angle), Math.sin(angle));
+    });
+    return a;
+  };
+  for (const size of [1, 2, 3, 4]) {
+    it(`Avalanche Charge and its fissure, ${size} raider(s)`, () => {
+      for (const seed of SEEDS) {
+        const a = ascendant(size, 2, seed);
+        // Pillars down: the lane runs its full length, and the fissure with it.
+        if (seed % 2) a.raid.pillars.forEach((p) => (p.broken = true));
+        const target = a.heroes()[seed % size];
+        const run = dodge(
+          a,
+          () => (a as any).startAttack("avalanche", target),
+          { seconds: 5 },
+        );
+        expect(run.shown.map((w) => w.kind)).toContain("avalanche");
+        check(run, `seed ${seed}`);
+      }
+    });
+    it(`Twin Slam (jumped), ${size} raider(s)`, () => {
+      for (const seed of SEEDS) {
+        const a = ascendant(size, 2, seed);
+        const target = a.heroes()[seed % size];
+        const run = dodge(
+          a,
+          () => (a as any).startAttack("twin-slam", target),
+          { jump: true },
+        );
+        const rings = a.raid.warnings.length;
+        expect(rings).toBe(0);
+        expect(run.shown.filter((w) => w.kind === "twin-slam")).toHaveLength(2);
+        check(run, `seed ${seed}`);
+      }
+    });
+    it(`habit-aimed debris and eruptions, ${size} raider(s)`, () => {
+      for (const seed of SEEDS) {
+        const a = ascendant(size, 2, seed);
+        const run = dodge(a, () =>
+          (a as any).startAttack("debris", a.heroes()[0]),
+        );
+        check(run, `debris seed ${seed}`);
+        const b = ascendant(size, 2, seed);
+        const target = b.heroes()[seed % size];
+        Object.assign(target, { vx: 0, vy: 0 });
+        const one = dodge(b, () => (b as any).warnEruption(target, 1, false));
+        expect(one.shown).toHaveLength(1);
+        check(one, `eruption seed ${seed}`);
+      }
+    });
+    it(`a volley, ${size} raider(s)`, () => {
+      for (const seed of SEEDS) {
+        const a = ascendant(size, 1, seed);
+        const target = a.heroes()[seed % size];
+        const run = dodge(a, () => (a as any).startAttack("volley", target));
+        check(run, `seed ${seed}`);
+      }
+    });
+    it(`a feint: a slam that turns into a volley or an eruption, ${size} raider(s)`, () => {
+      let feints = 0;
+      for (const seed of SEEDS) {
+        // Chapter 1: volleys don't chain into chasing eruptions yet (a
+        // chase is answered by running, which this dodger doesn't do).
+        const a = ascendant(size, 1, seed) as any;
+        a.feintRoll = () => true;
+        a.seenAttacks.set("slam", 2);
+        const target = a.heroes()[seed % size];
+        // Half the time the raiders stand close, in the ring.
+        if (seed % 2)
+          a.heroes().forEach((p: Fighter, i: number) =>
+            Object.assign(p, {
+              x: a.boss().x - 120 - i * 25,
+              y: a.boss().y + 40 * (i - 1),
+            }),
+          );
+        const run = dodge(
+          a,
+          () => {
+            a.currentCast = ++a.castSerial;
+            a.startAttack("slam", target);
+            a.settleWarnings();
+            a.currentCast = 0;
+          },
+          { seconds: 4.5, jump: true },
+        );
+        feints += a.reads.feints;
+        // The slam never lands once it has turned.
+        if (a.reads.feints)
+          expect(run.shown.map((w) => w.kind)).toEqual(
+            expect.arrayContaining(["slam"]),
+          );
+        check(run, `seed ${seed}`);
+      }
+      expect(feints).toBe(SEEDS.length);
+    });
+  }
 });

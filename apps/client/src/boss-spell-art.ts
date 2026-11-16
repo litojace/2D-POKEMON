@@ -191,6 +191,48 @@ export function paintBossAura(
   });
 }
 
+/**
+ * Ascendant Cragmuff's aura, always on while it fights: heat glowing on the
+ * floor under it, a slow ring of magma light, and embers rising off its
+ * crystals (fewer on Low). It shows which boss this is, so it is drawn as
+ * essential (Low's glow budget never shrinks it), and kept small: one wide
+ * floor glow and a few ember sparks.
+ */
+export function paintAscendantAura(
+  g: G,
+  x: number,
+  y: number,
+  core: { x: number; y: number },
+  time: number,
+  phase: number,
+  reduced: boolean,
+) {
+  const low = lowGraphics();
+  space(g, (fx, glow) => {
+    const t = reduced ? 0 : time,
+      heat = 0.55 + 0.15 * phase,
+      pulse = 0.85 + 0.15 * Math.sin(t * 2.6);
+    const fy = y + 51;
+    glow(x, fy, 96, 0xff5a1e, 0.16 * heat * pulse, true);
+    const ring = 92 + ((t * 26) % 40);
+    fx.floor
+      .lineStyle(2.2, 0xff7a2e, 0.34 * heat * (1 - (ring - 92) / 40))
+      .strokeEllipse(x, fy, ring * 2, ring * 0.9);
+    if (reduced) return;
+    const count = low ? 3 : 6 + phase;
+    for (let i = 0; i < count; i++) {
+      const k = (t * 0.55 + i / count) % 1,
+        side = hash(i * 3.1) - 0.5;
+      const px = core.x + side * 120 + Math.sin(k * 6 + i) * 8,
+        py = core.y + 30 - k * 130;
+      const c = i % 3 ? 0xff7a2e : 0xffc04a,
+        a = Math.sin(k * Math.PI) * 0.8;
+      fx.g.fillStyle(c, a).fillCircle(px, py, 2.2);
+      if (i % 2 === 0) glow(px, py, 7, c, a * 0.35);
+    }
+  });
+}
+
 function castEffect(
   fx: Fx,
   glow: (

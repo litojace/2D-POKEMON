@@ -16,6 +16,8 @@ import {
 import { formSubmitButton } from "./dialog";
 import type { RaidScreen } from "./screens/raid-hall";
 import type { RaidSeat, RaidTab } from "./screens/raid-hall-view";
+import type { SpireTab } from "./screens/spire-view";
+import type { SpireProgress } from "../../../packages/shared/src/spire";
 import { iconLabel } from "./menu-icons";
 import { coinChip, compactCoins, leafChip, coins } from "./shop-ui";
 import { openMissions, type MissionsScreen } from "./screens/missions";
@@ -157,6 +159,8 @@ type Hooks = {
     boss: RaidBossId,
     options: { solo?: boolean; returnTab?: RaidTab },
   ) => void;
+  /** Start a Spire climb (from your party's checkpoint, checked by the server). */
+  startSpire?: (options: { solo?: boolean; returnTab?: SpireTab }) => void;
   /** Your Lobby party for the raid seats, and whether you can start. */
   raidParty?: () => { party: RaidSeat[]; leader: boolean; inRoom: boolean };
   /** Invite a friend to your Lobby party (the server answers). */
@@ -844,12 +848,13 @@ export class AccountUI {
   private raidProblem = "";
   private raidLoading = false;
   private raidFriends: Friend[] | null = null;
+  private spireProgress: SpireProgress | null = null;
   /**
    * Raids: the boss list and a boss's page, a panel inside the Lobby. It
    * opens at once with what is known, then shows the server's fresh copy of
    * your raid records and your friends.
    */
-  async showRaids(boss?: RaidBossId, tab?: RaidTab) {
+  async showRaids(boss?: RaidBossId, tab?: RaidTab, spire?: SpireTab) {
     if (!this.ensurePlayer()) return;
     this.toLobbyScreen();
     const accountId = this.account?.id;
@@ -858,7 +863,8 @@ export class AccountUI {
     const { openRaids } = await import("./screens/raid-hall");
     if (this.account?.id !== accountId) return;
     if (this.raidScreen?.isOpen) {
-      this.raidScreen.show(boss, tab);
+      if (spire) this.raidScreen.showSpire(spire);
+      else this.raidScreen.show(boss, tab);
     } else {
       this.raidLoading = !this.raidProgress;
       this.raidProblem = "";
@@ -873,6 +879,7 @@ export class AccountUI {
             };
             return {
               progress: this.raidProgress,
+              spire: this.spireProgress,
               loading: this.raidLoading,
               problem: this.raidProblem,
               me: {
@@ -886,6 +893,7 @@ export class AccountUI {
             };
           },
           start: (id, options) => this.hooks.startRaid?.(id, options),
+          startSpire: (options) => this.hooks.startSpire?.(options),
           invite: (id) =>
             this.hooks.inviteToParty?.(id) ??
             Promise.resolve({ ok: false, error: "Parties are unavailable." }),
@@ -893,14 +901,18 @@ export class AccountUI {
           wardrobe: () => void this.showWardrobe(),
           onClose: () => (this.raidScreen = undefined),
         },
-        { boss, tab },
+        { boss, tab, spire },
       );
     }
     const screen = this.raidScreen;
-    const [raids, friends] = await Promise.allSettled([
+    const [raids, friends, climb] = await Promise.allSettled([
       this.api("/api/raids") as Promise<RaidProgress>,
       this.nearbyFriends(),
+      this.api("/api/spire") as Promise<SpireProgress>,
     ]);
+    // The Spire's records (before its migration runs: none, still playable).
+    if (climb.status === "fulfilled" && climb.value)
+      this.spireProgress = climb.value;
     if (this.account?.id !== accountId || !screen.isOpen) return;
     if (raids.status === "fulfilled") {
       this.raidProgress = raids.value;

@@ -11,6 +11,11 @@ import {
   type RaidProgress,
   type RaidReceipt,
 } from "../../../packages/shared/src/raid.js";
+import type {
+  SpireFloorReceipt,
+  SpireFloorResult,
+  SpireMember,
+} from "../../../packages/shared/src/spire.js";
 import { z } from "zod";
 import {
   characterSchema,
@@ -22,7 +27,9 @@ import {
   type ActivityReceipt,
 } from "../../../packages/shared/src/shop.js";
 import { JOURNEY_ITEM_BY_ID } from "../../../packages/shared/src/journey.js";
+import { LEAF_TRADE } from "../../../packages/shared/src/farm.js";
 import {
+  BISTRO_TRADE,
   MAX_SIZE as BISTRO_MAX_SIZE,
   MAX_STOVES as BISTRO_MAX_STOVES,
 } from "../../../packages/shared/src/bistro.js";
@@ -64,11 +71,15 @@ import {
   type OnlineList,
 } from "../../../packages/shared/src/accounts.js";
 /** The newest database migration the server expects. */
-export const LATEST_MIGRATION = "20261115230000_chat_friend_messages.sql";
+export const LATEST_MIGRATION = "20261116150000_spire.sql";
 /** The migration that last redefined the raid appearance functions. */
 export const RAID_FUNCTIONS_MIGRATION = "018_collection_equipping.sql";
 export interface AccountProvider {
   recordRaid?(receipt: RaidReceipt): Promise<void>;
+  /** The Spire: save one cleared floor (first-clear rewards once per player). */
+  recordSpireFloor?(receipt: SpireFloorReceipt): Promise<SpireFloorResult>;
+  /** The Spire: each climber's checkpoint and raid clears, before a climb. */
+  spireStart?(accountIds: string[]): Promise<SpireMember[]>;
   /** Coins, missions and Mythic progress after a real match or raid. */
   recordActivity?(receipt: ActivityReceipt): Promise<void>;
   /** Something the game server saw in the Plaza (quests, orbs, laps); returns the player's progress. */
@@ -305,6 +316,32 @@ export function createAccountProvider(): AccountProvider {
       });
       if (result.error)
         throw new AccountError(503, "Raid rewards could not be stored.");
+    },
+    async recordSpireFloor(receipt) {
+      const r = await admin().rpc("arena_record_spire_floor", { p: receipt });
+      if (r.error)
+        throw new AccountError(
+          503,
+          "Spire progress could not be stored.",
+          r.error.message,
+        );
+      const data = r.data as Partial<SpireFloorResult> | null;
+      return { newClaims: data?.newClaims ?? [] };
+    },
+    async spireStart(accountIds) {
+      const r = await admin().rpc("arena_spire_start", {
+        p_players: accountIds,
+      });
+      if (r.error)
+        throw new AccountError(
+          503,
+          "Spire progress is unavailable.",
+          r.error.message,
+        );
+      return ((r.data as SpireMember[] | null) ?? []).map((m) => ({
+        checkpoint: Number(m.checkpoint) || 1,
+        clears: m.clears ?? {},
+      }));
     },
     async recordPlaza(event) {
       const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -722,12 +759,18 @@ export function installAccountRoutes(
       res.json({ ok: true, economy });
     }),
   );
-  // Gold Leaves: 100 leaves → 5 coins, up to 40 coins a day (migration 036).
+  // Gold Leaves: 100 leaves → 5 coins, up to 60 coins a Pacific day.
   app.post(
     "/api/leaves/trade",
     route(false, async (req, res, token, account) => {
       const data = z
-        .object({ lots: z.number().int().min(1).max(8) })
+        .object({
+          lots: z
+            .number()
+            .int()
+            .min(1)
+            .max(LEAF_TRADE.dailyCoins / LEAF_TRADE.coins),
+        })
         .strict()
         .parse(req.body);
       const economy = await provider.rpc(token, "arena_trade_leaves", {
@@ -772,15 +815,22 @@ export function installAccountRoutes(
         "shoo",
         "farmer",
         "perk",
-        "decor",
-        "decor-remove",
+        "decor-place",
+        "decor-move",
+        "decor-store",
         "buy-pasture",
         "milk",
         "sell-milk",
         "harvest-giant",
       ]),
       plot: z.number().int().min(0).max(49).optional(),
-      slot: z.number().int().min(0).max(7).optional(),
+      // A decoration: where it stands on the farm (world px, a 10 px grid
+      // the database checks), mirrored or not, and which one to move or
+      // put away.
+      x: z.number().int().min(0).max(1760).optional(),
+      y: z.number().int().min(0).max(1080).optional(),
+      flip: z.boolean().optional(),
+      piece: z.number().int().min(1).max(2_000_000_000).optional(),
       item: z
         .string()
         .max(32)
@@ -1026,7 +1076,12 @@ export function installAccountRoutes(
       // Hiring a friend (migration 073): their account id.
       friend: z.string().uuid().optional(),
       char: z.enum(FIGHTER_IDS).optional(),
-      lots: z.number().int().min(1).max(15).optional(),
+      lots: z
+        .number()
+        .int()
+        .min(1)
+        .max(BISTRO_TRADE.dailyLeaves / BISTRO_TRADE.leaves)
+        .optional(),
       // Market buys and Farm crops (migration 074).
       qty: z.number().int().min(1).max(30).optional(),
       // Catering orders (migration 100).
@@ -1336,6 +1391,13 @@ export function installAccountRoutes(
           p_slot: data.slot,
         }),
       });
+    }),
+  );
+  app.get(
+    "/api/spire",
+    route(false, async (_req, res, token) => {
+      res.setHeader("Cache-Control", "no-store");
+      res.json(await provider.rpc(token, "arena_spire_progress", {}));
     }),
   );
   app.get(

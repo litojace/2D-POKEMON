@@ -5,12 +5,14 @@ import {
   type RaidBossId,
   type RaidAttack,
 } from "../../../packages/shared/src/index";
+import type { RaidVariant } from "../../../packages/shared/src/raid";
 export function createBossCombatDemo(
   id: RaidBossId,
   publish = true,
   raidersAttack = true,
+  variant?: RaidVariant,
 ) {
-  const arena = createRaidArena("RAID42", id);
+  const arena = createRaidArena("RAID42", id, { variant });
   arena.add("me", "Tester", "voltkit");
   arena.add("p2", "Kai", "auralynx");
   arena.configure(1, false);

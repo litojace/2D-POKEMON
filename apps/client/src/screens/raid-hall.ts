@@ -15,6 +15,8 @@ import {
   type RaidView,
 } from "./raid-hall-view";
 import "./raid-hall.css";
+import "./spire.css";
+import { spireStartState, type SpireTab } from "./spire-view";
 
 /**
  * Raids' behaviour (UI remodel step 5). Markup comes from raid-hall-view.ts.
@@ -26,6 +28,8 @@ import "./raid-hall.css";
 export interface RaidHooks {
   data(): RaidData;
   start(boss: RaidBossId, o: { solo?: boolean; returnTab: RaidTab }): void;
+  /** Start a Spire climb (a raid room the party follows you into). */
+  startSpire?(o: { solo?: boolean; returnTab: SpireTab }): void;
   /** Invite a friend to your Lobby party; resolves with the server's answer. */
   invite(id: string): Promise<{ ok: boolean; error?: string }>;
   /** Friends (to invite from somewhere else), the Wardrobe (to wear rewards). */
@@ -37,6 +41,8 @@ export interface RaidScreen {
   refresh(): void;
   /** Show a boss's page (or the hall) on a tab. */
   show(boss?: RaidBossId, tab?: RaidTab): void;
+  /** Show the Spire's page on a tab. */
+  showSpire(tab?: SpireTab): void;
   close(): void;
   readonly isOpen: boolean;
   readonly view: RaidView;
@@ -44,6 +50,8 @@ export interface RaidScreen {
 
 const FOCUS_KEYS = [
   "data-raid-card",
+  "data-raid-spire",
+  "data-ui-spire-tab",
   "data-ui-raid-filter",
   "data-ui-raid-tab",
   "data-ui-raid-play",
@@ -56,11 +64,12 @@ const FOCUS_KEYS = [
 
 export function openRaids(
   hooks: RaidHooks,
-  o: { boss?: RaidBossId; tab?: RaidTab } = {},
+  o: { boss?: RaidBossId; tab?: RaidTab; spire?: SpireTab } = {},
 ): RaidScreen {
   const view = raidView(o.boss ?? "grumblecrag", {
-    mode: o.boss ? "boss" : "hall",
+    mode: o.spire ? "spire" : o.boss ? "boss" : "hall",
     tab: o.tab ?? "party",
+    spireTab: o.spire,
   });
   let template: HTMLElement;
   let panel: HubPanel;
@@ -132,18 +141,37 @@ export function openRaids(
       preventScroll: true,
     });
   };
+  const openSpire = (tab: SpireTab = "climb") => {
+    if (view.mode === "hall")
+      hallScroll = q<HTMLElement>(".rh-grid")?.scrollLeft ?? 0;
+    view.mode = "spire";
+    view.spireTab = tab;
+    view.status = "";
+    render(true);
+    q<HTMLElement>('[role="tab"][aria-selected="true"]')?.focus({
+      preventScroll: true,
+    });
+  };
   const toHall = () => {
-    const from = view.boss;
+    const from = view.mode === "spire" ? "spire" : view.boss;
     view.mode = "hall";
     view.status = "";
     render(true, -1);
     q<HTMLElement>(".rh-grid")?.scrollTo({ left: hallScroll });
     // Back on the card you came from, scrolled into view.
-    const card = q<HTMLElement>(`[data-raid-card="${from}"]`);
+    const card = q<HTMLElement>(
+      from === "spire" ? "[data-raid-spire]" : `[data-raid-card="${from}"]`,
+    );
     card?.scrollIntoView({ block: "nearest" });
     card?.focus({ preventScroll: true });
   };
   const start = (solo: boolean) => {
+    if (view.mode === "spire") {
+      if (!spireStartState(view, hooks.data()).ok || !hooks.startSpire) return;
+      panel.close();
+      hooks.startSpire({ solo, returnTab: view.spireTab ?? "climb" });
+      return;
+    }
     const s = startState(view, hooks.data());
     if (!s.ok) return;
     panel.close();
@@ -169,7 +197,35 @@ export function openRaids(
     if (!t || !root().contains(t) || t.disabled) return;
     const d = t.dataset;
     if (d.raidCard) openBoss(d.raidCard as RaidBossId);
-    else if (d.uiRaidFilter) {
+    else if (d.raidSpire !== undefined) openSpire();
+    else if (d.uiSpireTab) {
+      const tabs: SpireTab[] = ["climb", "floors", "blessings"];
+      const direction =
+        tabs.indexOf(d.uiSpireTab as SpireTab) <
+        tabs.indexOf(view.spireTab ?? "climb")
+          ? -1
+          : 1;
+      view.spireTab = d.uiSpireTab as SpireTab;
+      // Only the tab's contents change: patch them in and glide them, not
+      // the whole column. (Gliding the column with its scroller inside left
+      // a stale band painted over the Floors tab's first rows in Chromium.)
+      render();
+      const body = q<HTMLElement>("[data-raid-region=body]");
+      body?.scrollTo({ top: 0 });
+      for (const animation of navigation) animation.cancel();
+      navigation = [];
+      for (const child of Array.from(body?.children ?? [])) {
+        const animation = enter(
+          child,
+          { opacity: 0, transform: `translateX(${direction * 24}px)` },
+          { duration: 260 },
+        );
+        if (animation) navigation.push(animation);
+      }
+      q<HTMLElement>(`[data-ui-spire-tab="${view.spireTab}"]`)?.focus({
+        preventScroll: true,
+      });
+    } else if (d.uiRaidFilter) {
       view.filter = d.uiRaidFilter as RaidFilter;
       render();
     } else if (d.raidFilter) {
@@ -295,6 +351,7 @@ export function openRaids(
       if (boss) openBoss(boss, tab ?? "party");
       else toHall();
     },
+    showSpire: (tab) => openSpire(tab ?? "climb"),
     close: () => panel.close(),
     get isOpen() {
       return !closed;

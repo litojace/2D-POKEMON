@@ -4,11 +4,13 @@
  *
  *   npx tsx scripts/balance/raid-sim.ts [runs=12] [bosses=all] [sizes=1,4] [reactions=0.35,0.15]
  *
- *   bosses     comma list of boss ids, or "all"
+ *   bosses     comma list of boss ids, or "all"; "grumblecrag:ascendant"
+ *              plays a boss's Ascendant form
  *   sizes      party sizes (1-4)
  *   reactions  reaction delays in seconds: the bots see each warning as it
  *              was this long ago (0.35 s typical, 0.15 s near-perfect)
  *
+ * RAID_SIM_POWER=1.2 makes the raiders hit that much harder (blessings).
  * RAID_SIM_JSON=<file> also writes every run as JSON. RAID_SIM_SEED changes
  * the base seed (runs are repeatable for the same seed and code).
  *
@@ -33,6 +35,7 @@ import {
 import {
   RAID_BOSSES,
   type RaidBossId,
+  type RaidVariant,
   type RaidWarning,
 } from "../../packages/shared/src/raid.ts";
 import { createRaidArena } from "../../apps/server/src/raid-bosses.ts";
@@ -44,9 +47,9 @@ const [
   sizeArg = "1,4",
   reactionArg = "0.35,0.15",
 ] = process.argv.slice(2);
-const BOSSES = (
-  bossArg === "all" ? Object.keys(RAID_BOSSES) : bossArg.split(",")
-) as RaidBossId[];
+const BOSSES =
+  bossArg === "all" ? Object.keys(RAID_BOSSES) : bossArg.split(",");
+const POWER = +(process.env.RAID_SIM_POWER ?? 1);
 const SIZES = sizeArg.split(",").map(Number);
 const REACTIONS = reactionArg.split(",").map(Number);
 const RUNS = +runsArg;
@@ -84,7 +87,7 @@ function seedCrypto(seed: number) {
 }
 
 type Run = {
-  boss: RaidBossId;
+  boss: string;
   size: number;
   reaction: number;
   seed: number;
@@ -119,7 +122,7 @@ function threatened(a: RaidArena) {
 }
 
 function play(
-  boss: RaidBossId,
+  bossKey: string,
   size: number,
   reaction: number,
   seed: number,
@@ -131,7 +134,13 @@ function play(
     const c = FIGHTER_IDS[Math.floor(rand() * FIGHTER_IDS.length)];
     if (!team.includes(c)) team.push(c);
   }
-  const a = createRaidArena(`SIM${seed}`, boss);
+  const [boss, variant] = bossKey.split(":") as [RaidBossId, RaidVariant?];
+  const a = createRaidArena(`SIM${seed}`, boss, { variant });
+  if (POWER !== 1) {
+    const hit = a.damage.bind(a);
+    a.damage = (target, amount, owner, ability) =>
+      hit(target, target.raidBoss ? amount * POWER : amount, owner, ability);
+  }
   team.forEach((c, i) => a.add("b" + i, "Bot " + i, c));
   a.configure(3, false);
   a.start();
@@ -207,7 +216,7 @@ function play(
     }
   }
   return {
-    boss,
+    boss: bossKey,
     size,
     reaction,
     seed,
@@ -284,7 +293,9 @@ for (const boss of BOSSES)
       console.log(
         [
           boss.padEnd(12),
-          String(RAID_BOSSES[boss].stars),
+          boss.includes(":")
+            ? "A"
+            : String(RAID_BOSSES[boss as RaidBossId].stars),
           String(size).padStart(4),
           reaction.toFixed(2).padStart(5),
           pc(wins.length / runs.length).padStart(5),
