@@ -268,3 +268,9 @@
     font-size: 12px;
   }
 }
+
+/* Touch first (iPhone, iPad): the page's tabs are a finger tall everywhere,
+   short landscape phones included (tests/visual/spire-safe-area.spec.ts). */
+.sp-room .ui-tabs > button {
+  min-height: 44px;
+}
