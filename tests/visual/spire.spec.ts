@@ -143,8 +143,8 @@ for (const size of SIZES)
 
       await room.locator('[data-ui-spire-tab="floors"]').click();
       const floors = room.locator("[data-spire-floor]");
-      // Zone 1's ten floors, then zone 2's (locked: checkpoint 1).
-      await expect(floors).toHaveCount(20);
+      // Zone 1's ten floors, then zone 2's and 3's (locked: checkpoint 1).
+      await expect(floors).toHaveCount(30);
       await expect(room.locator('[data-spire-floor="11"]')).toHaveClass(
         /is-locked/,
       );
@@ -707,7 +707,7 @@ for (const size of ZONE2_SIZES)
       await expect(zone2).toHaveAttribute("aria-pressed", "true");
       // The floors, zone by zone.
       await room.locator('[data-ui-spire-tab="floors"]').click();
-      await expect(room.locator("[data-spire-floor]")).toHaveCount(20);
+      await expect(room.locator("[data-spire-floor]")).toHaveCount(30);
       await expect(room.locator('[data-spire-floor="12"]')).toHaveClass(
         /is-done/,
       );
@@ -852,7 +852,7 @@ for (const size of ZONE2_SIZES)
         "Ascendant Tidelotl defeated",
       );
       await expect(results.locator(".spire-conquered")).toContainText(
-        "More floors are coming",
+        "Zone 3 opens at floor 21",
       );
       await expect(results.locator(".spire-rewards")).toContainText(
         "Tidecaller of the Spire",
@@ -860,6 +860,239 @@ for (const size of ZONE2_SIZES)
       await expect(results.locator("#raid-retry")).toBeInViewport();
       await settle(page);
       await snap(page, info, `spire-z2-results-${size.name}`);
+      expect(errors).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });
+
+// ------------------------------------------------------------------ Zone 3
+const CLEARED_ALL = {
+  ...CLEARED_BOTH,
+  bosses: {
+    ...CLEARED_BOTH.bosses,
+    gloomshade: { clears: 1, highestPeril: 3, bestSeconds: 300, runs: 2 },
+  },
+};
+const CLIMB_ZONE3 = {
+  season: 0,
+  highestFloor: 21,
+  checkpoint: 21,
+  attempts: 9,
+  claimed: Array.from({ length: 21 }, (_, i) => i + 1),
+  clears: { grumblecrag: 2, tidewyrm: 1, gloomshade: 1 },
+};
+const ZONE3_SIZES = [
+  { name: "desktop", width: 1440, height: 900, phone: false },
+  { name: "844x390", width: 844, height: 390, phone: true },
+  { name: "667x375", width: 667, height: 375, phone: true },
+];
+for (const size of ZONE3_SIZES)
+  test(`zone 3 (the Lantern Yard): the zone picker, its floors, the elite, the Ascendant Inkpurr and zone 3 conquered at ${size.name}`, async ({
+    browser,
+  }, info) => {
+    test.setTimeout(240_000);
+    const context = await browser.newContext({
+      viewport: { width: size.width, height: size.height },
+      isMobile: size.phone,
+      hasTouch: size.phone,
+    });
+    try {
+      const page = await context.newPage();
+      await withRecords(page, CLEARED_ALL, CLIMB_ZONE3);
+      const errors = await openHub(page);
+      await page.click('.lobby-rail [data-lobby-action="raids"]');
+      const room = page.locator(".rh-room");
+      await room.locator("[data-raid-spire]").click();
+      await expect(room).toHaveAttribute("data-raid-mode", "spire");
+      // The zone picker: zone 3 picked (checkpoint 21), zones 1 and 2 open too.
+      const zones = [1, 2, 3].map((z) =>
+        room.locator(`[data-ui-spire-zone="${z}"]`),
+      );
+      await expect(zones[2]).toHaveAttribute("aria-pressed", "true");
+      await expect(zones[0]).toBeEnabled();
+      await expect(zones[1]).toBeEnabled();
+      await expect(zones[2]).toContainText("Lantern Yard");
+      await expect(room.locator(".rh-foot-note")).toContainText(
+        "zone 3 from floor 21",
+      );
+      for (const z of zones) {
+        const b = await z.boundingBox();
+        expect(b!.height).toBeGreaterThanOrEqual(44);
+      }
+      await zones[2].scrollIntoViewIfNeeded();
+      await settle(page);
+      expect(await layoutProblems(page, { phone: size.phone })).toEqual([]);
+      await snap(page, info, `spire-z3-picker-${size.name}`);
+      // Replay zone 2: the start follows the pick.
+      await zones[1].click();
+      await expect(zones[1]).toHaveAttribute("aria-pressed", "true");
+      await expect(room.locator(".rh-foot-note")).toContainText(
+        "zone 2 from floor 11",
+      );
+      await zones[2].click();
+      await expect(zones[2]).toHaveAttribute("aria-pressed", "true");
+      // The floors, zone by zone.
+      await room.locator('[data-ui-spire-tab="floors"]').click();
+      await expect(room.locator("[data-spire-floor]")).toHaveCount(30);
+      await expect(room.locator('[data-spire-floor="21"]')).toHaveClass(
+        /is-done/,
+      );
+      await expect(room.locator('[data-spire-floor="22"]')).toHaveClass(
+        /is-next/,
+      );
+      await expect(room.locator('[data-spire-floor="25"]')).toContainText(
+        "Elite",
+      );
+      await expect(room.locator('[data-spire-floor="30"]')).toContainText(
+        "Ascendant Inkpurr",
+      );
+      const head3 = room.locator('[data-spire-zone-floors="3"] .sp-zone-head');
+      await expect(head3).toContainText("Lantern Yard");
+      await expect(head3).toContainText("Shadow");
+      await settle(page);
+      await head3.scrollIntoViewIfNeeded();
+      await page.waitForTimeout(300);
+      expect(await layoutProblems(page, { phone: size.phone })).toEqual([]);
+      await snap(page, info, `spire-z3-floors-${size.name}`);
+      await page
+        .locator(".rh-room [data-ui-close]")
+        .click()
+        .catch(() => {});
+
+      // Floor 21: Shadow Echoes on the Spire's court (no lanterns, no night).
+      await climb(page, { floor: 21, seats: 2 });
+      await expect(page.locator('#raid-hud [data-hud="phase"]')).toHaveText(
+        /^Floor 21 · Wave 1\/3 · \d Echo(es)?$/,
+      );
+      await expect(page.locator('#raid-hud [data-hud="title"]')).toHaveText(
+        "THE SPIRE · FLOOR 21",
+      );
+      const court = await page.evaluate(() => {
+        const s = (window as any).__snap;
+        return {
+          zone: s.raid.spire.zone,
+          boss: s.raid.boss,
+          arena: s.arena,
+          lanterns: s.raid.lanterns ?? null,
+          decoys: (s.raid.decoys ?? []).length,
+        };
+      });
+      expect(court).toEqual({
+        zone: 3,
+        boss: "gloomshade",
+        arena: "classic",
+        lanterns: null,
+        decoys: 0,
+      });
+      await page.evaluate(() => (window as any).__spireStep(0.5));
+      await page.waitForTimeout(500);
+      await snap(page, info, `spire-z3-floor21-${size.name}`);
+
+      // Floor 25: the captain, with Inkpurr's Grasping Hands.
+      await page.evaluate(() => {
+        const w = window as any;
+        w.__room("spire", { floor: 25, stage: "playing" });
+        w.__push();
+      });
+      await expect(page.locator('#raid-hud [data-hud="title"]')).toHaveText(
+        "FLOOR 25 · ECHO CAPTAIN DUSKVEIL",
+      );
+      await expect(page.locator('#raid-hud [data-hud="phase"]')).toHaveText(
+        "Floor 25 · Elite",
+      );
+      for (let i = 0; i < 30; i++) {
+        const hands = await page.evaluate(() => {
+          const w = window as any;
+          w.__spireStep(0.25);
+          return w.__snap.raid.warnings.some((x: any) => x.kind === "hands");
+        });
+        if (hands) break;
+      }
+      await expect(page.locator("#raid-hud .raid-callout")).toHaveText(
+        "Grasping Hands — step onto a lit tile!",
+      );
+      await page.evaluate(() => (window as any).__spireStep(0.6));
+      await page.waitForTimeout(300);
+      await snap(page, info, `spire-z3-elite-${size.name}`);
+
+      // Floor 30: the Ascendant Inkpurr's briefing, in the Lantern Yard.
+      await page.evaluate(() => {
+        const w = window as any;
+        w.__room("spire", { floor: 30, stage: "briefing" });
+        w.__push();
+      });
+      const brief = page.locator(".rc-card.is-briefing");
+      await expect(brief.locator("h2")).toHaveText(
+        "Floor 30 · Ascendant Inkpurr",
+      );
+      expect(
+        await brief.locator(".spire-new-attacks li").count(),
+      ).toBeGreaterThan(0);
+      await expect(brief).toContainText("Inkpurr, evolved");
+      await expect(brief).toContainText("Inkpurr's raid, step by step");
+      await expect(page.locator("#raid-instructions")).toBeInViewport();
+      await settle(page);
+      await snap(page, info, `spire-z3-boss-briefing-${size.name}`);
+
+      // The fight: the yard and its lanterns, the raid's bar, the floor.
+      await page.evaluate(() => {
+        const w = window as any;
+        w.__room("spire", { floor: 30, stage: "playing" });
+        w.__push();
+      });
+      await expect(page.locator('#raid-hud [data-hud="title"]')).toHaveText(
+        /^ASCENDANT INKPURR/,
+      );
+      await expect(page.locator('#raid-hud [data-hud="phase"]')).toHaveText(
+        "Floor 30 · Phase 1/3",
+      );
+      const fight = await page.evaluate(() => {
+        const s = (window as any).__snap;
+        return {
+          arena: s.arena,
+          variant: s.raid.variant,
+          boss: s.players.find((p: any) => p.raidBoss)?.name,
+          lanterns: (s.raid.lanterns ?? []).length,
+        };
+      });
+      expect(fight).toEqual({
+        arena: "lantern-yard",
+        variant: "ascendant",
+        boss: "Ascendant Inkpurr",
+        lanterns: 4,
+      });
+      for (let i = 0; i < 20; i++) {
+        const live = await page.evaluate(() => {
+          const w = window as any;
+          w.__spireStep(0.5);
+          return w.__snap.raid.warnings.length;
+        });
+        if (live) break;
+      }
+      await page.waitForTimeout(400);
+      await snap(page, info, `spire-z3-boss-fight-${size.name}`);
+
+      // It falls: zone 3 conquered, floor 30's title.
+      await page.evaluate(() => {
+        const w = window as any;
+        w.__room("spire", { floor: 30, stage: "finished" });
+        w.__push();
+      });
+      const results = page.locator(".rc-card.is-results");
+      await expect(results.locator("h2")).toHaveText("Zone 3 conquered!");
+      await expect(results.locator(".spire-conquered")).toContainText(
+        "Ascendant Inkpurr defeated",
+      );
+      await expect(results.locator(".spire-conquered")).toContainText(
+        "More floors are coming",
+      );
+      await expect(results.locator(".spire-rewards")).toContainText(
+        "Lanternbane of the Spire",
+      );
+      await expect(results.locator("#raid-retry")).toBeInViewport();
+      await settle(page);
+      await snap(page, info, `spire-z3-results-${size.name}`);
       expect(errors).toEqual([]);
     } finally {
       await context.close();

@@ -1173,27 +1173,8 @@ test("floor 30: Inkpurr's Lantern Yard with its summit grade, painted on floor 2
         art.push({ url: r.url(), floor: floorNow });
     });
     const errors = await openHub(page);
-    // Test-only path (the rooms harness has no floor 30): Inkpurr's raid
-    // room carrying a climb's state from a real Spire room, shown as floor
-    // 29 cleared (the party may climb to 30), then as floor 30.
-    await page.evaluate(() => {
-      const w = window as any;
-      w.__room("spire", { floor: 9, ceiling: 10 });
-      const climb = JSON.parse(JSON.stringify(w.__snap.raid.spire));
-      w.__room("raid", { boss: "gloomshade" });
-      w.__snap.remaining = 300;
-      w.__snap.raid.spire = {
-        ...climb,
-        zone: 3,
-        floor: 29,
-        kind: "wave",
-        ceiling: 30,
-        clearedAt: w.__snap.raid.time ?? 1,
-      };
-    });
-    await openPlayPanel(page);
-    await createRoom(page);
-    await pushUntilBattle(page);
+    // A real zone-3 room (harness/rooms.ts), on floor 29 with floor 30 open.
+    await climb(page, 29, 30);
     const scene = () =>
       page.evaluate(() => {
         const s = (window as any).__spireGame.scene.getScene("arena");
@@ -1201,27 +1182,42 @@ test("floor 30: Inkpurr's Lantern Yard with its summit grade, painted on floor 2
           floor: s.floor.texture.key as string,
           artwork: s.floor.texture.getSourceImage().dataset?.raidArtwork as
             string | undefined,
-          summitArt: s.textures.exists("arena-floor-spire-summit-yard:art"),
+          floors: (s.textures.getTextureKeys() as string[]).filter((k) =>
+            k.startsWith("arena-floor-"),
+          ),
         };
       });
     expect((await scene()).floor).toBe("arena-floor-spire-z3");
-    // Floor 29's stairs are open: the yard's summit is painted now.
-    await expect.poll(async () => (await scene()).summitArt).toBe(true);
+    // Beat floor 29: its stairs open.
+    for (let i = 0; i < 12; i++) {
+      const cleared = await page.evaluate(() => {
+        const w = window as any;
+        for (const p of w.__spireArena.players) if (p.echo) p.hp = 0;
+        w.__spireStep(1.8);
+        return w.__snap.raid.spire.clearedAt !== undefined;
+      });
+      if (cleared) break;
+    }
+    // While they are open, floor 30's court (the yard with its summit
+    // grade) is painted.
+    await expect
+      .poll(async () => (await scene()).floors)
+      .toContain("arena-floor-spire-summit-yard:art");
+    const ready = (await scene()).floors;
     await shot(page, "z3-floor-29-stairs-open-844x390");
+    // Up to floor 30: the Ascendant Inkpurr's briefing, in its yard.
     floorNow = 30;
-    await page.evaluate(() => {
-      const w = window as any;
-      w.__snap.raid.spire = {
-        ...w.__snap.raid.spire,
-        floor: 30,
-        kind: "boss",
-        clearedAt: undefined,
-      };
-      w.__push();
-    });
+    await page.evaluate(() => (window as any).__spireStep(3));
+    await expect
+      .poll(() => page.evaluate(() => (window as any).__snap.raid.spire.floor))
+      .toBe(30);
     await expect
       .poll(async () => (await scene()).artwork)
       .toBe("spire-summit-yard");
+    const thirty = await scene();
+    expect(thirty.floor).toMatch(/^arena-floor-spire-summit-yard(:art)?$/);
+    // The court it shows was ready before the stairs were climbed.
+    expect(ready).toContain(thirty.floor);
     // The yard's picture was fetched on floor 29 (or before), never on 30.
     expect(art.some((a) => a.url.includes("gloomshade"))).toBe(true);
     expect(art.every((a) => a.floor === 29)).toBe(true);

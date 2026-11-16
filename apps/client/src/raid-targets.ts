@@ -47,6 +47,10 @@ export function raidTargets(
   from: { x: number; y: number; id?: string },
   random: () => number = Math.random,
 ): RaidTarget[] | undefined {
+  // The Spire's wave and elite floors: the Echoes are all there is (its room
+  // carries its zone's boss id for the boss floor only).
+  const climb = state.raid?.spire;
+  if (climb && climb.kind !== "boss") return undefined;
   return state.raid?.boss === "tidewyrm"
     ? tideTargets(state, from)
     : gloomTargets(state, from, random);

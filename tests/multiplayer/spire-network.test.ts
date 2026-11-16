@@ -2,7 +2,11 @@ import { afterEach, expect, it, vi } from "vitest";
 import { io, type Socket } from "socket.io-client";
 import { createArenaServer } from "../../apps/server/src/server";
 import { fakeAccounts, fakeSpire } from "../helpers/accounts";
-import { SpireArena, SpireTideArena } from "../../apps/server/src/spire";
+import {
+  SpireArena,
+  SpireGloomArena,
+  SpireTideArena,
+} from "../../apps/server/src/spire";
 import {
   MetaCache,
   unpackSnapshot,
@@ -413,7 +417,7 @@ it("won't start zone 2 for a party asking for floor 11 without the checkpoint", 
 it("refuses a start floor that isn't a built zone's first floor", async () => {
   const { connect } = await setup(true, conqueror);
   const { socket } = await connect();
-  for (const spireFloor of [2, 10, 15, 20, 21, -1, 1.5])
+  for (const spireFloor of [2, 10, 15, 20, 25, 30, 31, -1, 1.5])
     expect(
       (
         await emit(socket, "create", {
@@ -444,5 +448,160 @@ it("lets a player with checkpoint 11 replay zone 1 from floor 1", async () => {
     zone: 1,
     startFloor: 1,
     ceiling: 10,
+  });
+});
+
+// ------------------------------------------------------------------ Zone 3
+const shadowWalker: SpireMember = {
+  checkpoint: 21,
+  clears: { grumblecrag: 1, tidewyrm: 1, gloomshade: 1 },
+};
+
+it("climbs zone 3 from floor 21 to the Ascendant Inkpurr on floor 30 → results, in one room", async () => {
+  const { connect, recordRaid, recordActivity, spire } = await setup(
+    true,
+    shadowWalker,
+  );
+  const one = await connect(),
+    two = await connect();
+  const created = await emit(one.socket, "create", {
+    name: "One",
+    mode: "raid",
+    spire: 21,
+  });
+  expect(created.ok).toBe(true);
+  const joined = await emit(two.socket, "join", {
+    name: "Two",
+    code: created.code,
+  });
+  expect(joined.ok).toBe(true);
+  const a = server!.rooms.get(created.code!) as SpireGloomArena;
+  expect(a).toBeInstanceOf(SpireGloomArena);
+  expect(a.raid.boss).toBe("gloomshade");
+  const cache = new MetaCache();
+  const seen: Snapshot[] = [];
+  one.socket.on("state", (wire: WireSnapshot) =>
+    seen.push(unpackSnapshot(wire, cache)),
+  );
+  await emit(one.socket, "ready");
+  await emit(two.socket, "ready");
+  await settle();
+  expect(a.phase).toBe("briefing");
+  expect(a.raid.spire).toMatchObject({
+    zone: 3,
+    startFloor: 21,
+    floor: 21,
+    ceiling: 30,
+  });
+  // The wave floors: the Spire's court, never Inkpurr's yard.
+  expect(a.arenaId).toBe("classic");
+  expect(a.raid.lanterns).toBeUndefined();
+  for (const s of [one.socket, two.socket]) await emit(s, "instructions-ready");
+  const ids = [created.id!, joined.id!];
+  const step = async () => {
+    for (const p of a.heroes()) p.hp = Math.max(p.hp, 900);
+    if (a.phase === "playing" && a.raid.spire!.kind !== "boss")
+      for (const p of a.players) if (p.echo && p.hp > 0) p.hp = 0;
+    if (a.phase === "intermission")
+      for (const [i, s] of [one.socket, two.socket].entries()) {
+        const offer = a.raid.spire!.offers[ids[i]];
+        if (offer?.[0]) await emit(s, "rite", { id: offer[0] });
+      }
+    server!.step();
+  };
+  for (let i = 0; i < 30 * 400 && a.raid.spire!.floor < 30; i++) await step();
+  for (let i = 0; i < 30 * 5 && a.phase !== "briefing"; i++) await step();
+  await settle();
+  expect(server!.rooms.get(created.code!)).toBe(a);
+  expect(a.raid.spire).toMatchObject({ floor: 30, kind: "boss", best: 29 });
+  expect(a.phase).toBe("briefing");
+  expect(a.raid.variant).toBe("ascendant");
+  expect(a.arenaId).toBe("lantern-yard");
+  expect(spire.floors.map((f) => f.floor)).toEqual([
+    21, 22, 23, 24, 25, 26, 27, 28, 29,
+  ]);
+  expect(spire.floors.every((f) => f.startFloor === 21)).toBe(true);
+  for (const s of [one.socket, two.socket]) await emit(s, "instructions-ready");
+  for (let i = 0; i < 30 * 30 && a.phase !== "playing"; i++) await step();
+  expect(a.phase).toBe("playing");
+  for (let i = 0; i < 30 * 20; i++) await step();
+  await settle();
+  // What the players saw: Inkpurr's yard and its boss, under its Ascendant name.
+  const last = seen.at(-1)!;
+  expect(last.arena).toBe("lantern-yard");
+  expect(last.raid?.spire).toMatchObject({ zone: 3, floor: 30 });
+  expect(last.raid?.lanterns?.length).toBe(4);
+  expect(last.players.find((p) => p.raidBoss)?.name).toBe("Ascendant Inkpurr");
+  const stream = seen.flatMap((s) => s.events.map((e) => e.id));
+  for (let i = 1; i < stream.length; i++)
+    expect(stream[i]).toBeGreaterThan(stream[i - 1]);
+  // Beat it: saved as Spire floor 30 under both accounts, never a raid.
+  a.boss()!.hp = 0;
+  for (let i = 0; i < 30 * (SPIRE_PARTY.cleared + 0.5); i++) await step();
+  await settle();
+  expect(a.phase).toBe("finished");
+  expect(a.raid.result).toBe("victory");
+  expect(a.raid.message).toMatch(/Zone 3 conquered/);
+  const thirty = spire.floors.at(-1)!;
+  expect(thirty).toMatchObject({ floor: 30, startFloor: 21, partySize: 2 });
+  expect(thirty.players.map((p) => p.accountId).sort()).toEqual(
+    [one.account.id, two.account.id].sort(),
+  );
+  expect(
+    a.raid.spire!.saves.at(-1)!.claims!.find((c) => c.playerId === ids[0]),
+  ).toMatchObject({ coins: 250, titles: ["Lanternbane of the Spire"] });
+  expect(recordRaid).not.toHaveBeenCalled();
+  expect(recordActivity).not.toHaveBeenCalled();
+  expect(a.raid.rewardStatus).toBeUndefined();
+}, 120_000);
+
+it("won't start zone 3 for a party asking for floor 21 without the checkpoint", async () => {
+  const { connect, spire } = await setup();
+  const one = await connect(),
+    two = await connect();
+  // One has conquered zone 2; Two has only conquered zone 1.
+  spire.members[one.account.id] = shadowWalker;
+  spire.members[two.account.id] = conqueror;
+  const created = await emit(one.socket, "create", {
+    name: "One",
+    mode: "raid",
+    spire: 21,
+  });
+  expect(created.ok).toBe(true);
+  await emit(two.socket, "join", { name: "Two", code: created.code });
+  const a = server!.rooms.get(created.code!) as SpireGloomArena;
+  await emit(one.socket, "ready");
+  await emit(two.socket, "ready");
+  await settle();
+  expect(a.phase).toBe("lobby");
+  expect(a.raid.spire!.problem).toMatch(/floor 21/);
+  expect(a.players.every((p) => !p.ready)).toBe(true);
+  expect(spire.floors).toEqual([]);
+});
+
+it("stops zone 3 at floor 29 unless every member has cleared Inkpurr's raid", async () => {
+  const { connect, spire } = await setup();
+  const one = await connect(),
+    two = await connect();
+  spire.members[one.account.id] = shadowWalker;
+  spire.members[two.account.id] = {
+    checkpoint: 21,
+    clears: { grumblecrag: 1, tidewyrm: 1 },
+  };
+  const created = await emit(one.socket, "create", {
+    name: "One",
+    mode: "raid",
+    spire: 21,
+  });
+  await emit(two.socket, "join", { name: "Two", code: created.code });
+  const a = server!.rooms.get(created.code!) as SpireGloomArena;
+  await emit(one.socket, "ready");
+  await emit(two.socket, "ready");
+  await settle();
+  expect(a.phase).toBe("briefing");
+  expect(a.raid.spire).toMatchObject({
+    zone: 3,
+    startFloor: 21,
+    ceiling: 29,
   });
 });
