@@ -89,32 +89,27 @@ const reduced = matchMedia("(prefers-reduced-motion: reduce)");
 let frame = 0;
 let lastTick = 0;
 
-/** Entrance pieces drawn by the rig itself in play get a matching stand-in. */
+/**
+ * Entrance pieces drawn by the rig itself in play get a matching stand-in.
+ * Mountainborn: the rig's burst of pebbles from the feet (animation/rig.ts),
+ * nothing more; a Rare entrance has no flourish.
+ */
 function entranceFallback(emit: (p: FxParticle) => void, id: string) {
   if (id !== "mountainborn") return false;
-  for (let i = 0; i < 18; i++) {
-    const a = -Math.PI * (0.1 + (i / 18) * 0.8);
+  for (let i = 0; i < 22; i++) {
+    const a = -Math.PI * (0.1 + Math.random() * 0.8);
+    const speed = 90 + Math.random() * 150;
     emit({
-      x: 0,
+      x: (Math.random() - 0.5) * 30,
       y: 0,
-      vx: Math.cos(a) * (80 + Math.random() * 90),
-      vy: Math.sin(a) * (160 + Math.random() * 110),
-      life: 0.9,
-      size: 3 + Math.random() * 2,
-      color: i % 3 ? 0x9b8466 : 0xffd28c,
+      vx: Math.cos(a) * speed,
+      vy: Math.sin(a) * speed - 60,
+      life: 0.8 + Math.random() * 0.4,
+      size: 2.5 + Math.random() * 2.5,
+      color: [0x8a7a68, 0xa99782, 0x6f6152, 0xffc46b][i % 4],
       shape: "pebble",
     });
   }
-  emit({
-    x: 0,
-    y: 0,
-    vx: 0,
-    vy: 0,
-    life: 0.5,
-    size: 16,
-    color: 0xffd28c,
-    shape: "ring",
-  });
   return true;
 }
 function victoryFallback(

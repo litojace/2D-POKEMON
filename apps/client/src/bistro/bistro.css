@@ -1043,6 +1043,8 @@
   display: flex;
   gap: 6px;
   overflow-x: auto;
+  /* Sideways only (ui/scroll-rows.ts). */
+  overflow-y: hidden;
   min-height: 56px;
   align-items: center;
 }

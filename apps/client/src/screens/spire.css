@@ -82,6 +82,8 @@
   display: flex;
   gap: 8px;
   overflow-x: auto;
+  /* Sideways only (ui/scroll-rows.ts). */
+  overflow-y: hidden;
   padding-bottom: 4px;
   scrollbar-width: thin;
 }
@@ -484,6 +486,8 @@
   display: flex;
   gap: 4px;
   overflow-x: auto;
+  /* Sideways only (ui/scroll-rows.ts). */
+  overflow-y: hidden;
   padding: 2px 2px 6px;
   scrollbar-width: thin;
 }
