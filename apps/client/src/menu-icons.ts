@@ -7,8 +7,10 @@ const paths = {
   swipe:
     '<path d="M4 12h16M7 8l-4 4 4 4m10-8 4 4-4 4"/><path d="M9 4h6M9 20h6" opacity=".5"/>',
   help: '<path d="M9 9a3 3 0 0 1 6 0c0 2-3 2-3 5"/><path d="M12 17h.01"/><circle cx="12" cy="12" r="10"/>',
+  // Centred in its 24 × 24 box (the teeth span 2–22 both ways), so it sits
+  // in the middle of a round button.
   settings:
-    '<path d="m9 3-.5 3-2 1-3-.5-2 3 2 2v2l-2 2 2 3 3-.5 2 1 .5 3h4l.5-3 2-1 3 .5 2-3-2-2v-2l2-2-2-3-3 .5-2-1L13 3Z"/><circle cx="11" cy="12" r="3"/>',
+    '<path d="m10 2.5-.5 3-2 1-3-.5-2 3 2 2v2l-2 2 2 3 3-.5 2 1 .5 3h4l.5-3 2-1 3 .5 2-3-2-2v-2l2-2-2-3-3 .5-2-1L14 2.5Z"/><circle cx="12" cy="12" r="3"/>',
   friends:
     '<circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2M16 5a3 3 0 0 1 0 6m2 3a5 5 0 0 1 3 4v2"/>',
   leaderboard:

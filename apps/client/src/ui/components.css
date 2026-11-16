@@ -530,6 +530,8 @@
   padding: 0 var(--sp-3);
   border-bottom: 1px solid var(--ui-line);
   overflow-x: auto;
+  /* Sideways only (ui/scroll-rows.ts). */
+  overflow-y: hidden;
   scrollbar-width: none;
 }
 .ui-tabs > button {
@@ -613,18 +615,34 @@
   display: flex;
   gap: 6px;
   overflow-x: auto;
+  /* Sideways only (ui/scroll-rows.ts). */
+  overflow-y: hidden;
   scrollbar-width: none;
   align-items: center;
 }
-/* An edge fades where more of the row is hidden past it (ui/scroll-rows.ts:
-   the wheel and a mouse drag scroll it too). */
-.ui-chips.has-more-right {
+/* Every row that scrolls sideways (ui/scroll-rows.ts lists them: chips,
+   tabs, the raid gallery, quick chat…): an edge fades where more of the
+   row is hidden past it, so a player knows to swipe. */
+.has-more-right {
+  -webkit-mask-image: linear-gradient(
+    90deg,
+    #000 calc(100% - 32px),
+    transparent
+  );
   mask-image: linear-gradient(90deg, #000 calc(100% - 32px), transparent);
 }
-.ui-chips.has-more-left {
+.has-more-left {
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 32px);
   mask-image: linear-gradient(90deg, transparent, #000 32px);
 }
-.ui-chips.has-more-left.has-more-right {
+.has-more-left.has-more-right {
+  -webkit-mask-image: linear-gradient(
+    90deg,
+    transparent,
+    #000 32px,
+    #000 calc(100% - 32px),
+    transparent
+  );
   mask-image: linear-gradient(
     90deg,
     transparent,

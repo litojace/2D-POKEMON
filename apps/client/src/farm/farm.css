@@ -783,6 +783,8 @@
   padding: 0 0.8em;
   border-bottom: 1px solid #ffffff1a;
   overflow-x: auto;
+  /* Sideways only (ui/scroll-rows.ts). */
+  overflow-y: hidden;
 }
 .farm-layer .sh-tabs button {
   border: 0;
