@@ -1,5 +1,11 @@
 import { expect, test, type Page } from "@playwright/test";
-import { openHub, openPlayPanel, pushUntilBattle, snap } from "./helpers";
+import {
+  createRoom,
+  openHub,
+  openPlayPanel,
+  pushUntilBattle,
+  snap,
+} from "./helpers";
 import {
   SPIRE_STAIRS,
   spireCourtLayout,
@@ -60,11 +66,17 @@ async function climb(page: Page, floor: number, ceiling?: number) {
     { floor, ceiling },
   );
   await openPlayPanel(page);
-  await page.click("#play-create");
+  await createRoom(page);
   await pushUntilBattle(page);
 }
-/** What the scene shows of the Spire's court. */
-function court(page: Page) {
+/** What the scene shows of the Spire's court, once its floor is drawn. */
+async function court(page: Page) {
+  // Floor 10's court is the Cragmuff picture: it may still be decoding a
+  // moment after the battle opens, so wait for the floor itself.
+  await page.waitForFunction(
+    () =>
+      !!(window as any).__spireGame?.scene.getScene("arena")?.floor?.texture,
+  );
   return page.evaluate(() => {
     const scene = (window as any).__spireGame.scene.getScene("arena");
     const named = (prefix: string) =>
