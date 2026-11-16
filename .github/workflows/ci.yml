@@ -54,6 +54,10 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: node scripts/visual-shards.mjs ${{ matrix.shard }} 18 visual-shard.txt
       - run: npm run test:visual -- --test-list visual-shard.txt
+        env:
+          # Without --shard every blob is report.zip, and the report job's
+          # download (merge-multiple) would write them over each other.
+          PLAYWRIGHT_BLOB_OUTPUT_NAME: report-${{ matrix.shard }}.zip
       - if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
