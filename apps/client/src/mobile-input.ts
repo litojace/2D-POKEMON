@@ -257,75 +257,69 @@ export function mobileLayout(
   };
 }
 
-/** The target portraits' tap size (CSS px) and how many the arc holds. */
+/** The target portraits' tap size (CSS px) and how many the row holds. */
 export const LOCK_SLOT_SIZE = 44;
 export const LOCK_SLOT_MAX = 4;
+/** Space between two portraits' tap circles (their 38 px discs: 10 px). */
+export const LOCK_SLOT_GAP = 4;
+/** Space between the row and the combat buttons. */
+export const LOCK_ROW_CLEAR = 6;
+/** The top HUD's bottom (gear, raid bar, scoreboard: 4 + 44 px from the safe
+ * top) and a gap: the row stays below it. */
+export const LOCK_HUD_BOTTOM = 54;
+/** The row stays in the right 45% of the screen (never the court's middle);
+ * the cluster sits about 16 px in from the safe right edge. */
+export const LOCK_ROW_REACH = 0.45;
+export const LOCK_PAD_EDGE = 16;
 /**
- * Where the target portraits go (cluster coordinates, centres): an outer arc
- * around the basic attack, just clear of the buttons above it, like the hero
- * lock portraits of console-style MOBAs. Every slot is the same reach from
- * the attack button. Slot 0 is the rightmost, tucked in the notch over Dash
- * beside the ultimate; the rest go up and left over the ring, so the arc
- * never reaches the joystick, the court's middle or the top HUD.
+ * Where the target portraits go (cluster coordinates, centres): one straight
+ * row, evenly spaced, just above the combat cluster. Its right end lines up
+ * with the right edge of the cluster's topmost button (the ultimate on the
+ * ring; the top skill row on the compact layout) and it grows leftward, so
+ * the column over Dash and Jump stays free for the gear, the raid timer and
+ * the ping, at every height. Slot 0 is the right end.
+ *
+ * `top` is the highest the row may reach (cluster coordinates: the top HUD's
+ * bottom edge), `reach` how far left of the cluster's right edge it may go
+ * (never the court's middle). When the row would rise into the HUD (big
+ * buttons on a short screen), it goes beside the cluster's left edge instead,
+ * at the same rule. Fewer slots fit when the row would pass `reach`.
  */
 export function lockSlots(
   layout: { width: number; targets: TouchTarget[] },
-  size = LOCK_SLOT_SIZE,
-  max = LOCK_SLOT_MAX,
+  {
+    top = -Infinity,
+    reach = Infinity,
+    size = LOCK_SLOT_SIZE,
+    max = LOCK_SLOT_MAX,
+  }: { top?: number; reach?: number; size?: number; max?: number } = {},
 ) {
-  const attack = layout.targets.find((t) => t.action === "attack");
-  if (!attack) return [];
-  const others = layout.targets.filter((t) => t !== attack);
-  const gap = 6;
+  if (!layout.targets.length) return [];
   const half = size / 2;
-  /** The nearest radius at this angle that clears every button by `gap`. */
-  const clearAt = (angle: number) => {
-    const u = { x: Math.cos(angle), y: Math.sin(angle) };
-    let r = attack.size / 2 + gap + half;
-    for (let moved = true, i = 0; moved && i < 20; i++) {
-      moved = false;
-      for (const b of others) {
-        const c = { x: b.x - attack.x, y: b.y - attack.y },
-          s = b.size / 2 + half + gap,
-          along = u.x * c.x + u.y * c.y,
-          disc = along * along - (c.x * c.x + c.y * c.y) + s * s;
-        if (disc <= 0) continue;
-        const lo = along - Math.sqrt(disc),
-          hi = along + Math.sqrt(disc);
-        if (r > lo && r < hi) {
-          r = hi;
-          moved = true;
-        }
-      }
-    }
-    return r;
-  };
-  // One radius for the whole arc (the widest any slot needs), settling the
-  // angles and the radius together; it only grows, so it settles.
-  const arc = (radius: number) => {
-    const step = 2 * Math.asin(Math.min(1, (size + 4) / (2 * radius)));
-    // The rightmost angle that keeps the slot inside the cluster's edge.
-    const start = -Math.acos(
-      Math.max(-1, Math.min(1, (layout.width - half - attack.x) / radius)),
-    );
-    const out: number[] = [];
-    for (let i = 0; i < max; i++) {
-      const a = start - i * step;
-      if (a < (-160 * Math.PI) / 180) break;
-      out.push(a);
-    }
-    return out;
-  };
-  let radius = clearAt(-Math.PI / 2);
-  for (let pass = 0; pass < 8; pass++) {
-    const next = Math.max(radius, ...arc(radius).map(clearAt));
-    if (next - radius < 0.01) break;
-    radius = next;
+  const edges = layout.targets.map((t) => ({
+    left: t.x - t.size / 2,
+    top: t.y - t.size / 2,
+    right: t.x + t.size / 2,
+  }));
+  const clusterTop = Math.min(...edges.map((e) => e.top));
+  // The topmost button (the rightmost of a level top row).
+  const anchor = edges
+    .filter((e) => e.top <= clusterTop + 1)
+    .reduce((a, b) => (b.right > a.right ? b : a));
+  let right = anchor.right,
+    y = clusterTop - LOCK_ROW_CLEAR - half;
+  if (y - half < top) {
+    right = Math.min(...edges.map((e) => e.left)) - LOCK_ROW_CLEAR;
+    y = top + half;
   }
-  const angles = arc(radius);
-  return angles.map((a) => ({
-    x: attack.x + radius * Math.cos(a),
-    y: attack.y + radius * Math.sin(a),
+  const step = size + LOCK_SLOT_GAP;
+  const fit = Math.floor(
+    (right - (layout.width - reach) + LOCK_SLOT_GAP) / step,
+  );
+  const count = Math.max(0, Math.min(max, fit));
+  return Array.from({ length: count }, (_, i) => ({
+    x: right - half - i * step,
+    y,
   }));
 }
 

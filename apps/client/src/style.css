@@ -15218,8 +15218,9 @@ body.battle-raid.touch-mode #battle #raid-hud#raid-hud .raid-callout {
 #target-picker[hidden] {
   display: none;
 }
-/* The target portraits (target-picker.ts): round buttons on an arc beside
-   the basic attack. The box is a point at the touch pad's bottom-right
+/* The target portraits (target-picker.ts): round buttons in one straight
+   row over the combat cluster, right end in line with the ultimate's right
+   edge (lockSlots in mobile-input.ts). The box is a point at the touch pad's bottom-right
    corner (the cluster's), so it covers nothing; each portrait sits at its
    slot's centre (--lock-N-r/-b from the cluster edges, set on resize by
    touch-controls.ts). 44 px to tap, a 38 px disc to see. */

@@ -1,14 +1,14 @@
 /**
  * The target portraits on phones: with two or more enemies, a small round
- * portrait per enemy on an arc beside the basic attack (lockSlots in
- * mobile-input.ts), like the hero lock of console-style MOBAs. Tap one to
+ * portrait per enemy in one straight row just above the combat buttons
+ * (lockSlots in mobile-input.ts), like the hero lock of console-style MOBAs. Tap one to
  * aim at it; tap the locked one again for automatic aiming. A tap on the
  * fighter itself on the court still locks it too.
  *
  * Each enemy keeps its slot (fixed display: the same enemy, the same place,
  * for muscle memory), in the scoreboard's order from left to right. With more enemies than slots, the nearest are shown
- * (the locked one always), still in their fixed order, and one off the arc
- * comes on only when it is clearly nearer than one on it, so the portraits
+ * (the locked one always), still in their fixed order, and one off the row
+ * comes on only when it is clearly nearer than one in it, so the portraits
  * do not shuffle while fighters walk about. The rest stay a tap away on the
  * court.
  *
@@ -43,8 +43,8 @@ const escape = (s: string) =>
 /** A tap's own click arrives right after its touch; within this window the
  * click repeats the pick the touch already made. */
 export const TOUCH_CLICK_MS = 700;
-/** How much nearer (world units) an enemy off the arc must be to take the
- * place of one on it. */
+/** How much nearer (world units) an enemy off the row must be to take the
+ * place of one in it. */
 export const SWAP_MARGIN = 120;
 
 /**
@@ -143,7 +143,7 @@ export function renderTargetPicker(
       .map(
         (e, i) =>
           // Read left to right in the enemies' order (the scoreboard's), on
-          // the rightmost slots: slot 0 is the arc's right end.
+          // the rightmost slots: slot 0 is the row's right end.
           `<button type="button" data-target-id="${escape(e.id)}" data-slot="${shown.length - 1 - i}" data-kind="${e.kind ?? "fighter"}" style="--target-color:${escape(e.color)}" aria-pressed="false" aria-label="${escape(e.name)}"><span class="target-face">${face(e)}</span></button>`,
       )
       .join("");
