@@ -53,7 +53,7 @@ interface State {
   pillar?: [number, number];
   blind?: boolean;
 }
-const MARKER = "prewarmBossAtlas(this, state.raid.boss, state.raid.phase);";
+const MARKER = "if (state?.raid) prewarmRaidArena(this, state.raid);";
 
 async function battle(page: Page) {
   await page.route(/\/apps\/client\/src\/main\.ts(?:\?|$)/, async (route) => {

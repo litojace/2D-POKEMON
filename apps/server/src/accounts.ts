@@ -11,6 +11,11 @@ import {
   type RaidProgress,
   type RaidReceipt,
 } from "../../../packages/shared/src/raid.js";
+import type {
+  SpireFloorReceipt,
+  SpireFloorResult,
+  SpireMember,
+} from "../../../packages/shared/src/spire.js";
 import { z } from "zod";
 import {
   characterSchema,
@@ -64,11 +69,15 @@ import {
   type OnlineList,
 } from "../../../packages/shared/src/accounts.js";
 /** The newest database migration the server expects. */
-export const LATEST_MIGRATION = "20261115230000_chat_friend_messages.sql";
+export const LATEST_MIGRATION = "20261116150000_spire.sql";
 /** The migration that last redefined the raid appearance functions. */
 export const RAID_FUNCTIONS_MIGRATION = "018_collection_equipping.sql";
 export interface AccountProvider {
   recordRaid?(receipt: RaidReceipt): Promise<void>;
+  /** The Spire: save one cleared floor (first-clear rewards once per player). */
+  recordSpireFloor?(receipt: SpireFloorReceipt): Promise<SpireFloorResult>;
+  /** The Spire: each climber's checkpoint and raid clears, before a climb. */
+  spireStart?(accountIds: string[]): Promise<SpireMember[]>;
   /** Coins, missions and Mythic progress after a real match or raid. */
   recordActivity?(receipt: ActivityReceipt): Promise<void>;
   /** Something the game server saw in the Plaza (quests, orbs, laps); returns the player's progress. */
@@ -305,6 +314,32 @@ export function createAccountProvider(): AccountProvider {
       });
       if (result.error)
         throw new AccountError(503, "Raid rewards could not be stored.");
+    },
+    async recordSpireFloor(receipt) {
+      const r = await admin().rpc("arena_record_spire_floor", { p: receipt });
+      if (r.error)
+        throw new AccountError(
+          503,
+          "Spire progress could not be stored.",
+          r.error.message,
+        );
+      const data = r.data as Partial<SpireFloorResult> | null;
+      return { newClaims: data?.newClaims ?? [] };
+    },
+    async spireStart(accountIds) {
+      const r = await admin().rpc("arena_spire_start", {
+        p_players: accountIds,
+      });
+      if (r.error)
+        throw new AccountError(
+          503,
+          "Spire progress is unavailable.",
+          r.error.message,
+        );
+      return ((r.data as SpireMember[] | null) ?? []).map((m) => ({
+        checkpoint: Number(m.checkpoint) || 1,
+        clears: m.clears ?? {},
+      }));
     },
     async recordPlaza(event) {
       const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -1343,6 +1378,13 @@ export function installAccountRoutes(
           p_slot: data.slot,
         }),
       });
+    }),
+  );
+  app.get(
+    "/api/spire",
+    route(false, async (_req, res, token) => {
+      res.setHeader("Cache-Control", "no-store");
+      res.json(await provider.rpc(token, "arena_spire_progress", {}));
     }),
   );
   app.get(

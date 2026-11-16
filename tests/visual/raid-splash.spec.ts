@@ -181,7 +181,9 @@ test("locked bosses keep their navigation and unlock instruction visible", async
     await hubMenu(page, "raids");
     const room = page.locator(".rh-room");
     // Locked cards say why (UI remodel step 5).
-    await expect(room.locator(".rh-card.is-locked")).toHaveCount(6);
+    await expect(room.locator("[data-raid-card].is-locked")).toHaveCount(6);
+    // So is the Spire, the last tile.
+    await expect(room.locator("[data-raid-spire].is-locked")).toHaveCount(1);
     await expect(
       room.locator('[data-raid-card="emberwing"] .ui-tag'),
     ).toHaveText("Clear Cragmuff first");

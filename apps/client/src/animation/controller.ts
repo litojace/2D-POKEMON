@@ -71,6 +71,9 @@ export interface AnimationPose {
   shell?: boolean;
   /** Curled into a ball (Curl & Roll, Pinball): how far it has spun, and where it rolls. */
   ball?: { spin: number; heading: number };
+  /** A tint over the whole fighter (Spire Echoes), and the one it flashes when hit. */
+  tint?: number;
+  hurtTint?: number;
 }
 export function facing(angle: number): Facing {
   return Math.abs(Math.cos(angle)) > Math.abs(Math.sin(angle))

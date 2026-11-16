@@ -1,0 +1,278 @@
+/* ==========================================================================
+   The Spire in the Raid Hub: its card (last of the boss list) and its page
+   (Climb · Floors · Blessings). Markup: screens/spire-view.ts. Layout on top
+   of the shared components and the Raid Hub's rh- rules; sp- classes only.
+   ========================================================================== */
+
+/* The card: the tower drawn in SVG, standing in for a boss painting. */
+.spire-card-art {
+  display: block;
+  background: #0a0818;
+}
+.spire-card-art > svg,
+.sp-poster > svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.rh-spire-card .spire-card-art > svg {
+  transition: transform var(--dur-3);
+}
+.rh-spire-card:hover .spire-card-art > svg {
+  transform: scale(1.03);
+}
+.rh-spire-card.is-locked .spire-card-art > svg {
+  filter: grayscale(0.6) brightness(0.55);
+}
+.rh-stars.spire-floors {
+  letter-spacing: 0;
+  font-size: 12px;
+}
+
+/* The page's stage: the tower, lit to your highest floor. */
+.sp-stage {
+  background: #0a0818;
+}
+.sp-poster {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+.sp-poster > svg {
+  inset: 4% 0 0;
+  height: 96%;
+}
+
+.sp-body {
+  display: grid;
+  align-content: start;
+  gap: var(--sp-3);
+  /* A tab's contents glide in sideways: never a sideways scroller. */
+  overflow-x: hidden;
+}
+.sp-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.sp-stat {
+  display: grid;
+  gap: 2px;
+  padding: 10px 12px;
+  border-radius: var(--rad-md);
+  border: 1px solid color-mix(in srgb, var(--boss) 35%, transparent);
+  background: color-mix(in srgb, var(--boss) 10%, var(--ui-bg-1));
+}
+.sp-stat b {
+  font-family: var(--font-display);
+  font-size: 26px;
+  line-height: 1;
+}
+.sp-stat small {
+  color: var(--ui-dim);
+}
+.sp-how {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.sp-how li {
+  padding: 8px 12px;
+  border-radius: var(--rad-md);
+  background: var(--ui-bg-1);
+  border: 1px solid var(--ui-line);
+  color: #d6def0;
+}
+
+/* Floors: one row each, with its Echoes, reward and state. */
+.sp-floors {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.sp-floor {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 6px 12px;
+  border-radius: var(--rad-md);
+  border: 1px solid var(--ui-line);
+  background: var(--ui-bg-1);
+}
+.sp-floor.is-next {
+  border-color: color-mix(in srgb, var(--boss) 65%, transparent);
+  background: color-mix(in srgb, var(--boss) 12%, var(--ui-bg-1));
+}
+.sp-floor.is-locked,
+.sp-floor.is-soon {
+  opacity: 0.72;
+}
+.sp-floor-num {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 800;
+  text-align: center;
+  color: var(--boss);
+}
+.sp-floor-main {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.sp-floor-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.sp-floor-name b {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sp-floor-state {
+  color: var(--ui-dim);
+}
+.sp-floor.is-next .sp-floor-state {
+  color: var(--boss);
+}
+.sp-reward {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  justify-self: end;
+}
+.sp-title-tag svg {
+  width: 12px;
+  height: 12px;
+  margin-right: 3px;
+}
+.sp-check {
+  display: grid;
+  color: var(--ui-ok);
+}
+.sp-check svg {
+  width: 18px;
+  height: 18px;
+}
+.sp-lock {
+  display: grid;
+}
+.sp-lock svg {
+  width: 16px;
+  height: 16px;
+  color: var(--ui-dim);
+}
+
+/* Blessings: the codex. */
+.sp-blessings {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 8px;
+}
+.sp-blessing {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  padding: 10px 12px;
+  border-radius: var(--rad-md);
+  border: 1px solid color-mix(in srgb, var(--boss) 30%, transparent);
+  background: var(--ui-bg-1);
+}
+.sp-blessing-icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  color: var(--boss);
+  background: color-mix(in srgb, var(--boss) 16%, transparent);
+}
+.sp-blessing-icon svg {
+  width: 22px;
+  height: 22px;
+}
+.sp-blessing-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.sp-stacks {
+  color: var(--boss);
+  font-size: 12px;
+}
+
+/* ------------------------------------------------- phones, sideways */
+@media (max-height: 500px) {
+  .sp-body {
+    gap: 8px;
+  }
+  .sp-stats {
+    gap: 6px;
+  }
+  .sp-stat {
+    padding: 4px 8px;
+  }
+  .sp-stat b {
+    font-size: 18px;
+  }
+  .sp-how li {
+    padding: 4px 8px;
+    font-size: 13px;
+  }
+  .sp-floor {
+    grid-template-columns: 28px minmax(0, 1fr) auto auto;
+    gap: 6px;
+    min-height: 40px;
+    padding: 3px 8px;
+  }
+  .sp-floor-num {
+    font-size: 16px;
+  }
+  .sp-floor-state {
+    display: none;
+  }
+  .sp-floor .rh-tricks .ui-avatar {
+    --size: 20px !important;
+  }
+  .sp-title-tag {
+    display: none;
+  }
+  .sp-blessings {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .sp-blessing {
+    grid-template-columns: 30px minmax(0, 1fr);
+    gap: 6px;
+    padding: 4px 8px;
+  }
+  .sp-blessing-icon {
+    width: 30px;
+    height: 30px;
+  }
+  .sp-blessing-icon svg {
+    width: 17px;
+    height: 17px;
+  }
+}
+@media (max-width: 700px) {
+  .sp-floor .sp-reward .ui-price {
+    font-size: 12px;
+  }
+}
+
+/* Touch first (iPhone, iPad): the page's tabs are a finger tall everywhere,
+   short landscape phones included (tests/visual/spire-safe-area.spec.ts). */
+.sp-room .ui-tabs > button {
+  min-height: 44px;
+}

@@ -2421,6 +2421,12 @@ export const MODE_MIN: Record<MatchMode, number> = {
 export const TEAM_NAMES = ["Blue", "Red"] as const;
 export interface Fighter extends Vec {
   raidBoss?: boolean;
+  /** A Spire Echo: a champion on the enemy side, driven by the bot. */
+  echo?: boolean;
+  /** The Spire's elite captain (an Echo with a boss mechanic and a bar). */
+  elite?: boolean;
+  /** This fighter's dash cooldown when not the usual (Spire blessings); prediction reads it too. */
+  dashCd?: number;
   /** Equipped raid appearance (skin, aura, entrance, frame). */
   raidLook?: RaidLoadout;
   /** Equipped Shop skin for each champion (only the one being played shows). */
@@ -3632,3 +3638,6 @@ export function hazardAbility(h: Hazard): Ability {
       : {}),
   });
 }
+/** A fighter's dash cooldown (the server and client prediction both read it). */
+export const dashCooldownOf = (p: { dashCd?: number }) =>
+  p.dashCd ?? RULES.dashCooldown;

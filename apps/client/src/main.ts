@@ -111,6 +111,7 @@ import {
   bossClears,
   pacificDate,
   raidPingLabel,
+  isRaider,
 } from "../../../packages/shared/src/raid";
 import { resultXp } from "./adventure-ui";
 import { arcadeWeek, ARCADE_EVENTS } from "../../../packages/shared/src/arcade";
@@ -143,6 +144,7 @@ import { illustratedHelp } from "./illustrated-help";
 import { buttonIcon, iconLabel, menuIcon } from "./menu-icons";
 import type { RaidBossId } from "../../../packages/shared/src/raid";
 import type { RaidTab } from "./screens/raid-hall-view";
+import type { SpireTab } from "./screens/spire-view";
 import { LobbySelection } from "./lobby-selection";
 import { setupBattleDock } from "./battle-dock";
 import {
@@ -153,7 +155,11 @@ import {
 } from "./animation/pipeline";
 import { rigAssets, skinSuffix } from "./animation/assets";
 import { loadRigTextures } from "./animation/rig-textures";
-import { prewarmBossAtlas, syncBossPrepaint } from "./boss-vector-prewarm";
+import {
+  bossLookOf,
+  prewarmBossAtlas,
+  syncBossPrepaint,
+} from "./boss-vector-prewarm";
 import {
   addPrepaintedLayers,
   holdFighterPrepaint,
@@ -346,6 +352,14 @@ import type { PlazaProgress } from "../../../packages/shared/src/plaza";
 import { CHAMPION_SKIN_BY_ID } from "../../../packages/shared/src/shop";
 import { prepareSurfaceTextures, surfaceBurst } from "./court-surface-fx";
 import { fxFor } from "./fx-engine";
+import {
+  ECHO_SKILL_COLOR,
+  ECHO_TINT,
+  ECHO_TINT_HURT,
+  drawEliteCrown,
+  echoShown,
+} from "./spire-art";
+import { SPIRE_PARTY } from "../../../packages/shared/src/spire";
 import { isRaidFloor, paintRaidFloor } from "./raid-floors";
 import {
   isIllustratedRaidFloor,
@@ -594,7 +608,8 @@ let state: Snapshot | undefined,
 /** Your late inputs the server will fold into one tick (Fighter.owed). */
 let owedSteps = 0;
 let raidRoomReturn:
-  { code: string; boss: RaidBossId; tab: RaidTab } | undefined;
+  | { code: string; boss: RaidBossId; tab: RaidTab; spire?: SpireTab }
+  | undefined;
 let accountShown = "";
 /** Last known "ultimate ready" state, for the ready sound. */
 let ultWasReady = false;
@@ -1301,7 +1316,7 @@ function roomData(watch: boolean): RoomData {
       : isTeams()
         ? "teams"
         : "duel";
-  const players = s.players.filter((p) => !p.raidBoss);
+  const players = s.players.filter((p) => isRaider(p));
   const hostId = players[0]?.id;
   const me = players.find((p) => p.id === myId);
   const on = new Set(s.mutators ?? []);
@@ -1310,6 +1325,7 @@ function roomData(watch: boolean): RoomData {
     watch,
     code: s.code,
     boss: s.raid?.boss,
+    spire: s.raid?.spire ? { problem: s.raid.spire.problem } : undefined,
     rounds: roundsNeeded(s.mutators),
     seats: players.map((p, i) => {
       const character = p.id === myId ? selected : p.character;
@@ -2670,6 +2686,36 @@ function syncFighterArt() {
     },
   ]);
 }
+/** Start a Spire climb from the Raid Hub (a raid room; the server checks where it starts). */
+async function startSpire(options: { solo?: boolean; returnTab?: SpireTab }) {
+  if (!accountsUI.ensurePlayer()) return;
+  if (myId) return toast("Leave your current room first.");
+  if (!connected) return toast("Waiting for the server connection.");
+  if (watching) await stopWatching();
+  audio.unlock();
+  $<HTMLDialogElement>("dialog").close();
+  settingsOpen = false;
+  menuOpen = false;
+  roomMode = "raid";
+  const reply = await request("create", {
+    name:
+      accountsUI.account?.displayName ??
+      localStorage.getItem("arena-name") ??
+      "Player",
+    mode: "raid",
+    spire: 0,
+  });
+  identity(reply);
+  if (!reply.ok) return;
+  raidRoomReturn = {
+    code: reply.code!,
+    boss: "grumblecrag",
+    tab: "party",
+    spire: options.returnTab ?? "climb",
+  };
+  await request("select", selected);
+  if (options.solo) await request("ready");
+}
 function renderMenu(revealSelection = false) {
   // In a raid room, the boss's atlas is painted ahead (boss-prepaint.ts).
   syncBossPrepaint(state);
@@ -2896,7 +2942,11 @@ async function leave(returnToHub = true) {
     ? state?.raid
       ? raidRoomReturn?.code === state.code
         ? raidRoomReturn
-        : { boss: state.raid.boss, tab: "party" as const }
+        : {
+            boss: state.raid.boss,
+            tab: "party" as const,
+            spire: state.raid.spire ? ("climb" as const) : undefined,
+          }
       : undefined
     : undefined;
   const reply = await request("leave", {
@@ -2921,7 +2971,11 @@ async function leave(returnToHub = true) {
   $<HTMLDialogElement>("dialog").close();
   menuOpen = false;
   if (returnToRaidHub)
-    await accountsUI.showRaids(returnToRaidHub.boss, returnToRaidHub.tab);
+    await accountsUI.showRaids(
+      returnToRaidHub.boss,
+      returnToRaidHub.tab,
+      returnToRaidHub.spire,
+    );
 }
 function renderPvpSpectator() {
   const banner = $("spectate");
@@ -2984,7 +3038,10 @@ function renderBattle() {
       ]
     : isFfa()
       ? [me, ...state.players.filter((p) => p !== me)]
-      : state.players;
+      : state.raid?.spire
+        ? // A climb's Echoes come and go: the cards are the climbers'.
+          state.players.filter((p) => !p.echo)
+        : state.players;
   // PvP shows one score badge (names, rounds, the clock): health is over
   // each fighter, and no one sees an opponent's ultimate (owner, 7 Nov
   // 2026). Raids and Practice keep the full cards.
@@ -3045,7 +3102,8 @@ function renderBattle() {
     // sits in the middle whatever the names' lengths.
     $("hud").innerHTML = badge
       ? `<div class="hud-side">${cards.slice(0, split).join("")}</div>${timerWrap}<div class="hud-side right">${cards.slice(split).join("")}</div>`
-      : cards.map((c, i) => (i === split ? timerWrap : "") + c).join("");
+      : cards.map((c, i) => (i === split ? timerWrap : "") + c).join("") +
+        (cards.length <= split ? timerWrap : "");
     battleHudSize.disconnect();
     battleHudSize.observe($("hud"));
     battleHudSize.observe($("phase-label"));
@@ -3162,7 +3220,7 @@ function renderBattle() {
   );
   setHudText(
     $("network"),
-    `${state.raid ? "Raid" : (state.arena ?? "classic") === "classic" ? "Coliseum" : ARENAS[state.arena!].name} · ${state.practice ? "Practice" : state.raid ? "Boss fight" : "Online match"}`,
+    `${state.raid?.spire ? "The Spire" : state.raid ? "Raid" : (state.arena ?? "classic") === "classic" ? "Coliseum" : ARENAS[state.arena!].name} · ${state.practice ? "Practice" : state.raid?.spire ? `Floor ${state.raid.spire.floor}` : state.raid ? "Boss fight" : "Online match"}`,
   );
   const seconds = Math.ceil(state.remaining);
   setHudText(
@@ -4018,7 +4076,7 @@ function leaveButton() {
     return `<button id="exit-room" class="secondary btn-secondary leave-button">${iconLabel("leave", "Leave room")}</button>`;
   if (state!.raid) {
     const others = state!.players.filter(
-      (p) => !p.raidBoss && !p.out && p.id !== myId,
+      (p) => isRaider(p) && !p.out && p.id !== myId,
     ).length;
     return `<button id="exit-room" class="secondary btn-secondary leave-button is-costly"><span>${buttonIcon("leave")}Leave raid</span><small>${others ? "Your team carries on without you" : "Ends this run"}</small></button>`;
   }
@@ -4607,15 +4665,15 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
   private perfOverlay?: PerfOverlay;
   /** Every fighter in this snapshot has its textures (or gave up loading). */
   fightersReady(s: Snapshot) {
-    return this.fighters.allReady(neededFighters(s.players));
+    return this.fighters.allReady(sceneFighters(s));
   }
   /** Queue whichever of this snapshot's fighters are still missing. */
   private requestFighters(s: Snapshot) {
     if (this.fightersReady(s)) return;
     // Layers rasterized ahead (fighter-prepaint.ts) are added at once.
-    for (const id of neededFighters(s.players))
+    for (const id of sceneFighters(s))
       addPrepaintedLayers(this, this.fighters.assetsFor(id));
-    const ids = this.fighters.toRequest(neededFighters(s.players));
+    const ids = this.fighters.toRequest(sceneFighters(s));
     if (!ids.length) return;
     for (const id of ids)
       queueFighterAssets(this, id, this.fighters.assetsFor(id));
@@ -4760,7 +4818,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       for (const id of neededFighters(state.players))
         addPrepaintedLayers(this, this.fighters.assetsFor(id));
     if (state)
-      for (const id of this.fighters.toRequest(neededFighters(state.players)))
+      for (const id of this.fighters.toRequest(sceneFighters(state)))
         queueFighterAssets(this, id, this.fighters.assetsFor(id));
     // The Shop skins they wear load here too, behind the loading screen: a
     // rig would otherwise ask for them on its first frame, mid-battle (a
@@ -4784,7 +4842,13 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     battleLoadMarks.create ||= performance.now();
     scene = this;
     // The boss's pieces are drawn once into an atlas: now, not on its first frame.
-    if (state?.raid) prewarmBossAtlas(this, state.raid.boss, state.raid.phase);
+    if (state?.raid)
+      prewarmBossAtlas(
+        this,
+        state.raid.boss,
+        state.raid.phase,
+        bossLookOf(state.raid),
+      );
     // So are the arena's pieces (lanterns, conductor posts, light, marks).
     if (state?.raid) prewarmRaidArena(this, state.raid);
     // So are its arena's (pillars, braziers and burning ground).
@@ -5099,7 +5163,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       ? allAbilities.get(event.abilityId)
       : undefined;
     const owner = state?.players.find((p) => p.id === event.owner);
-    const skinColor = owner ? fighterSkillColor(owner) : undefined;
+    const skinColor = owner ? skillColorOf(owner) : undefined;
     if (skinColor !== undefined) event = { ...event, color: skinColor };
     if (
       event.kind === "beam" &&
@@ -5420,7 +5484,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     if (state) this.requestFighters(state);
     if (!this.loadReported && state && this.fightersReady(state)) {
       this.loadReported = true;
-      reportBattleLoad(neededFighters(state.players).length);
+      reportBattleLoad(sceneFighters(state).length);
     }
     const feelNow = performance.now();
     this.applyBattleQuality(feelNow);
@@ -5779,7 +5843,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     }
     // Epic and Mythical skins recolour their wearer's moves (shapes never change).
     const tints = new Map(
-      state.players.map((p) => [p.id, fighterSkillColor(p)] as const),
+      state.players.map((p) => [p.id, skillColorOf(p)] as const),
     );
     const tinted = <T extends { owner: string; color: number }>(o: T): T => {
       const color = tints.get(o.owner);
@@ -6049,6 +6113,8 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         y = pos.y,
         c = CHARACTERS[p.character];
       if (serverPlayer.raidBoss) continue;
+      // A climb's Echoes fade out once it ends (not frozen over the results).
+      const shown = echoShown(state, serverPlayer, sampledAt);
       const serverTime = state.time;
       const airborne = serverPlayer.jumpUntil - serverTime;
       // Static Glide keeps a fighter airborne longer than a jump: it lifts,
@@ -6074,6 +6140,10 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
           : 0;
       const pose = {
         hp: p.hp,
+        // Spire Echoes: the champion in a dark violet shade.
+        ...(serverPlayer.echo
+          ? { tint: ECHO_TINT, hurtTint: ECHO_TINT_HURT }
+          : {}),
         look: p.raidLook,
         skin: p.championLooks?.[p.character] ?? null,
         ambient: ambient.has(p.id),
@@ -6136,11 +6206,13 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
           reducedMotion,
         );
       }
-      const giant = state.mutators?.includes("giants")
-        ? MUTATOR_RULES.giants
-        : 1;
+      // The Spire's elite captain stands bigger than a champion (its hit
+      // area grows the same on the server: SpireArena.hitRadius).
+      const giant =
+        (state.mutators?.includes("giants") ? MUTATOR_RULES.giants : 1) *
+        (serverPlayer.elite ? SPIRE_PARTY.eliteScale : 1);
       const feetY = y + WORLD_ART.fighterFeet * view.fighterY * 0.7 * giant;
-      g.fillStyle(0x081f19, 0.45).fillEllipse(
+      g.fillStyle(0x081f19, 0.45 * shown).fillEllipse(
         x,
         feetY,
         48 - jump * 0.2,
@@ -6150,13 +6222,34 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         2,
         p.id === myId
           ? 0xffffff
-          : isTeams()
-            ? teamOf(p) === myTeam
-              ? 0x5ab0ff
-              : 0xff5d6c
-            : c.color,
-        isTeams() ? 0.8 : 0.55,
+          : serverPlayer.echo
+            ? 0xff5d6c
+            : isTeams()
+              ? teamOf(p) === myTeam
+                ? 0x5ab0ff
+                : 0xff5d6c
+              : c.color,
+        (isTeams() || serverPlayer.echo ? 0.8 : 0.55) * shown,
       ).strokeEllipse(x, feetY, 72, groundHeight(72));
+      if (serverPlayer.echo && serverPlayer.hp > 0 && shown >= 1) {
+        // An Echo: a violet ring (the captain's doubled) and a dark wisp
+        // under it, through the effects engine (Low's budget sees it).
+        g.lineStyle(
+          serverPlayer.elite ? 4 : 2,
+          ECHO_SKILL_COLOR,
+          0.7,
+        ).strokeEllipse(x, feetY, 84, groundHeight(84));
+        const fx = fxFor(this);
+        fx.glow(
+          x,
+          feetY,
+          serverPlayer.elite ? 42 : 30,
+          ECHO_SKILL_COLOR,
+          0.3,
+          true,
+        );
+        fx.soft(x, y - jump - 28, 30, 0x160c2c, 0.22);
+      }
       // The enemy you locked on to (phones): turning corner brackets.
       if (
         p.id === targetLock.id &&
@@ -6196,7 +6289,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
           38,
         );
       }
-      const rig = this.readyRig(p.id, p.character);
+      const rig = shown > 0 ? this.readyRig(p.id, p.character) : undefined;
       if (rig) {
         // The rig keeps this as its base scale (squash and stretch multiply it).
         rig.root.setScale(
@@ -6219,14 +6312,32 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
           x,
           y - jump,
           this.feelClock,
-          serverPlayer.statuses.some((s) => s.kind === "stealth")
+          (serverPlayer.statuses.some((s) => s.kind === "stealth")
             ? p.id === myId
               ? 0.5
               : 0.12
-            : 1,
+            : 1) * shown,
           reducedMotion,
         );
         if ((this.flashUntil.get(p.id) ?? 0) > feelNow) flashWhite(rig.root);
+        // The captain: a crown of violet crystals over its head (in front
+        // of the rig) and a small halo through the effects engine.
+        if (
+          serverPlayer.elite &&
+          serverPlayer.hp > 0 &&
+          shown >= 1 &&
+          rig.front
+        )
+          drawEliteCrown(
+            rig.front,
+            fxFor(this),
+            x,
+            y -
+              jump -
+              (fighterPack(p.character)?.kind === "layered" ? 30 : 46) * giant,
+            giant,
+            reducedMotion ? 0 : _time / 1000,
+          );
         // After render (it clears the rig's layers): the aura's near items
         // pass in front of the fighter, the rest go round behind.
         if (p.raidLook?.aura)
@@ -6242,7 +6353,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
             18 / 48,
             0,
           );
-      } else {
+      } else if (shown > 0) {
         // Its art is still loading (or failed): a plain stand-in in the
         // fighter's colour where the rig would stand, never missing textures.
         const alpha = serverPlayer.statuses.some((s) => s.kind === "stealth")
@@ -6612,7 +6723,8 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         maxHealth(p.character, state.mode, state.players.length),
         p.id === myId
           ? "self"
-          : state.raid || (isTeams() && teamOf(p) === myTeam)
+          : (state.raid && !serverPlayer.echo) ||
+              (isTeams() && teamOf(p) === myTeam)
             ? "ally"
             : "enemy",
       );
@@ -6644,14 +6756,18 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
           outsideView(x, y, this.scale.width, this.scale.height, view)) ||
         serverPlayer.statuses.some(
           (s) => s.kind === "stealth" && p.id !== myId,
-        );
+        ) ||
+        shown <= 0;
       label.hidden = hidden;
       setHudStyle(label, "opacity", p.hp > 0 ? "1" : "0.4");
       label.classList.toggle(
         "team-ally",
         isTeams() && p.id !== myId && teamOf(p) === myTeam,
       );
-      label.classList.toggle("team-enemy", isTeams() && teamOf(p) !== myTeam);
+      label.classList.toggle(
+        "team-enemy",
+        (isTeams() && teamOf(p) !== myTeam) || !!serverPlayer.echo,
+      );
       if (hidden) {
         // Takes no room: the off-screen arrow ignores a plate with no width.
         this.plates.set(p.id, { x: labelX, bottom: labelY, w: 0, h: 0 });
@@ -6675,6 +6791,20 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     g.lineBetween(aim.x - 15, aim.y, aim.x - 6, aim.y);
     g.lineBetween(aim.x + 6, aim.y, aim.x + 15, aim.y);
   }
+}
+/**
+ * The champions a battle needs loaded: those on the court, and a Spire
+ * climb's whole roster (its Echoes appear mid-fight, their art must not).
+ */
+function sceneFighters(s: Snapshot) {
+  return neededFighters([
+    ...s.players,
+    ...(s.raid?.spire?.roster ?? []).map((character) => ({ character })),
+  ]);
+}
+/** A fighter's skill colour: a worn skin's, or the Echoes' violet. */
+function skillColorOf(p: Fighter) {
+  return p.echo ? ECHO_SKILL_COLOR : fighterSkillColor(p);
 }
 /** Floors are baked at 2x on dense screens so they stay sharp when zoomed. */
 /**
@@ -7099,6 +7229,7 @@ accountsUI = new AccountUI({
   openFarm: () => setHubScene("farm"),
   openDialog: dialog,
   startRaid: (boss, options) => void startRaid(boss, options),
+  startSpire: (options) => void startSpire(options),
   raidParty: () => {
     const me = accountsUI.account?.id;
     return {

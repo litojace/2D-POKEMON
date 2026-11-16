@@ -367,7 +367,11 @@ export class FighterRig {
         .setPosition(asset.x, asset.y)
         .setRotation(0)
         .setScale(0.5)
-        .setTint(state === "hurt" ? 0xffb4b4 : 0xffffff);
+        .setTint(
+          state === "hurt"
+            ? (pose.hurtTint ?? 0xffb4b4)
+            : (pose.tint ?? 0xffffff),
+        );
     }
     let [sx, sy] = reduced ? [1, 1] : squashFor(state, progress, t, pose.angle);
     let offsetX = 0,
