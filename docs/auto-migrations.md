@@ -35,9 +35,10 @@ did in the run's summary on GitHub (Actions → Production migrations).
    password (Project Settings → Database → Reset database password if it is
    lost; the game server does not use it, it uses the API keys). Use the
    **Session pooler** address, not the direct `db.<ref>.supabase.co` one:
-   GitHub's runners have no IPv6. Remove the `[ ]` around the password. A
-   password with `@ : / ? # [ ] %` must have them written as `%40 %3A %2F
-%3F %23 %5B %5D %25`; simplest is a password of letters and digits only.
+   GitHub's runners have no IPv6. Remove the `[ ]` around the password. In
+   the password, write `@` as `%40`, `:` as `%3A`, `/` as `%2F`, `?` as
+   `%3F`, `#` as `%23`, `[` as `%5B`, `]` as `%5D` and `%` as `%25`; simplest
+   is a password of letters and digits only.
 2. GitHub → repository → **Settings → Secrets and variables → Actions → New
    repository secret**: name `SUPABASE_DB_URL`, value the URI.
 3. Optional: **Settings → Environments → production → Required reviewers**:
