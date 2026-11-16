@@ -130,6 +130,30 @@ for (const phone of PHONES)
         '.battle-nameplate[data-fighter="p3"] .chat-bubble',
       );
       await expect(rae).toHaveText("Help me");
+      // The text stays inside the bubble, a long phrase or a long line too.
+      const fits = () =>
+        rae.evaluate((b) => {
+          const r = b.getBoundingClientRect(),
+            t = document.createRange();
+          t.selectNodeContents(b);
+          const s = t.getBoundingClientRect();
+          return (
+            b.scrollWidth <= b.clientWidth &&
+            s.left >= r.left &&
+            s.right <= r.right &&
+            s.top >= r.top &&
+            s.bottom <= r.bottom
+          );
+        });
+      expect(await fits()).toBe(true);
+      await rae.evaluate((b) => {
+        b.textContent = "see you all at the fountain after this round ok";
+      });
+      expect(await fits()).toBe(true);
+      expect((await rae.boundingBox())!.width).toBeLessThanOrEqual(160);
+      await rae.evaluate((b) => {
+        b.textContent = "Help me";
+      });
       await expect(page.locator(".battle-chat-feed li")).toHaveText([
         "Rae Help me",
       ]);
