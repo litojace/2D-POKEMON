@@ -482,6 +482,38 @@ const art: Partial<Record<RaidAttack, { el: Element; draw: () => string }>> = {
       arrow(80, 108, 80, 94),
   },
 
+  // Ascendant Inkpurr · Shadow: the dark closes in; stand in a moonlit pool.
+  nightfall: {
+    el: "shadow",
+    draw: () =>
+      `<rect x="6" y="40" width="116" height="80" rx="6" fill="${RED}" fill-opacity=".2" stroke="${RED}" stroke-width="2" stroke-dasharray="5 4"/>` +
+      `<ellipse cx="86" cy="86" rx="24" ry="11" fill="#dfe8ff" fill-opacity=".55" stroke="#fff3c4" stroke-width="2.6"/>` +
+      `<path d="M30 30 a12 12 0 1 0 12 -14 a9 9 0 1 1 -12 14Z" fill="#fff3c4"/>` +
+      shade(30, 74, 0.8) +
+      raider(86, 80, 0.85) +
+      arrow(52, 96, 72, 90),
+  },
+  pounce: {
+    el: "shadow",
+    draw: () =>
+      [
+        [34, 96, 1],
+        [64, 86, 2],
+        [96, 96, 3],
+      ]
+        .map(
+          ([x, y, k]) =>
+            danger(ell(x, y, 17, 7), 0.16 + k * 0.06) +
+            dots(x, y + 13, k, WHITE),
+        )
+        .join("") +
+      `<path d="M26 44 Q40 30 52 52 M96 40 Q104 54 98 72" fill="none" stroke="${S.accent[1]}" stroke-width="2" stroke-dasharray="4 4"/>` +
+      shade(24, 46, 0.7) +
+      shade(96, 38, 0.8, "#fff2b0") +
+      raider(66, 82, 0.8) +
+      arrow(66, 98, 66, 116),
+  },
+
   // Snoozaku · Psychic
   lullaby: {
     el: "psychic",
