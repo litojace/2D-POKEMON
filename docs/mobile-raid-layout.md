@@ -19,10 +19,15 @@ whole-creature crops. Snoozaku's gallery card instead uses the wide
 painting with expanded scenery, showing the creature at a smaller scale with real scenery
 covering both edges on mobile and desktop; room banners keep the portrait asset.
 Gallery artwork uses small optical scale adjustments: Tidelotl 1.06,
-Lumiwick 1.08, and Snoozaku 1.12 on its wider source (previously 1.20 on
+Lumiwick 1.08, and Snoozaku 1.08 on its wider source (previously 1.20 on
 mobile and a tightly cropped portrait on desktop). The other four cards
 retain their scale. Lumiwick and Snoozaku scale from the top to protect
 the flame/nightcap. These card adjustments do not alter detail-page framing.
+Snoozaku's full silhouette spans approximately x=568–1067 in the 1536 px
+source. Its horizontal object position offsets the covered image by the
+silhouette center's distance from source center, keeping equal clearance
+at both card edges across different card ratios. Scaling stays centered
+on the card horizontally, so changing zoom preserves that balance.
 
 The detail paintings use `*-lower.webp` variants with painted scenery added
 above the original composition. The approved creature, horizontal framing and
