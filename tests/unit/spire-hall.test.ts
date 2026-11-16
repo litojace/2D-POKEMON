@@ -1,3 +1,5 @@
+import { expandedSpire } from "../fixtures/spire-catalogue";
+import { spireModel } from "../../apps/client/src/screens/spire-model";
 import { describe, expect, it } from "vitest";
 import type { RaidProgress } from "../../packages/shared/src/raid";
 import type { SpireProgress } from "../../packages/shared/src/spire";
@@ -80,6 +82,9 @@ describe("the Spire tile", () => {
       const html = hall(d);
       expect(html).toMatch(/rh-spire-card is-locked/);
       expect(html).toContain("Clear Cragmuff first");
+      expect(html).toContain(
+        'aria-label="The Spire, locked: clear Cragmuff first"',
+      );
       expect(spireUnlocked(d)).toBe(false);
     }
     // The server's own count of clears opens it too.
@@ -210,5 +215,84 @@ describe("Spire progress and floor previews", () => {
     );
     expect(html).toContain("Start party climb");
     expect(html).not.toContain("Climb from floor 10");
+  });
+});
+
+describe("Spire content expansion", () => {
+  const view = { play: "solo" as const, status: "" };
+  const later = () =>
+    data({
+      spire: climb({
+        highestFloor: 11,
+        checkpoint: 11,
+        claimed: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+      }),
+    });
+  it("derives a second zone, its progress and restart point from content", () => {
+    const content = expandedSpire();
+    const model = spireModel(view, later(), content);
+    expect(model.next?.floor.floor).toBe(12);
+    expect(model.activeGroup.zone.id).toBe(2);
+    expect(model.groups).toHaveLength(2);
+    expect(model.activeGroup.floors).toHaveLength(10);
+    const html = spireMarkup(view, later(), content);
+    expect(html).toContain('max="20" value="11"');
+    expect(html).toContain("Climb from floor 11");
+    expect(html).toContain('data-spire-zone="11" aria-pressed="true"');
+    expect(html.match(/data-spire-preview=/g) ?? []).toHaveLength(10);
+    const trail = html
+      .split('class="sp-tower-trail"')[1]
+      .split('class="rh-stage-info"')[0];
+    expect(trail.match(/<span /g) ?? []).toHaveLength(10);
+  });
+  it("lists released floors from every zone instead of only Zone 1", () => {
+    const html = spireMarkup(
+      { ...view, spireTab: "floors" },
+      later(),
+      expandedSpire(),
+    );
+    expect(html.match(/data-spire-floor=/g) ?? []).toHaveLength(20);
+    expect(html).toContain("Raid Coliseum");
+    expect(html).toContain("Tidal Archives beyond the Moonlit Observatory");
+    expect(html).toContain('data-spire-floor="20"');
+  });
+  it("uses a new boss's briefing, gate and rewards without inheriting Cragmuff copy", () => {
+    const model = spireModel(
+      { ...view, spireFloor: 20 },
+      later(),
+      expandedSpire(),
+    );
+    expect(model.selected.state.label).toBe("Clear its raid first");
+    expect(model.selected.coins).toBe(150);
+    expect(model.selected.title).toBe("Keeper of the Moonlit Tidal Archives");
+    const html = spireMarkup(
+      { ...view, spireFloor: 20 },
+      later(),
+      expandedSpire(),
+    );
+    expect(html).toContain("Pearl Cascade, Tidal Crown");
+    expect(html).not.toContain("Avalanche Charge");
+    expect(html).not.toContain("Twin Slam");
+    expect(html).toContain("Climb from floor 11");
+  });
+  it("keeps unreleased zones out of navigation and total progress", () => {
+    const content = { ...expandedSpire(), builtTop: 10 };
+    const model = spireModel({ ...view, spireFloor: 20 }, data(), content);
+    expect(model.groups).toHaveLength(1);
+    expect(model.total).toBe(10);
+    expect(model.selected.floor.floor).toBe(5);
+    expect(model.floors.every((f) => f.floor.floor <= 10)).toBe(true);
+  });
+  it("keeps mobile milestones and painting dots bounded when many zones are added", () => {
+    const content = expandedSpire(8);
+    const d = data({ spire: climb({ highestFloor: 70, checkpoint: 71 }) });
+    const model = spireModel(view, d, content);
+    expect(model.groups).toHaveLength(8);
+    expect(model.activeGroup.floors).toHaveLength(10);
+    expect(model.next?.floor.floor).toBe(71);
+    const html = spireMarkup(view, d, content);
+    expect(html.match(/data-spire-preview=/g) ?? []).toHaveLength(10);
+    expect(html.match(/data-spire-zone=/g) ?? []).toHaveLength(8);
+    expect(html).toContain("Climb from floor 71");
   });
 });

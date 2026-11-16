@@ -68,6 +68,8 @@ export interface SpireFloor {
   zone: number;
   kind: SpireFloorKind;
   name: string;
+  /** Optional encounter briefing shown by the Hub. Generic copy is the fallback. */
+  description?: string;
   /** Wave floors: two or three waves (a big party adds the last one again). */
   waves: SpireEcho[][];
   /** Elite floors: the captain and the boss mechanic it borrowed. */
@@ -138,6 +140,7 @@ export const SPIRE_FLOORS: Record<number, SpireFloor> = {
     zone: 1,
     kind: "elite",
     name: "The Captain's Ring",
+    description: "Echo Captain Wombolder · reinforcements and eruption attacks",
     waves: [],
     elite: {
       captain: e("wombolder", "front"),
@@ -225,6 +228,7 @@ export const SPIRE_FLOORS: Record<number, SpireFloor> = {
     zone: 1,
     kind: "boss",
     name: "Ascendant Cragmuff",
+    description: "New attacks: Avalanche Charge, Twin Slam",
     waves: [],
     boss: "grumblecrag",
   },

@@ -16,7 +16,7 @@ import {
 } from "./raid-hall-view";
 import "./raid-hall.css";
 import "./spire.css";
-import { spireStartState, type SpireTab } from "./spire-view";
+import { spireStartState, type SpireTab } from "./spire-model";
 
 /**
  * Raids' behaviour (UI remodel step 5). Markup comes from raid-hall-view.ts.
@@ -53,6 +53,7 @@ const FOCUS_KEYS = [
   "data-raid-spire",
   "data-ui-spire-tab",
   "data-spire-preview",
+  "data-spire-zone",
   "data-ui-raid-filter",
   "data-ui-raid-tab",
   "data-ui-raid-play",
@@ -77,6 +78,7 @@ export function openRaids(
   let closed = false;
   let navigation: Animation[] = [];
   let hallScroll = 0;
+  let shownSpireFloor: string | undefined;
   const root = () => panel.root;
   const q = <T extends HTMLElement>(s: string) => root().querySelector<T>(s);
 
@@ -119,6 +121,17 @@ export function openRaids(
       }
     } else patch(root(), template, next);
     template = next;
+    const selectedFloor = q<HTMLElement>('.sp-milestone[aria-pressed="true"]');
+    const floor = selectedFloor?.dataset.spirePreview;
+    if (selectedFloor && (swap || floor !== shownSpireFloor)) {
+      // Scroll only this zone's milestone strip; never move the page or artwork.
+      const route = selectedFloor.parentElement!;
+      route.scrollLeft =
+        selectedFloor.offsetLeft -
+        route.offsetLeft -
+        (route.clientWidth - selectedFloor.offsetWidth) / 2;
+    }
+    shownSpireFloor = floor;
     const active = document.activeElement as HTMLButtonElement | null;
     if (key && (!active?.matches(key) || active.disabled))
       (
@@ -200,10 +213,12 @@ export function openRaids(
     const d = t.dataset;
     if (d.raidCard) openBoss(d.raidCard as RaidBossId);
     else if (d.raidSpire !== undefined) openSpire();
-    else if (d.spirePreview) {
-      view.spireFloor = Number(d.spirePreview);
+    else if (d.spirePreview || d.spireZone) {
+      view.spireFloor = Number(d.spirePreview ?? d.spireZone);
       render();
-      q<HTMLElement>(`[data-spire-preview="${view.spireFloor}"]`)?.focus({
+      q<HTMLElement>(
+        `[${d.spireZone ? "data-spire-zone" : "data-spire-preview"}="${view.spireFloor}"]`,
+      )?.focus({
         preventScroll: true,
       });
     } else if (d.uiSpireTab) {

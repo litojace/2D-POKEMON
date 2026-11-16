@@ -1,5 +1,12 @@
 # Notes for Claude sessions
 
+## Product UI priorities
+
+Mobile landscape is the primary target for the App Store and Google Play
+launch: verify small phones and safe-area insets before desktop polish.
+Keep new content driven by shared data rather than floor/boss-specific UI
+branches. For Spire updates, follow [the content guide](docs/spire-content-guide.md).
+
 ## Running tests quickly
 
 The full visual suite (`tests/visual`, Playwright) has over 100 files and is

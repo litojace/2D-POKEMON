@@ -45,11 +45,6 @@
   /* A tab's contents glide in sideways: never a sideways scroller. */
   overflow-x: hidden;
 }
-.sp-stats {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-}
 .sp-stat {
   display: grid;
   gap: 2px;
@@ -128,9 +123,8 @@
 }
 .sp-floor-name b {
   min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 .sp-floor-state {
   color: var(--ui-dim);
@@ -209,9 +203,6 @@
 @media (max-height: 500px) {
   .sp-body {
     gap: 8px;
-  }
-  .sp-stats {
-    gap: 6px;
   }
   .sp-stat {
     padding: 4px 8px;
@@ -514,7 +505,7 @@
   .sp-preview .ui-note {
     font-size: 11px;
   }
-  .sp-preview > p:nth-of-type(2) {
+  .sp-preview .sp-encounter-description:not(.is-specific) {
     display: none;
   }
   .sp-preview .ui-kicker {
@@ -544,4 +535,62 @@
 .sp-room .ui-actions > .ui-btn {
   min-width: 144px;
   padding-inline: 16px;
+}
+
+/* Additional zones reuse the same compact, finger-sized mobile controls. */
+.sp-zone-picker {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  margin-bottom: 8px;
+  padding-bottom: 4px;
+  scrollbar-width: thin;
+}
+.sp-zone-picker button {
+  flex: none;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid var(--ui-line);
+  border-radius: 8px;
+  background: #151a2d;
+  color: #e8dcff;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.sp-zone-picker button[aria-pressed="true"] {
+  border-color: #c3a1ff;
+  background: #65438b70;
+}
+.sp-zone-picker button:focus-visible {
+  outline: 2px solid #ffda73;
+  outline-offset: -2px;
+}
+.sp-floor-zone {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+.sp-floor-zone h3 {
+  margin: 0;
+  font-size: 16px;
+  overflow-wrap: anywhere;
+}
+.sp-floor-name {
+  flex-wrap: wrap;
+}
+.sp-preview-heading > .ui-tag {
+  flex: none;
+}
+.sp-preview-title {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+@media (max-height: 500px) {
+  .sp-floor-zone {
+    gap: 6px;
+  }
+  .sp-floor-zone h3 {
+    font-size: 14px;
+  }
 }

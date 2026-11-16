@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 import { expect, test, type Page } from "@playwright/test";
 import {
   box,
@@ -184,6 +185,67 @@ for (const size of SIZES)
       await room.locator("[data-raid-back]").click();
       await expect(room.locator("[data-raid-spire]")).toBeFocused();
       expect(errors).toEqual([]);
+      if (size.name === "phone-island") {
+        // Stress future content layout without shipping or enabling any new floors.
+        await room.locator("[data-raid-spire]").click();
+        await page.evaluate(
+          async ({ modelPath, fixturePath, records }) => {
+            const { spireMarkup } = await import(modelPath);
+            const { expandedSpire } = await import(fixturePath);
+            const content = expandedSpire();
+            const data = {
+              progress: records,
+              spire: {
+                season: 0,
+                highestFloor: 11,
+                checkpoint: 11,
+                attempts: 4,
+                claimed: [11],
+              },
+              loading: false,
+              me: { name: "tester", character: "voltkit" },
+              party: [],
+              leader: true,
+              inRoom: false,
+            };
+            document.querySelector(".sp-room")!.outerHTML = spireMarkup(
+              { play: "solo", status: "", spireFloor: 20 },
+              data,
+              content,
+            );
+          },
+          {
+            modelPath: `/@fs${fileURLToPath(new URL("../../apps/client/src/screens/spire-view.ts", import.meta.url))}`,
+            fixturePath: `/@fs${fileURLToPath(new URL("../fixtures/spire-catalogue.ts", import.meta.url))}`,
+            records: CLEARED,
+          },
+        );
+        await expect(page.locator(".sp-zone-picker button")).toHaveCount(2);
+        await expect(page.locator(".sp-milestone")).toHaveCount(10);
+        await expect(page.locator(".sp-preview")).toContainText(
+          "Pearl Cascade, Tidal Crown",
+        );
+        await expect(page.locator(".sp-preview")).not.toContainText(
+          "Avalanche Charge",
+        );
+        await expect(page.locator("[data-raid-start]")).toHaveText(
+          "Climb from floor 11",
+        );
+        expect(
+          await layoutProblems(page, { phone: true, inset: size.inset }),
+        ).toEqual([]);
+        const targets = await page
+          .locator(".sp-zone-picker button, .sp-milestone")
+          .evaluateAll((els) =>
+            els.every(
+              (el) =>
+                el.getBoundingClientRect().width >= 44 &&
+                el.getBoundingClientRect().height >= 44,
+            ),
+          );
+        expect(targets).toBe(true);
+        await snap(page, info, "spire-expanded-phone-island");
+      }
     } finally {
       await context.close();
     }
@@ -519,6 +581,55 @@ test("Echoes fade from the court once the climb ends", async ({
       ).toBeHidden();
     await snap(page, info, "spire-results-no-echoes");
     expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});
+
+test("the next Spire milestone is revealed on mobile without moving the page", async ({
+  browser,
+}, info) => {
+  const context = await browser.newContext({
+    viewport: { width: 852, height: 393 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  try {
+    const page = await context.newPage();
+    await withRecords(page, CLEARED, {
+      ...CLIMB,
+      highestFloor: 9,
+      claimed: [1, 2, 3, 4, 5, 6, 7, 8, 9],
+    });
+    await openHub(page);
+    await setInsets(page, ISLAND);
+    await page.click('.lobby-rail [data-lobby-action="raids"]');
+    const card = page.locator("[data-raid-spire]");
+    await card.scrollIntoViewIfNeeded();
+    await card.click();
+    await expect(page.locator('[data-spire-preview="10"]')).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    const framing = await page
+      .locator('[data-spire-preview="10"]')
+      .evaluate((el) => {
+        const r = el.getBoundingClientRect(),
+          strip = el.parentElement!.getBoundingClientRect();
+        return {
+          contained: r.left >= strip.left && r.right <= strip.right,
+          scrollLeft: el.parentElement!.scrollLeft,
+          bodyScroll: document.querySelector('[data-raid-region="body"]')!
+            .scrollTop,
+        };
+      });
+    expect(framing.contained).toBe(true);
+    expect(framing.bodyScroll).toBe(0);
+    expect(framing.scrollLeft).toBeGreaterThan(0);
+    expect(await layoutProblems(page, { phone: true, inset: ISLAND })).toEqual(
+      [],
+    );
+    await snap(page, info, "spire-next-milestone-phone");
   } finally {
     await context.close();
   }
