@@ -244,12 +244,12 @@ function bossCard(id: RaidBossId, d: RaidData) {
         : tag("New", "new");
   const tricks = bossTricks(id).slice(0, 3);
   const label = `${b.name}, ${b.stars} ${b.stars === 1 ? "star" : "stars"}, ${b.element}${locked ? ", locked: clear Cragmuff first" : !b.playable ? ", coming soon" : clears ? `, ${clears} ${clears === 1 ? "clear" : "clears"}` : ", new"}`;
-  // Snoozaku's expanded painting allows a wider mobile crop with real scenery
-  // at both edges. Other cards and room banners keep their portrait assets.
+  // Snoozaku's wider painting keeps its nightcap and body inside the gallery
+  // card at both sizes. Room banners still use their portrait assets.
   const portrait = raidPortraitImage(id);
   const art =
     id === "somnara"
-      ? `<picture><source media="(max-height: 500px)" srcset="${snoozakuMobile}">${portrait}</picture>`
+      ? `<img class="raid-splash-image" src="${snoozakuMobile}" alt="" width="1536" height="1024" decoding="async" loading="lazy">`
       : portrait;
   return `<button type="button" class="rh-card${locked ? " is-locked" : ""}${b.playable ? "" : " is-soon"}" style="--boss:${b.color}" data-raid-card="${id}" aria-label="${esc(label)}"><span class="rh-card-art">${art}</span><span class="rh-card-top">${corner}${stars(b.stars)}</span><span class="rh-card-text"><b class="rh-card-name">${esc(b.name)}</b><small class="ui-note rh-card-line">${esc(b.element)} · ${esc(b.signature)}</small><span class="rh-card-foot"><span class="rh-tricks" title="Fighters with a trick here">${tricks.map((t) => fighterChip(t.character, `rh-${id}-${t.character}`)).join("")}</span><span class="ui-note">${p ? `${earned} / ${total} rewards` : `${total} rewards`}</span></span></span></button>`;
 }
