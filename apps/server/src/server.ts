@@ -10,10 +10,13 @@ import {
 } from "../../../packages/shared/src/arcade.js";
 import { RaidArena } from "./raid.js";
 import { createRaidArena } from "./raid-bosses.js";
-import { SpireArena } from "./spire.js";
+import { createSpireArena, isSpireArena, type SpireRoom } from "./spire.js";
 import {
-  SPIRE_BUILT_TOP,
+  SPIRE_BUILT_ZONES,
   spireStartFrom,
+  spireZoneOf,
+  spireZoneStart,
+  spireZoneTop,
   type SpireMember,
 } from "../../../packages/shared/src/spire.js";
 import type { ActivityReceipt } from "../../../packages/shared/src/shop.js";
@@ -106,8 +109,18 @@ const createSchema = identitySchema
       .enum(RAID_BOSS_ORDER as [RaidBossId, ...RaidBossId[]])
       .refine((id: RaidBossId) => RAID_BOSSES[id].playable)
       .optional(),
-    // The Spire (season 0): a climb in a raid room.
-    spire: z.literal(0).optional(),
+    // The Spire (season 0): a climb in a raid room, one zone per room. The
+    // first floor of a built zone (0: zone 1, as before zones). Whether the
+    // party has earned it is checked against storage when the climb starts.
+    spire: z
+      .number()
+      .int()
+      .refine(
+        (f) =>
+          f === 0 ||
+          SPIRE_BUILT_ZONES.some((zone) => spireZoneStart(zone) === f),
+      )
+      .optional(),
   })
   .strict();
 const teamSchema = z
@@ -806,17 +819,18 @@ export function createArenaServer(
       });
   }
   function startArena(a: Arena) {
-    if (a instanceof SpireArena) return void startSpire(a);
+    if (isSpireArena(a)) return void startSpire(a);
     a.start();
   }
   /** Climbs being checked against storage (one at a time per room). */
-  const spireChecks = new WeakSet<SpireArena>();
+  const spireChecks = new WeakSet<SpireRoom>();
   /**
-   * A climb starts where the party may climb: the lowest checkpoint among
-   * its members, below the lowest boss floor someone hasn't unlocked (each
-   * read from storage, never from a client). Without storage: floor 1.
+   * A climb starts at the first floor of the room's zone, if every member
+   * has earned that checkpoint, below the lowest boss floor someone hasn't
+   * unlocked (each read from storage, never from a client). Without
+   * storage: zone 1 from floor 1 only.
    */
-  async function startSpire(a: SpireArena) {
+  async function startSpire(a: SpireRoom) {
     if (spireChecks.has(a)) return;
     spireChecks.add(a);
     const owners = fighterAccounts.get(a);
@@ -839,8 +853,15 @@ export function createArenaServer(
     )
       return;
     const plan = members
-      ? spireStartFrom(members)
-      : { ok: true, startFloor: 1, ceiling: SPIRE_BUILT_TOP };
+      ? spireStartFrom(members, a.zone)
+      : a.zone === 1
+        ? { ok: true, startFloor: 1, ceiling: spireZoneTop(1) }
+        : {
+            ok: false,
+            startFloor: 1,
+            ceiling: 0,
+            reason: "Climbing past zone 1 needs your saved progress.",
+          };
     if (!plan.ok) {
       a.spire.state.problem = plan.reason;
       for (const p of a.players) p.ready = false;
@@ -851,7 +872,7 @@ export function createArenaServer(
     broadcast(a);
   }
   /** Save each floor a climb cleared, at once (the climb may still fail). */
-  function saveSpireFloors(arena: SpireArena) {
+  function saveSpireFloors(arena: SpireRoom) {
     const owners = fighterAccounts.get(arena);
     for (const floor of arena.spire.pending.splice(0)) {
       const runId = floor.runId;
@@ -913,7 +934,7 @@ export function createArenaServer(
     const started = diagnostics.now();
     // Wins and real attempts (not instant quits) are saved:
     // losses still count towards titles and tell us which attacks are unfair.
-    if (arena instanceof SpireArena && arena.spire.pending.length)
+    if (isSpireArena(arena) && arena.spire.pending.length)
       saveSpireFloors(arena);
     // Raid clears (not Spire climbs: those save floor by floor, above).
     if (
@@ -1666,7 +1687,7 @@ export function createArenaServer(
       const arena =
         result.data.mode === "raid"
           ? result.data.spire !== undefined
-            ? new SpireArena(code)
+            ? createSpireArena(code, spireZoneOf(result.data.spire || 1))
             : createRaidArena(code, result.data.boss)
           : result.data.arcade
             ? new ArcadeArena(
@@ -2780,7 +2801,7 @@ export function createArenaServer(
           bots: a.bots.size,
           ...(bot ? { botLevel: bot.difficulty } : {}),
           ...(a instanceof RaidArena ? { boss: a.raid.boss } : {}),
-          ...(a instanceof SpireArena ? { spire: a.spire.state.floor } : {}),
+          ...(isSpireArena(a) ? { spire: a.spire.state.floor } : {}),
           character: a.players.find((p) => p.id === id)?.character,
           // Who you fought (champions only), and a tag shared by every
           // player's report of this match, to read both sides together.

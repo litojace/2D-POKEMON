@@ -29,7 +29,7 @@ export interface RaidHooks {
   data(): RaidData;
   start(boss: RaidBossId, o: { solo?: boolean; returnTab: RaidTab }): void;
   /** Start a Spire climb (a raid room the party follows you into). */
-  startSpire?(o: { solo?: boolean; returnTab: SpireTab }): void;
+  startSpire?(o: { solo?: boolean; returnTab: SpireTab; zone: number }): void;
   /** Invite a friend to your Lobby party; resolves with the server's answer. */
   invite(id: string): Promise<{ ok: boolean; error?: string }>;
   /** Friends (to invite from somewhere else), the Wardrobe (to wear rewards). */
@@ -53,7 +53,7 @@ const FOCUS_KEYS = [
   "data-raid-spire",
   "data-ui-spire-tab",
   "data-spire-preview",
-  "data-spire-zone",
+  "data-ui-spire-zone",
   "data-ui-raid-filter",
   "data-ui-raid-tab",
   "data-ui-raid-play",
@@ -182,9 +182,14 @@ export function openRaids(
   };
   const start = (solo: boolean) => {
     if (view.mode === "spire") {
-      if (!spireStartState(view, hooks.data()).ok || !hooks.startSpire) return;
+      const s = spireStartState(view, hooks.data());
+      if (!s.ok || !hooks.startSpire) return;
       panel.close();
-      hooks.startSpire({ solo, returnTab: view.spireTab ?? "climb" });
+      hooks.startSpire({
+        solo,
+        returnTab: view.spireTab ?? "climb",
+        zone: s.zone,
+      });
       return;
     }
     const s = startState(view, hooks.data());
@@ -213,12 +218,10 @@ export function openRaids(
     const d = t.dataset;
     if (d.raidCard) openBoss(d.raidCard as RaidBossId);
     else if (d.raidSpire !== undefined) openSpire();
-    else if (d.spirePreview || d.spireZone) {
-      view.spireFloor = Number(d.spirePreview ?? d.spireZone);
+    else if (d.spirePreview) {
+      view.spireFloor = Number(d.spirePreview);
       render();
-      q<HTMLElement>(
-        `[${d.spireZone ? "data-spire-zone" : "data-spire-preview"}="${view.spireFloor}"]`,
-      )?.focus({
+      q<HTMLElement>(`[data-spire-preview="${view.spireFloor}"]`)?.focus({
         preventScroll: true,
       });
     } else if (d.uiSpireTab) {
@@ -246,6 +249,15 @@ export function openRaids(
         if (animation) navigation.push(animation);
       }
       q<HTMLElement>(`[data-ui-spire-tab="${view.spireTab}"]`)?.focus({
+        preventScroll: true,
+      });
+    } else if (d.uiSpireZone) {
+      // The zone to climb (Climb tab): only an open one is enabled. The
+      // preview and milestones follow it, from its next floor.
+      view.spireZone = Number(d.uiSpireZone);
+      view.spireFloor = undefined;
+      render();
+      q<HTMLElement>(`[data-ui-spire-zone="${view.spireZone}"]`)?.focus({
         preventScroll: true,
       });
     } else if (d.uiRaidFilter) {
@@ -317,7 +329,7 @@ export function openRaids(
     )[event.key];
     if (!step) return;
     const group = t.closest<HTMLElement>(
-      ".ui-tabs, .ui-seg, .ui-chips, .rh-grid, .rh-attacks, .rh-strip",
+      ".ui-tabs, .ui-seg, .ui-chips, .rh-grid, .rh-attacks, .rh-strip, .sp-zone-picker",
     );
     if (!group || !root().contains(group)) return;
     const items = Array.from(

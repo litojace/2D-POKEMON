@@ -7,6 +7,7 @@ import {
   TouchInputState,
   controlExtent,
   mobileLayout,
+  lockSlots,
   safeViewport,
   controlPreferences,
   DEFAULT_CONTROLS,
@@ -22,6 +23,14 @@ export class TouchControls {
   readonly input = new TouchInputState();
   enabled: boolean;
   readonly available: boolean;
+  /** How many target portraits fit on the arc by the basic attack. */
+  lockSlots = 0;
+  /** Where the target portraits live: the touch pad, beside the cluster. */
+  get lockHost() {
+    return (this.pad ??=
+      this.root.querySelector<HTMLElement>(".touch-pad") ?? undefined);
+  }
+  private pad?: HTMLElement;
   preferences: ControlPreferences;
   private root: HTMLElement;
   private stick: HTMLElement;
@@ -415,6 +424,15 @@ export class TouchControls {
       "--combat-cluster-height",
       layout.height + "px",
     );
+    // The target portraits' arc (target-picker.ts), from the cluster's
+    // bottom-right corner, which is the touch pad's in a battle.
+    const slots = lockSlots(layout);
+    this.lockSlots = slots.length;
+    const pad = cluster.parentElement!;
+    slots.forEach((slot, i) => {
+      pad.style.setProperty(`--lock-${i}-r`, layout.width - slot.x + "px");
+      pad.style.setProperty(`--lock-${i}-b`, layout.height - slot.y + "px");
+    });
     for (const target of layout.targets) {
       const button = this.buttons.find(
         (b) => (b.dataset.skill ?? b.dataset.action) === target.action,

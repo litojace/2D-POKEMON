@@ -37,7 +37,7 @@ import {
 } from "./predict-fighter";
 import { startPingBadge } from "./ping-badge";
 import { TargetLock, drawTargetReticle, type Targetable } from "./target-lock";
-import { renderTargetPicker } from "./target-picker";
+import { renderTargetPicker, type PickerEnemy } from "./target-picker";
 import {
   CastPredictor,
   canBasic,
@@ -270,7 +270,7 @@ import {
   leadProjectile,
 } from "./networking/timeline-lead";
 import { AccountUI } from "./accounts";
-import { framedAvatar } from "./portraits";
+import { framedAvatar, portraitAvatar } from "./portraits";
 import { waitForServer, onServerStartupRetry } from "./server-connection";
 import "./ui/tokens.css";
 import "./style.css";
@@ -361,20 +361,27 @@ import {
   drawEliteCrown,
   echoShown,
 } from "./spire-art";
-import { SPIRE_PARTY } from "../../../packages/shared/src/spire";
+import {
+  SPIRE_PARTY,
+  SPIRE_ZONES,
+  spireZoneStart,
+} from "../../../packages/shared/src/spire";
 import { spireCourtWalls } from "../../../packages/shared/src/spire-court";
 import {
-  SPIRE_SUMMIT_FLOOR,
   SpireCourtRig,
   isSpireFloorId,
+  isSpireSummitFloorId,
   nextSpireCourtView,
   paintSpireFloorId,
   prewarmSpireCourt,
   spireCourtView,
   spireFloorId,
+  spireSummitArt,
+  spireSummitFloorId,
+  spireSummitFloorOf,
   type SpireCourtView,
 } from "./spire-court-rig";
-import { paintSpireSummitGrade, spireFloorTint } from "./spire-court-art";
+import { spireFloorTint } from "./spire-court-art";
 import { isRaidFloor, paintRaidFloor } from "./raid-floors";
 import {
   isIllustratedRaidFloor,
@@ -1343,7 +1350,9 @@ function roomData(watch: boolean): RoomData {
     watch,
     code: s.code,
     boss: s.raid?.boss,
-    spire: s.raid?.spire ? { problem: s.raid.spire.problem } : undefined,
+    spire: s.raid?.spire
+      ? { problem: s.raid.spire.problem, zone: s.raid.spire.zone }
+      : undefined,
     rounds: roundsNeeded(s.mutators),
     seats: players.map((p, i) => {
       const character = p.id === myId ? selected : p.character;
@@ -1563,6 +1572,20 @@ function identityOf(p: Fighter, character = p.character): Fighter {
             : p.raidClears,
       }
     : { ...p, character };
+}
+/** Target portraits' faces (data URLs), built once per look and kept. */
+const targetFaces = new Map<string, string>();
+function targetFace(p: Fighter) {
+  const look = p.championLooks?.[p.character];
+  const key = `${p.character}|${look?.skin ?? ""}|${look?.stage ?? ""}|${p.raidLook?.skin ?? ""}`;
+  let url = targetFaces.get(key);
+  if (!url) {
+    url =
+      "data:image/svg+xml;charset=utf-8," +
+      encodeURIComponent(portraitAvatar(p, `target-${targetFaces.size}`));
+    targetFaces.set(key, url);
+  }
+  return url;
 }
 let lastWornKey = "{}";
 /** Your fighter's colour on the page (the room, the hub). */
@@ -2713,7 +2736,13 @@ function syncFighterArt() {
   ]);
 }
 /** Start a Spire climb from the Raid Hub (a raid room; the server checks where it starts). */
-async function startSpire(options: { solo?: boolean; returnTab?: SpireTab }) {
+async function startSpire(options: {
+  solo?: boolean;
+  returnTab?: SpireTab;
+  /** The zone to climb (the server checks every climber has earned it). */
+  zone?: number;
+}) {
+  const zone = SPIRE_ZONES[options.zone ?? 1] ? (options.zone ?? 1) : 1;
   if (!accountsUI.ensurePlayer()) return;
   if (myId) return toast("Leave your current room first.");
   if (!connected) return toast("Waiting for the server connection.");
@@ -2729,13 +2758,13 @@ async function startSpire(options: { solo?: boolean; returnTab?: SpireTab }) {
       localStorage.getItem("arena-name") ??
       "Player",
     mode: "raid",
-    spire: 0,
+    spire: spireZoneStart(zone),
   });
   identity(reply);
   if (!reply.ok) return;
   raidRoomReturn = {
     code: reply.code!,
-    boss: "grumblecrag",
+    boss: SPIRE_ZONES[zone].boss,
     tab: "party",
     spire: options.returnTab ?? "climb",
   };
@@ -4438,11 +4467,11 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         ctx.scale(bake, bake);
         paintSpireFloorId(ctx, id);
         addCanvasTexture(this.textures, key, canvas);
-      } else if (isIllustratedRaidFloor(id) || id === SPIRE_SUMMIT_FLOOR) {
+      } else if (isIllustratedRaidFloor(id) || isSpireSummitFloorId(id)) {
         // The Spire's boss floor: its raid's court with the summit grade.
-        const summit = id === SPIRE_SUMMIT_FLOOR;
+        const summit = isSpireSummitFloorId(id) ? spireSummitArt(id) : null;
         const picture: IllustratedRaidFloor = summit
-          ? "raid-coliseum"
+          ? summit.picture
           : (id as IllustratedRaidFloor);
         const canvas = document.createElement("canvas");
         canvas.width = RULES.width * bake;
@@ -4451,14 +4480,14 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         ctx.scale(bake, bake);
         if (isRaidFloor(picture)) paintRaidFloor(ctx, picture);
         else paintCourtFloor(ctx, "classic", true);
-        if (summit) paintSpireSummitGrade(ctx);
+        summit?.grade(ctx);
         addCanvasTexture(this.textures, key, canvas);
         loadRaidArenaArt(picture, (image) => {
           if (!this.textures?.exists(key)) return;
           ctx.save();
           ctx.setTransform(bake, 0, 0, bake, 0, 0);
           paintIllustratedRaidFloor(ctx, picture, image);
-          if (summit) paintSpireSummitGrade(ctx);
+          summit?.grade(ctx);
           ctx.restore();
           canvas.dataset.raidArtwork = id;
           // A new texture rather than re-uploading the old one in place: on
@@ -4577,8 +4606,8 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     const key = this.floorTexture(
       spireCourt
         ? spireFloorId(spireCourt)
-        : spire && this.courtRaid
-          ? SPIRE_SUMMIT_FLOOR
+        : spire && (this.courtRaid || arena === "lagoon")
+          ? spireSummitFloorOf(arena)
           : this.courtRaid
             ? "raid-coliseum"
             : court
@@ -4590,7 +4619,11 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       .setTexture(key)
       .setScale(1 / (this.floorScale.get(key) ?? 1))
       // The Spire's platform takes the light of its height.
-      .setTint(spireCourt ? spireFloorTint(spireCourt.floor) : 0xffffff);
+      .setTint(
+        spireCourt
+          ? spireFloorTint(spireCourt.floor, spireCourt.zone)
+          : 0xffffff,
+      );
     this.releaseFloor(previous);
     // Round the Spire's courts: its sky, not the raid's dimmed floor.
     if (spire) this.spireRig ??= new SpireCourtRig(this, fighterDepth);
@@ -4700,7 +4733,8 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       if (next && ahead !== this.spirePrepared) {
         this.spirePrepared = ahead;
         this.spireRig.prepare(next);
-        if (next.kind === "boss") this.floorTexture(SPIRE_SUMMIT_FLOOR);
+        if (next.kind === "boss")
+          this.floorTexture(spireSummitFloorId(next.zone));
       }
       if (spire.kind !== "boss") {
         fxFor(this).setOccluders(this.spireRig.fronts, fighterDepth);
@@ -5034,8 +5068,8 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         !!state?.players.some((p) => p.id === id && !p.out) ||
         !!extra?.some((t) => t.id === id),
     );
-    const frame = document.getElementById("game")?.parentElement;
-    if (!frame) return;
+    const host = touch.lockHost;
+    if (!host) return;
     const show =
       touch.enabled &&
       !!me &&
@@ -5043,7 +5077,13 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       state?.phase === "playing" &&
       state.raid?.boss !== "storm-twins";
     const myTeam = me ? teamOf(me) : undefined;
-    const enemies = !show
+    const away = (t: { x: number; y: number }) =>
+      me ? Math.hypot(t.x - me.x, t.y - me.y) : 0;
+    const face = (id: string | undefined) => {
+      const p = id ? state?.players.find((f) => f.id === id) : undefined;
+      return p ? targetFace(p) : undefined;
+    };
+    const enemies: PickerEnemy[] = !show
       ? []
       : extra
         ? // Gloomshade's bodies (alike, by letter) and unlit lanterns;
@@ -5056,6 +5096,14 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
               name: t.label,
               color: TARGET_COLORS[t.kind],
               available: true,
+              kind: t.kind,
+              distance: away(t),
+              ...(t.kind === "bubble"
+                ? { art: face(t.id.slice("bubble:".length)) }
+                : t.kind === "boss"
+                  ? { art: face(t.id) }
+                  : // "Inkpurr B" → B; "Lantern NW" → NW
+                    { glyph: t.label.split(" ").at(-1) }),
             }))
         : state!.players
             .filter((p) => p.id !== myId && !p.out && teamOf(p) !== myTeam)
@@ -5065,9 +5113,17 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
               color: `#${CHARACTERS[p.character].color.toString(16).padStart(6, "0")}`,
               available:
                 p.hp > 0 && !p.statuses.some((s) => s.kind === "stealth"),
+              kind: p.raidBoss ? ("boss" as const) : ("fighter" as const),
+              art: targetFace(p),
+              distance: away(p),
             }));
-    renderTargetPicker(frame, show, enemies, targetLock.id, (id) =>
-      targetLock.toggle(id),
+    renderTargetPicker(
+      host,
+      show,
+      enemies,
+      targetLock.id,
+      touch.lockSlots,
+      (id) => targetLock.toggle(id),
     );
   }
   /** Start your own basic, skill or dash feedback on the press (see cast-prediction). */

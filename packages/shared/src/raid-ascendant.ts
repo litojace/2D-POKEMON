@@ -178,11 +178,11 @@ export const ASCENDANT_CRAGMUFF_CHAPTERS = [
 export const ASCENDANT_TIDELOTL = {
   name: "Ascendant Tidelotl",
   /**
-   * Health added per extra raider (Tidelotl's raid: 850). Its attacks mostly
-   * need the whole floor, so a party meets far fewer overlapping attacks
-   * than against Ascendant Cragmuff; more health per raider evens that out.
+   * Health added per extra raider: the raid's own scaling (850). A party is
+   * held back by pressure instead (combos, echoes, overlaps, harder hits):
+   * more health only made its fights twice as long as Ascendant Cragmuff's.
    */
-  perExtraPlayer: 1900,
+  perExtraPlayer: 850,
   /** Seconds a teammate kneels to revive (the Ascendant tier: 4.5). */
   reviveSeconds: 6.5,
   /**
@@ -219,6 +219,33 @@ export const ASCENDANT_TIDELOTL = {
   anchor: { still: 1.2, hit: 1.0, speed: 40 },
   /** As a strand ends it sweeps its tail twice: a wider second ring. */
   secondSweep: { radius: 175 },
+  /**
+   * Pressure by chapter: seconds between attacks × this (the tier's cadence
+   * and the party's are applied first).
+   */
+  cadence: [1, 0.95, 0.78],
+  /** First chapter of each combo: a missed dive, a bubble fan and a crossed Breaker Wall raise geysers. */
+  combosFrom: { dive: 1, bubbles: 1, breaker: 2 },
+  /**
+   * Party pressure: Geyser Lines also go at a second raider from this many
+   * raiders alive, bubble fans from this chapter (3+ raiders).
+   */
+  echo: { geyserRaiders: 2, bubblesFrom: 1 },
+  /**
+   * Overlap: from chapter `from`, with `raiders` or more alive, a Geyser Line
+   * or a bubble fan may start while one of these plays out (they don't move
+   * the boss or need the whole floor at once). The raid's overlap rules
+   * still space the impacts and keep everyone a safe spot.
+   */
+  overlap: {
+    from: 1,
+    raiders: 2,
+    with: ["hightide", "undertow", "prison"] as readonly RaidAttack[],
+  },
+  /** Strand and stagger windows × (1 + this per extra raider): a party's punish window. */
+  partyWindows: 0.15,
+  /** Its attacks hit harder by this share per extra raider (instead of more health). */
+  partyDamage: 0.25,
 } as const;
 
 /** Ascendant Tidelotl's attack order for a chapter. */
@@ -254,18 +281,18 @@ export const ASCENDANT_TIDELOTL_CHAPTERS = [
     name: "Abyssal Swell",
     objective: "Lead dives onto islands. Find the calm lane in a Breaker Wall.",
     detail:
-      "A Breaker Wall can't be jumped: stand in a lane of calm water, or on an island, as it passes. It reads you: geysers rise where you usually dodge, and standing still to attack draws a Geyser Line.",
+      "A Breaker Wall can't be jumped: stand in a lane of calm water, or on an island, as it passes. Bubble fans and dives that miss chain into geysers, and standing still to attack draws a Geyser Line.",
   },
   {
     name: "Lightless Deep",
     objective: "Strand it fast. Watch for a ripple that turns.",
     detail:
-      "A dive's ripple may sink away and become a Geyser Line: the new warning is shown in full, so react to what is drawn now. Bubble fans chain into geysers, and it hunts whoever kneels to revive.",
+      "A dive's ripple may sink away and become a Geyser Line: the new warning is shown in full, so react to what is drawn now. When a Breaker Wall has crossed, geysers erupt under you. It hunts whoever kneels to revive.",
   },
   {
     name: "Ascendant Tide",
     objective: "Strand it. Survive the combinations.",
     detail:
-      "When a Breaker Wall has crossed, geysers erupt under you: move off them. As a strand ends it sweeps its tail twice, the second ring wider. High Tide leads into a dive, the Undertow into a wave.",
+      "Its rhythm quickens. As a strand ends it sweeps its tail twice, the second ring wider. High Tide leads into a dive, the Undertow into a wave.",
   },
 ] as const;

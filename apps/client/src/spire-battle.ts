@@ -7,7 +7,11 @@
 import type Phaser from "phaser";
 import type { Snapshot } from "@arena/shared";
 import { CHARACTERS } from "@arena/shared";
-import { SPIRE_FLOORS, SPIRE_PARTY } from "../../../packages/shared/src/spire";
+import {
+  SPIRE_ELITE_MECHANICS,
+  SPIRE_FLOORS,
+  SPIRE_PARTY,
+} from "../../../packages/shared/src/spire";
 import { ECHO_SKILL_COLOR } from "./spire-art";
 
 /** A ring where an Echo is about to step out (harmless: a heads-up). */
@@ -87,9 +91,13 @@ export function spireCue(state: Snapshot) {
     return SPIRE_FLOORS[s.floor]?.name ?? "The Spire";
   if (s.kind === "elite") {
     if (r.staggerUntil > state.time) return "The captain reels — hit it now!";
-    if (r.warnings.some((w) => w.kind === "eruption"))
-      return "Eruptions chase you — keep moving!";
-    return "Echo Captain · it borrowed Cragmuff's eruptions";
+    const m =
+      SPIRE_ELITE_MECHANICS[
+        SPIRE_FLOORS[s.floor]?.elite?.mechanic ?? "eruption"
+      ];
+    if (r.warnings.some((w) => w.kind === m.attack) || r.bubbles?.length)
+      return m.cue;
+    return `Echo Captain · it borrowed ${m.boss}'s ${m.name}`;
   }
   if (s.spawns.length) return "Echoes are taking shape — get ready!";
   if (!s.echoesLeft && s.wave < s.waves)

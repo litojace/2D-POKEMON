@@ -120,7 +120,10 @@ describe("the Ascendant tier", () => {
       A.geyser.delay * RAID_ASCENDANT_TIER.telegraph,
     );
   });
-  it("a party meets more health per extra raider; alone, the tier's formula", () => {
+  // Retuned: a party used to meet +1900 health per extra raider (fights
+  // twice as long as Ascendant Cragmuff's). It now has the raid's own
+  // scaling, and pressure instead (next test).
+  it("a party meets the raid's own health scaling; alone, the tier's formula", () => {
     const health = (size: number, form: "ascendant" | "raid") => {
       // (A raid may roll Gilded: compare the plain look's health.)
       const a = arena(size, 1, form);
@@ -133,12 +136,37 @@ describe("the Ascendant tier", () => {
     );
     const ratio = (n: number) =>
       health(n, "ascendant") / (health(n, "raid") * RAID_ASCENDANT_TIER.health);
-    expect(ratio(4)).toBeCloseTo(
-      (T.health.base + 3 * A.perExtraPlayer) /
-        (T.health.base + 3 * T.health.perExtraPlayer),
-      2,
+    expect(A.perExtraPlayer).toBe(T.health.perExtraPlayer);
+    expect(ratio(4)).toBeCloseTo(1, 2);
+    expect(ratio(2)).toBeCloseTo(1, 2);
+  });
+  it("a party meets harder hits and longer punish windows; alone, the tier's", () => {
+    const solo = arena(1),
+      four = arena(4),
+      plain = arena(4, 1, "raid");
+    expect(four.bossDamage()).toBeCloseTo(
+      solo.bossDamage() * (1 + 3 * A.partyDamage),
     );
-    expect(ratio(2)).toBeGreaterThan(1);
+    expect(A.partyDamage).toBeGreaterThan(0);
+    expect(four.window(4)).toBeCloseTo(
+      solo.window(4) * (1 + 3 * A.partyWindows),
+    );
+    expect(solo.window(4)).toBeCloseTo(4 * RAID_ASCENDANT_TIER.windows);
+    // The ordinary raid keeps its own numbers.
+    expect(plain.window(4)).toBeCloseTo(4 * RAID_TIERS[2].windows);
+  });
+  it("its rhythm tightens by chapter (the ordinary raid's does not)", () => {
+    const gap = (phase: number, form: "ascendant" | "raid" = "ascendant") => {
+      const a = arena(4, phase, form);
+      a.raid.trait = "murky";
+      return a.cadence();
+    };
+    const base = (phase: number) => gap(phase) / A.cadence[phase - 1];
+    for (const phase of [1, 2, 3])
+      expect(
+        base(phase) / (gap(phase, "raid") / RAID_TIERS[2].cadence),
+      ).toBeCloseTo(RAID_ASCENDANT_TIER.cadence, 5);
+    expect(A.cadence[2]).toBeLessThan(A.cadence[0]);
   });
 });
 
@@ -374,7 +402,10 @@ describe("the Geyser Line", () => {
 });
 
 describe("combos", () => {
-  it("bubble fans chain into geysers from chapter 2 (not in chapter 1)", () => {
+  // Retuned: every combo starts a chapter earlier (bubbles and missed dives
+  // from chapter 1, crossed Breaker Walls from chapter 2).
+  it("bubble fans chain into geysers from chapter 1", () => {
+    expect(A.combosFrom.bubbles).toBe(1);
     for (const phase of [1, 2]) {
       const a = arena(1, phase);
       const p = place(a.heroes()[0], 400, 700);
@@ -382,7 +413,7 @@ describe("combos", () => {
       const fan = a.raid.warnings[0];
       while (a.raid.warnings.includes(fan)) run(a, DT);
       const g = a.raid.warnings.filter((w: RaidWarning) => w.kind === "geyser");
-      expect(g.length).toBe(phase === 2 ? 3 : 0);
+      expect(g.length).toBe(3);
       for (const w of g) {
         expect(w.followUp).toBe(true);
         expect(w.at - w.startedAt!).toBeGreaterThanOrEqual(
@@ -391,8 +422,9 @@ describe("combos", () => {
       }
     }
   });
-  it("chapter 3: once a Breaker Wall has crossed, geysers rise under a raider", () => {
-    for (const phase of [2, 3]) {
+  it("from chapter 2: once a Breaker Wall has crossed, geysers rise under a raider", () => {
+    expect(A.combosFrom.breaker).toBe(2);
+    for (const phase of [1, 2]) {
       const a = arena(1, phase);
       const p = place(a.heroes()[0], 600, 450);
       cast(a, "breaker", p);
@@ -411,14 +443,15 @@ describe("combos", () => {
         geysers = Math.max(geysers, g);
       }
       expect(geysersWhileWall).toBe(0);
-      expect(geysers).toBe(phase === 3 ? 3 : 0);
+      expect(geysers).toBe(phase === 2 ? 3 : 0);
       // Standing in a calm lane, the wall never touches it.
-      if (phase === 2) expect(hurt(p)).toBe(0);
+      if (phase === 1) expect(hurt(p)).toBe(0);
     }
   });
-  it("a dive that surfaces in the water (from chapter 2) is followed by geysers; a strand is not", () => {
+  it("a dive that surfaces in the water (from chapter 1) is followed by geysers; a strand is not", () => {
+    expect(A.combosFrom.dive).toBe(1);
     for (const onIsland of [false, true]) {
-      const a = arena(1, 2);
+      const a = arena(1, 1);
       const island = a.raid.islands![0];
       const p = onIsland
         ? place(a.heroes()[0], island.x, island.y)
@@ -436,6 +469,41 @@ describe("combos", () => {
         );
       if (onIsland) expect(a.raid.exposedUntil).toBeGreaterThan(a.time);
     }
+  });
+  it("in a party, Geyser Lines and bubble fans may start during High Tide, the Undertow or a prison (never a dive, wave or wall)", () => {
+    for (const kind of ["hightide", "undertow", "prison"] as const) {
+      expect(A.overlap.with).toContain(kind);
+      for (const size of [1, 2]) {
+        const a = arena(size, 1);
+        const p = place(a.heroes()[0], 400, 600);
+        if (size > 1) place(a.heroes()[1], 1200, 300);
+        cast(a, kind, p);
+        // Alone the floor stays busy; a party may meet a second attack.
+        expect(a.busy()).toBe(size === 1);
+        if (size > 1) expect(a.canOverlap("bubbles")).toBe(true);
+        // The ordinary raid keeps its rule.
+        const r = arena(size, 1, "raid");
+        place(r.heroes()[0], 400, 600);
+        cast(r, kind, r.heroes()[0]);
+        expect(r.busy()).toBe(true);
+      }
+    }
+    for (const kind of ["dive", "wave", "breaker"] as const) {
+      const a = arena(2, 3);
+      cast(a, kind, place(a.heroes()[0], 400, 600));
+      expect(a.busy()).toBe(true);
+    }
+  });
+  it("in a party, Geyser Lines go at a second raider; bubble fans too with three", () => {
+    const alive = (a: Inner) => a.heroes().filter((p: Fighter) => p.hp > 0);
+    expect(arena(1).pressured("geyser", alive(arena(1)))).toBe(false);
+    const two = arena(2);
+    expect(two.pressured("geyser", alive(two))).toBe(true);
+    expect(two.pressured("bubbles", alive(two))).toBe(false);
+    const three = arena(3, 1);
+    expect(three.pressured("bubbles", alive(three))).toBe(true);
+    const raid = arena(3, 1, "raid");
+    expect(raid.pressured("bubbles", alive(raid))).toBe(false);
   });
   it("a strand ends with two tail sweeps, the second wider and a jump cooldown later", () => {
     for (const form of ["ascendant", "raid"] as const) {
