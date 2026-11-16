@@ -9,9 +9,11 @@ export * from "./raid-somnara.js";
 import { RAID_BOSSES, type RaidBossId } from "./raid-roster.js";
 import {
   ASCENDANT_CRAGMUFF_CHAPTERS,
+  ASCENDANT_TIDELOTL_CHAPTERS,
   RAID_ASCENDANT_ATTACKS,
   RAID_ASCENDANT_TIER,
   ascendantCragmuffPattern,
+  ascendantTidelotlPattern,
   type RaidVariant,
 } from "./raid-ascendant.js";
 export * from "./raid-ascendant.js";
@@ -255,7 +257,10 @@ export type RaidAttack =
   // Ascendant Cragmuff
   | "avalanche"
   | "fissure"
-  | "twin-slam";
+  | "twin-slam"
+  // Ascendant Tidelotl
+  | "breaker"
+  | "geyser";
 export const RAID_ATTACKS: Record<
   RaidAttack,
   { name: string; tip: string; summary: string }
@@ -401,6 +406,17 @@ export const RAID_ATTACKS: Record<
     name: "Twin Slam",
     tip: "Two rings: one round the boss, then a second toward you. Jump each as it fills, or walk out of both. One dot marks the first ring, two dots the second.",
     summary: "Ring 1 round the boss, then ring 2 near you. Jump each in turn.",
+  },
+  breaker: {
+    name: "Breaker Wall",
+    tip: "A towering wave sweeps the whole court: it can't be jumped. Stand in a lane of calm water (the bracketed gaps) or on an island as it passes.",
+    summary:
+      "A wall of water with calm lanes. Stand in a lane or on an island.",
+  },
+  geyser: {
+    name: "Geyser Line",
+    tip: "Three geysers in a row, marked at once, erupt one after another (dots count them). Step sideways out of the line, not along it.",
+    summary: "A row of geysers erupts in turn. Step sideways off the line.",
   },
   share: {
     name: "Shared Meteor",
@@ -830,6 +846,8 @@ export function raidPattern(
 ): RaidAttack[] {
   if (variant === "ascendant" && boss === "grumblecrag")
     return ascendantCragmuffPattern(phase, partySize);
+  if (variant === "ascendant" && boss === "tidewyrm")
+    return ascendantTidelotlPattern(phase);
   if (boss === "tidewyrm") return tidewyrmPattern(phase, peril);
   if (boss === "gloomshade") return gloomshadePattern(phase, peril);
   if (boss === "somnara") return somnaraPattern(phase);
@@ -1277,7 +1295,9 @@ export const raidChapters = (
 ): readonly { name: string; objective: string; detail: string }[] =>
   (variant === "ascendant" && boss === "grumblecrag"
     ? ASCENDANT_CRAGMUFF_CHAPTERS
-    : undefined) ??
+    : variant === "ascendant" && boss === "tidewyrm"
+      ? ASCENDANT_TIDELOTL_CHAPTERS
+      : undefined) ??
   RAID_BOSS_CHAPTERS[boss] ??
   RAID_CHAPTERS;
 /** Separate appearance slots; each is cosmetic only. */
@@ -2373,6 +2393,9 @@ export interface RaidWarning {
   gapAngle?: number;
   casterId?: string;
   beamPost?: number;
+  /** Breaker Wall: centres of its calm lanes (across its travel), and their width. */
+  gaps?: number[];
+  gapWidth?: number;
 }
 /** Tidewyrm's raised islands (walkable). */
 export interface RaidIsland {
@@ -2396,6 +2419,9 @@ export interface RaidWave {
   speed: number;
   width: number;
   high: boolean;
+  /** Breaker Wall: centres of its calm lanes (across its travel), and their width. */
+  gaps?: number[];
+  gapWidth?: number;
 }
 export interface RaidState {
   /** The boss entity's player id. */

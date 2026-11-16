@@ -50,8 +50,12 @@ import {
   type LegPose,
   type Mouth,
   paintingDensity,
+  paintingLook,
   paintingPhase,
+  paintCrown,
+  type LotlLookId,
 } from "./boss-tidelotl-paint";
+export type { LotlLookId } from "./boss-tidelotl-paint";
 
 void MOUTH_LIST;
 /** Rig px → world px. */
@@ -102,8 +106,8 @@ const QUAL = {
 const FOAM_KINDS = 3;
 const LEGS_F: LegPose[] = ["stand", "paddle", "splay", "up"];
 const LEGS_B: LegPose[] = ["stand", "paddle", "splay"];
-/** Every piece, main and skin. */
-export function tidelotlPieces(): LotlPiece[] {
+/** Every piece, main and skin (Ascendant Tidelotl adds its crown's two halves). */
+export function tidelotlPieces(look: LotlLookId = "raid"): LotlPiece[] {
   const out: LotlPiece[] = [];
   const add = (
     p: Omit<LotlPiece, "outline" | "line" | "skin"> & Partial<LotlPiece>,
@@ -176,6 +180,15 @@ export function tidelotlPieces(): LotlPiece[] {
             paint: (c) => paintLeg(c, { v, side, fb, pose }),
           });
     }
+    if (look === "ascendant")
+      for (const front of [false, true])
+        add({
+          name: `crown${front ? "F" : "B"}_${v}`,
+          box: [-110, -130, 110, 30],
+          q: QUAL.head,
+          outline: false,
+          paint: (c) => paintCrown(c, { v, front }),
+        });
     for (const pose of Object.keys(TAIL_POSE))
       if (pose !== "restB" || v >= 3)
         add({
@@ -920,7 +933,9 @@ function oneBoss(
   out: LotlPlacement[],
   wet: boolean,
   sea: { low: boolean; sections: Section[] },
+  look: LotlLookId = "raid",
 ) {
+  const crown = look === "ascendant";
   const F = FACING[facing],
     v = F.v,
     A = ATT[v],
@@ -1194,6 +1209,8 @@ function oneBoss(
       order.sort((a, b) => a.z - b.z);
       for (const o of order) if (o.z <= 0.02) gill(o.side, o.i);
       const puff = S(1 + P.puff * 0.075, 1 + P.puff * 0.03);
+      // Ascendant: the crown's far half under the head, its near half over it
+      if (crown) put("crownB", `crownB_${hv}`, mul(hm, puff), headCut);
       put("head", `head_${hv}`, mul(hm, puff), headCut);
       for (const e of EYES[hv]) {
         const ex = e.peek ? "idle" : P.expr;
@@ -1209,6 +1226,7 @@ function oneBoss(
       if (hv < 4)
         put("mouth", `mouth_${hv}_${P.mouth}`, mul(hm, puff), headCut);
       if (hv < 3) put("pearl", `pearl_${hv}`, mul(hm, puff), headCut);
+      if (crown) put("crownF", `crownF_${hv}`, mul(hm, puff), headCut);
       for (const o of order) if (o.z > 0.02) gill(o.side, o.i);
       veil(head, "h");
       const at = (x: number, y: number, o: { x: number; y: number }) => {
@@ -1249,6 +1267,7 @@ export function tidelotlPlacements(
   phase: number,
   wet: boolean,
   low = false,
+  look: LotlLookId = "raid",
 ): LotlLayout {
   const out: LotlPlacement[] = [];
   const f0 = ((Math.floor(facing) % 8) + 8) % 8,
@@ -1263,9 +1282,9 @@ export function tidelotlPlacements(
   out.push(place("deep", wet ? "deep" : "shadow", S(1), 0));
   const legs = !wet || P.h > 36;
   const sea = { low, sections: [] as Section[] };
-  const pts = oneBoss(P, f0, phase, "", 1, legs, out, wet, sea);
+  const pts = oneBoss(P, f0, phase, "", 1, legs, out, wet, sea, look);
   if (k > 0.03) {
-    oneBoss(P, (f0 + 1) % 8, phase, "b:", ease(k), false, out, wet, sea);
+    oneBoss(P, (f0 + 1) % 8, phase, "b:", ease(k), false, out, wet, sea, look);
     for (let i = 0; i < 2; i++) {
       const a = facing * (Math.PI / 4) * 1.6 + i * Math.PI,
         h = (40 + i * 30) * LOTL_SCALE;
@@ -1374,7 +1393,11 @@ export interface Painted {
  * Paint one piece into its own (CPU) canvas with a soft darker outline: the
  * whole box plus a pad, untrimmed, so no pixel is read back.
  */
-export function paintPieceFull(p: LotlPiece, phase: number): Painted | null {
+export function paintPieceFull(
+  p: LotlPiece,
+  phase: number,
+  look: LotlLookId = "raid",
+): Painted | null {
   const w = Math.ceil((p.box[2] - p.box[0]) * p.q) + PAD * 2,
     h = Math.ceil((p.box[3] - p.box[1]) * p.q) + PAD * 2;
   const c = document.createElement("canvas");
@@ -1383,6 +1406,7 @@ export function paintPieceFull(p: LotlPiece, phase: number): Painted | null {
   const g = c.getContext("2d", { willReadFrequently: true });
   if (!g) return null;
   paintingDensity(p.q);
+  paintingLook(look);
   paintingPhase(phase);
   g.translate(PAD - p.box[0] * p.q, PAD - p.box[1] * p.q);
   g.scale(p.q, p.q);
@@ -1412,8 +1436,12 @@ export function paintPieceFull(p: LotlPiece, phase: number): Painted | null {
   };
 }
 /** Paint one piece: its own canvas, a soft darker outline, trimmed to its pixels. */
-export function paintPiece(p: LotlPiece, phase: number): Painted | null {
-  const full = paintPieceFull(p, phase);
+export function paintPiece(
+  p: LotlPiece,
+  phase: number,
+  look: LotlLookId = "raid",
+): Painted | null {
+  const full = paintPieceFull(p, phase, look);
   if (!full) return null;
   const src = full.canvas,
     w = src.width,

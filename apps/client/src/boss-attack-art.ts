@@ -368,6 +368,44 @@ const art: Partial<Record<RaidAttack, { el: Element; draw: () => string }>> = {
       glint(104, 90, 5, W.hot),
   },
 
+  // Ascendant Tidelotl · Water: a towering wall with one calm lane to stand in.
+  breaker: {
+    el: "water",
+    draw: () =>
+      danger("M8 14 H52 V114 H8Z M76 14 H120 V114 H76Z", 0.22) +
+      `<path d="M8 14 H52 V114 H8Z M76 14 H120 V114 H76Z" fill="url(#sa-up-water)" opacity=".55"/>` +
+      glow("M8 14 Q30 4 52 14 M76 14 Q98 4 120 14", W.hot, 2.4, W.accent[1]) +
+      `<path d="M56 18 V110 M72 18 V110" stroke="${W.accent[2]}" stroke-width="2.4" stroke-dasharray="6 5" stroke-linecap="round"/>` +
+      `<path d="M52 20 h8 M52 108 h8 M76 20 h-8 M76 108 h-8" stroke="${WHITE}" stroke-width="2.4" stroke-linecap="round"/>` +
+      raider(64, 76, 0.85) +
+      arrow(30, 64, 54, 70),
+  },
+  geyser: {
+    el: "water",
+    draw: () =>
+      [
+        [30, 98, 1],
+        [62, 84, 2],
+        [94, 70, 3],
+      ]
+        .map(
+          ([x, y, k]) =>
+            danger(ell(x, y, 17, 7), 0.18 + k * 0.06) +
+            dots(x, y + 14, k, WHITE) +
+            (k === 1
+              ? glow(
+                  `M${x - 6} ${y} Q${x - 9} ${y - 30} ${x - 2} ${y - 52} M${x + 6} ${y} Q${x + 9} ${y - 30} ${x + 2} ${y - 52}`,
+                  W.hot,
+                  2.6,
+                  W.accent[1],
+                ) + bubble(x, y - 56, 6, "water")
+              : ""),
+        )
+        .join("") +
+      raider(56, 108, 0.85) +
+      arrow(64, 112, 86, 118),
+  },
+
   // Inkpurr · Shadow
   lunge: {
     el: "shadow",

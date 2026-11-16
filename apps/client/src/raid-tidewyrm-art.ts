@@ -16,6 +16,11 @@ import {
   raidMapLow,
 } from "./raid-map-atlas";
 import { FLOOD, lagoonName, lagoonPieces } from "./raid-lagoon-pieces";
+import {
+  drawAscendantTideWarning,
+  drawBreakerWall,
+} from "./ascendant-tidelotl-art";
+import { paintAscendantTideAura } from "./boss-spell-art";
 
 /**
  * Tidewyrm (shown as Tidelotl) and the Lagoon Court, drawn live each frame: the islands (they
@@ -361,6 +366,9 @@ export function drawTidewyrmWarning(
   const t = state.time;
   const pulse = reduced ? 1 : 0.86 + Math.sin(t * 8) * 0.14;
   const progress = progressOf(w, t);
+  // Ascendant Tidelotl's Breaker Wall and Geyser Line.
+  if (w.kind === "breaker" || w.kind === "geyser")
+    return drawAscendantTideWarning(g, state, w, reduced);
   if (w.kind === "dive") {
     const locked = w.lockAt !== undefined && t >= w.lockAt;
     const murky = r.trait === "murky";
@@ -715,6 +723,10 @@ export function drawTideAttacks(g: G, state: Snapshot, reduced: boolean) {
   const r = state.raid!;
   const t = state.time;
   for (const wave of r.waves ?? []) {
+    if (wave.gaps) {
+      drawBreakerWall(g, wave, t, reduced);
+      continue;
+    }
     const horizontal = wave.axis === "x";
     const h = wave.width;
     const crest = wave.high ? 0xffffff : 0xe6fbff;
@@ -1073,12 +1085,16 @@ export function drawTidewyrm(
     dive: r.submerged ? diving : 0,
     deathSink: sink,
     roarAge: t - m.roarAt,
+    look: r.variant === "ascendant" ? "ascendant" : "raid",
     // Water everywhere but the islands' sand.
     wet: (x, y) =>
       !islands.some((i) => Math.hypot(x - i.x, y - i.y) < i.radius),
   });
   if (head) {
     noteTidelotl(g.scene, { mouth: head.mouth, head: head.head });
+    // Ascendant Tidelotl's own aura: abyssal light and rising motes.
+    if (r.variant === "ascendant" && !dead)
+      paintAscendantTideAura(g, boss.x, boss.y, head.top, t, r.phase, reduced);
     if (stagger && !stranded)
       for (let i = 0; i < 3; i++) {
         const a = t * 4 + (i * Math.PI * 2) / 3;

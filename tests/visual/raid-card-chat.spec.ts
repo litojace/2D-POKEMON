@@ -1,5 +1,11 @@
 import { expect, test } from "@playwright/test";
-import { openHub, openPlayPanel, pushUntilBattle, snap } from "./helpers";
+import {
+  createRoom,
+  openHub,
+  openPlayPanel,
+  pushUntilBattle,
+  snap,
+} from "./helpers";
 
 // On a phone, a chat button sits in the screen's top-left corner while the
 // raid's cards are up: the battle's quick chat over the briefing, the room's
@@ -38,7 +44,7 @@ for (const phone of [
         (window as any).__room("raid", { boss: "tidewyrm" }),
       );
       await openPlayPanel(page);
-      await page.click("#play-create");
+      await createRoom(page);
       await pushUntilBattle(page);
       for (const [phase, button] of [
         ["briefing", "#battle-chat"],

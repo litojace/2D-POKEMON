@@ -200,8 +200,9 @@ describe("blessing hooks", () => {
   it("Static Wake: a dash lays a crackling trail that hurts Echoes", () => {
     const { a, echo, me } = fight({ wake: 1 });
     a.bots.delete(echo.id);
-    Object.assign(me, { x: 500, y: 450 });
-    Object.assign(echo, { x: 560, y: 450, hp: 500 });
+    // (Clear of floor 1's cover: packages/shared/src/spire-court.ts.)
+    Object.assign(me, { x: 420, y: 250 });
+    Object.assign(echo, { x: 480, y: 250, hp: 500 });
     a.submit(me, { ...blankInput(), seq: me.ack + 1, dx: 1, dash: true });
     for (let i = 0; i < 15; i++) a.tick(DT);
     const zone = a.zones.find(

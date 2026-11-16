@@ -10,6 +10,9 @@
  *   blows out of the mouth along the fan's aim.
  * - Every other cast lands as painted water: a crown of spray inside the
  *   warning's footprint and a few shiny drops (no serpent ribbons).
+ * - Ascendant Tidelotl: a Geyser Line wells up (bubbles and light rising in
+ *   each ring) and erupts as a column of water; a Breaker Wall rises with
+ *   spray all along the edge it comes from.
  */
 import type Phaser from "phaser";
 import type { Fighter, Snapshot } from "@arena/shared";
@@ -37,7 +40,8 @@ const clamp = (v: number, a = 0, b = 1) => Math.max(a, Math.min(b, v));
 const FOAM = 0xe6fbff,
   AQUA = 0x9fe8f4,
   PEARL = 0xbff6ff,
-  PINK = 0xffb3d4;
+  PINK = 0xffb3d4,
+  GEYSER = 0x5ff6ff;
 
 export function drawTidelotlAttacks(
   scene: Phaser.Scene,
@@ -81,7 +85,103 @@ export function drawTidelotlAttacks(
       });
     });
   }
+  // a Geyser Line wells up: motes rising inside each ring, brighter as it fills
+  for (const w of r.warnings) {
+    if (w.kind !== "geyser") continue;
+    const start = w.startedAt ?? w.at - 1,
+      k = clamp((state.time - start) / Math.max(0.01, w.at - start));
+    if (k <= 0 || k >= 1) continue;
+    glow(w.x, w.y, w.radius * (0.35 + 0.35 * k), GEYSER, 0.12 + 0.25 * k, true);
+    fx.trail(`lotl-well-${w.id}`, low ? 0.2 : 0.1, () => {
+      const a = Math.random() * Math.PI * 2,
+        d = Math.random() * w.radius * 0.6;
+      fx.burst({
+        x: w.x + Math.cos(a) * d,
+        y: w.y + Math.sin(a) * d * 0.6,
+        z: 0,
+        count: 1,
+        kind: "mote",
+        color: [FOAM, GEYSER, PEARL],
+        speed: [10, 30],
+        up: [40, 90],
+        life: [0.4, 0.6],
+        size: [2, 3.5],
+        drag: 1.2,
+      });
+    });
+  }
   for (const c of casts) {
+    if (c.kind === "geyser") {
+      // the eruption: a column of water inside its ring, falling back as spray
+      fx.trail(`lotl-geyser-${c.id}`, 99, () =>
+        fx.burst({
+          x: c.x,
+          y: c.y,
+          z: 0,
+          count: low ? 8 : 16,
+          kind: "drop",
+          color: [FOAM, AQUA, GEYSER, 0xffffff],
+          speed: [20, c.radius * 0.9],
+          up: [260, 460],
+          life: [0.55, 0.9],
+          size: [2, 4.5],
+          grav: 800,
+        }),
+      );
+      const k = clamp(c.age / 0.6);
+      if (k >= 1) continue;
+      const rise = Math.sin(Math.min(1, k * 1.6) * Math.PI * 0.5),
+        fade = 1 - k * k,
+        h = 150 * rise,
+        w = c.radius * 0.32;
+      fx.solid
+        .fillStyle(AQUA, 0.7 * fade)
+        .fillTriangle(c.x - w, c.y, c.x, c.y - h, c.x + w, c.y);
+      fx.solid
+        .fillStyle(0xffffff, 0.8 * fade)
+        .fillTriangle(
+          c.x - w * 0.4,
+          c.y,
+          c.x,
+          c.y - h * 0.92,
+          c.x + w * 0.4,
+          c.y,
+        );
+      fx.solid.fillStyle(0xffffff, 0.9 * fade).fillCircle(c.x, c.y - h, 6);
+      glow(c.x, c.y - h * 0.5, 30, GEYSER, 0.35 * fade);
+      continue;
+    }
+    if (c.kind === "breaker") {
+      // the wall rises: spray along the whole edge it comes from
+      const horizontal = c.tx !== c.x;
+      fx.trail(`lotl-breaker-${c.id}`, 99, () => {
+        for (let i = 0; i < (low ? 4 : 8); i++) {
+          const s = ((i + 0.5) / (low ? 4 : 8)) * (horizontal ? 900 : 1600);
+          fx.burst({
+            x: horizontal ? c.x : s,
+            y: horizontal ? s : c.y,
+            z: 0,
+            count: low ? 3 : 5,
+            kind: "drop",
+            color: [FOAM, AQUA, 0xffffff],
+            speed: [60, 160],
+            angle: horizontal
+              ? Math.sign(c.tx - c.x) > 0
+                ? 0
+                : Math.PI
+              : Math.sign(c.ty - c.y) > 0
+                ? Math.PI / 2
+                : -Math.PI / 2,
+            spread: 0.7,
+            up: [160, 320],
+            life: [0.5, 0.8],
+            size: [2, 4],
+            grav: 700,
+          });
+        }
+      });
+      continue;
+    }
     if (c.kind === "bubbles" || c.kind === "prison") {
       // the blow: a puff of bubbles and spray out of the mouth, along the aim
       fx.trail(`lotl-blow-${c.id}`, 99, () => {

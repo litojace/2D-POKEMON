@@ -225,9 +225,19 @@ function tidewyrmCue(state: Snapshot, myId: string) {
   if (r.undertow) return "Undertow — dash outward, away from the whirlpool!";
   const wave = (r.waves ?? [])[0];
   if (wave)
-    return wave.high ? "High wave — be on an island!" : "Low wave — jump it!";
+    return wave.gaps
+      ? "Breaker Wall — stay in a calm lane or on an island!"
+      : wave.high
+        ? "High wave — be on an island!"
+        : "Low wave — jump it!";
   const w = cueWarning(state, myId);
   if (!w) return "";
+  if (w.kind === "breaker")
+    return "Breaker Wall — get into a calm lane (or onto an island): it can't be jumped!";
+  if (w.kind === "geyser")
+    return w.targetId === myId
+      ? "Geysers under you — step sideways off the line!"
+      : `Geysers rise under ${name(w.targetId)} — step off the line!`;
   if (w.kind === "dive") {
     const locked = w.lockAt !== undefined && state.time >= w.lockAt;
     if (locked)

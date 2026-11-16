@@ -5,6 +5,7 @@ import {
   RULES,
   blankInput,
   blocked,
+  currentObstacles,
   skillReady,
   ARENAS,
   COMBOS,
@@ -24,6 +25,7 @@ import {
   type Fighter,
   type Input,
   type Zone,
+  type Rect,
   RING_KINDS,
 } from "../../../packages/shared/src/index.js";
 import type { Arena } from "./simulation.js";
@@ -159,7 +161,14 @@ function rng(seed: number) {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
-const DISABLES = ["stun", "freeze", "sleep", "shell", "paralysis", "root"] as const;
+const DISABLES = [
+  "stun",
+  "freeze",
+  "sleep",
+  "shell",
+  "paralysis",
+  "root",
+] as const;
 const OFFENSIVE = new Set([
   "projectile",
   "charged",
@@ -198,8 +207,8 @@ function zoneArea(z: Zone) {
     radius: Math.max(z.radius, half * 0.6),
   };
 }
-/** Corners just outside every pillar: the waypoints for walking around cover. */
-const CORNERS: Point[] = OBSTACLES.flatMap((o) => {
+/** Corners just outside a block: the waypoints for walking around cover. */
+const cornersOf = (o: Rect): Point[] => {
   const m = RULES.radius + 14;
   return [
     { x: o.x - m, y: o.y - m },
@@ -207,7 +216,29 @@ const CORNERS: Point[] = OBSTACLES.flatMap((o) => {
     { x: o.x - m, y: o.y + o.h + m },
     { x: o.x + o.w + m, y: o.y + o.h + m },
   ];
-});
+};
+/** Corners just outside every PvP pillar. */
+const CORNERS: Point[] = OBSTACLES.flatMap(cornersOf);
+const cornerCache = new WeakMap<readonly Rect[], Point[]>();
+/**
+ * The corners for the walls in use: the PvP pillars' (as always), plus
+ * those of any other blocks the room has (the Spire's court layouts).
+ */
+export function cornersNow(): Point[] {
+  const walls = currentObstacles();
+  let list = cornerCache.get(walls);
+  if (!list) {
+    const extra = walls.filter(
+      (w) =>
+        !OBSTACLES.some(
+          (o) => o.x === w.x && o.y === w.y && o.w === w.w && o.h === w.h,
+        ),
+    );
+    list = extra.length ? [...CORNERS, ...extra.flatMap(cornersOf)] : CORNERS;
+    cornerCache.set(walls, list);
+  }
+  return list;
+}
 /**
  * When cover blocks the view, the next corner to walk to: the shortest route
  * via one corner that sees both ends, else the visible corner nearest the goal.
@@ -222,7 +253,7 @@ export function waypoint(
     bestCost = Infinity,
     fallback: Point | null = null,
     fallbackCost = Infinity;
-  for (const c of CORNERS) {
+  for (const c of cornersNow()) {
     if (blocked(c.x, c.y, RULES.radius) || !clear(from, c)) continue;
     const toGoal = Math.hypot(goal.x - c.x, goal.y - c.y),
       cost = Math.hypot(c.x - from.x, c.y - from.y) + toGoal;
@@ -365,8 +396,10 @@ export class BotBrain {
     const melee = basic.kind === "melee" || basic.kind === "cone";
     const dist = Math.hypot(target.x - me.x, target.y - me.y);
     const sight = arena.lineClear(me, target);
-    const hpRatio = me.hp / maxHealth(me.character, arena.mode, arena.players.length),
-      enemyRatio = enemy.hp / maxHealth(enemy.character, arena.mode, arena.players.length);
+    const hpRatio =
+        me.hp / maxHealth(me.character, arena.mode, arena.players.length),
+      enemyRatio =
+        enemy.hp / maxHealth(enemy.character, arena.mode, arena.players.length);
     const enemyDisabled = DISABLES.some((k) => arena.has(enemy, k));
     // ---- Threats: shots that will hit soon, and big wind-ups nearby.
     let threat: {
@@ -420,10 +453,16 @@ export class BotBrain {
       enemy.charge &&
       (() => {
         // The enemy's own rites (a wider nova, say) count when dodging.
-        const a = kitOf(enemy.character, enemy.rites).skills[enemy.charge!.skill];
+        const a = kitOf(enemy.character, enemy.rites).skills[
+          enemy.charge!.skill
+        ];
         // A blast ring, a cage about to rise, or rays about to turn.
         const reach =
-          a.kind === "lighthouse" ? a.range : RING_KINDS.includes(a.kind) ? a.radius : 0;
+          a.kind === "lighthouse"
+            ? a.range
+            : RING_KINDS.includes(a.kind)
+              ? a.radius
+              : 0;
         return reach > 0 &&
           Math.hypot(enemy.x - me.x, enemy.y - me.y) < reach + 40
           ? a
@@ -717,7 +756,8 @@ export class BotBrain {
         case "beam":
           // A marksman's shot (farBonus) is worth more the farther away they are.
           if (s.sight && reach(a.range * 0.85))
-            score = a.damage * farMultiplier(a, s.dist) * (a.boomerang ? 1.6 : 1);
+            score =
+              a.damage * farMultiplier(a, s.dist) * (a.boomerang ? 1.6 : 1);
           break;
         case "rush":
         case "blink":
@@ -734,7 +774,8 @@ export class BotBrain {
           break;
         case "screen": {
           // An Ember Curtain against shots coming in, or a shooter keeping its distance.
-          const ranged = CHARACTERS[enemy.character].basic.kind !== "melee" &&
+          const ranged =
+            CHARACTERS[enemy.character].basic.kind !== "melee" &&
             CHARACTERS[enemy.character].basic.kind !== "cone";
           if (s.threatened || (ranged && s.dist > 220 && s.sight)) score = 18;
           break;
@@ -809,7 +850,8 @@ export class BotBrain {
         case "seedling": {
           // Keep a few seedlings growing between itself and the opponent.
           const mine = arena.zones.filter(
-            (z) => z.owner === me.id && z.ability.kind === "seedling" && z.until > t,
+            (z) =>
+              z.owner === me.id && z.ability.kind === "seedling" && z.until > t,
           ).length;
           if (mine < (a.count ?? 3) && reach(a.range / 0.45)) score = 14;
           break;
@@ -841,9 +883,14 @@ export class BotBrain {
             score = a.damage * 1.1;
           // Overgrowth also blooms every seedling it has.
           if (score && a.bloom)
-            score += 8 * arena.zones.filter(
-              (z) => z.owner === me.id && z.ability.kind === "seedling" && z.until > t,
-            ).length;
+            score +=
+              8 *
+              arena.zones.filter(
+                (z) =>
+                  z.owner === me.id &&
+                  z.ability.kind === "seedling" &&
+                  z.until > t,
+              ).length;
           break;
         case "zone":
           if (a.heal) {
@@ -937,7 +984,8 @@ export function chooseRite(
       RITE_BY_ID[id]?.tier === "major" ? 3 : 1,
     );
     let roll = random() * weights.reduce((a, b) => a + b, 0);
-    for (const [i, w] of weights.entries()) if ((roll -= w) < 0) return offer[i];
+    for (const [i, w] of weights.entries())
+      if ((roll -= w) < 0) return offer[i];
     return offer[0];
   }
   let best = offer[0],
@@ -981,7 +1029,8 @@ const perUse = (a: Ability, crowd = false) =>
   a.turret
     ? // A lantern: one shot after tickDelay, then one per tickInterval.
       a.turret.damage *
-      (Math.floor((a.duration - (a.tickDelay ?? 0)) / (a.tickInterval ?? 1)) + 1)
+      (Math.floor((a.duration - (a.tickDelay ?? 0)) / (a.tickInterval ?? 1)) +
+        1)
     : a.damage *
         (a.count ?? 1) *
         ticks(a) *

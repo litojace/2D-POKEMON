@@ -37,6 +37,8 @@ export interface RoomOptions {
   /** Spire: the floor, and how far into it (a real climb, run on the page). */
   floor?: number;
   stage?: "briefing" | "playing" | "intermission" | "finished";
+  /** Spire: how high the party may climb (default 9: no boss floor). */
+  ceiling?: number;
 }
 /**
  * A real Spire climb (the server's SpireArena on the page): the floor's
@@ -65,7 +67,7 @@ function spire(o: RoomOptions) {
   }
   a.configureSpire({
     startFloor: Math.min(floor, o.stage === "intermission" ? floor - 1 : floor),
-    ceiling: 9,
+    ceiling: o.ceiling ?? 9,
   });
   a.start();
   crypto.getRandomValues = random;
