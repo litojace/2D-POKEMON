@@ -79,6 +79,8 @@ export interface RaidView {
   /** The Spire page's tab. */
   spireTab?: SpireTab;
   spireFloor?: number;
+  /** The Spire zone picked to climb (default: the highest open to you). */
+  spireZone?: number;
   boss: RaidBossId;
   tab: RaidTab;
   filter: RaidFilter;

@@ -495,6 +495,10 @@ async function raiseFloors(page: Page, by: number) {
                   ...spire,
                   floor: spire.floor + by,
                   ceiling: (spire.ceiling ?? 0) + by,
+                  // The climb's zone (the snapshot names it), raised too.
+                  ...(spire.zone === undefined
+                    ? {}
+                    : { zone: spire.zone + Math.round(by / 10) }),
                 },
               },
             }
@@ -603,6 +607,15 @@ for (const size of [
         await climb(page, floor - 10);
         await page.waitForTimeout(400);
         const key = `spire-court-2-${floor}`;
+        // The floor's atlas is painted once the court is up (on a busy
+        // machine, after the fixed wait above).
+        await page.waitForFunction(
+          (key) =>
+            (window as any).__spireGame.scene
+              .getScene("arena")
+              .textures.exists(key),
+          key,
+        );
         // The cover's crystals: bright aquamarine pixels (blue-green).
         const crystal = await atlasPixels(page, key, "block0");
         const sea = await page.evaluate(
@@ -681,6 +694,7 @@ test("floor 20: the lagoon's summit grade, painted on floor 19, nothing fetched 
       w.__snap.remaining = 300;
       w.__snap.raid.spire = {
         ...climb,
+        zone: 2,
         floor: 19,
         kind: "wave",
         ceiling: 20,

@@ -2,7 +2,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { io, type Socket } from "socket.io-client";
 import { createArenaServer } from "../../apps/server/src/server";
 import { fakeAccounts, fakeSpire } from "../helpers/accounts";
-import { SpireArena } from "../../apps/server/src/spire";
+import { SpireArena, SpireTideArena } from "../../apps/server/src/spire";
 import {
   MetaCache,
   unpackSnapshot,
@@ -10,7 +10,7 @@ import {
   type Snapshot,
   type WireSnapshot,
 } from "@arena/shared";
-import { SPIRE_PARTY } from "../../packages/shared/src/spire";
+import { SPIRE_PARTY, type SpireMember } from "../../packages/shared/src/spire";
 
 // The Spire over the network: the server checks where a party may climb
 // (never the client), saves each cleared floor at once under the players'
@@ -30,7 +30,7 @@ const emit = (s: Socket, event: string, data: unknown = {}) =>
       ),
   );
 const settle = () => new Promise((r) => setTimeout(r, 20));
-const setup = async (cragmuff = true) => {
+const setup = async (cragmuff = true, member?: SpireMember) => {
   const accounts = fakeAccounts();
   const recordRaid = vi.fn(async () => {});
   const recordActivity = vi.fn(async () => {});
@@ -45,6 +45,7 @@ const setup = async (cragmuff = true) => {
     const user = accounts.add(false);
     if (!cragmuff)
       spire.members[user.account.id] = { checkpoint: 1, clears: {} };
+    else if (member) spire.members[user.account.id] = structuredClone(member);
     const socket = io(`http://127.0.0.1:${addr.port}`, {
       auth: { accessToken: user.token },
       transports: ["websocket"],
@@ -284,3 +285,164 @@ it("climbs floor 9 → the Ascendant on floor 10 → results in one room, saved 
   expect(recordActivity).not.toHaveBeenCalled();
   expect(a.raid.rewardStatus).toBeUndefined();
 }, 60_000);
+
+// ------------------------------------------------------------------ Zone 2
+const conqueror: SpireMember = {
+  checkpoint: 11,
+  clears: { grumblecrag: 1, tidewyrm: 1 },
+};
+
+it("climbs zone 2 from floor 11 to the Ascendant Tidelotl on floor 20 → results, in one room", async () => {
+  const { connect, recordRaid, recordActivity, spire } = await setup(
+    true,
+    conqueror,
+  );
+  const one = await connect(),
+    two = await connect();
+  const created = await emit(one.socket, "create", {
+    name: "One",
+    mode: "raid",
+    spire: 11,
+  });
+  expect(created.ok).toBe(true);
+  const joined = await emit(two.socket, "join", {
+    name: "Two",
+    code: created.code,
+  });
+  expect(joined.ok).toBe(true);
+  const a = server!.rooms.get(created.code!) as SpireTideArena;
+  expect(a).toBeInstanceOf(SpireTideArena);
+  expect(a.raid.boss).toBe("tidewyrm");
+  const cache = new MetaCache();
+  const seen: Snapshot[] = [];
+  one.socket.on("state", (wire: WireSnapshot) =>
+    seen.push(unpackSnapshot(wire, cache)),
+  );
+  await emit(one.socket, "ready");
+  await emit(two.socket, "ready");
+  await settle();
+  expect(a.phase).toBe("briefing");
+  expect(a.raid.spire).toMatchObject({
+    zone: 2,
+    startFloor: 11,
+    floor: 11,
+    ceiling: 20,
+  });
+  for (const s of [one.socket, two.socket]) await emit(s, "instructions-ready");
+  const ids = [created.id!, joined.id!];
+  const step = async () => {
+    for (const p of a.heroes()) p.hp = Math.max(p.hp, 900);
+    if (a.phase === "playing" && a.raid.spire!.kind !== "boss")
+      for (const p of a.players) if (p.echo && p.hp > 0) p.hp = 0;
+    if (a.phase === "intermission")
+      for (const [i, s] of [one.socket, two.socket].entries()) {
+        const offer = a.raid.spire!.offers[ids[i]];
+        if (offer?.[0]) await emit(s, "rite", { id: offer[0] });
+      }
+    server!.step();
+  };
+  for (let i = 0; i < 30 * 400 && a.raid.spire!.floor < 20; i++) await step();
+  for (let i = 0; i < 30 * 5 && a.phase !== "briefing"; i++) await step();
+  await settle();
+  expect(server!.rooms.get(created.code!)).toBe(a);
+  expect(a.raid.spire).toMatchObject({ floor: 20, kind: "boss", best: 19 });
+  expect(a.phase).toBe("briefing");
+  expect(a.raid.variant).toBe("ascendant");
+  expect(a.arenaId).toBe("lagoon");
+  expect(spire.floors.map((f) => f.floor)).toEqual([
+    11, 12, 13, 14, 15, 16, 17, 18, 19,
+  ]);
+  expect(spire.floors.every((f) => f.startFloor === 11)).toBe(true);
+  for (const s of [one.socket, two.socket]) await emit(s, "instructions-ready");
+  for (let i = 0; i < 30 * 30 && a.phase !== "playing"; i++) await step();
+  expect(a.phase).toBe("playing");
+  for (let i = 0; i < 30 * 20; i++) await step();
+  await settle();
+  // What the players saw: the lagoon's boss, under its Ascendant name.
+  const last = seen.at(-1)!;
+  expect(last.arena).toBe("lagoon");
+  expect(last.raid?.spire).toMatchObject({ zone: 2, floor: 20 });
+  expect(last.players.find((p) => p.raidBoss)?.name).toBe("Ascendant Tidelotl");
+  const stream = seen.flatMap((s) => s.events.map((e) => e.id));
+  for (let i = 1; i < stream.length; i++)
+    expect(stream[i]).toBeGreaterThan(stream[i - 1]);
+  // Beat it: saved as Spire floor 20 under both accounts, never a raid.
+  a.raid.submerged = false;
+  a.boss()!.hp = 0;
+  for (let i = 0; i < 30 * (SPIRE_PARTY.cleared + 0.5); i++) await step();
+  await settle();
+  expect(a.phase).toBe("finished");
+  expect(a.raid.result).toBe("victory");
+  expect(a.raid.message).toMatch(/Zone 2 conquered/);
+  const twenty = spire.floors.at(-1)!;
+  expect(twenty).toMatchObject({ floor: 20, startFloor: 11, partySize: 2 });
+  expect(twenty.players.map((p) => p.accountId).sort()).toEqual(
+    [one.account.id, two.account.id].sort(),
+  );
+  expect(
+    a.raid.spire!.saves.at(-1)!.claims!.find((c) => c.playerId === ids[0]),
+  ).toMatchObject({ coins: 200, titles: ["Tidecaller of the Spire"] });
+  expect(recordRaid).not.toHaveBeenCalled();
+  expect(recordActivity).not.toHaveBeenCalled();
+  expect(a.raid.rewardStatus).toBeUndefined();
+}, 90_000);
+
+it("won't start zone 2 for a party asking for floor 11 without the checkpoint", async () => {
+  const { connect, spire } = await setup();
+  const one = await connect(),
+    two = await connect();
+  // One has conquered zone 1; Two hasn't.
+  spire.members[one.account.id] = conqueror;
+  const created = await emit(one.socket, "create", {
+    name: "One",
+    mode: "raid",
+    spire: 11,
+  });
+  expect(created.ok).toBe(true);
+  await emit(two.socket, "join", { name: "Two", code: created.code });
+  const a = server!.rooms.get(created.code!) as SpireTideArena;
+  await emit(one.socket, "ready");
+  await emit(two.socket, "ready");
+  await settle();
+  expect(a.phase).toBe("lobby");
+  expect(a.raid.spire!.problem).toMatch(/floor 11/);
+  expect(a.players.every((p) => !p.ready)).toBe(true);
+  expect(spire.floors).toEqual([]);
+});
+
+it("refuses a start floor that isn't a built zone's first floor", async () => {
+  const { connect } = await setup(true, conqueror);
+  const { socket } = await connect();
+  for (const spireFloor of [2, 10, 15, 20, 21, -1, 1.5])
+    expect(
+      (
+        await emit(socket, "create", {
+          name: "Climber",
+          mode: "raid",
+          spire: spireFloor,
+        })
+      ).ok,
+    ).toBe(false);
+  expect(server!.rooms.size).toBe(0);
+});
+
+it("lets a player with checkpoint 11 replay zone 1 from floor 1", async () => {
+  const { connect } = await setup(true, conqueror);
+  const { socket } = await connect();
+  const created = await emit(socket, "create", {
+    name: "Climber",
+    mode: "raid",
+    spire: 1,
+  });
+  expect(created.ok).toBe(true);
+  const a = server!.rooms.get(created.code!) as SpireArena;
+  expect(a).toBeInstanceOf(SpireArena);
+  await emit(socket, "ready");
+  await settle();
+  expect(a.phase).toBe("briefing");
+  expect(a.raid.spire).toMatchObject({
+    zone: 1,
+    startFloor: 1,
+    ceiling: 10,
+  });
+});

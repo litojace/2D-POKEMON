@@ -12,7 +12,10 @@ export function expandedSpire(zones = 2): SpireCatalogue {
   const entries: Record<number, SpireZone> = structuredClone(
     SPIRE_CATALOGUE.zones,
   );
-  const rewards = structuredClone([...SPIRE_CATALOGUE.rewards]);
+  // Built on zone 1 alone: the zones it adds replace any released ones.
+  const rewards = structuredClone(
+    SPIRE_CATALOGUE.rewards.filter((r) => r.floor <= 10),
+  );
   for (let zone = 2; zone <= zones; zone++) {
     entries[zone] = {
       ...entries[1],

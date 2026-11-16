@@ -9,7 +9,12 @@ export {
   MetaTracker,
 } from "../../../packages/shared/src/index";
 export { createRaidArena } from "../../../apps/server/src/raid-bosses";
-import { SpireArena } from "../../../apps/server/src/spire";
+import { createSpireArena } from "../../../apps/server/src/spire";
+import {
+  spireZoneOf,
+  spireZoneStart,
+  spireZoneTop,
+} from "../../../packages/shared/src/spire";
 export { dressUp } from "../../../scripts/perf/workloads";
 export { resultXp } from "../../../apps/client/src/adventure-ui";
 import { createRaidArena } from "../../../apps/server/src/raid-bosses";
@@ -37,7 +42,7 @@ export interface RoomOptions {
   /** Spire: the floor, and how far into it (a real climb, run on the page). */
   floor?: number;
   stage?: "briefing" | "playing" | "intermission" | "finished";
-  /** Spire: how high the party may climb (default 9: no boss floor). */
+  /** Spire: how high the party may climb (default: below the zone's boss floor). */
   ceiling?: number;
 }
 /**
@@ -56,18 +61,23 @@ function spire(o: RoomOptions) {
     }
     return b;
   }) as typeof crypto.getRandomValues;
-  const a: any = new SpireArena("SPIRE42");
+  const floor = o.floor ?? 1;
+  // The room climbs the floor's zone (zone 2 from floor 11).
+  const zone = spireZoneOf(floor);
+  const a: any = createSpireArena("SPIRE42", zone);
   a.add("me", "tester", "voltkit");
   if ((o.seats ?? 1) > 1) a.add("p2", "Kai", "cindrake");
-  const floor = o.floor ?? 1;
-  if (floor === 10) {
+  if (floor === spireZoneTop(zone)) {
     spireBoss(a, o);
     crypto.getRandomValues = random;
     return a;
   }
   a.configureSpire({
-    startFloor: Math.min(floor, o.stage === "intermission" ? floor - 1 : floor),
-    ceiling: o.ceiling ?? 9,
+    startFloor: Math.max(
+      spireZoneStart(zone),
+      Math.min(floor, o.stage === "intermission" ? floor - 1 : floor),
+    ),
+    ceiling: o.ceiling ?? spireZoneTop(zone) - 1,
   });
   a.start();
   crypto.getRandomValues = random;
@@ -132,12 +142,14 @@ function spire(o: RoomOptions) {
   return a;
 }
 /**
- * Floor 10: a real climb from floor 9 (cleared), on to the Ascendant
- * Cragmuff in the same room: its briefing, the fight a few seconds in, or
- * the results once it falls (zone 1 conquered).
+ * A boss floor (10: the Ascendant Cragmuff; 20: the Ascendant Tidelotl): a
+ * real climb from the floor below (cleared), on to the Ascendant in the
+ * same room: its briefing, the fight a few seconds in, or the results once
+ * it falls (the zone conquered).
  */
 function spireBoss(a: any, o: RoomOptions) {
-  a.configureSpire({ startFloor: 9, ceiling: 10 });
+  const top = spireZoneTop(a.zone);
+  a.configureSpire({ startFloor: top - 1, ceiling: top });
   a.start();
   for (const p of a.heroes()) a.acknowledgeInstructions(p.id);
   const tick = (s: number) => {
@@ -147,7 +159,7 @@ function spireBoss(a: any, o: RoomOptions) {
     }
   };
   while (a.phase !== "playing") a.tick(1 / 30);
-  for (let i = 0; i < 20 && a.raid.spire.floor === 9; i++) {
+  for (let i = 0; i < 20 && a.raid.spire.floor === top - 1; i++) {
     tick(1);
     for (const p of a.players) if (p.echo) p.hp = 0;
     tick(1.8);
@@ -176,12 +188,21 @@ function spireBoss(a: any, o: RoomOptions) {
   if (kai) Object.assign(kai, { x: 700, y: 620 });
   tick(o.stage === "finished" ? 2 : 6);
   if (stage === "finished") {
+    // (Tidelotl may be under water: it surfaces to fall.)
+    a.raid.submerged = false;
     a.boss().hp = 0;
     tick(3);
     a.raid.spire.saves.at(-1).status = "saved";
-    a.raid.spire.saves.at(-1).claims = [
-      { playerId: "me", coins: 120, titles: ["Earthshaker of the Spire"] },
-    ];
+    a.raid.spire.saves.at(-1).claims =
+      a.zone === 2
+        ? [{ playerId: "me", coins: 200, titles: ["Tidecaller of the Spire"] }]
+        : [
+            {
+              playerId: "me",
+              coins: 120,
+              titles: ["Earthshaker of the Spire"],
+            },
+          ];
   }
   return a;
 }

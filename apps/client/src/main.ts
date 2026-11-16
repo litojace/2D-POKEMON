@@ -360,7 +360,11 @@ import {
   drawEliteCrown,
   echoShown,
 } from "./spire-art";
-import { SPIRE_PARTY } from "../../../packages/shared/src/spire";
+import {
+  SPIRE_PARTY,
+  SPIRE_ZONES,
+  spireZoneStart,
+} from "../../../packages/shared/src/spire";
 import { spireCourtWalls } from "../../../packages/shared/src/spire-court";
 import {
   SpireCourtRig,
@@ -1344,7 +1348,9 @@ function roomData(watch: boolean): RoomData {
     watch,
     code: s.code,
     boss: s.raid?.boss,
-    spire: s.raid?.spire ? { problem: s.raid.spire.problem } : undefined,
+    spire: s.raid?.spire
+      ? { problem: s.raid.spire.problem, zone: s.raid.spire.zone }
+      : undefined,
     rounds: roundsNeeded(s.mutators),
     seats: players.map((p, i) => {
       const character = p.id === myId ? selected : p.character;
@@ -2714,7 +2720,13 @@ function syncFighterArt() {
   ]);
 }
 /** Start a Spire climb from the Raid Hub (a raid room; the server checks where it starts). */
-async function startSpire(options: { solo?: boolean; returnTab?: SpireTab }) {
+async function startSpire(options: {
+  solo?: boolean;
+  returnTab?: SpireTab;
+  /** The zone to climb (the server checks every climber has earned it). */
+  zone?: number;
+}) {
+  const zone = SPIRE_ZONES[options.zone ?? 1] ? (options.zone ?? 1) : 1;
   if (!accountsUI.ensurePlayer()) return;
   if (myId) return toast("Leave your current room first.");
   if (!connected) return toast("Waiting for the server connection.");
@@ -2730,13 +2742,13 @@ async function startSpire(options: { solo?: boolean; returnTab?: SpireTab }) {
       localStorage.getItem("arena-name") ??
       "Player",
     mode: "raid",
-    spire: 0,
+    spire: spireZoneStart(zone),
   });
   identity(reply);
   if (!reply.ok) return;
   raidRoomReturn = {
     code: reply.code!,
-    boss: "grumblecrag",
+    boss: SPIRE_ZONES[zone].boss,
     tab: "party",
     spire: options.returnTab ?? "climb",
   };

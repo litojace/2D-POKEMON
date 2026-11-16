@@ -12,6 +12,8 @@ import {
   SPIRE_SEASON,
   SPIRE_SEATS,
   spireStartCheckpoint,
+  spireZoneStart,
+  spireZoneTop,
   type SpireFloor,
   type SpireProgress,
   type SpireZone,
@@ -37,6 +39,11 @@ export const builtFloors = (catalogue: SpireCatalogue = SPIRE_CATALOGUE) =>
   Object.values(catalogue.floors)
     .filter((f) => f.floor <= catalogue.builtTop)
     .sort((a, b) => a.floor - b.floor);
+/** The zones that are released (every floor up to their boss is built), in order. */
+export const builtZones = (catalogue: SpireCatalogue = SPIRE_CATALOGUE) =>
+  Object.values(catalogue.zones)
+    .filter((z) => spireZoneTop(z.id) <= catalogue.builtTop)
+    .sort((a, b) => a.id - b.id);
 export function spireEntryBoss(catalogue: SpireCatalogue = SPIRE_CATALOGUE) {
   const first = builtFloors(catalogue)[0];
   return RAID_BOSSES[catalogue.zones[first.zone].boss];
@@ -65,8 +72,10 @@ export interface SpireData {
 }
 export interface SpireView {
   spireTab?: SpireTab;
-  /** Floor preview only; starting a climb always uses the checkpoint. */
+  /** Floor preview only; starting a climb never uses it. */
   spireFloor?: number;
+  /** The zone picked to climb (default: the highest open to you). */
+  spireZone?: number;
   play: "solo" | "party";
   status: string;
 }
@@ -101,6 +110,27 @@ export function spireStanding(
     claimed: new Set(s?.claimed ?? []),
   };
 }
+/**
+ * The zone a climb will be for: the one picked if it is open to you, else
+ * the highest open one. Zone 1 always is; a later released zone once its
+ * first floor is your checkpoint (zone 2 from checkpoint 11).
+ */
+export function spireZoneChoice(
+  view: Pick<SpireView, "spireZone">,
+  d: Pick<SpireData, "spire">,
+  catalogue: SpireCatalogue = SPIRE_CATALOGUE,
+) {
+  const { checkpoint } = spireStanding(d, catalogue);
+  const zones = builtZones(catalogue);
+  const open = zones
+    .filter((z) => spireZoneStart(z.id) <= checkpoint)
+    .map((z) => z.id);
+  if (!open.length) open.push(zones[0]?.id ?? 1);
+  const zone = open.includes(view.spireZone ?? 0)
+    ? view.spireZone!
+    : open[open.length - 1];
+  return { zones, open, zone, start: spireZoneStart(zone) };
+}
 /** Start climb: whether it can go now, and what it will do. */
 export function spireStartState(
   view: SpireView,
@@ -109,7 +139,7 @@ export function spireStartState(
 ) {
   const size = Math.max(1, d.party.length);
   const play: SpireView["play"] = size > 1 ? "party" : view.play;
-  const { checkpoint } = spireStanding(d, catalogue);
+  const { zone, start } = spireZoneChoice(view, d, catalogue);
   const reason = !spireUnlocked(d, catalogue)
     ? `Clear ${spireEntryBoss(catalogue).name} once to open the Spire.`
     : d.inRoom
@@ -117,15 +147,25 @@ export function spireStartState(
       : !d.leader
         ? "Your party leader starts the climb."
         : "";
-  const from = checkpoint;
+  const from = start;
   const note = reason
     ? reason
     : play === "solo"
-      ? `Just you · from floor ${from} · one self-revive a floor`
+      ? `Just you · zone ${zone} from floor ${from} · one self-revive a floor`
       : size > 1
-        ? `${size} of ${SPIRE_SEATS} seats · from your party's lowest checkpoint`
-        : `A room for up to ${SPIRE_SEATS} · invite friends there`;
-  return { play, ok: !reason, reason, note, soloLocked: size > 1 };
+        ? from > 1
+          ? `${size} of ${SPIRE_SEATS} seats · zone ${zone} from floor ${from} · everyone needs checkpoint ${from}`
+          : `${size} of ${SPIRE_SEATS} seats · zone ${zone} from floor ${from}`
+        : `A room for up to ${SPIRE_SEATS} · zone ${zone} from floor ${from}`;
+  return {
+    play,
+    ok: !reason,
+    reason,
+    note,
+    soloLocked: size > 1,
+    zone,
+    from,
+  };
 }
 
 /** The champions a floor fields (each once), in order of appearance. */
@@ -144,22 +184,31 @@ export function spirePreview(
   const floors = builtFloors(catalogue);
   const { highest } = spireStanding(d, catalogue);
   const next = floors.find((f) => f.floor > highest);
+  // Previews stay in the zone picked to climb: a picked floor of it, else
+  // its next uncleared floor, else its first (where the climb starts).
+  const { zone } = spireZoneChoice(view, d, catalogue);
+  const inZone = floors.filter((f) => f.zone === zone);
   const selected =
-    floors.find((f) => f.floor === view.spireFloor) ??
+    inZone.find((f) => f.floor === view.spireFloor) ??
+    inZone.find((f) => f.floor > highest) ??
+    inZone[0] ??
     next ??
     floors[floors.length - 1];
-  return { floors, next, selected };
+  return { floors, next, selected, zone };
 }
 export function floorState(
   f: SpireFloor,
   d: SpireData,
   catalogue: SpireCatalogue = SPIRE_CATALOGUE,
 ) {
-  const { highest, claimed } = spireStanding(d, catalogue);
+  const { highest, claimed, checkpoint } = spireStanding(d, catalogue);
   if (f.kind === "boss" && f.floor > catalogue.builtTop)
     return { key: "soon", label: "Coming soon" };
   if (claimed.has(f.floor) || f.floor <= highest)
     return { key: "done", label: "Cleared" };
+  // A later zone opens once the one below it is conquered.
+  if (spireZoneStart(f.zone) > checkpoint)
+    return { key: "locked", label: `Conquer zone ${f.zone - 1} first` };
   // A boss floor also needs that boss's raid cleared (the server checks too).
   const boss = f.kind === "boss" ? f.boss : undefined;
   if (
@@ -209,7 +258,7 @@ export function spireModel(
       description:
         floor.description ??
         (floor.kind === "boss"
-          ? "Ascendant boss encounter"
+          ? `${catalogue.zones[floor.zone].ascendant} encounter`
           : floor.elite
             ? `${floor.elite.name} · captain and reinforcements`
             : "Defeat every Echo wave to open the stairs"),
@@ -222,9 +271,12 @@ export function spireModel(
   });
   const next = floors.find((f) => f.floor === preview.next);
   const selected = floors.find((f) => f.floor === preview.selected)!;
+  const choice = spireZoneChoice(view, d, catalogue);
   const groups = [...new Set(floors.map((f) => f.zone.id))].map((id) => ({
     zone: catalogue.zones[id],
     floors: floors.filter((f) => f.zone.id === id),
+    /** Open to climb (zone 1 always; a later one from its checkpoint). */
+    open: choice.open.includes(id),
   }));
   return {
     ...standing,
@@ -236,6 +288,7 @@ export function spireModel(
     total: catalogue.builtTop,
     cleared: Math.min(catalogue.builtTop, Math.max(0, standing.highest)),
     complete: !next,
+    climbZone: choice.zone,
     start: spireStartState(view, d, catalogue),
   };
 }
