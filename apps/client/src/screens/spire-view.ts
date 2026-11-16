@@ -19,6 +19,7 @@ import {
   SPIRE_ZONES,
   spireBlessingText,
   spireRewardsOf,
+  spireStartCheckpoint,
   type SpireFloor,
   type SpireProgress,
 } from "../../../../packages/shared/src/spire";
@@ -75,12 +76,16 @@ export function spireUnlocked(d: Pick<SpireData, "progress" | "spire">) {
       0) > 0
   );
 }
-/** Your climb so far (nothing saved yet: floor 0, checkpoint 1). */
+/**
+ * Your climb so far (nothing saved yet: floor 0, checkpoint 1). The
+ * checkpoint is where a climb starts: a zone that is built (after zone 1's
+ * boss, floor 1 until zone 2 exists).
+ */
 export function spireStanding(d: Pick<SpireData, "spire">) {
   const s = d.spire;
   return {
     highest: s?.highestFloor ?? 0,
-    checkpoint: s?.checkpoint ?? 1,
+    checkpoint: spireStartCheckpoint(s?.checkpoint ?? 1),
     attempts: s?.attempts ?? 0,
     claimed: new Set(s?.claimed ?? []),
   };
@@ -97,7 +102,7 @@ export function spireStartState(view: SpireView, d: SpireData) {
       : !d.leader
         ? "Your party leader starts the climb."
         : "";
-  const from = Math.min(checkpoint, SPIRE_BUILT_TOP);
+  const from = checkpoint;
   const note = reason
     ? reason
     : play === "solo"
@@ -178,6 +183,13 @@ function floorState(f: SpireFloor, d: SpireData) {
     return { key: "soon", label: "Coming soon" };
   if (claimed.has(f.floor) || f.floor <= highest)
     return { key: "done", label: "Cleared" };
+  // A boss floor also needs that boss's raid cleared (the server checks too).
+  const boss = f.kind === "boss" ? f.boss : undefined;
+  if (
+    boss &&
+    !(d.spire?.clears?.[boss] ?? d.progress?.bosses?.[boss]?.clears ?? 0)
+  )
+    return { key: "locked", label: "Clear its raid first" };
   if (f.floor === highest + 1) return { key: "next", label: "Next" };
   return { key: "locked", label: `Clear floor ${f.floor - 1} first` };
 }
@@ -195,7 +207,7 @@ function floorsTab(d: SpireData) {
             : tag(`${f.waves.length} waves`);
       const who =
         f.kind === "boss"
-          ? `<small class="ui-note">${esc(zone.ascendant)} · a room of its own</small>`
+          ? `<small class="ui-note">${esc(zone.ascendant)} · new attacks: Avalanche Charge, Twin Slam</small>`
           : `<span class="rh-tricks">${floorRoster(f)
               .map((c) => chip(c, `sp-f${f.floor}-${c}`, 24))
               .join("")}</span>`;

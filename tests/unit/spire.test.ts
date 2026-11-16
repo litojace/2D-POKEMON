@@ -36,6 +36,7 @@ import {
   spireCheckpoint,
   spireCourtCap,
   spireRoster,
+  spireStartCheckpoint,
   spireStartFrom,
   spireWaves,
   spireBlessingOffer as blessingOffer,
@@ -93,7 +94,7 @@ const toPlaying = (a: SpireArena) => {
 
 describe("Spire floors (zone 1)", () => {
   const earth = new Set<string>(SPIRE_ZONES[1].kin);
-  it("has wave floors 1–4 and 6–9 of two or three waves, the elite on 5 and the boss hook on 10", () => {
+  it("has wave floors 1–4 and 6–9 of two or three waves, the elite on 5 and the boss on 10", () => {
     for (const f of [1, 2, 3, 4, 6, 7, 8, 9]) {
       const def = SPIRE_FLOORS[f];
       expect(def.kind, `floor ${f}`).toBe("wave");
@@ -115,7 +116,8 @@ describe("Spire floors (zone 1)", () => {
     expect(SPIRE_FLOORS[5].kind).toBe("elite");
     expect(SPIRE_FLOORS[5].elite?.mechanic).toBe("eruption");
     expect(SPIRE_FLOORS[10].kind).toBe("boss");
-    expect(SPIRE_BUILT_TOP).toBe(9);
+    expect(SPIRE_FLOORS[10].boss).toBe("grumblecrag");
+    expect(SPIRE_BUILT_TOP).toBe(10);
   });
   it("gets harder floor by floor in the tuning table", () => {
     const level = { easy: 0, normal: 1, hard: 2 };
@@ -194,6 +196,12 @@ describe("where a party climbs", () => {
     expect(spireStartFrom([m(11)]).startFloor).toBeLessThanOrEqual(
       SPIRE_BUILT_TOP,
     );
+    // Zone 1 conquered (checkpoint 11) but zone 2 isn't built: floor 1,
+    // never straight onto the boss floor.
+    expect(spireStartFrom([m(11)]).startFloor).toBe(1);
+    expect(spireStartCheckpoint(11)).toBe(1);
+    expect(spireStartCheckpoint(11, 20)).toBe(11);
+    expect(spireStartCheckpoint(5)).toBe(1);
   });
 });
 
@@ -554,4 +562,182 @@ describe("play-test (bot raiders vs the floors)", () => {
     expect(nine.rate).toBeLessThan(one.rate);
     expect(nine.seconds).toBeGreaterThan(one.seconds);
   }, 120_000);
+});
+
+describe("the boss floor (floor 10: the Ascendant Cragmuff)", () => {
+  /** Clear floor 9 of a climb that may go on to 10. */
+  const toTen = (chars: CharacterId[] = ["voltkit"]) => {
+    const a = climb(chars, { startFloor: 9, ceiling: 10 });
+    toPlaying(a);
+    for (let i = 0; i < 12 && a.raid.spire!.clearedAt === undefined; i++) {
+      run(a, 1.2);
+      killEchoes(a);
+      run(a, SPIRE_PARTY.waveGap + 0.2);
+    }
+    run(a, SPIRE_PARTY.cleared + 0.2);
+    return a;
+  };
+  const ascendantKinds = new Set(["avalanche", "twin-slam", "fissure"]);
+  it("briefs the Ascendant in the same room, then the blessings, then the fight", () => {
+    seeded(41);
+    const a = toTen();
+    const s = a.raid.spire!;
+    expect(a.raid.result).toBeNull();
+    expect(s).toMatchObject({ floor: 10, kind: "boss", best: 9 });
+    expect(a.phase).toBe("briefing");
+    // The same arena runs the Ascendant's rules now.
+    expect(a.raid.variant).toBe("ascendant");
+    expect(a.raid.name).toBe("Ascendant Cragmuff");
+    const boss = a.boss()!;
+    expect(boss).toMatchObject({ raidBoss: true, name: "Ascendant Cragmuff" });
+    expect(boss.hp).toBe(a.raid.maxHp);
+    expect(a.raid.maxHp).toBeGreaterThan(1);
+    expect(a.raid.gilded).toBe(false);
+    expect(echoes(a)).toEqual([]);
+    expect(a.instructionsReady).toEqual([boss.id]);
+    // The briefing waits for the raiders, then the cards.
+    a.acknowledgeInstructions("p0");
+    expect(a.phase).toBe("intermission");
+    expect(s.offers.p0).toHaveLength(SPIRE_OFFER);
+    a.pickRite("p0", s.offers.p0[0]);
+    toPlaying(a);
+    // The Ascendant's own attacks come (its deck, not the elite's).
+    const kinds = new Set<string>();
+    run(a, 45, () => a.raid.warnings.forEach((w) => kinds.add(w.kind)));
+    expect([...kinds].some((k) => ascendantKinds.has(k))).toBe(true);
+    expect(kinds.size).toBeGreaterThan(2);
+  });
+  it("goes on without a raider who never reads the briefing", () => {
+    seeded(42);
+    const a = toTen();
+    expect(a.phase).toBe("briefing");
+    run(a, SPIRE_PARTY.bossBriefing + 0.2);
+    expect(a.phase).toBe("intermission");
+  });
+  it("keeps event numbers rising, the raiders and their blessings across floors 9 → 10", () => {
+    seeded(43);
+    const a = climb(["voltkit", "terradon"], { startFloor: 9, ceiling: 10 });
+    const heroes = a.heroes().map((p) => p.id);
+    toPlaying(a);
+    let last = 0;
+    const ids: number[] = [];
+    const watch = () => {
+      for (const e of a.events) if (e.id > last) ids.push((last = e.id));
+    };
+    for (let i = 0; i < 12 && a.raid.spire!.clearedAt === undefined; i++) {
+      run(a, 1.2, watch);
+      killEchoes(a);
+      run(a, SPIRE_PARTY.waveGap + 0.2, watch);
+    }
+    run(a, SPIRE_PARTY.cleared + 0.2, watch);
+    const before = last;
+    const s = a.raid.spire!;
+    // Blessings from earlier floors are still held.
+    s.blessings.p0 = { keen: 1, stoneskin: 1, leech: 1, focus: 1, fleet: 1 };
+    for (const id of heroes) a.acknowledgeInstructions(id);
+    for (const id of heroes) a.pickRite(id, s.offers[id][0]);
+    toPlaying(a);
+    expect(a.heroes().map((p) => p.id)).toEqual(heroes);
+    run(a, 20, watch);
+    expect(last).toBeGreaterThan(before);
+    for (let i = 1; i < ids.length; i++)
+      expect(ids[i]).toBeGreaterThan(ids[i - 1]);
+    expect(s.blessings.p0).toMatchObject({ keen: 1, stoneskin: 1 });
+  });
+  it("works every blessing hook in the boss fight", () => {
+    seeded(44);
+    const a = toTen();
+    const s = a.raid.spire!;
+    a.acknowledgeInstructions("p0");
+    a.pickRite("p0", s.offers.p0[0]);
+    toPlaying(a);
+    const boss = a.boss()!,
+      p = a.heroes()[0];
+    const hit = (target: Fighter, from: string) => {
+      const hp = (target.hp = 9999);
+      a.damage(target, 40, from);
+      return hp - target.hp;
+    };
+    s.blessings.p0 = {};
+    a.raid.exposedUntil = a.time + 99;
+    const plain = hit(boss, p.id),
+      taken = hit(p, boss.id);
+    s.blessings.p0 = { keen: 1, stoneskin: 1 };
+    expect(hit(boss, p.id)).toBeCloseTo(plain * 1.1, 4);
+    expect(hit(p, boss.id)).toBeCloseTo(taken * 0.9, 4);
+    // Leeching Strikes heal on the boss too.
+    s.blessings.p0 = { leech: 1 };
+    boss.hp = 9999;
+    p.hp = 50;
+    a.damage(boss, 40, p.id);
+    expect(p.hp).toBeGreaterThan(50);
+    // Focus (skill cooldowns) and Fleet Step (the dash, read by prediction).
+    s.blessings.p0 = { focus: 1, fleet: 1 };
+    expect(
+      (a as unknown as { cooldownScale(p: Fighter): number }).cooldownScale(p),
+    ).toBeCloseTo(0.9, 6);
+    a.pickRite("p0", "fleet"); // (not on offer: refused)
+    (a as unknown as { applyBlessings(p: Fighter): void }).applyBlessings(p);
+    expect(p.dashCd).toBeCloseTo(RULES.dashCooldown * 0.8, 6);
+  });
+  it("saves the clear as Spire floor 10, then ends the climb: zone 1 conquered", () => {
+    seeded(45);
+    const a = toTen();
+    const s = a.raid.spire!;
+    a.acknowledgeInstructions("p0");
+    a.pickRite("p0", s.offers.p0[0]);
+    toPlaying(a);
+    run(a, 5);
+    a.spire.pending = [];
+    a.boss()!.hp = 0;
+    run(a, 0.1);
+    expect(s.clearedAt).toBeDefined();
+    expect(s.best).toBe(10);
+    expect(a.spire.pending.map((r) => r.floor)).toEqual([10]);
+    expect(a.spire.pending[0].blessings.p0).toBeDefined();
+    expect(a.raid.result).toBeNull();
+    // The boss stops attacking once beaten.
+    expect(a.raid.warnings).toEqual([]);
+    run(a, SPIRE_PARTY.cleared + 0.2);
+    expect(a.raid.result).toBe("victory");
+    expect(a.phase).toBe("finished");
+    expect(a.raid.message).toMatch(/Zone 1 conquered/);
+    // Climb again: from where this climb started (never floor 10 or 11:
+    // zone 2 isn't built), no blessings, the Ascendant gone.
+    a.retry();
+    expect(s.startFloor).toBe(9);
+    expect(s.floor).toBe(9);
+    expect(s.blessings).toEqual({});
+    expect(a.raid.variant).toBeUndefined();
+    expect(a.players.some((p) => p.raidBoss)).toBe(false);
+  });
+  it("ends at floor 9 for a party the server capped there", () => {
+    seeded(46);
+    const a = climb(["voltkit"], { startFloor: 9, ceiling: 9 });
+    toPlaying(a);
+    for (let i = 0; i < 12 && a.raid.spire!.clearedAt === undefined; i++) {
+      run(a, 1.2);
+      killEchoes(a);
+      run(a, SPIRE_PARTY.waveGap + 0.2);
+    }
+    run(a, SPIRE_PARTY.cleared + 0.2);
+    expect(a.raid.result).toBe("victory");
+    expect(a.players.some((p) => p.raidBoss)).toBe(false);
+  });
+  it("loses the climb on a defeat by the Ascendant", () => {
+    seeded(47);
+    const a = toTen();
+    a.acknowledgeInstructions("p0");
+    a.pickRite("p0", a.raid.spire!.offers.p0[0]);
+    toPlaying(a);
+    (a as unknown as { selfUsed: boolean }).selfUsed = true;
+    for (let i = 0; i < 300 && !a.raid.result; i++) {
+      const p = a.heroes()[0];
+      if (p.hp > 0) a.damage(p, 999, a.boss()!.id);
+      a.tick(DT);
+    }
+    expect(a.raid.result).toBe("defeat");
+    expect(a.raid.message).toMatch(/Ascendant Cragmuff stands unbroken/);
+    expect(a.raid.spire!.best).toBe(9);
+  });
 });

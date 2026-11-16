@@ -109,8 +109,27 @@ describe("the Spire page", () => {
     expect(html).toMatch(/sp-floor is-done" data-spire-floor="4"/);
     expect(html).toMatch(/sp-floor is-next" data-spire-floor="5"/);
     expect(html).toMatch(/sp-floor is-locked" data-spire-floor="6"/);
-    expect(html).toMatch(/sp-floor is-soon" data-spire-floor="10"/);
+    // Floor 10: the Ascendant Cragmuff, built now (its title shown).
+    expect(html).toMatch(/sp-floor is-locked" data-spire-floor="10"/);
+    expect(html).not.toContain("is-soon");
+    expect(html).toContain("Ascendant Cragmuff");
+    expect(html).toContain("Earthshaker of the Spire");
     expect(html).toContain("Echo Breaker");
+  });
+  it("shows floor 10 cleared, and checkpoint 1 until zone 2 exists", () => {
+    const done = data({
+      spire: climb({
+        highestFloor: 10,
+        checkpoint: 11,
+        claimed: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+      }),
+    });
+    const html = page("floors", done);
+    expect(html).toMatch(/sp-floor is-done" data-spire-floor="10"/);
+    expect(page("climb", done)).toContain("from floor 1");
+    expect(spireStartState({ play: "solo", status: "" }, done).note).toContain(
+      "from floor 1",
+    );
   });
   it("shows every blessing in its codex", () => {
     expect(

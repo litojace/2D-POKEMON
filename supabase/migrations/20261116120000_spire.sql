@@ -106,6 +106,21 @@ language sql stable security definer set search_path = public as $$
 $$;
 revoke all on function public.arena_spire_clears(uuid) from public, anon, authenticated, service_role;
 
+-- The checkpoint after clearing up to `highest`: the first floor of the
+-- zone it reaches, but only a zone that exists (has reward rows). Clearing
+-- floor 10 (zone 1's boss) keeps checkpoint 1 until zone 2's floors are
+-- added; that migration recomputes checkpoints with this function.
+create or replace function public.arena_spire_checkpoint(s integer, highest integer) returns integer
+language sql stable security definer set search_path = public as $$
+  select case
+    when exists (select 1 from public.arena_spire_rewards r
+                 where r.season = s and r.floor = (greatest(highest, 0) / 10) * 10 + 1)
+      then (greatest(highest, 0) / 10) * 10 + 1
+    else ((greatest(highest, 1) - 1) / 10) * 10 + 1
+  end;
+$$;
+revoke all on function public.arena_spire_checkpoint(integer, integer) from public, anon, authenticated, service_role;
+
 -- One cleared floor of a climb (the game server's receipt).
 create or replace function public.arena_record_spire_floor(p jsonb) returns jsonb
 language plpgsql security definer set search_path = public as $$
@@ -147,10 +162,10 @@ begin
     insert into public.arena_spire_players(run_id, player_id, character)
     values (run, pid, left(coalesce(pl->>'character', ''), 32)) on conflict do nothing;
     insert into public.arena_spire_progress(player_id, season, highest_floor, checkpoint, attempts)
-    values (pid, s, f, (f / 10) * 10 + 1, 1)
+    values (pid, s, f, public.arena_spire_checkpoint(s, f), 1)
     on conflict (player_id, season) do update set
       highest_floor = greatest(public.arena_spire_progress.highest_floor, excluded.highest_floor),
-      checkpoint = (greatest(public.arena_spire_progress.highest_floor, excluded.highest_floor) / 10) * 10 + 1,
+      checkpoint = public.arena_spire_checkpoint(s, greatest(public.arena_spire_progress.highest_floor, excluded.highest_floor)),
       attempts = public.arena_spire_progress.attempts + case when fresh then 1 else 0 end,
       updated_at = now();
     insert into public.arena_spire_claims(player_id, season, floor, run_id)

@@ -9,9 +9,22 @@
  * floor cleared (saved at once) → next floor in the same room. A defeat ends
  * the climb; "Climb again" starts from the checkpoint with no blessings.
  *
- * Boss floors (floor 10: the Ascendant Cragmuff) are a hook: `bossFloor`
- * will swap the room's arena for the boss's (phase 2). Until then a climb
- * ends at SPIRE_BUILT_TOP.
+ * Boss floors (floor 10: the Ascendant Cragmuff) are fought in this same
+ * arena: it carries the Ascendant's rules (AscendantCragmuffRules, on while
+ * `raid.variant` is "ascendant") and turns them on for the floor. The room,
+ * its sessions, accounts and appearance, the event numbering, the clock and
+ * the blessings (hooked here, below) stay exactly as they were, and the
+ * clear is saved as a Spire floor like any other (never as a raid clear:
+ * server.ts files raid clears only for rooms without `spire`). Why not swap
+ * the room to the boss's own arena: the room's state lives in many places
+ * (the server's per-arena maps, input queues and acks inside Arena, the
+ * raid's run state), and a swap that missed one would break prediction or
+ * saving in ways no snapshot shows. Later zones add their Ascendant's rules
+ * as another layer, each on for its own boss.
+ *
+ * After floor 10 the climb ends as a victory: zone 1 conquered. The next
+ * checkpoint (floor 11) is only granted once zone 2 exists
+ * (spireStartCheckpoint; the database caps it the same way).
  */
 import {
   CHARACTERS,
@@ -23,6 +36,7 @@ import {
   type Fighter,
 } from "../../../packages/shared/src/index.js";
 import {
+  ASCENDANT_CRAGMUFF,
   isRaider,
   type RaidAttack,
 } from "../../../packages/shared/src/raid.js";
@@ -35,10 +49,10 @@ import {
   SPIRE_SEASON,
   spireBlessingOffer,
   spireBlessingValue,
-  spireCheckpoint,
   spireCourtCap,
   spireRoster,
   spireScale,
+  spireStartCheckpoint,
   spireWaves,
   spireZoneOf,
   type SpireBlessingId,
@@ -48,6 +62,7 @@ import {
 } from "../../../packages/shared/src/spire.js";
 import { BotBrain } from "./bot.js";
 import { RaidArena, raidJitter } from "./raid.js";
+import { AscendantCragmuffRules } from "./raid-ascendant-cragmuff.js";
 
 const randomUUID = () => crypto.randomUUID();
 const randomSeed = () => {
@@ -73,7 +88,7 @@ export function blessing(arena: SpireArena, p: Fighter, id: SpireBlessingId) {
   return spireBlessingValue(id, arena.spire.state.blessings[p.id]?.[id]);
 }
 
-export class SpireArena extends RaidArena {
+export class SpireArena extends AscendantCragmuffRules(RaidArena) {
   declare spire: SpireRun;
   private echoSerial = 0;
   /** The floor's waves (a big party has one more). */
@@ -133,11 +148,14 @@ export class SpireArena extends RaidArena {
   }
   override start() {
     const s = this.spire.state;
-    // A new climb starts from the checkpoint this party has reached.
+    // A new climb starts from the checkpoint this party has reached (one
+    // that is built: after zone 1's boss, floor 1 again).
     s.startFloor = Math.min(
       s.ceiling,
-      Math.max(s.startFloor, spireCheckpoint(s.best + 1)),
+      Math.max(s.startFloor, spireStartCheckpoint(s.best + 1, s.ceiling)),
     );
+    s.kind = "wave";
+    this.raid.variant = undefined;
     super.start();
     const r = this.raid;
     r.name = "The Spire";
@@ -158,17 +176,30 @@ export class SpireArena extends RaidArena {
     this.setupFloor(s.startFloor);
     r.message = `The Spire · Floor ${s.floor}: ${SPIRE_FLOORS[s.floor]?.name ?? ""}`;
   }
-  /** Wave floors have no boss; the elite steps in as an Echo. */
+  /** Is this floor the zone's Ascendant boss? */
+  bossFloor() {
+    return this.spire?.state.kind === "boss";
+  }
+  /** Floors bring their own foes (setupFloor): none at the climb's start. */
   protected override spawnBoss() {}
-  /** The living elite captain plays the borrowed mechanic. */
+  /** The Ascendant on its floor; elsewhere the living elite captain. */
   override boss() {
+    if (this.bossFloor()) return super.boss();
     const id = this.spire?.state.eliteId;
     return id
       ? this.players.find((p) => p.id === id && p.hp > 0 && !p.out)
       : undefined;
   }
   protected override fighting() {
+    if (this.bossFloor())
+      return (
+        this.spire.state.clearedAt === undefined && (this.boss()?.hp ?? 0) > 0
+      );
     return !!this.boss();
+  }
+  /** The captain is drawn bigger (SPIRE_PARTY.eliteScale): so is its hit area. */
+  override hitRadius(p: Fighter) {
+    return p.elite ? RULES.radius * SPIRE_PARTY.eliteScale : super.hitRadius(p);
   }
   override snapshot(remaining = 0) {
     // Echo brains are not a "bot match".
@@ -182,7 +213,8 @@ export class SpireArena extends RaidArena {
       r = this.raid,
       def = SPIRE_FLOORS[floor];
     for (const p of this.players) if (p.echo) this.bots.delete(p.id);
-    this.players = this.players.filter((p) => !p.echo);
+    // Echoes and a boss from an earlier floor leave the court.
+    this.players = this.players.filter((p) => !p.echo && !p.raidBoss);
     this.spawning.clear();
     this.fallenAt.clear();
     this.bastionUsed.clear();
@@ -206,19 +238,16 @@ export class SpireArena extends RaidArena {
       limit: spireScale(floor, r.partySize).limit,
     });
     r.elapsed = 0;
-    r.warnings = [];
-    r.downed = {};
-    r.stagger = 0;
-    r.staggerUntil = 0;
-    r.exposedUntil = 0;
-    r.wards = [];
     r.bossId = "raid-boss";
     r.maxHp = 1;
+    // Chapter 1, the pillars standing, the brain and deck fresh.
+    this.resetFight();
+    this.resetReads();
     this.projectiles = [];
     this.zones = [];
-    this.resetBrain();
-    this.attacks = 0;
-    this.started = false;
+    // The Ascendant's rules are on for its floor only.
+    r.variant = def?.kind === "boss" ? "ascendant" : undefined;
+    r.name = def?.kind === "boss" ? ASCENDANT_CRAGMUFF.name : "The Spire";
     // Everyone stands again, at full health, at the stairs.
     this.heroes().forEach((p, i) => {
       Object.assign(p, {
@@ -240,6 +269,20 @@ export class SpireArena extends RaidArena {
       });
       this.applyBlessings(p);
     });
+    if (def?.kind === "boss") this.spawnAscendant();
+  }
+  /**
+   * The zone's Ascendant steps onto the court (zone 1: Cragmuff), at the
+   * Ascendant tier's health for this party, never Gilded.
+   */
+  private spawnAscendant() {
+    const r = this.raid;
+    r.gilded = false;
+    r.maxHp = this.bossMaxHp();
+    super.spawnBoss();
+    const boss = this.boss();
+    if (boss) boss.name = ASCENDANT_CRAGMUFF.name;
+    r.message = `Floor ${this.spire.state.floor}: ${ASCENDANT_CRAGMUFF.name} waits at the top.`;
   }
   /** The first live moment of a floor: the first wave (or the captain) comes. */
   private beginFloor() {
@@ -450,27 +493,35 @@ export class SpireArena extends RaidArena {
       })),
     });
     s.saves.push({ floor: s.floor, status: "saving" });
-    r.message = `Floor ${s.floor} cleared! The stairs open.`;
+    r.message =
+      s.kind === "boss"
+        ? `${r.name} kneels! Floor ${s.floor} cleared.`
+        : `Floor ${s.floor} cleared! The stairs open.`;
   }
   /** On up: the next floor in this room, or the end of what is built. */
   private nextFloor() {
     const s = this.spire.state;
     const next = s.floor + 1;
     const def = SPIRE_FLOORS[next];
+    // The server decided how high this party may climb (each member must
+    // have cleared a boss's raid for its floor): nothing above it.
     if (next > s.ceiling || !def) return this.finish(true);
-    if (def.kind === "boss" && !this.bossFloor(next)) return this.finish(true);
     this.setupFloor(next);
+    if (def.kind === "boss") return this.briefBoss();
     this.raid.message = `Floor ${next}: ${def.name}`;
     this.offerRaidRites();
   }
   /**
-   * HOOK (phase 2): a boss floor swaps this room's arena for the zone's
-   * Ascendant boss arena (server.ts swapArena: carry serial, time, players
-   * and this `spire` run) and back afterwards. Not built: the climb ends
-   * below it.
+   * Before a boss floor: its briefing (the boss, its new attacks), read
+   * until everyone is ready or the time is up; then the blessing cards.
    */
-  protected bossFloor(_floor: number): boolean {
-    return false;
+  private briefBoss() {
+    this.phase = "briefing";
+    this.deadline = this.time + SPIRE_PARTY.bossBriefing;
+    // The boss is ready; the raiders confirm (Arena.acknowledgeInstructions).
+    this.instructionsReady = this.players
+      .filter((p) => p.raidBoss)
+      .map((p) => p.id);
   }
 
   // -------------------------------------------------- Blessings (rites)
@@ -580,12 +631,23 @@ export class SpireArena extends RaidArena {
       amount *= scale.power * (1 - blessing(this, target, "stoneskin"));
     if (target.echo && source && isRaider(source))
       amount *= scale.armour * (1 + blessing(this, source, "keen"));
+    // The boss floor: the boss's tier sets its numbers; blessings still count.
+    if (source?.raidBoss && isRaider(target))
+      amount *= 1 - blessing(this, target, "stoneskin");
+    if (target.raidBoss && source && isRaider(source))
+      amount *= 1 + blessing(this, source, "keen");
     const before = target.hp;
     super.damage(target, amount, owner, ability);
     const dealt = Math.max(0, before - Math.max(0, target.hp));
-    if (source && isRaider(source) && target.echo && dealt > 0) {
+    if (
+      source &&
+      isRaider(source) &&
+      (target.echo || target.raidBoss) &&
+      dealt > 0
+    ) {
+      // (A raid counts damage to its boss itself.)
       const mine = this.raid.contributions?.[source.id];
-      if (mine) mine.damage += dealt;
+      if (mine && target.echo) mine.damage += dealt;
       const leech = blessing(this, source, "leech");
       if (leech && source.hp > 0) this.heal(source, dealt * leech);
       const harvest = blessing(this, source, "harvest");
@@ -609,23 +671,41 @@ export class SpireArena extends RaidArena {
   }
 
   // -------------------------------------------- The elite's borrowed mechanic
+  // (On the boss floor: the Ascendant's own deck, rhythm and enrage.)
   protected override pattern(): RaidAttack[] {
-    return ["eruption"];
+    return this.bossFloor() ? super.pattern() : ["eruption"];
   }
   protected override signature(): RaidAttack | undefined {
-    return "eruption";
+    return this.bossFloor() ? super.signature() : "eruption";
   }
   protected override cadence() {
+    if (this.bossFloor()) return super.cadence();
     return SPIRE_PARTY.eliteCadence * (1 - 0.05 * (this.raid.partySize - 1));
   }
   protected override concurrency() {
-    return 1;
+    return this.bossFloor() ? super.concurrency() : 1;
   }
-  protected override stepEnrage() {}
+  protected override stepEnrage() {
+    if (this.bossFloor()) super.stepEnrage();
+  }
 
   // -------------------------------------------------------------- Clock
   override tick(dt = 1 / RULES.tick) {
     const s = this.spire.state;
+    // A boss floor's briefing runs on a clock (a climb never stalls on it).
+    if (
+      this.phase === "briefing" &&
+      s.kind === "boss" &&
+      s.floor > s.startFloor
+    ) {
+      this.time += dt;
+      if (this.time >= this.deadline) {
+        this.instructionsReady = this.players.map((p) => p.id);
+        this.phase = "countdown";
+        this.offerRaidRites();
+      }
+      return;
+    }
     // Time's up on the cards: the first option is taken.
     if (this.phase === "intermission" && this.time + dt >= this.deadline)
       for (const id of Object.keys(s.offers))
@@ -645,6 +725,17 @@ export class SpireArena extends RaidArena {
       r = this.raid;
     // Everyone left: the climb ends (a raid's boss would have ended it).
     if (!this.heroes().length) return this.finish(false);
+    if (s.kind === "boss") {
+      if (s.clearedAt === undefined) {
+        if (this.bossHealth() <= 0) this.floorCleared();
+        else if (r.elapsed >= s.limit) return this.finish(false);
+        // Chapters, as in the raid (its win and loss are the floor's, above).
+        else return super.stepOutcome();
+      }
+      if (this.time >= (s.clearedAt ?? Infinity) + SPIRE_PARTY.cleared)
+        this.nextFloor();
+      return;
+    }
     if (!this.floorStarted) this.beginFloor();
     this.stepEchoes();
     const elite = this.boss();
@@ -661,10 +752,17 @@ export class SpireArena extends RaidArena {
   }
   protected override finishMessage(won: boolean) {
     const s = this.spire.state;
+    const from = spireStartCheckpoint(
+      Math.max(s.startFloor, s.best + 1),
+      s.ceiling,
+    );
     if (!won)
-      return `The Echoes held floor ${s.floor}. Climb again from floor ${spireCheckpoint(s.best + 1 > s.startFloor ? s.best + 1 : s.startFloor)}.`;
-    return s.best >= SPIRE_BUILT_TOP
-      ? `Floor ${s.best} cleared! The Ascendant waits above, soon.`
-      : `Floor ${s.best} cleared — the top of your climb for now.`;
+      return s.kind === "boss"
+        ? `${ASCENDANT_CRAGMUFF.name} stands unbroken. Climb again from floor ${from}.`
+        : `The Echoes held floor ${s.floor}. Climb again from floor ${from}.`;
+    const top = SPIRE_FLOORS[s.best];
+    if (top?.kind === "boss" && !SPIRE_FLOORS[s.best + 1])
+      return `Zone ${top.zone} conquered — more floors are coming.`;
+    return `Floor ${s.best} cleared — the top of your climb for now.`;
   }
 }

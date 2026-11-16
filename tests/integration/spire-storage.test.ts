@@ -155,11 +155,45 @@ it("pays each member of a party, and only their own first clears", async () => {
   expect(await balance(bo)).toBe(before.bo + 20);
 });
 
-it("moves the checkpoint to the next zone once floor 10 is cleared", async () => {
-  for (const f of [6, 7, 8, 9, 10]) await record(floor(run(4), f));
+it("pays floor 10's title once, and keeps checkpoint 1 until zone 2 exists", async () => {
+  const before = await balance(ana);
+  for (const f of [6, 7, 8, 9]) await record(floor(run(4), f));
+  const boss = await record(floor(run(4), 10));
+  expect(boss.newClaims).toEqual([
+    {
+      accountId: ana,
+      floor: 10,
+      coins: 120,
+      titles: ["Earthshaker of the Spire"],
+    },
+  ]);
+  // A second clear of the Ascendant pays nothing more.
+  expect((await record(floor(run(6), 10))).newClaims).toEqual([]);
+  expect(await balance(ana)).toBe(before + 30 + 30 + 35 + 35 + 120);
+  await as(ana);
+  const me = (await db.query<{ p: any }>("select public.arena_me() as p"))
+    .rows[0].p;
+  expect(me.ownedTitles.map((t: any) => t.name)).toContain(
+    "Earthshaker of the Spire",
+  );
   const p = await progress(ana);
   expect(p.highestFloor).toBe(10);
-  expect(p.checkpoint).toBe(11);
+  expect(p.claimed).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+  // Zone 1 is conquered, but floor 11 doesn't exist yet: climbs start at 1.
+  expect(p.checkpoint).toBe(1);
+  // Once zone 2's floors exist, the same clear opens checkpoint 11.
+  await db.exec(
+    `reset role;insert into public.arena_spire_rewards(season,floor,kind,item,amount) values(0,11,'coins','coins',1)`,
+  );
+  const next = (
+    await db.query<{ c: number }>(
+      "select public.arena_spire_checkpoint(0, 10) as c",
+    )
+  ).rows[0].c;
+  await db.exec(
+    "reset role;delete from public.arena_spire_rewards where season=0 and floor=11",
+  );
+  expect(next).toBe(11);
 });
 
 it("rejects broken receipts", async () => {
@@ -182,7 +216,7 @@ it("reads checkpoints and raid clears before a climb (lowest among the party)", 
     `select public.arena_spire_start(array['${ana}','${bo}']::uuid[]) as v`,
   );
   expect(members.map((m) => [m.id, m.checkpoint, m.clears])).toEqual([
-    [ana, 11, {}],
+    [ana, 1, {}],
     [bo, 1, { grumblecrag: 1 }],
   ]);
   // Ana has no Cragmuff clear: the party can't climb yet.

@@ -5,9 +5,12 @@
  * database agree on: floors, the one tuning table, blessings, rewards,
  * progress and the snapshot's `raid.spire`.
  *
- * Phase 1 builds zone 1 (floors 1–9 in the Raid Coliseum). Floor 10 (the
- * Ascendant Cragmuff, a room swap to its own arena) is a marked hook:
- * `SPIRE_BUILT_TOP` stops a climb below it until the boss floor lands.
+ * Zone 1 is built: floors 1–9 in the Raid Coliseum and the Ascendant
+ * Cragmuff on floor 10, fought in the same room (the Spire's arena turns the
+ * Ascendant's rules on for that floor: apps/server/src/spire.ts). Clearing
+ * floor 10 ends the climb with zone 1 conquered; the checkpoint at floor 11
+ * is only granted once zone 2 exists (`spireStartCheckpoint`, and the
+ * database's arena_record_spire_floor).
  */
 import type { CharacterId } from "./index.js";
 import type { RaidBossId } from "./raid-roster.js";
@@ -16,8 +19,8 @@ import type { RaidBossId } from "./raid-roster.js";
 export const SPIRE_SEASON = 0;
 /** Floors per zone; floor 10 of each is its boss, floor 5 its elite. */
 export const SPIRE_ZONE_FLOORS = 10;
-/** The highest floor that can be played today (floor 10 is the hook). */
-export const SPIRE_BUILT_TOP = 9;
+/** The highest floor that can be played today (zone 1's boss). */
+export const SPIRE_BUILT_TOP = 10;
 /** Party size, like raids. */
 export const SPIRE_SEATS = 4;
 
@@ -75,7 +78,7 @@ export interface SpireFloor {
     /** Escorts that join when the captain drops to half health. */
     escorts: SpireEcho[];
   };
-  /** Boss floors: the raid boss's Ascendant form (phase 2 builds it). */
+  /** Boss floors: the raid boss whose Ascendant form is fought. */
   boss?: RaidBossId;
 }
 const e = (character: CharacterId, role: SpireRole): SpireEcho => ({
@@ -85,7 +88,7 @@ const e = (character: CharacterId, role: SpireRole): SpireEcho => ({
 /**
  * Zone 1: Earth-leaning (Terradon, Wombolder, Pangrove) plus one off-element
  * champion per floor, roles mixed. Floors 6–9 are defined too (same shape);
- * floor 10 is the Ascendant Cragmuff hook.
+ * floor 10 is the Ascendant Cragmuff.
  */
 export const SPIRE_FLOORS: Record<number, SpireFloor> = {
   1: {
@@ -215,8 +218,8 @@ export const SPIRE_FLOORS: Record<number, SpireFloor> = {
       [e("wombolder", "front"), e("pangrove", "front"), e("terradon", "front")],
     ],
   },
-  // HOOK (phase 2): the Ascendant Cragmuff. The server swaps the room to the
-  // boss's own arena for this floor (SpireArena.bossFloor), then back.
+  // The Ascendant Cragmuff, in the climb's own room (SpireArena turns the
+  // Ascendant's rules on for this floor).
   10: {
     floor: 10,
     zone: 1,
@@ -233,6 +236,18 @@ export const spireZoneOf = (floor: number) =>
 /** The checkpoint a climb starts from after reaching `floor`: the zone's first floor. */
 export const spireCheckpoint = (floor: number) =>
   (spireZoneOf(floor) - 1) * SPIRE_ZONE_FLOORS + 1;
+/**
+ * Where a new climb starts after reaching `floor`: its zone's first floor,
+ * but only a zone that is built and open (below `ceiling`). Clearing zone 1's
+ * boss reaches floor 11: until zone 2 exists, the climb starts at floor 1.
+ */
+export const spireStartCheckpoint = (
+  floor: number,
+  ceiling: number = SPIRE_BUILT_TOP,
+) => {
+  const at = spireCheckpoint(floor);
+  return at > ceiling ? spireCheckpoint(Math.max(1, ceiling)) : at;
+};
 /** Every champion a zone's floors can field (loaded before the climb starts). */
 export function spireRoster(zone: number): CharacterId[] {
   const out = new Set<CharacterId>();
@@ -273,7 +288,8 @@ export const SPIRE_TUNING: Record<
   7: { difficulty: "normal", power: 0.4, armour: 1.1, limit: 180 },
   8: { difficulty: "normal", power: 0.45, armour: 1.05, limit: 180 },
   9: { difficulty: "normal", power: 0.5, armour: 1, limit: 180 },
-  10: { difficulty: "hard", power: 1, armour: 1, limit: 300 },
+  // The boss floor: the raid's own time limit (no extra wave for big parties).
+  10: { difficulty: "hard", power: 1, armour: 1, limit: 600 },
 };
 /** Party scaling, and the cap on fighters on the court. */
 export const SPIRE_PARTY = {
@@ -298,6 +314,13 @@ export const SPIRE_PARTY = {
   /** The elite's stagger: per point of damage it takes, and seconds stunned. */
   eliteStagger: 0.09,
   eliteStun: 2.5,
+  /**
+   * The captain is drawn this much bigger than a champion, and its hit area
+   * grows with it (SpireArena.hitRadius), so what you see is what you hit.
+   */
+  eliteScale: 1.25,
+  /** Seconds to read a boss floor's briefing before it goes on without you. */
+  bossBriefing: 45,
 };
 export function spireScale(floor: number, partySize: number) {
   const t = SPIRE_TUNING[floor] ?? SPIRE_TUNING[SPIRE_BUILT_TOP];
@@ -307,7 +330,12 @@ export function spireScale(floor: number, partySize: number) {
     power: t.power * (1 + SPIRE_PARTY.power * extra),
     armour: t.armour / (1 + SPIRE_PARTY.toughness * extra),
     // A big party fights one more wave: it gets a minute more.
-    limit: t.limit + (partySize >= SPIRE_PARTY.extraWaveFrom ? 60 : 0),
+    limit:
+      t.limit +
+      (partySize >= SPIRE_PARTY.extraWaveFrom &&
+      SPIRE_FLOORS[floor]?.kind !== "boss"
+        ? 60
+        : 0),
   };
 }
 /** The waves a party of this size fights on a floor (big parties: one more). */
@@ -349,7 +377,7 @@ export interface SpireBlessing {
 export const SPIRE_BLESSINGS: Record<SpireBlessingId, SpireBlessing> = {
   keen: {
     name: "Keen Edge",
-    text: "Deal {v} more damage to Echoes.",
+    text: "Deal {v} more damage to Echoes and bosses.",
     tag: "Damage",
     values: [0.1, 0.18, 0.25],
     unit: "percent",
@@ -533,7 +561,7 @@ export interface SpireMember {
 /**
  * Where a party may climb: from the lowest checkpoint among its members, up
  * to the lowest ceiling (each boss floor needs every member to have cleared
- * that boss's raid once; nothing is open above SPIRE_BUILT_TOP yet). The
+ * that boss's raid once; nothing is open above SPIRE_BUILT_TOP). The
  * Spire opens with a Cragmuff clear.
  */
 export function spireStartFrom(members: readonly SpireMember[]): {
@@ -551,10 +579,6 @@ export function spireStartFrom(members: readonly SpireMember[]): {
       ceiling: 0,
       reason: "Every climber must clear Cragmuff once to enter the Spire.",
     };
-  const startFloor = Math.max(
-    1,
-    Math.min(...members.map((m) => spireCheckpoint(Math.max(1, m.checkpoint)))),
-  );
   let ceiling = SPIRE_BUILT_TOP;
   for (const zone of Object.values(SPIRE_ZONES)) {
     const bossFloor = zone.id * SPIRE_ZONE_FLOORS;
@@ -563,6 +587,14 @@ export function spireStartFrom(members: readonly SpireMember[]): {
       break;
     }
   }
+  const startFloor = Math.max(
+    1,
+    Math.min(
+      ...members.map((m) =>
+        spireStartCheckpoint(Math.max(1, m.checkpoint), ceiling),
+      ),
+    ),
+  );
   return { ok: true, startFloor: Math.min(startFloor, ceiling), ceiling };
 }
 /** One cleared floor, saved at once (even if the climb fails later). */
