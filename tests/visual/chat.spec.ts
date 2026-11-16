@@ -739,10 +739,29 @@ test("times in the chat: a stamp before each stretch, as the big chat apps do", 
   }
 });
 
-/** A stand-in for the browser's push service (headless Chromium has none). */
+/**
+ * Stand-ins for the browser's push service (headless Chromium has none) and
+ * its notification permission (which Chromium builds report differently in
+ * headless runs: "denied" on CI even when granted). window.__permission sets
+ * what the browser answers.
+ */
 const fakePush = () => {
   const w = window as any;
   let sub: any = null;
+  w.__permission = "default";
+  class FakeNotification {
+    static get permission() {
+      return w.__permission;
+    }
+    static async requestPermission() {
+      if (w.__permission === "default") w.__permission = "granted";
+      return w.__permission;
+    }
+  }
+  Object.defineProperty(window, "Notification", {
+    configurable: true,
+    value: FakeNotification,
+  });
   const pushManager = {
     getSubscription: async () => sub,
     subscribe: async (opts: any) => {
@@ -788,7 +807,6 @@ test("notify me of friends' messages: the gear's switch, and when it can't be of
     viewport: { width: 844, height: 390 },
     isMobile: true,
     hasTouch: true,
-    permissions: ["notifications"],
   });
   try {
     const page = await context.newPage();
@@ -843,6 +861,14 @@ test("notify me of friends' messages: the gear's switch, and when it can't be of
       "push-unsubscribe",
       { endpoint: "https://fcm.googleapis.com/fcm/send/this-phone" },
     ]);
+    // Said no in the browser: explained, and the switch can't undo it.
+    await page.evaluate(() => ((window as any).__permission = "denied"));
+    await page.click("#chat-drawer .chat-gear");
+    await page.click("#chat-drawer .chat-gear");
+    await expect(page.locator("#chat-drawer .chat-push-note")).toHaveText(
+      "Notifications are blocked for this game in your browser settings.",
+    );
+    await expect(toggle).toBeDisabled();
     // A server without notification keys: nothing offered.
     await page.evaluate(() => ((window as any).__pushKey = null));
     await page.click("#chat-drawer .chat-gear");
