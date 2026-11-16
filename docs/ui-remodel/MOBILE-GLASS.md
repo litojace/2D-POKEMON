@@ -298,7 +298,14 @@ is left").
 3. **Player card:** done (tabs on phones, above).
 4. **Ranks' leaderboard (2.9) and Friends (2.2)** are lists and scroll;
    that is right for a list.
-5. **Journey on a 667 px phone** (about 4 screens a tab): one column there.
-   A per-tab layout for the narrowest phones would be the next step.
-6. **About 1,000 font sizes in px** across the older stylesheets (mostly the
-   match HUD, the Farm and the Bistro) are not on the type scale yet.
+5. **Journey on a 667 px phone:** done. The goals sit beside the level
+   road on every phone held sideways (667×375: Season 4.05 → 2.95, Levels
+   4.42 → 3.53). Phones under 600 px wide (568×320) keep one column, about
+   5.6 screens a tab.
+6. **Text sizes:** done as one knob. `--text-scale` (ui/tokens.css,
+   default 1) multiplies the type scale and every px font size in the
+   stylesheets (825 `font-size` and 177 `font` sizes in 27 files; the 8
+   `clamp()` sizes were left alone). At 1 nothing changes (32 screens
+   pixel-compared). Moving each size onto a named step of the type scale
+   would change sizes, so it stays a design pass for the owner; a "Larger
+   text" setting could set `--text-scale` on `<html>`.
