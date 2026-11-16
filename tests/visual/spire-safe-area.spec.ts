@@ -5,6 +5,7 @@ import {
   pushUntilBattle,
   settle,
   snap,
+  createRoom,
 } from "./helpers";
 import { ISLAND, layoutProblems, setInsets, type Insets } from "./ui-measure";
 
@@ -241,7 +242,7 @@ for (const s of SIZES)
         .click()
         .catch(() => {});
       await openPlayPanel(page);
-      await page.click("#play-create");
+      await createRoom(page);
       await pushUntilBattle(page);
       await setInsets(page, s.inset);
       await expect(page.locator('#raid-hud [data-hud="phase"]')).toHaveText(
