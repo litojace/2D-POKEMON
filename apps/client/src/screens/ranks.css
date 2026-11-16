@@ -477,3 +477,13 @@
     font-size: var(--fs-micro);
   }
 }
+
+/* Phones: the card's ladder shows your rank and the ranks either side of
+   it (the one below, the one to reach next), so the card fits its column
+   instead of scrolling. Desktop and an unranked player see every rank. */
+@media (max-height: 500px) {
+  .rk-ladder:has(> .is-cur)
+    > li:not(.is-cur):not(:has(+ .is-cur)):not(.is-cur + li) {
+    display: none;
+  }
+}

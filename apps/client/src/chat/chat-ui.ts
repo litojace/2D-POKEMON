@@ -329,7 +329,7 @@ export function mountChat(hooks: ChatHooks): ChatView {
               ? "Loading your friends…"
               : friends.length
                 ? ""
-                : "Add friends (Menu → Friends) to message them here."
+                : "Add friends from Friends on the Lobby's left to message them here."
             : "No messages yet. Say hi!";
   }
 

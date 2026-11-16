@@ -6114,9 +6114,15 @@ html::before {
   height: 100lvh;
   z-index: -1;
   pointer-events: none;
-  /* Elemental Plaza, dimmed, behind lobbies and other screens. */
+  /* Elemental Plaza, dimmed, behind lobbies and other screens. The room
+     before a match takes the Lobby's lighter dim (ui/aero.css). */
   background:
-    linear-gradient(180deg, #0b1424d9 0%, #0b1424e6 50%, #0b1424f2 100%),
+    linear-gradient(
+      180deg,
+      var(--backdrop-dim-top, #0b1424d9) 0%,
+      var(--backdrop-dim-mid, #0b1424e6) 50%,
+      var(--backdrop-dim-bottom, #0b1424f2) 100%
+    ),
     url("/assets/backgrounds/plaza-lobby-f340a3b8.webp") center/cover no-repeat;
 }
 html:has(body.battle-active)::before {

@@ -88,9 +88,10 @@
   padding: max(8px, calc(var(--safe-top, 0px) + 6px)) 10px
     max(8px, calc(var(--safe-bottom, 0px) + 4px))
     calc(var(--safe-left, 0px) + 10px);
-  border-right: 1px solid rgba(139, 174, 229, 0.3);
-  background: rgba(10, 19, 37, 0.95);
-  backdrop-filter: blur(8px);
+  /* Thick glass (ui/tokens.css), never blurred: it opens over matches,
+     where a blur is redrawn every frame (CLAUDE.md, older phones). */
+  border-right: 1px solid var(--glass-rim);
+  background: var(--glass-thick);
   color: var(--ui-text);
   box-shadow: 8px 0 24px rgba(0, 0, 0, 0.35);
   animation: chat-in 0.18s ease-out;

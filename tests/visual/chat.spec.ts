@@ -235,7 +235,7 @@ for (const size of SIZES)
         "Friends",
       ]);
       await expect(page.locator("#chat-drawer .chat-empty")).toContainText(
-        "Add friends (Menu → Friends) to message them here.",
+        "Add friends from Friends on the Lobby's left to message them here.",
       );
       await expect(page.locator("#chat-drawer .chat-form")).toBeHidden();
       await page.click("#chat-drawer .chat-close");

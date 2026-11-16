@@ -208,3 +208,22 @@
   background: var(--glass-thick);
   border: 1px solid var(--glass-rim-on);
 }
+
+/* The room before a match sits on the Plaza picture as the Lobby does:
+   blurred and dimmed about as much (the Lobby's backdrop is blur 5 px,
+   60 % brightness), instead of 85-95 % dark, so its glass reads as glass.
+   The picture is still: the blur is drawn once. */
+html:has(body.lobby-active) {
+  --backdrop-dim-top: rgba(11, 20, 36, 0.55);
+  --backdrop-dim-mid: rgba(11, 20, 36, 0.35);
+  --backdrop-dim-bottom: rgba(11, 20, 36, 0.65);
+}
+html:has(body.lobby-active)::before {
+  filter: blur(5px) saturate(1.05);
+  transform: scale(1.04);
+}
+/* The room's own fill (style.css body.lobby-active) was solid navy over the
+   picture; it keeps its glow in your fighter's colour, over the picture. */
+:root body.lobby-active {
+  background-color: transparent;
+}

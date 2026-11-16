@@ -948,3 +948,18 @@
 .fit-mythic-stages .ui-bar {
   --bar: var(--r-mythic);
 }
+
+/* Phones: the count sits after Owned / Not owned, before the rarity chips,
+   so it isn't read as part of the chip the row's fade cuts ("Rar 8 skins"). */
+@media (max-height: 500px) {
+  .fit-filters > .ui-seg {
+    order: 0;
+  }
+  .fit-filters > .fit-count {
+    order: 1;
+    margin-left: 0;
+  }
+  .fit-filters > .ui-chips {
+    order: 2;
+  }
+}
