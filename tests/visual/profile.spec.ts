@@ -297,14 +297,11 @@ for (const size of SIZES)
       await centred(page, "[data-profile-rename]", "Change name");
       await boxCentred(page, ".pf-name-now", ".pf-name-row", "name", "y");
       await centred(page, ".pf-title-chip.is-on", "worn title");
-      for (const go of ["ranks", "journey", "raids"])
-        await centred(
-          page,
-          `.pf-links [data-profile-go="${go}"]`,
-          `${go} link`,
-        );
+      // No row of Ranks / Journey / Raid rewards links: the Journey and
+      // Ranked tiles and the trophies above open those already.
+      await expect(panel.locator(".pf-links")).toHaveCount(0);
       // One size each: tiles, title chips' height, mastery chips, trophies,
-      // the two summaries, the links; the tiles share a top edge.
+      // the two summaries; the tiles share a top edge.
       expect(await sizes(page, ".pf-tile"), "tiles").toHaveLength(1);
       expect(
         await sizes(page, ".pf-mastery-chip"),
@@ -312,7 +309,6 @@ for (const size of SIZES)
       ).toHaveLength(1);
       expect(await sizes(page, ".pf-trophy"), "trophies").toHaveLength(1);
       expect(await sizes(page, ".pf-mini"), "summaries").toHaveLength(1);
-      expect(await sizes(page, ".pf-links > .ui-btn"), "links").toHaveLength(1);
       const chipHeights = await page.evaluate(
         () =>
           new Set(
@@ -338,7 +334,7 @@ for (const size of SIZES)
       // The card keeps its place; the column beside it scrolls to its end.
       const main = panel.locator(".pf-main");
       await main.evaluate((e) => (e.scrollTop = e.scrollHeight));
-      await expect(panel.locator(".pf-links")).toBeInViewport();
+      await expect(panel.locator(".pf-who")).toBeInViewport();
       await expect(card).toBeInViewport();
       expect(
         await layoutProblems(page, {

@@ -4,8 +4,7 @@
    Valorant's lobby rework (nothing decorative that doesn't help you read):
    a deep ink tint with the scene blurred behind it, one 1px warm-gold rim,
    no gloss, bevel, glow or drop shadow. Hover and focus brighten the rim to
-   the game's gold. The coin and leaf pills keep their gold and green rims;
-   the Raid and Farm cards keep their colour.
+   the game's gold. The coin and leaf pills keep their gold and green rims.
 
    ONE PLACE: the colours, thicknesses and blur are the --glass-* and
    --fill-* tokens in ui/tokens.css. This file only says which surfaces are

@@ -716,20 +716,6 @@
   height: 6px;
   accent-color: #9ff3d8;
 }
-.lobby-farm-card {
-  background: linear-gradient(
-    120deg,
-    rgba(63, 122, 51, 0.6),
-    var(--lobby-glass) 72%
-  );
-}
-.lobby-raid-card {
-  background: linear-gradient(
-    120deg,
-    rgba(122, 82, 214, 0.55),
-    var(--lobby-glass) 72%
-  );
-}
 .lobby-spark {
   color: #ffe39d !important;
 }
@@ -1000,12 +986,12 @@
     --lobby-play-h: 98px;
     --lobby-rail-btn: 48px;
   }
-  .lobby-friends-card {
-    display: none !important;
-  }
 }
-@media (max-height: 640px) {
-  .lobby-missions-card {
+/* Phones: two cards beside the fighter, Journey and today's missions (the
+   Raids and Farm cards are gone: the rail, the scene switch and the leaf
+   pill already open those). */
+@media (max-height: 500px) {
+  .lobby-friends-card {
     display: none !important;
   }
 }
@@ -1131,18 +1117,6 @@
     align-content: start;
     gap: 2px;
     border-radius: 20px;
-  }
-}
-@media (max-height: 420px) {
-  .lobby-farm-card {
-    background: linear-gradient(
-      120deg,
-      rgba(63, 122, 51, 0.6),
-      var(--lobby-glass) 72%
-    );
-  }
-  .lobby-raid-card {
-    display: none !important;
   }
 }
 /* Narrow phones: the stage needs the room the side cards take. */

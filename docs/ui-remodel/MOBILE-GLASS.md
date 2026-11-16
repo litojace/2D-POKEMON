@@ -154,6 +154,33 @@ test was checked to fail without its fix.
   edge. 3.1 → 2.4 screens. (`panel-scroll.spec.ts` swipes every sideways
   box with real touch input.)
 
+## Duplicate buttons (owner, 16 Nov)
+
+Every button on screen was listed with where it goes, on the Lobby, the
+player card, the Shop, a boss page, the mode menu and the Play drawer.
+
+Removed:
+
+| Where       | Removed                                   | Already there                                                                  |
+| ----------- | ----------------------------------------- | ------------------------------------------------------------------------------ |
+| Lobby       | Raids card ("Seven bosses", fixed text)   | Raids on the rail                                                              |
+| Lobby       | Elemental Farm card ("1,234 Gold Leaves") | FARM in the scene switch, and the leaf pill (same number, also opens the Farm) |
+| Player card | Ranks · Journey · Raid rewards links row  | the Ranked and Journey tiles and the seven raid trophies above it              |
+
+Kept, on purpose: cards and buttons that show something nothing else
+shows. The Journey card (the only way to Journey from the Lobby, with your
+tier), Daily missions (done today and the reset time), Friends (who is
+online; hidden on phones), the coin pill (opens the Shop, as in most mobile
+games), the two party seats' Invite. On phones the Lobby now shows Journey
+and Daily missions beside the fighter (it showed Journey and the Farm card).
+
+Not removed yet: the Play drawer ("Join or watch" in the mode menu) repeats
+every mode the mode menu already has (four rooms, three bot levels, the
+practice room) above what only it has (join or watch by room code, your
+display name). 58 visual test files reach matches through those drawer
+buttons, so cutting them means moving the tests to the mode menu first; it
+is listed below.
+
 ## Mythic Hall picks one fighter on a phone (owner, 16 Nov)
 
 The combined option the owner chose: on a phone held sideways, Mythic Hall
@@ -222,6 +249,9 @@ is left").
 
 ## What is left, by value on a phone
 
+0. **The Play drawer's repeated modes** (see "Duplicate buttons"): move
+   the visual tests to the mode menu, then keep only Join / Watch and the
+   name in the drawer.
 1. **Shop › Mythic Hall:** done (one fighter at a time on phones, above).
 2. **Raids › Rewards (2.4).** Could be a sideways strip like the trophies.
 3. **Player card (2.4).** Tabs in the head (Overview · Titles · Mastery ·

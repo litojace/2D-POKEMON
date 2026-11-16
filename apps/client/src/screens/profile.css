@@ -419,18 +419,6 @@
 }
 
 /* Ranks, Journey and Raid rewards: three equal buttons. */
-.pf-links {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: var(--act-w);
-  justify-content: start;
-  gap: var(--sp-2);
-  margin-top: var(--sp-1);
-}
-.pf-links > .ui-btn {
-  width: 100%;
-  min-width: 0;
-}
 .pf-who:empty {
   display: none;
 }
@@ -648,11 +636,6 @@
   }
   /* Three equal links across the column: "Raid rewards" and its icon need
      more than the phones' 104 px action width. */
-  .pf-links {
-    grid-auto-flow: row;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 6px;
-  }
 }
 
 /* Phones: fighter mastery and raid trophies each take one row that swipes

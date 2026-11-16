@@ -299,7 +299,7 @@ function deleteRow(d: ProfileData, view: ProfileView) {
 function main(d: ProfileData, view: ProfileView) {
   if (!d.progress && d.progressProblem)
     return `${tiles(d)}${emptyState("Your records aren't available", d.progressProblem, button("Try again", { size: "s", attrs: { "data-profile-retry": true } }))}${deleteRow(d, view)}`;
-  return `${tiles(d)}${d.guest ? saveAccount(view) : ""}${nameRow(d, view)}${section("Title", "Tap to wear it · saved at once", "pf-titles-h")}${titleChips(d, view)}${section("Fighter mastery", "Badges for matches played", "pf-mastery-h")}${masteryGrid(d)}${summaries(d)}${section("Raid trophies", "Clears per boss", "pf-trophy-h")}${trophies(d)}${achievements(d)}<div class="pf-links">${button("Ranks", { icon: "leaderboard", attrs: { "data-profile-go": "ranks" } })}${button("Journey", { icon: "sparkle", attrs: { "data-profile-go": "journey" } })}${button("Raid rewards", { icon: "bestiary", attrs: { "data-profile-go": "raids" } })}</div><p class="ui-note pf-who">${esc(d.role)}${d.email ? ` · ${esc(d.email)}` : ""}</p>${deleteRow(d, view)}`;
+  return `${tiles(d)}${d.guest ? saveAccount(view) : ""}${nameRow(d, view)}${section("Title", "Tap to wear it · saved at once", "pf-titles-h")}${titleChips(d, view)}${section("Fighter mastery", "Badges for matches played", "pf-mastery-h")}${masteryGrid(d)}${summaries(d)}${section("Raid trophies", "Clears per boss", "pf-trophy-h")}${trophies(d)}${achievements(d)}<p class="ui-note pf-who">${esc(d.role)}${d.email ? ` · ${esc(d.email)}` : ""}</p>${deleteRow(d, view)}`;
 }
 
 export function profileMarkup(view: ProfileView, d: ProfileData) {
