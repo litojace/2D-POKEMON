@@ -74,6 +74,17 @@ test("the raid gallery fades at the edge it hides more past", async ({
     expect(g.left).toBe(false);
     expect(g.mask).not.toBe("none");
     expect(g.overflowY).toBe("hidden");
+    // The fade's mask kept Chromium from loading the cards past the edge
+    // (lazy pictures): every card's picture loads, so a swipe isn't blank.
+    await expect
+      .poll(() =>
+        grid.evaluate((el) =>
+          [...el.querySelectorAll("img")].every(
+            (i) => (i as HTMLImageElement).complete,
+          ),
+        ),
+      )
+      .toBe(true);
     await snap(page, info, "scroll-rows-raids-start");
     // Swiped to the end: only the left edge fades.
     await grid.evaluate((el) => (el.scrollLeft = el.scrollWidth));

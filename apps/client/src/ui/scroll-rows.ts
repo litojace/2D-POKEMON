@@ -108,18 +108,42 @@ function wire(row: HTMLElement): Wired {
   // row's classes, ui/patch.ts) change what is hidden past its edges.
   const sizes = new ResizeObserver(fade);
   sizes.observe(row);
-  const changes = new MutationObserver(fade);
+  // The fade's mask keeps the browser from loading lazy pictures just past
+  // the row's edge, as it does in a row without one (Chromium: the raid
+  // gallery's off-screen cards never loaded, so a swipe showed them blank):
+  // a picture within one row's width of either edge loads now.
+  const nearby = new IntersectionObserver(
+    (entries) => {
+      for (const e of entries)
+        if (e.isIntersecting) {
+          (e.target as HTMLImageElement).loading = "eager";
+          nearby.unobserve(e.target);
+        }
+    },
+    { root: row, rootMargin: "0px 100% 0px 100%" },
+  );
+  const watchPictures = () =>
+    row
+      .querySelectorAll<HTMLImageElement>('img[loading="lazy"]')
+      .forEach((img) => nearby.observe(img));
+  const changes = new MutationObserver(() => {
+    watchPictures();
+    fade();
+  });
   changes.observe(row, {
     childList: true,
+    subtree: true,
     attributes: true,
     attributeFilter: ["class"],
   });
+  watchPictures();
   fadeRow(row);
   return {
     stop() {
       cancelAnimationFrame(frame);
       sizes.disconnect();
       changes.disconnect();
+      nearby.disconnect();
       row.removeEventListener("scroll", fade);
       row.removeEventListener("wheel", onWheel);
       row.removeEventListener("pointerdown", onDown);
