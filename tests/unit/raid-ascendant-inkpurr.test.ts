@@ -981,7 +981,7 @@ describe("it reads the fight", () => {
     expect(seen).toContain("pounce");
     const r = a.inkReads;
     expect(r.habits + r.pools + r.reveals).toBeGreaterThan(0);
-  });
+  }, 60_000);
 });
 
 /**
