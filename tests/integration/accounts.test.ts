@@ -1191,6 +1191,7 @@ it("passes farm actions and leaf trades to the database only when the request is
     ).status,
   ).toBe(200);
   expect((await send("/api/leaves/trade", { lots: 2 })).status).toBe(200);
+  expect((await send("/api/leaves/trade", { lots: 12 })).status).toBe(200);
   expect(calls).toEqual([
     ["arena_farm", {}],
     [
@@ -1218,6 +1219,7 @@ it("passes farm actions and leaf trades to the database only when the request is
       },
     ],
     ["arena_trade_leaves", { p_lots: 2 }],
+    ["arena_trade_leaves", { p_lots: 12 }],
   ]);
   // The client can't pick a time, a price or a balance, or send junk.
   for (const body of [
@@ -1260,7 +1262,7 @@ it("passes farm actions and leaf trades to the database only when the request is
     expect((await send("/api/farm/act", body)).status).toBe(400);
   for (const body of [
     { lots: 0 },
-    { lots: 9 },
+    { lots: 13 },
     { lots: 1.5 },
     {},
     { lots: 1, coins: 5 },
@@ -1341,7 +1343,7 @@ it("passes farm actions and leaf trades to the database only when the request is
       )
     ).status,
   ).toBe(401);
-  expect(calls).toHaveLength(3);
+  expect(calls).toHaveLength(4);
   // Every champion in the roster can be your farmer, the newest ten too.
   for (const id of [
     "pangrove",

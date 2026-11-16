@@ -27,7 +27,9 @@ import {
   type ActivityReceipt,
 } from "../../../packages/shared/src/shop.js";
 import { JOURNEY_ITEM_BY_ID } from "../../../packages/shared/src/journey.js";
+import { LEAF_TRADE } from "../../../packages/shared/src/farm.js";
 import {
+  BISTRO_TRADE,
   MAX_SIZE as BISTRO_MAX_SIZE,
   MAX_STOVES as BISTRO_MAX_STOVES,
 } from "../../../packages/shared/src/bistro.js";
@@ -757,12 +759,18 @@ export function installAccountRoutes(
       res.json({ ok: true, economy });
     }),
   );
-  // Gold Leaves: 100 leaves → 5 coins, up to 40 coins a day (migration 036).
+  // Gold Leaves: 100 leaves → 5 coins, up to 60 coins a Pacific day.
   app.post(
     "/api/leaves/trade",
     route(false, async (req, res, token, account) => {
       const data = z
-        .object({ lots: z.number().int().min(1).max(8) })
+        .object({
+          lots: z
+            .number()
+            .int()
+            .min(1)
+            .max(LEAF_TRADE.dailyCoins / LEAF_TRADE.coins),
+        })
         .strict()
         .parse(req.body);
       const economy = await provider.rpc(token, "arena_trade_leaves", {
@@ -1068,7 +1076,12 @@ export function installAccountRoutes(
       // Hiring a friend (migration 073): their account id.
       friend: z.string().uuid().optional(),
       char: z.enum(FIGHTER_IDS).optional(),
-      lots: z.number().int().min(1).max(15).optional(),
+      lots: z
+        .number()
+        .int()
+        .min(1)
+        .max(BISTRO_TRADE.dailyLeaves / BISTRO_TRADE.leaves)
+        .optional(),
       // Market buys and Farm crops (migration 074).
       qty: z.number().int().min(1).max(30).optional(),
       // Catering orders (migration 100).

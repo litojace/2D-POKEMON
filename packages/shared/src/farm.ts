@@ -1166,8 +1166,8 @@ export function mutationMultiplier(key: string) {
         .reduce((x, m) => x * (MUTATIONS.find((v) => v.id === m)?.mult ?? 1), 1)
     : 1;
 }
-/** 100 Gold Leaves trade for 5 coins, up to 40 coins a day (migration 036). */
-export const LEAF_TRADE = { leaves: 100, coins: 5, dailyCoins: 40 } as const;
+/** 100 Gold Leaves trade for 5 coins, up to 60 coins a Pacific day. */
+export const LEAF_TRADE = { leaves: 100, coins: 5, dailyCoins: 60 } as const;
 
 /** The stage of the crop art (0 seed … 4 ripe) at a growth fraction. */
 export function cropStage(progress: number) {

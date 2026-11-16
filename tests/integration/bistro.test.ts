@@ -418,9 +418,9 @@ describe("trade and friends", () => {
     expect(r.results[0]).toEqual({ ok: true, leaves: 200 });
     expect(r.bistro.leaves).toBe(leaves + 200);
     expect(r.bistro.coins).toBe(10000 - 1000);
-    r = await act(ana, [{ a: "trade", lots: 6 }]);
-    expect(r.results[0].error).toMatch(/300 Gold Leaves a day/);
-    r = await act(ana, [{ a: "trade", lots: 5 }]);
+    r = await act(ana, [{ a: "trade", lots: 21 }]);
+    expect(r.results[0].error).toMatch(/600 Gold Leaves a day/);
+    r = await act(ana, [{ a: "trade", lots: 20 }]);
     expect(r.results[0].ok).toBe(true);
     expect(r.bistro.tradedToday).toBe(BISTRO_TRADE.dailyLeaves);
   });

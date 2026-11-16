@@ -88,7 +88,7 @@ Useful checks:
   - Market prices change daily and one crop is HOT each day.
   - An order board pays more than the market.
   - The barn has upgradable storage.
-  - 100 leaves trade for 5 coins, up to 40 coins a day.
+  - 100 leaves trade for 5 coins, up to 60 coins a day.
 - **Pests and guards:**
   - Guard dogs are hired by the real day: Goldie, Inky or Fluffy.
   - Crows come for ripe crops; a scarecrow keeps them away.
@@ -138,7 +138,7 @@ All numbers are in [`NUMBERS.md`](NUMBERS.md). The reasoning, and sources from o
    - Store `planted_at` / `ready_at` and similar timestamps on the server.
    - Compute growth, dog time, restocks and market days from server time when a player acts.
    - The client only animates.
-2. **Every economy change is a validated server call** (Supabase RPCs, like the existing shop and mission functions). This covers buying, selling, harvesting, trading leaves for coins, stealing, pranks and orders. Daily limits (40 coins a day from leaves, 3 pranks a day, 1 gift a day) are enforced on the server.
+2. **Every economy change is a validated server call** (Supabase RPCs, like the existing shop and mission functions). This covers buying, selling, harvesting, trading leaves for coins, stealing, pranks and orders. Daily limits (60 coins a day from leaves, 3 pranks a day, 1 gift a day) are enforced on the server.
 3. **Clock-based events need a timezone decision:** missions at midnight, weather every 4 h, shop restock at 2:00, 6:00, 10:00 …, the market at midnight, weekly goals on Monday and the Orb Shower on the quarter hour (see the open questions below).
 4. **Client loop lessons from the prototype:**
    - Clamp frame `dt` to at least 0. The first frame can be stamped before `enter()` runs; the resulting negative `dt` pushed the dog backwards into its kennel.
@@ -175,5 +175,5 @@ Each step can ship on its own. Agree on the open questions first.
 1. Which time zone do clock events use: the player's local time, one server time (UTC), or per region?
 2. Daily mission changes: keep 3 (live) or move to 5 (prototype)?
 3. Ship the farm in the same release as the Journey and Plaza changes, or later?
-4. Gold Leaves: confirm they are a separate wallet, and the 100 leaves → 5 coins trade capped at 40 coins a day.
+4. Gold Leaves: confirm they are a separate wallet, and the 100 leaves → 5 coins trade capped at 60 coins a day.
 5. Optional idea from Stardew Valley: giant crops when a 3×3 block of the same crop is ripe.

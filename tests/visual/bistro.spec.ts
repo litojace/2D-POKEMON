@@ -752,14 +752,19 @@ test("Bistro staff: hire a cook who cooks alone, a report after time away, and t
   await snap(page, info, "bistro-away");
   await page.click(".bs-away [data-collect]");
   await expect(page.locator("#bs-modal")).toBeHidden();
-  // Trade 100 coins for 20 Gold Leaves.
+  // Trade the full raised allowance: 3000 Bistro coins for 600 Gold Leaves.
   await B(page, "srv.S.coins = 5000; return b.load()");
   await page.click('.bs-rail [data-sheet="shop"]');
   await page.click('#bs-sheet [data-tab="bank"]');
-  await page.click('#bs-sheet [data-trade="1"]');
+  await expect(page.locator("#bs-sheet")).toContainText(
+    "up to 600 leaves a day",
+  );
+  await page.click('#bs-sheet [data-trade="30"]');
   await flush(page);
-  expect(await B(page, "return srv.extras.leaves")).toBe(1254);
-  await expect(page.locator("#account-leaves")).toContainText("1,254");
+  expect(await B(page, "return srv.extras.leaves")).toBe(1834);
+  expect(await B(page, "return srv.extras.tradedToday")).toBe(600);
+  await expect(page.locator("#account-leaves")).toContainText("1,834");
+  await expect(page.locator('#bs-sheet [data-trade="1"]')).toBeDisabled();
   expect(errors).toEqual([]);
 });
 

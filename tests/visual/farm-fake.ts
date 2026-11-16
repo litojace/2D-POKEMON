@@ -518,7 +518,7 @@ export async function fakeFarm(page: Page) {
         leaves: {
           balance: 1234,
           tradedToday: 0,
-          tradeCap: 40,
+          tradeCap: 60,
           tradeLeaves: 100,
           tradeCoins: 5,
         },

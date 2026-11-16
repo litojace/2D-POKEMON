@@ -66,7 +66,7 @@ it("grants leaves once per reason and ref, and reports them in the economy", asy
   expect(e.leaves).toMatchObject({
     balance: 2000,
     tradedToday: 0,
-    tradeCap: 40,
+    tradeCap: 60,
     tradeLeaves: 100,
     tradeCoins: 5,
   });
@@ -80,7 +80,7 @@ it("spends leaves only when the balance covers it, and never twice for one reque
   expect((await leaves()).balance).toBe(1500);
 });
 
-it("trades 100 leaves for 5 coins, at most 40 coins a day", async () => {
+it("trades 100 leaves for 5 coins, at most 60 coins a day", async () => {
   const before = await coins(player);
   await login();
   await db.query("select public.arena_trade_leaves(3)");
@@ -90,11 +90,14 @@ it("trades 100 leaves for 5 coins, at most 40 coins a day", async () => {
   await db.query("select public.arena_trade_leaves(5)");
   expect((await leaves()).tradedToday).toBe(40);
   await login();
+  await db.query("select public.arena_trade_leaves(4)");
+  expect((await leaves()).tradedToday).toBe(60);
+  await login();
   await expect(db.query("select public.arena_trade_leaves(1)")).rejects.toThrow(
-    "at most 40 coins",
+    "at most 60 coins",
   );
-  expect(await coins(player)).toBe(before + 40);
-  expect((await leaves()).balance).toBe(700);
+  expect(await coins(player)).toBe(before + 60);
+  expect((await leaves()).balance).toBe(300);
 });
 
 it("refuses a trade without enough leaves and leaves both wallets as they were", async () => {
@@ -107,9 +110,9 @@ it("refuses a trade without enough leaves and leaves both wallets as they were",
   expect((await leaves(other)).balance).toBe(150);
   expect(await coins(other)).toBe(before);
   await login(other);
-  await expect(db.query("select public.arena_trade_leaves(9)")).rejects.toThrow(
-    "how many",
-  );
+  await expect(
+    db.query("select public.arena_trade_leaves(13)"),
+  ).rejects.toThrow("how many");
 });
 
 it("keeps the wallet tables and the grant and spend functions away from players", async () => {
@@ -127,7 +130,10 @@ it("can be run again without changing balances", async () => {
   const before = await leaves();
   await db.exec(
     "reset role;" +
-      (await readFile("supabase/migrations/036_gold_leaves.sql", "utf8")),
+      (await readFile(
+        "supabase/migrations/20261116150001_raise_currency_trade_caps.sql",
+        "utf8",
+      )),
   );
   expect(await leaves()).toEqual(before);
 });

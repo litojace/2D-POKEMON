@@ -1490,11 +1490,11 @@ export const rushIn = (ms: number) => {
   const s = Math.floor(ms / 1000) % RUSH_PERIOD;
   return s < RUSH_SECONDS ? 0 : RUSH_PERIOD - s;
 };
-/** Bistro coins for Gold Leaves: 100 coins → 20 leaves, up to 300 leaves a Pacific day. */
+/** Bistro coins for Gold Leaves: 100 coins → 20 leaves, up to 600 leaves a Pacific day. */
 export const BISTRO_TRADE = {
   coins: 100,
   leaves: 20,
-  dailyLeaves: 300,
+  dailyLeaves: 600,
 } as const;
 /** Eating at a friend's bistro: once a friend a Pacific day, up to 10 a day. */
 export const DINE = {

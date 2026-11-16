@@ -3177,7 +3177,11 @@ export function openBistro(o: BistroOptions): BistroHandle {
         const left = BISTRO_TRADE.dailyLeaves - sync.extras.tradedToday;
         body = `<div class="bs-bank"><p>Trade bistro coins for Gold Leaves (the Farm's currency): <b>${BISTRO_TRADE.coins} coins → ${BISTRO_TRADE.leaves} ${I("leaf")}</b>, up to ${BISTRO_TRADE.dailyLeaves} leaves a day.</p>
           <div class="bs-bank-left"><b>${fmt(Math.max(0, left))}</b><small>leaves left to trade today · you have ${fmt(sync.extras.leaves)} ${I("leaf")}</small></div>
-          <div class="bs-items">${[1, 5, 15]
+          <div class="bs-items">${[
+            1,
+            5,
+            BISTRO_TRADE.dailyLeaves / BISTRO_TRADE.leaves,
+          ]
             .map((lots) => {
               const gets = lots * BISTRO_TRADE.leaves;
               const cost = lots * BISTRO_TRADE.coins;
