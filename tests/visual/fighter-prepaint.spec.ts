@@ -8,8 +8,7 @@ import { openHub, openPlayPanel } from "./helpers";
 
 /** Each battle's queued loader files and its rig textures, at create. */
 async function routeMain(page: Page) {
-  const queued =
-    "this.load.on(Phaser.Loader.Events.COMPLETE, () => this.fighters.settled());";
+  const queued = "() => this.fighters.settled());";
   const created = "battleLoadMarks.create ||= performance.now();";
   await page.route(/\/apps\/client\/src\/main\.ts(?:\?|$)/, async (route) => {
     const response = await route.fetch(),
