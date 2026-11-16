@@ -435,11 +435,13 @@ for (const size of [
           gear.x + gear.width <= box.x ||
           box.y + box.height <= gear.y,
       ).toBe(true);
+      // The court itself fills the whole screen, under the island too, as
+      // in raids (style.css); only the HUD keeps to the safe area.
       const frame = (await page.locator(".arena-frame").boundingBox())!;
-      expect(frame.x).toBeGreaterThanOrEqual(inset.left);
-      expect(frame.x + frame.width).toBeLessThanOrEqual(
-        size.width - inset.right + 0.5,
-      );
+      expect(frame.x).toBeCloseTo(0, 0);
+      expect(frame.y).toBeCloseTo(0, 0);
+      expect(frame.width).toBeCloseTo(size.width, 0);
+      expect(frame.height).toBeCloseTo(size.height, 0);
       expect(errors).toEqual([]);
     } finally {
       await context.close();
