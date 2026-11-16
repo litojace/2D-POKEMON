@@ -272,6 +272,77 @@ test.describe("phone: less scrolling", () => {
     await snap(page, info, "phone-raid-guide");
   });
 
+  test("raid Rewards: looks two a row, then titles three a row", async ({
+    page,
+  }, info) => {
+    await page.setViewportSize(PHONE);
+    // Raid progress, so the tab lists every reward (the harness has none).
+    await page.addInitScript(() => {
+      const raids = {
+        clears: 4,
+        highestPeril: 2,
+        bosses: { grumblecrag: { clears: 3, highestPeril: 2 } },
+        titles: [],
+        cosmetics: [],
+        earned: [],
+        weekly: [],
+        loadout: {},
+      };
+      let cur = window.fetch;
+      const wrap =
+        (inner: typeof fetch): typeof fetch =>
+        async (input, init) => {
+          const url = new URL(
+            typeof input === "string"
+              ? input
+              : input instanceof URL
+                ? input.href
+                : input.url,
+            location.href,
+          );
+          return url.pathname === "/api/raids"
+            ? Response.json(raids)
+            : inner(input, init);
+        };
+      cur = wrap(cur);
+      Object.defineProperty(window, "fetch", {
+        configurable: true,
+        get: () => cur,
+        set: (v) => {
+          cur = wrap(v);
+        },
+      });
+    });
+    await openLobby(page);
+    await setInsets(page, ISLAND);
+    await hubMenu(page, "raids");
+    await page.click('[data-raid-card="grumblecrag"]');
+    await page.click('[data-ui-raid-tab="rewards"]');
+    const cards = page.locator(".rh-rewards.is-all > .rh-reward");
+    await expect(cards).not.toHaveCount(0);
+    const kinds = await cards.evaluateAll((els) =>
+      els.map((e) => (e as HTMLElement).dataset.rewardKind),
+    );
+    // Every look before the first title.
+    expect(kinds.indexOf("title")).toBe(kinds.lastIndexOf("look") + 1);
+    const perRow = (kind: string) =>
+      page
+        .locator(`.rh-rewards.is-all > .rh-reward[data-reward-kind="${kind}"]`)
+        .evaluateAll((els) => {
+          const tops = els.map((e) =>
+            Math.round(e.getBoundingClientRect().top),
+          );
+          return tops.filter((t) => t === tops[0]).length;
+        });
+    expect(await perRow("look")).toBe(2);
+    expect(await perRow("title")).toBe(3);
+    const m = await page
+      .locator(".rh-body")
+      .evaluate((el) => el.scrollHeight / el.clientHeight);
+    expect(m).toBeLessThan(2.1);
+    await snap(page, info, "phone-raid-rewards");
+  });
+
   test("the player card is four tabs on a phone, each without scrolling", async ({
     page,
   }, info) => {

@@ -893,3 +893,40 @@ button.rh-reward:focus-visible {
     display: none;
   }
 }
+
+/* The Rewards tab on a phone: looks two a row with their picture, titles
+   three a row without one (it is the same trophy for every title), after
+   the looks; every card a line shorter, its bar a hairline along its foot.
+   An open card takes the whole row. 2.4 screens became 1.9. */
+@media (max-height: 500px) {
+  .rh-rewards.is-all {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 4px;
+  }
+  .rh-rewards.is-all > .rh-reward {
+    grid-column: span 3;
+  }
+  .rh-rewards.is-all > .rh-reward[data-reward-kind="title"] {
+    grid-column: span 2;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .rh-rewards.is-all > .rh-reward[data-reward-kind="title"] .rh-reward-art {
+    display: none;
+  }
+  .rh-rewards.is-all > .rh-reward.is-open {
+    grid-column: 1 / -1;
+  }
+  .rh-rewards.is-all > .rh-reward:not(.is-open) {
+    padding-bottom: 8px;
+  }
+  .rh-rewards.is-all > .rh-reward:not(.is-open) .rh-reward-text {
+    gap: 1px;
+  }
+  .rh-rewards.is-all > .rh-reward:not(.is-open) .rh-reward-text > .ui-bar {
+    position: absolute;
+    left: 6px;
+    right: 6px;
+    bottom: 3px;
+    height: 3px;
+  }
+}

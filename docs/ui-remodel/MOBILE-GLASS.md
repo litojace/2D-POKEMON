@@ -64,7 +64,7 @@ tall on the boss page: less than half the panel.
 | Shop › Skins            |    3.6 |   2.0 |
 | Raid room fighter list  |    3.2 |     — |
 | Player card (Overview)  |    3.1 |   1.2 |
-| Raids › boss › Rewards  |    3.1 |   2.4 |
+| Raids › boss › Rewards  |    3.1 |   1.9 |
 | Ranks (ladder)          |    2.9 |     — |
 | Friends                 |    2.8 |     — |
 | Fighter › Skins         |    2.7 |     — |
@@ -183,6 +183,14 @@ through them (`lobbyPlay` in `main.ts`), so there is still one code path.
 Tests that only need a match press them through `createRoom()`,
 `startPractice()` and `pickRoomMode()` in `tests/visual/helpers.ts`.
 
+## Raid rewards grouped on a phone (owner, 16 Nov)
+
+The Rewards tab lists looks first, then titles (on every size). On a phone
+the looks sit two a row with their picture and the titles three a row
+without one (every title's picture is the same trophy); each card is a line
+shorter, its progress bar a hairline along its foot, and an open card takes
+the whole row. 2.4 → 1.9 screens on 852×393.
+
 ## The player card in tabs on a phone (owner, 16 Nov)
 
 On a phone held sideways the card's column is four tabs in the head, beside
@@ -263,7 +271,7 @@ is left").
 ## What is left, by value on a phone
 
 1. **Shop › Mythic Hall:** done (one fighter at a time on phones, above).
-2. **Raids › Rewards (2.4).** Could be a sideways strip like the trophies.
+2. **Raids › Rewards:** done (grouped, titles three a row on phones, above).
 3. **Player card:** done (tabs on phones, above).
 4. **Ranks ladder (2.9) and Friends (2.8)** are lists: they should scroll.
    Your rank row is already pinned.
