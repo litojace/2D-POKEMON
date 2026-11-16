@@ -12,7 +12,11 @@
 import { healthTrail } from "./raid-health-trail";
 import { twinBars, type TwinBarView } from "./storm-twins-controls";
 import { raidCue } from "./raid-presentation";
-import { RAID_BOSSES, prismRelayHold } from "../../../packages/shared/src/raid";
+import {
+  RAID_BOSSES,
+  prismRelayHold,
+  raidBossName,
+} from "../../../packages/shared/src/raid";
 import type { Fighter, Snapshot } from "@arena/shared";
 
 const escape = (s: string) =>
@@ -73,7 +77,7 @@ export function raidHudView(state: Snapshot, me: Fighter): RaidHudView {
   return {
     key: `${r.boss}|${twins.map((t) => `${t.id}:${t.name}`).join(",")}`,
     stormTwins,
-    title: `${r.gilded ? "✦ GILDED " : ""}${RAID_BOSSES[r.boss].name.toUpperCase()}${!stormTwins && (exposed || r.staggerUntil > state.time || r.permanentGround) ? " · EXPOSED" : ""}${(r.enrage ?? 0) > 0 ? " · FURIOUS" : ""}`,
+    title: `${r.gilded ? "✦ GILDED " : ""}${raidBossName(r).toUpperCase()}${!stormTwins && (exposed || r.staggerUntil > state.time || r.permanentGround) ? " · EXPOSED" : ""}${(r.enrage ?? 0) > 0 ? " · FURIOUS" : ""}`,
     phase: r.phase,
     health,
     trail: healthTrail(`raid:${r.boss}`, health),

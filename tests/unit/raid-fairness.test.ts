@@ -13,7 +13,8 @@
  *  5. attacks dodged by jumping land at least the jump cooldown apart.
  *
  * Phones depend on the 0.9 s floor: interpolation and a slow connection can
- * eat a third of it.
+ * eat a third of it. Ascendant forms ("grumblecrag:ascendant", the Spire's
+ * boss floors) keep the same rules.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { RULES, type CharacterId, type Fighter } from "@arena/shared";
@@ -34,6 +35,7 @@ import {
   raidTier,
   type RaidAttack,
   type RaidBossId,
+  type RaidVariant,
   type RaidWarning,
 } from "../../packages/shared/src/raid";
 
@@ -56,7 +58,12 @@ type Inner = RaidArena & {
 const EPS = 1e-6;
 const DT = 1 / 30;
 const TEAM: CharacterId[] = ["voltkit", "terradon", "lumoth", "cindrake"];
-const BOSSES = Object.keys(RAID_BOSSES) as RaidBossId[];
+/** A boss, or its evolved form as "boss:variant". */
+type Boss = RaidBossId | `${RaidBossId}:${RaidVariant}`;
+const BOSSES: Boss[] = [
+  ...(Object.keys(RAID_BOSSES) as RaidBossId[]),
+  "grumblecrag:ascendant",
+];
 const spatial = (w: RaidWarning) =>
   ["circle", "line", "cone"].includes(raidShapeOf(w.kind));
 const shape = (w: RaidWarning) =>
@@ -76,8 +83,9 @@ const seeded = (seed: number) => {
   }) as never);
 };
 afterEach(() => vi.restoreAllMocks());
-const raid = (boss: RaidBossId, size: number) => {
-  const a = createRaidArena("FAIR", boss) as Inner;
+const raid = (key: Boss, size: number) => {
+  const [boss, variant] = key.split(":") as [RaidBossId, RaidVariant?];
+  const a = createRaidArena("FAIR", boss, { variant }) as Inner;
   TEAM.slice(0, size).forEach((c, i) => a.add("p" + i, "P" + i, c));
   a.configure(3, false);
   a.start();
@@ -298,7 +306,10 @@ function dodge(
       p.vy = vy;
     }
     a.tick(DT);
-    if (!a.raid.warnings.length && t > 0.5 && !a.raid.waves?.length) break;
+    // Charges run on after their warning (an avalanche leaves its fissure).
+    const running = !!(a as unknown as { charging?: unknown }).charging;
+    if (!a.raid.warnings.length && t > 0.5 && !a.raid.waves?.length && !running)
+      break;
   }
   return ids.filter(
     (id) => a.heroes().find((q) => q.id === id)!.hp < hp.get(id)!,
@@ -307,7 +318,7 @@ function dodge(
 
 /** Set up a still or running raider, then cast one attack at them. */
 function cast(
-  boss: RaidBossId,
+  boss: Boss,
   kind: RaidAttack,
   opts: {
     size: number;
@@ -345,7 +356,7 @@ function cast(
   return { a, ids: heroes.map((p) => p.id), target };
 }
 
-const DODGE: [RaidBossId, RaidAttack, number][] = [
+const DODGE: [Boss, RaidAttack, number][] = [
   ["grumblecrag", "volley", 1],
   ["grumblecrag", "debris", 1],
   ["grumblecrag", "charge", 1],
@@ -354,6 +365,11 @@ const DODGE: [RaidBossId, RaidAttack, number][] = [
   ["gloomshade", "lunge", 2],
   ["somnara", "tail-splash", 1],
   ["somnara", "falling-stars", 2],
+  ["grumblecrag:ascendant", "volley", 1],
+  ["grumblecrag:ascendant", "debris", 2],
+  ["grumblecrag:ascendant", "charge", 1],
+  ["grumblecrag:ascendant", "avalanche", 1],
+  ["grumblecrag:ascendant", "avalanche", 2],
 ];
 describe("a dodger who reacts in 0.45 s at the slowest speed is never hit", () => {
   it.each(DODGE)("%s %s (chapter %i), standing still", (boss, kind, phase) => {

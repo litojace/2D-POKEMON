@@ -49,6 +49,7 @@ import {
   type RaidLoadout,
   type RaidPingKind,
   type RaidProgress,
+  raidBossName,
 } from "../../../packages/shared/src/raid";
 import { raidGuideBossFor } from "./raid-guide-art";
 import { raidBriefingGuide } from "./raid-briefing";
@@ -166,29 +167,29 @@ export function renderRaidUI(
     body = "",
     actions = "";
   if (state.phase === "briefing") {
-    title = `${RAID_TRAITS[r.trait].name} ${RAID_BOSSES[r.boss].name}`;
+    title = `${RAID_TRAITS[r.trait].name} ${raidBossName(r)}`;
     const waiting = state.instructionsReady.includes(me.id);
     body = `<div class="rc-body" tabindex="0" role="region" aria-label="Raid instructions">${raidBriefingGuide(r.boss, me.character, r.partySize === 1)}<details class="rc-extra" id="raid-briefing-extra"><summary>Your fighter, team &amp; modifiers</summary><p><b>${escape(RAID_TRAITS[r.trait].name)}</b> · ${escape(RAID_TRAITS[r.trait].text)}</p>${perkLines(state, me.id)}${r.partySize > 1 ? `<p class="raid-signals">Team signals: ${(Object.keys(RAID_PINGS) as RaidPingKind[]).map((k) => `<b>${RAID_PINGS[k].key}</b> ${raidPingLabel(k, r.boss)}`).join(" · ")} (or use the on-screen buttons)</p>` : ""}</details></div>`;
-    actions = `<p class="ui-note rc-meta">Three phases · one shared fight · ${r.partySize === 1 ? (soloRevives(r.boss) ? "Solo · one self-revive" : "Solo") : "Team · stand beside fallen allies to revive"}</p>${r.partySize === 1 && !soloRevives(r.boss) ? `<p class="raid-solo-warning" role="note">${SOLO_NO_REVIVE}</p>` : ""}${uiActions(uiButton(waiting ? "Waiting for the team…" : "I’m ready", { kind: "primary", icon: waiting ? undefined : "battle", disabled: waiting, attrs: { id: "raid-instructions", "aria-label": waiting ? "Waiting for the team" : "I’m ready — start raid" } }))}`;
+    actions = `<p class="ui-note rc-meta">Three phases · one shared fight · ${r.partySize === 1 ? (soloRevives(r.boss, r.variant) ? "Solo · one self-revive" : "Solo") : "Team · stand beside fallen allies to revive"}</p>${r.partySize === 1 && !soloRevives(r.boss, r.variant) ? `<p class="raid-solo-warning" role="note">${SOLO_NO_REVIVE}</p>` : ""}${uiActions(uiButton(waiting ? "Waiting for the team…" : "I’m ready", { kind: "primary", icon: waiting ? undefined : "battle", disabled: waiting, attrs: { id: "raid-instructions", "aria-label": waiting ? "Waiting for the team" : "I’m ready — start raid" } }))}`;
   } else if (state.phase === "intermission") {
     // Rites are chosen once, before the fight (RAID_RITE_PICKS each).
     const picked = Math.min(RAID_RITE_PICKS, (r.rites[me.id] ?? []).length);
     title = `Choose ${RAID_RITE_PICKS} rites · ${picked}/${RAID_RITE_PICKS}`;
-    body = `<p class="raid-phase-objective">${raidChapters(r.boss)[r.phase - 1].detail}</p><details class="raid-team-summary"><summary>Team rites</summary><div class="raid-team-builds" aria-label="Team rites"></div></details>`;
+    body = `<p class="raid-phase-objective">${raidChapters(r.boss, r.variant)[r.phase - 1].detail}</p><details class="raid-team-summary"><summary>Team rites</summary><div class="raid-team-builds" aria-label="Team rites"></div></details>`;
     const offers = r.offers[me.id] ?? [];
     const mine = r.rites[me.id] ?? [];
     const order = riteDisplayOrder(offers, mine);
     actions = `<div class="raid-rite-intro">${offers.length ? "<span>Grow stronger each chapter</span>" : '<span class="raid-rite-locked">Rites locked in · waiting for the team</span>'}<span class="raid-choice-timer" role="timer" aria-label="Time left to choose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></svg><span>Choose in</span><strong>${LIVE_SECONDS}</strong></span>${raidRiteDetails(order)}</div><div class="raid-rite-options">${raidRiteChoices(order, mine, !offers.length)}</div>`;
   } else if (state.phase === "countdown") {
     title = LIVE_COUNTDOWN;
-    body = `<p>${raidChapters(r.boss)[r.phase - 1].objective}</p>`;
+    body = `<p>${raidChapters(r.boss, r.variant)[r.phase - 1].objective}</p>`;
   } else if (state.phase === "paused") {
     title = "A teammate disconnected";
     body = "<p>The raid is paused while they reconnect.</p>";
   } else if (state.phase === "finished") {
     title =
       r.result === "victory"
-        ? `${RAID_BOSSES[r.boss].name} defeated!`
+        ? `${raidBossName(r)} defeated!`
         : r.boss === "storm-twins"
           ? "The storm gathers again"
           : r.boss === "emberwing"
@@ -327,6 +328,23 @@ export function renderRaidUI(
   const lobby = overlay.querySelector<HTMLButtonElement>("#raid-lobby");
   if (lobby) lobby.onclick = () => void request("lobby");
 }
+/** A small magma vent on the floor (a triangle in a dark notch). */
+function drawVent(
+  g: Phaser.GameObjects.Graphics,
+  x: number,
+  y: number,
+  color: number,
+) {
+  g.fillStyle(0x2a130a, 0.9).fillTriangle(
+    x - 11,
+    y + 9,
+    x,
+    y - 13,
+    x + 11,
+    y + 9,
+  );
+  g.fillStyle(color, 1).fillTriangle(x - 7, y + 6, x, y - 8, x + 7, y + 6);
+}
 export function drawRaidArena(
   g: Phaser.GameObjects.Graphics,
   state: Snapshot,
@@ -362,7 +380,7 @@ export function drawRaidArena(
     const pulse = reduced ? 1 : 0.86 + Math.sin(state.time * 8) * 0.14;
     const danger = 0xff4059,
       edge = 0xff8c99;
-    if (w.kind === "charge") {
+    if (w.kind === "charge" || w.kind === "avalanche") {
       const target = state.players.find((p) => p.id === w.targetId && p.hp > 0);
       const locked = w.lockAt !== undefined && state.time >= w.lockAt;
       if (target) {
@@ -413,6 +431,50 @@ export function drawRaidArena(
             cx - ux * 13 + uy * 15,
             cy - uy * 13 - ux * 15,
           );
+      }
+      // An avalanche will split its lane: magma vents mark the line to come.
+      if (w.kind === "avalanche")
+        for (let distance = 60; distance < length - 30; distance += 120)
+          drawVent(g, w.x + ux * distance, w.y + uy * distance, 0xff8a3d);
+    } else if (w.kind === "fissure") {
+      // The magma line: exact edges, vents along it (shape, not only colour).
+      const lava = 0xff8a3d;
+      const dx = w.tx - w.x,
+        dy = w.ty - w.y,
+        length = Math.hypot(dx, dy) || 1,
+        half = (w.width ?? w.radius * 2) / 2;
+      const nx = (-dy / length) * half,
+        ny = (dx / length) * half;
+      g.lineStyle(half * 2, lava, 0.2 * pulse).lineBetween(
+        w.x,
+        w.y,
+        w.tx,
+        w.ty,
+      );
+      g.lineStyle(4, lava, 1)
+        .lineBetween(w.x + nx, w.y + ny, w.tx + nx, w.ty + ny)
+        .lineBetween(w.x - nx, w.y - ny, w.tx - nx, w.ty - ny);
+      for (let distance = 40; distance < length - 20; distance += 110)
+        drawVent(
+          g,
+          w.x + (dx / length) * distance,
+          w.y + (dy / length) * distance,
+          0xffc46b,
+        );
+    } else if (w.kind === "twin-slam") {
+      // A ring like the slam's, with dots for its order (1, then 2).
+      g.fillStyle(danger, 0.18 * pulse).fillCircle(w.x, w.y, w.radius);
+      g.lineStyle(4, danger, 1).strokeCircle(w.x, w.y, w.radius);
+      g.lineStyle(1, edge, 0.9).strokeCircle(
+        w.x,
+        w.y,
+        Math.max(0, w.radius - 7),
+      );
+      const order = w.chain === 1 ? 2 : 1;
+      for (let i = 0; i < order; i++) {
+        const x = w.x + (i - (order - 1) / 2) * 22;
+        g.fillStyle(0x2a0d12, 1).fillCircle(x, w.y - w.radius - 16, 9);
+        g.fillStyle(0xffd1d6, 1).fillCircle(x, w.y - w.radius - 16, 6);
       }
     } else if (w.kind === "volley") {
       // A cone of stones: exact edges plus stone ticks along the arc.
@@ -520,7 +582,11 @@ export function drawRaidArena(
             false,
           )
           .strokePath();
-      } else if (w.kind === "charge") {
+      } else if (
+        w.kind === "charge" ||
+        w.kind === "avalanche" ||
+        w.kind === "fissure"
+      ) {
         // A growing center stripe shows time remaining alongside the flowing arrows.
         g.lineStyle(5, edge, 0.65).lineBetween(
           w.x,

@@ -7,6 +7,14 @@ export * from "./raid-prismatail.js";
 import { somnaraPattern, type DreamRune } from "./raid-somnara.js";
 export * from "./raid-somnara.js";
 import { RAID_BOSSES, type RaidBossId } from "./raid-roster.js";
+import {
+  ASCENDANT_CRAGMUFF_CHAPTERS,
+  RAID_ASCENDANT_ATTACKS,
+  RAID_ASCENDANT_TIER,
+  ascendantCragmuffPattern,
+  type RaidVariant,
+} from "./raid-ascendant.js";
+export * from "./raid-ascendant.js";
 import type { CharacterId } from "./index.js";
 export * from "./raid-roster.js";
 export const RAID = {
@@ -114,35 +122,60 @@ export const RAID_ENRAGE = {
   cadence: 0.94,
   damage: 0.08,
 } as const;
+/** The difficulty row for a boss (its stars), or for its evolved form. */
+export const raidTierOf = (
+  boss: RaidBossId,
+  variant?: RaidVariant,
+): RaidTier =>
+  variant === "ascendant"
+    ? RAID_ASCENDANT_TIER
+    : RAID_TIERS[RAID_BOSSES[boss]?.stars ?? 1];
 /** The difficulty row for a boss. */
-export const raidTier = (boss: RaidBossId): RaidTier =>
-  RAID_TIERS[RAID_BOSSES[boss]?.stars ?? 1];
+export const raidTier = (boss: RaidBossId): RaidTier => raidTierOf(boss);
 /**
  * A solo raider's self-revive against this boss: seconds down before they
  * stand again, and the share of health they come back with. Undefined when
- * there is none (★★★ bosses), so the client can warn before the fight.
+ * there is none (★★★ bosses, Ascendant forms), so the client can warn
+ * before the fight.
  */
 export function raidSoloRevive(
   boss: RaidBossId,
+  variant?: RaidVariant,
 ): { seconds: number; hp: number } | undefined {
-  const revive = raidTier(boss).soloRevive;
+  const revive = raidTierOf(boss, variant).soloRevive;
   return revive ? { seconds: revive.seconds, hp: revive.hp } : undefined;
 }
-/** A telegraph's length on this tier: 1.4 s or more is shortened, never below the floor. */
-export function raidTelegraph(boss: RaidBossId, seconds: number) {
+/** A telegraph's length on a tier row: 1.4 s or more is shortened, never below the floor. */
+export function tierTelegraph(tier: RaidTier, seconds: number) {
   return seconds >= 1.4
-    ? Math.max(RAID_TELEGRAPH_FLOOR, seconds * raidTier(boss).telegraph)
+    ? Math.max(RAID_TELEGRAPH_FLOOR, seconds * tier.telegraph)
     : seconds;
 }
-/** Soft enrage steps after `elapsed` seconds of combat (0 before it starts). */
-export function raidEnrageSteps(boss: RaidBossId, elapsed: number) {
-  const start = raidTier(boss).enrageAt;
+/** A telegraph's length on this boss's tier (see `tierTelegraph`). */
+export function raidTelegraph(
+  boss: RaidBossId,
+  seconds: number,
+  variant?: RaidVariant,
+) {
+  return tierTelegraph(raidTierOf(boss, variant), seconds);
+}
+/** Soft enrage steps after `elapsed` seconds of combat on a tier row (0 before it starts). */
+export function tierEnrageSteps(tier: RaidTier, elapsed: number) {
+  const start = tier.enrageAt;
   return elapsed < start
     ? 0
     : Math.min(
         RAID_ENRAGE.steps,
         1 + Math.floor((elapsed - start) / RAID_ENRAGE.every),
       );
+}
+/** Soft enrage steps after `elapsed` seconds of combat (0 before it starts). */
+export function raidEnrageSteps(
+  boss: RaidBossId,
+  elapsed: number,
+  variant?: RaidVariant,
+) {
+  return tierEnrageSteps(raidTierOf(boss, variant), elapsed);
 }
 export const RAID_CHAPTERS = [
   {
@@ -218,7 +251,11 @@ export type RaidAttack =
   | "static-field"
   | "twin-rush"
   | "polarity"
-  | "thunderclap";
+  | "thunderclap"
+  // Ascendant Cragmuff
+  | "avalanche"
+  | "fissure"
+  | "twin-slam";
 export const RAID_ATTACKS: Record<
   RaidAttack,
   { name: string; tip: string; summary: string }
@@ -348,6 +385,22 @@ export const RAID_ATTACKS: Record<
     name: "Chasing Eruption",
     tip: "The eruptions follow one raider: keep running in one direction and don't drag them through your team.",
     summary: "Eruptions chase you three times. Keep running.",
+  },
+  avalanche: {
+    name: "Avalanche Charge",
+    tip: "Its lane locks at once: step out of it, then stay off it. The floor it ran over erupts a moment later. A pillar in the lane still stops it.",
+    summary:
+      "A locked charge that splits the floor. Leave the lane, then keep off the magma line.",
+  },
+  fissure: {
+    name: "Magma Fissure",
+    tip: "The glowing line an Avalanche Charge leaves erupts after a second. Don't cross it to reach the boss until it has.",
+    summary: "The charge's lane erupts. Wait for it before you cross.",
+  },
+  "twin-slam": {
+    name: "Twin Slam",
+    tip: "Two rings: one round the boss, then a second toward you. Jump each as it fills, or walk out of both. One dot marks the first ring, two dots the second.",
+    summary: "Ring 1 round the boss, then ring 2 near you. Jump each in turn.",
   },
   share: {
     name: "Shared Meteor",
@@ -492,8 +545,10 @@ export const RAID_BOSS_ATTACKS: Record<RaidBossId, RaidAttack[]> = {
     "dream-sequence",
   ],
 };
-export const raidAttacksOf = (boss: RaidBossId) =>
-  RAID_BOSS_ATTACKS[boss] ?? [];
+export const raidAttacksOf = (boss: RaidBossId, variant?: RaidVariant) =>
+  (variant === "ascendant" ? RAID_ASCENDANT_ATTACKS[boss] : undefined) ??
+  RAID_BOSS_ATTACKS[boss] ??
+  [];
 /**
  * Grumblecrag's numbers in one place, so tuning (or a second boss) is a
  * matter of data. Damage is before the Peril multiplier.
@@ -771,7 +826,10 @@ export function raidPattern(
   peril: number,
   partySize: number,
   boss: RaidBossId = "grumblecrag",
+  variant?: RaidVariant,
 ): RaidAttack[] {
+  if (variant === "ascendant" && boss === "grumblecrag")
+    return ascendantCragmuffPattern(phase, partySize);
   if (boss === "tidewyrm") return tidewyrmPattern(phase, peril);
   if (boss === "gloomshade") return gloomshadePattern(phase, peril);
   if (boss === "somnara") return somnaraPattern(phase);
@@ -790,9 +848,14 @@ export function raidPattern(
       : ["charge", "slam", "eruption", "charge", "volley", "debris"];
   return ["charge", "slam", "volley", meteor, "charge", "eruption"];
 }
-/** How many eruptions chase their target. */
-export const eruptionChain = (phase: number, peril: number) =>
-  phase === 1 ? (peril >= 3 ? 3 : 2) : phase === 2 && peril < 2 ? 2 : 3;
+/** How many eruptions chase their target (an Ascendant boss: one more). */
+export const eruptionChain = (
+  phase: number,
+  peril: number,
+  variant?: RaidVariant,
+) =>
+  (phase === 1 ? (peril >= 3 ? 3 : 2) : phase === 2 && peril < 2 ? 2 : 3) +
+  (variant === "ascendant" ? 1 : 0);
 /** Quick signals for teams without voice chat. */
 export type RaidPingKind = "stack" | "revive" | "bait";
 export const RAID_PINGS: Record<RaidPingKind, { label: string; key: string }> =
@@ -1204,8 +1267,19 @@ export const RAID_BOSS_CHAPTERS: Partial<
     },
   ],
 };
-export const raidChapters = (boss: RaidBossId) =>
-  RAID_BOSS_CHAPTERS[boss] ?? RAID_CHAPTERS;
+/** The name players see: the boss's, or its evolved form's (Ascendant Cragmuff). */
+export const raidBossName = (
+  r: Pick<RaidState, "boss" | "variant" | "name">,
+) => (r.variant ? r.name : RAID_BOSSES[r.boss].name);
+export const raidChapters = (
+  boss: RaidBossId,
+  variant?: RaidVariant,
+): readonly { name: string; objective: string; detail: string }[] =>
+  (variant === "ascendant" && boss === "grumblecrag"
+    ? ASCENDANT_CRAGMUFF_CHAPTERS
+    : undefined) ??
+  RAID_BOSS_CHAPTERS[boss] ??
+  RAID_CHAPTERS;
 /** Separate appearance slots; each is cosmetic only. */
 export type RaidSlot = "skin" | "aura" | "entrance" | "frame" | "victory";
 export const RAID_SLOTS: RaidSlot[] = [
@@ -2328,6 +2402,8 @@ export interface RaidState {
   bossId: string;
   /** Which boss this raid is (Grumblecrag, …). */
   boss: RaidBossId;
+  /** Its evolved form (Ascendant: the Spire's boss floors); none in raids. */
+  variant?: RaidVariant;
   name: string;
   peril: number;
   trait: RaidTrait;

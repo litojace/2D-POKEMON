@@ -159,8 +159,9 @@ export class RaidBossMotion {
     for (const w of r.warnings)
       if (!this.seenWarnings.has(w.id)) {
         this.seenWarnings.add(w.id);
-        if (w.kind === "slam") this.pendingSlams.set(w.id, w.at);
-        if (w.kind === "charge") cues.push("charge");
+        if (w.kind === "slam" || w.kind === "twin-slam")
+          this.pendingSlams.set(w.id, w.at);
+        if (w.kind === "charge" || w.kind === "avalanche") cues.push("charge");
         if (w.kind === "debris") this.pendingDebris.set(w.id, w);
         if (
           w.kind !== "debris" ||
@@ -220,13 +221,20 @@ export class RaidBossMotion {
       }
     } else this.strideAge = 0;
     this.fragments = this.fragments.filter((v) => (v.age += dt) < v.life);
-    const slam = r.warnings.find((w) => w.kind === "slam");
+    const slam = r.warnings.find(
+      (w) => w.kind === "slam" || (w.kind === "twin-slam" && w.chain !== 1),
+    );
     // Volleys wind up like a charge; eruptions and meteors like debris.
     const debris = r.warnings.find(
-      (w) => w.kind === "debris" || w.kind === "eruption" || w.kind === "share",
+      (w) =>
+        w.kind === "debris" ||
+        w.kind === "eruption" ||
+        w.kind === "share" ||
+        w.kind === "fissure",
     );
     const charge = r.warnings.find(
-      (w) => w.kind === "charge" || w.kind === "volley",
+      (w) =>
+        w.kind === "charge" || w.kind === "avalanche" || w.kind === "volley",
     );
     const progress = (w: typeof slam) =>
       w
