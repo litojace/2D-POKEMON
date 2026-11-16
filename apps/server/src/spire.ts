@@ -9,16 +9,17 @@
  * One climb is one zone, and a room runs one zone: `SpireRules` is a layer
  * over the zone's boss arena (zone 1: the Ascendant Cragmuff's rules over
  * the raid core, `SpireArena`; zone 2: the Ascendant Tidelotl's over
- * Tidelotl's arena, `SpireTideArena`). `createSpireArena(code, zone)`
- * builds the room the server was asked for.
+ * Tidelotl's arena, `SpireTideArena`; zone 3: the Ascendant Inkpurr's over
+ * Inkpurr's (Gloomshade's) arena, `SpireGloomArena`).
+ * `createSpireArena(code, zone)` builds the room the server was asked for.
  *
  * Flow: briefing → (blessings, from the second floor) → countdown → waves →
  * floor cleared (saved at once) → next floor in the same room. A defeat ends
  * the climb; "Climb again" starts from the checkpoint with no blessings.
  *
  * Boss floors (floor 10: the Ascendant Cragmuff; 20: the Ascendant
- * Tidelotl) are fought in this same arena: it carries the Ascendant's rules
- * (on while `raid.variant` is "ascendant") and turns them on for the floor. The room,
+ * Tidelotl; 30: the Ascendant Inkpurr) are fought in this same arena: it
+ * carries the Ascendant's rules (on while `raid.variant` is "ascendant") and turns them on for the floor. The room,
  * its sessions, accounts and appearance, the event numbering, the clock and
  * the blessings (hooked here, below) stay exactly as they were, and the
  * clear is saved as a Spire floor like any other (never as a raid clear:
@@ -44,6 +45,8 @@ import {
   type Rect,
 } from "../../../packages/shared/src/index.js";
 import {
+  GLOOMSHADE,
+  handsTileDark,
   isRaider,
   type RaidAttack,
 } from "../../../packages/shared/src/raid.js";
@@ -81,6 +84,8 @@ import { RaidArena, raidJitter } from "./raid.js";
 import { AscendantCragmuffRules } from "./raid-ascendant-cragmuff.js";
 import { AscendantTidelotlRules } from "./raid-ascendant-tidelotl.js";
 import { TidewyrmArena } from "./raid-tidewyrm.js";
+import { AscendantInkpurrRules } from "./raid-ascendant-inkpurr.js";
+import { GloomshadeArena } from "./raid-gloomshade.js";
 
 const randomUUID = () => crypto.randomUUID();
 const randomSeed = () => {
@@ -862,11 +867,96 @@ export class SpireTideArena extends SpireRules(
     this.resetTideReads();
   }
 }
+/**
+ * Zone 3's climb: Echo floors 21–29 on the Spire's court and the Ascendant
+ * Inkpurr on floor 30, in the Lantern Yard. The wave and elite floors keep
+ * Inkpurr's yard switched off (no lanterns, copies, curses or lights), and
+ * the captain of floor 25 only borrows its Grasping Hands: it never drifts
+ * between Inkpurr's spots, never splits, and the board never flips.
+ */
+export class SpireGloomArena extends SpireRules(
+  AscendantInkpurrRules(GloomshadeArena),
+) {
+  constructor(code: string) {
+    super(code, "gloomshade");
+  }
+  // TODO(lead): once the boss branch lands, reset the Ascendant Inkpurr's
+  // reads here each floor, as SpireTideArena does (its own reset method).
+  protected override resetAscendantReads() {}
+  protected override clearBossCourt() {
+    super.clearBossCourt();
+    const r = this.raid;
+    r.lanterns = undefined;
+    r.decoys = [];
+    r.curses = {};
+    r.lights = [];
+    r.revealUntil = 0;
+    r.streak = 0;
+  }
+  /**
+   * Off its own floor, Inkpurr's counters (Mystowl's ray, Duskveil's lantern,
+   * Voltkit's spark light) have nothing to reveal or light: the captain is
+   * no Inkpurr, and the Spire's court has no night.
+   */
+  override cast(p: Fighter, a: Ability, ex = false) {
+    if (this.bossFloor()) return super.cast(p, a, ex);
+    const r = this.raid,
+      before = {
+        lights: r.lights,
+        revealUntil: r.revealUntil,
+        message: r.message,
+      };
+    super.cast(p, a, ex);
+    r.lights = before.lights;
+    r.revealUntil = before.revealUntil;
+    if (r.message !== before.message && /Inkpurr/.test(r.message))
+      r.message = before.message;
+  }
+  /** Inkpurr's drift and splits belong to its own floor (not the captain's). */
+  protected override bossStep(dt: number, boss: Fighter) {
+    if (this.bossFloor()) super.bossStep(dt, boss);
+  }
+  /** So do its lanterns, curses and lights. */
+  protected override worldStep(dt: number, boss: Fighter) {
+    if (this.bossFloor()) super.worldStep(dt, boss);
+  }
+  /**
+   * The elite's Grasping Hands: the tiles under most raiders go dark (every
+   * raider has a lit tile next to theirs), on the raid's own warning clock,
+   * and never flipped part-way: the Spire's elite asks you to move, it
+   * doesn't trick you.
+   */
+  protected override startAttack(kind: RaidAttack, target: Fighter): void {
+    if (this.bossFloor() || kind !== "hands")
+      return super.startAttack(kind, target);
+    const count = this.seenAttacks.get(kind) ?? 0;
+    this.seenAttacks.set(kind, count + 1);
+    const alive = this.heroes().filter((p) => p.hp > 0);
+    const under = (q: number) =>
+      alive.filter((p) => handsTileDark(p.x, p.y, q)).length;
+    const parity =
+      under(1) > under(0)
+        ? 1
+        : under(0) > under(1)
+          ? 0
+          : (this.raid.seed + this.attacks) % 2;
+    Object.assign(
+      this.warn("hands", 800, 450, 800, 450, 0, GLOOMSHADE.hands.delay),
+      { parity, teach: count < 2 },
+    );
+  }
+}
 /** Any zone's climb. */
-export type SpireRoom = SpireArena | SpireTideArena;
+export type SpireRoom = SpireArena | SpireTideArena | SpireGloomArena;
 export const isSpireArena = (a: unknown): a is SpireRoom =>
-  a instanceof SpireArena || a instanceof SpireTideArena;
+  a instanceof SpireArena ||
+  a instanceof SpireTideArena ||
+  a instanceof SpireGloomArena;
 /** The room for a climb of `zone` (the server checked it is built). */
 export function createSpireArena(code: string, zone = 1): SpireRoom {
-  return zone === 2 ? new SpireTideArena(code) : new SpireArena(code);
+  return zone === 3
+    ? new SpireGloomArena(code)
+    : zone === 2
+      ? new SpireTideArena(code)
+      : new SpireArena(code);
 }

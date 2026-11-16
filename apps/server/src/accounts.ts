@@ -71,7 +71,7 @@ import {
   type OnlineList,
 } from "../../../packages/shared/src/accounts.js";
 /** The newest database migration the server expects. */
-export const LATEST_MIGRATION = "20261116180000_spire_zone2.sql";
+export const LATEST_MIGRATION = "20261117090000_spire_zone3.sql";
 /** The migration that last redefined the raid appearance functions. */
 export const RAID_FUNCTIONS_MIGRATION = "018_collection_equipping.sql";
 export interface AccountProvider {
