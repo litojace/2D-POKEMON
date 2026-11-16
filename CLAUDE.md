@@ -2,11 +2,16 @@
 
 ## Running tests quickly
 
-The full visual suite (`tests/visual`, Playwright) has 75 files and is slow
-on one machine: the config runs **one worker** on purpose, and the
+The full visual suite (`tests/visual`, Playwright) has over 100 files and is
+slow on one machine: the config runs **one worker** on purpose, and the
 `panel-scroll` sweeps alone take over half an hour. CI splits it into eighteen
-shards (`.github/workflows/ci.yml`). Locally, don't run all of it: run what
-the change touches, in parallel, in the background.
+shards of about equal running time (`.github/workflows/ci.yml`,
+`scripts/visual-shards.mjs`, from each test's CI time in
+`tests/visual/durations.json`). When the shards drift apart (new or slower
+tests), download the `visual-durations` artifact of a green main run over
+that file and commit it; `node scripts/visual-shards.mjs --plan 18` shows the
+split. Locally, don't run all of it: run what the change touches, in
+parallel, in the background.
 
 **1. Unit and integration tests first** (about 2–3 minutes for all):
 
@@ -37,6 +42,9 @@ Then run those with:
   `roster-smooth`, `graphics-quality`, `ui-motion`, `touch-recovery`,
   `cosmetic-displays`.
 - `-g "<part of a test title>"` while iterating on one test.
+- Name spec files by path (`tests/visual/spire.spec.ts`). A bare word is a
+  pattern on the whole path, so in a checkout like `/tmp/wt-spire` the word
+  `spire` matches every spec.
 
 ```bash
 PW_CHROMIUM=/opt/pw-browsers/chromium-1243/chrome-linux64/chrome npx playwright test --config tests/visual/playwright.config.ts tests/visual/bistro.spec.ts tests/visual/farm.spec.ts --trace off --workers=2 --reporter=line
