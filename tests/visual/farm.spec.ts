@@ -719,7 +719,27 @@ test("visiting a friend's farm: sneak a ripe crop, catch a bug, go home", async 
   }
 });
 
-test("decorating: buy a decoration, place it, and put one in storage to place again free", async ({
+/** Where a world point of the farm is on screen, after bringing it into view. */
+async function farmPoint(page: Page, x: number, y: number, look = true) {
+  const p = await page.evaluate(
+    ([x, y, look]) => {
+      const f = (window as any).__farm;
+      if (look) f.look(x + 120, y - 60);
+      return f.worldClient(x, y);
+    },
+    [x, y, look] as const,
+  );
+  await page.waitForTimeout(150);
+  return p as { x: number; y: number };
+}
+const decoState = (page: Page) =>
+  page.evaluate(() => (window as any).__farm.deco());
+const farmActions = (page: Page) =>
+  page.evaluate(() =>
+    (window as any).__farmRequests.flatMap((r: any) => r.actions),
+  );
+
+test("decorating: drag a decoration anywhere, mirror it, move one and store it to place again free", async ({
   browser,
 }, info) => {
   const context = await browser.newContext({
@@ -731,93 +751,147 @@ test("decorating: buy a decoration, place it, and put one in storage to place ag
     await fakeFarm(page);
     await page.evaluate(() => {
       const f = (window as any).__fakeFarm;
-      f.decor = [{ slot: 0, item: "lamp" }];
+      f.decor = [{ id: 1, item: "lamp", x: 80, y: 830, flip: false }];
       f.charm = 2;
     });
     await page.click('#hub-scenes [data-hub-scene="farm"]');
     await expect(page.locator("#fm-badge")).toContainText("tester's Farm");
     await openSheet(page, "decor");
-    const sheet = page.locator("#fm-sheet");
+    const sheet = page.locator("#fm-sheet"),
+      bar = page.locator("#fm-deco-bar");
     await expect(sheet).toContainText("Charm 2 · +1% XP");
+    await expect(sheet).toContainText("Room for 13");
     await expect(
       sheet.locator(".item", { hasText: "Street Lamp" }),
     ).toContainText("unlocks at Lv 12");
+    // Pick the rock: the sheet closes and the rock waits on free ground.
     await sheet.locator('[data-deco="rock"]').click();
-    await expect(sheet).toContainText("Placing Mossy Rock");
-    await page.waitForTimeout(500);
-    await snap(page, info, "farm-decor-1280x800");
-    // The second spot (230, 870 on the farm).
-    const spot = await page.evaluate(() =>
-      (window as any).__farm.worldClient(230, 870),
-    );
-    await page.mouse.click(spot.x, spot.y);
-    await expect
-      .poll(() =>
-        page.evaluate(() =>
-          (window as any).__farmRequests.flatMap((r: any) => r.actions),
-        ),
-      )
-      .toEqual([{ a: "decor", slot: 1, item: "rock" }]);
+    await expect(sheet).toBeHidden();
+    await expect(bar).toBeVisible();
+    await expect(bar).toContainText("Mossy Rock");
+    await expect(bar).toContainText("300");
+    let st = await decoState(page);
+    expect(st.edit).toMatchObject({ item: "rock", flip: false });
+    // Drag it onto the field: it can't stand there.
+    const start = await farmPoint(page, st.edit.x, st.edit.y - 10, false);
+    await page.mouse.move(start.x, start.y);
+    await page.mouse.down();
+    const field = await farmPoint(page, 800, 500, false);
+    await page.mouse.move(field.x, field.y + 10, { steps: 8 });
+    await page.mouse.up();
+    await expect(bar).toContainText("Something is in the way");
+    await expect(bar.locator('[data-dact="ok"]')).toBeDisabled();
+    // A click on free grass puts it there; Mirror flips it.
+    const grass = await farmPoint(page, 200, 900);
+    await page.mouse.click(grass.x, grass.y);
+    st = await decoState(page);
+    expect(st.edit).toMatchObject({ x: 200, y: 900 });
+    await expect(bar.locator('[data-dact="ok"]')).toBeEnabled();
+    await bar.locator('[data-dact="flip"]').click();
+    expect((await decoState(page)).edit.flip).toBe(true);
+    await page.waitForTimeout(300);
+    await snap(page, info, "farm-decor-place-1280x800");
+    await bar.locator('[data-dact="ok"]').click();
+    await expect(bar).toBeHidden();
     await expect(page.locator("#fm-log")).toContainText(
       "Placed Mossy Rock · +1 Charm",
     );
+    await expect
+      .poll(() => farmActions(page))
+      .toEqual([
+        { a: "decor-place", item: "rock", x: 200, y: 900, flip: true },
+      ]);
+    // Move decorations: tap the lamp, put it away.
+    await openSheet(page, "decor");
     await expect(sheet).toContainText("Charm 3 · +1% XP");
-    // Put the Street Lamp (spot 0, at 80, 830) away: it goes to storage and
-    // places again for free, even below its level.
-    const tapSpot = async (x: number, y: number) => {
-      const p = await page.evaluate(
-        ([x, y]) => {
-          const f = (window as any).__farm;
-          f.look(x + 200, y - 100);
-          return f.worldClient(x, y);
-        },
-        [x, y],
-      );
-      await page.waitForTimeout(150);
-      await page.mouse.click(p.x, p.y);
-    };
-    // The Storage tab: empty, with the Remove tool.
-    await sheet.locator('[data-tab="storage"]').click();
-    await expect(sheet).toContainText("Storage is empty");
-    await expect(sheet.locator('[data-tab="storage"]')).toHaveText("Storage");
-    await sheet.locator('[data-deco="__remove"]').click();
-    await expect(sheet).toContainText("It goes to storage");
-    await tapSpot(80, 830);
+    await sheet.locator('[data-deco="__edit"]').click();
+    await expect(bar).toContainText("Tap one on the farm");
+    const lampAt = await farmPoint(page, 80, 800);
+    await page.mouse.click(lampAt.x, lampAt.y);
+    await expect(bar).toContainText("Street Lamp");
+    await snap(page, info, "farm-decor-move");
+    await bar.locator('[data-dact="store"]').click();
     await expect(page.locator("#fm-log")).toContainText(
       "Put Street Lamp in storage",
     );
+    await expect(bar).toContainText("Tap one on the farm");
+    await bar.locator('[data-dact="done"]').click();
+    await expect(bar).toBeHidden();
+    // From storage it places free, even below its level.
+    await openSheet(page, "decor");
+    await sheet.locator('[data-tab="storage"]').click();
     await expect(sheet.locator('[data-tab="storage"]')).toHaveText(
       "Storage (1)",
     );
     const lamp = sheet.locator(".item", { hasText: "Street Lamp" });
     await expect(lamp).toContainText("×1");
-    await expect(lamp.locator("button")).toHaveText("Place");
-    // Placing from storage: the spots glow and carry a pin.
     await lamp.locator("button").click();
-    await expect(sheet).toContainText("Placing Street Lamp");
-    await page.evaluate(() => (window as any).__farm.look(400, 760));
-    await page.waitForTimeout(400);
-    await snap(page, info, "farm-decor-storage");
-    await tapSpot(530, 870);
+    await expect(bar).toContainText("Free from storage");
+    const spot = await farmPoint(page, 240, 600);
+    await page.mouse.click(spot.x, spot.y);
+    await bar.locator('[data-dact="ok"]').click();
+    await expect
+      .poll(() => farmActions(page))
+      .toEqual([
+        { a: "decor-place", item: "rock", x: 200, y: 900, flip: true },
+        { a: "decor-store", piece: 1 },
+        { a: "decor-place", item: "lamp", x: 240, y: 600, flip: false },
+      ]);
     await expect
       .poll(() =>
         page.evaluate(() =>
-          (window as any).__farmRequests.flatMap((r: any) => r.actions),
+          (window as any).__farm.F.decor.map((d: any) => [d.item, d.x, d.y]),
         ),
       )
       .toEqual([
-        { a: "decor", slot: 1, item: "rock" },
-        { a: "decor-remove", slot: 0 },
-        { a: "decor", slot: 2, item: "lamp" },
+        ["rock", 200, 900],
+        ["lamp", 240, 600],
       ]);
-    // The last stored copy is placed: placing stops (nothing is bought).
+    await openSheet(page, "decor");
+    await sheet.locator('[data-tab="storage"]').click();
     await expect(sheet).toContainText("Storage is empty");
-    await expect(sheet).not.toContainText("Placing");
-    await expect(sheet.locator('[data-tab="storage"]')).toHaveText("Storage");
-    await sheet.locator('[data-tab="buy"]').click();
-    await expect(
-      sheet.locator(".item", { hasText: "Street Lamp" }),
-    ).toContainText("unlocks at Lv 12");
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});
+
+test("decorating on a phone: a tap puts the decoration there, a drag on it moves it", async ({
+  browser,
+}, info) => {
+  const context = await browser.newContext({
+    viewport: { width: 844, height: 390 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  try {
+    const page = await context.newPage();
+    const errors = await openLobby(page);
+    await fakeFarm(page);
+    await page.click('#hub-scenes [data-hub-scene="farm"]');
+    await expect(page.locator("#fm-badge")).toContainText("tester's Farm");
+    await openSheet(page, "decor");
+    const sheet = page.locator("#fm-sheet"),
+      bar = page.locator("#fm-deco-bar");
+    await sheet.locator('[data-deco="hay"]').click();
+    await expect(sheet).toBeHidden();
+    await expect(bar).toContainText("Hay Bale");
+    const p = await farmPoint(page, 600, 920);
+    await page.touchscreen.tap(p.x, p.y);
+    await expect
+      .poll(async () => (await decoState(page)).edit)
+      .toMatchObject({ x: 600, y: 920 });
+    // The bar fits the phone's width, over the farm.
+    const box = await bar.boundingBox();
+    expect(box!.x).toBeGreaterThanOrEqual(0);
+    expect(box!.x + box!.width).toBeLessThanOrEqual(844);
+    await snap(page, info, "farm-decor-place-844x390");
+    await bar.locator('[data-dact="ok"]').click();
+    await expect
+      .poll(() => farmActions(page))
+      .toEqual([
+        { a: "decor-place", item: "hay", x: 600, y: 920, flip: false },
+      ]);
     expect(errors).toEqual([]);
   } finally {
     await context.close();

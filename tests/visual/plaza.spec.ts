@@ -848,12 +848,27 @@ test("Nearby chat on the Plaza: the wheel sends quick chat, phrases pop over the
       ),
     )
     .toBe(1);
+  // Every toast from here on (the drawer's requests must all be answered).
+  await page.evaluate(() => {
+    const w = window as any,
+      t = document.getElementById("toast")!;
+    w.__toasts = [];
+    new MutationObserver(() => w.__toasts.push(t.textContent)).observe(t, {
+      childList: true,
+      characterData: true,
+      subtree: true,
+    });
+  });
   await page.click("#chat-button");
   await expect(page.locator('[data-chat-tab="place"]')).toHaveAttribute(
     "aria-selected",
     "true",
   );
   await expect(page.locator("#chat-drawer .chat-line")).toHaveText("tester👋");
+  // The Nearby history came back (the harness answers as the server does):
+  // no "Offline harness" toast.
+  await page.waitForTimeout(500);
+  expect(await page.evaluate(() => (window as any).__toasts)).toEqual([]);
   // Typing waits for an account's own channels: here it is quick chat.
   await expect(page.locator("#chat-input")).toBeDisabled();
   await page.click("#chat-drawer .chat-close");

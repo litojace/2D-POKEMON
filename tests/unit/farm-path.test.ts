@@ -10,6 +10,7 @@ import {
   type PathWorld,
   type Point,
 } from "../../apps/client/src/farm/farm-path";
+import { decorBox } from "../../packages/shared/src/farm";
 
 // The farm's layout (farm-scene.ts): a 10×5 field of 96×62 plots from (360, 380).
 const OX = 360,
@@ -60,7 +61,13 @@ describe("where farm animals can walk", () => {
     expect(blocked(w, 288, 562)).toBe(false);
     expect(blocked(world({ scarecrow: [288, 562] }), 288, 562)).toBe(true);
     expect(blocked(w, 900, 960)).toBe(false);
-    expect(blocked(world({ decor: [[900, 960]] }), 900, 960)).toBe(true);
+    // A decoration's ground (decorBox), with a little room around it.
+    const lamp = decorBox("lamp", 900, 960),
+      gazebo = decorBox("tower", 1200, 980);
+    expect(blocked(world({ decor: [lamp] }), 900, 960)).toBe(true);
+    expect(blocked(world({ decor: [lamp] }), 960, 960)).toBe(false);
+    expect(blocked(world({ decor: [gazebo] }), 1270, 960)).toBe(true);
+    expect(blocked(world({ decor: [gazebo] }), 1300, 960)).toBe(false);
   });
   it("has free spots for the dog to sit", () => {
     const free = DOG_SPOTS.filter(([x, y]) => !blocked(w, x, y));
@@ -69,7 +76,10 @@ describe("where farm animals can walk", () => {
 });
 
 describe("the guard dog's routes", () => {
-  const w = world({ decor: [[1100, 840]], scarecrow: [288, 562] });
+  const w = world({
+    decor: [decorBox("apple", 1100, 900), decorBox("bench", 560, 900)],
+    scarecrow: [288, 562],
+  });
   const outside: Point[] = [
     [1520, 860],
     [460, 830],

@@ -15,6 +15,8 @@ import { bubbleLines } from "../chat/bubble-text";
 /** A chat bubble's text is at most this wide; longer lines wrap. */
 const BUBBLE_TEXT_W = 150;
 import { syncHubGraphics } from "../hub-graphics";
+import { goldenLevel } from "../farm/farm-feel";
+import { NightLight, ShadowLayer, sunLight } from "../world-light";
 import {
   ORB_SHOWER,
   PLAZA,
@@ -151,6 +153,9 @@ export function openPlaza(options) {
   const reduced = options.reduced;
   /** Low graphics (slow phones): no ambient animals or night glow, 30 fps. */
   let low = !!options.low;
+  // Shadows that follow the sun and the night's light map (not at Low).
+  const shadowLayer = new ShadowLayer(),
+    nightLight = new NightLight();
   layer.dataset.graphics = low ? "low" : "high";
   syncHubGraphics();
   layer.dataset.frozen = "false";
@@ -2011,6 +2016,81 @@ export function openPlaza(options) {
     if (t >= 0.2 && t <= 0.3) return 1 - (t - 0.2) / 0.1;
     return 1;
   }
+  /**
+   * Every tall thing's shadow on the ground, away from the sun: long and to
+   * the left in the morning, short at noon, long and to the right at golden
+   * hour, gone at night. Drawn before anything standing.
+   */
+  function drawCastShadows(g, time, vx0, vy0, vx1, vy1) {
+    if (!shadowLayer.begin(g, sunLight(tod, night()))) return;
+    const near = (x, y) =>
+      y > vy0 - 60 && y < vy1 + 420 && x > vx0 - 420 && x < vx1 + 420;
+    for (const o of TREES) {
+      if (!near(o.x, o.y)) continue;
+      const t = o.t;
+      if (t.pine) shadowLayer.sprite(t.pine, o.x, o.y + 4);
+      else {
+        shadowLayer.sprite(t.trunk, o.x, o.y + 4);
+        shadowLayer.sprite(t.canopy, o.x, o.y + 4, t.h - 10);
+      }
+    }
+    for (const o of BUSHES)
+      if (near(o.x, o.y)) shadowLayer.sprite(o.spr, o.x, o.y + 4);
+    const lampSpr = GFX.lamp(),
+      benchSpr = GFX.bench();
+    for (const o of LAMPS)
+      if (near(o.x, o.y)) shadowLayer.sprite(lampSpr, o.x, o.y + 4);
+    for (const o of BENCHES)
+      if (near(o.x, o.y)) shadowLayer.sprite(benchSpr, o.x, o.y + 4);
+    for (const h of HOUSES)
+      if (near(h.x, h.y)) shadowLayer.sprite(h.spr, h.x, h.y);
+    for (const f of FLOOD)
+      if (near(f.x, f.y)) shadowLayer.pole(f.x, f.y, 10, 250);
+    if (near(CAFE.x, CAFE.y))
+      shadowLayer.sprite(GFX.foodTruck(), CAFE.x, CAFE.y + 4);
+    if (near(BOARD.x, BOARD.y))
+      shadowLayer.sprite(GFX.board(), BOARD.x, BOARD.y + 4);
+    const s = 84;
+    for (const b of BODIES()) {
+      const im = b.img?.sprite;
+      if (!im || !near(b.x, b.y)) continue;
+      shadowLayer.image(
+        im,
+        b.x,
+        b.y,
+        -s / 2,
+        -s * 0.9,
+        s,
+        s * 1.01,
+        b.z,
+        b.face > 0,
+      );
+    }
+    shadowLayer.end(g);
+  }
+  /**
+   * The night's light map: each lamp, floodlight and lit window lifts the
+   * darkness around it, so what it lights keeps its colours.
+   */
+  function drawNightMap(g, n, vx0, vy0, vx1, vy1) {
+    nightLight.begin(g, [255 - 150 * n, 255 - 132 * n, 255 - 62 * n]);
+    nightLight.follow(g);
+    const L = (x, y, r, k, flat) => {
+      if (x + r < vx0 || x - r > vx1 || y + r < vy0 || y - r > vy1) return;
+      nightLight.light(x, y, r, k * n, flat);
+    };
+    for (const l of LAMPS) L(l.x, l.y - 6, 150, 0.48, 0.6);
+    for (const f of FLOOD) L(f.x, f.y - 40, 320, 0.45, 0.66);
+    L((PITCH.x0 + PITCH.x1) / 2, (PITCH.y0 + PITCH.y1) / 2, 520, 0.3, 0.7);
+    L((LED.x0 + LED.x1) / 2, LED.y1 + 40, 380, 0.35, 0.6);
+    L(CAFE.x, CAFE.y - 30, 220, 0.5, 0.7);
+    L(FOUNT.x, FOUNT.y - 10, 230, 0.3, 0.7);
+    for (const h of HOUSES)
+      for (const [wx, wy, ww, wh] of h.spr.win ?? [])
+        L(h.x + wx + ww / 2, h.y + wy + wh, 100, 0.4, 0.8);
+    for (const o of ev.orbs) L(o.x, o.y - 10, 90, 0.5, 0.8);
+    nightLight.end(g);
+  }
   function drawLamp(g, l) {
     GFX.shadow(g, l.x + 6, l.y + 2, 18, 6);
     GFX.blit(g, GFX.lamp(), l.x, l.y + 4);
@@ -3416,6 +3496,7 @@ export function openPlaza(options) {
       g.ellipse(o.x, o.y, 12 * (1 - o.z / 500), 5, 0, 0, 7);
       g.fill();
     });
+    if (!low) drawCastShadows(g, time, vx0, vy0, vx1, vy1);
     const items = [
       ...TREES.map((o) => ({
         x: o.x,
@@ -3648,14 +3729,33 @@ export function openPlaza(options) {
     }
     // day / night grading and lights
     const n = night();
-    if (n > 0) {
+    // Golden hour, as on the Farm: the late sun warms the whole square.
+    const gold = low ? 0 : goldenLevel(tod) * (1 - n);
+    if (gold > 0.01) {
       g.save();
       g.setTransform(1, 0, 0, 1, 0, 0);
-      g.globalCompositeOperation = "multiply";
-      // A little lighter than it was, so the night reads as lit, not dark.
-      g.fillStyle = `rgba(${Math.round(255 - 150 * n)},${Math.round(255 - 132 * n)},${Math.round(255 - 62 * n)},1)`;
-      g.fillRect(0, 0, g.canvas.width, g.canvas.height);
+      g.globalCompositeOperation = "soft-light";
+      const cw = g.canvas.width,
+        chh = g.canvas.height,
+        sg = g.createLinearGradient(0, 0, cw * 0.7, chh);
+      sg.addColorStop(0, `rgba(255,190,80,${0.7 * gold})`);
+      sg.addColorStop(0.65, `rgba(255,140,70,${0.45 * gold})`);
+      sg.addColorStop(1, `rgba(200,90,110,${0.4 * gold})`);
+      g.fillStyle = sg;
+      g.fillRect(0, 0, cw, chh);
       g.restore();
+    }
+    if (n > 0) {
+      if (!low) drawNightMap(g, n, vx0, vy0, vx1, vy1);
+      else {
+        g.save();
+        g.setTransform(1, 0, 0, 1, 0, 0);
+        g.globalCompositeOperation = "multiply";
+        // A little lighter than it was, so the night reads as lit, not dark.
+        g.fillStyle = `rgba(${Math.round(255 - 150 * n)},${Math.round(255 - 132 * n)},${Math.round(255 - 62 * n)},1)`;
+        g.fillRect(0, 0, g.canvas.width, g.canvas.height);
+        g.restore();
+      }
       drawSpotlightsNight(g, time, n);
       g.save();
       g.globalCompositeOperation = "lighter";
@@ -3672,7 +3772,7 @@ export function openPlaza(options) {
       };
       LAMPS.forEach((l) => {
         glow(l.x, l.y - 78, 90, "255,214,140", 0.55 * n);
-        glow(l.x, l.y, 120, "255,200,120", 0.18 * n);
+        glow(l.x, l.y, 110, "255,200,120", (low ? 0.18 : 0.08) * n);
       });
       FLOOD.forEach((f) => glow(f.x, f.y - 240, 120, "255,250,220", 0.5 * n));
       glow(

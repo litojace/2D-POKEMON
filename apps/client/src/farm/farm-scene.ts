@@ -10,6 +10,7 @@
  * by line; the typed entry point is farm-screen.ts.
  */
 import { syncHubGraphics } from "../hub-graphics";
+import { NightLight, ShadowLayer, sunLight } from "../world-light";
 import {
   CROPS,
   CROP_BY_ID,
@@ -27,6 +28,11 @@ import {
   farmPerkOf,
   FARM_DECOR,
   charmBonus,
+  decorBox,
+  decorCap,
+  decorFits,
+  nearestDecorSpot,
+  DECOR_GRID,
   CROW_SECONDS,
   MILK,
   PASTURE,
@@ -119,17 +125,28 @@ const fmtDur = (s) =>
     : fmtSecs(s);
 const DOG = Object.fromEntries(FARM_DOGS.map((d) => [d.id, d]));
 const DECO = Object.fromEntries(FARM_DECOR.map((d) => [d.id, d]));
-/** The 8 decoration spots around the farm (the prototype's). */
-const DECO_SLOTS = [
-  [80, 830],
-  [230, 870],
-  [530, 870],
-  [1240, 870],
-  [70, 540],
-  [1700, 880],
-  [1390, 890],
-  [390, 890],
-];
+/** How tall each decoration's picture stands above its spot (for taps). */
+const DECO_TALL = {
+  rock: 40,
+  hay: 46,
+  bush6: 60,
+  bush7: 60,
+  flowers: 60,
+  mailbox: 66,
+  bench: 52,
+  crates: 60,
+  lamp: 110,
+  planter: 44,
+  mintree: 150,
+  pine: 150,
+  autumn: 150,
+  cherry: 150,
+  apple: 150,
+  orange: 150,
+  tower: 160,
+  plum: 130,
+  statue: 130,
+};
 const GIFT_KEY = "arena-farm-gift-seen";
 /** Giant crops this device has already announced (migration 050). */
 const GIANT_KEY = "arena-farm-giants-seen";
@@ -196,6 +213,7 @@ const FARM_HTML = `<div class="fm" id="fm">
     <div class="fm-tip glass" id="fm-tip" hidden></div>
     <div class="fm-pop glass" id="fm-pop" hidden></div>
     <div class="fm-acts" id="fm-acts" hidden></div>
+    <div class="fm-deco-bar glass" id="fm-deco-bar" hidden></div>
     <div class="fm-sickle fm-seedbub" id="fm-seed" hidden><button type="button" data-seedbub></button></div>
     <div class="fm-sickle" id="fm-sickle" hidden><button type="button" data-sickle aria-label="Harvest: tap, or drag across ripe crops">${I("sickle")}</button></div>
     <div class="fm-ghost" id="fm-ghost" hidden aria-hidden="true"></div>
@@ -375,6 +393,13 @@ export function openFarm(options) {
     locked: false,
     ...o,
   });
+  /* Decorating (anywhere since 20261116120000): the decoration being placed
+     or moved ({ id (none while new), item, x, y, flip, from }), whether a
+     tap picks a decoration to move, and a drag of the one being moved. */
+  let decoEdit = null,
+    decoBrowse = false,
+    decoDrag = null,
+    decoTemp = -1;
   const F = {
     lv: 1,
     xp: 0,
@@ -403,13 +428,11 @@ export function openFarm(options) {
     gifts: [],
     farmer: null,
     perksUsed: [],
-    decor: Array(8).fill(null),
+    decor: [],
     charm: 0,
     decorCredits: {},
     warmUntil: 0,
     log: [],
-    decorPick: null,
-    decorFromStore: false,
     shovelArm: null,
     weather: { cur: null },
     visiting: null,
@@ -606,8 +629,16 @@ export function openFarm(options) {
     // The farmer and perks (migration 046). The farm follows your Lobby
     // fighter: tell the server once if it changed since the last visit.
     // Decorations and Charm (migration 048).
-    F.decor = Array(8).fill(null);
-    for (const d of st.decor ?? []) F.decor[d.slot] = d.item;
+    F.decor = (st.decor ?? []).map((d) => ({
+      id: d.id,
+      item: d.item,
+      x: d.x,
+      y: d.y,
+      flip: !!d.flip,
+    }));
+    // Moving a decoration the server no longer has: stop.
+    if (decoEdit?.id && !F.decor.some((p) => p.id === decoEdit.id))
+      endDecoEdit();
     F.charm = st.charm ?? 0;
     F.decorCredits = { ...(st.decorCredits ?? {}) };
     // The Cow Pasture and Storm Milk's price today (migration 049).
@@ -1089,7 +1120,7 @@ export function openFarm(options) {
     well: WELL,
     doghouse: DOGH,
     scarecrow: F.scarecrow ? [288, 562] : null,
-    decor: F.decor.flatMap((d, k) => (d ? [DECO_SLOTS[k]] : [])),
+    decor: F.decor.map((p) => decorBox(p.item, p.x, p.y)),
     gateX: FCX,
     width: WW,
     height: WH,
@@ -1638,115 +1669,6 @@ export function openFarm(options) {
     GFX.blit(ctx, spr, 0, 0);
     ctx.restore();
   }
-  /* Placing decor: each spot you can tap glows on the ground (a pulsing light,
-     a solid ring, marching dashes and a ripple), gold to place and coral to
-     put away; a pin over it (drawn with the labels, above trees) says what a
-     tap does. Putting away marks only the spots that have decor. */
-  const decorTarget = (k) =>
-    !!F.decorPick && (F.decorPick !== "__remove" || !!F.decor[k]);
-  const decorRgb = () =>
-    F.decorPick === "__remove" ? "255,122,89" : "255,214,91";
-  function drawDecorSpot(x, y, k, time) {
-    const rgb = decorRgb(),
-      pulse = reduced ? 0.6 : 0.5 + 0.5 * Math.sin(time * 4 + k);
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.scale(1, 0.4);
-    glow(ctx, 0, 0, 64, rgb, 0.35 + 0.3 * pulse);
-    ctx.restore();
-    ctx.save();
-    ctx.strokeStyle = `rgba(${rgb},${0.8 + 0.2 * pulse})`;
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.ellipse(x, y, 42 + 3 * pulse, 17 + 1.2 * pulse, 0, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.strokeStyle = "rgba(255,255,255,.85)";
-    ctx.lineWidth = 2;
-    ctx.setLineDash([8, 7]);
-    ctx.lineDashOffset = reduced ? 0 : -time * 24;
-    ctx.beginPath();
-    ctx.ellipse(x, y, 52, 22, 0, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
-    if (!reduced) {
-      const r = (time * 0.7 + k * 0.13) % 1;
-      ctx.strokeStyle = `rgba(${rgb},${0.6 * (1 - r)})`;
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.ellipse(x, y, 44 + 34 * r, 18 + 14 * r, 0, 0, Math.PI * 2);
-      ctx.stroke();
-    }
-    ctx.restore();
-  }
-  /** The pin over a decor spot: + to place, ⟳ to swap, × to put away. */
-  function drawDecorPins(time, z) {
-    if (!F.decorPick || V) return;
-    const rm = F.decorPick === "__remove",
-      rgb = decorRgb();
-    // Night, moonlight and rain darken the ground rings with the farm: light
-    // them again on top, as strong as the dark, so they read at any hour.
-    const w = F.weather.cur,
-      dark = Math.max(
-        nightLevel(TOD),
-        w === "moon" ? 0.85 * nightLevel(TOD) : 0,
-        w === "storm" ? 0.5 : w === "rain" ? 0.3 : 0,
-      );
-    if (dark > 0.05)
-      DECO_SLOTS.forEach(([x, y], k) => {
-        if (!decorTarget(k)) return;
-        ctx.save();
-        ctx.globalCompositeOperation = "lighter";
-        ctx.globalAlpha = Math.min(1, dark * 1.2);
-        drawDecorSpot(x, y, k, time);
-        ctx.restore();
-      });
-    DECO_SLOTS.forEach(([x, y], k) => {
-      if (!decorTarget(k)) return;
-      const bob = reduced ? 0 : Math.sin(time * 3 + k) * 4 * z,
-        r = 14 * z,
-        cy = y - 62 - bob;
-      ctx.save();
-      ctx.fillStyle = `rgb(${rgb})`;
-      ctx.strokeStyle = "#2a1a05";
-      ctx.lineWidth = 2.5 * z;
-      ctx.beginPath();
-      ctx.moveTo(x - 6 * z, cy + r - 2 * z);
-      ctx.lineTo(x, cy + r + 9 * z);
-      ctx.lineTo(x + 6 * z, cy + r - 2 * z);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.arc(x, cy, r, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-      ctx.strokeStyle = "#2a1a05";
-      ctx.lineWidth = 3 * z;
-      ctx.lineCap = "round";
-      ctx.beginPath();
-      const a = 6 * z;
-      if (rm) {
-        ctx.moveTo(x - a, cy - a);
-        ctx.lineTo(x + a, cy + a);
-        ctx.moveTo(x + a, cy - a);
-        ctx.lineTo(x - a, cy + a);
-      } else if (F.decor[k]) {
-        // Swap: a circular arrow.
-        ctx.arc(x, cy, a, -Math.PI * 0.2, Math.PI * 1.35);
-        ctx.moveTo(x + a * 0.81, cy - a * 0.59);
-        ctx.lineTo(x + a * 0.95, cy - a * 1.35);
-        ctx.moveTo(x + a * 0.81, cy - a * 0.59);
-        ctx.lineTo(x + a * 0.05, cy - a * 0.5);
-      } else {
-        ctx.moveTo(x - a, cy);
-        ctx.lineTo(x + a, cy);
-        ctx.moveTo(x, cy - a);
-        ctx.lineTo(x, cy + a);
-      }
-      ctx.stroke();
-      ctx.restore();
-    });
-  }
   /* The wishing well twinkles: a shimmer on the water and stars that drift
      up out of it and fade, gold and busier while today's wish is waiting. */
   function drawWellSparkles(time) {
@@ -1777,6 +1699,73 @@ export function openFarm(options) {
       ctx.globalAlpha = 1;
     }
     ctx.restore();
+  }
+  /* Shadows that follow the sun (not at Low): long and to the left in the
+     morning, short at noon, long and to the right at golden hour, none in
+     rain or at night. Drawn on the ground before anything standing. */
+  const shadowLayer = new ShadowLayer(),
+    nightLight = new NightLight();
+  function farmSun() {
+    const w = F.weather.cur;
+    const sun = sunLight(TOD, nightLevel(TOD));
+    if (w === "rain" || w === "storm") sun.alpha = 0;
+    else if (w === "cloud" || w === "frost") sun.alpha *= 0.5;
+    return sun;
+  }
+  function drawCastShadows(s) {
+    if (!shadowLayer.begin(ctx, farmSun())) return;
+    const L = shadowLayer;
+    const tree = (o) => {
+      const t = o.t;
+      if (t.pine) L.sprite(t.pine, o.x, o.y + 4);
+      else {
+        L.sprite(t.trunk, o.x, o.y + 4);
+        L.sprite(t.canopy, o.x, o.y + 4, t.h - 10);
+      }
+    };
+    TREES.forEach(tree);
+    for (const m of MARGIN) {
+      if (m.t) tree(m);
+      else if (m.b) L.sprite(m.b, m.x, m.y + 4);
+    }
+    L.sprite(HOUSE_SPR(), HOUSE.x, HOUSE.y);
+    L.sprite(GFX.windmillBody(), MILL.x, MILL.y);
+    L.sprite(GFX.board(), BOARDP.x, BOARDP.y);
+    L.sprite(GFX.stall(), STALL.x, STALL.y);
+    L.sprite(GFX.barn(), BARN.x, BARN.y);
+    L.sprite(GFX.well(), WELL.x, WELL.y);
+    L.sprite(GFX.doghouse(), DOGH.x, DOGH.y);
+    if (s.me) {
+      if (F.scarecrow) L.sprite(GFX.scarecrow(), 288, 562);
+      for (const p of F.decor)
+        if (p.item === "lamp" && p.id !== decoEdit?.id)
+          L.sprite(GFX.lamp(), p.x, p.y + 4);
+    }
+    L.end(ctx);
+  }
+  /** The night's lights on the light map (world coordinates). */
+  function farmLights(nl, k) {
+    ctx.save();
+    ctx.translate(VW / 2, VH / 2);
+    ctx.scale(Z, Z);
+    ctx.translate(-cam.x, -cam.y);
+    nl.follow(ctx);
+    ctx.restore();
+    const hs = HOUSE_SPR();
+    for (const [wx, wy, ww, wh] of hs.win ?? [])
+      nl.light(
+        HOUSE.x + wx + ww / 2,
+        HOUSE.y + wy + wh + 10,
+        120,
+        0.45 * k,
+        0.75,
+      );
+    nl.light(BARN.x, BARN.y - 60, 200, 0.4 * k, 0.7);
+    nl.light(STALL.x, STALL.y - 40, 190, 0.45 * k, 0.7);
+    nl.light(WELL.x, WELL.y - 20, 110, 0.25 * k, 0.75);
+    if (cur().me)
+      for (const p of F.decor)
+        if (p.item === "lamp") nl.light(p.x, p.y - 6, 150, 0.5 * k, 0.6);
   }
   function drawTreeS(tr, time, shadowK) {
     if (!(tr.shake > 0))
@@ -1828,9 +1817,36 @@ export function openFarm(options) {
   /** A decoration in its spot (the prototype's drawings). */
   let statueImg = null,
     statueGold = null;
-  function drawDecor(g, id, x, y, time) {
+  function drawDecor(g, id, x, y, time, flip = false) {
+    if (flip) {
+      // Mirrored: drawn about its own spot.
+      g.save();
+      g.translate(x, 0);
+      g.scale(-1, 1);
+      drawDecor(g, id, 0, y, time);
+      g.restore();
+      return;
+    }
     const sh = (rx) => GFX.shadow(g, x + 6, y + 2, rx, rx * 0.25);
-    if (id === "planter") {
+    const tree = (kind, sd, size) =>
+      GFX.drawTree(g, GFX.tree(kind, sd, size), x, y, time, x * 0.01, 0.7);
+    if (id === "hay") {
+      sh(36);
+      GFX.blit(g, GFX.hay(), x, y + 4);
+    } else if (id === "mailbox") {
+      sh(14);
+      GFX.blit(g, GFX.mailbox(), x, y + 4);
+    } else if (id === "bench") {
+      sh(46);
+      GFX.blit(g, GFX.bench(), x, y + 4);
+    } else if (id === "flowers") {
+      sh(36);
+      GFX.blit(g, GFX.bush("flower", 27), x, y + 4);
+    } else if (id === "mintree") tree("mint", 28, 0.7);
+    else if (id === "autumn") tree("autumn", 29, 0.7);
+    else if (id === "cherry") tree("cherry", 30, 0.7);
+    else if (id === "orange") tree("orange", 32, 0.7);
+    else if (id === "planter") {
       sh(54);
       GFX.blit(g, GFX.flowerbed(96, 21), x, y + 6);
     } else if (id === "lamp") {
@@ -2964,7 +2980,7 @@ export function openFarm(options) {
     g.restore();
   }
   function drawArea(g) {
-    if (!CUR.on || hoverI < 0 || F.decorPick) return;
+    if (!CUR.on || hoverI < 0 || decorating()) return;
     const s = cur();
     if (!s.me && !["can", "net", "hand", "prank"].includes(F.tool)) return;
     let ids =
@@ -3032,6 +3048,8 @@ export function openFarm(options) {
   function applyVisit(v, asked) {
     const now = Date.parse(v.now);
     offset = clock.note(now, Date.now(), asked);
+    // Visiting a friend stops decorating your own farm.
+    if (decorating()) endDecoEdit();
     V = {
       id: v.id,
       name: v.name,
@@ -4197,41 +4215,235 @@ export function openFarm(options) {
   function storeDecor(id) {
     if (id) F.decorCredits[id] = (F.decorCredits[id] || 0) + 1;
   }
-  /** Decorating (migration 048): place the picked decoration, or put one away. */
-  function placeDecor(k) {
-    const pick = F.decorPick;
-    if (pick === "__remove") {
-      if (!F.decor[k]) return toast("Nothing to put away there");
-      act({ a: "decor-remove", slot: k }, true);
-      log(`Put <b>${DECO[F.decor[k]]?.name ?? "decor"}</b> in storage`);
-      storeDecor(F.decor[k]);
-      F.decor[k] = null;
-    } else {
-      const d = DECO[pick];
-      if (!d) return;
-      if (F.decor[k] === pick) return toast("That is already there");
-      act({ a: "decor", slot: k, item: pick }, true);
-      // A stored copy places first, for free; what stood there is stored.
-      if (F.decorCredits[pick] > 0) F.decorCredits[pick]--;
-      else F.leaves -= d.price;
-      if (F.decor[k]) {
-        log(`Put <b>${DECO[F.decor[k]]?.name ?? "decor"}</b> in storage`);
-        storeDecor(F.decor[k]);
+  /* ---------- decorating anywhere (20261116120000) ---------- */
+  const decorating = () => !!decoEdit || decoBrowse;
+  const snap = (v) => Math.round(v / DECOR_GRID) * DECOR_GRID;
+  /** Why the decoration being placed can't stand where it is (or null). */
+  function decoProblem() {
+    const e = decoEdit;
+    if (!e) return null;
+    const why = decorFits(e.item, e.x, e.y, F.decor, e.id);
+    if (why) return why;
+    if (!e.id) {
+      const d = DECO[e.item];
+      if (F.decor.length >= decorCap(F.lv))
+        return `Your farm has room for ${decorCap(F.lv)} decorations`;
+      if (!(F.decorCredits[e.item] > 0)) {
+        if (d.level > F.lv) return `Unlocks at farm level ${d.level}`;
+        if (F.leaves < d.price) return "Not enough Gold Leaves";
       }
-      FX.push({
-        puff: 1,
-        x: DECO_SLOTS[k][0],
-        y: DECO_SLOTS[k][1],
-        t: 0,
-        life: 0.6,
-      });
-      F.decor[k] = pick;
-      // Stop placing when nothing is left in storage and another can't (or,
-      // picked in Storage, shouldn't) be bought.
-      if (!F.decorCredits[pick] && (F.decorFromStore || F.leaves < d.price))
-        F.decorPick = null;
     }
-    if (sheet === "decor") renderSheet();
+    return null;
+  }
+  /** Start placing a decoration from the shop or storage, near the view's middle. */
+  function startDecoPlace(item) {
+    const near = nearestDecorSpot(item, cam.x, cam.y + 40, F.decor) ??
+      nearestDecorSpot(item, FCX, OY + FH + 160, F.decor, undefined, 1200) ?? {
+        x: snap(cam.x),
+        y: snap(cam.y),
+      };
+    decoEdit = { item, x: near.x, y: near.y, flip: false, from: null };
+    decoBrowse = false;
+    closeSheet();
+    renderDecoBar();
+  }
+  /** Pick up a placed decoration to move, mirror or put away. */
+  function startDecoMove(p) {
+    if (p.id < 0) return toast("Still saving that one…");
+    decoEdit = {
+      id: p.id,
+      item: p.item,
+      x: p.x,
+      y: p.y,
+      flip: !!p.flip,
+      from: { x: p.x, y: p.y, flip: !!p.flip },
+    };
+    sfx("tick");
+    renderDecoBar();
+  }
+  function endDecoEdit(browse = false) {
+    decoEdit = null;
+    decoDrag = null;
+    decoBrowse = browse;
+    renderDecoBar();
+  }
+  /** Move the decoration being placed to a world point (snapped to the grid). */
+  function decoTo(x, y) {
+    if (!decoEdit) return;
+    const nx = Math.min(1740, Math.max(20, snap(x))),
+      ny = Math.min(1060, Math.max(120, snap(y)));
+    if (nx === decoEdit.x && ny === decoEdit.y) return;
+    decoEdit.x = nx;
+    decoEdit.y = ny;
+    renderDecoBar();
+  }
+  /** The decoration under a world point (the front one first). */
+  function decoAt(x, y) {
+    let hit = null;
+    for (const p of F.decor) {
+      const b = decorBox(p.item, p.x, p.y);
+      if (
+        x > b.x0 - 8 &&
+        x < b.x1 + 8 &&
+        y > p.y - (DECO_TALL[p.item] ?? 60) &&
+        y < p.y + 12 &&
+        (!hit || p.y > hit.y)
+      )
+        hit = p;
+    }
+    return hit;
+  }
+  /** Whether a world point is on the decoration being placed (to drag it). */
+  function onDecoGhost(x, y) {
+    const e = decoEdit;
+    if (!e) return false;
+    const b = decorBox(e.item, e.x, e.y);
+    return (
+      x > b.x0 - 24 &&
+      x < b.x1 + 24 &&
+      y > e.y - (DECO_TALL[e.item] ?? 60) - 10 &&
+      y < e.y + 30
+    );
+  }
+  /** A tap while decorating: move the decoration there, or pick one up. */
+  function decoTap(w) {
+    if (decoEdit) return decoTo(w.x, w.y);
+    const p = decoAt(w.x, w.y);
+    if (p) startDecoMove(p);
+  }
+  /** Confirm: buy or place the new decoration, or put the moved one down. */
+  function decoConfirm() {
+    const e = decoEdit;
+    if (!e) return;
+    const why = decoProblem();
+    if (why) return toast(why);
+    const d = DECO[e.item];
+    if (!e.id) {
+      act(
+        { a: "decor-place", item: e.item, x: e.x, y: e.y, flip: e.flip },
+        true,
+      );
+      if (F.decorCredits[e.item] > 0) F.decorCredits[e.item]--;
+      else F.leaves -= d.price;
+      F.decor.push({
+        id: decoTemp--,
+        item: e.item,
+        x: e.x,
+        y: e.y,
+        flip: e.flip,
+      });
+      F.charm += d.charm;
+    } else if (e.x !== e.from.x || e.y !== e.from.y || e.flip !== e.from.flip) {
+      act({ a: "decor-move", piece: e.id, x: e.x, y: e.y, flip: e.flip }, true);
+      const p = F.decor.find((q) => q.id === e.id);
+      if (p) Object.assign(p, { x: e.x, y: e.y, flip: e.flip });
+    }
+    FX.push({ puff: 1, x: e.x, y: e.y, t: 0, life: 0.6 });
+    sfx("pop");
+    // Moving goes on (tap another decoration); a new one is done.
+    endDecoEdit(!!e.id);
+  }
+  /** Put the decoration being moved into storage. */
+  function decoStore() {
+    const e = decoEdit;
+    if (!e?.id) return;
+    act({ a: "decor-store", piece: e.id }, true);
+    F.decor = F.decor.filter((p) => p.id !== e.id);
+    storeDecor(e.item);
+    F.charm = Math.max(0, F.charm - (DECO[e.item]?.charm ?? 0));
+    log(`Put <b>${DECO[e.item]?.name ?? "decor"}</b> in storage`);
+    FX.push({ puff: 1, x: e.x, y: e.y, t: 0, life: 0.6 });
+    endDecoEdit(true);
+  }
+  /** The bar under the farm while decorating: what it is, and the buttons. */
+  function renderDecoBar() {
+    const bar = $("fm-deco-bar");
+    if (!bar) return;
+    if (!decorating() || V) {
+      bar.hidden = true;
+      return;
+    }
+    const e = decoEdit;
+    let html;
+    if (!e)
+      html = `<div class="db-msg"><b>Move decorations</b><small>Tap one on the farm to move, mirror or put it away.</small></div><button type="button" class="btn-s green" data-dact="done">Done</button>`;
+    else {
+      const d = DECO[e.item],
+        why = decoProblem(),
+        free = !e.id && F.decorCredits[e.item] > 0,
+        price = e.id
+          ? "Drag it, or tap where it should go"
+          : free
+            ? "Free from storage"
+            : `${d.price.toLocaleString("en-US")} ${L}`;
+      html = `<div class="db-msg"><b>${esc(d.name)}</b><small class="${why ? "bad" : ""}">${why ? esc(why) : price}</small></div><button type="button" class="btn-s ghost" data-dact="flip" title="Mirror (R)">Mirror</button>${e.id ? `<button type="button" class="btn-s ghost" data-dact="store">Put away</button>` : ""}<button type="button" class="btn-s ghost" data-dact="cancel">Cancel</button><button type="button" class="btn-s green" data-dact="ok" ${why ? "disabled" : ""}>${e.id ? "Done" : "Place"}</button>`;
+    }
+    bar.hidden = false;
+    setInner(bar, html);
+  }
+  /**
+   * The grid and every decoration's ground while decorating. On the ground
+   * (`top` false) the boxes are filled, under the pictures; over everything
+   * (`top`, after the night and the rain) only their edges and the grid,
+   * so they read at any hour.
+   */
+  function drawDecoGround(time, top = false) {
+    const e = decoEdit;
+    ctx.save();
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = "rgba(255,255,255,.45)";
+    ctx.fillStyle = "rgba(255,255,255,.14)";
+    if (top) ctx.setLineDash([5, 4]);
+    for (const p of F.decor) {
+      if (p.id === e?.id) continue;
+      const b = decorBox(p.item, p.x, p.y);
+      ctx.beginPath();
+      ctx.roundRect(b.x0, b.y0, b.x1 - b.x0, b.y1 - b.y0, 6);
+      if (top) ctx.stroke();
+      else ctx.fill();
+    }
+    ctx.setLineDash([]);
+    if (e) {
+      const ok = !decoProblem(),
+        rgb = ok ? "88,226,128" : "255,96,86",
+        b = decorBox(e.item, e.x, e.y),
+        pulse = reduced ? 0.5 : 0.5 + 0.5 * Math.sin(time * 5);
+      if (top) {
+        // Grid dots around it, fading out.
+        ctx.fillStyle = "#fff";
+        for (let gx = e.x - 160; gx <= e.x + 160; gx += 20)
+          for (let gy = e.y - 100; gy <= e.y + 100; gy += 20) {
+            const f = 1 - Math.hypot((gx - e.x) / 170, (gy - e.y) / 110);
+            if (f <= 0) continue;
+            ctx.globalAlpha = 0.55 * f;
+            ctx.fillRect(gx - 1.5, gy - 1.5, 3, 3);
+          }
+        ctx.globalAlpha = 1;
+        ctx.strokeStyle = `rgb(${rgb})`;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.roundRect(b.x0 - 4, b.y0 - 4, b.x1 - b.x0 + 8, b.y1 - b.y0 + 8, 8);
+        ctx.stroke();
+      } else {
+        ctx.fillStyle = `rgba(${rgb},${0.35 + 0.15 * pulse})`;
+        ctx.beginPath();
+        ctx.roundRect(b.x0 - 4, b.y0 - 4, b.x1 - b.x0 + 8, b.y1 - b.y0 + 8, 8);
+        ctx.fill();
+      }
+    }
+    ctx.restore();
+  }
+  /** The decoration being placed, lifted a little; faded where it can't stand. */
+  function drawDecoGhost(time) {
+    const e = decoEdit;
+    if (!e) return;
+    const ok = !decoProblem(),
+      lift = decoDrag ? 6 : reduced ? 0 : 2 + Math.sin(time * 4) * 2;
+    ctx.save();
+    ctx.globalAlpha = ok ? 0.95 : 0.55;
+    ctx.translate(0, -lift);
+    drawDecor(ctx, e.item, e.x, e.y, time, e.flip);
+    ctx.restore();
   }
   /** Gifts the dogs dug up since this device last showed them. */
   function announceGifts() {
@@ -4921,6 +5133,8 @@ export function openFarm(options) {
     s.plots.forEach((p, i) => drawPlot(ctx, i, p, time, s));
     drawArea(ctx);
     drawRainSplashes(ctx, time);
+    if (!low) drawCastShadows(s);
+    if (s.me && decorating()) drawDecoGround(time);
     const items = [];
     // Trees and the back row stand in the depth order too, so nothing
     // walking behind them is drawn over them.
@@ -5036,21 +5250,17 @@ export function openFarm(options) {
           }),
       });
     }
-    // Decorations in their spots; in placing mode the spots glow.
+    // Decorations where they stand; the one being placed or moved follows
+    // the finger, see-through where it can't stand.
     if (s.me) {
-      F.decor.forEach((d, k) => {
-        if (d)
+      for (const p of F.decor)
+        if (p.id !== decoEdit?.id)
           items.push({
-            y: DECO_SLOTS[k][1],
-            d: () =>
-              drawDecor(ctx, d, DECO_SLOTS[k][0], DECO_SLOTS[k][1], time),
+            y: p.y,
+            d: () => drawDecor(ctx, p.item, p.x, p.y, time, p.flip),
           });
-      });
-      if (F.decorPick)
-        DECO_SLOTS.forEach(([x, y], k) => {
-          if (decorTarget(k))
-            items.push({ y: y - 1, d: () => drawDecorSpot(x, y, k, time) });
-        });
+      if (decoEdit)
+        items.push({ y: decoEdit.y + 0.5, d: () => drawDecoGhost(time) });
     }
     // Tools you own stand on the farm: the Scarecrow left of the field, a
     // sprinkler at the right end of each row that has one.
@@ -5447,7 +5657,14 @@ export function openFarm(options) {
       warm = wet || w === "frost" ? 0 : (1 - n) * (1 - golden);
     // The Moonlit weather paints its own night (after dark only): no second
     // darkening.
-    gradeView(ctx, VW, VH, { night: w === "moon" ? 0 : n, golden, warm, low });
+    gradeView(ctx, VW, VH, {
+      night: w === "moon" ? 0 : n,
+      golden,
+      warm,
+      low,
+      map: low ? undefined : nightLight,
+      lights: (nl) => farmLights(nl, n),
+    });
     const lit = Math.max(
       n,
       w === "moon" ? 0.85 * n : 0,
@@ -5505,6 +5722,7 @@ export function openFarm(options) {
     ctx.translate(VW / 2, VH / 2);
     ctx.scale(Z, Z);
     ctx.translate(-cam.x, -cam.y);
+    if (!V && decorating()) drawDecoGround(time, true);
     const z = 1 / Math.max(0.6, Z),
       tag = (t, x, top, accent) => nameTag(ctx, t, x, top - 20 * z, accent);
     const bob = reduced ? 0 : Math.abs(Math.sin(time * 3)) * 2.5 * z;
@@ -5547,7 +5765,6 @@ export function openFarm(options) {
       ctx.fillText(t, x, y + 1 * z);
       ctx.restore();
     };
-    drawDecorPins(time, z);
     // A place with something for you: its tag gets a gold edge and a badge.
     const orderReady = !V && F.orders.some((o) => o.items && canFill(o)),
       sold = !V && stall?.shelves?.some((x) => x.sold),
@@ -6309,9 +6526,6 @@ export function openFarm(options) {
   function closeSheet() {
     sheet = null;
     $("fm-sheet").hidden = true;
-    // Closing the Decorate sheet stops placing, except on phones, where it
-    // closes so the spots can be tapped (Escape stops it there).
-    if (!layer.classList.contains("phone")) F.decorPick = null;
     $("fm-rail")
       .querySelectorAll("[data-sheet]")
       .forEach((b) => b.setAttribute("aria-expanded", "false"));
@@ -6578,47 +6792,45 @@ export function openFarm(options) {
           (a, n) => a + (n > 0 ? n : 0),
           0,
         ),
-        placed = F.decor.filter(Boolean).length,
+        placed = F.decor.length,
+        cap = decorCap(F.lv),
+        full = placed >= cap,
         note =
-          F.decorPick === "__remove"
-            ? "<b>Putting away:</b> tap a decoration on the farm. It goes to storage and places again for free."
-            : F.decorPick
-              ? `<b>Placing ${DECO[F.decorPick]?.name}:</b> tap a glowing spot on the farm. Decor already on that spot goes to storage.`
-              : sheetTab === "storage"
-                ? `Decor you put away, or replace with another, waits here and places again for free. On the farm: ${placed}/${DECO_SLOTS.length} spots.`
-                : "Buy decor and place it in the 8 spots around the farm. Every 2 Charm gives +1% farm XP (up to 25%).";
+          sheetTab === "storage"
+            ? `Decor you put away waits here and places again for free. On the farm: ${placed}/${cap}.`
+            : `Pick a decoration, then drag it anywhere on your farm. Room for ${cap} (more as your farm grows). Every 2 Charm gives +1% farm XP (up to 25%).`;
       const row = (d, sub, btn) =>
         `<div class="item${d.lock ? " locked" : ""}"><span class="ic">${I(d.icon)}</span><div><b>${d.name}</b><small>${sub}</small></div><div class="acts">${btn}</div></div>`;
-      const removeRow = `<div class="item"><span class="ic">${I("broom")}</span><div><b>Put decor away</b><small>Tap "Remove", then a decoration on the farm.</small></div><div class="acts"><button type="button" class="btn-s ghost" data-deco="__remove" ${placed ? "" : "disabled"}>${F.decorPick === "__remove" ? "Removing…" : "Remove"}</button></div></div>`;
+      const moveRow = `<div class="item"><span class="ic">${I("hand")}</span><div><b>Move decorations</b><small>${placed}/${cap} on the farm · move, mirror or put away</small></div><div class="acts"><button type="button" class="btn-s ghost" data-deco="__edit" ${placed ? "" : "disabled"}>Move</button></div></div>`;
       let body;
       if (sheetTab === "storage") {
         const kept = FARM_DECOR.filter((d) => F.decorCredits[d.id] > 0);
         body =
-          removeRow +
+          moveRow +
           (kept.length
             ? kept
-                .map((d) => {
-                  const picking = F.decorPick === d.id;
-                  return row(
+                .map((d) =>
+                  row(
                     d,
                     `+${d.charm} Charm · <b style="color:#7ff0a2">×${F.decorCredits[d.id]}</b>`,
-                    `<button type="button" class="btn-s${picking ? " green" : " gold"}" data-deco="${d.id}">${picking ? "Placing…" : "Place"}</button>`,
-                  );
-                })
+                    `<button type="button" class="btn-s gold" data-deco="${d.id}" ${full ? "disabled" : ""}>Place</button>`,
+                  ),
+                )
                 .join("")
             : `<p class="sh-note">Storage is empty.</p>`);
       } else
-        body = FARM_DECOR.map((d) => {
-          const stored = F.decorCredits[d.id] || 0,
-            free = stored > 0,
-            lock = d.level > F.lv && !free,
-            picking = F.decorPick === d.id;
-          return row(
-            { ...d, lock },
-            `+${d.charm} Charm${free ? ` · <b style="color:#7ff0a2">${stored} in storage</b>` : ""}${lock ? ` · <b style="color:#ffd65b">unlocks at Lv ${d.level}</b>` : ""}`,
-            `<button type="button" class="btn-s${picking ? " green" : ""}" data-deco="${d.id}" ${lock || (!free && F.leaves < d.price) ? "disabled" : ""}>${picking ? "Placing…" : free ? "Place free" : `${d.price.toLocaleString("en-US")} ${L}`}</button>`,
-          );
-        }).join("");
+        body =
+          moveRow +
+          FARM_DECOR.map((d) => {
+            const stored = F.decorCredits[d.id] || 0,
+              free = stored > 0,
+              lock = d.level > F.lv && !free;
+            return row(
+              { ...d, lock },
+              `+${d.charm} Charm${free ? ` · <b style="color:#7ff0a2">${stored} in storage</b>` : ""}${lock ? ` · <b style="color:#ffd65b">unlocks at Lv ${d.level}</b>` : ""}`,
+              `<button type="button" class="btn-s" data-deco="${d.id}" ${lock || full || (!free && F.leaves < d.price) ? "disabled" : ""}>${free ? "Place free" : `${d.price.toLocaleString("en-US")} ${L}`}</button>`,
+            );
+          }).join("");
       html =
         head("Decorate", `Charm ${F.charm} · +${charmBonus(F.charm)}% XP`, [
           ["buy", "Shop"],
@@ -6816,19 +7028,15 @@ export function openFarm(options) {
       return;
     }
     if (d.deco) {
-      F.decorPick = F.decorPick === d.deco ? null : d.deco;
-      // Picked in Storage: placing stops when the stored copies run out.
-      F.decorFromStore = sheetTab === "storage";
-      // On a phone the sheet covers the spots: close it while placing.
-      if (F.decorPick && layer.classList.contains("phone")) {
+      // The sheet closes so the farm shows: the bar below takes over.
+      if (d.deco === "__edit") {
         closeSheet();
-        return toast(
-          F.decorPick === "__remove"
-            ? "Tap a decoration to put it away"
-            : "Tap a glowing spot on the farm",
-        );
+        decoEdit = null;
+        decoBrowse = true;
+        renderDecoBar();
+        return toast("Tap a decoration to move it");
       }
-      return renderSheet();
+      return startDecoPlace(d.deco);
     }
     if (d.visit) return visitFriend(d.visit);
     if (d.landbuy) return landClick(+d.landbuy);
@@ -6949,7 +7157,7 @@ export function openFarm(options) {
   const closeOutside = (e) => {
     const t = e.target,
       orb = orbOpen && !t.closest("#fm-orbpop, #fm-chips"),
-      field = t === cv && sheet && !(sheet === "decor" && F.decorPick);
+      field = t === cv && sheet;
     if (orb) {
       orbOpen = null;
       $("fm-orbpop").hidden = true;
@@ -7069,9 +7277,21 @@ export function openFarm(options) {
   let tapG = null;
   const HOLD_MS = 300,
     MOVE_PX = 10;
+  /** Start dragging the decoration being placed. */
+  function beginDecoDrag(e, w) {
+    decoDrag = { id: e.pointerId, dx: decoEdit.x - w.x, dy: decoEdit.y - w.y };
+    try {
+      cv.setPointerCapture(e.pointerId);
+    } catch {}
+    cv.style.cursor = "grabbing";
+  }
   cv.addEventListener("pointerdown", (e) => {
     if (e.pointerType === "mouse") return press(e);
     if (touchPts.size >= 2) return;
+    if (decoEdit && !V) {
+      const w = toWorld(e.clientX, e.clientY);
+      if (onDecoGhost(w.x, w.y)) return beginDecoDrag(e, w);
+    }
     screen.focus({ preventScroll: true });
     $("fm-pop").hidden = true;
     $("fm-sickle").hidden = true;
@@ -7113,11 +7333,28 @@ export function openFarm(options) {
     $("fm-acts").hidden = true;
     pressType = e.pointerType ?? "mouse";
     const w = toWorld(e.clientX, e.clientY);
-    if (F.decorPick && !V) {
-      const k = DECO_SLOTS.findIndex(
-        ([x, y]) => Math.hypot(w.x - x, (w.y - y) * 2) < 50,
-      );
-      if (k >= 0) return placeDecor(k);
+    // Decorating: a mouse press on the decoration drags it, anywhere else
+    // it moves the map (a click without moving puts the decoration there);
+    // a tap on a phone puts it there (a drag that starts on it moves it).
+    if (decorating() && !V) {
+      if (e.pointerType === "mouse") {
+        if (decoEdit && onDecoGhost(w.x, w.y)) return beginDecoDrag(e, w);
+        panning = {
+          x: e.clientX,
+          y: e.clientY,
+          cx: cam.x,
+          cy: cam.y,
+          k: NW / cv.getBoundingClientRect().width,
+          w: { x: w.x, y: w.y },
+          moved: false,
+          decoTap: w,
+        };
+        try {
+          cv.setPointerCapture(e.pointerId);
+        } catch {}
+        return;
+      }
+      return decoTap(w);
     }
     if (
       w.x > STALL.x - 95 &&
@@ -7233,6 +7470,11 @@ export function openFarm(options) {
     useTool(i);
   }
   cv.addEventListener("pointermove", (e) => {
+    if (decoDrag && decoDrag.id === e.pointerId) {
+      const w = toWorld(e.clientX, e.clientY);
+      decoTo(w.x + decoDrag.dx, w.y + decoDrag.dy);
+      return;
+    }
     if (tapG && tapG.id === e.pointerId && tapG.mode === "pending") {
       if (Math.hypot(e.clientX - tapG.x0, e.clientY - tapG.y0) < MOVE_PX)
         return;
@@ -7270,12 +7512,14 @@ export function openFarm(options) {
     }
     CUR.vx = w.vx;
     CUR.vy = w.vy;
-    CUR.on = e.pointerType === "mouse" && !F.decorPick;
+    CUR.on = e.pointerType === "mouse" && !decorating();
     cv.style.cursor = CUR.on
       ? "none"
-      : i >= 0 || F.decorPick
-        ? "pointer"
-        : "default";
+      : decoEdit && onDecoGhost(w.x, w.y)
+        ? "grab"
+        : i >= 0 || (decoBrowse && decoAt(w.x, w.y))
+          ? "pointer"
+          : "default";
     if (
       dragging &&
       i >= 0 &&
@@ -7322,6 +7566,19 @@ export function openFarm(options) {
       clampCam();
     }
   });
+  // The decorating bar's buttons.
+  $("fm-deco-bar").addEventListener("click", (e) => {
+    const b = e.target.closest?.("[data-dact]");
+    if (!b || b.disabled) return;
+    const a = b.dataset.dact;
+    if (a === "flip" && decoEdit) {
+      decoEdit.flip = !decoEdit.flip;
+      renderDecoBar();
+    } else if (a === "store") decoStore();
+    else if (a === "ok") decoConfirm();
+    else if (a === "cancel") endDecoEdit(!!decoEdit?.id);
+    else if (a === "done") endDecoEdit();
+  });
   layer.addEventListener("keydown", (e) => {
     if (!running || e.target.closest?.("input, textarea")) return;
     const k = e.key.toLowerCase();
@@ -7347,8 +7604,18 @@ export function openFarm(options) {
         renderTools();
       }
     }
+    if (k === "r" && decoEdit) {
+      decoEdit.flip = !decoEdit.flip;
+      renderDecoBar();
+      return;
+    }
+    if (k === "enter" && decoEdit && !e.target.closest?.("button"))
+      return decoConfirm();
     if (k === "escape") {
-      F.decorPick = null;
+      if (decorating()) {
+        endDecoEdit();
+        return;
+      }
       $("fm-pop").hidden = true;
       $("fm-modal").hidden = true;
       closeSheet();
@@ -7363,6 +7630,18 @@ export function openFarm(options) {
   const pokeAt = () =>
     panning && !panning.moved && panning.w ? panning.w : null;
   cv.addEventListener("pointerup", (e) => {
+    if (decoDrag && decoDrag.id === e.pointerId) {
+      decoDrag = null;
+      cv.style.cursor = "pointer";
+      renderDecoBar();
+      return;
+    }
+    // A click (no drag) while decorating on a computer.
+    if (panning?.decoTap && !panning.moved) {
+      const w = panning.decoTap;
+      endDrag();
+      return decoTap(w);
+    }
     if (tapG && tapG.id === e.pointerId) {
       clearTimeout(tapG.timer);
       const m = tapG.mode,
@@ -7381,6 +7660,7 @@ export function openFarm(options) {
     if (pw) poke(pw);
   });
   cv.addEventListener("pointercancel", (e) => {
+    if (decoDrag && decoDrag.id === e.pointerId) decoDrag = null;
     if (tapG && tapG.id === e.pointerId) {
       clearTimeout(tapG.timer);
       tapG = null;
@@ -7604,6 +7884,10 @@ export function openFarm(options) {
     /** Debug handle for tests. */
     _dbg: {
       F,
+      /** The shared decoration rules (the harness's fake server uses them). */
+      rules: { FARM_DECOR, decorFits, decorCap },
+      /** The decoration being placed or moved, and the decorating bar (tests). */
+      deco: () => ({ edit: decoEdit, browse: decoBrowse }),
       /** Read the farm from the server again, as the minute poll does (tests). */
       refresh: () => refresh(),
       /** Preview a time of day (0..1), or null for the device clock (tests). */
