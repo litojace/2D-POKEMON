@@ -14592,6 +14592,16 @@ body.battle-active:not(.touch-mode).battle-raid .arena-frame {
     left: calc(var(--safe-left) + 4px);
     z-index: 26;
   }
+  /* PvP and practice on a phone held sideways: the court fills the whole
+     screen as in raids (and as in Brawl Stars or Pokémon Unite), under the
+     notch and home bar too; only the HUD and controls keep to the safe
+     area. The #battle id outranks the framed-court rules above and in
+     match-badge.css. */
+  body.battle-active.touch-mode #battle .arena-frame {
+    inset: 0;
+    border: 0;
+    border-radius: 0;
+  }
 }
 
 /* Raid Hub: independent boss navigation, scrollable details, persistent actions. */
