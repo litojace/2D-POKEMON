@@ -443,7 +443,7 @@
   }
   .rk-head {
     height: 24px;
-    font-size: 10px;
+    font-size: var(--fs-micro);
   }
   .rk-row {
     height: 40px;
@@ -474,6 +474,6 @@
     font-size: var(--fs-micro);
   }
   .rk-wl.is-long {
-    font-size: 9px;
+    font-size: var(--fs-micro);
   }
 }

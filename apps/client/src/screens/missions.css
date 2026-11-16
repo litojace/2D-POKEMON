@@ -95,7 +95,7 @@
   border-radius: 5px;
   background: color-mix(in srgb, var(--tier) 16%, transparent);
   color: var(--tier);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -209,7 +209,7 @@
   }
   .missions-pay {
     gap: 6px;
-    font-size: 10px;
+    font-size: var(--fs-micro);
   }
   .missions-pay .ui-price {
     font-size: 13px;

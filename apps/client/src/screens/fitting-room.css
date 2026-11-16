@@ -338,7 +338,7 @@
   background: var(--fill-card);
 }
 .fit-fighter > span:last-child {
-  font-size: 10px;
+  font-size: var(--fs-micro);
   font-weight: 700;
   color: var(--ui-dim);
   max-width: 100%;
@@ -542,7 +542,7 @@
   font-size: 28px;
 }
 .fit-slot small {
-  font-size: 10px;
+  font-size: var(--fs-micro);
   color: var(--ui-dim);
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -794,7 +794,7 @@
   }
   .fit-section .ui-note,
   .fit-body > .ui-note {
-    font-size: 10px;
+    font-size: var(--fs-micro);
   }
   .fit-foot-art {
     width: 36px;
@@ -855,10 +855,10 @@
     height: 26px;
   }
   .fit-slot small {
-    font-size: 8px;
+    font-size: var(--fs-micro);
   }
   .fit-slot b {
-    font-size: 9px;
+    font-size: var(--fs-micro);
   }
   .fit-grid[style*="--cols:5"],
   .fit-grid[style*="--cols:4"] {

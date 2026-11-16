@@ -614,7 +614,7 @@
     --size: 22px !important;
   }
   .pf-mastery-chip .ui-ring b {
-    font-size: 9px;
+    font-size: var(--fs-micro);
   }
   .pf-mini {
     padding: 8px 10px;

@@ -204,7 +204,7 @@
     min-height: 44px;
   }
 
-  /* --------------------------------------------- no text under 10 px */
+  /* ---------------------- no text under 11 px (--fs-micro on phones) */
   :root
     body
     :is(
@@ -225,10 +225,10 @@
       .roster-combo-tag,
       .pf-mastery-chip .ui-ring b
     ) {
-    font-size: 10px;
+    font-size: var(--fs-micro);
   }
 
-  /* At 10 px, "Clear Cragmuff first" still fits its card. */
+  /* At 11 px, "Clear Cragmuff first" still fits its card. */
   :root body .rh-card-top .ui-tag {
     letter-spacing: 0.02em;
     padding: 0 5px;

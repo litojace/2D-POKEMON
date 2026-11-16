@@ -435,7 +435,7 @@ button.rh-reward:focus-visible {
 }
 .rh-reward-more strong {
   display: block;
-  font-size: 10px;
+  font-size: var(--fs-micro);
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--boss);
@@ -718,10 +718,10 @@ button.rh-reward:focus-visible {
     top: 5px;
   }
   .rh-card-top .ui-tag {
-    font-size: 9px;
+    font-size: var(--fs-micro);
   }
   .rh-stars {
-    font-size: 10px;
+    font-size: var(--fs-micro);
     padding: 1px 4px;
   }
   .rh-card-art img {

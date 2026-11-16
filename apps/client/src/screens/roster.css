@@ -583,7 +583,7 @@
     inset: 3px;
   }
   .roster-card .ui-ring b {
-    font-size: 10px;
+    font-size: var(--fs-micro);
   }
   .roster-foot-text {
     width: 140px;
@@ -661,7 +661,7 @@
     gap: 6px;
   }
   .roster-combo-tag {
-    font-size: 9px;
+    font-size: var(--fs-micro);
     padding: 2px 4px;
   }
   .roster-combo-text b {

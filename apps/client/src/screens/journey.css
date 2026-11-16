@@ -97,7 +97,7 @@
   font-size: 30px;
 }
 .journey-ring-text small {
-  font-size: 10px;
+  font-size: var(--fs-micro);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--ui-dim);
@@ -518,7 +518,7 @@ button.journey-prize {
     font-size: 19px;
   }
   .journey-ring-text small {
-    font-size: 7px;
+    font-size: var(--fs-micro);
   }
   .journey-banner-main {
     gap: 3px;
@@ -533,13 +533,13 @@ button.journey-prize {
     padding-left: 10px;
   }
   .journey-banner-spark .ui-kicker {
-    font-size: 9px;
+    font-size: var(--fs-micro);
   }
   .journey-banner-spark b {
     font-size: 16px;
   }
   .journey-banner-spark small {
-    font-size: 9px;
+    font-size: var(--fs-micro);
   }
   .journey-tier {
     width: 64px;
@@ -561,7 +561,7 @@ button.journey-prize {
     height: 22px;
   }
   .journey-tier em {
-    font-size: 9px;
+    font-size: var(--fs-micro);
   }
   .journey-tick {
     top: 3px;

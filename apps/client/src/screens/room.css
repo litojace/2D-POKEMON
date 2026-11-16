@@ -369,7 +369,7 @@ button.room-seat.is-open:focus-visible {
     font-size: 13px;
   }
   .room-head .ui-note {
-    font-size: 10px;
+    font-size: var(--fs-micro);
   }
   .room-seat {
     min-height: 40px;
@@ -387,10 +387,10 @@ button.room-seat.is-open:focus-visible {
     font-size: 12px;
   }
   .room-seat-text small {
-    font-size: 10px;
+    font-size: var(--fs-micro);
   }
   .room-seat .ui-tag {
-    font-size: 9px;
+    font-size: var(--fs-micro);
     padding: 0 5px;
   }
   .room-notes,

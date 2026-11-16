@@ -897,7 +897,7 @@
   height: 18px;
   padding: 0 6px;
   border-radius: var(--rad-xs);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -1166,7 +1166,7 @@
     top: 7px;
     right: 7px;
     height: 15px;
-    font-size: 8px;
+    font-size: var(--fs-micro);
   }
 }
 .ui-grid {
