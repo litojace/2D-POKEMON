@@ -32,7 +32,6 @@ import {
   paintSpireFloor,
   paintSpireSky,
   spireFloorPieces,
-  spireFloorTint,
   spireStairsGlow,
   spireStarSpots,
   spireTheme,
@@ -186,20 +185,20 @@ export class SpireCourtRig {
     }
     const layout = spireCourtLayout(v.floor, v.kind);
     if (!layout) return;
-    // The higher the floor, the cooler the light (main.ts tints the floor).
-    const tint = spireFloorTint(v.floor);
-    this.number = place("number", -9.8).setTint(tint);
+    // (The height's dusk is in the pieces' stone, painted; main.ts tints the
+    // floor. Crystals and the number keep their own light: no tint here.)
+    this.number = place("number", -9.8);
     layout.blocks.forEach((o, i) => {
       const front = o.y + o.h;
       this.blocks.push({
         shadow: place(`shadow${i}`, -9.5),
-        stone: place(`block${i}`, this.depth(front)).setTint(tint),
+        stone: place(`block${i}`, this.depth(front)),
         front,
       });
     });
     this.stairsShadow = place("stairs-shadow", -9.5);
     const sf = 372 + 156;
-    this.stairs = place("stairs", this.depth(sf)).setTint(tint);
+    this.stairs = place("stairs", this.depth(sf));
     this.lit = false;
     this.fronts = [...this.blocks.map((b) => b.front), sf];
   }

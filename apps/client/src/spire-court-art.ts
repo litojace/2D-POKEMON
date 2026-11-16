@@ -82,8 +82,10 @@ export const SPIRE_ZONE_THEMES: Record<number, SpireZoneTheme> = {
 export const spireTheme = (zone: number) =>
   SPIRE_ZONE_THEMES[zone] ?? SPIRE_ZONE_THEMES[1];
 /**
- * The light on the platform by height (a tint on its pictures, so it costs
- * nothing): full afternoon light low down, a cool dusk near the top.
+ * The light on the platform's floor by height (a tint on its picture, so
+ * it costs nothing): full afternoon light low down, a cool dusk near the
+ * top. The floor's pieces get the same dusk painted into their stone only
+ * (duskStone), so crystals and the carved number keep their own light.
  */
 export function spireFloorTint(floor: number) {
   const h = spireHeight(floor);
@@ -746,6 +748,8 @@ function cluster(
   y: number,
   size: number,
   n: number,
+  /** Height (0–1): the darker the sky, the more the crystals glow. */
+  h = 0,
 ) {
   const glow = c.createRadialGradient(
     x,
@@ -755,7 +759,7 @@ function cluster(
     y - size * 0.3,
     size * 1.1,
   );
-  glow.addColorStop(0, rgba(t.crystal[1], 0.45));
+  glow.addColorStop(0, rgba(t.crystal[1], 0.45 + 0.25 * h));
   glow.addColorStop(1, rgba(t.crystal[1], 0));
   c.fillStyle = glow;
   c.beginPath();
@@ -812,6 +816,20 @@ function courses(
   c.fillRect(x, y, w, h);
 }
 /**
+ * The height's dusk on stone already painted (and only on it: "source-atop"
+ * keeps the piece's transparent pixels clear). Crystals are painted after
+ * it, so they keep their own warm light on every floor. The atlas spot's
+ * clip keeps the fill inside the piece.
+ */
+function duskStone(c: Ctx, h: number) {
+  if (h <= 0) return;
+  c.save();
+  c.globalCompositeOperation = "source-atop";
+  c.fillStyle = `rgba(34,24,72,${0.36 * h})`;
+  c.fillRect(-4000, -4000, 8000, 8000);
+  c.restore();
+}
+/**
  * One block on its footprint, drawn in world coordinates: the top face over
  * the footprint's back part and the front face over its front BLOCK_H, so
  * the stone you see is exactly what stops fighters; crystals rise from the
@@ -823,6 +841,7 @@ function paintBlock(
   foot: Rect,
   style: BlockStyle,
   seed: number,
+  h = 0,
 ) {
   reseed(seed);
   const o = stoneBase(foot);
@@ -855,7 +874,8 @@ function paintBlock(
     ]);
     c.fillStyle = "rgba(255,248,230,0.45)";
     c.fillRect(x + 10, top + 1, w - 20, 2.5);
-    cluster(c, t, x + w / 2, top + depth * 0.62, Math.min(w, 70) * 0.7, 3);
+    duskStone(c, h);
+    cluster(c, t, x + w / 2, top + depth * 0.62, Math.min(w, 70) * 0.7, 3, h);
     return;
   }
   // Pylons and walls: dressed blocks with a carved band and crystals on top.
@@ -892,6 +912,7 @@ function paintBlock(
   c.lineWidth = 1.8;
   rune(c, x + w / 2, front + BLOCK_H / 2, 9, seed);
   c.restore();
+  duskStone(c, h);
   if (style === "wall") {
     // Crystal clusters along the wall's length.
     const n = Math.max(2, Math.floor(depth / 70));
@@ -903,9 +924,10 @@ function paintBlock(
         top + (depth * (k + 0.75)) / n,
         Math.min(w, 60) * 0.6,
         2,
+        h,
       );
   } else
-    cluster(c, t, x + w / 2, top + depth * 0.66, Math.min(w, 80) * 0.62, 3);
+    cluster(c, t, x + w / 2, top + depth * 0.66, Math.min(w, 80) * 0.62, 3, h);
 }
 /** A block's frame (world): its footprint plus room for crystals and chips. */
 function blockFrame(foot: Rect) {
@@ -973,7 +995,7 @@ export function spireStairsGlow() {
   const top = s.y - STEPS * SPIRE_STAIRS_RISE;
   return { x: s.x + s.w / 2, y: top - 52 };
 }
-function paintStairs(c: Ctx, t: SpireZoneTheme, lit: boolean) {
+function paintStairs(c: Ctx, t: SpireZoneTheme, lit: boolean, h = 0) {
   reseed(5501);
   const s = SPIRE_STAIRS;
   const inner = { x: s.x + 12, w: s.w - 24 };
@@ -1051,14 +1073,6 @@ function paintStairs(c: Ctx, t: SpireZoneTheme, lit: boolean) {
     c.fillRect(x - 8, y - 34, 16, 34);
     c.fillStyle = t.rim[0];
     c.fillRect(x - 10, y - 38, 20, 6);
-    if (lit) {
-      const g = c.createRadialGradient(x, y - 46, 1, x, y - 46, 16);
-      g.addColorStop(0, rgba(t.crystal[0], 0.9));
-      g.addColorStop(1, rgba(t.crystal[1], 0));
-      c.fillStyle = g;
-      c.fillRect(x - 16, y - 62, 32, 32);
-    }
-    crystal(c, t, x, y - 38, 9, lit ? 20 : 15, 0);
   }
   // The arch at the top landing: two posts, a round head, the opening.
   const landing = s.y - STEPS * SPIRE_STAIRS_RISE;
@@ -1140,6 +1154,30 @@ function paintStairs(c: Ctx, t: SpireZoneTheme, lit: boolean) {
     Math.PI * 1.6,
   );
   c.stroke();
+  // The height's dusk on the stone; then what lights itself.
+  duskStone(c, h);
+  if (lit) {
+    c.fillStyle = og;
+    c.beginPath();
+    c.moveTo(openL, landing);
+    c.lineTo(openL, openTop + (openR - openL) / 2);
+    c.arc(ax, openTop + (openR - openL) / 2, (openR - openL) / 2, Math.PI, 0);
+    c.lineTo(openR, landing);
+    c.closePath();
+    c.fill();
+  }
+  // The newels' crystal lamps.
+  for (const x of [s.x + 6, s.x + s.w - 6]) {
+    const y = s.y + s.h;
+    if (lit) {
+      const g = c.createRadialGradient(x, y - 46, 1, x, y - 46, 16);
+      g.addColorStop(0, rgba(t.crystal[0], 0.9));
+      g.addColorStop(1, rgba(t.crystal[1], 0));
+      c.fillStyle = g;
+      c.fillRect(x - 16, y - 62, 32, 32);
+    }
+    crystal(c, t, x, y - 38, 9, lit ? 20 : 15, 0);
+  }
   // The keystone crystal.
   crystal(c, t, ax, openTop - postW + 6, 14, lit ? 30 : 24, 0);
 }
@@ -1148,7 +1186,7 @@ function numberFrame() {
   const { x, y } = SPIRE_RING;
   return { x: x - 90, y: y - 60, w: 180, h: 120 };
 }
-function paintNumber(c: Ctx, t: SpireZoneTheme, floor: number) {
+function paintNumber(c: Ctx, t: SpireZoneTheme, floor: number, k: number) {
   const { x, y } = SPIRE_RING;
   const text = String(floor);
   c.save();
@@ -1157,17 +1195,30 @@ function paintNumber(c: Ctx, t: SpireZoneTheme, floor: number) {
   c.font = `700 ${text.length > 1 ? 104 : 118}px Georgia, "Times New Roman", serif`;
   c.textAlign = "center";
   c.textBaseline = "middle";
-  // The groove: shade on its upper-left wall, light on its lower-right lip.
-  c.fillStyle = "rgba(255,248,230,0.55)";
-  c.fillText(text, 2.5, 3);
-  c.fillStyle = rgba(t.carve, 0.9);
-  c.fillText(text, -1.5, -1.5);
+  c.lineJoin = "round";
+  // A faint glow round it (under the groove, so the groove stays dark).
+  c.save();
+  c.shadowColor = rgba(t.crystal[1], 0.75);
+  c.shadowBlur = 14 * k;
+  c.strokeStyle = rgba(t.crystal[1], 0.5);
+  c.lineWidth = 9;
+  c.strokeText(text, 0, 0);
+  c.restore();
+  // The light lip on the groove's lower-right edge.
+  c.fillStyle = "rgba(255,248,230,0.9)";
+  c.fillText(text, 3.5, 4);
+  // The groove itself: deep and dark, a little wider than the number, so
+  // it reads on every floor (whatever the light).
+  c.strokeStyle = t.carve;
+  c.lineWidth = 9;
+  c.strokeText(text, -1, -1);
+  c.fillStyle = t.carve;
+  c.fillText(text, -2, -2);
   // The inlay at the bottom of the groove.
   const g = c.createLinearGradient(0, -50, 0, 50);
   g.addColorStop(0, t.crystal[0]);
   g.addColorStop(1, t.crystal[1]);
   c.fillStyle = g;
-  c.globalAlpha = 0.85;
   c.fillText(text, 0, 0);
   c.restore();
 }
@@ -1193,6 +1244,8 @@ export function spireFloorPieces(
 ): SpirePiece[] {
   const t = spireTheme(zone);
   const layout = spireCourtLayout(floor, kind);
+  // The height's dusk is painted into the stone (crystals keep their light).
+  const height = spireHeight(floor);
   const out: SpirePiece[] = [];
   const at = (f: { x: number; y: number; w: number; h: number }) => f;
   if (layout) {
@@ -1208,18 +1261,19 @@ export function spireFloorPieces(
       out.push({
         name: `block${i}`,
         ...bf,
-        paint: (c) => paintBlock(c, t, foot, style, 7000 + i * 31 + floor),
+        paint: (c) =>
+          paintBlock(c, t, foot, style, 7000 + i * 31 + floor, height),
       });
     });
     out.push({
       name: "stairs",
       ...stairsFrame(),
-      paint: (c) => paintStairs(c, t, false),
+      paint: (c) => paintStairs(c, t, false, height),
     });
     out.push({
       name: "stairs-lit",
       ...stairsFrame(),
-      paint: (c) => paintStairs(c, t, true),
+      paint: (c) => paintStairs(c, t, true, height),
     });
     out.push({
       name: "stairs-shadow",
@@ -1229,7 +1283,7 @@ export function spireFloorPieces(
     out.push({
       name: "number",
       ...numberFrame(),
-      paint: (c) => paintNumber(c, t, floor),
+      paint: (c) => paintNumber(c, t, floor, k),
     });
   }
   out.push({

@@ -380,3 +380,78 @@ test("the summit grade darkens Cragmuff's court", async ({ browser }) => {
     await context.close();
   }
 });
+
+/**
+ * Pixels of one piece in a floor's atlas (test-side read-back only):
+ * luminance and warmth of its opaque pixels.
+ */
+function atlasPixels(page: Page, key: string, frame: string) {
+  return page.evaluate(
+    ({ key, frame }) => {
+      const scene = (window as any).__spireGame.scene.getScene("arena");
+      const tex = scene.textures.get(key);
+      const f = tex.get(frame);
+      const src = tex.getSourceImage() as HTMLCanvasElement;
+      const d = src
+        .getContext("2d")!
+        .getImageData(f.cutX, f.cutY, f.cutWidth, f.cutHeight).data;
+      const out: { lum: number; warm: number }[] = [];
+      for (let i = 0; i < d.length; i += 4)
+        if (d[i + 3] > 200)
+          out.push({
+            lum: 0.3 * d[i] + 0.59 * d[i + 1] + 0.11 * d[i + 2],
+            warm: d[i] - d[i + 2],
+          });
+      return out;
+    },
+    { key, frame },
+  );
+}
+
+test("high floors keep amber crystals and a readable floor number", async ({
+  browser,
+}, info) => {
+  test.setTimeout(150_000);
+  const context = await browser.newContext({
+    viewport: { width: 844, height: 390 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  try {
+    const page = await context.newPage();
+    await hookGame(page);
+    const errors = await openHub(page);
+    await climb(page, 9);
+    // The height's dusk is on the floor only: the cover, the stairs and
+    // the number are not tinted at run time (their stone is shaded when
+    // painted, their crystals keep their own light).
+    const tints = await page.evaluate(() => {
+      const scene = (window as any).__spireGame.scene.getScene("arena");
+      return scene.children.list
+        .filter((o: any) => /^spire-(block|stairs$|number)/.test(o.name ?? ""))
+        .map((o: any) => o.tintTopLeft);
+    });
+
+    // Floor 9's crystals: bright, warm amber pixels.
+    const crystal = await atlasPixels(page, "spire-court-1-9", "block0");
+    const amber = crystal.filter((p) => p.lum > 170 && p.warm > 90).length;
+    // The number: a dark groove round a bright inlay (a fair share of each).
+    const number = (await atlasPixels(page, "spire-court-1-9", "number")).map(
+      (p) => p.lum,
+    );
+    const dark = number.filter((l) => l < 70).length / number.length,
+      bright = number.filter((l) => l > 190).length / number.length;
+    console.log(
+      JSON.stringify({ amber: amber / crystal.length, dark, bright }),
+    );
+    expect(amber / crystal.length).toBeGreaterThan(0.08);
+    expect(dark).toBeGreaterThan(0.15);
+    expect(bright).toBeGreaterThan(0.25);
+    expect(tints.length).toBeGreaterThan(4);
+    expect(tints.every((t: number) => t === 0xffffff)).toBe(true);
+    await snap(page, info, "spire-court-floor-9-crystals-844x390");
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});
