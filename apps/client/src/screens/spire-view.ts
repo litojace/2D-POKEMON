@@ -132,7 +132,10 @@ function floorPreview(model: SpireModel) {
  * Phones first: one row of equal, finger-sized chips (the zone's number and
  * its element's glyph; a lock while it is closed), all of them in view
  * without scrolling for up to seven zones, and the picked zone's name,
- * element, floors and Ascendant said once beside or under the row.
+ * element, floors and Ascendant said once beside the row. Where the row
+ * leaves no room beside it (phones), the milestones' heading says the
+ * zone's name and element instead (its floors are the milestones): no
+ * extra line, so the milestones stay in view.
  */
 function zonePicker(model: SpireModel) {
   const { groups, climbZone } = model;
@@ -173,7 +176,7 @@ function floorRoute(model: SpireModel) {
   const cleared = activeGroup.floors.filter(
     (f) => f.state.key === "done",
   ).length;
-  return `<div class="sp-route-wrap"><div class="sp-route-heading"><b><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 20h6v-6h6V8h6M4 7l4-4 4 4M8 3v9"/></svg>Floor milestones${groups.length > 1 ? ` · Zone ${activeGroup.zone.id}` : ""}</b><small class="ui-note"><strong>${cleared}</strong> / ${activeGroup.floors.length} cleared</small></div><div class="sp-route" role="group" aria-label="Preview a floor">${activeGroup.floors
+  return `<div class="sp-route-wrap"><div class="sp-route-heading"><b><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 20h6v-6h6V8h6M4 7l4-4 4 4M8 3v9"/></svg>Floor milestones${groups.length > 1 ? ` · Zone ${activeGroup.zone.id}<span class="sp-route-zone">· ${esc(activeGroup.zone.name)} · ${esc(activeGroup.zone.element)}</span>` : ""}</b><small class="ui-note"><strong>${cleared}</strong> / ${activeGroup.floors.length} cleared</small></div><div class="sp-route" role="group" aria-label="Preview a floor">${activeGroup.floors
     .map(({ floor: f, state, kind }) => {
       const camp = f.floor === checkpoint;
       const crest =

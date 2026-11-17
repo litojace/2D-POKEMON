@@ -39,6 +39,8 @@
 }
 
 .sp-body {
+  /* The zone picker's line moves to the milestones' heading when narrow. */
+  container: sp-body / inline-size;
   display: grid;
   align-content: start;
   gap: var(--sp-3);
@@ -164,6 +166,31 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+/* No room beside the chips: the zone is named in the milestones' heading
+   (one line fewer, so the milestones stay in view on a landscape phone). */
+.sp-route-zone {
+  display: none;
+}
+@container sp-body (max-width: 559px) {
+  .sp-zone-info {
+    display: none;
+  }
+  /* One line: a long zone name shortens, the count keeps its place. */
+  .sp-body .sp-route-heading {
+    flex-wrap: nowrap;
+  }
+  .sp-body .sp-route-heading b {
+    flex: 0 1 auto;
+    min-width: 0;
+    white-space: nowrap;
+  }
+  .sp-route-zone {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 }
 .sp-zone-info-num {
   color: var(--zone);
@@ -327,8 +354,11 @@
     font-size: calc(16px * var(--text-scale, 1));
   }
   .sp-zone-picker {
-    grid-auto-columns: minmax(46px, 54px);
+    grid-auto-columns: minmax(46px, 52px);
     gap: 5px;
+  }
+  .sp-zone-info {
+    flex-basis: 150px;
   }
   .sp-zone {
     /* A finger square after the phone UI scale (tests: 44 px drawn). */

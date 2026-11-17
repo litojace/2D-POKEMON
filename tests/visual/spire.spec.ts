@@ -923,8 +923,10 @@ for (const size of ZONE3_SIZES)
       await expect(zones[2]).toHaveAttribute("aria-pressed", "true");
       await expect(zones[0]).toBeEnabled();
       await expect(zones[1]).toBeEnabled();
-      // (The picked zone is named once, beside the chips.)
-      await expect(room.locator(".sp-zone-info")).toContainText("Lantern Yard");
+      // (The picked zone is named once, beside the chips or over the milestones.)
+      await expect(
+        room.locator(".sp-zone-info, .sp-route-zone").locator("visible=true"),
+      ).toContainText("Lantern Yard");
       await expect(room.locator(".rh-foot-note")).toContainText(
         "zone 3 from floor 21",
       );
@@ -1157,7 +1159,9 @@ for (const size of ZONE4_SIZES)
       );
       await expect(zones[3]).toHaveAttribute("aria-pressed", "true");
       for (const z of zones.slice(0, 3)) await expect(z).toBeEnabled();
-      await expect(room.locator(".sp-zone-info")).toContainText("Cloud Deck");
+      await expect(
+        room.locator(".sp-zone-info, .sp-route-zone").locator("visible=true"),
+      ).toContainText("Cloud Deck");
       await expect(room.locator(".rh-foot-note")).toContainText(
         "zone 4 from floor 31",
       );
@@ -1397,10 +1401,13 @@ for (const size of ZONE5_SIZES)
       );
       await expect(zones[4]).toHaveAttribute("aria-pressed", "true");
       for (const z of zones.slice(0, 4)) await expect(z).toBeEnabled();
-      const info5 = room.locator(".sp-zone-info");
-      await expect(info5).toContainText("Zone 5");
+      // (Beside the chips, or in the milestones' heading on phones.)
+      const info5 = room
+        .locator(".sp-zone-info, .sp-route-zone")
+        .locator("visible=true");
+      await expect(info5).toHaveCount(1);
       await expect(info5).toContainText("Sun Atrium");
-      await expect(info5).toContainText("Light · Floors 41–50");
+      await expect(info5).toContainText("Light");
       await expect(room.locator(".rh-foot-note")).toContainText(
         "zone 5 from floor 41",
       );

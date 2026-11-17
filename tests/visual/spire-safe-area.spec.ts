@@ -106,11 +106,19 @@ async function pickerFits(page: Page) {
       if (c.width < 44 || c.height < 44)
         out.push(`zone ${id} ${c.width.toFixed(0)}x${c.height.toFixed(0)}`);
     }
-    const info = row.parentElement!.querySelector(".sp-zone-info");
-    if (info) {
-      const i = info.getBoundingClientRect();
+    // The picked zone's line: beside the chips, or (no room beside them)
+    // in the milestones' heading; exactly one of them shown.
+    const lines = [
+      ...row
+        .closest(".sp-body")!
+        .querySelectorAll<HTMLElement>(".sp-zone-info, .sp-route-zone"),
+    ].filter((e) => e.getClientRects().length > 0);
+    if (lines.length !== 1) out.push(`${lines.length} zone lines shown`);
+    for (const line of lines) {
+      const i = line.getBoundingClientRect();
       if (i.right > main.right + 1) out.push("zone line outside the panel");
-      if (i.width < 120) out.push(`zone line ${i.width.toFixed(0)} px wide`);
+      if (line.scrollWidth > line.clientWidth + 1 && i.width < 120)
+        out.push(`zone line ${i.width.toFixed(0)} px wide`);
     }
     return out;
   });
@@ -862,9 +870,11 @@ for (const s of ZONE5_SIZES)
       await expect(
         picker.locator('[data-ui-spire-zone="5"][aria-pressed="true"]'),
       ).toBeVisible();
-      await expect(page.locator(".rh-room .sp-zone-info")).toContainText(
-        "Sun Atrium",
-      );
+      await expect(
+        page
+          .locator(".rh-room .sp-zone-info, .rh-room .sp-route-zone")
+          .locator("visible=true"),
+      ).toContainText("Sun Atrium");
       expect(await pickerFits(page)).toEqual([]);
       inSafe(await boxOf(page, ".rh-room .sp-zones"), s, "zone picker");
       expect(await layoutProblems(page, { inset: s.inset, phone })).toEqual([]);
