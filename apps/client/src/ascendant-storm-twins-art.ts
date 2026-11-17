@@ -30,6 +30,7 @@ import {
 } from "../../../packages/shared/src/raid";
 import type { Fx } from "./fx-engine";
 import type { BossCast } from "./boss-performance";
+import { stageOn } from "./raid-piece-stage";
 
 type G = Phaser.GameObjects.Graphics;
 type Glow = (
@@ -49,7 +50,6 @@ const DANGER = 0xff4059,
   VIOLET = 0xb88cff,
   WHITE = 0xf4ecff,
   PIP = 0xffd65b,
-  PIP_OFF = 0x3a3020,
   NIGHT = 0x060a16;
 const TAU = Math.PI * 2;
 const clamp = (v: number, a = 0, b = 1) => Math.max(a, Math.min(b, v));
@@ -65,7 +65,13 @@ const segment = (p: Point, a: Point, b: Point) => {
 };
 /** Where a twin's charge badge sits over it, and a raider's sign medallion. */
 export const TWIN_BADGE = { y: -122, r: 25 };
-export const RAIDER_SIGN = { y: -100, r: 17 };
+/** (Beside the raider at chest height: clear of its name tag and health bar.) */
+export const RAIDER_SIGN = { x: 46, y: -34, r: 21 };
+/**
+ * The badges and signs draw over the raiders and twins (their band is 2 to
+ * 2.09), on the stage Polarity's marks use (the two never show at once).
+ */
+const MARK_DEPTH = 2.95;
 
 /** A raider's sign right now (alone, it flips at flipAt). */
 export function mirrorSign(m: StormMirror, id: string, now: number) {
@@ -83,6 +89,11 @@ export function mirrorTwinFor(state: Snapshot, myId: string) {
   const t = m.twins.find((x) => x.sign !== sign && x.hits < x.need);
   return t && state.players.find((p) => p.id === t.id && p.hp > 0);
 }
+/** Where a Short Circuit's share count sits: under the middle of the beam. */
+export const shortCount = (w: RaidWarning) => ({
+  x: (w.x + w.tx) / 2,
+  y: (w.y + w.ty) / 2 + w.radius + 30,
+});
 /** Is a raider at `p` standing on this Short Circuit (the server's test)? */
 export const onShortCircuit = (w: RaidWarning, p: Point) =>
   segment(p, w, { x: w.tx, y: w.ty }) <= w.radius + RULES.radius;
@@ -125,7 +136,7 @@ function arc(g: G, x: number, y: number, r: number, k: number, c: number) {
     .beginPath()
     .arc(x, y, r, -Math.PI / 2, -Math.PI / 2 + k * TAU)
     .strokePath();
-  g.lineStyle(4, c, 0.95)
+  g.lineStyle(4.5, c, 1)
     .beginPath()
     .arc(x, y, r, -Math.PI / 2, -Math.PI / 2 + k * TAU)
     .strokePath();
@@ -143,13 +154,14 @@ function tick(g: G, x: number, y: number, s: number) {
       .lineTo(x + 10 * s, y - 7 * s)
       .strokePath();
 }
-/** A row of pips centred at (x, y): `on` of `n` lit. */
+/** A row of pips centred at (x, y): `on` of `n` lit (gold), the rest hollow. */
 function pips(g: G, x: number, y: number, n: number, on: number) {
-  const gap = 13;
+  const gap = 15;
   for (let i = 0; i < n; i++) {
     const px = x + (i - (n - 1) / 2) * gap;
-    g.fillStyle(NIGHT, 0.8).fillCircle(px, y, 6.5);
-    g.fillStyle(i < on ? PIP : PIP_OFF, 1).fillCircle(px, y, 4.6);
+    g.fillStyle(NIGHT, 0.85).fillCircle(px, y, 7.5);
+    if (i < on) g.fillStyle(PIP, 1).fillCircle(px, y, 5.4);
+    else g.lineStyle(2.4, WHITE, 0.95).strokeCircle(px, y, 4.4);
   }
 }
 /** A dashed line. */
@@ -181,11 +193,12 @@ function drawMirror(g: G, state: Snapshot, w: RaidWarning, reduced: boolean) {
     const body = goal && twin(goal.id);
     if (!p || !body) continue;
     const color = sign! > 0 ? PLUS : MINUS;
-    g.lineStyle(5, NIGHT, 0.35);
+    g.lineStyle(7, NIGHT, 0.4);
     dashedLine(g, p, body);
-    g.lineStyle(2.5, color, 0.75 * pulse);
+    g.lineStyle(3.5, color, 0.85 * pulse);
     dashedLine(g, p, body);
   }
+  const over = stageOn(g, "arena-pieces:ring-marks", MARK_DEPTH)?.lines ?? g;
   for (const c of m.twins) {
     const p = twin(c.id);
     if (!p) continue;
@@ -204,25 +217,26 @@ function drawMirror(g: G, state: Snapshot, w: RaidWarning, reduced: boolean) {
     }
     const bx = p.x,
       by = p.y + TWIN_BADGE.y;
-    medallion(g, bx, by, TWIN_BADGE.r, c.sign > 0, color, done ? 0.55 : 1);
-    if (done) tick(g, bx + TWIN_BADGE.r * 0.9, by + TWIN_BADGE.r * 0.6, 0.9);
-    else arc(g, bx, by, TWIN_BADGE.r + 6, k, color);
+    medallion(over, bx, by, TWIN_BADGE.r, c.sign > 0, color, done ? 0.55 : 1);
+    if (done) tick(over, bx + TWIN_BADGE.r * 0.9, by + TWIN_BADGE.r * 0.6, 0.9);
+    else arc(over, bx, by, TWIN_BADGE.r + 7, k, WHITE);
     if (c.need > 0)
-      pips(g, bx, by + TWIN_BADGE.r + 15, Math.min(8, c.need), c.hits);
+      pips(over, bx, by - TWIN_BADGE.r - 16, Math.min(8, c.need), c.hits);
   }
   for (const s of m.signs) {
     const p = state.players.find((q) => q.id === s.playerId && q.hp > 0);
     if (!p) continue;
     const sign = mirrorSign(m, s.playerId, t)!;
     const color = sign > 0 ? PLUS : MINUS;
-    const y = p.y + RAIDER_SIGN.y;
-    medallion(g, p.x, y, RAIDER_SIGN.r, sign > 0, color);
+    const x = p.x + RAIDER_SIGN.x,
+      y = p.y + RAIDER_SIGN.y;
+    medallion(over, x, y, RAIDER_SIGN.r, sign > 0, color);
     // Alone: the sign it flips to, and the time to the flip.
     if (m.flipAt !== undefined && t < m.flipAt) {
       const next = -sign as 1 | -1,
-        nx = p.x + RAIDER_SIGN.r * 2 + 6;
+        nx = x + RAIDER_SIGN.r * 1.8 + 4;
       medallion(
-        g,
+        over,
         nx,
         y,
         RAIDER_SIGN.r * 0.7,
@@ -233,7 +247,7 @@ function drawMirror(g: G, state: Snapshot, w: RaidWarning, reduced: boolean) {
       const left = clamp(
         (m.flipAt - t) / Math.max(0.01, m.flipAt - m.startedAt),
       );
-      arc(g, nx, y, RAIDER_SIGN.r * 0.7 + 5, left, WHITE);
+      arc(over, nx, y, RAIDER_SIGN.r * 0.7 + 5, left, WHITE);
     }
   }
   void w;
@@ -317,21 +331,24 @@ export function drawAscendantStormTwinsWarning(
     });
     g.lineStyle(7, NIGHT, 0.45).strokePoints(core, false);
     g.lineStyle(3, WHITE, 1).strokePoints(core, false);
-    // The share count at its middle: a pip per raider up, gold if on it.
+    // The share count under its middle (over the raiders, clear of their
+    // name tags): a pip per raider up, gold for each one standing on it.
     const alive = state.players.filter(
       (p) => !p.raidBoss && !p.echo && p.hp > 0 && !p.out,
     );
     const on = alive.filter((p) => onShortCircuit(w, p)).length;
-    const mx = (w.x + w.tx) / 2,
-      my = (w.y + w.ty) / 2 - w.radius - 22;
-    g.fillStyle(NIGHT, 0.75).fillRoundedRect(
-      mx - alive.length * 6.5 - 8,
-      my - 11,
-      alive.length * 13 + 16,
-      22,
-      9,
-    );
-    pips(g, mx, my, alive.length, on);
+    const c = shortCount(w);
+    const over = stageOn(g, "arena-pieces:ring-marks", MARK_DEPTH)?.lines ?? g;
+    over
+      .fillStyle(NIGHT, 0.8)
+      .fillRoundedRect(
+        c.x - alive.length * 7.5 - 9,
+        c.y - 12,
+        alive.length * 15 + 18,
+        24,
+        10,
+      );
+    pips(over, c.x, c.y, alive.length, on);
     return true;
   }
   return false;
