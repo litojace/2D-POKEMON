@@ -18,7 +18,12 @@ import {
   raidBossName,
 } from "../../../packages/shared/src/raid";
 import type { Fighter, Snapshot } from "@arena/shared";
-import { spireCue, spireFloorProgress, spireHudLine } from "./spire-battle";
+import {
+  spireCue,
+  spireFloorProgress,
+  spireHudLine,
+  spireWaveLabel,
+} from "./spire-battle";
 
 const escape = (s: string) =>
   s.replace(
@@ -49,8 +54,18 @@ export interface RaidHudView {
   cue: string;
   elapsed: string;
   twins: TwinBarView[];
-  /** The Spire: its line ("Floor 7 · Wave 2/3 · 2 Echoes") replaces the phase. */
-  spire?: { line: string; bar: "floor" | "elite" | "boss" };
+  /**
+   * The Spire: its line ("Floor 7 · Wave 2/3 · 2 Echoes") replaces the phase.
+   * A wave floor's bar is the floor's progress, one slice per wave, labelled
+   * "Wave 2/3" (not a health bar: it fills as the Echoes fall).
+   */
+  spire?: {
+    line: string;
+    bar: "floor" | "elite" | "boss";
+    wave?: number;
+    waves?: number;
+    label?: string;
+  };
 }
 
 /** Everything the HUD shows for this snapshot. Moves the damage trails along. */
@@ -159,7 +174,7 @@ export function spireHudView(state: Snapshot): RaidHudView {
       )
     : spireFloorProgress(state);
   return {
-    key: `spire|${s.kind}|${elite ? "elite" : "floor"}`,
+    key: `spire|${s.kind}|${elite ? "elite" : `floor|${s.waves}`}`,
     stormTwins: false,
     title: elite
       ? `FLOOR ${s.floor} · ${elite.name.toUpperCase()}`
@@ -173,7 +188,15 @@ export function spireHudView(state: Snapshot): RaidHudView {
     cue: spireCue(state),
     elapsed: time(Math.max(0, s.limit - r.elapsed)),
     twins: [],
-    spire: { line: spireHudLine(state), bar: elite ? "elite" : "floor" },
+    spire: elite
+      ? { line: spireHudLine(state), bar: "elite" }
+      : {
+          line: spireHudLine(state),
+          bar: "floor",
+          wave: Math.min(s.waves, Math.max(1, s.wave)),
+          waves: s.waves,
+          label: spireWaveLabel(state),
+        },
   };
 }
 
@@ -188,7 +211,16 @@ function skeleton(view: RaidHudView) {
         .join("")}</div>`
     : "";
   const spire = view.spire;
-  return `<div class="raid-boss-heading"><b data-hud="title"></b><span class="raid-boss-phase" data-hud="phase"></span></div>${twins}<div class="raid-boss-health${spire?.bar === "floor" ? " is-spire-floor" : ""}" role="progressbar" aria-label="${spire?.bar === "floor" ? "Floor progress" : "Boss health"}" aria-valuemin="0" aria-valuemax="100" data-hud="health"><i class="raid-boss-trail" data-hud="trail"></i><i class="raid-boss-fill" data-hud="fill"></i>${spire && spire.bar !== "boss" ? "" : MARKS.map((mark, i) => `<span class="raid-health-mark" style="left:${mark}%" aria-hidden="true" data-hud="mark${i}"></span>`).join("")}<span class="raid-boss-pct" aria-hidden="true" data-hud="pct"></span></div><div class="raid-stagger"${view.stormTwins || spire?.bar === "floor" ? " hidden" : ""}><i data-hud="stagger"></i><span data-hud="stagger-label"></span></div><div class="raid-status-row"><p class="raid-callout" role="status" data-hud="cue"></p><div class="raid-elapsed" role="timer" aria-label="${spire ? "Time left on this floor" : "Raid elapsed time"}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></svg><b data-hud="elapsed"></b></div></div>`;
+  // A wave floor's bar: a divider where each wave's slice ends.
+  const waveMarks =
+    spire?.bar === "floor"
+      ? Array.from(
+          { length: Math.max(0, (spire.waves ?? 0) - 1) },
+          (_, i) =>
+            `<span class="raid-health-mark spire-wave-mark" style="left:${(((i + 1) / spire.waves!) * 100).toFixed(3)}%" aria-hidden="true" data-hud="wave${i}"></span>`,
+        ).join("")
+      : "";
+  return `<div class="raid-boss-heading"><b data-hud="title"></b><span class="raid-boss-phase" data-hud="phase"></span></div>${twins}<div class="raid-boss-health${spire?.bar === "floor" ? " is-spire-floor" : ""}" role="progressbar" aria-label="${spire?.bar === "floor" ? "Floor progress" : "Boss health"}" aria-valuemin="0" aria-valuemax="100" data-hud="health"><i class="raid-boss-trail" data-hud="trail"></i><i class="raid-boss-fill" data-hud="fill"></i>${waveMarks}${spire && spire.bar !== "boss" ? "" : MARKS.map((mark, i) => `<span class="raid-health-mark" style="left:${mark}%" aria-hidden="true" data-hud="mark${i}"></span>`).join("")}<span class="raid-boss-pct" aria-hidden="true" data-hud="pct"></span></div><div class="raid-stagger"${view.stormTwins || spire?.bar === "floor" ? " hidden" : ""}><i data-hud="stagger"></i><span data-hud="stagger-label"></span></div><div class="raid-status-row"><p class="raid-callout" role="status" data-hud="cue"></p><div class="raid-elapsed" role="timer" aria-label="${spire ? "Time left on this floor" : "Raid elapsed time"}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></svg><b data-hud="elapsed"></b></div></div>`;
 }
 
 interface Mounted {
@@ -270,7 +302,7 @@ export function paintRaidHud(hud: HTMLElement, view: RaidHudView): boolean {
     "health",
     "aria-valuetext",
     view.spire?.bar === "floor"
-      ? `${rounded}% of the floor beaten.`
+      ? `${view.spire.label}: ${rounded}% of the floor beaten.`
       : view.spire
         ? `${rounded}% health.`
         : `${rounded}% health. Rite choices open at 67% and 33% health.`,
@@ -280,7 +312,10 @@ export function paintRaidHud(hud: HTMLElement, view: RaidHudView): boolean {
   MARKS.forEach((_, i) =>
     write(m, `mark${i}`, "passed", view.phase > i + 1 ? "1" : ""),
   );
-  write(m, "pct", "text", `${Math.ceil(view.health)}%`);
+  // A wave floor's bar counts waves, not health.
+  for (let i = 0; i < (view.spire?.waves ?? 1) - 1; i++)
+    write(m, `wave${i}`, "passed", (view.spire?.wave ?? 1) > i + 1 ? "1" : "");
+  write(m, "pct", "text", view.spire?.label ?? `${Math.ceil(view.health)}%`);
   write(m, "stagger", "width", `${view.stagger}%`);
   write(m, "stagger-label", "text", view.staggerLabel);
   write(m, "cue", "text", view.cue);

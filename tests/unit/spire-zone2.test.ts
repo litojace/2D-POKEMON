@@ -157,8 +157,14 @@ describe("Spire floors (zone 2, the Lagoon)", () => {
     // deadlier per point than zone 1's Earth front-liners, so its numbers
     // start lower than floor 9's: how hard a floor is comes from the
     // play-test below (floor 11, with no blessings, about as hard as 9).
+    // Each Echo hits a little harder floor by floor; since every wave is
+    // fought (the last one too), how much damage it takes follows its
+    // floor's line-up on 11–14 as well (floor 13's last wave is the
+    // hardest, so its Echoes are softer).
     for (const f of [12, 13, 14])
-      expect(each(f), `floor ${f}`).toBeGreaterThan(each(f - 1));
+      expect(SPIRE_TUNING[f].power, `floor ${f}`).toBeGreaterThan(
+        SPIRE_TUNING[f - 1].power,
+      );
     // Floors 16–19, as in zone 3: each Echo hits a little harder floor by
     // floor, and how much damage it takes follows its floor's line-up
     // (floor 16's is far easier than 17's at the same numbers, so its Echoes
@@ -167,11 +173,9 @@ describe("Spire floors (zone 2, the Lagoon)", () => {
       expect(SPIRE_TUNING[f].power, `floor ${f}`).toBeGreaterThan(
         SPIRE_TUNING[f - 1 === 15 ? 14 : f - 1].power,
       );
-    for (const [a, b] of [
-      [11, 12],
-      [12, 13],
-    ])
-      expect(threat(b), `floor ${b} over ${a}`).toBeGreaterThan(threat(a));
+    // (Floor 13 over 12 is the play-test's to judge: its softer Echoes
+    // still clear less often, about two in five against 12's three in five.)
+    expect(threat(12), "floor 12 over 11").toBeGreaterThan(threat(11));
     // The elite and the boss floors keep their own clocks.
     expect(SPIRE_TUNING[15].limit).toBe(SPIRE_TUNING[5].limit);
     expect(SPIRE_TUNING[20].limit).toBe(SPIRE_TUNING[10].limit);

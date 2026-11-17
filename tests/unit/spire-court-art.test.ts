@@ -17,6 +17,7 @@ import {
   paintSpireSummitGrade,
   spireFloorPieces,
   spireFloorTint,
+  spireNumberOffset,
   spireTheme,
   spireZoneTheme,
 } from "../../apps/client/src/spire-court-art";
@@ -114,20 +115,22 @@ describe("spireZoneTheme", () => {
       fingerprint(paintZone(1, [1])),
     );
   });
+  // (Re-recorded once for the floor number's centring, spire-court-art.ts
+  // paintNumber: its ink on the ring's centre. Nothing else changed.)
   it("zone 1's painting is exactly what it was (recipe recorded before zone 2)", () => {
     const log = paintZone(1, [1, 2, 5, 9]);
     paintSpireSummitGrade(recordingContext(log));
-    expect(fingerprint(log)).toBe("37336:e022bcfd");
+    expect(fingerprint(log)).toBe("37340:20ffb4c9");
   });
   it("zone 2's painting is exactly what it was (recipe recorded before zone 3)", () => {
     const log = paintZone(2, [11, 12, 15, 19]);
     paintLagoonSummitGrade(recordingContext(log));
-    expect(fingerprint(log)).toBe("45085:2b44e5bb");
+    expect(fingerprint(log)).toBe("45089:a485dcb");
   });
   it("zone 3's painting is exactly what it was (recipe recorded before zone 4)", () => {
     const log = paintZone(3, [21, 22, 25, 29]);
     paintLanternSummitGrade(recordingContext(log));
-    expect(fingerprint(log)).toBe("40960:e2aa8481");
+    expect(fingerprint(log)).toBe("40964:a6c31d31");
   });
   it("zone 3 is dark slate with candle-pale crystal, ink veins and lanterns, at night", () => {
     const one = spireZoneTheme(1),
@@ -579,5 +582,26 @@ describe("Echoes on zone 4's pale court", () => {
     // The hit flush reads by hue on the pale stone (red leads, rose).
     expect(hurt.r).toBeGreaterThan(hurt.g + 60);
     expect(hurt.r).toBeGreaterThan(hurt.b);
+  });
+});
+
+describe("the floor number's centring", () => {
+  it("centres the glyphs' ink, not the font's em box", () => {
+    // An old-style "7" (Georgia): ink from 40 px above the baseline to 30
+    // below, its left edge 2 px right of the pen's centre, its right 30 px.
+    const o = spireNumberOffset(
+      {
+        width: 60,
+        actualBoundingBoxLeft: -2,
+        actualBoundingBoxRight: 30,
+        actualBoundingBoxAscent: 40,
+        actualBoundingBoxDescent: 30,
+      },
+      118,
+    );
+    // Drawn at (o.x, o.y): ink from x -14..14 and y -35..35, round (0, 0).
+    expect(o).toEqual({ x: -16, y: 5 });
+    // Without glyph bounds: a lining digit's cap height, centred.
+    expect(spireNumberOffset({ width: 60 }, 100)).toEqual({ x: 0, y: 35 });
   });
 });

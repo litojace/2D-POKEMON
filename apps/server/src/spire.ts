@@ -385,6 +385,16 @@ export function SpireRules<B extends RaidClass>(Base: B) {
       this.queue = [...(this.waveList[i] ?? [])];
       this.nextWaveAt = Infinity;
       this.fillCourt();
+      // Count the new wave at once: it starts inside stepEchoes, after that
+      // tick's count, and a stale 0 on the last wave read as "floor done".
+      this.countEchoes();
+    }
+    /** Echoes of the floor still to beat: on the court, appearing or queued. */
+    private countEchoes() {
+      const s = this.spire.state;
+      s.echoesLeft =
+        this.livingEchoes().length + this.spawning.size + this.queue.length;
+      return s.echoesLeft;
     }
     /** Echoes join while the court has room for them. */
     private fillCourt() {
@@ -523,8 +533,7 @@ export function SpireRules<B extends RaidClass>(Base: B) {
         this.raid.message = `${elite.name} calls for help!`;
       }
       this.fillCourt();
-      const living = this.livingEchoes().length;
-      s.echoesLeft = living + this.spawning.size + this.queue.length;
+      this.countEchoes();
       if (
         s.kind === "wave" &&
         this.floorStarted &&
@@ -540,9 +549,14 @@ export function SpireRules<B extends RaidClass>(Base: B) {
     }
     private floorDone() {
       const s = this.spire.state;
-      if (!this.floorStarted || s.echoesLeft) return false;
+      // A fresh count: the floor is done only when nothing is left to beat.
+      if (!this.floorStarted || this.countEchoes()) return false;
       if (s.kind === "elite") return !!s.eliteId && !this.boss();
-      return this.waveIndex >= this.waveList.length - 1;
+      // Every wave has come (and none is waiting to come).
+      return (
+        this.waveIndex >= this.waveList.length - 1 &&
+        this.nextWaveAt === Infinity
+      );
     }
     /** The floor is beaten: it is saved at once (the climb may still fail). */
     private floorCleared() {

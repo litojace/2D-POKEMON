@@ -889,6 +889,13 @@ export function spireRoster(zone: number): CharacterId[] {
  * `limit` is the floor's time limit in seconds. Tuned by simulation
  * (tests/unit/spire.test.ts "play-test"): a solo Normal bot raider with an
  * average champion clears floor 1 nearly always, and less often each floor.
+ *
+ * Every wave of a wave floor is fought, the last one too. (Until Nov 2026
+ * the last wave began after the floor's Echo count and the floor cleared
+ * as it appeared, so the rates below were measured one wave short.) The
+ * wave floors' `armour` was raised then, floor by floor, so that each
+ * clears about as often as it did (a solo bot, seeds 1–72, within a few
+ * clears of 72); power, bot levels, clocks and the elite floors unchanged.
  */
 export const SPIRE_TUNING: Record<
   number,
@@ -901,13 +908,13 @@ export const SPIRE_TUNING: Record<
 > = {
   1: { difficulty: "easy", power: 0.4, armour: 1.5, limit: 180 },
   2: { difficulty: "easy", power: 0.45, armour: 1.35, limit: 180 },
-  3: { difficulty: "easy", power: 0.5, armour: 1.25, limit: 180 },
-  4: { difficulty: "easy", power: 0.45, armour: 1.2, limit: 180 },
+  3: { difficulty: "easy", power: 0.5, armour: 1.69, limit: 180 },
+  4: { difficulty: "easy", power: 0.45, armour: 2.04, limit: 180 },
   5: { difficulty: "normal", power: 0.4, armour: 0.7, limit: 240 },
-  6: { difficulty: "easy", power: 0.55, armour: 1.1, limit: 180 },
-  7: { difficulty: "normal", power: 0.4, armour: 1.1, limit: 180 },
-  8: { difficulty: "normal", power: 0.45, armour: 1.05, limit: 180 },
-  9: { difficulty: "normal", power: 0.5, armour: 1, limit: 180 },
+  6: { difficulty: "easy", power: 0.55, armour: 1.49, limit: 180 },
+  7: { difficulty: "normal", power: 0.4, armour: 1.49, limit: 180 },
+  8: { difficulty: "normal", power: 0.45, armour: 1.4, limit: 180 },
+  9: { difficulty: "normal", power: 0.5, armour: 1.35, limit: 180 },
   // The boss floor: the raid's own time limit (no extra wave for big parties).
   10: { difficulty: "hard", power: 1, armour: 1, limit: 600 },
   // Zone 2: a climb starts at 11 with no blessings, against champions far
@@ -918,15 +925,15 @@ export const SPIRE_TUNING: Record<
   // By simulation (tests/unit/spire-zone2.test.ts; 96 seeds) a solo bot
   // clears floor 11 about four times in five, floor 16 about two in five,
   // falling smoothly to about one in five on floor 19; floor 9 one in three.
-  11: { difficulty: "normal", power: 0.44, armour: 1.36, limit: 180 },
-  12: { difficulty: "normal", power: 0.45, armour: 1.34, limit: 180 },
-  13: { difficulty: "normal", power: 0.46, armour: 1.32, limit: 180 },
-  14: { difficulty: "normal", power: 0.47, armour: 1.3, limit: 180 },
+  11: { difficulty: "normal", power: 0.44, armour: 2.04, limit: 180 },
+  12: { difficulty: "normal", power: 0.45, armour: 1.81, limit: 180 },
+  13: { difficulty: "normal", power: 0.46, armour: 2.48, limit: 180 },
+  14: { difficulty: "normal", power: 0.47, armour: 1.62, limit: 180 },
   15: { difficulty: "normal", power: 0.55, armour: 0.58, limit: 240 },
-  16: { difficulty: "normal", power: 0.48, armour: 1.02, limit: 180 },
-  17: { difficulty: "normal", power: 0.49, armour: 1.35, limit: 180 },
-  18: { difficulty: "normal", power: 0.5, armour: 1.29, limit: 180 },
-  19: { difficulty: "normal", power: 0.52, armour: 1.18, limit: 180 },
+  16: { difficulty: "normal", power: 0.48, armour: 1.56, limit: 180 },
+  17: { difficulty: "normal", power: 0.49, armour: 1.53, limit: 180 },
+  18: { difficulty: "normal", power: 0.5, armour: 1.74, limit: 180 },
+  19: { difficulty: "normal", power: 0.52, armour: 1.85, limit: 180 },
   20: { difficulty: "hard", power: 1, armour: 1, limit: 600 },
   // Zone 3: a climb starts at 21 with no blessings, against Shadow Echoes
   // (an assassin, a trickster, a duelist) and one off-element champion a
@@ -936,15 +943,15 @@ export const SPIRE_TUNING: Record<
   // (tests/unit/spire-zone3.test.ts; a solo Normal bot raider, 96 seeds)
   // floor 21 is cleared about two times in three, falling smoothly to
   // about one in three on floor 29.
-  21: { difficulty: "normal", power: 0.48, armour: 1.6, limit: 180 },
-  22: { difficulty: "normal", power: 0.49, armour: 1.3, limit: 180 },
-  23: { difficulty: "normal", power: 0.5, armour: 1.35, limit: 180 },
-  24: { difficulty: "normal", power: 0.51, armour: 1.85, limit: 180 },
+  21: { difficulty: "normal", power: 0.48, armour: 2.72, limit: 180 },
+  22: { difficulty: "normal", power: 0.49, armour: 1.76, limit: 180 },
+  23: { difficulty: "normal", power: 0.5, armour: 3.12, limit: 180 },
+  24: { difficulty: "normal", power: 0.51, armour: 2.83, limit: 180 },
   25: { difficulty: "normal", power: 0.58, armour: 0.54, limit: 240 },
-  26: { difficulty: "normal", power: 0.52, armour: 0.97, limit: 180 },
-  27: { difficulty: "normal", power: 0.53, armour: 1.36, limit: 180 },
-  28: { difficulty: "normal", power: 0.54, armour: 1.68, limit: 180 },
-  29: { difficulty: "normal", power: 0.55, armour: 1.08, limit: 180 },
+  26: { difficulty: "normal", power: 0.52, armour: 1.65, limit: 180 },
+  27: { difficulty: "normal", power: 0.53, armour: 1.42, limit: 180 },
+  28: { difficulty: "normal", power: 0.54, armour: 2.27, limit: 180 },
+  29: { difficulty: "normal", power: 0.55, armour: 1.65, limit: 180 },
   30: { difficulty: "hard", power: 1, armour: 1, limit: 600 },
   // Zone 4: a climb starts at 31 with no blessings, against Psychic Echoes
   // (a duelist owl, a blinking rabbit, a counter lynx) and one off-element
@@ -953,15 +960,15 @@ export const SPIRE_TUNING: Record<
   // (tests/unit/spire-zone4.test.ts; a solo Normal bot raider, 96 seeds)
   // floor 31 is cleared about two times in three, falling smoothly to
   // about one in three on floors 38 and 39.
-  31: { difficulty: "normal", power: 0.56, armour: 1.66, limit: 180 },
-  32: { difficulty: "normal", power: 0.57, armour: 1.39, limit: 180 },
-  33: { difficulty: "normal", power: 0.58, armour: 1.72, limit: 180 },
-  34: { difficulty: "normal", power: 0.59, armour: 1.62, limit: 180 },
+  31: { difficulty: "normal", power: 0.56, armour: 2.66, limit: 180 },
+  32: { difficulty: "normal", power: 0.57, armour: 1.49, limit: 180 },
+  33: { difficulty: "normal", power: 0.58, armour: 3.53, limit: 180 },
+  34: { difficulty: "normal", power: 0.59, armour: 2.33, limit: 180 },
   35: { difficulty: "normal", power: 0.62, armour: 0.57, limit: 240 },
-  36: { difficulty: "normal", power: 0.6, armour: 1.14, limit: 180 },
-  37: { difficulty: "normal", power: 0.61, armour: 1.29, limit: 180 },
-  38: { difficulty: "normal", power: 0.62, armour: 1.93, limit: 180 },
-  39: { difficulty: "normal", power: 0.63, armour: 1.39, limit: 180 },
+  36: { difficulty: "normal", power: 0.6, armour: 1.54, limit: 180 },
+  37: { difficulty: "normal", power: 0.61, armour: 1.74, limit: 180 },
+  38: { difficulty: "normal", power: 0.62, armour: 3.37, limit: 180 },
+  39: { difficulty: "normal", power: 0.63, armour: 1.63, limit: 180 },
   40: { difficulty: "hard", power: 1, armour: 1, limit: 600 },
 };
 /** Party scaling, and the cap on fighters on the court. */

@@ -15,7 +15,12 @@ import {
   type Snapshot,
   type WireSnapshot,
 } from "@arena/shared";
-import { SPIRE_PARTY, type SpireMember } from "../../packages/shared/src/spire";
+import {
+  SPIRE_PARTY,
+  spireWaves,
+  type SpireMember,
+} from "../../packages/shared/src/spire";
+import { spireHudView } from "../../apps/client/src/raid-hud";
 
 // The Spire over the network: the server checks where a party may climb
 // (never the client), saves each cleared floor at once under the players'
@@ -763,4 +768,78 @@ it("stops zone 4 at floor 39 unless every member has cleared Snoozaku's raid", a
     startFloor: 31,
     ceiling: 39,
   });
+});
+
+it("makes the party beat every wave, the last one too, before the floor clears", async () => {
+  // The last wave once started after the tick's Echo count: the floor read
+  // "nothing left", cleared and saved while that wave was still appearing.
+  const { connect, spire } = await setup();
+  const { socket } = await connect();
+  const created = await emit(socket, "create", {
+    name: "Climber",
+    mode: "raid",
+    spire: 0,
+  });
+  const a = server!.rooms.get(created.code!) as SpireArena;
+  const cache = new MetaCache();
+  const seen: Snapshot[] = [];
+  socket.on("state", (wire: WireSnapshot) =>
+    seen.push(unpackSnapshot(wire, cache)),
+  );
+  await emit(socket, "ready");
+  await settle();
+  await emit(socket, "instructions-ready");
+  for (let i = 0; i < 125 && a.phase !== "playing"; i++) server!.step();
+  expect(a.phase).toBe("playing");
+  const waves = spireWaves(1, 1);
+  expect(waves.length).toBeGreaterThanOrEqual(2);
+  const sturdy = () => {
+    for (const p of a.heroes()) p.hp = 999;
+  };
+  for (let w = 0; w < waves.length; w++) {
+    // The wave arrives and steps onto the court.
+    for (let i = 0; i < 200 && a.raid.spire!.wave !== w + 1; i++) {
+      sturdy();
+      server!.step();
+    }
+    for (let i = 0; i < 40; i++) {
+      sturdy();
+      server!.step();
+    }
+    await settle();
+    const last = seen[seen.length - 1];
+    const s = last.raid!.spire!;
+    // What the player sees: this wave on the court, the floor not cleared.
+    expect(s.wave).toBe(w + 1);
+    expect(s.waves).toBe(waves.length);
+    expect(s.clearedAt).toBeUndefined();
+    expect(s.echoesLeft).toBe(waves[w].length);
+    expect(last.players.filter((p) => p.echo && p.hp > 0)).toHaveLength(
+      waves[w].length,
+    );
+    const hud = spireHudView(last);
+    expect(hud.spire?.label).toBe(`Wave ${w + 1}/${waves.length}`);
+    expect(hud.health).toBeCloseTo((w / waves.length) * 100, 5);
+    // Nothing saved, no Blessing cards, until the last Echo falls.
+    expect(spire.floors).toHaveLength(0);
+    expect(a.raid.spire!.offers).toEqual({});
+    for (const p of a.players) if (p.echo) p.hp = 0;
+    server!.step();
+  }
+  await settle();
+  const done = seen[seen.length - 1].raid!.spire!;
+  expect(done.clearedAt).toBeDefined();
+  expect(spireHudView(seen[seen.length - 1]).health).toBe(100);
+  // No snapshot showed a cleared floor before the last wave was fought.
+  const first = seen.findIndex((x) => x.raid?.spire?.clearedAt !== undefined);
+  expect(
+    seen
+      .slice(0, first)
+      .some(
+        (x) =>
+          x.raid?.spire?.wave === waves.length &&
+          x.players.some((p) => p.echo && p.hp > 0),
+      ),
+  ).toBe(true);
+  expect(spire.floors.map((f) => f.floor)).toEqual([1]);
 });
