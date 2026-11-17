@@ -39,6 +39,8 @@
 }
 
 .sp-body {
+  /* The zone picker's line moves to the milestones' heading when narrow. */
+  container: sp-body / inline-size;
   display: grid;
   align-content: start;
   gap: var(--sp-3);
@@ -76,64 +78,129 @@
   color: #d6def0;
 }
 
-/* The zone picker (Climb tab): one finger-tall button per released zone,
-   sharing the row; more zones scroll sideways instead of crowding phones. */
-.sp-zone-picker {
+/* The zone picker (Climb tab): one row of equal, finger-sized chips (the
+   zone's number and element glyph; a lock while closed) that fits up to
+   seven zones on the smallest phone without scrolling, and the picked
+   zone's name, element and floors said once beside the row (under it when
+   the row and the words don't fit side by side). */
+.sp-zones {
   display: flex;
-  gap: 8px;
-  overflow-x: auto;
-  /* Sideways only (ui/scroll-rows.ts). */
-  overflow-y: hidden;
-  padding-bottom: 4px;
-  scrollbar-width: thin;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  min-width: 0;
+}
+.sp-zone-picker {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(44px, 56px);
+  gap: 6px;
+  min-width: 0;
+  max-width: 100%;
 }
 .sp-zone {
-  flex: 1 0 150px;
-  min-width: 0;
+  position: relative;
   display: grid;
-  grid-template-columns: 34px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 10px;
-  min-height: 52px;
-  padding: 6px 12px;
+  place-items: center;
+  align-content: center;
+  gap: 1px;
+  min-width: 44px;
+  min-height: 48px;
+  padding: 4px 2px;
   border-radius: var(--rad-md);
   border: 1px solid var(--ui-line);
   background: var(--fill-card);
   color: inherit;
   font: inherit;
-  text-align: left;
   cursor: pointer;
 }
 .sp-zone.is-on {
-  border-color: color-mix(in srgb, var(--boss) 75%, transparent);
-  background: color-mix(in srgb, var(--boss) 16%, var(--ui-bg-1));
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--boss) 40%, transparent);
+  border-color: color-mix(in srgb, var(--zone) 80%, transparent);
+  background: color-mix(in srgb, var(--zone) 20%, var(--ui-bg-1));
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--zone) 55%, transparent),
+    0 0 12px color-mix(in srgb, var(--zone) 28%, transparent);
 }
 .sp-zone:disabled {
   cursor: default;
-  opacity: 0.66;
+  opacity: 0.6;
 }
 .sp-zone:focus-visible {
-  outline: 2px solid var(--boss);
-  outline-offset: -2px;
+  outline: 2px solid var(--zone);
+  outline-offset: 2px;
 }
 .sp-zone-num {
   font-family: var(--font-display);
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 800;
-  text-align: center;
-  color: var(--boss);
+  line-height: 1;
+  color: #eef3ff;
 }
-.sp-zone-text {
+.sp-zone.is-on .sp-zone-num {
+  color: color-mix(in srgb, var(--zone) 45%, #fff);
+}
+.sp-zone-glyph {
   display: grid;
-  gap: 2px;
-  min-width: 0;
+  place-items: center;
+  height: 14px;
+  color: var(--zone);
 }
-.sp-zone-text b,
-.sp-zone-text small {
+.sp-zone-glyph svg {
+  width: 14px;
+  height: 14px;
+}
+.sp-zone.is-locked .sp-zone-glyph {
+  color: var(--ui-dim);
+}
+.sp-zone-info {
+  /* Beside the chips while it has room to say the zone whole; under them
+     otherwise (a long name never squeezes to a few letters). */
+  flex: 1 1 240px;
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+  margin: 0;
+}
+.sp-zone-info b,
+.sp-zone-info small {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+/* No room beside the chips: the zone is named in the milestones' heading
+   (one line fewer, so the milestones stay in view on a landscape phone). */
+.sp-route-zone {
+  display: none;
+}
+@container sp-body (max-width: 559px) {
+  .sp-zone-info {
+    display: none;
+  }
+  /* One line: a long zone name shortens, the count keeps its place. */
+  .sp-body .sp-route-heading {
+    flex-wrap: nowrap;
+  }
+  .sp-body .sp-route-heading b {
+    flex: 0 1 auto;
+    min-width: 0;
+    white-space: nowrap;
+  }
+  .sp-route-zone {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+.sp-zone-info-num {
+  color: var(--zone);
+}
+.sp-zone-info .element-icon {
+  width: 12px;
+  height: 12px;
+  margin-right: 3px;
+  vertical-align: -1px;
+  color: var(--zone);
 }
 .sp-zone-head small {
   font-weight: 400;
@@ -286,15 +353,26 @@
   .sp-floor-num {
     font-size: calc(16px * var(--text-scale, 1));
   }
+  .sp-zone-picker {
+    grid-auto-columns: minmax(46px, 52px);
+    gap: 5px;
+  }
+  .sp-zone-info {
+    flex-basis: 150px;
+  }
   .sp-zone {
-    /* A finger tall after the phone UI scale (tests: 44 px drawn). */
+    /* A finger square after the phone UI scale (tests: 44 px drawn). */
+    min-width: 46px;
     min-height: 46px;
-    padding: 3px 8px;
-    grid-template-columns: 24px minmax(0, 1fr) auto;
-    gap: 6px;
+    padding: 2px;
   }
   .sp-zone-num {
-    font-size: 16px;
+    font-size: 17px;
+  }
+  .sp-zone-glyph,
+  .sp-zone-glyph svg {
+    height: 12px;
+    width: 12px;
   }
   .sp-floor-state {
     display: none;

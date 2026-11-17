@@ -6,6 +6,7 @@ import {
   SpireArena,
   SpireDreamArena,
   SpireGloomArena,
+  SpireLightArena,
   SpireTideArena,
 } from "../../apps/server/src/spire";
 import {
@@ -423,7 +424,7 @@ it("won't start zone 2 for a party asking for floor 11 without the checkpoint", 
 it("refuses a start floor that isn't a built zone's first floor", async () => {
   const { connect } = await setup(true, conqueror);
   const { socket } = await connect();
-  for (const spireFloor of [2, 10, 15, 20, 25, 30, 35, 40, 41, -1, 1.5])
+  for (const spireFloor of [2, 10, 15, 20, 25, 30, 35, 40, 45, 50, 51, -1, 1.5])
     expect(
       (
         await emit(socket, "create", {
@@ -842,4 +843,174 @@ it("makes the party beat every wave, the last one too, before the floor clears",
       ),
   ).toBe(true);
   expect(spire.floors.map((f) => f.floor)).toEqual([1]);
+});
+
+// ------------------------------------------------------------------ Zone 5
+const sunSeeker: SpireMember = {
+  checkpoint: 41,
+  clears: {
+    grumblecrag: 1,
+    tidewyrm: 1,
+    gloomshade: 1,
+    somnara: 1,
+    prismatail: 1,
+  },
+};
+
+it("climbs zone 5 from floor 41 to the Ascendant Prismell on floor 50 → results, in one room", async () => {
+  const { connect, recordRaid, recordActivity, spire } = await setup(
+    true,
+    sunSeeker,
+  );
+  const one = await connect(),
+    two = await connect();
+  const created = await emit(one.socket, "create", {
+    name: "One",
+    mode: "raid",
+    spire: 41,
+  });
+  expect(created.ok).toBe(true);
+  const joined = await emit(two.socket, "join", {
+    name: "Two",
+    code: created.code,
+  });
+  expect(joined.ok).toBe(true);
+  const a = server!.rooms.get(created.code!) as SpireLightArena;
+  expect(a).toBeInstanceOf(SpireLightArena);
+  expect(a.raid.boss).toBe("prismatail");
+  const cache = new MetaCache();
+  const seen: Snapshot[] = [];
+  one.socket.on("state", (wire: WireSnapshot) =>
+    seen.push(unpackSnapshot(wire, cache)),
+  );
+  await emit(one.socket, "ready");
+  await emit(two.socket, "ready");
+  await settle();
+  expect(a.phase).toBe("briefing");
+  expect(a.raid.spire).toMatchObject({
+    zone: 5,
+    startFloor: 41,
+    floor: 41,
+    ceiling: 50,
+  });
+  // The wave floors: the Spire's court, never Prismell's atrium.
+  expect(a.arenaId).toBe("classic");
+  expect(a.raid.mirrors ?? []).toEqual([]);
+  for (const s of [one.socket, two.socket]) await emit(s, "instructions-ready");
+  const ids = [created.id!, joined.id!];
+  let atriumOnWaves = false;
+  const step = async () => {
+    for (const p of a.heroes()) p.hp = Math.max(p.hp, 900);
+    if (a.phase === "playing" && a.raid.spire!.kind !== "boss")
+      for (const p of a.players) if (p.echo && p.hp > 0) p.hp = 0;
+    if (a.phase === "intermission")
+      for (const [i, s] of [one.socket, two.socket].entries()) {
+        const offer = a.raid.spire!.offers[ids[i]];
+        if (offer?.[0]) await emit(s, "rite", { id: offer[0] });
+      }
+    server!.step();
+    if (
+      a.raid.spire!.kind !== "boss" &&
+      ((a.raid.mirrors ?? []).length || (a.raid.lightLinks ?? []).length)
+    )
+      atriumOnWaves = true;
+  };
+  for (let i = 0; i < 30 * 400 && a.raid.spire!.floor < 50; i++) await step();
+  for (let i = 0; i < 30 * 5 && a.phase !== "briefing"; i++) await step();
+  await settle();
+  expect(atriumOnWaves).toBe(false);
+  expect(server!.rooms.get(created.code!)).toBe(a);
+  expect(a.raid.spire).toMatchObject({ floor: 50, kind: "boss", best: 49 });
+  expect(a.phase).toBe("briefing");
+  expect(a.raid.variant).toBe("ascendant");
+  expect(a.arenaId).toBe("sun-atrium");
+  expect(spire.floors.map((f) => f.floor)).toEqual([
+    41, 42, 43, 44, 45, 46, 47, 48, 49,
+  ]);
+  expect(spire.floors.every((f) => f.startFloor === 41)).toBe(true);
+  for (const s of [one.socket, two.socket]) await emit(s, "instructions-ready");
+  for (let i = 0; i < 30 * 30 && a.phase !== "playing"; i++) await step();
+  expect(a.phase).toBe("playing");
+  for (let i = 0; i < 30 * 20; i++) await step();
+  await settle();
+  // What the players saw: Prismell's atrium and its boss, under its Ascendant name.
+  const last = seen.at(-1)!;
+  expect(last.arena).toBe("sun-atrium");
+  expect(last.raid?.spire).toMatchObject({ zone: 5, floor: 50 });
+  expect(last.raid?.mirrors?.length).toBeGreaterThan(0);
+  expect(last.players.find((p) => p.raidBoss)?.name).toBe("Ascendant Prismell");
+  const stream = seen.flatMap((s) => s.events.map((e) => e.id));
+  for (let i = 1; i < stream.length; i++)
+    expect(stream[i]).toBeGreaterThan(stream[i - 1]);
+  // Beat it: saved as Spire floor 50 under both accounts, never a raid.
+  a.boss()!.hp = 0;
+  for (let i = 0; i < 30 * (SPIRE_PARTY.cleared + 0.5); i++) await step();
+  await settle();
+  expect(a.phase).toBe("finished");
+  expect(a.raid.result).toBe("victory");
+  expect(a.raid.message).toMatch(/Zone 5 conquered/);
+  const fifty = spire.floors.at(-1)!;
+  expect(fifty).toMatchObject({ floor: 50, startFloor: 41, partySize: 2 });
+  expect(fifty.players.map((p) => p.accountId).sort()).toEqual(
+    [one.account.id, two.account.id].sort(),
+  );
+  expect(
+    a.raid.spire!.saves.at(-1)!.claims!.find((c) => c.playerId === ids[0]),
+  ).toMatchObject({ coins: 350, titles: ["Sunbreaker of the Spire"] });
+  expect(recordRaid).not.toHaveBeenCalled();
+  expect(recordActivity).not.toHaveBeenCalled();
+  expect(a.raid.rewardStatus).toBeUndefined();
+}, 120_000);
+
+it("won't start zone 5 for a party asking for floor 41 without the checkpoint", async () => {
+  const { connect, spire } = await setup();
+  const one = await connect(),
+    two = await connect();
+  // One has conquered zone 4; Two only zone 3.
+  spire.members[one.account.id] = sunSeeker;
+  spire.members[two.account.id] = dreamWalker;
+  const created = await emit(one.socket, "create", {
+    name: "One",
+    mode: "raid",
+    spire: 41,
+  });
+  expect(created.ok).toBe(true);
+  await emit(two.socket, "join", { name: "Two", code: created.code });
+  const a = server!.rooms.get(created.code!) as SpireLightArena;
+  await emit(one.socket, "ready");
+  await emit(two.socket, "ready");
+  await settle();
+  expect(a.phase).toBe("lobby");
+  expect(a.raid.spire!.problem).toMatch(/floor 41/);
+  expect(a.players.every((p) => !p.ready)).toBe(true);
+  expect(spire.floors).toEqual([]);
+});
+
+it("stops zone 5 at floor 49 unless every member has cleared Prismell's raid", async () => {
+  const { connect, spire } = await setup();
+  const one = await connect(),
+    two = await connect();
+  spire.members[one.account.id] = sunSeeker;
+  // Two has conquered zone 4 but never cleared Prismell's raid; one's
+  // missing clears of the zones below never close zone 5's room.
+  spire.members[two.account.id] = {
+    checkpoint: 41,
+    clears: { grumblecrag: 1, somnara: 1 },
+  };
+  const created = await emit(one.socket, "create", {
+    name: "One",
+    mode: "raid",
+    spire: 41,
+  });
+  await emit(two.socket, "join", { name: "Two", code: created.code });
+  const a = server!.rooms.get(created.code!) as SpireLightArena;
+  await emit(one.socket, "ready");
+  await emit(two.socket, "ready");
+  await settle();
+  expect(a.phase).toBe("briefing");
+  expect(a.raid.spire).toMatchObject({
+    zone: 5,
+    startFloor: 41,
+    ceiling: 49,
+  });
 });

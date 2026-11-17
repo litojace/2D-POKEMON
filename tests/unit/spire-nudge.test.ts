@@ -127,6 +127,31 @@ describe("spireNudge", () => {
       spireNudge({ spire: { ...atZone4, highestFloor: 31 }, seen: [] }),
     ).toBeNull();
   });
+  it("announces zone 5 (the Sun Atrium) to a zone-4 conqueror, quiet once climbing", () => {
+    const atZone5 = climb({
+      highestFloor: 40,
+      checkpoint: 41,
+      clears: { grumblecrag: 1, somnara: 1 },
+    });
+    expect(spireNudge({ spire: atZone5, seen: ["s0-z4"] })).toEqual({
+      key: "s0-z5",
+      zone: 5,
+      from: 41,
+      title: "Zone 5 is open",
+      note: "Climb from floor 41 · Sun Atrium",
+    });
+    expect(spireSeenKeys(atZone5)).toEqual([
+      "s0-z1",
+      "s0-z2",
+      "s0-z3",
+      "s0-z4",
+      "s0-z5",
+    ]);
+    expect(spireNudge({ spire: atZone5, seen: ["s0-z5"] })).toBeNull();
+    expect(
+      spireNudge({ spire: { ...atZone5, highestFloor: 41 }, seen: [] }),
+    ).toBeNull();
+  });
   it("is never shown again for a zone once seen, even unclimbed", () => {
     expect(spireNudge({ spire: climb(), seen: ["s0-z1"] })).toBeNull();
     expect(spireNudge({ spire: zone1Done, seen: ["s0-z2"] })).toBeNull();
