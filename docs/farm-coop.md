@@ -43,4 +43,11 @@ Kết luận:
 
 ## Chỗ đứng
 
-Chuồng chiếm 990..1350 × 846..1010 (world px), dưới con đường, bên phải lối đi từ cổng. Cây tròn ở (1120, 1060) và các cây rìa ngay dưới chuồng đã bị đốn để chuồng to và dễ chạm; các cây khác giữ nguyên vị trí. Đồ trang trí đang đứng trên chỗ chuồng được migration cất vào kho (đặt lại miễn phí); chỗ cây cũ giờ là đất trống đặt được.
+Chuồng chiếm 960..1440 × 846..1040 (world px), dưới con đường, bên phải lối đi từ cổng (mở rộng ở `20261117160000_farm_coop_wider.sql`; trước đó 990..1350 × 846..1010). Cây tròn ở (1120, 1060), cây anh đào ở (1450, 1040) và các cây rìa ngay dưới chuồng đã bị đốn để chuồng rộng và dễ chạm; các cây khác giữ nguyên vị trí và hình dáng. Đồ trang trí đang đứng trên chỗ chuồng được migration cất vào kho (đặt lại miễn phí). `arena_farm_decor_fits` trong migration này chép từ `20261117120000_farm_decor_catalog.sql` (giữ luật lối đi được chồng nhau).
+
+## Cách chơi trong chuồng
+
+- Chạm một con gà đói: bên cạnh hiện nắm thóc (như hạt giống cạnh ô trống). Kéo thóc qua đàn gà: con đói nào nó đi qua đều được cho ăn, cho tới khi hết lúa mì thường. Chạm vào thóc: chỉ cho con đó ăn.
+- Chạm một con gà có trứng: hiện cái giỏ. Kéo giỏ qua đàn gà để nhặt hết trứng (giống thu hoạch bằng liềm); chạm vào giỏ: chỉ nhặt quả của con đó.
+- Gà tự đi lại khắp sân: mổ, bới rơm (bụi bay), ra máng uống nước, ra máng ăn, đuổi nhau, vỗ cánh. Con đói lảng vảng quanh máng ăn trống. Con đang ấp ngồi trên tổ rơm tới khi đẻ. Ở đồ hoạ Thấp hoặc khi bật giảm chuyển động, gà đứng yên (con đang ấp vẫn ngồi).
+- Gà chạy ngoài đồng cỏ (chỉ để trang trí) đã bỏ: gà của farm giờ sống trong chuồng.

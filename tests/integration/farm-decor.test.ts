@@ -212,7 +212,7 @@ it("places, moves, mirrors and stores decorations anywhere that's free", async (
   expect(away.farm.decorCredits).toEqual({ apple: 1 });
   expect(away.farm.charm).toBe(2);
   const back = await act([
-    { a: "decor-place", item: "apple", x: 1460, y: 900 },
+    { a: "decor-place", item: "apple", x: 1560, y: 900 },
   ]);
   expect(back.results[0]).toMatchObject({ ok: true, cost: 0 });
   expect(back.farm.leaves).toBe(away.farm.leaves);
@@ -502,9 +502,9 @@ it("adds a collection's Charm once every piece of it stands on the farm", async 
   const set = DECOR_SETS.find((s) => s.id === "cottage")!;
   const spots = [
     [100, 900],
-    [1480, 900],
+    [1560, 900],
     [700, 900],
-    [1400, 900],
+    [1640, 980],
     [600, 950],
   ];
   const r = await act(

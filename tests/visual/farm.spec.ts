@@ -971,43 +971,130 @@ for (const viewport of [
         info,
         `farm-coop-hungry-${viewport.width}x${viewport.height}`,
       );
-      // A tap feeds a hen 2 wheat; another says when her egg is due.
-      await tapWorld(...(await henAt(0)));
+      // The hens stand still for this (they roam the run otherwise).
+      const pin = () =>
+        page.evaluate(() =>
+          (window as any).__farm.coopHens.forEach((c: any, k: number) =>
+            Object.assign(c, {
+              x: 1220 + k * 80,
+              y: 960,
+              act: "idle",
+              st: "idle",
+              t: 999,
+              tx: null,
+              next: null,
+            }),
+          ),
+        );
+      const client = (x: number, y: number) =>
+        page.evaluate(
+          ([x, y]) => (window as any).__farm.worldClient(x, y),
+          [x, y],
+        );
+      /** Press the bubble by a hen and drag it over hens 0, 1 and 2. */
+      const dragOverHens = async () => {
+        const b = (await page.locator("#fm-seed button").boundingBox())!;
+        await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
+        await page.mouse.down();
+        for (const k of [0, 1, 2]) {
+          const p = await client(1220 + k * 80, 960 - 15);
+          await page.mouse.move(p.x, p.y, { steps: 6 });
+        }
+        await page.mouse.up();
+      };
+      const actions = () =>
+        page.evaluate(() =>
+          (window as any).__farmRequests.flatMap((r: any) => r.actions ?? []),
+        );
+      await pin();
+      // A hungry hen: a tap shows the grain beside her, like a seed by a
+      // plot; dragged over the flock it feeds every hungry hen it passes,
+      // until the wheat runs out (4 wheat: two hens).
+      await tapWorld(1220, 960 - 15);
+      const bubble = page.locator("#fm-seed");
+      await expect(bubble).toBeVisible();
+      await expect(bubble).toContainText("×4");
+      await snap(
+        page,
+        info,
+        `farm-coop-grain-${viewport.width}x${viewport.height}`,
+      );
+      await dragOverHens();
+      await expect(page.locator("#toast")).toContainText(
+        "Hens eat 2 Breeze Wheat",
+      );
       await expect
-        .poll(() =>
-          page.evaluate(() => (window as any).__fakeFarm.hens[0].eggAt),
-        )
-        .not.toBeNull();
+        .poll(actions)
+        .toEqual([
+          { a: "buy-coop" },
+          { a: "feed-hen", hen: 0 },
+          { a: "feed-hen", hen: 1 },
+        ]);
       await expect
         .poll(() =>
           page.evaluate(() =>
-            (window as any).__farm.rules.henState(
-              (window as any).__farm.F.hens[0].eggAt,
-              Date.now(),
-            ),
+            (window as any).__fakeFarm.hens.map((h: any) => !!h.eggAt),
           ),
         )
-        .toBe("laying");
-      await tapWorld(...(await henAt(0)));
+        .toEqual([true, true, false]);
+      await pin();
+      await tapWorld(1220, 960 - 15);
       await expect(page.locator("#toast")).toContainText(
         /This hen is laying\. Egg in (1h 59m|2h)/,
       );
-      // Her egg is ready (on the server too): an egg bubble; a tap collects it.
+      // Their eggs are ready (on the server too): egg bubbles; a tap on a hen
+      // shows the basket, dragged over the flock it gathers every egg.
       await page.evaluate(() => {
         const past = new Date(Date.now() - 1000).toISOString();
-        (window as any).__fakeFarm.hens[0].eggAt = past;
-        (window as any).__farm.F.hens[0].eggAt = Date.now() - 1000;
+        for (const k of [0, 1]) {
+          (window as any).__fakeFarm.hens[k].eggAt = past;
+          (window as any).__farm.F.hens[k].eggAt = Date.now() - 1000;
+        }
       });
+      await pin();
       await page.waitForTimeout(300);
       await snap(
         page,
         info,
         `farm-coop-egg-${viewport.width}x${viewport.height}`,
       );
-      await tapWorld(...(await henAt(0)));
-      await expect(page.locator("#fm-log")).toContainText(
-        "Collected 1 Sunny Egg",
+      await tapWorld(1300, 960 - 15);
+      await expect(bubble).toBeVisible();
+      await expect(bubble).toContainText("×2");
+      await snap(
+        page,
+        info,
+        `farm-coop-basket-${viewport.width}x${viewport.height}`,
       );
+      await dragOverHens();
+      await expect
+        .poll(actions)
+        .toEqual([
+          { a: "buy-coop" },
+          { a: "feed-hen", hen: 0 },
+          { a: "feed-hen", hen: 1 },
+          // From the hen tapped, then the others it passes.
+          { a: "collect-egg", hen: 1 },
+          { a: "collect-egg", hen: 0 },
+        ]);
+      await expect
+        .poll(() =>
+          page.evaluate(
+            () =>
+              (window as any).__fakeFarm.barn.find(
+                (b: any) => b.crop === "egg",
+              )?.qty,
+          ),
+        )
+        .toBe(2);
+      await expect(page.locator("#fm-log")).toContainText("Sunny Egg");
+      // More wheat in the barn for the coop's sheet below.
+      await page.evaluate(() => {
+        const f = (window as any).__fakeFarm,
+          w = f.barn.find((b: any) => b.crop === "wheat");
+        w.qty = 2;
+        return (window as any).__farm.refresh();
+      });
       // The coop's sheet: every hen, feed them all (2 wheat left: one hen),
       // and a fourth hen for 300 leaves.
       await tapWorld(1040, 880);
@@ -1034,7 +1121,7 @@ for (const viewport of [
               ).length,
           ),
         )
-        .toBe(4);
+        .toBe(6);
       await page.waitForTimeout(400);
       await page.evaluate(() => {
         (window as any).__fakeFarm.level = 17;
@@ -1077,6 +1164,8 @@ for (const viewport of [
         .toEqual([
           { a: "buy-coop" },
           { a: "feed-hen", hen: 0 },
+          { a: "feed-hen", hen: 1 },
+          { a: "collect-egg", hen: 1 },
           { a: "collect-egg", hen: 0 },
           { a: "feed-hen", hen: 0 },
           { a: "buy-hen" },

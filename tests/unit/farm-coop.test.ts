@@ -76,8 +76,9 @@ describe("the Chicken Coop", () => {
           ).toBe(false);
     expect(decorFits("rock", 1140, 900, [])).toBe("Something is in the way");
     expect(decorFits("rock", 1140, 990, [])).toBe("Something is in the way");
-    // The tree felled for it left free ground below it.
-    expect(decorFits("rock", 1120, 1050, [])).toBeNull();
+    // The cherry tree felled for its wider ground left free grass beside it.
+    expect(decorFits("rock", 1490, 1050, [])).toBeNull();
+    expect(decorFits("rock", 1420, 1000, [])).toBe("Something is in the way");
   });
 });
 describe("more cows", () => {
