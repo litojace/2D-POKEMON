@@ -35,6 +35,8 @@ export interface RaidHooks {
   /** Friends (to invite from somewhere else), the Wardrobe (to wear rewards). */
   friends(): void;
   wardrobe(): void;
+  /** The Spire's page is showing (the Lobby's Spire card is then seen). */
+  onSpire?(): void;
   onClose?(): void;
 }
 export interface RaidScreen {
@@ -163,6 +165,7 @@ export function openRaids(
     view.spireFloor = undefined;
     view.status = "";
     render(true);
+    hooks.onSpire?.();
     q<HTMLElement>('[role="tab"][aria-selected="true"]')?.focus({
       preventScroll: true,
     });
