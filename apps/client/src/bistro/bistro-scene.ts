@@ -2331,7 +2331,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
       editEl,
       `
       <div class="bs-edit-head"><b>${held ? `Placing: ${esc(ITEM_BY_KIND[held.kind].name)}` : stoveTitle ? stoveTitle : "Decorate"}</b><span>${held ? `Tap a floor tile to put it down${itemTurns(held.kind) > 1 ? " · ↻ or R to rotate" : ""}` : heldStove ? ("model" in heldStove ? "Tap a free spot on the kitchen's back wall, or a stove to swap it" : "Tap a free spot on the kitchen's back wall") : "Tap something to move it · tags: a waiter's steps to each seat"}</span><em class="bs-grade" id="bs-grade">${gradeText()}</em></div>
-      <div class="bs-store">${stored.length || stoves.length ? stoves.map(([m, n]) => `<button type="button" data-hold-stove="${m}" class="${heldStove && "model" in heldStove && heldStove.model === m ? "on" : ""}"><img src="${stoveIconUrl(m)}" alt=""><span>${esc(STOVE_BY_MODEL[m].name)}</span><i>×${n}</i></button>`).join("") + stored.map(([k, n]) => `<button type="button" data-hold="${k}" class="${held?.kind === k && !held.moving ? "on" : ""}"><img src="${itemIconUrl(k)}" alt=""><span>${esc(ITEM_BY_KIND[k].name)}</span><i>×${n}</i></button>`).join("") : `<em>Storage is empty</em>`}</div>
+      <div class="bs-store">${stored.length || stoves.length ? stoves.map(([m, n]) => `<button type="button" data-hold-stove="${m}" aria-label="${esc(STOVE_BY_MODEL[m].name)} ×${n}" class="${heldStove && "model" in heldStove && heldStove.model === m ? "on" : ""}"><img src="${stoveIconUrl(m)}" alt=""><span>${esc(STOVE_BY_MODEL[m].name)}</span><i>×${n}</i></button>`).join("") + stored.map(([k, n]) => `<button type="button" data-hold="${k}" aria-label="${esc(ITEM_BY_KIND[k].name)} ×${n}" class="${held?.kind === k && !held.moving ? "on" : ""}"><img src="${itemIconUrl(k)}" alt=""><span>${esc(ITEM_BY_KIND[k].name)}</span><i>×${n}</i></button>`).join("") : `<em>Storage is empty</em>`}</div>
       <div class="bs-edit-btns">
         ${held && itemTurns(held.kind) > 1 ? `<button type="button" data-ed="rot" title="Rotate (R)">↻ Rotate</button>` : ""}
         ${held ? `<button type="button" data-ed="store">Put away</button><button type="button" data-ed="cancel">Cancel</button>` : ""}
@@ -3090,7 +3090,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
           )
           .join(
             "",
-          )}</div><p class="bs-note">${role === "janitor" ? "Janitors clear the tables (so waiters only serve) and sweep up litter, which costs popularity." : role === "cook" ? "Cooks each run a stove on their own and keep the counter stocked." : "Waiters bring the dishes; more of them serve more guests."} New faces come by every day; friends can work for you too.</p>`;
+          )}<p class="bs-note">${role === "janitor" ? "Janitors clear the tables (so waiters only serve) and sweep up litter, which costs popularity." : role === "cook" ? "Cooks each run a stove on their own and keep the counter stocked." : "Waiters bring the dishes; more of them serve more guests."} New faces come by every day; friends can work for you too.</p></div>`;
       } else {
         const kp = KITCHEN_PRICES[S.kitchenLv];
         const shp = SHIFT_PRICES[S.shiftLv];
@@ -3179,7 +3179,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
             </button>`;
         }).join(
           "",
-        )}</div><p class="bs-note">${S.stoves.length} of ${maxStoves(S.sizeLv)} spots on the back wall are taken (expanding the room adds one). Place a stove on a free spot, or on a stove to swap them (the old one goes into storage). Hired cooks use the stoves you added last.</p>`;
+        )}<p class="bs-note">${S.stoves.length} of ${maxStoves(S.sizeLv)} spots on the back wall are taken (expanding the room adds one). Place a stove on a free spot, or on a stove to swap them (the old one goes into storage). Hired cooks use the stoves you added last.</p></div>`;
       } else if (tab === "bank") {
         const left = BISTRO_TRADE.dailyLeaves - sync.extras.tradedToday;
         body = `<div class="bs-bank"><p>Trade bistro coins for Gold Leaves (the Farm's currency): <b>${BISTRO_TRADE.coins} coins → ${BISTRO_TRADE.leaves} ${I("leaf")}</b>, up to ${BISTRO_TRADE.dailyLeaves} leaves a day.</p>
@@ -3245,7 +3245,18 @@ export function openBistro(o: BistroOptions): BistroHandle {
         if (el.scrollTop > 0 || el.scrollLeft > 0)
           scrolled.push([i, el.className, el.scrollTop, el.scrollLeft]);
       });
-    if (!setInner(sheet, out.innerHTML, fresh) || !scrolled.length) return;
+    const changed = setInner(sheet, out.innerHTML, fresh);
+    // A cook's dishes scroll sideways on a phone: open with theirs in view.
+    if (fresh)
+      sheet.querySelectorAll<HTMLElement>(".cookdish .picks").forEach((row) => {
+        const on = row.querySelector<HTMLElement>(".on");
+        if (!on || row.scrollWidth <= row.clientWidth) return;
+        row.scrollLeft +=
+          on.getBoundingClientRect().left -
+          row.getBoundingClientRect().left -
+          8;
+      });
+    if (!changed || !scrolled.length) return;
     const els = sheet.querySelectorAll<HTMLElement>("*");
     for (const [i, cls, y, x] of scrolled) {
       const el = els[i];

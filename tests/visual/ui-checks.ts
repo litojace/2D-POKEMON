@@ -144,8 +144,15 @@ export async function spills(page: Page, root: string) {
         (n) => n.nodeType === 3 && n.textContent!.trim(),
       );
       if (!text) continue;
+      // That hit area (an empty ::after, absolutely placed) widens the
+      // scrollable box by what it sticks out on the right: not text.
+      const after = getComputedStyle(el, "::after");
+      const hit =
+        after.content !== "none" && after.position === "absolute"
+          ? Math.max(0, -(parseFloat(after.right) || 0))
+          : 0;
       if (
-        el.scrollWidth > el.clientWidth + 1 &&
+        el.scrollWidth - hit > el.clientWidth + 1 &&
         cs.textOverflow !== "ellipsis" &&
         cs.overflowX !== "auto"
       )
