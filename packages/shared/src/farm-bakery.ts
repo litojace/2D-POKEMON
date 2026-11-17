@@ -72,7 +72,7 @@ export const BAKERY_RECIPES: readonly BakeryRecipe[] = [
     id: "berrytart",
     name: "Volt Berry Tart",
     level: 11,
-    seconds: 30 * 60,
+    seconds: 20 * 60,
     xp: 12,
     sell: 40,
     items: [
@@ -87,7 +87,7 @@ export const BAKERY_RECIPES: readonly BakeryRecipe[] = [
     id: "milkbun",
     name: "Storm Milk Bun",
     level: 12,
-    seconds: 45 * 60,
+    seconds: 30 * 60,
     xp: 16,
     sell: 105,
     items: [
@@ -102,7 +102,7 @@ export const BAKERY_RECIPES: readonly BakeryRecipe[] = [
     id: "carrotcake",
     name: "Carrot Cake",
     level: 14,
-    seconds: 90 * 60,
+    seconds: 60 * 60,
     xp: 28,
     sell: 130,
     items: [
@@ -118,7 +118,7 @@ export const BAKERY_RECIPES: readonly BakeryRecipe[] = [
     id: "pumpkinpie",
     name: "Lava Pumpkin Pie",
     level: 18,
-    seconds: 3 * 3600,
+    seconds: 2 * 3600,
     xp: 45,
     sell: 150,
     items: [
@@ -134,7 +134,7 @@ export const BAKERY_RECIPES: readonly BakeryRecipe[] = [
     id: "cornbread",
     name: "Twin Bolt Cornbread",
     level: 60,
-    seconds: 6 * 3600,
+    seconds: 4 * 3600,
     xp: 80,
     sell: 210,
     items: [

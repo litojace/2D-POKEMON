@@ -18,6 +18,7 @@ import {
 
 // Migration 20261117130000: the Bakery, its oven's queue and baked goods.
 const MIGRATION = "20261117130000_farm_bakery.sql";
+const TIMING_MIGRATION = "20261117150001_rebalance_bakery_times.sql";
 let db: PGlite;
 const player = "00000000-0000-4000-8000-000000000b01";
 const login = (who = player) =>
@@ -537,6 +538,9 @@ it("stands in the back row, where decorations never go", async () => {
   const before = await farm();
   await db.exec("reset role");
   await db.exec(await readFile(`supabase/migrations/${MIGRATION}`, "utf8"));
+  await db.exec(
+    await readFile(`supabase/migrations/${TIMING_MIGRATION}`, "utf8"),
+  );
   const after = await farm();
   expect(after.bakery).toEqual(before.bakery);
   expect(after.barn).toEqual(before.barn);
@@ -551,4 +555,91 @@ it("doesn't let players call the functions it wraps directly", async () => {
     "select public.arena_farm_new_order_prebakery(auth.uid(), 0, 10)",
   ])
     await expect(db.query(sql)).rejects.toThrow(/permission denied/);
+});
+
+it("shortens new batches without rescheduling existing queues, even when reapplied", async () => {
+  await level(60);
+  await owner(
+    "update public.arena_farms set bakery = true, bakery_slots = 5 where player_id = $1",
+    [player],
+  );
+  await owner(
+    "delete from public.arena_farm_bakery_queue where player_id = $1",
+    [player],
+  );
+  await emptyBarn();
+  for (const id of [
+    "wheat",
+    "voltberry",
+    "milk",
+    "carrot",
+    "pumpkin",
+    "boltcorn",
+  ])
+    await setBarn(id, id === "wheat" ? 20 : 10);
+  // Recreate the catalogue and completed / active / waiting batches from
+  // before the update. No ingredient or wallet adjustment is needed.
+  await owner(`update public.arena_farm_bakery_recipes set seconds = case id
+    when 'bread' then 600 when 'berrytart' then 1800 when 'milkbun' then 2700
+    when 'carrotcake' then 5400 when 'pumpkinpie' then 10800 when 'cornbread' then 21600 end`);
+  await owner(
+    `insert into public.arena_farm_bakery_queue(player_id, slot, recipe, started_at, ready_at) values
+    ($1, 0, 'bread', now() - interval '20 minutes', now() - interval '10 minutes'),
+    ($1, 1, 'berrytart', now() - interval '10 minutes', now() + interval '20 minutes'),
+    ($1, 2, 'milkbun', now() + interval '20 minutes', now() + interval '65 minutes')`,
+    [player],
+  );
+  const before = await farm();
+  const recipesBefore = await owner(
+    "select id, name, level, xp, sell, items from public.arena_farm_bakery_recipes order by id",
+  );
+  for (let run = 0; run < 2; run++) {
+    await db.exec("reset role");
+    await db.exec(
+      await readFile(`supabase/migrations/${TIMING_MIGRATION}`, "utf8"),
+    );
+    const after = await farm();
+    for (const key of ["bakery", "barn", "leaves", "level", "xp"])
+      expect(after[key]).toEqual(before[key]);
+    expect(
+      await owner(
+        "select id, name, level, xp, sell, items from public.arena_farm_bakery_recipes order by id",
+      ),
+    ).toEqual(recipesBefore);
+    for (const r of BAKERY_RECIPES) {
+      expect(
+        (
+          await owner(
+            "select seconds from public.arena_farm_bakery_recipes where id = $1",
+            [r.id],
+          )
+        )[0].seconds,
+      ).toBe(r.seconds);
+    }
+  }
+  // A new batch joins behind the old waiting batch at the shorter duration.
+  const next = await act([{ a: "bake", recipe: "berrytart" }]);
+  expect(next.results[0]).toMatchObject({
+    ok: true,
+    baking: "berrytart",
+    slot: 3,
+  });
+  const batch = next.farm.bakery.queue.find((q: any) => q.slot === 3);
+  expect(batch.startedAt).toBe(before.bakery.queue[2].readyAt);
+  expect(Date.parse(batch.readyAt) - Date.parse(batch.startedAt)).toBe(
+    20 * 60 * 1000,
+  );
+  // Every recipe's server-side duration agrees with the new catalogue.
+  for (const r of BAKERY_RECIPES) {
+    await owner(
+      "delete from public.arena_farm_bakery_queue where player_id = $1",
+      [player],
+    );
+    const result = await act([{ a: "bake", recipe: r.id }]);
+    expect(result.results[0], r.id).toMatchObject({ ok: true });
+    const q = result.farm.bakery.queue[0];
+    expect(Date.parse(q.readyAt) - Date.parse(q.startedAt)).toBe(
+      r.seconds * 1000,
+    );
+  }
 });

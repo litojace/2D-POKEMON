@@ -7,6 +7,7 @@ and come back to a full oven.
 
 - Rules (shared, for display): [`packages/shared/src/farm-bakery.ts`](../packages/shared/src/farm-bakery.ts)
 - Rules (authoritative): [`supabase/migrations/20261117130000_farm_bakery.sql`](../supabase/migrations/20261117130000_farm_bakery.sql)
+- Timing update: [`20261117150001_rebalance_bakery_times.sql`](../supabase/migrations/20261117150001_rebalance_bakery_times.sql)
 - Scene, sheet and art: `apps/client/src/farm/farm-scene.ts` (`drawBakery`,
   `bakeryHTML`), `farm-gfx.ts` (`GFX.bakery`), `bakery-art.ts` (icons)
 - Tests: `tests/unit/farm-bakery.test.ts`, `tests/integration/farm-bakery.test.ts`
@@ -44,14 +45,14 @@ and come back to a full oven.
 
 ## Recipes
 
-| Good                | Lv  | Ingredients                      | Time   | XP  | Sells | Raw base | Raw, avg day |
-| ------------------- | --- | -------------------------------- | ------ | --- | ----- | -------- | ------------ |
-| Breeze Bread        | 10  | 3 wheat                          | 10m    | 6   | 24    | 15       | 17.3         |
-| Volt Berry Tart     | 11  | 3 volt berry, 2 wheat            | 30m    | 12  | 40    | 25       | 28.8         |
-| Storm Milk Bun      | 12  | 2 wheat, 1 Storm Milk            | 45m    | 16  | 105   | 70       | 77.5         |
-| Carrot Cake         | 14  | 3 carrot, 2 wheat, 1 Storm Milk  | 1h 30m | 28  | 130   | 85       | 94.8         |
-| Lava Pumpkin Pie    | 18  | 2 pumpkin, 2 wheat, 1 Storm Milk | 3h     | 45  | 150   | 96       | 107.4        |
-| Twin Bolt Cornbread | 60  | 2 twin bolt corn, 1 Storm Milk   | 6h     | 80  | 210   | 134      | 151.1        |
+| Good                | Lv  | Ingredients                      | Time | XP  | Sells | Raw base | Raw, avg day |
+| ------------------- | --- | -------------------------------- | ---- | --- | ----- | -------- | ------------ |
+| Breeze Bread        | 10  | 3 wheat                          | 10m  | 6   | 24    | 15       | 17.3         |
+| Volt Berry Tart     | 11  | 3 volt berry, 2 wheat            | 20m  | 12  | 40    | 25       | 28.8         |
+| Storm Milk Bun      | 12  | 2 wheat, 1 Storm Milk            | 30m  | 16  | 105   | 70       | 77.5         |
+| Carrot Cake         | 14  | 3 carrot, 2 wheat, 1 Storm Milk  | 1h   | 28  | 130   | 85       | 94.8         |
+| Lava Pumpkin Pie    | 18  | 2 pumpkin, 2 wheat, 1 Storm Milk | 2h   | 45  | 150   | 96       | 107.4        |
+| Twin Bolt Cornbread | 60  | 2 twin bolt corn, 1 Storm Milk   | 4h   | 80  | 210   | 134      | 151.1        |
 
 "Raw base" is what the ingredients sell for at base price; "avg day" at the
 market's average multiplier (crops ×0.7–1.6 on an ordinary day, 1.15 on
@@ -72,19 +73,31 @@ game's only corn, which opens at level 60: it is the long-term recipe.
   selling the raw goods, a quarter of the 1,200 leaves the daily cap turns
   into coins.
 - **Finishing early never pays.** Even on the market day when baking pays
-  best (raw crops ×0.7, milk ×0.85), no recipe earns more than 1.4 leaves
-  per oven minute (bread), below the 2 a minute finishing costs, and
+  best (raw crops ×0.7, milk ×0.85), no recipe earns more than 1.57 leaves
+  per oven minute (milk bun), below the 2 a minute finishing costs, and
   finishing a whole bake costs more than the bake earns. So rushing to bake
   more always loses leaves: it buys time, never income
   (`tests/unit/farm-bakery.test.ts`, "finishing now").
-- **Storm Milk is the bottleneck.** The cow gives 2 every 2 hours, so the
-  milk recipes (the profitable ones) are limited to about 24 a day even for
-  someone who never leaves.
+- **Milk limits the early bakery.** Each cow gives 2 every 2 hours. The
+  first cow supports at most 24 milk recipes a day with perfect collection;
+  the extra cows at levels 40 and 55 increase supply later.
 - **Later recipes take longer and pay more** (profit over raw grows from 9
   to 76 leaves), so the queue suits short sessions early and overnight
   baking later. Times sit between the fast crops (2m–12h) and the cow (2h).
 - Prices follow the farm's other building purchases: the pasture is 900 at
   level 9, the sprinkler 1,500 at 18.
+
+## Shorter bake times (November 17, 2026)
+
+The six recipes now take 10, 20, 30, 60, 120 and 240 minutes. Ingredients,
+prices, XP, unlock levels, queue slots and rush pricing are unchanged. This
+keeps short-session recipes alongside longer offline recipes; five cornbreads
+now take 20 hours instead of 30.
+
+A new data migration updates only the recipe catalogue's `seconds`. Already
+scheduled batches keep their original start and ready times, including queued
+and finished goods. New batches use the new durations. Reapplying the migration
+does not move queues or change player inventories or balances.
 
 ## Where it stands
 
