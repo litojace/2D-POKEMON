@@ -139,17 +139,12 @@ export const SPIRE_ZONES: Record<number, SpireZone> = {
     boss: "prismatail",
     court: "sun-atrium",
     ascendant: "Ascendant Prismell",
-    // TODO(lead): the boss branch's new attack ids (and their RAID_ATTACKS
-    // text) go here, and in floor 50's description; the briefing and the
-    // Floors list show them.
-    ascendantMoves: [],
+    ascendantMoves: ["eclipse", "umbral-prism"],
     bossName: "Prismell",
-    // TODO(lead): check these two lines against the boss branch's moves and
-    // reads once it lands.
     bossLead:
-      "Prismell, evolved. Its raid's rules still hold (relay the sunbeam raider to raider, hit a mirror to turn it, carry the light into its heart to shatter the shield, look away from its Glare), pushed further: new attacks, combos and fewer openings.",
+      "Prismell, evolved. Its raid's rules still hold (relay the sunbeam raider to raider, hit a mirror to turn it, carry the light into its heart to shatter the shield, look away from its Glare), pushed further: an Eclipse moves the skylight (the relay starts again from the new window), an Umbral Prism only light passed from a teammate a step away can cleanse, combos and fewer openings.",
     bossReads:
-      "Lances aim where you usually dodge, standing still to attack draws a Prism Lance, a Fan Display may break into lances halfway (shown in full), and it hunts whoever kneels to revive.",
+      "Halos close over the spot you usually dodge to, standing still to attack draws a Prism Lance, a Prism Lance may curl into a Halo Crush (shown in full), and it hunts whoever kneels to revive.",
     // Light (Lumoth, Sunbara: Lumoth's Radiant Flare fans the sunbeam out in
     // Prismell's own raid) and their radiant kin of the sky, Halcyra, whose
     // Skyline Lance cuts Prismell's Prism Lances.
@@ -1032,8 +1027,7 @@ export const SPIRE_FLOORS: Record<number, SpireFloor> = {
     zone: 5,
     kind: "boss",
     name: "Ascendant Prismell",
-    // TODO(lead): "New attacks: …" with the boss branch's attack names.
-    description: "Prismell, evolved: the sunbeam relay pushed further",
+    description: "New attacks: Eclipse, Umbral Prism",
     waves: [],
     boss: "prismatail",
   },

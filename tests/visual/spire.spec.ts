@@ -1547,6 +1547,10 @@ for (const size of ZONE5_SIZES)
       await expect(brief.locator("h2")).toHaveText(
         "Floor 50 · Ascendant Prismell",
       );
+      const moves = brief.locator(".spire-new-attacks li");
+      await expect(moves).toHaveCount(2);
+      await expect(moves.nth(0)).toContainText("Eclipse");
+      await expect(moves.nth(1)).toContainText("Umbral Prism");
       await expect(brief).toContainText("Prismell, evolved");
       await expect(brief).toContainText("Prismell's raid, step by step");
       await expect(page.locator("#raid-instructions")).toBeInViewport();

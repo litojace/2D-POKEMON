@@ -10,12 +10,14 @@ import { RAID_BOSSES, type RaidBossId } from "./raid-roster.js";
 import {
   ASCENDANT_CRAGMUFF_CHAPTERS,
   ASCENDANT_INKPURR_CHAPTERS,
+  ASCENDANT_PRISMELL_CHAPTERS,
   ASCENDANT_SNOOZAKU_CHAPTERS,
   ASCENDANT_TIDELOTL_CHAPTERS,
   RAID_ASCENDANT_ATTACKS,
   RAID_ASCENDANT_TIER,
   ascendantCragmuffPattern,
   ascendantInkpurrPattern,
+  ascendantPrismellPattern,
   ascendantSnoozakuPattern,
   ascendantTidelotlPattern,
   type RaidVariant,
@@ -270,7 +272,10 @@ export type RaidAttack =
   | "pounce"
   // Ascendant Snoozaku
   | "twin-dream"
-  | "dream-tide";
+  | "dream-tide"
+  // Ascendant Prismell
+  | "eclipse"
+  | "umbral-prism";
 export const RAID_ATTACKS: Record<
   RaidAttack,
   { name: string; tip: string; summary: string }
@@ -547,6 +552,17 @@ export const RAID_ATTACKS: Record<
     name: "Dream Tide",
     tip: "Sleep floods the deck. Only one rune pad stays awake, and only the marked raider sees which: they call it, everyone runs onto that pad. It can't be jumped.",
     summary: "Listen for the call. Stand on the one pad that stays awake.",
+  },
+  eclipse: {
+    name: "Eclipse",
+    tip: "A dark moon covers the skylight: sunfall strikes its window, so step out of the circle. The light opens at the window marked in gold: rebuild the relay from there.",
+    summary:
+      "The skylight moves. Leave the sunfall; relay from the new window.",
+  },
+  "umbral-prism": {
+    name: "Umbral Prism",
+    tip: "A dark prism on a raider blocks the light through them. A teammate or a mirror must shine the beam on them from a step away (alone: stand in the skylight's reach) before its timer runs out, or it shatters and the relay's hold is lost.",
+    summary: "Hand the light to the marked raider before the prism shatters.",
   },
   nightmare: {
     name: "Nightmare",
@@ -883,6 +899,8 @@ export function raidPattern(
     return ascendantInkpurrPattern(phase);
   if (variant === "ascendant" && boss === "somnara")
     return ascendantSnoozakuPattern(phase);
+  if (variant === "ascendant" && boss === "prismatail")
+    return ascendantPrismellPattern(phase);
   if (boss === "tidewyrm") return tidewyrmPattern(phase, peril);
   if (boss === "gloomshade") return gloomshadePattern(phase, peril);
   if (boss === "somnara") return somnaraPattern(phase);
@@ -1336,7 +1354,9 @@ export const raidChapters = (
         ? ASCENDANT_INKPURR_CHAPTERS
         : variant === "ascendant" && boss === "somnara"
           ? ASCENDANT_SNOOZAKU_CHAPTERS
-          : undefined) ??
+          : variant === "ascendant" && boss === "prismatail"
+            ? ASCENDANT_PRISMELL_CHAPTERS
+            : undefined) ??
   RAID_BOSS_CHAPTERS[boss] ??
   RAID_CHAPTERS;
 /** Separate appearance slots; each is cosmetic only. */
@@ -2439,6 +2459,8 @@ export interface RaidWarning {
   pools?: { x: number; y: number; radius: number }[];
   /** Shade Pounce: which body leaps (0: the real one, else a copy's id). */
   body?: number;
+  /** Umbral Prism: seconds its raider has stood in handed-on light. */
+  lit?: number;
 }
 /** Tidewyrm's raised islands (walkable). */
 export interface RaidIsland {
@@ -2658,6 +2680,8 @@ export interface RaidState {
   takeoffAt?: number;
   mirrors?: import("./raid-prismatail.js").PrismMirror[];
   lightLinks?: import("./raid-prismatail.js").LightLink[];
+  /** Ascendant Prismell: where the skylights shine now (an Eclipse moves them; none: the raid's). */
+  lightSources?: import("./raid-prismatail.js").LightPoint[];
   lightStartedAt?: number;
   lightHold?: number;
   lightArrivals?: number[];

@@ -180,6 +180,13 @@ describe("Spire floors (zone 5, the Sun Atrium)", () => {
     expect(SPIRE_ZONES[5].bossLead).toMatch(/sunbeam/);
     expect(SPIRE_ZONES[5].bossReads).toMatch(/where you usually dodge/);
     expect(SPIRE_ZONES[5].bossReads).toMatch(/kneels to revive/);
+    // The Ascendant's new attacks, as the boss layer plays them.
+    expect(SPIRE_ZONES[5].ascendantMoves).toEqual(["eclipse", "umbral-prism"]);
+    expect(SPIRE_FLOORS[50].description).toBe(
+      "New attacks: Eclipse, Umbral Prism",
+    );
+    expect(SPIRE_ZONES[5].bossLead).toMatch(/Eclipse/);
+    expect(SPIRE_ZONES[5].bossLead).toMatch(/Umbral Prism/);
     expect(SPIRE_BUILT_TOP).toBe(50);
   });
   it("has wave floors 41–44 and 46–49, the elite on 45 and the boss on 50", () => {

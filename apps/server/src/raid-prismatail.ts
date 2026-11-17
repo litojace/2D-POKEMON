@@ -75,10 +75,10 @@ export function fanEscape(
   return Math.min(out, side);
 }
 export class PrismatailArena extends RaidArena {
-  private relayAt = 0;
+  protected relayAt = 0;
   private burnAt = new Map<string, number>();
-  private held = 0;
-  private arrivals: (number | undefined)[] = [];
+  protected held = 0;
+  protected arrivals: (number | undefined)[] = [];
   private rotateAt = new Map<number, number>();
   private flareUntil = new Map<string, number>();
   private wardUntil = new Map<string, number>();
@@ -86,7 +86,7 @@ export class PrismatailArena extends RaidArena {
   /** Shadopus's Ink Jet: Glare blinds nobody until then. */
   private inkUntil = 0;
   /** Raiders carrying the light right now (lances look for them). */
-  private carriers = new Set<string>();
+  protected carriers = new Set<string>();
   /** Mirrors on the path that last broke the shield (they scramble first). */
   private lastPath = new Set<number>();
   /** A break happened: scramble its mirrors as the exposure runs out. */
@@ -201,7 +201,7 @@ export class PrismatailArena extends RaidArena {
   override feat() {
     return this.raid.result === "victory" && (this.raid.quickBreaks ?? 0) >= 3;
   }
-  protected override finishMessage(won: boolean) {
+  protected override finishMessage(won: boolean): string {
     return won
       ? "The shield shatters. The atrium shines for you!"
       : "The light fades. Reconnect the mirrors and try again.";
@@ -325,7 +325,7 @@ export class PrismatailArena extends RaidArena {
     return super.chooseTarget(kind, alive);
   }
   /** Where a lance aims: a carrier where they stand, anyone else ahead. */
-  private lanceAim(target: Fighter, delay: number): Point {
+  protected lanceAim(target: Fighter, delay: number): Point {
     return !this.carriers.has(target.id)
       ? leadPoint(target, delay)
       : { x: target.x, y: target.y };
@@ -334,7 +334,7 @@ export class PrismatailArena extends RaidArena {
    * The fan's hot slice: the one over the most raiders that everyone in it
    * can still leave in time (an empty slice always qualifies).
    */
-  private fanSlice(boss: Fighter, count: number) {
+  protected fanSlice(boss: Fighter, count: number) {
     const r = this.raid,
       seeded = (r.seed + this.attacks) % count;
     const alive = this.heroes().filter((p) => p.hp > 0),
@@ -357,7 +357,7 @@ export class PrismatailArena extends RaidArena {
    * Halo Crush's gap: away from the raiders around the ring and against
    * the way the target runs, and always opening onto the floor.
    */
-  private haloGap(centre: Point, target: Fighter) {
+  protected haloGap(centre: Point, target: Fighter) {
     const toward = Math.atan2(450 - centre.y, 800 - centre.x);
     const others = this.heroes().filter(
         (p) =>
@@ -554,10 +554,22 @@ export class PrismatailArena extends RaidArena {
       this.events[this.events.length - 1].raidRadius = Math.min(180, w.radius);
     }
   }
-  private relayRange() {
+  /** How long a connected chain must hold to break the shield. */
+  protected relayHold() {
+    return prismRelayHold(this.raid.phase, this.raid.partySize);
+  }
+  /** How long a broken shield stays open. */
+  protected exposeSeconds() {
+    return P.expose + (this.raid.trait === "kaleidoscope" ? 1 : 0);
+  }
+  /** Where it drifts back to between attacks (x), by chapter. */
+  protected restX() {
+    return [1000, 1040, 1080][this.raid.phase - 1];
+  }
+  protected relayRange() {
     return P.range + (this.raid.trait === "dazzling" ? 60 : 0);
   }
-  private relaySources() {
+  protected relaySources(): { x: number; y: number }[] {
     return this.raid.phase === 3 && this.raid.partySize > 1
       ? [
           { x: 350, y: 300 },
@@ -566,7 +578,7 @@ export class PrismatailArena extends RaidArena {
       : [P.source];
   }
   /** Raiders, mirrors (optionally with other arrows) and pillars the light can use. */
-  private relayNodes(angles?: number[]): RelayNode[] {
+  protected relayNodes(angles?: number[]): RelayNode[] {
     const r = this.raid,
       range = this.relayRange();
     return [
@@ -696,7 +708,7 @@ export class PrismatailArena extends RaidArena {
           this.burnAt.set(p.id, this.time);
         } else if (!this.burnAt.has(p.id)) this.burnAt.set(p.id, this.time);
       } else this.burnAt.delete(p.id);
-    if (this.held >= prismRelayHold(r.phase, r.partySize)) {
+    if (this.held >= this.relayHold()) {
       r.shieldBreaks = (r.shieldBreaks ?? 0) + 1;
       if (this.time - r.lightStartedAt <= 8)
         r.quickBreaks = (r.quickBreaks ?? 0) + 1;
@@ -716,8 +728,7 @@ export class PrismatailArena extends RaidArena {
           .map((n) => Number(n.id.slice(7))),
       );
       this.scrambleArmed = true;
-      r.exposedUntil =
-        this.time + P.expose + (r.trait === "kaleidoscope" ? 1 : 0);
+      r.exposedUntil = this.time + this.exposeSeconds();
       r.staggerUntil = 0;
       r.warnings = [];
       this.nextAttack = r.exposedUntil + 0.8;
@@ -776,7 +787,7 @@ export class PrismatailArena extends RaidArena {
       this.raid.warnings.length
     )
       return;
-    const tx = [1000, 1040, 1080][this.raid.phase - 1],
+    const tx = this.restX(),
       ty = 450 + Math.sin(this.phaseElapsed * 0.2) * 12;
     const d = normalize(tx - boss.x, ty - boss.y),
       step = Math.min(35 * dt, Math.hypot(tx - boss.x, ty - boss.y));

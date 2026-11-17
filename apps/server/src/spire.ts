@@ -1108,15 +1108,14 @@ export class SpireLightArena extends SpireRules(
     super(code, "prismatail");
   }
   protected override resetAscendantReads() {
-    // TODO(lead): once the boss branch's layer lands, call its reads reset
-    // directly (as zones 2–4 do). Until then the stub has none.
-    (this as unknown as { resetPrismReads?: () => void }).resetPrismReads?.();
+    this.resetPrismReads();
   }
   protected override clearBossCourt() {
     super.clearBossCourt();
     Object.assign(this.raid, {
       mirrors: [],
       lightLinks: [],
+      lightSources: undefined,
       sunPillars: [],
       lightStartedAt: undefined,
       lightHold: 0,

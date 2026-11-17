@@ -1233,8 +1233,16 @@ export interface AtriumInput {
 export const BLIND_LIFT = 146;
 /** How long a mirror's turn chime rings (the server's turn cooldown). */
 export const CHIME = 0.4;
-/** Where the skylights stand: two in phase 3 with a party, else one. */
-export function atriumSources(r: { phase: number; partySize: number }) {
+/**
+ * Where the skylights stand: two in phase 3 with a party, else one (or
+ * where an Ascendant Prismell's Eclipse moved them).
+ */
+export function atriumSources(r: {
+  phase: number;
+  partySize: number;
+  lightSources?: { x: number; y: number }[];
+}) {
+  if (r.lightSources?.length) return r.lightSources.map((s) => ({ ...s }));
   return r.phase === 3 && r.partySize > 1
     ? [
         { x: 350, y: 300 },
