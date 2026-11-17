@@ -5,14 +5,16 @@
  * database agree on: floors, the one tuning table, blessings, rewards,
  * progress and the snapshot's `raid.spire`.
  *
- * Zones 1 to 5 are built. One climb is one zone: a room is made for a
+ * Zones 1 to 6 are built. One climb is one zone: a room is made for a
  * zone (its first floor is the start) and its boss floor ends the climb.
  * Zone 1: floors 1–9 on the Spire's court and the Ascendant Cragmuff on
  * floor 10. Zone 2: floors 11–19 (Water) and the Ascendant Tidelotl on
  * floor 20, in the lagoon. Zone 3: floors 21–29 (Shadow) and the Ascendant
  * Inkpurr on floor 30, in the Lantern Yard. Zone 4: floors 31–39 (Psychic)
  * and the Ascendant Snoozaku on floor 40, on the Cloud Deck. Zone 5: floors
- * 41–49 (Light) and the Ascendant Prismell on floor 50, in the Sun Atrium. Each boss is fought in the same room (the zone's
+ * 41–49 (Light) and the Ascendant Prismell on floor 50, in the Sun Atrium.
+ * Zone 6: floors 51–59 (Fire) and the Ascendant Lumiwick on floor 60, on
+ * the Sky Terrace. Each boss is fought in the same room (the zone's
  * arena turns the Ascendant's rules on for that floor:
  * apps/server/src/spire.ts). Clearing zone 1's boss grants checkpoint 11
  * (`spireStartCheckpoint`, and the database's arena_record_spire_floor).
@@ -25,8 +27,8 @@ import type { RaidBossId } from "./raid-roster.js";
 export const SPIRE_SEASON = 0;
 /** Floors per zone; floor 10 of each is its boss, floor 5 its elite. */
 export const SPIRE_ZONE_FLOORS = 10;
-/** The highest floor that can be played today (zone 5's boss). */
-export const SPIRE_BUILT_TOP = 50;
+/** The highest floor that can be played today (zone 6's boss). */
+export const SPIRE_BUILT_TOP = 60;
 /** Party size, like raids. */
 export const SPIRE_SEATS = 4;
 
@@ -52,7 +54,13 @@ export interface SpireZone {
   /** The raid boss of the zone: its clear opens the boss floor; its arena is the boss floor's court. */
   boss: RaidBossId;
   /** The arena the zone's boss floor is fought in (wave floors: the Spire's court). */
-  court: "classic" | "lagoon" | "lantern-yard" | "cloud-deck" | "sun-atrium";
+  court:
+    | "classic"
+    | "lagoon"
+    | "lantern-yard"
+    | "cloud-deck"
+    | "sun-atrium"
+    | "sky-terrace";
   /** Its Ascendant boss name (the boss floor). */
   ascendant: string;
   /** The Ascendant's new attacks (the boss floor's briefing and the Floors list). */
@@ -150,6 +158,26 @@ export const SPIRE_ZONES: Record<number, SpireZone> = {
     // Skyline Lance cuts Prismell's Prism Lances.
     kin: ["lumoth", "sunbara", "halcyra"],
   },
+  6: {
+    id: 6,
+    name: "Sky Terrace",
+    element: "Fire",
+    boss: "emberwing",
+    court: "sky-terrace",
+    ascendant: "Ascendant Lumiwick",
+    ascendantMoves: ["snuff-gale", "bound-wicks"],
+    bossName: "Lumiwick",
+    bossLead:
+      "Lumiwick, evolved. Its raid's rules still hold (light all three braziers together to bring it down, strike the open heart, jump its flame rings, keep out of burning ground), pushed further: a Snuffing Gale puts out a brazier's flame unless someone stands in its ring, Bound Wicks tie braziers that only light while every bound ring is held, it flies again after every grounding, combos and fewer openings.",
+    bossReads:
+      "Embers fall where you usually dodge to, standing still to attack draws a dive, a dive may turn into a Snuffing Gale (shown in full), and it hunts whoever kneels to revive.",
+    // Fire (Cindrake, Pyranda: Cindrake's Heat Cracks and Pyranda's
+    // Chestnut Mortar light Lumiwick's braziers in its own raid) and their
+    // kin of the lantern light, Lumoth: the moth drawn to every flame, whose
+    // Wing Dust reaches Lumiwick in the air at full strength. Only two
+    // champions are Fire, so the third is kin, as in zones 3 to 5.
+    kin: ["cindrake", "pyranda", "lumoth"],
+  },
 };
 /** The first floor of each built zone: where a climb may start. */
 export const spireZoneStart = (zone: number) =>
@@ -212,6 +240,17 @@ export const SPIRE_ELITE_MECHANICS = {
     name: "prism lances",
     hint: "three red lanes fan out from the captain, one on you: sidestep into a gap before they fire",
     cue: "Prism Lances — sidestep the red lane!",
+  },
+  // The captain dives down one locked lane, through where a raider is
+  // heading, and lands at its end: step out of the lane. On the Spire the
+  // lane runs over open ground only (never under a phone's touch controls,
+  // never through a wall), and the captain only flies where it was drawn.
+  dive: {
+    attack: "dive-bomb",
+    boss: "Lumiwick",
+    name: "ember dive",
+    hint: "the captain locks a red lane through you and dives down it: step out of the lane before it goes",
+    cue: "Ember Dive — step out of the red lane!",
   },
 } as const satisfies Record<
   string,
@@ -1031,6 +1070,152 @@ export const SPIRE_FLOORS: Record<number, SpireFloor> = {
     waves: [],
     boss: "prismatail",
   },
+  // Zone 6, the Sky Terrace: Fire-leaning (Cindrake, Pyranda) with their
+  // kin of the lantern light Lumoth, plus one off-element champion per floor.
+  51: {
+    floor: 51,
+    zone: 6,
+    kind: "wave",
+    name: "The Kindling Gate",
+    waves: [
+      [e("cindrake", "front"), e("pyranda", "caster")],
+      [e("tidefin", "skirmisher"), e("lumoth", "caster")],
+      [e("cindrake", "front"), e("pyranda", "caster")],
+    ],
+  },
+  52: {
+    floor: 52,
+    zone: 6,
+    kind: "wave",
+    name: "Cinder Steps",
+    waves: [
+      [e("pyranda", "caster"), e("cindrake", "skirmisher")],
+      [e("terradon", "front"), e("lumoth", "skirmisher")],
+      [e("cindrake", "front"), e("pyranda", "caster")],
+    ],
+  },
+  53: {
+    floor: 53,
+    zone: 6,
+    kind: "wave",
+    name: "Brazier Rows",
+    waves: [
+      [e("cindrake", "front"), e("glacelle", "caster")],
+      [e("lumoth", "skirmisher"), e("pyranda", "caster")],
+      [
+        e("glacelle", "caster"),
+        e("cindrake", "front"),
+        e("lumoth", "skirmisher"),
+      ],
+    ],
+  },
+  54: {
+    floor: 54,
+    zone: 6,
+    kind: "wave",
+    name: "Hall of Embers",
+    waves: [
+      [
+        e("cindrake", "front"),
+        e("pyranda", "caster"),
+        e("shadopus", "skirmisher"),
+      ],
+      [e("lumoth", "skirmisher"), e("cindrake", "front")],
+      [
+        e("shadopus", "skirmisher"),
+        e("pyranda", "caster"),
+        e("cindrake", "front"),
+      ],
+    ],
+  },
+  55: {
+    floor: 55,
+    zone: 6,
+    kind: "elite",
+    name: "The Diving Ring",
+    description: "Echo Captain Cindrake · reinforcements and an ember dive",
+    waves: [],
+    elite: {
+      captain: e("cindrake", "front"),
+      name: "Echo Captain Cindrake",
+      mechanic: "dive",
+      escorts: [e("pyranda", "caster")],
+    },
+  },
+  56: {
+    floor: 56,
+    zone: 6,
+    kind: "wave",
+    name: "Lantern Terrace",
+    waves: [
+      [e("cindrake", "front"), e("mystowl", "caster")],
+      [e("pyranda", "caster"), e("lumoth", "skirmisher")],
+      [e("mystowl", "caster"), e("cindrake", "front"), e("pyranda", "caster")],
+    ],
+  },
+  57: {
+    floor: 57,
+    zone: 6,
+    kind: "wave",
+    name: "Updraft Run",
+    waves: [
+      [e("pyranda", "caster"), e("cindrake", "front"), e("wombolder", "front")],
+      [
+        e("lumoth", "skirmisher"),
+        e("cindrake", "skirmisher"),
+        e("pyranda", "caster"),
+      ],
+      [e("wombolder", "front"), e("lumoth", "skirmisher")],
+    ],
+  },
+  58: {
+    floor: 58,
+    zone: 6,
+    kind: "wave",
+    name: "Choir of Flame",
+    waves: [
+      [
+        e("cindrake", "front"),
+        e("auralynx", "skirmisher"),
+        e("pyranda", "caster"),
+      ],
+      [
+        e("lumoth", "skirmisher"),
+        e("cindrake", "front"),
+        e("lumoth", "caster"),
+      ],
+      [
+        e("auralynx", "skirmisher"),
+        e("pyranda", "caster"),
+        e("cindrake", "front"),
+      ],
+    ],
+  },
+  59: {
+    floor: 59,
+    zone: 6,
+    kind: "wave",
+    name: "Stair of Sparks",
+    waves: [
+      [e("cindrake", "front"), e("pyranda", "caster"), e("halcyra", "caster")],
+      [
+        e("halcyra", "caster"),
+        e("lumoth", "skirmisher"),
+        e("cindrake", "skirmisher"),
+      ],
+      [e("cindrake", "front"), e("cindrake", "front"), e("pyranda", "caster")],
+    ],
+  },
+  // The Ascendant Lumiwick, on the Sky Terrace, in the climb's own room.
+  60: {
+    floor: 60,
+    zone: 6,
+    kind: "boss",
+    name: "Ascendant Lumiwick",
+    description: "New attacks: Snuffing Gale, Bound Wicks",
+    waves: [],
+    boss: "emberwing",
+  },
 };
 export const spireFloor = (floor: number): SpireFloor | undefined =>
   SPIRE_FLOORS[floor];
@@ -1175,6 +1360,28 @@ export const SPIRE_TUNING: Record<
   48: { difficulty: "normal", power: 0.64, armour: 4.8, limit: 180 },
   49: { difficulty: "normal", power: 0.65, armour: 3.05, limit: 180 },
   50: { difficulty: "hard", power: 1, armour: 1, limit: 600 },
+  // Zone 6: a climb starts at 51 with no blessings, against Fire Echoes (a
+  // burst drake, an artillery panda, a versatile moth) and one off-element
+  // champion a floor. As in zones 3 to 5, each Echo hits a little harder
+  // floor by floor and its toughness follows its floor's line-up. Tuned
+  // with every wave fought, the last one too: armour searched on seeds
+  // 1–120, checked on 121–336, then corrected on all 336. By simulation
+  // (tests/unit/spire-zone6.test.ts; a solo Normal bot raider, 336 seeds)
+  // floor 51 is cleared about two times in three (67%), then 62, 60, 54,
+  // 49 (the elite), 47, 44, 38 and 35% on floor 59. (Floor 53's armour
+  // sits on a cliff, 5.75 clearing 51% and 5.8 63%, so its step down from
+  // 52 comes from its power instead: 0.62 63%, 0.63 60%, 0.64 58%; floor
+  // 54 keeps its power above it, 0.635 clearing 54% as 0.63 did.)
+  51: { difficulty: "normal", power: 0.6, armour: 5.2, limit: 180 },
+  52: { difficulty: "normal", power: 0.61, armour: 2.45, limit: 180 },
+  53: { difficulty: "normal", power: 0.63, armour: 5.8, limit: 180 },
+  54: { difficulty: "normal", power: 0.635, armour: 3.12, limit: 180 },
+  55: { difficulty: "normal", power: 0.66, armour: 0.71, limit: 240 },
+  56: { difficulty: "normal", power: 0.64, armour: 3.85, limit: 180 },
+  57: { difficulty: "normal", power: 0.65, armour: 2.95, limit: 180 },
+  58: { difficulty: "normal", power: 0.66, armour: 4.1, limit: 180 },
+  59: { difficulty: "normal", power: 0.67, armour: 2.85, limit: 180 },
+  60: { difficulty: "hard", power: 1, armour: 1, limit: 600 },
 };
 /** Party scaling, and the cap on fighters on the court. */
 export const SPIRE_PARTY = {
@@ -1492,6 +1699,24 @@ export const SPIRE_REWARDS: SpireReward[] = [
     floor: 50,
     kind: "title",
     item: "Sunbreaker of the Spire",
+    amount: 0,
+  },
+  // Zone 6 (migration 20261118090000_spire_zone6.sql).
+  { season: 0, floor: 51, kind: "coins", item: "coins", amount: 100 },
+  { season: 0, floor: 52, kind: "coins", item: "coins", amount: 100 },
+  { season: 0, floor: 53, kind: "coins", item: "coins", amount: 105 },
+  { season: 0, floor: 54, kind: "coins", item: "coins", amount: 105 },
+  { season: 0, floor: 55, kind: "coins", item: "coins", amount: 220 },
+  { season: 0, floor: 56, kind: "coins", item: "coins", amount: 110 },
+  { season: 0, floor: 57, kind: "coins", item: "coins", amount: 110 },
+  { season: 0, floor: 58, kind: "coins", item: "coins", amount: 115 },
+  { season: 0, floor: 59, kind: "coins", item: "coins", amount: 115 },
+  { season: 0, floor: 60, kind: "coins", item: "coins", amount: 400 },
+  {
+    season: 0,
+    floor: 60,
+    kind: "title",
+    item: "Flamebreaker of the Spire",
     amount: 0,
   },
 ];

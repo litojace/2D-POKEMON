@@ -154,8 +154,8 @@ for (const size of SIZES)
 
       await room.locator('[data-ui-spire-tab="floors"]').click();
       const floors = room.locator("[data-spire-floor]");
-      // Zone 1's ten floors, then zones 2 to 5 (locked: checkpoint 1).
-      await expect(floors).toHaveCount(50);
+      // Zone 1's ten floors, then zones 2 to 6 (locked: checkpoint 1).
+      await expect(floors).toHaveCount(60);
       await expect(room.locator('[data-spire-floor="11"]')).toHaveClass(
         /is-locked/,
       );
@@ -718,7 +718,7 @@ for (const size of ZONE2_SIZES)
       await expect(zone2).toHaveAttribute("aria-pressed", "true");
       // The floors, zone by zone.
       await room.locator('[data-ui-spire-tab="floors"]').click();
-      await expect(room.locator("[data-spire-floor]")).toHaveCount(50);
+      await expect(room.locator("[data-spire-floor]")).toHaveCount(60);
       await expect(room.locator('[data-spire-floor="12"]')).toHaveClass(
         /is-done/,
       );
@@ -948,7 +948,7 @@ for (const size of ZONE3_SIZES)
       await expect(zones[2]).toHaveAttribute("aria-pressed", "true");
       // The floors, zone by zone.
       await room.locator('[data-ui-spire-tab="floors"]').click();
-      await expect(room.locator("[data-spire-floor]")).toHaveCount(50);
+      await expect(room.locator("[data-spire-floor]")).toHaveCount(60);
       await expect(room.locator('[data-spire-floor="21"]')).toHaveClass(
         /is-done/,
       );
@@ -1183,7 +1183,7 @@ for (const size of ZONE4_SIZES)
       await expect(zones[3]).toHaveAttribute("aria-pressed", "true");
       // The floors, zone by zone.
       await room.locator('[data-ui-spire-tab="floors"]').click();
-      await expect(room.locator("[data-spire-floor]")).toHaveCount(50);
+      await expect(room.locator("[data-spire-floor]")).toHaveCount(60);
       await expect(room.locator('[data-spire-floor="31"]')).toHaveClass(
         /is-done/,
       );
@@ -1450,7 +1450,7 @@ for (const size of ZONE5_SIZES)
       await expect(zones[4]).toHaveAttribute("aria-pressed", "true");
       // The floors, zone by zone.
       await room.locator('[data-ui-spire-tab="floors"]').click();
-      await expect(room.locator("[data-spire-floor]")).toHaveCount(50);
+      await expect(room.locator("[data-spire-floor]")).toHaveCount(60);
       await expect(room.locator('[data-spire-floor="41"]')).toHaveClass(
         /is-done/,
       );
@@ -1607,7 +1607,7 @@ for (const size of ZONE5_SIZES)
         "Ascendant Prismell defeated",
       );
       await expect(results.locator(".spire-conquered")).toContainText(
-        "More floors are coming",
+        "Zone 6 opens at floor 51",
       );
       await expect(results.locator(".spire-rewards")).toContainText(
         "Sunbreaker of the Spire",
@@ -1615,6 +1615,269 @@ for (const size of ZONE5_SIZES)
       await expect(results.locator("#raid-retry")).toBeInViewport();
       await settle(page);
       await snap(page, info, `spire-z5-results-${size.name}`);
+      expect(errors).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });
+
+// ------------------------------------------------------------------ Zone 6
+const CLEARED_FIRE = {
+  ...CLEARED_LIGHT,
+  bosses: {
+    ...CLEARED_LIGHT.bosses,
+    emberwing: { clears: 1, highestPeril: 3, bestSeconds: 300, runs: 2 },
+  },
+};
+const CLIMB_ZONE6 = {
+  season: 0,
+  highestFloor: 51,
+  checkpoint: 51,
+  attempts: 18,
+  claimed: Array.from({ length: 51 }, (_, i) => i + 1),
+  clears: {
+    grumblecrag: 2,
+    tidewyrm: 1,
+    gloomshade: 1,
+    somnara: 1,
+    prismatail: 1,
+    emberwing: 1,
+  },
+};
+for (const size of ZONE5_SIZES)
+  test(`zone 6 (the Sky Terrace): the zone picker, its floors, the elite, the Ascendant Lumiwick and zone 6 conquered at ${size.name}`, async ({
+    browser,
+  }, info) => {
+    test.setTimeout(240_000);
+    const context = await browser.newContext({
+      viewport: { width: size.width, height: size.height },
+      isMobile: size.phone,
+      hasTouch: size.phone,
+    });
+    try {
+      const page = await context.newPage();
+      await withRecords(page, CLEARED_FIRE, CLIMB_ZONE6);
+      const errors = await openHub(page);
+      await page.click('.lobby-rail [data-lobby-action="raids"]');
+      const room = page.locator(".rh-room");
+      await room.locator("[data-raid-spire]").click();
+      await expect(room).toHaveAttribute("data-raid-mode", "spire");
+      // The zone picker: zone 6 picked (checkpoint 51), zones 1 to 5 open
+      // too, all six chips in view (no sideways scrolling).
+      const zones = [1, 2, 3, 4, 5, 6].map((z) =>
+        room.locator(`[data-ui-spire-zone="${z}"]`),
+      );
+      await expect(zones[5]).toHaveAttribute("aria-pressed", "true");
+      for (const z of zones.slice(0, 5)) await expect(z).toBeEnabled();
+      const info6 = room
+        .locator(".sp-zone-info, .sp-route-zone")
+        .locator("visible=true");
+      await expect(info6).toHaveCount(1);
+      await expect(info6).toContainText("Sky Terrace");
+      await expect(info6).toContainText("Fire");
+      await expect(room.locator(".rh-foot-note")).toContainText(
+        "zone 6 from floor 51",
+      );
+      const picker = room.locator(".sp-zone-picker");
+      await picker.scrollIntoViewIfNeeded();
+      await settle(page);
+      const fit = await picker.evaluate((row) => {
+        const r = row.getBoundingClientRect();
+        const body = row.closest(".ui-split-main")!.getBoundingClientRect();
+        return {
+          overflow: row.scrollWidth - row.clientWidth,
+          inside: [...row.querySelectorAll("button")].every((b) => {
+            const c = b.getBoundingClientRect();
+            return (
+              c.left >= r.left - 1 &&
+              c.right <= r.right + 1 &&
+              c.left >= body.left &&
+              c.right <= body.right &&
+              c.width >= 44 &&
+              c.height >= 44
+            );
+          }),
+        };
+      });
+      expect(fit).toEqual({ overflow: 0, inside: true });
+      expect(await layoutProblems(page, { phone: size.phone })).toEqual([]);
+      await snap(page, info, `spire-z6-picker-${size.name}`);
+      // The floors, zone by zone.
+      await room.locator('[data-ui-spire-tab="floors"]').click();
+      await expect(room.locator("[data-spire-floor]")).toHaveCount(60);
+      await expect(room.locator('[data-spire-floor="51"]')).toHaveClass(
+        /is-done/,
+      );
+      await expect(room.locator('[data-spire-floor="52"]')).toHaveClass(
+        /is-next/,
+      );
+      await expect(room.locator('[data-spire-floor="55"]')).toContainText(
+        "Elite",
+      );
+      await expect(room.locator('[data-spire-floor="60"]')).toContainText(
+        "Ascendant Lumiwick",
+      );
+      const head6 = room.locator('[data-spire-zone-floors="6"] .sp-zone-head');
+      await expect(head6).toContainText("Sky Terrace");
+      await expect(head6).toContainText("Fire");
+      await settle(page);
+      await head6.scrollIntoViewIfNeeded();
+      await page.waitForTimeout(300);
+      expect(await layoutProblems(page, { phone: size.phone })).toEqual([]);
+      await snap(page, info, `spire-z6-floors-${size.name}`);
+      await page
+        .locator(".rh-room [data-ui-close]")
+        .click()
+        .catch(() => {});
+
+      // Floor 51: Fire Echoes on the Spire's court (no terrace, no braziers).
+      await climb(page, { floor: 51, seats: 2 });
+      await expect(page.locator('#raid-hud [data-hud="phase"]')).toHaveText(
+        /^Floor 51 · Wave 1\/3 · \d Echo(es)?$/,
+      );
+      await expect(page.locator('#raid-hud [data-hud="title"]')).toHaveText(
+        "THE SPIRE · FLOOR 51",
+      );
+      const court = await page.evaluate(() => {
+        const s = (window as any).__snap;
+        return {
+          zone: s.raid.spire.zone,
+          boss: s.raid.boss,
+          arena: s.arena,
+          braziers: (s.raid.braziers ?? []).length,
+          airborne: !!s.raid.airborne,
+        };
+      });
+      expect(court).toEqual({
+        zone: 6,
+        boss: "emberwing",
+        arena: "classic",
+        braziers: 0,
+        airborne: false,
+      });
+      await page.evaluate(() => (window as any).__spireStep(0.5));
+      await page.waitForTimeout(500);
+      await snap(page, info, `spire-z6-floor51-${size.name}`);
+
+      // Floor 55: the captain, with Lumiwick's dive.
+      await page.evaluate(() => {
+        const w = window as any;
+        w.__room("spire", { floor: 55, stage: "playing" });
+        w.__push();
+      });
+      await expect(page.locator('#raid-hud [data-hud="title"]')).toHaveText(
+        "FLOOR 55 · ECHO CAPTAIN CINDRAKE",
+      );
+      await expect(page.locator('#raid-hud [data-hud="phase"]')).toHaveText(
+        "Floor 55 · Elite",
+      );
+      let dive = false;
+      for (let i = 0; i < 60 && !dive; i++)
+        dive = await page.evaluate(() => {
+          const w = window as any;
+          w.__spireStep(0.25);
+          return w.__snap.raid.warnings.some(
+            (x: any) => x.kind === "dive-bomb",
+          );
+        });
+      expect(dive).toBe(true);
+      await expect(page.locator("#raid-hud .raid-callout")).toHaveText(
+        "Ember Dive — step out of the red lane!",
+      );
+      // The captain is its champion: no Lumiwick on the court.
+      const elite = await page.evaluate(() => {
+        const s = (window as any).__snap;
+        const id = s.raid.spire.eliteId;
+        const p = s.players.find((q: any) => q.id === id);
+        return {
+          character: p?.character,
+          raidBoss: !!p?.raidBoss,
+          bosses: s.players.filter((q: any) => q.raidBoss).length,
+        };
+      });
+      expect(elite).toEqual({
+        character: "cindrake",
+        raidBoss: false,
+        bosses: 0,
+      });
+      await page.evaluate(() => (window as any).__spireStep(0.3));
+      await page.waitForTimeout(300);
+      await snap(page, info, `spire-z6-elite-${size.name}`);
+
+      // Floor 60: the Ascendant Lumiwick's briefing, on the Sky Terrace.
+      await page.evaluate(() => {
+        const w = window as any;
+        w.__room("spire", { floor: 60, stage: "briefing" });
+        w.__push();
+      });
+      const brief = page.locator(".rc-card.is-briefing");
+      await expect(brief.locator("h2")).toHaveText(
+        "Floor 60 · Ascendant Lumiwick",
+      );
+      await expect(brief).toContainText("Lumiwick, evolved");
+      await expect(brief).toContainText("Lumiwick's raid, step by step");
+      await expect(page.locator("#raid-instructions")).toBeInViewport();
+      await settle(page);
+      await snap(page, info, `spire-z6-boss-briefing-${size.name}`);
+
+      // The fight: the Sky Terrace and its braziers, the raid's bar, the floor.
+      await page.evaluate(() => {
+        const w = window as any;
+        w.__room("spire", { floor: 60, stage: "playing" });
+        w.__push();
+      });
+      await expect(page.locator('#raid-hud [data-hud="title"]')).toHaveText(
+        /^ASCENDANT LUMIWICK/,
+      );
+      await expect(page.locator('#raid-hud [data-hud="phase"]')).toHaveText(
+        "Floor 60 · Phase 1/3",
+      );
+      const fight = await page.evaluate(() => {
+        const s = (window as any).__snap;
+        return {
+          arena: s.arena,
+          variant: s.raid.variant,
+          boss: s.players.find((p: any) => p.raidBoss)?.name,
+          braziers: (s.raid.braziers ?? []).length,
+        };
+      });
+      expect(fight).toEqual({
+        arena: "sky-terrace",
+        variant: "ascendant",
+        boss: "Ascendant Lumiwick",
+        braziers: 3,
+      });
+      for (let i = 0; i < 20; i++) {
+        const live = await page.evaluate(() => {
+          const w = window as any;
+          w.__spireStep(0.5);
+          return w.__snap.raid.warnings.length;
+        });
+        if (live) break;
+      }
+      await page.waitForTimeout(400);
+      await snap(page, info, `spire-z6-boss-fight-${size.name}`);
+
+      // It falls: zone 6 conquered, floor 60's title.
+      await page.evaluate(() => {
+        const w = window as any;
+        w.__room("spire", { floor: 60, stage: "finished" });
+        w.__push();
+      });
+      const results = page.locator(".rc-card.is-results");
+      await expect(results.locator("h2")).toHaveText("Zone 6 conquered!");
+      await expect(results.locator(".spire-conquered")).toContainText(
+        "Ascendant Lumiwick defeated",
+      );
+      await expect(results.locator(".spire-conquered")).toContainText(
+        "More floors are coming",
+      );
+      await expect(results.locator(".spire-rewards")).toContainText(
+        "Flamebreaker of the Spire",
+      );
+      await expect(results.locator("#raid-retry")).toBeInViewport();
+      await settle(page);
+      await snap(page, info, `spire-z6-results-${size.name}`);
       expect(errors).toEqual([]);
     } finally {
       await context.close();

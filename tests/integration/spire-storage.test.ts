@@ -6,8 +6,9 @@ import {
   type SpireMember,
 } from "../../packages/shared/src/spire";
 
-// The Spire's storage (migrations 20261116150000 and, for zones 2 to 5,
-// 20261116180000, 20261117090000, 20261117150000 and 20261117210000): each cleared floor is saved at once, first-clear coins
+// The Spire's storage (migrations 20261116150000 and, for zones 2 to 6,
+// 20261116180000, 20261117090000, 20261117150000, 20261117210000 and
+// 20261118090000): each cleared floor is saved at once, first-clear coins
 // and titles are paid once per player, and the server reads checkpoints and
 // raid clears before a climb.
 let db: PGlite;
@@ -79,6 +80,7 @@ beforeAll(async () => {
     "20261117090000_spire_zone3.sql",
     "20261117150000_spire_zone4.sql",
     "20261117210000_spire_zone5.sql",
+    "20261118090000_spire_zone6.sql",
   ])
     await db.exec(await readFile("supabase/migrations/" + f, "utf8"));
   await db.exec(
@@ -303,8 +305,38 @@ it("pays floor 10's title once, and opens checkpoint 11 (zone 2)", async () => {
   );
   const p5 = await progress(ana);
   expect(p5.highestFloor).toBe(50);
-  // Zone 6 isn't built: the checkpoint stays at 41.
-  expect(p5.checkpoint).toBe(41);
+  // Zone 5 is conquered: climbs may start at floor 51 (zone 6).
+  expect(p5.checkpoint).toBe(51);
+  // Zone 6's floors pay their own first clears; floor 60 its title.
+  const before6 = await balance(ana);
+  for (const f of [51, 52, 53, 54, 55, 56, 57, 58, 59])
+    await record({ ...floor(run(15), f), startFloor: 51 });
+  const sixty = await record({ ...floor(run(15), 60), startFloor: 51 });
+  expect(sixty.newClaims).toEqual([
+    {
+      accountId: ana,
+      floor: 60,
+      coins: 400,
+      titles: ["Flamebreaker of the Spire"],
+    },
+  ]);
+  // A second clear of the Ascendant Lumiwick pays nothing more.
+  expect(
+    (await record({ ...floor(run(16), 60), startFloor: 51 })).newClaims,
+  ).toEqual([]);
+  expect(await balance(ana)).toBe(
+    before6 + 100 + 100 + 105 + 105 + 220 + 110 + 110 + 115 + 115 + 400,
+  );
+  await as(ana);
+  const me5 = (await db.query<{ p: any }>("select public.arena_me() as p"))
+    .rows[0].p;
+  expect(me5.ownedTitles.map((t: any) => t.name)).toContain(
+    "Flamebreaker of the Spire",
+  );
+  const p6 = await progress(ana);
+  expect(p6.highestFloor).toBe(60);
+  // Zone 7 isn't built: the checkpoint stays at 51.
+  expect(p6.checkpoint).toBe(51);
 });
 
 it("gives checkpoint 11 to players who conquered zone 1 before zone 2 existed", async () => {
@@ -503,6 +535,56 @@ it("gives checkpoint 41 to players who conquered zone 4 before zone 5 existed", 
   await db.exec(`reset role;delete from auth.users where id='${old}'`);
 });
 
+it("gives checkpoint 51 to players who conquered zone 5 before zone 6 existed", async () => {
+  // As before zone 6's migration ran: floor 50 cleared, checkpoint 41.
+  const old = "00000000-0000-4000-8000-0000000051a7";
+  await db.exec(
+    `reset role;insert into auth.users values('${old}','{"display_name":"Firstlight"}')`,
+  );
+  await as(old);
+  await db.query("select public.arena_me()");
+  await db.exec(
+    `reset role;insert into public.arena_spire_progress(player_id,season,highest_floor,checkpoint,attempts)
+     values('${old}',0,50,41,17)
+     on conflict (player_id, season) do update set highest_floor=excluded.highest_floor, checkpoint=excluded.checkpoint`,
+  );
+  const zone6 = await readFile(
+    "supabase/migrations/20261118090000_spire_zone6.sql",
+    "utf8",
+  );
+  await db.exec(zone6);
+  expect(await progress(old)).toMatchObject({
+    highestFloor: 50,
+    checkpoint: 51,
+    attempts: 17,
+  });
+  // Its server-side read agrees: Firstlight may start zone 6.
+  const [m] = await server<(SpireMember & { id: string })[]>(
+    `select public.arena_spire_start(array['${old}']::uuid[]) as v`,
+  );
+  expect(m.checkpoint).toBe(51);
+  expect(
+    spireStartFrom([{ ...m, clears: { grumblecrag: 1 } }], 6),
+  ).toMatchObject({ ok: true, startFloor: 51, ceiling: 59 });
+  // Running it again changes nothing, and keeps one row per reward.
+  await db.exec(zone6);
+  expect((await progress(old)).checkpoint).toBe(51);
+  await db.exec("reset role");
+  const rows = (
+    await db.query<{ n: number }>(
+      "select count(*)::int as n from public.arena_spire_rewards where season = 0 and floor between 51 and 60",
+    )
+  ).rows[0].n;
+  expect(rows).toBe(11);
+  const titles = (
+    await db.query<{ n: number }>(
+      "select count(*)::int as n from public.arena_titles where name = 'Flamebreaker of the Spire'",
+    )
+  ).rows[0].n;
+  expect(titles).toBe(1);
+  await db.exec(`reset role;delete from auth.users where id='${old}'`);
+});
+
 it("rejects broken receipts", async () => {
   await expect(record({ ...floor(run(5), 1), floor: 0 })).rejects.toThrow(
     /Invalid Spire floor/,
@@ -523,7 +605,7 @@ it("reads checkpoints and raid clears before a climb (lowest among the party)", 
     `select public.arena_spire_start(array['${ana}','${bo}']::uuid[]) as v`,
   );
   expect(members.map((m) => [m.id, m.checkpoint, m.clears])).toEqual([
-    [ana, 41, {}],
+    [ana, 51, {}],
     [bo, 1, { grumblecrag: 1 }],
   ]);
   // Ana has no Cragmuff clear: the party can't climb yet.
@@ -533,12 +615,13 @@ it("reads checkpoints and raid clears before a climb (lowest among the party)", 
     ok: true,
     startFloor: 1,
   });
-  // Zone 2 needs floor 11 from Bo too, zone 3 floor 21, zone 4 floor 31
-  // and zone 5 floor 41.
+  // Zone 2 needs floor 11 from Bo too, zone 3 floor 21, zone 4 floor 31,
+  // zone 5 floor 41 and zone 6 floor 51.
   expect(spireStartFrom([members[1]], 2)).toMatchObject({ ok: false });
   expect(spireStartFrom([members[1]], 3)).toMatchObject({ ok: false });
   expect(spireStartFrom([members[1]], 4)).toMatchObject({ ok: false });
   expect(spireStartFrom([members[1]], 5)).toMatchObject({ ok: false });
+  expect(spireStartFrom([members[1]], 6)).toMatchObject({ ok: false });
   expect((await progress(bo)).clears).toEqual({ grumblecrag: 1 });
 });
 

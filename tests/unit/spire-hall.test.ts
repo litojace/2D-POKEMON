@@ -114,7 +114,7 @@ describe("the Spire page", () => {
   it("lists each floor with its state and first-clear reward", () => {
     const html = page("floors");
     // Every zone, each under its own heading.
-    expect((html.match(/data-spire-floor=/g) ?? []).length).toBe(50);
+    expect((html.match(/data-spire-floor=/g) ?? []).length).toBe(60);
     expect(html).toContain('data-spire-zone-floors="1"');
     expect(html).toContain('data-spire-zone-floors="2"');
     expect(html).toContain('data-spire-zone-floors="3"');
@@ -451,13 +451,13 @@ describe("Spire progress and floor previews", () => {
     expect(spirePreview(view, fresh).selected.floor).toBe(1);
     // Every released zone conquered: no next floor; climb any zone again
     // (the highest by default, zone 1 when picked).
-    const done = data({ spire: climb({ highestFloor: 50, checkpoint: 51 }) });
+    const done = data({ spire: climb({ highestFloor: 60, checkpoint: 61 }) });
     expect(spirePreview(view, done).next).toBeUndefined();
     const html = spireMarkup(view, done);
-    expect(html).toContain("All 50 floors conquered!");
+    expect(html).toContain("All 60 floors conquered!");
     expect(html).toContain("Spire conquered");
     expect(html).not.toContain("Next uncleared");
-    expect(html).toContain("Climb from floor 41");
+    expect(html).toContain("Climb from floor 51");
     expect(spireMarkup({ ...view, spireZone: 1 }, done)).toContain(
       "Climb from floor 1<",
     );

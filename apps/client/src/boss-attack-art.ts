@@ -843,6 +843,40 @@ const art: Partial<Record<RaidAttack, { el: Element; draw: () => string }>> = {
       raider(112, 104, 0.75) +
       arrow(84, 70, 104, 54),
   },
+  // Ascendant Lumiwick · Fire: a cold gale through a brazier; its keeper holds the flame.
+  "snuff-gale": {
+    el: "fire",
+    draw: () =>
+      danger(lane(20, 24, 112, 104, 18), 0.22) +
+      halo("fire", 22, 24, 18) +
+      `<circle cx="22" cy="24" r="7" fill="url(#sa-orb-fire)"/>` +
+      glow(
+        "M34 38 q10 -2 18 6 M46 52 q10 -2 18 6 M90 92 q8 0 14 6",
+        "#d8f4ff",
+        2.2,
+        "#8eddf0",
+      ) +
+      `<path d="${ell(76, 80, 22, 9)}" fill="#ffd778" fill-opacity=".28" stroke="#ffd778" stroke-width="2.4" stroke-dasharray="4 3"/>` +
+      flame(76, 70, 0.55) +
+      raider(76, 84, 0.8) +
+      raider(36, 100, 0.75) +
+      arrow(44, 96, 22, 112),
+  },
+  // Ascendant Lumiwick · Fire: a burning wick binds two braziers; both rings at once.
+  "bound-wicks": {
+    el: "fire",
+    draw: () =>
+      `<path d="${ell(28, 84, 20, 8)}" fill="#ffd778" fill-opacity=".22" stroke="#ffd778" stroke-width="2.4"/>` +
+      `<path d="${ell(100, 84, 20, 8)}" fill="#ffd778" fill-opacity=".22" stroke="#ffd778" stroke-width="2.4"/>` +
+      `<path d="M30 70 Q64 44 98 70" fill="none" stroke="#2a120a" stroke-width="5" stroke-linecap="round"/>` +
+      `<path d="M30 70 Q64 44 98 70" fill="none" stroke="${F.accent[1]}" stroke-width="2.4" stroke-dasharray="5 6" stroke-linecap="round"/>` +
+      flame(64, 52, 0.5) +
+      flame(28, 70, 0.45) +
+      flame(100, 70, 0.45) +
+      raider(28, 88, 0.8) +
+      raider(100, 88, 0.8) +
+      `<path d="M52 108 h24" stroke="${RED}" stroke-width="2" stroke-dasharray="3 4"/>`,
+  },
 
   // Storm Twins · Electric
   "link-beam": {

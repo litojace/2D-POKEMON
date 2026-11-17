@@ -63,7 +63,7 @@ function spire(o: RoomOptions) {
     return b;
   }) as typeof crypto.getRandomValues;
   const floor = o.floor ?? 1;
-  // The room climbs the floor's zone (zone 2 from floor 11, 3 from 21, 4 from 31, 5 from 41).
+  // The room climbs the floor's zone (zone 2 from floor 11, 3 from 21, 4 from 31, 5 from 41, 6 from 51).
   const zone = spireZoneOf(floor);
   const a: any = createSpireArena("SPIRE42", zone);
   a.add("me", "tester", "voltkit");
@@ -146,7 +146,7 @@ function spire(o: RoomOptions) {
  * A boss floor (10: the Ascendant Cragmuff; 20: the Ascendant Tidelotl;
  * 30: the Ascendant Inkpurr, in the Lantern Yard; 40: the Ascendant
  * Snoozaku, on the Cloud Deck; 50: the Ascendant Prismell, in the Sun
- * Atrium): a
+ * Atrium; 60: the Ascendant Lumiwick, on the Sky Terrace): a
  * real climb from the floor below (cleared), on to the Ascendant in the
  * same room: its briefing, the fight a few seconds in, or the results once
  * it falls (the zone conquered).

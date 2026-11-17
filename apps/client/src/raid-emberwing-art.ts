@@ -10,6 +10,7 @@ import {
 } from "../../../packages/shared/src/raid";
 import { RaidBossMotion, type RaidBossCue } from "./raid-boss-motion";
 import type { LayerAt } from "./raid-layers";
+import { drawAscendantLumiwickWarning } from "./ascendant-lumiwick-art";
 type G = Phaser.GameObjects.Graphics;
 const TAU = Math.PI * 2;
 function flame(g: G, x: number, y: number, size: number, alpha = 1) {
@@ -144,6 +145,8 @@ export function drawEmberwingWarning(g: G, state: Snapshot, w: RaidWarning) {
     else if (w.kind === "ember-rain") flame(g, w.x, w.y - (1 - p) * 100, 9);
     return true;
   }
+  if (w.kind === "snuff-gale" || w.kind === "bound-wicks")
+    return drawAscendantLumiwickWarning(g, state, w);
   return w.kind === "brazier-lighting";
 }
 interface LumiState {
@@ -219,6 +222,8 @@ export function drawEmberwing(
   const wind = r.warnings.find(
     (w) =>
       w.kind !== "brazier-lighting" &&
+      // a wick burns on the floor: no wind-up of the lantern's
+      w.kind !== "bound-wicks" &&
       (!w.casterId || w.casterId === boss.id) &&
       w.at >= state.time &&
       (w.startedAt ?? w.at - 1.5) <= state.time,
