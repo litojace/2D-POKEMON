@@ -1,0 +1,3635 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <title>Nghiên cứu hình 2D</title>
+    <meta name="claude:viewport-fit-sides" content="cover" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Sora:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap"
+    />
+    <style>
+      /* Layout: a reviewer's bench — the sticky clock and draw-mode bar on top, then
+   each place as a row of three frames (today's game, look A, look B), then the
+   cost table and the report. */
+      :root {
+        --bg: #f3f5f0;
+        --panel: #ffffff;
+        --fg: #1c231f;
+        --muted: #5b665e;
+        --line: #d6ddd4;
+        --accent: #2c7a57;
+        --accent-ink: #ffffff;
+        --warn: #a8571c;
+        --chip: #e6ece4;
+        --font-display: "Sora", "Segoe UI", system-ui, sans-serif;
+        --font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+        --font-data:
+          "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) {
+          --bg: #131915;
+          --panel: #1a221d;
+          --fg: #e5ebe6;
+          --muted: #9ba89f;
+          --line: #2b352f;
+          --accent: #6fd0a0;
+          --accent-ink: #0f1a14;
+          --warn: #f0a466;
+          --chip: #232d27;
+          color-scheme: dark;
+        }
+      }
+      :root[data-theme="dark"] {
+        --bg: #131915;
+        --panel: #1a221d;
+        --fg: #e5ebe6;
+        --muted: #9ba89f;
+        --line: #2b352f;
+        --accent: #6fd0a0;
+        --accent-ink: #0f1a14;
+        --warn: #f0a466;
+        --chip: #232d27;
+        color-scheme: dark;
+      }
+      :root {
+        padding-top: env(safe-area-inset-top, 0px);
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--fg);
+        font: 15px/1.6 var(--font-body);
+        padding-left: max(16px, env(safe-area-inset-left, 0px));
+        padding-right: max(16px, env(safe-area-inset-right, 0px));
+        padding-block: 0 48px;
+      }
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0 0 auto;
+        height: env(safe-area-inset-top, 0px);
+        z-index: 10;
+        background: var(--bg);
+      }
+      .wrap {
+        max-width: 1320px;
+        margin: 0 auto;
+      }
+      h1,
+      h2,
+      h3 {
+        font-family: var(--font-display);
+        text-wrap: balance;
+        line-height: 1.2;
+        margin: 0;
+      }
+      h1 {
+        font-size: clamp(1.6rem, 3.2vw, 2.3rem);
+        font-weight: 700;
+      }
+      h2 {
+        font-size: 1.35rem;
+        font-weight: 700;
+      }
+      h3 {
+        font-size: 1.02rem;
+        font-weight: 600;
+      }
+      p,
+      li {
+        max-width: 72ch;
+      }
+      a {
+        color: var(--accent);
+      }
+      header.top {
+        padding-block: 28px 18px;
+        display: grid;
+        gap: 10px;
+      }
+      .eyebrow {
+        font: 600 0.72rem/1 var(--font-data);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .lede {
+        color: var(--muted);
+        margin: 0;
+      }
+      .bar {
+        position: sticky;
+        top: env(safe-area-inset-top, 0px);
+        z-index: 5;
+        background: var(--bg);
+        border-bottom: 1px solid var(--line);
+        padding-block: 10px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px 18px;
+        align-items: center;
+      }
+      .group {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      .group > span.lbl {
+        font: 600 0.72rem var(--font-data);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--muted);
+        margin-right: 2px;
+      }
+      button {
+        font: 500 0.85rem var(--font-body);
+        color: var(--fg);
+        background: var(--chip);
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 5px 12px;
+        cursor: pointer;
+      }
+      button[aria-pressed="true"] {
+        background: var(--accent);
+        color: var(--accent-ink);
+        border-color: var(--accent);
+      }
+      button:focus-visible,
+      input:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+      button:disabled {
+        opacity: 0.6;
+        cursor: progress;
+      }
+      #clock {
+        font: 600 1.05rem var(--font-data);
+        min-width: 3.4em;
+        font-variant-numeric: tabular-nums;
+      }
+      #tod {
+        width: min(260px, 52vw);
+        accent-color: var(--accent);
+      }
+      section {
+        padding-block: 28px 8px;
+        display: grid;
+        gap: 14px;
+      }
+      .trio {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+      }
+      @media (max-width: 980px) {
+        .trio {
+          grid-template-columns: minmax(0, 1fr);
+        }
+      }
+      figure {
+        margin: 0;
+        display: grid;
+        gap: 6px;
+        min-width: 0;
+      }
+      figure .frame {
+        position: relative;
+        width: 100%;
+        aspect-ratio: 480 / 300;
+        max-width: 100%;
+        border-radius: 6px;
+        overflow: hidden;
+        background: #000;
+        border: 1px solid var(--line);
+      }
+      figure canvas,
+      figure img {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      figcaption {
+        display: grid;
+        gap: 2px;
+      }
+      figcaption b {
+        font: 600 0.92rem var(--font-display);
+      }
+      .stat {
+        font: 0.72rem/1.4 var(--font-data);
+        color: var(--muted);
+        font-variant-numeric: tabular-nums;
+      }
+      .note {
+        color: var(--muted);
+        font-size: 0.88rem;
+      }
+      .table-wrap {
+        overflow-x: auto;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: var(--panel);
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        font-size: 0.86rem;
+      }
+      th,
+      td {
+        text-align: left;
+        padding: 7px 10px;
+        border-bottom: 1px solid var(--line);
+        vertical-align: top;
+      }
+      th {
+        font: 600 0.72rem var(--font-data);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--muted);
+        background: var(--chip);
+      }
+      td.num,
+      th.num {
+        text-align: right;
+        font-family: var(--font-data);
+        font-variant-numeric: tabular-nums;
+      }
+      tr:last-child td {
+        border-bottom: 0;
+      }
+      .cols {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 18px;
+      }
+      @media (max-width: 760px) {
+        .cols {
+          grid-template-columns: minmax(0, 1fr);
+        }
+      }
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 16px 18px;
+        display: grid;
+        gap: 8px;
+        min-width: 0;
+      }
+      .card ul {
+        margin: 0;
+        padding-left: 1.1em;
+      }
+      .tag {
+        display: inline-block;
+        font: 600 0.7rem var(--font-data);
+        padding: 2px 8px;
+        border-radius: 999px;
+        background: var(--chip);
+        color: var(--muted);
+      }
+      .warn {
+        color: var(--warn);
+      }
+      ol.src {
+        padding-left: 1.3em;
+        font-size: 0.88rem;
+      }
+      ol.src li {
+        margin-bottom: 6px;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        * {
+          scroll-behavior: auto !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header class="top">
+        <span class="eyebrow">Bản mẫu để duyệt · chưa sửa game</span>
+        <h1>Farm và Bistro chân thật hơn, vẫn 2D</h1>
+        <p class="lede">
+          Một góc Farm và một góc Bistro, vẽ lại theo hai hướng hình ảnh bằng
+          Canvas 2D thuần (không thư viện). Cột trái là ảnh chụp game hiện tại
+          từ test hình. Kéo thanh giờ để xem bóng đổ đổi theo mặt trời, dùng
+          đúng công thức <code>sunLight</code> và lớp bóng của
+          <code>world-light.ts</code>.
+        </p>
+      </header>
+
+      <div class="bar" role="toolbar" aria-label="Điều khiển bản mẫu">
+        <div class="group">
+          <span class="lbl">Giờ</span>
+          <span id="clock" aria-live="off">08:38</span>
+          <input
+            id="tod"
+            type="range"
+            min="360"
+            max="1094"
+            step="1"
+            value="518"
+            aria-label="Giờ trong ngày"
+          />
+          <button id="play" type="button" aria-pressed="false">Chạy giờ</button>
+        </div>
+        <div class="group">
+          <span class="lbl">Đồ họa</span>
+          <button type="button" data-set="grade:high">Cao</button>
+          <button type="button" data-set="grade:low">Thấp</button>
+        </div>
+        <div class="group">
+          <span class="lbl">Cách vẽ</span>
+          <button type="button" data-set="mode:live">Vẽ trực tiếp</button>
+          <button type="button" data-set="mode:baked">
+            Nướng sẵn (như game)
+          </button>
+          <button type="button" data-set="mode:cached">Nướng cả bóng</button>
+        </div>
+      </div>
+
+      <section aria-labelledby="farm-h">
+        <h2 id="farm-h">Góc Farm</h2>
+        <div class="trio">
+          <figure>
+            <div class="frame">
+              <img
+                src="shots/current-farm.webp"
+                alt="Farm hiện tại lúc trưa, nắng, chụp từ test hình ở 844×390"
+              />
+            </div>
+            <figcaption>
+              <b>Hiện tại</b
+              ><span class="stat"
+                >Ảnh chụp game (test hình, 844×390 ×2, 12:00, nắng), cắt một
+                góc</span
+              >
+            </figcaption>
+          </figure>
+          <figure>
+            <div class="frame">
+              <canvas
+                id="farm-painted"
+                data-scene="farm"
+                data-kit="painted"
+                width="480"
+                height="300"
+                aria-label="Farm, hướng A, Painted storybook"
+              ></canvas>
+            </div>
+            <figcaption>
+              <b>A · Painted storybook</b
+              ><span class="stat" data-stat="farm-painted">…</span
+              ><span class="stat" data-bake="farm-painted">…</span>
+            </figcaption>
+          </figure>
+          <figure>
+            <div class="frame">
+              <canvas
+                id="farm-toy"
+                data-scene="farm"
+                data-kit="toy"
+                width="480"
+                height="300"
+                aria-label="Farm, hướng B, Crisp toy"
+              ></canvas>
+            </div>
+            <figcaption>
+              <b>B · Crisp toy</b
+              ><span class="stat" data-stat="farm-toy">…</span
+              ><span class="stat" data-bake="farm-toy">…</span>
+            </figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section aria-labelledby="bistro-h">
+        <h2 id="bistro-h">Góc Bistro</h2>
+        <div class="trio">
+          <figure>
+            <div class="frame">
+              <img
+                src="shots/current-bistro.webp"
+                alt="Bistro hiện tại lúc trưa, chụp từ test hình ở 844×390"
+              />
+            </div>
+            <figcaption>
+              <b>Hiện tại</b
+              ><span class="stat"
+                >Ảnh chụp game (test hình, 844×390 ×2, 12:00), cắt một góc</span
+              >
+            </figcaption>
+          </figure>
+          <figure>
+            <div class="frame">
+              <canvas
+                id="bistro-painted"
+                data-scene="bistro"
+                data-kit="painted"
+                width="480"
+                height="300"
+                aria-label="Bistro, hướng A, Painted storybook"
+              ></canvas>
+            </div>
+            <figcaption>
+              <b>A · Painted storybook</b
+              ><span class="stat" data-stat="bistro-painted">…</span
+              ><span class="stat" data-bake="bistro-painted">…</span>
+            </figcaption>
+          </figure>
+          <figure>
+            <div class="frame">
+              <canvas
+                id="bistro-toy"
+                data-scene="bistro"
+                data-kit="toy"
+                width="480"
+                height="300"
+                aria-label="Bistro, hướng B, Crisp toy"
+              ></canvas>
+            </div>
+            <figcaption>
+              <b>B · Crisp toy</b
+              ><span class="stat" data-stat="bistro-toy">…</span
+              ><span class="stat" data-bake="bistro-toy">…</span>
+            </figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section aria-labelledby="cost-h">
+        <h2 id="cost-h">Chi phí vẽ</h2>
+        <p class="note">
+          Máy test: container đám mây, 4 nhân Xeon 2,1 GHz, Chromium 153
+          headless, <b>không có GPU</b> (WebGL báo SwiftShader, tức vẽ bằng
+          CPU). Số mili-giây ở đây chậm hơn điện thoại thật nhiều lần, nên chỉ
+          dùng để so <b>tương đối</b> giữa các cách vẽ. Mỗi số là trung vị của
+          40 frame; sau mỗi frame đọc 1 điểm ảnh để trình duyệt vẽ xong thật rồi
+          mới dừng đồng hồ. Canvas 1440×900 (1,30 triệu điểm ảnh, gần bằng màn
+          844×390 ở ×2).
+        </p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Cảnh</th>
+                <th>Cách vẽ</th>
+                <th class="num">ms/frame (trung vị)</th>
+                <th class="num">p90</th>
+                <th class="num">drawImage/frame</th>
+                <th class="num">fill/stroke/frame</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Farm A</td>
+                <td>Vẽ trực tiếp</td>
+                <td class="num">83,2</td>
+                <td class="num">117,4</td>
+                <td class="num">67</td>
+                <td class="num">4 975</td>
+              </tr>
+              <tr>
+                <td>Farm A</td>
+                <td>Nướng sẵn (như game)</td>
+                <td class="num">14,2</td>
+                <td class="num">15,6</td>
+                <td class="num">110</td>
+                <td class="num">2</td>
+              </tr>
+              <tr>
+                <td>Farm A</td>
+                <td>Nướng cả bóng</td>
+                <td class="num">8,3</td>
+                <td class="num">12,0</td>
+                <td class="num">109</td>
+                <td class="num">2</td>
+              </tr>
+              <tr>
+                <td>Farm A</td>
+                <td>Nướng sẵn · Thấp</td>
+                <td class="num">7,8</td>
+                <td class="num">8,8</td>
+                <td class="num">43</td>
+                <td class="num">2</td>
+              </tr>
+              <tr>
+                <td>Farm B</td>
+                <td>Vẽ trực tiếp</td>
+                <td class="num">38,2</td>
+                <td class="num">42,9</td>
+                <td class="num">67</td>
+                <td class="num">2 114</td>
+              </tr>
+              <tr>
+                <td>Farm B</td>
+                <td>Nướng sẵn (như game)</td>
+                <td class="num">15,2</td>
+                <td class="num">20,1</td>
+                <td class="num">110</td>
+                <td class="num">2</td>
+              </tr>
+              <tr>
+                <td>Farm B</td>
+                <td>Nướng cả bóng</td>
+                <td class="num">7,7</td>
+                <td class="num">9,5</td>
+                <td class="num">109</td>
+                <td class="num">2</td>
+              </tr>
+              <tr>
+                <td>Farm B</td>
+                <td>Nướng sẵn · Thấp</td>
+                <td class="num">6,5</td>
+                <td class="num">8,5</td>
+                <td class="num">43</td>
+                <td class="num">2</td>
+              </tr>
+              <tr>
+                <td>Bistro A</td>
+                <td>Vẽ trực tiếp</td>
+                <td class="num">41,6</td>
+                <td class="num">43,1</td>
+                <td class="num">13</td>
+                <td class="num">480</td>
+              </tr>
+              <tr>
+                <td>Bistro A</td>
+                <td>Nướng sẵn (như game)</td>
+                <td class="num">15,1</td>
+                <td class="num">17,2</td>
+                <td class="num">20</td>
+                <td class="num">6</td>
+              </tr>
+              <tr>
+                <td>Bistro A</td>
+                <td>Nướng cả bóng</td>
+                <td class="num">9,4</td>
+                <td class="num">11,2</td>
+                <td class="num">19</td>
+                <td class="num">6</td>
+              </tr>
+              <tr>
+                <td>Bistro A</td>
+                <td>Nướng sẵn · Thấp</td>
+                <td class="num">7,7</td>
+                <td class="num">8,8</td>
+                <td class="num">7</td>
+                <td class="num">6</td>
+              </tr>
+              <tr>
+                <td>Bistro B</td>
+                <td>Vẽ trực tiếp</td>
+                <td class="num">25,7</td>
+                <td class="num">31,3</td>
+                <td class="num">13</td>
+                <td class="num">509</td>
+              </tr>
+              <tr>
+                <td>Bistro B</td>
+                <td>Nướng sẵn (như game)</td>
+                <td class="num">15,5</td>
+                <td class="num">18,5</td>
+                <td class="num">20</td>
+                <td class="num">6</td>
+              </tr>
+              <tr>
+                <td>Bistro B</td>
+                <td>Nướng cả bóng</td>
+                <td class="num">11,2</td>
+                <td class="num">12,7</td>
+                <td class="num">19</td>
+                <td class="num">6</td>
+              </tr>
+              <tr>
+                <td>Bistro B</td>
+                <td>Nướng sẵn · Thấp</td>
+                <td class="num">7,3</td>
+                <td class="num">7,5</td>
+                <td class="num">7</td>
+                <td class="num">6</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="cols">
+          <div class="card">
+            <h3>Kích thước đồ nướng (canvas 1440×900)</h3>
+            <ul>
+              <li>
+                Farm: 13,2 MB cho 1 góc. Trong đó nền 5,2 MB, nền kèm bóng (chế
+                độ "nướng cả bóng") thêm 5,2 MB, còn lại là sprite và 3 dải viền
+                sáng mỗi sprite.
+              </li>
+              <li>Bistro: 13,7 MB, chia tương tự.</li>
+              <li>
+                Thời gian nướng lần đầu: Farm A 62 ms, Farm B 26 ms, Bistro A 40
+                ms, Bistro B 22 ms. Nướng lại bóng khi đồng hồ qua 5 phút game:
+                6–17 ms.
+              </li>
+              <li>
+                Viền sáng làm bộ nhớ sprite tăng gấp 4 (ảnh gốc + 3 hướng).
+                Trong game nên nướng viền vào chính sprite theo từng khoảng giờ
+                (xem đề xuất bên dưới).
+              </li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>Game hiện tại, cùng máy, cùng cách đo</h3>
+            <ul>
+              <li>
+                Farm 844×390 ×2, 12:00, nắng: trung vị <b>356 ms</b>/frame, 329
+                drawImage và khoảng 220 fill/stroke mỗi frame.
+              </li>
+              <li>
+                Bistro 844×390 ×2, 12:00: trung vị <b>164 ms</b>/frame, 16
+                drawImage và khoảng 540 fill/stroke mỗi frame. Đồ nội thất đã
+                được nướng (<code>bistro-art.ts</code>, hàm
+                <code>sprite()</code>); phần vẽ path đến từ thứ khác, bước này
+                chưa tách ra.
+              </li>
+              <li class="warn">
+                Không so thẳng với bảng trên: game vẽ cả trang trại, thú, thời
+                tiết, nhân vật và đọc mọi canvas đang hiện; bản mẫu chỉ là 1 góc
+                khoảng 70 vật.
+              </li>
+            </ul>
+          </div>
+        </div>
+        <div class="group">
+          <button id="bench" type="button">Đo lại trên máy này</button>
+          <span class="note"
+            >Mở trang trên điện thoại thật rồi bấm để có số của máy đó (ở độ
+            phân giải đang hiện).</span
+          >
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Canvas</th>
+                <th>Cách vẽ</th>
+                <th class="num">ms trung vị</th>
+                <th class="num">p90</th>
+                <th class="num">drawImage</th>
+                <th class="num">fill/stroke</th>
+              </tr>
+            </thead>
+            <tbody id="bench-out">
+              <tr>
+                <td colspan="6" class="note">Chưa đo trên máy này.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section aria-labelledby="bake-h">
+        <h2 id="bake-h">Nướng sẵn được gì</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Phần hình</th>
+                <th>Cách làm</th>
+                <th>Lý do và số đo</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>
+                  Vân cỏ, đất, gỗ, đá, gạch; bóng góc (AO) dưới vật đứng yên
+                </td>
+                <td>Nướng vào nền, như canvas nền Plaza/Farm đang làm</td>
+                <td>
+                  Vẽ trực tiếp vân cỏ Painted tốn 83 ms/frame so với 14 ms khi
+                  nướng. AO đứng yên thì nướng vào nền là miễn phí mỗi frame.
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  Vật đứng yên (cây, hàng rào, luống, đồ gỗ) kèm vân và hạt giấy
+                </td>
+                <td>Sprite nướng (<code>GFX.sprite</code> như hiện nay)</td>
+                <td>
+                  Game đã làm vậy; hướng mới chỉ thêm chi tiết lúc nướng, không
+                  thêm lệnh vẽ mỗi frame.
+                </td>
+              </tr>
+              <tr>
+                <td>Viền sáng phía mặt trời</td>
+                <td>
+                  Nướng vào sprite theo khoảng giờ (vd. mỗi 30 phút game), chỉ
+                  giữ bản của giờ hiện tại
+                </td>
+                <td>
+                  Bản mẫu vẽ viền bằng 1–2 drawImage riêng mỗi vật (farm: 109 so
+                  với 43 khi Thấp) và tốn gấp 4 bộ nhớ. Giờ trong game chạy theo
+                  đồng hồ thật nên đổi rất chậm, nướng lại theo khoảng là đủ.
+                </td>
+              </tr>
+              <tr>
+                <td>Bóng đổ của vật đứng yên</td>
+                <td>
+                  Một canvas bóng theo toạ độ thế giới, nửa độ phân giải, vẽ lại
+                  mỗi 5 phút game; thú, người chơi và đồ đang kéo vẫn dùng
+                  <code>ShadowLayer</code> mỗi frame
+                </td>
+                <td>
+                  "Nướng cả bóng" giảm frame Farm từ 14–15 ms xuống khoảng 8 ms
+                  (khoảng 40–50%). Kích thước ước tính: Farm 1240×730 (3,6 MB),
+                  Plaza 1350×850 (4,6 MB).
+                </td>
+              </tr>
+              <tr>
+                <td>Vệt nắng qua cửa sổ Bistro, màu giờ vàng</td>
+                <td>Vẽ trực tiếp (1–2 hình, 2 lớp phủ toàn màn)</td>
+                <td>
+                  Rẻ về lệnh vẽ nhưng mỗi lớp phủ toàn màn tốn thêm một lượt tô
+                  mọi điểm ảnh; tắt ở Thấp.
+                </td>
+              </tr>
+              <tr>
+                <td>Chi tiết khi phóng to (zoom)</td>
+                <td>
+                  Một ô vân 256×256 lặp phủ lên nền theo độ phân giải màn hình
+                </td>
+                <td>
+                  Nền Farm nướng ở ×1 thế giới (2480×1460, 14,5 MB) mà điện
+                  thoại phóng tới 2,4 lần, nên vân nướng sẵn sẽ mờ. Nướng nền ×2
+                  thì 58 MB, không vừa iPhone. Ô vân phủ đo được thêm khoảng 3
+                  ms trên 1,3 triệu điểm ảnh ở máy test (khoảng +55% so với chỉ
+                  vẽ nền).
+                </td>
+              </tr>
+              <tr>
+                <td>Thú, nhân vật, cây đung đưa, hiệu ứng</td>
+                <td>Không nướng được</td>
+                <td>Giữ như hiện nay.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section aria-labelledby="report-h">
+        <h2 id="report-h">Báo cáo cho chủ game</h2>
+        <div class="cols">
+          <div class="card">
+            <h3>A · Painted storybook</h3>
+            <p class="note">
+              Nét vẽ tay mềm: không viền đen, vệt cọ trên cỏ và đất, bóng ngả
+              tím lạnh, ánh nắng vàng ấm, hạt giấy nhẹ, viền sáng mềm.
+            </p>
+            <b>Ưu</b>
+            <ul>
+              <li>
+                Cảm giác "chân thật", ấm, có chiều sâu nhất; giờ vàng rất đẹp.
+              </li>
+              <li>
+                Hợp với hướng "painted world materials" đã duyệt cho tướng và
+                boss (<code>docs/painted-world-materials.md</code>).
+              </li>
+            </ul>
+            <b>Nhược</b>
+            <ul>
+              <li>
+                Ở khung nhỏ của điện thoại, vân dày dễ thành "bẩn" và làm mờ chỗ
+                người chơi cần bấm (luống, ô bán). Bản mẫu đã phải giảm nhiễu
+                hai lần.
+              </li>
+              <li>
+                Khác hẳn nét hiện tại (viền tối, hình tròn kiểu đồ chơi), phải
+                vẽ lại gần như mọi vật để không lệch nhau.
+              </li>
+              <li>
+                Vân là phần đắt nhất khi vẽ trực tiếp (83 ms so với 38 ms của B)
+                và cần nền độ phân giải cao hơn hoặc ô vân phủ để không mờ khi
+                zoom.
+              </li>
+              <li>
+                Chất lượng thật phụ thuộc nhiều vào tay hoạ sĩ; vẽ bằng code chỉ
+                đến một mức.
+              </li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>B · Crisp toy</h3>
+            <p class="note">
+              Mô hình đồ chơi bóng bẩy: viền tối mảnh, cạnh vát sáng, điểm bóng
+              loáng, đá mài mặt, gạch men có vệt phản chiếu, bóng góc gọn.
+            </p>
+            <b>Ưu</b>
+            <ul>
+              <li>
+                Là bước tiến tiếp của nét hiện tại (<code>farm-gfx.ts</code>:
+                "soft toy-like shapes, gentle dark outlines"), sửa từng vật
+                được, không cần đổi hết một lần.
+              </li>
+              <li>Dễ đọc trên màn nhỏ; chỗ bấm vẫn rõ.</li>
+              <li>
+                Nhẹ hơn khi nướng (26 ms so với 62 ms) và khi vẽ trực tiếp.
+              </li>
+            </ul>
+            <b>Nhược</b>
+            <ul>
+              <li>"Chân thật" ít hơn A; vẫn mang vẻ đồ chơi.</li>
+              <li>
+                Màu bão hoà mạnh dễ chói nếu không có màu giờ trong ngày và bóng
+                góc đi kèm.
+              </li>
+            </ul>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Ước lượng công sức cho toàn bộ Plaza, Farm, Bistro</h3>
+          <p class="note">
+            Ước lượng thô theo ngày làm (một người cùng AI), dựa trên lượng mã
+            vẽ hiện có: <code>farm-gfx.ts</code> 2 760 dòng (nhà, cây, đồ, thú
+            của Plaza và Farm), <code>crop-art.ts</code> 1 929,
+            <code>bistro-art.ts</code> 2 732, <code>bistro-furniture.ts</code> 2
+            598, <code>bistro-scenery.ts</code> 1 166. Chưa tính tướng, boss,
+            giao diện. Chưa có dữ liệu để kiểm chứng con số này.
+          </p>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Phần việc</th>
+                  <th class="num">A (ngày)</th>
+                  <th class="num">B (ngày)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>
+                    Nền tảng chung: bộ chất liệu (vân, gỗ, đá, đất, gạch), nướng
+                    viền sáng theo giờ, AO, canvas bóng theo thế giới, ô vân
+                    zoom, mức Thấp, test ngân sách vẽ
+                  </td>
+                  <td class="num">5–7</td>
+                  <td class="num">4–6</td>
+                </tr>
+                <tr>
+                  <td>
+                    Farm: nền, luống (ướt, bón phân, khoá, khổng lồ), cây trồng
+                    mọi giai đoạn, nhà, chuồng, thú
+                  </td>
+                  <td class="num">9–12</td>
+                  <td class="num">5–7</td>
+                </tr>
+                <tr>
+                  <td>Plaza: nền 2700×1700, đài phun, toà nhà, đồ trang trí</td>
+                  <td class="num">6–8</td>
+                  <td class="num">4–5</td>
+                </tr>
+                <tr>
+                  <td>
+                    Bistro: các kiểu sàn và tường, nội thất mọi hướng xoay, phố
+                    bên ngoài, vệt nắng cửa sổ, bóng theo giờ (hiện Bistro chưa
+                    có)
+                  </td>
+                  <td class="num">8–11</td>
+                  <td class="num">5–7</td>
+                </tr>
+                <tr>
+                  <td>
+                    Chỉnh cho đồng bộ, chụp lại test hình, đo trên máy thật
+                  </td>
+                  <td class="num">4–6</td>
+                  <td class="num">3–4</td>
+                </tr>
+                <tr>
+                  <td><b>Tổng</b></td>
+                  <td class="num"><b>32–44</b></td>
+                  <td class="num"><b>21–29</b></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Rủi ro trên máy cũ</h3>
+          <ul>
+            <li>
+              <b>Tô điểm ảnh (fill-rate):</b> mỗi lớp phủ toàn màn (màu giờ
+              vàng, ô vân zoom, lớp bóng) là một lượt tô thêm cả màn hình. GPU
+              Android đời cũ chậm ở đúng chỗ này (<code
+                >docs/network-performance.md</code
+              >
+              mục 5 và 8 nói vậy cho trận đấu). Ở Thấp nên tắt hết, chỉ giữ AO
+              đã nướng.
+            </li>
+            <li>
+              <b>Chế độ trộn màu:</b> bản mẫu dùng <code>soft-light</code> và
+              <code>multiply</code>. Chưa đo trên máy thật xem chúng có chậm hơn
+              trộn thường không; nếu chậm, đổi sang một lớp màu thường có độ mờ.
+            </li>
+            <li>
+              <b>Bộ nhớ iPhone:</b> nền Plaza đã 17,5 MB, nền Farm 14,5 MB.
+              Không nướng nền ×2. Viền sáng tách riêng làm sprite tốn gấp 4 nên
+              phải nướng gộp. Canvas bóng thêm 3,6–4,6 MB mỗi nơi.
+            </li>
+            <li>
+              <b>Khựng khi nướng:</b> nướng lần đầu hoặc nướng lại theo giờ có
+              thể mất vài chục ms trên máy yếu; nên chia nhỏ qua
+              <code>requestIdleCallback</code> như game đã làm khi trả nền.
+            </li>
+            <li>
+              <b>Bóng nướng lệch thực tế:</b> đồ trang trí bị kéo, cổng mở, cây
+              rung phải xoá khỏi canvas bóng và vẽ trực tiếp trong lúc thay đổi.
+            </li>
+            <li>
+              <b>Số đo chưa từ máy thật:</b> máy test không có GPU. Trước khi áp
+              dụng cần mở trang này trên một máy Android cũ và một iPhone, bấm
+              "Đo lại", và xem dòng <code>?perf=1</code> trong game.
+            </li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Đề xuất</h3>
+          <p>
+            Chọn <b>B · Crisp toy làm gốc</b> và mượn ba thứ của A: bóng ngả màu
+            lạnh thay vì xám, ánh nắng ấm và màu giờ vàng, AO mềm dưới mọi vật.
+            Lý do: gần nét hiện tại nên áp dụng dần được, dễ đọc trên điện thoại
+            ngang, ít rủi ro máy cũ hơn, và khoảng 2/3 công sức của A. Nếu chủ
+            game muốn hẳn cảm giác tranh vẽ, A khả thi về hiệu năng khi nướng
+            sẵn, nhưng nên có hoạ sĩ vẽ ô vân và vài vật mẫu trước.
+          </p>
+          <p class="note">
+            Lưu ý khi xem: bản mẫu hiện góc gần hơn khung game thường thấy, nên
+            chi tiết dễ thấy hơn. Nên duyệt lại ở đúng mức zoom của game trong
+            bước áp dụng.
+          </p>
+        </div>
+      </section>
+
+      <section aria-labelledby="src-h">
+        <h2 id="src-h">Nghiên cứu và nguồn</h2>
+        <p class="note">
+          Mạng của máy làm việc chặn các trang này nên tôi không mở được toàn
+          văn. Các ý dưới đây lấy từ đoạn trích trên kết quả tìm kiếm; ý nào
+          không có nguồn thì ghi rõ.
+        </p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Kỹ thuật</th>
+                <th>Điều nguồn nói</th>
+                <th>Áp dụng trong bản mẫu</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Viền sáng (rim light)</td>
+                <td>
+                  Hướng dẫn 2D lighting của Unity: nhân vật thường có viền sáng
+                  quanh hình để dễ đọc khi di chuyển, nhất là game nhìn từ trên
+                  xuống; có thể dùng mask để chọn chỗ có viền [1]. Một thảo luận
+                  trên diễn đàn Spine thấy normal map làm nhân vật quá tròn và
+                  thích viền kiểu hoạt hình hơn [2].
+                </td>
+                <td>
+                  Viền sáng nướng sẵn theo 3 hướng, trộn theo vị trí mặt trời;
+                  không dùng normal map.
+                </td>
+              </tr>
+              <tr>
+                <td>Không vẽ chết bóng vào sprite nếu có ánh sáng động</td>
+                <td>
+                  Bài Dragon Crashers của Unity khuyên không tô sẵn sáng tối vào
+                  sprite khi dùng nhiều ánh sáng 2D [3].
+                </td>
+                <td>
+                  Bản mẫu vẫn tô sẵn sáng từ trên (ánh sáng chính không đổi) và
+                  chỉ để bóng đổ, viền sáng, màu giờ thay đổi theo giờ.
+                </td>
+              </tr>
+              <tr>
+                <td>Bóng góc (AO)</td>
+                <td>
+                  AO là bóng tiếp xúc ở chỗ các mặt gần nhau (sàn gặp tường,
+                  khe, kẽ nứt) [4]; AO hay bóng thời gian thực rất tốn hiệu năng
+                  nên thường nướng sẵn [5].
+                </td>
+                <td>AO dưới vật và chân tường nướng vào nền.</td>
+              </tr>
+              <tr>
+                <td>Nướng sẵn trên canvas</td>
+                <td>
+                  MDN: vẽ trước các thứ lặp lại lên canvas ngoài màn hình, làm
+                  tròn toạ độ, tách lớp tĩnh và động [6]. web.dev: lợi ích của
+                  canvas ngoài màn hình có thể mất vì chép canvas lớn, tuỳ kích
+                  thước nguồn và đích [7].
+                </td>
+                <td>
+                  Nền, vật và viền nướng sẵn; "Nướng cả bóng" gộp bóng tĩnh vào
+                  nền. Ghi chú bộ nhớ ở trên là do điểm của web.dev.
+                </td>
+              </tr>
+              <tr>
+                <td>Bảng màu, phong cách</td>
+                <td>
+                  Hay Day chọn phong cách có chủ ý, "kiểu thập niên 1950", hơi
+                  khác thường thay vì chỉ dễ thương [8][9].
+                  <b>Không tìm được nguồn</b> nói Hay Day làm hình bằng cách nào
+                  (vẽ tay hay dựng 3D rồi xuất ảnh), nên tôi không khẳng định.
+                </td>
+                <td>
+                  Chỉ dùng làm định hướng: mỗi hướng có bảng màu riêng nhất
+                  quán.
+                </td>
+              </tr>
+              <tr>
+                <td>Sáng ấm, bóng lạnh (hue shift)</td>
+                <td>
+                  <b>Chưa xác minh bằng nguồn</b> trong bước này; đây là kinh
+                  nghiệm vẽ tranh phổ biến.
+                </td>
+                <td>Hướng A pha bóng về tím xanh, sáng về vàng.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <ol class="src">
+          <li>
+            <a
+              href="https://discussions.unity.com/t/2d-light-and-shadow-techniques-with-the-universal-render-pipeline/1641848"
+              >Unity: 2D light and shadow techniques with the Universal Render
+              Pipeline</a
+            >
+          </li>
+          <li>
+            <a href="https://en.esotericsoftware.com/forum/d/11836"
+              >Esoteric Software (Spine) forum, thread 11836</a
+            >
+          </li>
+          <li>
+            <a
+              href="https://blog.unity.com/en/games/2d-art-creation-in-dragon-crashers"
+              >Unity Blog: 2D art creation in Dragon Crashers</a
+            >
+          </li>
+          <li>
+            <a
+              href="https://80.lv/articles/the-vfx-map-baking-guide-ambient-occlusion"
+              >80.lv: The VFX map baking guide, ambient occlusion</a
+            >
+          </li>
+          <li>
+            <a
+              href="https://viewar.gitbooks.io/sdk-documentation/3d-content/3d-content--custom-models/guidelines/guidelines-AO/00--3d-content--custom-models--guidelines--AO--overview.html"
+              >ViewAR SDK docs: Ambient Occlusion maps</a
+            >
+          </li>
+          <li>
+            <a
+              href="https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Tutorial/Optimizing_canvas"
+              >MDN: Optimizing canvas</a
+            >
+          </li>
+          <li>
+            <a href="https://web.dev/articles/canvas-performance"
+              >web.dev: Improving HTML5 Canvas performance</a
+            >
+          </li>
+          <li>
+            <a
+              href="https://www.pocketgamer.biz/supercell-looking-back-10-years-of-hay-day-part-one"
+              >PocketGamer.biz: Supercell looking back at 10 years of Hay Day,
+              part one</a
+            >
+          </li>
+          <li>
+            <a
+              href="https://mobilegamer.biz/what-supercells-hay-day-team-learned-from-ten-years-of-updates/"
+              >MobileGamer.biz: What Supercell's Hay Day team learned from ten
+              years of updates</a
+            >
+          </li>
+        </ol>
+      </section>
+
+      <script>
+        /*
+         * Visual study prototype: one corner of the Farm and one of the Bistro in two
+         * looks ("painted storybook" and "crisp toy"), plain Canvas 2D, no library.
+         *
+         * Everything that does not move is painted once into offscreen canvases
+         * ("baked"), as apps/client/src/farm/farm-gfx.ts does with GFX.sprite.
+         * Cast shadows use a copy of apps/client/src/world-light.ts (sunLight and
+         * ShadowLayer, unchanged except that the shadow colour is a parameter).
+         *
+         * Three ways to draw, to measure what baking buys:
+         *   live   – every texture and object painted with paths each frame
+         *   baked  – ground and objects baked; cast shadows drawn each frame (as the
+         *            game does today)
+         *   cached – also bakes the static objects' cast shadows into the ground,
+         *            redrawn only when the clock has moved 5 game minutes
+         */
+        "use strict";
+
+        /* ───────────── world-light.ts (copied) ───────────── */
+
+        function sunLight(tod, night) {
+          const p = Math.max(-1, Math.min(1, (tod - 0.5) / 0.26));
+          const len = 0.32 + 1.05 * p * p;
+          const day = 1 - Math.min(1, Math.max(0, night));
+          return {
+            dx: p * len,
+            dy: 0.2 + 0.16 * len,
+            alpha: 0.3 * Math.pow(day, 0.7),
+          };
+        }
+        const SHADOW_SCALE = 0.5;
+        function layerFor(canvas, target) {
+          const c = canvas ?? document.createElement("canvas");
+          const w = Math.max(1, Math.ceil(target.canvas.width * SHADOW_SCALE)),
+            h = Math.max(1, Math.ceil(target.canvas.height * SHADOW_SCALE));
+          if (c.width !== w || c.height !== h) {
+            c.width = w;
+            c.height = h;
+          }
+          return c;
+        }
+        class ShadowLayer {
+          constructor(colour = "rgb(18,32,44)") {
+            this.c = null;
+            this.g = null;
+            this.sun = { dx: 0, dy: 0, alpha: 0 };
+            this.active = false;
+            this.colour = colour;
+          }
+          begin(target, sun) {
+            this.active = false;
+            if (sun.alpha < 0.02) return false;
+            this.c = layerFor(this.c, target);
+            this.g ||= this.c.getContext("2d");
+            const g = this.g;
+            this.sun = sun;
+            g.setTransform(1, 0, 0, 1, 0, 0);
+            g.globalCompositeOperation = "source-over";
+            g.globalAlpha = 1;
+            g.clearRect(0, 0, this.c.width, this.c.height);
+            const m = target.getTransform();
+            g.setTransform(
+              m.a * SHADOW_SCALE,
+              m.b * SHADOW_SCALE,
+              m.c * SHADOW_SCALE,
+              m.d * SHADOW_SCALE,
+              m.e * SHADOW_SCALE,
+              m.f * SHADOW_SCALE,
+            );
+            this.active = true;
+            return true;
+          }
+          image(img, x, y, ox, oy, w, h, lift = 0) {
+            const g = this.g;
+            if (!this.active || !g) return;
+            const { dx, dy } = this.sun;
+            g.save();
+            g.transform(1, 0, -dx, -dy, x + dx * lift, y + dy * lift);
+            g.drawImage(img, ox, oy, w, h);
+            g.restore();
+          }
+          sprite(s, x, y, lift = 0) {
+            this.image(s.c, x, y, -s.ax, -s.ay, s.w, s.h, lift);
+          }
+          end(target) {
+            const g = this.g,
+              c = this.c;
+            if (!this.active || !g || !c) return;
+            this.active = false;
+            g.setTransform(1, 0, 0, 1, 0, 0);
+            g.globalCompositeOperation = "source-in";
+            g.fillStyle = this.colour;
+            g.fillRect(0, 0, c.width, c.height);
+            g.globalCompositeOperation = "source-over";
+            target.save();
+            target.setTransform(1, 0, 0, 1, 0, 0);
+            target.globalAlpha = this.sun.alpha;
+            target.imageSmoothingEnabled = true;
+            target.drawImage(
+              c,
+              0,
+              0,
+              target.canvas.width,
+              target.canvas.height,
+            );
+            target.restore();
+          }
+        }
+
+        /* ───────────── colour and random helpers ───────────── */
+
+        const h2r = (h) => {
+          h = h.replace("#", "");
+          const n = parseInt(h, 16);
+          return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+        };
+        const hex = (r, g, b) =>
+          "#" +
+          [r, g, b]
+            .map((v) =>
+              Math.max(0, Math.min(255, Math.round(v)))
+                .toString(16)
+                .padStart(2, "0"),
+            )
+            .join("");
+        const mix = (a, b, t) => {
+          const A = h2r(a),
+            B = h2r(b);
+          return hex(
+            A[0] + (B[0] - A[0]) * t,
+            A[1] + (B[1] - A[1]) * t,
+            A[2] + (B[2] - A[2]) * t,
+          );
+        };
+        const rgba = (c, a) => {
+          const [r, g, b] = h2r(c);
+          return `rgba(${r},${g},${b},${a})`;
+        };
+        function seeded(s) {
+          s = Math.max(1, Math.floor(s) % 2147483646);
+          return () => (s = (s * 16807) % 2147483647) / 2147483647;
+        }
+
+        /* Value noise, 3 octaves, tileable: one 256² canvas shared by every bake. */
+        let NOISE = null;
+        function noiseCanvas() {
+          if (NOISE) return NOISE;
+          const N = 256,
+            c = document.createElement("canvas");
+          c.width = c.height = N;
+          const g = c.getContext("2d"),
+            img = g.createImageData(N, N),
+            r = seeded(7);
+          const grids = [8, 16, 32].map((n) =>
+            Array.from({ length: n * n }, r),
+          );
+          const val = (grid, n, x, y) => {
+            const fx = (x / N) * n,
+              fy = (y / N) * n,
+              x0 = Math.floor(fx),
+              y0 = Math.floor(fy);
+            const tx = fx - x0,
+              ty = fy - y0,
+              s = (t) => t * t * (3 - 2 * t);
+            const at = (i, j) => grid[((j + n) % n) * n + ((i + n) % n)];
+            const a = at(x0, y0) + (at(x0 + 1, y0) - at(x0, y0)) * s(tx);
+            const b =
+              at(x0, y0 + 1) + (at(x0 + 1, y0 + 1) - at(x0, y0 + 1)) * s(tx);
+            return a + (b - a) * s(ty);
+          };
+          for (let y = 0; y < N; y++)
+            for (let x = 0; x < N; x++) {
+              const v =
+                val(grids[0], 8, x, y) * 0.55 +
+                val(grids[1], 16, x, y) * 0.3 +
+                val(grids[2], 32, x, y) * 0.15;
+              const i = (y * N + x) * 4;
+              img.data[i] = img.data[i + 1] = img.data[i + 2] = 255;
+              img.data[i + 3] = Math.round(v * 255);
+            }
+          g.putImageData(img, 0, 0);
+          NOISE = c;
+          return c;
+        }
+        /** The noise as a colour with alpha from the noise, sharpened by `bias`. */
+        const tintCache = new Map();
+        function noiseTint(colour, bias = 0) {
+          const key = colour + bias;
+          if (tintCache.has(key)) return tintCache.get(key);
+          const src = noiseCanvas(),
+            c = document.createElement("canvas");
+          c.width = c.height = src.width;
+          const g = c.getContext("2d");
+          g.drawImage(src, 0, 0);
+          if (bias) {
+            const d = g.getImageData(0, 0, c.width, c.height);
+            for (let i = 3; i < d.data.length; i += 4) {
+              const v = d.data[i] / 255;
+              d.data[i] = Math.max(
+                0,
+                Math.min(
+                  255,
+                  ((v - 0.5) * (1 + bias * 3) + 0.5 - bias * 0.15) * 255,
+                ),
+              );
+            }
+            g.putImageData(d, 0, 0);
+          }
+          g.globalCompositeOperation = "source-in";
+          g.fillStyle = colour;
+          g.fillRect(0, 0, c.width, c.height);
+          tintCache.set(key, c);
+          return c;
+        }
+        /** Lay a noise tint over what is already painted (inside the current clip). */
+        function noiseOver(
+          g,
+          colour,
+          alpha,
+          scale,
+          x,
+          y,
+          w,
+          h,
+          bias = 0,
+          op = "source-atop",
+        ) {
+          const t = noiseTint(colour, bias);
+          g.save();
+          g.globalCompositeOperation = op;
+          g.globalAlpha *= alpha;
+          const pat = g.createPattern(t, "repeat");
+          // (x, y) also shifts the pattern, so two layers don't line up; the fill
+          // covers well past the box so a shift never leaves a hard edge.
+          pat.setTransform(new DOMMatrix().translate(x, y).scale(scale, scale));
+          g.fillStyle = pat;
+          g.fillRect(x - w, y - h, w * 3, h * 3);
+          g.restore();
+        }
+
+        /* ───────────── the two looks ───────────── */
+
+        const KITS = {
+          painted: {
+            id: "painted",
+            name: "A · Painted storybook",
+            light: "#fff1c9", // warm sun
+            shade: "#2f3160", // cool, slightly violet shade (hue shift)
+            outline: null,
+            shadowColour: "rgb(44,40,86)",
+            rim: "#ffe3a0",
+            rimSoft: true,
+            grass: "#86b04f",
+            grassHi: "#c4d66b",
+            grassLo: "#4f7d47",
+            dirt: "#c49660",
+            soil: "#7a4f30",
+            wood: "#a8733f",
+            stone: "#a7a198",
+            leaf: "#6f9e44",
+            tileA: "#c9674a",
+            tileB: "#efdcb6",
+            plaster: "#f0d9a8",
+            panel: "#9a6438",
+            grain: 0.05,
+          },
+          toy: {
+            id: "toy",
+            name: "B · Crisp toy",
+            light: "#ffffff",
+            shade: "#1c1630",
+            outline: "#3a2a3e",
+            shadowColour: "rgb(18,32,44)",
+            rim: "#fffbe8",
+            rimSoft: false,
+            grass: "#5fc457",
+            grassHi: "#a6ee7c",
+            grassLo: "#2f9548",
+            dirt: "#e6b679",
+            soil: "#8a5634",
+            wood: "#d98a4a",
+            stone: "#b9c2cc",
+            leaf: "#4fbf4f",
+            tileA: "#e8705a",
+            tileB: "#fff3dc",
+            plaster: "#ffe7b8",
+            panel: "#c9773f",
+            grain: 0,
+          },
+        };
+        const lt = (K, c, t) => mix(c, K.light, t);
+        const dk = (K, c, t) => mix(c, K.shade, t);
+
+        /* ───────────── baking ───────────── */
+
+        /**
+         * A sprite as farm-gfx bakes them: painted at (−ax, −ay) w×h, at `scale`
+         * device pixels per world pixel. `paint(g)` draws around the anchor.
+         */
+        function bake(scene, w, h, ax, ay, paint, { rim = true } = {}) {
+          const k = scene.scale;
+          const c = document.createElement("canvas");
+          c.width = Math.ceil(w * k);
+          c.height = Math.ceil(h * k);
+          const g = c.getContext("2d");
+          g.scale(k, k);
+          g.translate(ax, ay);
+          g.lineJoin = g.lineCap = "round";
+          paint(g);
+          if (scene.kit.grain) {
+            g.setTransform(1, 0, 0, 1, 0, 0);
+            noiseOver(
+              g,
+              "#20180c",
+              scene.kit.grain,
+              0.5 * k,
+              0,
+              0,
+              c.width,
+              c.height,
+              1.2,
+            );
+          }
+          const s = { c, w, h, ax, ay, paint, rims: null };
+          scene.baked.push(c);
+          if (rim) s.rims = makeRims(scene, s);
+          return s;
+        }
+
+        /** Rim light strips on the left, top and right edges of a sprite's silhouette. */
+        function makeRims(scene, s) {
+          const K = scene.kit,
+            k = scene.scale;
+          const out = {};
+          for (const [dir, ox, oy] of [
+            ["l", 1, 0],
+            ["t", 0, 1],
+            ["r", -1, 0],
+          ]) {
+            const c = document.createElement("canvas");
+            c.width = s.c.width;
+            c.height = s.c.height;
+            const g = c.getContext("2d");
+            const passes = K.rimSoft ? [4, 2.6, 1.3] : [2.2];
+            for (const d of passes) {
+              const t = document.createElement("canvas");
+              t.width = c.width;
+              t.height = c.height;
+              const tg = t.getContext("2d");
+              tg.drawImage(s.c, 0, 0);
+              tg.globalCompositeOperation = "destination-out";
+              tg.drawImage(s.c, ox * d * k, oy * d * k);
+              tg.globalCompositeOperation = "source-in";
+              tg.fillStyle = K.rim;
+              tg.fillRect(0, 0, t.width, t.height);
+              g.globalAlpha = K.rimSoft ? 0.5 : 1;
+              g.drawImage(t, 0, 0);
+            }
+            scene.baked.push(c);
+            out[dir] = c;
+          }
+          return out;
+        }
+
+        /** A soft contact shadow (ambient occlusion) under an object's foot. */
+        function aoBlob(g, x, y, rx, ry, a) {
+          g.save();
+          g.translate(x, y);
+          g.scale(1, ry / rx);
+          const gr = g.createRadialGradient(0, 0, 0, 0, 0, rx);
+          gr.addColorStop(0, `rgba(20,16,30,${a})`);
+          gr.addColorStop(0.5, `rgba(20,16,30,${a * 0.55})`);
+          gr.addColorStop(1, "rgba(20,16,30,0)");
+          g.fillStyle = gr;
+          g.beginPath();
+          g.arc(0, 0, rx, 0, Math.PI * 2);
+          g.fill();
+          g.restore();
+        }
+
+        /* ───────────── shared material painters ───────────── */
+
+        /** A wooden plank: base, grain lines, a knot, and (toy) a bevel. */
+        function plank(K, g, x, y, w, h, col, seed, vertical = false) {
+          const r = seeded(seed);
+          g.save();
+          g.beginPath();
+          g.rect(x, y, w, h);
+          g.clip();
+          const gr = vertical
+            ? g.createLinearGradient(x, 0, x + w, 0)
+            : g.createLinearGradient(0, y, 0, y + h);
+          gr.addColorStop(0, lt(K, col, K.outline ? 0.18 : 0.1));
+          gr.addColorStop(1, dk(K, col, K.outline ? 0.12 : 0.22));
+          g.fillStyle = gr;
+          g.fillRect(x, y, w, h);
+          // grain: long wavy lines along the plank
+          const n = Math.max(3, Math.round((vertical ? w : h) / 2.2));
+          g.lineWidth = K.outline ? 0.6 : 0.8;
+          for (let i = 0; i < n; i++) {
+            g.strokeStyle = rgba(dk(K, col, 0.45), 0.25 + r() * 0.3);
+            g.beginPath();
+            const off = (i + 0.5) * ((vertical ? w : h) / n) + (r() - 0.5);
+            const ph = r() * 6,
+              amp = 0.3 + r() * 0.8;
+            const L = vertical ? h : w;
+            for (let t = 0; t <= L; t += 3) {
+              const o = off + Math.sin(t / (7 + r() * 0.2) + ph) * amp;
+              if (vertical) t ? g.lineTo(x + o, y + t) : g.moveTo(x + o, y + t);
+              else t ? g.lineTo(x + t, y + o) : g.moveTo(x + t, y + o);
+            }
+            g.stroke();
+          }
+          if (r() < 0.7) {
+            const kx = vertical
+              ? x + w * (0.3 + r() * 0.4)
+              : x + w * (0.2 + r() * 0.6);
+            const ky = vertical
+              ? y + h * (0.2 + r() * 0.6)
+              : y + h * (0.3 + r() * 0.4);
+            const kr = Math.min(w, h) * 0.16;
+            g.strokeStyle = rgba(dk(K, col, 0.5), 0.6);
+            for (let q = 1; q <= 2; q++) {
+              g.beginPath();
+              g.ellipse(
+                kx,
+                ky,
+                kr * q * (vertical ? 0.6 : 1.4),
+                kr * q * (vertical ? 1.4 : 0.6),
+                0,
+                0,
+                Math.PI * 2,
+              );
+              g.stroke();
+            }
+          }
+          if (K.outline) {
+            g.fillStyle = "rgba(255,255,255,.35)";
+            vertical ? g.fillRect(x, y, 1, h) : g.fillRect(x, y, w, 1);
+            g.fillStyle = "rgba(0,0,0,.22)";
+            vertical
+              ? g.fillRect(x + w - 1, y, 1, h)
+              : g.fillRect(x, y + h - 1.2, w, 1.2);
+          } else {
+            noiseOver(g, dk(K, col, 0.5), 0.35, 0.25, x, y, w, h, 0.6);
+          }
+          g.restore();
+          if (K.outline) {
+            g.strokeStyle = K.outline;
+            g.lineWidth = 1;
+            g.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+          }
+        }
+
+        /** A rock: soft lumpy blob (painted) or faceted low-poly stone (toy). */
+        function rock(K, g, x, y, w, seed) {
+          const r = seeded(seed),
+            h = w * 0.62,
+            n = 9;
+          const pts = [];
+          for (let i = 0; i < n; i++) {
+            const a = Math.PI + (i / (n - 1)) * Math.PI;
+            const rr = 0.85 + r() * 0.2;
+            pts.push([
+              x + Math.cos(a) * (w / 2) * rr,
+              y + Math.sin(a) * h * rr,
+            ]);
+          }
+          pts.push([x + w / 2, y + 2], [x - w / 2, y + 2]);
+          const path = () => {
+            g.beginPath();
+            g.moveTo(pts[0][0], pts[0][1]);
+            for (let i = 1; i < pts.length; i++) {
+              if (K.outline) g.lineTo(pts[i][0], pts[i][1]);
+              else {
+                const p = pts[i - 1],
+                  q = pts[i];
+                g.quadraticCurveTo(
+                  p[0],
+                  p[1],
+                  (p[0] + q[0]) / 2,
+                  (p[1] + q[1]) / 2,
+                );
+              }
+            }
+            g.closePath();
+          };
+          if (K.outline) {
+            // facets: a fan from a point near the top left, each face shaded by its tilt
+            const cx = x - w * 0.12,
+              cy = y - h * 0.62;
+            for (let i = 0; i < pts.length - 1; i++) {
+              const [ax, ay] = pts[i],
+                [bx, by] = pts[i + 1];
+              const nx = (ay + by) / 2 - cy,
+                tilt = ((ax + bx) / 2 - cx) / w;
+              const f = 0.35 - tilt * 0.5 + (nx / h) * 0.25;
+              g.fillStyle =
+                f > 0
+                  ? lt(K, K.stone, Math.min(0.6, f))
+                  : dk(K, K.stone, Math.min(0.5, -f));
+              g.beginPath();
+              g.moveTo(cx, cy);
+              g.lineTo(ax, ay);
+              g.lineTo(bx, by);
+              g.closePath();
+              g.fill();
+              g.strokeStyle = "rgba(255,255,255,.18)";
+              g.lineWidth = 0.6;
+              g.stroke();
+            }
+            path();
+            g.strokeStyle = K.outline;
+            g.lineWidth = 1.3;
+            g.stroke();
+            g.fillStyle = "rgba(255,255,255,.85)";
+            g.beginPath();
+            g.ellipse(cx - 2, cy + 3, 2.2, 1.2, -0.4, 0, 7);
+            g.fill();
+          } else {
+            path();
+            const gr = g.createRadialGradient(
+              x - w * 0.18,
+              y - h * 0.75,
+              1,
+              x,
+              y - h * 0.3,
+              w * 0.7,
+            );
+            gr.addColorStop(0, lt(K, K.stone, 0.45));
+            gr.addColorStop(0.55, K.stone);
+            gr.addColorStop(1, dk(K, K.stone, 0.45));
+            g.fillStyle = gr;
+            g.fill();
+            g.save();
+            path();
+            g.clip();
+            noiseOver(
+              g,
+              dk(K, K.stone, 0.6),
+              0.5,
+              0.18,
+              x - w,
+              y - h * 2,
+              w * 2,
+              h * 3,
+              1.5,
+            );
+            // moss on the top, speckles
+            noiseOver(
+              g,
+              "#6f9440",
+              0.45,
+              0.3,
+              x - w,
+              y - h * 1.2,
+              w * 2,
+              h * 0.6,
+              2,
+            );
+            for (let i = 0; i < 18; i++) {
+              g.fillStyle = r() < 0.5 ? rgba(K.light, 0.4) : rgba(K.shade, 0.3);
+              g.fillRect(x + (r() - 0.5) * w, y - r() * h, 0.9, 0.9);
+            }
+            g.restore();
+          }
+        }
+
+        /** Grass tufts / blades. */
+        function tuft(K, g, x, y, s, r) {
+          if (K.outline) {
+            for (let i = -2; i <= 2; i++) {
+              const bx = x + i * 2.2 * s,
+                hgt = (7 + r() * 5) * s,
+                lean = i * 1.1 * s;
+              g.fillStyle = i < 0 ? K.grassLo : lt(K, K.grassHi, 0.1);
+              g.beginPath();
+              g.moveTo(bx - 1.6 * s, y);
+              g.lineTo(bx + lean, y - hgt);
+              g.lineTo(bx + 1.6 * s, y);
+              g.closePath();
+              g.fill();
+            }
+          } else {
+            g.lineWidth = 1.1 * s;
+            for (let i = 0; i < 6; i++) {
+              const a = -Math.PI / 2 + (r() - 0.5) * 0.9,
+                L = (5 + r() * 6) * s;
+              g.strokeStyle =
+                r() < 0.5
+                  ? rgba(K.grassHi, 0.75)
+                  : rgba(dk(K, K.grass, 0.3), 0.7);
+              g.beginPath();
+              g.moveTo(x + (r() - 0.5) * 4 * s, y);
+              g.quadraticCurveTo(
+                x + Math.cos(a) * L * 0.4,
+                y + Math.sin(a) * L * 0.6,
+                x + Math.cos(a) * L,
+                y + Math.sin(a) * L,
+              );
+              g.stroke();
+            }
+          }
+        }
+
+        /* ───────────── FARM ───────────── */
+
+        const FARM_W = 480,
+          FARM_H = 300;
+        const PLOTS = [];
+        for (let row = 0; row < 2; row++)
+          for (let col = 0; col < 3; col++)
+            PLOTS.push({
+              x: 168 + col * 82,
+              y: 104 + row * 60,
+              w: 72,
+              h: 48,
+              crop: row === 0 ? "wheat" : "cabbage",
+            });
+
+        const bez = (a, b, c, d, t) => {
+          const u = 1 - t;
+          return (
+            u * u * u * a +
+            3 * u * u * t * b +
+            3 * u * t * t * c +
+            t * t * t * d
+          );
+        };
+        /** A point on the path's top (0) or bottom (1) edge, t in 0..1. */
+        const pathEdge = (t, bottom) =>
+          bottom
+            ? { x: bez(-20, 120, 250, 500, t), y: bez(292, 266, 324, 276, t) }
+            : { x: bez(-20, 120, 250, 500, t), y: bez(252, 226, 286, 238, t) };
+        function pathShape(g) {
+          g.beginPath();
+          g.moveTo(-20, 252);
+          g.bezierCurveTo(120, 226, 250, 286, 500, 238);
+          g.lineTo(500, 276);
+          g.bezierCurveTo(250, 324, 120, 266, -20, 292);
+          g.closePath();
+        }
+
+        function paintFarmGround(scene, g) {
+          const K = scene.kit,
+            r = seeded(11);
+          // grass base: a little cooler and paler at the top (distance), warmer below
+          const gr = g.createLinearGradient(0, 0, 0, FARM_H);
+          gr.addColorStop(
+            0,
+            mix(
+              K.grass,
+              K.outline ? K.grassHi : "#9fb6a0",
+              K.outline ? 0.08 : 0.18,
+            ),
+          );
+          gr.addColorStop(
+            1,
+            K.outline ? K.grass : mix(K.grass, "#b6a24a", 0.12),
+          );
+          g.fillStyle = gr;
+          g.fillRect(0, 0, FARM_W, FARM_H);
+          if (K.outline) {
+            // mowed stripes
+            g.save();
+            g.globalAlpha = 0.07;
+            g.fillStyle = "#ffffff";
+            for (let i = -10; i < 20; i += 2) {
+              g.beginPath();
+              g.moveTo(i * 40, 0);
+              g.lineTo(i * 40 + 40, 0);
+              g.lineTo(i * 40 + 40 - 160, FARM_H);
+              g.lineTo(i * 40 - 160, FARM_H);
+              g.fill();
+            }
+            g.restore();
+            for (let i = 0; i < 70; i++)
+              tuft(
+                K,
+                g,
+                r() * FARM_W,
+                10 + r() * (FARM_H - 10),
+                0.8 + r() * 0.4,
+                r,
+              );
+            for (let i = 0; i < 18; i++) {
+              const x = r() * FARM_W,
+                y = r() * FARM_H;
+              g.fillStyle = "#e9f2e1";
+              g.beginPath();
+              g.ellipse(x, y, 2.2, 1.4, 0, 0, 7);
+              g.fill();
+              g.fillStyle = "#ffffff";
+              g.fillRect(x - 1, y - 1, 1, 0.8);
+            }
+            for (let i = 0; i < 14; i++) {
+              const x = r() * FARM_W,
+                y = r() * FARM_H,
+                c = ["#ffd84a", "#ffffff", "#ff8fc0"][i % 3];
+              for (let p = 0; p < 4; p++) {
+                g.fillStyle = c;
+                g.beginPath();
+                g.arc(
+                  x + Math.cos(p * 1.57) * 1.6,
+                  y + Math.sin(p * 1.57) * 1.6,
+                  1.3,
+                  0,
+                  7,
+                );
+                g.fill();
+              }
+              g.fillStyle = "#ffb12e";
+              g.beginPath();
+              g.arc(x, y, 0.9, 0, 7);
+              g.fill();
+            }
+          } else {
+            // painted: mottled patches of shade and sun, then brush strokes
+            noiseOver(
+              g,
+              K.grassLo,
+              0.4,
+              1.8,
+              0,
+              0,
+              FARM_W,
+              FARM_H,
+              1.8,
+              "source-over",
+            );
+            noiseOver(
+              g,
+              K.grassHi,
+              0.5,
+              1.3,
+              37,
+              11,
+              FARM_W,
+              FARM_H,
+              2.2,
+              "source-over",
+            );
+            noiseOver(
+              g,
+              "#f2df8a",
+              0.18,
+              2.2,
+              90,
+              40,
+              FARM_W,
+              FARM_H,
+              2.6,
+              "source-over",
+            );
+            g.lineCap = "round";
+            for (let i = 0; i < 1500; i++) {
+              const x = r() * FARM_W,
+                y = r() * FARM_H,
+                L = 3 + r() * 5,
+                a = -Math.PI / 2 + (r() - 0.5) * 0.8;
+              const pick = r();
+              g.strokeStyle =
+                pick < 0.4
+                  ? rgba(K.grassHi, 0.55)
+                  : pick < 0.8
+                    ? rgba(dk(K, K.grass, 0.35), 0.45)
+                    : rgba("#d8cf72", 0.5);
+              g.lineWidth = 0.8 + r() * 1.1;
+              g.beginPath();
+              g.moveTo(x, y);
+              g.quadraticCurveTo(
+                x + Math.cos(a) * L * 0.5 + 1,
+                y + Math.sin(a) * L * 0.5,
+                x + Math.cos(a) * L,
+                y + Math.sin(a) * L,
+              );
+              g.stroke();
+            }
+            for (let i = 0; i < 26; i++) {
+              const x = r() * FARM_W,
+                y = r() * FARM_H;
+              for (let p = 0; p < 5; p++) {
+                g.fillStyle = rgba(
+                  ["#fff6e0", "#ffd86a", "#f3a6c4"][i % 3],
+                  0.85,
+                );
+                g.beginPath();
+                g.arc(
+                  x + (r() - 0.5) * 6,
+                  y + (r() - 0.5) * 3,
+                  0.9 + r() * 0.7,
+                  0,
+                  7,
+                );
+                g.fill();
+              }
+            }
+          }
+          // the dirt path
+          g.save();
+          pathShape(g);
+          g.clip();
+          const pg = g.createLinearGradient(0, 226, 0, 300);
+          pg.addColorStop(0, lt(K, K.dirt, 0.12));
+          pg.addColorStop(1, dk(K, K.dirt, 0.15));
+          g.fillStyle = pg;
+          g.fillRect(0, 200, FARM_W, 120);
+          if (K.outline) {
+            // stepping stones, beveled
+            for (let i = 0; i < 9; i++) {
+              const t = i / 8,
+                x = 10 + t * 470,
+                y = 266 + Math.sin(t * 3.1 + 0.4) * 12 - t * 10;
+              g.fillStyle = dk(K, K.dirt, 0.25);
+              g.beginPath();
+              g.ellipse(x, y + 1.5, 15, 7.5, 0, 0, 7);
+              g.fill();
+              g.fillStyle = mix(K.stone, K.dirt, 0.25);
+              g.beginPath();
+              g.ellipse(x, y, 15, 7, 0, 0, 7);
+              g.fill();
+              g.fillStyle = "rgba(255,255,255,.55)";
+              g.beginPath();
+              g.ellipse(x - 3, y - 2.5, 9, 2.4, 0, Math.PI, Math.PI * 2);
+              g.fill();
+              g.strokeStyle = K.outline;
+              g.lineWidth = 1;
+              g.beginPath();
+              g.ellipse(x, y, 15, 7, 0, 0, 7);
+              g.stroke();
+            }
+          } else {
+            noiseOver(
+              g,
+              dk(K, K.dirt, 0.4),
+              0.55,
+              0.55,
+              0,
+              200,
+              FARM_W,
+              120,
+              1.2,
+              "source-over",
+            );
+            noiseOver(
+              g,
+              lt(K, K.dirt, 0.35),
+              0.35,
+              0.3,
+              13,
+              200,
+              FARM_W,
+              120,
+              1.8,
+              "source-over",
+            );
+            // a worn, lighter centre and darker damp edges
+            g.lineCap = "round";
+            g.strokeStyle = rgba(lt(K, K.dirt, 0.35), 0.35);
+            g.lineWidth = 14;
+            g.beginPath();
+            g.moveTo(-20, 272);
+            g.bezierCurveTo(120, 246, 250, 305, 500, 257);
+            g.stroke();
+            g.strokeStyle = rgba(dk(K, K.dirt, 0.45), 0.3);
+            g.lineWidth = 7;
+            pathShape(g);
+            g.stroke();
+            for (let i = 0; i < 90; i++) {
+              const x = r() * FARM_W,
+                y = 228 + r() * 70;
+              g.fillStyle = rgba(
+                r() < 0.5 ? lt(K, K.stone, 0.4) : dk(K, K.stone, 0.3),
+                0.8,
+              );
+              g.beginPath();
+              g.ellipse(x, y, 1 + r() * 1.5, 0.7 + r(), 0, 0, 7);
+              g.fill();
+            }
+          }
+          g.restore();
+          // path edge: an inner shadow (toy) or grass growing over it (painted)
+          if (K.outline) {
+            g.save();
+            pathShape(g);
+            g.clip();
+            g.strokeStyle = "rgba(60,30,10,.28)";
+            g.lineWidth = 5;
+            pathShape(g);
+            g.stroke();
+            g.restore();
+            g.strokeStyle = rgba(K.grassLo, 0.9);
+            g.lineWidth = 1.4;
+            pathShape(g);
+            g.stroke();
+          } else {
+            const rr = seeded(5);
+            for (let i = 0; i < 170; i++) {
+              const t = rr(),
+                bottom = rr() < 0.5,
+                e = pathEdge(t, bottom);
+              tuft(
+                K,
+                g,
+                e.x + (rr() - 0.5) * 4,
+                e.y + (bottom ? 2 : 3) + rr() * 2,
+                0.75 + rr() * 0.3,
+                rr,
+              );
+            }
+          }
+          // the plots
+          for (const [i, p] of PLOTS.entries()) paintPlot(scene, g, p, i);
+        }
+
+        function paintPlot(scene, g, p, i) {
+          const K = scene.kit,
+            r = seeded(30 + i);
+          const { x, y, w, h } = p;
+          if (K.outline) {
+            // a raised bed: plank frame, soil inside
+            aoBlob(g, x + w / 2, y + h + 1, w * 0.62, 8, 0.35);
+            plank(K, g, x - 4, y + h - 2, w + 8, 8, K.wood, 70 + i);
+            plank(
+              K,
+              g,
+              x - 4,
+              y - 5,
+              w + 8,
+              6,
+              mix(K.wood, K.light, 0.1),
+              80 + i,
+            );
+            plank(K, g, x - 4, y + 1, 5, h - 3, K.wood, 90 + i, true);
+            plank(K, g, x + w - 1, y + 1, 5, h - 3, K.wood, 95 + i, true);
+            const sx = x + 1,
+              sy = y + 1,
+              sw = w - 2,
+              sh = h - 3;
+            g.fillStyle = K.soil;
+            g.fillRect(sx, sy, sw, sh);
+            g.fillStyle = "rgba(0,0,0,.22)";
+            g.fillRect(sx, sy, sw, 4);
+            for (let k = 0; k < 4; k++) {
+              const ry = sy + 7 + k * ((sh - 8) / 4);
+              g.fillStyle = lt(K, K.soil, 0.25);
+              g.fillRect(sx + 3, ry, sw - 6, 2);
+              g.fillStyle = dk(K, K.soil, 0.35);
+              g.fillRect(sx + 3, ry + 2, sw - 6, 2.4);
+            }
+          } else {
+            // painted: a soft, slightly irregular bed with tilled ridges
+            g.save();
+            aoBlob(g, x + w / 2, y + h / 2 + 3, w * 0.68, h * 0.7, 0.28);
+            g.beginPath();
+            g.roundRect(x, y, w, h, 9);
+            g.clip();
+            const sg = g.createLinearGradient(0, y, 0, y + h);
+            sg.addColorStop(0, dk(K, K.soil, 0.25));
+            sg.addColorStop(1, mix(K.soil, "#a06a3c", 0.4));
+            g.fillStyle = sg;
+            g.fillRect(x, y, w, h);
+            for (let k = 0; k < 4; k++) {
+              const ry = y + 8 + k * ((h - 10) / 4);
+              g.strokeStyle = rgba(lt(K, K.soil, 0.38), 0.7);
+              g.lineWidth = 2.2;
+              g.beginPath();
+              for (let t = 0; t <= w; t += 4)
+                g.lineTo(x + t, ry + Math.sin(t * 0.3 + k) * 0.6);
+              g.stroke();
+              g.strokeStyle = rgba(dk(K, K.soil, 0.5), 0.6);
+              g.lineWidth = 2.4;
+              g.beginPath();
+              for (let t = 0; t <= w; t += 4)
+                g.lineTo(x + t, ry + 3 + Math.sin(t * 0.3 + k) * 0.6);
+              g.stroke();
+            }
+            noiseOver(g, dk(K, K.soil, 0.6), 0.5, 0.35, x, y, w, h, 1.5);
+            for (let k = 0; k < 30; k++) {
+              g.fillStyle = rgba(
+                r() < 0.5 ? lt(K, K.soil, 0.5) : dk(K, K.soil, 0.5),
+                0.8,
+              );
+              g.beginPath();
+              g.ellipse(
+                x + r() * w,
+                y + r() * h,
+                1 + r() * 1.2,
+                0.8 + r() * 0.7,
+                0,
+                0,
+                7,
+              );
+              g.fill();
+            }
+            // the bed sinks a little: occlusion along the top inner edge
+            const ao = g.createLinearGradient(0, y, 0, y + 9);
+            ao.addColorStop(0, "rgba(30,15,20,.45)");
+            ao.addColorStop(1, "rgba(30,15,20,0)");
+            g.fillStyle = ao;
+            g.fillRect(x, y, w, 9);
+            g.restore();
+            // grass leaning over the rim
+            for (let k = 0; k < 16; k++)
+              tuft(K, g, x + r() * w, y + (r() < 0.5 ? 1 : h + 2), 0.7, r);
+          }
+        }
+
+        function farmSprites(scene) {
+          const K = scene.kit,
+            S = {};
+          // wheat bundle
+          S.wheat = bake(scene, 30, 40, 15, 36, (g) => {
+            const r = seeded(3);
+            for (let i = 0; i < 9; i++) {
+              const bx = (i - 4) * 2.4,
+                top = -26 - r() * 6,
+                lean = (i - 4) * 0.9;
+              g.strokeStyle = K.outline ? "#b88a2a" : rgba("#a8873a", 0.9);
+              g.lineWidth = 1.1;
+              g.beginPath();
+              g.moveTo(bx * 0.4, 0);
+              g.quadraticCurveTo(bx, top * 0.5, bx + lean, top);
+              g.stroke();
+              // the ear: little grains
+              for (let k = 0; k < 5; k++) {
+                const ex = bx + lean + (k % 2 ? 1.2 : -1.2),
+                  ey = top + k * 2.2;
+                g.fillStyle = K.outline
+                  ? k % 2
+                    ? "#ffd75a"
+                    : "#f0b93a"
+                  : mix("#e6c05a", k % 2 ? K.light : K.shade, 0.2);
+                g.beginPath();
+                g.ellipse(ex, ey, 1.4, 2.2, k % 2 ? 0.4 : -0.4, 0, 7);
+                g.fill();
+                if (K.outline) {
+                  g.strokeStyle = "#8c5d1a";
+                  g.lineWidth = 0.5;
+                  g.stroke();
+                }
+              }
+            }
+          });
+          // cabbage
+          S.cabbage = bake(scene, 30, 26, 15, 22, (g) => {
+            const leaves = [
+              [-7, -6, 7],
+              [7, -6, 7],
+              [0, -4, 8],
+              [-4, -10, 6],
+              [4, -10, 6],
+              [0, -11, 5.5],
+            ];
+            for (const [lx, ly, lr] of leaves) {
+              if (K.outline) {
+                const gr = g.createRadialGradient(
+                  lx - lr * 0.3,
+                  ly - lr * 0.4,
+                  0.5,
+                  lx,
+                  ly,
+                  lr,
+                );
+                gr.addColorStop(0, "#d5ffb0");
+                gr.addColorStop(0.6, "#78d65a");
+                gr.addColorStop(1, "#3c9a46");
+                g.fillStyle = gr;
+                g.beginPath();
+                g.arc(lx, ly, lr, 0, 7);
+                g.fill();
+                g.strokeStyle = K.outline;
+                g.lineWidth = 0.9;
+                g.stroke();
+              } else {
+                const gr = g.createRadialGradient(
+                  lx - lr * 0.3,
+                  ly - lr * 0.5,
+                  0.5,
+                  lx,
+                  ly,
+                  lr * 1.05,
+                );
+                gr.addColorStop(0, lt(K, "#9fcf6a", 0.4));
+                gr.addColorStop(0.6, "#7fb456");
+                gr.addColorStop(1, dk(K, "#5d9a4a", 0.35));
+                g.fillStyle = gr;
+                g.beginPath();
+                g.arc(lx, ly, lr, 0, 7);
+                g.fill();
+                g.strokeStyle = rgba(lt(K, "#c9e89a", 0.3), 0.6);
+                g.lineWidth = 0.7;
+                g.beginPath();
+                g.moveTo(lx, ly + lr * 0.6);
+                g.lineTo(lx, ly - lr * 0.5);
+                g.stroke();
+              }
+            }
+          });
+          // tree: trunk + canopy
+          S.trunk = bake(scene, 30, 52, 15, 48, (g) => {
+            const gr = g.createLinearGradient(-7, 0, 7, 0);
+            gr.addColorStop(
+              0,
+              K.outline ? lt(K, "#9a6436", 0.25) : lt(K, "#8a5c34", 0.15),
+            );
+            gr.addColorStop(1, dk(K, "#7a4c28", K.outline ? 0.2 : 0.4));
+            g.fillStyle = gr;
+            g.beginPath();
+            g.moveTo(-8, 0);
+            g.quadraticCurveTo(-5, -20, -4, -46);
+            g.lineTo(4, -46);
+            g.quadraticCurveTo(5, -20, 8, 0);
+            g.closePath();
+            g.fill();
+            if (K.outline) {
+              g.strokeStyle = K.outline;
+              g.lineWidth = 1.2;
+              g.stroke();
+            } else {
+              const r = seeded(9);
+              g.save();
+              g.clip();
+              for (let i = 0; i < 26; i++) {
+                g.strokeStyle = rgba(r() < 0.5 ? "#4a2e1a" : "#c6966a", 0.45);
+                g.lineWidth = 0.8;
+                const x = -6 + r() * 12,
+                  y = -r() * 46;
+                g.beginPath();
+                g.moveTo(x, y);
+                g.lineTo(x + (r() - 0.5), y - 4 - r() * 5);
+                g.stroke();
+              }
+              g.restore();
+            }
+          });
+          S.canopy = bake(scene, 120, 104, 60, 92, (g) => {
+            const r = seeded(21);
+            const blobs = [
+              [0, -50, 30],
+              [-24, -40, 24],
+              [24, -42, 24],
+              [-10, -70, 24],
+              [14, -68, 22],
+              [-26, -22, 20],
+              [26, -24, 20],
+              [0, -22, 24],
+            ];
+            if (K.outline) {
+              for (const [x, y, rr] of blobs) {
+                g.fillStyle = K.outline;
+                g.beginPath();
+                g.arc(x, y, rr + 1.4, 0, 7);
+                g.fill();
+              }
+              for (const [x, y, rr] of blobs) {
+                const gr = g.createRadialGradient(
+                  x - rr * 0.35,
+                  y - rr * 0.45,
+                  rr * 0.1,
+                  x,
+                  y,
+                  rr,
+                );
+                gr.addColorStop(0, "#b9f58a");
+                gr.addColorStop(0.55, K.leaf);
+                gr.addColorStop(1, "#2a8a45");
+                g.fillStyle = gr;
+                g.beginPath();
+                g.arc(x, y, rr, 0, 7);
+                g.fill();
+              }
+              for (const [x, y, rr] of blobs.slice(0, 5)) {
+                g.fillStyle = "rgba(255,255,255,.55)";
+                g.beginPath();
+                g.ellipse(
+                  x - rr * 0.35,
+                  y - rr * 0.45,
+                  rr * 0.28,
+                  rr * 0.16,
+                  -0.5,
+                  0,
+                  7,
+                );
+                g.fill();
+              }
+              for (let i = 0; i < 7; i++) {
+                const [x, y, rr] = blobs[i % blobs.length];
+                g.fillStyle = "#ff5a4a";
+                g.beginPath();
+                g.arc(
+                  x + (r() - 0.5) * rr,
+                  y + (r() - 0.3) * rr * 0.8,
+                  3.2,
+                  0,
+                  7,
+                );
+                g.fill();
+                g.strokeStyle = K.outline;
+                g.lineWidth = 0.8;
+                g.stroke();
+                g.fillStyle = "#fff";
+                g.fillRect(x + (r() - 0.5) * rr - 1, y - 1, 1.2, 1.2);
+              }
+            } else {
+              // painted: dark mass, then lighter clusters toward the sun, then leaf dabs
+              for (const [x, y, rr] of blobs) {
+                g.fillStyle = dk(K, K.leaf, 0.45);
+                g.beginPath();
+                g.arc(x, y + 2, rr, 0, 7);
+                g.fill();
+              }
+              for (const [x, y, rr] of blobs) {
+                const gr = g.createRadialGradient(
+                  x - rr * 0.3,
+                  y - rr * 0.45,
+                  rr * 0.05,
+                  x,
+                  y,
+                  rr * 1.05,
+                );
+                gr.addColorStop(0, lt(K, "#a6cf62", 0.35));
+                gr.addColorStop(0.55, K.leaf);
+                gr.addColorStop(1, rgba(dk(K, K.leaf, 0.4), 0));
+                g.fillStyle = gr;
+                g.beginPath();
+                g.arc(x, y, rr * 0.95, 0, 7);
+                g.fill();
+              }
+              g.globalCompositeOperation = "source-atop";
+              for (let i = 0; i < 420; i++) {
+                const [x, y, rr] = blobs[Math.floor(r() * blobs.length)];
+                const a = r() * Math.PI * 2,
+                  d = r() * rr,
+                  px = x + Math.cos(a) * d,
+                  py = y + Math.sin(a) * d;
+                const lit = py < y - rr * 0.1 && px < x + rr * 0.3;
+                g.fillStyle = lit
+                  ? rgba(lt(K, "#b7d86c", 0.3), 0.6)
+                  : rgba(dk(K, K.leaf, 0.35), 0.5);
+                g.beginPath();
+                g.ellipse(px, py, 2.6 + r() * 2, 1.4 + r(), r() * 3, 0, 7);
+                g.fill();
+              }
+              // occlusion under the canopy, cool
+              const ao = g.createLinearGradient(0, -40, 0, 0);
+              ao.addColorStop(0, rgba(K.shade, 0));
+              ao.addColorStop(1, rgba(K.shade, 0.45));
+              g.fillStyle = ao;
+              g.fillRect(-60, -40, 120, 44);
+              for (let i = 0; i < 6; i++) {
+                const [x, y, rr] = blobs[i];
+                g.fillStyle = mix("#e8604a", K.shade, 0.1);
+                g.beginPath();
+                g.arc(
+                  x + (r() - 0.5) * rr,
+                  y + (r() - 0.3) * rr * 0.8,
+                  2.8,
+                  0,
+                  7,
+                );
+                g.fill();
+                g.fillStyle = rgba(K.light, 0.7);
+                g.beginPath();
+                g.arc(x + (r() - 0.5) * rr - 0.8, y - 1, 0.8, 0, 7);
+                g.fill();
+              }
+              g.globalCompositeOperation = "source-over";
+            }
+          });
+          // fence: one post and one rail span
+          S.post = bake(scene, 12, 34, 6, 32, (g) => {
+            plank(K, g, -3.5, -28, 7, 28, K.wood, 4, true);
+            g.fillStyle = K.outline ? lt(K, K.wood, 0.4) : lt(K, K.wood, 0.25);
+            g.beginPath();
+            g.moveTo(-3.5, -28);
+            g.lineTo(0, -31);
+            g.lineTo(3.5, -28);
+            g.closePath();
+            g.fill();
+            if (K.outline) {
+              g.strokeStyle = K.outline;
+              g.lineWidth = 1;
+              g.stroke();
+            }
+          });
+          S.rail = bake(scene, 44, 30, 2, 28, (g) => {
+            plank(K, g, 0, -22, 40, 4.5, K.wood, 12);
+            plank(K, g, 0, -12, 40, 4.5, K.wood, 13);
+          });
+          S.railV = bake(scene, 14, 46, 7, 44, (g) => {
+            plank(K, g, -2.5, -40, 5, 38, K.wood, 14, true);
+          });
+          S.rock = bake(scene, 50, 34, 25, 30, (g) => rock(K, g, 0, 0, 40, 4));
+          S.hay = bake(scene, 54, 40, 27, 36, (g) => {
+            // a round bale lying on its side: the face is a disc, the side a band
+            const col = K.outline ? "#f2c75a" : "#d8b45a";
+            g.fillStyle = dk(K, col, 0.3);
+            g.beginPath();
+            g.roundRect(-20, -30, 36, 30, 6);
+            g.fill();
+            const side = g.createLinearGradient(0, -30, 0, 0);
+            side.addColorStop(0, lt(K, col, 0.3));
+            side.addColorStop(1, dk(K, col, 0.25));
+            g.fillStyle = side;
+            g.beginPath();
+            g.roundRect(-20, -30, 32, 30, 4);
+            g.fill();
+            const r = seeded(17);
+            g.save();
+            g.clip();
+            for (let i = 0; i < (K.outline ? 14 : 70); i++) {
+              g.strokeStyle = K.outline
+                ? rgba("#b38a2a", 0.6)
+                : rgba(r() < 0.5 ? lt(K, col, 0.5) : dk(K, col, 0.45), 0.7);
+              g.lineWidth = K.outline ? 1 : 0.7;
+              const y = -28 + r() * 28,
+                x = -20 + r() * 20;
+              g.beginPath();
+              g.moveTo(x, y);
+              g.lineTo(x + 6 + r() * 10, y + (r() - 0.5) * 2);
+              g.stroke();
+            }
+            g.restore();
+            // the round face
+            const fg = g.createRadialGradient(14, -18, 1, 14, -15, 15);
+            fg.addColorStop(0, lt(K, col, 0.35));
+            fg.addColorStop(1, dk(K, col, 0.2));
+            g.fillStyle = fg;
+            g.beginPath();
+            g.ellipse(14, -15, 9, 15, 0, 0, 7);
+            g.fill();
+            g.strokeStyle = rgba(dk(K, col, 0.5), K.outline ? 0.8 : 0.5);
+            g.lineWidth = 0.8;
+            for (let q = 1; q <= 3; q++) {
+              g.beginPath();
+              g.ellipse(14, -15, 9 * (q / 4), 15 * (q / 4), 0, 0, 7);
+              g.stroke();
+            }
+            if (K.outline) {
+              g.strokeStyle = "#c84a3a";
+              g.lineWidth = 2;
+              g.beginPath();
+              g.moveTo(-6, -30);
+              g.lineTo(-6, 0);
+              g.stroke();
+              g.strokeStyle = K.outline;
+              g.lineWidth = 1.2;
+              g.beginPath();
+              g.roundRect(-20, -30, 32, 30, 4);
+              g.stroke();
+              g.beginPath();
+              g.ellipse(14, -15, 9, 15, 0, 0, 7);
+              g.stroke();
+            }
+          });
+          S.crate = bake(scene, 40, 40, 20, 36, (g) => {
+            // front face planks + top face
+            for (let k = 0; k < 3; k++)
+              plank(K, g, -14, -24 + k * 8, 28, 8, K.wood, 40 + k);
+            g.fillStyle = lt(K, K.wood, 0.3);
+            g.beginPath();
+            g.moveTo(-14, -24);
+            g.lineTo(-8, -31);
+            g.lineTo(20, -31);
+            g.lineTo(14, -24);
+            g.closePath();
+            g.fill();
+            g.fillStyle = dk(K, K.wood, 0.3);
+            g.beginPath();
+            g.moveTo(14, -24);
+            g.lineTo(20, -31);
+            g.lineTo(20, -7);
+            g.lineTo(14, 0);
+            g.closePath();
+            g.fill();
+            // apples on top
+            for (const [ax, ay] of [
+              [-4, -28],
+              [3, -29],
+              [10, -28],
+              [0, -31],
+              [7, -32],
+            ]) {
+              const gr = g.createRadialGradient(
+                ax - 1,
+                ay - 1.2,
+                0.3,
+                ax,
+                ay,
+                3.4,
+              );
+              gr.addColorStop(0, K.outline ? "#ffb0a0" : lt(K, "#d64a3a", 0.5));
+              gr.addColorStop(1, K.outline ? "#e2382c" : dk(K, "#b8372c", 0.3));
+              g.fillStyle = gr;
+              g.beginPath();
+              g.arc(ax, ay, 3.2, 0, 7);
+              g.fill();
+            }
+            if (K.outline) {
+              g.strokeStyle = K.outline;
+              g.lineWidth = 1.2;
+              g.strokeRect(-14, -24, 28, 24);
+            }
+          });
+          return S;
+        }
+
+        function farmObjects(S) {
+          const list = [];
+          for (const p of PLOTS)
+            for (let k = 0; k < 3; k++) {
+              const x = p.x + 14 + k * 22,
+                y = p.y + (p.crop === "wheat" ? 40 : 38);
+              list.push({
+                s: S[p.crop],
+                x,
+                y,
+                shadow: true,
+                rim: p.crop === "wheat",
+              });
+            }
+          for (let x = 140; x <= 430; x += 44) {
+            list.push({ s: S.post, x, y: 82, shadow: true, rim: true });
+            if (x + 44 <= 430)
+              list.push({ s: S.rail, x, y: 82, shadow: true, rim: true });
+          }
+          for (let y = 120; y <= 220; y += 42) {
+            list.push({ s: S.railV, x: 140, y, shadow: true, rim: true });
+            list.push({ s: S.post, x: 140, y: y + 4, shadow: true, rim: true });
+          }
+          list.push({ s: S.trunk, x: 70, y: 176, shadow: true, rim: true });
+          list.push({
+            s: S.canopy,
+            x: 70,
+            y: 176,
+            lift: 40,
+            shadow: true,
+            rim: true,
+            sway: true,
+            after: 1,
+          });
+          list.push({ s: S.rock, x: 440, y: 232, shadow: true, rim: true });
+          list.push({ s: S.hay, x: 92, y: 242, shadow: true, rim: true });
+          list.push({ s: S.crate, x: 446, y: 140, shadow: true, rim: true });
+          // contact occlusion sizes (world px)
+          for (const o of list) {
+            const w = o.s.w;
+            o.ao =
+              o.s === S.canopy
+                ? null
+                : o.s === S.post || o.s === S.railV
+                  ? [5, 2.2, 0.4]
+                  : o.s === S.rail
+                    ? null
+                    : o.s === S.trunk
+                      ? [16, 5, 0.5]
+                      : [w * 0.42, w * 0.13, 0.45];
+          }
+          return list;
+        }
+
+        /* ───────────── BISTRO (isometric, as bistro-geom.ts) ───────────── */
+
+        const TW = 96,
+          TH = 48,
+          BO = { x: 240, y: 96 },
+          ROOM = 4,
+          WALL = 92;
+        const iso = (gx, gy, z = 0) => ({
+          x: BO.x + (gx - gy) * (TW / 2),
+          y: BO.y + (gx + gy) * (TH / 2) - z,
+        });
+        function poly(g, pts) {
+          g.beginPath();
+          g.moveTo(pts[0].x, pts[0].y);
+          for (let i = 1; i < pts.length; i++) g.lineTo(pts[i].x, pts[i].y);
+          g.closePath();
+        }
+
+        function paintBistroShell(scene, g) {
+          const K = scene.kit;
+          g.fillStyle = K.outline ? "#6b5a7a" : "#5c4e66";
+          g.fillRect(0, 0, FARM_W, FARM_H);
+          // walls: left (gx = 0 plane) and right (gy = 0 plane)
+          const wall = (side) => {
+            const A = side === "L" ? iso(0, ROOM) : iso(0, 0),
+              B = side === "L" ? iso(0, 0) : iso(ROOM, 0);
+            const up = (p, z) => ({ x: p.x, y: p.y - z });
+            // plaster
+            poly(g, [up(A, 40), up(B, 40), up(B, WALL), up(A, WALL)]);
+            const pg = g.createLinearGradient(0, A.y - WALL, 0, A.y);
+            const base = side === "L" ? dk(K, K.plaster, 0.12) : K.plaster;
+            pg.addColorStop(0, lt(K, base, 0.15));
+            pg.addColorStop(1, dk(K, base, 0.1));
+            g.fillStyle = pg;
+            g.fill();
+            if (!K.outline) {
+              g.save();
+              poly(g, [up(A, 40), up(B, 40), up(B, WALL), up(A, WALL)]);
+              g.clip();
+              noiseOver(
+                g,
+                dk(K, base, 0.3),
+                0.22,
+                0.6,
+                0,
+                0,
+                FARM_W,
+                FARM_H,
+                1.6,
+              );
+              noiseOver(g, lt(K, base, 0.5), 0.3, 0.3, 9, 0, FARM_W, FARM_H, 2);
+              // a soft wash of light from the window side
+              const wg = g.createLinearGradient(A.x, 0, B.x, 0);
+              wg.addColorStop(0, rgba(K.shade, side === "L" ? 0.12 : 0));
+              wg.addColorStop(1, rgba(K.light, side === "L" ? 0 : 0.25));
+              g.fillStyle = wg;
+              g.fillRect(0, 0, FARM_W, FARM_H);
+              g.restore();
+            }
+            // wainscot panels
+            const n = ROOM * 2;
+            for (let i = 0; i < n; i++) {
+              const t0 = i / n,
+                t1 = (i + 1) / n;
+              const p0 = {
+                x: A.x + (B.x - A.x) * t0,
+                y: A.y + (B.y - A.y) * t0,
+              };
+              const p1 = {
+                x: A.x + (B.x - A.x) * t1,
+                y: A.y + (B.y - A.y) * t1,
+              };
+              // plank: draw in a sheared frame so grain follows the wall
+              g.save();
+              const dx = p1.x - p0.x,
+                dy = p1.y - p0.y;
+              g.transform(dx / 24, dy / 24, 0, 1, p0.x, p0.y);
+              plank(
+                K,
+                g,
+                0,
+                -40,
+                24,
+                40,
+                side === "L" ? dk(K, K.panel, 0.12) : K.panel,
+                200 + i + (side === "L" ? 50 : 0),
+                true,
+              );
+              g.restore();
+            }
+            // chair rail
+            g.strokeStyle = K.outline
+              ? lt(K, K.panel, 0.4)
+              : lt(K, K.panel, 0.25);
+            g.lineWidth = 3;
+            g.beginPath();
+            g.moveTo(A.x, A.y - 41);
+            g.lineTo(B.x, B.y - 41);
+            g.stroke();
+            if (K.outline) {
+              g.strokeStyle = K.outline;
+              g.lineWidth = 1;
+              poly(g, [A, B, up(B, WALL), up(A, WALL)]);
+              g.stroke();
+            }
+          };
+          wall("L");
+          wall("R");
+          // floor tiles
+          for (let gx = 0; gx < ROOM; gx++)
+            for (let gy = 0; gy < ROOM; gy++) {
+              const r = seeded(500 + gx * 7 + gy * 13);
+              const col = (gx + gy) % 2 ? K.tileA : K.tileB;
+              const pts = [
+                iso(gx, gy),
+                iso(gx + 1, gy),
+                iso(gx + 1, gy + 1),
+                iso(gx, gy + 1),
+              ];
+              poly(g, pts);
+              if (K.outline) {
+                g.fillStyle = col;
+                g.fill();
+                // bevel: light on the two far edges, dark on the near ones
+                const inset = (p, c, f) => ({
+                  x: p.x + (c.x - p.x) * f,
+                  y: p.y + (c.y - p.y) * f,
+                });
+                const c = iso(gx + 0.5, gy + 0.5);
+                const ip = pts.map((p) => inset(p, c, 0.12));
+                g.fillStyle = lt(K, col, 0.35);
+                poly(g, [pts[3], pts[0], pts[1], ip[1], ip[0], ip[3]]);
+                g.fill();
+                g.fillStyle = dk(K, col, 0.18);
+                poly(g, [pts[1], pts[2], pts[3], ip[3], ip[2], ip[1]]);
+                g.fill();
+                g.fillStyle = col;
+                poly(g, ip);
+                g.fill();
+                // glossy streak
+                g.save();
+                poly(g, ip);
+                g.clip();
+                g.strokeStyle = "rgba(255,255,255,.45)";
+                g.lineWidth = 3;
+                g.beginPath();
+                g.moveTo(c.x - 22, c.y - 2);
+                g.lineTo(c.x - 6, c.y - 10);
+                g.stroke();
+                g.restore();
+                g.strokeStyle = rgba(K.outline, 0.55);
+                g.lineWidth = 0.8;
+                poly(g, pts);
+                g.stroke();
+              } else {
+                const tint = mix(
+                  col,
+                  r() < 0.5 ? K.light : K.shade,
+                  r() * 0.12,
+                );
+                g.fillStyle = tint;
+                g.fill();
+                g.save();
+                poly(g, pts);
+                g.clip();
+                noiseOver(
+                  g,
+                  dk(K, col, 0.4),
+                  0.2,
+                  0.3 + r() * 0.2,
+                  r() * 80,
+                  r() * 80,
+                  FARM_W,
+                  FARM_H,
+                  1.6,
+                );
+                noiseOver(
+                  g,
+                  lt(K, col, 0.6),
+                  0.25,
+                  0.2,
+                  r() * 50,
+                  r() * 50,
+                  FARM_W,
+                  FARM_H,
+                  2,
+                );
+                // worn edges
+                g.strokeStyle = rgba(dk(K, col, 0.35), 0.5);
+                g.lineWidth = 3;
+                poly(g, pts);
+                g.stroke();
+                g.restore();
+                g.strokeStyle = rgba("#7a6a58", 0.7);
+                g.lineWidth = 1.2;
+                poly(g, pts);
+                g.stroke();
+              }
+            }
+          // ambient occlusion where the floor meets the walls (darker in the corner)
+          const strip = (A, B, n) => {
+            const steps = 6;
+            for (let s = 0; s < steps; s++) {
+              const f0 = s / steps,
+                f1 = (s + 1) / steps;
+              poly(g, [
+                { x: A.x + n.x * f0 * 18, y: A.y + n.y * f0 * 18 },
+                { x: B.x + n.x * f0 * 18, y: B.y + n.y * f0 * 18 },
+                { x: B.x + n.x * f1 * 18, y: B.y + n.y * f1 * 18 },
+                { x: A.x + n.x * f1 * 18, y: A.y + n.y * f1 * 18 },
+              ]);
+              g.fillStyle = `rgba(30,20,40,${0.32 * (1 - f0) * (1 - f0)})`;
+              g.fill();
+            }
+          };
+          strip(iso(0, ROOM), iso(0, 0), { x: 0.89, y: 0.45 });
+          strip(iso(0, 0), iso(ROOM, 0), { x: -0.89, y: 0.45 });
+          const c0 = iso(0, 0);
+          aoBlob(g, c0.x, c0.y + 6, 34, 16, 0.35);
+          // the wall's own occlusion just above the floor
+          for (const [A, B] of [
+            [iso(0, ROOM), iso(0, 0)],
+            [iso(0, 0), iso(ROOM, 0)],
+          ]) {
+            const gr = g.createLinearGradient(0, c0.y - 12, 0, c0.y);
+            gr.addColorStop(0, "rgba(30,20,40,0)");
+            gr.addColorStop(1, "rgba(30,20,40,.3)");
+            g.fillStyle = gr;
+            poly(g, [{ x: A.x, y: A.y - 12 }, { x: B.x, y: B.y - 12 }, B, A]);
+            g.fill();
+          }
+          // the window on the right wall (glass shows the sky; light comes from here)
+          const w0 = iso(1.4, 0),
+            w1 = iso(2.9, 0);
+          const win = [
+            { x: w0.x, y: w0.y - 48 },
+            { x: w1.x, y: w1.y - 48 },
+            { x: w1.x, y: w1.y - 86 },
+            { x: w0.x, y: w0.y - 86 },
+          ];
+          poly(g, win);
+          g.fillStyle = K.outline ? "#8a5a34" : "#7a4e2c";
+          g.fill();
+          const inset = 3;
+          const glass = [
+            { x: win[0].x + inset, y: win[0].y - inset * 0.5 - 2 },
+            { x: win[1].x - inset, y: win[1].y + inset * 0.5 - 2 },
+            { x: win[2].x - inset, y: win[2].y + inset * 0.5 + 2 },
+            { x: win[3].x + inset, y: win[3].y - inset * 0.5 + 2 },
+          ];
+          poly(g, glass);
+          const sky = g.createLinearGradient(0, glass[3].y, 0, glass[0].y);
+          sky.addColorStop(0, K.outline ? "#7fd0ff" : "#9cc6e0");
+          sky.addColorStop(1, K.outline ? "#d8f3ff" : "#f2e6c8");
+          g.fillStyle = sky;
+          g.fill();
+          g.save();
+          poly(g, glass);
+          g.clip();
+          g.strokeStyle = "rgba(255,255,255,.55)";
+          g.lineWidth = 6;
+          g.beginPath();
+          g.moveTo(glass[0].x + 10, glass[0].y);
+          g.lineTo(glass[3].x + 30, glass[3].y);
+          g.stroke();
+          g.restore();
+          g.strokeStyle = K.outline ? "#8a5a34" : "#6a4226";
+          g.lineWidth = 2.5;
+          const mid = (a, b) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+          g.beginPath();
+          const m0 = mid(glass[0], glass[1]),
+            m1 = mid(glass[3], glass[2]);
+          g.moveTo(m0.x, m0.y);
+          g.lineTo(m1.x, m1.y);
+          const n0 = mid(glass[0], glass[3]),
+            n1 = mid(glass[1], glass[2]);
+          g.moveTo(n0.x, n0.y);
+          g.lineTo(n1.x, n1.y);
+          g.stroke();
+          if (K.outline) {
+            g.strokeStyle = K.outline;
+            g.lineWidth = 1.2;
+            poly(g, win);
+            g.stroke();
+          }
+          // sill
+          g.fillStyle = K.outline ? lt(K, K.wood, 0.3) : lt(K, K.wood, 0.15);
+          poly(g, [
+            { x: win[0].x - 3, y: win[0].y + 2 },
+            { x: win[1].x + 3, y: win[1].y - 1 },
+            { x: win[1].x + 7, y: win[1].y + 3 },
+            { x: win[0].x + 1, y: win[0].y + 6 },
+          ]);
+          g.fill();
+          // a menu board on the left wall
+          const b0 = iso(0, 2.8),
+            b1 = iso(0, 1.7);
+          const board = [
+            { x: b0.x, y: b0.y - 50 },
+            { x: b1.x, y: b1.y - 50 },
+            { x: b1.x, y: b1.y - 82 },
+            { x: b0.x, y: b0.y - 82 },
+          ];
+          poly(g, board);
+          g.fillStyle = K.outline ? "#8a5a34" : "#6a4226";
+          g.fill();
+          const bi = board.map((p, i) => ({
+            x: p.x + (i === 0 || i === 3 ? 3 : -3),
+            y: p.y + (i < 2 ? -3 : 3) + (i === 0 || i === 3 ? 1.5 : -1.5),
+          }));
+          poly(g, bi);
+          g.fillStyle = K.outline ? "#2f4a3e" : "#2d3a34";
+          g.fill();
+          g.save();
+          poly(g, bi);
+          g.clip();
+          g.strokeStyle = "rgba(255,255,255,.7)";
+          g.lineWidth = 1.2;
+          for (let k = 0; k < 4; k++) {
+            g.beginPath();
+            g.moveTo(bi[3].x + 6, bi[3].y + 8 + k * 6 - 1.5);
+            g.lineTo(bi[2].x - 10 - (k % 2) * 8, bi[2].y + 8 + k * 6 + 3);
+            g.stroke();
+          }
+          if (!K.outline)
+            noiseOver(g, "#ffffff", 0.12, 0.3, 0, 0, FARM_W, FARM_H, 1);
+          g.restore();
+        }
+
+        /** An iso box (bistro-geom isoBox, shortened) in world units around (0,0). */
+        function isoBoxAt(K, g, cx, cy, w, d, z, h, col) {
+          const hw = w / 2,
+            hd = d / 2;
+          const P = (gx, gy, zz) => ({
+            x: cx + (gx - gy) * (TW / 2),
+            y: cy + (gx + gy) * (TH / 2) - zz,
+          });
+          const A = P(-hw, -hd, z + h),
+            B = P(hw, -hd, z + h),
+            C = P(hw, hd, z + h),
+            D = P(-hw, hd, z + h);
+          const Bb = P(hw, -hd, z),
+            Cb = P(hw, hd, z),
+            Db = P(-hw, hd, z);
+          g.fillStyle = dk(K, col, K.outline ? 0.15 : 0.25);
+          poly(g, [D, C, Cb, Db]);
+          g.fill();
+          g.fillStyle = dk(K, col, K.outline ? 0.3 : 0.42);
+          poly(g, [C, B, Bb, Cb]);
+          g.fill();
+          g.fillStyle = lt(K, col, K.outline ? 0.2 : 0.1);
+          poly(g, [A, B, C, D]);
+          g.fill();
+          if (K.outline) {
+            g.strokeStyle = "rgba(255,255,255,.5)";
+            g.lineWidth = 0.8;
+            g.beginPath();
+            g.moveTo(D.x, D.y);
+            g.lineTo(C.x, C.y);
+            g.lineTo(B.x, B.y);
+            g.stroke();
+            g.strokeStyle = K.outline;
+            g.lineWidth = 1;
+            poly(g, [A, B, Bb, Cb, Db, D]);
+            g.stroke();
+          }
+        }
+
+        function bistroSprites(scene) {
+          const K = scene.kit,
+            S = {};
+          S.table = bake(scene, 90, 76, 45, 66, (g) => {
+            // pedestal and base
+            g.fillStyle = dk(K, "#5a4a52", 0.2);
+            g.beginPath();
+            g.ellipse(0, 0, 14, 7, 0, 0, 7);
+            g.fill();
+            const col = g.createLinearGradient(-4, 0, 4, 0);
+            col.addColorStop(0, K.outline ? "#9a8a98" : "#7a6a70");
+            col.addColorStop(1, K.outline ? "#4a3e50" : "#3a3040");
+            g.fillStyle = col;
+            g.fillRect(-3.5, -36, 7, 36);
+            // top: a thick round slab with a cloth
+            const top = -40;
+            g.fillStyle = dk(K, K.outline ? "#f4f0ea" : "#e8dcc8", 0.25);
+            g.beginPath();
+            g.ellipse(0, top + 5, 36, 18, 0, 0, Math.PI);
+            g.lineTo(-36, top);
+            g.ellipse(0, top, 36, 18, 0, Math.PI, 0, true);
+            g.closePath();
+            g.fill();
+            const tg = g.createRadialGradient(-10, top - 8, 2, 0, top, 40);
+            tg.addColorStop(0, K.outline ? "#ffffff" : lt(K, "#efe3cf", 0.4));
+            tg.addColorStop(1, K.outline ? "#e6e1da" : dk(K, "#e2d4bc", 0.15));
+            g.fillStyle = tg;
+            g.beginPath();
+            g.ellipse(0, top, 36, 18, 0, 0, 7);
+            g.fill();
+            if (!K.outline) {
+              g.save();
+              g.beginPath();
+              g.ellipse(0, top, 36, 18, 0, 0, 7);
+              g.clip();
+              // linen weave
+              g.strokeStyle = "rgba(120,100,80,.12)";
+              g.lineWidth = 0.6;
+              for (let k = -40; k < 40; k += 2.4) {
+                g.beginPath();
+                g.moveTo(k, top - 20);
+                g.lineTo(k + 20, top + 20);
+                g.stroke();
+              }
+              g.restore();
+            }
+            // a plate and a cup
+            g.fillStyle = K.outline ? "#ffffff" : "#fbf6ee";
+            g.beginPath();
+            g.ellipse(-6, top + 2, 10, 5, 0, 0, 7);
+            g.fill();
+            g.strokeStyle = K.outline ? K.outline : "rgba(120,100,90,.4)";
+            g.lineWidth = 0.8;
+            g.stroke();
+            g.fillStyle = K.outline ? "#ff9a3a" : "#d98a3e";
+            g.beginPath();
+            g.ellipse(-6, top + 1, 5.5, 2.6, 0, 0, 7);
+            g.fill();
+            g.fillStyle = K.outline ? "#5fc4ff" : "#7fa6c0";
+            g.fillRect(12, top - 8, 7, 8);
+            g.beginPath();
+            g.ellipse(15.5, top - 8, 3.5, 1.6, 0, 0, 7);
+            g.fillStyle = K.outline ? "#a8e4ff" : "#c8d8e0";
+            g.fill();
+            if (K.outline) {
+              g.strokeStyle = K.outline;
+              g.lineWidth = 1.2;
+              g.beginPath();
+              g.ellipse(0, top, 36, 18, 0, 0, 7);
+              g.stroke();
+              g.beginPath();
+              g.moveTo(-36, top);
+              g.lineTo(-36, top + 5);
+              g.moveTo(36, top);
+              g.lineTo(36, top + 5);
+              g.stroke();
+              g.beginPath();
+              g.ellipse(0, top + 5, 36, 18, 0, 0, Math.PI);
+              g.stroke();
+            }
+          });
+          S.chair = bake(scene, 50, 70, 25, 60, (g) => {
+            const wood = K.outline ? "#c96a3a" : "#8a5530";
+            // legs
+            g.fillStyle = dk(K, wood, 0.35);
+            for (const [lx, ly] of [
+              [-12, -2],
+              [12, -2],
+              [0, 4],
+              [0, -8],
+            ])
+              g.fillRect(lx - 1.5, ly - 18, 3, 18);
+            // seat
+            isoBoxAt(K, g, 0, -2, 0.32, 0.32, 18, 4, wood);
+            // cushion
+            g.fillStyle = K.outline ? "#4fc48a" : "#6f9a74";
+            g.beginPath();
+            g.ellipse(0, -26, 11, 5.5, 0, 0, 7);
+            g.fill();
+            // backrest along the far edge
+            isoBoxAt(K, g, 6, -11, 0.06, 0.32, 22, 26, wood);
+            g.fillStyle = K.outline
+              ? "rgba(255,255,255,.35)"
+              : rgba(K.light, 0.18);
+            g.fillRect(-1, -47, 2, 18);
+          });
+          S.plant = bake(scene, 50, 80, 25, 72, (g) => {
+            // pot
+            const pot = K.outline ? "#e8704a" : "#b8603e";
+            const pg = g.createLinearGradient(-12, 0, 12, 0);
+            pg.addColorStop(0, lt(K, pot, 0.25));
+            pg.addColorStop(1, dk(K, pot, 0.35));
+            g.fillStyle = pg;
+            g.beginPath();
+            g.moveTo(-12, -22);
+            g.lineTo(-9, 0);
+            g.quadraticCurveTo(0, 4, 9, 0);
+            g.lineTo(12, -22);
+            g.closePath();
+            g.fill();
+            g.fillStyle = dk(K, pot, 0.2);
+            g.beginPath();
+            g.ellipse(0, -22, 12.5, 4.5, 0, 0, 7);
+            g.fill();
+            g.fillStyle = "#4a3020";
+            g.beginPath();
+            g.ellipse(0, -22, 10, 3.2, 0, 0, 7);
+            g.fill();
+            if (K.outline) {
+              g.strokeStyle = K.outline;
+              g.lineWidth = 1.1;
+              g.beginPath();
+              g.moveTo(-12, -22);
+              g.lineTo(-9, 0);
+              g.quadraticCurveTo(0, 4, 9, 0);
+              g.lineTo(12, -22);
+              g.stroke();
+            } else
+              noiseOver(g, dk(K, pot, 0.5), 0.4, 0.2, -14, -26, 28, 30, 1.2);
+            // leaves
+            const r = seeded(77);
+            for (let i = 0; i < 9; i++) {
+              const a = -Math.PI / 2 + (i - 4) * 0.33,
+                L = 30 + r() * 16;
+              const tx = Math.cos(a) * L * 0.8,
+                ty = -24 + Math.sin(a) * L;
+              const lc =
+                i % 2
+                  ? K.outline
+                    ? "#3fb85a"
+                    : "#5f8c4c"
+                  : K.outline
+                    ? "#62d46a"
+                    : "#77a35a";
+              g.fillStyle = lc;
+              g.beginPath();
+              g.moveTo(0, -24);
+              g.quadraticCurveTo(tx * 0.3 - 6, (ty - 24) / 2, tx, ty);
+              g.quadraticCurveTo(tx * 0.3 + 6, (ty - 24) / 2 + 4, 0, -24);
+              g.fill();
+              if (K.outline) {
+                g.strokeStyle = K.outline;
+                g.lineWidth = 0.9;
+                g.stroke();
+              }
+              g.strokeStyle = K.outline
+                ? "rgba(255,255,255,.5)"
+                : rgba(lt(K, lc, 0.5), 0.6);
+              g.lineWidth = 0.7;
+              g.beginPath();
+              g.moveTo(0, -24);
+              g.quadraticCurveTo(tx * 0.3, (ty - 24) / 2 + 2, tx, ty);
+              g.stroke();
+            }
+          });
+          S.counter = bake(scene, 120, 110, 60, 80, (g) => {
+            // a shelf unit against the left wall: a box 0.45 deep, 1.4 long, 54 high
+            isoBoxAt(
+              K,
+              g,
+              0,
+              0,
+              0.45,
+              1.4,
+              0,
+              54,
+              K.outline ? "#b8743e" : "#7e5232",
+            );
+            // jars on top
+            const top = -54;
+            for (let k = 0; k < 4; k++) {
+              const p = {
+                x: (0 - (-0.55 + k * 0.36)) * (TW / 2),
+                y: (0 + (-0.55 + k * 0.36)) * (TH / 2) + top,
+              };
+              const jc = ["#ffcf5a", "#ff8a6a", "#9ad86a", "#a6c8ff"][k];
+              g.fillStyle = K.outline ? jc : mix(jc, "#8a7a6a", 0.3);
+              g.beginPath();
+              g.roundRect(p.x - 5, p.y - 14, 10, 14, 3);
+              g.fill();
+              g.fillStyle = "rgba(255,255,255,.55)";
+              g.fillRect(p.x - 3, p.y - 12, 1.6, 8);
+              if (K.outline) {
+                g.strokeStyle = K.outline;
+                g.lineWidth = 0.9;
+                g.beginPath();
+                g.roundRect(p.x - 5, p.y - 14, 10, 14, 3);
+                g.stroke();
+              }
+            }
+          });
+          return S;
+        }
+
+        function bistroObjects(S) {
+          const at = (gx, gy) => iso(gx, gy);
+          const list = [
+            { s: S.counter, ...at(0.28, 2.25), shadow: true, rim: true },
+            { s: S.plant, ...at(0.45, 0.45), shadow: true, rim: true },
+            { s: S.table, ...at(2.3, 2.1), shadow: true, rim: true },
+            { s: S.chair, ...at(1.6, 2.1), shadow: true, rim: true },
+            { s: S.chair, ...at(2.3, 1.35), shadow: true, rim: true },
+            { s: S.plant, ...at(3.5, 0.5), shadow: true, rim: true },
+          ];
+          for (const o of list)
+            o.ao =
+              o.s === S.table
+                ? [22, 10, 0.4]
+                : o.s === S.counter
+                  ? [40, 14, 0.35]
+                  : [o.s.w * 0.36, o.s.w * 0.17, 0.42];
+          return list;
+        }
+
+        /** The sun through the bistro's window: shadows lean away from it (down-left). */
+        function bistroSun(tod) {
+          const s = sunLight(tod, 0);
+          const p = Math.max(-1, Math.min(1, (tod - 0.5) / 0.26));
+          return {
+            dx: -0.4 - p * 0.25,
+            dy: 0.26 + 0.08 * Math.abs(p),
+            alpha: s.alpha * 0.85,
+            p,
+          };
+        }
+
+        /** The window's light on the floor, sliding with the sun. */
+        function drawWindowLight(g, tod, kit) {
+          const p = Math.max(-1, Math.min(1, (tod - 0.5) / 0.26));
+          const day = 1;
+          const reach = 0.012 + 0.006 * Math.abs(p); // tiles of depth per px of height
+          const shift = p * 0.012; // the patch slides away from the sun
+          const pts = [];
+          for (const [gx, z] of [
+            [1.4, 48],
+            [2.9, 48],
+            [2.9, 86],
+            [1.4, 86],
+          ]) {
+            const fy = z * reach,
+              fx = gx + z * shift;
+            pts.push(iso(fx, fy));
+          }
+          const gold = Math.max(0, Math.abs(p) - 0.45) / 0.55;
+          const col = mix("#fff4d6", "#ffb35a", gold);
+          const c = pts.reduce(
+            (a, q) => ({ x: a.x + q.x / 4, y: a.y + q.y / 4 }),
+            { x: 0, y: 0 },
+          );
+          const grow = (f) =>
+            pts.map((q) => ({
+              x: c.x + (q.x - c.x) * f,
+              y: c.y + (q.y - c.y) * f,
+            }));
+          g.save();
+          poly(g, [iso(0, 0), iso(ROOM, 0), iso(ROOM, ROOM), iso(0, ROOM)]);
+          g.clip();
+          g.globalCompositeOperation = "soft-light";
+          poly(g, pts);
+          g.fillStyle = rgba(col, day);
+          g.fill();
+          g.globalCompositeOperation = "source-over";
+          // a soft halo, then the bright pane (the window's cross bars as gaps)
+          poly(g, grow(1.18));
+          g.fillStyle = rgba(col, (kit.outline ? 0.1 : 0.14) * day);
+          g.fill();
+          poly(g, pts);
+          g.fillStyle = rgba(col, (kit.outline ? 0.32 : 0.36) * day);
+          g.fill();
+          const m = (a, b) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+          g.strokeStyle = rgba("#000000", 0.12 * day);
+          g.lineWidth = 2.5;
+          g.beginPath();
+          const a0 = m(pts[0], pts[1]),
+            a1 = m(pts[3], pts[2]),
+            b0 = m(pts[0], pts[3]),
+            b1 = m(pts[1], pts[2]);
+          g.moveTo(a0.x, a0.y);
+          g.lineTo(a1.x, a1.y);
+          g.moveTo(b0.x, b0.y);
+          g.lineTo(b1.x, b1.y);
+          g.stroke();
+          g.restore();
+        }
+
+        /* ───────────── the scene runner ───────────── */
+
+        class Scene {
+          constructor(canvas, kind, kitId) {
+            this.cv = canvas;
+            this.g = canvas.getContext("2d");
+            this.kind = kind;
+            this.kit = KITS[kitId];
+            this.shadows = new ShadowLayer(this.kit.shadowColour);
+            this.stats = { drawImage: 0, fill: 0, stroke: 0, fillRect: 0 };
+            this.instrument(this.g);
+            this.scale = 0;
+            this.lastBakeMs = 0;
+            this.cachedTod = -1;
+            this.reBakeMs = 0;
+          }
+          instrument(g) {
+            for (const n of Object.keys(this.stats)) {
+              const orig = CanvasRenderingContext2D.prototype[n];
+              const st = this.stats;
+              g[n] = function () {
+                st[n]++;
+                return orig.apply(this, arguments);
+              };
+            }
+          }
+          resetStats() {
+            for (const n in this.stats) this.stats[n] = 0;
+          }
+          /** Bake everything at `scale` device pixels per world pixel. */
+          build(scale) {
+            const t0 = performance.now();
+            this.scale = scale;
+            this.baked = [];
+            const W = FARM_W,
+              H = FARM_H;
+            this.cv.width = Math.round(W * scale);
+            this.cv.height = Math.round(H * scale);
+            if (this.kind === "farm") {
+              this.S = farmSprites(this);
+              this.objects = farmObjects(this.S);
+              this.paintGround = (g) => paintFarmGround(this, g);
+            } else {
+              this.S = bistroSprites(this);
+              this.objects = bistroObjects(this.S);
+              this.paintGround = (g) => paintBistroShell(this, g);
+            }
+            this.objects.sort(
+              (a, b) => a.y - b.y || (a.after ?? 0) - (b.after ?? 0),
+            );
+            // static ground with every object's contact occlusion painted in
+            this.ground = document.createElement("canvas");
+            this.ground.width = this.cv.width;
+            this.ground.height = this.cv.height;
+            const gg = this.ground.getContext("2d");
+            gg.scale(scale, scale);
+            this.paintGround(gg);
+            if (this.kit.grain) {
+              gg.setTransform(1, 0, 0, 1, 0, 0);
+              noiseOver(
+                gg,
+                "#20180c",
+                this.kit.grain,
+                0.5 * scale,
+                0,
+                0,
+                this.ground.width,
+                this.ground.height,
+                1.2,
+              );
+              gg.setTransform(scale, 0, 0, scale, 0, 0);
+            }
+            for (const o of this.objects)
+              if (o.ao) aoBlob(gg, o.x, o.y, o.ao[0], o.ao[1], o.ao[2]);
+            this.baked.push(this.ground);
+            // the lit ground (ground + static cast shadows), made on demand
+            this.lit = document.createElement("canvas");
+            this.lit.width = this.cv.width;
+            this.lit.height = this.cv.height;
+            this.baked.push(this.lit);
+            this.litShadows = new ShadowLayer(this.kit.shadowColour);
+            this.cachedTod = -1;
+            this.lastBakeMs = performance.now() - t0;
+          }
+          bakedBytes() {
+            let b = 0;
+            for (const c of this.baked) b += c.width * c.height * 4;
+            return b;
+          }
+          sun(tod) {
+            return this.kind === "farm" ? sunLight(tod, 0) : bistroSun(tod);
+          }
+          castShadows(L, time) {
+            for (const o of this.objects)
+              if (o.shadow)
+                L.sprite(
+                  o.s,
+                  o.x + (o.sway ? Math.sin(time * 1.3) * 1.2 : 0),
+                  o.y,
+                  o.lift ?? 0,
+                );
+          }
+          /** Re-bake the ground with the static cast shadows when the sun has moved. */
+          ensureLit(tod) {
+            if (Math.abs(tod - this.cachedTod) < 5 / 1440) return false;
+            const t0 = performance.now();
+            const g = this.lit.getContext("2d");
+            g.setTransform(1, 0, 0, 1, 0, 0);
+            g.drawImage(this.ground, 0, 0);
+            g.setTransform(this.scale, 0, 0, this.scale, 0, 0);
+            if (this.litShadows.begin(g, this.sun(tod))) {
+              this.castShadows(this.litShadows, 0);
+              this.litShadows.end(g);
+            }
+            this.cachedTod = tod;
+            this.reBakeMs = performance.now() - t0;
+            return true;
+          }
+          draw(env, time) {
+            const g = this.g,
+              K = this.kit,
+              k = this.scale,
+              high = env.grade === "high";
+            const tod = env.tod,
+              sun = this.sun(tod);
+            g.setTransform(1, 0, 0, 1, 0, 0);
+            // 1. ground
+            if (env.mode === "live") {
+              g.setTransform(k, 0, 0, k, 0, 0);
+              this.paintGround(g);
+              for (const o of this.objects)
+                if (o.ao) aoBlob(g, o.x, o.y, o.ao[0], o.ao[1], o.ao[2]);
+            } else if (env.mode === "cached" && high) {
+              this.ensureLit(tod);
+              g.drawImage(this.lit, 0, 0);
+            } else g.drawImage(this.ground, 0, 0);
+            g.setTransform(k, 0, 0, k, 0, 0);
+            // 2. cast shadows (High only, as world-light.ts)
+            if (high && env.mode !== "cached" && this.shadows.begin(g, sun)) {
+              this.castShadows(this.shadows, time);
+              this.shadows.end(g);
+            }
+            if (this.kind === "bistro") drawWindowLight(g, tod, K);
+            // 3. objects, back to front, with their rim light on the sun's side
+            const p = Math.max(-1, Math.min(1, (tod - 0.5) / 0.26));
+            const wr =
+              this.kind === "farm"
+                ? Math.max(0, -p)
+                : 0.55 + 0.45 * Math.max(0, -p);
+            const wl = this.kind === "farm" ? Math.max(0, p) : 0;
+            const wt = this.kind === "farm" ? 1 - Math.abs(p) * 0.7 : 0.35;
+            const rimK = (K.rimSoft ? 1.1 : 0.9) * (sun.alpha / 0.3);
+            for (const o of this.objects) {
+              const x = o.x + (o.sway ? Math.sin(time * 1.3) * 1.2 : 0),
+                y = o.y,
+                s = o.s,
+                lift = o.lift ?? 0;
+              if (env.mode === "live") {
+                g.save();
+                g.translate(x, y - lift);
+                g.lineJoin = g.lineCap = "round";
+                s.paint(g);
+                g.restore();
+              } else g.drawImage(s.c, x - s.ax, y - lift - s.ay, s.w, s.h);
+              if (high && o.rim && s.rims) {
+                for (const [dir, wgt] of [
+                  ["l", wl],
+                  ["t", wt],
+                  ["r", wr],
+                ]) {
+                  if (wgt * rimK < 0.04) continue;
+                  g.globalAlpha = Math.min(1, wgt * rimK);
+                  g.drawImage(s.rims[dir], x - s.ax, y - lift - s.ay, s.w, s.h);
+                }
+                g.globalAlpha = 1;
+              }
+            }
+            // 4. the hour's colour: warm at golden hour, a touch cool in the morning
+            const gold = Math.max(0, Math.abs(p) - 0.35) / 0.65;
+            if (gold > 0.01) {
+              g.save();
+              g.globalCompositeOperation = "soft-light";
+              g.fillStyle = rgba(p > 0 ? "#ff8a3a" : "#ffc06a", 0.75 * gold);
+              g.fillRect(0, 0, FARM_W, FARM_H);
+              g.globalCompositeOperation = "multiply";
+              g.fillStyle = rgba(p > 0 ? "#ffd2a8" : "#fff0d0", 0.6 * gold);
+              g.fillRect(0, 0, FARM_W, FARM_H);
+              g.restore();
+            }
+          }
+        }
+
+        /* ───────────── the page ───────────── */
+
+        const ENV = { tod: 0.36, grade: "high", mode: "baked", playing: false };
+        const scenes = [];
+        const fmtClock = (t) => {
+          const m = Math.round(t * 1440);
+          return `${String(Math.floor(m / 60) % 24).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+        };
+        function sceneScale(cv) {
+          const css = cv.getBoundingClientRect().width || FARM_W;
+          const dpr = Math.min(2, window.devicePixelRatio || 1);
+          const k = (css / FARM_W) * dpr * (ENV.grade === "low" ? 0.75 : 1);
+          return Math.max(0.75, Math.min(3, Math.round(k * 4) / 4));
+        }
+        function rebuildAll() {
+          for (const s of scenes) s.build(sceneScale(s.cv));
+          updateBakeInfo();
+        }
+        function updateBakeInfo() {
+          for (const s of scenes) {
+            const el = document.querySelector(`[data-bake="${s.cv.id}"]`);
+            if (el)
+              el.textContent = `${s.baked.length} canvas nướng · ${(s.bakedBytes() / 1048576).toFixed(1)} MB · nướng ${s.lastBakeMs.toFixed(0)} ms`;
+          }
+        }
+        let lastFrame = 0;
+        const live = new Map();
+        function frame(now) {
+          const time = now / 1000;
+          if (ENV.playing) {
+            const dt = Math.min(0.1, (now - (lastFrame || now)) / 1000);
+            ENV.tod += dt * 0.02;
+            if (ENV.tod > 0.76) ENV.tod = 0.25;
+            syncControls();
+          }
+          lastFrame = now;
+          for (const s of scenes) {
+            s.resetStats();
+            const t0 = performance.now();
+            s.draw(ENV, time);
+            const ms = performance.now() - t0;
+            const prev = live.get(s) ?? ms;
+            live.set(s, prev * 0.9 + ms * 0.1);
+            const el = document.querySelector(`[data-stat="${s.cv.id}"]`);
+            if (el && Math.floor(now / 250) !== Math.floor((now - 16) / 250))
+              el.textContent = `${live.get(s).toFixed(1)} ms gửi lệnh (chưa gồm tô) · ${s.stats.drawImage} drawImage · ${s.stats.fill + s.stats.stroke + s.stats.fillRect} fill/stroke`;
+          }
+          requestAnimationFrame(frame);
+        }
+        function syncControls() {
+          const r = document.getElementById("tod");
+          if (r) r.value = String(Math.round(ENV.tod * 1440));
+          const c = document.getElementById("clock");
+          if (c) c.textContent = fmtClock(ENV.tod);
+        }
+
+        /**
+         * The benchmark: each scene in each mode, `n` frames, each followed by a
+         * 1-pixel read so the frame's drawing really finishes before the clock stops
+         * (otherwise the browser defers the work and the numbers flatter).
+         */
+        async function bench(n = 40, scale = 0) {
+          const out = [];
+          const save = { ...ENV };
+          ENV.grade = "high";
+          if (scale) for (const s of scenes) s.build(scale);
+          else rebuildAll();
+          for (const s of scenes)
+            for (const [mode, grade] of [
+              ["live", "high"],
+              ["baked", "high"],
+              ["cached", "high"],
+              ["baked", "low"],
+            ]) {
+              ENV.mode = mode;
+              ENV.grade = grade;
+              const times = [];
+              let counts = null;
+              for (let i = 0; i < n; i++) {
+                ENV.tod = 0.3 + (i / n) * 0.003; // clock moves under 5 min: cache stays
+                s.resetStats();
+                const t0 = performance.now();
+                s.draw(ENV, i / 60);
+                s.g.getImageData(0, 0, 1, 1);
+                times.push(performance.now() - t0);
+                if (i === n - 1) counts = { ...s.stats };
+                if (i % 10 === 9) await new Promise((r) => setTimeout(r, 0));
+              }
+              times.sort((a, b) => a - b);
+              out.push({
+                scene: s.cv.id,
+                mode,
+                grade,
+                median: +times[Math.floor(n / 2)].toFixed(2),
+                p90: +times[Math.floor(n * 0.9)].toFixed(2),
+                ...counts,
+                px: s.cv.width * s.cv.height,
+                bakedMB: +(s.bakedBytes() / 1048576).toFixed(2),
+                bakeMs: +s.lastBakeMs.toFixed(0),
+                reBakeMs: +s.reBakeMs.toFixed(1),
+              });
+            }
+          Object.assign(ENV, save);
+          rebuildAll();
+          return out;
+        }
+        window.__study = { ENV, scenes, bench, rebuildAll, syncControls };
+
+        function init() {
+          for (const cv of document.querySelectorAll("canvas[data-scene]"))
+            scenes.push(new Scene(cv, cv.dataset.scene, cv.dataset.kit));
+          const q = new URLSearchParams(location.search);
+          if (q.has("tod")) ENV.tod = +q.get("tod");
+          if (q.has("mode")) ENV.mode = q.get("mode");
+          if (q.has("grade")) ENV.grade = q.get("grade");
+          rebuildAll();
+          syncControls();
+          document.getElementById("tod")?.addEventListener("input", (e) => {
+            ENV.tod = +e.target.value / 1440;
+            ENV.playing = false;
+            document
+              .getElementById("play")
+              .setAttribute("aria-pressed", "false");
+            syncControls();
+          });
+          document.getElementById("play")?.addEventListener("click", (e) => {
+            ENV.playing = !ENV.playing;
+            e.currentTarget.setAttribute("aria-pressed", String(ENV.playing));
+          });
+          for (const el of document.querySelectorAll("[data-set]"))
+            el.addEventListener("click", () => {
+              const [key, val] = el.dataset.set.split(":");
+              ENV[key] = val;
+              for (const b of document.querySelectorAll(
+                `[data-set^="${key}:"]`,
+              ))
+                b.setAttribute("aria-pressed", String(b === el));
+              if (key === "grade") rebuildAll();
+            });
+          for (const b of document.querySelectorAll("[data-set]")) {
+            const [key, val] = b.dataset.set.split(":");
+            b.setAttribute("aria-pressed", String(ENV[key] === val));
+          }
+          const bb = document.getElementById("bench");
+          bb?.addEventListener("click", async () => {
+            bb.disabled = true;
+            bb.textContent = "Đang đo…";
+            const rows = await bench();
+            const tb = document.getElementById("bench-out");
+            const label = {
+              live: "Vẽ trực tiếp",
+              baked: "Nướng sẵn",
+              cached: "Nướng cả bóng",
+            };
+            tb.innerHTML = rows
+              .map(
+                (r) =>
+                  `<tr><td>${r.scene}</td><td>${label[r.mode]}${r.grade === "low" ? " · Thấp" : ""}</td><td>${r.median}</td><td>${r.p90}</td><td>${r.drawImage}</td><td>${r.fill + r.stroke + r.fillRect}</td></tr>`,
+              )
+              .join("");
+            bb.disabled = false;
+            bb.textContent = "Đo lại trên máy này";
+          });
+          let rt = 0;
+          addEventListener("resize", () => {
+            clearTimeout(rt);
+            rt = setTimeout(rebuildAll, 250);
+          });
+          requestAnimationFrame(frame);
+        }
+        if (document.readyState === "loading")
+          document.addEventListener("DOMContentLoaded", init);
+        else init();
+      </script>
+    </div>
+  </body>
+</html>
