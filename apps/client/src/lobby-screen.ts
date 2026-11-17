@@ -23,7 +23,7 @@ import { fadeIn } from "./ui/motion";
 import { setInner } from "./ui/patch";
 import { openHubPanelNow } from "./ui/hub-panel";
 import { guideCard, type GuideView } from "./getting-started";
-import { spireTowerArt } from "./spire-art";
+import { spireLobbyIcon } from "./spire-art";
 import type { SpireLobbyCard } from "./spire-nudge";
 
 /**
@@ -304,7 +304,7 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
 </section>
 <aside class="lobby-cards" aria-label="Today">
   <button type="button" class="lobby-card" data-lobby-action="journey" id="lobby-journey-card"></button>
-  <button type="button" class="lobby-card lobby-spire-card" data-lobby-action="spire" id="lobby-spire-card" hidden><span class="lobby-spire-art" aria-hidden="true">${spireTowerArt(3, "lobby-spire")}</span><span class="lobby-spire-text" id="lobby-spire-text"></span></button>
+  <button type="button" class="lobby-card lobby-spire-card" data-lobby-action="spire" id="lobby-spire-card" hidden><span class="lobby-spire-art" aria-hidden="true">${spireLobbyIcon()}</span><span class="lobby-spire-text" id="lobby-spire-text"></span></button>
   <button type="button" class="lobby-card lobby-missions-card" data-lobby-action="missions" id="lobby-missions-card"></button>
   <button type="button" class="lobby-card lobby-friends-card" data-lobby-action="friends" id="lobby-friends-card"><span class="lobby-card-kicker">Friends</span><b id="lobby-friends-online">Friends online</b><small>Invite, join or watch</small></button>
 </aside>

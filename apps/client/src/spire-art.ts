@@ -41,6 +41,22 @@ export function spireEchoTint(zone?: number): {
       : { tint: ECHO_TINT, hurtTint: ECHO_TINT_HURT };
 }
 
+/** Compact lobby emblem: transparent, with broad tiers readable on phones. */
+export function spireLobbyIcon() {
+  const tiers = [
+    [34, 35, 7],
+    [28, 28, 10],
+    [22, 21, 13],
+    [16, 14, 16],
+  ]
+    .map(([width, y, x]) => {
+      const right = x + width;
+      return `<path d="M${x} ${y + 10}h${width}l-2 -10H${x + 2}Z" fill="#aa8ce6" stroke="#694a9c" stroke-width="1.1" stroke-linejoin="round"/><path d="M24 ${y}h${right - 26}l2 10H24Z" fill="#8261bc"/><path d="M${x} ${y + 10}h${width}" stroke="#e5d4ff" stroke-width="1.7" stroke-linecap="round"/><path d="M22 ${y + 3}h4v4h-4Z" fill="#fff0b0"/>`;
+    })
+    .join("");
+  return `<svg class="spire-lobby-icon" viewBox="0 0 48 64" fill="none" aria-hidden="true" focusable="false"><path d="M6 56h36l-3 -7H9Z" fill="#bba0ee" stroke="#694a9c" stroke-width="1.2" stroke-linejoin="round"/><path d="M10 49h28l-2 -8H12Z" fill="#9270c9"/>${tiers}<path d="M17 14 24 3l7 11Z" fill="#e8d8ff" stroke="#8e6cc4" stroke-width="1.1" stroke-linejoin="round"/><path d="m24 3 7 11h-7Z" fill="#b69ae8"/><path d="M20 53v-6a4 4 0 0 1 8 0v6" fill="#fff0b0" stroke="#765298" stroke-width="1.1"/><path d="M9 56h30M16 59h16" stroke="#eadcff" stroke-width="1.7" stroke-linecap="round"/><path d="m38 13 1.5 3.5L43 18l-3.5 1.5L38 23l-1.5 -3.5L33 18l3.5 -1.5Z" fill="#ffe8a2"/><circle cx="9" cy="30" r="1.5" fill="#eee1ff"/></svg>`;
+}
+
 /**
  * The tower: ten floors of stone narrowing to a crystal tip, lit up to the
  * highest floor reached. `id` keeps gradient ids apart when two show.
