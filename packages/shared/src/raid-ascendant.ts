@@ -661,7 +661,7 @@ export const ASCENDANT_SNOOZAKU_CHAPTERS = [
 export const ASCENDANT_PRISMELL = {
   name: "Ascendant Prismell",
   /** Health added per extra raider (the raid's own: 880). */
-  perExtraPlayer: 340,
+  perExtraPlayer: 400,
   /** Seconds a teammate kneels to revive (the Ascendant tier: 4.5). */
   reviveSeconds: 5.5,
   /**
@@ -725,6 +725,8 @@ export const ASCENDANT_PRISMELL = {
     spare: 0.5,
     radius: 46,
     marks: [1, 2, 2],
+    /** Marks per cast by chapter with four raiders up. */
+    marksFour: [2, 2, 3],
     /** Out of the light, its glow fades this much slower than it fills. */
     decay: 0.5,
   },
@@ -745,6 +747,11 @@ export const ASCENDANT_PRISMELL = {
    */
   cadence: [0.7, 0.63, 0.56],
   /**
+   * A party's seconds between attacks × (1 - this per extra raider): more
+   * raiders meet more attacks (not harder hits).
+   */
+  partyCadence: 0.11,
+  /**
    * First chapter of each combo: a Prism Lance that misses closes a Halo
    * Crush round its raider; an Eclipse that lands sends lances after whoever
    * stood in the old light (at most `comboLances`).
@@ -758,11 +765,11 @@ export const ASCENDANT_PRISMELL = {
    */
   overlap: { from: 1, raiders: 2 },
   /** Exposure windows × (1 + this per extra raider). */
-  partyWindows: 0.1,
+  partyWindows: 0,
   /** Its attacks hit harder by this share per extra raider. */
   partyDamage: 0,
   /** Its attacks hit this much harder than the tier's, by party size (1-4). */
-  damage: [0.95, 1.3, 1.8, 2.55],
+  damage: [0.95, 1.15, 1.15, 1.15],
 } as const;
 
 /**

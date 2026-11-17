@@ -281,6 +281,50 @@ describe("the Ascendant tier", () => {
       );
     }
   });
+  it("no single hit of the raid's kit takes more than 60% of the frailest champion's health, at any party size", () => {
+    const frail = Math.min(...Object.values(CHARACTERS).map((c) => c.health));
+    const weakest = (Object.keys(CHARACTERS) as CharacterId[]).find(
+      (id) => CHARACTERS[id].health === frail,
+    )!;
+    const kit = {
+      "prism-lance": P.lance.damage,
+      refraction: P.lance.damage,
+      "fan-display": P.fan.damage,
+      "halo-crush": P.halo.damage,
+    };
+    for (const size of [1, 2, 3, 4]) {
+      const a = arena(size);
+      for (const [kind, base] of Object.entries(kit))
+        expect(
+          base * a.bossDamage(),
+          `${kind} with ${size}`,
+        ).toBeLessThanOrEqual(0.6 * frail);
+      // its own signatures stay in reach of that too
+      for (const base of [A.eclipse.damage, A.umbral.damage])
+        expect(base * a.bossDamage()).toBeLessThanOrEqual(0.65 * frail);
+      // and a real lance on the frailest champion agrees
+      const b = createRaidArena("CAP", "prismatail", {
+        variant: "ascendant",
+      }) as Inner;
+      for (let i = 0; i < size; i++)
+        b.add("p" + i, "P" + i, i === 0 ? weakest : TEAM[i]);
+      b.configure(3, false);
+      b.start();
+      b.phase = "playing";
+      b.started = true;
+      b.nextAttack = Infinity;
+      b.relayAt = Infinity;
+      const p = b.heroes()[0];
+      place(p, 600, 450);
+      p.immuneUntil = 0;
+      b.seenAttacks.set("prism-lance", 5);
+      b.prismFeintRoll = () => false;
+      const [lane] = cast(b, "prism-lance", p);
+      run(b, lane.at - b.time + DT);
+      expect(hurt(p), `lance with ${size}`).toBeGreaterThan(0);
+      expect(hurt(p), `lance with ${size}`).toBeLessThanOrEqual(0.6 * frail);
+    }
+  });
   it("its rhythm tightens by chapter (the ordinary raid's does not)", () => {
     const gaps = [1, 2, 3].map((phase) => arena(4, phase).cadence());
     expect(gaps[1]).toBeLessThan(gaps[0]);
@@ -729,7 +773,11 @@ describe("the Umbral Prism", () => {
       );
       // The team: after a reaction, the marked raider walks to the plan's
       // hand-off spot and the nearest teammate to its feeding spot.
-      const others = a.heroes().filter((p: Fighter) => p !== m);
+      // (a teammate under a prism of their own can't hand light on)
+      const dimmed = a.dimmed();
+      const others = a
+        .heroes()
+        .filter((p: Fighter) => p !== m && !dimmed.has(p.id));
       const feeder = plan.feed
         ? [...others].sort(
             (p: Fighter, q: Fighter) =>
@@ -761,7 +809,7 @@ describe("the Umbral Prism", () => {
         for (const id of lastHits) hits.add(id);
         a.nextAttack = Infinity;
       }
-      expect([...hits], `run ${i} (${size} raiders)`).toEqual([]);
+      expect(hits.has(m.id), `run ${i} (${size} raiders)`).toBe(false);
       expect(a.raid.warnings.includes(w), `run ${i}`).toBe(false);
       expect(a.prismReads.cleansed, `run ${i}`).toBeGreaterThanOrEqual(1);
     }
@@ -781,15 +829,18 @@ describe("the Umbral Prism", () => {
       umbralDelay(a.umbralPlanFor(m).walk) - 0.1,
     );
   });
-  it("two prisms with three raiders or more from chapter 2; one at a time; never while the skylight is dark", () => {
+  it("more prisms in a bigger party (three from chapter 2, four by ASCENDANT_PRISMELL.umbral.marksFour); one at a time; never while the skylight is dark", () => {
     const a = arena(4, 2);
     const ws = cast(a, "umbral-prism", a.heroes()[0]);
     expect(ws).toHaveLength(2);
     expect(new Set(ws.map((w) => w.targetId)).size).toBe(2);
     expect(a.allows("umbral-prism")).toBe(false);
-    expect(
-      cast(arena(4, 1), "umbral-prism", arena(4, 1).heroes()[0]),
-    ).toHaveLength(1);
+    const four = arena(4, 3);
+    expect(cast(four, "umbral-prism", four.heroes()[0])).toHaveLength(
+      A.umbral.marksFour[2],
+    );
+    const three = arena(3, 1);
+    expect(cast(three, "umbral-prism", three.heroes()[0])).toHaveLength(1);
     expect(
       cast(arena(2, 3), "umbral-prism", arena(2, 3).heroes()[0]),
     ).toHaveLength(1);

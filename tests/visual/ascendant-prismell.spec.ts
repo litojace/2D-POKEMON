@@ -339,3 +339,74 @@ for (const s of SIZES)
       await ctx.close();
     }
   });
+
+// More screens: every skylight window an Eclipse can open, every mirror and
+// the heart's rest spot stay clear of the HUD and the touch controls.
+const MORE = [
+  { name: "932x430", width: 932, height: 430, phone: true },
+  { name: "844x280", width: 844, height: 280, phone: true },
+  { name: "iPad", width: 1180, height: 820, phone: true },
+];
+for (const s of MORE)
+  test(`Ascendant Prismell's windows, mirrors and heart are clear at ${s.name}`, async ({
+    browser,
+  }, info) => {
+    test.setTimeout(300_000);
+    const ctx = await context(browser, s);
+    try {
+      const page = await ctx.newPage();
+      const errors = await raid(page);
+      await run(page, 0.4);
+      const mirrors: { x: number; y: number }[] = await page.evaluate(() =>
+        (window as any).__combat.arena.raid.mirrors.map((m: any) => ({
+          x: m.x,
+          y: m.y,
+        })),
+      );
+      const boxes = await covers(page);
+      const controls = boxes.filter((b) =>
+        /touch|joystick|^$/.test(String(b.what)),
+      );
+      expect(controls.length).toBeGreaterThan(4);
+      const wins: { x: number; y: number }[] = [
+        ...A.windows.single.flat(),
+        ...A.windows.pair.flat(),
+      ];
+      for (const [i, p] of (await onScreen(page, wins)).entries())
+        expect(
+          hidden({ x: p.x, y: p.y, r: 30 * p.scale }, boxes, s),
+          `window ${wins[i].x},${wins[i].y}`,
+        ).toBeUndefined();
+      for (const [i, p] of (await onScreen(page, mirrors)).entries())
+        expect(
+          hidden({ x: p.x, y: p.y, r: 34 * p.scale }, boxes, s),
+          `mirror ${i}`,
+        ).toBeUndefined();
+      for (const x of A.home) {
+        const [heart] = await onScreen(page, [{ x, y: 450 }]);
+        expect(
+          hidden(
+            { x: heart.x, y: heart.y, r: A.heartClear * heart.scale },
+            controls,
+            s,
+          ),
+          `heart at ${x}`,
+        ).toBeUndefined();
+      }
+      // An Eclipse to the top window, to look at.
+      await page.evaluate(() => {
+        const c = (window as any).__combat,
+          a = c.arena;
+        a.relayAt = 1e9;
+        c.cast("eclipse");
+        const w = a.raid.warnings.find((x: any) => x.kind === "eclipse");
+        w.at = a.time + 3;
+        c.snapshot();
+      });
+      await run(page, 0.6, 1);
+      await snap(page, info, `asc-prism-windows-${s.name}`);
+      expect(errors).toEqual([]);
+    } finally {
+      await ctx.close();
+    }
+  });

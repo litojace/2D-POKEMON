@@ -293,7 +293,12 @@ export function AscendantPrismellRules<B extends PrismClass>(Base: B) {
     protected override cadence() {
       const base = super.cadence();
       if (!this.prismAscendant() || !this.smart()) return base;
-      return base * A.cadence[Math.max(0, Math.min(2, this.raid.phase - 1))];
+      const extra = Math.max(0, this.raid.partySize - 1);
+      return (
+        base *
+        A.cadence[Math.max(0, Math.min(2, this.raid.phase - 1))] *
+        (1 - A.partyCadence * extra)
+      );
     }
     /** Its hits by party size (see ASCENDANT_PRISMELL.damage). */
     protected override bossDamage() {
@@ -765,16 +770,25 @@ export function AscendantPrismellRules<B extends PrismClass>(Base: B) {
     protected warnUmbral(target: Fighter, teach: boolean) {
       const r = this.raid;
       const alive = this.heroes().filter((p) => p.hp > 0);
+      const chapter = Math.max(0, Math.min(2, r.phase - 1));
       const marks =
-        alive.length >= 3
-          ? A.umbral.marks[Math.max(0, Math.min(2, r.phase - 1))]
-          : 1;
+        alive.length >= 4
+          ? A.umbral.marksFour[chapter]
+          : alive.length >= 3
+            ? A.umbral.marks[Math.max(0, Math.min(2, r.phase - 1))]
+            : 1;
       const targets = [target];
-      if (marks > 1) {
+      // more marks: the raiders farthest from the marked ones
+      while (targets.length < marks) {
         const far = alive
-          .filter((p) => p.id !== target.id)
-          .sort((a, b) => dist(b, target) - dist(a, target))[0];
-        if (far) targets.push(far);
+          .filter((p) => !targets.includes(p))
+          .sort(
+            (a, b) =>
+              Math.min(...targets.map((t) => dist(b, t))) -
+              Math.min(...targets.map((t) => dist(a, t))),
+          )[0];
+        if (!far) break;
+        targets.push(far);
       }
       const out: RaidWarning[] = [];
       for (const t of targets) {
