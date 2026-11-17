@@ -187,7 +187,7 @@ it("places, moves, mirrors and stores decorations anywhere that's free", async (
   expect(away.farm.decorCredits).toEqual({ apple: 1 });
   expect(away.farm.charm).toBe(2);
   const back = await act([
-    { a: "decor-place", item: "apple", x: 1300, y: 1000 },
+    { a: "decor-place", item: "apple", x: 1460, y: 900 },
   ]);
   expect(back.results[0]).toMatchObject({ ok: true, cost: 0 });
   expect(back.farm.leaves).toBe(away.farm.leaves);
@@ -298,7 +298,7 @@ it("adds 1% farm XP for every 2 Charm, up to 25%", async () => {
   await level(45);
   await place("rock", 100, 900);
   expect(await xpAfter(100)).toBe(100);
-  await place("tower", 1200, 980);
+  await place("tower", 600, 960);
   expect((await farm()).charm).toBe(11);
   expect(charmBonus(11)).toBe(5);
   expect(await xpAfter(100)).toBe(105);

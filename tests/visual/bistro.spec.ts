@@ -974,6 +974,13 @@ test("Bistro recipes: master a dish and level it up, buy at the Market, bring cr
   expect(await B(page, "return srv.S.pantry.flour")).toBe(
     first === "flour" ? 5 : 4,
   );
+  // Sunny Eggs from the Farm's coop make Eggs, three for one.
+  await expect(page.locator('#bs-sheet [data-farm="egg"]')).toContainText(
+    "3 Sunny Egg each · 6 in the barn",
+  );
+  await expect(page.locator('#bs-sheet [data-farm="egg"]')).toContainText(
+    "Bring 2",
+  );
   await snap(page, info, "bistro-pantry");
   expect(errors).toEqual([]);
 });
