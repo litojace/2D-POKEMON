@@ -2704,9 +2704,10 @@ export function createArenaServer(
       if (!allowed(10)) return;
       plaza.jump(socket.id);
     });
-    socket.on("plaza-dash", () => {
+    socket.on("plaza-dash", (data: unknown) => {
       if (!allowed(10)) return;
-      plaza.dash(socket.id);
+      const d = data as { dx?: unknown; dy?: unknown } | null;
+      plaza.dash(socket.id, d?.dx, d?.dy);
     });
     socket.on("plaza-emote", (data: unknown, cb: unknown) => {
       if (!allowed(10)) return;

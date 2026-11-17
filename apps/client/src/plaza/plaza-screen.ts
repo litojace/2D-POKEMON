@@ -14,12 +14,16 @@ export interface PlazaScreenOptions {
   socket: Socket;
   character: CharacterId;
   skin: { skin: string; stage?: number } | null;
+  /** The all-fighter Skin slot you wear (a palette id), if any. */
+  colour?: string | null;
   /** An image URL for a fighter in a skin (canvas sprite); `flat` leaves
    * out the masked overlays some browsers draw wrong (plaza-sprite.ts). */
   art(
     character: string,
     skin: { skin: string; stage?: number } | null,
     flat?: boolean,
+    /** The Skin slot's palette (ignored under a champion skin). */
+    colour?: string | null,
   ): string;
   skinName(skin: string): string | null;
   fighterName(character: string): string;
@@ -58,6 +62,7 @@ export interface PlazaScreen {
   look(
     character: CharacterId,
     skin: { skin: string; stage?: number } | null,
+    colour?: string | null,
   ): void;
   close(): void;
   /** A Nearby chat line: a bubble over the speaker's head. */
@@ -66,14 +71,14 @@ export interface PlazaScreen {
 export function openPlazaScreen(options: PlazaScreenOptions): PlazaScreen {
   document.body.classList.add("hub-screen", "hub-plaza");
   const scene = openPlaza(options) as {
-    look(character: string, skin: unknown): void;
+    look(character: string, skin: unknown, colour?: string | null): void;
     say(accountId: string, text: string): void;
     hide(): void;
     show(): void;
     close(): void;
     _dbg?: unknown;
   };
-  scene.look(options.character, options.skin);
+  scene.look(options.character, options.skin, options.colour ?? null);
   // Visual tests read positions through this (development builds only).
   if (import.meta.env.DEV)
     (window as unknown as { __plaza?: unknown }).__plaza = scene._dbg;
@@ -114,8 +119,8 @@ export function openPlazaScreen(options: PlazaScreenOptions): PlazaScreen {
   join();
   return {
     say: (accountId, text) => scene.say(accountId, text),
-    look(next, skin) {
-      scene.look(next, skin);
+    look(next, skin, colour) {
+      scene.look(next, skin, colour ?? null);
       character = next;
       // The server reloads the saved skin and wardrobe itself.
       options.socket.emit("plaza-look", { character: next }, () => {});

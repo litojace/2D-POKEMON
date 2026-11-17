@@ -2238,7 +2238,8 @@ function syncPlaza(want: boolean, hub = want) {
   const look = plazaOutfitKey(selected, skin, accountsUI.raidLook);
   if (plaza) {
     plaza.show();
-    if (look !== plazaLook) plaza.look(selected, skin);
+    if (look !== plazaLook)
+      plaza.look(selected, skin, accountsUI.raidLook?.skin ?? null);
     plazaLook = look;
     return;
   }
@@ -2251,20 +2252,23 @@ function syncPlaza(want: boolean, hub = want) {
     socket,
     character: selected,
     skin,
+    colour: accountsUI.raidLook?.skin ?? null,
     reduced: reducedMotion,
     low: plazaLow,
-    art: (character, worn, flat) =>
-      "data:image/svg+xml;charset=utf-8," +
-      encodeURIComponent(
-        fighterArt(
-          (Object.hasOwn(CHARACTERS, character)
-            ? character
-            : "voltkit") as CharacterId,
-          undefined,
-          worn,
-          flat,
-        ),
-      ),
+    art: (character, worn, flat, colour) => {
+      const id = (
+        Object.hasOwn(CHARACTERS, character) ? character : "voltkit"
+      ) as CharacterId;
+      const svg = fighterArt(id, undefined, worn, flat);
+      // The Skin slot's palette shows unless a champion skin is worn, the
+      // same rule as battle and portraits (portraits.ts).
+      return (
+        "data:image/svg+xml;charset=utf-8," +
+        encodeURIComponent(
+          colour && !wornArt(id, worn) ? colourPreview(svg, colour) : svg,
+        )
+      );
+    },
     skinName: (id) => CHAMPION_SKIN_BY_ID[id]?.name ?? null,
     fighterName: (id) => CHARACTERS[id as CharacterId]?.name ?? "Fighter",
     playerName: () => accountsUI.account?.displayName ?? "You",

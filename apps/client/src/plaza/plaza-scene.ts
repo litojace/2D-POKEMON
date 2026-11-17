@@ -738,15 +738,17 @@ export function openPlaza(options) {
   const art = new Map();
   // The <img> (its src shows in cards and the feed) carries `sprite`, the
   // bitmap the canvas draws once it is painted (see plaza-sprite.ts).
-  const imageFor = (character, skin) => {
-    const key = `${character}:${skin?.skin ?? ""}:${skin?.stage ?? 1}`;
+  // `colour`: the all-fighter Skin slot (a palette such as candy-colours),
+  // shown when no champion skin is worn, as in battle and on portraits.
+  const imageFor = (character, skin, colour = null) => {
+    const key = `${character}:${skin?.skin ?? ""}:${skin?.stage ?? 1}:${colour ?? ""}`;
     let im = art.get(key);
     if (!im) {
       im = new Image();
       im.decoding = "async";
-      im.src = options.art(character, skin);
+      im.src = options.art(character, skin, false, colour);
       im.sprite = null;
-      bakeSprite(im, options.art(character, skin, true)).then(
+      bakeSprite(im, options.art(character, skin, true, colour)).then(
         (sprite) => (im.sprite = sprite),
         () => {},
       );
@@ -775,6 +777,7 @@ export function openPlaza(options) {
     name: options.playerName(),
     character: options.character,
     skin: null,
+    colour: null,
     img: imageFor(options.character, null),
     emote: null,
     emoteT: 0,
@@ -1365,7 +1368,12 @@ export function openPlaza(options) {
     if (plazaJump(P)) socket.emit("plaza-jump");
   }
   function dash() {
-    if (plazaDash(P)) socket.emit("plaza-dash");
+    // Send the way you dashed: the server's last stick can be a step old.
+    if (plazaDash(P))
+      socket.emit("plaza-dash", {
+        dx: Math.round(P.dashX * 1000) / 1000,
+        dy: Math.round(P.dashY * 1000) / 1000,
+      });
   }
   let emoteAt = 0;
   function emote(e) {
@@ -1840,14 +1848,12 @@ export function openPlaza(options) {
           name: p.name,
           bot: !!p.bot,
           skin: p.skin,
-          img: imageFor(p.character, p.skin),
+          colour: p.look?.skin ?? null,
+          img: imageFor(p.character, p.skin, p.look?.skin ?? null),
         });
-      if (p.id === meId) {
-        P.name = p.name;
-        P.character = p.character;
-        P.skin = p.skin;
-        P.img = imageFor(p.character, p.skin);
-      }
+      // Your own fighter and skins come from your saved wardrobe (look()), at
+      // once: the server's copy starts bare until it has read the wardrobe.
+      if (p.id === meId) P.name = p.name;
     }
   }
   socket.on("plaza-state", onState);
@@ -1903,7 +1909,12 @@ export function openPlaza(options) {
           name: p?.name ?? "",
           bot: !!p?.bot,
           skin: p?.skin ?? null,
-          img: imageFor(p?.character ?? "voltkit", p?.skin ?? null),
+          colour: p?.look?.skin ?? null,
+          img: imageFor(
+            p?.character ?? "voltkit",
+            p?.skin ?? null,
+            p?.look?.skin ?? null,
+          ),
           emoteIdx: 0,
         });
         others.set(id, b);
@@ -1954,7 +1965,7 @@ export function openPlaza(options) {
     if (on !== runwayOn) {
       runwayOn = on;
       if (on) {
-        const skin = P.skin?.skin ? options.skinName(P.skin.skin) : null;
+        const skin = starSkin(P) || null;
         rc.innerHTML = `<img src="${P.img.src}" alt=""><div><small>ON THE RUNWAY</small><b>${esc(P.name)}</b><em>${esc(skin ?? "Original look")} · ${esc(options.fighterName(P.character))}</em></div><span class="claps">${I("heart")}<b id="pz-claps">${claps}</b></span>`;
         rc.className = "pz-runcard glass";
         rc.hidden = false;
@@ -2468,8 +2479,11 @@ export function openPlaza(options) {
   }
   function drawPhoto(g, time) {
     const { x, y } = PHOTO;
-    GFX.blit(g, GFX.bush("flower", 31, 70), x - 104, y + 6);
-    GFX.blit(g, GFX.bush("rose", 32, 70), x + 104, y + 6);
+    // The two bushes stand together west of the arch, clear of its posts,
+    // the tripod, the stage and the lane in front (they used to sit on both
+    // posts' feet, half hiding them).
+    GFX.blit(g, GFX.bush("flower", 31, 70), x - 160, y - 50);
+    GFX.blit(g, GFX.bush("rose", 32, 70), x - 235, y - 30);
     const post = (px) => {
       const gg = g.createLinearGradient(px - 6, 0, px + 6, 0);
       gg.addColorStop(0, "#fffaf0");
@@ -3768,7 +3782,15 @@ export function openPlaza(options) {
     }
   }
   function starSkin(b) {
-    return b.skin?.skin ? (options.skinName(b.skin.skin) ?? "") : "";
+    if (b.skin?.skin) return options.skinName(b.skin.skin) ?? "";
+    // A palette from the Skin slot: "candy-colours" → "Candy Colours".
+    return b.colour
+      ? (options.skinName(b.colour) ??
+          b.colour.replace(
+            /(^|-)(\w)/g,
+            (_, d, c) => (d ? " " : "") + c.toUpperCase(),
+          ))
+      : "";
   }
 
   /* ---------- loop ---------- */
@@ -4144,10 +4166,11 @@ export function openPlaza(options) {
     },
     say,
     /** Your fighter or skin changed. */
-    look(character, skin) {
+    look(character, skin, colour = null) {
       P.character = character;
       P.skin = skin ?? null;
-      P.img = imageFor(character, skin ?? null);
+      P.colour = colour ?? null;
+      P.img = imageFor(character, skin ?? null, colour ?? null);
     },
     close() {
       running = false;
