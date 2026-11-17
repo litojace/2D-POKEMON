@@ -105,6 +105,8 @@ import { AscendantPrismellRules } from "./raid-ascendant-prismell.js";
 import { PrismatailArena } from "./raid-prismatail.js";
 import { AscendantLumiwickRules } from "./raid-ascendant-lumiwick.js";
 import { EmberwingArena } from "./raid-emberwing.js";
+import { AscendantStormTwinsRules } from "./raid-ascendant-storm-twins.js";
+import { StormTwinsArena } from "./raid-storm-twins.js";
 import { leadPoint } from "./raid-boss-aim.js";
 
 const randomUUID = () => crypto.randomUUID();
@@ -1543,6 +1545,43 @@ export function spireDive(
     ty: from.y + uy * lane[1],
   };
 }
+/**
+ * Zone 7's climb: Echo floors 61–69 on the Spire's court and the Ascendant
+ * Storm Twins on floor 70, in the Conductor Ring. (Skeleton: the wave and
+ * elite floors keep the twins' court off; work/z7-core finishes it.)
+ */
+export class SpireStormArena extends SpireRules(
+  AscendantStormTwinsRules(StormTwinsArena),
+) {
+  constructor(code: string) {
+    super(code, "storm-twins");
+  }
+  protected override resetAscendantReads() {
+    this.resetTwinReads();
+  }
+  protected override clearBossCourt() {
+    super.clearBossCourt();
+    Object.assign(this.raid, { twins: [], twinRevivals: 0 });
+  }
+  /** The twins' drift and rushes belong to their own floor. */
+  protected override bossStep(dt: number, boss: Fighter) {
+    if (this.bossFloor()) super.bossStep(dt, boss);
+  }
+  /** So do their revivals, fields, beams and polarity. */
+  protected override worldStep(dt: number, boss: Fighter) {
+    if (this.bossFloor()) super.worldStep(dt, boss);
+  }
+  protected override botHint(
+    bot: Fighter,
+    input: Input,
+    go: (x: number, y: number, away: boolean) => Input,
+  ): Input | undefined {
+    return this.bossFloor() ? super.botHint(bot, input, go) : undefined;
+  }
+  protected override pressured(kind: RaidAttack, alive: Fighter[]) {
+    return this.bossFloor() && super.pressured(kind, alive);
+  }
+}
 /** Any zone's climb. */
 export type SpireRoom =
   | SpireArena
@@ -1550,25 +1589,29 @@ export type SpireRoom =
   | SpireGloomArena
   | SpireDreamArena
   | SpireLightArena
-  | SpireEmberArena;
+  | SpireEmberArena
+  | SpireStormArena;
 export const isSpireArena = (a: unknown): a is SpireRoom =>
   a instanceof SpireArena ||
   a instanceof SpireTideArena ||
   a instanceof SpireGloomArena ||
   a instanceof SpireDreamArena ||
   a instanceof SpireLightArena ||
-  a instanceof SpireEmberArena;
+  a instanceof SpireEmberArena ||
+  a instanceof SpireStormArena;
 /** The room for a climb of `zone` (the server checked it is built). */
 export function createSpireArena(code: string, zone = 1): SpireRoom {
-  return zone === 6
-    ? new SpireEmberArena(code)
-    : zone === 5
-      ? new SpireLightArena(code)
-      : zone === 4
-        ? new SpireDreamArena(code)
-        : zone === 3
-          ? new SpireGloomArena(code)
-          : zone === 2
-            ? new SpireTideArena(code)
-            : new SpireArena(code);
+  return zone === 7
+    ? new SpireStormArena(code)
+    : zone === 6
+      ? new SpireEmberArena(code)
+      : zone === 5
+        ? new SpireLightArena(code)
+        : zone === 4
+          ? new SpireDreamArena(code)
+          : zone === 3
+            ? new SpireGloomArena(code)
+            : zone === 2
+              ? new SpireTideArena(code)
+              : new SpireArena(code);
 }

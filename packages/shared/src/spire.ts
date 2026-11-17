@@ -28,7 +28,7 @@ export const SPIRE_SEASON = 0;
 /** Floors per zone; floor 10 of each is its boss, floor 5 its elite. */
 export const SPIRE_ZONE_FLOORS = 10;
 /** The highest floor that can be played today (zone 6's boss). */
-export const SPIRE_BUILT_TOP = 60;
+export const SPIRE_BUILT_TOP = 70;
 /** Party size, like raids. */
 export const SPIRE_SEATS = 4;
 
