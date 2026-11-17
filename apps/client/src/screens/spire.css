@@ -152,6 +152,13 @@
 .sp-zone.is-locked .sp-zone-glyph {
   color: var(--ui-dim);
 }
+/* A conquered zone: a gold edge (its boss floor cleared). */
+.sp-zone.is-conquered {
+  border-color: #f2cf6b99;
+}
+.sp-zone.is-conquered:not(.is-on) .sp-zone-num {
+  color: #ffe6a3;
+}
 .sp-zone-info {
   /* Beside the chips while it has room to say the zone whole; under them
      otherwise (a long name never squeezes to a few letters). */

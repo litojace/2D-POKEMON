@@ -114,12 +114,15 @@ describe("the Spire page", () => {
   it("lists each floor with its state and first-clear reward", () => {
     const html = page("floors");
     // Every zone, each under its own heading.
-    expect((html.match(/data-spire-floor=/g) ?? []).length).toBe(60);
+    expect((html.match(/data-spire-floor=/g) ?? []).length).toBe(70);
     expect(html).toContain('data-spire-zone-floors="1"');
     expect(html).toContain('data-spire-zone-floors="2"');
     expect(html).toContain('data-spire-zone-floors="3"');
     expect(html).toContain('data-spire-zone-floors="4"');
     expect(html).toContain('data-spire-zone-floors="5"');
+    expect(html).toContain('data-spire-zone-floors="6"');
+    expect(html).toContain('data-spire-zone-floors="7"');
+    expect(html).toContain("Stormbreaker of the Spire");
     expect(html).toMatch(/sp-floor is-done" data-spire-floor="4"/);
     expect(html).toMatch(/sp-floor is-next" data-spire-floor="5"/);
     expect(html).toMatch(/sp-floor is-locked" data-spire-floor="6"/);
@@ -451,13 +454,28 @@ describe("Spire progress and floor previews", () => {
     expect(spirePreview(view, fresh).selected.floor).toBe(1);
     // Every released zone conquered: no next floor; climb any zone again
     // (the highest by default, zone 1 when picked).
-    const done = data({ spire: climb({ highestFloor: 60, checkpoint: 61 }) });
+    // (Floor 70 cleared: the database keeps checkpoint 61, there is no 71.)
+    const done = data({ spire: climb({ highestFloor: 70, checkpoint: 61 }) });
     expect(spirePreview(view, done).next).toBeUndefined();
     const html = spireMarkup(view, done);
-    expect(html).toContain("All 60 floors conquered!");
+    expect(html).toContain("The Spire is yours!");
+    expect(html).toContain("All 7 zones and 70 floors conquered.");
     expect(html).toContain("Spire conquered");
     expect(html).not.toContain("Next uncleared");
-    expect(html).toContain("Climb from floor 51");
+    expect(html).toContain("Climb from floor 61");
+    // Every zone's chip says it is conquered.
+    expect((html.match(/class="sp-zone[^"]*is-conquered/g) ?? []).length).toBe(
+      7,
+    );
+    expect(html).toMatch(/Ascendant Storm Twins at the top, conquered/);
+    // Zone 6 conquered, zone 7 not climbed yet: no celebration, 61 next.
+    const six = data({ spire: climb({ highestFloor: 60, checkpoint: 61 }) });
+    expect(spirePreview(view, six).next?.floor).toBe(61);
+    const sixHtml = spireMarkup(view, six);
+    expect(sixHtml).not.toContain("The Spire is yours!");
+    expect(
+      (sixHtml.match(/class="sp-zone[^"]*is-conquered/g) ?? []).length,
+    ).toBe(6);
     expect(spireMarkup({ ...view, spireZone: 1 }, done)).toContain(
       "Climb from floor 1<",
     );

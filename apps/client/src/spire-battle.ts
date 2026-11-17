@@ -9,6 +9,7 @@ import type { Snapshot } from "@arena/shared";
 import { CHARACTERS } from "@arena/shared";
 import {
   SPIRE_ELITE_MECHANICS,
+  spireBorrowed,
   SPIRE_FLOORS,
   SPIRE_PARTY,
   spireWaves,
@@ -109,9 +110,14 @@ export function spireCue(state: Snapshot) {
       SPIRE_ELITE_MECHANICS[
         SPIRE_FLOORS[s.floor]?.elite?.mechanic ?? "eruption"
       ];
-    if (r.warnings.some((w) => w.kind === m.attack) || r.bubbles?.length)
+    // (Polarity's countdown is its marks: they stay up after the warning.)
+    if (
+      r.warnings.some((w) => w.kind === m.attack) ||
+      r.bubbles?.length ||
+      r.polarities?.some((q) => !q.cancelled)
+    )
       return m.cue;
-    return `Echo Captain · it borrowed ${m.boss}'s ${m.name}`;
+    return `Echo Captain · it borrowed ${spireBorrowed(m)}`;
   }
   if (s.spawns.length) return "Echoes are taking shape — get ready!";
   if (!s.echoesLeft && s.wave < s.waves)

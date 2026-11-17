@@ -5,7 +5,7 @@
  * database agree on: floors, the one tuning table, blessings, rewards,
  * progress and the snapshot's `raid.spire`.
  *
- * Zones 1 to 6 are built. One climb is one zone: a room is made for a
+ * Zones 1 to 7 are built: the whole Spire. One climb is one zone: a room is made for a
  * zone (its first floor is the start) and its boss floor ends the climb.
  * Zone 1: floors 1–9 on the Spire's court and the Ascendant Cragmuff on
  * floor 10. Zone 2: floors 11–19 (Water) and the Ascendant Tidelotl on
@@ -14,7 +14,9 @@
  * and the Ascendant Snoozaku on floor 40, on the Cloud Deck. Zone 5: floors
  * 41–49 (Light) and the Ascendant Prismell on floor 50, in the Sun Atrium.
  * Zone 6: floors 51–59 (Fire) and the Ascendant Lumiwick on floor 60, on
- * the Sky Terrace. Each boss is fought in the same room (the zone's
+ * the Sky Terrace. Zone 7, the last: floors 61–69 (Electric) and the
+ * Ascendant Storm Twins on floor 70, in the Conductor Ring, the Spire's
+ * summit (its clear conquers the whole Spire). Each boss is fought in the same room (the zone's
  * arena turns the Ascendant's rules on for that floor:
  * apps/server/src/spire.ts). Clearing zone 1's boss grants checkpoint 11
  * (`spireStartCheckpoint`, and the database's arena_record_spire_floor).
@@ -27,7 +29,7 @@ import type { RaidBossId } from "./raid-roster.js";
 export const SPIRE_SEASON = 0;
 /** Floors per zone; floor 10 of each is its boss, floor 5 its elite. */
 export const SPIRE_ZONE_FLOORS = 10;
-/** The highest floor that can be played today (zone 6's boss). */
+/** The highest floor that can be played (zone 7's boss: the Spire's summit). */
 export const SPIRE_BUILT_TOP = 70;
 /** Party size, like raids. */
 export const SPIRE_SEATS = 4;
@@ -273,10 +275,14 @@ export const SPIRE_ELITE_MECHANICS = {
     hint: "the captain locks a red lane through you and dives down it: step out of the lane before it goes",
     cue: "Ember Dive — step out of the red lane!",
   },
-  // The captain marks every raider + or - (as the twins' Polarity does):
-  // stand by a teammate of the opposite sign to cancel it; alone, step on
-  // the pad of the opposite sign. On the Spire no pad is laid under a
-  // phone's touch controls.
+  // The captain marks every raider + or − (as the twins' Polarity does,
+  // on the raid's warning clock): stand by a teammate of the opposite sign
+  // to cancel both marks; alone (or too far from any opposite sign to
+  // reach in time), step on the pad of the opposite sign. On the Spire
+  // every raider can answer their own mark at the slowest champion's
+  // speed, no pad is laid under a phone's touch controls or in a wall, a
+  // mark settles once, and no second one comes while one is live
+  // (apps/server/src/spire.ts: spirePolarityPlan).
   polarity: {
     attack: "polarity",
     boss: "the Storm Twins",
@@ -295,6 +301,12 @@ export const SPIRE_ELITE_MECHANICS = {
   }
 >;
 export type SpireEliteMechanic = keyof typeof SPIRE_ELITE_MECHANICS;
+/** A name's possessive: "Lumiwick's", "the Storm Twins'". */
+export const spirePossessive = (name: string) =>
+  /s$/.test(name) ? `${name}'` : `${name}'s`;
+/** What a captain borrowed: "Cragmuff's eruptions", "the Storm Twins' polarity". */
+export const spireBorrowed = (m: { boss: string; name: string }) =>
+  `${spirePossessive(m.boss)} ${m.name}`;
 /**
  * The court under a phone's touch controls (world px: x0, y0, x1, y1): the
  * joystick, dash, jump, the three skills, the ultimate and the attack
@@ -1250,7 +1262,12 @@ export const SPIRE_FLOORS: Record<number, SpireFloor> = {
   },
   // Zone 7, the Conductor Ring, the Spire's summit zone: Electric-leaning
   // (Voltkit, Coilemur) with their kin of the storm's mirror Auralynx,
-  // plus one off-element champion per floor.
+  // plus one off-element champion per floor, each a different one: Tidefin
+  // (Water), Pangrove (Nature: its curl shrugs off Polarity in the twins'
+  // raid), Glacelle (Water's frost), Duskveil (Shadow: its Void Orb drags a twin),
+  // Mystowl (Psychic), Wombolder (Earth: its brace stops a Twin Rush),
+  // Sunbara (Light) and Cindrake (Fire), the zone below's drake on the
+  // last stair.
   61: {
     floor: 61,
     zone: 7,
@@ -1904,6 +1921,24 @@ export const SPIRE_REWARDS: SpireReward[] = [
     floor: 60,
     kind: "title",
     item: "Flamebreaker of the Spire",
+    amount: 0,
+  },
+  // Zone 7, the summit (migration 20261119090000_spire_zone7.sql).
+  { season: 0, floor: 61, kind: "coins", item: "coins", amount: 115 },
+  { season: 0, floor: 62, kind: "coins", item: "coins", amount: 115 },
+  { season: 0, floor: 63, kind: "coins", item: "coins", amount: 120 },
+  { season: 0, floor: 64, kind: "coins", item: "coins", amount: 120 },
+  { season: 0, floor: 65, kind: "coins", item: "coins", amount: 250 },
+  { season: 0, floor: 66, kind: "coins", item: "coins", amount: 125 },
+  { season: 0, floor: 67, kind: "coins", item: "coins", amount: 125 },
+  { season: 0, floor: 68, kind: "coins", item: "coins", amount: 130 },
+  { season: 0, floor: 69, kind: "coins", item: "coins", amount: 130 },
+  { season: 0, floor: 70, kind: "coins", item: "coins", amount: 500 },
+  {
+    season: 0,
+    floor: 70,
+    kind: "title",
+    item: "Stormbreaker of the Spire",
     amount: 0,
   },
 ];

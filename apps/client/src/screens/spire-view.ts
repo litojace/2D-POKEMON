@@ -149,9 +149,11 @@ function zonePicker(model: SpireModel) {
       const { zone: z, open } = g;
       const on = open && z.id === climbZone;
       const { from, top } = range(g);
-      const label = `Zone ${z.id}, ${z.name}, ${z.element}. ${open ? `Floors ${from} to ${top}, ${z.ascendant} at the top` : `Locked: conquer zone ${z.id - 1} first`}`;
+      // Its boss floor cleared: the zone is conquered (a gold edge).
+      const won = g.floors[g.floors.length - 1]?.state.key === "done";
+      const label = `Zone ${z.id}, ${z.name}, ${z.element}. ${open ? `Floors ${from} to ${top}, ${z.ascendant} at the top${won ? ", conquered" : ""}` : `Locked: conquer zone ${z.id - 1} first`}`;
       const glyph = open ? elementIcon(z.element) : lockIcon;
-      return `<button type="button" class="sp-zone${on ? " is-on" : ""}${open ? "" : " is-locked"}" data-ui-spire-zone="${z.id}" aria-pressed="${on}"${open ? "" : " disabled"} aria-label="${esc(label)}" title="${esc(`Zone ${z.id} · ${z.name}${open ? "" : ` · conquer zone ${z.id - 1} first`}`)}" style="--zone:var(--el-${esc(z.element.toLowerCase())}, var(--boss))"><span class="sp-zone-num ui-num" aria-hidden="true">${z.id}</span><span class="sp-zone-glyph" aria-hidden="true">${glyph}</span></button>`;
+      return `<button type="button" class="sp-zone${on ? " is-on" : ""}${open ? "" : " is-locked"}${won ? " is-conquered" : ""}" data-ui-spire-zone="${z.id}" aria-pressed="${on}"${open ? "" : " disabled"} aria-label="${esc(label)}" title="${esc(`Zone ${z.id} · ${z.name}${won ? " · conquered" : open ? "" : ` · conquer zone ${z.id - 1} first`}`)}" style="--zone:var(--el-${esc(z.element.toLowerCase())}, var(--boss))"><span class="sp-zone-num ui-num" aria-hidden="true">${z.id}</span><span class="sp-zone-glyph" aria-hidden="true">${glyph}</span></button>`;
     })
     .join("");
   const picked =
@@ -206,7 +208,8 @@ function floorRoute(model: SpireModel) {
 function climbTab(model: SpireModel, d: SpireData) {
   const { checkpoint, attempts, complete, total } = model;
   const how = `<details class="sp-guide"><summary>How to play</summary><ul class="sp-how"><li><b>Waves of Echoes.</b> Shadow copies of the champions, with their whole kits. Beat every wave to open the stairs.</li><li><b>A blessing a floor.</b> After each floor, pick one of three. They stack, and last until the climb ends.</li><li><b>Every floor counts.</b> A cleared floor is saved at once and pays its first-clear reward, even if the climb ends later.</li><li><b>One zone a climb.</b> A new climb starts at the first floor of the zone you pick, with no blessings, and ends at its boss. Conquer a zone to open the next; you can always climb an earlier one again. Everyone in a party needs the zone's checkpoint.</li></ul></details>`;
-  return `${complete ? `<p class="sp-conquered">All ${total} floors conquered! Pick a zone to climb again.</p>` : ""}${zonePicker(model)}${floorRoute(model)}${floorPreview(model)}<p class="ui-note sp-start-note">${attempts} climbs · Checkpoint ${checkpoint}. Floor previews do not change where a climb starts.</p>${seats(d)}${how}`;
+  // Every floor of the Spire cleared, its summit too: the whole Spire is yours.
+  return `${complete ? `<p class="sp-conquered" role="status"><b>The Spire is yours!</b> All ${model.groups.length} zones and ${total} floors conquered. Pick a zone to climb again.</p>` : ""}${zonePicker(model)}${floorRoute(model)}${floorPreview(model)}<p class="ui-note sp-start-note">${attempts} climbs · Checkpoint ${checkpoint}. Floor previews do not change where a climb starts.</p>${seats(d)}${how}`;
 }
 function floorsTab(model: SpireModel) {
   return `<p class="ui-note">First-clear rewards are paid once, the first time you clear each floor.</p>${model.groups

@@ -245,6 +245,33 @@ describe("spireLobbyCard", () => {
       ),
     ).toMatchObject({ title: "Every floor cleared", fresh: false });
   });
+  it("celebrates the whole Spire once its summit (floor 70) falls", () => {
+    expect(
+      spireLobbyCard({
+        spire: climb({
+          highestFloor: 70,
+          checkpoint: 61,
+          clears: { grumblecrag: 1, "storm-twins": 1 },
+        }),
+        seen: ["s0-z1", "s0-z2", "s0-z3", "s0-z4", "s0-z5", "s0-z6", "s0-z7"],
+      }),
+    ).toMatchObject({
+      title: "The Spire is yours",
+      note: "Climb from floor 61 · Conductor Ring",
+      fresh: false,
+    });
+    // Zone 6 conquered, zone 7 not yet climbed: zone 7 is news.
+    expect(
+      spireLobbyCard({
+        spire: climb({ highestFloor: 60, checkpoint: 61 }),
+        seen: ["s0-z1", "s0-z2", "s0-z3", "s0-z4", "s0-z5", "s0-z6"],
+      }),
+    ).toMatchObject({
+      title: "Zone 7 is open",
+      note: "Climb from floor 61 · Conductor Ring",
+      fresh: true,
+    });
+  });
   it("changes its key when its words change", () => {
     const a = spireLobbyCard({ spire: climb({ highestFloor: 2 }), seen: [] })!;
     const b = spireLobbyCard({ spire: climb({ highestFloor: 3 }), seen: [] })!;

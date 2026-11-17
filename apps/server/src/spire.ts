@@ -56,6 +56,7 @@ import {
   GLOOMSHADE,
   PRISMATAIL,
   SOMNARA,
+  STORM_TWINS,
   prismRayEnd,
   handsTileDark,
   isRaider,
@@ -73,6 +74,7 @@ import {
   SPIRE_ZONES,
   spireBlessingOffer,
   spireBlessingValue,
+  spireBorrowed,
   spireCourtCap,
   spireRoster,
   spireScale,
@@ -106,8 +108,8 @@ import { PrismatailArena } from "./raid-prismatail.js";
 import { AscendantLumiwickRules } from "./raid-ascendant-lumiwick.js";
 import { EmberwingArena } from "./raid-emberwing.js";
 import { AscendantStormTwinsRules } from "./raid-ascendant-storm-twins.js";
-import { StormTwinsArena } from "./raid-storm-twins.js";
-import { leadPoint } from "./raid-boss-aim.js";
+import { StormTwinsArena, polaritySigns } from "./raid-storm-twins.js";
+import { REACTION, SLOWEST_RAIDER, leadPoint } from "./raid-boss-aim.js";
 
 const randomUUID = () => crypto.randomUUID();
 const randomSeed = () => {
@@ -382,9 +384,16 @@ export function SpireRules<B extends RaidClass>(Base: B) {
       r.gilded = false;
       r.maxHp = this.bossMaxHp();
       super.spawnBoss();
+      this.placeAscendant(name);
+      r.message = `Floor ${this.spire.state.floor}: ${name} waits at the top.`;
+    }
+    /**
+     * The Ascendant has stepped onto its court (its raid's spawn): it takes
+     * the Ascendant's name. (Zone 7's two twins keep theirs: SpireStormArena.)
+     */
+    protected placeAscendant(name: string) {
       const boss = this.boss();
       if (boss) boss.name = name;
-      r.message = `Floor ${this.spire.state.floor}: ${name} waits at the top.`;
     }
     /** The first live moment of a floor: the first wave (or the captain) comes. */
     private beginFloor() {
@@ -516,7 +525,7 @@ export function SpireRules<B extends RaidClass>(Base: B) {
         this.raid.bossId = id;
         this.raid.maxHp = p.hp;
         const m = SPIRE_ELITE_MECHANICS[def?.elite?.mechanic ?? "eruption"];
-        this.raid.message = `${name} — it borrowed ${m.boss}'s ${m.name}!`;
+        this.raid.message = `${name} — it borrowed ${spireBorrowed(m)}!`;
         // A moment to see the captain before its first eruption.
         this.nextAttack = this.time + 2.5;
       }
@@ -871,13 +880,16 @@ export function SpireRules<B extends RaidClass>(Base: B) {
       );
       if (!won)
         return s.kind === "boss"
-          ? `${this.zoneDef().ascendant} stands unbroken. Climb again from floor ${from}.`
+          ? `${this.zoneDef().ascendant} ${/s$/.test(this.zoneDef().ascendant) ? "stand" : "stands"} unbroken. Climb again from floor ${from}.`
           : `The Echoes held floor ${s.floor}. Climb again from floor ${from}.`;
       const top = SPIRE_FLOORS[s.best];
+      // The last zone's boss: the whole Spire is conquered.
       if (top?.kind === "boss")
-        return SPIRE_FLOORS[s.best + 1]
+        return SPIRE_FLOORS[s.best + 1] && s.best + 1 <= SPIRE_BUILT_TOP
           ? `Zone ${top.zone} conquered — zone ${top.zone + 1} opens at floor ${s.best + 1}.`
-          : `Zone ${top.zone} conquered — more floors are coming.`;
+          : SPIRE_FLOORS[s.best + 1]
+            ? `Zone ${top.zone} conquered — more floors are coming.`
+            : `Zone ${top.zone} conquered — the Spire is yours.`;
       return `Floor ${s.best} cleared — the top of your climb for now.`;
     }
   };
@@ -1545,10 +1557,203 @@ export function spireDive(
     ty: from.y + uy * lane[1],
   };
 }
+/** The elite's polarity: seconds every raider may spend before they move (the raid's reaction). */
+export const SPIRE_POLARITY_REACTION = REACTION;
+/** Slack on top of it (a turn, a step round a teammate) before a mark counts as reachable (s). */
+export const SPIRE_POLARITY_SLACK = 0.3;
+/** How far the elite's pad lies from the raider it is for (px, the raid's own). */
+export const SPIRE_PAD_REACH = 190;
 /**
- * Zone 7's climb: Echo floors 61–69 on the Spire's court and the Ascendant
- * Storm Twins on floor 70, in the Conductor Ring. (Skeleton: the wave and
- * elite floors keep the twins' court off; work/z7-core finishes it.)
+ * How far a raider can walk to answer a mark (px): the slowest champion,
+ * once they have seen it.
+ */
+export const spirePolarityWalk = (
+  seconds: number = STORM_TWINS.polarity.seconds,
+) =>
+  SLOWEST_RAIDER *
+  Math.max(0, seconds - SPIRE_POLARITY_REACTION - SPIRE_POLARITY_SLACK);
+/** Is a pad at (x, y) fair: whole on the court, off the walls and clear of the phone's touch controls? (Call walls() first.) */
+export function spirePadOpen(x: number, y: number) {
+  const R = STORM_TWINS.polarity.padRadius;
+  return (
+    x >= R + 10 &&
+    x <= RULES.width - R - 10 &&
+    y >= R + 10 &&
+    y <= RULES.height - R - 10 &&
+    !spireUnderControls(x, y, R) &&
+    !blocked(x, y, R)
+  );
+}
+/** A straight walk from `a` to `b` that no wall blocks. */
+function spireOpenWalk(
+  a: { x: number; y: number },
+  b: { x: number; y: number },
+) {
+  const n = Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) / 10);
+  for (let i = 1; i <= n; i++)
+    if (
+      blocked(
+        a.x + ((b.x - a.x) * i) / n,
+        a.y + ((b.y - a.y) * i) / n,
+        RULES.radius * 0.6,
+      )
+    )
+      return false;
+  return true;
+}
+/**
+ * Where the elite lays its pad for a raider at `at`: about
+ * `SPIRE_PAD_REACH` px away (toward the court's middle first, as the raid
+ * lays it), the whole pad on the court, off the walls and clear of the
+ * phone's touch controls, a straight walk away. (The walls in use: call
+ * `walls()` first.) Undefined when there is no such spot.
+ */
+export function spirePolarityPad(at: { x: number; y: number }) {
+  const toMiddle = Math.atan2(
+    RULES.height / 2 - at.y,
+    RULES.width / 2 - at.x || 1,
+  );
+  for (const d of [1, 0.85, 1.2, 0.7, 1.45, 1.8, 2.2, 2.7].map(
+    (k) => k * SPIRE_PAD_REACH,
+  ))
+    for (let i = 0; i < 24; i++) {
+      const a = toMiddle + (i % 2 ? 1 : -1) * Math.ceil(i / 2) * (Math.PI / 12);
+      const x = at.x + Math.cos(a) * d,
+        y = at.y + Math.sin(a) * d;
+      if (spirePadOpen(x, y) && spireOpenWalk(at, { x, y })) return { x, y };
+    }
+  // Boxed in (a nook between walls and the controls): the nearest open spot
+  // by the way round, a walk the slowest champion makes in time.
+  const step = 20,
+    key = (x: number, y: number) => `${x},${y}`,
+    start = {
+      x: Math.round(at.x / step) * step,
+      y: Math.round(at.y / step) * step,
+    },
+    walk = spirePolarityWalk() + STORM_TWINS.polarity.padRadius,
+    seen = new Set([key(start.x, start.y)]),
+    queue = [{ ...start, d: Math.hypot(start.x - at.x, start.y - at.y) }];
+  for (let i = 0; i < queue.length; i++) {
+    const c = queue[i];
+    if (c.d > walk) continue;
+    if (c.d >= STORM_TWINS.polarity.padRadius && spirePadOpen(c.x, c.y))
+      return { x: c.x, y: c.y };
+    for (const [dx, dy] of [
+      [step, 0],
+      [-step, 0],
+      [0, step],
+      [0, -step],
+    ]) {
+      const x = c.x + dx,
+        y = c.y + dy;
+      if (x < 0 || x > RULES.width || y < 0 || y > RULES.height) continue;
+      if (seen.has(key(x, y)) || blocked(x, y, RULES.radius * 0.6)) continue;
+      seen.add(key(x, y));
+      queue.push({ x, y, d: c.d + step });
+    }
+  }
+  return undefined;
+}
+/**
+ * The elite's marks for the raiders standing at `raiders`: the twins' own
+ * signs (each raider kept as far as can be from an opposite sign:
+ * polaritySigns), then the Spire's fairness. Every raider must be able to
+ * answer their mark alone, walking at the slowest champion's speed once
+ * they have seen it (`spirePolarityWalk`): to within reach of an opposite
+ * sign standing still, or onto the pad. A raider who can't is given the
+ * same sign as the others who can't (nobody counted on them: no opposite
+ * was in reach), and one pad of the opposite sign is laid where they all
+ * reach it (alone: about `SPIRE_PAD_REACH` px away, as in the raid),
+ * never under the phone's touch controls nor in a wall. Undefined when no
+ * fair answer exists (the captain tries again a moment later).
+ */
+export function spirePolarityPlan(
+  raiders: readonly { x: number; y: number }[],
+  seed: number,
+  seconds: number = STORM_TWINS.polarity.seconds,
+):
+  | { signs: (1 | -1)[]; pad?: { x: number; y: number; sign: 1 | -1 } }
+  | undefined {
+  if (!raiders.length) return undefined;
+  const walk = spirePolarityWalk(seconds),
+    range = STORM_TWINS.polarity.range,
+    R = STORM_TWINS.polarity.padRadius;
+  const signs = polaritySigns([...raiders], seed);
+  const stuck = () =>
+    raiders
+      .map((_, i) => i)
+      .filter(
+        (i) =>
+          !raiders.some(
+            (q, j) =>
+              signs[j] !== signs[i] &&
+              Math.hypot(q.x - raiders[i].x, q.y - raiders[i].y) - range <=
+                walk,
+          ),
+      );
+  let left = stuck();
+  for (let k = 0; k < 4 && left.length; k++) {
+    for (const i of left) signs[i] = signs[left[0]];
+    left = stuck();
+  }
+  if (!left.length) return { signs };
+  const sign = signs[left[0]];
+  if (left.some((i) => signs[i] !== sign)) return undefined;
+  let spot: { x: number; y: number } | undefined;
+  if (left.length === 1) spot = spirePolarityPad(raiders[left[0]]);
+  else {
+    let worst = Infinity;
+    for (let x = 80; x <= RULES.width - 80; x += 20)
+      for (let y = 80; y <= RULES.height - 80; y += 20) {
+        if (!spirePadOpen(x, y)) continue;
+        const far = Math.max(
+          ...left.map((i) => Math.hypot(raiders[i].x - x, raiders[i].y - y)),
+        );
+        if (
+          far < worst &&
+          left.every((i) => spireOpenWalk(raiders[i], { x, y }))
+        ) {
+          worst = far;
+          spot = { x, y };
+        }
+      }
+  }
+  if (
+    !spot ||
+    left.some(
+      (i) =>
+        Math.hypot(raiders[i].x - spot.x, raiders[i].y - spot.y) - R > walk,
+    )
+  )
+    return undefined;
+  return { signs, pad: { ...spot, sign: sign === 1 ? -1 : 1 } };
+}
+/** Where the twins stand on floor 70 if their raid's spots sit under the phone's controls. */
+export const SPIRE_TWIN_SPAWNS = [
+  { x: 820, y: 360 },
+  { x: 1000, y: 560 },
+] as const;
+/**
+ * Zone 7's climb, the Spire's summit zone: Echo floors 61–69 on the Spire's
+ * court and the Ascendant Storm Twins on floor 70, in the Conductor Ring.
+ *
+ * The wave and elite floors keep the twins' ring switched off: no twins,
+ * revivals, Link Beam, static fields, rushes, chain lightning or the raid's
+ * polarity, and no stand-in brain of theirs (`twins`, `stormBeam`, …: all
+ * cleared). Their hit rules key on the twins and are checked against the
+ * Echoes: a raider's hits and staggers reach the captain like any elite's
+ * (the twins' stagger is per twin: here the captain's is the raid's one
+ * bar), their exposed core, health split and damage floor apply to the
+ * twins only (an Echo is never a raid boss), Wombolder's brace only stops
+ * a Twin Rush, and Coilemur's Electromagnet and Duskveil's Void Orb only
+ * drag a twin (an Echo Coilemur pulls as its champion does). Halcyra's
+ * Focus Shot pierces only into a twin behind the first: on the Echo
+ * floors there is none, so its cast needs no gate.
+ *
+ * The captain of floor 65 borrows Polarity through the raid's attack deck:
+ * every raider marked + or − on the raid's warning clock (spirePolarityPlan:
+ * always a fair answer, and a pad clear of the phone's controls and the
+ * walls), each mark settled once, and no second polarity while one is live.
  */
 export class SpireStormArena extends SpireRules(
   AscendantStormTwinsRules(StormTwinsArena),
@@ -1559,27 +1764,243 @@ export class SpireStormArena extends SpireRules(
   protected override resetAscendantReads() {
     this.resetTwinReads();
   }
+  /**
+   * Floor 70's ring is the Ascendant's: setupFloor lays the court before
+   * it turns the Ascendant's rules on (floor 60 once laid the raid's
+   * brazier spots that way), so its court is laid with them on.
+   */
+  protected override setupArena() {
+    if (this.bossFloor()) this.raid.variant = "ascendant";
+    super.setupArena();
+  }
+  /**
+   * Both twins keep their own names (Fizz and Crackle: the raid's name is
+   * the Ascendant's), and neither starts under a phone's touch controls.
+   */
+  protected override placeAscendant(_name: string) {
+    const twins = this.players.filter((p) => p.raidBoss);
+    for (const t of this.raid.twins ?? []) {
+      const p = twins.find((q) => q.id === t.id);
+      if (p) p.name = t.name;
+    }
+    if (twins.some((p) => spireUnderControls(p.x, p.y, STORM_TWINS.radius)))
+      twins.forEach((p, i) => Object.assign(p, SPIRE_TWIN_SPAWNS[i] ?? {}));
+  }
   protected override clearBossCourt() {
     super.clearBossCourt();
-    Object.assign(this.raid, { twins: [], twinRevivals: 0 });
+    // The raid's beam, fields, rushes, chain, polarity and their hit memory.
+    this.clearAttacks();
+    Object.assign(this.raid, {
+      twins: [],
+      twinRevivals: 0,
+      stormBeam: undefined,
+      stormChain: undefined,
+      stormFields: [],
+      stormRushes: [],
+      polarities: [],
+      polarityPad: undefined,
+    });
+  }
+  /** The captain staggers as any elite does (the twins' stagger is per twin). */
+  protected override addBossStagger(p: Fighter, amount: number) {
+    if (this.bossFloor()) return super.addBossStagger(p, amount);
+    this.raid.stagger = Math.min(100, this.raid.stagger + amount);
+  }
+  /** The captain casts while no polarity is live (the twins wait for a twin). */
+  protected override canStartAttack() {
+    if (this.bossFloor()) return super.canStartAttack();
+    return !this.raid.polarities?.length;
   }
   /** The twins' drift and rushes belong to their own floor. */
   protected override bossStep(dt: number, boss: Fighter) {
     if (this.bossFloor()) super.bossStep(dt, boss);
   }
-  /** So do their revivals, fields, beams and polarity. */
+  /** So do their revivals, fields, beams and the raid's polarity. */
   protected override worldStep(dt: number, boss: Fighter) {
     if (this.bossFloor()) super.worldStep(dt, boss);
   }
+  /**
+   * A stand-in's twin-balancing and dodging are the twins' floor's; on the
+   * Spire's court it plays like any raider, and answers the captain's mark
+   * (the opposite pad, else the nearest opposite sign).
+   */
   protected override botHint(
     bot: Fighter,
     input: Input,
     go: (x: number, y: number, away: boolean) => Input,
   ): Input | undefined {
-    return this.bossFloor() ? super.botHint(bot, input, go) : undefined;
+    if (this.bossFloor()) return super.botHint(bot, input, go);
+    const r = this.raid,
+      mark = r.polarities?.find(
+        (m) => m.playerId === bot.id && !m.cancelled && m.until > this.time,
+      );
+    if (!mark) return undefined;
+    const pad = r.polarityPad;
+    if (pad && pad.sign !== mark.sign) {
+      if (
+        Math.hypot(bot.x - pad.x, bot.y - pad.y) >
+        STORM_TWINS.polarity.padRadius * 0.6
+      )
+        return go(pad.x, pad.y, false);
+      input.dx = input.dy = 0;
+      return input;
+    }
+    const opposite = (r.polarities ?? [])
+      .filter((m) => m.sign !== mark.sign)
+      .map((m) => this.heroes().find((p) => p.id === m.playerId && p.hp > 0))
+      .filter((p): p is Fighter => !!p)
+      .sort(
+        (a, b) =>
+          Math.hypot(a.x - bot.x, a.y - bot.y) -
+          Math.hypot(b.x - bot.x, b.y - bot.y),
+      )[0];
+    if (!opposite) return undefined;
+    if (
+      Math.hypot(bot.x - opposite.x, bot.y - opposite.y) >
+      STORM_TWINS.polarity.range * 0.65
+    )
+      return go(opposite.x, opposite.y, false);
+    input.dx = input.dy = 0;
+    return input;
   }
   protected override pressured(kind: RaidAttack, alive: Fighter[]) {
     return this.bossFloor() && super.pressured(kind, alive);
+  }
+  /**
+   * The elite's Polarity: every raider marked + or − (spirePolarityPlan),
+   * on the raid's own warning clock (the warning is the mark's countdown;
+   * the marks and the pad are what is drawn). No fair answer, no marks: the
+   * captain tries again a moment later. On floor 70 the twins' own, with
+   * their pad kept clear of the phone's controls.
+   */
+  protected override startAttack(kind: RaidAttack, target: Fighter): void {
+    if (this.bossFloor()) {
+      super.startAttack(kind, target);
+      this.keepPadOpen();
+      return;
+    }
+    if (kind !== "polarity") return super.startAttack(kind, target);
+    const r = this.raid,
+      boss = this.boss();
+    if (!boss || r.polarities?.length) return;
+    this.walls();
+    const alive = this.heroes().filter((p) => p.hp > 0);
+    const plan = spirePolarityPlan(alive, r.seed + this.attacks);
+    if (!plan) {
+      this.nextAttack = this.time + 0.6;
+      return;
+    }
+    const count = this.seenAttacks.get(kind) ?? 0;
+    this.seenAttacks.set(kind, count + 1);
+    boss.angle = Math.atan2(target.y - boss.y, target.x - boss.x);
+    const w = this.warn(
+      kind,
+      boss.x,
+      boss.y,
+      boss.x,
+      boss.y,
+      0,
+      STORM_TWINS.polarity.seconds,
+    );
+    // The marks' whole countdown, as in the twins' raid (the tier never
+    // shortens it: the marks are what is read).
+    w.at = this.time + STORM_TWINS.polarity.seconds;
+    w.teach = count < 2;
+    r.polarities = alive.map((p, i) => ({
+      playerId: p.id,
+      sign: plan.signs[i],
+      until: w.at,
+      cancelled: false,
+    }));
+    r.polarityPad = plan.pad ? { ...plan.pad, until: w.at } : undefined;
+  }
+  /** (Its countdown is the marks': they settle in stepElitePolarity.) */
+  protected override resolveWarning(w: RaidWarning, boss: Fighter) {
+    if (this.bossFloor() || w.kind !== "polarity")
+      return super.resolveWarning(w, boss);
+  }
+  /** Floor 70: a pad the twins lay under a thumb moves to open ground. */
+  private keepPadOpen() {
+    const pad = this.raid.polarityPad;
+    if (!pad) return;
+    this.walls();
+    if (spirePadOpen(pad.x, pad.y)) return;
+    const mark = this.raid.polarities?.find((m) => m.sign !== pad.sign);
+    const p = this.heroes().find((q) => q.id === mark?.playerId) ?? pad;
+    const spot = spirePolarityPad(p);
+    if (spot) Object.assign(pad, spot);
+  }
+  override tick(dt = 1 / RULES.tick) {
+    super.tick(dt);
+    this.stepElitePolarity();
+  }
+  /**
+   * The captain's marks: a raider by an opposite sign (or on the opposite
+   * pad) is cancelled, both of them; a raider left with no opposite to
+   * reach (their partners went down) is let off. When the countdown runs
+   * out, each mark still live hurts its raider once (twice as hard by a
+   * live mark of the same sign, as in the raid); the captain's fall takes
+   * its marks with it.
+   */
+  private stepElitePolarity() {
+    const r = this.raid,
+      marks = r.polarities ?? [];
+    if (this.bossFloor() || !marks.length) return;
+    const boss = this.boss();
+    if (this.phase !== "playing" || !boss || r.result) {
+      r.polarities = [];
+      r.polarityPad = undefined;
+      return;
+    }
+    const P = STORM_TWINS.polarity,
+      alive = this.heroes().filter((p) => p.hp > 0),
+      at = (m: { playerId: string }) => alive.find((p) => p.id === m.playerId);
+    const pad = r.polarityPad;
+    for (const m of marks) {
+      const p = at(m);
+      if (!p || m.cancelled || m.until <= this.time) continue;
+      const onPad =
+        !!pad &&
+        pad.sign !== m.sign &&
+        Math.hypot(p.x - pad.x, p.y - pad.y) <= P.padRadius;
+      const partners = marks.filter((n) => n.sign !== m.sign && at(n));
+      const by = partners.filter((n) => {
+        const q = at(n)!;
+        return Math.hypot(q.x - p.x, q.y - p.y) <= P.range;
+      });
+      if (onPad || by.length) {
+        for (const n of [m, ...by])
+          if (!n.cancelled) {
+            n.cancelled = true;
+            this.event("heal", at(n)!, 0x8cead0, 0, n.playerId);
+          }
+      } else if (!partners.length && !(pad && pad.sign !== m.sign))
+        m.cancelled = true;
+    }
+    for (const m of marks) {
+      if (m.until > this.time || m.cancelled) continue;
+      const p = at(m);
+      if (!p) continue;
+      if (p.character === "terradon" && this.has(p, "shell")) continue;
+      if (this.curled(p)) continue;
+      const crowded = marks.some(
+        (n) =>
+          n !== m &&
+          !n.cancelled &&
+          n.sign === m.sign &&
+          !!at(n) &&
+          Math.hypot(at(n)!.x - p.x, at(n)!.y - p.y) <= P.range,
+      );
+      this.hitBy = "polarity";
+      this.damage(p, P.damage * (crowded ? 2 : 1), boss.id);
+      this.hitBy = undefined;
+    }
+    r.polarities = marks.filter((m) => m.until > this.time);
+    if (
+      r.polarityPad &&
+      (r.polarityPad.until <= this.time || !r.polarities.length)
+    )
+      r.polarityPad = undefined;
   }
 }
 /** Any zone's climb. */

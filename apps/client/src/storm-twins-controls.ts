@@ -1,8 +1,16 @@
 import { healthTrail } from "./raid-health-trail";
 import type { Snapshot } from "@arena/shared";
 let targetId: string | undefined;
+/**
+ * Is there a pair of twins to aim at? Their raid, and the Spire's floor 70
+ * (the Spire's other zone-7 floors field Echoes: no twins).
+ */
+const twinsUp = (state: Snapshot) =>
+  state.raid?.boss === "storm-twins" &&
+  state.phase === "playing" &&
+  (!state.raid.spire || state.raid.spire.kind === "boss");
 export function stormTarget(state: Snapshot) {
-  if (state.raid?.boss !== "storm-twins" || state.phase !== "playing") {
+  if (!twinsUp(state)) {
     targetId = undefined;
     return;
   }
@@ -25,8 +33,7 @@ export function renderStormTargets(state: Snapshot, frame: HTMLElement) {
     panel.setAttribute("aria-label", "Choose which twin to aim at");
     frame.append(panel);
   }
-  panel.hidden =
-    state.raid?.boss !== "storm-twins" || state.phase !== "playing";
+  panel.hidden = !twinsUp(state);
   if (panel.hidden) {
     targetId = undefined;
     return;
