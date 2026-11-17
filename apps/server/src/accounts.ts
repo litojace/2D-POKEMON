@@ -847,6 +847,13 @@ export function installAccountRoutes(
         "milk",
         "sell-milk",
         "harvest-giant",
+        // The Bakery (migration 20261117130000).
+        "buy-bakery",
+        "buy-bake-slot",
+        "bake",
+        "bake-collect",
+        "bake-rush",
+        "sell-good",
         "buy-coop",
         "buy-hen",
         "feed-hen",
@@ -899,6 +906,19 @@ export function installAccountRoutes(
         .regex(/^[a-z+]*$/)
         .optional(),
       qty: z.number().int().min(1).max(10000).optional(),
+      // The Bakery: a recipe to bake, an oven slot to collect, a baked good
+      // to sell. The database checks the rest (level, ingredients, time).
+      recipe: z
+        .string()
+        .max(32)
+        .regex(/^[a-z]+$/)
+        .optional(),
+      slot: z.number().int().min(0).max(4).optional(),
+      good: z
+        .string()
+        .max(32)
+        .regex(/^[a-z]+$/)
+        .optional(),
     })
     .strict();
   // Crop mastery: buy a crop's next star (migration 043).

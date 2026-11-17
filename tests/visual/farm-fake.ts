@@ -90,6 +90,17 @@ export async function fakeFarm(page: Page) {
       pasture: false,
       milkAt: null as string | null,
       milkMult: 1.12,
+      // The Bakery (20261117130000): not built yet.
+      bakery: {
+        owned: false,
+        slots: 2,
+        queue: [] as {
+          slot: number;
+          recipe: string;
+          startedAt: string;
+          readyAt: string;
+        }[],
+      },
       // The Chicken Coop (20261117100000).
       coop: false,
       hens: [] as { i: number; eggAt: string | null }[],
@@ -507,6 +518,85 @@ export async function fakeFarm(page: Page) {
             const leaves = Math.round(60 * farm.milkMult) * a.qty;
             farm.leaves += leaves;
             return { ok: true, leaves };
+          }
+          // The Bakery, with the shared rules the database mirrors.
+          const B = w.__farm?.rules;
+          const add = (crop: string, n: number) => {
+            const row = farm.barn.find(
+              (b: any) => b.crop === crop && b.mutation === "",
+            );
+            if (row) row.qty += n;
+            else farm.barn = [...farm.barn, { crop, mutation: "", qty: n }];
+          };
+          if (a.a === "buy-bakery") {
+            if (farm.bakery.owned)
+              return { ok: false, error: "You already have the bakery" };
+            if (farm.level < B.BAKERY.level)
+              return {
+                ok: false,
+                error: `Unlocks at farm level ${B.BAKERY.level}`,
+              };
+            farm.bakery.owned = true;
+            farm.leaves -= B.BAKERY.price;
+            return { ok: true, bakery: true, cost: B.BAKERY.price };
+          }
+          if (a.a === "buy-bake-slot") {
+            const price = B.bakeSlotPrice(farm.bakery.slots);
+            if (!price)
+              return { ok: false, error: "Your bakery has every slot" };
+            farm.bakery.slots++;
+            farm.leaves -= price;
+            return { ok: true, bakeSlots: farm.bakery.slots, cost: price };
+          }
+          if (a.a === "bake") {
+            const error = B.bakeError(farm, a.recipe);
+            if (error) return { ok: false, error };
+            const r = B.BAKERY_RECIPE_BY_ID[a.recipe],
+              start = B.bakeStart(farm.bakery.queue, Date.now());
+            for (const [id, n] of r.items) add(id, -n);
+            const q = {
+              slot: B.freeBakeSlot(farm.bakery.queue, farm.bakery.slots),
+              recipe: r.id,
+              startedAt: new Date(start).toISOString(),
+              readyAt: new Date(start + r.seconds * 1000).toISOString(),
+            };
+            farm.bakery.queue.push(q);
+            return { ok: true, baking: r.id, slot: q.slot, readyAt: q.readyAt };
+          }
+          if (a.a === "bake-collect") {
+            const error = B.collectError(farm, a.slot, Date.now());
+            if (error) return { ok: false, error };
+            const q = farm.bakery.queue.find((x: any) => x.slot === a.slot)!;
+            farm.bakery.queue = farm.bakery.queue.filter((x: any) => x !== q);
+            add(q.recipe, 1);
+            const xp = B.BAKERY_RECIPE_BY_ID[q.recipe].xp;
+            farm.xp += xp;
+            return { ok: true, baked: q.recipe, qty: 1, slot: q.slot, xp };
+          }
+          if (a.a === "bake-rush") {
+            const error = B.rushError(farm, a.slot, Date.now());
+            if (error) return { ok: false, error };
+            const q = farm.bakery.queue.find((x: any) => x.slot === a.slot)!,
+              cost = B.rushPrice((Date.parse(q.readyAt) - Date.now()) / 1000);
+            farm.bakery.queue = B.rushQueue(
+              farm.bakery.queue,
+              a.slot,
+              Date.now(),
+            );
+            farm.leaves -= cost;
+            return { ok: true, rushed: q.recipe, slot: a.slot, cost };
+          }
+          if (a.a === "sell-good") {
+            const r = B.BAKERY_RECIPE_BY_ID[a.good],
+              row = farm.barn.find(
+                (b: any) => b.crop === a.good && b.mutation === "",
+              );
+            if (!r) return { ok: false, error: "Unknown good" };
+            if (!row || row.qty < a.qty)
+              return { ok: false, error: "You don't have that many" };
+            row.qty -= a.qty;
+            farm.leaves += r.sell * a.qty;
+            return { ok: true, leaves: r.sell * a.qty };
           }
           // The Chicken Coop (20261117100000), with the shared rules.
           const barnQty = (crop: string) =>
