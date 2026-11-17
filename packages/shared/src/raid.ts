@@ -2492,6 +2492,8 @@ export interface RaidWarning {
   gapAngle?: number;
   casterId?: string;
   beamPost?: number;
+  /** Ascendant Storm Twins' Mirror Charge: the overload ring round a twin left charged. */
+  overload?: boolean;
   /** Breaker Wall: centres of its calm lanes (across its travel), and their width. */
   gaps?: number[];
   gapWidth?: number;
@@ -2697,6 +2699,14 @@ export interface RaidState {
     cancelled: boolean;
   }[];
   polarityPad?: { x: number; y: number; sign: 1 | -1; until: number };
+  /**
+   * Ascendant Storm Twins' Mirror Charge, while it runs: each twin's charge
+   * (Fizz +, Crackle -) and the opposite-sign hits it still needs, every
+   * raider's sign, and (alone) when the raider's sign flips.
+   */
+  stormMirror?: import("./raid-storm-twins.js").StormMirror;
+  /** Ascendant Storm Twins' Short Circuit, the moment it fires (drawn briefly). */
+  stormShort?: import("./raid-storm-twins.js").StormShort;
   airborne?: boolean;
   braziers?: import("./raid-emberwing.js").RaidBrazier[];
   emberPatches?: import("./raid-emberwing.js").EmberPatch[];
