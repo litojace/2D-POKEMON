@@ -11,7 +11,8 @@ import {
   spireCourtLayout,
 } from "../../packages/shared/src/spire-court";
 import { SPIRE_BUILT_TOP } from "../../packages/shared/src/spire";
-import { SOMNARA } from "../../packages/shared/src/raid-somnara";
+import { somnaraPads } from "../../packages/shared/src/raid-somnara";
+import { ASCENDANT_SNOOZAKU } from "../../packages/shared/src/raid-ascendant";
 
 // The Spire's court (apps/client/src/spire-court-rig.ts): floors 1–9 on the
 // stone platform at the top of the tower, their cover where the server's
@@ -1665,18 +1666,17 @@ for (const size of [
  * of the tide's lilac and ivory rings against the second under the tide's
  * sleep mist (at half its wind-up), and how much the mist darkens it.
  */
-// (Ascendant Snoozaku's pads and awake ring radius, from its branch:
-// ASCENDANT_SNOOZAKU.pads and the Dream Tide's radius, 105.)
-const ASCENDANT_PADS = [
-  [530, 250],
-  [1070, 250],
-  [960, 650],
-  [640, 650],
-];
+// (The raid's pads and Ascendant Snoozaku's, and the Dream Tide's awake
+// ring radius, read from the game's own tables.)
+const DECK_PADS = [...somnaraPads(), ...somnaraPads("ascendant")].map((p) => [
+  p.x,
+  p.y,
+]);
+const TIDE_RADIUS = ASCENDANT_SNOOZAKU.tide.radius;
 const RUNE_ENAMEL = [0x92efdb, 0xffdf8d, 0xd1b2ff, 0x8bceff];
 function deckReadability(page: Page, src: "floor" | string) {
   return page.evaluate(
-    async ({ src, pads }) => {
+    async ({ src, pads, tide }) => {
       const scene = (window as any).__spireGame.scene.getScene("arena");
       const image: CanvasImageSource =
         src === "floor"
@@ -1711,10 +1711,10 @@ function deckReadability(page: Page, src: "floor" | string) {
       };
       return pads.map(([x, y]: number[]) => ({
         pad: ring(x, y, 62, 80),
-        tide: ring(x, y, 100, 110),
+        tide: ring(x, y, tide - 5, tide + 5),
       }));
     },
-    { src, pads: [...SOMNARA.pads.map((p) => [p.x, p.y]), ...ASCENDANT_PADS] },
+    { src, pads: DECK_PADS, tide: TIDE_RADIUS },
   );
 }
 function deckScores(rings: { pad: number[]; tide: number[] }[]) {
