@@ -1,7 +1,7 @@
 /**
  * Frame measurements of a fighter preview (shop-preview.ts) for the Lobby's
- * frame-rate read-out (lobby-perf.ts; Settings → Graphics → "Show frame
- * rate"). On an iPhone the Lobby's aura turned like a 30 Hz screen and the
+ * frame-rate read-out (lobby-perf.ts; five taps on Settings → Graphics'
+ * title). On an iPhone the Lobby's aura turned like a 30 Hz screen and the
  * phone ran hot, while the same preview in the Shop was smooth (owner,
  * iPhone 17 Pro Max, 17 Nov 2026); this tells apart:
  *

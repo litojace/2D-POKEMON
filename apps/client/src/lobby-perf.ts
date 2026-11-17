@@ -3,7 +3,7 @@ import { isIOSDevice, largeIPad } from "./render-budget";
 import { lowGraphics } from "./graphics-quality";
 
 /**
- * The Lobby's frame-rate read-out (Settings → Graphics → "Show frame rate"),
+ * The Lobby's frame-rate read-out (five taps on Settings → Graphics' title),
  * for a player to screenshot. On an iPhone 17 Pro Max the Lobby's aura
  * turned like a 30 Hz screen and the phone ran hot, while the same preview
  * in the Shop was smooth and a desktop was smooth too (owner, 17 Nov 2026).

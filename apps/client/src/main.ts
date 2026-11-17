@@ -4271,7 +4271,7 @@ function graphicsCard() {
   const setting = graphicsSetting();
   const option = (value: GraphicsSetting, label: string) =>
     `<button type="button" role="radio" data-graphics="${value}" aria-checked="${setting === value}">${label}</button>`;
-  return `<section class="prefs-card prefs-graphics" aria-labelledby="prefs-graphics"><h3 id="prefs-graphics">${menuIcon("sparkle")}Graphics</h3><div class="prefs-choice" role="radiogroup" aria-labelledby="prefs-graphics">${option("auto", "Auto")}${option("high", "High")}${option("low", "Low")}</div><p class="prefs-graphics-note">${graphicsNote(setting)}</p>${softwareRendering() ? GPU_OFF_NOTE : ""}<div class="prefs-toggle-row"><span><b>Show frame rate</b><small>Numbers over the Lobby and battles, to screenshot when something lags.</small></span><button type="button" class="prefs-switch" id="settings-perf" role="switch" aria-checked="${perfMode()}"><span>${perfMode() ? "On" : "Off"}</span></button></div></section>`;
+  return `<section class="prefs-card prefs-graphics" aria-labelledby="prefs-graphics"><h3 id="prefs-graphics">${menuIcon("sparkle")}Graphics</h3><div class="prefs-choice" role="radiogroup" aria-labelledby="prefs-graphics">${option("auto", "Auto")}${option("high", "High")}${option("low", "Low")}</div><p class="prefs-graphics-note">${graphicsNote(setting)}</p>${softwareRendering() ? GPU_OFF_NOTE : ""}</section>`;
 }
 /** Shown when the browser draws without the graphics card (gpu-check.ts). */
 const GPU_OFF_NOTE =
@@ -4285,14 +4285,23 @@ function graphicsNote(setting: GraphicsSetting) {
     ? `Auto picked <b>Low</b> for the Plaza and Farm on this device (${softwareRendering() ? "it draws without a graphics card" : "they ran slowly"}). Battles adapt on their own. Pick High to try it again.`
     : "Starts on High. The Plaza and Farm switch to Low if they run slowly; battles trim decorative sparks only while frames stay slow.";
 }
+/** Five taps on Graphics' title within 3 s: the frame-rate read-out over
+ *  the Lobby and battles, on this device (lobby-perf.ts, perf-overlay.ts).
+ *  A tool to screenshot when something lags (the iPhone app has no address
+ *  bar for `?perf=1`), so it adds no row to Settings, which fits a phone
+ *  held sideways without scrolling. */
+let perfTaps: number[] = [];
 function bindGraphicsCard() {
-  const perf = document.querySelector<HTMLButtonElement>("#settings-perf");
-  if (perf)
-    perf.onclick = () => {
+  const title = document.querySelector<HTMLElement>("#prefs-graphics");
+  if (title)
+    title.onclick = () => {
+      const now = performance.now();
+      perfTaps = [...perfTaps.filter((t) => now - t < 3000), now];
+      if (perfTaps.length < 5) return;
+      perfTaps = [];
       const on = !perfMode();
       setPerfMode(on);
-      perf.setAttribute("aria-checked", String(on));
-      perf.querySelector("span")!.textContent = on ? "On" : "Off";
+      toast(on ? "Frame rate read-out on" : "Frame rate read-out off");
       // The Lobby shows or hides its read-out (lobby-perf.ts).
       document.dispatchEvent(new Event("ea-perf-change"));
     };

@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { box, inside, openLobby, snap } from "./helpers";
 
-// Settings → Graphics → "Show frame rate": the Lobby's read-out
+// Five taps on Settings → Graphics' title: the Lobby's read-out
 // (lobby-perf.ts), for the owner's iPhone, where the aura turned like a
 // 30 Hz screen in the Lobby but not in the Shop.
 test.use({
@@ -10,7 +10,7 @@ test.use({
   isMobile: true,
 });
 
-test("Settings turns the Lobby's frame-rate read-out on and off", async ({
+test("five taps on Graphics turn the Lobby's frame-rate read-out on and off", async ({
   page,
 }, info) => {
   test.setTimeout(90_000);
@@ -20,14 +20,23 @@ test("Settings turns the Lobby's frame-rate read-out on and off", async ({
   const perf = page.locator(".lobby-perf");
   await expect(perf).toHaveCount(0);
 
-  const toggle = async () => {
+  const toggle = async (to: "on" | "off") => {
     await page.evaluate(() => document.getElementById("settings")!.click());
     const dialog = page.locator("#dialog");
-    await dialog.locator("#settings-perf").click();
+    const title = dialog.locator("#prefs-graphics");
+    const count = await perf.count();
+    // Four taps do nothing (a stray tap or two never changes it).
+    for (let i = 0; i < 4; i++) await title.click();
+    await page.waitForTimeout(300);
+    expect(await perf.count()).toBe(count);
+    await title.click();
+    await expect(page.locator("#toast")).toHaveText(
+      `Frame rate read-out ${to}`,
+    );
     await page.keyboard.press("Escape");
     await expect(dialog).not.toBeVisible();
   };
-  await toggle();
+  await toggle("on");
   await expect(perf).toBeVisible();
   // The live rig's numbers: the screen, frames drawn, our own work, canvas.
   await expect(perf.locator("pre")).toContainText(
@@ -75,7 +84,7 @@ test("Settings turns the Lobby's frame-rate read-out on and off", async ({
   await snap(page, info, "lobby-perf-phone");
 
   // Off again: the read-out and its experiments are gone.
-  await toggle();
+  await toggle("off");
   await expect(perf).toHaveCount(0);
   expect(await style(".lobby-rail", null, "backdrop-filter")).not.toBe("none");
   expect(await style(".lobby-play", "::before", "animation-name")).not.toBe(

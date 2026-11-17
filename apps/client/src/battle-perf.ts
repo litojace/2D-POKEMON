@@ -95,7 +95,7 @@ export class BattlePerfMeter {
   }
 }
 
-/** Settings → Graphics → "Show frame rate": saved on this device (the iPhone
+/** Five taps on Settings → Graphics' title (main.ts): saved on this device (the iPhone
  *  app has no address bar for `?perf=1`). */
 export function setPerfMode(on: boolean) {
   try {

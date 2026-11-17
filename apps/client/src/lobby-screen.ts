@@ -582,7 +582,7 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
     attributeFilter: ["open", "hidden", "data-ui-leaving"],
   });
   syncCovered();
-  // Settings → Graphics → "Show frame rate": the read-out (lobby-perf.ts).
+  // The frame-rate read-out (lobby-perf.ts; five taps on Settings → Graphics).
   let perfView: LobbyPerfHandle | undefined;
   const syncPerf = () => {
     if (closed) return;
