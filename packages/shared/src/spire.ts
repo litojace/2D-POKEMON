@@ -5,11 +5,13 @@
  * database agree on: floors, the one tuning table, blessings, rewards,
  * progress and the snapshot's `raid.spire`.
  *
- * Zones 1 and 2 are built. One climb is one zone: a room is made for a
+ * Zones 1 to 4 are built. One climb is one zone: a room is made for a
  * zone (its first floor is the start) and its boss floor ends the climb.
  * Zone 1: floors 1–9 on the Spire's court and the Ascendant Cragmuff on
  * floor 10. Zone 2: floors 11–19 (Water) and the Ascendant Tidelotl on
- * floor 20, in the lagoon. Each boss is fought in the same room (the zone's
+ * floor 20, in the lagoon. Zone 3: floors 21–29 (Shadow) and the Ascendant
+ * Inkpurr on floor 30, in the Lantern Yard. Zone 4: floors 31–39 (Psychic)
+ * and the Ascendant Snoozaku on floor 40, on the Cloud Deck. Each boss is fought in the same room (the zone's
  * arena turns the Ascendant's rules on for that floor:
  * apps/server/src/spire.ts). Clearing zone 1's boss grants checkpoint 11
  * (`spireStartCheckpoint`, and the database's arena_record_spire_floor).
@@ -22,8 +24,8 @@ import type { RaidBossId } from "./raid-roster.js";
 export const SPIRE_SEASON = 0;
 /** Floors per zone; floor 10 of each is its boss, floor 5 its elite. */
 export const SPIRE_ZONE_FLOORS = 10;
-/** The highest floor that can be played today (zone 2's boss). */
-export const SPIRE_BUILT_TOP = 20;
+/** The highest floor that can be played today (zone 4's boss). */
+export const SPIRE_BUILT_TOP = 40;
 /** Party size, like raids. */
 export const SPIRE_SEATS = 4;
 
@@ -49,7 +51,7 @@ export interface SpireZone {
   /** The raid boss of the zone: its clear opens the boss floor; its arena is the boss floor's court. */
   boss: RaidBossId;
   /** The arena the zone's boss floor is fought in (wave floors: the Spire's court). */
-  court: "classic" | "lagoon";
+  court: "classic" | "lagoon" | "lantern-yard" | "cloud-deck";
   /** Its Ascendant boss name (the boss floor). */
   ascendant: string;
   /** The Ascendant's new attacks (the boss floor's briefing and the Floors list). */
@@ -94,6 +96,41 @@ export const SPIRE_ZONES: Record<number, SpireZone> = {
     // Water (Tidefin, Glacelle) and their marsh kin, Mossloth.
     kin: ["tidefin", "glacelle", "mossloth"],
   },
+  3: {
+    id: 3,
+    name: "Lantern Yard",
+    element: "Shadow",
+    boss: "gloomshade",
+    court: "lantern-yard",
+    ascendant: "Ascendant Inkpurr",
+    ascendantMoves: ["nightfall", "pounce"],
+    bossName: "Inkpurr",
+    bossLead:
+      "Inkpurr, evolved. Its raid's rules still hold (find the real one by its shadow in lantern light, keep the lanterns lit, never hit a copy), pushed further: new attacks, combos and fewer openings.",
+    bossReads:
+      "Pounces land where you usually dodge and its moonlight pools sit away from there, standing still to attack draws a pounce, a lunge may sink into the dark and become a pounce (shown in full), and it hunts whoever kneels to revive.",
+    // Shadow (Duskveil, Shadopus) and their night kin, Mystowl: the owl
+    // that hunts in the dark (its Third-Eye Ray is Inkpurr's own counter).
+    kin: ["duskveil", "shadopus", "mystowl"],
+  },
+  4: {
+    id: 4,
+    name: "Cloud Deck",
+    element: "Psychic",
+    boss: "somnara",
+    court: "cloud-deck",
+    ascendant: "Ascendant Snoozaku",
+    ascendantMoves: ["twin-dream", "dream-tide"],
+    bossName: "Snoozaku",
+    bossLead:
+      "Snoozaku, evolved. Its raid's rules still hold (the Dreamer calls the runes, step the pads in order, jump the lullaby rings, wake whoever falls asleep), pushed further: two Dreamers who each see half the runes, a Dream Tide only the Seer can read (they call the one awake pad), combos and fewer openings.",
+    bossReads:
+      "Stars land where you usually dodge, standing still to attack draws stars, a Trunk Slam may turn into Falling Stars (shown in full), and it hunts whoever kneels to revive.",
+    // Psychic (Mystowl, Astrabun: their Mind Maze and Moon Hop are
+    // Snoozaku's own counters in its raid) and their kin of the mind,
+    // Auralynx, the aura-reading lynx.
+    kin: ["mystowl", "astrabun", "auralynx"],
+  },
 };
 /** The first floor of each built zone: where a climb may start. */
 export const spireZoneStart = (zone: number) =>
@@ -127,6 +164,26 @@ export const SPIRE_ELITE_MECHANICS = {
     hint: "weave between the slow bubbles or pop them: a hit roots you",
     cue: "Bubbles coming — weave through or pop them!",
   },
+  // The whole court darkens in a checkerboard: every raider has a lit tile
+  // next to them. On the Spire the board never flips (the raid's trick);
+  // the dark tiles are the ones the party stands on, so it makes you move.
+  hands: {
+    attack: "hands",
+    boss: "Inkpurr",
+    name: "grasping hands",
+    hint: "the floor darkens in a checkerboard: step onto a lit tile before the hands close",
+    cue: "Grasping Hands — step onto a lit tile!",
+  },
+  // A constellation of star marks falls with its first star on a raider:
+  // step out of the circle under you (the middle and the gaps are safe).
+  // On the Spire no star is laid under a phone's touch controls.
+  stars: {
+    attack: "falling-stars",
+    boss: "Snoozaku",
+    name: "falling stars",
+    hint: "a ring of star marks falls with one star on you: step out of its circle before it lands",
+    cue: "Falling Stars — step out of the star under you!",
+  },
 } as const satisfies Record<
   string,
   {
@@ -138,6 +195,44 @@ export const SPIRE_ELITE_MECHANICS = {
   }
 >;
 export type SpireEliteMechanic = keyof typeof SPIRE_ELITE_MECHANICS;
+/**
+ * The court under a phone's touch controls (world px: x0, y0, x1, y1): the
+ * joystick, dash, jump, the three skills, the ultimate and the attack
+ * button, each control's box at 667x375 and 844x390 together (measured in
+ * the visual harness; phones have no target row any more). The elite's
+ * falling stars are never laid within `SPIRE_CONTROL_MARGIN` of one, and the
+ * Ascendant Inkpurr's and Snoozaku's layers keep their safe spots off them
+ * too: a warning under a thumb can't be read.
+ */
+export const SPIRE_PHONE_CONTROLS: readonly (readonly [
+  number,
+  number,
+  number,
+  number,
+])[] = [
+  [-260, 560, 183, 835],
+  [1528, 455, 1868, 600],
+  [1534, 630, 1874, 774],
+  [1124, 686, 1486, 848],
+  [1078, 497, 1440, 660],
+  [1188, 337, 1550, 501],
+  [1381, 305, 1750, 479],
+  [1269, 497, 1714, 745],
+];
+export const SPIRE_CONTROL_MARGIN = 12;
+/** Is a disc (centre, radius) within `margin` of a phone's touch controls? */
+export function spireUnderControls(
+  x: number,
+  y: number,
+  radius = 0,
+  margin = SPIRE_CONTROL_MARGIN,
+) {
+  return SPIRE_PHONE_CONTROLS.some(([x0, y0, x1, y1]) => {
+    const dx = Math.max(x0 - x, 0, x - x1),
+      dy = Math.max(y0 - y, 0, y - y1);
+    return (dx === 0 && dy === 0) || Math.hypot(dx, dy) < radius + margin;
+  });
+}
 export interface SpireFloor {
   floor: number;
   zone: number;
@@ -449,6 +544,310 @@ export const SPIRE_FLOORS: Record<number, SpireFloor> = {
     waves: [],
     boss: "tidewyrm",
   },
+  // Zone 3, the Lantern Yard: Shadow-leaning (Duskveil, Shadopus) with their
+  // night kin Mystowl, plus one off-element champion per floor.
+  21: {
+    floor: 21,
+    zone: 3,
+    kind: "wave",
+    name: "The Dusk Gate",
+    waves: [
+      [e("duskveil", "front"), e("mystowl", "caster")],
+      [e("shadopus", "skirmisher"), e("astrabun", "skirmisher")],
+      [e("duskveil", "front"), e("shadopus", "skirmisher")],
+    ],
+  },
+  22: {
+    floor: 22,
+    zone: 3,
+    kind: "wave",
+    name: "Lantern Rows",
+    waves: [
+      [e("shadopus", "skirmisher"), e("duskveil", "front")],
+      [e("mystowl", "caster"), e("lumoth", "caster")],
+      [e("duskveil", "front"), e("shadopus", "skirmisher")],
+    ],
+  },
+  23: {
+    floor: 23,
+    zone: 3,
+    kind: "wave",
+    name: "Ink Stair",
+    waves: [
+      [e("duskveil", "front"), e("wombolder", "front")],
+      [e("mystowl", "caster"), e("shadopus", "skirmisher")],
+      [e("wombolder", "front"), e("duskveil", "front"), e("mystowl", "caster")],
+    ],
+  },
+  24: {
+    floor: 24,
+    zone: 3,
+    kind: "wave",
+    name: "Hall of Whispers",
+    waves: [
+      [
+        e("duskveil", "front"),
+        e("shadopus", "skirmisher"),
+        e("halcyra", "caster"),
+      ],
+      [e("mystowl", "caster"), e("duskveil", "front")],
+      [
+        e("shadopus", "skirmisher"),
+        e("halcyra", "caster"),
+        e("duskveil", "front"),
+      ],
+    ],
+  },
+  25: {
+    floor: 25,
+    zone: 3,
+    kind: "elite",
+    name: "The Lightless Ring",
+    description: "Echo Captain Duskveil · reinforcements and grasping hands",
+    waves: [],
+    elite: {
+      captain: e("duskveil", "front"),
+      name: "Echo Captain Duskveil",
+      mechanic: "hands",
+      escorts: [e("shadopus", "skirmisher")],
+    },
+  },
+  26: {
+    floor: 26,
+    zone: 3,
+    kind: "wave",
+    name: "Gloam Terrace",
+    waves: [
+      [e("duskveil", "front"), e("auralynx", "front")],
+      [e("shadopus", "skirmisher"), e("mystowl", "caster")],
+      [
+        e("auralynx", "front"),
+        e("duskveil", "front"),
+        e("shadopus", "skirmisher"),
+      ],
+    ],
+  },
+  27: {
+    floor: 27,
+    zone: 3,
+    kind: "wave",
+    name: "Umbral Run",
+    waves: [
+      [
+        e("mystowl", "caster"),
+        e("duskveil", "front"),
+        e("coilemur", "skirmisher"),
+      ],
+      [
+        e("shadopus", "skirmisher"),
+        e("duskveil", "front"),
+        e("shadopus", "skirmisher"),
+      ],
+      [e("mystowl", "caster"), e("coilemur", "skirmisher")],
+    ],
+  },
+  28: {
+    floor: 28,
+    zone: 3,
+    kind: "wave",
+    name: "Midnight Choir",
+    waves: [
+      [
+        e("duskveil", "front"),
+        e("pyranda", "caster"),
+        e("shadopus", "skirmisher"),
+      ],
+      [
+        e("shadopus", "skirmisher"),
+        e("duskveil", "front"),
+        e("shadopus", "skirmisher"),
+      ],
+      [e("mystowl", "caster"), e("pyranda", "caster"), e("duskveil", "front")],
+    ],
+  },
+  29: {
+    floor: 29,
+    zone: 3,
+    kind: "wave",
+    name: "Stair of Night",
+    waves: [
+      [
+        e("duskveil", "front"),
+        e("shadopus", "skirmisher"),
+        e("terradon", "front"),
+      ],
+      [
+        e("mystowl", "caster"),
+        e("terradon", "front"),
+        e("shadopus", "skirmisher"),
+      ],
+      [e("duskveil", "front"), e("duskveil", "front"), e("mystowl", "caster")],
+    ],
+  },
+  // The Ascendant Inkpurr, in the Lantern Yard, in the climb's own room.
+  30: {
+    floor: 30,
+    zone: 3,
+    kind: "boss",
+    name: "Ascendant Inkpurr",
+    description: "New attacks: Nightfall, Shade Pounce",
+    waves: [],
+    boss: "gloomshade",
+  },
+  // Zone 4, the Cloud Deck: Psychic-leaning (Mystowl, Astrabun) with their
+  // kin of the mind Auralynx, plus one off-element champion per floor.
+  31: {
+    floor: 31,
+    zone: 4,
+    kind: "wave",
+    name: "The Drowsy Gate",
+    waves: [
+      [e("auralynx", "front"), e("mystowl", "caster")],
+      [e("astrabun", "skirmisher"), e("lumoth", "caster")],
+      [e("auralynx", "front"), e("astrabun", "skirmisher")],
+    ],
+  },
+  32: {
+    floor: 32,
+    zone: 4,
+    kind: "wave",
+    name: "Pillow Steps",
+    waves: [
+      [e("astrabun", "skirmisher"), e("auralynx", "front")],
+      [e("mystowl", "caster"), e("pangrove", "front")],
+      [e("auralynx", "front"), e("astrabun", "skirmisher")],
+    ],
+  },
+  33: {
+    floor: 33,
+    zone: 4,
+    kind: "wave",
+    name: "Moonlit Rows",
+    waves: [
+      [e("auralynx", "front"), e("shadopus", "skirmisher")],
+      [e("mystowl", "caster"), e("astrabun", "skirmisher")],
+      [
+        e("shadopus", "skirmisher"),
+        e("auralynx", "front"),
+        e("mystowl", "caster"),
+      ],
+    ],
+  },
+  34: {
+    floor: 34,
+    zone: 4,
+    kind: "wave",
+    name: "Hall of Murmurs",
+    waves: [
+      [
+        e("auralynx", "front"),
+        e("astrabun", "skirmisher"),
+        e("glacelle", "caster"),
+      ],
+      [e("mystowl", "caster"), e("auralynx", "front")],
+      [
+        e("astrabun", "skirmisher"),
+        e("glacelle", "caster"),
+        e("auralynx", "front"),
+      ],
+    ],
+  },
+  35: {
+    floor: 35,
+    zone: 4,
+    kind: "elite",
+    name: "The Starfall Ring",
+    description: "Echo Captain Mystowl · reinforcements and falling stars",
+    waves: [],
+    elite: {
+      captain: e("mystowl", "front"),
+      name: "Echo Captain Mystowl",
+      mechanic: "stars",
+      escorts: [e("astrabun", "skirmisher")],
+    },
+  },
+  36: {
+    floor: 36,
+    zone: 4,
+    kind: "wave",
+    name: "Reverie Terrace",
+    waves: [
+      [e("auralynx", "front"), e("terradon", "front")],
+      [e("astrabun", "skirmisher"), e("mystowl", "caster")],
+      [
+        e("terradon", "front"),
+        e("auralynx", "front"),
+        e("astrabun", "skirmisher"),
+      ],
+    ],
+  },
+  37: {
+    floor: 37,
+    zone: 4,
+    kind: "wave",
+    name: "Lullaby Run",
+    waves: [
+      [
+        e("mystowl", "caster"),
+        e("auralynx", "front"),
+        e("cindrake", "skirmisher"),
+      ],
+      [
+        e("astrabun", "skirmisher"),
+        e("auralynx", "front"),
+        e("astrabun", "skirmisher"),
+      ],
+      [e("mystowl", "caster"), e("cindrake", "skirmisher")],
+    ],
+  },
+  38: {
+    floor: 38,
+    zone: 4,
+    kind: "wave",
+    name: "Dreamer's Choir",
+    waves: [
+      [
+        e("auralynx", "front"),
+        e("halcyra", "caster"),
+        e("astrabun", "skirmisher"),
+      ],
+      [
+        e("astrabun", "skirmisher"),
+        e("auralynx", "front"),
+        e("astrabun", "skirmisher"),
+      ],
+      [e("mystowl", "caster"), e("halcyra", "caster"), e("auralynx", "front")],
+    ],
+  },
+  39: {
+    floor: 39,
+    zone: 4,
+    kind: "wave",
+    name: "Stair of Stars",
+    waves: [
+      [
+        e("auralynx", "front"),
+        e("astrabun", "skirmisher"),
+        e("mossloth", "front"),
+      ],
+      [
+        e("mystowl", "caster"),
+        e("mossloth", "front"),
+        e("astrabun", "skirmisher"),
+      ],
+      [e("auralynx", "front"), e("auralynx", "front"), e("mystowl", "caster")],
+    ],
+  },
+  // The Ascendant Snoozaku, on the Cloud Deck, in the climb's own room.
+  40: {
+    floor: 40,
+    zone: 4,
+    kind: "boss",
+    name: "Ascendant Snoozaku",
+    description: "New attacks: Twin Dream, Dream Tide",
+    waves: [],
+    boss: "somnara",
+  },
 };
 export const spireFloor = (floor: number): SpireFloor | undefined =>
   SPIRE_FLOORS[floor];
@@ -514,19 +913,56 @@ export const SPIRE_TUNING: Record<
   // Zone 2: a climb starts at 11 with no blessings, against champions far
   // deadlier per point than zone 1's Earth front-liners (casters, an
   // assassin, a controller), so the numbers start below floor 9's and each
-  // Echo grows a little stronger floor by floor. By simulation
-  // (tests/unit/spire-zone2.test.ts) a solo bot clears floor 11 about two
-  // times in three and floor 19 about one in five; floor 9 one in three.
+  // Echo grows a little stronger floor by floor (on 16–19, as in zone 3,
+  // its toughness follows its floor's line-up: floor 16's is the easiest).
+  // By simulation (tests/unit/spire-zone2.test.ts; 96 seeds) a solo bot
+  // clears floor 11 about four times in five, floor 16 about two in five,
+  // falling smoothly to about one in five on floor 19; floor 9 one in three.
   11: { difficulty: "normal", power: 0.44, armour: 1.36, limit: 180 },
   12: { difficulty: "normal", power: 0.45, armour: 1.34, limit: 180 },
   13: { difficulty: "normal", power: 0.46, armour: 1.32, limit: 180 },
   14: { difficulty: "normal", power: 0.47, armour: 1.3, limit: 180 },
   15: { difficulty: "normal", power: 0.55, armour: 0.58, limit: 240 },
-  16: { difficulty: "normal", power: 0.48, armour: 1.28, limit: 180 },
-  17: { difficulty: "normal", power: 0.49, armour: 1.26, limit: 180 },
-  18: { difficulty: "normal", power: 0.5, armour: 1.24, limit: 180 },
-  19: { difficulty: "normal", power: 0.52, armour: 1.22, limit: 180 },
+  16: { difficulty: "normal", power: 0.48, armour: 1.02, limit: 180 },
+  17: { difficulty: "normal", power: 0.49, armour: 1.35, limit: 180 },
+  18: { difficulty: "normal", power: 0.5, armour: 1.29, limit: 180 },
+  19: { difficulty: "normal", power: 0.52, armour: 1.18, limit: 180 },
   20: { difficulty: "hard", power: 1, armour: 1, limit: 600 },
+  // Zone 3: a climb starts at 21 with no blessings, against Shadow Echoes
+  // (an assassin, a trickster, a duelist) and one off-element champion a
+  // floor. Each Echo hits a little harder floor by floor; how much damage
+  // it takes follows its floor's line-up (two casters on 24 and 28 make
+  // those floors' Echoes softer, not the floors easier). By simulation
+  // (tests/unit/spire-zone3.test.ts; a solo Normal bot raider, 96 seeds)
+  // floor 21 is cleared about two times in three, falling smoothly to
+  // about one in three on floor 29.
+  21: { difficulty: "normal", power: 0.48, armour: 1.6, limit: 180 },
+  22: { difficulty: "normal", power: 0.49, armour: 1.3, limit: 180 },
+  23: { difficulty: "normal", power: 0.5, armour: 1.35, limit: 180 },
+  24: { difficulty: "normal", power: 0.51, armour: 1.85, limit: 180 },
+  25: { difficulty: "normal", power: 0.58, armour: 0.54, limit: 240 },
+  26: { difficulty: "normal", power: 0.52, armour: 0.97, limit: 180 },
+  27: { difficulty: "normal", power: 0.53, armour: 1.36, limit: 180 },
+  28: { difficulty: "normal", power: 0.54, armour: 1.68, limit: 180 },
+  29: { difficulty: "normal", power: 0.55, armour: 1.08, limit: 180 },
+  30: { difficulty: "hard", power: 1, armour: 1, limit: 600 },
+  // Zone 4: a climb starts at 31 with no blessings, against Psychic Echoes
+  // (a duelist owl, a blinking rabbit, a counter lynx) and one off-element
+  // champion a floor. As in zone 3, each Echo hits a little harder floor by
+  // floor and its toughness follows its floor's line-up. By simulation
+  // (tests/unit/spire-zone4.test.ts; a solo Normal bot raider, 96 seeds)
+  // floor 31 is cleared about two times in three, falling smoothly to
+  // about one in three on floors 38 and 39.
+  31: { difficulty: "normal", power: 0.56, armour: 1.66, limit: 180 },
+  32: { difficulty: "normal", power: 0.57, armour: 1.39, limit: 180 },
+  33: { difficulty: "normal", power: 0.58, armour: 1.72, limit: 180 },
+  34: { difficulty: "normal", power: 0.59, armour: 1.62, limit: 180 },
+  35: { difficulty: "normal", power: 0.62, armour: 0.57, limit: 240 },
+  36: { difficulty: "normal", power: 0.6, armour: 1.14, limit: 180 },
+  37: { difficulty: "normal", power: 0.61, armour: 1.29, limit: 180 },
+  38: { difficulty: "normal", power: 0.62, armour: 1.93, limit: 180 },
+  39: { difficulty: "normal", power: 0.63, armour: 1.39, limit: 180 },
+  40: { difficulty: "hard", power: 1, armour: 1, limit: 600 },
 };
 /** Party scaling, and the cap on fighters on the court. */
 export const SPIRE_PARTY = {
@@ -792,6 +1228,42 @@ export const SPIRE_REWARDS: SpireReward[] = [
     item: "Tidecaller of the Spire",
     amount: 0,
   },
+  // Zone 3 (migration 20261117090000_spire_zone3.sql).
+  { season: 0, floor: 21, kind: "coins", item: "coins", amount: 55 },
+  { season: 0, floor: 22, kind: "coins", item: "coins", amount: 55 },
+  { season: 0, floor: 23, kind: "coins", item: "coins", amount: 60 },
+  { season: 0, floor: 24, kind: "coins", item: "coins", amount: 60 },
+  { season: 0, floor: 25, kind: "coins", item: "coins", amount: 130 },
+  { season: 0, floor: 26, kind: "coins", item: "coins", amount: 65 },
+  { season: 0, floor: 27, kind: "coins", item: "coins", amount: 65 },
+  { season: 0, floor: 28, kind: "coins", item: "coins", amount: 70 },
+  { season: 0, floor: 29, kind: "coins", item: "coins", amount: 70 },
+  { season: 0, floor: 30, kind: "coins", item: "coins", amount: 250 },
+  {
+    season: 0,
+    floor: 30,
+    kind: "title",
+    item: "Lanternbane of the Spire",
+    amount: 0,
+  },
+  // Zone 4 (migration 20261117150000_spire_zone4.sql).
+  { season: 0, floor: 31, kind: "coins", item: "coins", amount: 70 },
+  { season: 0, floor: 32, kind: "coins", item: "coins", amount: 70 },
+  { season: 0, floor: 33, kind: "coins", item: "coins", amount: 75 },
+  { season: 0, floor: 34, kind: "coins", item: "coins", amount: 75 },
+  { season: 0, floor: 35, kind: "coins", item: "coins", amount: 160 },
+  { season: 0, floor: 36, kind: "coins", item: "coins", amount: 80 },
+  { season: 0, floor: 37, kind: "coins", item: "coins", amount: 80 },
+  { season: 0, floor: 38, kind: "coins", item: "coins", amount: 85 },
+  { season: 0, floor: 39, kind: "coins", item: "coins", amount: 85 },
+  { season: 0, floor: 40, kind: "coins", item: "coins", amount: 300 },
+  {
+    season: 0,
+    floor: 40,
+    kind: "title",
+    item: "Dreambreaker of the Spire",
+    amount: 0,
+  },
 ];
 export const spireRewardsOf = (floor: number, season = SPIRE_SEASON) =>
   SPIRE_REWARDS.filter((r) => r.floor === floor && r.season === season);
@@ -856,6 +1328,9 @@ export function spireStartFrom(
     };
   let ceiling = top;
   for (const z of Object.values(SPIRE_ZONES).sort((a, b) => a.id - b.id)) {
+    // A zone's room only climbs its own boss floor: the bosses of the
+    // zones below it never close it (the checkpoint already says they fell).
+    if (zone !== undefined && z.id < zone) continue;
     if (members.some((m) => !(m.clears[z.boss] ?? 0))) {
       ceiling = Math.min(ceiling, spireZoneTop(z.id) - 1);
       break;

@@ -482,6 +482,38 @@ const art: Partial<Record<RaidAttack, { el: Element; draw: () => string }>> = {
       arrow(80, 108, 80, 94),
   },
 
+  // Ascendant Inkpurr · Shadow: the dark closes in; stand in a moonlit pool.
+  nightfall: {
+    el: "shadow",
+    draw: () =>
+      `<rect x="6" y="40" width="116" height="80" rx="6" fill="${RED}" fill-opacity=".2" stroke="${RED}" stroke-width="2" stroke-dasharray="5 4"/>` +
+      `<ellipse cx="86" cy="86" rx="24" ry="11" fill="#dfe8ff" fill-opacity=".55" stroke="#fff3c4" stroke-width="2.6"/>` +
+      `<path d="M30 30 a12 12 0 1 0 12 -14 a9 9 0 1 1 -12 14Z" fill="#fff3c4"/>` +
+      shade(30, 74, 0.8) +
+      raider(86, 80, 0.85) +
+      arrow(52, 96, 72, 90),
+  },
+  pounce: {
+    el: "shadow",
+    draw: () =>
+      [
+        [34, 96, 1],
+        [64, 86, 2],
+        [96, 96, 3],
+      ]
+        .map(
+          ([x, y, k]) =>
+            danger(ell(x, y, 17, 7), 0.16 + k * 0.06) +
+            dots(x, y + 13, k, WHITE),
+        )
+        .join("") +
+      `<path d="M26 44 Q40 30 52 52 M96 40 Q104 54 98 72" fill="none" stroke="${S.accent[1]}" stroke-width="2" stroke-dasharray="4 4"/>` +
+      shade(24, 46, 0.7) +
+      shade(96, 38, 0.8, "#fff2b0") +
+      raider(66, 82, 0.8) +
+      arrow(66, 98, 66, 116),
+  },
+
   // Snoozaku · Psychic
   lullaby: {
     el: "psychic",
@@ -582,6 +614,50 @@ const art: Partial<Record<RaidAttack, { el: Element; draw: () => string }>> = {
       raider(28, 82, 0.85) +
       halo("psychic", 64, 28, 18) +
       glint(64, 28, 7, P.hot),
+  },
+  // Ascendant Snoozaku · Psychic: two Dreamers, half the runes each.
+  "twin-dream": {
+    el: "psychic",
+    draw: () =>
+      (
+        [
+          [24, 34, "1", P.hot],
+          [44, 34, "?", "#8a7fb0"],
+          [84, 34, "?", "#8a7fb0"],
+          [104, 34, "2", P.hot],
+        ] as const
+      )
+        .map(
+          ([x, y, t, c]) =>
+            `<circle cx="${x}" cy="${y}" r="9" fill="${P.accent[0]}" stroke="${c}" stroke-width="2"/><text x="${x}" y="${y + 4}" font-size="11" font-weight="700" text-anchor="middle" fill="${c}">${t}</text>`,
+        )
+        .join("") +
+      `<path d="M30 78 Q64 58 98 78" fill="none" stroke="${P.accent[2]}" stroke-width="2" stroke-dasharray="3 4"/>` +
+      raider(30, 86, 0.85) +
+      raider(98, 86, 0.85) +
+      `<path d="M36 64 l6 -6 M92 64 l-6 -6" stroke="${P.hot}" stroke-width="2.4" stroke-linecap="round"/>` +
+      glint(64, 104, 6, P.hot),
+  },
+  // Ascendant Snoozaku · Psychic: sleep floods the deck; one pad stays awake.
+  "dream-tide": {
+    el: "psychic",
+    draw: () =>
+      danger("M0 40 H128 V128 H0Z", 0.22) +
+      [
+        [26, 64],
+        [102, 64],
+        [26, 108],
+      ]
+        .map(
+          ([x, y]) =>
+            `<path d="${ell(x, y, 13, 5.5)}" fill="${P.accent[0]}" stroke="#8a7fb0" stroke-width="1.6"/>`,
+        )
+        .join("") +
+      `<ellipse cx="96" cy="106" rx="22" ry="9" fill="#fff3c4" fill-opacity=".4" stroke="#fff3c4" stroke-width="2.6"/>` +
+      `<path d="M30 18 h22 a6 6 0 0 1 6 6 v8 a6 6 0 0 1 -6 6 h-12 l-6 6 v-6 h-4 a6 6 0 0 1 -6 -6 v-8 a6 6 0 0 1 6 -6Z" fill="${P.accent[0]}" stroke="${P.hot}" stroke-width="2"/>` +
+      glint(41, 28, 4, P.hot) +
+      raider(58, 92, 0.85) +
+      arrow(66, 98, 84, 104),
   },
 
   // Prismell · Light

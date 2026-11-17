@@ -140,6 +140,10 @@ Stars need 25 / 75 / 200 / 500 / 1000 harvests of that crop and cost seed price 
 
 ## Decorations
 
+The full catalog (61, with groups, paths, seasons and collections) is in
+[farm-decor-catalog.md](../farm-decor-catalog.md); the table below is the
+prototype's.
+
 | Decoration            | Cost   | Charm | Unlock Lv |
 | --------------------- | ------ | ----- | --------- |
 | Flower Planter        | 2,250  | 3     | 16        |

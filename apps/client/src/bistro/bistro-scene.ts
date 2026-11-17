@@ -191,9 +191,8 @@ import {
 } from "./bistro-model";
 import {
   carGlows,
-  drawFrontLamps,
-  drawFrontTrees,
   drawRoofSign,
+  drawSceneryFront,
   drawSceneryLive,
   drawSceneryStatic,
   roofSignGlow,
@@ -201,8 +200,16 @@ import {
   updateCars,
   type Car,
 } from "./bistro-scenery";
+import {
+  makeStreet,
+  seasonOf,
+  updateStreet,
+  type PaintCreature,
+} from "./bistro-town";
+import type { Season } from "./bistro-art";
+import { serverDay } from "../ui/countdown";
 import * as Rules from "./bistro-model";
-import { CROP_BY_ID } from "../../../../packages/shared/src/farm";
+import { CROP_BY_ID, EGG, MILK } from "../../../../packages/shared/src/farm";
 import {
   BistroSync,
   applyLocal,
@@ -682,7 +689,11 @@ const HTML = `<canvas class="bs-cv" aria-label="Your bistro"></canvas>
   </div>
   <div class="bs-bar glass" id="bs-bar"></div>
   <div class="bs-edit glass" id="bs-edit" hidden></div>
-  <button type="button" class="bs-rotate" id="bs-rotate" hidden aria-label="Rotate (R)" title="Rotate (R)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.6-5.9" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/><path d="M20.5 3.5v5h-5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+  <div class="bs-held" id="bs-held" hidden>
+    <button type="button" class="bs-rotate" id="bs-rotate" aria-label="Rotate (R)" title="Rotate (R)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.6-5.9" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/><path d="M20.5 3.5v5h-5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <button type="button" class="bs-held-btn" data-ed="store" aria-label="Put away" title="Put away"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h16v10a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 19z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><path d="M3 5.5h18V9H3z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><path d="M12 11.5v5.5m-2.6-2.6L12 17l2.6-2.6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <button type="button" class="bs-held-btn x" data-ed="cancel" aria-label="Cancel" title="Cancel"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5l11 11m0-11l-11 11" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg></button>
+  </div>
   <div class="bs-tip glass" id="bs-tip" hidden></div>
   <section class="bs-sheet glass" id="bs-sheet" hidden></section>
   <div class="bs-banner" id="bs-banner" hidden></div>
@@ -968,6 +979,8 @@ export function openBistro(o: BistroOptions): BistroHandle {
   let W = 0,
     H = 0,
     DPR = 1;
+  /** The HUD's edges moved (a resize, the decorate bar): measure them again. */
+  let hudMoved = true;
   const view = { s: 1, x: 0, y: 0 };
   let fitS = 1;
   let zoom = 1;
@@ -1006,6 +1019,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
     );
     shellKey = "";
     hudDirty = true;
+    hudMoved = true;
   };
   const applyView = () => {
     const ins = insets();
@@ -2306,6 +2320,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
     if (g) setInner(g, gradeText());
   };
   const renderEdit = () => {
+    hudMoved = true;
     editEl.hidden = !editing;
     if (!editing) return;
     const stored = Object.entries(S.stored).filter(([, n]) => (n ?? 0) > 0) as [
@@ -2323,11 +2338,9 @@ export function openBistro(o: BistroOptions): BistroHandle {
     setInner(
       editEl,
       `
-      <div class="bs-edit-head"><b>${held ? `Placing: ${esc(ITEM_BY_KIND[held.kind].name)}` : stoveTitle ? stoveTitle : "Decorate"}</b><span>${held ? `Tap a floor tile to put it down${itemTurns(held.kind) > 1 ? " · ↻ or R to rotate" : ""}` : heldStove ? ("model" in heldStove ? "Tap a free spot on the kitchen's back wall, or a stove to swap it" : "Tap a free spot on the kitchen's back wall") : "Tap something to move it · tags: a waiter's steps to each seat"}</span><em class="bs-grade" id="bs-grade">${gradeText()}</em></div>
-      <div class="bs-store">${stored.length || stoves.length ? stoves.map(([m, n]) => `<button type="button" data-hold-stove="${m}" class="${heldStove && "model" in heldStove && heldStove.model === m ? "on" : ""}"><img src="${stoveIconUrl(m)}" alt=""><span>${esc(STOVE_BY_MODEL[m].name)}</span><i>×${n}</i></button>`).join("") + stored.map(([k, n]) => `<button type="button" data-hold="${k}" class="${held?.kind === k && !held.moving ? "on" : ""}"><img src="${itemIconUrl(k)}" alt=""><span>${esc(ITEM_BY_KIND[k].name)}</span><i>×${n}</i></button>`).join("") : `<em>Storage is empty</em>`}</div>
+      <div class="bs-edit-head"><b>${held ? `Placing: ${esc(ITEM_BY_KIND[held.kind].name)}` : stoveTitle ? stoveTitle : "Decorate"}</b><span>${held ? `Tap a floor tile to put it down, or drag it there${itemTurns(held.kind) > 1 ? " · ↻ (or R) turns it" : ""}` : heldStove ? ("model" in heldStove ? "Tap a free spot on the kitchen's back wall, or a stove to swap it" : "Tap a free spot on the kitchen's back wall") : "Tap something to move it · tags: a waiter's steps to each seat"}</span><em class="bs-grade" id="bs-grade">${gradeText()}</em></div>
+      <div class="bs-store">${stored.length || stoves.length ? stoves.map(([m, n]) => `<button type="button" data-hold-stove="${m}" aria-label="${esc(STOVE_BY_MODEL[m].name)} ×${n}" class="${heldStove && "model" in heldStove && heldStove.model === m ? "on" : ""}"><img src="${stoveIconUrl(m)}" alt=""><span>${esc(STOVE_BY_MODEL[m].name)}</span><i>×${n}</i></button>`).join("") + stored.map(([k, n]) => `<button type="button" data-hold="${k}" aria-label="${esc(ITEM_BY_KIND[k].name)} ×${n}" class="${held?.kind === k && !held.moving ? "on" : ""}"><img src="${itemIconUrl(k)}" alt=""><span>${esc(ITEM_BY_KIND[k].name)}</span><i>×${n}</i></button>`).join("") : `<em>Storage is empty</em>`}</div>
       <div class="bs-edit-btns">
-        ${held && itemTurns(held.kind) > 1 ? `<button type="button" data-ed="rot" title="Rotate (R)">↻ Rotate</button>` : ""}
-        ${held ? `<button type="button" data-ed="store">Put away</button><button type="button" data-ed="cancel">Cancel</button>` : ""}
         ${heldStove ? `<button type="button" data-ed="cancel">Cancel</button>` : ""}
         <button type="button" data-ed="shop">Shop</button>
         <button type="button" class="go" data-ed="done">Done</button>
@@ -2337,12 +2350,37 @@ export function openBistro(o: BistroOptions): BistroHandle {
     const g = editEl.querySelector<HTMLElement>("#bs-grade");
     if (g) setInner(g, gradeText());
   };
+  /**
+   * Where a piece taken from storage shows first: the free tile nearest the
+   * room's middle (so its ghost, and the buttons beside it, are in view at
+   * once; a tap elsewhere still puts it there).
+   */
+  const firstSpot = (kind: ItemKind): Pt => {
+    const cx = (R.cols - 1) / 2,
+      cy = (R.rows - 1) / 2;
+    let best: Pt | null = null,
+      bd = Infinity;
+    for (let x = 0; x < R.cols; x++)
+      for (let y = 0; y < R.rows; y++) {
+        const d = Math.hypot(x - cx, y - cy);
+        if (d < bd && tryPlaceDry(kind, x, y)) {
+          best = { x, y };
+          bd = d;
+        }
+      }
+    return best ?? { x: Math.round(cx), y: Math.round(cy) };
+  };
+  /** Pick up a piece from storage (or one just bought). */
+  const holdNew = (kind: ItemKind) => {
+    held = { kind, rot: 0 };
+    hover = firstSpot(kind);
+  };
   editEl.addEventListener("click", (e) => {
     const b = (e.target as HTMLElement).closest("button");
     if (!b) return;
     sound("tick");
     if (b.dataset.hold) {
-      held = { kind: b.dataset.hold as ItemKind, rot: 0 };
+      holdNew(b.dataset.hold as ItemKind);
       heldStove = null;
       renderEdit();
       return;
@@ -2353,7 +2391,10 @@ export function openBistro(o: BistroOptions): BistroHandle {
       renderEdit();
       return;
     }
-    const a = b.dataset.ed;
+    editAct(b.dataset.ed);
+  });
+  /** A decorate button: on the bar, or beside the held piece. */
+  const editAct = (a: string | undefined) => {
     if (a === "done") setEditing(false);
     else if (a === "shop") openSheet("shop", "furniture");
     else if (a === "cancel") {
@@ -2372,7 +2413,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
       sound("whoosh");
       renderEdit();
     }
-  });
+  };
   /**
    * The way the held piece faces on a tile: as turned; a chair not turned by
    * hand faces a table it touches (so the ghost shows where it will face).
@@ -2614,9 +2655,11 @@ export function openBistro(o: BistroOptions): BistroHandle {
           PANTRY_MAX - (S.pantry[ing] ?? 0),
         );
         const name =
-          crop === "milk"
-            ? "Storm Milk"
-            : (CROP_BY_ID[crop as keyof typeof CROP_BY_ID]?.name ?? crop);
+          crop === MILK.id
+            ? MILK.name
+            : crop === EGG.id
+              ? EGG.name
+              : (CROP_BY_ID[crop as keyof typeof CROP_BY_ID]?.name ?? crop);
         return `<button type="button" class="bs-item mk" data-farm="${crop}" ${can > 0 ? "" : "disabled"}><i class="ing big ing-${ing}"></i><b>${INGREDIENT_NAMES[ing]}</b><small>${FARM_PER_INGREDIENT} ${esc(name)} each · ${n} in the barn</small>${can > 0 ? `<span class="pr">Bring ${can}</span>` : `<span class="lk">${n < FARM_PER_INGREDIENT ? "Grow more" : "Not today"}</span>`}</button>`;
       })
       .join("");
@@ -3083,7 +3126,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
           )
           .join(
             "",
-          )}</div><p class="bs-note">${role === "janitor" ? "Janitors clear the tables (so waiters only serve) and sweep up litter, which costs popularity." : role === "cook" ? "Cooks each run a stove on their own and keep the counter stocked." : "Waiters bring the dishes; more of them serve more guests."} New faces come by every day; friends can work for you too.</p>`;
+          )}<p class="bs-note">${role === "janitor" ? "Janitors clear the tables (so waiters only serve) and sweep up litter, which costs popularity." : role === "cook" ? "Cooks each run a stove on their own and keep the counter stocked." : "Waiters bring the dishes; more of them serve more guests."} New faces come by every day; friends can work for you too.</p></div>`;
       } else {
         const kp = KITCHEN_PRICES[S.kitchenLv];
         const shp = SHIFT_PRICES[S.shiftLv];
@@ -3172,7 +3215,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
             </button>`;
         }).join(
           "",
-        )}</div><p class="bs-note">${S.stoves.length} of ${maxStoves(S.sizeLv)} spots on the back wall are taken (expanding the room adds one). Place a stove on a free spot, or on a stove to swap them (the old one goes into storage). Hired cooks use the stoves you added last.</p>`;
+        )}<p class="bs-note">${S.stoves.length} of ${maxStoves(S.sizeLv)} spots on the back wall are taken (expanding the room adds one). Place a stove on a free spot, or on a stove to swap them (the old one goes into storage). Hired cooks use the stoves you added last.</p></div>`;
       } else if (tab === "bank") {
         const left = BISTRO_TRADE.dailyLeaves - sync.extras.tradedToday;
         body = `<div class="bs-bank"><p>Trade bistro coins for Gold Leaves (the Farm's currency): <b>${BISTRO_TRADE.coins} coins → ${BISTRO_TRADE.leaves} ${I("leaf")}</b>, up to ${BISTRO_TRADE.dailyLeaves} leaves a day.</p>
@@ -3238,7 +3281,18 @@ export function openBistro(o: BistroOptions): BistroHandle {
         if (el.scrollTop > 0 || el.scrollLeft > 0)
           scrolled.push([i, el.className, el.scrollTop, el.scrollLeft]);
       });
-    if (!setInner(sheet, out.innerHTML, fresh) || !scrolled.length) return;
+    const changed = setInner(sheet, out.innerHTML, fresh);
+    // A cook's dishes scroll sideways on a phone: open with theirs in view.
+    if (fresh)
+      sheet.querySelectorAll<HTMLElement>(".cookdish .picks").forEach((row) => {
+        const on = row.querySelector<HTMLElement>(".on");
+        if (!on || row.scrollWidth <= row.clientWidth) return;
+        row.scrollLeft +=
+          on.getBoundingClientRect().left -
+          row.getBoundingClientRect().left -
+          8;
+      });
+    if (!changed || !scrolled.length) return;
     const els = sheet.querySelectorAll<HTMLElement>("*");
     for (const [i, cls, y, x] of scrolled) {
       const el = els[i];
@@ -3348,7 +3402,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
       changed();
       closeSheet();
       if (!editing) setEditing(true);
-      held = { kind, rot: 0 };
+      holdNew(kind);
       renderEdit();
       return;
     }
@@ -3804,7 +3858,11 @@ export function openBistro(o: BistroOptions): BistroHandle {
   /* ───────────── update ───────────── */
   const update = (dt: number) => {
     T += dt;
-    cars = updateCars(cars, dt, Math.random());
+    updateStreet(street, dt);
+    cars = updateCars(cars, dt, Math.random(), {
+      bus: street.bus,
+      max: low ? 2 : 4,
+    });
     // Nothing happens inside until the server has answered once.
     if (!sync.ready && !visiting) return;
     const now = nowS();
@@ -3925,11 +3983,25 @@ export function openBistro(o: BistroOptions): BistroHandle {
   };
 
   /* ───────────── draw ───────────── */
+  // The season follows the server's day (looked up once a minute).
+  let season: Season = seasonOf(serverDay());
+  let seasonAt = 0;
   const light = (): Light => {
     const tod =
       (window as unknown as { __bistroTod?: number }).__bistroTod ??
       deviceTimeOfDay();
-    return { night: nightLevel(tod), gold: goldenLevel(tod), t: T };
+    if (T - seasonAt > 60) {
+      seasonAt = T;
+      season = seasonOf(serverDay());
+    }
+    return {
+      night: nightLevel(tod),
+      gold: goldenLevel(tod),
+      t: T,
+      season:
+        (window as unknown as { __bistroSeason?: Season }).__bistroSeason ??
+        season,
+    };
   };
   type Drawable = { d: number; f: () => void };
   /** The staff drawn in the last frame, by id (tests: everyone on the team shows). */
@@ -4148,6 +4220,48 @@ export function openBistro(o: BistroOptions): BistroHandle {
     { y: -2, v: 2.8, col: "#3d8fd1", kind: 0 },
     { y: 13, v: -3.1, col: "#f2c14e", kind: 1 },
   ];
+  // The neighbourhood's passers-by: a handful of the roster, fewer on Low.
+  const street = makeStreet(
+    [...ROSTER].sort(() => Math.random() - 0.5).slice(0, 8),
+    low,
+  );
+  /**
+   * Night versions of the passers-by's drawings: the street darkens at
+   * night, so they do too (the drawing again, tinted, crossfaded by the
+   * night's depth; made once per drawing).
+   */
+  const nightArt = new WeakMap<Sprite, HTMLCanvasElement>();
+  const nightOf = (s: Sprite) => {
+    let c = nightArt.get(s);
+    if (!c) {
+      c = document.createElement("canvas");
+      c.width = s.cv.width;
+      c.height = s.cv.height;
+      const g = c.getContext("2d")!;
+      g.drawImage(s.cv, 0, 0);
+      g.globalCompositeOperation = "source-atop";
+      g.fillStyle = "rgba(24,30,64,.55)";
+      g.fillRect(0, 0, c.width, c.height);
+      nightArt.set(s, c);
+    }
+    return c;
+  };
+  let streetNight = 0;
+  const paintCreature: PaintCreature = (char, face, x, y, lift, alpha) => {
+    const s = sprite(asChar(char), face);
+    if (!s.ready) return;
+    const k = SPR * 0.94;
+    const dx = x - s.ax * k,
+      dy = y - lift - s.ay * k,
+      dw = s.cv.width * k,
+      dh = s.cv.height * k;
+    ctx.globalAlpha = alpha;
+    if (streetNight < 0.98) ctx.drawImage(s.cv, dx, dy, dw, dh);
+    if (streetNight > 0.02) {
+      ctx.globalAlpha = alpha * streetNight;
+      ctx.drawImage(nightOf(s), dx, dy, dw, dh);
+    }
+  };
   const scenery = document.createElement("canvas");
   let sceneryKey = "";
   const sceneryCanvas = (L: Light) => {
@@ -4164,6 +4278,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
       DPR,
       Math.round(L.night * 24),
       Math.round(L.gold * 24),
+      L.season,
       special(),
     ].join(":");
     if (key === sceneryKey) return scenery;
@@ -4216,7 +4331,8 @@ export function openBistro(o: BistroOptions): BistroHandle {
       view.x * DPR,
       view.y * DPR,
     );
-    drawSceneryLive(ctx, L, cars, low);
+    streetNight = L.night;
+    drawSceneryLive(ctx, L, cars, low, street, paintCreature);
     drawGroundShadow(ctx);
     const sh = shellCanvas();
     ctx.drawImage(
@@ -4479,8 +4595,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
       drawDish(ctx, f.dish, x, y, 13, T, false);
     }
 
-    drawFrontTrees(ctx, L);
-    drawFrontLamps(ctx, L);
+    drawSceneryFront(ctx, L, low, street, paintCreature);
     drawLighting(L);
     drawOverlay(now);
     placeRotate();
@@ -4598,7 +4713,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
       // Street lamps, headlights and the rooftop sign.
       for (const [x, y, r, rgb, a] of [
         ...sceneryGlows(),
-        ...carGlows(cars),
+        ...carGlows(cars, street.bus),
         roofSignGlow(),
       ])
         glow(x, y, r, rgb, a * n);
@@ -4724,32 +4839,71 @@ export function openBistro(o: BistroOptions): BistroHandle {
     drawItem(ctx, h.kind, at.x, at.y, T, facing(at.x, at.y));
     ctx.restore();
   };
-  /** The round ↻ button beside the held piece (as building games put it). */
+  /**
+   * The round buttons beside the held piece, as the Farm puts its tools on
+   * a plot: ↻ turns it, the box puts a placed piece away, ✕ cancels. Moved
+   * with the piece each frame (from the view alone: the canvas fills the
+   * layer, so no layout is read).
+   */
+  const heldEl = $("#bs-held");
   const rotateEl = $("#bs-rotate") as HTMLButtonElement;
-  let rotateAt = "";
+  const storeEl = heldEl.querySelector<HTMLElement>('[data-ed="store"]')!;
+  let heldAt = "";
+  /** The open part of the screen for the held piece's buttons (cached). */
+  const freeArea = { l: 8, t: 8, r: 1e4, b: 1e4 };
+  const measureFree = () => {
+    const pad = 8;
+    const rail = layer.querySelector<HTMLElement>(".bs-rail");
+    const top = layer.querySelector<HTMLElement>("#bs-badge");
+    const rr = rail?.getBoundingClientRect();
+    const tr = top?.getBoundingClientRect();
+    const er = editEl.hidden ? null : editEl.getBoundingClientRect();
+    freeArea.l = pad;
+    freeArea.r = (rr && rr.width ? rr.left : W) - pad;
+    freeArea.t = (tr && tr.height ? tr.bottom : 0) + pad;
+    freeArea.b = (er && er.height ? er.top : H) - pad;
+    heldAt = "";
+  };
   const placeRotate = () => {
-    const show =
-      editing && !!held && !!hover && itemTurns(held.kind) > 1 && !sheetKind;
-    if (rotateEl.hidden === show) rotateEl.hidden = !show;
+    const show = editing && !!held && !!hover && !sheetKind;
+    if (heldEl.hidden === show) heldEl.hidden = !show;
     if (!show || !held || !hover) return;
+    if (hudMoved) {
+      hudMoved = false;
+      measureFree();
+    }
+    const turns = itemTurns(held.kind) > 1,
+      moving = !!held.moving;
     const floor = ITEM_BY_KIND[held.kind].floor;
     const w = iso(hover.x + (floor ? 1 : 0), hover.y);
     const p = toScreen({ x: w.x + 40, y: w.y - (floor ? 30 : 104) });
-    const r = cv.getBoundingClientRect(),
-      lr = layer.getBoundingClientRect();
-    const x = Math.round(r.left - lr.left + p.x),
-      y = Math.round(r.top - lr.top + p.y);
-    const key = `${x},${y}`;
-    if (key === rotateAt) return;
-    rotateAt = key;
-    rotateEl.style.left = `${x}px`;
-    rotateEl.style.top = `${y}px`;
+    const n = 1 + (turns ? 1 : 0) + (moving ? 1 : 0);
+    // Kept in the open: under the top bar, left of the menu, above the
+    // decorate bar (their edges measured on resize and when the bar
+    // changes, never per frame). x and y are the first button's middle.
+    const span = n * 44 + (n - 1) * 8;
+    const x = Math.round(clamp(p.x, freeArea.l + 22, freeArea.r - span + 22)),
+      y = Math.round(clamp(p.y, freeArea.t + 22, freeArea.b - 22));
+    const key = `${x},${y},${turns},${moving}`;
+    if (key === heldAt) return;
+    heldAt = key;
+    rotateEl.hidden = !turns;
+    storeEl.hidden = !moving;
+    heldEl.style.left = `${x}px`;
+    heldEl.style.top = `${y}px`;
   };
   rotateEl.addEventListener("click", () => {
+    sound("tick");
     rotateHeld(1);
     rotateEl.classList.remove("spun");
     void rotateEl.offsetWidth;
     rotateEl.classList.add("spun");
+  });
+  heldEl.addEventListener("click", (e) => {
+    const b = (e.target as HTMLElement).closest<HTMLElement>("[data-ed]");
+    if (!b) return;
+    sound("tick");
+    editAct(b.dataset.ed);
   });
   /** Free stoves of yours: since when (for the call to cook), and which call now. */
   const idleSince = new Map<number, number>();
@@ -5500,9 +5654,42 @@ export function openBistro(o: BistroOptions): BistroHandle {
       litter: () => litter,
       setTod: (v: number | undefined) =>
         ((window as unknown as { __bistroTod?: number }).__bistroTod = v),
+      /** Another season outside (tests; undefined: the server's day). */
+      setSeason: (v: Season | undefined) =>
+        ((window as unknown as { __bistroSeason?: Season }).__bistroSeason = v),
+      /** The street's passers-by, the bus and the birds (tests). */
+      street: () => ({
+        folk: street.folk.map((f) => ({
+          kind: f.kind,
+          x: f.x,
+          y: f.y,
+          char: f.char,
+        })),
+        bus: { ...street.bus },
+        pigeons: street.pigeons.length,
+        ducks: street.ducks.length,
+      }),
+      /** Keep the bus at its stop (tests: pictures with the bus in). */
+      holdBus: (on = true) => {
+        street.bus.hold = on;
+        if (on) street.bus.state = "stop";
+      },
       spawn: () => spawn(),
       sync: () => sync,
       setCars: (list: Car[]) => (cars = list),
+      /** Bake the street again and say how long it took (ms; tests, tuning). */
+      bakeScenery: () => {
+        sceneryKey = "";
+        const t0 = performance.now();
+        sceneryCanvas(light());
+        return performance.now() - t0;
+      },
+      /** Draw `n` frames back to back and say how long one took (ms). */
+      drawMs: (n = 20) => {
+        const t0 = performance.now();
+        for (let i = 0; i < n; i++) draw();
+        return (performance.now() - t0) / n;
+      },
       load: () => sync.load(),
       flush: () => sync.flush(),
       plate: (i: number) => plateStove(i),

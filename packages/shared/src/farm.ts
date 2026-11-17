@@ -461,6 +461,7 @@ export const FARM_UNLOCKS: readonly [number, string][] = [
   [10, "Big Net"],
   [10, "Bakery"],
   [14, "Sickle"],
+  [14, "Chicken Coop"],
   [18, "Sprinkler"],
   [24, "Gold Fertilizer"],
   [30, "Gold Can"],
@@ -672,25 +673,76 @@ export const farmPerkOf = (farmer: string) => FARM_PERK_OF[farmer] ?? farmer;
 /** A farmer's perk, or null when it has none. */
 export const farmPerk = (farmer: string | null | undefined) =>
   farmer ? (FARM_PERKS[farmPerkOf(farmer)] ?? null) : null;
+/** The shop's groups of decorations (20261117120000), in the sheet's order. */
+export const DECOR_GROUPS = [
+  { id: "fences", name: "Fences & paths" },
+  { id: "plants", name: "Flowers & plants" },
+  { id: "trees", name: "Trees" },
+  { id: "furniture", name: "Furniture" },
+  { id: "water", name: "Water" },
+  { id: "lights", name: "Lights" },
+  { id: "statues", name: "Statues" },
+  { id: "seasonal", name: "Seasonal" },
+] as const;
+export type DecorGroup = (typeof DECOR_GROUPS)[number]["id"];
 /**
- * Decorations (migration 048) and Charm: every 2 Charm is +1% farm XP, up to
- * 25%. Since 20261116120000 they stand anywhere on the farm's land (they used
- * 8 fixed spots): `w` is half the width of the ground a decoration takes and
- * `d` how deep it is behind the point it stands on (world px).
+ * Seasons when seasonal decorations are sold (20261117120000), by the
+ * server's game day (America/Los_Angeles, arena_today): from `from` to `to`
+ * inclusive, as "MM-DD"; a season whose `to` is before its `from` runs over
+ * the new year. Lunar New Year moves between 21 Jan and 20 Feb, so its
+ * window (to the end of February, 29 Feb in a leap year) covers every
+ * year's festival, and the Lantern Festival after it in all but the latest
+ * years (2034's falls on 5 Mar).
+ * Bought ones are kept: they place again from storage at any time.
+ * arena_farm_decor_seasons is the same table.
  */
-export const FARM_DECOR: readonly {
+export const DECOR_SEASONS = [
+  { id: "halloween", name: "Halloween", from: "10-01", to: "11-07" },
+  { id: "christmas", name: "Christmas", from: "12-01", to: "01-06" },
+  { id: "lunar", name: "Lunar New Year", from: "01-15", to: "02-29" },
+] as const;
+export type DecorSeason = (typeof DECOR_SEASONS)[number]["id"];
+/** The seasons on sale on a game day ("YYYY-MM-DD"). */
+export function decorSeasonsOn(day: string): DecorSeason[] {
+  const md = day.slice(5, 10);
+  return DECOR_SEASONS.filter((s) =>
+    s.from <= s.to ? md >= s.from && md <= s.to : md >= s.from || md <= s.to,
+  ).map((s) => s.id);
+}
+export interface FarmDecorItem {
   id: string;
   name: string;
+  /** The shop's group (DECOR_GROUPS). */
+  group: DecorGroup;
   price: number;
   charm: number;
   level: number;
   icon: string;
+  /** Half the width of the ground it takes (world px). */
   w: number;
+  /** How deep its ground is behind the point it stands on (world px). */
   d: number;
-}[] = [
+  /**
+   * Flat on the ground (paths, paving): ground pieces may overlap each
+   * other, but not anything standing, the field, the buildings or the pond.
+   */
+  ground?: true;
+  /** Sold only in this season (bought ones place again at any time). */
+  season?: DecorSeason;
+}
+/**
+ * Decorations (migration 048) and Charm: every 2 Charm is +1% farm XP, up to
+ * 25%. Since 20261116120000 they stand anywhere on the farm's land (they used
+ * 8 fixed spots): `w` is half the width of the ground a decoration takes and
+ * `d` how deep it is behind the point it stands on (world px). 20261117120000
+ * adds 42 more, in groups, with paths that may overlap and seasonal ones.
+ * The database's arena_farm_decor_items is the same list.
+ */
+export const FARM_DECOR: readonly FarmDecorItem[] = [
   {
     id: "rock",
     name: "Mossy Rock",
+    group: "plants",
     price: 300,
     charm: 1,
     level: 1,
@@ -701,6 +753,7 @@ export const FARM_DECOR: readonly {
   {
     id: "hay",
     name: "Hay Bale",
+    group: "furniture",
     price: 400,
     charm: 1,
     level: 2,
@@ -711,6 +764,7 @@ export const FARM_DECOR: readonly {
   {
     id: "bush6",
     name: "Rose Bush",
+    group: "plants",
     price: 450,
     charm: 1,
     level: 3,
@@ -721,6 +775,7 @@ export const FARM_DECOR: readonly {
   {
     id: "mailbox",
     name: "Mailbox",
+    group: "furniture",
     price: 500,
     charm: 1,
     level: 4,
@@ -731,6 +786,7 @@ export const FARM_DECOR: readonly {
   {
     id: "bush7",
     name: "Fern Bush",
+    group: "plants",
     price: 550,
     charm: 1,
     level: 5,
@@ -741,6 +797,7 @@ export const FARM_DECOR: readonly {
   {
     id: "bench",
     name: "Park Bench",
+    group: "furniture",
     price: 700,
     charm: 1,
     level: 6,
@@ -751,6 +808,7 @@ export const FARM_DECOR: readonly {
   {
     id: "flowers",
     name: "Flower Bush",
+    group: "plants",
     price: 650,
     charm: 1,
     level: 7,
@@ -761,6 +819,7 @@ export const FARM_DECOR: readonly {
   {
     id: "crates",
     name: "Crates",
+    group: "furniture",
     price: 950,
     charm: 1,
     level: 8,
@@ -771,6 +830,7 @@ export const FARM_DECOR: readonly {
   {
     id: "lamp",
     name: "Street Lamp",
+    group: "lights",
     price: 1350,
     charm: 2,
     level: 12,
@@ -781,6 +841,7 @@ export const FARM_DECOR: readonly {
   {
     id: "planter",
     name: "Flower Planter",
+    group: "plants",
     price: 2250,
     charm: 3,
     level: 16,
@@ -791,6 +852,7 @@ export const FARM_DECOR: readonly {
   {
     id: "mintree",
     name: "Mint Tree",
+    group: "trees",
     price: 3000,
     charm: 3,
     level: 19,
@@ -801,6 +863,7 @@ export const FARM_DECOR: readonly {
   {
     id: "pine",
     name: "Pine Tree",
+    group: "trees",
     price: 3200,
     charm: 2,
     level: 22,
@@ -811,6 +874,7 @@ export const FARM_DECOR: readonly {
   {
     id: "autumn",
     name: "Maple Tree",
+    group: "trees",
     price: 3600,
     charm: 3,
     level: 25,
@@ -821,6 +885,7 @@ export const FARM_DECOR: readonly {
   {
     id: "cherry",
     name: "Cherry Tree",
+    group: "trees",
     price: 3900,
     charm: 3,
     level: 27,
@@ -831,6 +896,7 @@ export const FARM_DECOR: readonly {
   {
     id: "apple",
     name: "Apple Tree",
+    group: "trees",
     price: 4200,
     charm: 4,
     level: 30,
@@ -841,6 +907,7 @@ export const FARM_DECOR: readonly {
   {
     id: "orange",
     name: "Orange Tree",
+    group: "trees",
     price: 4800,
     charm: 4,
     level: 36,
@@ -851,6 +918,7 @@ export const FARM_DECOR: readonly {
   {
     id: "tower",
     name: "Gazebo",
+    group: "furniture",
     price: 6050,
     charm: 10,
     level: 45,
@@ -861,6 +929,7 @@ export const FARM_DECOR: readonly {
   {
     id: "plum",
     name: "Guest Cottage",
+    group: "furniture",
     price: 8550,
     charm: 12,
     level: 60,
@@ -871,6 +940,7 @@ export const FARM_DECOR: readonly {
   {
     id: "statue",
     name: "Golden Voltkit Statue",
+    group: "statues",
     price: 30000,
     charm: 15,
     level: 75,
@@ -878,7 +948,560 @@ export const FARM_DECOR: readonly {
     w: 38,
     d: 18,
   },
+  {
+    id: "picket",
+    name: "Picket Fence",
+    group: "fences",
+    price: 300,
+    charm: 1,
+    level: 3,
+    icon: "decor",
+    w: 25,
+    d: 6,
+  },
+  {
+    id: "railfence",
+    name: "Rail Fence",
+    group: "fences",
+    price: 350,
+    charm: 1,
+    level: 5,
+    icon: "decor",
+    w: 25,
+    d: 6,
+  },
+  {
+    id: "gate",
+    name: "Garden Gate",
+    group: "fences",
+    price: 600,
+    charm: 1,
+    level: 9,
+    icon: "decor",
+    w: 25,
+    d: 6,
+  },
+  {
+    id: "hedge",
+    name: "Box Hedge",
+    group: "fences",
+    price: 1000,
+    charm: 2,
+    level: 14,
+    icon: "fern",
+    w: 25,
+    d: 10,
+  },
+  {
+    id: "pathstone",
+    name: "Stepping Stones",
+    group: "fences",
+    price: 300,
+    charm: 1,
+    level: 2,
+    icon: "rock",
+    w: 20,
+    d: 16,
+    ground: true,
+  },
+  {
+    id: "pathgravel",
+    name: "Gravel Path",
+    group: "fences",
+    price: 300,
+    charm: 1,
+    level: 4,
+    icon: "rock",
+    w: 30,
+    d: 16,
+    ground: true,
+  },
+  {
+    id: "pathbrick",
+    name: "Brick Path",
+    group: "fences",
+    price: 450,
+    charm: 1,
+    level: 10,
+    icon: "rock",
+    w: 30,
+    d: 16,
+    ground: true,
+  },
+  {
+    id: "tulips",
+    name: "Tulip Patch",
+    group: "plants",
+    price: 350,
+    charm: 1,
+    level: 2,
+    icon: "flower",
+    w: 20,
+    d: 10,
+  },
+  {
+    id: "potdaisy",
+    name: "Potted Daisies",
+    group: "plants",
+    price: 400,
+    charm: 1,
+    level: 4,
+    icon: "flower",
+    w: 12,
+    d: 8,
+  },
+  {
+    id: "sunflowers",
+    name: "Sunflowers",
+    group: "plants",
+    price: 450,
+    charm: 1,
+    level: 6,
+    icon: "flower",
+    w: 20,
+    d: 10,
+  },
+  {
+    id: "barrow",
+    name: "Flower Barrow",
+    group: "plants",
+    price: 1000,
+    charm: 2,
+    level: 13,
+    icon: "flower",
+    w: 26,
+    d: 12,
+  },
+  {
+    id: "lavender",
+    name: "Lavender Row",
+    group: "plants",
+    price: 1100,
+    charm: 2,
+    level: 15,
+    icon: "flower",
+    w: 30,
+    d: 10,
+  },
+  {
+    id: "topiary",
+    name: "Topiary",
+    group: "plants",
+    price: 1500,
+    charm: 3,
+    level: 20,
+    icon: "fern",
+    w: 16,
+    d: 10,
+  },
+  {
+    id: "birch",
+    name: "Silver Birch",
+    group: "trees",
+    price: 1800,
+    charm: 3,
+    level: 18,
+    icon: "fern",
+    w: 30,
+    d: 18,
+  },
+  {
+    id: "bamboo",
+    name: "Bamboo Grove",
+    group: "trees",
+    price: 1650,
+    charm: 3,
+    level: 21,
+    icon: "fern",
+    w: 24,
+    d: 12,
+  },
+  {
+    id: "palm",
+    name: "Palm Tree",
+    group: "trees",
+    price: 2400,
+    charm: 4,
+    level: 28,
+    icon: "fern",
+    w: 30,
+    d: 18,
+  },
+  {
+    id: "willow",
+    name: "Weeping Willow",
+    group: "trees",
+    price: 3000,
+    charm: 5,
+    level: 34,
+    icon: "fern",
+    w: 46,
+    d: 20,
+  },
+  {
+    id: "deckchair",
+    name: "Deck Chair",
+    group: "furniture",
+    price: 450,
+    charm: 1,
+    level: 5,
+    icon: "decor",
+    w: 16,
+    d: 10,
+  },
+  {
+    id: "picnic",
+    name: "Picnic Table",
+    group: "furniture",
+    price: 900,
+    charm: 2,
+    level: 9,
+    icon: "decor",
+    w: 40,
+    d: 16,
+  },
+  {
+    id: "parasol",
+    name: "Patio Umbrella",
+    group: "furniture",
+    price: 1000,
+    charm: 2,
+    level: 11,
+    icon: "decor",
+    w: 22,
+    d: 12,
+  },
+  {
+    id: "swing",
+    name: "Garden Swing",
+    group: "furniture",
+    price: 1500,
+    charm: 3,
+    level: 17,
+    icon: "decor",
+    w: 36,
+    d: 14,
+  },
+  {
+    id: "birdbath",
+    name: "Birdbath",
+    group: "water",
+    price: 550,
+    charm: 1,
+    level: 7,
+    icon: "decor",
+    w: 14,
+    d: 8,
+  },
+  {
+    id: "lilypond",
+    name: "Lily Pond",
+    group: "water",
+    price: 1800,
+    charm: 3,
+    level: 20,
+    icon: "decor",
+    w: 46,
+    d: 22,
+  },
+  {
+    id: "fountain",
+    name: "Little Fountain",
+    group: "water",
+    price: 2400,
+    charm: 4,
+    level: 24,
+    icon: "decor",
+    w: 30,
+    d: 16,
+  },
+  {
+    id: "bridge",
+    name: "Wooden Bridge",
+    group: "water",
+    price: 1800,
+    charm: 3,
+    level: 26,
+    icon: "decor",
+    w: 36,
+    d: 16,
+  },
+  {
+    id: "torch",
+    name: "Tiki Torch",
+    group: "lights",
+    price: 500,
+    charm: 1,
+    level: 8,
+    icon: "lamp",
+    w: 10,
+    d: 8,
+  },
+  {
+    id: "lantern",
+    name: "Paper Lantern",
+    group: "lights",
+    price: 900,
+    charm: 2,
+    level: 10,
+    icon: "lamp",
+    w: 12,
+    d: 8,
+  },
+  {
+    id: "stringlights",
+    name: "String Lights",
+    group: "lights",
+    price: 1650,
+    charm: 3,
+    level: 23,
+    icon: "lamp",
+    w: 40,
+    d: 8,
+  },
+  {
+    id: "stonelantern",
+    name: "Stone Lantern",
+    group: "lights",
+    price: 2200,
+    charm: 4,
+    level: 29,
+    icon: "lamp",
+    w: 16,
+    d: 10,
+  },
+  {
+    id: "frog",
+    name: "Frog Statue",
+    group: "statues",
+    price: 550,
+    charm: 1,
+    level: 6,
+    icon: "statue",
+    w: 14,
+    d: 8,
+  },
+  {
+    id: "bunny",
+    name: "Bunny Statue",
+    group: "statues",
+    price: 900,
+    charm: 2,
+    level: 12,
+    icon: "statue",
+    w: 14,
+    d: 8,
+  },
+  {
+    id: "owl",
+    name: "Owl Statue",
+    group: "statues",
+    price: 1100,
+    charm: 2,
+    level: 16,
+    icon: "statue",
+    w: 14,
+    d: 10,
+  },
+  {
+    id: "deer",
+    name: "Deer Statue",
+    group: "statues",
+    price: 2400,
+    charm: 4,
+    level: 32,
+    icon: "statue",
+    w: 24,
+    d: 12,
+  },
+  {
+    id: "pumpkin",
+    name: "Jack-o'-Lantern",
+    group: "seasonal",
+    price: 600,
+    charm: 1,
+    level: 1,
+    icon: "decor",
+    w: 14,
+    d: 10,
+    season: "halloween",
+  },
+  {
+    id: "tombstone",
+    name: "Spooky Tombstone",
+    group: "seasonal",
+    price: 900,
+    charm: 2,
+    level: 5,
+    icon: "decor",
+    w: 16,
+    d: 8,
+    season: "halloween",
+  },
+  {
+    id: "cauldron",
+    name: "Witch's Cauldron",
+    group: "seasonal",
+    price: 1500,
+    charm: 3,
+    level: 10,
+    icon: "decor",
+    w: 18,
+    d: 10,
+    season: "halloween",
+  },
+  {
+    id: "redlantern",
+    name: "Red Lantern Post",
+    group: "seasonal",
+    price: 600,
+    charm: 1,
+    level: 1,
+    icon: "lamp",
+    w: 12,
+    d: 8,
+    season: "lunar",
+  },
+  {
+    id: "luckycat",
+    name: "Lucky Cat",
+    group: "seasonal",
+    price: 900,
+    charm: 2,
+    level: 5,
+    icon: "statue",
+    w: 14,
+    d: 10,
+    season: "lunar",
+  },
+  {
+    id: "plumtree",
+    name: "Plum Blossom Tree",
+    group: "seasonal",
+    price: 1800,
+    charm: 3,
+    level: 10,
+    icon: "flower",
+    w: 30,
+    d: 18,
+    season: "lunar",
+  },
+  {
+    id: "snowman",
+    name: "Snowman",
+    group: "seasonal",
+    price: 600,
+    charm: 1,
+    level: 1,
+    icon: "decor",
+    w: 18,
+    d: 10,
+    season: "christmas",
+  },
+  {
+    id: "gifts",
+    name: "Gift Pile",
+    group: "seasonal",
+    price: 900,
+    charm: 2,
+    level: 5,
+    icon: "decor",
+    w: 20,
+    d: 10,
+    season: "christmas",
+  },
+  {
+    id: "xmastree",
+    name: "Christmas Tree",
+    group: "seasonal",
+    price: 1800,
+    charm: 3,
+    level: 10,
+    icon: "pine",
+    w: 30,
+    d: 18,
+    season: "christmas",
+  },
 ];
+const DECOR_BY_ID = new Map(FARM_DECOR.map((d) => [d.id, d]));
+/**
+ * Collections (20261117120000): every decoration of a set standing on the
+ * farm at once adds its Charm on top of theirs. arena_farm_decor_sets and
+ * arena_farm_decor_set_items are the same list.
+ */
+export const DECOR_SETS: readonly {
+  id: string;
+  name: string;
+  charm: number;
+  items: readonly string[];
+}[] = [
+  {
+    id: "cottage",
+    name: "Cottage Garden",
+    charm: 4,
+    items: ["picket", "gate", "tulips", "birdbath", "barrow"],
+  },
+  {
+    id: "picnic",
+    name: "Picnic Meadow",
+    charm: 4,
+    items: ["picnic", "parasol", "deckchair", "sunflowers", "pathgravel"],
+  },
+  {
+    id: "lanterns",
+    name: "Lantern Walk",
+    charm: 5,
+    items: ["torch", "lantern", "stringlights", "stonelantern", "pathstone"],
+  },
+  {
+    id: "orchard",
+    name: "Orchard",
+    charm: 5,
+    items: ["apple", "orange", "cherry", "autumn", "hay"],
+  },
+  {
+    id: "watergarden",
+    name: "Water Garden",
+    charm: 6,
+    items: ["fountain", "lilypond", "bridge", "frog", "bamboo"],
+  },
+  {
+    id: "woodland",
+    name: "Woodland Friends",
+    charm: 6,
+    items: ["birch", "willow", "owl", "bunny", "deer"],
+  },
+  {
+    id: "spooky",
+    name: "Spooky Night",
+    charm: 3,
+    items: ["pumpkin", "tombstone", "cauldron"],
+  },
+  {
+    id: "lunar",
+    name: "Lunar New Year",
+    charm: 3,
+    items: ["redlantern", "luckycat", "plumtree"],
+  },
+  {
+    id: "winter",
+    name: "Winter Holiday",
+    charm: 3,
+    items: ["snowman", "gifts", "xmastree"],
+  },
+];
+/** The collections complete on a farm (every piece of the set placed). */
+export function decorSetsDone(placed: readonly { item: string }[]) {
+  const have = new Set(placed.map((p) => p.item));
+  return DECOR_SETS.filter((s) => s.items.every((i) => have.has(i)));
+}
+/** A farm's Charm: its decorations' and its complete collections' (arena_farm_charm). */
+export function decorCharm(placed: readonly { item: string }[]) {
+  let c = 0;
+  for (const p of placed) c += DECOR_BY_ID.get(p.item)?.charm ?? 0;
+  for (const s of decorSetsDone(placed)) c += s.charm;
+  return c;
+}
 /** How many decorations a farm has room for at a level. */
 export const decorCap = (level: number) =>
   Math.min(60, 10 + Math.max(1, Math.floor(level)));
@@ -886,6 +1509,54 @@ export const decorCap = (level: number) =>
 export const DECOR_GRID = 10;
 /** The land decorations may stand on (world px, the farm scene's). */
 export const DECOR_AREA = { x0: 20, x1: 1740, y0: 120, y1: 1060 } as const;
+/**
+ * The Chicken Coop (migration 20261117100000_farm_coop_cows.sql): a wooden
+ * coop and its run on the grass below the lane, right of the gate's path
+ * (the farm's tree that stood there was felled). It opens at farm level 14
+ * with 3 hens; 6 more can be bought, each from its own farm level, so the
+ * eggs stay a side income next to the field (docs/farm-coop.md). A hen fed
+ * 2 Breeze Wheat from the barn lays one egg after `laySeconds` (server
+ * time); a tap collects it (into the barn) and the hen is hungry again.
+ */
+export const COOP = {
+  level: 14,
+  price: 1500,
+  /** Farm XP for opening it, and for each egg collected. */
+  xp: 40,
+  eggXp: 3,
+  /** The ground it takes (world px): no decoration stands here. */
+  x0: 990,
+  x1: 1350,
+  y0: 846,
+  y1: 1010,
+  /** Hens it opens with, and the most it holds. */
+  hens: 3,
+  maxHens: 9,
+  /** The 4th, 5th … 9th hen: the farm level it needs, and its Gold Leaves. */
+  henLevels: [17, 20, 24, 28, 32, 36] as readonly number[],
+  henPrices: [500, 700, 900, 1100, 1300, 1500] as readonly number[],
+  /** One feeding: plain (unmutated) crops from the barn. */
+  feedCrop: "wheat",
+  feedQty: 2,
+  laySeconds: 2 * 3600,
+} as const;
+/** What the next hen costs when a coop has `owned` hens (null: it's full). */
+export const henPrice = (owned: number): number | null =>
+  owned >= COOP.hens && owned < COOP.maxHens
+    ? COOP.henPrices[owned - COOP.hens]
+    : null;
+/** The farm level the next hen needs when a coop has `owned` hens (null: it's full). */
+export const henLevel = (owned: number): number | null =>
+  owned >= COOP.hens && owned < COOP.maxHens
+    ? COOP.henLevels[owned - COOP.hens]
+    : null;
+export type HenState = "hungry" | "laying" | "egg";
+/** A hen by when its egg is due (null: not fed), at server time `now` (ms). */
+export function henState(eggAt: string | number | null, now: number): HenState {
+  if (eggAt == null) return "hungry";
+  const t = typeof eggAt === "number" ? eggAt : Date.parse(eggAt);
+  return t > now ? "laying" : "egg";
+}
 export type DecorBlock =
   | { k: "rect"; x0: number; x1: number; y0: number; y1: number }
   | { k: "oval"; x: number; y: number; rx: number; ry: number };
@@ -893,7 +1564,8 @@ export type DecorBlock =
  * What decorations can't stand on: the field and its fence, the lane in
  * front of it, the back row (home, mill, orders board, market, barn), the
  * pasture, the well, the doghouse and the dog's spot, the scarecrow's spot,
- * the path down from the gate, the pond and the farm's own trees.
+ * the path down from the gate, the Chicken Coop (COOP), the pond and the
+ * farm's own trees.
  * The database checks the same list (arena_farm_decor_fits).
  */
 export const DECOR_BLOCKS: readonly DecorBlock[] = [
@@ -905,6 +1577,7 @@ export const DECOR_BLOCKS: readonly DecorBlock[] = [
   { k: "rect", x0: 1470, x1: 1680, y0: 754, y1: 840 },
   { k: "rect", x0: 250, x1: 326, y0: 520, y1: 576 },
   { k: "rect", x0: 830, x1: 940, y0: 770, y1: 1060 },
+  { k: "rect", x0: COOP.x0, x1: COOP.x1, y0: COOP.y0, y1: COOP.y1 },
   { k: "oval", x: 250, y: 990, rx: 190, ry: 82 },
   ...(
     [
@@ -915,7 +1588,6 @@ export const DECOR_BLOCKS: readonly DecorBlock[] = [
       [1700, 330],
       [70, 210],
       [640, 1050],
-      [1120, 1060],
       [1450, 1040],
       [1720, 1000],
       [40, 1060],
@@ -930,7 +1602,8 @@ export interface FarmDecorPiece {
   y: number;
   flip?: boolean;
 }
-const DECOR_BY_ID = new Map(FARM_DECOR.map((d) => [d.id, d]));
+/** Whether a decoration lies flat on the ground (a path), see FarmDecorItem.ground. */
+export const decorGround = (item: string) => !!DECOR_BY_ID.get(item)?.ground;
 /** The ground a decoration takes standing at (x, y). */
 export function decorBox(item: string, x: number, y: number) {
   const d = DECOR_BY_ID.get(item);
@@ -941,7 +1614,8 @@ export function decorBox(item: string, x: number, y: number) {
 /**
  * Whether a decoration fits at (x, y): null when it does, otherwise why not.
  * `placed` is what already stands on the farm; `except` is the one being
- * moved. The database runs the same check (arena_farm_decor_fits).
+ * moved. Ground pieces (paths) may overlap each other, never anything
+ * standing. The database runs the same check (arena_farm_decor_fits).
  */
 export function decorFits(
   item: string,
@@ -972,8 +1646,9 @@ export function decorFits(
         return "Something is in the way";
     }
   }
+  const flat = decorGround(item);
   for (const p of placed) {
-    if (p.id === except) continue;
+    if (p.id === except || (flat && decorGround(p.item))) continue;
     const o = decorBox(p.item, p.x, p.y);
     if (b.x0 < o.x1 && o.x0 < b.x1 && b.y0 < o.y1 && o.y0 < b.y1)
       return "Too close to another decoration";
@@ -1022,9 +1697,27 @@ export const PASTURE = {
   /** Storm Milk per milking, and how long the cow takes (seconds). */
   milk: 2,
   milkSeconds: 2 * 3600,
-  /** The first milk after the pasture opens. */
+  /** The first milk after the pasture opens (and after a new cow arrives). */
   firstMilkSeconds: 20 * 60,
+  /**
+   * More cows (20261117100000): the 2nd and 3rd, each from a farm level and
+   * for Gold Leaves. One cow is a big part of a young farm's income, so the
+   * others come late, when the field earns several times more.
+   */
+  cowLevels: [40, 55] as readonly number[],
+  cowPrices: [6000, 10000] as readonly number[],
+  maxCows: 3,
 } as const;
+/** The next cow when a pasture has `owned` cows: its level and price (null: it's full). */
+export const nextCow = (
+  owned: number,
+): { level: number; price: number } | null =>
+  owned >= 1 && owned < PASTURE.maxCows
+    ? {
+        level: PASTURE.cowLevels[owned - 1],
+        price: PASTURE.cowPrices[owned - 1],
+      }
+    : null;
 /** Storm Milk: a barn good, not a crop. Its price of the day is 0.85–1.35×. */
 export const MILK = {
   id: "milk",
@@ -1035,6 +1728,16 @@ export const MILK = {
 } as const;
 export const milkPrice = (mult: number) =>
   Math.max(1, Math.round(MILK.sell * mult));
+/** Eggs from the coop: a barn good like Storm Milk, with their own price of the day (0.85–1.35×). */
+export const EGG = {
+  id: "egg",
+  name: "Sunny Egg",
+  sell: 30,
+  multMin: 0.85,
+  multMax: 1.35,
+} as const;
+export const eggPrice = (mult: number) =>
+  Math.max(1, Math.round(EGG.sell * mult));
 /** A crow eats its crop this many seconds after landing unless shooed. */
 export const CROW_SECONDS = 8;
 /**
@@ -1259,6 +1962,12 @@ export interface FarmState {
   milkMult?: number;
   /** The Bakery and its oven's queue (migration 20261117130000). */
   bakery?: import("./farm-bakery.js").FarmBakery;
+  /** The 2nd and 3rd cows (20261117100000): each one's milk time; milkAt is the first cow's. */
+  cows?: { i: number; milkAt: string | null }[];
+  /** The Chicken Coop: its hens (when each one's egg is due; null: hungry) and eggs' price today (20261117100000). */
+  coop?: boolean;
+  hens?: FarmHen[];
+  eggMult?: number;
   /** Friends who visited lately, newest first (migration 047). */
   visits?: FarmVisitEvent[];
   /** Giant crops on the farm, and how many of each crop grew giant (migration 050). */
@@ -1276,6 +1985,11 @@ export interface FarmState {
     until: string;
   };
   leaves: number;
+}
+/** A hen in the coop: its place (0–8) and when its egg is due (null: not fed). */
+export interface FarmHen {
+  i: number;
+  eggAt: string | null;
 }
 /** A giant crop (migration 050): its square's top-left plot, its 9 plots, when it formed. */
 export interface FarmGiant {
@@ -1317,6 +2031,10 @@ export interface FarmVisit {
   sprinklers: number;
   /** Migration 049: they have a Cow Pasture. */
   pasture?: boolean;
+  /** 20261117100000: their Chicken Coop, how many hens live in it, and their cows. */
+  coop?: boolean;
+  hens?: number;
+  cows?: number;
   /** Migration 050: their giant crops. */
   giants?: FarmGiant[];
   /** What you did on friends' farms today. */

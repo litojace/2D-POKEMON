@@ -15,6 +15,31 @@ export const ECHO_SKILL_COLOR = 0xa98bff;
 /** The tint on an Echo's rig (dark violet), and lighter when it is hit. */
 export const ECHO_TINT = 0x8a7ab8;
 export const ECHO_TINT_HURT = 0xd8c8ff;
+/** Zone 3's Echoes: the pale wash over them (see AnimationPose.wash). */
+export const ECHO_WASH_Z3 = { color: 0xe4dcff, alpha: 0.35 };
+/** Zone 4's Echoes: a deeper violet shade (and a rose flush when hit). */
+export const ECHO_TINT_Z4 = 0x5c4c94;
+export const ECHO_TINT_HURT_Z4 = 0xff9cc8;
+/**
+ * An Echo's tint on its zone's court. Zone 3's court is dark slate, where
+ * the usual dark violet shade sinks into the floor: there Echoes are pale
+ * violet ghosts instead (and flush pink when hit), washed over in pale
+ * violet so even a dark champion's outlines and shading lift off the slate.
+ * Zone 4's court is pale lavender marble: there the shade is deeper (no
+ * wash), so Echoes stand dark on the pale stone, and the hit flush is rose
+ * (the usual pale lilac flush would melt into the marble).
+ */
+export function spireEchoTint(zone?: number): {
+  tint: number;
+  hurtTint: number;
+  wash?: { color: number; alpha: number };
+} {
+  return zone === 3
+    ? { tint: 0xe0d6ff, hurtTint: 0xffc2d6, wash: ECHO_WASH_Z3 }
+    : zone === 4
+      ? { tint: ECHO_TINT_Z4, hurtTint: ECHO_TINT_HURT_Z4 }
+      : { tint: ECHO_TINT, hurtTint: ECHO_TINT_HURT };
+}
 
 /**
  * The tower: ten floors of stone narrowing to a crystal tip, lit up to the

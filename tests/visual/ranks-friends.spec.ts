@@ -565,6 +565,55 @@ for (const size of SIZES)
       expect(Math.abs(dot.bottom)).toBeLessThanOrEqual(1);
       await snap(page, info, `friends-${size.name}`);
 
+      // A friend's options (Message, Pin, Remove, Block) fit inside the
+      // sheet: the list never pans sideways (owner's report, 16 Nov 2026:
+      // on a phone the open options pushed Block out and the whole list
+      // could be dragged in every direction). Remove's question too.
+      const optsFit = async (what: string) => {
+        await settled(page, ".friends-sheet");
+        const fit = await page.evaluate((who) => {
+          const scroll = document.querySelector(".friends-sheet .fr-scroll")!;
+          const opts = document.querySelector(`#fr-opts-${who}`)!;
+          const box = opts.getBoundingClientRect();
+          const outside = Array.from(opts.children)
+            .filter((c) => {
+              const r = c.getBoundingClientRect();
+              return r.left < box.left - 0.5 || r.right > box.right + 0.5;
+            })
+            .map((c) => c.textContent?.trim());
+          const text = opts.querySelector(".fr-opts-text")!;
+          return {
+            pans: scroll.scrollWidth > scroll.clientWidth,
+            outside,
+            inList: box.right <= scroll.getBoundingClientRect().right + 0.5,
+            textWhole: text.scrollWidth <= text.clientWidth,
+          };
+        }, id(4));
+        expect(fit, what).toEqual({
+          pans: false,
+          outside: [],
+          inList: true,
+          textWhole: true,
+        });
+        expect(await spills(page, ".friends-sheet"), what).toEqual([]);
+      };
+      await sheet.locator(`[data-friend-menu="${id(4)}"]`).click();
+      await expect(
+        sheet.locator(`[data-friend-block="${id(4)}"]`),
+      ).toBeVisible();
+      await optsFit("options");
+      await centred(page, `[data-friend-pin="${id(4)}"]`, "Pin");
+      await centred(page, `[data-friend-block="${id(4)}"]`, "Block");
+      await snap(page, info, `friends-options-${size.name}`);
+      await sheet.locator(`[data-friend-remove="${id(4)}"]`).click();
+      await expect(
+        sheet.locator(`[data-friend-keep="${id(4)}"]`),
+      ).toBeVisible();
+      await optsFit("remove's question");
+      await sheet.locator(`[data-friend-keep="${id(4)}"]`).click();
+      await sheet.locator(`[data-friend-menu="${id(4)}"]`).click();
+      await expect(sheet.locator(`#fr-opts-${id(4)}`)).toBeHidden();
+
       // Requests: For you (Decline / Accept) and Sent (Cancel).
       await page.click('[data-ui-friends-tab="requests"]');
       await expect(sheet.locator(".fr-row")).toHaveCount(2);

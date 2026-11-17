@@ -3209,3 +3209,174 @@ body.hub-farm #account-leaves {
   width: 1.1em;
   height: 1.1em;
 }
+
+/* The Decorate sheet (20261117120000): each decoration's own picture on a
+   patch of grass, the shop's groups as chips, collections with progress. */
+.farm-layer .item .ic.dpic {
+  background: radial-gradient(circle at 50% 78%, #6fbf54, #2f6f3a 72%);
+}
+.farm-layer .item .ic.dpic canvas,
+.farm-layer .dset-it canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.farm-layer .deco-groups {
+  margin: 0 -2px;
+}
+.farm-layer .deco-groups .ui-chip {
+  position: relative;
+}
+.farm-layer .dlive {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #7ff0a2;
+  box-shadow: 0 0 6px #7ff0a2;
+}
+.farm-layer .dtag {
+  display: inline-block;
+  padding: 0 0.45em;
+  border-radius: 99px;
+  background: #ffffff14;
+  color: #c9d4ef;
+  white-space: nowrap;
+}
+.farm-layer .dtag.done {
+  background: color-mix(in srgb, var(--ui-ok) 22%, transparent);
+  color: #7ff0a2;
+}
+.farm-layer .dset {
+  display: grid;
+  gap: 0.4em;
+  padding: 0.55em 0.7em 0.6em;
+  border-radius: 14px;
+  background: #ffffff0b;
+  border: 1px solid #ffffff14;
+}
+.farm-layer .dset.done {
+  border-color: color-mix(in srgb, var(--ui-ok) 55%, transparent);
+  background: color-mix(in srgb, var(--ui-ok) 9%, transparent);
+}
+.farm-layer .dset-h {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6em;
+}
+.farm-layer .dset-h b {
+  flex: 1;
+  min-width: 0;
+}
+.farm-layer .dset-n {
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.85em;
+}
+.farm-layer .dset.done .dset-n {
+  color: #7ff0a2;
+}
+.farm-layer .dset-c {
+  font-size: 0.78em;
+  font-weight: 800;
+  color: var(--ui-accent);
+  white-space: nowrap;
+}
+.farm-layer .dset-bar {
+  height: 5px;
+  border-radius: 99px;
+  background: #ffffff14;
+  overflow: hidden;
+}
+.farm-layer .dset-bar i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #8ff5ae, var(--ui-ok));
+}
+.farm-layer .dset-items {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.4em;
+}
+.farm-layer .dset-it {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  opacity: 0.4;
+  filter: grayscale(0.8);
+}
+.farm-layer .dset-it.got {
+  opacity: 1;
+  filter: none;
+}
+.farm-layer .dset-it canvas {
+  width: min(3.4em, 100%);
+  height: auto;
+  aspect-ratio: 1;
+  border-radius: 0.5em;
+  background: radial-gradient(circle at 50% 78%, #6fbf54, #2f6f3a 72%);
+}
+.farm-layer .dset-it small {
+  font-size: 0.68em;
+  color: var(--dim);
+  text-align: center;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+.farm-layer .dset-s {
+  font-size: 0.72em;
+  color: var(--dim);
+}
+.farm-layer.phone .dset-it canvas {
+  width: min(40px, 100%);
+}
+
+/* The Chicken Coop's sheet (20261117100000): one chip per hen, three to a row. */
+.farm-layer .coop-hens {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5em;
+}
+.farm-layer .coop-hens .hen {
+  display: grid;
+  grid-template-columns: 1.9em minmax(0, 1fr);
+  gap: 0.45em;
+  align-items: center;
+  min-width: 0;
+  padding: 0.4em 0.5em;
+  border-radius: 12px;
+  background: #ffffff0b;
+  border: 1px solid #ffffff14;
+}
+.farm-layer .coop-hens .hen.egg {
+  background: #ffd65b1c;
+  border-color: #ffd65b80;
+}
+.farm-layer .coop-hens .hen .ic {
+  width: 1.9em;
+  height: 1.9em;
+  display: grid;
+  place-items: center;
+}
+.farm-layer .coop-hens .hen .ic img,
+.farm-layer .coop-hens .hen .ic svg {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.farm-layer .coop-hens .hen b {
+  display: block;
+  font-size: 0.86em;
+}
+.farm-layer .coop-hens .hen small {
+  display: block;
+  overflow: hidden;
+  color: var(--dim);
+  font-size: 0.76em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.farm-layer .coop-hens .hen.egg small {
+  color: #ffd65b;
+}

@@ -113,10 +113,12 @@ describe("the Spire page", () => {
   });
   it("lists each floor with its state and first-clear reward", () => {
     const html = page("floors");
-    // Both zones, each under its own heading.
-    expect((html.match(/data-spire-floor=/g) ?? []).length).toBe(20);
+    // Every zone, each under its own heading.
+    expect((html.match(/data-spire-floor=/g) ?? []).length).toBe(40);
     expect(html).toContain('data-spire-zone-floors="1"');
     expect(html).toContain('data-spire-zone-floors="2"');
+    expect(html).toContain('data-spire-zone-floors="3"');
+    expect(html).toContain('data-spire-zone-floors="4"');
     expect(html).toMatch(/sp-floor is-done" data-spire-floor="4"/);
     expect(html).toMatch(/sp-floor is-next" data-spire-floor="5"/);
     expect(html).toMatch(/sp-floor is-locked" data-spire-floor="6"/);
@@ -203,6 +205,108 @@ describe("the Spire page", () => {
     expect(floors).toContain("Breaker Wall");
     expect(floors).toContain("Tidecaller of the Spire");
   });
+  it("offers zone 3 once zone 2 is conquered (checkpoint 21), locked before", () => {
+    const climbPage = (d: RaidData, zone?: number) =>
+      raidMarkup(
+        raidView("grumblecrag", {
+          mode: "spire",
+          spireTab: "climb",
+          spireZone: zone,
+        }),
+        d,
+      );
+    // Checkpoint 11: zone 3 is shown, locked ("Conquer zone 2 first").
+    const at11 = data({ spire: climb({ highestFloor: 14, checkpoint: 11 }) });
+    const locked = climbPage(at11);
+    expect(locked).toMatch(
+      /data-ui-spire-zone="3" aria-pressed="false" disabled/,
+    );
+    expect(locked).toContain("Conquer zone 2 first");
+    expect(spireZoneChoice({ spireZone: 3 }, at11)).toMatchObject({
+      zone: 2,
+      start: 11,
+    });
+    // Checkpoint 21: zone 3 by default, from floor 21.
+    const at21 = data({
+      spire: climb({
+        highestFloor: 20,
+        checkpoint: 21,
+        claimed: Array.from({ length: 20 }, (_, i) => i + 1),
+      }),
+    });
+    const open = climbPage(at21);
+    expect(open).toMatch(/data-ui-spire-zone="3" aria-pressed="true"/);
+    expect(open).not.toMatch(/data-ui-spire-zone="3"[^>]*disabled/);
+    expect(open).toContain("Zone 3 · Shadow");
+    expect(open).toContain("from floor 21");
+    expect(spireStartState({ play: "solo", status: "" }, at21)).toMatchObject({
+      ok: true,
+      zone: 3,
+      from: 21,
+    });
+    // Its floors: the next is 21, the elite on 25, Inkpurr's Ascendant on 30.
+    const floors = page("floors", at21);
+    expect(floors).toMatch(/sp-floor is-next" data-spire-floor="21"/);
+    expect(floors).toMatch(/sp-floor is-locked" data-spire-floor="25"/);
+    expect(floors).toContain("Zone 3 · Lantern Yard · Shadow");
+    expect(floors).toContain("The Lightless Ring");
+    expect(floors).toContain("Ascendant Inkpurr");
+    expect(floors).toContain("Lanternbane of the Spire");
+    // Floor 30 needs Inkpurr's raid cleared, like every boss floor.
+    expect(floors).toMatch(/data-spire-floor="30"[\s\S]*?Clear its raid first/);
+  });
+  it("offers zone 4 once zone 3 is conquered (checkpoint 31), locked before", () => {
+    const climbPage = (d: RaidData, zone?: number) =>
+      raidMarkup(
+        raidView("grumblecrag", {
+          mode: "spire",
+          spireTab: "climb",
+          spireZone: zone,
+        }),
+        d,
+      );
+    // Checkpoint 21: zone 4 is shown, locked ("Conquer zone 3 first").
+    const at21 = data({ spire: climb({ highestFloor: 24, checkpoint: 21 }) });
+    const locked = climbPage(at21);
+    expect(locked).toMatch(
+      /data-ui-spire-zone="4" aria-pressed="false" disabled/,
+    );
+    expect(locked).toContain("Conquer zone 3 first");
+    expect(spireZoneChoice({ spireZone: 4 }, at21)).toMatchObject({
+      zone: 3,
+      start: 21,
+    });
+    // Checkpoint 31: zone 4 by default, from floor 31.
+    const at31 = data({
+      spire: climb({
+        highestFloor: 30,
+        checkpoint: 31,
+        claimed: Array.from({ length: 30 }, (_, i) => i + 1),
+      }),
+    });
+    const open = climbPage(at31);
+    expect(open).toMatch(/data-ui-spire-zone="4" aria-pressed="true"/);
+    expect(open).not.toMatch(/data-ui-spire-zone="4"[^>]*disabled/);
+    expect(open).toContain("Zone 4 · Psychic");
+    expect(open).toContain("from floor 31");
+    expect(spireStartState({ play: "solo", status: "" }, at31)).toMatchObject({
+      ok: true,
+      zone: 4,
+      from: 31,
+    });
+    // Its floors: the next is 31, the elite on 35, Snoozaku's Ascendant on 40.
+    const floors = page("floors", at31);
+    expect(floors).toMatch(/sp-floor is-next" data-spire-floor="31"/);
+    expect(floors).toMatch(/sp-floor is-locked" data-spire-floor="35"/);
+    expect(floors).toContain("Zone 4 · Cloud Deck · Psychic");
+    expect(floors).toContain("The Starfall Ring");
+    expect(floors).toContain("Ascendant Snoozaku");
+    expect(floors).toContain("Twin Dream");
+    expect(floors).toContain("Dream Tide");
+    expect(floors).toContain("Dreambreaker of the Spire");
+    // Floor 40 needs Snoozaku's raid cleared, like every boss floor.
+    expect(floors).toMatch(/data-spire-floor="40"[\s\S]*?Clear its raid first/);
+  });
   it("shows every blessing in its codex", () => {
     expect(
       (page("blessings").match(/data-spire-blessing-info=/g) ?? []).length,
@@ -257,15 +361,15 @@ describe("Spire progress and floor previews", () => {
   it("shows a fresh climb and handles a fully conquered tower without a phantom floor", () => {
     const fresh = data({ spire: climb({ highestFloor: 0, claimed: [] }) });
     expect(spirePreview(view, fresh).selected.floor).toBe(1);
-    // Both released zones conquered: no next floor; climb any zone again
+    // Every released zone conquered: no next floor; climb any zone again
     // (the highest by default, zone 1 when picked).
-    const done = data({ spire: climb({ highestFloor: 20, checkpoint: 21 }) });
+    const done = data({ spire: climb({ highestFloor: 40, checkpoint: 41 }) });
     expect(spirePreview(view, done).next).toBeUndefined();
     const html = spireMarkup(view, done);
-    expect(html).toContain("All 20 floors conquered!");
+    expect(html).toContain("All 40 floors conquered!");
     expect(html).toContain("Spire conquered");
     expect(html).not.toContain("Next uncleared");
-    expect(html).toContain("Climb from floor 11");
+    expect(html).toContain("Climb from floor 31");
     expect(spireMarkup({ ...view, spireZone: 1 }, done)).toContain(
       "Climb from floor 1<",
     );

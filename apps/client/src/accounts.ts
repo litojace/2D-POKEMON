@@ -18,6 +18,7 @@ import type { RaidScreen } from "./screens/raid-hall";
 import type { RaidSeat, RaidTab } from "./screens/raid-hall-view";
 import type { SpireTab } from "./screens/spire-view";
 import type { SpireProgress } from "../../../packages/shared/src/spire";
+import { markSpireSeen, spireSeenKeys } from "./spire-nudge";
 import { iconLabel } from "./menu-icons";
 import { coinChip, compactCoins, leafChip, coins } from "./shop-ui";
 import { openMissions, type MissionsScreen } from "./screens/missions";
@@ -285,6 +286,7 @@ export class AccountUI {
       this.account = null;
       this.raidLook = undefined;
       this.raidClears = {};
+      this.spireProgress = null;
       this.economy = undefined;
       this.savedFighter = undefined;
       this.blocked = [];
@@ -311,6 +313,14 @@ export class AccountUI {
           this.raidClears = bossClears(progress);
         } catch {
           /* Raid storage is optional until migration 007 is installed. */
+        }
+        // The Spire's climb, for the Lobby's Spire card (spire-nudge.ts).
+        try {
+          const climb = (await this.api("/api/spire")) as SpireProgress;
+          if (version !== this.generation) return;
+          if (climb) this.spireProgress = climb;
+        } catch {
+          /* Before the Spire's migration: no climb, no card. */
         }
         try {
           const economy = (await this.api("/api/economy")) as Economy;
@@ -849,6 +859,15 @@ export class AccountUI {
   private raidLoading = false;
   private raidFriends: Friend[] | null = null;
   private spireProgress: SpireProgress | null = null;
+  /** The account's Spire climb, once loaded (null: unknown). */
+  get spire() {
+    return this.spireProgress;
+  }
+  /** The Spire page is showing: its open zones are seen (spire-nudge.ts). */
+  private noteSpireSeen() {
+    if (markSpireSeen(this.account?.id, spireSeenKeys(this.spireProgress)))
+      this.hooks.onChange();
+  }
   /**
    * Raids: the boss list and a boss's page, a panel inside the Lobby. It
    * opens at once with what is known, then shows the server's fresh copy of
@@ -899,12 +918,14 @@ export class AccountUI {
             Promise.resolve({ ok: false, error: "Parties are unavailable." }),
           friends: () => void this.showFriends(),
           wardrobe: () => void this.showWardrobe(),
+          onSpire: () => this.noteSpireSeen(),
           onClose: () => (this.raidScreen = undefined),
         },
         { boss, tab, spire },
       );
     }
     const screen = this.raidScreen;
+    if (screen.view.mode === "spire") this.noteSpireSeen();
     const [raids, friends, climb] = await Promise.allSettled([
       this.api("/api/raids") as Promise<RaidProgress>,
       this.nearbyFriends(),
@@ -914,6 +935,7 @@ export class AccountUI {
     if (climb.status === "fulfilled" && climb.value)
       this.spireProgress = climb.value;
     if (this.account?.id !== accountId || !screen.isOpen) return;
+    if (screen.view.mode === "spire") this.noteSpireSeen();
     if (raids.status === "fulfilled") {
       this.raidProgress = raids.value;
       this.raidProblem = "";

@@ -422,14 +422,15 @@ export function marketOffers(now: number): { id: Ingredient; price: number }[] {
 /** When the Market changes next (ms). */
 export const marketNext = (now: number) =>
   (Math.floor(now / MARKET_PERIOD_MS) + 1) * MARKET_PERIOD_MS;
-/* The Farm's barn: three plain crops (or milk) make one ingredient, up to
-   30 a Pacific day; never back the other way. */
+/* The Farm's barn: three plain crops (or milk, or eggs from the coop) make
+   one ingredient, up to 30 a Pacific day; never back the other way. */
 export const FARM_TO_BISTRO: Record<string, Ingredient> = {
   wheat: "flour",
   mint: "herbs",
   pepper: "chili",
   lotus: "beans",
   milk: "milk",
+  egg: "egg",
 };
 export const FARM_PER_INGREDIENT = 3;
 export const FARM_DAILY = 30;

@@ -1,4 +1,5 @@
 import type { RaidAttack } from "./raid.js";
+import { ASCENDANT_SNOOZAKU, type RaidVariant } from "./raid-ascendant.js";
 
 export const DREAM_RUNES = ["circle", "star", "moon", "wave"] as const;
 export type DreamRune = (typeof DREAM_RUNES)[number];
@@ -14,6 +15,13 @@ export interface RaidDreamView {
   runes: DreamRune[];
   full: boolean;
   backwards: boolean;
+  /**
+   * Steps whose rune this raider can't see (their `runes` entry is only a
+   * placeholder): a Twin Dream's partner steps, or a faded dream's runes.
+   */
+  hidden?: number[];
+  /** A Dream Tide: `runes[0]` is the one pad that stays awake (`id` is its warning). */
+  tide?: boolean;
 }
 export const SOMNARA = {
   health: { base: 1050, perExtraPlayer: 1000, gilded: 1.12 },
@@ -67,6 +75,15 @@ export const SOMNARA = {
   /** Exposed after a solved dream: one lullaby halfway through, at this damage share. */
   thrash: 0.6,
 } as const;
+
+/**
+ * The rune pads of a Somnara raid. The Ascendant's sit clear of a phone's
+ * touch controls (ASCENDANT_SNOOZAKU.pads); the raid's keep their square.
+ */
+export const somnaraPads = (
+  variant?: RaidVariant,
+): readonly { rune: DreamRune; x: number; y: number }[] =>
+  variant === "ascendant" ? ASCENDANT_SNOOZAKU.pads : SOMNARA.pads;
 
 export function somnaraSequenceLength(
   phase: number,

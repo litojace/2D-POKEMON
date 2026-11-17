@@ -21,6 +21,8 @@ const SIZES = [
   },
   // The old spec's narrow phone.
   { name: "700x390", width: 700, height: 390, phone: true },
+  // The biggest iPhones held sideways (owner's screenshot, 16 Nov 2026).
+  { name: "932x430", width: 932, height: 430, phone: true },
 ];
 // The server says it is Wednesday 4 Nov 2026, 12:00 in California: the
 // weekly goals reset in 4 d 12 h, November's season ends in 26 d 12 h.
@@ -175,6 +177,27 @@ for (const size of SIZES)
       expect(await layoutProblems(page, { inset, phone: size.phone })).toEqual(
         [],
       );
+      // Each reward's picture, level, name and state one under the other,
+      // none over another and all inside the card (owner's screenshot,
+      // 16 Nov 2026: 100 px cards squeezed the 44 px picture over "Level").
+      const stacked = await room.evaluate((r) =>
+        Array.from(r.querySelectorAll(".journey-prize")).flatMap((card) => {
+          const box = card.getBoundingClientRect();
+          const parts = Array.from(card.children).map((c) =>
+            c.getBoundingClientRect(),
+          );
+          const bad: string[] = [];
+          const name = card.querySelector("b")?.textContent ?? "?";
+          parts.forEach((p, i) => {
+            if (i && p.top < parts[i - 1].bottom - 0.5)
+              bad.push(`${name}: part ${i} under part ${i - 1}`);
+            if (p.top < box.top || p.bottom > box.bottom + 0.5)
+              bad.push(`${name}: part ${i} outside the card`);
+          });
+          return bad;
+        }),
+      );
+      expect(stacked).toEqual([]);
       await snap(page, info, `journey-levels-${size.name}`);
       const last = room.locator('[data-journey-item="element-master-frame"]');
       await last.scrollIntoViewIfNeeded();

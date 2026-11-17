@@ -119,14 +119,30 @@ it("Earth Carrot, Dusk Cap, Lava Pumpkin and Storm Melon can grow giant, at 10% 
   const [{ x }] = await owner("select public.arena_farm_giant_chance() x");
   expect(x).toBeCloseTo(GIANT.chance, 9);
   // Many squares of 9 plantings: about 10% of their rolls are under the chance.
-  const [{ share }] = await owner(
-    `select avg((public.arena_farm_giant_roll($1, 0, array(
-        select timestamptz '2026-01-01' + make_interval(secs => s * 60 + k) from generate_series(0, 8) k
-      )) < $2)::int)::float share from generate_series(1, 4000) s`,
-    [player, GIANT.chance],
+  // The rolls hash the farm salt, which migration 039 draws at random for each
+  // new database, so pin it here: the same 4000 rolls every run, not a fresh
+  // sample that falls outside the window once in a few hundred runs.
+  // (With this salt the share is 0.10625: 425 of the 4000 rolls.)
+  const [{ salt }] = await owner(
+    "select salt from public.arena_farm_salt where id = 1",
   );
-  expect(share).toBeGreaterThan(0.085);
-  expect(share).toBeLessThan(0.115);
+  await owner("update public.arena_farm_salt set salt = $1 where id = 1", [
+    "farm-giants-test",
+  ]);
+  try {
+    const [{ share }] = await owner(
+      `select avg((public.arena_farm_giant_roll($1, 0, array(
+          select timestamptz '2026-01-01' + make_interval(secs => s * 60 + k) from generate_series(0, 8) k
+        )) < $2)::int)::float share from generate_series(1, 4000) s`,
+      [player, GIANT.chance],
+    );
+    expect(share).toBeGreaterThan(0.085);
+    expect(share).toBeLessThan(0.115);
+  } finally {
+    await owner("update public.arena_farm_salt set salt = $1 where id = 1", [
+      salt,
+    ]);
+  }
 });
 
 it("rolls each square once: reading the farm again never re-rolls it", async () => {

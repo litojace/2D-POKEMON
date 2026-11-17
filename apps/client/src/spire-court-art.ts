@@ -84,6 +84,44 @@ export interface SpireZoneTheme {
     /** Bioluminescence (high floors). */
     bio: string;
   };
+  /** The pale glow in the paving's middle (unset: 0.16; a dark zone's is faint). */
+  centreGlow?: number;
+  /** The floor's vignette (unset: 0.42; a dark zone keeps its edges lighter). */
+  vignette?: number;
+  /**
+   * A night zone (Shadow): violet ink veins in the inlay, lantern-lit warm
+   * pools on the paving, lanterns and candles on the cover, and beyond the
+   * tower a night sky with ink clouds and a few distant lantern lights.
+   * Higher floors gather more ink (on the cover and in the sky).
+   */
+  night?: {
+    /** The ink in the veins and on the stone. */
+    veins: string;
+    /** Lantern glass and flame (light, mid). */
+    lantern: [string, string];
+    /** The warm light a lantern throws on the paving ("r,g,b"). */
+    pool: string;
+    /** Ink clouds and streaks in the sky. */
+    inkCloud: string;
+  };
+  /**
+   * A dream zone (Psychic): pale marble veins and a gold star inlay in the
+   * paving (constellations along the spokes, crescent moons in the
+   * corners), a crescent and star on the cover and stars at the crystals'
+   * tips, and beyond the tower a twilight sky with a big soft moon, dream
+   * clouds drifting past and a few stars floating in the air. Higher floors
+   * sink into a deeper indigo night.
+   */
+  dream?: {
+    /** The star inlay's gold (and the stars on the cover). */
+    star: string;
+    /** Marble veins ("r,g,b"). */
+    vein: string;
+    /** Dream clouds: their lit tops (rose) and their shade (lavender). */
+    cloud: [string, string];
+    /** The moon. */
+    moon: string;
+  };
 }
 export const SPIRE_ZONE_THEMES: Record<number, SpireZoneTheme> = {
   // Zone 1, Earth: warm sandstone and amber crystal, a golden afternoon
@@ -135,8 +173,80 @@ export const SPIRE_ZONE_THEMES: Record<number, SpireZoneTheme> = {
       bio: "#6ff7e6",
     },
   },
+  // Zone 3, Shadow: a haunted tower at night. Dark slate and obsidian
+  // stone, lantern-lit warm pools on the paving, violet ink seeping through
+  // the inlay, candle-pale crystals over ink-dark faces and lanterns on the
+  // cover; beyond the edge a night sky with ink clouds and a few distant
+  // lantern lights. (The Echoes' lavender, ECHO_SKILL_COLOR, stays unused:
+  // the ink is a deeper, redder violet and only in thin veins.)
+  3: {
+    zone: 3,
+    slab: ["#33364a", "#1e2030"],
+    grout: "#14121c",
+    rim: ["#77738a", "#403e52"],
+    carve: "#0b0912",
+    top: ["#8a879e", "#5e5c74"],
+    front: ["#4e4c64", "#2c2a3c"],
+    crystal: ["#fff6dc", "#ffcf7a", "#3a2350"],
+    glow: 0xffc864,
+    rune: "#ffd98a",
+    skyLow: ["#211c40", "#4d3c66"],
+    skyHigh: ["#040309", "#160c28"],
+    cloud: ["#3e345c", "#1c1430"],
+    light: "112,106,168",
+    ink: "8,6,18",
+    shine: "232,226,255",
+    dusk: "14,8,40",
+    warmth: 0.1,
+    duskTint: [196, 184, 226],
+    centreGlow: 0.04,
+    vignette: 0.3,
+    night: {
+      veins: "#8a3fc0",
+      lantern: ["#fff3c8", "#ffb04a"],
+      pool: "255,184,104",
+      inkCloud: "#2a1d44",
+    },
+  },
+  // Zone 4, Psychic: a dreamlike tower above the clouds. Pale periwinkle
+  // marble with white veins and a gold star inlay, rose-pink
+  // psychic crystals with stars at their tips, a crescent and star on the
+  // cover; beyond the edge a twilight sky (periwinkle over a rose horizon)
+  // with a big soft moon, dream clouds and a few floating stars, sinking
+  // into a deep indigo night near the top. (The marble leans blue, not
+  // lavender, so the Echoes' violet ring, ECHO_SKILL_COLOR, keeps its own
+  // hue on it; the crystals are rose, never violet.)
+  4: {
+    zone: 4,
+    slab: ["#d6daf6", "#aab0e2"],
+    grout: "#5e66a8",
+    rim: ["#eff1ff", "#a4aade"],
+    carve: "#1c1642",
+    top: ["#f4f5ff", "#cdd1f2"],
+    front: ["#868fcf", "#525a9c"],
+    crystal: ["#fff3fb", "#ff9fd4", "#7c2a78"],
+    glow: 0xffa6da,
+    rune: "#ffd86a",
+    skyLow: ["#5d64ba", "#f7c8de"],
+    skyHigh: ["#070726", "#2c2266"],
+    cloud: ["#f6ecff", "#5a4c9c"],
+    light: "236,228,255",
+    ink: "22,16,62",
+    shine: "252,248,255",
+    dusk: "26,18,88",
+    sun: "255,222,238",
+    warmth: 0.08,
+    duskTint: [192, 192, 240],
+    vignette: 0.28,
+    dream: {
+      star: "#ffdf86",
+      vein: "255,252,255",
+      cloud: ["#ffd9ef", "#c0b0f6"],
+      moon: "#fff7e2",
+    },
+  },
 };
-/** A zone's look (zone 1 Earth, zone 2 Water); unknown zones take zone 1's. */
+/** A zone's look (1 Earth, 2 Water, 3 Shadow, 4 Psychic); unknown zones take zone 1's. */
 export const spireZoneTheme = (zone: number): SpireZoneTheme =>
   SPIRE_ZONE_THEMES[zone] ?? SPIRE_ZONE_THEMES[1];
 export const spireTheme = spireZoneTheme;
@@ -255,10 +365,12 @@ function ringPaving(c: Ctx, t: SpireZoneTheme) {
         const [p0x, p0y] = at(a0 + (a1 - a0) * 0.3, r0 + 4),
           [p1x, p1y] = at(a0 + (a1 - a0) * 0.6, r0 + depth * 0.5),
           [p2x, p2y] = at(a0 + (a1 - a0) * 0.45, r1 - 4);
+        // (In a night zone the seam is violet ink.)
+        const seam = t.night?.veins ?? t.crystal[1];
         c.save();
-        c.shadowColor = t.crystal[1];
+        c.shadowColor = seam;
         c.shadowBlur = 6;
-        c.strokeStyle = rgba(t.crystal[1], 0.75);
+        c.strokeStyle = rgba(seam, 0.75);
         c.lineWidth = 1.6;
         c.beginPath();
         c.moveTo(p0x, p0y);
@@ -504,6 +616,301 @@ function waterways(c: Ctx, t: SpireZoneTheme) {
     }
   }
 }
+/**
+ * A night zone's ink (decoration: walkable): violet veins seeping out of the
+ * rune ring's groove into the paving and the plate, and ink threads laid in
+ * four of the spokes. Thin and dim, so they read as stone, never as a
+ * warning or an Echo's ring.
+ */
+function inkVeins(c: Ctx, t: SpireZoneTheme) {
+  const night = t.night;
+  if (!night) return;
+  const { x, y, r } = SPIRE_RING;
+  const at = (a: number, rr: number): [number, number] => [
+    x + Math.cos(a) * rr,
+    y + Math.sin(a) * rr * K,
+  ];
+  c.save();
+  c.lineCap = "round";
+  c.lineJoin = "round";
+  // Ink in the spokes the water zone cuts channels along.
+  for (let k = 1; k < 8; k += 2) {
+    const a = (k / 8) * Math.PI * 2 + Math.PI / 8;
+    const [x0, y0] = at(a, r + 30),
+      [x1, y1] = at(a, 560);
+    c.strokeStyle = rgba(night.veins, 0.45);
+    c.lineWidth = 2.4;
+    c.beginPath();
+    c.moveTo(x0, y0);
+    c.lineTo(x1, y1);
+    c.stroke();
+  }
+  // Veins from the groove: a wandering line with a branch or two, fading.
+  reseed(7471);
+  c.shadowColor = night.veins;
+  c.shadowBlur = 5;
+  const vein = (a: number, r0: number, len: number, width: number) => {
+    let [px, py] = at(a, r0),
+      dir = a;
+    const out = r0 > r;
+    c.beginPath();
+    c.moveTo(px, py);
+    const steps = 6;
+    for (let i = 0; i < steps; i++) {
+      dir += (R() - 0.5) * 0.9;
+      const d = len / steps;
+      const s = out ? 1 : -1;
+      px += Math.cos(dir) * d * s;
+      py += Math.sin(dir) * d * K * s;
+      c.lineTo(px, py);
+      if (i === 2 && R() < 0.7) {
+        // A short branch.
+        c.moveTo(px, py);
+        c.lineTo(
+          px + Math.cos(dir + 0.8) * d * 1.4 * s,
+          py + Math.sin(dir + 0.8) * d * 1.4 * K * s,
+        );
+        c.moveTo(px, py);
+      }
+    }
+    c.lineWidth = width;
+    c.stroke();
+  };
+  for (let k = 0; k < 14; k++) {
+    const a = (k / 14) * Math.PI * 2 + R() * 0.3;
+    c.strokeStyle = rgba(night.veins, 0.6);
+    vein(a, r + 22, 70 + R() * 90, 1.8 + R() * 1.2);
+  }
+  // A few finer ones creeping inward over the plate.
+  for (let k = 0; k < 6; k++) {
+    const a = (k / 6) * Math.PI * 2 + 0.4 + R() * 0.4;
+    c.strokeStyle = rgba(night.veins, 0.4);
+    vein(a, r - 12, 26 + R() * 22, 1.2);
+  }
+  c.restore();
+}
+/** Where a night zone's lanterns stand on the coping (world). */
+export const SPIRE_LANTERNS: [number, number][] = [
+  [420, 14],
+  [W - 420, 14],
+  [14, H / 2],
+  [W - 14, H / 2],
+  [420, H - 12],
+  [W - 420, H - 12],
+];
+/** A small lantern standing at (x, y): iron frame, warm glass, a flame. */
+function lantern(c: Ctx, t: SpireZoneTheme, x: number, y: number, s = 1) {
+  const night = t.night!;
+  const w = 12 * s,
+    h = 18 * s;
+  c.save();
+  // The glow round it (painted, not a live light).
+  const g = c.createRadialGradient(x, y - h * 0.55, 1, x, y - h * 0.55, 26 * s);
+  g.addColorStop(0, rgba(night.lantern[1], 0.55));
+  g.addColorStop(1, rgba(night.lantern[1], 0));
+  c.fillStyle = g;
+  c.fillRect(x - 26 * s, y - h * 0.55 - 26 * s, 52 * s, 52 * s);
+  // Glass, then the flame, then the iron.
+  const glass = c.createLinearGradient(0, y - h, 0, y);
+  glass.addColorStop(0, night.lantern[0]);
+  glass.addColorStop(1, night.lantern[1]);
+  c.fillStyle = glass;
+  c.fillRect(x - w / 2, y - h, w, h);
+  c.fillStyle = "#fffdf2";
+  c.beginPath();
+  c.ellipse(x, y - h * 0.45, 2.2 * s, 4.2 * s, 0, 0, Math.PI * 2);
+  c.fill();
+  c.strokeStyle = "#16121e";
+  c.lineWidth = 2 * s;
+  c.strokeRect(x - w / 2, y - h, w, h);
+  c.beginPath();
+  c.moveTo(x, y - h);
+  c.lineTo(x, y);
+  c.stroke();
+  c.fillStyle = "#16121e";
+  c.beginPath();
+  c.moveTo(x - w / 2 - 2 * s, y - h);
+  c.lineTo(x, y - h - 7 * s);
+  c.lineTo(x + w / 2 + 2 * s, y - h);
+  c.closePath();
+  c.fill();
+  c.fillRect(x - w / 2 - 2 * s, y - 2 * s, w + 4 * s, 3 * s);
+  c.restore();
+}
+/**
+ * A night zone's lantern light on the paving: a warm pool under each of the
+ * coping's lanterns and in each corner (where the crystals grow), so the
+ * dark slate has lit places to read fighters against. Soft-edged: never a
+ * ring, never a warning.
+ */
+function lanternPools(c: Ctx, t: SpireZoneTheme) {
+  const night = t.night;
+  if (!night) return;
+  lights(c, [
+    ...SPIRE_LANTERNS.map(
+      ([x, y]): [number, number, number, number, string] => [
+        x + (x < 40 ? 40 : x > W - 40 ? -40 : 0),
+        y + (y < 40 ? 50 : y > H - 40 ? -50 : 0),
+        240,
+        0.6,
+        night.pool,
+      ],
+    ),
+    [96, 90, 230, 0.55, night.pool],
+    [W - 96, 90, 230, 0.55, night.pool],
+    [96, H - 86, 230, 0.55, night.pool],
+    [W - 96, H - 86, 230, 0.55, night.pool],
+  ]);
+}
+/**
+ * A star's outline (`n` points; the inner corners at `inner` of the
+ * radius) round (x, y), squashed by `flat` (K lays it on the ground).
+ */
+function starPath(
+  c: Ctx,
+  x: number,
+  y: number,
+  r: number,
+  n = 4,
+  inner = 0.38,
+  flat = 1,
+) {
+  c.beginPath();
+  for (let i = 0; i < n * 2; i++) {
+    const a = -Math.PI / 2 + (i * Math.PI) / n,
+      rr = i % 2 ? r * inner : r;
+    const px = x + Math.cos(a) * rr,
+      py = y + Math.sin(a) * rr * flat;
+    if (i) c.lineTo(px, py);
+    else c.moveTo(px, py);
+  }
+  c.closePath();
+}
+/** A crescent moon's outline round (x, y), its horns to the upper right. */
+function crescentPath(c: Ctx, x: number, y: number, r: number, flat = 1) {
+  // The outer disc's arc round the left, then the bite's arc back.
+  const d = r * 0.5,
+    r2 = r * 0.82;
+  const ix = (r * r - r2 * r2 + d * d) / (2 * d),
+    iy = Math.sqrt(Math.max(0, r * r - ix * ix));
+  const ao = Math.atan2(iy, ix),
+    ai = Math.atan2(iy, ix - d);
+  c.save();
+  c.translate(x, y);
+  c.scale(1, flat);
+  c.rotate(-0.5);
+  c.beginPath();
+  c.arc(0, 0, r, ao, -ao, false);
+  c.arc(d, 0, r2, -ai, ai, true);
+  c.closePath();
+  c.restore();
+}
+/** A gold star inlaid in the paving: a dark seat, the gold, a pale glint. */
+function inlaidStar(
+  c: Ctx,
+  t: SpireZoneTheme,
+  x: number,
+  y: number,
+  r: number,
+  n = 4,
+) {
+  const d = t.dream!;
+  c.fillStyle = tone(t, "rgba(30,18,6,0.5)");
+  starPath(c, x + 0.8, y + 1, r * 1.3, n, 0.44, K);
+  c.fill();
+  c.fillStyle = d.star;
+  starPath(c, x, y, r, n, 0.4, K);
+  c.fill();
+  c.fillStyle = "rgba(255,255,248,0.8)";
+  ell(c, x - r * 0.12, y - r * 0.12 * K, r * 0.22, r * 0.16);
+  c.fill();
+}
+/**
+ * A dream zone's paving (decoration: walkable, nothing collides): soft
+ * white veins through the marble, a constellation inlaid in gold along
+ * four of the spokes, stars scattered through the paving and a crescent
+ * moon in each corner beyond the octagon. Small and calm, never a ring or
+ * a warning.
+ */
+function dreamInlay(c: Ctx, t: SpireZoneTheme) {
+  const d = t.dream;
+  if (!d) return;
+  const { x, y, r } = SPIRE_RING;
+  const at = (a: number, rr: number): [number, number] => [
+    x + Math.cos(a) * rr,
+    y + Math.sin(a) * rr * K,
+  ];
+  c.save();
+  c.lineCap = "round";
+  c.lineJoin = "round";
+  // Marble veins: long, faint, wandering.
+  reseed(7481);
+  for (let k = 0; k < 24; k++) {
+    let px = 80 + R() * (W - 160),
+      py = 60 + R() * (H - 120),
+      dir = R() * Math.PI * 2;
+    c.beginPath();
+    c.moveTo(px, py);
+    for (let i = 0; i < 7; i++) {
+      dir += (R() - 0.5) * 0.8;
+      const len = 22 + R() * 30;
+      px += Math.cos(dir) * len;
+      py += Math.sin(dir) * len * K;
+      c.lineTo(px, py);
+    }
+    c.strokeStyle = `rgba(${d.vein},${(0.2 + R() * 0.16).toFixed(3)})`;
+    c.lineWidth = 1 + R() * 1.4;
+    c.stroke();
+  }
+  // Constellations along the spokes the water zone cuts channels beside.
+  for (let k = 1; k < 8; k += 2) {
+    const a = (k / 8) * Math.PI * 2 + Math.PI / 8;
+    const pts = Array.from({ length: 5 }, (_, i) =>
+      at(a + (R() - 0.5) * 0.14, r + 52 + i * 92 + R() * 26),
+    );
+    const line = (style: string, width: number, dy: number) => {
+      c.strokeStyle = style;
+      c.lineWidth = width;
+      c.beginPath();
+      pts.forEach(([px, py], i) =>
+        i ? c.lineTo(px, py + dy) : c.moveTo(px, py + dy),
+      );
+      c.stroke();
+    };
+    line(tone(t, "rgba(30,18,6,0.3)"), 3, 1.2);
+    line(rgba(d.star, 0.75), 1.6, 0);
+    pts.forEach(([px, py], i) =>
+      inlaidStar(c, t, px, py, i === 2 ? 10 : 5.5 + R() * 2, i === 2 ? 5 : 4),
+    );
+  }
+  // Stars scattered through the paving (clear of the ring's plate).
+  for (let k = 0; k < 30; k++) {
+    const px = 100 + R() * (W - 200),
+      py = 80 + R() * (H - 160),
+      s = 3 + R() * 3.5;
+    if (Math.hypot(px - x, (py - y) / K) < r + 40) continue;
+    inlaidStar(c, t, px, py, s);
+  }
+  // A crescent moon in each corner beyond the octagon, a star beside it.
+  for (const [px, py] of [
+    [122, 112],
+    [W - 122, 112],
+    [122, H - 104],
+    [W - 122, H - 104],
+  ]) {
+    c.fillStyle = tone(t, "rgba(30,18,6,0.45)");
+    crescentPath(c, px + 1.5, py + 2, 26, K);
+    c.fill();
+    const g = c.createLinearGradient(px - 26, py - 20, px + 26, py + 20);
+    g.addColorStop(0, mix(d.star, "#ffffff", 0.45));
+    g.addColorStop(1, d.star);
+    c.fillStyle = g;
+    crescentPath(c, px, py, 24, K);
+    c.fill();
+    inlaidStar(c, t, px + 30, py - 14, 7);
+  }
+  c.restore();
+}
 /** The platform's coping: big dressed stones round the edge, a lip you can stand on. */
 function coping(c: Ctx, t: SpireZoneTheme) {
   const B = SPIRE_RIM;
@@ -566,7 +973,7 @@ export function paintSpireFloor(c: Ctx, t: SpireZoneTheme) {
   c.clip();
   ringPaving(c, t);
   const inner = c.createRadialGradient(W / 2, H / 2, 80, W / 2, H / 2, 820);
-  inner.addColorStop(0, tone(t, "rgba(255,244,220,0.16)"));
+  inner.addColorStop(0, tone(t, `rgba(255,244,220,${t.centreGlow ?? 0.16})`));
   inner.addColorStop(1, tone(t, "rgba(255,244,220,0)"));
   c.fillStyle = inner;
   c.fillRect(0, 0, W, H);
@@ -624,6 +1031,9 @@ export function paintSpireFloor(c: Ctx, t: SpireZoneTheme) {
   }
   runeRing(c, t);
   waterways(c, t);
+  inkVeins(c, t);
+  lanternPools(c, t);
+  dreamInlay(c, t);
   // Dust and grit, a few fallen crystal shards near the edges.
   paintKit.pebbles(
     c,
@@ -662,12 +1072,14 @@ export function paintSpireFloor(c: Ctx, t: SpireZoneTheme) {
   ])
     for (let k = 0; k < 3; k++)
       shards(c, t, x + (R() - 0.5) * 22, y + (R() - 0.5) * 8, 16 + R() * 8);
+  // A night zone's lanterns on the coping.
+  if (t.night) for (const [x, y] of SPIRE_LANTERNS) lantern(c, t, x, y + 8);
   // Sun from the upper left, warm, and a gentle vignette.
   lights(c, [
     [380, 200, 620, 0.2, t.light],
     [1250, 680, 420, 0.08, t.light],
   ]);
-  grade(c, t.warmth ?? 0.3, 0.42);
+  grade(c, t.warmth ?? 0.3, t.vignette ?? 0.42);
 }
 
 // ───────────────────────────── Sky ─────────────────────────────
@@ -691,27 +1103,49 @@ export function paintSpireSky(c: Ctx, t: SpireZoneTheme, floor: number) {
     horizon = mix(t.skyLow[1], t.skyHigh[1], h);
   // The cloud sea's top: level with the court low down, far below it near the top.
   // (A water zone's sea, with a mist over it, sinks a little less.)
-  const cloudTop = t.sea ? 300 + h * 760 : 260 + h * 1000;
+  // (A night zone's ink clouds sink a little less too.)
+  const cloudTop = t.sea
+    ? 300 + h * 760
+    : t.night
+      ? 320 + h * 820
+      : t.dream
+        ? 280 + h * 900
+        : 260 + h * 1000;
   const g = c.createLinearGradient(0, S.y, 0, cloudTop + 120);
   g.addColorStop(0, top);
   g.addColorStop(0.65, mix(top, horizon, 0.55));
   g.addColorStop(1, horizon);
   c.fillStyle = g;
   c.fillRect(S.x, S.y, S.w, S.h);
-  // Stars: none in daylight, a field of them at the top.
+  // Stars: none in daylight, a field of them at the top (a night zone has
+  // some from its first floor).
   reseed(9100 + floor);
-  const stars = Math.round(220 * h * h);
+  // (A dream zone's twilight has some too, and more higher up.)
+  const stars = t.night
+    ? Math.round(70 + 150 * h)
+    : t.dream
+      ? Math.round(50 + 170 * h)
+      : Math.round(220 * h * h);
   for (let k = 0; k < stars; k++) {
     const x = S.x + R() * S.w,
       y = S.y + R() * (cloudTop - S.y);
-    const a = (0.35 + R() * 0.65) * Math.min(1, h * 1.4);
+    const a =
+      (0.35 + R() * 0.65) *
+      (t.night
+        ? 0.6 + 0.4 * h
+        : t.dream
+          ? 0.45 + 0.55 * h
+          : Math.min(1, h * 1.4));
     c.fillStyle = `rgba(255,248,232,${a})`;
     c.beginPath();
     c.arc(x, y, 1.6 + R() * 2.2, 0, Math.PI * 2);
     c.fill();
   }
-  // A pale moon once it is dark enough.
-  if (h > 0.45) {
+  // A pale moon once it is dark enough (a night zone's: a crescent, always).
+  // (A dream zone's: a big soft full moon, always.)
+  if (t.night) paintCrescent(c, t, h);
+  else if (t.dream) paintDreamMoon(c, t, h);
+  else if (h > 0.45) {
     const a = (h - 0.45) / 0.55;
     const mx = 1900,
       my = -200;
@@ -757,6 +1191,8 @@ export function paintSpireSky(c: Ctx, t: SpireZoneTheme, floor: number) {
         0.22 * (1 - h),
       );
   if (t.sea) paintSeaBelow(c, t, h, cloudTop, puff, floor);
+  else if (t.night) paintNightBelow(c, t, h, cloudTop, puff, floor);
+  else if (t.dream) paintDreamBelow(c, t, h, cloudTop, puff, floor);
   // The far cloud sea behind the tower.
   else
     for (let row = 0; row < 5; row++)
@@ -816,6 +1252,38 @@ export function paintSpireSky(c: Ctx, t: SpireZoneTheme, floor: number) {
     c.lineTo(sx + 14, faceTop + 100);
     c.lineTo(sx - 6, faceTop + 160);
     c.stroke();
+  }
+  // A night zone's tower: lit windows in its face.
+  if (t.night) {
+    reseed(9350);
+    for (const [wx, wy] of [
+      [180, 70],
+      [520, 120],
+      [1060, 80],
+      [1420, 130],
+      [880, 170],
+    ]) {
+      const glow = c.createRadialGradient(
+        wx,
+        faceTop + wy,
+        1,
+        wx,
+        faceTop + wy,
+        30,
+      );
+      glow.addColorStop(0, rgba(t.night.lantern[1], 0.5));
+      glow.addColorStop(1, rgba(t.night.lantern[1], 0));
+      c.fillStyle = glow;
+      c.fillRect(wx - 30, faceTop + wy - 30, 60, 60);
+      c.fillStyle = t.night.lantern[1];
+      c.beginPath();
+      c.moveTo(wx - 7, faceTop + wy + 10);
+      c.lineTo(wx - 7, faceTop + wy - 4);
+      c.arc(wx, faceTop + wy - 4, 7, Math.PI, 0);
+      c.lineTo(wx + 7, faceTop + wy + 10);
+      c.closePath();
+      c.fill();
+    }
   }
   // Near clouds drift across the foot of the tower.
   reseed(9400 + floor);
@@ -933,6 +1401,260 @@ function paintSeaBelow(
     }
   }
 }
+/** A night zone's moon: a pale crescent at the upper right, hazed by ink. */
+function paintCrescent(c: Ctx, t: SpireZoneTheme, h: number) {
+  const mx = 1900,
+    my = -200,
+    a = 0.75 + 0.25 * h;
+  const glow = c.createRadialGradient(mx, my, 10, mx, my, 260);
+  glow.addColorStop(0, `rgba(226,218,255,${0.3 * a})`);
+  glow.addColorStop(1, "rgba(226,218,255,0)");
+  c.fillStyle = glow;
+  c.fillRect(mx - 260, my - 260, 520, 520);
+  c.save();
+  c.fillStyle = `rgba(246,242,255,${0.92 * a})`;
+  c.beginPath();
+  c.arc(mx, my, 50, 0, Math.PI * 2);
+  c.fill();
+  // The dark part: the night's own colour over the disc.
+  c.fillStyle = mix(t.skyLow[0], t.skyHigh[0], h);
+  c.beginPath();
+  c.arc(mx + 22, my - 10, 46, 0, Math.PI * 2);
+  c.fill();
+  c.restore();
+}
+/**
+ * A night zone's view down: ink clouds far below the tower from `top`,
+ * with ink streaks drifting across the sky (more the higher), distant
+ * spires on the horizon with a lantern lit here and there, and a few sky
+ * lanterns floating up out of the clouds. Painted once per floor with the
+ * sky (nothing moves).
+ */
+function paintNightBelow(
+  c: Ctx,
+  t: SpireZoneTheme,
+  h: number,
+  top: number,
+  puff: (x: number, y: number, r: number, a: number) => void,
+  floor: number,
+) {
+  const night = t.night!,
+    S = SPIRE_SKY,
+    bottom = S.y + S.h;
+  reseed(9600 + floor);
+  // Distant spires on the horizon (dark against the sky), a lit window or
+  // two in each: only beyond the court's sides, where the sky shows.
+  const spireCol = mix(mix(t.skyLow[0], t.skyHigh[0], h), "#000000", 0.35);
+  for (let k = 0; k < 9; k++) {
+    const x = S.x + 60 + R() * (S.w - 120);
+    if (x > -60 && x < W + 60) continue;
+    const w = 26 + R() * 34,
+      tall = 120 + R() * 200,
+      base = top + 60;
+    c.fillStyle = spireCol;
+    c.beginPath();
+    c.moveTo(x - w / 2, base);
+    c.lineTo(x - w / 2, base - tall);
+    c.lineTo(x, base - tall - w * 1.4);
+    c.lineTo(x + w / 2, base - tall);
+    c.lineTo(x + w / 2, base);
+    c.closePath();
+    c.fill();
+    for (let j = 0; j < 2; j++)
+      if (R() < 0.7) {
+        const wy = base - tall * (0.3 + R() * 0.6);
+        const g = c.createRadialGradient(x, wy, 0, x, wy, 16);
+        g.addColorStop(0, rgba(night.lantern[1], 0.85));
+        g.addColorStop(1, rgba(night.lantern[1], 0));
+        c.fillStyle = g;
+        c.fillRect(x - 16, wy - 16, 32, 32);
+      }
+  }
+  // The ink cloud sea, darker the higher the floor.
+  const cloudCol = mix(t.cloud[0], t.cloud[1], h);
+  for (let row = 0; row < 5; row++)
+    for (let k = 0; k < 16; k++)
+      puff(
+        S.x + (k + R() * 0.8) * (S.w / 15),
+        top + row * 90 + R() * 40,
+        170 + R() * 110,
+        0.6 + row * 0.08,
+      );
+  // Moonlit tops on the nearest row (so the ink reads as cloud).
+  c.strokeStyle = `rgba(200,190,240,${0.16 * (1 - 0.4 * h)})`;
+  c.lineWidth = 3;
+  c.lineCap = "round";
+  for (let k = 0; k < 14; k++) {
+    const x = S.x + R() * S.w,
+      y = top + 10 + R() * 40;
+    c.beginPath();
+    c.arc(x, y + 60, 90 + R() * 40, Math.PI * 1.15, Math.PI * 1.6);
+    c.stroke();
+  }
+  // Ink streaks drifting across the sky: long dark wisps, more the higher.
+  const streaks = Math.round(6 + 14 * h);
+  for (let k = 0; k < streaks; k++) {
+    const x = S.x + R() * S.w,
+      y = S.y + 80 + R() * (top - S.y - 40),
+      len = 260 + R() * 420,
+      thick = 18 + R() * 26;
+    const g = c.createLinearGradient(x, 0, x + len, 0);
+    g.addColorStop(0, rgba(night.inkCloud, 0));
+    g.addColorStop(0.4, rgba(night.inkCloud, 0.5 + 0.3 * h));
+    g.addColorStop(1, rgba(night.inkCloud, 0));
+    c.fillStyle = g;
+    c.beginPath();
+    c.ellipse(x + len / 2, y, len / 2, thick / 2, -0.06, 0, Math.PI * 2);
+    c.fill();
+  }
+  // A few sky lanterns rising out of the clouds (beyond the court).
+  for (let k = 0; k < 7; k++) {
+    const x = S.x + 80 + R() * (S.w - 160),
+      y = top - 40 - R() * 380;
+    if (x > -40 && x < W + 40 && y > -40 && y < H + 40) continue;
+    const r = 3 + R() * 3;
+    const g = c.createRadialGradient(x, y, 0, x, y, r * 5);
+    g.addColorStop(0, rgba(night.lantern[0], 0.9));
+    g.addColorStop(0.3, rgba(night.lantern[1], 0.45));
+    g.addColorStop(1, rgba(night.lantern[1], 0));
+    c.fillStyle = g;
+    c.fillRect(x - r * 5, y - r * 5, r * 10, r * 10);
+  }
+  // Below the clouds, deep night.
+  const g = c.createLinearGradient(0, top + 300, 0, bottom);
+  g.addColorStop(0, rgba(cloudCol, 0));
+  g.addColorStop(1, rgba(mix(cloudCol, "#000000", 0.5), 0.9));
+  c.fillStyle = g;
+  c.fillRect(S.x, top + 300, S.w, Math.max(0, bottom - top - 300));
+}
+/** A dream zone's moon: big, soft and full at the upper right, with a halo. */
+function paintDreamMoon(c: Ctx, t: SpireZoneTheme, h: number) {
+  const d = t.dream!,
+    mx = 1880,
+    my = -190,
+    a = 0.85 + 0.15 * h;
+  const glow = c.createRadialGradient(mx, my, 20, mx, my, 360);
+  glow.addColorStop(0, rgba(d.moon, 0.42 * a));
+  glow.addColorStop(0.45, rgba(d.cloud[1], 0.16 * a));
+  glow.addColorStop(1, rgba(d.cloud[1], 0));
+  c.fillStyle = glow;
+  c.fillRect(mx - 360, my - 360, 720, 720);
+  // Two faint halo rings.
+  c.lineWidth = 3;
+  for (const [rr, al] of [
+    [118, 0.22],
+    [176, 0.12],
+  ] as const) {
+    c.strokeStyle = rgba(d.moon, al * a);
+    c.beginPath();
+    c.arc(mx, my, rr, 0, Math.PI * 2);
+    c.stroke();
+  }
+  const disc = c.createRadialGradient(mx - 20, my - 22, 6, mx, my, 72);
+  disc.addColorStop(0, "#ffffff");
+  disc.addColorStop(0.7, d.moon);
+  disc.addColorStop(1, mix(d.moon, d.cloud[0], 0.5));
+  c.globalAlpha = a;
+  c.fillStyle = disc;
+  c.beginPath();
+  c.arc(mx, my, 72, 0, Math.PI * 2);
+  c.fill();
+  // Soft grey-violet seas on its face.
+  c.fillStyle = rgba(d.cloud[1], 0.35);
+  for (const [sx, sy, sr] of [
+    [-22, -8, 18],
+    [16, 18, 13],
+    [24, -26, 9],
+  ]) {
+    c.beginPath();
+    c.arc(mx + sx, my + sy, sr, 0, Math.PI * 2);
+    c.fill();
+  }
+  c.globalAlpha = 1;
+}
+/**
+ * A dream zone's view down: a pastel cloud sea far below the tower from
+ * `top`, its tops lit rose; dream clouds drifting through the sky beside
+ * the court (rose tops over lavender) and a few big stars floating in the
+ * air with a soft glow. Painted once per floor with the sky (nothing
+ * moves).
+ */
+function paintDreamBelow(
+  c: Ctx,
+  t: SpireZoneTheme,
+  h: number,
+  top: number,
+  puff: (x: number, y: number, r: number, a: number) => void,
+  floor: number,
+) {
+  const d = t.dream!,
+    S = SPIRE_SKY,
+    bottom = S.y + S.h;
+  reseed(9700 + floor);
+  const soft = (x: number, y: number, r: number, a: number, col: string) => {
+    const p = c.createRadialGradient(x, y - r * 0.2, r * 0.1, x, y, r);
+    p.addColorStop(0, rgba(col, a));
+    p.addColorStop(0.6, rgba(col, a * 0.7));
+    p.addColorStop(1, rgba(col, 0));
+    c.fillStyle = p;
+    c.beginPath();
+    c.ellipse(x, y, r, r * 0.55, 0, 0, Math.PI * 2);
+    c.fill();
+  };
+  // Dream clouds drifting by (only where the sky shows beside the court).
+  for (let k = 0; k < 9; k++) {
+    const x = S.x + 80 + R() * (S.w - 160),
+      y = S.y + 120 + R() * Math.max(80, top - S.y - 260),
+      size = 70 + R() * 70;
+    if (x > -size && x < W + size && y > -size * 0.6 && y < H + 40) continue;
+    const a = 0.55 * (1 - 0.35 * h);
+    for (let i = 0; i < 4; i++) {
+      const ox = (i - 1.5) * size * 0.55,
+        oy = -Math.sin((i / 3) * Math.PI) * size * 0.25;
+      soft(x + ox, y + oy + size * 0.12, size * 0.8, a, d.cloud[1]);
+      soft(x + ox, y + oy - size * 0.08, size * 0.6, a * 0.85, d.cloud[0]);
+    }
+  }
+  // The cloud sea: lavender, its nearest tops lit rose.
+  for (let row = 0; row < 5; row++)
+    for (let k = 0; k < 16; k++)
+      puff(
+        S.x + (k + R() * 0.8) * (S.w / 15),
+        top + row * 90 + R() * 40,
+        170 + R() * 110,
+        0.55 + row * 0.08,
+      );
+  for (let k = 0; k < 18; k++)
+    soft(
+      S.x + R() * S.w,
+      top - 10 + R() * 50,
+      110 + R() * 80,
+      0.32 * (1 - 0.5 * h),
+      d.cloud[0],
+    );
+  // Big stars floating in the air beside the court, each in a soft glow.
+  for (let k = 0; k < 10; k++) {
+    const x = S.x + 80 + R() * (S.w - 160),
+      y = S.y + 80 + R() * (top - S.y),
+      r = 7 + R() * 7;
+    if (x > -40 && x < W + 40 && y > -40 && y < H + 40) continue;
+    const g = c.createRadialGradient(x, y, 0, x, y, r * 4);
+    g.addColorStop(0, rgba(d.star, 0.55));
+    g.addColorStop(1, rgba(d.star, 0));
+    c.fillStyle = g;
+    c.fillRect(x - r * 4, y - r * 4, r * 8, r * 8);
+    c.fillStyle = mix(d.star, "#ffffff", 0.35);
+    starPath(c, x, y, r, 5, 0.45);
+    c.fill();
+  }
+  // Below the clouds, the night deepening into indigo.
+  const cloudCol = mix(t.cloud[0], t.cloud[1], h);
+  const g = c.createLinearGradient(0, top + 300, 0, bottom);
+  g.addColorStop(0, rgba(cloudCol, 0));
+  g.addColorStop(1, rgba(mix(cloudCol, "#120a3a", 0.5), 0.85));
+  c.fillStyle = g;
+  c.fillRect(S.x, top + 300, S.w, Math.max(0, bottom - top - 300));
+}
 function rgba(col: string, a: number) {
   const m = col.startsWith("rgb")
     ? col.match(/\d+/g)!.slice(0, 3).map(Number)
@@ -1045,18 +1767,53 @@ function cluster(
     const off = n === 1 ? 0 : (i / (n - 1)) * 2 - 1;
     return { off, back: i % 2 === 0 && Math.abs(off) < 0.9 };
   }).sort((a, b) => Number(b.back) - Number(a.back));
+  const tips: [number, number, number][] = [];
   for (const { off, back } of spots) {
     const big = 1 - Math.abs(off) * 0.55;
-    crystal(
-      c,
-      t,
-      x + off * size * 0.55,
-      y + (back ? -4 : 3) + Math.abs(off) * 2,
-      size * (0.34 + 0.12 * big),
-      size * (0.5 + 0.75 * big) * (0.85 + R() * 0.3),
-      off * size * 0.5,
-    );
+    const cx = x + off * size * 0.55,
+      cy = y + (back ? -4 : 3) + Math.abs(off) * 2,
+      tall = size * (0.5 + 0.75 * big) * (0.85 + R() * 0.3),
+      lean = off * size * 0.5;
+    crystal(c, t, cx, cy, size * (0.34 + 0.12 * big), tall, lean);
+    tips.push([cx + lean, cy - tall, tall]);
   }
+  // A dream zone's crystals: a star twinkling at the tallest one's tip, a
+  // small one on the next (painted once, a soft gold).
+  if (t.dream) {
+    tips.sort((a, b) => b[2] - a[2]);
+    tips
+      .slice(0, 2)
+      .forEach(([sx, sy], i) => sparkle(c, t, sx, sy, i ? 4 : 6.5));
+  }
+}
+/** A dream zone's star on a crystal's tip: a soft gold glow and a bright four-point star. */
+function sparkle(c: Ctx, t: SpireZoneTheme, x: number, y: number, r: number) {
+  const d = t.dream!;
+  const g = c.createRadialGradient(x, y, 0, x, y, r * 2.2);
+  g.addColorStop(0, rgba(d.star, 0.6));
+  g.addColorStop(1, rgba(d.star, 0));
+  c.fillStyle = g;
+  c.fillRect(x - r * 2.2, y - r * 2.2, r * 4.4, r * 4.4);
+  c.fillStyle = mix(d.star, "#ffffff", 0.5);
+  starPath(c, x, y, r, 4, 0.3);
+  c.fill();
+}
+/**
+ * A dream zone's mark on a block's front: a gold crescent moon with a star
+ * beside it, inlaid (a dark seat under the gold), where Earth carves a rune.
+ */
+function dreamMark(c: Ctx, t: SpireZoneTheme, x: number, y: number) {
+  const d = t.dream!;
+  c.fillStyle = rgba(t.carve, 0.7);
+  crescentPath(c, x - 2.2, y + 1.2, 10);
+  c.fill();
+  starPath(c, x + 9.8, y - 4, 5.6, 4, 0.42);
+  c.fill();
+  c.fillStyle = d.star;
+  crescentPath(c, x - 3, y, 9);
+  c.fill();
+  starPath(c, x + 9, y - 5, 4.6, 4, 0.38);
+  c.fill();
 }
 /** Courses of dressed stone across a front face. */
 function courses(
@@ -1133,6 +1890,116 @@ function bioSpecks(
   }
 }
 /**
+ * A night zone's ink on a block (painted after its dusk): drips running
+ * down the front face from the top edge, and a stain on the top face; more
+ * and darker the higher the floor.
+ */
+function inkDrips(
+  c: Ctx,
+  t: SpireZoneTheme,
+  x: number,
+  top: number,
+  front: number,
+  w: number,
+  h: number,
+) {
+  const night = t.night;
+  if (!night) return;
+  const n = Math.round(2 + 6 * h),
+    a = 0.45 + 0.35 * h,
+    ink = mix(night.veins, "#05030a", 0.55);
+  c.save();
+  c.fillStyle = rgba(ink, a);
+  for (let k = 0; k < n; k++) {
+    const dx = x + 6 + R() * (w - 12),
+      len = 8 + R() * (14 + 22 * h),
+      dw = 2 + R() * 3;
+    c.beginPath();
+    c.moveTo(dx - dw, front);
+    c.lineTo(dx - dw * 0.6, front + len);
+    c.arc(dx, front + len, dw * 0.6, Math.PI, 0, true);
+    c.lineTo(dx + dw, front);
+    c.closePath();
+    c.fill();
+  }
+  // A pooled stain on the top slab.
+  if (h > 0.2) {
+    c.fillStyle = rgba(ink, 0.35 + 0.3 * h);
+    ell(
+      c,
+      x + w * (0.25 + R() * 0.5),
+      top + (front - top) * (0.25 + R() * 0.2),
+      w * (0.1 + 0.08 * h),
+      (front - top) * 0.08,
+    );
+    c.fill();
+  }
+  c.restore();
+}
+/**
+ * A night zone's mark on a block (painted after its dusk: it lights
+ * itself): a lantern hung on a pylon's or wall's front, candles at an
+ * outcrop's foot.
+ */
+function nightMotif(
+  c: Ctx,
+  t: SpireZoneTheme,
+  style: BlockStyle,
+  x: number,
+  top: number,
+  front: number,
+  w: number,
+) {
+  if (!t.night) return;
+  if (style !== "outcrop") {
+    // An iron bracket, then the lantern hanging from it.
+    const lx = x + w / 2,
+      ly = front + BLOCK_H * 0.86;
+    c.strokeStyle = "#16121e";
+    c.lineWidth = 2.4;
+    c.beginPath();
+    c.moveTo(lx, front + 3);
+    c.lineTo(lx, ly - 22);
+    c.stroke();
+    lantern(c, t, lx, ly, 1.1);
+    return;
+  }
+  // Candles on the outcrop's top, either side of its crystals.
+  const depth = front - top;
+  for (const [fx, tall] of [
+    [0.18, 14],
+    [0.27, 9],
+    [0.8, 12],
+  ] as const) {
+    const cx = x + w * fx,
+      cy = top + depth * 0.78;
+    const g = c.createRadialGradient(
+      cx,
+      cy - tall - 4,
+      1,
+      cx,
+      cy - tall - 4,
+      16,
+    );
+    g.addColorStop(0, rgba(t.night.lantern[1], 0.6));
+    g.addColorStop(1, rgba(t.night.lantern[1], 0));
+    c.fillStyle = g;
+    c.fillRect(cx - 16, cy - tall - 20, 32, 32);
+    c.fillStyle = "#efe6d4";
+    c.fillRect(cx - 3, cy - tall, 6, tall);
+    c.fillStyle = tone(t, "rgba(30,18,6,0.35)");
+    c.fillRect(cx + 1, cy - tall, 2, tall);
+    c.fillStyle = t.night.lantern[1];
+    c.beginPath();
+    c.ellipse(cx, cy - tall - 4, 2.2, 4, 0, 0, Math.PI * 2);
+    c.fill();
+    c.fillStyle = "#fffdf2";
+    c.beginPath();
+    c.ellipse(cx, cy - tall - 3, 1, 2, 0, 0, Math.PI * 2);
+    c.fill();
+  }
+}
+/**
  * One block on its footprint, drawn in world coordinates: the top face over
  * the footprint's back part and the front face over its front BLOCK_H, so
  * the stone you see is exactly what stops fighters; crystals rise from the
@@ -1177,8 +2044,11 @@ function paintBlock(
     ]);
     c.fillStyle = tone(t, "rgba(255,248,230,0.45)");
     c.fillRect(x + 10, top + 1, w - 20, 2.5);
+    if (t.dream) dreamMark(c, t, x + w / 2, front + BLOCK_H * 0.45);
     duskStone(c, t, h);
     bioSpecks(c, t, x, front, w, BLOCK_H, h);
+    inkDrips(c, t, x, top, front, w, h);
+    nightMotif(c, t, style, x, top, front, w);
     cluster(c, t, x + w / 2, top + depth * 0.62, Math.min(w, 70) * 0.7, 3, h);
     return;
   }
@@ -1206,18 +2076,24 @@ function paintBlock(
   c.fillRect(x, front - 2, w, 3);
   c.fillStyle = tone(t, "rgba(30,18,6,0.4)");
   c.fillRect(x, front + 1, w, 2);
-  // A rune on the front, inlaid with the zone's crystal.
-  c.save();
-  c.lineCap = "round";
-  c.strokeStyle = rgba(t.carve, 0.7);
-  c.lineWidth = 3;
-  rune(c, x + w / 2 + 0.8, front + BLOCK_H / 2 + 0.8, 9, seed);
-  c.strokeStyle = t.crystal[1];
-  c.lineWidth = 1.8;
-  rune(c, x + w / 2, front + BLOCK_H / 2, 9, seed);
-  c.restore();
+  // A rune on the front, inlaid with the zone's crystal (a night zone
+  // hangs a lantern there instead, a dream zone inlays a crescent).
+  if (t.dream) dreamMark(c, t, x + w / 2, front + BLOCK_H / 2);
+  else if (!t.night) {
+    c.save();
+    c.lineCap = "round";
+    c.strokeStyle = rgba(t.carve, 0.7);
+    c.lineWidth = 3;
+    rune(c, x + w / 2 + 0.8, front + BLOCK_H / 2 + 0.8, 9, seed);
+    c.strokeStyle = t.crystal[1];
+    c.lineWidth = 1.8;
+    rune(c, x + w / 2, front + BLOCK_H / 2, 9, seed);
+    c.restore();
+  }
   duskStone(c, t, h);
   bioSpecks(c, t, x, front, w, BLOCK_H, h);
+  inkDrips(c, t, x, top, front, w, h);
+  nightMotif(c, t, style, x, top, front, w);
   if (style === "wall") {
     // Crystal clusters along the wall's length.
     const n = Math.max(2, Math.floor(depth / 70));
@@ -1754,5 +2630,180 @@ export function paintLagoonSummitGrade(c: Ctx) {
     c.lineTo(x + 26 + R() * 40, y + (R() - 0.5) * 3);
     c.stroke();
   }
+  c.restore();
+}
+
+// ──────────────────────── The summit (floor 30) ────────────────────────
+
+/**
+ * Floor 30 keeps Inkpurr's Lantern Yard; painted over it once, a summit
+ * grade of its own: a deeper, violet midnight (a soft multiply), ink
+ * creeping in from the edges and a cold moon at the upper left. The middle
+ * of the yard, where the lanterns' light falls, stays nearly as bright as
+ * the raid's own picture, so its dark ink warnings (hands, the pulse band,
+ * blobs) still read; the lanterns, their light and the night closing in are
+ * drawn live on top, as in the raid. No warm light is baked in (a snuffed
+ * lantern must look dark).
+ */
+export function paintLanternSummitGrade(c: Ctx) {
+  c.save();
+  c.globalCompositeOperation = "multiply";
+  c.fillStyle = "#d8d0f4";
+  c.fillRect(0, 0, W, H);
+  c.globalCompositeOperation = "source-over";
+  const v = c.createRadialGradient(
+    W / 2,
+    H / 2,
+    H * 0.5,
+    W / 2,
+    H / 2,
+    H * 1.05,
+  );
+  v.addColorStop(0, "rgba(10,4,26,0)");
+  v.addColorStop(1, "rgba(10,4,26,0.62)");
+  c.fillStyle = v;
+  c.fillRect(0, 0, W, H);
+  // Ink creeping in along the edges: soft dark tongues, never past the
+  // edge band (the lanterns stand well inside it).
+  reseed(30801);
+  for (let k = 0; k < 34; k++) {
+    const side = k % 4,
+      along = R(),
+      reach = 40 + R() * 70,
+      wide = 40 + R() * 70;
+    const x =
+        side === 0 ? along * W : side === 1 ? W : side === 2 ? along * W : 0,
+      y = side === 0 ? 0 : side === 1 ? along * H : side === 2 ? H : along * H;
+    const g = c.createRadialGradient(x, y, 0, x, y, Math.max(reach, wide));
+    g.addColorStop(0, "rgba(14,6,34,0.5)");
+    g.addColorStop(1, "rgba(14,6,34,0)");
+    c.fillStyle = g;
+    c.beginPath();
+    c.ellipse(
+      x,
+      y,
+      side % 2 ? reach : wide,
+      side % 2 ? wide : reach,
+      0,
+      0,
+      Math.PI * 2,
+    );
+    c.fill();
+  }
+  // Thin violet ink veins in the edge band.
+  c.strokeStyle = "rgba(138,63,192,0.32)";
+  c.lineWidth = 2;
+  c.lineCap = "round";
+  for (let k = 0; k < 16; k++) {
+    const side = k % 4,
+      along = 0.08 + R() * 0.84;
+    let x = side === 1 ? W : side === 3 ? 0 : along * W,
+      y = side === 0 ? 0 : side === 2 ? H : along * H;
+    const ix = side === 1 ? -1 : side === 3 ? 1 : 0,
+      iy = side === 0 ? 1 : side === 2 ? -1 : 0;
+    c.beginPath();
+    c.moveTo(x, y);
+    for (let i = 0; i < 5; i++) {
+      x += ix * (10 + R() * 12) + (R() - 0.5) * 16;
+      y += iy * (8 + R() * 10) + (R() - 0.5) * 16;
+      c.lineTo(x, y);
+    }
+    c.stroke();
+  }
+  // A cold moon at the upper left.
+  c.globalCompositeOperation = "screen";
+  const m = c.createRadialGradient(0, 0, 40, 0, 0, 900);
+  m.addColorStop(0, "rgba(186,172,255,0.2)");
+  m.addColorStop(1, "rgba(186,172,255,0)");
+  c.fillStyle = m;
+  c.fillRect(0, 0, W, H);
+  c.restore();
+}
+
+// ──────────────────────── The summit (floor 40) ────────────────────────
+
+/**
+ * Floor 40 keeps Snoozaku's Cloud Deck; painted over it once, a summit
+ * grade of its own: a deep twilight (a soft periwinkle multiply), indigo
+ * night pressing in from the edges, dream clouds banked along the deck's
+ * rim with a few gold stars in them, and the big moon's light from the
+ * upper right. The middle, where the rune pads, the constellation ring
+ * and every warning are, keeps nearly the raid's own light; the pads, their
+ * glyphs and the Dream Tide's rings are drawn live on top, so they keep
+ * their colours (and its pale rings gain against the deeper floor).
+ */
+export function paintDreamSummitGrade(c: Ctx) {
+  c.save();
+  c.globalCompositeOperation = "multiply";
+  c.fillStyle = "#d0ccf4";
+  c.fillRect(0, 0, W, H);
+  c.globalCompositeOperation = "source-over";
+  const v = c.createRadialGradient(
+    W / 2,
+    H / 2,
+    H * 0.46,
+    W / 2,
+    H / 2,
+    H * 1.05,
+  );
+  v.addColorStop(0, "rgba(14,10,52,0)");
+  v.addColorStop(1, "rgba(14,10,52,0.6)");
+  c.fillStyle = v;
+  c.fillRect(0, 0, W, H);
+  // Dream clouds banked along the rim (never past the edge band: the pads
+  // and their rings stand well inside it): lavender, their tops rose.
+  reseed(40801);
+  const soft = (x: number, y: number, r: number, col: string, a: number) => {
+    const g = c.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, `rgba(${col},${a})`);
+    g.addColorStop(0.6, `rgba(${col},${a * 0.6})`);
+    g.addColorStop(1, `rgba(${col},0)`);
+    c.fillStyle = g;
+    c.beginPath();
+    c.ellipse(x, y, r, r * 0.6, 0, 0, Math.PI * 2);
+    c.fill();
+  };
+  for (let k = 0; k < 30; k++) {
+    const side = k % 4,
+      along = R(),
+      r = 50 + R() * 40;
+    const x =
+        side === 0
+          ? along * W
+          : side === 1
+            ? W + 6
+            : side === 2
+              ? along * W
+              : -6,
+      y =
+        side === 0
+          ? -6
+          : side === 1
+            ? along * H
+            : side === 2
+              ? H + 6
+              : along * H;
+    soft(x, y, r, "150,136,214", 0.5);
+    soft(x, y - r * 0.2, r * 0.7, "255,214,238", 0.32);
+  }
+  // A few gold stars in the clouds.
+  for (let k = 0; k < 12; k++) {
+    const side = k % 4,
+      along = 0.06 + R() * 0.88,
+      inset = 10 + R() * 26,
+      s = 3 + R() * 3;
+    const x = side === 1 ? W - inset : side === 3 ? inset : along * W,
+      y = side === 0 ? inset : side === 2 ? H - inset : along * H;
+    c.fillStyle = "rgba(255,226,140,0.85)";
+    starPath(c, x, y, s, 4, 0.36);
+    c.fill();
+  }
+  // The moon's light from the upper right.
+  c.globalCompositeOperation = "screen";
+  const m = c.createRadialGradient(W, 0, 40, W, 0, 900);
+  m.addColorStop(0, "rgba(255,240,226,0.18)");
+  m.addColorStop(1, "rgba(255,240,226,0)");
+  c.fillStyle = m;
+  c.fillRect(0, 0, W, H);
   c.restore();
 }

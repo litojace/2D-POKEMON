@@ -9,10 +9,14 @@ export * from "./raid-somnara.js";
 import { RAID_BOSSES, type RaidBossId } from "./raid-roster.js";
 import {
   ASCENDANT_CRAGMUFF_CHAPTERS,
+  ASCENDANT_INKPURR_CHAPTERS,
+  ASCENDANT_SNOOZAKU_CHAPTERS,
   ASCENDANT_TIDELOTL_CHAPTERS,
   RAID_ASCENDANT_ATTACKS,
   RAID_ASCENDANT_TIER,
   ascendantCragmuffPattern,
+  ascendantInkpurrPattern,
+  ascendantSnoozakuPattern,
   ascendantTidelotlPattern,
   type RaidVariant,
 } from "./raid-ascendant.js";
@@ -260,7 +264,13 @@ export type RaidAttack =
   | "twin-slam"
   // Ascendant Tidelotl
   | "breaker"
-  | "geyser";
+  | "geyser"
+  // Ascendant Inkpurr
+  | "nightfall"
+  | "pounce"
+  // Ascendant Snoozaku
+  | "twin-dream"
+  | "dream-tide";
 export const RAID_ATTACKS: Record<
   RaidAttack,
   { name: string; tip: string; summary: string }
@@ -418,6 +428,17 @@ export const RAID_ATTACKS: Record<
     tip: "Three geysers in a row, marked at once, erupt one after another (dots count them). Step sideways out of the line, not along it.",
     summary: "A row of geysers erupts in turn. Step sideways off the line.",
   },
+  nightfall: {
+    name: "Nightfall",
+    tip: "The dark swallows the yard: only lit lanterns and the glowing pools of moonlight are safe. Walk into one before the dark closes. It can't be jumped, and it adds a curse.",
+    summary: "The yard goes dark. Stand in a moonlit pool or lantern light.",
+  },
+  pounce: {
+    name: "Shade Pounce",
+    tip: "Every body leaps onto a raider, one after another (dots count the order): the copies first, the real one last. Step out of the circle under you. A real one that lands in lantern light casts a shadow.",
+    summary:
+      "Bodies pounce in turn. Step out of each circle; the last is real.",
+  },
   share: {
     name: "Shared Meteor",
     tip: "Gather on the marked raider so the meteor's damage is split. Alone, step out of the circle once it locks.",
@@ -516,6 +537,16 @@ export const RAID_ATTACKS: Record<
     tip: "The Dreamer sees the runes privately. Call them with 1–4 or the rune buttons, then enter the matching pads in order. Leave a pad before entering it again. A backwards arrow means read right to left.",
     summary:
       "Read your private sequence and step on the pads in order. Solo gives you 14 seconds.",
+  },
+  "twin-dream": {
+    name: "Twin Dream",
+    tip: "Two Dreamers share one dream: each sees only their own runes (the other's show as ?). Take turns calling, then step the pads in order. Alone, the dream fades after a glimpse: remember it.",
+    summary: "Two Dreamers each see half the runes. Call in turn.",
+  },
+  "dream-tide": {
+    name: "Dream Tide",
+    tip: "Sleep floods the deck. Only one rune pad stays awake, and only the marked raider sees which: they call it, everyone runs onto that pad. It can't be jumped.",
+    summary: "Listen for the call. Stand on the one pad that stays awake.",
   },
   nightmare: {
     name: "Nightmare",
@@ -848,6 +879,10 @@ export function raidPattern(
     return ascendantCragmuffPattern(phase, partySize);
   if (variant === "ascendant" && boss === "tidewyrm")
     return ascendantTidelotlPattern(phase);
+  if (variant === "ascendant" && boss === "gloomshade")
+    return ascendantInkpurrPattern(phase);
+  if (variant === "ascendant" && boss === "somnara")
+    return ascendantSnoozakuPattern(phase);
   if (boss === "tidewyrm") return tidewyrmPattern(phase, peril);
   if (boss === "gloomshade") return gloomshadePattern(phase, peril);
   if (boss === "somnara") return somnaraPattern(phase);
@@ -1297,7 +1332,11 @@ export const raidChapters = (
     ? ASCENDANT_CRAGMUFF_CHAPTERS
     : variant === "ascendant" && boss === "tidewyrm"
       ? ASCENDANT_TIDELOTL_CHAPTERS
-      : undefined) ??
+      : variant === "ascendant" && boss === "gloomshade"
+        ? ASCENDANT_INKPURR_CHAPTERS
+        : variant === "ascendant" && boss === "somnara"
+          ? ASCENDANT_SNOOZAKU_CHAPTERS
+          : undefined) ??
   RAID_BOSS_CHAPTERS[boss] ??
   RAID_CHAPTERS;
 /** Separate appearance slots; each is cosmetic only. */
@@ -2396,6 +2435,10 @@ export interface RaidWarning {
   /** Breaker Wall: centres of its calm lanes (across its travel), and their width. */
   gaps?: number[];
   gapWidth?: number;
+  /** Nightfall: the pools of moonlight that stay safe. */
+  pools?: { x: number; y: number; radius: number }[];
+  /** Shade Pounce: which body leaps (0: the real one, else a copy's id). */
+  body?: number;
 }
 /** Tidewyrm's raised islands (walkable). */
 export interface RaidIsland {
@@ -2502,8 +2545,14 @@ export interface RaidState {
   decoys?: { id: number; x: number; y: number }[];
   /** Creeping Curse stacks per raider, and who is Haunted until when. */
   curses?: Record<string, { stacks: number; hauntedUntil: number }>;
-  /** Short-lived light (Voltkit's Ball Lightning). */
-  lights?: { x: number; y: number; radius: number; until: number }[];
+  /** Short-lived light (Voltkit's Ball Lightning; `moon`: Nightfall's pools). */
+  lights?: {
+    x: number;
+    y: number;
+    radius: number;
+    until: number;
+    moon?: boolean;
+  }[];
   /** The real Gloomshade is marked for everyone until this time. */
   revealUntil?: number;
   /** Hits on the real Gloomshade in a row (6 exposes it). */
@@ -2517,6 +2566,10 @@ export interface RaidState {
     until: number;
     startedAt: number;
     backwards: boolean;
+    /** Ascendant Snoozaku's Twin Dream: the second Dreamer (odd steps are theirs). */
+    partnerId?: string;
+    /** Ascendant Snoozaku alone: the dream's runes fade from view at this time. */
+    fadeAt?: number;
   };
   dreamRings?: {
     id: number;

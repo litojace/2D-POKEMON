@@ -35,6 +35,8 @@ export interface RaidHooks {
   /** Friends (to invite from somewhere else), the Wardrobe (to wear rewards). */
   friends(): void;
   wardrobe(): void;
+  /** The Spire's page is showing (the Lobby's Spire card is then seen). */
+  onSpire?(): void;
   onClose?(): void;
 }
 export interface RaidScreen {
@@ -78,6 +80,7 @@ export function openRaids(
   let closed = false;
   let navigation: Animation[] = [];
   let hallScroll = 0;
+  let shownSpireZone: string | undefined;
   let shownSpireFloor: string | undefined;
   const root = () => panel.root;
   const q = <T extends HTMLElement>(s: string) => root().querySelector<T>(s);
@@ -132,6 +135,19 @@ export function openRaids(
         (route.clientWidth - selectedFloor.offsetWidth) / 2;
     }
     shownSpireFloor = floor;
+    // The picked zone stays in view in its picker (a fourth zone no longer
+    // fits beside the others on phones): only that row scrolls, just enough.
+    const pickedZone = q<HTMLElement>('.sp-zone[aria-pressed="true"]');
+    const zone = pickedZone?.dataset.uiSpireZone;
+    if (pickedZone && (swap || zone !== shownSpireZone)) {
+      const row = pickedZone.parentElement!;
+      const left = pickedZone.offsetLeft - row.offsetLeft,
+        right = left + pickedZone.offsetWidth;
+      if (left < row.scrollLeft) row.scrollLeft = left;
+      else if (right > row.scrollLeft + row.clientWidth)
+        row.scrollLeft = right - row.clientWidth;
+    }
+    shownSpireZone = zone;
     const active = document.activeElement as HTMLButtonElement | null;
     if (key && (!active?.matches(key) || active.disabled))
       (
@@ -163,6 +179,7 @@ export function openRaids(
     view.spireFloor = undefined;
     view.status = "";
     render(true);
+    hooks.onSpire?.();
     q<HTMLElement>('[role="tab"][aria-selected="true"]')?.focus({
       preventScroll: true,
     });

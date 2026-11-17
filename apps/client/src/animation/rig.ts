@@ -141,6 +141,10 @@ export class FighterRig {
   private suffix = "";
   /** The state skin effects last saw (to fire one-off bursts once). */
   private fxState: AnimationState = "idle";
+  /** A twin of each part drawn in one flat colour over it (pose.wash). */
+  private washes?: Map<Part, Phaser.GameObjects.Image>;
+  /** The facing the twins were last ordered for. */
+  private washDir = "";
   /** Auralynx's ring keeps its phase when its speed or the scene clock changes. */
   private auraRingAngle = 0;
   /** Height/width of the ground plane skin rings lie on. The fitting room's
@@ -901,7 +905,9 @@ export class FighterRig {
       for (const [part, image] of this.images)
         if (part !== "wings") image.setVisible(false);
     // Curled into a ball (Curl & Roll, Pinball): only the ball of leaf plates.
-    if (pose.ball) for (const image of this.images.values()) image.setVisible(false);
+    if (pose.ball)
+      for (const image of this.images.values()) image.setVisible(false);
+    this.syncWash(pose.wash);
     this.effects.clear();
     this.under.clear();
     if (pose.ball) this.drawBall(pose.ball, x, y, alpha, reduced);
@@ -938,6 +944,49 @@ export class FighterRig {
       dir,
     );
     this.lastProgress = progress;
+  }
+
+  /**
+   * The wash: each part's twin, just above it, in the wash colour (its
+   * texture, frame, place and pose copied once the part is posed). Made the
+   * first time a pose asks for it; hidden when a pose doesn't.
+   */
+  private syncWash(wash: AnimationPose["wash"]) {
+    if (!wash) {
+      if (this.washes)
+        for (const w of this.washes.values()) w.setVisible(false);
+      return;
+    }
+    if (!this.washes) {
+      this.washes = new Map();
+      for (const [part, image] of this.images) {
+        const twin = sizeByResolution(
+          this.scene.add.image(0, 0, image.texture.key),
+        );
+        this.washes.set(part, twin);
+        this.root.add(twin);
+      }
+      this.washDir = "";
+    }
+    if (this.washDir !== this.dir) {
+      this.washDir = this.dir;
+      for (const [part, twin] of this.washes)
+        this.root.moveAbove(twin, this.images.get(part)!);
+    }
+    for (const [part, twin] of this.washes) {
+      const image = this.images.get(part)!;
+      if (twin.texture.key !== image.texture.key)
+        twin.setTexture(image.texture.key);
+      twin
+        .setOrigin(image.originX, image.originY)
+        .setPosition(image.x, image.y)
+        .setScale(image.scaleX, image.scaleY)
+        .setRotation(image.rotation)
+        .setFlip(image.flipX, image.flipY)
+        .setVisible(image.visible)
+        .setAlpha(image.alpha * wash.alpha)
+        .setTintFill(wash.color);
+    }
   }
 
   /** A burst of bouncing pebbles from the top of the victory rock pile. */
@@ -1328,7 +1377,10 @@ export class FighterRig {
           { x: px + s * h, y: py - c * h },
         ];
         const lit = 0.55 + 0.45 * (facing + 1) * 0.5;
-        g.fillStyle(lit > 0.85 ? 0xc7e88a : 0x7fcf6a, alpha).fillPoints(pts, true);
+        g.fillStyle(lit > 0.85 ? 0xc7e88a : 0x7fcf6a, alpha).fillPoints(
+          pts,
+          true,
+        );
         g.lineStyle(1.2, 0x1f4626, 0.8 * alpha).strokePoints(pts, true);
       }
     }

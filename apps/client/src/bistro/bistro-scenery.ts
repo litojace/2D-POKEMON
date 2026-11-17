@@ -1,13 +1,15 @@
 /*
  * Element Bistro (demo): the world around the restaurant. A street corner
- * on a summer evening or a bright noon, following the device clock: sky,
- * hills and a far skyline on a level horizon, grass, a street with cars,
- * sidewalks with lamps, houses and trees across the road, and a sign on the
- * roof. World units, the same isometric grid as bistro-art.ts.
+ * following the device clock (dawn, noon, sunset, night) and the server's
+ * season: sky, hills and a far skyline on a level horizon, grass, a street
+ * with cars and a bus, sidewalks with lamps, and the neighbourhood of
+ * bistro-town.ts (shops across the road, a canal, a square, passers-by).
+ * World units, the same isometric grid as bistro-art.ts.
  */
 import { DOOR } from "./bistro-model";
 import {
   R,
+  ROOM,
   WALL_H,
   iso,
   isoBox,
@@ -15,34 +17,53 @@ import {
   softShadow,
   skyColours,
   type Light,
+  type Season,
 } from "./bistro-art";
+import {
+  BACKS,
+  BUS_LEN,
+  FAR,
+  FRONTS,
+  HORIZON,
+  ROAD0,
+  ROAD1,
+  WALK,
+  bridgeParts,
+  busGlows,
+  busStopGlow,
+  drawBus,
+  drawBusStop,
+  drawCanal,
+  drawFountainWater,
+  drawShop,
+  drawSquareGround,
+  drawWeather,
+  hash,
+  inFront,
+  laneOf,
+  lerpRgb,
+  meets,
+  onGround,
+  plaza,
+  quad,
+  shopBox,
+  shopGlows,
+  shops,
+  squareLamps,
+  squareParts,
+  stopY,
+  townBehind,
+  townFront,
+  viewRect,
+  type Bus,
+  type Glow,
+  type PaintCreature,
+  type Street,
+} from "./bistro-town";
+import { poly } from "./bistro-geom";
 
+export { HORIZON, onGround };
 type Ctx = CanvasRenderingContext2D;
-type Pt = { x: number; y: number };
-/** The level horizon (world y): the sky above, the ground below. */
-export const HORIZON = -150;
-/** The road on the far side of the door: x from ROAD0 to ROAD1, along y. */
-const ROAD0 = -5.6,
-  ROAD1 = -3.3;
-const WALK = -0.5; // the building's left face
-const FAR = 4000;
-
-const lerpRgb = (a: number[], b: number[], f: number) =>
-  `rgb(${a.map((v, i) => Math.round(v + (b[i] - v) * f)).join(",")})`;
-function poly(ctx: Ctx, pts: Pt[]) {
-  ctx.beginPath();
-  ctx.moveTo(pts[0].x, pts[0].y);
-  for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
-  ctx.closePath();
-}
-/** A ground quad over grid span [x0, x1] × [y0, y1]. */
-function quad(ctx: Ctx, x0: number, y0: number, x1: number, y1: number) {
-  poly(ctx, [iso(x0, y0), iso(x1, y0), iso(x1, y1), iso(x0, y1)]);
-}
-const hash = (n: number) => {
-  const x = Math.sin(n * 127.1) * 43758.5453;
-  return x - Math.floor(x);
-};
 
 /* ───────────── sky ───────────── */
 
@@ -152,8 +173,26 @@ export function drawClouds(ctx: Ctx, l: Light, low: boolean) {
 
 /* ───────────── far away: hills and a skyline ───────────── */
 
+/** A day colour in the season's tint: snowy, golden, fresh or as it is. */
+export function seasonTint(
+  c: number[],
+  s: Season | undefined,
+  k = 1,
+): number[] {
+  const to =
+    s === "winter"
+      ? [234, 240, 248]
+      : s === "autumn"
+        ? [200, 160, 92]
+        : s === "spring"
+          ? [150, 214, 130]
+          : c;
+  const f = (s === "winter" ? 0.72 : s === "autumn" ? 0.38 : 0.15) * k;
+  return c.map((v, i) => Math.round(v + (to[i] - v) * f));
+}
 function drawFar(ctx: Ctx, l: Light) {
   const n = l.night;
+  const tint = (c: number[]) => seasonTint(c, l.season);
   // Two rows of a far city: the farther one paler in the haze, the nearer
   // with roof shapes, a lit edge and rows of windows (lit at night).
   const row = (
@@ -248,8 +287,8 @@ function drawFar(ctx: Ctx, l: Light) {
       0,
       HORIZON + 20,
     );
-    g.addColorStop(0, lerpRgb(top, darkTop, n));
-    g.addColorStop(1, lerpRgb(bottom, darkBottom, n));
+    g.addColorStop(0, lerpRgb(tint(top), darkTop, n));
+    g.addColorStop(1, lerpRgb(tint(bottom), darkBottom, n));
     ctx.fillStyle = g;
     ctx.beginPath();
     ctx.moveTo(-FAR, HORIZON + 40);
@@ -293,7 +332,11 @@ function drawFar(ctx: Ctx, l: Light) {
     if (hash(x * 0.37) < 0.45) continue;
     const y = ridge(x, -6, 30, 0.007, 4.1);
     const r = 5 + hash(x) * 5;
-    ctx.fillStyle = lerpRgb([78, 132, 72], [22, 34, 40], n);
+    ctx.fillStyle = lerpRgb(
+      l.season === "winter" ? [150, 170, 160] : tint([78, 132, 72]),
+      [22, 34, 40],
+      n,
+    );
     ctx.beginPath();
     ctx.arc(x, y + r * 0.4, r, 0, Math.PI * 2);
     ctx.arc(x + r * 0.8, y + r * 0.7, r * 0.75, 0, Math.PI * 2);
@@ -305,19 +348,43 @@ function drawFar(ctx: Ctx, l: Light) {
 
 function drawGround(ctx: Ctx, l: Light) {
   const n = l.night;
+  const season = l.season ?? "summer",
+    snow = season === "winter";
   ctx.save();
   ctx.beginPath();
   ctx.rect(-FAR, HORIZON, FAR * 2, FAR);
   ctx.clip();
-  // Grass, hazier toward the horizon.
+  // Grass (or snow), hazier toward the horizon.
+  const day = snow
+    ? [
+        [238, 242, 248],
+        [230, 236, 244],
+        [220, 228, 240],
+      ]
+    : [
+        [150, 196, 132],
+        [112, 178, 92],
+        [86, 156, 72],
+      ].map((c) => seasonTint(c, season, 0.8));
+  const dark = snow
+    ? [
+        [72, 80, 108],
+        [66, 74, 102],
+        [60, 68, 96],
+      ]
+    : [
+        [44, 60, 62],
+        [36, 58, 48],
+        [28, 48, 38],
+      ];
   const g = ctx.createLinearGradient(0, HORIZON, 0, HORIZON + 900);
-  g.addColorStop(0, lerpRgb([150, 196, 132], [44, 60, 62], n));
-  g.addColorStop(0.25, lerpRgb([112, 178, 92], [36, 58, 48], n));
-  g.addColorStop(1, lerpRgb([86, 156, 72], [28, 48, 38], n));
+  g.addColorStop(0, lerpRgb(day[0], dark[0], n));
+  g.addColorStop(0.25, lerpRgb(day[1], dark[1], n));
+  g.addColorStop(1, lerpRgb(day[2], dark[2], n));
   ctx.fillStyle = g;
   ctx.fillRect(-FAR, HORIZON, FAR * 2, FAR);
   // Mowing stripes along the grid, and soft lighter and darker patches.
-  ctx.globalAlpha = 0.07 * (1 - n * 0.7);
+  ctx.globalAlpha = (snow ? 0.03 : 0.07) * (1 - n * 0.7);
   ctx.fillStyle = "#ffffff";
   for (let k = -24; k < 40; k += 2) {
     poly(ctx, [iso(k, -30), iso(k + 1, -30), iso(k + 1, 40), iso(k, 40)]);
@@ -330,7 +397,13 @@ function drawGround(ctx: Ctx, l: Light) {
     const r = 60 + hash(i + 1500) * 110;
     const lighter = hash(i + 1800) > 0.5;
     const rg = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r);
-    const c = lighter ? "200,236,150" : "40,96,40";
+    const c = snow
+      ? lighter
+        ? "255,255,255"
+        : "150,170,210"
+      : lighter
+        ? "200,236,150"
+        : "40,96,40";
     rg.addColorStop(0, `rgba(${c},${(lighter ? 0.16 : 0.14) * (1 - n * 0.6)})`);
     rg.addColorStop(1, `rgba(${c},0)`);
     ctx.fillStyle = rg;
@@ -338,18 +411,36 @@ function drawGround(ctx: Ctx, l: Light) {
     ctx.ellipse(p.x, p.y, r, r * 0.5, 0, 0, Math.PI * 2);
     ctx.fill();
   }
-  // Tufts of grass and flowers (fixed).
+  // Tufts of grass and flowers (fixed): more flowers in spring, fallen
+  // leaves in autumn, only a glint here and there on the winter snow.
+  const flowerShare = { spring: 0.3, summer: 0.18, autumn: 0.05, winter: 0 }[
+    season
+  ];
   for (let i = 0; i < 520; i++) {
     const gx = -16 + hash(i) * 40,
       gy = -12 + hash(i + 300) * 36;
-    if (gx > ROAD0 - 0.5 && gx < R.cols + 1.6 && gy > -2.4 && gy < R.rows + 1.6)
+    if (
+      gx > FRONTS - 0.2 &&
+      gx < R.cols + 1.6 &&
+      gy > -2.4 &&
+      gy < R.rows + 1.6
+    )
       continue;
     const p = iso(gx, gy);
     if (p.y < HORIZON + 4) continue;
-    const flower = hash(i + 77) > 0.82;
+    if (snow) {
+      if (i % 3) continue;
+      ctx.globalAlpha = 0.8 - n * 0.4;
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(p.x, p.y, 1.6, 1.6);
+      continue;
+    }
+    const flower = hash(i + 77) > 1 - flowerShare;
     ctx.fillStyle = flower
-      ? ["#ffd65b", "#ff8fb1", "#ffffff", "#b49cff"][i % 4]
-      : lerpRgb([70, 140, 60], [24, 40, 30], n);
+      ? season === "autumn"
+        ? ["#f2c14e", "#e8862e"][i % 2]
+        : ["#ffd65b", "#ff8fb1", "#ffffff", "#b49cff"][i % 4]
+      : lerpRgb(seasonTint([70, 140, 60], season, 0.8), [24, 40, 30], n);
     ctx.globalAlpha = flower ? 1 - n * 0.6 : 0.7;
     if (flower) {
       ctx.beginPath();
@@ -365,12 +456,25 @@ function drawGround(ctx: Ctx, l: Light) {
       ctx.fill();
     }
   }
+  if (season === "autumn")
+    for (let i = 0; i < 260; i++) {
+      // Fallen leaves on the grass.
+      const p = iso(-16 + hash(i + 6100) * 40, -12 + hash(i + 6400) * 36);
+      if (p.y < HORIZON + 6) continue;
+      ctx.globalAlpha = 0.9 - n * 0.5;
+      ctx.fillStyle = ["#d9822b", "#c8442c", "#e8b23a", "#9a5a2a"][i % 4];
+      ctx.beginPath();
+      ctx.ellipse(p.x, p.y, 3, 1.6, hash(i) * 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
   ctx.globalAlpha = 1;
-  // Sidewalks around the building and along the road.
-  const paving = lerpRgb([214, 204, 186], [78, 76, 90], n);
-  const seam = lerpRgb([186, 174, 154], [60, 58, 72], n);
+  // Sidewalks around the building, along the road and past the shops.
+  const slab = (c: number[]) => (snow ? c.map((v) => v + (250 - v) * 0.4) : c);
+  const paving = lerpRgb(slab([214, 204, 186]), [78, 76, 90], n);
+  const seam = lerpRgb(slab([186, 174, 154]), [60, 58, 72], n);
   ctx.fillStyle = paving;
   for (const [x0, y0, x1, y1] of [
+    [FRONTS, -40, ROAD0, 40], // across the road, past the shops
     [ROAD1, -40, WALK, 40], // along the road
     [ROAD1, R.rows - 0.5, R.cols + 1.6, R.rows + 1.6], // the front
     [R.cols - 0.5, -2.4, R.cols + 1.6, R.rows + 1.6], // the right side
@@ -380,19 +484,26 @@ function drawGround(ctx: Ctx, l: Light) {
     ctx.fill();
   }
   // Every other slab a shade lighter along the road.
-  ctx.fillStyle = lerpRgb([226, 218, 202], [86, 84, 98], n);
+  ctx.fillStyle = lerpRgb(slab([226, 218, 202]), [86, 84, 98], n);
   for (let y = -40; y < 40; y += 1.6) {
     quad(ctx, ROAD1, y, WALK, y + 0.8);
+    ctx.fill();
+    quad(ctx, FRONTS, y, ROAD0, y + 0.8);
     ctx.fill();
   }
   ctx.strokeStyle = seam;
   ctx.lineWidth = 1;
   ctx.beginPath();
   for (let y = -40; y <= 40; y += 0.8) {
-    const a = iso(ROAD1, y),
-      b = iso(WALK, y);
-    ctx.moveTo(a.x, a.y);
-    ctx.lineTo(b.x, b.y);
+    for (const [x0, x1] of [
+      [ROAD1, WALK],
+      [FRONTS, ROAD0],
+    ]) {
+      const a = iso(x0, y),
+        b = iso(x1, y);
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+    }
   }
   for (let x = ROAD1; x <= R.cols + 1.6; x += 0.8) {
     const a = iso(x, R.rows - 0.5),
@@ -453,6 +564,14 @@ function drawGround(ctx: Ctx, l: Light) {
   ctx.fillStyle = lerpRgb([236, 232, 222], [96, 96, 108], n);
   quad(ctx, ROAD0, -40, ROAD0 + 0.08, 40);
   ctx.fill();
+  if (snow) {
+    // Slush along both curbs.
+    ctx.fillStyle = lerpRgb([236, 240, 246], [92, 96, 116], n);
+    quad(ctx, ROAD0 + 0.08, -40, ROAD0 + 0.3, 40);
+    ctx.fill();
+    quad(ctx, ROAD1 - 0.3, -40, ROAD1 - 0.08, 40);
+    ctx.fill();
+  }
   ctx.fillStyle = lerpRgb([255, 226, 120], [130, 120, 80], n);
   const mid = (ROAD0 + ROAD1) / 2;
   for (let y = -40; y < 40; y += 1.2) {
@@ -468,128 +587,8 @@ function drawGround(ctx: Ctx, l: Light) {
   ctx.restore();
 }
 
-/* ───────────── houses, trees, lamps ───────────── */
+/* ───────────── trees, lamps ───────────── */
 
-/** A spot on the ground on this side of the horizon (things stand there, not in the sky). */
-export const onGround = (gx: number, gy: number, margin = 12) =>
-  iso(gx, gy).y > HORIZON + margin;
-
-function drawHouse(
-  ctx: Ctx,
-  x: number,
-  y: number,
-  body: string,
-  roof: string,
-  l: Light,
-) {
-  const n = l.night;
-  const dim = (c: string) => shade(c, -0.55 * n);
-  const c = iso(x, y);
-  softShadow(ctx, c.x, c.y + 6, 120, 50, 0.25);
-  const H = 76;
-  isoBox(ctx, x - 1, y - 1, x + 1, y + 1, 0, H, {
-    top: dim(body),
-    left: dim(shade(body, -0.12)),
-    right: dim(shade(body, 0.08)),
-  });
-  // Windows on both faces, warm at night.
-  const win =
-    n > 0.4 ? `rgba(255,205,120,${0.6 + n * 0.4})` : "rgba(170,210,235,.9)";
-  const frame = dim("#fbf6ec");
-  for (const f of [-0.5, 0.4]) {
-    // Right face (along y at x + 1).
-    const a = iso(x + 1, y + f),
-      b = iso(x + 1, y + f + 0.38);
-    // A white frame and sill around each window.
-    ctx.fillStyle = frame;
-    poly(ctx, [
-      { x: a.x - 2, y: a.y - 27 },
-      { x: b.x + 2, y: b.y - 27 },
-      { x: b.x + 2, y: b.y - 59 },
-      { x: a.x - 2, y: a.y - 59 },
-    ]);
-    ctx.fill();
-    const pf = iso(x + f, y + 1),
-      qf = iso(x + f + 0.38, y + 1);
-    poly(ctx, [
-      { x: pf.x - 2, y: pf.y - 27 },
-      { x: qf.x + 2, y: qf.y - 27 },
-      { x: qf.x + 2, y: qf.y - 59 },
-      { x: pf.x - 2, y: pf.y - 59 },
-    ]);
-    ctx.fill();
-    ctx.fillStyle = win;
-    poly(ctx, [
-      { x: a.x, y: a.y - 30 },
-      { x: b.x, y: b.y - 30 },
-      { x: b.x, y: b.y - 56 },
-      { x: a.x, y: a.y - 56 },
-    ]);
-    ctx.fill();
-    // Left face (along x at y + 1).
-    const p = iso(x + f, y + 1),
-      q = iso(x + f + 0.38, y + 1);
-    poly(ctx, [
-      { x: p.x, y: p.y - 30 },
-      { x: q.x, y: q.y - 30 },
-      { x: q.x, y: q.y - 56 },
-      { x: p.x, y: p.y - 56 },
-    ]);
-    ctx.fill();
-  }
-  // A door on the face toward the road.
-  const d0 = iso(x + 1, y - 0.1),
-    d1 = iso(x + 1, y + 0.25);
-  ctx.fillStyle = dim("#6b3d22");
-  poly(ctx, [d0, d1, { x: d1.x, y: d1.y - 26 }, { x: d0.x, y: d0.y - 26 }]);
-  ctx.fill();
-  // A pitched roof, its ridge along x.
-  const r = (gx: number, gy: number, h: number) => {
-    const p = iso(gx, gy);
-    return { x: p.x, y: p.y - h };
-  };
-  ctx.fillStyle = dim(shade(roof, -0.15));
-  poly(ctx, [
-    r(x - 1.1, y - 1.1, H),
-    r(x + 1.1, y - 1.1, H),
-    r(x + 1.1, y, H + 40),
-    r(x - 1.1, y, H + 40),
-  ]);
-  ctx.fill();
-  ctx.fillStyle = dim(roof);
-  poly(ctx, [
-    r(x - 1.1, y + 1.1, H),
-    r(x + 1.1, y + 1.1, H),
-    r(x + 1.1, y, H + 40),
-    r(x - 1.1, y, H + 40),
-  ]);
-  ctx.fill();
-  // Rows of shingles.
-  ctx.strokeStyle = dim(shade(roof, -0.22));
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  for (let k = 1; k < 5; k++) {
-    const f = k / 5;
-    const a = r(x - 1.1, y + 1.1 - 1.1 * f, H + 40 * f),
-      b = r(x + 1.1, y + 1.1 - 1.1 * f, H + 40 * f);
-    ctx.moveTo(a.x, a.y);
-    ctx.lineTo(b.x, b.y);
-  }
-  ctx.stroke();
-  ctx.fillStyle = dim(shade(body, -0.05));
-  poly(ctx, [
-    r(x + 1.1, y - 1.1, H),
-    r(x + 1.1, y + 1.1, H),
-    r(x + 1.1, y, H + 40),
-  ]);
-  ctx.fill();
-  // Chimney.
-  isoBox(ctx, x - 0.6, y - 0.6, x - 0.3, y - 0.3, H + 18, 34, {
-    top: dim("#5a3a2a"),
-    left: dim("#8a5a40"),
-    right: dim("#6e4630"),
-  });
-}
 /** A linear gradient from stops. */
 const lin = (
   ctx: Ctx,
@@ -681,12 +680,60 @@ function drawTree(
       ctx.beginPath();
       ctx.ellipse(c.x + lx, base + 4 * s, w * 0.8, 4 * s, 0, 0, Math.PI * 2);
       ctx.fill();
+      if (l.season === "winter") {
+        // Snow resting on the tier.
+        ctx.fillStyle = shade("#f6f8fc", -0.45 * n);
+        ctx.beginPath();
+        ctx.moveTo(c.x + tx, tip);
+        ctx.lineTo(c.x + w * 0.62 + lx, base - 8 * s);
+        ctx.quadraticCurveTo(
+          c.x + lx,
+          base - 2 * s,
+          c.x - w * 0.62 + lx,
+          base - 8 * s,
+        );
+        ctx.closePath();
+        ctx.fill();
+      }
     }
+    return;
+  }
+  if (l.season === "winter") {
+    // Bare branches with snow along them.
+    const twig = (
+      x0: number,
+      y0: number,
+      x1: number,
+      y1: number,
+      wd: number,
+    ) => {
+      ctx.strokeStyle = barkDark;
+      ctx.lineWidth = wd * s;
+      ctx.beginPath();
+      ctx.moveTo(c.x + x0 * s + lean(y0 * s), c.y + y0 * s);
+      ctx.lineTo(c.x + x1 * s + lean(y1 * s), c.y + y1 * s);
+      ctx.stroke();
+      ctx.strokeStyle = shade("#f6f8fc", -0.45 * n);
+      ctx.lineWidth = wd * 0.45 * s;
+      ctx.beginPath();
+      ctx.moveTo(c.x + x0 * s + lean(y0 * s), c.y + (y0 - wd * 0.5) * s);
+      ctx.lineTo(c.x + x1 * s + lean(y1 * s), c.y + (y1 - wd * 0.5) * s);
+      ctx.stroke();
+    };
+    ctx.lineCap = "round";
+    twig(0, -70, -26, -104, 4);
+    twig(0, -70, 24, -110, 4);
+    twig(0, -76, 2, -122, 3.5);
+    twig(-14, -88, -34, -92, 2.4);
+    twig(12, -90, 34, -96, 2.4);
+    twig(-18, -95, -14, -120, 2);
+    twig(16, -100, 12, -124, 2);
+    ctx.lineCap = "butt";
     return;
   }
   // A round leafy crown: a darker underside, then clumps lit from the top
   // right; the low middle clump covers the trunk's top.
-  const base = kind === 2 ? "#e78fb0" : "#5fae4f";
+  const base = crownColour(kind, l.season);
   const under: [number, number, number][] = [
     [-22, -66, 28],
     [22, -64, 30],
@@ -752,21 +799,41 @@ function drawTree(
     const px = c.x + Math.cos(a) * d + 6 * s + lean(dy) * s,
       py = c.y + dy * s;
     ctx.fillStyle =
-      kind === 2
-        ? `rgba(255,236,244,${0.8 - n * 0.6})`
-        : `rgba(210,250,170,${0.45 - n * 0.35})`;
+      l.season === "autumn"
+        ? `rgba(255,214,110,${0.55 - n * 0.4})`
+        : kind === 2 && l.season !== "summer"
+          ? `rgba(255,236,244,${0.8 - n * 0.6})`
+          : l.season === "spring" && i % 3 === 0
+            ? `rgba(255,240,246,${0.75 - n * 0.55})`
+            : `rgba(210,250,170,${0.45 - n * 0.35})`;
     ctx.beginPath();
     ctx.arc(px, py, (kind === 2 ? 2.4 : 3) * s, 0, Math.PI * 2);
     ctx.fill();
   }
 }
-/** Petals drifting down from the pink trees (the live layer, a few at a time). */
-function drawPetals(ctx: Ctx, l: Light) {
+/** A leafy crown's colour in each season (cherries bloom pink in spring). */
+function crownColour(kind: number, season: Season | undefined): string {
+  switch (season) {
+    case "spring":
+      return kind === 2 ? "#f2a2c0" : "#78c25a";
+    case "autumn":
+      return kind === 2 ? "#d4543a" : "#e2962f";
+    case "winter":
+      return "#7a6a5a";
+    case "summer":
+      return kind === 2 ? "#6ab04e" : "#5fae4f";
+    default:
+      return kind === 2 ? "#e78fb0" : "#5fae4f";
+  }
+}
+/** Petals drifting down from the cherry trees in spring (the live layer, a few at a time). */
+function drawPetals(ctx: Ctx, l: Light, low: boolean) {
+  if (l.season !== "spring") return;
   const n = l.night;
   for (const [x, y, s, k] of trees()) {
     if (k !== 2 || !onGround(x, y)) continue;
     const c = iso(x, y);
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < (low ? 2 : 5); i++) {
       const f = (l.t * 0.12 + hash(i + x * 7)) % 1;
       const px =
         c.x +
@@ -781,12 +848,18 @@ function drawPetals(ctx: Ctx, l: Light) {
     }
   }
 }
-/** Street lamps: (grid x, grid y). */
-export const LAMPS: readonly [number, number][] = [
+/** Street lamps on the near curb (their light is added live): (grid x, grid y). */
+export const lamps = (): [number, number][] => [
   [ROAD1 + 0.35, 1.5],
   [ROAD1 + 0.35, 5],
-  [ROAD1 + 0.35, 10.2],
-  [ROAD1 + 0.35, 14.5],
+  [ROAD1 + 0.35, R.rows - 0.6],
+  [ROAD1 + 0.35, R.rows + 5.4],
+];
+/** Lamps on the far curb, by the shops (their light is baked with the street). */
+const farLamps = (): [number, number][] => [
+  [ROAD0 - 0.3, 3.4],
+  [ROAD0 - 0.3, 8.6],
+  [ROAD0 - 0.3, R.rows + 5.4],
 ];
 function drawLampPost(ctx: Ctx, x: number, y: number, l: Light) {
   const c = iso(x, y);
@@ -880,54 +953,163 @@ function drawStreetProps(ctx: Ctx, l: Light) {
   });
 }
 
-/** Everything that never moves: drawn once per view and time-of-day bucket. */
+/** Everything that never moves: drawn once per view, light, and season. */
 export function drawSceneryStatic(ctx: Ctx, l: Light, special: string) {
+  const vr = viewRect(ctx);
   drawSky(ctx, l);
   drawFar(ctx, l);
   drawGround(ctx, l);
-  // Across the road: houses with gardens between them; trees around the block.
-  // Across the road, on this side of the horizon (the far end of the road
-  // runs behind the bistro's wall to the hills).
-  const across: [number, number, string, string][] = [
-    [-8.6, 3, "#f3d7a6", "#c4553d"],
-    [-8.6, 7.5, "#cfe3f0", "#3d6f9e"],
-    [-8.6, 12, "#f5e0e0", "#7a4a8a"],
-    [-8.6, 16.5, "#e4f0cf", "#5a8a3d"],
-  ];
+  drawCanal(ctx, l);
+  drawSquareGround(ctx, l);
+  // Shops across the road, trees, the bridges, the square, the bus stop:
+  // far to near. Only what the view shows (a pan or a zoom bakes again).
   type D = { d: number; f: () => void };
   const list: D[] = [];
-  for (const [x, y, b, r] of across)
-    if (onGround(x, y))
-      list.push({ d: x + y, f: () => drawHouse(ctx, x, y, b, r, l) });
-  // Trees in front of the building come later (drawFrontTrees), over it.
-  for (const [x, y, s, k] of trees())
-    if (onGround(x, y) && !inFront(x, y))
-      list.push({ d: x + y, f: () => drawTree(ctx, x, y, s, k, l) });
+  for (const s of shops()) {
+    const b = shopBox(s);
+    if (!meets(vr, b.x0, b.y0, b.x1, b.y1)) continue;
+    // Standing on this side of the horizon, never floating in the sky.
+    if (!onGround(FRONTS, s.y0, 4) || !onGround(BACKS, s.y1, 4)) continue;
+    list.push({
+      d: (BACKS + FRONTS) / 2 + (s.y0 + s.y1) / 2,
+      f: () => drawShop(ctx, s, l),
+    });
+  }
+  // Trees that could cover the room are drawn after it, every frame
+  // (drawSceneryFront); the rest are baked here.
+  for (const [x, y, s, k] of trees()) {
+    const c = iso(x, y);
+    if (!onGround(x, y) || liveTree(x, y, s)) continue;
+    if (!meets(vr, c.x - 70 * s, c.y - 150 * s, c.x + 70 * s, c.y + 20))
+      continue;
+    list.push({ d: x + y, f: () => drawTree(ctx, x, y, s, k, l) });
+  }
+  for (const p of [...bridgeParts(l), ...squareParts(l)])
+    list.push({ d: p.d, f: () => p.f(ctx) });
+  list.push({ d: -3.1 + stopY(), f: () => drawBusStop(ctx, l) });
   list.sort((a, b) => a.d - b.d);
   for (const it of list) it.f();
   drawStreetProps(ctx, l);
   drawSignBoard(ctx, l, special);
+  // The neighbourhood's lights at night: baked too, they never move.
+  if (l.night > 0.02) {
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    for (const [x, y, r, rgb, a] of staticGlows()) {
+      if (!meets(vr, x - r, y - r, x + r, y + r)) continue;
+      const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+      g.addColorStop(0, `rgba(${rgb},${a * l.night})`);
+      g.addColorStop(1, `rgba(${rgb},0)`);
+      ctx.fillStyle = g;
+      ctx.fillRect(x - r, y - r, r * 2, r * 2);
+    }
+    ctx.restore();
+  }
 }
-/** Trees around the block: (grid x, grid y, size, kind). */
+/** Lights baked with the street: shops, the far lamps, the square, the bus stop. */
+export function staticGlows(): Glow[] {
+  const out: Glow[] = [...shopGlows(), busStopGlow()];
+  for (const [x, y] of farLamps()) {
+    const c = iso(x, y);
+    out.push([c.x + 12, c.y - 100, 110, "255,215,150", 0.38]);
+    out.push([c.x + 12, c.y - 10, 64, "255,200,140", 0.22]);
+  }
+  for (const [x, y] of squareLamps()) {
+    const c = iso(x, y);
+    out.push([c.x, c.y - 76, 90, "255,215,150", 0.36]);
+    out.push([c.x, c.y - 4, 56, "255,200,140", 0.2]);
+  }
+  return out;
+}
+/** Trees around the block, in the square and along the canal: (grid x, grid y, size, kind). */
 const trees = (): [number, number, number, number][] => [
-  [-6.7, 5.3, 0.9, 2],
-  [-6.6, 9.8, 1.1, 0],
-  [-6.8, 14.3, 1, 1],
   [3, -3.6, 1.1, 0],
   [7.5, -3.4, 1, 1],
   [11.5, -3.2, 1.2, 0],
-  [R.cols + 2.6, 0.5, 1.1, 2],
-  [R.cols + 2.8, 4.6, 1, 0],
-  [-2.4, R.rows + 3.2, 1, 0],
-  [R.cols + 1.5, R.rows + 4.6, 1, 2],
+  // The square.
+  [R.cols + 3.0, -1.6, 1.1, 2],
+  [R.cols + 6.2, -0.4, 1.2, 0],
+  [R.cols + 7.3, 3.4, 1, 1],
+  [R.cols + 3.2, 8.2, 1, 0],
+  [R.cols + 5.8, R.rows + 0.4, 1.1, 2],
+  // Beyond the canal.
+  [0.6, R.rows + 6.2, 1, 0],
+  [8.4, R.rows + 5.6, 1.1, 2],
 ];
-/** Trees in front of the building's base: drawn after the room, nearest last. */
-export function drawFrontTrees(ctx: Ctx, l: Light) {
-  for (const [x, y, s, k] of trees()
-    .filter(([x, y]) => inFront(x, y) && onGround(x, y))
-    .sort((a, b) => a[0] + a[1] - b[0] - b[1]))
-    // Trees in front sway in the wind (they're drawn every frame anyway).
-    drawTree(ctx, x, y, s, k, l, Math.sin(l.t * 1.1 + x * 0.7 + y) * 3);
+/** The room's outline on screen (walls included), for what may cover it. */
+function roomOutline() {
+  const l = ROOM.left,
+    b = ROOM.bottom,
+    r = ROOM.right,
+    t = ROOM.top;
+  return [
+    { x: l.x - 16, y: l.y + 40 },
+    { x: b.x, y: b.y + 40 },
+    { x: r.x + 16, y: r.y + 40 },
+    { x: r.x + 16, y: r.y - WALL_H - 22 },
+    { x: t.x, y: t.y - WALL_H - 22 },
+    { x: l.x - 16, y: l.y - WALL_H - 22 },
+  ];
+}
+function inside(p: { x: number; y: number }, poly: { x: number; y: number }[]) {
+  let hit = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const a = poly[i],
+      b = poly[j];
+    if (
+      a.y > p.y !== b.y > p.y &&
+      p.x < ((b.x - a.x) * (p.y - a.y)) / (b.y - a.y) + a.x
+    )
+      hit = !hit;
+  }
+  return hit;
+}
+/**
+ * A tree in front of the room that can reach over it: drawn after the room
+ * every frame (swaying). Trees anywhere else are baked with the street.
+ */
+export function liveTree(x: number, y: number, s: number): boolean {
+  if (!inFront(x, y)) return false;
+  const c = iso(x, y);
+  const room = roomOutline();
+  for (const [dx, dy] of [
+    [-55, -125],
+    [0, -135],
+    [55, -125],
+    [-55, -60],
+    [55, -60],
+    [0, -60],
+    [-30, -20],
+    [30, -20],
+  ])
+    if (inside({ x: c.x + dx * s, y: c.y + dy * s }, room)) return true;
+  return false;
+}
+/** In front of the room: trees that reach over it, lamps, passers-by; then the weather. */
+export function drawSceneryFront(
+  ctx: Ctx,
+  l: Light,
+  low: boolean,
+  street?: Street,
+  paint?: PaintCreature,
+) {
+  type D = { d: number; f: () => void };
+  const list: D[] = [];
+  for (const [x, y, s, k] of trees())
+    if (onGround(x, y) && liveTree(x, y, s))
+      list.push({
+        d: x + y,
+        // Trees drawn every frame sway in the wind.
+        f: () =>
+          drawTree(ctx, x, y, s, k, l, Math.sin(l.t * 1.1 + x * 0.7 + y) * 3),
+      });
+  for (const [x, y] of lamps())
+    if (inFront(x, y))
+      list.push({ d: x + y, f: () => drawLampPost(ctx, x, y, l) });
+  if (street && paint) list.push(...townFront(ctx, street, l, paint));
+  list.sort((a, b) => a.d - b.d);
+  for (const it of list) it.f();
+  drawWeather(ctx, l, low);
 }
 
 /* ───────────── what moves: cars, lamps, birds, fireflies ───────────── */
@@ -939,19 +1121,58 @@ export interface Car {
   col: string;
   kind: number;
 }
-export function updateCars(cars: Car[], dt: number, spawnRoll: number): Car[] {
+const carLen = (c: Car) => (c.kind ? 1.25 : 0.95);
+/**
+ * Cars along the road. Each keeps its distance from the one ahead in its
+ * lane (and from the bus, which stops at its stop in the near lane): they
+ * queue instead of driving through each other. `max` cars at most.
+ */
+export function updateCars(
+  cars: Car[],
+  dt: number,
+  spawnRoll: number,
+  o: { bus?: Bus | null; max?: number } = {},
+): Car[] {
   for (const c of cars) c.y += c.v * dt;
+  const bus = o.bus && o.bus.state !== "away" ? o.bus : null;
+  for (const dir of [1, -1]) {
+    const lane: { y: number; len: number; set: (y: number) => void }[] = [];
+    for (const c of cars)
+      if (Math.sign(c.v) === dir)
+        lane.push({ y: c.y, len: carLen(c), set: (y) => (c.y = y) });
+    if (bus && dir < 0)
+      lane.push({ y: bus.y, len: BUS_LEN, set: (y) => (bus.y = y) });
+    // The front of the lane first.
+    lane.sort((a, b) => (dir > 0 ? b.y - a.y : a.y - b.y));
+    for (let i = 1; i < lane.length; i++) {
+      const ahead = lane[i - 1],
+        me = lane[i];
+      const gap = (ahead.len + me.len) / 2 + 0.45;
+      if (dir > 0 ? me.y > ahead.y - gap : me.y < ahead.y + gap) {
+        me.y = dir > 0 ? ahead.y - gap : ahead.y + gap;
+        me.set(me.y);
+      }
+    }
+  }
   const out = cars.filter((c) => c.y > -30 && c.y < 34);
-  if (spawnRoll < dt * 0.22 && out.length < 4) {
+  if (spawnRoll < dt * 0.22 && out.length < (o.max ?? 4)) {
     const down = Math.random() < 0.5;
-    out.push({
-      y: down ? -26 : 30,
-      v: (down ? 1 : -1) * (2.4 + Math.random() * 1.6),
-      col: ["#e2453a", "#3d8fd1", "#f2c14e", "#f4f1ea", "#4fb36b", "#8a5ad1"][
-        Math.floor(Math.random() * 6)
-      ],
-      kind: Math.random() < 0.25 ? 1 : 0,
-    });
+    const y = down ? -26 : 30;
+    // Not on top of someone already coming in.
+    const busy =
+      out.some(
+        (c) => Math.sign(c.v) === (down ? 1 : -1) && Math.abs(c.y - y) < 2.5,
+      ) ||
+      (!down && !!bus && Math.abs(bus.y - y) < 3);
+    if (!busy)
+      out.push({
+        y: down ? -26 : 30,
+        v: (down ? 1 : -1) * (2.4 + Math.random() * 1.6),
+        col: ["#e2453a", "#3d8fd1", "#f2c14e", "#f4f1ea", "#4fb36b", "#8a5ad1"][
+          Math.floor(Math.random() * 6)
+        ],
+        kind: Math.random() < 0.25 ? 1 : 0,
+      });
   }
   return out;
 }
@@ -1027,10 +1248,21 @@ function drawCar(ctx: Ctx, car: Car, l: Light) {
     ctx.fill();
   }
 }
-/** The moving parts and street furniture, in depth order (lamps stand in front of the far lane). */
-export function drawSceneryLive(ctx: Ctx, l: Light, cars: Car[], low: boolean) {
+/**
+ * The moving parts and street furniture behind (or beside) the room, in
+ * depth order: cars and the bus, lamps, passers-by, pigeons, ducks, the
+ * fountain's water. People in front of the room come in drawSceneryFront.
+ */
+export function drawSceneryLive(
+  ctx: Ctx,
+  l: Light,
+  cars: Car[],
+  low: boolean,
+  street?: Street,
+  paint?: PaintCreature,
+) {
   drawClouds(ctx, l, low);
-  if (!low) drawPetals(ctx, l);
+  drawPetals(ctx, l, low);
   type D = { d: number; f: () => void };
   const list: D[] = [];
   for (const car of cars) {
@@ -1052,17 +1284,25 @@ export function drawSceneryLive(ctx: Ctx, l: Light, cars: Car[], low: boolean) {
       },
     });
   }
-  for (const [x, y] of LAMPS)
+  for (const [x, y] of [...lamps(), ...farLamps()])
     if (!inFront(x, y))
       list.push({ d: x + y, f: () => drawLampPost(ctx, x, y, l) });
+  if (street) {
+    const b = street.bus;
+    if (b.state !== "away")
+      list.push({ d: laneOf(-1) + b.y, f: () => drawBus(ctx, b, l) });
+    if (paint) list.push(...townBehind(ctx, street, l, paint));
+  }
+  const P = plaza();
+  list.push({ d: P.x + P.y + 0.05, f: () => drawFountainWater(ctx, l, low) });
   list.sort((a, b) => a.d - b.d);
   for (const it of list) it.f();
   if (!low) {
-    if (l.night > 0.4) {
-      // Fireflies over the grass across the road.
+    if (l.night > 0.4 && l.season !== "winter") {
+      // Fireflies over the square's lawn.
       for (let i = 0; i < 18; i++) {
-        const gx = -7.4 + hash(i) * 2 + Math.sin(l.t * 0.6 + i) * 0.3,
-          gy = 1 + hash(i + 50) * 16 + Math.cos(l.t * 0.5 + i * 2) * 0.3;
+        const gx = R.cols + 2.6 + hash(i) * 6 + Math.sin(l.t * 0.6 + i) * 0.3,
+          gy = -2 + hash(i + 50) * 11 + Math.cos(l.t * 0.5 + i * 2) * 0.3;
         if (!onGround(gx, gy, 40)) continue;
         const p = iso(gx, gy);
         const a = (0.5 + 0.5 * Math.sin(l.t * 3 + i * 1.7)) * l.night;
@@ -1088,31 +1328,26 @@ export function drawSceneryLive(ctx: Ctx, l: Light, cars: Car[], low: boolean) {
     }
   }
 }
-/** Lamps in front of the building's base: drawn after the room. */
-const inFront = (x: number, y: number) => y > R.rows - 0.5 || x > R.cols - 0.5;
-export function drawFrontLamps(ctx: Ctx, l: Light) {
-  for (const [x, y] of LAMPS) if (inFront(x, y)) drawLampPost(ctx, x, y, l);
-}
 /** Lights the lighting pass adds at night: [x, y, radius, rgb, strength]. */
-export function sceneryGlows(): [number, number, number, string, number][] {
-  const out: [number, number, number, string, number][] = [];
-  for (const [x, y] of LAMPS) {
+export function sceneryGlows(): Glow[] {
+  const out: Glow[] = [];
+  for (const [x, y] of lamps()) {
     const c = iso(x, y);
     out.push([c.x + 12, c.y - 100, 120, "255,215,150", 0.4]);
     out.push([c.x + 12, c.y - 10, 70, "255,200,140", 0.25]);
   }
   return out;
 }
-export function carGlows(
-  cars: Car[],
-): [number, number, number, string, number][] {
-  return cars
+export function carGlows(cars: Car[], bus?: Bus | null): Glow[] {
+  const out: Glow[] = cars
     .filter((car) => carFade(car) > 0)
     .map((car) => {
       const lane = car.v > 0 ? ROAD0 + 0.6 : ROAD1 - 0.6;
       const p = iso(lane, car.y + Math.sign(car.v) * 1.1);
-      return [p.x, p.y - 6, 60, "255,240,200", 0.35 * carFade(car)];
+      return [p.x, p.y - 6, 60, "255,240,200", 0.35 * carFade(car)] as Glow;
     });
+  if (bus) out.push(...busGlows(bus));
+  return out;
 }
 
 /** The rooftop sign over the right wall: lit letters at night. */
