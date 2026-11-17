@@ -1664,3 +1664,52 @@ body:not(.hub-active) #account-leaves {
     --hub-card-w: 136px;
   }
 }
+
+/* Settings → Graphics → "Show frame rate" (lobby-perf.ts): numbers to
+   screenshot, beside the rail, and buttons that switch one suspect off. */
+.lobby-layer > .lobby-perf {
+  top: var(--lobby-top);
+  left: calc(var(--lobby-gutter) + var(--lobby-rail) + 10px);
+  z-index: 30;
+  display: grid;
+  gap: 4px;
+  max-width: min(300px, 46vw);
+  padding: 5px 7px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.72);
+  color: #e8f0ff;
+  font:
+    10px/1.35 ui-monospace,
+    Menlo,
+    Consolas,
+    monospace;
+}
+.lobby-perf-text {
+  margin: 0;
+  white-space: pre-wrap;
+  font: inherit;
+}
+.lobby-perf-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.lobby-perf-buttons button {
+  min-height: 28px;
+  padding: 2px 7px;
+  border: 1px solid rgba(232, 240, 255, 0.35);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  font: inherit;
+}
+/* The read-out's experiments: no frosted glass anywhere, a still PLAY. */
+body.perf-no-blur *,
+body.perf-no-blur *::before,
+body.perf-no-blur *::after {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+.lobby-layer.perf-no-play .lobby-play::before,
+.lobby-layer.perf-no-play .lobby-play-button::after {
+  animation: none !important;
+}

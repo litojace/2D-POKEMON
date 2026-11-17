@@ -95,6 +95,16 @@ export class BattlePerfMeter {
   }
 }
 
+/** Settings → Graphics → "Show frame rate": saved on this device (the iPhone
+ *  app has no address bar for `?perf=1`). */
+export function setPerfMode(on: boolean) {
+  try {
+    if (on) localStorage.setItem("ea-perf", "1");
+    else localStorage.removeItem("ea-perf");
+  } catch {
+    /* Optional preference. */
+  }
+}
 /** `?perf=1` in the address (or `ea-perf` = "1" saved on this device). */
 export function perfMode(
   search = typeof location === "undefined" ? "" : location.search,

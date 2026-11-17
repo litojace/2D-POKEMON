@@ -17,6 +17,8 @@ import { drawCollectionAura } from "./skins/collection-fx";
 import { menuShadow } from "./fighter-art";
 import { lowGraphics } from "./graphics-quality";
 import { previewDensity } from "./render-budget";
+import { FrameCap } from "./frame-cap";
+import { PreviewPerf, type PreviewPerfStats } from "./preview-perf";
 import type { AnimationPose, AnimationState } from "./animation/controller";
 import type { SkinLook } from "./creature-design";
 import {
@@ -43,6 +45,18 @@ export interface ShopPreviewHandle {
    * px), from the last frame; undefined before the rig is drawn.
    */
   inkTop(): number | undefined;
+  /** Frame measurements for the Lobby's read-out (lobby-perf.ts). */
+  perf(): PreviewPerfStats & {
+    canvas: string;
+    resolution: number;
+    textures: number;
+  };
+  /**
+   * Experiments from that read-out, on this device only and until the
+   * preview closes: draw the aura or not, and hold the preview to 60 or 30
+   * frames a second (0: every frame the browser offers).
+   */
+  tune(options: { aura?: boolean; fps?: 0 | 30 | 60 }): void;
 }
 
 /** Shared idle rig for Shop and Home. Keep decoded textures when browsing. */
@@ -99,6 +113,10 @@ export function mountShopPreview(
    * camera zooms by this much.
    */
   let resolution = 1;
+  /** The read-out's experiments (tune) and measurements (perf). */
+  let auraShown = true;
+  let fpsCap: 0 | 30 | 60 = 0;
+  let measure: PreviewPerf | undefined;
   /** The texture scale the last looks were loaded at. */
   let loadedScale = 1;
   const resolutionFor = (height: number) => {
@@ -574,7 +592,7 @@ export function mountShopPreview(
       }
       this.aura.setScale(auraScale);
       this.auraFront.setScale(auraScale);
-      if (auraId)
+      if (auraId && auraShown)
         drawCollectionAura(
           this.aura,
           auraId,
@@ -636,6 +654,39 @@ export function mountShopPreview(
       // 17 Nov 2026). The rAF timestamps are the display's, so raw is exact.
       fps: { target: 60, smoothStep: false },
       scene: PreviewScene,
+      callbacks: {
+        // Measures each frame for the Lobby's read-out once it asks, and
+        // holds the preview to the read-out's cap (tune). Skipped frames'
+        // time goes to the next one drawn, so the clock keeps real time.
+        postBoot: (booted) => {
+          const step = booted.step.bind(booted);
+          const cap60 = new FrameCap();
+          let owed = 0,
+            drawnAt = -Infinity;
+          booted.step = (time: number, delta: number) => {
+            measure?.frame(time);
+            if (
+              !(booted as { pendingDestroy?: boolean }).pendingDestroy &&
+              fpsCap
+            ) {
+              const skip =
+                fpsCap === 60
+                  ? !cap60.draw(time)
+                  : time - drawnAt < 1000 / fpsCap - 4;
+              if (skip) {
+                owed += delta;
+                return;
+              }
+            }
+            drawnAt = time;
+            const total = delta + owed;
+            owed = 0;
+            const start = performance.now();
+            step(time, total);
+            measure?.draw(time, performance.now() - start);
+          };
+        },
+      },
     });
   } catch {
     failed();
@@ -690,6 +741,22 @@ export function mountShopPreview(
           // A canvas that can't be read: the caller's fallback.
         }
         return undefined;
+      },
+      perf() {
+        measure ??= new PreviewPerf();
+        const canvas = game?.canvas;
+        return {
+          ...measure.stats(),
+          canvas: canvas ? `${canvas.width}x${canvas.height}` : "-",
+          resolution,
+          textures: loadedScale,
+        };
+      },
+      tune(options: { aura?: boolean; fps?: 0 | 30 | 60 }) {
+        if (options.aura !== undefined) auraShown = options.aura;
+        if (options.fps !== undefined) fpsCap = options.fps;
+        dirty = true;
+        syncLoop();
       },
       play(state: AnimationState, ms: number) {
         // Reduced motion: a still fighter (the clock does not run).

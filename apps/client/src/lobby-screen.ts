@@ -25,6 +25,8 @@ import { openHubPanelNow } from "./ui/hub-panel";
 import { guideCard, type GuideView } from "./getting-started";
 import { spireLobbyIcon } from "./spire-art";
 import type { SpireLobbyCard } from "./spire-nudge";
+import { perfMode } from "./battle-perf";
+import { openLobbyPerf, type LobbyPerfHandle } from "./lobby-perf";
 
 /**
  * The Lobby: the one-screen hub after login (hub redesign phase 2). Your
@@ -580,6 +582,19 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
     attributeFilter: ["open", "hidden", "data-ui-leaving"],
   });
   syncCovered();
+  // Settings → Graphics → "Show frame rate": the read-out (lobby-perf.ts).
+  let perfView: LobbyPerfHandle | undefined;
+  const syncPerf = () => {
+    if (closed) return;
+    if (perfMode() && !perfView)
+      perfView = openLobbyPerf(layer, () => [rig, ...seatRigs]);
+    else if (!perfMode() && perfView) {
+      perfView.close();
+      perfView = undefined;
+    }
+  };
+  document.addEventListener("ea-perf-change", syncPerf);
+  syncPerf();
   return {
     update(view) {
       const skin = wornSkin(view.character);
@@ -685,6 +700,8 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
       clearTimeout(bubbleTimer);
       clearTimeout(hopTimer);
       coverWatch.disconnect();
+      document.removeEventListener("ea-perf-change", syncPerf);
+      perfView?.close();
       cancelAnimationFrame(fitFrame);
       removeEventListener("resize", fitSoon);
       layer.removeEventListener("keydown", onKey);

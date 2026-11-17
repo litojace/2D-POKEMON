@@ -20,6 +20,7 @@ import {
   deviceKind,
   loadPhases,
   perfMode,
+  setPerfMode,
 } from "./battle-perf";
 import { correctionCause } from "./networking/correction-cause";
 import { PerfOverlay } from "./perf-overlay";
@@ -504,7 +505,6 @@ const PREDICTED_CAST_KINDS = new Set<AbilityKind>([
 /** The network side of the same match: round trips, snapshot gaps, corrections. */
 const netMeter = new NetMeter();
 /** `?perf=1`: the read-out over the battle, and its numbers for tests. */
-const showPerf = perfMode();
 /** Fighters' names and equipped looks, sent apart from combat snapshots. */
 const snapshotMeta = new MetaCache();
 let snapshotMetaAsked = "";
@@ -4271,7 +4271,7 @@ function graphicsCard() {
   const setting = graphicsSetting();
   const option = (value: GraphicsSetting, label: string) =>
     `<button type="button" role="radio" data-graphics="${value}" aria-checked="${setting === value}">${label}</button>`;
-  return `<section class="prefs-card prefs-graphics" aria-labelledby="prefs-graphics"><h3 id="prefs-graphics">${menuIcon("sparkle")}Graphics</h3><div class="prefs-choice" role="radiogroup" aria-labelledby="prefs-graphics">${option("auto", "Auto")}${option("high", "High")}${option("low", "Low")}</div><p class="prefs-graphics-note">${graphicsNote(setting)}</p>${softwareRendering() ? GPU_OFF_NOTE : ""}</section>`;
+  return `<section class="prefs-card prefs-graphics" aria-labelledby="prefs-graphics"><h3 id="prefs-graphics">${menuIcon("sparkle")}Graphics</h3><div class="prefs-choice" role="radiogroup" aria-labelledby="prefs-graphics">${option("auto", "Auto")}${option("high", "High")}${option("low", "Low")}</div><p class="prefs-graphics-note">${graphicsNote(setting)}</p>${softwareRendering() ? GPU_OFF_NOTE : ""}<div class="prefs-toggle-row"><span><b>Show frame rate</b><small>Numbers over the Lobby and battles, to screenshot when something lags.</small></span><button type="button" class="prefs-switch" id="settings-perf" role="switch" aria-checked="${perfMode()}"><span>${perfMode() ? "On" : "Off"}</span></button></div></section>`;
 }
 /** Shown when the browser draws without the graphics card (gpu-check.ts). */
 const GPU_OFF_NOTE =
@@ -4286,6 +4286,16 @@ function graphicsNote(setting: GraphicsSetting) {
     : "Starts on High. The Plaza and Farm switch to Low if they run slowly; battles trim decorative sparks only while frames stay slow.";
 }
 function bindGraphicsCard() {
+  const perf = document.querySelector<HTMLButtonElement>("#settings-perf");
+  if (perf)
+    perf.onclick = () => {
+      const on = !perfMode();
+      setPerfMode(on);
+      perf.setAttribute("aria-checked", String(on));
+      perf.querySelector("span")!.textContent = on ? "On" : "Off";
+      // The Lobby shows or hides its read-out (lobby-perf.ts).
+      document.dispatchEvent(new Event("ea-perf-change"));
+    };
   for (const b of Array.from(
     document.querySelectorAll<HTMLButtonElement>("[data-graphics]"),
   ))
@@ -5137,7 +5147,8 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     leadSeen.sum = leadSeen.frames = 0;
     matchErrors = 0;
     drawnSelf.length = 0;
-    if (showPerf) {
+    // Read at each match: Settings → Graphics can turn it on or off.
+    if (perfMode()) {
       this.perfOverlay = new PerfOverlay($("game").parentElement!);
       // The same numbers for the budget tests (tests/visual/effect-budget).
       (window as unknown as Record<string, unknown>).__arenaPerf = {
