@@ -207,7 +207,7 @@ for (const size of PHONES)
       for (const floor of [7, 17, 47, 57, 67]) {
         if (floor > 10) {
           // Zone 2's look for 17; zone 5's bright Light court for 47;
-          // zone 6's dusky Fire court for 57; zone 7's storm court for 67.
+          // zone 6's dusky Fire court for 57; zone 7's storm slate for 67.
           await raiseFloors(page, floor - 7);
           await page.evaluate(() => (window as any).__push());
         }

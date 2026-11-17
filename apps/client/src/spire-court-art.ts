@@ -24,7 +24,10 @@ import {
   spireCourtLayout,
   type SpireCourtLayoutId,
 } from "../../../packages/shared/src/spire-court";
-import type { SpireFloorKind } from "../../../packages/shared/src/spire";
+import {
+  spireUnderControls,
+  type SpireFloorKind,
+} from "../../../packages/shared/src/spire";
 import { BLOCK_H, paintKit, stoneBase } from "./arena-courts";
 
 type Ctx = CanvasRenderingContext2D;
@@ -163,6 +166,27 @@ export interface SpireZoneTheme {
     bronze: [string, string];
     /** Lava far below and its glow on the ash clouds' undersides. */
     lava: string;
+  };
+  /**
+   * A storm zone (Electric): a storm-wrapped summit. Copper circuit traces
+   * inlaid along the ring's spokes (each ending in a node), copper
+   * lightning bolts between them, a tesla coil in each corner, lightning
+   * rods on the coping, a copper bolt plate on the cover's fronts and a
+   * small coil on its outcrops; beyond the tower a thundercloud sky with
+   * forked lightning (baked), rain curtains and storm clouds lit from
+   * within. Higher floors sink into a black storm night with more bolts.
+   * Everything is baked: no live arcs or glows.
+   */
+  storm?: {
+    /** Copper (light, dark): traces, bolts, coils. */
+    copper: [string, string];
+    /** The live-looking arc's pale core (only thin lines and the coils' tops). */
+    arc: string;
+    /** Lightning in the sky, and the light it throws on the clouds ("r,g,b"). */
+    bolt: string;
+    flash: string;
+    /** Rain streaks ("r,g,b"). */
+    rain: string;
   };
 }
 export const SPIRE_ZONE_THEMES: Record<number, SpireZoneTheme> = {
@@ -368,8 +392,48 @@ export const SPIRE_ZONE_THEMES: Record<number, SpireZoneTheme> = {
       lava: "#ff5a1a",
     },
   },
+  // Zone 7, Electric: a storm-wrapped summit. Slate and steel paving with
+  // copper circuit traces and lightning bolts inlaid round the ring, a
+  // tesla coil in each corner and lightning rods on the coping, electric
+  // yellow crystals; beyond the edge a thundercloud sky with forked
+  // lightning and rain curtains, sinking into a black storm night near the
+  // top. (The stone is a cool mid-dark slate, so the twins' yellow (+) and
+  // blue (−) cues, the Echoes' violet and pink warnings, all light
+  // colours, stand out from it by lightness; the inlay is copper, never
+  // yellow or blue, and thin: never a ring, a pad or a warning.)
+  7: {
+    zone: 7,
+    slab: ["#535d6c", "#2c3340"],
+    grout: "#141922",
+    rim: ["#a4afbd", "#58626f"],
+    carve: "#090c13",
+    top: ["#aab4c2", "#76808e"],
+    front: ["#48505d", "#252b35"],
+    crystal: ["#fffbe0", "#ffd23f", "#2c2f52"],
+    glow: 0xffe066,
+    rune: "#eaa062",
+    skyLow: ["#34435e", "#8e9cb4"],
+    skyHigh: ["#04050c", "#1e1a3c"],
+    cloud: ["#66708a", "#161828"],
+    light: "196,212,244",
+    ink: "8,12,22",
+    shine: "228,238,255",
+    dusk: "10,14,46",
+    sun: "206,218,255",
+    warmth: 0.04,
+    duskTint: [180, 188, 224],
+    centreGlow: 0.07,
+    vignette: 0.32,
+    storm: {
+      copper: ["#e0995c", "#6e3c1e"],
+      arc: "#d6eeff",
+      bolt: "#f4f0ff",
+      flash: "196,200,255",
+      rain: "176,196,228",
+    },
+  },
 };
-/** A zone's look (1 Earth, 2 Water, 3 Shadow, 4 Psychic, 5 Light, 6 Fire); unknown zones take zone 1's. */
+/** A zone's look (1 Earth, 2 Water, 3 Shadow, 4 Psychic, 5 Light, 6 Fire, 7 Electric); unknown zones take zone 1's. */
 export const spireZoneTheme = (zone: number): SpireZoneTheme =>
   SPIRE_ZONE_THEMES[zone] ?? SPIRE_ZONE_THEMES[1];
 export const spireTheme = spireZoneTheme;
@@ -1493,6 +1557,274 @@ function emberInlay(c: Ctx, t: SpireZoneTheme) {
     brazier(c, t, px, py, 21);
   c.restore();
 }
+/**
+ * A lightning bolt's outline (a flat zigzag), from (x0, y0) along angle
+ * `a`, `len` long and `w` wide, laid on the ground (K).
+ */
+function boltGlyph(
+  c: Ctx,
+  x0: number,
+  y0: number,
+  a: number,
+  len: number,
+  w: number,
+) {
+  const ux = Math.cos(a),
+    uy = Math.sin(a) * K,
+    nx = -Math.sin(a) * w,
+    ny = Math.cos(a) * w * K;
+  const pts: [number, number][] = [
+    [0, -0.5],
+    [0.52, -0.6],
+    [0.44, -0.08],
+    [1, 0.05],
+    [0.42, 0.62],
+    [0.5, 0.14],
+    [0, 0.3],
+  ];
+  c.beginPath();
+  pts.forEach(([f, s], i) => {
+    const px = x0 + ux * len * f + nx * s,
+      py = y0 + uy * len * f + ny * s;
+    if (i) c.lineTo(px, py);
+    else c.moveTo(px, py);
+  });
+  c.closePath();
+}
+/**
+ * A tesla coil standing at (x, y), `r` across: its shadow, a steel base, a
+ * copper winding (stacked rings), the toroid on top and, unless `quiet`,
+ * a few baked arcs off it (still: it never crackles). Its light on the
+ * stone is small and soft: never a pad or a field.
+ */
+function teslaCoil(
+  c: Ctx,
+  t: SpireZoneTheme,
+  x: number,
+  y: number,
+  r: number,
+  quiet = false,
+) {
+  const s = t.storm!;
+  c.save();
+  const g = c.createRadialGradient(x, y - r * 1.6, 1, x, y - r * 1.6, r * 1.5);
+  g.addColorStop(0, rgba(s.arc, 0.28));
+  g.addColorStop(1, rgba(s.arc, 0));
+  c.fillStyle = g;
+  c.fillRect(x - r * 1.5, y - r * 3.1, r * 3, r * 3);
+  c.fillStyle = tone(t, "rgba(30,18,6,0.45)");
+  ell(c, x + 5, y + r * 0.3, r * 1.1, r * 0.42);
+  c.fill();
+  // The steel base.
+  c.fillStyle = t.front[1];
+  ell(c, x, y, r, r * 0.4);
+  c.fill();
+  c.fillStyle = t.rim[1];
+  ell(c, x, y - 2, r * 0.9, r * 0.34);
+  c.fill();
+  // The winding: copper rings stacked up the column.
+  const tall = r * 1.5;
+  const col = c.createLinearGradient(x - r * 0.4, 0, x + r * 0.4, 0);
+  col.addColorStop(0, s.copper[0]);
+  col.addColorStop(1, s.copper[1]);
+  c.fillStyle = col;
+  c.fillRect(x - r * 0.36, y - tall, r * 0.72, tall);
+  c.strokeStyle = rgba(s.copper[1], 0.9);
+  c.lineWidth = 1.2;
+  for (let k = 1; k < 7; k++) {
+    const yy = y - (tall * k) / 7;
+    c.beginPath();
+    c.moveTo(x - r * 0.36, yy);
+    c.lineTo(x + r * 0.36, yy + 1.5);
+    c.stroke();
+  }
+  // The toroid: a steel ring with a pale lit top.
+  c.fillStyle = t.rim[1];
+  ell(c, x, y - tall, r * 0.72, r * 0.3);
+  c.fill();
+  c.fillStyle = t.rim[0];
+  ell(c, x, y - tall - 2, r * 0.6, r * 0.2);
+  c.fill();
+  c.fillStyle = rgba(s.arc, 0.9);
+  ell(c, x - r * 0.15, y - tall - 3, r * 0.22, r * 0.07);
+  c.fill();
+  if (!quiet) {
+    // Arcs off the toroid (baked), a pale core in a soft halo.
+    c.lineCap = "round";
+    c.lineJoin = "round";
+    for (const [a, len] of [
+      [-2.5, 1.1],
+      [-0.7, 0.9],
+      [-1.6, 0.7],
+    ] as const) {
+      let px = x + Math.cos(a) * r * 0.6,
+        py = y - tall + Math.sin(a) * r * 0.25;
+      const path: [number, number][] = [[px, py]];
+      for (let i = 0; i < 4; i++) {
+        px += Math.cos(a) * r * len * 0.3 + (R() - 0.5) * r * 0.3;
+        py += Math.sin(a) * r * len * 0.22 + (R() - 0.5) * r * 0.25;
+        path.push([px, py]);
+      }
+      for (const [w, alpha] of [
+        [4, 0.22],
+        [1.4, 0.85],
+      ] as const) {
+        c.strokeStyle = rgba(s.arc, alpha);
+        c.lineWidth = w;
+        c.beginPath();
+        path.forEach(([px, py], i) =>
+          i ? c.lineTo(px, py) : c.moveTo(px, py),
+        );
+        c.stroke();
+      }
+    }
+  }
+  c.restore();
+}
+/** A lightning rod on the coping at (x, y): a steel rod, a copper ball, a spark. */
+function lightningRod(c: Ctx, t: SpireZoneTheme, x: number, y: number) {
+  const s = t.storm!;
+  c.save();
+  c.fillStyle = tone(t, "rgba(30,18,6,0.4)");
+  ell(c, x + 3, y + 2, 7, 3);
+  c.fill();
+  c.fillStyle = t.front[1];
+  ell(c, x, y, 6, 2.6);
+  c.fill();
+  c.strokeStyle = t.rim[0];
+  c.lineWidth = 2.4;
+  c.beginPath();
+  c.moveTo(x, y);
+  c.lineTo(x, y - 24);
+  c.stroke();
+  c.strokeStyle = t.carve;
+  c.lineWidth = 1;
+  c.beginPath();
+  c.moveTo(x + 1.2, y);
+  c.lineTo(x + 1.2, y - 24);
+  c.stroke();
+  const ball = c.createRadialGradient(x - 1.5, y - 27, 0.5, x, y - 26, 4.5);
+  ball.addColorStop(0, "#ffe6c8");
+  ball.addColorStop(0.5, s.copper[0]);
+  ball.addColorStop(1, s.copper[1]);
+  c.fillStyle = ball;
+  c.beginPath();
+  c.arc(x, y - 26, 4.5, 0, Math.PI * 2);
+  c.fill();
+  c.strokeStyle = rgba(s.arc, 0.8);
+  c.lineWidth = 1.2;
+  c.beginPath();
+  c.moveTo(x, y - 31);
+  c.lineTo(x + 3, y - 36);
+  c.lineTo(x - 1, y - 39);
+  c.lineTo(x + 2, y - 44);
+  c.stroke();
+  c.restore();
+}
+/**
+ * A storm zone's paving (decoration: walkable, nothing collides): copper
+ * circuit traces inlaid along the ring's spokes (each jogs aside at 45°
+ * like a printed circuit and ends in a node: a copper ring round a pale
+ * dot), a copper lightning bolt between each pair of spokes, a copper rail
+ * round the rune ring, and a tesla coil in each corner beyond the octagon
+ * (a coil under a phone's touch controls stands quiet: no arcs). Thin and
+ * dark-seated: never a ring, a pad or a warning.
+ */
+function stormInlay(c: Ctx, t: SpireZoneTheme) {
+  const s = t.storm;
+  if (!s) return;
+  const { x, y, r } = SPIRE_RING;
+  const at = (a: number, rr: number): [number, number] => [
+    x + Math.cos(a) * rr,
+    y + Math.sin(a) * rr * K,
+  ];
+  c.save();
+  c.lineJoin = "round";
+  c.lineCap = "round";
+  reseed(7701);
+  const trace = (pts: [number, number][]) => {
+    for (const [dx, dy, col, w] of [
+      [1, 1.4, tone(t, "rgba(30,18,6,0.45)"), 6],
+      [0, 0, rgba(s.copper[0], 0.7), 3.2],
+      [0, -0.6, rgba(s.arc, 0.38), 1],
+    ] as const) {
+      c.strokeStyle = col;
+      c.lineWidth = w;
+      c.beginPath();
+      pts.forEach(([px, py], i) =>
+        i ? c.lineTo(px + dx, py + dy) : c.moveTo(px + dx, py + dy),
+      );
+      c.stroke();
+    }
+  };
+  const node = (nx: number, ny: number) => {
+    c.fillStyle = tone(t, "rgba(30,18,6,0.5)");
+    ell(c, nx + 1, ny + 1.4, 9, 9 * K);
+    c.fill();
+    c.strokeStyle = s.copper[0];
+    c.lineWidth = 2.6;
+    ell(c, nx, ny, 7, 7 * K);
+    c.stroke();
+    c.fillStyle = rgba(s.arc, 0.85);
+    ell(c, nx, ny, 2.6, 2.6 * K);
+    c.fill();
+  };
+  for (let k = 0; k < 8; k++) {
+    const a = (k / 8) * Math.PI * 2 + Math.PI / 8;
+    // Two traces along each spoke, either side of it, jogging apart.
+    for (const side of [-1, 1]) {
+      const r0 = r + 34,
+        r1 = r0 + 70 + (k % 2) * 30,
+        r2 = r1 + 60 + R() * 40;
+      const off = side * 0.05;
+      const p0 = at(a + off, r0),
+        p1 = at(a + off, r1),
+        p2 = at(a + off + side * 0.09, r1 + 34),
+        p3 = at(a + off + side * 0.09, r2);
+      trace([p0, p1, p2, p3]);
+      node(...p3);
+    }
+    // A copper bolt between this spoke and the next.
+    const b = a + Math.PI / 8;
+    const [bx, by] = at(b - 0.08, r + 46);
+    c.save();
+    c.translate(1, 1.4);
+    boltGlyph(c, bx, by, b, 96, 26);
+    c.fillStyle = tone(t, "rgba(30,18,6,0.4)");
+    c.fill();
+    c.restore();
+    boltGlyph(c, bx, by, b, 92, 22);
+    c.fillStyle = rgba(s.copper[0], 0.55);
+    c.fill();
+    c.strokeStyle = rgba(s.copper[1], 0.8);
+    c.lineWidth = 1.2;
+    c.stroke();
+  }
+  // The copper rail round the rune ring, the traces' roots on it.
+  c.strokeStyle = tone(t, "rgba(30,18,6,0.45)");
+  c.lineWidth = 6;
+  gEll(c, x + 1, y + 1.4, r + 33);
+  c.stroke();
+  c.strokeStyle = rgba(s.copper[0], 0.8);
+  c.lineWidth = 3;
+  gEll(c, x, y, r + 32);
+  c.stroke();
+  c.strokeStyle = rgba(s.arc, 0.3);
+  c.lineWidth = 1;
+  gEll(c, x, y - 0.8, r + 32);
+  c.stroke();
+  // A tesla coil in each corner beyond the octagon.
+  for (const [px, py] of SPIRE_COILS)
+    teslaCoil(c, t, px, py, 20, spireUnderControls(px, py, 40));
+  c.restore();
+}
+/** Where a storm zone's tesla coils stand in the platform's corners (world). */
+export const SPIRE_COILS: [number, number][] = [
+  [122, 118],
+  [W - 122, 118],
+  [122, H - 96],
+  [W - 122, H - 96],
+];
 /** The platform's coping: big dressed stones round the edge, a lip you can stand on. */
 function coping(c: Ctx, t: SpireZoneTheme) {
   const B = SPIRE_RIM;
@@ -1618,6 +1950,7 @@ export function paintSpireFloor(c: Ctx, t: SpireZoneTheme) {
   dreamInlay(c, t);
   sunInlay(c, t);
   emberInlay(c, t);
+  stormInlay(c, t);
   // Dust and grit, a few fallen crystal shards near the edges.
   paintKit.pebbles(
     c,
@@ -1662,6 +1995,10 @@ export function paintSpireFloor(c: Ctx, t: SpireZoneTheme) {
   if (t.ember)
     for (const [x, y] of SPIRE_LANTERNS)
       paperLantern(c, t, x, y < 40 ? 24 : y > H - 40 ? H - 26 : y, 1.3);
+  // A storm zone's lightning rods on the coping.
+  if (t.storm)
+    for (const [x, y] of SPIRE_LANTERNS)
+      lightningRod(c, t, x, y < 40 ? 22 : y > H - 40 ? H - 8 : y + 10);
   // Sun from the upper left, warm, and a gentle vignette.
   lights(c, [
     [380, 200, 620, 0.2, t.light],
@@ -1702,7 +2039,9 @@ export function paintSpireSky(c: Ctx, t: SpireZoneTheme, floor: number) {
           ? 290 + h * 860
           : t.ember
             ? 300 + h * 820
-            : 260 + h * 1000;
+            : t.storm
+              ? 280 + h * 860
+              : 260 + h * 1000;
   const g = c.createLinearGradient(0, S.y, 0, cloudTop + 120);
   g.addColorStop(0, top);
   g.addColorStop(0.65, mix(top, horizon, 0.55));
@@ -1722,7 +2061,9 @@ export function paintSpireSky(c: Ctx, t: SpireZoneTheme, floor: number) {
         ? 0
         : t.ember
           ? Math.round(150 * h * h)
-          : Math.round(220 * h * h);
+          : t.storm
+            ? Math.round(70 * h * h)
+            : Math.round(220 * h * h);
   for (let k = 0; k < stars; k++) {
     const x = S.x + R() * S.w,
       y = S.y + R() * (cloudTop - S.y);
@@ -1744,6 +2085,7 @@ export function paintSpireSky(c: Ctx, t: SpireZoneTheme, floor: number) {
   else if (t.dream) paintDreamMoon(c, t, h);
   else if (t.radiant) paintRadiantSun(c, t, h);
   else if (t.ember) paintEmberSun(c, t, h, cloudTop);
+  else if (t.storm) paintStormFlash(c, t, h);
   else if (h > 0.45) {
     const a = (h - 0.45) / 0.55;
     const mx = 1900,
@@ -1794,6 +2136,7 @@ export function paintSpireSky(c: Ctx, t: SpireZoneTheme, floor: number) {
   else if (t.dream) paintDreamBelow(c, t, h, cloudTop, puff, floor);
   else if (t.radiant) paintRadiantBelow(c, t, h, cloudTop, puff, floor);
   else if (t.ember) paintEmberBelow(c, t, h, cloudTop, puff, floor);
+  else if (t.storm) paintStormBelow(c, t, h, cloudTop, puff, floor);
   // The far cloud sea behind the tower.
   else
     for (let row = 0; row < 5; row++)
@@ -1860,7 +2203,9 @@ export function paintSpireSky(c: Ctx, t: SpireZoneTheme, floor: number) {
     ? t.night.lantern[1]
     : t.ember
       ? t.ember.paper[1]
-      : undefined;
+      : t.storm
+        ? t.storm.arc
+        : undefined;
   if (windowLight) {
     reseed(9350);
     for (const [wx, wy] of [
@@ -2581,6 +2926,186 @@ function paintEmberBelow(
   c.fillStyle = g;
   c.fillRect(S.x, top + 300, S.w, Math.max(0, bottom - top - 300));
 }
+/**
+ * A storm zone's light in the sky: no sun, the glow of lightning inside
+ * the thunderheads (high at the right, low at the left), stronger as the
+ * storm night falls.
+ */
+function paintStormFlash(c: Ctx, t: SpireZoneTheme, h: number) {
+  const s = t.storm!;
+  for (const [fx, fy, rr, a] of [
+    [1960, -120, 640, 0.32 + 0.2 * h],
+    [-320, 260, 520, 0.22 + 0.16 * h],
+  ] as const) {
+    const g = c.createRadialGradient(fx, fy, 10, fx, fy, rr);
+    g.addColorStop(0, `rgba(${s.flash},${a})`);
+    g.addColorStop(0.45, `rgba(${s.flash},${a * 0.35})`);
+    g.addColorStop(1, `rgba(${s.flash},0)`);
+    c.fillStyle = g;
+    c.fillRect(fx - rr, fy - rr, rr * 2, rr * 2);
+  }
+}
+/**
+ * A forked lightning bolt from (x, y) down `len`, leaning `lean`: a soft
+ * halo, a white core and a branch or two (baked: it never flashes).
+ */
+function skyBolt(
+  c: Ctx,
+  t: SpireZoneTheme,
+  x: number,
+  y: number,
+  len: number,
+  lean: number,
+  w = 1,
+) {
+  const s = t.storm!;
+  const path = (x0: number, y0: number, l: number, steps: number) => {
+    const pts: [number, number][] = [[x0, y0]];
+    let px = x0,
+      py = y0;
+    for (let i = 0; i < steps; i++) {
+      px += lean * (l / steps) + (R() - 0.5) * l * 0.16;
+      py += l / steps;
+      pts.push([px, py]);
+    }
+    return pts;
+  };
+  const main = path(x, y, len, 9);
+  const branches = [main];
+  for (const i of [3, 5]) {
+    if (R() < 0.3) continue;
+    const [bx, by] = main[i];
+    branches.push(path(bx, by, len * (0.3 + R() * 0.2), 5));
+  }
+  c.save();
+  c.lineCap = "round";
+  c.lineJoin = "round";
+  branches.forEach((pts, b) => {
+    const k = b ? 0.55 : 1;
+    for (const [width, col] of [
+      [18 * w * k, `rgba(${s.flash},0.14)`],
+      [7 * w * k, `rgba(${s.flash},0.35)`],
+      [2.6 * w * k, rgba(s.bolt, 0.95)],
+    ] as const) {
+      c.strokeStyle = col;
+      c.lineWidth = width;
+      c.beginPath();
+      pts.forEach(([px, py], i) => (i ? c.lineTo(px, py) : c.moveTo(px, py)));
+      c.stroke();
+    }
+  });
+  c.restore();
+}
+/**
+ * A storm zone's view down: thunderheads piled below the tower from `top`
+ * (dark, lit from within where lightning runs through them), forked
+ * lightning striking down beside the court (more higher up), slanting
+ * rain curtains and a black storm sea under the clouds. Painted once per
+ * floor with the sky.
+ */
+function paintStormBelow(
+  c: Ctx,
+  t: SpireZoneTheme,
+  h: number,
+  top: number,
+  puff: (x: number, y: number, r: number, a: number) => void,
+  floor: number,
+) {
+  const s = t.storm!,
+    S = SPIRE_SKY,
+    bottom = S.y + S.h;
+  reseed(9960 + floor);
+  const soft = (x: number, y: number, r: number, a: number, col: string) => {
+    const p = c.createRadialGradient(x, y - r * 0.2, r * 0.1, x, y, r);
+    p.addColorStop(0, `rgba(${col},${a})`);
+    p.addColorStop(0.6, `rgba(${col},${a * 0.6})`);
+    p.addColorStop(1, `rgba(${col},0)`);
+    c.fillStyle = p;
+    c.beginPath();
+    c.ellipse(x, y, r, r * 0.55, 0, 0, Math.PI * 2);
+    c.fill();
+  };
+  // Thunderheads towering at both sides of the court.
+  const anvil = rgba(mix(t.cloud[1], "#000000", 0.2), 1).slice(5, -3);
+  for (const [cx, peak] of [
+    [-300, 520],
+    [1900, 620],
+  ] as const)
+    for (let k = 0; k < 14; k++)
+      soft(
+        cx + (R() - 0.5) * 360,
+        top - (k / 14) * peak,
+        160 + R() * 120 - k * 4,
+        0.6,
+        anvil,
+      );
+  // Lightning running through the clouds: lit patches inside them.
+  const flashes = Math.round(5 + 6 * h);
+  for (let k = 0; k < flashes; k++)
+    soft(
+      S.x + R() * S.w,
+      top - 120 + R() * 360,
+      90 + R() * 120,
+      0.22 + 0.2 * h,
+      s.flash,
+    );
+  // The cloud sea: dark tops, a cold light under them.
+  for (let row = 0; row < 5; row++)
+    for (let k = 0; k < 16; k++) {
+      const x = S.x + (k + R() * 0.8) * (S.w / 15),
+        y = top + row * 90 + R() * 40,
+        r = 170 + R() * 110;
+      puff(x, y, r, 0.6 + row * 0.08);
+      if (R() < 0.18) soft(x, y + r * 0.2, r * 0.6, 0.18, s.flash);
+    }
+  // Forked lightning striking down beside the court (where the sky shows).
+  const bolts = Math.round(3 + 5 * h);
+  for (let k = 0, tries = 0; k < bolts && tries < 40; tries++) {
+    const x = S.x + 80 + R() * (S.w - 160),
+      y = S.y + 40 + R() * 240,
+      len = Math.min(360 - y, 380 + R() * 420);
+    // (Beside the court and in its upper half only: never behind a phone's
+    // stick or buttons, which sit low at either side.)
+    if (x > -60 && x < W + 60) continue;
+    skyBolt(c, t, x, y, len, (R() - 0.5) * 0.5, 0.8 + R() * 0.5);
+    k++;
+  }
+  // A few far bolts over the horizon, small and dim.
+  for (let k = 0; k < 4; k++) {
+    const x = S.x + R() * S.w,
+      y = top - 40 - R() * 80,
+      len = 120 + R() * 90;
+    if (x > -40 && x < W + 40) continue;
+    if (spireUnderControls(x, y, 80) || spireUnderControls(x, y + len, 80))
+      continue;
+    c.save();
+    c.globalAlpha = 0.6;
+    skyBolt(c, t, x, y, len, 0, 0.5);
+    c.restore();
+  }
+  // Rain: slanting curtains of thin streaks.
+  c.save();
+  c.lineCap = "round";
+  c.lineWidth = 1.6;
+  const streaks = Math.round(260 + 160 * h);
+  for (let k = 0; k < streaks; k++) {
+    const x = S.x + R() * S.w,
+      y = S.y + R() * S.h,
+      len = 26 + R() * 34;
+    c.strokeStyle = `rgba(${s.rain},${0.12 + R() * 0.16})`;
+    c.beginPath();
+    c.moveTo(x, y);
+    c.lineTo(x - len * 0.28, y + len);
+    c.stroke();
+  }
+  c.restore();
+  // Below the clouds, a black storm sea.
+  const g = c.createLinearGradient(0, top + 300, 0, bottom);
+  g.addColorStop(0, "rgba(6,8,18,0)");
+  g.addColorStop(1, "rgba(6,8,18,0.92)");
+  c.fillStyle = g;
+  c.fillRect(S.x, top + 300, S.w, Math.max(0, bottom - top - 300));
+}
 function rgba(col: string, a: number) {
   const m = col.startsWith("rgb")
     ? col.match(/\d+/g)!.slice(0, 3).map(Number)
@@ -2815,6 +3340,65 @@ function sunMark(c: Ctx, t: SpireZoneTheme, x: number, y: number) {
   c.beginPath();
   c.arc(x - 1.5, y - 1.5, 2.6, 0, Math.PI * 2);
   c.fill();
+}
+/**
+ * A storm zone's mark on a block's front: a riveted steel plate with an
+ * electric yellow lightning bolt on it (a dark outline round the bolt),
+ * where Earth carves a rune.
+ */
+function stormMark(c: Ctx, t: SpireZoneTheme, x: number, y: number) {
+  const s = t.storm!;
+  c.fillStyle = rgba(t.carve, 0.7);
+  c.beginPath();
+  c.roundRect(x - 12, y - 13, 26, 28, 4);
+  c.fill();
+  const p = c.createLinearGradient(0, y - 14, 0, y + 14);
+  p.addColorStop(0, t.rim[0]);
+  p.addColorStop(1, t.rim[1]);
+  c.fillStyle = p;
+  c.beginPath();
+  c.roundRect(x - 13, y - 14, 26, 28, 4);
+  c.fill();
+  c.fillStyle = s.copper[1];
+  for (const [dx, dy] of [
+    [-9, -10],
+    [9, -10],
+    [-9, 10],
+    [9, 10],
+  ])
+    c.fillRect(x + dx - 1.2, y + dy - 1.2, 2.4, 2.4);
+  const bolt = () => {
+    c.beginPath();
+    c.moveTo(x + 3, y - 11);
+    c.lineTo(x - 6, y + 1);
+    c.lineTo(x - 0.5, y + 1);
+    c.lineTo(x - 3, y + 11);
+    c.lineTo(x + 6, y - 2);
+    c.lineTo(x + 0.5, y - 2);
+    c.closePath();
+  };
+  bolt();
+  c.strokeStyle = t.carve;
+  c.lineWidth = 2.4;
+  c.stroke();
+  c.fillStyle = t.crystal[1];
+  c.fill();
+}
+/**
+ * A storm zone's mark on an outcrop (painted after its dusk: it lights
+ * itself): a small tesla coil on its top beside the crystals.
+ */
+function stormMotif(
+  c: Ctx,
+  t: SpireZoneTheme,
+  style: BlockStyle,
+  x: number,
+  top: number,
+  front: number,
+  w: number,
+) {
+  if (!t.storm || style !== "outcrop") return;
+  teslaCoil(c, t, x + w * 0.2, top + (front - top) * 0.78, 10);
 }
 /** Courses of dressed stone across a front face. */
 function courses(
@@ -3078,12 +3662,14 @@ function paintBlock(
     c.fillRect(x + 10, top + 1, w - 20, 2.5);
     if (t.dream) dreamMark(c, t, x + w / 2, front + BLOCK_H * 0.45);
     if (t.radiant) sunMark(c, t, x + w / 2, front + BLOCK_H * 0.45);
+    if (t.storm) stormMark(c, t, x + w / 2, front + BLOCK_H * 0.45);
     duskStone(c, t, h);
     bioSpecks(c, t, x, front, w, BLOCK_H, h);
     inkDrips(c, t, x, top, front, w, h);
     nightMotif(c, t, style, x, top, front, w);
     cluster(c, t, x + w / 2, top + depth * 0.62, Math.min(w, 70) * 0.7, 3, h);
     emberMotif(c, t, style, x, top, front, w);
+    stormMotif(c, t, style, x, top, front, w);
     return;
   }
   // Pylons and walls: dressed blocks with a carved band and crystals on top.
@@ -3114,6 +3700,7 @@ function paintBlock(
   // hangs a lantern there instead, a dream zone inlays a crescent).
   if (t.dream) dreamMark(c, t, x + w / 2, front + BLOCK_H / 2);
   else if (t.radiant) sunMark(c, t, x + w / 2, front + BLOCK_H / 2);
+  else if (t.storm) stormMark(c, t, x + w / 2, front + BLOCK_H / 2);
   else if (!t.night && !t.ember) {
     c.save();
     c.lineCap = "round";
@@ -4017,6 +4604,102 @@ export function paintEmberSummitGrade(c: Ctx) {
   d.addColorStop(0, "rgba(255,170,120,0.1)");
   d.addColorStop(1, "rgba(255,170,120,0)");
   c.fillStyle = d;
+  c.fillRect(0, 0, W, H);
+  c.restore();
+}
+
+// ──────────────────────── The summit (floor 70) ────────────────────────
+
+/**
+ * Floor 70 keeps the Storm Twins' Conductor Ring; painted over it once, a
+ * summit grade of its own: the storm's eye at the top of the Spire. A cool
+ * steel-blue multiply (the slate and its copper deepen, so the twins'
+ * cues, all light colours: the yellow + and blue − marks and pad, the
+ * gold and cyan beam, the pink Link Beam and rush lanes, the blue static
+ * fields and thunderclap rings, gain on them), a storm night pressing in
+ * from the edges, thunderclouds massed in the corners (outside the ring's
+ * rush box) and baked lightning crackling along the rim (never under a
+ * phone's touch controls, never inside the edge band), and a cold flash
+ * from the upper left. The middle, where the posts, the beam and every
+ * warning are, keeps most of the raid's own light; the posts, fields, pad
+ * and beam are drawn live on top, so they keep their colours.
+ */
+export function paintStormSummitGrade(c: Ctx) {
+  const t = SPIRE_ZONE_THEMES[7],
+    s = t.storm!;
+  c.save();
+  c.globalCompositeOperation = "multiply";
+  c.fillStyle = "#c2c8de";
+  c.fillRect(0, 0, W, H);
+  c.globalCompositeOperation = "source-over";
+  const v = c.createRadialGradient(
+    W / 2,
+    H / 2,
+    H * 0.46,
+    W / 2,
+    H / 2,
+    H * 1.05,
+  );
+  v.addColorStop(0, "rgba(6,8,24,0)");
+  v.addColorStop(1, "rgba(6,8,24,0.6)");
+  c.fillStyle = v;
+  c.fillRect(0, 0, W, H);
+  // Thunderclouds massed in the corners (beyond the rush box's corners).
+  reseed(70801);
+  for (const [cx, cy] of [
+    [0, 0],
+    [W, 0],
+    [0, H],
+    [W, H],
+  ])
+    for (let k = 0; k < 6; k++) {
+      const x = cx + (cx ? -1 : 1) * R() * 90,
+        y = cy + (cy ? -1 : 1) * R() * 60,
+        r = 80 + R() * 50;
+      const p = c.createRadialGradient(x, y, r * 0.1, x, y, r);
+      p.addColorStop(0, "rgba(14,16,32,0.5)");
+      p.addColorStop(1, "rgba(14,16,32,0)");
+      c.fillStyle = p;
+      c.beginPath();
+      c.ellipse(x, y, r, r * 0.6, 0, 0, Math.PI * 2);
+      c.fill();
+    }
+  // Lightning crackling along the rim: short forked arcs inside the edge
+  // band (none where a phone's touch controls sit).
+  c.lineCap = "round";
+  c.lineJoin = "round";
+  for (let k = 0; k < 32; k++) {
+    const side = k % 4,
+      along = 0.04 + R() * 0.92,
+      inset = 8 + R() * 14;
+    const x = side === 1 ? W - inset : side === 3 ? inset : along * W,
+      y = side === 0 ? inset : side === 2 ? H - inset : along * H;
+    const horizontal = side % 2 === 0,
+      len = 30 + R() * 30;
+    const pts: [number, number][] = [[x, y]];
+    for (let i = 1; i <= 5; i++) {
+      const f = (i / 5) * len,
+        j = (R() - 0.5) * 9;
+      pts.push(horizontal ? [x + f, y + j] : [x + j, y + f]);
+    }
+    if (pts.some(([px, py]) => spireUnderControls(px, py, 30))) continue;
+    for (const [w, col] of [
+      [6, `rgba(${s.flash},0.18)`],
+      [1.6, rgba(s.bolt, 0.7)],
+    ] as const) {
+      c.strokeStyle = col;
+      c.lineWidth = w;
+      c.beginPath();
+      pts.forEach(([px, py], i) => (i ? c.lineTo(px, py) : c.moveTo(px, py)));
+      c.stroke();
+    }
+  }
+  // A cold lightning flash from the upper left.
+  c.globalCompositeOperation = "screen";
+  const m = c.createRadialGradient(0, 0, 40, 0, 0, 900);
+  m.addColorStop(0, `rgba(${s.flash},0.16)`);
+  m.addColorStop(1, `rgba(${s.flash},0)`);
+  c.fillStyle = m;
   c.fillRect(0, 0, W, H);
   c.restore();
 }
