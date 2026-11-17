@@ -564,14 +564,26 @@ const carnival: Record<CharacterId, Signature> = {
     h: 0xd65d83,
     burst: "star",
     draw: (f) => {
-      // A spotlight from above follows the ringmaster, drifting a little.
-      const sx = f.x + Math.sin(f.t / 1800) * 5 * f.s;
-      const w = 22 * f.s * f.boost,
-        top = f.headY - 60 * f.s;
-      f.under.fillStyle(f.c, 0.1).fillTriangle(sx - 6 * f.s, top, sx + 6 * f.s, top, sx + w, f.ground);
-      f.under.fillStyle(f.c, 0.1).fillTriangle(sx - 6 * f.s, top, sx - w, f.ground, sx + w, f.ground);
-      f.under.fillStyle(f.c, 0.22).fillEllipse(sx, f.ground, w * 2, w * 0.6);
-      groundEllipse(f, 44, f.h, 0.5 + 0.3 * wave(f.t / 900), 1.4, sx);
+      // A spotlight follows the ringmaster: a short beam that stops just above
+      // the hat (so it never paints over a pillar or fighter behind it), a
+      // warm pool of light on the ground, and glitter drifting down through
+      // it. No ring: the player's own ring already sits under the feet.
+      const sx = f.x + Math.sin(f.t / 1800) * 4 * f.s;
+      const w = 24 * f.s * f.boost,
+        top = f.headY - 8 * f.s;
+      f.under.fillStyle(f.c, 0.16).fillTriangle(sx - 5 * f.s, top, sx + 5 * f.s, top, sx + w, f.ground);
+      f.under.fillStyle(f.c, 0.16).fillTriangle(sx - 5 * f.s, top, sx - w, f.ground, sx + w, f.ground);
+      const k = wave(f.t / 1400);
+      f.under.fillStyle(0xfff1c8, 0.32 + 0.08 * k).fillEllipse(sx, f.ground, w * 2.1, w * 0.64);
+      f.under.fillStyle(0xffffff, 0.3 + 0.1 * k).fillEllipse(sx, f.ground, w * 1.2, w * 0.36);
+      for (let i = 0; i < (f.full ? 3 : 2); i++) {
+        const u = (f.t / 2600 + i / 3) % 1;
+        const gx = sx + Math.sin(u * 9 + i * 2) * (5 + u * 12) * f.s * (i % 2 ? 1 : -1),
+          gy = top + u * (f.ground - top);
+        const a = Math.sin(u * Math.PI);
+        if (f.full) sparkle(f.under, gx, gy, 1.6 * f.s, i % 2 ? f.h : 0xffe19a, a);
+        else dot(f.under, gx, gy, 1.1 * f.s, i % 2 ? f.h : 0xffe19a, a);
+      }
     },
   },
   terradon: {
