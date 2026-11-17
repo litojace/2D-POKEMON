@@ -212,6 +212,7 @@ export const VANGUARD_ART: Record<string, SkinArt> = Object.fromEntries(
         },
         skill: parseInt(design.palette.glow.slice(1), 16),
         detail: "glint",
+        vanguard: id,
       } satisfies SkinArt,
     ];
   }),

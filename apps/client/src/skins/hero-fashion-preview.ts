@@ -1,9 +1,9 @@
-import { epicFxSvg } from "./epic-skin-fx";
+import { vanguardPreviewFx } from "./vanguard-fx";
 import { creatureLayers, type CreaturePart } from "../creature-design";
 import type { CharacterId } from "@arena/shared";
 import { profilePartOrder } from "../creature-profile";
 import type { Facing } from "../animation/controller";
-import { HEAD, SKIN_ART } from "./skin-art";
+import { HEAD } from "./skin-art";
 import { vanguardOutfit } from "./vanguard-equipment";
 import { VANGUARD_DESIGNS } from "./vanguard-art";
 export { VANGUARD_DESIGNS as HERO_PREVIEWS } from "./vanguard-art";
@@ -16,12 +16,7 @@ export function heroPreviewLayers(id: CharacterId, dir: Facing) {
 }
 export function heroPreviewSvg(id: CharacterId, dir: Facing) {
   const { defs, layers } = heroPreviewLayers(id, dir);
-  const fx = epicFxSvg(
-    `${id}-nova-vanguard`,
-    { now: 600, facing: dir, moving: false, dashing: false, ambient: true },
-    SKIN_ART[`${id}-nova-vanguard`],
-    true,
-  );
+  const fx = vanguardPreviewFx(id, dir);
   const order: CreaturePart[] =
     dir === "down"
       ? [
@@ -39,5 +34,5 @@ export function heroPreviewSvg(id: CharacterId, dir: Facing) {
           "scarf",
         ]
       : profilePartOrder(dir, id);
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-12 -40 224 238" aria-label="${id} ${dir}">${defs}${fx.under}<g fill="none" stroke="${VANGUARD_DESIGNS[id].palette.dark}" stroke-width="2.1" stroke-linejoin="round" stroke-linecap="round"><ellipse cx="100" cy="178" rx="35" ry="6" fill="#071120" opacity=".35" stroke="none"/>${order.map((part) => `<g class="hero-part hero-${part}">${layers[part]}</g>`).join("")}</g>${fx.over}</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-12 -40 224 238" aria-label="${id} ${dir}">${defs}<g fill="none" stroke="${VANGUARD_DESIGNS[id].palette.dark}" stroke-width="2.1" stroke-linejoin="round" stroke-linecap="round"><ellipse cx="100" cy="178" rx="35" ry="6" fill="#071120" opacity=".35" stroke="none"/>${order.map((part) => `<g class="hero-part hero-${part}">${layers[part]}${fx[part] ?? ""}</g>`).join("")}</g></svg>`;
 }
