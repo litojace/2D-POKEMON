@@ -425,12 +425,17 @@ test("Bistro decorate: pieces turn as they're placed (the ↻ button, R, a right
   const at = async (x: number, y: number) =>
     (await B(page, `return b.screen(${x}, ${y})`)) as Pt;
   const rotate = page.locator("#bs-rotate");
-  // A lamp: the round ↻ shows beside it once it's over the floor.
+  // A lamp: the round ↻ shows beside it once it's over the floor, with ✕
+  // (the buttons sit on the piece, as the Farm's tools sit on a plot; the
+  // bar keeps storage, Shop and Done).
   await page.click('#bs-edit [data-hold="lamp"]');
   let p = await at(6, 6);
   await page.mouse.move(p.x, p.y);
   await expect(rotate).toBeVisible();
-  await expect(page.locator('#bs-edit [data-ed="rot"]')).toBeVisible();
+  await expect(page.locator('#bs-held [data-ed="cancel"]')).toBeVisible();
+  // (Put away is for a piece already in the room: this one is from storage.)
+  await expect(page.locator('#bs-held [data-ed="store"]')).toBeHidden();
+  await expect(page.locator('#bs-edit [data-ed="rot"]')).toHaveCount(0);
   const box = (await rotate.boundingBox())!;
   expect(box.x).toBeGreaterThan(p.x - 10); // beside it, to the right
   expect(box.y + box.height).toBeLessThan(p.y); // and above

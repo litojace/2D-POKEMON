@@ -316,16 +316,17 @@ for (const size of PHONES)
         all.push(...(await touchProblems(page, `${where} (end)`)));
         if (k === "shop" && a === "furniture") {
           await snap(page, info, `bistro-touch-shop-${size.name}`);
-          // − and + a thumb can hit, around a count of its own size (the
-          // page's field style once squeezed them to 17 px slivers).
+          // − and + whole, around a count of its own size (the page's field
+          // style once squeezed them to 17 px slivers).
           const step = await page.evaluate(() =>
             [...document.querySelectorAll("#bs-sheet .bs-step > *")].map((e) =>
               Math.round(e.getBoundingClientRect().width),
             ),
           );
-          expect(step[0]).toBeGreaterThanOrEqual(34);
-          expect(step[2]).toBeGreaterThanOrEqual(34);
-          expect(step[1]).toBeLessThanOrEqual(64);
+          // An iOS stepper's size: 32 px parts, not the 40 px they grew to.
+          expect(step[0]).toBe(32);
+          expect(step[2]).toBe(32);
+          expect(step[1]).toBeLessThanOrEqual(48);
         }
       }
       // A long list scrolls under a finger (the team, a dozen cards down).
@@ -344,6 +345,28 @@ for (const size of PHONES)
       await page.click("#bs-edit [data-hold]");
       all.push(...(await touchProblems(page, `${size.name} decorate holding`)));
       await snap(page, info, `bistro-touch-decorate-${size.name}`);
+      // The piece's own buttons sit on it at once (its ghost shows on a free
+      // tile), and the bar keeps only storage, Shop and Done.
+      const acts = page.locator("#bs-held");
+      await expect(acts).toBeVisible();
+      await expect(page.locator('#bs-edit [data-ed="cancel"]')).toHaveCount(0);
+      await page.locator('#bs-held [data-ed="cancel"]').tap();
+      await expect(acts).toBeHidden();
+      // A piece in the room: tap it, and the box puts it away.
+      const item = (await B(
+        page,
+        `const it = srv.S.items.find((i) => i.kind === 'plant') ?? srv.S.items.find((i) => !['table','chair','stool'].includes(i.kind));
+         const p = b.screen(it.x, it.y, 20); return { kind: it.kind, x: p.x, y: p.y, stored: srv.S.stored[it.kind] ?? 0 };`,
+      )) as { kind: string; x: number; y: number; stored: number };
+      await page.touchscreen.tap(item.x, item.y);
+      await expect(page.locator('#bs-held [data-ed="store"]')).toBeVisible();
+      all.push(...(await touchProblems(page, `${size.name} decorate moving`)));
+      await page.locator('#bs-held [data-ed="store"]').tap();
+      await expect(acts).toBeHidden();
+      await B(page, "return b.flush()");
+      expect(await B(page, `return srv.S.stored['${item.kind}'] ?? 0`)).toBe(
+        item.stored + 1,
+      );
       await page.click('#bs-edit [data-ed="done"]');
       // The report after time away.
       await B(page, "srv.S.lastSeen -= 9 * 3600 * 1000; return b.load()");

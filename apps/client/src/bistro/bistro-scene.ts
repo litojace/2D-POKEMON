@@ -689,7 +689,11 @@ const HTML = `<canvas class="bs-cv" aria-label="Your bistro"></canvas>
   </div>
   <div class="bs-bar glass" id="bs-bar"></div>
   <div class="bs-edit glass" id="bs-edit" hidden></div>
-  <button type="button" class="bs-rotate" id="bs-rotate" hidden aria-label="Rotate (R)" title="Rotate (R)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.6-5.9" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/><path d="M20.5 3.5v5h-5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+  <div class="bs-held" id="bs-held" hidden>
+    <button type="button" class="bs-rotate" id="bs-rotate" aria-label="Rotate (R)" title="Rotate (R)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.6-5.9" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/><path d="M20.5 3.5v5h-5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <button type="button" class="bs-held-btn" data-ed="store" aria-label="Put away" title="Put away"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h16v10a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 19z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><path d="M3 5.5h18V9H3z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><path d="M12 11.5v5.5m-2.6-2.6L12 17l2.6-2.6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <button type="button" class="bs-held-btn x" data-ed="cancel" aria-label="Cancel" title="Cancel"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5l11 11m0-11l-11 11" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg></button>
+  </div>
   <div class="bs-tip glass" id="bs-tip" hidden></div>
   <section class="bs-sheet glass" id="bs-sheet" hidden></section>
   <div class="bs-banner" id="bs-banner" hidden></div>
@@ -975,6 +979,8 @@ export function openBistro(o: BistroOptions): BistroHandle {
   let W = 0,
     H = 0,
     DPR = 1;
+  /** The HUD's edges moved (a resize, the decorate bar): measure them again. */
+  let hudMoved = true;
   const view = { s: 1, x: 0, y: 0 };
   let fitS = 1;
   let zoom = 1;
@@ -1013,6 +1019,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
     );
     shellKey = "";
     hudDirty = true;
+    hudMoved = true;
   };
   const applyView = () => {
     const ins = insets();
@@ -2313,6 +2320,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
     if (g) setInner(g, gradeText());
   };
   const renderEdit = () => {
+    hudMoved = true;
     editEl.hidden = !editing;
     if (!editing) return;
     const stored = Object.entries(S.stored).filter(([, n]) => (n ?? 0) > 0) as [
@@ -2330,11 +2338,9 @@ export function openBistro(o: BistroOptions): BistroHandle {
     setInner(
       editEl,
       `
-      <div class="bs-edit-head"><b>${held ? `Placing: ${esc(ITEM_BY_KIND[held.kind].name)}` : stoveTitle ? stoveTitle : "Decorate"}</b><span>${held ? `Tap a floor tile to put it down${itemTurns(held.kind) > 1 ? " · ↻ or R to rotate" : ""}` : heldStove ? ("model" in heldStove ? "Tap a free spot on the kitchen's back wall, or a stove to swap it" : "Tap a free spot on the kitchen's back wall") : "Tap something to move it · tags: a waiter's steps to each seat"}</span><em class="bs-grade" id="bs-grade">${gradeText()}</em></div>
+      <div class="bs-edit-head"><b>${held ? `Placing: ${esc(ITEM_BY_KIND[held.kind].name)}` : stoveTitle ? stoveTitle : "Decorate"}</b><span>${held ? `Tap a floor tile to put it down, or drag it there${itemTurns(held.kind) > 1 ? " · ↻ (or R) turns it" : ""}` : heldStove ? ("model" in heldStove ? "Tap a free spot on the kitchen's back wall, or a stove to swap it" : "Tap a free spot on the kitchen's back wall") : "Tap something to move it · tags: a waiter's steps to each seat"}</span><em class="bs-grade" id="bs-grade">${gradeText()}</em></div>
       <div class="bs-store">${stored.length || stoves.length ? stoves.map(([m, n]) => `<button type="button" data-hold-stove="${m}" aria-label="${esc(STOVE_BY_MODEL[m].name)} ×${n}" class="${heldStove && "model" in heldStove && heldStove.model === m ? "on" : ""}"><img src="${stoveIconUrl(m)}" alt=""><span>${esc(STOVE_BY_MODEL[m].name)}</span><i>×${n}</i></button>`).join("") + stored.map(([k, n]) => `<button type="button" data-hold="${k}" aria-label="${esc(ITEM_BY_KIND[k].name)} ×${n}" class="${held?.kind === k && !held.moving ? "on" : ""}"><img src="${itemIconUrl(k)}" alt=""><span>${esc(ITEM_BY_KIND[k].name)}</span><i>×${n}</i></button>`).join("") : `<em>Storage is empty</em>`}</div>
       <div class="bs-edit-btns">
-        ${held && itemTurns(held.kind) > 1 ? `<button type="button" data-ed="rot" title="Rotate (R)">↻ Rotate</button>` : ""}
-        ${held ? `<button type="button" data-ed="store">Put away</button><button type="button" data-ed="cancel">Cancel</button>` : ""}
         ${heldStove ? `<button type="button" data-ed="cancel">Cancel</button>` : ""}
         <button type="button" data-ed="shop">Shop</button>
         <button type="button" class="go" data-ed="done">Done</button>
@@ -2344,12 +2350,37 @@ export function openBistro(o: BistroOptions): BistroHandle {
     const g = editEl.querySelector<HTMLElement>("#bs-grade");
     if (g) setInner(g, gradeText());
   };
+  /**
+   * Where a piece taken from storage shows first: the free tile nearest the
+   * room's middle (so its ghost, and the buttons beside it, are in view at
+   * once; a tap elsewhere still puts it there).
+   */
+  const firstSpot = (kind: ItemKind): Pt => {
+    const cx = (R.cols - 1) / 2,
+      cy = (R.rows - 1) / 2;
+    let best: Pt | null = null,
+      bd = Infinity;
+    for (let x = 0; x < R.cols; x++)
+      for (let y = 0; y < R.rows; y++) {
+        const d = Math.hypot(x - cx, y - cy);
+        if (d < bd && tryPlaceDry(kind, x, y)) {
+          best = { x, y };
+          bd = d;
+        }
+      }
+    return best ?? { x: Math.round(cx), y: Math.round(cy) };
+  };
+  /** Pick up a piece from storage (or one just bought). */
+  const holdNew = (kind: ItemKind) => {
+    held = { kind, rot: 0 };
+    hover = firstSpot(kind);
+  };
   editEl.addEventListener("click", (e) => {
     const b = (e.target as HTMLElement).closest("button");
     if (!b) return;
     sound("tick");
     if (b.dataset.hold) {
-      held = { kind: b.dataset.hold as ItemKind, rot: 0 };
+      holdNew(b.dataset.hold as ItemKind);
       heldStove = null;
       renderEdit();
       return;
@@ -2360,7 +2391,10 @@ export function openBistro(o: BistroOptions): BistroHandle {
       renderEdit();
       return;
     }
-    const a = b.dataset.ed;
+    editAct(b.dataset.ed);
+  });
+  /** A decorate button: on the bar, or beside the held piece. */
+  const editAct = (a: string | undefined) => {
     if (a === "done") setEditing(false);
     else if (a === "shop") openSheet("shop", "furniture");
     else if (a === "cancel") {
@@ -2379,7 +2413,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
       sound("whoosh");
       renderEdit();
     }
-  });
+  };
   /**
    * The way the held piece faces on a tile: as turned; a chair not turned by
    * hand faces a table it touches (so the ghost shows where it will face).
@@ -3366,7 +3400,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
       changed();
       closeSheet();
       if (!editing) setEditing(true);
-      held = { kind, rot: 0 };
+      holdNew(kind);
       renderEdit();
       return;
     }
@@ -4803,32 +4837,71 @@ export function openBistro(o: BistroOptions): BistroHandle {
     drawItem(ctx, h.kind, at.x, at.y, T, facing(at.x, at.y));
     ctx.restore();
   };
-  /** The round ↻ button beside the held piece (as building games put it). */
+  /**
+   * The round buttons beside the held piece, as the Farm puts its tools on
+   * a plot: ↻ turns it, the box puts a placed piece away, ✕ cancels. Moved
+   * with the piece each frame (from the view alone: the canvas fills the
+   * layer, so no layout is read).
+   */
+  const heldEl = $("#bs-held");
   const rotateEl = $("#bs-rotate") as HTMLButtonElement;
-  let rotateAt = "";
+  const storeEl = heldEl.querySelector<HTMLElement>('[data-ed="store"]')!;
+  let heldAt = "";
+  /** The open part of the screen for the held piece's buttons (cached). */
+  const freeArea = { l: 8, t: 8, r: 1e4, b: 1e4 };
+  const measureFree = () => {
+    const pad = 8;
+    const rail = layer.querySelector<HTMLElement>(".bs-rail");
+    const top = layer.querySelector<HTMLElement>("#bs-badge");
+    const rr = rail?.getBoundingClientRect();
+    const tr = top?.getBoundingClientRect();
+    const er = editEl.hidden ? null : editEl.getBoundingClientRect();
+    freeArea.l = pad;
+    freeArea.r = (rr && rr.width ? rr.left : W) - pad;
+    freeArea.t = (tr && tr.height ? tr.bottom : 0) + pad;
+    freeArea.b = (er && er.height ? er.top : H) - pad;
+    heldAt = "";
+  };
   const placeRotate = () => {
-    const show =
-      editing && !!held && !!hover && itemTurns(held.kind) > 1 && !sheetKind;
-    if (rotateEl.hidden === show) rotateEl.hidden = !show;
+    const show = editing && !!held && !!hover && !sheetKind;
+    if (heldEl.hidden === show) heldEl.hidden = !show;
     if (!show || !held || !hover) return;
+    if (hudMoved) {
+      hudMoved = false;
+      measureFree();
+    }
+    const turns = itemTurns(held.kind) > 1,
+      moving = !!held.moving;
     const floor = ITEM_BY_KIND[held.kind].floor;
     const w = iso(hover.x + (floor ? 1 : 0), hover.y);
     const p = toScreen({ x: w.x + 40, y: w.y - (floor ? 30 : 104) });
-    const r = cv.getBoundingClientRect(),
-      lr = layer.getBoundingClientRect();
-    const x = Math.round(r.left - lr.left + p.x),
-      y = Math.round(r.top - lr.top + p.y);
-    const key = `${x},${y}`;
-    if (key === rotateAt) return;
-    rotateAt = key;
-    rotateEl.style.left = `${x}px`;
-    rotateEl.style.top = `${y}px`;
+    const n = 1 + (turns ? 1 : 0) + (moving ? 1 : 0);
+    // Kept in the open: under the top bar, left of the menu, above the
+    // decorate bar (their edges measured on resize and when the bar
+    // changes, never per frame). x and y are the first button's middle.
+    const span = n * 44 + (n - 1) * 8;
+    const x = Math.round(clamp(p.x, freeArea.l + 22, freeArea.r - span + 22)),
+      y = Math.round(clamp(p.y, freeArea.t + 22, freeArea.b - 22));
+    const key = `${x},${y},${turns},${moving}`;
+    if (key === heldAt) return;
+    heldAt = key;
+    rotateEl.hidden = !turns;
+    storeEl.hidden = !moving;
+    heldEl.style.left = `${x}px`;
+    heldEl.style.top = `${y}px`;
   };
   rotateEl.addEventListener("click", () => {
+    sound("tick");
     rotateHeld(1);
     rotateEl.classList.remove("spun");
     void rotateEl.offsetWidth;
     rotateEl.classList.add("spun");
+  });
+  heldEl.addEventListener("click", (e) => {
+    const b = (e.target as HTMLElement).closest<HTMLElement>("[data-ed]");
+    if (!b) return;
+    sound("tick");
+    editAct(b.dataset.ed);
   });
   /** Free stoves of yours: since when (for the call to cook), and which call now. */
   const idleSince = new Map<number, number>();
