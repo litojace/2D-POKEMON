@@ -178,7 +178,7 @@ describe("Spire floors (zone 5, the Sun Atrium)", () => {
       /Cragmuff|Tidelotl|Inkpurr|Snoozaku/,
     );
     expect(SPIRE_ZONES[5].bossLead).toMatch(/sunbeam/);
-    expect(SPIRE_ZONES[5].bossReads).toMatch(/where you usually dodge/);
+    expect(SPIRE_ZONES[5].bossReads).toMatch(/you usually dodge to/);
     expect(SPIRE_ZONES[5].bossReads).toMatch(/kneels to revive/);
     // The Ascendant's new attacks, as the boss layer plays them.
     expect(SPIRE_ZONES[5].ascendantMoves).toEqual(["eclipse", "umbral-prism"]);

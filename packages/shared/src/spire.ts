@@ -1158,19 +1158,22 @@ export const SPIRE_TUNING: Record<
   // off-element champion a floor. As in zones 3 and 4, each Echo hits a
   // little harder floor by floor and its toughness follows its floor's
   // line-up: the support Sunbara heals the Echoes round it, so Light Echoes
-  // take more damage per hit than zone 4's to stay beatable. By simulation
-  // (tests/unit/spire-zone5.test.ts; a solo Normal bot raider, 96 seeds)
-  // floor 41 is cleared about two times in three (69%), then 59, 56, 49,
-  // 50 (the elite), 48, 44, 39 and 35% on floor 49.
-  41: { difficulty: "normal", power: 0.58, armour: 2.9, limit: 180 },
-  42: { difficulty: "normal", power: 0.59, armour: 2.25, limit: 180 },
-  43: { difficulty: "normal", power: 0.6, armour: 3.1, limit: 180 },
-  44: { difficulty: "normal", power: 0.61, armour: 3, limit: 180 },
+  // take more damage per hit than zone 4's to stay beatable. The wave
+  // floors were tuned again once every wave had to be fought (see above):
+  // their armour searched on seeds 1–240, then checked on seeds 241–336. By
+  // simulation (tests/unit/spire-zone5.test.ts; a solo Normal bot raider,
+  // all 336 seeds) floor 41 is cleared about two times in three (66%), then
+  // 62, 59, 48, about 45 (the elite, unchanged), 49, 45, 42 and 35% on
+  // floor 49.
+  41: { difficulty: "normal", power: 0.58, armour: 4.8, limit: 180 },
+  42: { difficulty: "normal", power: 0.59, armour: 3.35, limit: 180 },
+  43: { difficulty: "normal", power: 0.6, armour: 6.5, limit: 180 },
+  44: { difficulty: "normal", power: 0.61, armour: 4.5, limit: 180 },
   45: { difficulty: "normal", power: 0.64, armour: 0.8, limit: 240 },
-  46: { difficulty: "normal", power: 0.62, armour: 2.04, limit: 180 },
-  47: { difficulty: "normal", power: 0.63, armour: 2.7, limit: 180 },
-  48: { difficulty: "normal", power: 0.64, armour: 3.35, limit: 180 },
-  49: { difficulty: "normal", power: 0.65, armour: 2.15, limit: 180 },
+  46: { difficulty: "normal", power: 0.62, armour: 3.75, limit: 180 },
+  47: { difficulty: "normal", power: 0.63, armour: 3.3, limit: 180 },
+  48: { difficulty: "normal", power: 0.64, armour: 4.8, limit: 180 },
+  49: { difficulty: "normal", power: 0.65, armour: 3.05, limit: 180 },
   50: { difficulty: "hard", power: 1, armour: 1, limit: 600 },
 };
 /** Party scaling, and the cap on fighters on the court. */
