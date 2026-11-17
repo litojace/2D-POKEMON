@@ -59,9 +59,9 @@ Duskveil retains a dark void face.
 ## Animation and performance
 
 The production articulated rig moves the clothing pieces with their joints.
-Rare skins have no idle particle or drawing effect. The two fashion Epic
-collections cap idle glints at 20 Graphics calls; Nova Vanguard caps its
-personal details at 32 calls and emits no idle particles. Trails use the existing dash particle budget; skills only
+Rare skins have no idle particle or drawing effect. All 90 Epic
+skins now have personal signatures: up to 20 drawing calls for their essential
+Low-quality identity, up to 64 for the full layered effect, and no idle particles. Trails use the existing dash particle budget; skills only
 change color. These skins add no Mythical ornaments, Awakening stages,
 full-screen flashes, large auras, changed hitboxes or ability timings.
 
@@ -91,12 +91,25 @@ provides a modest idle/walk demonstration. Costume pieces fit the actual rig
 crop boxes across all 72 views. Shop, Wardrobe and battles use the production
 skin renderer; the review wrapper calls that same renderer.
 
-`vanguard-fx.ts` supplies personal animated ornaments through the rig's existing
-Graphics objects. They follow their actual body/limb transforms, use at most
-32 drawing calls per frame, emit no idle particles, and stop when ambient
-costume effects or motion are disabled. Battles share the existing one/two-fighter
-ambient budget (local player first); Low disables these details. No custom
-scene objects, large glow layers or extra skill geometry are introduced.
+`epic-signatures.ts`, `epic-glyphs.ts` and `epic-skin-fx.ts` replace shared Epic
+glints with 90 distinct signatures, including the original and Cyber skins.
+Each signature combines an authored creature / costume motif, its material
+language and animation, and a personal movement stamp. Abyssal uses currents
+and sonar bubbles; Carnival uses props and ribbons; Cyber uses tracking
+brackets and circuit scans; Nova projects its hero emblems. Original Epics
+keep their own subjects (ice, clockwork, neon, aurora, paper, sap and so on).
+
+The essential emblem stays visible at Low instead of disappearing with the
+ambient budget. Full details use the existing one/two-fighter cap (you first),
+fit a 64-call ceiling and add no idle particles. That deliberately replaces the
+previous 32-call, barely visible Nova details with larger, higher-contrast
+shapes while retaining a 20-call Low ceiling. Reduced Motion skips battle
+animation as before. Details stay below faces, are drawn on existing pooled
+Graphics layers, and leave attacks, hitboxes and their warnings unchanged.
+
+Town uses the same frame plans on its existing canvas: full detail for the
+local player at High, essential identities for up to three nearby real players
+(one at Low). No per-frame image baking or pixel reads are introduced.
 
 | Champion | Costume | Signature equipment |
 | --- | --- | --- |

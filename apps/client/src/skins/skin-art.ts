@@ -1,3 +1,4 @@
+import { EPIC_SIGNATURES } from "./epic-signatures";
 import { VANGUARD_ART, VANGUARD_DESIGNS } from "./vanguard-art";
 import { vanguardOutfit } from "./vanguard-equipment";
 import { FASHION_ART } from "./fashion-art";
@@ -123,8 +124,8 @@ export interface SkinArt {
   /** Epic and up: a small animated detail on the rig. */
   detail?: "pulse" | "glint" | "flicker" | "shimmer" | "gears" | "frost" | "scan";
   mythic?: Mythic;
-  /** Individual, budgeted Nova Vanguard idle ornament. */
-  vanguard?: CharacterId;
+  /** Individual Epic signature, with a Low-quality essential motif. */
+  epicFx?: string;
   /**
    * Outfits: the champion's own pieces on these parts (goggles, crest,
    * kerchief...) come off, and the skin's armour takes their place.
@@ -874,6 +875,10 @@ export const SKIN_ART: Record<string, SkinArt> = {
     mythic: "blight-sentinel",
   },
 };
+
+// Resolve all Epic identities from the shared catalog once, not per frame.
+for (const id of Object.keys(EPIC_SIGNATURES))
+  if (SKIN_ART[id]) SKIN_ART[id].epicFx = id;
 
 /** Where a champion's head sits, per facing (art units, measured). */
 export const HEAD: Record<CharacterId, Record<Facing, { cx: number; top: number }>> = {

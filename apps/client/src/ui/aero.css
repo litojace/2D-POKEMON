@@ -116,6 +116,25 @@
   box-shadow: none;
 }
 
+/* The chat button (chat/chat.css) is a HUD pill too: thin glass with the
+   gold hairline in the hub, lit gold on hover or while the drawer is
+   open. Outside the hub (a Spire battle) it sits over a moving fight, so
+   it stays unblurred there, as dialogs over a match do. */
+:root .chat-button {
+  background: var(--glass-solid);
+  border-color: var(--aero-rim);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+:root body.hub-active .chat-button {
+  background: var(--aero-tint);
+  -webkit-backdrop-filter: var(--aero-blur);
+  backdrop-filter: var(--aero-blur);
+}
+:root .chat-button:is(:hover, :focus-visible, [aria-expanded="true"]) {
+  border-color: var(--aero-rim-on);
+}
+
 /* Low graphics on the Plaza or the Farm: no blur over the moving canvas.
    hub-graphics-low is on <body> while either is at Low (hub-graphics.ts);
    doubled to keep the specificity the :has() selector it replaces had. */
@@ -124,7 +143,13 @@
 .farm-layer[data-graphics="low"] .glass,
 :root
   body.hub-graphics-low.hub-graphics-low
-  :is(#account-profile, #account-admin, .header-menu > summary, .hub-scenes),
+  :is(
+    #account-profile,
+    #account-admin,
+    .header-menu > summary,
+    .hub-scenes,
+    .chat-button
+  ),
 :root
   body.hub-graphics-low.hub-graphics-low
   :is(#account-coins, #account-leaves)
