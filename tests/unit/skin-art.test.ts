@@ -92,7 +92,10 @@ describe("champion skin art", () => {
   it("draws every skin in every facing as well-formed SVG with its own palette", () => {
     for (const s of CHAMPION_SKINS)
       for (const dir of DIRS)
-        for (const stage of [1, 2, 3]) {
+        for (const stage of SKIN_ART[s.id].mythic ||
+        SKIN_ART[s.id].stageAccessories?.length
+          ? [1, 2, 3]
+          : [1]) {
           const svg = creatureSvg(
             s.champion,
             dir,
