@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   loadSpireSeen,
   markSpireSeen,
+  spireLobbyCard,
   spireNudge,
   spireSeenKeys,
 } from "../../apps/client/src/spire-nudge";
@@ -133,6 +134,70 @@ describe("spireNudge", () => {
     expect(
       spireNudge({ spire: climb({ season: 1 }), seen: ["s0-z1"] })?.key,
     ).toBe("s1-z1");
+  });
+});
+
+// The Lobby's Spire card stays once the Spire is open (a shortcut past the
+// Raid Hub): the news while a zone is new, else your best floor.
+describe("spireLobbyCard", () => {
+  it("is absent before the Spire opens or while the climb is unknown", () => {
+    expect(
+      spireLobbyCard({ spire: climb({ clears: {} }), seen: [] }),
+    ).toBeNull();
+    expect(
+      spireLobbyCard({ spire: null, clears: { grumblecrag: 1 }, seen: [] }),
+    ).toBeNull();
+  });
+  it("carries the news, fresh, while a zone is new", () => {
+    expect(spireLobbyCard({ spire: climb(), seen: [] })).toEqual({
+      key: "new:s0-z1",
+      title: "The Spire is open",
+      note: "Climb from floor 1",
+      fresh: true,
+    });
+  });
+  it("stays once seen, with the climb's standing and no news", () => {
+    expect(spireLobbyCard({ spire: climb(), seen: ["s0-z1"] })).toMatchObject({
+      title: "Start your climb",
+      note: "Climb from floor 1 · Raid Coliseum",
+      fresh: false,
+    });
+    // The raid records' clear counts open it too.
+    expect(
+      spireLobbyCard({
+        spire: climb({ clears: {}, highestFloor: 7 }),
+        clears: { grumblecrag: 1 },
+        seen: [],
+      }),
+    ).toMatchObject({
+      title: "Best: floor 7",
+      note: "Climb from floor 1 · Raid Coliseum",
+      fresh: false,
+    });
+    expect(
+      spireLobbyCard({ spire: { ...zone1Done, highestFloor: 14 }, seen: [] }),
+    ).toMatchObject({
+      title: "Best: floor 14",
+      note: "Climb from floor 11 · Lagoon",
+      fresh: false,
+    });
+  });
+  it("says so once every released floor is cleared", () => {
+    const three = expandedSpire(3);
+    expect(
+      spireLobbyCard(
+        {
+          spire: climb({ highestFloor: three.builtTop, checkpoint: 21 }),
+          seen: ["s0-z1", "s0-z2", "s0-z3"],
+        },
+        three,
+      ),
+    ).toMatchObject({ title: "Every floor cleared", fresh: false });
+  });
+  it("changes its key when its words change", () => {
+    const a = spireLobbyCard({ spire: climb({ highestFloor: 2 }), seen: [] })!;
+    const b = spireLobbyCard({ spire: climb({ highestFloor: 3 }), seen: [] })!;
+    expect(a.key).not.toBe(b.key);
   });
 });
 

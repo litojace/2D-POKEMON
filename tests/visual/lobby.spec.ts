@@ -769,11 +769,12 @@ test("a tap on the Lobby's background closes the open screen", async ({
   expect(errors).toEqual([]);
 });
 
-// The Spire card (spire-nudge.ts): it shows only while something in the
-// Spire is new (here: the Spire just opened by a Cragmuff clear, nothing
-// climbed yet), fits the cards' column with nothing overlapping at every
-// size, and a tap opens the Raid Hub on the Spire's page, which dismisses
-// it and the dot on the Raids rail button for good.
+// The Spire card (spire-nudge.ts): once the Spire is open it stays in the
+// cards' column, above Missions (a shortcut past the Raid Hub's carousel),
+// on violet glass. While something is new (here: the Spire just opened by a
+// Cragmuff clear) it glows and Raids gets a dot; opening the Spire's page
+// puts the news out, not the card. It fits with nothing overlapping at every
+// size, iPhones with their safe areas first.
 const SPIRE_OPEN = {
   raids: {
     clears: 1,
@@ -803,85 +804,150 @@ async function withSpire(page: Page, records: unknown = SPIRE_OPEN) {
     w.__spire = (r as any).spire;
   }, records);
 }
-const ALL_CARDS = ["journey", "missions", "spire", "friends"];
-const SPIRE_VIEWPORTS = [
+/** Seen on this device already (spire-nudge.ts), so the card has no news. */
+async function spireSeen(page: Page) {
+  await page.addInitScript(() => {
+    const real = Storage.prototype.getItem;
+    Storage.prototype.getItem = function (key: string) {
+      if (key.startsWith("arena-spire-seen:")) return '["s0-z1"]';
+      return real.call(this, key);
+    };
+  });
+}
+const ALL_CARDS = ["journey", "spire", "missions", "friends"];
+type Inset = { left: number; right: number; bottom: number };
+const ISLAND: Inset = { left: 59, right: 59, bottom: 21 };
+const NOTCH: Inset = { left: 47, right: 47, bottom: 21 };
+const SPIRE_VIEWPORTS: {
+  width: number;
+  height: number;
+  inset?: Inset;
+  label?: string;
+  expect: string[];
+  /** Without news, where only one card fits. */
+  seen?: string[];
+}[] = [
+  // iPhone Pro Max (Dynamic Island), iPhone 14 (notch), iPhone SE.
+  {
+    width: 932,
+    height: 430,
+    inset: ISLAND,
+    label: "island",
+    expect: ["journey", "spire", "missions"],
+  },
+  {
+    width: 844,
+    height: 390,
+    inset: NOTCH,
+    label: "notch",
+    expect: ["journey", "spire", "missions"],
+  },
+  { width: 844, height: 390, expect: ["journey", "spire", "missions"] },
+  { width: 700, height: 390, expect: ["journey", "spire", "missions"] },
+  { width: 667, height: 375, expect: ["journey", "spire"] },
+  { width: 568, height: 320, expect: ["journey", "spire"] },
+  { width: 844, height: 280, expect: ["spire"], seen: ["journey"] },
   { width: 1280, height: 800, expect: ALL_CARDS },
   { width: 1180, height: 820, expect: ALL_CARDS },
   { width: 1024, height: 768, expect: ALL_CARDS },
-  { width: 844, height: 390, expect: ["journey", "missions", "spire"] },
-  { width: 700, height: 390, expect: ["journey", "missions", "spire"] },
-  { width: 667, height: 375, expect: ["journey", "spire"] },
-  { width: 568, height: 320, expect: ["journey", "spire"] },
-  { width: 844, height: 280, expect: ["spire"] },
 ];
-for (const viewport of SPIRE_VIEWPORTS) {
-  test(`the Spire card fits without overlaps at ${viewport.width}x${viewport.height}`, async ({
-    browser,
-  }, info) => {
-    const phone = viewport.width < 1000;
-    const context = await browser.newContext({
-      viewport,
-      isMobile: phone,
-      hasTouch: phone,
-    });
-    try {
-      const page = await context.newPage();
-      await withSpire(page);
-      const errors = await openLobby(page);
-      const card = page.locator("#lobby-spire-card");
-      await expect(card).toBeVisible();
-      await expect(card).toContainText("The Spire is open");
-      await expect(card).toContainText("Climb from floor 1");
-      await expect(
-        page.locator('.lobby-rail [data-badge-for="raids"]'),
-      ).toBeVisible();
-      await snap(
-        page,
-        info,
-        `lobby-spire-${viewport.width}x${viewport.height}`,
-      );
-      // Where there's room it is one more card; on shorter screens it takes
-      // Missions' place (the rail's badge still counts them), and on the
-      // shortest the Journey's too.
-      const shown = await page.evaluate(() =>
-        [
-          ...document.querySelectorAll<HTMLElement>(
-            ".lobby-cards > .lobby-card",
-          ),
-        ]
-          .filter((c) => c.getBoundingClientRect().height > 0)
-          .map((c) => c.id.replace(/^lobby-|-card$/g, "")),
-      );
-      expect(shown).toEqual(viewport.expect);
-      const all = await boxes(page);
-      for (const b of all) {
-        expect(b.x, `${b.name} left edge`).toBeGreaterThanOrEqual(-1);
-        expect(b.y, `${b.name} top edge`).toBeGreaterThanOrEqual(-1);
-        expect(b.x + b.w, `${b.name} right edge`).toBeLessThanOrEqual(
-          viewport.width + 1,
+for (const viewport of SPIRE_VIEWPORTS)
+  for (const fresh of [true, false]) {
+    const size = `${viewport.width}x${viewport.height}${viewport.label ? `-${viewport.label}` : ""}`;
+    test(`the Spire card (${fresh ? "new" : "seen"}) sits above Missions without overlaps at ${size}`, async ({
+      browser,
+    }, info) => {
+      const phone = viewport.width < 1000;
+      const context = await browser.newContext({
+        viewport: { width: viewport.width, height: viewport.height },
+        isMobile: phone,
+        hasTouch: phone,
+      });
+      try {
+        const page = await context.newPage();
+        await withSpire(page);
+        if (!fresh) await spireSeen(page);
+        const errors = await openLobby(page);
+        if (viewport.inset) {
+          await page.evaluate((inset) => {
+            for (const [key, value] of Object.entries(inset))
+              document.documentElement.style.setProperty(
+                `--safe-${key}`,
+                `${value}px`,
+              );
+            // The column is fitted after a resize (a rotation sets the insets).
+            dispatchEvent(new Event("resize"));
+          }, viewport.inset);
+        }
+        const card = page.locator("#lobby-spire-card");
+        const badge = page.locator('.lobby-rail [data-badge-for="raids"]');
+        await expect(card).toBeAttached();
+        await expect(card).not.toHaveAttribute("hidden");
+        if (fresh) {
+          await expect(card).toContainText("The Spire is open");
+          await expect(card).toContainText("Climb from floor 1");
+          await expect(card).toHaveClass(/is-new/);
+          await expect(badge).toBeVisible();
+        } else {
+          await expect(card).toContainText("Start your climb");
+          await expect(card).toContainText("Climb from floor 1");
+          await expect(card).not.toHaveClass(/is-new/);
+          await expect(badge).toBeHidden();
+        }
+        // Violet glass, over the theme's tint.
+        expect(
+          await card.evaluate((c) => getComputedStyle(c).backgroundImage),
+        ).toContain("gradient");
+        await page.waitForTimeout(100);
+        await snap(page, info, `lobby-spire-${fresh ? "new" : "seen"}-${size}`);
+        const shown = await page.evaluate(() =>
+          [
+            ...document.querySelectorAll<HTMLElement>(
+              ".lobby-cards > .lobby-card",
+            ),
+          ]
+            .filter((c) => c.getBoundingClientRect().height > 0)
+            .map((c) => c.id.replace(/^lobby-|-card$/g, "")),
         );
-        expect(b.y + b.h, `${b.name} bottom edge`).toBeLessThanOrEqual(
-          viewport.height + 1,
+        expect(shown).toEqual(
+          fresh ? viewport.expect : (viewport.seen ?? viewport.expect),
         );
+        if (shown.includes("spire")) {
+          const box = (await card.boundingBox())!;
+          // A finger tall, inside the safe area on the right.
+          expect(box.height).toBeGreaterThanOrEqual(44);
+          expect(box.x + box.width).toBeLessThanOrEqual(
+            viewport.width - (viewport.inset?.right ?? 0) + 1,
+          );
+        }
+        const all = await boxes(page);
+        for (const b of all) {
+          expect(b.x, `${b.name} left edge`).toBeGreaterThanOrEqual(-1);
+          expect(b.y, `${b.name} top edge`).toBeGreaterThanOrEqual(-1);
+          expect(b.x + b.w, `${b.name} right edge`).toBeLessThanOrEqual(
+            viewport.width + 1,
+          );
+          expect(b.y + b.h, `${b.name} bottom edge`).toBeLessThanOrEqual(
+            viewport.height + 1,
+          );
+        }
+        const clashes = all.flatMap((a, i) =>
+          all
+            .slice(i + 1)
+            .filter((b) => overlap(a, b))
+            .map((b) => `${a.name} × ${b.name}`),
+        );
+        expect(clashes).toEqual([]);
+        expect(errors).toEqual([]);
+      } finally {
+        await context.close();
       }
-      const clashes = all.flatMap((a, i) =>
-        all
-          .slice(i + 1)
-          .filter((b) => overlap(a, b))
-          .map((b) => `${a.name} × ${b.name}`),
-      );
-      expect(clashes).toEqual([]);
-      expect(errors).toEqual([]);
-    } finally {
-      await context.close();
-    }
-  });
-}
+    });
+  }
 
-// The card's rules on the page: nothing before the Spire opens, nothing for
-// a zone already being climbed, a new zone once its checkpoint is earned,
-// and gone for good once the Spire's page has been opened.
-test("the Spire card opens the Spire's page and stays dismissed once seen", async ({
+// A tap opens the Spire's page; that puts out the news (the glow and the
+// dot on Raids) for good, and the card stays as the shortcut.
+test("the Spire card opens the Spire's page and stays as a shortcut once seen", async ({
   browser,
 }, info) => {
   const context = await browser.newContext({
@@ -905,18 +971,21 @@ test("the Spire card opens the Spire's page and stays dismissed once seen", asyn
     const badge = page.locator('.lobby-rail [data-badge-for="raids"]');
     await expect(card).toContainText("Zone 2 is open");
     await expect(card).toContainText("Climb from floor 11");
+    await expect(card).toHaveClass(/is-new/);
     await expect(badge).toBeVisible();
     await snap(page, info, "lobby-spire-zone2-badge-844x390");
     await card.click();
     const room = page.locator(".rh-room");
     await expect(room).toHaveAttribute("data-raid-mode", "spire");
-    await expect(card).toBeHidden();
     await expect(badge).toBeHidden();
     await page.keyboard.press("Escape");
     await expect(room).toHaveCount(0);
-    await expect(card).toBeHidden();
+    await expect(card).toBeVisible();
+    await expect(card).toContainText("Best: floor 10");
+    await expect(card).toContainText("Climb from floor 11");
+    await expect(card).not.toHaveClass(/is-new/);
     await expect(badge).toBeHidden();
-    // Seen is kept with the account: a reload doesn't bring it back.
+    // Seen is kept with the account: a reload brings the card, not the news.
     await page.reload();
     await page.waitForFunction(() => !!(window as any).__sock);
     await expect
@@ -925,16 +994,20 @@ test("the Spire card opens the Spire's page and stays dismissed once seen", asyn
         return page.locator("#lobby-fighter-name").textContent();
       })
       .not.toBe("");
-    await expect(page.locator(".lobby-missions-card")).toBeVisible();
-    await expect(card).toBeHidden();
+    await expect(card).toBeVisible();
+    await expect(card).toContainText("Best: floor 10");
+    await expect(card).not.toHaveClass(/is-new/);
     await expect(badge).toBeHidden();
+    // And it still goes straight to the Spire.
+    await card.click();
+    await expect(room).toHaveAttribute("data-raid-mode", "spire");
     expect(errors).toEqual([]);
   } finally {
     await context.close();
   }
 });
 
-test("the Spire card stays away before the Spire opens and while a zone is being climbed, and the Raids page dismisses it too", async ({
+test("the Spire card stays away before the Spire opens, shows progress while a zone is being climbed, and the Raids page puts out its news too", async ({
   browser,
 }) => {
   const context = await browser.newContext({
@@ -953,7 +1026,7 @@ test("the Spire card stays away before the Spire opens and while a zone is being
     await expect(page.locator(".lobby-missions-card")).toBeVisible();
     await expect(card).toBeHidden();
     await expect(badge).toBeHidden();
-    // Zone 1 under way (floor 3 cleared): nothing new.
+    // Zone 1 under way (floor 3 cleared): the card, without news.
     await page.evaluate((r) => {
       const w = window as any;
       w.__raids = r.raids;
@@ -964,10 +1037,12 @@ test("the Spire card stays away before the Spire opens and while a zone is being
     await expect(room).toHaveAttribute("data-raid-mode", "hall");
     await expect(room.locator("[data-raid-spire]")).toContainText("3");
     await page.keyboard.press("Escape");
-    await expect(card).toBeHidden();
+    await expect(card).toBeVisible();
+    await expect(card).toContainText("Best: floor 3");
+    await expect(card).not.toHaveClass(/is-new/);
     await expect(badge).toBeHidden();
-    // Now the Spire opens for this player (a fresh climb): the card shows,
-    // and opening the Spire from the Raid Hub's tile dismisses it as well.
+    // Now the Spire opens for this player (a fresh climb): news, and
+    // opening the Spire from the Raid Hub's tile puts it out as well.
     await page.evaluate((r) => {
       const w = window as any;
       w.__spire = r.spire;
@@ -977,7 +1052,7 @@ test("the Spire card stays away before the Spire opens and while a zone is being
     // (The open Raid Hub covers the cards' column; the rail shows.)
     await expect(badge).toBeVisible();
     await page.keyboard.press("Escape");
-    await expect(card).toBeVisible();
+    await expect(card).toHaveClass(/is-new/);
     await page.click('.lobby-rail [data-lobby-action="raids"]');
     await expect(room).toHaveAttribute("data-raid-mode", "hall");
     await expect(badge).toBeVisible();
@@ -986,7 +1061,8 @@ test("the Spire card stays away before the Spire opens and while a zone is being
     await expect(badge).toBeHidden();
     await page.keyboard.press("Escape");
     await expect(room).toHaveCount(0);
-    await expect(card).toBeHidden();
+    await expect(card).toBeVisible();
+    await expect(card).not.toHaveClass(/is-new/);
     expect(errors).toEqual([]);
   } finally {
     await context.close();

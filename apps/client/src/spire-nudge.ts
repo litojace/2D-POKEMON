@@ -88,6 +88,49 @@ export function spireNudge(
   };
 }
 
+/** The Lobby's Spire card: a shortcut to the climb, kept above Missions. */
+export interface SpireLobbyCard {
+  /** What the Lobby re-renders on: changes whenever the words do. */
+  key: string;
+  title: string;
+  note: string;
+  /** Something new (spireNudge): the card glows and Raids gets a dot. */
+  fresh: boolean;
+}
+/**
+ * The card once the Spire is open (a Cragmuff clear), every time: the news
+ * while a zone is new to climb, else your best floor and where a climb
+ * starts. Nothing before it opens or while the climb is unknown.
+ */
+export function spireLobbyCard(
+  f: SpireNudgeFacts,
+  catalogue: SpireCatalogue = SPIRE_CATALOGUE,
+): SpireLobbyCard | null {
+  const nudge = spireNudge(f, catalogue);
+  if (nudge)
+    return {
+      key: `new:${nudge.key}`,
+      title: nudge.title,
+      note: nudge.note,
+      fresh: true,
+    };
+  if (!f.spire) return null;
+  const entry = spireEntryBoss(catalogue).id;
+  if (Math.max(f.spire.clears?.[entry] ?? 0, f.clears?.[entry] ?? 0) <= 0)
+    return null;
+  const { highest } = spireStanding({ spire: f.spire }, catalogue);
+  const { zone, start } = spireZoneChoice({}, { spire: f.spire }, catalogue);
+  const name = catalogue.zones[zone]?.name;
+  const title =
+    highest >= catalogue.builtTop
+      ? "Every floor cleared"
+      : highest > 0
+        ? `Best: floor ${highest}`
+        : "Start your climb";
+  const note = `Climb from floor ${start}${name ? ` · ${name}` : ""}`;
+  return { key: `${title}|${note}`, title, note, fresh: false };
+}
+
 const KEY = (account: string) => `arena-spire-seen:${account}`;
 /** This session's marks too, for a device that can't store them. */
 const marked = new Map<string, string[]>();

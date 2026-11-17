@@ -377,7 +377,7 @@ import {
   type SpireCourtView,
 } from "./spire-court-rig";
 import { spireFloorTint } from "./spire-court-art";
-import { loadSpireSeen, spireNudge } from "./spire-nudge";
+import { loadSpireSeen, spireLobbyCard } from "./spire-nudge";
 import { isRaidFloor, paintRaidFloor } from "./raid-floors";
 import {
   isIllustratedRaidFloor,
@@ -2398,11 +2398,11 @@ function lobbyView() {
     spire: lobbySpire(),
   };
 }
-/** Something new in the Spire for the Lobby's card and badge (spire-nudge.ts). */
+/** The Lobby's Spire card, and the Raids dot while it's new (spire-nudge.ts). */
 function lobbySpire() {
   const account = accountsUI?.account?.id;
   if (!account) return null;
-  return spireNudge({
+  return spireLobbyCard({
     spire: accountsUI.spire,
     clears: accountsUI.raidClears,
     seen: loadSpireSeen(account),
