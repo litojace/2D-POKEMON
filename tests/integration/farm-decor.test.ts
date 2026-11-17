@@ -5,15 +5,19 @@ import { afterAll, beforeAll, expect, it } from "vitest";
 import {
   CROPS,
   DECOR_AREA,
+  DECOR_SETS,
   FARM_DECOR,
   charmBonus,
   decorCap,
+  decorCharm,
   decorFits,
+  decorSeasonsOn,
   type FarmDecorPiece,
 } from "../../packages/shared/src/farm";
 
 // Decorations and Charm (migration 048), standing anywhere since
-// 20261116120000_farm_free_decor.sql.
+// 20261116120000_farm_free_decor.sql; groups, paths, seasons and
+// collections since 20261117120000_farm_decor_catalog.sql.
 const FREE = "20261116120000_farm_free_decor.sql";
 let db: PGlite;
 const player = "00000000-0000-4000-8000-000000000481";
@@ -92,21 +96,42 @@ beforeAll(async () => {
 }, 90000);
 afterAll(async () => db.close());
 
-it("sells the shared decorations at their level, price, Charm and size", async () => {
+it("sells the shared decorations at their level, price, Charm, size, group, layer and season", async () => {
   const items = await owner(
-    "select id, name, price, charm, level, w, d from public.arena_farm_decor_items order by level, id",
+    "select id, name, price, charm, level, w, d, decor_group, ground, season from public.arena_farm_decor_items order by level, id",
   );
   expect(items).toEqual(
     [...FARM_DECOR]
       .sort((a, b) => a.level - b.level || a.id.localeCompare(b.id))
-      .map(({ id, name, price, charm, level, w, d }) => ({
+      .map(
+        ({ id, name, price, charm, level, w, d, group, ground, season }) => ({
+          id,
+          name,
+          price,
+          charm,
+          level,
+          w,
+          d,
+          decor_group: group,
+          ground: !!ground,
+          season: season ?? null,
+        }),
+      ),
+  );
+  expect(FARM_DECOR.length).toBeGreaterThanOrEqual(19 + 30);
+  const sets = await owner(
+    `select s.id, s.name, s.charm, array_agg(i.item order by i.item) items
+       from public.arena_farm_decor_sets s join public.arena_farm_decor_set_items i on i.set_id = s.id
+      group by s.id order by s.id`,
+  );
+  expect(sets).toEqual(
+    [...DECOR_SETS]
+      .sort((a, b) => a.id.localeCompare(b.id))
+      .map(({ id, name, charm, items }) => ({
         id,
         name,
-        price,
         charm,
-        level,
-        w,
-        d,
+        items: [...items].sort(),
       })),
   );
   expect(await farm()).toMatchObject({ decor: [], charm: 0, decorCredits: {} });
@@ -232,7 +257,8 @@ it("checks the same boxes as the shared rules (decorFits)", async () => {
   const rows = await owner(
     `insert into public.arena_farm_decor_pieces(player_id, item, x, y) values
      ($1, 'tower', 1200, 980), ($1, 'bench', 560, 900), ($1, 'pine', 1620, 560),
-     ($1, 'plum', 300, 460), ($1, 'lamp', 1000, 160) returning id, item, x, y`,
+     ($1, 'plum', 300, 460), ($1, 'lamp', 1000, 160), ($1, 'pathstone', 700, 960),
+     ($1, 'pathbrick', 1300, 900), ($1, 'picket', 160, 880) returning id, item, x, y`,
     [player],
   );
   for (const r of rows)
@@ -240,8 +266,13 @@ it("checks the same boxes as the shared rules (decorFits)", async () => {
   let seed = 7;
   const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
   const checks: [string, number, number, number | null][] = [];
-  for (let i = 0; i < 700; i++) {
-    const item = FARM_DECOR[Math.floor(rnd() * FARM_DECOR.length)].id;
+  const flat = FARM_DECOR.filter((d) => d.ground);
+  for (let i = 0; i < 1400; i++) {
+    // Every third check is a path (they may overlap each other).
+    const item =
+      i % 3 === 0
+        ? flat[Math.floor(rnd() * flat.length)].id
+        : FARM_DECOR[Math.floor(rnd() * FARM_DECOR.length)].id;
     const x =
       Math.round((DECOR_AREA.x0 - 40 + rnd() * 1800) / 10) * 10 +
       (i % 50 === 0 ? 5 : 0);
@@ -268,6 +299,15 @@ it("checks the same boxes as the shared rules (decorFits)", async () => {
       decorFits(item, x, y, placed, ex ?? undefined) ?? null,
   );
   expect(sql.map((r: any) => r.e)).toEqual(shared);
+  // Paths overlapping paths were in the sample, and passed.
+  expect(
+    checks.some(
+      ([item, x, y], k) =>
+        shared[k] === null &&
+        FARM_DECOR.find((d) => d.id === item)?.ground &&
+        decorFits("rock", x, y, placed) === "Too close to another decoration",
+    ),
+  ).toBe(true);
   // The sample covers every answer.
   expect(new Set(shared)).toEqual(
     new Set([
@@ -371,3 +411,129 @@ it("moves what stood in the 8 spots to the same places, once", async () => {
     await d.close();
   }
 }, 90000);
+
+it("lets paths overlap each other, never anything standing", async () => {
+  await clear();
+  await level(30);
+  const r = await act([
+    { a: "decor-place", item: "pathstone", x: 600, y: 950 },
+    { a: "decor-place", item: "pathgravel", x: 610, y: 950 },
+    { a: "decor-place", item: "pathstone", x: 600, y: 950 },
+    // A bench on the path, a path under the bench: no.
+    { a: "decor-place", item: "bench", x: 600, y: 950 },
+    { a: "decor-place", item: "bench", x: 600, y: 920 },
+    { a: "decor-place", item: "pathbrick", x: 610, y: 920 },
+    // Fences side by side, 50 px apart, touch without overlapping.
+    { a: "decor-place", item: "picket", x: 1100, y: 900 },
+    { a: "decor-place", item: "picket", x: 1150, y: 900 },
+    { a: "decor-place", item: "gate", x: 1200, y: 900 },
+    { a: "decor-place", item: "picket", x: 1240, y: 900 },
+  ]);
+  expect(r.results.map((x: any) => x.ok || x.error)).toEqual([
+    true,
+    true,
+    true,
+    "Too close to another decoration",
+    true,
+    "Too close to another decoration",
+    true,
+    true,
+    true,
+    "Too close to another decoration",
+  ]);
+});
+
+it("sells seasonal decorations only in their season, by the server's game day", async () => {
+  // Every day of a year (and a leap day) against the shared table.
+  const days: string[] = [];
+  for (let t = Date.UTC(2027, 0, 1); t <= Date.UTC(2028, 2, 1); t += 86400e3)
+    days.push(new Date(t).toISOString().slice(0, 10));
+  const sql = await owner(
+    "select public.arena_farm_decor_seasons(d) s from unnest($1::date[]) d order by d",
+    [days],
+  );
+  expect(sql.map((r: any) => r.s)).toEqual(days.map((d) => decorSeasonsOn(d)));
+  expect(decorSeasonsOn("2026-10-31")).toEqual(["halloween"]);
+  expect(decorSeasonsOn("2026-12-31")).toEqual(["christmas"]);
+  expect(decorSeasonsOn("2027-01-03")).toEqual(["christmas"]);
+  expect(decorSeasonsOn("2027-02-06")).toEqual(["lunar"]);
+  expect(decorSeasonsOn("2027-07-04")).toEqual([]);
+  const today = (await owner("select public.arena_today()::text d"))[0].d;
+  expect((await farm()).decorSeasons).toEqual(decorSeasonsOn(today));
+
+  await clear();
+  await level(20);
+  const buy = async (item: string, day: string, x = 600) =>
+    (
+      await owner(
+        `select err, gained from public.arena_farm_act_more($1, $2::jsonb, $3, now(), $4::date)`,
+        [
+          player,
+          JSON.stringify({ a: "decor-place", item, x, y: 950 }),
+          randomUUID(),
+          day,
+        ],
+      )
+    )[0];
+  expect((await buy("pumpkin", "2027-07-04")).err).toBe(
+    "On sale only for Halloween",
+  );
+  expect((await buy("snowman", "2027-10-20")).err).toBe(
+    "On sale only for Christmas",
+  );
+  expect((await buy("redlantern", "2027-12-20")).err).toBe(
+    "On sale only for Lunar New Year",
+  );
+  const p = await buy("pumpkin", "2027-10-20");
+  expect(p.err).toBeNull();
+  expect(p.gained).toMatchObject({ decor: "pumpkin", cost: 600 });
+  // Bought once, it is kept: put away, it places again out of season.
+  await act([{ a: "decor-store", piece: p.gained.piece }]);
+  const again = await buy("pumpkin", "2027-07-04", 700);
+  expect(again.err).toBeNull();
+  expect(again.gained).toMatchObject({ decor: "pumpkin", cost: 0 });
+  // Not seasonal: any day.
+  expect((await buy("tulips", "2027-07-04", 800)).err).toBeNull();
+});
+
+it("adds a collection's Charm once every piece of it stands on the farm", async () => {
+  await clear();
+  await level(30);
+  const set = DECOR_SETS.find((s) => s.id === "cottage")!;
+  const spots = [
+    [100, 900],
+    [1100, 900],
+    [1250, 900],
+    [1400, 900],
+    [600, 950],
+  ];
+  const r = await act(
+    set.items.slice(0, 4).map((item, k) => ({
+      a: "decor-place",
+      item,
+      x: spots[k][0],
+      y: spots[k][1],
+    })),
+  );
+  expect(r.results.every((x: any) => x.ok)).toBe(true);
+  const base = set.items
+    .slice(0, 4)
+    .reduce((a, i) => a + FARM_DECOR.find((d) => d.id === i)!.charm, 0);
+  expect(r.farm.charm).toBe(base);
+  const done = await act([
+    { a: "decor-place", item: set.items[4], x: 600, y: 950 },
+  ]);
+  expect(done.results[0]).toMatchObject({ ok: true });
+  const all = base + FARM_DECOR.find((d) => d.id === set.items[4])!.charm;
+  expect(done.farm.charm).toBe(all + set.charm);
+  expect(decorCharm(done.farm.decor)).toBe(done.farm.charm);
+  // A second copy adds only its own Charm; putting one away breaks the set.
+  const two = await act([
+    { a: "decor-place", item: "tulips", x: 1550, y: 950 },
+  ]);
+  expect(two.farm.charm).toBe(all + set.charm + 1);
+  const piece = done.farm.decor.find((p: any) => p.item === set.items[4]).id;
+  const away = await act([{ a: "decor-store", piece }]);
+  expect(away.farm.charm).toBe(base + 1);
+  expect(decorCharm(away.farm.decor)).toBe(away.farm.charm);
+});

@@ -671,25 +671,76 @@ export const farmPerkOf = (farmer: string) => FARM_PERK_OF[farmer] ?? farmer;
 /** A farmer's perk, or null when it has none. */
 export const farmPerk = (farmer: string | null | undefined) =>
   farmer ? (FARM_PERKS[farmPerkOf(farmer)] ?? null) : null;
+/** The shop's groups of decorations (20261117120000), in the sheet's order. */
+export const DECOR_GROUPS = [
+  { id: "fences", name: "Fences & paths" },
+  { id: "plants", name: "Flowers & plants" },
+  { id: "trees", name: "Trees" },
+  { id: "furniture", name: "Furniture" },
+  { id: "water", name: "Water" },
+  { id: "lights", name: "Lights" },
+  { id: "statues", name: "Statues" },
+  { id: "seasonal", name: "Seasonal" },
+] as const;
+export type DecorGroup = (typeof DECOR_GROUPS)[number]["id"];
 /**
- * Decorations (migration 048) and Charm: every 2 Charm is +1% farm XP, up to
- * 25%. Since 20261116120000 they stand anywhere on the farm's land (they used
- * 8 fixed spots): `w` is half the width of the ground a decoration takes and
- * `d` how deep it is behind the point it stands on (world px).
+ * Seasons when seasonal decorations are sold (20261117120000), by the
+ * server's game day (America/Los_Angeles, arena_today): from `from` to `to`
+ * inclusive, as "MM-DD"; a season whose `to` is before its `from` runs over
+ * the new year. Lunar New Year moves between 21 Jan and 20 Feb, so its
+ * window (to the end of February, 29 Feb in a leap year) covers every
+ * year's festival, and the Lantern Festival after it in all but the latest
+ * years (2034's falls on 5 Mar).
+ * Bought ones are kept: they place again from storage at any time.
+ * arena_farm_decor_seasons is the same table.
  */
-export const FARM_DECOR: readonly {
+export const DECOR_SEASONS = [
+  { id: "halloween", name: "Halloween", from: "10-01", to: "11-07" },
+  { id: "christmas", name: "Christmas", from: "12-01", to: "01-06" },
+  { id: "lunar", name: "Lunar New Year", from: "01-15", to: "02-29" },
+] as const;
+export type DecorSeason = (typeof DECOR_SEASONS)[number]["id"];
+/** The seasons on sale on a game day ("YYYY-MM-DD"). */
+export function decorSeasonsOn(day: string): DecorSeason[] {
+  const md = day.slice(5, 10);
+  return DECOR_SEASONS.filter((s) =>
+    s.from <= s.to ? md >= s.from && md <= s.to : md >= s.from || md <= s.to,
+  ).map((s) => s.id);
+}
+export interface FarmDecorItem {
   id: string;
   name: string;
+  /** The shop's group (DECOR_GROUPS). */
+  group: DecorGroup;
   price: number;
   charm: number;
   level: number;
   icon: string;
+  /** Half the width of the ground it takes (world px). */
   w: number;
+  /** How deep its ground is behind the point it stands on (world px). */
   d: number;
-}[] = [
+  /**
+   * Flat on the ground (paths, paving): ground pieces may overlap each
+   * other, but not anything standing, the field, the buildings or the pond.
+   */
+  ground?: true;
+  /** Sold only in this season (bought ones place again at any time). */
+  season?: DecorSeason;
+}
+/**
+ * Decorations (migration 048) and Charm: every 2 Charm is +1% farm XP, up to
+ * 25%. Since 20261116120000 they stand anywhere on the farm's land (they used
+ * 8 fixed spots): `w` is half the width of the ground a decoration takes and
+ * `d` how deep it is behind the point it stands on (world px). 20261117120000
+ * adds 42 more, in groups, with paths that may overlap and seasonal ones.
+ * The database's arena_farm_decor_items is the same list.
+ */
+export const FARM_DECOR: readonly FarmDecorItem[] = [
   {
     id: "rock",
     name: "Mossy Rock",
+    group: "plants",
     price: 300,
     charm: 1,
     level: 1,
@@ -700,6 +751,7 @@ export const FARM_DECOR: readonly {
   {
     id: "hay",
     name: "Hay Bale",
+    group: "furniture",
     price: 400,
     charm: 1,
     level: 2,
@@ -710,6 +762,7 @@ export const FARM_DECOR: readonly {
   {
     id: "bush6",
     name: "Rose Bush",
+    group: "plants",
     price: 450,
     charm: 1,
     level: 3,
@@ -720,6 +773,7 @@ export const FARM_DECOR: readonly {
   {
     id: "mailbox",
     name: "Mailbox",
+    group: "furniture",
     price: 500,
     charm: 1,
     level: 4,
@@ -730,6 +784,7 @@ export const FARM_DECOR: readonly {
   {
     id: "bush7",
     name: "Fern Bush",
+    group: "plants",
     price: 550,
     charm: 1,
     level: 5,
@@ -740,6 +795,7 @@ export const FARM_DECOR: readonly {
   {
     id: "bench",
     name: "Park Bench",
+    group: "furniture",
     price: 700,
     charm: 1,
     level: 6,
@@ -750,6 +806,7 @@ export const FARM_DECOR: readonly {
   {
     id: "flowers",
     name: "Flower Bush",
+    group: "plants",
     price: 650,
     charm: 1,
     level: 7,
@@ -760,6 +817,7 @@ export const FARM_DECOR: readonly {
   {
     id: "crates",
     name: "Crates",
+    group: "furniture",
     price: 950,
     charm: 1,
     level: 8,
@@ -770,6 +828,7 @@ export const FARM_DECOR: readonly {
   {
     id: "lamp",
     name: "Street Lamp",
+    group: "lights",
     price: 1350,
     charm: 2,
     level: 12,
@@ -780,6 +839,7 @@ export const FARM_DECOR: readonly {
   {
     id: "planter",
     name: "Flower Planter",
+    group: "plants",
     price: 2250,
     charm: 3,
     level: 16,
@@ -790,6 +850,7 @@ export const FARM_DECOR: readonly {
   {
     id: "mintree",
     name: "Mint Tree",
+    group: "trees",
     price: 3000,
     charm: 3,
     level: 19,
@@ -800,6 +861,7 @@ export const FARM_DECOR: readonly {
   {
     id: "pine",
     name: "Pine Tree",
+    group: "trees",
     price: 3200,
     charm: 2,
     level: 22,
@@ -810,6 +872,7 @@ export const FARM_DECOR: readonly {
   {
     id: "autumn",
     name: "Maple Tree",
+    group: "trees",
     price: 3600,
     charm: 3,
     level: 25,
@@ -820,6 +883,7 @@ export const FARM_DECOR: readonly {
   {
     id: "cherry",
     name: "Cherry Tree",
+    group: "trees",
     price: 3900,
     charm: 3,
     level: 27,
@@ -830,6 +894,7 @@ export const FARM_DECOR: readonly {
   {
     id: "apple",
     name: "Apple Tree",
+    group: "trees",
     price: 4200,
     charm: 4,
     level: 30,
@@ -840,6 +905,7 @@ export const FARM_DECOR: readonly {
   {
     id: "orange",
     name: "Orange Tree",
+    group: "trees",
     price: 4800,
     charm: 4,
     level: 36,
@@ -850,6 +916,7 @@ export const FARM_DECOR: readonly {
   {
     id: "tower",
     name: "Gazebo",
+    group: "furniture",
     price: 6050,
     charm: 10,
     level: 45,
@@ -860,6 +927,7 @@ export const FARM_DECOR: readonly {
   {
     id: "plum",
     name: "Guest Cottage",
+    group: "furniture",
     price: 8550,
     charm: 12,
     level: 60,
@@ -870,6 +938,7 @@ export const FARM_DECOR: readonly {
   {
     id: "statue",
     name: "Golden Voltkit Statue",
+    group: "statues",
     price: 30000,
     charm: 15,
     level: 75,
@@ -877,7 +946,560 @@ export const FARM_DECOR: readonly {
     w: 38,
     d: 18,
   },
+  {
+    id: "picket",
+    name: "Picket Fence",
+    group: "fences",
+    price: 300,
+    charm: 1,
+    level: 3,
+    icon: "decor",
+    w: 25,
+    d: 6,
+  },
+  {
+    id: "railfence",
+    name: "Rail Fence",
+    group: "fences",
+    price: 350,
+    charm: 1,
+    level: 5,
+    icon: "decor",
+    w: 25,
+    d: 6,
+  },
+  {
+    id: "gate",
+    name: "Garden Gate",
+    group: "fences",
+    price: 600,
+    charm: 1,
+    level: 9,
+    icon: "decor",
+    w: 25,
+    d: 6,
+  },
+  {
+    id: "hedge",
+    name: "Box Hedge",
+    group: "fences",
+    price: 1000,
+    charm: 2,
+    level: 14,
+    icon: "fern",
+    w: 25,
+    d: 10,
+  },
+  {
+    id: "pathstone",
+    name: "Stepping Stones",
+    group: "fences",
+    price: 300,
+    charm: 1,
+    level: 2,
+    icon: "rock",
+    w: 20,
+    d: 16,
+    ground: true,
+  },
+  {
+    id: "pathgravel",
+    name: "Gravel Path",
+    group: "fences",
+    price: 300,
+    charm: 1,
+    level: 4,
+    icon: "rock",
+    w: 30,
+    d: 16,
+    ground: true,
+  },
+  {
+    id: "pathbrick",
+    name: "Brick Path",
+    group: "fences",
+    price: 450,
+    charm: 1,
+    level: 10,
+    icon: "rock",
+    w: 30,
+    d: 16,
+    ground: true,
+  },
+  {
+    id: "tulips",
+    name: "Tulip Patch",
+    group: "plants",
+    price: 350,
+    charm: 1,
+    level: 2,
+    icon: "flower",
+    w: 20,
+    d: 10,
+  },
+  {
+    id: "potdaisy",
+    name: "Potted Daisies",
+    group: "plants",
+    price: 400,
+    charm: 1,
+    level: 4,
+    icon: "flower",
+    w: 12,
+    d: 8,
+  },
+  {
+    id: "sunflowers",
+    name: "Sunflowers",
+    group: "plants",
+    price: 450,
+    charm: 1,
+    level: 6,
+    icon: "flower",
+    w: 20,
+    d: 10,
+  },
+  {
+    id: "barrow",
+    name: "Flower Barrow",
+    group: "plants",
+    price: 1000,
+    charm: 2,
+    level: 13,
+    icon: "flower",
+    w: 26,
+    d: 12,
+  },
+  {
+    id: "lavender",
+    name: "Lavender Row",
+    group: "plants",
+    price: 1100,
+    charm: 2,
+    level: 15,
+    icon: "flower",
+    w: 30,
+    d: 10,
+  },
+  {
+    id: "topiary",
+    name: "Topiary",
+    group: "plants",
+    price: 1500,
+    charm: 3,
+    level: 20,
+    icon: "fern",
+    w: 16,
+    d: 10,
+  },
+  {
+    id: "birch",
+    name: "Silver Birch",
+    group: "trees",
+    price: 1800,
+    charm: 3,
+    level: 18,
+    icon: "fern",
+    w: 30,
+    d: 18,
+  },
+  {
+    id: "bamboo",
+    name: "Bamboo Grove",
+    group: "trees",
+    price: 1650,
+    charm: 3,
+    level: 21,
+    icon: "fern",
+    w: 24,
+    d: 12,
+  },
+  {
+    id: "palm",
+    name: "Palm Tree",
+    group: "trees",
+    price: 2400,
+    charm: 4,
+    level: 28,
+    icon: "fern",
+    w: 30,
+    d: 18,
+  },
+  {
+    id: "willow",
+    name: "Weeping Willow",
+    group: "trees",
+    price: 3000,
+    charm: 5,
+    level: 34,
+    icon: "fern",
+    w: 46,
+    d: 20,
+  },
+  {
+    id: "deckchair",
+    name: "Deck Chair",
+    group: "furniture",
+    price: 450,
+    charm: 1,
+    level: 5,
+    icon: "decor",
+    w: 16,
+    d: 10,
+  },
+  {
+    id: "picnic",
+    name: "Picnic Table",
+    group: "furniture",
+    price: 900,
+    charm: 2,
+    level: 9,
+    icon: "decor",
+    w: 40,
+    d: 16,
+  },
+  {
+    id: "parasol",
+    name: "Patio Umbrella",
+    group: "furniture",
+    price: 1000,
+    charm: 2,
+    level: 11,
+    icon: "decor",
+    w: 22,
+    d: 12,
+  },
+  {
+    id: "swing",
+    name: "Garden Swing",
+    group: "furniture",
+    price: 1500,
+    charm: 3,
+    level: 17,
+    icon: "decor",
+    w: 36,
+    d: 14,
+  },
+  {
+    id: "birdbath",
+    name: "Birdbath",
+    group: "water",
+    price: 550,
+    charm: 1,
+    level: 7,
+    icon: "decor",
+    w: 14,
+    d: 8,
+  },
+  {
+    id: "lilypond",
+    name: "Lily Pond",
+    group: "water",
+    price: 1800,
+    charm: 3,
+    level: 20,
+    icon: "decor",
+    w: 46,
+    d: 22,
+  },
+  {
+    id: "fountain",
+    name: "Little Fountain",
+    group: "water",
+    price: 2400,
+    charm: 4,
+    level: 24,
+    icon: "decor",
+    w: 30,
+    d: 16,
+  },
+  {
+    id: "bridge",
+    name: "Wooden Bridge",
+    group: "water",
+    price: 1800,
+    charm: 3,
+    level: 26,
+    icon: "decor",
+    w: 36,
+    d: 16,
+  },
+  {
+    id: "torch",
+    name: "Tiki Torch",
+    group: "lights",
+    price: 500,
+    charm: 1,
+    level: 8,
+    icon: "lamp",
+    w: 10,
+    d: 8,
+  },
+  {
+    id: "lantern",
+    name: "Paper Lantern",
+    group: "lights",
+    price: 900,
+    charm: 2,
+    level: 10,
+    icon: "lamp",
+    w: 12,
+    d: 8,
+  },
+  {
+    id: "stringlights",
+    name: "String Lights",
+    group: "lights",
+    price: 1650,
+    charm: 3,
+    level: 23,
+    icon: "lamp",
+    w: 40,
+    d: 8,
+  },
+  {
+    id: "stonelantern",
+    name: "Stone Lantern",
+    group: "lights",
+    price: 2200,
+    charm: 4,
+    level: 29,
+    icon: "lamp",
+    w: 16,
+    d: 10,
+  },
+  {
+    id: "frog",
+    name: "Frog Statue",
+    group: "statues",
+    price: 550,
+    charm: 1,
+    level: 6,
+    icon: "statue",
+    w: 14,
+    d: 8,
+  },
+  {
+    id: "bunny",
+    name: "Bunny Statue",
+    group: "statues",
+    price: 900,
+    charm: 2,
+    level: 12,
+    icon: "statue",
+    w: 14,
+    d: 8,
+  },
+  {
+    id: "owl",
+    name: "Owl Statue",
+    group: "statues",
+    price: 1100,
+    charm: 2,
+    level: 16,
+    icon: "statue",
+    w: 14,
+    d: 10,
+  },
+  {
+    id: "deer",
+    name: "Deer Statue",
+    group: "statues",
+    price: 2400,
+    charm: 4,
+    level: 32,
+    icon: "statue",
+    w: 24,
+    d: 12,
+  },
+  {
+    id: "pumpkin",
+    name: "Jack-o'-Lantern",
+    group: "seasonal",
+    price: 600,
+    charm: 1,
+    level: 1,
+    icon: "decor",
+    w: 14,
+    d: 10,
+    season: "halloween",
+  },
+  {
+    id: "tombstone",
+    name: "Spooky Tombstone",
+    group: "seasonal",
+    price: 900,
+    charm: 2,
+    level: 5,
+    icon: "decor",
+    w: 16,
+    d: 8,
+    season: "halloween",
+  },
+  {
+    id: "cauldron",
+    name: "Witch's Cauldron",
+    group: "seasonal",
+    price: 1500,
+    charm: 3,
+    level: 10,
+    icon: "decor",
+    w: 18,
+    d: 10,
+    season: "halloween",
+  },
+  {
+    id: "redlantern",
+    name: "Red Lantern Post",
+    group: "seasonal",
+    price: 600,
+    charm: 1,
+    level: 1,
+    icon: "lamp",
+    w: 12,
+    d: 8,
+    season: "lunar",
+  },
+  {
+    id: "luckycat",
+    name: "Lucky Cat",
+    group: "seasonal",
+    price: 900,
+    charm: 2,
+    level: 5,
+    icon: "statue",
+    w: 14,
+    d: 10,
+    season: "lunar",
+  },
+  {
+    id: "plumtree",
+    name: "Plum Blossom Tree",
+    group: "seasonal",
+    price: 1800,
+    charm: 3,
+    level: 10,
+    icon: "flower",
+    w: 30,
+    d: 18,
+    season: "lunar",
+  },
+  {
+    id: "snowman",
+    name: "Snowman",
+    group: "seasonal",
+    price: 600,
+    charm: 1,
+    level: 1,
+    icon: "decor",
+    w: 18,
+    d: 10,
+    season: "christmas",
+  },
+  {
+    id: "gifts",
+    name: "Gift Pile",
+    group: "seasonal",
+    price: 900,
+    charm: 2,
+    level: 5,
+    icon: "decor",
+    w: 20,
+    d: 10,
+    season: "christmas",
+  },
+  {
+    id: "xmastree",
+    name: "Christmas Tree",
+    group: "seasonal",
+    price: 1800,
+    charm: 3,
+    level: 10,
+    icon: "pine",
+    w: 30,
+    d: 18,
+    season: "christmas",
+  },
 ];
+const DECOR_BY_ID = new Map(FARM_DECOR.map((d) => [d.id, d]));
+/**
+ * Collections (20261117120000): every decoration of a set standing on the
+ * farm at once adds its Charm on top of theirs. arena_farm_decor_sets and
+ * arena_farm_decor_set_items are the same list.
+ */
+export const DECOR_SETS: readonly {
+  id: string;
+  name: string;
+  charm: number;
+  items: readonly string[];
+}[] = [
+  {
+    id: "cottage",
+    name: "Cottage Garden",
+    charm: 4,
+    items: ["picket", "gate", "tulips", "birdbath", "barrow"],
+  },
+  {
+    id: "picnic",
+    name: "Picnic Meadow",
+    charm: 4,
+    items: ["picnic", "parasol", "deckchair", "sunflowers", "pathgravel"],
+  },
+  {
+    id: "lanterns",
+    name: "Lantern Walk",
+    charm: 5,
+    items: ["torch", "lantern", "stringlights", "stonelantern", "pathstone"],
+  },
+  {
+    id: "orchard",
+    name: "Orchard",
+    charm: 5,
+    items: ["apple", "orange", "cherry", "autumn", "hay"],
+  },
+  {
+    id: "watergarden",
+    name: "Water Garden",
+    charm: 6,
+    items: ["fountain", "lilypond", "bridge", "frog", "bamboo"],
+  },
+  {
+    id: "woodland",
+    name: "Woodland Friends",
+    charm: 6,
+    items: ["birch", "willow", "owl", "bunny", "deer"],
+  },
+  {
+    id: "spooky",
+    name: "Spooky Night",
+    charm: 3,
+    items: ["pumpkin", "tombstone", "cauldron"],
+  },
+  {
+    id: "lunar",
+    name: "Lunar New Year",
+    charm: 3,
+    items: ["redlantern", "luckycat", "plumtree"],
+  },
+  {
+    id: "winter",
+    name: "Winter Holiday",
+    charm: 3,
+    items: ["snowman", "gifts", "xmastree"],
+  },
+];
+/** The collections complete on a farm (every piece of the set placed). */
+export function decorSetsDone(placed: readonly { item: string }[]) {
+  const have = new Set(placed.map((p) => p.item));
+  return DECOR_SETS.filter((s) => s.items.every((i) => have.has(i)));
+}
+/** A farm's Charm: its decorations' and its complete collections' (arena_farm_charm). */
+export function decorCharm(placed: readonly { item: string }[]) {
+  let c = 0;
+  for (const p of placed) c += DECOR_BY_ID.get(p.item)?.charm ?? 0;
+  for (const s of decorSetsDone(placed)) c += s.charm;
+  return c;
+}
 /** How many decorations a farm has room for at a level. */
 export const decorCap = (level: number) =>
   Math.min(60, 10 + Math.max(1, Math.floor(level)));
@@ -929,7 +1551,8 @@ export interface FarmDecorPiece {
   y: number;
   flip?: boolean;
 }
-const DECOR_BY_ID = new Map(FARM_DECOR.map((d) => [d.id, d]));
+/** Whether a decoration lies flat on the ground (a path), see FarmDecorItem.ground. */
+export const decorGround = (item: string) => !!DECOR_BY_ID.get(item)?.ground;
 /** The ground a decoration takes standing at (x, y). */
 export function decorBox(item: string, x: number, y: number) {
   const d = DECOR_BY_ID.get(item);
@@ -940,7 +1563,8 @@ export function decorBox(item: string, x: number, y: number) {
 /**
  * Whether a decoration fits at (x, y): null when it does, otherwise why not.
  * `placed` is what already stands on the farm; `except` is the one being
- * moved. The database runs the same check (arena_farm_decor_fits).
+ * moved. Ground pieces (paths) may overlap each other, never anything
+ * standing. The database runs the same check (arena_farm_decor_fits).
  */
 export function decorFits(
   item: string,
@@ -971,8 +1595,9 @@ export function decorFits(
         return "Something is in the way";
     }
   }
+  const flat = decorGround(item);
   for (const p of placed) {
-    if (p.id === except) continue;
+    if (p.id === except || (flat && decorGround(p.item))) continue;
     const o = decorBox(p.item, p.x, p.y);
     if (b.x0 < o.x1 && o.x0 < b.x1 && b.y0 < o.y1 && o.y0 < b.y1)
       return "Too close to another decoration";
