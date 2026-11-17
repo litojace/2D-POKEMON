@@ -1199,19 +1199,27 @@ test("floor 30: Inkpurr's Lantern Yard with its summit grade, painted on floor 2
     const errors = await openHub(page);
     // A real zone-3 room (harness/rooms.ts), on floor 29 with floor 30 open.
     await climb(page, 29, 30);
+    // The arena paints its floor a frame or two after the room arrives.
+    await page.waitForFunction(
+      () =>
+        !!(window as any).__spireGame?.scene.getScene("arena")?.floor?.texture,
+    );
     const scene = () =>
       page.evaluate(() => {
         const s = (window as any).__spireGame.scene.getScene("arena");
+        const t = s.floor?.texture;
         return {
-          floor: s.floor.texture.key as string,
-          artwork: s.floor.texture.getSourceImage().dataset?.raidArtwork as
+          floor: t?.key as string,
+          artwork: t?.getSourceImage().dataset?.raidArtwork as
             string | undefined,
           floors: (s.textures.getTextureKeys() as string[]).filter((k) =>
             k.startsWith("arena-floor-"),
           ),
         };
       });
-    expect((await scene()).floor).toBe("arena-floor-spire-z3");
+    await expect
+      .poll(async () => (await scene()).floor)
+      .toBe("arena-floor-spire-z3");
     // Beat floor 29: its stairs open.
     for (let i = 0; i < 12; i++) {
       const cleared = await page.evaluate(() => {
