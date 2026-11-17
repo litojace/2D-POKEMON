@@ -94,7 +94,7 @@ export function renderSomnaraControls(
           : r.dream?.partnerId
             ? "Your half"
             : "Your dream";
-    panel.innerHTML = `<div class="dream-strip"><span>${title}</span><div class="dream-private-runes" aria-label="${view.backwards ? "Read right to left: " : ""}${names}">${view.backwards ? '<b title="Read right to left" aria-hidden="true">←</b>' : ""}${view.runes.map((rune, i) => (hidden.has(i) ? `<i data-rune="hidden">${hiddenIcon}</i>` : `<i data-rune="${rune}">${runeIcon(rune)}</i>`)).join("")}</div><b data-dream-seconds aria-label="${seconds} seconds remaining">${seconds}s</b><small data-dream-progress>${tide ? "!" : `${d.step}/${d.length}`}</small></div>${caller ? `<div class="dream-rune-buttons" role="group" aria-label="Call a rune to your team">${DREAM_RUNES.map((rune, i) => `<button type="button" data-raid-rune="${rune}" data-rune="${rune}" aria-label="Call ${DREAM_RUNE_NAMES[rune]} (${i + 1})" title="Call ${DREAM_RUNE_NAMES[rune]} (${i + 1})" ${sleeping ? "disabled" : ""}>${runeIcon(rune)}<kbd>${i + 1}</kbd></button>`).join("")}</div>` : ""}`;
+    panel.innerHTML = `<div class="dream-strip"><span>${title}</span><div class="dream-private-runes" aria-label="${view.backwards ? "Read right to left: " : ""}${names}">${view.backwards ? '<b title="Read right to left" aria-hidden="true">←</b>' : ""}${view.runes.map((rune, i) => (hidden.has(i) ? `<i data-rune="hidden">${hiddenIcon}</i>` : `<i data-rune="${rune}">${runeIcon(rune)}</i>`)).join("")}</div><b data-dream-seconds aria-label="${seconds} seconds remaining">${seconds}s</b><small data-dream-progress>${tide ? "call" : `${d.step}/${d.length}`}</small></div>${caller ? `<div class="dream-rune-buttons" role="group" aria-label="Call a rune to your team">${DREAM_RUNES.map((rune, i) => `<button type="button" data-raid-rune="${rune}" data-rune="${rune}" aria-label="Call ${DREAM_RUNE_NAMES[rune]} (${i + 1})" title="Call ${DREAM_RUNE_NAMES[rune]} (${i + 1})" ${sleeping ? "disabled" : ""}>${runeIcon(rune)}<kbd>${i + 1}</kbd></button>`).join("")}</div>` : ""}`;
     for (const b of Array.from(
       panel.querySelectorAll<HTMLButtonElement>("[data-raid-rune]"),
     ))
@@ -105,7 +105,7 @@ export function renderSomnaraControls(
   timer.textContent = `${seconds}s`;
   timer.setAttribute("aria-label", `${seconds} seconds remaining`);
   panel.querySelector<HTMLElement>("[data-dream-progress]")!.textContent = tide
-    ? "!"
+    ? "call"
     : `${d.step}/${d.length}`;
   for (const b of Array.from(
     panel.querySelectorAll<HTMLButtonElement>("[data-raid-rune]"),

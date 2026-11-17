@@ -50,6 +50,10 @@ const progressOf = (w: RaidWarning, now: number) =>
     ? 1
     : clamp((now - w.startedAt) / Math.max(0.01, w.at - w.startedAt));
 
+/** Where the Seer's speech bubble sits, from their feet (beside them). */
+export const SEER_BUBBLE = { x: 62, y: -12 };
+/** The Twin Dream's thread and order dots, below each Dreamer's feet. */
+export const TWIN_MARK = { thread: 30, dots: 44 };
 /** The colour of the server's event marking a Dream Tide's awake pad. */
 export const TIDE_AWAKE_COLOR = 0xfff3c4;
 /** Awake pads shown as tides landed (the newest few). */
@@ -134,7 +138,7 @@ function dashedCircle(
   alpha: number,
 ) {
   const n = 28;
-  g.lineStyle(3, color, alpha);
+  g.lineStyle(4, color, alpha);
   for (let i = 0; i < n; i += 2) {
     const a0 = (i / n) * Math.PI * 2,
       a1 = ((i + 1) / n) * Math.PI * 2;
@@ -161,7 +165,7 @@ export function drawAscendantSnoozeWarning(
   const pulse = reduced ? 1 : 0.86 + Math.sin(t * 7) * 0.14;
   const k = progressOf(w, t);
   // Sleep floods the deck, closing in from every edge.
-  g.fillStyle(MIST, (0.16 + 0.3 * k) * pulse).fillRect(0, 0, W, H);
+  g.fillStyle(MIST, (0.24 + 0.34 * k) * pulse).fillRect(0, 0, W, H);
   const band = 18 + k * 130;
   g.fillStyle(MIST, 0.5)
     .fillRect(0, 0, W, band)
@@ -178,16 +182,18 @@ export function drawAscendantSnoozeWarning(
       g.lineStyle(5, IVORY, 1).strokeCircle(pad.x, pad.y, w.radius);
       g.lineStyle(2, NIGHT, 0.8).strokeCircle(pad.x, pad.y, w.radius + 4);
       timer(g, pad.x, pad.y, w.radius - 11, k, GOLD);
-    } else dashedCircle(g, pad.x, pad.y, w.radius, LILAC, 0.75);
+    } else dashedCircle(g, pad.x, pad.y, w.radius, LILAC, 0.95);
   }
   // The Seer, for everyone: listen to them.
   const seer = state.players.find((p) => p.id === w.targetId && p.hp > 0);
   if (seer) {
     const r = 46 + (reduced ? 0 : Math.sin(t * 6) * 4);
     g.lineStyle(3, call ? IVORY : LILAC, 0.9).strokeCircle(seer.x, seer.y, r);
-    bubble(g, seer.x - 52, seer.y - 112, 0.9, !!call);
+    // beside the feet: name tags and health bars stand above a raider
+    bubble(g, seer.x + SEER_BUBBLE.x, seer.y + SEER_BUBBLE.y, 1.15, !!call);
   }
-  eclipseIcon(g, W / 2, 64);
+  // (bottom middle: the rune panel sits at the top, the controls at the sides)
+  eclipseIcon(g, W / 2, H - 70);
   return true;
 }
 
@@ -202,18 +208,23 @@ export function drawTwinThread(g: G, state: Snapshot, reduced: boolean) {
   const second = state.players.find((p) => p.id === d.partnerId && p.hp > 0);
   if (!first || !second) return;
   const x0 = first.x,
-    y0 = first.y - 60,
+    y0 = first.y + TWIN_MARK.thread,
     x1 = second.x,
-    y1 = second.y - 60;
+    y1 = second.y + TWIN_MARK.thread;
   const len = Math.hypot(x1 - x0, y1 - y0);
   if (len > 1) {
     const ux = (x1 - x0) / len,
       uy = (y1 - y0) / len;
     const flow = reduced ? 0 : (state.time * 40) % 24;
-    g.lineStyle(2, 0xe7e0ff, 0.55);
-    for (let s = flow; s < len; s += 24) {
-      const e = Math.min(len, s + 10);
-      g.lineBetween(x0 + ux * s, y0 + uy * s, x0 + ux * e, y0 + uy * e);
+    for (const [width, color, alpha] of [
+      [6, NIGHT, 0.5],
+      [3, 0xf1ecff, 0.9],
+    ] as const) {
+      g.lineStyle(width, color, alpha);
+      for (let s = flow; s < len; s += 24) {
+        const e = Math.min(len, s + 12);
+        g.lineBetween(x0 + ux * s, y0 + uy * s, x0 + ux * e, y0 + uy * e);
+      }
     }
   }
   const mark = (x: number, y: number, n: number, mine: boolean) => {
@@ -224,8 +235,8 @@ export function drawTwinThread(g: G, state: Snapshot, reduced: boolean) {
     }
   };
   const turn = d.step % 2 === 0;
-  mark(first.x, first.y - 96, 1, turn);
-  mark(second.x, second.y - 96, 2, !turn);
+  mark(first.x, first.y + TWIN_MARK.dots, 1, turn);
+  mark(second.x, second.y + TWIN_MARK.dots, 2, !turn);
 }
 
 /**
