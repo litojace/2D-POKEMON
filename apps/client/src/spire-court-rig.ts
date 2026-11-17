@@ -328,13 +328,23 @@ export const SPIRE_SUMMIT_FLOOR = "spire-summit";
 export const SPIRE_LAGOON_SUMMIT_FLOOR = "spire-summit-lagoon";
 /** Floor 30's: Inkpurr's Lantern Yard, with its own (midnight ink) grade. */
 export const SPIRE_YARD_SUMMIT_FLOOR = "spire-summit-yard";
+/**
+ * Floor 40's court until it has a summit grade of its own: Snoozaku's Cloud
+ * Deck as its raid paints it (the floor showArena picks for that arena).
+ * TODO(art): replace with the deck's summit floor id (and pick it in
+ * spireSummitFloorOf and hasSpireSummitArena), so the prewarm stays the
+ * texture floor 40 shows.
+ */
+export const SPIRE_DECK_BOSS_FLOOR = "cloud-deck";
 /** A boss floor's court texture id, by its zone (unknown zones: zone 1's). */
 export const spireSummitFloorId = (zone: number) =>
   zone === 2
     ? SPIRE_LAGOON_SUMMIT_FLOOR
     : zone === 3
       ? SPIRE_YARD_SUMMIT_FLOOR
-      : SPIRE_SUMMIT_FLOOR;
+      : zone === 4
+        ? SPIRE_DECK_BOSS_FLOOR
+        : SPIRE_SUMMIT_FLOOR;
 export const isSpireSummitFloorId = (id: string) =>
   id === SPIRE_SUMMIT_FLOOR ||
   id === SPIRE_LAGOON_SUMMIT_FLOOR ||
