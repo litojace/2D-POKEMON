@@ -32,6 +32,7 @@ import {
   paintSpireFloor,
   paintLagoonSummitGrade,
   paintDreamSummitGrade,
+  paintEmberSummitGrade,
   paintRadiantSummitGrade,
   paintLanternSummitGrade,
   paintSpireSky,
@@ -307,7 +308,8 @@ export function nextSpireCourtView(
 /**
  * A boss floor's court texture by its raid's arena (the lagoon: floor 20's;
  * the Lantern Yard: floor 30's; the Cloud Deck: floor 40's; the Sun
- * Atrium: floor 50's; any other: floor 10's graded Coliseum).
+ * Atrium: floor 50's; the Sky Terrace: floor 60's; any other: floor 10's
+ * graded Coliseum).
  */
 export const spireSummitFloorOf = (arena: string) =>
   arena === "lagoon"
@@ -318,13 +320,16 @@ export const spireSummitFloorOf = (arena: string) =>
         ? SPIRE_DECK_SUMMIT_FLOOR
         : arena === "sun-atrium"
           ? SPIRE_ATRIUM_SUMMIT_FLOOR
-          : SPIRE_SUMMIT_FLOOR;
+          : arena === "sky-terrace"
+            ? SPIRE_TERRACE_SUMMIT_FLOOR
+            : SPIRE_SUMMIT_FLOOR;
 /** Raid arenas with a summit court of their own (beside Cragmuff's court). */
 export const hasSpireSummitArena = (arena: string) =>
   arena === "lagoon" ||
   arena === "lantern-yard" ||
   arena === "cloud-deck" ||
-  arena === "sun-atrium";
+  arena === "sun-atrium" ||
+  arena === "sky-terrace";
 /** A Spire floor texture id ("spire-z1": the zone's platform floor). */
 export const spireFloorId = (v: SpireCourtView) => `spire-z${v.zone}`;
 export const isSpireFloorId = (id: string) => /^spire-z\d+$/.test(id);
@@ -342,6 +347,8 @@ export const SPIRE_YARD_SUMMIT_FLOOR = "spire-summit-yard";
 export const SPIRE_DECK_SUMMIT_FLOOR = "spire-summit-deck";
 /** Floor 50's: Prismell's Sun Atrium, with its own (golden hour) grade. */
 export const SPIRE_ATRIUM_SUMMIT_FLOOR = "spire-summit-atrium";
+/** Floor 60's: Lumiwick's Sky Terrace, with its own (lantern night) grade. */
+export const SPIRE_TERRACE_SUMMIT_FLOOR = "spire-summit-terrace";
 /** A boss floor's court texture id, by its zone (unknown zones: zone 1's). */
 export const spireSummitFloorId = (zone: number) =>
   zone === 2
@@ -352,13 +359,16 @@ export const spireSummitFloorId = (zone: number) =>
         ? SPIRE_DECK_SUMMIT_FLOOR
         : zone === 5
           ? SPIRE_ATRIUM_SUMMIT_FLOOR
-          : SPIRE_SUMMIT_FLOOR;
+          : zone === 6
+            ? SPIRE_TERRACE_SUMMIT_FLOOR
+            : SPIRE_SUMMIT_FLOOR;
 export const isSpireSummitFloorId = (id: string) =>
   id === SPIRE_SUMMIT_FLOOR ||
   id === SPIRE_LAGOON_SUMMIT_FLOOR ||
   id === SPIRE_YARD_SUMMIT_FLOOR ||
   id === SPIRE_DECK_SUMMIT_FLOOR ||
-  id === SPIRE_ATRIUM_SUMMIT_FLOOR;
+  id === SPIRE_ATRIUM_SUMMIT_FLOOR ||
+  id === SPIRE_TERRACE_SUMMIT_FLOOR;
 /** The raid picture under a summit floor, and its grade. */
 export function spireSummitArt(id: string) {
   return id === SPIRE_LAGOON_SUMMIT_FLOOR
@@ -369,5 +379,10 @@ export function spireSummitArt(id: string) {
         ? { picture: "cloud-deck" as const, grade: paintDreamSummitGrade }
         : id === SPIRE_ATRIUM_SUMMIT_FLOOR
           ? { picture: "sun-atrium" as const, grade: paintRadiantSummitGrade }
-          : { picture: "raid-coliseum" as const, grade: paintSpireSummitGrade };
+          : id === SPIRE_TERRACE_SUMMIT_FLOOR
+            ? { picture: "sky-terrace" as const, grade: paintEmberSummitGrade }
+            : {
+                picture: "raid-coliseum" as const,
+                grade: paintSpireSummitGrade,
+              };
 }
