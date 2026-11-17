@@ -559,31 +559,46 @@ const carnival: Record<CharacterId, Signature> = {
     },
   },
   mystowl: {
-    name: "Ringmaster spotlight",
-    c: 0xfff3c0,
-    h: 0xd65d83,
-    burst: "star",
+    name: "Big-top bunting",
+    c: 0xe0405a,
+    h: 0xffe19a,
+    burst: "confetti",
     draw: (f) => {
-      // A spotlight follows the ringmaster: a short beam that stops just above
-      // the hat (so it never paints over a pillar or fighter behind it), a
-      // warm pool of light on the ground, and glitter drifting down through
-      // it. No ring: the player's own ring already sits under the feet.
-      const sx = f.x + Math.sin(f.t / 1800) * 4 * f.s;
-      const w = 24 * f.s * f.boost,
-        top = f.headY - 8 * f.s;
-      f.under.fillStyle(f.c, 0.16).fillTriangle(sx - 5 * f.s, top, sx + 5 * f.s, top, sx + w, f.ground);
-      f.under.fillStyle(f.c, 0.16).fillTriangle(sx - 5 * f.s, top, sx - w, f.ground, sx + w, f.ground);
-      const k = wave(f.t / 1400);
-      f.under.fillStyle(0xfff1c8, 0.32 + 0.08 * k).fillEllipse(sx, f.ground, w * 2.1, w * 0.64);
-      f.under.fillStyle(0xffffff, 0.3 + 0.1 * k).fillEllipse(sx, f.ground, w * 1.2, w * 0.36);
-      for (let i = 0; i < (f.full ? 3 : 2); i++) {
-        const u = (f.t / 2600 + i / 3) % 1;
-        const gx = sx + Math.sin(u * 9 + i * 2) * (5 + u * 12) * f.s * (i % 2 ? 1 : -1),
-          gy = top + u * (f.ground - top);
-        const a = Math.sin(u * Math.PI);
-        if (f.full) sparkle(f.under, gx, gy, 1.6 * f.s, i % 2 ? f.h : 0xffe19a, a);
-        else dot(f.under, gx, gy, 1.1 * f.s, i % 2 ? f.h : 0xffe19a, a);
+      // A string of big-top pennants frames the ringmaster like a tent
+      // entrance: its ends tied at the shoulders, its arch high over the hat
+      // and plumes, swaying, each flag ruffling in turn. Saturated cloth with
+      // a dark edge, so it reads on bright sand and dark courts alike.
+      const n = f.full ? 9 : 5;
+      const span = (f.headR + 16 * f.s) * f.boost;
+      const sway = Math.sin(f.t / 1100) * 2.5 * f.s;
+      const peak = f.headY - 20 * f.s * f.boost,
+        foot = f.chest;
+      const at = (u: number) => {
+        // u from -1 (left shoulder) to 1 (right shoulder), sagging a little
+        // between the pegs.
+        const x = f.headX + Math.sin((u * Math.PI) / 2) * span + sway * (1 - u * u);
+        const arch = Math.cos((u * Math.PI) / 2);
+        return { x, y: foot - (foot - peak) * arch + Math.abs(Math.sin(u * Math.PI * 2)) * 2 * f.s };
+      };
+      f.under.lineStyle(1 * f.s, 0x3a2140, 0.9).strokePoints(curve(10, (u) => at(u * 2 - 1)));
+      const colors = [f.c, f.h, 0xfff6ea];
+      const flags: [number, number, number, number, number, number][] = [];
+      for (let i = 0; i < n; i++) {
+        const u = ((i + 0.5) / n) * 2 - 1;
+        // Each pennant is pinned at one point and hangs straight down, so the
+        // flags on the steep sides of the arch keep their full width.
+        const p = at(u);
+        const half = 3.4 * f.s * f.boost;
+        const a = { x: p.x - half, y: p.y },
+          b = { x: p.x + half, y: p.y };
+        const ruffle = Math.sin(f.t / 260 + i * 1.3) * 2 * f.s;
+        const len = 8 * f.s * f.boost;
+        const tip = { x: p.x + ruffle, y: p.y + len };
+        f.under.fillStyle(colors[i % 3], 1).fillTriangle(a.x, a.y, b.x, b.y, tip.x, tip.y);
+        flags.push([a.x, a.y, b.x, b.y, tip.x, tip.y]);
       }
+      f.under.lineStyle(0.9 * f.s, 0x3a2140, 0.85);
+      for (const fl of flags) f.under.strokeTriangle(...fl);
     },
   },
   terradon: {

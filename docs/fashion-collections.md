@@ -97,7 +97,7 @@ the collection, in place of the shared glint:
 | Tidefin | Reef fish school | Pearl garland | Riptide crescent orbiting |
 | Auralynx | Cryo crystals, falling frost | Moon trapeze above | Prism hex panels |
 | Lumoth | Angler lure | Wing ribbons | Lumen beacon orbs |
-| Mystowl | Sonar pings | Ringmaster spotlight | Living star chart |
+| Mystowl | Sonar pings | Big-top bunting | Living star chart |
 | Terradon | Anemone garden | Carousel bulbs | Hex bulwark ring |
 | Duskveil | Moon jelly | Marionette strings | Echo waves |
 | Coilemur | Live cable with current | Spinning hoop | Flux rings |
