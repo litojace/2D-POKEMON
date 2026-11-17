@@ -403,6 +403,7 @@ import { RITE_EFFECTS, riteEffect, riteIcon } from "./rite-icons";
 import { ConnectionWatch, dropMessage } from "./connection-loss";
 import { watchSceneSwitch } from "./scene-switch-place";
 import { mountChat, type ChatFriend, type ChatPlace } from "./chat/chat-ui";
+import { pushState, turnPushOff, turnPushOn } from "./chat/push-setup";
 import { mountBattleChat } from "./chat/battle-chat";
 import {
   CHAT_MODES,
@@ -533,6 +534,34 @@ const socket = io(import.meta.env.VITE_SERVER_URL || undefined, {
   auth: { accessToken: null },
 });
 let accountsUI: AccountUI;
+/** The server's key for notifications (null: it sends none). */
+let pushKey: string | null = null;
+/** A friend to open from a tapped notification (sw.ts), once signed in. */
+let friendToOpen: { id: string; name: string } | null = (() => {
+  const q = new URLSearchParams(location.search);
+  const id = q.get("friend");
+  if (!id) return null;
+  q.delete("friend");
+  const name = q.get("name") ?? "";
+  q.delete("name");
+  const rest = q.toString();
+  history.replaceState(
+    history.state,
+    "",
+    location.pathname + (rest ? `?${rest}` : "") + location.hash,
+  );
+  return { id, name };
+})();
+navigator.serviceWorker?.addEventListener("message", (event) => {
+  const friend =
+    (event.data as { type?: string; friend?: unknown } | null)?.type ===
+    "open-friend"
+      ? (event.data.friend as { id?: unknown; name?: unknown })
+      : null;
+  if (typeof friend?.id !== "string") return;
+  friendToOpen = { id: friend.id, name: String(friend.name ?? "") };
+  syncHub();
+});
 const chat = mountChat({
   send: (channel, body, to) =>
     request("chat-send", { channel, ...body, ...(to ? { to } : {}) }),
@@ -552,6 +581,28 @@ const chat = mountChat({
   },
   read: (to) => {
     if (socket.connected) socket.emit("chat-read", { to });
+  },
+  // Notifications of friends' messages on this device (push-setup.ts). The
+  // server's key is fetched when the gear opens, so turning them on asks the
+  // browser straight from the tap.
+  push: {
+    state: async () => {
+      const reply = (await request("push-config", {}, true)) as {
+        ok: boolean;
+        key?: string | null;
+      };
+      pushKey = reply.ok && typeof reply.key === "string" ? reply.key : null;
+      return pushKey ? pushState() : "server-off";
+    },
+    toggle: (on) =>
+      on
+        ? pushKey
+          ? turnPushOn(pushKey, (event, data) => request(event, data, true))
+          : Promise.resolve({
+              ok: false,
+              error: "Notifications aren't available right now.",
+            })
+        : turnPushOff((event, data) => request(event, data, true)),
   },
   me: () =>
     accountsUI?.account
@@ -2153,6 +2204,12 @@ function syncChat(hub: boolean) {
     // Friends: anyone signed in with an account (guests have no friends).
     friend: !!accountsUI?.account && !accountsUI.account.guest,
   });
+  // A tapped notification waits for the sign-in, then opens that friend.
+  if (friendToOpen && accountsUI?.account && !accountsUI.account.guest) {
+    const { id, name } = friendToOpen;
+    friendToOpen = null;
+    chat.openFriend(id, name);
+  }
   // Either chat button is up in the screen's top-left corner: the raid's
   // briefing and results cards keep clear of it on phones (raid-cards.css).
   document.body.classList.toggle(
@@ -7487,6 +7544,8 @@ accountsUI = new AccountUI({
   onSession: (token, accountId) => {
     const attempt = ++authConnectionAttempt;
     if (!token) roomInvites.clear();
+    // Signed out: this device stops getting the last player's notifications.
+    if (!token) void turnPushOff();
     if (!token || (accountId && accountId !== replacedAccount)) {
       replacedAccount = null;
       sessionStorage.removeItem("arena-session-replaced");
