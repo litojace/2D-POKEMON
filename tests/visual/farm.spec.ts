@@ -1067,6 +1067,8 @@ for (const viewport of [
         `farm-coop-basket-${viewport.width}x${viewport.height}`,
       );
       await dragOverHens();
+      // (The log's lines fade after a few seconds: read it first.)
+      await expect(page.locator("#fm-log")).toContainText("Sunny Egg");
       await expect
         .poll(actions)
         .toEqual([
@@ -1087,7 +1089,6 @@ for (const viewport of [
           ),
         )
         .toBe(2);
-      await expect(page.locator("#fm-log")).toContainText("Sunny Egg");
       // More wheat in the barn for the coop's sheet below.
       await page.evaluate(() => {
         const f = (window as any).__fakeFarm,
