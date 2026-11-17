@@ -58,6 +58,7 @@ import {
   plazaJump,
   plazaStep,
   trackPoint,
+  segmentDistance,
   trackPolar,
 } from "../../../../packages/shared/src/plaza";
 import { CROP_BY_ID } from "../../../../packages/shared/src/farm";
@@ -311,18 +312,32 @@ export function openPlaza(options) {
       g.arc(x, y, 1.2, 0, 7);
       g.fill();
     }
-    // stone paths: soft bed + rounded cobbles
-    const path = (pts, w = 100) => {
+    // stone paths: soft bed + rounded cobbles. Drawn in layers (every
+    // path's bed, then every path's sand, then the stones) so where paths
+    // meet they run into each other instead of one's edge lying on another.
+    // One stroke over every path at a width: the canvas paints their union,
+    // so overlapping paths don't darken or edge each other where they meet.
+    const strokeAll = (extra, style) => {
       g.lineCap = "round";
       g.lineJoin = "round";
-      g.strokeStyle = "rgba(60,90,40,.35)";
-      g.lineWidth = w + 18;
-      g.beginPath();
-      pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y)));
-      g.stroke();
-      g.strokeStyle = "#d9c9a3";
-      g.lineWidth = w + 6;
-      g.stroke();
+      for (const w of new Set(PLAZA_PATHS.map((p) => p.w))) {
+        g.strokeStyle = style;
+        g.lineWidth = w + extra;
+        g.beginPath();
+        for (const p of PLAZA_PATHS)
+          if (p.w === w)
+            p.pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y)));
+        g.stroke();
+      }
+    };
+    strokeAll(18, "rgba(60,90,40,.35)");
+    strokeAll(6, "#d9c9a3");
+    /** Segments already paved: a stone that would land on one is left out. */
+    const paved = [];
+    const onPaved = (x, y) =>
+      paved.some((s) => segmentDistance(x, y, s.a, s.b) < s.w / 2 - 10);
+    for (const { pts, w } of PLAZA_PATHS) {
+      const mine = [];
       for (let i = 0; i < pts.length - 1; i++) {
         const [x0, y0] = pts[i],
           [x1, y1] = pts[i + 1],
@@ -338,6 +353,7 @@ export function openPlaza(options) {
             const c = ["#efe3c8", "#e6d6b4", "#f4ead6", "#dccaa6"][
               Math.floor(rnd() * 4)
             ];
+            if (onPaved(x, y)) continue;
             g.fillStyle = "rgba(120,100,60,.45)";
             g.beginPath();
             g.roundRect(x - 10, y - 7 + 2, 20, 15, 6);
@@ -351,10 +367,17 @@ export function openPlaza(options) {
             g.roundRect(x - 7, y - 6, 9, 3.5, 2);
             g.fill();
           }
+        // The segment before this one counts once this one is laid, so a
+        // bend's stones don't pile up either.
+        mine.push({
+          a: { x: x0, y: y0 },
+          b: { x: x1, y: y1 },
+          w,
+        });
+        if (mine.length > 1) paved.push(mine[mine.length - 2]);
       }
-    };
-    // The paths are shared (PLAZA_PATHS), so scenery keeps off them.
-    for (const p of PLAZA_PATHS) path(p.pts, p.w);
+      paved.push(mine[mine.length - 1]);
+    }
     // plaza square: concentric pavers + elemental mosaic
     g.save();
     g.translate(SQ.x, SQ.y);
