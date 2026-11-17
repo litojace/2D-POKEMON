@@ -374,7 +374,11 @@ export function drawRaidArena(
   if (r.spire) drawSpireCourt(g, state, reduced);
   if (r.boss === "storm-twins") drawConductorRing(g, state, reduced, at, clock);
   if (r.boss === "emberwing") drawSkyTerrace(g, state, reduced, at);
-  if (r.boss === "prismatail") drawSunAtrium(g, state, reduced, at, clock);
+  // (The Spire's wave and elite floors in a raid's zone: its own court; the
+  // raid's arena and its boss's body are the boss floor's.)
+  const bossCourt = !r.spire || r.spire.kind === "boss";
+  if (r.boss === "prismatail" && bossCourt)
+    drawSunAtrium(g, state, reduced, at, clock);
   // (The Spire's wave and elite floors in Snoozaku's zone: its court, no deck.)
   if (dream && (!r.spire || r.spire.kind === "boss"))
     drawCloudDeck(g, state, reduced, clock);
@@ -707,9 +711,11 @@ export function drawRaidArena(
   if (r.boss === "storm-twins")
     return drawStormTwins(g, state, reduced, clock, at);
   if (r.boss === "emberwing") return drawEmberwing(boss, state, reduced, clock);
+  // (An elite captain carries the boss bar there: it is drawn as the
+  // champion it is, never as the raid's boss.)
   if (r.boss === "prismatail")
-    return drawPrismatail(boss, state, reduced, clock);
-  if (dream) return drawSomnara(boss, state, reduced, clock);
+    return bossCourt ? drawPrismatail(boss, state, reduced, clock) : [];
+  if (dream) return bossCourt ? drawSomnara(boss, state, reduced, clock) : [];
   return tide
     ? drawTidewyrm(boss, state, reduced, clock)
     : gloom

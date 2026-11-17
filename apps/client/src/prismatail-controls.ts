@@ -1,14 +1,17 @@
 import type { Snapshot, Fighter } from "@arena/shared";
+/**
+ * Prismell's atrium is on the court: its raid, or the Spire's boss floor in
+ * its zone (the wave and elite floors have no mirrors or Glare).
+ */
+const prismCourt = (state: Snapshot) =>
+  state.raid?.boss === "prismatail" &&
+  (!state.raid.spire || state.raid.spire.kind === "boss");
 let lookingAway = false,
   turningUntil = 0;
 let turningBasicAt: number | undefined;
 /** Input assistance stays local; the server still resolves the real aim and attack. */
 export function prismatailAim(state: Snapshot, me: Fighter) {
-  if (
-    state.phase !== "playing" ||
-    state.raid?.boss !== "prismatail" ||
-    me.hp <= 0
-  ) {
+  if (state.phase !== "playing" || !prismCourt(state) || me.hp <= 0) {
     lookingAway = false;
     turningUntil = 0;
     turningBasicAt = undefined;
@@ -30,7 +33,7 @@ export function prismatailAim(state: Snapshot, me: Fighter) {
       turningBasicAt = undefined;
       return;
     }
-    const mirror = [...(state.raid.mirrors ?? [])].sort(
+    const mirror = [...(state.raid?.mirrors ?? [])].sort(
       (a, b) =>
         Math.hypot(a.x - me.x, a.y - me.y) - Math.hypot(b.x - me.x, b.y - me.y),
     )[0];
@@ -49,10 +52,7 @@ export function renderPrismatailControls(
     panel.id = "raid-prism-controls";
     frame.append(panel);
   }
-  panel.hidden =
-    state.raid?.boss !== "prismatail" ||
-    state.phase !== "playing" ||
-    me.hp <= 0;
+  panel.hidden = !prismCourt(state) || state.phase !== "playing" || me.hp <= 0;
   frame.classList.toggle(
     "prism-blinded",
     !panel.hidden && (state.raid?.blinded?.[me.id] ?? 0) > state.time,

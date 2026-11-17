@@ -72,9 +72,11 @@ export function spireFloorPlan(f: SpireFloor | undefined) {
 export function spireFloorLine(f: SpireFloor | undefined) {
   if (!f) return "";
   if (f.kind === "boss")
-    return `${ascendantOf(f)} · ${ascendantNew(f)
-      .map((k) => RAID_ATTACKS[k].name)
-      .join(", ")}`;
+    return ascendantNew(f).length
+      ? `${ascendantOf(f)} · ${ascendantNew(f)
+          .map((k) => RAID_ATTACKS[k].name)
+          .join(", ")}`
+      : ascendantOf(f);
   if (f.kind === "elite" && f.elite) {
     const m = SPIRE_ELITE_MECHANICS[f.elite.mechanic];
     return `${f.elite.name}, with ${m.boss}'s ${m.name}`;
@@ -140,7 +142,7 @@ export function spireOverlay(state: Snapshot, me: Fighter) {
         : "No self-revive in this fight: dodge carefully."
       : "Stand beside a fallen ally to revive them.";
     title = `Floor ${s.floor} · ${escape(ascendantOf(floor))}`;
-    body = `<div class="rc-body spire-briefing spire-boss-briefing" tabindex="0" role="region" aria-label="Boss floor briefing"><p class="spire-lead">The top of ${escape(zoneOf(floor).name)}: ${escape(zoneOf(floor).bossLead)}</p><span class="ui-kicker">New attacks</span>${spireFloorPlan(floor)}<ul class="spire-rules"><li>${menuIcon("motion")}<span><b>It reads you.</b> ${escape(zoneOf(floor).bossReads)}</span></li><li>${menuIcon("sparkle")}<span>Your <b>blessings</b> fight with you. You pick one more before the fight.</span></li><li>${menuIcon("again")}<span>${revive} A defeat ends the climb.</span></li></ul><details class="rc-extra" id="raid-briefing-extra"><summary>${escape(zoneOf(floor).bossName)}'s raid, step by step</summary>${raidBriefingGuide(r.boss, me.character, solo)}</details></div>`;
+    body = `<div class="rc-body spire-briefing spire-boss-briefing" tabindex="0" role="region" aria-label="Boss floor briefing"><p class="spire-lead">The top of ${escape(zoneOf(floor).name)}: ${escape(zoneOf(floor).bossLead)}</p>${ascendantNew(floor).length ? `<span class="ui-kicker">New attacks</span>${spireFloorPlan(floor)}` : ""}<ul class="spire-rules"><li>${menuIcon("motion")}<span><b>It reads you.</b> ${escape(zoneOf(floor).bossReads)}</span></li><li>${menuIcon("sparkle")}<span>Your <b>blessings</b> fight with you. You pick one more before the fight.</span></li><li>${menuIcon("again")}<span>${revive} A defeat ends the climb.</span></li></ul><details class="rc-extra" id="raid-briefing-extra"><summary>${escape(zoneOf(floor).bossName)}'s raid, step by step</summary>${raidBriefingGuide(r.boss, me.character, solo)}</details></div>`;
     acts = `<p class="ui-note rc-meta">Boss floor · starts in <span class="spire-briefing-timer">${LIVE_SECONDS}</span> · ${solo ? "Solo" : `${r.partySize} climbers`}</p>${actions(button(waiting ? "Waiting for the team…" : "I’m ready", { kind: "primary", icon: waiting ? undefined : "battle", disabled: waiting, attrs: { id: "raid-instructions", "aria-label": waiting ? "Waiting for the team" : `I’m ready — fight ${ascendantOf(floor)}` } }))}`;
   } else if (state.phase === "briefing") {
     const waiting = state.instructionsReady.includes(me.id);

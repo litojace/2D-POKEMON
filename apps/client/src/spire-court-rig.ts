@@ -334,6 +334,14 @@ export const SPIRE_LAGOON_SUMMIT_FLOOR = "spire-summit-lagoon";
 export const SPIRE_YARD_SUMMIT_FLOOR = "spire-summit-yard";
 /** Floor 40's: Snoozaku's Cloud Deck, with its own (dream twilight) grade. */
 export const SPIRE_DECK_SUMMIT_FLOOR = "spire-summit-deck";
+/**
+ * Floor 50's court until it has a summit grade of its own: Prismell's Sun
+ * Atrium as its raid paints it (the floor showArena picks for that arena).
+ * TODO(art): replace with the atrium's summit floor id (and pick it in
+ * spireSummitFloorOf and hasSpireSummitArena), so the prewarm stays the
+ * texture floor 50 shows.
+ */
+export const SPIRE_ATRIUM_BOSS_FLOOR = "sun-atrium";
 /** A boss floor's court texture id, by its zone (unknown zones: zone 1's). */
 export const spireSummitFloorId = (zone: number) =>
   zone === 2
@@ -342,7 +350,9 @@ export const spireSummitFloorId = (zone: number) =>
       ? SPIRE_YARD_SUMMIT_FLOOR
       : zone === 4
         ? SPIRE_DECK_SUMMIT_FLOOR
-        : SPIRE_SUMMIT_FLOOR;
+        : zone === 5
+          ? SPIRE_ATRIUM_BOSS_FLOOR
+          : SPIRE_SUMMIT_FLOOR;
 export const isSpireSummitFloorId = (id: string) =>
   id === SPIRE_SUMMIT_FLOOR ||
   id === SPIRE_LAGOON_SUMMIT_FLOOR ||
