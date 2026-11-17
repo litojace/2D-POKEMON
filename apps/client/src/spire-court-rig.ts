@@ -31,6 +31,7 @@ import {
   paintSpireAtlas,
   paintSpireFloor,
   paintLagoonSummitGrade,
+  paintLanternSummitGrade,
   paintSpireSky,
   paintSpireSummitGrade,
   spireFloorPieces,
@@ -301,9 +302,19 @@ export function nextSpireCourtView(
     kind: place === 10 ? "boss" : place === 5 ? "elite" : "wave",
   };
 }
-/** A boss floor's court texture by its raid's arena (the lagoon: floor 20's). */
+/**
+ * A boss floor's court texture by its raid's arena (the lagoon: floor 20's;
+ * the Lantern Yard: floor 30's; any other: floor 10's graded Coliseum).
+ */
 export const spireSummitFloorOf = (arena: string) =>
-  arena === "lagoon" ? SPIRE_LAGOON_SUMMIT_FLOOR : SPIRE_SUMMIT_FLOOR;
+  arena === "lagoon"
+    ? SPIRE_LAGOON_SUMMIT_FLOOR
+    : arena === "lantern-yard"
+      ? SPIRE_YARD_SUMMIT_FLOOR
+      : SPIRE_SUMMIT_FLOOR;
+/** Raid arenas with a summit court of their own (beside Cragmuff's court). */
+export const hasSpireSummitArena = (arena: string) =>
+  arena === "lagoon" || arena === "lantern-yard";
 /** A Spire floor texture id ("spire-z1": the zone's platform floor). */
 export const spireFloorId = (v: SpireCourtView) => `spire-z${v.zone}`;
 export const isSpireFloorId = (id: string) => /^spire-z\d+$/.test(id);
@@ -315,14 +326,24 @@ export function paintSpireFloorId(ctx: CanvasRenderingContext2D, id: string) {
 export const SPIRE_SUMMIT_FLOOR = "spire-summit";
 /** Floor 20's: Tidelotl's lagoon, with its own (night-sea) summit grade. */
 export const SPIRE_LAGOON_SUMMIT_FLOOR = "spire-summit-lagoon";
+/** Floor 30's: Inkpurr's Lantern Yard, with its own (midnight ink) grade. */
+export const SPIRE_YARD_SUMMIT_FLOOR = "spire-summit-yard";
 /** A boss floor's court texture id, by its zone (unknown zones: zone 1's). */
 export const spireSummitFloorId = (zone: number) =>
-  zone === 2 ? SPIRE_LAGOON_SUMMIT_FLOOR : SPIRE_SUMMIT_FLOOR;
+  zone === 2
+    ? SPIRE_LAGOON_SUMMIT_FLOOR
+    : zone === 3
+      ? SPIRE_YARD_SUMMIT_FLOOR
+      : SPIRE_SUMMIT_FLOOR;
 export const isSpireSummitFloorId = (id: string) =>
-  id === SPIRE_SUMMIT_FLOOR || id === SPIRE_LAGOON_SUMMIT_FLOOR;
+  id === SPIRE_SUMMIT_FLOOR ||
+  id === SPIRE_LAGOON_SUMMIT_FLOOR ||
+  id === SPIRE_YARD_SUMMIT_FLOOR;
 /** The raid picture under a summit floor, and its grade. */
 export function spireSummitArt(id: string) {
   return id === SPIRE_LAGOON_SUMMIT_FLOOR
     ? { picture: "lagoon" as const, grade: paintLagoonSummitGrade }
-    : { picture: "raid-coliseum" as const, grade: paintSpireSummitGrade };
+    : id === SPIRE_YARD_SUMMIT_FLOOR
+      ? { picture: "lantern-yard" as const, grade: paintLanternSummitGrade }
+      : { picture: "raid-coliseum" as const, grade: paintSpireSummitGrade };
 }

@@ -205,6 +205,17 @@ describe("Spire court layouts", () => {
       "crystals",
       "pylons",
       undefined,
+      // Zone 3: the same order.
+      "gates",
+      "walls",
+      "crystals",
+      "pylons",
+      "captain",
+      "gates",
+      "walls",
+      "crystals",
+      "pylons",
+      undefined,
     ]);
     // Later zones reuse the same order (floor 13 like floor 3).
     expect(spireCourtLayout(13, "wave")?.id).toBe("crystals");

@@ -11,6 +11,7 @@ import { SomnaraArena } from "./raid-somnara.js";
 import { GloomshadeArena } from "./raid-gloomshade.js";
 import { AscendantCragmuffArena } from "./raid-ascendant-cragmuff.js";
 import { AscendantTidelotlArena } from "./raid-ascendant-tidelotl.js";
+import { AscendantInkpurrArena } from "./raid-ascendant-inkpurr.js";
 
 /**
  * A raid room for a boss: each built boss has its own arena class. An
@@ -26,6 +27,8 @@ export function createRaidArena(
     return new AscendantCragmuffArena(code);
   if (opts.variant === "ascendant" && boss === "tidewyrm")
     return new AscendantTidelotlArena(code);
+  if (opts.variant === "ascendant" && boss === "gloomshade")
+    return new AscendantInkpurrArena(code);
   if (boss === "storm-twins") return new StormTwinsArena(code, boss);
   if (boss === "emberwing") return new EmberwingArena(code, boss);
   if (boss === "prismatail") return new PrismatailArena(code, boss);

@@ -280,6 +280,13 @@ function gloomshadeCue(state: Snapshot, myId: string) {
   if (mine && mine.hauntedUntil > state.time)
     return "Haunted — get into lantern light to cleanse it!";
   const w = cueWarning(state, myId);
+  // Ascendant Inkpurr's Nightfall and Shade Pounce.
+  if (w?.kind === "nightfall")
+    return "Nightfall — get into a pool of moonlight or lantern light!";
+  if (w?.kind === "pounce")
+    return w.targetId === myId
+      ? "It pounces at you — step out of the circle (the last leap is the real one)!"
+      : `Shade Pounce at ${name(w.targetId)} — keep out of the circles!`;
   if (w?.kind === "hands")
     return w.shiftAt !== undefined && state.time < w.shiftAt
       ? "Grasping Hands — the tiles will flip! Watch for the flicker."
