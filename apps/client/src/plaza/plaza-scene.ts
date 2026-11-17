@@ -10,6 +10,9 @@
  * the same shared step. Ported drawing code is not type-checked line by
  * line; the typed entry point is plaza-screen.ts.
  */
+import { epicSignatureFrame } from "../skins/epic-skin-fx";
+import { drawEpicCanvasFx } from "../skins/epic-canvas-fx";
+import { SKIN_ART } from "../skins/skin-art";
 import { CHAT_EMOTES } from "../../../../packages/shared/src/chat";
 import { bubbleLines } from "../chat/bubble-text";
 /** A chat bubble's text is at most this wide; longer lines wrap. */
@@ -37,6 +40,8 @@ import {
   PLAZA_PADS,
   PLAZA_PATHS,
   PLAZA_PHOTO,
+  PLAZA_PHOTO_CAMERA,
+  PLAZA_LANDINGS,
   PLAZA_PITCH,
   PLAZA_POND,
   PLAZA_QUESTS,
@@ -58,6 +63,7 @@ import {
   plazaJump,
   plazaStep,
   trackPoint,
+  segmentDistance,
   trackPolar,
 } from "../../../../packages/shared/src/plaza";
 import { CROP_BY_ID } from "../../../../packages/shared/src/farm";
@@ -311,18 +317,80 @@ export function openPlaza(options) {
       g.arc(x, y, 1.2, 0, 7);
       g.fill();
     }
-    // stone paths: soft bed + rounded cobbles
-    const path = (pts, w = 100) => {
+    // stone paths: soft bed + rounded cobbles. Drawn in layers (every
+    // path's bed, then every path's sand, then the stones) so where paths
+    // meet they run into each other instead of one's edge lying on another.
+    // One stroke over every path at a width: the canvas paints their union,
+    // so overlapping paths don't darken or edge each other where they meet.
+    const strokeAll = (extra, style) => {
       g.lineCap = "round";
       g.lineJoin = "round";
-      g.strokeStyle = "rgba(60,90,40,.35)";
-      g.lineWidth = w + 18;
+      for (const w of new Set(PLAZA_PATHS.map((p) => p.w))) {
+        g.strokeStyle = style;
+        g.lineWidth = w + extra;
+        g.beginPath();
+        for (const p of PLAZA_PATHS)
+          if (p.w === w)
+            p.pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y)));
+        g.stroke();
+      }
+    };
+    // Landings (where paths arrive) are part of the same bed and sand.
+    const landings = (grow, style) => {
+      g.fillStyle = style;
       g.beginPath();
-      pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y)));
-      g.stroke();
-      g.strokeStyle = "#d9c9a3";
-      g.lineWidth = w + 6;
-      g.stroke();
+      for (const l of PLAZA_LANDINGS) {
+        g.moveTo(l.x + l.rx + grow, l.y);
+        g.ellipse(l.x, l.y, l.rx + grow, l.ry + grow, 0, 0, Math.PI * 2);
+      }
+      g.fill();
+    };
+    strokeAll(18, "rgba(60,90,40,.35)");
+    landings(9, "rgba(60,90,40,.35)");
+    strokeAll(6, "#d9c9a3");
+    landings(3, "#d9c9a3");
+    const cobble = (x, y, c) => {
+      g.fillStyle = "rgba(120,100,60,.45)";
+      g.beginPath();
+      g.roundRect(x - 10, y - 7 + 2, 20, 15, 6);
+      g.fill();
+      g.fillStyle = c;
+      g.beginPath();
+      g.roundRect(x - 10, y - 8, 20, 15, 6);
+      g.fill();
+      g.fillStyle = "rgba(255,255,255,.35)";
+      g.beginPath();
+      g.roundRect(x - 7, y - 6, 9, 3.5, 2);
+      g.fill();
+    };
+    const STONES = ["#efe3c8", "#e6d6b4", "#f4ead6", "#dccaa6"];
+    // A landing's stones first, in rows; the paths' stones stop at its edge.
+    const inLanding = (x, y, inset) =>
+      PLAZA_LANDINGS.some(
+        (l) =>
+          ((x - l.x) / (l.rx - inset)) ** 2 +
+            ((y - l.y) / (l.ry - inset)) ** 2 <
+          1,
+      );
+    for (const l of PLAZA_LANDINGS)
+      for (let y = l.y - l.ry, row = 0; y <= l.y + l.ry; y += 17, row++)
+        for (let x = l.x - l.rx + (row % 2) * 12; x <= l.x + l.rx; x += 24) {
+          const sx = x + (rnd() - 0.5) * 4,
+            sy = y + (rnd() - 0.5) * 4,
+            c = STONES[Math.floor(rnd() * 4)];
+          if (
+            ((sx - l.x) / (l.rx - 12)) ** 2 + ((sy - l.y) / (l.ry - 9)) ** 2 <
+            1
+          )
+            cobble(sx, sy, c);
+        }
+    /** Segments already paved: a stone that would land on one is left out. */
+    const paved = [];
+    const onPaved = (x, y) =>
+      inLanding(x, y, 2) ||
+      paved.some((s) => segmentDistance(x, y, s.a, s.b) < s.w / 2 - 10);
+    for (const { pts, w } of PLAZA_PATHS) {
+      const mine = [];
       for (let i = 0; i < pts.length - 1; i++) {
         const [x0, y0] = pts[i],
           [x1, y1] = pts[i + 1],
@@ -338,23 +406,19 @@ export function openPlaza(options) {
             const c = ["#efe3c8", "#e6d6b4", "#f4ead6", "#dccaa6"][
               Math.floor(rnd() * 4)
             ];
-            g.fillStyle = "rgba(120,100,60,.45)";
-            g.beginPath();
-            g.roundRect(x - 10, y - 7 + 2, 20, 15, 6);
-            g.fill();
-            g.fillStyle = c;
-            g.beginPath();
-            g.roundRect(x - 10, y - 8, 20, 15, 6);
-            g.fill();
-            g.fillStyle = "rgba(255,255,255,.35)";
-            g.beginPath();
-            g.roundRect(x - 7, y - 6, 9, 3.5, 2);
-            g.fill();
+            if (!onPaved(x, y)) cobble(x, y, c);
           }
+        // The segment before this one counts once this one is laid, so a
+        // bend's stones don't pile up either.
+        mine.push({
+          a: { x: x0, y: y0 },
+          b: { x: x1, y: y1 },
+          w,
+        });
+        if (mine.length > 1) paved.push(mine[mine.length - 2]);
       }
-    };
-    // The paths are shared (PLAZA_PATHS), so scenery keeps off them.
-    for (const p of PLAZA_PATHS) path(p.pts, p.w);
+      paved.push(mine[mine.length - 1]);
+    }
     // plaza square: concentric pavers + elemental mosaic
     g.save();
     g.translate(SQ.x, SQ.y);
@@ -684,13 +748,14 @@ export function openPlaza(options) {
       });
     }
     // photo spot pad
-    g.fillStyle = "rgba(255,255,255,.22)";
+    // (On the landing's stones, so a warm outline that shows on them.)
+    g.fillStyle = "rgba(255,255,255,.14)";
     g.beginPath();
     g.ellipse(PHOTO.x, PHOTO.y + 30, 74, 40, 0, 0, 7);
     g.fill();
-    g.strokeStyle = "#ffffffaa";
+    g.strokeStyle = "rgba(150,110,50,.75)";
     g.setLineDash([8, 8]);
-    g.lineWidth = 2;
+    g.lineWidth = 2.5;
     g.stroke();
     g.setLineDash([]);
     // garden strip beyond the gate
@@ -738,15 +803,17 @@ export function openPlaza(options) {
   const art = new Map();
   // The <img> (its src shows in cards and the feed) carries `sprite`, the
   // bitmap the canvas draws once it is painted (see plaza-sprite.ts).
-  const imageFor = (character, skin) => {
-    const key = `${character}:${skin?.skin ?? ""}:${skin?.stage ?? 1}`;
+  // `colour`: the all-fighter Skin slot (a palette such as candy-colours),
+  // shown when no champion skin is worn, as in battle and on portraits.
+  const imageFor = (character, skin, colour = null) => {
+    const key = `${character}:${skin?.skin ?? ""}:${skin?.stage ?? 1}:${colour ?? ""}`;
     let im = art.get(key);
     if (!im) {
       im = new Image();
       im.decoding = "async";
-      im.src = options.art(character, skin);
+      im.src = options.art(character, skin, false, colour);
       im.sprite = null;
-      bakeSprite(im, options.art(character, skin, true)).then(
+      bakeSprite(im, options.art(character, skin, true, colour)).then(
         (sprite) => (im.sprite = sprite),
         () => {},
       );
@@ -775,6 +842,7 @@ export function openPlaza(options) {
     name: options.playerName(),
     character: options.character,
     skin: null,
+    colour: null,
     img: imageFor(options.character, null),
     emote: null,
     emoteT: 0,
@@ -1365,7 +1433,12 @@ export function openPlaza(options) {
     if (plazaJump(P)) socket.emit("plaza-jump");
   }
   function dash() {
-    if (plazaDash(P)) socket.emit("plaza-dash");
+    // Send the way you dashed: the server's last stick can be a step old.
+    if (plazaDash(P))
+      socket.emit("plaza-dash", {
+        dx: Math.round(P.dashX * 1000) / 1000,
+        dy: Math.round(P.dashY * 1000) / 1000,
+      });
   }
   let emoteAt = 0;
   function emote(e) {
@@ -1840,14 +1913,12 @@ export function openPlaza(options) {
           name: p.name,
           bot: !!p.bot,
           skin: p.skin,
-          img: imageFor(p.character, p.skin),
+          colour: p.look?.skin ?? null,
+          img: imageFor(p.character, p.skin, p.look?.skin ?? null),
         });
-      if (p.id === meId) {
-        P.name = p.name;
-        P.character = p.character;
-        P.skin = p.skin;
-        P.img = imageFor(p.character, p.skin);
-      }
+      // Your own fighter and skins come from your saved wardrobe (look()), at
+      // once: the server's copy starts bare until it has read the wardrobe.
+      if (p.id === meId) P.name = p.name;
     }
   }
   socket.on("plaza-state", onState);
@@ -1903,7 +1974,12 @@ export function openPlaza(options) {
           name: p?.name ?? "",
           bot: !!p?.bot,
           skin: p?.skin ?? null,
-          img: imageFor(p?.character ?? "voltkit", p?.skin ?? null),
+          colour: p?.look?.skin ?? null,
+          img: imageFor(
+            p?.character ?? "voltkit",
+            p?.skin ?? null,
+            p?.look?.skin ?? null,
+          ),
           emoteIdx: 0,
         });
         others.set(id, b);
@@ -1954,7 +2030,7 @@ export function openPlaza(options) {
     if (on !== runwayOn) {
       runwayOn = on;
       if (on) {
-        const skin = P.skin?.skin ? options.skinName(P.skin.skin) : null;
+        const skin = starSkin(P) || null;
         rc.innerHTML = `<img src="${P.img.src}" alt=""><div><small>ON THE RUNWAY</small><b>${esc(P.name)}</b><em>${esc(skin ?? "Original look")} · ${esc(options.fighterName(P.character))}</em></div><span class="claps">${I("heart")}<b id="pz-claps">${claps}</b></span>`;
         rc.className = "pz-runcard glass";
         rc.hidden = false;
@@ -2466,10 +2542,55 @@ export function openPlaza(options) {
       g.textAlign = "left";
     });
   }
+  /** The Photo Spot's camera, seen from behind: it stands in front of the
+   * arch on its own feet (not against a post) and points at the spot. */
+  function drawCamera(g) {
+    const { x: cx, y: cy } = PLAZA_PHOTO_CAMERA;
+    g.save();
+    g.fillStyle = "rgba(0,0,0,.18)";
+    g.beginPath();
+    g.ellipse(cx, cy + 1, 18, 5, 0, 0, 7);
+    g.fill();
+    g.strokeStyle = "#2c3348";
+    g.lineWidth = 3;
+    g.lineCap = "round";
+    g.beginPath();
+    g.moveTo(cx, cy - 46);
+    g.lineTo(cx - 14, cy);
+    g.moveTo(cx, cy - 46);
+    g.lineTo(cx + 14, cy);
+    g.moveTo(cx, cy - 46);
+    g.lineTo(cx + 3, cy - 6);
+    g.stroke();
+    // The lens, toward the arch (up and to the right), behind the body.
+    g.fillStyle = "#1f2536";
+    g.beginPath();
+    g.roundRect(cx + 4, cy - 76, 14, 12, 3);
+    g.fill();
+    g.fillStyle = "#2c3348";
+    g.beginPath();
+    g.roundRect(cx - 16, cy - 66, 32, 22, 5);
+    g.fill();
+    // Its back: the screen, and the red light while it is ready.
+    g.fillStyle = "#8fd0ff";
+    g.beginPath();
+    g.roundRect(cx - 11, cy - 62, 17, 13, 2);
+    g.fill();
+    g.fillStyle = "rgba(255,255,255,.5)";
+    g.fillRect(cx - 9, cy - 60, 6, 3);
+    g.fillStyle = "#ef4f61";
+    g.beginPath();
+    g.arc(cx + 11, cy - 60, 2.5, 0, 7);
+    g.fill();
+    g.restore();
+  }
   function drawPhoto(g, time) {
     const { x, y } = PHOTO;
-    GFX.blit(g, GFX.bush("flower", 31, 70), x - 104, y + 6);
-    GFX.blit(g, GFX.bush("rose", 32, 70), x + 104, y + 6);
+    // The two bushes stand together west of the arch, clear of its posts,
+    // the tripod, the stage and the lane in front (they used to sit on both
+    // posts' feet, half hiding them).
+    GFX.blit(g, GFX.bush("flower", 31, 70), x - 160, y - 50);
+    GFX.blit(g, GFX.bush("rose", 32, 70), x - 235, y - 30);
     const post = (px) => {
       const gg = g.createLinearGradient(px - 6, 0, px + 6, 0);
       gg.addColorStop(0, "#fffaf0");
@@ -2518,31 +2639,6 @@ export function openPlaza(options) {
     g.lineWidth = 4;
     g.strokeText("PHOTO SPOT", x, y - 246);
     g.fillText("PHOTO SPOT", x, y - 246);
-    // camera on a tripod
-    const cx = x + 72,
-      cy = y - 6;
-    g.strokeStyle = "#2c3348";
-    g.lineWidth = 3;
-    g.beginPath();
-    g.moveTo(cx, cy - 46);
-    g.lineTo(cx - 12, cy);
-    g.moveTo(cx, cy - 46);
-    g.lineTo(cx + 12, cy);
-    g.moveTo(cx, cy - 46);
-    g.lineTo(cx, cy + 2);
-    g.stroke();
-    g.fillStyle = "#2c3348";
-    g.beginPath();
-    g.roundRect(cx - 16, cy - 66, 32, 22, 5);
-    g.fill();
-    g.fillStyle = "#8fd0ff";
-    g.beginPath();
-    g.arc(cx - 3, cy - 55, 7, 0, 7);
-    g.fill();
-    g.fillStyle = "#ef4f61";
-    g.beginPath();
-    g.arc(cx + 10, cy - 62, 2.5, 0, 7);
-    g.fill();
   }
   function drawCafe(g) {
     GFX.blit(g, GFX.foodTruck(), CAFE.x, CAFE.y + 4);
@@ -2610,6 +2706,7 @@ export function openPlaza(options) {
         g.fill();
       });
   }
+  let nearbyEpicDraws = 0;
   function drawBody(g, b, time, photo) {
     const s = 84,
       im = b.img;
@@ -2639,7 +2736,31 @@ export function openPlaza(options) {
     }
     g.globalAlpha = 1;
     const { bob, rot, sq } = bodyPose(b, time);
+    const skinArt = b.skin?.skin ? SKIN_ART[b.skin.skin] : null;
+    const nearby = !b.bot && (b.x - P.x) ** 2 + (b.y - P.y) ** 2 < 240 ** 2;
+    const showEpic = !reduced && skinArt?.epicFx &&
+      (b.me || (nearby && nearbyEpicDraws < (low ? 1 : 3)));
+    let epicFrame = null, epicPose = null;
+    if (showEpic) {
+      if (!b.me) nearbyEpicDraws++;
+      const full = b.me && !low && !photo;
+      epicFrame = epicSignatureFrame(skinArt.epicFx, {
+        now: photo ? 0 : time * 1000,
+        facing: "down",
+        moving: b.sp > 0.05,
+        dashing: b.dash > 0,
+        ambient: full,
+        angle: Math.hypot(b.vx ?? 0, b.vy ?? 0) > 0.1
+          ? Math.atan2(b.vy, b.vx) : b.face > 0 ? 0 : Math.PI,
+      }, skinArt);
+      epicPose = {
+        x: b.x, y: b.y, z: b.z, bob, rotation: rot,
+        squash: sq, face: b.face, size: s, full,
+      };
+      drawEpicCanvasFx(g, epicFrame, epicPose, "ground");
+    }
     drawSprite(g, sp, b.x, b.y - b.z - bob, s, b.face, rot, sq);
+    if (epicFrame) drawEpicCanvasFx(g, epicFrame, epicPose, "rig");
     // Bots (the pitch bots and the townsfolk) wear a quieter, italic name
     // tag, so nobody mistakes them for players.
     g.font = b.bot
@@ -3385,6 +3506,7 @@ export function openPlaza(options) {
     g.restore();
   }
   function drawWorld(g, time, photo = false) {
+    nearbyEpicDraws = 0;
     // What this canvas shows of the world, so only that much is drawn.
     const inv = g.getTransform().inverse(),
       c0 = inv.transformPoint({ x: 0, y: 0 }),
@@ -3578,6 +3700,7 @@ export function openPlaza(options) {
       { y: TRACK.cy - TRACK.ri[1], d: () => drawGantry(g) },
       { y: LEADER.y, d: () => drawLeader(g) },
       { y: PHOTO.y, d: () => drawPhoto(g, time) },
+      { y: PLAZA_PHOTO_CAMERA.y, d: () => drawCamera(g) },
       { y: CAFE.y, d: () => drawCafe(g) },
       { y: BOARD.y, d: () => drawBoard(g) },
       { y: GATE.y, d: () => drawGate(g) },
@@ -3768,7 +3891,15 @@ export function openPlaza(options) {
     }
   }
   function starSkin(b) {
-    return b.skin?.skin ? (options.skinName(b.skin.skin) ?? "") : "";
+    if (b.skin?.skin) return options.skinName(b.skin.skin) ?? "";
+    // A palette from the Skin slot: "candy-colours" → "Candy Colours".
+    return b.colour
+      ? (options.skinName(b.colour) ??
+          b.colour.replace(
+            /(^|-)(\w)/g,
+            (_, d, c) => (d ? " " : "") + c.toUpperCase(),
+          ))
+      : "";
   }
 
   /* ---------- loop ---------- */
@@ -4144,10 +4275,11 @@ export function openPlaza(options) {
     },
     say,
     /** Your fighter or skin changed. */
-    look(character, skin) {
+    look(character, skin, colour = null) {
       P.character = character;
       P.skin = skin ?? null;
-      P.img = imageFor(character, skin ?? null);
+      P.colour = colour ?? null;
+      P.img = imageFor(character, skin ?? null, colour ?? null);
     },
     close() {
       running = false;

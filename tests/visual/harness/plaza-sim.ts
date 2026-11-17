@@ -120,7 +120,7 @@ w.__reply = (ev: string, data: any) =>
 w.__emit = (ev: string, data: any) => {
   if (ev === "plaza-input") world.input(ME, data.dx, data.dy);
   else if (ev === "plaza-jump") world.jump(ME);
-  else if (ev === "plaza-dash") world.dash(ME);
+  else if (ev === "plaza-dash") world.dash(ME, data?.dx, data?.dy);
   else before.emit?.(ev, data);
 };
 let ticks = 0;

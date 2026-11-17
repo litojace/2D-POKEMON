@@ -77,6 +77,11 @@ export const PLAZA_PADS: readonly (readonly [number, number])[] = [
   [1555, 1035],
 ];
 export const PLAZA_PHOTO = { x: 1010, y: 500 } as const;
+/** The Photo Spot's camera: on its tripod in front of the arch, pointing at it. */
+export const PLAZA_PHOTO_CAMERA = {
+  x: PLAZA_PHOTO.x - 105,
+  y: PLAZA_PHOTO.y + 112,
+} as const;
 export const PLAZA_CAFE = { x: 1745, y: 480 } as const;
 export const PLAZA_BOARD = { x: 1050, y: 1265 } as const;
 export const PLAZA_LEADER = { x: 240, y: 600 } as const;
@@ -275,6 +280,22 @@ export function plazaClear(x: number, y: number, pad = 0) {
     if (x < SQ.x - 200 && x > T.cx) return false;
   }
   if (
+    PLAZA_LANDINGS.some(
+      (l) =>
+        ((x - l.x) / (l.rx + 40)) ** 2 + ((y - l.y) / (l.ry + 30)) ** 2 < 1,
+    )
+  )
+    return false;
+  // The Photo Spot's arch rises well above its spot, and its two bushes
+  // stand west of it (drawn with it): keep both clear.
+  if (
+    x > PLAZA_PHOTO.x - 300 &&
+    x < PLAZA_PHOTO.x + 150 &&
+    y > PLAZA_PHOTO.y - 300 &&
+    y < PLAZA_PHOTO.y + 60
+  )
+    return false;
+  if (
     Math.hypot(x - PLAZA_PHOTO.x, (y - PLAZA_PHOTO.y) * 1.4) < 190 ||
     Math.hypot(x - PLAZA_CAFE.x, (y - PLAZA_CAFE.y) * 1.3) < 230 ||
     Math.hypot(x - PLAZA_BOARD.x, y - PLAZA_BOARD.y) < 140 ||
@@ -376,14 +397,14 @@ export const PLAZA_PATHS: readonly {
   {
     pts: [
       [PLAZA_SQUARE.x + 220, PLAZA_SQUARE.y - 180],
-      [PLAZA_CAFE.x - 40, PLAZA_CAFE.y + 50],
+      [PLAZA_CAFE.x - 30, PLAZA_CAFE.y + 72],
     ],
     w: 80,
   },
   {
     pts: [
       [PLAZA_SQUARE.x - 220, PLAZA_SQUARE.y - 180],
-      [PLAZA_PHOTO.x + 20, PLAZA_PHOTO.y + 50],
+      [PLAZA_PHOTO.x, PLAZA_PHOTO.y + 32],
     ],
     w: 80,
   },
@@ -396,7 +417,8 @@ export const PLAZA_PATHS: readonly {
   },
   {
     pts: [
-      [PLAZA_SQUARE.x + 120, PLAZA_GATE.y - 200],
+      // From the main path itself, not a stub beside it.
+      [PLAZA_SQUARE.x, PLAZA_GATE.y - 200],
       [PLAZA_POND.x - 170, PLAZA_POND.y - 40],
     ],
     w: 72,
@@ -404,15 +426,50 @@ export const PLAZA_PATHS: readonly {
   {
     pts: [
       [PLAZA_TRACK.cx - 40, PLAZA_TRACK.cy - PLAZA_TRACK.ro[1] - 10],
-      [PLAZA_LEADER.x + 20, PLAZA_LEADER.y + 30],
+      [PLAZA_LEADER.x + 10, PLAZA_LEADER.y + 36],
     ],
     w: 64,
   },
+  // The houses' lanes run on to the Photo Spot and the Volt Boba truck, so
+  // they meet the paths from the square instead of stopping in the grass.
   {
     pts: [
       [410, 330],
       [410, 470],
-      [900, 520],
+      [880, 540],
+      [PLAZA_PHOTO.x, PLAZA_PHOTO.y + 32],
+    ],
+    w: 64,
+  },
+  // Front walks: the teal house, the Bakery and the far east house reach
+  // the lanes below them.
+  {
+    pts: [
+      [650, 335],
+      [650, 506],
+    ],
+    w: 56,
+  },
+  {
+    pts: [
+      [2060, 325],
+      [2060, 511],
+    ],
+    w: 56,
+  },
+  {
+    pts: [
+      [2540, 335],
+      [2540, 400],
+      [2300, 460],
+    ],
+    w: 56,
+  },
+  // … and the studio lane down to the TOP DASH path along the track.
+  {
+    pts: [
+      [410, 470],
+      [410, PLAZA_LEADER.y + 30],
     ],
     w: 64,
   },
@@ -420,10 +477,27 @@ export const PLAZA_PATHS: readonly {
     pts: [
       [2300, 330],
       [2300, 460],
-      [1900, 500],
+      [1900, 545],
+      [PLAZA_CAFE.x - 30, PLAZA_CAFE.y + 72],
     ],
     w: 64,
   },
+];
+/**
+ * Paved landings where paths arrive (the Photo Spot under its arch, the
+ * Volt Boba counter): the paths end inside them, so no path stops in a
+ * round stub on the grass.
+ */
+export const PLAZA_LANDINGS: readonly {
+  x: number;
+  y: number;
+  rx: number;
+  ry: number;
+}[] = [
+  { x: PLAZA_PHOTO.x, y: PLAZA_PHOTO.y + 32, rx: 104, ry: 58 },
+  { x: PLAZA_CAFE.x - 30, y: PLAZA_CAFE.y + 72, rx: 124, ry: 50 },
+  // In front of the TOP DASH board.
+  { x: PLAZA_LEADER.x + 10, y: PLAZA_LEADER.y + 36, rx: 96, ry: 36 },
 ];
 /** How far a point is from the nearest path's edge (negative: on it), and
  * which way is off it. */
@@ -544,7 +618,7 @@ export const PLAZA_OBSTACLES: readonly PlazaObstacle[] = [
   { x: PLAZA_CAFE.x + 10, y: PLAZA_CAFE.y - 40, r: 130, sy: 2.6 },
   { x: PLAZA_BOARD.x, y: PLAZA_BOARD.y, r: 54, sy: 3 },
   { x: PLAZA_LEADER.x, y: PLAZA_LEADER.y, r: 60, sy: 3 },
-  { x: PLAZA_PHOTO.x + 72, y: PLAZA_PHOTO.y - 8, r: 20 },
+  { x: PLAZA_PHOTO_CAMERA.x, y: PLAZA_PHOTO_CAMERA.y - 4, r: 16 },
 ];
 
 /** Keep a body out of every obstacle, the pond and the stage wall, and inside the map. */
@@ -645,9 +719,18 @@ export function plazaJump(
   b.airH = height;
   return true;
 }
-/** Dash the way you last moved (or faced); false while on cooldown or stumbling. */
-export function plazaDash(b: PlazaBody) {
+/**
+ * Dash the way you last moved (or faced); false while on cooldown or
+ * stumbling. The server passes the way the browser dashed (`dir`): its own
+ * last stick can be a step or two old, and a dash that leaves at another
+ * angle lands the server's copy of you far from where you see yourself.
+ */
+export function plazaDash(b: PlazaBody, dir?: { x: number; y: number }) {
   if (b.dashCd > 0 || b.stun > 0) return false;
+  if (dir && Math.hypot(dir.x, dir.y) > 0.05) {
+    b.lastX = dir.x;
+    b.lastY = dir.y;
+  }
   const m = Math.hypot(b.lastX, b.lastY);
   b.dash = PLAZA.dashSeconds;
   b.dashCd = PLAZA.dashEvery;
@@ -753,16 +836,63 @@ export function plazaStep(
 /** Laps run clockwise from the start line at the top of the track. */
 export const PLAZA_LAP_START = -Math.PI / 2;
 /**
+ * How the lap timer forgives the server's copy of you for drifting off the
+ * lane. The server moves you from your stick, a network trip late, so on a
+ * bend (above all after a dash, which leaves in a straight line) its copy can
+ * be a few dozen pixels outside the lane while your screen shows you inside.
+ * The outer side forgives more: running wide only makes a lap longer, while
+ * cutting inside would make it shorter. Within the slack it's still the
+ * lane; a little further out, the lap survives `graceMs`; past `outerOff` px
+ * outside or `innerOff` px into the infield it ends at once (so the grace
+ * can't cut across the infield).
+ */
+export const PLAZA_LAP_LANE = {
+  /** A lap starts only this close to the painted lane. */
+  startSlack: 24,
+  outerSlack: 80,
+  innerSlack: 48,
+  graceMs: 800,
+  outerOff: 200,
+  innerOff: 110,
+} as const;
+/** Where a point is for the lap timer: close enough to start a lap, in the
+ * lane (with slack), near it, or off. */
+export function lapZone(
+  x: number,
+  y: number,
+): "start" | "lane" | "near" | "off" {
+  const { cx, cy, ro, ri } = PLAZA_TRACK,
+    L = PLAZA_LAP_LANE,
+    e = (a: number, b: number) => ((x - cx) / a) ** 2 + ((y - cy) / b) ** 2;
+  if (
+    e(ro[0] + L.startSlack, ro[1] + L.startSlack) <= 1 &&
+    e(ri[0] - L.startSlack, ri[1] - L.startSlack) >= 1
+  )
+    return "start";
+  if (
+    e(ro[0] + L.outerOff, ro[1] + L.outerOff) > 1 ||
+    e(ri[0] - L.innerOff, ri[1] - L.innerOff) < 1
+  )
+    return "off";
+  return e(ro[0] + L.outerSlack, ro[1] + L.outerSlack) <= 1 &&
+    e(ri[0] - L.innerSlack, ri[1] - L.innerSlack) >= 1
+    ? "lane"
+    : "near";
+}
+/**
  * Times a lap from server positions. A lap starts when you cross the start
  * line clockwise inside the lane, and ends when you've gone all the way round
- * (2π clockwise) without leaving the lane. Crossing is checked between steps,
- * so a fast dash can't skip a line.
+ * (2π clockwise) without leaving the lane (see PLAZA_LAP_LANE for how much
+ * drift it forgives). Crossing is checked between steps, so a fast dash
+ * can't skip a line.
  */
 export class LapTimer {
   /** Unwrapped angle travelled since the start line; null when not running. */
   private travelled: number | null = null;
   private last: number | null = null;
   private startedAt = 0;
+  /** When a running lap last left the lane (null: in it). */
+  private outSince: number | null = null;
   get running() {
     return this.travelled !== null;
   }
@@ -777,6 +907,12 @@ export class LapTimer {
   }
   reset() {
     this.travelled = null;
+    this.outSince = null;
+  }
+  private cancel(): { cancelled: true } {
+    this.travelled = null;
+    this.outSince = null;
+    return { cancelled: true };
   }
   /** Feed a position; returns a finished lap's time (ms) or "start" / "cancel". */
   update(
@@ -784,34 +920,39 @@ export class LapTimer {
     y: number,
     now: number,
   ): { started?: true; cancelled?: true; lapMs?: number } {
-    const inLane = this.inLane(x, y),
+    const zone = lapZone(x, y),
       a = trackPolar(x, y).a,
       prev = this.last;
-    this.last = inLane ? a : null;
-    if (!inLane) {
-      if (this.travelled !== null) {
-        this.travelled = null;
-        return { cancelled: true };
-      }
-      return {};
-    }
-    if (prev === null) return {};
-    // Signed angle change, wrapped into (−π, π].
-    let d = a - prev;
-    while (d > Math.PI) d -= Math.PI * 2;
-    while (d <= -Math.PI) d += Math.PI * 2;
     if (this.travelled === null) {
+      // Not running: only the lane itself can start a lap.
+      this.last = zone === "start" ? a : null;
+      if (zone !== "start" || prev === null) return {};
       // Start line: from just before −π/2 to at or past it, clockwise.
-      const before = wrap(prev - PLAZA_LAP_START),
+      const d = wrap(a - prev),
+        before = wrap(prev - PLAZA_LAP_START),
         after = wrap(a - PLAZA_LAP_START);
       if (d > 0 && before < 0 && after >= 0 && after - before < Math.PI) {
         this.travelled = after;
         this.startedAt = now;
+        this.outSince = null;
         return { started: true };
       }
       return {};
     }
-    this.travelled += d;
+    if (zone === "start" || zone === "lane") this.outSince = null;
+    else if (zone === "off") {
+      this.last = null;
+      return this.cancel();
+    } else {
+      this.outSince ??= now;
+      if (now - this.outSince > PLAZA_LAP_LANE.graceMs) {
+        this.last = null;
+        return this.cancel();
+      }
+    }
+    this.last = a;
+    if (prev === null) return {};
+    this.travelled += wrap(a - prev);
     if (this.travelled >= Math.PI * 2) {
       const lapMs = now - this.startedAt;
       // Carry on: crossing the line again starts the next lap at once.
@@ -820,19 +961,8 @@ export class LapTimer {
       return { lapMs, started: true };
     }
     // Running backwards past the start line cancels the lap.
-    if (this.travelled < -0.3) {
-      this.travelled = null;
-      return { cancelled: true };
-    }
+    if (this.travelled < -0.3) return this.cancel();
     return {};
-  }
-  /** The lane with a little slack, so brushing an edge doesn't cancel a lap. */
-  private inLane(x: number, y: number) {
-    const { cx, cy, ro, ri } = PLAZA_TRACK;
-    return (
-      ((x - cx) / (ro[0] + 24)) ** 2 + ((y - cy) / (ro[1] + 24)) ** 2 <= 1 &&
-      ((x - cx) / (ri[0] - 24)) ** 2 + ((y - cy) / (ri[1] - 24)) ** 2 >= 1
-    );
   }
 }
 const wrap = (d: number) => {

@@ -944,3 +944,72 @@ test("Nearby chat on the Plaza: the wheel sends quick chat, phrases pop over the
   await snap(page, info, "plaza-chat-bubble");
   expect(errors).toEqual([]);
 });
+
+test("the Plaza shows the skins players wear: yours at once, and others' palettes", async ({
+  page,
+}, info) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const errors = await openPlaza(page);
+  // Yours, from your saved wardrobe (the harness: Voltkit in Stormcrown,
+  // stage 2), even though the server's first copy of you is bare.
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const P = (window as any).__plaza.P;
+        return [P.skin?.skin ?? null, P.skin?.stage ?? null];
+      }),
+    )
+    .toEqual(["voltkit-stormcrown", 2]);
+  // The server sends your bare copy again (it changed, before or without
+  // reading your wardrobe): you stay in what you wear.
+  await page.evaluate(() =>
+    (window as any).__plazaWorld.updateProfile("local", { level: 13 }),
+  );
+  await page.waitForTimeout(800);
+  expect(
+    await page.evaluate(() => (window as any).__plaza.P.skin?.skin ?? null),
+  ).toBe("voltkit-stormcrown");
+  // Someone in a Skin-slot palette, and someone in a champion skin over one
+  // (the champion skin wins, as in battle).
+  await page.evaluate(() => {
+    const w = window as any,
+      me = w.__plazaWorld.bodyOf("local");
+    const join = (key: string, name: string, extra: object, dx: number) => {
+      w.__plazaWorld.join(key, `acct-${key}`, {
+        name,
+        title: null,
+        titleColor: null,
+        level: 3,
+        character: "voltkit",
+        skin: null,
+        ...extra,
+      });
+      Object.assign(w.__plazaWorld.bodyOf(key), { x: me.x + dx, y: me.y });
+    };
+    join("candy", "Candy", { look: { skin: "candy-colours" } }, 90);
+    join(
+      "crown",
+      "Crown",
+      {
+        skin: { skin: "voltkit-stormcrown", stage: 1 },
+        look: { skin: "candy-colours" },
+      },
+      -90,
+    );
+  });
+  const srcOf = (name: string) =>
+    page.evaluate((name) => {
+      const b = [...(window as any).__plaza.others.values()].find(
+        (x: any) => x.name === name,
+      );
+      return b ? decodeURIComponent(b.img.src) : null;
+    }, name);
+  await expect
+    .poll(() => srcOf("Candy"), { timeout: 15_000 })
+    .toContain("preview-palette-candy-colours");
+  const crown = await srcOf("Crown");
+  expect(crown).not.toContain("preview-palette");
+  expect(crown).not.toBe(await srcOf("Candy"));
+  await snap(page, info, "plaza-skins");
+  expect(errors).toEqual([]);
+});

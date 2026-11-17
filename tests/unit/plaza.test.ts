@@ -13,6 +13,7 @@ import {
   PLAZA_ROCKS,
   PLAZA_SPAWN,
   PLAZA_SPOTS,
+  PLAZA_LAP_LANE,
   PLAZA_TRACK,
   orbHeight,
   orbShower,
@@ -159,6 +160,18 @@ describe("Plaza movement", () => {
     expect(landed.some((e) => e.landed)).toBe(true);
   });
 
+  it("dashes the way the browser dashed, even if the last stick is older", () => {
+    const b = plazaBody(600, 1300);
+    run(b, { x: 1, y: 0 }, 0.1);
+    expect(plazaDash(b, { x: 0, y: 1 })).toBe(true);
+    expect([b.dashX, b.dashY]).toEqual([0, 1]);
+    // No direction (or a bad one): the last stick, as before.
+    const c = plazaBody(600, 1300);
+    run(c, { x: 1, y: 0 }, 0.1);
+    expect(plazaDash(c, plazaStick(NaN, undefined))).toBe(true);
+    expect([c.dashX, c.dashY]).toEqual([1, 0]);
+  });
+
   it("throws you high from a bounce pad", () => {
     const [x, y] = PLAZA_PADS[0];
     const b = plazaBody(x - 60, y);
@@ -236,6 +249,60 @@ describe("the dash track lap timer", () => {
     expect(timer.update(PLAZA_TRACK.cx, PLAZA_TRACK.cy, (t += 50))).toEqual({
       cancelled: true,
     });
+    expect(timer.running).toBe(false);
+  });
+  /** A point `px` outside the outer edge (negative: inside the inner edge) at angle `a`. */
+  const beyond = (a: number, px: number) => {
+    const { cx, cy, ro, ri } = PLAZA_TRACK,
+      [rx, ry] = px >= 0 ? [ro[0] + px, ro[1] + px] : [ri[0] + px, ri[1] + px];
+    return { x: cx + Math.cos(a) * rx, y: cy + Math.sin(a) * ry };
+  };
+  const startLap = () => {
+    const timer = new LapTimer();
+    let t = 0;
+    for (let a = -Math.PI / 2 - 0.2; a < -0.4; a += 0.04) {
+      const p = trackPoint(a);
+      timer.update(p.x, p.y, (t += 50));
+    }
+    expect(timer.running).toBe(true);
+    return { timer, t, a: -0.4 };
+  };
+  it("forgives the server's copy drifting wide on a bend for a moment", () => {
+    // The server moves you from your stick a network trip late, so after a
+    // dash its copy of you can be well outside while you see yourself inside.
+    let { timer, t, a } = startLap();
+    for (let i = 0; i < 10; i++, a += 0.04) {
+      const p = beyond(a, PLAZA_LAP_LANE.outerSlack + 40);
+      expect(timer.update(p.x, p.y, (t += 50)).cancelled).toBeUndefined();
+    }
+    for (; a < Math.PI * 1.5 - 0.15; a += 0.04) {
+      const p = trackPoint(a, 0.9);
+      timer.update(p.x, p.y, (t += 50));
+    }
+    const p = trackPoint(-Math.PI / 2 + 0.05);
+    expect(timer.update(p.x, p.y, (t += 50)).lapMs).toBeGreaterThan(0);
+  });
+  it("still cancels a lap that stays off the lane or cuts the infield", () => {
+    let { timer, t, a } = startLap();
+    let cancelled = false;
+    for (let i = 0; i < 30 && !cancelled; i++, a += 0.02) {
+      const p = beyond(a, PLAZA_LAP_LANE.outerSlack + 40);
+      cancelled = !!timer.update(p.x, p.y, (t += 50)).cancelled;
+      if (cancelled) expect(i * 50).toBeGreaterThan(PLAZA_LAP_LANE.graceMs);
+    }
+    expect(cancelled).toBe(true);
+    ({ timer, t, a } = startLap());
+    // Into the infield, past the slack: at once, no grace.
+    const p = beyond(a, -PLAZA_LAP_LANE.innerOff - 10);
+    expect(timer.update(p.x, p.y, t + 50)).toEqual({ cancelled: true });
+  });
+  it("starts a lap only on the painted lane, not walking by just outside", () => {
+    const timer = new LapTimer();
+    let t = 0;
+    for (let a = -Math.PI / 2 - 0.3; a < -Math.PI / 2 + 0.3; a += 0.04) {
+      const p = beyond(a, PLAZA_LAP_LANE.startSlack + 20);
+      expect(timer.update(p.x, p.y, (t += 50)).started).toBeUndefined();
+    }
     expect(timer.running).toBe(false);
   });
 });

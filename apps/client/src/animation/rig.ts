@@ -1602,6 +1602,7 @@ export class FighterRig {
           ambient: pose.ambient !== false,
           mount,
           facing: dir,
+          travelAngle: pose.travelAngle ?? pose.angle,
           flat: this.groundFlat,
         },
         art,
