@@ -139,7 +139,28 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  /* The corner tag and the stars share the row; on a narrow card the stars
+     go under the tag at the right instead of over it ("Clear Cragmuff
+     first" ran under the stars at 932x430). */
+  flex-wrap: wrap;
+  gap: 4px 8px;
+}
+.rh-card-top > .ui-tag {
+  max-width: 100%;
+  min-width: 0;
+}
+/* A long lock line ("Clear Cragmuff first") wraps inside its tag on a
+   narrow card instead of running past the card's edge, where the card
+   cut it (667x375; fonts a little wider still on some machines). */
+.rh-card-top > .ui-tag.is-lock {
+  height: auto;
+  min-height: 18px;
+  padding-block: 2px;
+  white-space: normal;
+  line-height: 1.15;
+}
+.rh-card-top > .rh-stars {
+  margin-left: auto;
 }
 .rh-card-top .ui-tag:not(.is-new):not(.is-lock) {
   background: #0b1020d9;
