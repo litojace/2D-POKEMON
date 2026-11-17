@@ -2,6 +2,10 @@ import { drawBossSpellFlipbook } from "./boss-spell-flipbook";
 import { drawGrumbleAttacks } from "./grumble-attack-fx";
 import { drawLumiwickAttacks } from "./lumiwick-attack-fx";
 import { drawTidelotlAttacks } from "./tidelotl-attack-fx";
+import {
+  drawAscendantInkFx,
+  paintAscendantInkAura,
+} from "./ascendant-inkpurr-art";
 import { drawSnoozakuAttacks } from "./snoozaku-attack-fx";
 import { cloudDeckNightmares } from "./raid-somnara-art";
 import { drawPrismellAttacks } from "./prismell-attack-fx";
@@ -275,6 +279,21 @@ export function paintAscendantTideAura(
   });
 }
 
+/** Ascendant Inkpurr's aura round each body (ascendant-inkpurr-art.ts). */
+export function paintAscendantInkAuras(
+  g: G,
+  bodies: { x: number; y: number; id: number }[],
+  time: number,
+  phase: number,
+  reduced: boolean,
+) {
+  const low = lowGraphics();
+  space(g, (fx) => {
+    for (const b of bodies)
+      paintAscendantInkAura(fx, b.x, b.y, time, phase, b.id, reduced, low);
+  });
+}
+
 function castEffect(
   fx: Fx,
   glow: (
@@ -519,9 +538,17 @@ export function drawBossBattleEffects(
           lowGraphics(),
         ),
       );
+    // Ascendant Inkpurr's Nightfall and Shade Pounce draw their own.
+    const ink = r.boss === "gloomshade" && r.variant === "ascendant";
+    if (ink)
+      space(g, (fx, glow) =>
+        drawAscendantInkFx(fx, glow, state, life.action.casts, lowGraphics()),
+      );
     if (!life.action.casts.length) continue;
     space(g, (fx, glow) => {
       for (const event of life.action.casts) {
+        if (ink && (event.kind === "nightfall" || event.kind === "pounce"))
+          continue;
         castEffect(fx, glow, r.boss, event, index === 1);
         const line = [
           "charge",

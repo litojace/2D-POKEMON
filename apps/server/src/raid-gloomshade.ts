@@ -52,10 +52,10 @@ function segmentDistance(
  */
 export class GloomshadeArena extends RaidArena {
   /** Where each copy is drifting to (index 0 is the real one). */
-  private targets: { x: number; y: number }[] = [];
+  protected targets: { x: number; y: number }[] = [];
   private driftAt = 0;
   /** Live raids: each copy picks its next spot on its own clock. */
-  private driftAts: number[] = [];
+  protected driftAts: number[] = [];
   /** The last hit that counted towards the streak. */
   private streakAt = -99;
   private serialDrift = 0;
@@ -123,7 +123,7 @@ export class GloomshadeArena extends RaidArena {
     return false;
   }
   /** Shadopus hidden in its Ink Cloud: Gloomshade has lost track of it. */
-  private inked(p: Fighter) {
+  protected inked(p: Fighter) {
     return p.character === "shadopus" && this.has(p, "stealth");
   }
   /** Attacks never pick a hidden Shadopus (and wait while nobody is seen). */
@@ -178,7 +178,7 @@ export class GloomshadeArena extends RaidArena {
       this.raid.result === "victory" && this.splits > 0 && this.decoyHits === 0
     );
   }
-  protected override finishMessage(won: boolean) {
+  protected override finishMessage(won: boolean): string {
     return won
       ? "Dawn breaks. Inkpurr melts away with the night. You did it!"
       : "The night goes on. Change your build and try again.";
@@ -217,14 +217,14 @@ export class GloomshadeArena extends RaidArena {
     );
   }
   /** Gloomshade and its copies (the real one first). */
-  private copies() {
+  protected copies() {
     const boss = this.boss();
     return [
       ...(boss ? [{ x: boss.x, y: boss.y }] : []),
       ...(this.raid.decoys ?? []),
     ];
   }
-  private addCurse(p: Fighter) {
+  protected addCurse(p: Fighter) {
     const r = this.raid;
     if (p.hp <= 0 || p.raidBoss) return;
     r.curses ??= {};
@@ -236,14 +236,14 @@ export class GloomshadeArena extends RaidArena {
       r.message = `${p.name} is Haunted! Get to lantern light.`;
     }
   }
-  private cleanse(p: Fighter) {
+  protected cleanse(p: Fighter) {
     const c = this.raid.curses?.[p.id];
     if (!c || (!c.stacks && c.hauntedUntil <= this.time)) return;
     delete this.raid.curses![p.id];
     this.event("heal", p, 0xffe7a8, 0, p.id);
   }
   /** How many copies a split makes (the real one included). */
-  private copyCount() {
+  protected copyCount() {
     const r = this.raid;
     let n = r.peril >= 3 ? G.split.peril3Copies : G.split.copies;
     if (r.trait === "moonlit") n++;
