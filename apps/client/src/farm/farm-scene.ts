@@ -7721,9 +7721,16 @@ export function openFarm(options) {
       if (sheetTab === "stall") html += stallHTML();
       if (sheetTab === "paper") html += paperHTML();
       if (sheetTab === "sell") {
+        // Dearest each first; on a tie, the one worth more in all (more in
+        // the barn), then by name, so the list never shuffles.
         const rows = Object.entries(F.barn)
           .filter(([, n]) => n > 0)
-          .sort((a, b) => price(b[0]) - price(a[0]));
+          .sort(
+            (a, b) =>
+              price(b[0]) - price(a[0]) ||
+              price(b[0]) * b[1] - price(a[0]) * a[1] ||
+              a[0].localeCompare(b[0]),
+          );
         html +=
           `<p class="sh-note">Prices change daily. Today <b>${CROP[F.market.hot]?.n ?? "one crop"}</b> is in demand. New day in <b data-mkt>${fmtSecs(marketIn())}</b>.</p>` +
           (rows.length
@@ -7747,35 +7754,69 @@ export function openFarm(options) {
                 .join("")
             : `<p class="sh-note">Your barn is empty. Harvest ripe crops, then sell them here.</p>`);
       }
-      if (sheetTab === "prices")
+      if (sheetTab === "prices") {
+        // Every good on one list, today's price high to low; crops not
+        // open yet (shown 3 levels ahead) at the end.
+        const trend = (m, hot = false) =>
+          `<span class="trend ${hot ? "fire" : m >= 1 ? "up" : "down"}">${hot ? "HOT" : m >= 1 ? "▲" : "▼"} ×${m.toFixed(2)}</span>`;
+        const row = (id, name, small, extra = "", locked = false) =>
+          `<div class="item${locked ? " locked" : ""}"><span class="ic"><img src="${icon(id)}" alt=""></span><div><b>${name}</b><small>${small}</small></div>${extra}</div>`;
+        const list = PCROPS.filter((c) => c.lv <= F.lv + 3).map((c) => {
+          const m = F.market.mult[c.id]?.m ?? 1,
+            today = Math.max(1, Math.round(c.sell * m));
+          return {
+            today,
+            locked: c.lv > F.lv,
+            html: row(
+              c.id,
+              c.n,
+              `Base ${c.sell} → today <span class="price">${today} ${L}</span>`,
+              trend(m, c.id === F.market.hot),
+              c.lv > F.lv,
+            ),
+          };
+        });
+        if (F.pasture && F.market.mult.milk) {
+          const m = F.market.mult.milk.m;
+          list.push({
+            today: milkPrice(m),
+            html: row(
+              "milk",
+              MILK.name,
+              `Base ${MILK.sell} → today <span class="price">${milkPrice(m)} ${L}</span>`,
+              trend(m),
+            ),
+          });
+        }
+        if (F.coop && F.market.mult.egg) {
+          const m = F.market.mult.egg.m;
+          list.push({
+            today: eggPrice(m),
+            html: row(
+              EGG.id,
+              EGG.name,
+              `Base ${EGG.sell} → today <span class="price">${eggPrice(m)} ${L}</span>`,
+              trend(m),
+            ),
+          });
+        }
+        if (F.bakery.owned)
+          for (const r of BAKERY_RECIPES.filter((r) => r.level <= F.lv))
+            list.push({
+              today: r.sell,
+              html: row(
+                r.id,
+                r.name,
+                `Baked · always <span class="price">${r.sell} ${L}</span>`,
+              ),
+            });
         html +=
           `<p class="sh-note">Prices go up and down every day. Sell when the price is high.</p>` +
-          PCROPS.filter((c) => c.lv <= F.lv + 3)
-            .map((c) => {
-              const m = F.market.mult[c.id]?.m ?? 1;
-              return `<div class="item${c.lv > F.lv ? " locked" : ""}"><span class="ic"><img src="${icon(c.id)}" alt=""></span><div><b>${c.n}</b><small>Base ${c.sell} → today <span class="price">${Math.max(1, Math.round(c.sell * m))} ${L}</span></small></div><span class="trend ${c.id === F.market.hot ? "fire" : m >= 1 ? "up" : "down"}">${c.id === F.market.hot ? "HOT" : m >= 1 ? "▲" : "▼"} ×${m.toFixed(2)}</span></div>`;
-            })
-            .join("") +
-          (F.pasture && F.market.mult.milk
-            ? (() => {
-                const m = F.market.mult.milk.m;
-                return `<div class="item"><span class="ic"><img src="${icon("milk")}" alt=""></span><div><b>${MILK.name}</b><small>Base ${MILK.sell} → today <span class="price">${milkPrice(m)} ${L}</span></small></div><span class="trend ${m >= 1 ? "up" : "down"}">${m >= 1 ? "▲" : "▼"} ×${m.toFixed(2)}</span></div>`;
-              })()
-            : "") +
-          (F.bakery.owned
-            ? BAKERY_RECIPES.filter((r) => r.level <= F.lv)
-                .map(
-                  (r) =>
-                    `<div class="item"><span class="ic"><img src="${icon(r.id)}" alt=""></span><div><b>${r.name}</b><small>Baked · always <span class="price">${r.sell} ${L}</span></small></div></div>`,
-                )
-                .join("")
-            : "") +
-          (F.coop && F.market.mult.egg
-            ? (() => {
-                const m = F.market.mult.egg.m;
-                return `<div class="item"><span class="ic"><img src="${icon(EGG.id)}" alt=""></span><div><b>${EGG.name}</b><small>Base ${EGG.sell} → today <span class="price">${eggPrice(m)} ${L}</span></small></div><span class="trend ${m >= 1 ? "up" : "down"}">${m >= 1 ? "▲" : "▼"} ×${m.toFixed(2)}</span></div>`;
-              })()
-            : "");
+          list
+            .sort((a, b) => +!!a.locked - +!!b.locked || b.today - a.today)
+            .map((x) => x.html)
+            .join("");
+      }
       if (sheetTab === "coins") {
         const e = options.economy?.()?.leaves,
           traded = e?.tradedToday ?? 0,

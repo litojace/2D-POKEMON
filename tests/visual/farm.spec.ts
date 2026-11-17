@@ -3524,3 +3524,99 @@ for (const viewport of [
     }
   });
 }
+
+for (const viewport of [
+  { width: 1280, height: 800 },
+  { width: 844, height: 390 },
+]) {
+  test(`the Market lists goods dearest first, to sell and in Prices, at ${viewport.width}x${viewport.height}`, async ({
+    browser,
+  }, info) => {
+    const phone = viewport.width < 1000;
+    const context = await browser.newContext({
+      viewport,
+      isMobile: phone,
+      hasTouch: phone,
+    });
+    try {
+      const page = await context.newPage();
+      const errors = await openLobby(page);
+      await fakeFarm(page);
+      await page.evaluate(() => {
+        const f = (window as any).__fakeFarm;
+        f.level = 12;
+        f.pasture = true;
+        f.bakery.owned = true;
+        // Cheap crops in bulk, a Gold one, milk and baked goods; two crops
+        // tie on price each (wheat 1.1 and voltberry 1.1 → 6 each).
+        f.market.mult = { wheat: 1.1, carrot: 1.7, voltberry: 1.1, mint: 1.2 };
+        // (Volt Berry first, so the tie can't pass by the barn's order.)
+        f.barn = [
+          { crop: "voltberry", mutation: "", qty: 3 },
+          { crop: "wheat", mutation: "", qty: 40 },
+          { crop: "carrot", mutation: "gold", qty: 2 },
+          { crop: "milk", mutation: "", qty: 1 },
+          { crop: "bread", mutation: "", qty: 2 },
+          { crop: "milkbun", mutation: "", qty: 1 },
+        ];
+      });
+      await page.click('#hub-scenes [data-hub-scene="farm"]');
+      await page.waitForFunction(() => (window as any).__farm?.F?.loaded);
+      await openSheet(page, "market");
+      const sheet = page.locator("#fm-sheet");
+      const prices = () =>
+        sheet
+          .locator(".item")
+          .evaluateAll((els) =>
+            els.map((el) => [
+              el.querySelector("b")?.textContent ?? "",
+              Number(
+                (el.querySelector(".price")?.textContent ?? "").replace(
+                  /\D/g,
+                  "",
+                ),
+              ),
+              el.classList.contains("locked"),
+            ]),
+          );
+      // Sell: dearest each first; on a tie, the larger lot first.
+      const sell = await prices();
+      expect(sell.map((r) => r[1])).toEqual(
+        [...sell.map((r) => r[1])].sort((a, b) => Number(b) - Number(a)),
+      );
+      expect(sell.map((r) => String(r[0]).replace(/ ×\d+$/, ""))).toEqual([
+        "Storm Milk Bun",
+        "Storm Milk",
+        "Earth Carrot",
+        "Breeze Bread",
+        "Breeze Wheat",
+        "Volt Berry",
+      ]);
+      await snap(
+        page,
+        info,
+        `farm-market-sell-sorted-${viewport.width}x${viewport.height}`,
+      );
+      // Prices: one list, today's price high to low; crops not open yet last.
+      await sheet.locator('[data-tab="prices"]').click();
+      const list = await prices();
+      const open = list.filter((r) => !r[2]),
+        later = list.filter((r) => r[2]);
+      expect(list).toEqual([...open, ...later]);
+      expect(later.length).toBeGreaterThan(0);
+      for (const part of [open, later])
+        expect(part.map((r) => r[1])).toEqual(
+          [...part.map((r) => r[1])].sort((a, b) => Number(b) - Number(a)),
+        );
+      expect(open[0][0]).toBe("Storm Milk Bun");
+      await snap(
+        page,
+        info,
+        `farm-market-prices-sorted-${viewport.width}x${viewport.height}`,
+      );
+      expect(errors).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });
+}
