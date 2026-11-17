@@ -938,6 +938,31 @@ describe("feints, combos and reads", () => {
   });
 });
 
+describe("a party meets both twins at once", () => {
+  it("from ASCENDANT_STORM_TWINS.pair, a chain or a clap comes from both twins (at another raider, a moment later)", () => {
+    const a = arena(A.pair.raiders, A.pair.from);
+    const [one, two] = a.heroes();
+    place(one, 400, 300);
+    place(two, 1000, 700);
+    const chains = cast(a, "chain-lightning", one);
+    expect(chains).toHaveLength(2);
+    expect(new Set(chains.map((w) => w.casterId)).size).toBe(2);
+    expect(new Set(chains.map((w) => w.targetId)).size).toBe(2);
+    expect(chains[1].at - chains[0].at).toBeCloseTo(A.pair.gap, 1);
+    const claps = cast(a, "thunderclap", one);
+    expect(claps).toHaveLength(2);
+    expect(new Set(claps.map((w) => w.casterId)).size).toBe(2);
+    expect(a.twinReads.pairs).toBe(2);
+  });
+  it("not before its chapter, nor with fewer raiders up", () => {
+    expect(
+      cast(arena(4, A.pair.from - 1), "chain-lightning", arena(4).heroes()[0]),
+    ).toHaveLength(1);
+    const b = arena(A.pair.raiders - 1, 3);
+    expect(cast(b, "chain-lightning", b.heroes()[0])).toHaveLength(1);
+  });
+});
+
 describe("overlap and the safe-spot rule", () => {
   it("chapter 1 (or alone): nothing starts while a Mirror Charge runs", () => {
     for (const [size, phase] of [

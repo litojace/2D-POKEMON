@@ -1061,8 +1061,11 @@ export const ASCENDANT_STORM_TWINS = {
   name: "Ascendant Storm Twins",
   /** Health added per extra raider (the raid's own: 960). */
   perExtraPlayer: 960,
-  /** Seconds a teammate kneels to revive (the Ascendant tier: 4.5). */
-  reviveSeconds: 5,
+  /**
+   * Seconds a teammate kneels to revive (the Ascendant tier: 4.5): longer
+   * here, where the twins hunt whoever kneels.
+   */
+  reviveSeconds: 6,
   /**
    * The court, kept clear of a phone's touch controls (the raid's lean to
    * the bottom right: Crackle starts at 1150, 520 and the orbit, rushes and
@@ -1124,8 +1127,8 @@ export const ASCENDANT_STORM_TWINS = {
     delay: 2.4,
     spare: 0.5,
     width: 40,
-    perRaider: 10,
-    minShare: 10,
+    perRaider: 12,
+    minShare: 12,
     maxShare: 30,
     arc: 30,
     /** Its discharge stays on screen this long (s). */
@@ -1163,6 +1166,12 @@ export const ASCENDANT_STORM_TWINS = {
    * keeps every raider a spot clear of all of them and of the controls).
    */
   overlap: { from: 2, raiders: 2 },
+  /**
+   * A party meets both twins at once: from chapter `from`, with `raiders`
+   * or more up, a chain or a clap one twin casts the other casts too,
+   * `gap` s later (at another raider; a clap round itself).
+   */
+  pair: { from: 2, raiders: 3, gap: 0.35 },
   /** Polarity's same-sign failure: × this (the raid: × 2; no spike here). */
   polarityMismatch: 1.1,
   /** Its attacks hit this much harder than the tier's, by party size (1-4). */
@@ -1228,7 +1237,7 @@ export const ASCENDANT_STORM_TWINS_CHAPTERS = [
     name: "Overcharge",
     objective: "Share the Short Circuit. Watch for a rush that turns.",
     detail:
-      "A Short Circuit overcharges the link: a thick beam that can't be jumped. Stand on it together to share the shock, or it arcs over the whole court; the ground you shared it on turns static, so step off. With two raiders up, attacks keep coming during a Mirror Charge. A Twin Rush may turn into a Link Beam halfway: the new warning is shown in full. They hunt whoever kneels to revive.",
+      "A Short Circuit overcharges the link: a thick beam that can't be jumped. Stand on it together to share the shock, or it arcs over the whole court; the ground you shared it on turns static, so step off. With two raiders up, attacks keep coming during a Mirror Charge; with three, both twins cast each chain and clap. A Twin Rush may turn into a Link Beam halfway: the new warning is shown in full. They hunt whoever kneels to revive.",
   },
   {
     name: "Ascendant Storm",

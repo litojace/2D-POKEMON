@@ -211,6 +211,7 @@ export function AscendantStormTwinsRules<B extends TwinsClass>(Base: B) {
       overloads: 0,
       shorts: 0,
       shared: 0,
+      pairs: 0,
       arced: 0,
       combos: 0,
     };
@@ -556,6 +557,8 @@ export function AscendantStormTwinsRules<B extends TwinsClass>(Base: B) {
       const before = new Set(r.warnings);
       super.startAttack(kind, target);
       if (kind === "static-field" && this.smart()) this.fieldOnHabit(target);
+      if (kind === "chain-lightning" || kind === "thunderclap")
+        this.pairCast(kind, target, before);
       if (kind !== "twin-rush") return;
       const lanes = r.warnings.filter(
         (w) => w.kind === "twin-rush" && !before.has(w),
@@ -576,6 +579,68 @@ export function AscendantStormTwinsRules<B extends TwinsClass>(Base: B) {
           lanes,
         });
       }
+    }
+    /**
+     * A party meets both twins at once (ASCENDANT_STORM_TWINS.pair): from
+     * its chapter, with enough raiders up, a chain or a clap cast by one
+     * twin is cast by the other too, a moment later (at another raider; a
+     * clap round the other twin). The trait In Sync already does it.
+     */
+    protected pairCast(
+      kind: "chain-lightning" | "thunderclap",
+      target: Fighter,
+      before: Set<RaidWarning>,
+    ) {
+      const r = this.raid;
+      const alive = this.heroes().filter((p) => p.hp > 0);
+      if (
+        !this.smart() ||
+        r.trait === "in-sync" ||
+        r.phase < A.pair.from ||
+        alive.length < A.pair.raiders
+      )
+        return;
+      const first = r.warnings.find((w) => w.kind === kind && !before.has(w));
+      const other = this.actors().find((p) => p.id !== first?.casterId);
+      if (!first || !other) return;
+      if (kind === "chain-lightning") {
+        const ally = this.chooseTarget(
+          kind,
+          alive.filter((p) => p !== target),
+        );
+        if (!ally) return;
+        other.angle = Math.atan2(ally.y - other.y, ally.x - other.x);
+        Object.assign(
+          this.warn(
+            kind,
+            ally.x,
+            ally.y,
+            ally.x,
+            ally.y,
+            S.chain.range,
+            S.chain.delay + A.pair.gap,
+          ),
+          {
+            casterId: other.id,
+            targetId: ally.id,
+            teach: first.teach,
+            at: first.at + A.pair.gap,
+          },
+        );
+      } else
+        Object.assign(
+          this.warn(
+            kind,
+            other.x,
+            other.y,
+            other.x,
+            other.y,
+            S.clap.radius,
+            S.clap.delay + A.pair.gap,
+          ),
+          { casterId: other.id, teach: first.teach, at: first.at + A.pair.gap },
+        );
+      this.twinReads.pairs++;
     }
     /** Is this rush a feint? A seeded roll per chapter. */
     protected twinFeintRoll() {
