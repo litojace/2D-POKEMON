@@ -342,6 +342,14 @@ export const SPIRE_YARD_SUMMIT_FLOOR = "spire-summit-yard";
 export const SPIRE_DECK_SUMMIT_FLOOR = "spire-summit-deck";
 /** Floor 50's: Prismell's Sun Atrium, with its own (golden hour) grade. */
 export const SPIRE_ATRIUM_SUMMIT_FLOOR = "spire-summit-atrium";
+/**
+ * Floor 60's court until it has a summit grade of its own: Lumiwick's Sky
+ * Terrace as its raid paints it (the floor showArena picks for that arena).
+ * TODO(art): replace with the terrace's summit floor id (and pick it in
+ * spireSummitFloorOf and hasSpireSummitArena), so the prewarm stays the
+ * texture floor 60 shows.
+ */
+export const SPIRE_TERRACE_BOSS_FLOOR = "sky-terrace";
 /** A boss floor's court texture id, by its zone (unknown zones: zone 1's). */
 export const spireSummitFloorId = (zone: number) =>
   zone === 2
@@ -352,7 +360,9 @@ export const spireSummitFloorId = (zone: number) =>
         ? SPIRE_DECK_SUMMIT_FLOOR
         : zone === 5
           ? SPIRE_ATRIUM_SUMMIT_FLOOR
-          : SPIRE_SUMMIT_FLOOR;
+          : zone === 6
+            ? SPIRE_TERRACE_BOSS_FLOOR
+            : SPIRE_SUMMIT_FLOOR;
 export const isSpireSummitFloorId = (id: string) =>
   id === SPIRE_SUMMIT_FLOOR ||
   id === SPIRE_LAGOON_SUMMIT_FLOOR ||
