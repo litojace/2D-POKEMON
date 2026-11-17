@@ -14,6 +14,10 @@ import {
 import { cloudDeckNightmares } from "./raid-somnara-art";
 import { drawPrismellAttacks } from "./prismell-attack-fx";
 import {
+  drawAscendantLumiwickFx,
+  paintAscendantLumiwickAura,
+} from "./ascendant-lumiwick-art";
+import {
   drawAscendantPrismellFx,
   paintAscendantPrismellAura,
 } from "./ascendant-prismell-art";
@@ -538,6 +542,27 @@ export function drawBossBattleEffects(
           lowGraphics(),
         ),
       );
+      // Ascendant Lumiwick: its aura, the Snuffing Gale and Bound Wicks.
+      if (r.variant === "ascendant")
+        space(g, (fx, glow) => {
+          if (boss.hp > 0)
+            paintAscendantLumiwickAura(
+              fx,
+              boss.x,
+              boss.y,
+              state.time,
+              r.phase,
+              reduced,
+              lowGraphics(),
+            );
+          drawAscendantLumiwickFx(
+            fx,
+            glow,
+            state,
+            life.action.casts,
+            lowGraphics(),
+          );
+        });
       continue;
     }
     // Tidelotl's attacks start from its mouth and land as painted water.
