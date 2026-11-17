@@ -40,7 +40,7 @@ const SKYWARD = new Set(["wing-dust", "aura-quill", "focus-shot", "full-moon"]);
 const MOON_STAGGER = 20;
 export class EmberwingArena extends RaidArena {
   private floorAt = new Map<string, number>();
-  private brazierTargets = new Map<string, number>();
+  protected brazierTargets = new Map<string, number>();
   private ringHits = new Map<number, Set<string>>();
   /** The dive under way turns and comes back at this raider when it ends. */
   private returnPass?: { targetId?: string };
@@ -51,8 +51,46 @@ export class EmberwingArena extends RaidArena {
   protected override def() {
     return E;
   }
-  protected override bossHome() {
+  protected override bossHome(): { x: number; y: number } {
     return E.home;
+  }
+  /** Where it hovers, and how far it sways (aloft, or on the ground). */
+  protected hoverHome(): { x: number; y: number } {
+    return E.home;
+  }
+  protected sway(airborne: boolean): number {
+    return airborne ? 170 : 75;
+  }
+  /** Seconds a raider stands in a ring to light it. */
+  protected lightSeconds(): number {
+    return E.lightSeconds;
+  }
+  /** The first chapter it takes off again by itself after a grounding. */
+  protected fliesFrom() {
+    return 2;
+  }
+  /** Where the braziers stand. */
+  protected brazierSpots(): readonly { x: number; y: number }[] {
+    return E.braziers;
+  }
+  /** How long a lit brazier burns. */
+  protected brazierSeconds() {
+    return brazierLifetime(
+      this.raid.partySize,
+      this.raid.phase,
+      this.raid.peril,
+    );
+  }
+  /** How long the heart stays open after the braziers bring it down. */
+  protected exposeSeconds() {
+    return E.expose + (this.raid.trait === "updraft" ? 2 : 0);
+  }
+  /**
+   * Who lights brazier `index` this tick, of the raiders standing in its
+   * ring (a fireproof raider first); none: its progress is lost.
+   */
+  protected kindler(_index: number, occupants: Fighter[]): Fighter | undefined {
+    return occupants.find((p) => this.hasRite(p, "fireproof")) ?? occupants[0];
   }
   override walls() {
     useObstacles([]);
@@ -67,7 +105,7 @@ export class EmberwingArena extends RaidArena {
   protected override setupArena() {
     this.arenaId = "sky-terrace";
     this.raid.pillars = [];
-    this.raid.braziers = E.braziers.map((p) => ({
+    this.raid.braziers = this.brazierSpots().map((p) => ({
       ...p,
       progress: 0,
       litUntil: 0,
@@ -109,12 +147,12 @@ export class EmberwingArena extends RaidArena {
       this.raid.result === "victory" && (this.raid.quickGroundings ?? 0) >= 3
     );
   }
-  protected override finishMessage(won: boolean) {
+  protected override finishMessage(won: boolean): string {
     return won
       ? "The sky grows quiet. Lumiwick drifts down at your feet."
       : "The terrace still burns. Light the braziers and try again.";
   }
-  private takeoff() {
+  protected takeoff() {
     const r = this.raid;
     r.airborne = true;
     r.takeoffAt = this.time;
@@ -125,7 +163,7 @@ export class EmberwingArena extends RaidArena {
     });
     r.message = "Lumiwick floats up! Light all three braziers together.";
   }
-  private ground() {
+  protected ground() {
     const r = this.raid;
     if (!r.airborne) return;
     r.airborne = false;
@@ -138,7 +176,7 @@ export class EmberwingArena extends RaidArena {
       r.phase === 3 && (r.chapterGroundings ?? 0) >= E.permanentGround.after;
     if (r.permanentGround)
       this.groundedUntil = this.time + E.permanentGround.seconds;
-    r.exposedUntil = this.time + E.expose + (r.trait === "updraft" ? 2 : 0);
+    r.exposedUntil = this.time + this.exposeSeconds();
     r.stagger = 0;
     r.staggerUntil = 0;
     r.emberPatches = (r.emberPatches ?? [])
@@ -178,13 +216,11 @@ export class EmberwingArena extends RaidArena {
       r.message = "Full Moon crashes into Lumiwick! +20 stagger";
     }
   }
-  private light(index: number, by: Fighter) {
+  protected light(index: number, by: Fighter) {
     const b = this.raid.braziers?.[index];
     if (!b || b.litUntil > this.time) return;
     b.progress = 1;
-    b.litUntil =
-      this.time +
-      brazierLifetime(this.raid.partySize, this.raid.phase, this.raid.peril);
+    b.litUntil = this.time + this.brazierSeconds();
     if (this.raid.contributions?.[by.id])
       this.raid.contributions[by.id].pillars++;
     this.event("heal", b, 0xffd778, 0, by.id);
@@ -330,7 +366,7 @@ export class EmberwingArena extends RaidArena {
     }
   }
   /** While flying with two braziers lit: the one still dark. */
-  private lastBrazier() {
+  protected lastBrazier() {
     const r = this.raid;
     if (!r.airborne || r.braziers?.length !== 3) return undefined;
     const dark = r.braziers.filter((b) => b.litUntil <= this.time);
@@ -341,7 +377,7 @@ export class EmberwingArena extends RaidArena {
    * (the far side stays clear, so they can keep lighting) and a few on the
    * ground around that side.
    */
-  private lighterRain() {
+  protected lighterRain() {
     const r = this.raid,
       boss = this.boss()!,
       b = r.braziers![this.lastBrazier()!];
@@ -550,10 +586,9 @@ export class EmberwingArena extends RaidArena {
     if (r.exposedUntil > this.time && !r.permanentGround) return;
     // A dive is drawn from where it waits: it hovers in place until it goes.
     if (r.warnings.some((w) => w.kind === "dive-bomb")) return;
-    const x =
-        E.home.x + Math.sin(this.phaseElapsed * 0.18) * (r.airborne ? 170 : 75),
-      y =
-        E.home.y + Math.sin(this.phaseElapsed * 0.27) * (r.airborne ? 35 : 40);
+    const home = this.hoverHome(),
+      x = home.x + Math.sin(this.phaseElapsed * 0.18) * this.sway(!!r.airborne),
+      y = home.y + Math.sin(this.phaseElapsed * 0.27) * (r.airborne ? 35 : 40);
     const d = normalize(x - boss.x, y - boss.y),
       amount = Math.min(
         (r.airborne ? 65 : 45) * dt,
@@ -576,7 +611,7 @@ export class EmberwingArena extends RaidArena {
       !r.airborne &&
       !r.permanentGround &&
       r.exposedUntil <= this.time &&
-      r.phase >= 2 &&
+      r.phase >= this.fliesFrom() &&
       !this.charging
     )
       this.takeoff();
@@ -597,14 +632,13 @@ export class EmberwingArena extends RaidArena {
             !this.has(p, "sleep") &&
             !this.has(p, "shell"),
         );
-        const lighter =
-          occupants.find((p) => this.hasRite(p, "fireproof")) ?? occupants[0];
+        const lighter = this.kindler(i, occupants);
         if (lighter) {
           b.progress = Math.min(
             1,
             b.progress +
               dt /
-                (E.lightSeconds *
+                (this.lightSeconds() *
                   (this.hasRite(lighter, "fireproof")
                     ? 1 - riteValue("fireproof", this.raid.phase)
                     : 1)),

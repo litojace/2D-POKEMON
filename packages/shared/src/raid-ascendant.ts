@@ -179,6 +179,16 @@ export const RAID_ASCENDANT_ATTACKS: Partial<Record<string, RaidAttack[]>> = {
     "eclipse",
     "umbral-prism",
   ],
+  emberwing: [
+    "dive-bomb",
+    "ember-rain",
+    "wing-gust",
+    "flame-ring",
+    "scorched-earth",
+    "heat-mark",
+    "snuff-gale",
+    "bound-wicks",
+  ],
 };
 
 /** Ascendant Cragmuff's three chapters. */
@@ -411,7 +421,7 @@ export const ASCENDANT_INKPURR = {
    * Pressure by chapter: seconds between attacks × this (the tier's cadence
    * and the party's are applied first).
    */
-  cadence: [0.8, 0.72, 0.64],
+  cadence: [0.95, 0.86, 0.78],
   /**
    * First chapter of each combo: a lunge ends in a pounce on its raider, a
    * snuffed lantern's darkness lunges at whoever stood in its light, and a
@@ -500,7 +510,7 @@ export const ASCENDANT_INKPURR_CHAPTERS = [
 export const ASCENDANT_SNOOZAKU = {
   name: "Ascendant Snoozaku",
   /** Health added per extra raider (the raid's own: 1000). */
-  perExtraPlayer: 1000,
+  perExtraPlayer: 1150,
   /** Seconds a teammate kneels to revive (the Ascendant tier: 4.5). */
   reviveSeconds: 5.5,
   /**
@@ -836,5 +846,196 @@ export const ASCENDANT_PRISMELL_CHAPTERS = [
     objective: "Two paths, moving suns. Survive the combinations.",
     detail:
       "Its rhythm quickens. Halos close where you usually dodge, and standing still to attack draws a lance. An Eclipse moves both skylights: split up and rebuild both paths within 3 seconds.",
+  },
+] as const;
+
+/**
+ * Ascendant Lumiwick's own numbers (damage before the tier multiplier), the
+ * Spire's sixtieth floor (Emberwing's id). Its ordinary attacks keep
+ * EMBERWING's numbers, and its raid's rule holds: only all three braziers
+ * burning at once pull the smug sky-lantern out of the sky.
+ */
+export const ASCENDANT_LUMIWICK = {
+  name: "Ascendant Lumiwick",
+  /** Health added per extra raider (the raid's own: 830). */
+  perExtraPlayer: 1150,
+  /** Seconds a teammate kneels to revive (the Ascendant tier: 4.5). */
+  reviveSeconds: 5,
+  /**
+   * Its braziers: the raid's triangle pulled in from the bottom right, so no
+   * ring (nor a raider standing anywhere in one) sits within `controlMargin`
+   * of a phone's touch controls (`phoneControls`).
+   */
+  braziers: [
+    { x: 780, y: 270 },
+    { x: 590, y: 590 },
+    { x: 970, y: 590 },
+  ] as readonly { x: number; y: number }[],
+  /**
+   * Where it hovers (the raid: 1100, 480) and how far it sways, aloft and on
+   * the ground: its heart (`heartClear` px round it) stays clear of the
+   * controls wherever it is brought down; after a dive it glides back
+   * (`glide` px/s) before its heart opens anywhere under them.
+   */
+  home: { x: 880, y: 420 },
+  sway: { air: 130, ground: 75 },
+  heartClear: 60,
+  glide: 520,
+  /**
+   * The court under a phone's touch controls (SPIRE_PHONE_CONTROLS: the
+   * joystick, dash, jump, the three skills, the ultimate and the attack
+   * button; phones have no target row). No brazier ring, no shelter, the
+   * heart and no safe spot the boss leaves sits within `controlMargin`.
+   */
+  phoneControls: SPIRE_PHONE_CONTROLS,
+  controlMargin: 12,
+  /** The open heart lasts this long (the raid: 5 s), × the party's windows. */
+  expose: 3.5,
+  /** Seconds a raider stands in a ring to light it (the raid: 2). */
+  light: 2.6,
+  /**
+   * Snuffing Gale: Lumiwick blows a cold gale down a lane (`width` px each
+   * side of its line) from itself through a brazier that burns or is being
+   * lit, and `past` px on. A flame with nobody in its ring goes out; a raider
+   * standing in any brazier's ring is sheltered (the flame holds its
+   * keeper); anyone else in the lane is hit and blown along it. It only aims
+   * at a flame some raider can reach in time (slowest speed, after a
+   * reaction, `spare` s to spare); else the lane goes at a raider.
+   */
+  gale: {
+    delay: 1.9,
+    width: 58,
+    past: 260,
+    damage: 18,
+    push: 140,
+    spare: 0.15,
+  },
+  /**
+   * Bound Wicks: a burning wick binds two braziers (three in the last
+   * chapter, with three raiders up): they catch only together, while every
+   * bound ring has a raider in it. The fuse burns for as long as the
+   * slowest team needs to walk in after a reaction and light them (`spare`
+   * s more, never under `min`); if it burns out first the wick snaps: a
+   * Backdraft bursts from each bound brazier (its ring and `burst` px
+   * round it) and every flame goes out. Never alone.
+   */
+  wicks: {
+    min: 6,
+    spare: 1.4,
+    burst: 45,
+    damage: 28,
+    bound: [2, 2, 3],
+  },
+  /** A Dive Bomb whose lane, part-way, turns into a Snuffing Gale. */
+  feint: {
+    /** Chance a dive is a feint, by chapter. */
+    chance: [0.15, 0.25, 0.35],
+    /** Share of the dive's telegraph shown before it turns. */
+    turnAt: 0.5,
+  },
+  /**
+   * Reading habits (as Ascendant Cragmuff reads them): embers also fall
+   * `offset` px from a raider, where they usually dodge to.
+   */
+  habit: { samples: 3, consistency: 0.55, offset: 100 },
+  /** Standing still to attack: seconds still, and seconds since the last hit. */
+  anchor: { still: 1.2, hit: 1.0, speed: 40 },
+  /**
+   * Pressure by chapter: seconds between attacks × this (the tier's cadence
+   * and the party's are applied first).
+   */
+  cadence: [0.95, 0.86, 0.78],
+  /**
+   * A party's seconds between attacks × (1 - this per extra raider): more
+   * raiders meet more attacks (not harder hits).
+   */
+  partyCadence: 0.03,
+  /**
+   * First chapter of each combo: a gale whose flame was held drops embers on
+   * its keeper; kindled Bound Wicks answer with a gale at one of the flames
+   * just lit (its keepers are already there: hold).
+   */
+  combosFrom: { gale: 1, wicks: 2 },
+  /**
+   * Overlap: from chapter `from`, with `raiders` or more alive, embers, heat
+   * marks and gusts may play out while a Snuffing Gale is drawn (the
+   * safe-spot rule keeps every raider a spot clear of all of them and of the
+   * phone's controls).
+   */
+  overlap: { from: 2, raiders: 2 },
+  /** Exposure windows × (1 + this per extra raider). */
+  partyWindows: 0,
+  /** Its attacks hit harder by this share per extra raider. */
+  partyDamage: 0,
+  /** Its attacks hit this much harder than the tier's, by party size (1-4). */
+  damage: [1, 1.05, 1.05, 1],
+} as const;
+
+/**
+ * Ascendant Lumiwick's attack order for a chapter (the raid's trait rules
+ * apply: Molting adds a dive, Smouldering rains no embers). The raid's
+ * signature (Brazier Lighting: it takes off) is dealt in as before.
+ */
+export function ascendantLumiwickPattern(
+  phase: number,
+  trait = "",
+): RaidAttack[] {
+  const attacks: RaidAttack[] =
+    phase === 1
+      ? [
+          "dive-bomb",
+          "snuff-gale",
+          "wing-gust",
+          "bound-wicks",
+          "flame-ring",
+          "ember-rain",
+        ]
+      : phase === 2
+        ? [
+            "dive-bomb",
+            "bound-wicks",
+            "heat-mark",
+            "snuff-gale",
+            "scorched-earth",
+            "ember-rain",
+            "wing-gust",
+            "flame-ring",
+          ]
+        : [
+            "snuff-gale",
+            "dive-bomb",
+            "bound-wicks",
+            "heat-mark",
+            "ember-rain",
+            "snuff-gale",
+            "flame-ring",
+            "scorched-earth",
+          ];
+  if (trait === "molting") attacks.splice(2, 0, "dive-bomb");
+  return trait === "smouldering"
+    ? attacks.filter((a) => a !== "ember-rain")
+    : attacks;
+}
+
+/** Ascendant Lumiwick's three chapters. */
+export const ASCENDANT_LUMIWICK_CHAPTERS = [
+  {
+    name: "Lantern Rising",
+    objective:
+      "Hold the flame when the gale comes. Light bound wicks together.",
+    detail:
+      "A Snuffing Gale blows down a lane through a brazier: a flame with nobody in its ring goes out, and a raider standing in a ring is sheltered. Bound Wicks tie two braziers together: they only catch while both rings have someone in them, before the fuse burns out.",
+  },
+  {
+    name: "Tethered Flames",
+    objective: "Keep the keepers in place. Watch for a dive that turns.",
+    detail:
+      "A dive may turn into a Snuffing Gale halfway: the new warning is shown in full, so react to what is drawn now. Kindle the wicks and Lumiwick blows at one of the new flames: its keeper must hold. Embers fall on a keeper who held. It hunts whoever kneels to revive.",
+  },
+  {
+    name: "Ascendant Lantern",
+    objective: "Three wicks, one breath. Survive the combinations.",
+    detail:
+      "Its rhythm quickens. With three raiders up, the wick binds all three braziers: everyone in a ring at once. Embers fall where you usually dodge, and standing still to attack draws a dive.",
   },
 ] as const;
