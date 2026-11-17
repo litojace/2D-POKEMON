@@ -199,9 +199,10 @@ export type SpireEliteMechanic = keyof typeof SPIRE_ELITE_MECHANICS;
  * The court under a phone's touch controls (world px: x0, y0, x1, y1): the
  * joystick, dash, jump, the three skills, the ultimate and the attack
  * button, each control's box at 667x375 and 844x390 together (measured in
- * the visual harness for ASCENDANT_INKPURR.nightfall.phoneControls; phones
- * have no target row any more). The elite's falling stars are never laid
- * within `SPIRE_CONTROL_MARGIN` of one: a warning under a thumb can't be read.
+ * the visual harness; phones have no target row any more). The elite's
+ * falling stars are never laid within `SPIRE_CONTROL_MARGIN` of one, and the
+ * Ascendant Inkpurr's and Snoozaku's layers keep their safe spots off them
+ * too: a warning under a thumb can't be read.
  */
 export const SPIRE_PHONE_CONTROLS: readonly (readonly [
   number,

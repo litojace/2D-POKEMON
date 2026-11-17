@@ -34,7 +34,10 @@ import {
   SOMNARA,
   type RaidWarning,
 } from "../../packages/shared/src/raid";
-import { ASCENDANT_INKPURR } from "../../packages/shared/src/raid-ascendant";
+import {
+  ASCENDANT_INKPURR,
+  ASCENDANT_SNOOZAKU,
+} from "../../packages/shared/src/raid-ascendant";
 import {
   SPIRE_BUILT_TOP,
   SPIRE_CONTROL_MARGIN,
@@ -257,13 +260,15 @@ describe("Spire floors (zone 4, the Cloud Deck)", () => {
     );
     expect(spireRewardsOf(35).some((r) => r.kind === "title")).toBe(false);
   });
-  it("keeps the phone control boxes of Nightfall's list, without the target row", () => {
-    // The joystick, dash, jump, skills, ultimate and attack button: the
-    // first eight boxes measured for Nightfall (its last six were the
-    // target portraits round them, which phones no longer have).
-    expect(SPIRE_PHONE_CONTROLS).toEqual(
-      ASCENDANT_INKPURR.nightfall.phoneControls.slice(0, 8),
+  it("is the one list of phone control boxes, without the target row", () => {
+    // The joystick, dash, jump, three skills, ultimate and attack button
+    // (the target portraits round them are gone from phones). The Ascendant
+    // Inkpurr's and Snoozaku's layers read the same list.
+    expect(SPIRE_PHONE_CONTROLS).toHaveLength(8);
+    expect(ASCENDANT_INKPURR.nightfall.phoneControls).toBe(
+      SPIRE_PHONE_CONTROLS,
     );
+    expect(ASCENDANT_SNOOZAKU.phoneControls).toBe(SPIRE_PHONE_CONTROLS);
     expect(spireUnderControls(0, 700)).toBe(true);
     expect(spireUnderControls(800, 450)).toBe(false);
   });
