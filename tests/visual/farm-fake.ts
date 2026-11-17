@@ -142,6 +142,13 @@ export async function fakeFarm(page: Page) {
     };
     w.__farmRequests = [];
     w.__fakeFarm = farm;
+    // The farm joins chat's channel for the farm it shows, and again every
+    // ping until it's in (main.ts, `here`): the server answers ok. Unanswered,
+    // the harness toasts "Offline harness" every 20 s, over the farm's own
+    // toasts, so a test reading a toast late could see that instead.
+    const reply = w.__reply;
+    w.__reply = (ev: string, data: unknown) =>
+      ev === "chat-farm" ? { ok: true } : reply?.(ev, data);
     const fetch = window.fetch.bind(window);
     window.fetch = async (input, init) => {
       const url = String(input);
