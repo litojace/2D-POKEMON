@@ -1,0 +1,321 @@
+-- The Bakery: the Farm's first processing chain (docs/farm-bakery.md).
+-- Run after 20261117120000_farm_decor_catalog.sql and the Chicken Coop's
+-- 20261117100000_farm_coop_cows.sql when those are there. Safe to run again.
+-- Every function it changes is wrapped, not copied (the old one renamed
+-- *_prebakery), so the coop's and the decorations' versions stay in force.
+--   * arena_farm_bakery_recipes: six recipes (the same as BAKERY_RECIPES in
+--     packages/shared/src/farm-bakery.ts): ingredients from the barn (plain
+--     crops and Storm Milk), oven time, farm XP, a fixed sell price and the
+--     farm level each unlocks at. Each baked good is a barn good.
+--   * The Bakery takes the farmhouse's place in the back row (the house had
+--     no use). The back row was never decorations' ground, so nothing about
+--     decorations changes.
+--   * It is built at farm level 10 for 1,200 Gold Leaves (+40 farm XP). Its
+--     oven bakes one thing at a time, from a queue of 2 slots (600, 1,200
+--     and 2,400 leaves buy a 3rd, 4th and 5th). A new one starts when the
+--     last in the queue is done, or now: every time is the database's
+--     clock, so the queue bakes on while the player is away. A finished
+--     good waits in its slot until collected (a tap), into the barn (one
+--     space each), for its XP.
+--   * Finishing now (bake-rush): what's in the oven is ready at once for 2
+--     Gold Leaves a minute left (rounded up, at least 10), and the queue
+--     behind it moves up by the time saved. That is dearer than any recipe
+--     earns per oven minute, so it buys time, never leaves.
+--   * Actions in arena_farm_act_more (wrapping 20261116120000's): buy-bakery,
+--     buy-bake-slot, bake, bake-collect, bake-rush, sell-good. arena_farm_state adds
+--     'bakery': owned, slots and the queue.
+--   * Orders: with a bakery, some new orders also ask for a baked good it
+--     can make (arena_farm_new_order wraps the one before it, now
+--     arena_farm_new_order_prebakery). arena_farm_order checks baked goods
+--     before handing over to the one before it (arena_farm_order_prebakery):
+--     040's answer names only crops, and a missing name made it null, which
+--     counted as delivered.
+begin;
+
+create table if not exists public.arena_farm_bakery_recipes (
+  id text primary key,
+  name text not null,
+  level integer not null check (level between 1 and 100),
+  seconds integer not null check (seconds > 0),
+  xp integer not null check (xp >= 0),
+  sell integer not null check (sell > 0),
+  -- [[good, count], ...]: plain crops or 'milk'.
+  items jsonb not null
+);
+insert into public.arena_farm_bakery_recipes(id, name, level, seconds, xp, sell, items) values
+  ('bread', 'Breeze Bread', 10, 600, 6, 24, '[["wheat", 3]]'),
+  ('berrytart', 'Volt Berry Tart', 11, 1800, 12, 40, '[["voltberry", 3], ["wheat", 2]]'),
+  ('milkbun', 'Storm Milk Bun', 12, 2700, 16, 105, '[["wheat", 2], ["milk", 1]]'),
+  ('carrotcake', 'Carrot Cake', 14, 5400, 28, 130, '[["carrot", 3], ["wheat", 2], ["milk", 1]]'),
+  ('pumpkinpie', 'Lava Pumpkin Pie', 18, 10800, 45, 150, '[["pumpkin", 2], ["wheat", 2], ["milk", 1]]'),
+  ('cornbread', 'Twin Bolt Cornbread', 60, 21600, 80, 210, '[["boltcorn", 2], ["milk", 1]]')
+on conflict (id) do update set name = excluded.name, level = excluded.level, seconds = excluded.seconds,
+  xp = excluded.xp, sell = excluded.sell, items = excluded.items;
+alter table public.arena_farm_bakery_recipes enable row level security;
+revoke all on public.arena_farm_bakery_recipes from public, anon, authenticated, service_role;
+-- Baked goods go in the barn.
+insert into public.arena_farm_goods(id) select id from public.arena_farm_bakery_recipes on conflict do nothing;
+
+alter table public.arena_farms add column if not exists bakery boolean not null default false;
+alter table public.arena_farms add column if not exists bakery_slots integer not null default 2;
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'arena_farms_bakery_slots_check'
+      and conrelid = 'public.arena_farms'::regclass) then
+    alter table public.arena_farms add constraint arena_farms_bakery_slots_check
+      check (bakery_slots between 2 and 5);
+  end if;
+end $$;
+
+-- The oven's queue: one row per slot in use, until its good is collected.
+create table if not exists public.arena_farm_bakery_queue (
+  player_id uuid not null references public.arena_profiles(id) on delete cascade,
+  slot integer not null check (slot between 0 and 4),
+  recipe text not null references public.arena_farm_bakery_recipes(id),
+  started_at timestamptz not null,
+  ready_at timestamptz not null check (ready_at > started_at),
+  primary key (player_id, slot)
+);
+alter table public.arena_farm_bakery_queue enable row level security;
+revoke all on public.arena_farm_bakery_queue from public, anon, authenticated, service_role;
+
+
+
+-- The name of anything the barn holds.
+create or replace function public.arena_farm_good_name(p_good text) returns text
+language sql stable security definer set search_path = public as $$
+  select coalesce((select name from public.arena_farm_crops where id = p_good),
+    (select name from public.arena_farm_bakery_recipes where id = p_good),
+    case when p_good = 'milk' then 'Storm Milk' end, p_good)
+$$;
+revoke all on function public.arena_farm_good_name(text) from public, anon, authenticated, service_role;
+
+-- The farm state: as before, with the Bakery.
+do $$
+begin
+  if to_regprocedure('public.arena_farm_state_prebakery(uuid)') is null then
+    alter function public.arena_farm_state(uuid) rename to arena_farm_state_prebakery;
+  end if;
+end $$;
+create or replace function public.arena_farm_state(pid uuid) returns jsonb
+language sql stable security definer set search_path = public as $$
+  select public.arena_farm_state_prebakery(pid) || coalesce((select jsonb_build_object('bakery',
+      jsonb_build_object('owned', f.bakery, 'slots', f.bakery_slots,
+        'queue', coalesce((select jsonb_agg(jsonb_build_object('slot', q.slot, 'recipe', q.recipe,
+            'startedAt', q.started_at, 'readyAt', q.ready_at) order by q.ready_at, q.slot)
+          from public.arena_farm_bakery_queue q where q.player_id = pid), '[]'::jsonb)))
+    from public.arena_farms f where f.player_id = pid), '{}'::jsonb)
+$$;
+revoke all on function public.arena_farm_state(uuid), public.arena_farm_state_prebakery(uuid)
+  from public, anon, authenticated, service_role;
+
+-- The Bakery's actions; everything else as before (20261116120000's function).
+-- arena_farm_act_core holds the farm's row lock for the whole request.
+do $$
+begin
+  if to_regprocedure('public.arena_farm_act_prebakery(uuid, jsonb, text, timestamptz, date)') is null then
+    alter function public.arena_farm_act_more(uuid, jsonb, text, timestamptz, date) rename to arena_farm_act_prebakery;
+  end if;
+end $$;
+create or replace function public.arena_farm_act_more(pid uuid, a jsonb, ref text, t timestamptz, d date,
+  out err text, out gained jsonb, out xp integer)
+language plpgsql security definer set search_path = public as $$
+declare f public.arena_farms; r public.arena_farm_bakery_recipes; q public.arena_farm_bakery_queue;
+  item jsonb; n integer; cost integer; used integer; v_slot integer; v_start timestamptz;
+  v_saved interval;
+begin
+  xp = 0;
+  if a->>'a' is null or a->>'a' not in ('buy-bakery', 'buy-bake-slot', 'bake', 'bake-collect', 'bake-rush', 'sell-good') then
+    select x.err, x.gained, x.xp into err, gained, xp
+      from public.arena_farm_act_prebakery(pid, a, ref, t, d) x;
+    return;
+  end if;
+  select * into f from public.arena_farms where player_id = pid;
+  if a->>'a' = 'buy-bakery' then
+    if f.bakery then err = 'You already have the bakery';
+    elsif f.level < 10 then err = 'Unlocks at farm level 10';
+    elsif not public.arena_spend_leaves(pid, 1200, 'farm-bakery', 'bakery', d) then
+      err = 'Not enough Gold Leaves';
+    else
+      update public.arena_farms set bakery = true where player_id = pid;
+      gained = jsonb_build_object('bakery', true, 'cost', 1200);
+      xp = 40;
+    end if;
+  elsif a->>'a' = 'buy-bake-slot' then
+    if not f.bakery then err = 'Build the bakery first';
+    elsif f.bakery_slots >= 5 then err = 'Your bakery has every slot';
+    else
+      cost = case f.bakery_slots when 2 then 600 when 3 then 1200 else 2400 end;
+      if not public.arena_spend_leaves(pid, cost, 'farm-bake-slot', (f.bakery_slots + 1)::text, d) then
+        err = 'Not enough Gold Leaves';
+      else
+        update public.arena_farms set bakery_slots = bakery_slots + 1 where player_id = pid;
+        gained = jsonb_build_object('bakeSlots', f.bakery_slots + 1, 'cost', cost);
+      end if;
+    end if;
+  elsif a->>'a' = 'bake' then
+    select * into r from public.arena_farm_bakery_recipes where id = a->>'recipe';
+    if not f.bakery then err = 'Build the bakery first';
+    elsif r.id is null then err = 'Unknown recipe';
+    elsif f.level < r.level then err = 'Unlocks at farm level ' || r.level;
+    elsif (select count(*) from public.arena_farm_bakery_queue where player_id = pid) >= f.bakery_slots then
+      err = 'The bakery queue is full';
+    else
+      -- Every ingredient first, so nothing is taken when one is short.
+      for item in select * from jsonb_array_elements(r.items) loop
+        if coalesce((select qty from public.arena_farm_barn where player_id = pid
+            and crop = item->>0 and mutation = ''), 0) < (item->>1)::integer then
+          err = 'You need ' || (item->>1) || ' ' || public.arena_farm_good_name(item->>0);
+          exit;
+        end if;
+      end loop;
+      if err is null then
+        for item in select * from jsonb_array_elements(r.items) loop
+          update public.arena_farm_barn set qty = qty - (item->>1)::integer
+           where player_id = pid and crop = item->>0 and mutation = '';
+        end loop;
+        select s into v_slot from generate_series(0, f.bakery_slots - 1) s
+         where not exists (select 1 from public.arena_farm_bakery_queue
+           where player_id = pid and slot = s) order by s limit 1;
+        -- One at a time: after the last in the queue, or now.
+        v_start = greatest(t, coalesce((select max(ready_at) from public.arena_farm_bakery_queue
+          where player_id = pid), t));
+        insert into public.arena_farm_bakery_queue(player_id, slot, recipe, started_at, ready_at)
+        values (pid, v_slot, r.id, v_start, v_start + make_interval(secs => r.seconds));
+        gained = jsonb_build_object('baking', r.id, 'slot', v_slot,
+          'readyAt', v_start + make_interval(secs => r.seconds));
+      end if;
+    end if;
+  elsif a->>'a' = 'bake-collect' then
+    v_slot = case when jsonb_typeof(a->'slot') = 'number' and (a->>'slot') ~ '^[0-9]$'
+      then (a->>'slot')::integer end;
+    select * into q from public.arena_farm_bakery_queue where player_id = pid and slot = v_slot for update;
+    if q.slot is null then err = 'Nothing in that slot';
+    elsif q.ready_at > t then err = 'Still baking';
+    elsif (select coalesce(sum(qty), 0) from public.arena_farm_barn where player_id = pid) + 1
+        > 80 + 40 * f.barn_upgrades then
+      err = 'Your barn is full';
+    else
+      select * into r from public.arena_farm_bakery_recipes where id = q.recipe;
+      delete from public.arena_farm_bakery_queue where player_id = pid and slot = q.slot;
+      insert into public.arena_farm_barn(player_id, crop, mutation, qty) values (pid, q.recipe, '', 1)
+      on conflict (player_id, crop, mutation) do update set qty = public.arena_farm_barn.qty + 1;
+      gained = jsonb_build_object('baked', q.recipe, 'qty', 1, 'slot', q.slot, 'xp', r.xp);
+      xp = r.xp;
+    end if;
+  elsif a->>'a' = 'bake-rush' then
+    v_slot = case when jsonb_typeof(a->'slot') = 'number' and (a->>'slot') ~ '^[0-9]$'
+      then (a->>'slot')::integer end;
+    select * into q from public.arena_farm_bakery_queue where player_id = pid and slot = v_slot for update;
+    if q.slot is null then err = 'Nothing in that slot';
+    elsif q.ready_at <= t then err = 'Already done';
+    elsif q.started_at > t then err = 'Not in the oven yet';
+    else
+      cost = greatest(10, 2 * ceil(extract(epoch from (q.ready_at - t)) / 60))::integer;
+      if not public.arena_spend_leaves(pid, cost, 'farm-bake-rush', ref, d) then
+        err = 'Not enough Gold Leaves';
+      else
+        v_saved = q.ready_at - t;
+        -- What waited behind it starts that much sooner.
+        update public.arena_farm_bakery_queue
+           set started_at = started_at - v_saved, ready_at = ready_at - v_saved
+         where player_id = pid and started_at >= q.ready_at;
+        update public.arena_farm_bakery_queue
+           set started_at = least(started_at, t - interval '1 second'), ready_at = t
+         where player_id = pid and slot = q.slot;
+        gained = jsonb_build_object('rushed', q.recipe, 'slot', q.slot, 'cost', cost);
+      end if;
+    end if;
+  else
+    select * into r from public.arena_farm_bakery_recipes where id = a->>'good';
+    n = case when jsonb_typeof(a->'qty') = 'number' and (a->>'qty') ~ '^[0-9]+$'
+      then (a->>'qty')::integer end;
+    if r.id is null then err = 'Unknown good';
+    elsif n is null or n < 1 or n > 10000 then err = 'Choose how many to sell';
+    else
+      update public.arena_farm_barn set qty = qty - n
+       where player_id = pid and crop = r.id and mutation = '' and qty >= n;
+      get diagnostics used = row_count;
+      if used = 0 then err = 'You don''t have that many';
+      else
+        cost = r.sell * n;
+        perform public.arena_grant_leaves(pid, cost, 'farm-sell', ref, d);
+        gained = jsonb_build_object('leaves', cost);
+      end if;
+    end if;
+  end if;
+end; $$;
+revoke all on function public.arena_farm_act_more(uuid, jsonb, text, timestamptz, date),
+  public.arena_farm_act_prebakery(uuid, jsonb, text, timestamptz, date)
+  from public, anon, authenticated, service_role;
+
+-- New orders: as before (070's crops, the coop's eggs), then, with a bakery,
+-- sometimes a baked good it
+-- can make (1 or 2), paid like the crops: 1.45 × its price, and its XP.
+do $$
+begin
+  if to_regprocedure('public.arena_farm_new_order_prebakery(uuid, integer, integer)') is null then
+    alter function public.arena_farm_new_order(uuid, integer, integer) rename to arena_farm_new_order_prebakery;
+  end if;
+end $$;
+create or replace function public.arena_farm_new_order(pid uuid, p_slot integer, p_level integer) returns void
+language plpgsql security definer set search_path = public as $$
+declare r public.arena_farm_bakery_recipes; o public.arena_farm_orders; n integer;
+begin
+  perform public.arena_farm_new_order_prebakery(pid, p_slot, p_level);
+  if random() >= 0.45 or not coalesce((select bakery from public.arena_farms where player_id = pid), false) then
+    return;
+  end if;
+  select * into o from public.arena_farm_orders where player_id = pid and slot = p_slot;
+  if o.items is null or jsonb_array_length(o.items) >= 3 then return; end if;
+  select * into r from public.arena_farm_bakery_recipes where level <= greatest(1, p_level)
+   order by random() limit 1;
+  if r.id is null then return; end if;
+  n = 1 + floor(random() * 2)::integer;
+  update public.arena_farm_orders
+     set items = items || jsonb_build_array(jsonb_build_array(r.id, n)),
+         leaves = leaves + (round(r.sell * n * 1.45 / 5) * 5)::integer,
+         xp = xp + r.xp * n
+   where player_id = pid and slot = p_slot;
+end; $$;
+revoke all on function public.arena_farm_new_order(uuid, integer, integer),
+  public.arena_farm_new_order_prebakery(uuid, integer, integer)
+  from public, anon, authenticated, service_role;
+
+-- Delivering an order: short of a baked good, say which; otherwise as
+-- before (040's, or the coop's on top of it).
+do $$
+begin
+  if to_regprocedure('public.arena_farm_order_prebakery(uuid, integer, text)') is null then
+    alter function public.arena_farm_order(uuid, integer, text) rename to arena_farm_order_prebakery;
+  end if;
+end $$;
+create or replace function public.arena_farm_order(p_request uuid, p_slot integer, p_kind text) returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare me uuid = auth.uid(); item jsonb;
+begin
+  if me is not null and p_kind = 'deliver' and p_request is not null
+      and exists (select 1 from public.arena_profiles where id = me and not suspended)
+      and not exists (select 1 from public.arena_farm_requests where player_id = me and request = p_request) then
+    for item in select i from public.arena_farm_orders o cross join lateral jsonb_array_elements(o.items) i
+        where o.player_id = me and o.slot = p_slot and o.items is not null
+          and exists (select 1 from public.arena_farm_bakery_recipes r where r.id = i->>0) loop
+      if (item->>1)::integer > coalesce((select sum(qty) from public.arena_farm_barn
+          where player_id = me and crop = item->>0), 0) then
+        return jsonb_build_object('farm', public.arena_farm_state(me), 'ok', false,
+          'error', 'You need ' || (item->>1) || ' ' || public.arena_farm_good_name(item->>0));
+      end if;
+    end loop;
+  end if;
+  return public.arena_farm_order_prebakery(p_request, p_slot, p_kind);
+end; $$;
+revoke all on function public.arena_farm_order(uuid, integer, text) from public, anon;
+revoke all on function public.arena_farm_order_prebakery(uuid, integer, text)
+  from public, anon, authenticated, service_role;
+grant execute on function public.arena_farm_order(uuid, integer, text) to authenticated;
+
+commit;
+
+select
+  to_regclass('public.arena_farm_bakery_queue') is not null as farm_bakery_enabled,
+  (select count(*) from public.arena_farm_bakery_recipes) = 6 as bakery_recipes_seeded;

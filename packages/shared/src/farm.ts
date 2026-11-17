@@ -459,6 +459,7 @@ export const FARM_UNLOCKS: readonly [number, string][] = [
   [8, "Copper Can"],
   [9, "Cow Pasture"],
   [10, "Big Net"],
+  [10, "Bakery"],
   [14, "Sickle"],
   [14, "Chicken Coop"],
   [18, "Sprinkler"],
@@ -1959,6 +1960,8 @@ export interface FarmState {
   pasture?: boolean;
   milkAt?: string | null;
   milkMult?: number;
+  /** The Bakery and its oven's queue (migration 20261117130000). */
+  bakery?: import("./farm-bakery.js").FarmBakery;
   /** The 2nd and 3rd cows (20261117100000): each one's milk time; milkAt is the first cow's. */
   cows?: { i: number; milkAt: string | null }[];
   /** The Chicken Coop: its hens (when each one's egg is due; null: hungry) and eggs' price today (20261117100000). */
@@ -2081,7 +2084,12 @@ export type FarmAction =
   | { a: "buy-seeds"; crop: string; qty: number }
   | { a: "sell"; crop: string; mutation: string; qty: number }
   | { a: "buy-fertilizer"; kind: FertilizerKind }
-  | { a: "upgrade-barn" };
+  | { a: "upgrade-barn" }
+  /** The Bakery (20261117130000): build it, add a queue slot, bake, collect, sell its goods. */
+  | { a: "buy-bakery" | "buy-bake-slot" }
+  | { a: "bake"; recipe: string }
+  | { a: "bake-collect"; slot: number }
+  | { a: "sell-good"; good: string; qty: number };
 export interface FarmActResult {
   farm: FarmState;
   results: (
@@ -2107,6 +2115,13 @@ export interface FarmActResult {
         barnFull?: boolean;
         /** A giant crop's harvest: its top-left plot (the crops are in `harvested`). */
         giant?: number;
+        /** The Bakery: built, a slot bought, a recipe started (its slot and readyAt), a good collected. */
+        bakery?: boolean;
+        bakeSlots?: number;
+        baking?: string;
+        slot?: number;
+        readyAt?: string;
+        baked?: string;
         tool?: FarmToolId;
         cost?: number;
       }

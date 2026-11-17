@@ -1067,25 +1067,25 @@ for (const viewport of [
         `farm-coop-basket-${viewport.width}x${viewport.height}`,
       );
       await dragOverHens();
-      // (The log's lines fade after a few seconds: read it first.)
-      await expect(page.locator("#fm-log")).toContainText("Sunny Egg");
+      // (The log's lines fade after 6.8 s, maybe before a slow drag ends:
+      // read every line it showed.)
       await expect
-        .poll(actions)
-        .toEqual([
-          { a: "buy-coop" },
-          { a: "feed-hen", hen: 0 },
-          { a: "feed-hen", hen: 1 },
-          // From the hen tapped, then the others it passes.
-          { a: "collect-egg", hen: 1 },
-          { a: "collect-egg", hen: 0 },
-        ]);
+        .poll(() => page.evaluate(() => (window as any).__farmLog.join("\n")))
+        .toContain("Sunny Egg");
+      await expect.poll(actions).toEqual([
+        { a: "buy-coop" },
+        { a: "feed-hen", hen: 0 },
+        { a: "feed-hen", hen: 1 },
+        // From the hen tapped, then the others it passes.
+        { a: "collect-egg", hen: 1 },
+        { a: "collect-egg", hen: 0 },
+      ]);
       await expect
         .poll(() =>
           page.evaluate(
             () =>
-              (window as any).__fakeFarm.barn.find(
-                (b: any) => b.crop === "egg",
-              )?.qty,
+              (window as any).__fakeFarm.barn.find((b: any) => b.crop === "egg")
+                ?.qty,
           ),
         )
         .toBe(2);
@@ -2893,13 +2893,13 @@ test("tapping the farm's animals, trees and buildings reacts and sends nothing; 
     const h = (window as any).__farm.hens[0];
     return h ? [h.x, h.y - 12] : null;
   });
-  // A hen, the cat by the house, the pond, the apple tree, the house, the mill.
+  // A hen, the cat asleep on the Bakery's oven (a tap wakes it; the
+  // Bakery itself opens its sheet), the pond, the apple tree, the mill.
   const spots = [
     ...(hen ? [hen] : []),
-    [150, 294],
+    [94, 256],
     [250, 990],
     [338, 180],
-    [205, 215],
     [470, 170],
   ];
   for (const [x, y] of spots) {
@@ -3403,3 +3403,219 @@ test("a server answer keeps the open sheet scrolled where it was", async ({
   expect(await body.evaluate((el) => el.scrollTop)).toBe(y);
   expect(errors).toEqual([]);
 });
+
+for (const viewport of [
+  { width: 1280, height: 800 },
+  { width: 844, height: 390 },
+]) {
+  test(`the Bakery: build it, bake from the barn, finish early, collect with a tap and sell at ${viewport.width}x${viewport.height}`, async ({
+    browser,
+  }, info) => {
+    const phone = viewport.width < 1000;
+    const context = await browser.newContext({
+      viewport,
+      isMobile: phone,
+      hasTouch: phone,
+    });
+    try {
+      const page = await context.newPage();
+      const errors = await openLobby(page);
+      await fakeFarm(page);
+      await page.evaluate(() => {
+        const f = (window as any).__fakeFarm;
+        f.level = 9;
+        f.barn = [
+          { crop: "wheat", mutation: "", qty: 6 },
+          { crop: "wheat", mutation: "gold", qty: 3 },
+          { crop: "milk", mutation: "", qty: 1 },
+        ];
+      });
+      await page.click('#hub-scenes [data-hub-scene="farm"]');
+      await expect(page.locator("#fm-badge")).toContainText("tester's Farm");
+      await page.waitForFunction(() => (window as any).__farm?.F?.loaded);
+      const sheet = page.locator("#fm-sheet");
+      const tapBakery = async () => {
+        const p = await page.evaluate(() => {
+          const f = (window as any).__farm,
+            w = f.place("bakery");
+          f.look(w.x, w.y);
+          return f.worldClient(w.x, w.y);
+        });
+        await page.waitForTimeout(200);
+        if (phone) await page.touchscreen.tap(p.x, p.y);
+        else await page.mouse.click(p.x, p.y);
+      };
+      const sent = () =>
+        page.evaluate(() =>
+          (window as any).__farmRequests.flatMap((r: any) => r.actions ?? []),
+        );
+      // Not built, and the farm is too young: the sheet says when.
+      await tapBakery();
+      const build = sheet.locator(".item", { hasText: "Build the Bakery" });
+      await expect(build).toContainText("unlocks at Lv 10");
+      await expect(build.locator("[data-bakery-build]")).toBeDisabled();
+      await expect(sheet.locator(".bk-rec")).toHaveCount(6);
+      await page.waitForTimeout(500);
+      await snap(
+        page,
+        info,
+        `farm-bakery-locked-${viewport.width}x${viewport.height}`,
+      );
+      // Level 12: build it.
+      await page.evaluate(() => {
+        (window as any).__fakeFarm.level = 12;
+        return (window as any).__farm.refresh();
+      });
+      await expect(build.locator("[data-bakery-build]")).toBeEnabled();
+      await build.locator("[data-bakery-build]").click();
+      // The farm's log keeps every line (a later toast can replace one).
+      await expect(page.locator("#fm-log")).toContainText("Built the Bakery");
+      await expect(sheet.locator(".bk-slot.empty")).toHaveCount(2);
+      await expect(sheet.locator(".bk-slot.buy")).toContainText("600");
+      // What it can bake now: bread (6 plain wheat) and the milk bun;
+      // carrot cake waits for level 14.
+      const rec = (name: string) => sheet.locator(".bk-rec", { hasText: name });
+      await expect(rec("Breeze Bread").locator("[data-bake]")).toBeEnabled();
+      await expect(rec("Storm Milk Bun").locator("[data-bake]")).toBeEnabled();
+      await expect(rec("Carrot Cake")).toHaveClass(/locked/);
+      await expect(rec("Carrot Cake").locator("[data-bake]")).toBeDisabled();
+      await expect(rec("Breeze Bread")).toContainText("6/3 Breeze Wheat");
+      // Bake bread, then a bun: one bakes, the other waits its turn.
+      await rec("Breeze Bread").locator("[data-bake]").click();
+      await rec("Storm Milk Bun").locator("[data-bake]").click();
+      await expect(sheet.locator(".bk-slot.baking")).toHaveCount(1);
+      await expect(sheet.locator(".bk-slot.wait")).toContainText("Up next");
+      await expect(sheet.locator(".bk-slot.empty")).toHaveCount(0);
+      // Plain wheat went in the oven; the gold wheat stays in the barn.
+      await expect
+        .poll(() =>
+          page.evaluate(() => {
+            const b = (window as any).__fakeFarm.barn;
+            return b
+              .filter((x: any) => x.crop === "wheat")
+              .map((x: any) => [x.mutation, x.qty]);
+          }),
+        )
+        .toEqual([
+          ["", 1],
+          ["gold", 3],
+        ]);
+      await expect(rec("Breeze Bread").locator("[data-bake]")).toBeDisabled();
+      // The ring fills as it bakes.
+      const ring = await sheet
+        .locator(".bk-slot.baking")
+        .evaluate((el) => Number(el.style.getPropertyValue("--p")));
+      expect(ring).toBeGreaterThanOrEqual(0);
+      expect(ring).toBeLessThan(1);
+      // Everything fits the sheet: no sideways scrolling on a phone.
+      const fit = await sheet
+        .locator(".sh-body")
+        .evaluate((el) => el.scrollWidth - el.clientWidth);
+      expect(fit).toBeLessThanOrEqual(1);
+      await page.waitForTimeout(400);
+      await snap(
+        page,
+        info,
+        `farm-bakery-baking-${viewport.width}x${viewport.height}`,
+      );
+      // Time passes on the server (the player was away): the bread is done.
+      await page.evaluate(() => {
+        const q = (window as any).__fakeFarm.bakery.queue,
+          t = (s: number) => new Date(Date.now() + s * 1000).toISOString();
+        Object.assign(q[0], { startedAt: t(-700), readyAt: t(-100) });
+        Object.assign(q[1], { startedAt: t(-100), readyAt: t(2600) });
+        return (window as any).__farm.refresh();
+      });
+      await expect(sheet.locator(".bk-slot.ready")).toContainText("Collect");
+      await sheet.locator("[data-close]").click();
+      await expect(sheet).toBeHidden();
+      await page.waitForTimeout(400);
+      await snap(
+        page,
+        info,
+        `farm-bakery-ready-${viewport.width}x${viewport.height}`,
+      );
+      // A tap on the building collects it into the barn.
+      await tapBakery();
+      await expect(page.locator("#fm-log")).toContainText("Baked Breeze Bread");
+      await expect(sheet).toBeHidden();
+      await expect
+        .poll(() =>
+          page.evaluate(
+            () =>
+              (window as any).__fakeFarm.barn.find(
+                (x: any) => x.crop === "bread",
+              )?.qty,
+          ),
+        )
+        .toBe(1);
+      // The bun is in the oven now: finish it early for leaves, with a
+      // second tap to confirm (about 44 minutes left: 2 leaves a minute).
+      await page.evaluate(() => {
+        (window as any).__fakeFarm.leaves = 500;
+        return (window as any).__farm.refresh();
+      });
+      await tapBakery();
+      const rush = sheet.locator(".bk-slot.baking [data-brush]");
+      await expect(rush).toContainText("Finish");
+      const price = Number(await rush.locator("[data-bprice]").textContent());
+      expect(price).toBeGreaterThanOrEqual(86);
+      expect(price).toBeLessThanOrEqual(88);
+      await rush.click();
+      await expect(rush).toContainText("Sure?");
+      await expect(rush).toHaveClass(/armed/);
+      await snap(
+        page,
+        info,
+        `farm-bakery-rush-${viewport.width}x${viewport.height}`,
+      );
+      expect((await sent()).some((a: any) => a.a === "bake-rush")).toBe(false);
+      // "Sure?" lasts 3 s: the snapshot can take longer on a busy machine,
+      // so arm it again if it lapsed, then confirm straight away.
+      if (!/armed/.test((await rush.getAttribute("class")) ?? ""))
+        await rush.click();
+      await expect(rush).toHaveClass(/armed/);
+      await rush.click();
+      await expect(page.locator("#fm-log")).toContainText(
+        "Finished Storm Milk Bun early",
+      );
+      await expect(
+        sheet.locator(".bk-slot.ready", { hasText: "Storm Milk Bun" }),
+      ).toBeVisible();
+      await expect
+        .poll(() => page.evaluate(() => (window as any).__fakeFarm.leaves))
+        .toBeLessThanOrEqual(500 - 86);
+      await sheet.locator("[data-bcollect]").click();
+      await expect(page.locator("#fm-log")).toContainText(
+        "Baked Storm Milk Bun",
+      );
+      await sheet.locator("[data-close]").click();
+      await expect(sheet).toBeHidden();
+      // Sold at the market at its fixed price.
+      await openSheet(page, "market");
+      const bread = sheet.locator(".item", { hasText: "Breeze Bread" });
+      await expect(bread).toContainText("24");
+      await expect(bread).toContainText("Baked");
+      await snap(
+        page,
+        info,
+        `farm-bakery-sell-${viewport.width}x${viewport.height}`,
+      );
+      await bread.locator("[data-sell]").first().click();
+      await expect
+        .poll(sent)
+        .toEqual([
+          { a: "buy-bakery" },
+          { a: "bake", recipe: "bread" },
+          { a: "bake", recipe: "milkbun" },
+          { a: "bake-collect", slot: 0 },
+          { a: "bake-rush", slot: 1 },
+          { a: "bake-collect", slot: 1 },
+          { a: "sell-good", good: "bread", qty: 1 },
+        ]);
+      expect(errors).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });
+}

@@ -716,16 +716,38 @@
   height: 6px;
   accent-color: #9ff3d8;
 }
-/* The Spire card (spire-nudge.ts): only while there is something new to
-   climb. The tower beside a kicker, one bold line and a note. */
+/* The Spire card (spire-nudge.ts): once the Spire is open, above Missions.
+   The tower beside a kicker, one bold line and a note, on violet glass so it
+   reads as the way up at a glance. The gradient is a background-image, so
+   the glass themes' tint (ui/aero.css) stays underneath it; the extra
+   .lobby-layer outranks their hairline. A static glow (no animation) keeps
+   it cheap on older phones; it brightens while something is new. */
 .lobby-card[hidden] {
   display: none;
 }
-.lobby-card.lobby-spire-card {
+.lobby-layer .lobby-card.lobby-spire-card {
   grid-template-columns: 34px minmax(0, 1fr);
   align-items: center;
   column-gap: 10px;
-  border-color: color-mix(in srgb, #a78bff 55%, transparent);
+  border-color: rgba(190, 160, 255, 0.7);
+  background-image: linear-gradient(
+    135deg,
+    rgba(124, 77, 255, 0.55),
+    rgba(76, 38, 160, 0.5) 55%,
+    rgba(196, 92, 255, 0.4)
+  );
+  box-shadow:
+    0 0 14px rgba(150, 100, 255, 0.35),
+    inset 0 1px 0 rgba(235, 220, 255, 0.25);
+}
+.lobby-layer .lobby-card.lobby-spire-card:is(:hover, :focus-visible) {
+  border-color: #e4d6ff;
+}
+.lobby-layer .lobby-card.lobby-spire-card.is-new {
+  border-color: #d9c8ff;
+  box-shadow:
+    0 0 20px rgba(170, 120, 255, 0.6),
+    inset 0 1px 0 rgba(235, 220, 255, 0.35);
 }
 .lobby-spire-art {
   width: 34px;
@@ -745,7 +767,10 @@
   min-width: 0;
 }
 .lobby-spire-text .lobby-card-kicker {
-  color: #c9b2ff;
+  color: #e2d4ff;
+}
+.lobby-spire-text small {
+  color: rgba(238, 230, 255, 0.82);
 }
 .lobby-spire-text b {
   overflow: hidden;
@@ -758,7 +783,7 @@
 /* Phones: a slimmer tower and tighter lines, so it fits under Missions
    at 390 px tall. */
 @media (max-height: 500px) {
-  .lobby-card.lobby-spire-card {
+  .lobby-layer .lobby-card.lobby-spire-card {
     grid-template-columns: 26px minmax(0, 1fr);
     column-gap: 8px;
     padding-block: 5px;
@@ -773,6 +798,17 @@
   }
   .lobby-spire-text small {
     line-height: 1.2;
+  }
+}
+/* Short phones (iPhone 14/15 and SE in landscape): the title and the tower
+   say it, so the note steps aside and Missions still fits under the card
+   with the home indicator's inset. Still a finger (44 px) tall. */
+@media (max-height: 400px) {
+  .lobby-spire-text small {
+    display: none;
+  }
+  .lobby-layer .lobby-card.lobby-spire-card {
+    min-height: 44px;
   }
 }
 .lobby-badge.is-new {

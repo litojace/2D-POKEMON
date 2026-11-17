@@ -24,7 +24,7 @@ import { setInner } from "./ui/patch";
 import { openHubPanelNow } from "./ui/hub-panel";
 import { guideCard, type GuideView } from "./getting-started";
 import { spireTowerArt } from "./spire-art";
-import type { SpireNudge } from "./spire-nudge";
+import type { SpireLobbyCard } from "./spire-nudge";
 
 /**
  * The Lobby: the one-screen hub after login (hub redesign phase 2). Your
@@ -187,8 +187,8 @@ export interface LobbyView {
   friendsOnline: number | null;
   /** Getting started, for a new player: in the Journey card's place. */
   guide?: GuideView;
-  /** Something new in the Spire (spire-nudge.ts): its card and a badge on Raids. */
-  spire?: SpireNudge | null;
+  /** The Spire's card once it is open, and a dot on Raids while it's new (spire-nudge.ts). */
+  spire?: SpireLobbyCard | null;
 }
 export interface LobbyOptions {
   onAction(action: LobbyAction): void;
@@ -245,7 +245,7 @@ export function journeyCard(j: Journey | undefined) {
   return `<span class="lobby-card-kicker">Journey · ${escape(theme.name)}</span><span class="lobby-card-row"><b>Tier ${tier} / ${rules.tiers}</b><small>Lv ${playerLevel(j.xp).level}</small></span><progress max="${rules.tierXp}" value="${into}" aria-label="Season tier progress"></progress><small>${item ? `Next: ${escape(JOURNEY_ITEM_BY_ID[item]?.name ?? "reward")} at tier ${next}` : "Every season cosmetic earned"}</small>${j.spark ? `<small class="lobby-spark${spark ? "" : " is-spent"}">Daily Spark · ${spark ? `${spark} XP left at ×2` : "used up today"}</small>` : ""}`;
 }
 /** The Spire card's words (its tower art stays as it is). */
-export function spireCard(n: SpireNudge) {
+export function spireCard(n: Pick<SpireLobbyCard, "title" | "note">) {
   return `<span class="lobby-card-kicker">The Spire</span><b>${escape(n.title)}</b><small>${escape(n.note)}</small>`;
 }
 /** The Missions card: how many are done and when new ones arrive. */
@@ -304,8 +304,8 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
 </section>
 <aside class="lobby-cards" aria-label="Today">
   <button type="button" class="lobby-card" data-lobby-action="journey" id="lobby-journey-card"></button>
-  <button type="button" class="lobby-card lobby-missions-card" data-lobby-action="missions" id="lobby-missions-card"></button>
   <button type="button" class="lobby-card lobby-spire-card" data-lobby-action="spire" id="lobby-spire-card" hidden><span class="lobby-spire-art" aria-hidden="true">${spireTowerArt(3, "lobby-spire")}</span><span class="lobby-spire-text" id="lobby-spire-text"></span></button>
+  <button type="button" class="lobby-card lobby-missions-card" data-lobby-action="missions" id="lobby-missions-card"></button>
   <button type="button" class="lobby-card lobby-friends-card" data-lobby-action="friends" id="lobby-friends-card"><span class="lobby-card-kicker">Friends</span><b id="lobby-friends-online">Friends online</b><small>Invite, join or watch</small></button>
 </aside>
 <div class="lobby-play">
@@ -525,23 +525,31 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
    * The cards' column ends 8px above the mode button. Where the cards don't
    * all fit (short phones, a safe area, the Spire card shown), the least
    * urgent one steps aside: Friends, then Missions (the rail's badge still
-   * counts them), then, under the Spire card, the Journey or guide card.
+   * counts them). Where only one card fits, a new zone keeps the Spire card
+   * over the Journey or guide card; otherwise the Journey stays (the Spire
+   * is still a tap away on Raids).
    * Measured once after an update or a resize, never per frame.
    */
   let fitFrame = 0;
   const fitCards = () => {
     fitFrame = 0;
     if (closed) return;
-    const spireShown = !$("lobby-spire-card").hidden;
+    const spireCardEl = $("lobby-spire-card");
+    const spireShown = !spireCardEl.hidden;
     const order = [
       $("lobby-friends-card"),
       $("lobby-missions-card"),
-      ...(spireShown ? [$("lobby-journey-card")] : []),
+      ...(spireShown
+        ? spireCardEl.classList.contains("is-new")
+          ? [$("lobby-journey-card")]
+          : [spireCardEl]
+        : []),
     ];
     for (const card of [
       $("lobby-friends-card"),
       $("lobby-missions-card"),
       $("lobby-journey-card"),
+      spireCardEl,
     ])
       card.classList.remove("is-squeezed");
     const limit =
@@ -654,17 +662,19 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
       missionBadge.hidden = !missions.length || !left;
       missionBadge.textContent = String(left);
       missionBadge.classList.add("is-count");
-      // Something new in the Spire: its card, and a dot on Raids.
+      // The Spire, once open: its card above Missions (a shortcut past the
+      // Raid Hub), glowing with a dot on Raids while something is new.
       const spire = view.spire ?? null;
       const spireCardEl = $("lobby-spire-card");
       spireCardEl.hidden = !spire;
+      spireCardEl.classList.toggle("is-new", !!spire?.fresh);
       layer.classList.toggle("has-spire", !!spire);
       if (spire) setInner($("lobby-spire-text"), spireCard(spire));
       fitSoon();
       const raidBadge = layer.querySelector<HTMLElement>(
         '[data-badge-for="raids"]',
       )!;
-      raidBadge.hidden = !spire;
+      raidBadge.hidden = !spire?.fresh;
       raidBadge.classList.add("is-new");
     },
     close() {
