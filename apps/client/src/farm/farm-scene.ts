@@ -1540,7 +1540,6 @@ export function openFarm(options) {
      rather than opening the Bakery. */
   const CAT = { x: BAKERY.x - 96, y: BAKERY.y - 26 };
   const onCat = (w) => Math.hypot(w.x - CAT.x, w.y - (CAT.y - 10)) < 24;
-  const milkReady = () => F.pasture && F.milkAt <= serverNow();
   /* The Bakery (farm-bakery.ts): the farm as its shared rules read it, what
      the oven is baking now, and what's ready to collect. */
   const bakeFarm = () => ({
