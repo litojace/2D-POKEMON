@@ -1289,7 +1289,7 @@ it("passes farm actions and leaf trades to the database only when the request is
     { request, actions: [{ a: "bake-rush", slot: 0, cost: 1 }] },
     { request, actions: [{ a: "bake-rush", slot: -1 }] },
     { request, actions: [{ a: "feed-hen", hen: 9 }] },
-    { request, actions: [{ a: "milk", cow: 3 }] },
+    { request, actions: [{ a: "milk", cow: 5 }] },
     { request, actions: [{ a: "collect-egg", hen: 1.5 }] },
     { request, actions: [{ a: "feed-hen", hen: 0, eggAt: "2030-01-01" }] },
     { request, actions: [{ a: "plant", plot: 1, crop: "Wheat;drop" }] },

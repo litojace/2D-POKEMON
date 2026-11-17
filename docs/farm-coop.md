@@ -1,6 +1,6 @@
 # Chuồng gà và thêm bò: con số và lý do
 
-Migration: `supabase/migrations/20261117100000_farm_coop_cows.sql` (chuồng gà, gà, trứng, bò thứ 2–3) và `20261117100001_bistro_farm_eggs.sql` (trứng sang Bistro). Luật dùng chung: `COOP`, `EGG`, `henLevel`, `henPrice`, `PASTURE.cowLevels`, `nextCow` trong `packages/shared/src/farm.ts`; `FARM_TO_BISTRO.egg` trong `packages/shared/src/bistro.ts`.
+Migration: `supabase/migrations/20261117100000_farm_coop_cows.sql` (chuồng gà, gà, trứng, bò thứ 2–3), `20261117180000_farm_more_cows.sql` (tối đa 5 bò, mở sớm hơn, đồng cỏ cao hơn) và `20261117100001_bistro_farm_eggs.sql` (trứng sang Bistro). Luật dùng chung: `COOP`, `EGG`, `henLevel`, `henPrice`, `PASTURE.cowLevels`, `nextCow` trong `packages/shared/src/farm.ts`; `FARM_TO_BISTRO.egg` trong `packages/shared/src/bistro.ts`.
 
 ## Mô hình
 
@@ -8,38 +8,47 @@ Migration: `supabase/migrations/20261117100000_farm_coop_cows.sql` (chuồng gà
 
 Người chơi "regular" (4 lần ghé/ngày):
 
-| Farm Lv | Ruộng | Bò | Sữa | Gà | Trứng (lãi) | Vật nuôi / ruộng |
-| ------- | ----- | -- | --- | -- | ----------- | ---------------- |
-| 9       | 669   | 1  | 480 | 0  | 0           | 72%              |
-| 14      | 739   | 1  | 480 | 3  | 300         | 106%             |
-| 17      | 1065  | 1  | 480 | 4  | 400         | 83%              |
-| 24      | 1487  | 1  | 480 | 6  | 600         | 73%              |
-| 36      | 2592  | 1  | 480 | 9  | 900         | 53%              |
-| 40      | 3049  | 2  | 960 | 9  | 900         | 61%              |
-| 55      | 4224  | 3  | 1440| 9  | 900         | 55%              |
-| 75      | 5280  | 3  | 1440| 9  | 900         | 44%              |
+| Farm Lv | Ruộng | Bò  | Sữa  | Gà  | Trứng (lãi) | Vật nuôi / ruộng |
+| ------- | ----- | --- | ---- | --- | ----------- | ---------------- |
+| 9       | 669   | 1   | 480  | 0   | 0           | 72%              |
+| 14      | 739   | 1   | 480  | 3   | 300         | 106%             |
+| 17      | 1065  | 1   | 480  | 4   | 400         | 83%              |
+| 24      | 1487  | 1   | 480  | 6   | 600         | 73%              |
+| 32      | 2112  | 2   | 960  | 8   | 800         | 83%              |
+| 36      | 2592  | 2   | 960  | 9   | 900         | 72%              |
+| 40      | 3049  | 2   | 960  | 9   | 900         | 61%              |
+| 42      | 3142  | 3   | 1440 | 9   | 900         | 74%              |
+| 50      | 4013  | 3   | 1440 | 9   | 900         | 58%              |
+| 55      | 4224  | 4   | 1920 | 9   | 900         | 67%              |
+| 68      | 4963  | 5   | 2400 | 9   | 900         | 66%              |
+| 75      | 5280  | 5   | 2400 | 9   | 900         | 63%              |
 
 Kết luận:
 
 - **Gà phải mở theo level.** Nếu cho mua đủ 9 gà ngay ở Lv 14 (bản đầu), gà cho ~900/ngày, hơn cả ruộng (~740). Mở dần tới Lv 36 giữ vật nuôi ở khoảng 50–85% thu nhập ruộng.
-- **Bò thêm cũng theo level, nhưng muộn.** Một con bò đã bằng 72% ruộng ở Lv 9 (thiết kế có sẵn). Về sau ruộng tăng lên 3.000–5.000/ngày, một con bò thành nhỏ; bò thứ 2 ở Lv 40, thứ 3 ở Lv 55 giữ vật nuôi đáng chăm mà ruộng vẫn là chính.
+- **Bò thêm theo level (bản 20261117180000).** Một con bò đã bằng 72% ruộng ở Lv 9 (thiết kế có sẵn). Bản đầu cho bò thứ 2 ở Lv 40 và thứ 3 ở Lv 55: người chơi đều đặn phải chờ khoảng 41 ngày từ con bò đầu tới con thứ 2, và vật nuôi tụt xuống 49% ruộng ở Lv 35, 46% ở Lv 50, 44% ở Lv 75 (dưới khoảng 50–85% đã chọn). Nay tối đa 5 bò: Lv 32 / 42 / 55 / 68, giữ vật nuôi ở 58–83% ruộng từ Lv 32 trở đi.
+- **Không mở bò thứ 2 sớm hơn Lv 32.** Thử ở Lv 22–25: vật nuôi lên 100–105% ruộng ở Lv 25–30 (gà cũng đang tăng cùng lúc), ruộng hết là nguồn chính. Lv 32 là lúc ruộng nhảy lên (cây mới, đất mới) và chuồng gà gần đủ (gà thứ 8).
+- Sữa chỉ chiếm 2–6% XP, nên thêm bò gần như không làm lên level nhanh hơn. Hoàn vốn: bò thứ 2 (4.000) khoảng 8 ngày với 4 lần ghé/ngày.
 - Lv 14–16 vượt 100% trong khoảng 3 ngày (bò sẵn có + 3 gà đầu). Chấp nhận được: chuồng giá 1.500, mấy ngày này trả lại tiền chuồng. Nếu muốn mềm hơn: bắt đầu với 2 gà.
 - Mô hình lạc quan cho ruộng (giả định luôn đủ hạt giống trong cửa hàng), nên tỉ lệ vật nuôi thật có thể cao hơn bảng một chút.
 - Đổi leaves → coins có trần 60 coins/ngày (1.200 leaves), nên vật nuôi không làm tăng coins; leaves dư đi vào đất, đồ trang trí, mastery.
 
 ## Con số
 
-| Thứ                 | Mở ở Lv | Giá (leaves) |
-| ------------------- | ------- | ------------ |
-| Chicken Coop (3 gà) | 14      | 1.500        |
+| Thứ                 | Mở ở Lv                | Giá (leaves)                       |
+| ------------------- | ---------------------- | ---------------------------------- |
+| Chicken Coop (3 gà) | 14                     | 1.500                              |
 | Gà thứ 4 → 9        | 17, 20, 24, 28, 32, 36 | 500, 700, 900, 1.100, 1.300, 1.500 |
-| Bò thứ 2            | 40      | 6.000        |
-| Bò thứ 3            | 55      | 10.000       |
+| Bò thứ 2            | 32                     | 4.000                              |
+| Bò thứ 3            | 42                     | 6.000                              |
+| Bò thứ 4            | 55                     | 9.000                              |
+| Bò thứ 5            | 68                     | 13.000                             |
 
 - Mỗi gà: 2 Breeze Wheat thường (không đột biến) → 1 Sunny Egg sau 2 giờ, +3 XP khi nhặt. Không có Feed Mill: corn (Twin Bolt Corn) mở ở Lv 60, còn lúa mì mọc 2 phút.
 - Sunny Egg: 30 leaves × hệ số trong ngày (0,85–1,35), chiếm chỗ barn. Khi có chuồng, khoảng 1/3 đơn hàng mới đòi thêm 2–4 trứng (trả 1,45 × giá gốc, 3 XP mỗi quả).
 - Bistro: 3 trứng → 1 Eggs trong pantry, chung giới hạn 30/ngày như các nguyên liệu từ farm khác.
-- Bò thêm: như con đầu, 2 Storm Milk mỗi 2 giờ, lần đầu 20 phút sau khi mua.
+- Bò thêm: như con đầu, 2 Storm Milk mỗi 2 giờ, lần đầu 20 phút sau khi mua. Bò đã mua theo giá cũ (6.000 / 10.000) giữ nguyên, không hoàn tiền.
+- Đồng cỏ (20261117180000): mép trên từ y 420 lên 348, ngang hàng rào sau của ruộng (`OY - 32`); mép phải từ 1720 ra 1860, quá mép farm (1760) vào vùng cây viền (world px; đồ trang trí không đặt được từ y 318 xuống, trước là 390). Đốn cây tròn ở (1480, 340), cây thông ở (1700, 330), và các cây/bụi/đá viền nằm trên đất mới hoặc có tán đè lên hàng rào. 5 bò đứng 3 hàng cách nhau khoảng 95 px: bò 2–3 hàng sau, bò 4–5 hàng giữa (so le với hàng sau), bò đầu hàng trước. Mỗi con đi trên một đoạn riêng, cách hàng rào ≥60 px và cách đoạn của con bên cạnh ≥130 px (bò dài khoảng 120 px kể cả đuôi), nên không con nào chồng lên con khác hay thò qua rào. Đồ trang trí đang đứng trên phần đất mới được cất vào kho (đặt lại miễn phí).
 
 ## Chỗ đứng
 
