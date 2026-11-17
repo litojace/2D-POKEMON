@@ -61,5 +61,10 @@ What changed after this run:
   server knows (a Cragmuff clear, something worn) come from the account;
   the others are remembered per account in the browser.
 - The reward reveal offers **Wear it now** for an appearance reward.
+- **The first match's coach** (`apps/client/src/battle-coach.ts`): while
+  Getting started still has its bot match to do, that match shows one line
+  at a time above the skill buttons (on a phone, under the scoreboard):
+  move, basic attack, a skill, dash, then "Win 3 rounds". Each line goes
+  when the player does it, with their own keys or the touch buttons.
 
 Compare the guest rows on the next run.

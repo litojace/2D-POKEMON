@@ -1,0 +1,76 @@
+/* The first match's coach (battle-coach.ts): one line just above the skill
+   buttons it talks about (fighters start near the top, under their names);
+   on a phone under the scoreboard, clear of the thumbs. It never takes a
+   tap. */
+.battle-coach {
+  pointer-events: none;
+  z-index: 40;
+  position: absolute;
+  bottom: 14%;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: calc(100% - 24px);
+  padding: 7px 14px 7px 8px;
+  border-radius: 999px;
+  background: #101c35e6;
+  border: 1px solid #ffd65b88;
+  box-shadow: 0 6px 18px #0008;
+  color: #fff3d6;
+  font-size: calc(14px * var(--text-scale, 1));
+  font-weight: 700;
+  white-space: nowrap;
+  animation: coach-in 260ms ease-out;
+}
+.battle-coach kbd {
+  flex: none;
+  padding: 3px 8px;
+  border-radius: 7px;
+  background: #ffd65b;
+  color: #2a1a00;
+  font:
+    800 calc(12px * var(--text-scale, 1)) / 1.2 "Barlow Condensed",
+    sans-serif;
+  letter-spacing: 0.06em;
+}
+.battle-coach > span:not(.coach-dots) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.coach-dots {
+  display: flex;
+  gap: 4px;
+  flex: none;
+}
+.coach-dots i {
+  width: 12px;
+  height: 4px;
+  border-radius: 2px;
+  background: #ffffff33;
+}
+.coach-dots i.is-done {
+  background: #43d971;
+}
+.coach-dots i.is-next {
+  background: #ffd65b;
+}
+.battle-active.touch-mode .battle-coach {
+  position: fixed;
+  top: calc(var(--safe-top) + 64px);
+  bottom: auto;
+  z-index: 79;
+  font-size: calc(12px * var(--text-scale, 1));
+}
+@keyframes coach-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -6px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .battle-coach {
+    animation: none;
+  }
+}

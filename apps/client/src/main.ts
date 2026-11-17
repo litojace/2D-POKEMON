@@ -294,6 +294,7 @@ import { watchScreenPin } from "./screen-pin";
 import { watchCosmeticPreviews } from "./cosmetic-fx-preview";
 import { openHubPanelNow } from "./ui/hub-panel";
 import { createGuide } from "./getting-started-screen";
+import { createCoach } from "./battle-coach";
 import { playerLevel } from "../../../packages/shared/src/journey";
 import { openRoster, type RosterScreen } from "./screens/roster";
 import { showRewardReveal, takeNewRewards } from "./reward-reveal";
@@ -2799,6 +2800,7 @@ async function startSpire(options: {
   if (options.solo) await request("ready");
 }
 function renderMenu(revealSelection = false) {
+  coach.stop();
   // In a raid room, the boss's atlas is painted ahead (boss-prepaint.ts).
   syncBossPrepaint(state);
   syncFighterArt();
@@ -3087,6 +3089,39 @@ function renderPvpSpectator() {
   }
 }
 
+/** The first match's coach (battle-coach.ts), over the court. */
+const coach = createCoach({
+  host: () => document.querySelector<HTMLElement>("#battle .arena-frame"),
+  keys: () => ({
+    touch: touch.enabled,
+    move: moveText(),
+    basic: keyText("basic"),
+    skills: skillsText(),
+    dash: keyText("dash"),
+  }),
+});
+/** The room the coach was last decided for (once per room). */
+let coachRoom = "";
+/**
+ * A new player's match against a bot, while Getting started still has it
+ * to do: the coach runs until the match ends.
+ */
+function syncCoach() {
+  const live =
+    !!state &&
+    !!myId &&
+    !!state.vsBot &&
+    state.phase !== "lobby" &&
+    state.phase !== "finished";
+  if (!live) {
+    if (coach.running) coach.stop();
+    return;
+  }
+  if (coach.running || coachRoom === state!.code) return;
+  coachRoom = state!.code;
+  const g = guide.view();
+  if (g.active && !g.done.bot) coach.start();
+}
 function renderBattle() {
   document.body.classList.remove("home-active", "lobby-active", "gate-active");
   if (!state?.practice) document.body.classList.remove("practice-active");
@@ -3106,6 +3141,7 @@ function renderBattle() {
     state?.players.find((p) => p.id === myId) ??
     (watching && state?.code === watching ? state.players[0] : undefined);
   if (!state || !me) return;
+  syncCoach();
   setHudStyle(
     document.body,
     "--element",
@@ -5975,6 +6011,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       };
       this.actions = { skill: -1, dash: false, jump: false, basic: false };
       socket.emit("input", input);
+      if (combatActive && coach.running) coach.note(input);
       // Show your own cast now (before this step's movement changes the
       // fighter), at the time this input is predicted to run.
       this.predictCasts(
