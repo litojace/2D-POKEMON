@@ -28,6 +28,6 @@ export default defineConfig({
     "import.meta.env.VITE_SERVER_URL": JSON.stringify(""),
     "import.meta.env.VITE_SITE_URL": JSON.stringify(""),
   },
-  server: { port: 4179, strictPort: true, fs: { allow: [here("../..")] } },
+  server: { port: Number(process.env.VISUAL_PORT) || 4179, strictPort: true, fs: { allow: [here("../..")] } },
   logLevel: "warn",
 });
