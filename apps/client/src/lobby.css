@@ -311,6 +311,19 @@
   opacity: 1;
   z-index: 1;
 }
+/* Its own compositing layer: each frame the browser takes the canvas as it
+   is, instead of repainting the Lobby around it (the glow, the podium, the
+   still art). On an iPhone the Lobby ran its frames at 27 a second with our
+   drawing at 1 ms (owner, 17 Nov 2026). The read-out's "Layer off" button
+   (lobby-perf.ts) takes it away to compare. */
+.lobby-fighter-art > canvas,
+.lobby-member-art > canvas {
+  will-change: transform;
+}
+.lobby-layer.perf-no-layer .lobby-fighter-art > canvas,
+.lobby-layer.perf-no-layer .lobby-member-art > canvas {
+  will-change: auto;
+}
 /* Podiums: a lit disc under your fighter and under every seat, all on the
    same floor line, tinted by the fighter's element (as in the hub redesign
    proposal). An open seat's podium is fainter. */
@@ -1665,15 +1678,17 @@ body:not(.hub-active) #account-leaves {
   }
 }
 
-/* Settings → Graphics → "Show frame rate" (lobby-perf.ts): numbers to
-   screenshot, beside the rail, and buttons that switch one suspect off. */
-.lobby-layer > .lobby-perf {
-  top: var(--lobby-top);
-  left: calc(var(--lobby-gutter) + var(--lobby-rail) + 10px);
-  z-index: 30;
+/* The frame-rate read-out (lobby-perf.ts; five taps on Settings →
+   Graphics): numbers to screenshot, beside the rail, and buttons that switch
+   one suspect off. On the page, over the Shop and the Wardrobe too. */
+.lobby-perf {
+  position: fixed;
+  top: calc(var(--hub-top) + var(--hub-card-h) + 22px);
+  left: calc(max(14px, var(--safe-left, 0px)) + 70px);
+  z-index: var(--z-toast);
   display: grid;
   gap: 4px;
-  max-width: min(300px, 46vw);
+  max-width: min(330px, 46vw);
   padding: 5px 7px;
   border-radius: 8px;
   background: rgba(0, 0, 0, 0.72);

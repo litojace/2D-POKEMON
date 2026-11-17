@@ -26,3 +26,10 @@ it("draws the Lobby's backdrop from a pre-blurred picture, with no filter", () =
 it("lays the fighter's glow without a blend mode", () => {
   expect(rule(".lobby-fighter::before")).not.toMatch(/mix-blend-mode/);
 });
+
+it("gives the Lobby fighter's canvas its own compositing layer", () => {
+  // The iPhone read-out: the page at 27 frames a second, our drawing 1 ms.
+  expect(css).toMatch(
+    /\.lobby-fighter-art > canvas,\s*\.lobby-member-art > canvas \{\s*will-change: transform;/,
+  );
+});

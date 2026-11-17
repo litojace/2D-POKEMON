@@ -38,11 +38,11 @@ test("five taps on Graphics turn the Lobby's frame-rate read-out on and off", as
   };
   await toggle("on");
   await expect(perf).toBeVisible();
-  // The live rig's numbers: the screen, frames drawn, our own work, canvas.
-  await expect(perf.locator("pre")).toContainText(
-    // (A screen this machine draws too slowly to judge reads "?".)
-    /screen (\d+|\?) Hz\s+drawn \d+ fps/,
-  );
+  // The page's frame rate, then the live rig's: frames drawn, our own
+  // work, the canvas. (A screen this machine draws too slowly to judge
+  // reads "?".)
+  await expect(perf.locator("pre")).toContainText(/page (\d+|\?) Hz/);
+  await expect(perf.locator("pre")).toContainText(/fighter \d+ fps/);
   await expect(perf.locator("pre")).toContainText(/ours [\d.]+ ms/);
   await expect(perf.locator("pre")).toContainText(/canvas \d+x\d+ @/);
   // Clear of PLAY and the mode button, and on the screen.
@@ -66,6 +66,12 @@ test("five taps on Graphics turn the Lobby's frame-rate read-out on and off", as
         getComputedStyle(document.querySelector(s!)!, p).getPropertyValue(k!),
       [selector, pseudo, prop] as const,
     );
+  // The fighter's canvas has its own compositing layer, unless "Layer off".
+  const canvas = "#lobby-fighter-art > canvas";
+  expect(await style(canvas, null, "will-change")).toBe("transform");
+  await perf.locator('[data-perf="layer"]').click();
+  await expect(perf.locator('[data-perf="layer"]')).toHaveText("Layer off");
+  expect(await style(canvas, null, "will-change")).toBe("auto");
   expect(await style(".lobby-rail", null, "backdrop-filter")).not.toBe("none");
   await perf.locator('[data-perf="blur"]').click();
   await expect(perf.locator('[data-perf="blur"]')).toHaveText("Blur off");
@@ -83,9 +89,20 @@ test("five taps on Graphics turn the Lobby's frame-rate read-out on and off", as
   await expect.poll(clock, { timeout: 10_000 }).toBeGreaterThan(before);
   await snap(page, info, "lobby-perf-phone");
 
+  // Over the Shop it stays, with the page's frame rate (to compare with the
+  // Lobby's) while the Lobby's fighter sleeps.
+  await page.click('.lobby-rail [data-lobby-action="shop"]');
+  await expect(page.locator(".fit-room")).toBeVisible();
+  await expect(perf).toBeVisible();
+  await expect(perf.locator("pre")).toContainText(/page (\d+|\?) Hz/);
+  await expect(perf.locator("pre")).toContainText("fighter: asleep");
+  await page.locator(".fit-room .ui-close").first().click();
+  await expect(page.locator(".fit-room")).toHaveCount(0);
+
   // Off again: the read-out and its experiments are gone.
   await toggle("off");
   await expect(perf).toHaveCount(0);
+  expect(await style(canvas, null, "will-change")).toBe("transform");
   expect(await style(".lobby-rail", null, "backdrop-filter")).not.toBe("none");
   expect(await style(".lobby-play", "::before", "animation-name")).not.toBe(
     "none",
