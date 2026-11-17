@@ -101,7 +101,7 @@ for (const phone of PHONES)
         if (b.bottom > (H - cutout) / 2 && b.top < (H + cutout) / 2)
           out.push("cutout band");
         for (const e of document.querySelectorAll(
-          ".touch-buttons button, .joystick, #battle-menu, #hud .scoreboard, #hud > *, #target-picker button",
+          ".touch-buttons button, .joystick, #battle-menu, #hud .scoreboard, #hud > *",
         )) {
           const r = e.getBoundingClientRect();
           if (!r.width || getComputedStyle(e).display === "none") continue;

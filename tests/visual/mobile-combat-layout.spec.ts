@@ -32,23 +32,9 @@ for (const size of [{width:844,height:390},{width:932,height:430},{width:844,hei
       expect(Math.min(...gaps)).toBeGreaterThanOrEqual(8);
       expect(targets.attack.r).toBeGreaterThan(targets["0"].r*1.4);
       expect(targets["3"].r).toBeGreaterThan(targets["0"].r);
-      // The target portraits (three enemies): one straight row just over the
-      // ring, evenly spaced, its right end on the ultimate's right edge, clear
-      // of every button.
-      const portraits = await page.locator("#target-picker button").evaluateAll((buttons) => buttons.map((b) => {
-        const r = b.getBoundingClientRect();
-        return {x:r.x+r.width/2,y:r.y+r.height/2,r:r.width/2};
-      }));
-      expect(portraits).toHaveLength(3);
-      portraits.sort((a,b) => a.x-b.x);
-      const top = Math.min(...Object.values(targets).map((t) => t.y-t.r));
-      for (const [i,p] of portraits.entries()) {
-        expect(Math.abs(p.y-portraits[0].y)).toBeLessThanOrEqual(1);
-        if (i>1) expect(Math.abs(p.x-portraits[i-1].x-(portraits[1].x-portraits[0].x))).toBeLessThanOrEqual(1);
-        expect(p.y+p.r).toBeLessThanOrEqual(top-5.5);
-        for (const t of Object.values(targets)) expect(Math.hypot(p.x-t.x,p.y-t.y)-p.r-t.r).toBeGreaterThanOrEqual(5);
-      }
-      expect(Math.abs(portraits.at(-1)!.x+portraits.at(-1)!.r-targets["3"].x-targets["3"].r)).toBeLessThanOrEqual(1);
+      // No target row (owner, 16 Nov 2026: it took too much room): phones
+      // aim by tapping the court.
+      await expect(page.locator("#target-picker")).toHaveCount(0);
       for (const [id,t] of Object.entries(targets)) {
         expect(t.r*2).toBeGreaterThanOrEqual(44);
         expect(t.x-t.r).toBeGreaterThanOrEqual(0);
