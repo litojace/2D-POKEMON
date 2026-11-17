@@ -812,6 +812,32 @@ describe("the elite (floor 55): Lumiwick's dive", () => {
   );
 });
 
+describe("the elite's HUD line, on each zone's real elite floor", () => {
+  it.each([
+    [5, 1, "Cragmuff's eruptions"],
+    [15, 2, "Tidelotl's bubble volleys"],
+    [25, 3, "Inkpurr's grasping hands"],
+    [35, 4, "Snoozaku's falling stars"],
+    [45, 5, "Prismell's prism lances"],
+    [55, 6, "Lumiwick's ember dive"],
+  ])("floor %i (zone %i) names %s", (floor, zone, borrowed) => {
+    seeded(640 + floor);
+    const a = createSpireArena("CUE" + floor, zone) as SpireEmberArena;
+    a.add("p0", "P0", "voltkit");
+    a.configureSpire({ startFloor: floor, ceiling: floor + 4 });
+    a.start();
+    a.acknowledgeInstructions("p0");
+    toPlaying(a);
+    const s = a.raid.spire!;
+    expect(s).toMatchObject({ floor, kind: "elite", zone });
+    // Before (and between) its casts: the captain and whose mechanic.
+    a.raid.warnings = [];
+    expect(spireCue(snap(a))).toBe(`Echo Captain · it borrowed ${borrowed}`);
+    const m = SPIRE_ELITE_MECHANICS[SPIRE_FLOORS[floor].elite!.mechanic];
+    expect(`${m.boss}'s ${m.name}`).toBe(borrowed);
+  });
+});
+
 describe("the boss floor (floor 60: the Ascendant Lumiwick, on the Sky Terrace)", () => {
   const toSixty = (chars: CharacterId[] = ["voltkit"]) => {
     const a = climb(chars, { startFloor: 59, ceiling: 60 });
