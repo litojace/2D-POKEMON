@@ -140,7 +140,8 @@ describe("Spire floors (zone 3, the Lantern Yard)", () => {
     expect(SPIRE_FLOORS[30].description).toBe(
       "New attacks: Nightfall, Shade Pounce",
     );
-    expect(SPIRE_BUILT_TOP).toBe(30);
+    // (Zone 4 is built on top of it.)
+    expect(SPIRE_BUILT_TOP).toBeGreaterThanOrEqual(30);
   });
   it("has wave floors 21–24 and 26–29, the elite on 25 and the boss on 30", () => {
     for (const f of [21, 22, 23, 24, 26, 27, 28, 29]) {
@@ -579,7 +580,7 @@ describe("the boss floor (floor 30: the Ascendant Inkpurr, in the Lantern Yard)"
     expect(a.raid.warnings).toEqual([]);
     run(a, SPIRE_PARTY.cleared + 0.2);
     expect(a.raid.result).toBe("victory");
-    expect(a.raid.message).toBe("Zone 3 conquered — more floors are coming.");
+    expect(a.raid.message).toBe("Zone 3 conquered — zone 4 opens at floor 31.");
     a.retry();
     expect(s).toMatchObject({ startFloor: 29, floor: 29, blessings: {} });
     expect(a.raid.variant).toBeUndefined();

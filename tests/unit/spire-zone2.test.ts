@@ -157,16 +157,19 @@ describe("Spire floors (zone 2, the Lagoon)", () => {
     // deadlier per point than zone 1's Earth front-liners, so its numbers
     // start lower than floor 9's: how hard a floor is comes from the
     // play-test below (floor 11, with no blessings, about as hard as 9).
-    for (const f of [12, 13, 14, 16, 17, 18, 19])
-      expect(each(f), `floor ${f}`).toBeGreaterThan(
-        each(f - 1 === 15 ? 14 : f - 1),
+    for (const f of [12, 13, 14])
+      expect(each(f), `floor ${f}`).toBeGreaterThan(each(f - 1));
+    // Floors 16–19, as in zone 3: each Echo hits a little harder floor by
+    // floor, and how much damage it takes follows its floor's line-up
+    // (floor 16's is far easier than 17's at the same numbers, so its Echoes
+    // are tougher). The play-test keeps the climb declining smoothly.
+    for (const f of [16, 17, 18, 19])
+      expect(SPIRE_TUNING[f].power, `floor ${f}`).toBeGreaterThan(
+        SPIRE_TUNING[f - 1 === 15 ? 14 : f - 1].power,
       );
     for (const [a, b] of [
       [11, 12],
       [12, 13],
-      [16, 17],
-      [17, 18],
-      [18, 19],
     ])
       expect(threat(b), `floor ${b} over ${a}`).toBeGreaterThan(threat(a));
     // The elite and the boss floors keep their own clocks.

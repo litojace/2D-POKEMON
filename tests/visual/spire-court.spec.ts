@@ -1920,3 +1920,140 @@ test("Snoozaku's own raid keeps the Cloud Deck ungraded", async ({
     await context.close();
   }
 });
+
+/** Snoozaku's Cloud Deck pieces the arena shows (its map atlas's images). */
+async function deckPieces(page: Page) {
+  return page.evaluate(() => {
+    const scene = (window as any).__spireGame.scene.getScene("arena");
+    let n = 0;
+    const walk = (o: any) => {
+      if (!o?.visible) return;
+      if (o.list) o.list.forEach(walk);
+      else if (o.texture?.key?.startsWith("cloud-deck-atlas")) n++;
+    };
+    scene.children.list.forEach(walk);
+    return n;
+  });
+}
+/** Wait for two more game frames (this machine draws a few a second). */
+async function frames(page: Page, n = 2) {
+  const at = await page.evaluate(
+    () => (window as any).__spireGame.loop.frame as number,
+  );
+  await page.waitForFunction(
+    ([at, n]) => (window as any).__spireGame.loop.frame >= at + n,
+    [at, n] as const,
+  );
+}
+
+test("zone 4: Snoozaku's Cloud Deck kept to floor 40, painted on floor 39, nothing fetched mid-fight", async ({
+  browser,
+}, info) => {
+  test.setTimeout(240_000);
+  const context = await browser.newContext({
+    viewport: { width: 844, height: 390 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  try {
+    const page = await context.newPage();
+    await hookGame(page);
+    const art: { url: string; floor: number }[] = [];
+    let floorNow = 31;
+    page.on("request", (r) => {
+      if (r.url().includes("/raid-arenas/"))
+        art.push({ url: r.url(), floor: floorNow });
+    });
+    const errors = await openHub(page);
+    // A real zone-4 room (harness/rooms.ts): floor 31, on the Spire's court.
+    await climb(page, 31);
+    await page.waitForTimeout(600);
+    const c31 = await court(page);
+    expect(c31.floor).toBe("arena-floor-spire-z4");
+    expect(c31.blocks.length).toBeGreaterThan(0);
+    expect(c31.stairs).toHaveLength(1);
+    await frames(page);
+    // No rune pads, Quiet Zone or rings: the deck isn't drawn.
+    expect(await deckPieces(page)).toBe(0);
+    await snap(page, info, "spire-court-z4-floor-31-844x390");
+    await shot4(page, "z4-floor-31-844x390");
+
+    // Floor 35: the captain's falling stars, still on the Spire's court.
+    floorNow = 35;
+    await page.evaluate(() => {
+      const w = window as any;
+      w.__room("spire", { floor: 35, stage: "playing" });
+      w.__push();
+    });
+    for (let i = 0; i < 40; i++) {
+      const stars = await page.evaluate(() => {
+        const w = window as any;
+        w.__spireStep(0.25);
+        return w.__snap.raid.warnings.filter(
+          (x: any) => x.kind === "falling-stars",
+        ).length;
+      });
+      if (stars) break;
+    }
+    await page.evaluate(() => (window as any).__spireStep(0.5));
+    await frames(page);
+    await page.waitForTimeout(300);
+    expect((await court(page)).floor).toBe("arena-floor-spire-z4");
+    expect(await deckPieces(page)).toBe(0);
+    await snap(page, info, "spire-court-z4-floor-35-stars-844x390");
+    await shot4(page, "z4-floor-35-stars-844x390");
+
+    // Floor 39 with floor 40 open: beat it, and while its stairs are open
+    // floor 40's court is painted.
+    floorNow = 39;
+    await page.evaluate(() => {
+      const w = window as any;
+      w.__room("spire", { floor: 39, stage: "playing", ceiling: 40 });
+      w.__push();
+    });
+    const scene = () =>
+      page.evaluate(() => {
+        const s = (window as any).__spireGame.scene.getScene("arena");
+        return {
+          floor: s.floor?.texture?.key as string,
+          floors: (s.textures.getTextureKeys() as string[]).filter((k) =>
+            k.startsWith("arena-floor-"),
+          ),
+        };
+      });
+    for (let i = 0; i < 12; i++) {
+      const cleared = await page.evaluate(() => {
+        const w = window as any;
+        for (const p of w.__spireArena.players) if (p.echo) p.hp = 0;
+        w.__spireStep(1.8);
+        return w.__snap.raid.spire.clearedAt !== undefined;
+      });
+      if (cleared) break;
+    }
+    await page.waitForTimeout(1500);
+    const ready = (await scene()).floors;
+    floorNow = 40;
+    await page.evaluate(() => (window as any).__spireStep(3));
+    await expect
+      .poll(() => page.evaluate(() => (window as any).__snap.raid.spire.floor))
+      .toBe(40);
+    await expect
+      .poll(async () => (await scene()).floor)
+      .not.toBe("arena-floor-spire-z4");
+    const forty = await scene();
+    // Floor 40 shows the deck's summit grade (spireSummitFloorId(4)).
+    expect(forty.floor).toBe("arena-floor-spire-summit-deck:art");
+    // The court it shows was ready before the stairs were climbed.
+    expect(ready).toContain(forty.floor);
+    expect(art.every((a) => a.floor !== 40)).toBe(true);
+    // Its own floor draws the deck (its rune pads at least).
+    await frames(page);
+    await expect.poll(() => deckPieces(page)).toBeGreaterThan(0);
+    await page.waitForTimeout(500);
+    await snap(page, info, "spire-court-z4-floor-40-844x390");
+    await shot4(page, "z4-floor-40-844x390");
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});

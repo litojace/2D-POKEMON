@@ -265,7 +265,10 @@ export type RaidAttack =
   | "geyser"
   // Ascendant Inkpurr
   | "nightfall"
-  | "pounce";
+  | "pounce"
+  // Ascendant Snoozaku (the boss branch's ids and text: the Spire's zone 4)
+  | "twin-dream"
+  | "dream-tide";
 export const RAID_ATTACKS: Record<
   RaidAttack,
   { name: string; tip: string; summary: string }
@@ -433,6 +436,16 @@ export const RAID_ATTACKS: Record<
     tip: "Every body leaps onto a raider, one after another (dots count the order): the copies first, the real one last. Step out of the circle under you. A real one that lands in lantern light casts a shadow.",
     summary:
       "Bodies pounce in turn. Step out of each circle; the last is real.",
+  },
+  "twin-dream": {
+    name: "Twin Dream",
+    tip: "Two Dreamers share one dream: each sees only their own runes (the other's show as ?). Take turns calling, then step the pads in order. Alone, the dream fades after a glimpse: remember it.",
+    summary: "Two Dreamers each see half the runes. Call in turn.",
+  },
+  "dream-tide": {
+    name: "Dream Tide",
+    tip: "Sleep floods the deck. Only one rune pad stays awake, and only the marked raider sees which: they call it, everyone runs onto that pad. It can't be jumped.",
+    summary: "Listen for the call. Stand on the one pad that stays awake.",
   },
   share: {
     name: "Shared Meteor",

@@ -102,6 +102,30 @@ describe("spireNudge", () => {
       title: "Zone 3 is open",
     });
   });
+  it("announces zone 4 (the Cloud Deck) to a zone-3 conqueror, quiet once climbing", () => {
+    const atZone4 = climb({
+      highestFloor: 30,
+      checkpoint: 31,
+      clears: { grumblecrag: 1, gloomshade: 1 },
+    });
+    expect(spireNudge({ spire: atZone4, seen: ["s0-z3"] })).toEqual({
+      key: "s0-z4",
+      zone: 4,
+      from: 31,
+      title: "Zone 4 is open",
+      note: "Climb from floor 31 · Cloud Deck",
+    });
+    expect(spireSeenKeys(atZone4)).toEqual([
+      "s0-z1",
+      "s0-z2",
+      "s0-z3",
+      "s0-z4",
+    ]);
+    expect(spireNudge({ spire: atZone4, seen: ["s0-z4"] })).toBeNull();
+    expect(
+      spireNudge({ spire: { ...atZone4, highestFloor: 31 }, seen: [] }),
+    ).toBeNull();
+  });
   it("is never shown again for a zone once seen, even unclimbed", () => {
     expect(spireNudge({ spire: climb(), seen: ["s0-z1"] })).toBeNull();
     expect(spireNudge({ spire: zone1Done, seen: ["s0-z2"] })).toBeNull();
