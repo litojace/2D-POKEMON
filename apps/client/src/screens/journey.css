@@ -510,17 +510,20 @@ button.journey-prize {
     gap: 10px;
     padding: 6px 10px;
   }
+  /* "LEVEL" at the 11 px floor needs a 52 px ring: in 46 px its corners
+     crossed the ring (owner's screenshot, 16 Nov 2026). */
   .journey-banner > .ui-ring {
-    --size: 46px;
+    --size: 52px;
   }
   .journey-banner > .ui-ring::before {
     inset: 3px;
   }
   .journey-ring-text b {
-    font-size: calc(19px * var(--text-scale, 1));
+    font-size: calc(18px * var(--text-scale, 1));
   }
   .journey-ring-text small {
     font-size: var(--fs-micro);
+    letter-spacing: 0.04em;
   }
   .journey-banner-main {
     gap: 3px;
@@ -641,11 +644,13 @@ button.journey-prize {
   .journey-two {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
-  /* The Levels tab's rewards a little shorter (the picture keeps its 44 px:
-     a frame needs it whole). */
+  /* The Levels tab's rewards: seven a row, each card as tall as its
+     picture (44 px: a frame needs it whole), level, name and state. A
+     fixed 100 px squeezed the picture over the level (owner's screenshot,
+     16 Nov 2026). */
   .journey-prizes {
     grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
-    grid-auto-rows: 100px;
+    grid-auto-rows: auto;
   }
   .journey-goals {
     grid-template-columns: minmax(0, 1fr);

@@ -10,7 +10,7 @@
  * by line; the typed entry point is farm-screen.ts.
  */
 import { syncHubGraphics } from "../hub-graphics";
-import { NightLight, ShadowLayer, sunLight } from "../world-light";
+import { NightLight } from "../world-light";
 import {
   CROPS,
   CROP_BY_ID,
@@ -136,8 +136,7 @@ const DECO = Object.fromEntries(FARM_DECOR.map((d) => [d.id, d]));
  * How each decoration looks (20261117120000), one row per decoration
  * instead of a branch each: its picture (`spr`, else its GFX.deco art, or a
  * `tree`), the soft shadow under it (`sh`, its x radius), how tall it
- * stands (`tall`, for taps and the shop's previews), whether it casts a sun
- * shadow (`cast`), and its light after dark (`light`: the pool it lifts on
+ * stands (`tall`, for taps and the shop's previews), and its light after dark (`light`: the pool it lifts on
  * the ground at `y` with radius `r`, strength `k` and flatness `flat`, and
  * its glow at (`gx`, `gy`) of radius `gr` in `rgb`).
  */
@@ -148,7 +147,6 @@ type DecoLook = {
   tall: number;
   dy?: number;
   k?: number;
-  cast?: true;
   light?: {
     y: number;
     r: number;
@@ -181,17 +179,16 @@ const DECO_LOOK: Record<string, DecoLook> = {
     spr: () => GFX.lamp(),
     sh: 16,
     tall: 110,
-    cast: true,
     light: lightAt(-92, "255,214,120", 150, 0, 40, 0.5),
   },
   planter: { spr: () => GFX.flowerbed(96, 21), sh: 54, tall: 44, dy: 6 },
-  mintree: { tree: ["mint", 28, 0.7], tall: 150, cast: true },
-  pine: { tree: ["pine", 25, 0.8], tall: 150, cast: true },
-  autumn: { tree: ["autumn", 29, 0.7], tall: 150, cast: true },
-  cherry: { tree: ["cherry", 30, 0.7], tall: 150, cast: true },
-  apple: { tree: ["apple", 26, 0.7], tall: 150, cast: true },
-  orange: { tree: ["orange", 32, 0.7], tall: 150, cast: true },
-  tower: { spr: () => GFX.gazebo(), sh: 60, tall: 160, cast: true },
+  mintree: { tree: ["mint", 28, 0.7], tall: 150 },
+  pine: { tree: ["pine", 25, 0.8], tall: 150 },
+  autumn: { tree: ["autumn", 29, 0.7], tall: 150 },
+  cherry: { tree: ["cherry", 30, 0.7], tall: 150 },
+  apple: { tree: ["apple", 26, 0.7], tall: 150 },
+  orange: { tree: ["orange", 32, 0.7], tall: 150 },
+  tower: { spr: () => GFX.gazebo(), sh: 60, tall: 160 },
   plum: {
     spr: () =>
       GFX.house({
@@ -210,59 +207,56 @@ const DECO_LOOK: Record<string, DecoLook> = {
     k: 0.85,
     sh: 70,
     tall: 130,
-    cast: true,
   },
   statue: { spr: () => GFX.plinth(), sh: 40, tall: 130 },
   // Fences & paths (paths lie on the ground: no shadow).
   picket: { sh: 28, tall: 40 },
   railfence: { sh: 28, tall: 38 },
   gate: { sh: 28, tall: 48 },
-  hedge: { sh: 30, tall: 36, cast: true },
+  hedge: { sh: 30, tall: 36 },
   pathstone: { tall: 22 },
   pathgravel: { tall: 22 },
   pathbrick: { tall: 22 },
   // Flowers & plants.
   tulips: { sh: 20, tall: 40 },
   potdaisy: { sh: 12, tall: 44 },
-  sunflowers: { sh: 18, tall: 84, cast: true },
+  sunflowers: { sh: 18, tall: 84 },
   barrow: { sh: 28, tall: 48 },
   lavender: { sh: 30, tall: 38 },
-  topiary: { sh: 14, tall: 76, cast: true },
+  topiary: { sh: 14, tall: 76 },
   // Trees.
-  birch: { tree: ["lime", 33, 0.62], tall: 140, cast: true },
-  bamboo: { sh: 24, tall: 130, cast: true },
-  palm: { sh: 34, tall: 140, cast: true },
-  willow: { sh: 56, tall: 150, cast: true },
+  birch: { tree: ["lime", 33, 0.62], tall: 140 },
+  bamboo: { sh: 24, tall: 130 },
+  palm: { sh: 34, tall: 140 },
+  willow: { sh: 56, tall: 150 },
   // Furniture.
   deckchair: { sh: 16, tall: 40 },
   picnic: { sh: 44, tall: 48 },
-  parasol: { sh: 28, tall: 94, cast: true },
-  swing: { sh: 40, tall: 90, cast: true },
+  parasol: { sh: 28, tall: 94 },
+  swing: { sh: 40, tall: 90 },
   // Water.
   birdbath: { sh: 14, tall: 50 },
   lilypond: { tall: 34 },
-  fountain: { sh: 32, tall: 76, cast: true },
+  fountain: { sh: 32, tall: 76 },
   bridge: { sh: 38, tall: 52 },
   // Lights.
-  torch: { sh: 8, tall: 88, cast: true, light: lightAt(-80, "255,170,80") },
+  torch: { sh: 8, tall: 88, light: lightAt(-80, "255,170,80") },
   lantern: {
     sh: 10,
     tall: 82,
-    cast: true,
     light: lightAt(-54, "255,150,90", 120, 14),
   },
   stringlights: {
     sh: 40,
     tall: 80,
-    cast: true,
     light: lightAt(-46, "255,214,150", 170, 0, 56),
   },
-  stonelantern: { sh: 16, tall: 66, cast: true, light: lightAt(-40) },
+  stonelantern: { sh: 16, tall: 66, light: lightAt(-40) },
   // Statues.
   frog: { sh: 14, tall: 32 },
   bunny: { sh: 14, tall: 56 },
   owl: { sh: 12, tall: 60 },
-  deer: { sh: 28, tall: 80, cast: true },
+  deer: { sh: 28, tall: 80 },
   // Seasonal.
   pumpkin: {
     sh: 16,
@@ -278,17 +272,15 @@ const DECO_LOOK: Record<string, DecoLook> = {
   redlantern: {
     sh: 22,
     tall: 92,
-    cast: true,
     light: lightAt(-64, "255,90,70", 130, 0, 46),
   },
   luckycat: { sh: 14, tall: 50 },
-  plumtree: { sh: 40, tall: 124, cast: true },
+  plumtree: { sh: 40, tall: 124 },
   snowman: { sh: 16, tall: 74 },
   gifts: { sh: 22, tall: 40 },
   xmastree: {
     sh: 34,
     tall: 146,
-    cast: true,
     light: lightAt(-134, "255,230,140", 130, 0, 36),
   },
 };
@@ -1867,69 +1859,10 @@ export function openFarm(options) {
     }
     ctx.restore();
   }
-  /* Shadows that follow the sun (not at Low): long and to the left in the
-     morning, short at noon, long and to the right at golden hour, none in
-     rain or at night. Drawn on the ground before anything standing. */
-  const shadowLayer = new ShadowLayer(),
-    nightLight = new NightLight();
-  function farmSun() {
-    const w = F.weather.cur;
-    const sun = sunLight(TOD, nightLevel(TOD));
-    if (w === "rain" || w === "storm") sun.alpha = 0;
-    else if (w === "cloud" || w === "frost") sun.alpha *= 0.5;
-    return sun;
-  }
-  function drawCastShadows(s) {
-    if (!shadowLayer.begin(ctx, farmSun())) return;
-    const L = shadowLayer;
-    const tree = (o) => {
-      const t = o.t;
-      if (t.pine) L.sprite(t.pine, o.x, o.y + 4);
-      else {
-        L.sprite(t.trunk, o.x, o.y + 4);
-        L.sprite(t.canopy, o.x, o.y + 4, t.h - 10);
-      }
-    };
-    TREES.forEach(tree);
-    for (const m of MARGIN) {
-      if (m.t) tree(m);
-      else if (m.b) L.sprite(m.b, m.x, m.y + 4);
-    }
-    L.sprite(HOUSE_SPR(), HOUSE.x, HOUSE.y);
-    L.sprite(GFX.windmillBody(), MILL.x, MILL.y);
-    L.sprite(GFX.board(), BOARDP.x, BOARDP.y);
-    L.sprite(GFX.stall(), STALL.x, STALL.y);
-    L.sprite(GFX.barn(), BARN.x, BARN.y);
-    L.sprite(GFX.well(), WELL.x, WELL.y);
-    L.sprite(GFX.doghouse(), DOGH.x, DOGH.y);
-    if (s.me) {
-      if (F.scarecrow) L.sprite(GFX.scarecrow(), 288, 562);
-      // Decorations that stand tall (DECO_LOOK's `cast`).
-      for (const p of F.decor) {
-        const look = DECO_LOOK[p.item];
-        if (!look?.cast || p.id === decoEdit?.id || !decoShows(p)) continue;
-        if (look.tree) {
-          tree({ t: decoTree(p.item), x: p.x, y: p.y });
-          continue;
-        }
-        const sp = decoSprite(p.item),
-          k = look.k ?? 1;
-        if (sp)
-          L.image(
-            sp.c,
-            p.x,
-            p.y + (look.dy ?? 4),
-            -sp.ax * k,
-            -sp.ay * k,
-            sp.w * k,
-            sp.h * k,
-            0,
-            p.flip,
-          );
-      }
-    }
-    L.end(ctx);
-  }
+  /* The night's light map (not at Low). Shadows are the round ones under
+     each thing: shadows cast from the sun (drawn at half resolution) blurred
+     the edges beside every fighter, and were taken out. */
+  const nightLight = new NightLight();
   /** The night's lights on the light map (world coordinates). */
   function farmLights(nl, k) {
     ctx.save();
@@ -5363,7 +5296,6 @@ export function openFarm(options) {
     setDecoView();
     if (s.me) drawDecoFloor(time);
     drawRainSplashes(ctx, time);
-    if (!low) drawCastShadows(s);
     if (s.me && decorating()) drawDecoGround(time);
     const items = [];
     // Trees and the back row stand in the depth order too, so nothing

@@ -20,8 +20,8 @@ decorations (19 before, 42 new) in eight groups. The list lives in
   a third of them paths.
 - **Rows.** Fences and the hedge are 50 px wide, so pieces placed 50 px
   apart touch and read as one fence.
-- **Drawing order.** Paths are drawn on the ground before the sun's shadows
-  and everything standing; standing decorations sort by depth with the
+- **Drawing order.** Paths are drawn flat on the ground, under
+  everything standing; standing decorations sort by depth with the
   rest of the farm. A tap while moving picks what stands before a path.
 - **Seasonal.** Seasonal decorations are sold only in their season, by the
   server's game day (`arena_today`, Los Angeles). Once bought they are kept:
@@ -176,9 +176,10 @@ way to Charm at their level. Seasonal decorations unlock early (level 1,
 anchor y, draw]`, baked once to a 2x canvas), or reuse a sprite or a
    tree.
 3. Give it a row in `DECO_LOOK` (`farm-scene.ts`): its soft shadow, how tall
-   it stands, whether it casts a sun shadow (`cast`) and its light after
-   dark (`light`). Lights (the night's light map and their glow) and cast
-   shadows come from that table, not from code per decoration.
+   it stands and its light after dark (`light`). Lights (the night's light
+   map and their glow) come from that table, not from code per decoration.
+   The farm has no sun shadows (taken out on main: they blurred the edges
+   beside the fighters); each decoration has its soft round shadow (`sh`).
 4. Run `tests/integration/farm-decor.test.ts`,
    `tests/unit/farm-decor-place.test.ts` and
    `tests/visual/farm-decor-catalog.spec.ts` (every preview must paint).
@@ -186,7 +187,7 @@ anchor y, draw]`, baked once to a 2x canvas), or reuse a sprite or a
 ## Performance
 
 Each decoration is one baked sprite blit plus a stamped soft shadow; only
-those near the view are drawn. Sun shadows and glows are not drawn at Low.
+those near the view are drawn. Glows are not drawn at Low.
 `tests/visual/farm-decor-catalog.spec.ts` draws a farm with 60 decorations
 and checks the frame costs little more than an empty farm, at Low on a
 phone-sized screen and at the default level.

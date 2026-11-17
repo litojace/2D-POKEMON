@@ -821,9 +821,16 @@
     font-size: calc(18px * var(--text-scale, 1));
     margin-top: 0;
   }
+  /* The countdown sits in the tags' row (it is the row's last child) and
+     wraps under them when the card is narrow: pinned to the corner it
+     covered "20% off today" on a 667 px phone. */
+  .fit-deal-text > .fit-row {
+    flex-wrap: wrap;
+    row-gap: 4px;
+  }
   .fit-deal-timer {
-    top: 6px;
-    right: 8px;
+    position: static;
+    margin-left: auto;
   }
   .fit-bundle {
     grid-template-columns: minmax(0, 1fr) auto;
@@ -859,6 +866,15 @@
   }
   .fit-slot b {
     font-size: var(--fs-micro);
+  }
+  /* A slot's name and what it holds stay inside it: they get its width,
+     and end in an ellipsis rather than run into the next slot. */
+  .fit-slot small {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    letter-spacing: 0.02em;
   }
   .fit-grid[style*="--cols:5"],
   .fit-grid[style*="--cols:4"] {
@@ -961,5 +977,14 @@
   }
   .fit-filters > .ui-chips {
     order: 2;
+  }
+}
+
+/* The narrowest phones: "ENTRANCE" at the 11 px floor is wider than a sixth
+   of the Wardrobe (it ran into "VICTORY" at 667x375): the six slots go
+   three a row. */
+@media (max-height: 500px) and (max-width: 720px) {
+  .fit-slots {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }

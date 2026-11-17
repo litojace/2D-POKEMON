@@ -109,6 +109,10 @@
   /* No blur (Low graphics, or over a moving scene): the scene shows
      through sharp, so the tint is deeper. */
   --glass-solid: rgba(12, 18, 34, 0.94);
+  /* Text surfaces with nothing blurred behind them (Low graphics,
+     battles): solid, as iOS's Reduce Transparency. Even at 94-97 % the
+     gold text of a Lobby card read through a menu's rows. */
+  --glass-opaque: rgb(12, 18, 34);
   --glass-blur: blur(16px) saturate(1.3);
   /* Panels are big: a lighter blur, the one they had before the tokens.
      A blur costs per pixel of what it covers, and older phones pay it. */

@@ -23,6 +23,8 @@ import { fadeIn } from "./ui/motion";
 import { setInner } from "./ui/patch";
 import { openHubPanelNow } from "./ui/hub-panel";
 import { guideCard, type GuideView } from "./getting-started";
+import { spireTowerArt } from "./spire-art";
+import type { SpireNudge } from "./spire-nudge";
 
 /**
  * The Lobby: the one-screen hub after login (hub redesign phase 2). Your
@@ -144,6 +146,7 @@ export type LobbyAction =
   | "leave-party"
   | "farm"
   | "guide"
+  | "spire"
   | "more-play";
 /**
  * Six, so each is a finger (44 pt) tall on every phone. The Wardrobe is the
@@ -184,6 +187,8 @@ export interface LobbyView {
   friendsOnline: number | null;
   /** Getting started, for a new player: in the Journey card's place. */
   guide?: GuideView;
+  /** Something new in the Spire (spire-nudge.ts): its card and a badge on Raids. */
+  spire?: SpireNudge | null;
 }
 export interface LobbyOptions {
   onAction(action: LobbyAction): void;
@@ -238,6 +243,10 @@ export function journeyCard(j: Journey | undefined) {
     item = next ? seasonReward(next, sid, rules).item : null,
     spark = sparkLeft(j);
   return `<span class="lobby-card-kicker">Journey · ${escape(theme.name)}</span><span class="lobby-card-row"><b>Tier ${tier} / ${rules.tiers}</b><small>Lv ${playerLevel(j.xp).level}</small></span><progress max="${rules.tierXp}" value="${into}" aria-label="Season tier progress"></progress><small>${item ? `Next: ${escape(JOURNEY_ITEM_BY_ID[item]?.name ?? "reward")} at tier ${next}` : "Every season cosmetic earned"}</small>${j.spark ? `<small class="lobby-spark${spark ? "" : " is-spent"}">Daily Spark · ${spark ? `${spark} XP left at ×2` : "used up today"}</small>` : ""}`;
+}
+/** The Spire card's words (its tower art stays as it is). */
+export function spireCard(n: SpireNudge) {
+  return `<span class="lobby-card-kicker">The Spire</span><b>${escape(n.title)}</b><small>${escape(n.note)}</small>`;
 }
 /** The Missions card: how many are done and when new ones arrive. */
 export function missionsCard(e: Economy | undefined) {
@@ -296,6 +305,7 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
 <aside class="lobby-cards" aria-label="Today">
   <button type="button" class="lobby-card" data-lobby-action="journey" id="lobby-journey-card"></button>
   <button type="button" class="lobby-card lobby-missions-card" data-lobby-action="missions" id="lobby-missions-card"></button>
+  <button type="button" class="lobby-card lobby-spire-card" data-lobby-action="spire" id="lobby-spire-card" hidden><span class="lobby-spire-art" aria-hidden="true">${spireTowerArt(3, "lobby-spire")}</span><span class="lobby-spire-text" id="lobby-spire-text"></span></button>
   <button type="button" class="lobby-card lobby-friends-card" data-lobby-action="friends" id="lobby-friends-card"><span class="lobby-card-kicker">Friends</span><b id="lobby-friends-online">Friends online</b><small>Invite, join or watch</small></button>
 </aside>
 <div class="lobby-play">
@@ -511,6 +521,49 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
         rigLoading = false;
       });
   };
+  /**
+   * The cards' column ends 8px above the mode button. Where the cards don't
+   * all fit (short phones, a safe area, the Spire card shown), the least
+   * urgent one steps aside: Friends, then Missions (the rail's badge still
+   * counts them), then, under the Spire card, the Journey or guide card.
+   * Measured once after an update or a resize, never per frame.
+   */
+  let fitFrame = 0;
+  const fitCards = () => {
+    fitFrame = 0;
+    if (closed) return;
+    const spireShown = !$("lobby-spire-card").hidden;
+    const order = [
+      $("lobby-friends-card"),
+      $("lobby-missions-card"),
+      ...(spireShown ? [$("lobby-journey-card")] : []),
+    ];
+    for (const card of [
+      $("lobby-friends-card"),
+      $("lobby-missions-card"),
+      $("lobby-journey-card"),
+    ])
+      card.classList.remove("is-squeezed");
+    const limit =
+      layer.querySelector(".lobby-play")!.getBoundingClientRect().top - 8;
+    const bottom = () =>
+      Math.max(
+        0,
+        ...Array.from(
+          layer.querySelectorAll<HTMLElement>(".lobby-cards > .lobby-card"),
+          (c) => c.getBoundingClientRect().bottom,
+        ),
+      );
+    for (const card of order) {
+      if (bottom() <= limit) break;
+      card.classList.add("is-squeezed");
+    }
+  };
+  const fitSoon = () => {
+    if (!fitFrame) fitFrame = requestAnimationFrame(fitCards);
+  };
+  addEventListener("resize", fitSoon);
+  void document.fonts?.ready.then(fitSoon);
   const coverWatch = new MutationObserver(syncCovered);
   coverWatch.observe(document.body, {
     subtree: true,
@@ -601,6 +654,18 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
       missionBadge.hidden = !missions.length || !left;
       missionBadge.textContent = String(left);
       missionBadge.classList.add("is-count");
+      // Something new in the Spire: its card, and a dot on Raids.
+      const spire = view.spire ?? null;
+      const spireCardEl = $("lobby-spire-card");
+      spireCardEl.hidden = !spire;
+      layer.classList.toggle("has-spire", !!spire);
+      if (spire) setInner($("lobby-spire-text"), spireCard(spire));
+      fitSoon();
+      const raidBadge = layer.querySelector<HTMLElement>(
+        '[data-badge-for="raids"]',
+      )!;
+      raidBadge.hidden = !spire;
+      raidBadge.classList.add("is-new");
     },
     close() {
       closed = true;
@@ -610,6 +675,8 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
       clearTimeout(bubbleTimer);
       clearTimeout(hopTimer);
       coverWatch.disconnect();
+      cancelAnimationFrame(fitFrame);
+      removeEventListener("resize", fitSoon);
       layer.removeEventListener("keydown", onKey);
       layer.remove();
       if (!document.querySelector(".farm-layer"))

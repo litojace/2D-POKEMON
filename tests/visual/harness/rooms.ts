@@ -62,7 +62,7 @@ function spire(o: RoomOptions) {
     return b;
   }) as typeof crypto.getRandomValues;
   const floor = o.floor ?? 1;
-  // The room climbs the floor's zone (zone 2 from floor 11).
+  // The room climbs the floor's zone (zone 2 from floor 11, zone 3 from 21).
   const zone = spireZoneOf(floor);
   const a: any = createSpireArena("SPIRE42", zone);
   a.add("me", "tester", "voltkit");
@@ -142,7 +142,8 @@ function spire(o: RoomOptions) {
   return a;
 }
 /**
- * A boss floor (10: the Ascendant Cragmuff; 20: the Ascendant Tidelotl): a
+ * A boss floor (10: the Ascendant Cragmuff; 20: the Ascendant Tidelotl;
+ * 30: the Ascendant Inkpurr, in the Lantern Yard): a
  * real climb from the floor below (cleared), on to the Ascendant in the
  * same room: its briefing, the fight a few seconds in, or the results once
  * it falls (the zone conquered).
@@ -194,15 +195,23 @@ function spireBoss(a: any, o: RoomOptions) {
     tick(3);
     a.raid.spire.saves.at(-1).status = "saved";
     a.raid.spire.saves.at(-1).claims =
-      a.zone === 2
-        ? [{ playerId: "me", coins: 200, titles: ["Tidecaller of the Spire"] }]
-        : [
-            {
-              playerId: "me",
-              coins: 120,
-              titles: ["Earthshaker of the Spire"],
-            },
-          ];
+      a.zone === 3
+        ? [{ playerId: "me", coins: 250, titles: ["Lanternbane of the Spire"] }]
+        : a.zone === 2
+          ? [
+              {
+                playerId: "me",
+                coins: 200,
+                titles: ["Tidecaller of the Spire"],
+              },
+            ]
+          : [
+              {
+                playerId: "me",
+                coins: 120,
+                titles: ["Earthshaker of the Spire"],
+              },
+            ];
   }
   return a;
 }
