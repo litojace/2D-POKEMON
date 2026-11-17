@@ -1550,7 +1550,7 @@ const GFX = (() => {
   /* The Chicken Coop (20261117100000): a little wooden hen house on stilts
      with a shingled roof, a round window that glows at night, a hatch and a
      ramp, and nest boxes on the side. Anchored at the middle of its base. */
-  const COOP_S = 1.3;
+  const COOP_S = 1.45;
   const coop = () =>
     memo("coop", () =>
       sprite(170 * COOP_S, 160 * COOP_S, 82 * COOP_S, 148 * COOP_S, (g) => {
@@ -1734,12 +1734,41 @@ const GFX = (() => {
         g.fillStyle = "#7fc8ff";
         ell(g, 18, h - 15, 8, 3);
         g.fill();
-        rr(g, w - 46, 8, 36, 10, 3);
+        rr(g, w - 48, 22, 36, 10, 3);
         g.fillStyle = "#8a5a2c";
         g.fill();
         g.fillStyle = "#ffd65b";
-        rr(g, w - 43, 8, 30, 4, 2);
+        rr(g, w - 45, 22, 30, 4, 2);
         g.fill();
+      }),
+    );
+  /* A laying hen's nest: a ring of straw on the ground. */
+  const nest = () =>
+    memo("nest", () =>
+      sprite(48, 22, 24, 11, (g) => {
+        g.fillStyle = "rgba(60,40,16,.25)";
+        ell(g, 0, 2, 21, 8);
+        g.fill();
+        g.fillStyle = "#c99a4e";
+        ell(g, 0, 0, 20, 7.5);
+        g.fill();
+        g.fillStyle = "#8a6430";
+        ell(g, 0, -1, 12, 4);
+        g.fill();
+        srand(77);
+        for (let i = 0; i < 26; i++) {
+          const a = rnd() * Math.PI * 2,
+            r = 13 + rnd() * 7;
+          g.strokeStyle = rnd() < 0.6 ? "#f2d27a" : "#a87a36";
+          g.lineWidth = 1.4;
+          g.beginPath();
+          g.moveTo(Math.cos(a) * r, Math.sin(a) * r * 0.38);
+          g.lineTo(
+            Math.cos(a + 0.35) * (r - 4),
+            Math.sin(a + 0.35) * (r - 4) * 0.38,
+          );
+          g.stroke();
+        }
       }),
     );
   const foodTruck = () =>
@@ -2386,24 +2415,43 @@ const GFX = (() => {
       kind === "brown"
         ? { b: "#c8743a", l: "#e8a26a", d: "#8a4a22" }
         : { b: "#fbf7ef", l: "#ffffff", d: "#d7cfc0" };
+    // States: walk, peck, idle, flap, and for the coop's hens (20261117…)
+    // sit (brooding on the ground, legs tucked in) and scratch (kicking the
+    // straw back with one foot, leaning in).
     const walk = st === "walk",
       peck = st === "peck",
+      sit = st === "sit",
+      scratch = st === "scratch",
       p = t * 11;
-    shadow(g, x, y + 1, 15 * s, 4.5 * s, 0.28);
+    shadow(g, x, y + 1, (sit ? 17 : 15) * s, 4.5 * s, sit ? 0.34 : 0.28);
     g.save();
     g.translate(x, y);
     g.scale(face * s, s);
     // legs
-    const step = walk ? Math.sin(p) * 4 : 0;
+    const step = walk
+      ? Math.sin(p) * 4
+      : scratch
+        ? -Math.abs(Math.sin(t * 15)) * 6
+        : 0;
     g.strokeStyle = "#f2a93a";
     g.lineWidth = 2;
-    [
-      [-2, step],
-      [3, -step],
-    ].forEach(([lx, d]) => {
+    (sit
+      ? []
+      : scratch
+        ? [
+            [-2, step],
+            [3, 0],
+          ]
+        : [
+            [-2, step],
+            [3, -step],
+          ]
+    ).forEach(([lx, d]) => {
       const lift = walk
         ? Math.max(0, Math.sin(p + (d > 0 ? 0 : Math.PI))) * 2
-        : 0;
+        : scratch && d
+          ? Math.abs(Math.sin(t * 15)) * 2.5
+          : 0;
       g.beginPath();
       g.moveTo(lx, -9);
       g.lineTo(lx + d * 0.5, -lift);
@@ -2413,10 +2461,19 @@ const GFX = (() => {
       g.lineTo(lx + d * 0.5 + 3, -lift);
       g.stroke();
     });
-    const bob = walk ? -Math.abs(Math.sin(p)) * 1.5 : 0,
-      tilt = peck ? Math.max(0, Math.sin(t * 9)) * 0.5 : 0;
+    const bob = walk
+        ? -Math.abs(Math.sin(p)) * 1.5
+        : sit
+          ? Math.sin(t * 1.6) * 0.4
+          : 0,
+      tilt = peck
+        ? Math.max(0, Math.sin(t * 9)) * 0.5
+        : scratch
+          ? 0.16 + Math.abs(Math.sin(t * 15)) * 0.05
+          : 0;
     g.save();
-    g.translate(0, -12 + bob);
+    g.translate(0, (sit ? -7 : -12) + bob);
+    if (sit) g.scale(1.06, 0.9);
     g.rotate(tilt);
     // tail
     [
@@ -4829,6 +4886,7 @@ const GFX = (() => {
     doghouse,
     coop,
     coopYard,
+    nest,
     foodTruck,
     gazebo,
     scarecrow,

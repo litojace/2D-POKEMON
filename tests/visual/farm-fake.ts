@@ -153,6 +153,27 @@ export async function fakeFarm(page: Page) {
     };
     w.__farmRequests = [];
     w.__fakeFarm = farm;
+    // The farm joins chat's channel for the farm it shows, and again every
+    // ping until it's in (main.ts, `here`): the server answers ok. Unanswered,
+    // the harness toasts "Offline harness" every 20 s, over the farm's own
+    // toasts, so a test reading a toast late could see that instead.
+    // Every line the farm's log shows, as it appears: a line fades after
+    // 6.8 s, so a test that reads the log after a long step (a drag across
+    // the coop on a busy machine) reads this instead.
+    w.__farmLog = [];
+    const logWatch = new MutationObserver(() => {
+      const box = document.getElementById("fm-log") as any;
+      if (!box || box.__watched) return;
+      box.__watched = true;
+      new MutationObserver((ms) => {
+        for (const m of ms)
+          for (const n of m.addedNodes) w.__farmLog.push(n.textContent ?? "");
+      }).observe(box, { childList: true });
+    });
+    logWatch.observe(document.body, { childList: true, subtree: true });
+    const reply = w.__reply;
+    w.__reply = (ev: string, data: unknown) =>
+      ev === "chat-farm" ? { ok: true } : reply?.(ev, data);
     const fetch = window.fetch.bind(window);
     window.fetch = async (input, init) => {
       const url = String(input);

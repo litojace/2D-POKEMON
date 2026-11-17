@@ -88,7 +88,7 @@ beforeAll(async () => {
   }
   await owner(
     `insert into public.arena_farm_decor_pieces(player_id, item, x, y) values
-     ($1, 'bench', 1100, 900), ($1, 'rock', 1240, 870), ($1, 'rock', 1100, 990), ($1, 'rock', 1120, 1050), ($1, 'hay', 600, 900)`,
+     ($1, 'bench', 1100, 900), ($1, 'rock', 1240, 870), ($1, 'rock', 1100, 990), ($1, 'rock', 1120, 1050), ($1, 'rock', 1420, 900), ($1, 'rock', 1480, 1050), ($1, 'hay', 600, 900)`,
     [player],
   );
   await migrate(COOP_SQL);
@@ -104,15 +104,16 @@ afterAll(async () => db.close());
 
 it("moves decorations standing where the coop goes into storage, once", async () => {
   const f = await farm();
-  // The bench and two rocks overlapped the coop; the others stay (one where
-  // the felled tree stood).
+  // The bench and two rocks overlapped the coop (20261117100000), two more
+  // rocks its wider ground (20261117160000); the others stay, one where the
+  // felled cherry tree stood.
   expect(f.decor.map((p: any) => [p.item, p.x, p.y]).sort()).toEqual(
     [
       ["hay", 600, 900],
-      ["rock", 1120, 1050],
+      ["rock", 1480, 1050],
     ].sort(),
   );
-  expect(f.decorCredits).toMatchObject({ bench: 1, rock: 2 });
+  expect(f.decorCredits).toMatchObject({ bench: 1, rock: 4 });
   // Nothing can be placed there now, just as the shared rules say.
   for (const [item, x, y] of [
     ["rock", 1100, 900],
@@ -123,6 +124,9 @@ it("moves decorations standing where the coop goes into storage, once", async ()
     ["rock", 1220, 1040],
     ["bench", 1060, 1040],
     ["rock", 1120, 1050],
+    ["rock", 1420, 900],
+    ["rock", 1480, 1050],
+    ["rock", 1500, 1030],
   ] as const) {
     const sql = (
       await owner("select public.arena_farm_decor_fits($1, $2, $3, $4) e", [
@@ -142,8 +146,9 @@ it("moves decorations standing where the coop goes into storage, once", async ()
     );
   }
   expect(decorFits("rock", 1100, 900, [])).toBe("Something is in the way");
-  // The felled tree's ground is free now.
-  expect(decorFits("rock", 1120, 1050, [])).toBeNull();
+  // The felled cherry tree's ground is free now; the round tree's is coop.
+  expect(decorFits("rock", 1490, 1050, [])).toBeNull();
+  expect(decorFits("rock", 1120, 1050, [])).toBe("Something is in the way");
 });
 
 it("opens the coop at farm level 14 for 1500 leaves, with 3 hungry hens", async () => {

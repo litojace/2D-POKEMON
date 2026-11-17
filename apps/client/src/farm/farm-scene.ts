@@ -397,7 +397,9 @@ CROP.egg = {
   lv: COOP.level,
   rar: "uncommon",
 };
-const EGG_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 140" width="240" height="280"><defs><radialGradient id="eg" cx=".38" cy=".3" r=".8"><stop offset="0" stop-color="#ffffff"/><stop offset=".6" stop-color="#fff0cf"/><stop offset="1" stop-color="#f0cf8f"/></radialGradient></defs><path d="M60 18c22 0 38 34 38 62s-17 46-38 46-38-18-38-46 16-62 38-62z" fill="url(#eg)" stroke="#b98a3e" stroke-width="3.5"/><circle cx="60" cy="86" r="13" fill="#ffb02e" stroke="#d9801a" stroke-width="2.5"/><g stroke="#ffb02e" stroke-width="4" stroke-linecap="round"><path d="M60 64v-7M60 108v7M38 86h-7M82 86h7M45 71l-5-5M75 71l5-5M45 101l-5 5M75 101l5 5"/></g><ellipse cx="46" cy="44" rx="6" ry="12" fill="#fff" opacity=".85" transform="rotate(20 46 44)"/></svg>`;
+// Drawn inside the middle of its 120×140 box like the crops' icons (menus
+// scale icons up 1.3×), with a bold sun that still reads small.
+const EGG_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 140" width="240" height="280"><defs><radialGradient id="eg" cx=".38" cy=".3" r=".8"><stop offset="0" stop-color="#ffffff"/><stop offset=".6" stop-color="#fff0cf"/><stop offset="1" stop-color="#f0cf8f"/></radialGradient></defs><g transform="translate(60 74) scale(.78) translate(-60 -72)"><path d="M60 18c22 0 38 34 38 62s-17 46-38 46-38-18-38-46 16-62 38-62z" fill="url(#eg)" stroke="#a87830" stroke-width="5"/><g stroke="#f59a1c" stroke-width="6" stroke-linecap="round"><path d="M60 62v-9M60 110v9M36 86h-9M84 86h9M43 69l-6-6M77 69l6-6M43 103l-6 6M77 103l6 6"/></g><circle cx="60" cy="86" r="16" fill="#ffb02e" stroke="#d9801a" stroke-width="4"/><ellipse cx="45" cy="44" rx="7" ry="13" fill="#fff" opacity=".9" transform="rotate(20 45 44)"/></g></svg>`;
 const MILK_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 140" width="240" height="280"><defs><linearGradient id="mk" x1="0" x2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#cfe6ff"/></linearGradient></defs><path d="M44 40 h32 v14 l10 16 v52 a8 8 0 0 1 -8 8 h-36 a8 8 0 0 1 -8 -8 v-52 l10 -16z" fill="url(#mk)" stroke="#5f8cc0" stroke-width="3"/><rect x="40" y="28" width="40" height="14" rx="4" fill="#4fb3ff" stroke="#2a6fd0" stroke-width="2"/><rect x="38" y="84" width="44" height="26" rx="4" fill="#ffd65b"/><path d="M60 88 l-6 10 h5 l-3 9 l9 -12 h-5 l3 -7z" fill="#2a1f4c"/><ellipse cx="50" cy="70" rx="3" ry="10" fill="#fff" opacity=".8"/></svg>`;
 
 const FARM_HTML = `<div class="fm" id="fm">
@@ -1576,52 +1578,278 @@ export function openFarm(options) {
   const cowMilkAt = (k) =>
     k === 0 ? F.milkAt : (F.cows.find((c) => c.i === k)?.milkAt ?? Infinity);
   const milkReady = (k = 0) => F.pasture && cowMilkAt(k) <= serverNow();
-  /* The Chicken Coop (20261117100000): the house on the left of its ground
-     (COOP in the shared rules), the run on the right, and a place in the run
-     for each of up to 9 hens: front row first, so the first three stand
-     where they're easy to tap. */
+  /* The Chicken Coop (20261117100000, wider in 20261117160000): the house
+     on the left of its ground (COOP in the shared rules) and the run on the
+     right, where the hens roam freely: they wander, peck, scratch the straw,
+     drink at the dish, eat at the trough, chase each other now and then, and
+     a hen laying an egg sits on a nest of straw until it's ready. */
   const COOP_BOX = {
       x0: COOP.x0,
       x1: COOP.x1,
       y0: COOP.y0 - 6,
       y1: COOP.y1 + 4,
     },
-    COOPH = { x: COOP.x0 + 66, y: COOP.y1 - 8 },
+    COOPH = { x: COOP.x0 + 78, y: COOP.y1 - 8 },
     RUN = {
-      x0: COOP.x0 + 172,
+      x0: COOP.x0 + 196,
       x1: COOP.x1 - 6,
       y0: COOP.y0 + 10,
       y1: COOP.y1 - 4,
     },
-    // Two rows, far enough apart that a bubble never covers the hen behind.
-    HEN_SPOTS = [
-      [1256, 994],
-      [1218, 994],
-      [1294, 994],
-      [1237, 928],
-      [1275, 928],
-      [1199, 928],
-      [1313, 928],
-      [1180, 994],
-      [1332, 994],
-    ],
-    HEN_SCALE = 1.2;
-  const coopHens = HEN_SPOTS.map(([x, y], k) => ({
-    k: k % 3 === 1 ? "brown" : "white",
-    hx: x,
-    hy: y,
-    x,
-    y,
-    face: k % 2 ? -1 : 1,
-    tx: null,
-    wait: 1 + k * 0.4,
-    st: "idle",
-    hop: 0,
-  }));
+    // Where a hen's feet may go: clear of the fences, and low enough that
+    // her bubble stays in front of the back rail.
+    ROAM = {
+      x0: RUN.x0 + 20,
+      x1: RUN.x1 - 18,
+      y0: RUN.y0 + 42,
+      y1: RUN.y1 - 10,
+    },
+    // The water dish and the feed trough painted in the run (coopYard).
+    DISH = { x: RUN.x0 + 18, y: RUN.y1 - 20 },
+    TROUGH = { x: RUN.x1 - 30, y: ROAM.y0 },
+    HEN_SCALE = 1.25,
+    // How close two hens may stand: their bubbles (28 px wide) never overlap.
+    HEN_ROOM = 34;
+  /** A free spot in the run: random, nudged away from the other hens. */
+  function roamSpot() {
+    let best = null,
+      bd = -1;
+    for (let t = 0; t < 6; t++) {
+      const x = ROAM.x0 + Math.random() * (ROAM.x1 - ROAM.x0),
+        y = ROAM.y0 + Math.random() * (ROAM.y1 - ROAM.y0),
+        d = Math.min(
+          999,
+          ...coopHens.map((o) => Math.hypot(o.x - x, (o.y - y) * 1.4)),
+        );
+      if (d > bd) {
+        bd = d;
+        best = { x, y };
+      }
+    }
+    return best;
+  }
+  const coopHens = Array.from({ length: COOP.maxHens }, (_, k) => {
+    const x = ROAM.x0 + ((k * 61) % (ROAM.x1 - ROAM.x0)),
+      y = ROAM.y0 + ((k * 47) % (ROAM.y1 - ROAM.y0));
+    return {
+      k: k % 3 === 1 ? "brown" : "white",
+      x,
+      y,
+      face: k % 2 ? -1 : 1,
+      act: "idle",
+      st: "idle",
+      t: 0.5 + k * 0.35,
+      tx: null,
+      ty: null,
+      sp: 30,
+      next: null,
+      hop: 0,
+      nest: false,
+    };
+  });
+  /** What a hen does next, by her state: a laying hen mostly sits on her
+   *  nest; a hungry one hunts around and hangs about the empty trough; a
+   *  fed one pecks, scratches, drinks, dusts off and plays. */
+  function henChoose(c, state) {
+    const r = Math.random();
+    const go = (x, y, sp, next) =>
+      Object.assign(c, {
+        act: "walk",
+        st: "walk",
+        tx: Math.max(ROAM.x0, Math.min(ROAM.x1, x)),
+        ty: Math.max(ROAM.y0, Math.min(ROAM.y1, y)),
+        sp,
+        next,
+        t: 6,
+      });
+    const stay = (st, t) =>
+      Object.assign(c, { act: st, st, t, tx: null, next: null });
+    c.nest = false;
+    if (state === "laying") {
+      if (r < 0.72) {
+        // To a quiet spot, then down on the nest for a good while.
+        if (Math.random() < 0.35) {
+          const p = roamSpot();
+          return go(p.x, p.y, 26, { st: "sit", t: 10 + Math.random() * 16 });
+        }
+        return stay("sit", 10 + Math.random() * 16);
+      }
+      if (r < 0.86)
+        return go(DISH.x + 10, DISH.y - 4, 26, { st: "peck", t: 2.2 });
+      return stay("idle", 1.2 + Math.random() * 1.5);
+    }
+    if (state === "hungry") {
+      if (r < 0.3)
+        return go(
+          TROUGH.x - 40 + Math.random() * 56,
+          TROUGH.y + 4 + Math.random() * 18,
+          40,
+          { st: "peck", t: 1.6 },
+        );
+      if (r < 0.6) {
+        const p = roamSpot();
+        return go(p.x, p.y, 42, { st: "idle", t: 0.6 });
+      }
+      if (r < 0.85) return stay("peck", 1 + Math.random() * 1.6);
+      return stay("idle", 0.8 + Math.random());
+    }
+    if (r < 0.24) {
+      const p = roamSpot();
+      return go(p.x, p.y, 28 + Math.random() * 10, {
+        st: "idle",
+        t: 0.5 + Math.random(),
+      });
+    }
+    if (r < 0.44) return stay("peck", 1.2 + Math.random() * 2);
+    if (r < 0.62) return stay("scratch", 1.2 + Math.random() * 1.4);
+    if (r < 0.72)
+      return go(DISH.x + 6 + Math.random() * 10, DISH.y - 4, 30, {
+        st: "peck",
+        t: 2,
+      });
+    if (r < 0.8)
+      return go(TROUGH.x - 14 + Math.random() * 28, TROUGH.y + 4, 30, {
+        st: "peck",
+        t: 2.4,
+      });
+    if (r < 0.9) return stay("idle", 0.8 + Math.random() * 1.8);
+    if (r < 0.95) {
+      c.hop = 1;
+      return stay("flap", 0.6);
+    }
+    // Chase another hen that's up and about; she runs off.
+    const others = coopHens.filter(
+      (o, j) => o !== c && j < F.hens.length && o.st !== "sit",
+    );
+    const o = others[Math.floor(Math.random() * others.length)];
+    if (!o) return stay("idle", 1);
+    go(o.x, o.y, 78, { st: "idle", t: 0.8 });
+    c.t = 1.6;
+    const ax = o.x - c.x,
+      ay = o.y - c.y,
+      d = Math.hypot(ax, ay) || 1;
+    Object.assign(o, {
+      act: "walk",
+      st: "walk",
+      tx: Math.max(ROAM.x0, Math.min(ROAM.x1, o.x + (ax / d) * 70)),
+      ty: Math.max(ROAM.y0, Math.min(ROAM.y1, o.y + (ay / d) * 40)),
+      sp: 80,
+      next: { st: "idle", t: 0.8 },
+      t: 1.6,
+      hop: 0.8,
+    });
+  }
+  /** One step of every hen in the coop (Low graphics or reduced motion: still). */
+  function henStep(dt) {
+    const n = cur().coop ? Math.min(cur().hens, coopHens.length) : 0,
+      now = serverNow();
+    for (let k = 0; k < n; k++) {
+      const c = coopHens[k];
+      if (c.hop > 0) c.hop = Math.max(0, c.hop - dt / 0.45);
+      const h = !V && F.hens[k],
+        state = h ? henState(h.eggAt, now) : "egg";
+      if (reduced || low) {
+        c.st = state === "laying" ? "sit" : "idle";
+        continue;
+      }
+      // A hen that starts laying goes to her nest straight away.
+      if (state === "laying" && c.st !== "sit" && c.act !== "walk")
+        c.t = Math.min(c.t, 0.2);
+      c.t -= dt;
+      if (c.act === "walk") {
+        const dx = c.tx - c.x,
+          dy = c.ty - c.y,
+          d = Math.hypot(dx, dy);
+        if (d < 2 || c.t <= 0) {
+          const nx = c.next;
+          if (nx) Object.assign(c, { act: nx.st, st: nx.st, t: nx.t });
+          else Object.assign(c, { act: "idle", st: "idle", t: 0.6 });
+          c.tx = null;
+          c.next = null;
+        } else {
+          c.x += (dx / d) * Math.min(d, c.sp * dt);
+          c.y += (dy / d) * Math.min(d, c.sp * dt);
+          if (Math.abs(dx) > 0.5) c.face = dx > 0 ? 1 : -1;
+        }
+      } else if (c.t <= 0) henChoose(c, state);
+      else if (c.st === "idle" && Math.random() < dt * 0.6) c.face *= -1;
+      if (c.st === "scratch" && Math.random() < dt * 5)
+        feel.burst(c.x - c.face * 8, c.y, 1, "dust", {
+          v: 26,
+          up: 20,
+          life: 0.45,
+          s: 3,
+          c: "#d9b06a",
+        });
+      c.nest = c.st === "sit";
+    }
+    // Hens keep a little room between them (one sitting stays put).
+    for (let a = 0; a < n; a++)
+      for (let b = a + 1; b < n; b++) {
+        const p = coopHens[a],
+          q = coopHens[b],
+          dx = q.x - p.x,
+          dy = (q.y - p.y) * 1.5,
+          d = Math.hypot(dx, dy);
+        if (d >= HEN_ROOM || d === 0) continue;
+        const push = (HEN_ROOM - d) * 0.5,
+          ux = dx / d,
+          uy = dy / d / 1.5;
+        const ps = p.st === "sit" ? 0 : 1,
+          qs = q.st === "sit" ? 0 : 1;
+        if (!ps && !qs) continue;
+        const k = 1 / (ps + qs);
+        p.x -= ux * push * ps * k;
+        p.y -= uy * push * ps * k;
+        q.x += ux * push * qs * k;
+        q.y += uy * push * qs * k;
+      }
+    for (let k = 0; k < n; k++) {
+      const c = coopHens[k];
+      c.x = Math.max(ROAM.x0, Math.min(ROAM.x1, c.x));
+      c.y = Math.max(ROAM.y0, Math.min(ROAM.y1, c.y));
+    }
+  }
   const plainWheat = () => F.barn[`${COOP.feedCrop}|`] || 0;
   /** A hen's state now: "hungry", "laying" or "egg". */
   const henNow = (h) => henState(h.eggAt, serverNow());
-  /** Tap a hen: feed her, collect her egg, or say when it's due. */
+  /** Gather one hen's egg (the basket tapped, or dragged over her). */
+  function gatherEgg(k) {
+    const h = F.hens[k],
+      c = coopHens[k];
+    if (!h || henNow(h) !== "egg") return false;
+    if (barnUsed() + 1 > F.barnCap) return null;
+    act({ a: "collect-egg", hen: h.i });
+    c.hop = 1;
+    sfx("coin");
+    return true;
+  }
+  const noWheat = () =>
+    toast(
+      `Hens eat ${COOP.feedQty} ${CROP[COOP.feedCrop].n}. Harvest some wheat first`,
+    );
+  /** Feed one hungry hen (a tap on the grain, or the grain dragged over her). */
+  function feedHen(k) {
+    const h = F.hens[k],
+      c = coopHens[k];
+    if (!h || henNow(h) !== "hungry") return false;
+    if (plainWheat() < COOP.feedQty) return null;
+    act({ a: "feed-hen", hen: h.i });
+    // She pecks at the grain scattered at her feet.
+    Object.assign(c, { act: "peck", st: "peck", t: 2.6, tx: null, hop: 0.6 });
+    feel.burst(c.x + c.face * 6, c.y - 2, 8, "dust", {
+      v: 40,
+      up: 36,
+      life: 0.7,
+      s: 3,
+      c: "#ffd65b",
+    });
+    sfx("cluck");
+    return true;
+  }
+  /** Tap a hen: a hungry one shows the grain, one with an egg the basket
+   *  (drag either over the flock to feed or gather from every hen it passes,
+   *  or tap it for just her); a laying one says when her egg is due. */
   function henTap(k) {
     const h = F.hens[k],
       c = coopHens[k];
@@ -1636,21 +1864,10 @@ export function openFarm(options) {
     if (st === "egg") {
       if (barnUsed() + 1 > F.barnCap)
         return toast("Your barn is full! Sell something or upgrade the barn.");
-      act({ a: "collect-egg", hen: h.i }, true);
-      return;
+      return henBubble(k, "basket");
     }
-    if (plainWheat() < COOP.feedQty)
-      return toast(
-        `Hens eat ${COOP.feedQty} ${CROP[COOP.feedCrop].n}. Harvest some wheat first`,
-      );
-    act({ a: "feed-hen", hen: h.i }, true);
-    feel.burst(c.x, c.y - 4, 5, "dust", {
-      v: 30,
-      up: 30,
-      life: 0.6,
-      s: 3,
-      c: "#ffd65b",
-    });
+    if (plainWheat() < COOP.feedQty) return noWheat();
+    henBubble(k, "feed");
   }
   /** Feed every hungry hen (as far as the wheat goes), collect every egg (room allowing). */
   function coopAll(kind) {
@@ -1666,10 +1883,7 @@ export function openFarm(options) {
         n++;
       } else if (kind === "feed" && st === "hungry") {
         if (plainWheat() < COOP.feedQty) {
-          if (!n)
-            toast(
-              `Hens eat ${COOP.feedQty} ${CROP[COOP.feedCrop].n}. Harvest some wheat first`,
-            );
+          if (!n) noWheat();
           break;
         }
         act({ a: "feed-hen", hen: h.i });
@@ -1683,18 +1897,18 @@ export function openFarm(options) {
     }
     return n;
   }
-  /** The hen (index) a tap on the run lands on: her body or her bubble. */
-  function henAt(w) {
+  /** The hen (index) a point lands on: her body or her bubble. */
+  function henAt(w, reach = 32) {
     let best = -1,
       bd = 1e9;
     F.hens.forEach((h, k) => {
       const c = coopHens[k];
       if (!c) return;
       const d = Math.min(
-        Math.hypot(w.x - c.x, w.y - (c.y - 14)),
-        Math.hypot(w.x - c.x, w.y - (c.y - 50)),
+        Math.hypot(w.x - c.x, w.y - (c.y - 15)),
+        Math.hypot(w.x - c.x, w.y - (c.y - 52)),
       );
-      if (d < 32 && d < bd) {
+      if (d < reach && d < bd) {
         bd = d;
         best = k;
       }
@@ -1710,48 +1924,8 @@ export function openFarm(options) {
     sfx("tick");
     openSheet("coop");
   }
-  const hens = [
-    {
-      k: "white",
-      x: 120,
-      y: 800,
-      face: 1,
-      tx: null,
-      ty: null,
-      wait: 1,
-      st: "idle",
-    },
-    {
-      k: "brown",
-      x: 230,
-      y: 840,
-      face: -1,
-      tx: null,
-      ty: null,
-      wait: 2,
-      st: "idle",
-    },
-    {
-      k: "white",
-      x: 70,
-      y: 880,
-      face: 1,
-      tx: null,
-      ty: null,
-      wait: 3,
-      st: "idle",
-    },
-    {
-      k: "brown",
-      x: 480,
-      y: 960,
-      face: 1,
-      tx: null,
-      ty: null,
-      wait: 2,
-      st: "idle",
-    },
-  ];
+  // The hens that used to wander the meadow now live in the coop.
+  const hens = [];
   const BUTTER = [0, 1, 2, 3].map((i) => ({
     hx: [230, 640, 1300, 1600][i],
     hy: [600, 300, 860, 720][i],
@@ -1862,74 +2036,152 @@ export function openFarm(options) {
       g.arc(x, y, 1.2, 0, 7);
       g.fill();
     }
-    // dirt paths with pebbles
-    const dirt = (pts, w) => {
-      g.lineCap = "round";
-      g.lineJoin = "round";
-      g.strokeStyle = "rgba(90,70,40,.35)";
-      g.lineWidth = w + 12;
-      g.beginPath();
-      pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y)));
-      g.stroke();
-      g.strokeStyle = "#d8b98a";
-      g.lineWidth = w;
-      g.stroke();
-      g.strokeStyle = "#e6cba0";
-      g.lineWidth = w * 0.45;
-      g.stroke();
+    /* Dirt paths: one network, painted in layers, so where two paths meet
+       they read as one (each path used to bring its own dark verge, laid
+       over the paths painted before it). Corners are rounded, the verge is
+       painted once for all of them (half resolution, then laid down at one
+       strength), then every path's dirt, then every path's lighter middle,
+       then pebbles. */
+    const PATHS = [
+      // the road along the top, and home's drive up to it
+      [
+        [
+          [WX0 - 20, -70],
+          [WX1 + 20, -60],
+        ],
+        70,
+      ],
+      [
+        [
+          [HOUSE.x, HOUSE.y + 10],
+          [HOUSE.x, -66],
+        ],
+        46,
+      ],
+      // the back row: home to the barn
+      [
+        [
+          [HOUSE.x + 60, HOUSE.y + 10],
+          [BARN.x - 40, BARN.y + 12],
+        ],
+        46,
+      ],
+      // up from the bottom of the farm to the field's gate
+      [
+        [
+          [FCX, WY1 + 30],
+          [FCX, OY + FH + 24],
+        ],
+        64,
+      ],
+      // the lane in front of the field: west and up to home
+      [
+        [
+          [FCX, OY + FH + 70],
+          [420, OY + FH + 70],
+          [260, 620],
+          [HOUSE.x, HOUSE.y + 10],
+        ],
+        54,
+      ],
+      // east to the doghouse
+      [
+        [
+          [FCX, OY + FH + 70],
+          [1460, OY + FH + 70],
+          [DOGH.x - 50, DOGH.y],
+        ],
+        54,
+      ],
+      // down from the lane's bend to the pond
+      [
+        [
+          [420, OY + FH + 70],
+          [372, 868],
+          [POND.x + 76, POND.y - 64],
+        ],
+        42,
+      ],
+    ];
+    /** A path's line with its corners rounded (radius up to `r`). */
+    const pathLine = (c, pts, r = 70) => {
+      c.moveTo(pts[0][0], pts[0][1]);
+      for (let i = 1; i < pts.length - 1; i++) {
+        const [ax, ay] = pts[i - 1],
+          [bx, by] = pts[i],
+          [cx, cy] = pts[i + 1],
+          l1 = Math.hypot(bx - ax, by - ay),
+          l2 = Math.hypot(cx - bx, cy - by),
+          k = Math.min(r, l1 / 2, l2 / 2);
+        c.lineTo(bx - ((bx - ax) / l1) * k, by - ((by - ay) / l1) * k);
+        c.quadraticCurveTo(
+          bx,
+          by,
+          bx + ((cx - bx) / l2) * k,
+          by + ((cy - by) / l2) * k,
+        );
+      }
+      const last = pts[pts.length - 1];
+      c.lineTo(last[0], last[1]);
     };
-    dirt(
-      [
-        [FCX, WY1 + 30],
-        [FCX, OY + FH + 24],
-      ],
-      66,
-    );
-    dirt(
-      [
-        [WX0 - 20, -70],
-        [WX1 + 20, -60],
-      ],
-      70,
-    );
-    dirt(
-      [
-        [HOUSE.x, HOUSE.y + 10],
-        [HOUSE.x, -66],
-      ],
-      44,
-    );
-    dirt(
-      [
-        [FCX, OY + FH + 70],
-        [420, OY + FH + 70],
-        [260, 620],
-        [HOUSE.x, HOUSE.y + 10],
-      ],
-      52,
-    );
-    dirt(
-      [
-        [FCX, OY + FH + 70],
-        [1460, OY + FH + 70],
-        [DOGH.x - 50, DOGH.y],
-      ],
-      52,
-    );
-    dirt(
-      [
-        [260, OY + FH + 70],
-        [POND.x + 60, POND.y - 70],
-      ],
-      40,
-    );
-    dirt(
-      [
-        [HOUSE.x + 80, HOUSE.y + 10],
-        [BARN.x - 40, BARN.y + 12],
-      ],
-      44,
-    );
+    const strokeAll = (c, color, widen, scale) => {
+      c.lineCap = "round";
+      c.lineJoin = "round";
+      c.strokeStyle = color;
+      for (const [pts, w] of PATHS) {
+        c.lineWidth = w * scale + widen;
+        c.beginPath();
+        pathLine(c, pts);
+        c.stroke();
+      }
+    };
+    {
+      // The verge: every path's at once, at half size, laid down at one strength.
+      const vc = document.createElement("canvas");
+      vc.width = Math.ceil(BW / 2);
+      vc.height = Math.ceil(BH / 2);
+      const v = vc.getContext("2d");
+      v.scale(0.5, 0.5);
+      v.translate(-WX0, -WY0);
+      strokeAll(v, "#5a4628", 14, 1);
+      g.save();
+      g.globalAlpha = 0.3;
+      g.drawImage(vc, WX0, WY0, BW, BH);
+      g.restore();
+      vc.width = vc.height = 0;
+    }
+    strokeAll(g, "#d6b688", 0, 1);
+    strokeAll(g, "#e3c79b", 0, 0.5);
+    // Pebbles and darker grit along each path, the same every time.
+    for (const [pts, w] of PATHS)
+      for (let i = 0; i < pts.length - 1; i++) {
+        const [ax, ay] = pts[i],
+          [bx, by] = pts[i + 1],
+          len = Math.hypot(bx - ax, by - ay),
+          nx = -(by - ay) / len,
+          ny = (bx - ax) / len;
+        for (let k = 0; k < len / 9; k++) {
+          const f = rnd(),
+            off = (rnd() - 0.5) * w * 0.8,
+            x = ax + (bx - ax) * f + nx * off,
+            y = ay + (by - ay) * f + ny * off;
+          if (rnd() < 0.3) {
+            const pr = 1.6 + rnd() * 2.4;
+            g.fillStyle = "rgba(90,70,45,.35)";
+            g.beginPath();
+            g.ellipse(x + 0.6, y + 1, pr, pr * 0.7, 0, 0, 7);
+            g.fill();
+            g.fillStyle = ["#c9b79c", "#b8a283", "#e2d4bd"][k % 3];
+            g.beginPath();
+            g.ellipse(x, y, pr, pr * 0.7, 0, 0, 7);
+            g.fill();
+          } else {
+            g.fillStyle =
+              rnd() < 0.5 ? "rgba(150,112,64,.35)" : "rgba(255,240,210,.35)";
+            g.fillRect(x, y, 1.6, 1.6);
+          }
+        }
+      }
     // field bed
     const x0 = OX - 20,
       y0 = OY - 16,
@@ -2097,6 +2349,49 @@ export function openFarm(options) {
       post(g, x1, y1);
     }
   }
+  /** A Sunny Egg in a hen's bubble, drawn as shapes so it stays crisp at
+   *  any zoom (a small picture lost its sun). */
+  function eggIcon(g, x, y) {
+    g.save();
+    g.translate(x, y);
+    g.beginPath();
+    g.moveTo(0, -9.5);
+    g.bezierCurveTo(5.6, -9.5, 7.8, -1.2, 7.8, 2.6);
+    g.bezierCurveTo(7.8, 7.2, 4.2, 9.8, 0, 9.8);
+    g.bezierCurveTo(-4.2, 9.8, -7.8, 7.2, -7.8, 2.6);
+    g.bezierCurveTo(-7.8, -1.2, -5.6, -9.5, 0, -9.5);
+    const eg = g.createRadialGradient(-2.5, -4, 0.5, 0, 0, 11);
+    eg.addColorStop(0, "#ffffff");
+    eg.addColorStop(0.6, "#fff0cf");
+    eg.addColorStop(1, "#f0cf8f");
+    g.fillStyle = eg;
+    g.fill();
+    g.strokeStyle = "#a87830";
+    g.lineWidth = 1.3;
+    g.stroke();
+    g.strokeStyle = "#f59a1c";
+    g.lineWidth = 1.2;
+    g.lineCap = "round";
+    g.beginPath();
+    for (let k = 0; k < 8; k++) {
+      const a = (k / 8) * Math.PI * 2;
+      g.moveTo(Math.cos(a) * 4.6, 3 + Math.sin(a) * 4.6);
+      g.lineTo(Math.cos(a) * 6.2, 3 + Math.sin(a) * 6.2);
+    }
+    g.stroke();
+    g.fillStyle = "#ffb02e";
+    g.beginPath();
+    g.arc(0, 3, 3.3, 0, 7);
+    g.fill();
+    g.strokeStyle = "#d9801a";
+    g.lineWidth = 0.9;
+    g.stroke();
+    g.fillStyle = "rgba(255,255,255,.9)";
+    g.beginPath();
+    g.ellipse(-3.1, -4.4, 1.3, 2.6, 0.35, 0, 7);
+    g.fill();
+    g.restore();
+  }
   /* Each hen's state in a little bubble over her (your farm only): wheat
      when she's hungry, a filling ring while she lays, an egg when it's ready. */
   function drawHenBubbles(time) {
@@ -2136,8 +2431,9 @@ export function openFarm(options) {
         ctx.arc(x, y, 7, -Math.PI / 2, -Math.PI / 2 + f * Math.PI * 2);
         ctx.stroke();
       } else {
-        const im = st === "egg" ? ITEM.egg : ITEM[COOP.feedCrop];
-        if (im?.complete) ctx.drawImage(im, x - 9.5, y - 11, 19, 22);
+        if (st === "egg") eggIcon(ctx, x, y);
+        else if (ITEM[COOP.feedCrop]?.complete)
+          ctx.drawImage(ITEM[COOP.feedCrop], x - 9.5, y - 11, 19, 22);
       }
       ctx.globalAlpha = 1;
     });
@@ -2266,9 +2562,13 @@ export function openFarm(options) {
       ph: i,
       shake: 0,
     }))
-    // The round tree below the lane was felled for the Chicken Coop
+    // The round tree below the lane and the cherry tree right of it were
+    // felled for the Chicken Coop
     // (filtered after, so every other tree keeps its own look).
-    .filter((t) => !(t.x === 1120 && t.y === 1060));
+    .filter(
+      (t) =>
+        !((t.x === 1120 && t.y === 1060) || (t.x === 1450 && t.y === 1040)),
+    );
   /** Squash-and-stretch after a tap (house, mill, barn…): 1 → 0. */
   const bounce = {};
   const squash = (k) => {
@@ -5518,6 +5818,46 @@ export function openFarm(options) {
       carryOne("seed", id, i);
     };
   }
+  /** By a hen in the coop, like the seed by an empty plot: the grain (for a
+   *  hungry hen) or the egg basket (for one with an egg). Drag it over the
+   *  flock and every hungry hen it passes is fed, or every egg gathered; tap
+   *  it for just her. It is the seed bubble, so it closes like it. */
+  function henBubble(k, kind) {
+    const el = $("fm-seed"),
+      b = el.querySelector("[data-seedbub]"),
+      c = coopHens[k],
+      eggs = F.hens.filter((h) => henNow(h) === "egg").length;
+    $("fm-sickle").hidden = true;
+    $("fm-acts").hidden = true;
+    b.innerHTML =
+      kind === "feed"
+        ? `<img src="${icon(COOP.feedCrop)}" alt=""><b>×${plainWheat()}</b>`
+        : `${I("basket")}<b>×${eggs}</b>`;
+    b.setAttribute(
+      "aria-label",
+      kind === "feed"
+        ? "Feed: tap, or drag across the hungry hens"
+        : "Gather eggs: tap, or drag across the hens",
+    );
+    const o = hudOff(),
+      sp0 = toScreen(c.x + 22, c.y - 30);
+    el.hidden = false;
+    el.dataset.plot = "";
+    el.dataset.hen = String(k);
+    el.dataset.kind = kind;
+    el.style.left = `${Math.max(8, Math.min(o.w - 72, sp0.x - o.x - 32))}px`;
+    el.style.top = `${Math.max(56, Math.min(o.h - 72, sp0.y - o.y - 70))}px`;
+    b.onpointerdown = (e) => startCarry(e, kind, null, k);
+    b.onclick = () => {
+      if (carried()) return;
+      el.hidden = true;
+      carryOne(kind, null, k);
+      if (kind === "basket") {
+        clearTimeout(flushTimer);
+        flushTimer = setTimeout(flush, 0);
+      }
+    };
+  }
   /** The icon a tool shows (the can and net you own). */
   const toolIcon = (kind, id) =>
     kind === "can"
@@ -5625,6 +5965,18 @@ export function openFarm(options) {
   }
   function carryOne(kind, id, i) {
     if (i < 0 || carry?.done.has(i)) return;
+    if (kind === "feed" || kind === "basket") {
+      // A hen only counts once she's fed (or gathered from): the grain or
+      // the basket may pass her again.
+      const done = kind === "feed" ? feedHen(i) : gatherEgg(i);
+      if (done) carry?.done.add(i);
+      else if (done === null && !carry?.out) {
+        if (carry) carry.out = true;
+        if (kind === "feed") noWheat();
+        else toast("Your barn is full! Sell something or upgrade the barn.");
+      }
+      return;
+    }
     carry?.done.add(i);
     const p = F.plots[i];
     if (!p || p.locked) return;
@@ -5674,7 +6026,11 @@ export function openFarm(options) {
       g.innerHTML =
         carry.kind === "seed"
           ? `<img src="${icon(carry.id)}" alt="">`
-          : I(toolIcon(carry.kind, carry.id));
+          : carry.kind === "feed"
+            ? `<img src="${icon(COOP.feedCrop)}" alt="">`
+            : carry.kind === "basket"
+              ? I("basket")
+              : I(toolIcon(carry.kind, carry.id));
       g.hidden = false;
       // The plot it started from counts too.
       carryOne(carry.kind, carry.id, carry.from);
@@ -5688,8 +6044,13 @@ export function openFarm(options) {
     g.style.left = `${e.clientX - lr.left - o.x}px`;
     g.style.top = `${e.clientY - lr.top - o.y}px`;
     const w = toWorld(e.clientX, e.clientY);
-    carryOne(carry.kind, carry.id, plotAt(w.x, w.y));
+    carryOne(carry.kind, carry.id, carryTarget(w));
   }
+  /** What a carried seed or tool is over: a plot, or a hen for the grain. */
+  const carryTarget = (w) =>
+    carry?.kind === "feed" || carry?.kind === "basket"
+      ? henAt(w, 36)
+      : plotAt(w.x, w.y);
   /** Carrying a seed or a tool to the edge of the view scrolls the farm that
    *  way, faster the closer to the edge; what slides under the finger is
    *  sown, watered or cut as it goes. Called every frame; it starts once the
@@ -5722,7 +6083,7 @@ export function openFarm(options) {
     clampCam();
     if (cam.x === bx && cam.y === by) return; // already at the farm's edge
     const w = toWorld(carry.lx, carry.ly);
-    carryOne(carry.kind, carry.id, plotAt(w.x, w.y));
+    carryOne(carry.kind, carry.id, carryTarget(w));
   }
   function carryEnd(e) {
     if (!carry || e.pointerId !== carry.pid) return;
@@ -6169,7 +6530,9 @@ export function openFarm(options) {
         const c = coopHens[k];
         items.push({
           y: c.y,
-          d: () =>
+          d: () => {
+            // A laying hen sits on a nest of straw.
+            if (c.st === "sit") GFX.blit(ctx, GFX.nest(), c.x, c.y + 2);
             GFX.chicken(
               ctx,
               c.k,
@@ -6179,7 +6542,8 @@ export function openFarm(options) {
               c.y - Math.sin((c.hop || 0) * Math.PI) * 14,
               HEN_SCALE,
               c.face,
-            ),
+            );
+          },
         });
       }
       items.push({ y: RUN.y1 + 1, d: () => drawRunFence(ctx, false) });
@@ -6972,6 +7336,8 @@ export function openFarm(options) {
       if (h.hop > 0) h.hop = Math.max(0, h.hop - dt / 0.45);
       if (h.fast > 0) h.fast -= dt;
     });
+    // The coop's hens roam their run (henStep).
+    henStep(dt);
     if (
       !reduced &&
       !V &&
@@ -6986,46 +7352,6 @@ export function openFarm(options) {
         t: 0,
         life: 2.6,
         vx: 4 + Math.random() * 6,
-      });
-    }
-    // The coop's hens potter about their own spot; a laying hen sits still.
-    if (cur().coop) {
-      const now = serverNow();
-      coopHens.forEach((c, k) => {
-        if (c.hop > 0) c.hop = Math.max(0, c.hop - dt / 0.45);
-        const h = !V && F.hens[k];
-        if (reduced || (h && henState(h.eggAt, now) === "laying")) {
-          c.st = "idle";
-          c.tx = null;
-          return;
-        }
-        if (c.wait > 0) {
-          c.wait -= dt;
-          if (c.wait <= 0) c.st = "idle";
-          return;
-        }
-        if (c.tx == null) {
-          if (Math.random() < 0.5) {
-            c.st = "peck";
-            c.wait = 1 + Math.random() * 2;
-            return;
-          }
-          c.tx = c.hx + (Math.random() - 0.5) * 10;
-          c.ty = c.hy + (Math.random() - 0.5) * 8;
-          c.st = "walk";
-        }
-        const dx = c.tx - c.x,
-          dy = c.ty - c.y,
-          d = Math.hypot(dx, dy);
-        if (d < 1.5) {
-          c.tx = null;
-          c.st = "idle";
-          c.wait = 1 + Math.random() * 3;
-          return;
-        }
-        c.x += (dx / d) * Math.min(d, 22 * dt);
-        c.y += (dy / d) * Math.min(d, 22 * dt);
-        if (Math.abs(dx) > 0.5) c.face = dx > 0 ? 1 : -1;
       });
     }
     FSMOKE.forEach((m) => {
@@ -9041,7 +9367,7 @@ export function openFarm(options) {
   // The animals stand where you left them.
   if (left) {
     if (left.dog) Object.assign(dog, left.dog, { path: [], moving: false });
-    left.hens?.forEach((h, k) => hens[k] && Object.assign(hens[k], h));
+    left.hens?.forEach((h, k) => coopHens[k] && Object.assign(coopHens[k], h));
     left.ducks?.forEach((a, k) => FDUCKS[k] && (FDUCKS[k].a = a));
     if (left.cow) Object.assign(COW, left.cow);
   }
@@ -9116,14 +9442,17 @@ export function openFarm(options) {
           face: dog.face,
           wait: 1 + Math.random() * 3,
         },
-        hens: hens.map((h) => ({
+        // The coop's hens: where each stood, sitting or not.
+        hens: coopHens.map((h) => ({
           x: h.x,
           y: h.y,
           face: h.face,
           tx: null,
           ty: null,
-          st: "idle",
-          wait: 1 + Math.random() * 2,
+          next: null,
+          act: h.st === "sit" ? "sit" : "idle",
+          st: h.st === "sit" ? "sit" : "idle",
+          t: 1 + Math.random() * 2,
         })),
         ducks: FDUCKS.map((d) => d.a),
         cow: { x: COW.x, face: COW.face, t: COW.t },
@@ -9181,7 +9510,8 @@ export function openFarm(options) {
         TOD = v ?? deviceTimeOfDay();
       },
       feel,
-      hens,
+      /** The coop's hens (tests): where each one is and what it's doing. */
+      hens: coopHens,
       /** The guard dog (tests): where it is, its route, and a bark. */
       dog,
       dogTo,

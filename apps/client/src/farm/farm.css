@@ -3364,6 +3364,10 @@ body.hub-farm #account-leaves {
   height: 100%;
   object-fit: contain;
 }
+/* Item pictures leave a margin in their box (menus scale them up): fill the chip. */
+.farm-layer .coop-hens .hen .ic img {
+  transform: scale(1.35);
+}
 .farm-layer .coop-hens .hen b {
   display: block;
   font-size: 0.86em;

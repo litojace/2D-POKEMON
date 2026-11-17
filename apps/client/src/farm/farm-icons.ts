@@ -200,6 +200,14 @@ const ICON_SRC = (() => {
       ) +
       c(12, 14, 2.4, "#ffb02e") +
       hl("M9 8c.6-1.4 1.4-2.4 2.4-2.8"),
+    // The egg basket: drag it over the coop's hens to gather their eggs.
+    basket:
+      l("M6 11c0-5 3-7.5 6-7.5s6 2.5 6 7.5", 1.8, "#9a6a34") +
+      c(9, 10.5, 2.6, "#fff3d6") +
+      c(13.5, 10, 2.6, "#ffe7b0") +
+      c(11.3, 8.6, 2.4, "#fffaf0") +
+      p("M3 11h18l-2 9.5H5z", "#d99a52") +
+      l("M5.5 14.5h13M6.3 17.5h11.4M9 11.5l.8 9M15 11.5l-.8 9", 1, "#a8712f"),
     fish:
       p("M3 12c3-4 9-5 14 0-5 5-11 4-14 0z", "#ff8a3d") +
       p("M17 12l4-3v6z", "#ffb36b") +

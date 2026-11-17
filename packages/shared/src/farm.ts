@@ -1510,9 +1510,10 @@ export const DECOR_GRID = 10;
 /** The land decorations may stand on (world px, the farm scene's). */
 export const DECOR_AREA = { x0: 20, x1: 1740, y0: 120, y1: 1060 } as const;
 /**
- * The Chicken Coop (migration 20261117100000_farm_coop_cows.sql): a wooden
- * coop and its run on the grass below the lane, right of the gate's path
- * (the farm's tree that stood there was felled). It opens at farm level 14
+ * The Chicken Coop (migration 20261117100000_farm_coop_cows.sql; its ground
+ * widened in 20261117160000_farm_coop_wider.sql): a wooden coop and its run
+ * on the grass below the lane, right of the gate's path (the farm's trees at
+ * (1120, 1060) and (1450, 1040) were felled for it). It opens at farm level 14
  * with 3 hens; 6 more can be bought, each from its own farm level, so the
  * eggs stay a side income next to the field (docs/farm-coop.md). A hen fed
  * 2 Breeze Wheat from the barn lays one egg after `laySeconds` (server
@@ -1525,10 +1526,10 @@ export const COOP = {
   xp: 40,
   eggXp: 3,
   /** The ground it takes (world px): no decoration stands here. */
-  x0: 990,
-  x1: 1350,
+  x0: 960,
+  x1: 1440,
   y0: 846,
-  y1: 1010,
+  y1: 1040,
   /** Hens it opens with, and the most it holds. */
   hens: 3,
   maxHens: 9,
@@ -1588,7 +1589,6 @@ export const DECOR_BLOCKS: readonly DecorBlock[] = [
       [1700, 330],
       [70, 210],
       [640, 1050],
-      [1450, 1040],
       [1720, 1000],
       [40, 1060],
     ] as const
