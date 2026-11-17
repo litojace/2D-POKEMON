@@ -4,7 +4,12 @@ import {
   WORLD_ART,
 } from "../../../../packages/shared/src/world-art";
 import { cosmeticLayer, type Skin } from "./cosmetics";
-import { profilePartOrder, profileEmissionPoint } from "../creature-profile";
+import {
+  profilePartOrder,
+  profileEmissionPoint,
+  PROFILE_HEAD_WIDTH,
+  PROFILE_FACE_PARTS,
+} from "../creature-profile";
 import { drawElementGlyph } from "../element-effects";
 import type Phaser from "phaser";
 import { CHARACTERS, type CharacterId } from "@arena/shared";
@@ -1415,10 +1420,7 @@ export class FighterRig {
       ? hexToNumber(paletteFor(this.character, pose.skin).glow)
       : undefined;
     const sc = this.baseX;
-    const at = (part: Part, ax: number, ay: number) => {
-      if (dir !== "down")
-        [ax, ay] = profileEmissionPoint(this.character, dir, part, ax, ay);
-      const p = rigPoint(part, ax, ay);
+    const screenPoint = (part: Part, p: { x: number; y: number }) => {
       const asset = this.assets.find(
         (a) => a.key === rigKey(this.character, dir, part),
       )!;
@@ -1431,6 +1433,19 @@ export class FighterRig {
         x: this.root.x + (image.x + dx * cos - dy * sin) * this.root.scaleX,
         y: this.root.y + (image.y + dx * sin + dy * cos) * this.root.scaleY,
       };
+    };
+    const at = (part: Part, ax: number, ay: number) => {
+      if (dir !== "down")
+        [ax, ay] = profileEmissionPoint(this.character, dir, part, ax, ay);
+      return screenPoint(part, rigPoint(part, ax, ay));
+    };
+    const mount = (part: Part, ax: number, ay: number) => {
+      if (
+        (dir === "left" || dir === "right") &&
+        PROFILE_FACE_PARTS.includes(part)
+      )
+        ax = 100 + (ax - 100) * PROFILE_HEAD_WIDTH;
+      return screenPoint(part, { x: (ax - 100) * 0.5, y: (ay - 130) * 0.5 });
     };
     // The tail tip sits on the far side when facing right.
     const tailX = (ax: number) => (dir === "right" ? 200 - ax : ax);
@@ -1585,6 +1600,8 @@ export class FighterRig {
           knockedOut: state === "defeat" && this.fxState !== "defeat",
           ultimate: skill === 3 && this.lastProgress < 0.3 && progress >= 0.3,
           ambient: pose.ambient !== false,
+          mount,
+          facing: dir,
           flat: this.groundFlat,
         },
         art,

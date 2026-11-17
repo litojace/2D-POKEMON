@@ -25,7 +25,16 @@ const migration =
   readFileSync(
     "supabase/migrations/071_nature_void_knights_and_cyber.sql",
     "utf8",
-  );
+  ) +
+  readFileSync(
+    "supabase/migrations/20261117170000_fashion_collections.sql",
+    "utf8",
+  ) +
+  readFileSync(
+    "supabase/migrations/20261117170001_distinct_epic_collections.sql",
+    "utf8",
+  ) +
+  readFileSync("supabase/migrations/20261117170002_nova_vanguard.sql", "utf8");
 /** Missions are re-seeded (with the solo flag) by 014. */
 const missionMigration = readFileSync(
   "supabase/migrations/014_missions.sql",
@@ -153,7 +162,7 @@ describe("shop catalog", () => {
       expect(missionMigration, m.metric).toContain(`'${m.metric}'`);
   });
 
-  it("has 7 skins for every champion: 3 Common, 2 Rare, 1 Epic, 1 Mythical", () => {
+  it("has 14 skins for every champion: 3 Common, 5 Rare, 5 Epic, 1 Mythical", () => {
     for (const id of Object.keys(CHARACTERS)) {
       const mine = CHAMPION_SKINS.filter((s) => s.champion === id);
       const count = (r: string) => mine.filter((s) => s.rarity === r).length;
@@ -166,9 +175,9 @@ describe("shop catalog", () => {
           count("mythical"),
         ],
         id,
-      ).toEqual([8, 3, 2, 2, 1]);
+      ).toEqual([14, 3, 5, 5, 1]);
     }
-    expect(CHAMPION_SKINS).toHaveLength(8 * 18);
+    expect(CHAMPION_SKINS).toHaveLength(14 * Object.keys(CHARACTERS).length);
     // Each champion has one Cyber Mecha Epic.
     for (const id of Object.keys(CHARACTERS))
       expect(
