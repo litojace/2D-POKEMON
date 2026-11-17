@@ -686,7 +686,7 @@ export function openFarm(options) {
         m: Number(st.milkMult),
         prev: Number(st.milkMult),
       };
-    // The Bakery and its oven's queue (migration 20261117120000).
+    // The Bakery and its oven's queue (migration 20261117130000).
     F.bakery = {
       owned: !!st.bakery?.owned,
       slots: st.bakery?.slots ?? BAKERY.startSlots,

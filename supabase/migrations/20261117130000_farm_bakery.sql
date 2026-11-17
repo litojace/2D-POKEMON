@@ -1,12 +1,17 @@
 -- The Bakery: the Farm's first processing chain (docs/farm-bakery.md).
--- Run after 20261116180000_spire_zone2.sql. Safe to run again.
+-- Run after 20261117120000_farm_decor_catalog.sql and the Chicken Coop's
+-- 20261117100000_farm_coop_cows.sql when those are there. Safe to run again.
+-- Every function it changes is wrapped, not copied (the old one renamed
+-- *_prebakery), so the coop's and the decorations' versions stay in force.
 --   * arena_farm_bakery_recipes: six recipes (the same as BAKERY_RECIPES in
 --     packages/shared/src/farm-bakery.ts): ingredients from the barn (plain
 --     crops and Storm Milk), oven time, farm XP, a fixed sell price and the
 --     farm level each unlocks at. Each baked good is a barn good.
---   * The Bakery stands below the lane, right of the path (its ground is
---     1070..1320 × 850..940). Decorations can't stand there any more
---     (arena_farm_decor_fits, as DECOR_BLOCKS); any that did go into
+--   * The Bakery stands below the field, left of the path down from the gate
+--     (its ground is 520..770 × 850..940; the Chicken Coop's is right of the
+--     path). Decorations can't stand there any more (arena_farm_decor_fits,
+--     as DECOR_BLOCKS, and the decor actions themselves, so the rule holds
+--     whatever replaces arena_farm_decor_fits later); any that did go into
 --     storage, to place again for free.
 --   * It is built at farm level 10 for 1,200 Gold Leaves (+40 farm XP). Its
 --     oven bakes one thing at a time, from a queue of 2 slots (600, 1,200
@@ -23,10 +28,11 @@
 --     buy-bake-slot, bake, bake-collect, bake-rush, sell-good. arena_farm_state adds
 --     'bakery': owned, slots and the queue.
 --   * Orders: with a bakery, some new orders also ask for a baked good it
---     can make (arena_farm_new_order wraps 070's, now
---     arena_farm_new_order_crops: change the crops' orders there).
---     arena_farm_order names any good in its "You need" answer (a missing
---     crop name used to make the whole answer null).
+--     can make (arena_farm_new_order wraps the one before it, now
+--     arena_farm_new_order_prebakery). arena_farm_order checks baked goods
+--     before handing over to the one before it (arena_farm_order_prebakery):
+--     040's answer names only crops, and a missing name made it null, which
+--     counted as delivered.
 begin;
 
 create table if not exists public.arena_farm_bakery_recipes (
@@ -82,7 +88,7 @@ with moved as (
   delete from public.arena_farm_decor_pieces p
    using public.arena_farm_decor_items i
    where i.id = p.item
-     and p.x - coalesce(i.w, 30) < 1320 and 1070 < p.x + coalesce(i.w, 30)
+     and p.x - coalesce(i.w, 30) < 770 and 520 < p.x + coalesce(i.w, 30)
      and p.y - coalesce(i.d, 14) < 940 and 850 < p.y + 4
   returning p.player_id, p.item
 )
@@ -90,53 +96,40 @@ insert into public.arena_farm_decor_credits(player_id, item, qty)
 select player_id, item, count(*)::integer from moved group by player_id, item
 on conflict (player_id, item) do update set qty = public.arena_farm_decor_credits.qty + excluded.qty;
 
--- As in 20261116120000, with the Bakery's ground among the blocks.
+-- Whether a decoration standing at (px, py) would be on the Bakery's ground.
+create or replace function public.arena_farm_on_bakery(v_item text, px integer, py integer) returns boolean
+language sql stable security definer set search_path = public as $$
+  select px - coalesce(i.w, 30) < 770 and 520 < px + coalesce(i.w, 30)
+     and py - coalesce(i.d, 14) < 940 and 850 < py + 4
+    from (select (select w from public.arena_farm_decor_items where id = v_item) w,
+                 (select d from public.arena_farm_decor_items where id = v_item) d) i
+$$;
+revoke all on function public.arena_farm_on_bakery(text, integer, integer)
+  from public, anon, authenticated, service_role;
+
+-- The decoration check as before (the farm's own, the coop's, the
+-- decorations'), with the Bakery's ground among the blocks. Off the farm
+-- stays off the farm; anything else on its ground is in the way, before any
+-- other decoration (as decorFits).
+do $$
+begin
+  if to_regprocedure('public.arena_farm_decor_fits_prebakery(uuid, text, integer, integer, bigint)') is null then
+    alter function public.arena_farm_decor_fits(uuid, text, integer, integer, bigint)
+      rename to arena_farm_decor_fits_prebakery;
+  end if;
+end $$;
 create or replace function public.arena_farm_decor_fits(pid uuid, v_item text, px integer, py integer,
   except_id bigint default null) returns text
 language plpgsql stable security definer set search_path = public as $$
-declare i public.arena_farm_decor_items; x0 double precision; x1 double precision;
-  y0 double precision; y1 double precision; b record; cx double precision; cy double precision;
+declare e text = public.arena_farm_decor_fits_prebakery(pid, v_item, px, py, except_id);
 begin
-  select * into i from public.arena_farm_decor_items where id = v_item;
-  if px is null or py is null or px % 10 <> 0 or py % 10 <> 0 then
-    return 'Choose a spot on the farm';
+  if e is distinct from 'Choose a spot on the farm' and public.arena_farm_on_bakery(v_item, px, py) then
+    return 'Something is in the way';
   end if;
-  x0 = px - coalesce(i.w, 30); x1 = px + coalesce(i.w, 30);
-  y0 = py - coalesce(i.d, 14); y1 = py + 4;
-  if x0 < 20 or x1 > 1740 or y0 < 120 or y1 > 1060 then
-    return 'Choose a spot on the farm';
-  end if;
-  for b in select * from (values
-      ('rect', 314, 1456, 338, 770), ('rect', 380, 1480, 770, 842),
-      ('rect', 20, 1460, 120, 360), ('rect', 1450, 1750, 390, 690),
-      ('rect', 80, 220, 630, 726), ('rect', 1470, 1680, 754, 840),
-      ('rect', 250, 326, 520, 576), ('rect', 830, 940, 770, 1060),
-      ('rect', 1070, 1320, 850, 940)) r(k, a1, a2, a3, a4) loop
-    if x0 < b.a2 and b.a1 < x1 and y0 < b.a4 and b.a3 < y1 then
-      return 'Something is in the way';
-    end if;
-  end loop;
-  -- Ovals: centre, radii (the pond, then the farm's trees).
-  for b in select * from (values (250, 990, 190, 82),
-      (338, 230, 52, 26), (812, 190, 52, 26), (44, 400, 52, 26), (1480, 340, 52, 26),
-      (1700, 330, 52, 26), (70, 210, 52, 26), (640, 1050, 52, 26), (1120, 1060, 52, 26),
-      (1450, 1040, 52, 26), (1720, 1000, 52, 26), (40, 1060, 52, 26)) o(ox, oy, rx, ry) loop
-    cx = least(greatest(b.ox::double precision, x0), x1);
-    cy = least(greatest(b.oy::double precision, y0), y1);
-    if ((cx - b.ox) / b.rx) ^ 2 + ((cy - b.oy) / b.ry) ^ 2 < 1 then
-      return 'Something is in the way';
-    end if;
-  end loop;
-  if exists (select 1 from public.arena_farm_decor_pieces p
-      join public.arena_farm_decor_items o on o.id = p.item
-     where p.player_id = pid and p.id is distinct from except_id
-       and x0 < p.x + coalesce(o.w, 30) and p.x - coalesce(o.w, 30) < x1
-       and y0 < p.y + 4 and p.y - coalesce(o.d, 14) < y1) then
-    return 'Too close to another decoration';
-  end if;
-  return null;
+  return e;
 end; $$;
-revoke all on function public.arena_farm_decor_fits(uuid, text, integer, integer, bigint)
+revoke all on function public.arena_farm_decor_fits(uuid, text, integer, integer, bigint),
+  public.arena_farm_decor_fits_prebakery(uuid, text, integer, integer, bigint)
   from public, anon, authenticated, service_role;
 
 -- The name of anything the barn holds.
@@ -183,6 +176,20 @@ declare f public.arena_farms; r public.arena_farm_bakery_recipes; q public.arena
   v_saved interval;
 begin
   xp = 0;
+  -- Decorations never go on the Bakery's ground, whichever decoration
+  -- check is in force (a later migration may replace arena_farm_decor_fits).
+  if a->>'a' in ('decor-place', 'decor-move')
+      and jsonb_typeof(a->'x') = 'number' and (a->>'x') ~ '^[0-9]+$' and (a->>'x')::integer % 10 = 0
+      and jsonb_typeof(a->'y') = 'number' and (a->>'y') ~ '^[0-9]+$' and (a->>'y')::integer % 10 = 0
+      and public.arena_farm_on_bakery(
+        case when a->>'a' = 'decor-place' then a->>'item'
+          else (select dp.item from public.arena_farm_decor_pieces dp where dp.player_id = pid
+            and jsonb_typeof(a->'piece') = 'number' and (a->>'piece') ~ '^[0-9]+$'
+            and dp.id = (a->>'piece')::bigint) end,
+        (a->>'x')::integer, (a->>'y')::integer) then
+    err = 'Something is in the way';
+    return;
+  end if;
   if a->>'a' is null or a->>'a' not in ('buy-bakery', 'buy-bake-slot', 'bake', 'bake-collect', 'bake-rush', 'sell-good') then
     select x.err, x.gained, x.xp into err, gained, xp
       from public.arena_farm_act_prebakery(pid, a, ref, t, d) x;
@@ -307,19 +314,20 @@ revoke all on function public.arena_farm_act_more(uuid, jsonb, text, timestamptz
   public.arena_farm_act_prebakery(uuid, jsonb, text, timestamptz, date)
   from public, anon, authenticated, service_role;
 
--- New orders: 070's crops, then, with a bakery, sometimes a baked good it
+-- New orders: as before (070's crops, the coop's eggs), then, with a bakery,
+-- sometimes a baked good it
 -- can make (1 or 2), paid like the crops: 1.45 × its price, and its XP.
 do $$
 begin
-  if to_regprocedure('public.arena_farm_new_order_crops(uuid, integer, integer)') is null then
-    alter function public.arena_farm_new_order(uuid, integer, integer) rename to arena_farm_new_order_crops;
+  if to_regprocedure('public.arena_farm_new_order_prebakery(uuid, integer, integer)') is null then
+    alter function public.arena_farm_new_order(uuid, integer, integer) rename to arena_farm_new_order_prebakery;
   end if;
 end $$;
 create or replace function public.arena_farm_new_order(pid uuid, p_slot integer, p_level integer) returns void
 language plpgsql security definer set search_path = public as $$
 declare r public.arena_farm_bakery_recipes; o public.arena_farm_orders; n integer;
 begin
-  perform public.arena_farm_new_order_crops(pid, p_slot, p_level);
+  perform public.arena_farm_new_order_prebakery(pid, p_slot, p_level);
   if random() >= 0.45 or not coalesce((select bakery from public.arena_farms where player_id = pid), false) then
     return;
   end if;
@@ -336,72 +344,39 @@ begin
    where player_id = pid and slot = p_slot;
 end; $$;
 revoke all on function public.arena_farm_new_order(uuid, integer, integer),
-  public.arena_farm_new_order_crops(uuid, integer, integer)
+  public.arena_farm_new_order_prebakery(uuid, integer, integer)
   from public, anon, authenticated, service_role;
 
--- As in 040, naming any good it is short of (a baked good has no crop name).
+-- Delivering an order: short of a baked good, say which; otherwise as
+-- before (040's, or the coop's on top of it).
+do $$
+begin
+  if to_regprocedure('public.arena_farm_order_prebakery(uuid, integer, text)') is null then
+    alter function public.arena_farm_order(uuid, integer, text) rename to arena_farm_order_prebakery;
+  end if;
+end $$;
 create or replace function public.arena_farm_order(p_request uuid, p_slot integer, p_kind text) returns jsonb
 language plpgsql security definer set search_path = public as $$
-declare me uuid = auth.uid(); t timestamptz = now(); d date = public.arena_today(); o public.arena_farm_orders;
-  item jsonb; need integer; take integer; b record; inserted integer; err text; gained jsonb;
+declare me uuid = auth.uid(); item jsonb;
 begin
-  if me is null or not exists (select 1 from public.arena_profiles where id = me and not suspended) then
-    raise exception 'Login required';
-  end if;
-  if p_request is null or p_slot is null or p_slot not between 0 and 2 or p_kind not in ('deliver', 'skip') then
-    raise exception 'Invalid order request';
-  end if;
-  perform public.arena_farm_ensure(me);
-  perform 1 from public.arena_farms where player_id = me for update;
-  insert into public.arena_farm_requests(player_id, request) values (me, p_request) on conflict do nothing;
-  get diagnostics inserted = row_count;
-  if inserted = 0 then
-    return jsonb_build_object('farm', public.arena_farm_state(me), 'ok', false, 'repeated', true);
-  end if;
-  perform public.arena_farm_orders_refresh(me);
-  select * into o from public.arena_farm_orders where player_id = me and slot = p_slot for update;
-  if o.items is null then err = 'A new order is on its way';
-  elsif p_kind = 'skip' then
-    update public.arena_farm_orders set items = null, wait_until = t + interval '5 minutes'
-     where player_id = me and slot = p_slot;
-  else
-    -- Enough of every good (any mutation)?
-    for item in select * from jsonb_array_elements(o.items) loop
-      if coalesce((select sum(qty) from public.arena_farm_barn where player_id = me and crop = item->>0), 0)
-         < (item->>1)::integer then
-        err = 'You need ' || (item->>1) || ' ' || public.arena_farm_good_name(item->>0);
-        exit;
+  if me is not null and p_kind = 'deliver' and p_request is not null
+      and exists (select 1 from public.arena_profiles where id = me and not suspended)
+      and not exists (select 1 from public.arena_farm_requests where player_id = me and request = p_request) then
+    for item in select i from public.arena_farm_orders o cross join lateral jsonb_array_elements(o.items) i
+        where o.player_id = me and o.slot = p_slot and o.items is not null
+          and exists (select 1 from public.arena_farm_bakery_recipes r where r.id = i->>0) loop
+      if (item->>1)::integer > coalesce((select sum(qty) from public.arena_farm_barn
+          where player_id = me and crop = item->>0), 0) then
+        return jsonb_build_object('farm', public.arena_farm_state(me), 'ok', false,
+          'error', 'You need ' || (item->>1) || ' ' || public.arena_farm_good_name(item->>0));
       end if;
     end loop;
-    if err is null then
-      for item in select * from jsonb_array_elements(o.items) loop
-        need = (item->>1)::integer;
-        -- Plain first, then the cheapest mutations.
-        for b in select mutation, qty from public.arena_farm_barn
-            where player_id = me and crop = item->>0 and qty > 0
-            order by public.arena_farm_mutation_mult(mutation), mutation loop
-          exit when need = 0;
-          take = least(need, b.qty);
-          update public.arena_farm_barn set qty = qty - take
-           where player_id = me and crop = item->>0 and mutation = b.mutation;
-          need = need - take;
-        end loop;
-      end loop;
-      perform public.arena_grant_leaves(me, o.leaves, 'farm-order', p_request::text, d);
-      perform public.arena_farm_add_xp(me, o.xp);
-      if o.bonus is not null then
-        update public.arena_farms set fert_norm = fert_norm + case when o.bonus = 'norm' then 1 else 0 end,
-          fert_super = fert_super + case when o.bonus = 'super' then 1 else 0 end,
-          fert_gold = fert_gold + case when o.bonus = 'gold' then 1 else 0 end where player_id = me;
-      end if;
-      update public.arena_farm_orders set items = null, wait_until = t + interval '80 minutes'
-       where player_id = me and slot = p_slot;
-      gained = jsonb_build_object('leaves', o.leaves, 'xp', o.xp, 'bonus', o.bonus, 'who', o.who);
-    end if;
   end if;
-  return jsonb_build_object('farm', public.arena_farm_state(me), 'ok', err is null, 'error', err, 'gained', gained);
+  return public.arena_farm_order_prebakery(p_request, p_slot, p_kind);
 end; $$;
 revoke all on function public.arena_farm_order(uuid, integer, text) from public, anon;
+revoke all on function public.arena_farm_order_prebakery(uuid, integer, text)
+  from public, anon, authenticated, service_role;
 grant execute on function public.arena_farm_order(uuid, integer, text) to authenticated;
 
 commit;

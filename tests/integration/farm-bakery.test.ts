@@ -21,8 +21,8 @@ import {
   rushPrice,
 } from "../../packages/shared/src/farm-bakery";
 
-// Migration 20261117120000: the Bakery, its oven's queue and baked goods.
-const MIGRATION = "20261117120000_farm_bakery.sql";
+// Migration 20261117130000: the Bakery, its oven's queue and baked goods.
+const MIGRATION = "20261117130000_farm_bakery.sql";
 let db: PGlite;
 const player = "00000000-0000-4000-8000-000000000b01";
 const login = (who = player) =>
@@ -545,14 +545,14 @@ it("keeps decorations off the Bakery, and moved any that stood there into storag
   expect(sql.map((r: any) => r.e)).toEqual(
     checks.map(([item, x, y]) => decorFits(item, x, y, placed)),
   );
-  expect(decorFits("rock", 1180, BAKERY.y - 25, [])).toBe(
+  expect(decorFits("rock", BAKERY.x, BAKERY.y - 25, [])).toBe(
     "Something is in the way",
   );
   // A rock on its ground and a bench beside it; the migration runs again.
   await owner(
     `insert into public.arena_farm_decor_pieces(player_id, item, x, y) values
-       ($1, 'rock', 1180, $2), ($1, 'bench', 1000, 1000)`,
-    [player, BAKERY.y - 25],
+       ($1, 'rock', $2, $3), ($1, 'bench', 1000, 1000)`,
+    [player, BAKERY.x, BAKERY.y - 25],
   );
   await owner(
     "delete from public.arena_farm_decor_credits where player_id = $1",
@@ -566,4 +566,68 @@ it("keeps decorations off the Bakery, and moved any that stood there into storag
   // Running it again kept the Bakery, its slots and its goods.
   expect(f.bakery.owned).toBe(true);
   expect(f.bakery.slots).toBe(BAKERY.maxSlots);
+});
+
+it("keeps decorations off the Bakery even if a later migration replaces the decoration check", async () => {
+  // A migration that copies an older arena_farm_decor_fits (without the
+  // Bakery) lands after this one: the decor actions still refuse its ground.
+  const old = await readFile(
+    "supabase/migrations/20261116120000_farm_free_decor.sql",
+    "utf8",
+  );
+  const fn = old.slice(
+    old.indexOf("create or replace function public.arena_farm_decor_fits("),
+    old.indexOf("end; $$;", old.indexOf("public.arena_farm_decor_fits(")) +
+      "end; $$;".length,
+  );
+  await db.exec("reset role");
+  await db.exec(fn);
+  expect(
+    (
+      await owner("select public.arena_farm_decor_fits($1, 'rock', $2, $3) e", [
+        player,
+        BAKERY.x,
+        BAKERY.y - 25,
+      ])
+    )[0].e,
+  ).toBeNull();
+  await level(20);
+  await owner(
+    "delete from public.arena_farm_decor_pieces where player_id = $1",
+    [player],
+  );
+  const r = await act([
+    { a: "decor-place", item: "rock", x: BAKERY.x, y: BAKERY.y - 25 },
+    { a: "decor-place", item: "rock", x: 1000, y: 1000 },
+  ]);
+  expect(r.results[0]).toEqual({ ok: false, error: "Something is in the way" });
+  expect(r.results[1]).toMatchObject({ ok: true });
+  const piece = r.results[1].piece;
+  expect(
+    await one({ a: "decor-move", piece, x: BAKERY.x, y: BAKERY.y - 25 }),
+  ).toEqual({ ok: false, error: "Something is in the way" });
+  // Running this migration again puts its wrapper back over the old check.
+  await db.exec("reset role");
+  await db.exec(await readFile(`supabase/migrations/${MIGRATION}`, "utf8"));
+  expect(
+    (
+      await owner("select public.arena_farm_decor_fits($1, 'rock', $2, $3) e", [
+        player,
+        BAKERY.x,
+        BAKERY.y - 25,
+      ])
+    )[0].e,
+  ).toBe("Something is in the way");
+});
+
+it("doesn't let players call the functions it wraps directly", async () => {
+  await login();
+  for (const sql of [
+    "select public.arena_farm_order_prebakery(gen_random_uuid(), 0, 'deliver')",
+    "select public.arena_farm_act_prebakery(auth.uid(), '{}'::jsonb, 'x', now(), current_date)",
+    "select public.arena_farm_state_prebakery(auth.uid())",
+    "select public.arena_farm_decor_fits_prebakery(auth.uid(), 'rock', 100, 900)",
+    "select public.arena_farm_new_order_prebakery(auth.uid(), 0, 10)",
+  ])
+    await expect(db.query(sql)).rejects.toThrow(/permission denied/);
 });

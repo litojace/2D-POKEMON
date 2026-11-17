@@ -88,7 +88,7 @@ export async function fakeFarm(page: Page) {
       pasture: false,
       milkAt: null as string | null,
       milkMult: 1.12,
-      // The Bakery (20261117120000): not built yet.
+      // The Bakery (20261117130000): not built yet.
       bakery: {
         owned: false,
         slots: 2,

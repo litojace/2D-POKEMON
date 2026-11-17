@@ -890,7 +890,7 @@ export type DecorBlock =
   | { k: "rect"; x0: number; x1: number; y0: number; y1: number }
   | { k: "oval"; x: number; y: number; rx: number; ry: number };
 /** The ground the Bakery takes (farm-bakery.ts), built or not. */
-export const BAKERY_GROUND = { x0: 1070, x1: 1320, y0: 850, y1: 940 } as const;
+export const BAKERY_GROUND = { x0: 520, x1: 770, y0: 850, y1: 940 } as const;
 /**
  * What decorations can't stand on: the field and its fence, the lane in
  * front of it, the back row (home, mill, orders board, market, barn), the
@@ -1261,7 +1261,7 @@ export interface FarmState {
   pasture?: boolean;
   milkAt?: string | null;
   milkMult?: number;
-  /** The Bakery and its oven's queue (migration 20261117120000). */
+  /** The Bakery and its oven's queue (migration 20261117130000). */
   bakery?: import("./farm-bakery.js").FarmBakery;
   /** Friends who visited lately, newest first (migration 047). */
   visits?: FarmVisitEvent[];
@@ -1371,7 +1371,7 @@ export type FarmAction =
   | { a: "sell"; crop: string; mutation: string; qty: number }
   | { a: "buy-fertilizer"; kind: FertilizerKind }
   | { a: "upgrade-barn" }
-  /** The Bakery (20261117120000): build it, add a queue slot, bake, collect, sell its goods. */
+  /** The Bakery (20261117130000): build it, add a queue slot, bake, collect, sell its goods. */
   | { a: "buy-bakery" | "buy-bake-slot" }
   | { a: "bake"; recipe: string }
   | { a: "bake-collect"; slot: number }

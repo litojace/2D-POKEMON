@@ -847,7 +847,7 @@ export function installAccountRoutes(
         "milk",
         "sell-milk",
         "harvest-giant",
-        // The Bakery (migration 20261117120000).
+        // The Bakery (migration 20261117130000).
         "buy-bakery",
         "buy-bake-slot",
         "bake",

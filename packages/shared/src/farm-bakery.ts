@@ -2,7 +2,7 @@
  * The Bakery: the Farm's first processing chain. Crops and Storm Milk from
  * the barn bake into goods worth more than the raw crops, one at a time in
  * an oven with a queue. The database runs the rules
- * (supabase/migrations/20261117120000_farm_bakery.sql); this file mirrors
+ * (supabase/migrations/20261117130000_farm_bakery.sql); this file mirrors
  * them for display, and tests/integration/farm-bakery.test.ts checks that
  * the two agree. Numbers and their reasons: docs/farm-bakery.md.
  */
@@ -27,7 +27,7 @@ export const BAKERY = {
   rushPerMinute: 2,
   rushMin: 10,
   /** The middle of its front wall, on the ground (world px of the farm scene). */
-  x: 1200,
+  x: 650,
   y: 925,
   /** The ground it takes: decorations can't stand here (DECOR_BLOCKS). */
   ground: BAKERY_GROUND,

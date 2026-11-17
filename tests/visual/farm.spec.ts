@@ -3084,7 +3084,8 @@ for (const viewport of [
       });
       await expect(build.locator("[data-bakery-build]")).toBeEnabled();
       await build.locator("[data-bakery-build]").click();
-      await expect(page.locator("#toast")).toContainText("Your Bakery is open");
+      // The farm's log keeps every line (a later toast can replace one).
+      await expect(page.locator("#fm-log")).toContainText("Built the Bakery");
       await expect(sheet.locator(".bk-slot.empty")).toHaveCount(2);
       await expect(sheet.locator(".bk-slot.buy")).toContainText("600");
       // What it can bake now: bread (6 plain wheat) and the milk bun;
@@ -3186,8 +3187,8 @@ for (const viewport of [
       );
       expect((await sent()).some((a: any) => a.a === "bake-rush")).toBe(false);
       await rush.click();
-      await expect(page.locator("#toast")).toContainText(
-        "Storm Milk Bun is done",
+      await expect(page.locator("#fm-log")).toContainText(
+        "Finished Storm Milk Bun early",
       );
       await expect(
         sheet.locator(".bk-slot.ready", { hasText: "Storm Milk Bun" }),
