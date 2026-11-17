@@ -1,5 +1,6 @@
 import { framedAvatar } from "./portraits";
 import { ascendantPrismellCue } from "./ascendant-prismell-art";
+import { ascendantLumiwickCue } from "./ascendant-lumiwick-art";
 import { CHARACTERS, type Snapshot } from "@arena/shared";
 import {
   raidChapters,
@@ -83,6 +84,8 @@ export function raidCue(state: Snapshot, myId: string) {
       return "Wings broken — the heart stays exposed!";
     if (r.exposedUntil > state.time)
       return "Grounded — unleash your ultimates! Fire patches have shrunk.";
+    const ascendant = ascendantLumiwickCue(state, myId, w);
+    if (ascendant) return ascendant;
     if (w?.kind === "heat-mark")
       return "Heat Marks — spread out from every marked ally!";
     if (w?.kind === "dive-bomb")

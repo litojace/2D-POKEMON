@@ -198,6 +198,8 @@ it("still equips earned raid rewards alongside collection pieces", async () => {
   });
 });
 
+// It buys every champion skin (250+ purchases): about 6 s on a quiet machine,
+// and past the default 10 s when CI runs the suite in parallel.
 it("keeps every champion skin equippable through its separate champion slot", async () => {
   // The catalog includes the newest champions' skins, which 053 and 054
   // seed, the Cyber Mecha Epics (069), and the Nature champions' (070, 071;
@@ -248,4 +250,4 @@ it("keeps every champion skin equippable through its separate champion slot", as
     });
   }
   expect((await economy()).balance).toBe(0);
-});
+}, 60_000);

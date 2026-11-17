@@ -83,6 +83,7 @@ export const RAID_HARMLESS_ATTACKS = new Set<RaidAttack>([
   "light-relay",
   "refraction",
   "brazier-lighting",
+  "bound-wicks",
 ]);
 /**
  * Single-target attacks that, under party pressure, go at a second raider
@@ -139,6 +140,7 @@ export function raidShapeOf(kind: RaidAttack): RaidShape {
       "dive-bomb",
       "link-beam",
       "prism-lance",
+      "snuff-gale",
     ].includes(kind)
   )
     return "line";
@@ -156,6 +158,7 @@ export function raidShapeOf(kind: RaidAttack): RaidShape {
       "nightfall",
       "dream-tide",
       "umbral-prism",
+      "bound-wicks",
       "chain-lightning",
       "glare",
       "polarity",

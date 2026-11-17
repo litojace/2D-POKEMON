@@ -10,6 +10,7 @@ import { RAID_BOSSES, type RaidBossId } from "./raid-roster.js";
 import {
   ASCENDANT_CRAGMUFF_CHAPTERS,
   ASCENDANT_INKPURR_CHAPTERS,
+  ASCENDANT_LUMIWICK_CHAPTERS,
   ASCENDANT_PRISMELL_CHAPTERS,
   ASCENDANT_SNOOZAKU_CHAPTERS,
   ASCENDANT_TIDELOTL_CHAPTERS,
@@ -17,6 +18,7 @@ import {
   RAID_ASCENDANT_TIER,
   ascendantCragmuffPattern,
   ascendantInkpurrPattern,
+  ascendantLumiwickPattern,
   ascendantPrismellPattern,
   ascendantSnoozakuPattern,
   ascendantTidelotlPattern,
@@ -275,7 +277,10 @@ export type RaidAttack =
   | "dream-tide"
   // Ascendant Prismell
   | "eclipse"
-  | "umbral-prism";
+  | "umbral-prism"
+  // Ascendant Lumiwick
+  | "snuff-gale"
+  | "bound-wicks";
 export const RAID_ATTACKS: Record<
   RaidAttack,
   { name: string; tip: string; summary: string }
@@ -558,6 +563,17 @@ export const RAID_ATTACKS: Record<
     tip: "A dark moon covers the skylight: sunfall strikes its window, so step out of the circle. The light opens at the window marked in gold: rebuild the relay from there.",
     summary:
       "The skylight moves. Leave the sunfall; relay from the new window.",
+  },
+  "snuff-gale": {
+    name: "Snuffing Gale",
+    tip: "Lumiwick blows a cold gale down the lane through a brazier: if nobody stands in that brazier's ring, its flame goes out. Anyone standing in a brazier's ring is sheltered; anyone else in the lane is hit and blown along it.",
+    summary: "Hold the flame: stand in the brazier's ring, or leave the lane.",
+  },
+  "bound-wicks": {
+    name: "Bound Wicks",
+    tip: "A burning wick ties braziers together: they only catch while every bound ring has a raider in it. Light them together before the fuse burns out, or the wick snaps: a Backdraft bursts from each bound brazier and every flame goes out.",
+    summary:
+      "Stand in every bound ring at once. Step out if the fuse runs out.",
   },
   "umbral-prism": {
     name: "Umbral Prism",
@@ -901,6 +917,8 @@ export function raidPattern(
     return ascendantSnoozakuPattern(phase);
   if (variant === "ascendant" && boss === "prismatail")
     return ascendantPrismellPattern(phase);
+  if (variant === "ascendant" && boss === "emberwing")
+    return ascendantLumiwickPattern(phase);
   if (boss === "tidewyrm") return tidewyrmPattern(phase, peril);
   if (boss === "gloomshade") return gloomshadePattern(phase, peril);
   if (boss === "somnara") return somnaraPattern(phase);
@@ -1356,7 +1374,9 @@ export const raidChapters = (
           ? ASCENDANT_SNOOZAKU_CHAPTERS
           : variant === "ascendant" && boss === "prismatail"
             ? ASCENDANT_PRISMELL_CHAPTERS
-            : undefined) ??
+            : variant === "ascendant" && boss === "emberwing"
+              ? ASCENDANT_LUMIWICK_CHAPTERS
+              : undefined) ??
   RAID_BOSS_CHAPTERS[boss] ??
   RAID_CHAPTERS;
 /** Separate appearance slots; each is cosmetic only. */
@@ -2461,6 +2481,10 @@ export interface RaidWarning {
   body?: number;
   /** Umbral Prism: seconds its raider has stood in handed-on light. */
   lit?: number;
+  /** Snuffing Gale: the brazier it blows at (none: a lane at a raider). */
+  brazier?: number;
+  /** Bound Wicks: the braziers the wick ties together. */
+  braziers?: number[];
 }
 /** Tidewyrm's raised islands (walkable). */
 export interface RaidIsland {

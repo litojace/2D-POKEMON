@@ -14,6 +14,7 @@ import { SPIRE_BUILT_TOP } from "../../packages/shared/src/spire";
 import { somnaraPads } from "../../packages/shared/src/raid-somnara";
 import { ASCENDANT_SNOOZAKU } from "../../packages/shared/src/raid-ascendant";
 import { PRISMATAIL } from "../../packages/shared/src/raid-prismatail";
+import { EMBERWING } from "../../packages/shared/src/raid-emberwing";
 
 // The Spire's court (apps/client/src/spire-court-rig.ts): floors 1–9 on the
 // stone platform at the top of the tower, their cover where the server's
@@ -2796,6 +2797,709 @@ test("zone 5: Prismell's Sun Atrium kept to floor 50, painted on floor 49, nothi
     await page.waitForTimeout(500);
     await snap(page, info, "spire-court-z5-floor-50-844x390");
     await shot5(page, "z5-real-floor-50-844x390");
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});
+
+// ───────────────────────── Zone 6: Fire ─────────────────────────
+//
+// Floors 51–59 take zone 6's Fire look (spireZoneTheme(6)): a lantern
+// festival on a volcanic tower at dusk. Warm basalt paving with an
+// ember-gold inlay of flame tongues, bronze braziers in the corners, red
+// paper lanterns on the coping and the cover, fire-opal crystals; a dusky
+// orange sky over smoking volcanoes with sky lanterns and embers, a deep
+// crimson night higher up. Until zone 6's rooms are built (SPIRE_BUILT_TOP
+// < 60), the same test-only path as zones 2 to 5: a real room of the zone
+// below (with its own Echoes) runs on the page and each snapshot is shown
+// ten floors higher (floor and zone, 5 → 6; the client tints the Echoes by
+// the shown zone, spireEchoTint(6)). Once they are, these tests climb real
+// zone-6 rooms with their own Echoes.
+const ZONE6_REAL = SPIRE_BUILT_TOP >= 60;
+const SHOTS6 = process.env.ZONE6_SHOTS;
+async function shot6(page: Page, name: string) {
+  if (SHOTS6) await page.screenshot({ path: `${SHOTS6}/${name}.png` });
+}
+async function climbZone6(page: Page, floor: number, ceiling?: number) {
+  if (ZONE6_REAL) return climb(page, floor, ceiling);
+  // (The highest built zone's room, shown in zone 6.)
+  const by = ZONE5_REAL ? 10 : 20;
+  await raiseFloors(page, by);
+  await climb(
+    page,
+    floor - by,
+    ceiling === undefined ? undefined : ceiling - by,
+  );
+}
+const ZONE6_SIZES = [
+  { ...DESKTOP, floors: [51, 55, 59] },
+  {
+    name: "844x390",
+    width: 844,
+    height: 390,
+    phone: true,
+    floors: [51, 55, 59],
+  },
+  {
+    name: "667x375",
+    width: 667,
+    height: 375,
+    phone: true,
+    floors: [51, 55, 59],
+  },
+  { name: "ipad", width: 1180, height: 820, phone: true, floors: [51, 55, 59] },
+];
+for (const size of ZONE6_SIZES)
+  for (const floor of size.floors)
+    test(`zone 6: the Spire court on floor ${floor} at ${size.name}`, async ({
+      browser,
+    }, info) => {
+      test.setTimeout(150_000);
+      const context = await browser.newContext({
+        viewport: { width: size.width, height: size.height },
+        isMobile: size.phone,
+        hasTouch: size.phone,
+      });
+      try {
+        const page = await context.newPage();
+        await hookGame(page);
+        const errors = await openHub(page);
+        await climbZone6(page, floor);
+        await page.waitForTimeout(600);
+        const c = await court(page);
+        const kind = floor === 55 ? "elite" : "wave";
+        // Zone 6's platform floor and its own floor atlas.
+        expect(c.floor).toBe("arena-floor-spire-z6");
+        await page.waitForFunction(
+          (key) =>
+            (window as any).__spireGame.scene
+              .getScene("arena")
+              .textures.exists(key),
+          `spire-court-6-${floor}`,
+        );
+        expect(c.sky).toBe(4);
+        expect(c.surround).toBe(0);
+        expect(c.pillars).toBe(0);
+        expect(c.number).toBe(1);
+        const layout = spireCourtLayout(floor, kind)!;
+        expect(c.blocks).toHaveLength(layout.blocks.length);
+        const shown = [...c.blocks].sort((a, b) => a.x - b.x || a.y - b.y);
+        const feet = [...layout.blocks].sort((a, b) => a.x - b.x || a.y - b.y);
+        feet.forEach((o, i) => {
+          expect(shown[i].x).toBeLessThanOrEqual(o.x);
+          expect(shown[i].x + shown[i].w).toBeGreaterThanOrEqual(o.x + o.w);
+          expect(shown[i].depth).toBeCloseTo(2 + (o.y + o.h) / 10000, 6);
+        });
+        expect(c.stairs).toHaveLength(1);
+        // Height: the zone's first floor untinted, higher ones a crimson
+        // night (red leads green and blue).
+        if (floor === 51) expect(c.tint).toBe(0xffffff);
+        else {
+          expect(c.tint).toBeLessThan(0xffffff);
+          expect(c.tint >> 16).toBeGreaterThan(((c.tint >> 8) & 255) + 15);
+          if (floor === 59)
+            expect(c.tint >> 16).toBeGreaterThan(((c.tint >> 8) & 255) + 35);
+        }
+        await page.waitForTimeout(300);
+        await snap(page, info, `spire-court-z6-floor-${floor}-${size.name}`);
+        await shot6(page, `z6-floor-${floor}-${size.name}`);
+        expect(errors).toEqual([]);
+      } finally {
+        await context.close();
+      }
+    });
+
+/** Where the zone-6 readability check stands its Echoes (feet, world px). */
+// (Clear of the cover on every layout and of a phone's touch buttons, as
+// zones 4 and 5: on a flame tongue below the ring, by a corner brazier,
+// near the bottom coping under a lantern's pool, by the top-right tongues.)
+const ZONE6_SPOTS = ZONE4_SPOTS;
+for (const size of [
+  { name: "844x390", width: 844, height: 390 },
+  { name: "667x375", width: 667, height: 375 },
+])
+  for (const floor of [51, 55, 59])
+    test(`zone 6: fighters, Echo rings, red warnings, fire champions and the floor number read on the ember court, floor ${floor} at ${size.name}`, async ({
+      browser,
+    }, info) => {
+      test.setTimeout(180_000);
+      const context = await browser.newContext({
+        viewport: { width: size.width, height: size.height },
+        isMobile: true,
+        hasTouch: true,
+      });
+      try {
+        const page = await context.newPage();
+        await hookGame(page);
+        const errors = await openHub(page);
+        await climbZone6(page, floor);
+        await page.waitForTimeout(400);
+        const key = `spire-court-6-${floor}`;
+        await page.waitForFunction(
+          (key) =>
+            (window as any).__spireGame.scene
+              .getScene("arena")
+              .textures.exists(key),
+          key,
+        );
+        // The cover: warm fire-opal and lantern-lit pixels against its
+        // basalt, and red lantern paper on it.
+        const cover = await page.evaluate(
+          ({ key }) => {
+            const scene = (window as any).__spireGame.scene.getScene("arena");
+            const tex = scene.textures.get(key);
+            const f = tex.get("block0");
+            const d = (tex.getSourceImage() as HTMLCanvasElement)
+              .getContext("2d")!
+              .getImageData(f.cutX, f.cutY, f.cutWidth, f.cutHeight).data;
+            let n = 0,
+              fire = 0,
+              paper = 0;
+            for (let i = 0; i < d.length; i += 4) {
+              if (d[i + 3] <= 200) continue;
+              n++;
+              const [r, g, b] = [d[i], d[i + 1], d[i + 2]];
+              const lum = 0.3 * r + 0.59 * g + 0.11 * b;
+              if (lum > 150 && r - b > 80) fire++;
+              if (r > 170 && r - g > 70 && r - b > 70) paper++;
+            }
+            return { fire: fire / n, paper: paper / n };
+          },
+          { key },
+        );
+        // The number: a dark groove round a bright inlay.
+        const number = (await atlasPixels(page, key, "number")).map(
+          (p) => p.lum,
+        );
+        const darkPx = number.filter((l) => l < 70),
+          brightPx = number.filter((l) => l > 190);
+        const dark = darkPx.length / number.length,
+          bright = brightPx.length / number.length;
+        const mean = (a: number[]) =>
+          a.reduce((x, y) => x + y, 0) / Math.max(1, a.length);
+        const inlay = mean(brightPx),
+          groove = mean(darkPx);
+        // The floor where fighters walk: dusky basalt (darker higher up).
+        const ground = await floorColour(page);
+        const groundLum = 0.3 * ground[0] + 0.59 * ground[1] + 0.11 * ground[2];
+        const g = (l: number) => [l, l, l];
+        const apart = (a: number[], b: number[]) =>
+          Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+        const rings = {
+          echo: apart(hex(0xa98bff), ground),
+          echoLight: contrast(hex(0xa98bff), ground),
+          enemy: apart(hex(0xff5d6c), ground),
+          enemyLight: contrast(hex(0xff5d6c), ground),
+          // The raids' red danger (0xff4059), and fire champions' wind-ups
+          // in their own colours (Cindrake 0xff7a4f, Pyranda 0xff8a3d).
+          danger: apart(hex(0xff4059), ground),
+          dangerLight: contrast(hex(0xff4059), ground),
+          cindrake: contrast(hex(0xff7a4f), ground),
+          pyranda: contrast(hex(0xff8a3d), ground),
+          hero: contrast([255, 255, 255], ground),
+          inlay: contrast(g(inlay), g(groove)),
+        };
+        await page
+          .waitForFunction(
+            () =>
+              [
+                ...(window as any).__spireGame.scene
+                  .getScene("arena")
+                  .rigs.entries(),
+              ].some(
+                ([id, r]: [string, any]) =>
+                  id.startsWith("echo") && r.root?.visible,
+              ),
+            undefined,
+            { timeout: 15_000 },
+          )
+          .catch(() => {});
+        // Everyone at fixed spots: the same picture on every run.
+        await page.evaluate((spots) => {
+          const w = window as any;
+          const a = w.__spireArena;
+          const place = (p: any, [x, y]: number[]) =>
+            Object.assign(p, { x, y, vx: 0, vy: 0, angle: Math.PI / 2 });
+          place(a.heroes()[0], [380, 470]);
+          a.players
+            .filter((p: any) => p.echo && p.hp > 0)
+            .forEach((p: any, i: number) => place(p, spots[i % spots.length]));
+          w.__spireStep(0);
+        }, ZONE6_SPOTS);
+        await page.waitForTimeout(900);
+        const fighters = await fighterContrast(page);
+        const shown = fighters.filter((f) => f.n > 60);
+        const summary = shown.map((f) => ({
+          id: f.id.slice(0, 10),
+          n: f.n,
+          seen: +f.seen.toFixed(3),
+          contrast: +contrast(f.fighter, f.court).toFixed(2),
+          fighterLum: Math.round(
+            0.3 * f.fighter[0] + 0.59 * f.fighter[1] + 0.11 * f.fighter[2],
+          ),
+          courtLum: Math.round(
+            0.3 * f.court[0] + 0.59 * f.court[1] + 0.11 * f.court[2],
+          ),
+        }));
+        console.log(
+          JSON.stringify({
+            floor,
+            size: size.name,
+            real: ZONE6_REAL,
+            cover,
+            dark: +dark.toFixed(3),
+            bright: +bright.toFixed(3),
+            inlay: Math.round(inlay),
+            groundLum: Math.round(groundLum),
+            ground: ground.map(Math.round),
+            rings: Object.fromEntries(
+              Object.entries(rings).map(([k, v]) => [k, +v.toFixed(2)]),
+            ),
+            fighters: summary,
+          }),
+        );
+        await shot6(page, `z6-floor-${floor}-read-${size.name}`);
+        // Fire champions on the warm stone (the hero, above, as Cindrake
+        // and Pyranda), and the darkest one (Duskveil) on the dusky basalt.
+        const hot: Record<string, number> = {};
+        for (const character of ["cindrake", "pyranda", "duskveil"]) {
+          await page.evaluate((character) => {
+            const w = window as any;
+            const hero = w.__spireArena.heroes()[0];
+            Object.assign(hero, { character, hp: hero.maxHp ?? hero.hp });
+            w.__spireStep(0);
+          }, character);
+          // (Its rig is rebuilt for the new champion: measure once it shows.)
+          let me:
+            Awaited<ReturnType<typeof fighterContrast>>[number] | undefined;
+          for (let i = 0; i < 6 && !(me && me.n > 60); i++) {
+            await page.waitForTimeout(1000);
+            me = (await fighterContrast(page)).find((f) => f.id === "me");
+          }
+          hot[character] = +(me?.seen ?? 0).toFixed(3);
+          await shot6(page, `z6-floor-${floor}-read-${character}-${size.name}`);
+        }
+        console.log(JSON.stringify({ floor, size: size.name, hot }));
+        // (Measured the same way on zone 5's champagne stone: Cindrake
+        // 0.55–0.65, Pyranda 0.73–0.77, Duskveil 0.59–0.67; here Cindrake
+        // 0.69–0.75, Pyranda 0.56–0.67, Duskveil 0.69–0.75. Pyranda's mid
+        // reds sit near the basalt's lightness: she reads by hue, her dark
+        // outlines and her white ring, as Sunbara on zone 5's gold stone.
+        // A champion's idle pose moves the share by up to ±0.05.)
+        expect(hot.cindrake).toBeGreaterThan(0.6);
+        expect(hot.pyranda).toBeGreaterThan(0.5);
+        expect(hot.duskveil).toBeGreaterThan(0.6);
+        expect(cover.fire).toBeGreaterThan(0.03);
+        expect(cover.paper).toBeGreaterThan(0.005);
+        expect(dark).toBeGreaterThan(0.15);
+        expect(bright).toBeGreaterThan(0.2);
+        expect(inlay).toBeGreaterThan(190);
+        expect(rings.inlay).toBeGreaterThan(6);
+        // Dusky basalt: dark enough that red and orange (warnings, enemy
+        // rings, fire champions) stand out by lightness, never black.
+        expect(groundLum).toBeGreaterThan(50);
+        expect(groundLum).toBeLessThan(110);
+        expect(rings.echo).toBeGreaterThan(150);
+        expect(rings.echoLight).toBeGreaterThan(3);
+        expect(rings.enemy).toBeGreaterThan(140);
+        expect(rings.enemyLight).toBeGreaterThan(2.5);
+        expect(rings.danger).toBeGreaterThan(130);
+        expect(rings.dangerLight).toBeGreaterThan(2.2);
+        expect(rings.cindrake).toBeGreaterThan(2.8);
+        expect(rings.pyranda).toBeGreaterThan(3);
+        expect(rings.hero).toBeGreaterThan(6);
+        // Every fighter in view stands out from the court under it.
+        expect(shown.length).toBeGreaterThanOrEqual(2);
+        const echoes = summary.filter((f) => f.id.startsWith("echo"));
+        expect(echoes.length).toBeGreaterThanOrEqual(1);
+        for (const f of echoes) expect(f.seen).toBeGreaterThan(0.58);
+        expect(
+          echoes.reduce((a, f) => a + f.seen, 0) / echoes.length,
+        ).toBeGreaterThan(0.6);
+        for (const f of summary)
+          if (!f.id.startsWith("echo")) expect(f.seen).toBeGreaterThan(0.65);
+        await snap(
+          page,
+          info,
+          `spire-court-z6-floor-${floor}-read-${size.name}`,
+        );
+        expect(errors).toEqual([]);
+      } finally {
+        await context.close();
+      }
+    });
+
+/**
+ * How Lumiwick's own cues read on a Sky Terrace floor picture (test-side,
+ * from the baked floor only: the braziers' rings and arcs, the flame ring,
+ * the burning ground and the dive lanes are drawn live on top). Round each
+ * brazier's standing radius (its teal or gold ring and the progress arc
+ * on it), and across the terrace's middle (where the flame ring sweeps,
+ * the ground burns and the dives land): the floor's mean colour there.
+ */
+function terraceReadability(page: Page, key: string) {
+  return page.evaluate(
+    ({ key, braziers, radius }) => {
+      const scene = (window as any).__spireGame.scene.getScene("arena");
+      const image = scene.textures.get(key).getSourceImage() as
+        HTMLCanvasElement | HTMLImageElement;
+      const c = document.createElement("canvas");
+      c.width = 800;
+      c.height = 450;
+      const ctx = c.getContext("2d")!;
+      ctx.drawImage(image, 0, 0, 800, 450);
+      const d = ctx.getImageData(0, 0, 800, 450).data;
+      const meanOf = (pts: [number, number][]) => {
+        const m = [0, 0, 0];
+        let n = 0;
+        for (const [x, y] of pts) {
+          const px = Math.round(x / 2),
+            py = Math.round(y / 2);
+          if (px < 0 || py < 0 || px >= 800 || py >= 450) continue;
+          const i = (py * 800 + px) * 4;
+          for (let k = 0; k < 3; k++) m[k] += d[i + k];
+          n++;
+        }
+        return m.map((v) => v / Math.max(1, n));
+      };
+      const ring = (x: number, y: number, r0: number, r1: number) => {
+        const pts: [number, number][] = [];
+        for (let a = 0; a < 96; a++)
+          for (let r = r0; r <= r1; r += 2)
+            pts.push([
+              x + Math.cos((a / 96) * Math.PI * 2) * r,
+              y + Math.sin((a / 96) * Math.PI * 2) * r,
+            ]);
+        return meanOf(pts);
+      };
+      const box: [number, number][] = [];
+      for (let y = 200; y <= 700; y += 6)
+        for (let x = 340; x <= 1260; x += 6) box.push([x, y]);
+      return {
+        braziers: braziers.map((b: { x: number; y: number }) =>
+          ring(b.x, b.y, radius - 6, radius + 6),
+        ),
+        middle: meanOf(box),
+      };
+    },
+    { key, braziers: EMBERWING.braziers, radius: EMBERWING.brazierRadius },
+  );
+}
+function terraceScores(f: Awaited<ReturnType<typeof terraceReadability>>) {
+  const apart = (a: number[], b: number[]) =>
+    Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+  const min = (xs: number[]) => Math.min(...xs);
+  // The brazier arcs (raid-emberwing-terrace-rig.ts): the teal progress
+  // band and its pale core, the gold time-left band, and their dark seat;
+  // the flame ring's pale edge, the burning ground's outline, the dive
+  // lane's edges and the raids' red danger.
+  return {
+    teal: min(f.braziers.map((b) => contrast(hex(0x5fd9bd), b))),
+    tealHue: min(f.braziers.map((b) => apart(hex(0x5fd9bd), b))),
+    tealCore: min(f.braziers.map((b) => contrast(hex(0xe4fff7), b))),
+    gold: min(f.braziers.map((b) => contrast(hex(0xffdb8d), b))),
+    seat: min(f.braziers.map((b) => contrast(hex(0x0e0603), b))),
+    flameRing: contrast(hex(0xffce87), f.middle),
+    patch: contrast(hex(0xffac6f), f.middle),
+    lane: contrast(hex(0xffa76a), f.middle),
+    danger: apart(hex(0xff4059), f.middle),
+  };
+}
+/** Sky Terrace pieces the arena shows (its atlas's images). */
+async function terracePieceCount(page: Page) {
+  return page.evaluate(() => {
+    const scene = (window as any).__spireGame.scene.getScene("arena");
+    let n = 0;
+    const walk = (o: any) => {
+      if (!o?.visible) return;
+      if (o.list) o.list.forEach(walk);
+      else if (o.texture?.key === "ember-terrace-atlas") n++;
+    };
+    scene.children.list.forEach(walk);
+    return n;
+  });
+}
+
+test("floor 60: Lumiwick's Sky Terrace with its summit grade, painted on floor 59, nothing fetched mid-fight", async ({
+  browser,
+}, info) => {
+  test.setTimeout(180_000);
+  const context = await browser.newContext({
+    viewport: { width: 844, height: 390 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  try {
+    const page = await context.newPage();
+    await hookGame(page);
+    const art: { url: string; floor: number }[] = [];
+    let floorNow = 59;
+    page.on("request", (r) => {
+      if (r.url().includes("/raid-arenas/"))
+        art.push({ url: r.url(), floor: floorNow });
+    });
+    const errors = await openHub(page);
+    // Test-only path (the rooms harness has no floor 60 yet): Lumiwick's
+    // raid room carrying a climb's state from a real Spire room, shown as
+    // floor 59 cleared (the party may climb to 60), then as floor 60.
+    await page.evaluate(() => {
+      const w = window as any;
+      w.__room("spire", { floor: 9, ceiling: 10 });
+      const climb = JSON.parse(JSON.stringify(w.__snap.raid.spire));
+      w.__room("raid", { boss: "emberwing" });
+      w.__snap.remaining = 300;
+      w.__snap.raid.spire = {
+        ...climb,
+        zone: 6,
+        floor: 59,
+        kind: "wave",
+        ceiling: 60,
+        clearedAt: w.__snap.raid.time ?? 1,
+      };
+    });
+    await openPlayPanel(page);
+    await createRoom(page);
+    await pushUntilBattle(page);
+    await page.waitForFunction(
+      () =>
+        !!(window as any).__spireGame?.scene.getScene("arena")?.floor?.texture,
+    );
+    const scene = () =>
+      page.evaluate(() => {
+        const s = (window as any).__spireGame.scene.getScene("arena");
+        return {
+          floor: s.floor.texture.key as string,
+          artwork: s.floor.texture.getSourceImage().dataset?.raidArtwork as
+            string | undefined,
+          summitArt: s.textures.exists("arena-floor-spire-summit-terrace:art"),
+        };
+      });
+    await expect
+      .poll(async () => (await scene()).floor)
+      .toBe("arena-floor-spire-z6");
+    // Floor 59's stairs are open: the terrace's summit is painted now.
+    await expect.poll(async () => (await scene()).summitArt).toBe(true);
+    await shot6(page, "z6-floor-59-stairs-open-844x390");
+    floorNow = 60;
+    await page.evaluate(() => {
+      const w = window as any;
+      w.__snap.raid.spire = {
+        ...w.__snap.raid.spire,
+        floor: 60,
+        kind: "boss",
+        clearedAt: undefined,
+      };
+      w.__push();
+    });
+    await expect
+      .poll(async () => (await scene()).artwork)
+      .toBe("spire-summit-terrace");
+    expect((await scene()).floor).toBe("arena-floor-spire-summit-terrace:art");
+    // The terrace's picture was fetched on floor 59 (or before), never on 60.
+    expect(art.some((a) => a.url.includes("emberwing"))).toBe(true);
+    expect(art.every((a) => a.floor === 59)).toBe(true);
+    const c = await court(page);
+    expect(c.sky).toBe(4);
+    expect(c.blocks).toEqual([]);
+    // Its own floor draws the terrace (braziers, their rings) on top.
+    await expect.poll(() => terracePieceCount(page)).toBeGreaterThan(0);
+    await page.waitForTimeout(500);
+    await snap(page, info, "spire-court-floor-60-terrace-summit-844x390");
+    await shot6(page, "z6-floor-60-terrace-summit-844x390");
+    // The raid's own floor, painted beside it (test-side only: it never
+    // shows), to measure against.
+    await page.evaluate(() =>
+      (window as any).__spireGame.scene
+        .getScene("arena")
+        .floorTexture("sky-terrace"),
+    );
+    await page.waitForFunction(() =>
+      (window as any).__spireGame.scene
+        .getScene("arena")
+        .textures.exists("arena-floor-sky-terrace:art"),
+    );
+    // Graded: darker and redder overall (green drops most), the middle
+    // (the braziers, the dive lanes, every warning) kept most of its light.
+    const light = await page.evaluate(() => {
+      const scene = (window as any).__spireGame.scene.getScene("arena");
+      const measure = (key: string) => {
+        const c = document.createElement("canvas");
+        c.width = 160;
+        c.height = 90;
+        const ctx = c.getContext("2d")!;
+        ctx.drawImage(scene.textures.get(key).getSourceImage(), 0, 0, 160, 90);
+        const box = (x: number, y: number, w: number, h: number) => {
+          const d = ctx.getImageData(x, y, w, h).data;
+          let lum = 0,
+            red = 0;
+          for (let i = 0; i < d.length; i += 4) {
+            lum += 0.3 * d[i] + 0.59 * d[i + 1] + 0.11 * d[i + 2];
+            red += d[i] - d[i + 1];
+          }
+          return { lum: lum / (d.length / 4), red: red / (d.length / 4) };
+        };
+        return { all: box(0, 0, 160, 90), middle: box(40, 22, 80, 46) };
+      };
+      return {
+        graded: measure("arena-floor-spire-summit-terrace:art"),
+        plain: measure("arena-floor-sky-terrace:art"),
+      };
+    });
+    const graded = terraceScores(
+        await terraceReadability(page, "arena-floor-spire-summit-terrace:art"),
+      ),
+      plain = terraceScores(
+        await terraceReadability(page, "arena-floor-sky-terrace:art"),
+      );
+    console.log(JSON.stringify({ light, graded, plain }));
+    expect(light.graded.all.lum).toBeLessThan(light.plain.all.lum * 0.9);
+    expect(light.graded.all.red).toBeGreaterThan(light.plain.all.red);
+    expect(light.graded.middle.lum).toBeGreaterThan(
+      light.plain.middle.lum * 0.75,
+    );
+    // Lumiwick's brazier cues and fire warnings read at least as well as
+    // in the raid (they are light colours: they gain on the deeper floor),
+    // the teal ring stands as far from the floor's colour, the red danger
+    // too.
+    expect(graded.teal).toBeGreaterThanOrEqual(plain.teal * 0.98);
+    expect(graded.tealHue).toBeGreaterThanOrEqual(plain.tealHue * 0.98);
+    expect(graded.tealCore).toBeGreaterThanOrEqual(plain.tealCore * 0.98);
+    expect(graded.gold).toBeGreaterThanOrEqual(plain.gold * 0.98);
+    expect(graded.flameRing).toBeGreaterThanOrEqual(plain.flameRing * 0.98);
+    expect(graded.patch).toBeGreaterThanOrEqual(plain.patch * 0.98);
+    expect(graded.lane).toBeGreaterThanOrEqual(plain.lane * 0.98);
+    expect(graded.danger).toBeGreaterThanOrEqual(plain.danger * 0.9);
+    // (The arcs' dark seat loses some contrast on the deeper floor, as
+    // their bright bands gain. Held so it never sinks further.)
+    expect(graded.seat).toBeGreaterThan(plain.seat * 0.75);
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});
+
+test("Lumiwick's own raid keeps the Sky Terrace ungraded", async ({
+  browser,
+}) => {
+  test.setTimeout(150_000);
+  const context = await browser.newContext({
+    viewport: { width: 844, height: 390 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  try {
+    const page = await context.newPage();
+    await hookGame(page);
+    const errors = await openHub(page);
+    await page.evaluate(() =>
+      (window as any).__room("raid", { boss: "emberwing" }),
+    );
+    await openPlayPanel(page);
+    await createRoom(page);
+    await pushUntilBattle(page);
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () =>
+            (window as any).__spireGame.scene.getScene("arena").floor.texture
+              .key,
+        ),
+      )
+      .toMatch(/^arena-floor-sky-terrace(:art)?$/);
+    expect(
+      await page.evaluate(() =>
+        (window as any).__spireGame.scene
+          .getScene("arena")
+          .textures.getTextureKeys()
+          .filter((k: string) => k.startsWith("arena-floor-spire-summit")),
+      ),
+    ).toEqual([]);
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});
+
+// Once zone 6's rooms are built (SPIRE_BUILT_TOP reaches 60), a real climb:
+// floor 51 on the Spire's court, then floor 59 beaten with floor 60 open,
+// its court (the terrace's summit) painted while the stairs are open and
+// shown on floor 60 with nothing fetched mid-fight.
+test("zone 6: Lumiwick's Sky Terrace kept to floor 60, painted on floor 59, nothing fetched mid-fight", async ({
+  browser,
+}, info) => {
+  test.skip(!ZONE6_REAL, "zone 6's rooms are not built yet");
+  test.setTimeout(240_000);
+  const context = await browser.newContext({
+    viewport: { width: 844, height: 390 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  try {
+    const page = await context.newPage();
+    await hookGame(page);
+    const art: { url: string; floor: number }[] = [];
+    let floorNow = 51;
+    page.on("request", (r) => {
+      if (r.url().includes("/raid-arenas/"))
+        art.push({ url: r.url(), floor: floorNow });
+    });
+    const errors = await openHub(page);
+    await climb(page, 51);
+    await page.waitForTimeout(600);
+    const c51 = await court(page);
+    expect(c51.floor).toBe("arena-floor-spire-z6");
+    expect(c51.blocks.length).toBeGreaterThan(0);
+    expect(c51.stairs).toHaveLength(1);
+    await frames(page);
+    // No braziers: the terrace isn't drawn.
+    expect(await terracePieceCount(page)).toBe(0);
+    await shot6(page, "z6-real-floor-51-844x390");
+
+    floorNow = 59;
+    await page.evaluate(() => {
+      const w = window as any;
+      w.__room("spire", { floor: 59, stage: "playing", ceiling: 60 });
+      w.__push();
+    });
+    const scene = () =>
+      page.evaluate(() => {
+        const s = (window as any).__spireGame.scene.getScene("arena");
+        return {
+          floor: s.floor?.texture?.key as string,
+          floors: (s.textures.getTextureKeys() as string[]).filter((k) =>
+            k.startsWith("arena-floor-"),
+          ),
+        };
+      });
+    for (let i = 0; i < 12; i++) {
+      const cleared = await page.evaluate(() => {
+        const w = window as any;
+        for (const p of w.__spireArena.players) if (p.echo) p.hp = 0;
+        w.__spireStep(1.8);
+        return w.__snap.raid.spire.clearedAt !== undefined;
+      });
+      if (cleared) break;
+    }
+    await page.waitForTimeout(1500);
+    const ready = (await scene()).floors;
+    floorNow = 60;
+    await page.evaluate(() => (window as any).__spireStep(3));
+    await expect
+      .poll(() => page.evaluate(() => (window as any).__snap.raid.spire.floor))
+      .toBe(60);
+    await expect
+      .poll(async () => (await scene()).floor)
+      .not.toBe("arena-floor-spire-z6");
+    const sixty = await scene();
+    expect(sixty.floor).toBe("arena-floor-spire-summit-terrace:art");
+    expect(ready).toContain(sixty.floor);
+    expect(art.every((a) => a.floor !== 60)).toBe(true);
+    await frames(page);
+    await expect.poll(() => terracePieceCount(page)).toBeGreaterThan(0);
+    await page.waitForTimeout(500);
+    await snap(page, info, "spire-court-z6-floor-60-844x390");
+    await shot6(page, "z6-real-floor-60-844x390");
     expect(errors).toEqual([]);
   } finally {
     await context.close();
