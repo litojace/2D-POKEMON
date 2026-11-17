@@ -738,3 +738,179 @@ test("times in the chat: a stamp before each stretch, as the big chat apps do", 
     await context.close();
   }
 });
+
+/**
+ * Stand-ins for the browser's push service (headless Chromium has none) and
+ * its notification permission (which Chromium builds report differently in
+ * headless runs: "denied" on CI even when granted). window.__permission sets
+ * what the browser answers.
+ */
+const fakePush = () => {
+  const w = window as any;
+  let sub: any = null;
+  w.__permission = "default";
+  class FakeNotification {
+    static get permission() {
+      return w.__permission;
+    }
+    static async requestPermission() {
+      if (w.__permission === "default") w.__permission = "granted";
+      return w.__permission;
+    }
+  }
+  Object.defineProperty(window, "Notification", {
+    configurable: true,
+    value: FakeNotification,
+  });
+  const pushManager = {
+    getSubscription: async () => sub,
+    subscribe: async (opts: any) => {
+      w.__pushOpts = {
+        userVisibleOnly: opts.userVisibleOnly,
+        key: opts.applicationServerKey?.length,
+      };
+      sub = {
+        endpoint: "https://fcm.googleapis.com/fcm/send/this-phone",
+        toJSON: () => ({
+          endpoint: sub.endpoint,
+          keys: {
+            p256dh:
+              "BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA_0QTpQtUbVlUls0VJXg7A8u-Ts1XbjhazAkj7I99e8QcYP7DkM",
+            auth: "tBHItJI5svbpez7KI4CCXg",
+          },
+        }),
+        unsubscribe: async () => {
+          sub = null;
+          return true;
+        },
+      };
+      return sub;
+    },
+  };
+  const reg = { pushManager };
+  Object.defineProperty(navigator, "serviceWorker", {
+    configurable: true,
+    value: {
+      ready: Promise.resolve(reg),
+      getRegistration: async () => reg,
+      addEventListener() {},
+      register: async () => reg,
+    },
+  });
+};
+
+test("notify me of friends' messages: the gear's switch, and when it can't be offered", async ({
+  browser,
+}, info) => {
+  test.setTimeout(120_000);
+  const context = await browser.newContext({
+    viewport: { width: 844, height: 390 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  try {
+    const page = await context.newPage();
+    await page.addInitScript(fakePush);
+    const errors = await openHub(page);
+    await page.evaluate(() => {
+      const w = window as any;
+      w.__pushSent = [];
+      w.__pushKey =
+        "BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA_0QTpQtUbVlUls0VJXg7A8u-Ts1XbjhazAkj7I99e8QcYP7DkM";
+      const before = w.__reply;
+      w.__reply = (ev: string, data: any) => {
+        if (ev === "push-config") return { ok: true, key: w.__pushKey };
+        if (ev === "push-subscribe" || ev === "push-unsubscribe") {
+          w.__pushSent.push([ev, data]);
+          return { ok: true };
+        }
+        return before?.(ev, data);
+      };
+    });
+    await page.click("#chat-button");
+    await page.click("#chat-drawer .chat-gear");
+    const toggle = page.locator("#chat-drawer .chat-push-toggle");
+    await expect(toggle).toBeVisible();
+    await expect(toggle).toHaveAttribute("aria-checked", "false");
+    await expect(page.locator("#chat-drawer .chat-push-note")).toContainText(
+      "It says who, not what.",
+    );
+    await snap(page, info, "chat-push-off-844x390");
+    // On: subscribed with the server's key, and the server told.
+    await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-checked", "true");
+    expect(await page.evaluate(() => (window as any).__pushOpts)).toEqual({
+      userVisibleOnly: true,
+      key: 65,
+    });
+    expect(await page.evaluate(() => (window as any).__pushSent)).toEqual([
+      [
+        "push-subscribe",
+        {
+          endpoint: "https://fcm.googleapis.com/fcm/send/this-phone",
+          keys: expect.objectContaining({ auth: "tBHItJI5svbpez7KI4CCXg" }),
+        },
+      ],
+    ]);
+    // Off again.
+    await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-checked", "false");
+    expect(
+      await page.evaluate(() => (window as any).__pushSent.at(-1)),
+    ).toEqual([
+      "push-unsubscribe",
+      { endpoint: "https://fcm.googleapis.com/fcm/send/this-phone" },
+    ]);
+    // Said no in the browser: explained, and the switch can't undo it.
+    await page.evaluate(() => ((window as any).__permission = "denied"));
+    await page.click("#chat-drawer .chat-gear");
+    await page.click("#chat-drawer .chat-gear");
+    await expect(page.locator("#chat-drawer .chat-push-note")).toHaveText(
+      "Notifications are blocked for this game in your browser settings.",
+    );
+    await expect(toggle).toBeDisabled();
+    // A server without notification keys: nothing offered.
+    await page.evaluate(() => ((window as any).__pushKey = null));
+    await page.click("#chat-drawer .chat-gear");
+    await page.click("#chat-drawer .chat-gear");
+    await expect(page.locator("#chat-drawer .chat-push")).toBeHidden();
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+
+  // iPhone Safari, not on the Home Screen: how to get them, switch off.
+  const iphone = await browser.newContext({
+    viewport: { width: 844, height: 390 },
+    isMobile: true,
+    hasTouch: true,
+    userAgent:
+      "Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.1 Mobile/15E148 Safari/604.1",
+  });
+  try {
+    const page = await iphone.newPage();
+    await page.addInitScript(() => {
+      delete (window as any).PushManager;
+    });
+    await openHub(page);
+    await page.evaluate(() => {
+      const w = window as any;
+      const before = w.__reply;
+      w.__reply = (ev: string, data: any) =>
+        ev === "push-config"
+          ? {
+              ok: true,
+              key: "BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA_0QTpQtUbVlUls0VJXg7A8u-Ts1XbjhazAkj7I99e8QcYP7DkM",
+            }
+          : before?.(ev, data);
+    });
+    await page.click("#chat-button");
+    await page.click("#chat-drawer .chat-gear");
+    await expect(page.locator("#chat-drawer .chat-push-note")).toContainText(
+      "add the game to your Home Screen first",
+    );
+    await expect(page.locator("#chat-drawer .chat-push-toggle")).toBeDisabled();
+  } finally {
+    await iphone.close();
+  }
+});

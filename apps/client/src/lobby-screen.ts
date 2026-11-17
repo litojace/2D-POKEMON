@@ -22,6 +22,7 @@ import "./lobby.css";
 import { fadeIn } from "./ui/motion";
 import { setInner } from "./ui/patch";
 import { openHubPanelNow } from "./ui/hub-panel";
+import { guideCard, type GuideView } from "./getting-started";
 
 /**
  * The Lobby: the one-screen hub after login (hub redesign phase 2). Your
@@ -142,6 +143,7 @@ export type LobbyAction =
   | "invite"
   | "leave-party"
   | "farm"
+  | "guide"
   | "more-play";
 /**
  * Six, so each is a finger (44 pt) tall on every phone. The Wardrobe is the
@@ -180,6 +182,8 @@ export interface LobbyView {
   friendRequests: number;
   /** Friends online right now (null: not loaded). */
   friendsOnline: number | null;
+  /** Getting started, for a new player: in the Journey card's place. */
+  guide?: GuideView;
 }
 export interface LobbyOptions {
   onAction(action: LobbyAction): void;
@@ -569,7 +573,16 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
       $("lobby-party-size").textContent = `Party · ${view.partySize}/4`;
       // In place (ui/patch.ts): updates come often (friends online, the
       // economy) and the cards' pictures and progress bars stay as they are.
-      setInner($("lobby-journey-card"), journeyCard(view.economy?.journey));
+      // A new player's guide takes the Journey card's place until it's done
+      // or hidden (getting-started.ts); there is no room for a fourth card.
+      const first = $("lobby-journey-card"),
+        guide = view.guide?.active ? view.guide : undefined;
+      first.dataset.lobbyAction = guide ? "guide" : "journey";
+      first.classList.toggle("is-guide", !!guide);
+      setInner(
+        first,
+        guide ? guideCard(guide) : journeyCard(view.economy?.journey),
+      );
       setInner($("lobby-missions-card"), missionsCard(view.economy));
       $("lobby-friends-online").textContent =
         view.friendsOnline === null

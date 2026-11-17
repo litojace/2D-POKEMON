@@ -16,6 +16,12 @@
 :root[data-ui-effects="light"] {
   --aero-tint: var(--aero-tint-solid);
   --aero-blur: none;
+  /* No blur behind glass: what shows through stays sharp and competes
+     with the text on it (ui/tokens.css). Pills and cards turn near solid;
+     panels, menus, dialogs and the chat turn solid. */
+  --glass-thin: var(--glass-solid);
+  --glass-regular: var(--glass-opaque);
+  --glass-thick: var(--glass-opaque);
   --shadow-2: 0 6px 14px #000a;
 }
 :root[data-ui-effects="light"]

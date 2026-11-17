@@ -15215,125 +15215,6 @@ body.battle-raid.touch-mode #battle #raid-hud#raid-hud .raid-callout {
   --ping: #ff5d6c;
 }
 
-#target-picker[hidden] {
-  display: none;
-}
-/* The target portraits (target-picker.ts): round buttons in one straight
-   row over the combat cluster, right end in line with the ultimate's right
-   edge (lockSlots in mobile-input.ts). The box is a point at the touch pad's bottom-right
-   corner (the cluster's), so it covers nothing; each portrait sits at its
-   slot's centre (--lock-N-r/-b from the cluster edges, set on resize by
-   touch-controls.ts). 44 px to tap, a 38 px disc to see. */
-#target-picker {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  width: 0;
-  height: 0;
-  z-index: 2;
-  pointer-events: none;
-}
-#target-picker button {
-  position: absolute;
-  display: grid;
-  place-items: center;
-  width: 44px;
-  height: 44px;
-  min-height: 0;
-  padding: 0;
-  margin: 0;
-  border: 0;
-  border-radius: 50%;
-  background: none;
-  pointer-events: auto;
-  touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
-}
-#target-picker button[data-slot="0"] {
-  right: calc(var(--lock-0-r) - 22px);
-  bottom: calc(var(--lock-0-b) - 22px);
-}
-#target-picker button[data-slot="1"] {
-  right: calc(var(--lock-1-r) - 22px);
-  bottom: calc(var(--lock-1-b) - 22px);
-}
-#target-picker button[data-slot="2"] {
-  right: calc(var(--lock-2-r) - 22px);
-  bottom: calc(var(--lock-2-b) - 22px);
-}
-#target-picker button[data-slot="3"] {
-  right: calc(var(--lock-3-r) - 22px);
-  bottom: calc(var(--lock-3-b) - 22px);
-}
-#target-picker .target-face {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: 38px;
-  height: 38px;
-  overflow: hidden;
-  border-radius: 50%;
-  border: 2px solid var(--target-color);
-  background: radial-gradient(
-      circle at 50% 30%,
-      color-mix(in srgb, var(--target-color) 45%, #14243b),
-      #0b1222 80%
-    )
-    #0b1222;
-  box-shadow: 0 1px 4px #000a;
-  color: #f4efe2;
-  opacity: var(--hud-opacity, 0.85);
-}
-#target-picker .target-face img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  pointer-events: none;
-  -webkit-user-select: none;
-  user-select: none;
-}
-#target-picker .target-face b {
-  font:
-    800 calc(15px * var(--text-scale, 1))/1 "DM Sans",
-    sans-serif;
-  text-shadow: 0 1px 2px #000;
-}
-#target-picker [data-kind="lantern"] .target-face {
-  color: var(--target-color);
-}
-#target-picker [data-kind="lantern"] .target-face svg {
-  width: 20px;
-  height: 20px;
-  margin-top: -6px;
-}
-#target-picker [data-kind="lantern"] .target-face b {
-  position: absolute;
-  bottom: 3px;
-  color: #f4efe2;
-  font-size: calc(9px * var(--text-scale, 1));
-  letter-spacing: 0.02em;
-}
-/* A bubble holds a teammate: their face behind a glassy sheen. */
-#target-picker [data-kind="bubble"] .target-face::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  background:
-    radial-gradient(circle at 32% 28%, #ffffffb0 0 12%, transparent 13%),
-    radial-gradient(circle, transparent 58%, #9fe6ff88 100%);
-}
-#target-picker button[aria-pressed="true"] .target-face {
-  opacity: 1;
-  border-color: #fff;
-  box-shadow:
-    0 0 0 3px #ff5d6c,
-    0 0 12px 2px #ff5d6ccc;
-}
-#target-picker button:disabled .target-face {
-  opacity: 0.35;
-  filter: grayscale(1);
-}
 /* PvP: the fighter cards reach the gear, so the badge sits under it (raids
    keep it beside the gear: the raid timer is under it). */
 body:not(.battle-raid) #battle-menu .ping-badge {
@@ -15341,7 +15222,7 @@ body:not(.battle-raid) #battle-menu .ping-badge {
   right: 50%;
   translate: 50% 0;
 }
-/* Phones: no room for the number by the gear (fighter cards, target row),
+/* Phones: no room for the number by the gear (the fighter cards),
    so the badge is just its coloured dot on the gear's corner. */
 body.touch-mode #battle-menu .ping-badge {
   top: 1px;

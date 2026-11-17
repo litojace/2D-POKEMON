@@ -80,11 +80,16 @@ export function rewardCard(r: RaidReward, champion: CharacterId) {
   return `<div class="reveal-card" style="--reveal:${boss?.color ?? "#ffd76a"}"><div class="reveal-face reveal-back" aria-hidden="true"><span>?</span></div><div class="reveal-face reveal-front"><span class="reveal-slot">${SLOT_LABEL[r.slot] ?? r.slot}</span>${r.slot === "title" ? "" : tierChip(r.id)}<span class="reveal-art">${art}</span><b class="reveal-name">${escape(r.name)}</b><small class="reveal-source">${boss ? escape(boss.name) : "Boss raids"} · ${escape(r.goal)}</small></div></div>`;
 }
 
-/** Show the new rewards one card at a time. Resolves when dismissed. */
+/**
+ * Show the new rewards one card at a time. Resolves when dismissed. With
+ * `wear`, an appearance reward offers "Wear it now" (titles are worn from
+ * the profile).
+ */
 export function showRewardReveal(
   rewards: RaidReward[],
   champion: CharacterId,
   host: HTMLElement = document.body,
+  wear?: (reward: RaidReward) => Promise<void>,
 ) {
   if (!rewards.length) return Promise.resolve();
   document.getElementById("reward-reveal")?.remove();
@@ -99,13 +104,34 @@ export function showRewardReveal(
     const show = () => {
       const r = rewards[index];
       const last = index === rewards.length - 1;
-      root.innerHTML = `<div class="reveal-stage"><p class="reveal-eyebrow">New reward unlocked${rewards.length > 1 ? ` · ${index + 1} of ${rewards.length}` : ""}</p>${rewardCard(r, champion)}<button type="button" class="primary reveal-next">${last ? "Awesome!" : "Next reward"}</button><p class="reveal-hint">${r.slot === "title" ? "Equip it from your profile." : "Equip it in the Wardrobe."}</p></div>`;
+      const wearable = !!wear && r.slot !== "title";
+      root.innerHTML = `<div class="reveal-stage"><p class="reveal-eyebrow">New reward unlocked${rewards.length > 1 ? ` · ${index + 1} of ${rewards.length}` : ""}</p>${rewardCard(r, champion)}<div class="reveal-actions">${wearable ? `<button type="button" class="primary reveal-wear">Wear it now</button>` : ""}<button type="button" class="${wearable ? "secondary" : "primary"} reveal-next">${last ? (wearable ? "Later" : "Awesome!") : "Next reward"}</button></div><p class="reveal-hint" role="status">${r.slot === "title" ? "Equip it from your profile." : wearable ? "Or wear it later in the Wardrobe." : "Equip it in the Wardrobe."}</p></div>`;
       // Flip on the next frame so the turn animates.
       requestAnimationFrame(() =>
         root.querySelector(".reveal-card")?.classList.add("is-flipped"),
       );
       const button = root.querySelector<HTMLButtonElement>(".reveal-next")!;
-      button.focus({ preventScroll: true });
+      const wearButton = root.querySelector<HTMLButtonElement>(".reveal-wear");
+      (wearButton ?? button).focus({ preventScroll: true });
+      if (wearButton && wear)
+        wearButton.onclick = async () => {
+          const hint = root.querySelector(".reveal-hint")!;
+          wearButton.disabled = true;
+          wearButton.textContent = "Wearing…";
+          try {
+            await wear(r);
+            wearButton.textContent = "Worn ✓";
+            hint.textContent = "It's on: it shows on all your fighters.";
+            button.textContent = last ? "Awesome!" : "Next reward";
+            button.className = "primary reveal-next";
+            button.focus({ preventScroll: true });
+          } catch {
+            wearButton.disabled = false;
+            wearButton.textContent = "Wear it now";
+            hint.textContent =
+              "Couldn't wear it right now. Try again, or use the Wardrobe.";
+          }
+        };
       button.onclick = () => {
         if (last) {
           root.remove();

@@ -37,7 +37,6 @@ import {
 } from "./predict-fighter";
 import { startPingBadge } from "./ping-badge";
 import { TargetLock, drawTargetReticle, type Targetable } from "./target-lock";
-import { renderTargetPicker, type PickerEnemy } from "./target-picker";
 import {
   CastPredictor,
   canBasic,
@@ -117,14 +116,7 @@ import { resultXp } from "./adventure-ui";
 import { arcadeWeek, ARCADE_EVENTS } from "../../../packages/shared/src/arcade";
 import { drawArcade } from "./arcade-art";
 import { stormTarget } from "./storm-twins-controls";
-import { raidTargets, type RaidTarget } from "./raid-targets";
-/** Target row colours for the raid targets that are not fighters. */
-const TARGET_COLORS: Record<RaidTarget["kind"], string> = {
-  shade: "#8a6ad6",
-  lantern: "#ffd27a",
-  boss: "#4fb8d8",
-  bubble: "#9fe6ff",
-};
+import { raidTargets } from "./raid-targets";
 import { prismatailAim } from "./prismatail-controls";
 import { dreamRuneKey } from "./somnara-controls";
 import { battleMusic } from "./battle-music";
@@ -142,7 +134,7 @@ import "./screens/room.css";
 import { renderRaidUI, drawRaidArena, raidLookList } from "./raid-ui";
 import { illustratedHelp } from "./illustrated-help";
 import { buttonIcon, iconLabel, menuIcon } from "./menu-icons";
-import type { RaidBossId } from "../../../packages/shared/src/raid";
+import type { RaidBossId, RaidSlot } from "../../../packages/shared/src/raid";
 import type { RaidTab } from "./screens/raid-hall-view";
 import type { SpireTab } from "./screens/spire-view";
 import { LobbySelection } from "./lobby-selection";
@@ -270,7 +262,7 @@ import {
   leadProjectile,
 } from "./networking/timeline-lead";
 import { AccountUI } from "./accounts";
-import { framedAvatar, portraitAvatar } from "./portraits";
+import { framedAvatar } from "./portraits";
 import { waitForServer, onServerStartupRetry } from "./server-connection";
 import "./ui/tokens.css";
 import "./style.css";
@@ -293,6 +285,9 @@ import { watchScrollRows } from "./ui/scroll-rows";
 import { watchScreenPin } from "./screen-pin";
 import { watchCosmeticPreviews } from "./cosmetic-fx-preview";
 import { openHubPanelNow } from "./ui/hub-panel";
+import { createGuide } from "./getting-started-screen";
+import { createCoach } from "./battle-coach";
+import { playerLevel } from "../../../packages/shared/src/journey";
 import { openRoster, type RosterScreen } from "./screens/roster";
 import { showRewardReveal, takeNewRewards } from "./reward-reveal";
 import {
@@ -408,6 +403,7 @@ import { RITE_EFFECTS, riteEffect, riteIcon } from "./rite-icons";
 import { ConnectionWatch, dropMessage } from "./connection-loss";
 import { watchSceneSwitch } from "./scene-switch-place";
 import { mountChat, type ChatFriend, type ChatPlace } from "./chat/chat-ui";
+import { pushState, turnPushOff, turnPushOn } from "./chat/push-setup";
 import { mountBattleChat } from "./chat/battle-chat";
 import {
   CHAT_MODES,
@@ -538,6 +534,34 @@ const socket = io(import.meta.env.VITE_SERVER_URL || undefined, {
   auth: { accessToken: null },
 });
 let accountsUI: AccountUI;
+/** The server's key for notifications (null: it sends none). */
+let pushKey: string | null = null;
+/** A friend to open from a tapped notification (sw.ts), once signed in. */
+let friendToOpen: { id: string; name: string } | null = (() => {
+  const q = new URLSearchParams(location.search);
+  const id = q.get("friend");
+  if (!id) return null;
+  q.delete("friend");
+  const name = q.get("name") ?? "";
+  q.delete("name");
+  const rest = q.toString();
+  history.replaceState(
+    history.state,
+    "",
+    location.pathname + (rest ? `?${rest}` : "") + location.hash,
+  );
+  return { id, name };
+})();
+navigator.serviceWorker?.addEventListener("message", (event) => {
+  const friend =
+    (event.data as { type?: string; friend?: unknown } | null)?.type ===
+    "open-friend"
+      ? (event.data.friend as { id?: unknown; name?: unknown })
+      : null;
+  if (typeof friend?.id !== "string") return;
+  friendToOpen = { id: friend.id, name: String(friend.name ?? "") };
+  syncHub();
+});
 const chat = mountChat({
   send: (channel, body, to) =>
     request("chat-send", { channel, ...body, ...(to ? { to } : {}) }),
@@ -557,6 +581,28 @@ const chat = mountChat({
   },
   read: (to) => {
     if (socket.connected) socket.emit("chat-read", { to });
+  },
+  // Notifications of friends' messages on this device (push-setup.ts). The
+  // server's key is fetched when the gear opens, so turning them on asks the
+  // browser straight from the tap.
+  push: {
+    state: async () => {
+      const reply = (await request("push-config", {}, true)) as {
+        ok: boolean;
+        key?: string | null;
+      };
+      pushKey = reply.ok && typeof reply.key === "string" ? reply.key : null;
+      return pushKey ? pushState() : "server-off";
+    },
+    toggle: (on) =>
+      on
+        ? pushKey
+          ? turnPushOn(pushKey, (event, data) => request(event, data, true))
+          : Promise.resolve({
+              ok: false,
+              error: "Notifications aren't available right now.",
+            })
+        : turnPushOff((event, data) => request(event, data, true)),
   },
   me: () =>
     accountsUI?.account
@@ -658,7 +704,7 @@ const escape = (s: string) =>
       ]!,
   );
 document.querySelector("#app")!.innerHTML =
-  `<header class="topbar"><nav class="hub-scenes" id="hub-scenes" role="group" aria-label="Scene" hidden></nav><a class="brand" href="#"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 64 64"><defs><linearGradient id="element-crest" x2="0" y2="1"><stop stop-color="#fff1a3"/><stop offset="1" stop-color="#d9a340"/></linearGradient></defs><path fill="url(#element-crest)" fill-rule="evenodd" d="M32 2 42 21 62 32 43 43 32 62 21 43 2 32 21 21Zm0 14L16 32l16 16 16-16Z"/></svg></span> ELEMENT<span>ARENA</span></a><div class="top-links"><div id="account-nav" class="account-nav"></div><button type="button" class="quiet home-settings" id="home-settings" aria-label="Settings" title="Settings">${menuIcon("settings")}</button><details class="header-menu" id="header-menu"><summary><i class="menu-burger" aria-hidden="true">☰</i><i class="menu-gear" aria-hidden="true">${menuIcon("settings")}</i> <span>Menu</span></summary><div class="header-menu-panel"><button class="quiet" id="help">${menuIcon("help")}<span>How to play</span></button><button class="quiet" id="settings">${menuIcon("settings")}<span>Settings</span></button><button class="quiet" id="leaderboard">${menuIcon("leaderboard")}<span>Leaderboard</span></button><button class="quiet" id="install-app">${menuIcon("fullscreen")}<span>Want fullscreen?</span></button><button class="quiet" id="report-problem">${menuIcon("report")}<span>Report a problem</span></button><button class="quiet" id="privacy-policy">${menuIcon("help")}<span>Privacy policy</span></button><button class="quiet" id="menu-logout">${menuIcon("leave")}<span>Log out</span></button><span class="connection" id="connection">Connecting</span></div></details></div></header><main><section id="menu"></section><section id="battle" hidden>${stadiumCrowd()}<div id="practice-controls" class="practice-controls" hidden></div><div id="hud" class="hud"></div><div class="arena-stage"><div class="arena-frame"><div id="game"></div><div id="arena-overlay"></div><div id="spectate" class="spectate-banner" role="status" hidden></div><span class="map-label">ELEMENTAL COLISEUM <span>01 / CHAMPIONS COURT</span></span></div></div><div id="mobile-controls"></div><div id="abilities" class="ability-bar"></div><div class="battle-footer"><span id="control-hints"></span><span id="network">AUTHORITATIVE ONLINE MATCH</span><button class="quiet" id="battle-menu" aria-label="Battle settings" title="Battle settings (Esc / controller Menu)">${menuIcon("settings")}</button></div></section></main><div id="toast" role="status"></div><dialog id="dialog"></dialog>`;
+  `<header class="topbar"><nav class="hub-scenes" id="hub-scenes" role="group" aria-label="Scene" hidden></nav><a class="brand" href="#"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 64 64"><defs><linearGradient id="element-crest" x2="0" y2="1"><stop stop-color="#fff1a3"/><stop offset="1" stop-color="#d9a340"/></linearGradient></defs><path fill="url(#element-crest)" fill-rule="evenodd" d="M32 2 42 21 62 32 43 43 32 62 21 43 2 32 21 21Zm0 14L16 32l16 16 16-16Z"/></svg></span> ELEMENT<span>ARENA</span></a><div class="top-links"><div id="account-nav" class="account-nav"></div><button type="button" class="quiet home-settings" id="home-settings" aria-label="Settings" title="Settings">${menuIcon("settings")}</button><details class="header-menu" id="header-menu"><summary><i class="menu-burger" aria-hidden="true">☰</i><i class="menu-gear" aria-hidden="true">${menuIcon("settings")}</i> <span>Menu</span></summary><div class="header-menu-panel"><button class="quiet" id="help">${menuIcon("help")}<span>How to play</span></button><button class="quiet" id="guide-open">${menuIcon("sparkle")}<span>Getting started</span></button><button class="quiet" id="settings">${menuIcon("settings")}<span>Settings</span></button><button class="quiet" id="leaderboard">${menuIcon("leaderboard")}<span>Leaderboard</span></button><button class="quiet" id="install-app">${menuIcon("fullscreen")}<span>Want fullscreen?</span></button><button class="quiet" id="report-problem">${menuIcon("report")}<span>Report a problem</span></button><button class="quiet" id="privacy-policy">${menuIcon("help")}<span>Privacy policy</span></button><button class="quiet" id="menu-logout">${menuIcon("leave")}<span>Log out</span></button><span class="connection" id="connection">Connecting</span></div></details></div></header><main><section id="menu"></section><section id="battle" hidden>${stadiumCrowd()}<div id="practice-controls" class="practice-controls" hidden></div><div id="hud" class="hud"></div><div class="arena-stage"><div class="arena-frame"><div id="game"></div><div id="arena-overlay"></div><div id="spectate" class="spectate-banner" role="status" hidden></div><span class="map-label">ELEMENTAL COLISEUM <span>01 / CHAMPIONS COURT</span></span></div></div><div id="mobile-controls"></div><div id="abilities" class="ability-bar"></div><div class="battle-footer"><span id="control-hints"></span><span id="network">AUTHORITATIVE ONLINE MATCH</span><button class="quiet" id="battle-menu" aria-label="Battle settings" title="Battle settings (Esc / controller Menu)">${menuIcon("settings")}</button></div></section></main><div id="toast" role="status"></div><dialog id="dialog"></dialog>`;
 // Measure wrapped HUDs for phone spacing and desktop boss-specific controls.
 let measuredRaidHud: HTMLElement | null = null;
 let battleLayoutFrame = 0;
@@ -897,7 +943,7 @@ else $("battle").append($("battle-menu"));
 const held = new Set<string>();
 const caster = new SkillCaster();
 const castPredictor = new CastPredictor();
-/** The enemy a phone player locked on to (tap it, or its name in the target row). */
+/** The enemy a phone player locked on to (tap it on the court). */
 const targetLock = new TargetLock();
 // The ping badge by the battle gear; predicted casts wait about one round trip.
 startPingBadge(
@@ -1573,20 +1619,6 @@ function identityOf(p: Fighter, character = p.character): Fighter {
       }
     : { ...p, character };
 }
-/** Target portraits' faces (data URLs), built once per look and kept. */
-const targetFaces = new Map<string, string>();
-function targetFace(p: Fighter) {
-  const look = p.championLooks?.[p.character];
-  const key = `${p.character}|${look?.skin ?? ""}|${look?.stage ?? ""}|${p.raidLook?.skin ?? ""}`;
-  let url = targetFaces.get(key);
-  if (!url) {
-    url =
-      "data:image/svg+xml;charset=utf-8," +
-      encodeURIComponent(portraitAvatar(p, `target-${targetFaces.size}`));
-    targetFaces.set(key, url);
-  }
-  return url;
-}
 let lastWornKey = "{}";
 /** Your fighter's colour on the page (the room, the hub). */
 function syncMenuCosmetic() {
@@ -2172,6 +2204,12 @@ function syncChat(hub: boolean) {
     // Friends: anyone signed in with an account (guests have no friends).
     friend: !!accountsUI?.account && !accountsUI.account.guest,
   });
+  // A tapped notification waits for the sign-in, then opens that friend.
+  if (friendToOpen && accountsUI?.account && !accountsUI.account.guest) {
+    const { id, name } = friendToOpen;
+    friendToOpen = null;
+    chat.openFriend(id, name);
+  }
   // Either chat button is up in the screen's top-left corner: the raid's
   // briefing and results cards keep clear of it on phones (raid-cards.css).
   document.body.classList.toggle(
@@ -2317,6 +2355,7 @@ let placeSceneSwitch: (() => void) | undefined;
 function setHubScene(scene: HubScene) {
   if (!sceneAvailable(scene) || scene === hubScene) return;
   hubScene = scene;
+  if (scene === "farm" || scene === "bistro") guide.mark(scene);
   saveHubScene(scene);
   homeNavigation.close();
   syncHub();
@@ -2354,8 +2393,31 @@ function lobbyView() {
     economy: accountsUI.economy ?? undefined,
     friendRequests: lobbyFriends.requests,
     friendsOnline: lobbyFriends.online,
+    guide: guide.view(),
   };
 }
+/** Getting started (getting-started.ts): a new player's first steps. */
+const guide = createGuide({
+  account: () => accountsUI.account?.id,
+  facts: () => {
+    const journey = accountsUI.economy?.journey;
+    return {
+      level: journey ? playerLevel(journey.xp).level : undefined,
+      cragmuffClears: accountsUI.raidClears.grumblecrag ?? 0,
+      wearing:
+        Object.values(accountsUI.raidLook ?? {}).some(Boolean) ||
+        !!accountsUI.account?.title,
+    };
+  },
+  go: (step) => {
+    if (step === "bot") void lobbyPlay("bot-easy");
+    else if (step === "raid") void accountsUI.showRaids("grumblecrag", "party");
+    else if (step === "wear") void accountsUI.showWardrobe();
+    else setHubScene(step);
+  },
+  changed: () => syncLobby(!!lobby),
+  toast: (text) => toast(text),
+});
 function syncLobby(want: boolean) {
   if (!want) {
     if (lobby) {
@@ -2626,6 +2688,7 @@ function lobbyAction(action: LobbyAction) {
   if (action !== "shop" && action !== "wardrobe") openHubPanelNow()?.close();
   if (action === "fighters") openRosterScreen();
   else if (action === "more-play") homeNavigation.open("play");
+  else if (action === "guide") guide.open();
   else if (action === "wardrobe") void accountsUI.showWardrobe();
   else if (action === "shop") void accountsUI.showShop();
   else if (action === "raids") void showRaidBestiary();
@@ -2772,6 +2835,7 @@ async function startSpire(options: {
   if (options.solo) await request("ready");
 }
 function renderMenu(revealSelection = false) {
+  coach.stop();
   // In a raid room, the boss's atlas is painted ahead (boss-prepaint.ts).
   syncBossPrepaint(state);
   syncFighterArt();
@@ -3060,6 +3124,39 @@ function renderPvpSpectator() {
   }
 }
 
+/** The first match's coach (battle-coach.ts), over the court. */
+const coach = createCoach({
+  host: () => document.querySelector<HTMLElement>("#battle .arena-frame"),
+  keys: () => ({
+    touch: touch.enabled,
+    move: moveText(),
+    basic: keyText("basic"),
+    skills: skillsText(),
+    dash: keyText("dash"),
+  }),
+});
+/** The room the coach was last decided for (once per room). */
+let coachRoom = "";
+/**
+ * A new player's match against a bot, while Getting started still has it
+ * to do: the coach runs until the match ends.
+ */
+function syncCoach() {
+  const live =
+    !!state &&
+    !!myId &&
+    !!state.vsBot &&
+    state.phase !== "lobby" &&
+    state.phase !== "finished";
+  if (!live) {
+    if (coach.running) coach.stop();
+    return;
+  }
+  if (coach.running || coachRoom === state!.code) return;
+  coachRoom = state!.code;
+  const g = guide.view();
+  if (g.active && !g.done.bot) coach.start();
+}
 function renderBattle() {
   document.body.classList.remove("home-active", "lobby-active", "gate-active");
   if (!state?.practice) document.body.classList.remove("practice-active");
@@ -3079,6 +3176,7 @@ function renderBattle() {
     state?.players.find((p) => p.id === myId) ??
     (watching && state?.code === watching ? state.players[0] : undefined);
   if (!state || !me) return;
+  syncCoach();
   setHudStyle(
     document.body,
     "--element",
@@ -3448,7 +3546,13 @@ function renderBattle() {
         // Let the victory screen land, then turn the new cards over.
         if (fresh.length) {
           const champion = me.character;
-          setTimeout(() => void showRewardReveal(fresh, champion), 1800);
+          setTimeout(
+            () =>
+              void showRewardReveal(fresh, champion, document.body, (r) =>
+                accountsUI.wearLook(r.slot as RaidSlot, r.id),
+              ),
+            1800,
+          );
         }
         return progress;
       },
@@ -3609,6 +3713,8 @@ function renderBattle() {
       if (state.arcade)
         details +=
           '<p class="arcade-rating-note">Weekly arcade · XP and mission progress · PvP rating stays separate.</p>';
+      // A finished match against a bot: Getting started's first step.
+      if (state.vsBot) guide.mark("bot");
       actions = `<div class="result-actions"><button class="primary btn-primary" id="rematch">${me.ready ? "Waiting for opponent…" : iconLabel("again", "Rematch")}</button><button class="secondary btn-secondary" id="share-result">${iconLabel("share", "Share result")}</button><button class="secondary btn-secondary${state.vsBot ? " leave-button" : ""}" id="return">${state.vsBot ? iconLabel("home", "Back to menu") : iconLabel("back", "Return to lobby")}</button></div>`;
     }
     const markup = `<div class="overlay-card${actions ? " action-overlay" : state.phase === "countdown" ? " countdown-card" : ""}"><span class="eyebrow">Element Arena</span><h2>${heading}</h2><div${actions ? ' class="panel-scroll" tabindex="0" role="region" aria-label="Match details"' : ""}>${details}</div>${actions ? `<div class="panel-actions">${actions}</div>` : ""}</div>`;
@@ -4341,6 +4447,12 @@ $("menu-logout").onclick = () => {
   headerMenu.open = false;
   document.getElementById("account-logout")?.click();
 };
+$("guide-open").onclick = () => {
+  $<HTMLDetailsElement>("header-menu").open = false;
+  if (!accountsUI.ensurePlayer()) return;
+  if (myId) return toast("Finish or leave this room first.");
+  guide.reopen();
+};
 $("help").onclick = () =>
   dialog(
     `<div class="help-screen"><div class="eyebrow">How to play</div><h2>Welcome to Elemental Plaza.</h2><p>Press <b>PLAY</b> in the Lobby to start a match. Switch between the Lobby, the Plaza and your Farm at the top of the screen. In battle, win three rounds to take the match.</p><div class="eyebrow help-battle-eyebrow">In battle</div><div class="help-layout"><section class="help-controls" aria-label="Game controls">${controlsList(true)}</section>${illustratedHelp()}</div></div>`,
@@ -5059,71 +5171,16 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     });
     this.scale.refresh();
   }
-  /** The phone target row (two or more enemies) and the lock's lifetime. */
-  syncTargetPicker() {
+  /** The tap-to-target lock's lifetime: it ends when its target dies or
+   * leaves (a defeated fighter, a popped copy or bubble, a relit lantern). */
+  keepTargetLock() {
+    if (targetLock.id === undefined) return;
     const me = state?.players.find((p) => p.id === myId);
     const extra = state && me ? raidTargets(state, me) : undefined;
     targetLock.keepIf(
       (id) =>
-        !!state?.players.some((p) => p.id === id && !p.out) ||
+        !!state?.players.some((p) => p.id === id && !p.out && p.hp > 0) ||
         !!extra?.some((t) => t.id === id),
-    );
-    const host = touch.lockHost;
-    if (!host) return;
-    const show =
-      touch.enabled &&
-      !!me &&
-      !me.out &&
-      state?.phase === "playing" &&
-      state.raid?.boss !== "storm-twins";
-    const myTeam = me ? teamOf(me) : undefined;
-    const away = (t: { x: number; y: number }) =>
-      me ? Math.hypot(t.x - me.x, t.y - me.y) : 0;
-    const face = (id: string | undefined) => {
-      const p = id ? state?.players.find((f) => f.id === id) : undefined;
-      return p ? targetFace(p) : undefined;
-    };
-    const enemies: PickerEnemy[] = !show
-      ? []
-      : extra
-        ? // Gloomshade's bodies (alike, by letter) and unlit lanterns;
-          // Tidewyrm and the bubbles holding teammates.
-          extra
-            .slice()
-            .sort((a, b) => a.label.localeCompare(b.label))
-            .map((t) => ({
-              id: t.id,
-              name: t.label,
-              color: TARGET_COLORS[t.kind],
-              available: true,
-              kind: t.kind,
-              distance: away(t),
-              ...(t.kind === "bubble"
-                ? { art: face(t.id.slice("bubble:".length)) }
-                : t.kind === "boss"
-                  ? { art: face(t.id) }
-                  : // "Inkpurr B" → B; "Lantern NW" → NW
-                    { glyph: t.label.split(" ").at(-1) }),
-            }))
-        : state!.players
-            .filter((p) => p.id !== myId && !p.out && teamOf(p) !== myTeam)
-            .map((p) => ({
-              id: p.id,
-              name: p.raidBoss && state!.raid ? state!.raid.name : p.name,
-              color: `#${CHARACTERS[p.character].color.toString(16).padStart(6, "0")}`,
-              available:
-                p.hp > 0 && !p.statuses.some((s) => s.kind === "stealth"),
-              kind: p.raidBoss ? ("boss" as const) : ("fighter" as const),
-              art: targetFace(p),
-              distance: away(p),
-            }));
-    renderTargetPicker(
-      host,
-      show,
-      enemies,
-      targetLock.id,
-      touch.lockSlots,
-      (id) => targetLock.toggle(id),
     );
   }
   /** Start your own basic, skill or dash feedback on the press (see cast-prediction). */
@@ -5795,7 +5852,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         this.positions.delete(id);
       }
     const pad = pollPad();
-    this.syncTargetPicker();
+    this.keepTargetLock();
     if (!this.canControl()) {
       this.actions = { skill: -1, dash: false, jump: false, basic: false };
       caster.cancel();
@@ -5934,6 +5991,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       };
       this.actions = { skill: -1, dash: false, jump: false, basic: false };
       socket.emit("input", input);
+      if (combatActive && coach.running) coach.note(input);
       // Show your own cast now (before this step's movement changes the
       // fighter), at the time this input is predicted to run.
       this.predictCasts(
@@ -5966,6 +6024,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
           locked.x,
           locked.feetY,
           reducedMotion ? 0 : _time / 1000,
+          this.cameras.main.zoomX * this.scale.zoom,
         );
     }
     const raidCues =
@@ -6425,7 +6484,13 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         p.hp > 0 &&
         !serverPlayer.statuses.some((s) => s.kind === "stealth")
       )
-        drawTargetReticle(g, x, feetY, reducedMotion ? 0 : _time / 1000);
+        drawTargetReticle(
+          g,
+          x,
+          feetY,
+          reducedMotion ? 0 : _time / 1000,
+          this.cameras.main.zoomX * this.scale.zoom,
+        );
       // Mastery flair: an outer ring in the tier's colour (Crystal shimmers).
       if (serverPlayer.flair) {
         const tier = MASTERY_TIERS.find((t) => t.name === serverPlayer.flair);
@@ -7323,6 +7388,9 @@ function ensureBattleRenderer() {
     // CSS zoom compensates for DPR; it must not enable Phaser's pixel-art mode.
     render: { pixelArt: false, antialias: true },
     // The camera maps the authoritative 1600x900 world onto the buffer.
+    // Several fingers at once: the joystick's thumb takes one of Phaser's
+    // pointers, so a court tap to lock a target needs another
+    // (tests/visual/tap-target.spec.ts fails with one).
     input: { activePointers: 4 },
     // A 120 Hz phone draws the battle at about 60 frames a second, like
     // every other screen (frame-cap.ts): half the drawing for no visible
@@ -7475,6 +7543,8 @@ accountsUI = new AccountUI({
   onSession: (token, accountId) => {
     const attempt = ++authConnectionAttempt;
     if (!token) roomInvites.clear();
+    // Signed out: this device stops getting the last player's notifications.
+    if (!token) void turnPushOff();
     if (!token || (accountId && accountId !== replacedAccount)) {
       replacedAccount = null;
       sessionStorage.removeItem("arena-session-replaced");

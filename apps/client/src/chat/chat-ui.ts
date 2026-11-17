@@ -30,6 +30,7 @@ import {
 import { filterChat } from "../../../../packages/shared/src/chat-filter";
 import { menuIcon } from "../menu-icons";
 import { needsStamp, stampLong, stampText } from "./chat-time";
+import type { PushState } from "./push-setup";
 
 export type ChatPlace = "hub" | "room" | "none";
 interface Reply {
@@ -62,6 +63,14 @@ export interface ChatHooks {
   report(channel: ChatChannel, lineId: number, to?: string): Promise<Reply>;
   /** The player picked a chat setting (keep it, tell the server). */
   setMode(mode: ChatMode): void;
+  /**
+   * Notifications of friends' messages on this device (push-setup.ts):
+   * what it can do, and turning them on or off (from the tap itself).
+   */
+  push?: {
+    state(): Promise<PushState | "server-off">;
+    toggle(on: boolean): Promise<Reply>;
+  };
 }
 export interface ChatView {
   /** Where the button shows, and which channels are open now. */
@@ -133,7 +142,7 @@ export function mountChat(hooks: ChatHooks): ChatView {
     )
     .join(
       "",
-    )}</div><p class="chat-mode-note"></p></div><div class="chat-with" hidden><button type="button" class="chat-back" aria-label="All friends">${menuIcon("back")}</button><b></b></div><ol class="chat-lines" aria-live="polite"></ol><p class="chat-empty" hidden></p><div class="chat-quick" role="group" aria-label="Quick chat">${CHIPS.map((q) => `<button type="button" class="chat-chip" data-chat-quick="${q}">${quickText(q)}</button>`).join("")}</div><form class="chat-form"><input id="chat-input" class="chat-input" type="text" enterkeyhint="send" autocomplete="off" autocapitalize="sentences" maxlength="${CHAT_LIMITS.length}" aria-label="Message"><button type="submit" class="chat-send" aria-label="Send">Send</button></form><p class="chat-note" role="status"></p>`;
+    )}</div><p class="chat-mode-note"></p><div class="chat-push" hidden><button type="button" role="switch" class="chat-push-toggle" aria-checked="false">Notify me of friends' messages</button><p class="chat-push-note"></p></div></div><div class="chat-with" hidden><button type="button" class="chat-back" aria-label="All friends">${menuIcon("back")}</button><b></b></div><ol class="chat-lines" aria-live="polite"></ol><p class="chat-empty" hidden></p><div class="chat-quick" role="group" aria-label="Quick chat">${CHIPS.map((q) => `<button type="button" class="chat-chip" data-chat-quick="${q}">${quickText(q)}</button>`).join("")}</div><form class="chat-form"><input id="chat-input" class="chat-input" type="text" enterkeyhint="send" autocomplete="off" autocapitalize="sentences" maxlength="${CHAT_LIMITS.length}" aria-label="Message"><button type="submit" class="chat-send" aria-label="Send">Send</button></form><p class="chat-note" role="status"></p>`;
   document.body.append(button, drawer);
   const tabs = drawer.querySelector<HTMLElement>(".chat-tabs")!;
   const list = drawer.querySelector<HTMLOListElement>(".chat-lines")!;
@@ -513,10 +522,54 @@ export function mountChat(hooks: ChatHooks): ChatView {
       b.setAttribute("aria-checked", String(b.dataset.chatMode === mode));
     prefs.querySelector(".chat-mode-note")!.textContent = MODE_NOTE[mode];
   };
+  // Notifications of friends' messages (signed-in players; push-setup.ts).
+  const pushRow = prefs.querySelector<HTMLElement>(".chat-push")!;
+  const pushToggle =
+    pushRow.querySelector<HTMLButtonElement>(".chat-push-toggle")!;
+  const pushNote = pushRow.querySelector<HTMLElement>(".chat-push-note")!;
+  const PUSH_NOTE: Record<PushState, string> = {
+    on: "On for this device: a notification when a friend messages you while you're away. It says who, not what.",
+    off: "Get a notification when a friend messages you while you're away. It says who, not what.",
+    "install-first":
+      "On iPhone and iPad, add the game to your Home Screen first (Share, then Add to Home Screen), and turn this on there.",
+    blocked:
+      "Notifications are blocked for this game in your browser settings.",
+    unsupported: "",
+  };
+  let pushNow: PushState | "server-off" = "unsupported";
+  const renderPush = (state: PushState | "server-off") => {
+    pushNow = state;
+    const me = hooks.me();
+    pushRow.hidden =
+      !hooks.push ||
+      !me ||
+      me.guest ||
+      state === "unsupported" ||
+      state === "server-off";
+    pushToggle.setAttribute("aria-checked", String(state === "on"));
+    pushToggle.disabled = state === "install-first" || state === "blocked";
+    pushNote.textContent = state === "server-off" ? "" : PUSH_NOTE[state];
+  };
+  const refreshPush = () =>
+    void hooks.push
+      ?.state()
+      .then(renderPush)
+      .catch(() => renderPush("unsupported"));
+  pushToggle.addEventListener("click", async () => {
+    if (!hooks.push || pushToggle.disabled) return;
+    const want = pushNow !== "on";
+    pushToggle.disabled = true;
+    // (The browser asks inside this tap: nothing is awaited before it.)
+    const reply = await hooks.push.toggle(want);
+    if (!reply.ok && reply.error) say(reply.error);
+    pushToggle.disabled = false;
+    refreshPush();
+  });
   gear.addEventListener("click", () => {
     prefs.hidden = !prefs.hidden;
     gear.setAttribute("aria-expanded", String(!prefs.hidden));
     renderPrefs();
+    if (!prefs.hidden) refreshPush();
   });
   prefs.addEventListener("click", (e) => {
     const pick = (e.target as HTMLElement).closest<HTMLElement>(
