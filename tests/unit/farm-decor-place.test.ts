@@ -160,26 +160,29 @@ describe("the decoration catalog: groups, paths, seasons, collections", () => {
     for (const d of flat) expect(d.group).toBe("fences");
     const placed: FarmDecorPiece[] = [
       { id: 1, item: "pathstone", x: 600, y: 950 },
-      { id: 2, item: "picket", x: 1100, y: 900 },
+      { id: 2, item: "picket", x: 460, y: 900 },
     ];
     expect(decorFits("pathgravel", 610, 950, placed)).toBeNull();
     expect(decorFits("pathstone", 600, 950, placed)).toBeNull();
     expect(decorFits("tulips", 600, 950, placed)).toBe(
       "Too close to another decoration",
     );
-    expect(decorFits("pathbrick", 1100, 900, placed)).toBe(
+    expect(decorFits("pathbrick", 460, 900, placed)).toBe(
       "Too close to another decoration",
     );
-    // Still not on the field, the pond or the gate's path.
+    // Still not on the field, the gate's path or the Chicken Coop.
     expect(decorFits("pathstone", 800, 500, [])).toBe(
       "Something is in the way",
     );
     expect(decorFits("pathstone", 880, 950, [])).toBe(
       "Something is in the way",
     );
+    expect(decorFits("pathstone", 1170, 930, [])).toBe(
+      "Something is in the way",
+    );
     // Fences 50 px apart touch without overlapping.
-    expect(decorFits("picket", 1150, 900, placed)).toBeNull();
-    expect(decorFits("picket", 1140, 900, placed)).toBe(
+    expect(decorFits("picket", 510, 900, placed)).toBeNull();
+    expect(decorFits("picket", 500, 900, placed)).toBe(
       "Too close to another decoration",
     );
   });

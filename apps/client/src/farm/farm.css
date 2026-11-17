@@ -3211,3 +3211,53 @@ body.hub-farm #account-leaves {
 .farm-layer.phone .dset-it canvas {
   width: min(40px, 100%);
 }
+
+/* The Chicken Coop's sheet (20261117100000): one chip per hen, three to a row. */
+.farm-layer .coop-hens {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5em;
+}
+.farm-layer .coop-hens .hen {
+  display: grid;
+  grid-template-columns: 1.9em minmax(0, 1fr);
+  gap: 0.45em;
+  align-items: center;
+  min-width: 0;
+  padding: 0.4em 0.5em;
+  border-radius: 12px;
+  background: #ffffff0b;
+  border: 1px solid #ffffff14;
+}
+.farm-layer .coop-hens .hen.egg {
+  background: #ffd65b1c;
+  border-color: #ffd65b80;
+}
+.farm-layer .coop-hens .hen .ic {
+  width: 1.9em;
+  height: 1.9em;
+  display: grid;
+  place-items: center;
+}
+.farm-layer .coop-hens .hen .ic img,
+.farm-layer .coop-hens .hen .ic svg {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.farm-layer .coop-hens .hen b {
+  display: block;
+  font-size: 0.86em;
+}
+.farm-layer .coop-hens .hen small {
+  display: block;
+  overflow: hidden;
+  color: var(--dim);
+  font-size: 0.76em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.farm-layer .coop-hens .hen.egg small {
+  color: #ffd65b;
+}

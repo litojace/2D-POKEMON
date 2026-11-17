@@ -460,6 +460,7 @@ export const FARM_UNLOCKS: readonly [number, string][] = [
   [9, "Cow Pasture"],
   [10, "Big Net"],
   [14, "Sickle"],
+  [14, "Chicken Coop"],
   [18, "Sprinkler"],
   [24, "Gold Fertilizer"],
   [30, "Gold Can"],
@@ -1507,6 +1508,54 @@ export const decorCap = (level: number) =>
 export const DECOR_GRID = 10;
 /** The land decorations may stand on (world px, the farm scene's). */
 export const DECOR_AREA = { x0: 20, x1: 1740, y0: 120, y1: 1060 } as const;
+/**
+ * The Chicken Coop (migration 20261117100000_farm_coop_cows.sql): a wooden
+ * coop and its run on the grass below the lane, right of the gate's path
+ * (the farm's tree that stood there was felled). It opens at farm level 14
+ * with 3 hens; 6 more can be bought, each from its own farm level, so the
+ * eggs stay a side income next to the field (docs/farm-coop.md). A hen fed
+ * 2 Breeze Wheat from the barn lays one egg after `laySeconds` (server
+ * time); a tap collects it (into the barn) and the hen is hungry again.
+ */
+export const COOP = {
+  level: 14,
+  price: 1500,
+  /** Farm XP for opening it, and for each egg collected. */
+  xp: 40,
+  eggXp: 3,
+  /** The ground it takes (world px): no decoration stands here. */
+  x0: 990,
+  x1: 1350,
+  y0: 846,
+  y1: 1010,
+  /** Hens it opens with, and the most it holds. */
+  hens: 3,
+  maxHens: 9,
+  /** The 4th, 5th … 9th hen: the farm level it needs, and its Gold Leaves. */
+  henLevels: [17, 20, 24, 28, 32, 36] as readonly number[],
+  henPrices: [500, 700, 900, 1100, 1300, 1500] as readonly number[],
+  /** One feeding: plain (unmutated) crops from the barn. */
+  feedCrop: "wheat",
+  feedQty: 2,
+  laySeconds: 2 * 3600,
+} as const;
+/** What the next hen costs when a coop has `owned` hens (null: it's full). */
+export const henPrice = (owned: number): number | null =>
+  owned >= COOP.hens && owned < COOP.maxHens
+    ? COOP.henPrices[owned - COOP.hens]
+    : null;
+/** The farm level the next hen needs when a coop has `owned` hens (null: it's full). */
+export const henLevel = (owned: number): number | null =>
+  owned >= COOP.hens && owned < COOP.maxHens
+    ? COOP.henLevels[owned - COOP.hens]
+    : null;
+export type HenState = "hungry" | "laying" | "egg";
+/** A hen by when its egg is due (null: not fed), at server time `now` (ms). */
+export function henState(eggAt: string | number | null, now: number): HenState {
+  if (eggAt == null) return "hungry";
+  const t = typeof eggAt === "number" ? eggAt : Date.parse(eggAt);
+  return t > now ? "laying" : "egg";
+}
 export type DecorBlock =
   | { k: "rect"; x0: number; x1: number; y0: number; y1: number }
   | { k: "oval"; x: number; y: number; rx: number; ry: number };
@@ -1514,7 +1563,8 @@ export type DecorBlock =
  * What decorations can't stand on: the field and its fence, the lane in
  * front of it, the back row (home, mill, orders board, market, barn), the
  * pasture, the well, the doghouse and the dog's spot, the scarecrow's spot,
- * the path down from the gate, the pond and the farm's own trees.
+ * the path down from the gate, the Chicken Coop (COOP), the pond and the
+ * farm's own trees.
  * The database checks the same list (arena_farm_decor_fits).
  */
 export const DECOR_BLOCKS: readonly DecorBlock[] = [
@@ -1526,6 +1576,7 @@ export const DECOR_BLOCKS: readonly DecorBlock[] = [
   { k: "rect", x0: 1470, x1: 1680, y0: 754, y1: 840 },
   { k: "rect", x0: 250, x1: 326, y0: 520, y1: 576 },
   { k: "rect", x0: 830, x1: 940, y0: 770, y1: 1060 },
+  { k: "rect", x0: COOP.x0, x1: COOP.x1, y0: COOP.y0, y1: COOP.y1 },
   { k: "oval", x: 250, y: 990, rx: 190, ry: 82 },
   ...(
     [
@@ -1536,7 +1587,6 @@ export const DECOR_BLOCKS: readonly DecorBlock[] = [
       [1700, 330],
       [70, 210],
       [640, 1050],
-      [1120, 1060],
       [1450, 1040],
       [1720, 1000],
       [40, 1060],
@@ -1646,9 +1696,27 @@ export const PASTURE = {
   /** Storm Milk per milking, and how long the cow takes (seconds). */
   milk: 2,
   milkSeconds: 2 * 3600,
-  /** The first milk after the pasture opens. */
+  /** The first milk after the pasture opens (and after a new cow arrives). */
   firstMilkSeconds: 20 * 60,
+  /**
+   * More cows (20261117100000): the 2nd and 3rd, each from a farm level and
+   * for Gold Leaves. One cow is a big part of a young farm's income, so the
+   * others come late, when the field earns several times more.
+   */
+  cowLevels: [40, 55] as readonly number[],
+  cowPrices: [6000, 10000] as readonly number[],
+  maxCows: 3,
 } as const;
+/** The next cow when a pasture has `owned` cows: its level and price (null: it's full). */
+export const nextCow = (
+  owned: number,
+): { level: number; price: number } | null =>
+  owned >= 1 && owned < PASTURE.maxCows
+    ? {
+        level: PASTURE.cowLevels[owned - 1],
+        price: PASTURE.cowPrices[owned - 1],
+      }
+    : null;
 /** Storm Milk: a barn good, not a crop. Its price of the day is 0.85–1.35×. */
 export const MILK = {
   id: "milk",
@@ -1659,6 +1727,16 @@ export const MILK = {
 } as const;
 export const milkPrice = (mult: number) =>
   Math.max(1, Math.round(MILK.sell * mult));
+/** Eggs from the coop: a barn good like Storm Milk, with their own price of the day (0.85–1.35×). */
+export const EGG = {
+  id: "egg",
+  name: "Sunny Egg",
+  sell: 30,
+  multMin: 0.85,
+  multMax: 1.35,
+} as const;
+export const eggPrice = (mult: number) =>
+  Math.max(1, Math.round(EGG.sell * mult));
 /** A crow eats its crop this many seconds after landing unless shooed. */
 export const CROW_SECONDS = 8;
 /**
@@ -1881,6 +1959,12 @@ export interface FarmState {
   pasture?: boolean;
   milkAt?: string | null;
   milkMult?: number;
+  /** The 2nd and 3rd cows (20261117100000): each one's milk time; milkAt is the first cow's. */
+  cows?: { i: number; milkAt: string | null }[];
+  /** The Chicken Coop: its hens (when each one's egg is due; null: hungry) and eggs' price today (20261117100000). */
+  coop?: boolean;
+  hens?: FarmHen[];
+  eggMult?: number;
   /** Friends who visited lately, newest first (migration 047). */
   visits?: FarmVisitEvent[];
   /** Giant crops on the farm, and how many of each crop grew giant (migration 050). */
@@ -1898,6 +1982,11 @@ export interface FarmState {
     until: string;
   };
   leaves: number;
+}
+/** A hen in the coop: its place (0–8) and when its egg is due (null: not fed). */
+export interface FarmHen {
+  i: number;
+  eggAt: string | null;
 }
 /** A giant crop (migration 050): its square's top-left plot, its 9 plots, when it formed. */
 export interface FarmGiant {
@@ -1939,6 +2028,10 @@ export interface FarmVisit {
   sprinklers: number;
   /** Migration 049: they have a Cow Pasture. */
   pasture?: boolean;
+  /** 20261117100000: their Chicken Coop, how many hens live in it, and their cows. */
+  coop?: boolean;
+  hens?: number;
+  cows?: number;
   /** Migration 050: their giant crops. */
   giants?: FarmGiant[];
   /** What you did on friends' farms today. */

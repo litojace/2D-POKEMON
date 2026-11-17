@@ -212,7 +212,7 @@ it("places, moves, mirrors and stores decorations anywhere that's free", async (
   expect(away.farm.decorCredits).toEqual({ apple: 1 });
   expect(away.farm.charm).toBe(2);
   const back = await act([
-    { a: "decor-place", item: "apple", x: 1300, y: 1000 },
+    { a: "decor-place", item: "apple", x: 1460, y: 900 },
   ]);
   expect(back.results[0]).toMatchObject({ ok: true, cost: 0 });
   expect(back.farm.leaves).toBe(away.farm.leaves);
@@ -256,9 +256,9 @@ it("checks the same boxes as the shared rules (decorFits)", async () => {
   const placed: FarmDecorPiece[] = [];
   const rows = await owner(
     `insert into public.arena_farm_decor_pieces(player_id, item, x, y) values
-     ($1, 'tower', 1200, 980), ($1, 'bench', 560, 900), ($1, 'pine', 1620, 560),
+     ($1, 'tower', 600, 960), ($1, 'bench', 560, 900), ($1, 'pine', 1620, 560),
      ($1, 'plum', 300, 460), ($1, 'lamp', 1000, 160), ($1, 'pathstone', 700, 960),
-     ($1, 'pathbrick', 1300, 900), ($1, 'picket', 160, 880) returning id, item, x, y`,
+     ($1, 'pathbrick', 1500, 960), ($1, 'picket', 160, 880) returning id, item, x, y`,
     [player],
   );
   for (const r of rows)
@@ -338,7 +338,7 @@ it("adds 1% farm XP for every 2 Charm, up to 25%", async () => {
   await level(45);
   await place("rock", 100, 900);
   expect(await xpAfter(100)).toBe(100);
-  await place("tower", 1200, 980);
+  await place("tower", 600, 960);
   expect((await farm()).charm).toBe(11);
   expect(charmBonus(11)).toBe(5);
   expect(await xpAfter(100)).toBe(105);
@@ -424,10 +424,10 @@ it("lets paths overlap each other, never anything standing", async () => {
     { a: "decor-place", item: "bench", x: 600, y: 920 },
     { a: "decor-place", item: "pathbrick", x: 610, y: 920 },
     // Fences side by side, 50 px apart, touch without overlapping.
-    { a: "decor-place", item: "picket", x: 1100, y: 900 },
-    { a: "decor-place", item: "picket", x: 1150, y: 900 },
-    { a: "decor-place", item: "gate", x: 1200, y: 900 },
-    { a: "decor-place", item: "picket", x: 1240, y: 900 },
+    { a: "decor-place", item: "picket", x: 460, y: 900 },
+    { a: "decor-place", item: "picket", x: 510, y: 900 },
+    { a: "decor-place", item: "gate", x: 560, y: 900 },
+    { a: "decor-place", item: "picket", x: 600, y: 900 },
   ]);
   expect(r.results.map((x: any) => x.ok || x.error)).toEqual([
     true,
@@ -502,8 +502,8 @@ it("adds a collection's Charm once every piece of it stands on the farm", async 
   const set = DECOR_SETS.find((s) => s.id === "cottage")!;
   const spots = [
     [100, 900],
-    [1100, 900],
-    [1250, 900],
+    [1480, 900],
+    [700, 900],
     [1400, 900],
     [600, 950],
   ];

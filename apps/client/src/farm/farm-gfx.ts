@@ -1384,6 +1384,201 @@ const GFX = (() => {
         g.stroke();
       }),
     );
+  /* The Chicken Coop (20261117100000): a little wooden hen house on stilts
+     with a shingled roof, a round window that glows at night, a hatch and a
+     ramp, and nest boxes on the side. Anchored at the middle of its base. */
+  const COOP_S = 1.3;
+  const coop = () =>
+    memo("coop", () =>
+      sprite(170 * COOP_S, 160 * COOP_S, 82 * COOP_S, 148 * COOP_S, (g) => {
+        g.scale(COOP_S, COOP_S);
+        const x0 = -50,
+          x1 = 50,
+          top = -92,
+          floor = -22;
+        // stilts
+        g.fillStyle = "#6b4527";
+        for (const x of [x0 + 6, x1 - 12]) {
+          rr(g, x, floor - 2, 6, 24, 2);
+          g.fill();
+        }
+        // nest boxes on the right
+        rr(g, x1 - 4, -62, 30, 34, 4);
+        g.fillStyle = vg(g, -62, -28, "#e3a866", "#b0743a");
+        g.fill();
+        g.strokeStyle = "#6b4122";
+        g.lineWidth = 2;
+        g.stroke();
+        g.beginPath();
+        g.moveTo(x1 - 8, -64);
+        g.lineTo(x1 + 30, -70);
+        g.lineTo(x1 + 30, -60);
+        g.lineTo(x1 - 8, -56);
+        g.closePath();
+        g.fillStyle = "#3f8f7a";
+        g.fill();
+        g.strokeStyle = "#1f5446";
+        g.stroke();
+        g.fillStyle = "#ffe38a";
+        ell(g, x1 + 11, -34, 9, 4);
+        g.fill();
+        // walls: planks, lit from the top left
+        rr(g, x0, top, x1 - x0, floor - top, 4);
+        g.fillStyle = vg(g, top, floor, "#f0c07a", "#c98a46", "#a86a32");
+        g.fill();
+        g.strokeStyle = "#6b4122";
+        g.lineWidth = 2.4;
+        g.stroke();
+        g.strokeStyle = "rgba(107,65,34,.38)";
+        g.lineWidth = 1;
+        for (let x = x0 + 12; x < x1; x += 12) {
+          g.beginPath();
+          g.moveTo(x, top + 4);
+          g.lineTo(x, floor - 2);
+          g.stroke();
+        }
+        g.fillStyle = "rgba(255,255,255,.18)";
+        g.fillRect(x0 + 3, top + 3, 8, floor - top - 6);
+        // corner posts
+        g.fillStyle = "#8a5a2c";
+        rr(g, x0 - 3, top + 2, 7, floor - top, 2);
+        g.fill();
+        rr(g, x1 - 4, top + 2, 7, floor - top, 2);
+        g.fill();
+        // round window (glows at night; see `win`)
+        g.fillStyle = "#3a2214";
+        ell(g, -18, top + 26, 11, 11);
+        g.fill();
+        g.fillStyle = vg(g, top + 15, top + 37, "#ffe9a8", "#ffbe5a");
+        ell(g, -18, top + 26, 8.5, 8.5);
+        g.fill();
+        g.strokeStyle = "#6b4122";
+        g.lineWidth = 1.6;
+        g.beginPath();
+        g.moveTo(-18, top + 17);
+        g.lineTo(-18, top + 35);
+        g.moveTo(-27, top + 26);
+        g.lineTo(-9, top + 26);
+        g.stroke();
+        // hatch and ramp
+        rr(g, 8, floor - 34, 26, 34, 6);
+        g.fillStyle = "#3a2214";
+        g.fill();
+        g.strokeStyle = "#6b4122";
+        g.lineWidth = 2;
+        g.stroke();
+        g.beginPath();
+        g.moveTo(8, floor);
+        g.lineTo(34, floor);
+        g.lineTo(46, 0);
+        g.lineTo(20, 0);
+        g.closePath();
+        g.fillStyle = vg(g, floor, 0, "#d9a25e", "#a8743c");
+        g.fill();
+        g.strokeStyle = "#6b4122";
+        g.lineWidth = 1.8;
+        g.stroke();
+        g.strokeStyle = "rgba(107,65,34,.55)";
+        g.lineWidth = 1.4;
+        for (let k = 1; k < 4; k++) {
+          const f = k / 4;
+          g.beginPath();
+          g.moveTo(8 + 12 * f, floor + 22 * f);
+          g.lineTo(34 + 12 * f, floor + 22 * f);
+          g.stroke();
+        }
+        // gable roof, shingled
+        const roof = () => {
+          g.beginPath();
+          g.moveTo(x0 - 14, top + 8);
+          g.lineTo(0, top - 40);
+          g.lineTo(x1 + 14, top + 8);
+          g.lineTo(x1 + 6, top + 14);
+          g.lineTo(0, top - 28);
+          g.lineTo(x0 - 6, top + 14);
+          g.closePath();
+        };
+        g.beginPath();
+        g.moveTo(x0, top + 6);
+        g.lineTo(0, top - 30);
+        g.lineTo(x1, top + 6);
+        g.closePath();
+        g.fillStyle = vg(g, top - 30, top + 6, "#ffd28c", "#d9964e");
+        g.fill();
+        g.strokeStyle = "#6b4122";
+        g.lineWidth = 2;
+        g.stroke();
+        roof();
+        g.fillStyle = vg(g, top - 40, top + 14, "#5fd0a8", "#2e8f72");
+        g.fill();
+        g.strokeStyle = "#1a5444";
+        g.lineWidth = 2.2;
+        g.stroke();
+        g.strokeStyle = "rgba(20,70,56,.45)";
+        g.lineWidth = 1;
+        for (let k = 1; k < 4; k++) {
+          const f = k / 4;
+          g.beginPath();
+          g.moveTo(-f * (50 + 14) + 2, top - 40 + f * 48 + 1);
+          g.lineTo(f * (50 + 14) - 2, top - 40 + f * 48 + 1);
+          g.stroke();
+        }
+        // a weather vane: a little hen
+        g.strokeStyle = "#4a3a2a";
+        g.lineWidth = 1.6;
+        g.beginPath();
+        g.moveTo(0, top - 40);
+        g.lineTo(0, top - 54);
+        g.stroke();
+        g.fillStyle = "#ef4f61";
+        ell(g, 1, top - 58, 6, 4.5);
+        g.fill();
+        g.fillStyle = "#ffd65b";
+        g.beginPath();
+        g.moveTo(6, top - 59);
+        g.lineTo(10, top - 58);
+        g.lineTo(6, top - 56);
+        g.fill();
+        return { win: [-18 * COOP_S, (top + 26) * COOP_S] };
+      }),
+    );
+  /* The coop's run: packed earth with straw, w × h, anchored top left. */
+  const coopYard = (w, h) =>
+    memo(`coopyard:${w}x${h}`, () =>
+      sprite(w + 8, h + 10, 0, 0, (g) => {
+        g.fillStyle = "rgba(40,30,16,.22)";
+        rr(g, 4, 7, w, h, 14);
+        g.fill();
+        rr(g, 0, 0, w, h, 14);
+        g.fillStyle = vg(g, 0, h, "#d8b77a", "#b9925a");
+        g.fill();
+        srand(w * 31 + h);
+        for (let i = 0; i < (w * h) / 90; i++) {
+          const x = 6 + rnd() * (w - 12),
+            y = 6 + rnd() * (h - 12),
+            a = rnd() * Math.PI;
+          g.strokeStyle = rnd() < 0.6 ? "#f2d27a" : "#a3783e";
+          g.lineWidth = 1.3;
+          g.beginPath();
+          g.moveTo(x - Math.cos(a) * 4, y - Math.sin(a) * 2);
+          g.lineTo(x + Math.cos(a) * 4, y + Math.sin(a) * 2);
+          g.stroke();
+        }
+        // a water dish and a feed trough
+        g.fillStyle = "#8a93a6";
+        ell(g, 18, h - 14, 11, 5);
+        g.fill();
+        g.fillStyle = "#7fc8ff";
+        ell(g, 18, h - 15, 8, 3);
+        g.fill();
+        rr(g, w - 46, 8, 36, 10, 3);
+        g.fillStyle = "#8a5a2c";
+        g.fill();
+        g.fillStyle = "#ffd65b";
+        rr(g, w - 43, 8, 30, 4, 2);
+        g.fill();
+      }),
+    );
   const foodTruck = () =>
     memo("truck", () =>
       sprite(320, 200, 165, 180, (g) => {
@@ -4468,6 +4663,8 @@ const GFX = (() => {
     board,
     well,
     doghouse,
+    coop,
+    coopYard,
     foodTruck,
     gazebo,
     scarecrow,

@@ -1,5 +1,5 @@
 -- More decorations, in groups, with paths, seasons and collections.
--- Run after 20261116180000_spire_zone2.sql. Safe to run again.
+-- Run after 20261117100000_farm_coop_cows.sql. Safe to run again.
 --   * arena_farm_decor_items gains decor_group (the shop's tab), ground
 --     (paths and paving: they may overlap each other, never anything
 --     standing) and season (sold only then). 42 new decorations, 61 in all,
@@ -178,7 +178,8 @@ language sql stable security definer set search_path = public as $$
 $$;
 revoke all on function public.arena_farm_charm(uuid) from public, anon, authenticated, service_role;
 
--- As 20261116120000's, except two ground pieces may overlap.
+-- As 20261117100000's (the Chicken Coop's block, without the felled tree at
+-- (1120, 1060)), except two ground pieces may overlap.
 create or replace function public.arena_farm_decor_fits(pid uuid, v_item text, px integer, py integer,
   except_id bigint default null) returns text
 language plpgsql stable security definer set search_path = public as $$
@@ -198,14 +199,15 @@ begin
       ('rect', 314, 1456, 338, 770), ('rect', 380, 1480, 770, 842),
       ('rect', 20, 1460, 120, 360), ('rect', 1450, 1750, 390, 690),
       ('rect', 80, 220, 630, 726), ('rect', 1470, 1680, 754, 840),
-      ('rect', 250, 326, 520, 576), ('rect', 830, 940, 770, 1060)) r(k, a1, a2, a3, a4) loop
+      ('rect', 250, 326, 520, 576), ('rect', 830, 940, 770, 1060),
+      ('rect', 990, 1350, 846, 1010)) r(k, a1, a2, a3, a4) loop
     if x0 < b.a2 and b.a1 < x1 and y0 < b.a4 and b.a3 < y1 then
       return 'Something is in the way';
     end if;
   end loop;
   for b in select * from (values (250, 990, 190, 82),
       (338, 230, 52, 26), (812, 190, 52, 26), (44, 400, 52, 26), (1480, 340, 52, 26),
-      (1700, 330, 52, 26), (70, 210, 52, 26), (640, 1050, 52, 26), (1120, 1060, 52, 26),
+      (1700, 330, 52, 26), (70, 210, 52, 26), (640, 1050, 52, 26),
       (1450, 1040, 52, 26), (1720, 1000, 52, 26), (40, 1060, 52, 26)) o(ox, oy, rx, ry) loop
     cx = least(greatest(b.ox::double precision, x0), x1);
     cy = least(greatest(b.oy::double precision, y0), y1);

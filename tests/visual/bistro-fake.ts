@@ -24,7 +24,7 @@ export async function fakeBistro(page: Page) {
         dinesToday: 0,
         marketBought: {},
         farmSent: 0,
-        farmCrops: { wheat: 9, milk: 4, mint: 2 },
+        farmCrops: { wheat: 9, milk: 4, mint: 2, egg: 6 },
         event: "harvest",
         orders: [
           {

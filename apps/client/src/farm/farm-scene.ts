@@ -44,6 +44,13 @@ import {
   MILK,
   PASTURE,
   milkPrice,
+  COOP,
+  EGG,
+  eggPrice,
+  henLevel,
+  henPrice,
+  henState,
+  nextCow,
   SPRINKLER_LEVELS,
   SPRINKLER_PRICES,
   farmXpToNext,
@@ -344,6 +351,21 @@ CROP.milk = {
   lv: PASTURE.level,
   rar: "rare",
 };
+// Sunny Eggs from the Chicken Coop (20261117100000), the same way.
+CROP.egg = {
+  id: EGG.id,
+  n: EGG.name,
+  el: "Light",
+  c: "#fff3d6",
+  c2: "#ffb02e",
+  t: COOP.laySeconds,
+  cost: 0,
+  sell: EGG.sell,
+  xp: COOP.eggXp,
+  lv: COOP.level,
+  rar: "uncommon",
+};
+const EGG_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 140" width="240" height="280"><defs><radialGradient id="eg" cx=".38" cy=".3" r=".8"><stop offset="0" stop-color="#ffffff"/><stop offset=".6" stop-color="#fff0cf"/><stop offset="1" stop-color="#f0cf8f"/></radialGradient></defs><path d="M60 18c22 0 38 34 38 62s-17 46-38 46-38-18-38-46 16-62 38-62z" fill="url(#eg)" stroke="#b98a3e" stroke-width="3.5"/><circle cx="60" cy="86" r="13" fill="#ffb02e" stroke="#d9801a" stroke-width="2.5"/><g stroke="#ffb02e" stroke-width="4" stroke-linecap="round"><path d="M60 64v-7M60 108v7M38 86h-7M82 86h7M45 71l-5-5M75 71l5-5M45 101l-5 5M75 101l5 5"/></g><ellipse cx="46" cy="44" rx="6" ry="12" fill="#fff" opacity=".85" transform="rotate(20 46 44)"/></svg>`;
 const MILK_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 140" width="240" height="280"><defs><linearGradient id="mk" x1="0" x2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#cfe6ff"/></linearGradient></defs><path d="M44 40 h32 v14 l10 16 v52 a8 8 0 0 1 -8 8 h-36 a8 8 0 0 1 -8 -8 v-52 l10 -16z" fill="url(#mk)" stroke="#5f8cc0" stroke-width="3"/><rect x="40" y="28" width="40" height="14" rx="4" fill="#4fb3ff" stroke="#2a6fd0" stroke-width="2"/><rect x="38" y="84" width="44" height="26" rx="4" fill="#ffd65b"/><path d="M60 88 l-6 10 h5 l-3 9 l9 -12 h-5 l3 -7z" fill="#2a1f4c"/><ellipse cx="50" cy="70" rx="3" ry="10" fill="#fff" opacity=".8"/></svg>`;
 
 const FARM_HTML = `<div class="fm" id="fm">
@@ -498,6 +520,8 @@ export function openFarm(options) {
   }
   ITEM.milk = new Image();
   ITEM.milk.src = svgUrl(MILK_SVG);
+  ITEM.egg = new Image();
+  ITEM.egg.src = svgUrl(EGG_SVG);
   // Giant crops (migration 050): one picture across a 3×3 square.
   const GIMG = {};
   for (const id of GIANT.crops) {
@@ -586,6 +610,9 @@ export function openFarm(options) {
     charm: 0,
     decorCredits: {},
     decorSeasons: [],
+    coop: false,
+    hens: [],
+    cows: [],
     warmUntil: 0,
     log: [],
     shovelArm: null,
@@ -803,10 +830,26 @@ export function openFarm(options) {
     // The Cow Pasture and Storm Milk's price today (migration 049).
     F.pasture = !!st.pasture;
     F.milkAt = st.milkAt ? Date.parse(st.milkAt) : 0;
+    F.cows = (st.cows ?? []).map((c) => ({
+      i: c.i,
+      milkAt: c.milkAt ? Date.parse(c.milkAt) : 0,
+    }));
     if (st.milkMult != null)
       F.market.mult.milk = {
         m: Number(st.milkMult),
         prev: Number(st.milkMult),
+      };
+    // The Chicken Coop, its hens and eggs' price today (20261117100000).
+    // (A tap on a hen not sent yet is applied again below, with the queue.)
+    F.coop = !!st.coop;
+    F.hens = (st.hens ?? []).map((h) => ({
+      i: h.i,
+      eggAt: h.eggAt ? Date.parse(h.eggAt) : null,
+    }));
+    if (st.eggMult != null)
+      F.market.mult.egg = {
+        m: Number(st.eggMult),
+        prev: Number(st.eggMult),
       };
     F.farmer = st.farmer ?? null;
     F.perksUsed = st.perksUsed ?? [];
@@ -881,10 +924,24 @@ export function openFarm(options) {
     renderAll();
     if (sheet) renderSheet();
   }
+  /** A hen fed or her egg collected, before the server answers (it decides). */
+  function henLocal(a) {
+    const h = F.hens.find((x) => x.i === a.hen);
+    if (!h) return;
+    if (a.a === "feed-hen" && h.eggAt == null) {
+      h.eggAt = serverNow() + COOP.laySeconds * 1000;
+      const k = `${COOP.feedCrop}|`;
+      F.barn[k] = Math.max(0, (F.barn[k] || 0) - COOP.feedQty);
+    } else if (a.a === "collect-egg" && h.eggAt != null) {
+      h.eggAt = null;
+      F.barn[`${EGG.id}|`] = (F.barn[`${EGG.id}|`] || 0) + 1;
+    }
+  }
   /** What an action looks like before the server answers (the answer replaces it). */
   function applyLocal(a) {
     const p = F.plots[a.plot],
       now = serverNow();
+    if (a.a === "feed-hen" || a.a === "collect-egg") return henLocal(a);
     if (a.a === "buy-seeds") {
       F.seeds[a.crop] = (F.seeds[a.crop] || 0) + a.qty;
       return;
@@ -1009,13 +1066,13 @@ export function openFarm(options) {
     );
   }
   /** The Cow Pasture: open it in the shop, then milk the cow (migration 049). */
-  function pastureClick() {
+  function pastureClick(k = 0) {
     if (!F.pasture) return openSheet("shop", "land");
-    const left = (F.milkAt - serverNow()) / 1000;
+    const left = (cowMilkAt(k) - serverNow()) / 1000;
     if (left > 0) return toast(`The cow is grazing. Milk in ${fmtDur(left)}`);
     if (barnUsed() + PASTURE.milk > F.barnCap)
       return toast("Your barn is full! Sell something or upgrade the barn.");
-    act({ a: "milk" }, true);
+    act(k ? { a: "milk", cow: k } : { a: "milk" }, true);
     sfx("coin");
   }
   /** The wishing well: 3 seeds once a Pacific day (migration 042). */
@@ -1138,11 +1195,55 @@ export function openFarm(options) {
           toast("Your pasture is open. A cow moved in!");
           log("Opened the <b>Cow Pasture</b>. Your cow has moved in", "good");
         }
+        if (x.cow != null && x.cost != null) {
+          const cw = COWS[x.cow];
+          if (cw) FX.push({ puff: 1, x: cw.x, y: cw.y - 30, t: 0, life: 0.8 });
+          toast("A new cow moved into the pasture!");
+          log(`Bought a cow · ${1 + F.cows.length}/${PASTURE.maxCows}`, "good");
+        }
         if (x.milk) {
-          fly(COW.x, COW.y - 60, icon("milk"), `+${x.milk}`);
-          float(COW.x, COW.y - 100, `+${PASTURE.milkXp} XP`, "#7ff0a2");
+          const cw = COWS[x.cow ?? 0] ?? COW;
+          fly(cw.x, cw.y - 60, icon("milk"), `+${x.milk}`);
+          float(cw.x, cw.y - 100, `+${PASTURE.milkXp} XP`, "#7ff0a2");
           log(`Collected ${x.milk} <b>${MILK.name}</b>`, "good");
         }
+        // The Chicken Coop (20261117100000).
+        if (x.coop) {
+          FX.push({
+            puff: 1,
+            x: COOPH.x + 60,
+            y: COOPH.y - 40,
+            t: 0,
+            life: 0.8,
+          });
+          float(COOPH.x + 60, COOPH.y - 120, "New coop!", "#7ff0a2");
+          toast(`Your coop is open. ${COOP.hens} hens moved in!`);
+          log(
+            `Opened the <b>Chicken Coop</b>. ${COOP.hens} hens have moved in`,
+            "good",
+          );
+        }
+        if (x.cost != null && x.hen != null) {
+          const c = coopHens[x.hen];
+          if (c) FX.push({ puff: 1, x: c.x, y: c.y - 10, t: 0, life: 0.8 });
+          toast("A new hen moved into the coop!");
+          log(`Bought a hen · ${F.hens.length}/${COOP.maxHens}`, "good");
+        }
+        if (x.egg) {
+          const c = coopHens[x.hen] ?? { x: COOPH.x, y: COOPH.y };
+          fly(c.x, c.y - 30, icon(EGG.id), `+${x.egg}`);
+          float(c.x, c.y - 60, `+${COOP.eggXp} XP`, "#7ff0a2");
+        }
+      }
+      {
+        const eggs = r.results.filter((x) => x.ok && x.egg).length,
+          fed = r.results.filter((x) => x.ok && x.fed != null).length;
+        if (eggs)
+          log(
+            `Collected ${eggs} <b>${EGG.name}${eggs > 1 ? "s" : ""}</b>`,
+            "good",
+          );
+        if (fed) log(`Fed ${fed} hen${fed > 1 ? "s" : ""}`, "good");
       }
       for (const x of r.results) {
         if (!x.ok || x.giant == null) continue;
@@ -1252,6 +1353,18 @@ export function openFarm(options) {
               : GFX.rock(400 + i, 30 + r() * 30),
         });
     }
+    // Trees just below the Chicken Coop were felled, so their crowns never
+    // hide its run (taken out after, so the rest stand where they did).
+    for (let k = MARGIN.length - 1; k >= 0; k--) {
+      const m = MARGIN[k];
+      if (
+        m.t &&
+        m.x > COOP.x0 - 80 &&
+        m.x < COOP.x1 + 80 &&
+        m.y < COOP.y1 + 240
+      )
+        MARGIN.splice(k, 1);
+    }
   })();
   const FDUCKS = [
     { k: "drake", a: 0, s: 0.25 },
@@ -1279,7 +1392,11 @@ export function openFarm(options) {
     well: WELL,
     doghouse: DOGH,
     scarecrow: F.scarecrow ? [288, 562] : null,
-    decor: F.decor.map((p) => decorBox(p.item, p.x, p.y)),
+    // Decorations, and the Chicken Coop's house and run once it's built.
+    decor: [
+      ...F.decor.map((p) => decorBox(p.item, p.x, p.y)),
+      ...(cur().coop ? [COOP_BOX] : []),
+    ],
     gateX: FCX,
     width: WW,
     height: WH,
@@ -1314,7 +1431,152 @@ export function openFarm(options) {
   let decoyIn = 60 + Math.random() * 120;
   // The pasture's cow (migration 049): it walks slowly from side to side.
   const COW = { x: 1600, y: 610, face: -1, t: 0 };
-  const milkReady = () => F.pasture && F.milkAt <= serverNow();
+  // More cows (20261117100000): the 2nd and 3rd graze the back of the
+  // meadow, each on its own half, so no two cows stand on each other and
+  // the first cow's bubble stays clear of them.
+  const COWS = [
+    COW,
+    { x: 1535, y: 505, face: 1, t: 5, x0: 1526, x1: 1545 },
+    { x: 1668, y: 512, face: -1, t: 9, x0: 1660, x1: 1674 },
+  ];
+  /** When cow k's milk is ready (ms; the first cow's is F.milkAt). */
+  const cowMilkAt = (k) =>
+    k === 0 ? F.milkAt : (F.cows.find((c) => c.i === k)?.milkAt ?? Infinity);
+  const milkReady = (k = 0) => F.pasture && cowMilkAt(k) <= serverNow();
+  /* The Chicken Coop (20261117100000): the house on the left of its ground
+     (COOP in the shared rules), the run on the right, and a place in the run
+     for each of up to 9 hens: front row first, so the first three stand
+     where they're easy to tap. */
+  const COOP_BOX = {
+      x0: COOP.x0,
+      x1: COOP.x1,
+      y0: COOP.y0 - 6,
+      y1: COOP.y1 + 4,
+    },
+    COOPH = { x: COOP.x0 + 66, y: COOP.y1 - 8 },
+    RUN = {
+      x0: COOP.x0 + 172,
+      x1: COOP.x1 - 6,
+      y0: COOP.y0 + 10,
+      y1: COOP.y1 - 4,
+    },
+    // Two rows, far enough apart that a bubble never covers the hen behind.
+    HEN_SPOTS = [
+      [1256, 994],
+      [1218, 994],
+      [1294, 994],
+      [1237, 928],
+      [1275, 928],
+      [1199, 928],
+      [1313, 928],
+      [1180, 994],
+      [1332, 994],
+    ],
+    HEN_SCALE = 1.2;
+  const coopHens = HEN_SPOTS.map(([x, y], k) => ({
+    k: k % 3 === 1 ? "brown" : "white",
+    hx: x,
+    hy: y,
+    x,
+    y,
+    face: k % 2 ? -1 : 1,
+    tx: null,
+    wait: 1 + k * 0.4,
+    st: "idle",
+    hop: 0,
+  }));
+  const plainWheat = () => F.barn[`${COOP.feedCrop}|`] || 0;
+  /** A hen's state now: "hungry", "laying" or "egg". */
+  const henNow = (h) => henState(h.eggAt, serverNow());
+  /** Tap a hen: feed her, collect her egg, or say when it's due. */
+  function henTap(k) {
+    const h = F.hens[k],
+      c = coopHens[k];
+    if (!h) return;
+    c.hop = 1;
+    sfx("cluck");
+    const st = henNow(h);
+    if (st === "laying")
+      return toast(
+        `This hen is laying. Egg in ${fmtDur((h.eggAt - serverNow()) / 1000)}`,
+      );
+    if (st === "egg") {
+      if (barnUsed() + 1 > F.barnCap)
+        return toast("Your barn is full! Sell something or upgrade the barn.");
+      act({ a: "collect-egg", hen: h.i }, true);
+      return;
+    }
+    if (plainWheat() < COOP.feedQty)
+      return toast(
+        `Hens eat ${COOP.feedQty} ${CROP[COOP.feedCrop].n}. Harvest some wheat first`,
+      );
+    act({ a: "feed-hen", hen: h.i }, true);
+    feel.burst(c.x, c.y - 4, 5, "dust", {
+      v: 30,
+      up: 30,
+      life: 0.6,
+      s: 3,
+      c: "#ffd65b",
+    });
+  }
+  /** Feed every hungry hen (as far as the wheat goes), collect every egg (room allowing). */
+  function coopAll(kind) {
+    let n = 0;
+    for (const h of F.hens) {
+      const st = henNow(h);
+      if (kind === "collect" && st === "egg") {
+        if (barnUsed() + 1 > F.barnCap) {
+          toast("Your barn is full! Sell something or upgrade the barn.");
+          break;
+        }
+        act({ a: "collect-egg", hen: h.i });
+        n++;
+      } else if (kind === "feed" && st === "hungry") {
+        if (plainWheat() < COOP.feedQty) {
+          if (!n)
+            toast(
+              `Hens eat ${COOP.feedQty} ${CROP[COOP.feedCrop].n}. Harvest some wheat first`,
+            );
+          break;
+        }
+        act({ a: "feed-hen", hen: h.i });
+        n++;
+      }
+    }
+    if (n) {
+      clearTimeout(flushTimer);
+      flushTimer = setTimeout(flush, 0);
+      sfx("cluck");
+    }
+    return n;
+  }
+  /** The hen (index) a tap on the run lands on: her body or her bubble. */
+  function henAt(w) {
+    let best = -1,
+      bd = 1e9;
+    F.hens.forEach((h, k) => {
+      const c = coopHens[k];
+      if (!c) return;
+      const d = Math.min(
+        Math.hypot(w.x - c.x, w.y - (c.y - 14)),
+        Math.hypot(w.x - c.x, w.y - (c.y - 50)),
+      );
+      if (d < 32 && d < bd) {
+        bd = d;
+        best = k;
+      }
+    });
+    return best;
+  }
+  /** A tap on the coop: buy it, tend a hen, or open the coop's sheet. */
+  function coopClick(w) {
+    if (!F.coop) return openSheet("shop", "land");
+    const k = henAt(w);
+    if (k >= 0) return henTap(k);
+    bounce.coop = 1;
+    sfx("tick");
+    openSheet("coop");
+  }
   const hens = [
     {
       k: "white",
@@ -1682,6 +1944,72 @@ export function openFarm(options) {
     }
   }
 
+  /** The coop's run: its straw floor and back and side rails (ground layer). */
+  function drawCoopGround(g) {
+    const { x0, x1, y0, y1 } = RUN;
+    GFX.blit(g, GFX.coopYard(x1 - x0, y1 - y0 - 6), x0, y0);
+    drawRunFence(g, true);
+  }
+  function drawRunFence(g, back) {
+    const { x0, x1, y0, y1 } = RUN;
+    if (back) {
+      rail(g, x0, y0, x1, y0);
+      for (let x = x0; x <= x1; x += 38) post(g, x, y0);
+      post(g, x1, y0);
+      rail(g, x1, y0, x1, y1);
+      post(g, x1, (y0 + y1) / 2);
+    } else {
+      rail(g, x0, y1, x1, y1);
+      for (let x = x0; x <= x1; x += 38) post(g, x, y1);
+      post(g, x1, y1);
+    }
+  }
+  /* Each hen's state in a little bubble over her (your farm only): wheat
+     when she's hungry, a filling ring while she lays, an egg when it's ready. */
+  function drawHenBubbles(time) {
+    const now = serverNow();
+    F.hens.forEach((h, k) => {
+      const c = coopHens[k];
+      if (!c) return;
+      const st = henState(h.eggAt, now),
+        x = c.x,
+        y =
+          c.y -
+          50 +
+          (reduced || st === "laying" ? 0 : Math.sin(time * 3 + k) * 1.5);
+      ctx.globalAlpha = st === "laying" ? 0.85 : 1;
+      ctx.fillStyle = st === "egg" ? "#fff6d8" : "#ffffff";
+      ctx.beginPath();
+      ctx.roundRect(x - 14, y - 12, 28, 24, 10);
+      ctx.moveTo(x - 4, y + 11.5);
+      ctx.lineTo(x + 4, y + 11.5);
+      ctx.lineTo(x, y + 17);
+      ctx.fill();
+      ctx.strokeStyle = st === "egg" ? "#e0a53a" : "rgba(42,31,76,.35)";
+      ctx.lineWidth = st === "egg" ? 2 : 1.2;
+      ctx.stroke();
+      if (st === "laying") {
+        const f = Math.min(
+          1,
+          Math.max(0, 1 - (h.eggAt - now) / (COOP.laySeconds * 1000)),
+        );
+        ctx.strokeStyle = "rgba(42,31,76,.18)";
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(x, y, 7, 0, 7);
+        ctx.stroke();
+        ctx.strokeStyle = "#f0a830";
+        ctx.beginPath();
+        ctx.arc(x, y, 7, -Math.PI / 2, -Math.PI / 2 + f * Math.PI * 2);
+        ctx.stroke();
+      } else {
+        const im = st === "egg" ? ITEM.egg : ITEM[COOP.feedCrop];
+        if (im?.complete) ctx.drawImage(im, x - 9.5, y - 11, 19, 22);
+      }
+      ctx.globalAlpha = 1;
+    });
+  }
+
   /* ---------- geometry ---------- */
   const plotRect = (i) => {
     const c = i % COLS,
@@ -1796,14 +2124,18 @@ export function openFarm(options) {
     [1450, 1040, "cherry", 0.65],
     [1720, 1000, "pine", 0.8],
     [40, 1060, "mint", 0.7],
-  ].map(([x, y, kind, sz], i) => ({
-    x,
-    y,
-    kind,
-    t: GFX.tree(kind, 50 + i, sz),
-    ph: i,
-    shake: 0,
-  }));
+  ]
+    .map(([x, y, kind, sz], i) => ({
+      x,
+      y,
+      kind,
+      t: GFX.tree(kind, 50 + i, sz),
+      ph: i,
+      shake: 0,
+    }))
+    // The round tree below the lane was felled for the Chicken Coop
+    // (filtered after, so every other tree keeps its own look).
+    .filter((t) => !(t.x === 1120 && t.y === 1060));
   /** Your home. Its name is a tag above it, like every building's. */
   const HOUSE_SPR = () =>
     GFX.house({
@@ -1883,6 +2215,11 @@ export function openFarm(options) {
     nl.light(BARN.x, BARN.y - 60, 200, 0.4 * k, 0.7);
     nl.light(STALL.x, STALL.y - 40, 190, 0.45 * k, 0.7);
     nl.light(WELL.x, WELL.y - 20, 110, 0.25 * k, 0.75);
+    // The coop's round window.
+    if (cur().coop) {
+      const [wx, wy] = GFX.coop().win;
+      nl.light(COOPH.x + wx, COOPH.y + wy + 8, 100, 0.4 * k, 0.75);
+    }
     // Decorations that light up (DECO_LOOK's `light`).
     if (cur().me)
       for (const p of F.decor) {
@@ -3178,6 +3515,9 @@ export function openFarm(options) {
           stolen: V.stolen,
           dog: V.dog,
           pasture: V.pasture,
+          cows: V.cows,
+          coop: V.coop,
+          hens: V.hens,
           giants: V.giants,
           giantAt: V.giantAt,
         }
@@ -3185,6 +3525,9 @@ export function openFarm(options) {
           plots: F.plots,
           me: true,
           pasture: F.pasture,
+          cows: F.pasture ? 1 + F.cows.length : 0,
+          coop: F.coop,
+          hens: F.hens.length,
           giants: F.giants,
           giantAt: F.giantAt,
         };
@@ -3201,6 +3544,9 @@ export function openFarm(options) {
       farmer: v.farmer,
       dog: v.dog,
       pasture: !!v.pasture,
+      cows: Math.min(PASTURE.maxCows, Number(v.cows) || (v.pasture ? 1 : 0)),
+      coop: !!v.coop,
+      hens: Math.min(COOP.maxHens, Number(v.hens) || 0),
       today: v.today ?? { helpXp: 0, sneaks: 0, pranks: 0 },
       stolen: new Set(),
       plots: v.plots.map((p) =>
@@ -5291,6 +5637,7 @@ export function openFarm(options) {
     }
     drawFence(ctx);
     drawPastureFence(ctx, true);
+    if (s.coop) drawCoopGround(ctx);
     s.plots.forEach((p, i) => drawPlot(ctx, i, p, time, s));
     drawArea(ctx);
     setDecoView();
@@ -5535,35 +5882,38 @@ export function openFarm(options) {
       },
     });
     if (s.pasture)
-      items.push({
-        y: COW.y,
-        d: () => {
-          const ready = s.me && milkReady();
-          GFX.cow(
-            ctx,
-            ready ? "idle" : "graze",
-            time,
-            COW.x,
-            COW.y - Math.sin((COW.hop || 0) * Math.PI) * 16,
-            0.95,
-            COW.face,
-          );
-          if (!ready) return;
-          // A speech bubble with a milk bottle: tap the cow.
-          const by = COW.y - 82 + (reduced ? 0 : Math.sin(time * 3) * 3);
-          ctx.fillStyle = "#fff";
-          ctx.beginPath();
-          ctx.roundRect(COW.x - 22, by - 22, 44, 32, 12);
-          ctx.fill();
-          ctx.beginPath();
-          ctx.moveTo(COW.x - 5, by + 9);
-          ctx.lineTo(COW.x + 5, by + 9);
-          ctx.lineTo(COW.x, by + 16);
-          ctx.fill();
-          if (ITEM.milk.complete)
-            ctx.drawImage(ITEM.milk, COW.x - 11, by - 17, 22, 22);
-        },
-      });
+      for (let k = 0; k < Math.min(s.cows || 1, COWS.length); k++) {
+        const cw = COWS[k];
+        items.push({
+          y: cw.y,
+          d: () => {
+            const ready = s.me && milkReady(k);
+            GFX.cow(
+              ctx,
+              ready ? "idle" : "graze",
+              time + k * 1.7,
+              cw.x,
+              cw.y - Math.sin((cw.hop || 0) * Math.PI) * 16,
+              0.95,
+              cw.face,
+            );
+            if (!ready) return;
+            // A speech bubble with a milk bottle: tap the cow.
+            const by = cw.y - 82 + (reduced ? 0 : Math.sin(time * 3 + k) * 3);
+            ctx.fillStyle = "#fff";
+            ctx.beginPath();
+            ctx.roundRect(cw.x - 22, by - 22, 44, 32, 12);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.moveTo(cw.x - 5, by + 9);
+            ctx.lineTo(cw.x + 5, by + 9);
+            ctx.lineTo(cw.x, by + 16);
+            ctx.fill();
+            if (ITEM.milk.complete)
+              ctx.drawImage(ITEM.milk, cw.x - 11, by - 17, 22, 22);
+          },
+        });
+      }
     else
       items.push({
         y: 570,
@@ -5585,6 +5935,52 @@ export function openFarm(options) {
         },
       });
     items.push({ y: PAST.y1, d: () => drawPastureFence(ctx, false) });
+    // The Chicken Coop (20261117100000): the house, the hens in their run
+    // and its front rail; before it's built, a sign on the empty grass.
+    if (s.coop) {
+      items.push({
+        y: COOPH.y,
+        d: () => {
+          GFX.shadow(ctx, COOPH.x + 16, COOPH.y + 2, 96, 16);
+          blitB("coop", GFX.coop(), COOPH.x, COOPH.y);
+        },
+      });
+      for (let k = 0; k < Math.min(s.hens, coopHens.length); k++) {
+        const c = coopHens[k];
+        items.push({
+          y: c.y,
+          d: () =>
+            GFX.chicken(
+              ctx,
+              c.k,
+              c.hop > 0 ? "flap" : c.st,
+              time + k * 0.7,
+              c.x,
+              c.y - Math.sin((c.hop || 0) * Math.PI) * 14,
+              HEN_SCALE,
+              c.face,
+            ),
+        });
+      }
+      items.push({ y: RUN.y1 + 1, d: () => drawRunFence(ctx, false) });
+    } else if (s.me)
+      items.push({
+        y: COOP.y1 - 14,
+        d: () => {
+          GFX.blit(ctx, GFX.hay(), COOP.x0 + 100, COOP.y1 - 8);
+          GFX.blit(
+            ctx,
+            GFX.sign(
+              F.lv >= COOP.level
+                ? `COOP · ${COOP.price}`
+                : `COOP · Lv ${COOP.level}`,
+              "#c0392b",
+            ),
+            COOP.x0 + 180,
+            COOP.y1 - 14,
+          );
+        },
+      });
     items.push({
       y: DOGH.y,
       d: () => {
@@ -5611,6 +6007,7 @@ export function openFarm(options) {
     fenceItems(items);
     items.push(...feel.groundItems(ctx));
     items.sort((a, b) => a.y - b.y).forEach((it) => it.d());
+    if (s.coop && s.me) drawHenBubbles(time);
     FSMOKE.forEach((m) => {
       ctx.fillStyle = `rgba(240,240,245,${0.5 * (1 - m.t / m.life)})`;
       ctx.beginPath();
@@ -6099,7 +6496,8 @@ export function openFarm(options) {
     catAwake = Math.max(0, catAwake - dt);
     scareSpin = Math.max(0, scareSpin - dt / 0.9);
     duckRush = Math.max(0, duckRush - dt);
-    if (COW.hop > 0) COW.hop = Math.max(0, COW.hop - dt / 0.5);
+    for (const cw of COWS)
+      if (cw.hop > 0) cw.hop = Math.max(0, cw.hop - dt / 0.5);
     if (!reduced)
       for (const d of FDUCKS) d.a += d.s * dt * (duckRush > 0 ? 5 : 1);
     for (let k = flyAway.length - 1; k >= 0; k--) {
@@ -6288,17 +6686,18 @@ export function openFarm(options) {
         }
       }
     }
-    if (cur().pasture && !reduced) {
-      COW.t += dt;
-      if (COW.t > 12) {
-        COW.t = 0;
-        COW.face *= -1;
-      }
-      COW.x = Math.max(
-        PAST.x0 + 46,
-        Math.min(PAST.x1 - 46, COW.x + COW.face * 6 * dt),
-      );
-    }
+    if (cur().pasture && !reduced)
+      COWS.forEach((cw) => {
+        cw.t += dt;
+        if (cw.t > 12) {
+          cw.t = 0;
+          cw.face *= -1;
+        }
+        cw.x = Math.max(
+          cw.x0 ?? PAST.x0 + 46,
+          Math.min(cw.x1 ?? PAST.x1 - 46, cw.x + cw.face * 6 * dt),
+        );
+      });
     if (!reduced)
       hens.forEach((h) => {
         if (h.wait > 0) {
@@ -6346,6 +6745,46 @@ export function openFarm(options) {
       if (h.hop > 0) h.hop = Math.max(0, h.hop - dt / 0.45);
       if (h.fast > 0) h.fast -= dt;
     });
+    // The coop's hens potter about their own spot; a laying hen sits still.
+    if (cur().coop) {
+      const now = serverNow();
+      coopHens.forEach((c, k) => {
+        if (c.hop > 0) c.hop = Math.max(0, c.hop - dt / 0.45);
+        const h = !V && F.hens[k];
+        if (reduced || (h && henState(h.eggAt, now) === "laying")) {
+          c.st = "idle";
+          c.tx = null;
+          return;
+        }
+        if (c.wait > 0) {
+          c.wait -= dt;
+          if (c.wait <= 0) c.st = "idle";
+          return;
+        }
+        if (c.tx == null) {
+          if (Math.random() < 0.5) {
+            c.st = "peck";
+            c.wait = 1 + Math.random() * 2;
+            return;
+          }
+          c.tx = c.hx + (Math.random() - 0.5) * 10;
+          c.ty = c.hy + (Math.random() - 0.5) * 8;
+          c.st = "walk";
+        }
+        const dx = c.tx - c.x,
+          dy = c.ty - c.y,
+          d = Math.hypot(dx, dy);
+        if (d < 1.5) {
+          c.tx = null;
+          c.st = "idle";
+          c.wait = 1 + Math.random() * 3;
+          return;
+        }
+        c.x += (dx / d) * Math.min(d, 22 * dt);
+        c.y += (dy / d) * Math.min(d, 22 * dt);
+        if (Math.abs(dx) > 0.5) c.face = dx > 0 ? 1 : -1;
+      });
+    }
     if (!reduced && Math.random() < dt * 2.5) {
       const hs = HOUSE_SPR();
       if (hs.chimney)
@@ -6889,6 +7328,37 @@ export function openFarm(options) {
       ),
     );
   };
+  /** The Chicken Coop: every hen's state, feed or collect them all, buy a hen (20261117100000). */
+  function coopHTML() {
+    const now = serverNow(),
+      sts = F.hens.map((h) => henState(h.eggAt, now)),
+      eggs = sts.filter((x) => x === "egg").length,
+      hungry = sts.filter((x) => x === "hungry").length,
+      wheat = plainWheat(),
+      feedable = Math.min(hungry, Math.floor(wheat / COOP.feedQty)),
+      next = henPrice(F.hens.length),
+      nextLv = henLevel(F.hens.length),
+      henLock = nextLv != null && F.lv < nextLv,
+      wheatName = CROP[COOP.feedCrop].n;
+    const hens = F.hens
+      .map((h, k) => {
+        const st = sts[k],
+          pic =
+            st === "laying"
+              ? I("clock")
+              : `<img src="${icon(st === "egg" ? EGG.id : COOP.feedCrop)}" alt="">`;
+        return `<div class="hen ${st}"><span class="ic">${pic}</span><div><b>Hen ${k + 1}</b><small>${st === "egg" ? "Egg ready!" : st === "hungry" ? "Hungry" : `Egg in <span data-henleft="${h.i}">${fmtSecs((h.eggAt - now) / 1000)}</span>`}</small></div></div>`;
+      })
+      .join("");
+    return (
+      head("Chicken Coop", `Hens ${F.hens.length}/${COOP.maxHens}`) +
+      `<div class="sh-body"><p class="sh-note">Feed a hen ${COOP.feedQty} plain <b>${wheatName}</b> from your barn and she lays a <b>${EGG.name}</b> in ${fmtDur(COOP.laySeconds)}. Tap a hen on the farm, or tend them all here.</p>` +
+      `<div class="item"><span class="ic"><img src="${icon(EGG.id)}" alt=""></span><div><b>${eggs} egg${eggs === 1 ? "" : "s"} ready</b><small>Eggs go to your barn: sell them or deliver them on orders</small></div><div class="acts"><button type="button" class="btn-s green" data-coop-all="collect" ${eggs ? "" : "disabled"}>Collect</button></div></div>` +
+      `<div class="item"><span class="ic"><img src="${icon(COOP.feedCrop)}" alt=""></span><div><b>${hungry} hungry hen${hungry === 1 ? "" : "s"}</b><small>You have ${wheat} plain ${wheatName} · ${COOP.feedQty} per hen</small></div><div class="acts"><button type="button" class="btn-s" data-coop-all="feed" ${feedable ? "" : "disabled"}>Feed</button></div></div>` +
+      `<div class="coop-hens">${hens}</div>` +
+      `<div class="item"><span class="ic">${I("hen")}</span><div><b>Hens ${F.hens.length}/${COOP.maxHens}</b><small>${next == null ? "Your coop is full" : henLock ? `The next hen <b style="color:#ffd65b">unlocks at Lv ${nextLv}</b>` : "One more hen, one more egg each round"}</small></div><div class="acts">${next == null ? `<button type="button" class="btn-s green" disabled>Full</button>` : `<button type="button" class="btn-s" data-buyhen ${henLock || F.leaves < next ? "disabled" : ""}>${henLock ? `Lv ${nextLv}` : `${next.toLocaleString("en-US")} ${L}`}</button>`}</div></div></div>`
+    );
+  }
   function renderSheet() {
     const el = $("fm-sheet");
     el.hidden = false;
@@ -6941,6 +7411,11 @@ export function openFarm(options) {
         html += `<p class="sh-note">Buy more land one plot at a time. Each plot costs more than the last. You can only buy plots <b>next to land you own</b>; they show a <b>FOR SALE</b> sign.</p><div class="landmap" style="grid-template-columns:repeat(${COLS},minmax(0,1fr))">${F.plots.map((p, i) => `<button type="button" class="lm ${!p.locked ? "own" : buyable(i) ? "can" : "no"}" ${buyable(i) ? `data-landbuy="${i}"` : "disabled"} title="${!p.locked ? "Your land" : buyable(i) ? "For sale" : "Not yet"}">${!p.locked ? (p.crop ? I("sprout") : "") : buyable(i) ? I("sign") : ""}</button>`).join("")}</div><div class="item"><span class="ic">${I("sign")}</span><div><b>Next plot · ${15 + k}/${FARM_PLOTS} plots</b><small>${done ? "You own every plot" : `${landPrice(k)} ${L} · needs Lv ${landLv(k)}${ok ? "" : ` · <b style="color:#ffd65b">you are Lv ${F.lv}</b>`}`}</small></div></div>`;
         const pLock = F.lv < PASTURE.level;
         html += `<div class="item${pLock && !F.pasture ? " locked" : ""}"><span class="ic">${I("cow")}</span><div><b>Cow Pasture</b><small>Opens the meadow on the right with a cow that gives <b>${PASTURE.milk} ${MILK.name}</b> every ${fmtDur(PASTURE.milkSeconds)}, about ${MILK.sell} ${L} each${F.pasture ? "" : pLock ? ` · <b style="color:#ffd65b">unlocks at Lv ${PASTURE.level}</b>` : ""}</small></div><div class="acts">${F.pasture ? `<button type="button" class="btn-s green" disabled>Owned</button>` : `<button type="button" class="btn-s" data-pasture ${pLock || F.leaves < PASTURE.price ? "disabled" : ""}>${PASTURE.price} ${L}</button>`}</div></div>`;
+        const cow = F.pasture ? nextCow(1 + F.cows.length) : null;
+        if (F.pasture)
+          html += `<div class="item${cow && F.lv < cow.level ? " locked" : ""}"><span class="ic">${I("cow")}</span><div><b>Another cow · ${1 + F.cows.length}/${PASTURE.maxCows}</b><small>${cow ? `One more cow, ${PASTURE.milk} ${MILK.name} every ${fmtDur(PASTURE.milkSeconds)}${F.lv < cow.level ? ` · <b style="color:#ffd65b">unlocks at Lv ${cow.level}</b>` : ""}` : "Your pasture is full"}</small></div><div class="acts">${cow ? `<button type="button" class="btn-s" data-buycow ${F.lv < cow.level || F.leaves < cow.price ? "disabled" : ""}>${F.lv < cow.level ? `Lv ${cow.level}` : `${cow.price.toLocaleString("en-US")} ${L}`}</button>` : `<button type="button" class="btn-s green" disabled>Full</button>`}</div></div>`;
+        const cLock = F.lv < COOP.level;
+        html += `<div class="item${cLock && !F.coop ? " locked" : ""}"><span class="ic">${I("hen")}</span><div><b>Chicken Coop</b><small>A coop by the lane with <b>${COOP.hens} hens</b> (up to ${COOP.maxHens}). Feed a hen ${COOP.feedQty} ${CROP[COOP.feedCrop].n} and she lays a <b>${EGG.name}</b> in ${fmtDur(COOP.laySeconds)}, about ${EGG.sell} ${L} each${F.coop ? "" : cLock ? ` · <b style="color:#ffd65b">unlocks at Lv ${COOP.level}</b>` : ""}</small></div><div class="acts">${F.coop ? `<button type="button" class="btn-s green" disabled>Owned</button>` : `<button type="button" class="btn-s" data-coop ${cLock || F.leaves < COOP.price ? "disabled" : ""}>${COOP.price.toLocaleString("en-US")} ${L}</button>`}</div></div>`;
       }
       html += `</div>`;
     }
@@ -6996,6 +7471,12 @@ export function openFarm(options) {
                 const m = F.market.mult.milk.m;
                 return `<div class="item"><span class="ic"><img src="${icon("milk")}" alt=""></span><div><b>${MILK.name}</b><small>Base ${MILK.sell} → today <span class="price">${milkPrice(m)} ${L}</span></small></div><span class="trend ${m >= 1 ? "up" : "down"}">${m >= 1 ? "▲" : "▼"} ×${m.toFixed(2)}</span></div>`;
               })()
+            : "") +
+          (F.coop && F.market.mult.egg
+            ? (() => {
+                const m = F.market.mult.egg.m;
+                return `<div class="item"><span class="ic"><img src="${icon(EGG.id)}" alt=""></span><div><b>${EGG.name}</b><small>Base ${EGG.sell} → today <span class="price">${eggPrice(m)} ${L}</span></small></div><span class="trend ${m >= 1 ? "up" : "down"}">${m >= 1 ? "▲" : "▼"} ×${m.toFixed(2)}</span></div>`;
+              })()
             : "");
       if (sheetTab === "coins") {
         const e = options.economy?.()?.leaves,
@@ -7050,13 +7531,16 @@ export function openFarm(options) {
                     .join(" ")
                 : id === MILK.id
                   ? "From your cow"
-                  : "Regular"
+                  : id === EGG.id
+                    ? "From your hens"
+                    : "Regular"
             } · ${price(k)} ${L} each</small></div><div class="acts"><button type="button" class="btn-s ghost" data-goto="market:sell">Sell</button></div></div>`;
           })
           .join(
             "",
           )}<p class="sh-note">Regular crops double as treats to <b>throw in the Plaza</b> (key T).</p></div>`;
     }
+    if (sheet === "coop") html = coopHTML();
     if (sheet === "book") {
       const found = PCROPS.filter((c) => F.harv[c.id]).length;
       const tabs = [
@@ -7172,6 +7656,17 @@ export function openFarm(options) {
     if (r) r.textContent = fmtSecs(restockIn());
     const m = $("fm-sheet").querySelector("[data-mkt]");
     if (m) m.textContent = fmtSecs(marketIn());
+    // The coop's laying hens; one that just laid shows her egg.
+    let laid = false;
+    $("fm-sheet")
+      .querySelectorAll("[data-henleft]")
+      .forEach((el) => {
+        const h = F.hens.find((x) => x.i === +el.dataset.henleft),
+          left = h?.eggAt ? (h.eggAt - serverNow()) / 1000 : 0;
+        el.textContent = fmtSecs(left);
+        if (left <= 0) laid = true;
+      });
+    if (laid && sheet === "coop") renderSheet();
     let due = false;
     $("fm-sheet")
       .querySelectorAll("[data-ordwait]")
@@ -7343,13 +7838,33 @@ export function openFarm(options) {
       act({ a: "buy-pasture" }, true);
       return renderSheet();
     }
+    if ("coop" in d) {
+      act({ a: "buy-coop" }, true);
+      return renderSheet();
+    }
+    if ("buycow" in d) {
+      t.disabled = true;
+      act({ a: "buy-cow" }, true);
+      return;
+    }
+    if ("buyhen" in d) {
+      t.disabled = true;
+      act({ a: "buy-hen" }, true);
+      return;
+    }
+    if (d.coopAll) {
+      coopAll(d.coopAll);
+      return renderSheet();
+    }
     if (d.sell) {
       const [id, mut] = d.sell.split("|"),
         n = +d.n;
       act(
         id === MILK.id
           ? { a: "sell-milk", qty: n }
-          : { a: "sell", crop: id, mutation: mut || "", qty: n },
+          : id === EGG.id
+            ? { a: "sell-eggs", qty: n }
+            : { a: "sell", crop: id, mutation: mut || "", qty: n },
         true,
       );
       F.barn[d.sell] = Math.max(0, (F.barn[d.sell] || 0) - n);
@@ -7671,27 +8186,63 @@ export function openFarm(options) {
       w.y > PAST.y0 - 60 &&
       w.y < PAST.y1
     ) {
-      if (F.pasture && Math.hypot(w.x - COW.x, w.y - (COW.y - 30)) < 60) {
-        COW.hop = 1;
-        sfx("moo");
-        FX.push({
-          bark: 1,
-          x: COW.x,
-          y: COW.y - 50,
-          t: 0,
-          life: 1.4,
-          text: "MOO!",
-        });
-        feel.burst(COW.x, COW.y - 60, 5, "heart", {
-          v: 50,
-          up: 50,
-          life: 1,
-          s: 15,
-          c: "#ff7aa8",
-        });
+      // The cow nearest the tap (or its milk bubble).
+      let k = 0;
+      if (F.pasture) {
+        let bd = 1e9;
+        for (let j = 0; j < 1 + F.cows.length && j < COWS.length; j++) {
+          const cw = COWS[j],
+            d = Math.min(
+              Math.hypot(w.x - cw.x, w.y - (cw.y - 30)),
+              Math.hypot(w.x - cw.x, w.y - (cw.y - 88)),
+            );
+          if (d < bd) {
+            bd = d;
+            k = j;
+          }
+        }
+        const cw = COWS[k];
+        if (bd < 60) {
+          cw.hop = 1;
+          sfx("moo");
+          FX.push({
+            bark: 1,
+            x: cw.x,
+            y: cw.y - 50,
+            t: 0,
+            life: 1.4,
+            text: "MOO!",
+          });
+          feel.burst(cw.x, cw.y - 60, 5, "heart", {
+            v: 50,
+            up: 50,
+            life: 1,
+            s: 15,
+            c: "#ff7aa8",
+          });
+        }
       }
-      return pastureClick();
+      return pastureClick(k);
     }
+    // The Chicken Coop: its house, its run (and the bubbles over the hens),
+    // or the sign where it can be built.
+    if (
+      !V &&
+      (F.coop
+        ? (w.x > COOPH.x - 72 &&
+            w.x < COOPH.x + 104 &&
+            w.y > COOPH.y - 196 &&
+            w.y < COOPH.y + 8) ||
+          (w.x > RUN.x0 - 8 &&
+            w.x < RUN.x1 + 8 &&
+            w.y > RUN.y0 - 60 &&
+            w.y < RUN.y1 + 10)
+        : w.x > COOP.x0 + 40 &&
+          w.x < COOP.x1 - 40 &&
+          w.y > COOP.y0 - 60 &&
+          w.y < COOP.y1)
+    )
+      return coopClick(w);
     const i = plotAt(w.x, w.y);
     if (i < 0) {
       panning = {
@@ -7888,6 +8439,26 @@ export function openFarm(options) {
   // A tap on the grass that didn't drag: whatever is there reacts (cosmetic).
   const pokeAt = () =>
     panning && !panning.moved && panning.w ? panning.w : null;
+  /* A tap on the farm that opens a sheet or a card (the coop's sign, the
+     pasture, a building) is followed by the browser's own click at the same
+     spot, which would land on whatever just opened there (a plot on the
+     land map, a sell button): that one click is swallowed. */
+  let ghostUntil = 0;
+  const overlayOpen = () => !$("fm-sheet").hidden || !$("fm-modal").hidden;
+  layer.addEventListener(
+    "click",
+    (e) => {
+      if (
+        performance.now() < ghostUntil &&
+        e.target.closest?.("#fm-sheet, #fm-modal")
+      ) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+      ghostUntil = 0;
+    },
+    true,
+  );
   cv.addEventListener("pointerup", (e) => {
     if (decoDrag && decoDrag.id === e.pointerId) {
       decoDrag = null;
@@ -7907,7 +8478,9 @@ export function openFarm(options) {
         ev = tapG.ev;
       tapG = null;
       if (m === "pending") {
+        const shut = !overlayOpen();
         press(ev);
+        if (shut && overlayOpen()) ghostUntil = performance.now() + 500;
         const pw = pokeAt();
         endDrag();
         if (pw) poke(pw);
@@ -8143,7 +8716,7 @@ export function openFarm(options) {
     /** Debug handle for tests. */
     _dbg: {
       F,
-      /** The shared decoration rules (the harness's fake server uses them). */
+      /** The shared decoration and coop rules (the harness's fake server uses them). */
       rules: {
         FARM_DECOR,
         DECOR_SETS,
@@ -8151,6 +8724,12 @@ export function openFarm(options) {
         decorCap,
         decorCharm,
         nearestDecorSpot,
+        COOP,
+        PASTURE,
+        henLevel,
+        henPrice,
+        henState,
+        nextCow,
       },
       /** Draw `n` frames now and answer the mean time of one, in ms (tests). */
       drawMs: (n = 20) => {
@@ -8201,7 +8780,12 @@ export function openFarm(options) {
           barn: { x: BARN.x + 20, y: BARN.y - 60 },
           balloon: { x: BAL.x, y: BAL.y - 30 },
           well: { x: WELL.x, y: WELL.y - 50 },
+          coop: { x: COOPH.x, y: COOPH.y - 60 },
+          hen: { x: coopHens[0].x, y: coopHens[0].y - 14 },
         })[k],
+      /** The coop's hens and the pasture's cows as drawn (tests): where each one stands. */
+      coopHens,
+      cows: COWS,
       /** Center the camera on a world point (tests). */
       look: (x, y) => {
         cam.x = x;
