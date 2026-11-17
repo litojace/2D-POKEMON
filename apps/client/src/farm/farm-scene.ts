@@ -365,7 +365,9 @@ CROP.egg = {
   lv: COOP.level,
   rar: "uncommon",
 };
-const EGG_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 140" width="240" height="280"><defs><radialGradient id="eg" cx=".38" cy=".3" r=".8"><stop offset="0" stop-color="#ffffff"/><stop offset=".6" stop-color="#fff0cf"/><stop offset="1" stop-color="#f0cf8f"/></radialGradient></defs><path d="M60 18c22 0 38 34 38 62s-17 46-38 46-38-18-38-46 16-62 38-62z" fill="url(#eg)" stroke="#b98a3e" stroke-width="3.5"/><circle cx="60" cy="86" r="13" fill="#ffb02e" stroke="#d9801a" stroke-width="2.5"/><g stroke="#ffb02e" stroke-width="4" stroke-linecap="round"><path d="M60 64v-7M60 108v7M38 86h-7M82 86h7M45 71l-5-5M75 71l5-5M45 101l-5 5M75 101l5 5"/></g><ellipse cx="46" cy="44" rx="6" ry="12" fill="#fff" opacity=".85" transform="rotate(20 46 44)"/></svg>`;
+// Drawn inside the middle of its 120×140 box like the crops' icons (menus
+// scale icons up 1.3×), with a bold sun that still reads small.
+const EGG_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 140" width="240" height="280"><defs><radialGradient id="eg" cx=".38" cy=".3" r=".8"><stop offset="0" stop-color="#ffffff"/><stop offset=".6" stop-color="#fff0cf"/><stop offset="1" stop-color="#f0cf8f"/></radialGradient></defs><g transform="translate(60 74) scale(.78) translate(-60 -72)"><path d="M60 18c22 0 38 34 38 62s-17 46-38 46-38-18-38-46 16-62 38-62z" fill="url(#eg)" stroke="#a87830" stroke-width="5"/><g stroke="#f59a1c" stroke-width="6" stroke-linecap="round"><path d="M60 62v-9M60 110v9M36 86h-9M84 86h9M43 69l-6-6M77 69l6-6M43 103l-6 6M77 103l6 6"/></g><circle cx="60" cy="86" r="16" fill="#ffb02e" stroke="#d9801a" stroke-width="4"/><ellipse cx="45" cy="44" rx="7" ry="13" fill="#fff" opacity=".9" transform="rotate(20 45 44)"/></g></svg>`;
 const MILK_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 140" width="240" height="280"><defs><linearGradient id="mk" x1="0" x2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#cfe6ff"/></linearGradient></defs><path d="M44 40 h32 v14 l10 16 v52 a8 8 0 0 1 -8 8 h-36 a8 8 0 0 1 -8 -8 v-52 l10 -16z" fill="url(#mk)" stroke="#5f8cc0" stroke-width="3"/><rect x="40" y="28" width="40" height="14" rx="4" fill="#4fb3ff" stroke="#2a6fd0" stroke-width="2"/><rect x="38" y="84" width="44" height="26" rx="4" fill="#ffd65b"/><path d="M60 88 l-6 10 h5 l-3 9 l9 -12 h-5 l3 -7z" fill="#2a1f4c"/><ellipse cx="50" cy="70" rx="3" ry="10" fill="#fff" opacity=".8"/></svg>`;
 
 const FARM_HTML = `<div class="fm" id="fm">
@@ -2214,6 +2216,49 @@ export function openFarm(options) {
       post(g, x1, y1);
     }
   }
+  /** A Sunny Egg in a hen's bubble, drawn as shapes so it stays crisp at
+   *  any zoom (a small picture lost its sun). */
+  function eggIcon(g, x, y) {
+    g.save();
+    g.translate(x, y);
+    g.beginPath();
+    g.moveTo(0, -9.5);
+    g.bezierCurveTo(5.6, -9.5, 7.8, -1.2, 7.8, 2.6);
+    g.bezierCurveTo(7.8, 7.2, 4.2, 9.8, 0, 9.8);
+    g.bezierCurveTo(-4.2, 9.8, -7.8, 7.2, -7.8, 2.6);
+    g.bezierCurveTo(-7.8, -1.2, -5.6, -9.5, 0, -9.5);
+    const eg = g.createRadialGradient(-2.5, -4, 0.5, 0, 0, 11);
+    eg.addColorStop(0, "#ffffff");
+    eg.addColorStop(0.6, "#fff0cf");
+    eg.addColorStop(1, "#f0cf8f");
+    g.fillStyle = eg;
+    g.fill();
+    g.strokeStyle = "#a87830";
+    g.lineWidth = 1.3;
+    g.stroke();
+    g.strokeStyle = "#f59a1c";
+    g.lineWidth = 1.2;
+    g.lineCap = "round";
+    g.beginPath();
+    for (let k = 0; k < 8; k++) {
+      const a = (k / 8) * Math.PI * 2;
+      g.moveTo(Math.cos(a) * 4.6, 3 + Math.sin(a) * 4.6);
+      g.lineTo(Math.cos(a) * 6.2, 3 + Math.sin(a) * 6.2);
+    }
+    g.stroke();
+    g.fillStyle = "#ffb02e";
+    g.beginPath();
+    g.arc(0, 3, 3.3, 0, 7);
+    g.fill();
+    g.strokeStyle = "#d9801a";
+    g.lineWidth = 0.9;
+    g.stroke();
+    g.fillStyle = "rgba(255,255,255,.9)";
+    g.beginPath();
+    g.ellipse(-3.1, -4.4, 1.3, 2.6, 0.35, 0, 7);
+    g.fill();
+    g.restore();
+  }
   /* Each hen's state in a little bubble over her (your farm only): wheat
      when she's hungry, a filling ring while she lays, an egg when it's ready. */
   function drawHenBubbles(time) {
@@ -2253,8 +2298,9 @@ export function openFarm(options) {
         ctx.arc(x, y, 7, -Math.PI / 2, -Math.PI / 2 + f * Math.PI * 2);
         ctx.stroke();
       } else {
-        const im = st === "egg" ? ITEM.egg : ITEM[COOP.feedCrop];
-        if (im?.complete) ctx.drawImage(im, x - 9.5, y - 11, 19, 22);
+        if (st === "egg") eggIcon(ctx, x, y);
+        else if (ITEM[COOP.feedCrop]?.complete)
+          ctx.drawImage(ITEM[COOP.feedCrop], x - 9.5, y - 11, 19, 22);
       }
       ctx.globalAlpha = 1;
     });
