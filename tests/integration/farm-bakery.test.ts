@@ -449,14 +449,14 @@ it("keeps decorations off the Bakery, and moved any that stood there into storag
   expect(sql.map((r: any) => r.e)).toEqual(
     checks.map(([item, x, y]) => decorFits(item, x, y, placed)),
   );
-  expect(decorFits("rock", 1180, BAKERY.y - 20, [])).toBe(
+  expect(decorFits("rock", 1180, BAKERY.y - 25, [])).toBe(
     "Something is in the way",
   );
   // A rock on its ground and a bench beside it; the migration runs again.
   await owner(
     `insert into public.arena_farm_decor_pieces(player_id, item, x, y) values
        ($1, 'rock', 1180, $2), ($1, 'bench', 1000, 1000)`,
-    [player, BAKERY.y - 20],
+    [player, BAKERY.y - 25],
   );
   await owner(
     "delete from public.arena_farm_decor_credits where player_id = $1",
