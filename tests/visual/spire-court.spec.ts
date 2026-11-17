@@ -15,6 +15,7 @@ import { somnaraPads } from "../../packages/shared/src/raid-somnara";
 import { ASCENDANT_SNOOZAKU } from "../../packages/shared/src/raid-ascendant";
 import { PRISMATAIL } from "../../packages/shared/src/raid-prismatail";
 import { EMBERWING } from "../../packages/shared/src/raid-emberwing";
+import { STORM_TWINS } from "../../packages/shared/src/raid-storm-twins";
 
 // The Spire's court (apps/client/src/spire-court-rig.ts): floors 1–9 on the
 // stone platform at the top of the tower, their cover where the server's
@@ -3505,3 +3506,721 @@ test("zone 6: Lumiwick's Sky Terrace kept to floor 60, painted on floor 59, noth
     await context.close();
   }
 });
+
+// ──────────────────────── Zone 7: Electric ────────────────────────
+//
+// Floors 61–69 take zone 7's Electric look (spireZoneTheme(7)): slate and
+// steel paving with copper circuit traces and lightning bolts inlaid,
+// tesla coils, electric yellow crystals, a thundercloud sky with baked
+// lightning; floor 70 fights on the Storm Twins' Conductor Ring with a
+// summit grade of its own. Zone 7's rooms are real (SPIRE_BUILT_TOP 70).
+const SHOTS7 = process.env.ZONE7_SHOTS ?? process.env.VISUAL_SHOTS;
+async function shot7(page: Page, name: string) {
+  if (SHOTS7) await page.screenshot({ path: `${SHOTS7}/${name}.png` });
+}
+const ZONE7_SIZES = [
+  { ...DESKTOP, floors: [61, 65, 69] },
+  {
+    name: "844x390",
+    width: 844,
+    height: 390,
+    phone: true,
+    floors: [61, 65, 69],
+  },
+  {
+    name: "667x375",
+    width: 667,
+    height: 375,
+    phone: true,
+    floors: [61, 65, 69],
+  },
+  { name: "ipad", width: 1180, height: 820, phone: true, floors: [61, 69] },
+];
+for (const size of ZONE7_SIZES)
+  for (const floor of size.floors)
+    test(`zone 7: the Spire court on floor ${floor} at ${size.name}`, async ({
+      browser,
+    }, info) => {
+      test.setTimeout(150_000);
+      const context = await browser.newContext({
+        viewport: { width: size.width, height: size.height },
+        isMobile: size.phone,
+        hasTouch: size.phone,
+      });
+      try {
+        const page = await context.newPage();
+        await hookGame(page);
+        const errors = await openHub(page);
+        await climb(page, floor);
+        await page.waitForTimeout(600);
+        const c = await court(page);
+        const kind = floor === 65 ? "elite" : "wave";
+        // Zone 7's platform floor and its own floor atlas.
+        expect(c.floor).toBe("arena-floor-spire-z7");
+        await page.waitForFunction(
+          (key) =>
+            (window as any).__spireGame.scene
+              .getScene("arena")
+              .textures.exists(key),
+          `spire-court-7-${floor}`,
+        );
+        expect(c.sky).toBe(4);
+        expect(c.surround).toBe(0);
+        expect(c.pillars).toBe(0);
+        expect(c.number).toBe(1);
+        const layout = spireCourtLayout(floor, kind)!;
+        expect(c.blocks).toHaveLength(layout.blocks.length);
+        const shown = [...c.blocks].sort((a, b) => a.x - b.x || a.y - b.y);
+        const feet = [...layout.blocks].sort((a, b) => a.x - b.x || a.y - b.y);
+        feet.forEach((o, i) => {
+          expect(shown[i].x).toBeLessThanOrEqual(o.x);
+          expect(shown[i].x + shown[i].w).toBeGreaterThanOrEqual(o.x + o.w);
+          expect(shown[i].depth).toBeCloseTo(2 + (o.y + o.h) / 10000, 6);
+        });
+        expect(c.stairs).toHaveLength(1);
+        // Height: the zone's first floor untinted, higher ones a cold
+        // storm night (blue leads red).
+        if (floor === 61) expect(c.tint).toBe(0xffffff);
+        else {
+          expect(c.tint).toBeLessThan(0xffffff);
+          expect(c.tint & 255).toBeGreaterThan((c.tint >> 16) + 15);
+          if (floor === 69)
+            expect(c.tint & 255).toBeGreaterThan((c.tint >> 16) + 35);
+        }
+        await page.waitForTimeout(300);
+        await snap(page, info, `spire-court-z7-floor-${floor}-${size.name}`);
+        await shot7(page, `z7-floor-${floor}-${size.name}`);
+        expect(errors).toEqual([]);
+      } finally {
+        await context.close();
+      }
+    });
+
+/** Where the zone-7 readability check stands its Echoes (feet, world px). */
+// (Clear of the cover on every layout and of a phone's touch buttons, as
+// zones 4 to 6: on a circuit trace below the ring, by a corner coil, near
+// the bottom coping, by the top-right traces.)
+const ZONE7_SPOTS = ZONE4_SPOTS;
+for (const size of [
+  { name: "844x390", width: 844, height: 390 },
+  { name: "667x375", width: 667, height: 375 },
+])
+  for (const floor of [61, 65, 69])
+    test(`zone 7: fighters, Echo rings, yellow and blue warnings and the floor number read on the storm court, floor ${floor} at ${size.name}`, async ({
+      browser,
+    }, info) => {
+      test.setTimeout(180_000);
+      const context = await browser.newContext({
+        viewport: { width: size.width, height: size.height },
+        isMobile: true,
+        hasTouch: true,
+      });
+      try {
+        const page = await context.newPage();
+        await hookGame(page);
+        const errors = await openHub(page);
+        await climb(page, floor);
+        await page.waitForTimeout(400);
+        const key = `spire-court-7-${floor}`;
+        await page.waitForFunction(
+          (key) =>
+            (window as any).__spireGame.scene
+              .getScene("arena")
+              .textures.exists(key),
+          key,
+        );
+        // The cover: electric yellow crystal and bolt plates against its
+        // slate.
+        const cover = await page.evaluate(
+          ({ key }) => {
+            const scene = (window as any).__spireGame.scene.getScene("arena");
+            const tex = scene.textures.get(key);
+            const f = tex.get("block0");
+            const d = (tex.getSourceImage() as HTMLCanvasElement)
+              .getContext("2d")!
+              .getImageData(f.cutX, f.cutY, f.cutWidth, f.cutHeight).data;
+            let n = 0,
+              yellow = 0;
+            for (let i = 0; i < d.length; i += 4) {
+              if (d[i + 3] <= 200) continue;
+              n++;
+              const [r, g, b] = [d[i], d[i + 1], d[i + 2]];
+              if (r > 200 && g > 160 && b < 120) yellow++;
+            }
+            return { yellow: yellow / n };
+          },
+          { key },
+        );
+        // The number: a dark groove round a bright inlay.
+        const number = (await atlasPixels(page, key, "number")).map(
+          (p) => p.lum,
+        );
+        const darkPx = number.filter((l) => l < 70),
+          brightPx = number.filter((l) => l > 190);
+        const dark = darkPx.length / number.length,
+          bright = brightPx.length / number.length;
+        const mean = (a: number[]) =>
+          a.reduce((x, y) => x + y, 0) / Math.max(1, a.length);
+        const inlay = mean(brightPx),
+          groove = mean(darkPx);
+        // The floor where fighters walk: cool slate (darker higher up).
+        const ground = await floorColour(page);
+        const groundLum = 0.3 * ground[0] + 0.59 * ground[1] + 0.11 * ground[2];
+        const g = (l: number) => [l, l, l];
+        const apart = (a: number[], b: number[]) =>
+          Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+        const rings = {
+          echo: apart(hex(0xa98bff), ground),
+          echoLight: contrast(hex(0xa98bff), ground),
+          enemy: apart(hex(0xff5d6c), ground),
+          enemyLight: contrast(hex(0xff5d6c), ground),
+          danger: apart(hex(0xff4059), ground),
+          dangerLight: contrast(hex(0xff4059), ground),
+          // Electric yellow (+) and blue (−): the polarity marks (the
+          // floor-65 captain borrows the twins' polarity) and pad, chain
+          // lightning's yellow and the static field's blue.
+          plus: contrast(hex(0xffda85), ground),
+          plusHue: apart(hex(0xffda85), ground),
+          minus: contrast(hex(0x8edfff), ground),
+          minusHue: apart(hex(0x8edfff), ground),
+          chain: contrast(hex(0xffdc85), ground),
+          field: contrast(hex(0xabc7ff), ground),
+          hero: contrast([255, 255, 255], ground),
+          inlay: contrast(g(inlay), g(groove)),
+        };
+        await page
+          .waitForFunction(
+            () =>
+              [
+                ...(window as any).__spireGame.scene
+                  .getScene("arena")
+                  .rigs.entries(),
+              ].some(
+                ([id, r]: [string, any]) =>
+                  id.startsWith("echo") && r.root?.visible,
+              ),
+            undefined,
+            { timeout: 15_000 },
+          )
+          .catch(() => {});
+        // Everyone at fixed spots: the same picture on every run.
+        await page.evaluate((spots) => {
+          const w = window as any;
+          const a = w.__spireArena;
+          const place = (p: any, [x, y]: number[]) =>
+            Object.assign(p, { x, y, vx: 0, vy: 0, angle: Math.PI / 2 });
+          place(a.heroes()[0], [380, 470]);
+          a.players
+            .filter((p: any) => p.echo && p.hp > 0)
+            .forEach((p: any, i: number) => place(p, spots[i % spots.length]));
+          w.__spireStep(0);
+        }, ZONE7_SPOTS);
+        await page.waitForTimeout(900);
+        const fighters = await fighterContrast(page);
+        const shown = fighters.filter((f) => f.n > 60);
+        const summary = shown.map((f) => ({
+          id: f.id.slice(0, 10),
+          n: f.n,
+          seen: +f.seen.toFixed(3),
+          contrast: +contrast(f.fighter, f.court).toFixed(2),
+          fighterLum: Math.round(
+            0.3 * f.fighter[0] + 0.59 * f.fighter[1] + 0.11 * f.fighter[2],
+          ),
+          courtLum: Math.round(
+            0.3 * f.court[0] + 0.59 * f.court[1] + 0.11 * f.court[2],
+          ),
+        }));
+        const echoes = summary.filter((f) => f.id.startsWith("echo"));
+        console.log(
+          JSON.stringify({
+            floor,
+            size: size.name,
+            cover,
+            dark: +dark.toFixed(3),
+            bright: +bright.toFixed(3),
+            inlay: Math.round(inlay),
+            groundLum: Math.round(groundLum),
+            ground: ground.map(Math.round),
+            rings: Object.fromEntries(
+              Object.entries(rings).map(([k, v]) => [k, +v.toFixed(2)]),
+            ),
+            fighters: summary,
+            echoWorst: Math.min(...echoes.map((f) => f.seen)),
+            echoMean: +(
+              echoes.reduce((a, f) => a + f.seen, 0) / echoes.length
+            ).toFixed(3),
+          }),
+        );
+        await shot7(page, `z7-floor-${floor}-read-${size.name}`);
+        expect(cover.yellow).toBeGreaterThan(0.02);
+        expect(dark).toBeGreaterThan(0.15);
+        expect(bright).toBeGreaterThan(0.2);
+        expect(inlay).toBeGreaterThan(190);
+        expect(rings.inlay).toBeGreaterThan(6);
+        // Cool mid-dark slate: dark enough that the light cues (yellow,
+        // blue, pink, violet) stand out by lightness, never black.
+        expect(groundLum).toBeGreaterThan(45);
+        expect(groundLum).toBeLessThan(105);
+        expect(rings.echo).toBeGreaterThan(150);
+        expect(rings.echoLight).toBeGreaterThan(3);
+        expect(rings.enemy).toBeGreaterThan(150);
+        expect(rings.enemyLight).toBeGreaterThan(2.5);
+        expect(rings.danger).toBeGreaterThan(140);
+        expect(rings.dangerLight).toBeGreaterThan(2.2);
+        expect(rings.plus).toBeGreaterThan(5.5);
+        expect(rings.plusHue).toBeGreaterThan(200);
+        expect(rings.minus).toBeGreaterThan(5);
+        expect(rings.minusHue).toBeGreaterThan(150);
+        expect(rings.chain).toBeGreaterThan(5.5);
+        expect(rings.field).toBeGreaterThan(4.5);
+        expect(rings.hero).toBeGreaterThan(6);
+        // Every fighter in view stands out from the court under it.
+        expect(shown.length).toBeGreaterThanOrEqual(2);
+        expect(echoes.length).toBeGreaterThanOrEqual(1);
+        for (const f of echoes) expect(f.seen).toBeGreaterThan(0.58);
+        expect(
+          echoes.reduce((a, f) => a + f.seen, 0) / echoes.length,
+        ).toBeGreaterThan(0.6);
+        for (const f of summary)
+          if (!f.id.startsWith("echo")) expect(f.seen).toBeGreaterThan(0.65);
+        await snap(
+          page,
+          info,
+          `spire-court-z7-floor-${floor}-read-${size.name}`,
+        );
+        expect(errors).toEqual([]);
+      } finally {
+        await context.close();
+      }
+    });
+
+/**
+ * How the Storm Twins' cues read on a Conductor Ring floor picture
+ * (test-side, from the baked floor only: the beam, the polarity marks and
+ * pad, the static fields, the rush lanes and the thunderclap rings are
+ * drawn live on top). Round each post (where the Link Beam bends and the
+ * post's charge glows), along the ring's filament (where the charge
+ * pulses run), across the ring's middle (where the twins orbit, the beam
+ * sweeps, the pad and fields land and the claps ring out) and over the
+ * whole rush box (where the lanes run): the floor's mean colour there.
+ */
+function ringReadability(page: Page, key: string) {
+  return page.evaluate(
+    ({ key, posts, box }) => {
+      const scene = (window as any).__spireGame.scene.getScene("arena");
+      const image = scene.textures.get(key).getSourceImage() as
+        HTMLCanvasElement | HTMLImageElement;
+      const c = document.createElement("canvas");
+      c.width = 800;
+      c.height = 450;
+      const ctx = c.getContext("2d")!;
+      ctx.drawImage(image, 0, 0, 800, 450);
+      const d = ctx.getImageData(0, 0, 800, 450).data;
+      const meanOf = (pts: [number, number][]) => {
+        const m = [0, 0, 0];
+        let n = 0;
+        for (const [x, y] of pts) {
+          const px = Math.round(x / 2),
+            py = Math.round(y / 2);
+          if (px < 0 || py < 0 || px >= 800 || py >= 450) continue;
+          const i = (py * 800 + px) * 4;
+          for (let k = 0; k < 3; k++) m[k] += d[i + k];
+          n++;
+        }
+        return m.map((v) => v / Math.max(1, n));
+      };
+      const ring = (
+        x: number,
+        y: number,
+        r0: number,
+        r1: number,
+        squash = 1,
+      ) => {
+        const pts: [number, number][] = [];
+        for (let a = 0; a < 96; a++)
+          for (let r = r0; r <= r1; r += 2)
+            pts.push([
+              x + Math.cos((a / 96) * Math.PI * 2) * r,
+              y + Math.sin((a / 96) * Math.PI * 2) * r * squash,
+            ]);
+        return meanOf(pts);
+      };
+      const area = (x0: number, y0: number, x1: number, y1: number) => {
+        const pts: [number, number][] = [];
+        for (let y = y0; y <= y1; y += 6)
+          for (let x = x0; x <= x1; x += 6) pts.push([x, y]);
+        return meanOf(pts);
+      };
+      return {
+        posts: posts.map((p: { x: number; y: number }) =>
+          ring(p.x, p.y, 30, 70),
+        ),
+        filament: ring(800, 450, 700, 720, 360 / 710),
+        middle: area(340, 200, 1260, 700),
+        rush: area(box.x0, box.y0, box.x1, box.y1),
+      };
+    },
+    { key, posts: STORM_TWINS.posts, box: STORM_TWINS.rush.box },
+  );
+}
+function ringScores(f: Awaited<ReturnType<typeof ringReadability>>) {
+  const apart = (a: number[], b: number[]) =>
+    Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+  const min = (xs: number[]) => Math.min(...xs);
+  // The twins' colours (raid-storm-twins-art.ts, raid-ring-pieces.ts COL).
+  const where = [f.middle, f.rush];
+  const on = (col: number) => min(where.map((b) => contrast(hex(col), b)));
+  const hue = (col: number) => min(where.map((b) => apart(hex(col), b)));
+  return {
+    plusMark: on(0xffda85),
+    plusHue: hue(0xffda85),
+    minusMark: on(0x8edfff),
+    minusHue: hue(0x8edfff),
+    plusPad: on(0xffd579),
+    minusPad: on(0x8adfff),
+    linkWarn: on(0xff7799),
+    linkWarnCore: on(0xffbdc9),
+    linkHue: hue(0xff7799),
+    beamGold: min(
+      [...f.posts, f.middle].map((b) => contrast(hex(0xffe18b), b)),
+    ),
+    beamCyan: min(
+      [...f.posts, f.middle].map((b) => contrast(hex(0x9ce4ff), b)),
+    ),
+    beamBand: on(0xffdc8d),
+    rush: contrast(hex(0xff6f95), f.rush),
+    rushEdge: contrast(hex(0xffbdc9), f.rush),
+    chain: on(0xffdc85),
+    field: on(0xa5c8ff),
+    fieldHue: hue(0xa5c8ff),
+    clap: on(0xabc7ff),
+    filament: contrast(hex(0x9ce4ff), f.filament),
+    danger: hue(0xff4059),
+    // The polarity countdown's dark seat (it loses some on a deeper floor).
+    seat: on(0x060a16),
+  };
+}
+/** Conductor Ring pieces the arena shows (its atlas's images). */
+async function ringPieceCount(page: Page) {
+  return page.evaluate(() => {
+    const scene = (window as any).__spireGame.scene.getScene("arena");
+    let n = 0;
+    const walk = (o: any) => {
+      if (!o?.visible) return;
+      if (o.list) o.list.forEach(walk);
+      else if (o.texture?.key === "ring-atlas") n++;
+    };
+    scene.children.list.forEach(walk);
+    return n;
+  });
+}
+
+test("floor 70: the Storm Twins' Conductor Ring with its summit grade, painted on floor 69, nothing fetched mid-fight", async ({
+  browser,
+}, info) => {
+  test.setTimeout(180_000);
+  const context = await browser.newContext({
+    viewport: { width: 844, height: 390 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  try {
+    const page = await context.newPage();
+    await hookGame(page);
+    const art: { url: string; floor: number }[] = [];
+    let floorNow = 69;
+    page.on("request", (r) => {
+      if (r.url().includes("/raid-arenas/"))
+        art.push({ url: r.url(), floor: floorNow });
+    });
+    const errors = await openHub(page);
+    // Test-only path: the twins' raid room carrying a climb's state from a
+    // real Spire room, shown as floor 69 cleared (the party may climb to
+    // 70), then as floor 70.
+    await page.evaluate(() => {
+      const w = window as any;
+      w.__room("spire", { floor: 9, ceiling: 10 });
+      const climb = JSON.parse(JSON.stringify(w.__snap.raid.spire));
+      w.__room("raid", { boss: "storm-twins" });
+      w.__snap.remaining = 300;
+      w.__snap.raid.spire = {
+        ...climb,
+        zone: 7,
+        floor: 69,
+        kind: "wave",
+        ceiling: 70,
+        clearedAt: w.__snap.raid.time ?? 1,
+      };
+    });
+    await openPlayPanel(page);
+    await createRoom(page);
+    await pushUntilBattle(page);
+    await page.waitForFunction(
+      () =>
+        !!(window as any).__spireGame?.scene.getScene("arena")?.floor?.texture,
+    );
+    const scene = () =>
+      page.evaluate(() => {
+        const s = (window as any).__spireGame.scene.getScene("arena");
+        return {
+          floor: s.floor.texture.key as string,
+          artwork: s.floor.texture.getSourceImage().dataset?.raidArtwork as
+            string | undefined,
+          summitArt: s.textures.exists("arena-floor-spire-summit-ring:art"),
+        };
+      });
+    await expect
+      .poll(async () => (await scene()).floor)
+      .toBe("arena-floor-spire-z7");
+    // Floor 69's stairs are open: the ring's summit is painted now.
+    await expect.poll(async () => (await scene()).summitArt).toBe(true);
+    await shot7(page, "z7-floor-69-stairs-open-844x390");
+    floorNow = 70;
+    await page.evaluate(() => {
+      const w = window as any;
+      w.__snap.raid.spire = {
+        ...w.__snap.raid.spire,
+        floor: 70,
+        kind: "boss",
+        clearedAt: undefined,
+      };
+      w.__push();
+    });
+    await expect
+      .poll(async () => (await scene()).artwork)
+      .toBe("spire-summit-ring");
+    expect((await scene()).floor).toBe("arena-floor-spire-summit-ring:art");
+    // The ring's picture was fetched on floor 69 (or before), never on 70.
+    expect(art.some((a) => a.url.includes("storm-twins"))).toBe(true);
+    expect(art.every((a) => a.floor === 69)).toBe(true);
+    const c = await court(page);
+    expect(c.sky).toBe(4);
+    expect(c.blocks).toEqual([]);
+    // Its own floor draws the ring (posts, filament pulses) on top.
+    await expect.poll(() => ringPieceCount(page)).toBeGreaterThan(0);
+    await page.waitForTimeout(500);
+    await snap(page, info, "spire-court-floor-70-ring-summit-844x390");
+    await shot7(page, "z7-floor-70-ring-summit-844x390");
+    // The raid's own floor, painted beside it (test-side only: it never
+    // shows), to measure against.
+    await page.evaluate(() =>
+      (window as any).__spireGame.scene
+        .getScene("arena")
+        .floorTexture("conductor-ring"),
+    );
+    await page.waitForFunction(() =>
+      (window as any).__spireGame.scene
+        .getScene("arena")
+        .textures.exists("arena-floor-conductor-ring:art"),
+    );
+    // Graded: darker and cooler overall, the middle (the posts, the beam,
+    // every warning) kept most of its light.
+    const light = await page.evaluate(() => {
+      const scene = (window as any).__spireGame.scene.getScene("arena");
+      const measure = (key: string) => {
+        const c = document.createElement("canvas");
+        c.width = 160;
+        c.height = 90;
+        const ctx = c.getContext("2d")!;
+        ctx.drawImage(scene.textures.get(key).getSourceImage(), 0, 0, 160, 90);
+        const box = (x: number, y: number, w: number, h: number) => {
+          const d = ctx.getImageData(x, y, w, h).data;
+          let lum = 0,
+            cool = 0;
+          for (let i = 0; i < d.length; i += 4) {
+            lum += 0.3 * d[i] + 0.59 * d[i + 1] + 0.11 * d[i + 2];
+            cool += d[i + 2] - d[i];
+          }
+          return { lum: lum / (d.length / 4), cool: cool / (d.length / 4) };
+        };
+        return { all: box(0, 0, 160, 90), middle: box(40, 22, 80, 46) };
+      };
+      return {
+        graded: measure("arena-floor-spire-summit-ring:art"),
+        plain: measure("arena-floor-conductor-ring:art"),
+      };
+    });
+    const graded = ringScores(
+        await ringReadability(page, "arena-floor-spire-summit-ring:art"),
+      ),
+      plain = ringScores(
+        await ringReadability(page, "arena-floor-conductor-ring:art"),
+      );
+    const round = (o: Record<string, number>) =>
+      Object.fromEntries(Object.entries(o).map(([k, v]) => [k, +v.toFixed(2)]));
+    console.log(
+      JSON.stringify({ light, graded: round(graded), plain: round(plain) }),
+    );
+    expect(light.graded.all.lum).toBeLessThan(light.plain.all.lum * 0.9);
+    expect(light.graded.all.cool).toBeGreaterThanOrEqual(
+      light.plain.all.cool - 1,
+    );
+    expect(light.graded.middle.lum).toBeGreaterThan(
+      light.plain.middle.lum * 0.75,
+    );
+    // Every twin cue reads at least as well as in the raid (they are light
+    // colours: they gain on the deeper floor), and stands as far from the
+    // floor's colour.
+    for (const k of [
+      "plusMark",
+      "plusHue",
+      "minusMark",
+      "minusHue",
+      "plusPad",
+      "minusPad",
+      "linkWarn",
+      "linkWarnCore",
+      "linkHue",
+      "beamGold",
+      "beamCyan",
+      "beamBand",
+      "rush",
+      "rushEdge",
+      "chain",
+      "field",
+      "fieldHue",
+      "clap",
+      "filament",
+    ] as const)
+      expect(graded[k], k).toBeGreaterThanOrEqual(plain[k] * 0.98);
+    expect(graded.danger).toBeGreaterThanOrEqual(plain.danger * 0.9);
+    // (The countdown's dark seat loses some contrast on the deeper floor,
+    // as the bright cues gain. Held so it never sinks further.)
+    expect(graded.seat).toBeGreaterThan(plain.seat * 0.75);
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});
+
+test("the Storm Twins' own raid keeps the Conductor Ring ungraded", async ({
+  browser,
+}) => {
+  test.setTimeout(150_000);
+  const context = await browser.newContext({
+    viewport: { width: 844, height: 390 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  try {
+    const page = await context.newPage();
+    await hookGame(page);
+    const errors = await openHub(page);
+    await page.evaluate(() =>
+      (window as any).__room("raid", { boss: "storm-twins" }),
+    );
+    await openPlayPanel(page);
+    await createRoom(page);
+    await pushUntilBattle(page);
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () =>
+            (window as any).__spireGame.scene.getScene("arena").floor.texture
+              .key,
+        ),
+      )
+      .toMatch(/^arena-floor-conductor-ring(:art)?$/);
+    expect(
+      await page.evaluate(() =>
+        (window as any).__spireGame.scene
+          .getScene("arena")
+          .textures.getTextureKeys()
+          .filter((k: string) => k.startsWith("arena-floor-spire-summit")),
+      ),
+    ).toEqual([]);
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});
+
+// A real climb: floor 61 on the Spire's court, then floor 69 beaten with
+// floor 70 open, its court (the ring's summit) painted while the stairs
+// are open and shown on floor 70 with nothing fetched mid-fight.
+for (const size of [
+  { name: "844x390", width: 844, height: 390 },
+  { name: "667x375", width: 667, height: 375 },
+])
+  test(`zone 7: the twins' Conductor Ring kept to floor 70, painted on floor 69, nothing fetched mid-fight, at ${size.name}`, async ({
+    browser,
+  }, info) => {
+    test.setTimeout(240_000);
+    const context = await browser.newContext({
+      viewport: { width: size.width, height: size.height },
+      isMobile: true,
+      hasTouch: true,
+    });
+    try {
+      const page = await context.newPage();
+      await hookGame(page);
+      const art: { url: string; floor: number }[] = [];
+      let floorNow = 61;
+      page.on("request", (r) => {
+        if (r.url().includes("/raid-arenas/"))
+          art.push({ url: r.url(), floor: floorNow });
+      });
+      const errors = await openHub(page);
+      await climb(page, 61);
+      await page.waitForTimeout(600);
+      const c61 = await court(page);
+      expect(c61.floor).toBe("arena-floor-spire-z7");
+      expect(c61.blocks.length).toBeGreaterThan(0);
+      expect(c61.stairs).toHaveLength(1);
+      await frames(page);
+      // No posts: the ring isn't drawn.
+      expect(await ringPieceCount(page)).toBe(0);
+      await shot7(page, `z7-real-floor-61-${size.name}`);
+
+      floorNow = 69;
+      await page.evaluate(() => {
+        const w = window as any;
+        w.__room("spire", { floor: 69, stage: "playing", ceiling: 70 });
+        w.__push();
+      });
+      const scene = () =>
+        page.evaluate(() => {
+          const s = (window as any).__spireGame.scene.getScene("arena");
+          return {
+            floor: s.floor?.texture?.key as string,
+            floors: (s.textures.getTextureKeys() as string[]).filter((k) =>
+              k.startsWith("arena-floor-"),
+            ),
+          };
+        });
+      for (let i = 0; i < 12; i++) {
+        const cleared = await page.evaluate(() => {
+          const w = window as any;
+          for (const p of w.__spireArena.players) if (p.echo) p.hp = 0;
+          w.__spireStep(1.8);
+          return w.__snap.raid.spire.clearedAt !== undefined;
+        });
+        if (cleared) break;
+      }
+      await page.waitForTimeout(1500);
+      const ready = (await scene()).floors;
+      await shot7(page, `z7-real-floor-69-cleared-${size.name}`);
+      floorNow = 70;
+      await page.evaluate(() => (window as any).__spireStep(3));
+      await expect
+        .poll(() =>
+          page.evaluate(() => (window as any).__snap.raid.spire.floor),
+        )
+        .toBe(70);
+      await expect
+        .poll(async () => (await scene()).floor)
+        .not.toBe("arena-floor-spire-z7");
+      const seventy = await scene();
+      expect(seventy.floor).toBe("arena-floor-spire-summit-ring:art");
+      expect(ready).toContain(seventy.floor);
+      expect(art.every((a) => a.floor !== 70)).toBe(true);
+      await frames(page);
+      await expect.poll(() => ringPieceCount(page)).toBeGreaterThan(0);
+      await page.waitForTimeout(800);
+      await snap(page, info, `spire-court-z7-floor-70-${size.name}`);
+      await shot7(page, `z7-real-floor-70-${size.name}`);
+      expect(errors).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });

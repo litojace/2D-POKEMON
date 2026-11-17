@@ -27,6 +27,10 @@ export const ECHO_TINT_HURT_Z5 = 0xff7ad0;
 export const ECHO_TINT_Z6 = 0xd4deff;
 export const ECHO_TINT_HURT_Z6 = 0xb8fff4;
 export const ECHO_WASH_Z6 = { color: 0xdce8ff, alpha: 0.28 };
+/** Zone 7's Echoes: a pale lilac-rose shade and wash (a pink flush when hit). */
+export const ECHO_TINT_Z7 = 0xf2dcff;
+export const ECHO_TINT_HURT_Z7 = 0xffb4dc;
+export const ECHO_WASH_Z7 = { color: 0xf4e6ff, alpha: 0.3 };
 /**
  * An Echo's tint on its zone's court. Zone 3's court is dark slate, where
  * the usual dark violet shade sinks into the floor: there Echoes are pale
@@ -39,6 +43,11 @@ export const ECHO_WASH_Z6 = { color: 0xdce8ff, alpha: 0.28 };
  * the shade is a deep indigo (gold's opposite, no wash), so Echoes stand
  * dark and cool on the warm stone, and the hit flush is magenta (a pale
  * or gold flush would melt into the light).
+ * Zone 6's court is dusky warm basalt: there Echoes are pale ice-blue
+ * (fire's opposite), washed pale, and flush cyan when hit.
+ * Zone 7's court is cool mid-dark slate under a storm: there Echoes are
+ * pale lilac-rose (warm against the cold steel), washed pale, and flush
+ * pink when hit (never yellow or blue: the twins' + and − cues).
  */
 export function spireEchoTint(zone?: number): {
   tint: number;
@@ -57,7 +66,13 @@ export function spireEchoTint(zone?: number): {
               hurtTint: ECHO_TINT_HURT_Z6,
               wash: ECHO_WASH_Z6,
             }
-          : { tint: ECHO_TINT, hurtTint: ECHO_TINT_HURT };
+          : zone === 7
+            ? {
+                tint: ECHO_TINT_Z7,
+                hurtTint: ECHO_TINT_HURT_Z7,
+                wash: ECHO_WASH_Z7,
+              }
+            : { tint: ECHO_TINT, hurtTint: ECHO_TINT_HURT };
 }
 
 /** Compact lobby emblem: transparent, with broad tiers readable on phones. */
