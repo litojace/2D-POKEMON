@@ -70,7 +70,7 @@ export class SomnaraArena extends RaidArena {
   protected wrongStep?: string;
   private trailAt = new Map<string, number>();
   /** Exposed after a dream: when its one lullaby goes out. */
-  private thrashAt = Infinity;
+  protected thrashAt = Infinity;
   private thrashRings = new Set<number>();
   private thrashWarning = -1;
 

@@ -3,6 +3,10 @@ import { drawGrumbleAttacks } from "./grumble-attack-fx";
 import { drawLumiwickAttacks } from "./lumiwick-attack-fx";
 import { drawTidelotlAttacks } from "./tidelotl-attack-fx";
 import { drawSnoozakuAttacks } from "./snoozaku-attack-fx";
+import {
+  drawAscendantSnoozeFx,
+  paintAscendantSnoozeAura,
+} from "./ascendant-snoozaku-art";
 import { cloudDeckNightmares } from "./raid-somnara-art";
 import { drawPrismellAttacks } from "./prismell-attack-fx";
 import { lowGraphics } from "./graphics-quality";
@@ -461,6 +465,27 @@ export function drawBossBattleEffects(
     // Snoozaku has its own attack effects (the baku demo's): the dream-trunk
     // over its lane, shooting stars, the snore's waves, drawn every frame.
     if (r.boss === "somnara") {
+      // Ascendant Snoozaku: its aura, the Dream Tide's mist and awake pad.
+      if (r.variant === "ascendant")
+        space(g, (fx, glow) => {
+          if (boss.hp > 0)
+            paintAscendantSnoozeAura(
+              fx,
+              boss.x,
+              boss.y,
+              state.time,
+              r.phase,
+              reduced,
+              lowGraphics(),
+            );
+          drawAscendantSnoozeFx(
+            fx,
+            glow,
+            state,
+            life.action.casts,
+            lowGraphics(),
+          );
+        });
       space(g, (fx, glow) =>
         drawSnoozakuAttacks(
           fx,

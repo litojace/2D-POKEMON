@@ -55,6 +55,7 @@ import {
   type RaidWarning,
 } from "../../../packages/shared/src/raid.js";
 import {
+  RAID_JUMP_ATTACKS,
   RAID_REACTION,
   RAID_SLOWEST_SPEED,
   raidShapeHits,
@@ -94,7 +95,7 @@ export function underControls(
   return A.phoneControls.some(([x0, y0, x1, y1]) => {
     const dx = Math.max(x0 - x, 0, x - x1),
       dy = Math.max(y0 - y, 0, y - y1);
-    return Math.hypot(dx, dy) < radius + margin;
+    return (dx === 0 && dy === 0) || Math.hypot(dx, dy) < radius + margin;
   });
 }
 
@@ -924,6 +925,17 @@ export function AscendantSnoozakuRules<B extends DreamClass>(Base: B) {
       if (this.snoozeAscendant()) {
         const r = this.raid,
           d = r.dream;
+        // Its shorter opening brings the woken thrash sooner: it still lands
+        // the jump cooldown away from a lullaby already wound up.
+        if (this.time >= this.thrashAt) {
+          const gap = RULES.jumpCooldown + 0.3;
+          const lands = this.time + S.lullaby.delay;
+          const clash = r.warnings.find(
+            (w) =>
+              RAID_JUMP_ATTACKS.has(w.kind) && Math.abs(w.at - lands) < gap,
+          );
+          if (clash) this.thrashAt = clash.at + gap - S.lullaby.delay;
+        }
         if (
           d?.partnerId &&
           !this.heroes().some((p) => p.id === d.partnerId && p.hp > 0)

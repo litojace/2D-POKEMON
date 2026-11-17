@@ -321,20 +321,38 @@ function somnaraCue(state: Snapshot, myId: string) {
   if (drowsy && drowsy.sleepUntil > state.time)
     return "Asleep — a teammate can tap you awake without hurting you!";
   if (r.quietZone) return "Thunder Snore — follow the moving teal Quiet Zone!";
+  // Ascendant Snoozaku's Dream Tide: the Seer calls, everyone runs.
+  const tide = r.warnings.find((w) => w.kind === "dream-tide");
+  if (tide) {
+    const view = state.raidDream;
+    if (view?.tide && view.id === tide.id)
+      return `Only you see it: the ${DREAM_RUNE_NAMES[view.runes[0]]} pad stays awake. Call it (1–4), then go!`;
+    const call = [...(r.runeCalls ?? [])]
+      .reverse()
+      .find((q) => q.step === -1 && q.playerId === tide.targetId);
+    const seer = state.players.find((p) => p.id === tide.targetId);
+    return call
+      ? `${DREAM_RUNE_NAMES[call.rune]} called — get onto that pad before the Dream Tide!`
+      : `Dream Tide — listen for ${seer?.name ?? "the Seer"}'s call!`;
+  }
   if (r.warnings.some((w) => w.kind === "falling-stars"))
     return "Falling Stars — stand between the constellation points!";
   const dream = r.dream,
     view = state.raidDream;
   if (dream) {
+    const twin = !!dream.partnerId;
+    const mine = dream.dreamerId === myId || dream.partnerId === myId;
+    if (view?.id === dream.id && view.full && twin && mine)
+      return `Twin Dream: you see half the runes (? are your partner's). Call yours in turn (${dream.step}/${dream.length}).`;
     if (view?.id === dream.id && view.full)
-      return `${dream.dreamerId === myId ? "You are the Dreamer" : "Dream revealed"}${view.backwards ? " — read RIGHT TO LEFT" : ""}. Call 1–4, then step the pads (${dream.step}/${dream.length}).`;
+      return `${mine ? "You are the Dreamer" : "Dream revealed"}${view.backwards ? " — read RIGHT TO LEFT" : ""}${view.hidden?.length ? " — it has faded: remember it" : ""}. Call 1–4, then step the pads (${dream.step}/${dream.length}).`;
     const called = [...(r.runeCalls ?? [])]
       .reverse()
       .find(
         (q) =>
           q.until > state.time &&
           q.step === dream.step &&
-          q.playerId === dream.dreamerId,
+          (q.playerId === dream.dreamerId || q.playerId === dream.partnerId),
       );
     return called
       ? `${DREAM_RUNE_NAMES[called.rune]} called — enter that rune pad (${dream.step}/${dream.length})!`
