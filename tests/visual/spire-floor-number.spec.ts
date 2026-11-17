@@ -59,6 +59,7 @@ const FLOORS = [
   ...[11, 12, 13, 14, 15, 16, 17, 18, 19],
   ...[21, 22, 23, 24, 25, 26, 27, 28, 29],
   ...[31, 32, 33, 34, 35, 36, 37, 38, 39],
+  ...[41, 42, 43, 44, 45, 46, 47, 48, 49],
 ];
 
 for (const font of FONTS)
@@ -143,7 +144,7 @@ async function hookGame(page: Page) {
     });
   });
 }
-/** Show every pushed snapshot `by` floors higher (zone 2's look for 11–19). */
+/** Show every pushed snapshot `by` floors higher (zone 2's look for 11–19, …). */
 async function raiseFloors(page: Page, by: number) {
   await page.evaluate((by) => {
     const w = window as any;
@@ -182,7 +183,7 @@ const PHONES = [
   { name: "ipad", width: 1180, height: 820 },
 ];
 for (const size of PHONES)
-  test(`the floor number sits on the ring's centre at ${size.name} (floors 7 and 17)`, async ({
+  test(`the floor number sits on the ring's centre at ${size.name} (floors 7, 17 and 47)`, async ({
     browser,
   }, info) => {
     test.setTimeout(150_000);
@@ -201,9 +202,10 @@ for (const size of PHONES)
       await openPlayPanel(page);
       await createRoom(page);
       await pushUntilBattle(page);
-      for (const floor of [7, 17]) {
-        if (floor === 17) {
-          await raiseFloors(page, 10);
+      for (const floor of [7, 17, 47]) {
+        if (floor > 10) {
+          // Zone 2's look for 17; zone 5's bright Light court for 47.
+          await raiseFloors(page, floor - 7);
           await page.evaluate(() => (window as any).__push());
         }
         await page.waitForFunction(

@@ -1,4 +1,5 @@
 import { framedAvatar } from "./portraits";
+import { ascendantPrismellCue } from "./ascendant-prismell-art";
 import { CHARACTERS, type Snapshot } from "@arena/shared";
 import {
   raidChapters,
@@ -109,6 +110,8 @@ export function raidCue(state: Snapshot, myId: string) {
       return "Heart exposed — unleash your ultimates!";
     if ((r.blinded?.[myId] ?? 0) > state.time)
       return "Dazzled — keep moving until your vision clears.";
+    const ascendant = ascendantPrismellCue(state, myId, w);
+    if (ascendant) return ascendant;
     if (w?.kind === "glare")
       return "Glare — aim away from the boss or hold Look away!";
     if (w?.kind === "fan-display")

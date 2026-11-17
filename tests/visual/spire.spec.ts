@@ -154,8 +154,8 @@ for (const size of SIZES)
 
       await room.locator('[data-ui-spire-tab="floors"]').click();
       const floors = room.locator("[data-spire-floor]");
-      // Zone 1's ten floors, then zones 2 to 4 (locked: checkpoint 1).
-      await expect(floors).toHaveCount(40);
+      // Zone 1's ten floors, then zones 2 to 5 (locked: checkpoint 1).
+      await expect(floors).toHaveCount(50);
       await expect(room.locator('[data-spire-floor="11"]')).toHaveClass(
         /is-locked/,
       );
@@ -718,7 +718,7 @@ for (const size of ZONE2_SIZES)
       await expect(zone2).toHaveAttribute("aria-pressed", "true");
       // The floors, zone by zone.
       await room.locator('[data-ui-spire-tab="floors"]').click();
-      await expect(room.locator("[data-spire-floor]")).toHaveCount(40);
+      await expect(room.locator("[data-spire-floor]")).toHaveCount(50);
       await expect(room.locator('[data-spire-floor="12"]')).toHaveClass(
         /is-done/,
       );
@@ -923,7 +923,10 @@ for (const size of ZONE3_SIZES)
       await expect(zones[2]).toHaveAttribute("aria-pressed", "true");
       await expect(zones[0]).toBeEnabled();
       await expect(zones[1]).toBeEnabled();
-      await expect(zones[2]).toContainText("Lantern Yard");
+      // (The picked zone is named once, beside the chips or over the milestones.)
+      await expect(
+        room.locator(".sp-zone-info, .sp-route-zone").locator("visible=true"),
+      ).toContainText("Lantern Yard");
       await expect(room.locator(".rh-foot-note")).toContainText(
         "zone 3 from floor 21",
       );
@@ -945,7 +948,7 @@ for (const size of ZONE3_SIZES)
       await expect(zones[2]).toHaveAttribute("aria-pressed", "true");
       // The floors, zone by zone.
       await room.locator('[data-ui-spire-tab="floors"]').click();
-      await expect(room.locator("[data-spire-floor]")).toHaveCount(40);
+      await expect(room.locator("[data-spire-floor]")).toHaveCount(50);
       await expect(room.locator('[data-spire-floor="21"]')).toHaveClass(
         /is-done/,
       );
@@ -1156,7 +1159,9 @@ for (const size of ZONE4_SIZES)
       );
       await expect(zones[3]).toHaveAttribute("aria-pressed", "true");
       for (const z of zones.slice(0, 3)) await expect(z).toBeEnabled();
-      await expect(zones[3]).toContainText("Cloud Deck");
+      await expect(
+        room.locator(".sp-zone-info, .sp-route-zone").locator("visible=true"),
+      ).toContainText("Cloud Deck");
       await expect(room.locator(".rh-foot-note")).toContainText(
         "zone 4 from floor 31",
       );
@@ -1178,7 +1183,7 @@ for (const size of ZONE4_SIZES)
       await expect(zones[3]).toHaveAttribute("aria-pressed", "true");
       // The floors, zone by zone.
       await room.locator('[data-ui-spire-tab="floors"]').click();
-      await expect(room.locator("[data-spire-floor]")).toHaveCount(40);
+      await expect(room.locator("[data-spire-floor]")).toHaveCount(50);
       await expect(room.locator('[data-spire-floor="31"]')).toHaveClass(
         /is-done/,
       );
@@ -1330,7 +1335,7 @@ for (const size of ZONE4_SIZES)
         "Ascendant Snoozaku defeated",
       );
       await expect(results.locator(".spire-conquered")).toContainText(
-        "More floors are coming",
+        "Zone 5 opens at floor 41",
       );
       await expect(results.locator(".spire-rewards")).toContainText(
         "Dreambreaker of the Spire",
@@ -1338,6 +1343,278 @@ for (const size of ZONE4_SIZES)
       await expect(results.locator("#raid-retry")).toBeInViewport();
       await settle(page);
       await snap(page, info, `spire-z4-results-${size.name}`);
+      expect(errors).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });
+
+// ------------------------------------------------------------------ Zone 5
+const CLEARED_LIGHT = {
+  ...CLEARED_DREAM,
+  bosses: {
+    ...CLEARED_DREAM.bosses,
+    prismatail: { clears: 1, highestPeril: 3, bestSeconds: 300, runs: 2 },
+  },
+};
+const CLIMB_ZONE5 = {
+  season: 0,
+  highestFloor: 41,
+  checkpoint: 41,
+  attempts: 15,
+  claimed: Array.from({ length: 41 }, (_, i) => i + 1),
+  clears: {
+    grumblecrag: 2,
+    tidewyrm: 1,
+    gloomshade: 1,
+    somnara: 1,
+    prismatail: 1,
+  },
+};
+const ZONE5_SIZES = [
+  { name: "desktop", width: 1440, height: 900, phone: false },
+  { name: "844x390", width: 844, height: 390, phone: true },
+  { name: "667x375", width: 667, height: 375, phone: true },
+];
+for (const size of ZONE5_SIZES)
+  test(`zone 5 (the Sun Atrium): the zone picker, its floors, the elite, the Ascendant Prismell and zone 5 conquered at ${size.name}`, async ({
+    browser,
+  }, info) => {
+    test.setTimeout(240_000);
+    const context = await browser.newContext({
+      viewport: { width: size.width, height: size.height },
+      isMobile: size.phone,
+      hasTouch: size.phone,
+    });
+    try {
+      const page = await context.newPage();
+      await withRecords(page, CLEARED_LIGHT, CLIMB_ZONE5);
+      const errors = await openHub(page);
+      await page.click('.lobby-rail [data-lobby-action="raids"]');
+      const room = page.locator(".rh-room");
+      await room.locator("[data-raid-spire]").click();
+      await expect(room).toHaveAttribute("data-raid-mode", "spire");
+      // The zone picker: zone 5 picked (checkpoint 41), zones 1 to 4 open
+      // too, every chip in view (no sideways scrolling), named once beside.
+      const zones = [1, 2, 3, 4, 5].map((z) =>
+        room.locator(`[data-ui-spire-zone="${z}"]`),
+      );
+      await expect(zones[4]).toHaveAttribute("aria-pressed", "true");
+      for (const z of zones.slice(0, 4)) await expect(z).toBeEnabled();
+      // (Beside the chips, or in the milestones' heading on phones.)
+      const info5 = room
+        .locator(".sp-zone-info, .sp-route-zone")
+        .locator("visible=true");
+      await expect(info5).toHaveCount(1);
+      await expect(info5).toContainText("Sun Atrium");
+      await expect(info5).toContainText("Light");
+      await expect(room.locator(".rh-foot-note")).toContainText(
+        "zone 5 from floor 41",
+      );
+      const picker = room.locator(".sp-zone-picker");
+      await picker.scrollIntoViewIfNeeded();
+      await settle(page);
+      const fit = await picker.evaluate((row) => {
+        const r = row.getBoundingClientRect();
+        const body = row.closest(".ui-split-main")!.getBoundingClientRect();
+        return {
+          overflow: row.scrollWidth - row.clientWidth,
+          inside: [...row.querySelectorAll("button")].every((b) => {
+            const c = b.getBoundingClientRect();
+            return (
+              c.left >= r.left - 1 &&
+              c.right <= r.right + 1 &&
+              c.left >= body.left &&
+              c.right <= body.right &&
+              c.width >= 44 &&
+              c.height >= 44
+            );
+          }),
+        };
+      });
+      expect(fit).toEqual({ overflow: 0, inside: true });
+      expect(await layoutProblems(page, { phone: size.phone })).toEqual([]);
+      await snap(page, info, `spire-z5-picker-${size.name}`);
+      // Replay zone 4: the start and the line beside the chips follow it.
+      await zones[3].click();
+      await expect(zones[3]).toHaveAttribute("aria-pressed", "true");
+      await expect(zones[3]).toBeFocused();
+      await expect(info5).toContainText("Cloud Deck");
+      await expect(room.locator(".rh-foot-note")).toContainText(
+        "zone 4 from floor 31",
+      );
+      // Arrow keys move along the chips.
+      await page.keyboard.press("ArrowRight");
+      await expect(zones[4]).toBeFocused();
+      await page.keyboard.press("Enter");
+      await expect(zones[4]).toHaveAttribute("aria-pressed", "true");
+      // The floors, zone by zone.
+      await room.locator('[data-ui-spire-tab="floors"]').click();
+      await expect(room.locator("[data-spire-floor]")).toHaveCount(50);
+      await expect(room.locator('[data-spire-floor="41"]')).toHaveClass(
+        /is-done/,
+      );
+      await expect(room.locator('[data-spire-floor="42"]')).toHaveClass(
+        /is-next/,
+      );
+      await expect(room.locator('[data-spire-floor="45"]')).toContainText(
+        "Elite",
+      );
+      await expect(room.locator('[data-spire-floor="50"]')).toContainText(
+        "Ascendant Prismell",
+      );
+      const head5 = room.locator('[data-spire-zone-floors="5"] .sp-zone-head');
+      await expect(head5).toContainText("Sun Atrium");
+      await expect(head5).toContainText("Light");
+      await settle(page);
+      await head5.scrollIntoViewIfNeeded();
+      await page.waitForTimeout(300);
+      expect(await layoutProblems(page, { phone: size.phone })).toEqual([]);
+      await snap(page, info, `spire-z5-floors-${size.name}`);
+      await page
+        .locator(".rh-room [data-ui-close]")
+        .click()
+        .catch(() => {});
+
+      // Floor 41: Light Echoes on the Spire's court (no mirrors, no skylight).
+      await climb(page, { floor: 41, seats: 2 });
+      await expect(page.locator('#raid-hud [data-hud="phase"]')).toHaveText(
+        /^Floor 41 · Wave 1\/3 · \d Echo(es)?$/,
+      );
+      await expect(page.locator('#raid-hud [data-hud="title"]')).toHaveText(
+        "THE SPIRE · FLOOR 41",
+      );
+      const court = await page.evaluate(() => {
+        const s = (window as any).__snap;
+        return {
+          zone: s.raid.spire.zone,
+          boss: s.raid.boss,
+          arena: s.arena,
+          mirrors: (s.raid.mirrors ?? []).length,
+          links: (s.raid.lightLinks ?? []).length,
+          // Prismell's touch buttons are its own floor's.
+          prism: !!document.querySelector("#raid-prism-controls:not([hidden])"),
+        };
+      });
+      expect(court).toEqual({
+        zone: 5,
+        boss: "prismatail",
+        arena: "classic",
+        mirrors: 0,
+        links: 0,
+        prism: false,
+      });
+      await page.evaluate(() => (window as any).__spireStep(0.5));
+      await page.waitForTimeout(500);
+      await snap(page, info, `spire-z5-floor41-${size.name}`);
+
+      // Floor 45: the captain, with Prismell's Prism Lances.
+      await page.evaluate(() => {
+        const w = window as any;
+        w.__room("spire", { floor: 45, stage: "playing" });
+        w.__push();
+      });
+      await expect(page.locator('#raid-hud [data-hud="title"]')).toHaveText(
+        "FLOOR 45 · ECHO CAPTAIN HALCYRA",
+      );
+      await expect(page.locator('#raid-hud [data-hud="phase"]')).toHaveText(
+        "Floor 45 · Elite",
+      );
+      for (let i = 0; i < 40; i++) {
+        const lances = await page.evaluate(() => {
+          const w = window as any;
+          w.__spireStep(0.25);
+          return w.__snap.raid.warnings.some(
+            (x: any) => x.kind === "prism-lance",
+          );
+        });
+        if (lances) break;
+      }
+      await expect(page.locator("#raid-hud .raid-callout")).toHaveText(
+        "Prism Lances — sidestep the red lane!",
+      );
+      await page.evaluate(() => (window as any).__spireStep(0.4));
+      await page.waitForTimeout(300);
+      await snap(page, info, `spire-z5-elite-${size.name}`);
+
+      // Floor 50: the Ascendant Prismell's briefing, in the Sun Atrium.
+      await page.evaluate(() => {
+        const w = window as any;
+        w.__room("spire", { floor: 50, stage: "briefing" });
+        w.__push();
+      });
+      const brief = page.locator(".rc-card.is-briefing");
+      await expect(brief.locator("h2")).toHaveText(
+        "Floor 50 · Ascendant Prismell",
+      );
+      const moves = brief.locator(".spire-new-attacks li");
+      await expect(moves).toHaveCount(2);
+      await expect(moves.nth(0)).toContainText("Eclipse");
+      await expect(moves.nth(1)).toContainText("Umbral Prism");
+      await expect(brief).toContainText("Prismell, evolved");
+      await expect(brief).toContainText("Prismell's raid, step by step");
+      await expect(page.locator("#raid-instructions")).toBeInViewport();
+      await settle(page);
+      await snap(page, info, `spire-z5-boss-briefing-${size.name}`);
+
+      // The fight: the Sun Atrium and its mirrors, the raid's bar, the floor.
+      await page.evaluate(() => {
+        const w = window as any;
+        w.__room("spire", { floor: 50, stage: "playing" });
+        w.__push();
+      });
+      await expect(page.locator('#raid-hud [data-hud="title"]')).toHaveText(
+        /^ASCENDANT PRISMELL/,
+      );
+      await expect(page.locator('#raid-hud [data-hud="phase"]')).toHaveText(
+        "Floor 50 · Phase 1/3",
+      );
+      const fight = await page.evaluate(() => {
+        const s = (window as any).__snap;
+        return {
+          arena: s.arena,
+          variant: s.raid.variant,
+          boss: s.players.find((p: any) => p.raidBoss)?.name,
+          mirrors: (s.raid.mirrors ?? []).length,
+        };
+      });
+      expect(fight).toEqual({
+        arena: "sun-atrium",
+        variant: "ascendant",
+        boss: "Ascendant Prismell",
+        mirrors: 4,
+      });
+      for (let i = 0; i < 20; i++) {
+        const live = await page.evaluate(() => {
+          const w = window as any;
+          w.__spireStep(0.5);
+          return w.__snap.raid.warnings.length;
+        });
+        if (live) break;
+      }
+      await page.waitForTimeout(400);
+      await snap(page, info, `spire-z5-boss-fight-${size.name}`);
+
+      // It falls: zone 5 conquered, floor 50's title.
+      await page.evaluate(() => {
+        const w = window as any;
+        w.__room("spire", { floor: 50, stage: "finished" });
+        w.__push();
+      });
+      const results = page.locator(".rc-card.is-results");
+      await expect(results.locator("h2")).toHaveText("Zone 5 conquered!");
+      await expect(results.locator(".spire-conquered")).toContainText(
+        "Ascendant Prismell defeated",
+      );
+      await expect(results.locator(".spire-conquered")).toContainText(
+        "More floors are coming",
+      );
+      await expect(results.locator(".spire-rewards")).toContainText(
+        "Sunbreaker of the Spire",
+      );
+      await expect(results.locator("#raid-retry")).toBeInViewport();
+      await settle(page);
+      await snap(page, info, `spire-z5-results-${size.name}`);
       expect(errors).toEqual([]);
     } finally {
       await context.close();

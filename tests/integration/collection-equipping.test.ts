@@ -226,6 +226,13 @@ it("keeps every champion skin equippable through its separate champion slot", as
       "utf8",
     ),
   );
+  // The fashion collections and Nova Vanguard skins (17 Nov 2026).
+  for (const file of [
+    "20261117170000_fashion_collections.sql",
+    "20261117170001_distinct_epic_collections.sql",
+    "20261117170002_nova_vanguard.sql",
+  ])
+    await db.exec(await readFile(`supabase/migrations/${file}`, "utf8"));
   await login(admin);
   for (const skin of CHAMPION_SKINS) {
     await db.query("select public.arena_buy_item($1)", [skin.id]);

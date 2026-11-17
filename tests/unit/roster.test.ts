@@ -146,7 +146,11 @@ describe("what a card says", () => {
     const other = rosterMarkup(rosterView("tidefin"), data());
     expect(other).toMatch(/data-roster-select="tidefin"/);
     expect(other).not.toMatch(/disabled[^>]*data-roster-select/);
-    expect(other).toContain("3/9 looks");
+    // Original look + every Tidefin skin the shop sells (counted, so new
+    // skins don't break this test).
+    const tidefinLooks =
+      1 + CHAMPION_SKINS.filter((s) => s.champion === "tidefin").length;
+    expect(other).toContain(`3/${tidefinLooks} looks`);
   });
   it("can be a room's picker: the main button locks in instead", () => {
     const html = rosterMarkup(rosterView("voltkit"), data({ action: "lock" }));

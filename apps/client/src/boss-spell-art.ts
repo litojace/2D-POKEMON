@@ -13,6 +13,10 @@ import {
 } from "./ascendant-snoozaku-art";
 import { cloudDeckNightmares } from "./raid-somnara-art";
 import { drawPrismellAttacks } from "./prismell-attack-fx";
+import {
+  drawAscendantPrismellFx,
+  paintAscendantPrismellAura,
+} from "./ascendant-prismell-art";
 import { lowGraphics } from "./graphics-quality";
 import type Phaser from "phaser";
 import type { Snapshot } from "@arena/shared";
@@ -563,6 +567,27 @@ export function drawBossBattleEffects(
           lowGraphics(),
         ),
       );
+    // Ascendant Prismell: its aura, the Eclipse's windows and Umbral Prisms.
+    if (r.boss === "prismatail" && r.variant === "ascendant")
+      space(g, (fx, glow) => {
+        if (boss.hp > 0)
+          paintAscendantPrismellAura(
+            fx,
+            boss.x,
+            boss.y,
+            state.time,
+            r.phase,
+            reduced,
+            lowGraphics(),
+          );
+        drawAscendantPrismellFx(
+          fx,
+          glow,
+          state,
+          life.action.casts,
+          lowGraphics(),
+        );
+      });
     // Ascendant Inkpurr's Nightfall and Shade Pounce draw their own.
     const ink = r.boss === "gloomshade" && r.variant === "ascendant";
     if (ink)
