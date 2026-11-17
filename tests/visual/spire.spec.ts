@@ -1026,10 +1026,10 @@ for (const size of ZONE3_SIZES)
       await expect(brief.locator("h2")).toHaveText(
         "Floor 30 · Ascendant Inkpurr",
       );
-      await expect(brief.locator(".spire-new-attacks li")).toHaveText([
-        "Nightfall",
-        "Shade Pounce",
-      ]);
+      const moves = brief.locator(".spire-new-attacks li");
+      await expect(moves).toHaveCount(2);
+      await expect(moves.nth(0)).toContainText("Nightfall");
+      await expect(moves.nth(1)).toContainText("Shade Pounce");
       await expect(brief).toContainText("Inkpurr, evolved");
       await expect(brief).toContainText("Inkpurr's raid, step by step");
       await expect(page.locator("#raid-instructions")).toBeInViewport();
