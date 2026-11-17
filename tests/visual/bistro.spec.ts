@@ -543,6 +543,28 @@ test("Bistro shop: buy any number at once (typed, or counted with − and +, hel
   );
   await flush(page);
   expect(await B(page, "return srv.S.stored.plant")).toBe(13);
+  // The next time the Shop opens the count is one again, whatever was
+  // bought last (a count left at 13 bought 13 again unnoticed).
+  await page.click('.bs-rail [data-sheet="shop"]');
+  await page.click('#bs-sheet [data-tab="decor"]');
+  await expect(n).toHaveValue("1");
+  await expect(
+    page.locator('#bs-sheet [data-buy="plant"] .pr'),
+  ).not.toContainText("×");
+  // Closed without buying, too; switching tabs keeps it.
+  await n.fill("5");
+  await n.press("Enter");
+  await page.click('#bs-sheet [data-tab="machines"]');
+  await expect(n).toHaveValue("5");
+  await page.click("#bs-sheet [data-close]");
+  await page.click('.bs-rail [data-sheet="shop"]');
+  await expect(n).toHaveValue("1");
+  // And from another sheet straight to the Shop.
+  await n.fill("4");
+  await n.press("Enter");
+  await page.click('.bs-rail [data-sheet="staff"]');
+  await page.click('.bs-rail [data-sheet="shop"]');
+  await expect(n).toHaveValue("1");
   expect(errors).toEqual([]);
 });
 
