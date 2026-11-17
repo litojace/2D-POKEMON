@@ -12,6 +12,7 @@ import {
 } from "../../../packages/shared/src/raid";
 import { RaidBossMotion, type RaidBossCue } from "./raid-boss-motion";
 import { paintAtriumRig } from "./raid-prismatail-atrium-rig";
+import { drawAscendantPrismellWarning } from "./ascendant-prismell-art";
 import type { LayerAt } from "./raid-layers";
 type G = Phaser.GameObjects.Graphics;
 const TAU = Math.PI * 2;
@@ -133,6 +134,8 @@ export function drawPrismatailWarning(g: G, state: Snapshot, w: RaidWarning) {
       .strokePath();
     return true;
   }
+  if (w.kind === "eclipse" || w.kind === "umbral-prism")
+    return drawAscendantPrismellWarning(g, state, w);
   return w.kind === "light-relay";
 }
 const motion = new WeakMap<G, RaidBossMotion>();
@@ -177,6 +180,8 @@ export function drawPrismatail(
   steps.set(g, { x: boss.x, y: boss.y, time: state.time, walk });
   const wind = r.warnings.find(
     (w) =>
+      // an Umbral Prism rides a raider: no wind-up of the shell's
+      w.kind !== "umbral-prism" &&
       (!w.casterId || w.casterId === boss.id) &&
       w.at >= state.time &&
       (w.startedAt ?? w.at - 1.5) <= state.time,

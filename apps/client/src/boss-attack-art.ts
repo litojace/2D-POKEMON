@@ -728,6 +728,32 @@ const art: Partial<Record<RaidAttack, { el: Element; draw: () => string }>> = {
       `<path d="M100 78 L110 90 L100 104 L90 90Z" fill="url(#sa-orb-light)" stroke="${L.hot}" stroke-width="1.6"/>` +
       glint(100, 90, 4, WHITE),
   },
+  // Ascendant Prismell · Light: a dark moon over the skylight; the light opens elsewhere.
+  eclipse: {
+    el: "light",
+    draw: () =>
+      danger(ell(32, 86, 26, 11), 0.34) +
+      `<path d="${ell(32, 86, 26, 11)}" fill="none" stroke="${RED}" stroke-width="2.4"/>` +
+      `<circle cx="32" cy="56" r="13" fill="${L.hot}"/><circle cx="25" cy="54" r="13" fill="#1b1030" stroke="#b48cff" stroke-width="1.6"/>` +
+      `<path d="M58 80 Q76 60 92 50" fill="none" stroke="${L.hot}" stroke-width="3" stroke-dasharray="5 5"/>` +
+      `<path d="${ell(102, 46, 20, 8.5)}" fill="${L.hot}" fill-opacity=".3" stroke="${L.hot}" stroke-width="2.4" stroke-dasharray="4 3"/>` +
+      halo("light", 102, 24, 16) +
+      glint(102, 24, 7, L.hot) +
+      raider(52, 104, 0.85) +
+      arrow(44, 100, 26, 116),
+  },
+  // Ascendant Prismell · Light: a dark prism on a raider; a teammate hands them the light.
+  "umbral-prism": {
+    el: "light",
+    draw: () =>
+      `<path d="M20 70 L84 70" stroke="url(#sa-up-light)" stroke-width="8" opacity=".5"/>` +
+      glow("M24 70 L84 70", L.hot, 2, L.accent[1]) +
+      raider(22, 82, 0.85) +
+      raider(90, 82, 0.85) +
+      `<path d="${ell(90, 98, 20, 8)}" fill="none" stroke="#b48cff" stroke-width="2.6"/>` +
+      `<path d="M106 32 L116 46 L106 62 L96 46Z" fill="#2a1846" stroke="#b48cff" stroke-width="2"/>` +
+      `<path d="M40 104 h40" stroke="#b48cff" stroke-width="2" stroke-dasharray="3 4"/>`,
+  },
 
   // Lumiwick · Fire
   "dive-bomb": {
