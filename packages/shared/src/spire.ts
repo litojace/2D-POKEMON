@@ -1575,16 +1575,25 @@ export const SPIRE_TUNING: Record<
   58: { difficulty: "normal", power: 0.66, armour: 4.1, limit: 180 },
   59: { difficulty: "normal", power: 0.67, armour: 2.85, limit: 180 },
   60: { difficulty: "hard", power: 1, armour: 1, limit: 600 },
-  // Zone 7 (skeleton: tuned on work/z7-core, tests/unit/spire-waves.test.ts).
-  61: { difficulty: "normal", power: 0.66, armour: 4.5, limit: 180 },
-  62: { difficulty: "normal", power: 0.67, armour: 3.2, limit: 180 },
-  63: { difficulty: "normal", power: 0.68, armour: 4.4, limit: 180 },
-  64: { difficulty: "normal", power: 0.69, armour: 3.3, limit: 180 },
-  65: { difficulty: "normal", power: 0.7, armour: 0.75, limit: 240 },
-  66: { difficulty: "normal", power: 0.7, armour: 3.6, limit: 180 },
-  67: { difficulty: "normal", power: 0.71, armour: 3.1, limit: 180 },
-  68: { difficulty: "normal", power: 0.72, armour: 3.4, limit: 180 },
-  69: { difficulty: "normal", power: 0.73, armour: 3.0, limit: 180 },
+  // Zone 7, the summit: a climb starts at 61 with no blessings, against
+  // Electric Echoes (a burst fox, a grappling lemur, a mirror lynx) and one
+  // off-element champion a floor. As in zones 3 to 6, each Echo hits a
+  // little harder floor by floor and its toughness follows its floor's
+  // line-up. Tuned with every wave fought, the last one too: armour searched
+  // on seeds 1–60 and 1–120, then checked on all 336. By simulation
+  // (tests/unit/spire-zone7.test.ts; a solo Normal bot raider, 336 seeds)
+  // floor 61 is cleared about two times in three (69%), then 67, 62, 57,
+  // 55 (the elite), 52, 46, 41 and 38% on floor 69. (Floor 62 sits on a
+  // cliff: 2.7 clears 60%, 3.0 74%.)
+  61: { difficulty: "normal", power: 0.66, armour: 5.8, limit: 180 },
+  62: { difficulty: "normal", power: 0.67, armour: 2.85, limit: 180 },
+  63: { difficulty: "normal", power: 0.68, armour: 6.6, limit: 180 },
+  64: { difficulty: "normal", power: 0.69, armour: 4.8, limit: 180 },
+  65: { difficulty: "normal", power: 0.7, armour: 0.6, limit: 240 },
+  66: { difficulty: "normal", power: 0.7, armour: 4.1, limit: 180 },
+  67: { difficulty: "normal", power: 0.71, armour: 2.7, limit: 180 },
+  68: { difficulty: "normal", power: 0.72, armour: 4.15, limit: 180 },
+  69: { difficulty: "normal", power: 0.73, armour: 2.2, limit: 180 },
   70: { difficulty: "hard", power: 1, armour: 1, limit: 600 },
 };
 /** Party scaling, and the cap on fighters on the court. */

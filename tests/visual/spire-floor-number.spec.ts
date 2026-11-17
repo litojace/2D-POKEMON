@@ -61,6 +61,7 @@ const FLOORS = [
   ...[31, 32, 33, 34, 35, 36, 37, 38, 39],
   ...[41, 42, 43, 44, 45, 46, 47, 48, 49],
   ...[51, 52, 53, 54, 55, 56, 57, 58, 59],
+  ...[61, 62, 63, 64, 65, 66, 67, 68, 69],
 ];
 
 for (const font of FONTS)
@@ -184,7 +185,7 @@ const PHONES = [
   { name: "ipad", width: 1180, height: 820 },
 ];
 for (const size of PHONES)
-  test(`the floor number sits on the ring's centre at ${size.name} (floors 7, 17, 47 and 57)`, async ({
+  test(`the floor number sits on the ring's centre at ${size.name} (floors 7, 17, 47, 57 and 67)`, async ({
     browser,
   }, info) => {
     test.setTimeout(150_000);
@@ -203,10 +204,10 @@ for (const size of PHONES)
       await openPlayPanel(page);
       await createRoom(page);
       await pushUntilBattle(page);
-      for (const floor of [7, 17, 47, 57]) {
+      for (const floor of [7, 17, 47, 57, 67]) {
         if (floor > 10) {
           // Zone 2's look for 17; zone 5's bright Light court for 47;
-          // zone 6's dusky Fire court for 57.
+          // zone 6's dusky Fire court for 57; zone 7's storm court for 67.
           await raiseFloors(page, floor - 7);
           await page.evaluate(() => (window as any).__push());
         }
