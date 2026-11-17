@@ -876,11 +876,11 @@ test("decorating on a phone: a tap puts the decoration there, a drag on it moves
     await sheet.locator('[data-deco="hay"]').click();
     await expect(sheet).toBeHidden();
     await expect(bar).toContainText("Hay Bale");
-    const p = await farmPoint(page, 600, 920);
+    const p = await farmPoint(page, 1500, 920);
     await page.touchscreen.tap(p.x, p.y);
     await expect
       .poll(async () => (await decoState(page)).edit)
-      .toMatchObject({ x: 600, y: 920 });
+      .toMatchObject({ x: 1500, y: 920 });
     // The bar fits the phone's width, over the farm.
     const box = await bar.boundingBox();
     expect(box!.x).toBeGreaterThanOrEqual(0);
@@ -890,7 +890,7 @@ test("decorating on a phone: a tap puts the decoration there, a drag on it moves
     await expect
       .poll(() => farmActions(page))
       .toEqual([
-        { a: "decor-place", item: "hay", x: 600, y: 920, flip: false },
+        { a: "decor-place", item: "hay", x: 1500, y: 920, flip: false },
       ]);
     expect(errors).toEqual([]);
   } finally {
