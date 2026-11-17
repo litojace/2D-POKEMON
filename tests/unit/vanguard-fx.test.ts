@@ -54,32 +54,19 @@ function frame(now: number, ambient: boolean, defeated = false) {
   return { ctx, commands, emit, mount };
 }
 describe("Nova Vanguard idle effects", () => {
-  it("animates each costume within a small drawing budget without ambient particles", () => {
+  // In battle the Nova suits draw their signature effect (epic-signature-fx,
+  // tested in epic-signature-fx.test.ts); these suit lights remain for the
+  // review sheet's preview.
+  it("draws the signature effect, not the suit lights, in battle", () => {
     for (const id of ids) {
-      const a = frame(300, true),
-        b = frame(1400, true);
-      drawSkinFx(a.ctx, SKIN_ART[`${id}-nova-vanguard`], 1);
-      drawSkinFx(b.ctx, SKIN_ART[`${id}-nova-vanguard`], 1);
-      expect(a.commands.length, id).toBeGreaterThan(0);
-      expect(a.commands.length, id).toBeLessThanOrEqual(32);
-      expect(b.commands.length, id).toBeLessThanOrEqual(32);
-      expect(a.commands, id).not.toEqual(b.commands);
-      expect(a.emit).not.toHaveBeenCalled();
-      expect(b.emit).not.toHaveBeenCalled();
-      expect(a.mount).toHaveBeenCalled();
+      const f = frame(300, true);
+      drawSkinFx(f.ctx, SKIN_ART[`${id}-nova-vanguard`], 1);
+      expect(SKIN_ART[`${id}-nova-vanguard`].signature).toBe(
+        `${id}-nova-vanguard`,
+      );
+      expect(f.commands.length, id).toBeGreaterThan(0);
+      expect(f.mount).not.toHaveBeenCalled();
     }
-  });
-  it("suppresses details when ambient effects are off or the fighter is defeated", () => {
-    for (const id of ids)
-      for (const [ambient, defeated] of [
-        [false, false],
-        [true, true],
-      ]) {
-        const f = frame(500, ambient, defeated);
-        drawSkinFx(f.ctx, SKIN_ART[`${id}-nova-vanguard`], 1);
-        expect(f.commands).toEqual([]);
-        expect(f.emit).not.toHaveBeenCalled();
-      }
   });
   it("uses finite joint coordinates and bounded small ornaments in every facing", () => {
     for (const id of ids)

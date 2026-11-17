@@ -79,11 +79,48 @@ Duskveil retains a dark void face.
 ## Animation and performance
 
 The production articulated rig moves the clothing pieces with their joints.
-Rare skins have no idle particle or drawing effect. The two fashion Epic
-collections cap idle glints at 20 Graphics calls; Nova Vanguard caps its
-personal details at 32 calls and emits no idle particles. Trails use the existing dash particle budget; skills only
+Rare skins have no idle particle or drawing effect. Trails use the existing
+dash particle budget; skills only
 change color. These skins add no Mythical ornaments, Awakening stages,
 full-screen flashes, large auras, changed hitboxes or ability timings.
+
+## Epic signature effects
+
+Each of the 54 new Epics (Abyssal Expedition, Dream Carnival, Nova Vanguard)
+has its own animated motif in `epic-signature-fx.ts`, tied to the champion and
+the collection, in place of the shared glint:
+
+| Champion | Abyssal | Carnival | Vanguard |
+| --- | --- | --- | --- |
+| Voltkit | Electric eel round the waist | Jester bells round the head | Pulse chevrons climbing above |
+| Cindrake | Thermal vent glow and heat shimmer | Fire poi at its sides | Solar halo behind the head |
+| Tidefin | Reef fish school | Pearl garland | Riptide crescent orbiting |
+| Auralynx | Cryo crystals, falling frost | Moon trapeze above | Prism hex panels |
+| Lumoth | Angler lure | Wing ribbons | Lumen beacon orbs |
+| Mystowl | Sonar pings | Ringmaster spotlight | Living star chart |
+| Terradon | Anemone garden | Carousel bulbs | Hex bulwark ring |
+| Duskveil | Moon jelly | Marionette strings | Echo waves |
+| Coilemur | Live cable with current | Spinning hoop | Flux rings |
+| Pyranda | Rescue buoy | Silk fan | Medic cross |
+| Glacelle | Caustic light ripples | Snow-globe pirouette | Frost lattice |
+| Halcyra | Ocean current streaks | Aria notes | Gale vortex |
+| Sunbara | Harbour beacon | Parade balloons | Rising dawn |
+| Astrabun | Moon bubbles | Juggled mochi | Orbiting comet |
+| Wombolder | Headlamp | Drum-major baton | Quake pulse |
+| Shadopus | Nautilus spiral | Card fan | Oracle eye |
+| Pangrove | Kelp guard | Pinwheel | Briar circle |
+| Mossloth | Coral polyps | Dream Zs | Cloud cushions |
+
+They draw on the rig's two Graphics layers, beside, behind, above the head or
+on the ground, never over the face. Sizes come from the rig's head top and
+shadow line, so they fit Shop previews and small battle fighters alike. With
+the battle's ambient budget (one or two fighters, you first; none on Low)
+they draw in full: at most 40 calls and a particle or two a second. Outside
+it, and on Low, a compact version: at most 20 calls and no particles. An
+ultimate swells the motif for 0.9 s and throws one burst of its own shape
+with a ground ring. Defeated fighters draw nothing. Older Epics and Rares
+are unchanged. `epic-signature-fx.test.ts` checks the budgets in every
+facing, that all 54 are distinct, the ultimate swell and the defeat case.
 
 ## Shipping
 
@@ -111,12 +148,9 @@ provides a modest idle/walk demonstration. Costume pieces fit the actual rig
 crop boxes across all 72 views. Shop, Wardrobe and battles use the production
 skin renderer; the review wrapper calls that same renderer.
 
-`vanguard-fx.ts` supplies personal animated ornaments through the rig's existing
-Graphics objects. They follow their actual body/limb transforms, use at most
-32 drawing calls per frame, emit no idle particles, and stop when ambient
-costume effects or motion are disabled. Battles share the existing one/two-fighter
-ambient budget (local player first); Low disables these details. No custom
-scene objects, large glow layers or extra skill geometry are introduced.
+`vanguard-fx.ts` supplies the suit lights shown in the review sheet's
+preview (follow the body and limb joints, at most 32 drawing calls). In the
+Shop and in battle, the signature effect above replaces them.
 
 | Champion | Costume | Signature equipment |
 | --- | --- | --- |

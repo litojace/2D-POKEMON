@@ -77,7 +77,14 @@ describe("champion skin art", () => {
         ]);
       if (s.rarity === "epic")
         expect(
-          [extras, !!art.trail, typeof art.skill, !!art.detail, art.mythic],
+          // An animated detail, or the new collections' own signature.
+          [
+            extras,
+            !!art.trail,
+            typeof art.skill,
+            !!(art.detail || art.signature),
+            art.mythic,
+          ],
           s.id,
         ).toEqual([true, true, "number", true, undefined]);
       if (s.rarity === "mythical")
