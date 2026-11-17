@@ -34,7 +34,13 @@ and come back to a full oven.
 - **Ingredients are plain goods only** (no mutation), as the Bistro's farm
   delivery: a Gold or Rainbow crop is worth far more sold, so the oven never
   takes one by surprise.
-- No real-money speed-up: that needs the game owner's decision first.
+- **Finish now** (`bake-rush`): the slot in the oven gets a Finish button
+  priced at 2 Gold Leaves a minute left (rounded up, at least 10); a second
+  tap within 3 seconds confirms. It's ready at once, and everything queued
+  behind it moves up by the time saved. The server prices it from its own
+  clock (the price only falls while the button shows). Only what's baking
+  can be finished, not what waits behind it. No real money: Gold Leaves
+  only, a sink for late-game leaves.
 
 ## Recipes
 
@@ -65,6 +71,12 @@ game's only corn, which opens at level 60: it is the long-term recipe.
   A full 5-slot queue left overnight adds under 300 leaves of profit over
   selling the raw goods, a quarter of the 1,200 leaves the daily cap turns
   into coins.
+- **Finishing early never pays.** Even on the market day when baking pays
+  best (raw crops ×0.7, milk ×0.85), no recipe earns more than 1.4 leaves
+  per oven minute (bread), below the 2 a minute finishing costs, and
+  finishing a whole bake costs more than the bake earns. So rushing to bake
+  more always loses leaves: it buys time, never income
+  (`tests/unit/farm-bakery.test.ts`, "finishing now").
 - **Storm Milk is the bottleneck.** The cow gives 2 every 2 hours, so the
   milk recipes (the profitable ones) are limited to about 24 a day even for
   someone who never leaves.

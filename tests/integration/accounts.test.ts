@@ -1190,6 +1190,7 @@ it("passes farm actions and leaf trades to the database only when the request is
           { a: "buy-bake-slot" },
           { a: "bake", recipe: "carrotcake" },
           { a: "bake-collect", slot: 4 },
+          { a: "bake-rush", slot: 1 },
           { a: "sell-good", good: "bread", qty: 3 },
         ],
       })
@@ -1224,6 +1225,7 @@ it("passes farm actions and leaf trades to the database only when the request is
           { a: "buy-bake-slot" },
           { a: "bake", recipe: "carrotcake" },
           { a: "bake-collect", slot: 4 },
+          { a: "bake-rush", slot: 1 },
           { a: "sell-good", good: "bread", qty: 3 },
         ],
       },
@@ -1270,6 +1272,8 @@ it("passes farm actions and leaf trades to the database only when the request is
     { request, actions: [{ a: "bake-collect", slot: "1" }] },
     { request, actions: [{ a: "sell-good", good: "bread", qty: 1, price: 9 }] },
     { request, actions: [{ a: "buy-bake-slot", slots: 5 }] },
+    { request, actions: [{ a: "bake-rush", slot: 0, cost: 1 }] },
+    { request, actions: [{ a: "bake-rush", slot: -1 }] },
     { request, actions: [{ a: "plant", plot: 1, crop: "Wheat;drop" }] },
     { request, actions: [{ a: "harvest", plot: 1 }], leaves: 1e9 },
     {

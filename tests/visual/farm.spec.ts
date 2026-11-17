@@ -3024,7 +3024,7 @@ for (const viewport of [
   { width: 1280, height: 800 },
   { width: 844, height: 390 },
 ]) {
-  test(`the Bakery: build it, bake from the barn, collect with a tap and sell at ${viewport.width}x${viewport.height}`, async ({
+  test(`the Bakery: build it, bake from the barn, finish early, collect with a tap and sell at ${viewport.width}x${viewport.height}`, async ({
     browser,
   }, info) => {
     const phone = viewport.width < 1000;
@@ -3164,6 +3164,43 @@ for (const viewport of [
           ),
         )
         .toBe(1);
+      // The bun is in the oven now: finish it early for leaves, with a
+      // second tap to confirm (about 44 minutes left: 2 leaves a minute).
+      await page.evaluate(() => {
+        (window as any).__fakeFarm.leaves = 500;
+        return (window as any).__farm.refresh();
+      });
+      await tapBakery();
+      const rush = sheet.locator(".bk-slot.baking [data-brush]");
+      await expect(rush).toContainText("Finish");
+      const price = Number(await rush.locator("[data-bprice]").textContent());
+      expect(price).toBeGreaterThanOrEqual(86);
+      expect(price).toBeLessThanOrEqual(88);
+      await rush.click();
+      await expect(rush).toContainText("Sure?");
+      await expect(rush).toHaveClass(/armed/);
+      await snap(
+        page,
+        info,
+        `farm-bakery-rush-${viewport.width}x${viewport.height}`,
+      );
+      expect((await sent()).some((a: any) => a.a === "bake-rush")).toBe(false);
+      await rush.click();
+      await expect(page.locator("#toast")).toContainText(
+        "Storm Milk Bun is done",
+      );
+      await expect(
+        sheet.locator(".bk-slot.ready", { hasText: "Storm Milk Bun" }),
+      ).toBeVisible();
+      await expect
+        .poll(() => page.evaluate(() => (window as any).__fakeFarm.leaves))
+        .toBeLessThanOrEqual(500 - 86);
+      await sheet.locator("[data-bcollect]").click();
+      await expect(page.locator("#fm-log")).toContainText(
+        "Baked Storm Milk Bun",
+      );
+      await sheet.locator("[data-close]").click();
+      await expect(sheet).toBeHidden();
       // Sold at the market at its fixed price.
       await openSheet(page, "market");
       const bread = sheet.locator(".item", { hasText: "Breeze Bread" });
@@ -3182,6 +3219,8 @@ for (const viewport of [
           { a: "bake", recipe: "bread" },
           { a: "bake", recipe: "milkbun" },
           { a: "bake-collect", slot: 0 },
+          { a: "bake-rush", slot: 1 },
+          { a: "bake-collect", slot: 1 },
           { a: "sell-good", good: "bread", qty: 1 },
         ]);
       expect(errors).toEqual([]);

@@ -20,6 +20,9 @@ import {
   ingredientValue,
   isBakedGood,
   plainStock,
+  rushError,
+  rushPrice,
+  rushQueue,
   type FarmBakery,
 } from "../../packages/shared/src/farm-bakery";
 
@@ -205,5 +208,75 @@ describe("the queue", () => {
         T0,
       ),
     ).toBe("Your barn is full");
+  });
+});
+
+describe("finishing now", () => {
+  const q = (slot: number, recipe: string, s: number, e: number) => ({
+    slot,
+    recipe,
+    startedAt: iso(T0 + s * 1000),
+    readyAt: iso(T0 + e * 1000),
+  });
+
+  it("costs 2 leaves a minute left, rounded up, at least 10", () => {
+    expect(rushPrice(1)).toBe(10);
+    expect(rushPrice(299)).toBe(10);
+    expect(rushPrice(301)).toBe(12);
+    expect(rushPrice(600)).toBe(20);
+    expect(rushPrice(3 * 3600)).toBe(360);
+  });
+
+  it("never earns leaves: it costs more than any recipe makes per oven minute", () => {
+    // Even on the worst market day for the raw goods (crops ×0.7, milk
+    // ×0.85), when baking pays best, a rushed minute costs more than a
+    // minute of baking earns: rushing to bake more loses leaves.
+    for (const r of BAKERY_RECIPES) {
+      const perMinute =
+        (r.sell - ingredientValue(r, 0.7, 0.85)) / (r.seconds / 60);
+      expect(perMinute).toBeLessThan(BAKERY.rushPerMinute);
+      // Rushing a whole bake costs more than the bake earns.
+      expect(rushPrice(r.seconds)).toBeGreaterThan(
+        r.sell - ingredientValue(r, 0.7, 0.85),
+      );
+    }
+  });
+
+  it("finishes only what's baking, if the leaves are there", () => {
+    const bakery: FarmBakery = {
+      owned: true,
+      slots: 3,
+      queue: [
+        q(0, "bread", -900, -300),
+        q(1, "berrytart", -300, 300),
+        q(2, "bread", 300, 900),
+      ],
+    };
+    const f = { leaves: 100, bakery };
+    expect(rushError(f, 0, T0)).toBe("Already done");
+    expect(rushError(f, 1, T0)).toBeNull();
+    expect(rushError(f, 2, T0)).toBe("Not in the oven yet");
+    expect(rushError(f, 3, T0)).toBe("Nothing in that slot");
+    expect(rushError({ ...f, leaves: 9 }, 1, T0)).toBe(
+      "Not enough Gold Leaves",
+    );
+  });
+
+  it("moves what waits behind it up by the time saved", () => {
+    const queue = [
+      q(0, "bread", -900, -300),
+      q(1, "berrytart", -300, 300),
+      q(2, "bread", 300, 900),
+    ];
+    const out = rushQueue(queue, 1, T0);
+    expect(out[0]).toEqual(queue[0]);
+    expect(out[1]).toMatchObject({
+      readyAt: iso(T0),
+      startedAt: iso(T0 - 300_000),
+    });
+    expect(out[2]).toMatchObject({
+      startedAt: iso(T0),
+      readyAt: iso(T0 + 600_000),
+    });
   });
 });

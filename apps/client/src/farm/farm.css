@@ -3197,3 +3197,15 @@ body.hub-farm #account-leaves {
   width: 1.7em;
   height: 1.7em;
 }
+.farm-layer .bk-slot .bk-rush {
+  margin-top: 0.2em;
+  padding: 0.35em 0.55em;
+  font-size: 0.72em;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2em;
+}
+.farm-layer .bk-slot .bk-rush .ico {
+  width: 1.1em;
+  height: 1.1em;
+}

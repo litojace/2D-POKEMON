@@ -19,6 +19,13 @@ export const BAKERY = {
   maxSlots: 5,
   /** The price of the 3rd, 4th and 5th slot. */
   slotPrices: [600, 1200, 2400] as const,
+  /**
+   * Finishing what's in the oven now: Gold Leaves per minute left (rounded
+   * up), at least `rushMin`. Dearer than any recipe earns per oven minute,
+   * so rushing never adds leaves: it only buys time.
+   */
+  rushPerMinute: 2,
+  rushMin: 10,
   /** The middle of its front wall, on the ground (world px of the farm scene). */
   x: 1200,
   y: 925,
@@ -244,4 +251,55 @@ export function collectError(
   if (farm.barn.reduce((a, x) => a + x.qty, 0) + 1 > farm.barnCap)
     return "Your barn is full";
   return null;
+}
+
+/** What finishing a bake costs with `seconds` left (the server's price). */
+export const rushPrice = (seconds: number) =>
+  Math.max(
+    BAKERY.rushMin,
+    BAKERY.rushPerMinute * Math.ceil(Math.max(0, seconds) / 60),
+  );
+/** Why a slot can't be finished now, or null when it can; with its price. */
+export function rushError(
+  farm: { leaves: number; bakery?: FarmBakery | null },
+  slot: number,
+  now: number,
+): string | null {
+  const q = farm.bakery?.queue.find((x) => x.slot === slot);
+  if (!q) return "Nothing in that slot";
+  if (Date.parse(q.readyAt) <= now) return "Already done";
+  if (Date.parse(q.startedAt) > now) return "Not in the oven yet";
+  if (farm.leaves < rushPrice((Date.parse(q.readyAt) - now) / 1000))
+    return "Not enough Gold Leaves";
+  return null;
+}
+/**
+ * The queue after finishing `slot` at `now`: it is ready now, and everything
+ * after it moves up by the time saved, so the oven doesn't stand idle.
+ */
+export function rushQueue<T extends BakeryQueueItem>(
+  queue: readonly T[],
+  slot: number,
+  now: number,
+): T[] {
+  const q = queue.find((x) => x.slot === slot);
+  if (!q) return [...queue];
+  const end = Date.parse(q.readyAt),
+    saved = end - now,
+    iso = (ms: number) => new Date(ms).toISOString();
+  return queue.map((x) =>
+    x === q
+      ? {
+          ...x,
+          startedAt: iso(Math.min(Date.parse(x.startedAt), now - 1000)),
+          readyAt: iso(now),
+        }
+      : Date.parse(x.startedAt) >= end
+        ? {
+            ...x,
+            startedAt: iso(Date.parse(x.startedAt) - saved),
+            readyAt: iso(Date.parse(x.readyAt) - saved),
+          }
+        : x,
+  );
 }

@@ -71,6 +71,9 @@ import {
   collectError,
   freeBakeSlot,
   isBakedGood,
+  rushError,
+  rushPrice,
+  rushQueue,
 } from "../../../../packages/shared/src/farm-bakery";
 import { GIANT_ART, cropFieldSvg, cropGiantSvg, cropItemSvg } from "./crop-art";
 import { bakedItemSvg } from "./bakery-art";
@@ -797,6 +800,11 @@ export function openFarm(options) {
       });
       return;
     }
+    if (a.a === "bake-rush") {
+      if (rushError(bakeFarm(), a.slot, now)) return;
+      F.bakery.queue = rushQueue(F.bakery.queue, a.slot, now);
+      return;
+    }
     if (a.a === "bake-collect") {
       if (collectError(bakeFarm(), a.slot, now)) return;
       const q = F.bakery.queue.find((x) => x.slot === a.slot);
@@ -1055,6 +1063,15 @@ export function openFarm(options) {
             `Put <b>${CROP[x.baking]?.n ?? x.baking}</b> in the oven`,
             "good",
           );
+        if (x.rushed) {
+          toast(
+            `${CROP[x.rushed]?.n ?? x.rushed} is done · ${x.cost} Gold Leaves`,
+          );
+          log(
+            `Finished <b>${CROP[x.rushed]?.n ?? x.rushed}</b> early · ${x.cost} ${L}`,
+            "good",
+          );
+        }
         if (x.baked) {
           fly(BAKERY.x - 96, BAKERY.y - 40, icon(x.baked), "+1");
           float(BAKERY.x, BAKERY.y - 130, `+${x.xp} XP`, "#7ff0a2");
@@ -1245,6 +1262,7 @@ export function openFarm(options) {
      the oven is baking now, and what's ready to collect. */
   const bakeFarm = () => ({
     level: F.lv,
+    leaves: F.leaves,
     barnCap: F.barnCap,
     bakery: F.bakery,
     barn: Object.entries(F.barn).map(([k, qty]) => {
@@ -6828,6 +6846,8 @@ export function openFarm(options) {
     );
   };
   /* ---------- the Bakery's sheet: its queue with progress rings, and its recipes ---------- */
+  /** The Finish button waiting for its second tap: its slot, until when. */
+  let rushArm = null;
   const bakeLeft = (q) =>
     Math.max(0, (Date.parse(q.readyAt) - serverNow()) / 1000);
   function bakeSlotHTML(q) {
@@ -6838,7 +6858,11 @@ export function openFarm(options) {
     if (p >= 1)
       return `<button type="button" class="bk-slot ready" data-bq="${q.slot}" data-bcollect="${q.slot}" style="--p:1" aria-label="Collect ${esc(r.name)}">${img}<b>${esc(r.name)}</b><small>Collect</small></button>`;
     const waiting = Date.parse(q.startedAt) > n;
-    return `<div class="bk-slot ${waiting ? "wait" : "baking"}" data-bq="${q.slot}" style="--p:${p.toFixed(3)}">${img}<b>${esc(r.name)}</b><small data-bleft>${waiting ? "Up next" : fmtSecs(bakeLeft(q))}</small></div>`;
+    // In the oven: finish it now for leaves (a second tap confirms).
+    const rush = waiting
+      ? ""
+      : `<button type="button" class="btn-s gold bk-rush${rushArm?.slot === q.slot ? " armed" : ""}" data-brush="${q.slot}" ${F.leaves < rushPrice(bakeLeft(q)) ? "disabled" : ""}>${rushArm?.slot === q.slot ? "Sure?" : "Finish"} <span data-bprice>${rushPrice(bakeLeft(q))}</span> ${L}</button>`;
+    return `<div class="bk-slot ${waiting ? "wait" : "baking"}" data-bq="${q.slot}" style="--p:${p.toFixed(3)}">${img}<b>${esc(r.name)}</b><small data-bleft>${waiting ? "Up next" : fmtSecs(bakeLeft(q))}</small>${rush}</div>`;
   }
   function recipesHTML(preview) {
     const f = bakeFarm();
@@ -7247,12 +7271,18 @@ export function openFarm(options) {
         const t = el.querySelector("[data-bleft]");
         if (t && Date.parse(q.startedAt) <= serverNow())
           t.textContent = fmtSecs(bakeLeft(q));
+        const bp = el.querySelector("[data-bprice]");
+        if (bp) bp.textContent = String(rushPrice(bakeLeft(q)));
         if (
           p >= 1 !== el.classList.contains("ready") ||
           (el.classList.contains("wait") && p > 0)
         )
           baked = true;
       });
+    if (rushArm && rushArm.until < Date.now()) {
+      rushArm = null;
+      baked = true;
+    }
     if (baked && sheet === "bakery") renderSheet();
     // A waiting order is ready: opening the farm again brings it.
     if (due && !ordersRefreshing) {
@@ -7427,6 +7457,19 @@ export function openFarm(options) {
       act({ a: "bake", recipe: d.bake }, true);
       sfx("tick");
       toast(`${CROP[d.bake].n} is in the oven`);
+      return renderSheet();
+    }
+    if (d.brush !== undefined) {
+      const slot = +d.brush,
+        err = rushError(bakeFarm(), slot, serverNow());
+      if (err) return toast(err);
+      if (rushArm?.slot !== slot) {
+        rushArm = { slot, until: Date.now() + 3000 };
+        return renderSheet();
+      }
+      rushArm = null;
+      act({ a: "bake-rush", slot }, true);
+      sfx("coin");
       return renderSheet();
     }
     if (d.bcollect !== undefined) {
@@ -8260,6 +8303,9 @@ export function openFarm(options) {
         bakeStart,
         collectError,
         freeBakeSlot,
+        rushError,
+        rushPrice,
+        rushQueue,
       },
       /** The decoration being placed or moved, and the decorating bar (tests). */
       deco: () => ({ edit: decoEdit, browse: decoBrowse }),

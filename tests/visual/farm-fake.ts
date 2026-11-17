@@ -531,6 +531,19 @@ export async function fakeFarm(page: Page) {
             farm.xp += xp;
             return { ok: true, baked: q.recipe, qty: 1, slot: q.slot, xp };
           }
+          if (a.a === "bake-rush") {
+            const error = B.rushError(farm, a.slot, Date.now());
+            if (error) return { ok: false, error };
+            const q = farm.bakery.queue.find((x: any) => x.slot === a.slot)!,
+              cost = B.rushPrice((Date.parse(q.readyAt) - Date.now()) / 1000);
+            farm.bakery.queue = B.rushQueue(
+              farm.bakery.queue,
+              a.slot,
+              Date.now(),
+            );
+            farm.leaves -= cost;
+            return { ok: true, rushed: q.recipe, slot: a.slot, cost };
+          }
           if (a.a === "sell-good") {
             const r = B.BAKERY_RECIPE_BY_ID[a.good],
               row = farm.barn.find(

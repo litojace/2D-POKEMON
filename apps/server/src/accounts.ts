@@ -852,6 +852,7 @@ export function installAccountRoutes(
         "buy-bake-slot",
         "bake",
         "bake-collect",
+        "bake-rush",
         "sell-good",
       ]),
       plot: z.number().int().min(0).max(49).optional(),

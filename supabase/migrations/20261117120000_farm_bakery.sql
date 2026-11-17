@@ -15,8 +15,12 @@
 --     clock, so the queue bakes on while the player is away. A finished
 --     good waits in its slot until collected (a tap), into the barn (one
 --     space each), for its XP.
+--   * Finishing now (bake-rush): what's in the oven is ready at once for 2
+--     Gold Leaves a minute left (rounded up, at least 10), and the queue
+--     behind it moves up by the time saved. That is dearer than any recipe
+--     earns per oven minute, so it buys time, never leaves.
 --   * Actions in arena_farm_act_more (wrapping 20261116120000's): buy-bakery,
---     buy-bake-slot, bake, bake-collect, sell-good. arena_farm_state adds
+--     buy-bake-slot, bake, bake-collect, bake-rush, sell-good. arena_farm_state adds
 --     'bakery': owned, slots and the queue.
 --   * Orders: with a bakery, some new orders also ask for a baked good it
 --     can make (arena_farm_new_order wraps 070's, now
@@ -176,9 +180,10 @@ create or replace function public.arena_farm_act_more(pid uuid, a jsonb, ref tex
 language plpgsql security definer set search_path = public as $$
 declare f public.arena_farms; r public.arena_farm_bakery_recipes; q public.arena_farm_bakery_queue;
   item jsonb; n integer; cost integer; used integer; v_slot integer; v_start timestamptz;
+  v_saved interval;
 begin
   xp = 0;
-  if a->>'a' is null or a->>'a' not in ('buy-bakery', 'buy-bake-slot', 'bake', 'bake-collect', 'sell-good') then
+  if a->>'a' is null or a->>'a' not in ('buy-bakery', 'buy-bake-slot', 'bake', 'bake-collect', 'bake-rush', 'sell-good') then
     select x.err, x.gained, x.xp into err, gained, xp
       from public.arena_farm_act_prebakery(pid, a, ref, t, d) x;
     return;
@@ -255,6 +260,29 @@ begin
       on conflict (player_id, crop, mutation) do update set qty = public.arena_farm_barn.qty + 1;
       gained = jsonb_build_object('baked', q.recipe, 'qty', 1, 'slot', q.slot, 'xp', r.xp);
       xp = r.xp;
+    end if;
+  elsif a->>'a' = 'bake-rush' then
+    v_slot = case when jsonb_typeof(a->'slot') = 'number' and (a->>'slot') ~ '^[0-9]$'
+      then (a->>'slot')::integer end;
+    select * into q from public.arena_farm_bakery_queue where player_id = pid and slot = v_slot for update;
+    if q.slot is null then err = 'Nothing in that slot';
+    elsif q.ready_at <= t then err = 'Already done';
+    elsif q.started_at > t then err = 'Not in the oven yet';
+    else
+      cost = greatest(10, 2 * ceil(extract(epoch from (q.ready_at - t)) / 60))::integer;
+      if not public.arena_spend_leaves(pid, cost, 'farm-bake-rush', ref, d) then
+        err = 'Not enough Gold Leaves';
+      else
+        v_saved = q.ready_at - t;
+        -- What waited behind it starts that much sooner.
+        update public.arena_farm_bakery_queue
+           set started_at = started_at - v_saved, ready_at = ready_at - v_saved
+         where player_id = pid and started_at >= q.ready_at;
+        update public.arena_farm_bakery_queue
+           set started_at = least(started_at, t - interval '1 second'), ready_at = t
+         where player_id = pid and slot = q.slot;
+        gained = jsonb_build_object('rushed', q.recipe, 'slot', q.slot, 'cost', cost);
+      end if;
     end if;
   else
     select * into r from public.arena_farm_bakery_recipes where id = a->>'good';

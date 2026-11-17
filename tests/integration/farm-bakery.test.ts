@@ -17,6 +17,8 @@ import {
   bakeStart,
   collectError,
   freeBakeSlot,
+  rushError,
+  rushPrice,
 } from "../../packages/shared/src/farm-bakery";
 
 // Migration 20261117120000: the Bakery, its oven's queue and baked goods.
@@ -350,6 +352,100 @@ it("sells more queue slots, up to 5, at their prices", async () => {
   expect(freeBakeSlot(q, 5)).toBe(-1);
   await away(24 * 3600);
   await act(q.map((x: any) => ({ a: "bake-collect", slot: x.slot })));
+});
+
+it("finishes what's in the oven for leaves, and moves the queue up", async () => {
+  await level(14);
+  await emptyBarn();
+  await setBarn("wheat", 9);
+  await setBarn("voltberry", 3);
+  const r = await act([
+    { a: "bake", recipe: "bread" },
+    { a: "bake", recipe: "berrytart" },
+    { a: "bake", recipe: "bread" },
+  ]);
+  const slotOf = (recipe: string, k = 0) =>
+    r.farm.bakery.queue.filter((q: any) => q.recipe === recipe)[k].slot;
+  const [bread, tart, last] = [
+    slotOf("bread"),
+    slotOf("berrytart"),
+    slotOf("bread", 1),
+  ];
+  let f = await farm();
+  const now = Date.parse(f.now);
+  // Only what's in the oven now; the shared rules say the same.
+  for (const [slot, error] of [
+    [tart, "Not in the oven yet"],
+    [4, "Nothing in that slot"],
+  ] as const) {
+    expect(rushError(f, slot, now)).toBe(error);
+    expect(await one({ a: "bake-rush", slot })).toEqual({ ok: false, error });
+  }
+  // A fresh bread (10 minutes left) costs 2 leaves a minute: 20.
+  const q0 = f.bakery.queue.find((q: any) => q.slot === bread);
+  const price = rushPrice((Date.parse(q0.readyAt) - now) / 1000);
+  expect(price).toBe(20);
+  expect(rushError(f, bread, now)).toBeNull();
+  const tartBefore = f.bakery.queue.find((q: any) => q.slot === tart);
+  const lastBefore = f.bakery.queue.find((q: any) => q.slot === last);
+  const x = await act([
+    { a: "bake-rush", slot: bread },
+    { a: "bake-rush", slot: bread },
+    { a: "bake-rush", slot: "0" },
+  ]);
+  expect(x.results).toEqual([
+    { ok: true, rushed: "bread", slot: bread, cost: price },
+    { ok: false, error: "Already done" },
+    { ok: false, error: "Nothing in that slot" },
+  ]);
+  expect(f.leaves - x.farm.leaves).toBe(price);
+  // It's ready now; the tart starts now instead of in 10 minutes, and the
+  // last bread moves up by the same time.
+  const after = (slot: number) =>
+    x.farm.bakery.queue.find((q: any) => q.slot === slot);
+  const saved = Date.parse(q0.readyAt) - Date.parse(after(bread).readyAt);
+  expect(saved).toBeGreaterThan(590_000);
+  expect(Date.parse(after(bread).readyAt)).toBeLessThanOrEqual(
+    Date.parse(x.farm.now),
+  );
+  expect(after(tart).startedAt).toBe(after(bread).readyAt);
+  expect(Date.parse(tartBefore.readyAt) - Date.parse(after(tart).readyAt)).toBe(
+    saved,
+  );
+  expect(
+    Date.parse(lastBefore.startedAt) - Date.parse(after(last).startedAt),
+  ).toBe(saved);
+  expect(after(last).startedAt).toBe(after(tart).readyAt);
+  expect(await one({ a: "bake-collect", slot: bread })).toMatchObject({
+    ok: true,
+    baked: "bread",
+  });
+  // Short of leaves: nothing changes.
+  const wallet = await owner(
+    "select balance from public.arena_leaf_wallets where player_id = $1",
+    [player],
+  );
+  await owner(
+    "update public.arena_leaf_wallets set balance = 5 where player_id = $1",
+    [player],
+  );
+  f = await farm();
+  expect(rushError(f, tart, Date.parse(f.now))).toBe("Not enough Gold Leaves");
+  expect(await one({ a: "bake-rush", slot: tart })).toEqual({
+    ok: false,
+    error: "Not enough Gold Leaves",
+  });
+  expect((await farm()).bakery.queue).toEqual(f.bakery.queue);
+  await owner(
+    "update public.arena_leaf_wallets set balance = $2 where player_id = $1",
+    [player, wallet[0].balance],
+  );
+  await away(24 * 3600);
+  await act([
+    { a: "bake-collect", slot: tart },
+    { a: "bake-collect", slot: last },
+  ]);
+  expect((await farm()).bakery.queue).toEqual([]);
 });
 
 it("sells baked goods at the market at their fixed price", async () => {
