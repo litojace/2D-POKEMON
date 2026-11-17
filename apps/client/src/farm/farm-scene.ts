@@ -489,7 +489,9 @@ export function openFarm(options) {
   // behind the field's fence, so a lane runs in front of it: the barn's door
   // and the market's counter no longer open onto the fence, and the lane
   // from home to the barn shows instead of running under it.
-  const PAST = { x0: 1480, x1: 1720, y0: 420, y1: 664 },
+  // The pasture's top grew from 420 to 330 for 5 cows (20261117170000);
+  // the two trees that stood there were felled.
+  const PAST = { x0: 1480, x1: 1720, y0: 330, y1: 664 },
     // Where the farmhouse stood: the Bakery's place now (BAKERY), and
     // where the paths to the Plaza and the barn start.
     HOUSE = { x: 190, y: 292 },
@@ -1535,7 +1537,7 @@ export function openFarm(options) {
   const decoys = [];
   let decoyIn = 60 + Math.random() * 120;
   // The pasture's cow (migration 049): it walks slowly from side to side.
-  const COW = { x: 1600, y: 610, face: -1, t: 0 };
+  const COW = { x: 1600, y: 630, face: -1, t: 0 };
   /* The farm cat naps curled up on top of the Bakery's brick oven, the
      warmest spot on the farm (it slept by the farmhouse's door before the
      Bakery took the house's place). A tap on it wakes it for a moment
@@ -1566,13 +1568,16 @@ export function openFarm(options) {
       .filter((q) => Date.parse(q.readyAt) <= n)
       .sort((a, b) => Date.parse(a.readyAt) - Date.parse(b.readyAt));
   };
-  // More cows (20261117100000): the 2nd and 3rd graze the back of the
-  // meadow, each on its own half, so no two cows stand on each other and
-  // the first cow's bubble stays clear of them.
+  // More cows (20261117100000, 20261117170000): three rows about 95 px
+  // apart in the taller meadow. The 2nd and 3rd graze the back, the 4th and
+  // 5th the middle, each on its own short stretch, so no two cows stand on
+  // each other and each milk bubble floats above the row behind.
   const COWS = [
     COW,
-    { x: 1535, y: 505, face: 1, t: 5, x0: 1526, x1: 1545 },
-    { x: 1668, y: 512, face: -1, t: 9, x0: 1660, x1: 1674 },
+    { x: 1535, y: 442, face: 1, t: 5, x0: 1526, x1: 1548 },
+    { x: 1665, y: 448, face: -1, t: 9, x0: 1652, x1: 1674 },
+    { x: 1560, y: 538, face: -1, t: 2, x0: 1540, x1: 1580 },
+    { x: 1660, y: 544, face: 1, t: 7, x0: 1640, x1: 1674 },
   ];
   /** When cow k's milk is ready (ms; the first cow's is F.milkAt). */
   const cowMilkAt = (k) =>
@@ -2563,11 +2568,17 @@ export function openFarm(options) {
       shake: 0,
     }))
     // The round tree below the lane and the cherry tree right of it were
-    // felled for the Chicken Coop
-    // (filtered after, so every other tree keeps its own look).
+    // felled for the Chicken Coop, and the two above the pasture for its
+    // taller meadow (20261117170000), filtered after, so every other tree
+    // keeps its own look.
     .filter(
       (t) =>
-        !((t.x === 1120 && t.y === 1060) || (t.x === 1450 && t.y === 1040)),
+        !(
+          (t.x === 1120 && t.y === 1060) ||
+          (t.x === 1450 && t.y === 1040) ||
+          (t.x === 1480 && t.y === 340) ||
+          (t.x === 1700 && t.y === 330)
+        ),
     );
   /** Squash-and-stretch after a tap (house, mill, barn…): 1 → 0. */
   const bounce = {};

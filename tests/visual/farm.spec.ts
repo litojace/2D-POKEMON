@@ -1189,13 +1189,13 @@ for (const viewport of [
   });
 }
 
-// More cows (20261117100000): the 2nd from farm level 40, bought in the
-// shop's Animals tab, milked on its own with a tap.
+// More cows (20261117100000, 20261117170000): the 2nd from farm level 32,
+// bought in the shop's Animals tab, milked on its own with a tap.
 for (const viewport of [
   { width: 1280, height: 800 },
   { width: 844, height: 390 },
 ]) {
-  test(`a second cow joins the pasture at farm level 40 at ${viewport.width}x${viewport.height}`, async ({
+  test(`a second cow joins the pasture at farm level 32 at ${viewport.width}x${viewport.height}`, async ({
     browser,
   }, info) => {
     const phone = viewport.width < 1000;
@@ -1210,7 +1210,7 @@ for (const viewport of [
       await fakeFarm(page);
       await page.evaluate(() => {
         const f = (window as any).__fakeFarm;
-        f.level = 39;
+        f.level = 31;
         f.leaves = 9000;
         f.pasture = true;
         f.milkAt = new Date(Date.now() + 3600e3).toISOString();
@@ -1221,14 +1221,14 @@ for (const viewport of [
       const sheet = page.locator("#fm-sheet");
       await sheet.locator('[data-tab="animals"]').click();
       const item = sheet.locator(".item", { hasText: "Another cow" });
-      await expect(item).toContainText("1/3");
-      await expect(item).toContainText("unlocks at Lv 40");
+      await expect(item).toContainText("1/5");
+      await expect(item).toContainText("unlocks at Lv 32");
       await expect(item.locator("[data-buycow]")).toBeDisabled();
       await page.evaluate(() => {
-        (window as any).__fakeFarm.level = 40;
+        (window as any).__fakeFarm.level = 32;
         return (window as any).__farm.refresh();
       });
-      await expect(item.locator("[data-buycow]")).toContainText("6,000");
+      await expect(item.locator("[data-buycow]")).toContainText("4,000");
       await snap(
         page,
         info,
@@ -1240,10 +1240,10 @@ for (const viewport of [
       );
       await expect(
         sheet.locator(".item", { hasText: "Another cow" }),
-      ).toContainText("2/3");
+      ).toContainText("2/5");
       await expect(
         sheet.locator(".item", { hasText: "Another cow" }).locator("button"),
-      ).toHaveText("Lv 55");
+      ).toHaveText("Lv 42");
       await sheet.locator("[data-close]").click();
       // The new cow's milk is ready (the first cow's isn't): a tap on her.
       await page.evaluate(() => {
@@ -1253,7 +1253,7 @@ for (const viewport of [
       });
       const p = await page.evaluate(() => {
         const f = (window as any).__farm;
-        f.look(1600, 560);
+        f.look(1600, 500);
         const c = f.cows[1];
         return f.worldClient(c.x, c.y - 88);
       });
@@ -1275,6 +1275,71 @@ for (const viewport of [
           ),
         )
         .toEqual([{ a: "buy-cow" }, { a: "milk", cow: 1 }]);
+      expect(errors).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });
+}
+
+// A full pasture (20261117170000): five cows in three rows in the taller
+// meadow, where its two trees stood. Each one's milk bubble is a tap on
+// that cow, even on a phone.
+for (const viewport of [
+  { width: 1280, height: 800 },
+  { width: 844, height: 390 },
+]) {
+  test(`five cows graze the taller pasture, each milked with its own tap at ${viewport.width}x${viewport.height}`, async ({
+    browser,
+  }, info) => {
+    const phone = viewport.width < 1000;
+    const context = await browser.newContext({
+      viewport,
+      isMobile: phone,
+      hasTouch: phone,
+    });
+    try {
+      const page = await context.newPage();
+      const errors = await openLobby(page);
+      await fakeFarm(page);
+      await page.evaluate(() => {
+        const f = (window as any).__fakeFarm,
+          ready = new Date(Date.now() - 1000).toISOString();
+        f.level = 68;
+        f.pasture = true;
+        f.milkAt = ready;
+        f.cows = [1, 2, 3, 4].map((i) => ({ i, milkAt: ready }));
+      });
+      await page.click('#hub-scenes [data-hub-scene="farm"]');
+      await expect(page.locator("#fm-badge")).toContainText("tester's Farm");
+      await page.waitForFunction(() => (window as any).__farm?.F?.loaded);
+      await page.evaluate(() => (window as any).__farm.look(1600, 500));
+      await page.waitForTimeout(500);
+      await snap(
+        page,
+        info,
+        `farm-cows-five-${viewport.width}x${viewport.height}`,
+      );
+      // Front to back, so a milked cow's bubble never hides the next tap.
+      for (const k of [0, 3, 4, 1, 2]) {
+        const p = await page.evaluate((k) => {
+          const f = (window as any).__farm,
+            c = f.cows[k];
+          return f.worldClient(c.x, c.y - 88);
+        }, k);
+        if (phone) await page.touchscreen.tap(p.x, p.y);
+        else await page.mouse.click(p.x, p.y);
+        await page.waitForTimeout(150);
+      }
+      await expect
+        .poll(() =>
+          page.evaluate(() =>
+            (window as any).__farmRequests
+              .flatMap((r: any) => r.actions)
+              .map((a: any) => a.cow ?? 0),
+          ),
+        )
+        .toEqual([0, 3, 4, 1, 2]);
       expect(errors).toEqual([]);
     } finally {
       await context.close();
