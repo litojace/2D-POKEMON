@@ -16,6 +16,9 @@ import {
   spireStartCheckpoint,
   type SpireBlessingId,
   type SpireFloor,
+  spireBorrowed,
+  spirePossessive,
+  SPIRE_BUILT_TOP,
 } from "../../../packages/shared/src/spire";
 import { menuIcon } from "./menu-icons";
 import { raidBriefingGuide } from "./raid-briefing";
@@ -24,6 +27,9 @@ import { LIVE_COUNTDOWN, LIVE_SECONDS } from "./overlay";
 import { spireBlessingIcon } from "./spire-art";
 import { actions, button } from "./ui/components";
 import "./spire-battle.css";
+
+/** A name at the start of a sentence ("the Storm Twins" → "The Storm Twins"). */
+const sentence = (name: string) => name.charAt(0).toUpperCase() + name.slice(1);
 
 const escape = (s: string) =>
   s.replace(
@@ -79,7 +85,7 @@ export function spireFloorLine(f: SpireFloor | undefined) {
       : ascendantOf(f);
   if (f.kind === "elite" && f.elite) {
     const m = SPIRE_ELITE_MECHANICS[f.elite.mechanic];
-    return `${f.elite.name}, with ${m.boss}'s ${m.name}`;
+    return `${f.elite.name}, with ${spireBorrowed(m)}`;
   }
   return f.waves
     .map((w) => w.map((e) => CHARACTERS[e.character].name).join(", "))
@@ -142,7 +148,7 @@ export function spireOverlay(state: Snapshot, me: Fighter) {
         : "No self-revive in this fight: dodge carefully."
       : "Stand beside a fallen ally to revive them.";
     title = `Floor ${s.floor} · ${escape(ascendantOf(floor))}`;
-    body = `<div class="rc-body spire-briefing spire-boss-briefing" tabindex="0" role="region" aria-label="Boss floor briefing"><p class="spire-lead">The top of ${escape(zoneOf(floor).name)}: ${escape(zoneOf(floor).bossLead)}</p>${ascendantNew(floor).length ? `<span class="ui-kicker">New attacks</span>${spireFloorPlan(floor)}` : ""}<ul class="spire-rules"><li>${menuIcon("motion")}<span><b>It reads you.</b> ${escape(zoneOf(floor).bossReads)}</span></li><li>${menuIcon("sparkle")}<span>Your <b>blessings</b> fight with you. You pick one more before the fight.</span></li><li>${menuIcon("again")}<span>${revive} A defeat ends the climb.</span></li></ul><details class="rc-extra" id="raid-briefing-extra"><summary>${escape(zoneOf(floor).bossName)}'s raid, step by step</summary>${raidBriefingGuide(r.boss, me.character, solo)}</details></div>`;
+    body = `<div class="rc-body spire-briefing spire-boss-briefing" tabindex="0" role="region" aria-label="Boss floor briefing"><p class="spire-lead">The top of ${escape(zoneOf(floor).name)}: ${escape(zoneOf(floor).bossLead)}</p>${ascendantNew(floor).length ? `<span class="ui-kicker">New attacks</span>${spireFloorPlan(floor)}` : ""}<ul class="spire-rules"><li>${menuIcon("motion")}<span><b>It reads you.</b> ${escape(zoneOf(floor).bossReads)}</span></li><li>${menuIcon("sparkle")}<span>Your <b>blessings</b> fight with you. You pick one more before the fight.</span></li><li>${menuIcon("again")}<span>${revive} A defeat ends the climb.</span></li></ul><details class="rc-extra" id="raid-briefing-extra"><summary>${escape(spirePossessive(sentence(zoneOf(floor).bossName)))} raid, step by step</summary>${raidBriefingGuide(r.boss, me.character, solo)}</details></div>`;
     acts = `<p class="ui-note rc-meta">Boss floor · starts in <span class="spire-briefing-timer">${LIVE_SECONDS}</span> · ${solo ? "Solo" : `${r.partySize} climbers`}</p>${actions(button(waiting ? "Waiting for the team…" : "I’m ready", { kind: "primary", icon: waiting ? undefined : "battle", disabled: waiting, attrs: { id: "raid-instructions", "aria-label": waiting ? "Waiting for the team" : `I’m ready — fight ${ascendantOf(floor)}` } }))}`;
   } else if (state.phase === "briefing") {
     const waiting = state.instructionsReady.includes(me.id);
@@ -190,13 +196,17 @@ export function spireOverlay(state: Snapshot, me: Fighter) {
     // The zone's boss beaten: the zone is conquered (a climb ends there).
     const conquered = won && top?.kind === "boss";
     const nextZone = conquered ? SPIRE_FLOORS[s.best + 1] : undefined;
-    title = conquered
-      ? `Zone ${top.zone} conquered!`
-      : won
-        ? `Floor ${s.best} cleared!`
-        : floor?.kind === "boss"
-          ? `${escape(ascendantOf(floor))} held floor ${s.floor}`
-          : `The Echoes held floor ${s.floor}`;
+    // The last zone's boss: the summit, and the whole Spire with it.
+    const summit = conquered && !nextZone;
+    title = summit
+      ? `Zone ${top.zone} conquered — the Spire is yours!`
+      : conquered
+        ? `Zone ${top.zone} conquered!`
+        : won
+          ? `Floor ${s.best} cleared!`
+          : floor?.kind === "boss"
+            ? `${escape(ascendantOf(floor))} held floor ${s.floor}`
+            : `The Echoes held floor ${s.floor}`;
     const mine = s.saves.flatMap((v) =>
       (v.claims ?? []).filter((c) => c.playerId === me.id),
     );
@@ -223,7 +233,7 @@ export function spireOverlay(state: Snapshot, me: Fighter) {
     );
     const checkpoint = conquered ? spireStartCheckpoint(s.best + 1) : next;
     const banner = conquered
-      ? `<p class="spire-conquered" role="status">${menuIcon("leaderboard")}<span><b>${escape(ascendantOf(top))} defeated.</b> ${escape(zoneOf(top).name)} is yours. ${nextZone ? `Zone ${nextZone.zone} opens at floor ${nextZone.floor}: pick it in the Spire to climb on.` : "More floors are coming."}</span></p>`
+      ? `<p class="spire-conquered" role="status">${menuIcon("leaderboard")}<span><b>${escape(ascendantOf(top))} defeated.</b> ${escape(zoneOf(top).name)} is yours. ${nextZone ? (nextZone.floor <= SPIRE_BUILT_TOP ? `Zone ${nextZone.zone} opens at floor ${nextZone.floor}: pick it in the Spire to climb on.` : "More floors are coming.") : `You stand on the summit: all ${zoneOf(top).id} zones of the Spire are conquered. Climb any of them again from the Spire.`}</span></p>`
       : "";
     body = `${banner}<div class="rc-summary spire-summary"><div class="rc-stats"><span class="rc-stat"><b class="ui-num">${s.best || "—"}</b><small>Best floor</small></span><span class="rc-stat"><b class="ui-num">${checkpoint}</b><small>Checkpoint</small></span><span class="rc-stat"><b class="ui-num">${clock(s.climbSeconds)}</b><small>Climb time</small></span><span class="rc-stat"><b class="ui-num">${r.downs}</b><small>Downs</small></span></div></div>${rewards}<p class="spire-held"><span class="ui-kicker">Blessings</span>${escape(held(state, me.id))}</p>${saved ? `<p class="rc-save${!saving && !failed ? " is-saved" : failed ? " is-error" : ""}" role="status">${saved}</p>` : ""}${conquered ? "" : `<p class="rc-tip">${escape(r.message)}</p>`}`;
     const readyCount = heroes.filter((p) => p.ready).length;

@@ -121,9 +121,13 @@ export function spireLobbyCard(
   const { highest } = spireStanding({ spire: f.spire }, catalogue);
   const { zone, start } = spireZoneChoice({}, { spire: f.spire }, catalogue);
   const name = catalogue.zones[zone]?.name;
+  // Every released floor cleared; the summit too (no floor above it at
+  // all): every zone conquered, the whole Spire.
   const title =
     highest >= catalogue.builtTop
-      ? "Every floor cleared"
+      ? catalogue.floors[catalogue.builtTop + 1]
+        ? "Every floor cleared"
+        : "The Spire is yours"
       : highest > 0
         ? `Best: floor ${highest}`
         : "Start your climb";

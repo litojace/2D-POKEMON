@@ -5,6 +5,7 @@ import {
   drawConductorRing,
   drawStormWarning,
   drawStormTwins,
+  drawPolarityPieces,
 } from "./raid-storm-twins-art";
 import { renderStormTargets } from "./storm-twins-controls";
 import {
@@ -372,10 +373,14 @@ export function drawRaidArena(
     gloom = r.boss === "gloomshade",
     dream = r.boss === "somnara";
   if (r.spire) drawSpireCourt(g, state, reduced);
-  if (r.boss === "storm-twins") drawConductorRing(g, state, reduced, at, clock);
   // (The Spire's wave and elite floors in a raid's zone: its own court; the
   // raid's arena and its boss's body are the boss floor's.)
   const bossCourt = !r.spire || r.spire.kind === "boss";
+  // The Conductor Ring is floor 70's; floor 65's captain borrows only
+  // Polarity: its pad and marks on the Spire's court.
+  if (r.boss === "storm-twins")
+    if (bossCourt) drawConductorRing(g, state, reduced, at, clock);
+    else drawPolarityPieces(g, state, reduced, clock);
   if (r.boss === "emberwing" && bossCourt)
     drawSkyTerrace(g, state, reduced, at);
   if (r.boss === "prismatail" && bossCourt)
@@ -710,7 +715,7 @@ export function drawRaidArena(
     clock,
   );
   if (r.boss === "storm-twins")
-    return drawStormTwins(g, state, reduced, clock, at);
+    return bossCourt ? drawStormTwins(g, state, reduced, clock, at) : [];
   // (An elite captain carries the boss bar there: it is drawn as the
   // champion it is, never as the raid's boss.)
   if (r.boss === "emberwing")

@@ -3,11 +3,19 @@ import type { Snapshot } from "@arena/shared";
 import { mirrorTwinFor } from "./ascendant-storm-twins-art";
 let targetId: string | undefined;
 /**
+ * Is there a pair of twins to aim at? Their raid, and the Spire's floor 70
+ * (the Spire's other zone-7 floors field Echoes: no twins).
+ */
+const twinsUp = (state: Snapshot) =>
+  state.raid?.boss === "storm-twins" &&
+  state.phase === "playing" &&
+  (!state.raid.spire || state.raid.spire.kind === "boss");
+/**
  * The twin to aim at: the one picked with the buttons; during an Ascendant
  * Mirror Charge (no button picked), the twin `myId`'s sign discharges.
  */
 export function stormTarget(state: Snapshot, myId?: string) {
-  if (state.raid?.boss !== "storm-twins" || state.phase !== "playing") {
+  if (!twinsUp(state)) {
     targetId = undefined;
     return;
   }
@@ -30,8 +38,7 @@ export function renderStormTargets(state: Snapshot, frame: HTMLElement) {
     panel.setAttribute("aria-label", "Choose which twin to aim at");
     frame.append(panel);
   }
-  panel.hidden =
-    state.raid?.boss !== "storm-twins" || state.phase !== "playing";
+  panel.hidden = !twinsUp(state);
   if (panel.hidden) {
     targetId = undefined;
     return;

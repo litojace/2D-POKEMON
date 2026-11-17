@@ -46,16 +46,16 @@ function climb(zone: number, floor: number, party: number) {
 const view = (a: ReturnType<typeof climb>) =>
   ({ ...a.snapshot(), raid: a.raid }) as unknown as Snapshot;
 
-/** The wave floors of zones 1–6. */
+/** The wave floors of zones 1–7 (the whole Spire). */
 const WAVE_FLOORS = Object.keys(SPIRE_FLOORS)
   .map(Number)
-  .filter((f) => f <= 59 && SPIRE_FLOORS[f].kind === "wave");
+  .filter((f) => f <= 69 && SPIRE_FLOORS[f].kind === "wave");
 
 describe("a Spire wave floor", () => {
-  it("covers floors 1–9, 11–19, 21–29, 31–39, 41–49 and 51–59", () => {
+  it("covers floors 1–9, 11–19, 21–29, 31–39, 41–49, 51–59 and 61–69", () => {
     const zones = new Set(WAVE_FLOORS.map((f) => Math.ceil(f / 10)));
-    expect([...zones]).toEqual([1, 2, 3, 4, 5, 6]);
-    expect(WAVE_FLOORS.length).toBe(48);
+    expect([...zones]).toEqual([1, 2, 3, 4, 5, 6, 7]);
+    expect(WAVE_FLOORS.length).toBe(56);
   });
 
   for (const party of [1, SPIRE_PARTY.extraWaveFrom])

@@ -50,6 +50,7 @@ import {
   SPIRE_TUNING,
   SPIRE_ZONES,
   spireBlessingOffer,
+  spireBorrowed,
   spireRewardsOf,
   spireRoster,
   spireScale,
@@ -198,7 +199,7 @@ describe("Spire floors (zone 6, the Sky Terrace)", () => {
     expect(SPIRE_ZONES[6].bossLead).toMatch(/Snuffing Gale/);
     expect(SPIRE_ZONES[6].bossLead).toMatch(/Bound Wicks/);
     expect(SPIRE_ZONES[6].bossReads).toMatch(/Embers fall where you/);
-    expect(SPIRE_BUILT_TOP).toBe(60);
+    expect(SPIRE_BUILT_TOP).toBeGreaterThanOrEqual(60);
   });
   it("has wave floors 51–54 and 56–59, the elite on 55 and the boss on 60", () => {
     for (const f of [51, 52, 53, 54, 56, 57, 58, 59]) {
@@ -820,6 +821,7 @@ describe("the elite's HUD line, on each zone's real elite floor", () => {
     [35, 4, "Snoozaku's falling stars"],
     [45, 5, "Prismell's prism lances"],
     [55, 6, "Lumiwick's ember dive"],
+    [65, 7, "the Storm Twins' polarity"],
   ])("floor %i (zone %i) names %s", (floor, zone, borrowed) => {
     seeded(640 + floor);
     const a = createSpireArena("CUE" + floor, zone) as SpireEmberArena;
@@ -834,7 +836,7 @@ describe("the elite's HUD line, on each zone's real elite floor", () => {
     a.raid.warnings = [];
     expect(spireCue(snap(a))).toBe(`Echo Captain · it borrowed ${borrowed}`);
     const m = SPIRE_ELITE_MECHANICS[SPIRE_FLOORS[floor].elite!.mechanic];
-    expect(`${m.boss}'s ${m.name}`).toBe(borrowed);
+    expect(spireBorrowed(m)).toBe(borrowed);
   });
 });
 
@@ -962,7 +964,7 @@ describe("the boss floor (floor 60: the Ascendant Lumiwick, on the Sky Terrace)"
     expect(a.raid.warnings).toEqual([]);
     run(a, SPIRE_PARTY.cleared + 0.2);
     expect(a.raid.result).toBe("victory");
-    expect(a.raid.message).toBe("Zone 6 conquered — more floors are coming.");
+    expect(a.raid.message).toBe("Zone 6 conquered — zone 7 opens at floor 61.");
     a.retry();
     expect(s).toMatchObject({ startFloor: 59, floor: 59, blessings: {} });
     expect(a.raid.variant).toBeUndefined();

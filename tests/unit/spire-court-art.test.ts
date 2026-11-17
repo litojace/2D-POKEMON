@@ -2,10 +2,12 @@
  * The Spire court's zone looks (apps/client/src/spire-court-art.ts): the
  * lookup the floor flow calls (`spireZoneTheme`), zone 2's Water look,
  * zone 3's Shadow look, zone 4's Psychic look, zone 5's Light look, zone
- * 6's Fire look, zones 1 to 5's paintings left exactly as they were, the
+ * 6's Fire look, zone 7's Electric look, zones 1 to 6's paintings (and
+ * the Storm Twins' own Conductor Ring) left exactly as they were, the
  * floor tint by zone, how the rig reads a snapshot's zone, the boss floors'
- * summit courts and the Echoes' tint on zone 3's dark court, zone 4's pale
- * one, zone 5's bright one and zone 6's dusky one.
+ * summit courts, nothing that looks like a pad under a phone's touch
+ * controls, and the Echoes' tint on zone 3's dark court, zone 4's pale
+ * one, zone 5's bright one, zone 6's dusky one and zone 7's storm slate.
  */
 import { describe, expect, it } from "vitest";
 import {
@@ -18,6 +20,9 @@ import {
   paintSpireFloor,
   paintSpireSky,
   paintSpireSummitGrade,
+  paintStormSummitGrade,
+  SPIRE_COILS,
+  SPIRE_LANTERNS,
   spireFloorPieces,
   spireFloorTint,
   spireNumberOffset,
@@ -29,6 +34,7 @@ import {
   SPIRE_DECK_SUMMIT_FLOOR,
   SPIRE_LAGOON_SUMMIT_FLOOR,
   SPIRE_SUMMIT_FLOOR,
+  SPIRE_RING_SUMMIT_FLOOR,
   SPIRE_TERRACE_SUMMIT_FLOOR,
   SPIRE_YARD_SUMMIT_FLOOR,
   hasSpireSummitArena,
@@ -56,8 +62,17 @@ import {
   ECHO_TINT_HURT_Z6,
   ECHO_TINT_Z6,
   ECHO_WASH_Z6,
+  ECHO_TINT_HURT_Z7,
+  ECHO_TINT_Z7,
+  ECHO_WASH_Z7,
   spireEchoTint,
 } from "../../apps/client/src/spire-art";
+import {
+  SPIRE_PHONE_CONTROLS,
+  spireUnderControls,
+} from "../../packages/shared/src/spire";
+import { paintRaidFloor } from "../../apps/client/src/raid-floors";
+import { paintIllustratedRaidFloor } from "../../apps/client/src/raid-arena-art";
 
 const lum = (hex: string) => {
   const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
@@ -83,12 +98,12 @@ function paintZone(zone: number, floors: number[]) {
 }
 
 describe("spireZoneTheme", () => {
-  it("gives zone 1 (Earth), zone 2 (Water), zone 3 (Shadow), zone 4 (Psychic), zone 5 (Light) and zone 6 (Fire); unknown zones fall back to zone 1", () => {
-    for (const z of [1, 2, 3, 4, 5, 6]) {
+  it("gives zone 1 (Earth), zone 2 (Water), zone 3 (Shadow), zone 4 (Psychic), zone 5 (Light), zone 6 (Fire) and zone 7 (Electric); unknown zones fall back to zone 1", () => {
+    for (const z of [1, 2, 3, 4, 5, 6, 7]) {
       expect(spireZoneTheme(z)).toBe(SPIRE_ZONE_THEMES[z]);
       expect(spireZoneTheme(z).zone).toBe(z);
     }
-    for (const z of [0, -1, 7, 99, NaN, 1.5, 2.5, 3.5, 4.5, 5.5])
+    for (const z of [0, -1, 8, 99, NaN, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5])
       expect(spireZoneTheme(z)).toBe(SPIRE_ZONE_THEMES[1]);
     // The older name is the same lookup.
     expect(spireTheme).toBe(spireZoneTheme);
@@ -557,6 +572,241 @@ describe("spireZoneTheme", () => {
     paintEmberSummitGrade(recordingContext(log));
     expect(fingerprint(log)).toBe("46644:fbc11130");
   });
+  it("zone 7 is cool storm slate and steel with electric yellow crystal, a copper circuit inlay and a thundercloud sky", () => {
+    const seven = spireZoneTheme(7);
+    for (const z of [1, 2, 3, 4, 5, 6]) {
+      const other = spireZoneTheme(z);
+      for (const key of [
+        "slab",
+        "top",
+        "front",
+        "crystal",
+        "rune",
+        "skyLow",
+        "skyHigh",
+      ] as const)
+        expect(seven[key]).not.toEqual(other[key]);
+      expect(seven.glow).not.toBe(other.glow);
+      expect(other.storm).toBeUndefined();
+    }
+    expect(seven.storm).toBeDefined();
+    for (const k of ["ember", "radiant", "dream", "night", "sea"] as const)
+      expect(seven[k]).toBeUndefined();
+    // Cool mid-dark slate: blue leads, gently; the twins' yellow (+) and
+    // blue (−) cues, chain lightning's yellow, the static field's blue, the
+    // Link Beam's pink and the Echoes' violet, all light colours, stand
+    // far lighter than it.
+    const stone = lum(seven.slab[0]),
+      deep = lum(seven.slab[1]);
+    expect(stone.b).toBeGreaterThan(stone.r + 10);
+    expect(stone.b - stone.r).toBeLessThan(40);
+    expect(stone.l).toBeGreaterThan(70);
+    expect(stone.l).toBeLessThan(100);
+    expect(deep.l).toBeLessThan(stone.l - 30);
+    for (const cue of [
+      "#ffda85",
+      "#8edfff",
+      "#ffd579",
+      "#8adfff",
+      "#ffdc85",
+      "#abc7ff",
+      "#ff7799",
+      "#a98bff",
+    ])
+      expect(lum(cue).l).toBeGreaterThan(stone.l + 60);
+    // The cover's top lighter steel, its fronts dark slate.
+    expect(lum(seven.top[0]).l).toBeGreaterThan(stone.l + 60);
+    expect(lum(seven.front[0]).l).toBeLessThan(stone.l - 5);
+    // Electric yellow crystal over a deep storm-indigo face.
+    const crystal = lum(seven.crystal[1]);
+    expect(crystal.l).toBeGreaterThan(180);
+    expect(crystal.r + crystal.g - 2 * crystal.b).toBeGreaterThan(300);
+    expect(lum(seven.crystal[2]).l).toBeLessThan(60);
+    // The inlay is copper (red leads, then green, little blue): never the
+    // cues' yellow or blue, and the runes copper too.
+    for (const copper of [seven.storm!.copper[0], seven.rune]) {
+      const c = lum(copper);
+      expect(c.r - c.g).toBeGreaterThan(50);
+      expect(c.r - c.b).toBeGreaterThan(100);
+    }
+    // The number's groove: near black.
+    expect(lum(seven.carve).l).toBeLessThan(20);
+    // A storm sky low down (slate over a grey horizon), a black storm
+    // night at the top.
+    const low = lum(seven.skyLow[0]),
+      high = lum(seven.skyHigh[0]);
+    expect(low.b).toBeGreaterThan(low.r + 30);
+    expect(low.l).toBeLessThan(80);
+    expect(high.l).toBeLessThan(10);
+    expect(lum(seven.cloud[1]).l).toBeLessThan(30);
+    // Zone 7 paints differently from zones 1 to 6.
+    const z7 = fingerprint(paintZone(7, [61]));
+    for (const [z, f] of [
+      [1, 1],
+      [2, 11],
+      [3, 21],
+      [4, 31],
+      [5, 41],
+      [6, 51],
+    ])
+      expect(z7).not.toBe(fingerprint(paintZone(z, [f])));
+  });
+  it("zone 7 inlays circuit traces and bolts, stands tesla coils and lightning rods, and hangs forked lightning and rain in the sky", () => {
+    const s = spireZoneTheme(7).storm!;
+    const count = (log: string[], re: RegExp) =>
+      log.filter((l) => re.test(l)).length;
+    const esc = (hex: string) =>
+      `rgba\\(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(",")},`;
+    const low = paintZone(7, [61]),
+      high = paintZone(7, [69]);
+    // The copper traces: two along each of the 8 spokes (and the rail).
+    const copper = new RegExp(`^strokeStyle=${esc(s.copper[0])}0\\.7\\)$`);
+    expect(count(low, copper)).toBe(16);
+    // Each trace ends in a node (a copper ring round a pale dot).
+    const node = new RegExp(`^fillStyle=${esc(s.arc)}0\\.85\\)$`);
+    expect(count(low, node)).toBe(16);
+    // Copper bolts between the spokes.
+    const bolt = new RegExp(`^fillStyle=${esc(s.copper[0])}0\\.55\\)$`);
+    expect(count(low, bolt)).toBe(8);
+    // Four corner coils (their toroids' lit tops) and six lightning rods,
+    // and cover coils on the elite's outcrops.
+    const toroid = new RegExp(`^fillStyle=${esc(s.arc)}0\\.9\\)$`);
+    expect(count(paintZone(7, []), toroid)).toBe(SPIRE_COILS.length);
+    const rods = (log: string[]) =>
+      log.filter((l) => l.endsWith(`.stop(0,#ffe6c8)`)).length;
+    expect(rods(paintZone(7, []))).toBe(SPIRE_LANTERNS.length);
+    // Forked lightning in the sky (its white core), more higher up; rain.
+    const sky = (floor: number) => {
+      const log: string[] = [];
+      paintSpireSky(recordingContext(log), spireZoneTheme(7), floor);
+      return log;
+    };
+    const core = new RegExp(`^strokeStyle=${esc(s.bolt)}0\\.95\\)$`);
+    expect(count(sky(61), core)).toBeGreaterThanOrEqual(4);
+    expect(count(sky(69), core)).toBeGreaterThan(count(sky(61), core));
+    const rain = new RegExp(`^strokeStyle=rgba\\(${s.rain},`);
+    expect(count(sky(61), rain)).toBeGreaterThan(200);
+    expect(count(sky(69), rain)).toBeGreaterThan(count(sky(61), rain));
+    // The storm night: stars only at the top, few.
+    const stars = (log: string[]) =>
+      count(log, /^fillStyle=rgba\(255,248,232,/);
+    expect(stars(sky(61))).toBe(0);
+    expect(stars(sky(69))).toBeGreaterThan(20);
+    expect(stars(sky(69))).toBeLessThan(100);
+    expect(high.length).toBeGreaterThan(low.length);
+    // No other zone carries any of it.
+    for (const [z, f] of [
+      [1, 9],
+      [2, 19],
+      [3, 29],
+      [4, 39],
+      [5, 49],
+      [6, 59],
+    ] as const) {
+      const log = paintZone(z, [f]);
+      expect(count(log, copper)).toBe(0);
+      expect(count(log, node)).toBe(0);
+      expect(count(log, core)).toBe(0);
+      expect(count(log, rain)).toBe(0);
+    }
+  });
+  it("zone 7 paints nothing pad- or hazard-like under a phone's touch controls", () => {
+    // Every radial light zone 7's floor adds (beyond the shared court's)
+    // that sits within reach of the controls is small: no disc a player
+    // could take for a pad, a field or a safe spot.
+    const radials = (log: string[]) =>
+      log
+        .filter((l) => /^Radial\d+\(/.test(l))
+        .map((l) =>
+          l
+            .replace(/^Radial\d+\(/, "")
+            .replace(")", "")
+            .split(",")
+            .map(Number),
+        );
+    const shared = new Set(
+      radials(paintZone(1, [])).map((r) => r.join(",")),
+    );
+    const added = radials(paintZone(7, [])).filter(
+      (r) => !shared.has(r.join(",")),
+    );
+    expect(added.length).toBeGreaterThan(0);
+    const near = added.filter(([, , , x, y, r]) =>
+      spireUnderControls(x, y, r),
+    );
+    for (const [, , , , , r] of near) expect(r).toBeLessThan(32);
+    // The corner coil under the controls stands quiet (no arcs off it);
+    // the others crackle.
+    const quiet = SPIRE_COILS.filter(([x, y]) => spireUnderControls(x, y, 40));
+    expect(quiet.length).toBeGreaterThanOrEqual(1);
+    expect(quiet.length).toBeLessThan(SPIRE_COILS.length);
+    const s = spireZoneTheme(7).storm!;
+    const arcs = paintZone(7, []).filter(
+      (l) =>
+        l ===
+        `strokeStyle=rgba(${[1, 3, 5].map((i) => parseInt(s.arc.slice(i, i + 2), 16)).join(",")},0.85)`,
+    ).length;
+    expect(arcs).toBe((SPIRE_COILS.length - quiet.length) * 3);
+    // The summit grade's rim lightning: never under the controls.
+    const log: string[] = [];
+    paintStormSummitGrade(recordingContext(log));
+    const moves = log
+      .filter((l) => /^(moveTo|lineTo)\(/.test(l))
+      .map((l) =>
+        l
+          .replace(/^\w+\(/, "")
+          .replace(")", "")
+          .split(",")
+          .map(Number),
+      );
+    expect(moves.length).toBeGreaterThan(40);
+    for (const [x, y] of moves) {
+      expect(spireUnderControls(x, y, 30)).toBe(false);
+      // Inside the edge band only (the rush box and posts stand far in).
+      expect(Math.min(x, 1600 - x, y, 900 - y)).toBeLessThan(40);
+    }
+    expect(SPIRE_PHONE_CONTROLS.length).toBeGreaterThan(0);
+  });
+  it("zone 7's number is centred on the ring for every floor 61 to 69 (no number on floor 70)", () => {
+    for (let f = 61; f <= 69; f++) {
+      const kind = f === 65 ? "elite" : "wave";
+      const n = spireFloorPieces(7, f, kind, 1.4).find(
+        (p) => p.name === "number",
+      )!;
+      expect(n.x + n.w / 2).toBe(800);
+      expect(n.y + n.h / 2).toBe(450);
+      const log: string[] = [];
+      n.paint(recordingContext(log));
+      // Two digits at the two-digit size, centred by the glyphs' ink.
+      expect(log).toContain('font=700 104px Georgia, "Times New Roman", serif');
+      expect(log.filter((l) => l.startsWith(`fillText(${f},`)).length).toBe(
+        3,
+      );
+    }
+    expect(
+      spireFloorPieces(7, 70, "boss", 1.4).find((p) => p.name === "number"),
+    ).toBeUndefined();
+  });
+  it("zone 7's painting is exactly what it was (recipe recorded with zone 7)", () => {
+    const log = paintZone(7, [61, 62, 65, 69]);
+    paintStormSummitGrade(recordingContext(log));
+    expect(fingerprint(log)).toBe("49627:7ada9f39");
+  });
+  it("the Storm Twins' own Conductor Ring paints exactly as it did (recipe recorded before zone 7)", () => {
+    const log: string[] = [];
+    const undo = installRecordingDocument(log);
+    try {
+      paintRaidFloor(recordingContext(log), "conductor-ring");
+      paintIllustratedRaidFloor(
+        recordingContext(log),
+        "conductor-ring",
+        {} as HTMLImageElement,
+      );
+    } finally {
+      undo();
+    }
+    expect(fingerprint(log)).toBe("7404:c608c7e7");
+  });
   it("zone 2's high floors add bioluminescence (none low down)", () => {
     const low = paintZone(2, [11]).join("\n"),
       high = paintZone(2, [19]).join("\n");
@@ -618,6 +868,19 @@ describe("spireZoneTheme", () => {
       expect(red(spireFloorTint(59, z))).toBeLessThan(15);
     expect(spireFloorTint(59, 6) >> 16).toBeGreaterThan(220);
     expect(spireFloorTint(55, 6)).toBeGreaterThan(spireFloorTint(59, 6));
+    // Zone 7: untinted on its first floor, a cold storm night at the top
+    // (blue leads, darker than zone 3's), never so dark the slate turns
+    // black.
+    expect(spireFloorTint(61, 7)).toBe(0xffffff);
+    expect(blue(spireFloorTint(69, 7))).toBeGreaterThan(35);
+    expect(blue(spireFloorTint(69, 7))).toBeGreaterThan(
+      blue(spireFloorTint(69, 1)),
+    );
+    expect(spireFloorTint(69, 7) >> 16).toBeLessThan(
+      spireFloorTint(29, 3) >> 16,
+    );
+    expect(spireFloorTint(69, 7) >> 16).toBeGreaterThan(160);
+    expect(spireFloorTint(65, 7)).toBeGreaterThan(spireFloorTint(69, 7));
   });
 });
 
@@ -715,7 +978,7 @@ describe("summit courts", () => {
   it("floor 10 on Cragmuff's court, floor 20 on Tidelotl's lagoon, each graded", () => {
     expect(spireSummitFloorId(1)).toBe(SPIRE_SUMMIT_FLOOR);
     expect(spireSummitFloorId(2)).toBe(SPIRE_LAGOON_SUMMIT_FLOOR);
-    expect(spireSummitFloorId(7)).toBe(SPIRE_SUMMIT_FLOOR);
+    expect(spireSummitFloorId(8)).toBe(SPIRE_SUMMIT_FLOOR);
     expect(spireSummitFloorOf("lagoon")).toBe(SPIRE_LAGOON_SUMMIT_FLOOR);
     expect(spireSummitFloorOf("classic")).toBe(SPIRE_SUMMIT_FLOOR);
     expect(isSpireSummitFloorId(SPIRE_SUMMIT_FLOOR)).toBe(true);
@@ -744,7 +1007,8 @@ describe("summit courts", () => {
     expect(hasSpireSummitArena("lantern-yard")).toBe(true);
     expect(hasSpireSummitArena("lagoon")).toBe(true);
     expect(hasSpireSummitArena("classic")).toBe(false);
-    expect(hasSpireSummitArena("conductor-ring")).toBe(false);
+    expect(hasSpireSummitArena("conductor-ring")).toBe(true);
+    expect(hasSpireSummitArena("raid-coliseum")).toBe(false);
     expect(
       new Set([
         SPIRE_SUMMIT_FLOOR,
@@ -753,8 +1017,9 @@ describe("summit courts", () => {
         SPIRE_DECK_SUMMIT_FLOOR,
         SPIRE_ATRIUM_SUMMIT_FLOOR,
         SPIRE_TERRACE_SUMMIT_FLOOR,
+        SPIRE_RING_SUMMIT_FLOOR,
       ]).size,
-    ).toBe(6);
+    ).toBe(7);
   });
   it("floor 40 on Snoozaku's Cloud Deck, with its own grade (Snoozaku's raid untouched)", () => {
     expect(spireSummitFloorId(4)).toBe(SPIRE_DECK_SUMMIT_FLOOR);
@@ -769,7 +1034,7 @@ describe("summit courts", () => {
     });
     // The other zones keep theirs (an unbuilt zone's boss floor: zone 1's).
     expect(spireSummitFloorId(3)).toBe(SPIRE_YARD_SUMMIT_FLOOR);
-    expect(spireSummitFloorId(7)).toBe(SPIRE_SUMMIT_FLOOR);
+    expect(spireSummitFloorId(8)).toBe(SPIRE_SUMMIT_FLOOR);
   });
   it("floor 50 on Prismell's Sun Atrium, with its own grade (Prismell's raid untouched)", () => {
     expect(spireSummitFloorId(5)).toBe(SPIRE_ATRIUM_SUMMIT_FLOOR);
@@ -810,7 +1075,8 @@ describe("summit courts", () => {
       [3, SPIRE_YARD_SUMMIT_FLOOR],
       [4, SPIRE_DECK_SUMMIT_FLOOR],
       [5, SPIRE_ATRIUM_SUMMIT_FLOOR],
-      [7, SPIRE_SUMMIT_FLOOR],
+      [7, SPIRE_RING_SUMMIT_FLOOR],
+      [8, SPIRE_SUMMIT_FLOOR],
     ] as const)
       expect(spireSummitFloorId(zone)).toBe(id);
     expect(spireSummitFloorOf("sun-atrium")).toBe(SPIRE_ATRIUM_SUMMIT_FLOOR);

@@ -154,8 +154,8 @@ for (const size of SIZES)
 
       await room.locator('[data-ui-spire-tab="floors"]').click();
       const floors = room.locator("[data-spire-floor]");
-      // Zone 1's ten floors, then zones 2 to 6 (locked: checkpoint 1).
-      await expect(floors).toHaveCount(60);
+      // Zone 1's ten floors, then zones 2 to 7 (locked: checkpoint 1).
+      await expect(floors).toHaveCount(70);
       await expect(room.locator('[data-spire-floor="11"]')).toHaveClass(
         /is-locked/,
       );
@@ -718,7 +718,7 @@ for (const size of ZONE2_SIZES)
       await expect(zone2).toHaveAttribute("aria-pressed", "true");
       // The floors, zone by zone.
       await room.locator('[data-ui-spire-tab="floors"]').click();
-      await expect(room.locator("[data-spire-floor]")).toHaveCount(60);
+      await expect(room.locator("[data-spire-floor]")).toHaveCount(70);
       await expect(room.locator('[data-spire-floor="12"]')).toHaveClass(
         /is-done/,
       );
@@ -948,7 +948,7 @@ for (const size of ZONE3_SIZES)
       await expect(zones[2]).toHaveAttribute("aria-pressed", "true");
       // The floors, zone by zone.
       await room.locator('[data-ui-spire-tab="floors"]').click();
-      await expect(room.locator("[data-spire-floor]")).toHaveCount(60);
+      await expect(room.locator("[data-spire-floor]")).toHaveCount(70);
       await expect(room.locator('[data-spire-floor="21"]')).toHaveClass(
         /is-done/,
       );
@@ -1183,7 +1183,7 @@ for (const size of ZONE4_SIZES)
       await expect(zones[3]).toHaveAttribute("aria-pressed", "true");
       // The floors, zone by zone.
       await room.locator('[data-ui-spire-tab="floors"]').click();
-      await expect(room.locator("[data-spire-floor]")).toHaveCount(60);
+      await expect(room.locator("[data-spire-floor]")).toHaveCount(70);
       await expect(room.locator('[data-spire-floor="31"]')).toHaveClass(
         /is-done/,
       );
@@ -1450,7 +1450,7 @@ for (const size of ZONE5_SIZES)
       await expect(zones[4]).toHaveAttribute("aria-pressed", "true");
       // The floors, zone by zone.
       await room.locator('[data-ui-spire-tab="floors"]').click();
-      await expect(room.locator("[data-spire-floor]")).toHaveCount(60);
+      await expect(room.locator("[data-spire-floor]")).toHaveCount(70);
       await expect(room.locator('[data-spire-floor="41"]')).toHaveClass(
         /is-done/,
       );
@@ -1704,7 +1704,7 @@ for (const size of ZONE5_SIZES)
       await snap(page, info, `spire-z6-picker-${size.name}`);
       // The floors, zone by zone.
       await room.locator('[data-ui-spire-tab="floors"]').click();
-      await expect(room.locator("[data-spire-floor]")).toHaveCount(60);
+      await expect(room.locator("[data-spire-floor]")).toHaveCount(70);
       await expect(room.locator('[data-spire-floor="51"]')).toHaveClass(
         /is-done/,
       );
@@ -1870,7 +1870,7 @@ for (const size of ZONE5_SIZES)
         "Ascendant Lumiwick defeated",
       );
       await expect(results.locator(".spire-conquered")).toContainText(
-        "More floors are coming",
+        "Zone 7 opens at floor 61",
       );
       await expect(results.locator(".spire-rewards")).toContainText(
         "Flamebreaker of the Spire",
@@ -1878,6 +1878,311 @@ for (const size of ZONE5_SIZES)
       await expect(results.locator("#raid-retry")).toBeInViewport();
       await settle(page);
       await snap(page, info, `spire-z6-results-${size.name}`);
+      expect(errors).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });
+
+// ------------------------------------------------------------------ Zone 7
+/** Expose the battle's game (after the arena prewarm line in main.ts). */
+async function hookGame(page: Page) {
+  await page.route(/\/apps\/client\/src\/main\.ts(?:\?|$)/, async (route) => {
+    const response = await route.fetch(),
+      body = await response.text(),
+      marker =
+        "gameInstance.events.once(Phaser.Core.Events.POST_RENDER, syncBattleLoop);";
+    expect(body).toContain(marker);
+    await route.fulfill({
+      response,
+      body: body.replace(marker, "window.__spireGame=gameInstance;" + marker),
+    });
+  });
+}
+const CLEARED_STORM = {
+  ...CLEARED_FIRE,
+  bosses: {
+    ...CLEARED_FIRE.bosses,
+    "storm-twins": { clears: 1, highestPeril: 3, bestSeconds: 320, runs: 2 },
+  },
+};
+const CLIMB_ZONE7 = {
+  season: 0,
+  highestFloor: 61,
+  checkpoint: 61,
+  attempts: 21,
+  claimed: Array.from({ length: 61 }, (_, i) => i + 1),
+  clears: {
+    grumblecrag: 2,
+    tidewyrm: 1,
+    gloomshade: 1,
+    somnara: 1,
+    prismatail: 1,
+    emberwing: 1,
+    "storm-twins": 1,
+  },
+};
+for (const size of ZONE5_SIZES)
+  test(`zone 7 (the Conductor Ring): the zone picker, its floors, the elite's polarity, the Ascendant Storm Twins and the whole Spire conquered at ${size.name}`, async ({
+    browser,
+  }, info) => {
+    test.setTimeout(240_000);
+    const context = await browser.newContext({
+      viewport: { width: size.width, height: size.height },
+      isMobile: size.phone,
+      hasTouch: size.phone,
+    });
+    try {
+      const page = await context.newPage();
+      await hookGame(page);
+      await withRecords(page, CLEARED_STORM, CLIMB_ZONE7);
+      const errors = await openHub(page);
+      await page.click('.lobby-rail [data-lobby-action="raids"]');
+      const room = page.locator(".rh-room");
+      await room.locator("[data-raid-spire]").click();
+      await expect(room).toHaveAttribute("data-raid-mode", "spire");
+      // The zone picker: zone 7 picked (checkpoint 61), zones 1 to 6 open
+      // too (and conquered: gold), all seven chips in view.
+      const zones = [1, 2, 3, 4, 5, 6, 7].map((z) =>
+        room.locator(`[data-ui-spire-zone="${z}"]`),
+      );
+      await expect(zones[6]).toHaveAttribute("aria-pressed", "true");
+      for (const z of zones.slice(0, 6)) await expect(z).toBeEnabled();
+      for (const z of zones.slice(0, 6))
+        await expect(z).toHaveClass(/is-conquered/);
+      await expect(zones[6]).not.toHaveClass(/is-conquered/);
+      const info6 = room
+        .locator(".sp-zone-info, .sp-route-zone")
+        .locator("visible=true");
+      await expect(info6).toHaveCount(1);
+      await expect(info6).toContainText("Conductor Ring");
+      await expect(info6).toContainText("Electric");
+      await expect(room.locator(".rh-foot-note")).toContainText(
+        "zone 7 from floor 61",
+      );
+      const picker = room.locator(".sp-zone-picker");
+      await picker.scrollIntoViewIfNeeded();
+      await settle(page);
+      const fit = await picker.evaluate((row) => {
+        const r = row.getBoundingClientRect();
+        const body = row.closest(".ui-split-main")!.getBoundingClientRect();
+        return {
+          overflow: row.scrollWidth - row.clientWidth,
+          inside: [...row.querySelectorAll("button")].every((b) => {
+            const c = b.getBoundingClientRect();
+            return (
+              c.left >= r.left - 1 &&
+              c.right <= r.right + 1 &&
+              c.left >= body.left &&
+              c.right <= body.right &&
+              c.width >= 44 &&
+              c.height >= 44
+            );
+          }),
+        };
+      });
+      expect(fit).toEqual({ overflow: 0, inside: true });
+      expect(await layoutProblems(page, { phone: size.phone })).toEqual([]);
+      await snap(page, info, `spire-z7-picker-${size.name}`);
+      // The floors, zone by zone.
+      await room.locator('[data-ui-spire-tab="floors"]').click();
+      await expect(room.locator("[data-spire-floor]")).toHaveCount(70);
+      await expect(room.locator('[data-spire-floor="61"]')).toHaveClass(
+        /is-done/,
+      );
+      await expect(room.locator('[data-spire-floor="62"]')).toHaveClass(
+        /is-next/,
+      );
+      await expect(room.locator('[data-spire-floor="65"]')).toContainText(
+        "Elite",
+      );
+      await expect(room.locator('[data-spire-floor="70"]')).toContainText(
+        "Ascendant Storm Twins",
+      );
+      await expect(room.locator('[data-spire-floor="70"]')).toContainText(
+        "Stormbreaker of the Spire",
+      );
+      const head6 = room.locator('[data-spire-zone-floors="7"] .sp-zone-head');
+      await expect(head6).toContainText("Conductor Ring");
+      await expect(head6).toContainText("Electric");
+      await settle(page);
+      await head6.scrollIntoViewIfNeeded();
+      await page.waitForTimeout(300);
+      expect(await layoutProblems(page, { phone: size.phone })).toEqual([]);
+      await snap(page, info, `spire-z7-floors-${size.name}`);
+      await page
+        .locator(".rh-room [data-ui-close]")
+        .click()
+        .catch(() => {});
+
+      // Floor 61: Electric Echoes on the Spire's court (no ring, no twins).
+      await climb(page, { floor: 61, seats: 2 });
+      await expect(page.locator('#raid-hud [data-hud="phase"]')).toHaveText(
+        /^Floor 61 · Wave 1\/3 · \d Echo(es)?$/,
+      );
+      await expect(page.locator('#raid-hud [data-hud="title"]')).toHaveText(
+        "THE SPIRE · FLOOR 61",
+      );
+      const court = await page.evaluate(() => {
+        const s = (window as any).__snap;
+        return {
+          zone: s.raid.spire.zone,
+          boss: s.raid.boss,
+          arena: s.arena,
+          twins: (s.raid.twins ?? []).length,
+          bosses: s.players.filter((p: any) => p.raidBoss).length,
+        };
+      });
+      expect(court).toEqual({
+        zone: 7,
+        boss: "storm-twins",
+        arena: "classic",
+        twins: 0,
+        bosses: 0,
+      });
+      // The twins' target buttons are theirs (floor 70): none here.
+      await expect(page.locator("#raid-storm-targets")).toBeHidden();
+      await page.evaluate(() => (window as any).__spireStep(0.5));
+      await page.waitForTimeout(500);
+      await snap(page, info, `spire-z7-floor61-${size.name}`);
+
+      // Floor 65: the captain, with the twins' polarity.
+      await page.evaluate(() => {
+        const w = window as any;
+        w.__room("spire", { floor: 65, stage: "playing", seats: 2 });
+        w.__push();
+      });
+      await expect(page.locator('#raid-hud [data-hud="title"]')).toHaveText(
+        "FLOOR 65 · ECHO CAPTAIN COILEMUR",
+      );
+      await expect(page.locator('#raid-hud [data-hud="phase"]')).toHaveText(
+        "Floor 65 · Elite",
+      );
+      let marked = false;
+      for (let i = 0; i < 80 && !marked; i++)
+        marked = await page.evaluate(() => {
+          const w = window as any;
+          w.__spireStep(0.25);
+          return (w.__snap.raid.polarities ?? []).length > 0;
+        });
+      expect(marked).toBe(true);
+      await expect(page.locator("#raid-hud .raid-callout")).toHaveText(
+        "Polarity — find the opposite sign!",
+      );
+      // The marks are drawn over the raiders (the ring's pieces, no posts).
+      await expect
+        .poll(() =>
+          page.evaluate(() => {
+            const scene = (window as any).__spireGame?.scene.getScene("arena");
+            const names = (scene?.children.list ?? []).map((o: any) => o.name);
+            return {
+              marks: names.includes("arena-pieces:ring-marks"),
+              posts: names.some((n: string) =>
+                /arena-pieces:post-/.test(n ?? ""),
+              ),
+            };
+          }),
+        )
+        .toEqual({ marks: true, posts: false });
+      // The captain is its champion: no twins on the court.
+      const elite = await page.evaluate(() => {
+        const s = (window as any).__snap;
+        const id = s.raid.spire.eliteId;
+        const p = s.players.find((q: any) => q.id === id);
+        return {
+          character: p?.character,
+          raidBoss: !!p?.raidBoss,
+          bosses: s.players.filter((q: any) => q.raidBoss).length,
+        };
+      });
+      expect(elite).toEqual({
+        character: "coilemur",
+        raidBoss: false,
+        bosses: 0,
+      });
+      await page.evaluate(() => (window as any).__spireStep(0.3));
+      await page.waitForTimeout(300);
+      await snap(page, info, `spire-z7-elite-${size.name}`);
+
+      // Floor 70: the Ascendant Storm Twins' briefing, in the Conductor Ring.
+      await page.evaluate(() => {
+        const w = window as any;
+        w.__room("spire", { floor: 70, stage: "briefing" });
+        w.__push();
+      });
+      const brief = page.locator(".rc-card.is-briefing");
+      await expect(brief.locator("h2")).toHaveText(
+        "Floor 70 · Ascendant Storm Twins",
+      );
+      await expect(brief).toContainText("Fizz and Crackle, evolved");
+      await expect(brief).toContainText("The Storm Twins' raid, step by step");
+      await expect(page.locator("#raid-instructions")).toBeInViewport();
+      await settle(page);
+      await snap(page, info, `spire-z7-boss-briefing-${size.name}`);
+
+      // The fight: the ring and both twins, their bars, the floor.
+      await page.evaluate(() => {
+        const w = window as any;
+        w.__room("spire", { floor: 70, stage: "playing" });
+        w.__push();
+      });
+      await expect(page.locator('#raid-hud [data-hud="title"]')).toHaveText(
+        /^ASCENDANT STORM TWINS/,
+      );
+      await expect(page.locator('#raid-hud [data-hud="phase"]')).toHaveText(
+        "Floor 70 · Phase 1/3",
+      );
+      const fight = await page.evaluate(() => {
+        const s = (window as any).__snap;
+        return {
+          arena: s.arena,
+          variant: s.raid.variant,
+          twins: s.players
+            .filter((p: any) => p.raidBoss)
+            .map((p: any) => p.name),
+        };
+      });
+      expect(fight).toEqual({
+        arena: "conductor-ring",
+        variant: "ascendant",
+        twins: ["Fizz", "Crackle"],
+      });
+      await expect(page.locator("#raid-hud .raid-twin-bar")).toHaveCount(2);
+      if (size.phone)
+        await expect(page.locator("#raid-storm-targets")).toBeVisible();
+      for (let i = 0; i < 20; i++) {
+        const live = await page.evaluate(() => {
+          const w = window as any;
+          w.__spireStep(0.5);
+          return w.__snap.raid.warnings.length;
+        });
+        if (live) break;
+      }
+      await page.waitForTimeout(400);
+      await snap(page, info, `spire-z7-boss-fight-${size.name}`);
+
+      // Both fall: zone 7 conquered, the whole Spire, floor 70's title.
+      await page.evaluate(() => {
+        const w = window as any;
+        w.__room("spire", { floor: 70, stage: "finished" });
+        w.__push();
+      });
+      const results = page.locator(".rc-card.is-results");
+      await expect(results.locator("h2")).toHaveText(
+        "Zone 7 conquered — the Spire is yours!",
+      );
+      await expect(results.locator(".spire-conquered")).toContainText(
+        "Ascendant Storm Twins defeated",
+      );
+      await expect(results.locator(".spire-conquered")).toContainText(
+        "all 7 zones of the Spire are conquered",
+      );
+      await expect(results.locator(".spire-rewards")).toContainText(
+        "Stormbreaker of the Spire",
+      );
+      await expect(results.locator("#raid-retry")).toBeInViewport();
+      await settle(page);
+      await snap(page, info, `spire-z7-results-${size.name}`);
       expect(errors).toEqual([]);
     } finally {
       await context.close();
