@@ -6,6 +6,7 @@
  * one with `RaidState.variant`; the difficulty row is `RAID_ASCENDANT_TIER`.
  */
 import type { DreamRune, RaidAttack, RaidBossId, RaidTier } from "./raid.js";
+import type { LightPoint } from "./raid-prismatail.js";
 import { SPIRE_PHONE_CONTROLS } from "./spire.js";
 
 /** An evolved form of a raid boss (none: the ordinary raid). */
@@ -167,6 +168,16 @@ export const RAID_ASCENDANT_ATTACKS: Partial<Record<string, RaidAttack[]>> = {
     "dream-sequence",
     "twin-dream",
     "dream-tide",
+  ],
+  prismatail: [
+    "prism-lance",
+    "fan-display",
+    "glare",
+    "refraction",
+    "halo-crush",
+    "light-relay",
+    "eclipse",
+    "umbral-prism",
   ],
 };
 
@@ -637,5 +648,186 @@ export const ASCENDANT_SNOOZAKU_CHAPTERS = [
     objective: "Survive the combinations. Keep the calls coming.",
     detail:
       "Its rhythm quickens. Stars fall where you usually dodge, and standing still to attack draws them onto you. Keep moving, keep calling, and strike the star-heart when it wakes.",
+  },
+] as const;
+
+/**
+ * Ascendant Prismell's own numbers (damage before the tier multiplier), the
+ * Spire's fiftieth floor (Prismatail's id). Its ordinary attacks keep
+ * PRISMATAIL's numbers, and its raid's rules hold: the skylight's beam is
+ * passed raider to raider (and through the mirrors) into the heart, and only
+ * a held relay opens the shield.
+ */
+export const ASCENDANT_PRISMELL = {
+  name: "Ascendant Prismell",
+  /** Health added per extra raider (the raid's own: 880). */
+  perExtraPlayer: 340,
+  /** Seconds a teammate kneels to revive (the Ascendant tier: 4.5). */
+  reviveSeconds: 5.5,
+  /**
+   * Where it rests, by chapter (x; the raid backs off to 1040 and 1080):
+   * its heart stays clear of a phone's touch controls (`heartClear` px round
+   * it, plus `controlMargin`).
+   */
+  home: [1000, 1000, 1000],
+  heartClear: 60,
+  /**
+   * The court under a phone's touch controls (SPIRE_PHONE_CONTROLS: the
+   * joystick, dash, jump, the three skills, the ultimate and the attack
+   * button; phones have no target row). No skylight, mirror, heart, halo
+   * gap or safe spot sits within `controlMargin` of one.
+   */
+  phoneControls: SPIRE_PHONE_CONTROLS,
+  controlMargin: 12,
+  /** The open shield lasts this long (the raid: 5 s), × the party's windows. */
+  expose: 3.8,
+  /**
+   * The skylight windows an Eclipse moves the light between: one skylight
+   * (the raid's own place first), or the last chapter's pair with a party.
+   * Every window has a mirror within a raider's reach of its light.
+   */
+  windows: {
+    single: [[{ x: 350, y: 450 }], [{ x: 560, y: 170 }], [{ x: 560, y: 730 }]],
+    pair: [
+      [
+        { x: 350, y: 300 },
+        { x: 350, y: 600 },
+      ],
+      [
+        { x: 560, y: 170 },
+        { x: 560, y: 730 },
+      ],
+    ],
+  } as {
+    single: readonly (readonly LightPoint[])[];
+    pair: readonly (readonly LightPoint[])[];
+  },
+  /**
+   * Eclipse: a dark moon crosses the skylight. Sunfall strikes the old
+   * window (a circle `radius` round it, after `delay`), and the light opens
+   * at another window, shown from the start: the relay starts again there.
+   */
+  eclipse: { delay: 2, radius: 135, damage: 26 },
+  /**
+   * Umbral Prism: a dark prism lodges on a raider. It blocks the light (no
+   * beam passes through them) and only light handed to them cleanses it:
+   * from a teammate or a mirror at least `apart` px away (alone, the
+   * skylight's own reach), for `lit` s, before it shatters (`damage`, a
+   * Glare's blindness, and the relay's hold is lost). The timer is never
+   * shorter than the slowest pair walking into place after a reaction.
+   * Marks per cast by chapter, with three raiders or more (else one).
+   */
+  umbral: {
+    lit: 0.8,
+    apart: 140,
+    damage: 30,
+    min: 4.5,
+    spare: 0.5,
+    radius: 46,
+    marks: [1, 2, 2],
+    /** Out of the light, its glow fades this much slower than it fills. */
+    decay: 0.5,
+  },
+  /** A Prism Lance whose lane, part-way, curls into a Halo Crush round its raider. */
+  feint: {
+    /** Chance a lance is a feint, by chapter. */
+    chance: [0.2, 0.3, 0.4],
+    /** Share of the lance's telegraph shown before it turns. */
+    turnAt: 0.5,
+  },
+  /** Reading habits (as Ascendant Cragmuff reads them). */
+  habit: { samples: 3, consistency: 0.55, offset: 0.5 },
+  /** Standing still to attack: seconds still, and seconds since the last hit. */
+  anchor: { still: 1.2, hit: 1.0, speed: 40 },
+  /**
+   * Pressure by chapter: seconds between attacks × this (the tier's cadence
+   * and the party's are applied first).
+   */
+  cadence: [0.7, 0.63, 0.56],
+  /**
+   * First chapter of each combo: a Prism Lance that misses closes a Halo
+   * Crush round its raider; an Eclipse that lands sends lances after whoever
+   * stood in the old light (at most `comboLances`).
+   */
+  combosFrom: { lance: 1, eclipse: 2 },
+  comboLances: 2,
+  /**
+   * Overlap: from chapter `from`, with `raiders` or more alive, a lance or a
+   * fan may play out while a Halo Crush closes (the safe-spot rule keeps
+   * every raider a spot clear of both and of the phone's controls).
+   */
+  overlap: { from: 1, raiders: 2 },
+  /** Exposure windows × (1 + this per extra raider). */
+  partyWindows: 0.1,
+  /** Its attacks hit harder by this share per extra raider. */
+  partyDamage: 0,
+  /** Its attacks hit this much harder than the tier's, by party size (1-4). */
+  damage: [0.95, 1.3, 1.8, 2.55],
+} as const;
+
+/**
+ * Ascendant Prismell's attack order for a chapter (the raid's trait rules
+ * apply: Dazzling adds a Glare, Overcast fires no plain lances).
+ */
+export function ascendantPrismellPattern(
+  phase: number,
+  trait = "",
+): RaidAttack[] {
+  const attacks: RaidAttack[] =
+    phase === 1
+      ? [
+          "prism-lance",
+          "fan-display",
+          "eclipse",
+          "glare",
+          "umbral-prism",
+          "halo-crush",
+          "prism-lance",
+        ]
+      : phase === 2
+        ? [
+            "refraction",
+            "umbral-prism",
+            "halo-crush",
+            "eclipse",
+            "fan-display",
+            "prism-lance",
+            "glare",
+          ]
+        : [
+            "eclipse",
+            "prism-lance",
+            "umbral-prism",
+            "halo-crush",
+            "refraction",
+            "fan-display",
+            "glare",
+            "prism-lance",
+          ];
+  if (trait === "dazzling") attacks.push("glare");
+  return trait === "overcast"
+    ? attacks.filter((a) => a !== "prism-lance")
+    : attacks;
+}
+
+/** Ascendant Prismell's three chapters. */
+export const ASCENDANT_PRISMELL_CHAPTERS = [
+  {
+    name: "Corona Dawn",
+    objective: "Rebuild the relay when the sun moves. Hand the light on.",
+    detail:
+      "An Eclipse darkens the skylight: sunfall strikes it and the light opens at another window, shown from the start. An Umbral Prism blocks the light through its raider: a teammate or a mirror must shine on them from a step away to cleanse it. A lance that misses closes a halo round you.",
+  },
+  {
+    name: "Zenith Glass",
+    objective: "Keep the light moving. Watch for a lance that turns.",
+    detail:
+      "A Prism Lance may curl into a Halo Crush halfway: the new warning is shown in full, so react to what is drawn now. A landed Eclipse sends lances after whoever stood in the old light. Lances may fly while a halo closes. It hunts whoever kneels to revive.",
+  },
+  {
+    name: "Ascendant Corona",
+    objective: "Two paths, moving suns. Survive the combinations.",
+    detail:
+      "Its rhythm quickens. Halos close where you usually dodge, and standing still to attack draws a lance. An Eclipse moves both skylights: split up and rebuild both paths within 3 seconds.",
   },
 ] as const;
