@@ -1086,6 +1086,8 @@ export const ASCENDANT_STORM_TWINS = {
     { x: 500, y: 640 },
     { x: 960, y: 640 },
   ] as readonly { x: number; y: number }[],
+  /** Alone: the second Twin Rush lane runs this far beside the raider (px). */
+  soloOffset: 150,
   /** A twin rushed or pulled under the controls glides back this fast (px/s). */
   glide: 420,
   /**

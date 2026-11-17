@@ -51,6 +51,7 @@
  */
 import { raidJitter } from "./raid.js";
 import { StormTwinsArena, polaritySigns } from "./raid-storm-twins.js";
+import { rayToBox } from "./raid-boss-aim.js";
 import {
   CHARACTERS,
   FIGHTER_IDS,
@@ -641,6 +642,37 @@ export function AscendantStormTwinsRules<B extends TwinsClass>(Base: B) {
           { casterId: other.id, teach: first.teach, at: first.at + A.pair.gap },
         );
       this.twinReads.pairs++;
+    }
+    /**
+     * Alone, the raid aims both lanes through the one raider and the twins
+     * end up on top of each other: the second twin's lane runs instead
+     * `soloOffset` px to the raider's side (away from the first lane), so
+     * the two bodies stay apart and both lanes read.
+     */
+    protected override rushEnds(actors: Fighter[], target: Fighter) {
+      const ends = super.rushEnds(actors, target);
+      if (
+        !this.twinsAscendant() ||
+        actors.length < 2 ||
+        this.heroes().filter((p) => p.hp > 0).length > 1
+      )
+        return ends;
+      const [a, b] = actors;
+      const d = normalize(ends[0].x - a.x || 1, ends[0].y - a.y);
+      const n = { x: -d.y, y: d.x };
+      const side = (b.x - a.x) * n.x + (b.y - a.y) * n.y < 0 ? -1 : 1;
+      const box = this.rushBox();
+      const aim = {
+        x: Math.max(
+          box.x0,
+          Math.min(box.x1, target.x + n.x * side * A.soloOffset),
+        ),
+        y: Math.max(
+          box.y0,
+          Math.min(box.y1, target.y + n.y * side * A.soloOffset),
+        ),
+      };
+      return [ends[0], rayToBox(b, aim, box)];
     }
     /** Is this rush a feint? A seeded roll per chapter. */
     protected twinFeintRoll() {

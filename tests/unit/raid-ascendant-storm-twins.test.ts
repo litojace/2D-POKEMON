@@ -963,6 +963,31 @@ describe("a party meets both twins at once", () => {
   });
 });
 
+describe("Twin Rush alone", () => {
+  it("the second lane runs beside the lone raider, so the twins don't end on top of each other", () => {
+    const a = arena(1, 2);
+    const p = a.heroes()[0];
+    place(p, 600, 450);
+    const [first, second] = cast(a, "twin-rush", p);
+    const off = (w: RaidWarning) => {
+      const dx = w.tx - w.x,
+        dy = w.ty - w.y,
+        len = Math.hypot(dx, dy) || 1;
+      return Math.abs((p.x - w.x) * dy - (p.y - w.y) * dx) / len;
+    };
+    expect(off(first)).toBeLessThan(5);
+    expect(off(second)).toBeGreaterThan(60);
+    expect(
+      Math.hypot(first.tx - second.tx, first.ty - second.ty),
+    ).toBeGreaterThan(2 * S.radius);
+    // the raid's twins keep their own aim
+    const b = arena(1, 2, "raid");
+    place(b.heroes()[0], 600, 450);
+    const lanes = cast(b, "twin-rush", b.heroes()[0]);
+    expect(lanes.every((w) => off(w) < 5)).toBe(true);
+  });
+});
+
 describe("overlap and the safe-spot rule", () => {
   it("chapter 1 (or alone): nothing starts while a Mirror Charge runs", () => {
     for (const [size, phase] of [
