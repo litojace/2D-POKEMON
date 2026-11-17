@@ -15,6 +15,7 @@ import { pyrandaMarks } from "./champion-markings";
 import type { CharacterId } from "@arena/shared";
 import type { Facing } from "./animation/controller";
 import { awakeningSvg } from "./skins/mythic-art";
+import { UNDER } from "./skins/rare-fashion";
 import {
   PATTERN_PARTS,
   SKIN_ART,
@@ -1159,8 +1160,12 @@ function dressLayers(
       .map((s) => s.accessory),
   ];
   for (const a of extras)
-    for (const [part, svg] of accessorySvg(a, id, dir, p))
-      layers[part] += `<g class="skin-accessory skin-${a}">${svg}</g>`;
+    for (const [part, svg] of accessorySvg(a, id, dir, p)) {
+      // A piece marked UNDER (a pack, hanging sleeves) goes behind the part.
+      const under = svg.startsWith(UNDER);
+      const g = `<g class="skin-accessory skin-${a}">${under ? svg.slice(UNDER.length) : svg}</g>`;
+      layers[part] = under ? g + layers[part] : layers[part] + g;
+    }
   if (art.mythic)
     for (const [part, svg] of awakeningSvg(art.mythic, stage, id, dir, p))
       layers[part] += `<g class="skin-awakening">${svg}</g>`;

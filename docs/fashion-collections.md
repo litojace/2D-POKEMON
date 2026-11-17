@@ -6,9 +6,9 @@ Six collections add 108 champion skins: three Rare and three Epic for each of th
 
 | Collection | Rarity / base coins | Clothing and effects |
 | --- | --- | --- |
-| Wayfarer | Rare / 1,500 | Field jackets, leather equipment, compass badges; a short dash leaf trail |
-| Moonlit Tea | Rare / 1,500 | Crossed silk, blossom ornaments and tied details; a short petal dash trail |
-| Astral Court | Rare / 1,500 | Original midnight cloth, constellation embroidery and individual crystal fittings; a short star trail, no idle effect |
+| Wayfarer | Rare / 1,500 | A trail pack whose bedroll shows either side of the head, a short field jacket with cross strap and belt, a red neckerchief, a hip satchel; a short dash leaf trail |
+| Moonlit Tea | Rare / 1,500 | A wrapped kimono with long furisode sleeves, a wide obi whose butterfly bow fills the back, a kanzashi hairpin with dangling blossoms; a short petal dash trail |
+| Astral Court | Rare / 1,500 | A long gold-trimmed velvet robe, a starry scalloped shoulder mantle with gold epaulettes, a floating star circlet; a short star trail, no idle effect |
 | Abyssal Expedition | Epic / 3,500 | Independent pressure-suit construction, glass helmets, gauges, tanks and individual dive equipment; a small glass glint and bubble dash trail |
 | Dream Carnival | Epic / 3,500 | Independent stagewear, masks, personal headpieces and ruffs; a small glint and confetti dash trail |
 | Nova Vanguard | Epic / 3,500 | Original hero suits, individual emblems and joint-mounted equipment; personal energy details and a short movement trail |
@@ -35,37 +35,16 @@ champion and that `accent`/`dark` keep the champion's lightness.
 
 ## Individual tailoring
 
-The collection shares a fabric language, not a single costume pasted onto all
-champions. `fashion-fits.ts` contains 54 authored garment cuts: front, side and
-rear for each champion. The opposite side follows the corresponding anatomy.
-`fashion-signatures.ts` supplies the Rare equipment; `epic-fashion.ts` supplies wholly separate Epic suit, mask and headpiece construction. Both mount separate equipment on body, scarf, head,
-ears, wing and wrist joints as appropriate.
-
-| Champion | Individual construction |
-| --- | --- |
-| Voltkit | Split field jacket, trim around the original goggles, rear equipment bag |
-| Cindrake | Open crest, horn sleeves, notched back and a heatproof neck clasp |
-| Tidefin | Asymmetric sailor cut, frond clasps and a blade guard |
-| Auralynx | Pointed monk's vest, ear-tip settings and separate crystal wrist jewellery |
-| Lumoth | Short wing-root bolero, antenna pendants and wing clasps |
-| Mystowl | Feathered mantle, plume comb and an archive clasp |
-| Terradon | Short apron in front, open shell harness at the back, side equipment panel |
-| Duskveil | Uneven spirit robe, embroidered hood seam and side clasp; no second hat |
-| Coilemur | Narrow acrobat's vest, coil fittings, diagonal harness and rear spool pack |
-| Pyranda | Wrapped jacket, slouch beret, a rear panel and crossed straps |
-| Glacelle | Scalloped bell skirt, curved comb and pearl chain |
-| Halcyra | Short flight cut, feather fastening and tapered rear lappets |
-| Sunbara | Rounded host's coat, low boater and a soft neck wrap |
-| Astrabun | Short rabbit vest, ear tie and a rear pompom clasp |
-| Wombolder | Broad utility coat, reinforced brow helmet and suspenders |
-| Shadopus | Small scalloped caplet, soft cap and a three-part chest chain |
-| Pangrove | Overlapping leaf cut, paired temple leaves and scale-shaped collar |
-| Mossloth | Uneven soft poncho, slouch cap and folded neck wrap |
-
-The front shows closures and jewellery; the rear shows construction, bags,
-straps and cape panels. Side fittings move to the visible anatomical root.
-Tidefin's blade guard, Auralynx's wrist ornaments and Lumoth's wing clasps
-remain attached through every facing. No artwork is baked into the eyes.
+Each Rare collection has its own construction (`rare-fashion.ts`), so the
+three read apart by silhouette at battle size, not just by colour. Pieces are
+fitted to each champion's own torso cut (`fashion-fits.ts`, 54 front, side and
+rear patterns) and head anchor in every facing, and sit on parts the rig keeps
+steady: the body and the flame (head-top) part. A pack and hanging sleeves go
+behind the part's own art (`UNDER` in `rare-fashion.ts`). From behind, shells
+and glider membranes cover the back, so the pack, obi bow and mantle sit on the
+scarf part, which is painted last there. Rare coats replace the default scarf.
+`fashion-collections.test.ts` checks that no two Rare collections share more
+than a fifth of their shapes for any champion or facing.
 
 Epic equipment replaces conflicting default props, including Voltkit's goggles,
 Tidefin's bandana and Sunbara's head ornament and towel. Cindrake has one
