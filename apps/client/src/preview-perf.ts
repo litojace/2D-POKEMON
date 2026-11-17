@@ -1,13 +1,12 @@
 /**
- * Frame measurements of a fighter preview (shop-preview.ts) for the Lobby's
- * frame-rate read-out (lobby-perf.ts; five taps on Settings → Graphics'
- * title). On an iPhone the Lobby's aura turned like a 30 Hz screen and the
- * phone ran hot, while the same preview in the Shop was smooth (owner,
- * iPhone 17 Pro Max, 17 Nov 2026); this tells apart:
+ * Frame measurements for the frame-rate line (perf-hud.ts; five taps on
+ * Settings → Graphics' title): the whole page's, and a fighter preview's
+ * (shop-preview.ts). On an iPhone the Lobby's aura turned like a 30 Hz
+ * screen and the phone ran hot (owner, iPhone 17 Pro Max, 17 Nov 2026);
+ * this tells apart:
  *
  * - the screen's own refresh (the browser's animation frames, `screenHz`),
- * - how many of those the preview drew (`fps`; fewer: frames were skipped
- *   by the cap, or the browser called less often),
+ * - how many of those the preview drew (`fps`),
  * - how long our own code took per drawn frame (`stepMs`, `stepMaxMs`: the
  *   rig's update and Phaser's canvas drawing, on the main thread),
  * - the share of drawn frames that came late (`late`: more than 1.5 times

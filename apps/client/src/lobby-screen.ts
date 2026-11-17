@@ -25,8 +25,7 @@ import { openHubPanelNow } from "./ui/hub-panel";
 import { guideCard, type GuideView } from "./getting-started";
 import { spireLobbyIcon } from "./spire-art";
 import type { SpireLobbyCard } from "./spire-nudge";
-import { perfMode } from "./battle-perf";
-import { openLobbyPerf, type LobbyPerfHandle } from "./lobby-perf";
+import { setPerfSource } from "./perf-hud";
 
 /**
  * The Lobby: the one-screen hub after login (hub redesign phase 2). Your
@@ -582,19 +581,14 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
     attributeFilter: ["open", "hidden", "data-ui-leaving"],
   });
   syncCovered();
-  // The frame-rate read-out (lobby-perf.ts; five taps on Settings → Graphics).
-  let perfView: LobbyPerfHandle | undefined;
-  const syncPerf = () => {
-    if (closed) return;
-    if (perfMode() && !perfView)
-      perfView = openLobbyPerf(layer, () => [rig, ...seatRigs]);
-    else if (!perfMode() && perfView) {
-      perfView.close();
-      perfView = undefined;
-    }
+  // The frame-rate line (perf-hud.ts): your fighter's frames, our own
+  // drawing time and its canvas, while the Lobby shows.
+  const perfSource = () => {
+    if (!rig || layer.classList.contains("is-covered")) return undefined;
+    const p = rig.perf();
+    return `fighter ${p.fps} fps ${p.stepMs} ms · ${p.canvas} @${p.resolution}x`;
   };
-  document.addEventListener("ea-perf-change", syncPerf);
-  syncPerf();
+  setPerfSource(perfSource);
   return {
     update(view) {
       const skin = wornSkin(view.character);
@@ -700,8 +694,7 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
       clearTimeout(bubbleTimer);
       clearTimeout(hopTimer);
       coverWatch.disconnect();
-      document.removeEventListener("ea-perf-change", syncPerf);
-      perfView?.close();
+      setPerfSource(undefined);
       cancelAnimationFrame(fitFrame);
       removeEventListener("resize", fitSoon);
       layer.removeEventListener("keydown", onKey);

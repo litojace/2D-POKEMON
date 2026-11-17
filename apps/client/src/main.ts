@@ -24,6 +24,7 @@ import {
 } from "./battle-perf";
 import { correctionCause } from "./networking/correction-cause";
 import { PerfOverlay } from "./perf-overlay";
+import { syncPerfHud } from "./perf-hud";
 import { addCanvasTexture } from "./canvas-texture";
 import { setHudText, setHudAttribute, setHudStyle } from "./hud-dom";
 import { battleCurves } from "./battle-curves";
@@ -946,6 +947,8 @@ const caster = new SkillCaster();
 const castPredictor = new CastPredictor();
 /** The enemy a phone player locked on to (tap it on the court). */
 const targetLock = new TargetLock();
+// The frame-rate line along the top, when turned on (perf-hud.ts).
+syncPerfHud();
 // The ping badge by the battle gear; predicted casts wait about one round trip.
 startPingBadge(
   socket,
@@ -4285,8 +4288,9 @@ function graphicsNote(setting: GraphicsSetting) {
     ? `Auto picked <b>Low</b> for the Plaza and Farm on this device (${softwareRendering() ? "it draws without a graphics card" : "they ran slowly"}). Battles adapt on their own. Pick High to try it again.`
     : "Starts on High. The Plaza and Farm switch to Low if they run slowly; battles trim decorative sparks only while frames stay slow.";
 }
-/** Five taps on Graphics' title within 3 s: the frame-rate read-out over
- *  the Lobby and battles, on this device (lobby-perf.ts, perf-overlay.ts).
+/** Five taps on Graphics' title within 3 s: the frame-rate line over every
+ *  screen and the battle read-out, on this device (perf-hud.ts,
+ *  perf-overlay.ts).
  *  A tool to screenshot when something lags (the iPhone app has no address
  *  bar for `?perf=1`), so it adds no row to Settings, which fits a phone
  *  held sideways without scrolling. */
@@ -4302,8 +4306,7 @@ function bindGraphicsCard() {
       const on = !perfMode();
       setPerfMode(on);
       toast(on ? "Frame rate read-out on" : "Frame rate read-out off");
-      // The Lobby shows or hides its read-out (lobby-perf.ts).
-      document.dispatchEvent(new Event("ea-perf-change"));
+      syncPerfHud();
     };
   for (const b of Array.from(
     document.querySelectorAll<HTMLButtonElement>("[data-graphics]"),

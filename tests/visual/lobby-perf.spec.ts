@@ -1,34 +1,43 @@
 import { expect, test } from "@playwright/test";
-import { box, inside, openLobby, snap } from "./helpers";
+import { box, openLobby, snap } from "./helpers";
 
-// Five taps on Settings → Graphics' title: the Lobby's read-out
-// (lobby-perf.ts), for the owner's iPhone, where the aura turned like a
-// 30 Hz screen in the Lobby but not in the Shop.
+// Five taps on Settings → Graphics' title: the frame-rate line along the top
+// edge (perf-hud.ts), over every screen. It found the owner's iPhone running
+// the Lobby at 27 frames a second until the fighter's canvas got its own
+// compositing layer (lobby.css).
 test.use({
   viewport: { width: 844, height: 390 },
   hasTouch: true,
   isMobile: true,
 });
 
-test("five taps on Graphics turn the Lobby's frame-rate read-out on and off", async ({
+test("five taps on Graphics show the frame-rate line over every screen", async ({
   page,
 }, info) => {
-  test.setTimeout(90_000);
+  test.setTimeout(120_000);
   const errors = await openLobby(page);
   const art = page.locator("#lobby-fighter-art");
   await expect(art).toHaveClass(/is-ready/, { timeout: 30_000 });
-  const perf = page.locator(".lobby-perf");
-  await expect(perf).toHaveCount(0);
+  const line = page.locator(".perf-hud");
+  await expect(line).toHaveCount(0);
+  // The fighter's canvas has its own compositing layer.
+  expect(
+    await page.evaluate(
+      () =>
+        getComputedStyle(document.querySelector("#lobby-fighter-art > canvas")!)
+          .willChange,
+    ),
+  ).toBe("transform");
 
   const toggle = async (to: "on" | "off") => {
     await page.evaluate(() => document.getElementById("settings")!.click());
     const dialog = page.locator("#dialog");
     const title = dialog.locator("#prefs-graphics");
-    const count = await perf.count();
+    const count = await line.count();
     // Four taps do nothing (a stray tap or two never changes it).
     for (let i = 0; i < 4; i++) await title.click();
     await page.waitForTimeout(300);
-    expect(await perf.count()).toBe(count);
+    expect(await line.count()).toBe(count);
     await title.click();
     await expect(page.locator("#toast")).toHaveText(
       `Frame rate read-out ${to}`,
@@ -37,75 +46,45 @@ test("five taps on Graphics turn the Lobby's frame-rate read-out on and off", as
     await expect(dialog).not.toBeVisible();
   };
   await toggle("on");
-  await expect(perf).toBeVisible();
-  // The page's frame rate, then the live rig's: frames drawn, our own
-  // work, the canvas. (A screen this machine draws too slowly to judge
+  await expect(line).toBeVisible();
+  // The page's frame rate, then the Lobby fighter's frames, our own drawing
+  // time and its canvas. (A screen this machine draws too slowly to judge
   // reads "?".)
-  await expect(perf.locator("pre")).toContainText(/page (\d+|\?) Hz/);
-  await expect(perf.locator("pre")).toContainText(/fighter \d+ fps/);
-  await expect(perf.locator("pre")).toContainText(/ours [\d.]+ ms/);
-  await expect(perf.locator("pre")).toContainText(/canvas \d+x\d+ @/);
-  // Clear of PLAY and the mode button, and on the screen.
-  const screen = { x: 0, y: 0, width: 844, height: 390 };
-  const read = await box(page, ".lobby-perf");
-  expect(inside(read, screen)).toBe(true);
-  for (const other of ["#lobby-play", "#lobby-mode"]) {
-    const b = await box(page, other);
-    expect(
-      read.x + read.width <= b.x ||
-        b.x + b.width <= read.x ||
-        read.y + read.height <= b.y ||
-        b.y + b.height <= read.y,
-    ).toBe(true);
-  }
+  await expect(line).toHaveText(
+    /^(\d+|\?) Hz · fighter \d+ fps [\d.]+ ms · \d+x\d+ @[\d.]+x$/,
+  );
+  // One line along the top edge, above the header row, and taps go through.
+  const b = await box(page, ".perf-hud");
+  expect(b.y).toBe(0);
+  expect(b.height).toBeLessThanOrEqual(10);
+  expect(await line.evaluate((e) => getComputedStyle(e).pointerEvents)).toBe(
+    "none",
+  );
+  const header = await box(page, "#hub-scenes");
+  expect(b.y + b.height).toBeLessThanOrEqual(header.y + 2);
+  await snap(page, info, "perf-hud-lobby");
 
-  // Each experiment switches its suspect off, and on again.
-  const style = (selector: string, pseudo: string | null, prop: string) =>
-    page.evaluate(
-      ([s, p, k]) =>
-        getComputedStyle(document.querySelector(s!)!, p).getPropertyValue(k!),
-      [selector, pseudo, prop] as const,
-    );
-  // The fighter's canvas has its own compositing layer, unless "Layer off".
-  const canvas = "#lobby-fighter-art > canvas";
-  expect(await style(canvas, null, "will-change")).toBe("transform");
-  await perf.locator('[data-perf="layer"]').click();
-  await expect(perf.locator('[data-perf="layer"]')).toHaveText("Layer off");
-  expect(await style(canvas, null, "will-change")).toBe("auto");
-  expect(await style(".lobby-rail", null, "backdrop-filter")).not.toBe("none");
-  await perf.locator('[data-perf="blur"]').click();
-  await expect(perf.locator('[data-perf="blur"]')).toHaveText("Blur off");
-  expect(await style(".lobby-rail", null, "backdrop-filter")).toBe("none");
-  await perf.locator('[data-perf="play"]').click();
-  expect(await style(".lobby-play", "::before", "animation-name")).toBe("none");
-  await perf.locator('[data-perf="cap"]').click();
-  await expect(perf.locator('[data-perf="cap"]')).toHaveText("Cap 60");
-  await perf.locator('[data-perf="cap"]').click();
-  await expect(perf.locator('[data-perf="cap"]')).toHaveText("Cap 30");
-  // Capped, the rig still moves.
-  const clock = () =>
-    art.evaluate((e) => Number((e as HTMLElement).dataset.animationTime));
-  const before = await clock();
-  await expect.poll(clock, { timeout: 10_000 }).toBeGreaterThan(before);
-  await snap(page, info, "lobby-perf-phone");
-
-  // Over the Shop it stays, with the page's frame rate (to compare with the
-  // Lobby's) while the Lobby's fighter sleeps.
+  // Over the Shop: still there, the page's rate alone (the Lobby's fighter
+  // sleeps behind it).
   await page.click('.lobby-rail [data-lobby-action="shop"]');
   await expect(page.locator(".fit-room")).toBeVisible();
-  await expect(perf).toBeVisible();
-  await expect(perf.locator("pre")).toContainText(/page (\d+|\?) Hz/);
-  await expect(perf.locator("pre")).toContainText("fighter: asleep");
+  await expect(line).toBeVisible();
+  await expect(line).toHaveText(/^(\d+|\?) Hz$/);
   await page.locator(".fit-room .ui-close").first().click();
   await expect(page.locator(".fit-room")).toHaveCount(0);
 
-  // Off again: the read-out and its experiments are gone.
+  // On the Plaza too.
+  await page.click('#hub-scenes [data-hub-scene="plaza"]');
+  await expect(page.locator(".plaza-layer #pz-cv")).toBeVisible();
+  await expect(line).toBeVisible();
+  await expect(line).toHaveText(/^(\d+|\?) Hz$/);
+  await snap(page, info, "perf-hud-plaza");
+  await page.click('#hub-scenes [data-hub-scene="lobby"]');
+  await expect(art).toHaveClass(/is-ready/, { timeout: 30_000 });
+  await expect(line).toHaveText(/ · fighter /);
+
+  // Off again.
   await toggle("off");
-  await expect(perf).toHaveCount(0);
-  expect(await style(canvas, null, "will-change")).toBe("transform");
-  expect(await style(".lobby-rail", null, "backdrop-filter")).not.toBe("none");
-  expect(await style(".lobby-play", "::before", "animation-name")).not.toBe(
-    "none",
-  );
+  await expect(line).toHaveCount(0);
   expect(errors).toEqual([]);
 });

@@ -15608,3 +15608,28 @@ body.battle-active:not(.touch-mode)
   color: #ffb4a8;
   font-weight: 600;
 }
+
+/* The frame-rate line (perf-hud.ts; five taps on Settings → Graphics): one
+   line along the top edge, in the strip above the header row (10px), over
+   every screen, ignoring touches. */
+.perf-hud {
+  position: fixed;
+  top: var(--safe-top, 0px);
+  left: 50%;
+  z-index: calc(var(--z-system) - 1);
+  max-width: calc(100vw - var(--safe-left, 0px) - var(--safe-right, 0px));
+  overflow: hidden;
+  padding: 0 6px;
+  border-radius: 0 0 6px 6px;
+  background: rgba(0, 0, 0, 0.62);
+  color: #e8f0ff;
+  font:
+    8px/9px ui-monospace,
+    Menlo,
+    Consolas,
+    monospace;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  pointer-events: none;
+  transform: translateX(-50%);
+}
