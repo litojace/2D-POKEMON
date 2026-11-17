@@ -2084,6 +2084,43 @@ for (const size of ZONE5_SIZES)
           }),
         )
         .toEqual({ marks: true, posts: false });
+      // Each medallion as drawn (the marks' stage: its markBase images)
+      // clears every name tag and health bar: over the head (the raid's
+      // spot) a phone's name tag hid it.
+      const hiddenMarks = await page.evaluate(() => {
+        const w = window as any;
+        const scene = w.__spireGame.scene.getScene("arena"),
+          cam = scene.cameras.main,
+          canvas = w.__spireGame.canvas as HTMLCanvasElement;
+        const c = canvas.getBoundingClientRect(),
+          k = c.width / canvas.width,
+          v = cam.worldView;
+        const stage = scene.children.list.find(
+          (o: any) => o.name === "arena-pieces:ring-marks",
+        );
+        const plates = [
+          ...document.querySelectorAll<HTMLElement>(".battle-nameplate"),
+        ]
+          .filter((e) => e.offsetWidth && !e.hidden)
+          .map((e) => e.getBoundingClientRect());
+        const marks = (stage?.list ?? []).filter(
+          (o: any) => o.name === "markBase" && o.visible,
+        );
+        if (!marks.length) return ["no marks drawn"];
+        return marks.flatMap((o: any) => {
+          const b = o.getBounds(),
+            x0 = c.x + (cam.x + (b.x - v.x) * cam.zoom) * k,
+            y0 = c.y + (cam.y + (b.y - v.y) * cam.zoom) * k,
+            x1 = x0 + b.width * cam.zoom * k,
+            y1 = y0 + b.height * cam.zoom * k;
+          return plates.some(
+            (p) => x1 > p.x && x0 < p.right && y1 > p.y && y0 < p.bottom,
+          )
+            ? [`${Math.round(b.centerX)},${Math.round(b.centerY)}`]
+            : [];
+        });
+      });
+      expect(hiddenMarks, "polarity marks under a name tag").toEqual([]);
       // The captain is its champion: no twins on the court.
       const elite = await page.evaluate(() => {
         const s = (window as any).__snap;

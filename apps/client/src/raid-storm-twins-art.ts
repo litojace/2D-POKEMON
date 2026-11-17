@@ -298,10 +298,25 @@ function paintPad(
   }
 }
 /** Polarity marks over each marked raider, with their countdown rings. */
+/**
+ * Where a raider's Polarity medallion sits: the raid's, 100 px over them;
+ * on the Spire and the Ascendant form, beside them at chest height, clear of
+ * the name tag and health bar (on a phone the raid's spot sits under them).
+ */
+export function polarityMarkAt(
+  r: Pick<NonNullable<Snapshot["raid"]>, "variant" | "spire">,
+  p: { x: number; y: number },
+) {
+  return r.spire || r.variant === "ascendant"
+    ? { x: p.x + POLARITY_BESIDE.x, y: p.y + POLARITY_BESIDE.y }
+    : { x: p.x, y: p.y - 100 };
+}
+/** The Spire's and the Ascendant's medallion offset (world px). */
+export const POLARITY_BESIDE = { x: 54, y: -30 };
 function paintMarks(g: G, A: ReturnType<typeof ringAtlas>, state: Snapshot) {
   const r = state.raid!;
-  // Polarity marks: a copper medallion 100 px over each marked raider, over
-  // the raiders, with its countdown ring.
+  // Polarity marks: a copper medallion by each marked raider (polarityMarkAt),
+  // over the raiders, with its countdown ring.
   const marks = (r.polarities ?? []).filter((m) => {
     const p = state.players.find((p) => p.id === m.playerId);
     return p && p.hp > 0;
@@ -312,12 +327,12 @@ function paintMarks(g: G, A: ReturnType<typeof ringAtlas>, state: Snapshot) {
   for (const m of marks) {
     const p = state.players.find((p) => p.id === m.playerId)!;
     const color = m.cancelled ? 0x8de8cf : m.sign > 0 ? 0xffda85 : 0x8edfff,
-      y = p.y - 100;
-    over.put(A, "markBase", p.x, y);
+      { x, y } = polarityMarkAt(r, p);
+    over.put(A, "markBase", x, y);
     over.put(
       A,
       m.cancelled ? "markCheck" : m.sign > 0 ? "markPlus" : "markMinus",
-      p.x,
+      x,
       y,
     );
     if (!m.cancelled) {
@@ -327,12 +342,12 @@ function paintMarks(g: G, A: ReturnType<typeof ringAtlas>, state: Snapshot) {
       over.lines
         .lineStyle(6.5, 0x060a16, 0.55)
         .beginPath()
-        .arc(p.x, y, 31, a0, a1, false)
+        .arc(x, y, 31, a0, a1, false)
         .strokePath();
       over.lines
         .lineStyle(4, color, 0.9)
         .beginPath()
-        .arc(p.x, y, 31, a0, a1, false)
+        .arc(x, y, 31, a0, a1, false)
         .strokePath();
     }
   }
