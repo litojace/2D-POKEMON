@@ -460,7 +460,8 @@ describe("summit courts", () => {
     });
     // The other zones keep theirs.
     expect(spireSummitFloorId(3)).toBe(SPIRE_YARD_SUMMIT_FLOOR);
-    expect(spireSummitFloorId(5)).toBe(SPIRE_SUMMIT_FLOOR);
+    // (Zone 5's is the Sun Atrium's: spire-zone5.test.ts.)
+    expect(spireSummitFloorId(6)).toBe(SPIRE_SUMMIT_FLOOR);
   });
   it("the deck's summit grade is a soft twilight that keeps the middle lit", () => {
     const log: string[] = [];
