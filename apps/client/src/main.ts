@@ -377,6 +377,7 @@ import {
   type SpireCourtView,
 } from "./spire-court-rig";
 import { spireFloorTint } from "./spire-court-art";
+import { loadSpireSeen, spireNudge } from "./spire-nudge";
 import { isRaidFloor, paintRaidFloor } from "./raid-floors";
 import {
   isIllustratedRaidFloor,
@@ -2394,7 +2395,18 @@ function lobbyView() {
     friendRequests: lobbyFriends.requests,
     friendsOnline: lobbyFriends.online,
     guide: guide.view(),
+    spire: lobbySpire(),
   };
+}
+/** Something new in the Spire for the Lobby's card and badge (spire-nudge.ts). */
+function lobbySpire() {
+  const account = accountsUI?.account?.id;
+  if (!account) return null;
+  return spireNudge({
+    spire: accountsUI.spire,
+    clears: accountsUI.raidClears,
+    seen: loadSpireSeen(account),
+  });
 }
 /** Getting started (getting-started.ts): a new player's first steps. */
 const guide = createGuide({
@@ -2692,6 +2704,8 @@ function lobbyAction(action: LobbyAction) {
   else if (action === "wardrobe") void accountsUI.showWardrobe();
   else if (action === "shop") void accountsUI.showShop();
   else if (action === "raids") void showRaidBestiary();
+  else if (action === "spire")
+    void accountsUI.showRaids(undefined, undefined, "climb");
   else if (action === "journey") void accountsUI.showJourney();
   else if (action === "missions") void accountsUI.showMissions();
   else if (action === "ranks") $("leaderboard").click();
@@ -7589,6 +7603,7 @@ accountsUI = new AccountUI({
       accountsUI?.raidClears ?? null,
       accountsUI?.economy?.looks ?? null,
       accountsUI?.economy?.journey ?? null,
+      accountsUI ? (lobbySpire()?.key ?? null) : null,
     ]);
     if (shown === accountShown) return;
     accountShown = shown;

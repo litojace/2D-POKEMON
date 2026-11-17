@@ -1,0 +1,142 @@
+import { afterEach, describe, expect, it } from "vitest";
+import {
+  loadSpireSeen,
+  markSpireSeen,
+  spireNudge,
+  spireSeenKeys,
+} from "../../apps/client/src/spire-nudge";
+import type { SpireProgress } from "../../packages/shared/src/spire";
+import { expandedSpire } from "../fixtures/spire-catalogue";
+
+// The Lobby's Spire card and Raids badge: only while something in the Spire
+// is new to the player, never before it opens, and never again once seen.
+const store = new Map<string, string>();
+(globalThis as { localStorage?: unknown }).localStorage = {
+  getItem: (k: string) => store.get(k) ?? null,
+  setItem: (k: string, v: string) => void store.set(k, v),
+  removeItem: (k: string) => void store.delete(k),
+};
+afterEach(() => store.clear());
+
+const climb = (o: Partial<SpireProgress> = {}): SpireProgress => ({
+  season: 0,
+  highestFloor: 0,
+  checkpoint: 1,
+  attempts: 0,
+  claimed: [],
+  clears: { grumblecrag: 1 },
+  ...o,
+});
+/** Zone 1 conquered: checkpoint 11, floors 1–10 cleared. */
+const zone1Done = climb({
+  highestFloor: 10,
+  checkpoint: 11,
+  claimed: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+});
+
+describe("spireNudge", () => {
+  it("stays quiet before the Spire opens (no Cragmuff clear)", () => {
+    expect(spireNudge({ spire: climb({ clears: {} }), seen: [] })).toBeNull();
+    expect(
+      spireNudge({
+        spire: climb({ clears: {} }),
+        clears: { tidewyrm: 3 },
+        seen: [],
+      }),
+    ).toBeNull();
+  });
+  it("stays quiet while the climb is unknown", () => {
+    expect(
+      spireNudge({ spire: null, clears: { grumblecrag: 1 }, seen: [] }),
+    ).toBeNull();
+    expect(spireNudge({ spire: undefined, seen: [] })).toBeNull();
+  });
+  it("announces the Spire once a Cragmuff clear opens it", () => {
+    expect(spireNudge({ spire: climb(), seen: [] })).toEqual({
+      key: "s0-z1",
+      zone: 1,
+      from: 1,
+      title: "The Spire is open",
+      note: "Climb from floor 1",
+    });
+    // The raid records' clear counts too (the climb's copy may lag).
+    expect(
+      spireNudge({
+        spire: climb({ clears: {} }),
+        clears: { grumblecrag: 1 },
+        seen: [],
+      })?.key,
+    ).toBe("s0-z1");
+  });
+  it("stays quiet once a floor of the open zone is cleared", () => {
+    expect(
+      spireNudge({ spire: climb({ highestFloor: 1, claimed: [1] }), seen: [] }),
+    ).toBeNull();
+    expect(
+      spireNudge({ spire: climb({ highestFloor: 7 }), seen: [] }),
+    ).toBeNull();
+  });
+  it("announces a newly opened zone at its first floor", () => {
+    expect(spireNudge({ spire: zone1Done, seen: ["s0-z1"] })).toEqual({
+      key: "s0-z2",
+      zone: 2,
+      from: 11,
+      title: "Zone 2 is open",
+      note: "Climb from floor 11 · Lagoon",
+    });
+    // A floor of zone 2 cleared: under way, quiet.
+    expect(
+      spireNudge({ spire: { ...zone1Done, highestFloor: 11 }, seen: [] }),
+    ).toBeNull();
+  });
+  it("announces a zone released later to a player already at its checkpoint", () => {
+    const three = expandedSpire(3);
+    const atZone3 = climb({ highestFloor: 20, checkpoint: 21 });
+    // Before zone 3 is built, the checkpoint stays in zone 2 (cleared): quiet.
+    expect(
+      spireNudge({ spire: atZone3, seen: [] }, expandedSpire(2)),
+    ).toBeNull();
+    expect(spireNudge({ spire: atZone3, seen: [] }, three)).toMatchObject({
+      key: "s0-z3",
+      from: 21,
+      title: "Zone 3 is open",
+    });
+  });
+  it("is never shown again for a zone once seen, even unclimbed", () => {
+    expect(spireNudge({ spire: climb(), seen: ["s0-z1"] })).toBeNull();
+    expect(spireNudge({ spire: zone1Done, seen: ["s0-z2"] })).toBeNull();
+    // Seen in an earlier season: a new season's zone is new again.
+    expect(
+      spireNudge({ spire: climb({ season: 1 }), seen: ["s0-z1"] })?.key,
+    ).toBe("s1-z1");
+  });
+});
+
+describe("seen marks", () => {
+  it("opening the Spire marks every open zone, per account", () => {
+    expect(spireSeenKeys(null)).toEqual([]);
+    expect(spireSeenKeys(climb())).toEqual(["s0-z1"]);
+    expect(spireSeenKeys(zone1Done)).toEqual(["s0-z1", "s0-z2"]);
+    expect(markSpireSeen("a", spireSeenKeys(zone1Done))).toBe(true);
+    expect(loadSpireSeen("a")).toEqual(["s0-z1", "s0-z2"]);
+    // Nothing new to mark: no change (the Lobby isn't redrawn for it).
+    expect(markSpireSeen("a", ["s0-z2"])).toBe(false);
+    expect(loadSpireSeen("b")).toEqual([]);
+    expect(
+      spireNudge({ spire: zone1Done, seen: loadSpireSeen("a") }),
+    ).toBeNull();
+    expect(
+      spireNudge({ spire: zone1Done, seen: loadSpireSeen("b") })?.key,
+    ).toBe("s0-z2");
+  });
+  it("signed out: nothing is kept", () => {
+    expect(markSpireSeen(undefined, ["s0-z1"])).toBe(false);
+    expect(loadSpireSeen(undefined)).toEqual([]);
+  });
+  it("ignores a damaged save", () => {
+    store.set("arena-spire-seen:c", "{not json");
+    expect(loadSpireSeen("c")).toEqual([]);
+    store.set("arena-spire-seen:c", JSON.stringify(["s0-z1", 4, null]));
+    expect(loadSpireSeen("c")).toEqual(["s0-z1"]);
+  });
+});
