@@ -140,6 +140,30 @@ export interface SpireZoneTheme {
     /** The sun's disc. */
     sun: string;
   };
+  /**
+   * A fire zone (Fire): a lantern festival on a volcanic tower at dusk. An
+   * ember-gold inlay round the rune ring (flame tongues along the spokes), a
+   * bronze brazier of glowing coals in each corner, red paper lanterns on
+   * the coping (their warm light pooled on the paving), a paper lantern on
+   * the cover's fronts and a brazier on its outcrops; beyond the tower a
+   * dusky orange sky over smoking volcanoes, ash clouds lit from below,
+   * sky lanterns floating up and embers drifting. Higher floors sink into a
+   * deep crimson night. Everything is baked: no live flames or glows.
+   */
+  ember?: {
+    /** The inlay's ember gold, and its light edge. */
+    gold: string;
+    goldLight: string;
+    /** Lantern paper (deep, lit) and the light a lantern throws ("r,g,b"). */
+    paper: [string, string];
+    pool: string;
+    /** Coals and flame (deep, hot, white-hot). */
+    coal: [string, string, string];
+    /** Brazier bronze (light, dark). */
+    bronze: [string, string];
+    /** Lava far below and its glow on the ash clouds' undersides. */
+    lava: string;
+  };
 }
 export const SPIRE_ZONE_THEMES: Record<number, SpireZoneTheme> = {
   // Zone 1, Earth: warm sandstone and amber crystal, a golden afternoon
@@ -301,8 +325,51 @@ export const SPIRE_ZONE_THEMES: Record<number, SpireZoneTheme> = {
       sun: "#fff6d8",
     },
   },
+  // Zone 6, Fire: a lantern festival on a volcanic tower at dusk. Warm
+  // basalt paving with terracotta tones, an ember-gold inlay of flame
+  // tongues round the ring, bronze braziers of glowing coals in the
+  // corners, red paper lanterns on the coping and the cover, fire-opal
+  // crystals; beyond the edge a dusky orange sky over smoking volcanoes,
+  // sky lanterns floating up and embers drifting, sinking into a deep
+  // crimson night near the top. (The stone is a dusky mid-dark tone and
+  // only gently red, so red and orange warnings, the enemies' red rings and
+  // fire champions stand out from it by lightness as well as hue; the
+  // lantern pools are soft and low, never a ring or a warning.)
+  6: {
+    zone: 6,
+    slab: ["#76503f", "#3e2b28"],
+    grout: "#1e0e0a",
+    rim: ["#c09274", "#6e4636"],
+    carve: "#1a0806",
+    top: ["#b08672", "#7c5646"],
+    front: ["#4e3029", "#2a1713"],
+    crystal: ["#ffe8b4", "#ff9a3c", "#5a1a0e"],
+    glow: 0xffa040,
+    rune: "#ffbe4a",
+    skyLow: ["#4c2c60", "#ff9a52"],
+    skyHigh: ["#14040e", "#8a1a22"],
+    cloud: ["#ffae78", "#4a1420"],
+    light: "255,176,116",
+    ink: "30,10,6",
+    shine: "255,224,190",
+    dusk: "80,10,26",
+    sun: "255,162,92",
+    warmth: 0.12,
+    duskTint: [238, 196, 190],
+    centreGlow: 0.06,
+    vignette: 0.3,
+    ember: {
+      gold: "#eaa83c",
+      goldLight: "#ffe2a4",
+      paper: ["#c8322a", "#ff8a4c"],
+      pool: "255,150,84",
+      coal: ["#8a1a0c", "#ff6a1e", "#fff0b0"],
+      bronze: ["#b07a44", "#4a2a16"],
+      lava: "#ff5a1a",
+    },
+  },
 };
-/** A zone's look (1 Earth, 2 Water, 3 Shadow, 4 Psychic, 5 Light); unknown zones take zone 1's. */
+/** A zone's look (1 Earth, 2 Water, 3 Shadow, 4 Psychic, 5 Light, 6 Fire); unknown zones take zone 1's. */
 export const spireZoneTheme = (zone: number): SpireZoneTheme =>
   SPIRE_ZONE_THEMES[zone] ?? SPIRE_ZONE_THEMES[1];
 export const spireTheme = spireZoneTheme;
@@ -1148,6 +1215,284 @@ function sunInlay(c: Ctx, t: SpireZoneTheme) {
     inlaidSun(c, t, px, py, 18, 12);
   c.restore();
 }
+/**
+ * A round paper lantern centred at (x, y), hanging from a hook: its warm
+ * glow (painted, not a live light), the lit paper with its ribs, gold caps
+ * and a red tassel.
+ */
+function paperLantern(
+  c: Ctx,
+  t: SpireZoneTheme,
+  x: number,
+  y: number,
+  s = 1,
+  glow = 1,
+) {
+  const e = t.ember!;
+  const w = 8 * s,
+    h = 9.5 * s;
+  c.save();
+  if (glow > 0) {
+    const g = c.createRadialGradient(x, y, 1, x, y, 28 * s);
+    g.addColorStop(0, rgba(e.paper[1], 0.5 * glow));
+    g.addColorStop(1, rgba(e.paper[1], 0));
+    c.fillStyle = g;
+    c.fillRect(x - 28 * s, y - 28 * s, 56 * s, 56 * s);
+  }
+  // The hook and cord above it.
+  c.strokeStyle = "#1c0f0c";
+  c.lineWidth = 1.4 * s;
+  c.beginPath();
+  c.moveTo(x, y - h - 2 * s);
+  c.lineTo(x, y - h - 7 * s);
+  c.stroke();
+  const p = c.createRadialGradient(x - w * 0.25, y - h * 0.2, 1, x, y, w * 1.2);
+  p.addColorStop(0, "#ffe9b8");
+  p.addColorStop(0.45, e.paper[1]);
+  p.addColorStop(1, e.paper[0]);
+  c.fillStyle = p;
+  ell(c, x, y, w, h);
+  c.fill();
+  // Its ribs, and a dark outline (reads at a glance).
+  c.strokeStyle = "rgba(90,16,10,0.5)";
+  c.lineWidth = 0.9 * s;
+  ell(c, x, y, w * 0.5, h);
+  c.stroke();
+  c.beginPath();
+  c.moveTo(x, y - h);
+  c.lineTo(x, y + h);
+  c.stroke();
+  c.strokeStyle = "rgba(60,10,6,0.85)";
+  c.lineWidth = 1.2 * s;
+  ell(c, x, y, w, h);
+  c.stroke();
+  // Gold caps and the tassel.
+  c.fillStyle = e.gold;
+  c.fillRect(x - w * 0.5, y - h - 2 * s, w, 3 * s);
+  c.fillRect(x - w * 0.5, y + h - 1 * s, w, 3 * s);
+  c.strokeStyle = e.paper[0];
+  c.lineWidth = 2 * s;
+  c.beginPath();
+  c.moveTo(x, y + h + 2 * s);
+  c.lineTo(x, y + h + 8 * s);
+  c.stroke();
+  c.restore();
+}
+/**
+ * A bronze brazier seen from above, standing at (x, y): its shadow, three
+ * feet, the bowl's rim, glowing coals and a few small flames over them
+ * (all painted once: it never flickers), with its warm light round it.
+ */
+function brazier(c: Ctx, t: SpireZoneTheme, x: number, y: number, r: number) {
+  const e = t.ember!;
+  c.save();
+  // Warm light on the stone round it.
+  const g = c.createRadialGradient(x, y, r * 0.4, x, y, r * 3.2);
+  g.addColorStop(0, rgba(e.coal[1], 0.32));
+  g.addColorStop(1, rgba(e.coal[1], 0));
+  c.fillStyle = g;
+  ell(c, x, y, r * 3.2, r * 3.2 * K);
+  c.fill();
+  c.fillStyle = tone(t, "rgba(30,18,6,0.45)");
+  ell(c, x + 4, y + r * 0.7, r * 1.15, r * 0.5);
+  c.fill();
+  // Three feet under the bowl.
+  c.fillStyle = e.bronze[1];
+  for (const dx of [-0.75, 0, 0.75])
+    c.fillRect(x + dx * r - 2, y + r * 0.2, 4, r * 0.62);
+  // The bowl: its outer face, then the rim round the coals.
+  const b = c.createLinearGradient(x - r, 0, x + r, 0);
+  b.addColorStop(0, e.bronze[0]);
+  b.addColorStop(1, e.bronze[1]);
+  c.fillStyle = b;
+  ell(c, x, y + r * 0.18, r, r * 0.62);
+  c.fill();
+  c.fillStyle = mix(e.bronze[0], "#fff0d0", 0.25);
+  ell(c, x, y, r, r * 0.5);
+  c.fill();
+  // The coals: a deep red bed with hot spots.
+  const coals = c.createRadialGradient(x, y, 1, x, y, r * 0.82);
+  coals.addColorStop(0, e.coal[2]);
+  coals.addColorStop(0.35, e.coal[1]);
+  coals.addColorStop(1, e.coal[0]);
+  c.fillStyle = coals;
+  ell(c, x, y, r * 0.82, r * 0.38);
+  c.fill();
+  for (let k = 0; k < 6; k++) {
+    c.fillStyle = rgba(k % 2 ? e.coal[0] : "#2a0c06", 0.7);
+    ell(
+      c,
+      x + (R() - 0.5) * r * 1.2,
+      y + (R() - 0.5) * r * 0.45,
+      1.6 + R() * 1.8,
+      1 + R(),
+    );
+    c.fill();
+  }
+  // Flames rising off the coals (still: baked).
+  for (const [dx, tall, lean] of [
+    [-0.32, 1.0, -0.12],
+    [0.05, 1.45, 0.06],
+    [0.38, 0.9, 0.16],
+  ] as const) {
+    const fx = x + dx * r,
+      fy = y + 1,
+      fh = r * tall;
+    const fl = c.createLinearGradient(0, fy, 0, fy - fh);
+    fl.addColorStop(0, rgba(e.coal[1], 0.95));
+    fl.addColorStop(0.6, rgba("#ffb24a", 0.85));
+    fl.addColorStop(1, rgba(e.coal[2], 0));
+    c.fillStyle = fl;
+    c.beginPath();
+    c.moveTo(fx - r * 0.2, fy);
+    c.quadraticCurveTo(fx - r * 0.24, fy - fh * 0.5, fx + lean * r, fy - fh);
+    c.quadraticCurveTo(fx + r * 0.24, fy - fh * 0.5, fx + r * 0.2, fy);
+    c.closePath();
+    c.fill();
+  }
+  c.restore();
+}
+/** A flame tongue's outline from its root (x0, y0) along angle `a`, `len` long. */
+function flamePath(
+  c: Ctx,
+  x0: number,
+  y0: number,
+  a: number,
+  len: number,
+  w: number,
+) {
+  const ux = Math.cos(a),
+    uy = Math.sin(a) * K,
+    nx = -Math.sin(a) * w,
+    ny = Math.cos(a) * w * K;
+  const at = (f: number, side: number) => [
+    x0 + ux * len * f + nx * side,
+    y0 + uy * len * f + ny * side,
+  ];
+  const q = (cu: number, cv: number, u: number, v: number) => {
+    const [ax, ay] = at(cu, cv),
+      [bx, by] = at(u, v);
+    c.quadraticCurveTo(ax, ay, bx, by);
+  };
+  // Round at the root, a flick out of each side, the tip curling over.
+  c.beginPath();
+  const [sx, sy] = at(0, -0.55);
+  c.moveTo(sx, sy);
+  q(0.2, -1.05, 0.42, -0.6);
+  q(0.52, -0.4, 0.6, -0.62);
+  q(0.82, -0.35, 1, 0.12);
+  q(0.8, 0.2, 0.62, 0.34);
+  q(0.52, 0.48, 0.56, 0.74);
+  q(0.3, 1.05, 0, 0.55);
+  c.closePath();
+}
+/**
+ * A fire zone's paving (decoration: walkable, nothing collides): an
+ * ember-gold ring round the rune ring with a flame tongue inlaid along each
+ * spoke (a dark seat, the gold, a warm red heart), small gold diamonds
+ * between them, a bronze brazier of glowing coals in each corner beyond the
+ * octagon and the paper lanterns' warm light pooled under the coping. Flat
+ * and calm: never a ring or a cue.
+ */
+function emberInlay(c: Ctx, t: SpireZoneTheme) {
+  const e = t.ember;
+  if (!e) return;
+  const { x, y, r } = SPIRE_RING;
+  const at = (a: number, rr: number): [number, number] => [
+    x + Math.cos(a) * rr,
+    y + Math.sin(a) * rr * K,
+  ];
+  c.save();
+  c.lineJoin = "round";
+  reseed(7601);
+  // The lanterns' light, pooled soft and low under the coping and round
+  // the corner braziers: lit places to read fighters against.
+  lights(c, [
+    ...SPIRE_LANTERNS.map(
+      ([lx, ly]): [number, number, number, number, string] => [
+        lx + (lx < 40 ? 40 : lx > W - 40 ? -40 : 0),
+        ly + (ly < 40 ? 46 : ly > H - 40 ? -46 : 0),
+        200,
+        0.32,
+        e.pool,
+      ],
+    ),
+  ]);
+  for (let k = 0; k < 8; k++) {
+    const a = (k / 8) * Math.PI * 2 + Math.PI / 8,
+      r0 = r + 34,
+      len = k % 2 ? 130 : 170;
+    // A flame of three tongues: a tall one along the spoke, two shorter
+    // ones curling out beside it (each a dark seat, the gold, a red heart).
+    for (const [da, f, wide] of [
+      [-0.17, 0.55, 16],
+      [0.17, 0.55, 16],
+      [0, 1, 24],
+    ] as const) {
+      const [rx, ry] = at(a + da * 0.5, r0);
+      const ta = a + da,
+        tl = len * f;
+      c.save();
+      c.translate(1, 1.4);
+      flamePath(c, rx, ry, ta, tl + 4, wide + 4);
+      c.fillStyle = tone(t, "rgba(30,18,6,0.35)");
+      c.fill();
+      c.restore();
+      flamePath(c, rx, ry, ta, tl, wide);
+      c.fillStyle = rgba(e.gold, 0.46);
+      c.fill();
+      c.strokeStyle = rgba(e.goldLight, 0.6);
+      c.lineWidth = 1.3;
+      c.stroke();
+      flamePath(c, rx, ry, ta, tl * 0.55, wide * 0.45);
+      c.fillStyle = rgba(e.paper[0], 0.55);
+      c.fill();
+    }
+    // A gold diamond between this spoke and the next.
+    const [dx, dy] = at(a + Math.PI / 8, r + 64);
+    c.fillStyle = tone(t, "rgba(30,18,6,0.4)");
+    c.beginPath();
+    c.moveTo(dx + 1, dy - 7);
+    c.lineTo(dx + 10, dy + 1.4);
+    c.lineTo(dx + 1, dy + 8);
+    c.lineTo(dx - 8, dy + 1.4);
+    c.closePath();
+    c.fill();
+    c.fillStyle = e.gold;
+    c.beginPath();
+    c.moveTo(dx, dy - 8);
+    c.lineTo(dx + 9, dy);
+    c.lineTo(dx, dy + 7);
+    c.lineTo(dx - 9, dy);
+    c.closePath();
+    c.fill();
+    c.fillStyle = rgba(e.goldLight, 0.8);
+    c.beginPath();
+    c.moveTo(dx, dy - 8);
+    c.lineTo(dx + 3, dy - 1);
+    c.lineTo(dx - 9, dy);
+    c.closePath();
+    c.fill();
+  }
+  // The ember-gold ring joining the tongues' roots.
+  c.strokeStyle = tone(t, "rgba(30,18,6,0.4)");
+  c.lineWidth = 5;
+  gEll(c, x + 1, y + 1.4, r + 32);
+  c.stroke();
+  c.strokeStyle = rgba(e.gold, 0.8);
+  c.lineWidth = 2.6;
+  gEll(c, x, y, r + 32);
+  c.stroke();
+  // A brazier in each corner beyond the octagon.
+  for (const [px, py] of [
+    [122, 112],
+    [W - 122, 112],
+    [122, H - 104],
+    [W - 122, H - 104],
+  ])
+    brazier(c, t, px, py, 21);
+  c.restore();
+}
 /** The platform's coping: big dressed stones round the edge, a lip you can stand on. */
 function coping(c: Ctx, t: SpireZoneTheme) {
   const B = SPIRE_RIM;
@@ -1272,6 +1617,7 @@ export function paintSpireFloor(c: Ctx, t: SpireZoneTheme) {
   lanternPools(c, t);
   dreamInlay(c, t);
   sunInlay(c, t);
+  emberInlay(c, t);
   // Dust and grit, a few fallen crystal shards near the edges.
   paintKit.pebbles(
     c,
@@ -1312,6 +1658,10 @@ export function paintSpireFloor(c: Ctx, t: SpireZoneTheme) {
       shards(c, t, x + (R() - 0.5) * 22, y + (R() - 0.5) * 8, 16 + R() * 8);
   // A night zone's lanterns on the coping.
   if (t.night) for (const [x, y] of SPIRE_LANTERNS) lantern(c, t, x, y + 8);
+  // A fire zone's paper lanterns on the coping.
+  if (t.ember)
+    for (const [x, y] of SPIRE_LANTERNS)
+      paperLantern(c, t, x, y < 40 ? 24 : y > H - 40 ? H - 26 : y, 1.3);
   // Sun from the upper left, warm, and a gentle vignette.
   lights(c, [
     [380, 200, 620, 0.2, t.light],
@@ -1350,7 +1700,9 @@ export function paintSpireSky(c: Ctx, t: SpireZoneTheme, floor: number) {
         ? 280 + h * 900
         : t.radiant
           ? 290 + h * 860
-          : 260 + h * 1000;
+          : t.ember
+            ? 300 + h * 820
+            : 260 + h * 1000;
   const g = c.createLinearGradient(0, S.y, 0, cloudTop + 120);
   g.addColorStop(0, top);
   g.addColorStop(0.65, mix(top, horizon, 0.55));
@@ -1368,7 +1720,9 @@ export function paintSpireSky(c: Ctx, t: SpireZoneTheme, floor: number) {
       ? Math.round(50 + 170 * h)
       : t.radiant
         ? 0
-        : Math.round(220 * h * h);
+        : t.ember
+          ? Math.round(150 * h * h)
+          : Math.round(220 * h * h);
   for (let k = 0; k < stars; k++) {
     const x = S.x + R() * S.w,
       y = S.y + R() * (cloudTop - S.y);
@@ -1389,6 +1743,7 @@ export function paintSpireSky(c: Ctx, t: SpireZoneTheme, floor: number) {
   if (t.night) paintCrescent(c, t, h);
   else if (t.dream) paintDreamMoon(c, t, h);
   else if (t.radiant) paintRadiantSun(c, t, h);
+  else if (t.ember) paintEmberSun(c, t, h, cloudTop);
   else if (h > 0.45) {
     const a = (h - 0.45) / 0.55;
     const mx = 1900,
@@ -1438,6 +1793,7 @@ export function paintSpireSky(c: Ctx, t: SpireZoneTheme, floor: number) {
   else if (t.night) paintNightBelow(c, t, h, cloudTop, puff, floor);
   else if (t.dream) paintDreamBelow(c, t, h, cloudTop, puff, floor);
   else if (t.radiant) paintRadiantBelow(c, t, h, cloudTop, puff, floor);
+  else if (t.ember) paintEmberBelow(c, t, h, cloudTop, puff, floor);
   // The far cloud sea behind the tower.
   else
     for (let row = 0; row < 5; row++)
@@ -1498,8 +1854,14 @@ export function paintSpireSky(c: Ctx, t: SpireZoneTheme, floor: number) {
     c.lineTo(sx - 6, faceTop + 160);
     c.stroke();
   }
-  // A night zone's tower: lit windows in its face.
-  if (t.night) {
+  // A night zone's tower: lit windows in its face (a fire zone's too,
+  // lantern-lit).
+  const windowLight = t.night
+    ? t.night.lantern[1]
+    : t.ember
+      ? t.ember.paper[1]
+      : undefined;
+  if (windowLight) {
     reseed(9350);
     for (const [wx, wy] of [
       [180, 70],
@@ -1516,11 +1878,11 @@ export function paintSpireSky(c: Ctx, t: SpireZoneTheme, floor: number) {
         faceTop + wy,
         30,
       );
-      glow.addColorStop(0, rgba(t.night.lantern[1], 0.5));
-      glow.addColorStop(1, rgba(t.night.lantern[1], 0));
+      glow.addColorStop(0, rgba(windowLight, 0.5));
+      glow.addColorStop(1, rgba(windowLight, 0));
       c.fillStyle = glow;
       c.fillRect(wx - 30, faceTop + wy - 30, 60, 60);
-      c.fillStyle = t.night.lantern[1];
+      c.fillStyle = windowLight;
       c.beginPath();
       c.moveTo(wx - 7, faceTop + wy + 10);
       c.lineTo(wx - 7, faceTop + wy - 4);
@@ -2031,6 +2393,194 @@ function paintRadiantBelow(
   c.fillStyle = g;
   c.fillRect(S.x, top + 300, S.w, Math.max(0, bottom - top - 300));
 }
+/**
+ * A fire zone's setting sun: big, low and hazy at the left, sitting on the
+ * horizon's smoke; higher floors it has sunk (only a crimson afterglow
+ * stays on the horizon).
+ */
+function paintEmberSun(c: Ctx, t: SpireZoneTheme, h: number, top: number) {
+  const e = t.ember!,
+    sx = -250,
+    sy = top - 70 + h * 190,
+    rr = 104,
+    disc = mix("#ffd884", e.lava, 0.25 + 0.6 * h),
+    a = 1 - 0.75 * h;
+  const glow = c.createRadialGradient(sx, sy, rr * 0.5, sx, sy, 760);
+  glow.addColorStop(0, rgba(disc, 0.6 * a + 0.15));
+  glow.addColorStop(0.35, rgba(disc, 0.2 * a + 0.08));
+  glow.addColorStop(1, rgba(disc, 0));
+  c.fillStyle = glow;
+  c.fillRect(sx - 760, sy - 760, 1520, 1520);
+  c.save();
+  c.globalAlpha = a;
+  const g = c.createRadialGradient(
+    sx - rr * 0.2,
+    sy - rr * 0.25,
+    4,
+    sx,
+    sy,
+    rr,
+  );
+  g.addColorStop(0, "#fff3d0");
+  g.addColorStop(0.6, mix(disc, "#fff3d0", 0.35));
+  g.addColorStop(1, disc);
+  c.fillStyle = g;
+  c.beginPath();
+  c.arc(sx, sy, rr, 0, Math.PI * 2);
+  c.fill();
+  // Smoke bands drawn across its face.
+  c.fillStyle = rgba("#5a1a1e", 0.35);
+  for (const [dy, hh] of [
+    [rr * 0.15, 9],
+    [rr * 0.45, 12],
+  ])
+    c.fillRect(sx - rr - 20, sy + dy, rr * 2 + 40, hh);
+  c.restore();
+}
+/** A small sky lantern floating up at (x, y): a glowing paper shade, open at the foot. */
+function skyLantern(
+  c: Ctx,
+  t: SpireZoneTheme,
+  x: number,
+  y: number,
+  s: number,
+) {
+  const e = t.ember!;
+  const g = c.createRadialGradient(x, y, 0, x, y, s * 3);
+  g.addColorStop(0, rgba(e.paper[1], 0.5));
+  g.addColorStop(1, rgba(e.paper[1], 0));
+  c.fillStyle = g;
+  c.fillRect(x - s * 3, y - s * 3, s * 6, s * 6);
+  const body = c.createLinearGradient(0, y - s, 0, y + s);
+  body.addColorStop(0, e.paper[1]);
+  body.addColorStop(1, "#ffe6a8");
+  c.fillStyle = body;
+  c.beginPath();
+  c.moveTo(x - s * 0.62, y - s);
+  c.lineTo(x + s * 0.62, y - s);
+  c.lineTo(x + s * 0.48, y + s);
+  c.lineTo(x - s * 0.48, y + s);
+  c.closePath();
+  c.fill();
+  c.fillStyle = "#fff8dc";
+  c.beginPath();
+  c.ellipse(x, y + s, s * 0.48, s * 0.18, 0, 0, Math.PI * 2);
+  c.fill();
+}
+/**
+ * A fire zone's view down: smoking volcanoes on the horizon (lava glowing
+ * in their craters and down their flanks), an ash cloud sea lit orange
+ * from below, sky lanterns floating up beside the court and embers
+ * drifting. Painted once per floor with the sky.
+ */
+function paintEmberBelow(
+  c: Ctx,
+  t: SpireZoneTheme,
+  h: number,
+  top: number,
+  puff: (x: number, y: number, r: number, a: number) => void,
+  floor: number,
+) {
+  const e = t.ember!,
+    S = SPIRE_SKY,
+    bottom = S.y + S.h;
+  reseed(9860 + floor);
+  const soft = (x: number, y: number, r: number, a: number, col: string) => {
+    const p = c.createRadialGradient(x, y - r * 0.2, r * 0.1, x, y, r);
+    p.addColorStop(0, rgba(col, a));
+    p.addColorStop(0.6, rgba(col, a * 0.7));
+    p.addColorStop(1, rgba(col, 0));
+    c.fillStyle = p;
+    c.beginPath();
+    c.ellipse(x, y, r, r * 0.55, 0, 0, Math.PI * 2);
+    c.fill();
+  };
+  // Two volcanoes on the horizon, beyond the court on either side.
+  const rock = mix("#2a0c10", t.skyLow[1], 0.18 - 0.14 * h);
+  for (const [vx, peak, half] of [
+    [-360, 170, 420],
+    [1980, 230, 470],
+  ] as const) {
+    const py = top - peak,
+      crater = half * 0.16;
+    // The plume: soft dark puffs rising and leaning right.
+    for (let k = 0; k < 16; k++)
+      soft(
+        vx + k * 20 + (R() - 0.5) * 40,
+        py - 40 - k * 38,
+        80 + k * 10,
+        0.26 - k * 0.012,
+        "#3a1418",
+      );
+    const lavaGlow = c.createRadialGradient(vx, py, 4, vx, py, 220);
+    lavaGlow.addColorStop(0, rgba(e.lava, 0.55));
+    lavaGlow.addColorStop(1, rgba(e.lava, 0));
+    c.fillStyle = lavaGlow;
+    c.fillRect(vx - 220, py - 220, 440, 440);
+    c.fillStyle = rock;
+    c.beginPath();
+    c.moveTo(vx - half, top + 60);
+    c.lineTo(vx - crater, py);
+    c.lineTo(vx + crater, py);
+    c.lineTo(vx + half, top + 60);
+    c.closePath();
+    c.fill();
+    // Lava in the crater and running down the flanks.
+    c.fillStyle = rgba(e.lava, 0.95);
+    c.fillRect(vx - crater, py - 2, crater * 2, 5);
+    c.strokeStyle = rgba(e.lava, 0.75);
+    c.lineWidth = 4;
+    c.lineCap = "round";
+    for (const side of [-1, 1, -0.4]) {
+      let lx = vx + side * crater * 0.6,
+        ly = py + 2;
+      c.beginPath();
+      c.moveTo(lx, ly);
+      for (let i = 0; i < 5; i++) {
+        lx += side * (14 + R() * 18);
+        ly += 22 + R() * 18;
+        c.lineTo(lx, ly);
+      }
+      c.stroke();
+    }
+  }
+  // The ash cloud sea: dark tops, lit orange underneath.
+  for (let row = 0; row < 5; row++)
+    for (let k = 0; k < 16; k++) {
+      const x = S.x + (k + R() * 0.8) * (S.w / 15),
+        y = top + row * 90 + R() * 40,
+        r = 170 + R() * 110;
+      soft(x, y + r * 0.3, r * 0.9, 0.32, e.lava);
+      puff(x, y, r, 0.55 + row * 0.08);
+    }
+  // Sky lanterns floating up beside the court (where the sky shows).
+  const lanterns = Math.round(16 + 12 * h);
+  for (let k = 0; k < lanterns; k++) {
+    const x = S.x + 60 + R() * (S.w - 120),
+      y = S.y + 60 + R() * Math.max(80, top + 160 - S.y),
+      s = 5 + R() * 9;
+    if (x > -20 && x < W + 20 && y > -20 && y < H + 20) continue;
+    skyLantern(c, t, x, y, s);
+  }
+  // Embers drifting up.
+  const embers = Math.round(60 + 60 * h);
+  for (let k = 0; k < embers; k++) {
+    const x = S.x + R() * S.w,
+      y = S.y + R() * S.h,
+      r = 1.2 + R() * 2.2;
+    const g = c.createRadialGradient(x, y, 0, x, y, r * 2.6);
+    g.addColorStop(0, rgba(R() < 0.4 ? e.coal[2] : e.coal[1], 0.9));
+    g.addColorStop(1, rgba(e.coal[1], 0));
+    c.fillStyle = g;
+    c.fillRect(x - r * 2.6, y - r * 2.6, r * 5.2, r * 5.2);
+  }
+  // Below the clouds, smouldering crimson deepening into lava light.
+  const g = c.createLinearGradient(0, top + 300, 0, bottom);
+  g.addColorStop(0, rgba("#3a1418", 0));
+  g.addColorStop(1, rgba(mix("#3a1418", e.lava, 0.35), 0.9));
+  c.fillStyle = g;
+  c.fillRect(S.x, top + 300, S.w, Math.max(0, bottom - top - 300));
+}
 function rgba(col: string, a: number) {
   const m = col.startsWith("rgb")
     ? col.match(/\d+/g)!.slice(0, 3).map(Number)
@@ -2451,6 +3001,37 @@ function nightMotif(
   }
 }
 /**
+ * A fire zone's mark on a block (painted after its dusk: it lights
+ * itself): a red paper lantern hung on a pylon's or wall's front from an
+ * iron bracket, a small bronze brazier on an outcrop's top beside its
+ * crystals.
+ */
+function emberMotif(
+  c: Ctx,
+  t: SpireZoneTheme,
+  style: BlockStyle,
+  x: number,
+  top: number,
+  front: number,
+  w: number,
+) {
+  if (!t.ember) return;
+  if (style !== "outcrop") {
+    const lx = x + w / 2,
+      ly = front + BLOCK_H * 0.52;
+    c.strokeStyle = "#1c0f0c";
+    c.lineWidth = 2.4;
+    c.beginPath();
+    c.moveTo(lx - 7, front + 4);
+    c.lineTo(lx, front + 4);
+    c.lineTo(lx, ly - 16);
+    c.stroke();
+    paperLantern(c, t, lx, ly, 1.15, 0.8);
+    return;
+  }
+  brazier(c, t, x + w * 0.2, top + (front - top) * 0.72, 9);
+}
+/**
  * One block on its footprint, drawn in world coordinates: the top face over
  * the footprint's back part and the front face over its front BLOCK_H, so
  * the stone you see is exactly what stops fighters; crystals rise from the
@@ -2502,6 +3083,7 @@ function paintBlock(
     inkDrips(c, t, x, top, front, w, h);
     nightMotif(c, t, style, x, top, front, w);
     cluster(c, t, x + w / 2, top + depth * 0.62, Math.min(w, 70) * 0.7, 3, h);
+    emberMotif(c, t, style, x, top, front, w);
     return;
   }
   // Pylons and walls: dressed blocks with a carved band and crystals on top.
@@ -2532,7 +3114,7 @@ function paintBlock(
   // hangs a lantern there instead, a dream zone inlays a crescent).
   if (t.dream) dreamMark(c, t, x + w / 2, front + BLOCK_H / 2);
   else if (t.radiant) sunMark(c, t, x + w / 2, front + BLOCK_H / 2);
-  else if (!t.night) {
+  else if (!t.night && !t.ember) {
     c.save();
     c.lineCap = "round";
     c.strokeStyle = rgba(t.carve, 0.7);
@@ -2547,6 +3129,7 @@ function paintBlock(
   bioSpecks(c, t, x, front, w, BLOCK_H, h);
   inkDrips(c, t, x, top, front, w, h);
   nightMotif(c, t, style, x, top, front, w);
+  emberMotif(c, t, style, x, top, front, w);
   if (style === "wall") {
     // Crystal clusters along the wall's length.
     const n = Math.max(2, Math.floor(depth / 70));
@@ -3351,6 +3934,89 @@ export function paintRadiantSummitGrade(c: Ctx) {
   m.addColorStop(0, "rgba(255,236,186,0.16)");
   m.addColorStop(1, "rgba(255,236,186,0)");
   c.fillStyle = m;
+  c.fillRect(0, 0, W, H);
+  c.restore();
+}
+
+// ──────────────────────── The summit (floor 60) ────────────────────────
+
+/**
+ * Floor 60 keeps Lumiwick's Sky Terrace; painted over it once, a summit
+ * grade of its own: the lantern festival at nightfall. A soft rose-crimson
+ * multiply (green drops most, so the braziers' teal rings and progress
+ * arcs stand further from the warm stone, and the slabs deepen, so the
+ * gold time-left arcs, the flame ring's pale edge and the burning
+ * ground's outline gain on them), a crimson night pressing in from the
+ * edges, red paper lanterns strung along the rim and the volcano's glow
+ * from the lower right. The middle, where the braziers, the dive lanes and
+ * every warning are, keeps most of the raid's own light; the braziers,
+ * flames and rings are drawn live on top, so they keep their colours (and
+ * an unlit brazier still looks dark: no light is baked on it).
+ */
+export function paintEmberSummitGrade(c: Ctx) {
+  const t = SPIRE_ZONE_THEMES[6];
+  c.save();
+  c.globalCompositeOperation = "multiply";
+  c.fillStyle = "#e6c6c8";
+  c.fillRect(0, 0, W, H);
+  c.globalCompositeOperation = "source-over";
+  const v = c.createRadialGradient(
+    W / 2,
+    H / 2,
+    H * 0.46,
+    W / 2,
+    H / 2,
+    H * 1.05,
+  );
+  v.addColorStop(0, "rgba(40,6,16,0)");
+  v.addColorStop(1, "rgba(40,6,16,0.58)");
+  c.fillStyle = v;
+  c.fillRect(0, 0, W, H);
+  // Paper lanterns strung along the rim (never past the edge band: the
+  // braziers and their rings stand well inside it), a cord between them.
+  reseed(60801);
+  const strings: [number, number][][] = [
+    Array.from(
+      { length: 8 },
+      (_, i) => [140 + i * 189, 26] as [number, number],
+    ),
+    Array.from(
+      { length: 8 },
+      (_, i) => [140 + i * 189, H - 22] as [number, number],
+    ),
+    Array.from(
+      { length: 4 },
+      (_, i) => [22, 170 + i * 186] as [number, number],
+    ),
+    Array.from(
+      { length: 4 },
+      (_, i) => [W - 22, 170 + i * 186] as [number, number],
+    ),
+  ];
+  for (const row of strings) {
+    c.strokeStyle = "rgba(28,12,10,0.7)";
+    c.lineWidth = 1.6;
+    c.beginPath();
+    row.forEach(([x, y], i) => {
+      if (!i) return c.moveTo(x, y - 18);
+      const [px, py] = row[i - 1];
+      c.quadraticCurveTo((px + x) / 2, (py + y) / 2 - 6, x, y - 18);
+    });
+    c.stroke();
+    for (const [x, y] of row) paperLantern(c, t, x, y, 1.1 + R() * 0.2, 0.9);
+  }
+  // The volcano's glow from the lower right, and the last of the dusk at
+  // the upper left.
+  c.globalCompositeOperation = "screen";
+  const m = c.createRadialGradient(W, H, 40, W, H, 950);
+  m.addColorStop(0, "rgba(255,120,60,0.16)");
+  m.addColorStop(1, "rgba(255,120,60,0)");
+  c.fillStyle = m;
+  c.fillRect(0, 0, W, H);
+  const d = c.createRadialGradient(0, 0, 40, 0, 0, 800);
+  d.addColorStop(0, "rgba(255,170,120,0.1)");
+  d.addColorStop(1, "rgba(255,170,120,0)");
+  c.fillStyle = d;
   c.fillRect(0, 0, W, H);
   c.restore();
 }

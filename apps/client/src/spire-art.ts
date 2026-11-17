@@ -23,6 +23,10 @@ export const ECHO_TINT_HURT_Z4 = 0xff9cc8;
 /** Zone 5's Echoes: a deep indigo shade (and a magenta flush when hit). */
 export const ECHO_TINT_Z5 = 0x4a3c8c;
 export const ECHO_TINT_HURT_Z5 = 0xff7ad0;
+/** Zone 6's Echoes: a pale ice-blue shade and wash (a pale cyan flush when hit). */
+export const ECHO_TINT_Z6 = 0xd4deff;
+export const ECHO_TINT_HURT_Z6 = 0xb8fff4;
+export const ECHO_WASH_Z6 = { color: 0xdce8ff, alpha: 0.28 };
 /**
  * An Echo's tint on its zone's court. Zone 3's court is dark slate, where
  * the usual dark violet shade sinks into the floor: there Echoes are pale
@@ -47,7 +51,13 @@ export function spireEchoTint(zone?: number): {
       ? { tint: ECHO_TINT_Z4, hurtTint: ECHO_TINT_HURT_Z4 }
       : zone === 5
         ? { tint: ECHO_TINT_Z5, hurtTint: ECHO_TINT_HURT_Z5 }
-        : { tint: ECHO_TINT, hurtTint: ECHO_TINT_HURT };
+        : zone === 6
+          ? {
+              tint: ECHO_TINT_Z6,
+              hurtTint: ECHO_TINT_HURT_Z6,
+              wash: ECHO_WASH_Z6,
+            }
+          : { tint: ECHO_TINT, hurtTint: ECHO_TINT_HURT };
 }
 
 /** Compact lobby emblem: transparent, with broad tiers readable on phones. */
