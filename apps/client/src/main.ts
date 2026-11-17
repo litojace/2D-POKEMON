@@ -4315,6 +4315,8 @@ function bindGraphicsCard() {
       const value = b.dataset.graphics as GraphicsSetting;
       setGraphicsSetting(value);
       syncUiEffects();
+      // The Lobby's fighters follow at once (lobby-screen.ts).
+      document.dispatchEvent(new Event("ea-graphics-change"));
       // Picking Auto again measures battles afresh too.
       if (value === "auto") battleQuality.reset(resetBattleQuality);
       for (const other of Array.from(

@@ -50,7 +50,9 @@ function openPerfHud() {
     frame = requestAnimationFrame(tick);
   });
   const ios = isIOSDevice();
-  const device = `dpr ${devicePixelRatio} ${screen.width}x${screen.height}${ios ? (largeIPad(ios) ? " iPad-L" : " iOS") : ""}${lowGraphics() ? " Low" : ""}`;
+  // (Low read each time: Settings or Auto can change it while it shows.)
+  const device = () =>
+    `dpr ${devicePixelRatio} ${screen.width}x${screen.height}${ios ? (largeIPad(ios) ? " iPad-L" : " iOS") : ""}${lowGraphics() ? " Low" : ""}`;
   const show = () => {
     let extra: string | undefined;
     try {
@@ -58,7 +60,7 @@ function openPerfHud() {
     } catch {
       extra = undefined;
     }
-    const value = `page ${page.stats().screenHz || "?"} Hz\n${extra ? `${extra}\n` : ""}${device}`;
+    const value = `page ${page.stats().screenHz || "?"} Hz\n${extra ? `${extra}\n` : ""}${device()}`;
     if (text.textContent !== value) text.textContent = value;
   };
   show();

@@ -46,6 +46,8 @@ export interface ShopPreviewHandle {
   inkTop(): number | undefined;
   /** Frame measurements for the frame-rate line (perf-hud.ts). */
   perf(): PreviewPerfStats & {
+    /** Why it shows still artwork ("" while it draws). */
+    failed: string;
     canvas: string;
     resolution: number;
     textures: number;
@@ -82,6 +84,8 @@ export function mountShopPreview(
   let visible = true;
   let disposed = false;
   let failedSelection = false;
+  /** Why the preview fell back to its still artwork (the read-out). */
+  let failReason = "";
   let ready = false;
   let dirty = true;
   let drawn = false;
@@ -265,8 +269,9 @@ export function mountShopPreview(
     },
     { threshold: 0 },
   );
-  const failed = () => {
+  const failed = (reason: string) => {
     if (disposed) return;
+    failReason = reason;
     ready = false;
     failedSelection = true;
     rig?.destroy();
@@ -462,8 +467,11 @@ export function mountShopPreview(
           this.select();
           return;
         }
-        if (requested.some((a) => !this.textures.exists(a.key))) {
-          failed();
+        const lost = requested.filter((a) => !this.textures.exists(a.key));
+        if (lost.length) {
+          failed(
+            `${lost.length} of ${requested.length} parts did not load at ${loadedScale}x`,
+          );
           return;
         }
         // Only replace the visible rig once the entire selected look is ready.
@@ -659,8 +667,10 @@ export function mountShopPreview(
         },
       },
     });
-  } catch {
-    failed();
+  } catch (error) {
+    failed(
+      `renderer: ${error instanceof Error ? error.message : String(error)}`,
+    );
   }
   const dispose: ShopPreviewHandle = Object.assign(
     () => {
@@ -718,6 +728,7 @@ export function mountShopPreview(
         const canvas = game?.canvas;
         return {
           ...measure.stats(),
+          failed: failedSelection ? failReason || "failed" : "",
           canvas: canvas ? `${canvas.width}x${canvas.height}` : "-",
           resolution,
           textures: loadedScale,
