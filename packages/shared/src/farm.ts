@@ -459,6 +459,7 @@ export const FARM_UNLOCKS: readonly [number, string][] = [
   [8, "Copper Can"],
   [9, "Cow Pasture"],
   [10, "Big Net"],
+  [10, "Bakery"],
   [14, "Sickle"],
   [18, "Sprinkler"],
   [24, "Gold Fertilizer"],
@@ -888,11 +889,14 @@ export const DECOR_AREA = { x0: 20, x1: 1740, y0: 120, y1: 1060 } as const;
 export type DecorBlock =
   | { k: "rect"; x0: number; x1: number; y0: number; y1: number }
   | { k: "oval"; x: number; y: number; rx: number; ry: number };
+/** The ground the Bakery takes (farm-bakery.ts), built or not. */
+export const BAKERY_GROUND = { x0: 1070, x1: 1320, y0: 850, y1: 940 } as const;
 /**
  * What decorations can't stand on: the field and its fence, the lane in
  * front of it, the back row (home, mill, orders board, market, barn), the
  * pasture, the well, the doghouse and the dog's spot, the scarecrow's spot,
- * the path down from the gate, the pond and the farm's own trees.
+ * the path down from the gate, the Bakery's ground, the pond and the farm's
+ * own trees.
  * The database checks the same list (arena_farm_decor_fits).
  */
 export const DECOR_BLOCKS: readonly DecorBlock[] = [
@@ -904,6 +908,7 @@ export const DECOR_BLOCKS: readonly DecorBlock[] = [
   { k: "rect", x0: 1470, x1: 1680, y0: 754, y1: 840 },
   { k: "rect", x0: 250, x1: 326, y0: 520, y1: 576 },
   { k: "rect", x0: 830, x1: 940, y0: 770, y1: 1060 },
+  { k: "rect", ...BAKERY_GROUND },
   { k: "oval", x: 250, y: 990, rx: 190, ry: 82 },
   ...(
     [
@@ -1256,6 +1261,8 @@ export interface FarmState {
   pasture?: boolean;
   milkAt?: string | null;
   milkMult?: number;
+  /** The Bakery and its oven's queue (migration 20261117120000). */
+  bakery?: import("./farm-bakery.js").FarmBakery;
   /** Friends who visited lately, newest first (migration 047). */
   visits?: FarmVisitEvent[];
   /** Giant crops on the farm, and how many of each crop grew giant (migration 050). */
@@ -1363,7 +1370,12 @@ export type FarmAction =
   | { a: "buy-seeds"; crop: string; qty: number }
   | { a: "sell"; crop: string; mutation: string; qty: number }
   | { a: "buy-fertilizer"; kind: FertilizerKind }
-  | { a: "upgrade-barn" };
+  | { a: "upgrade-barn" }
+  /** The Bakery (20261117120000): build it, add a queue slot, bake, collect, sell its goods. */
+  | { a: "buy-bakery" | "buy-bake-slot" }
+  | { a: "bake"; recipe: string }
+  | { a: "bake-collect"; slot: number }
+  | { a: "sell-good"; good: string; qty: number };
 export interface FarmActResult {
   farm: FarmState;
   results: (
@@ -1389,6 +1401,13 @@ export interface FarmActResult {
         barnFull?: boolean;
         /** A giant crop's harvest: its top-left plot (the crops are in `harvested`). */
         giant?: number;
+        /** The Bakery: built, a slot bought, a recipe started (its slot and readyAt), a good collected. */
+        bakery?: boolean;
+        bakeSlots?: number;
+        baking?: string;
+        slot?: number;
+        readyAt?: string;
+        baked?: string;
         tool?: FarmToolId;
         cost?: number;
       }

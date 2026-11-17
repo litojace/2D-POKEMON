@@ -298,7 +298,7 @@ it("adds 1% farm XP for every 2 Charm, up to 25%", async () => {
   await level(45);
   await place("rock", 100, 900);
   expect(await xpAfter(100)).toBe(100);
-  await place("tower", 1200, 980);
+  await place("tower", 600, 920);
   expect((await farm()).charm).toBe(11);
   expect(charmBonus(11)).toBe(5);
   expect(await xpAfter(100)).toBe(105);

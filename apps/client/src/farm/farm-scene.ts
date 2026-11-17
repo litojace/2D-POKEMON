@@ -60,7 +60,20 @@ import {
   FARM_WEATHER_BY_ID,
   FARM_WEATHER_SECONDS,
 } from "../../../../packages/shared/src/farm";
+import {
+  BAKERY,
+  BAKERY_RECIPES,
+  BAKERY_RECIPE_BY_ID,
+  bakeError,
+  bakeProgress,
+  bakeSlotPrice,
+  bakeStart,
+  collectError,
+  freeBakeSlot,
+  isBakedGood,
+} from "../../../../packages/shared/src/farm-bakery";
 import { GIANT_ART, cropFieldSvg, cropGiantSvg, cropItemSvg } from "./crop-art";
+import { bakedItemSvg } from "./bakery-art";
 import { ClockBounds } from "../server-clock";
 import { GFX } from "./farm-gfx";
 import {
@@ -190,6 +203,22 @@ CROP.milk = {
   lv: PASTURE.level,
   rar: "rare",
 };
+// Baked goods (the Bakery) sit in the barn like crops too, at a fixed price.
+for (const r of BAKERY_RECIPES)
+  CROP[r.id] = {
+    id: r.id,
+    n: r.name,
+    el: "Earth",
+    c: r.color,
+    c2: r.shade,
+    t: r.seconds,
+    cost: 0,
+    sell: r.sell,
+    xp: r.xp,
+    lv: r.level,
+    rar: "uncommon",
+    baked: true,
+  };
 const MILK_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 140" width="240" height="280"><defs><linearGradient id="mk" x1="0" x2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#cfe6ff"/></linearGradient></defs><path d="M44 40 h32 v14 l10 16 v52 a8 8 0 0 1 -8 8 h-36 a8 8 0 0 1 -8 -8 v-52 l10 -16z" fill="url(#mk)" stroke="#5f8cc0" stroke-width="3"/><rect x="40" y="28" width="40" height="14" rx="4" fill="#4fb3ff" stroke="#2a6fd0" stroke-width="2"/><rect x="38" y="84" width="44" height="26" rx="4" fill="#ffd65b"/><path d="M60 88 l-6 10 h5 l-3 9 l9 -12 h-5 l3 -7z" fill="#2a1f4c"/><ellipse cx="50" cy="70" rx="3" ry="10" fill="#fff" opacity=".8"/></svg>`;
 
 const FARM_HTML = `<div class="fm" id="fm">
@@ -344,6 +373,10 @@ export function openFarm(options) {
   }
   ITEM.milk = new Image();
   ITEM.milk.src = svgUrl(MILK_SVG);
+  for (const r of BAKERY_RECIPES) {
+    ITEM[r.id] = new Image();
+    ITEM[r.id].src = svgUrl(bakedItemSvg(r));
+  }
   // Giant crops (migration 050): one picture across a 3×3 square.
   const GIMG = {};
   for (const id of GIANT.crops) {
@@ -409,6 +442,7 @@ export function openFarm(options) {
     seeds: {},
     barn: {},
     orders: [],
+    bakery: { owned: false, slots: 2, queue: [] },
     barnCap: 80,
     barnUp: 0,
     ferts: { norm: 0, super: 0, gold: 0 },
@@ -649,6 +683,12 @@ export function openFarm(options) {
         m: Number(st.milkMult),
         prev: Number(st.milkMult),
       };
+    // The Bakery and its oven's queue (migration 20261117120000).
+    F.bakery = {
+      owned: !!st.bakery?.owned,
+      slots: st.bakery?.slots ?? BAKERY.startSlots,
+      queue: (st.bakery?.queue ?? []).map((q) => ({ ...q })),
+    };
     F.farmer = st.farmer ?? null;
     F.perksUsed = st.perksUsed ?? [];
     F.warmUntil = st.warmUntil ? Date.parse(st.warmUntil) : 0;
@@ -741,6 +781,27 @@ export function openFarm(options) {
       }
       F.giants = F.giants.filter((x) => x !== gi);
       indexGiants(F);
+      return;
+    }
+    if (a.a === "bake") {
+      if (bakeError(bakeFarm(), a.recipe)) return;
+      const r = BAKERY_RECIPE_BY_ID[a.recipe],
+        start = bakeStart(F.bakery.queue, now);
+      for (const [id, n] of r.items)
+        F.barn[`${id}|`] = Math.max(0, (F.barn[`${id}|`] || 0) - n);
+      F.bakery.queue.push({
+        slot: freeBakeSlot(F.bakery.queue, F.bakery.slots),
+        recipe: r.id,
+        startedAt: new Date(start).toISOString(),
+        readyAt: new Date(start + r.seconds * 1000).toISOString(),
+      });
+      return;
+    }
+    if (a.a === "bake-collect") {
+      if (collectError(bakeFarm(), a.slot, now)) return;
+      const q = F.bakery.queue.find((x) => x.slot === a.slot);
+      F.bakery.queue = F.bakery.queue.filter((x) => x !== q);
+      F.barn[`${q.recipe}|`] = (F.barn[`${q.recipe}|`] || 0) + 1;
       return;
     }
     if (a.a === "perk") {
@@ -979,6 +1040,29 @@ export function openFarm(options) {
           toast("Your pasture is open. A cow moved in!");
           log("Opened the <b>Cow Pasture</b>. Your cow has moved in", "good");
         }
+        if (x.bakery) {
+          FX.push({ puff: 1, x: BAKERY.x, y: BAKERY.y - 60, t: 0, life: 0.8 });
+          float(BAKERY.x, BAKERY.y - 150, "Bakery open!", "#ffd65b");
+          toast("Your Bakery is open. Bake goods from your barn!");
+          log("Built the <b>Bakery</b>", "good");
+        }
+        if (x.bakeSlots) {
+          toast(`The Bakery's queue has ${x.bakeSlots} slots`);
+          log(`Bakery queue: <b>${x.bakeSlots} slots</b>`, "good");
+        }
+        if (x.baking)
+          log(
+            `Put <b>${CROP[x.baking]?.n ?? x.baking}</b> in the oven`,
+            "good",
+          );
+        if (x.baked) {
+          fly(BAKERY.x - 96, BAKERY.y - 40, icon(x.baked), "+1");
+          float(BAKERY.x, BAKERY.y - 130, `+${x.xp} XP`, "#7ff0a2");
+          log(
+            `Baked <b>${CROP[x.baked]?.n ?? x.baked}</b> · +${x.xp} XP`,
+            "good",
+          );
+        }
         if (x.milk) {
           fly(COW.x, COW.y - 60, icon("milk"), `+${x.milk}`);
           float(COW.x, COW.y - 100, `+${PASTURE.milkXp} XP`, "#7ff0a2");
@@ -1120,7 +1204,8 @@ export function openFarm(options) {
     well: WELL,
     doghouse: DOGH,
     scarecrow: F.scarecrow ? [288, 562] : null,
-    decor: F.decor.map((p) => decorBox(p.item, p.x, p.y)),
+    // The Bakery stands on its ground whether built or not.
+    decor: [...F.decor.map((p) => decorBox(p.item, p.x, p.y)), BAKERY.ground],
     gateX: FCX,
     width: WW,
     height: WH,
@@ -1156,6 +1241,29 @@ export function openFarm(options) {
   // The pasture's cow (migration 049): it walks slowly from side to side.
   const COW = { x: 1600, y: 610, face: -1, t: 0 };
   const milkReady = () => F.pasture && F.milkAt <= serverNow();
+  /* The Bakery (farm-bakery.ts): the farm as its shared rules read it, what
+     the oven is baking now, and what's ready to collect. */
+  const bakeFarm = () => ({
+    level: F.lv,
+    barnCap: F.barnCap,
+    bakery: F.bakery,
+    barn: Object.entries(F.barn).map(([k, qty]) => {
+      const [crop, mutation = ""] = k.split("|");
+      return { crop, mutation, qty };
+    }),
+  });
+  const bakingNow = () => {
+    const n = serverNow();
+    return F.bakery.queue.some(
+      (q) => Date.parse(q.startedAt) <= n && Date.parse(q.readyAt) > n,
+    );
+  };
+  const bakeReady = () => {
+    const n = serverNow();
+    return F.bakery.queue
+      .filter((q) => Date.parse(q.readyAt) <= n)
+      .sort((a, b) => Date.parse(a.readyAt) - Date.parse(b.readyAt));
+  };
   const hens = [
     {
       k: "white",
@@ -1712,6 +1820,90 @@ export function openFarm(options) {
     else if (w === "cloud" || w === "frost") sun.alpha *= 0.5;
     return sun;
   }
+  /* The Bakery: the building (shut, with a sign, until it's built), its
+     oven aglow while it bakes, and a bubble with what's ready. */
+  function drawBakery(s, time) {
+    const spr = GFX.bakery(),
+      b = F.bakery,
+      me = s.me;
+    GFX.shadow(ctx, BAKERY.x + 14, BAKERY.y + 4, 128, 20);
+    blitB("bakery", spr, BAKERY.x, BAKERY.y);
+    if (me && b.owned && bakingNow()) {
+      const [mx, my] = spr.mouth,
+        k = reduced
+          ? 0.85
+          : 0.78 + 0.22 * Math.sin(time * 9) * Math.sin(time * 3.7),
+        gx = BAKERY.x + mx,
+        gy = BAKERY.y + my,
+        gr = ctx.createRadialGradient(gx, gy, 1, gx, gy, 13);
+      gr.addColorStop(0, `rgba(255,236,170,${0.95 * k})`);
+      gr.addColorStop(0.5, `rgba(255,150,50,${0.75 * k})`);
+      gr.addColorStop(1, "rgba(255,90,20,0)");
+      ctx.fillStyle = gr;
+      ctx.beginPath();
+      ctx.arc(gx, gy, 13, 0, 7);
+      ctx.fill();
+    }
+    if (me && !b.owned) {
+      GFX.blit(
+        ctx,
+        GFX.sign(
+          F.lv >= BAKERY.level
+            ? `BAKERY · ${BAKERY.price}`
+            : `BAKERY · Lv ${BAKERY.level}`,
+          "#c0392b",
+        ),
+        BAKERY.x + 2,
+        BAKERY.y + 34,
+      );
+      return;
+    }
+    const ready = me ? bakeReady() : [];
+    if (!ready.length) return;
+    // A speech bubble out of the oven: tap the Bakery to collect.
+    const bx = BAKERY.x - 96,
+      by = BAKERY.y - 66 + (reduced ? 0 : Math.sin(time * 3) * 3);
+    ctx.fillStyle = "#fff";
+    ctx.beginPath();
+    ctx.roundRect(bx - 24, by - 22, 48, 34, 12);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(bx - 5, by + 11);
+    ctx.lineTo(bx + 5, by + 11);
+    ctx.lineTo(bx, by + 18);
+    ctx.fill();
+    const im = ITEM[ready[0].recipe];
+    if (im?.complete) ctx.drawImage(im, bx - 15, by - 21, 30, 30);
+    if (ready.length > 1) {
+      ctx.fillStyle = "#ffd65b";
+      ctx.strokeStyle = "#1a0f05";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(bx + 22, by - 20, 10, 0, 7);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = "#1a0f05";
+      ctx.font = "900 13px 'Barlow Condensed', sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(String(ready.length), bx + 22, by - 19);
+      ctx.textBaseline = "alphabetic";
+    }
+  }
+  /** Tap the Bakery: collect what's ready (as the barn has room), else open it. */
+  function bakeryClick() {
+    if (!F.bakery.owned) return openSheet("bakery");
+    const ready = bakeReady();
+    if (!ready.length) return openSheet("bakery");
+    const room = F.barnCap - barnUsed();
+    if (room <= 0)
+      return toast("Your barn is full! Sell something or upgrade the barn.");
+    for (const q of ready.slice(0, room))
+      act({ a: "bake-collect", slot: q.slot }, true);
+    sfx("coin");
+    if (ready.length > room)
+      toast("Your barn is full! The rest waits in the oven.");
+  }
   function drawCastShadows(s) {
     if (!shadowLayer.begin(ctx, farmSun())) return;
     const L = shadowLayer;
@@ -1735,6 +1927,7 @@ export function openFarm(options) {
     L.sprite(GFX.barn(), BARN.x, BARN.y);
     L.sprite(GFX.well(), WELL.x, WELL.y);
     L.sprite(GFX.doghouse(), DOGH.x, DOGH.y);
+    L.sprite(GFX.bakery(), BAKERY.x, BAKERY.y);
     if (s.me) {
       if (F.scarecrow) L.sprite(GFX.scarecrow(), 288, 562);
       for (const p of F.decor)
@@ -1763,6 +1956,26 @@ export function openFarm(options) {
     nl.light(BARN.x, BARN.y - 60, 200, 0.4 * k, 0.7);
     nl.light(STALL.x, STALL.y - 40, 190, 0.45 * k, 0.7);
     nl.light(WELL.x, WELL.y - 20, 110, 0.25 * k, 0.75);
+    // The Bakery's windows once it's built, and its oven while it bakes.
+    if (cur().me && F.bakery.owned) {
+      const bs = GFX.bakery();
+      for (const [wx, wy, ww, wh] of bs.win)
+        nl.light(
+          BAKERY.x + wx + ww / 2,
+          BAKERY.y + wy + wh + 10,
+          120,
+          0.5 * k,
+          0.75,
+        );
+      if (bakingNow())
+        nl.light(
+          BAKERY.x + bs.mouth[0],
+          BAKERY.y + bs.mouth[1] + 8,
+          90,
+          0.55 * k,
+          0.7,
+        );
+    }
     if (cur().me)
       for (const p of F.decor)
         if (p.item === "lamp") nl.light(p.x, p.y - 6, 150, 0.5 * k, 0.6);
@@ -3359,7 +3572,10 @@ export function openFarm(options) {
     }).join("");
     let form = "";
     if (stallSlot != null) {
-      const keys = Object.entries(F.barn).filter(([, n]) => n > 0);
+      // Only crops go on a stall (not Storm Milk or baked goods).
+      const keys = Object.entries(F.barn).filter(
+        ([k, n]) => n > 0 && CROP_BY_ID[k.split("|")[0]],
+      );
       if (!keys.length)
         form = `<p class="sh-note">Your barn is empty. Harvest something to sell first.</p>`;
       else {
@@ -5423,6 +5639,7 @@ export function openFarm(options) {
         },
       });
     items.push({ y: PAST.y1, d: () => drawPastureFence(ctx, false) });
+    items.push({ y: BAKERY.y, d: () => drawBakery(s, time) });
     items.push({
       y: DOGH.y,
       d: () => {
@@ -5781,7 +5998,14 @@ export function openFarm(options) {
         STALL.y - 150,
         sold ? "#7ff0a2" : undefined,
       ),
-      tBarn = tag("BARN", BARN.x, BARN.y - 196, full ? "#ff8a7a" : undefined);
+      tBarn = tag("BARN", BARN.x, BARN.y - 196, full ? "#ff8a7a" : undefined),
+      baked = !V && F.bakery.owned && bakeReady().length > 0,
+      tBakery = tag(
+        "BAKERY",
+        BAKERY.x + 8,
+        BAKERY.y - 156,
+        baked ? "#ffd65b" : undefined,
+      );
     tag(
       F.wishReady && !V ? "WISHING WELL ✦" : "WISHING WELL",
       WELL.x,
@@ -5792,6 +6016,7 @@ export function openFarm(options) {
       if (orderReady) badge(tOrders, "!", "#ffd65b");
       if (sold) badge(tMarket, "SOLD!", "#7ff0a2");
       if (full) badge(tBarn, "FULL", "#ff8a7a");
+      if (baked) badge(tBakery, "READY", "#ffd65b");
       if (balloon) {
         if (balloon.crates && bal.mode === "idle") {
           const p = balloonPos(time, performance.now()),
@@ -6170,6 +6395,22 @@ export function openFarm(options) {
       if (h.hop > 0) h.hop = Math.max(0, h.hop - dt / 0.45);
       if (h.fast > 0) h.fast -= dt;
     });
+    if (
+      !reduced &&
+      !V &&
+      F.bakery.owned &&
+      bakingNow() &&
+      Math.random() < dt * 3
+    ) {
+      const bs = GFX.bakery();
+      FSMOKE.push({
+        x: BAKERY.x + bs.chimney[0],
+        y: BAKERY.y + bs.chimney[1],
+        t: 0,
+        life: 2.6,
+        vx: 4 + Math.random() * 6,
+      });
+    }
     if (!reduced && Math.random() < dt * 2.5) {
       const hs = HOUSE_SPR();
       if (hs.chimney)
@@ -6205,7 +6446,7 @@ export function openFarm(options) {
     draw(T);
     if (Math.floor(T * 4) !== Math.floor((T - dt) * 4)) {
       renderChips();
-      if (sheet && ["shop", "market", "orders"].includes(sheet))
+      if (sheet && ["shop", "market", "orders", "bakery"].includes(sheet))
         updateSheetTimers();
       if (hoverI >= 0) showTip(hoverI);
     }
@@ -6586,6 +6827,58 @@ export function openFarm(options) {
       ),
     );
   };
+  /* ---------- the Bakery's sheet: its queue with progress rings, and its recipes ---------- */
+  const bakeLeft = (q) =>
+    Math.max(0, (Date.parse(q.readyAt) - serverNow()) / 1000);
+  function bakeSlotHTML(q) {
+    const r = BAKERY_RECIPE_BY_ID[q.recipe],
+      n = serverNow(),
+      p = bakeProgress(q, n),
+      img = `<span class="ring"><img src="${icon(q.recipe)}" alt=""></span>`;
+    if (p >= 1)
+      return `<button type="button" class="bk-slot ready" data-bq="${q.slot}" data-bcollect="${q.slot}" style="--p:1" aria-label="Collect ${esc(r.name)}">${img}<b>${esc(r.name)}</b><small>Collect</small></button>`;
+    const waiting = Date.parse(q.startedAt) > n;
+    return `<div class="bk-slot ${waiting ? "wait" : "baking"}" data-bq="${q.slot}" style="--p:${p.toFixed(3)}">${img}<b>${esc(r.name)}</b><small data-bleft>${waiting ? "Up next" : fmtSecs(bakeLeft(q))}</small></div>`;
+  }
+  function recipesHTML(preview) {
+    const f = bakeFarm();
+    return BAKERY_RECIPES.map((r) => {
+      const lock = F.lv < r.level,
+        err = preview ? null : bakeError(f, r.id),
+        need = r.items
+          .map(([id, k]) => {
+            const have = f.barn
+              .filter((x) => x.crop === id && x.mutation === "")
+              .reduce((a, x) => a + x.qty, 0);
+            return `<span class="oneed${preview ? "" : have >= k ? " ok" : " no"}"><img src="${icon(id)}" alt="">${preview ? "" : `${have}/`}${k} ${esc(CROP[id]?.n ?? id)}</span>`;
+          })
+          .join("");
+      return `<div class="item bk-rec${lock ? " locked" : ""}"><span class="ic"><img src="${icon(r.id)}" alt=""></span><div><b>${esc(r.name)}</b><small>${fmtSecs(r.seconds)} · +${r.xp} XP · sells <span class="price">${r.sell} ${L}</span>${lock ? ` · <b style="color:#ffd65b">Lv ${r.level}</b>` : ""}</small><div class="needs">${need}</div></div>${preview ? "" : `<div class="acts"><button type="button" class="btn-s green" data-bake="${r.id}" ${err ? `disabled title="${esc(err)}"` : ""}>Bake</button></div>`}</div>`;
+    }).join("");
+  }
+  function bakeryHTML() {
+    const b = F.bakery;
+    if (!b.owned) {
+      const lock = F.lv < BAKERY.level;
+      return `<div class="sh-body"><p class="sh-note">Bake crops and ${MILK.name} from your barn into goods that sell for more, and that orders ask for. The oven bakes one thing at a time and keeps going while you're away.</p><div class="item${lock ? " locked" : ""}"><span class="ic">${I("bakery")}</span><div><b>Build the Bakery</b><small>${BAKERY_RECIPES.length} recipes · ${BAKERY.startSlots} queue slots, up to ${BAKERY.maxSlots} · +${BAKERY.xp} XP${lock ? ` · <b style="color:#ffd65b">unlocks at Lv ${BAKERY.level}</b>` : ""}</small></div><div class="acts"><button type="button" class="btn-s" data-bakery-build ${lock || F.leaves < BAKERY.price ? "disabled" : ""}>${BAKERY.price.toLocaleString("en-US")} ${L}</button></div></div>${recipesHTML(true)}</div>`;
+    }
+    const q = [...b.queue].sort(
+        (x, y) => Date.parse(x.readyAt) - Date.parse(y.readyAt),
+      ),
+      empty = Math.max(0, b.slots - q.length),
+      price = bakeSlotPrice(b.slots);
+    const slots =
+      q.map(bakeSlotHTML).join("") +
+      Array.from(
+        { length: empty },
+        () =>
+          `<div class="bk-slot empty"><span class="ring"></span><b>Empty</b><small>Pick a recipe</small></div>`,
+      ).join("") +
+      (price
+        ? `<button type="button" class="bk-slot buy" data-bslot-buy ${F.leaves < price ? "disabled" : ""}><span class="ring">+</span><b>New slot</b><small>${price.toLocaleString("en-US")} ${L}</small></button>`
+        : "");
+    return `<div class="sh-body"><p class="sh-note">One thing bakes at a time; the next starts when it's done, even while you're away. Tap a finished one, or the Bakery, to collect it into the barn.</p><div class="bk-queue">${slots}</div>${recipesHTML(false)}</div>`;
+  }
   function renderSheet() {
     const el = $("fm-sheet");
     el.hidden = false;
@@ -6674,7 +6967,7 @@ export function openFarm(options) {
                           )
                           .join(" ") + " · "
                       : ""
-                  }<span class="price">${price(k)} ${L}</span> each <span class="trend ${id === F.market.hot ? "fire" : "up"}">${id === F.market.hot ? "HOT" : ""} ×${m.toFixed(2)}</span></small></div><div class="acts"><button type="button" class="btn-s b-sell1" data-sell="${k}" data-n="1">Sell 1</button><button type="button" class="btn-s ghost b-sellall" data-sell="${k}" data-n="${n}">All · ${price(k) * n} ${L}</button></div></div>`;
+                  }<span class="price">${price(k)} ${L}</span> each ${isBakedGood(id) ? `<span class="trend up">Baked</span>` : `<span class="trend ${id === F.market.hot ? "fire" : "up"}">${id === F.market.hot ? "HOT" : ""} ×${m.toFixed(2)}</span>`}</small></div><div class="acts"><button type="button" class="btn-s b-sell1" data-sell="${k}" data-n="1">Sell 1</button><button type="button" class="btn-s ghost b-sellall" data-sell="${k}" data-n="${n}">All · ${price(k) * n} ${L}</button></div></div>`;
                 })
                 .join("")
             : `<p class="sh-note">Your barn is empty. Harvest ripe crops, then sell them here.</p>`);
@@ -6693,6 +6986,14 @@ export function openFarm(options) {
                 const m = F.market.mult.milk.m;
                 return `<div class="item"><span class="ic"><img src="${icon("milk")}" alt=""></span><div><b>${MILK.name}</b><small>Base ${MILK.sell} → today <span class="price">${milkPrice(m)} ${L}</span></small></div><span class="trend ${m >= 1 ? "up" : "down"}">${m >= 1 ? "▲" : "▼"} ×${m.toFixed(2)}</span></div>`;
               })()
+            : "") +
+          (F.bakery.owned
+            ? BAKERY_RECIPES.filter((r) => r.level <= F.lv)
+                .map(
+                  (r) =>
+                    `<div class="item"><span class="ic"><img src="${icon(r.id)}" alt=""></span><div><b>${r.name}</b><small>Baked · always <span class="price">${r.sell} ${L}</span></small></div></div>`,
+                )
+                .join("")
             : "");
       if (sheetTab === "coins") {
         const e = options.economy?.()?.leaves,
@@ -6722,6 +7023,12 @@ export function openFarm(options) {
           .join("") +
         `</div>`;
     }
+    if (sheet === "bakery")
+      html =
+        head(
+          "Farm Bakery",
+          `Bakery${F.bakery.owned ? ` · ${F.bakery.queue.length}/${F.bakery.slots}` : ""}`,
+        ) + bakeryHTML();
     if (sheet === "barn") {
       const rows = Object.entries(F.barn).filter(([, n]) => n > 0);
       html =
@@ -6747,7 +7054,9 @@ export function openFarm(options) {
                     .join(" ")
                 : id === MILK.id
                   ? "From your cow"
-                  : "Regular"
+                  : isBakedGood(id)
+                    ? "From your bakery"
+                    : "Regular"
             } · ${price(k)} ${L} each</small></div><div class="acts"><button type="button" class="btn-s ghost" data-goto="market:sell">Sell</button></div></div>`;
           })
           .join(
@@ -6926,6 +7235,25 @@ export function openFarm(options) {
         el.textContent = fmtSecs(left);
         if (!left) due = true;
       });
+    // The Bakery's rings and times; one just done turns into a Collect button.
+    let baked = false;
+    $("fm-sheet")
+      .querySelectorAll("[data-bq]")
+      .forEach((el) => {
+        const q = F.bakery.queue.find((x) => x.slot === +el.dataset.bq);
+        if (!q) return;
+        const p = bakeProgress(q, serverNow());
+        el.style.setProperty("--p", p.toFixed(3));
+        const t = el.querySelector("[data-bleft]");
+        if (t && Date.parse(q.startedAt) <= serverNow())
+          t.textContent = fmtSecs(bakeLeft(q));
+        if (
+          p >= 1 !== el.classList.contains("ready") ||
+          (el.classList.contains("wait") && p > 0)
+        )
+          baked = true;
+      });
+    if (baked && sheet === "bakery") renderSheet();
     // A waiting order is ready: opening the farm again brings it.
     if (due && !ordersRefreshing) {
       ordersRefreshing = true;
@@ -7084,13 +7412,39 @@ export function openFarm(options) {
       act({ a: "buy-pasture" }, true);
       return renderSheet();
     }
+    // The Bakery: build it, buy a slot, bake, collect.
+    if ("bakeryBuild" in d) {
+      act({ a: "buy-bakery" }, true);
+      return renderSheet();
+    }
+    if ("bslotBuy" in d) {
+      act({ a: "buy-bake-slot" }, true);
+      return renderSheet();
+    }
+    if (d.bake) {
+      const err = bakeError(bakeFarm(), d.bake);
+      if (err) return toast(err);
+      act({ a: "bake", recipe: d.bake }, true);
+      sfx("tick");
+      toast(`${CROP[d.bake].n} is in the oven`);
+      return renderSheet();
+    }
+    if (d.bcollect !== undefined) {
+      const err = collectError(bakeFarm(), +d.bcollect, serverNow());
+      if (err) return toast(err);
+      act({ a: "bake-collect", slot: +d.bcollect }, true);
+      sfx("coin");
+      return renderSheet();
+    }
     if (d.sell) {
       const [id, mut] = d.sell.split("|"),
         n = +d.n;
       act(
         id === MILK.id
           ? { a: "sell-milk", qty: n }
-          : { a: "sell", crop: id, mutation: mut || "", qty: n },
+          : isBakedGood(id)
+            ? { a: "sell-good", good: id, qty: n }
+            : { a: "sell", crop: id, mutation: mut || "", qty: n },
         true,
       );
       F.barn[d.sell] = Math.max(0, (F.barn[d.sell] || 0) - n);
@@ -7404,6 +7758,16 @@ export function openFarm(options) {
         life: 0.7,
       });
       return wishWell();
+    }
+    if (
+      !V &&
+      Math.abs(w.x - (BAKERY.x - 20)) < 130 &&
+      w.y > BAKERY.y - 156 &&
+      w.y < BAKERY.y + 14
+    ) {
+      bounce.bakery = 1;
+      sfx("tick");
+      return bakeryClick();
     }
     if (
       !V &&
@@ -7885,7 +8249,18 @@ export function openFarm(options) {
     _dbg: {
       F,
       /** The shared decoration rules (the harness's fake server uses them). */
-      rules: { FARM_DECOR, decorFits, decorCap },
+      rules: {
+        FARM_DECOR,
+        decorFits,
+        decorCap,
+        BAKERY,
+        BAKERY_RECIPE_BY_ID,
+        bakeError,
+        bakeSlotPrice,
+        bakeStart,
+        collectError,
+        freeBakeSlot,
+      },
       /** The decoration being placed or moved, and the decorating bar (tests). */
       deco: () => ({ edit: decoEdit, browse: decoBrowse }),
       /** Read the farm from the server again, as the minute poll does (tests). */
@@ -7929,6 +8304,7 @@ export function openFarm(options) {
           barn: { x: BARN.x + 20, y: BARN.y - 60 },
           balloon: { x: BAL.x, y: BAL.y - 30 },
           well: { x: WELL.x, y: WELL.y - 50 },
+          bakery: { x: BAKERY.x, y: BAKERY.y - 60 },
         })[k],
       /** Center the camera on a world point (tests). */
       look: (x, y) => {

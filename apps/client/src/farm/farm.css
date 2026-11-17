@@ -3090,3 +3090,110 @@ body.hub-farm #account-leaves {
 .farm-layer.phone .fm-deco-bar .btn-s {
   padding: 0.5em 0.65em;
 }
+/* The Bakery (farm-bakery.ts): its oven's queue, each slot a progress ring,
+   then its recipes with what each needs from the barn. */
+.farm-layer .bk-queue {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(6.4em, 1fr));
+  gap: 0.5em;
+}
+.farm-layer .bk-slot {
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 0.2em;
+  min-width: 0;
+  padding: 0.55em 0.35em 0.5em;
+  border-radius: 14px;
+  border: 1px solid #ffffff1a;
+  background: #ffffff0b;
+  color: inherit;
+  font: inherit;
+  text-align: center;
+}
+.farm-layer .bk-slot b {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.82em;
+}
+.farm-layer .bk-slot small {
+  color: var(--dim);
+  font-size: 0.74em;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.farm-layer .bk-slot .ring {
+  --ring: #ffb347;
+  display: grid;
+  place-items: center;
+  width: 3.6em;
+  height: 3.6em;
+  border-radius: 50%;
+  background: conic-gradient(
+    var(--ring) calc(var(--p, 0) * 360deg),
+    #ffffff1c 0
+  );
+  font-size: 1em;
+  font-weight: 900;
+  color: var(--ui-accent);
+}
+.farm-layer .bk-slot .ring img {
+  width: 2.9em;
+  height: 2.9em;
+  padding: 0.25em;
+  border-radius: 50%;
+  background: #141d3a;
+}
+.farm-layer .bk-slot.wait .ring img {
+  opacity: 0.6;
+}
+.farm-layer .bk-slot.ready {
+  cursor: pointer;
+  border-color: #ffd65b;
+  background: linear-gradient(180deg, #ffd65b2b, #ffd65b0d);
+}
+.farm-layer .bk-slot.ready .ring {
+  --ring: #ffd65b;
+}
+.farm-layer .bk-slot.ready small {
+  color: #ffe27a;
+}
+.farm-layer .bk-slot.empty {
+  border-style: dashed;
+}
+.farm-layer .bk-slot.empty .ring {
+  background: #ffffff10;
+}
+.farm-layer .bk-slot.buy {
+  cursor: pointer;
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--ui-accent) 45%, transparent);
+}
+.farm-layer .bk-slot.buy .ring {
+  background: #ffffff10;
+  font-size: 1.6em;
+  width: 2.25em;
+  height: 2.25em;
+}
+.farm-layer .bk-slot.buy[disabled] {
+  opacity: 0.45;
+  cursor: default;
+}
+.farm-layer .bk-slot:active:not([disabled]):is(.ready, .buy) {
+  transform: translateY(2px);
+}
+.farm-layer .bk-rec .needs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3em;
+  margin-top: 0.3em;
+}
+.farm-layer .bk-rec .oneed {
+  font-size: 0.74em;
+}
+.farm-layer .bk-rec .oneed img {
+  width: 1.7em;
+  height: 1.7em;
+}

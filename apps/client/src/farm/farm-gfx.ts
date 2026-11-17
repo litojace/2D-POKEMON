@@ -914,6 +914,169 @@ const GFX = (() => {
       ),
     );
   }
+  /* The Bakery (farm-bakery.ts): a cinnamon-roofed cottage with striped
+     awnings, a brick oven at its side, a loaf on a hanging sign and a flour
+     sack by the door. Built on house(), so it shares its light and lines.
+     Meta: win (windows), chimney (smoke) and mouth (the oven's glow). */
+  const bakery = () =>
+    memo("bakery", () => {
+      const hs = house({
+        wall: "#ffe9cc",
+        roof: "#b0583a",
+        door: "#8a4a2a",
+        shutters: "",
+        flowers: false,
+        w: 140,
+        hgt: 86,
+        roofH: 60,
+        depth: 28,
+        sd: 21,
+      });
+      return sprite(270, 222, 134, 198, (g) => {
+        g.drawImage(hs.c, -hs.ax, -hs.ay, hs.w, hs.h);
+        const x0 = -70,
+          x1 = 70,
+          top = -86;
+        // Striped awnings over the windows, scalloped at the bottom.
+        for (const [wx, wy, ww] of hs.win) {
+          const ax0 = wx - 9,
+            ax1 = wx + ww + 9,
+            ay = wy - 9,
+            n = 5,
+            sw = (ax1 - ax0) / n;
+          for (let k = 0; k < n; k++) {
+            g.beginPath();
+            g.moveTo(ax0 + k * sw + 2, ay - 4);
+            g.lineTo(ax0 + (k + 1) * sw + 2, ay - 4);
+            g.lineTo(ax0 + (k + 1) * sw, ay + 9);
+            g.arc(ax0 + (k + 0.5) * sw, ay + 9, sw / 2, 0, Math.PI);
+            g.closePath();
+            g.fillStyle =
+              k % 2
+                ? vg(g, ay - 4, ay + 14, "#fffaf0", "#f1dcc4")
+                : vg(g, ay - 4, ay + 14, "#ff9bb0", "#e0607d");
+            g.fill();
+          }
+          g.strokeStyle = "#8a3044";
+          g.lineWidth = 1.6;
+          g.beginPath();
+          g.moveTo(ax0 + 2, ay - 4);
+          g.lineTo(ax1 + 2, ay - 4);
+          g.stroke();
+          g.fillStyle = "rgba(255,255,255,.35)";
+          g.fillRect(ax0 + 3, ay - 3, ax1 - ax0 - 2, 2);
+        }
+        // A loaf on a round sign, hung from a bracket at the corner.
+        g.strokeStyle = "#3a2a1c";
+        g.lineWidth = 2.4;
+        g.beginPath();
+        g.moveTo(x1 - 2, top + 12);
+        g.lineTo(x1 + 24, top + 12);
+        g.moveTo(x1 + 18, top + 12);
+        g.lineTo(x1 + 18, top + 18);
+        g.stroke();
+        ball(g, x1 + 18, top + 31, 13, "#7a5230", 0.3);
+        g.strokeStyle = "#4a2f18";
+        g.lineWidth = 1.8;
+        g.beginPath();
+        g.arc(x1 + 18, top + 31, 13, 0, 7);
+        g.stroke();
+        ell(g, x1 + 18, top + 32, 9, 5.5);
+        g.fillStyle = vg(g, top + 26, top + 38, "#ffd27a", "#d48a32");
+        g.fill();
+        g.strokeStyle = "#8a4a1a";
+        g.lineWidth = 1.2;
+        g.stroke();
+        g.strokeStyle = "#fff1c9";
+        g.lineWidth = 1.2;
+        for (const dx of [-4, 0, 4]) {
+          g.beginPath();
+          g.moveTo(x1 + 18 + dx - 1.5, top + 34);
+          g.lineTo(x1 + 18 + dx + 1.5, top + 29.5);
+          g.stroke();
+        }
+        // A flour sack by the door.
+        const fx = x1 - 22;
+        g.beginPath();
+        g.moveTo(fx - 11, -1);
+        g.quadraticCurveTo(fx - 13, -18, fx - 6, -24);
+        g.lineTo(fx + 6, -24);
+        g.quadraticCurveTo(fx + 13, -18, fx + 11, -1);
+        g.closePath();
+        g.fillStyle = vg(g, -24, 0, "#fbf3e2", "#d9c9a8");
+        g.fill();
+        g.strokeStyle = "#8a7656";
+        g.lineWidth = 1.6;
+        g.stroke();
+        g.fillStyle = "#c9a26a";
+        rr(g, fx - 7, -27, 14, 5, 2);
+        g.fill();
+        g.fillStyle = "#e0607d";
+        g.font = "900 8px 'Barlow Condensed', sans-serif";
+        g.textAlign = "center";
+        g.fillText("FLOUR", fx, -9);
+        // The brick oven: a dome at the left, its mouth aglow.
+        const ox = x0 - 26,
+          orad = 30;
+        g.beginPath();
+        g.moveTo(ox - orad, 2);
+        g.arc(ox, 2, orad, Math.PI, 0);
+        g.closePath();
+        g.fillStyle = (() => {
+          const gr = g.createRadialGradient(ox - 10, -18, 4, ox, 0, orad + 6);
+          gr.addColorStop(0, "#f0a07a");
+          gr.addColorStop(0.55, "#c9603e");
+          gr.addColorStop(1, "#8a3a24");
+          return gr;
+        })();
+        g.fill();
+        g.save();
+        g.clip();
+        g.strokeStyle = "rgba(90,30,16,.45)";
+        g.lineWidth = 1.2;
+        for (let r = 9; r < orad; r += 9) {
+          g.beginPath();
+          g.arc(ox, 2, r, Math.PI, 0);
+          g.stroke();
+        }
+        for (let a = 0.25; a < Math.PI; a += 0.42) {
+          g.beginPath();
+          g.moveTo(ox - Math.cos(a) * 9, 2 - Math.sin(a) * 9);
+          g.lineTo(ox - Math.cos(a) * orad, 2 - Math.sin(a) * orad);
+          g.stroke();
+        }
+        g.restore();
+        g.strokeStyle = "#5a2414";
+        g.lineWidth = 2.2;
+        g.beginPath();
+        g.arc(ox, 2, orad, Math.PI, 0);
+        g.stroke();
+        // The mouth.
+        g.beginPath();
+        g.moveTo(ox - 12, 1);
+        g.lineTo(ox - 12, -8);
+        g.arc(ox, -8, 12, Math.PI, 0);
+        g.lineTo(ox + 12, 1);
+        g.closePath();
+        g.fillStyle = vg(g, -20, 1, "#3a1a10", "#1c0c08");
+        g.fill();
+        g.strokeStyle = "#e8b48a";
+        g.lineWidth = 2.4;
+        g.stroke();
+        // A stone slab under it.
+        rr(g, ox - orad - 4, -1, orad * 2 + 8, 6, 3);
+        g.fillStyle = vg(g, -1, 5, "#c9c3b6", "#8e8778");
+        g.fill();
+        g.strokeStyle = "#5e584c";
+        g.lineWidth = 1.2;
+        g.stroke();
+        return {
+          win: hs.win,
+          chimney: hs.chimney,
+          mouth: [ox, -7],
+        };
+      });
+    });
   const barn = () =>
     memo("barn", () =>
       sprite(260, 230, 120, 210, (g) => {
@@ -2733,6 +2896,7 @@ const GFX = (() => {
     hay,
     mailbox,
     house,
+    bakery,
     barn,
     windmillBody,
     windmillSails,
