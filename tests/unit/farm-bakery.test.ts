@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   CROP_BY_ID,
-  DECOR_AREA,
   DECOR_BLOCKS,
   LEAF_TRADE,
   MILK,
@@ -95,23 +94,20 @@ describe("the recipes", () => {
 });
 
 describe("the building", () => {
-  it("stands on ground decorations can't use, clear of the field and paths", () => {
-    expect(DECOR_BLOCKS).toContainEqual({ k: "rect", ...BAKERY.ground });
-    const g = BAKERY.ground;
-    expect(g.x0).toBeGreaterThanOrEqual(DECOR_AREA.x0);
-    expect(g.x1).toBeLessThanOrEqual(DECOR_AREA.x1);
-    expect(g.y1).toBeLessThanOrEqual(DECOR_AREA.y1);
-    expect(BAKERY.x).toBeGreaterThan(g.x0);
-    expect(BAKERY.x).toBeLessThan(g.x1);
-    expect(BAKERY.y).toBeGreaterThan(g.y0);
-    expect(BAKERY.y).toBeLessThanOrEqual(g.y1);
-    // No other rectangle block (field, lane, path, doghouse) overlaps it.
-    for (const b of DECOR_BLOCKS) {
-      if (b.k !== "rect" || b.x0 === g.x0) continue;
-      expect(b.x0 < g.x1 && g.x0 < b.x1 && b.y0 < g.y1 && g.y0 < b.y1).toBe(
-        false,
-      );
+  it("stands in the back row, which decorations never use", () => {
+    // The back row (home, mill, orders board, market, barn) is the third
+    // block: the Bakery's front wall, oven and sign all fall inside it.
+    const row = DECOR_BLOCKS.find(
+      (b) => b.k === "rect" && b.y0 === 120 && b.x0 === 20,
+    );
+    expect(row).toBeDefined();
+    if (row?.k !== "rect") return;
+    for (const x of [BAKERY.x - 126, BAKERY.x, BAKERY.x + 114]) {
+      expect(x).toBeGreaterThan(row.x0);
+      expect(x).toBeLessThan(row.x1);
     }
+    expect(BAKERY.y).toBeGreaterThan(row.y0);
+    expect(BAKERY.y + 4).toBeLessThan(row.y1);
   });
 
   it("sells 3 more queue slots, each dearer", () => {

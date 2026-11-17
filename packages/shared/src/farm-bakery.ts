@@ -6,7 +6,7 @@
  * them for display, and tests/integration/farm-bakery.test.ts checks that
  * the two agree. Numbers and their reasons: docs/farm-bakery.md.
  */
-import { BAKERY_GROUND, CROP_BY_ID, MILK } from "./farm.js";
+import { CROP_BY_ID, MILK } from "./farm.js";
 
 /** Building it, its queue and where it stands on the farm. */
 export const BAKERY = {
@@ -26,11 +26,13 @@ export const BAKERY = {
    */
   rushPerMinute: 2,
   rushMin: 10,
-  /** The middle of its front wall, on the ground (world px of the farm scene). */
-  x: 650,
-  y: 925,
-  /** The ground it takes: decorations can't stand here (DECOR_BLOCKS). */
-  ground: BAKERY_GROUND,
+  /**
+   * Where it stands: the farmhouse's place in the back row, left of the
+   * windmill (the middle of its front wall, on the ground, in the farm
+   * scene's world px). The back row is never decorations' ground.
+   */
+  x: 190,
+  y: 292,
 } as const;
 
 export interface BakeryRecipe {

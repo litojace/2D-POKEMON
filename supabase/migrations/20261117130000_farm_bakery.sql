@@ -7,12 +7,9 @@
 --     packages/shared/src/farm-bakery.ts): ingredients from the barn (plain
 --     crops and Storm Milk), oven time, farm XP, a fixed sell price and the
 --     farm level each unlocks at. Each baked good is a barn good.
---   * The Bakery stands below the field, left of the path down from the gate
---     (its ground is 520..770 × 850..940; the Chicken Coop's is right of the
---     path). Decorations can't stand there any more (arena_farm_decor_fits,
---     as DECOR_BLOCKS, and the decor actions themselves, so the rule holds
---     whatever replaces arena_farm_decor_fits later); any that did go into
---     storage, to place again for free.
+--   * The Bakery takes the farmhouse's place in the back row (the house had
+--     no use). The back row was never decorations' ground, so nothing about
+--     decorations changes.
 --   * It is built at farm level 10 for 1,200 Gold Leaves (+40 farm XP). Its
 --     oven bakes one thing at a time, from a queue of 2 slots (600, 1,200
 --     and 2,400 leaves buy a 3rd, 4th and 5th). A new one starts when the
@@ -82,55 +79,7 @@ create table if not exists public.arena_farm_bakery_queue (
 alter table public.arena_farm_bakery_queue enable row level security;
 revoke all on public.arena_farm_bakery_queue from public, anon, authenticated, service_role;
 
--- Decorations standing on the Bakery's ground go into storage (once: a
--- second run finds none there).
-with moved as (
-  delete from public.arena_farm_decor_pieces p
-   using public.arena_farm_decor_items i
-   where i.id = p.item
-     and p.x - coalesce(i.w, 30) < 770 and 520 < p.x + coalesce(i.w, 30)
-     and p.y - coalesce(i.d, 14) < 940 and 850 < p.y + 4
-  returning p.player_id, p.item
-)
-insert into public.arena_farm_decor_credits(player_id, item, qty)
-select player_id, item, count(*)::integer from moved group by player_id, item
-on conflict (player_id, item) do update set qty = public.arena_farm_decor_credits.qty + excluded.qty;
 
--- Whether a decoration standing at (px, py) would be on the Bakery's ground.
-create or replace function public.arena_farm_on_bakery(v_item text, px integer, py integer) returns boolean
-language sql stable security definer set search_path = public as $$
-  select px - coalesce(i.w, 30) < 770 and 520 < px + coalesce(i.w, 30)
-     and py - coalesce(i.d, 14) < 940 and 850 < py + 4
-    from (select (select w from public.arena_farm_decor_items where id = v_item) w,
-                 (select d from public.arena_farm_decor_items where id = v_item) d) i
-$$;
-revoke all on function public.arena_farm_on_bakery(text, integer, integer)
-  from public, anon, authenticated, service_role;
-
--- The decoration check as before (the farm's own, the coop's, the
--- decorations'), with the Bakery's ground among the blocks. Off the farm
--- stays off the farm; anything else on its ground is in the way, before any
--- other decoration (as decorFits).
-do $$
-begin
-  if to_regprocedure('public.arena_farm_decor_fits_prebakery(uuid, text, integer, integer, bigint)') is null then
-    alter function public.arena_farm_decor_fits(uuid, text, integer, integer, bigint)
-      rename to arena_farm_decor_fits_prebakery;
-  end if;
-end $$;
-create or replace function public.arena_farm_decor_fits(pid uuid, v_item text, px integer, py integer,
-  except_id bigint default null) returns text
-language plpgsql stable security definer set search_path = public as $$
-declare e text = public.arena_farm_decor_fits_prebakery(pid, v_item, px, py, except_id);
-begin
-  if e is distinct from 'Choose a spot on the farm' and public.arena_farm_on_bakery(v_item, px, py) then
-    return 'Something is in the way';
-  end if;
-  return e;
-end; $$;
-revoke all on function public.arena_farm_decor_fits(uuid, text, integer, integer, bigint),
-  public.arena_farm_decor_fits_prebakery(uuid, text, integer, integer, bigint)
-  from public, anon, authenticated, service_role;
 
 -- The name of anything the barn holds.
 create or replace function public.arena_farm_good_name(p_good text) returns text
@@ -176,20 +125,6 @@ declare f public.arena_farms; r public.arena_farm_bakery_recipes; q public.arena
   v_saved interval;
 begin
   xp = 0;
-  -- Decorations never go on the Bakery's ground, whichever decoration
-  -- check is in force (a later migration may replace arena_farm_decor_fits).
-  if a->>'a' in ('decor-place', 'decor-move')
-      and jsonb_typeof(a->'x') = 'number' and (a->>'x') ~ '^[0-9]+$' and (a->>'x')::integer % 10 = 0
-      and jsonb_typeof(a->'y') = 'number' and (a->>'y') ~ '^[0-9]+$' and (a->>'y')::integer % 10 = 0
-      and public.arena_farm_on_bakery(
-        case when a->>'a' = 'decor-place' then a->>'item'
-          else (select dp.item from public.arena_farm_decor_pieces dp where dp.player_id = pid
-            and jsonb_typeof(a->'piece') = 'number' and (a->>'piece') ~ '^[0-9]+$'
-            and dp.id = (a->>'piece')::bigint) end,
-        (a->>'x')::integer, (a->>'y')::integer) then
-    err = 'Something is in the way';
-    return;
-  end if;
   if a->>'a' is null or a->>'a' not in ('buy-bakery', 'buy-bake-slot', 'bake', 'bake-collect', 'bake-rush', 'sell-good') then
     select x.err, x.gained, x.xp into err, gained, xp
       from public.arena_farm_act_prebakery(pid, a, ref, t, d) x;

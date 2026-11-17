@@ -876,11 +876,11 @@ test("decorating on a phone: a tap puts the decoration there, a drag on it moves
     await sheet.locator('[data-deco="hay"]').click();
     await expect(sheet).toBeHidden();
     await expect(bar).toContainText("Hay Bale");
-    const p = await farmPoint(page, 1500, 920);
+    const p = await farmPoint(page, 600, 920);
     await page.touchscreen.tap(p.x, p.y);
     await expect
       .poll(async () => (await decoState(page)).edit)
-      .toMatchObject({ x: 1500, y: 920 });
+      .toMatchObject({ x: 600, y: 920 });
     // The bar fits the phone's width, over the farm.
     const box = await bar.boundingBox();
     expect(box!.x).toBeGreaterThanOrEqual(0);
@@ -890,7 +890,7 @@ test("decorating on a phone: a tap puts the decoration there, a drag on it moves
     await expect
       .poll(() => farmActions(page))
       .toEqual([
-        { a: "decor-place", item: "hay", x: 1500, y: 920, flip: false },
+        { a: "decor-place", item: "hay", x: 600, y: 920, flip: false },
       ]);
     expect(errors).toEqual([]);
   } finally {
@@ -2509,13 +2509,13 @@ test("tapping the farm's animals, trees and buildings reacts and sends nothing; 
     const h = (window as any).__farm.hens[0];
     return h ? [h.x, h.y - 12] : null;
   });
-  // A hen, the cat by the house, the pond, the apple tree, the house, the mill.
+  // A hen, the cat asleep on the Bakery's oven (a tap wakes it; the
+  // Bakery itself opens its sheet), the pond, the apple tree, the mill.
   const spots = [
     ...(hen ? [hen] : []),
-    [150, 294],
+    [94, 256],
     [250, 990],
     [338, 180],
-    [205, 215],
     [470, 170],
   ];
   for (const [x, y] of spots) {

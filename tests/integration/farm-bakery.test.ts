@@ -2,12 +2,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { randomUUID } from "node:crypto";
 import { readFile, readdir } from "node:fs/promises";
 import { afterAll, beforeAll, expect, it } from "vitest";
-import {
-  DECOR_AREA,
-  FARM_DECOR,
-  decorFits,
-  type FarmDecorPiece,
-} from "../../packages/shared/src/farm";
+import { decorFits } from "../../packages/shared/src/farm";
 import {
   BAKERY,
   BAKERY_RECIPES,
@@ -523,101 +518,28 @@ it("puts baked goods in orders, and delivers them from the barn", async () => {
   expect(stock(yes.farm, good)).toBe(0);
 });
 
-it("keeps decorations off the Bakery, and moved any that stood there into storage", async () => {
-  // The same answers as decorFits on and around its ground.
-  const placed: FarmDecorPiece[] = [];
-  const checks: [string, number, number][] = [];
-  for (let x = BAKERY.ground.x0 - 120; x <= BAKERY.ground.x1 + 120; x += 30)
-    for (let y = BAKERY.ground.y0 - 60; y <= DECOR_AREA.y1; y += 20)
-      checks.push([FARM_DECOR[(x + y) % FARM_DECOR.length].id, x, y]);
-  await owner(
-    "delete from public.arena_farm_decor_pieces where player_id = $1",
-    [player],
-  );
-  const sql = await owner(
-    `select c.ord, public.arena_farm_decor_fits($1, c.item, c.x, c.y) e
-       from jsonb_to_recordset($2::jsonb) c(ord int, item text, x int, y int) order by c.ord`,
-    [
-      player,
-      JSON.stringify(checks.map(([item, x, y], ord) => ({ ord, item, x, y }))),
-    ],
-  );
-  expect(sql.map((r: any) => r.e)).toEqual(
-    checks.map(([item, x, y]) => decorFits(item, x, y, placed)),
-  );
-  expect(decorFits("rock", BAKERY.x, BAKERY.y - 25, [])).toBe(
-    "Something is in the way",
-  );
-  // A rock on its ground and a bench beside it; the migration runs again.
-  await owner(
-    `insert into public.arena_farm_decor_pieces(player_id, item, x, y) values
-       ($1, 'rock', $2, $3), ($1, 'bench', 1000, 1000)`,
-    [player, BAKERY.x, BAKERY.y - 25],
-  );
-  await owner(
-    "delete from public.arena_farm_decor_credits where player_id = $1",
-    [player],
-  );
-  await db.exec(await readFile(`supabase/migrations/${MIGRATION}`, "utf8"));
-  await db.exec(await readFile(`supabase/migrations/${MIGRATION}`, "utf8"));
-  const f = await farm();
-  expect(f.decor.map((p: any) => p.item)).toEqual(["bench"]);
-  expect(f.decorCredits).toEqual({ rock: 1 });
-  // Running it again kept the Bakery, its slots and its goods.
-  expect(f.bakery.owned).toBe(true);
-  expect(f.bakery.slots).toBe(BAKERY.maxSlots);
-});
-
-it("keeps decorations off the Bakery even if a later migration replaces the decoration check", async () => {
-  // A migration that copies an older arena_farm_decor_fits (without the
-  // Bakery) lands after this one: the decor actions still refuse its ground.
-  const old = await readFile(
-    "supabase/migrations/20261116120000_farm_free_decor.sql",
-    "utf8",
-  );
-  const fn = old.slice(
-    old.indexOf("create or replace function public.arena_farm_decor_fits("),
-    old.indexOf("end; $$;", old.indexOf("public.arena_farm_decor_fits(")) +
-      "end; $$;".length,
-  );
-  await db.exec("reset role");
-  await db.exec(fn);
-  expect(
-    (
-      await owner("select public.arena_farm_decor_fits($1, 'rock', $2, $3) e", [
-        player,
-        BAKERY.x,
-        BAKERY.y - 25,
-      ])
-    )[0].e,
-  ).toBeNull();
-  await level(20);
-  await owner(
-    "delete from public.arena_farm_decor_pieces where player_id = $1",
-    [player],
-  );
-  const r = await act([
-    { a: "decor-place", item: "rock", x: BAKERY.x, y: BAKERY.y - 25 },
-    { a: "decor-place", item: "rock", x: 1000, y: 1000 },
-  ]);
-  expect(r.results[0]).toEqual({ ok: false, error: "Something is in the way" });
-  expect(r.results[1]).toMatchObject({ ok: true });
-  const piece = r.results[1].piece;
-  expect(
-    await one({ a: "decor-move", piece, x: BAKERY.x, y: BAKERY.y - 25 }),
-  ).toEqual({ ok: false, error: "Something is in the way" });
-  // Running this migration again puts its wrapper back over the old check.
+it("stands in the back row, where decorations never go", async () => {
+  // Its front, its oven and its sign: all on ground the farm keeps clear.
+  // (Decorations snap to a 10 px grid.)
+  for (const [x, y] of [
+    [BAKERY.x, 280],
+    [BAKERY.x - 90, 290],
+    [BAKERY.x + 90, 270],
+  ]) {
+    const sql = await owner(
+      "select public.arena_farm_decor_fits($1, 'rock', $2, $3) e",
+      [player, x, y],
+    );
+    expect(sql[0].e).toBe("Something is in the way");
+    expect(decorFits("rock", x, y, [])).toBe("Something is in the way");
+  }
+  // Running the migration again keeps the Bakery, its slots and its goods.
+  const before = await farm();
   await db.exec("reset role");
   await db.exec(await readFile(`supabase/migrations/${MIGRATION}`, "utf8"));
-  expect(
-    (
-      await owner("select public.arena_farm_decor_fits($1, 'rock', $2, $3) e", [
-        player,
-        BAKERY.x,
-        BAKERY.y - 25,
-      ])
-    )[0].e,
-  ).toBe("Something is in the way");
+  const after = await farm();
+  expect(after.bakery).toEqual(before.bakery);
+  expect(after.barn).toEqual(before.barn);
 });
 
 it("doesn't let players call the functions it wraps directly", async () => {
@@ -626,7 +548,6 @@ it("doesn't let players call the functions it wraps directly", async () => {
     "select public.arena_farm_order_prebakery(gen_random_uuid(), 0, 'deliver')",
     "select public.arena_farm_act_prebakery(auth.uid(), '{}'::jsonb, 'x', now(), current_date)",
     "select public.arena_farm_state_prebakery(auth.uid())",
-    "select public.arena_farm_decor_fits_prebakery(auth.uid(), 'rock', 100, 900)",
     "select public.arena_farm_new_order_prebakery(auth.uid(), 0, 10)",
   ])
     await expect(db.query(sql)).rejects.toThrow(/permission denied/);

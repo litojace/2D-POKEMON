@@ -88,37 +88,27 @@ game's only corn, which opens at level 60: it is the long-term recipe.
 
 ## Where it stands
 
-Below the field, left of the path down from the gate, beside the pond, at
-(650, 925) in the farm scene's world pixels. The meadow right of the path
-is the Chicken Coop's (`claude/dreamy-darwin-1b94xx`, 990..1350 ×
-846..1010). The Bakery's ground, 520..770 × 850..940, is in `DECOR_BLOCKS`
-and the database's decoration check whether it is built or not, so
-decorations never stand on it; the migration put any that did into
-storage, to place again for free. The guard dog and the hens walk around
-it (`pathWorld().decor`). It casts a shadow, its windows light at night
-once built, its oven glows and its chimney smokes while it bakes, and a
-bubble over the oven shows what is ready.
+In the farmhouse's place in the back row, left of the windmill, at
+(190, 292) in the farm scene's world pixels. The house had no use; the
+Bakery gives the spot one. The back row has never been decorations' ground,
+so nothing about decorations changed. Before it's built the building stands
+shut with a sign. Its windows light at night (as the house's did), its oven
+glows and its chimney smokes while it bakes, it casts a shadow, and a bubble
+over the oven shows what is ready. The farm cat that slept by the house's
+door now naps curled up on top of the warm oven; a tap on the cat wakes it
+(the rest of the building opens the Bakery).
 
 ## Living with the coop and the new decorations
 
 Three farm branches change the same database functions. This migration
 (`20261117130000`) sorts after the coop's (`20261117100000`, `…100001`)
 and the decorations' (`20261117120000`), and wraps instead of copying:
-
-- `arena_farm_decor_fits`, `arena_farm_order`, `arena_farm_new_order`,
-  `arena_farm_state` and `arena_farm_act_more` are renamed `*_prebakery`
-  and called from the new function, so the coop's eggs and the
-  decorations' overlapping paths stay in force under it. The renamed ones
-  can't be called by players.
-- The Bakery's actions handler also refuses decorations on its ground, so
-  the rule holds even if a branch that copies `arena_farm_decor_fits` in
-  full merges later (`tests/integration/farm-bakery.test.ts`).
-- Checked by running the coop's tests on all three migrations together:
-  the coop's rules all pass. Two coop test fixtures stand on the Bakery's
-  ground (a Hay Bale at (600, 900) in `farm-coop.test.ts`, a Gazebo at
-  (600, 960) in `farm-decor.test.ts`): whichever branch merges second moves
-  them. `farm-scene.ts`, `farm.ts`, `farm-fake.ts` and `farm.spec.ts` will
-  need an ordinary merge of both sides.
+`arena_farm_order`, `arena_farm_new_order`, `arena_farm_state` and
+`arena_farm_act_more` are renamed `*_prebakery` and called from the new
+function, so the coop's eggs stay in force under them. The renamed ones
+can't be called by players. It doesn't touch `arena_farm_decor_fits` at
+all. `farm-scene.ts`, `farm.ts`, `farm-fake.ts` and `farm.spec.ts` will need
+an ordinary merge of both sides.
 
 ## Changing it
 

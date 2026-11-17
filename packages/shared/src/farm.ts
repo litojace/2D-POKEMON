@@ -889,14 +889,11 @@ export const DECOR_AREA = { x0: 20, x1: 1740, y0: 120, y1: 1060 } as const;
 export type DecorBlock =
   | { k: "rect"; x0: number; x1: number; y0: number; y1: number }
   | { k: "oval"; x: number; y: number; rx: number; ry: number };
-/** The ground the Bakery takes (farm-bakery.ts), built or not. */
-export const BAKERY_GROUND = { x0: 520, x1: 770, y0: 850, y1: 940 } as const;
 /**
  * What decorations can't stand on: the field and its fence, the lane in
  * front of it, the back row (home, mill, orders board, market, barn), the
  * pasture, the well, the doghouse and the dog's spot, the scarecrow's spot,
- * the path down from the gate, the Bakery's ground, the pond and the farm's
- * own trees.
+ * the path down from the gate, the pond and the farm's own trees.
  * The database checks the same list (arena_farm_decor_fits).
  */
 export const DECOR_BLOCKS: readonly DecorBlock[] = [
@@ -908,7 +905,6 @@ export const DECOR_BLOCKS: readonly DecorBlock[] = [
   { k: "rect", x0: 1470, x1: 1680, y0: 754, y1: 840 },
   { k: "rect", x0: 250, x1: 326, y0: 520, y1: 576 },
   { k: "rect", x0: 830, x1: 940, y0: 770, y1: 1060 },
-  { k: "rect", ...BAKERY_GROUND },
   { k: "oval", x: 250, y: 990, rx: 190, ry: 82 },
   ...(
     [

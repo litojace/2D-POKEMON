@@ -312,6 +312,8 @@ export function openFarm(options) {
   // and the market's counter no longer open onto the fence, and the lane
   // from home to the barn shows instead of running under it.
   const PAST = { x0: 1480, x1: 1720, y0: 420, y1: 664 },
+    // Where the farmhouse stood: the Bakery's place now (BAKERY), and
+    // where the paths to the Plaza and the barn start.
     HOUSE = { x: 190, y: 292 },
     MILL = { x: 470, y: 278 },
     BOARDP = { x: 700, y: 282 },
@@ -1221,8 +1223,7 @@ export function openFarm(options) {
     well: WELL,
     doghouse: DOGH,
     scarecrow: F.scarecrow ? [288, 562] : null,
-    // The Bakery stands on its ground whether built or not.
-    decor: [...F.decor.map((p) => decorBox(p.item, p.x, p.y)), BAKERY.ground],
+    decor: F.decor.map((p) => decorBox(p.item, p.x, p.y)),
     gateX: FCX,
     width: WW,
     height: WH,
@@ -1257,6 +1258,12 @@ export function openFarm(options) {
   let decoyIn = 60 + Math.random() * 120;
   // The pasture's cow (migration 049): it walks slowly from side to side.
   const COW = { x: 1600, y: 610, face: -1, t: 0 };
+  /* The farm cat naps curled up on top of the Bakery's brick oven, the
+     warmest spot on the farm (it slept by the farmhouse's door before the
+     Bakery took the house's place). A tap on it wakes it for a moment
+     rather than opening the Bakery. */
+  const CAT = { x: BAKERY.x - 96, y: BAKERY.y - 26 };
+  const onCat = (w) => Math.hypot(w.x - CAT.x, w.y - (CAT.y - 10)) < 24;
   const milkReady = () => F.pasture && F.milkAt <= serverNow();
   /* The Bakery (farm-bakery.ts): the farm as its shared rules read it, what
      the oven is baking now, and what's ready to collect. */
@@ -1771,15 +1778,6 @@ export function openFarm(options) {
     ph: i,
     shake: 0,
   }));
-  /** Your home. Its name is a tag above it, like every building's. */
-  const HOUSE_SPR = () =>
-    GFX.house({
-      wall: "#fff3dd",
-      roof: "#d9473f",
-      shutters: "#4fae46",
-      w: 150,
-      sd: 9,
-    });
   /** Squash-and-stretch after a tap (house, mill, barn…): 1 → 0. */
   const bounce = {};
   const squash = (k) => {
@@ -1880,7 +1878,7 @@ export function openFarm(options) {
     if (!ready.length) return;
     // A speech bubble out of the oven: tap the Bakery to collect.
     const bx = BAKERY.x - 96,
-      by = BAKERY.y - 66 + (reduced ? 0 : Math.sin(time * 3) * 3);
+      by = BAKERY.y - 86 + (reduced ? 0 : Math.sin(time * 3) * 3);
     ctx.fillStyle = "#fff";
     ctx.beginPath();
     ctx.roundRect(bx - 24, by - 22, 48, 34, 12);
@@ -1938,7 +1936,6 @@ export function openFarm(options) {
       if (m.t) tree(m);
       else if (m.b) L.sprite(m.b, m.x, m.y + 4);
     }
-    L.sprite(HOUSE_SPR(), HOUSE.x, HOUSE.y);
     L.sprite(GFX.windmillBody(), MILL.x, MILL.y);
     L.sprite(GFX.board(), BOARDP.x, BOARDP.y);
     L.sprite(GFX.stall(), STALL.x, STALL.y);
@@ -1962,29 +1959,21 @@ export function openFarm(options) {
     ctx.translate(-cam.x, -cam.y);
     nl.follow(ctx);
     ctx.restore();
-    const hs = HOUSE_SPR();
-    for (const [wx, wy, ww, wh] of hs.win ?? [])
+    nl.light(BARN.x, BARN.y - 60, 200, 0.4 * k, 0.7);
+    nl.light(STALL.x, STALL.y - 40, 190, 0.45 * k, 0.7);
+    nl.light(WELL.x, WELL.y - 20, 110, 0.25 * k, 0.75);
+    // The Bakery's windows (lit at night like the farmhouse's were), and
+    // its oven while it bakes.
+    const bs = GFX.bakery();
+    for (const [wx, wy, ww, wh] of bs.win)
       nl.light(
-        HOUSE.x + wx + ww / 2,
-        HOUSE.y + wy + wh + 10,
+        BAKERY.x + wx + ww / 2,
+        BAKERY.y + wy + wh + 10,
         120,
         0.45 * k,
         0.75,
       );
-    nl.light(BARN.x, BARN.y - 60, 200, 0.4 * k, 0.7);
-    nl.light(STALL.x, STALL.y - 40, 190, 0.45 * k, 0.7);
-    nl.light(WELL.x, WELL.y - 20, 110, 0.25 * k, 0.75);
-    // The Bakery's windows once it's built, and its oven while it bakes.
     if (cur().me && F.bakery.owned) {
-      const bs = GFX.bakery();
-      for (const [wx, wy, ww, wh] of bs.win)
-        nl.light(
-          BAKERY.x + wx + ww / 2,
-          BAKERY.y + wy + wh + 10,
-          120,
-          0.5 * k,
-          0.75,
-        );
       if (bakingNow())
         nl.light(
           BAKERY.x + bs.mouth[0],
@@ -4264,18 +4253,18 @@ export function openFarm(options) {
       });
       return;
     }
-    if (Math.hypot(w.x - (HOUSE.x - 40), w.y - HOUSE.y) < 30) {
+    if (onCat(w)) {
       catAwake = 3;
       sfx("meow");
       FX.push({
         bark: 1,
-        x: HOUSE.x - 40,
-        y: HOUSE.y - 16,
+        x: CAT.x,
+        y: CAT.y - 24,
         t: 0,
         life: 1.4,
         text: "MRRP?",
       });
-      feel.burst(HOUSE.x - 40, HOUSE.y - 30, 4, "heart", {
+      feel.burst(CAT.x, CAT.y - 38, 4, "heart", {
         v: 40,
         up: 50,
         life: 0.9,
@@ -4306,19 +4295,20 @@ export function openFarm(options) {
       sfx("whoosh");
       return;
     }
+    // A friend's Bakery: a knock and a puff from its chimney.
     if (
-      Math.abs(w.x - (HOUSE.x + 10)) < 95 &&
-      w.y < HOUSE.y + 10 &&
-      w.y > HOUSE.y - 200
+      Math.abs(w.x - (BAKERY.x - 6)) < 120 &&
+      w.y < BAKERY.y + 14 &&
+      w.y > BAKERY.y - 156
     ) {
-      bounce.house = 1;
+      bounce.bakery = 1;
       sfx("knock");
-      const hs = HOUSE_SPR();
+      const hs = GFX.bakery();
       if (hs.chimney)
         for (let k = 0; k < 4; k++)
           FSMOKE.push({
-            x: HOUSE.x + hs.chimney[0],
-            y: HOUSE.y + hs.chimney[1] - k * 8,
+            x: BAKERY.x + hs.chimney[0],
+            y: BAKERY.y + hs.chimney[1] - k * 8,
             t: k * 0.1,
             life: 2.4,
             vx: 4 + Math.random() * 8,
@@ -5375,14 +5365,8 @@ export function openFarm(options) {
     TREES.forEach((tr) =>
       items.push({ y: tr.y, d: () => drawTreeS(tr, time, 0.7) }),
     );
+    // The Bakery stands where the farmhouse was (drawBakery, below).
     items.push(
-      {
-        y: HOUSE.y,
-        d: () => {
-          GFX.shadow(ctx, HOUSE.x + 30, HOUSE.y + 4, 110, 20);
-          blitB("house", HOUSE_SPR(), HOUSE.x, HOUSE.y);
-        },
-      },
       {
         y: MILL.y,
         d: () => {
@@ -5550,15 +5534,16 @@ export function openFarm(options) {
         drawWellSparkles(time);
       },
     });
+    // On the oven: drawn just after the Bakery.
     items.push({
-      y: HOUSE.y + 8,
+      y: BAKERY.y + 1,
       d: () =>
         GFX.cat(
           ctx,
           catAwake > 0 ? "awake" : "sleep",
           time,
-          HOUSE.x - 40,
-          HOUSE.y + 8,
+          CAT.x,
+          CAT.y,
           1.1,
           1,
         ),
@@ -5916,14 +5901,13 @@ export function openFarm(options) {
     ctx.translate(-cam.x, -cam.y);
     ctx.globalCompositeOperation = "lighter";
     const fl = 0.92 + Math.sin(time * 9) * 0.04 + Math.sin(time * 5.3) * 0.04;
-    const hs = HOUSE_SPR();
-    for (const [wx, wy, ww, wh] of hs.win ?? []) {
+    for (const [wx, wy, ww, wh] of GFX.bakery().win) {
       ctx.fillStyle = `rgba(255,200,90,${0.6 * lit})`;
-      ctx.fillRect(HOUSE.x + wx + 3, HOUSE.y + wy + 3, ww - 6, wh - 6);
+      ctx.fillRect(BAKERY.x + wx + 3, BAKERY.y + wy + 3, ww - 6, wh - 6);
       glow(
         ctx,
-        HOUSE.x + wx + ww / 2,
-        HOUSE.y + wy + wh / 2,
+        BAKERY.x + wx + ww / 2,
+        BAKERY.y + wy + wh / 2,
         70,
         "255,190,90",
         0.45 * lit * fl,
@@ -6428,17 +6412,6 @@ export function openFarm(options) {
         life: 2.6,
         vx: 4 + Math.random() * 6,
       });
-    }
-    if (!reduced && Math.random() < dt * 2.5) {
-      const hs = HOUSE_SPR();
-      if (hs.chimney)
-        FSMOKE.push({
-          x: HOUSE.x + hs.chimney[0],
-          y: HOUSE.y + hs.chimney[1],
-          t: 0,
-          life: 2.4,
-          vx: 6 + Math.random() * 6,
-        });
     }
     FSMOKE.forEach((m) => {
       m.t += dt;
@@ -7804,7 +7777,10 @@ export function openFarm(options) {
     }
     if (
       !V &&
-      Math.abs(w.x - (BAKERY.x - 20)) < 130 &&
+      // From its oven to its sign; a tap on the cat wakes it instead.
+      !onCat(w) &&
+      w.x > BAKERY.x - 128 &&
+      w.x < BAKERY.x + 116 &&
       w.y > BAKERY.y - 156 &&
       w.y < BAKERY.y + 14
     ) {

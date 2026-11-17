@@ -44,19 +44,16 @@ describe("decorations on the farm's land", () => {
       );
   });
   it("keeps decorations apart, except the one being moved", () => {
-    // Right of the Chicken Coop's ground, below the doghouse.
-    const placed: FarmDecorPiece[] = [
-      { id: 1, item: "bench", x: 1500, y: 900 },
-    ];
-    expect(decorFits("rock", 1540, 900, placed)).toBe(
+    const placed: FarmDecorPiece[] = [{ id: 1, item: "bench", x: 560, y: 900 }];
+    expect(decorFits("rock", 600, 900, placed)).toBe(
       "Too close to another decoration",
     );
-    expect(decorFits("bench", 1510, 900, placed, 1)).toBeNull();
+    expect(decorFits("bench", 570, 900, placed, 1)).toBeNull();
     // Right beside it is fine: the boxes don't overlap.
-    const b = decorBox("bench", 1500, 900),
-      r = decorBox("rock", 1580, 900);
+    const b = decorBox("bench", 560, 900),
+      r = decorBox("rock", 640, 900);
     expect(r.x0).toBeGreaterThan(b.x1);
-    expect(decorFits("rock", 1580, 900, placed)).toBeNull();
+    expect(decorFits("rock", 640, 900, placed)).toBeNull();
   });
   it("finds the nearest free spot for a new decoration", () => {
     const spot = nearestDecorSpot("tower", 800, 500, []);
