@@ -2367,16 +2367,43 @@ function numberFrame() {
   const { x, y } = SPIRE_RING;
   return { x: x - 90, y: y - 60, w: 180, h: 120 };
 }
+/**
+ * Where to draw `text` so its ink (not its em box) is centred on (0, 0).
+ * A "middle" baseline centres the em box, and Georgia's old-style digits
+ * sit low or high in it ("7" drops below the line, "6" climbs): the number
+ * sat off the ring's centre, by a different amount on every floor and font.
+ * The glyphs' measured bounds put it in the middle whatever the font
+ * (without them: a lining digit's cap height, centred).
+ */
+export function spireNumberOffset(
+  m: Pick<TextMetrics, "width"> & Partial<TextMetrics>,
+  size: number,
+) {
+  const left = m.actualBoundingBoxLeft,
+    right = m.actualBoundingBoxRight,
+    ascent = m.actualBoundingBoxAscent,
+    descent = m.actualBoundingBoxDescent;
+  const ok = (v: number | undefined): v is number => Number.isFinite(v);
+  return {
+    x: ok(left) && ok(right) ? (left - right) / 2 : 0,
+    y: ok(ascent) && ok(descent) ? (ascent - descent) / 2 : size * 0.35,
+  };
+}
 function paintNumber(c: Ctx, t: SpireZoneTheme, floor: number, k: number) {
   const { x, y } = SPIRE_RING;
   const text = String(floor);
+  const size = text.length > 1 ? 104 : 118;
   c.save();
-  c.translate(x, y + 4);
+  // The ring's centre (the ground plane squashes it by K).
+  c.translate(x, y);
   c.scale(1, K);
-  c.font = `700 ${text.length > 1 ? 104 : 118}px Georgia, "Times New Roman", serif`;
+  c.font = `700 ${size}px Georgia, "Times New Roman", serif`;
   c.textAlign = "center";
-  c.textBaseline = "middle";
+  c.textBaseline = "alphabetic";
   c.lineJoin = "round";
+  // Centre the number's ink, then the carving's layers round it.
+  const o = spireNumberOffset(c.measureText(text), size);
+  c.translate(o.x, o.y);
   // A faint glow round it (under the groove, so the groove stays dark).
   c.save();
   c.shadowColor = rgba(t.crystal[1], 0.75);

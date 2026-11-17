@@ -11,6 +11,7 @@ import {
   SPIRE_ELITE_MECHANICS,
   SPIRE_FLOORS,
   SPIRE_PARTY,
+  spireWaves,
 } from "../../../packages/shared/src/spire";
 import { ECHO_SKILL_COLOR } from "./spire-art";
 
@@ -69,15 +70,28 @@ export function spireHudLine(state: Snapshot) {
   const echoes = s.echoesLeft;
   return `Floor ${s.floor} · Wave ${Math.max(1, s.wave)}/${s.waves} · ${echoes} ${echoes === 1 ? "Echo" : "Echoes"}`;
 }
-/** Share of the floor beaten (waves before this one, and this one's fallen). */
+/** "Wave 2/3": what the floor bar on a wave floor counts. */
+export function spireWaveLabel(state: Snapshot) {
+  const s = state.raid?.spire;
+  if (!s || !s.waves) return "";
+  return `Wave ${Math.min(s.waves, Math.max(1, s.wave))}/${s.waves}`;
+}
+/**
+ * Share of the floor beaten: each wave is an equal slice of the bar, filled
+ * as its Echoes fall (waves before this one, and this one's fallen). Full
+ * only when the floor is cleared: the last Echo of the last wave fell.
+ */
 export function spireFloorProgress(state: Snapshot) {
   const s = state.raid?.spire;
   if (!s || !s.waves) return 0;
   if (s.clearedAt !== undefined) return 100;
-  const def = SPIRE_FLOORS[s.floor];
-  const size = def?.waves[Math.max(0, s.wave - 1)]?.length ?? 1;
-  const done = Math.max(0, s.wave - 1) + Math.max(0, 1 - s.echoesLeft / size);
-  return Math.max(0, Math.min(100, (done / s.waves) * 100));
+  // The floor's waves as the server spawns them (a big party has one more).
+  const waves = spireWaves(s.floor, Math.max(1, state.raid?.partySize ?? 1));
+  const size = Math.max(1, waves[Math.max(0, s.wave - 1)]?.length ?? 1);
+  const fallen = Math.max(0, Math.min(1, 1 - s.echoesLeft / size));
+  const done = Math.max(0, s.wave - 1) + fallen;
+  // Never full before the server says the floor is cleared.
+  return Math.max(0, Math.min(99.5, (done / s.waves) * 100));
 }
 /** The callout under the Spire's HUD. */
 export function spireCue(state: Snapshot) {

@@ -13,6 +13,24 @@ body.battle-raid
   background: linear-gradient(180deg, #d9ccff 0%, #9b7bff 52%, #5f43b8 100%);
 }
 
+/* Where each wave's slice of the floor bar ends: a thin pale divider (not
+   the boss bar's gold rite marks); a wave behind the party dims. */
+body.battle-raid #battle #raid-hud#raid-hud .raid-health-mark.spire-wave-mark {
+  background: #efe8ff;
+}
+body.battle-raid
+  #battle
+  #raid-hud#raid-hud
+  .raid-health-mark.spire-wave-mark::before {
+  content: none;
+}
+body.battle-raid
+  #battle
+  #raid-hud#raid-hud
+  .raid-health-mark.spire-wave-mark.is-passed {
+  background: #7d6bb0;
+}
+
 /* Who each wave sends (one line between floors). */
 .spire-plan-line {
   margin: 4px 0 0;
