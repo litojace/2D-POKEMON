@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { openLobby, snap } from "./helpers";
 import { fakeBistro } from "./bistro-fake";
+import { richBistro } from "./bistro-rich";
 import { settled, spills } from "./ui-checks";
 import { ISLAND, setInsets, type Insets } from "./ui-measure";
 
@@ -140,9 +141,16 @@ async function problems(page: Page, where: string, inset: Insets | null) {
           out.push(
             `button "${words.slice(0, 24)}" is ${Math.round(r.height)} px tall`,
           );
+        // (A phone's 44 px target is an empty ::after past the button's
+        // edge: what it sticks out isn't words.)
+        const after = getComputedStyle(e, "::after");
+        const past = (v: string) =>
+          after.content !== "none" && after.position === "absolute"
+            ? Math.max(0, -(parseFloat(v) || 0))
+            : 0;
         if (
-          e.scrollWidth > e.clientWidth + 1 ||
-          e.scrollHeight > e.clientHeight + 1
+          e.scrollWidth - past(after.right) > e.clientWidth + 1 ||
+          e.scrollHeight - past(after.bottom) > e.clientHeight + 1
         )
           out.push(`button "${words.slice(0, 24)}" is cut short`);
       }
@@ -188,6 +196,11 @@ async function problems(page: Page, where: string, inset: Insets | null) {
               ".bs-dish, .bs-item, .bs-staff, .bs-slot, .bs-chip, .bs-badge, .bs-wallet, .bs-rail button, .bs-visit, .bs-edit, .bs-away-stats > div, .bs-pop-row, .bs-pop-fx > div, .bs-pop-plan, .bs-card, .bs-league li",
             );
         if (!box) continue;
+        // A row that scrolls sideways inside the box (a cook's dishes on a
+        // phone) shows the rest of its words as you scroll.
+        const row = e.parentElement?.closest<HTMLElement>(".picks");
+        if (row && box.contains(row) && row.scrollWidth > row.clientWidth + 1)
+          continue;
         const t = e.getBoundingClientRect(),
           o = box.getBoundingClientRect();
         if (
@@ -237,31 +250,7 @@ for (const size of SIZES)
       await page.click('#hub-scenes [data-hub-scene="bistro"]');
       await page.waitForFunction(() => (window as any).__bistro?.sync().ready);
       // A bistro with everything: high level, big numbers, staff, stock.
-      await B(
-        page,
-        `const S = srv.S; S.level = 12; S.coins = 1234567; S.rating = 4.6; S.served = 98765;
-         S.staff.push({ id: 2, char: 'pyranda', role: 'cook', level: 3, dish: 'pho' },
-                      { id: 3, char: 'glacelle', role: 'waiter', level: 5, dish: 'goicuon' },
-                      { id: 4, char: 'wombolder', role: 'cook', level: 1, dish: 'lau', energy: 12 },
-                      { id: 5, char: 'tidefin', role: 'janitor', level: 2, dish: 'goicuon', energy: 35 },
-                      { id: 6, char: 'lumoth', role: 'waiter', level: 1, dish: 'goicuon', energy: 140,
-                        friend: { id: '00000000-0000-4000-8000-000000000673', name: 'Bartholomew the Brave' } });
-         S.trash = 4;
-         S.stars = 2; S.tokens = 45; S.regulars = { mira: 1, tobi: 3 };
-         S.dishLv = { pho: { lv: 4, mastery: 12 }, lau: { lv: 10, mastery: 0 }, goicuon: { lv: 2, mastery: 10 } };
-         S.pantry = { rice: 12, flour: 3, herbs: 99, pork: 1, spice: 2 };
-         S.stoves.push({ x: 3, model: 'clay', dish: null, start: 0, perfect: false }, { x: 4, model: 'clay', dish: null, start: 0, perfect: false });
-         S.counter = [{ dish: 'lau', servings: 188, perfect: true }, { dish: 'pho', servings: 12, perfect: false },
-                      { dish: 'banhmi', servings: 12, perfect: false }, { dish: 'goicuon', servings: 4, perfect: false }];
-         // (Two catering orders ready: the Orders tab's "Hand over all" shows.)
-         S.stored = { plant: 12, lamp: 3, fountain: 1, aquarium: 2, rug: 1, luckycat: 4 };
-         srv.extras.leaves = 98765; srv.extras.tradedToday = 120;
-         srv.friends = [
-           { id: '00000000-0000-4000-8000-000000000672', name: 'Bartholomew the Brave', fighter: 'tidefin', level: 27, rating: 4.9, popularity: 47.6, likes: 1234, served: 123456, servings: 88, dined: true, liked: false },
-           { id: '00000000-0000-4000-8000-000000000673', name: 'Cy', fighter: 'lumoth', level: 3, rating: 2.1, likes: 0, served: 4, servings: 0, dined: false, liked: true },
-         ];
-         return b.load();`,
-      );
+      await richBistro(page);
       await B(page, "b.setTod(0.5)");
       const all: string[] = [];
       const check = async (where: string) => {
