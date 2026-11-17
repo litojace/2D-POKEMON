@@ -748,6 +748,18 @@
   -moz-appearance: textfield;
   appearance: textfield;
 }
+/* The page's field style (style.css: 100% wide, padded, filled, a ring) is more
+   specific than the rules above and stretched the count across the row,
+   squeezing − and + to slivers: the count's own size wins here. */
+.bistro-layer .bs-step input#bs-qty-n {
+  flex: none;
+  width: 46px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  box-shadow: none;
+}
 .bistro-layer .bs-step input::-webkit-inner-spin-button,
 .bistro-layer .bs-step input::-webkit-outer-spin-button {
   -webkit-appearance: none;
@@ -982,6 +994,66 @@
 }
 .bistro-layer .bs-rotate[hidden] {
   display: none;
+}
+/* The held piece's buttons, together beside it (as the Farm's tools sit on
+   a plot): ↻, put away, cancel. The first one's middle is the spot the
+   scene places; they never touch (8 px apart: each target its own). */
+.bistro-layer .bs-held {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  gap: 8px;
+  margin: -22px 0 0 -22px;
+  pointer-events: none;
+  animation: bs-popin 0.16s ease-out;
+}
+@keyframes bs-popin {
+  from {
+    opacity: 0;
+    scale: 0.8;
+  }
+}
+.bistro-layer .bs-held[hidden],
+.bistro-layer .bs-held > [hidden] {
+  display: none;
+}
+.bistro-layer .bs-held > button {
+  pointer-events: auto;
+}
+.bistro-layer .bs-held .bs-rotate {
+  position: static;
+  margin: 0;
+}
+.bistro-layer .bs-held-btn {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 35%, #3a4a86, #172040);
+  color: #fff;
+  box-shadow: 0 4px 10px rgba(20, 24, 40, 0.35);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.bistro-layer .bs-held-btn.x {
+  background: radial-gradient(circle at 50% 35%, #9a4252, #4a1620);
+}
+.bistro-layer .bs-held-btn svg {
+  width: 22px;
+  height: 22px;
+}
+.bistro-layer .bs-held > button:active {
+  transform: scale(0.94);
+}
+@media (prefers-reduced-motion: reduce) {
+  .bistro-layer .bs-held {
+    animation: none;
+  }
 }
 .bistro-layer .bs-rotate svg {
   width: 24px;
@@ -3134,4 +3206,383 @@ body.hub-bistro #account-profile {
 /* Recipes on a phone: room for "Level 10 · 12,000" and the ingredients. */
 .bistro-layer.phone .bs-dishes.levels {
   grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+}
+
+/* ── Phones: buttons and words to iOS's measures (the touch pass) ──
+   The compact sheets above came from the desktop layout shrunk to fit: 30 px
+   buttons, 9–10.5 px words. On phones they follow Apple's Human Interface
+   Guidelines instead, without growing so big that a sheet shows less:
+   - a control looks 36 px tall (a regular iOS button) but takes a tap over
+     44 × 44 (Apple's minimum target): an invisible margin round it, as iOS
+     does round its bar buttons, so the target costs no room on screen;
+   - words use iOS's text styles: Caption 2 (11 px, the smallest) for tags
+     and counts, Caption 1 (12) for descriptions, Footnote (13) on buttons
+     and tabs, Subheadline (15) for a card's name, Headline (17) a title;
+   - the room comes from the header (the title and its line of help share a
+     row; the Shop's "Buy − 1 +" sits there too).
+   tests/visual/bistro-touch.spec.ts measures all of it on four phones. */
+.bistro-layer {
+  -webkit-tap-highlight-color: transparent;
+}
+.bistro-layer.phone {
+  --ios-tap: 44px;
+  --ios-ctl: 36px;
+  --ios-caption2: calc(11px * var(--text-scale, 1));
+  --ios-caption1: calc(12px * var(--text-scale, 1));
+  --ios-footnote: calc(13px * var(--text-scale, 1));
+  --ios-subhead: calc(15px * var(--text-scale, 1));
+  --ios-headline: calc(17px * var(--text-scale, 1));
+}
+/* No sticky hover on a touch screen: a tapped card doesn't stay lifted. */
+@media (hover: none) {
+  .bistro-layer :is(.bs-dish, .bs-item):not(:disabled):hover {
+    border-color: inherit;
+    transform: none;
+  }
+  .bistro-layer :is(.bs-wallet, .bs-allbar button, .bs-rotate):hover {
+    filter: none;
+  }
+}
+/* The controls, and the press that shows under the finger (no hover). */
+.bistro-layer.phone
+  :is(
+    .bs-sheet .x,
+    .bs-tabs button,
+    .bs-teamfilter button,
+    .bs-sheet button.pr,
+    .bs-dish button.up,
+    .bs-step button,
+    .bs-edit-btns button,
+    .bs-visit button,
+    .bs-allbar button
+  ) {
+  position: relative;
+  min-height: var(--ios-ctl);
+  touch-action: manipulation;
+}
+/* The target: 44 px tall at least (4 px over and under a 36 px button). */
+.bistro-layer.phone
+  :is(
+    .bs-sheet .x,
+    .bs-tabs button,
+    .bs-teamfilter button,
+    .bs-sheet button.pr,
+    .bs-dish button.up,
+    .bs-step button,
+    .bs-edit-btns button,
+    .bs-visit button
+  )::after {
+  content: "";
+  position: absolute;
+  inset: calc((var(--ios-ctl) - var(--ios-tap)) / 2) 0;
+}
+.bistro-layer.phone
+  :is(
+    .bs-sheet button,
+    .bs-edit button,
+    .bs-visit button,
+    .bs-away button,
+    .bs-chip
+  ):not(:disabled):active {
+  transform: scale(0.96);
+  filter: brightness(1.12);
+}
+/* The header: the title, its help beside it (two lines at most), close. */
+.bistro-layer.phone .bs-sheet header {
+  align-items: center;
+  min-height: 40px;
+  padding: 5px 8px 5px 12px;
+}
+.bistro-layer.phone .bs-sheet header div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.bistro-layer.phone .bs-sheet h2 {
+  flex: none;
+  max-width: 55%;
+  font-size: var(--ios-headline);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.bistro-layer.phone .bs-sheet header p {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: var(--ios-caption1);
+  line-height: 1.25;
+  white-space: normal;
+  text-overflow: clip;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+}
+/* Close: a 34 px circle, a 44 × 44 target. */
+/* (button.x: as specific as the shared 36 px rule, which stretched this
+   circle to a 34 × 36 oval.) */
+.bistro-layer.phone .bs-sheet button.x {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  min-height: 34px;
+}
+.bistro-layer.phone .bs-sheet button.x::after {
+  inset: -5px;
+}
+/* Tabs and filters. */
+.bistro-layer.phone .bs-tabs {
+  gap: 6px;
+  padding: 0 10px 8px;
+}
+.bistro-layer.phone .bs-tabs button,
+.bistro-layer.phone .bs-teamfilter button {
+  padding-top: 4px;
+  padding-bottom: 4px;
+  font-size: var(--ios-footnote);
+}
+.bistro-layer.phone .bs-teamfilter {
+  gap: 6px;
+}
+.bistro-layer.phone .bs-tabs .tn {
+  font-size: var(--ios-caption2);
+}
+/* A sheet's and a card's buttons. */
+.bistro-layer.phone :is(.bs-sheet button.pr, .bs-dish button.up) {
+  padding-top: 4px;
+  padding-bottom: 4px;
+  font-size: var(--ios-footnote);
+}
+.bistro-layer.phone .bs-sheet button.pr {
+  min-width: 60px;
+}
+.bistro-layer.phone .bs-allbar button {
+  min-height: var(--ios-tap);
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+/* How many to buy: − and + a thumb can hit, never squeezed. */
+.bistro-layer.phone .bs-qty {
+  gap: 8px;
+  padding: 0 10px 8px;
+  font-size: var(--ios-caption1);
+}
+.bistro-layer.phone .bs-step {
+  flex: none;
+  gap: 4px;
+}
+/* − 1 +: an iOS stepper's size (32 px circles in a 34 px pill), each part
+   still a 44 × 44 target: − and + reach outwards past the pill (over the
+   label and the note, never the count), the count's box is 44 px tall. */
+.bistro-layer.phone .bs-sheet .bs-step {
+  height: 34px;
+  box-sizing: border-box;
+  padding: 0 1px;
+  gap: 4px;
+}
+/* (Under .bs-sheet: the shared rule giving controls 36 px is that specific,
+   and stretched these circles to 32 × 36 ovals.) */
+.bistro-layer.phone .bs-sheet .bs-step button {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  min-height: 32px;
+  font-size: calc(17px * var(--text-scale, 1));
+}
+.bistro-layer.phone .bs-sheet .bs-step button::after {
+  inset: -6px 0 -6px -12px;
+}
+.bistro-layer.phone .bs-sheet .bs-step button:last-child::after {
+  inset: -6px -12px -6px 0;
+}
+.bistro-layer.phone .bs-step input#bs-qty-n {
+  width: 44px;
+  height: var(--ios-tap);
+  margin: -5px 0;
+}
+.bistro-layer.phone .bs-qty small {
+  font-size: var(--ios-caption1);
+  white-space: normal;
+  line-height: 1.2;
+  overflow: visible;
+}
+/* Words in cards: Subheadline names, Caption 1 descriptions, Caption 2 tags. */
+.bistro-layer.phone :is(.bs-dish, .bs-item, .bs-card) b,
+.bistro-layer.phone .bs-staff .who b {
+  font-size: var(--ios-subhead);
+}
+.bistro-layer.phone
+  :is(.bs-dish, .bs-item, .bs-staff, .bs-card, .bs-pop, .bs-league, .bs-pantry)
+  small,
+.bistro-layer.phone .bs-note,
+.bistro-layer.phone .bs-card q {
+  font-size: var(--ios-caption1);
+  line-height: 1.3;
+}
+.bistro-layer.phone :is(.bs-dish, .bs-item) em,
+.bistro-layer.phone .bs-dish :is(.needs, .mast) em,
+.bistro-layer.phone .bs-dish i.sp,
+.bistro-layer.phone .bs-staff .role,
+.bistro-layer.phone .bs-staff .cookdish small,
+.bistro-layer.phone .bs-staff .cookdish button span,
+.bistro-layer.phone .bs-visit .who small,
+.bistro-layer.phone .bs-teamhead,
+.bistro-layer.phone .bs-bar small {
+  font-size: var(--ios-caption2);
+}
+/* The pantry: tiles wide enough for "Coconut" whole at Caption 2. */
+.bistro-layer.phone .pt-grid {
+  grid-template-columns: repeat(auto-fill, minmax(98px, 1fr));
+}
+.bistro-layer.phone .bs-pantry .pt-ing small {
+  overflow: visible;
+  text-overflow: clip;
+  font-size: var(--ios-caption2);
+}
+.bistro-layer.phone .bs-slot b {
+  min-width: 18px;
+  height: 18px;
+  font-size: var(--ios-caption2);
+  line-height: 18px;
+}
+/* (The level ring's star badge is a mark on a 30 px ring, not a line.) */
+.bistro-layer.phone .bs-ring .stars {
+  font-size: calc(10px * var(--text-scale, 1));
+}
+/* Lists scroll inside the sheet, never the page behind it. */
+.bistro-layer.phone :is(.bs-bank, .bs-pop, .bs-pantry, .bs-board, .bs-team) {
+  overscroll-behavior: contain;
+}
+/* A list's help note scrolls with it (a note under the list took the room
+   of a row of cards). */
+.bistro-layer .bs-items > .bs-note {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 2px 2px 0;
+}
+/* Shop on a phone: "Buy − 1 +" sits in the header's row, in place of the
+   coin balance (the wallet above shows it), so a row more of cards fits. */
+.bistro-layer.phone .bs-sheet:has(.bs-qty) header p {
+  visibility: hidden;
+}
+.bistro-layer.phone .bs-sheet:has(.bs-qty) header {
+  min-height: 54px;
+}
+.bistro-layer.phone .bs-sheet .bs-qty {
+  position: absolute;
+  top: 10px;
+  height: 34px;
+  right: 54px;
+  left: 96px;
+  justify-content: flex-end;
+  padding: 0;
+}
+.bistro-layer.phone .bs-sheet .bs-qty small {
+  flex: 0 1 auto;
+  max-width: 170px;
+}
+/* Decorate: storage shows each piece's picture and count (its name is in
+   the title above once you pick it up), so more fit and none is cut short;
+   a tile is a 44 px target, the buttons regular iOS buttons. */
+.bistro-layer.phone .bs-edit {
+  column-gap: 10px;
+}
+.bistro-layer.phone .bs-store {
+  min-height: var(--ios-tap);
+  gap: 6px;
+}
+.bistro-layer.phone .bs-store button {
+  position: relative;
+  width: var(--ios-tap);
+  height: var(--ios-tap);
+  padding: 2px;
+}
+.bistro-layer.phone .bs-store button span {
+  display: none;
+}
+.bistro-layer.phone .bs-store img {
+  width: 32px;
+  height: 32px;
+}
+.bistro-layer.phone .bs-store button i {
+  position: absolute;
+  right: 1px;
+  top: 1px;
+  padding: 0 3px;
+  border-radius: 6px;
+  background: #1a1426d9;
+  font-size: var(--ios-caption2);
+  line-height: 14px;
+}
+.bistro-layer.phone .bs-edit-head span {
+  font-size: var(--ios-caption1);
+}
+.bistro-layer.phone .bs-edit-btns {
+  gap: 6px;
+}
+.bistro-layer.phone .bs-edit-btns button {
+  padding-top: 4px;
+  padding-bottom: 4px;
+  font-size: var(--ios-footnote);
+}
+/* A target's margin is drawn past the button's box: a box that hid what
+   overflows (to cut a long label short) hid the margin too. The labels fit
+   (bistro-layout.spec.ts checks), so these show their overflow. */
+.bistro-layer.phone :is(.bs-tabs button, .bs-item.hire button.pr) {
+  overflow: visible;
+  text-overflow: clip;
+}
+/* A cook's dishes on a phone: one row that scrolls sideways (two rows of
+   tall tiles made a cook's card taller than the list, so none showed
+   whole), each tile a 44 px target with its name under the picture. */
+.bistro-layer.phone .bs-staff .cookdish .picks {
+  display: flex;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  gap: 6px;
+  padding-bottom: 2px;
+}
+.bistro-layer.phone .bs-staff .cookdish button {
+  flex: 0 0 74px;
+  min-height: var(--ios-tap);
+  padding: 3px 3px 4px;
+  scroll-snap-align: start;
+}
+.bistro-layer.phone .bs-staff .cookdish img {
+  width: 28px;
+  height: 28px;
+}
+/* A staff card on a phone: the name, role and level on one line, then the
+   job, then the energy (three rows, not five). */
+.bistro-layer.phone .bs-staff .who {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 6px;
+  row-gap: 2px;
+}
+.bistro-layer.phone .bs-staff .who :is(small, .en) {
+  flex-basis: 100%;
+}
+/* The report after time away: its button a full target. */
+.bistro-layer.phone .bs-away [data-collect] {
+  min-height: var(--ios-tap);
+}
+/* Recipes on a phone: three wider cards to a row (in four narrow ones each
+   line of numbers broke in two and a card stood taller than the list), and
+   no flavour line: what a dish needs and pays is what's read here. */
+.bistro-layer.phone .bs-dishes.levels {
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+}
+.bistro-layer.phone .bs-dishes.levels .bs-dish > b + small {
+  display: none;
+}
+/* A cook's dish: the tile that's lit says which (no line above repeating
+   it), so the card fits the list whole. */
+.bistro-layer.phone .bs-staff .cookdish > small {
+  display: none;
 }

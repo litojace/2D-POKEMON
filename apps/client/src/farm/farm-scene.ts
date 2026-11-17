@@ -27,10 +27,17 @@ import {
   farmPerk,
   farmPerkOf,
   FARM_DECOR,
+  DECOR_GROUPS,
+  DECOR_SEASONS,
+  DECOR_SETS,
   charmBonus,
   decorBox,
   decorCap,
+  decorCharm,
   decorFits,
+  decorGround,
+  decorSeasonsOn,
+  decorSetsDone,
   nearestDecorSpot,
   DECOR_GRID,
   CROW_SECONDS,
@@ -132,28 +139,175 @@ const fmtDur = (s) =>
     : fmtSecs(s);
 const DOG = Object.fromEntries(FARM_DOGS.map((d) => [d.id, d]));
 const DECO = Object.fromEntries(FARM_DECOR.map((d) => [d.id, d]));
-/** How tall each decoration's picture stands above its spot (for taps). */
-const DECO_TALL = {
-  rock: 40,
-  hay: 46,
-  bush6: 60,
-  bush7: 60,
-  flowers: 60,
-  mailbox: 66,
-  bench: 52,
-  crates: 60,
-  lamp: 110,
-  planter: 44,
-  mintree: 150,
-  pine: 150,
-  autumn: 150,
-  cherry: 150,
-  apple: 150,
-  orange: 150,
-  tower: 160,
-  plum: 130,
-  statue: 130,
+/**
+ * How each decoration looks (20261117120000), one row per decoration
+ * instead of a branch each: its picture (`spr`, else its GFX.deco art, or a
+ * `tree`), the soft shadow under it (`sh`, its x radius), how tall it
+ * stands (`tall`, for taps and the shop's previews), and its light after dark (`light`: the pool it lifts on
+ * the ground at `y` with radius `r`, strength `k` and flatness `flat`, and
+ * its glow at (`gx`, `gy`) of radius `gr` in `rgb`).
+ */
+type DecoLook = {
+  spr?: () => any;
+  tree?: [string, number, number];
+  sh?: number;
+  tall: number;
+  dy?: number;
+  k?: number;
+  light?: {
+    y: number;
+    r: number;
+    k: number;
+    flat: number;
+    gx?: number;
+    gy: number;
+    gr: number;
+    rgb: string;
+  };
 };
+const lightAt = (
+  gy: number,
+  rgb = "255,206,120",
+  r = 120,
+  gx = 0,
+  gr = 34,
+  k = 0.45,
+): DecoLook["light"] => ({ y: -6, r, k, flat: 0.6, gx, gy, gr, rgb });
+const DECO_LOOK: Record<string, DecoLook> = {
+  rock: { spr: () => GFX.rock(24, 44), sh: 24, tall: 40 },
+  hay: { spr: () => GFX.hay(), sh: 36, tall: 46 },
+  bush6: { spr: () => GFX.bush("rose", 22), sh: 36, tall: 60 },
+  bush7: { spr: () => GFX.bush("green", 23), sh: 36, tall: 60 },
+  flowers: { spr: () => GFX.bush("flower", 27), sh: 36, tall: 60 },
+  mailbox: { spr: () => GFX.mailbox(), sh: 14, tall: 66 },
+  bench: { spr: () => GFX.bench(), sh: 46, tall: 52 },
+  crates: { spr: () => GFX.crates(), sh: 46, tall: 60 },
+  lamp: {
+    spr: () => GFX.lamp(),
+    sh: 16,
+    tall: 110,
+    light: lightAt(-92, "255,214,120", 150, 0, 40, 0.5),
+  },
+  planter: { spr: () => GFX.flowerbed(96, 21), sh: 54, tall: 44, dy: 6 },
+  mintree: { tree: ["mint", 28, 0.7], tall: 150 },
+  pine: { tree: ["pine", 25, 0.8], tall: 150 },
+  autumn: { tree: ["autumn", 29, 0.7], tall: 150 },
+  cherry: { tree: ["cherry", 30, 0.7], tall: 150 },
+  apple: { tree: ["apple", 26, 0.7], tall: 150 },
+  orange: { tree: ["orange", 32, 0.7], tall: 150 },
+  tower: { spr: () => GFX.gazebo(), sh: 60, tall: 160 },
+  plum: {
+    spr: () =>
+      GFX.house({
+        wall: "#f0e4ff",
+        roof: "#8a4ad0",
+        w: 100,
+        hgt: 70,
+        roofH: 50,
+        windows: 1,
+        chimney: false,
+        flowers: true,
+        shutters: "#ffffff",
+        sd: 31,
+        depth: 20,
+      }),
+    k: 0.85,
+    sh: 70,
+    tall: 130,
+  },
+  statue: { spr: () => GFX.plinth(), sh: 40, tall: 130 },
+  // Fences & paths (paths lie on the ground: no shadow).
+  picket: { sh: 28, tall: 40 },
+  railfence: { sh: 28, tall: 38 },
+  gate: { sh: 28, tall: 48 },
+  hedge: { sh: 30, tall: 36 },
+  pathstone: { tall: 22 },
+  pathgravel: { tall: 22 },
+  pathbrick: { tall: 22 },
+  // Flowers & plants.
+  tulips: { sh: 20, tall: 40 },
+  potdaisy: { sh: 12, tall: 44 },
+  sunflowers: { sh: 18, tall: 84 },
+  barrow: { sh: 28, tall: 48 },
+  lavender: { sh: 30, tall: 38 },
+  topiary: { sh: 14, tall: 76 },
+  // Trees.
+  birch: { tree: ["lime", 33, 0.62], tall: 140 },
+  bamboo: { sh: 24, tall: 130 },
+  palm: { sh: 34, tall: 140 },
+  willow: { sh: 56, tall: 150 },
+  // Furniture.
+  deckchair: { sh: 16, tall: 40 },
+  picnic: { sh: 44, tall: 48 },
+  parasol: { sh: 28, tall: 94 },
+  swing: { sh: 40, tall: 90 },
+  // Water.
+  birdbath: { sh: 14, tall: 50 },
+  lilypond: { tall: 34 },
+  fountain: { sh: 32, tall: 76 },
+  bridge: { sh: 38, tall: 52 },
+  // Lights.
+  torch: { sh: 8, tall: 88, light: lightAt(-80, "255,170,80") },
+  lantern: {
+    sh: 10,
+    tall: 82,
+    light: lightAt(-54, "255,150,90", 120, 14),
+  },
+  stringlights: {
+    sh: 40,
+    tall: 80,
+    light: lightAt(-46, "255,214,150", 170, 0, 56),
+  },
+  stonelantern: { sh: 16, tall: 66, light: lightAt(-40) },
+  // Statues.
+  frog: { sh: 14, tall: 32 },
+  bunny: { sh: 14, tall: 56 },
+  owl: { sh: 12, tall: 60 },
+  deer: { sh: 28, tall: 80 },
+  // Seasonal.
+  pumpkin: {
+    sh: 16,
+    tall: 34,
+    light: lightAt(-12, "255,160,60", 90, 0, 26, 0.4),
+  },
+  tombstone: { sh: 16, tall: 50 },
+  cauldron: {
+    sh: 18,
+    tall: 48,
+    light: lightAt(-30, "160,255,110", 100, 0, 30, 0.4),
+  },
+  redlantern: {
+    sh: 22,
+    tall: 92,
+    light: lightAt(-64, "255,90,70", 130, 0, 46),
+  },
+  luckycat: { sh: 14, tall: 50 },
+  plumtree: { sh: 40, tall: 124 },
+  snowman: { sh: 16, tall: 74 },
+  gifts: { sh: 22, tall: 40 },
+  xmastree: {
+    sh: 34,
+    tall: 146,
+    light: lightAt(-134, "255,230,140", 130, 0, 36),
+  },
+};
+/** A decoration's baked picture (or null for a tree). */
+const decoSprite = (id: string) => {
+  const L = DECO_LOOK[id];
+  return L?.tree ? null : L?.spr ? L.spr() : GFX.deco(id);
+};
+/** A tree decoration's trunk and canopy (GFX.tree). */
+const decoTree = (id: string) => GFX.tree(...DECO_LOOK[id].tree!);
+/** The game day on the server's clock (arena_today: Los Angeles). */
+const gameDay = (t: number) =>
+  new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Los_Angeles",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(t);
+const MONTHS = "Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec".split(" ");
+const mdName = (md: string) => `${MONTHS[+md.slice(0, 2) - 1]} ${+md.slice(3)}`;
 const GIFT_KEY = "arena-farm-gift-seen";
 /** Giant crops this device has already announced (migration 050). */
 const GIANT_KEY = "arena-farm-giants-seen";
@@ -455,6 +609,7 @@ export function openFarm(options) {
     decor: [],
     charm: 0,
     decorCredits: {},
+    decorSeasons: [],
     coop: false,
     hens: [],
     cows: [],
@@ -668,6 +823,10 @@ export function openFarm(options) {
       endDecoEdit();
     F.charm = st.charm ?? 0;
     F.decorCredits = { ...(st.decorCredits ?? {}) };
+    // The seasons on sale today, by the server's game day (20261117120000).
+    F.decorSeasons = Array.isArray(st.decorSeasons)
+      ? st.decorSeasons
+      : decorSeasonsOn(gameDay(serverNow()));
     // The Cow Pasture and Storm Milk's price today (migration 049).
     F.pasture = !!st.pasture;
     F.milkAt = st.milkAt ? Date.parse(st.milkAt) : 0;
@@ -2061,9 +2220,19 @@ export function openFarm(options) {
       const [wx, wy] = GFX.coop().win;
       nl.light(COOPH.x + wx, COOPH.y + wy + 8, 100, 0.4 * k, 0.75);
     }
+    // Decorations that light up (DECO_LOOK's `light`).
     if (cur().me)
-      for (const p of F.decor)
-        if (p.item === "lamp") nl.light(p.x, p.y - 6, 150, 0.5 * k, 0.6);
+      for (const p of F.decor) {
+        const lt = DECO_LOOK[p.item]?.light;
+        if (lt && decoShows(p))
+          nl.light(
+            p.x + (p.flip ? -1 : 1) * (lt.gx ?? 0),
+            p.y + lt.y,
+            lt.r,
+            lt.k * k,
+            lt.flat,
+          );
+      }
   }
   function drawTreeS(tr, time, shadowK) {
     if (!(tr.shake > 0))
@@ -2115,6 +2284,13 @@ export function openFarm(options) {
   /** A decoration in its spot (the prototype's drawings). */
   let statueImg = null,
     statueGold = null;
+  function statueReady() {
+    if (!statueImg) {
+      statueImg = new Image();
+      statueImg.src = options.art("voltkit");
+    }
+    return statueImg.complete && statueImg.naturalWidth > 0;
+  }
   function drawDecor(g, id, x, y, time, flip = false) {
     if (flip) {
       // Mirrored: drawn about its own spot.
@@ -2125,84 +2301,90 @@ export function openFarm(options) {
       g.restore();
       return;
     }
-    const sh = (rx) => GFX.shadow(g, x + 6, y + 2, rx, rx * 0.25);
-    const tree = (kind, sd, size) =>
-      GFX.drawTree(g, GFX.tree(kind, sd, size), x, y, time, x * 0.01, 0.7);
-    if (id === "hay") {
-      sh(36);
-      GFX.blit(g, GFX.hay(), x, y + 4);
-    } else if (id === "mailbox") {
-      sh(14);
-      GFX.blit(g, GFX.mailbox(), x, y + 4);
-    } else if (id === "bench") {
-      sh(46);
-      GFX.blit(g, GFX.bench(), x, y + 4);
-    } else if (id === "flowers") {
-      sh(36);
-      GFX.blit(g, GFX.bush("flower", 27), x, y + 4);
-    } else if (id === "mintree") tree("mint", 28, 0.7);
-    else if (id === "autumn") tree("autumn", 29, 0.7);
-    else if (id === "cherry") tree("cherry", 30, 0.7);
-    else if (id === "orange") tree("orange", 32, 0.7);
-    else if (id === "planter") {
-      sh(54);
-      GFX.blit(g, GFX.flowerbed(96, 21), x, y + 6);
-    } else if (id === "lamp") {
-      sh(16);
-      GFX.blit(g, GFX.lamp(), x, y + 4);
-    } else if (id === "bush6") {
-      sh(36);
-      GFX.blit(g, GFX.bush("rose", 22), x, y + 4);
-    } else if (id === "bush7") {
-      sh(36);
-      GFX.blit(g, GFX.bush("green", 23), x, y + 4);
-    } else if (id === "rock") {
-      sh(24);
-      GFX.blit(g, GFX.rock(24, 44), x, y + 4);
-    } else if (id === "crates") {
-      sh(46);
-      GFX.blit(g, GFX.crates(), x, y + 4);
-    } else if (id === "pine")
-      GFX.drawTree(g, GFX.tree("pine", 25, 0.8), x, y, time, x * 0.01, 0.7);
-    else if (id === "apple")
-      GFX.drawTree(g, GFX.tree("apple", 26, 0.7), x, y, time, x * 0.01, 0.7);
-    else if (id === "tower") {
-      sh(60);
-      GFX.blit(g, GFX.gazebo(), x, y + 4);
-    } else if (id === "plum") {
-      sh(70);
-      GFX.blit(
-        g,
-        GFX.house({
-          wall: "#f0e4ff",
-          roof: "#8a4ad0",
-          w: 100,
-          hgt: 70,
-          roofH: 50,
-          windows: 1,
-          chimney: false,
-          flowers: true,
-          shutters: "#ffffff",
-          sd: 31,
-          depth: 20,
-        }),
-        x,
-        y + 4,
-        0.85,
-      );
-    } else if (id === "statue") {
-      sh(40);
-      GFX.blit(g, GFX.plinth(), x, y + 4);
-      if (!statueImg) {
-        statueImg = new Image();
-        statueImg.src = options.art("voltkit");
-      }
-      if (statueImg.complete && statueImg.naturalWidth) {
+    const L = DECO_LOOK[id];
+    if (!L) return;
+    if (L.tree) {
+      GFX.drawTree(g, decoTree(id), x, y, time, x * 0.01, 0.7);
+      return;
+    }
+    if (L.sh) GFX.shadow(g, x + 6, y + 2, L.sh, L.sh * 0.25);
+    const spr = decoSprite(id);
+    if (spr) GFX.blit(g, spr, x, y + (L.dy ?? 4), L.k ?? 1);
+    if (id === "statue" && statueReady()) {
+      {
         if (!statueGold)
           statueGold = tintCanvas(statueImg, null, "#ffc93a", 0.62);
         g.drawImage(statueGold, x - 34, y - 122, 68, 69);
       }
     }
+  }
+  /** Whether a decoration at (x, y) can show in the view (with room for its picture). */
+  let decoView = { x0: -1e9, x1: 1e9, y0: -1e9, y1: 1e9 };
+  function setDecoView() {
+    const hw = VW / 2 / Z + 120,
+      hh = VH / 2 / Z;
+    decoView = {
+      x0: cam.x - hw,
+      x1: cam.x + hw,
+      y0: cam.y - hh - 40,
+      y1: cam.y + hh + 180,
+    };
+  }
+  const decoShows = (p) =>
+    p.x > decoView.x0 &&
+    p.x < decoView.x1 &&
+    p.y > decoView.y0 &&
+    p.y < decoView.y1;
+  /** Paths and paving, flat on the ground under everything standing. */
+  function drawDecoFloor(time) {
+    for (const p of F.decor)
+      if (p.id !== decoEdit?.id && decorGround(p.item) && decoShows(p))
+        drawDecor(ctx, p.item, p.x, p.y, time, p.flip);
+  }
+  /**
+   * A decoration's picture in a small square, for the shop (painted once,
+   * from the same drawing as on the farm, then copied into the sheet).
+   */
+  const decoThumbs = new Map();
+  const THUMB = 96;
+  function decoThumb(id) {
+    let c = decoThumbs.get(id);
+    if (c) return c;
+    const L = DECO_LOOK[id],
+      it = DECO[id];
+    if (!L || !it) return null;
+    // The statue waits for its fighter's picture.
+    if (id === "statue" && !statueReady()) return null;
+    const spr = decoSprite(id),
+      k = L.k ?? 1,
+      dy = L.dy ?? 4;
+    let x0, x1, top, bot;
+    if (spr) {
+      x0 = -spr.ax * k;
+      x1 = (spr.w - spr.ax) * k;
+      top = -spr.ay * k + dy;
+      bot = (spr.h - spr.ay) * k + dy;
+      if (id === "statue") top = Math.min(top, -124);
+    } else {
+      x0 = -62;
+      x1 = 70;
+      top = -L.tall - 8;
+      bot = 14;
+    }
+    const w = x1 - x0,
+      h = bot - top,
+      sc = Math.min((THUMB - 8) / w, (THUMB - 8) / h, 1.6);
+    c = document.createElement("canvas");
+    c.width = c.height = THUMB;
+    const g = c.getContext("2d");
+    g.translate(
+      THUMB / 2 - ((x0 + x1) / 2) * sc,
+      THUMB / 2 - ((top + bot) / 2) * sc,
+    );
+    g.scale(sc, sc);
+    drawDecor(g, id, 0, 0, 0);
+    decoThumbs.set(id, c);
+    return c;
   }
   // Grass on land you don't own yet: painted once per plot, then stamped.
   // Land not for sale yet is faded: each stroke at 55%, as drawn before, so
@@ -4536,6 +4718,8 @@ export function openFarm(options) {
       if (F.decor.length >= decorCap(F.lv))
         return `Your farm has room for ${decorCap(F.lv)} decorations`;
       if (!(F.decorCredits[e.item] > 0)) {
+        if (d.season && !(F.decorSeasons ?? []).includes(d.season))
+          return `On sale only for ${DECOR_SEASONS.find((x) => x.id === d.season)?.name ?? d.season}`;
         if (d.level > F.lv) return `Unlocks at farm level ${d.level}`;
         if (F.leaves < d.price) return "Not enough Gold Leaves";
       }
@@ -4584,19 +4768,23 @@ export function openFarm(options) {
     decoEdit.y = ny;
     renderDecoBar();
   }
-  /** The decoration under a world point (the front one first). */
+  /** The decoration under a world point (the front one first; a path only when nothing stands there). */
   function decoAt(x, y) {
-    let hit = null;
+    let hit = null,
+      hitFlat = true;
     for (const p of F.decor) {
-      const b = decorBox(p.item, p.x, p.y);
+      const b = decorBox(p.item, p.x, p.y),
+        flat = decorGround(p.item);
       if (
         x > b.x0 - 8 &&
         x < b.x1 + 8 &&
-        y > p.y - (DECO_TALL[p.item] ?? 60) &&
+        y > p.y - (DECO_LOOK[p.item]?.tall ?? 60) &&
         y < p.y + 12 &&
-        (!hit || p.y > hit.y)
-      )
+        (!hit || (hitFlat && !flat) || (hitFlat === flat && p.y >= hit.y))
+      ) {
         hit = p;
+        hitFlat = flat;
+      }
     }
     return hit;
   }
@@ -4608,7 +4796,7 @@ export function openFarm(options) {
     return (
       x > b.x0 - 24 &&
       x < b.x1 + 24 &&
-      y > e.y - (DECO_TALL[e.item] ?? 60) - 10 &&
+      y > e.y - (DECO_LOOK[e.item]?.tall ?? 60) - 10 &&
       y < e.y + 30
     );
   }
@@ -4632,6 +4820,7 @@ export function openFarm(options) {
       );
       if (F.decorCredits[e.item] > 0) F.decorCredits[e.item]--;
       else F.leaves -= d.price;
+      const before = decorSetsDone(F.decor).length;
       F.decor.push({
         id: decoTemp--,
         item: e.item,
@@ -4639,7 +4828,18 @@ export function openFarm(options) {
         y: e.y,
         flip: e.flip,
       });
-      F.charm += d.charm;
+      F.charm = decorCharm(F.decor);
+      const sets = decorSetsDone(F.decor);
+      if (sets.length > before) {
+        const set = sets.find((x) => x.items.includes(e.item));
+        if (set) {
+          log(
+            `Collection complete: <b>${esc(set.name)}</b> · +${set.charm} Charm`,
+            "good",
+          );
+          sfx("coin");
+        }
+      }
     } else if (e.x !== e.from.x || e.y !== e.from.y || e.flip !== e.from.flip) {
       act({ a: "decor-move", piece: e.id, x: e.x, y: e.y, flip: e.flip }, true);
       const p = F.decor.find((q) => q.id === e.id);
@@ -4657,7 +4857,7 @@ export function openFarm(options) {
     act({ a: "decor-store", piece: e.id }, true);
     F.decor = F.decor.filter((p) => p.id !== e.id);
     storeDecor(e.item);
-    F.charm = Math.max(0, F.charm - (DECO[e.item]?.charm ?? 0));
+    F.charm = decorCharm(F.decor);
     log(`Put <b>${DECO[e.item]?.name ?? "decor"}</b> in storage`);
     FX.push({ puff: 1, x: e.x, y: e.y, t: 0, life: 0.6 });
     endDecoEdit(true);
@@ -5440,6 +5640,8 @@ export function openFarm(options) {
     if (s.coop) drawCoopGround(ctx);
     s.plots.forEach((p, i) => drawPlot(ctx, i, p, time, s));
     drawArea(ctx);
+    setDecoView();
+    if (s.me) drawDecoFloor(time);
     drawRainSplashes(ctx, time);
     if (s.me && decorating()) drawDecoGround(time);
     const items = [];
@@ -5561,7 +5763,7 @@ export function openFarm(options) {
     // the finger, see-through where it can't stand.
     if (s.me) {
       for (const p of F.decor)
-        if (p.id !== decoEdit?.id)
+        if (p.id !== decoEdit?.id && !decorGround(p.item) && decoShows(p))
           items.push({
             y: p.y,
             d: () => drawDecor(ctx, p.item, p.x, p.y, time, p.flip),
@@ -6061,6 +6263,20 @@ export function openFarm(options) {
           y = f.y + Math.sin(time * 0.5 * f.sp + f.ph * 2) * 30,
           b = Math.max(0, Math.sin(time * 2 * f.sp + f.ph));
         glow(ctx, x, y, 16, "210,255,120", 0.75 * n * b);
+      }
+    // The decorations' lamps, lanterns and flames (DECO_LOOK's `light`).
+    if (cur().me)
+      for (const p of F.decor) {
+        const lt = DECO_LOOK[p.item]?.light;
+        if (!lt || p.id === decoEdit?.id || !decoShows(p)) continue;
+        glow(
+          ctx,
+          p.x + (p.flip ? -1 : 1) * (lt.gx ?? 0),
+          p.y + lt.gy,
+          lt.gr,
+          lt.rgb,
+          0.5 * lit * fl,
+        );
       }
     ctx.restore();
     drawLabels(time);
@@ -6901,7 +7117,134 @@ export function openFarm(options) {
 
   /* ---------- sheets ---------- */
   let sheet = null,
-    sheetTab = null;
+    sheetTab = null,
+    /** The Decorate shop's group (DECOR_GROUPS, or "all"). */
+    decoGroup = "all";
+  /**
+   * The Decorate sheet (20261117120000): the shop by group, each decoration
+   * with its own picture; collections with their progress; storage.
+   */
+  function decorSheetHTML() {
+    const storedN = Object.values(F.decorCredits).reduce(
+        (a, n) => a + (n > 0 ? n : 0),
+        0,
+      ),
+      placed = F.decor.length,
+      cap = decorCap(F.lv),
+      full = placed >= cap,
+      onFarm = {},
+      done = new Set(decorSetsDone(F.decor).map((x) => x.id)),
+      seasons = new Set(F.decorSeasons ?? []);
+    for (const p of F.decor) onFarm[p.item] = (onFarm[p.item] || 0) + 1;
+    const setOf = {};
+    for (const st of DECOR_SETS) for (const i of st.items) setOf[i] = st;
+    const prev = (id) =>
+      `<canvas data-decoprev="${id}" width="${THUMB}" height="${THUMB}" aria-hidden="true"></canvas>`;
+    const row = (d, sub, btn) =>
+      `<div class="item deco-it${d.lock ? " locked" : ""}" data-decoitem="${d.id}"><span class="ic dpic">${prev(d.id)}</span><div><b>${esc(d.name)}</b><small>${sub}</small></div><div class="acts">${btn}</div></div>`;
+    const tabs = [
+      ["buy", "Shop"],
+      ["sets", `Sets ${done.size}/${DECOR_SETS.length}`],
+      ["storage", `Storage${storedN ? ` (${storedN})` : ""}`],
+    ];
+    const moveRow = `<div class="item"><span class="ic">${I("hand")}</span><div><b>Move decorations</b><small>${placed}/${cap} on the farm · move, mirror or put away</small></div><div class="acts"><button type="button" class="btn-s ghost" data-deco="__edit" ${placed ? "" : "disabled"}>Move</button></div></div>`;
+    let note, body;
+    if (sheetTab === "storage") {
+      note = `Decor you put away waits here and places again for free. On the farm: ${placed}/${cap}.`;
+      const kept = FARM_DECOR.filter((d) => F.decorCredits[d.id] > 0);
+      body =
+        moveRow +
+        (kept.length
+          ? kept
+              .map((d) =>
+                row(
+                  d,
+                  `+${d.charm} Charm · <b style="color:#7ff0a2">×${F.decorCredits[d.id]}</b>`,
+                  `<button type="button" class="btn-s gold" data-deco="${d.id}" ${full ? "disabled" : ""}>Place</button>`,
+                ),
+              )
+              .join("")
+          : `<p class="sh-note">Storage is empty.</p>`);
+    } else if (sheetTab === "sets") {
+      note = `Place every piece of a collection on your farm for <b>bonus Charm</b>. The bonus lasts while all of them stand on the farm.`;
+      body = DECOR_SETS.map((st) => {
+        const have = st.items.filter((i) => onFarm[i]).length,
+          ok = done.has(st.id),
+          season = DECO[st.items[0]]?.season,
+          sn = season && DECOR_SEASONS.find((x) => x.id === season);
+        return `<div class="dset${ok ? " done" : ""}" data-decoset="${st.id}"><div class="dset-h"><b>${esc(st.name)}</b><span class="dset-n">${ok ? "✓ Complete" : `${have}/${st.items.length}`}</span><span class="dset-c">+${st.charm} Charm</span></div><div class="dset-bar"><i style="width:${Math.round((have / st.items.length) * 100)}%"></i></div><div class="dset-items">${st.items
+          .map((i) => {
+            const d = DECO[i];
+            return `<span class="dset-it${onFarm[i] ? " got" : ""}" title="${esc(d.name)}${onFarm[i] ? " · on the farm" : ""}">${prev(i)}<small>${esc(d.name)}</small></span>`;
+          })
+          .join(
+            "",
+          )}</div>${sn ? `<small class="dset-s">${esc(sn.name)} collection · sold ${mdName(sn.from)} – ${mdName(sn.to)}</small>` : ""}</div>`;
+      }).join("");
+    } else {
+      note = `Pick a decoration, then drag it anywhere on your farm. Room for ${cap} (more as your farm grows). Every 2 Charm gives +1% farm XP (up to 25%). Paths may overlap each other.`;
+      const live = DECOR_SEASONS.some((x) => seasons.has(x.id));
+      const chips = [["all", "All"], ...DECOR_GROUPS.map((g) => [g.id, g.name])]
+        .map(
+          ([id, name]) =>
+            `<button type="button" class="ui-chip" data-dgroup="${id}" aria-pressed="${decoGroup === id}">${esc(name)}${id === "seasonal" && live ? ' <i class="dlive" aria-label="on sale now"></i>' : ""}</button>`,
+        )
+        .join("");
+      const list = FARM_DECOR.filter(
+        (d) => decoGroup === "all" || d.group === decoGroup,
+      );
+      body =
+        moveRow +
+        `<div class="ui-chips deco-groups" role="group" aria-label="Decoration groups">${chips}</div>` +
+        list
+          .map((d) => {
+            const stored = F.decorCredits[d.id] || 0,
+              free = stored > 0,
+              sn = d.season && DECOR_SEASONS.find((x) => x.id === d.season),
+              offSeason = !!sn && !seasons.has(d.season) && !free,
+              early = d.level > F.lv && !free,
+              lock = early || offSeason,
+              st = setOf[d.id],
+              bits = [
+                `+${d.charm} Charm`,
+                d.ground ? "path" : "",
+                onFarm[d.id] ? `on farm ×${onFarm[d.id]}` : "",
+                free ? `<b style="color:#7ff0a2">${stored} in storage</b>` : "",
+                st
+                  ? `<span class="dtag${done.has(st.id) ? " done" : ""}">${esc(st.name)}</span>`
+                  : "",
+                offSeason
+                  ? `<b style="color:#ffd65b">sold ${mdName(sn.from)} – ${mdName(sn.to)}</b>`
+                  : sn
+                    ? `<b style="color:#7ff0a2">${esc(sn.name)} · on sale now</b>`
+                    : "",
+                early
+                  ? `<b style="color:#ffd65b">unlocks at Lv ${d.level}</b>`
+                  : "",
+              ].filter(Boolean);
+            return row(
+              { ...d, lock },
+              bits.join(" · "),
+              `<button type="button" class="btn-s" data-deco="${d.id}" ${lock || full || (!free && F.leaves < d.price) ? "disabled" : ""}>${free ? "Place free" : `${d.price.toLocaleString("en-US")} ${L}`}</button>`,
+            );
+          })
+          .join("");
+    }
+    return (
+      head("Decorate", `Charm ${F.charm} · +${charmBonus(F.charm)}% XP`, tabs) +
+      `<div class="sh-body"><p class="sh-note">${note}</p>${body}</div>`
+    );
+  }
+  /** Copy each decoration's picture into the sheet's little canvases. */
+  function paintDecoPreviews(el) {
+    el.querySelectorAll("[data-decoprev]").forEach((c) => {
+      const t = decoThumb(c.dataset.decoprev);
+      if (!t) return;
+      const g = c.getContext("2d");
+      g.clearRect(0, 0, c.width, c.height);
+      g.drawImage(t, 0, 0, c.width, c.height);
+    });
+  }
   function openSheet(name, tab) {
     sheet = name;
     sheetTab =
@@ -7231,56 +7574,7 @@ export function openFarm(options) {
             },
           ).join("")}</div></div>`;
     }
-    if (sheet === "decor") {
-      const storedN = Object.values(F.decorCredits).reduce(
-          (a, n) => a + (n > 0 ? n : 0),
-          0,
-        ),
-        placed = F.decor.length,
-        cap = decorCap(F.lv),
-        full = placed >= cap,
-        note =
-          sheetTab === "storage"
-            ? `Decor you put away waits here and places again for free. On the farm: ${placed}/${cap}.`
-            : `Pick a decoration, then drag it anywhere on your farm. Room for ${cap} (more as your farm grows). Every 2 Charm gives +1% farm XP (up to 25%).`;
-      const row = (d, sub, btn) =>
-        `<div class="item${d.lock ? " locked" : ""}"><span class="ic">${I(d.icon)}</span><div><b>${d.name}</b><small>${sub}</small></div><div class="acts">${btn}</div></div>`;
-      const moveRow = `<div class="item"><span class="ic">${I("hand")}</span><div><b>Move decorations</b><small>${placed}/${cap} on the farm · move, mirror or put away</small></div><div class="acts"><button type="button" class="btn-s ghost" data-deco="__edit" ${placed ? "" : "disabled"}>Move</button></div></div>`;
-      let body;
-      if (sheetTab === "storage") {
-        const kept = FARM_DECOR.filter((d) => F.decorCredits[d.id] > 0);
-        body =
-          moveRow +
-          (kept.length
-            ? kept
-                .map((d) =>
-                  row(
-                    d,
-                    `+${d.charm} Charm · <b style="color:#7ff0a2">×${F.decorCredits[d.id]}</b>`,
-                    `<button type="button" class="btn-s gold" data-deco="${d.id}" ${full ? "disabled" : ""}>Place</button>`,
-                  ),
-                )
-                .join("")
-            : `<p class="sh-note">Storage is empty.</p>`);
-      } else
-        body =
-          moveRow +
-          FARM_DECOR.map((d) => {
-            const stored = F.decorCredits[d.id] || 0,
-              free = stored > 0,
-              lock = d.level > F.lv && !free;
-            return row(
-              { ...d, lock },
-              `+${d.charm} Charm${free ? ` · <b style="color:#7ff0a2">${stored} in storage</b>` : ""}${lock ? ` · <b style="color:#ffd65b">unlocks at Lv ${d.level}</b>` : ""}`,
-              `<button type="button" class="btn-s" data-deco="${d.id}" ${lock || full || (!free && F.leaves < d.price) ? "disabled" : ""}>${free ? "Place free" : `${d.price.toLocaleString("en-US")} ${L}`}</button>`,
-            );
-          }).join("");
-      html =
-        head("Decorate", `Charm ${F.charm} · +${charmBonus(F.charm)}% XP`, [
-          ["buy", "Shop"],
-          ["storage", `Storage${storedN ? ` (${storedN})` : ""}`],
-        ]) + `<div class="sh-body"><p class="sh-note">${note}</p>${body}</div>`;
-    }
+    if (sheet === "decor") html = decorSheetHTML();
     if (sheet === "balloon")
       html =
         head(
@@ -7331,6 +7625,7 @@ export function openFarm(options) {
       g.clearRect(0, 0, 120, 120);
       GFX.dog(g, c.dataset.dogprev, "sit", 0, 54, 108, 1.7, 1);
     });
+    if (sheet === "decor") paintDecoPreviews(el);
     lineUpButtons(el);
     const b = el.querySelector(".sh-body");
     if (b) b.scrollTop = top;
@@ -7449,6 +7744,10 @@ export function openFarm(options) {
         toast("Select the link and copy it");
       }
       return;
+    }
+    if (d.dgroup) {
+      decoGroup = d.dgroup;
+      return renderSheet();
     }
     if (d.tab) {
       if (sheet === "market" && (d.tab === "stall" || d.tab === "paper"))
@@ -8420,14 +8719,23 @@ export function openFarm(options) {
       /** The shared decoration and coop rules (the harness's fake server uses them). */
       rules: {
         FARM_DECOR,
+        DECOR_SETS,
         decorFits,
         decorCap,
+        decorCharm,
+        nearestDecorSpot,
         COOP,
         PASTURE,
         henLevel,
         henPrice,
         henState,
         nextCow,
+      },
+      /** Draw `n` frames now and answer the mean time of one, in ms (tests). */
+      drawMs: (n = 20) => {
+        const t0 = performance.now();
+        for (let k = 0; k < n; k++) draw(T);
+        return (performance.now() - t0) / n;
       },
       /** The decoration being placed or moved, and the decorating bar (tests). */
       deco: () => ({ edit: decoEdit, browse: decoBrowse }),

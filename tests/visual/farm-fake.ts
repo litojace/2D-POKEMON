@@ -84,6 +84,8 @@ export async function fakeFarm(page: Page) {
       }[],
       charm: 0,
       decorCredits: {} as Record<string, number>,
+      // The seasons on sale today (20261117120000): none by default.
+      decorSeasons: [] as string[],
       // The Cow Pasture (migration 049).
       pasture: false,
       milkAt: null as string | null,
@@ -371,6 +373,16 @@ export async function fakeFarm(page: Page) {
           if (a.a === "decor-place") {
             if (!item) return { ok: false, error: "Unknown decoration" };
             const free = (farm.decorCredits[a.item] ?? 0) > 0;
+            // Seasonal ones sell only in season (20261117120000).
+            if (
+              !free &&
+              item.season &&
+              !(farm.decorSeasons ?? []).includes(item.season)
+            )
+              return {
+                ok: false,
+                error: `On sale only for ${({ halloween: "Halloween", christmas: "Christmas", lunar: "Lunar New Year" } as Record<string, string>)[item.season]}`,
+              };
             if (!free && farm.level < item.level)
               return {
                 ok: false,
@@ -396,7 +408,7 @@ export async function fakeFarm(page: Page) {
               y: a.y,
               flip: !!a.flip,
             });
-            farm.charm += item.charm;
+            farm.charm = R.decorCharm(farm.decor);
             return {
               ok: true,
               decor: a.item,
@@ -417,9 +429,7 @@ export async function fakeFarm(page: Page) {
           if (a.a === "decor-store") {
             if (!piece) return { ok: false, error: "Nothing there" };
             farm.decor = farm.decor.filter((d: any) => d !== piece);
-            farm.charm -= R.FARM_DECOR.find(
-              (d: any) => d.id === piece.item,
-            ).charm;
+            farm.charm = R.decorCharm(farm.decor);
             farm.decorCredits[piece.item] =
               (farm.decorCredits[piece.item] ?? 0) + 1;
             return { ok: true, stored: piece.item, piece: piece.id };
