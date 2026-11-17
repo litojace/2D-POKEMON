@@ -94,3 +94,21 @@ export function sceneDensity(
     );
   return Math.max(1, d);
 }
+/**
+ * The screen density a fighter preview (the Lobby, the roster, the Shop's
+ * fitting room: shop-preview.ts) draws its canvas at: up to 3×, and at most
+ * 2× on iPhones and smaller iPads. A 3× iPhone drew the Lobby's fighter on a
+ * 1080 × 1125 canvas with parts rasterized 4× bigger, every frame on the 2D
+ * canvas, and the phone ran hot with an uneven idle (owner, iPhone 17 Pro
+ * Max, 17 Nov 2026). At 2× the same fighter is 720 × 750 (55% fewer pixels)
+ * with 3× parts (44% less texture memory), still sharper than a battle's
+ * 1.5×. A large iPad keeps 3×.
+ */
+export function previewDensity(
+  dpr = typeof devicePixelRatio === "number" ? devicePixelRatio : 1,
+  ios = isIOSDevice(),
+  large = largeIPad(ios),
+) {
+  const cap = ios && !large ? 2 : 3;
+  return Math.max(1, Math.min(cap, Number.isFinite(dpr) ? dpr : 1));
+}
