@@ -54,11 +54,13 @@ export interface AnimationPose {
   look?: RaidLoadout;
   /** Shop skin worn by this champion (with its Awakening stage). */
   skin?: { skin: string; stage?: number } | null;
-  /** Extra Mythical ambient particles allowed (at most two living fighters). */
+  /** Extra costume details allowed (at most two living fighters). */
   ambient?: boolean;
   hp: number;
   speed: number;
   angle: number;
+  /** Motion heading, distinct from attack aim, for cosmetic wakes. */
+  travelAngle?: number;
   dash: boolean;
   jump: boolean;
   victory?: boolean;

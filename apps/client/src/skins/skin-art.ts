@@ -1,3 +1,9 @@
+import { EPIC_SIGNATURES } from "./epic-signatures";
+import { VANGUARD_ART, VANGUARD_DESIGNS } from "./vanguard-art";
+import { vanguardOutfit } from "./vanguard-equipment";
+import { FASHION_ART } from "./fashion-art";
+import { fashionOutfit, type FashionAccessory } from "./fashion-outfits";
+import type { FashionCollection } from "../../../../packages/shared/src/shop";
 import type { CharacterId } from "@arena/shared";
 import type { CreaturePart } from "../creature-design";
 import type { Facing } from "../animation/controller";
@@ -39,6 +45,8 @@ export type PatternKind =
   | "runes"
   | "plating";
 export type Accessory =
+  | FashionAccessory
+  | "vanguard"
   | "earmuffs"
   | "ribbon"
   | "stem"
@@ -116,8 +124,10 @@ export interface SkinArt {
   /** Epic and up: a small animated detail on the rig. */
   detail?: "pulse" | "glint" | "flicker" | "shimmer" | "gears" | "frost" | "scan";
   mythic?: Mythic;
+  /** Individual Epic signature, with a Low-quality essential motif. */
+  epicFx?: string;
   /**
-   * Mythicals: the champion's own pieces on these parts (goggles, crest,
+   * Outfits: the champion's own pieces on these parts (goggles, crest,
    * kerchief...) come off, and the skin's armour takes their place.
    */
   replaces?: CreaturePart[];
@@ -132,6 +142,8 @@ export interface SkinArt {
 const hex = (c: string) => Number.parseInt(c.slice(1), 16);
 
 export const SKIN_ART: Record<string, SkinArt> = {
+  ...FASHION_ART,
+  ...VANGUARD_ART,
   // ---------------------------------------------------------------- Voltkit
   "voltkit-midnight": { palette: { light: "#c9d6ff", mid: "#3a4f9a", dark: "#141b3d", glow: "#5ff6ff", accent: "#5ff6ff" } },
   "voltkit-peach-fizz": { palette: { light: "#fff0e6", mid: "#ffb08f", dark: "#7a3a2e", glow: "#ff8fc8", accent: "#ff6fa8" } },
@@ -864,6 +876,10 @@ export const SKIN_ART: Record<string, SkinArt> = {
   },
 };
 
+// Resolve all Epic identities from the shared catalog once, not per frame.
+for (const id of Object.keys(EPIC_SIGNATURES))
+  if (SKIN_ART[id]) SKIN_ART[id].epicFx = id;
+
 /** Where a champion's head sits, per facing (art units, measured). */
 export const HEAD: Record<CharacterId, Record<Facing, { cx: number; top: number }>> = {
   voltkit: { down: { cx: 100, top: 44 }, up: { cx: 100, top: 44 }, left: { cx: 92, top: 44 }, right: { cx: 108, top: 44 } },
@@ -1093,6 +1109,8 @@ export function patternSvg(kind: PatternKind, color: string, color2 = color, see
 
 /** Accessory art for a facing, as [part layer, svg] in art units. */
 export function accessorySvg(a: Accessory, id: CharacterId, dir: Facing, p: Palette): [CreaturePart, string][] {
+  if (a === "vanguard") return vanguardOutfit(id, dir, VANGUARD_DESIGNS[id], HEAD[id][dir]);
+  if (a.startsWith("fashion-")) return fashionOutfit(a.slice(8) as FashionCollection, id, dir, p, HEAD[id][dir]);
   if (a.startsWith("mecha-")) return mechaSvg(a as MechaPiece, id, dir, p);
   const h = HEAD[id][dir];
   const cx = h.cx,

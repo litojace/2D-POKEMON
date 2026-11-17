@@ -16,6 +16,7 @@ import { SKINS } from "./animation/cosmetics";
 import { drawCollectionAura } from "./skins/collection-fx";
 import { menuShadow } from "./fighter-art";
 import { lowGraphics } from "./graphics-quality";
+import { previewDensity } from "./render-budget";
 import type { AnimationPose, AnimationState } from "./animation/controller";
 import type { SkinLook } from "./creature-design";
 import {
@@ -91,7 +92,8 @@ export function mountShopPreview(
    * Canvas pixels per framing pixel. The framing is small (400 or 480 px
    * wide) and the canvas is shown much larger on a big stage or a sharp
    * screen, which blurred the fighter. The canvas draws at the size it is
-   * shown times the screen's density (up to 3×), in quarter steps,
+   * shown times the screen's density (up to 3×, 2× on iPhones: see
+   * previewDensity), in quarter steps,
    * within a generous pixel budget (a 4K screen's worth would be a waste);
    * Low graphics stays at 1×. World coordinates don't change: only the
    * camera zooms by this much.
@@ -104,7 +106,8 @@ export function mountShopPreview(
     const shown =
       game?.canvas?.getBoundingClientRect().width ||
       host.getBoundingClientRect().width;
-    const density = Math.min(window.devicePixelRatio || 1, 3);
+    // Up to 3×, at most 2× on iPhones (render-budget.ts).
+    const density = previewDensity(window.devicePixelRatio || 1);
     const wanted = (shown * density) / framing.width,
       budget = Math.sqrt(PIXEL_BUDGET / (framing.width * height));
     // Rounded up to a quarter (never fewer canvas pixels than shown), and

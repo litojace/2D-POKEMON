@@ -82,11 +82,30 @@ describe("the Chicken Coop", () => {
   });
 });
 describe("more cows", () => {
-  it("adds a 2nd cow at level 40 and a 3rd at 55, and no more", () => {
+  it("adds a 2nd to 5th cow at levels 32, 42, 55 and 68, and no more", () => {
     expect(nextCow(0)).toBeNull();
-    expect(nextCow(1)).toEqual({ level: 40, price: 6000 });
-    expect(nextCow(2)).toEqual({ level: 55, price: 10000 });
-    expect(nextCow(3)).toBeNull();
-    expect(PASTURE.cowLevels[0]).toBeGreaterThan(COOP.henLevels.at(-1)!);
+    expect(nextCow(1)).toEqual({ level: 32, price: 4000 });
+    expect(nextCow(2)).toEqual({ level: 42, price: 6000 });
+    expect(nextCow(3)).toEqual({ level: 55, price: 9000 });
+    expect(nextCow(4)).toEqual({ level: 68, price: 13000 });
+    expect(nextCow(5)).toBeNull();
+    expect(PASTURE.maxCows).toBe(1 + PASTURE.cowLevels.length);
+    // Each cow comes later and costs more than the one before, and the 2nd
+    // waits until the coop is almost full (docs/farm-coop.md).
+    for (let k = 1; k < PASTURE.cowLevels.length; k++) {
+      expect(PASTURE.cowLevels[k]).toBeGreaterThan(PASTURE.cowLevels[k - 1]);
+      expect(PASTURE.cowPrices[k]).toBeGreaterThan(PASTURE.cowPrices[k - 1]);
+    }
+    expect(PASTURE.cowLevels[0]).toBeGreaterThanOrEqual(COOP.henLevels.at(-2)!);
+  });
+  it("the taller pasture keeps decorations off, with its two trees felled", () => {
+    expect(decorFits("rock", 1600, 360, [])).toBe("Something is in the way");
+    expect(decorFits("rock", 1600, 410, [])).toBe("Something is in the way");
+    expect(
+      DECOR_BLOCKS.some((b) => b.k === "oval" && b.x === 1480 && b.y === 340),
+    ).toBe(false);
+    expect(
+      DECOR_BLOCKS.some((b) => b.k === "oval" && b.x === 1700 && b.y === 330),
+    ).toBe(false);
   });
 });

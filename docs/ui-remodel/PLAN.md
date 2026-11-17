@@ -854,7 +854,10 @@ canvas. Measured on the roster stage: a 156 × 148 head texture drawn about
   its stars, sparks, cracks and glow are drawn in art units (a canvas
   transform), so they look the same at any k.
 - **Canvas**: up to 3× density and 4 million pixels, rounded up to a
-  quarter so it never has fewer pixels than it is shown at.
+  quarter so it never has fewer pixels than it is shown at. On iPhones and
+  smaller iPads at most 2× (`previewDensity`, 17 Nov 2026): a 3× iPhone 17
+  Pro Max drew the Lobby fighter on 1080 × 1125 pixels with 4× parts and
+  ran hot with an uneven idle; it is now 720 × 750 with 3× parts.
 - **Memory**: a look at k = 3.5 is about 11 MB of textures (was about 1 MB);
   the preview keeps three looks instead of eight once k ≥ 3.
 - **Stages**: the fitting room's host is as wide as its stage again and the

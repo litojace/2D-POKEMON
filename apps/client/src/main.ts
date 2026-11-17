@@ -2238,7 +2238,8 @@ function syncPlaza(want: boolean, hub = want) {
   const look = plazaOutfitKey(selected, skin, accountsUI.raidLook);
   if (plaza) {
     plaza.show();
-    if (look !== plazaLook) plaza.look(selected, skin);
+    if (look !== plazaLook)
+      plaza.look(selected, skin, accountsUI.raidLook?.skin ?? null);
     plazaLook = look;
     return;
   }
@@ -2251,20 +2252,23 @@ function syncPlaza(want: boolean, hub = want) {
     socket,
     character: selected,
     skin,
+    colour: accountsUI.raidLook?.skin ?? null,
     reduced: reducedMotion,
     low: plazaLow,
-    art: (character, worn, flat) =>
-      "data:image/svg+xml;charset=utf-8," +
-      encodeURIComponent(
-        fighterArt(
-          (Object.hasOwn(CHARACTERS, character)
-            ? character
-            : "voltkit") as CharacterId,
-          undefined,
-          worn,
-          flat,
-        ),
-      ),
+    art: (character, worn, flat, colour) => {
+      const id = (
+        Object.hasOwn(CHARACTERS, character) ? character : "voltkit"
+      ) as CharacterId;
+      const svg = fighterArt(id, undefined, worn, flat);
+      // The Skin slot's palette shows unless a champion skin is worn, the
+      // same rule as battle and portraits (portraits.ts).
+      return (
+        "data:image/svg+xml;charset=utf-8," +
+        encodeURIComponent(
+          colour && !wornArt(id, worn) ? colourPreview(svg, colour) : svg,
+        )
+      );
+    },
     skinName: (id) => CHAMPION_SKIN_BY_ID[id]?.name ?? null,
     fighterName: (id) => CHARACTERS[id as CharacterId]?.name ?? "Fighter",
     playerName: () => accountsUI.account?.displayName ?? "You",
@@ -6313,15 +6317,14 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
           ),
         );
     }
-    // Extra ambient particles for at most two living Mythicals (you first).
-    // Signature ornaments still animate for every equipped fighter.
+    // Ambient costume effects for at most two living fighters (you first).
+    // Mythical signature ornaments still animate outside this budget.
     const ambient = new Set(
       [...state.players]
-        .filter(
-          (q) =>
-            q.hp > 0 &&
-            wornArt(q.character, q.championLooks?.[q.character])?.mythic,
-        )
+        .filter((q) => {
+          const art = wornArt(q.character, q.championLooks?.[q.character]);
+          return q.hp > 0 && (art?.mythic || art?.epicFx);
+        })
         .sort((a, b) => Number(b.id === myId) - Number(a.id === myId))
         .slice(0, battleQuality.knobs().mythicAmbient)
         .map((q) => q.id),
@@ -6390,6 +6393,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         ambient: ambient.has(p.id),
         speed: Math.hypot(p.vx, p.vy),
         angle: p.angle,
+        travelAngle: Math.atan2(p.vy, p.vx),
         // A glide spreads the glider membranes (the dash pose).
         dash: serverPlayer.dashUntil > state.time || isGliding,
         jump: serverPlayer.jumpUntil > state.time && !isGliding,

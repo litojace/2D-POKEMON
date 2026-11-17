@@ -1,3 +1,6 @@
+import { drawEpicSkinFx } from "./epic-skin-fx";
+import type { CreaturePart } from "../creature-design";
+import type { Facing } from "../animation/controller";
 import { WORLD_ART } from "../../../../packages/shared/src/world-art";
 import type Phaser from "phaser";
 import { hexToNumber, type SkinArt, type Trail } from "./skin-art";
@@ -45,6 +48,10 @@ export interface FxParticle {
   behind?: boolean;
 }
 export interface FxContext {
+  /** Exact animated joint position of final accessory art coordinates. */
+  mount?: (part: CreaturePart, x: number, y: number) => { x: number; y: number };
+  facing?: Facing;
+  travelAngle?: number;
   g: Phaser.GameObjects.Graphics;
   /** Drawn behind the fighter. */
   under: Phaser.GameObjects.Graphics;
@@ -574,7 +581,8 @@ export function drawSkinFx(ctx: FxContext, art: SkinArt | undefined, stage: numb
   trail(ctx, art);
   moments(ctx, art, stage);
   if (ctx.defeated) return;
-  detail(ctx, art);
+  if (art.epicFx) drawEpicSkinFx(ctx, art.epicFx, art);
+  else detail(ctx, art);
   if (art.mythic) {
     mythic(ctx, art, stage);
     voidMoments(ctx, art, stage);

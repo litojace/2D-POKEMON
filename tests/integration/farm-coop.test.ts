@@ -427,10 +427,10 @@ it("shows a friend your coop and how many hens live in it", async () => {
   });
 });
 
-it("adds a 2nd cow from farm level 40 and a 3rd from 55; each is milked on its own", async () => {
+it("adds cows 2 to 5, each from its own farm level; each is milked on its own", async () => {
   await owner(
-    "update public.arena_farms set level = 39, pasture = false where player_id = $1",
-    [player],
+    "update public.arena_farms set level = $2, pasture = false where player_id = $1",
+    [player, nextCow(1)!.level - 1],
   );
   expect(await one({ a: "buy-cow" })).toEqual({
     ok: false,
@@ -444,7 +444,7 @@ it("adds a 2nd cow from farm level 40 and a 3rd from 55; each is milked on its o
   await setBarn("wheat", 0);
   const first = nextCow(1)!,
     second = nextCow(2)!;
-  expect(first).toEqual({ level: 40, price: 6000 });
+  expect(first).toEqual({ level: 32, price: 4000 });
   expect(await one({ a: "buy-cow" })).toEqual({
     ok: false,
     error: `Unlocks at farm level ${first.level}`,
@@ -472,12 +472,14 @@ it("adds a 2nd cow from farm level 40 and a 3rd from 55; each is milked on its o
     { a: "milk" },
     { a: "milk", cow: 0 },
     { a: "milk", cow: 2 },
+    { a: "milk", cow: 4 },
     { a: "milk", cow: 7 },
   ]);
   expect(r.results).toEqual([
     { ok: false, error: "The cow is still grazing" },
     expect.objectContaining({ ok: true, milk: PASTURE.milk }),
     { ok: false, error: "The cow is still grazing" },
+    { ok: false, error: "Choose a cow" },
     { ok: false, error: "Choose a cow" },
     { ok: false, error: "Choose a cow" },
   ]);
@@ -494,17 +496,40 @@ it("adds a 2nd cow from farm level 40 and a 3rd from 55; each is milked on its o
     (Date.parse(r.farm.cows[0].milkAt) - Date.parse(r.farm.now)) / 1000;
   expect(w2).toBeGreaterThan(PASTURE.milkSeconds - 5);
   expect(w2).toBeLessThanOrEqual(PASTURE.milkSeconds);
-  // The 3rd at 55; then the pasture is full.
-  await owner("update public.arena_farms set level = 55 where player_id = $1", [
-    player,
-  ]);
-  f = await farm();
-  r = await act([{ a: "buy-cow" }, { a: "buy-cow" }]);
-  expect(r.results[0]).toMatchObject({ ok: true, cow: 2, cost: second.price });
-  expect(r.results[1]).toEqual({ ok: false, error: "Your pasture is full" });
-  expect(f.leaves - r.farm.leaves).toBe(second.price);
-  expect(r.farm.cows.map((c: any) => c.i)).toEqual([1, 2]);
+  // Cows 3 to 5, each at its level (one at a time: the next one waits);
+  // then the pasture is full.
+  for (let owned = 2; owned < PASTURE.maxCows; owned++) {
+    const next = nextCow(owned)!;
+    await owner(
+      "update public.arena_farms set level = $2 where player_id = $1",
+      [player, next.level],
+    );
+    f = await farm();
+    r = await act([{ a: "buy-cow" }, { a: "buy-cow" }]);
+    expect(r.results[0]).toMatchObject({
+      ok: true,
+      cow: owned,
+      cost: next.price,
+    });
+    expect(r.results[1]).toEqual(
+      owned + 1 < PASTURE.maxCows
+        ? {
+            ok: false,
+            error: `Unlocks at farm level ${nextCow(owned + 1)!.level}`,
+          }
+        : { ok: false, error: "Your pasture is full" },
+    );
+    expect(f.leaves - r.farm.leaves).toBe(next.price);
+  }
+  expect(r.farm.cows.map((c: any) => c.i)).toEqual([1, 2, 3, 4]);
   expect(nextCow(PASTURE.maxCows)).toBeNull();
+  // The 5th cow (place 4) gives milk like the others.
+  await owner(
+    "update public.arena_farm_cows set milk_at = now() - interval '1 second' where player_id = $1 and idx = 4",
+    [player],
+  );
+  r = await act([{ a: "milk", cow: 4 }]);
+  expect(r.results[0]).toMatchObject({ ok: true, milk: PASTURE.milk, cow: 4 });
   const v = (
     await owner("select public.arena_farm_view($1, $2) v", [friend, player])
   )[0].v;

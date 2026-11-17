@@ -489,7 +489,10 @@ export function openFarm(options) {
   // behind the field's fence, so a lane runs in front of it: the barn's door
   // and the market's counter no longer open onto the fence, and the lane
   // from home to the barn shows instead of running under it.
-  const PAST = { x0: 1480, x1: 1720, y0: 420, y1: 664 },
+  // The pasture grew for 5 cows (20261117180000): its top from 420 up to
+  // the field's back rail (OY - 32) and its right side from 1720 out past
+  // the farm's edge to 1860. The trees that stood there were felled.
+  const PAST = { x0: 1480, x1: 1860, y0: OY - 32, y1: 664 },
     // Where the farmhouse stood: the Bakery's place now (BAKERY), and
     // where the paths to the Plaza and the barn start.
     HOUSE = { x: 190, y: 292 },
@@ -497,6 +500,8 @@ export function openFarm(options) {
     BOARDP = { x: 700, y: 282 },
     STALL = { x: 930, y: 278 },
     BARN = { x: 1250, y: 296 },
+    // The pasture's middle (its sign, its opening puff).
+    PCX = (PAST.x0 + PAST.x1) / 2,
     WELL = { x: 150, y: 700 },
     DOGH = { x: 1600, y: 810 },
     POND = { x: 250, y: 990, rx: 150, ry: 56 };
@@ -1140,7 +1145,7 @@ export function openFarm(options) {
   }
   /** The Cow Pasture: open it in the shop, then milk the cow (migration 049). */
   function pastureClick(k = 0) {
-    if (!F.pasture) return openSheet("shop", "land");
+    if (!F.pasture) return openSheet("shop", "animals");
     const left = (cowMilkAt(k) - serverNow()) / 1000;
     if (left > 0) return toast(`The cow is grazing. Milk in ${fmtDur(left)}`);
     if (barnUsed() + PASTURE.milk > F.barnCap)
@@ -1263,8 +1268,8 @@ export function openFarm(options) {
       for (const x of r.results) {
         if (!x.ok) continue;
         if (x.pasture) {
-          FX.push({ puff: 1, x: 1600, y: 560, t: 0, life: 0.8 });
-          float(1600, 520, "New pasture!", "#7ff0a2");
+          FX.push({ puff: 1, x: PCX, y: 560, t: 0, life: 0.8 });
+          float(PCX, 520, "New pasture!", "#7ff0a2");
           toast("Your pasture is open. A cow moved in!");
           log("Opened the <b>Cow Pasture</b>. Your cow has moved in", "good");
         }
@@ -1459,14 +1464,20 @@ export function openFarm(options) {
         });
     }
     // Trees just below the Chicken Coop were felled, so their crowns never
-    // hide its run (taken out after, so the rest stand where they did).
+    // hide its run, and the trees, bushes and rocks on the pasture's wider
+    // ground or with a crown over its fence (taken out after, so the rest
+    // stand where they did).
     for (let k = MARGIN.length - 1; k >= 0; k--) {
       const m = MARGIN[k];
       if (
-        m.t &&
-        m.x > COOP.x0 - 80 &&
-        m.x < COOP.x1 + 80 &&
-        m.y < COOP.y1 + 240
+        (m.t &&
+          m.x > COOP.x0 - 80 &&
+          m.x < COOP.x1 + 80 &&
+          m.y < COOP.y1 + 240) ||
+        (m.x > PAST.x0 - 60 &&
+          m.x < PAST.x1 + (m.t ? 90 : 50) &&
+          m.y > PAST.y0 - 30 &&
+          m.y < PAST.y1 + (m.t ? 130 : 40))
       )
         MARGIN.splice(k, 1);
     }
@@ -1535,7 +1546,7 @@ export function openFarm(options) {
   const decoys = [];
   let decoyIn = 60 + Math.random() * 120;
   // The pasture's cow (migration 049): it walks slowly from side to side.
-  const COW = { x: 1600, y: 610, face: -1, t: 0 };
+  const COW = { x: 1660, y: 630, face: -1, t: 0, x0: 1540, x1: 1800 };
   /* The farm cat naps curled up on top of the Bakery's brick oven, the
      warmest spot on the farm (it slept by the farmhouse's door before the
      Bakery took the house's place). A tap on it wakes it for a moment
@@ -1566,14 +1577,20 @@ export function openFarm(options) {
       .filter((q) => Date.parse(q.readyAt) <= n)
       .sort((a, b) => Date.parse(a.readyAt) - Date.parse(b.readyAt));
   };
-  // More cows (20261117100000): the 2nd and 3rd graze the back of the
-  // meadow, each on its own half, so no two cows stand on each other and
-  // the first cow's bubble stays clear of them.
+  // More cows (20261117100000, 20261117180000): three rows about 95 px
+  // apart in the bigger meadow. The 2nd and 3rd graze the back, the 4th and
+  // 5th the middle, set off from the back row's. Each walks its own stretch:
+  // a cow is about 120 px long (tail included), so a stretch stays 60 px
+  // inside the fence and 130 px from its neighbour's, whichever way the
+  // cows face.
   const COWS = [
     COW,
-    { x: 1535, y: 505, face: 1, t: 5, x0: 1526, x1: 1545 },
-    { x: 1668, y: 512, face: -1, t: 9, x0: 1660, x1: 1674 },
+    { x: 1555, y: 442, face: 1, t: 5, x0: 1540, x1: 1570 },
+    { x: 1720, y: 448, face: -1, t: 9, x0: 1700, x1: 1740 },
+    { x: 1635, y: 538, face: -1, t: 2, x0: 1620, x1: 1650 },
+    { x: 1790, y: 544, face: 1, t: 7, x0: 1780, x1: 1800 },
   ];
+
   /** When cow k's milk is ready (ms; the first cow's is F.milkAt). */
   const cowMilkAt = (k) =>
     k === 0 ? F.milkAt : (F.cows.find((c) => c.i === k)?.milkAt ?? Infinity);
@@ -1917,7 +1934,7 @@ export function openFarm(options) {
   }
   /** A tap on the coop: buy it, tend a hen, or open the coop's sheet. */
   function coopClick(w) {
-    if (!F.coop) return openSheet("shop", "land");
+    if (!F.coop) return openSheet("shop", "animals");
     const k = henAt(w);
     if (k >= 0) return henTap(k);
     bounce.coop = 1;
@@ -2563,11 +2580,17 @@ export function openFarm(options) {
       shake: 0,
     }))
     // The round tree below the lane and the cherry tree right of it were
-    // felled for the Chicken Coop
-    // (filtered after, so every other tree keeps its own look).
+    // felled for the Chicken Coop, and the two above the pasture for its
+    // taller meadow (20261117180000), filtered after, so every other tree
+    // keeps its own look.
     .filter(
       (t) =>
-        !((t.x === 1120 && t.y === 1060) || (t.x === 1450 && t.y === 1040)),
+        !(
+          (t.x === 1120 && t.y === 1060) ||
+          (t.x === 1450 && t.y === 1040) ||
+          (t.x === 1480 && t.y === 340) ||
+          (t.x === 1700 && t.y === 330)
+        ),
     );
   /** Squash-and-stretch after a tap (house, mill, barn…): 1 → 0. */
   const bounce = {};
@@ -6498,8 +6521,8 @@ export function openFarm(options) {
       items.push({
         y: 570,
         d: () => {
-          GFX.blit(ctx, GFX.rock(61, 40), 1530, 610);
-          GFX.blit(ctx, GFX.bush("green", 62, 56), 1680, 640);
+          GFX.blit(ctx, GFX.rock(61, 40), PAST.x0 + 50, 610);
+          GFX.blit(ctx, GFX.bush("green", 62, 56), PAST.x1 - 80, 640);
           if (s.me)
             GFX.blit(
               ctx,
@@ -6509,7 +6532,7 @@ export function openFarm(options) {
                   : `PASTURE · Lv ${PASTURE.level}`,
                 "#c0392b",
               ),
-              1600,
+              PCX,
               570,
             );
         },
@@ -7986,7 +8009,7 @@ export function openFarm(options) {
           ["seeds", "Seeds"],
           ["tools", "Tools"],
           ["dogs", "Guard Dogs"],
-          ["land", "Land"],
+          ["animals", "Animals"],
         ]) + `<div class="sh-body">`;
       if (sheetTab === "seeds")
         html +=
@@ -8020,11 +8043,9 @@ export function openFarm(options) {
               lock = d.level > F.lv;
             return `<div class="dogcard${active ? " active" : ""}${lock ? " locked" : ""}"><canvas data-dogprev="${d.id}" width="120" height="120"></canvas><div><b>${d.name}</b><small>${d.text}${active ? `<br><b style="color:#7ff0a2">On guard · ${fmtDur(dogLeft())} left</b>` : ""}</small><div class="acts">${lock ? `<span class="sh-note">Unlocks at Lv ${d.level}</span>` : `<button type="button" class="btn-s${active ? " green" : ""}" data-dog="${d.id}" data-days="1" ${F.leaves < d.price1 ? "disabled" : ""}>${active ? "+1 day" : "1 day"} · ${d.price1} ${L}</button><button type="button" class="btn-s ghost" data-dog="${d.id}" data-days="3" ${F.leaves < d.price3 ? "disabled" : ""}>${active ? "+3 days" : "3 days"} · ${d.price3} ${L}</button>`}</div></div></div>`;
           }).join("");
-      if (sheetTab === "land") {
-        const k = F.land,
-          ok = F.lv >= landLv(k),
-          done = k >= 35;
-        html += `<p class="sh-note">Buy more land one plot at a time. Each plot costs more than the last. You can only buy plots <b>next to land you own</b>; they show a <b>FOR SALE</b> sign.</p><div class="landmap" style="grid-template-columns:repeat(${COLS},minmax(0,1fr))">${F.plots.map((p, i) => `<button type="button" class="lm ${!p.locked ? "own" : buyable(i) ? "can" : "no"}" ${buyable(i) ? `data-landbuy="${i}"` : "disabled"} title="${!p.locked ? "Your land" : buyable(i) ? "For sale" : "Not yet"}">${!p.locked ? (p.crop ? I("sprout") : "") : buyable(i) ? I("sign") : ""}</button>`).join("")}</div><div class="item"><span class="ic">${I("sign")}</span><div><b>Next plot · ${15 + k}/${FARM_PLOTS} plots</b><small>${done ? "You own every plot" : `${landPrice(k)} ${L} · needs Lv ${landLv(k)}${ok ? "" : ` · <b style="color:#ffd65b">you are Lv ${F.lv}</b>`}`}</small></div></div>`;
+      if (sheetTab === "animals") {
+        // Land is bought on the farm itself, from its FOR SALE signs
+        // (landClick's deed); this tab is the pasture's and the coop's.
         const pLock = F.lv < PASTURE.level;
         html += `<div class="item${pLock && !F.pasture ? " locked" : ""}"><span class="ic">${I("cow")}</span><div><b>Cow Pasture</b><small>Opens the meadow on the right with a cow that gives <b>${PASTURE.milk} ${MILK.name}</b> every ${fmtDur(PASTURE.milkSeconds)}, about ${MILK.sell} ${L} each${F.pasture ? "" : pLock ? ` · <b style="color:#ffd65b">unlocks at Lv ${PASTURE.level}</b>` : ""}</small></div><div class="acts">${F.pasture ? `<button type="button" class="btn-s green" disabled>Owned</button>` : `<button type="button" class="btn-s" data-pasture ${pLock || F.leaves < PASTURE.price ? "disabled" : ""}>${PASTURE.price} ${L}</button>`}</div></div>`;
         const cow = F.pasture ? nextCow(1 + F.cows.length) : null;
@@ -8032,6 +8053,12 @@ export function openFarm(options) {
           html += `<div class="item${cow && F.lv < cow.level ? " locked" : ""}"><span class="ic">${I("cow")}</span><div><b>Another cow · ${1 + F.cows.length}/${PASTURE.maxCows}</b><small>${cow ? `One more cow, ${PASTURE.milk} ${MILK.name} every ${fmtDur(PASTURE.milkSeconds)}${F.lv < cow.level ? ` · <b style="color:#ffd65b">unlocks at Lv ${cow.level}</b>` : ""}` : "Your pasture is full"}</small></div><div class="acts">${cow ? `<button type="button" class="btn-s" data-buycow ${F.lv < cow.level || F.leaves < cow.price ? "disabled" : ""}>${F.lv < cow.level ? `Lv ${cow.level}` : `${cow.price.toLocaleString("en-US")} ${L}`}</button>` : `<button type="button" class="btn-s green" disabled>Full</button>`}</div></div>`;
         const cLock = F.lv < COOP.level;
         html += `<div class="item${cLock && !F.coop ? " locked" : ""}"><span class="ic">${I("hen")}</span><div><b>Chicken Coop</b><small>A coop by the lane with <b>${COOP.hens} hens</b> (up to ${COOP.maxHens}). Feed a hen ${COOP.feedQty} ${CROP[COOP.feedCrop].n} and she lays a <b>${EGG.name}</b> in ${fmtDur(COOP.laySeconds)}, about ${EGG.sell} ${L} each${F.coop ? "" : cLock ? ` · <b style="color:#ffd65b">unlocks at Lv ${COOP.level}</b>` : ""}</small></div><div class="acts">${F.coop ? `<button type="button" class="btn-s green" disabled>Owned</button>` : `<button type="button" class="btn-s" data-coop ${cLock || F.leaves < COOP.price ? "disabled" : ""}>${COOP.price.toLocaleString("en-US")} ${L}</button>`}</div></div>`;
+        if (F.coop) {
+          const hen = henPrice(F.hens.length),
+            henLv = henLevel(F.hens.length),
+            hLock = henLv != null && F.lv < henLv;
+          html += `<div class="item${hLock ? " locked" : ""}"><span class="ic">${I("hen")}</span><div><b>Another hen · ${F.hens.length}/${COOP.maxHens}</b><small>${hen == null ? "Your coop is full" : `One more hen, one more ${EGG.name} each round${hLock ? ` · <b style="color:#ffd65b">unlocks at Lv ${henLv}</b>` : ""}`}</small></div><div class="acts">${hen == null ? `<button type="button" class="btn-s green" disabled>Full</button>` : `<button type="button" class="btn-s" data-buyhen ${hLock || F.leaves < hen ? "disabled" : ""}>${hLock ? `Lv ${henLv}` : `${hen.toLocaleString("en-US")} ${L}`}</button>`}</div></div>`;
+        }
       }
       html += `</div>`;
     }
@@ -9551,6 +9578,7 @@ export function openFarm(options) {
       /** The coop's hens and the pasture's cows as drawn (tests): where each one stands. */
       coopHens,
       cows: COWS,
+      pasture: PAST,
       /** Center the camera on a world point (tests). */
       look: (x, y) => {
         cam.x = x;

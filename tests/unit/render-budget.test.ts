@@ -4,6 +4,7 @@ import {
   isIOSWebApp,
   largeIPad,
   memoryConstrained,
+  previewDensity,
   rendererDensity,
   sceneDensity,
 } from "../../apps/client/src/render-budget";
@@ -78,4 +79,16 @@ it("draws sharp on large iPads (4 GB or more), as on a desktop", () => {
   expect(Math.round(2560 * d) * Math.round(1440 * d)).toBeLessThanOrEqual(
     6_002_000,
   );
+});
+
+it("draws fighter previews at most 2× on iPhones, 3× elsewhere", () => {
+  // A 3× iPhone (the Lobby ran hot on an iPhone 17 Pro Max).
+  expect(previewDensity(3, true, false)).toBe(2);
+  expect(previewDensity(2, true, false)).toBe(2);
+  // A large iPad and other screens keep up to 3×.
+  expect(previewDensity(3, true, true)).toBe(3);
+  expect(previewDensity(3, false, false)).toBe(3);
+  expect(previewDensity(4, false, false)).toBe(3);
+  expect(previewDensity(1, true, false)).toBe(1);
+  expect(previewDensity(NaN, true, false)).toBe(1);
 });

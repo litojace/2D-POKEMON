@@ -1,0 +1,201 @@
+import { describe, expect, it } from "vitest";
+import { CHARACTERS, type CharacterId } from "@arena/shared";
+import {
+  FASHION_COLLECTION_IDS,
+  FASHION_SKINS,
+} from "../../packages/shared/src/shop";
+import { epicBodyCut } from "../../apps/client/src/skins/epic-fashion";
+import { fashionCut } from "../../apps/client/src/skins/fashion-fits";
+import { fashionOutfit } from "../../apps/client/src/skins/fashion-outfits";
+import { HEAD, SKIN_ART } from "../../apps/client/src/skins/skin-art";
+import { creatureLayers } from "../../apps/client/src/creature-design";
+import {
+  drawSkinFx,
+  type FxContext,
+} from "../../apps/client/src/skins/skin-fx";
+
+const ids = Object.keys(CHARACTERS) as CharacterId[];
+const dirs = ["down", "left", "right", "up"] as const;
+// Ignore paint, labels and coordinates in metadata: uniqueness must be in the
+// authored shapes, not merely a different skin id or palette.
+const shapes = (svg: string) =>
+  [...svg.matchAll(/(?:\sd="([^"]+)"|<(circle|ellipse)[^>]+>)/g)]
+    .map((m) => m[1] ?? m[0].replace(/(?:fill|stroke)="[^"]*"/g, ""))
+    .join("|");
+
+describe("authored fashion collections", () => {
+  it("replaces conflicting default props without covering faces or removing Halcyra's beak", () => {
+    for (const collection of ["abyssal-expedition", "dream-carnival"] as const)
+      for (const dir of dirs) {
+        for (const id of ids) {
+          const { layers } = creatureLayers(id, dir, "normal", {
+            skin: `${id}-${collection}`,
+          });
+          // Neckwear belongs below the face, not in the last-painted scarf layer.
+          expect(layers.scarf, `${id} ${collection} ${dir}`).toBe("");
+          expect(layers.body).toContain("epic-fashion");
+        }
+        for (const id of ["voltkit", "tidefin", "sunbara"] as const) {
+          const original = creatureLayers(id, dir).layers.flame;
+          const dressed = creatureLayers(id, dir, "normal", {
+            skin: `${id}-${collection}`,
+          }).layers.flame;
+          for (const [, d] of original.matchAll(/\sd="([^"]+)"/g))
+            expect(dressed, `${id}: old prop must not remain`).not.toContain(
+              `d="${d}"`,
+            );
+        }
+        const beak = creatureLayers("halcyra", dir).layers.flame;
+        const dressed = creatureLayers("halcyra", dir, "normal", {
+          skin: `halcyra-${collection}`,
+        }).layers.flame;
+        const beakPaths = [...beak.matchAll(/\sd="([^"]+)"/g)];
+        if (dir !== "up") expect(beakPaths.length).toBeGreaterThan(0);
+        for (const [, d] of beakPaths) expect(dressed).toContain(`d="${d}"`);
+      }
+  });
+
+  it("gives the new Epics independent geometry from every retained Rare collection", () => {
+    const rares = FASHION_SKINS.filter((s) => s.rarity === "rare");
+    expect(rares).toHaveLength(ids.length * 3);
+    expect(
+      FASHION_SKINS.some(
+        (s) => (s.collection as string) === "clockwork-reverie",
+      ),
+    ).toBe(false);
+    for (const id of ids)
+      for (const dir of dirs) {
+        const deep = epicBodyCut(id, dir, "abyssal-expedition"),
+          stage = epicBodyCut(id, dir, "dream-carnival");
+        expect(deep).not.toBe(stage);
+        for (const rare of rares.filter((s) => s.champion === id)) {
+          const cut = fashionCut(
+            id,
+            dir,
+            rare.collection as (typeof FASHION_COLLECTION_IDS)[number],
+          );
+          expect(deep).not.toBe(cut);
+          expect(stage).not.toBe(cut);
+        }
+      }
+  });
+
+  it("retains signature wrist, blade and wing equipment through turns", () => {
+    for (const collection of FASHION_COLLECTION_IDS)
+      for (const dir of dirs) {
+        for (const [id, parts] of [
+          ["tidefin", ["armR"]],
+          ["auralynx", ["armL", "armR"]],
+          ["lumoth", ["wings"]],
+        ] as const) {
+          const layers = fashionOutfit(
+            collection,
+            id,
+            dir,
+            SKIN_ART[`${id}-${collection}`].palette as any,
+            HEAD[id][dir],
+          );
+          for (const part of parts)
+            expect(
+              layers.some(([p]) => p === part),
+              `${id} ${dir} ${part}`,
+            ).toBe(true);
+        }
+      }
+  });
+  it("keeps Rare idle effects silent and Epic details within a small drawing budget", () => {
+    for (const skin of FASHION_SKINS)
+      for (const now of [100, 600, 1200]) {
+        let commands = 0,
+          emissions = 0;
+        const g: any = new Proxy(
+          {},
+          {
+            get: () => () => {
+              commands++;
+              return g;
+            },
+          },
+        );
+        const ctx = {
+          g,
+          under: g,
+          emit: () => emissions++,
+          chance: () => true,
+          x: 100,
+          y: 160,
+          headX: 100,
+          headY: 90,
+          sc: 1,
+          now,
+          dt: 1 / 60,
+          angle: 0,
+          moving: false,
+          dashing: false,
+          hurt: false,
+          defeated: false,
+          greeting: false,
+          celebrating: false,
+          knockedOut: false,
+          ultimate: false,
+          ambient: false,
+        } as unknown as FxContext;
+        drawSkinFx(ctx, SKIN_ART[skin.id], 1);
+        expect(emissions, skin.id).toBe(0);
+        expect(commands, skin.id).toBeLessThanOrEqual(
+          skin.rarity === "rare" ? 0 : 20,
+        );
+      }
+  });
+  it("gives every champion one Rare/Epic costume in each new collection", () => {
+    expect(FASHION_SKINS).toHaveLength(
+      ids.length * FASHION_COLLECTION_IDS.length,
+    );
+    for (const collection of FASHION_COLLECTION_IDS) {
+      const skins = FASHION_SKINS.filter((s) => s.collection === collection);
+      expect(skins.map((s) => s.champion).sort()).toEqual([...ids].sort());
+      expect(new Set(skins.map((s) => s.name)).size).toBe(ids.length);
+    }
+  });
+  it("has a distinct garment cut for every champion, with separately authored side and back", () => {
+    for (const dir of ["down", "left", "up"] as const) {
+      expect(
+        new Set(ids.map((id) => fashionCut(id, dir, "wayfarer"))).size,
+      ).toBe(ids.length);
+    }
+    for (const id of ids)
+      expect(
+        new Set(
+          ["down", "left", "up"].map((dir) =>
+            fashionCut(id, dir as (typeof dirs)[number], "wayfarer"),
+          ),
+        ).size,
+        id,
+      ).toBe(3);
+  });
+  it("keeps individual equipment on rig joints and does not reuse a painted front from behind", () => {
+    for (const skin of FASHION_SKINS) {
+      const art = SKIN_ART[skin.id],
+        views: string[] = [];
+      for (const dir of dirs) {
+        const layers = fashionOutfit(
+          skin.collection as (typeof FASHION_COLLECTION_IDS)[number],
+          skin.champion,
+          dir,
+          art.palette as any,
+          HEAD[skin.champion][dir],
+        );
+        expect(
+          new Set(layers.map(([part]) => part)).size,
+          skin.id,
+        ).toBeGreaterThanOrEqual(2);
+        const svg = layers.map(([, svg]) => svg).join("");
+        expect(svg, skin.id).toMatch(/class="[^"]*\bfashion-signature\b/);
+        expect(svg, skin.id).not.toMatch(/NaN|undefined|Infinity/);
+        views.push(shapes(svg));
+      }
+      expect(views[0], skin.id).not.toBe(views[3]);
+      expect(views[0], skin.id).not.toBe(views[1]);
+    }
+  });
+});

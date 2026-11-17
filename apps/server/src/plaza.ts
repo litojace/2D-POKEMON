@@ -494,9 +494,11 @@ export class PlazaWorld {
     const v = this.visitors.get(key);
     return !!v && plazaJump(v.body);
   }
-  dash(key: string) {
+  /** A dash, the way the browser dashed (`dx`, `dy`; a bad or missing
+   * direction falls back to the last stick). */
+  dash(key: string, dx?: unknown, dy?: unknown) {
     const v = this.visitors.get(key);
-    return !!v && plazaDash(v.body);
+    return !!v && plazaDash(v.body, plazaStick(dx, dy));
   }
   /** At most one emote a second. */
   emote(key: string, kind: unknown, now: number) {
