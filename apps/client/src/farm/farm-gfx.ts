@@ -1387,9 +1387,11 @@ const GFX = (() => {
   /* The Chicken Coop (20261117100000): a little wooden hen house on stilts
      with a shingled roof, a round window that glows at night, a hatch and a
      ramp, and nest boxes on the side. Anchored at the middle of its base. */
+  const COOP_S = 1.3;
   const coop = () =>
     memo("coop", () =>
-      sprite(170, 160, 82, 148, (g) => {
+      sprite(170 * COOP_S, 160 * COOP_S, 82 * COOP_S, 148 * COOP_S, (g) => {
+        g.scale(COOP_S, COOP_S);
         const x0 = -50,
           x1 = 50,
           top = -92,
@@ -1537,7 +1539,7 @@ const GFX = (() => {
         g.lineTo(10, top - 58);
         g.lineTo(6, top - 56);
         g.fill();
-        return { win: [-18, top + 26] };
+        return { win: [-18 * COOP_S, (top + 26) * COOP_S] };
       }),
     );
   /* The coop's run: packed earth with straw, w × h, anchored top left. */

@@ -8,23 +8,31 @@ import {
   PASTURE,
   decorFits,
   eggPrice,
+  henLevel,
   henPrice,
   henState,
+  nextCow,
 } from "../../packages/shared/src/farm";
+import { FARM_TO_BISTRO } from "../../packages/shared/src/bistro";
 
-// The Chicken Coop (20261117100000_farm_coop.sql).
+// The Chicken Coop and more cows (20261117100000_farm_coop_cows.sql).
 describe("the Chicken Coop", () => {
-  it("opens at level 14 with 3 hens, and holds 9", () => {
+  it("opens at level 14 with 3 hens; each more hen has its own level", () => {
     expect(COOP.level).toBe(14);
     expect(FARM_UNLOCKS).toContainEqual([14, "Chicken Coop"]);
     expect(COOP.henPrices).toHaveLength(COOP.maxHens - COOP.hens);
+    expect(COOP.henLevels).toHaveLength(COOP.maxHens - COOP.hens);
     expect(henPrice(0)).toBeNull();
-    expect(henPrice(3)).toBe(300);
-    expect(henPrice(8)).toBe(1200);
+    expect([henLevel(3), henPrice(3)]).toEqual([17, 500]);
+    expect([henLevel(8), henPrice(8)]).toEqual([36, 1500]);
     expect(henPrice(9)).toBeNull();
-    // Each hen costs more than the last.
-    for (let k = 1; k < COOP.henPrices.length; k++)
+    expect(henLevel(9)).toBeNull();
+    // Each hen comes later and costs more than the last.
+    for (let k = 1; k < COOP.henPrices.length; k++) {
       expect(COOP.henPrices[k]).toBeGreaterThan(COOP.henPrices[k - 1]);
+      expect(COOP.henLevels[k]).toBeGreaterThan(COOP.henLevels[k - 1]);
+    }
+    expect(COOP.henLevels[0]).toBeGreaterThan(COOP.level);
   });
   it("tells a hungry hen, a laying one and one with an egg apart", () => {
     const now = Date.parse("2026-11-17T10:00:00Z");
@@ -39,6 +47,8 @@ describe("the Chicken Coop", () => {
     expect(EGG.sell).toBeLessThan(60);
     expect(eggPrice(0)).toBe(1);
     expect(COOP.laySeconds).toBe(PASTURE.milkSeconds);
+    // Three eggs make the Bistro's Eggs, like milk.
+    expect(FARM_TO_BISTRO.egg).toBe("egg");
   });
   it("stands on the farm's free land, where no decoration can go", () => {
     expect(COOP.x0).toBeGreaterThanOrEqual(DECOR_AREA.x0);
@@ -65,6 +75,17 @@ describe("the Chicken Coop", () => {
             `${x},${y}`,
           ).toBe(false);
     expect(decorFits("rock", 1140, 900, [])).toBe("Something is in the way");
-    expect(decorFits("rock", 1140, 990, [])).toBeNull();
+    expect(decorFits("rock", 1140, 990, [])).toBe("Something is in the way");
+    // The tree felled for it left free ground below it.
+    expect(decorFits("rock", 1120, 1050, [])).toBeNull();
+  });
+});
+describe("more cows", () => {
+  it("adds a 2nd cow at level 40 and a 3rd at 55, and no more", () => {
+    expect(nextCow(0)).toBeNull();
+    expect(nextCow(1)).toEqual({ level: 40, price: 6000 });
+    expect(nextCow(2)).toEqual({ level: 55, price: 10000 });
+    expect(nextCow(3)).toBeNull();
+    expect(PASTURE.cowLevels[0]).toBeGreaterThan(COOP.henLevels.at(-1)!);
   });
 });

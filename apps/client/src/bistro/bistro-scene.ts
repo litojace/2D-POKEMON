@@ -202,7 +202,7 @@ import {
   type Car,
 } from "./bistro-scenery";
 import * as Rules from "./bistro-model";
-import { CROP_BY_ID } from "../../../../packages/shared/src/farm";
+import { CROP_BY_ID, EGG, MILK } from "../../../../packages/shared/src/farm";
 import {
   BistroSync,
   applyLocal,
@@ -2614,9 +2614,11 @@ export function openBistro(o: BistroOptions): BistroHandle {
           PANTRY_MAX - (S.pantry[ing] ?? 0),
         );
         const name =
-          crop === "milk"
-            ? "Storm Milk"
-            : (CROP_BY_ID[crop as keyof typeof CROP_BY_ID]?.name ?? crop);
+          crop === MILK.id
+            ? MILK.name
+            : crop === EGG.id
+              ? EGG.name
+              : (CROP_BY_ID[crop as keyof typeof CROP_BY_ID]?.name ?? crop);
         return `<button type="button" class="bs-item mk" data-farm="${crop}" ${can > 0 ? "" : "disabled"}><i class="ing big ing-${ing}"></i><b>${INGREDIENT_NAMES[ing]}</b><small>${FARM_PER_INGREDIENT} ${esc(name)} each · ${n} in the barn</small>${can > 0 ? `<span class="pr">Bring ${can}</span>` : `<span class="lk">${n < FARM_PER_INGREDIENT ? "Grow more" : "Not today"}</span>`}</button>`;
       })
       .join("");

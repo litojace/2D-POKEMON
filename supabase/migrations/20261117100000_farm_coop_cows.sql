@@ -1,17 +1,23 @@
--- The Chicken Coop: hens that lay eggs when fed. Run after
--- 20261116180000_spire_zone2.sql. Safe to run again.
+-- The Chicken Coop, and more cows. Run after 20261116180000_spire_zone2.sql.
+-- Safe to run again. Numbers and reasons: docs/farm-coop.md.
 --   * The coop opens at farm level 14 for 1500 Gold Leaves (+40 farm XP),
---     with 3 hens; 6 more can be bought (300, 450, 600, 800, 1000, 1200).
+--     with 3 hens. 6 more can be bought, each from its own farm level:
+--     Lv 17 / 20 / 24 / 28 / 32 / 36 for 500 / 700 / 900 / 1100 / 1300 / 1500.
 --   * A hungry hen eats 2 plain Breeze Wheat from the barn and lays one
 --     Sunny Egg 2 hours later (server time); collecting it gives 3 farm XP,
 --     and the hen is hungry again. Eggs take barn space and sell for 30
 --     Gold Leaves times their own price of the day (0.85 to 1.35).
 --   * The coop stands on the grass below the lane, right of the gate's
---     path (990..1340 × 846..934, world px): decorations can't stand there
+--     path (990..1350 × 846..1010, world px); the farm tree that stood at
+--     (1120, 1060) is felled. Decorations can't stand on the coop
 --     (arena_farm_decor_fits, as DECOR_BLOCKS / COOP in
---     packages/shared/src/farm.ts), and any already there go into storage
---     (placed again for free).
+--     packages/shared/src/farm.ts) and any already there go into storage
+--     (placed again for free); the felled tree's spot is free ground.
 --   * Order board: with a coop, an order may ask for eggs too.
+--   * More cows: the pasture's 2nd cow from farm level 40 (6000 Gold
+--     Leaves) and the 3rd from 55 (10000). Each gives 2 Storm Milk every
+--     2 hours like the first (its first milk 20 minutes after it arrives);
+--     `milk` takes the cow (0, the first, when left out).
 --   * Hooks as in 049/20261116120000: the actions go through
 --     arena_farm_act_extra and the fields through arena_farm_state_extra,
 --     each wrapping the function it replaces (renamed once).
@@ -32,6 +38,17 @@ create table if not exists public.arena_farm_hens (
 alter table public.arena_farm_hens enable row level security;
 revoke all on public.arena_farm_hens from public, anon, authenticated, service_role;
 
+-- The 2nd and 3rd cows (1, 2) and when each one's milk is ready; the first
+-- cow's stays arena_farms.milk_at.
+create table if not exists public.arena_farm_cows (
+  player_id uuid not null references public.arena_profiles(id) on delete cascade,
+  idx smallint not null check (idx between 1 and 2),
+  milk_at timestamptz not null,
+  primary key (player_id, idx)
+);
+alter table public.arena_farm_cows enable row level security;
+revoke all on public.arena_farm_cows from public, anon, authenticated, service_role;
+
 -- Eggs' price of the day, the same for everyone (0.85 to 1.35).
 create or replace function public.arena_farm_egg_mult(p_day date) returns numeric
 language sql immutable set search_path = public as $$
@@ -43,15 +60,15 @@ with gone as (
   delete from public.arena_farm_decor_pieces p
    using public.arena_farm_decor_items i
    where i.id = p.item
-     and p.x - coalesce(i.w, 30) < 1340 and 990 < p.x + coalesce(i.w, 30)
-     and p.y - coalesce(i.d, 14) < 934 and 846 < p.y + 4
+     and p.x - coalesce(i.w, 30) < 1350 and 990 < p.x + coalesce(i.w, 30)
+     and p.y - coalesce(i.d, 14) < 1010 and 846 < p.y + 4
   returning p.player_id, p.item
 )
 insert into public.arena_farm_decor_credits(player_id, item, qty)
 select player_id, item, count(*)::integer from gone group by player_id, item
 on conflict (player_id, item) do update set qty = public.arena_farm_decor_credits.qty + excluded.qty;
 
--- As in 20261116120000, with the coop among the blocks.
+-- As in 20261116120000, with the coop among the blocks and one tree fewer.
 create or replace function public.arena_farm_decor_fits(pid uuid, v_item text, px integer, py integer,
   except_id bigint default null) returns text
 language plpgsql stable security definer set search_path = public as $$
@@ -72,15 +89,16 @@ begin
       ('rect', 20, 1460, 120, 360), ('rect', 1450, 1750, 390, 690),
       ('rect', 80, 220, 630, 726), ('rect', 1470, 1680, 754, 840),
       ('rect', 250, 326, 520, 576), ('rect', 830, 940, 770, 1060),
-      ('rect', 990, 1340, 846, 934)) r(k, a1, a2, a3, a4) loop
+      ('rect', 990, 1350, 846, 1010)) r(k, a1, a2, a3, a4) loop
     if x0 < b.a2 and b.a1 < x1 and y0 < b.a4 and b.a3 < y1 then
       return 'Something is in the way';
     end if;
   end loop;
-  -- Ovals: centre, radii (the pond, then the farm's trees).
+  -- Ovals: centre, radii (the pond, then the farm's trees; the one at
+  -- (1120, 1060) was felled for the coop).
   for b in select * from (values (250, 990, 190, 82),
       (338, 230, 52, 26), (812, 190, 52, 26), (44, 400, 52, 26), (1480, 340, 52, 26),
-      (1700, 330, 52, 26), (70, 210, 52, 26), (640, 1050, 52, 26), (1120, 1060, 52, 26),
+      (1700, 330, 52, 26), (70, 210, 52, 26), (640, 1050, 52, 26),
       (1450, 1040, 52, 26), (1720, 1000, 52, 26), (40, 1060, 52, 26)) o(ox, oy, rx, ry) loop
     cx = least(greatest(b.ox::double precision, x0), x1);
     cy = least(greatest(b.oy::double precision, y0), y1);
@@ -100,7 +118,7 @@ end; $$;
 revoke all on function public.arena_farm_decor_fits(uuid, text, integer, integer, bigint)
   from public, anon, authenticated, service_role;
 
--- The coop's actions; anything else as before (064's function).
+-- The coop's actions and the other cows; anything else as before (064's function).
 do $$
 begin
   if to_regprocedure('public.arena_farm_act_extra_pasture(uuid, jsonb, text, timestamptz, date)') is null then
@@ -110,16 +128,52 @@ end $$;
 create or replace function public.arena_farm_act_extra(pid uuid, a jsonb, ref text, t timestamptz, d date,
   out err text, out gained jsonb, out xp integer)
 language plpgsql security definer set search_path = public as $$
-declare f public.arena_farms; h public.arena_farm_hens; n integer; cost integer; used integer;
+declare f public.arena_farms; h public.arena_farm_hens; c public.arena_farm_cows; n integer;
+  cost integer; used integer; lv integer;
 begin
   xp = 0;
-  if a->>'a' not in ('buy-coop', 'buy-hen', 'feed-hen', 'collect-egg', 'sell-eggs') then
+  n = case when jsonb_typeof(a->'cow') = 'number' and (a->>'cow') ~ '^[0-9]+$' then (a->>'cow')::integer end;
+  if a->>'a' = 'milk' and a ? 'cow' and (n is null or n > 2) then
+    err = 'Choose a cow';
+    return;
+  end if;
+  if a->>'a' not in ('buy-coop', 'buy-hen', 'feed-hen', 'collect-egg', 'sell-eggs', 'buy-cow')
+      and not (a->>'a' = 'milk' and coalesce(n between 1 and 2, false)) then
     select x.err, x.gained, x.xp into err, gained, xp
       from public.arena_farm_act_extra_pasture(pid, a, ref, t, d) x;
     return;
   end if;
   select * into f from public.arena_farms where player_id = pid;
-  if a->>'a' = 'buy-coop' then
+  if a->>'a' = 'buy-cow' then
+    select count(*) + 1 into n from public.arena_farm_cows where player_id = pid;
+    lv = case n when 1 then 40 when 2 then 55 end;
+    cost = case n when 1 then 6000 when 2 then 10000 end;
+    if not f.pasture then err = 'Open the pasture first';
+    elsif lv is null then err = 'Your pasture is full';
+    elsif f.level < lv then err = 'Unlocks at farm level ' || lv;
+    -- One purchase per place in the pasture: a retry can never buy it twice.
+    elsif not public.arena_spend_leaves(pid, cost, 'farm-cow', 'cow-' || n, d) then
+      err = 'Not enough Gold Leaves';
+    else
+      insert into public.arena_farm_cows(player_id, idx, milk_at) values (pid, n, t + interval '20 minutes');
+      gained = jsonb_build_object('cow', n, 'cost', cost, 'milkAt', t + interval '20 minutes');
+    end if;
+  elsif a->>'a' = 'milk' then
+    -- The 2nd or 3rd cow (the first is 064's).
+    select * into c from public.arena_farm_cows where player_id = pid and idx = n for update;
+    if c.idx is null then err = 'Choose a cow';
+    elsif c.milk_at > t then err = 'The cow is still grazing';
+    elsif (select coalesce(sum(qty), 0) from public.arena_farm_barn where player_id = pid) + 2
+        > 80 + 40 * f.barn_upgrades then
+      err = 'Your barn is full';
+    else
+      insert into public.arena_farm_barn(player_id, crop, mutation, qty) values (pid, 'milk', '', 2)
+      on conflict (player_id, crop, mutation) do update set qty = public.arena_farm_barn.qty + 2;
+      update public.arena_farm_cows set milk_at = t + interval '2 hours' where player_id = pid and idx = n;
+      gained = jsonb_build_object('milk', 2, 'cow', n, 'milkAt', t + interval '2 hours');
+      xp = 8;
+    end if;
+  elsif a->>'a' = 'buy-coop' then
     if f.coop then err = 'You already have the coop';
     elsif f.level < 14 then err = 'Unlocks at farm level 14';
     elsif not public.arena_spend_leaves(pid, 1500, 'farm-coop', 'coop', d) then
@@ -149,10 +203,11 @@ begin
     err = 'Open the coop first';
   elsif a->>'a' = 'buy-hen' then
     select count(*) into n from public.arena_farm_hens where player_id = pid;
-    cost = case n when 3 then 300 when 4 then 450 when 5 then 600 when 6 then 800
-      when 7 then 1000 when 8 then 1200 end;
-    if n >= 9 then err = 'Your coop is full';
-    elsif cost is null then err = 'Your coop is full';
+    lv = case n when 3 then 17 when 4 then 20 when 5 then 24 when 6 then 28 when 7 then 32 when 8 then 36 end;
+    cost = case n when 3 then 500 when 4 then 700 when 5 then 900 when 6 then 1100
+      when 7 then 1300 when 8 then 1500 end;
+    if cost is null then err = 'Your coop is full';
+    elsif f.level < lv then err = 'Unlocks at farm level ' || lv;
     -- One purchase per place in the coop: a retry can never buy it twice.
     elsif not public.arena_spend_leaves(pid, cost, 'farm-hen', 'hen-' || n, d) then
       err = 'Not enough Gold Leaves';
@@ -207,11 +262,13 @@ language sql stable security definer set search_path = public as $$
       'coop', f.coop,
       'hens', coalesce((select jsonb_agg(jsonb_build_object('i', h.idx, 'eggAt', h.egg_at) order by h.idx)
         from public.arena_farm_hens h where h.player_id = pid), '[]'::jsonb),
-      'eggMult', public.arena_farm_egg_mult(public.arena_today()))
+      'eggMult', public.arena_farm_egg_mult(public.arena_today()),
+      'cows', coalesce((select jsonb_agg(jsonb_build_object('i', c.idx, 'milkAt', c.milk_at) order by c.idx)
+        from public.arena_farm_cows c where c.player_id = pid), '[]'::jsonb))
     from public.arena_farms f where f.player_id = pid), '{}'::jsonb)
 $$;
 
--- A friend's farm as before, plus their coop (they see your hens).
+-- A friend's farm as before, plus their coop and cows (they see your hens).
 do $$
 begin
   if to_regprocedure('public.arena_farm_view_pasture(uuid, uuid)') is null then
@@ -222,7 +279,9 @@ create or replace function public.arena_farm_view(me uuid, pid uuid) returns jso
 language sql stable security definer set search_path = public as $$
   select public.arena_farm_view_pasture(me, pid) || jsonb_build_object(
     'coop', coalesce((select f.coop from public.arena_farms f where f.player_id = pid), false),
-    'hens', (select count(*) from public.arena_farm_hens h where h.player_id = pid))
+    'hens', (select count(*) from public.arena_farm_hens h where h.player_id = pid),
+    'cows', case when coalesce((select f.pasture from public.arena_farms f where f.player_id = pid), false)
+      then 1 + (select count(*) from public.arena_farm_cows c where c.player_id = pid) else 0 end)
 $$;
 
 -- New orders as in 070; with a coop, about a third also ask for 2 to 4 eggs

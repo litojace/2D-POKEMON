@@ -887,9 +887,11 @@ export const DECOR_GRID = 10;
 /** The land decorations may stand on (world px, the farm scene's). */
 export const DECOR_AREA = { x0: 20, x1: 1740, y0: 120, y1: 1060 } as const;
 /**
- * The Chicken Coop (migration 20261117100000_farm_coop.sql): a wooden coop
- * and its run on the grass below the lane, right of the gate's path. It
- * opens at farm level 14 with 3 hens; up to 6 more can be bought. A hen fed
+ * The Chicken Coop (migration 20261117100000_farm_coop_cows.sql): a wooden
+ * coop and its run on the grass below the lane, right of the gate's path
+ * (the farm's tree that stood there was felled). It opens at farm level 14
+ * with 3 hens; 6 more can be bought, each from its own farm level, so the
+ * eggs stay a side income next to the field (docs/farm-coop.md). A hen fed
  * 2 Breeze Wheat from the barn lays one egg after `laySeconds` (server
  * time); a tap collects it (into the barn) and the hen is hungry again.
  */
@@ -901,14 +903,15 @@ export const COOP = {
   eggXp: 3,
   /** The ground it takes (world px): no decoration stands here. */
   x0: 990,
-  x1: 1340,
+  x1: 1350,
   y0: 846,
-  y1: 934,
+  y1: 1010,
   /** Hens it opens with, and the most it holds. */
   hens: 3,
   maxHens: 9,
-  /** Gold Leaves for the 4th, 5th … 9th hen. */
-  henPrices: [300, 450, 600, 800, 1000, 1200] as readonly number[],
+  /** The 4th, 5th … 9th hen: the farm level it needs, and its Gold Leaves. */
+  henLevels: [17, 20, 24, 28, 32, 36] as readonly number[],
+  henPrices: [500, 700, 900, 1100, 1300, 1500] as readonly number[],
   /** One feeding: plain (unmutated) crops from the barn. */
   feedCrop: "wheat",
   feedQty: 2,
@@ -918,6 +921,11 @@ export const COOP = {
 export const henPrice = (owned: number): number | null =>
   owned >= COOP.hens && owned < COOP.maxHens
     ? COOP.henPrices[owned - COOP.hens]
+    : null;
+/** The farm level the next hen needs when a coop has `owned` hens (null: it's full). */
+export const henLevel = (owned: number): number | null =>
+  owned >= COOP.hens && owned < COOP.maxHens
+    ? COOP.henLevels[owned - COOP.hens]
     : null;
 export type HenState = "hungry" | "laying" | "egg";
 /** A hen by when its egg is due (null: not fed), at server time `now` (ms). */
@@ -957,7 +965,6 @@ export const DECOR_BLOCKS: readonly DecorBlock[] = [
       [1700, 330],
       [70, 210],
       [640, 1050],
-      [1120, 1060],
       [1450, 1040],
       [1720, 1000],
       [40, 1060],
@@ -1064,9 +1071,27 @@ export const PASTURE = {
   /** Storm Milk per milking, and how long the cow takes (seconds). */
   milk: 2,
   milkSeconds: 2 * 3600,
-  /** The first milk after the pasture opens. */
+  /** The first milk after the pasture opens (and after a new cow arrives). */
   firstMilkSeconds: 20 * 60,
+  /**
+   * More cows (20261117100000): the 2nd and 3rd, each from a farm level and
+   * for Gold Leaves. One cow is a big part of a young farm's income, so the
+   * others come late, when the field earns several times more.
+   */
+  cowLevels: [40, 55] as readonly number[],
+  cowPrices: [6000, 10000] as readonly number[],
+  maxCows: 3,
 } as const;
+/** The next cow when a pasture has `owned` cows: its level and price (null: it's full). */
+export const nextCow = (
+  owned: number,
+): { level: number; price: number } | null =>
+  owned >= 1 && owned < PASTURE.maxCows
+    ? {
+        level: PASTURE.cowLevels[owned - 1],
+        price: PASTURE.cowPrices[owned - 1],
+      }
+    : null;
 /** Storm Milk: a barn good, not a crop. Its price of the day is 0.85–1.35×. */
 export const MILK = {
   id: "milk",
@@ -1309,6 +1334,8 @@ export interface FarmState {
   pasture?: boolean;
   milkAt?: string | null;
   milkMult?: number;
+  /** The 2nd and 3rd cows (20261117100000): each one's milk time; milkAt is the first cow's. */
+  cows?: { i: number; milkAt: string | null }[];
   /** The Chicken Coop: its hens (when each one's egg is due; null: hungry) and eggs' price today (20261117100000). */
   coop?: boolean;
   hens?: FarmHen[];
@@ -1376,9 +1403,10 @@ export interface FarmVisit {
   sprinklers: number;
   /** Migration 049: they have a Cow Pasture. */
   pasture?: boolean;
-  /** 20261117100000: their Chicken Coop, and how many hens live in it. */
+  /** 20261117100000: their Chicken Coop, how many hens live in it, and their cows. */
   coop?: boolean;
   hens?: number;
+  cows?: number;
   /** Migration 050: their giant crops. */
   giants?: FarmGiant[];
   /** What you did on friends' farms today. */

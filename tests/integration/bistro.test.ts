@@ -12,6 +12,7 @@ import {
   SHIFT_PRICES,
   STOVE_BY_MODEL,
   EXPAND_STEPS,
+  FARM_TO_BISTRO,
   staffUpgradePrice,
   cookMs,
   defaultState,
@@ -916,6 +917,23 @@ describe("dish levels, ingredients, the Market and the Farm (migration 074)", ()
       { mutation: "", qty: 1 },
       { mutation: "gold", qty: 4 },
     ]);
+    // Sunny Eggs from the coop (20261117100001): three make one Eggs, like
+    // the other farm goods, within the same daily 30.
+    expect(FARM_TO_BISTRO.egg).toBe("egg");
+    await sql(
+      "insert into public.arena_farm_barn(player_id, crop, mutation, qty) values ($1, 'egg', '', 4) on conflict (player_id, crop, mutation) do update set qty = excluded.qty",
+      [cal],
+    );
+    expect((await open(cal)).farmCrops).toMatchObject({ wheat: 1, egg: 4 });
+    const eggsBefore = r.bistro.pantry.egg ?? 0;
+    r = await act(cal, [
+      { a: "farm", id: "egg", qty: 2 },
+      { a: "farm", id: "egg", qty: 1 },
+    ]);
+    expect(r.results.map((x: any) => x.ok)).toEqual([false, true]);
+    expect(r.bistro.pantry.egg).toBe(eggsBefore + 1);
+    expect(r.bistro.farmSent).toBe(3);
+    expect((await open(cal)).farmCrops.egg).toBe(1);
     // A level-up: three ingredients.
     await sql("delete from public.arena_bistro_pantry where player_id = $1", [
       cal,

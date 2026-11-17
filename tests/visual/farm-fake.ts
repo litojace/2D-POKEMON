@@ -92,6 +92,8 @@ export async function fakeFarm(page: Page) {
       coop: false,
       hens: [] as { i: number; eggAt: string | null }[],
       eggMult: 1.2,
+      // The 2nd and 3rd cows (20261117100000).
+      cows: [] as { i: number; milkAt: string }[],
       dog: null as any,
       dogGifts: [] as any[],
       crows: {} as Record<string, string>,
@@ -456,6 +458,32 @@ export async function fakeFarm(page: Page) {
             farm.leaves -= 900;
             return { ok: true, pasture: true, milkAt: farm.milkAt };
           }
+          if (a.a === "buy-cow") {
+            const next = R.nextCow(1 + farm.cows.length);
+            if (!farm.pasture)
+              return { ok: false, error: "Open the pasture first" };
+            if (!next) return { ok: false, error: "Your pasture is full" };
+            if (farm.level < next.level)
+              return {
+                ok: false,
+                error: `Unlocks at farm level ${next.level}`,
+              };
+            if (farm.leaves < next.price)
+              return { ok: false, error: "Not enough Gold Leaves" };
+            farm.leaves -= next.price;
+            const i = farm.cows.length + 1;
+            farm.cows = [...farm.cows, { i, milkAt: at(1200) }];
+            return { ok: true, cow: i, cost: next.price, milkAt: at(1200) };
+          }
+          if (a.a === "milk" && farm.pasture && a.cow) {
+            const c = farm.cows.find((x: any) => x.i === a.cow);
+            if (!c) return { ok: false, error: "Choose a cow" };
+            if (Date.parse(c.milkAt) > Date.now())
+              return { ok: false, error: "The cow is still grazing" };
+            c.milkAt = at(7200);
+            farm.barn = [...farm.barn, { crop: "milk", mutation: "", qty: 2 }];
+            return { ok: true, milk: 2, cow: a.cow, milkAt: c.milkAt };
+          }
           if (a.a === "milk" && farm.pasture) {
             farm.milkAt = at(7200);
             farm.barn = [...farm.barn, { crop: "milk", mutation: "", qty: 2 }];
@@ -513,6 +541,9 @@ export async function fakeFarm(page: Page) {
               const cost = R.henPrice(farm.hens.length);
               if (cost == null)
                 return { ok: false, error: "Your coop is full" };
+              const lv = R.henLevel(farm.hens.length);
+              if (farm.level < lv)
+                return { ok: false, error: `Unlocks at farm level ${lv}` };
               if (farm.leaves < cost)
                 return { ok: false, error: "Not enough Gold Leaves" };
               farm.leaves -= cost;
