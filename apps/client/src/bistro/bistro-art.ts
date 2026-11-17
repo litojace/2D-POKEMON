@@ -123,12 +123,16 @@ export const BOUNDS = {
 
 /* ───────────── sky and backdrop ───────────── */
 
+/** The season outside (from the server's day): trees, ground and weather. */
+export type Season = "spring" | "summer" | "autumn" | "winter";
 export interface Light {
   /** 0 day … 1 night. */
   night: number;
   /** 0 … 1 golden hour. */
   gold: number;
   t: number;
+  /** Summer when not given. */
+  season?: Season;
 }
 export function skyColours(l: Light): [string, string] {
   const mix = (a: number[], b: number[], f: number) =>
