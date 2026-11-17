@@ -1,13 +1,15 @@
 /**
  * The Spire court's zone looks (apps/client/src/spire-court-art.ts): the
  * lookup the floor flow calls (`spireZoneTheme`), zone 2's Water look,
- * zone 3's Shadow look, zones 1 and 2's paintings left exactly as they
- * were, the floor tint by zone, how the rig reads a snapshot's zone, the
- * boss floors' summit courts and the Echoes' tint on zone 3's dark court.
+ * zone 3's Shadow look, zone 4's Psychic look, zones 1 to 3's paintings
+ * left exactly as they were, the floor tint by zone, how the rig reads a
+ * snapshot's zone, the boss floors' summit courts and the Echoes' tint on
+ * zone 3's dark court and zone 4's pale one.
  */
 import { describe, expect, it } from "vitest";
 import {
   SPIRE_ZONE_THEMES,
+  paintDreamSummitGrade,
   paintLagoonSummitGrade,
   paintLanternSummitGrade,
   paintSpireFloor,
@@ -19,6 +21,7 @@ import {
   spireZoneTheme,
 } from "../../apps/client/src/spire-court-art";
 import {
+  SPIRE_DECK_SUMMIT_FLOOR,
   SPIRE_LAGOON_SUMMIT_FLOOR,
   SPIRE_SUMMIT_FLOOR,
   SPIRE_YARD_SUMMIT_FLOOR,
@@ -40,6 +43,8 @@ import {
   ECHO_SKILL_COLOR,
   ECHO_TINT,
   ECHO_TINT_HURT,
+  ECHO_TINT_HURT_Z4,
+  ECHO_TINT_Z4,
   spireEchoTint,
 } from "../../apps/client/src/spire-art";
 
@@ -67,14 +72,12 @@ function paintZone(zone: number, floors: number[]) {
 }
 
 describe("spireZoneTheme", () => {
-  it("gives zone 1 (Earth), zone 2 (Water) and zone 3 (Shadow); unknown zones fall back to zone 1", () => {
-    expect(spireZoneTheme(1)).toBe(SPIRE_ZONE_THEMES[1]);
-    expect(spireZoneTheme(2)).toBe(SPIRE_ZONE_THEMES[2]);
-    expect(spireZoneTheme(3)).toBe(SPIRE_ZONE_THEMES[3]);
-    expect(spireZoneTheme(1).zone).toBe(1);
-    expect(spireZoneTheme(2).zone).toBe(2);
-    expect(spireZoneTheme(3).zone).toBe(3);
-    for (const z of [0, -1, 4, 99, NaN, 1.5, 2.5])
+  it("gives zone 1 (Earth), zone 2 (Water), zone 3 (Shadow) and zone 4 (Psychic); unknown zones fall back to zone 1", () => {
+    for (const z of [1, 2, 3, 4]) {
+      expect(spireZoneTheme(z)).toBe(SPIRE_ZONE_THEMES[z]);
+      expect(spireZoneTheme(z).zone).toBe(z);
+    }
+    for (const z of [0, -1, 5, 99, NaN, 1.5, 2.5, 3.5])
       expect(spireZoneTheme(z)).toBe(SPIRE_ZONE_THEMES[1]);
     // The older name is the same lookup.
     expect(spireTheme).toBe(spireZoneTheme);
@@ -120,6 +123,11 @@ describe("spireZoneTheme", () => {
     const log = paintZone(2, [11, 12, 15, 19]);
     paintLagoonSummitGrade(recordingContext(log));
     expect(fingerprint(log)).toBe("45085:2b44e5bb");
+  });
+  it("zone 3's painting is exactly what it was (recipe recorded before zone 4)", () => {
+    const log = paintZone(3, [21, 22, 25, 29]);
+    paintLanternSummitGrade(recordingContext(log));
+    expect(fingerprint(log)).toBe("40960:e2aa8481");
   });
   it("zone 3 is dark slate with candle-pale crystal, ink veins and lanterns, at night", () => {
     const one = spireZoneTheme(1),
@@ -182,6 +190,101 @@ describe("spireZoneTheme", () => {
     expect(count(paintZone(1, [9]), `stop(1,${flame})`)).toBe(0);
     expect(drips(paintZone(2, [19]))).toBe(0);
   });
+  it("zone 4 is pale periwinkle marble with rose crystal, a gold star inlay and a twilight sky", () => {
+    const four = spireZoneTheme(4);
+    for (const z of [1, 2, 3]) {
+      const other = spireZoneTheme(z);
+      for (const key of [
+        "slab",
+        "top",
+        "front",
+        "crystal",
+        "rune",
+        "skyLow",
+        "skyHigh",
+      ] as const)
+        expect(four[key]).not.toEqual(other[key]);
+      expect(four.glow).not.toBe(other.glow);
+      expect(other.dream).toBeUndefined();
+    }
+    expect(four.dream).toBeDefined();
+    expect(four.night).toBeUndefined();
+    expect(four.sea).toBeUndefined();
+    // Pale, cool marble: periwinkle (blue leads), leaning blue rather than
+    // the Echoes' violet (their ring keeps its own hue on it).
+    const stone = lum(four.slab[0]);
+    expect(stone.l).toBeGreaterThan(180);
+    expect(stone.b).toBeGreaterThan(stone.r + 20);
+    expect(stone.g).toBeGreaterThanOrEqual(stone.r);
+    // The cover's top paler still, its fronts darker (blocks read on it).
+    expect(lum(four.top[0]).l).toBeGreaterThan(stone.l + 20);
+    expect(lum(four.front[0]).l).toBeLessThan(stone.l - 40);
+    // Rose psychic crystal, bright: never the Echoes' lavender (blue leads
+    // there, red here).
+    const crystal = lum(four.crystal[1]),
+      echo = lum(`#${ECHO_SKILL_COLOR.toString(16)}`);
+    expect(crystal.l).toBeGreaterThan(180);
+    expect(crystal.r).toBeGreaterThan(crystal.b + 30);
+    expect(echo.b).toBeGreaterThan(echo.r);
+    // A gold inlay and gold stars.
+    for (const gold of [four.rune, four.dream!.star]) {
+      const g = lum(gold);
+      expect(g.l).toBeGreaterThan(190);
+      expect(g.r - g.b).toBeGreaterThan(100);
+    }
+    // The number's groove: a deep indigo, far darker than the marble.
+    expect(lum(four.carve).l).toBeLessThan(40);
+    // Twilight low down (periwinkle over a rose horizon), deep indigo at the top.
+    const low = lum(four.skyLow[0]),
+      horizon = lum(four.skyLow[1]),
+      high = lum(four.skyHigh[0]);
+    expect(low.b).toBeGreaterThan(low.r + 60);
+    expect(horizon.r).toBeGreaterThan(horizon.g);
+    expect(horizon.l).toBeGreaterThan(190);
+    expect(high.l).toBeLessThan(20);
+    expect(high.b).toBeGreaterThan(high.r);
+    // Zone 4 paints differently from zones 1 to 3.
+    const z4 = fingerprint(paintZone(4, [31]));
+    for (const [z, f] of [
+      [1, 1],
+      [2, 11],
+      [3, 21],
+    ])
+      expect(z4).not.toBe(fingerprint(paintZone(z, [f])));
+  });
+  it("zone 4 inlays stars and crescents, stars the crystals' tips and hangs a moon in the sky", () => {
+    const star = spireZoneTheme(4).dream!.star;
+    const count = (log: string[], line: string) =>
+      log.filter((l) => l === line).length;
+    const low = paintZone(4, [31]),
+      high = paintZone(4, [39]);
+    // The star inlay (paving, constellations, crescents, block fronts).
+    expect(count(low, `fillStyle=${star}`)).toBeGreaterThan(40);
+    // A sparkle at crystal tips: a gold glow stop in every block's atlas piece.
+    const sparkles = (log: string[]) =>
+      log.filter((l) => /stop\(0,rgba\(255,223,134,0\.6\)\)$/.test(l)).length;
+    expect(sparkles(low)).toBeGreaterThan(4);
+    // The moon, on the zone's first floor already.
+    const moon = (log: string[]) =>
+      log.filter((l) => /^Radial\d+\(1880,-190,20,1880,-190,360\)$/.test(l))
+        .length;
+    expect(moon(low)).toBe(1);
+    expect(moon(high)).toBe(1);
+    // More sky stars higher up (the twilight deepens).
+    const skyStars = (log: string[]) =>
+      log.filter((l) => /^fillStyle=rgba\(255,248,232,/.test(l)).length;
+    expect(skyStars(high)).toBeGreaterThan(skyStars(low) + 100);
+    // No other zone carries any of it.
+    for (const [z, f] of [
+      [1, 9],
+      [2, 19],
+      [3, 29],
+    ] as const) {
+      const log = paintZone(z, [f]);
+      expect(count(log, `fillStyle=${star}`)).toBe(0);
+      expect(moon(log)).toBe(0);
+    }
+  });
   it("zone 2's high floors add bioluminescence (none low down)", () => {
     const low = paintZone(2, [11]).join("\n"),
       high = paintZone(2, [19]).join("\n");
@@ -213,6 +316,18 @@ describe("spireZoneTheme", () => {
     );
     expect(spireFloorTint(29, 3) >> 16).toBeGreaterThan(170);
     expect(spireFloorTint(25, 3)).toBeGreaterThan(spireFloorTint(29, 3));
+    // Zone 4: untinted on its first floor, a deeper indigo at the top (blue
+    // leads more than zone 1's dusk, darker than zone 3's), never so dark
+    // the marble loses its pale.
+    expect(spireFloorTint(31, 4)).toBe(0xffffff);
+    expect(blue(spireFloorTint(39, 4))).toBeGreaterThan(
+      blue(spireFloorTint(39, 1)),
+    );
+    expect(spireFloorTint(39, 4) >> 16).toBeLessThan(
+      spireFloorTint(29, 3) >> 16,
+    );
+    expect(spireFloorTint(39, 4) >> 16).toBeGreaterThan(140);
+    expect(spireFloorTint(35, 4)).toBeGreaterThan(spireFloorTint(39, 4));
   });
 });
 
@@ -242,6 +357,13 @@ describe("the rig's zone", () => {
       spireCourtView({ spire: { floor: 5, kind: "elite", zone: 3 } })?.zone,
     ).toBe(3);
     expect(spireFloorId({ zone: 3, floor: 21, kind: "wave" })).toBe("spire-z3");
+    expect(spireCourtView({ spire: { floor: 35, kind: "elite" } })?.zone).toBe(
+      4,
+    );
+    expect(spireCourtView({ spire: { floor: 40, kind: "boss" } })?.zone).toBe(
+      4,
+    );
+    expect(spireFloorId({ zone: 4, floor: 31, kind: "wave" })).toBe("spire-z4");
   });
   it("paints zone 2's next floors ahead (floor 19's next is the boss, 20)", () => {
     expect(nextSpireCourtView({ zone: 1, floor: 9, kind: "wave" })).toEqual({
@@ -267,6 +389,16 @@ describe("the rig's zone", () => {
     expect(nextSpireCourtView({ zone: 3, floor: 29, kind: "wave" })).toEqual({
       zone: 3,
       floor: 30,
+      kind: "boss",
+    });
+    expect(nextSpireCourtView({ zone: 4, floor: 34, kind: "wave" })).toEqual({
+      zone: 4,
+      floor: 35,
+      kind: "elite",
+    });
+    expect(nextSpireCourtView({ zone: 4, floor: 39, kind: "wave" })).toEqual({
+      zone: 4,
+      floor: 40,
       kind: "boss",
     });
   });
@@ -305,14 +437,54 @@ describe("summit courts", () => {
     expect(hasSpireSummitArena("lantern-yard")).toBe(true);
     expect(hasSpireSummitArena("lagoon")).toBe(true);
     expect(hasSpireSummitArena("classic")).toBe(false);
-    expect(hasSpireSummitArena("cloud-deck")).toBe(false);
+    expect(hasSpireSummitArena("sun-atrium")).toBe(false);
     expect(
       new Set([
         SPIRE_SUMMIT_FLOOR,
         SPIRE_LAGOON_SUMMIT_FLOOR,
         SPIRE_YARD_SUMMIT_FLOOR,
+        SPIRE_DECK_SUMMIT_FLOOR,
       ]).size,
-    ).toBe(3);
+    ).toBe(4);
+  });
+  it("floor 40 on Snoozaku's Cloud Deck, with its own grade (Snoozaku's raid untouched)", () => {
+    expect(spireSummitFloorId(4)).toBe(SPIRE_DECK_SUMMIT_FLOOR);
+    expect(spireSummitFloorOf("cloud-deck")).toBe(SPIRE_DECK_SUMMIT_FLOOR);
+    expect(hasSpireSummitArena("cloud-deck")).toBe(true);
+    expect(isSpireSummitFloorId(SPIRE_DECK_SUMMIT_FLOOR)).toBe(true);
+    // The raid's own arena id is never a summit texture.
+    expect(isSpireSummitFloorId("cloud-deck")).toBe(false);
+    expect(spireSummitArt(SPIRE_DECK_SUMMIT_FLOOR)).toEqual({
+      picture: "cloud-deck",
+      grade: paintDreamSummitGrade,
+    });
+    // The other zones keep theirs.
+    expect(spireSummitFloorId(3)).toBe(SPIRE_YARD_SUMMIT_FLOOR);
+    expect(spireSummitFloorId(5)).toBe(SPIRE_SUMMIT_FLOOR);
+  });
+  it("the deck's summit grade is a soft twilight that keeps the middle lit", () => {
+    const log: string[] = [];
+    paintDreamSummitGrade(recordingContext(log));
+    const multiply = log.indexOf("globalCompositeOperation=multiply");
+    expect(multiply).toBeGreaterThanOrEqual(0);
+    const fill = lum(log[multiply + 1].replace("fillStyle=", ""));
+    // Periwinkle (blue leads), soft: the deck is a pale picture already.
+    expect(fill.b).toBeGreaterThan(fill.g + 30);
+    expect(fill.l).toBeGreaterThan(180);
+    // The edge's night starts about half way out (the pads stay clear).
+    expect(log.some((l) => /^Radial\d+\(800,450,414,/.test(l))).toBe(true);
+    // Different from every other summit grade.
+    const of = (paint: (c: CanvasRenderingContext2D) => void) => {
+      const l: string[] = [];
+      paint(recordingContext(l));
+      return fingerprint(l);
+    };
+    for (const other of [
+      paintSpireSummitGrade,
+      paintLagoonSummitGrade,
+      paintLanternSummitGrade,
+    ])
+      expect(of(paintDreamSummitGrade)).not.toBe(of(other));
   });
   it("the yard's summit grade is a soft violet midnight that keeps the middle lit and bakes no lantern light", () => {
     const log: string[] = [];
@@ -382,7 +554,30 @@ describe("Echoes on zone 3's dark court", () => {
     expect(lum(hexOf(wash.color)).l).toBeGreaterThan(200);
     expect(wash.alpha).toBeGreaterThan(0.2);
     expect(wash.alpha).toBeLessThanOrEqual(0.35);
-    for (const zone of [1, 2, undefined])
+    for (const zone of [1, 2, 4, undefined])
       expect(spireEchoTint(zone).wash).toBeUndefined();
+  });
+});
+
+describe("Echoes on zone 4's pale court", () => {
+  it("take a deeper violet shade there (no wash) and flush rose when hit", () => {
+    expect(spireEchoTint(4)).toEqual({
+      tint: ECHO_TINT_Z4,
+      hurtTint: ECHO_TINT_HURT_Z4,
+    });
+    const hexOf = (n: number) => `#${n.toString(16).padStart(6, "0")}`;
+    const deep = lum(hexOf(ECHO_TINT_Z4)),
+      usual = lum(hexOf(ECHO_TINT)),
+      hurt = lum(hexOf(ECHO_TINT_HURT_Z4)),
+      marble = lum(spireZoneTheme(4).slab[1]);
+    // Darker than the usual shade and far darker than the marble's darker
+    // tone, still violet (tests/visual/spire-court.spec.ts measures the
+    // Echoes on the court: 0.80-0.99 of their pixels stand clear).
+    expect(deep.l).toBeLessThan(usual.l - 30);
+    expect(deep.l).toBeLessThan(marble.l - 80);
+    expect(deep.b).toBeGreaterThan(deep.r + 40);
+    // The hit flush reads by hue on the pale stone (red leads, rose).
+    expect(hurt.r).toBeGreaterThan(hurt.g + 60);
+    expect(hurt.r).toBeGreaterThan(hurt.b);
   });
 });
