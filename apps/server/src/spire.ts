@@ -13,7 +13,8 @@
  * Inkpurr's (Gloomshade's) arena, `SpireGloomArena`; zone 4: the Ascendant
  * Snoozaku's over Snoozaku's (Somnara's) arena, `SpireDreamArena`; zone 5:
  * the Ascendant Prismell's over Prismell's (Prismatail's) arena,
- * `SpireLightArena`).
+ * `SpireLightArena`; zone 6: the Ascendant Lumiwick's over Lumiwick's
+ * (Emberwing's) arena, `SpireEmberArena`).
  * `createSpireArena(code, zone)` builds the room the server was asked for.
  *
  * Flow: briefing → (blessings, from the second floor) → countdown → waves →
@@ -22,7 +23,7 @@
  *
  * Boss floors (floor 10: the Ascendant Cragmuff; 20: the Ascendant
  * Tidelotl; 30: the Ascendant Inkpurr; 40: the Ascendant Snoozaku; 50: the
- * Ascendant Prismell) are fought in this same arena: it
+ * Ascendant Prismell; 60: the Ascendant Lumiwick) are fought in this same arena: it
  * carries the Ascendant's rules (on while `raid.variant` is "ascendant") and turns them on for the floor. The room,
  * its sessions, accounts and appearance, the event numbering, the clock and
  * the blessings (hooked here, below) stay exactly as they were, and the
@@ -50,6 +51,7 @@ import {
   type Rect,
 } from "../../../packages/shared/src/index.js";
 import {
+  EMBERWING,
   GLOOMSHADE,
   PRISMATAIL,
   SOMNARA,
@@ -57,6 +59,7 @@ import {
   handsTileDark,
   isRaider,
   type RaidAttack,
+  type RaidWarning,
 } from "../../../packages/shared/src/raid.js";
 import {
   SPIRE_BASTION_AT,
@@ -99,6 +102,9 @@ import { AscendantSnoozakuRules } from "./raid-ascendant-snoozaku.js";
 import { SomnaraArena } from "./raid-somnara.js";
 import { AscendantPrismellRules } from "./raid-ascendant-prismell.js";
 import { PrismatailArena } from "./raid-prismatail.js";
+import { AscendantLumiwickRules } from "./raid-ascendant-lumiwick.js";
+import { EmberwingArena } from "./raid-emberwing.js";
+import { leadPoint } from "./raid-boss-aim.js";
 
 const randomUUID = () => crypto.randomUUID();
 const randomSeed = () => {
@@ -1246,28 +1252,313 @@ export function spireLances(
   }
   return out;
 }
+/** The elite's dive lane: a lane shorter than this once clipped is not laid (px). */
+export const SPIRE_DIVE_MIN = 160;
+/** The lane runs this far past where its raider is heading (px). */
+export const SPIRE_DIVE_OVERSHOOT = 150;
+/** A teaching dive (the first two) is shown this much longer (s). */
+export const SPIRE_DIVE_TEACH = 0.6;
+/** The captain's dive speed down its lane (px/s, Lumiwick's own). */
+export const SPIRE_DIVE_SPEED = 2400;
+/**
+ * Zone 6's climb: Echo floors 51–59 on the Spire's court and the Ascendant
+ * Lumiwick on floor 60, on the Sky Terrace. The wave and elite floors keep
+ * Lumiwick's terrace switched off (no braziers, take-offs, groundings,
+ * burning ground, dive trails, flame rings or feathers; its stand-in
+ * brain's brazier routes are its own floor's), and the captain of floor 55
+ * only borrows its dive: one locked lane over open ground (never under a
+ * phone's touch controls, never through a wall), and the captain flies
+ * only where it was drawn.
+ */
+export class SpireEmberArena extends SpireRules(
+  AscendantLumiwickRules(EmberwingArena),
+) {
+  /** The captain's dive under way (elite floor). */
+  private eliteDive?: {
+    from: { x: number; y: number };
+    to: { x: number; y: number };
+    /** The drawn lane: only it hurts. */
+    lane: { x: number; y: number; tx: number; ty: number };
+    startedAt: number;
+    until: number;
+    hit: Set<string>;
+  };
+  constructor(code: string) {
+    super(code, "emberwing");
+  }
+  protected override resetAscendantReads() {
+    // TODO(lead): once the boss branch's layer lands, call its reads reset
+    // directly (as zones 2–5 do). Until then the stub has none.
+    (
+      this as unknown as { resetLumiwickReads?: () => void }
+    ).resetLumiwickReads?.();
+  }
+  protected override clearBossCourt() {
+    super.clearBossCourt();
+    this.eliteDive = undefined;
+    Object.assign(this.raid, {
+      braziers: [],
+      airborne: false,
+      takeoffAt: undefined,
+      emberDive: undefined,
+      emberPatches: [],
+      emberTrails: [],
+      flameRings: [],
+      emberFeathers: [],
+      groundings: 0,
+      quickGroundings: 0,
+      chapterGroundings: 0,
+      permanentGround: false,
+    });
+  }
+  protected override clearAttacks() {
+    super.clearAttacks();
+    this.eliteDive = undefined;
+  }
+  // (Off its own floor Lumiwick's counters have nothing to work on: Heat
+  // Cracks and Chestnut Mortar light braziers only while it flies, the
+  // currents and vines put out fire there is none of, and its Facet Guard
+  // reflects only its own dive. Its cast needs no gate.)
+  /** Lumiwick's drift and dives belong to its own floor (not the captain's). */
+  protected override bossStep(dt: number, boss: Fighter) {
+    if (this.bossFloor()) super.bossStep(dt, boss);
+  }
+  /** So do its take-offs, braziers, burning ground, rings and feathers. */
+  protected override worldStep(dt: number, boss: Fighter) {
+    if (this.bossFloor()) super.worldStep(dt, boss);
+  }
+  /**
+   * A stand-in's brazier routes and heat-mark spacing are Lumiwick's
+   * floor's; on the Spire's court it plays like any raider (dodging what
+   * is drawn).
+   */
+  protected override botHint(
+    bot: Fighter,
+    input: Input,
+    go: (x: number, y: number, away: boolean) => Input,
+  ): Input | undefined {
+    return this.bossFloor() ? super.botHint(bot, input, go) : undefined;
+  }
+  /** One dive at a time: a big party's captain never sends a second one. */
+  protected override pressured(kind: RaidAttack, alive: Fighter[]) {
+    return this.bossFloor() && super.pressured(kind, alive);
+  }
+  /**
+   * The elite's dive: one locked lane from the captain through where a
+   * raider is heading (Lumiwick's own aim) and a little past, on the raid's
+   * own warning clock and damage. The lane runs over open ground only: it
+   * stops at the first wall and never runs under the phone's touch
+   * controls; a lane too short to read is not laid (the captain tries again
+   * a moment later).
+   */
+  protected override startAttack(kind: RaidAttack, target: Fighter): void {
+    if (this.bossFloor() || kind !== "dive-bomb")
+      return super.startAttack(kind, target);
+    const boss = this.boss();
+    if (!boss || this.eliteDive) return;
+    this.walls();
+    const plan = spireDive(
+      boss,
+      leadPoint(target, EMBERWING.dive.delay, {
+        x0: 90,
+        y0: 90,
+        x1: 1510,
+        y1: 810,
+      }),
+      this.hitRadius(boss),
+    );
+    if (!plan) {
+      this.nextAttack = this.time + 0.6;
+      return;
+    }
+    const count = this.seenAttacks.get(kind) ?? 0;
+    this.seenAttacks.set(kind, count + 1);
+    const teach = count < 2;
+    boss.angle = Math.atan2(plan.ty - plan.y, plan.tx - plan.x);
+    Object.assign(
+      this.warn(
+        kind,
+        plan.x,
+        plan.y,
+        plan.tx,
+        plan.ty,
+        EMBERWING.dive.width,
+        EMBERWING.dive.delay + (teach ? SPIRE_DIVE_TEACH : 0),
+      ),
+      { teach, targetId: target.id },
+    );
+  }
+  /** The lane locks: the captain dives from where it stands to the lane's end. */
+  protected override resolveWarning(w: RaidWarning, boss: Fighter) {
+    if (this.bossFloor() || w.kind !== "dive-bomb")
+      return super.resolveWarning(w, boss);
+    const from = { x: boss.x, y: boss.y },
+      to = { x: w.tx, y: w.ty },
+      len = Math.hypot(to.x - from.x, to.y - from.y);
+    boss.angle = Math.atan2(to.y - from.y, to.x - from.x);
+    this.eliteDive = {
+      from,
+      to,
+      lane: { x: w.x, y: w.y, tx: w.tx, ty: w.ty },
+      startedAt: this.time,
+      until: this.time + Math.max(0.2, len / SPIRE_DIVE_SPEED),
+      hit: new Set(),
+    };
+  }
+  override tick(dt = 1 / RULES.tick) {
+    super.tick(dt);
+    this.stepEliteDive();
+  }
+  /**
+   * The captain flies down its lane (after the court's own movement, so its
+   * brain never steers it mid-dive), hurting each raider it passes inside
+   * the drawn lane once. A stagger stops it where it is.
+   */
+  private stepEliteDive() {
+    const d = this.eliteDive;
+    if (!d) return;
+    const boss = this.boss();
+    if (
+      !boss ||
+      this.phase !== "playing" ||
+      this.bossFloor() ||
+      this.raid.staggerUntil > this.time
+    ) {
+      this.eliteDive = undefined;
+      return;
+    }
+    const before = { x: boss.x, y: boss.y };
+    const t = Math.min(
+      1,
+      (this.time - d.startedAt) / Math.max(1e-6, d.until - d.startedAt),
+    );
+    Object.assign(boss, {
+      x: d.from.x + (d.to.x - d.from.x) * t,
+      y: d.from.y + (d.to.y - d.from.y) * t,
+      vx: 0,
+      vy: 0,
+      angle: Math.atan2(d.to.y - d.from.y, d.to.x - d.from.x),
+    });
+    const reach = EMBERWING.dive.width + RULES.radius;
+    this.hitBy = "dive-bomb";
+    for (const p of this.heroes())
+      if (
+        p.hp > 0 &&
+        !d.hit.has(p.id) &&
+        spireSegmentDistance(p, before, boss) < reach &&
+        spireSegmentDistance(p, d.lane, { x: d.lane.tx, y: d.lane.ty }) < reach
+      ) {
+        d.hit.add(p.id);
+        this.damage(p, EMBERWING.dive.damage, boss.id);
+      }
+    this.hitBy = undefined;
+    if (t >= 1) {
+      this.eliteDive = undefined;
+      this.event("raid-impact", boss, 0xffa56b, undefined, boss.id);
+      this.events[this.events.length - 1].raidRadius = EMBERWING.dive.width;
+    }
+  }
+}
+/** Distance from `p` to the segment a → b. */
+export function spireSegmentDistance(
+  p: { x: number; y: number },
+  a: { x: number; y: number },
+  b: { x: number; y: number },
+) {
+  const dx = b.x - a.x,
+    dy = b.y - a.y,
+    t = Math.max(
+      0,
+      Math.min(
+        1,
+        ((p.x - a.x) * dx + (p.y - a.y) * dy) / (dx * dx + dy * dy || 1),
+      ),
+    );
+  return Math.hypot(p.x - a.x - dx * t, p.y - a.y - dy * t);
+}
+/**
+ * The elite's dive lane: from the captain at `from`, through `at` (where its
+ * raider is heading) and `SPIRE_DIVE_OVERSHOOT` px on, kept on the court.
+ * The captain's flight stops at the first wall (the walls in use: call
+ * `walls()` first). The lane is the stretch of that flight over open ground
+ * (lane width and margin clear of the phone's touch controls) that holds
+ * the raider, else the longest; none shorter than `SPIRE_DIVE_MIN`.
+ * Undefined when there is none: no dive.
+ */
+export function spireDive(
+  from: { x: number; y: number },
+  at: { x: number; y: number },
+  bodyRadius = RULES.radius,
+) {
+  const width = EMBERWING.dive.width,
+    step = 6,
+    edge = bodyRadius + 6;
+  const aim = Math.atan2(at.y - from.y, at.x - from.x),
+    ux = Math.cos(aim),
+    uy = Math.sin(aim),
+    reach = Math.hypot(at.x - from.x, at.y - from.y);
+  const want = reach + SPIRE_DIVE_OVERSHOOT;
+  // How far the captain can fly that way: on the court, short of any wall.
+  let flight = 0;
+  for (let d = step; d <= want; d += step) {
+    const x = from.x + ux * d,
+      y = from.y + uy * d;
+    if (
+      x < edge ||
+      x > RULES.width - edge ||
+      y < edge ||
+      y > RULES.height - edge ||
+      blocked(x, y, bodyRadius)
+    )
+      break;
+    flight = d;
+  }
+  // The flight's stretches of open ground (from, to: px along it).
+  const open: [number, number][] = [];
+  for (let d = 0; d <= flight; d += step) {
+    const free = !spireUnderControls(from.x + ux * d, from.y + uy * d, width);
+    const last = open.at(-1);
+    if (free && last && last[1] === d - step) last[1] = d;
+    else if (free) open.push([d, d]);
+  }
+  const long = open.filter(([s, e]) => e - s >= SPIRE_DIVE_MIN);
+  const lane =
+    long.find(([s, e]) => s <= reach && reach <= e) ??
+    [...long].sort((a, b) => b[1] - b[0] - (a[1] - a[0]))[0];
+  if (!lane) return undefined;
+  return {
+    x: from.x + ux * lane[0],
+    y: from.y + uy * lane[0],
+    tx: from.x + ux * lane[1],
+    ty: from.y + uy * lane[1],
+  };
+}
 /** Any zone's climb. */
 export type SpireRoom =
   | SpireArena
   | SpireTideArena
   | SpireGloomArena
   | SpireDreamArena
-  | SpireLightArena;
+  | SpireLightArena
+  | SpireEmberArena;
 export const isSpireArena = (a: unknown): a is SpireRoom =>
   a instanceof SpireArena ||
   a instanceof SpireTideArena ||
   a instanceof SpireGloomArena ||
   a instanceof SpireDreamArena ||
-  a instanceof SpireLightArena;
+  a instanceof SpireLightArena ||
+  a instanceof SpireEmberArena;
 /** The room for a climb of `zone` (the server checked it is built). */
 export function createSpireArena(code: string, zone = 1): SpireRoom {
-  return zone === 5
-    ? new SpireLightArena(code)
-    : zone === 4
-      ? new SpireDreamArena(code)
-      : zone === 3
-        ? new SpireGloomArena(code)
-        : zone === 2
-          ? new SpireTideArena(code)
-          : new SpireArena(code);
+  return zone === 6
+    ? new SpireEmberArena(code)
+    : zone === 5
+      ? new SpireLightArena(code)
+      : zone === 4
+        ? new SpireDreamArena(code)
+        : zone === 3
+          ? new SpireGloomArena(code)
+          : zone === 2
+            ? new SpireTideArena(code)
+            : new SpireArena(code);
 }

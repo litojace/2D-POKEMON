@@ -435,15 +435,16 @@ for (const s of SIZES)
       const phone = s.height < 500;
       await page.click('.lobby-rail [data-lobby-action="raids"]');
       await page.locator(".rh-room [data-raid-spire]").click();
-      // The zone picker: every zone (zones 3 to 5 locked), finger-sized,
+      // The zone picker: every zone (zones 3 to 6 locked), finger-sized,
       // inside the safe area.
       const picker = page.locator(".rh-room .sp-zone-picker");
       await picker.scrollIntoViewIfNeeded();
       await settle(page);
-      await expect(picker.locator("[data-ui-spire-zone]")).toHaveCount(5);
+      await expect(picker.locator("[data-ui-spire-zone]")).toHaveCount(6);
       await expect(picker.locator('[data-ui-spire-zone="3"]')).toBeDisabled();
       await expect(picker.locator('[data-ui-spire-zone="4"]')).toBeDisabled();
       await expect(picker.locator('[data-ui-spire-zone="5"]')).toBeDisabled();
+      await expect(picker.locator('[data-ui-spire-zone="6"]')).toBeDisabled();
       await expect(
         picker.locator('[data-ui-spire-zone="2"][aria-pressed="true"]'),
       ).toBeVisible();
@@ -577,9 +578,10 @@ for (const s of SIZES)
       const picker = page.locator(".rh-room .sp-zone-picker");
       await picker.scrollIntoViewIfNeeded();
       await settle(page);
-      await expect(picker.locator("[data-ui-spire-zone]")).toHaveCount(5);
+      await expect(picker.locator("[data-ui-spire-zone]")).toHaveCount(6);
       await expect(picker.locator('[data-ui-spire-zone="4"]')).toBeDisabled();
       await expect(picker.locator('[data-ui-spire-zone="5"]')).toBeDisabled();
+      await expect(picker.locator('[data-ui-spire-zone="6"]')).toBeDisabled();
       await expect(
         picker.locator('[data-ui-spire-zone="3"][aria-pressed="true"]'),
       ).toBeVisible();
@@ -713,7 +715,7 @@ for (const s of SIZES)
       const picker = page.locator(".rh-room .sp-zone-picker");
       await picker.scrollIntoViewIfNeeded();
       await settle(page);
-      await expect(picker.locator("[data-ui-spire-zone]")).toHaveCount(5);
+      await expect(picker.locator("[data-ui-spire-zone]")).toHaveCount(6);
       await expect(
         picker.locator('[data-ui-spire-zone="4"][aria-pressed="true"]'),
       ).toBeVisible();
@@ -862,11 +864,11 @@ for (const s of ZONE5_SIZES)
       const phone = s.height < 500;
       await page.click('.lobby-rail [data-lobby-action="raids"]');
       await page.locator(".rh-room [data-raid-spire]").click();
-      // The zone picker: five zones in one row, zone 5 picked, named once.
+      // The zone picker: six zones in one row, zone 5 picked, named once.
       const picker = page.locator(".rh-room .sp-zone-picker");
       await picker.scrollIntoViewIfNeeded();
       await settle(page);
-      await expect(picker.locator("[data-ui-spire-zone]")).toHaveCount(5);
+      await expect(picker.locator("[data-ui-spire-zone]")).toHaveCount(6);
       await expect(
         picker.locator('[data-ui-spire-zone="5"][aria-pressed="true"]'),
       ).toBeVisible();
@@ -1000,6 +1002,154 @@ for (const s of ZONE5_SIZES)
       );
       await cardFits(page, s, ".rc-card.is-results", "#raid-retry");
       await snap(page, info, `spire-z5-safe-results-${s.name}`);
+      expect(errors).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });
+
+// Zone 6 (the Sky Terrace) on the same screens: the zone picker with six
+// zones in one row, its floors in the hub, floor 51's HUD, the elite's, the
+// Ascendant Lumiwick's briefing and boss bar, and zone 6 conquered.
+const ZONE6 = {
+  raids: {
+    ...ZONE5.raids,
+    bosses: {
+      ...ZONE5.raids.bosses,
+      emberwing: { clears: 1, highestPeril: 3, bestSeconds: 300, runs: 2 },
+    },
+  },
+  spire: {
+    season: 0,
+    highestFloor: 52,
+    checkpoint: 51,
+    attempts: 18,
+    claimed: Array.from({ length: 52 }, (_, i) => i + 1),
+    clears: {
+      grumblecrag: 2,
+      tidewyrm: 1,
+      gloomshade: 1,
+      somnara: 1,
+      prismatail: 1,
+      emberwing: 1,
+    },
+  },
+};
+for (const s of ZONE5_SIZES)
+  test(`the Spire's zone 6 on touch screens at ${s.name}`, async ({
+    browser,
+  }, info) => {
+    test.setTimeout(240_000);
+    const context = await browser.newContext({
+      viewport: { width: s.width, height: s.height },
+      isMobile: true,
+      hasTouch: true,
+    });
+    try {
+      const page = await context.newPage();
+      await page.addInitScript((r) => {
+        const w = window as any;
+        w.__raids = r.raids;
+        w.__spire = r.spire;
+      }, ZONE6);
+      const errors = await openHub(page);
+      await setInsets(page, s.inset);
+      const phone = s.height < 500;
+      await page.click('.lobby-rail [data-lobby-action="raids"]');
+      await page.locator(".rh-room [data-raid-spire]").click();
+      // The zone picker: six zones in one row, zone 6 picked, named once.
+      const picker = page.locator(".rh-room .sp-zone-picker");
+      await picker.scrollIntoViewIfNeeded();
+      await settle(page);
+      await expect(picker.locator("[data-ui-spire-zone]")).toHaveCount(6);
+      await expect(
+        picker.locator('[data-ui-spire-zone="6"][aria-pressed="true"]'),
+      ).toBeVisible();
+      await expect(
+        page
+          .locator(".rh-room")
+          .locator(".sp-zone-info, .sp-route-zone")
+          .locator("visible=true"),
+      ).toContainText("Sky Terrace");
+      expect(await pickerFits(page)).toEqual([]);
+      inSafe(await boxOf(page, ".rh-room .sp-zones"), s, "zone picker");
+      expect(await layoutProblems(page, { inset: s.inset, phone })).toEqual([]);
+      await touchTargets(page, ".rh-room .sp-zone-picker");
+      await touchTargets(page, ".rh-room .ui-panel-foot");
+      await snap(page, info, `spire-z6-safe-picker-${s.name}`);
+      // The floors tab: zone 6's heading and rows.
+      await page.locator('[data-ui-spire-tab="floors"]').click();
+      const head = page.locator('[data-spire-zone-floors="6"] .sp-zone-head');
+      await head.scrollIntoViewIfNeeded();
+      await settle(page);
+      expect(await layoutProblems(page, { inset: s.inset, phone })).toEqual([]);
+      await snap(page, info, `spire-z6-safe-floors-${s.name}`);
+
+      // Floor 51 with a teammate: the HUD line.
+      await page.evaluate(() =>
+        (window as any).__room("spire", {
+          stage: "playing",
+          floor: 51,
+          seats: 2,
+        }),
+      );
+      await page
+        .locator(".rh-room [data-ui-close]")
+        .click()
+        .catch(() => {});
+      await openPlayPanel(page);
+      await createRoom(page);
+      await pushUntilBattle(page);
+      await setInsets(page, s.inset);
+      await expect(page.locator('#raid-hud [data-hud="phase"]')).toHaveText(
+        /^Floor 51 · Wave/,
+      );
+      await hudFits(page, s);
+      await snap(page, info, `spire-z6-safe-wave-${s.name}`);
+
+      // The elite's HUD (its name in the title).
+      await page.evaluate(() => {
+        const w = window as any;
+        w.__room("spire", { floor: 55, stage: "playing" });
+        w.__push();
+      });
+      await expect(page.locator('#raid-hud [data-hud="phase"]')).toHaveText(
+        "Floor 55 · Elite",
+      );
+      await hudFits(page, s);
+      await snap(page, info, `spire-z6-safe-elite-${s.name}`);
+
+      // The Ascendant Lumiwick's briefing, its boss bar, and the results.
+      await page.evaluate(() => {
+        const w = window as any;
+        w.__room("spire", { floor: 60, stage: "briefing" });
+        w.__push();
+      });
+      await expect(page.locator(".rc-card.is-briefing h2")).toHaveText(
+        "Floor 60 · Ascendant Lumiwick",
+      );
+      await cardFits(page, s, ".rc-card.is-briefing", "#raid-instructions");
+      await snap(page, info, `spire-z6-safe-briefing-${s.name}`);
+      await page.evaluate(() => {
+        const w = window as any;
+        w.__room("spire", { floor: 60, stage: "playing" });
+        w.__push();
+      });
+      await expect(page.locator('#raid-hud [data-hud="phase"]')).toHaveText(
+        "Floor 60 · Phase 1/3",
+      );
+      await hudFits(page, s);
+      await snap(page, info, `spire-z6-safe-boss-${s.name}`);
+      await page.evaluate(() => {
+        const w = window as any;
+        w.__room("spire", { floor: 60, stage: "finished" });
+        w.__push();
+      });
+      await expect(page.locator(".rc-card.is-results h2")).toHaveText(
+        "Zone 6 conquered!",
+      );
+      await cardFits(page, s, ".rc-card.is-results", "#raid-retry");
+      await snap(page, info, `spire-z6-safe-results-${s.name}`);
       expect(errors).toEqual([]);
     } finally {
       await context.close();

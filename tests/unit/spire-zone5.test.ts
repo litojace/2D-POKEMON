@@ -187,7 +187,7 @@ describe("Spire floors (zone 5, the Sun Atrium)", () => {
     );
     expect(SPIRE_ZONES[5].bossLead).toMatch(/Eclipse/);
     expect(SPIRE_ZONES[5].bossLead).toMatch(/Umbral Prism/);
-    expect(SPIRE_BUILT_TOP).toBe(50);
+    expect(SPIRE_BUILT_TOP).toBeGreaterThanOrEqual(50);
   });
   it("has wave floors 41–44 and 46–49, the elite on 45 and the boss on 50", () => {
     for (const f of [41, 42, 43, 44, 46, 47, 48, 49]) {
@@ -779,7 +779,7 @@ describe("the boss floor (floor 50: the Ascendant Prismell, in the Sun Atrium)",
     expect(a.raid.warnings).toEqual([]);
     run(a, SPIRE_PARTY.cleared + 0.2);
     expect(a.raid.result).toBe("victory");
-    expect(a.raid.message).toBe("Zone 5 conquered — more floors are coming.");
+    expect(a.raid.message).toBe("Zone 5 conquered — zone 6 opens at floor 51.");
     a.retry();
     expect(s).toMatchObject({ startFloor: 49, floor: 49, blessings: {} });
     expect(a.raid.variant).toBeUndefined();
