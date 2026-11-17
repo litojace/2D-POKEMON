@@ -77,6 +77,11 @@ export const PLAZA_PADS: readonly (readonly [number, number])[] = [
   [1555, 1035],
 ];
 export const PLAZA_PHOTO = { x: 1010, y: 500 } as const;
+/** The Photo Spot's camera: on its tripod in front of the arch, pointing at it. */
+export const PLAZA_PHOTO_CAMERA = {
+  x: PLAZA_PHOTO.x - 105,
+  y: PLAZA_PHOTO.y + 112,
+} as const;
 export const PLAZA_CAFE = { x: 1745, y: 480 } as const;
 export const PLAZA_BOARD = { x: 1050, y: 1265 } as const;
 export const PLAZA_LEADER = { x: 240, y: 600 } as const;
@@ -274,6 +279,13 @@ export function plazaClear(x: number, y: number, pad = 0) {
     if (x > SQ.x + 200 && x < PLAZA_PITCH.x0) return false;
     if (x < SQ.x - 200 && x > T.cx) return false;
   }
+  if (
+    PLAZA_LANDINGS.some(
+      (l) =>
+        ((x - l.x) / (l.rx + 40)) ** 2 + ((y - l.y) / (l.ry + 30)) ** 2 < 1,
+    )
+  )
+    return false;
   // The Photo Spot's arch rises well above its spot, and its two bushes
   // stand west of it (drawn with it): keep both clear.
   if (
@@ -385,14 +397,14 @@ export const PLAZA_PATHS: readonly {
   {
     pts: [
       [PLAZA_SQUARE.x + 220, PLAZA_SQUARE.y - 180],
-      [PLAZA_CAFE.x - 40, PLAZA_CAFE.y + 50],
+      [PLAZA_CAFE.x - 30, PLAZA_CAFE.y + 72],
     ],
     w: 80,
   },
   {
     pts: [
       [PLAZA_SQUARE.x - 220, PLAZA_SQUARE.y - 180],
-      [PLAZA_PHOTO.x + 20, PLAZA_PHOTO.y + 50],
+      [PLAZA_PHOTO.x, PLAZA_PHOTO.y + 32],
     ],
     w: 80,
   },
@@ -405,7 +417,8 @@ export const PLAZA_PATHS: readonly {
   },
   {
     pts: [
-      [PLAZA_SQUARE.x + 120, PLAZA_GATE.y - 200],
+      // From the main path itself, not a stub beside it.
+      [PLAZA_SQUARE.x, PLAZA_GATE.y - 200],
       [PLAZA_POND.x - 170, PLAZA_POND.y - 40],
     ],
     w: 72,
@@ -413,7 +426,7 @@ export const PLAZA_PATHS: readonly {
   {
     pts: [
       [PLAZA_TRACK.cx - 40, PLAZA_TRACK.cy - PLAZA_TRACK.ro[1] - 10],
-      [PLAZA_LEADER.x + 20, PLAZA_LEADER.y + 30],
+      [PLAZA_LEADER.x + 10, PLAZA_LEADER.y + 36],
     ],
     w: 64,
   },
@@ -424,9 +437,33 @@ export const PLAZA_PATHS: readonly {
       [410, 330],
       [410, 470],
       [880, 540],
-      [PLAZA_PHOTO.x + 20, PLAZA_PHOTO.y + 50],
+      [PLAZA_PHOTO.x, PLAZA_PHOTO.y + 32],
     ],
     w: 64,
+  },
+  // Front walks: the teal house, the Bakery and the far east house reach
+  // the lanes below them.
+  {
+    pts: [
+      [650, 335],
+      [650, 506],
+    ],
+    w: 56,
+  },
+  {
+    pts: [
+      [2060, 325],
+      [2060, 511],
+    ],
+    w: 56,
+  },
+  {
+    pts: [
+      [2540, 335],
+      [2540, 400],
+      [2300, 460],
+    ],
+    w: 56,
   },
   // … and the studio lane down to the TOP DASH path along the track.
   {
@@ -440,11 +477,27 @@ export const PLAZA_PATHS: readonly {
     pts: [
       [2300, 330],
       [2300, 460],
-      [1900, 525],
-      [PLAZA_CAFE.x - 40, PLAZA_CAFE.y + 50],
+      [1900, 545],
+      [PLAZA_CAFE.x - 30, PLAZA_CAFE.y + 72],
     ],
     w: 64,
   },
+];
+/**
+ * Paved landings where paths arrive (the Photo Spot under its arch, the
+ * Volt Boba counter): the paths end inside them, so no path stops in a
+ * round stub on the grass.
+ */
+export const PLAZA_LANDINGS: readonly {
+  x: number;
+  y: number;
+  rx: number;
+  ry: number;
+}[] = [
+  { x: PLAZA_PHOTO.x, y: PLAZA_PHOTO.y + 32, rx: 104, ry: 58 },
+  { x: PLAZA_CAFE.x - 30, y: PLAZA_CAFE.y + 72, rx: 124, ry: 50 },
+  // In front of the TOP DASH board.
+  { x: PLAZA_LEADER.x + 10, y: PLAZA_LEADER.y + 36, rx: 96, ry: 36 },
 ];
 /** How far a point is from the nearest path's edge (negative: on it), and
  * which way is off it. */
@@ -565,7 +618,7 @@ export const PLAZA_OBSTACLES: readonly PlazaObstacle[] = [
   { x: PLAZA_CAFE.x + 10, y: PLAZA_CAFE.y - 40, r: 130, sy: 2.6 },
   { x: PLAZA_BOARD.x, y: PLAZA_BOARD.y, r: 54, sy: 3 },
   { x: PLAZA_LEADER.x, y: PLAZA_LEADER.y, r: 60, sy: 3 },
-  { x: PLAZA_PHOTO.x + 72, y: PLAZA_PHOTO.y - 8, r: 20 },
+  { x: PLAZA_PHOTO_CAMERA.x, y: PLAZA_PHOTO_CAMERA.y - 4, r: 16 },
 ];
 
 /** Keep a body out of every obstacle, the pond and the stage wall, and inside the map. */

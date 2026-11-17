@@ -37,6 +37,8 @@ import {
   PLAZA_PADS,
   PLAZA_PATHS,
   PLAZA_PHOTO,
+  PLAZA_PHOTO_CAMERA,
+  PLAZA_LANDINGS,
   PLAZA_PITCH,
   PLAZA_POND,
   PLAZA_QUESTS,
@@ -330,11 +332,59 @@ export function openPlaza(options) {
         g.stroke();
       }
     };
+    // Landings (where paths arrive) are part of the same bed and sand.
+    const landings = (grow, style) => {
+      g.fillStyle = style;
+      g.beginPath();
+      for (const l of PLAZA_LANDINGS) {
+        g.moveTo(l.x + l.rx + grow, l.y);
+        g.ellipse(l.x, l.y, l.rx + grow, l.ry + grow, 0, 0, Math.PI * 2);
+      }
+      g.fill();
+    };
     strokeAll(18, "rgba(60,90,40,.35)");
+    landings(9, "rgba(60,90,40,.35)");
     strokeAll(6, "#d9c9a3");
+    landings(3, "#d9c9a3");
+    const cobble = (x, y, c) => {
+      g.fillStyle = "rgba(120,100,60,.45)";
+      g.beginPath();
+      g.roundRect(x - 10, y - 7 + 2, 20, 15, 6);
+      g.fill();
+      g.fillStyle = c;
+      g.beginPath();
+      g.roundRect(x - 10, y - 8, 20, 15, 6);
+      g.fill();
+      g.fillStyle = "rgba(255,255,255,.35)";
+      g.beginPath();
+      g.roundRect(x - 7, y - 6, 9, 3.5, 2);
+      g.fill();
+    };
+    const STONES = ["#efe3c8", "#e6d6b4", "#f4ead6", "#dccaa6"];
+    // A landing's stones first, in rows; the paths' stones stop at its edge.
+    const inLanding = (x, y, inset) =>
+      PLAZA_LANDINGS.some(
+        (l) =>
+          ((x - l.x) / (l.rx - inset)) ** 2 +
+            ((y - l.y) / (l.ry - inset)) ** 2 <
+          1,
+      );
+    for (const l of PLAZA_LANDINGS)
+      for (let y = l.y - l.ry, row = 0; y <= l.y + l.ry; y += 17, row++)
+        for (let x = l.x - l.rx + (row % 2) * 12; x <= l.x + l.rx; x += 24) {
+          const sx = x + (rnd() - 0.5) * 4,
+            sy = y + (rnd() - 0.5) * 4,
+            c = STONES[Math.floor(rnd() * 4)];
+          if (
+            ((sx - l.x) / (l.rx - 12)) ** 2 + ((sy - l.y) / (l.ry - 9)) ** 2 <
+            1
+          )
+            cobble(sx, sy, c);
+        }
     /** Segments already paved: a stone that would land on one is left out. */
     const paved = [];
     const onPaved = (x, y) =>
+      inLanding(x, y, 2) ||
       paved.some((s) => segmentDistance(x, y, s.a, s.b) < s.w / 2 - 10);
     for (const { pts, w } of PLAZA_PATHS) {
       const mine = [];
@@ -353,19 +403,7 @@ export function openPlaza(options) {
             const c = ["#efe3c8", "#e6d6b4", "#f4ead6", "#dccaa6"][
               Math.floor(rnd() * 4)
             ];
-            if (onPaved(x, y)) continue;
-            g.fillStyle = "rgba(120,100,60,.45)";
-            g.beginPath();
-            g.roundRect(x - 10, y - 7 + 2, 20, 15, 6);
-            g.fill();
-            g.fillStyle = c;
-            g.beginPath();
-            g.roundRect(x - 10, y - 8, 20, 15, 6);
-            g.fill();
-            g.fillStyle = "rgba(255,255,255,.35)";
-            g.beginPath();
-            g.roundRect(x - 7, y - 6, 9, 3.5, 2);
-            g.fill();
+            if (!onPaved(x, y)) cobble(x, y, c);
           }
         // The segment before this one counts once this one is laid, so a
         // bend's stones don't pile up either.
@@ -707,13 +745,14 @@ export function openPlaza(options) {
       });
     }
     // photo spot pad
-    g.fillStyle = "rgba(255,255,255,.22)";
+    // (On the landing's stones, so a warm outline that shows on them.)
+    g.fillStyle = "rgba(255,255,255,.14)";
     g.beginPath();
     g.ellipse(PHOTO.x, PHOTO.y + 30, 74, 40, 0, 0, 7);
     g.fill();
-    g.strokeStyle = "#ffffffaa";
+    g.strokeStyle = "rgba(150,110,50,.75)";
     g.setLineDash([8, 8]);
-    g.lineWidth = 2;
+    g.lineWidth = 2.5;
     g.stroke();
     g.setLineDash([]);
     // garden strip beyond the gate
@@ -2500,6 +2539,48 @@ export function openPlaza(options) {
       g.textAlign = "left";
     });
   }
+  /** The Photo Spot's camera, seen from behind: it stands in front of the
+   * arch on its own feet (not against a post) and points at the spot. */
+  function drawCamera(g) {
+    const { x: cx, y: cy } = PLAZA_PHOTO_CAMERA;
+    g.save();
+    g.fillStyle = "rgba(0,0,0,.18)";
+    g.beginPath();
+    g.ellipse(cx, cy + 1, 18, 5, 0, 0, 7);
+    g.fill();
+    g.strokeStyle = "#2c3348";
+    g.lineWidth = 3;
+    g.lineCap = "round";
+    g.beginPath();
+    g.moveTo(cx, cy - 46);
+    g.lineTo(cx - 14, cy);
+    g.moveTo(cx, cy - 46);
+    g.lineTo(cx + 14, cy);
+    g.moveTo(cx, cy - 46);
+    g.lineTo(cx + 3, cy - 6);
+    g.stroke();
+    // The lens, toward the arch (up and to the right), behind the body.
+    g.fillStyle = "#1f2536";
+    g.beginPath();
+    g.roundRect(cx + 4, cy - 76, 14, 12, 3);
+    g.fill();
+    g.fillStyle = "#2c3348";
+    g.beginPath();
+    g.roundRect(cx - 16, cy - 66, 32, 22, 5);
+    g.fill();
+    // Its back: the screen, and the red light while it is ready.
+    g.fillStyle = "#8fd0ff";
+    g.beginPath();
+    g.roundRect(cx - 11, cy - 62, 17, 13, 2);
+    g.fill();
+    g.fillStyle = "rgba(255,255,255,.5)";
+    g.fillRect(cx - 9, cy - 60, 6, 3);
+    g.fillStyle = "#ef4f61";
+    g.beginPath();
+    g.arc(cx + 11, cy - 60, 2.5, 0, 7);
+    g.fill();
+    g.restore();
+  }
   function drawPhoto(g, time) {
     const { x, y } = PHOTO;
     // The two bushes stand together west of the arch, clear of its posts,
@@ -2555,31 +2636,6 @@ export function openPlaza(options) {
     g.lineWidth = 4;
     g.strokeText("PHOTO SPOT", x, y - 246);
     g.fillText("PHOTO SPOT", x, y - 246);
-    // camera on a tripod
-    const cx = x + 72,
-      cy = y - 6;
-    g.strokeStyle = "#2c3348";
-    g.lineWidth = 3;
-    g.beginPath();
-    g.moveTo(cx, cy - 46);
-    g.lineTo(cx - 12, cy);
-    g.moveTo(cx, cy - 46);
-    g.lineTo(cx + 12, cy);
-    g.moveTo(cx, cy - 46);
-    g.lineTo(cx, cy + 2);
-    g.stroke();
-    g.fillStyle = "#2c3348";
-    g.beginPath();
-    g.roundRect(cx - 16, cy - 66, 32, 22, 5);
-    g.fill();
-    g.fillStyle = "#8fd0ff";
-    g.beginPath();
-    g.arc(cx - 3, cy - 55, 7, 0, 7);
-    g.fill();
-    g.fillStyle = "#ef4f61";
-    g.beginPath();
-    g.arc(cx + 10, cy - 62, 2.5, 0, 7);
-    g.fill();
   }
   function drawCafe(g) {
     GFX.blit(g, GFX.foodTruck(), CAFE.x, CAFE.y + 4);
@@ -3615,6 +3671,7 @@ export function openPlaza(options) {
       { y: TRACK.cy - TRACK.ri[1], d: () => drawGantry(g) },
       { y: LEADER.y, d: () => drawLeader(g) },
       { y: PHOTO.y, d: () => drawPhoto(g, time) },
+      { y: PLAZA_PHOTO_CAMERA.y, d: () => drawCamera(g) },
       { y: CAFE.y, d: () => drawCafe(g) },
       { y: BOARD.y, d: () => drawBoard(g) },
       { y: GATE.y, d: () => drawGate(g) },
