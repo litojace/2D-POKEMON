@@ -617,7 +617,7 @@ describe("summit courts", () => {
     });
     // The other zones keep theirs.
     expect(spireSummitFloorId(3)).toBe(SPIRE_YARD_SUMMIT_FLOOR);
-    expect(spireSummitFloorId(6)).toBe(SPIRE_SUMMIT_FLOOR);
+    expect(spireSummitFloorId(7)).toBe(SPIRE_SUMMIT_FLOOR);
   });
   it("floor 50 on Prismell's Sun Atrium, with its own grade (Prismell's raid untouched)", () => {
     expect(spireSummitFloorId(5)).toBe(SPIRE_ATRIUM_SUMMIT_FLOOR);
