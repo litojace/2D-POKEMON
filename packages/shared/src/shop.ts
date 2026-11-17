@@ -26,7 +26,241 @@ export const SKIN_PRICES: Record<Rarity, number> = {
 export const MYTHIC_TRIAL_WINS = 30;
 export const AWAKENING = { stage2Wins: 25, stage3Wins: 75 } as const;
 
+/** Champion costumes, distinct from the universal Colors/effect bundles. */
+export const FASHION_COLLECTIONS = {
+  wayfarer: {
+    name: "Wayfarer",
+    rarity: "rare",
+    description: "Trail capes, leather satchels and enamel compass pins",
+  },
+  "moonlit-tea": {
+    name: "Moonlit Tea",
+    rarity: "rare",
+    description: "Crossed silk robes, blossom hairpins and tied obi bows",
+  },
+  "astral-court": {
+    name: "Astral Court",
+    rarity: "rare",
+    description:
+      "Midnight velvet, constellation embroidery and crystal diadems",
+  },
+  "abyssal-expedition": {
+    name: "Abyssal Expedition",
+    rarity: "epic",
+    description:
+      "Pressure suits, glass visors and individual deep-sea equipment",
+  },
+  "dream-carnival": {
+    name: "Dream Carnival",
+    rarity: "epic",
+    description:
+      "Sculpted stagewear, personal masks and playful carnival headpieces",
+  },
+} as const;
+export type FashionCollection = keyof typeof FASHION_COLLECTIONS;
+export const FASHION_COLLECTION_IDS = Object.keys(
+  FASHION_COLLECTIONS,
+) as FashionCollection[];
+
+/** Authored names and accent identity for every current champion. */
+export const FASHION_ROSTER = {
+  voltkit: [
+    "Amber Pathfinder",
+    "Yuzu Tea",
+    "Storm Astronomer",
+    "Arc Diver",
+    "Harlequin Spark",
+    "#e9b654",
+  ],
+  cindrake: [
+    "Ember Scout",
+    "Hibiscus Tea",
+    "Solar Regent",
+    "Thermal Vent",
+    "Crimson Fire Dancer",
+    "#e77862",
+  ],
+  tidefin: [
+    "Coastal Courier",
+    "Seafoam Tea",
+    "Tidal Astrologer",
+    "Reef Submariner",
+    "Pearl Masquerade",
+    "#60c7c2",
+  ],
+  auralynx: [
+    "Alpine Wayfinder",
+    "Lavender Tea",
+    "Lunar Paladin",
+    "Cryo Naut",
+    "Moonlight Acrobat",
+    "#b6a3ef",
+  ],
+  lumoth: [
+    "Meadow Surveyor",
+    "Jasmine Tea",
+    "Aurora Envoy",
+    "Abyssal Lantern",
+    "Ribbonwing Revue",
+    "#a6d9a6",
+  ],
+  mystowl: [
+    "Dusk Cartographer",
+    "Plum Blossom Tea",
+    "Star Archivist",
+    "Sonar Owl",
+    "Velvet Ringmaster",
+    "#d49ac7",
+  ],
+  terradon: [
+    "Old Trail Keeper",
+    "Matcha Tea",
+    "World Atlas",
+    "Reef Bastion",
+    "Carousel Keeper",
+    "#a7be73",
+  ],
+  duskveil: [
+    "Lantern Wanderer",
+    "Black Sesame Tea",
+    "Eclipse Magister",
+    "Diving Bell Wisp",
+    "Midnight Marionette",
+    "#9f91d3",
+  ],
+  coilemur: [
+    "Canopy Messenger",
+    "Honey Citrus Tea",
+    "Comet Acrobat",
+    "Cable Runner",
+    "Hoop Trickster",
+    "#eac25e",
+  ],
+  pyranda: [
+    "Maple Rambler",
+    "Cinnamon Tea",
+    "Ember Constellation",
+    "Coral Rescuer",
+    "Scarlet Fan Dancer",
+    "#de9570",
+  ],
+  glacelle: [
+    "Glacial Navigator",
+    "Blue Peony Tea",
+    "Polar Oracle",
+    "Bathyal Bell",
+    "Glassbell Ballerina",
+    "#99cae8",
+  ],
+  halcyra: [
+    "Skyline Ranger",
+    "Lotus Tea",
+    "Celestial Falconer",
+    "Current Pilot",
+    "Opera Skydancer",
+    "#79c7d8",
+  ],
+  sunbara: [
+    "Sunset Rambler",
+    "Osmanthus Tea",
+    "Dawn Consul",
+    "Buoy Captain",
+    "Honey Parade",
+    "#e8c080",
+  ],
+  astrabun: [
+    "Clover Courier",
+    "Sakura Mochi Tea",
+    "Moon Princess",
+    "Lunar Aquanaut",
+    "Mochi Harlequin",
+    "#e5abc9",
+  ],
+  wombolder: [
+    "Canyon Explorer",
+    "Roasted Chestnut Tea",
+    "Meteor Sentinel",
+    "Trench Miner",
+    "Grand Drum Major",
+    "#b7a385",
+  ],
+  shadopus: [
+    "Deepwater Rover",
+    "Indigo Tea",
+    "Nebula Illusionist",
+    "Nautilus Captain",
+    "Eightfold Jester",
+    "#ab91cc",
+  ],
+  pangrove: [
+    "Fern Waykeeper",
+    "Bamboo Tea",
+    "Verdant Zodiac",
+    "Kelp Bulwark",
+    "Verdant Masquerader",
+    "#8ec59b",
+  ],
+  mossloth: [
+    "Mossy Rambler",
+    "Chrysanthemum Tea",
+    "Dreaming Equinox",
+    "Coral Keeper",
+    "Dreamtime Jester",
+    "#bac294",
+  ],
+} as const satisfies Record<
+  CharacterId,
+  readonly [string, string, string, string, string, string]
+>;
+
+export const FASHION_SKINS: ChampionSkin[] = (
+  Object.keys(FASHION_ROSTER) as CharacterId[]
+).flatMap((champion) =>
+  FASHION_COLLECTION_IDS.map((collection, i) => ({
+    id: `${champion}-${collection}`,
+    champion,
+    name: FASHION_ROSTER[champion][i],
+    rarity: FASHION_COLLECTIONS[collection].rarity,
+    collection,
+    description: FASHION_COLLECTIONS[collection].description,
+  })),
+);
+
+/** Original hero costumes with individual rig-mounted equipment and restrained effects. */
+export const VANGUARD_NAMES = {
+  voltkit: "Pulse Courier",
+  cindrake: "Solar Forger",
+  tidefin: "Riptide Ranger",
+  auralynx: "Prism Sentinel",
+  lumoth: "Lumen Warden",
+  mystowl: "Night Cartographer",
+  terradon: "Bulwark Grove",
+  duskveil: "Echo Beacon",
+  coilemur: "Flux Runner",
+  pyranda: "Cinder Medic",
+  glacelle: "Frost Weaver",
+  halcyra: "Gale Captain",
+  sunbara: "Dawn Defender",
+  astrabun: "Comet Strider",
+  wombolder: "Quake Marshal",
+  shadopus: "Deepwatch Oracle",
+  pangrove: "Briar Bastion",
+  mossloth: "Cloud Keeper",
+} as const satisfies Record<CharacterId, string>;
+export const VANGUARD_SKINS: ChampionSkin[] = (
+  Object.keys(VANGUARD_NAMES) as CharacterId[]
+).map((champion) => ({
+  id: `${champion}-nova-vanguard`,
+  champion,
+  name: VANGUARD_NAMES[champion],
+  rarity: "epic",
+  collection: "nova-vanguard",
+  description: "Original hero equipment and a subtle personal energy effect",
+}));
+
 export type Collection =
+  | FashionCollection
+  | "nova-vanguard"
   | "winter"
   | "festival"
   | "garden"
@@ -37,6 +271,10 @@ export type Collection =
   | "galaxy"
   | "retro";
 export const COLLECTION_NAMES: Record<Collection, string> = {
+  ...(Object.fromEntries(
+    Object.entries(FASHION_COLLECTIONS).map(([id, c]) => [id, c.name]),
+  ) as Record<FashionCollection, string>),
+  "nova-vanguard": "Nova Vanguard",
   winter: "Winter",
   festival: "Festival",
   garden: "Garden",
@@ -72,8 +310,10 @@ const skin = (
   ...(collection ? { collection } : {}),
 });
 
-/** 8 per champion: 3 Common, 2 Rare, 2 Epic (one Cyber Mecha), 1 Mythical. */
+/** 14 per champion: 3 Common, 5 Rare, 5 Epic, 1 Mythical. */
 export const CHAMPION_SKINS: ChampionSkin[] = [
+  ...FASHION_SKINS,
+  ...VANGUARD_SKINS,
   skin("voltkit", "midnight", "Midnight", "common", "Navy fur, cyan cheeks"),
   skin("voltkit", "peach-fizz", "Peach Fizz", "common", "Peach and pink"),
   skin("voltkit", "mint-static", "Mint Static", "common", "Mint and white"),
@@ -1032,6 +1272,12 @@ const LOOK_SETS: [Collection, [string, string][]][] = [
  * below the set's other pieces. Pricier, rarer pieces get grander effects.
  */
 export const COLLECTION_TIER: Record<Collection, 0 | 1 | 2> = {
+  "nova-vanguard": 1,
+  wayfarer: 0,
+  "moonlit-tea": 0,
+  "astral-court": 0,
+  "abyssal-expedition": 1,
+  "dream-carnival": 1,
   candy: 0,
   garden: 0,
   retro: 0,

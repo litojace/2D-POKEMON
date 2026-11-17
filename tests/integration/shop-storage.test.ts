@@ -289,3 +289,55 @@ it("lets admins test all Mythic stages without changing earned wins or raid clea
   await expect(db.query("select public.arena_equip_champion_skin('auralynx','auralynx-celestial-sage',3)")).rejects.toThrow("Login required");
   await expect(db.query("select public.arena_buy_item('cindrake-ashen')")).rejects.toThrow("Login required");
 });
+
+it("adds the fashion catalog idempotently and sells/equips Rare and Epic looks without a Mythic Trial", async () => {
+  const sql = (await readFile("supabase/migrations/20261117170000_fashion_collections.sql", "utf8")) + (await readFile("supabase/migrations/20261117170001_distinct_epic_collections.sql", "utf8"));
+  await db.exec("reset role");
+  await db.exec(sql);
+  const rows = await db.query<{ rarity: string; n: number }>(
+    "select rarity, count(*)::int as n from public.arena_shop_items where collection in ('wayfarer', 'moonlit-tea', 'astral-court', 'abyssal-expedition', 'dream-carnival') group by rarity order by rarity",
+  );
+  expect(rows.rows).toEqual([
+    { rarity: "epic", n: 36 },
+    { rarity: "rare", n: 54 },
+  ]);
+  await db.exec(
+    `insert into public.arena_wallets(player_id, balance) values ('${player}',20000) on conflict (player_id) do update set balance=20000`,
+  );
+  await login();
+  await db.query("select public.arena_buy_item('voltkit-wayfarer')");
+  await db.query("select public.arena_buy_item('mossloth-abyssal-expedition')");
+  await db.query(
+    "select public.arena_equip_champion_skin('voltkit','voltkit-wayfarer',1)",
+  );
+  await db.query(
+    "select public.arena_equip_champion_skin('mossloth','mossloth-abyssal-expedition',1)",
+  );
+  const before = await economy();
+  expect(before.balance).toBe(15000);
+  expect(before.looks.voltkit.skin).toBe("voltkit-wayfarer");
+  expect(before.looks.mossloth.skin).toBe("mossloth-abyssal-expedition");
+  await expect(
+    db.query(
+      "select public.arena_equip_champion_skin('cindrake','voltkit-wayfarer',1)",
+    ),
+  ).rejects.toThrow("another champion");
+  await db.exec("reset role");
+  await db.exec(sql);
+  const after = await economy();
+  expect(after.owned).toEqual(before.owned);
+  expect(after.looks).toEqual(before.looks);
+  expect(after.balance).toBe(before.balance);
+});
+
+
+it("sells, equips and preserves original Nova Vanguard costumes without a Mythic Trial",async()=>{
+ const sql=await readFile("supabase/migrations/20261117170002_nova_vanguard.sql","utf8");
+ await db.exec("reset role");await db.exec(sql);
+ expect((await db.query("select id from public.arena_shop_items where collection='nova-vanguard'")).rows).toHaveLength(18);
+ await db.exec(`update public.arena_wallets set balance=10000 where player_id='${player}'`);
+ await login();
+ for(const id of ["auralynx","astrabun"]){await db.query("select public.arena_buy_item($1)",[`${id}-nova-vanguard`]);await db.query("select public.arena_equip_champion_skin($1,$2,1)",[id,`${id}-nova-vanguard`]);}
+ const before=await economy();expect(before.balance).toBe(3000);expect(before.looks.auralynx.skin).toBe("auralynx-nova-vanguard");expect(before.looks.astrabun.skin).toBe("astrabun-nova-vanguard");
+ await db.exec("reset role");await db.exec(sql);expect(await economy()).toEqual(before);
+});
