@@ -88,8 +88,9 @@
   padding: max(8px, calc(var(--safe-top, 0px) + 6px)) 10px
     max(8px, calc(var(--safe-bottom, 0px) + 4px))
     calc(var(--safe-left, 0px) + 10px);
-  /* Thick glass (ui/tokens.css), never blurred: it opens over matches,
-     where a blur is redrawn every frame (CLAUDE.md, older phones). */
+  /* Thick glass (ui/tokens.css), blurred outside battles (ui/aero.css);
+     over a match it is near solid instead: a blur there is redrawn every
+     frame (CLAUDE.md, older phones). */
   border-right: 1px solid var(--glass-rim);
   background: var(--glass-thick);
   color: var(--ui-text);
