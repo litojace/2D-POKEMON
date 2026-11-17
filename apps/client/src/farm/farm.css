@@ -1347,38 +1347,6 @@
   top: 122px;
   transform: translateX(-50%);
 }
-.farm-layer .landmap {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
-  padding: 8px;
-  border-radius: 12px;
-  background: #5e3f22;
-}
-.farm-layer .lm {
-  aspect-ratio: 1.5;
-  border-radius: 6px;
-  border: 0;
-  font-size: 0.9em;
-  display: grid;
-  place-items: center;
-  padding: 0;
-}
-.farm-layer .lm.own {
-  background: #8a6038;
-}
-.farm-layer .lm.can {
-  background: #7cc45e;
-  cursor: pointer;
-  box-shadow: 0 0 0 2px var(--ui-accent) inset;
-}
-.farm-layer .lm.can:hover {
-  background: #9be07a;
-}
-.farm-layer .lm.no {
-  background: #4f8a3c;
-  opacity: 0.55;
-}
 .farm-layer .deed {
   width: min(380px, 70%);
   border-radius: 22px;
@@ -1726,11 +1694,6 @@
   display: inline-flex;
   align-items: center;
   gap: 0.2em;
-}
-.farm-layer .lm .ico {
-  width: 1.2em;
-  height: 1.2em;
-  vertical-align: 0;
 }
 .farm-layer .fm-visit small {
   display: inline-flex;

@@ -898,7 +898,7 @@ test("decorating on a phone: a tap puts the decoration there, a drag on it moves
   }
 });
 
-// The Chicken Coop (20261117100000): bought in the shop's Land tab, its hens
+// The Chicken Coop (20261117100000): bought in the shop's Animals tab, its hens
 // fed with wheat from the barn lay eggs, collected with a tap, sold at the
 // market; the coop's sheet tends every hen and buys more.
 for (const viewport of [
@@ -945,7 +945,7 @@ for (const viewport of [
         }, k);
       const look = () =>
         page.evaluate(() => (window as any).__farm.look(1170, 920));
-      // Not built: a sign on the grass; tapping it opens the shop's Land tab.
+      // Not built: a sign on the grass; tapping it opens the shop's Animals tab.
       await tapWorld(1150, 900);
       const sheet = page.locator("#fm-sheet");
       const item = sheet.locator(".item", { hasText: "Chicken Coop" });
@@ -1190,7 +1190,7 @@ for (const viewport of [
 }
 
 // More cows (20261117100000): the 2nd from farm level 40, bought in the
-// shop's Land tab, milked on its own with a tap.
+// shop's Animals tab, milked on its own with a tap.
 for (const viewport of [
   { width: 1280, height: 800 },
   { width: 844, height: 390 },
@@ -1219,7 +1219,7 @@ for (const viewport of [
       await expect(page.locator("#fm-badge")).toContainText("tester's Farm");
       await openFromRail(page, "shop");
       const sheet = page.locator("#fm-sheet");
-      await sheet.locator('[data-tab="land"]').click();
+      await sheet.locator('[data-tab="animals"]').click();
       const item = sheet.locator(".item", { hasText: "Another cow" });
       await expect(item).toContainText("1/3");
       await expect(item).toContainText("unlocks at Lv 40");
@@ -1314,7 +1314,7 @@ for (const viewport of [
         if (phone) await page.touchscreen.tap(p.x, p.y);
         else await page.mouse.click(p.x, p.y);
       };
-      // Locked: a FOR SALE sign; tapping it opens the shop's Land tab.
+      // Locked: a FOR SALE sign; tapping it opens the shop's Animals tab.
       await tapPasture();
       const sheet = page.locator("#fm-sheet");
       const item = sheet.locator(".item", { hasText: "Cow Pasture" });
@@ -3346,11 +3346,17 @@ test("a tap on the farm closes the open sheet or orb card and does nothing else"
       .poll(actions)
       .toEqual([{ a: "harvest", plot: 0, tool: "sickle" }]);
 
-    // The land deed: a tap beside it, on its dim background, closes it
-    // (and leaves the shop open behind it).
-    await shop.click();
-    await page.click('#fm-sheet [data-tab="land"]');
-    await page.locator("#fm-sheet [data-landbuy]").first().click();
+    // The land deed (opened from a FOR SALE plot on the farm, the only
+    // place land is sold): a tap beside it, on its dim background, closes it.
+    const forSale = await page.evaluate(() => {
+      const F = (window as any).__farm.F,
+        own = (j: number) => F.plots[j] && !F.plots[j].locked,
+        i = F.plots.findIndex(
+          (p: any, j: number) => p.locked && j % 10 > 0 && own(j - 1),
+        );
+      return (window as any).__farm.plotClient(i);
+    });
+    await page.mouse.click(forSale.x, forSale.y);
     const deed = page.locator("#fm-modal");
     await expect(deed.locator(".deed")).toBeVisible();
     const out = await page.evaluate(() => {
@@ -3366,7 +3372,6 @@ test("a tap on the farm closes the open sheet or orb card and does nothing else"
     await expect(deed).toBeVisible();
     await page.mouse.click(out.x, out.y);
     await expect(deed).toBeHidden();
-    await expect(sheet).toBeVisible();
     expect(errors).toEqual([]);
   } finally {
     await context.close();

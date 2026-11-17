@@ -1140,7 +1140,7 @@ export function openFarm(options) {
   }
   /** The Cow Pasture: open it in the shop, then milk the cow (migration 049). */
   function pastureClick(k = 0) {
-    if (!F.pasture) return openSheet("shop", "land");
+    if (!F.pasture) return openSheet("shop", "animals");
     const left = (cowMilkAt(k) - serverNow()) / 1000;
     if (left > 0) return toast(`The cow is grazing. Milk in ${fmtDur(left)}`);
     if (barnUsed() + PASTURE.milk > F.barnCap)
@@ -1917,7 +1917,7 @@ export function openFarm(options) {
   }
   /** A tap on the coop: buy it, tend a hen, or open the coop's sheet. */
   function coopClick(w) {
-    if (!F.coop) return openSheet("shop", "land");
+    if (!F.coop) return openSheet("shop", "animals");
     const k = henAt(w);
     if (k >= 0) return henTap(k);
     bounce.coop = 1;
@@ -7986,7 +7986,7 @@ export function openFarm(options) {
           ["seeds", "Seeds"],
           ["tools", "Tools"],
           ["dogs", "Guard Dogs"],
-          ["land", "Land"],
+          ["animals", "Animals"],
         ]) + `<div class="sh-body">`;
       if (sheetTab === "seeds")
         html +=
@@ -8020,11 +8020,9 @@ export function openFarm(options) {
               lock = d.level > F.lv;
             return `<div class="dogcard${active ? " active" : ""}${lock ? " locked" : ""}"><canvas data-dogprev="${d.id}" width="120" height="120"></canvas><div><b>${d.name}</b><small>${d.text}${active ? `<br><b style="color:#7ff0a2">On guard · ${fmtDur(dogLeft())} left</b>` : ""}</small><div class="acts">${lock ? `<span class="sh-note">Unlocks at Lv ${d.level}</span>` : `<button type="button" class="btn-s${active ? " green" : ""}" data-dog="${d.id}" data-days="1" ${F.leaves < d.price1 ? "disabled" : ""}>${active ? "+1 day" : "1 day"} · ${d.price1} ${L}</button><button type="button" class="btn-s ghost" data-dog="${d.id}" data-days="3" ${F.leaves < d.price3 ? "disabled" : ""}>${active ? "+3 days" : "3 days"} · ${d.price3} ${L}</button>`}</div></div></div>`;
           }).join("");
-      if (sheetTab === "land") {
-        const k = F.land,
-          ok = F.lv >= landLv(k),
-          done = k >= 35;
-        html += `<p class="sh-note">Buy more land one plot at a time. Each plot costs more than the last. You can only buy plots <b>next to land you own</b>; they show a <b>FOR SALE</b> sign.</p><div class="landmap" style="grid-template-columns:repeat(${COLS},minmax(0,1fr))">${F.plots.map((p, i) => `<button type="button" class="lm ${!p.locked ? "own" : buyable(i) ? "can" : "no"}" ${buyable(i) ? `data-landbuy="${i}"` : "disabled"} title="${!p.locked ? "Your land" : buyable(i) ? "For sale" : "Not yet"}">${!p.locked ? (p.crop ? I("sprout") : "") : buyable(i) ? I("sign") : ""}</button>`).join("")}</div><div class="item"><span class="ic">${I("sign")}</span><div><b>Next plot · ${15 + k}/${FARM_PLOTS} plots</b><small>${done ? "You own every plot" : `${landPrice(k)} ${L} · needs Lv ${landLv(k)}${ok ? "" : ` · <b style="color:#ffd65b">you are Lv ${F.lv}</b>`}`}</small></div></div>`;
+      if (sheetTab === "animals") {
+        // Land is bought on the farm itself, from its FOR SALE signs
+        // (landClick's deed); this tab is the pasture's and the coop's.
         const pLock = F.lv < PASTURE.level;
         html += `<div class="item${pLock && !F.pasture ? " locked" : ""}"><span class="ic">${I("cow")}</span><div><b>Cow Pasture</b><small>Opens the meadow on the right with a cow that gives <b>${PASTURE.milk} ${MILK.name}</b> every ${fmtDur(PASTURE.milkSeconds)}, about ${MILK.sell} ${L} each${F.pasture ? "" : pLock ? ` · <b style="color:#ffd65b">unlocks at Lv ${PASTURE.level}</b>` : ""}</small></div><div class="acts">${F.pasture ? `<button type="button" class="btn-s green" disabled>Owned</button>` : `<button type="button" class="btn-s" data-pasture ${pLock || F.leaves < PASTURE.price ? "disabled" : ""}>${PASTURE.price} ${L}</button>`}</div></div>`;
         const cow = F.pasture ? nextCow(1 + F.cows.length) : null;
@@ -8032,6 +8030,12 @@ export function openFarm(options) {
           html += `<div class="item${cow && F.lv < cow.level ? " locked" : ""}"><span class="ic">${I("cow")}</span><div><b>Another cow · ${1 + F.cows.length}/${PASTURE.maxCows}</b><small>${cow ? `One more cow, ${PASTURE.milk} ${MILK.name} every ${fmtDur(PASTURE.milkSeconds)}${F.lv < cow.level ? ` · <b style="color:#ffd65b">unlocks at Lv ${cow.level}</b>` : ""}` : "Your pasture is full"}</small></div><div class="acts">${cow ? `<button type="button" class="btn-s" data-buycow ${F.lv < cow.level || F.leaves < cow.price ? "disabled" : ""}>${F.lv < cow.level ? `Lv ${cow.level}` : `${cow.price.toLocaleString("en-US")} ${L}`}</button>` : `<button type="button" class="btn-s green" disabled>Full</button>`}</div></div>`;
         const cLock = F.lv < COOP.level;
         html += `<div class="item${cLock && !F.coop ? " locked" : ""}"><span class="ic">${I("hen")}</span><div><b>Chicken Coop</b><small>A coop by the lane with <b>${COOP.hens} hens</b> (up to ${COOP.maxHens}). Feed a hen ${COOP.feedQty} ${CROP[COOP.feedCrop].n} and she lays a <b>${EGG.name}</b> in ${fmtDur(COOP.laySeconds)}, about ${EGG.sell} ${L} each${F.coop ? "" : cLock ? ` · <b style="color:#ffd65b">unlocks at Lv ${COOP.level}</b>` : ""}</small></div><div class="acts">${F.coop ? `<button type="button" class="btn-s green" disabled>Owned</button>` : `<button type="button" class="btn-s" data-coop ${cLock || F.leaves < COOP.price ? "disabled" : ""}>${COOP.price.toLocaleString("en-US")} ${L}</button>`}</div></div>`;
+        if (F.coop) {
+          const hen = henPrice(F.hens.length),
+            henLv = henLevel(F.hens.length),
+            hLock = henLv != null && F.lv < henLv;
+          html += `<div class="item${hLock ? " locked" : ""}"><span class="ic">${I("hen")}</span><div><b>Another hen · ${F.hens.length}/${COOP.maxHens}</b><small>${hen == null ? "Your coop is full" : `One more hen, one more ${EGG.name} each round${hLock ? ` · <b style="color:#ffd65b">unlocks at Lv ${henLv}</b>` : ""}`}</small></div><div class="acts">${hen == null ? `<button type="button" class="btn-s green" disabled>Full</button>` : `<button type="button" class="btn-s" data-buyhen ${hLock || F.leaves < hen ? "disabled" : ""}>${hLock ? `Lv ${henLv}` : `${hen.toLocaleString("en-US")} ${L}`}</button>`}</div></div>`;
+        }
       }
       html += `</div>`;
     }
