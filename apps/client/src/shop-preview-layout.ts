@@ -54,8 +54,17 @@ export const SHOP_SHADOW = { width: 128, height: 26 } as const;
 export const SHOP_GROUND_FLAT = SHOP_SHADOW.height / SHOP_SHADOW.width;
 
 /**
- * Auras lie on the same plane as the shadow (SHOP_GROUND_FLAT), a ring wider
- * than it, and the whole projected aura stays inside the frame.
+ * Art units per aura unit, as the Lobby and the roster draw an aura: their
+ * ring (about 48 aura units) spans 1.6 times the menu shadow (rx 32 art
+ * units; shop-preview.ts). The fitting room uses the same, so an aura is as
+ * big next to the fighter in the Shop and the Wardrobe as in the Lobby (it
+ * was about 1.56 times bigger there: owner, 17 Nov 2026).
+ */
+export const AURA_ART_SCALE = (32 * 2 * 1.6) / 48 / 2;
+/**
+ * Auras lie on the same plane as the shadow (SHOP_GROUND_FLAT), sized to the
+ * fighter as in the Lobby (AURA_ART_SCALE), and the whole projected aura
+ * stays inside the frame.
  */
 export function previewAuraScale(
   frame: {
@@ -67,7 +76,8 @@ export function previewAuraScale(
 ) {
   const feet = frame.y + WORLD_ART.fighterFeet * frame.scale;
   return Math.min(
-    frame.scale / 1.2,
+    // The rig draws its art at half the framing's scale.
+    frame.scale * 0.5 * AURA_ART_SCALE,
     Math.max(0.1, ((frame.height - feet - 12) * 2) / (128 * flat)),
   );
 }

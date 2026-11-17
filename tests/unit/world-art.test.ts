@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { CHARACTERS, type CharacterId } from "@arena/shared";
+import { menuShadow } from "../../apps/client/src/fighter-art";
 import { WORLD_ART, groundHeight } from "../../packages/shared/src/world-art";
 import { paintKit } from "../../apps/client/src/arena-courts";
 import { LOOK_ITEMS } from "../../packages/shared/src/shop";
@@ -29,7 +31,7 @@ describe("shared world art perspective", () => {
     },
   );
 
-  it("lays fitting-room auras on the shadow's plane, wider than the shadow", () => {
+  it("lays fitting-room auras on the shadow's plane", () => {
     expect(SHOP_GROUND_FLAT).toBeCloseTo(
       SHOP_SHADOW.height / SHOP_SHADOW.width,
     );
@@ -51,9 +53,23 @@ describe("shared world art perspective", () => {
     expect(ellipses.length).toBeGreaterThan(0);
     for (const [, , width, height] of ellipses.filter((e) => e[2] > 20))
       expect(height / width).toBeCloseTo(SHOP_GROUND_FLAT);
-    // The ring (about 96 aura units across) reaches past the shadow.
-    expect(96 * previewAuraScale(SHOP_PREVIEW)).toBeGreaterThan(
-      SHOP_SHADOW.width,
+  });
+
+  it("sizes fitting-room auras to the fighter as the Lobby does", () => {
+    // The Lobby: a ring of 48 aura units spans 1.6 times the menu shadow,
+    // at two canvas pixels per art unit (shop-preview.ts, "selection").
+    for (const id of Object.keys(CHARACTERS) as CharacterId[]) {
+      const shadow = menuShadow(id);
+      const lobby =
+        (shadow.rx * 2 * 1.6) / 48 / (SELECTION_PREVIEW.scale * 0.5);
+      // The Shop and the Wardrobe draw art at half their framing's scale.
+      expect(
+        previewAuraScale(SHOP_PREVIEW) / (SHOP_PREVIEW.scale * 0.5),
+      ).toBeCloseTo(lobby);
+    }
+    // It was about 1.56 times bigger, past the whole fighter.
+    expect(previewAuraScale(SHOP_PREVIEW)).toBeLessThan(
+      SHOP_PREVIEW.scale / 1.2,
     );
   });
 
