@@ -8,7 +8,10 @@ import { epicBodyCut } from "../../apps/client/src/skins/epic-fashion";
 import { fashionCut } from "../../apps/client/src/skins/fashion-fits";
 import { fashionOutfit } from "../../apps/client/src/skins/fashion-outfits";
 import { HEAD, SKIN_ART } from "../../apps/client/src/skins/skin-art";
-import { creatureLayers } from "../../apps/client/src/creature-design";
+import {
+  creatureLayers,
+  creaturePalette,
+} from "../../apps/client/src/creature-design";
 import {
   drawSkinFx,
   type FxContext,
@@ -22,6 +25,46 @@ const shapes = (svg: string) =>
   [...svg.matchAll(/(?:\sd="([^"]+)"|<(circle|ellipse)[^>]+>)/g)]
     .map((m) => m[1] ?? m[0].replace(/(?:fill|stroke)="[^"]*"/g, ""))
     .join("|");
+
+const lightness = (hex: string) => {
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+  return (Math.max(r, g, b) + Math.min(r, g, b)) / 510;
+};
+const distance = (a: string, b: string) =>
+  Math.hypot(
+    ...[1, 3, 5].map(
+      (i) => parseInt(a.slice(i, i + 2), 16) - parseInt(b.slice(i, i + 2), 16),
+    ),
+  );
+
+describe("fashion collection colors", () => {
+  it("gives each Rare collection its own body color for every champion", () => {
+    for (const id of ids) {
+      const mids = ["wayfarer", "moonlit-tea", "astral-court"].map(
+        (c) => SKIN_ART[`${id}-${c}`].palette!.mid!,
+      );
+      for (let i = 0; i < mids.length; i++)
+        for (let j = i + 1; j < mids.length; j++)
+          expect(distance(mids[i], mids[j]), `${id} ${i}/${j}`).toBeGreaterThan(
+            45,
+          );
+    }
+  });
+  it("keeps each champion's light and dark markings (Duskveil's void face, Pyranda's mask)", () => {
+    for (const id of ids)
+      for (const c of [
+        "wayfarer",
+        "moonlit-tea",
+        "astral-court",
+        "abyssal-expedition",
+      ])
+        for (const key of ["accent", "dark"] as const) {
+          const was = lightness(creaturePalette[id][key]);
+          const now = lightness(SKIN_ART[`${id}-${c}`].palette![key]!);
+          expect(Math.abs(now - was), `${id}-${c} ${key}`).toBeLessThan(0.12);
+        }
+  });
+});
 
 describe("authored fashion collections", () => {
   it("replaces conflicting default props without covering faces or removing Halcyra's beak", () => {

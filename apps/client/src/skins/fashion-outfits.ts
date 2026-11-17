@@ -108,7 +108,8 @@ export function fashionOutfit(
       break;
     }
     case "moonlit-tea": {
-      const silk = ghost ? "#5b4b7c" : bulky ? "#6a8267" : "#b37f9a";
+      // Indigo or matcha silk against the blossom-pink coat, never pink on pink.
+      const silk = bulky ? "#5f7f5c" : "#46548a";
       coat(
         wrap(
           path(cut, silk) +
@@ -129,7 +130,8 @@ export function fashionOutfit(
       break;
     }
     case "astral-court": {
-      const velvet = ghost ? "#352952" : "#334565";
+      // Darker than the midnight coat, so the gold trim frames a clear robe.
+      const velvet = "#161a36";
       coat(
         wrap(
           path(cut, velvet) +

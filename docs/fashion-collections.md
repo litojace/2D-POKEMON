@@ -13,6 +13,26 @@ Six collections add 108 champion skins: three Rare and three Epic for each of th
 | Dream Carnival | Epic / 3,500 | Independent stagewear, masks, personal headpieces and ruffs; a small glint and confetti dash trail |
 | Nova Vanguard | Epic / 3,500 | Original hero suits, individual emblems and joint-mounted equipment; personal energy details and a short movement trail |
 
+## Color stories
+
+Each collection recolors the champion through `fashion-art.ts` (`TINTS`): the
+hue moves to the collection's own color while every color keeps the
+champion's lightness, so dark markings stay dark and light markings stay
+light (Duskveil's void face, Shadopus's visor, Pyranda's mask, Coilemur's
+white face). Never set `accent` or `dark` to an unrelated pastel: champions
+draw anatomy with them.
+
+| Collection | Body | Costume fabric |
+| --- | --- | --- |
+| Wayfarer | Honey and russet | Field green, cream |
+| Moonlit Tea | Blossom pink | Indigo silk (matcha on bulky champions) |
+| Astral Court | Midnight indigo | Near-black velvet, gold trim, pale-blue glow |
+| Abyssal Expedition | Deep-water teal | Pressure suit, aqua glow |
+
+Rare coats replace the default scarf or towel, as Epic suits do.
+`fashion-collections.test.ts` checks that the three Rares differ for every
+champion and that `accent`/`dark` keep the champion's lightness.
+
 ## Individual tailoring
 
 The collection shares a fabric language, not a single costume pasted onto all
