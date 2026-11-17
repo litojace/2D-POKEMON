@@ -5,13 +5,14 @@
  * database agree on: floors, the one tuning table, blessings, rewards,
  * progress and the snapshot's `raid.spire`.
  *
- * Zones 1 to 4 are built. One climb is one zone: a room is made for a
+ * Zones 1 to 5 are built. One climb is one zone: a room is made for a
  * zone (its first floor is the start) and its boss floor ends the climb.
  * Zone 1: floors 1–9 on the Spire's court and the Ascendant Cragmuff on
  * floor 10. Zone 2: floors 11–19 (Water) and the Ascendant Tidelotl on
  * floor 20, in the lagoon. Zone 3: floors 21–29 (Shadow) and the Ascendant
  * Inkpurr on floor 30, in the Lantern Yard. Zone 4: floors 31–39 (Psychic)
- * and the Ascendant Snoozaku on floor 40, on the Cloud Deck. Each boss is fought in the same room (the zone's
+ * and the Ascendant Snoozaku on floor 40, on the Cloud Deck. Zone 5: floors
+ * 41–49 (Light) and the Ascendant Prismell on floor 50, in the Sun Atrium. Each boss is fought in the same room (the zone's
  * arena turns the Ascendant's rules on for that floor:
  * apps/server/src/spire.ts). Clearing zone 1's boss grants checkpoint 11
  * (`spireStartCheckpoint`, and the database's arena_record_spire_floor).
@@ -24,8 +25,8 @@ import type { RaidBossId } from "./raid-roster.js";
 export const SPIRE_SEASON = 0;
 /** Floors per zone; floor 10 of each is its boss, floor 5 its elite. */
 export const SPIRE_ZONE_FLOORS = 10;
-/** The highest floor that can be played today (zone 4's boss). */
-export const SPIRE_BUILT_TOP = 40;
+/** The highest floor that can be played today (zone 5's boss). */
+export const SPIRE_BUILT_TOP = 50;
 /** Party size, like raids. */
 export const SPIRE_SEATS = 4;
 
@@ -51,7 +52,7 @@ export interface SpireZone {
   /** The raid boss of the zone: its clear opens the boss floor; its arena is the boss floor's court. */
   boss: RaidBossId;
   /** The arena the zone's boss floor is fought in (wave floors: the Spire's court). */
-  court: "classic" | "lagoon" | "lantern-yard" | "cloud-deck";
+  court: "classic" | "lagoon" | "lantern-yard" | "cloud-deck" | "sun-atrium";
   /** Its Ascendant boss name (the boss floor). */
   ascendant: string;
   /** The Ascendant's new attacks (the boss floor's briefing and the Floors list). */
@@ -131,6 +132,29 @@ export const SPIRE_ZONES: Record<number, SpireZone> = {
     // Auralynx, the aura-reading lynx.
     kin: ["mystowl", "astrabun", "auralynx"],
   },
+  5: {
+    id: 5,
+    name: "Sun Atrium",
+    element: "Light",
+    boss: "prismatail",
+    court: "sun-atrium",
+    ascendant: "Ascendant Prismell",
+    // TODO(lead): the boss branch's new attack ids (and their RAID_ATTACKS
+    // text) go here, and in floor 50's description; the briefing and the
+    // Floors list show them.
+    ascendantMoves: [],
+    bossName: "Prismell",
+    // TODO(lead): check these two lines against the boss branch's moves and
+    // reads once it lands.
+    bossLead:
+      "Prismell, evolved. Its raid's rules still hold (relay the sunbeam raider to raider, hit a mirror to turn it, carry the light into its heart to shatter the shield, look away from its Glare), pushed further: new attacks, combos and fewer openings.",
+    bossReads:
+      "Lances aim where you usually dodge, standing still to attack draws a Prism Lance, a Fan Display may break into lances halfway (shown in full), and it hunts whoever kneels to revive.",
+    // Light (Lumoth, Sunbara: Lumoth's Radiant Flare fans the sunbeam out in
+    // Prismell's own raid) and their radiant kin of the sky, Halcyra, whose
+    // Skyline Lance cuts Prismell's Prism Lances.
+    kin: ["lumoth", "sunbara", "halcyra"],
+  },
 };
 /** The first floor of each built zone: where a climb may start. */
 export const spireZoneStart = (zone: number) =>
@@ -183,6 +207,16 @@ export const SPIRE_ELITE_MECHANICS = {
     name: "falling stars",
     hint: "a ring of star marks falls with one star on you: step out of its circle before it lands",
     cue: "Falling Stars — step out of the star under you!",
+  },
+  // Three locked prism lances fan out from the captain, the middle one on a
+  // raider: step sideways into a gap (or out of the fan). On the Spire no
+  // lance runs under a phone's touch controls: each stops short of them.
+  lances: {
+    attack: "prism-lance",
+    boss: "Prismell",
+    name: "prism lances",
+    hint: "three red lanes fan out from the captain, one on you: sidestep into a gap before they fire",
+    cue: "Prism Lances — sidestep the red lane!",
   },
 } as const satisfies Record<
   string,
@@ -848,6 +882,161 @@ export const SPIRE_FLOORS: Record<number, SpireFloor> = {
     waves: [],
     boss: "somnara",
   },
+  // Zone 5, the Sun Atrium: Light-leaning (Lumoth, Sunbara) with their
+  // radiant kin of the sky Halcyra, plus one off-element champion per floor.
+  41: {
+    floor: 41,
+    zone: 5,
+    kind: "wave",
+    name: "The Dawn Gate",
+    waves: [
+      [e("sunbara", "front"), e("lumoth", "caster")],
+      [e("coilemur", "skirmisher"), e("halcyra", "caster")],
+      [e("sunbara", "front"), e("lumoth", "skirmisher")],
+    ],
+  },
+  42: {
+    floor: 42,
+    zone: 5,
+    kind: "wave",
+    name: "Gilded Steps",
+    waves: [
+      [e("lumoth", "skirmisher"), e("sunbara", "front")],
+      [e("halcyra", "caster"), e("tidefin", "caster")],
+      [e("sunbara", "front"), e("lumoth", "caster")],
+    ],
+  },
+  43: {
+    floor: 43,
+    zone: 5,
+    kind: "wave",
+    name: "Prism Rows",
+    waves: [
+      [e("sunbara", "front"), e("duskveil", "skirmisher")],
+      [e("halcyra", "caster"), e("lumoth", "skirmisher")],
+      [
+        e("duskveil", "skirmisher"),
+        e("sunbara", "front"),
+        e("halcyra", "caster"),
+      ],
+    ],
+  },
+  44: {
+    floor: 44,
+    zone: 5,
+    kind: "wave",
+    name: "Hall of Mirrors",
+    waves: [
+      [
+        e("sunbara", "front"),
+        e("lumoth", "skirmisher"),
+        e("pyranda", "caster"),
+      ],
+      [e("halcyra", "caster"), e("sunbara", "front")],
+      [
+        e("lumoth", "skirmisher"),
+        e("pyranda", "caster"),
+        e("sunbara", "front"),
+      ],
+    ],
+  },
+  45: {
+    floor: 45,
+    zone: 5,
+    kind: "elite",
+    name: "The Lancer's Ring",
+    description: "Echo Captain Halcyra · reinforcements and prism lances",
+    waves: [],
+    elite: {
+      captain: e("halcyra", "front"),
+      name: "Echo Captain Halcyra",
+      mechanic: "lances",
+      escorts: [e("sunbara", "front")],
+    },
+  },
+  46: {
+    floor: 46,
+    zone: 5,
+    kind: "wave",
+    name: "Rainbow Terrace",
+    waves: [
+      [e("sunbara", "front"), e("wombolder", "front")],
+      [e("lumoth", "skirmisher"), e("halcyra", "caster")],
+      [
+        e("wombolder", "front"),
+        e("sunbara", "front"),
+        e("lumoth", "skirmisher"),
+      ],
+    ],
+  },
+  47: {
+    floor: 47,
+    zone: 5,
+    kind: "wave",
+    name: "Skylight Run",
+    waves: [
+      [
+        e("halcyra", "caster"),
+        e("sunbara", "front"),
+        e("shadopus", "skirmisher"),
+      ],
+      [
+        e("lumoth", "skirmisher"),
+        e("sunbara", "front"),
+        e("lumoth", "skirmisher"),
+      ],
+      [e("halcyra", "caster"), e("shadopus", "skirmisher")],
+    ],
+  },
+  48: {
+    floor: 48,
+    zone: 5,
+    kind: "wave",
+    name: "Choir of Glass",
+    waves: [
+      [
+        e("sunbara", "front"),
+        e("glacelle", "caster"),
+        e("lumoth", "skirmisher"),
+      ],
+      [
+        e("lumoth", "skirmisher"),
+        e("sunbara", "front"),
+        e("lumoth", "skirmisher"),
+      ],
+      [e("halcyra", "caster"), e("glacelle", "caster"), e("sunbara", "front")],
+    ],
+  },
+  49: {
+    floor: 49,
+    zone: 5,
+    kind: "wave",
+    name: "Sunlit Stair",
+    waves: [
+      [
+        e("sunbara", "front"),
+        e("lumoth", "skirmisher"),
+        e("astrabun", "skirmisher"),
+      ],
+      [
+        e("halcyra", "caster"),
+        e("astrabun", "skirmisher"),
+        e("lumoth", "skirmisher"),
+      ],
+      [e("sunbara", "front"), e("sunbara", "front"), e("halcyra", "caster")],
+    ],
+  },
+  // The Ascendant Prismell, in the Sun Atrium, in the climb's own room.
+  50: {
+    floor: 50,
+    zone: 5,
+    kind: "boss",
+    name: "Ascendant Prismell",
+    // TODO(lead): "New attacks: …" with the boss branch's attack names.
+    description: "Prismell, evolved: the sunbeam relay pushed further",
+    waves: [],
+    boss: "prismatail",
+  },
 };
 export const spireFloor = (floor: number): SpireFloor | undefined =>
   SPIRE_FLOORS[floor];
@@ -963,6 +1152,25 @@ export const SPIRE_TUNING: Record<
   38: { difficulty: "normal", power: 0.62, armour: 1.93, limit: 180 },
   39: { difficulty: "normal", power: 0.63, armour: 1.39, limit: 180 },
   40: { difficulty: "hard", power: 1, armour: 1, limit: 600 },
+  // Zone 5: a climb starts at 41 with no blessings, against Light Echoes
+  // (a sturdy support capybara, a versatile moth, a sky marksman) and one
+  // off-element champion a floor. As in zones 3 and 4, each Echo hits a
+  // little harder floor by floor and its toughness follows its floor's
+  // line-up: the support Sunbara heals the Echoes round it, so Light Echoes
+  // take more damage per hit than zone 4's to stay beatable. By simulation
+  // (tests/unit/spire-zone5.test.ts; a solo Normal bot raider, 96 seeds)
+  // floor 41 is cleared about two times in three (69%), then 59, 56, 49,
+  // 50 (the elite), 48, 44, 39 and 35% on floor 49.
+  41: { difficulty: "normal", power: 0.58, armour: 2.9, limit: 180 },
+  42: { difficulty: "normal", power: 0.59, armour: 2.25, limit: 180 },
+  43: { difficulty: "normal", power: 0.6, armour: 3.1, limit: 180 },
+  44: { difficulty: "normal", power: 0.61, armour: 3, limit: 180 },
+  45: { difficulty: "normal", power: 0.64, armour: 0.8, limit: 240 },
+  46: { difficulty: "normal", power: 0.62, armour: 2.04, limit: 180 },
+  47: { difficulty: "normal", power: 0.63, armour: 2.7, limit: 180 },
+  48: { difficulty: "normal", power: 0.64, armour: 3.35, limit: 180 },
+  49: { difficulty: "normal", power: 0.65, armour: 2.15, limit: 180 },
+  50: { difficulty: "hard", power: 1, armour: 1, limit: 600 },
 };
 /** Party scaling, and the cap on fighters on the court. */
 export const SPIRE_PARTY = {
@@ -1262,6 +1470,24 @@ export const SPIRE_REWARDS: SpireReward[] = [
     floor: 40,
     kind: "title",
     item: "Dreambreaker of the Spire",
+    amount: 0,
+  },
+  // Zone 5 (migration 20261117210000_spire_zone5.sql).
+  { season: 0, floor: 41, kind: "coins", item: "coins", amount: 85 },
+  { season: 0, floor: 42, kind: "coins", item: "coins", amount: 85 },
+  { season: 0, floor: 43, kind: "coins", item: "coins", amount: 90 },
+  { season: 0, floor: 44, kind: "coins", item: "coins", amount: 90 },
+  { season: 0, floor: 45, kind: "coins", item: "coins", amount: 190 },
+  { season: 0, floor: 46, kind: "coins", item: "coins", amount: 95 },
+  { season: 0, floor: 47, kind: "coins", item: "coins", amount: 95 },
+  { season: 0, floor: 48, kind: "coins", item: "coins", amount: 100 },
+  { season: 0, floor: 49, kind: "coins", item: "coins", amount: 100 },
+  { season: 0, floor: 50, kind: "coins", item: "coins", amount: 350 },
+  {
+    season: 0,
+    floor: 50,
+    kind: "title",
+    item: "Sunbreaker of the Spire",
     amount: 0,
   },
 ];

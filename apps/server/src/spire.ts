@@ -11,7 +11,9 @@
  * the raid core, `SpireArena`; zone 2: the Ascendant Tidelotl's over
  * Tidelotl's arena, `SpireTideArena`; zone 3: the Ascendant Inkpurr's over
  * Inkpurr's (Gloomshade's) arena, `SpireGloomArena`; zone 4: the Ascendant
- * Snoozaku's over Snoozaku's (Somnara's) arena, `SpireDreamArena`).
+ * Snoozaku's over Snoozaku's (Somnara's) arena, `SpireDreamArena`; zone 5:
+ * the Ascendant Prismell's over Prismell's (Prismatail's) arena,
+ * `SpireLightArena`).
  * `createSpireArena(code, zone)` builds the room the server was asked for.
  *
  * Flow: briefing → (blessings, from the second floor) → countdown → waves →
@@ -19,7 +21,8 @@
  * the climb; "Climb again" starts from the checkpoint with no blessings.
  *
  * Boss floors (floor 10: the Ascendant Cragmuff; 20: the Ascendant
- * Tidelotl; 30: the Ascendant Inkpurr; 40: the Ascendant Snoozaku) are fought in this same arena: it
+ * Tidelotl; 30: the Ascendant Inkpurr; 40: the Ascendant Snoozaku; 50: the
+ * Ascendant Prismell) are fought in this same arena: it
  * carries the Ascendant's rules (on while `raid.variant` is "ascendant") and turns them on for the floor. The room,
  * its sessions, accounts and appearance, the event numbering, the clock and
  * the blessings (hooked here, below) stay exactly as they were, and the
@@ -43,11 +46,14 @@ import {
   type Ability,
   type CharacterId,
   type Fighter,
+  type Input,
   type Rect,
 } from "../../../packages/shared/src/index.js";
 import {
   GLOOMSHADE,
+  PRISMATAIL,
   SOMNARA,
+  prismRayEnd,
   handsTileDark,
   isRaider,
   type RaidAttack,
@@ -91,6 +97,8 @@ import { AscendantInkpurrRules } from "./raid-ascendant-inkpurr.js";
 import { GloomshadeArena } from "./raid-gloomshade.js";
 import { AscendantSnoozakuRules } from "./raid-ascendant-snoozaku.js";
 import { SomnaraArena } from "./raid-somnara.js";
+import { AscendantPrismellRules } from "./raid-ascendant-prismell.js";
+import { PrismatailArena } from "./raid-prismatail.js";
 
 const randomUUID = () => crypto.randomUUID();
 const randomSeed = () => {
@@ -1063,21 +1071,190 @@ export function spireStarfall(at: { x: number; y: number }) {
   }
   return out;
 }
+/** Lances in the elite's spread (the middle one on a raider). */
+export const SPIRE_LANCE_COUNT = 3;
+/** Radians between neighbouring lances of the spread. */
+export const SPIRE_LANCE_SPREAD = 0.5;
+/** A teaching spread (the first two) is shown this much longer (s). */
+export const SPIRE_LANCE_TEACH = 0.6;
+/** A lane shorter than this once clipped is not laid (px). */
+export const SPIRE_LANCE_MIN = 140;
+/**
+ * Zone 5's climb: Echo floors 41–49 on the Spire's court and the Ascendant
+ * Prismell on floor 50, in the Sun Atrium. The wave and elite floors keep
+ * Prismell's atrium switched off (no mirrors, skylight, relay, burn, Glare
+ * or sun pillars; its stand-in brain's relay posts are its own floor's),
+ * and the captain of floor 45 only borrows its Prism Lances: never under a
+ * phone's touch controls.
+ */
+export class SpireLightArena extends SpireRules(
+  AscendantPrismellRules(PrismatailArena),
+) {
+  constructor(code: string) {
+    super(code, "prismatail");
+  }
+  protected override resetAscendantReads() {
+    // TODO(lead): once the boss branch's layer lands, call its reads reset
+    // directly (as zones 2–4 do). Until then the stub has none.
+    (this as unknown as { resetPrismReads?: () => void }).resetPrismReads?.();
+  }
+  protected override clearBossCourt() {
+    super.clearBossCourt();
+    Object.assign(this.raid, {
+      mirrors: [],
+      lightLinks: [],
+      sunPillars: [],
+      lightStartedAt: undefined,
+      lightHold: 0,
+      lightArrivals: [],
+      blinded: {},
+      shieldBreaks: 0,
+      quickBreaks: 0,
+    });
+  }
+  /**
+   * Off its own floor, Prismell's counters have no atrium to work on: no
+   * Sun Pillar or Frost Bloom relays the light, and an Echo's skill never
+   * cuts the captain's lances (a raider's Skyline Lance still does, as in
+   * Prismell's raid).
+   */
+  override cast(p: Fighter, a: Ability, ex = false) {
+    if (this.bossFloor()) return super.cast(p, a, ex);
+    const r = this.raid,
+      before = { warnings: r.warnings, message: r.message };
+    super.cast(p, a, ex);
+    r.sunPillars = [];
+    if (p.echo) {
+      r.warnings = before.warnings;
+      r.message = before.message;
+    }
+  }
+  /** Prismell's drift belongs to its own floor (not the captain's). */
+  protected override bossStep(dt: number, boss: Fighter) {
+    if (this.bossFloor()) super.bossStep(dt, boss);
+  }
+  /** So do its mirrors, skylight relay, beam burn and Glare. */
+  protected override worldStep(dt: number, boss: Fighter) {
+    if (this.bossFloor()) super.worldStep(dt, boss);
+  }
+  /**
+   * A stand-in's relay posts and mirror turning are Prismell's floor's; on
+   * the Spire's court it plays like any raider (dodging what is drawn).
+   */
+  protected override botHint(
+    bot: Fighter,
+    input: Input,
+    go: (x: number, y: number, away: boolean) => Input,
+  ): Input | undefined {
+    return this.bossFloor() ? super.botHint(bot, input, go) : undefined;
+  }
+  /**
+   * One spread at a time: a big party's captain never sends a second spread
+   * at someone else while the first is out (three lanes cross the court).
+   */
+  protected override pressured(kind: RaidAttack, alive: Fighter[]) {
+    return this.bossFloor() && super.pressured(kind, alive);
+  }
+  /**
+   * The elite's Prism Lances: a spread of locked lanes from the captain, the
+   * middle one through a raider (sidestep into a gap, or out of the fan),
+   * on the raid's own warning clock and damage. A lane runs only over open
+   * ground: it starts where it leaves the phone's touch controls and stops
+   * where it would reach them again.
+   */
+  protected override startAttack(kind: RaidAttack, target: Fighter): void {
+    if (this.bossFloor() || kind !== "prism-lance")
+      return super.startAttack(kind, target);
+    const boss = this.boss();
+    if (!boss) return;
+    const count = this.seenAttacks.get(kind) ?? 0;
+    this.seenAttacks.set(kind, count + 1);
+    const teach = count < 2;
+    boss.angle = Math.atan2(target.y - boss.y, target.x - boss.x);
+    for (const lane of spireLances(boss, target))
+      this.warn(
+        kind,
+        lane.x,
+        lane.y,
+        lane.tx,
+        lane.ty,
+        PRISMATAIL.lance.width,
+        PRISMATAIL.lance.delay + (teach ? SPIRE_LANCE_TEACH : 0),
+      ).teach = teach;
+  }
+}
+/**
+ * The elite's lances: `SPIRE_LANCE_COUNT` lanes from `from`, the middle one
+ * through `at`, the others `SPIRE_LANCE_SPREAD` apart, each running to the
+ * court's edge. Each runs over one stretch of open ground only (lane and
+ * margin clear of the phone's touch controls): the stretch as far out as the
+ * raider, else its first one; a stretch shorter than `SPIRE_LANCE_MIN` is
+ * never laid.
+ */
+export function spireLances(
+  from: { x: number; y: number },
+  at: { x: number; y: number },
+) {
+  const width = PRISMATAIL.lance.width,
+    step = 6;
+  const aim = Math.atan2(at.y - from.y, at.x - from.x),
+    reach = Math.hypot(at.x - from.x, at.y - from.y);
+  const out: { x: number; y: number; tx: number; ty: number }[] = [];
+  for (let i = 0; i < SPIRE_LANCE_COUNT; i++) {
+    const a = aim + (i - (SPIRE_LANCE_COUNT - 1) / 2) * SPIRE_LANCE_SPREAD;
+    const end = prismRayEnd(from, {
+      x: from.x + Math.cos(a) * 100,
+      y: from.y + Math.sin(a) * 100,
+    });
+    const len = Math.hypot(end.x - from.x, end.y - from.y);
+    // The lane's stretches of open ground (from, to: px along it).
+    const open: [number, number][] = [];
+    for (let d = 0; d <= len; d += step) {
+      const free = !spireUnderControls(
+        from.x + Math.cos(a) * d,
+        from.y + Math.sin(a) * d,
+        width,
+      );
+      const last = open.at(-1);
+      if (free && last && last[1] === d - step) last[1] = d;
+      else if (free) open.push([d, d]);
+    }
+    // The stretch as far out as the raider (the one it runs through), else
+    // the first long enough to read.
+    const long = open.filter(([s, e]) => e - s >= SPIRE_LANCE_MIN);
+    const lane = long.find(([s, e]) => s <= reach && reach <= e) ?? long[0];
+    if (!lane) continue;
+    out.push({
+      x: from.x + Math.cos(a) * lane[0],
+      y: from.y + Math.sin(a) * lane[0],
+      tx: from.x + Math.cos(a) * lane[1],
+      ty: from.y + Math.sin(a) * lane[1],
+    });
+  }
+  return out;
+}
 /** Any zone's climb. */
 export type SpireRoom =
-  SpireArena | SpireTideArena | SpireGloomArena | SpireDreamArena;
+  | SpireArena
+  | SpireTideArena
+  | SpireGloomArena
+  | SpireDreamArena
+  | SpireLightArena;
 export const isSpireArena = (a: unknown): a is SpireRoom =>
   a instanceof SpireArena ||
   a instanceof SpireTideArena ||
   a instanceof SpireGloomArena ||
-  a instanceof SpireDreamArena;
+  a instanceof SpireDreamArena ||
+  a instanceof SpireLightArena;
 /** The room for a climb of `zone` (the server checked it is built). */
 export function createSpireArena(code: string, zone = 1): SpireRoom {
-  return zone === 4
-    ? new SpireDreamArena(code)
-    : zone === 3
-      ? new SpireGloomArena(code)
-      : zone === 2
-        ? new SpireTideArena(code)
-        : new SpireArena(code);
+  return zone === 5
+    ? new SpireLightArena(code)
+    : zone === 4
+      ? new SpireDreamArena(code)
+      : zone === 3
+        ? new SpireGloomArena(code)
+        : zone === 2
+          ? new SpireTideArena(code)
+          : new SpireArena(code);
 }

@@ -166,7 +166,7 @@ describe("Spire floors (zone 4, the Cloud Deck)", () => {
     expect(SPIRE_FLOORS[40].description).toBe(
       "New attacks: Twin Dream, Dream Tide",
     );
-    expect(SPIRE_BUILT_TOP).toBe(40);
+    expect(SPIRE_BUILT_TOP).toBeGreaterThanOrEqual(40);
   });
   it("has wave floors 31–34 and 36–39, the elite on 35 and the boss on 40", () => {
     for (const f of [31, 32, 33, 34, 36, 37, 38, 39]) {
@@ -683,7 +683,7 @@ describe("the boss floor (floor 40: the Ascendant Snoozaku, on the Cloud Deck)",
     expect(a.raid.warnings).toEqual([]);
     run(a, SPIRE_PARTY.cleared + 0.2);
     expect(a.raid.result).toBe("victory");
-    expect(a.raid.message).toBe("Zone 4 conquered — more floors are coming.");
+    expect(a.raid.message).toBe("Zone 4 conquered — zone 5 opens at floor 41.");
     a.retry();
     expect(s).toMatchObject({ startFloor: 39, floor: 39, blessings: {} });
     expect(a.raid.variant).toBeUndefined();
