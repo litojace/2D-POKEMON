@@ -628,7 +628,13 @@ export function mountShopPreview(
       // clock is not in step with a 60/120 Hz screen: frames were held for
       // uneven times, which reads as a jerky idle. The loop still sleeps
       // whenever the preview is hidden, covered or paused.
-      fps: { target: 60, smoothStep: true },
+      // Real frame times, not smoothed: Phaser's smoothStep moves each frame
+      // by the average of the last ten, so on uneven frames (a dropped one,
+      // a 120 Hz screen mixing 8 and 16 ms) every step was 3–4 ms off the
+      // time it is shown at, up to a whole frame, and the aura's fast orbits
+      // stuttered while the slow idle hid it (owner, iPhone 17 Pro Max,
+      // 17 Nov 2026). The rAF timestamps are the display's, so raw is exact.
+      fps: { target: 60, smoothStep: false },
       scene: PreviewScene,
     });
   } catch {
