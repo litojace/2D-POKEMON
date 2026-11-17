@@ -795,6 +795,14 @@ test("floor 20: the lagoon's summit grade, painted on floor 19, nothing fetched 
 // risk, so their contrast with the floor is measured, as well as the
 // crystals, the floor number and the Echoes' rings.
 const SHOTS = process.env.ZONE3_SHOTS;
+/** Where the zone-3 readability check stands its Echoes (feet, world px). */
+// (Clear of the cover on every layout, and of a phone's touch buttons.)
+const ZONE3_SPOTS = [
+  [900, 700], // dark slate, below the ring
+  [230, 190], // the top-left corner's lantern pool
+  [600, 790], // dark slate, near the bottom coping
+  [1180, 170], // under the top-right lanterns
+];
 const ZONE3_SIZES = [
   { ...DESKTOP, floors: [21, 25, 29] },
   {
@@ -1031,8 +1039,8 @@ for (const size of [
         const page = await context.newPage();
         await hookGame(page);
         const errors = await openHub(page);
-        await raiseFloors(page, 20);
-        await climb(page, floor - 20);
+        // A real zone-3 room (harness/rooms.ts): its own Shadow Echoes.
+        await climb(page, floor);
         await page.waitForTimeout(400);
         const key = `spire-court-3-${floor}`;
         await page.waitForFunction(
@@ -1083,7 +1091,22 @@ for (const size of [
             { timeout: 15_000 },
           )
           .catch(() => {});
-        await page.waitForTimeout(300);
+        // Everyone at fixed spots (not wherever the fight took them), the
+        // Echoes alternating between the dark slate and the lantern pools,
+        // the first (floor 25's captain) on the slate: the same picture on
+        // every run.
+        await page.evaluate((spots) => {
+          const w = window as any;
+          const a = w.__spireArena;
+          const place = (p: any, [x, y]: number[]) =>
+            Object.assign(p, { x, y, vx: 0, vy: 0, angle: Math.PI / 2 });
+          place(a.heroes()[0], [380, 470]);
+          a.players
+            .filter((p: any) => p.echo && p.hp > 0)
+            .forEach((p: any, i: number) => place(p, spots[i % spots.length]));
+          w.__spireStep(0);
+        }, ZONE3_SPOTS);
+        await page.waitForTimeout(900);
         const fighters = await fighterContrast(page);
         const shown = fighters.filter((f) => f.n > 60);
         const summary = shown.map((f) => ({
@@ -1130,15 +1153,16 @@ for (const size of [
         // clearly from the court under them.
         // (Measured the same way on zone 1's floor 9, its Echoes are 0.71,
         // 0.83 and 0.50 and the hero 0.71; on zone 2's floor 19, 0.93, 0.91,
-        // 0.70 and 0.75. The darkest champions' Echoes are the weakest here,
-        // about 0.47–0.56; with the usual dark violet shade they were 0.39.)
+        // 0.70 and 0.75. Zone 3's own Shadow Echoes at these spots, with the
+        // pale tint alone: 0.35–0.63, floor 25's Echo Captain Duskveil the
+        // worst; with the pale wash over them (spireEchoTint): 0.74–0.99.)
         expect(shown.length).toBeGreaterThanOrEqual(2);
         const echoes = summary.filter((f) => f.id.startsWith("echo"));
         expect(echoes.length).toBeGreaterThanOrEqual(1);
-        for (const f of echoes) expect(f.seen).toBeGreaterThan(0.43);
+        for (const f of echoes) expect(f.seen).toBeGreaterThan(0.58);
         expect(
           echoes.reduce((a, f) => a + f.seen, 0) / echoes.length,
-        ).toBeGreaterThan(0.52);
+        ).toBeGreaterThan(0.6);
         for (const f of summary)
           if (!f.id.startsWith("echo")) {
             expect(f.seen).toBeGreaterThan(0.65);

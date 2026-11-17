@@ -74,6 +74,12 @@ export interface AnimationPose {
   /** A tint over the whole fighter (Spire Echoes), and the one it flashes when hit. */
   tint?: number;
   hurtTint?: number;
+  /**
+   * A flat colour laid over the whole fighter at `alpha` (zone 3's Echoes:
+   * pale ghosts that lift their dark outlines off the dark court). Normal
+   * blending, the fighter's own silhouette: no glow.
+   */
+  wash?: { color: number; alpha: number };
 }
 export function facing(angle: number): Facing {
   return Math.abs(Math.cos(angle)) > Math.abs(Math.sin(angle))

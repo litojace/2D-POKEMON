@@ -376,5 +376,13 @@ describe("Echoes on zone 3's dark court", () => {
     expect(pale.l).toBeGreaterThan(dark.l + 60);
     expect(pale.b).toBeGreaterThan(pale.r);
     expect(hurt.r).toBeGreaterThan(hurt.b);
+    // Washed over in pale violet (a dark champion's outlines lift off the
+    // slate; tests/visual/spire-court.spec.ts measures it), never elsewhere.
+    const wash = spireEchoTint(3).wash!;
+    expect(lum(hexOf(wash.color)).l).toBeGreaterThan(200);
+    expect(wash.alpha).toBeGreaterThan(0.2);
+    expect(wash.alpha).toBeLessThanOrEqual(0.35);
+    for (const zone of [1, 2, undefined])
+      expect(spireEchoTint(zone).wash).toBeUndefined();
   });
 });
