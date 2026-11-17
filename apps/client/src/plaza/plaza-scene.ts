@@ -10,9 +10,6 @@
  * the same shared step. Ported drawing code is not type-checked line by
  * line; the typed entry point is plaza-screen.ts.
  */
-import { epicSignatureFrame } from "../skins/epic-skin-fx";
-import { drawEpicCanvasFx } from "../skins/epic-canvas-fx";
-import { SKIN_ART } from "../skins/skin-art";
 import { CHAT_EMOTES } from "../../../../packages/shared/src/chat";
 import { bubbleLines } from "../chat/bubble-text";
 /** A chat bubble's text is at most this wide; longer lines wrap. */
@@ -2706,7 +2703,6 @@ export function openPlaza(options) {
         g.fill();
       });
   }
-  let nearbyEpicDraws = 0;
   function drawBody(g, b, time, photo) {
     const s = 84,
       im = b.img;
@@ -2736,31 +2732,7 @@ export function openPlaza(options) {
     }
     g.globalAlpha = 1;
     const { bob, rot, sq } = bodyPose(b, time);
-    const skinArt = b.skin?.skin ? SKIN_ART[b.skin.skin] : null;
-    const nearby = !b.bot && (b.x - P.x) ** 2 + (b.y - P.y) ** 2 < 240 ** 2;
-    const showEpic = !reduced && skinArt?.epicFx &&
-      (b.me || (nearby && nearbyEpicDraws < (low ? 1 : 3)));
-    let epicFrame = null, epicPose = null;
-    if (showEpic) {
-      if (!b.me) nearbyEpicDraws++;
-      const full = b.me && !low && !photo;
-      epicFrame = epicSignatureFrame(skinArt.epicFx, {
-        now: photo ? 0 : time * 1000,
-        facing: "down",
-        moving: b.sp > 0.05,
-        dashing: b.dash > 0,
-        ambient: full,
-        angle: Math.hypot(b.vx ?? 0, b.vy ?? 0) > 0.1
-          ? Math.atan2(b.vy, b.vx) : b.face > 0 ? 0 : Math.PI,
-      }, skinArt);
-      epicPose = {
-        x: b.x, y: b.y, z: b.z, bob, rotation: rot,
-        squash: sq, face: b.face, size: s, full,
-      };
-      drawEpicCanvasFx(g, epicFrame, epicPose, "ground");
-    }
     drawSprite(g, sp, b.x, b.y - b.z - bob, s, b.face, rot, sq);
-    if (epicFrame) drawEpicCanvasFx(g, epicFrame, epicPose, "rig");
     // Bots (the pitch bots and the townsfolk) wear a quieter, italic name
     // tag, so nobody mistakes them for players.
     g.font = b.bot
@@ -3506,7 +3478,6 @@ export function openPlaza(options) {
     g.restore();
   }
   function drawWorld(g, time, photo = false) {
-    nearbyEpicDraws = 0;
     // What this canvas shows of the world, so only that much is drawn.
     const inv = g.getTransform().inverse(),
       c0 = inv.transformPoint({ x: 0, y: 0 }),
