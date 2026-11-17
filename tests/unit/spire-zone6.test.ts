@@ -35,6 +35,8 @@ import { EmberwingArena } from "../../apps/server/src/raid-emberwing";
 import { createRaidArena } from "../../apps/server/src/raid-bosses";
 import { RAID_SLOWEST_SPEED } from "../../apps/server/src/raid-ai";
 import {
+  ASCENDANT_LUMIWICK,
+  RAID_ATTACKS,
   EMBERWING,
   RAID_TELEGRAPH_FLOOR,
   type RaidWarning,
@@ -182,10 +184,20 @@ describe("Spire floors (zone 6, the Sky Terrace)", () => {
     expect(SPIRE_ZONES[6].bossLead).toMatch(/three braziers/);
     expect(SPIRE_ZONES[6].bossReads).toMatch(/you usually dodge to/);
     expect(SPIRE_ZONES[6].bossReads).toMatch(/kneels to revive/);
-    // The Ascendant's new attacks: the boss branch names them (until then
-    // the briefing and the Floors list show none, never an empty list).
-    for (const k of SPIRE_ZONES[6].ascendantMoves)
-      expect(typeof k).toBe("string");
+    // The Ascendant's new attacks, as the boss layer plays them.
+    expect(SPIRE_ZONES[6].ascendantMoves).toEqual([
+      "snuff-gale",
+      "bound-wicks",
+    ]);
+    expect(
+      SPIRE_ZONES[6].ascendantMoves.map((m) => RAID_ATTACKS[m].name),
+    ).toEqual(["Snuffing Gale", "Bound Wicks"]);
+    expect(SPIRE_FLOORS[60].description).toBe(
+      "New attacks: Snuffing Gale, Bound Wicks",
+    );
+    expect(SPIRE_ZONES[6].bossLead).toMatch(/Snuffing Gale/);
+    expect(SPIRE_ZONES[6].bossLead).toMatch(/Bound Wicks/);
+    expect(SPIRE_ZONES[6].bossReads).toMatch(/Embers fall where you/);
     expect(SPIRE_BUILT_TOP).toBe(60);
   });
   it("has wave floors 51–54 and 56–59, the elite on 55 and the boss on 60", () => {
@@ -821,6 +833,13 @@ describe("the boss floor (floor 60: the Ascendant Lumiwick, on the Sky Terrace)"
     expect(a.arenaId).toBe(SPIRE_ZONES[6].court);
     expect(a.walls()).toEqual([]);
     expect(a.raid.braziers).toHaveLength(EMBERWING.braziers.length);
+    // The Ascendant's braziers (clear of a phone's controls), not the raid's.
+    expect(a.raid.braziers!.map(({ x, y }) => ({ x, y }))).toEqual(
+      ASCENDANT_LUMIWICK.braziers.map(({ x, y }) => ({ x, y })),
+    );
+    expect(a.raid.braziers!.some((b) => spireUnderControls(b.x, b.y, 70))).toBe(
+      false,
+    );
     const boss = a.boss()!;
     expect(boss).toMatchObject({ raidBoss: true, name: "Ascendant Lumiwick" });
     expect(boss.hp).toBe(a.raid.maxHp);
@@ -849,6 +868,27 @@ describe("the boss floor (floor 60: the Ascendant Lumiwick, on the Sky Terrace)"
       ),
     ).toBe(true);
   });
+  it("plays the Ascendant's new attacks on the Spire's floor 60 (its layer is on)", () => {
+    seeded(634);
+    const a = toSixty(["voltkit", "voltkit"]);
+    const s = a.raid.spire!;
+    for (const p of a.heroes()) {
+      a.acknowledgeInstructions(p.id);
+    }
+    for (const p of a.heroes()) a.pickRite(p.id, s.offers[p.id][0]);
+    toPlaying(a);
+    const kinds = new Set<string>();
+    run(a, 150, () => {
+      for (const p of a.heroes()) p.hp = maxHealth(p.character, a.mode);
+      a.raid.warnings.forEach((w) => kinds.add(w.kind));
+    });
+    expect(kinds.has("snuff-gale")).toBe(true);
+    expect(kinds.has("bound-wicks")).toBe(true);
+    // Every gale and wick on the Ascendant's braziers.
+    expect(a.raid.braziers!.map(({ x, y }) => ({ x, y }))).toEqual(
+      ASCENDANT_LUMIWICK.braziers.map(({ x, y }) => ({ x, y })),
+    );
+  }, 60_000);
   it("goes on without a raider who never reads the briefing", () => {
     seeded(632);
     const a = toSixty();

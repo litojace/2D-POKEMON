@@ -165,17 +165,12 @@ export const SPIRE_ZONES: Record<number, SpireZone> = {
     boss: "emberwing",
     court: "sky-terrace",
     ascendant: "Ascendant Lumiwick",
-    // TODO(lead): the boss branch's new attack ids (and their RAID_ATTACKS
-    // text) go here, and in floor 60's description; the briefing and the
-    // Floors list show them.
-    ascendantMoves: [],
+    ascendantMoves: ["snuff-gale", "bound-wicks"],
     bossName: "Lumiwick",
-    // TODO(lead): check these two lines against the boss branch's moves and
-    // reads once it lands.
     bossLead:
-      "Lumiwick, evolved. Its raid's rules still hold (light all three braziers together to bring it down, strike the open heart, jump its flame rings, keep out of burning ground), pushed further: new attacks, combos and fewer openings.",
+      "Lumiwick, evolved. Its raid's rules still hold (light all three braziers together to bring it down, strike the open heart, jump its flame rings, keep out of burning ground), pushed further: a Snuffing Gale puts out a brazier's flame unless someone stands in its ring, Bound Wicks tie braziers that only light while every bound ring is held, it flies again after every grounding, combos and fewer openings.",
     bossReads:
-      "Dives aim where you usually dodge to, standing still to attack draws a dive, a gust may turn into a dive halfway (shown in full), and it hunts whoever kneels to revive.",
+      "Embers fall where you usually dodge to, standing still to attack draws a dive, a dive may turn into a Snuffing Gale (shown in full), and it hunts whoever kneels to revive.",
     // Fire (Cindrake, Pyranda: Cindrake's Heat Cracks and Pyranda's
     // Chestnut Mortar light Lumiwick's braziers in its own raid) and their
     // kin of the lantern light, Lumoth: the moth drawn to every flame, whose
@@ -1217,8 +1212,7 @@ export const SPIRE_FLOORS: Record<number, SpireFloor> = {
     zone: 6,
     kind: "boss",
     name: "Ascendant Lumiwick",
-    // TODO(lead): "New attacks: …" with the boss branch's attack names.
-    description: "Lumiwick, evolved: the three braziers pushed further",
+    description: "New attacks: Snuffing Gale, Bound Wicks",
     waves: [],
     boss: "emberwing",
   },

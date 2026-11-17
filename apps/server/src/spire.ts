@@ -51,6 +51,7 @@ import {
   type Rect,
 } from "../../../packages/shared/src/index.js";
 import {
+  ASCENDANT_LUMIWICK,
   EMBERWING,
   GLOOMSHADE,
   PRISMATAIL,
@@ -1287,15 +1288,24 @@ export class SpireEmberArena extends SpireRules(
     super(code, "emberwing");
   }
   protected override resetAscendantReads() {
-    // TODO(lead): once the boss branch's layer lands, call its reads reset
-    // directly (as zones 2–5 do). Until then the stub has none.
-    (
-      this as unknown as { resetLumiwickReads?: () => void }
-    ).resetLumiwickReads?.();
+    this.resetLumiReads();
+  }
+  /**
+   * Floor 60's braziers are the Ascendant's (clear of a phone's controls):
+   * setupFloor lays the court before it turns the Ascendant's rules on.
+   */
+  protected override brazierSpots() {
+    return this.bossFloor()
+      ? ASCENDANT_LUMIWICK.braziers
+      : super.brazierSpots();
   }
   protected override clearBossCourt() {
     super.clearBossCourt();
     this.eliteDive = undefined;
+    // (The Ascendant's gales and wicks are warnings: clearAttacks; its
+    // feints and fuses: its reads reset.)
+    this.lumiFeints.clear();
+    this.wickFit.clear();
     Object.assign(this.raid, {
       braziers: [],
       airborne: false,
