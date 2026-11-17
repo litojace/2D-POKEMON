@@ -45,9 +45,11 @@
      (the Lobby itself is fixed to the whole screen). */
   position: fixed;
   inset: -28px;
-  background: #0b1020 url("/assets/backgrounds/plaza-lobby-f340a3b8.webp")
+  /* The Plaza picture already blurred and dimmed (scripts/lobby-backdrop/
+     blur.py), not a CSS filter: a full-screen filter under the live fighter
+     made its aura stutter on an iPhone. */
+  background: #0b1020 url("/assets/backgrounds/lobby-backdrop-d99b61e6.webp")
     center 42% / cover no-repeat;
-  filter: blur(5px) saturate(1.05) brightness(0.6);
   transform: scale(1.04);
 }
 .lobby-layer::after {
@@ -247,15 +249,16 @@
   aspect-ratio: 1;
   transform: translate(-50%, -50%);
   border-radius: 50%;
-  /* Brighter than in the preview windows, and added as light: the Lobby
-     stands on the bright Plaza map, where their dark-stage glow vanished. */
+  /* Brighter than in the preview windows: the Lobby stands on the Plaza
+     map, where their dark-stage glow vanished. Plain alpha, no blend mode:
+     over the dimmed backdrop "screen" drew the same (within 1/255) and a
+     blended layer sat right under the canvas that redraws every frame. */
   background: radial-gradient(
     closest-side,
     color-mix(in srgb, var(--element, var(--ui-accent)) 85%, transparent),
     color-mix(in srgb, var(--element, var(--ui-accent)) 38%, transparent) 50%,
     transparent
   );
-  mix-blend-mode: screen;
   pointer-events: none;
 }
 .lobby-fighter-art {
