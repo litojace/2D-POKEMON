@@ -1,14 +1,21 @@
 import { perfMode, setPerfMode } from "./battle-perf";
 import { PreviewPerf } from "./preview-perf";
 import { isIOSDevice, largeIPad } from "./render-budget";
-import { lowGraphics } from "./graphics-quality";
+import {
+  AUTO_SLOW_WINDOWS,
+  autoLowWhy,
+  graphicsSetting,
+  lowGraphics,
+  type FrameRateProbe,
+} from "./graphics-quality";
 
 /**
  * The frame-rate read-out (five taps on Settings → Graphics' title): a small
  * table beside the rail, over every screen (the Lobby, the Plaza, the Farm,
  * the Bistro, the Shop, a battle), for a player to screenshot. It shows the
  * whole page's frame rate, what the screen underneath adds
- * (`setPerfSource`: the Lobby's fighter) and the device. Touches go through
+ * (`setPerfSource`: the Lobby's fighter, the Plaza's and the Farm's frames
+ * and Auto's measuring), the device, and why Auto chose Low if it did. Touches go through
  * it, except its × button, which turns it off. Battles also have their own
  * read-out (perf-overlay.ts).
  *
@@ -18,11 +25,34 @@ import { lowGraphics } from "./graphics-quality";
  * updated twice a second; its own animation loop only notes the time.
  */
 let hud: { close(): void } | undefined;
-let source: (() => string | undefined) | undefined;
+const sources = new Map<string, () => string | undefined>();
 
-/** Lines the screen underneath adds to the table (undefined: none). */
-export function setPerfSource(next: (() => string | undefined) | undefined) {
-  source = next;
+/** Lines a screen adds to the table while it shows (it returns undefined
+ *  when hidden); `undefined` takes the screen's lines away. */
+export function setPerfSource(
+  key: string,
+  next: (() => string | undefined) | undefined,
+) {
+  if (next) sources.set(key, next);
+  else sources.delete(key);
+}
+
+/**
+ * A walkable scene's lines (the Plaza, the Farm): the frames it drew, its
+ * canvas, and Auto's measuring ("auto 57 fps", "slow 1/3" while it counts
+ * slow windows towards Low; "auto off" when High or Low was picked, or once
+ * the scene is Low).
+ */
+export function sceneLines(
+  name: string,
+  drawn: PreviewPerf,
+  canvas: HTMLCanvasElement,
+  probe: FrameRateProbe | undefined,
+) {
+  const auto = probe
+    ? `auto ${probe.lastFps ? `${Math.round(probe.lastFps)} fps` : "measuring"}${probe.slow ? `, slow ${probe.slow}/${AUTO_SLOW_WINDOWS}` : ""}`
+    : "auto off";
+  return `${name} ${drawn.stats().fps} fps · ${canvas.width}x${canvas.height}\n${auto}`;
 }
 
 /** Show or hide the table to match the saved setting. */
@@ -54,13 +84,19 @@ function openPerfHud() {
   const device = () =>
     `dpr ${devicePixelRatio} ${screen.width}x${screen.height}${ios ? (largeIPad(ios) ? " iPad-L" : " iOS") : ""}${lowGraphics() ? " Low" : ""}`;
   const show = () => {
-    let extra: string | undefined;
-    try {
-      extra = source?.();
-    } catch {
-      extra = undefined;
+    const lines = [`page ${page.stats().screenHz || "?"} Hz`];
+    for (const source of sources.values()) {
+      try {
+        const extra = source();
+        if (extra) lines.push(extra);
+      } catch {
+        /* A screen closing mid-read: its lines are left out. */
+      }
     }
-    const value = `page ${page.stats().screenHz || "?"} Hz\n${extra ? `${extra}\n` : ""}${device()}`;
+    lines.push(device());
+    const why = graphicsSetting() === "auto" ? autoLowWhy() : "";
+    if (why) lines.push(`Auto Low: ${why}`);
+    const value = lines.join("\n");
     if (text.textContent !== value) text.textContent = value;
   };
   show();

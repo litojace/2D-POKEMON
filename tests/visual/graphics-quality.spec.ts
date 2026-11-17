@@ -19,6 +19,8 @@ test("Auto switches a slow device to Low and remembers it", async ({ browser }) 
     await expect(host).toHaveAttribute("data-graphics", "high");
     await expect(host).toHaveAttribute("data-graphics", "low", { timeout: 30_000 });
     expect(await page.evaluate(() => localStorage.getItem("ea-graphics-auto"))).toBe("low");
+    // It says where and how slow (Settings, the frame-rate read-out).
+    expect(await page.evaluate(() => localStorage.getItem("ea-graphics-auto-why"))).toMatch(/^Plaza ran at \d+ fps$/);
     // The canvas drops to 1× (one pixel per CSS pixel).
     await expect.poll(async () => { const c = await canvas(page); return c.width / c.css; }).toBeCloseTo(1, 1);
     // Next visit starts Low straight away.
@@ -27,6 +29,8 @@ test("Auto switches a slow device to Low and remembers it", async ({ browser }) 
     await expect.poll(async () => { await page.evaluate(() => (window as any).__sock.fire("connect")); return page.locator("#lobby-play").isVisible(); }, { timeout: 30_000 }).toBe(true);
     await page.click('#hub-scenes [data-hub-scene="plaza"]');
     await expect(page.locator(".plaza-layer")).toHaveAttribute("data-graphics", "low");
+    await page.evaluate(() => document.getElementById("settings")!.click());
+    await expect(page.locator(".prefs-graphics-note")).toContainText(/Auto picked Low .*the Plaza ran at \d+ fps/);
     expect(errors).toEqual([]);
   } finally {
     await context.close();

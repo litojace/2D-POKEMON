@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   AUTO_MIN_FPS,
+  AUTO_SLOW_WINDOWS,
   autoChoosesLow,
+  autoLowWhy,
   FrameRateProbe,
   graphicsSetting,
   lowGraphics,
@@ -22,7 +24,8 @@ beforeEach(() => {
 /** Feed the probe steady frames at `fps` for `seconds`. */
 function run(probe: FrameRateProbe, fps: number, seconds: number, from = 0) {
   let verdict;
-  for (let t = from; t <= from + seconds * 1000; t += 1000 / fps) verdict = probe.frame(t) ?? verdict;
+  for (let t = from; t <= from + seconds * 1000; t += 1000 / fps)
+    verdict = probe.frame(t) ?? verdict;
   return verdict;
 }
 
@@ -45,6 +48,17 @@ describe("Settings → Graphics", () => {
     setGraphicsSetting("auto");
     expect(lowGraphics()).toBe(false);
   });
+  it("remembers where and how slow, for Settings and the read-out", () => {
+    expect(autoLowWhy()).toBe("");
+    rememberAutoLow("Plaza ran at 41 fps");
+    expect(autoLowWhy()).toBe("Plaza ran at 41 fps");
+    // Choosing Auto again forgets the reason with the verdict.
+    setGraphicsSetting("auto");
+    expect(autoLowWhy()).toBe("");
+    // Low without a measure (a slow device reported before): no reason.
+    rememberAutoLow();
+    expect(autoLowWhy()).toBe("");
+  });
   it("Auto starts Low on a device reporting 2 GB of memory or less", () => {
     expect(autoChoosesLow(2)).toBe(true);
     expect(autoChoosesLow(1)).toBe(true);
@@ -53,9 +67,15 @@ describe("Settings → Graphics", () => {
   });
   it("survives storage that throws (private mode)", () => {
     (globalThis as any).localStorage = {
-      getItem: () => { throw new Error("blocked"); },
-      setItem: () => { throw new Error("blocked"); },
-      removeItem: () => { throw new Error("blocked"); },
+      getItem: () => {
+        throw new Error("blocked");
+      },
+      setItem: () => {
+        throw new Error("blocked");
+      },
+      removeItem: () => {
+        throw new Error("blocked");
+      },
     };
     expect(graphicsSetting()).toBe("auto");
     expect(() => setGraphicsSetting("low")).not.toThrow();
@@ -69,8 +89,24 @@ describe("Auto's frame-rate probe", () => {
     expect(run(new FrameRateProbe(), 120, 8)).toBe("ok");
   });
   it("switches a device stuck around 25 fps (or just under the bar) to Low", () => {
-    expect(run(new FrameRateProbe(), 25, 8)).toBe("low");
-    expect(run(new FrameRateProbe(), AUTO_MIN_FPS - 3, 8)).toBe("low");
+    const p = new FrameRateProbe();
+    expect(run(p, 25, 16)).toBe("low");
+    expect(p.lastFps).toBeCloseTo(25, 0);
+    expect(run(new FrameRateProbe(), AUTO_MIN_FPS - 3, 16)).toBe("low");
+  });
+  it("needs three slow windows in a row, not one slow moment", () => {
+    expect(AUTO_SLOW_WINDOWS).toBe(3);
+    // Two slow windows (8 s after the 2 s warm-up; the third would end at
+    // 14 s): still measuring.
+    const p = new FrameRateProbe();
+    expect(run(p, 30, 11)).toBeUndefined();
+    expect(p.slow).toBe(2);
+    // Then a smooth window: the device is fine.
+    expect(run(p, 60, 5, 11_100)).toBe("ok");
+    // One slow window (a heavy moment) alone never decides.
+    const q = new FrameRateProbe();
+    expect(run(q, 20, 6)).toBeUndefined();
+    expect(run(q, 60, 5, 6100)).toBe("ok");
   });
   it("says nothing until it has seen enough, and ignores the loading moments", () => {
     const p = new FrameRateProbe();
@@ -90,7 +126,7 @@ describe("Auto's frame-rate probe", () => {
   });
   it("answers once", () => {
     const p = new FrameRateProbe();
-    expect(run(p, 20, 8)).toBe("low");
-    expect(run(p, 60, 8, 9000)).toBe("low");
+    expect(run(p, 20, 16)).toBe("low");
+    expect(run(p, 60, 8, 17_000)).toBe("low");
   });
 });

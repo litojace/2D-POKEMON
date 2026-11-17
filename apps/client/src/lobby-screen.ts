@@ -627,7 +627,7 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
       `canvas ${p.canvas} @${p.resolution}x tex ${p.textures}x`
     );
   };
-  setPerfSource(perfSource);
+  setPerfSource("lobby", perfSource);
   return {
     update(view) {
       const skin = wornSkin(view.character);
@@ -735,7 +735,7 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
       clearTimeout(bubbleTimer);
       clearTimeout(hopTimer);
       coverWatch.disconnect();
-      setPerfSource(undefined);
+      setPerfSource("lobby", undefined);
       document.removeEventListener("ea-graphics-change", syncGraphics);
       cancelAnimationFrame(fitFrame);
       removeEventListener("resize", fitSoon);
