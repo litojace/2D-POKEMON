@@ -122,6 +122,24 @@ export interface SpireZoneTheme {
     /** The moon. */
     moon: string;
   };
+  /**
+   * A light zone (Light): a gold sun inlaid round the rune ring (rays along
+   * the spokes, a sunburst in each corner), prism crystals that split the
+   * light into small rainbow facets (on the crystals and spilled at their
+   * feet, a few flecks on the paving), a gold sun on the cover's fronts, and
+   * beyond the tower a bright morning sky with a big sun and its rays over
+   * prismatic clouds (iridescent fringes, a small rainbow). Higher floors
+   * turn to a warm gold sunset.
+   */
+  radiant?: {
+    /** The sun inlay's gold, and its light edge. */
+    gold: string;
+    goldLight: string;
+    /** The spectrum a prism splits the light into (red to blue). */
+    prism: string[];
+    /** The sun's disc. */
+    sun: string;
+  };
 }
 export const SPIRE_ZONE_THEMES: Record<number, SpireZoneTheme> = {
   // Zone 1, Earth: warm sandstone and amber crystal, a golden afternoon
@@ -245,8 +263,46 @@ export const SPIRE_ZONE_THEMES: Record<number, SpireZoneTheme> = {
       moon: "#fff7e2",
     },
   },
+  // Zone 5, Light: a radiant sanctum of crystal and gold. Warm ivory and
+  // champagne stone with a gold sun inlaid round the ring, clear prism
+  // crystals splitting the light into small rainbow facets, a gold sun on
+  // the cover's fronts; beyond the edge a bright morning sky with a big sun,
+  // its rays and prismatic clouds, turning to a warm gold sunset near the
+  // top. (The stone is a mid champagne, never white, so white and yellow
+  // fighters keep a floor to stand out from; the crystals are clear and
+  // cool, so the cover reads against the warm stone; the facets are small
+  // and pale, never a ring or a warning.)
+  5: {
+    zone: 5,
+    slab: ["#e0c9a2", "#b39465"],
+    grout: "#76552e",
+    rim: ["#fbf1da", "#c9ac7c"],
+    carve: "#2a1608",
+    top: ["#fdf6e6", "#e4cfa6"],
+    front: ["#c29466", "#85603a"],
+    crystal: ["#ffffff", "#e2f4ff", "#7f9ad2"],
+    glow: 0xfff0b4,
+    rune: "#f2b632",
+    skyLow: ["#78bdf0", "#fff0cc"],
+    skyHigh: ["#b4587c", "#ffb54a"],
+    cloud: ["#fffaf0", "#ffc08a"],
+    light: "255,238,200",
+    ink: "62,36,12",
+    shine: "255,252,240",
+    dusk: "120,52,36",
+    sun: "255,246,214",
+    warmth: 0.14,
+    duskTint: [246, 210, 176],
+    vignette: 0.3,
+    radiant: {
+      gold: "#f2b632",
+      goldLight: "#fff1b0",
+      prism: ["#ff8fa8", "#ffbe5c", "#fff07a", "#8ef0a8", "#78d6ff"],
+      sun: "#fff6d8",
+    },
+  },
 };
-/** A zone's look (1 Earth, 2 Water, 3 Shadow, 4 Psychic); unknown zones take zone 1's. */
+/** A zone's look (1 Earth, 2 Water, 3 Shadow, 4 Psychic, 5 Light); unknown zones take zone 1's. */
 export const spireZoneTheme = (zone: number): SpireZoneTheme =>
   SPIRE_ZONE_THEMES[zone] ?? SPIRE_ZONE_THEMES[1];
 export const spireTheme = spireZoneTheme;
@@ -911,6 +967,187 @@ function dreamInlay(c: Ctx, t: SpireZoneTheme) {
   }
   c.restore();
 }
+/**
+ * A spectrum fleck: light split by a prism, `n` short parallel bands (red
+ * to blue) at (x, y) along `a`. Small and pale: decoration, never a cue.
+ */
+function rainbowFleck(
+  c: Ctx,
+  t: SpireZoneTheme,
+  x: number,
+  y: number,
+  len: number,
+  a: number,
+  alpha: number,
+  band = 1.6,
+) {
+  const prism = t.radiant!.prism;
+  const dx = Math.cos(a) * len,
+    dy = Math.sin(a) * len * K;
+  const nx = -Math.sin(a) * band,
+    ny = Math.cos(a) * band * K;
+  c.lineWidth = band * 1.1;
+  prism.forEach((col, i) => {
+    const o = i - (prism.length - 1) / 2;
+    c.strokeStyle = rgba(col, alpha);
+    c.beginPath();
+    c.moveTo(x + nx * o, y + ny * o);
+    c.lineTo(x + nx * o + dx, y + ny * o + dy);
+    c.stroke();
+  });
+}
+/** A gold sun inlaid in the paving: a dark seat, the gold disc, its rays and a glint. */
+function inlaidSun(
+  c: Ctx,
+  t: SpireZoneTheme,
+  x: number,
+  y: number,
+  r: number,
+  rays = 12,
+) {
+  const d = t.radiant!;
+  const ray = (rr: number, w: number, col: string, dx = 0, dy = 0) => {
+    c.fillStyle = col;
+    c.beginPath();
+    for (let i = 0; i < rays; i++) {
+      const a = (i / rays) * Math.PI * 2,
+        len = i % 2 ? rr * 0.78 : rr;
+      c.moveTo(
+        x + dx + Math.cos(a - w) * r * 0.7,
+        y + dy + Math.sin(a - w) * r * 0.7 * K,
+      );
+      c.lineTo(x + dx + Math.cos(a) * len, y + dy + Math.sin(a) * len * K);
+      c.lineTo(
+        x + dx + Math.cos(a + w) * r * 0.7,
+        y + dy + Math.sin(a + w) * r * 0.7 * K,
+      );
+    }
+    c.fill();
+  };
+  ray(r * 1.9, 0.2, tone(t, "rgba(30,18,6,0.4)"), 1, 1.4);
+  ray(r * 1.8, 0.16, d.gold);
+  c.fillStyle = tone(t, "rgba(30,18,6,0.45)");
+  gEll(c, x + 1, y + 1.4, r * 0.82);
+  c.fill();
+  const g = c.createRadialGradient(
+    x - r * 0.25,
+    y - r * 0.2,
+    1,
+    x,
+    y,
+    r * 0.75,
+  );
+  g.addColorStop(0, d.goldLight);
+  g.addColorStop(1, d.gold);
+  c.fillStyle = g;
+  gEll(c, x, y, r * 0.75);
+  c.fill();
+  c.fillStyle = "rgba(255,255,246,0.75)";
+  ell(c, x - r * 0.22, y - r * 0.16 * K, r * 0.22, r * 0.12);
+  c.fill();
+}
+/**
+ * A light zone's paving (decoration: walkable, nothing collides): a gold
+ * sun inlaid round the rune ring (long rays along the spokes, short ones
+ * between, a small prism at each long ray's tip splitting the light), a
+ * sunburst in each corner beyond the octagon and a few rainbow flecks
+ * where the crystals' light falls. Flat and calm: never a ring or a cue.
+ */
+function sunInlay(c: Ctx, t: SpireZoneTheme) {
+  const d = t.radiant;
+  if (!d) return;
+  const { x, y, r } = SPIRE_RING;
+  const at = (a: number, rr: number): [number, number] => [
+    x + Math.cos(a) * rr,
+    y + Math.sin(a) * rr * K,
+  ];
+  c.save();
+  c.lineJoin = "round";
+  reseed(7491);
+  // The rays: a dark seat, the gold, a light ridge down the middle.
+  for (let k = 0; k < 16; k++) {
+    const long = k % 2 === 0;
+    const a = (k / 16) * Math.PI * 2 + Math.PI / 8,
+      r0 = r + 30,
+      r1 = long ? r + 230 : r + 110,
+      w = long ? 0.055 : 0.05;
+    const tri = (dx: number, dy: number, grow: number) => {
+      const [ax, ay] = at(a - w * grow, r0),
+        [bx, by] = at(a + w * grow, r0),
+        [tx, ty] = at(a, r1 + 4 * (grow - 1));
+      c.beginPath();
+      c.moveTo(ax + dx, ay + dy);
+      c.lineTo(tx + dx, ty + dy);
+      c.lineTo(bx + dx, by + dy);
+      c.closePath();
+    };
+    tri(1, 1.4, 1.25);
+    c.fillStyle = tone(t, "rgba(30,18,6,0.18)");
+    c.fill();
+    tri(0, 0, 1);
+    const [gx0, gy0] = at(a, r0),
+      [gx1, gy1] = at(a, r1);
+    const g = c.createLinearGradient(gx0, gy0, gx1, gy1);
+    g.addColorStop(0, rgba(d.gold, 0.62));
+    g.addColorStop(1, rgba(d.gold, 0.28));
+    c.fillStyle = g;
+    c.fill();
+    c.strokeStyle = rgba(d.goldLight, 0.55);
+    c.lineWidth = 1.2;
+    c.beginPath();
+    c.moveTo(gx0, gy0);
+    c.lineTo(...at(a, r1 - 10));
+    c.stroke();
+    if (long) {
+      // A small prism at the tip, and the light it splits.
+      const [px, py] = at(a, r1 + 12);
+      c.fillStyle = tone(t, "rgba(30,18,6,0.4)");
+      c.beginPath();
+      c.moveTo(px + 1, py - 8);
+      c.lineTo(px + 8, py + 4);
+      c.lineTo(px - 6, py + 4);
+      c.closePath();
+      c.fill();
+      c.fillStyle = t.crystal[1];
+      c.beginPath();
+      c.moveTo(px, py - 9);
+      c.lineTo(px + 7, py + 3);
+      c.lineTo(px - 7, py + 3);
+      c.closePath();
+      c.fill();
+      c.fillStyle = "rgba(255,255,255,0.9)";
+      c.beginPath();
+      c.moveTo(px, py - 9);
+      c.lineTo(px + 2, py + 3);
+      c.lineTo(px - 7, py + 3);
+      c.closePath();
+      c.fill();
+      rainbowFleck(c, t, px + 4, py, 18, a + 0.5, 0.5);
+    }
+  }
+  // A thin gold ring joining the rays' roots.
+  c.strokeStyle = rgba(d.gold, 0.7);
+  c.lineWidth = 2;
+  gEll(c, x, y, r + 30);
+  c.stroke();
+  // Rainbow flecks on the paving, where the light falls through the
+  // crystals (clear of the ring and its rays' roots).
+  for (let k = 0; k < 22; k++) {
+    const px = 110 + R() * (W - 220),
+      py = 90 + R() * (H - 180);
+    if (Math.hypot(px - x, (py - y) / K) < r + 70) continue;
+    rainbowFleck(c, t, px, py, 10 + R() * 10, -0.4 + R() * 0.8, 0.32);
+  }
+  // A sunburst in each corner beyond the octagon.
+  for (const [px, py] of [
+    [122, 112],
+    [W - 122, 112],
+    [122, H - 104],
+    [W - 122, H - 104],
+  ])
+    inlaidSun(c, t, px, py, 18, 12);
+  c.restore();
+}
 /** The platform's coping: big dressed stones round the edge, a lip you can stand on. */
 function coping(c: Ctx, t: SpireZoneTheme) {
   const B = SPIRE_RIM;
@@ -1034,6 +1271,7 @@ export function paintSpireFloor(c: Ctx, t: SpireZoneTheme) {
   inkVeins(c, t);
   lanternPools(c, t);
   dreamInlay(c, t);
+  sunInlay(c, t);
   // Dust and grit, a few fallen crystal shards near the edges.
   paintKit.pebbles(
     c,
@@ -1110,7 +1348,9 @@ export function paintSpireSky(c: Ctx, t: SpireZoneTheme, floor: number) {
       ? 320 + h * 820
       : t.dream
         ? 280 + h * 900
-        : 260 + h * 1000;
+        : t.radiant
+          ? 290 + h * 860
+          : 260 + h * 1000;
   const g = c.createLinearGradient(0, S.y, 0, cloudTop + 120);
   g.addColorStop(0, top);
   g.addColorStop(0.65, mix(top, horizon, 0.55));
@@ -1120,12 +1360,15 @@ export function paintSpireSky(c: Ctx, t: SpireZoneTheme, floor: number) {
   // Stars: none in daylight, a field of them at the top (a night zone has
   // some from its first floor).
   reseed(9100 + floor);
-  // (A dream zone's twilight has some too, and more higher up.)
+  // (A dream zone's twilight has some too, and more higher up; a light
+  // zone's sun is up on every floor: none.)
   const stars = t.night
     ? Math.round(70 + 150 * h)
     : t.dream
       ? Math.round(50 + 170 * h)
-      : Math.round(220 * h * h);
+      : t.radiant
+        ? 0
+        : Math.round(220 * h * h);
   for (let k = 0; k < stars; k++) {
     const x = S.x + R() * S.w,
       y = S.y + R() * (cloudTop - S.y);
@@ -1145,6 +1388,7 @@ export function paintSpireSky(c: Ctx, t: SpireZoneTheme, floor: number) {
   // (A dream zone's: a big soft full moon, always.)
   if (t.night) paintCrescent(c, t, h);
   else if (t.dream) paintDreamMoon(c, t, h);
+  else if (t.radiant) paintRadiantSun(c, t, h);
   else if (h > 0.45) {
     const a = (h - 0.45) / 0.55;
     const mx = 1900,
@@ -1193,6 +1437,7 @@ export function paintSpireSky(c: Ctx, t: SpireZoneTheme, floor: number) {
   if (t.sea) paintSeaBelow(c, t, h, cloudTop, puff, floor);
   else if (t.night) paintNightBelow(c, t, h, cloudTop, puff, floor);
   else if (t.dream) paintDreamBelow(c, t, h, cloudTop, puff, floor);
+  else if (t.radiant) paintRadiantBelow(c, t, h, cloudTop, puff, floor);
   // The far cloud sea behind the tower.
   else
     for (let row = 0; row < 5; row++)
@@ -1655,6 +1900,137 @@ function paintDreamBelow(
   c.fillStyle = g;
   c.fillRect(S.x, top + 300, S.w, Math.max(0, bottom - top - 300));
 }
+/**
+ * A light zone's sun: big and bright at the upper left, its rays fanning
+ * out across the sky, in a wide halo; higher floors it sinks lower,
+ * larger and warmer (a gold sunset).
+ */
+function paintRadiantSun(c: Ctx, t: SpireZoneTheme, h: number) {
+  const d = t.radiant!,
+    sx = -230,
+    sy = -170 + h * 340,
+    disc = mix(d.sun, "#ffb04a", h * 0.8),
+    rr = 78 + 22 * h;
+  // The rays: long soft wedges, fading out (the sky is only seen beyond
+  // the court, so they show round its edges).
+  reseed(9750);
+  c.save();
+  for (let k = 0; k < 16; k++) {
+    const a = -0.5 + (k / 15) * 2.2 + (R() - 0.5) * 0.06,
+      w = 0.025 + R() * 0.03,
+      len = 1500 + R() * 900;
+    const g = c.createRadialGradient(sx, sy, rr, sx, sy, len);
+    g.addColorStop(0, rgba(disc, 0.2 * (1 - 0.3 * h)));
+    g.addColorStop(1, rgba(disc, 0));
+    c.fillStyle = g;
+    c.beginPath();
+    c.moveTo(sx, sy);
+    c.lineTo(sx + Math.cos(a - w) * len, sy + Math.sin(a - w) * len);
+    c.lineTo(sx + Math.cos(a + w) * len, sy + Math.sin(a + w) * len);
+    c.closePath();
+    c.fill();
+  }
+  c.restore();
+  const glow = c.createRadialGradient(sx, sy, rr * 0.6, sx, sy, 560);
+  glow.addColorStop(0, rgba(disc, 0.6));
+  glow.addColorStop(0.4, rgba(disc, 0.22));
+  glow.addColorStop(1, rgba(disc, 0));
+  c.fillStyle = glow;
+  c.fillRect(sx - 560, sy - 560, 1120, 1120);
+  // A faint prismatic halo ring round it (the light split, high up).
+  c.lineWidth = 5;
+  d.prism.forEach((col, i) => {
+    c.strokeStyle = rgba(col, 0.16 * (1 - 0.4 * h));
+    c.beginPath();
+    c.arc(sx, sy, 210 + i * 5, 0, Math.PI * 2);
+    c.stroke();
+  });
+  const g = c.createRadialGradient(sx - rr * 0.2, sy - rr * 0.2, 4, sx, sy, rr);
+  g.addColorStop(0, "#ffffff");
+  g.addColorStop(0.65, mix(disc, "#ffffff", 0.5));
+  g.addColorStop(1, disc);
+  c.fillStyle = g;
+  c.beginPath();
+  c.arc(sx, sy, rr, 0, Math.PI * 2);
+  c.fill();
+}
+/**
+ * A light zone's view down: a cloud sea far below the tower from `top`,
+ * cream low down and peach at sunset, its clouds fringed with soft rainbow
+ * light; prismatic clouds drifting through the sky beside the court and a
+ * small rainbow arc at the right. Painted once per floor with the sky.
+ */
+function paintRadiantBelow(
+  c: Ctx,
+  t: SpireZoneTheme,
+  h: number,
+  top: number,
+  puff: (x: number, y: number, r: number, a: number) => void,
+  floor: number,
+) {
+  const d = t.radiant!,
+    S = SPIRE_SKY,
+    bottom = S.y + S.h;
+  reseed(9760 + floor);
+  const soft = (x: number, y: number, r: number, a: number, col: string) => {
+    const p = c.createRadialGradient(x, y - r * 0.2, r * 0.1, x, y, r);
+    p.addColorStop(0, rgba(col, a));
+    p.addColorStop(0.6, rgba(col, a * 0.7));
+    p.addColorStop(1, rgba(col, 0));
+    c.fillStyle = p;
+    c.beginPath();
+    c.ellipse(x, y, r, r * 0.55, 0, 0, Math.PI * 2);
+    c.fill();
+  };
+  const cloudCol = mix(t.cloud[0], t.cloud[1], h);
+  // A small rainbow arc at the right, beyond the court.
+  c.lineWidth = 16;
+  d.prism.forEach((col, i) => {
+    c.strokeStyle = rgba(col, 0.22 * (1 - 0.45 * h));
+    c.beginPath();
+    c.arc(1960, top + 140, 520 - i * 15, Math.PI * 1.08, Math.PI * 1.62);
+    c.stroke();
+  });
+  // Prismatic clouds drifting by (only where the sky shows beside the
+  // court): a rose fringe under, a sky-blue one over, the cream between.
+  for (let k = 0; k < 9; k++) {
+    const x = S.x + 80 + R() * (S.w - 160),
+      y = S.y + 120 + R() * Math.max(80, top - S.y - 260),
+      size = 70 + R() * 70;
+    if (x > -size && x < W + size && y > -size * 0.6 && y < H + 40) continue;
+    const a = 0.6 * (1 - 0.3 * h);
+    for (let i = 0; i < 4; i++) {
+      const ox = (i - 1.5) * size * 0.55,
+        oy = -Math.sin((i / 3) * Math.PI) * size * 0.25;
+      soft(x + ox, y + oy + size * 0.16, size * 0.78, a * 0.5, d.prism[0]);
+      soft(x + ox, y + oy - size * 0.14, size * 0.7, a * 0.4, d.prism[4]);
+      soft(x + ox, y + oy, size * 0.66, a, cloudCol);
+    }
+  }
+  // The cloud sea, its nearest tops fringed in rainbow light.
+  for (let row = 0; row < 5; row++)
+    for (let k = 0; k < 16; k++)
+      puff(
+        S.x + (k + R() * 0.8) * (S.w / 15),
+        top + row * 90 + R() * 40,
+        170 + R() * 110,
+        0.55 + row * 0.08,
+      );
+  for (let k = 0; k < 18; k++)
+    soft(
+      S.x + R() * S.w,
+      top - 14 + R() * 50,
+      100 + R() * 80,
+      0.22 * (1 - 0.4 * h),
+      d.prism[k % d.prism.length],
+    );
+  // Below the clouds, warm light deepening into amber.
+  const g = c.createLinearGradient(0, top + 300, 0, bottom);
+  g.addColorStop(0, rgba(cloudCol, 0));
+  g.addColorStop(1, rgba(mix(cloudCol, "#8a4a22", 0.45), 0.85));
+  c.fillStyle = g;
+  c.fillRect(S.x, top + 300, S.w, Math.max(0, bottom - top - 300));
+}
 function rgba(col: string, a: number) {
   const m = col.startsWith("rgb")
     ? col.match(/\d+/g)!.slice(0, 3).map(Number)
@@ -1736,6 +2112,31 @@ function crystal(
   c.lineTo(x - w * 0.18 + lean * 0.25, y - h * 0.3);
   c.closePath();
   c.fill();
+  // A light zone's prism: small rainbow facets across the shaded face.
+  if (t.radiant) {
+    const prism = t.radiant.prism;
+    c.save();
+    c.beginPath();
+    c.moveTo(x + lean * 0.1, y + 2);
+    c.lineTo(tip.x, tip.y);
+    c.lineTo(x + w / 2 + lean * 0.3, y - h * 0.72);
+    c.lineTo(x + w / 2, y);
+    c.closePath();
+    c.clip();
+    const band = Math.max(1.4, h * 0.07);
+    prism.forEach((col, i) => {
+      const f = 0.3 + i * 0.09;
+      c.fillStyle = rgba(col, 0.85);
+      c.beginPath();
+      c.moveTo(x - w, y - h * f + w * 0.5);
+      c.lineTo(x + w, y - h * f - w * 0.3);
+      c.lineTo(x + w, y - h * f - w * 0.3 + band);
+      c.lineTo(x - w, y - h * f + w * 0.5 + band);
+      c.closePath();
+      c.fill();
+    });
+    c.restore();
+  }
 }
 /** A cluster of crystals with a soft glow at its foot. */
 function cluster(
@@ -1785,6 +2186,20 @@ function cluster(
       .slice(0, 2)
       .forEach(([sx, sy], i) => sparkle(c, t, sx, sy, i ? 4 : 6.5));
   }
+  // A light zone's crystals: the light they split spills on the stone
+  // beside them (a small rainbow fan, baked).
+  if (t.radiant)
+    for (let i = 0; i < 3; i++)
+      rainbowFleck(
+        c,
+        t,
+        x + size * (0.25 + i * 0.12),
+        y + 3 + i * 2,
+        size * (0.45 - i * 0.08),
+        0.25 + i * 0.3,
+        0.55,
+        1.3,
+      );
 }
 /** A dream zone's star on a crystal's tip: a soft gold glow and a bright four-point star. */
 function sparkle(c: Ctx, t: SpireZoneTheme, x: number, y: number, r: number) {
@@ -1813,6 +2228,42 @@ function dreamMark(c: Ctx, t: SpireZoneTheme, x: number, y: number) {
   crescentPath(c, x - 3, y, 9);
   c.fill();
   starPath(c, x + 9, y - 5, 4.6, 4, 0.38);
+  c.fill();
+}
+/**
+ * A light zone's mark on a block's front: a gold sun (a disc and eight
+ * rays), inlaid over a dark seat, where Earth carves a rune.
+ */
+function sunMark(c: Ctx, t: SpireZoneTheme, x: number, y: number) {
+  const d = t.radiant!;
+  const sun = (dx: number, dy: number, r: number, col: string) => {
+    c.fillStyle = col;
+    c.beginPath();
+    c.arc(x + dx, y + dy, r * 0.55, 0, Math.PI * 2);
+    c.fill();
+    c.beginPath();
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      c.moveTo(
+        x + dx + Math.cos(a - 0.28) * r * 0.6,
+        y + dy + Math.sin(a - 0.28) * r * 0.6,
+      );
+      c.lineTo(
+        x + dx + Math.cos(a) * r * 1.15,
+        y + dy + Math.sin(a) * r * 1.15,
+      );
+      c.lineTo(
+        x + dx + Math.cos(a + 0.28) * r * 0.6,
+        y + dy + Math.sin(a + 0.28) * r * 0.6,
+      );
+    }
+    c.fill();
+  };
+  sun(0.8, 1.2, 10.5, rgba(t.carve, 0.7));
+  sun(0, 0, 9.5, d.gold);
+  c.fillStyle = d.goldLight;
+  c.beginPath();
+  c.arc(x - 1.5, y - 1.5, 2.6, 0, Math.PI * 2);
   c.fill();
 }
 /** Courses of dressed stone across a front face. */
@@ -2045,6 +2496,7 @@ function paintBlock(
     c.fillStyle = tone(t, "rgba(255,248,230,0.45)");
     c.fillRect(x + 10, top + 1, w - 20, 2.5);
     if (t.dream) dreamMark(c, t, x + w / 2, front + BLOCK_H * 0.45);
+    if (t.radiant) sunMark(c, t, x + w / 2, front + BLOCK_H * 0.45);
     duskStone(c, t, h);
     bioSpecks(c, t, x, front, w, BLOCK_H, h);
     inkDrips(c, t, x, top, front, w, h);
@@ -2079,6 +2531,7 @@ function paintBlock(
   // A rune on the front, inlaid with the zone's crystal (a night zone
   // hangs a lantern there instead, a dream zone inlays a crescent).
   if (t.dream) dreamMark(c, t, x + w / 2, front + BLOCK_H / 2);
+  else if (t.radiant) sunMark(c, t, x + w / 2, front + BLOCK_H / 2);
   else if (!t.night) {
     c.save();
     c.lineCap = "round";
@@ -2803,6 +3256,73 @@ export function paintDreamSummitGrade(c: Ctx) {
   const m = c.createRadialGradient(W, 0, 40, W, 0, 900);
   m.addColorStop(0, "rgba(255,240,226,0.18)");
   m.addColorStop(1, "rgba(255,240,226,0)");
+  c.fillStyle = m;
+  c.fillRect(0, 0, W, H);
+  c.restore();
+}
+
+// ──────────────────────── The summit (floor 50) ────────────────────────
+
+/**
+ * Floor 50 keeps Prismell's Sun Atrium; painted over it once, a summit
+ * grade of its own: the sanctum at golden hour. A soft pale-gold multiply
+ * (the pale marble turns champagne, so the relay's gold and cyan beams,
+ * the skylight's cream ring and the chimes stand brighter than the floor
+ * under them; red and green stay level, so the scramble's pink keeps its
+ * distance), a warm umber dusk pressing in from the edges, prism light
+ * glinting in rainbow flecks along the rim, and the low sun's warmth from
+ * the upper left. The middle, where the mirrors, the relay and every
+ * warning are, keeps most of the raid's own light; the mirrors, beams and
+ * shield are drawn live on top, so they keep their colours.
+ */
+export function paintRadiantSummitGrade(c: Ctx) {
+  c.save();
+  c.globalCompositeOperation = "multiply";
+  c.fillStyle = "#e9e9cc";
+  c.fillRect(0, 0, W, H);
+  c.globalCompositeOperation = "source-over";
+  const v = c.createRadialGradient(
+    W / 2,
+    H / 2,
+    H * 0.46,
+    W / 2,
+    H / 2,
+    H * 1.05,
+  );
+  v.addColorStop(0, "rgba(54,32,26,0)");
+  v.addColorStop(1, "rgba(54,32,26,0.55)");
+  c.fillStyle = v;
+  c.fillRect(0, 0, W, H);
+  // Prism light along the rim (never past the edge band: the mirrors and
+  // the skylight's ring stand well inside it): small rainbow flecks.
+  reseed(50801);
+  const prism = ["#ff8fa8", "#ffbe5c", "#fff07a", "#8ef0a8", "#78d6ff"];
+  c.lineCap = "round";
+  for (let k = 0; k < 28; k++) {
+    const side = k % 4,
+      along = 0.05 + R() * 0.9,
+      inset = 12 + R() * 22,
+      len = 14 + R() * 16,
+      a = (R() - 0.5) * 0.8 + (side % 2 ? Math.PI / 2 : 0);
+    const x = side === 1 ? W - inset : side === 3 ? inset : along * W,
+      y = side === 0 ? inset : side === 2 ? H - inset : along * H;
+    const nx = -Math.sin(a) * 2,
+      ny = Math.cos(a) * 2;
+    c.lineWidth = 2.2;
+    prism.forEach((col, i) => {
+      const o = i - 2;
+      c.strokeStyle = rgba(col, 0.42);
+      c.beginPath();
+      c.moveTo(x + nx * o, y + ny * o);
+      c.lineTo(x + nx * o + Math.cos(a) * len, y + ny * o + Math.sin(a) * len);
+      c.stroke();
+    });
+  }
+  // The low sun's warmth from the upper left.
+  c.globalCompositeOperation = "screen";
+  const m = c.createRadialGradient(0, 0, 40, 0, 0, 950);
+  m.addColorStop(0, "rgba(255,236,186,0.16)");
+  m.addColorStop(1, "rgba(255,236,186,0)");
   c.fillStyle = m;
   c.fillRect(0, 0, W, H);
   c.restore();
