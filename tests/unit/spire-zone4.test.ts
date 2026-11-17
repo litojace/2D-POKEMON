@@ -728,7 +728,7 @@ describe("play-test (bot raiders vs zone 4)", () => {
     return a.raid.spire!.best >= floor;
   }
   it("floor 31 is often cleared solo with no blessings; floor 39 less often, but sometimes", () => {
-    const seeds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+    const seeds = Array.from({ length: 24 }, (_, i) => i + 1);
     const rate = (floor: number) =>
       seeds.filter((s) => playFloor(floor, s)).length / seeds.length;
     const first = rate(31),

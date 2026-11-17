@@ -912,18 +912,20 @@ export const SPIRE_TUNING: Record<
   // Zone 2: a climb starts at 11 with no blessings, against champions far
   // deadlier per point than zone 1's Earth front-liners (casters, an
   // assassin, a controller), so the numbers start below floor 9's and each
-  // Echo grows a little stronger floor by floor. By simulation
-  // (tests/unit/spire-zone2.test.ts) a solo bot clears floor 11 about two
-  // times in three and floor 19 about one in five; floor 9 one in three.
+  // Echo grows a little stronger floor by floor (on 16–19, as in zone 3,
+  // its toughness follows its floor's line-up: floor 16's is the easiest).
+  // By simulation (tests/unit/spire-zone2.test.ts; 96 seeds) a solo bot
+  // clears floor 11 about four times in five, floor 16 about two in five,
+  // falling smoothly to about one in five on floor 19; floor 9 one in three.
   11: { difficulty: "normal", power: 0.44, armour: 1.36, limit: 180 },
   12: { difficulty: "normal", power: 0.45, armour: 1.34, limit: 180 },
   13: { difficulty: "normal", power: 0.46, armour: 1.32, limit: 180 },
   14: { difficulty: "normal", power: 0.47, armour: 1.3, limit: 180 },
   15: { difficulty: "normal", power: 0.55, armour: 0.58, limit: 240 },
-  16: { difficulty: "normal", power: 0.48, armour: 1.28, limit: 180 },
-  17: { difficulty: "normal", power: 0.49, armour: 1.26, limit: 180 },
-  18: { difficulty: "normal", power: 0.5, armour: 1.24, limit: 180 },
-  19: { difficulty: "normal", power: 0.52, armour: 1.22, limit: 180 },
+  16: { difficulty: "normal", power: 0.48, armour: 1.02, limit: 180 },
+  17: { difficulty: "normal", power: 0.49, armour: 1.35, limit: 180 },
+  18: { difficulty: "normal", power: 0.5, armour: 1.29, limit: 180 },
+  19: { difficulty: "normal", power: 0.52, armour: 1.18, limit: 180 },
   20: { difficulty: "hard", power: 1, armour: 1, limit: 600 },
   // Zone 3: a climb starts at 21 with no blessings, against Shadow Echoes
   // (an assassin, a trickster, a duelist) and one off-element champion a
@@ -948,16 +950,17 @@ export const SPIRE_TUNING: Record<
   // champion a floor. As in zone 3, each Echo hits a little harder floor by
   // floor and its toughness follows its floor's line-up. By simulation
   // (tests/unit/spire-zone4.test.ts; a solo Normal bot raider, 96 seeds)
-  // TUNE_NOTE
-  31: { difficulty: "normal", power: 0.56, armour: 1.3, limit: 180 },
-  32: { difficulty: "normal", power: 0.57, armour: 1.3, limit: 180 },
-  33: { difficulty: "normal", power: 0.58, armour: 1.3, limit: 180 },
-  34: { difficulty: "normal", power: 0.59, armour: 1.3, limit: 180 },
-  35: { difficulty: "normal", power: 0.62, armour: 0.54, limit: 240 },
-  36: { difficulty: "normal", power: 0.6, armour: 1.2, limit: 180 },
-  37: { difficulty: "normal", power: 0.61, armour: 1.2, limit: 180 },
-  38: { difficulty: "normal", power: 0.62, armour: 1.2, limit: 180 },
-  39: { difficulty: "normal", power: 0.63, armour: 1.2, limit: 180 },
+  // floor 31 is cleared about two times in three, falling smoothly to
+  // about one in three on floors 38 and 39.
+  31: { difficulty: "normal", power: 0.56, armour: 1.66, limit: 180 },
+  32: { difficulty: "normal", power: 0.57, armour: 1.39, limit: 180 },
+  33: { difficulty: "normal", power: 0.58, armour: 1.72, limit: 180 },
+  34: { difficulty: "normal", power: 0.59, armour: 1.62, limit: 180 },
+  35: { difficulty: "normal", power: 0.62, armour: 0.57, limit: 240 },
+  36: { difficulty: "normal", power: 0.6, armour: 1.14, limit: 180 },
+  37: { difficulty: "normal", power: 0.61, armour: 1.29, limit: 180 },
+  38: { difficulty: "normal", power: 0.62, armour: 1.93, limit: 180 },
+  39: { difficulty: "normal", power: 0.63, armour: 1.39, limit: 180 },
   40: { difficulty: "hard", power: 1, armour: 1, limit: 600 },
 };
 /** Party scaling, and the cap on fighters on the court. */
