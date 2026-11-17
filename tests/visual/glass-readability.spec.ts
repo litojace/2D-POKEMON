@@ -34,6 +34,21 @@ for (const mode of ["full", "light"] as const)
       const menu = await look(page, ".header-menu-panel");
       await snap(page, info, `glass-readability-${mode}-menu`);
       await page.click(".header-menu > summary");
+      // The chat button is a HUD pill like the player card beside it: the
+      // same glass, blur and gold hairline (ui/aero.css), in either mode.
+      const pill = (sel: string) =>
+        page.locator(sel).evaluate((el) => {
+          const c = getComputedStyle(el);
+          return {
+            bg: c.backgroundColor,
+            blur: c.backdropFilter,
+            rim: c.borderTopColor,
+          };
+        });
+      await page.mouse.move(1, 1);
+      expect(await pill("#chat-button")).toEqual(
+        await pill("#account-profile"),
+      );
       await page.click("#chat-button");
       await expect(page.locator("#chat-drawer")).toBeVisible();
       const chat = await look(page, "#chat-drawer");
