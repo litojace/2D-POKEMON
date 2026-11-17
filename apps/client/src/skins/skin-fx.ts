@@ -1,4 +1,5 @@
 import { drawVanguardFx } from "./vanguard-fx";
+import { drawEpicSignature } from "./epic-signature-fx";
 import type { CreaturePart } from "../creature-design";
 import type { Facing } from "../animation/controller";
 import { WORLD_ART } from "../../../../packages/shared/src/world-art";
@@ -580,7 +581,8 @@ export function drawSkinFx(ctx: FxContext, art: SkinArt | undefined, stage: numb
   trail(ctx, art);
   moments(ctx, art, stage);
   if (ctx.defeated) return;
-  if (art.vanguard) drawVanguardFx(ctx, art.vanguard);
+  if (art.signature) drawEpicSignature(ctx, art.signature);
+  else if (art.vanguard) drawVanguardFx(ctx, art.vanguard);
   else detail(ctx, art);
   if (art.mythic) {
     mythic(ctx, art, stage);

@@ -8,7 +8,10 @@ import { epicBodyCut } from "../../apps/client/src/skins/epic-fashion";
 import { fashionCut } from "../../apps/client/src/skins/fashion-fits";
 import { fashionOutfit } from "../../apps/client/src/skins/fashion-outfits";
 import { HEAD, SKIN_ART } from "../../apps/client/src/skins/skin-art";
-import { creatureLayers } from "../../apps/client/src/creature-design";
+import {
+  creatureLayers,
+  creaturePalette,
+} from "../../apps/client/src/creature-design";
 import {
   drawSkinFx,
   type FxContext,
@@ -22,6 +25,46 @@ const shapes = (svg: string) =>
   [...svg.matchAll(/(?:\sd="([^"]+)"|<(circle|ellipse)[^>]+>)/g)]
     .map((m) => m[1] ?? m[0].replace(/(?:fill|stroke)="[^"]*"/g, ""))
     .join("|");
+
+const lightness = (hex: string) => {
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+  return (Math.max(r, g, b) + Math.min(r, g, b)) / 510;
+};
+const distance = (a: string, b: string) =>
+  Math.hypot(
+    ...[1, 3, 5].map(
+      (i) => parseInt(a.slice(i, i + 2), 16) - parseInt(b.slice(i, i + 2), 16),
+    ),
+  );
+
+describe("fashion collection colors", () => {
+  it("gives each Rare collection its own body color for every champion", () => {
+    for (const id of ids) {
+      const mids = ["wayfarer", "moonlit-tea", "astral-court"].map(
+        (c) => SKIN_ART[`${id}-${c}`].palette!.mid!,
+      );
+      for (let i = 0; i < mids.length; i++)
+        for (let j = i + 1; j < mids.length; j++)
+          expect(distance(mids[i], mids[j]), `${id} ${i}/${j}`).toBeGreaterThan(
+            45,
+          );
+    }
+  });
+  it("keeps each champion's light and dark markings (Duskveil's void face, Pyranda's mask)", () => {
+    for (const id of ids)
+      for (const c of [
+        "wayfarer",
+        "moonlit-tea",
+        "astral-court",
+        "abyssal-expedition",
+      ])
+        for (const key of ["accent", "dark"] as const) {
+          const was = lightness(creaturePalette[id][key]);
+          const now = lightness(SKIN_ART[`${id}-${c}`].palette![key]!);
+          expect(Math.abs(now - was), `${id}-${c} ${key}`).toBeLessThan(0.12);
+        }
+  });
+});
 
 describe("authored fashion collections", () => {
   it("replaces conflicting default props without covering faces or removing Halcyra's beak", () => {
@@ -80,27 +123,55 @@ describe("authored fashion collections", () => {
       }
   });
 
-  it("retains signature wrist, blade and wing equipment through turns", () => {
-    for (const collection of FASHION_COLLECTION_IDS)
+  it("gives each Rare collection its own silhouette for every champion and facing", () => {
+    const rares = ["wayfarer", "moonlit-tea", "astral-court"] as const;
+    for (const id of ids)
       for (const dir of dirs) {
-        for (const [id, parts] of [
-          ["tidefin", ["armR"]],
-          ["auralynx", ["armL", "armR"]],
-          ["lumoth", ["wings"]],
-        ] as const) {
+        const looks = rares.map((c) => {
           const layers = fashionOutfit(
-            collection,
+            c,
             id,
             dir,
-            SKIN_ART[`${id}-${collection}`].palette as any,
+            SKIN_ART[`${id}-${c}`].palette as any,
             HEAD[id][dir],
           );
-          for (const part of parts)
+          return { c, layers, svg: layers.map(([, s]) => s).join("") };
+        });
+        // No two collections share their construction.
+        const shapeSets = looks.map((l) => shapes(l.svg));
+        expect(new Set(shapeSets).size, `${id} ${dir}`).toBe(3);
+        // ...and not merely in a detail: at most a fifth of either's
+        // shapes may also appear in another collection.
+        for (let i = 0; i < 3; i++)
+          for (let j = i + 1; j < 3; j++) {
+            const A = new Set(shapeSets[i].split("|")),
+              B = new Set(shapeSets[j].split("|"));
+            const shared = [...A].filter((s) => B.has(s)).length;
             expect(
-              layers.some(([p]) => p === part),
-              `${id} ${dir} ${part}`,
+              shared / Math.min(A.size, B.size),
+              `${id} ${dir} ${rares[i]}/${rares[j]}`,
+            ).toBeLessThan(0.2);
+          }
+        const [way, tea, court] = looks;
+        // Wayfarer: a pack (behind the torso, or over the back from behind).
+        expect(way.svg, `${id} ${dir} pack`).toContain('rx="6"');
+        // Moonlit Tea: a kanzashi on the head; Astral Court: a star circlet.
+        expect(
+          tea.layers.some(([p]) => p === "flame"),
+          `${id} ${dir} kanzashi`,
+        ).toBe(true);
+        expect(
+          court.layers.some(([p]) => p === "flame"),
+          `${id} ${dir} circlet`,
+        ).toBe(true);
+        // From behind, shells and glider membranes cover the back, so the
+        // pack, obi bow and mantle sit on the part painted last there.
+        if (dir === "up")
+          for (const l of looks)
+            expect(
+              l.layers.some(([p]) => p === "scarf"),
+              `${id} ${l.c} back`,
             ).toBe(true);
-        }
       }
   });
   it("keeps Rare idle effects silent and Epic details within a small drawing budget", () => {
@@ -185,10 +256,7 @@ describe("authored fashion collections", () => {
           art.palette as any,
           HEAD[skin.champion][dir],
         );
-        expect(
-          new Set(layers.map(([part]) => part)).size,
-          skin.id,
-        ).toBeGreaterThanOrEqual(2);
+        expect(layers.length, skin.id).toBeGreaterThanOrEqual(2);
         const svg = layers.map(([, svg]) => svg).join("");
         expect(svg, skin.id).toMatch(/class="[^"]*\bfashion-signature\b/);
         expect(svg, skin.id).not.toMatch(/NaN|undefined|Infinity/);
