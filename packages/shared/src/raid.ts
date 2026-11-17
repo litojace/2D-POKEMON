@@ -9,10 +9,12 @@ export * from "./raid-somnara.js";
 import { RAID_BOSSES, type RaidBossId } from "./raid-roster.js";
 import {
   ASCENDANT_CRAGMUFF_CHAPTERS,
+  ASCENDANT_SNOOZAKU_CHAPTERS,
   ASCENDANT_TIDELOTL_CHAPTERS,
   RAID_ASCENDANT_ATTACKS,
   RAID_ASCENDANT_TIER,
   ascendantCragmuffPattern,
+  ascendantSnoozakuPattern,
   ascendantTidelotlPattern,
   type RaidVariant,
 } from "./raid-ascendant.js";
@@ -260,7 +262,10 @@ export type RaidAttack =
   | "twin-slam"
   // Ascendant Tidelotl
   | "breaker"
-  | "geyser";
+  | "geyser"
+  // Ascendant Snoozaku
+  | "twin-dream"
+  | "dream-tide";
 export const RAID_ATTACKS: Record<
   RaidAttack,
   { name: string; tip: string; summary: string }
@@ -516,6 +521,16 @@ export const RAID_ATTACKS: Record<
     tip: "The Dreamer sees the runes privately. Call them with 1–4 or the rune buttons, then enter the matching pads in order. Leave a pad before entering it again. A backwards arrow means read right to left.",
     summary:
       "Read your private sequence and step on the pads in order. Solo gives you 14 seconds.",
+  },
+  "twin-dream": {
+    name: "Twin Dream",
+    tip: "Two Dreamers share one dream: each sees only their own runes (the other's show as ?). Take turns calling, then step the pads in order. Alone, the dream fades after a glimpse: remember it.",
+    summary: "Two Dreamers each see half the runes. Call in turn.",
+  },
+  "dream-tide": {
+    name: "Dream Tide",
+    tip: "Sleep floods the deck. Only one rune pad stays awake, and only the marked raider sees which: they call it, everyone runs onto that pad. It can't be jumped.",
+    summary: "Listen for the call. Stand on the one pad that stays awake.",
   },
   nightmare: {
     name: "Nightmare",
@@ -848,6 +863,8 @@ export function raidPattern(
     return ascendantCragmuffPattern(phase, partySize);
   if (variant === "ascendant" && boss === "tidewyrm")
     return ascendantTidelotlPattern(phase);
+  if (variant === "ascendant" && boss === "somnara")
+    return ascendantSnoozakuPattern(phase);
   if (boss === "tidewyrm") return tidewyrmPattern(phase, peril);
   if (boss === "gloomshade") return gloomshadePattern(phase, peril);
   if (boss === "somnara") return somnaraPattern(phase);
@@ -1297,7 +1314,9 @@ export const raidChapters = (
     ? ASCENDANT_CRAGMUFF_CHAPTERS
     : variant === "ascendant" && boss === "tidewyrm"
       ? ASCENDANT_TIDELOTL_CHAPTERS
-      : undefined) ??
+      : variant === "ascendant" && boss === "somnara"
+        ? ASCENDANT_SNOOZAKU_CHAPTERS
+        : undefined) ??
   RAID_BOSS_CHAPTERS[boss] ??
   RAID_CHAPTERS;
 /** Separate appearance slots; each is cosmetic only. */
@@ -2517,6 +2536,10 @@ export interface RaidState {
     until: number;
     startedAt: number;
     backwards: boolean;
+    /** Ascendant Snoozaku's Twin Dream: the second Dreamer (odd steps are theirs). */
+    partnerId?: string;
+    /** Ascendant Snoozaku alone: the dream's runes fade from view at this time. */
+    fadeAt?: number;
   };
   dreamRings?: {
     id: number;
