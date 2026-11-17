@@ -129,6 +129,11 @@ describe("spireZoneTheme", () => {
     paintLanternSummitGrade(recordingContext(log));
     expect(fingerprint(log)).toBe("40960:e2aa8481");
   });
+  it("zone 4's painting is exactly what it was (recipe recorded before zone 5)", () => {
+    const log = paintZone(4, [31, 32, 35, 39]);
+    paintDreamSummitGrade(recordingContext(log));
+    expect(fingerprint(log)).toBe("43798:75119f06");
+  });
   it("zone 3 is dark slate with candle-pale crystal, ink veins and lanterns, at night", () => {
     const one = spireZoneTheme(1),
       two = spireZoneTheme(2),
