@@ -13,6 +13,7 @@ import {
 import { SPIRE_BUILT_TOP } from "../../packages/shared/src/spire";
 import { somnaraPads } from "../../packages/shared/src/raid-somnara";
 import { ASCENDANT_SNOOZAKU } from "../../packages/shared/src/raid-ascendant";
+import { PRISMATAIL } from "../../packages/shared/src/raid-prismatail";
 
 // The Spire's court (apps/client/src/spire-court-rig.ts): floors 1–9 on the
 // stone platform at the top of the tower, their cover where the server's
@@ -2052,6 +2053,749 @@ test("zone 4: Snoozaku's Cloud Deck kept to floor 40, painted on floor 39, nothi
     await page.waitForTimeout(500);
     await snap(page, info, "spire-court-z4-floor-40-844x390");
     await shot4(page, "z4-floor-40-844x390");
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});
+
+// ───────────────────────── Zone 5: Light ─────────────────────────
+//
+// Floors 41–49 take zone 5's Light look (spireZoneTheme(5)): champagne
+// stone with a gold sun inlay, clear prism crystals splitting the light
+// into rainbow facets, a bright morning sky with a big sun and prismatic
+// clouds, a warm gold sunset higher up. Until zone 5's rooms are built
+// (SPIRE_BUILT_TOP < 50), the same test-only path as zones 2 to 4: a real
+// zone-4 room (with its own Psychic Echoes) runs on the page and each
+// snapshot is shown ten floors higher (floor and zone, 4 → 5; the client
+// tints the Echoes by the shown zone, spireEchoTint(5)). Once they are,
+// these tests climb real zone-5 rooms with their own Echoes.
+const ZONE5_REAL = SPIRE_BUILT_TOP >= 50;
+const SHOTS5 = process.env.ZONE5_SHOTS;
+async function shot5(page: Page, name: string) {
+  if (SHOTS5) await page.screenshot({ path: `${SHOTS5}/${name}.png` });
+}
+async function climbZone5(page: Page, floor: number, ceiling?: number) {
+  if (ZONE5_REAL) return climb(page, floor, ceiling);
+  await raiseFloors(page, 10);
+  await climb(
+    page,
+    floor - 10,
+    ceiling === undefined ? undefined : ceiling - 10,
+  );
+}
+const ZONE5_SIZES = [
+  { ...DESKTOP, floors: [41, 45, 49] },
+  {
+    name: "844x390",
+    width: 844,
+    height: 390,
+    phone: true,
+    floors: [41, 45, 49],
+  },
+  {
+    name: "667x375",
+    width: 667,
+    height: 375,
+    phone: true,
+    floors: [41, 45, 49],
+  },
+  { name: "ipad", width: 1180, height: 820, phone: true, floors: [41, 45, 49] },
+];
+for (const size of ZONE5_SIZES)
+  for (const floor of size.floors)
+    test(`zone 5: the Spire court on floor ${floor} at ${size.name}`, async ({
+      browser,
+    }, info) => {
+      test.setTimeout(150_000);
+      const context = await browser.newContext({
+        viewport: { width: size.width, height: size.height },
+        isMobile: size.phone,
+        hasTouch: size.phone,
+      });
+      try {
+        const page = await context.newPage();
+        await hookGame(page);
+        const errors = await openHub(page);
+        await climbZone5(page, floor);
+        await page.waitForTimeout(600);
+        const c = await court(page);
+        const kind = floor === 45 ? "elite" : "wave";
+        // Zone 5's platform floor and its own floor atlas.
+        expect(c.floor).toBe("arena-floor-spire-z5");
+        await page.waitForFunction(
+          (key) =>
+            (window as any).__spireGame.scene
+              .getScene("arena")
+              .textures.exists(key),
+          `spire-court-5-${floor}`,
+        );
+        expect(c.sky).toBe(4);
+        expect(c.surround).toBe(0);
+        expect(c.pillars).toBe(0);
+        expect(c.number).toBe(1);
+        const layout = spireCourtLayout(floor, kind)!;
+        expect(c.blocks).toHaveLength(layout.blocks.length);
+        const shown = [...c.blocks].sort((a, b) => a.x - b.x || a.y - b.y);
+        const feet = [...layout.blocks].sort((a, b) => a.x - b.x || a.y - b.y);
+        feet.forEach((o, i) => {
+          expect(shown[i].x).toBeLessThanOrEqual(o.x);
+          expect(shown[i].x + shown[i].w).toBeGreaterThanOrEqual(o.x + o.w);
+          expect(shown[i].depth).toBeCloseTo(2 + (o.y + o.h) / 10000, 6);
+        });
+        expect(c.stairs).toHaveLength(1);
+        // Height: the zone's first floor untinted, higher ones a warm gold
+        // sunset (red leads blue, unlike every other zone's dusk).
+        if (floor === 41) expect(c.tint).toBe(0xffffff);
+        else {
+          expect(c.tint).toBeLessThan(0xffffff);
+          expect(c.tint >> 16).toBeGreaterThan((c.tint & 255) + 15);
+          if (floor === 49)
+            expect(c.tint >> 16).toBeGreaterThan((c.tint & 255) + 50);
+        }
+        await page.waitForTimeout(300);
+        await snap(page, info, `spire-court-z5-floor-${floor}-${size.name}`);
+        await shot5(page, `z5-floor-${floor}-${size.name}`);
+        expect(errors).toEqual([]);
+      } finally {
+        await context.close();
+      }
+    });
+
+/** Where the zone-5 readability check stands its Echoes (feet, world px). */
+// (Clear of the cover on every layout and of a phone's touch buttons, as
+// zone 4's: on the sun's rays below the ring, a corner sunburst, near the
+// bottom coping, by the top-right rays.)
+const ZONE5_SPOTS = ZONE4_SPOTS;
+for (const size of [
+  { name: "844x390", width: 844, height: 390 },
+  { name: "667x375", width: 667, height: 375 },
+])
+  for (const floor of [41, 45, 49])
+    test(`zone 5: fighters, Echo rings, gold cues, crystals and the floor number read on the bright court, floor ${floor} at ${size.name}`, async ({
+      browser,
+    }, info) => {
+      test.setTimeout(150_000);
+      const context = await browser.newContext({
+        viewport: { width: size.width, height: size.height },
+        isMobile: true,
+        hasTouch: true,
+      });
+      try {
+        const page = await context.newPage();
+        await hookGame(page);
+        const errors = await openHub(page);
+        await climbZone5(page, floor);
+        await page.waitForTimeout(400);
+        const key = `spire-court-5-${floor}`;
+        await page.waitForFunction(
+          (key) =>
+            (window as any).__spireGame.scene
+              .getScene("arena")
+              .textures.exists(key),
+          key,
+        );
+        // The cover: clear, cool crystal pixels against its warm stone, and
+        // the prism's facets in every band of the spectrum.
+        const cover = await page.evaluate(
+          ({ key }) => {
+            const scene = (window as any).__spireGame.scene.getScene("arena");
+            const tex = scene.textures.get(key);
+            const f = tex.get("block0");
+            const d = (tex.getSourceImage() as HTMLCanvasElement)
+              .getContext("2d")!
+              .getImageData(f.cutX, f.cutY, f.cutWidth, f.cutHeight).data;
+            let n = 0,
+              cool = 0;
+            const bands = new Set<number>();
+            for (let i = 0; i < d.length; i += 4) {
+              if (d[i + 3] <= 200) continue;
+              n++;
+              const [r, g, b] = [d[i], d[i + 1], d[i + 2]];
+              const lum = 0.3 * r + 0.59 * g + 0.11 * b;
+              if (lum > 140 && b - r > 15) cool++;
+              const hi = Math.max(r, g, b),
+                lo = Math.min(r, g, b);
+              if (hi - lo < 70 || hi < 150) continue;
+              // The pixel's hue, in sixths (red, yellow, green, cyan, blue…).
+              const h =
+                hi === r
+                  ? ((g - b) / (hi - lo) + 6) % 6
+                  : hi === g
+                    ? (b - r) / (hi - lo) + 2
+                    : (r - g) / (hi - lo) + 4;
+              bands.add(Math.floor(h + 0.5) % 6);
+            }
+            return { cool: cool / n, bands: bands.size };
+          },
+          { key },
+        );
+        // The number: a dark groove round a bright inlay.
+        const number = (await atlasPixels(page, key, "number")).map(
+          (p) => p.lum,
+        );
+        const darkPx = number.filter((l) => l < 70),
+          brightPx = number.filter((l) => l > 190);
+        const dark = darkPx.length / number.length,
+          bright = brightPx.length / number.length;
+        const mean = (a: number[]) =>
+          a.reduce((x, y) => x + y, 0) / Math.max(1, a.length);
+        const inlay = mean(brightPx),
+          groove = mean(darkPx);
+        // The floor where fighters walk: champagne stone (warmer higher up).
+        const ground = await floorColour(page);
+        const groundLum = 0.3 * ground[0] + 0.59 * ground[1] + 0.11 * ground[2];
+        const g = (l: number) => [l, l, l];
+        const apart = (a: number[], b: number[]) =>
+          Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+        const rings = {
+          echo: apart(hex(0xa98bff), ground),
+          enemy: apart(hex(0xff5d6c), ground),
+          hero: contrast([255, 255, 255], ground),
+          // A pale gold warning (a lantern's, a falling star's) by its
+          // colour's distance from the stone, and by lightness.
+          gold: apart(hex(0xffd982), ground),
+          goldLight: contrast(hex(0xffd982), ground),
+          inlay: contrast(g(inlay), g(groove)),
+          groove: contrast(g(groove), ground),
+        };
+        await page
+          .waitForFunction(
+            () =>
+              [
+                ...(window as any).__spireGame.scene
+                  .getScene("arena")
+                  .rigs.entries(),
+              ].some(
+                ([id, r]: [string, any]) =>
+                  id.startsWith("echo") && r.root?.visible,
+              ),
+            undefined,
+            { timeout: 15_000 },
+          )
+          .catch(() => {});
+        // Everyone at fixed spots: the same picture on every run.
+        await page.evaluate((spots) => {
+          const w = window as any;
+          const a = w.__spireArena;
+          const place = (p: any, [x, y]: number[]) =>
+            Object.assign(p, { x, y, vx: 0, vy: 0, angle: Math.PI / 2 });
+          place(a.heroes()[0], [380, 470]);
+          a.players
+            .filter((p: any) => p.echo && p.hp > 0)
+            .forEach((p: any, i: number) => place(p, spots[i % spots.length]));
+          w.__spireStep(0);
+        }, ZONE5_SPOTS);
+        await page.waitForTimeout(900);
+        const fighters = await fighterContrast(page);
+        const shown = fighters.filter((f) => f.n > 60);
+        const summary = shown.map((f) => ({
+          id: f.id.slice(0, 10),
+          n: f.n,
+          seen: +f.seen.toFixed(3),
+          contrast: +contrast(f.fighter, f.court).toFixed(2),
+          fighterLum: Math.round(
+            0.3 * f.fighter[0] + 0.59 * f.fighter[1] + 0.11 * f.fighter[2],
+          ),
+          courtLum: Math.round(
+            0.3 * f.court[0] + 0.59 * f.court[1] + 0.11 * f.court[2],
+          ),
+        }));
+        console.log(
+          JSON.stringify({
+            floor,
+            size: size.name,
+            real: ZONE5_REAL,
+            cover,
+            dark: +dark.toFixed(3),
+            bright: +bright.toFixed(3),
+            inlay: Math.round(inlay),
+            groundLum: Math.round(groundLum),
+            rings: Object.fromEntries(
+              Object.entries(rings).map(([k, v]) => [k, +v.toFixed(2)]),
+            ),
+            fighters: summary,
+          }),
+        );
+        await shot5(page, `z5-floor-${floor}-read-${size.name}`);
+        // The palest champions on the bright stone: the hero (Voltkit, a
+        // yellow one, above) as Glacelle (ice white) and Sunbara (gold).
+        const pale: Record<string, number> = {};
+        for (const character of ["glacelle", "sunbara"]) {
+          await page.evaluate((character) => {
+            const w = window as any;
+            const hero = w.__spireArena.heroes()[0];
+            Object.assign(hero, { character, hp: hero.maxHp ?? hero.hp });
+            w.__spireStep(0);
+          }, character);
+          // (Its rig is rebuilt for the new champion: measure once it shows.)
+          let me:
+            Awaited<ReturnType<typeof fighterContrast>>[number] | undefined;
+          for (let i = 0; i < 6 && !(me && me.n > 60); i++) {
+            await page.waitForTimeout(1000);
+            me = (await fighterContrast(page)).find((f) => f.id === "me");
+          }
+          pale[character] = +(me?.seen ?? 0).toFixed(3);
+          await shot5(page, `z5-floor-${floor}-read-${character}-${size.name}`);
+        }
+        console.log(JSON.stringify({ floor, size: size.name, pale }));
+        // (Measured the same way on the shipped courts: Glacelle 0.71–0.81
+        // on zone 1's sandstone and 0.65–0.77 on zone 4's marble, Sunbara
+        // 0.61–0.71 and 0.54–0.64. A gold champion on warm gold stone is
+        // the hardest case of any zone: it reads by its outlines, shading
+        // and white ring. A champion's idle pose moves the share by up to
+        // ±0.05 from run to run. Held at zone 4's level.)
+        expect(pale.glacelle).toBeGreaterThan(0.6);
+        expect(pale.sunbara).toBeGreaterThan(0.5);
+        expect(cover.cool).toBeGreaterThan(0.04);
+        expect(cover.bands).toBeGreaterThanOrEqual(4);
+        expect(dark).toBeGreaterThan(0.15);
+        expect(bright).toBeGreaterThan(0.25);
+        expect(inlay).toBeGreaterThan(200);
+        expect(rings.inlay).toBeGreaterThan(6);
+        expect(rings.groove).toBeGreaterThan(4);
+        // Champagne stone, never white (white and yellow fighters and pale
+        // gold cues keep a floor to stand out from), warmer higher up.
+        expect(groundLum).toBeGreaterThan(110);
+        expect(groundLum).toBeLessThan(185);
+        // (Violet on the warm stone is far apart; the enemies' red ring is
+        // nearer the stone's hue, about 100 apart, as on zone 1's sandstone:
+        // it reads by its lightness and its enemies' dark shade.)
+        expect(rings.echo).toBeGreaterThan(110);
+        expect(rings.enemy).toBeGreaterThan(90);
+        expect(rings.hero).toBeGreaterThan(2.4);
+        expect(rings.gold).toBeGreaterThan(70);
+        expect(rings.goldLight).toBeGreaterThan(1.5);
+        // Every fighter in view stands out from the court under it.
+        expect(shown.length).toBeGreaterThanOrEqual(2);
+        const echoes = summary.filter((f) => f.id.startsWith("echo"));
+        expect(echoes.length).toBeGreaterThanOrEqual(1);
+        for (const f of echoes) expect(f.seen).toBeGreaterThan(0.58);
+        expect(
+          echoes.reduce((a, f) => a + f.seen, 0) / echoes.length,
+        ).toBeGreaterThan(0.6);
+        for (const f of summary)
+          if (!f.id.startsWith("echo")) expect(f.seen).toBeGreaterThan(0.65);
+        await snap(
+          page,
+          info,
+          `spire-court-z5-floor-${floor}-read-${size.name}`,
+        );
+        expect(errors).toEqual([]);
+      } finally {
+        await context.close();
+      }
+    });
+
+/**
+ * How Prismell's own cues read on a Sun Atrium floor picture (test-side,
+ * from the baked floor only: the beams, the skylight's ring, the chimes,
+ * the scramble flash and the shield are drawn live on top). Under each
+ * relay beam's line (the skylight to the mirrors, mirror to mirror and on
+ * to the heart, lifted as the beams are), round the skylight's reach, round
+ * each mirror's chime and round the shell's shield: the floor's mean colour
+ * there.
+ */
+const ATRIUM_SOURCE = PRISMATAIL.source;
+const ATRIUM_MIRRORS = PRISMATAIL.mirrors.map((m) => [m.x, m.y]);
+const ATRIUM_HEART = [1000, 450];
+function atriumReadability(page: Page, key: string) {
+  return page.evaluate(
+    ({ key, source, mirrors, heart, range }) => {
+      const scene = (window as any).__spireGame.scene.getScene("arena");
+      const image = scene.textures.get(key).getSourceImage() as
+        HTMLCanvasElement | HTMLImageElement;
+      const c = document.createElement("canvas");
+      c.width = 800;
+      c.height = 450;
+      const ctx = c.getContext("2d")!;
+      ctx.drawImage(image, 0, 0, 800, 450);
+      const d = ctx.getImageData(0, 0, 800, 450).data;
+      const at = (x: number, y: number) => {
+        const px = Math.round(x / 2),
+          py = Math.round(y / 2);
+        if (px < 0 || py < 0 || px >= 800 || py >= 450) return undefined;
+        const i = (py * 800 + px) * 4;
+        return [d[i], d[i + 1], d[i + 2]];
+      };
+      const meanOf = (pts: [number, number][]) => {
+        const m = [0, 0, 0];
+        let n = 0;
+        for (const [x, y] of pts) {
+          const p = at(x, y);
+          if (!p) continue;
+          for (let k = 0; k < 3; k++) m[k] += p[k];
+          n++;
+        }
+        return m.map((v) => v / Math.max(1, n));
+      };
+      const line = (a: number[], b: number[]) =>
+        meanOf(
+          Array.from({ length: 40 }, (_, i) => {
+            const t = (i + 0.5) / 40;
+            return [
+              a[0] + (b[0] - a[0]) * t,
+              a[1] + (b[1] - a[1]) * t - 20,
+            ] as [number, number];
+          }).flatMap(([x, y]) => [
+            [x, y - 3] as [number, number],
+            [x, y],
+            [x, y + 3],
+          ]),
+        );
+      const ring = (
+        x: number,
+        y: number,
+        r0: number,
+        r1: number,
+        flat = 0.65,
+      ) => {
+        const pts: [number, number][] = [];
+        for (let a = 0; a < 96; a++)
+          for (let r = r0; r <= r1; r += 2)
+            pts.push([
+              x + Math.cos((a / 96) * Math.PI * 2) * r,
+              y + Math.sin((a / 96) * Math.PI * 2) * r * flat,
+            ]);
+        return meanOf(pts);
+      };
+      const s = [source.x, source.y];
+      const [m0, m1, m2, m3] = mirrors;
+      return {
+        beams: [
+          line(s, m0),
+          line(s, m2),
+          line(m0, m1),
+          line(m2, m3),
+          line(m0, m2),
+          line(m1, heart),
+          line(m3, heart),
+        ],
+        reach: ring(source.x, source.y, range - 4, range + 4),
+        chimes: mirrors.map(([x, y]: number[]) => ring(x, y, 31, 39)),
+        shield: ring(heart[0], heart[1] - 70, 56, 72, 1),
+      };
+    },
+    {
+      key,
+      source: ATRIUM_SOURCE,
+      mirrors: ATRIUM_MIRRORS,
+      heart: ATRIUM_HEART,
+      range: PRISMATAIL.range,
+    },
+  );
+}
+function atriumScores(f: Awaited<ReturnType<typeof atriumReadability>>) {
+  const apart = (a: number[], b: number[]) =>
+    Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+  const min = (xs: number[]) => Math.min(...xs);
+  // The beams' cores (gold, then cyan: BEAM_COLORS), their dark edges
+  // (the colour deepened 62% toward 0x2a1530), the reach's cream dashes,
+  // the chimes' gold, the scramble's pink and the shield's ice line.
+  const deepen = (c: number) =>
+    hex(c).map((v, k) => v + (hex(0x2a1530)[k] - v) * 0.62);
+  return {
+    gold: min(f.beams.map((b) => contrast(hex(0xffdc83), b))),
+    cyan: min(f.beams.map((b) => contrast(hex(0x9cddff), b))),
+    goldEdge: min(f.beams.map((b) => contrast(deepen(0xffdc83), b))),
+    reach: contrast(hex(0xfff8e2), f.reach),
+    chime: min(f.chimes.map((c) => contrast(hex(0xffd678), c))),
+    scramble: min(f.chimes.map((c) => apart(hex(0xff6f91), c))),
+    shield: apart(hex(0xb4e8ff), f.shield),
+  };
+}
+/** Sun Atrium pieces the arena shows (its atlas's images). */
+async function atriumPieceCount(page: Page) {
+  return page.evaluate(() => {
+    const scene = (window as any).__spireGame.scene.getScene("arena");
+    let n = 0;
+    const walk = (o: any) => {
+      if (!o?.visible) return;
+      if (o.list) o.list.forEach(walk);
+      else if (o.texture?.key === "atrium-prisma-atlas") n++;
+    };
+    scene.children.list.forEach(walk);
+    return n;
+  });
+}
+
+test("floor 50: Prismell's Sun Atrium with its summit grade, painted on floor 49, nothing fetched mid-fight", async ({
+  browser,
+}, info) => {
+  test.setTimeout(180_000);
+  const context = await browser.newContext({
+    viewport: { width: 844, height: 390 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  try {
+    const page = await context.newPage();
+    await hookGame(page);
+    const art: { url: string; floor: number }[] = [];
+    let floorNow = 49;
+    page.on("request", (r) => {
+      if (r.url().includes("/raid-arenas/"))
+        art.push({ url: r.url(), floor: floorNow });
+    });
+    const errors = await openHub(page);
+    // Test-only path (the rooms harness has no floor 50 yet): Prismell's
+    // raid room carrying a climb's state from a real Spire room, shown as
+    // floor 49 cleared (the party may climb to 50), then as floor 50.
+    await page.evaluate(() => {
+      const w = window as any;
+      w.__room("spire", { floor: 9, ceiling: 10 });
+      const climb = JSON.parse(JSON.stringify(w.__snap.raid.spire));
+      w.__room("raid", { boss: "prismatail" });
+      w.__snap.remaining = 300;
+      w.__snap.raid.spire = {
+        ...climb,
+        zone: 5,
+        floor: 49,
+        kind: "wave",
+        ceiling: 50,
+        clearedAt: w.__snap.raid.time ?? 1,
+      };
+    });
+    await openPlayPanel(page);
+    await createRoom(page);
+    await pushUntilBattle(page);
+    await page.waitForFunction(
+      () =>
+        !!(window as any).__spireGame?.scene.getScene("arena")?.floor?.texture,
+    );
+    const scene = () =>
+      page.evaluate(() => {
+        const s = (window as any).__spireGame.scene.getScene("arena");
+        return {
+          floor: s.floor.texture.key as string,
+          artwork: s.floor.texture.getSourceImage().dataset?.raidArtwork as
+            string | undefined,
+          summitArt: s.textures.exists("arena-floor-spire-summit-atrium:art"),
+        };
+      });
+    await expect
+      .poll(async () => (await scene()).floor)
+      .toBe("arena-floor-spire-z5");
+    // Floor 49's stairs are open: the atrium's summit is painted now.
+    await expect.poll(async () => (await scene()).summitArt).toBe(true);
+    await shot5(page, "z5-floor-49-stairs-open-844x390");
+    floorNow = 50;
+    await page.evaluate(() => {
+      const w = window as any;
+      w.__snap.raid.spire = {
+        ...w.__snap.raid.spire,
+        floor: 50,
+        kind: "boss",
+        clearedAt: undefined,
+      };
+      w.__push();
+    });
+    await expect
+      .poll(async () => (await scene()).artwork)
+      .toBe("spire-summit-atrium");
+    expect((await scene()).floor).toBe("arena-floor-spire-summit-atrium:art");
+    // The atrium's picture was fetched on floor 49 (or before), never on 50.
+    expect(art.some((a) => a.url.includes("prismatail"))).toBe(true);
+    expect(art.every((a) => a.floor === 49)).toBe(true);
+    const c = await court(page);
+    expect(c.sky).toBe(4);
+    expect(c.blocks).toEqual([]);
+    // Its own floor draws the atrium (mirrors, the skylight) on top.
+    await expect.poll(() => atriumPieceCount(page)).toBeGreaterThan(0);
+    await page.waitForTimeout(500);
+    await snap(page, info, "spire-court-floor-50-atrium-summit-844x390");
+    await shot5(page, "z5-floor-50-atrium-summit-844x390");
+    // The raid's own floor, painted beside it (test-side only: it never
+    // shows), to measure against.
+    await page.evaluate(() =>
+      (window as any).__spireGame.scene
+        .getScene("arena")
+        .floorTexture("sun-atrium"),
+    );
+    await page.waitForFunction(() =>
+      (window as any).__spireGame.scene
+        .getScene("arena")
+        .textures.exists("arena-floor-sun-atrium:art"),
+    );
+    // Graded: darker and warmer overall, the middle (the mirrors, the
+    // relay, every warning) kept most of its light.
+    const light = await page.evaluate(() => {
+      const scene = (window as any).__spireGame.scene.getScene("arena");
+      const measure = (key: string) => {
+        const c = document.createElement("canvas");
+        c.width = 160;
+        c.height = 90;
+        const ctx = c.getContext("2d")!;
+        ctx.drawImage(scene.textures.get(key).getSourceImage(), 0, 0, 160, 90);
+        const box = (x: number, y: number, w: number, h: number) => {
+          const d = ctx.getImageData(x, y, w, h).data;
+          let lum = 0,
+            warm = 0;
+          for (let i = 0; i < d.length; i += 4) {
+            lum += 0.3 * d[i] + 0.59 * d[i + 1] + 0.11 * d[i + 2];
+            warm += d[i] - d[i + 2];
+          }
+          return { lum: lum / (d.length / 4), warm: warm / (d.length / 4) };
+        };
+        return { all: box(0, 0, 160, 90), middle: box(40, 22, 80, 46) };
+      };
+      return {
+        graded: measure("arena-floor-spire-summit-atrium:art"),
+        plain: measure("arena-floor-sun-atrium:art"),
+      };
+    });
+    const graded = atriumScores(
+        await atriumReadability(page, "arena-floor-spire-summit-atrium:art"),
+      ),
+      plain = atriumScores(
+        await atriumReadability(page, "arena-floor-sun-atrium:art"),
+      );
+    console.log(JSON.stringify({ light, graded, plain }));
+    expect(light.graded.all.lum).toBeLessThan(light.plain.all.lum * 0.9);
+    expect(light.graded.all.warm).toBeGreaterThan(light.plain.all.warm);
+    expect(light.graded.middle.lum).toBeGreaterThan(
+      light.plain.middle.lum * 0.8,
+    );
+    // Prismell's light cues read at least as well as in the raid (they
+    // are light colours: they gain on the deeper floor), its pink and ice
+    // cues stay as far from the floor's colour.
+    expect(graded.gold).toBeGreaterThanOrEqual(plain.gold * 0.98);
+    expect(graded.cyan).toBeGreaterThanOrEqual(plain.cyan * 0.98);
+    expect(graded.reach).toBeGreaterThanOrEqual(plain.reach * 0.98);
+    expect(graded.chime).toBeGreaterThanOrEqual(plain.chime * 0.98);
+    expect(graded.scramble).toBeGreaterThanOrEqual(plain.scramble * 0.98);
+    expect(graded.shield).toBeGreaterThanOrEqual(plain.shield * 0.98);
+    // (The beams' dark edges lose some contrast on the deeper floor, about
+    // as much as their bright cores gain: 3.0 → 2.5 against 1.25 → 1.48.
+    // Held so they never sink further.)
+    expect(graded.goldEdge).toBeGreaterThan(plain.goldEdge * 0.8);
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});
+
+test("Prismell's own raid keeps the Sun Atrium ungraded", async ({
+  browser,
+}) => {
+  test.setTimeout(150_000);
+  const context = await browser.newContext({
+    viewport: { width: 844, height: 390 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  try {
+    const page = await context.newPage();
+    await hookGame(page);
+    const errors = await openHub(page);
+    await page.evaluate(() =>
+      (window as any).__room("raid", { boss: "prismatail" }),
+    );
+    await openPlayPanel(page);
+    await createRoom(page);
+    await pushUntilBattle(page);
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () =>
+            (window as any).__spireGame.scene.getScene("arena").floor.texture
+              .key,
+        ),
+      )
+      .toMatch(/^arena-floor-sun-atrium(:art)?$/);
+    expect(
+      await page.evaluate(() =>
+        (window as any).__spireGame.scene
+          .getScene("arena")
+          .textures.getTextureKeys()
+          .filter((k: string) => k.startsWith("arena-floor-spire-summit")),
+      ),
+    ).toEqual([]);
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});
+
+// Once zone 5's rooms are built (SPIRE_BUILT_TOP reaches 50), a real climb:
+// floor 41 and the elite on the Spire's court, then floor 49 beaten with
+// floor 50 open, its court (the atrium's summit) painted while the stairs
+// are open and shown on floor 50 with nothing fetched mid-fight.
+test("zone 5: Prismell's Sun Atrium kept to floor 50, painted on floor 49, nothing fetched mid-fight", async ({
+  browser,
+}, info) => {
+  test.skip(!ZONE5_REAL, "zone 5's rooms are not built yet");
+  test.setTimeout(240_000);
+  const context = await browser.newContext({
+    viewport: { width: 844, height: 390 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  try {
+    const page = await context.newPage();
+    await hookGame(page);
+    const art: { url: string; floor: number }[] = [];
+    let floorNow = 41;
+    page.on("request", (r) => {
+      if (r.url().includes("/raid-arenas/"))
+        art.push({ url: r.url(), floor: floorNow });
+    });
+    const errors = await openHub(page);
+    await climb(page, 41);
+    await page.waitForTimeout(600);
+    const c41 = await court(page);
+    expect(c41.floor).toBe("arena-floor-spire-z5");
+    expect(c41.blocks.length).toBeGreaterThan(0);
+    expect(c41.stairs).toHaveLength(1);
+    await frames(page);
+    // No mirrors or skylight: the atrium isn't drawn.
+    expect(await atriumPieceCount(page)).toBe(0);
+    await shot5(page, "z5-real-floor-41-844x390");
+
+    floorNow = 49;
+    await page.evaluate(() => {
+      const w = window as any;
+      w.__room("spire", { floor: 49, stage: "playing", ceiling: 50 });
+      w.__push();
+    });
+    const scene = () =>
+      page.evaluate(() => {
+        const s = (window as any).__spireGame.scene.getScene("arena");
+        return {
+          floor: s.floor?.texture?.key as string,
+          floors: (s.textures.getTextureKeys() as string[]).filter((k) =>
+            k.startsWith("arena-floor-"),
+          ),
+        };
+      });
+    for (let i = 0; i < 12; i++) {
+      const cleared = await page.evaluate(() => {
+        const w = window as any;
+        for (const p of w.__spireArena.players) if (p.echo) p.hp = 0;
+        w.__spireStep(1.8);
+        return w.__snap.raid.spire.clearedAt !== undefined;
+      });
+      if (cleared) break;
+    }
+    await page.waitForTimeout(1500);
+    const ready = (await scene()).floors;
+    floorNow = 50;
+    await page.evaluate(() => (window as any).__spireStep(3));
+    await expect
+      .poll(() => page.evaluate(() => (window as any).__snap.raid.spire.floor))
+      .toBe(50);
+    await expect
+      .poll(async () => (await scene()).floor)
+      .not.toBe("arena-floor-spire-z5");
+    const fifty = await scene();
+    expect(fifty.floor).toBe("arena-floor-spire-summit-atrium:art");
+    expect(ready).toContain(fifty.floor);
+    expect(art.every((a) => a.floor !== 50)).toBe(true);
+    await frames(page);
+    await expect.poll(() => atriumPieceCount(page)).toBeGreaterThan(0);
+    await page.waitForTimeout(500);
+    await snap(page, info, "spire-court-z5-floor-50-844x390");
+    await shot5(page, "z5-real-floor-50-844x390");
     expect(errors).toEqual([]);
   } finally {
     await context.close();
