@@ -1253,7 +1253,7 @@ for (const viewport of [
       });
       const p = await page.evaluate(() => {
         const f = (window as any).__farm;
-        f.look(1600, 500);
+        f.look(1670, 500);
         const c = f.cows[1];
         return f.worldClient(c.x, c.y - 88);
       });
@@ -1282,8 +1282,8 @@ for (const viewport of [
   });
 }
 
-// A full pasture (20261117170000): five cows in three rows in the taller
-// meadow, where its two trees stood. Each one's milk bubble is a tap on
+// A full pasture (20261117170000): five cows in three rows in the bigger
+// meadow (level with the field's back rail, wider to the right). Each one's milk bubble is a tap on
 // that cow, even on a phone.
 for (const viewport of [
   { width: 1280, height: 800 },
@@ -1313,7 +1313,35 @@ for (const viewport of [
       await page.click('#hub-scenes [data-hub-scene="farm"]');
       await expect(page.locator("#fm-badge")).toContainText("tester's Farm");
       await page.waitForFunction(() => (window as any).__farm?.F?.loaded);
-      await page.evaluate(() => (window as any).__farm.look(1600, 500));
+      // Each cow's stretch keeps her (about 120 px long, tail included) inside the fence
+      // and clear of the cow beside her in her row, whichever way she faces.
+      const clash = await page.evaluate(() => {
+        const f = (window as any).__farm,
+          P = f.pasture,
+          cows = f.cows.map((c: any) => ({
+            x0: c.x0 ?? P.x0 + 46,
+            x1: c.x1 ?? P.x1 - 46,
+            y: c.y,
+          })),
+          bad: string[] = [];
+        cows.forEach((c: any, k: number) => {
+          if (c.x0 - 60 < P.x0 || c.x1 + 60 > P.x1) bad.push(`fence ${k}`);
+          cows.forEach((o: any, j: number) => {
+            // Two cows in a row clash when their stretches come within a
+            // cow's length of each other.
+            if (
+              j > k &&
+              Math.abs(o.y - c.y) < 60 &&
+              o.x0 - c.x1 < 120 &&
+              c.x0 - o.x1 < 120
+            )
+              bad.push(`cows ${k} ${j}`);
+          });
+        });
+        return bad;
+      });
+      expect(clash).toEqual([]);
+      await page.evaluate(() => (window as any).__farm.look(1670, 500));
       await page.waitForTimeout(500);
       await snap(
         page,

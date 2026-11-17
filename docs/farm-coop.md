@@ -48,7 +48,7 @@ Kết luận:
 - Sunny Egg: 30 leaves × hệ số trong ngày (0,85–1,35), chiếm chỗ barn. Khi có chuồng, khoảng 1/3 đơn hàng mới đòi thêm 2–4 trứng (trả 1,45 × giá gốc, 3 XP mỗi quả).
 - Bistro: 3 trứng → 1 Eggs trong pantry, chung giới hạn 30/ngày như các nguyên liệu từ farm khác.
 - Bò thêm: như con đầu, 2 Storm Milk mỗi 2 giờ, lần đầu 20 phút sau khi mua. Bò đã mua theo giá cũ (6.000 / 10.000) giữ nguyên, không hoàn tiền.
-- Đồng cỏ (20261117170000): mép trên từ y 420 lên 330 (world px; đồ trang trí không đặt được từ y 300 xuống, trước là 390), đốn cây tròn ở (1480, 340) và cây thông ở (1700, 330). 5 bò đứng 3 hàng cách nhau khoảng 95 px: bò 2–3 hàng sau, bò 4–5 hàng giữa, bò đầu hàng trước; mỗi con đi lại trên một đoạn ngắn của mình. Đồ trang trí đang đứng trên phần đất mới được cất vào kho (đặt lại miễn phí).
+- Đồng cỏ (20261117170000): mép trên từ y 420 lên 348, ngang hàng rào sau của ruộng (`OY - 32`); mép phải từ 1720 ra 1860, quá mép farm (1760) vào vùng cây viền (world px; đồ trang trí không đặt được từ y 318 xuống, trước là 390). Đốn cây tròn ở (1480, 340), cây thông ở (1700, 330), và các cây/bụi/đá viền nằm trên đất mới hoặc có tán đè lên hàng rào. 5 bò đứng 3 hàng cách nhau khoảng 95 px: bò 2–3 hàng sau, bò 4–5 hàng giữa (so le với hàng sau), bò đầu hàng trước. Mỗi con đi trên một đoạn riêng, cách hàng rào ≥60 px và cách đoạn của con bên cạnh ≥130 px (bò dài khoảng 120 px kể cả đuôi), nên không con nào chồng lên con khác hay thò qua rào. Đồ trang trí đang đứng trên phần đất mới được cất vào kho (đặt lại miễn phí).
 
 ## Chỗ đứng
 

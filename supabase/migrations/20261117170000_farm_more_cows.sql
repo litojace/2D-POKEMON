@@ -7,9 +7,11 @@
 --     Cows already bought stay; nothing is refunded.
 --   * Each new cow is like the others: 2 Storm Milk every 2 hours, its first
 --     milk 20 minutes after it arrives; `milk` takes the cow (0 to 4).
---   * A taller pasture for them: its top moves from 420 to 330 (world px;
---     no decoration from 300 down, was 390), and the round tree at
---     (1480, 340) and the pine at (1700, 330) are felled for it.
+--   * A bigger pasture for them: its top moves from 420 up to 348, level
+--     with the field's back rail, and its right side from 1720 out past the
+--     farm's edge to 1860 (world px; no decoration from 318 down, was 390).
+--     The round tree at (1480, 340) and the pine at (1700, 330) are felled
+--     for it, and on the client the edge trees beside it.
 --     arena_farm_decor_fits is 20261117160000's with that block and without
 --     the two trees (DECOR_BLOCKS in packages/shared/src/farm.ts matches);
 --     decorations standing on the new ground go into storage (placed again
@@ -29,7 +31,7 @@ with gone as (
    using public.arena_farm_decor_items i
    where i.id = p.item
      and p.x - coalesce(i.w, 30) < 1750 and 1450 < p.x + coalesce(i.w, 30)
-     and p.y - coalesce(i.d, 14) < 690 and 300 < p.y + 4
+     and p.y - coalesce(i.d, 14) < 690 and 318 < p.y + 4
   returning p.player_id, p.item
 )
 insert into public.arena_farm_decor_credits(player_id, item, qty)
@@ -54,7 +56,7 @@ begin
   end if;
   for b in select * from (values
       ('rect', 314, 1456, 338, 770), ('rect', 380, 1480, 770, 842),
-      ('rect', 20, 1460, 120, 360), ('rect', 1450, 1750, 300, 690),
+      ('rect', 20, 1460, 120, 360), ('rect', 1450, 1750, 318, 690),
       ('rect', 80, 220, 630, 726), ('rect', 1470, 1680, 754, 840),
       ('rect', 250, 326, 520, 576), ('rect', 830, 940, 770, 1060),
       ('rect', 960, 1440, 846, 1040)) r(k, a1, a2, a3, a4) loop

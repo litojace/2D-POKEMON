@@ -489,9 +489,10 @@ export function openFarm(options) {
   // behind the field's fence, so a lane runs in front of it: the barn's door
   // and the market's counter no longer open onto the fence, and the lane
   // from home to the barn shows instead of running under it.
-  // The pasture's top grew from 420 to 330 for 5 cows (20261117170000);
-  // the two trees that stood there were felled.
-  const PAST = { x0: 1480, x1: 1720, y0: 330, y1: 664 },
+  // The pasture grew for 5 cows (20261117170000): its top from 420 up to
+  // the field's back rail (OY - 32) and its right side from 1720 out past
+  // the farm's edge to 1860. The trees that stood there were felled.
+  const PAST = { x0: 1480, x1: 1860, y0: OY - 32, y1: 664 },
     // Where the farmhouse stood: the Bakery's place now (BAKERY), and
     // where the paths to the Plaza and the barn start.
     HOUSE = { x: 190, y: 292 },
@@ -499,6 +500,8 @@ export function openFarm(options) {
     BOARDP = { x: 700, y: 282 },
     STALL = { x: 930, y: 278 },
     BARN = { x: 1250, y: 296 },
+    // The pasture's middle (its sign, its opening puff).
+    PCX = (PAST.x0 + PAST.x1) / 2,
     WELL = { x: 150, y: 700 },
     DOGH = { x: 1600, y: 810 },
     POND = { x: 250, y: 990, rx: 150, ry: 56 };
@@ -1265,8 +1268,8 @@ export function openFarm(options) {
       for (const x of r.results) {
         if (!x.ok) continue;
         if (x.pasture) {
-          FX.push({ puff: 1, x: 1600, y: 560, t: 0, life: 0.8 });
-          float(1600, 520, "New pasture!", "#7ff0a2");
+          FX.push({ puff: 1, x: PCX, y: 560, t: 0, life: 0.8 });
+          float(PCX, 520, "New pasture!", "#7ff0a2");
           toast("Your pasture is open. A cow moved in!");
           log("Opened the <b>Cow Pasture</b>. Your cow has moved in", "good");
         }
@@ -1461,14 +1464,20 @@ export function openFarm(options) {
         });
     }
     // Trees just below the Chicken Coop were felled, so their crowns never
-    // hide its run (taken out after, so the rest stand where they did).
+    // hide its run, and the trees, bushes and rocks on the pasture's wider
+    // ground or with a crown over its fence (taken out after, so the rest
+    // stand where they did).
     for (let k = MARGIN.length - 1; k >= 0; k--) {
       const m = MARGIN[k];
       if (
-        m.t &&
-        m.x > COOP.x0 - 80 &&
-        m.x < COOP.x1 + 80 &&
-        m.y < COOP.y1 + 240
+        (m.t &&
+          m.x > COOP.x0 - 80 &&
+          m.x < COOP.x1 + 80 &&
+          m.y < COOP.y1 + 240) ||
+        (m.x > PAST.x0 - 60 &&
+          m.x < PAST.x1 + (m.t ? 90 : 50) &&
+          m.y > PAST.y0 - 30 &&
+          m.y < PAST.y1 + (m.t ? 130 : 40))
       )
         MARGIN.splice(k, 1);
     }
@@ -1537,7 +1546,7 @@ export function openFarm(options) {
   const decoys = [];
   let decoyIn = 60 + Math.random() * 120;
   // The pasture's cow (migration 049): it walks slowly from side to side.
-  const COW = { x: 1600, y: 630, face: -1, t: 0 };
+  const COW = { x: 1660, y: 630, face: -1, t: 0, x0: 1540, x1: 1800 };
   /* The farm cat naps curled up on top of the Bakery's brick oven, the
      warmest spot on the farm (it slept by the farmhouse's door before the
      Bakery took the house's place). A tap on it wakes it for a moment
@@ -1569,16 +1578,19 @@ export function openFarm(options) {
       .sort((a, b) => Date.parse(a.readyAt) - Date.parse(b.readyAt));
   };
   // More cows (20261117100000, 20261117170000): three rows about 95 px
-  // apart in the taller meadow. The 2nd and 3rd graze the back, the 4th and
-  // 5th the middle, each on its own short stretch, so no two cows stand on
-  // each other and each milk bubble floats above the row behind.
+  // apart in the bigger meadow. The 2nd and 3rd graze the back, the 4th and
+  // 5th the middle, set off from the back row's. Each walks its own stretch:
+  // a cow is about 120 px long (tail included), so a stretch stays 60 px
+  // inside the fence and 130 px from its neighbour's, whichever way the
+  // cows face.
   const COWS = [
     COW,
-    { x: 1535, y: 442, face: 1, t: 5, x0: 1526, x1: 1548 },
-    { x: 1665, y: 448, face: -1, t: 9, x0: 1652, x1: 1674 },
-    { x: 1560, y: 538, face: -1, t: 2, x0: 1540, x1: 1580 },
-    { x: 1660, y: 544, face: 1, t: 7, x0: 1640, x1: 1674 },
+    { x: 1555, y: 442, face: 1, t: 5, x0: 1540, x1: 1570 },
+    { x: 1720, y: 448, face: -1, t: 9, x0: 1700, x1: 1740 },
+    { x: 1635, y: 538, face: -1, t: 2, x0: 1620, x1: 1650 },
+    { x: 1790, y: 544, face: 1, t: 7, x0: 1780, x1: 1800 },
   ];
+
   /** When cow k's milk is ready (ms; the first cow's is F.milkAt). */
   const cowMilkAt = (k) =>
     k === 0 ? F.milkAt : (F.cows.find((c) => c.i === k)?.milkAt ?? Infinity);
@@ -6509,8 +6521,8 @@ export function openFarm(options) {
       items.push({
         y: 570,
         d: () => {
-          GFX.blit(ctx, GFX.rock(61, 40), 1530, 610);
-          GFX.blit(ctx, GFX.bush("green", 62, 56), 1680, 640);
+          GFX.blit(ctx, GFX.rock(61, 40), PAST.x0 + 50, 610);
+          GFX.blit(ctx, GFX.bush("green", 62, 56), PAST.x1 - 80, 640);
           if (s.me)
             GFX.blit(
               ctx,
@@ -6520,7 +6532,7 @@ export function openFarm(options) {
                   : `PASTURE · Lv ${PASTURE.level}`,
                 "#c0392b",
               ),
-              1600,
+              PCX,
               570,
             );
         },
@@ -9566,6 +9578,7 @@ export function openFarm(options) {
       /** The coop's hens and the pasture's cows as drawn (tests): where each one stands. */
       coopHens,
       cows: COWS,
+      pasture: PAST,
       /** Center the camera on a world point (tests). */
       look: (x, y) => {
         cam.x = x;

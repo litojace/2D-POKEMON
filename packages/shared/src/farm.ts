@@ -1573,8 +1573,9 @@ export const DECOR_BLOCKS: readonly DecorBlock[] = [
   { k: "rect", x0: 314, x1: 1456, y0: 338, y1: 770 },
   { k: "rect", x0: 380, x1: 1480, y0: 770, y1: 842 },
   { k: "rect", x0: 20, x1: 1460, y0: 120, y1: 360 },
-  // The pasture (its top at 300 since 20261117170000's taller meadow).
-  { k: "rect", x0: 1450, x1: 1750, y0: 300, y1: 690 },
+  // The pasture (its top at 318 since 20261117170000's bigger meadow; it
+  // also reaches past the right edge, where no decoration goes anyway).
+  { k: "rect", x0: 1450, x1: 1750, y0: 318, y1: 690 },
   { k: "rect", x0: 80, x1: 220, y0: 630, y1: 726 },
   { k: "rect", x0: 1470, x1: 1680, y0: 754, y1: 840 },
   { k: "rect", x0: 250, x1: 326, y0: 520, y1: 576 },
