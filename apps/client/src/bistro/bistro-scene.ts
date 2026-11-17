@@ -2578,6 +2578,10 @@ export function openBistro(o: BistroOptions): BistroHandle {
   const closeSheet = () => {
     sheet.hidden = true;
     sheetKind = null;
+    // The Shop's count starts at one each time it opens: a buy closes it, so
+    // the next buy never takes the last count by surprise (owner, 17 Nov
+    // 2026: a count left at many cost coins unnoticed).
+    shopQty = 1;
     layer.classList.remove("sheet-open");
     layer
       .querySelectorAll(".bs-rail [data-sheet]")
@@ -2585,6 +2589,8 @@ export function openBistro(o: BistroOptions): BistroHandle {
   };
   const openSheet = (kind: string, arg?: number | string) => {
     if (kind === "friends") void loadFriends();
+    // (From another sheet straight to the Shop: one again too.)
+    if (kind === "shop" && sheetKind !== "shop") shopQty = 1;
     sheetKind = kind;
     sheetArg = arg;
     drawnView = "";
