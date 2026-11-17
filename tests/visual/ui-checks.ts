@@ -192,7 +192,14 @@ export async function sizes(page: Page, selector: string) {
  * with the frames shown and hidden; any frame pixel on the box's outermost
  * ring of pixels counts. The panel redraws on its timers, so boxes are found
  * again by index each time and frames are hidden by a style sheet (it
- * outlives a redraw, unlike a style on the element). */
+ * outlives a redraw, unlike a style on the element).
+ *
+ * Each photograph is of the whole window, cut to the box here: the test
+ * browser (drawing on the processor) gave a small `clip` screenshot of the
+ * same unchanged page slightly different pixels from one call to the next,
+ * while whole-window ones matched. The Journey's season frame then
+ * "touched" its box's edge in 4 runs of 6 at 1440x900 (46 edge pixels,
+ * the frame itself well inside the box). */
 export async function clippedFrames(page: Page, boxes: string) {
   const count = await page.locator(boxes).count();
   const bad: string[] = [];
@@ -223,9 +230,7 @@ export async function clippedFrames(page: Page, boxes: string) {
       [boxes, i] as const,
     );
     const shot = async () =>
-      (
-        await page.screenshot({ clip: spot.clip, animations: "disabled" })
-      ).toString("base64");
+      (await page.screenshot({ animations: "disabled" })).toString("base64");
     const on = await shot();
     const hide = await page.addStyleTag({
       content: "[data-frame-stars] { visibility: hidden !important; }",
@@ -233,16 +238,28 @@ export async function clippedFrames(page: Page, boxes: string) {
     const off = await shot();
     await hide.evaluate((e) => e.remove());
     const edge = await page.evaluate(
-      async ([a, b]) => {
+      async ([a, b, clip]) => {
         const pixels = async (src: string) => {
           const img = new Image();
           img.src = `data:image/png;base64,${src}`;
           await img.decode();
+          // The window's photograph cut to the box (in device pixels).
+          const k = img.width / innerWidth;
           const c = document.createElement("canvas");
-          c.width = img.width;
-          c.height = img.height;
+          c.width = Math.round(clip.width * k);
+          c.height = Math.round(clip.height * k);
           const g = c.getContext("2d")!;
-          g.drawImage(img, 0, 0);
+          g.drawImage(
+            img,
+            Math.round(clip.x * k),
+            Math.round(clip.y * k),
+            c.width,
+            c.height,
+            0,
+            0,
+            c.width,
+            c.height,
+          );
           return g.getImageData(0, 0, c.width, c.height);
         };
         const [p, q] = [await pixels(a), await pixels(b)];
@@ -259,7 +276,7 @@ export async function clippedFrames(page: Page, boxes: string) {
           }
         return hits;
       },
-      [on, off],
+      [on, off, spot.clip] as const,
     );
     if (edge) bad.push(`${spot.id} (${edge} edge pixels)`);
   }
