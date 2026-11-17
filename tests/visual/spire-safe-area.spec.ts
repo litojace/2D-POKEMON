@@ -86,16 +86,34 @@ function inSafe(
 /**
  * Every button in sight under `root`: a finger 44 px tall lands on it (its
  * hit area may reach past what is drawn, as ui-measure's rule allows), and
- * its label is whole.
+ * its label is whole. In a row that scrolls sideways (the zone picker once
+ * four zones are out), what is in sight is the part inside the row: a
+ * button scrolled mostly out of it is reached by swiping, and the row's
+ * edge fades say so.
  */
 async function touchTargets(page: Page, root: string) {
   const bad = await page
     .locator(root)
     .first()
-    .evaluate((el) =>
-      [...el.querySelectorAll<HTMLElement>("button, [role=tab]")]
+    .evaluate((el) => {
+      /** The part of `b` inside every sideways-scrolling row round it. */
+      const shown = (b: HTMLElement) => {
+        const r = b.getBoundingClientRect();
+        let left = r.left,
+          right = r.right;
+        for (let a = b.parentElement; a; a = a.parentElement) {
+          const o = getComputedStyle(a).overflowX;
+          if (o !== "auto" && o !== "scroll") continue;
+          const box = a.getBoundingClientRect();
+          left = Math.max(left, box.left);
+          right = Math.min(right, box.right);
+        }
+        return { r, left, right };
+      };
+      return [...el.querySelectorAll<HTMLElement>("button, [role=tab]")]
         .filter((b) => {
-          const r = b.getBoundingClientRect();
+          const { r, left, right } = shown(b);
+          if (right - left < 44) return false;
           return (
             r.width > 0 &&
             r.height > 0 &&
@@ -105,12 +123,12 @@ async function touchTargets(page: Page, root: string) {
           );
         })
         .flatMap((b) => {
-          const r = b.getBoundingClientRect();
+          const { r, left, right } = shown(b);
           const out: string[] = [];
           const name = (b.getAttribute("aria-label") || b.textContent || "")
             .trim()
             .slice(0, 30);
-          const cx = r.x + r.width / 2,
+          const cx = (left + right) / 2,
             cy = r.y + r.height / 2;
           for (const [dx, dy] of [
             [0, -21],
@@ -134,8 +152,8 @@ async function touchTargets(page: Page, root: string) {
           )
             out.push(`${name}: label clipped`);
           return out;
-        }),
-    );
+        });
+    });
   expect(bad).toEqual([]);
 }
 /** The HUD stays inside the safe area, its text whole, clear of the touch controls. */
@@ -377,13 +395,14 @@ for (const s of SIZES)
       const phone = s.height < 500;
       await page.click('.lobby-rail [data-lobby-action="raids"]');
       await page.locator(".rh-room [data-raid-spire]").click();
-      // The zone picker: every zone (zone 3 locked), finger-sized, inside
-      // the safe area.
+      // The zone picker: every zone (zones 3 and 4 locked), finger-sized,
+      // inside the safe area.
       const picker = page.locator(".rh-room .sp-zone-picker");
       await picker.scrollIntoViewIfNeeded();
       await settle(page);
-      await expect(picker.locator("[data-ui-spire-zone]")).toHaveCount(3);
+      await expect(picker.locator("[data-ui-spire-zone]")).toHaveCount(4);
       await expect(picker.locator('[data-ui-spire-zone="3"]')).toBeDisabled();
+      await expect(picker.locator('[data-ui-spire-zone="4"]')).toBeDisabled();
       await expect(
         picker.locator('[data-ui-spire-zone="2"][aria-pressed="true"]'),
       ).toBeVisible();
@@ -513,11 +532,12 @@ for (const s of SIZES)
       const phone = s.height < 500;
       await page.click('.lobby-rail [data-lobby-action="raids"]');
       await page.locator(".rh-room [data-raid-spire]").click();
-      // The zone picker: three zones, zone 3 picked, inside the safe area.
+      // The zone picker: four zones, zone 3 picked, inside the safe area.
       const picker = page.locator(".rh-room .sp-zone-picker");
       await picker.scrollIntoViewIfNeeded();
       await settle(page);
-      await expect(picker.locator("[data-ui-spire-zone]")).toHaveCount(3);
+      await expect(picker.locator("[data-ui-spire-zone]")).toHaveCount(4);
+      await expect(picker.locator('[data-ui-spire-zone="4"]')).toBeDisabled();
       await expect(
         picker.locator('[data-ui-spire-zone="3"][aria-pressed="true"]'),
       ).toBeVisible();
@@ -599,6 +619,149 @@ for (const s of SIZES)
       );
       await cardFits(page, s, ".rc-card.is-results", "#raid-retry");
       await snap(page, info, `spire-z3-safe-results-${s.name}`);
+      expect(errors).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });
+
+// Zone 4 (the Cloud Deck) on the same screens: the zone picker with four
+// zones, its floors in the hub, floor 31's HUD, the elite's, the Ascendant
+// Snoozaku's briefing and boss bar, and zone 4 conquered.
+const ZONE4 = {
+  raids: {
+    ...ZONE3.raids,
+    bosses: {
+      ...ZONE3.raids.bosses,
+      somnara: { clears: 1, highestPeril: 3, bestSeconds: 320, runs: 2 },
+    },
+  },
+  spire: {
+    season: 0,
+    highestFloor: 32,
+    checkpoint: 31,
+    attempts: 12,
+    claimed: Array.from({ length: 32 }, (_, i) => i + 1),
+    clears: { grumblecrag: 2, tidewyrm: 1, gloomshade: 1, somnara: 1 },
+  },
+};
+for (const s of SIZES)
+  test(`the Spire's zone 4 on touch screens at ${s.name}`, async ({
+    browser,
+  }, info) => {
+    test.setTimeout(240_000);
+    const context = await browser.newContext({
+      viewport: { width: s.width, height: s.height },
+      isMobile: true,
+      hasTouch: true,
+    });
+    try {
+      const page = await context.newPage();
+      await page.addInitScript((r) => {
+        const w = window as any;
+        w.__raids = r.raids;
+        w.__spire = r.spire;
+      }, ZONE4);
+      const errors = await openHub(page);
+      await setInsets(page, s.inset);
+      const phone = s.height < 500;
+      await page.click('.lobby-rail [data-lobby-action="raids"]');
+      await page.locator(".rh-room [data-raid-spire]").click();
+      // The zone picker: four zones, zone 4 picked, inside the safe area.
+      const picker = page.locator(".rh-room .sp-zone-picker");
+      await picker.scrollIntoViewIfNeeded();
+      await settle(page);
+      await expect(picker.locator("[data-ui-spire-zone]")).toHaveCount(4);
+      await expect(
+        picker.locator('[data-ui-spire-zone="4"][aria-pressed="true"]'),
+      ).toBeVisible();
+      // The picked zone is in view inside its row (four zones overflow it).
+      const inRow = await picker.evaluate((row) => {
+        const b = row
+          .querySelector('[aria-pressed="true"]')!
+          .getBoundingClientRect();
+        const r = row.getBoundingClientRect();
+        return b.left >= r.left - 1 && b.right <= r.right + 1;
+      });
+      expect(inRow).toBe(true);
+      inSafe(await boxOf(page, ".rh-room .sp-zone-picker"), s, "zone picker");
+      expect(await layoutProblems(page, { inset: s.inset, phone })).toEqual([]);
+      await touchTargets(page, ".rh-room .sp-zone-picker");
+      await touchTargets(page, ".rh-room .ui-panel-foot");
+      await snap(page, info, `spire-z4-safe-picker-${s.name}`);
+      // The floors tab: zone 4's heading and rows.
+      await page.locator('[data-ui-spire-tab="floors"]').click();
+      const head = page.locator('[data-spire-zone-floors="4"] .sp-zone-head');
+      await head.scrollIntoViewIfNeeded();
+      await settle(page);
+      expect(await layoutProblems(page, { inset: s.inset, phone })).toEqual([]);
+      await snap(page, info, `spire-z4-safe-floors-${s.name}`);
+
+      // Floor 31 with a teammate: the HUD line.
+      await page.evaluate(() =>
+        (window as any).__room("spire", {
+          stage: "playing",
+          floor: 31,
+          seats: 2,
+        }),
+      );
+      await page
+        .locator(".rh-room [data-ui-close]")
+        .click()
+        .catch(() => {});
+      await openPlayPanel(page);
+      await createRoom(page);
+      await pushUntilBattle(page);
+      await setInsets(page, s.inset);
+      await expect(page.locator('#raid-hud [data-hud="phase"]')).toHaveText(
+        /^Floor 31 · Wave/,
+      );
+      await hudFits(page, s);
+      await snap(page, info, `spire-z4-safe-wave-${s.name}`);
+
+      // The elite's HUD (its name in the title).
+      await page.evaluate(() => {
+        const w = window as any;
+        w.__room("spire", { floor: 35, stage: "playing" });
+        w.__push();
+      });
+      await expect(page.locator('#raid-hud [data-hud="phase"]')).toHaveText(
+        "Floor 35 · Elite",
+      );
+      await hudFits(page, s);
+      await snap(page, info, `spire-z4-safe-elite-${s.name}`);
+
+      // The Ascendant Snoozaku's briefing, its boss bar, and the results.
+      await page.evaluate(() => {
+        const w = window as any;
+        w.__room("spire", { floor: 40, stage: "briefing" });
+        w.__push();
+      });
+      await expect(page.locator(".rc-card.is-briefing h2")).toHaveText(
+        "Floor 40 · Ascendant Snoozaku",
+      );
+      await cardFits(page, s, ".rc-card.is-briefing", "#raid-instructions");
+      await snap(page, info, `spire-z4-safe-briefing-${s.name}`);
+      await page.evaluate(() => {
+        const w = window as any;
+        w.__room("spire", { floor: 40, stage: "playing" });
+        w.__push();
+      });
+      await expect(page.locator('#raid-hud [data-hud="phase"]')).toHaveText(
+        "Floor 40 · Phase 1/3",
+      );
+      await hudFits(page, s);
+      await snap(page, info, `spire-z4-safe-boss-${s.name}`);
+      await page.evaluate(() => {
+        const w = window as any;
+        w.__room("spire", { floor: 40, stage: "finished" });
+        w.__push();
+      });
+      await expect(page.locator(".rc-card.is-results h2")).toHaveText(
+        "Zone 4 conquered!",
+      );
+      await cardFits(page, s, ".rc-card.is-results", "#raid-retry");
+      await snap(page, info, `spire-z4-safe-results-${s.name}`);
       expect(errors).toEqual([]);
     } finally {
       await context.close();

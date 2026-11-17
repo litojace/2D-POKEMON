@@ -10,7 +10,8 @@
  * over the zone's boss arena (zone 1: the Ascendant Cragmuff's rules over
  * the raid core, `SpireArena`; zone 2: the Ascendant Tidelotl's over
  * Tidelotl's arena, `SpireTideArena`; zone 3: the Ascendant Inkpurr's over
- * Inkpurr's (Gloomshade's) arena, `SpireGloomArena`).
+ * Inkpurr's (Gloomshade's) arena, `SpireGloomArena`; zone 4: the Ascendant
+ * Snoozaku's over Snoozaku's (Somnara's) arena, `SpireDreamArena`).
  * `createSpireArena(code, zone)` builds the room the server was asked for.
  *
  * Flow: briefing → (blessings, from the second floor) → countdown → waves →
@@ -18,7 +19,7 @@
  * the climb; "Climb again" starts from the checkpoint with no blessings.
  *
  * Boss floors (floor 10: the Ascendant Cragmuff; 20: the Ascendant
- * Tidelotl; 30: the Ascendant Inkpurr) are fought in this same arena: it
+ * Tidelotl; 30: the Ascendant Inkpurr; 40: the Ascendant Snoozaku) are fought in this same arena: it
  * carries the Ascendant's rules (on while `raid.variant` is "ascendant") and turns them on for the floor. The room,
  * its sessions, accounts and appearance, the event numbering, the clock and
  * the blessings (hooked here, below) stay exactly as they were, and the
@@ -46,6 +47,7 @@ import {
 } from "../../../packages/shared/src/index.js";
 import {
   GLOOMSHADE,
+  SOMNARA,
   handsTileDark,
   isRaider,
   type RaidAttack,
@@ -65,6 +67,7 @@ import {
   spireRoster,
   spireScale,
   spireStartCheckpoint,
+  spireUnderControls,
   spireWaves,
   spireZoneOfBoss,
   spireZoneStart,
@@ -86,6 +89,8 @@ import { AscendantTidelotlRules } from "./raid-ascendant-tidelotl.js";
 import { TidewyrmArena } from "./raid-tidewyrm.js";
 import { AscendantInkpurrRules } from "./raid-ascendant-inkpurr.js";
 import { GloomshadeArena } from "./raid-gloomshade.js";
+import { AscendantSnoozakuRules } from "./raid-ascendant-snoozaku.js";
+import { SomnaraArena } from "./raid-somnara.js";
 
 const randomUUID = () => crypto.randomUUID();
 const randomSeed = () => {
@@ -946,17 +951,133 @@ export class SpireGloomArena extends SpireRules(
     );
   }
 }
+/** Where the elite's falling stars sit round their centre (px). */
+export const SPIRE_STAR_RING = 220;
+/** Stars in the elite's constellation. */
+export const SPIRE_STAR_COUNT = 5;
+/** A teaching constellation (the first two) is shown this much longer (s). */
+export const SPIRE_STAR_TEACH = 0.4;
+/**
+ * Zone 4's climb: Echo floors 31–39 on the Spire's court and the Ascendant
+ * Snoozaku on floor 40, on the Cloud Deck. The wave and elite floors keep
+ * Snoozaku's deck switched off (no dreams, rune calls, lullaby rings,
+ * bubbles, Quiet Zones or drowsiness), and the captain of floor 35 only
+ * borrows its Falling Stars: never on top of a phone's touch controls.
+ */
+export class SpireDreamArena extends SpireRules(
+  AscendantSnoozakuRules(SomnaraArena),
+) {
+  constructor(code: string) {
+    super(code, "somnara");
+  }
+  protected override resetAscendantReads() {
+    this.resetSnoozeReads();
+  }
+  protected override clearBossCourt() {
+    super.clearBossCourt();
+    Object.assign(this.raid, {
+      dream: undefined,
+      dreamRings: [],
+      dreamBubbles: [],
+      quietZone: undefined,
+      drowsy: {},
+      runeCalls: [],
+      dreamTrails: [],
+      dreamsSolved: 0,
+      dreamMistakes: 0,
+    });
+  }
+  /** Snoozaku's drift belongs to its own floor (not the captain's). */
+  protected override bossStep(dt: number, boss: Fighter) {
+    if (this.bossFloor()) super.bossStep(dt, boss);
+  }
+  /** So do its dreams, rings, bubbles, Quiet Zones and drowsiness. */
+  protected override worldStep(dt: number, boss: Fighter) {
+    if (this.bossFloor()) super.worldStep(dt, boss);
+  }
+  /**
+   * The elite's Falling Stars: a constellation of star marks with its first
+   * star on a raider (step out of it: the middle and the gaps are safe), on
+   * the raid's own warning clock and damage. No star is laid under a
+   * phone's touch controls: one a thumb hides is dropped, and a raider
+   * standing under them draws the first star to the nearest open ground.
+   */
+  protected override startAttack(kind: RaidAttack, target: Fighter): void {
+    if (this.bossFloor() || kind !== "falling-stars")
+      return super.startAttack(kind, target);
+    const count = this.seenAttacks.get(kind) ?? 0;
+    this.seenAttacks.set(kind, count + 1);
+    const teach = count < 2;
+    const boss = this.boss();
+    if (boss) boss.angle = Math.atan2(target.y - boss.y, target.x - boss.x);
+    for (const star of spireStarfall(target))
+      this.warn(
+        kind,
+        star.x,
+        star.y,
+        star.x,
+        star.y,
+        SOMNARA.stars.radius,
+        SOMNARA.stars.delay + (teach ? SPIRE_STAR_TEACH : 0),
+      ).teach = teach;
+  }
+}
+/**
+ * Where the elite's stars fall: the first on `at` (or, under a phone's touch
+ * controls, the nearest open ground), the rest on a ring round a centre
+ * toward the middle of the court, each on the court and none under the
+ * controls.
+ */
+export function spireStarfall(at: { x: number; y: number }) {
+  const r = SOMNARA.stars.radius,
+    W = RULES.width,
+    H = RULES.height;
+  let aim = { x: at.x, y: at.y };
+  if (spireUnderControls(aim.x, aim.y, r)) {
+    let best = { x: W / 2, y: H / 2 },
+      near = Infinity;
+    for (let x = r; x <= W - r; x += 20)
+      for (let y = r; y <= H - r; y += 20) {
+        if (spireUnderControls(x, y, r)) continue;
+        const d = Math.hypot(x - at.x, y - at.y);
+        if (d < near) {
+          near = d;
+          best = { x, y };
+        }
+      }
+    aim = best;
+  }
+  // The ring's centre lies toward the court's middle, so the ring stays on it.
+  const toMiddle = Math.atan2(H / 2 - aim.y, W / 2 - aim.x);
+  const cx = aim.x + Math.cos(toMiddle) * SPIRE_STAR_RING,
+    cy = aim.y + Math.sin(toMiddle) * SPIRE_STAR_RING;
+  const first = toMiddle + Math.PI;
+  const out: { x: number; y: number }[] = [];
+  for (let i = 0; i < SPIRE_STAR_COUNT; i++) {
+    const a = first + (i * Math.PI * 2) / SPIRE_STAR_COUNT;
+    const x = i === 0 ? aim.x : cx + Math.cos(a) * SPIRE_STAR_RING,
+      y = i === 0 ? aim.y : cy + Math.sin(a) * SPIRE_STAR_RING;
+    if (x < r / 2 || x > W - r / 2 || y < r / 2 || y > H - r / 2) continue;
+    if (spireUnderControls(x, y, r)) continue;
+    out.push({ x, y });
+  }
+  return out;
+}
 /** Any zone's climb. */
-export type SpireRoom = SpireArena | SpireTideArena | SpireGloomArena;
+export type SpireRoom =
+  SpireArena | SpireTideArena | SpireGloomArena | SpireDreamArena;
 export const isSpireArena = (a: unknown): a is SpireRoom =>
   a instanceof SpireArena ||
   a instanceof SpireTideArena ||
-  a instanceof SpireGloomArena;
+  a instanceof SpireGloomArena ||
+  a instanceof SpireDreamArena;
 /** The room for a climb of `zone` (the server checked it is built). */
 export function createSpireArena(code: string, zone = 1): SpireRoom {
-  return zone === 3
-    ? new SpireGloomArena(code)
-    : zone === 2
-      ? new SpireTideArena(code)
-      : new SpireArena(code);
+  return zone === 4
+    ? new SpireDreamArena(code)
+    : zone === 3
+      ? new SpireGloomArena(code)
+      : zone === 2
+        ? new SpireTideArena(code)
+        : new SpireArena(code);
 }

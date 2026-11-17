@@ -5,9 +5,16 @@ import type { Snapshot } from "@arena/shared";
 import {
   SOMNARA,
   quietZoneAt,
+  somnaraPads,
   type DreamRune,
+  type RaidVariant,
   type RaidWarning,
 } from "../../../packages/shared/src/raid";
+import {
+  drawAscendantSnoozeWarning,
+  drawTwinThread,
+  noteTideAwake,
+} from "./ascendant-snoozaku-art";
 import type { RaidBossCue } from "./raid-boss-motion";
 import { beginMapFrame, mapAtlas, raidMapLow } from "./raid-map-atlas";
 import {
@@ -70,8 +77,8 @@ export const cloudDeckAtlasKey = deckKey;
 
 // ---------------------------------------------------------------- Steps
 /** The pad whose entry radius holds (x, y), as the server's padAt. */
-export function padAtPoint(x: number, y: number) {
-  return SOMNARA.pads.find(
+export function padAtPoint(x: number, y: number, variant?: RaidVariant) {
+  return somnaraPads(variant).find(
     (p) => Math.hypot(p.x - x, p.y - y) <= SOMNARA.padRadius,
   )?.rune;
 }
@@ -81,10 +88,10 @@ const STEP_COLOR = 0x99efdd;
 const NIGHTMARE = { color: 0xc090ff, radius: 500 };
 type Event = Snapshot["events"][number];
 /** The pad a correct step was made on, or undefined if the event is not one. */
-export function correctStepPad(event: Event) {
+export function correctStepPad(event: Event, variant?: RaidVariant) {
   if (event.kind !== "heal" || (event.value ?? 0) !== 0) return undefined;
   if (event.color !== STEP_COLOR) return undefined;
-  return padAtPoint(event.x, event.y);
+  return padAtPoint(event.x, event.y, variant);
 }
 export const isNightmare = (event: Event) =>
   event.kind === "raid-impact" &&
@@ -95,7 +102,7 @@ export function padsUnderRaiders(state: Snapshot) {
   const runes = new Set<DreamRune>();
   for (const p of state.players)
     if (!p.raidBoss && p.hp > 0 && !p.out) {
-      const rune = padAtPoint(p.x, p.y);
+      const rune = padAtPoint(p.x, p.y, state.raid?.variant);
       if (rune) runes.add(rune);
     }
   return [...runes];
@@ -121,7 +128,9 @@ export const cloudDeckNightmares = () => deckFx.nightmares;
  */
 export function noteCloudDeckEvent(event: Event, state: Snapshot | undefined) {
   if (state?.raid?.boss !== "somnara") return false;
-  const ok = correctStepPad(event);
+  // Ascendant Snoozaku: a Dream Tide's awake pad, shown as it lands.
+  if (noteTideAwake(event, state)) return false;
+  const ok = correctStepPad(event, state.raid.variant);
   if (ok) deckFx.pads.push({ rune: ok, kind: "ok" });
   if (!isNightmare(event)) return false;
   for (const rune of padsUnderRaiders(state))
@@ -204,8 +213,9 @@ export function drawCloudDeck(
   const called = [...(r.runeCalls ?? [])]
     .reverse()
     .find((c) => c.until > state.time);
-  for (const pad of SOMNARA.pads) U.put("padShadow", pad.x + 5, pad.y + 9);
-  for (const pad of SOMNARA.pads) {
+  const pads = somnaraPads(r.variant);
+  for (const pad of pads) U.put("padShadow", pad.x + 5, pad.y + 9);
+  for (const pad of pads) {
     const rune = pad.rune,
       hot = called?.rune === rune;
     const fx = deckFx.pads.filter((f) => f.rune === rune).at(-1);
@@ -350,10 +360,22 @@ export function drawCloudDeck(
       T.put(`coinS-${call.rune}`, p.x + 47, p.y - 92);
     }
   }
-  // The Dreamer's sequence plaque (only the Dreamer's client knows the runes).
-  const view = state.raidDream,
-    dreamer = state.players.find((p) => p.id === r.dream?.dreamerId);
-  if (view && r.dream && view.id === r.dream.id && dreamer) {
+  // The Dreamer's sequence plaque (only the Dreamer's client knows the
+  // runes). Ascendant Snoozaku: over the second Dreamer when it is their
+  // view (the first rune hidden), with "?" for runes this raider can't see;
+  // a Dream Tide's Seer, its one awake rune.
+  const view = state.raidDream;
+  const tide = r.warnings.find(
+    (w) => w.kind === "dream-tide" && view?.tide && view.id === w.id,
+  );
+  const second = !!r.dream?.partnerId && !!view?.hidden?.includes(0);
+  const dreamer = state.players.find(
+    (p) =>
+      p.id ===
+      (tide ? tide.targetId : second ? r.dream?.partnerId : r.dream?.dreamerId),
+  );
+  if (r.dream?.partnerId) drawTwinThread(lines, state, reduced);
+  if (view && (tide || (r.dream && view.id === r.dream.id)) && dreamer) {
     const n = view.runes.length,
       width = n * 34 + 16,
       y = dreamer.y - 147;
@@ -364,7 +386,11 @@ export function drawCloudDeck(
     T.put("plaqueL", x0 + 8, cy);
     T.put("plaqueR", x0 + width - 8, cy);
     view.runes.forEach((rune, i) =>
-      T.put(`coinT-${rune}`, dreamer.x + (i - (n - 1) / 2) * 34, cy),
+      T.put(
+        view.hidden?.includes(i) ? "coinT-hidden" : `coinT-${rune}`,
+        dreamer.x + (i - (n - 1) / 2) * 34,
+        cy,
+      ),
     );
     if (view.backwards) {
       T.stretch("arrowShaft", x0 + 12, y - 37, width - 20, 8);
@@ -430,6 +456,8 @@ export function drawSomnaraWarning(
     note(g, w.x - 5, w.y - 130, 1.7, 0xffdf8d, 0.9);
     return true;
   }
+  if (w.kind === "dream-tide")
+    return drawAscendantSnoozeWarning(g, state, w, _reduced);
   return w.kind === "whale-song";
 }
 interface BakuMemory {
@@ -535,7 +563,12 @@ export function drawSomnara(
     phase: r.phase,
     reduced,
     gilded: !!r.gilded,
-    windKind: dreaming ? "dream-sequence" : wind?.kind,
+    // (A Dream Tide's wind-up: the snore's huge breath in.)
+    windKind: dreaming
+      ? "dream-sequence"
+      : wind?.kind === "dream-tide"
+        ? "whale-song"
+        : wind?.kind,
     windup: dreaming ? 1 : life.windup,
     castKind: cast?.kind,
     castAge: cast?.age ?? 99,

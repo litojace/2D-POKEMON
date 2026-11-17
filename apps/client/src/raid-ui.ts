@@ -375,7 +375,9 @@ export function drawRaidArena(
   if (r.boss === "storm-twins") drawConductorRing(g, state, reduced, at, clock);
   if (r.boss === "emberwing") drawSkyTerrace(g, state, reduced, at);
   if (r.boss === "prismatail") drawSunAtrium(g, state, reduced, at, clock);
-  if (dream) drawCloudDeck(g, state, reduced, clock);
+  // (The Spire's wave and elite floors in Snoozaku's zone: its court, no deck.)
+  if (dream && (!r.spire || r.spire.kind === "boss"))
+    drawCloudDeck(g, state, reduced, clock);
   if (tide) drawLagoon(g, state, reduced, clock);
   // (The Spire's wave and elite floors in Inkpurr's zone: its court, no yard.)
   if (gloom && (!r.spire || r.spire.kind === "boss"))
