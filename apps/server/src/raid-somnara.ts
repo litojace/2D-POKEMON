@@ -59,16 +59,18 @@ const distanceToSegment = (
 
 /** Somnara's secret sequence never enters RaidState, snapshots or public events. */
 export class SomnaraArena extends RaidArena {
-  private sequence: DreamRune[] = [];
-  private sharedUntil = 0;
-  private nextStepAt = 0;
-  private previousDreamer = "";
-  private occupied = new Map<string, DreamRune | undefined>();
+  protected sequence: DreamRune[] = [];
+  protected sharedUntil = 0;
+  protected nextStepAt = 0;
+  protected previousDreamer = "";
+  protected occupied = new Map<string, DreamRune | undefined>();
   private ringHits = new Map<number, Set<string>>();
-  private runeCallAt = new Map<string, number>();
+  protected runeCallAt = new Map<string, number>();
+  /** Who stepped the last wrong rune (undefined: the dream ran out). */
+  protected wrongStep?: string;
   private trailAt = new Map<string, number>();
   /** Exposed after a dream: when its one lullaby goes out. */
-  private thrashAt = Infinity;
+  protected thrashAt = Infinity;
   private thrashRings = new Set<number>();
   private thrashWarning = -1;
 
@@ -141,7 +143,7 @@ export class SomnaraArena extends RaidArena {
   protected override onChapter() {
     this.clearAttacks();
   }
-  protected override finishMessage(won: boolean) {
+  protected override finishMessage(won: boolean): string {
     return won
       ? "Snoozaku wakes! Its star-heart twinkles over the clouds."
       : "The dream drifts on. Listen for the runes and try again.";
@@ -153,11 +155,30 @@ export class SomnaraArena extends RaidArena {
       (this.raid.dreamMistakes ?? 0) === 0
     );
   }
-  private padAt(x: number, y: number) {
-    return S.pads.find((p) => Math.hypot(p.x - x, p.y - y) <= S.padRadius)
+  /** This raid's rune pads (the Ascendant's sit clear of the phone controls). */
+  protected pads(): readonly { rune: DreamRune; x: number; y: number }[] {
+    return S.pads;
+  }
+  protected padAt(x: number, y: number) {
+    return this.pads().find((p) => Math.hypot(p.x - x, p.y - y) <= S.padRadius)
       ?.rune;
   }
-  private bodies() {
+  /** Who may call this dream's runes (the Dreamer). */
+  protected callers(d = this.raid.dream): string[] {
+    return d ? [d.dreamerId] : [];
+  }
+  /** Runes in a new dream. */
+  protected dreamLength() {
+    const r = this.raid;
+    return somnaraSequenceLength(r.phase, r.peril, r.partySize, r.trait);
+  }
+  /** Seconds a new dream lasts. */
+  protected dreamSeconds(): number {
+    return this.raid.partySize === 1
+      ? S.sequence.soloSeconds
+      : S.sequence.seconds;
+  }
+  protected bodies() {
     return this.heroes()
       .filter((p) => p.hp > 0)
       .flatMap((p) => [
@@ -181,7 +202,7 @@ export class SomnaraArena extends RaidArena {
           : []),
       ]);
   }
-  private beginDream() {
+  protected beginDream() {
     const alive = this.heroes().filter((p) => p.hp > 0);
     if (!alive.length) return;
     const candidates = alive.filter((p) => p.id !== this.previousDreamer);
@@ -190,12 +211,7 @@ export class SomnaraArena extends RaidArena {
     crypto.getRandomValues(random);
     const dreamer = pool[random[0] % pool.length];
     const r = this.raid;
-    const length = somnaraSequenceLength(
-      r.phase,
-      r.peril,
-      r.partySize,
-      r.trait,
-    );
+    const length = this.dreamLength();
     this.sequence = [];
     for (let i = 0; i < length; i++) {
       const values = new Uint32Array(1);
@@ -213,9 +229,7 @@ export class SomnaraArena extends RaidArena {
       step: 0,
       length,
       startedAt: this.time,
-      until:
-        this.time +
-        (r.partySize === 1 ? S.sequence.soloSeconds : S.sequence.seconds),
+      until: this.time + this.dreamSeconds(),
       backwards: r.phase >= 3 && r.peril >= 3 && (random[1] & 1) === 1,
     };
     r.runeCalls = [];
@@ -246,7 +260,7 @@ export class SomnaraArena extends RaidArena {
     if (
       this.phase !== "playing" ||
       !r.dream ||
-      r.dream.dreamerId !== id ||
+      !this.callers().includes(id) ||
       !p ||
       this.has(p, "sleep") ||
       this.has(p, "shell") ||
@@ -267,7 +281,7 @@ export class SomnaraArena extends RaidArena {
     });
     return true;
   }
-  private nightmare() {
+  protected nightmare() {
     const r = this.raid,
       boss = this.boss();
     if (!boss) return;
@@ -285,7 +299,7 @@ export class SomnaraArena extends RaidArena {
     this.beginDream();
     r.message = `Nightmare! New dream — ${this.heroes().find((p) => p.id === r.dream?.dreamerId)?.name ?? "the Dreamer"} calls this time.`;
   }
-  private stepDream() {
+  protected stepDream() {
     const r = this.raid,
       d = r.dream;
     if (!d) return;
@@ -308,7 +322,7 @@ export class SomnaraArena extends RaidArena {
       if (!this.enterPad(p.owner, p, this.padAt(p.x, p.y)!)) break;
   }
   /** A raider (or their double) enters a pad; false once no more count now. */
-  private enterPad(
+  protected enterPad(
     owner: string,
     at: { x: number; y: number },
     rune: DreamRune,
@@ -317,7 +331,9 @@ export class SomnaraArena extends RaidArena {
       d = r.dream;
     if (!d || this.time < this.nextStepAt) return false;
     if (rune !== this.sequence[d.step]) {
+      this.wrongStep = owner;
       this.nightmare();
+      this.wrongStep = undefined;
       return false;
     }
     d.step++;
@@ -345,7 +361,7 @@ export class SomnaraArena extends RaidArena {
     }
     return true;
   }
-  private addDrowsy(p: Fighter, bubble = false) {
+  protected addDrowsy(p: Fighter, bubble = false) {
     if (p.hp <= 0 || (bubble && this.hasRite(p, "lucid"))) return;
     // Shadopus hidden in its Ink Cloud, and anyone in a Warm Spring (or
     // in Mossloth's Sloth Time, where drowsiness can't catch up), stay awake.
@@ -372,10 +388,10 @@ export class SomnaraArena extends RaidArena {
       this.raid.message = `${p.name} is asleep! Tap them awake with an attack.`;
     }
   }
-  private inked(p: Fighter) {
+  protected inked(p: Fighter) {
     return p.character === "shadopus" && this.has(p, "stealth");
   }
-  private wake(p: Fighter) {
+  protected wake(p: Fighter) {
     const d = this.raid.drowsy?.[p.id];
     if (!d || d.sleepUntil <= this.time) return;
     d.sleepUntil = 0;
@@ -441,8 +457,9 @@ export class SomnaraArena extends RaidArena {
   /** The Dreamer standing on a pad is never targeted while they work. */
   protected override chooseTarget(kind: RaidAttack, alive: Fighter[]) {
     const d = this.raid.dream;
+    const callers = this.callers(d);
     const free = alive.filter(
-      (p) => !(d && p.id === d.dreamerId && this.padAt(p.x, p.y)),
+      (p) => !(callers.includes(p.id) && this.padAt(p.x, p.y)),
     );
     return super.chooseTarget(kind, free.length ? free : alive);
   }
@@ -569,7 +586,7 @@ export class SomnaraArena extends RaidArena {
           y = cy + Math.sin(angle) * 220;
         // Mid-dream, stars fall on the paths between pads, never on one.
         if (r.dream && this.smart())
-          for (const pad of S.pads) {
+          for (const pad of this.pads()) {
             const d = Math.hypot(x - pad.x, y - pad.y),
               keep = S.padRadius + S.stars.radius + 8;
             if (d < keep) {
@@ -648,7 +665,7 @@ export class SomnaraArena extends RaidArena {
             : Math.hypot(p.x - w.x, p.y - w.y) < w.radius + RULES.radius;
         // Mid-dream, the Dreamer on a pad is spared.
         const working =
-          r.dream && p.id === r.dream.dreamerId && this.padAt(p.x, p.y);
+          r.dream && this.callers().includes(p.id) && this.padAt(p.x, p.y);
         if (hit && !(this.smart() && working))
           this.damage(
             p,
@@ -834,7 +851,7 @@ export class SomnaraArena extends RaidArena {
       // Mid-dream they chase whoever is closest to the next right pad.
       const next =
         this.smart() && r.dream
-          ? S.pads.find((q) => q.rune === this.sequence[r.dream!.step])
+          ? this.pads().find((q) => q.rune === this.sequence[r.dream!.step])
           : undefined;
       const from = next ?? b;
       const target = this.heroes()
@@ -876,13 +893,40 @@ export class SomnaraArena extends RaidArena {
       return true;
     });
     this.projectiles = this.projectiles.filter((pr) => !spent.has(pr.id));
-    const d = r.dream;
+    this.botCallRunes();
+  }
+  /** A stand-in Dreamer calls the rune of the step the team is on. */
+  protected botCallRunes() {
+    const d = this.raid.dream;
     if (
       d &&
       this.bots.has(d.dreamerId) &&
       this.time >= (this.runeCallAt.get(d.dreamerId) ?? 0)
     )
       this.callRune(d.dreamerId, this.sequence[d.step]);
+  }
+  /**
+   * The rune a stand-in knows for the step the team is on: from its own
+   * view of the dream, or a rune a caller actually called. Never the
+   * server's secret.
+   */
+  protected botRune(bot: Fighter): DreamRune | undefined {
+    const r = this.raid,
+      d = r.dream;
+    if (!d) return undefined;
+    const view = this.dreamFor(bot.id);
+    const callers = this.callers(d);
+    const called = [...(r.runeCalls ?? [])]
+      .reverse()
+      .find(
+        (q) =>
+          callers.includes(q.playerId) &&
+          q.step === d.step &&
+          q.until > this.time,
+      );
+    return view?.full
+      ? (view.backwards ? [...view.runes].reverse() : view.runes)[d.step]
+      : called?.rune;
   }
   override cast(p: Fighter, a: Ability, ex = false) {
     super.cast(p, a, ex);
@@ -902,7 +946,7 @@ export class SomnaraArena extends RaidArena {
     }
     // Astrabun's Moon Hop: landing on (or beside) a rune pad steps on it.
     if (a.id === "moon-hop" && this.raid.dream) {
-      const pad = S.pads.find(
+      const pad = this.pads().find(
         (q) => Math.hypot(q.x - p.x, q.y - p.y) <= S.padRadius + a.radius,
       );
       if (pad && this.occupied.get(p.id) !== pad.rune) {
@@ -933,28 +977,17 @@ export class SomnaraArena extends RaidArena {
       input.dash = false;
       // Stand-ins only solve information they could receive as a player, or a
       // rune the Dreamer actually called. Never peek at the server's secret.
-      const view = this.dreamFor(bot.id);
-      const called = [...(r.runeCalls ?? [])]
-        .reverse()
-        .find(
-          (q) =>
-            q.playerId === d.dreamerId &&
-            q.step === d.step &&
-            q.until > this.time,
-        );
-      const rune = view?.full
-        ? (view.backwards ? [...view.runes].reverse() : view.runes)[d.step]
-        : called?.rune;
+      const rune = this.botRune(bot);
       const runner = this.bots.has(d.dreamerId)
         ? d.dreamerId
         : this.heroes().find((p) => p.hp > 0 && this.bots.has(p.id))?.id;
       if (rune && runner === bot.id) {
-        const pad = S.pads.find((p) => p.rune === rune)!;
+        const pad = this.pads().find((p) => p.rune === rune)!;
         if (this.padAt(bot.x, bot.y) === rune)
           return go(pad.x + 95, pad.y, false);
         // A direct line from the left spawn to the Star pad crosses Circle.
         // Route through the centre instead of stepping a wrong rune en route.
-        const blocked = S.pads.some(
+        const blocked = this.pads().some(
           (q) =>
             q.rune !== rune &&
             Math.hypot(q.x - bot.x, q.y - bot.y) > S.padRadius + 15 &&

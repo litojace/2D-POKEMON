@@ -895,6 +895,23 @@ const runeCoin = (rune: DreamRune, s: number) => (ctx: Ctx) => {
   glyphStyle(ctx, g);
   glyph(ctx, rune, s, 3);
 };
+/**
+ * A rune this raider can't see (Ascendant Snoozaku: the other Dreamer's
+ * step, or a dream that has faded): a hollow coin with a question mark.
+ */
+function hiddenCoin(ctx: Ctx) {
+  ctx.lineWidth = 2.4;
+  ctx.strokeStyle = "rgba(196,180,240,0.85)";
+  ctx.fillStyle = "rgba(20,12,44,0.75)";
+  disc(ctx, 0, 0, 11);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = "#d9ccff";
+  ctx.font = "bold 15px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("?", 0, 1);
+}
 /** The backwards arrow: gold, a head and a stretchable shaft. */
 function arrowHead(ctx: Ctx) {
   ctx.fillStyle = "rgba(20,10,40,0.6)";
@@ -1041,6 +1058,7 @@ export function cloudDeckPieces(quiet: number): MapPiece[] {
   add("plaqueM", 4, 52, plaqueSlice("M"));
   add("plaqueR", 16, 52, plaqueSlice("R"));
   add("callTile", 54, 56, callTile);
+  add("coinT-hidden", 30, 30, hiddenCoin);
   add("arrowHead", 16, 16, arrowHead);
   add("arrowShaft", 4, 8, arrowShaft);
   add("gemGlow", 20, 20, spark("#e9dcff", 9));

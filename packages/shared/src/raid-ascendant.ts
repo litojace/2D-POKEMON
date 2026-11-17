@@ -5,7 +5,7 @@
  * combos, shorter openings and a boss that reads the fight. A raid becomes
  * one with `RaidState.variant`; the difficulty row is `RAID_ASCENDANT_TIER`.
  */
-import type { RaidAttack, RaidBossId, RaidTier } from "./raid.js";
+import type { DreamRune, RaidAttack, RaidBossId, RaidTier } from "./raid.js";
 
 /** An evolved form of a raid boss (none: the ordinary raid). */
 export type RaidVariant = "ascendant";
@@ -156,6 +156,16 @@ export const RAID_ASCENDANT_ATTACKS: Partial<Record<string, RaidAttack[]>> = {
     "pulse",
     "nightfall",
     "pounce",
+  ],
+  somnara: [
+    "lullaby",
+    "tail-splash",
+    "dream-bubbles",
+    "falling-stars",
+    "whale-song",
+    "dream-sequence",
+    "twin-dream",
+    "dream-tide",
   ],
 };
 
@@ -483,5 +493,175 @@ export const ASCENDANT_INKPURR_CHAPTERS = [
     objective: "Survive the combinations. Catch its shadow in the light.",
     detail:
       "Its rhythm quickens. A lunge may sink into the dark halfway and become a pounce: react to what is drawn now. A real one that lands in lantern light casts a shadow: hit it before it fades. Standing still to attack draws a pounce.",
+  },
+] as const;
+
+/**
+ * Ascendant Snoozaku's own numbers (damage before the tier multiplier), the
+ * Spire's fortieth floor (Somnara's id). Its ordinary attacks keep
+ * SOMNARA's numbers.
+ */
+export const ASCENDANT_SNOOZAKU = {
+  name: "Ascendant Snoozaku",
+  /** Health added per extra raider (the raid's own: 1000). */
+  perExtraPlayer: 1000,
+  /** Seconds a teammate kneels to revive (the Ascendant tier: 4.5). */
+  reviveSeconds: 5.5,
+  /**
+   * Its rune pads: the raid's square pulled in at the bottom right, so no pad
+   * (nor a Dream Tide's awake ring round it) sits under a phone's touch
+   * controls (`phoneControls`).
+   */
+  pads: [
+    { rune: "circle", x: 530, y: 250 },
+    { rune: "star", x: 1070, y: 250 },
+    { rune: "moon", x: 960, y: 650 },
+    { rune: "wave", x: 640, y: 650 },
+  ] as readonly { rune: DreamRune; x: number; y: number }[],
+  /**
+   * The court under a phone's touch controls (world px: x0, y0, x1, y1),
+   * each control's box at 667x375 and 844x390 together, measured in the
+   * visual harness: the joystick, dash, jump, the three skills, the
+   * ultimate and the attack button (phones have no target row). No pad, no
+   * awake ring and no safe spot the boss leaves sits within `controlMargin`
+   * of one.
+   */
+  phoneControls: [
+    [-260, 560, 183, 835],
+    [1528, 455, 1868, 600],
+    [1534, 630, 1874, 774],
+    [1124, 686, 1486, 848],
+    [1078, 497, 1440, 660],
+    [1188, 337, 1550, 501],
+    [1381, 305, 1750, 479],
+    [1269, 497, 1714, 745],
+  ] as readonly (readonly [number, number, number, number])[],
+  controlMargin: 12,
+  /** Each chapter's dreams are this many runes longer than the raid's. */
+  longerDreams: [0, 0, 0],
+  /**
+   * Twin Dream: two Dreamers share one dream, one rune longer; each sees only
+   * their own steps (the first Dreamer the 1st, 3rd…, the second the 2nd,
+   * 4th…) and they call in turn. Alone, the dream shows for `glimpse` s,
+   * then fades: what is left is remembered.
+   */
+  twin: { seconds: 11, extra: 1, glimpse: 3.2, soloSeconds: 12 },
+  /**
+   * Dream Tide: sleep floods the deck; only one pad stays awake (`radius`
+   * round its centre). One raider (the Seer) sees which and calls it. It
+   * lands when the slowest raider, reacting `reaction` s to the vision and
+   * again to the call (`call` s to make it), can walk well into the ring;
+   * never sooner than `delay`. Pads farther than `maxWalk` from someone are
+   * never the awake one. The deck hurts and adds a Drowsy stack.
+   */
+  tide: {
+    delay: 3,
+    radius: 105,
+    call: 0.6,
+    damage: 32,
+    maxWalk: 620,
+  },
+  /** A Trunk Slam whose wind-up turns, part-way, into Falling Stars at its target. */
+  feint: {
+    /** Chance a trunk slam is a feint, by chapter. */
+    chance: [0.2, 0.3, 0.4],
+    /** Share of the slam's telegraph shown before it turns. */
+    turnAt: 0.5,
+  },
+  /** Reading habits (as Ascendant Cragmuff reads them). */
+  habit: { samples: 3, consistency: 0.55, offset: 0.55 },
+  /** Standing still to attack: seconds still, and seconds since the last hit. */
+  anchor: { still: 1.2, hit: 1.0, speed: 40 },
+  /**
+   * Pressure by chapter: seconds between attacks × this (the tier's cadence
+   * and the party's are applied first).
+   */
+  cadence: [0.9, 0.82, 0.72],
+  /**
+   * Alone: seconds between attacks × this as well (the raid's own solo
+   * rhythm applies first), and a dream lasts this long (the raid: 13 s).
+   */
+  solo: { cadence: 0.85, seconds: 11 },
+  /** Mid-dream it slows down only this much (the raid: SOMNARA.dreamCadence). */
+  dreamCadence: 1.15,
+  /**
+   * First chapter of each combo: a trunk slam that misses calls stars down
+   * on its raider; a Nightmare drops stars on whoever stepped wrong (or the
+   * Dreamer, on a timeout); a Dream Tide that lands rings out lullabies
+   * from the awake pad.
+   */
+  combosFrom: { tail: 1, nightmare: 2, tide: 2 },
+  /** A combo's stars: how many, and their circle (SOMNARA.stars.radius). */
+  comboStars: 3,
+  /**
+   * Overlap: from chapter `from`, with `raiders` or more alive, Falling
+   * Stars may land while a lullaby's rings or dream bubbles are out (the raid's
+   * rules space impacts and keep a safe spot, off the wrong pads mid-dream
+   * and clear of the phone's controls).
+   */
+  overlap: { from: 1, raiders: 2 },
+  /** Exposure and stagger windows × (1 + this per extra raider). */
+  partyWindows: 0.1,
+  /** Its attacks hit harder by this share per extra raider (instead of more health). */
+  partyDamage: 0,
+  /** Its attacks hit this much harder than the tier's, by party size (1-4). */
+  damage: [1.4, 1.15, 1.12, 1.15],
+} as const;
+
+/** Ascendant Snoozaku's attack order for a chapter. */
+export function ascendantSnoozakuPattern(phase: number): RaidAttack[] {
+  if (phase === 1)
+    return [
+      "dream-sequence",
+      "tail-splash",
+      "lullaby",
+      "dream-tide",
+      "falling-stars",
+      "twin-dream",
+      "dream-bubbles",
+    ];
+  if (phase === 2)
+    return [
+      "twin-dream",
+      "falling-stars",
+      "lullaby",
+      "dream-tide",
+      "tail-splash",
+      "whale-song",
+      "dream-bubbles",
+      "dream-sequence",
+    ];
+  return [
+    "twin-dream",
+    "dream-tide",
+    "falling-stars",
+    "lullaby",
+    "whale-song",
+    "tail-splash",
+    "dream-sequence",
+    "dream-bubbles",
+  ];
+}
+
+/** Ascendant Snoozaku's three chapters. */
+export const ASCENDANT_SNOOZAKU_CHAPTERS = [
+  {
+    name: "Restless Slumber",
+    objective:
+      "Listen for the call when the Dream Tide rises. Share the Twin Dream.",
+    detail:
+      "A Dream Tide floods the deck: only one pad stays awake, and only the marked raider sees which. They call it; everyone runs there. In a Twin Dream two Dreamers each see half the runes: take turns calling. A trunk slam that misses calls stars down on you.",
+  },
+  {
+    name: "Lucid Depths",
+    objective: "Call fast and clearly. Watch for a slam that turns.",
+    detail:
+      "A trunk slam may turn into Falling Stars halfway: the new warning is shown in full, so react to what is drawn now. A Nightmare drops stars on whoever stepped wrong, and a landed Dream Tide rings out lullabies from the awake pad. It hunts whoever kneels to revive.",
+  },
+  {
+    name: "Ascendant Dream",
+    objective: "Survive the combinations. Keep the calls coming.",
+    detail:
+      "Its rhythm quickens. Stars fall where you usually dodge, and standing still to attack draws them onto you. Keep moving, keep calling, and strike the star-heart when it wakes.",
   },
 ] as const;

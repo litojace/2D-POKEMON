@@ -971,10 +971,7 @@ export class SpireDreamArena extends SpireRules(
     super(code, "somnara");
   }
   protected override resetAscendantReads() {
-    // TODO(lead): the boss branch's layer resets its reads with
-    // resetSnoozeReads(); once it lands, call it directly (as zones 2 and 3
-    // do). Until then the stub has none.
-    (this as unknown as { resetSnoozeReads?: () => void }).resetSnoozeReads?.();
+    this.resetSnoozeReads();
   }
   protected override clearBossCourt() {
     super.clearBossCourt();
