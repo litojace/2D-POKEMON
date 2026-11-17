@@ -1165,7 +1165,11 @@ export const EPIC_SIGNATURES: Record<string, Signature> = Object.fromEntries(
 );
 
 const ULT_MS = 900;
-const ULTS = new WeakMap<object, number>();
+/** The Legendary hero landing and victory pose, swelling a little longer. */
+const MOMENT_MS = 1200;
+const ULTS = new WeakMap<object, { at: number; ms: number }>();
+/** Nova Vanguard is the Legendary set: it also lands and wins in style. */
+const isLegendary = (skin: string) => skin.endsWith("-nova-vanguard");
 
 /** Draw a signature for one frame. */
 export function drawEpicSignature(ctx: FxContext, skin: string) {
@@ -1173,8 +1177,27 @@ export function drawEpicSignature(ctx: FxContext, skin: string) {
   if (!sig || ctx.defeated) return;
   const { sc } = ctx;
   const ground = ctx.y + WORLD_ART.fighterFeet * sc;
+  if (isLegendary(skin) && (ctx.greeting || ctx.celebrating)) {
+    ULTS.set(ctx.g, { at: ctx.now, ms: MOMENT_MS });
+    if (ctx.greeting) {
+      // Hero landing: a column of the suit's light comes down on the spot,
+      // a ring rolls out over the ground, and motes of the motif scatter.
+      ctx.emit({ x: ctx.x, y: ground, vx: 0, vy: 0, life: 1, size: 11 * sc, color: sig.c, shape: "beam", glow: true, behind: true });
+      ctx.emit({ x: ctx.x, y: ground, vx: 0, vy: 0, life: 0.7, size: 12 * sc, color: sig.h, shape: "shock" });
+      for (let i = 0; i < (ctx.ambient ? 10 : 5); i++) {
+        const a = Math.PI + (i / 9) * Math.PI;
+        ctx.emit({ x: ctx.x, y: ground - 2 * sc, vx: Math.cos(a) * 120, vy: Math.sin(a) * 50, life: 0.6, size: 2.2 * sc, color: i % 2 ? sig.c : sig.h, shape: sig.burst, spin: (Math.random() - 0.5) * 8, behind: true });
+      }
+    } else {
+      // Victory: a fan of stars rises behind the hero, off its face.
+      for (let i = 0; i < (ctx.ambient ? 12 : 6); i++) {
+        const a = -Math.PI * (0.15 + (0.7 * i) / 11);
+        ctx.emit({ x: ctx.x, y: ctx.headY + 6 * sc, vx: Math.cos(a) * 90, vy: Math.sin(a) * 110, life: 1, size: 2.6 * sc, color: i % 2 ? sig.c : 0xfff3c4, shape: "star", glow: true, behind: true });
+      }
+    }
+  }
   if (ctx.ultimate) {
-    ULTS.set(ctx.g, ctx.now);
+    ULTS.set(ctx.g, { at: ctx.now, ms: ULT_MS });
     // One small burst in the motif's own shape, plus a ring on the ground.
     const n = ctx.ambient ? 12 : 6;
     for (let i = 0; i < n; i++) {
@@ -1194,8 +1217,9 @@ export function drawEpicSignature(ctx: FxContext, skin: string) {
     }
     ctx.emit({ x: ctx.x, y: ground, vx: 0, vy: 0, life: 0.6, size: 10 * sc, color: sig.c, shape: "shock" });
   }
-  const since = ctx.now - (ULTS.get(ctx.g) ?? -Infinity);
-  const boost = since >= 0 && since < ULT_MS ? 1 + 0.7 * Math.sin((since / ULT_MS) * Math.PI) : 1;
+  const swell = ULTS.get(ctx.g);
+  const since = swell ? ctx.now - swell.at : Infinity;
+  const boost = swell && since >= 0 && since < swell.ms ? 1 + 0.7 * Math.sin((since / swell.ms) * Math.PI) : 1;
   // The rig gives the feet line and the head top; a chibi champion's head is
   // a little over half its height, the chest just under it.
   const tall = Math.max(10, ground - ctx.headY);

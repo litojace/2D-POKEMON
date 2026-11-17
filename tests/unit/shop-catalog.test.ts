@@ -8,7 +8,9 @@ import {
   LOOK_ITEMS,
   MISSIONS,
   SHOP_BUNDLES,
+  SKIN_BUNDLES,
   SKIN_PRICES,
+  shopPrice,
   awakeningStage,
 } from "../../packages/shared/src/shop";
 
@@ -34,7 +36,12 @@ const migration =
     "supabase/migrations/20261117170001_distinct_epic_collections.sql",
     "utf8",
   ) +
-  readFileSync("supabase/migrations/20261117170002_nova_vanguard.sql", "utf8");
+  readFileSync("supabase/migrations/20261117170002_nova_vanguard.sql", "utf8") +
+  // Nova Vanguard becomes Legendary, and the full-roster skin sets.
+  readFileSync(
+    "supabase/migrations/20261118100000_legendary_skins_and_skin_sets.sql",
+    "utf8",
+  );
 /** Missions are re-seeded (with the solo flag) by 014. */
 const missionMigration = readFileSync(
   "supabase/migrations/014_missions.sql",
@@ -162,7 +169,7 @@ describe("shop catalog", () => {
       expect(missionMigration, m.metric).toContain(`'${m.metric}'`);
   });
 
-  it("has 14 skins for every champion: 3 Common, 5 Rare, 5 Epic, 1 Mythical", () => {
+  it("has 14 skins for every champion: 3 Common, 5 Rare, 4 Epic, 1 Legendary, 1 Mythical", () => {
     for (const id of Object.keys(CHARACTERS)) {
       const mine = CHAMPION_SKINS.filter((s) => s.champion === id);
       const count = (r: string) => mine.filter((s) => s.rarity === r).length;
@@ -172,10 +179,11 @@ describe("shop catalog", () => {
           count("common"),
           count("rare"),
           count("epic"),
+          count("legendary"),
           count("mythical"),
         ],
         id,
-      ).toEqual([14, 3, 5, 5, 1]);
+      ).toEqual([14, 3, 5, 4, 1, 1]);
     }
     expect(CHAMPION_SKINS).toHaveLength(14 * Object.keys(CHARACTERS).length);
     // Each champion has one Cyber Mecha Epic.
@@ -192,9 +200,12 @@ describe("shop catalog", () => {
   });
 
   it("uses unique ids across skins, collection pieces and bundles", () => {
-    const ids = [...CHAMPION_SKINS, ...LOOK_ITEMS, ...SHOP_BUNDLES].map(
-      (i) => i.id,
-    );
+    const ids = [
+      ...CHAMPION_SKINS,
+      ...LOOK_ITEMS,
+      ...SHOP_BUNDLES,
+      ...SKIN_BUNDLES,
+    ].map((i) => i.id);
     expect(new Set(ids).size).toBe(ids.length);
   });
 
@@ -211,7 +222,49 @@ describe("shop catalog", () => {
   it("prices rarities so harder skins take longer", () => {
     expect(SKIN_PRICES.common).toBeLessThan(SKIN_PRICES.rare);
     expect(SKIN_PRICES.rare).toBeLessThan(SKIN_PRICES.epic);
-    expect(SKIN_PRICES.epic).toBeLessThan(SKIN_PRICES.mythical);
+    expect(SKIN_PRICES.epic).toBeLessThan(SKIN_PRICES.legendary);
+    expect(SKIN_PRICES.legendary).toBeLessThan(SKIN_PRICES.mythical);
+  });
+
+  it("sells full-roster skin sets: one design, one rarity, every champion, never a Mythical", () => {
+    const champions = Object.keys(CHARACTERS).sort();
+    expect(SKIN_BUNDLES).toHaveLength(7);
+    for (const b of SKIN_BUNDLES) {
+      const skins = b.items.map((id) =>
+        CHAMPION_SKINS.find((s) => s.id === id)!,
+      );
+      expect(skins.every(Boolean), b.id).toBe(true);
+      expect(skins.map((s) => s.champion).sort(), b.id).toEqual(champions);
+      expect(new Set(skins.map((s) => s.collection)), b.id).toEqual(
+        new Set([b.collection]),
+      );
+      expect(new Set(skins.map((s) => s.rarity)).size, b.id).toBe(1);
+      // A set would skip each champion's Mythic Trial.
+      expect(
+        skins.some((s) => s.rarity === "mythical"),
+        b.id,
+      ).toBe(false);
+    }
+    // Nova Vanguard is the Legendary set.
+    expect(
+      SKIN_BUNDLES.find((b) => b.collection === "nova-vanguard")!.items.every(
+        (id) => CHAMPION_SKINS.find((s) => s.id === id)!.rarity === "legendary",
+      ),
+    ).toBe(true);
+  });
+
+  it("prices a skin set at 80% of the skins you don't own, as the database does", () => {
+    const wayfarer = SKIN_BUNDLES.find((b) => b.id === "wayfarer-skins")!;
+    const nova = SKIN_BUNDLES.find((b) => b.id === "nova-vanguard-skins")!;
+    expect(shopPrice(wayfarer.id, [], null)).toBe(18 * 1500 * 0.8);
+    expect(shopPrice(nova.id, [], null)).toBe(18 * 5500 * 0.8);
+    // Pieces you own come off; a complete set has no price.
+    expect(shopPrice(wayfarer.id, wayfarer.items.slice(0, 5), null)).toBe(
+      13 * 1500 * 0.8,
+    );
+    expect(shopPrice(wayfarer.id, wayfarer.items, null)).toBeNull();
+    // Today's deal never stacks on a set.
+    expect(shopPrice(wayfarer.id, [], wayfarer.id)).toBe(18 * 1500 * 0.8);
   });
 
   it("offers missions in every tier, with valid champion filters", () => {

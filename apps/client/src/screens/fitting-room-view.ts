@@ -23,6 +23,11 @@ import {
   MYTHIC_TRIAL_WINS,
   RARITY_NAMES,
   SHOP_BUNDLES,
+  SKIN_BUNDLES,
+  BUNDLE_BY_ID,
+  ALL_BUNDLES,
+  isSkinBundle,
+  itemListPrice,
   shopPrice,
   type Collection,
   type Economy,
@@ -219,7 +224,7 @@ export function fitItem(id: string): FitItem | undefined {
   }
 }
 const nameOf = (id: string) =>
-  fitItem(id)?.name ?? SHOP_BUNDLES.find((b) => b.id === id)?.name ?? id;
+  fitItem(id)?.name ?? BUNDLE_BY_ID[id]?.name ?? id;
 
 /**
  * What you own for a slot: bought skins and pieces, and boss rewards you
@@ -403,11 +408,11 @@ export function trialLocked(id: string, e: Economy) {
 export function purchase(id: string, e: Economy) {
   const cost = shopPrice(id, e.owned, e.picks.deal);
   if (cost === null) return null;
-  const set = SHOP_BUNDLES.find((b) => b.id === id);
+  const set = BUNDLE_BY_ID[id];
   const full = set
     ? set.items
         .filter((i) => !e.owned.includes(i))
-        .reduce((s, i) => s + LOOK_ITEM_BY_ID[i].price, 0)
+        .reduce((s, i) => s + itemListPrice(i), 0)
     : (shopPrice(id, e.owned, null) ?? cost);
   const unlimited = !!e.unlimitedCoins;
   return {
@@ -557,9 +562,7 @@ function stageMarkup(view: FitView, d: FitData) {
   // Bottom: what is on the stage, Hold to compare, awakening stages.
   const focus = view.selected ?? outfit.skin?.skin ?? null;
   const info = focus ? fitItem(focus) : undefined;
-  const set = view.selected
-    ? SHOP_BUNDLES.find((b) => b.id === view.selected)
-    : undefined;
+  const set = view.selected ? BUNDLE_BY_ID[view.selected] : undefined;
   const state = !focus
     ? "Wearing"
     : e && owns(focus, d)
@@ -598,7 +601,7 @@ function stageMarkup(view: FitView, d: FitData) {
     ? set.name
     : (info?.name ?? (outfit.skin ? nameOf(outfit.skin.skin) : name));
   const sub = set
-    ? `${set.items.length} pieces for every fighter`
+    ? setNote(set.id)
     : (info?.source ?? (outfit.skin ? "" : `${name} · original look`));
   const rarity =
     focus && !set ? rarityTag(rarityOf(focus, starsOf(focus, d))) : "";
@@ -722,7 +725,7 @@ function todayBody(view: FitView, d: FitData) {
     featured = `<button type="button" class="fit-deal" data-ui-item="${esc(deal)}" data-slot="${esc(item.slot)}" data-rarity="${rarityOf(deal)}" aria-pressed="${view.selected === deal}"><span class="fit-deal-art">${pictureOf(deal, view, d, `fit-deal-${deal}`)}</span><span class="fit-deal-text"><span class="fit-row">${rarityTag(rarityOf(deal))}${tag("20% off today", "sale")}<span class="fit-deal-timer">${timer(`Ends in ${countdown}`)}</span></span><b class="fit-deal-name">${esc(item.name)}</b><small class="ui-note">${esc(`${skin ? `${CHARACTERS[skin.champion].name} skin` : item.source} · ${item.description}`)}</small><span class="fit-deal-price">${cost}</span></span></button>`;
   }
   const picks = e.picks.items.filter((id) => id !== deal);
-  const bundles = SHOP_BUNDLES.filter(
+  const bundles = ALL_BUNDLES.filter(
     (b) => shopPrice(b.id, e.owned, null) !== null,
   )
     .map((b) => ({
@@ -739,12 +742,40 @@ function todayBody(view: FitView, d: FitData) {
     "fit-picks",
   )}${bundles.length ? `${section("Bundles", '<small class="ui-note">20% off the pieces you don\'t own</small>')}${bundles.map(({ b }) => bundleRow(b.id, view, d)).join("")}` : ""}${earn}`;
 }
+/** What a set holds, in a few words. */
+export function setNote(id: string) {
+  const set = BUNDLE_BY_ID[id];
+  return isSkinBundle(id)
+    ? `${set.items.length} skins, one for every fighter`
+    : `${set.items.length} pieces for every fighter`;
+}
+/**
+ * The pieces a set's row and confirmation show: a Look set's five pieces;
+ * a skin set's skin for the fighter you're looking at (the other seventeen
+ * are the same design), so a row never draws eighteen fighters.
+ */
+export function setPreview(id: string, champion: CharacterId) {
+  const set = BUNDLE_BY_ID[id];
+  if (!isSkinBundle(id)) return set.items;
+  const mine = set.items.find(
+    (i) => CHAMPION_SKIN_BY_ID[i]?.champion === champion,
+  );
+  return mine ? [mine] : set.items.slice(0, 1);
+}
 function bundleRow(id: string, view: FitView, d: FitData) {
   const e = d.economy!;
-  const set = SHOP_BUNDLES.find((b) => b.id === id)!;
+  const set = BUNDLE_BY_ID[id];
   const have = set.items.filter((i) => e.owned.includes(i)).length;
   const p = purchase(id, e);
-  return `<button type="button" class="fit-bundle" data-ui-item="${esc(id)}" data-rarity="epic" aria-pressed="${view.selected === id}"><span class="fit-bundle-art">${set.items.map((i) => `<span>${pictureOf(i, view, d, `fit-set-${i}`)}</span>`).join("")}</span><span class="fit-bundle-text"><b class="ui-h">${esc(set.name)}</b><small class="ui-note">${set.items.length} pieces for every fighter · ${have} owned</small></span><span class="fit-bundle-price">${p ? price(p.price, p.was) : `<span class="ui-tag is-ok">${menuIcon("check")}Complete</span>`}</span></button>`;
+  const rarity = isSkinBundle(id) ? rarityOf(set.items[0]) : "epic";
+  return `<button type="button" class="fit-bundle" data-ui-item="${esc(id)}" data-rarity="${rarity}" aria-pressed="${view.selected === id}"><span class="fit-bundle-art">${setPreview(
+    id,
+    view.champion,
+  )
+    .map((i) => `<span>${pictureOf(i, view, d, `fit-set-${i}`)}</span>`)
+    .join(
+      "",
+    )}</span><span class="fit-bundle-text"><b class="ui-h">${esc(set.name)}</b><small class="ui-note">${esc(setNote(id))} · ${have} owned</small></span><span class="fit-bundle-price">${p ? price(p.price, p.was) : `<span class="ui-tag is-ok">${menuIcon("check")}Complete</span>`}</span></button>`;
 }
 function filters(view: FitView, count: number, rarity: boolean, noun: string) {
   const own = segmented(
@@ -809,7 +840,24 @@ function skinsBody(view: FitView, d: FitData) {
     skins.length
       ? grid(skins.map((s) => shopTile(s.id, view, d)).join(""))
       : noMatch()
-  }`;
+  }${skinSets(view, d)}`;
+}
+/**
+ * Full-roster skin sets, under the fighter's skins: one row per collection
+ * that dresses every fighter alike, shown with this fighter's skin from it.
+ * Complete sets drop to the end.
+ */
+function skinSets(view: FitView, d: FitData) {
+  const e = d.economy!;
+  const rows = [...SKIN_BUNDLES]
+    .sort(
+      (a, b) =>
+        Number(shopPrice(a.id, e.owned, null) === null) -
+        Number(shopPrice(b.id, e.owned, null) === null),
+    )
+    .map((b) => bundleRow(b.id, view, d))
+    .join("");
+  return `${section("Full-roster sets", '<small class="ui-note">Every fighter in one design · 20% off the skins you don\'t own</small>')}<div class="fit-skin-sets">${rows}</div>`;
 }
 /** A skin collection's reward frame: how close you are, with its picture. */
 function collectionReward(
@@ -1049,14 +1097,14 @@ function shopFoot(view: FitView, d: FitData) {
       '<footer class="ui-panel-foot"',
       '<footer class="ui-panel-foot" data-idle',
     );
-  const set = SHOP_BUNDLES.find((b) => b.id === id);
+  const set = BUNDLE_BY_ID[id];
   const p = purchase(id, e);
   const name = nameOf(id);
   if (set) {
     const info = footText(
       name,
       p
-        ? `${set.items.length} pieces · 20% off the ones you don't own`
+        ? `${setNote(id)} · 20% off the ones you don't own`
         : "You own every piece",
     );
     return actionBar(
