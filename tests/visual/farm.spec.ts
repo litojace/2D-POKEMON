@@ -1027,6 +1027,9 @@ for (const viewport of [
         (window as any).__fakeFarm.level = 17;
         return (window as any).__farm.refresh();
       });
+      // Levelling up shows its card first, as for a player.
+      await page.locator("#fm-modal [data-lvok]").click();
+      await expect(page.locator("#fm-modal")).toBeHidden();
       await expect(sheet.locator("[data-buyhen]")).toContainText("500");
       await sheet.locator("[data-buyhen]").click();
       await expect(sheet.locator(".sh-head h4")).toHaveText("Hens 4/9");
@@ -1125,6 +1128,9 @@ for (const viewport of [
         (window as any).__fakeFarm.level = 40;
         return (window as any).__farm.refresh();
       });
+      // Levelling up shows its card first, as for a player.
+      await page.locator("#fm-modal [data-lvok]").click();
+      await expect(page.locator("#fm-modal")).toBeHidden();
       await expect(item.locator("[data-buycow]")).toContainText("6,000");
       await snap(
         page,
