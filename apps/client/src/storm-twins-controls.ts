@@ -1,12 +1,17 @@
 import { healthTrail } from "./raid-health-trail";
 import type { Snapshot } from "@arena/shared";
+import { mirrorTwinFor } from "./ascendant-storm-twins-art";
 let targetId: string | undefined;
-export function stormTarget(state: Snapshot) {
+/**
+ * The twin to aim at: the one picked with the buttons; during an Ascendant
+ * Mirror Charge (no button picked), the twin `myId`'s sign discharges.
+ */
+export function stormTarget(state: Snapshot, myId?: string) {
   if (state.raid?.boss !== "storm-twins" || state.phase !== "playing") {
     targetId = undefined;
     return;
   }
-  if (!targetId) return;
+  if (!targetId) return myId ? mirrorTwinFor(state, myId) : undefined;
   let p = state.players.find(
     (p) => p.id === targetId && p.raidBoss && p.hp > 0,
   );
@@ -43,13 +48,19 @@ export function renderStormTargets(state: Snapshot, frame: HTMLElement) {
         b.setAttribute("aria-pressed", String(targetId === id));
       };
   }
+  const mirror = state.raid!.stormMirror;
   for (const b of Array.from(
     panel.querySelectorAll<HTMLButtonElement>("button"),
   )) {
-    const id = state.raid!.twins?.[Number(b.dataset.twinIndex)]?.id;
+    const index = Number(b.dataset.twinIndex),
+      id = state.raid!.twins?.[index]?.id;
     b.disabled = !state.players.some((p) => p.id === id && p.hp > 0);
     b.setAttribute("aria-pressed", String(targetId === id));
-    b.title = `Aim at ${Number(b.dataset.twinIndex) ? "Crackle" : "Fizz"}. Tap again for automatic targeting.`;
+    b.title = `Aim at ${index ? "Crackle" : "Fizz"}. Tap again for automatic targeting.`;
+    // Mirror Charge: each button carries its twin's charge (written only when it changes).
+    const charge = mirror?.twins.find((t) => t.id === id);
+    const label = `Target ${index ? "Crackle" : "Fizz"}${charge && charge.hits < charge.need ? (charge.sign > 0 ? " +" : " \u2212") : ""}`;
+    if (b.textContent !== label) b.textContent = label;
   }
 }
 /** Separate bars show each twin's real health and stagger; the shared thin bar retains phase marks. */

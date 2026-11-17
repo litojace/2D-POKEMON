@@ -6002,7 +6002,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       else if (usingPad) aimAt = this.aimPoint;
       else if (controlPrefs().aimAssist && skill < 0)
         aimAt = assistAim(aimAt, bodies ?? enemies);
-      const stormAim = state ? stormTarget(state) : undefined;
+      const stormAim = state ? stormTarget(state, local.id) : undefined;
       if (stormAim) aimAt = stormAim;
       const prismAim = state ? prismatailAim(state, local) : undefined;
       if (prismAim) aimAt = prismAim;

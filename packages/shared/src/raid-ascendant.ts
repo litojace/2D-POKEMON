@@ -1222,18 +1222,18 @@ export const ASCENDANT_STORM_TWINS_CHAPTERS = [
     objective:
       "Hit the twin of the opposite sign. Keep both health bars level.",
     detail:
-      "Mirror Charge marks Fizz + and Crackle \u2212, and every raider + or \u2212: only the opposite sign discharges a twin, so split up and discharge both before time runs out, or the charged one overloads. Jump the Link Beam and leave both rush lanes.",
+      "Mirror Charge marks Fizz + and Crackle \u2212, and every raider + or \u2212: only the opposite sign discharges a twin (the same sign is repelled), so split up and discharge both before time runs out, or the charged one overloads. Alone, your sign flips half-way. Jump the Link Beam and leave both rush lanes.",
   },
   {
     name: "Overcharge",
     objective: "Share the Short Circuit. Watch for a rush that turns.",
     detail:
-      "A Short Circuit overcharges the link: stand on the thick beam together to share the shock, or it arcs over the whole court. A Twin Rush may turn into a Link Beam halfway: the new warning is shown in full. They hunt whoever kneels to revive.",
+      "A Short Circuit overcharges the link: a thick beam that can't be jumped. Stand on it together to share the shock, or it arcs over the whole court; the ground you shared it on turns static, so step off. With two raiders up, attacks keep coming during a Mirror Charge. A Twin Rush may turn into a Link Beam halfway: the new warning is shown in full. They hunt whoever kneels to revive.",
   },
   {
     name: "Ascendant Storm",
     objective: "Two hearts, one storm. Survive the combinations.",
     detail:
-      "Their rhythm quickens. Chain lightning lands where you usually dodge, standing still to attack draws a Thunderclap, and Polarity follows a Mirror Charge. Finish both twins together.",
+      "Their rhythm quickens. Static fields land where you usually dodge, standing still to attack draws a Twin Rush, and both twins discharged in time answer with Polarity on the same signs: cross to pair up. Finish both twins together.",
   },
 ] as const;

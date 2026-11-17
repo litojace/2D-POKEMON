@@ -257,6 +257,16 @@ export function twinPose(c: TwinCue): TwinPose {
   } else if (kind === "thunderclap") {
     q.dy += 26 * w;
     q.spread = 0.6 * w;
+  } else if (kind === "mirror-charge") {
+    // Ascendant: both charge up, sparking, eyes wide.
+    q.look = "wide";
+    q.spark = Math.max(q.spark, 0.6 * w);
+  } else if (kind === "short-circuit") {
+    // Ascendant: they lean into the overcharged link, crackling.
+    q.roll += (fizz ? 0.3 : -0.3) * w;
+    q.dx += (fizz ? 10 : -10) * w;
+    q.spark = Math.max(q.spark, w);
+    q.mouth = "grit";
   }
   // the follow-through (none with reduced motion)
   const cast = c.reduced ? undefined : c.castKind,

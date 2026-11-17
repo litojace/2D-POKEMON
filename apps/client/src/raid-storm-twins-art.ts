@@ -6,9 +6,11 @@ import type { Snapshot } from "@arena/shared";
 import {
   STORM_TWINS as S,
   stormBeamPoints,
+  stormTwinsPosts,
   type RaidWarning,
   type StormPoint,
 } from "../../../packages/shared/src/raid";
+import { drawAscendantStormTwinsWarning } from "./ascendant-storm-twins-art";
 import type { RaidBossCue } from "./raid-boss-motion";
 import type { LayerAt } from "./raid-layers";
 import { fxFor } from "./fx-engine";
@@ -58,7 +60,9 @@ export function drawConductorRing(
 ) {
   const r = state.raid!;
   // The posts stand up, so each sorts with the raiders (a layer each).
-  const posts = S.posts.map((p, i) => (at ? at(`post-${i}`, p.y + 17) : g));
+  const posts = stormTwinsPosts(r).map((p, i) =>
+    at ? at(`post-${i}`, p.y + 17) : g,
+  );
   const [a, b] = state.players.filter((p) => p.raidBoss);
   if (a && b && a.hp > 0 && b.hp > 0 && !r.stormBeam) {
     g.lineStyle(2, 0xa3dfff, 0.2).lineBetween(a.x, a.y, b.x, b.y);
@@ -105,11 +109,8 @@ function paintRing(
     (w) => w.kind === "link-beam" && w.beamPost !== undefined,
   );
   const warnP = warning ? progressOf(warning, state.time) : 0;
-  const states = postStates(
-    S.posts.length,
-    r.stormBeam?.post,
-    warning?.beamPost,
-  );
+  const spots = stormTwinsPosts(r);
+  const states = postStates(spots.length, r.stormBeam?.post, warning?.beamPost);
   // Three charge pulses running round the cyan filament.
   if (!low && !reduced)
     for (let i = 0; i < 3; i++) {
@@ -126,7 +127,7 @@ function paintRing(
         },
       );
     }
-  for (const [i, p] of S.posts.entries()) {
+  for (const [i, p] of spots.entries()) {
     floor.put(A, "postShadow", p.x + 5, p.y + 14, { sx: 1.2 });
     const st = states[i];
     if (st === "idle")
@@ -207,7 +208,7 @@ function paintRing(
     }
   }
   // The posts.
-  for (const [i, p] of S.posts.entries()) {
+  for (const [i, p] of spots.entries()) {
     const post = stageOn(layers[i], "arena-pieces:post-" + i);
     if (!post) continue;
     post.put(A, "post", p.x, p.y);
@@ -341,7 +342,12 @@ export function drawStormWarning(g: G, state: Snapshot, w: RaidWarning) {
     ),
   );
   if (w.kind === "link-beam") {
-    const points = stormBeamPoints(w, { x: w.tx, y: w.ty }, w.beamPost);
+    const points = stormBeamPoints(
+      w,
+      { x: w.tx, y: w.ty },
+      w.beamPost,
+      stormTwinsPosts(state.raid!),
+    );
     for (let i = 1; i < points.length; i++) {
       g.lineStyle(
         S.link.width * 2,
@@ -396,6 +402,8 @@ export function drawStormWarning(g: G, state: Snapshot, w: RaidWarning) {
     if (chain) sign(g, w.x, w.y - 95, 1, 0xffe18b, 11);
     return true;
   }
+  if (w.kind === "mirror-charge" || w.kind === "short-circuit")
+    return drawAscendantStormTwinsWarning(g, state, w);
   return w.kind === "polarity";
 }
 interface Memory {

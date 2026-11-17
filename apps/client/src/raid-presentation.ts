@@ -1,6 +1,7 @@
 import { framedAvatar } from "./portraits";
 import { ascendantPrismellCue } from "./ascendant-prismell-art";
 import { ascendantLumiwickCue } from "./ascendant-lumiwick-art";
+import { ascendantStormTwinsCue } from "./ascendant-storm-twins-art";
 import { CHARACTERS, type Snapshot } from "@arena/shared";
 import {
   raidChapters,
@@ -58,6 +59,8 @@ export function raidCue(state: Snapshot, myId: string) {
     );
     if (fallen && state.players.some((p) => p.raidBoss && p.hp > 0))
       return `${fallen.name} revives in ${Math.max(0, Math.ceil((fallen.reviveAt ?? state.time) - state.time))}s — finish the other twin!`;
+    const ascendant = ascendantStormTwinsCue(state, myId, w);
+    if (ascendant) return ascendant;
     const mark = r.polarities?.find((m) => m.playerId === myId && !m.cancelled);
     if (mark)
       return r.polarityPad

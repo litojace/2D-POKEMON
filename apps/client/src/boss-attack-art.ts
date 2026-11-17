@@ -966,6 +966,51 @@ const art: Partial<Record<RaidAttack, { el: Element; draw: () => string }>> = {
       raider(36, 86, 0.85) +
       arrow(28, 92, 10, 70),
   },
+  // Ascendant Storm Twins · Electric: hit the twin of the opposite sign.
+  "mirror-charge": {
+    el: "electric",
+    draw: () =>
+      twin(24, 46, 11) +
+      sign(24, 22, true, "#ffd36e") +
+      twin(104, 46, 11) +
+      sign(104, 22, false, "#8edfff") +
+      raider(44, 100, 0.8) +
+      sign(44, 76, false, "#8edfff") +
+      raider(84, 100, 0.8) +
+      sign(84, 76, true, "#ffd36e") +
+      `<path d="M38 66 L30 58 M90 66 L98 58" stroke="${E.accent[1]}" stroke-width="2.4" stroke-dasharray="3 3" stroke-linecap="round"/>` +
+      arrow(36, 64, 30, 58) +
+      arrow(92, 64, 98, 58),
+  },
+  // Ascendant Storm Twins · Electric: stand on the overcharged beam together.
+  "short-circuit": {
+    el: "electric",
+    draw: () =>
+      twin(18, 50, 11) +
+      twin(110, 50, 11) +
+      `<path d="M28 50 H100" stroke="#d9b8ff" stroke-opacity=".4" stroke-width="16" stroke-linecap="round"/>` +
+      glow(
+        bolt(
+          [
+            [28, 50],
+            [100, 50],
+          ],
+          6,
+          3,
+        ),
+        "#f4ecff",
+        2.6,
+        "#b88cff",
+      ) +
+      raider(50, 60, 0.8) +
+      raider(78, 60, 0.8) +
+      [56, 64, 72]
+        .map(
+          (x, i) =>
+            `<circle cx="${x}" cy="104" r="3.4" fill="${i < 2 ? "#ffd65b" : "#3a3020"}" stroke="#ffd65b" stroke-width="1"/>`,
+        )
+        .join(""),
+  },
   polarity: {
     el: "electric",
     draw: () =>
