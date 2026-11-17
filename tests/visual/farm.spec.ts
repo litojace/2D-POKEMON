@@ -898,6 +898,186 @@ test("decorating on a phone: a tap puts the decoration there, a drag on it moves
   }
 });
 
+// The Chicken Coop (20261117100000): bought in the shop's Land tab, its hens
+// fed with wheat from the barn lay eggs, collected with a tap, sold at the
+// market; the coop's sheet tends every hen and buys more.
+for (const viewport of [
+  { width: 1280, height: 800 },
+  { width: 844, height: 390 },
+]) {
+  test(`the coop opens in the shop and its hens lay eggs at ${viewport.width}x${viewport.height}`, async ({
+    browser,
+  }, info) => {
+    const phone = viewport.width < 1000;
+    const context = await browser.newContext({
+      viewport,
+      isMobile: phone,
+      hasTouch: phone,
+    });
+    try {
+      const page = await context.newPage();
+      const errors = await openLobby(page);
+      await fakeFarm(page);
+      await page.evaluate(() => {
+        const f = (window as any).__fakeFarm;
+        f.level = 14;
+        f.leaves = 5000;
+      });
+      await page.click('#hub-scenes [data-hub-scene="farm"]');
+      await expect(page.locator("#fm-badge")).toContainText("tester's Farm");
+      const tapWorld = async (x: number, y: number) => {
+        const p = await page.evaluate(
+          ([x, y]) => {
+            const f = (window as any).__farm;
+            f.look(1150, 860);
+            return f.worldClient(x, y);
+          },
+          [x, y],
+        );
+        await page.waitForTimeout(200);
+        if (phone) await page.touchscreen.tap(p.x, p.y);
+        else await page.mouse.click(p.x, p.y);
+      };
+      const henAt = (k: number) =>
+        page.evaluate((k) => {
+          const c = (window as any).__farm.coopHens[k];
+          return [c.x, c.y - 12] as [number, number];
+        }, k);
+      const look = () =>
+        page.evaluate(() => (window as any).__farm.look(1150, 860));
+      // Not built: a sign on the grass; tapping it opens the shop's Land tab.
+      await tapWorld(1150, 900);
+      const sheet = page.locator("#fm-sheet");
+      const item = sheet.locator(".item", { hasText: "Chicken Coop" });
+      await expect(item).toContainText("3 hens");
+      await expect(item).toContainText("Sunny Egg in 2h");
+      await snap(
+        page,
+        info,
+        `farm-coop-shop-${viewport.width}x${viewport.height}`,
+      );
+      await item.locator("[data-coop]").click();
+      await expect(page.locator("#toast")).toContainText(
+        "Your coop is open. 3 hens moved in!",
+      );
+      await expect(item.locator("button")).toHaveText("Owned");
+      await sheet.locator("[data-close]").click();
+      await expect(sheet).toBeHidden();
+      // Three hungry hens, each with a bubble.
+      await look();
+      await page.waitForTimeout(500);
+      await snap(
+        page,
+        info,
+        `farm-coop-hungry-${viewport.width}x${viewport.height}`,
+      );
+      // A tap feeds a hen 2 wheat; another says when her egg is due.
+      await tapWorld(...(await henAt(0)));
+      await expect
+        .poll(() =>
+          page.evaluate(() => (window as any).__fakeFarm.hens[0].eggAt),
+        )
+        .not.toBeNull();
+      await expect
+        .poll(() =>
+          page.evaluate(() =>
+            (window as any).__farm.rules.henState(
+              (window as any).__farm.F.hens[0].eggAt,
+              Date.now(),
+            ),
+          ),
+        )
+        .toBe("laying");
+      await tapWorld(...(await henAt(0)));
+      await expect(page.locator("#toast")).toContainText(
+        /This hen is laying\. Egg in (1h 59m|2h)/,
+      );
+      // Her egg is ready (on the server too): an egg bubble; a tap collects it.
+      await page.evaluate(() => {
+        const past = new Date(Date.now() - 1000).toISOString();
+        (window as any).__fakeFarm.hens[0].eggAt = past;
+        (window as any).__farm.F.hens[0].eggAt = Date.now() - 1000;
+      });
+      await page.waitForTimeout(300);
+      await snap(
+        page,
+        info,
+        `farm-coop-egg-${viewport.width}x${viewport.height}`,
+      );
+      await tapWorld(...(await henAt(0)));
+      await expect(page.locator("#fm-log")).toContainText(
+        "Collected 1 Sunny Egg",
+      );
+      // The coop's sheet: every hen, feed them all (2 wheat left: one hen),
+      // and a fourth hen for 300 leaves.
+      await tapWorld(1040, 880);
+      await expect(sheet.locator(".sh-head h4")).toHaveText("Hens 3/9");
+      await expect(sheet.locator(".coop-hens .hen")).toHaveCount(3);
+      await expect(sheet.locator(".coop-hens .hen.hungry")).toHaveCount(3);
+      await sheet.locator('[data-coop-all="feed"]').click();
+      await expect(sheet.locator(".coop-hens .hen.laying")).toHaveCount(1);
+      await expect(sheet.locator('[data-coop-all="feed"]')).toBeDisabled();
+      await expect(sheet.locator(".coop-hens .hen.laying")).toContainText(
+        /Egg in (1h 59m|2h)/,
+      );
+      await sheet.locator("[data-buyhen]").click();
+      await expect(sheet.locator(".sh-head h4")).toHaveText("Hens 4/9");
+      await expect(sheet.locator("[data-buyhen]")).toContainText("450");
+      await expect(page.locator("#toast")).toContainText(
+        "A new hen moved into the coop!",
+      );
+      await page.waitForTimeout(300);
+      await snap(
+        page,
+        info,
+        `farm-coop-sheet-${viewport.width}x${viewport.height}`,
+      );
+      // The sheet fits: no row wider than the sheet.
+      const fits = await sheet.evaluate((el) => {
+        const r = el.getBoundingClientRect();
+        return [...el.querySelectorAll(".item, .hen")].every((x) => {
+          const b = x.getBoundingClientRect();
+          return b.left >= r.left - 1 && b.right <= r.right + 1;
+        });
+      });
+      expect(fits).toBe(true);
+      await sheet.locator("[data-close]").click();
+      // Eggs sell at the market at their price of the day (30 × 1.2 = 36).
+      await openSheet(page, "market");
+      const egg = sheet.locator(".item", { hasText: "Sunny Egg" });
+      await expect(egg).toContainText("36");
+      await egg.locator("[data-sell]").first().click();
+      await expect
+        .poll(() =>
+          page.evaluate(() =>
+            (window as any).__farmRequests.flatMap((r: any) => r.actions),
+          ),
+        )
+        .toEqual([
+          { a: "buy-coop" },
+          { a: "feed-hen", hen: 0 },
+          { a: "collect-egg", hen: 0 },
+          { a: "feed-hen", hen: 0 },
+          { a: "buy-hen" },
+          { a: "sell-eggs", qty: 1 },
+        ]);
+      // At night the coop's window glows.
+      await sheet.locator("[data-close]").click();
+      await page.evaluate(() => (window as any).__farm.tod(0.92));
+      await look();
+      await page.waitForTimeout(400);
+      await snap(
+        page,
+        info,
+        `farm-coop-night-${viewport.width}x${viewport.height}`,
+      );
+      expect(errors).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });
+}
+
 for (const viewport of [
   { width: 1280, height: 800 },
   { width: 844, height: 390 },

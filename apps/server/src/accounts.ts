@@ -847,8 +847,15 @@ export function installAccountRoutes(
         "milk",
         "sell-milk",
         "harvest-giant",
+        "buy-coop",
+        "buy-hen",
+        "feed-hen",
+        "collect-egg",
+        "sell-eggs",
       ]),
       plot: z.number().int().min(0).max(49).optional(),
+      // A hen in the Chicken Coop, by its place (0–8).
+      hen: z.number().int().min(0).max(8).optional(),
       // A decoration: where it stands on the farm (world px, a 10 px grid
       // the database checks), mirrored or not, and which one to move or
       // put away.

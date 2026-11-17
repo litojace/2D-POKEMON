@@ -88,6 +88,10 @@ export async function fakeFarm(page: Page) {
       pasture: false,
       milkAt: null as string | null,
       milkMult: 1.12,
+      // The Chicken Coop (20261117100000).
+      coop: false,
+      hens: [] as { i: number; eggAt: string | null }[],
+      eggMult: 1.2,
       dog: null as any,
       dogGifts: [] as any[],
       crows: {} as Record<string, string>,
@@ -465,6 +469,78 @@ export async function fakeFarm(page: Page) {
             const leaves = Math.round(60 * farm.milkMult) * a.qty;
             farm.leaves += leaves;
             return { ok: true, leaves };
+          }
+          // The Chicken Coop (20261117100000), with the shared rules.
+          const barnQty = (crop: string) =>
+            farm.barn.find((b: any) => b.crop === crop && b.mutation === "")
+              ?.qty ?? 0;
+          const addBarn = (crop: string, n: number) => {
+            const b = farm.barn.find(
+              (x: any) => x.crop === crop && x.mutation === "",
+            );
+            if (b) b.qty += n;
+            else farm.barn = [...farm.barn, { crop, mutation: "", qty: n }];
+          };
+          if (a.a === "buy-coop") {
+            if (farm.coop)
+              return { ok: false, error: "You already have the coop" };
+            if (farm.level < R.COOP.level)
+              return {
+                ok: false,
+                error: `Unlocks at farm level ${R.COOP.level}`,
+              };
+            if (farm.leaves < R.COOP.price)
+              return { ok: false, error: "Not enough Gold Leaves" };
+            farm.leaves -= R.COOP.price;
+            farm.coop = true;
+            farm.hens = Array.from({ length: R.COOP.hens }, (_, i) => ({
+              i,
+              eggAt: null,
+            }));
+            return { ok: true, coop: true };
+          }
+          if (a.a === "sell-eggs") {
+            if (barnQty("egg") < a.qty)
+              return { ok: false, error: "You don't have that many" };
+            addBarn("egg", -a.qty);
+            const leaves = Math.round(30 * farm.eggMult) * a.qty;
+            farm.leaves += leaves;
+            return { ok: true, leaves };
+          }
+          if (["buy-hen", "feed-hen", "collect-egg"].includes(a.a)) {
+            if (!farm.coop) return { ok: false, error: "Open the coop first" };
+            if (a.a === "buy-hen") {
+              const cost = R.henPrice(farm.hens.length);
+              if (cost == null)
+                return { ok: false, error: "Your coop is full" };
+              if (farm.leaves < cost)
+                return { ok: false, error: "Not enough Gold Leaves" };
+              farm.leaves -= cost;
+              const n = farm.hens.length;
+              farm.hens = [...farm.hens, { i: n, eggAt: null }];
+              return { ok: true, hen: n, cost };
+            }
+            const h = farm.hens.find((x: any) => x.i === a.hen);
+            if (!h) return { ok: false, error: "Choose a hen" };
+            const st = R.henState(h.eggAt, Date.now());
+            if (a.a === "feed-hen") {
+              if (st === "laying")
+                return { ok: false, error: "This hen is already fed" };
+              if (st === "egg")
+                return { ok: false, error: "Collect her egg first" };
+              if (barnQty(R.COOP.feedCrop) < R.COOP.feedQty)
+                return { ok: false, error: "You need 2 Breeze Wheat" };
+              addBarn(R.COOP.feedCrop, -R.COOP.feedQty);
+              h.eggAt = at(R.COOP.laySeconds);
+              return { ok: true, fed: h.i, eggAt: h.eggAt };
+            }
+            if (st === "hungry")
+              return { ok: false, error: "Feed this hen first" };
+            if (st === "laying")
+              return { ok: false, error: "This hen is still laying" };
+            addBarn("egg", 1);
+            h.eggAt = null;
+            return { ok: true, egg: 1, hen: h.i };
           }
           if (a.a === "buy-tool" && a.tool === "net2") {
             farm.tools.bigNet = true;
