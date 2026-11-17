@@ -1367,12 +1367,13 @@ export const SPIRE_TUNING: Record<
   // with every wave fought, the last one too: armour searched on seeds
   // 1–120, checked on 121–336, then corrected on all 336. By simulation
   // (tests/unit/spire-zone6.test.ts; a solo Normal bot raider, 336 seeds)
-  // floor 51 is cleared about two times in three (67%), then 62, 63, 54,
-  // 49 (the elite), 47, 44, 38 and 35% on floor 59. (Floor 53 sits on a
-  // cliff: 5.75 clears 51%, 5.8 63%.)
+  // floor 51 is cleared about two times in three (67%), then 62, 60, 54,
+  // 49 (the elite), 47, 44, 38 and 35% on floor 59. (Floor 53's armour
+  // sits on a cliff, 5.75 clearing 51% and 5.8 63%, so its step down from
+  // 52 comes from its power instead: 0.62 63%, 0.63 60%, 0.64 58%.)
   51: { difficulty: "normal", power: 0.6, armour: 5.2, limit: 180 },
   52: { difficulty: "normal", power: 0.61, armour: 2.45, limit: 180 },
-  53: { difficulty: "normal", power: 0.62, armour: 5.8, limit: 180 },
+  53: { difficulty: "normal", power: 0.63, armour: 5.8, limit: 180 },
   54: { difficulty: "normal", power: 0.63, armour: 3.12, limit: 180 },
   55: { difficulty: "normal", power: 0.66, armour: 0.71, limit: 240 },
   56: { difficulty: "normal", power: 0.64, armour: 3.85, limit: 180 },
