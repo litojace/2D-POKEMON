@@ -341,3 +341,46 @@ it("sells, equips and preserves original Nova Vanguard costumes without a Mythic
  const before=await economy();expect(before.balance).toBe(3000);expect(before.looks.auralynx.skin).toBe("auralynx-nova-vanguard");expect(before.looks.astrabun.skin).toBe("astrabun-nova-vanguard");
  await db.exec("reset role");await db.exec(sql);expect(await economy()).toEqual(before);
 });
+
+it("makes Nova Vanguard Legendary and sells full-roster skin sets at 80% of the missing skins, keeping owners' costumes", async () => {
+  const sql = await readFile(
+    "supabase/migrations/20261118100000_legendary_skins_and_skin_sets.sql",
+    "utf8",
+  );
+  // The player already owns and wears two Nova costumes (previous test).
+  const before = await economy();
+  expect(before.owned).toContain("auralynx-nova-vanguard");
+  await db.exec("reset role");
+  await db.exec(sql);
+  const nova = await db.query<{ rarity: string; price: number; n: number }>(
+    "select rarity, price, count(*)::int as n from public.arena_shop_items where collection = 'nova-vanguard' and kind = 'champion' group by rarity, price",
+  );
+  expect(nova.rows).toEqual([{ rarity: "legendary", price: 5500, n: 18 }]);
+  const kept = await economy();
+  expect(kept.owned).toEqual(before.owned);
+  expect(kept.looks).toEqual(before.looks);
+  // The Nova set: 16 costumes still to buy, at 80%.
+  await db.exec("reset role");
+  await db.exec(
+    `update public.arena_wallets set balance = 100000 where player_id = '${player}'`,
+  );
+  await login();
+  await db.query("select public.arena_buy_item('nova-vanguard-skins')");
+  const bought = await economy();
+  expect(100000 - bought.balance).toBe(16 * 5500 * 0.8);
+  await db.exec("reset role");
+  const novas = (
+    await db.query<{ id: string }>(
+      "select id from public.arena_shop_items where collection = 'nova-vanguard' and kind = 'champion'",
+    )
+  ).rows.map((r) => r.id);
+  for (const id of novas) expect(bought.owned).toContain(id);
+  await login();
+  await expect(
+    db.query("select public.arena_buy_item('nova-vanguard-skins')"),
+  ).rejects.toThrow("already own");
+  // Running the migration again changes nothing.
+  await db.exec("reset role");
+  await db.exec(sql);
+  expect(await economy()).toEqual(bought);
+});

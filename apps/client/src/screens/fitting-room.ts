@@ -1,7 +1,8 @@
 import { CHARACTERS, type CharacterId } from "@arena/shared";
 import {
+  BUNDLE_BY_ID,
   CHAMPION_SKIN_BY_ID,
-  SHOP_BUNDLES,
+  isSkinBundle,
 } from "../../../../packages/shared/src/shop";
 import {
   rewardBoss,
@@ -17,6 +18,8 @@ import { previewViewBox, SHOP_PREVIEW } from "../shop-preview-layout";
 import {
   dropUnownedTryOns,
   fitItem,
+  setNote,
+  setPreview,
   fitView,
   fittingRoomMarkup,
   ownedFor,
@@ -343,9 +346,10 @@ export function openFittingRoom(
       view.action = "idle";
       return;
     }
-    const set = SHOP_BUNDLES.find((b) => b.id === id);
+    const set = BUNDLE_BY_ID[id];
     if (set) {
-      for (const piece of set.items) {
+      // A Look set dresses every slot; a skin set shows this fighter's skin.
+      for (const piece of setPreview(id, view.champion)) {
         const item = fitItem(piece);
         if (item) view.tryOn[item.slot] = piece;
       }
@@ -401,17 +405,19 @@ export function openFittingRoom(
     const e = data().economy;
     const p = e ? purchase(id, e) : null;
     if (!e || !p || p.locked || p.short) return;
-    const set = SHOP_BUNDLES.find((b) => b.id === id);
+    const set = BUNDLE_BY_ID[id];
     const item = fitItem(id);
     const skin = CHAMPION_SKIN_BY_ID[id];
     const art = set
-      ? `<span class="fit-confirm-set">${set.items.map((i) => itemPicture(i, view.champion, `fit-confirm-${i}`)).join("")}</span>`
+      ? `<span class="fit-confirm-set">${setPreview(id, view.champion)
+          .map((i) => itemPicture(i, view.champion, `fit-confirm-${i}`))
+          .join("")}</span>`
       : itemPicture(id, skin?.champion ?? view.champion, `fit-confirm-${id}`);
     const answer = askConfirm({
       kicker: "Confirm purchase",
       title: set?.name ?? item?.name ?? id,
       sub: set
-        ? `<span class="ui-note">${set.items.length} pieces for every fighter</span>`
+        ? `<span class="ui-note">${setNote(id)}</span>`
         : `${rarityTag(rarityOf(id))}<span class="ui-note">${item?.source ?? ""}</span>`,
       art,
       lines: [
@@ -420,7 +426,7 @@ export function openFittingRoom(
       ],
       total: ["After", p.unlimited ? "Unlimited" : price(p.after)],
       extra: set
-        ? '<p class="ui-note">20% off the pieces you don\'t own yet.</p>'
+        ? `<p class="ui-note">20% off the ${isSkinBundle(id) ? "skins" : "pieces"} you don't own yet.</p>`
         : `<label class="fit-wear"><input type="checkbox" data-fit-wear checked> Wear it now</label>${p.unlimited ? '<p class="ui-note">Testing: purchases don\'t spend coins.</p>' : ""}`,
       confirm: "Buy",
       confirmAfter: price(p.price),

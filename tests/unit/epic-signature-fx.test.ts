@@ -148,6 +148,54 @@ describe("new Epic signature effects", () => {
     }
   });
 
+  it("gives only the Legendary Nova Vanguard suits a hero landing and a victory", () => {
+    for (const id of Object.keys(EPIC_SIGNATURES)) {
+      const legendary = id.endsWith("-nova-vanguard");
+      const art = { ...SKIN_ART[id], trail: undefined };
+      // Ambient off: no idle particles, so every emission is the moment's.
+      const land = frame(3000, false, Math.PI / 2, { greeting: true });
+      drawSkinFx(land.ctx, art, 1);
+      const landShapes = land.emit.mock.calls.map(([p]) => p.shape);
+      const win = frame(3000, false, Math.PI / 2, { celebrating: true });
+      drawSkinFx(win.ctx, art, 1);
+      const winCalls = win.emit.mock.calls.map(([p]) => p);
+      if (legendary) {
+        expect(landShapes, id).toContain("beam");
+        // The column of light rises behind the hero, never over its face.
+        expect(
+          land.emit.mock.calls.find(([p]) => p.shape === "beam")![0].behind,
+          id,
+        ).toBe(true);
+        expect(landShapes, id).toContain("shock");
+        expect(
+          winCalls.filter((p) => p.shape === "star").length,
+          id,
+        ).toBeGreaterThanOrEqual(6);
+        // Victory sparkles stay behind the fighter, off its face.
+        expect(
+          winCalls.every((p) => p.behind),
+          id,
+        ).toBe(true);
+        // The motif swells for the moment, then settles.
+        const again = (now: number) => {
+          land.commands.length = 0;
+          drawSkinFx({ ...land.ctx, now, greeting: false }, art, 1);
+          return JSON.stringify(land.commands);
+        };
+        const fresh = (now: number) => {
+          const f = frame(now, false);
+          drawSkinFx(f.ctx, art, 1);
+          return JSON.stringify(f.commands);
+        };
+        expect(again(3600), id).not.toBe(fresh(3600));
+        expect(again(4300), id).toBe(fresh(4300));
+      } else {
+        expect(land.emit, id).not.toHaveBeenCalled();
+        expect(win.emit, id).not.toHaveBeenCalled();
+      }
+    }
+  });
+
   it("draws nothing for a defeated fighter", () => {
     for (const id of Object.keys(EPIC_SIGNATURES)) {
       const f = frame(500, true, Math.PI / 2, { defeated: true });

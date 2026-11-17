@@ -11,7 +11,7 @@ Six collections add 108 champion skins: three Rare and three Epic for each of th
 | Astral Court | Rare / 1,500 | A long gold-trimmed velvet robe, a starry scalloped shoulder mantle with gold epaulettes, a floating star circlet; a short star trail, no idle effect |
 | Abyssal Expedition | Epic / 3,500 | Independent pressure-suit construction, glass helmets, gauges, tanks and individual dive equipment; a small glass glint and bubble dash trail |
 | Dream Carnival | Epic / 3,500 | Independent stagewear, masks, personal headpieces and ruffs; a small glint and confetti dash trail |
-| Nova Vanguard | Epic / 3,500 | Original hero suits, individual emblems and joint-mounted equipment; personal energy details and a short movement trail |
+| Nova Vanguard | Legendary / 5,500 | Original hero suits, individual emblems and joint-mounted equipment; a signature effect, its own hero landing and victory, and a short movement trail |
 
 ## Color stories
 
@@ -100,6 +100,28 @@ ultimate swells the motif for 0.9 s and throws one burst of its own shape
 with a ground ring. Defeated fighters draw nothing. Older Epics and Rares
 are unchanged. `epic-signature-fx.test.ts` checks the budgets in every
 facing, that all 54 are distinct, the ultimate swell and the defeat case.
+
+## Legendary: Nova Vanguard
+
+Legendary sits between Epic (3,500) and Mythical (8,000) at 5,500 coins. Nova
+Vanguard is the Legendary set: on top of its signature effect, each suit has
+its own hero landing (a column of its light behind it, a ground ring, motes of
+its motif) and victory (a fan of stars behind its head); both swell its motif
+for 1.2 s. Epics have neither. Legendary has no Mythic Trial or Awakening.
+Migration `20261118100000_legendary_skins_and_skin_sets.sql` allows the
+rarity and moves the 18 suits to it; owners keep theirs.
+
+## Full-roster skin sets
+
+Seven sets, one per collection that dresses all 18 champions in one design at
+one rarity: Wayfarer, Moonlit Tea, Astral Court, Cyber Mecha, Abyssal
+Expedition, Dream Carnival and Nova Vanguard (`SKIN_BUNDLES` in `shop.ts`).
+Like the Look sets, a set costs 80% of the skins you don't own yet (the
+database's `arena_item_price`); buying one grants each skin, and a complete
+Cyber Mecha set earns its frame as usual. Void Knight Mythicals are never
+bundled: each opens with its own champion's Mythic Trial. Sets show at the
+foot of the Shop's Skins tab, with the fighter you're looking at in each
+set's skin, and among the Today tab's Bundles.
 
 ## Shipping
 
