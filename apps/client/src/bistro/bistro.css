@@ -3321,7 +3321,9 @@ body.hub-bistro #account-profile {
   overflow: hidden;
 }
 /* Close: a 34 px circle, a 44 × 44 target. */
-.bistro-layer.phone .bs-sheet .x {
+/* (button.x: as specific as the shared 36 px rule, which stretched this
+   circle to a 34 × 36 oval.) */
+.bistro-layer.phone .bs-sheet button.x {
   flex: none;
   width: 34px;
   height: 34px;
@@ -3380,7 +3382,9 @@ body.hub-bistro #account-profile {
   padding: 0 1px;
   gap: 4px;
 }
-.bistro-layer.phone .bs-step button {
+/* (Under .bs-sheet: the shared rule giving controls 36 px is that specific,
+   and stretched these circles to 32 × 36 ovals.) */
+.bistro-layer.phone .bs-sheet .bs-step button {
   flex: none;
   width: 32px;
   height: 32px;

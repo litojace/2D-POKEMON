@@ -145,6 +145,19 @@ async function touchProblems(page: Page, where: string) {
         if (gap >= 2 && steals)
           out.push(`"${label(ea)}"'s target covers "${label(eb)}"`);
       }
+    // A round button (border-radius 50%) is a circle, never an oval: −, +
+    // and close were once stretched to 32 × 36 and 34 × 36 by the rule
+    // giving controls their height. (Capsules, like the wallet, are meant.)
+    for (const e of controls) {
+      const r = e.getBoundingClientRect();
+      if (
+        getComputedStyle(e).borderTopLeftRadius === "50%" &&
+        Math.abs(r.width - r.height) > 1
+      )
+        out.push(
+          `"${label(e)}" is a ${Math.round(r.width)}×${Math.round(r.height)} oval, not a circle`,
+        );
+    }
     // Words: 11 px at least (the level ring's star badge: 10), whole.
     const seen = new Set<Element>();
     const walk = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
@@ -323,6 +336,12 @@ for (const size of PHONES)
               Math.round(e.getBoundingClientRect().width),
             ),
           );
+          const tall = await page.evaluate(() =>
+            [...document.querySelectorAll("#bs-sheet .bs-step > button")].map(
+              (e) => Math.round(e.getBoundingClientRect().height),
+            ),
+          );
+          expect(tall).toEqual([32, 32]);
           // An iOS stepper's size: 32 px parts, not the 40 px they grew to.
           expect(step[0]).toBe(32);
           expect(step[2]).toBe(32);
