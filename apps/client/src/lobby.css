@@ -713,11 +713,31 @@
   gap: 8px;
   font-variant-numeric: tabular-nums;
 }
+/* Drawn by us, as the Journey and raid bars are: Safari's own progress bar
+   (only tinted by accent-color) showed a light track with a white cap at
+   each end on iPhone (owner, 17 Nov 2026). */
 .lobby-card progress {
   display: block;
   width: 100%;
   height: 6px;
-  accent-color: #9ff3d8;
+  appearance: none;
+  -webkit-appearance: none;
+  overflow: hidden;
+  border: 0;
+  border-radius: 6px;
+  background: rgba(139, 174, 229, 0.22);
+}
+.lobby-card progress::-webkit-progress-bar {
+  background: rgba(139, 174, 229, 0.22);
+  border-radius: 6px;
+}
+.lobby-card progress::-webkit-progress-value {
+  background: #9ff3d8;
+  border-radius: 6px;
+}
+.lobby-card progress::-moz-progress-bar {
+  background: #9ff3d8;
+  border-radius: 6px;
 }
 /* The Spire card (spire-nudge.ts): once the Spire is open, above Missions.
    The tower beside a kicker, one bold line and a note, on violet glass so it
