@@ -64,7 +64,7 @@ const segment = (p: Point, a: Point, b: Point) => {
   return Math.hypot(p.x - a.x - dx * t, p.y - a.y - dy * t);
 };
 /** Where a twin's charge badge sits over it, and a raider's sign medallion. */
-export const TWIN_BADGE = { y: -122, r: 25 };
+export const TWIN_BADGE = { y: -122, r: 29 };
 /** (Beside the raider at chest height: clear of its name tag and health bar.) */
 export const RAIDER_SIGN = { x: 46, y: -34, r: 21 };
 /**
