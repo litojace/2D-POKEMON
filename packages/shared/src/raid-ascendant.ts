@@ -421,7 +421,7 @@ export const ASCENDANT_INKPURR = {
    * Pressure by chapter: seconds between attacks × this (the tier's cadence
    * and the party's are applied first).
    */
-  cadence: [0.9, 0.82, 0.74],
+  cadence: [0.95, 0.86, 0.78],
   /**
    * First chapter of each combo: a lunge ends in a pounce on its raider, a
    * snuffed lantern's darkness lunges at whoever stood in its light, and a
@@ -944,7 +944,7 @@ export const ASCENDANT_LUMIWICK = {
    * Pressure by chapter: seconds between attacks × this (the tier's cadence
    * and the party's are applied first).
    */
-  cadence: [0.9, 0.82, 0.74],
+  cadence: [0.95, 0.86, 0.78],
   /**
    * A party's seconds between attacks × (1 - this per extra raider): more
    * raiders meet more attacks (not harder hits).

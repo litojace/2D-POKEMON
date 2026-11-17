@@ -13,14 +13,16 @@
  *   chapter: they only catch while every bound ring has a raider in it, and
  *   the fuse, fitted to the slowest team, snaps into a Backdraft that puts
  *   every flame out).
- * - Its rhythm tightens by chapter and with the party; the open heart lasts
- *   less.
+ * - It refuses to come down: aloft again after every grounding from
+ *   chapter 1, its braziers slower to catch, its rhythm tighter by chapter
+ *   and with the party, the open heart shorter.
  * - Combos (ASCENDANT_LUMIWICK.combosFrom): a gale whose flame was held
  *   drops embers on its keeper; kindled wicks answer with a gale at one of
  *   the flames just lit. Feints: a dive whose lane turns, part way, into a
  *   Snuffing Gale (shown in full from then).
  * - Reads: embers where a raider usually dodges, a dive for a raider
- *   standing still to attack, and the raider kneeling to revive first.
+ *   standing still to attack, and embers on the raider kneeling to revive
+ *   (picked first by its dives, embers, marks and gales).
  * - Overlap: from chapter 2, embers, marks and gusts may play out while a
  *   gale is drawn; the safe-spot rule knows each shape exactly (lanes and
  *   their shelters, circles, a Backdraft's rings) and keeps
