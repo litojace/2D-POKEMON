@@ -865,7 +865,7 @@ export function installAccountRoutes(
       // A hen in the Chicken Coop, by its place (0–8).
       hen: z.number().int().min(0).max(8).optional(),
       // A cow in the pasture (0 is the first; 1 to 4 from 20261117100000
-      // and 20261117170000).
+      // and 20261117180000).
       cow: z.number().int().min(0).max(4).optional(),
       // A decoration: where it stands on the farm (world px, a 10 px grid
       // the database checks), mirrored or not, and which one to move or

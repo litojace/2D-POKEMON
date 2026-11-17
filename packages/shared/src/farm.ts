@@ -1573,7 +1573,7 @@ export const DECOR_BLOCKS: readonly DecorBlock[] = [
   { k: "rect", x0: 314, x1: 1456, y0: 338, y1: 770 },
   { k: "rect", x0: 380, x1: 1480, y0: 770, y1: 842 },
   { k: "rect", x0: 20, x1: 1460, y0: 120, y1: 360 },
-  // The pasture (its top at 318 since 20261117170000's bigger meadow; it
+  // The pasture (its top at 318 since 20261117180000's bigger meadow; it
   // also reaches past the right edge, where no decoration goes anyway).
   { k: "rect", x0: 1450, x1: 1750, y0: 318, y1: 690 },
   { k: "rect", x0: 80, x1: 220, y0: 630, y1: 726 },
@@ -1700,7 +1700,7 @@ export const PASTURE = {
   /** The first milk after the pasture opens (and after a new cow arrives). */
   firstMilkSeconds: 20 * 60,
   /**
-   * More cows (20261117100000; 4 of them from 20261117170000): the 2nd to
+   * More cows (20261117100000; 4 of them from 20261117180000): the 2nd to
    * 5th, each from a farm level and for Gold Leaves. One cow is a big part
    * of a young farm's income, so the 2nd waits until the field has grown
    * (Lv 32, after the 8th hen); each later one keeps the animals at about

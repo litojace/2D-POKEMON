@@ -489,7 +489,7 @@ export function openFarm(options) {
   // behind the field's fence, so a lane runs in front of it: the barn's door
   // and the market's counter no longer open onto the fence, and the lane
   // from home to the barn shows instead of running under it.
-  // The pasture grew for 5 cows (20261117170000): its top from 420 up to
+  // The pasture grew for 5 cows (20261117180000): its top from 420 up to
   // the field's back rail (OY - 32) and its right side from 1720 out past
   // the farm's edge to 1860. The trees that stood there were felled.
   const PAST = { x0: 1480, x1: 1860, y0: OY - 32, y1: 664 },
@@ -1577,7 +1577,7 @@ export function openFarm(options) {
       .filter((q) => Date.parse(q.readyAt) <= n)
       .sort((a, b) => Date.parse(a.readyAt) - Date.parse(b.readyAt));
   };
-  // More cows (20261117100000, 20261117170000): three rows about 95 px
+  // More cows (20261117100000, 20261117180000): three rows about 95 px
   // apart in the bigger meadow. The 2nd and 3rd graze the back, the 4th and
   // 5th the middle, set off from the back row's. Each walks its own stretch:
   // a cow is about 120 px long (tail included), so a stretch stays 60 px
@@ -2581,7 +2581,7 @@ export function openFarm(options) {
     }))
     // The round tree below the lane and the cherry tree right of it were
     // felled for the Chicken Coop, and the two above the pasture for its
-    // taller meadow (20261117170000), filtered after, so every other tree
+    // taller meadow (20261117180000), filtered after, so every other tree
     // keeps its own look.
     .filter(
       (t) =>

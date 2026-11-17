@@ -1189,7 +1189,7 @@ for (const viewport of [
   });
 }
 
-// More cows (20261117100000, 20261117170000): the 2nd from farm level 32,
+// More cows (20261117100000, 20261117180000): the 2nd from farm level 32,
 // bought in the shop's Animals tab, milked on its own with a tap.
 for (const viewport of [
   { width: 1280, height: 800 },
@@ -1282,7 +1282,7 @@ for (const viewport of [
   });
 }
 
-// A full pasture (20261117170000): five cows in three rows in the bigger
+// A full pasture (20261117180000): five cows in three rows in the bigger
 // meadow (level with the field's back rail, wider to the right). Each one's milk bubble is a tap on
 // that cow, even on a phone.
 for (const viewport of [

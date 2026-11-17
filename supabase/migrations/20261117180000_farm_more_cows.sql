@@ -1,4 +1,4 @@
--- More cows, sooner. Run after 20261117160000_farm_coop_wider.sql.
+-- More cows, sooner. Run after 20261117170002_nova_vanguard.sql.
 -- Safe to run again. Numbers and reasons: docs/farm-coop.md.
 --   * The pasture holds 5 cows (was 3). The 2nd comes at farm level 32 for
 --     4000 Gold Leaves (was 40, 6000), the 3rd at 42 for 6000 (was 55,

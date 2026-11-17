@@ -1,5 +1,5 @@
 /**
- * Animals vs the field (20261117100000_farm_coop_cows.sql, cows from 20261117170000): Gold Leaves a day
+ * Animals vs the field (20261117100000_farm_coop_cows.sql, cows from 20261117180000): Gold Leaves a day
  * from crops, the cows and the hens at each farm level, from the live shared
  * rules (packages/shared/src/farm.ts). Run from the repo root:
  *   node --experimental-strip-types docs/hub-redesign/economy/animals.mts
