@@ -6323,7 +6323,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       [...state.players]
         .filter((q) => {
           const art = wornArt(q.character, q.championLooks?.[q.character]);
-          return q.hp > 0 && (art?.mythic || art?.vanguard);
+          return q.hp > 0 && (art?.mythic || art?.epicFx);
         })
         .sort((a, b) => Number(b.id === myId) - Number(a.id === myId))
         .slice(0, battleQuality.knobs().mythicAmbient)
@@ -6393,6 +6393,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         ambient: ambient.has(p.id),
         speed: Math.hypot(p.vx, p.vy),
         angle: p.angle,
+        travelAngle: Math.atan2(p.vy, p.vx),
         // A glide spreads the glider membranes (the dash pose).
         dash: serverPlayer.dashUntil > state.time || isGliding,
         jump: serverPlayer.jumpUntil > state.time && !isGliding,
