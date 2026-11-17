@@ -189,6 +189,16 @@ export const RAID_ASCENDANT_ATTACKS: Partial<Record<string, RaidAttack[]>> = {
     "snuff-gale",
     "bound-wicks",
   ],
+  "storm-twins": [
+    "link-beam",
+    "chain-lightning",
+    "static-field",
+    "twin-rush",
+    "polarity",
+    "thunderclap",
+    "mirror-charge",
+    "short-circuit",
+  ],
 };
 
 /** Ascendant Cragmuff's three chapters. */
@@ -1037,5 +1047,108 @@ export const ASCENDANT_LUMIWICK_CHAPTERS = [
     objective: "Three wicks, one breath. Survive the combinations.",
     detail:
       "Its rhythm quickens. With three raiders up, the wick binds all three braziers: everyone in a ring at once. Embers fall where you usually dodge, and standing still to attack draws a dive.",
+  },
+] as const;
+
+/**
+ * Ascendant Storm Twins' own numbers (damage before the tier multiplier),
+ * the Spire's seventieth floor and its summit. Its ordinary attacks keep
+ * STORM_TWINS' numbers. (Skeleton: tuned with scripts/balance/raid-sim.ts.)
+ */
+export const ASCENDANT_STORM_TWINS = {
+  name: "Ascendant Storm Twins",
+  /** Health added per extra raider (the raid's own: 960). */
+  perExtraPlayer: 960,
+  /** Seconds a teammate kneels to revive (the Ascendant tier: 4.5). */
+  reviveSeconds: 5,
+  /**
+   * Mirror Charge: Fizz takes +, Crackle -, and every raider is marked + or
+   * - (split as Polarity splits them). For `seconds`, a twin is discharged
+   * by `need` of its health in hits from raiders of the opposite sign (the
+   * same sign is repelled: no damage). A twin still charged when it runs out
+   * overloads: a ring (`radius`, the raid's warning clock) round it.
+   */
+  mirror: { seconds: 7, need: 0.05, radius: 210, delay: 1.3, damage: 26 },
+  /**
+   * Short Circuit: an overcharged Link Beam (it can't be jumped) drawn
+   * between the twins for `delay` s. When it fires, the raiders standing on
+   * it (`width` px each side) share `damage` between them (never less than
+   * `minShare` each); nobody on it and the shock arcs over the whole court
+   * (`arc` to everyone).
+   */
+  short: { delay: 2.2, width: 46, damage: 60, minShare: 18, arc: 30 },
+  /** A Twin Rush whose lanes, part-way, turn into a Link Beam (shown in full). */
+  feint: { chance: [0.15, 0.25, 0.35], turnAt: 0.5 },
+  /** Reading habits (as Ascendant Cragmuff reads them). */
+  habit: { samples: 3, consistency: 0.55, offset: 100 },
+  /** Standing still to attack: seconds still, and seconds since the last hit. */
+  anchor: { still: 1.2, hit: 1.0, speed: 40 },
+  /** Pressure by chapter: seconds between attacks × this. */
+  cadence: [0.95, 0.86, 0.78],
+  /** A party's seconds between attacks × (1 - this per extra raider). */
+  partyCadence: 0.03,
+  /** Overlap: from chapter `from`, with `raiders` or more alive. */
+  overlap: { from: 2, raiders: 2 },
+  /** Its attacks hit this much harder than the tier's, by party size (1-4). */
+  damage: [1, 1.05, 1.05, 1],
+  /**
+   * The court under a phone's touch controls: no safe spot, post, pad,
+   * beam end or twin the party must reach sits within `controlMargin`.
+   */
+  phoneControls: SPIRE_PHONE_CONTROLS,
+  controlMargin: 12,
+} as const;
+
+/** Ascendant Storm Twins' attack order for a chapter. */
+export function ascendantStormTwinsPattern(phase: number): RaidAttack[] {
+  if (phase === 1)
+    return [
+      "link-beam",
+      "mirror-charge",
+      "chain-lightning",
+      "twin-rush",
+      "thunderclap",
+    ];
+  if (phase === 2)
+    return [
+      "polarity",
+      "short-circuit",
+      "static-field",
+      "mirror-charge",
+      "twin-rush",
+      "chain-lightning",
+      "link-beam",
+    ];
+  return [
+    "mirror-charge",
+    "polarity",
+    "short-circuit",
+    "twin-rush",
+    "static-field",
+    "link-beam",
+    "thunderclap",
+  ];
+}
+
+/** Ascendant Storm Twins' three chapters. */
+export const ASCENDANT_STORM_TWINS_CHAPTERS = [
+  {
+    name: "Charged Pair",
+    objective:
+      "Hit the twin of the opposite sign. Keep both health bars level.",
+    detail:
+      "Mirror Charge marks Fizz + and Crackle \u2212, and every raider + or \u2212: only the opposite sign discharges a twin, so split up and discharge both before time runs out, or the charged one overloads. Jump the Link Beam and leave both rush lanes.",
+  },
+  {
+    name: "Overcharge",
+    objective: "Share the Short Circuit. Watch for a rush that turns.",
+    detail:
+      "A Short Circuit overcharges the link: stand on the thick beam together to share the shock, or it arcs over the whole court. A Twin Rush may turn into a Link Beam halfway: the new warning is shown in full. They hunt whoever kneels to revive.",
+  },
+  {
+    name: "Ascendant Storm",
+    objective: "Two hearts, one storm. Survive the combinations.",
+    detail:
+      "Their rhythm quickens. Chain lightning lands where you usually dodge, standing still to attack draws a Thunderclap, and Polarity follows a Mirror Charge. Finish both twins together.",
   },
 ] as const;

@@ -99,10 +99,16 @@ export class StormTwinsArena extends RaidArena {
     this.raid.twinRevivals = 0;
     this.clearAttacks();
   }
-  override start() {
-    super.start();
+  /**
+   * The twins step onto the court: the raid's boss becomes Fizz and Crackle
+   * joins it, each with half the health. (Here rather than in start(), so a
+   * Spire boss floor, which spawns its boss mid-climb, gets both twins.)
+   */
+  protected override spawnBoss() {
+    super.spawnBoss();
     const r = this.raid,
-      first = this.players.find((p) => p.raidBoss)!;
+      first = this.players.find((p) => p.raidBoss);
+    if (!first) return;
     const hp = Math.round(r.maxHp / 2);
     r.maxHp = hp * 2;
     Object.assign(first, { name: "Fizz", hp, x: 960, y: 380 });
@@ -267,7 +273,7 @@ export class StormTwinsArena extends RaidArena {
       .filter((t) => t.hp > 0 && along(t) < Infinity)
       .sort((m, n) => along(m) - along(n));
   }
-  protected override finishMessage(won: boolean) {
+  protected override finishMessage(won: boolean): string {
     return won
       ? "Two hearts quiet. One storm conquered."
       : "The storm gathers again. Balance their health and pair opposite signs.";

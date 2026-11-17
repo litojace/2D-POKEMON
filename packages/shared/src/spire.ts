@@ -60,7 +60,8 @@ export interface SpireZone {
     | "lantern-yard"
     | "cloud-deck"
     | "sun-atrium"
-    | "sky-terrace";
+    | "sky-terrace"
+    | "conductor-ring";
   /** Its Ascendant boss name (the boss floor). */
   ascendant: string;
   /** The Ascendant's new attacks (the boss floor's briefing and the Floors list). */
@@ -178,6 +179,26 @@ export const SPIRE_ZONES: Record<number, SpireZone> = {
     // champions are Fire, so the third is kin, as in zones 3 to 5.
     kin: ["cindrake", "pyranda", "lumoth"],
   },
+  7: {
+    id: 7,
+    name: "Conductor Ring",
+    element: "Electric",
+    boss: "storm-twins",
+    court: "conductor-ring",
+    ascendant: "Ascendant Storm Twins",
+    ascendantMoves: ["mirror-charge", "short-circuit"],
+    bossName: "the Storm Twins",
+    bossLead:
+      "Fizz and Crackle, evolved. Their raid's rules still hold (keep both health bars level and finish them together, jump the Link Beam, pair opposite signs when Polarity marks you), pushed further: a Mirror Charge only the opposite sign can discharge, so the party splits between the twins, a Short Circuit the party shares by standing on the beam together, combos and fewer openings.",
+    bossReads:
+      "Chain lightning lands where you usually dodge to, standing still to attack draws a Thunderclap, a Twin Rush may turn into a Link Beam (shown in full), and they hunt whoever kneels to revive.",
+    // Electric (Voltkit, Coilemur: Voltkit absorbs the twins' Chain
+    // Lightning and Coilemur's Electromagnet drags them together in their
+    // own raid) and their kin of the storm's mirror, Auralynx, whose Facet
+    // Guard reflects the twins' Link Beam back into them. Only two champions
+    // are Electric, so the third is kin, as in zones 3 to 6.
+    kin: ["voltkit", "coilemur", "auralynx"],
+  },
 };
 /** The first floor of each built zone: where a climb may start. */
 export const spireZoneStart = (zone: number) =>
@@ -251,6 +272,17 @@ export const SPIRE_ELITE_MECHANICS = {
     name: "ember dive",
     hint: "the captain locks a red lane through you and dives down it: step out of the lane before it goes",
     cue: "Ember Dive — step out of the red lane!",
+  },
+  // The captain marks every raider + or - (as the twins' Polarity does):
+  // stand by a teammate of the opposite sign to cancel it; alone, step on
+  // the pad of the opposite sign. On the Spire no pad is laid under a
+  // phone's touch controls.
+  polarity: {
+    attack: "polarity",
+    boss: "the Storm Twins",
+    name: "polarity",
+    hint: "everyone is marked + or −: stand by an opposite sign (alone, step on the opposite pad) before it discharges",
+    cue: "Polarity — find the opposite sign!",
   },
 } as const satisfies Record<
   string,
@@ -1216,6 +1248,150 @@ export const SPIRE_FLOORS: Record<number, SpireFloor> = {
     waves: [],
     boss: "emberwing",
   },
+  // Zone 7, the Conductor Ring, the Spire's summit zone: Electric-leaning
+  // (Voltkit, Coilemur) with their kin of the storm's mirror Auralynx,
+  // plus one off-element champion per floor.
+  61: {
+    floor: 61,
+    zone: 7,
+    kind: "wave",
+    name: "The Static Gate",
+    waves: [
+      [e("coilemur", "front"), e("voltkit", "caster")],
+      [e("tidefin", "skirmisher"), e("auralynx", "front")],
+      [e("coilemur", "front"), e("voltkit", "caster")],
+    ],
+  },
+  62: {
+    floor: 62,
+    zone: 7,
+    kind: "wave",
+    name: "Copper Steps",
+    waves: [
+      [e("voltkit", "caster"), e("coilemur", "skirmisher")],
+      [e("pangrove", "front"), e("auralynx", "skirmisher")],
+      [e("coilemur", "front"), e("voltkit", "caster")],
+    ],
+  },
+  63: {
+    floor: 63,
+    zone: 7,
+    kind: "wave",
+    name: "Conductor Rows",
+    waves: [
+      [e("coilemur", "front"), e("glacelle", "caster")],
+      [e("auralynx", "front"), e("voltkit", "caster")],
+      [
+        e("glacelle", "caster"),
+        e("coilemur", "front"),
+        e("auralynx", "skirmisher"),
+      ],
+    ],
+  },
+  64: {
+    floor: 64,
+    zone: 7,
+    kind: "wave",
+    name: "Hall of Arcs",
+    waves: [
+      [
+        e("coilemur", "front"),
+        e("voltkit", "caster"),
+        e("duskveil", "skirmisher"),
+      ],
+      [e("auralynx", "front"), e("coilemur", "skirmisher")],
+      [
+        e("duskveil", "skirmisher"),
+        e("voltkit", "caster"),
+        e("coilemur", "front"),
+      ],
+    ],
+  },
+  65: {
+    floor: 65,
+    zone: 7,
+    kind: "elite",
+    name: "The Polar Ring",
+    description: "Echo Captain Coilemur · reinforcements and polarity marks",
+    waves: [],
+    elite: {
+      captain: e("coilemur", "front"),
+      name: "Echo Captain Coilemur",
+      mechanic: "polarity",
+      escorts: [e("voltkit", "caster")],
+    },
+  },
+  66: {
+    floor: 66,
+    zone: 7,
+    kind: "wave",
+    name: "Thunderhead Terrace",
+    waves: [
+      [e("coilemur", "front"), e("mystowl", "caster")],
+      [e("voltkit", "caster"), e("auralynx", "skirmisher")],
+      [e("mystowl", "caster"), e("coilemur", "front"), e("voltkit", "caster")],
+    ],
+  },
+  67: {
+    floor: 67,
+    zone: 7,
+    kind: "wave",
+    name: "Lightning Run",
+    waves: [
+      [e("voltkit", "caster"), e("coilemur", "front"), e("wombolder", "front")],
+      [
+        e("auralynx", "skirmisher"),
+        e("coilemur", "skirmisher"),
+        e("voltkit", "caster"),
+      ],
+      [e("wombolder", "front"), e("auralynx", "front")],
+    ],
+  },
+  68: {
+    floor: 68,
+    zone: 7,
+    kind: "wave",
+    name: "Choir of Thunder",
+    waves: [
+      [e("coilemur", "front"), e("sunbara", "front"), e("voltkit", "caster")],
+      [
+        e("auralynx", "skirmisher"),
+        e("coilemur", "front"),
+        e("voltkit", "caster"),
+      ],
+      [e("sunbara", "front"), e("voltkit", "caster"), e("coilemur", "front")],
+    ],
+  },
+  69: {
+    floor: 69,
+    zone: 7,
+    kind: "wave",
+    name: "Stair of Storms",
+    waves: [
+      [
+        e("coilemur", "front"),
+        e("voltkit", "caster"),
+        e("cindrake", "skirmisher"),
+      ],
+      [
+        e("cindrake", "skirmisher"),
+        e("auralynx", "front"),
+        e("coilemur", "skirmisher"),
+      ],
+      [e("coilemur", "front"), e("auralynx", "front"), e("voltkit", "caster")],
+    ],
+  },
+  // The Ascendant Storm Twins, in the Conductor Ring, in the climb's own
+  // room: the Spire's summit.
+  70: {
+    floor: 70,
+    zone: 7,
+    kind: "boss",
+    name: "Ascendant Storm Twins",
+    description: "New attacks: Mirror Charge, Short Circuit",
+    waves: [],
+    boss: "storm-twins",
+  },
 };
 export const spireFloor = (floor: number): SpireFloor | undefined =>
   SPIRE_FLOORS[floor];
@@ -1382,6 +1558,17 @@ export const SPIRE_TUNING: Record<
   58: { difficulty: "normal", power: 0.66, armour: 4.1, limit: 180 },
   59: { difficulty: "normal", power: 0.67, armour: 2.85, limit: 180 },
   60: { difficulty: "hard", power: 1, armour: 1, limit: 600 },
+  // Zone 7 (skeleton: tuned on work/z7-core, tests/unit/spire-waves.test.ts).
+  61: { difficulty: "normal", power: 0.66, armour: 4.5, limit: 180 },
+  62: { difficulty: "normal", power: 0.67, armour: 3.2, limit: 180 },
+  63: { difficulty: "normal", power: 0.68, armour: 4.4, limit: 180 },
+  64: { difficulty: "normal", power: 0.69, armour: 3.3, limit: 180 },
+  65: { difficulty: "normal", power: 0.7, armour: 0.75, limit: 240 },
+  66: { difficulty: "normal", power: 0.7, armour: 3.6, limit: 180 },
+  67: { difficulty: "normal", power: 0.71, armour: 3.1, limit: 180 },
+  68: { difficulty: "normal", power: 0.72, armour: 3.4, limit: 180 },
+  69: { difficulty: "normal", power: 0.73, armour: 3.0, limit: 180 },
+  70: { difficulty: "hard", power: 1, armour: 1, limit: 600 },
 };
 /** Party scaling, and the cap on fighters on the court. */
 export const SPIRE_PARTY = {

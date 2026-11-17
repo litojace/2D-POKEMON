@@ -15,6 +15,7 @@ import { AscendantInkpurrArena } from "./raid-ascendant-inkpurr.js";
 import { AscendantSnoozakuArena } from "./raid-ascendant-snoozaku.js";
 import { AscendantPrismellArena } from "./raid-ascendant-prismell.js";
 import { AscendantLumiwickArena } from "./raid-ascendant-lumiwick.js";
+import { AscendantStormTwinsArena } from "./raid-ascendant-storm-twins.js";
 
 /**
  * A raid room for a boss: each built boss has its own arena class. An
@@ -38,6 +39,8 @@ export function createRaidArena(
     return new AscendantPrismellArena(code);
   if (opts.variant === "ascendant" && boss === "emberwing")
     return new AscendantLumiwickArena(code);
+  if (opts.variant === "ascendant" && boss === "storm-twins")
+    return new AscendantStormTwinsArena(code);
   if (boss === "storm-twins") return new StormTwinsArena(code, boss);
   if (boss === "emberwing") return new EmberwingArena(code, boss);
   if (boss === "prismatail") return new PrismatailArena(code, boss);
