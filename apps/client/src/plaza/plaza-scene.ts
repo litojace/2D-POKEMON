@@ -16,7 +16,7 @@ import { bubbleLines } from "../chat/bubble-text";
 const BUBBLE_TEXT_W = 150;
 import { syncHubGraphics } from "../hub-graphics";
 import { goldenLevel } from "../farm/farm-feel";
-import { NightLight, ShadowLayer, sunLight } from "../world-light";
+import { NightLight } from "../world-light";
 import {
   ORB_SHOWER,
   PLAZA,
@@ -153,9 +153,10 @@ export function openPlaza(options) {
   const reduced = options.reduced;
   /** Low graphics (slow phones): no ambient animals or night glow, 30 fps. */
   let low = !!options.low;
-  // Shadows that follow the sun and the night's light map (not at Low).
-  const shadowLayer = new ShadowLayer(),
-    nightLight = new NightLight();
+  // The night's light map (not at Low). Shadows are the round ones under
+  // each thing: shadows cast from the sun (drawn at half resolution) blurred
+  // the edges beside every fighter, and were taken out.
+  const nightLight = new NightLight();
   layer.dataset.graphics = low ? "low" : "high";
   syncHubGraphics();
   layer.dataset.frozen = "false";
@@ -2017,58 +2018,6 @@ export function openPlaza(options) {
     return 1;
   }
   /**
-   * Every tall thing's shadow on the ground, away from the sun: long and to
-   * the left in the morning, short at noon, long and to the right at golden
-   * hour, gone at night. Drawn before anything standing.
-   */
-  function drawCastShadows(g, time, vx0, vy0, vx1, vy1) {
-    if (!shadowLayer.begin(g, sunLight(tod, night()))) return;
-    const near = (x, y) =>
-      y > vy0 - 60 && y < vy1 + 420 && x > vx0 - 420 && x < vx1 + 420;
-    for (const o of TREES) {
-      if (!near(o.x, o.y)) continue;
-      const t = o.t;
-      if (t.pine) shadowLayer.sprite(t.pine, o.x, o.y + 4);
-      else {
-        shadowLayer.sprite(t.trunk, o.x, o.y + 4);
-        shadowLayer.sprite(t.canopy, o.x, o.y + 4, t.h - 10);
-      }
-    }
-    for (const o of BUSHES)
-      if (near(o.x, o.y)) shadowLayer.sprite(o.spr, o.x, o.y + 4);
-    const lampSpr = GFX.lamp(),
-      benchSpr = GFX.bench();
-    for (const o of LAMPS)
-      if (near(o.x, o.y)) shadowLayer.sprite(lampSpr, o.x, o.y + 4);
-    for (const o of BENCHES)
-      if (near(o.x, o.y)) shadowLayer.sprite(benchSpr, o.x, o.y + 4);
-    for (const h of HOUSES)
-      if (near(h.x, h.y)) shadowLayer.sprite(h.spr, h.x, h.y);
-    for (const f of FLOOD)
-      if (near(f.x, f.y)) shadowLayer.pole(f.x, f.y, 10, 250);
-    if (near(CAFE.x, CAFE.y))
-      shadowLayer.sprite(GFX.foodTruck(), CAFE.x, CAFE.y + 4);
-    if (near(BOARD.x, BOARD.y))
-      shadowLayer.sprite(GFX.board(), BOARD.x, BOARD.y + 4);
-    const s = 84;
-    for (const b of BODIES()) {
-      const im = b.img?.sprite;
-      if (!im || !near(b.x, b.y)) continue;
-      shadowLayer.image(
-        im,
-        b.x,
-        b.y,
-        -s / 2,
-        -s * 0.9,
-        s,
-        s * 1.01,
-        b.z,
-        b.face > 0,
-      );
-    }
-    shadowLayer.end(g);
-  }
-  /**
    * The night's light map: each lamp, floodlight and lit window lifts the
    * darkness around it, so what it lights keeps its colours.
    */
@@ -3496,7 +3445,6 @@ export function openPlaza(options) {
       g.ellipse(o.x, o.y, 12 * (1 - o.z / 500), 5, 0, 0, 7);
       g.fill();
     });
-    if (!low) drawCastShadows(g, time, vx0, vy0, vx1, vy1);
     const items = [
       ...TREES.map((o) => ({
         x: o.x,
