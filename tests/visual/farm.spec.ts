@@ -1023,13 +1023,23 @@ for (const viewport of [
       // The 4th hen waits for farm level 17.
       await expect(sheet.locator("[data-buyhen]")).toHaveText("Lv 17");
       await expect(sheet.locator("[data-buyhen]")).toBeDisabled();
+      // (The feeding's answer first: an answer at a higher level than its
+      // request shows the level-up card, which isn't what this checks.)
+      await expect
+        .poll(() =>
+          page.evaluate(
+            () =>
+              (window as any).__farmRequests.flatMap(
+                (r: any) => r.actions ?? [],
+              ).length,
+          ),
+        )
+        .toBe(4);
+      await page.waitForTimeout(400);
       await page.evaluate(() => {
         (window as any).__fakeFarm.level = 17;
         return (window as any).__farm.refresh();
       });
-      // Levelling up shows its card first, as for a player.
-      await page.locator("#fm-modal [data-lvok]").click();
-      await expect(page.locator("#fm-modal")).toBeHidden();
       await expect(sheet.locator("[data-buyhen]")).toContainText("500");
       await sheet.locator("[data-buyhen]").click();
       await expect(sheet.locator(".sh-head h4")).toHaveText("Hens 4/9");
@@ -1128,9 +1138,6 @@ for (const viewport of [
         (window as any).__fakeFarm.level = 40;
         return (window as any).__farm.refresh();
       });
-      // Levelling up shows its card first, as for a player.
-      await page.locator("#fm-modal [data-lvok]").click();
-      await expect(page.locator("#fm-modal")).toBeHidden();
       await expect(item.locator("[data-buycow]")).toContainText("6,000");
       await snap(
         page,
