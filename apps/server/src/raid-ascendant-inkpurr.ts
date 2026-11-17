@@ -54,6 +54,7 @@ import {
   type RaidWarning,
 } from "../../../packages/shared/src/raid.js";
 import {
+  RAID_JUMP_ATTACKS,
   RAID_REACTION,
   RAID_SLOWEST_SPEED,
   raidShapeHits,
@@ -144,6 +145,8 @@ export function AscendantInkpurrRules<B extends InkClass>(Base: B) {
     protected inkCombos = new Set<number>();
     /** Where each pouncing body leaps from (its spot when the leap starts). */
     protected inkLeaps = new Map<RaidWarning, Point>();
+    /** When the last jump answer (a pulse ring) landed. */
+    protected inkJumpAt = -Infinity;
     /** Lunges that will turn into a pounce (by cast), and when. */
     protected inkFeints = new Map<
       number,
@@ -156,6 +159,7 @@ export function AscendantInkpurrRules<B extends InkClass>(Base: B) {
     }
     /** A new fight: forget the last one's reads. */
     protected resetInkReads() {
+      this.inkJumpAt = -Infinity;
       this.inkReads = {
         habits: 0,
         anchors: 0,
@@ -404,6 +408,7 @@ export function AscendantInkpurrRules<B extends InkClass>(Base: B) {
       const r = this.raid,
         before = new Set(r.warnings);
       super.startAttack(kind, target);
+      this.spaceFromLastJump(before);
       if (kind === "lunge") this.copyLunges(before);
       // A lunge on its own may be a feint (shown in full when it turns).
       if (kind === "lunge" && this.smart() && this.inkFeintRoll()) {
@@ -420,6 +425,22 @@ export function AscendantInkpurrRules<B extends InkClass>(Base: B) {
             lanes,
           });
         }
+      }
+    }
+    /**
+     * A jump answer lands the jump cooldown after the last one that landed,
+     * even once that one is gone from the warnings (its quicker rhythm can
+     * start a pulse right after another): whoever jumped the first can jump
+     * this one too. Delaying only ever gives more warning.
+     */
+    protected spaceFromLastJump(before: Set<RaidWarning>) {
+      const ready = this.inkJumpAt + RULES.jumpCooldown + 0.3;
+      for (const w of this.raid.warnings) {
+        if (before.has(w) || !RAID_JUMP_ATTACKS.has(w.kind) || w.at >= ready)
+          continue;
+        const delta = ready - w.at;
+        w.at += delta;
+        if (w.lockAt !== undefined) w.lockAt += delta;
       }
     }
     /**
@@ -719,6 +740,7 @@ export function AscendantInkpurrRules<B extends InkClass>(Base: B) {
 
     protected override resolveWarning(w: RaidWarning, boss: Fighter) {
       if (!this.inkAscendant()) return super.resolveWarning(w, boss);
+      if (RAID_JUMP_ATTACKS.has(w.kind)) this.inkJumpAt = this.time;
       const r = this.raid;
       if (w.kind === "nightfall") {
         const pools = w.pools ?? [];
