@@ -23,12 +23,6 @@ const SIZES = [
   { name: "667x375", width: 667, height: 375, phone: true },
   { name: "desktop", width: 1280, height: 720, phone: false },
 ];
-const PADS = {
-  circle: { x: 530, y: 250 },
-  star: { x: 1070, y: 250 },
-  moon: { x: 960, y: 650 },
-  wave: { x: 640, y: 650 },
-};
 
 async function raid(page: Page) {
   await page.route(/\/apps\/client\/src\/main\.ts(?:\?|$)/, async (route) => {
@@ -264,7 +258,11 @@ for (const s of SIZES)
       );
       // Every pad's awake ring: on screen, big enough to read, its glyph
       // (the middle) never covered; on phones never under the controls.
-      for (const [rune, pad] of Object.entries(PADS)) {
+      // (the arena's own pads, as the server and the deck place them)
+      const pads: { rune: string; x: number; y: number }[] =
+        await page.evaluate(() => (window as any).__combat.arena.pads());
+      expect(pads).toHaveLength(4);
+      for (const { rune, ...pad } of pads) {
         const [c] = await onScreen(page, [pad]);
         expect(tide.radius * c.scale, `${rune} ring`).toBeGreaterThan(22);
         expect(
