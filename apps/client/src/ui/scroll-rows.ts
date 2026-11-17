@@ -28,7 +28,6 @@ export const ROWS = [
   ".admin-tabs",
   ".journey-road",
   ".sp-route",
-  ".sp-zone-picker",
   ".bs-store",
   ".sh-tabs",
 ].join(",");

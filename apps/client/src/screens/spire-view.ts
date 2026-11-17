@@ -17,6 +17,7 @@ import {
   SPIRE_SEATS,
   spireBlessingText,
 } from "../../../../packages/shared/src/spire";
+import { elementIcon } from "../element-icons";
 import { fighterAvatar } from "../fighter-art";
 import { menuIcon } from "../menu-icons";
 import { SPIRE_COLOR, spireBlessingIcon } from "../spire-art";
@@ -127,23 +128,36 @@ function floorPreview(model: SpireModel) {
  * The zone picker: the zone a climb starts in (zone 1 always, a later zone
  * once its checkpoint is earned). The preview and milestones below follow
  * it. Shown once more than one zone is released.
+ *
+ * Phones first: one row of equal, finger-sized chips (the zone's number and
+ * its element's glyph; a lock while it is closed), all of them in view
+ * without scrolling for up to seven zones, and the picked zone's name,
+ * element, floors and Ascendant said once beside or under the row.
  */
 function zonePicker(model: SpireModel) {
   const { groups, climbZone } = model;
   if (groups.length < 2) return "";
+  const range = (g: SpireModel["groups"][number]) => ({
+    from: g.floors[0].floor.floor,
+    top: g.floors[g.floors.length - 1].floor.floor,
+  });
   const items = groups
-    .map(({ zone: z, floors, open }) => {
+    .map((g) => {
+      const { zone: z, open } = g;
       const on = open && z.id === climbZone;
-      const from = floors[0].floor.floor,
-        top = floors[floors.length - 1].floor.floor;
-      const state = open
-        ? `Floors ${from}–${top}`
-        : `Conquer zone ${z.id - 1} first`;
+      const { from, top } = range(g);
       const label = `Zone ${z.id}, ${z.name}, ${z.element}. ${open ? `Floors ${from} to ${top}, ${z.ascendant} at the top` : `Locked: conquer zone ${z.id - 1} first`}`;
-      return `<button type="button" class="sp-zone${on ? " is-on" : ""}${open ? "" : " is-locked"}" data-ui-spire-zone="${z.id}" aria-pressed="${on}"${open ? "" : " disabled"} aria-label="${esc(label)}"><span class="sp-zone-num ui-num">${z.id}</span><span class="sp-zone-text"><b>${esc(z.name)}</b><small class="ui-note">${esc(z.element)} · ${esc(state)}</small></span>${open ? "" : `<span class="sp-lock" aria-hidden="true">${lockIcon}</span>`}</button>`;
+      const glyph = open ? elementIcon(z.element) : lockIcon;
+      return `<button type="button" class="sp-zone${on ? " is-on" : ""}${open ? "" : " is-locked"}" data-ui-spire-zone="${z.id}" aria-pressed="${on}"${open ? "" : " disabled"} aria-label="${esc(label)}" title="${esc(`Zone ${z.id} · ${z.name}${open ? "" : ` · conquer zone ${z.id - 1} first`}`)}" style="--zone:var(--el-${esc(z.element.toLowerCase())}, var(--boss))"><span class="sp-zone-num ui-num" aria-hidden="true">${z.id}</span><span class="sp-zone-glyph" aria-hidden="true">${glyph}</span></button>`;
     })
     .join("");
-  return `<div class="sp-zone-picker" role="group" aria-label="Zone to climb">${items}</div>`;
+  const picked =
+    groups.find((g) => g.open && g.zone.id === climbZone) ?? groups[0];
+  const { from, top } = range(picked);
+  const z = picked.zone;
+  // The picked zone, said once (the chips' labels carry it for screen readers).
+  const info = `<p class="sp-zone-info" aria-hidden="true" style="--zone:var(--el-${esc(z.element.toLowerCase())}, var(--boss))"><b><span class="sp-zone-info-num">Zone ${z.id}</span> ${esc(z.name)}</b><small class="ui-note">${elementIcon(z.element)}${esc(z.element)} · Floors ${from}–${top} · ${esc(z.ascendant)}</small></p>`;
+  return `<div class="sp-zones" data-zones="${groups.length}"><div class="sp-zone-picker" role="group" aria-label="Zone to climb">${items}</div>${info}</div>`;
 }
 // Small decorative UI glyphs; encounter types and state still come from the model.
 const milestoneCrest = (kind: "boss" | "elite" | "checkpoint") => {
