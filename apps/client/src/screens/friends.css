@@ -56,7 +56,10 @@
 .fr-scroll {
   flex: 1 1 auto;
   min-height: 0;
-  overflow: auto;
+  /* Up and down only: nothing in the list may push it wider, and a finger
+     must not drag it sideways (owner's report, 16 Nov 2026). */
+  overflow: hidden auto;
+  touch-action: pan-y;
   overscroll-behavior: contain;
   /* Room for focus rings and frame ornaments at the edges. */
   margin: 0 calc(-1 * var(--sp-1));
@@ -64,6 +67,9 @@
 }
 .fr-list {
   display: grid;
+  /* One column no wider than the list: an auto column grew to the widest
+     row's content (an open row's options), wider than the sheet. */
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--sp-2);
   margin: 0;
   padding: 0;
@@ -180,12 +186,17 @@
   background: var(--st, var(--st-away));
   border: 2px solid var(--ui-bg-1);
 }
-/* A row's options: Pin and Remove (Remove asks once more). */
+/* A row's options: Message, Pin, Remove and Block (Remove asks once
+   more). The line of text on top, the buttons in one row under it, at the
+   right as in the rows: four one-size buttons beside the text were wider
+   than the sheet. */
 .fr-opts {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   align-items: center;
   gap: 6px;
-  margin: 4px 0 0 56px;
+  margin: 4px 0 0;
   padding: 6px 8px;
   border-radius: var(--rad-sm);
   background: var(--fill-card);
@@ -195,7 +206,7 @@
   display: none;
 }
 .fr-opts-text {
-  flex: 1;
+  flex: 1 0 100%;
   min-width: 0;
   font-size: var(--fs-small);
   color: var(--ui-dim);
@@ -322,7 +333,6 @@
     display: none;
   }
   .fr-opts {
-    margin-left: 0;
     padding: 4px 6px;
   }
   .fr-code {

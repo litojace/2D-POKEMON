@@ -351,8 +351,7 @@ import { prepareSurfaceTextures, surfaceBurst } from "./court-surface-fx";
 import { fxFor } from "./fx-engine";
 import {
   ECHO_SKILL_COLOR,
-  ECHO_TINT,
-  ECHO_TINT_HURT,
+  spireEchoTint,
   drawEliteCrown,
   echoShown,
 } from "./spire-art";
@@ -364,6 +363,7 @@ import {
 import { spireCourtWalls } from "../../../packages/shared/src/spire-court";
 import {
   SpireCourtRig,
+  hasSpireSummitArena,
   isSpireFloorId,
   isSpireSummitFloorId,
   nextSpireCourtView,
@@ -377,6 +377,7 @@ import {
   type SpireCourtView,
 } from "./spire-court-rig";
 import { spireFloorTint } from "./spire-court-art";
+import { loadSpireSeen, spireNudge } from "./spire-nudge";
 import { isRaidFloor, paintRaidFloor } from "./raid-floors";
 import {
   isIllustratedRaidFloor,
@@ -2394,7 +2395,18 @@ function lobbyView() {
     friendRequests: lobbyFriends.requests,
     friendsOnline: lobbyFriends.online,
     guide: guide.view(),
+    spire: lobbySpire(),
   };
+}
+/** Something new in the Spire for the Lobby's card and badge (spire-nudge.ts). */
+function lobbySpire() {
+  const account = accountsUI?.account?.id;
+  if (!account) return null;
+  return spireNudge({
+    spire: accountsUI.spire,
+    clears: accountsUI.raidClears,
+    seen: loadSpireSeen(account),
+  });
 }
 /** Getting started (getting-started.ts): a new player's first steps. */
 const guide = createGuide({
@@ -2692,6 +2704,8 @@ function lobbyAction(action: LobbyAction) {
   else if (action === "wardrobe") void accountsUI.showWardrobe();
   else if (action === "shop") void accountsUI.showShop();
   else if (action === "raids") void showRaidBestiary();
+  else if (action === "spire")
+    void accountsUI.showRaids(undefined, undefined, "climb");
   else if (action === "journey") void accountsUI.showJourney();
   else if (action === "missions") void accountsUI.showMissions();
   else if (action === "ranks") $("leaderboard").click();
@@ -4718,7 +4732,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     const key = this.floorTexture(
       spireCourt
         ? spireFloorId(spireCourt)
-        : spire && (this.courtRaid || arena === "lagoon")
+        : spire && (this.courtRaid || hasSpireSummitArena(arena))
           ? spireSummitFloorOf(arena)
           : this.courtRaid
             ? "raid-coliseum"
@@ -6368,10 +6382,9 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
           : 0;
       const pose = {
         hp: p.hp,
-        // Spire Echoes: the champion in a dark violet shade.
-        ...(serverPlayer.echo
-          ? { tint: ECHO_TINT, hurtTint: ECHO_TINT_HURT }
-          : {}),
+        // Spire Echoes: the champion in a dark violet shade (pale on
+        // zone 3's dark court).
+        ...(serverPlayer.echo ? spireEchoTint(this.spireView?.zone) : {}),
         look: p.raidLook,
         skin: p.championLooks?.[p.character] ?? null,
         ambient: ambient.has(p.id),
@@ -7590,6 +7603,7 @@ accountsUI = new AccountUI({
       accountsUI?.raidClears ?? null,
       accountsUI?.economy?.looks ?? null,
       accountsUI?.economy?.journey ?? null,
+      accountsUI ? (lobbySpire()?.key ?? null) : null,
     ]);
     if (shown === accountShown) return;
     accountShown = shown;

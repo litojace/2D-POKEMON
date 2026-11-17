@@ -377,7 +377,9 @@ export function drawRaidArena(
   if (r.boss === "prismatail") drawSunAtrium(g, state, reduced, at, clock);
   if (dream) drawCloudDeck(g, state, reduced, clock);
   if (tide) drawLagoon(g, state, reduced, clock);
-  if (gloom) drawLanternYard(g, state, reduced, at, clock);
+  // (The Spire's wave and elite floors in Inkpurr's zone: its court, no yard.)
+  if (gloom && (!r.spire || r.spire.kind === "boss"))
+    drawLanternYard(g, state, reduced, at, clock);
   for (const w of r.warnings) {
     if (r.boss === "storm-twins" && drawStormWarning(g, state, w)) continue;
     if (r.boss === "emberwing" && drawEmberwingWarning(g, state, w)) continue;

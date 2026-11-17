@@ -191,9 +191,8 @@ import {
 } from "./bistro-model";
 import {
   carGlows,
-  drawFrontLamps,
-  drawFrontTrees,
   drawRoofSign,
+  drawSceneryFront,
   drawSceneryLive,
   drawSceneryStatic,
   roofSignGlow,
@@ -201,6 +200,14 @@ import {
   updateCars,
   type Car,
 } from "./bistro-scenery";
+import {
+  makeStreet,
+  seasonOf,
+  updateStreet,
+  type PaintCreature,
+} from "./bistro-town";
+import type { Season } from "./bistro-art";
+import { serverDay } from "../ui/countdown";
 import * as Rules from "./bistro-model";
 import { CROP_BY_ID, EGG, MILK } from "../../../../packages/shared/src/farm";
 import {
@@ -3806,7 +3813,11 @@ export function openBistro(o: BistroOptions): BistroHandle {
   /* ───────────── update ───────────── */
   const update = (dt: number) => {
     T += dt;
-    cars = updateCars(cars, dt, Math.random());
+    updateStreet(street, dt);
+    cars = updateCars(cars, dt, Math.random(), {
+      bus: street.bus,
+      max: low ? 2 : 4,
+    });
     // Nothing happens inside until the server has answered once.
     if (!sync.ready && !visiting) return;
     const now = nowS();
@@ -3927,11 +3938,25 @@ export function openBistro(o: BistroOptions): BistroHandle {
   };
 
   /* ───────────── draw ───────────── */
+  // The season follows the server's day (looked up once a minute).
+  let season: Season = seasonOf(serverDay());
+  let seasonAt = 0;
   const light = (): Light => {
     const tod =
       (window as unknown as { __bistroTod?: number }).__bistroTod ??
       deviceTimeOfDay();
-    return { night: nightLevel(tod), gold: goldenLevel(tod), t: T };
+    if (T - seasonAt > 60) {
+      seasonAt = T;
+      season = seasonOf(serverDay());
+    }
+    return {
+      night: nightLevel(tod),
+      gold: goldenLevel(tod),
+      t: T,
+      season:
+        (window as unknown as { __bistroSeason?: Season }).__bistroSeason ??
+        season,
+    };
   };
   type Drawable = { d: number; f: () => void };
   /** The staff drawn in the last frame, by id (tests: everyone on the team shows). */
@@ -4150,6 +4175,48 @@ export function openBistro(o: BistroOptions): BistroHandle {
     { y: -2, v: 2.8, col: "#3d8fd1", kind: 0 },
     { y: 13, v: -3.1, col: "#f2c14e", kind: 1 },
   ];
+  // The neighbourhood's passers-by: a handful of the roster, fewer on Low.
+  const street = makeStreet(
+    [...ROSTER].sort(() => Math.random() - 0.5).slice(0, 8),
+    low,
+  );
+  /**
+   * Night versions of the passers-by's drawings: the street darkens at
+   * night, so they do too (the drawing again, tinted, crossfaded by the
+   * night's depth; made once per drawing).
+   */
+  const nightArt = new WeakMap<Sprite, HTMLCanvasElement>();
+  const nightOf = (s: Sprite) => {
+    let c = nightArt.get(s);
+    if (!c) {
+      c = document.createElement("canvas");
+      c.width = s.cv.width;
+      c.height = s.cv.height;
+      const g = c.getContext("2d")!;
+      g.drawImage(s.cv, 0, 0);
+      g.globalCompositeOperation = "source-atop";
+      g.fillStyle = "rgba(24,30,64,.55)";
+      g.fillRect(0, 0, c.width, c.height);
+      nightArt.set(s, c);
+    }
+    return c;
+  };
+  let streetNight = 0;
+  const paintCreature: PaintCreature = (char, face, x, y, lift, alpha) => {
+    const s = sprite(asChar(char), face);
+    if (!s.ready) return;
+    const k = SPR * 0.94;
+    const dx = x - s.ax * k,
+      dy = y - lift - s.ay * k,
+      dw = s.cv.width * k,
+      dh = s.cv.height * k;
+    ctx.globalAlpha = alpha;
+    if (streetNight < 0.98) ctx.drawImage(s.cv, dx, dy, dw, dh);
+    if (streetNight > 0.02) {
+      ctx.globalAlpha = alpha * streetNight;
+      ctx.drawImage(nightOf(s), dx, dy, dw, dh);
+    }
+  };
   const scenery = document.createElement("canvas");
   let sceneryKey = "";
   const sceneryCanvas = (L: Light) => {
@@ -4166,6 +4233,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
       DPR,
       Math.round(L.night * 24),
       Math.round(L.gold * 24),
+      L.season,
       special(),
     ].join(":");
     if (key === sceneryKey) return scenery;
@@ -4218,7 +4286,8 @@ export function openBistro(o: BistroOptions): BistroHandle {
       view.x * DPR,
       view.y * DPR,
     );
-    drawSceneryLive(ctx, L, cars, low);
+    streetNight = L.night;
+    drawSceneryLive(ctx, L, cars, low, street, paintCreature);
     drawGroundShadow(ctx);
     const sh = shellCanvas();
     ctx.drawImage(
@@ -4481,8 +4550,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
       drawDish(ctx, f.dish, x, y, 13, T, false);
     }
 
-    drawFrontTrees(ctx, L);
-    drawFrontLamps(ctx, L);
+    drawSceneryFront(ctx, L, low, street, paintCreature);
     drawLighting(L);
     drawOverlay(now);
     placeRotate();
@@ -4600,7 +4668,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
       // Street lamps, headlights and the rooftop sign.
       for (const [x, y, r, rgb, a] of [
         ...sceneryGlows(),
-        ...carGlows(cars),
+        ...carGlows(cars, street.bus),
         roofSignGlow(),
       ])
         glow(x, y, r, rgb, a * n);
@@ -5502,9 +5570,42 @@ export function openBistro(o: BistroOptions): BistroHandle {
       litter: () => litter,
       setTod: (v: number | undefined) =>
         ((window as unknown as { __bistroTod?: number }).__bistroTod = v),
+      /** Another season outside (tests; undefined: the server's day). */
+      setSeason: (v: Season | undefined) =>
+        ((window as unknown as { __bistroSeason?: Season }).__bistroSeason = v),
+      /** The street's passers-by, the bus and the birds (tests). */
+      street: () => ({
+        folk: street.folk.map((f) => ({
+          kind: f.kind,
+          x: f.x,
+          y: f.y,
+          char: f.char,
+        })),
+        bus: { ...street.bus },
+        pigeons: street.pigeons.length,
+        ducks: street.ducks.length,
+      }),
+      /** Keep the bus at its stop (tests: pictures with the bus in). */
+      holdBus: (on = true) => {
+        street.bus.hold = on;
+        if (on) street.bus.state = "stop";
+      },
       spawn: () => spawn(),
       sync: () => sync,
       setCars: (list: Car[]) => (cars = list),
+      /** Bake the street again and say how long it took (ms; tests, tuning). */
+      bakeScenery: () => {
+        sceneryKey = "";
+        const t0 = performance.now();
+        sceneryCanvas(light());
+        return performance.now() - t0;
+      },
+      /** Draw `n` frames back to back and say how long one took (ms). */
+      drawMs: (n = 20) => {
+        const t0 = performance.now();
+        for (let i = 0; i < n; i++) draw();
+        return (performance.now() - t0) / n;
+      },
       load: () => sync.load(),
       flush: () => sync.flush(),
       plate: (i: number) => plateStove(i),

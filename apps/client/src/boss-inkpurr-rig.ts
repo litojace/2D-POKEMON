@@ -31,6 +31,8 @@ export interface InkpurrLook extends Omit<InkCue, "clock"> {
   angle: number;
   clock: number;
   gilded: boolean;
+  /** Ascendant Inkpurr: a cooler, moonlit violet (every body alike). */
+  ascendant?: boolean;
   /** The body's own fade (a copy appearing or bursting). */
   alpha: number;
   /** A copy: drawn exactly alike, but without the idle drips. */
@@ -137,7 +139,9 @@ export function paintInkpurr(
       ? 0xffe5ee
       : o.gilded
         ? 0xffe1ad
-        : 0xffffff;
+        : o.ascendant
+          ? 0xc8b6ff
+          : 0xffffff;
   const seen = new Set<string>();
   for (const p of placed.placements) {
     const f = F[p.piece];

@@ -175,6 +175,31 @@
   background: var(--glass-thick);
   border-color: var(--glass-rim);
 }
+/* Thick glass carries text (menus, dialogs, the chat, the Play drawer,
+   confirmations, the toast). Unblurred, the 12 % of the scene that shows
+   through it kept its edges: the Lobby's cards read through the menu's
+   rows and the fighter through the chat (seen on an iPhone). So it is
+   blurred, outside battles, where the court redraws every frame: there,
+   and at Low graphics (no blur at all), it turns solid instead
+   (--glass-opaque, below and in ui/light-effects.css). */
+:root
+  body:not(.battle-active)
+  :is(
+    dialog[open],
+    .home-drawer,
+    .header-menu-panel,
+    .chat-drawer,
+    .ui-modal,
+    #toast
+  ) {
+  -webkit-backdrop-filter: var(--glass-blur-panel);
+  backdrop-filter: var(--glass-blur-panel);
+}
+/* In a battle nothing is blurred: panels and dialogs are solid there. */
+:root body.battle-active {
+  --glass-regular: var(--glass-opaque);
+  --glass-thick: var(--glass-opaque);
+}
 :root .home-drawer {
   box-shadow: none;
 }
