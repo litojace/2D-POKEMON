@@ -581,12 +581,16 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
     attributeFilter: ["open", "hidden", "data-ui-leaving"],
   });
   syncCovered();
-  // The frame-rate line (perf-hud.ts): your fighter's frames, our own
-  // drawing time and its canvas, while the Lobby shows.
+  // The frame-rate read-out (perf-hud.ts): your fighter's frames, our own
+  // drawing time (median and slowest) and its canvas, while the Lobby shows.
   const perfSource = () => {
     if (!rig || layer.classList.contains("is-covered")) return undefined;
     const p = rig.perf();
-    return `fighter ${p.fps} fps ${p.stepMs} ms · ${p.canvas} @${p.resolution}x`;
+    return (
+      `fighter ${p.fps} fps  late ${Math.round(p.late * 100)}%\n` +
+      `ours ${p.stepMs} ms (max ${p.stepMaxMs})\n` +
+      `canvas ${p.canvas} @${p.resolution}x tex ${p.textures}x`
+    );
   };
   setPerfSource(perfSource);
   return {

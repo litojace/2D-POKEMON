@@ -1,13 +1,16 @@
-import { perfMode } from "./battle-perf";
+import { perfMode, setPerfMode } from "./battle-perf";
 import { PreviewPerf } from "./preview-perf";
+import { isIOSDevice, largeIPad } from "./render-budget";
+import { lowGraphics } from "./graphics-quality";
 
 /**
- * The frame-rate line (five taps on Settings → Graphics' title): one line
- * along the top edge, over every screen (the Lobby, the Plaza, the Farm, the
- * Bistro, the Shop, a battle), that ignores touches. It shows the whole
- * page's frame rate, and what the screen underneath adds (`setPerfSource`:
- * the Lobby's fighter). Battles also have their own read-out
- * (perf-overlay.ts).
+ * The frame-rate read-out (five taps on Settings → Graphics' title): a small
+ * table beside the rail, over every screen (the Lobby, the Plaza, the Farm,
+ * the Bistro, the Shop, a battle), for a player to screenshot. It shows the
+ * whole page's frame rate, what the screen underneath adds
+ * (`setPerfSource`: the Lobby's fighter) and the device. Touches go through
+ * it, except its × button, which turns it off. Battles also have their own
+ * read-out (perf-overlay.ts).
  *
  * It found the Lobby's 30 Hz aura on an iPhone 17 Pro Max: the page ran at
  * 27 frames a second while our drawing took 1 ms, until the fighter's canvas
@@ -17,12 +20,12 @@ import { PreviewPerf } from "./preview-perf";
 let hud: { close(): void } | undefined;
 let source: (() => string | undefined) | undefined;
 
-/** What the screen underneath adds to the line (undefined: nothing). */
+/** Lines the screen underneath adds to the table (undefined: none). */
 export function setPerfSource(next: (() => string | undefined) | undefined) {
   source = next;
 }
 
-/** Show or hide the line to match the saved setting. */
+/** Show or hide the table to match the saved setting. */
 export function syncPerfHud() {
   if (perfMode() && !hud) hud = openPerfHud();
   else if (!perfMode() && hud) {
@@ -32,15 +35,22 @@ export function syncPerfHud() {
 }
 
 function openPerfHud() {
-  const line = document.createElement("div");
-  line.className = "perf-hud";
-  line.setAttribute("aria-hidden", "true");
-  document.body.append(line);
+  const box = document.createElement("div");
+  box.className = "perf-hud";
+  box.innerHTML = `<pre aria-hidden="true"></pre><button type="button" class="perf-hud-close" aria-label="Turn off the frame rate read-out">×</button>`;
+  document.body.append(box);
+  const text = box.querySelector("pre")!;
+  box.querySelector("button")!.onclick = () => {
+    setPerfMode(false);
+    syncPerfHud();
+  };
   const page = new PreviewPerf();
   let frame = requestAnimationFrame(function tick(now) {
     page.frame(now);
     frame = requestAnimationFrame(tick);
   });
+  const ios = isIOSDevice();
+  const device = `dpr ${devicePixelRatio} ${screen.width}x${screen.height}${ios ? (largeIPad(ios) ? " iPad-L" : " iOS") : ""}${lowGraphics() ? " Low" : ""}`;
   const show = () => {
     let extra: string | undefined;
     try {
@@ -48,8 +58,8 @@ function openPerfHud() {
     } catch {
       extra = undefined;
     }
-    const text = `${page.stats().screenHz || "?"} Hz${extra ? ` · ${extra}` : ""}`;
-    if (line.textContent !== text) line.textContent = text;
+    const value = `page ${page.stats().screenHz || "?"} Hz\n${extra ? `${extra}\n` : ""}${device}`;
+    if (text.textContent !== value) text.textContent = value;
   };
   show();
   const timer = setInterval(show, 500);
@@ -57,7 +67,7 @@ function openPerfHud() {
     close() {
       clearInterval(timer);
       cancelAnimationFrame(frame);
-      line.remove();
+      box.remove();
     },
   };
 }
