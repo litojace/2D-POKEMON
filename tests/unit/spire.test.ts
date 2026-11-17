@@ -119,8 +119,8 @@ describe("Spire floors (zone 1)", () => {
     expect(SPIRE_FLOORS[5].elite?.mechanic).toBe("eruption");
     expect(SPIRE_FLOORS[10].kind).toBe("boss");
     expect(SPIRE_FLOORS[10].boss).toBe("grumblecrag");
-    // Zones 2 and 3 are built on top of it.
-    expect(SPIRE_BUILT_TOP).toBe(30);
+    // Zones 2 to 4 are built on top of it.
+    expect(SPIRE_BUILT_TOP).toBe(40);
   });
   it("gets harder floor by floor in the tuning table", () => {
     const level = { easy: 0, normal: 1, hard: 2 };
@@ -158,13 +158,14 @@ describe("Spire floors (zone 1)", () => {
       "supabase/migrations/20261116150000_spire.sql",
       "supabase/migrations/20261116180000_spire_zone2.sql",
       "supabase/migrations/20261117090000_spire_zone3.sql",
+      "supabase/migrations/20261117150000_spire_zone4.sql",
     ]
       .map((f) => readFileSync(f, "utf8"))
       .join("\n");
     const blocks = [
       ...sql.matchAll(/insert into public\.arena_spire_rewards[^;]*;/g),
     ].map((m) => m[0]);
-    expect(blocks).toHaveLength(3);
+    expect(blocks).toHaveLength(4);
     const rows = [
       ...blocks
         .join("\n")
@@ -210,23 +211,32 @@ describe("where a party climbs", () => {
           clears: { grumblecrag: 1, tidewyrm: 1, gloomshade: 1 },
         },
       ]),
+    ).toMatchObject({ ok: true, ceiling: 39 });
+    expect(
+      spireStartFrom([
+        {
+          checkpoint: 1,
+          clears: { grumblecrag: 1, tidewyrm: 1, gloomshade: 1, somnara: 1 },
+        },
+      ]),
     ).toMatchObject({ ok: true, ceiling: SPIRE_BUILT_TOP });
   });
   it("never starts above what is built", () => {
-    expect(spireStartFrom([m(31)]).startFloor).toBeLessThanOrEqual(
+    expect(spireStartFrom([m(41)]).startFloor).toBeLessThanOrEqual(
       SPIRE_BUILT_TOP,
     );
-    // Zone 3 conquered (checkpoint 31) but zone 4 isn't built: floor 21,
+    // Zone 4 conquered (checkpoint 41) but zone 5 isn't built: floor 31,
     // never straight onto a boss floor.
     expect(
       spireStartFrom([
         {
-          checkpoint: 31,
-          clears: { grumblecrag: 1, tidewyrm: 1, gloomshade: 1 },
+          checkpoint: 41,
+          clears: { grumblecrag: 1, tidewyrm: 1, gloomshade: 1, somnara: 1 },
         },
       ]).startFloor,
-    ).toBe(21);
-    expect(spireStartCheckpoint(31)).toBe(21);
+    ).toBe(31);
+    expect(spireStartCheckpoint(41)).toBe(31);
+    expect(spireStartCheckpoint(31)).toBe(31);
     expect(spireStartCheckpoint(21)).toBe(21);
     expect(spireStartCheckpoint(11)).toBe(11);
     expect(spireStartCheckpoint(11, 10)).toBe(1);
@@ -302,16 +312,46 @@ describe("choosing a zone (one climb, one zone)", () => {
     expect(low.reason).toMatch(/conquer zone 2/);
     expect(spireStartFrom([{ checkpoint: 21, clears: {} }], 3).ok).toBe(false);
   });
-  it("refuses a zone that isn't built", () => {
-    expect(spireStartFrom([m(31)], 4)).toMatchObject({ ok: false });
-    expect(spireStartFrom([], 4)).toMatchObject({ ok: false });
-    expect(SPIRE_BUILT_ZONES).toEqual([1, 2, 3]);
+  it("climbs zone 4 from floor 31 once every member earned checkpoint 31", () => {
+    const ink = { gloomshade: 1 };
+    expect(spireStartFrom([m(31, ink), m(31, ink)], 4)).toEqual({
+      ok: true,
+      startFloor: 31,
+      ceiling: 39,
+    });
+    // Floor 40 needs every member's Snoozaku clear.
+    const dream = { somnara: 1 };
+    expect(spireStartFrom([m(31, dream), m(31, dream)], 4)).toEqual({
+      ok: true,
+      startFloor: 31,
+      ceiling: 40,
+    });
+    expect(spireStartFrom([m(31, dream), m(31, ink)], 4).ceiling).toBe(39);
+    // Zone 4's room only asks for its own boss: missing Tidelotl or Inkpurr
+    // clears (zones 2 and 3) never close it.
+    expect(spireStartFrom([m(31, dream)], 4)).toMatchObject({
+      ok: true,
+      startFloor: 31,
+      ceiling: 40,
+    });
+    // Someone hasn't reached floor 31: refused.
+    const low = spireStartFrom([m(31, dream), m(21, dream)], 4);
+    expect(low.ok).toBe(false);
+    expect(low.reason).toMatch(/floor 31/);
+    expect(low.reason).toMatch(/conquer zone 3/);
+    expect(spireStartFrom([{ checkpoint: 31, clears: {} }], 4).ok).toBe(false);
   });
-  it("offers zone 1 always, zone 2 from checkpoint 11 and zone 3 from 21", () => {
+  it("refuses a zone that isn't built", () => {
+    expect(spireStartFrom([m(41)], 5)).toMatchObject({ ok: false });
+    expect(spireStartFrom([], 5)).toMatchObject({ ok: false });
+    expect(SPIRE_BUILT_ZONES).toEqual([1, 2, 3, 4]);
+  });
+  it("offers zone 1 always, zone 2 from checkpoint 11, zone 3 from 21 and zone 4 from 31", () => {
     expect(spireZonesOpen(1)).toEqual([1]);
     expect(spireZonesOpen(11)).toEqual([1, 2]);
     expect(spireZonesOpen(21)).toEqual([1, 2, 3]);
-    expect(spireZonesOpen(31)).toEqual([1, 2, 3]);
+    expect(spireZonesOpen(31)).toEqual([1, 2, 3, 4]);
+    expect(spireZonesOpen(41)).toEqual([1, 2, 3, 4]);
   });
 });
 

@@ -399,7 +399,9 @@ export class SomnaraArena extends RaidArena {
       !(ability?.ground && target.jumpUntil > this.time)
     )
       this.wake(target);
-    if (source && source !== target && !target.raidBoss) return;
+    // (A raider's hit on a teammate only wakes them. The Spire's Echoes, in
+    // its zone-4 room, are foes: hits on them count.)
+    if (source && source !== target && !target.raidBoss && !target.echo) return;
     super.damage(target, amount, owner, ability);
   }
   protected override canStartAttack() {
