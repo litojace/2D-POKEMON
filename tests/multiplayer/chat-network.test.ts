@@ -1,5 +1,6 @@
 import { afterEach, expect, it } from "vitest";
 import { io, type Socket } from "socket.io-client";
+import type { PushDevice } from "../../apps/server/src/push";
 import { createArenaServer } from "../../apps/server/src/server";
 import { fakeAccounts } from "../helpers/accounts";
 import type { ChatLine } from "../../packages/shared/src/chat";
@@ -25,6 +26,10 @@ async function setup(
     lead: string;
     pal: string;
   }) => Record<string, string[]> = () => ({}),
+  /** More server options (and the fake accounts to set up first). */
+  more: (
+    accounts: ReturnType<typeof fakeAccounts>,
+  ) => Partial<Parameters<typeof createArenaServer>[0]> = () => ({}),
 ) {
   const accounts = fakeAccounts(),
     lead = accounts.add(false),
@@ -61,6 +66,7 @@ async function setup(
     accounts: accounts.provider,
     autoTick: false,
     chatFreeText,
+    ...more(accounts),
   });
   await new Promise<void>((r) => server!.http.listen(0, "127.0.0.1", r));
   const url = `http://127.0.0.1:${(server.http.address() as { port: number }).port}`;
@@ -486,4 +492,105 @@ it("before the friends' messages migration runs, friends still message live", as
     to: f.pal.account.id,
   });
   expect(back.lines?.map((l) => l.quick)).toEqual(["wave"]);
+});
+
+it("a friend who is away gets a notification of who messaged (never the words)", async () => {
+  const devices = new Map<string, PushDevice[]>();
+  const sent: { endpoint: string; payload: any }[] = [];
+  const f = await setup(
+    true,
+    () => ({}),
+    (accounts) => {
+      accounts.provider.pushDevices = {
+        async save(player, d) {
+          devices.set(player, [...(devices.get(player) ?? []), d]);
+        },
+        async remove(endpoint) {
+          for (const [p, list] of devices)
+            devices.set(
+              p,
+              list.filter((d) => d.endpoint !== endpoint),
+            );
+        },
+        async list(player) {
+          return devices.get(player) ?? [];
+        },
+      };
+      return {
+        push: {
+          publicKey: "test-public-key",
+          async send(d, payload) {
+            sent.push({ endpoint: d.endpoint, payload: JSON.parse(payload) });
+            return "sent";
+          },
+        },
+      };
+    },
+  );
+  await settle();
+  expect(await request(f.b.s, "push-config")).toEqual({
+    ok: true,
+    key: "test-public-key",
+  });
+  // Pal turns them on; an address that isn't a push service is refused.
+  const keys = {
+    p256dh:
+      "BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA_0QTpQtUbVlUls0VJXg7A8u-Ts1XbjhazAkj7I99e8QcYP7DkM",
+    auth: "tBHItJI5svbpez7KI4CCXg",
+  };
+  expect(
+    (
+      await request(f.b.s, "push-subscribe", {
+        endpoint: "https://attacker.example/x",
+        keys,
+      })
+    ).ok,
+  ).toBe(false);
+  const endpoint = "https://fcm.googleapis.com/fcm/send/pal-phone";
+  expect(await request(f.b.s, "push-subscribe", { endpoint, keys })).toEqual({
+    ok: true,
+  });
+  // Online: the line arrives in the game, no notification.
+  await request(f.a.s, "chat-send", {
+    channel: "friend",
+    to: f.pal.account.id,
+    text: "you there?",
+  });
+  await settle();
+  expect(sent).toEqual([]);
+  // Away (no device connected): one notification, who and not what.
+  f.b.s.disconnect();
+  await new Promise((r) => setTimeout(r, 1300)); // (typed lines' pacing)
+  expect(
+    await request(f.a.s, "chat-send", {
+      channel: "friend",
+      to: f.pal.account.id,
+      text: "secret plans",
+    }),
+  ).toMatchObject({ ok: true });
+  await settle();
+  expect(sent).toEqual([
+    {
+      endpoint,
+      payload: {
+        kind: "friend-message",
+        title: "Element Arena",
+        body: `New message from ${f.lead.account.displayName}`,
+        tag: `friend-${f.lead.account.id}`,
+        friend: { id: f.lead.account.id, name: f.lead.account.displayName },
+      },
+    },
+  ]);
+  expect(JSON.stringify(sent)).not.toContain("secret plans");
+  // A burst is one buzz.
+  await new Promise((r) => setTimeout(r, 1300));
+  expect(
+    await request(f.a.s, "chat-send", {
+      channel: "friend",
+      to: f.pal.account.id,
+      text: "and another",
+    }),
+  ).toMatchObject({ ok: true });
+  await settle();
+  expect(sent).toHaveLength(1);
 });

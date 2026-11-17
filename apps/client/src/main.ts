@@ -37,7 +37,6 @@ import {
 } from "./predict-fighter";
 import { startPingBadge } from "./ping-badge";
 import { TargetLock, drawTargetReticle, type Targetable } from "./target-lock";
-import { renderTargetPicker, type PickerEnemy } from "./target-picker";
 import {
   CastPredictor,
   canBasic,
@@ -117,14 +116,7 @@ import { resultXp } from "./adventure-ui";
 import { arcadeWeek, ARCADE_EVENTS } from "../../../packages/shared/src/arcade";
 import { drawArcade } from "./arcade-art";
 import { stormTarget } from "./storm-twins-controls";
-import { raidTargets, type RaidTarget } from "./raid-targets";
-/** Target row colours for the raid targets that are not fighters. */
-const TARGET_COLORS: Record<RaidTarget["kind"], string> = {
-  shade: "#8a6ad6",
-  lantern: "#ffd27a",
-  boss: "#4fb8d8",
-  bubble: "#9fe6ff",
-};
+import { raidTargets } from "./raid-targets";
 import { prismatailAim } from "./prismatail-controls";
 import { dreamRuneKey } from "./somnara-controls";
 import { battleMusic } from "./battle-music";
@@ -270,7 +262,7 @@ import {
   leadProjectile,
 } from "./networking/timeline-lead";
 import { AccountUI } from "./accounts";
-import { framedAvatar, portraitAvatar } from "./portraits";
+import { framedAvatar } from "./portraits";
 import { waitForServer, onServerStartupRetry } from "./server-connection";
 import "./ui/tokens.css";
 import "./style.css";
@@ -411,6 +403,7 @@ import { RITE_EFFECTS, riteEffect, riteIcon } from "./rite-icons";
 import { ConnectionWatch, dropMessage } from "./connection-loss";
 import { watchSceneSwitch } from "./scene-switch-place";
 import { mountChat, type ChatFriend, type ChatPlace } from "./chat/chat-ui";
+import { pushState, turnPushOff, turnPushOn } from "./chat/push-setup";
 import { mountBattleChat } from "./chat/battle-chat";
 import {
   CHAT_MODES,
@@ -541,6 +534,34 @@ const socket = io(import.meta.env.VITE_SERVER_URL || undefined, {
   auth: { accessToken: null },
 });
 let accountsUI: AccountUI;
+/** The server's key for notifications (null: it sends none). */
+let pushKey: string | null = null;
+/** A friend to open from a tapped notification (sw.ts), once signed in. */
+let friendToOpen: { id: string; name: string } | null = (() => {
+  const q = new URLSearchParams(location.search);
+  const id = q.get("friend");
+  if (!id) return null;
+  q.delete("friend");
+  const name = q.get("name") ?? "";
+  q.delete("name");
+  const rest = q.toString();
+  history.replaceState(
+    history.state,
+    "",
+    location.pathname + (rest ? `?${rest}` : "") + location.hash,
+  );
+  return { id, name };
+})();
+navigator.serviceWorker?.addEventListener("message", (event) => {
+  const friend =
+    (event.data as { type?: string; friend?: unknown } | null)?.type ===
+    "open-friend"
+      ? (event.data.friend as { id?: unknown; name?: unknown })
+      : null;
+  if (typeof friend?.id !== "string") return;
+  friendToOpen = { id: friend.id, name: String(friend.name ?? "") };
+  syncHub();
+});
 const chat = mountChat({
   send: (channel, body, to) =>
     request("chat-send", { channel, ...body, ...(to ? { to } : {}) }),
@@ -560,6 +581,28 @@ const chat = mountChat({
   },
   read: (to) => {
     if (socket.connected) socket.emit("chat-read", { to });
+  },
+  // Notifications of friends' messages on this device (push-setup.ts). The
+  // server's key is fetched when the gear opens, so turning them on asks the
+  // browser straight from the tap.
+  push: {
+    state: async () => {
+      const reply = (await request("push-config", {}, true)) as {
+        ok: boolean;
+        key?: string | null;
+      };
+      pushKey = reply.ok && typeof reply.key === "string" ? reply.key : null;
+      return pushKey ? pushState() : "server-off";
+    },
+    toggle: (on) =>
+      on
+        ? pushKey
+          ? turnPushOn(pushKey, (event, data) => request(event, data, true))
+          : Promise.resolve({
+              ok: false,
+              error: "Notifications aren't available right now.",
+            })
+        : turnPushOff((event, data) => request(event, data, true)),
   },
   me: () =>
     accountsUI?.account
@@ -900,7 +943,7 @@ else $("battle").append($("battle-menu"));
 const held = new Set<string>();
 const caster = new SkillCaster();
 const castPredictor = new CastPredictor();
-/** The enemy a phone player locked on to (tap it, or its name in the target row). */
+/** The enemy a phone player locked on to (tap it on the court). */
 const targetLock = new TargetLock();
 // The ping badge by the battle gear; predicted casts wait about one round trip.
 startPingBadge(
@@ -1576,20 +1619,6 @@ function identityOf(p: Fighter, character = p.character): Fighter {
       }
     : { ...p, character };
 }
-/** Target portraits' faces (data URLs), built once per look and kept. */
-const targetFaces = new Map<string, string>();
-function targetFace(p: Fighter) {
-  const look = p.championLooks?.[p.character];
-  const key = `${p.character}|${look?.skin ?? ""}|${look?.stage ?? ""}|${p.raidLook?.skin ?? ""}`;
-  let url = targetFaces.get(key);
-  if (!url) {
-    url =
-      "data:image/svg+xml;charset=utf-8," +
-      encodeURIComponent(portraitAvatar(p, `target-${targetFaces.size}`));
-    targetFaces.set(key, url);
-  }
-  return url;
-}
 let lastWornKey = "{}";
 /** Your fighter's colour on the page (the room, the hub). */
 function syncMenuCosmetic() {
@@ -2175,6 +2204,12 @@ function syncChat(hub: boolean) {
     // Friends: anyone signed in with an account (guests have no friends).
     friend: !!accountsUI?.account && !accountsUI.account.guest,
   });
+  // A tapped notification waits for the sign-in, then opens that friend.
+  if (friendToOpen && accountsUI?.account && !accountsUI.account.guest) {
+    const { id, name } = friendToOpen;
+    friendToOpen = null;
+    chat.openFriend(id, name);
+  }
   // Either chat button is up in the screen's top-left corner: the raid's
   // briefing and results cards keep clear of it on phones (raid-cards.css).
   document.body.classList.toggle(
@@ -5136,71 +5171,16 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     });
     this.scale.refresh();
   }
-  /** The phone target row (two or more enemies) and the lock's lifetime. */
-  syncTargetPicker() {
+  /** The tap-to-target lock's lifetime: it ends when its target dies or
+   * leaves (a defeated fighter, a popped copy or bubble, a relit lantern). */
+  keepTargetLock() {
+    if (targetLock.id === undefined) return;
     const me = state?.players.find((p) => p.id === myId);
     const extra = state && me ? raidTargets(state, me) : undefined;
     targetLock.keepIf(
       (id) =>
-        !!state?.players.some((p) => p.id === id && !p.out) ||
+        !!state?.players.some((p) => p.id === id && !p.out && p.hp > 0) ||
         !!extra?.some((t) => t.id === id),
-    );
-    const host = touch.lockHost;
-    if (!host) return;
-    const show =
-      touch.enabled &&
-      !!me &&
-      !me.out &&
-      state?.phase === "playing" &&
-      state.raid?.boss !== "storm-twins";
-    const myTeam = me ? teamOf(me) : undefined;
-    const away = (t: { x: number; y: number }) =>
-      me ? Math.hypot(t.x - me.x, t.y - me.y) : 0;
-    const face = (id: string | undefined) => {
-      const p = id ? state?.players.find((f) => f.id === id) : undefined;
-      return p ? targetFace(p) : undefined;
-    };
-    const enemies: PickerEnemy[] = !show
-      ? []
-      : extra
-        ? // Gloomshade's bodies (alike, by letter) and unlit lanterns;
-          // Tidewyrm and the bubbles holding teammates.
-          extra
-            .slice()
-            .sort((a, b) => a.label.localeCompare(b.label))
-            .map((t) => ({
-              id: t.id,
-              name: t.label,
-              color: TARGET_COLORS[t.kind],
-              available: true,
-              kind: t.kind,
-              distance: away(t),
-              ...(t.kind === "bubble"
-                ? { art: face(t.id.slice("bubble:".length)) }
-                : t.kind === "boss"
-                  ? { art: face(t.id) }
-                  : // "Inkpurr B" → B; "Lantern NW" → NW
-                    { glyph: t.label.split(" ").at(-1) }),
-            }))
-        : state!.players
-            .filter((p) => p.id !== myId && !p.out && teamOf(p) !== myTeam)
-            .map((p) => ({
-              id: p.id,
-              name: p.raidBoss && state!.raid ? state!.raid.name : p.name,
-              color: `#${CHARACTERS[p.character].color.toString(16).padStart(6, "0")}`,
-              available:
-                p.hp > 0 && !p.statuses.some((s) => s.kind === "stealth"),
-              kind: p.raidBoss ? ("boss" as const) : ("fighter" as const),
-              art: targetFace(p),
-              distance: away(p),
-            }));
-    renderTargetPicker(
-      host,
-      show,
-      enemies,
-      targetLock.id,
-      touch.lockSlots,
-      (id) => targetLock.toggle(id),
     );
   }
   /** Start your own basic, skill or dash feedback on the press (see cast-prediction). */
@@ -5872,7 +5852,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         this.positions.delete(id);
       }
     const pad = pollPad();
-    this.syncTargetPicker();
+    this.keepTargetLock();
     if (!this.canControl()) {
       this.actions = { skill: -1, dash: false, jump: false, basic: false };
       caster.cancel();
@@ -6044,6 +6024,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
           locked.x,
           locked.feetY,
           reducedMotion ? 0 : _time / 1000,
+          this.cameras.main.zoomX * this.scale.zoom,
         );
     }
     const raidCues =
@@ -6504,7 +6485,13 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         p.hp > 0 &&
         !serverPlayer.statuses.some((s) => s.kind === "stealth")
       )
-        drawTargetReticle(g, x, feetY, reducedMotion ? 0 : _time / 1000);
+        drawTargetReticle(
+          g,
+          x,
+          feetY,
+          reducedMotion ? 0 : _time / 1000,
+          this.cameras.main.zoomX * this.scale.zoom,
+        );
       // Mastery flair: an outer ring in the tier's colour (Crystal shimmers).
       if (serverPlayer.flair) {
         const tier = MASTERY_TIERS.find((t) => t.name === serverPlayer.flair);
@@ -7402,6 +7389,9 @@ function ensureBattleRenderer() {
     // CSS zoom compensates for DPR; it must not enable Phaser's pixel-art mode.
     render: { pixelArt: false, antialias: true },
     // The camera maps the authoritative 1600x900 world onto the buffer.
+    // Several fingers at once: the joystick's thumb takes one of Phaser's
+    // pointers, so a court tap to lock a target needs another
+    // (tests/visual/tap-target.spec.ts fails with one).
     input: { activePointers: 4 },
     // A 120 Hz phone draws the battle at about 60 frames a second, like
     // every other screen (frame-cap.ts): half the drawing for no visible
@@ -7554,6 +7544,8 @@ accountsUI = new AccountUI({
   onSession: (token, accountId) => {
     const attempt = ++authConnectionAttempt;
     if (!token) roomInvites.clear();
+    // Signed out: this device stops getting the last player's notifications.
+    if (!token) void turnPushOff();
     if (!token || (accountId && accountId !== replacedAccount)) {
       replacedAccount = null;
       sessionStorage.removeItem("arena-session-replaced");

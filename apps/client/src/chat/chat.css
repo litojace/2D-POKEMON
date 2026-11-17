@@ -228,6 +228,61 @@
     system-ui,
     sans-serif;
 }
+/* Notifications of friends' messages (push-setup.ts): a switch and why. */
+.chat-push {
+  margin-top: 8px;
+}
+.chat-push[hidden] {
+  display: none;
+}
+.chat-push-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid rgba(139, 174, 229, 0.3);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #eef2ff;
+  font:
+    700 13px/1.2 "Barlow",
+    system-ui,
+    sans-serif;
+  text-align: left;
+  cursor: pointer;
+}
+/* The switch's knob. */
+.chat-push-toggle::before {
+  content: "";
+  order: 2;
+  flex: none;
+  width: 34px;
+  height: 20px;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 10px 50%, #fff 7px, transparent 7.5px),
+    #4a5674;
+}
+.chat-push-toggle[aria-checked="true"]::before {
+  background:
+    radial-gradient(circle at 24px 50%, #2a1a00 7px, transparent 7.5px),
+    #ffd65b;
+}
+.chat-push-toggle:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.chat-push-note {
+  margin: 4px 0 0;
+  color: #a0afc8;
+  font:
+    500 12px/1.35 "Barlow",
+    system-ui,
+    sans-serif;
+}
 .chat-gear[aria-expanded="true"] {
   color: var(--ui-accent);
 }

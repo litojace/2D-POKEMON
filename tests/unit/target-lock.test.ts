@@ -3,6 +3,7 @@ import {
   TargetLock,
   TAP_HEIGHT,
   TAP_RADIUS,
+  reticleWidths,
 } from "../../apps/client/src/target-lock";
 
 const a = { id: "a", x: 100, y: 100 },
@@ -50,5 +51,16 @@ describe("touch target lock", () => {
     expect(lock.resolve([a, c])?.id).toBe("c");
     lock.keepIf((id) => id !== "c");
     expect(lock.id).toBeUndefined();
+  });
+});
+
+describe("lock reticle", () => {
+  it("stays at least 3.5 px of red on screen when the court is zoomed out", () => {
+    for (const pxPerUnit of [1, 0.63, 0.37, 0.25]) {
+      const { line, edge } = reticleWidths(pxPerUnit);
+      expect(line * pxPerUnit).toBeGreaterThanOrEqual(3);
+      if (pxPerUnit < 1) expect(line * pxPerUnit).toBeCloseTo(3.5, 5);
+      expect(edge).toBeGreaterThan(line);
+    }
   });
 });
