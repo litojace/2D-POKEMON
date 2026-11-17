@@ -1370,11 +1370,12 @@ export const SPIRE_TUNING: Record<
   // floor 51 is cleared about two times in three (67%), then 62, 60, 54,
   // 49 (the elite), 47, 44, 38 and 35% on floor 59. (Floor 53's armour
   // sits on a cliff, 5.75 clearing 51% and 5.8 63%, so its step down from
-  // 52 comes from its power instead: 0.62 63%, 0.63 60%, 0.64 58%.)
+  // 52 comes from its power instead: 0.62 63%, 0.63 60%, 0.64 58%; floor
+  // 54 keeps its power above it, 0.635 clearing 54% as 0.63 did.)
   51: { difficulty: "normal", power: 0.6, armour: 5.2, limit: 180 },
   52: { difficulty: "normal", power: 0.61, armour: 2.45, limit: 180 },
   53: { difficulty: "normal", power: 0.63, armour: 5.8, limit: 180 },
-  54: { difficulty: "normal", power: 0.63, armour: 3.12, limit: 180 },
+  54: { difficulty: "normal", power: 0.635, armour: 3.12, limit: 180 },
   55: { difficulty: "normal", power: 0.66, armour: 0.71, limit: 240 },
   56: { difficulty: "normal", power: 0.64, armour: 3.85, limit: 180 },
   57: { difficulty: "normal", power: 0.65, armour: 2.95, limit: 180 },
