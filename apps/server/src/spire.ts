@@ -1315,22 +1315,10 @@ export class SpireEmberArena extends SpireRules(
     super.clearAttacks();
     this.eliteDive = undefined;
   }
-  /**
-   * Off its own floor, Lumiwick's counters have no terrace to work on: no
-   * Heat Cracks or Chestnut Mortar lights a brazier, no current or vines
-   * put out a fire (there is none), and nothing an Echo casts changes the
-   * captain's lane.
-   */
-  override cast(p: Fighter, a: Ability, ex = false) {
-    if (this.bossFloor()) return super.cast(p, a, ex);
-    const r = this.raid,
-      before = { warnings: r.warnings, message: r.message };
-    super.cast(p, a, ex);
-    if (p.echo) {
-      r.warnings = before.warnings;
-      r.message = before.message;
-    }
-  }
+  // (Off its own floor Lumiwick's counters have nothing to work on: Heat
+  // Cracks and Chestnut Mortar light braziers only while it flies, the
+  // currents and vines put out fire there is none of, and its Facet Guard
+  // reflects only its own dive. Its cast needs no gate.)
   /** Lumiwick's drift and dives belong to its own floor (not the captain's). */
   protected override bossStep(dt: number, boss: Fighter) {
     if (this.bossFloor()) super.bossStep(dt, boss);

@@ -420,6 +420,32 @@ describe("a zone-6 room", () => {
       }
     ).botHint(a.heroes()[0], { ...a.heroes()[0].lastInput }, () => ({}));
     expect(hint).toBeUndefined();
+    // Not even with fire and a dive lane at its feet (its raid's brain
+    // would run from them; the Spire's plays like any raider).
+    const me = a.heroes()[0];
+    a.raid.emberPatches = [
+      { id: 1, x: me.x, y: me.y, radius: 60, until: a.time + 9, growAt: 99 },
+    ];
+    a.raid.warnings = [
+      {
+        id: 9002,
+        kind: "dive-bomb",
+        x: me.x - 300,
+        y: me.y,
+        tx: me.x + 300,
+        ty: me.y,
+        radius: EMBERWING.dive.width,
+        at: a.time + 1,
+        startedAt: a.time,
+      } as RaidWarning,
+    ];
+    expect(
+      (
+        a as unknown as {
+          botHint(b: Fighter, i: Input, go: unknown): Input | undefined;
+        }
+      ).botHint(me, { ...me.lastInput }, () => ({ basic: true })),
+    ).toBeUndefined();
   });
   it("ends at floor 59 for a party without a Lumiwick clear (the server's ceiling)", () => {
     seeded(605);
