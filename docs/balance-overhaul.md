@@ -104,3 +104,10 @@ did: raiders keep moving through the rest of the tick, so a spot only just in
 reach when an attack was planned could be out of reach a moment later
 (`tests/unit/raid-fairness.test.ts` caught it on Emberwing and Ascendant
 Tidewyrm once the raiders' kits changed).
+
+Ascendant Lumiwick no longer dives with an open heart into the space under
+a phone's touch controls: the dive lane ends short of them, pulled back along
+itself (`raid-ascendant-lumiwick.ts`). Before, an open heart could land there
+and sit for about half a second while it glided out
+(`tests/unit/raid-ascendant-lumiwick.test.ts`, 2 raiders, once the raiders'
+kits changed).
