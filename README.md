@@ -1,9 +1,44 @@
 # Match reports
 
-Newest report: 2026-11-16 03:01 UTC. From the game server's log (`scripts/perf/export-perf-reports.mjs` on `main`). One row per player's device per match; times are UTC. No accounts or names are kept.
+Newest report: 2026-11-17 22:23 UTC. From the game server's log (`scripts/perf/export-perf-reports.mjs` on `main`). One row per player's device per match; times are UTC. No accounts or names are kept.
 
 ## Needs attention
 
+- **2026-11-17 22:23**, lumoth against wombolder (bot, normal) (match `iitdv9`):
+  - 23.3 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 27 lumoth wombolder`.
+  - 3 hit(s) landed while you were drawn over 24 px away (largest 39 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
+- **2026-11-17 22:14**, voltkit against sunbara (bot, hard) (match `4fd5ze`):
+  - drawing slow: 30.3 fps, 21.4% stutter at low graphics. Reproduce with tests/visual/effect-budget.spec.ts; ?perf=1 shows it live.
+  - 73 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 39 voltkit sunbara`.
+  - 7 hit(s) landed while you were drawn over 24 px away (largest 56 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
+- **2026-11-17 22:08**, voltkit against astrabun (bot, easy) (match `h1b0qi`):
+  - slow connection: ping 91 ms, slowest 5% 302 ms. The player's network: compare other players at the same time before changing the game.
+  - drawing slow: 30.3 fps, 20.9% stutter at low graphics. Reproduce with tests/visual/effect-budget.spec.ts; ?perf=1 shows it live.
+  - 43.2 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 46 voltkit astrabun`.
+  - 6 hit(s) landed while you were drawn over 24 px away (largest 30 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
+- **2026-11-17 22:04**, tidefin against auralynx (bot, easy) (match `y1shbz`):
+  - 44.3 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 24 tidefin auralynx`.
+  - 11 hit(s) landed while you were drawn over 24 px away (largest 42 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
+- **2026-11-17 21:58**, tidefin against glacelle (bot, easy) (match `4u0w9y`):
+  - 41.2 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 25 tidefin glacelle`.
+  - 8 hit(s) landed while you were drawn over 24 px away (largest 48 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
+- **2026-11-17 20:37**, cindrake against duskveil (bot, hard) (match `pql80z`):
+  - drawing slow: 47.6 fps, 6.4% stutter at low graphics. Reproduce with tests/visual/effect-budget.spec.ts; ?perf=1 shows it live.
+  - 31.7 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 43 cindrake duskveil`.
+  - 15 hit(s) landed while you were drawn over 24 px away (largest 107 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
+- **2026-11-17 20:36**, cindrake against duskveil (bot, hard) (match `z3o987`):
+  - slow connection: ping 93 ms, slowest 5% 184 ms. The player's network: compare other players at the same time before changing the game.
+  - drawing slow: 47.6 fps, 5.9% stutter at low graphics. Reproduce with tests/visual/effect-budget.spec.ts; ?perf=1 shows it live.
+  - 48.7 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 47 cindrake duskveil`.
+  - 29 hit(s) landed while you were drawn over 24 px away (largest 382 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
+- **2026-11-17 12:48**, auralynx against grumblecrag (raid boss) (match `620xm0`):
+  - 9 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 31 auralynx cindrake`.
+- **2026-11-17 11:42**, sunbara against shadopus (bot, easy) (match `slw136`):
+  - 38.9 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 32 sunbara shadopus`.
+  - 12 hit(s) landed while you were drawn over 24 px away (largest 36 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
+- **2026-11-17 07:12**, coilemur against grumblecrag (raid boss) (match `cpik20`):
+  - 34.6 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 32 coilemur cindrake`.
+  - 142 hit(s) landed while you were drawn over 24 px away (largest 185 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
 - **2026-11-16 03:01**, cindrake against wombolder (bot, hard) (match `6590bp`):
   - 27.2 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 34 cindrake wombolder`.
   - 16 hit(s) landed while you were drawn over 24 px away (largest 36 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
@@ -130,30 +165,21 @@ Newest report: 2026-11-16 03:01 UTC. From the game server's log (`scripts/perf/e
 - **2026-11-11 18:27**, pangrove against cindrake (bot, hard) (match `lgi8go`):
   - 18 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 29 pangrove cindrake`.
   - 50 hit(s) landed while you were drawn over 24 px away (largest 209 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
-- **2026-11-11 18:26**, pangrove against coilemur (bot, hard) (match `uskvt8`):
-  - 11.6 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 30 pangrove coilemur`.
-  - 30 hit(s) landed while you were drawn over 24 px away (largest 104 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
-- **2026-11-11 18:25**, pangrove against halcyra (bot, hard) (match `32a9il`):
-  - 27.2 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 32 pangrove halcyra`.
-  - 29 hit(s) landed while you were drawn over 24 px away (largest 156 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
-- **2026-11-11 18:23**, voltkit against pangrove (bot, hard) (match `3ayaj0`):
-  - drawing slow: 66.2 fps, 5.6% stutter at low graphics. Reproduce with tests/visual/effect-budget.spec.ts; ?perf=1 shows it live.
-  - 37.2 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 32 voltkit pangrove`.
-  - 30 hit(s) landed while you were drawn over 24 px away (largest 114 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
-- **2026-11-11 18:21**, mossloth against auralynx (bot, hard) (match `k244kj`):
-  - 23.8 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 30 mossloth auralynx`.
-  - 13 hit(s) landed while you were drawn over 24 px away (largest 68 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
-- **2026-11-11 18:19**, mossloth against coilemur (bot, hard) (match `uuiqyl`):
-  - 28.8 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 29 mossloth coilemur`.
-  - 7 hit(s) landed while you were drawn over 24 px away (largest 56 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
-- **2026-11-11 18:17**, mossloth against glacelle (bot, hard) (match `gzuxes`):
-  - 25.8 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 26 mossloth glacelle`.
-  - 44 hit(s) landed while you were drawn over 24 px away (largest 337 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
 
 ## Latest matches
 
 | Time (UTC) | Match | Mode | You | Against | Ping (slowest 5%) | Lead | Late updates | Jumps | Hits off-screen | Skill confirm | FPS | Stutter | Graphics | Device | Build |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 2026-11-17 22:23 | `iitdv9` | duel vs bot | lumoth | wombolder (bot, normal) | 53 ms 🟢 (84) | 196 ms | 0.6% | 60.9/min (max 205 px), ⚠️ 23.3 unexplained | ⚠️ 3 (max 39 px) | 106 ms | 59.2 | 0.0% | low (auto) | android, 9 cores, 8 GB, 60 Hz | 10a12c9 |
+| 2026-11-17 22:14 | `4fd5ze` | duel vs bot | voltkit | sunbara (bot, hard) | 77 ms 🟢 (87) | 216 ms | 1.5% | 105.9/min (max 65 px), ⚠️ 73 unexplained | ⚠️ 7 (max 56 px) | 115 ms | 30.3 | 21.4% | low (auto) | ios app, 4 cores, 30 Hz | 10a12c9 |
+| 2026-11-17 22:08 | `h1b0qi` | duel vs bot | voltkit | astrabun (bot, easy) | 91 ms 🟡 (302) | 237 ms | 0.7% | 67.2/min (max 150 px), ⚠️ 43.2 unexplained | ⚠️ 6 (max 30 px) | 145 ms | 30.3 | 20.9% | low (auto) | ios app, 4 cores, 30 Hz | 10a12c9 |
+| 2026-11-17 22:04 | `y1shbz` | duel vs bot | tidefin | auralynx (bot, easy) | 48 ms 🟢 (81) | 204 ms | 0.5% | 74.2/min (max 202 px), ⚠️ 44.3 unexplained | ⚠️ 11 (max 42 px) | 135 ms | 58.8 | 0.0% | high (auto) | ios app, 4 cores, 59 Hz | 10a12c9 |
+| 2026-11-17 21:58 | `4u0w9y` | duel vs bot | tidefin | glacelle (bot, easy) | 49 ms 🟢 (63) | 183 ms | 0.2% | 68.4/min (max 141 px), ⚠️ 41.2 unexplained | ⚠️ 8 (max 48 px) | 91 ms | 58.8 | 0.0% | low (low) | ios app, 8 cores, 59 Hz | 10a12c9 |
+| 2026-11-17 20:37 | `pql80z` | duel vs bot | cindrake | duskveil (bot, hard) | 86 ms 🟡 (124) | 211 ms | 3.5% | 86.6/min (max 85 px), ⚠️ 31.7 unexplained | ⚠️ 15 (max 107 px) | 112 ms | 47.6 | 6.4% | low (low) | ios app, 4 cores, 34 Hz | 0bcbbf0 |
+| 2026-11-17 20:36 | `z3o987` | duel vs bot | cindrake | duskveil (bot, hard) | 93 ms 🟡 (184) | 233 ms | 4.0% | 75.5/min (max 355 px), ⚠️ 48.7 unexplained | ⚠️ 29 (max 382 px) | 125 ms | 47.6 | 5.9% | low (low) | ios app, 4 cores, 38 Hz | 0bcbbf0 |
+| 2026-11-17 12:48 | `620xm0` | raid | auralynx | grumblecrag (raid boss) | 62 ms 🟢 (100) | 178 ms | 0.0% | 13.1/min (max 14 px), ⚠️ 9 unexplained | 0 | 86 ms | 58.8 | 0.1% | high (auto) | ios app, 4 cores, 59 Hz | 71434cf |
+| 2026-11-17 11:42 | `slw136` | duel vs bot | sunbara | shadopus (bot, easy) | 64 ms 🟢 (78) | 202 ms | 0.4% | 81/min (max 65 px), ⚠️ 38.9 unexplained | ⚠️ 12 (max 36 px) | 81 ms | 58.8 | 0.0% | high (auto) | ios app, 4 cores, 59 Hz | e326a74 |
+| 2026-11-17 07:12 | `cpik20` | raid | coilemur | grumblecrag (raid boss) | 64 ms 🟢 (74) | 238 ms | 0.1% | 87/min (max 260 px), ⚠️ 34.6 unexplained | ⚠️ 142 (max 185 px) | 135 ms | 58.8 | 0.2% | high (auto) | ios app, 4 cores, 59 Hz | ce7d7d9 |
 | 2026-11-16 03:01 | `6590bp` | duel vs bot | cindrake | wombolder (bot, hard) | 67 ms 🟢 (97) | 192 ms | 1.3% | 65.8/min (max 183 px), ⚠️ 27.2 unexplained | ⚠️ 16 (max 36 px) | 87 ms | 59.9 | 0.9% | low (low) | android, 10 cores, 8 GB, 60 Hz | 090e60d |
 | 2026-11-16 02:59 | `gpnefa` | duel vs bot | cindrake | sunbara (bot, hard) | 64 ms 🟢 (73) | 202 ms | 0.3% | 41.9/min (max 107 px), ⚠️ 19.9 unexplained | ⚠️ 44 (max 80 px) | 89 ms | 59.9 | 3.1% | low (low) | android, 10 cores, 8 GB, 60 Hz | 090e60d |
 | 2026-11-16 02:56 | `2upwlr` | duel vs bot | cindrake | sunbara (bot, hard) | 66 ms 🟢 (73) | 199 ms | 0.4% | 50.9/min (max 90 px), ⚠️ 13 unexplained | ⚠️ 47 (max 103 px) | 89 ms | 59.9 | 0.3% | low (low) | android, 10 cores, 8 GB, 60 Hz | 090e60d |
@@ -194,21 +220,12 @@ Newest report: 2026-11-16 03:01 UTC. From the game server's log (`scripts/perf/e
 | 2026-11-11 18:30 | `3m1nqg` | duel vs bot | pangrove | halcyra (bot, hard) | 61 ms 🟢 (87) | 217 ms | 1.8% | 97/min (max 203 px), ⚠️ 8.4 unexplained | ⚠️ 22 (max 211 px) | 89 ms | 69.4 | 1.6% | low (low) | android, 10 cores, 8 GB | 7c17f1d |
 | 2026-11-11 18:28 | `pv0d9x` | duel vs bot | pangrove | cindrake (bot, hard) | 63 ms 🟢 (92) | 223 ms | 4.8% | 107.8/min (max 173 px), ⚠️ 26.9 unexplained | ⚠️ 33 (max 184 px) | 94 ms | 61.3 | 17.7% | low (low) | android, 10 cores, 8 GB | 7c17f1d |
 | 2026-11-11 18:27 | `lgi8go` | duel vs bot | pangrove | cindrake (bot, hard) | 57 ms 🟢 (69) | 215 ms | 1.6% | 91.2/min (max 226 px), ⚠️ 18 unexplained | ⚠️ 50 (max 209 px) | 98 ms | 68 | 3.9% | low (low) | android, 10 cores, 8 GB | 7c17f1d |
-| 2026-11-11 18:26 | `uskvt8` | duel vs bot | pangrove | coilemur (bot, hard) | 60 ms 🟢 (75) | 219 ms | 1.6% | 140.9/min (max 205 px), ⚠️ 11.6 unexplained | ⚠️ 30 (max 104 px) | 115 ms | 62.9 | 3.4% | low (low) | android, 10 cores, 8 GB | 7c17f1d |
-| 2026-11-11 18:25 | `32a9il` | duel vs bot | pangrove | halcyra (bot, hard) | 63 ms 🟢 (147) | 218 ms | 1.8% | 120/min (max 154 px), ⚠️ 27.2 unexplained | ⚠️ 29 (max 156 px) | 117 ms | 68.5 | 3.1% | low (low) | android, 10 cores, 8 GB | 7c17f1d |
-| 2026-11-11 18:23 | `3ayaj0` | duel vs bot | voltkit | pangrove (bot, hard) | 63 ms 🟢 (98) | 217 ms | 1.1% | 68/min (max 140 px), ⚠️ 37.2 unexplained | ⚠️ 30 (max 114 px) | 98 ms | 66.2 | 5.6% | low (low) | android, 10 cores, 8 GB | 7c17f1d |
-| 2026-11-11 18:21 | `k244kj` | duel vs bot | mossloth | auralynx (bot, hard) | 60 ms 🟢 (107) | 220 ms | 4.4% | 48.6/min (max 429 px), ⚠️ 23.8 unexplained | ⚠️ 13 (max 68 px) | 95 ms | 70.4 | 3.7% | low (low) | android, 10 cores, 8 GB | 7c17f1d |
-| 2026-11-11 18:19 | `uuiqyl` | duel vs bot | mossloth | coilemur (bot, hard) | 57 ms 🟢 (79) | 216 ms | 2.5% | 45/min (max 337 px), ⚠️ 28.8 unexplained | ⚠️ 7 (max 56 px) | 95 ms | 80 | 2.0% | low (low) | android, 10 cores, 8 GB | 7c17f1d |
-| 2026-11-11 18:17 | `gzuxes` | duel vs bot | mossloth | glacelle (bot, hard) | 52 ms 🟢 (58) | 213 ms | 0.2% | 88.3/min (max 525 px), ⚠️ 25.8 unexplained | ⚠️ 44 (max 337 px) | 94 ms | 92.6 | 2.2% | low (low) | android, 10 cores, 8 GB | 7c17f1d |
-| 2026-11-11 04:40 | – | duel vs bot | tidefin | ? (bot) | 65 ms 🟢 (69) | 206 ms | 0.0% | 64.7/min (max 258 px) | – | 111 ms | 58.8 | 0.1% | high (high) | 4 cores | – |
-| 2026-11-11 04:38 | – | duel vs bot | tidefin | ? (bot) | 65 ms 🟢 (72) | 210 ms | 0.0% | 101.8/min (max 320 px) | – | 153 ms | 58.8 | 0.0% | high (high) | 4 cores | – |
-| 2026-11-11 04:37 | – | duel vs bot | tidefin | ? (bot) | 65 ms 🟢 (69) | 205 ms | 0.0% | 56.2/min (max 132 px) | – | 111 ms | 58.8 | 0.0% | high (high) | 4 cores | – |
-| 2026-11-11 04:35 | – | duel vs bot | tidefin | ? (bot) | 67 ms 🟢 (71) | 205 ms | 0.0% | 113/min (max 246 px) | – | 109 ms | 58.8 | 0.0% | high (high) | 4 cores | – |
 
 ## By day
 
 | Day (UTC) | Reports | Needs attention | Ping, median | Ping, worst 10% | Lead, median | Jumps/min, median | Skill confirm, median | FPS, median | Stutter, median | Dropped connections |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 2026-11-17 | 10 | 10 | 64 ms | 91 ms | 204 ms | 74.2 | 112 ms | 58.8 | 0.1% | 4 transport close, 1 server namespace disconnect |
 | 2026-11-16 | 11 | 11 | 67 ms | 68 ms | 201 ms | 41.9 | 89 ms | 59.9 | 0.7% | 1 ping timeout |
 | 2026-11-14 | 4 | 4 | 58 ms | 70 ms | 196 ms | 40.4 | 95 ms | 58.8 | 0.0% | 0 |
 | 2026-11-13 | 12 | 12 | 72 ms | 80 ms | 241 ms | 118.1 | 122 ms | 67.1 | 2.7% | 2 transport close |
