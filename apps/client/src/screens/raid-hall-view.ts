@@ -406,7 +406,7 @@ function partyTab(view: RaidView, d: RaidData) {
             .map((f) => {
               const invited =
                 view.invited.includes(f.id) || !!d.invited?.includes(f.id);
-              const can = canInvite(f, d) && d.leader;
+              const can = canInvite(f, d);
               const c = (
                 f.fighter && Object.hasOwn(CHARACTERS, f.fighter)
                   ? f.fighter

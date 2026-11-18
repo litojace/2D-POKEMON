@@ -486,3 +486,91 @@ it("caps a party at four and lets an invitation expire", () => {
     error: "This invitation has expired.",
   });
 });
+
+it("lets members invite their friends into the leader's party", async () => {
+  const f = await setup();
+  await pairUp(f);
+  // The pal (a member) invites the third: the invitation names the leader.
+  f.accounts.provider.rpc = ((rpc) => async (token, name, args) => {
+    if (name === "arena_friends" && token === f.pal.token)
+      return {
+        code: "ABCDEF12",
+        friends: [f.lead, f.third].map((p) => ({
+          id: p.account.id,
+          name: p.account.displayName,
+        })),
+        incoming: [],
+        outgoing: [],
+      };
+    return rpc(token, name, args);
+  })(f.accounts.provider.rpc);
+  expect(
+    (
+      await request(f.b.s, "party-invite", {
+        playerId: f.third.account.id,
+        character: "tidefin",
+      })
+    ).ok,
+  ).toBe(true);
+  await settle();
+  expect(f.c.invites.at(-1)).toMatchObject({
+    mode: "party",
+    fromId: f.pal.account.id,
+    leader: f.lead.account.displayName,
+  });
+  expect(
+    (
+      await request(f.c.s, "party-accept", {
+        code: f.c.invites.at(-1)!.code,
+        character: "lumoth",
+      })
+    ).ok,
+  ).toBe(true);
+  await vi.waitFor(() => {
+    const party = f.a.parties.at(-1)!;
+    expect(party.leader).toBe(f.lead.account.id);
+    expect(party.members).toHaveLength(3);
+  });
+});
+
+it("lets only the leader remove a member, who is told", async () => {
+  const f = await setup();
+  await pairUp(f);
+  const kicked: unknown[] = [];
+  f.b.s.on("party-kicked", (d) => kicked.push(d));
+  // A member can't remove the leader; the leader removes the member.
+  expect(
+    (await request(f.b.s, "party-kick", { playerId: f.lead.account.id })).ok,
+  ).toBe(false);
+  expect(
+    (await request(f.a.s, "party-kick", { playerId: f.pal.account.id })).ok,
+  ).toBe(true);
+  await vi.waitFor(() => {
+    expect(f.b.parties.at(-1)).toBeNull();
+    expect(kicked.at(-1)).toEqual({ by: f.lead.account.displayName });
+    // Only the leader was left: the party ended.
+    expect(f.a.parties.at(-1)).toBeNull();
+  });
+});
+
+it("keeps someone out of a party with a member they blocked", async () => {
+  const f = await setup();
+  await pairUp(f);
+  // The third blocked the pal (a member): the leader's invite is refused,
+  // without saying why.
+  const rpc = f.accounts.provider.rpc;
+  f.accounts.provider.rpc = async (token, name, args) =>
+    name === "arena_blocked_players" && token === f.third.token
+      ? [{ id: f.pal.account.id, name: f.pal.account.displayName }]
+      : rpc(token, name, args);
+  await f.connect(f.third.token);
+  await settle();
+  const sent = await request(f.a.s, "party-invite", {
+    playerId: f.third.account.id,
+    character: "voltkit",
+  });
+  expect(sent).toMatchObject({
+    ok: false,
+    error: "Your friend can't join this party.",
+  });
+});

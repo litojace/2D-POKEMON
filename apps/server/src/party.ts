@@ -145,6 +145,22 @@ export class Parties {
       disbanded: previous?.disbanded,
     };
   }
+  /**
+   * The leader removes a member. Returns the party left (or ended, when
+   * only the leader remains) for broadcasting.
+   */
+  kick(
+    leaderId: string,
+    memberId: string,
+  ): Result<{ party: Party; disbanded?: Party }> | Failure {
+    const party = this.of(leaderId);
+    if (!party || party.leader !== leaderId)
+      return { ok: false, error: "Only the party leader can remove players." };
+    if (memberId === leaderId || !party.members.some((m) => m.id === memberId))
+      return { ok: false, error: "That player isn't in your party." };
+    const result = this.leave(memberId)!;
+    return { ok: true, ...result };
+  }
   /** The leader opened a room (or closed it: `undefined`). */
   setRoom(accountId: string, room: Party["room"]) {
     const party = this.of(accountId);
@@ -156,8 +172,8 @@ export class Parties {
     return party;
   }
   /**
-   * Invite `toId` to the sender's party, creating it with the sender as
-   * leader. Callers check friendship, presence and rooms first.
+   * Invite `toId` to the sender's party (any member may: most team games
+   * let them), creating it with the sender as leader. Callers check friendship, presence and rooms first.
    */
   invite(
     from: PartyMember,
