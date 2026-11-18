@@ -1,5 +1,7 @@
 import type { CharacterId } from "@arena/shared";
 import type { SkinArt, Palette } from "./skin-art";
+import { tintPalette } from "./fashion-art";
+import { VANGUARD_LOOK, VANGUARD_TINTS } from "./modern-vanguard";
 
 export interface HeroPreview {
   name: string;
@@ -181,21 +183,28 @@ export const VANGUARD_KEEP_CREST: readonly CharacterId[] = [
   "glacelle",
   "pangrove",
 ];
+/**
+ * What the redesigned suits (modern-vanguard.ts) draw in place of: the
+ * scarf, and the head-top piece except for the crests that are part of the
+ * champion (Cindrake's flame, Lumoth's and Halcyra's crests, Glacelle's ice,
+ * Pangrove's sprout). The champions keep their own weapons.
+ */
+export const vanguardReplaces = (
+  id: CharacterId,
+): import("../creature-design").CreaturePart[] =>
+  VANGUARD_KEEP_CREST.includes(id) ? ["scarf"] : ["scarf", "flame"];
+
 export const VANGUARD_ART: Record<string, SkinArt> = Object.fromEntries(
   (Object.keys(VANGUARD_DESIGNS) as CharacterId[]).map((id) => {
-    const design = VANGUARD_DESIGNS[id];
-    const replaces: import("../creature-design").CreaturePart[] = ["scarf"];
-    if (!VANGUARD_KEEP_CREST.includes(id)) replaces.push("flame");
-    if (["tidefin", "astrabun", "pyranda"].includes(id)) replaces.push("armR");
+    // The suit is drawn by modern-vanguard.ts (one design per hero); the
+    // body takes the hero's own colour, and trail and skill its glow.
+    const look = VANGUARD_LOOK[id];
     return [
       `${id}-nova-vanguard`,
       {
-        palette: {
-          ...design.palette,
-          ...(id === "duskveil" ? { accent: "#151b30" } : {}),
-        },
-        accessories: ["vanguard"],
-        replaces,
+        palette: tintPalette(id, VANGUARD_TINTS[id]),
+        accessories: ["modern-vanguard"],
+        replaces: vanguardReplaces(id),
         trail: {
           kind:
             id === "tidefin" || id === "shadopus"
@@ -206,11 +215,11 @@ export const VANGUARD_ART: Record<string, SkinArt> = Object.fromEntries(
                   ? "ember"
                   : "star",
           colors: [
-            parseInt(design.palette.glow.slice(1), 16),
-            parseInt(design.suit.slice(1), 16),
+            parseInt(look.glow.slice(1), 16),
+            parseInt(look.suit.slice(1), 16),
           ],
         },
-        skill: parseInt(design.palette.glow.slice(1), 16),
+        skill: parseInt(look.glow.slice(1), 16),
         vanguard: id,
         signature: `${id}-nova-vanguard`,
       } satisfies SkinArt,
