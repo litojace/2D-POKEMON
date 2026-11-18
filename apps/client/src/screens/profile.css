@@ -684,8 +684,13 @@
   opacity: 0.6;
 }
 @media (max-height: 500px) {
+  /* Short screens: the portrait takes the height left above the name and
+     tags (not the card's width), so it never runs down over the title. */
   .pf-card-avatar {
     padding: 8px;
+    width: auto;
+    height: 100%;
+    max-width: 100%;
   }
   .pf-avatars {
     grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
