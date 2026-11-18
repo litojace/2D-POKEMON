@@ -205,6 +205,8 @@ import {
 } from "./bistro-scenery";
 import {
   busBox,
+  canal,
+  footX,
   makeStreet,
   seasonOf,
   updateStreet,
@@ -1043,7 +1045,11 @@ export function openBistro(o: BistroOptions): BistroHandle {
     const sc = scene();
     return Math.min(
       ZOOM_MAX,
-      Math.max(0.92, W / ((sc.x1 - sc.x0) * fitS), H / ((sc.y1 - sc.y0) * fitS)),
+      Math.max(
+        0.92,
+        W / ((sc.x1 - sc.x0) * fitS),
+        H / ((sc.y1 - sc.y0) * fitS),
+      ),
     );
   };
   const clampZoom = (z: number) => clamp(z, zoomMin(), ZOOM_MAX);
@@ -4355,11 +4361,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
       vx1 <= bake.x1 &&
       vy1 <= bake.y1;
     const zooming = nowMs - scaleAt < 220;
-    if (
-      key === bake.key &&
-      covers &&
-      (Math.abs(bake.s - s) < 1e-6 || zooming)
-    )
+    if (key === bake.key && covers && (Math.abs(bake.s - s) < 1e-6 || zooming))
       return scenery;
     // Bake a quarter of the screen beyond each edge (within the town).
     const sc = scene();
@@ -5822,6 +5824,28 @@ export function openBistro(o: BistroOptions): BistroHandle {
         const t0 = performance.now();
         sceneryCanvas(light());
         return performance.now() - t0;
+      },
+      /** The camera: zoom (1 = fit), its least, the world shown and the town's edge. */
+      camera: () => {
+        applyView();
+        return {
+          zoom,
+          zoomMin: zoomMin(),
+          view: {
+            x0: -view.x / view.s,
+            y0: -view.y / view.s,
+            x1: (W - view.x) / view.s,
+            y1: (H - view.y) / view.s,
+          },
+          scene: scene(),
+        };
+      },
+      /** A spot on the canal's open water, on screen (tests). */
+      water: () => {
+        applyView();
+        const c = canal();
+        const p = iso(footX() - 2.2, (c.y0 + c.y1) / 2 + 0.4);
+        return toScreen({ x: p.x, y: p.y + 18 });
       },
       /** Time per part of the frames drawn since the last call (ms in all). */
       profile: () => {

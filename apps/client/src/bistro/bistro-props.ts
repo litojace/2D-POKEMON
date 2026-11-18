@@ -12,7 +12,16 @@
  * bikes, cars and the bus can be.
  */
 import { DOOR } from "./bistro-model";
-import { R, ROOM, iso, isoBox, shade, softShadow, type Light, type Season } from "./bistro-art";
+import {
+  R,
+  ROOM,
+  iso,
+  isoBox,
+  shade,
+  softShadow,
+  type Light,
+  type Season,
+} from "./bistro-art";
 import { poly } from "./bistro-geom";
 import {
   BACK,
@@ -45,9 +54,20 @@ import {
   zebraY,
   type Glow,
 } from "./bistro-town";
-import { buildings, drawBuilding, topOf, HOUSE_X0, type Building } from "./bistro-city";
+import {
+  buildings,
+  drawBuilding,
+  topOf,
+  HOUSE_X0,
+  type Building,
+} from "./bistro-city";
 import { CAR_SIZE, carBox, drawCar, type Pose } from "./bistro-vehicles";
-import { order, screenBox, type Drawable, type ScreenBox } from "./bistro-depth";
+import {
+  order,
+  screenBox,
+  type Drawable,
+  type ScreenBox,
+} from "./bistro-depth";
 import { lightKey, picture, tickPics } from "./bistro-pics";
 
 type Ctx = CanvasRenderingContext2D;
@@ -314,11 +334,17 @@ function crownColour(kind: number, season: Season | undefined): string {
   }
 }
 
-
 /* ───────────── lamps, benches and the small things ───────────── */
 
 /** A street lamp: a tall post, an arm toward `arm` (screen x: -1 left, 1 right), a lantern. */
-function drawLamp(ctx: Ctx, x: number, y: number, l: Light, arm: number, park = false) {
+function drawLamp(
+  ctx: Ctx,
+  x: number,
+  y: number,
+  l: Light,
+  arm: number,
+  park = false,
+) {
   const c = iso(x, y);
   const n = l.night;
   const iron = shade("#2d3340", -0.3 * n);
@@ -329,7 +355,9 @@ function drawLamp(ctx: Ctx, x: number, y: number, l: Light, arm: number, park = 
     ctx.fillRect(c.x - 2, c.y - 104, 4, 104);
     ctx.fillRect(c.x - 7, c.y - 108, 14, 4);
     const on = n > 0.2;
-    ctx.fillStyle = on ? `rgba(255,${(226 + n * 20) | 0},${(160 + n * 40) | 0},1)` : shade("#eef2f6", -0.3 * n);
+    ctx.fillStyle = on
+      ? `rgba(255,${(226 + n * 20) | 0},${(160 + n * 40) | 0},1)`
+      : shade("#eef2f6", -0.3 * n);
     poly(ctx, [
       { x: c.x - 7, y: c.y - 108 },
       { x: c.x + 7, y: c.y - 108 },
@@ -361,7 +389,9 @@ function drawLamp(ctx: Ctx, x: number, y: number, l: Light, arm: number, park = 
   ctx.beginPath();
   ctx.ellipse(c.x + arm * 28, c.y - 158, 12, 5, 0, Math.PI, 0);
   ctx.fill();
-  ctx.fillStyle = on ? `rgba(255,${(226 + n * 20) | 0},${(160 + n * 40) | 0},1)` : shade("#e3e8ee", -0.3 * n);
+  ctx.fillStyle = on
+    ? `rgba(255,${(226 + n * 20) | 0},${(160 + n * 40) | 0},1)`
+    : shade("#e3e8ee", -0.3 * n);
   ctx.beginPath();
   ctx.ellipse(c.x + arm * 28, c.y - 157, 9, 5, 0, 0, Math.PI);
   ctx.fill();
@@ -371,7 +401,10 @@ function drawLamp(ctx: Ctx, x: number, y: number, l: Light, arm: number, park = 
     ctx.beginPath();
     ctx.arc(c.x, c.y - 96, 8, 0, 7);
     ctx.fill();
-    ctx.fillStyle = shade(l.season === "spring" ? "#ff8fb1" : "#e2453a", -0.5 * n);
+    ctx.fillStyle = shade(
+      l.season === "spring" ? "#ff8fb1" : "#e2453a",
+      -0.5 * n,
+    );
     for (let i = 0; i < 5; i++) {
       ctx.beginPath();
       ctx.arc(c.x - 6 + i * 3, c.y - 98 + (i % 2) * 3, 2, 0, 7);
@@ -379,7 +412,13 @@ function drawLamp(ctx: Ctx, x: number, y: number, l: Light, arm: number, park = 
     }
   }
 }
-function drawBench(ctx: Ctx, bx: number, by: number, along: "x" | "y", l: Light) {
+function drawBench(
+  ctx: Ctx,
+  bx: number,
+  by: number,
+  along: "x" | "y",
+  l: Light,
+) {
   const n = l.night,
     snow = l.season === "winter";
   const wood = {
@@ -489,7 +528,10 @@ function drawZebraSign(ctx: Ctx, x: number, y: number, l: Light) {
   ctx.fill();
   ctx.fillRect(c.x - 1, c.y - 122, 2, 5);
   // A striped pole lamp (the belisha beacon): amber, blinking at night.
-  ctx.fillStyle = l.night > 0.2 && Math.sin(l.t * 4) > 0 ? "#ffb347" : shade("#f2a33a", -0.3 * n);
+  ctx.fillStyle =
+    l.night > 0.2 && Math.sin(l.t * 4) > 0
+      ? "#ffb347"
+      : shade("#f2a33a", -0.3 * n);
   ctx.beginPath();
   ctx.arc(c.x, c.y - 140, 5, 0, 7);
   ctx.fill();
@@ -543,7 +585,13 @@ function drawPlanter(ctx: Ctx, x: number, y: number, l: Light, round = false) {
   for (let i = 0; i < 7; i++) {
     ctx.fillStyle = shade(bloom[s][i % 3], -0.5 * n);
     ctx.beginPath();
-    ctx.arc(c.x - 12 + hash(i + x * 3) * 24, c.y - 26 - hash(i + y) * 14, 2.6, 0, 7);
+    ctx.arc(
+      c.x - 12 + hash(i + x * 3) * 24,
+      c.y - 26 - hash(i + y) * 14,
+      2.6,
+      0,
+      7,
+    );
     ctx.fill();
   }
 }
@@ -656,7 +704,15 @@ function drawDoorProps(ctx: Ctx, l: Light, special: string) {
   ctx.fillText("TODAY", c.x, c.y - 17);
 }
 /** An iron railing along x (along "x") or y, from a to b at c, z on top of the ground. */
-function drawRailing(ctx: Ctx, along: "x" | "y", c: number, a: number, b: number, l: Light, z = 0) {
+function drawRailing(
+  ctx: Ctx,
+  along: "x" | "y",
+  c: number,
+  a: number,
+  b: number,
+  l: Light,
+  z = 0,
+) {
   const n = l.night;
   const at = (u: number) => (along === "x" ? iso(u, c) : iso(c, u));
   ctx.strokeStyle = shade("#2d3340", -0.3 * n);
@@ -679,7 +735,14 @@ function drawRailing(ctx: Ctx, along: "x" | "y", c: number, a: number, b: number
   ctx.stroke();
 }
 /** A low stone parapet along y at x0..x1 (the road bridge's sides), with end piers. */
-function drawParapet(ctx: Ctx, x0: number, x1: number, y0: number, y1: number, l: Light) {
+function drawParapet(
+  ctx: Ctx,
+  x0: number,
+  x1: number,
+  y0: number,
+  y1: number,
+  l: Light,
+) {
   const n = l.night,
     snow = l.season === "winter";
   const stone = {
@@ -692,10 +755,19 @@ function drawParapet(ctx: Ctx, x0: number, x1: number, y0: number, y1: number, l
     isoBox(ctx, x0 - 0.05, y, x1 + 0.05, y + 0.3, 0, 32, stone);
 }
 /** A hedge: a clipped box of leaves. */
-function drawHedge(ctx: Ctx, x0: number, y0: number, x1: number, y1: number, h: number, l: Light) {
+function drawHedge(
+  ctx: Ctx,
+  x0: number,
+  y0: number,
+  x1: number,
+  y1: number,
+  h: number,
+  l: Light,
+) {
   const n = l.night,
     s = l.season ?? "summer";
-  const base = s === "winter" ? "#7a8a7a" : s === "autumn" ? "#6a8a3a" : "#4f8f45";
+  const base =
+    s === "winter" ? "#7a8a7a" : s === "autumn" ? "#6a8a3a" : "#4f8f45";
   isoBox(ctx, x0, y0, x1, y1, 0, h, {
     top: shade(shade(base, 0.18), -0.5 * n),
     left: shade(shade(base, -0.2), -0.5 * n),
@@ -705,14 +777,20 @@ function drawHedge(ctx: Ctx, x0: number, y0: number, x1: number, y1: number, h: 
   ctx.fillStyle = shade(shade(base, 0.1), -0.5 * n);
   const len = Math.max(x1 - x0, y1 - y0);
   for (let u = 0.15; u < len; u += 0.3) {
-    const p = x1 - x0 > y1 - y0 ? up(iso(x0 + u, y1), h) : up(iso(x1, y0 + u), h);
+    const p =
+      x1 - x0 > y1 - y0 ? up(iso(x0 + u, y1), h) : up(iso(x1, y0 + u), h);
     ctx.beginPath();
     ctx.arc(p.x, p.y, 5, Math.PI, 0);
     ctx.fill();
   }
   if (s === "winter") {
     ctx.fillStyle = shade("#f4f7fb", -0.45 * n);
-    poly(ctx, [up(iso(x0, y0), h + 2), up(iso(x1, y0), h + 2), up(iso(x1, y1), h + 2), up(iso(x0, y1), h + 2)]);
+    poly(ctx, [
+      up(iso(x0, y0), h + 2),
+      up(iso(x1, y0), h + 2),
+      up(iso(x1, y1), h + 2),
+      up(iso(x0, y1), h + 2),
+    ]);
     ctx.fill();
   }
 }
@@ -797,13 +875,28 @@ function drawPlayground(ctx: Ctx, x: number, y: number, l: Light) {
     right: yel,
   });
   ctx.fillStyle = red;
-  poly(ctx, [up(iso(x - 0.3, y + 0.3), 74), up(iso(x + 0.3, y + 0.3), 74), up(iso(x + 0.3, y + 0.9), 74), up(iso(x, y + 0.6), 92)]);
+  poly(ctx, [
+    up(iso(x - 0.3, y + 0.3), 74),
+    up(iso(x + 0.3, y + 0.3), 74),
+    up(iso(x + 0.3, y + 0.9), 74),
+    up(iso(x, y + 0.6), 92),
+  ]);
   ctx.fill();
   ctx.fillStyle = shade("#3d8fd1", -0.4 * n);
-  poly(ctx, [up(iso(x - 0.2, y + 0.9), 50), up(iso(x + 0.2, y + 0.9), 50), up(iso(x + 0.2, y + 2.2), 6), up(iso(x - 0.2, y + 2.2), 6)]);
+  poly(ctx, [
+    up(iso(x - 0.2, y + 0.9), 50),
+    up(iso(x + 0.2, y + 0.9), 50),
+    up(iso(x + 0.2, y + 2.2), 6),
+    up(iso(x - 0.2, y + 2.2), 6),
+  ]);
   ctx.fill();
   ctx.fillStyle = shade("#2f6fb1", -0.4 * n);
-  poly(ctx, [up(iso(x + 0.2, y + 0.9), 50), up(iso(x + 0.2, y + 2.2), 6), up(iso(x + 0.2, y + 2.2), 0), up(iso(x + 0.2, y + 0.9), 44)]);
+  poly(ctx, [
+    up(iso(x + 0.2, y + 0.9), 50),
+    up(iso(x + 0.2, y + 2.2), 6),
+    up(iso(x + 0.2, y + 2.2), 0),
+    up(iso(x + 0.2, y + 0.9), 44),
+  ]);
   ctx.fill();
   ctx.strokeStyle = yel;
   ctx.lineWidth = 2;
@@ -825,7 +918,8 @@ function drawPicnic(ctx: Ctx, x: number, y: number, l: Light) {
   };
   const c = iso(x, y);
   softShadow(ctx, c.x, c.y + 2, 46, 18, 0.22);
-  for (const dy of [-0.55, 0.55]) isoBox(ctx, x - 0.8, y + dy - 0.12, x + 0.8, y + dy + 0.12, 14, 4, wood);
+  for (const dy of [-0.55, 0.55])
+    isoBox(ctx, x - 0.8, y + dy - 0.12, x + 0.8, y + dy + 0.12, 14, 4, wood);
   ctx.fillStyle = wood.left;
   for (const dx of [-0.6, 0.6]) {
     const p = iso(x + dx, y);
@@ -871,7 +965,9 @@ function drawFountain(ctx: Ctx, l: Light) {
   ctx.ellipse(c.x, c.y - H, rx, ry, 0, 0, Math.PI * 2);
   ctx.fill();
   // The water (or ice) in the basin.
-  ctx.fillStyle = frozen ? lerpRgb([220, 236, 246], [80, 96, 124], n) : lerpRgb([96, 176, 214], [30, 52, 90], n);
+  ctx.fillStyle = frozen
+    ? lerpRgb([220, 236, 246], [80, 96, 124], n)
+    : lerpRgb([96, 176, 214], [30, 52, 90], n);
   ctx.beginPath();
   ctx.ellipse(c.x, c.y - H, rx - 8, ry - 5, 0, 0, Math.PI * 2);
   ctx.fill();
@@ -880,7 +976,15 @@ function drawFountain(ctx: Ctx, l: Light) {
     for (let i = 0; i < 9; i++) {
       ctx.fillStyle = `rgba(255,214,110,${0.6 - n * 0.4})`;
       ctx.beginPath();
-      ctx.ellipse(c.x - 40 + hash(i) * 80, c.y - H - 14 + hash(i + 9) * 26, 2, 1, 0, 0, 7);
+      ctx.ellipse(
+        c.x - 40 + hash(i) * 80,
+        c.y - H - 14 + hash(i + 9) * 26,
+        2,
+        1,
+        0,
+        0,
+        7,
+      );
       ctx.fill();
     }
   // The pedestal, the upper bowl and a finial.
@@ -899,7 +1003,9 @@ function drawFountain(ctx: Ctx, l: Light) {
   ctx.beginPath();
   ctx.ellipse(c.x, c.y - H - 44, 30, 11, 0, 0, Math.PI * 2);
   ctx.fill();
-  ctx.fillStyle = frozen ? lerpRgb([226, 240, 248], [86, 100, 128], n) : lerpRgb([110, 186, 226], [34, 58, 96], n);
+  ctx.fillStyle = frozen
+    ? lerpRgb([226, 240, 248], [86, 100, 128], n)
+    : lerpRgb([110, 186, 226], [34, 58, 96], n);
   ctx.beginPath();
   ctx.ellipse(c.x, c.y - H - 44, 24, 8, 0, 0, Math.PI * 2);
   ctx.fill();
@@ -936,7 +1042,12 @@ export function drawFountainWater(ctx: Ctx, l: Light, low: boolean) {
     const dir = i < 3 ? -1 : 1,
       far = 8 + (i % 3) * 6;
     ctx.moveTo(c.x, c.y - H - 70);
-    ctx.quadraticCurveTo(c.x + dir * far * 0.6, c.y - H - 92 - (i % 3) * 3, c.x + dir * far, c.y - H - 48);
+    ctx.quadraticCurveTo(
+      c.x + dir * far * 0.6,
+      c.y - H - 92 - (i % 3) * 3,
+      c.x + dir * far,
+      c.y - H - 48,
+    );
   }
   // The sheet falling from the bowl's rim into the basin.
   for (let i = -5; i <= 5; i++) {
@@ -1003,12 +1114,26 @@ function drawFootbridge(ctx: Ctx, l: Light) {
     ctx.fillStyle = snow
       ? lerpRgb([240, 244, 250], [86, 90, 110], n)
       : lerpRgb(i % 2 ? [182, 128, 80] : [164, 112, 68], [60, 46, 44], n);
-    poly(ctx, [up(iso(fx0, g(i)), z0), up(iso(fx1, g(i)), z0), up(iso(fx1, g(i + 1)), z1), up(iso(fx0, g(i + 1)), z1)]);
+    poly(ctx, [
+      up(iso(fx0, g(i)), z0),
+      up(iso(fx1, g(i)), z0),
+      up(iso(fx1, g(i + 1)), z1),
+      up(iso(fx0, g(i + 1)), z1),
+    ]);
     ctx.fill();
   }
   footRail(ctx, fx0, ya, yb, n, 0, N, N);
 }
-function footRail(ctx: Ctx, gx: number, ya: number, yb: number, n: number, i0: number, i1: number, N: number) {
+function footRail(
+  ctx: Ctx,
+  gx: number,
+  ya: number,
+  yb: number,
+  n: number,
+  i0: number,
+  i1: number,
+  N: number,
+) {
   const fx = footX();
   const col = lerpRgb([126, 82, 48], [44, 34, 34], n);
   ctx.strokeStyle = col;
@@ -1085,13 +1210,22 @@ export function trees(): [number, number, number, number][] {
     ]),
   ];
   // The park east of the square: clumps, clear of the paths.
-  const roomFree = (t: [number, number, number, number]) => !hidesRoom(t[0], t[1], t[2]);
+  const roomFree = (t: [number, number, number, number]) =>
+    !hidesRoom(t[0], t[1], t[2]);
   for (let i = 0; i < 26; i++) {
     const x = C + 11 + hash(i + 100) * 16,
       y = -1.6 + hash(i + 200) * (Rw + 5);
     if (Math.abs(y - (P.y + 2.7)) < 1.3 || Math.abs(y - -1.45) < 1.2) continue;
-    if (Math.abs(x - (C + 15)) < 2.2 && Math.abs(y - 6) < 2.4) continue;
-    out.push([x, y, 1 + hash(i + 300) * 0.3, i % 5 === 0 ? 1 : i % 4 === 0 ? 2 : 0]);
+    if (Math.abs(x - (C + 13.5)) < 4 && Math.abs(y - (P.y + 5.6)) < 2.4)
+      continue;
+    if (Math.abs(x - (C + 9.6)) < 1.6 && Math.abs(y - (P.y + 4.4)) < 1.6)
+      continue;
+    out.push([
+      x,
+      y,
+      1 + hash(i + 300) * 0.3,
+      i % 5 === 0 ? 1 : i % 4 === 0 ? 2 : 0,
+    ]);
   }
   // Nothing tall in front of the bistro hides it.
   return out.filter(roomFree);
@@ -1103,12 +1237,23 @@ export function hidesRoom(x: number, y: number, s: number): boolean {
   const l = ROOM.left,
     b = ROOM.bottom,
     r = ROOM.right;
-  const crown = { x0: c.x - 62 * s, x1: c.x + 62 * s, y0: c.y - 150 * s, y1: c.y - 30 * s };
+  const crown = {
+    x0: c.x - 62 * s,
+    x1: c.x + 62 * s,
+    y0: c.y - 150 * s,
+    y1: c.y - 30 * s,
+  };
   // The room's front edges (its slab's foot) from the left corner to the right.
   const below = (px: number) =>
-    px <= b.x ? l.y + 40 + ((b.y - l.y) * (px - l.x)) / (b.x - l.x) : b.y + 40 + ((r.y - b.y) * (px - b.x)) / (r.x - b.x);
+    px <= b.x
+      ? l.y + 40 + ((b.y - l.y) * (px - l.x)) / (b.x - l.x)
+      : b.y + 40 + ((r.y - b.y) * (px - b.x)) / (r.x - b.x);
   if (crown.x1 < l.x - 16 || crown.x0 > r.x + 16) return false;
-  const xs = [Math.max(crown.x0, l.x), Math.min(crown.x1, r.x), Math.max(Math.min(c.x, r.x), l.x)];
+  const xs = [
+    Math.max(crown.x0, l.x),
+    Math.min(crown.x1, r.x),
+    Math.max(Math.min(c.x, r.x), l.x),
+  ];
   return xs.some((px) => crown.y0 < below(px));
 }
 /** Street lamps: [x, y, arm (screen x), park style]. */
@@ -1122,7 +1267,8 @@ export function lampSpots(): [number, number, number, boolean][] {
     out.push([ROAD1 + 0.3, y, -1, false]);
   for (const y of [-12.5, -5.5, 0.6, 10.4, Rw + 4.4, Rw + 12.5, Rw + 19.5])
     out.push([ROAD0 - 0.3, y, 1, false]);
-  for (let x = HOUSE_X0 + 1; x < C + 26; x += 6) out.push([x, HOUSES + 0.35, 1, false]);
+  for (let x = HOUSE_X0 + 1; x < C + 26; x += 6)
+    out.push([x, HOUSES + 0.35, 1, false]);
   for (const x of [1.8, footX() + 1.4, C - 0.8, C + 6, C + 12])
     out.push([x, c.y0 - 0.45, 1, true]);
   for (const x of [1.6, footX() - 1.6, C + 1.5, C + 8, C + 14])
@@ -1146,7 +1292,17 @@ export function props(special: () => string = () => ""): Prop[] {
     h: number,
     paint: Prop["paint"],
     extra: Partial<Prop> = {},
-  ) => out.push({ id, x0: x - r, y0: y - r, x1: x + r, y1: y + r, h, paint, ...extra });
+  ) =>
+    out.push({
+      id,
+      x0: x - r,
+      y0: y - r,
+      x1: x + r,
+      y1: y + r,
+      h,
+      paint,
+      ...extra,
+    });
   for (const b of buildings())
     out.push({
       id: `b${b.kind}${b.k}`,
@@ -1165,7 +1321,15 @@ export function props(special: () => string = () => ""): Prop[] {
       tree: true,
     });
   for (const [i, [x, y, arm, park]] of lampSpots().entries())
-    at(`l${i}`, x, y, 0.12, park ? 140 : 168, (ctx, l) => drawLamp(ctx, x, y, l, arm, park), { sw: 30 });
+    at(
+      `l${i}`,
+      x,
+      y,
+      0.12,
+      park ? 140 : 168,
+      (ctx, l) => drawLamp(ctx, x, y, l, arm, park),
+      { sw: 30 },
+    );
   for (const [i, b] of benches().entries())
     out.push({
       id: `bench${i}`,
@@ -1177,34 +1341,93 @@ export function props(special: () => string = () => ""): Prop[] {
     });
   // Small things along the sidewalks.
   const Z = zebraY();
-  at("bin0", ROAD1 + 0.35, 1.4, 0.15, 40, (ctx, l) => drawBin(ctx, ROAD1 + 0.35, 1.4, l));
-  at("bin1", ROAD0 - 0.35, 5.0, 0.15, 40, (ctx, l) => drawBin(ctx, ROAD0 - 0.35, 5.0, l));
-  at("bin2", C + 1.35, 2.0, 0.15, 40, (ctx, l) => drawBin(ctx, C + 1.35, 2.0, l));
-  at("bin3", 5, c.y0 - 0.5, 0.15, 40, (ctx, l) => drawBin(ctx, 5, c.y0 - 0.5, l));
-  at("hyd0", ROAD1 + 0.35, -8.6, 0.12, 30, (ctx, l) => drawHydrant(ctx, ROAD1 + 0.35, -8.6, l));
-  at("hyd1", ROAD0 - 0.35, Rw + 1.6, 0.12, 30, (ctx, l) => drawHydrant(ctx, ROAD0 - 0.35, Rw + 1.6, l));
-  at("post", ROAD0 - 0.4, -7.6, 0.18, 52, (ctx, l) => drawPillarBox(ctx, ROAD0 - 0.4, -7.6, l));
-  at("ads", ROAD0 - 0.55, 13.4 + Rw - 9, 0.32, 140, (ctx, l) => drawAdColumn(ctx, ROAD0 - 0.55, 13.4 + Rw - 9, l), { sw: 22 });
+  at("bin0", ROAD1 + 0.35, 1.4, 0.15, 40, (ctx, l) =>
+    drawBin(ctx, ROAD1 + 0.35, 1.4, l),
+  );
+  at("bin1", ROAD0 - 0.35, 5.0, 0.15, 40, (ctx, l) =>
+    drawBin(ctx, ROAD0 - 0.35, 5.0, l),
+  );
+  at("bin2", C + 1.35, 2.0, 0.15, 40, (ctx, l) =>
+    drawBin(ctx, C + 1.35, 2.0, l),
+  );
+  at("bin3", 5, c.y0 - 0.5, 0.15, 40, (ctx, l) =>
+    drawBin(ctx, 5, c.y0 - 0.5, l),
+  );
+  at("hyd0", ROAD1 + 0.35, -8.6, 0.12, 30, (ctx, l) =>
+    drawHydrant(ctx, ROAD1 + 0.35, -8.6, l),
+  );
+  at("hyd1", ROAD0 - 0.35, Rw + 1.6, 0.12, 30, (ctx, l) =>
+    drawHydrant(ctx, ROAD0 - 0.35, Rw + 1.6, l),
+  );
+  at("post", ROAD0 - 0.4, -7.6, 0.18, 52, (ctx, l) =>
+    drawPillarBox(ctx, ROAD0 - 0.4, -7.6, l),
+  );
+  at(
+    "ads",
+    ROAD0 - 0.55,
+    13.4 + Rw - 9,
+    0.32,
+    140,
+    (ctx, l) => drawAdColumn(ctx, ROAD0 - 0.55, 13.4 + Rw - 9, l),
+    { sw: 22 },
+  );
   for (const [k, x] of [ROAD1 + 0.3, ROAD0 - 0.3].entries()) {
     for (const dy of [-ZEBRA_HALF - 0.3, ZEBRA_HALF + 0.3])
-      at(`bol${k}${dy}`, x, Z + dy, 0.08, 28, (ctx, l) => drawBollard(ctx, x, Z + dy, l));
-    at(`zs${k}`, x, Z - ZEBRA_HALF - 0.75, 0.1, 146, (ctx, l) => drawZebraSign(ctx, x, Z - ZEBRA_HALF - 0.75, l), { sw: 14 });
+      at(`bol${k}${dy}`, x, Z + dy, 0.08, 28, (ctx, l) =>
+        drawBollard(ctx, x, Z + dy, l),
+      );
+    at(
+      `zs${k}`,
+      x,
+      Z - ZEBRA_HALF - 0.75,
+      0.1,
+      146,
+      (ctx, l) => drawZebraSign(ctx, x, Z - ZEBRA_HALF - 0.75, l),
+      { sw: 14 },
+    );
   }
-  at("rack", C + 1.2, 2.9, 0.4, 32, (ctx, l) => drawBikeRack(ctx, C + 1.2, 2.9, l), { sw: 28 });
+  at(
+    "rack",
+    C + 1.2,
+    2.9,
+    0.4,
+    32,
+    (ctx, l) => drawBikeRack(ctx, C + 1.2, 2.9, l),
+    { sw: 28 },
+  );
   // The door's sandwich board and planters.
-  at("board", WALK - 1.0, DOOR.y - 1.2, 0.22, 52, (ctx, l) => drawDoorProps(ctx, l, special()));
+  at("board", WALK - 1.0, DOOR.y - 1.2, 0.22, 52, (ctx, l) =>
+    drawDoorProps(ctx, l, special()),
+  );
   for (const gy of [DOOR.y - 2.0, DOOR.y + 1.0])
-    at(`dp${gy}`, WALK - 0.4, gy, 0.32, 44, (ctx, l) => drawPlanter(ctx, WALK - 0.4, gy, l));
+    at(`dp${gy}`, WALK - 0.4, gy, 0.32, 44, (ctx, l) =>
+      drawPlanter(ctx, WALK - 0.4, gy, l),
+    );
   // Planters along the promenade and at the apron's corners.
   for (const x of [3.4, footX() - 2.2, C - 3.6])
-    at(`pp${x}`, x, Rw + 2.8, 0.36, 46, (ctx, l) => drawPlanter(ctx, x, Rw + 2.8, l, true), { sw: 22 });
+    at(
+      `pp${x}`,
+      x,
+      Rw + 2.8,
+      0.36,
+      46,
+      (ctx, l) => drawPlanter(ctx, x, Rw + 2.8, l, true),
+      { sw: 22 },
+    );
   for (const [x, y] of [
     [C + 1.2, Rw + 1.0],
     [C + 1.2, -2.0],
   ])
     at(`ap${x}${y}`, x, y, 0.32, 44, (ctx, l) => drawPlanter(ctx, x, y, l));
   // The bus shelter.
-  out.push({ id: "shelter", ...shelter(), h: 140, sw: 70, paint: (ctx, l) => drawShelter(ctx, l), live: true });
+  out.push({
+    id: "shelter",
+    ...shelter(),
+    h: 140,
+    sw: 70,
+    paint: (ctx, l) => drawShelter(ctx, l),
+    live: true,
+  });
   // The road bridge's parapets and the canal's railings, in short lengths.
   const by0 = c.y0 - 0.35,
     by1 = c.y1 + 0.35;
@@ -1215,7 +1438,8 @@ export function props(special: () => string = () => ""): Prop[] {
     y0: by0,
     y1: by1,
     h: 34,
-    paint: (ctx, l) => drawParapet(ctx, BRIDGE.x1 - 0.28, BRIDGE.x1, by0, by1, l),
+    paint: (ctx, l) =>
+      drawParapet(ctx, BRIDGE.x1 - 0.28, BRIDGE.x1, by0, by1, l),
   });
   out.push({
     id: "parFar",
@@ -1224,7 +1448,8 @@ export function props(special: () => string = () => ""): Prop[] {
     y0: by0,
     y1: by1,
     h: 34,
-    paint: (ctx, l) => drawParapet(ctx, BRIDGE.x0, BRIDGE.x0 + 0.28, by0, by1, l),
+    paint: (ctx, l) =>
+      drawParapet(ctx, BRIDGE.x0, BRIDGE.x0 + 0.28, by0, by1, l),
   });
   const fx = footX();
   for (let x = BRIDGE.x1 + 0.2; x < C + 30; x += 3) {
@@ -1236,7 +1461,12 @@ export function props(special: () => string = () => ""): Prop[] {
     ] as const) {
       // Gaps where the footbridge lands.
       const segs: [number, number][] =
-        a < fx + 0.8 && b > fx - 0.8 ? [[a, fx - 0.8], [fx + 0.8, b]] : [[a, b]];
+        a < fx + 0.8 && b > fx - 0.8
+          ? [
+              [a, fx - 0.8],
+              [fx + 0.8, b],
+            ]
+          : [[a, b]];
       for (const [s0, s1] of segs)
         if (s1 - s0 > 0.2)
           out.push({
@@ -1291,10 +1521,42 @@ export function props(special: () => string = () => ""): Prop[] {
     after: (ctx, l, low) => drawFountainWater(ctx, l, low),
     live: true,
   });
-  at("kiosk", C + 9.6, P.y + 4.4, 0.8, 140, (ctx, l) => drawKiosk(ctx, C + 9.6, P.y + 4.4, l), { sw: 50 });
-  at("play", C + 15, 5.4, 1.3, 96, (ctx, l) => drawPlayground(ctx, C + 15, 5.4, l), { sw: 100 });
-  at("picnic", C + 13.2, 9.3, 0.85, 34, (ctx, l) => drawPicnic(ctx, C + 13.2, 9.3, l), { sw: 44 });
-  at("picnic2", 4.6, c.y1 + 2.7, 0.85, 34, (ctx, l) => drawPicnic(ctx, 4.6, c.y1 + 2.7, l), { sw: 44 });
+  at(
+    "kiosk",
+    C + 9.6,
+    P.y + 4.4,
+    0.8,
+    140,
+    (ctx, l) => drawKiosk(ctx, C + 9.6, P.y + 4.4, l),
+    { sw: 50 },
+  );
+  at(
+    "play",
+    C + 15,
+    P.y + 5.6,
+    1.3,
+    96,
+    (ctx, l) => drawPlayground(ctx, C + 15, P.y + 5.6, l),
+    { sw: 100 },
+  );
+  at(
+    "picnic",
+    C + 11.6,
+    P.y + 6.2,
+    0.85,
+    34,
+    (ctx, l) => drawPicnic(ctx, C + 11.6, P.y + 6.2, l),
+    { sw: 44 },
+  );
+  at(
+    "picnic2",
+    4.6,
+    c.y1 + 2.7,
+    0.85,
+    34,
+    (ctx, l) => drawPicnic(ctx, 4.6, c.y1 + 2.7, l),
+    { sw: 44 },
+  );
   // Hedges around the pocket park and the gardens.
   out.push({
     id: "hedge0",
@@ -1303,7 +1565,8 @@ export function props(special: () => string = () => ""): Prop[] {
     y0: HOUSES - 0.4,
     y1: HOUSES - 0.1,
     h: 26,
-    paint: (ctx, l) => drawHedge(ctx, -0.4, HOUSES - 0.4, HOUSE_X0 - 0.2, HOUSES - 0.1, 26, l),
+    paint: (ctx, l) =>
+      drawHedge(ctx, -0.4, HOUSES - 0.4, HOUSE_X0 - 0.2, HOUSES - 0.1, 26, l),
   });
   // Parked cars along the back street's far curb.
   const parked: [number, number, string][] = [
@@ -1316,7 +1579,12 @@ export function props(special: () => string = () => ""): Prop[] {
     [24.4, 2, "#f2c14e"],
   ];
   for (const [i, [x, kind, col]] of parked.entries()) {
-    const pose: Pose = { x, y: BACK.y0 + 0.75, along: "x", dir: i % 2 ? -1 : 1 };
+    const pose: Pose = {
+      x,
+      y: BACK.y0 + 0.75,
+      along: "x",
+      dir: i % 2 ? -1 : 1,
+    };
     out.push({
       id: `pc${i}`,
       ...carBox(pose, kind),
@@ -1334,13 +1602,23 @@ export function moverSamples(): Drawable[] {
   const out: Drawable[] = [];
   const none = () => {};
   const walker = (x: number, y: number, h = 100) =>
-    out.push({ x0: x - 0.22, y0: y - 0.22, x1: x + 0.22, y1: y + 0.22, h, sw: 34, z: footLift(x, y), draw: none });
+    out.push({
+      x0: x - 0.22,
+      y0: y - 0.22,
+      x1: x + 0.22,
+      y1: y + 0.22,
+      h,
+      sw: 34,
+      z: footLift(x, y),
+      draw: none,
+    });
   const along = (pts: [number, number][], h?: number) => {
     for (let i = 1; i < pts.length; i++) {
       const [ax, ay] = pts[i - 1],
         [bx, by] = pts[i];
       const d = Math.hypot(bx - ax, by - ay);
-      for (let u = 0; u <= d; u += 0.3) walker(ax + ((bx - ax) * u) / d, ay + ((by - ay) * u) / d, h);
+      for (let u = 0; u <= d; u += 0.3)
+        walker(ax + ((bx - ax) * u) / d, ay + ((by - ay) * u) / d, h);
     }
   };
   for (const r of routes()) along(r.pts);
@@ -1367,7 +1645,14 @@ export function moverSamples(): Drawable[] {
 }
 type Poly = Pt[];
 /** The outline of a box standing on the ground (a hexagon on screen). */
-function silhouette(d: { x0: number; y0: number; x1: number; y1: number; h: number; z?: number }): Poly {
+function silhouette(d: {
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+  h: number;
+  z?: number;
+}): Poly {
   const z = d.z ?? 0;
   const a = iso(d.x0, d.y1),
     b = iso(d.x1, d.y1),
@@ -1416,7 +1701,9 @@ function convexMeet(a: Poly, b: Poly): boolean {
 }
 /** The prop's outline on screen: its box, or (trees, wide things) its screen rectangle. */
 export function outline(p: Prop): Poly {
-  return p.sw && !p.building ? rectPoly(screenBox({ ...p, draw: () => {} })) : silhouette(p);
+  return p.sw && !p.building
+    ? rectPoly(screenBox({ ...p, draw: () => {} }))
+    : silhouette(p);
 }
 /** Would this prop, drawn under everything that moves, wrongly show behind some of it? */
 export function coversMovers(p: Prop, samples = moverSamples()): boolean {
@@ -1425,7 +1712,13 @@ export function coversMovers(p: Prop, samples = moverSamples()): boolean {
   const pd: Drawable = { ...p, draw: () => {} };
   for (const s of samples) {
     const sb = screenBox(s);
-    if (sb.x1 <= box.x0 || sb.x0 >= box.x1 || sb.y1 <= box.y0 || sb.y0 >= box.y1) continue;
+    if (
+      sb.x1 <= box.x0 ||
+      sb.x0 >= box.x1 ||
+      sb.y1 <= box.y0 ||
+      sb.y0 >= box.y1
+    )
+      continue;
     if (order(s, pd) >= 0) continue;
     if (convexMeet(ol, rectPoly(sb))) return true;
   }
@@ -1453,7 +1746,12 @@ export function drawPropCached(ctx: Ctx, p: Prop, l: Light, sway = 0) {
     ctx,
     p.id,
     lightKey(l),
-    { x0: b.x0 - foot.x, y0: b.y0 - foot.y, x1: b.x1 - foot.x, y1: b.y1 - foot.y + 20 },
+    {
+      x0: b.x0 - foot.x,
+      y0: b.y0 - foot.y,
+      x1: b.x1 - foot.x,
+      y1: b.y1 - foot.y + 20,
+    },
     (g) => {
       g.translate(-foot.x, -foot.y);
       // Things whose picture moves (the swings) are drawn at a still moment.
