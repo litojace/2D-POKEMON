@@ -7,6 +7,7 @@ import {
   PROFILE_FACE_PARTS,
 } from "./creature-profile";
 import { championMaterials } from "./champion-materials";
+import { styleHalcyraBeak } from "./skins/halcyra-beaks";
 import {
   creaturePalette,
   type Palette as CreaturePalette,
@@ -1183,6 +1184,13 @@ function dressLayers(
     for (const [part, svg] of awakeningSvg(art.mythic, stage, id, dir, p))
       layers[part] += `<g class="skin-awakening">${svg}</g>`;
   for (const [part, keep] of kept) layers[part] += keep;
+  // Halcyra's beak, made for the skin's figure (skins/halcyra-beaks.ts).
+  if (id === "halcyra")
+    layers.flame = styleHalcyraBeak(
+      layers.flame,
+      look.skin,
+      dir === "down" ? "front" : dir === "up" ? null : "profile",
+    );
 }
 export function creatureSvg(
   id: CharacterId,

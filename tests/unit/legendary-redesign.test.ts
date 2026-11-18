@@ -3,6 +3,7 @@ import { CHARACTERS, type CharacterId } from "@arena/shared";
 import { creatureSvg } from "../../apps/client/src/creature-design";
 import { creaturePalette } from "../../apps/client/src/creature-palette";
 import { DOMParser } from "@xmldom/xmldom";
+import { HALCYRA_BEAKS } from "../../apps/client/src/skins/halcyra-beaks";
 import { SKIN_ART } from "../../apps/client/src/skins/skin-art";
 import { DESIGNS } from "../../apps/client/src/skins/modern-designs";
 import { PIRATE_TINTS } from "../../apps/client/src/skins/modern-pirates";
@@ -153,6 +154,37 @@ describe("Sky Pirates and Nova Vanguard, redrawn per champion", () => {
           "image/svg+xml",
         );
         expect(errors, `${c || "default"} ${view}`).toEqual([]);
+      }
+  });
+
+  it("gives Halcyra a beak of its own in each collection, in every view", () => {
+    const collections = [
+      "hon-viet",
+      "stars-stripes",
+      "hero-squad",
+      "neon-campus",
+      "sky-pirates",
+      "nova-vanguard",
+    ];
+    const looks = collections.map((c) => HALCYRA_BEAKS[`halcyra-${c}`]);
+    expect(looks.every(Boolean)).toBe(true);
+    expect(new Set(looks.map((l) => l.colors.join())).size).toBe(
+      collections.length,
+    );
+    for (const c of collections)
+      for (const view of ["down", "left", "right"] as const) {
+        const svg = creatureSvg(
+          "halcyra",
+          view,
+          undefined,
+          undefined,
+          "normal",
+          { skin: `halcyra-${c}` } as any,
+        );
+        const beak = svg.slice(svg.indexOf('data-keep="beak"'));
+        expect(beak, `${c} ${view}`).toContain(
+          `stop-color="${HALCYRA_BEAKS[`halcyra-${c}`].colors[1]}"`,
+        );
       }
   });
 });
