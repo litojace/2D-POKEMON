@@ -113,11 +113,51 @@ for 1.2 s. Epics have neither. Legendary has no Mythic Trial or Awakening.
 Migration `20261118100000_legendary_skins_and_skin_sets.sql` allows the
 rarity and moves the 18 suits to it; owners keep theirs.
 
+## Legendary: Sky Pirates
+
+The second Legendary collection (5,500 coins): a crew of sky-pirate
+captains (`pirate-fashion.ts`, `pirate-art.ts`). Each keeps the champion's
+own colours; the costume carries the theme. The silhouette is a tricorne,
+sized to the chibi head with its crown above it, a gold edge, a compass-rose
+emblem and a plume in the captain's colour, plus a gold-trimmed coat with a
+frilled shirt, double buttons, a red sash and buckle, and a cutlass at the
+hip. The hat replaces head-top props but keeps crests that are part of the
+champion (the same list Nova Vanguard keeps). From behind, the coat's back and
+tails sit on the scarf part, over shells and membranes.
+
+Each captain has its own signature motif, and all of them land with an
+anchor that drops beside them and bites the ground, and win with a treasure
+chest that springs open behind them, doubloons flying up off the face.
+
+| Champion | Captain | Signature |
+| --- | --- | --- |
+| Voltkit | Storm Corsair | Storm compass, needle crackling |
+| Cindrake | Cinder Buccaneer | Swinging ship lantern |
+| Tidefin | Tide Admiral | Ship's wheel turning behind |
+| Auralynx | Prism Navigator | Spyglass catching the light |
+| Lumoth | Lantern Lookout | Glowing message in a bottle |
+| Mystowl | Chart Quartermaster | Treasure map with a pulsing X |
+| Terradon | Ironhull Captain | Swinging anchor |
+| Duskveil | Ghost Ship Wisp | Rippling ghost flag |
+| Coilemur | Rigging Runner | Rope lasso overhead |
+| Pyranda | Spice Raider | Orbiting doubloons |
+| Glacelle | Frost Privateer | Billowing sail |
+| Halcyra | Crow's Nest Ace | Seagull wingman |
+| Sunbara | Sunset Skipper | Shoulder parrot |
+| Astrabun | Moonsail Bosun | Tiny moon galleon |
+| Wombolder | Anchor Warden | Deck cannon smoke |
+| Shadopus | Kraken Captain | Kraken tentacle |
+| Pangrove | Jungle Corsair | Ringing ship's bell |
+| Mossloth | Hammock Pirate | Swaying hammock |
+
+Migration `20261118120000_sky_pirates.sql` adds the 18 skins and their set.
+
 ## Full-roster skin sets
 
-Seven sets, one per collection that dresses all 18 champions in one design at
+Eight sets, one per collection that dresses all 18 champions in one design at
 one rarity: Wayfarer, Moonlit Tea, Astral Court, Cyber Mecha, Abyssal
-Expedition, Dream Carnival and Nova Vanguard (`SKIN_BUNDLES` in `shop.ts`).
+Expedition, Dream Carnival, Nova Vanguard and Sky Pirates (`SKIN_BUNDLES` in
+`shop.ts`).
 Like the Look sets, a set costs 80% of the skins you don't own yet (the
 database's `arena_item_price`); buying one grants each skin, and a complete
 Cyber Mecha set earns its frame as usual. Void Knight Mythicals are never
