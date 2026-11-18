@@ -63,6 +63,23 @@ export const FAR = 4000;
 export const TILE = Math.hypot(48, 24);
 export const BUS_LEN = 5.2;
 
+/**
+ * The parking bays along the back street's far curb (grid): one list for
+ * the white lines and the parked cars, so every car sits inside its bay.
+ */
+export const BAY = { len: 3.4, depth: 1.7, x0: ROAD1 + 2.6 } as const;
+export const bays = (count = 9) =>
+  Array.from({ length: count }, (_, i) => {
+    const x0 = BAY.x0 + i * BAY.len;
+    return {
+      x0,
+      x1: x0 + BAY.len,
+      y0: BACK.y0,
+      y1: BACK.y0 + BAY.depth,
+      cx: x0 + BAY.len / 2,
+      cy: BACK.y0 + BAY.depth / 2 + 0.05,
+    };
+  });
 /** The canal across the front: along x, water from grid y y0 to y1. */
 export const canal = () => ({ y0: R.rows + 6.2, y1: R.rows + 8.6 });
 /** The road bridge over it spans x from here to the near parapet. */
@@ -378,8 +395,8 @@ export function routes(): { w: number; pts: [number, number][] }[] {
 /** Bikes ride the quiet back street and the path along the far bank. */
 export const bikeRoutes = (): [number, number][][] => [
   [
-    [NEAR + 0.6, BACK.y1 - 1.25],
-    [EAST(), BACK.y1 - 1.25],
+    [NEAR + 0.6, BACK.y1 - 1.05],
+    [EAST(), BACK.y1 - 1.05],
   ],
   [
     [EAST(), BACK.y1 - 0.6],

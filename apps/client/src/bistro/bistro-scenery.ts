@@ -32,6 +32,8 @@ import { poly } from "./bistro-geom";
 import {
   APRON,
   BACK,
+  BAY,
+  bays,
   BACKS,
   BRIDGE,
   FAR,
@@ -542,13 +544,15 @@ function drawRoads(ctx: Ctx, l: Light, slab: (c: number[]) => number[]) {
   ctx.textAlign = "center";
   ctx.fillText("BUS", 0, 6);
   ctx.restore();
-  // Parking bays along the back street's far curb.
+  // Parking bays along the back street's far curb (the parked cars use the
+  // same bays: bistro-props.ts).
   ctx.fillStyle = paint;
-  for (let x = ROAD1 + 2.6; x < C + E; x += 3.4) {
-    quad(ctx, x, BACK.y0, x + 0.07, BACK.y0 + 1.4);
+  const bayList = bays(Math.ceil((C + E - BAY.x0) / BAY.len));
+  for (const b of bayList) {
+    quad(ctx, b.x0, b.y0, b.x0 + 0.07, b.y1);
     ctx.fill();
   }
-  quad(ctx, ROAD1 + 2.6, BACK.y0 + 1.4, C + E, BACK.y0 + 1.47);
+  quad(ctx, BAY.x0, BACK.y0 + BAY.depth, C + E, BACK.y0 + BAY.depth + 0.07);
   ctx.fill();
   // Manholes and drains.
   const iron = lerpRgb([66, 68, 76], [26, 28, 36], n);
