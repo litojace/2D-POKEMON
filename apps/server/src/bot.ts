@@ -74,7 +74,24 @@ interface Profile {
   daze?: number;
   /** Per-champion daze (overrides `daze` for that champion). */
   dazeBy?: Partial<Record<CharacterId, number>>;
+  /**
+   * In raids and the Spire (raider stand-ins and Spire Echoes), these
+   * champions keep the daze the raids were tuned with (see RAID_DAZE_BY).
+   */
+  raidDazeBy?: Partial<Record<CharacterId, number>>;
 }
+/**
+ * The skill revolution's wave A (docs/skill-revolution.md) recalibrated the
+ * duel daze of Voltkit, Tidefin and Lumoth. Raids and every Spire floor were
+ * tuned by simulation with the daze they had before (the Spire's play-tests
+ * use a Normal Voltkit raider; its Echoes are Normal bots too), so in raid
+ * mode they keep it: their duel numbers can move without moving the Spire.
+ */
+export const RAID_DAZE_BY: Partial<Record<CharacterId, number>> = {
+  voltkit: 0.18,
+  tidefin: 0.155,
+  lumoth: 0.17,
+};
 export const BOT_PROFILES: Record<BotDifficulty, Profile> = {
   easy: {
     reaction: 0.5,
@@ -129,6 +146,7 @@ export const BOT_PROFILES: Record<BotDifficulty, Profile> = {
       pangrove: 0.405,
       mossloth: 0.475,
     },
+    raidDazeBy: RAID_DAZE_BY,
   },
   hard: {
     reaction: 0.25,
@@ -480,7 +498,12 @@ export class BotBrain {
       this.judged.set(-enemy.charge!.at, this.random() < this.profile.dodge);
     const fleeWindup = windup && this.judged.get(-enemy.charge!.at);
     // A dazed second: it stands still and holds everything.
-    const daze = this.profile.dazeBy?.[me.character] ?? this.profile.daze;
+    const daze =
+      (arena.mode === "raid"
+        ? this.profile.raidDazeBy?.[me.character]
+        : undefined) ??
+      this.profile.dazeBy?.[me.character] ??
+      this.profile.daze;
     if (daze) {
       if (t >= this.nextDaze) {
         this.nextDaze = t + 1;
