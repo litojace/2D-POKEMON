@@ -178,6 +178,7 @@ import {
 import { fighterArt, fighterAvatar, scopeIds } from "./fighter-art";
 import { fighterSkillColor, wornArt } from "./skins/skin-art";
 import { drawCollectionAura } from "./skins/collection-fx";
+import { battleAuraScale } from "./shop-preview-layout";
 import { colourPreview } from "./colour-preview";
 import { stadiumCrowd } from "./stadium";
 import { paintArenaFloor, scaledPainter } from "./arena-floor";
@@ -6613,20 +6614,33 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
             reducedMotion ? 0 : _time / 1000,
           );
         // After render (it clears the rig's layers): the aura's near items
-        // pass in front of the fighter, the rest go round behind.
-        if (p.raidLook?.aura)
+        // pass in front of the fighter, the rest go round behind. Sized to
+        // the fighter as in the Lobby, Shop and Wardrobe (battleAuraScale),
+        // a giant's too: drawn at the feet on scaled layers.
+        if (p.raidLook?.aura) {
+          const layers = rig.front ? [g, rig.front] : [g];
+          for (const layer of layers)
+            layer
+              .save()
+              .translateCanvas(x, feetY)
+              .scaleCanvas(
+                battleAuraScale(view.fighterX * 0.7 * giant),
+                battleAuraScale(view.fighterY * 0.7 * giant),
+              );
           // On the shadow's plane (48×18 at the feet): same flatness.
           drawCollectionAura(
             g,
             p.raidLook.aura,
-            x,
-            feetY,
+            0,
+            0,
             _time,
             reducedMotion,
             rig.front,
             18 / 48,
             0,
           );
+          for (const layer of layers) layer.restore();
+        }
       } else if (shown > 0) {
         // Its art is still loading (or failed): a plain stand-in in the
         // fighter's colour where the rig would stand, never missing textures.
