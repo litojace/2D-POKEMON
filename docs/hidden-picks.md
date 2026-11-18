@@ -206,7 +206,5 @@ battle, on the briefing, in the picker and on the Lobby's party stage
 
 ## Not built yet
 
-- The Bistro's weekly league still shows fighters: its rows have no player
-  id (`arena_bistro_view`).
 - Supabase Storage for players' own pictures (they are kept in the
   database now): a separate session sets it up.
