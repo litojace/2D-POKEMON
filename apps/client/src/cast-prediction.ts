@@ -36,7 +36,12 @@ export function canCastSkill(
   time: number,
   free = false,
 ) {
-  return canAct(p, time) && skillReady(p, slot, time, free);
+  return (
+    canAct(p, time) &&
+    // Silenced (Hush): no skills.
+    !p.statuses.some((s) => s.kind === "silence" && s.until > time) &&
+    skillReady(p, slot, time, free)
+  );
 }
 /** Would the server swing a basic attack now? */
 export function canBasic(p: Fighter, time: number) {
@@ -48,7 +53,13 @@ export function canDash(p: Fighter, time: number) {
     !p.out &&
     p.hp > 0 &&
     time >= p.dashAt &&
-    !p.statuses.some((s) => s.until > time && DISABLING.includes(s.kind))
+    !p.statuses.some(
+      (s) =>
+        s.until > time &&
+        (DISABLING.includes(s.kind) ||
+          s.kind === "root" ||
+          s.kind === "grounded"),
+    )
   );
 }
 

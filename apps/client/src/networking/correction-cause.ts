@@ -32,6 +32,7 @@ export const MOVEMENT_STATUSES = new Set<string>([
   "leash",
   "cage",
   "current",
+  "lure",
   "float",
   "haste",
 ]);

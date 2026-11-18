@@ -23,6 +23,7 @@ import { shadowKit } from "./skill-fx-shadow";
 import { natureKit } from "./skill-fx-nature";
 import { withUltimates } from "./skill-fx-ultimates";
 import { withSignatures } from "./skill-fx-signatures";
+import { revolutionKit } from "./skill-fx-revolution";
 /** New-style effects by move; anything not listed keeps its classic drawing. */
 const KIT = withSignatures(
   withUltimates(
@@ -36,6 +37,7 @@ const KIT = withSignatures(
       earthKit,
       shadowKit,
       natureKit,
+      revolutionKit,
     ]),
   ),
 );
@@ -237,27 +239,6 @@ export function drawProjectile(
       }
       return;
     }
-    case "magma-bomb": {
-      trail(g, pr, 0x4a3b36, 0.12, r * 1.6, 0.35);
-      trail(g, pr, c, 0.06, r * 1.2, 0.4);
-      const pts = polygon(g, pr.x, pr.y, r, 7, t * 4);
-      g.fillStyle(0x5a2a1c).fillPoints(pts, true);
-      g.lineStyle(2.5, 0xffd34d, 0.95);
-      g.lineBetween(
-        pr.x - r * 0.6,
-        pr.y - r * 0.2,
-        pr.x + r * 0.1,
-        pr.y + r * 0.3,
-      );
-      g.lineBetween(
-        pr.x + r * 0.1,
-        pr.y + r * 0.3,
-        pr.x + r * 0.5,
-        pr.y - r * 0.4,
-      );
-      g.fillStyle(c, 0.25).fillCircle(pr.x, pr.y, r * 1.6);
-      return;
-    }
     case "tide-needle": {
       const len = 30;
       const bx = pr.x - Math.cos(angle) * len,
@@ -289,34 +270,6 @@ export function drawProjectile(
           pr.y - Math.sin(angle) * r * 2,
           2,
         );
-      return;
-    }
-    case "riptide-wave": {
-      // A wide crescent of water perpendicular to travel; width = hit radius.
-      const nx = -Math.sin(angle),
-        ny = Math.cos(angle);
-      for (let layer = 0; layer < 3; layer++) {
-        const back = layer * 10,
-          w = r * (1 - layer * 0.12);
-        const cx = pr.x - Math.cos(angle) * back,
-          cy = pr.y - Math.sin(angle) * back;
-        const pts = [];
-        for (let i = 0; i <= 12; i++) {
-          const s = i / 12 - 0.5;
-          const bulge = Math.cos(s * Math.PI) * 14;
-          pts.push({
-            x: cx + nx * s * 2 * w + Math.cos(angle) * bulge,
-            y: cy + ny * s * 2 * w + Math.sin(angle) * bulge,
-          });
-        }
-        g.lineStyle(
-          10 - layer * 3,
-          layer === 0 ? WHITE : c,
-          0.85 - layer * 0.25,
-        );
-        g.strokePoints(pts, false);
-      }
-      g.fillStyle(c, 0.12).fillCircle(pr.x, pr.y, r);
       return;
     }
     case "prism-shot": {
@@ -374,19 +327,6 @@ export function drawProjectile(
       g.fillStyle(0x7dffe1)
         .fillCircle(pr.x - 4, pr.y + 4, 2.5)
         .fillCircle(pr.x + 4, pr.y + 4, 2.5);
-      return;
-    }
-    case "void-orb": {
-      g.fillStyle(c, 0.18).fillCircle(pr.x, pr.y, r * 1.7);
-      g.lineStyle(3, c, 0.9);
-      for (let i = 0; i < 3; i++) {
-        const aa = -t * 6 + (i * TAU) / 3;
-        g.beginPath()
-          .arc(pr.x, pr.y, r * 1.3, aa, aa + 1.2)
-          .strokePath();
-      }
-      g.fillStyle(0x08040f).fillCircle(pr.x, pr.y, r);
-      g.lineStyle(2, 0xd9c7ff, 0.9).strokeCircle(pr.x, pr.y, r);
       return;
     }
     default:
@@ -757,16 +697,6 @@ export function playImpact(
       scene,
       reduced ? 200 : 420,
       (g, k) => {
-        if (a.id === "void-orb") {
-          // Implodes, then bursts.
-          const r =
-            k < 0.35
-              ? blast * (1 - k / 0.35) * 0.6
-              : blast * ((k - 0.35) / 0.65);
-          g.fillStyle(0x08040f, 0.6 * (1 - k)).fillCircle(x, y, blast * 0.5);
-          g.lineStyle(5, color, 1 - k).strokeCircle(x, y, Math.max(2, r));
-          return;
-        }
         g.fillStyle(color, 0.3 * (1 - k)).fillCircle(
           x,
           y,
@@ -793,15 +723,6 @@ export function playImpact(
             );
           }
         }
-        if (a.id === "magma-bomb")
-          for (let i = 0; i < 8; i++) {
-            const aa = (i * TAU) / 8 + hash(i);
-            g.fillStyle(i % 2 ? 0x5a2a1c : 0xffd34d, 1 - k).fillCircle(
-              x + Math.cos(aa) * blast * k,
-              y + Math.sin(aa) * blast * k - Math.sin(k * Math.PI) * 20,
-              4,
-            );
-          }
       },
       3,
     );

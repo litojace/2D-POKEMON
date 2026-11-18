@@ -358,7 +358,8 @@ function tremor(
   fx.decal({ kind: "crack", x, y, r: r * 0.95, color, life: 4.5 });
   fx.decal({ kind: "scorch", x, y, r: r * 0.35, color: DARK, life: 3.5 });
   rocks(fx, x, y, 34, [140, 520], [220, 560], { size: [3, 6] });
-  dust(fx, x, y, 22, [220, 420], { size: [14, 26] });
+  // (The ultimates layer rolls a dust wall out too: this cloud is lighter.)
+  dust(fx, x, y, 12, [220, 420], { size: [12, 22] });
   fx.shake(320, 0.009);
   // Rock spikes that thrust up around the ring and sink back.
   const spikes = Array.from({ length: 12 }, (_, i) => {

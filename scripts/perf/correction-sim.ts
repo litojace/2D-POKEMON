@@ -22,7 +22,8 @@
  * Wi-Fi with a 67 ms ping): 30-50 corrections a minute, every one a
  * knockback or a status that landed (the phone cannot know a hit is coming).
  * Walking alone gives none. Before carryCurrent, standing in Tidefin's
- * Undertow added about 70 a minute of ~7 px.
+ * old Undertow (a current) added about 70 a minute of ~7 px; the same drift
+ * now carries you in Riptide Wave and draws you into Radiant Flare.
  */
 import { Arena } from "../../apps/server/src/simulation.js";
 import { BotBrain, type BotDifficulty } from "../../apps/server/src/bot.js";
@@ -109,6 +110,8 @@ export function simulateCorrections(o: {
   noBasic?: boolean;
   /** Replay without carryCurrent (the behaviour before it). */
   noCarry?: boolean;
+  /** Keep the bot's ultimate meter full (a drift it casts often: Radiant Flare). */
+  fullUlt?: boolean;
   /** The bot's level (the match reports' fights are mostly "hard"). */
   level?: BotDifficulty;
   /** Uplink holds: chance per input and length (ms). */
@@ -183,6 +186,7 @@ export function simulateCorrections(o: {
       // (A knockout would end the round and reset both to their spawns.)
       me.hp = 100_000;
       for (const f of others) f.hp = 100_000;
+      if (o.fullUlt) bot.ult = RULES.ultMax;
       arena.tick();
       if (++ticks % Math.round(RULES.tick / RULES.snapshot) === 0) {
         const s = arena.snapshot();

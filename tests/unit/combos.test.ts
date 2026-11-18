@@ -45,7 +45,7 @@ describe("signature combos", () => {
   });
   it("the setup marks the target, for the attacker only", () => {
     const { arena, p, q } = duel("tidefin");
-    arena.damage(q, 4, p.id, skill("tidefin", "undertow"));
+    arena.damage(q, 4, p.id, skill("tidefin", "river-dash"));
     expect(hasMark(q, p.id, arena.time)).toBe(true);
     expect(hasMark(q, q.id, arena.time)).toBe(false);
     arena.time += COMBOS.tidefin.window + 0.1;
@@ -104,17 +104,24 @@ describe("signature combos", () => {
     expect(charged.dealt).toBeCloseTo(plain.dealt * COMBOS.voltkit.damage!);
     expect(charged.arena.events.some((e) => e.combo === "Charged")).toBe(true);
   });
-  it("Lumoth's Radiant Flare has longer rays while Kindled, then the mark is spent", () => {
+  it("Lumoth's Radiant Flare draws in and bursts wider while Kindled, then the mark is spent", () => {
     const flare = skill("lumoth", "radiant-flare");
-    const reach = flare.range * 1.15;
+    // Just past the burst's reach from the flare (hung at the aim, 100 px away).
+    // (It is drawn in a step each tick before the burst: room for that.)
+    const reach = (flare.explosion ?? 0) + 40;
     const hit = (kindle: boolean) => {
       const { arena, p, q } = duel("lumoth");
-      Object.assign(q, { x: p.x + reach, y: p.y });
+      p.lastInput = { ...p.lastInput, aimX: p.x + 100, aimY: p.y };
+      Object.assign(q, { x: p.x + 100 + reach, y: p.y });
       if (kindle) arena.cast(p, skill("lumoth", "kindle"));
       const before = q.hp;
       arena.cast(p, flare);
       const marked = hasMark(p, p.id, arena.time);
-      for (let i = 0; i < 60; i++) arena.tick();
+      // Held in place, out of the pull's reach if it isn't Kindled.
+      for (let i = 0; i < 70; i++) {
+        Object.assign(q, { x: p.x + 100 + reach, y: p.y });
+        arena.tick();
+      }
       return { dealt: before - q.hp, marked };
     };
     expect(hit(false).dealt).toBe(0);
@@ -133,7 +140,7 @@ describe("signature combos", () => {
     expect(before - q.hp).toBeCloseTo(28 * COMBOS.auralynx.damage!);
     expect(hasMark(p, p.id, arena.time)).toBe(false);
   });
-  it("Duskveil's Ghostfire lights the target up for Shade Crawl", () => {
+  it("Duskveil's Ghostfire lights the target up for Shade Crawl, which roots it longer", () => {
     const { arena, p, q } = duel("duskveil");
     arena.damage(q, 6, p.id, skill("duskveil", "ghostfire"));
     expect(hasMark(q, p.id, arena.time)).toBe(true);
@@ -142,5 +149,10 @@ describe("signature combos", () => {
     expect(before - q.hp).toBeCloseTo(20 * COMBOS.duskveil.damage!);
     expect(arena.events[arena.events.length - 1]?.combo).toBe("Lit");
     expect(hasMark(q, p.id, arena.time)).toBe(false);
+    const root = q.statuses.find((s) => s.kind === "root")!;
+    expect(root.until - arena.time).toBeCloseTo(
+      COMBOS.duskveil.statusDuration!,
+      5,
+    );
   });
 });

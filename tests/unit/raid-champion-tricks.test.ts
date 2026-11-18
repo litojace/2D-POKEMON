@@ -384,7 +384,7 @@ describe("Emberwing tricks", () => {
     a.raid.emberTrails = [
       { x: 400, y: 700, tx: 600, ty: 700, until: a.time + 5, width: 40 },
     ];
-    Object.assign(p, { x: 500, y: 640 });
+    aim(p, 500, 700, { x: 500, y: 640 });
     p.ult = 100;
     a.cast(p, skill("mossloth", "overgrowth"));
     a.tick(1 / 30);

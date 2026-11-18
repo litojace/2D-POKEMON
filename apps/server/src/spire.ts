@@ -1745,7 +1745,7 @@ export const SPIRE_TWIN_SPAWNS = [
  * (the twins' stagger is per twin: here the captain's is the raid's one
  * bar), their exposed core, health split and damage floor apply to the
  * twins only (an Echo is never a raid boss), Wombolder's brace only stops
- * a Twin Rush, and Coilemur's Electromagnet and Duskveil's Void Orb only
+ * a Twin Rush, and Coilemur's Electromagnet and Duskveil's Wraith Hunt only
  * drag a twin (an Echo Coilemur pulls as its champion does). Halcyra's
  * Focus Shot pierces only into a twin behind the first: on the Echo
  * floors there is none, so its cast needs no gate.

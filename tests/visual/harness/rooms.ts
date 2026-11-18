@@ -7,6 +7,7 @@ export {
   packSnapshot,
   blankInput,
   MetaTracker,
+  ULT_SLOT,
 } from "../../../packages/shared/src/index";
 export { createRaidArena } from "../../../apps/server/src/raid-bosses";
 import { createSpireArena } from "../../../apps/server/src/spire";

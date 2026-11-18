@@ -391,7 +391,7 @@ describe("Polarity fairness and champion tricks", () => {
     expect(b.heroes()[0].hp).toBeLessThan(CHARACTERS.cindrake.health);
     expect(b.heroes()[1].hp).toBe(CHARACTERS.cindrake.health);
   });
-  it("Duskveil’s Void Orb shortens the distance between the two real enemies", () => {
+  it("Duskveil’s Wraith Hunt shortens the distance between the two real enemies", () => {
     const a = setup(),
       [f, c] = twins(a);
     f.x = 600;
@@ -401,7 +401,7 @@ describe("Polarity fairness and champion tricks", () => {
       f,
       10,
       "p0",
-      CHARACTERS.duskveil.skills.find((a) => a.id === "void-orb"),
+      CHARACTERS.duskveil.skills.find((a) => a.id === "wraith-hunt"),
     );
     expect(Math.hypot(f.x - c.x, f.y - c.y)).toBeLessThan(before);
   });

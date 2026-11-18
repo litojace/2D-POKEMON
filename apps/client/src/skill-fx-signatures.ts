@@ -268,13 +268,15 @@ const crestFlare: ChannelFn = (g, a, x, y, angle) => {
     tx = x + Math.cos(angle) * reach,
     ty = y + Math.sin(angle) * reach;
   // Smoke rolls off the end of the flames, embers ride the heat.
-  fx.trail(`sig-crest-${Math.round(x)}-${Math.round(y)}`, 0.06, () => {
-    smoke(fx, tx, ty, 1, undefined, [12, 20]);
+  // (One small puff every 0.2 s: at 0.06 s some 20 big puffs hung in the
+  // air at once, more soft cover than any other kit draws.)
+  fx.trail(`sig-crest-${Math.round(x)}-${Math.round(y)}`, 0.2, () => {
+    smoke(fx, tx, ty, 1, undefined, [8, 13]);
     embers(
       fx,
       x + Math.cos(angle) * reach * Math.random(),
       y + Math.sin(angle) * reach * Math.random(),
-      2,
+      4,
       40,
     );
   });
@@ -300,26 +302,6 @@ const crestFlare: ChannelFn = (g, a, x, y, angle) => {
   fx.glow(tx, ty, reach * 0.35, 0xff8a3d, 0.25, true);
   fx.glow((x + tx) / 2, (y + ty) / 2, reach * 0.3, 0xffb054, 0.18, true);
 };
-const magmaTrail = shed(0.04, (fx, x, y, back) => {
-  // Molten rock drips off it and smokes.
-  splash(fx, x, y, 1, LAVA, 0.3, { angle: back, spread: 0.6, z: 14 });
-  fx.burst({
-    x,
-    y,
-    z: 16,
-    count: 1,
-    kind: "smoke",
-    color: [0x4a4240],
-    angle: back,
-    spread: 0.3,
-    speed: [10, 30],
-    up: [10, 30],
-    life: [0.5, 0.8],
-    size: [7, 11],
-    grav: -12,
-    drag: 1.4,
-  });
-});
 const magmaSplat: ImpactFn = (scene, a, x, y) => {
   const fx = fxFor(scene),
     r = a.explosion ?? 110;
@@ -327,7 +309,7 @@ const magmaSplat: ImpactFn = (scene, a, x, y) => {
   fx.decal({ kind: "molten", x, y, r: r * 0.55, color: 0xff6a2a, life: 4 });
   splash(fx, x, y, 22, LAVA, 1.2);
   chunks(fx, x, y, 8, [0x4a2318, 0x6b5a48], [60, 200]);
-  smoke(fx, x, y, 6, undefined, [16, 26]);
+  smoke(fx, x, y, 3, undefined, [12, 18]);
   embers(fx, x, y, 10, r);
 };
 const heatCracks: ZoneFn = (g, z, progress) => {
@@ -1459,7 +1441,7 @@ const SIGNATURES: Record<string, Sig> = {
   "hot-coals": { zone: hotCoals },
   "cinder-snap": { cast: cinderSnap },
   "crest-flare": { channel: crestFlare },
-  "magma-bomb": { projectile: magmaTrail, impact: magmaSplat },
+  "magma-leap": { impact: magmaSplat },
   "heat-cracks": { zone: heatCracks },
   // Water and ice
   "tide-needle": { projectile: needleTrail, impact: needleHit },
@@ -1515,7 +1497,7 @@ const SIGNATURES: Record<string, Sig> = {
   "yuzu-toss": { projectile: yuzuTrail, impact: yuzuSplat },
   "mallet-bop": { cast: malletBop },
   "moon-hop": { cast: moonHopGo, impact: moonHopLand },
-  "booming-hoot": { cast: boomingHoot },
+  hush: { cast: boomingHoot },
   "mind-dart": { projectile: mindTrail, impact: mindPop },
   "third-eye-ray": { beam: thirdEyeRay },
   "wing-cloak": { cast: wingCloak },

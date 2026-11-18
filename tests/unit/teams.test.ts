@@ -86,7 +86,7 @@ describe("2v2 teams", () => {
     place(b1, 800, 200);
     place(r1, 860, 200);
     place(r2, 800, 260);
-    a.cast(b1, CHARACTERS.lumoth.skills[3]); // Radiant Flare's turning rays
+    a.cast(b1, CHARACTERS.lumoth.skills[1]); // Eyespot Flash: everyone near
     for (let i = 0; i < 40; i++) a.tick();
     expect(r1.hp).toBeLessThan(maxHealth("terradon", "teams"));
     expect(r2.hp).toBeLessThan(maxHealth("terradon", "teams"));
@@ -131,7 +131,7 @@ describe("2v2 teams", () => {
   });
   it("credits burn to whoever applied it", () => {
     const { a, b2, r1 } = teams(["voltkit", "voltkit", "cindrake", "voltkit"]);
-    a.damage(r1, 1, b2.id, CHARACTERS.cindrake.skills[1]); // Magma Bomb burns
+    a.damage(r1, 1, b2.id, CHARACTERS.cindrake.skills[1]); // Magma Leap burns
     const burn = r1.statuses.find((s) => s.kind === "burn")!;
     expect(burn.by).toBe(b2.id);
     const dealt = b2.stats.dealt;

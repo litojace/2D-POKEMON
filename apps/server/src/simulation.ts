@@ -167,7 +167,10 @@ export class Arena {
   practice: Snapshot["practice"] = null;
   /** AI opponents in this room, by fighter id (solo vs bot). */
   bots = new Map<string, BotBrain>();
-  private bufferedSkills = new Map<string, { slot: number; ex: boolean; until: number }>();
+  private bufferedSkills = new Map<
+    string,
+    { slot: number; ex: boolean; until: number }
+  >();
   /** Fighters whose tick is held this tick (drainInputs: nothing queued). */
   private heldNow = new Set<string>();
   /** Late inputs paying held ticks: a step each before this tick's own. */
@@ -180,7 +183,14 @@ export class Arena {
    */
   private inputTally = new Map<
     string,
-    { ticks: number; depth: number; held: number; late: number; extra: number; folded: number }
+    {
+      ticks: number;
+      depth: number;
+      held: number;
+      late: number;
+      extra: number;
+      folded: number;
+    }
   >();
   private tally(id: string) {
     let t = this.inputTally.get(id);
@@ -211,12 +221,31 @@ export class Arena {
   /** Tongue Grapple zips: toward an enemy (followed) or a point, stopping `gap` short. */
   private zips = new Map<
     string,
-    { target?: string; x: number; y: number; gap: number; speed: number; until: number }
+    {
+      target?: string;
+      x: number;
+      y: number;
+      gap: number;
+      speed: number;
+      until: number;
+    }
   >();
   /** Where each fighter was lately (Halcyon Rewind): time, place and health, oldest first. */
-  private trail = new Map<string, { t: number; x: number; y: number; hp: number }[]>();
-  /** Radiant Flare: when each ray zone last swept each enemy (`zone:fighter`). */
+  private trail = new Map<
+    string,
+    { t: number; x: number; y: number; hp: number }[]
+  >();
+  /** Spark Trail: when each trail zone last hit each enemy (`zone:fighter`). */
   private rayHits = new Map<string, number>();
+  /** River Dash: dashes in progress, by fighter id, and who each has gone through. */
+  private surfs = new Map<
+    string,
+    { until: number; ability: Ability; slot: number; hit: Set<string> }
+  >();
+  /** Magma Leap: leaps in the air, by fighter id, landing when they end. */
+  private leaps = new Map<string, { until: number; ability: Ability }>();
+  /** Riptide Wave: when each enemy a wave reached stops being carried (`zone:fighter`). */
+  private carried = new Map<string, number>();
   /** Pinball flights: the enemies hit on the current stretch, and bounces left then. */
   private pinballs = new Map<
     string,
@@ -548,6 +577,9 @@ export class Arena {
     this.zips.clear();
     this.trail.clear();
     this.rayHits.clear();
+    this.surfs.clear();
+    this.leaps.clear();
+    this.carried.clear();
     // Fighter roulette: a fresh random fighter for everyone each round.
     if (this.rule("random") && !this.practice)
       for (const p of this.players) {
@@ -703,7 +735,8 @@ export class Arena {
       this.heldNow.delete(id);
       this.lateSteps.delete(id);
     }
-    for (const p of this.players) if (id === undefined || p.id === id) delete p.held;
+    for (const p of this.players)
+      if (id === undefined || p.id === id) delete p.held;
   }
   /** Apply this tick's queued inputs. Call before tick(). */
   drainInputs() {
@@ -817,8 +850,9 @@ export class Arena {
   }
   /** A dash press goes off at `time` (Arena.tick; late steps too). */
   private startDash(p: Fighter, input: Input, time: number, free: boolean) {
-    // Dashing out of a charge gives the charge up.
+    // Dashing out of a charge (or a River Dash) gives it up.
     this.rushes.delete(p.id);
+    this.surfs.delete(p.id);
     const d = normalize(input.dx, input.dy);
     p.dashX = (d.x || d.y ? d.x : Math.cos(p.angle)) * RULES.dashSpeed;
     p.dashY = (d.x || d.y ? d.y : Math.sin(p.angle)) * RULES.dashSpeed;
@@ -849,11 +883,20 @@ export class Arena {
       const free = !!this.practice?.unlimitedCooldowns && p === this.players[0];
       // Casting Curl & Roll again while rolling uncurls (it's on cooldown then).
       const uncurl = !!p.roll && input.skill === p.roll.slot;
-      if (input.skill < SKILL_SLOTS && p.hp > 0 &&
-          (uncurl || skillReady(p, input.skill, this.time, free)) &&
-          p.recoveryUntil <= this.time + SKILL_INPUT_BUFFER &&
-          !p.statuses.some(s => s.until > this.time && DISABLING_STATUSES.includes(s.kind)))
-        this.bufferedSkills.set(p.id, { slot: input.skill, ex: !!input.ex, until: this.time + SKILL_INPUT_BUFFER });
+      if (
+        input.skill < SKILL_SLOTS &&
+        p.hp > 0 &&
+        (uncurl || skillReady(p, input.skill, this.time, free)) &&
+        p.recoveryUntil <= this.time + SKILL_INPUT_BUFFER &&
+        !p.statuses.some(
+          (s) => s.until > this.time && DISABLING_STATUSES.includes(s.kind),
+        )
+      )
+        this.bufferedSkills.set(p.id, {
+          slot: input.skill,
+          ex: !!input.ex,
+          until: this.time + SKILL_INPUT_BUFFER,
+        });
     }
     p.lastInput = {
       ...input,
@@ -966,7 +1009,14 @@ export class Arena {
       ability.id === CHARACTERS[source.character].basic.id &&
       this.has(source, "blind")
     ) {
-      this.event("hit", target, CHARACTERS[target.character].color, 0, undefined, ability.id);
+      this.event(
+        "hit",
+        target,
+        CHARACTERS[target.character].color,
+        0,
+        undefined,
+        ability.id,
+      );
       Object.assign(this.events[this.events.length - 1], {
         target: target.id,
         source: owner,
@@ -1058,7 +1108,14 @@ export class Arena {
       if (ability && dealt >= PLATES.minHit && platesOf(target) > 0) {
         dealt *= PLATES.block;
         target.plates = platesOf(target) - 1;
-        this.event("burst", target, 0x9be37a, target.plates, target.id, "plate-break");
+        this.event(
+          "burst",
+          target,
+          0x9be37a,
+          target.plates,
+          target.id,
+          "plate-break",
+        );
       }
       target.plateAt = this.time + PLATES.regrowDelay;
     }
@@ -1196,11 +1253,15 @@ export class Arena {
   /** Restore health (capped at full), counted in stats, shown as a heal event. */
   heal(p: Fighter, amount: number, abilityId?: string) {
     const before = p.hp;
-    p.hp = Math.min(maxHealth(p.character, this.mode, this.players.length), p.hp + amount);
+    p.hp = Math.min(
+      maxHealth(p.character, this.mode, this.players.length),
+      p.hp + amount,
+    );
     const healed = p.hp - before;
     if (healed <= 0) return;
     p.stats.healed = (p.stats.healed ?? 0) + healed;
-    if (healed >= 1) this.event("heal", p, 0x7dffb0, Math.round(healed), p.id, abilityId);
+    if (healed >= 1)
+      this.event("heal", p, 0x7dffb0, Math.round(healed), p.id, abilityId);
   }
   damageLimit(target: Fighter) {
     return target.hp;
@@ -1323,7 +1384,8 @@ export class Arena {
     // A primed self-combo payoff that flies (Static Lance after Static Glide)
     // lands after the cast has spent the mark, so the shot carries it.
     const shotAbility =
-      selfPrimed && ["projectile", "charged", "barrage", "shrapnel"].includes(a.kind)
+      selfPrimed &&
+      ["projectile", "charged", "barrage", "shrapnel"].includes(a.kind)
         ? { ...a, selfPrimed: true }
         : a;
     const projectile = (offset: number) => {
@@ -1395,16 +1457,6 @@ export class Arena {
           this.lineClear(p, enemy)
         )
           this.damage(enemy, a.damage, p.id, a);
-      }
-      if (a.bloom) {
-        // Overgrowth: every seedling blooms at full growth, the moss grows full.
-        for (const z of this.zones)
-          if (z.owner === p.id && z.ability.kind === "seedling" && z.until > this.time)
-            this.bloomSeed(z, (z.ability.seed?.stages.length ?? 1) - 1);
-        if (CHARACTERS[p.character].passive === "moss") {
-          p.moss = MOSS.max;
-          p.mossAt = this.time + MOSS.shedEvery;
-        }
       }
     }
     if (a.kind === "beam") {
@@ -1596,7 +1648,10 @@ export class Arena {
         });
         this.rushes.delete(p.id);
         p.dashUntil = until;
-        p.recoveryUntil = Math.max(p.recoveryUntil, this.time + travel / a.speed);
+        p.recoveryUntil = Math.max(
+          p.recoveryUntil,
+          this.time + travel / a.speed,
+        );
         this.stepZip(p, 1 / RULES.tick);
       }
     }
@@ -1636,12 +1691,17 @@ export class Arena {
       const aim = p.lastInput;
       // At the aim, over any cover in between (like every zone); an aim
       // inside a wall lands just short of it instead.
-      const distance = Math.min(a.range, Math.hypot(aim.aimX - p.x, aim.aimY - p.y));
+      const distance = Math.min(
+        a.range,
+        Math.hypot(aim.aimX - p.x, aim.aimY - p.y),
+      );
       const at = {
         x: p.x + Math.cos(angle) * distance,
         y: p.y + Math.sin(angle) * distance,
       };
-      const spot = blocked(at.x, at.y, 6) ? blinkLanding(p, angle, distance) : at;
+      const spot = blocked(at.x, at.y, 6)
+        ? blinkLanding(p, angle, distance)
+        : at;
       if (a.kind === "seedling") {
         // Past the limit, the oldest seedling withers.
         const mine = this.zones
@@ -1652,7 +1712,10 @@ export class Arena {
               z.until > this.time,
           )
           .sort((m, n) => (m.born ?? 0) - (n.born ?? 0));
-        for (const z of mine.slice(0, Math.max(0, mine.length - ((a.count ?? 3) - 1))))
+        for (const z of mine.slice(
+          0,
+          Math.max(0, mine.length - ((a.count ?? 3) - 1)),
+        ))
           z.until = this.time;
       }
       this.zones.push({
@@ -1752,7 +1815,8 @@ export class Arena {
       for (const enemy of enemies)
         if (
           enemy.hp > 0 &&
-          Math.hypot(enemy.x - p.x, enemy.y - p.y) < a.radius + this.hitRadius(enemy)
+          Math.hypot(enemy.x - p.x, enemy.y - p.y) <
+            a.radius + this.hitRadius(enemy)
         )
           this.damage(enemy, a.damage, p.id, a);
       this.status(p, "brace", a.duration);
@@ -1778,7 +1842,10 @@ export class Arena {
             a.id,
           );
         this.event("burst", p, color, undefined, p.id, a.id);
-        Object.assign(this.events[this.events.length - 1], { tx: from.x, ty: from.y });
+        Object.assign(this.events[this.events.length - 1], {
+          tx: from.x,
+          ty: from.y,
+        });
         this.trail.set(p.id, []);
       }
     }
@@ -1823,7 +1890,10 @@ export class Arena {
           continue;
         const toMe = Math.atan2(p.y - enemy.y, p.x - enemy.x);
         const off = Math.abs(
-          Math.atan2(Math.sin(toMe - enemy.angle), Math.cos(toMe - enemy.angle)),
+          Math.atan2(
+            Math.sin(toMe - enemy.angle),
+            Math.cos(toMe - enemy.angle),
+          ),
         );
         this.damage(
           enemy,
@@ -1843,7 +1913,11 @@ export class Arena {
         )[0];
       if (target && a.kind === "clamp") {
         // A combo-primed target (Magnetised) goes off at once.
-        if (!combo.self && combo.payoff === a.id && hasMark(target, p.id, this.time))
+        if (
+          !combo.self &&
+          combo.payoff === a.id &&
+          hasMark(target, p.id, this.time)
+        )
           this.fireClamp(target, p.id, a);
         else {
           target.statuses = target.statuses.filter(
@@ -1860,7 +1934,8 @@ export class Arena {
       }
       if (target && a.kind === "throw") {
         // Kraken Grasp: seize it now, hurl it when the hold runs out.
-        if (a.status) this.status(target, a.status, a.statusDuration ?? 0.5, p.id);
+        if (a.status)
+          this.status(target, a.status, a.statusDuration ?? 0.5, p.id);
         p.grab = {
           target: target.id,
           at: this.time + (a.hold ?? 0.5),
@@ -1937,28 +2012,54 @@ export class Arena {
         if (inside && enemies.includes(q)) this.damage(q, a.damage, p.id, a);
       }
     }
-    if (a.kind === "lighthouse" && this.zones.length < RULES.maxZones) {
-      // Radiant Flare: rays turn round the caster (longer when Kindled).
+    if (a.kind === "surf") {
+      // River Dash: a dash through enemies; stepSurfs() hits whoever it passes.
+      const seconds = a.range / Math.max(1, a.speed);
+      p.dashX = Math.cos(angle) * a.speed;
+      p.dashY = Math.sin(angle) * a.speed;
+      p.dashUntil = this.time + seconds;
+      p.recoveryUntil = Math.max(p.recoveryUntil, this.time + seconds);
+      this.rushes.delete(p.id);
+      this.surfs.set(p.id, {
+        until: this.time + seconds,
+        ability: a,
+        slot: this.kit(p).skills.findIndex((k) => k.id === a.id),
+        hit: new Set(),
+      });
+    }
+    if (a.kind === "wave" && this.zones.length < RULES.maxZones)
+      // Riptide Wave: a wall of water rolling from the caster along the aim.
       this.zones.push({
         id: ++this.serial,
         owner: p.id,
         x: p.x,
         y: p.y,
-        radius: a.range * (selfPrimed ? (combo.radius ?? 1) : 1),
-        until: this.time + a.duration,
+        radius: a.radius,
+        until: this.time + a.range / Math.max(1, a.speed),
         nextTick: this.time,
         ability: a,
         color,
         born: this.time,
         angle,
       });
-      if (selfPrimed) {
-        this.event("burst", p, color, undefined, p.id, a.id);
-        this.events[this.events.length - 1].combo = combo.name;
-      }
-    }
-    if (a.kind === "current" && this.zones.length < RULES.maxZones)
-      // Undertow: a current from the caster along the aim.
+    if (a.kind === "storm" && this.zones.length < RULES.maxZones)
+      // Thunderstorm: the storm itself (no area); it calls a wave of bolts
+      // every tickInterval, the first one now.
+      this.zones.push({
+        id: ++this.serial,
+        owner: p.id,
+        x: p.x,
+        y: p.y,
+        radius: 0,
+        until:
+          this.time + ((a.count ?? 3) - 1) * (a.tickInterval ?? 0.8) + 0.05,
+        nextTick: this.time,
+        ability: a,
+        color,
+        born: this.time,
+      });
+    if (a.kind === "hunt" && this.zones.length < RULES.maxZones)
+      // Wraith Hunt: the wraith leaves from the caster.
       this.zones.push({
         id: ++this.serial,
         owner: p.id,
@@ -1966,12 +2067,114 @@ export class Arena {
         y: p.y,
         radius: a.radius,
         until: this.time + a.duration,
-        nextTick: this.time + (a.tickDelay ?? 0.2),
+        nextTick: this.time + (a.tickDelay ?? 0.3),
         ability: a,
         color,
         born: this.time,
-        angle,
       });
+    if (a.kind === "lure" && this.zones.length < RULES.maxZones) {
+      // Radiant Flare: a light at the aim (stopped short of a wall), wider
+      // when Kindled.
+      const aim = p.lastInput;
+      const at = blinkLanding(
+        p,
+        angle,
+        Math.min(a.range, Math.hypot(aim.aimX - p.x, aim.aimY - p.y)),
+      );
+      const wide = selfPrimed ? (combo.radius ?? 1) : 1;
+      this.zones.push({
+        id: ++this.serial,
+        owner: p.id,
+        x: at.x,
+        y: at.y,
+        radius: a.radius * wide,
+        until: this.time + a.duration,
+        nextTick: this.time + a.duration,
+        ability:
+          wide === 1 ? a : { ...a, explosion: (a.explosion ?? 0) * wide },
+        color,
+        born: this.time,
+      });
+      if (selfPrimed) {
+        // The callout only (the flare's own burst plays when it goes off).
+        this.event("burst", p, color, undefined, p.id);
+        this.events[this.events.length - 1].combo = combo.name;
+      }
+    }
+    if (a.kind === "leap") {
+      // Magma Leap: through the air toward the aim; stepLeaps() lands it.
+      const aim = p.lastInput;
+      const distance = Math.min(
+        a.range,
+        Math.hypot(aim.aimX - p.x, aim.aimY - p.y),
+      );
+      const seconds = Math.max(0.12, distance / Math.max(1, a.speed));
+      p.dashX = (Math.cos(angle) * distance) / seconds;
+      p.dashY = (Math.sin(angle) * distance) / seconds;
+      p.dashUntil = this.time + seconds;
+      p.jumpUntil = Math.max(p.jumpUntil, this.time + seconds);
+      p.recoveryUntil = Math.max(p.recoveryUntil, this.time + seconds);
+      this.rushes.delete(p.id);
+      this.leaps.set(p.id, { until: this.time + seconds, ability: a });
+    }
+    if (a.kind === "creep") {
+      // Chestnut Storm: blasts creeping along the aim, each a plain zone that
+      // lands once (`tickDelay` after it is marked).
+      const c = a.creep ?? { start: 160, step: 150, gap: 0.2 },
+        delay = a.tickDelay ?? 0.6;
+      for (let i = 0; i < (a.count ?? 5); i++) {
+        if (this.zones.length >= RULES.maxZones) break;
+        const d = c.start + c.step * i,
+          at = this.time + i * c.gap;
+        this.zones.push({
+          id: ++this.serial,
+          owner: p.id,
+          x: Math.max(0, Math.min(RULES.width, p.x + Math.cos(angle) * d)),
+          y: Math.max(0, Math.min(RULES.height, p.y + Math.sin(angle) * d)),
+          radius: a.explosion ?? 105,
+          until: at + delay + 0.1,
+          nextTick: at + delay,
+          ability: { ...a, kind: "zone", tickInterval: 9 },
+          color,
+          born: at,
+        });
+      }
+    }
+    if (a.kind === "garden" && this.zones.length < RULES.maxZones) {
+      // Overgrowth: a garden at the aim (stopped short of a wall).
+      const aim = p.lastInput;
+      const at = blinkLanding(
+        p,
+        angle,
+        Math.min(a.range, Math.hypot(aim.aimX - p.x, aim.aimY - p.y)),
+      );
+      this.zones.push({
+        id: ++this.serial,
+        owner: p.id,
+        x: at.x,
+        y: at.y,
+        radius: a.radius,
+        until: this.time + a.duration,
+        nextTick: this.time + (a.tickDelay ?? 0.3),
+        ability: a,
+        color,
+        born: this.time,
+      });
+    }
+    if (a.bloom) {
+      // Overgrowth: every seedling blooms at full growth, the moss grows full.
+      for (const z of this.zones)
+        if (
+          z.owner === p.id &&
+          z.ability.kind === "seedling" &&
+          z.until > this.time
+        )
+          this.bloomSeed(z, (z.ability.seed?.stages.length ?? 1) - 1);
+      if (CHARACTERS[p.character].passive === "moss") {
+        p.moss = MOSS.max;
+        p.mossAt = this.time + MOSS.shedEvery;
+      }
+    }
     if (a.kind === "trail") this.status(p, "haste", a.duration);
     if (a.kind === "trail" && this.zones.length < RULES.maxZones)
       // Spark Trail: laid behind the caster while it lasts, then it fades.
@@ -1991,7 +2194,10 @@ export class Arena {
     if (a.kind === "steer" && this.zones.length < RULES.maxZones) {
       // Sunfire Pillar: rises at the aim, then follows it.
       const aim = p.lastInput;
-      const distance = Math.min(a.range, Math.hypot(aim.aimX - p.x, aim.aimY - p.y));
+      const distance = Math.min(
+        a.range,
+        Math.hypot(aim.aimX - p.x, aim.aimY - p.y),
+      );
       this.zones.push({
         id: ++this.serial,
         owner: p.id,
@@ -2027,16 +2233,30 @@ export class Arena {
     if (a.kind === "barrier") this.status(p, "shield", a.duration);
     if (a.kind === "buff") {
       // Kindle empowers; Static Glide grants haste instead.
-      this.status(p, a.status ?? "empower", a.status ? (a.statusDuration ?? a.duration) : a.duration);
+      this.status(
+        p,
+        a.status ?? "empower",
+        a.status ? (a.statusDuration ?? a.duration) : a.duration,
+      );
       if (a.glide) p.jumpUntil = Math.max(p.jumpUntil, this.time + a.duration);
       if (a.pop) {
         // Takeoff pop: shoves nearby enemies away (knockback pushes from the caster) and slows them.
         // (The client draws the pop as part of the glide's own cast effect.)
-        const pop: Ability = { ...a, kind: "nova", damage: a.pop.damage, knockback: a.pop.knockback, status: "slow", statusDuration: a.pop.slow, glide: undefined, pop: undefined };
+        const pop: Ability = {
+          ...a,
+          kind: "nova",
+          damage: a.pop.damage,
+          knockback: a.pop.knockback,
+          status: "slow",
+          statusDuration: a.pop.slow,
+          glide: undefined,
+          pop: undefined,
+        };
         for (const enemy of enemies)
           if (
             enemy.hp > 0 &&
-            Math.hypot(enemy.x - p.x, enemy.y - p.y) < a.pop.radius + RULES.radius &&
+            Math.hypot(enemy.x - p.x, enemy.y - p.y) <
+              a.pop.radius + RULES.radius &&
             this.lineClear(p, enemy)
           )
             this.damage(enemy, pop.damage, p.id, pop);
@@ -2058,7 +2278,10 @@ export class Arena {
       // Tide Double: the axolotl regrows a little health as it slips away.
       if (a.heal) {
         const before = p.hp;
-        p.hp = Math.min(maxHealth(p.character, this.mode, this.players.length), p.hp + a.heal);
+        p.hp = Math.min(
+          maxHealth(p.character, this.mode, this.players.length),
+          p.hp + a.heal,
+        );
         p.stats.healed = (p.stats.healed ?? 0) + (p.hp - before);
       }
     }
@@ -2182,7 +2405,10 @@ export class Arena {
         continue;
       const amount = a.heal! * (ally === owner ? (a.selfHeal ?? 1) : 1);
       const before = ally.hp;
-      ally.hp = Math.min(maxHealth(ally.character, this.mode, this.players.length), ally.hp + amount);
+      ally.hp = Math.min(
+        maxHealth(ally.character, this.mode, this.players.length),
+        ally.hp + amount,
+      );
       const healed = ally.hp - before;
       if (healed <= 0) continue;
       ally.stats.healed = (ally.stats.healed ?? 0) + healed;
@@ -2288,7 +2514,10 @@ export class Arena {
       ) {
         // The arc: a bolt from the target to it.
         this.event("beam", target, color, undefined, by, a.id);
-        Object.assign(this.events[this.events.length - 1], { tx: e.x, ty: e.y });
+        Object.assign(this.events[this.events.length - 1], {
+          tx: e.x,
+          ty: e.y,
+        });
         this.damage(e, arc.damage, by, arc);
       }
   }
@@ -2347,7 +2576,11 @@ export class Arena {
         Math.hypot(e.x - target.x, e.y - target.y) <
           (a.explosion ?? 90) + this.hitRadius(e)
       )
-        this.damage(e, a.damage / 2, p.id, { ...hit, damage: a.damage / 2, knockback: 60 });
+        this.damage(e, a.damage / 2, p.id, {
+          ...hit,
+          damage: a.damage / 2,
+          knockback: 60,
+        });
   }
   /** Does a crystal cage stand between where this shot is and where it is going? */
   private caged(pr: Projectile, dt: number) {
@@ -2357,7 +2590,7 @@ export class Arena {
         next =
           Math.hypot(pr.x + pr.vx * dt - z.x, pr.y + pr.vy * dt - z.y) -
           z.radius;
-      if ((now < 0) !== (next < 0)) return true;
+      if (now < 0 !== next < 0) return true;
     }
     return false;
   }
@@ -2365,72 +2598,183 @@ export class Arena {
    * Radiant Flare: the rays turn; an enemy a ray passes over takes a hit (once
    * per ray passing, through nothing solid).
    */
-  private stepLighthouse(zone: Zone, dt: number) {
-    const owner = this.players.find((q) => q.id === zone.owner);
-    if (!owner || owner.hp <= 0 || owner.out) {
-      zone.until = this.time;
-      return;
-    }
-    const a = zone.ability;
-    zone.x = owner.x;
-    zone.y = owner.y;
-    zone.angle = (zone.angle ?? 0) + ((Math.PI * 2) / (a.spin ?? 1.2)) * dt;
-    const rays = a.count ?? 3;
-    // A ray passes a point every spin / rays seconds.
-    const gap = ((a.spin ?? 1.2) / rays) * 0.8;
-    for (const enemy of this.enemiesOf(owner)) {
-      if (enemy.hp <= 0) continue;
-      const dx = enemy.x - zone.x,
-        dy = enemy.y - zone.y,
-        d = Math.hypot(dx, dy);
-      const r = this.hitRadius(enemy);
-      if (d > zone.radius + r) continue;
-      const at = Math.atan2(dy, dx);
-      const swept = Array.from({ length: rays }, (_, k) => zone.angle! + (k * Math.PI * 2) / rays).some(
-        (ray) => {
-          const off = Math.atan2(Math.sin(at - ray), Math.cos(at - ray));
-          return Math.abs(off) < Math.PI / 2 && d * Math.abs(Math.sin(off)) < a.radius + r;
-        },
+  /** Ball Lightning: every `aura.tick` the orb zaps the nearest enemy near it. */
+  private zap(pr: Projectile) {
+    const aura = pr.ability.aura!;
+    if (this.time < (pr.nextZap ?? 0)) return;
+    const target = this.enemiesOfOwner(pr.owner)
+      .filter(
+        (e) =>
+          e.hp > 0 &&
+          !this.has(e, "stealth") &&
+          Math.hypot(e.x - pr.x, e.y - pr.y) <
+            aura.radius + this.hitRadius(e) &&
+          this.lineClear(pr, e),
+      )
+      .sort(
+        (p, q) =>
+          Math.hypot(p.x - pr.x, p.y - pr.y) -
+          Math.hypot(q.x - pr.x, q.y - pr.y),
+      )[0];
+    if (!target) return;
+    pr.nextZap = this.time + aura.tick;
+    this.events.push({
+      id: ++this.serial,
+      kind: "beam",
+      x: pr.x,
+      y: pr.y,
+      tx: target.x,
+      ty: target.y,
+      color: pr.color,
+      owner: pr.owner,
+      abilityId: pr.ability.id,
+    });
+    if (this.events.length > 80) this.events.shift();
+    this.damage(target, aura.damage, pr.owner, {
+      ...pr.ability,
+      damage: aura.damage,
+      knockback: 0,
+    });
+  }
+  /** Magma Leap: a leap that has run its course lands in an eruption. */
+  private stepLeaps() {
+    if (!this.leaps.size) return;
+    for (const [id, leap] of this.leaps) {
+      const p = this.players.find((q) => q.id === id);
+      if (!p || p.hp <= 0 || p.out) {
+        this.leaps.delete(id);
+        continue;
+      }
+      if (this.time < leap.until - 1e-9) continue;
+      this.leaps.delete(id);
+      const a = leap.ability;
+      this.event(
+        "burst",
+        p,
+        CHARACTERS[p.character].color,
+        undefined,
+        p.id,
+        a.id,
       );
-      const key = `${zone.id}:${enemy.id}`;
-      if (!swept || this.time - (this.rayHits.get(key) ?? -99) < gap) continue;
-      if (!this.lineClear(owner, enemy)) continue;
-      this.rayHits.set(key, this.time);
-      this.damage(enemy, a.damage, owner.id, a);
+      for (const e of this.enemiesOf(p))
+        if (
+          e.hp > 0 &&
+          Math.hypot(e.x - p.x, e.y - p.y) <
+            (a.explosion ?? 110) + this.hitRadius(e) &&
+          this.lineClear(p, e)
+        )
+          this.damage(e, a.damage, p.id, a);
     }
   }
-  /** Is this body in the current's lane (along it, within its width)? */
-  inCurrent(zone: Zone, body: { x: number; y: number }, r: number) {
-    const ux = Math.cos(zone.angle ?? 0),
-      uy = Math.sin(zone.angle ?? 0);
-    const dx = body.x - zone.x,
-      dy = body.y - zone.y;
-    const along = dx * ux + dy * uy,
-      across = Math.abs(-dx * uy + dy * ux);
-    return (
-      along >= -r * 0.5 &&
-      along <= zone.ability.range + r * 0.5 &&
-      across <= zone.radius + r * 0.5
+  /**
+   * Overgrowth: every `tickInterval` enemies on the garden are hurt and
+   * slowed; at the end whoever is still on it takes the burst and is rooted.
+   */
+  private stepGarden(zone: Zone) {
+    const a = zone.ability;
+    const end = this.time >= zone.until - 1e-9;
+    const tick = !end && this.time >= zone.nextTick;
+    if (tick) zone.nextTick += a.tickInterval ?? 0.5;
+    if (!end && !tick) return;
+    if (end) this.event("burst", zone, zone.color, undefined, zone.owner, a.id);
+    for (const enemy of this.enemiesOfOwner(zone.owner))
+      if (
+        enemy.hp > 0 &&
+        Math.hypot(enemy.x - zone.x, enemy.y - zone.y) <
+          zone.radius + this.hitRadius(enemy) * 0.5
+      )
+        this.damage(
+          enemy,
+          end ? (a.garden?.burst ?? 20) : a.damage,
+          zone.owner,
+          end ? a : { ...a, status: "slow", statusDuration: 0.6 },
+        );
+    zone.until = end ? this.time : zone.until;
+  }
+  /** River Dash: whoever the dashing body passes is hit once; the dash's end refunds the cooldown. */
+  private stepSurfs() {
+    if (!this.surfs.size) return;
+    for (const [id, surf] of this.surfs) {
+      const p = this.players.find((q) => q.id === id);
+      if (!p || p.hp <= 0 || p.out) {
+        this.surfs.delete(id);
+        continue;
+      }
+      for (const e of this.enemiesOf(p))
+        if (
+          e.hp > 0 &&
+          !surf.hit.has(e.id) &&
+          Math.hypot(e.x - p.x, e.y - p.y) <
+            this.hitRadius(e) + this.hitRadius(p) + RUSH_CONTACT
+        ) {
+          surf.hit.add(e.id);
+          this.damage(e, surf.ability.damage, p.id, surf.ability);
+        }
+      if (this.time < surf.until - 1e-9) continue;
+      this.surfs.delete(id);
+      // Went through someone: the cooldown drops to the refund.
+      if (surf.hit.size && surf.slot >= 0 && surf.ability.surf)
+        p.cooldowns[surf.slot] = Math.min(
+          p.cooldowns[surf.slot],
+          this.time + surf.ability.surf.refund * this.cooldownScale(p),
+        );
+    }
+  }
+  /** How far a wave's front has rolled from where it started (px). */
+  waveFront(zone: Zone) {
+    return Math.min(
+      zone.ability.range,
+      (this.time - (zone.born ?? this.time)) * zone.ability.speed,
     );
   }
-  /** Undertow: enemies in the lane drift along it; every tick they take a hit. */
-  private stepCurrent(zone: Zone) {
+  /**
+   * Riptide Wave: its front hits each enemy it reaches once, then carries it
+   * along (the drift Undertow used, so clients predict it) until the carry
+   * runs out; a wall in the way slams it.
+   */
+  private stepWave(zone: Zone) {
     const a = zone.ability,
-      speed = a.current?.speed ?? 200,
-      vx = Math.cos(zone.angle ?? 0) * speed,
-      vy = Math.sin(zone.angle ?? 0) * speed;
-    const tick = this.time >= zone.nextTick;
-    if (tick) zone.nextTick += a.tickInterval ?? 0.5;
+      ux = Math.cos(zone.angle ?? 0),
+      uy = Math.sin(zone.angle ?? 0),
+      front = this.waveFront(zone);
     for (const enemy of this.enemiesOfOwner(zone.owner)) {
-      if (
-        enemy.hp <= 0 ||
-        enemy.raidBoss ||
-        enemy.jumpUntil > this.time ||
-        !this.inCurrent(zone, enemy, this.hitRadius(enemy))
-      )
+      if (enemy.hp <= 0) continue;
+      const key = `${zone.id}:${enemy.id}`,
+        r = this.hitRadius(enemy),
+        dx = enemy.x - zone.x,
+        dy = enemy.y - zone.y,
+        along = dx * ux + dy * uy,
+        across = Math.abs(-dx * uy + dy * ux);
+      const carry = this.carried.get(key);
+      if (carry === undefined) {
+        if (
+          enemy.jumpUntil > this.time ||
+          across > zone.radius + r ||
+          along > front + r ||
+          along < front - 60
+        )
+          continue;
+        this.carried.set(key, this.time + (a.wave?.carry ?? 0.5));
+        this.damage(enemy, a.damage, zone.owner, { ...a, status: undefined });
         continue;
+      }
+      if (carry <= this.time || enemy.raidBoss) continue;
+      // Carried into a wall: slammed, and the carry ends.
+      if (
+        a.wallSlam &&
+        blocked(enemy.x + ux * 14, enemy.y + uy * 14, RULES.radius)
+      ) {
+        this.carried.set(key, this.time);
+        this.event("burst", enemy, zone.color, undefined, zone.owner, a.id);
+        this.events[this.events.length - 1].slam = true;
+        this.damage(enemy, a.damage * a.wallSlam, zone.owner, a);
+        continue;
+      }
       const old = enemy.statuses.find((s) => s.kind === "current");
-      if (old) Object.assign(old, { until: this.time + CURRENT_HOLD, tx: vx, ty: vy });
+      const vx = ux * a.speed,
+        vy = uy * a.speed;
+      if (old)
+        Object.assign(old, { until: this.time + CURRENT_HOLD, tx: vx, ty: vy });
       else
         enemy.statuses.push({
           kind: "current",
@@ -2440,7 +2784,134 @@ export class Arena {
           ty: vy,
           by: zone.owner,
         });
-      if (tick && a.damage > 0) this.damage(enemy, a.damage, zone.owner, a);
+    }
+  }
+  /**
+   * Thunderstorm: a bolt ahead of the enemy nearest the caster's aim (not a
+   * stealthed one). One target, not every enemy: a storm on every foe grew
+   * with their number (Spire waves, 2v2, free-for-all).
+   */
+  private stepStorm(zone: Zone) {
+    if (this.time < zone.nextTick) return;
+    const a = zone.ability;
+    zone.nextTick += a.tickInterval ?? 0.8;
+    const owner = this.players.find((q) => q.id === zone.owner);
+    if (!owner || owner.hp <= 0 || owner.out) return;
+    const delay = a.tickDelay ?? 0.55;
+    // Each bolt is aimed half its delay ahead of where the enemy is going.
+    const lead = delay * 0.5;
+    const aim = owner.lastInput;
+    const enemy = this.enemiesOf(owner)
+      .filter((e) => e.hp > 0 && !e.out && !this.has(e, "stealth"))
+      .sort(
+        (p, q) =>
+          Math.hypot(p.x - aim.aimX, p.y - aim.aimY) -
+          Math.hypot(q.x - aim.aimX, q.y - aim.aimY),
+      )[0];
+    if (enemy && this.zones.length < RULES.maxZones)
+      this.zones.push({
+        id: ++this.serial,
+        owner: zone.owner,
+        x: Math.max(0, Math.min(RULES.width, enemy.x + enemy.vx * lead)),
+        y: Math.max(0, Math.min(RULES.height, enemy.y + enemy.vy * lead)),
+        radius: a.explosion ?? 75,
+        until: this.time + delay + 0.05,
+        nextTick: this.time + delay,
+        // Each bolt is a plain zone that strikes once.
+        ability: {
+          ...a,
+          kind: "zone",
+          duration: delay + 0.05,
+          tickInterval: 9,
+        },
+        color: zone.color,
+        born: this.time,
+      });
+  }
+  /**
+   * Wraith Hunt: the wraith drifts through walls toward the nearest enemy
+   * that isn't stealthed; its touch hurts, and reaps the badly hurt.
+   */
+  private stepHunt(zone: Zone, dt: number) {
+    const a = zone.ability;
+    const owner = this.players.find((q) => q.id === zone.owner);
+    if (!owner || owner.hp <= 0 || owner.out) {
+      zone.until = this.time;
+      return;
+    }
+    const prey = this.enemiesOf(owner)
+      .filter((e) => e.hp > 0 && !e.out && !this.has(e, "stealth"))
+      .sort(
+        (p, q) =>
+          Math.hypot(p.x - zone.x, p.y - zone.y) -
+          Math.hypot(q.x - zone.x, q.y - zone.y),
+      )[0];
+    if (prey) {
+      const dx = prey.x - zone.x,
+        dy = prey.y - zone.y,
+        d = Math.hypot(dx, dy),
+        step = Math.min(d, (a.hunt?.speed ?? 215) * dt);
+      if (d > 0.5) {
+        zone.x += (dx / d) * step;
+        zone.y += (dy / d) * step;
+      }
+    }
+    if (this.time < zone.nextTick) return;
+    zone.nextTick += a.tickInterval ?? 0.4;
+    for (const enemy of this.enemiesOf(owner)) {
+      if (
+        enemy.hp <= 0 ||
+        Math.hypot(enemy.x - zone.x, enemy.y - zone.y) >
+          zone.radius + this.hitRadius(enemy)
+      )
+        continue;
+      this.damage(enemy, a.damage, owner.id, a);
+      // Reaped: a champion this badly hurt is taken (never a raid boss).
+      const full = maxHealth(enemy.character, this.mode, this.players.length);
+      if (
+        enemy.hp > 0 &&
+        !enemy.raidBoss &&
+        enemy.hp < full * (a.hunt?.execute ?? 0)
+      ) {
+        this.event("burst", enemy, zone.color, undefined, owner.id, a.id);
+        this.events[this.events.length - 1].combo = "REAPED";
+        this.damage(enemy, enemy.hp * 10, owner.id, { ...a, damage: 0 });
+      }
+    }
+  }
+  /** Radiant Flare: enemies near the light are drawn in; at the end it bursts. */
+  private stepLure(zone: Zone) {
+    const a = zone.ability;
+    const bursting = this.time >= zone.nextTick;
+    if (bursting) zone.nextTick = Infinity;
+    if (bursting)
+      this.event("burst", zone, zone.color, undefined, zone.owner, a.id);
+    for (const enemy of this.enemiesOfOwner(zone.owner)) {
+      if (enemy.hp <= 0) continue;
+      const dx = zone.x - enemy.x,
+        dy = zone.y - enemy.y,
+        d = Math.hypot(dx, dy);
+      if (bursting) {
+        if (d < (a.explosion ?? 140) + this.hitRadius(enemy))
+          this.damage(enemy, a.damage, zone.owner, a);
+        continue;
+      }
+      if (enemy.raidBoss || d > zone.radius + this.hitRadius(enemy)) continue;
+      const pull = {
+        until: this.time + CURRENT_HOLD,
+        tx: zone.x,
+        ty: zone.y,
+        amount: a.lure?.speed ?? 150,
+      };
+      const old = enemy.statuses.find((s) => s.kind === "lure");
+      if (old) Object.assign(old, pull);
+      else
+        enemy.statuses.push({
+          kind: "lure",
+          nextTick: pull.until,
+          by: zone.owner,
+          ...pull,
+        });
     }
   }
   /**
@@ -2468,9 +2939,11 @@ export class Arena {
     for (const enemy of this.enemiesOfOwner(zone.owner)) {
       if (enemy.hp <= 0 || enemy.jumpUntil > this.time) continue;
       const r = a.radius + this.hitRadius(enemy) * 0.6;
-      if (!pts.some((q) => Math.hypot(enemy.x - q.x, enemy.y - q.y) < r)) continue;
+      if (!pts.some((q) => Math.hypot(enemy.x - q.x, enemy.y - q.y) < r))
+        continue;
       const key = `${zone.id}:${enemy.id}`;
-      if (this.time - (this.rayHits.get(key) ?? -99) < (a.tickInterval ?? 0.5)) continue;
+      if (this.time - (this.rayHits.get(key) ?? -99) < (a.tickInterval ?? 0.5))
+        continue;
       this.rayHits.set(key, this.time);
       this.damage(enemy, a.damage, zone.owner, a);
     }
@@ -2506,9 +2979,17 @@ export class Arena {
     }
     const steps = Math.max(1, Math.ceil((speed * dt) / 10));
     for (let i = 0; i < steps; i++) {
-      const next = { x: pr.x + (pr.vx * dt) / steps, y: pr.y + (pr.vy * dt) / steps };
+      const next = {
+        x: pr.x + (pr.vx * dt) / steps,
+        y: pr.y + (pr.vy * dt) / steps,
+      };
       if (!pr.back) {
-        const contact = projectileContact(pr, next, pr.ability.radius, currentObstacles());
+        const contact = projectileContact(
+          pr,
+          next,
+          pr.ability.radius,
+          currentObstacles(),
+        );
         pr.remaining -= (speed * dt) / steps;
         if (contact || pr.remaining <= 0) {
           // Turn round here, and start a new pass.
@@ -2516,7 +2997,14 @@ export class Arena {
           pr.y = contact?.y ?? next.y;
           pr.back = true;
           pr.hit = [];
-          this.event("impact", pr, pr.color, undefined, pr.owner, pr.ability.id);
+          this.event(
+            "impact",
+            pr,
+            pr.color,
+            undefined,
+            pr.owner,
+            pr.ability.id,
+          );
           return true;
         }
       }
@@ -2527,10 +3015,18 @@ export class Arena {
         if (
           enemy.hp > 0 &&
           !(pr.hit ?? []).includes(enemy.id) &&
-          Math.hypot(pr.x - enemy.x, pr.y - enemy.y) < this.hitRadius(enemy) + pr.ability.radius
+          Math.hypot(pr.x - enemy.x, pr.y - enemy.y) <
+            this.hitRadius(enemy) + pr.ability.radius
         ) {
           pr.hit = [...(pr.hit ?? []), enemy.id];
-          this.event("impact", pr, pr.color, undefined, pr.owner, pr.ability.id);
+          this.event(
+            "impact",
+            pr,
+            pr.color,
+            undefined,
+            pr.owner,
+            pr.ability.id,
+          );
           this.damage(enemy, pr.ability.damage, pr.owner, pr.ability);
         }
     }
@@ -2602,7 +3098,14 @@ export class Arena {
           Math.min(1, (p.roll.speed - base) / Math.max(1, p.roll.top - base)),
         );
         hits.set(enemy.id, this.time);
-        this.event("burst", enemy, CHARACTERS[p.character].color, undefined, p.id, a.id);
+        this.event(
+          "burst",
+          enemy,
+          CHARACTERS[p.character].color,
+          undefined,
+          p.id,
+          a.id,
+        );
         this.damage(enemy, a.damage + (a.roll?.bonus ?? 0) * momentum, p.id, a);
         if (!p.roll) break;
         // Roll on through the one it rammed (it doesn't bounce back), so the
@@ -2626,7 +3129,14 @@ export class Arena {
       if (p.pinball.bounces !== flight.bounces) {
         flight.bounces = p.pinball.bounces;
         flight.hit.clear();
-        this.event("burst", p, CHARACTERS[p.character].color, undefined, p.id, "pinball-bounce");
+        this.event(
+          "burst",
+          p,
+          CHARACTERS[p.character].color,
+          undefined,
+          p.id,
+          "pinball-bounce",
+        );
       }
       for (const enemy of this.enemiesOf(p))
         if (
@@ -2636,7 +3146,14 @@ export class Arena {
             this.hitRadius(enemy) + this.hitRadius(p) + 8
         ) {
           flight.hit.add(enemy.id);
-          this.event("burst", enemy, CHARACTERS[p.character].color, undefined, p.id, flight.ability.id);
+          this.event(
+            "burst",
+            enemy,
+            CHARACTERS[p.character].color,
+            undefined,
+            p.id,
+            flight.ability.id,
+          );
           this.damage(enemy, flight.ability.damage, p.id, flight.ability);
         }
     }
@@ -2799,10 +3316,17 @@ export class Arena {
       p.statuses = p.statuses.filter((s) => s.until > this.time);
       for (const s of p.statuses) {
         if (p.hp <= 0) break;
-        if ((s.kind === "sleep" || s.kind === "shell") && s.amount && this.time >= s.nextTick) {
+        if (
+          (s.kind === "sleep" || s.kind === "shell") &&
+          s.amount &&
+          this.time >= s.nextTick
+        ) {
           s.nextTick += STATUS_RULES.restInterval;
           const before = p.hp;
-          p.hp = Math.min(maxHealth(p.character, this.mode, this.players.length), p.hp + s.amount);
+          p.hp = Math.min(
+            maxHealth(p.character, this.mode, this.players.length),
+            p.hp + s.amount,
+          );
           p.stats.healed = (p.stats.healed ?? 0) + (p.hp - before);
         }
         if (s.kind === "burn" && this.time >= s.nextTick) {
@@ -2825,21 +3349,34 @@ export class Arena {
       this.chargeUlt(p, RULES.ultPerSecond * dt);
       if (p.jumpUntil > this.time - dt && p.jumpUntil <= this.time)
         this.event("land", p, CHARACTERS[p.character].color, undefined, p.id);
-      const disabled = p.statuses.some((s) => DISABLING_STATUSES.includes(s.kind));
+      const disabled = p.statuses.some((s) =>
+        DISABLING_STATUSES.includes(s.kind),
+      );
       if (disabled) {
         this.clearBufferedSkills(p.id);
         p.charge = undefined;
         p.channel = undefined;
         // A stun or freeze stops a charge in its tracks (and uncurls a ball).
-        if (this.rushes.delete(p.id))
+        if (
+          this.rushes.delete(p.id) ||
+          this.surfs.delete(p.id) ||
+          this.leaps.delete(p.id)
+        )
           p.dashUntil = Math.min(p.dashUntil, this.time);
         this.endRoll(p);
         this.endPinball(p);
       }
       // Rooted: no dashing, and a charge (or a pinball) stops where it is.
       const rooted = this.has(p, "root");
-      if (rooted && this.rushes.delete(p.id))
+      if (
+        rooted &&
+        (this.rushes.delete(p.id) ||
+          this.surfs.delete(p.id) ||
+          this.leaps.delete(p.id))
+      )
         p.dashUntil = Math.min(p.dashUntil, this.time);
+      // Grounded (Sticky Mochi): no dashing or jumping either.
+      const noDash = rooted || this.has(p, "grounded");
       if (rooted) this.endPinball(p);
       if (p.roll && this.time >= p.roll.until) this.endRoll(p);
       // Late inputs for held ticks: a step each, at the held tick's time,
@@ -2849,18 +3386,31 @@ export class Arena {
       if (late) {
         this.lateSteps.delete(p.id);
         for (const s of late) {
-          if (s.input.dash && !disabled && !rooted && !p.roll && s.time >= p.dashAt) {
+          if (
+            s.input.dash &&
+            !disabled &&
+            !noDash &&
+            !p.roll &&
+            s.time >= p.dashAt
+          ) {
             this.startDash(p, s.input, s.time, freeCooldowns);
             input.dash = false;
           }
           advanceMovement(p, s.input, dt, s.time);
         }
       }
-      if (input.dash && !disabled && !rooted && !p.roll && this.time >= p.dashAt)
+      if (
+        input.dash &&
+        !disabled &&
+        !noDash &&
+        !p.roll &&
+        this.time >= p.dashAt
+      )
         this.startDash(p, input, this.time, freeCooldowns);
       if (
         input.jump &&
         !disabled &&
+        !this.has(p, "grounded") &&
         this.time >= p.jumpAt &&
         this.time >= p.jumpUntil
       ) {
@@ -2875,7 +3425,9 @@ export class Arena {
       // A taunt points at where the taunter is now (gone: it ends).
       for (const s of p.statuses)
         if (s.kind === "taunt") {
-          const by = this.players.find((q) => q.id === s.by && q.hp > 0 && !q.out);
+          const by = this.players.find(
+            (q) => q.id === s.by && q.hp > 0 && !q.out,
+          );
           if (by) {
             s.tx = by.x;
             s.ty = by.y;
@@ -2909,7 +3461,8 @@ export class Arena {
         p.charge = undefined;
       }
       const buffered = this.bufferedSkills.get(p.id);
-      if (buffered && this.time > buffered.until) this.clearBufferedSkills(p.id);
+      if (buffered && this.time > buffered.until)
+        this.clearBufferedSkills(p.id);
       else if (buffered && !disabled) {
         input.skill = buffered.slot;
         input.ex = buffered.ex;
@@ -2924,6 +3477,8 @@ export class Arena {
         } else if (input.skill !== ULT_SLOT) input.skill = -1;
         input.basic = false;
       }
+      // Silenced (Hush): no skills (a buffered one waits for it to end).
+      if (this.has(p, "silence")) input.skill = -1;
       if (!disabled && this.time >= p.recoveryUntil && !p.charge) {
         const character = CHARACTERS[p.character];
         const kit = this.kit(p);
@@ -3012,6 +3567,8 @@ export class Arena {
       }
     }
     this.stepRushes();
+    this.stepSurfs();
+    this.stepLeaps();
     this.stepRolls();
     this.stepPinballs();
     // Time bubbles slow the shots of whoever they work against.
@@ -3036,7 +3593,9 @@ export class Arena {
           this.rivals(z.owner, pr.owner) &&
           Math.hypot(pr.x - z.x, pr.y - z.y) < z.radius,
       );
-      const step = dt * (slowed ? (bubbles[0].ability.warp ?? STATUS_RULES.warpMultiplier) : 1);
+      const step =
+        dt *
+        (slowed ? (bubbles[0].ability.warp ?? STATUS_RULES.warpMultiplier) : 1);
       const steps = Math.max(
         1,
         Math.ceil((Math.hypot(pr.vx, pr.vy) * step) / 10),
@@ -3079,12 +3638,15 @@ export class Arena {
           );
           return false;
         }
-        const struck = enemies.find(
-          (e) =>
-            e.hp > 0 &&
-            Math.hypot(pr.x - e.x, pr.y - e.y) <
-              this.hitRadius(e) + pr.ability.radius,
-        );
+        // Ball Lightning flies through enemies (it zaps them instead).
+        const struck =
+          !pr.ability.aura &&
+          enemies.find(
+            (e) =>
+              e.hp > 0 &&
+              Math.hypot(pr.x - e.x, pr.y - e.y) <
+                this.hitRadius(e) + pr.ability.radius,
+          );
         if (struck) {
           if (pr.ability.explosion) explode();
           else {
@@ -3103,16 +3665,29 @@ export class Arena {
           return false;
         }
       }
+      if (pr.ability.aura) this.zap(pr);
       return true;
     });
     for (const zone of this.zones) {
       if (zone.ability.kind === "cage") continue;
-      if (zone.ability.kind === "lighthouse") {
-        this.stepLighthouse(zone, dt);
+      if (zone.ability.kind === "wave") {
+        this.stepWave(zone);
         continue;
       }
-      if (zone.ability.kind === "current") {
-        this.stepCurrent(zone);
+      if (zone.ability.kind === "storm") {
+        this.stepStorm(zone);
+        continue;
+      }
+      if (zone.ability.kind === "hunt") {
+        this.stepHunt(zone, dt);
+        continue;
+      }
+      if (zone.ability.kind === "lure") {
+        this.stepLure(zone);
+        continue;
+      }
+      if (zone.ability.kind === "garden") {
+        this.stepGarden(zone);
         continue;
       }
       if (zone.ability.kind === "trail") {
@@ -3145,7 +3720,8 @@ export class Arena {
               this.onScreen(zone, enemy, this.hitRadius(enemy))
             )
               if (a.damage > 0) this.damage(enemy, a.damage, zone.owner, a);
-              else if (a.status) this.status(enemy, a.status, a.statusDuration ?? 1, zone.owner);
+              else if (a.status)
+                this.status(enemy, a.status, a.statusDuration ?? 1, zone.owner);
         }
         continue;
       }
@@ -3177,7 +3753,8 @@ export class Arena {
           (e) =>
             e.hp > 0 &&
             e.jumpUntil <= this.time &&
-            Math.hypot(e.x - zone.x, e.y - zone.y) < trigger + this.hitRadius(e),
+            Math.hypot(e.x - zone.x, e.y - zone.y) <
+              trigger + this.hitRadius(e),
         );
         if (stepped) this.bloomSeed(zone, seedStage(zone, this.time));
         continue;
@@ -3219,7 +3796,10 @@ export class Arena {
           const heal = this.gift(p, "Water");
           if (!heal) continue;
           const before = p.hp;
-          p.hp = Math.min(maxHealth(p.character, this.mode, this.players.length), p.hp + heal * dt);
+          p.hp = Math.min(
+            maxHealth(p.character, this.mode, this.players.length),
+            p.hp + heal * dt,
+          );
           p.stats.healed = (p.stats.healed ?? 0) + (p.hp - before);
         }
     }
@@ -3297,7 +3877,9 @@ export class Arena {
         return (
           members.reduce(
             (sum, p) =>
-              sum + Math.max(0, p.hp) / maxHealth(p.character, this.mode, this.players.length),
+              sum +
+              Math.max(0, p.hp) /
+                maxHealth(p.character, this.mode, this.players.length),
             0,
           ) / Math.max(1, members.length)
         );
@@ -3403,7 +3985,8 @@ export class Arena {
             // Full health (or a full meter) walks straight through it.
             (orb.kind === "energy"
               ? (p.ult ?? 0) < RULES.ultMax
-              : p.hp < maxHealth(p.character, this.mode, this.players.length)) &&
+              : p.hp <
+                maxHealth(p.character, this.mode, this.players.length)) &&
             Math.hypot(p.x - orb.x, p.y - orb.y) <
               RULES.radius + RULES.orbRadius,
         )

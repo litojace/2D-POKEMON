@@ -269,126 +269,6 @@ function kindle(
   });
 }
 
-// ───────────── Radiant Flare: a sunburst ─────────────
-function flareWindup(
-  g: G,
-  a: Ability,
-  x: number,
-  y: number,
-  _angle: number,
-  _ax: number,
-  _ay: number,
-  color: number,
-  k: number,
-  now: number,
-) {
-  const fx = fxFor(g.scene),
-    r = a.radius,
-    sq = 0.82,
-    cy = y - 16;
-  fx.floorSolid
-    .fillStyle(color, 0.08 + k * 0.12)
-    .fillEllipse(x, y, r * 2, r * 2 * sq);
-  fx.floorSolid.lineStyle(2, GOLD, 0.8).strokeEllipse(x, y, r * 2, r * 2 * sq);
-  // Light pours inward from the rim.
-  for (let i = 0; i < 12; i++) {
-    const aa = (i * TAU) / 12 + now / 1500,
-      from = r * (1 - k * 0.6),
-      to = r * (0.9 - k * 0.8);
-    fx.g
-      .lineStyle(3, GOLD, 0.35 + k * 0.5)
-      .lineBetween(
-        x + Math.cos(aa) * from,
-        y + Math.sin(aa) * from * sq,
-        x + Math.cos(aa) * to,
-        y + Math.sin(aa) * to * sq,
-      );
-  }
-  fx.glow(x, cy, 24 + k * 60, color, 0.4 + k * 0.5);
-  twinkle(fx, x, cy, 6 + k * 14, color, 0.6 + k * 0.4, now / 200);
-}
-/** Radiant Flare's cast: Lumoth lights up (the rays are the zone). */
-function radiantFlare(
-  scene: Phaser.Scene,
-  a: Ability,
-  x: number,
-  y: number,
-  _angle: number,
-  color: number,
-  shot: Shot,
-) {
-  const fx = fxFor(scene),
-    cy = y - 16;
-  glitter(fx, x, y, 30, color, 1.6);
-  fx.decal({ kind: "glyph", x, y, r: a.range * 0.5, color: GOLD, life: 2.4 });
-  fx.shake(140, 0.003);
-  shot(fx.reduced ? 200 : 420, (k) => {
-    const fade = 1 - k;
-    fx.glow(x, cy, 120 * (1 - k * 0.5), 0xffffff, 0.7 * fade);
-    flare(fx, x, cy, 80 * (1 - k * 0.4), color, fade);
-  });
-}
-/**
- * Radiant Flare: rays of light turning round Lumoth like a lighthouse's
- * (`count` of them, `radius` px long, pointing from `z.angle`).
- */
-function lighthouse(g: G, z: Zone, progress: number, now: number) {
-  const fx = fxFor(g.scene),
-    a = z.ability,
-    rays = a.count ?? 3,
-    len = z.radius * ease(Math.min(1, progress * 10)),
-    fade = progress > 0.9 ? 1 - (progress - 0.9) / 0.1 : 1,
-    sq = 0.82,
-    cy = z.y - 16,
-    w = Math.atan2(a.radius, z.radius);
-  for (let i = 0; i < rays; i++) {
-    const ang = (z.angle ?? 0) + (i * TAU) / rays;
-    const tip = (o: number, l: number) => ({
-      x: z.x + Math.cos(ang + o) * l,
-      y: cy + Math.sin(ang + o) * l * sq,
-    });
-    // A pool of light on the floor, then the beam itself.
-    const f1 = tip(-w * 1.6, len),
-      f2 = tip(w * 1.6, len);
-    fx.floor
-      .fillStyle(GOLD, 0.14 * fade)
-      .fillTriangle(z.x, z.y, f1.x, f1.y + 16, f2.x, f2.y + 16);
-    const p1 = tip(-w, len),
-      p2 = tip(w, len);
-    fx.solid
-      .fillStyle(GOLD, 0.5 * fade)
-      .fillTriangle(z.x, cy, p1.x, p1.y, p2.x, p2.y);
-    const c1 = tip(-w * 0.4, len * 0.95),
-      c2 = tip(w * 0.4, len * 0.95);
-    fx.g
-      .fillStyle(CREAM, 0.75 * fade)
-      .fillTriangle(z.x, cy, c1.x, c1.y, c2.x, c2.y);
-    const end = tip(0, len);
-    fx.glow(end.x, end.y, 26, GOLD, 0.45 * fade);
-  }
-  fx.glow(z.x, cy, 60, GOLD, 0.55 * fade);
-  twinkle(fx, z.x, cy, 18, GOLD, fade, now / 300);
-  // Dust caught in the beams: specks lit up as a ray passes over them.
-  fx.trail(`lh-dust${z.id}`, 0.03, () => {
-    const i = (Math.random() * rays) | 0,
-      ang = (z.angle ?? 0) + (i * TAU) / rays,
-      d = 30 + Math.random() * len * 0.95;
-    fx.burst({
-      x: z.x + Math.cos(ang) * d,
-      y: z.y + Math.sin(ang) * d * sq,
-      z: 14,
-      count: 1,
-      kind: "mote",
-      color: [CREAM, GOLD, 0xffffff],
-      speed: [2, 14],
-      up: [4, 20],
-      life: [0.5, 0.9],
-      size: [1, 2],
-      drag: 2,
-    });
-  });
-}
-
 // ───────────── Casts and hits ─────────────
 function lightCast(
   scene: Phaser.Scene,
@@ -1045,14 +925,12 @@ export const lightKit: FxKit = {
     sunseed,
     "yuzu-toss": yuzuToss,
   },
-  zone: { "warm-spring": warmSpring, sanctuary, "radiant-flare": lighthouse },
-  windup: { "radiant-flare": flareWindup },
+  zone: { "warm-spring": warmSpring, sanctuary },
   cast: {
     glint: lightCast,
     "wing-dust": lightCast,
     "eyespot-flash": eyespotFlash,
     kindle,
-    "radiant-flare": radiantFlare,
     sunseed: lightCast,
     "yuzu-toss": yuzuCast,
     "warm-spring": springCast,

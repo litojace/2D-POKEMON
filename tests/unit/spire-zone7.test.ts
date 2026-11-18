@@ -391,8 +391,8 @@ describe("a zone-7 room", () => {
     const hp = (foe.hp = 500);
     a.damage(foe, 40, coil.id);
     expect(hp - foe.hp).toBeCloseTo(40 * spireScale(61, 2).armour, 4);
-    // Coilemur's Electromagnet and Duskveil's Void Orb only drag a twin.
-    for (const id of ["electromagnet", "void-orb"]) {
+    // Coilemur's Electromagnet and Duskveil's Wraith Hunt only drag a twin.
+    for (const id of ["electromagnet", "wraith-hunt"]) {
       const ability = [
         ...CHARACTERS.coilemur.skills,
         ...CHARACTERS.duskveil.skills,
@@ -1087,7 +1087,7 @@ describe("the boss floor (floor 70: the Ascendant Storm Twins, in the Conductor 
 function playFloor(floor: number, seed: number) {
   seeded(seed * 7919);
   const a = createSpireArena("SIM" + seed, 7);
-  a.add("p0", "P0", "voltkit");
+  a.add("p0", "P0", "halcyra");
   a.configureSpire({ startFloor: floor, ceiling: floor });
   a.start();
   const mine = (a.raid.spire!.blessings.p0 = {} as Record<string, number>);

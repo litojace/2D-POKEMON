@@ -224,30 +224,3 @@ describe("Crystal Cage (Auralynx)", () => {
     expect(inside.statuses.some((s) => s.kind === "cage")).toBe(false);
   });
 });
-
-describe("Radiant Flare (Lumoth)", () => {
-  it("sweeps nearby enemies with turning rays, again and again", () => {
-    const a = arena("lumoth");
-    const [me, them] = a.players;
-    place(me, 500, Y);
-    place(them, 650, Y);
-    const flare = skill("lumoth", "radiant-flare");
-    const hp = them.hp;
-    a.cast(me, flare);
-    seconds(a, flare.duration + 0.1);
-    const sweeps = (hp - them.hp) / flare.damage;
-    const expected =
-      (flare.duration / (flare.spin ?? 1.2)) * (flare.count ?? 3);
-    expect(sweeps).toBeGreaterThanOrEqual(expected - 1);
-    expect(sweeps).toBeLessThanOrEqual(expected + 1);
-    // Out of reach: untouched.
-    const b = arena("lumoth");
-    const [me2, them2] = b.players;
-    place(me2, 500, Y);
-    place(them2, 500 + flare.range + 80, Y);
-    const hp2 = them2.hp;
-    b.cast(me2, flare);
-    seconds(b, flare.duration + 0.1);
-    expect(them2.hp).toBe(hp2);
-  });
-});

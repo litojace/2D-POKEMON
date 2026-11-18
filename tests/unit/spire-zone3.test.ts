@@ -620,7 +620,7 @@ describe("play-test (bot raiders vs zone 3)", () => {
   function playFloor(floor: number, seed: number) {
     seeded(seed * 7919);
     const a = createSpireArena("SIM" + seed, 3);
-    a.add("p0", "P0", "voltkit");
+    a.add("p0", "P0", "halcyra");
     a.configureSpire({ startFloor: floor, ceiling: floor });
     a.start();
     const mine = (a.raid.spire!.blessings.p0 = {} as Record<string, number>);

@@ -238,13 +238,18 @@ export class EmberwingArena extends RaidArena {
     super.cast(p, a, ex);
     if (p.raidBoss || p.hp <= 0) return;
     // Mossloth's Overgrowth: the vines smother fire and dive trails around it.
-    if (a.id === "overgrowth") this.water(p.x, p.y, a.radius);
-    if (a.id === "undertow") {
-      // The whole current is water, from Tidefin along the aim.
-      const aim = p.lastInput,
-        d = normalize(aim.aimX - p.x, aim.aimY - p.y);
-      for (let k = 0; k <= a.range; k += a.radius)
-        this.water(p.x + d.x * k, p.y + d.y * k, a.radius);
+    if (a.id === "overgrowth") {
+      // Mossloth's Overgrowth: the garden smothers fire where it grows.
+      const garden = [...this.zones]
+        .reverse()
+        .find((z) => z.owner === p.id && z.ability.id === "overgrowth");
+      if (garden) this.water(garden.x, garden.y, garden.radius);
+    }
+    if (a.id === "river-dash") {
+      // The jet of water Tidefin rides on, all along the dash.
+      const d = { x: Math.cos(p.angle), y: Math.sin(p.angle) };
+      for (let k = 0; k <= a.range; k += 60)
+        this.water(p.x + d.x * k, p.y + d.y * k, 70);
     }
     if (a.id === "heat-cracks" && this.raid.airborne)
       this.raid.braziers?.forEach((b, i) => {
@@ -672,15 +677,8 @@ export class EmberwingArena extends RaidArena {
           if (Math.hypot(b.x - z.x, b.y - z.y) <= z.radius + E.brazierRadius)
             this.light(i, p);
         });
-      // Tidefin's Undertow and Glacelle's Frost Bloom put the fire out.
+      // Glacelle's Frost Bloom puts the fire out.
       if (z.ability.id === "frost-bloom") this.water(z.x, z.y, z.radius);
-      if (z.ability.id === "undertow")
-        for (let k = 0; k <= z.ability.range; k += z.radius)
-          this.water(
-            z.x + Math.cos(z.angle ?? 0) * k,
-            z.y + Math.sin(z.angle ?? 0) * k,
-            z.radius,
-          );
     }
     r.emberPatches = (r.emberPatches ?? []).filter((p) => p.until > this.time);
     for (const p of r.emberPatches)

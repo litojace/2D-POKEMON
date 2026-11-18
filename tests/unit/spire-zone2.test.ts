@@ -521,12 +521,16 @@ describe("the boss floor (floor 20: the Ascendant Tidelotl, in the lagoon)", () 
 /**
  * Play-test by simulation, as zone 1's: a Normal bot raider alone, with the
  * blessings it would hold by then on a climb from floor 11 (none on 11).
+ * The raider is Halcyra, a champion the skill revolution left alone (its
+ * new Thunderstorm made Voltkit, the raider these floors were tuned with,
+ * a far stronger one): Halcyra clears these floors exactly as often as
+ * before it (docs/skill-revolution.md), 12 seeds as in the zones above.
  */
 describe("play-test (bot raiders vs zone 2)", () => {
   function playFloor(floor: number, seed: number) {
     seeded(seed * 7919);
     const a = createSpireArena("SIM" + seed, 2);
-    a.add("p0", "P0", "voltkit");
+    a.add("p0", "P0", "halcyra");
     a.configureSpire({ startFloor: floor, ceiling: floor });
     a.start();
     const mine = (a.raid.spire!.blessings.p0 = {} as Record<string, number>);
@@ -544,7 +548,8 @@ describe("play-test (bot raiders vs zone 2)", () => {
   }
   it("floor 11 is often cleared solo with no blessings; floor 19 less often, but sometimes", () => {
     const rate = (floor: number) =>
-      [1, 2, 3, 4, 5, 6].filter((s) => playFloor(floor, s)).length / 6;
+      [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].filter((s) => playFloor(floor, s))
+        .length / 12;
     const eleven = rate(11),
       nineteen = rate(19);
     // (Zone 1: floor 9 is cleared about a third of the time, floor 1 always.)
