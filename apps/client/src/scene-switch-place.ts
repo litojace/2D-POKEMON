@@ -8,6 +8,8 @@
  * header, so CSS alone can't know where the pills start: this measures.
  */
 
+import { PANEL_EVENT } from "./ui/hub-panel";
+
 /** The least room between the switch and its neighbours (px). */
 export const SWITCH_CLEARANCE = 8;
 
@@ -95,8 +97,12 @@ function chatBelowCard(card: DOMRect, size: DOMRect, chat: HTMLElement) {
     });
   return spots.find((s) => free(s.x, s.y)) ?? spots[0];
 }
-/** Boxes on the hub's scenes the chat button must keep out of. */
+/** Boxes on the hub's scenes the chat button must keep out of: an open
+ * screen too (a panel or a sheet, ui/hub-panel.ts), or the button lands on
+ * its head (the Friends sheet's tabs on a 568x320 phone). Not one that is
+ * fading out. */
 const HUD_BLOCKS = [
+  ".ui-panel-host:not([data-ui-leaving]) > .ui-panel",
   ".lobby-party",
   ".lobby-rail",
   ".lobby-card",
@@ -175,6 +181,8 @@ export function watchSceneSwitch(nav: HTMLElement) {
     if (!frame) frame = requestAnimationFrame(place);
   };
   addEventListener("resize", schedule);
+  // A hub screen opening or closing changes what the button must avoid.
+  document.addEventListener(PANEL_EVENT, schedule);
   const sizes = new ResizeObserver(schedule);
   const watchAll = () => {
     for (const s of [
