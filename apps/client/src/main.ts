@@ -267,7 +267,6 @@ import {
 } from "./networking/timeline-lead";
 import { AccountUI } from "./accounts";
 import {
-  avatarImage,
   avatarOfPlayer,
   framedAvatar,
   identityPortrait,
@@ -4010,44 +4009,58 @@ function renderBattle() {
     overlay.style.pointerEvents = "auto";
     let heading = "",
       details = "",
-      actions = "";
+      actions = "",
+      eyebrow = "Element Arena",
+      reveal = false;
     if (state.phase === "briefing") {
-      heading = "How to play";
+      // The Reveal (docs/hidden-picks.md, "The Reveal"): the picks were
+      // hidden in the room, so each player's card starts face down (a "?"
+      // and their name) and turns over to their fighter, yours first, once
+      // this device has the arena. 1v1 and 2v2 face off across a VS; a
+      // free-for-all is one row, everyone for themselves.
+      heading = "The Reveal";
+      reveal = true;
       const confirmed = state.instructionsReady.includes(myId);
-      // Who's fighting whom (you first), each dressed as their Wardrobe
-      // shows: the fighter skin, else their Colors; no element aura, as in
-      // the roster and the Lobby.
+      const loading = arenaLoading(state);
+      // Each fighter dressed as their Wardrobe shows: the skin, else their
+      // Colors; no element aura, as in the roster and the Lobby.
       const vsArt = (p: Fighter) => {
         const skin = skinOf(p, p.character);
         const palette = skin ? "" : (identityOf(p).raidLook?.skin ?? "");
         const art = fighterArt(p.character, undefined, skin);
         return palette ? colourPreview(art, palette) : art;
       };
-      // The reveal (docs/hidden-picks.md): in PvP the picks were hidden, so
-      // each card starts face down (a "?", the player's avatar and name)
-      // and turns over to show the fighter, yours first.
-      const flips = vsReveal(state, arenaLoading(state));
+      const flips = vsReveal(state, loading);
       let order = 0;
       const card = (p: Fighter) => {
         const delay = flips?.(order++);
         const flip = delay !== undefined;
         const waiting = delay === "wait";
-        const who = identityOf(p);
-        return `<div class="vs-fighter${p.id === myId ? " me" : ""}${flip ? " vs-flip" : ""}${waiting ? " is-waiting" : ""}" style="--element:#${CHARACTERS[p.character].color.toString(16).padStart(6, "0")}${flip && !waiting ? `;--flip-delay:${delay}ms` : ""}">${scopeIds(vsArt(p), `vs${state!.players.indexOf(p)}`)}<b><i class="vs-avatar" aria-hidden="true">${avatarImage(who.avatar)}</i>${escape(p.name)}${p.id === myId ? " <small>(you)</small>" : ""}</b><span>${CHARACTERS[p.character].name} · ${CHARACTERS[p.character].element}</span>${flip ? `<div class="vs-back" aria-hidden="true"><strong class="vs-q">?</strong><i class="vs-avatar">${avatarImage(who.avatar)}</i><small>${escape(p.name)}</small></div>` : ""}</div>`;
+        const c = CHARACTERS[p.character];
+        const you = p.id === myId;
+        return `<div class="rv-card${you ? " me" : ""}${flip ? " vs-flip" : ""}${waiting ? " is-waiting" : ""}" style="--element:#${c.color.toString(16).padStart(6, "0")}${flip && !waiting ? `;--flip-delay:${delay}ms` : ""}"><div class="rv-face"><div class="rv-art">${scopeIds(vsArt(p), `vs${state!.players.indexOf(p)}`)}</div><b class="rv-name">${escape(c.name)}</b><span class="rv-role">${escape(c.element)} · ${escape(c.role)}</span><small class="rv-player" title="${escape(p.name)}">${escape(p.name)}</small></div>${you ? '<i class="rv-you">You</i>' : ""}${flip ? `<div class="vs-back" aria-hidden="true"><strong class="vs-q">?</strong><small>${escape(p.name)}</small></div>` : ""}</div>`;
       };
       const mine = (p: Fighter) => teamOf(p) === teamOf(me);
-      const side = (list: Fighter[]) =>
+      const youFirst = (list: Fighter[]) =>
         list.sort((a, b) => Number(b.id === myId) - Number(a.id === myId));
+      const vs = '<span class="vs-mark" aria-hidden="true">VS</span>';
       const versus = isTeams()
-        ? `<div class="briefing-versus teams"><div class="vs-team team-${teamOf(me)}">${side(state.players.filter(mine)).map(card).join("")}</div><span class="vs-mark">VS</span><div class="vs-team team-${1 - teamOf(me)}">${state.players
+        ? `<div class="briefing-versus teams"><div class="rv-side team-${teamOf(me)}">${youFirst(state.players.filter(mine)).map(card).join("")}</div>${vs}<div class="rv-side team-${1 - teamOf(me)}">${state.players
             .filter((p) => !mine(p))
             .map(card)
             .join("")}</div></div>`
-        : `<div class="briefing-versus${isFfa() ? " ffa" : ""}">${side([
-            ...state.players,
-          ])
-            .map(card)
-            .join('<span class="vs-mark">VS</span>')}</div>`;
+        : isFfa()
+          ? `<div class="briefing-versus ffa"><div class="rv-side">${youFirst([
+              ...state.players,
+            ])
+              .map(card)
+              .join("")}</div></div>`
+          : `<div class="briefing-versus duel">${youFirst([...state.players])
+              .map(
+                (p) =>
+                  `<div class="rv-side team-${p.id === myId ? 0 : 1}">${card(p)}</div>`,
+              )
+              .join(vs)}</div>`;
       // Short on purpose (owner, 5 Nov 2026): who, the goal, the arena if
       // it has something to dodge, the keys. The HUD and the fighters'
       // panels hold the rest.
@@ -4059,11 +4072,12 @@ function renderBattle() {
         : isFfa()
           ? `Last one standing takes the round · First to ${rounds}`
           : `First to win ${rounds} rounds`;
+      eyebrow = `${isTeams() ? "2v2 Teams" : isFfa() ? `Free-for-all · ${state.players.length} players` : state.vsBot ? "1v1 vs Bot" : "1v1 Duel"} · ${escape(event?.name ?? arena.name)}`;
       const place = event
-        ? `<p class="brief-arena"><b>${escape(event.name)}</b>${escape(event.tip)} · No rating change</p>`
+        ? `<p class="brief-arena">${escape(event.tip)} · No rating change</p>`
         : arena.hazards.length
-          ? `<p class="brief-arena"><b>${escape(arena.name)}</b>${escape(arena.tip)}</p>`
-          : `<p class="brief-arena"><b>${escape(arena.name)}</b></p>`;
+          ? `<p class="brief-arena">${escape(arena.tip)}</p>`
+          : "";
       details =
         versus +
         `<p class="brief-goal">${menuIcon("leaderboard")}<span>${goal}</span></p>` +
@@ -4074,8 +4088,14 @@ function renderBattle() {
         partyRulesNote();
       // Ready only once this device has the arena: the countdown starts when
       // everyone is ready, so a slow phone would otherwise miss the start.
-      const loading = arenaLoading(state);
-      actions = `<button class="primary btn-primary" id="instructions-ready" ${confirmed || loading ? "disabled" : ""}>${confirmed ? "Waiting for the others…" : loading ? "Loading the arena…" : "I’m ready"}</button>`;
+      const progress = arenaProgress(state);
+      const readyCount = state.instructionsReady.length;
+      const status = loading
+        ? `Loading the arena · ${Math.round(progress * 100)}%`
+        : confirmed
+          ? `Waiting for the others · ${readyCount}/${state.players.length} ready`
+          : "Arena and every fighter loaded";
+      actions = `<div class="rv-foot"><div class="rv-load${loading ? " is-loading" : ""}"><span>${status}</span><i role="progressbar" aria-label="Arena loading" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(progress * 100)}"><b style="width:${(progress * 100).toFixed(1)}%"></b></i></div><button class="primary btn-primary" id="instructions-ready" ${confirmed || loading ? "disabled" : ""}>${confirmed ? "Ready ✓" : loading ? "Loading…" : "I’m ready"}</button></div>`;
     }
     if (state.phase === "countdown") {
       heading = LIVE_COUNTDOWN;
@@ -4150,7 +4170,7 @@ function renderBattle() {
       if (state.vsBot) guide.mark("bot");
       actions = `<div class="result-actions"><button class="primary btn-primary" id="rematch">${me.ready ? "Waiting for opponent…" : iconLabel("again", "Rematch")}</button><button class="secondary btn-secondary" id="share-result">${iconLabel("share", "Share result")}</button><button class="secondary btn-secondary${state.vsBot ? " leave-button" : ""}" id="return">${state.vsBot ? iconLabel("home", "Back to menu") : iconLabel("back", "Return to lobby")}</button></div>`;
     }
-    const markup = `<div class="overlay-card${actions ? " action-overlay" : state.phase === "countdown" ? " countdown-card" : ""}"><span class="eyebrow">Element Arena</span><h2>${heading}</h2><div${actions ? ' class="panel-scroll" tabindex="0" role="region" aria-label="Match details"' : ""}>${details}</div>${actions ? `<div class="panel-actions">${actions}</div>` : ""}</div>`;
+    const markup = `<div class="overlay-card${actions ? " action-overlay" : state.phase === "countdown" ? " countdown-card" : ""}${reveal ? " match-reveal" : ""}"><span class="eyebrow">${eyebrow}</span><h2>${heading}</h2><div${actions ? ' class="panel-scroll" tabindex="0" role="region" aria-label="Match details"' : ""}>${details}</div>${actions ? `<div class="panel-actions">${actions}</div>` : ""}</div>`;
     // Preserve the pressed button and native scrolling between snapshots.
     setOverlayMarkup(
       overlay,
@@ -5398,6 +5418,14 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
   /** Every fighter in this snapshot has its textures (or gave up loading). */
   fightersReady(s: Snapshot) {
     return this.fighters.allReady(sceneFighters(s));
+  }
+  /** How many of this snapshot's fighters are ready, of how many. */
+  fighterProgress(s: Snapshot) {
+    const ids = sceneFighters(s);
+    return {
+      ready: ids.filter((id) => this.fighters.isReady(id)).length,
+      total: ids.length,
+    };
   }
   /** Queue whichever of this snapshot's fighters are still missing. */
   private requestFighters(s: Snapshot) {
@@ -7801,6 +7829,16 @@ let arenaWaitSince = 0;
  * (nothing to wait for) or a load past ARENA_WAIT_MAX_MS lets the player
  * confirm anyway.
  */
+/**
+ * How far this device is with the arena, 0 to 1, for the Reveal's bar: the
+ * engine first, then each fighter on the court. 1 once arenaLoading is done.
+ */
+function arenaProgress(s: Snapshot) {
+  if (!arenaLoading(s)) return 1;
+  if (!scene) return 0.05;
+  const { ready, total } = scene.fighterProgress(s);
+  return 0.2 + (0.75 * ready) / Math.max(1, total);
+}
 function arenaLoading(s: Snapshot) {
   if ((!gameInstance && !phaserWaitStarted) || scene?.fightersReady(s)) {
     arenaWaitSince = 0;
