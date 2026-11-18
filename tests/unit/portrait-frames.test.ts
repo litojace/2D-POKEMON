@@ -150,3 +150,15 @@ it("shows an offline friend's avatar in their evolved frame, never their fighter
   expect(html).toContain("/assets/avatars/ea-avatar-001.webp");
   expect(html).toContain('data-frame-stars="4"');
 });
+
+it("reads a friend wearing their own picture (a 42-letter avatar)", async () => {
+  const { friendsSchema } = await import("../../packages/shared/src/accounts");
+  const avatar = "photo:11111111-2222-4333-8444-555555555555";
+  const list = friendsSchema.parse({
+    code: "ABCDEF12",
+    friends: [{ id: "a", name: "Mia", avatar }],
+    incoming: [],
+    outgoing: [],
+  });
+  expect(list.friends[0].avatar).toBe(avatar);
+});

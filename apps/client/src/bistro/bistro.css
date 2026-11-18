@@ -3586,6 +3586,12 @@ body.hub-bistro #account-profile {
 .bistro-layer.phone .bs-staff .cookdish > small {
   display: none;
 }
+/* A friend's avatar (docs/hidden-picks.md, "Avatars"): round, the whole picture. */
+.bistro-layer img.who-avatar {
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: 50% 50%;
+}
 
 /* A sheet is as tall as what it holds (it used to reach the counter bar
    whatever it held: Friends left 426px empty), up to the room there is,

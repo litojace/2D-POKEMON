@@ -9,6 +9,8 @@
  */
 import { CHARACTERS, type CharacterId } from "../../../../packages/shared/src";
 import { FrameCap } from "../frame-cap";
+// Friends in lists are who they are: their avatar (docs/hidden-picks.md).
+import { avatarOfPlayer } from "../portraits";
 import type { Facing } from "../animation/controller";
 import { CREATURE_VIEWBOX, creatureSvg, type Mood } from "../creature-design";
 import { profileViewBox } from "../creature-profile";
@@ -2846,7 +2848,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
         <ol class="bs-league">${l.week
           .map(
             (x, i) =>
-              `<li class="${x.me ? "me" : ""}"><span class="rk">${i + 1}</span><img src="${portrait(x.fighter)}" alt=""><b>${esc(x.name)}</b><em>${fmt(x.points)}</em></li>`,
+              `<li class="${x.me ? "me" : ""}"><span class="rk">${i + 1}</span><img${x.id ? ' class="who-avatar"' : ""} src="${x.id ? avatarOfPlayer(x.id) : portrait(x.fighter)}" alt=""><b>${esc(x.name)}</b><em>${fmt(x.points)}</em></li>`,
           )
           .join("")}</ol>
       </div>`;
@@ -2987,7 +2989,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
               : `<div class="bs-team">${friendList
                   .map(
                     (f) => `<div class="bs-staff friend">
-                <img class="pt" src="${portrait(f.fighter)}" alt="">
+                <img class="pt who-avatar" src="${avatarOfPlayer(f.id)}" alt="">
                 <div class="who"><b>${esc(f.name)}</b><span class="role waiter">Level ${f.level}</span>
                   ${f.popularity === undefined ? `<span class="lv">${"★".repeat(Math.round(f.rating))}<i>${"★".repeat(5 - Math.round(f.rating))}</i></span>` : `<span class="lv pop">Popularity ${Math.round(f.popularity)}</span>`}
                   <small>♥ ${fmt(f.likes)} · ${fmt(f.served)} guests served · ${f.servings ? `${f.servings} servings on the counter` : "nothing on the counter"}${f.dined ? " · you ate here today" : ""}</small>
@@ -3161,7 +3163,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
                 .filter((f) => !hired.has(f.id))
                 .map(
                   (f) =>
-                    `<div class="bs-item hire friend"><img src="${portrait(f.fighter)}" alt=""><b>${esc(f.name)}</b><small>Your friend · works 10% faster</small>${btn(`data-hirefriend="${esc(f.id)}"`)}</div>`,
+                    `<div class="bs-item hire friend"><img class="who-avatar" src="${avatarOfPlayer(f.id)}" alt=""><b>${esc(f.name)}</b><small>Your friend · works 10% faster</small>${btn(`data-hirefriend="${esc(f.id)}"`)}</div>`,
                 )
                 .join("")
             : "";
@@ -5485,7 +5487,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
     const full = v.myDines >= DINE.perDay;
     setInner(
       visitEl,
-      `<div class="who"><img src="${portrait(v.fighter)}" alt=""><span><small>Visiting</small><b>${esc(v.name)}'s Bistro</b></span></div>
+      `<div class="who"><img class="who-avatar" src="${avatarOfPlayer(v.id)}" alt=""><span><small>Visiting</small><b>${esc(v.name)}'s Bistro</b></span></div>
       <button type="button" data-v="dine" ${v.dined || empty || full ? "disabled" : ""}>${v.dined ? "Ate here today" : full ? "Full for today" : empty ? "Nothing to eat" : "Eat here"}</button>
       <button type="button" data-v="like" ${v.liked ? "disabled" : ""}>${v.liked ? "♥ Liked" : "♥ Like"}</button>
       <button type="button" class="go" data-v="home">Back home</button>`,

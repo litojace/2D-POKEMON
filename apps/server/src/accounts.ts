@@ -89,7 +89,7 @@ import {
   type OnlineList,
 } from "../../../packages/shared/src/accounts.js";
 /** The newest database migration the server expects. */
-export const LATEST_MIGRATION = "20261119120000_avatar_photo_storage.sql";
+export const LATEST_MIGRATION = "20261119150000_bistro_league_ids.sql";
 /** The migration that last redefined the raid appearance functions. */
 export const RAID_FUNCTIONS_MIGRATION = "018_collection_equipping.sql";
 export interface AccountProvider {
@@ -130,6 +130,8 @@ export interface AccountProvider {
    * service role). Without it, pictures can't be added and show the default.
    */
   photos?: AvatarPhotoStore;
+  /** A player's avatar by account id (migration 20261119140000; service role). */
+  avatarOf?(playerId: string): Promise<string | null>;
 }
 /** One kept message between friends, as the database returns it. */
 export interface StoredFriendMessage {
@@ -340,6 +342,16 @@ export function createAccountProvider(): AccountProvider {
       },
     },
     photos: createAvatarPhotoStore(() => admin() as unknown as PhotoClient),
+    async avatarOf(playerId) {
+      try {
+        const result = await admin().rpc("arena_avatar_of", {
+          p_player: playerId,
+        });
+        return result.error ? null : ((result.data as string | null) ?? null);
+      } catch {
+        return null;
+      }
+    },
     async chatStoppedUntil(accountId) {
       try {
         const result = await admin().rpc("arena_chat_stopped_until", {
@@ -629,6 +641,32 @@ export function installAccountRoutes(
       // Short: a picture an admin removes stops showing within minutes.
       res.setHeader("Cache-Control", "public, max-age=600");
       res.type(photo.type).send(photo.data);
+    } catch (error) {
+      next(error);
+    }
+  });
+  // Any player's avatar by account id, as a picture: a redirect to the
+  // library file or their own picture (an avatar is on view to everyone).
+  // Lists that know only who (Farm and Bistro visitors, the party) point
+  // their pictures here.
+  app.get("/api/avatar/of/:id", async (req, res, next) => {
+    try {
+      const id =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+          req.params.id,
+        )
+          ? req.params.id
+          : null;
+      const avatar = id ? await provider.avatarOf?.(id) : null;
+      res.setHeader("Cache-Control", "public, max-age=300");
+      res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+      const photo = photoIdOf(avatar);
+      res.redirect(
+        302,
+        photo
+          ? `/api/avatar-photo/${photo}`
+          : `/assets/avatars/${isAvatar(avatar) ? avatar : DEFAULT_AVATAR}.webp`,
+      );
     } catch (error) {
       next(error);
     }

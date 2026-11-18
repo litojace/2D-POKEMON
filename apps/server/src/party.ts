@@ -29,6 +29,8 @@ export interface PartyMember {
 export interface PartyAppearance {
   looks: Partial<Record<string, ChampionLook>>;
   look: RaidLoadout;
+  /** Their avatar (avatars.ts); null: the default. */
+  avatar?: string | null;
 }
 export interface Party {
   /** Six characters, so an invitation looks like a room invitation. */

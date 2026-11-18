@@ -185,11 +185,26 @@ battle, on the briefing, in the picker and on the Lobby's party stage
     (HTTP) and
     `tests/visual/avatars.spec.ts`.
 
-## Not built yet
+## Everywhere else (Nov 2026)
 
-- A VS screen that flips the cards. The existing briefing already shows
-  every fighter.
-- Avatars in more places: Ranks rows (the leaderboard sends no player id
-  or avatar yet), the Plaza player card, Farm and Bistro visitors, and the
-  party bar still show an initial or a fighter.
-- Reporting a picture from the Plaza card and from Ranks.
+- **Ranks:** each row shows the player's avatar in a ring of their rank's
+  colour. Migration `20261119140000_avatars_everywhere` adds `id` and
+  `avatar` to `arena_leaderboard`'s rows. The Friends board and Recent
+  players carry it too. A tap on another player's own picture reports it.
+- **Plaza:** the player card shows the avatar, which the server reads in
+  `PlazaAppearance`. A player with their own picture also gets **Report
+  picture**. Players walking in the Plaza are still their fighters.
+- **Farm and Bistro:** lists of friends (a visit's header, stalls, help
+  requests, gifts, neighbours, friends' bistros, hiring a friend) show
+  each friend's avatar through `/api/avatar/of/<id>`. The server
+  redirects that address to the picture (`arena_avatar_of`, service
+  role), so a list that knows only who needs no avatar data of its own.
+  Friends standing at the farm's gate are still their fighters.
+- **Party:** the Lobby's party bar shows each member's avatar, with the
+  leader ringed in gold; the server reads it in `loadPartyAppearance`.
+  The stage still shows fighters, to show off skins (owner, 18 Nov).
+- **The reveal:** on a PvP briefing (bots included) each card starts
+  face down, with a "?", the player's avatar and their name. It waits
+  while the arena loads, then turns over to the fighter, yours first
+  (`vsReveal` in `main.ts`, `.vs-flip` in `style.css`). With reduced
+  motion the fighters show at once.

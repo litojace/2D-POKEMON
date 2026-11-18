@@ -1214,6 +1214,8 @@ export interface PlazaProfile {
   raid?: Partial<Record<RaidBossId, number>>;
   /** A bot, not a person: a pitch bot or one of the townsfolk (NPCs). */
   bot?: boolean;
+  /** Their avatar (avatars.ts), on their player card. */
+  avatar?: string | null;
 }
 export interface PlazaState {
   plaza: number;

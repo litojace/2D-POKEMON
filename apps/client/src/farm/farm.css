@@ -3375,3 +3375,7 @@ body.hub-farm #account-leaves {
 .farm-layer .coop-hens .hen.egg small {
   color: #ffd65b;
 }
+/* A friend's avatar (docs/hidden-picks.md, "Avatars"): the whole circle. */
+.farm-layer img.who-avatar {
+  object-position: 50% 50%;
+}

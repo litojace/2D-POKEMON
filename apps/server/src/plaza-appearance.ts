@@ -6,6 +6,7 @@ import {
 } from "../../../packages/shared/src/raid.js";
 import type { PlazaProfile } from "../../../packages/shared/src/plaza.js";
 import type { AccountProvider } from "./accounts.js";
+import { isAvatar } from "../../../packages/shared/src/avatars.js";
 import type { PlazaWorld } from "./plaza.js";
 
 /** Load only the authenticated account's saved cosmetics; Plaza input cannot grant looks. */
@@ -53,9 +54,10 @@ export class PlazaAppearance {
           .catch(() => undefined)
       : Promise.resolve();
     try {
-      const [skins, appearance] = await Promise.allSettled([
+      const [skins, appearance, avatar] = await Promise.allSettled([
         read("arena_my_looks"),
         read("arena_raid_progress"),
+        read("arena_my_avatar"),
       ]);
       const patch: Partial<Omit<PlazaProfile, "id" | "bot">> = {};
       if (skins.status === "fulfilled") {
@@ -68,6 +70,9 @@ export class PlazaAppearance {
         patch.look = raidLookOf(appearance.value as RaidProgress | null);
         patch.raid = bossClears(appearance.value as RaidProgress | null);
       }
+      // Who they are on their card (docs/hidden-picks.md, "Avatars").
+      if (avatar.status === "fulfilled")
+        patch.avatar = isAvatar(avatar.value) ? (avatar.value as string) : null;
       apply(patch);
       await level;
     } finally {

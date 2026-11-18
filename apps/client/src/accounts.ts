@@ -154,6 +154,8 @@ type Hooks = {
   onToken: (token: string) => void;
   beforeSignOut: () => Promise<void>;
   selectedCharacter?: () => CharacterId;
+  /** Report another player's own picture (asks first; main.ts). */
+  reportPhoto?: (photo: string, name: string) => Promise<void>;
   /** Make a fighter your Lobby fighter. */
   chooseFighter?: (id: CharacterId) => void;
   /** The fighter saved with the account (picked on another device). */
@@ -1721,9 +1723,14 @@ export class AccountUI {
       this.ranksScreen = openRanks({
         data: () => ({
           ...this.ranksData,
-          me: { name: this.account?.displayName ?? "You" },
+          me: {
+            name: this.account?.displayName ?? "You",
+            avatar: this.avatar,
+          },
         }),
         load: (scope) => this.loadRanks(scope, accountId),
+        reportPhoto: (photo, name) =>
+          void this.hooks.reportPhoto?.(photo, name),
         friends: () => void this.showFriends(),
         onClose: () => (this.ranksScreen = undefined),
       });

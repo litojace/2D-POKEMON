@@ -9,6 +9,8 @@
  * board; the Friends board comes from its own read-only endpoint. The
  * server owns every number; the season's countdown uses the server's clock.
  */
+import { avatarImage } from "../portraits";
+import { photoIdOf } from "../../../../packages/shared/src/avatars";
 import {
   PLACEMENT_MATCHES,
   RANKS,
@@ -47,8 +49,8 @@ export interface RanksData {
   friends: FriendsBoard | null;
   problem?: string;
   friendsProblem?: string;
-  /** Your name, for your pinned row when you aren't in the top 20. */
-  me: { name: string };
+  /** Your name and avatar, for your row (pinned when not in the top 20). */
+  me: { name: string; avatar?: string | null };
 }
 export interface RanksView {
   scope: RanksScope;
@@ -136,9 +138,19 @@ export interface BoardRow {
   me: boolean;
   /** Under the name instead of the rank (placement). */
   sub?: string;
+  /** Their avatar (avatars.ts); null or unset: the default. */
+  avatar?: string | null;
 }
-const monogram = (name: string, color: string) =>
-  `<span class="rk-avatar" style="--rank:${color}" aria-hidden="true">${esc(Array.from(name.trim())[0]?.toUpperCase() ?? "?")}</span>`;
+/**
+ * A row's player: their avatar in a ring of their rank's colour. Another
+ * player's own picture is a button: a tap reports it (it asks first).
+ */
+function rowAvatar(r: BoardRow, color: string) {
+  const photo = r.me ? null : photoIdOf(r.avatar);
+  return photo
+    ? `<button type="button" class="rk-avatar is-reportable" style="--rank:${color}" data-ranks-report-photo="${photo}" data-ranks-report-name="${esc(r.name)}" aria-label="${esc(`${r.name}'s picture. Report it`)}" title="Report this picture">${avatarImage(r.avatar)}</button>`
+    : `<span class="rk-avatar" style="--rank:${color}" aria-hidden="true">${avatarImage(r.avatar)}</span>`;
+}
 function placeCell(place: number | null) {
   if (place === null) return `<span class="rk-place ui-num">—</span>`;
   if (place <= 3)
@@ -154,13 +166,14 @@ function wl(wins: number, losses: number) {
 export function boardRow(r: BoardRow, pinned = false) {
   const color = rankColor(r.rankName);
   const sub = r.sub ?? r.rankName;
-  return `<li class="rk-row${r.me ? " is-me" : ""}${pinned ? " is-pinned" : ""}${r.place !== null && r.place <= 3 ? ` is-top` : ""}"${pinned ? ' aria-label="Your row"' : ""}>${placeCell(r.place)}${monogram(r.name, color)}<span class="rk-name"><span class="rk-name-top"><b>${esc(r.name)}</b>${r.me ? tag("You", "new") : ""}</span><small style="color:${color}">${esc(sub)}</small></span><span class="rk-rating-cell ui-num">${r.rating === null ? "—" : num(r.rating)}</span>${wl(r.wins, r.matches - r.wins)}</li>`;
+  return `<li class="rk-row${r.me ? " is-me" : ""}${pinned ? " is-pinned" : ""}${r.place !== null && r.place <= 3 ? ` is-top` : ""}"${pinned ? ' aria-label="Your row"' : ""}>${placeCell(r.place)}${rowAvatar(r, color)}<span class="rk-name"><span class="rk-name-top"><b>${esc(r.name)}</b>${r.me ? tag("You", "new") : ""}</span><small style="color:${color}">${esc(sub)}</small></span><span class="rk-rating-cell ui-num">${r.rating === null ? "—" : num(r.rating)}</span>${wl(r.wins, r.matches - r.wins)}</li>`;
 }
 
 /** Everyone: the top 20 by rating, the players placing, and you, pinned. */
 export function everyoneRows(
   board: Leaderboard,
   myName = "You",
+  myAvatar: string | null = null,
 ): {
   rows: BoardRow[];
   me: BoardRow;
@@ -175,6 +188,7 @@ export function everyoneRows(
     wins: r.wins,
     matches: r.matches,
     me: r.me,
+    avatar: r.me ? myAvatar : (r.avatar ?? null),
   }));
   const mine = board.rows.find((r) => r.me);
   const rating = board.rating;
@@ -187,6 +201,7 @@ export function everyoneRows(
     wins: board.me?.wins ?? mine?.wins ?? 0,
     matches: board.me?.matches ?? mine?.matches ?? 0,
     me: true,
+    avatar: myAvatar,
     sub: placing
       ? `Placing · ${rating!.placementLeft} to go`
       : !rating && !board.me
@@ -200,7 +215,10 @@ export function everyoneRows(
 }
 
 /** Friends: you and your friends, ranked among yourselves. */
-export function friendRows(board: FriendsBoard) {
+export function friendRows(
+  board: FriendsBoard,
+  myAvatar: string | null = null,
+) {
   const rows: BoardRow[] = board.rows.map((r) => ({
     place: r.place,
     name: r.name,
@@ -209,6 +227,7 @@ export function friendRows(board: FriendsBoard) {
     wins: r.wins,
     matches: r.matches,
     me: r.me,
+    avatar: r.me ? myAvatar : (r.avatar ?? null),
     sub: r.place === null ? `Placing · ${r.placementLeft} to go` : undefined,
   }));
   return { rows, me: rows.find((r) => r.me)! };
@@ -261,7 +280,7 @@ export function ranksMarkup(view: RanksView, d: RanksData) {
   } else {
     side = rankCard(board.rating);
     if (view.scope === "everyone") {
-      const e = everyoneRows(board, d.me.name);
+      const e = everyoneRows(board, d.me.name, d.me.avatar ?? null);
       main = boardMarkup(e.rows, e.me, {
         rated: !!board.rating,
         empty: emptyState(
@@ -271,7 +290,7 @@ export function ranksMarkup(view: RanksView, d: RanksData) {
         foot: e.placing,
       });
     } else if (d.friends) {
-      const f = friendRows(d.friends);
+      const f = friendRows(d.friends, d.me.avatar ?? null);
       const others = f.rows.length > 1;
       main = boardMarkup(others ? f.rows : [], f.me, {
         rated: true,
