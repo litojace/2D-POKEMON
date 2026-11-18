@@ -1456,17 +1456,107 @@ export function openPlaza(options) {
     if (who) return showCard(who);
     hideCard();
     // A click walks you there, round whatever is in the way (plaza-path.ts).
-    if (e.pointerType === "mouse") walkTo(w);
+    if (e.pointerType === "mouse") walkTo(w, true);
   });
   /** The rest of the way after `target`, and where it ends. */
   let route = [],
     routeEnd = null,
     replannedAt = 0;
-  function walkTo(w) {
+  function walkTo(w, click = false) {
     routeEnd = w;
     route = plazaPath(P, w);
+    const end = route[route.length - 1];
     target = route.shift() ?? null;
     replannedAt = performance.now();
+    // The click marker (as in MOBAs and ARPGs): where you're going, or a
+    // red cross where there is no way.
+    if (click)
+      clickMark = end
+        ? { x: end.x, y: end.y, t: 0, ok: true }
+        : { x: w.x, y: w.y, t: 0, ok: false };
+  }
+  /** The click marker: where a click sent you (drawn on the ground). */
+  let clickMark = null;
+  const MARK_BURST = 0.45;
+  function drawClickMark(g, time) {
+    const m = clickMark;
+    if (!m) return;
+    m.t = m.t ? m.t : time;
+    const age = time - m.t;
+    // Arrived (or walked off with the keys): the marker goes.
+    const going = m.ok && routeEnd && target;
+    if (age > MARK_BURST && !going) {
+      if (age > MARK_BURST + 0.25 || m.ok) clickMark = null;
+      if (!clickMark) return;
+    }
+    g.save();
+    g.translate(m.x, m.y);
+    g.scale(1, 0.42);
+    g.lineCap = "round";
+    if (!m.ok) {
+      // No way there: a red cross, fading.
+      const a = Math.max(0, 1 - age / (MARK_BURST + 0.25));
+      g.scale(1, 1 / 0.42);
+      g.strokeStyle = `rgba(20,8,12,${0.5 * a})`;
+      g.lineWidth = 7;
+      g.beginPath();
+      g.moveTo(-9, -6);
+      g.lineTo(9, 6);
+      g.moveTo(9, -6);
+      g.lineTo(-9, 6);
+      g.stroke();
+      g.strokeStyle = `rgba(255,90,100,${a})`;
+      g.lineWidth = 4;
+      g.stroke();
+      g.restore();
+      return;
+    }
+    const k = Math.min(1, age / MARK_BURST),
+      ease = 1 - (1 - k) ** 3;
+    if (k < 1 && !reduced) {
+      // The burst: a ring closing in and four chevrons pointing to the spot.
+      const r = 46 - 30 * ease,
+        a = 1 - k * 0.6;
+      g.strokeStyle = `rgba(10,30,40,${0.45 * a})`;
+      g.lineWidth = 6;
+      g.beginPath();
+      g.arc(0, 0, r, 0, Math.PI * 2);
+      g.stroke();
+      g.strokeStyle = `rgba(140,240,255,${a})`;
+      g.lineWidth = 3;
+      g.stroke();
+      for (let i = 0; i < 4; i++) {
+        g.save();
+        g.rotate((i * Math.PI) / 2 + Math.PI / 4);
+        g.translate(r + 12, 0);
+        g.beginPath();
+        g.moveTo(10, -10);
+        g.lineTo(0, 0);
+        g.lineTo(10, 10);
+        g.strokeStyle = `rgba(10,30,40,${0.45 * a})`;
+        g.lineWidth = 6;
+        g.stroke();
+        g.strokeStyle = `rgba(140,240,255,${a})`;
+        g.lineWidth = 3;
+        g.stroke();
+        g.restore();
+      }
+    }
+    // While you walk there: a small ring pulsing on the spot.
+    const p = reduced ? 0.5 : 0.5 + 0.5 * Math.sin(time * 6);
+    g.beginPath();
+    g.arc(0, 0, 14 + 3 * p, 0, Math.PI * 2);
+    g.strokeStyle = "rgba(10,30,40,.4)";
+    g.lineWidth = 6;
+    g.stroke();
+    g.strokeStyle = `rgba(140,240,255,${0.65 + 0.35 * p})`;
+    g.lineWidth = 3.5;
+    g.stroke();
+    g.fillStyle = "rgba(140,240,255,.45)";
+    g.beginPath();
+    g.arc(0, 0, 5, 0, Math.PI * 2);
+    g.fill();
+    g.restore();
   }
   /** The player card: name, level, title; add friend, invite to party. */
   let cardFor = null;
@@ -3735,6 +3825,8 @@ export function openPlaza(options) {
         );
       drawFarmLife(g, time, reduced, vx0, vy1, vx1);
     }
+    // Where a click sent you, on the ground under everyone.
+    if (!photo) drawClickMark(g, time);
     // pad glow, runway spotlight
     PADS.forEach(([x, y]) => {
       g.fillStyle = `rgba(159,208,255,${0.18 + Math.sin(time * 3 + x) * 0.1})`;
@@ -4736,6 +4828,8 @@ export function openPlaza(options) {
         y1: cam.y + NH / 2 / Z,
         z: Z,
       }),
+      /** The click marker now (tests). */
+      clickMark: () => (clickMark ? { ...clickMark } : null),
       /** Tests: zoom to a factor of the usual (as a pinch or the wheel). */
       setZoom: (f) => setZoom(f),
       zoomRange: () => plazaZoomRange(NW, NH),
