@@ -693,3 +693,42 @@
     }
   }
 }
+
+/* ----------------------------- 2v2: your teammate's pick (hidden picks) */
+/* docs/hidden-picks.md: your teammate's name on the fighter they're looking
+   at; a fighter they locked in is theirs, greyed out for you. */
+.roster-mate {
+  position: absolute;
+  left: 50%;
+  top: 30px;
+  transform: translateX(-50%);
+  max-width: calc(100% - 8px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0 6px;
+  border-radius: var(--rad-pill, 999px);
+  border: 1px dashed color-mix(in srgb, var(--ui-text) 55%, transparent);
+  background: var(--ui-glass);
+  color: var(--ui-text);
+  font-size: var(--fs-micro);
+  font-weight: 700;
+  line-height: 1.6;
+}
+.roster-mate.is-locked {
+  border-style: solid;
+  border-color: var(--ui-ok);
+}
+.roster-card.is-taken .roster-card-art,
+.roster-card.is-taken .roster-card-text {
+  filter: grayscale(1) brightness(0.6);
+}
+.roster-card.is-taken {
+  border-color: var(--ui-line);
+  background: var(--ui-bg-1);
+}
+@media (max-height: 500px) {
+  .roster-mate {
+    top: 22px;
+  }
+}

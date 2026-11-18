@@ -72,3 +72,20 @@ export function framedAvatar(
 ) {
   return framePortrait(portraitAvatar(p, scope), p.raidLook?.frame, stars);
 }
+
+/**
+ * A player as themselves, not as a fighter: their frame around their
+ * initial. Rooms show this where a portrait of the fighter would give a
+ * hidden pick away (docs/hidden-picks.md). The avatar library will put a
+ * picture in the disc instead of the initial.
+ */
+export function identityPortrait(
+  p: Pick<Fighter, "name" | "raidLook" | "raidClears">,
+) {
+  const initial = Array.from(p.name.trim())[0]?.toUpperCase() ?? "?";
+  return framePortrait(
+    `<span class="portrait-initial">${initial.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)}</span>`,
+    p.raidLook?.frame,
+    frameStars(p.raidLook?.frame, p.raidClears),
+  );
+}

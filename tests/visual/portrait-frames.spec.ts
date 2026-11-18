@@ -243,14 +243,23 @@ for (const size of [
             return page.locator("body").getAttribute("class");
           })
           .toContain("lobby-active");
-        // The room's seats (UI remodel step 5), the same in both rooms.
+        // The room's seats (UI remodel step 5): the same frames in both
+        // rooms. A raid seat is the fighter; a PvP seat is the player (frame
+        // and initial), their fighter in the tile beside it, and another
+        // side's fighter hidden (docs/hidden-picks.md).
         const own = page.locator(".room-seats [data-me] .player-avatar");
         const others = page.locator(".room-seats .player-avatar");
+        const ownFighter =
+          kind === "pvp"
+            ? page.locator(".room-seats [data-me] .room-pick")
+            : own;
         await expect(
           own.locator('[data-portrait-frame="conqueror"]'),
         ).toHaveAttribute("data-frame-stars", "4");
-        await expect(own.locator('[data-fighter="voltkit"]')).toHaveCount(1);
-        expect(await own.innerHTML()).toContain("voltkit-stormcrown");
+        await expect(ownFighter.locator('[data-fighter="voltkit"]')).toHaveCount(
+          1,
+        );
+        expect(await ownFighter.innerHTML()).toContain("voltkit-stormcrown");
         await expect(page.locator('#menu [data-frame-stars="5"]')).toHaveCount(
           1,
         );
@@ -270,8 +279,12 @@ for (const size of [
           ),
         ).toBe(true);
         await expect(
-          others.locator('svg[data-fighter="duskveil"]'),
-        ).toHaveCount(1);
+          page.locator('.room-seats svg[data-fighter="duskveil"]'),
+        ).toHaveCount(kind === "pvp" ? 0 : 1);
+        if (kind === "pvp")
+          await expect(
+            page.locator('.room-seats [data-room-seat="p2"] .room-pick.is-hidden'),
+          ).toHaveCount(1);
         await snap(
           page,
           info,
@@ -285,7 +298,7 @@ for (const size of [
           a.hooks.onChange();
         });
         await expect(
-          own.locator('filter[id*="preview-palette-candy-colours"]'),
+          ownFighter.locator('filter[id*="preview-palette-candy-colours"]'),
         ).toHaveCount(1);
         await expect(
           page.locator(

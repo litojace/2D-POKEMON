@@ -95,6 +95,16 @@ export interface RosterData {
     ready: boolean;
     /** Ready can be pressed (the room is waiting, nothing is being saved). */
     canReady: boolean;
+    /**
+     * PvP: your pick is locked in (`playing`). Unset in a room that has no
+     * lock (a raid): the fighter you play is then locked in already.
+     */
+    locked?: boolean;
+    /**
+     * 2v2: what your teammate is looking at or has locked in. A fighter your
+     * teammate locked in is theirs (one per team; docs/hidden-picks.md).
+     */
+    mates?: Partial<Record<CharacterId, { name: string; locked: boolean }>>;
   };
 }
 export const rosterView = (
@@ -218,11 +228,26 @@ function cardArt(c: CharacterId, d: RosterData) {
   const svg = fighterArt(c, undefined, skin);
   return palette ? scopeIds(colourPreview(svg, palette), `card-${c}`) : svg;
 }
+/** The teammate who locked in this fighter (it is theirs), if any. */
+export const takenBy = (c: CharacterId, d: RosterData) => {
+  const mate = d.room?.mates?.[c];
+  return mate?.locked ? mate.name : undefined;
+};
 function card(c: CharacterId, view: RosterView, d: RosterData) {
   const f = CHARACTERS[c];
   const looks = looksOwned(c, d.owned);
-  const playing = c === d.playing;
-  return `<button type="button" class="roster-card" data-roster-card="${c}" aria-pressed="${c === view.focus}" aria-label="${esc(`${f.name}, ${f.element}, ${rangeName(c)}, ${f.role}${playing ? ", playing" : ""}`)}" style="--el:${elVar(c)}"><span class="roster-card-top">${elementTag(f.element)}${masteryRing(c, d, 34)}</span><span class="roster-card-art">${cardArt(c, d)}</span><span class="roster-card-text"><b class="roster-card-name">${esc(f.name)}</b><small>${esc(f.role)}</small></span><span class="roster-card-foot">${rangeTag(c)}<span class="ui-note">${looks.have}/${looks.all} looks</span>${playing ? tag(d.room ? "Locked" : "Playing", "ok") : ""}</span></button>`;
+  const playing = c === d.playing && d.room?.locked !== false;
+  const mate = d.room?.mates?.[c];
+  const taken = takenBy(c, d);
+  const label = `${f.name}, ${f.element}, ${rangeName(c)}, ${f.role}${playing ? ", playing" : ""}${taken ? `, picked by ${taken}` : mate ? `, ${mate.name} is looking at it` : ""}`;
+  // Your teammate's name on the fighter they're looking at or locked in.
+  const badge = mate
+    ? `<span class="roster-mate${mate.locked ? " is-locked" : ""}">${esc(mate.name)}</span>`
+    : "";
+  const foot = taken
+    ? `${rangeTag(c)}${tag("Taken")}`
+    : `${rangeTag(c)}<span class="ui-note">${looks.have}/${looks.all} looks</span>${playing ? tag(d.room ? "Locked" : "Playing", "ok") : ""}`;
+  return `<button type="button" class="roster-card${taken ? " is-taken" : ""}" data-roster-card="${c}" aria-pressed="${c === view.focus}" aria-label="${esc(label)}" style="--el:${elVar(c)}"><span class="roster-card-top">${elementTag(f.element)}${badge}${masteryRing(c, d, 34)}</span><span class="roster-card-art">${cardArt(c, d)}</span><span class="roster-card-text"><b class="roster-card-name">${esc(f.name)}</b><small>${esc(f.role)}</small></span><span class="roster-card-foot">${foot}</span></button>`;
 }
 
 function filters(view: RosterView) {
@@ -261,20 +286,29 @@ function filters(view: RosterView) {
 /** A room's two buttons for the fighter shown: Lock in, then Ready. */
 function roomButtons(c: CharacterId, d: RosterData) {
   const r = d.room!;
-  const locked = c === d.playing && !r.saving;
+  const locked = c === d.playing && !r.saving && r.locked !== false;
+  // Your teammate locked this one in: it's theirs (2v2).
+  const taken = !locked && !!takenBy(c, d);
+  const word = r.saving
+    ? "Confirming…"
+    : locked
+      ? "Locked in"
+      : taken
+        ? "Taken"
+        : "Lock in";
   return [
-    button(r.saving ? "Confirming…" : locked ? "Locked in" : "Lock in", {
+    button(word, {
       icon: locked ? "check" : undefined,
-      disabled: locked || r.saving || r.ready,
+      disabled: locked || taken || r.saving || r.ready,
       attrs: {
         "data-roster-select": c,
-        "aria-label": `${r.saving ? "Confirming" : locked ? "Locked in" : "Lock in"} ${CHARACTERS[c].name}`,
+        "aria-label": `${word.replace("…", "")} ${CHARACTERS[c].name}`,
       },
     }),
     button(r.ready ? "Cancel ready" : "Ready", {
       kind: "primary",
       icon: r.ready ? undefined : "battle",
-      disabled: !r.canReady,
+      disabled: !r.canReady || (taken && !r.ready),
       attrs: { id: "ready", "data-roster-ready": c },
     }),
   ];
@@ -299,17 +333,20 @@ function gridMarkup(view: RosterView, d: RosterData) {
     ? `<div class="ui-grid roster-grid" role="group" aria-label="Fighters">${cards.map((c) => card(c, view, d)).join("")}</div>`
     : `<div class="ui-empty" role="status"><b>No fighters match</b><span>Try another element or range.</span>${button("Show all", { size: "s", attrs: { "data-roster-reset": true } })}</div>`;
   const lock = d.action === "lock";
-  const chosen = view.focus === d.playing;
+  const chosen = view.focus === d.playing && d.room?.locked !== false;
+  const taken = d.room && !chosen ? takenBy(view.focus, d) : undefined;
   // Nothing shown (a filter): nothing to act on either.
   const none = !cards.length;
   const status = d.room
     ? d.room.ready
       ? "Ready · waiting for the others"
-      : d.room.saving && chosen
+      : d.room.saving && view.focus === d.playing
         ? "Locking in…"
         : chosen
           ? "Locked in · ready when you are"
-          : "Picked · lock in to play it"
+          : taken
+            ? `${taken} picked this · choose another`
+            : "Picked · lock in to play it"
     : chosen
       ? "You play as"
       : "Picked";
