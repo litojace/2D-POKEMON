@@ -13617,21 +13617,46 @@ body.battle-active.court-view #game canvas {
   white-space: normal;
   background: #111b32f5;
 }
+/* Solid, as other text in a battle (tokens.css --glass-opaque): see-through
+   glass let the court's tiles show behind the names as a box. The battle
+   glass in ui/aero.css paints --aero-tint-solid, so set that here. */
+.spectate-banner.pvp-spectator {
+  --aero-tint-solid: var(--glass-opaque);
+}
 .spectate-banner.pvp-spectator button {
+  display: grid;
+  place-items: center;
   flex: 0 0 44px;
   width: 44px;
+  height: 44px;
   min-height: 44px;
   padding: 0;
+  border: 0;
   border-radius: 10px;
   background: #273651;
   color: #ffe390;
-  font: 700 calc(26px * var(--text-scale, 1))/1 var(--display);
+  touch-action: manipulation;
+}
+.spectate-banner.pvp-spectator button svg {
+  display: block;
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+.spectate-banner.pvp-spectator button:not(:disabled):active {
+  background: #34476a;
 }
 .spectate-banner.pvp-spectator button:disabled {
   opacity: 0.3;
 }
 .spectator-copy {
   display: grid;
+  flex: 1 1 auto;
   gap: 2px;
   min-width: 0;
   max-width: 240px;
