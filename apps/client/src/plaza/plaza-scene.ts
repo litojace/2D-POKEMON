@@ -92,6 +92,7 @@ import { FrameCap } from "../frame-cap";
 import { PreviewPerf } from "../preview-perf";
 import { sceneLines, setPerfSource } from "../perf-hud";
 import { depthSort, slices, spot } from "./plaza-depth";
+import { drawWornBehind, drawWornFront } from "./plaza-cosmetics";
 import {
   PLAZA_MARGIN,
   PLAZA_SCALE,
@@ -1942,6 +1943,7 @@ export function openPlaza(options) {
           bot: !!p.bot,
           skin: p.skin,
           colour: p.look?.skin ?? null,
+          aura: p.look?.aura ?? null,
           img: imageFor(p.character, p.skin, p.look?.skin ?? null),
         });
       // Your own fighter and skins come from your saved wardrobe (look()), at
@@ -2003,6 +2005,7 @@ export function openPlaza(options) {
           bot: !!p?.bot,
           skin: p?.skin ?? null,
           colour: p?.look?.skin ?? null,
+          aura: p?.look?.aura ?? null,
           img: imageFor(
             p?.character ?? "voltkit",
             p?.skin ?? null,
@@ -2804,6 +2807,10 @@ export function openPlaza(options) {
     }
     const sp = im?.sprite;
     if (!sp) return;
+    // What they wear shows here as everywhere: the Aura's ring and the
+    // Colors' motif behind, their near half in front (plaza-cosmetics.ts).
+    const worn = { now: time * 1000, reduced, low };
+    drawWornBehind(g, b, worn);
     for (const tr of b.trail) {
       g.globalAlpha = 0.32 * (1 - tr.t / 0.3);
       drawSprite(g, sp, tr.x, tr.y - tr.z, s, b.face, 0, 0);
@@ -2811,6 +2818,7 @@ export function openPlaza(options) {
     g.globalAlpha = 1;
     const { bob, rot, sq } = bodyPose(b, time);
     drawSprite(g, sp, b.x, b.y - b.z - bob, s, b.face, rot, sq);
+    drawWornFront(g, b, worn);
     // Bots (the pitch bots and the townsfolk) wear a quieter, italic name
     // tag, so nobody mistakes them for players.
     g.font = b.bot
@@ -4526,10 +4534,13 @@ export function openPlaza(options) {
     },
     say,
     /** Your fighter or skin changed. */
-    look(character, skin, colour = null) {
+    look(character, skin, colour = null, aura = null) {
       P.character = character;
       P.skin = skin ?? null;
       P.colour = colour ?? null;
+      // Your Aura shows at once; others' come with their profiles.
+      P.aura = aura ?? null;
+      P.fx = [];
       P.img = imageFor(character, skin ?? null, colour ?? null);
     },
     close() {

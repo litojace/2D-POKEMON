@@ -2377,7 +2377,12 @@ function syncPlaza(want: boolean, hub = want) {
   if (plaza) {
     plaza.show();
     if (look !== plazaLook)
-      plaza.look(selected, skin, accountsUI.raidLook?.skin ?? null);
+      plaza.look(
+        selected,
+        skin,
+        accountsUI.raidLook?.skin ?? null,
+        accountsUI.raidLook?.aura ?? null,
+      );
     plazaLook = look;
     return;
   }
@@ -2391,6 +2396,7 @@ function syncPlaza(want: boolean, hub = want) {
     character: selected,
     skin,
     colour: accountsUI.raidLook?.skin ?? null,
+    aura: accountsUI.raidLook?.aura ?? null,
     reduced: reducedMotion,
     low: plazaLow,
     art: (character, worn, flat, colour) => {

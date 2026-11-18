@@ -148,8 +148,9 @@
   height: var(--hud-clock-h);
   border-radius: 999px;
   color: #fff;
-  font-weight: 700;
-  font-size: calc(13px * var(--text-scale, 1));
+  font-weight: 800;
+  font-size: calc(16px * var(--text-scale, 1));
+  font-variant-numeric: tabular-nums;
   cursor: pointer;
 }
 /* Today's quests: a compact list (desktop 208px wide, rows 0.26em apart,
@@ -817,7 +818,7 @@
   display: none;
 }
 .plaza-layer.phone .pz-clock {
-  font-size: calc(11px * var(--text-scale, 1));
+  font-size: calc(14px * var(--text-scale, 1));
   width: 5.2em;
 }
 /* Phones: the quests go left, under the player card and exactly as wide
@@ -940,7 +941,9 @@
     var(--hub-top, max(10px, var(--safe-top, 0px))) - var(--safe-top, 0px) +
       var(--hub-card-h, 52px) + var(--hud-gap)
   );
-  --hud-clock-h: 32px;
+  /* The clock is as tall as the event pill beside it on the same row
+     (44 px; phones 38 px), so the row reads as one line of HUD. */
+  --hud-clock-h: 44px;
   position: fixed;
   inset: 0;
   z-index: var(--z-hub);
@@ -955,7 +958,7 @@
 }
 .plaza-layer.phone {
   --hud-gap: 10px;
-  --hud-clock-h: 28px;
+  --hud-clock-h: 38px;
 }
 .plaza-layer .pz {
   position: absolute;

@@ -1027,7 +1027,7 @@ test("Nearby chat on the Plaza: the wheel sends quick chat, phrases pop over the
   expect(errors).toEqual([]);
 });
 
-test("the Plaza shows the skins players wear: yours at once, and others' palettes", async ({
+test("the Plaza shows the skins players wear: yours at once, others' palettes and auras", async ({
   page,
 }, info) => {
   await page.setViewportSize({ width: 1280, height: 800 });
@@ -1078,7 +1078,20 @@ test("the Plaza shows the skins players wear: yours at once, and others' palette
       },
       -90,
     );
+    // Someone showing off an Aura (the Plaza draws it as a match does).
+    join("halo", "Halo", { look: { aura: "halo-aura" } }, 0);
+    Object.assign(w.__plazaWorld.bodyOf("halo"), { y: me.y + 120 });
   });
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          [...(window as any).__plaza.others.values()].find(
+            (x: any) => x.name === "Halo",
+          )?.aura ?? null,
+      ),
+    )
+    .toBe("halo-aura");
   const srcOf = (name: string) =>
     page.evaluate((name) => {
       const b = [...(window as any).__plaza.others.values()].find(
