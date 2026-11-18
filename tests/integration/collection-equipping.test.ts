@@ -228,11 +228,15 @@ it("keeps every champion skin equippable through its separate champion slot", as
       "utf8",
     ),
   );
-  // The fashion collections and Nova Vanguard skins (17 Nov 2026).
+  // The fashion collections and Nova Vanguard skins (17 Nov 2026), the
+  // Legendary rarity and the Sky Pirates (18 Nov).
   for (const file of [
     "20261117170000_fashion_collections.sql",
     "20261117170001_distinct_epic_collections.sql",
     "20261117170002_nova_vanguard.sql",
+    // The Legendary rarity (Nova moves to it) and the Sky Pirates.
+    "20261118100000_legendary_skins_and_skin_sets.sql",
+    "20261118120000_sky_pirates.sql",
   ])
     await db.exec(await readFile(`supabase/migrations/${file}`, "utf8"));
   await login(admin);

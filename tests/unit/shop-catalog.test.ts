@@ -41,7 +41,8 @@ const migration =
   readFileSync(
     "supabase/migrations/20261118100000_legendary_skins_and_skin_sets.sql",
     "utf8",
-  );
+  ) +
+  readFileSync("supabase/migrations/20261118120000_sky_pirates.sql", "utf8");
 /** Missions are re-seeded (with the solo flag) by 014. */
 const missionMigration = readFileSync(
   "supabase/migrations/014_missions.sql",
@@ -169,7 +170,7 @@ describe("shop catalog", () => {
       expect(missionMigration, m.metric).toContain(`'${m.metric}'`);
   });
 
-  it("has 14 skins for every champion: 3 Common, 5 Rare, 4 Epic, 1 Legendary, 1 Mythical", () => {
+  it("has 15 skins for every champion: 3 Common, 5 Rare, 4 Epic, 2 Legendary, 1 Mythical", () => {
     for (const id of Object.keys(CHARACTERS)) {
       const mine = CHAMPION_SKINS.filter((s) => s.champion === id);
       const count = (r: string) => mine.filter((s) => s.rarity === r).length;
@@ -183,9 +184,9 @@ describe("shop catalog", () => {
           count("mythical"),
         ],
         id,
-      ).toEqual([14, 3, 5, 4, 1, 1]);
+      ).toEqual([15, 3, 5, 4, 2, 1]);
     }
-    expect(CHAMPION_SKINS).toHaveLength(14 * Object.keys(CHARACTERS).length);
+    expect(CHAMPION_SKINS).toHaveLength(15 * Object.keys(CHARACTERS).length);
     // Each champion has one Cyber Mecha Epic.
     for (const id of Object.keys(CHARACTERS))
       expect(
@@ -228,7 +229,7 @@ describe("shop catalog", () => {
 
   it("sells full-roster skin sets: one design, one rarity, every champion, never a Mythical", () => {
     const champions = Object.keys(CHARACTERS).sort();
-    expect(SKIN_BUNDLES).toHaveLength(7);
+    expect(SKIN_BUNDLES).toHaveLength(8);
     for (const b of SKIN_BUNDLES) {
       const skins = b.items.map((id) =>
         CHAMPION_SKINS.find((s) => s.id === id)!,
@@ -245,12 +246,15 @@ describe("shop catalog", () => {
         b.id,
       ).toBe(false);
     }
-    // Nova Vanguard is the Legendary set.
-    expect(
-      SKIN_BUNDLES.find((b) => b.collection === "nova-vanguard")!.items.every(
-        (id) => CHAMPION_SKINS.find((s) => s.id === id)!.rarity === "legendary",
-      ),
-    ).toBe(true);
+    // Nova Vanguard and Sky Pirates are the Legendary sets.
+    for (const c of ["nova-vanguard", "sky-pirates"])
+      expect(
+        SKIN_BUNDLES.find((b) => b.collection === c)!.items.every(
+          (id) =>
+            CHAMPION_SKINS.find((s) => s.id === id)!.rarity === "legendary",
+        ),
+        c,
+      ).toBe(true);
   });
 
   it("prices a skin set at 80% of the skins you don't own, as the database does", () => {

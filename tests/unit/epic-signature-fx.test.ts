@@ -70,28 +70,29 @@ const finite = (commands: unknown[][]) =>
   );
 
 describe("Legendary signature effects", () => {
-  it("gives each Legendary Nova suit its own signature, and Epics only the small glint", () => {
-    const novas = CHAMPION_SKINS.filter(
-      (s) => s.collection === "nova-vanguard",
-    );
-    expect(novas).toHaveLength(ids.length);
-    for (const s of novas) {
-      expect(s.rarity, s.id).toBe("legendary");
+  it("gives each Legendary skin its own signature, and Epics only the small glint", () => {
+    const legendary = CHAMPION_SKINS.filter((s) => s.rarity === "legendary");
+    expect(legendary).toHaveLength(ids.length * 2);
+    for (const s of legendary) {
       expect(SKIN_ART[s.id].signature, s.id).toBe(s.id);
       expect(EPIC_SIGNATURES[s.id], s.id).toBeDefined();
     }
     // No other skin carries a moving motif: on a busy court they read as
     // clutter, so they stay a Legendary mark.
     for (const [id, art] of Object.entries(SKIN_ART))
-      if (art.signature) expect(id.endsWith("-nova-vanguard"), id).toBe(true);
+      if (art.signature)
+        expect(
+          legendary.map((s) => s.id),
+          id,
+        ).toContain(id);
     for (const s of CHAMPION_SKINS.filter((s) =>
       ["abyssal-expedition", "dream-carnival"].includes(s.collection as string),
     ))
       expect(SKIN_ART[s.id].detail, s.id).toBe("glint");
     const sigs = Object.values(EPIC_SIGNATURES);
-    expect(sigs).toHaveLength(18);
-    expect(new Set(sigs.map((s) => s.name)).size).toBe(18);
-    expect(new Set(sigs.map((s) => s.draw)).size).toBe(18);
+    expect(sigs).toHaveLength(36);
+    expect(new Set(sigs.map((s) => s.name)).size).toBe(36);
+    expect(new Set(sigs.map((s) => s.draw)).size).toBe(36);
   });
 
   it("gives the new Epics no landing or victory of their own", () => {
@@ -168,6 +169,8 @@ describe("Legendary signature effects", () => {
   it("gives only the Legendary Nova Vanguard suits a hero landing and a victory", () => {
     for (const id of Object.keys(EPIC_SIGNATURES)) {
       const legendary = id.endsWith("-nova-vanguard");
+      // Sky Pirates land and win over several frames (tested below).
+      if (id.endsWith("-sky-pirates")) continue;
       const art = { ...SKIN_ART[id], trail: undefined };
       // Ambient off: no idle particles, so every emission is the moment's.
       const land = frame(3000, false, Math.PI / 2, { greeting: true });
@@ -209,6 +212,51 @@ describe("Legendary signature effects", () => {
       } else {
         expect(land.emit, id).not.toHaveBeenCalled();
         expect(win.emit, id).not.toHaveBeenCalled();
+      }
+    }
+  });
+
+  it("lands Sky Pirates with an anchor and wins with a treasure chest, then clears", () => {
+    for (const id of Object.keys(EPIC_SIGNATURES).filter((k) =>
+      k.endsWith("-sky-pirates"),
+    )) {
+      const art = { ...SKIN_ART[id], trail: undefined };
+      for (const [moment, ms, shape] of [
+        ["greeting", 1100, "shock"],
+        ["celebrating", 1400, "coin"],
+      ] as const) {
+        const f = frame(1000, false, Math.PI / 2, { [moment]: true });
+        drawSkinFx(f.ctx, art, 1);
+        const idle = frame(1000, false);
+        drawSkinFx(idle.ctx, art, 1);
+        // Drawn over the next frames: more on the layers than idle.
+        expect(f.commands.length, `${id} ${moment}`).toBeGreaterThan(
+          idle.commands.length,
+        );
+        // The anchor bites (or the chest opens) partway through.
+        let shapes: string[] = [];
+        for (let t = 1016; t < 1000 + ms; t += 16) {
+          f.emit.mockClear();
+          drawSkinFx({ ...f.ctx, now: t, [moment]: false }, art, 1);
+          shapes = shapes.concat(f.emit.mock.calls.map(([p]) => p.shape));
+          // Coins and dust stay behind the captain, off its face.
+          for (const [p] of f.emit.mock.calls)
+            if (p.shape === "coin" || p.shape === "puff")
+              expect(p.behind, `${id} ${moment}`).toBe(true);
+        }
+        expect(shapes, `${id} ${moment}`).toContain(shape);
+        // Afterwards the moment is gone: the frame matches an idle one.
+        f.commands.length = 0;
+        drawSkinFx(
+          { ...f.ctx, now: 1000 + ms + 2000, [moment]: false },
+          art,
+          1,
+        );
+        const later = frame(1000 + ms + 2000, false);
+        drawSkinFx(later.ctx, art, 1);
+        expect(JSON.stringify(f.commands), `${id} ${moment}`).toBe(
+          JSON.stringify(later.commands),
+        );
       }
     }
   });

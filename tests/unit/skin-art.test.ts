@@ -132,6 +132,8 @@ describe("champion skin art", () => {
       dark: creaturePalette.pyranda.dark,
     });
     const marks = ["#8a2a14", "#5a2216"];
+    const keepsColours = (id: string) =>
+      !SKIN_ART[id].palette.mid && !SKIN_ART[id].palette.dark;
     // The belly faces away in the back view, so each marking shows in some facing.
     const own = DIRS.map((dir) => creatureSvg("pyranda", dir)).join("");
     for (const m of marks) expect(own).toContain(m);
@@ -147,8 +149,21 @@ describe("champion skin art", () => {
             skin: s.id,
           },
         );
+        // A skin that keeps Pyranda's own body colours (Sky Pirates: the
+        // costume carries the theme) keeps its markings too (checked below).
+        if (keepsColours(s.id)) continue;
         for (const m of marks) expect(svg, `${s.id} ${dir}`).not.toContain(m);
       }
+    }
+    for (const s of CHAMPION_SKINS.filter(
+      (s) => s.champion === "pyranda" && keepsColours(s.id),
+    )) {
+      const all = DIRS.map((dir) =>
+        creatureSvg("pyranda", dir, undefined, undefined, "normal", {
+          skin: s.id,
+        }),
+      ).join("");
+      for (const m of marks) expect(all, s.id).toContain(m);
     }
   });
 

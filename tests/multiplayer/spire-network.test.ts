@@ -43,6 +43,16 @@ const emit = (s: Socket, event: string, data: unknown = {}) =>
       ),
   );
 const settle = () => new Promise((r) => setTimeout(r, 20));
+/**
+ * Wait until the snapshots a client has received show what the server just
+ * did. The server steps synchronously but its snapshots reach the socket
+ * asynchronously, so a fixed wait can read a stale one on a busy machine.
+ */
+const until = async (ok: () => boolean, ms = 2000) => {
+  const end = Date.now() + ms;
+  do await settle();
+  while (!ok() && Date.now() < end);
+};
 const setup = async (cragmuff = true, member?: SpireMember) => {
   const accounts = fakeAccounts();
   const recordRaid = vi.fn(async () => {});
@@ -811,7 +821,13 @@ it("makes the party beat every wave, the last one too, before the floor clears",
       sturdy();
       server!.step();
     }
-    await settle();
+    await until(() => {
+      const x = seen[seen.length - 1];
+      return (
+        x?.raid?.spire?.wave === w + 1 &&
+        x.players.filter((p) => p.echo && p.hp > 0).length === waves[w].length
+      );
+    });
     const last = seen[seen.length - 1];
     const s = last.raid!.spire!;
     // What the player sees: this wave on the court, the floor not cleared.
@@ -831,7 +847,9 @@ it("makes the party beat every wave, the last one too, before the floor clears",
     for (const p of a.players) if (p.echo) p.hp = 0;
     server!.step();
   }
-  await settle();
+  await until(
+    () => seen[seen.length - 1]?.raid?.spire?.clearedAt !== undefined,
+  );
   const done = seen[seen.length - 1].raid!.spire!;
   expect(done.clearedAt).toBeDefined();
   expect(spireHudView(seen[seen.length - 1]).health).toBe(100);

@@ -1,4 +1,6 @@
 import { VANGUARD_ART, VANGUARD_DESIGNS } from "./vanguard-art";
+import { PIRATE_ART } from "./pirate-art";
+import { pirateOutfit } from "./pirate-fashion";
 import { vanguardOutfit } from "./vanguard-equipment";
 import { FASHION_ART } from "./fashion-art";
 import { fashionOutfit, type FashionAccessory } from "./fashion-outfits";
@@ -46,6 +48,7 @@ export type PatternKind =
 export type Accessory =
   | FashionAccessory
   | "vanguard"
+  | "sky-pirates"
   | "earmuffs"
   | "ribbon"
   | "stem"
@@ -146,6 +149,7 @@ const hex = (c: string) => Number.parseInt(c.slice(1), 16);
 export const SKIN_ART: Record<string, SkinArt> = {
   ...FASHION_ART,
   ...VANGUARD_ART,
+  ...PIRATE_ART,
   // ---------------------------------------------------------------- Voltkit
   "voltkit-midnight": { palette: { light: "#c9d6ff", mid: "#3a4f9a", dark: "#141b3d", glow: "#5ff6ff", accent: "#5ff6ff" } },
   "voltkit-peach-fizz": { palette: { light: "#fff0e6", mid: "#ffb08f", dark: "#7a3a2e", glow: "#ff8fc8", accent: "#ff6fa8" } },
@@ -1108,6 +1112,7 @@ export function patternSvg(kind: PatternKind, color: string, color2 = color, see
 /** Accessory art for a facing, as [part layer, svg] in art units. */
 export function accessorySvg(a: Accessory, id: CharacterId, dir: Facing, p: Palette): [CreaturePart, string][] {
   if (a === "vanguard") return vanguardOutfit(id, dir, VANGUARD_DESIGNS[id], HEAD[id][dir]);
+  if (a === "sky-pirates") return pirateOutfit(id, dir, p, HEAD[id][dir]);
   if (a.startsWith("fashion-")) return fashionOutfit(a.slice(8) as FashionCollection, id, dir, p, HEAD[id][dir]);
   if (a.startsWith("mecha-")) return mechaSvg(a as MechaPiece, id, dir, p);
   const h = HEAD[id][dir];

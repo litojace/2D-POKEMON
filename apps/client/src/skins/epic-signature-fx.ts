@@ -4,10 +4,12 @@ import type { FxContext, FxShape } from "./skin-fx";
 import { WORLD_ART } from "../../../../packages/shared/src/world-art";
 
 /**
- * Signature effects for the Legendary Nova Vanguard suits: each of the 18 has
- * its own motif tied to its champion (Voltkit's pulse chevrons, Astrabun's
- * orbiting comet, Pyranda's medic cross...), plus a hero landing and a
- * victory. Epics keep the small glint every Epic has; motifs moving round
+ * Signature effects for the Legendary skins: each Nova Vanguard suit and
+ * each Sky Pirates captain has its own motif tied to its champion (Voltkit's
+ * pulse chevrons or storm compass, Sunbara's rising dawn or shoulder parrot,
+ * Mystowl's star chart or treasure map...), plus a landing and a victory:
+ * Nova's hero landing and star fan, the pirates' anchor drop and treasure
+ * chest. Epics keep the small glint every Epic has; motifs moving round
  * every fighter on the court read as clutter, so they stay a Legendary mark.
  *
  * Budget: every motif draws on the rig's two existing Graphics layers (no
@@ -424,7 +426,370 @@ const vanguard: Record<CharacterId, Signature> = {
   },
 };
 
-const TABLES: [string, Record<CharacterId, Signature>][] = [["nova-vanguard", vanguard]];
+// ---- Sky Pirates: a crew of sky-pirate captains, each with their own kit.
+const pirates: Record<CharacterId, Signature> = {
+  voltkit: {
+    name: "Storm compass",
+    c: 0xffd65b,
+    h: 0x7ff3ff,
+    burst: "spark",
+    draw: (f) => {
+      // A brass compass hovers by the head; its needle swings and crackles.
+      const cx = f.headX + f.headR + 6 * f.s,
+        cy = f.headCY + Math.sin(f.t / 700) * 2 * f.s;
+      const r = 6 * f.s * f.boost;
+      f.g.fillStyle(0xfff6e0, 1).fillCircle(cx, cy, r).lineStyle(1.6 * f.s, 0xc89a3a, 1).strokeCircle(cx, cy, r);
+      const a = Math.sin(f.t / 260) * 1.2 + f.t / 900;
+      f.g.fillStyle(0xd8323a, 1).fillTriangle(cx + Math.cos(a) * r * 0.8, cy + Math.sin(a) * r * 0.8, cx + Math.cos(a + 1.6) * 1.4 * f.s, cy + Math.sin(a + 1.6) * 1.4 * f.s, cx + Math.cos(a - 1.6) * 1.4 * f.s, cy + Math.sin(a - 1.6) * 1.4 * f.s);
+      if (f.full && (f.t / 450) % 1 < 0.15) sparkle(f.g, cx + r, cy - r, 2 * f.s, f.h);
+    },
+  },
+  cindrake: {
+    name: "Ship lantern",
+    c: 0xffb347,
+    h: 0xfff0a0,
+    burst: "spark",
+    draw: (f) => {
+      // A ship's lantern swings from a hook at its side, its flame flickering.
+      const side = f.fx > 0.3 ? -1 : 1;
+      const px = f.x + side * 30 * f.s,
+        py = f.headCY;
+      const a = Math.sin(f.t / 600) * 0.35;
+      const lx = px + Math.sin(a) * 12 * f.s,
+        ly = py + Math.cos(a) * 12 * f.s;
+      const s = f.s * f.boost;
+      f.g.lineStyle(1 * f.s, 0x3a2a1c, 0.9).lineBetween(px, py, lx, ly - 5 * s);
+      f.g.fillStyle(f.c, 0.25 + 0.1 * wave(f.t / 120)).fillCircle(lx, ly, 9 * s);
+      f.g.fillStyle(0x3a2a1c, 1).fillRect(lx - 4 * s, ly - 6 * s, 8 * s, 2 * s).fillRect(lx - 4 * s, ly + 4 * s, 8 * s, 2 * s);
+      f.g.fillStyle(f.h, 0.9).fillRect(lx - 3 * s, ly - 4 * s, 6 * s, 8 * s);
+      f.g.fillStyle(f.c, 1).fillEllipse(lx, ly + 0.5 * s, 2.6 * s, (4 + Math.sin(f.t / 90)) * s);
+    },
+  },
+  tidefin: {
+    name: "Ship's wheel",
+    c: 0x9a6a3a,
+    h: 0xe6c46a,
+    burst: "coin",
+    draw: (f) => {
+      // A ship's wheel turns slowly behind the admiral.
+      const r = (f.headR + 4 * f.s) * f.boost;
+      const cx = f.x,
+        cy = f.body - 6 * f.s;
+      const a0 = Math.sin(f.t / 2000) * 0.8;
+      const n = f.full ? 8 : 6;
+      for (let i = 0; i < n; i++) {
+        const a = a0 + (i / n) * TAU;
+        f.under.lineStyle(2.2 * f.s, f.c, 0.95).lineBetween(cx, cy, cx + Math.cos(a) * (r + 6 * f.s), cy + Math.sin(a) * (r + 6 * f.s));
+        if (f.full) dot(f.under, cx + Math.cos(a) * (r + 6 * f.s), cy + Math.sin(a) * (r + 6 * f.s), 2 * f.s, f.c);
+      }
+      f.under.lineStyle(3 * f.s, f.c, 0.95).strokeCircle(cx, cy, r);
+      f.under.lineStyle(1 * f.s, f.h, 0.9).strokeCircle(cx, cy, r - 2 * f.s);
+    },
+  },
+  auralynx: {
+    name: "Spyglass glint",
+    c: 0xe6c46a,
+    h: 0xffffff,
+    burst: "star",
+    draw: (f) => {
+      // A brass spyglass hovers by the head, its lens catching the light.
+      const side = f.fx < -0.3 ? -1 : 1;
+      const sx = f.headX + side * (f.headR + 2 * f.s),
+        sy = f.headY + Math.sin(f.t / 800) * 2 * f.s;
+      const s = f.s * f.boost;
+      const ex = sx + side * 16 * s,
+        ey = sy - 6 * s;
+      f.g.lineStyle(5 * s, 0x6a4a2a, 1).lineBetween(sx, sy, ex, ey);
+      f.g.lineStyle(3.4 * s, f.c, 1).lineBetween(sx + side * 6 * s, sy - 2.2 * s, ex, ey);
+      f.g.fillStyle(0xbfe8ff, 1).fillCircle(ex, ey, 2.4 * s);
+      if ((f.t / 1600) % 1 < 0.2) sparkle(f.g, ex, ey, (2.4 + 2 * Math.sin(((f.t / 1600) % 1 / 0.2) * Math.PI)) * f.s, f.h);
+    },
+  },
+  lumoth: {
+    name: "Message in a bottle",
+    c: 0xa6ffd9,
+    h: 0xfff3b0,
+    burst: "bubble",
+    draw: (f) => {
+      // A glowing bottle with a rolled message bobs round it.
+      const o = orbit(f, 0, 1, 4200, 36, 9, -10);
+      const g = on(f, o.front);
+      const s = f.s * f.boost;
+      const tilt = Math.sin(f.t / 500) * 0.5;
+      g.fillStyle(f.c, 0.25).fillCircle(o.x, o.y, 8 * s);
+      g.fillStyle(0x8fd9c0, 0.9).fillEllipse(o.x, o.y, 7 * s, 10 * s);
+      g.fillStyle(0x9a6a3a, 1).fillRect(o.x - 1.5 * s + Math.sin(tilt) * 4 * s, o.y - 8 * s, 3 * s, 3 * s);
+      g.fillStyle(f.h, 1).fillRect(o.x - 1.6 * s, o.y - 3 * s, 3.2 * s, 6 * s);
+    },
+  },
+  mystowl: {
+    name: "Treasure map",
+    c: 0xf1dfb0,
+    h: 0xd8323a,
+    burst: "star",
+    draw: (f) => {
+      // A rolled treasure map hangs open beside the quartermaster, a dotted
+      // trail leading to a pulsing X.
+      const side = f.fx > 0.3 ? -1 : 1;
+      const s = f.s * f.boost;
+      const cx = f.headX + side * (f.headR + 12 * f.s),
+        cy = f.headCY + Math.sin(f.t / 900) * 1.5 * f.s;
+      const w = 10 * s,
+        hgt = 12 * s;
+      f.g.fillStyle(f.c, 1).fillRect(cx - w, cy - hgt, w * 2, hgt * 2);
+      f.g.fillStyle(0xc9a86a, 1).fillRect(cx - w - 1.5 * s, cy - hgt - 2 * s, w * 2 + 3 * s, 3.5 * s).fillRect(cx - w - 1.5 * s, cy + hgt - 1.5 * s, w * 2 + 3 * s, 3.5 * s);
+      if (f.full)
+        for (let i = 0; i < 4; i++) dot(f.g, cx - w * 0.7 + i * w * 0.38, cy + hgt * 0.5 - i * hgt * 0.32, 0.9 * f.s, 0x7a5a3a);
+      const k = 0.7 + 0.3 * wave(f.t / 900);
+      const xs = 2.8 * s * k,
+        xx = cx + w * 0.45,
+        xy = cy - hgt * 0.5;
+      f.g.lineStyle(1.8 * f.s, f.h, 1).lineBetween(xx - xs, xy - xs, xx + xs, xy + xs).lineBetween(xx - xs, xy + xs, xx + xs, xy - xs);
+    },
+  },
+  terradon: {
+    name: "Swinging anchor",
+    c: 0x6a7a8a,
+    h: 0xe6c46a,
+    burst: "pebble",
+    draw: (f) => {
+      // An iron anchor swings on its chain at the captain's side.
+      const side = f.fx > 0.3 ? -1 : 1;
+      const px = f.x + side * 34 * f.s,
+        py = f.headCY;
+      const a = Math.sin(f.t / 900) * 0.3;
+      const len = 20 * f.s;
+      const ax = px + Math.sin(a) * len,
+        ay = py + Math.cos(a) * len;
+      const s = f.s * f.boost;
+      f.g.lineStyle(1.2 * f.s, 0x8a8a8a, 0.9).lineBetween(px, py, ax, ay - 7 * s);
+      f.g.lineStyle(2.4 * s, f.c, 1).lineBetween(ax, ay - 7 * s, ax, ay + 5 * s).lineBetween(ax - 4 * s, ay - 4 * s, ax + 4 * s, ay - 4 * s);
+      f.g.beginPath().arc(ax, ay + 1 * s, 6 * s, 0.2, Math.PI - 0.2).strokePath();
+      f.g.lineStyle(1.6 * f.s, f.h, 1).strokeCircle(ax, ay - 8.5 * s, 1.6 * s);
+    },
+  },
+  duskveil: {
+    name: "Ghost flag",
+    c: 0xd6c8ff,
+    h: 0x2a2448,
+    burst: "puff",
+    draw: (f) => {
+      // A ghostly pirate flag ripples on a pole behind the wisp.
+      const side = f.fx > 0.3 ? -1 : 1;
+      const px = f.x + side * 30 * f.s,
+        top = f.headY - 6 * f.s;
+      f.under.lineStyle(1.6 * f.s, 0x5a4a3a, 1).lineBetween(px, top, px, f.ground);
+      const w = 20 * f.s * f.boost,
+        hgt = 12 * f.s * f.boost;
+      const n = f.full ? 6 : 4;
+      const edge = (dy: number) =>
+        curve(n, (u) => ({ x: px + side * u * w, y: top + dy + Math.sin(u * 4 - f.t / 220) * 2.2 * f.s * u }));
+      const pts = [...edge(0), ...edge(hgt).reverse()];
+      f.under.fillStyle(f.h, 0.85).fillPoints(pts, true);
+      f.under.lineStyle(1 * f.s, f.c, 0.8).strokePoints(pts, true);
+      dot(f.under, px + side * w * 0.45, top + hgt * 0.45 + Math.sin(1.8 - f.t / 220) * 1 * f.s, 2.4 * f.s, f.c, 0.95);
+    },
+  },
+  coilemur: {
+    name: "Rigging lasso",
+    c: 0xc9a06a,
+    h: 0xffffff,
+    burst: "ring",
+    draw: (f) => {
+      // A rope lasso spins above the runner's head.
+      const cy = f.headY - 10 * f.s;
+      const rx = 18 * f.s * f.boost,
+        ry = 5 * f.s * f.boost;
+      const a = f.t / 180;
+      f.g.lineStyle(2 * f.s, f.c, 1).strokeEllipse(f.headX, cy, rx * 2, ry * 2);
+      f.g.lineStyle(2 * f.s, f.c, 1).lineBetween(f.headX + Math.cos(a) * rx, cy + Math.sin(a) * ry, f.headX + f.headR * 0.6, f.headCY);
+      if (f.full) dot(f.g, f.headX + Math.cos(a) * rx, cy + Math.sin(a) * ry, 1.6 * f.s, f.h);
+    },
+  },
+  pyranda: {
+    name: "Doubloons",
+    c: 0xffd65b,
+    h: 0xa8823a,
+    burst: "coin",
+    draw: (f) => {
+      // Gold doubloons circle, flipping as they go.
+      const n = f.full ? 4 : 3;
+      for (let i = 0; i < n; i++) {
+        const o = orbit(f, i, n, 3000, 36, 10, -8);
+        const g = on(f, o.front);
+        const flip = Math.abs(Math.cos(f.t / 250 + i));
+        const r = 3.4 * f.s * f.boost;
+        g.fillStyle(f.c, o.front ? 1 : 0.6).fillEllipse(o.x, o.y, r * 2 * (0.2 + 0.8 * flip), r * 2);
+        g.lineStyle(0.8 * f.s, f.h, 0.9).strokeEllipse(o.x, o.y, r * 2 * (0.2 + 0.8 * flip), r * 2);
+      }
+    },
+  },
+  glacelle: {
+    name: "Frost sail",
+    c: 0xeaf6ff,
+    h: 0x7fb6e6,
+    burst: "flake",
+    draw: (f) => {
+      // A small sail on a mast at her side billows outward in the wind.
+      const side = f.fx > 0.3 ? -1 : 1;
+      const mx = f.x + side * 30 * f.s,
+        top = f.headY + 2 * f.s;
+      const hgt = (f.ground - top) * 0.7 * f.boost;
+      const belly = (10 + 5 * wave(f.t / 1400)) * f.s * f.boost;
+      f.under.lineStyle(2 * f.s, 0x8a6a4a, 1).lineBetween(mx, top - 4 * f.s, mx, f.ground);
+      const pts = curve(f.full ? 8 : 5, (u) => ({ x: mx + side * (Math.sin(u * Math.PI) * belly + 2 * f.s), y: top + u * hgt }));
+      f.under.fillStyle(f.c, 0.95).fillPoints(pts, true);
+      f.under.lineStyle(1 * f.s, f.h, 0.9).strokePoints(pts, true);
+      if (f.full) f.under.lineStyle(1 * f.s, f.h, 0.6).lineBetween(mx + side * 2 * f.s, top + hgt * 0.5, mx + side * belly * 0.9, top + hgt * 0.5);
+    },
+  },
+  halcyra: {
+    name: "Seagull wingman",
+    c: 0xffffff,
+    h: 0x3a3a4a,
+    burst: "ray",
+    draw: (f) => {
+      // A seagull wheels round above the ace, flapping now and then.
+      const a = (f.t / 2600) * TAU;
+      const gx = f.headX + Math.cos(a) * 34 * f.s,
+        gy = f.headY - 14 * f.s + Math.sin(a) * 7 * f.s;
+      const flap = Math.sin(f.t / 120) * 0.6 + 0.3;
+      const s = 7 * f.s * f.boost;
+      const g = Math.sin(a) > 0 ? f.g : f.under;
+      g.lineStyle(2 * f.s, f.c, 1).strokePoints([
+        { x: gx - s, y: gy - s * flap },
+        { x: gx - s * 0.4, y: gy - s * 0.1 },
+        { x: gx, y: gy },
+        { x: gx + s * 0.4, y: gy - s * 0.1 },
+        { x: gx + s, y: gy - s * flap },
+      ]);
+      dot(g, gx, gy, 1 * f.s, f.h);
+    },
+  },
+  sunbara: {
+    name: "Shoulder parrot",
+    c: 0x3fbf5a,
+    h: 0xd8323a,
+    burst: "leaf",
+    draw: (f) => {
+      // A parrot perches on its shoulder, bobbing and flicking a wing.
+      const side = f.fx < -0.3 ? -1 : 1;
+      const s = f.s * f.boost;
+      const bx = f.x + side * (f.headR * 0.95),
+        by = f.chest - 4 * f.s + Math.abs(Math.sin(f.t / 400)) * -2 * f.s;
+      const g = f.g;
+      g.fillStyle(f.c, 1).fillEllipse(bx, by, 7 * s, 10 * s);
+      g.fillStyle(f.h, 1).fillCircle(bx + side * 1 * s, by - 6 * s, 3.6 * s);
+      g.fillStyle(0xffd65b, 1).fillTriangle(bx + side * 4 * s, by - 6.5 * s, bx + side * 7 * s, by - 5 * s, bx + side * 4 * s, by - 4 * s);
+      dot(g, bx + side * 2 * s, by - 7 * s, 0.8 * s, 0x1a1a1a);
+      const wing = Math.sin(f.t / 150) > 0.7 ? -0.6 : 0;
+      g.fillStyle(0x2a8f45, 1).fillTriangle(bx - side * 2 * s, by - 2 * s, bx - side * (6 + wing * 6) * s, by + (4 + wing * 6) * s, bx, by + 4 * s);
+      g.fillStyle(0x3a7fd8, 1).fillTriangle(bx - 1.5 * s, by + 4 * s, bx + 1.5 * s, by + 4 * s, bx, by + 11 * s);
+    },
+  },
+  astrabun: {
+    name: "Moon galleon",
+    c: 0xfff3c4,
+    h: 0x9a6a3a,
+    burst: "star",
+    draw: (f) => {
+      // A tiny moonlit galleon sails an orbit round the bosun.
+      const o = orbit(f, 0, 1, 5200, 38, 11, -6);
+      const g = on(f, o.front);
+      const s = f.s * f.boost;
+      const dir = Math.cos(o.a + Math.PI / 2) > 0 ? 1 : -1;
+      g.fillStyle(f.h, o.front ? 1 : 0.6).fillTriangle(o.x - 7 * s, o.y, o.x + 7 * s, o.y, o.x + dir * 5 * s, o.y + 3.5 * s);
+      g.fillRect(o.x - 5 * s, o.y - 1 * s, 10 * s, 2 * s);
+      g.fillStyle(f.c, o.front ? 1 : 0.6).fillTriangle(o.x, o.y - 12 * s, o.x, o.y - 1.5 * s, o.x + dir * 6 * s, o.y - 2 * s);
+      g.lineStyle(0.8 * f.s, f.h, 1).lineBetween(o.x, o.y - 13 * s, o.x, o.y);
+    },
+  },
+  wombolder: {
+    name: "Cannon smoke",
+    c: 0xd8d8d8,
+    h: 0xffb347,
+    burst: "puff",
+    draw: (f) => {
+      // A small deck cannon at its side booms on the beat: a flash, then smoke.
+      const side = f.fx > 0.3 ? -1 : 1;
+      const cx = f.x + side * 32 * f.s,
+        cy = f.ground - 4 * f.s;
+      const s = f.s * f.boost;
+      f.under.fillStyle(0x3a3a44, 1).fillRect(cx - 7 * s, cy - 5 * s, 12 * s, 6 * s).fillCircle(cx - 4 * s, cy + 1 * s, 2.6 * s).fillCircle(cx + 3 * s, cy + 1 * s, 2.6 * s);
+      const k = (f.t / 1800) % 1;
+      const mx = cx + side * 6 * s;
+      if (k < 0.08) f.under.fillStyle(f.h, 0.9).fillCircle(mx, cy - 3 * s, 4 * s);
+      if (k < 0.7)
+        for (let i = 0; i < (f.full ? 3 : 2); i++) {
+          const r = (2.4 + k * 8 + i * 1.6) * s;
+          f.under.fillStyle(f.c, 0.6 * (1 - k / 0.7)).fillCircle(mx + side * (k * 16 + i * 4) * s, cy - 4 * s - k * 12 * s - i * 2 * s, r);
+        }
+    },
+  },
+  shadopus: {
+    name: "Kraken tentacle",
+    c: 0x6a3a8a,
+    h: 0xff8fd0,
+    burst: "bubble",
+    draw: (f) => {
+      // A kraken's tentacle curls up from the ground behind the captain.
+      const side = f.fx > 0.3 ? -1 : 1;
+      const bx = f.x + side * 26 * f.s;
+      const hgt = (f.ground - f.headY) * 0.75 * f.boost;
+      const pts = curve(f.full ? 10 : 6, (u) => ({
+        x: bx + side * Math.sin(u * 2.4 + Math.sin(f.t / 500) * 0.6) * 10 * f.s * u,
+        y: f.ground - u * hgt,
+      }));
+      f.under.lineStyle(6 * f.s, f.c, 1).strokePoints(pts);
+      f.under.lineStyle(2 * f.s, 0x9a6abf, 1).strokePoints(pts);
+      if (f.full)
+        for (const i of [3, 5, 7]) if (pts[i]) dot(f.under, pts[i].x - side * 2 * f.s, pts[i].y, 1.1 * f.s, f.h);
+    },
+  },
+  pangrove: {
+    name: "Ship's bell",
+    c: 0xe6c46a,
+    h: 0xffffff,
+    burst: "leaf",
+    draw: (f) => {
+      // A brass ship's bell on a bracket swings and rings on the beat.
+      const side = f.fx > 0.3 ? -1 : 1;
+      const px = f.x + side * 32 * f.s,
+        py = f.headCY - 2 * f.s;
+      const k = (f.t / 2000) % 1;
+      const swing = k < 0.4 ? Math.sin(k * 25) * 0.4 * (1 - k / 0.4) : 0;
+      const s = f.s * f.boost;
+      f.g.lineStyle(2 * f.s, 0x5a3a22, 1).lineBetween(px - side * 8 * s, py, px, py);
+      const bx = px + Math.sin(swing) * 6 * s,
+        by = py + 7 * s;
+      f.g.fillStyle(f.c, 1).fillTriangle(bx - 6 * s, by + 5 * s, bx + 6 * s, by + 5 * s, bx, by - 6 * s).fillCircle(bx, by - 2 * s, 4 * s);
+      f.g.fillStyle(0xa8823a, 1).fillCircle(bx + Math.sin(swing) * 3 * s, by + 5.5 * s, 1.4 * s);
+      if (f.full && k < 0.4)
+        for (const d of [1, -1]) f.g.lineStyle(1 * f.s, f.h, 0.8 * (1 - k / 0.4)).beginPath().arc(bx, by, (9 + k * 10) * s, d > 0 ? -0.6 : Math.PI - 0.6, d > 0 ? 0.6 : Math.PI + 0.6).strokePath();
+    },
+  },
+  mossloth: {
+    name: "Swaying hammock",
+    c: 0xd9c9a0,
+    h: 0x8a6a4a,
+    burst: "leaf",
+    draw: (f) => {
+      // A rope hammock sways between two posts behind the lazy pirate.
+      const w = (f.headR * 1.6) * f.boost;
+      const y0 = f.body - 6 * f.s;
+      f.under.lineStyle(2.4 * f.s, f.h, 1).lineBetween(f.x - w, y0 - 10 * f.s, f.x - w, f.ground).lineBetween(f.x + w, y0 - 10 * f.s, f.x + w, f.ground);
+      const sway = Math.sin(f.t / 900) * 4 * f.s;
+      const pts = curve(f.full ? 10 : 6, (u) => ({ x: f.x - w + u * w * 2 + sway * Math.sin(u * Math.PI), y: y0 - 8 * f.s + Math.sin(u * Math.PI) * 16 * f.s }));
+      f.under.lineStyle(5 * f.s, f.c, 0.95).strokePoints(pts);
+      f.under.lineStyle(1 * f.s, f.h, 0.8).strokePoints(pts);
+    },
+  },
+};
+
+const TABLES: [string, Record<CharacterId, Signature>][] = [
+  ["nova-vanguard", vanguard],
+  ["sky-pirates", pirates],
+];
 /** Every signature by skin id. */
 export const EPIC_SIGNATURES: Record<string, Signature> = Object.fromEntries(
   TABLES.flatMap(([suffix, table]) => Object.entries(table).map(([id, sig]) => [`${id}-${suffix}`, sig])),
@@ -434,8 +799,14 @@ const ULT_MS = 900;
 /** The Legendary hero landing and victory pose, swelling a little longer. */
 const MOMENT_MS = 1200;
 const ULTS = new WeakMap<object, { at: number; ms: number }>();
-/** Nova Vanguard is the Legendary set: it also lands and wins in style. */
-const isLegendary = (skin: string) => skin.endsWith("-nova-vanguard");
+/** The Legendary sets land and win in style. */
+const isLegendary = (skin: string) =>
+  skin.endsWith("-nova-vanguard") || skin.endsWith("-sky-pirates");
+const isPirate = (skin: string) => skin.endsWith("-sky-pirates");
+/** A Sky Pirate's anchor landing and treasure victory, drawn over time. */
+const PIRATE_MOMENTS = new WeakMap<object, { land?: number; win?: number }>();
+const LAND_MS = 1100,
+  WIN_MS = 1400;
 
 /** Draw a signature for one frame. */
 export function drawEpicSignature(ctx: FxContext, skin: string) {
@@ -443,7 +814,15 @@ export function drawEpicSignature(ctx: FxContext, skin: string) {
   if (!sig || ctx.defeated) return;
   const { sc } = ctx;
   const ground = ctx.y + WORLD_ART.fighterFeet * sc;
-  if (isLegendary(skin) && (ctx.greeting || ctx.celebrating)) {
+  if (isPirate(skin) && (ctx.greeting || ctx.celebrating)) {
+    // Sky Pirates: an anchor drops and bites the ground, or a treasure chest
+    // bursts open behind the captain; drawn over the next frames below.
+    ULTS.set(ctx.g, { at: ctx.now, ms: MOMENT_MS });
+    let m = PIRATE_MOMENTS.get(ctx.g);
+    if (!m) PIRATE_MOMENTS.set(ctx.g, (m = {}));
+    if (ctx.greeting) m.land = ctx.now;
+    else m.win = ctx.now;
+  } else if (isLegendary(skin) && (ctx.greeting || ctx.celebrating)) {
     ULTS.set(ctx.g, { at: ctx.now, ms: MOMENT_MS });
     if (ctx.greeting) {
       // Hero landing: a column of the suit's light comes down on the spot,
@@ -490,7 +869,7 @@ export function drawEpicSignature(ctx: FxContext, skin: string) {
   // a little over half its height, the chest just under it.
   const tall = Math.max(10, ground - ctx.headY);
   const headR = tall * 0.28;
-  sig.draw({
+  const frame: Frame = {
     ctx,
     g: ctx.g,
     under: ctx.under,
@@ -513,5 +892,70 @@ export function drawEpicSignature(ctx: FxContext, skin: string) {
     boost,
     c: sig.c,
     h: sig.h,
-  });
+  };
+  sig.draw(frame);
+  if (isPirate(skin)) pirateMoments(frame);
+}
+
+/**
+ * The Sky Pirates' landing and victory. Landing: an anchor falls beside the
+ * captain, bites the ground with a ring and a puff of dust, then fades.
+ * Victory: a treasure chest behind them springs open and doubloons fly up,
+ * off the face. Both stay within a step of the fighter.
+ */
+function pirateMoments(f: Frame) {
+  const m = PIRATE_MOMENTS.get(f.ctx.g);
+  if (!m) return;
+  const { ctx } = f;
+  const s = ctx.sc * 1.35;
+  if (m.land !== undefined) {
+    const k = (ctx.now - m.land) / LAND_MS;
+    if (k < 0 || k > 1) m.land = undefined;
+    else {
+      const side = f.fx > 0.3 ? -1 : 1;
+      const ax = f.x + side * 30 * s;
+      const drop = 0.25;
+      const ay = k < drop ? f.ground - 90 * s + (k / drop) * 90 * s : f.ground;
+      const a = k > 0.75 ? (1 - k) / 0.25 : 1;
+      const g = f.under;
+      // The chain up out of sight, the shank, the stock and the flukes.
+      g.lineStyle(1.4 * s, 0x8a8a8a, 0.9 * a).lineBetween(ax, ay - 40 * s, ax, ay - 22 * s);
+      g.lineStyle(3.4 * s, 0x5a6a7a, a).lineBetween(ax, ay - 22 * s, ax, ay - 2 * s).lineBetween(ax - 7 * s, ay - 17 * s, ax + 7 * s, ay - 17 * s);
+      g.beginPath().arc(ax, ay - 8 * s, 9 * s, 0.25, Math.PI - 0.25).strokePath();
+      g.lineStyle(1.6 * s, 0xe6c46a, a).strokeCircle(ax, ay - 24 * s, 2.4 * s);
+      if (k >= drop && k - (ctx.dt * 1000) / LAND_MS < drop) {
+        ctx.emit({ x: ax, y: f.ground, vx: 0, vy: 0, life: 0.6, size: 10 * ctx.sc, color: 0xe6c46a, shape: "shock" });
+        for (let i = 0; i < (ctx.ambient ? 8 : 4); i++) {
+          const d = Math.PI + (i / 7) * Math.PI;
+          ctx.emit({ x: ax, y: f.ground - 2 * ctx.sc, vx: Math.cos(d) * 70, vy: Math.sin(d) * 40, life: 0.5, size: 2.6 * ctx.sc, color: 0xc9b48a, shape: "puff", behind: true });
+        }
+      }
+    }
+  }
+  if (m.win !== undefined) {
+    const k = (ctx.now - m.win) / WIN_MS;
+    if (k < 0 || k > 1) m.win = undefined;
+    else {
+      const side = f.fx > 0.3 ? -1 : 1;
+      const cx = f.x + side * 26 * s,
+        cy = f.ground - 2 * s;
+      const a = k > 0.8 ? (1 - k) / 0.2 : 1;
+      const open = Math.min(1, Math.max(0, (k - 0.15) / 0.15));
+      const w = 11 * s,
+        hgt = 8 * s;
+      const g = f.under;
+      // Gold glow from inside, the box, its bands and the lid tipping back.
+      if (open > 0) g.fillStyle(0xffe08a, 0.35 * open * a).fillCircle(cx, cy - hgt, 12 * s);
+      g.fillStyle(0x7a4a24, a).fillRect(cx - w, cy - hgt, w * 2, hgt);
+      g.lineStyle(1.2 * s, 0xe6c46a, a).strokeRect(cx - w, cy - hgt, w * 2, hgt).lineBetween(cx - w * 0.5, cy - hgt, cx - w * 0.5, cy).lineBetween(cx + w * 0.5, cy - hgt, cx + w * 0.5, cy);
+      const lidY = cy - hgt - open * 8 * s;
+      g.fillStyle(0x8a5a2c, a).fillEllipse(cx, lidY, w * 2, (5 - open * 3) * s + 1);
+      g.lineStyle(1.2 * s, 0xe6c46a, a).strokeEllipse(cx, lidY, w * 2, (5 - open * 3) * s + 1);
+      if (open >= 1 && k - (ctx.dt * 1000) / WIN_MS < 0.3)
+        for (let i = 0; i < (ctx.ambient ? 12 : 6); i++) {
+          const d = -Math.PI * (0.2 + (0.6 * i) / 11);
+          ctx.emit({ x: cx, y: cy - hgt, vx: Math.cos(d) * 70, vy: Math.sin(d) * 150, life: 0.9, size: 2.6 * ctx.sc, color: i % 3 ? 0xffd65b : 0xfff3c4, shape: "coin", spin: 8, behind: true });
+        }
+    }
+  }
 }
