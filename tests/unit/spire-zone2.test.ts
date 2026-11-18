@@ -547,9 +547,13 @@ describe("play-test (bot raiders vs zone 2)", () => {
     return a.raid.spire!.best >= floor;
   }
   it("floor 11 is often cleared solo with no blessings; floor 19 less often, but sometimes", () => {
+    // 24 seeds, as the other zones: with 12, floors 11 and 19 tied (9 each)
+    // after the skill revolution's wave C though 48 seeds put them at 40 and
+    // 31, and on the kits before it 12 seeds passed only by luck (24 gave 18
+    // and 19).
+    const seeds = Array.from({ length: 24 }, (_, i) => i + 1);
     const rate = (floor: number) =>
-      [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].filter((s) => playFloor(floor, s))
-        .length / 12;
+      seeds.filter((s) => playFloor(floor, s)).length / seeds.length;
     const eleven = rate(11),
       nineteen = rate(19);
     // (Zone 1: floor 9 is cleared about a third of the time, floor 1 always.)

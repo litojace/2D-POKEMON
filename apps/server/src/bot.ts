@@ -82,7 +82,8 @@ interface Profile {
 }
 /**
  * The skill revolution (docs/skill-revolution.md) recalibrated the duel daze
- * of Voltkit, Tidefin and Lumoth (wave A) and Cindrake and Astrabun (wave B). Raids and every Spire floor were
+ * of Voltkit, Tidefin and Lumoth (wave A), Cindrake and Astrabun (wave B) and
+ * Glacelle, Halcyra and Sunbara (wave C). Raids and every Spire floor were
  * tuned by simulation with the daze they had before (the Spire's play-tests
  * use a Normal Voltkit raider; its Echoes are Normal bots too), so in raid
  * mode they keep it: their duel numbers can move without moving the Spire.
@@ -94,6 +95,10 @@ export const RAID_DAZE_BY: Partial<Record<CharacterId, number>> = {
   // Wave B.
   cindrake: 0.41,
   astrabun: 0.33,
+  // Wave C.
+  glacelle: 0.26,
+  halcyra: 0.175,
+  sunbara: 0.225,
 };
 export const BOT_PROFILES: Record<BotDifficulty, Profile> = {
   easy: {
@@ -140,9 +145,9 @@ export const BOT_PROFILES: Record<BotDifficulty, Profile> = {
       duskveil: 0.27,
       coilemur: 0.34,
       pyranda: 0.36,
-      glacelle: 0.26,
-      halcyra: 0.175,
-      sunbara: 0.225,
+      glacelle: 0.24,
+      halcyra: 0.165,
+      sunbara: 0.21,
       astrabun: 0.3,
       wombolder: 0.355,
       shadopus: 0.28,

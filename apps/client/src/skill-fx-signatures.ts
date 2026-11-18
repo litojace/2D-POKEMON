@@ -373,24 +373,15 @@ const iceTrail = shed(0.06, (fx, x, y) =>
     drag: 1.4,
   }),
 );
-const shatter: ImpactFn = (scene, a, x, y) => {
-  const fx = fxFor(scene),
-    big = a.id === "hailstone";
+const shatter: ImpactFn = (scene, _a, x, y) => {
+  const fx = fxFor(scene);
   // Ice breaks into chunks that skitter and bounce, with a puff of frost.
-  chunks(
-    fx,
-    x,
-    y,
-    big ? 14 : 7,
-    ICE,
-    big ? [80, 240] : [50, 160],
-    big ? [2, 3.8] : [1.4, 2.6],
-  );
+  chunks(fx, x, y, 7, ICE, [50, 160], [1.4, 2.6]);
   fx.burst({
     x,
     y,
     z: 10,
-    count: big ? 6 : 3,
+    count: 3,
     kind: "smoke",
     color: [0xf2fdff, 0xdff8ff],
     speed: [20, 70],
@@ -399,7 +390,6 @@ const shatter: ImpactFn = (scene, a, x, y) => {
     size: [9, 15],
     drag: 2,
   });
-  if (big) fx.decal({ kind: "wet", x, y, r: 28, color: 0xdff8ff, life: 3 });
 };
 const frostBloomBurst: ZoneFn = (g, z, progress) => {
   const fx = fxFor(g.scene),
@@ -1447,7 +1437,6 @@ const SIGNATURES: Record<string, Sig> = {
   "tide-needle": { projectile: needleTrail, impact: needleHit },
   "tide-double": { cast: tideDouble },
   "rime-shard": { projectile: iceTrail, impact: shatter },
-  hailstone: { projectile: iceTrail, impact: shatter },
   "frost-bloom": { zone: frostBloomBurst },
   "frost-breath": { channel: frostBreath },
   // Electric

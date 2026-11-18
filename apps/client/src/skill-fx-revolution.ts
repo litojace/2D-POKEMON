@@ -864,6 +864,93 @@ function mochiSplat(
   );
 }
 
+// ───────────── Glacelle · Black Ice: a sheet of glassy ice ─────────────
+const ICE = 0x1d3550;
+const RIME = 0xd8f4ff;
+/** Where the ice will spread: its real area, frosting over. */
+function iceWindup(
+  g: G,
+  a: Ability,
+  x: number,
+  y: number,
+  angle: number,
+  aimX: number,
+  aimY: number,
+  _color: number,
+  k: number,
+) {
+  const fx = fxFor(g.scene),
+    d = Math.min(a.range, Math.hypot(aimX - x, aimY - y)),
+    tx = x + Math.cos(angle) * d,
+    ty = y + Math.sin(angle) * d;
+  fx.floorSolid
+    .fillStyle(ICE, 0.08 + k * 0.14)
+    .fillEllipse(tx, ty, a.radius * 2 * k, a.radius * 2 * SQ * k);
+  fx.floor
+    .lineStyle(2, RIME, 0.3 + k * 0.5)
+    .strokeEllipse(tx, ty, a.radius * 2, a.radius * 2 * SQ);
+}
+/**
+ * The ice: a dark glassy sheet over its real area with a frosted rim, a
+ * few cracks and the sky's light gliding across it. Cheap: floor shapes and
+ * a rare glint, no glows.
+ */
+function blackIce(g: G, z: Zone, progress: number, now: number) {
+  const fx = fxFor(g.scene),
+    r = z.radius,
+    k = lifeOf(z, progress),
+    grow = Math.min(1, k * 8),
+    fade = k > 0.85 ? (1 - k) / 0.15 : 1;
+  fx.essential(() => {
+    fx.floorSolid
+      .fillStyle(ICE, 0.42 * grow * fade)
+      .fillEllipse(z.x, z.y, r * 2 * grow, r * 2 * SQ * grow);
+    fx.floor
+      .lineStyle(3, RIME, 0.75 * fade)
+      .strokeEllipse(z.x, z.y, r * 2 * grow, r * 2 * SQ * grow);
+  });
+  // A sheen sliding across: a pale band that crosses the sheet.
+  const t = (now / 1400 + hash(z.id)) % 1,
+    bx = z.x - r + t * r * 2,
+    half = Math.sqrt(Math.max(0, 1 - ((bx - z.x) / r) ** 2)) * r * SQ;
+  fx.floor
+    .lineStyle(10, RIME, 0.16 * grow * fade)
+    .lineBetween(bx - 14, z.y + half * 0.8, bx + 14, z.y - half * 0.8);
+  // Cracks from the middle.
+  for (let i = 0; i < 6; i++) {
+    const ang = hash(z.id * 5 + i) * TAU,
+      len = r * (0.45 + hash(z.id + i * 3) * 0.45) * grow,
+      mx = z.x + Math.cos(ang + 0.2) * len * 0.5,
+      my = z.y + Math.sin(ang + 0.2) * len * 0.5 * SQ;
+    fx.floor
+      .lineStyle(1.5, RIME, 0.5 * fade)
+      .lineBetween(z.x, z.y, mx, my)
+      .lineBetween(
+        mx,
+        my,
+        z.x + Math.cos(ang) * len,
+        z.y + Math.sin(ang) * len * SQ,
+      );
+  }
+  fx.trail(`black-ice${z.id}`, 0.3, () => {
+    const ang = Math.random() * TAU,
+      d = Math.sqrt(Math.random()) * r * 0.85;
+    fx.burst({
+      x: z.x + Math.cos(ang) * d,
+      y: z.y + Math.sin(ang) * d * SQ,
+      z: 2,
+      count: 1,
+      kind: "spark",
+      color: [WHITE, RIME],
+      speed: [0, 10],
+      up: [10, 30],
+      life: [0.3, 0.5],
+      size: [1, 1.6],
+      grav: 0,
+    });
+  });
+}
+
 export const revolutionKit: FxKit = {
   zone: {
     "riptide-wave": riptideWave,
@@ -871,6 +958,7 @@ export const revolutionKit: FxKit = {
     "wraith-hunt": wraith,
     "radiant-flare": flare,
     overgrowth: garden,
+    "black-ice": blackIce,
   },
   windup: {
     "riptide-wave": waveWindup,
@@ -879,6 +967,7 @@ export const revolutionKit: FxKit = {
     "radiant-flare": flareWindup,
     "chestnut-storm": creepWindup,
     overgrowth: gardenWindup,
+    "black-ice": iceWindup,
   },
   cast: {
     "river-dash": riverDash,

@@ -189,7 +189,7 @@ export const CHAMPION_QUIPS: Record<CharacterId, readonly Quip[]> = {
     q("wave", "Want a roasted chestnut?"),
   ],
   glacelle: [
-    q("skill0", "Hailstone! Chill out."),
+    q("skill0", "Black ice! Mind your step."),
     q("hurt", "Brr! Your finger is warm!"),
     q("victory", "Freeze! You're it."),
     q("wave", "Stay frosty."),

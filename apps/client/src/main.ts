@@ -3781,7 +3781,7 @@ function renderBattle() {
                                     : s.kind === "grounded"
                                       ? "GROUNDED"
                                       : s.kind === "float"
-                                        ? "FLOATING"
+                                        ? "SLIDING"
                                         : s.kind === "confuse"
                                           ? "CONFUSED"
                                           : s.kind.toUpperCase(),
@@ -7372,20 +7372,15 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
           g.fillStyle(0xff9de2, 0.95).fillCircle(qx, qy + 6, 1.6);
         }
       }
-      // Moon Gravity: a floating fighter hovers over a soft shadow.
+      // Black Ice: a sliding fighter skids on a glint of ice.
       if (
         serverPlayer.statuses.some(
           (s) => s.kind === "float" && s.until > serverTime,
         )
       ) {
-        const bob = reducedMotion ? 0 : Math.sin(_time / 180) * 3;
-        g.lineStyle(2, 0xe8e0ff, 0.7).strokeEllipse(
-          x,
-          y + 14 + bob * 0.3,
-          52,
-          16,
-        );
-        g.fillStyle(0xe8e0ff, 0.15).fillEllipse(x, y + 14, 44, 12);
+        const skid = reducedMotion ? 0 : Math.sin(_time / 90) * 3;
+        g.lineStyle(2, 0xd8f4ff, 0.75).strokeEllipse(x + skid, y + 14, 52, 16);
+        g.fillStyle(0xd8f4ff, 0.15).fillEllipse(x, y + 14, 44, 12);
       }
       // Static Clamp: a crackling ring that tightens as the charge runs out.
       const clamp = serverPlayer.statuses.find(

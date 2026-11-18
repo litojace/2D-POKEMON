@@ -2008,37 +2008,28 @@ const art: Record<string, { el: Element; draw: () => string }> = {
         W.accent[2],
       ),
   },
-  Hailstone: {
+  "Black Ice": {
     el: "water",
     draw: () =>
-      // A heavy, faceted hailstone dropping in, frost spreading where it lands.
-      floorGlow("water", 72, 104, 44, 12) +
-      `<ellipse cx="72" cy="104" rx="34" ry="8" fill="none" stroke="${W.accent[2]}" stroke-width="2" stroke-dasharray="4 4"/>` +
-      [
-        [20, 10, 52, 40],
-        [36, 6, 62, 32],
-        [8, 30, 44, 54],
-      ]
-        .map(([x0, y0, x1, y1], i) =>
-          glow(
-            `M${x0} ${y0} L${x1} ${y1}`,
-            i ? W.accent[2] : "#fff",
-            i ? 2 : 2.6,
-            W.accent[1],
-          ),
-        )
-        .join("") +
-      halo("water", 72, 64, 40) +
-      `<circle cx="72" cy="64" r="26" fill="url(#sa-orb-water)"/>` +
-      `<path d="M72 38 L60 52 L66 70 L84 72 L90 54Z M60 52 L48 60 M66 70 L58 86 M84 72 L92 84 M90 54 L98 60 M72 38 L84 40" fill="none" stroke="#fff" stroke-width="1.4" stroke-linejoin="round" opacity=".6"/>` +
-      `<circle cx="72" cy="64" r="26" fill="none" stroke="${W.accent[2]}" stroke-width="2"/>` +
-      `<ellipse cx="62" cy="52" rx="7" ry="4" fill="#fff" opacity=".6" transform="rotate(-35 62 52)"/>` +
-      flake(26, 92, 6, W.accent[2], 1.4) +
-      flake(112, 96, 5, W.accent[2], 1.3) +
+      // A sheet of dark glassy ice, cracked, a skid curling across it.
+      floorGlow("water", 64, 88, 58, 24) +
+      `<ellipse cx="64" cy="88" rx="54" ry="22" fill="#1d3550" opacity=".85"/>` +
+      `<ellipse cx="64" cy="88" rx="54" ry="22" fill="none" stroke="${W.accent[2]}" stroke-width="2.6"/>` +
+      // The sky's light gliding over it.
+      `<path d="M34 98 L58 72" stroke="#fff" stroke-width="7" stroke-linecap="round" opacity=".22"/>` +
+      `<path d="M72 102 L86 78" stroke="#fff" stroke-width="4" stroke-linecap="round" opacity=".18"/>` +
+      // Cracks from the middle.
+      `<path d="M64 88 L40 80 L26 84 M64 88 L80 98 L98 96 M64 88 L70 72 L88 70 M64 88 L52 102" fill="none" stroke="${W.accent[2]}" stroke-width="1.4" stroke-linejoin="round" opacity=".8"/>` +
+      // A skid curling over the ice, frost kicked up at its end.
+      glow("M18 60 Q52 40 74 56 Q92 70 108 52", "#fff", 2.4, W.accent[1]) +
+      flake(108, 50, 7, W.accent[2], 1.4) +
+      flake(24, 40, 5, W.accent[2], 1.2) +
+      glint(46, 82, 6, "#fff") +
       sparks(
         [
-          [112, 30, 1.4],
-          [104, 52, 1.2],
+          [100, 30, 1.4],
+          [60, 28, 1.2],
+          [116, 80, 1.2],
         ],
         W.accent[2],
       ),
