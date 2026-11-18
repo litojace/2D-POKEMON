@@ -191,6 +191,21 @@ export async function cutOff(page: Page, root: string) {
         let r = el.getBoundingClientRect();
         // Visually hidden helpers (1 px) and things not shown at all.
         if (r.width < 3 || r.height < 3) continue;
+        // ...and what is inside one: a heading kept for screen readers in
+        // a 1 px clipped box (the Profile's Name and Delete account on
+        // phones) is hidden on purpose, not cut.
+        let hiddenIn = false;
+        for (let a = el.parentElement; a && a !== base; a = a.parentElement) {
+          const b = a.getBoundingClientRect();
+          if (
+            (b.width < 3 || b.height < 3) &&
+            getComputedStyle(a).overflow !== "visible"
+          ) {
+            hiddenIn = true;
+            break;
+          }
+        }
+        if (hiddenIn) continue;
         if (
           !el.checkVisibility({
             contentVisibilityAuto: true,
