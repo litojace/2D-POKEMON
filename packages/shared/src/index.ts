@@ -415,9 +415,10 @@ export type AbilityKind =
    */
   | "wave"
   /**
-   * `count` waves of bolts, `tickInterval` apart: each wave marks the ground
-   * under every enemy that isn't stealthed and strikes there `tickDelay`
-   * later (`explosion` px, `damage` and `status`).
+   * `count` bolts, `tickInterval` apart: each marks the ground ahead of the
+   * enemy nearest the caster's aim (anywhere, if it isn't stealthed) and
+   * strikes there `tickDelay` later: everyone within `explosion` px takes
+   * `damage` and `status`.
    */
   | "storm"
   /**
@@ -714,7 +715,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "storm",
         16,
         20,
-        "Call a storm over the whole court: three bolts fall on every enemy you can see, 0.8 seconds apart. Each marks the ground where they are heading and strikes 0.55 seconds later: 16 damage and a short paralysis. Change direction to dodge them.",
+        "Call a storm over the whole court: three bolts fall on the enemy nearest your aim, wherever it is, 0.8 seconds apart. Each marks the ground where it is heading and strikes 0.55 seconds later: 16 damage and a short paralysis to anyone in its 95 px. Change direction to dodge them.",
         {
           cast: 0.4,
           count: 3,

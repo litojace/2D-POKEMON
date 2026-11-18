@@ -164,6 +164,25 @@ describe("Thunderstorm (Voltkit)", () => {
       else expect(hp - them.hp).toBeGreaterThanOrEqual(st.damage * 3 - 0.01);
     }
   });
+  it("strikes only the enemy nearest the aim when there are several", () => {
+    const a = new Arena("REVOLUTION-FFA", "ffa");
+    const me = a.add("me", "Me", "voltkit");
+    const near = a.add("near", "Near", "terradon");
+    const far = a.add("far", "Far", "terradon");
+    a.start();
+    a.phase = "playing";
+    a.deadline = 999;
+    place(me, 200, Y, 1200, 750);
+    place(near, 1200, 750);
+    place(far, 1400, 150);
+    const [hpNear, hpFar] = [near.hp, far.hp];
+    press(a, me, "voltkit", "thunderstorm");
+    seconds(a, 3);
+    expect(hpNear - near.hp).toBeGreaterThanOrEqual(
+      skill("voltkit", "thunderstorm").damage * 3 - 0.01,
+    );
+    expect(far.hp).toBe(hpFar);
+  });
   it("is dodged by stepping out of the mark", () => {
     const a = arena("voltkit");
     const [me, them] = a.players;

@@ -2520,7 +2520,11 @@ export class Arena {
         });
     }
   }
-  /** Thunderstorm: a wave of bolts, one under every enemy that isn't stealthed. */
+  /**
+   * Thunderstorm: a bolt ahead of the enemy nearest the caster's aim (not a
+   * stealthed one). One target, not every enemy: a storm on every foe grew
+   * with their number (Spire waves, 2v2, free-for-all).
+   */
   private stepStorm(zone: Zone) {
     if (this.time < zone.nextTick) return;
     const a = zone.ability;
@@ -2530,31 +2534,33 @@ export class Arena {
     const delay = a.tickDelay ?? 0.55;
     // Each bolt is aimed half its delay ahead of where the enemy is going.
     const lead = delay * 0.5;
-    for (const enemy of this.enemiesOf(owner))
-      if (
-        enemy.hp > 0 &&
-        !enemy.out &&
-        !this.has(enemy, "stealth") &&
-        this.zones.length < RULES.maxZones
-      )
-        this.zones.push({
-          id: ++this.serial,
-          owner: zone.owner,
-          x: Math.max(0, Math.min(RULES.width, enemy.x + enemy.vx * lead)),
-          y: Math.max(0, Math.min(RULES.height, enemy.y + enemy.vy * lead)),
-          radius: a.explosion ?? 75,
-          until: this.time + delay + 0.05,
-          nextTick: this.time + delay,
-          // Each bolt is a plain zone that strikes once.
-          ability: {
-            ...a,
-            kind: "zone",
-            duration: delay + 0.05,
-            tickInterval: 9,
-          },
-          color: zone.color,
-          born: this.time,
-        });
+    const aim = owner.lastInput;
+    const enemy = this.enemiesOf(owner)
+      .filter((e) => e.hp > 0 && !e.out && !this.has(e, "stealth"))
+      .sort(
+        (p, q) =>
+          Math.hypot(p.x - aim.aimX, p.y - aim.aimY) -
+          Math.hypot(q.x - aim.aimX, q.y - aim.aimY),
+      )[0];
+    if (enemy && this.zones.length < RULES.maxZones)
+      this.zones.push({
+        id: ++this.serial,
+        owner: zone.owner,
+        x: Math.max(0, Math.min(RULES.width, enemy.x + enemy.vx * lead)),
+        y: Math.max(0, Math.min(RULES.height, enemy.y + enemy.vy * lead)),
+        radius: a.explosion ?? 75,
+        until: this.time + delay + 0.05,
+        nextTick: this.time + delay,
+        // Each bolt is a plain zone that strikes once.
+        ability: {
+          ...a,
+          kind: "zone",
+          duration: delay + 0.05,
+          tickInterval: 9,
+        },
+        color: zone.color,
+        born: this.time,
+      });
   }
   /**
    * Wraith Hunt: the wraith drifts through walls toward the nearest enemy
