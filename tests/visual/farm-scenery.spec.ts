@@ -82,10 +82,10 @@ for (const vp of [
         ["se", 4000, 4000],
         ["middle", 880, 540],
       ] as const) {
-        await page.evaluate(([x, y]) => (window as any).__farm.look(x, y), [
-          x,
-          y,
-        ]);
+        await page.evaluate(
+          ([x, y]) => (window as any).__farm.look(x, y),
+          [x, y],
+        );
         const bare = await page.evaluate(() => {
           const cv = document.querySelector("#fm-cv") as HTMLCanvasElement,
             g = cv.getContext("2d")!;
@@ -160,7 +160,14 @@ test("a cow beside the pasture's side stands behind its nearer post", async ({
       P = f.pasture,
       cw = f.cows[0],
       y = P.y0 + 42 * 4;
-    Object.assign(cw, { x: P.x1 - 30, x0: P.x1 - 30, x1: P.x1 - 30, y: y - 6, face: 1, hop: 0 });
+    Object.assign(cw, {
+      x: P.x1 - 30,
+      x0: P.x1 - 30,
+      x1: P.x1 - 30,
+      y: y - 6,
+      face: 1,
+      hop: 0,
+    });
     f.zoom(2);
     f.look(P.x1, y - 40);
     return { x: P.x1, y };
