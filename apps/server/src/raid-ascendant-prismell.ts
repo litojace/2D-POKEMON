@@ -493,7 +493,7 @@ export function AscendantPrismellRules<B extends PrismClass>(Base: B) {
       shapes: RaidWarning[] = this.raid.warnings,
       slack = 0,
     ) {
-      if (!this.prismAscendant()) return super.safeSpotExists(shapes);
+      if (!this.prismAscendant()) return super.safeSpotExists(shapes, slack);
       const live = shapes.filter((w) => PRISM_SPATIAL.has(w.kind));
       if (!live.length) return true;
       const first = Math.min(...live.map((w) => w.at));

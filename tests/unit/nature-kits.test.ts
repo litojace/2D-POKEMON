@@ -42,7 +42,11 @@ const skill = (c: CharacterId, id: string) =>
 const Y = 150;
 
 describe("Pangrove's armour plates", () => {
-  const hit: Ability = { ...skill("voltkit", "ball-lightning"), explosion: 0, knockback: 0 };
+  const hit: Ability = {
+    ...skill("voltkit", "ball-lightning"),
+    explosion: 0,
+    knockback: 0,
+  };
   it("starts with three; a real hit breaks one and is halved", () => {
     const a = arena("pangrove");
     const [me] = a.players;
@@ -154,7 +158,7 @@ describe("Curl & Roll", () => {
     expect(later).toBeGreaterThan(CHARACTERS.pangrove.speed * 1.7);
     expect(later).toBeLessThanOrEqual(skill("pangrove", "curl-roll").speed + 1);
   });
-  it("rams harder at speed, then bounces off", () => {
+  it("rams harder at speed, then rolls on through", () => {
     const ram = (from: number) => {
       const a = arena("pangrove");
       const [me, them] = a.players;
@@ -163,14 +167,22 @@ describe("Curl & Roll", () => {
       roll(a, me);
       const hp = them.hp;
       for (let i = 0; i < 120 && them.hp === hp; i++) a.tick();
-      return { dealt: hp - them.hp, heading: me.roll!.heading };
+      return {
+        dealt: hp - them.hp,
+        heading: me.roll!.heading,
+        speed: me.roll!.speed,
+      };
     };
     const slow = ram(840),
       fast = ram(300);
-    expect(slow.dealt).toBeGreaterThanOrEqual(8);
+    expect(slow.dealt).toBeGreaterThanOrEqual(
+      skill("pangrove", "curl-roll").damage,
+    );
     expect(fast.dealt).toBeGreaterThan(slow.dealt + 8);
-    // Bounced back the way it came.
-    expect(Math.cos(fast.heading)).toBeLessThan(0);
+    // It rolls on the way it was going (no bounce back), slowed a little,
+    // so it can swing round for another pass.
+    expect(Math.cos(fast.heading)).toBeGreaterThan(0.9);
+    expect(fast.speed).toBeGreaterThan(CHARACTERS.pangrove.speed);
   });
   it("takes 30% less damage curled, can't attack, and uncurls when cast again", () => {
     const a = arena("pangrove");
@@ -197,6 +209,8 @@ describe("Curl & Roll", () => {
     place(them, 1500, 850);
     place(me, 1500, Y);
     roll(a, me);
+    // Let go of the stick, so steering doesn't turn it back to the wall.
+    me.lastInput = { ...me.lastInput, dx: 0, dy: 0 };
     ticks(a, 20);
     expect(Math.cos(me.roll!.heading)).toBeLessThan(0);
   });
@@ -284,7 +298,9 @@ describe("Seedling", () => {
     const seedling = skill("mossloth", "seedling");
     expect(sprout.stage).toBe(0);
     expect(bloom.stage).toBe(2);
-    expect(sprout.dealt).toBe(Math.round(seedling.damage * seedling.seed!.stages[0]));
+    expect(sprout.dealt).toBe(
+      Math.round(seedling.damage * seedling.seed!.stages[0]),
+    );
     expect(bloom.dealt).toBe(seedling.damage);
     expect(bloom.root).toBeGreaterThan(sprout.root * 2);
   });
@@ -341,7 +357,10 @@ describe("Sloth Time", () => {
     a.projectiles.push(shot("them"), shot("me"));
     a.tick();
     const [theirs, mine] = a.projectiles;
-    expect(theirs.y - (Y + 60)).toBeCloseTo(20 * STATUS_RULES.warpMultiplier, 0);
+    expect(theirs.y - (Y + 60)).toBeCloseTo(
+      20 * STATUS_RULES.warpMultiplier,
+      0,
+    );
     expect(mine.y - (Y + 60)).toBeCloseTo(20, 0);
   });
 });
@@ -452,5 +471,26 @@ describe("in raids", () => {
     a.tick();
     expect(a.has(boss, "warp")).toBe(false);
     expect(a.has(boss, "slow")).toBe(true);
+  });
+});
+
+describe("Curl & Roll steering", () => {
+  it("turns tighter when slow than at full speed", () => {
+    const turned = (fast: boolean) => {
+      const a = arena("pangrove");
+      const [me, them] = a.players;
+      place(them, 1500, 850);
+      place(me, 800, Y, 900, Y);
+      a.cast(
+        me,
+        CHARACTERS.pangrove.skills.find((k) => k.id === "curl-roll")!,
+      );
+      me.roll!.speed = fast ? me.roll!.top : CHARACTERS.pangrove.speed * 0.5;
+      me.lastInput = { ...me.lastInput, dx: 0, dy: 1 };
+      const from = me.roll!.heading;
+      a.tick();
+      return Math.abs(me.roll!.heading - from);
+    };
+    expect(turned(false)).toBeGreaterThan(turned(true) * 1.5);
   });
 });

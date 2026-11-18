@@ -27,7 +27,8 @@ const moves = (a: Ability | undefined) =>
   a?.kind === "blink" ||
   a?.kind === "rush" ||
   a?.kind === "roll" ||
-  a?.kind === "pinball";
+  a?.kind === "pinball" ||
+  !!a?.lunge;
 function castMove(
   p: Fighter,
   a: Ability,
@@ -52,6 +53,19 @@ function castMove(
     p.dashUntil = time + a.duration;
     p.recoveryUntil = Math.max(p.recoveryUntil, p.dashUntil);
     p.pinball = { bounces: a.count ?? 4, speedUp: a.pinball?.speedUp ?? 1.1 };
+    return;
+  }
+  if (a.lunge) {
+    // Facet Guard: a vault toward the aim.
+    const distance = Math.min(
+      a.lunge,
+      Math.hypot(input.aimX - p.x, input.aimY - p.y),
+    );
+    const seconds = distance / Math.max(1, a.speed);
+    p.dashX = Math.cos(p.angle) * a.speed;
+    p.dashY = Math.sin(p.angle) * a.speed;
+    p.dashUntil = time + seconds;
+    p.recoveryUntil = Math.max(p.recoveryUntil, time + seconds);
     return;
   }
   if (a.kind === "blink") {

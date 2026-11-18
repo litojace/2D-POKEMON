@@ -26,9 +26,14 @@ it("labels every card by attack range instead of the basic attack", () => {
   );
 });
 it("keeps basic-attack knockback light so brawlers can close in and chain hits", () => {
+  // Pyranda is the one exception (owner, 18 Nov 2026): the artillery's Ember
+  // Lob pushes brawlers back (65), else divers won 92-96% of their duels.
+  const exceptions: Partial<Record<string, number>> = { pyranda: 65 };
   for (const id of FIGHTER_IDS) {
     const b = CHARACTERS[id].basic;
-    expect(b.knockback, id).toBeLessThanOrEqual(b.kind === "melee" ? 25 : 20);
+    expect(b.knockback, id).toBeLessThanOrEqual(
+      exceptions[id] ?? (b.kind === "melee" ? 25 : 20),
+    );
   }
 });
 it("opens every fighter's stats and skills from its card", () => {
