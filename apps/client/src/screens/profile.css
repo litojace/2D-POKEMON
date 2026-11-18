@@ -157,6 +157,10 @@
 .pf-name-row {
   grid-template-columns: minmax(0, 1fr) auto;
 }
+/* The rule's note sits in the row on phones (its heading row goes). */
+.pf-name-note {
+  display: none;
+}
 .pf-name-row > .ui-btn {
   min-width: var(--act-w);
 }
@@ -730,5 +734,98 @@
   .pf-photo-now {
     width: 40px;
     height: 40px;
+  }
+}
+
+/* ------------------------- phones, held sideways: room for the card */
+/* The column beside the card holds short words: its boxes are as tall as
+   those words need (stats, name, Journey and Ranked), so the card gets the
+   width, and the avatar fits whole in it, frame and all. */
+@media (max-height: 500px) {
+  .profile-panel > .ui-panel-body.pf-body {
+    grid-template-columns: 210px minmax(0, 1fr);
+  }
+  /* The avatar: the biggest square that fits the room above the name. */
+  .pf-card-avatar {
+    container-type: size;
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    padding: 6px;
+  }
+  .pf-card-avatar > :is(.portrait-frame, .portrait-disc, img, svg) {
+    width: min(100cqw, 100cqh);
+    height: min(100cqw, 100cqh);
+  }
+  .pf-tile {
+    min-height: 0;
+    padding: 5px 4px;
+  }
+  .pf-tile > b {
+    font-size: calc(18px * var(--text-scale, 1));
+  }
+  /* Name: one row (the name, the rule, Change name), no heading row. */
+  .pf-section:has(#pf-name-h),
+  .pf-section:has(#pf-delete-h) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .pf-name-row {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+  .pf-name-note {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: right;
+    font-size: var(--fs-micro);
+  }
+  .pf-name-row,
+  .pf-name-form {
+    min-height: calc(var(--ctl-s) + 6px);
+    padding: 3px 3px 3px 10px;
+  }
+  .pf-name-message:empty {
+    display: none;
+  }
+  .pf-mini {
+    padding: 6px 10px;
+    gap: 3px;
+  }
+  .pf-mini .ui-kicker {
+    font-size: var(--fs-micro);
+  }
+  /* Its note goes under the value when the two don't fit on one line
+     ("40 more for Candidate Master"), rather than being cut. */
+  .pf-mini-row {
+    flex-wrap: wrap;
+    row-gap: 1px;
+  }
+  .pf-mini-row > .ui-note {
+    white-space: normal;
+  }
+  /* Who you are and Delete account: one line. */
+  .pf-account {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px var(--sp-2);
+  }
+  .pf-account .pf-who {
+    flex: 1 1 0;
+    min-width: 0;
+    margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .pf-account .pf-delete:has(.pf-delete-form:not([hidden])) {
+    flex-basis: 100%;
   }
 }

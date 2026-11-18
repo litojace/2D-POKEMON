@@ -344,7 +344,7 @@ function nameRow(d: ProfileData, view: ProfileView) {
   // The form is always in the markup (hidden when closed), so opening it
   // changes attributes and focus and the typed text stay put.
   const form = `<form class="pf-name-form" data-profile-name-form${view.renaming ? "" : " hidden"}><input name="name" maxlength="20" required autocomplete="nickname" spellcheck="false" aria-label="New name" value="${esc(d.name)}"${view.nameBusy ? " disabled" : ""}>${button("Cancel", { icon: "cancel", size: "s", disabled: view.nameBusy, attrs: { "data-profile-name-cancel": true } })}<button type="submit" class="ui-btn is-s is-primary"${view.nameBusy ? ' disabled aria-busy="true"' : ""}>${menuIcon("save")}<span>Save</span></button></form>`;
-  return `${section("Name", note, "pf-name-h")}<div class="pf-name" aria-labelledby="pf-name-h"><div class="pf-name-row"${view.renaming ? " hidden" : ""}><b class="pf-name-now">${esc(d.name)}</b>${button("Change name", { icon: "edit", size: "s", disabled: !!locked, attrs: { "data-profile-rename": true, title: locked ? note : undefined } })}</div>${form}<p class="ui-note pf-name-message" role="status">${esc(view.nameMessage)}</p></div>`;
+  return `${section("Name", note, "pf-name-h")}<div class="pf-name" aria-labelledby="pf-name-h"><div class="pf-name-row"${view.renaming ? " hidden" : ""}><b class="pf-name-now">${esc(d.name)}</b><small class="ui-note pf-name-note" aria-hidden="true">${esc(note)}</small>${button("Change name", { icon: "edit", size: "s", disabled: !!locked, attrs: { "data-profile-rename": true, title: locked ? note : undefined } })}</div>${form}<p class="ui-note pf-name-message" role="status">${esc(view.nameMessage)}</p></div>`;
 }
 
 /**
@@ -372,7 +372,8 @@ function main(d: ProfileData, view: ProfileView) {
   // A phone: one tab at a time (its tabs sit in the head).
   if (d.compact)
     return {
-      overview: `${overview}${summaries(d)}${who}${deleteRow(d, view)}`,
+      // Who you are and Delete account share one line on a phone.
+      overview: `${overview}${summaries(d)}<div class="pf-account">${who}${deleteRow(d, view)}</div>`,
       avatar: avatars,
       titles,
       mastery,

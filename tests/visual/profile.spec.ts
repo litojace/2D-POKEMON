@@ -27,6 +27,14 @@ const SIZES = [
     phone: true,
     island: true,
   },
+  // iPhone Pro Max held sideways (the owner's phone, 19 Nov).
+  {
+    name: "932x430-island",
+    width: 932,
+    height: 430,
+    phone: true,
+    island: true,
+  },
 ];
 type Size = (typeof SIZES)[number];
 const RAIDS = {
@@ -221,6 +229,26 @@ for (const size of SIZES)
     try {
       const page = await context.newPage();
       const { errors, panel } = await open(page, size);
+      // Your avatar is whole on the card: round (a square box), inside the
+      // card, frame and all (a phone cut its right side off).
+      const fit = await panel.evaluate((p) => {
+        const card = p.querySelector(".pf-card")!.getBoundingClientRect();
+        const art = p
+          .querySelector(".pf-card-avatar > *")!
+          .getBoundingClientRect();
+        return {
+          square: Math.abs(art.width - art.height) <= 1,
+          inside:
+            art.left >= card.left - 0.5 &&
+            art.right <= card.right + 0.5 &&
+            art.top >= card.top - 0.5,
+          size: Math.round(art.width),
+        };
+      });
+      expect(fit.square, "the avatar is round").toBe(true);
+      expect(fit.inside, "the avatar is inside the card").toBe(true);
+      if (size.phone)
+        expect(fit.size, "the avatar's size").toBeGreaterThanOrEqual(130);
       // A phone shows the card's column as tabs (Overview, Titles, Mastery,
       // Trophies); a desktop shows it all in one column.
       const tab = async (t: string) => {
