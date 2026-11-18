@@ -211,3 +211,51 @@ it("a raid room keeps picks open", async () => {
   expect(seat(two, host.id!).character).toBe("pyranda");
   expect(seat(two, host.id!).veiled).toBeUndefined();
 });
+
+/** Every chat line a socket receives. */
+const heard = (s: Player) => {
+  const lines: { channel: string; text?: string }[] = [];
+  s.on("chat", (l: { channel: string; text?: string }) => lines.push(l));
+  return lines;
+};
+
+it("2v2 team chat reaches your teammate only; the room reaches everyone", async () => {
+  const { players } = await room("teams", 4);
+  const [blue1, red1, blue2, red2] = players;
+  const ears = players.map(heard);
+  const sent = await emit(blue1, "chat-send", {
+    channel: "team",
+    text: "I take Tidefin",
+  });
+  expect(sent.ok).toBe(true);
+  expect(
+    (await emit(red1, "chat-send", { channel: "room", text: "hi all" })).ok,
+  ).toBe(true);
+  await settle();
+  const said = (i: number) => ears[i].map((l) => `${l.channel}:${l.text}`);
+  expect(said(2)).toContain("team:I take Tidefin");
+  for (const i of [1, 3]) expect(said(i).join()).not.toMatch(/Tidefin/);
+  for (const i of [0, 1, 2, 3]) expect(said(i)).toContain("room:hi all");
+  // The other team's history is theirs too.
+  const theirs = await emit(red2, "chat-history", { channel: "team" });
+  expect(JSON.stringify(theirs)).not.toMatch(/Tidefin/);
+  const ours = await emit(blue2, "chat-history", { channel: "team" });
+  expect(JSON.stringify(ours)).toMatch(/I take Tidefin/);
+  void red1;
+});
+
+it("team chat: none in a 1v1, and a team change clears what was said", async () => {
+  const duel = await room("duel", 2);
+  expect(
+    (await emit(duel.players[0], "chat-send", { channel: "team", text: "x" }))
+      .ok,
+  ).toBe(false);
+
+  const { players } = await room("teams", 3);
+  const [blue1, red1] = players;
+  await emit(red1, "chat-send", { channel: "team", text: "secret plan" });
+  // A Blue player moves to Red: Red's earlier plans are gone, not handed over.
+  expect((await emit(blue1, "team", { team: 1 })).ok).toBe(true);
+  const after = await emit(blue1, "chat-history", { channel: "team" });
+  expect(JSON.stringify(after)).not.toMatch(/secret plan/);
+});

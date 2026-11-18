@@ -93,11 +93,13 @@ export interface ChatView {
 
 const LABEL: Record<ChatChannel, string> = {
   party: "Party",
+  team: "Team",
   room: "Room",
   place: "Nearby",
   friend: "Friends",
 };
-const CHANNELS: ChatChannel[] = ["party", "room", "place", "friend"];
+// A 2v2 room's Team comes before Room: it opens first (docs/hidden-picks.md).
+const CHANNELS: ChatChannel[] = ["party", "team", "room", "place", "friend"];
 /** The quick chips under the lines: emotes, then phrases. */
 const CHIPS: ChatQuick[] = [
   ...(Object.keys(CHAT_EMOTES) as ChatQuick[]),
@@ -156,12 +158,14 @@ export function mountChat(hooks: ChatHooks): ChatView {
 
   const lines: Record<ChatChannel, ChatLine[]> = {
     party: [],
+    team: [],
     room: [],
     place: [],
     friend: [],
   };
   const unseen: Record<ChatChannel, number> = {
     party: 0,
+    team: 0,
     room: 0,
     place: 0,
     friend: 0,
@@ -365,7 +369,11 @@ export function mountChat(hooks: ChatHooks): ChatView {
               : friends.length
                 ? ""
                 : "Add friends from Friends on the Lobby's left to message them here."
-            : "No messages yet. Say hi!";
+            : active === "team"
+              ? "Only your team reads this. Agree on your fighters here."
+              : active === "room" && open.includes("team")
+                ? "Both teams read Room. Plan your picks in Team."
+                : "No messages yet. Say hi!";
   }
 
   function renderForm() {

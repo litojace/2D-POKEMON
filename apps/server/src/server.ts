@@ -889,6 +889,13 @@ export function createArenaServer(
         );
     }
   }
+  /** A 2v2 side's team chat (docs/hidden-picks.md). */
+  const teamChatKey = (code: string, team: number) => `team:${code}:${team}`;
+  /** Teams changed, or the room closed: both sides' team chats go. */
+  function dropTeamChat(code: string) {
+    chat.drop(teamChatKey(code, 0));
+    chat.drop(teamChatKey(code, 1));
+  }
   /** The 2v2 teammate who already locked in this fighter, if any. */
   function takenBy(a: Arena, p: Fighter, character: Fighter["character"]) {
     return pickTakenBy(a.mode, a.players, p, character, (o) => a.teamOf(o));
@@ -1407,6 +1414,7 @@ export function createArenaServer(
     if (![...sessions.values()].some((s) => s.code === arena.code)) {
       rooms.delete(arena.code);
       chat.drop(`room:${arena.code}`);
+      dropTeamChat(arena.code);
       // Anyone watching is told the room has closed.
       for (const [id, w] of watchers)
         if (w.code === arena.code) {
@@ -2361,6 +2369,8 @@ export function createArenaServer(
         p.team = team;
         for (const o of a.players) o.ready = false;
         unlockClashes(a);
+        // A new side must not read the old one's plans.
+        dropTeamChat(a.code);
         reply(cb, { ok: true });
         broadcast(a);
       }),
@@ -2377,6 +2387,7 @@ export function createArenaServer(
         order.forEach(({ p }, i) => (p.team = i % 2 === 0 ? 0 : 1));
         for (const o of a.players) o.ready = false;
         unlockClashes(a);
+        dropTeamChat(a.code);
         reply(cb, { ok: true });
         broadcast(a);
       }),
@@ -2616,6 +2627,29 @@ export function createArenaServer(
           members,
         };
       }
+      if (channel === "team") {
+        // A 2v2 room's own side: the sender's teammates only.
+        const session = getSession(socket.id);
+        const arena = session && rooms.get(session.code);
+        const me = arena?.players.find((p) => p.id === session!.id);
+        if (!arena || !me || arena.mode !== "teams") return null;
+        const team = arena.teamOf(me);
+        const owners = fighterAccounts.get(arena);
+        const members: ChatMember[] = [];
+        for (const p of arena.players) {
+          const accountId = owners?.get(p.id);
+          if (!accountId || arena.bots.has(p.id) || arena.teamOf(p) !== team)
+            continue;
+          if (![...sessions.values()].some((s) => s.id === p.id)) continue;
+          members.push(chatMember(accountId, p.name, team));
+        }
+        return {
+          channel,
+          key: teamChatKey(arena.code, team),
+          inBattle: arena.phase !== "lobby" && arena.phase !== "finished",
+          members,
+        };
+      }
       if (channel === "place") {
         // The Plaza: everyone in the same copy.
         const copy = plaza.plazaOf(socket.id);
@@ -2694,7 +2728,7 @@ export function createArenaServer(
       );
       if (!sent.ok) return fail(cb, sent.error);
       // In a room the line names the speaker's fighter (a bubble over them).
-      if (route.channel === "room") {
+      if (route.channel === "room" || route.channel === "team") {
         const session = getSession(socket.id);
         if (session) sent.line.fighter = session.id;
       }

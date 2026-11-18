@@ -112,6 +112,17 @@ hidden, which gives the seats and the picker the space instead.
   text wraps or is cut. Breaking the state width or moving the chat button
   3 px makes it fail.
 
+## Team chat
+
+A 2v2 room has a **Team** chat channel (`team` in
+`packages/shared/src/chat.ts`). It reaches your own side only, opens first,
+and holds the plans the other team can't read. Room still reaches both
+teams. The server routes `team` lines by `arena.teamOf` (`chatRoute` in
+`server.ts`). When teams change (a switch or a shuffle), both sides' team
+chats are cleared, so nobody can switch over and read the other side's
+plans. In a battle it works like Room: quick chat, with calls allowed. The
+tests are in `tests/integration/hidden-picks.test.ts`.
+
 ## Seats and cards at a glance
 
 - **Seat states:** Choosing (plain), **Locked** (solid gold, a padlock),
@@ -129,7 +140,5 @@ hidden, which gives the seats and the picker the space instead.
 - The avatar library: a seat, the player card and Friends will show the
   chosen avatar instead of the initial. See the design page for the
   picture spec.
-- A team-only chat tab for 2v2 lobbies. Today the room channel reaches
-  both teams.
 - A VS screen that flips the cards. The existing briefing already shows
   every fighter.

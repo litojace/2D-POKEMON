@@ -2458,6 +2458,8 @@ function syncChat(hub: boolean) {
   chat.sync(place, {
     party: !!party,
     room: inRoom && !state!.practice,
+    // A 2v2 room's own side (docs/hidden-picks.md).
+    team: inRoom && !state!.practice && state!.mode === "teams",
     // Nearby: the Plaza's copy, or the farm you are on.
     place:
       hub && (hubScene === "plaza" || (hubScene === "farm" && !!farmChatOwner)),

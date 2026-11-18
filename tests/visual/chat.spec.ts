@@ -359,10 +359,15 @@ for (const size of SIZES)
       expect(title.x + title.width).toBeLessThanOrEqual(more.x);
       expect(btn.x).toBeGreaterThanOrEqual(size.inset[0]);
       await page.click("#chat-button");
-      // The room, just joined, comes first.
-      await expect(drawer.locator('[data-chat-tab="room"]')).toHaveAttribute(
+      // A 2v2 room, just joined: your Team comes first (only your side
+      // reads it), Room beside it (docs/hidden-picks.md).
+      await expect(drawer.locator('[data-chat-tab="team"]')).toHaveAttribute(
         "aria-selected",
         "true",
+      );
+      await expect(drawer.locator('[data-chat-tab="room"]')).toBeVisible();
+      await expect(drawer.locator(".chat-empty")).toContainText(
+        "Only your team reads this",
       );
       await snap(page, info, `chat-room-${size.name}`);
       expect(errors).toEqual([]);
