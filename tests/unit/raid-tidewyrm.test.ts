@@ -295,7 +295,7 @@ describe("waves, bubbles and the tide", () => {
 });
 
 describe("Bubble Prison", () => {
-  it("is popped by three teammate hits, and Magma Bomb pops it at once", () => {
+  it("is popped by three teammate hits", () => {
     const a = tide(["voltkit", "cindrake"], 1);
     place(a, "p0", 400, 450);
     const friend = place(a, "p1", 460, 450);
@@ -320,10 +320,10 @@ describe("Bubble Prison", () => {
     expect(a.raid.prisons).toHaveLength(0);
     expect(hurt(a, "p0")).toBe(0);
   });
-  it("pops at once with Cindrake's Magma Bomb", () => {
+  it("pops at once when Cindrake's Magma Leap lands beside it", () => {
     const a = tide(["voltkit", "cindrake"], 1);
     place(a, "p0", 400, 450);
-    place(a, "p1", 900, 450);
+    const cindrake = place(a, "p1", 650, 450);
     a.raid.prisons = [
       {
         playerId: "p0",
@@ -335,19 +335,12 @@ describe("Bubble Prison", () => {
         startedAt: a.time,
       },
     ];
-    const bomb = CHARACTERS.cindrake.skills.find((s) => s.id === "magma-bomb")!;
-    a.projectiles.push({
-      id: 777,
-      owner: "p1",
-      x: 405,
-      y: 450,
-      vx: 0,
-      vy: 0,
-      remaining: 50,
-      ability: bomb,
-      color: 0xff7a4f,
-    });
-    run(a, 0.04);
+    const leap = CHARACTERS.cindrake.skills.find((s) => s.id === "magma-leap")!;
+    cindrake.angle = Math.PI;
+    cindrake.lastInput = { ...blankInput(), aimX: 440, aimY: 450 };
+    a.cast(cindrake, leap);
+    expect(a.raid.prisons).toHaveLength(1);
+    run(a, 0.4);
     expect(a.raid.prisons).toHaveLength(0);
   });
   it("lets an AI stand-in mash its way out too", () => {

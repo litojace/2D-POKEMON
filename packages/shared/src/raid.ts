@@ -1098,7 +1098,7 @@ export const RAID_BOSS_PERKS: Partial<
     },
     mossloth: {
       skill: "Overgrowth",
-      text: "Its vines smother fire patches and dive trails all around you.",
+      text: "Its garden smothers fire patches and dive trails where it grows.",
     },
   },
   "storm-twins": {
@@ -1142,8 +1142,8 @@ export const RAID_BOSS_PERKS: Partial<
       text: "Hits on a stranded Tidelotl add extra stagger (water conducts).",
     },
     cindrake: {
-      skill: "Magma Bomb",
-      text: "Pops a Bubble Prison in one hit.",
+      skill: "Magma Leap",
+      text: "Landing beside a Bubble Prison pops it in one go.",
     },
     tidefin: {
       skill: "Tide Double",
@@ -1159,7 +1159,7 @@ export const RAID_BOSS_PERKS: Partial<
     },
     pyranda: {
       skill: "Chestnut Storm",
-      text: "Pops every bubble where it lands, Bubble Prisons included.",
+      text: "Pops every bubble where its blasts land, Bubble Prisons included.",
     },
     glacelle: {
       skill: "Frost Bloom",

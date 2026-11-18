@@ -39,7 +39,7 @@ const ROSTER: Record<
     basic: ["Cinder Snap", 455],
     skills: [
       ["Crest Flare", 8],
-      ["Magma Bomb", 12],
+      ["Magma Leap", 11],
       ["Heat Cracks", 15],
       ["Sunfire Pillar", 20],
     ],
@@ -87,7 +87,7 @@ const ROSTER: Record<
     basic: ["Mind Dart", 390],
     skills: [
       ["Third-Eye Ray", 8],
-      ["Booming Hoot", 12],
+      ["Hush", 12],
       ["Wing Cloak", 15],
       ["Mind Maze", 20],
     ],
@@ -184,7 +184,7 @@ const ROSTER: Record<
     skills: [
       ["Moon Hop", 7],
       ["Mochi Pound", 12],
-      ["Moon Gravity", 15],
+      ["Sticky Mochi", 11],
       ["Full Moon", 20],
     ],
   },

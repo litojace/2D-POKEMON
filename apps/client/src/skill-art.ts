@@ -766,29 +766,30 @@ const art: Record<string, { el: Element; draw: () => string }> = {
       ) +
       `<g fill="none" stroke="${F.accent[2]}" stroke-width="1.6" stroke-linecap="round" opacity=".7"><path d="M60 40 q6 -6 12 -4"/><path d="M84 92 q8 2 12 -4"/></g>`,
   },
-  "Magma Bomb": {
+  "Magma Leap": {
     el: "fire",
     draw: () =>
-      `<path d="M14 104 Q30 70 52 62" stroke="url(#sa-diag-fire)" stroke-width="10" stroke-linecap="round" fill="none" opacity=".55"/>` +
-      halo("fire", 70, 56, 46) +
-      `<circle cx="70" cy="56" r="26" fill="#3a1408"/>` +
-      // Cracked magma rock, glowing seams.
-      `<circle cx="70" cy="56" r="26" fill="url(#sa-orb-fire)" opacity=".55"/>` +
-      glow(
-        `M56 44 L66 54 L60 62 L72 70 M76 38 L72 52 L84 58 M84 66 L78 74`,
-        F.accent[2],
-        2.4,
-        F.accent[1],
-      ) +
-      `<path d="M70 30 q-4 -12 4 -20 q2 10 10 12 q-6 4 -14 8Z" fill="url(#sa-up-fire)"/>` +
-      `<path d="M88 36 q4 -10 12 -12 q-2 8 2 14Z" fill="${F.accent[1]}"/>` +
-      `<ellipse cx="62" cy="46" rx="7" ry="4" fill="#fff" opacity=".35" transform="rotate(-30 62 46)"/>` +
+      // Cindrake arcs through the air and lands in an eruption.
+      floorGlow("fire", 84, 100, 40, 12) +
+      `<path d="M16 96 Q40 18 84 86" fill="none" stroke="${F.accent[1]}" stroke-width="3" stroke-dasharray="5 5" stroke-linecap="round" opacity=".8"/>` +
+      `<ellipse cx="84" cy="98" rx="32" ry="10" fill="${F.accent[0]}" opacity=".7"/>` +
+      [0, 1, 2, 3, 4, 5, 6]
+        .map((k) => {
+          const a = Math.PI + (k / 6) * Math.PI,
+            x0 = 84 + Math.cos(a) * 10,
+            y0 = 92 + Math.sin(a) * 4,
+            x1 = 84 + Math.cos(a) * 34,
+            y1 = 92 + Math.sin(a) * 30;
+          return `<path d="M${n(x0)} ${n(y0)} L${n(x1)} ${n(y1)}" stroke="${k % 2 ? F.accent[2] : F.accent[1]}" stroke-width="4" stroke-linecap="round"/>`;
+        })
+        .join("") +
+      `<path d="M84 96 Q72 76 80 60 Q84 70 88 70 Q90 56 96 50 Q102 78 84 96Z" fill="${F.hot}"/>` +
+      `<circle cx="44" cy="40" r="9" fill="url(#sa-orb-fire)"/>` +
       sparks(
         [
-          [104, 70, 1.8],
-          [100, 88, 1.4],
-          [30, 40, 1.3],
-          [96, 18, 1.2],
+          [110, 60, 1.6],
+          [60, 70, 1.3],
+          [112, 104, 1.4],
         ],
         F.accent[2],
       ),
@@ -1317,28 +1318,23 @@ const art: Record<string, { el: Element; draw: () => string }> = {
         P.accent[2],
       ),
   },
-  "Booming Hoot": {
+  Hush: {
     el: "psychic",
     draw: () =>
-      halo("psychic", 64, 64, 30) +
-      [0, 1, 2]
-        .map(
-          (k) =>
-            `<circle cx="64" cy="64" r="${24 + k * 13}" fill="none" stroke="${k ? P.accent[1] : P.accent[2]}" stroke-width="${4 - k}" opacity="${0.95 - k * 0.25}"/>`,
-        )
-        .join("") +
-      [0, 1, 2, 3]
-        .map((k) => {
-          const a = (k / 4) * Math.PI * 2 + Math.PI / 4,
-            x = 64 + Math.cos(a) * 46,
-            y = 64 + Math.sin(a) * 46,
-            ax = Math.cos(a) * 9,
-            ay = Math.sin(a) * 9;
-          return `<path d="M${n(x - ax)} ${n(y - ay)} L${n(x + ax)} ${n(y + ay)} M${n(x + ax - ay * 0.6 - ax * 0.5)} ${n(y + ay + ax * 0.6 - ay * 0.5)} L${n(x + ax)} ${n(y + ay)} L${n(x + ax + ay * 0.6 - ax * 0.5)} ${n(y + ay - ax * 0.6 - ay * 0.5)}" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`;
-        })
-        .join("") +
-      `<circle cx="64" cy="64" r="14" fill="url(#sa-core-psychic)"/>` +
-      `<path d="M52 64 Q64 54 76 64 Q64 74 52 64Z" fill="#fff"/><circle cx="64" cy="64" r="3.5" fill="${P.accent[0]}"/>`,
+      // A silent wingbeat: soundwaves crossed out round a hushed ring.
+      halo("psychic", 64, 64, 50) +
+      `<circle cx="64" cy="64" r="44" fill="none" stroke="${P.accent[1]}" stroke-width="2.4" stroke-dasharray="6 6" opacity=".8"/>` +
+      `<path d="M40 64 Q52 44 64 64 T88 64" fill="none" stroke="${P.accent[2]}" stroke-width="4" stroke-linecap="round"/>` +
+      `<path d="M38 40 L90 88" stroke="${P.hot}" stroke-width="5" stroke-linecap="round"/>` +
+      `<path d="M30 30 q-10 10 0 20 M98 30 q10 10 0 20" fill="none" stroke="${P.accent[2]}" stroke-width="2.6" stroke-linecap="round" opacity=".7"/>` +
+      sparks(
+        [
+          [20, 100, 1.4],
+          [108, 100, 1.4],
+          [64, 14, 1.3],
+        ],
+        P.accent[2],
+      ),
   },
   "Wing Cloak": {
     el: "psychic",
@@ -2458,34 +2454,22 @@ const art: Record<string, { el: Element; draw: () => string }> = {
         )
         .join(""),
   },
-  "Moon Gravity": {
+  "Sticky Mochi": {
     el: "psychic",
     draw: () =>
-      // A little moon over a patch of low gravity: everything floats up.
-      floorGlow("psychic", 64, 92, 58, 22) +
-      [0, 1, 2]
-        .map(
-          (k) =>
-            `<ellipse cx="64" cy="92" rx="${48 - k * 14}" ry="${16 - k * 4.6}" fill="none" stroke="${k ? P.accent[1] : P.accent[2]}" stroke-width="${2.6 - k * 0.5}" ${k ? 'stroke-dasharray="4 4"' : ""}/>`,
-        )
-        .join("") +
-      [36, 64, 92]
-        .map(
-          (x, i) =>
-            chevron(x, i === 1 ? 72 : 76, 7, -90, P.accent[2], 3.4) +
-            chevron(x, i === 1 ? 60 : 64, 7, -90, P.accent[1], 3, 0.6),
-        )
-        .join("") +
-      halo("psychic", 64, 30, 28) +
-      `<circle cx="64" cy="30" r="15" fill="#ffe9a3"/>` +
-      `<circle cx="58" cy="26" r="3.6" fill="#e6c870"/><circle cx="70" cy="34" r="2.6" fill="#e6c870"/><circle cx="66" cy="22" r="1.8" fill="#e6c870"/>` +
-      `<circle cx="64" cy="30" r="15" fill="none" stroke="#fffbe6" stroke-width="1.6"/>` +
+      // A ball of mochi stuck to the ground, strings of goo holding a foot.
+      floorGlow("psychic", 64, 98, 50, 14) +
+      `<ellipse cx="64" cy="96" rx="42" ry="12" fill="#f6e7dc" opacity=".75"/>` +
+      `<path d="M40 96 Q44 70 52 96 M76 96 Q82 66 90 96" fill="none" stroke="#fff7ef" stroke-width="4" stroke-linecap="round"/>` +
+      `<ellipse cx="64" cy="58" rx="28" ry="24" fill="#fff7ef"/>` +
+      `<ellipse cx="64" cy="58" rx="28" ry="24" fill="none" stroke="#e8c9b6" stroke-width="2.4"/>` +
+      `<circle cx="54" cy="50" r="6" fill="#fff"/>` +
+      `<path d="M58 62 q6 5 12 0" fill="none" stroke="${P.accent[0]}" stroke-width="2.2" stroke-linecap="round"/>` +
       sparks(
         [
-          [20, 26, 1.4],
-          [108, 24, 1.4],
-          [16, 64, 1.2],
-          [112, 64, 1.2],
+          [20, 30, 1.4],
+          [108, 34, 1.3],
+          [110, 108, 1.2],
         ],
         P.accent[2],
       ),

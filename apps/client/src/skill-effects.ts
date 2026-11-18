@@ -239,27 +239,6 @@ export function drawProjectile(
       }
       return;
     }
-    case "magma-bomb": {
-      trail(g, pr, 0x4a3b36, 0.12, r * 1.6, 0.35);
-      trail(g, pr, c, 0.06, r * 1.2, 0.4);
-      const pts = polygon(g, pr.x, pr.y, r, 7, t * 4);
-      g.fillStyle(0x5a2a1c).fillPoints(pts, true);
-      g.lineStyle(2.5, 0xffd34d, 0.95);
-      g.lineBetween(
-        pr.x - r * 0.6,
-        pr.y - r * 0.2,
-        pr.x + r * 0.1,
-        pr.y + r * 0.3,
-      );
-      g.lineBetween(
-        pr.x + r * 0.1,
-        pr.y + r * 0.3,
-        pr.x + r * 0.5,
-        pr.y - r * 0.4,
-      );
-      g.fillStyle(c, 0.25).fillCircle(pr.x, pr.y, r * 1.6);
-      return;
-    }
     case "tide-needle": {
       const len = 30;
       const bx = pr.x - Math.cos(angle) * len,
@@ -744,15 +723,6 @@ export function playImpact(
             );
           }
         }
-        if (a.id === "magma-bomb")
-          for (let i = 0; i < 8; i++) {
-            const aa = (i * TAU) / 8 + hash(i);
-            g.fillStyle(i % 2 ? 0x5a2a1c : 0xffd34d, 1 - k).fillCircle(
-              x + Math.cos(aa) * blast * k,
-              y + Math.sin(aa) * blast * k - Math.sin(k * Math.PI) * 20,
-              4,
-            );
-          }
       },
       3,
     );

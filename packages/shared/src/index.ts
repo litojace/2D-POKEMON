@@ -137,6 +137,10 @@ export type StatusKind =
   | "float"
   /** Confused (Mind Maze): its movement is reversed. */
   | "confuse"
+  /** Silenced (Hush): it can't cast skills (it can still move, dash and attack). */
+  | "silence"
+  /** Grounded (Sticky Mochi): it can't dash or jump. */
+  | "grounded"
   /** Combo setup: primed for the marker's payoff skill (`by` = the marker). */
   | "mark";
 /** Statuses that count as harmful (the Shadow team-up gift, bots' targeting). */
@@ -158,6 +162,8 @@ export const DEBUFFS: StatusKind[] = [
   "lure",
   "float",
   "confuse",
+  "silence",
+  "grounded",
 ];
 export const STATUS_RULES = {
   stacking: "refresh" as const,
@@ -435,6 +441,24 @@ export type AbilityKind =
    */
   | "lure"
   /**
+   * Leap toward the aim (up to `range` px) at `speed`, airborne on the way
+   * (ground attacks miss); landing, enemies within `explosion` take `damage`
+   * and `status`. Predicted on the client like a vault.
+   */
+  | "leap"
+  /**
+   * A barrage that creeps along the aim: `count` blasts of `explosion` px,
+   * the first `creep.start` px out and each `creep.step` px farther, landing
+   * `tickDelay` after they are marked and `creep.gap` seconds apart.
+   */
+  | "creep"
+  /**
+   * A garden at the aim (up to `range`, `radius` px) for `duration`: every
+   * `tickInterval` enemies on it take `damage` and are slowed; whoever is
+   * still on it at the end takes `garden.burst` and `status`.
+   */
+  | "garden"
+  /**
    * For `duration` the caster leaves a trail behind it that lasts
    * `trail.fade` seconds: enemies touching it (`radius`) take `damage` and
    * `status`, at most once every `tickInterval`.
@@ -557,6 +581,10 @@ export interface Ability {
   hunt?: { speed: number; execute: number };
   /** Lure: how fast enemies are drawn toward the light (px/s). */
   lure?: { speed: number };
+  /** Creep: the first blast's distance, the distance between blasts and the time between them. */
+  creep?: { start: number; step: number; gap: number };
+  /** Garden: the damage whoever is still on it at the end takes. */
+  garden?: { burst: number };
   /** Trail: how long each stretch of the trail lasts (s). */
   trail?: { fade: number };
   /** Steer: how fast the zone follows the caster's aim (px/s). */
@@ -770,16 +798,17 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         },
       ),
       ability(
-        "magma-bomb",
-        "Magma Bomb",
-        "projectile",
-        22,
-        12,
-        "An explosive fireball that burns enemies caught in the blast.",
+        "magma-leap",
+        "Magma Leap",
+        "leap",
+        20,
+        11,
+        "Leap up to 320 px toward your aim, over ground attacks, and land in an eruption: 20 damage and a burn to every enemy within 110 px.",
         {
-          speed: 620,
-          radius: 18,
+          range: 320,
+          speed: 900,
           explosion: 110,
+          knockback: 80,
           status: "burn",
           statusDuration: 2,
         },
@@ -1071,13 +1100,13 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         { range: 760, radius: 16, status: "slow", statusDuration: 0.6 },
       ),
       ability(
-        "booming-hoot",
-        "Booming Hoot",
+        "hush",
+        "Hush",
         "nova",
+        10,
         12,
-        12,
-        "A booming hoot that blasts nearby opponents far away.",
-        { radius: 180, knockback: 230 },
+        "A silent wingbeat: enemies within 200 px take 10, are pushed back a little and are Silenced for 1 second: no skills (they can still move, dash and attack).",
+        { radius: 200, knockback: 90, status: "silence", statusDuration: 1 },
       ),
       ability(
         "wing-cloak",
@@ -1429,20 +1458,21 @@ export const CHARACTERS: Record<CharacterId, Character> = {
       ability(
         "chestnut-storm",
         "Chestnut Storm",
-        "zone",
-        38,
+        "creep",
+        22,
         20,
-        "Rain burning chestnuts on a huge area far away, over any wall. It glows for almost a second before it lands.",
+        "A storm of burning chestnuts creeps along your aim, over any wall: five blasts 105 px wide, from 160 px out to 760 px, a fifth of a second apart. Each is marked 0.6 seconds before it lands: 22 damage, a burn and a shove. Step out of the line.",
         {
-          radius: 180,
-          range: 820,
           cast: 0.3,
-          duration: 1,
-          tickDelay: 0.9,
-          tickInterval: 1,
-          knockback: 130,
+          count: 5,
+          explosion: 105,
+          tickDelay: 0.6,
+          duration: 0.7,
+          range: 760,
+          knockback: 60,
           status: "burn",
-          statusDuration: 3,
+          statusDuration: 2,
+          creep: { start: 160, step: 150, gap: 0.2 },
         },
       ),
     ],
@@ -1730,20 +1760,19 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         },
       ),
       ability(
-        "moon-gravity",
-        "Moon Gravity",
-        "zone",
-        4,
-        15,
-        "A patch of low moon gravity at the aim point for 2.5 seconds: enemies in it float, sliding about and barely able to turn, and take 4 every half second.",
+        "sticky-mochi",
+        "Sticky Mochi",
+        "projectile",
+        10,
+        11,
+        "Fling a ball of sticky mochi: the first enemy hit takes 10 and is Grounded for 1.5 seconds: it can't dash or jump. Nowhere to hop away to.",
         {
-          radius: 130,
-          range: 450,
-          duration: 2.5,
-          tickInterval: 0.5,
+          speed: 820,
+          range: 560,
+          radius: 16,
           knockback: 0,
-          status: "float",
-          statusDuration: 0.8,
+          status: "grounded",
+          statusDuration: 1.5,
         },
       ),
       ability(
@@ -2065,17 +2094,22 @@ export const CHARACTERS: Record<CharacterId, Character> = {
       ability(
         "overgrowth",
         "Overgrowth",
-        "nova",
-        30,
+        "garden",
+        4,
         20,
-        "Vines erupt around Mossloth: 30 damage and Rooted for 1.2 seconds. Every seedling you have blooms at full growth, and your moss grows full.",
+        "A wild garden bursts up at your aim (up to 560 px, 210 px wide) for 2.5 seconds: enemies on it take 4 every half second and are slowed, and whoever is still on it at the end takes 20 and is Rooted for 1.2 seconds. Every seedling you have blooms, and your moss grows full.",
         {
           cast: 0.3,
-          radius: 230,
+          range: 560,
+          radius: 210,
+          duration: 2.5,
+          tickDelay: 0.3,
+          tickInterval: 0.5,
           knockback: 0,
           status: "root",
           statusDuration: 1.2,
           bloom: true,
+          garden: { burst: 20 },
         },
       ),
     ],
@@ -2154,20 +2188,20 @@ export const COMBOS: Record<CharacterId, Combo> = {
   cindrake: {
     name: "Scorched",
     setup: "crest-flare",
-    payoff: "magma-bomb",
+    payoff: "magma-leap",
     window: 3,
     damage: 1.35,
     status: "burn",
     statusDuration: 4,
-    text: "Crest Flare scorches. Magma Bomb deals 35% more to Scorched targets and burns twice as long.",
+    text: "Crest Flare scorches. Magma Leap lands 35% harder on Scorched targets and burns twice as long.",
   },
   mystowl: {
     name: "Dazed",
-    setup: "booming-hoot",
+    setup: "hush",
     payoff: "mind-maze",
     window: 3,
     damage: 1.4,
-    text: "Booming Hoot dazes. Mind Maze deals 40% more to Dazed targets.",
+    text: "Hush dazes. Mind Maze deals 40% more to Dazed targets.",
   },
   terradon: {
     name: "Mired",
@@ -3594,9 +3628,9 @@ export const RITES: Rite[] = [
   rite(
     "cindrake",
     "minor",
-    "magma-bomb",
-    "Wide Bomb",
-    "Magma Bomb's blast is 30% wider.",
+    "magma-leap",
+    "Wide Eruption",
+    "Magma Leap's eruption is 30% wider.",
     { mul: { explosion: 1.3 } },
   ),
   rite(
@@ -3783,14 +3817,9 @@ export const RITES: Rite[] = [
     "Third-Eye Ray reaches 20% further.",
     { mul: { range: 1.2 } },
   ),
-  rite(
-    "mystowl",
-    "minor",
-    "booming-hoot",
-    "Loud Hoot",
-    "Booming Hoot is 20% wider.",
-    { mul: { radius: 1.2 } },
-  ),
+  rite("mystowl", "minor", "hush", "Deep Hush", "Hush is 20% wider.", {
+    mul: { radius: 1.2 },
+  }),
   rite(
     "mystowl",
     "minor",
@@ -4007,8 +4036,8 @@ export const RITES: Rite[] = [
     "major",
     "chestnut-storm",
     "Harvest Storm",
-    "Chestnut Storm is 30% wider.",
-    { mul: { radius: 1.3 } },
+    "Chestnut Storm's blasts are 30% wider.",
+    { mul: { explosion: 1.3 } },
   ),
   rite(
     "glacelle",
@@ -4168,10 +4197,10 @@ export const RITES: Rite[] = [
   rite(
     "astrabun",
     "minor",
-    "moon-gravity",
-    "Light Moon",
-    "Moon Gravity is 20% wider.",
-    { mul: { radius: 1.2 } },
+    "sticky-mochi",
+    "Gooey Mochi",
+    "Sticky Mochi grounds for 2.2 seconds instead of 1.5.",
+    { set: { statusDuration: 2.2 } },
   ),
   rite(
     "astrabun",

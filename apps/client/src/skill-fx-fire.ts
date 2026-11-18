@@ -212,73 +212,6 @@ function emberGust(
 }
 
 // ───────────── Magma Bomb ─────────────
-function magmaBomb(g: G, pr: Projectile, now: number) {
-  const fx = fxFor(g.scene),
-    r = pr.ability.radius,
-    c = pr.color,
-    hover = 16 + Math.sin(now / 120 + pr.id) * 2,
-    x = pr.x,
-    y = pr.y - hover,
-    spin = now / 160 + pr.id;
-  fx.solid
-    .fillStyle(0x000000, 0.25)
-    .fillEllipse(pr.x, pr.y + 6, r * 2, r * 0.8);
-  fx.glow(pr.x, pr.y + 6, r * 3, c, 0.4, true);
-  fx.glow(x, y, r * 3.4, c, 0.45);
-  // Crusted rock with molten seams that pulse.
-  const pts = Array.from({ length: 8 }, (_, i) => {
-    const a = spin + (i * TAU) / 8,
-      rr = r * (0.88 + hash(pr.id + i) * 0.2);
-    return { x: x + Math.cos(a) * rr, y: y + Math.sin(a) * rr };
-  });
-  fx.solid.fillStyle(CRUST, 1).fillPoints(pts, true);
-  fx.solid
-    .fillStyle(0x6b3220, 1)
-    .fillCircle(x - r * 0.25, y - r * 0.25, r * 0.45);
-  const pulse = 0.7 + Math.sin(now / 90) * 0.3;
-  fx.g.lineStyle(3, GOLD, pulse);
-  for (let i = 0; i < 3; i++) {
-    const a = spin + i * 2.1;
-    fx.g.lineBetween(
-      x + Math.cos(a) * r * 0.1,
-      y + Math.sin(a) * r * 0.1,
-      x + Math.cos(a + 0.4) * r * 0.85,
-      y + Math.sin(a + 0.4) * r * 0.85,
-    );
-  }
-  fx.g.lineStyle(2, c, 0.8).strokePoints(pts, true);
-  fx.trail(`mb${pr.id}`, 0.03, () => {
-    smoke(fx, pr.x, pr.y, 1, [6, 10]);
-    fx.burst({
-      x: pr.x,
-      y: pr.y,
-      z: hover,
-      count: 1,
-      kind: "flame",
-      color: c,
-      speed: [0, 20],
-      up: [0, 30],
-      life: [0.25, 0.4],
-      size: [4, 7],
-      drag: 2,
-    });
-    if (Math.random() < 0.4)
-      fx.burst({
-        x: pr.x,
-        y: pr.y,
-        z: hover - r * 0.6,
-        count: 1,
-        kind: "drop",
-        color: GOLD,
-        speed: [5, 20],
-        up: [-20, 10],
-        life: [0.4, 0.6],
-        size: [1.6, 2.4],
-        grav: 900,
-        bounce: 0.1,
-      });
-  });
-}
 function magmaImpact(
   scene: Phaser.Scene,
   a: Ability,
@@ -1248,44 +1181,6 @@ function curtainCast(
 }
 
 // ───────────── Chestnut Storm (ultimate) ─────────────
-function stormTarget(
-  a: Ability,
-  x: number,
-  y: number,
-  angle: number,
-  ax: number,
-  ay: number,
-) {
-  const d = Math.min(a.range, Math.hypot(ax - x, ay - y));
-  return { x: x + Math.cos(angle) * d, y: y + Math.sin(angle) * d };
-}
-function chestnutStormWindup(
-  g: G,
-  a: Ability,
-  x: number,
-  y: number,
-  angle: number,
-  aimX: number,
-  aimY: number,
-  color: number,
-  k: number,
-  now: number,
-) {
-  const fx = fxFor(g.scene),
-    t = stormTarget(a, x, y, angle, aimX, aimY),
-    r = a.radius;
-  // At the target: the real area, filling as the volley is readied.
-  landingMark(fx, t.x, t.y, r, color, k * 0.4, now);
-  // At Pyranda: the tail flame flares and the nuts heat up.
-  const tx = x - Math.cos(angle) * 18,
-    ty = y - 26;
-  fx.glow(tx, ty, 26 + k * 40, color, 0.5 + k * 0.4);
-  fx.glow(tx, ty, 10 + k * 10, HOT, 0.6 + k * 0.4);
-  for (let i = 0; i < 5; i++) {
-    const a0 = now / 300 + (i * TAU) / 5;
-    chestnut(fx, tx + Math.cos(a0) * 22, ty - 10 + Math.sin(a0) * 8, 5, a0, k);
-  }
-}
 function chestnutStorm(g: G, z: Zone, progress: number, now: number) {
   const fx = fxFor(g.scene),
     a = z.ability,
@@ -1357,7 +1252,7 @@ function chestnutStorm(g: G, z: Zone, progress: number, now: number) {
 }
 
 export const fireKit: FxKit = {
-  projectile: { "magma-bomb": magmaBomb, "ember-lob": emberLob },
+  projectile: { "ember-lob": emberLob },
   zone: {
     "heat-cracks": blazeWhirl,
     "sunfire-pillar": sunfirePillar,
@@ -1368,12 +1263,11 @@ export const fireKit: FxKit = {
   },
   windup: {
     "sunfire-pillar": sunfireWindup,
-    "chestnut-storm": chestnutStormWindup,
   },
   channel: { "crest-flare": emberGust },
   cast: {
     "cinder-snap": cinderSnap,
-    "magma-bomb": magmaCast,
+    "magma-leap": magmaCast,
     "ember-lob": magmaCast,
     "chestnut-mortar": chestnutLob,
     "hot-coals": chestnutLob,
@@ -1381,6 +1275,6 @@ export const fireKit: FxKit = {
     "ember-curtain": curtainCast,
     "sunfire-pillar": magmaCast,
   },
-  impact: { "magma-bomb": magmaImpact, "ember-lob": emberLobImpact },
+  impact: { "magma-leap": magmaImpact, "ember-lob": emberLobImpact },
   hit: { fire: fireHit },
 };

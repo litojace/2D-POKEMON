@@ -134,13 +134,20 @@ describe("battle effects", () => {
                                           "storm",
                                           "hunt",
                                           "lure",
+                                          // Wave B: a creeping storm, a garden.
+                                          "creep",
+                                          "garden",
                                         ].includes(a.kind)
                                       ? a.id in effectKit.cast &&
                                         a.id in effectKit.zone
                                       : // River Dash: a jet of water under the dash.
                                         a.kind === "surf"
                                         ? a.id in effectKit.cast
-                                        : false;
+                                        : // Magma Leap: takeoff, and the eruption where it lands.
+                                          a.kind === "leap"
+                                          ? a.id in effectKit.cast &&
+                                            a.id in effectKit.impact
+                                          : false;
       if (!has) missing.push(`${a.id} (${a.kind})`);
       if ((a.cast ?? 0) > 0 && !(a.id in effectKit.windup))
         missing.push(`${a.id} wind-up`);

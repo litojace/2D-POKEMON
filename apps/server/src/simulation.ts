@@ -167,7 +167,10 @@ export class Arena {
   practice: Snapshot["practice"] = null;
   /** AI opponents in this room, by fighter id (solo vs bot). */
   bots = new Map<string, BotBrain>();
-  private bufferedSkills = new Map<string, { slot: number; ex: boolean; until: number }>();
+  private bufferedSkills = new Map<
+    string,
+    { slot: number; ex: boolean; until: number }
+  >();
   /** Fighters whose tick is held this tick (drainInputs: nothing queued). */
   private heldNow = new Set<string>();
   /** Late inputs paying held ticks: a step each before this tick's own. */
@@ -180,7 +183,14 @@ export class Arena {
    */
   private inputTally = new Map<
     string,
-    { ticks: number; depth: number; held: number; late: number; extra: number; folded: number }
+    {
+      ticks: number;
+      depth: number;
+      held: number;
+      late: number;
+      extra: number;
+      folded: number;
+    }
   >();
   private tally(id: string) {
     let t = this.inputTally.get(id);
@@ -232,6 +242,8 @@ export class Arena {
     string,
     { until: number; ability: Ability; slot: number; hit: Set<string> }
   >();
+  /** Magma Leap: leaps in the air, by fighter id, landing when they end. */
+  private leaps = new Map<string, { until: number; ability: Ability }>();
   /** Riptide Wave: when each enemy a wave reached stops being carried (`zone:fighter`). */
   private carried = new Map<string, number>();
   /** Pinball flights: the enemies hit on the current stretch, and bounces left then. */
@@ -563,6 +575,7 @@ export class Arena {
     this.trail.clear();
     this.rayHits.clear();
     this.surfs.clear();
+    this.leaps.clear();
     this.carried.clear();
     // Fighter roulette: a fresh random fighter for everyone each round.
     if (this.rule("random") && !this.practice)
@@ -719,7 +732,8 @@ export class Arena {
       this.heldNow.delete(id);
       this.lateSteps.delete(id);
     }
-    for (const p of this.players) if (id === undefined || p.id === id) delete p.held;
+    for (const p of this.players)
+      if (id === undefined || p.id === id) delete p.held;
   }
   /** Apply this tick's queued inputs. Call before tick(). */
   drainInputs() {
@@ -1441,20 +1455,6 @@ export class Arena {
         )
           this.damage(enemy, a.damage, p.id, a);
       }
-      if (a.bloom) {
-        // Overgrowth: every seedling blooms at full growth, the moss grows full.
-        for (const z of this.zones)
-          if (
-            z.owner === p.id &&
-            z.ability.kind === "seedling" &&
-            z.until > this.time
-          )
-            this.bloomSeed(z, (z.ability.seed?.stages.length ?? 1) - 1);
-        if (CHARACTERS[p.character].passive === "moss") {
-          p.moss = MOSS.max;
-          p.mossAt = this.time + MOSS.shedEvery;
-        }
-      }
     }
     if (a.kind === "beam") {
       const dx = Math.cos(angle),
@@ -2098,6 +2098,80 @@ export class Arena {
         this.events[this.events.length - 1].combo = combo.name;
       }
     }
+    if (a.kind === "leap") {
+      // Magma Leap: through the air toward the aim; stepLeaps() lands it.
+      const aim = p.lastInput;
+      const distance = Math.min(
+        a.range,
+        Math.hypot(aim.aimX - p.x, aim.aimY - p.y),
+      );
+      const seconds = Math.max(0.12, distance / Math.max(1, a.speed));
+      p.dashX = (Math.cos(angle) * distance) / seconds;
+      p.dashY = (Math.sin(angle) * distance) / seconds;
+      p.dashUntil = this.time + seconds;
+      p.jumpUntil = Math.max(p.jumpUntil, this.time + seconds);
+      p.recoveryUntil = Math.max(p.recoveryUntil, this.time + seconds);
+      this.rushes.delete(p.id);
+      this.leaps.set(p.id, { until: this.time + seconds, ability: a });
+    }
+    if (a.kind === "creep") {
+      // Chestnut Storm: blasts creeping along the aim, each a plain zone that
+      // lands once (`tickDelay` after it is marked).
+      const c = a.creep ?? { start: 160, step: 150, gap: 0.2 },
+        delay = a.tickDelay ?? 0.6;
+      for (let i = 0; i < (a.count ?? 5); i++) {
+        if (this.zones.length >= RULES.maxZones) break;
+        const d = c.start + c.step * i,
+          at = this.time + i * c.gap;
+        this.zones.push({
+          id: ++this.serial,
+          owner: p.id,
+          x: Math.max(0, Math.min(RULES.width, p.x + Math.cos(angle) * d)),
+          y: Math.max(0, Math.min(RULES.height, p.y + Math.sin(angle) * d)),
+          radius: a.explosion ?? 105,
+          until: at + delay + 0.1,
+          nextTick: at + delay,
+          ability: { ...a, kind: "zone", tickInterval: 9 },
+          color,
+          born: at,
+        });
+      }
+    }
+    if (a.kind === "garden" && this.zones.length < RULES.maxZones) {
+      // Overgrowth: a garden at the aim (stopped short of a wall).
+      const aim = p.lastInput;
+      const at = blinkLanding(
+        p,
+        angle,
+        Math.min(a.range, Math.hypot(aim.aimX - p.x, aim.aimY - p.y)),
+      );
+      this.zones.push({
+        id: ++this.serial,
+        owner: p.id,
+        x: at.x,
+        y: at.y,
+        radius: a.radius,
+        until: this.time + a.duration,
+        nextTick: this.time + (a.tickDelay ?? 0.3),
+        ability: a,
+        color,
+        born: this.time,
+      });
+    }
+    if (a.bloom) {
+      // Overgrowth: every seedling blooms at full growth, the moss grows full.
+      for (const z of this.zones)
+        if (
+          z.owner === p.id &&
+          z.ability.kind === "seedling" &&
+          z.until > this.time
+        )
+          this.bloomSeed(z, (z.ability.seed?.stages.length ?? 1) - 1);
+      if (CHARACTERS[p.character].passive === "moss") {
+        p.moss = MOSS.max;
+        p.mossAt = this.time + MOSS.shedEvery;
+      }
+    }
     if (a.kind === "trail") this.status(p, "haste", a.duration);
     if (a.kind === "trail" && this.zones.length < RULES.maxZones)
       // Spark Trail: laid behind the caster while it lasts, then it fades.
@@ -2558,6 +2632,61 @@ export class Arena {
       damage: aura.damage,
       knockback: 0,
     });
+  }
+  /** Magma Leap: a leap that has run its course lands in an eruption. */
+  private stepLeaps() {
+    if (!this.leaps.size) return;
+    for (const [id, leap] of this.leaps) {
+      const p = this.players.find((q) => q.id === id);
+      if (!p || p.hp <= 0 || p.out) {
+        this.leaps.delete(id);
+        continue;
+      }
+      if (this.time < leap.until - 1e-9) continue;
+      this.leaps.delete(id);
+      const a = leap.ability;
+      this.event(
+        "burst",
+        p,
+        CHARACTERS[p.character].color,
+        undefined,
+        p.id,
+        a.id,
+      );
+      for (const e of this.enemiesOf(p))
+        if (
+          e.hp > 0 &&
+          Math.hypot(e.x - p.x, e.y - p.y) <
+            (a.explosion ?? 110) + this.hitRadius(e) &&
+          this.lineClear(p, e)
+        )
+          this.damage(e, a.damage, p.id, a);
+    }
+  }
+  /**
+   * Overgrowth: every `tickInterval` enemies on the garden are hurt and
+   * slowed; at the end whoever is still on it takes the burst and is rooted.
+   */
+  private stepGarden(zone: Zone) {
+    const a = zone.ability;
+    const end = this.time >= zone.until - 1e-9;
+    const tick = !end && this.time >= zone.nextTick;
+    if (tick) zone.nextTick += a.tickInterval ?? 0.5;
+    if (!end && !tick) return;
+    if (end) this.event("burst", zone, zone.color, undefined, zone.owner, a.id);
+    for (const enemy of this.enemiesOfOwner(zone.owner))
+      if (
+        enemy.hp > 0 &&
+        Math.hypot(enemy.x - zone.x, enemy.y - zone.y) <
+          zone.radius + this.hitRadius(enemy) * 0.5
+      )
+        this.damage(
+          enemy,
+          end ? (a.garden?.burst ?? 20) : a.damage,
+          zone.owner,
+          end ? a : { ...a, status: "slow", statusDuration: 0.6 },
+        );
+    zone.until = end ? this.time : zone.until;
   }
   /** River Dash: whoever the dashing body passes is hit once; the dash's end refunds the cooldown. */
   private stepSurfs() {
@@ -3225,15 +3354,26 @@ export class Arena {
         p.charge = undefined;
         p.channel = undefined;
         // A stun or freeze stops a charge in its tracks (and uncurls a ball).
-        if (this.rushes.delete(p.id) || this.surfs.delete(p.id))
+        if (
+          this.rushes.delete(p.id) ||
+          this.surfs.delete(p.id) ||
+          this.leaps.delete(p.id)
+        )
           p.dashUntil = Math.min(p.dashUntil, this.time);
         this.endRoll(p);
         this.endPinball(p);
       }
       // Rooted: no dashing, and a charge (or a pinball) stops where it is.
       const rooted = this.has(p, "root");
-      if (rooted && (this.rushes.delete(p.id) || this.surfs.delete(p.id)))
+      if (
+        rooted &&
+        (this.rushes.delete(p.id) ||
+          this.surfs.delete(p.id) ||
+          this.leaps.delete(p.id))
+      )
         p.dashUntil = Math.min(p.dashUntil, this.time);
+      // Grounded (Sticky Mochi): no dashing or jumping either.
+      const noDash = rooted || this.has(p, "grounded");
       if (rooted) this.endPinball(p);
       if (p.roll && this.time >= p.roll.until) this.endRoll(p);
       // Late inputs for held ticks: a step each, at the held tick's time,
@@ -3243,18 +3383,31 @@ export class Arena {
       if (late) {
         this.lateSteps.delete(p.id);
         for (const s of late) {
-          if (s.input.dash && !disabled && !rooted && !p.roll && s.time >= p.dashAt) {
+          if (
+            s.input.dash &&
+            !disabled &&
+            !noDash &&
+            !p.roll &&
+            s.time >= p.dashAt
+          ) {
             this.startDash(p, s.input, s.time, freeCooldowns);
             input.dash = false;
           }
           advanceMovement(p, s.input, dt, s.time);
         }
       }
-      if (input.dash && !disabled && !rooted && !p.roll && this.time >= p.dashAt)
+      if (
+        input.dash &&
+        !disabled &&
+        !noDash &&
+        !p.roll &&
+        this.time >= p.dashAt
+      )
         this.startDash(p, input, this.time, freeCooldowns);
       if (
         input.jump &&
         !disabled &&
+        !this.has(p, "grounded") &&
         this.time >= p.jumpAt &&
         this.time >= p.jumpUntil
       ) {
@@ -3321,6 +3474,8 @@ export class Arena {
         } else if (input.skill !== ULT_SLOT) input.skill = -1;
         input.basic = false;
       }
+      // Silenced (Hush): no skills (a buffered one waits for it to end).
+      if (this.has(p, "silence")) input.skill = -1;
       if (!disabled && this.time >= p.recoveryUntil && !p.charge) {
         const character = CHARACTERS[p.character];
         const kit = this.kit(p);
@@ -3410,6 +3565,7 @@ export class Arena {
     }
     this.stepRushes();
     this.stepSurfs();
+    this.stepLeaps();
     this.stepRolls();
     this.stepPinballs();
     // Time bubbles slow the shots of whoever they work against.
@@ -3525,6 +3681,10 @@ export class Arena {
       }
       if (zone.ability.kind === "lure") {
         this.stepLure(zone);
+        continue;
+      }
+      if (zone.ability.kind === "garden") {
+        this.stepGarden(zone);
         continue;
       }
       if (zone.ability.kind === "trail") {

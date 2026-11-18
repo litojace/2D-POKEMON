@@ -238,7 +238,13 @@ export class EmberwingArena extends RaidArena {
     super.cast(p, a, ex);
     if (p.raidBoss || p.hp <= 0) return;
     // Mossloth's Overgrowth: the vines smother fire and dive trails around it.
-    if (a.id === "overgrowth") this.water(p.x, p.y, a.radius);
+    if (a.id === "overgrowth") {
+      // Mossloth's Overgrowth: the garden smothers fire where it grows.
+      const garden = [...this.zones]
+        .reverse()
+        .find((z) => z.owner === p.id && z.ability.id === "overgrowth");
+      if (garden) this.water(garden.x, garden.y, garden.radius);
+    }
     if (a.id === "river-dash") {
       // The jet of water Tidefin rides on, all along the dash.
       const d = { x: Math.cos(p.angle), y: Math.sin(p.angle) };

@@ -131,7 +131,7 @@ describe("2v2 teams", () => {
   });
   it("credits burn to whoever applied it", () => {
     const { a, b2, r1 } = teams(["voltkit", "voltkit", "cindrake", "voltkit"]);
-    a.damage(r1, 1, b2.id, CHARACTERS.cindrake.skills[1]); // Magma Bomb burns
+    a.damage(r1, 1, b2.id, CHARACTERS.cindrake.skills[1]); // Magma Leap burns
     const burn = r1.statuses.find((s) => s.kind === "burn")!;
     expect(burn.by).toBe(b2.id);
     const dealt = b2.stats.dealt;

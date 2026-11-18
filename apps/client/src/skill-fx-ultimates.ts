@@ -712,44 +712,6 @@ const pinballPhysics: ImpactFn = (scene, _a, x, y) => {
   });
   rocks(fx, x, y, 6, [60, 160], [1.6, 3]);
 };
-/** Overgrowth: soil heaves, leaves and petals burst out, pollen hangs in the air. */
-const overgrowthPhysics: CastFn = (scene, a, x, y) => {
-  const fx = fxFor(scene),
-    r = a.radius;
-  fx.decal({ kind: "crack", x, y, r: r * 0.6, color: 0x3e7a3a, life: 4 });
-  rocks(fx, x, y, 12, [60, r], [2, 3.6], [0x5a4330, 0x8a7a64]);
-  ring(10, (aa) =>
-    fx.burst({
-      x: x + Math.cos(aa) * r * 0.6,
-      y: y + Math.sin(aa) * r * 0.6 * SQ,
-      z: 10,
-      count: 3,
-      kind: "debris",
-      color: [0x9be07a, 0x6fbf5a, 0xffb0c8, 0xfff6a0],
-      speed: [20, 80],
-      up: [80, 180],
-      life: [1, 1.6],
-      size: [2.2, 3.4],
-      grav: 200,
-      drag: 2.4,
-    }),
-  );
-  fx.burst({
-    x,
-    y,
-    z: 30,
-    count: 14,
-    kind: "mote",
-    color: [0xfff6a0, 0xe9f5c8],
-    speed: [20, r * 0.6],
-    up: [20, 60],
-    life: [1.4, 2.2],
-    size: [1, 2],
-    grav: -10,
-    drag: 1.4,
-  });
-};
-
 export function withUltimates(kit: Required<FxKit>): Required<FxKit> {
   const cast = { ...kit.cast },
     zone = { ...kit.zone },
@@ -772,6 +734,5 @@ export function withUltimates(kit: Required<FxKit>): Required<FxKit> {
   zone.sanctuary = then(zone.sanctuary, sanctuaryPhysics);
   impact["full-moon"] = then(impact["full-moon"], fullMoonPhysics);
   impact.pinball = then(impact.pinball, pinballPhysics);
-  cast.overgrowth = then(cast.overgrowth, overgrowthPhysics);
   return { ...kit, cast, zone, windup, impact, beam, projectile };
 }

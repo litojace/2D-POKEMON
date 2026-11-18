@@ -1,5 +1,5 @@
 import type Phaser from "phaser";
-import type { Ability, Zone } from "@arena/shared";
+import type { Ability, Projectile, Zone } from "@arena/shared";
 import { fxFor } from "./fx-engine";
 import { TAU, ease, hash, type FxKit, type G, type Shot } from "./fx-kits";
 /**
@@ -694,18 +694,191 @@ function flareBurst(
   });
 }
 
+// ───────────── Wave B ─────────────
+const MOCHI = 0xfff7ef;
+const LEAF = 0x7fd36a;
+const VINE = 0x3f8f3a;
+/** Pyranda · Chestnut Storm: where each blast of the creeping storm will land. */
+function creepWindup(
+  g: G,
+  a: Ability,
+  x: number,
+  y: number,
+  angle: number,
+  _ax: number,
+  _ay: number,
+  color: number,
+  k: number,
+) {
+  const fx = fxFor(g.scene),
+    c = a.creep ?? { start: 160, step: 150, gap: 0.2 },
+    r = a.explosion ?? 105;
+  for (let i = 0; i < (a.count ?? 5); i++) {
+    const d = c.start + c.step * i,
+      px = x + Math.cos(angle) * d,
+      py = y + Math.sin(angle) * d,
+      kk = Math.max(0, Math.min(1, k * 1.6 - i * 0.12));
+    fx.floorSolid
+      .fillStyle(color, 0.05 + kk * 0.1)
+      .fillEllipse(px, py, r * 2, r * 2 * SQ);
+    fx.floor
+      .lineStyle(2, color, 0.25 + kk * 0.5)
+      .strokeEllipse(px, py, r * 2, r * 2 * SQ);
+  }
+}
+/** Mossloth · Overgrowth: where the garden will burst up. */
+function gardenWindup(
+  g: G,
+  a: Ability,
+  x: number,
+  y: number,
+  angle: number,
+  aimX: number,
+  aimY: number,
+  color: number,
+  k: number,
+) {
+  const fx = fxFor(g.scene),
+    d = Math.min(a.range, Math.hypot(aimX - x, aimY - y)),
+    tx = x + Math.cos(angle) * d,
+    ty = y + Math.sin(angle) * d;
+  fx.floorSolid
+    .fillStyle(color, 0.06 + k * 0.12)
+    .fillEllipse(tx, ty, a.radius * 2, a.radius * 2 * SQ);
+  fx.floor
+    .lineStyle(2, LEAF, 0.3 + k * 0.5)
+    .strokeEllipse(tx, ty, a.radius * 2, a.radius * 2 * SQ);
+}
+/**
+ * The garden: grass over its real area, vines curling up and, as its end
+ * nears, the ring that roots whoever is still on it tightening (the warning).
+ */
+function garden(g: G, z: Zone, progress: number, now: number) {
+  const fx = fxFor(g.scene),
+    r = z.radius,
+    k = lifeOf(z, progress),
+    grow = Math.min(1, k * 5);
+  fx.essential(() => {
+    fx.floorSolid
+      .fillStyle(VINE, 0.22 * grow)
+      .fillEllipse(z.x, z.y, r * 2, r * 2 * SQ);
+    fx.floor
+      .lineStyle(3, LEAF, 0.5 + k * 0.5)
+      .strokeEllipse(z.x, z.y, r * 2, r * 2 * SQ);
+    // The last second: the edge glows brighter and brighter.
+    if (k > 0.6) {
+      const kk = (k - 0.6) / 0.4;
+      fx.floor
+        .lineStyle(4 + kk * 4, 0xd8ff9a, 0.3 + kk * 0.6)
+        .strokeEllipse(
+          z.x,
+          z.y,
+          r * 2 * (1 - kk * 0.08),
+          r * 2 * SQ * (1 - kk * 0.08),
+        );
+    }
+  });
+  for (let i = 0; i < 9; i++) {
+    const ang = hash(z.id + i) * TAU,
+      d = r * (0.2 + hash(z.id * 3 + i) * 0.7),
+      vx = z.x + Math.cos(ang) * d,
+      vy = z.y + Math.sin(ang) * d * SQ,
+      h = (14 + hash(i + 9) * 16) * grow,
+      sway = Math.sin(now / 300 + i) * 4;
+    fx.solid.lineStyle(3, VINE, 0.9).lineBetween(vx, vy, vx + sway, vy - h);
+    fx.solid.fillStyle(LEAF, 0.9).fillEllipse(vx + sway, vy - h, 8, 4);
+  }
+}
+/** The garden snaps shut: vines burst up round whoever was rooted. */
+function gardenSnap(
+  scene: Phaser.Scene,
+  a: Ability,
+  x: number,
+  y: number,
+  _color: number,
+  shot: Shot,
+) {
+  const fx = fxFor(scene),
+    r = a.radius;
+  fx.burst({
+    x,
+    y,
+    z: 10,
+    count: 30,
+    kind: "mote",
+    color: [LEAF, VINE, 0xd8ff9a],
+    speed: [60, r * 1.6],
+    up: [60, 200],
+    life: [0.4, 0.8],
+    size: [1.4, 2.6],
+    drag: 1.4,
+  });
+  fx.shake(160, 0.004);
+  shot(fx.reduced ? 200 : 460, (kk) =>
+    fx.shockwave(x, y, r * ease(Math.min(1, kk * 1.5)), kk, LEAF, 10),
+  );
+}
+/** Astrabun · Sticky Mochi: a soft white ball with a dusting of flour. */
+function stickyMochi(g: G, pr: Projectile, now: number) {
+  const fx = fxFor(g.scene),
+    r = pr.ability.radius,
+    squash = 1 + Math.sin(now / 60 + pr.id) * 0.08;
+  fx.solid
+    .fillStyle(0x000000, 0.18)
+    .fillEllipse(pr.x, pr.y + 14, r * 1.8, r * 0.7);
+  fx.solid
+    .fillStyle(MOCHI, 1)
+    .fillEllipse(pr.x, pr.y, r * 2 * squash, (r * 2) / squash);
+  fx.solid
+    .lineStyle(2, 0xe8c9b6, 0.9)
+    .strokeEllipse(pr.x, pr.y, r * 2 * squash, (r * 2) / squash);
+  fx.g
+    .fillStyle(0xffffff, 0.9)
+    .fillCircle(pr.x - r * 0.3, pr.y - r * 0.3, r * 0.3);
+}
+/** The mochi splats and sticks. */
+function mochiSplat(
+  scene: Phaser.Scene,
+  _a: Ability,
+  x: number,
+  y: number,
+  _color: number,
+  shot: Shot,
+) {
+  const fx = fxFor(scene);
+  fx.burst({
+    x,
+    y,
+    z: 10,
+    count: 12,
+    kind: "drop",
+    color: [MOCHI, 0xf3dccb],
+    speed: [60, 180],
+    up: [40, 140],
+    life: [0.3, 0.5],
+    size: [1.6, 2.6],
+    grav: 900,
+  });
+  shot(fx.reduced ? 160 : 320, (kk) =>
+    fx.glow(x, y, 26 * (1 - kk * 0.5), MOCHI, 0.5 * (1 - kk)),
+  );
+}
+
 export const revolutionKit: FxKit = {
   zone: {
     "riptide-wave": riptideWave,
     thunderstorm: stormBolt,
     "wraith-hunt": wraith,
     "radiant-flare": flare,
+    overgrowth: garden,
   },
   windup: {
     "riptide-wave": waveWindup,
     thunderstorm: stormWindup,
     "wraith-hunt": wraithWindup,
     "radiant-flare": flareWindup,
+    "chestnut-storm": creepWindup,
+    overgrowth: gardenWindup,
   },
   cast: {
     "river-dash": riverDash,
@@ -718,6 +891,9 @@ export const revolutionKit: FxKit = {
     "riptide-wave": waveSlam,
     "wraith-hunt": reap,
     "radiant-flare": flareBurst,
+    overgrowth: gardenSnap,
+    "sticky-mochi": mochiSplat,
   },
+  projectile: { "sticky-mochi": stickyMochi },
   beam: { "ball-lightning": ballZap },
 };

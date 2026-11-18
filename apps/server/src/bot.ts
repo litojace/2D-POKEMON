@@ -817,7 +817,9 @@ export class BotBrain {
           // A marksman's shot (farBonus) is worth more the farther away they are.
           if (s.sight && reach(a.range * 0.85))
             score =
-              a.damage * farMultiplier(a, s.dist) * (a.boomerang ? 1.6 : 1);
+              a.damage * farMultiplier(a, s.dist) * (a.boomerang ? 1.6 : 1) +
+              // Sticky Mochi: grounding a target is worth more than its damage.
+              (a.status === "grounded" ? 10 : 0);
           break;
         case "rush":
         case "blink":
@@ -887,6 +889,19 @@ export class BotBrain {
         case "hunt":
           // Wraith Hunt: the wraith finds the target wherever it is.
           if (!arena.has(enemy, "stealth")) score = 25;
+          break;
+        case "leap":
+          // Magma Leap: land on the target (it erupts round where it lands).
+          if (s.sight && reach(a.range + (a.explosion ?? 0) * 0.5))
+            score = a.damage * 1.3;
+          break;
+        case "creep":
+          // Chestnut Storm creeps along the aim to its full length.
+          if (reach(a.range)) score = a.damage * 2;
+          break;
+        case "garden":
+          // Overgrowth: plant the garden under the target.
+          if (reach(a.range)) score = 28;
           break;
         case "lure":
           // Radiant Flare: hang the light on the target.

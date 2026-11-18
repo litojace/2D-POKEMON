@@ -3557,11 +3557,15 @@ function renderBattle() {
                                 ? "SWEPT AWAY"
                                 : s.kind === "lure"
                                   ? "DRAWN TO THE LIGHT"
-                                  : s.kind === "float"
-                                    ? "FLOATING"
-                                    : s.kind === "confuse"
-                                      ? "CONFUSED"
-                                      : s.kind.toUpperCase(),
+                                  : s.kind === "silence"
+                                    ? "SILENCED"
+                                    : s.kind === "grounded"
+                                      ? "GROUNDED"
+                                      : s.kind === "float"
+                                        ? "FLOATING"
+                                        : s.kind === "confuse"
+                                          ? "CONFUSED"
+                                          : s.kind.toUpperCase(),
         )
         .join(" · "),
     );
@@ -5715,6 +5719,8 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         "wave",
         "hunt",
         "lure",
+        "leap",
+        "garden",
       ].includes(ability.kind)
     ) {
       playImpact(this, ability, event.x, event.y, event.color, reducedMotion);
@@ -7063,6 +7069,8 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
           cage: 0xbfe6ff,
           current: 0x4fc3f7,
           lure: 0xfff3b0,
+          silence: 0xd9c7ff,
+          grounded: 0xffd7a8,
           float: 0xe8e0ff,
           confuse: 0xff9de2,
           mark: 0xffffff,

@@ -937,100 +937,6 @@ function poundThud(
 }
 
 // ───────────── Moon Gravity ─────────────
-/**
- * A patch of heavy moon gravity, as wide as the zone: a pale crater with
- * rings pressing inward and moon dust falling hard onto the floor.
- */
-function moonGravity(g: G, z: Zone, progress: number, now: number) {
-  const fx = fxFor(g.scene),
-    c = z.color,
-    r = z.radius,
-    { x, y } = z,
-    grow = ease(Math.min(1, progress / 0.1)),
-    fade = progress > 0.88 ? (1 - progress) / 0.12 : 1,
-    rr = r * grow;
-  // Low gravity: grit, pebbles and dust lift off the floor and drift up
-  // slowly, turning as they go.
-  fx.trail(`mg-lift${z.id}`, 0.05, () => {
-    const aa = Math.random() * Math.PI * 2,
-      d = Math.sqrt(Math.random()) * rr * 0.9;
-    fx.burst({
-      x: x + Math.cos(aa) * d,
-      y: y + Math.sin(aa) * d * SQ,
-      z: 0,
-      count: 1,
-      kind: Math.random() < 0.6 ? "debris" : "mote",
-      color: [0x9a8a78, 0xc9b8a4, MOON],
-      speed: [2, 12],
-      up: [20, 55],
-      life: [1.2, 2],
-      size: [1.4, 3],
-      grav: -6,
-      drag: 1.6,
-      bounce: 0,
-    });
-  });
-  // The patch: a pale violet haze over the floor.
-  fx.floorSolid
-    .fillStyle(INK, 0.32 * fade)
-    .fillEllipse(x, y, rr * 2, rr * 2 * SQ);
-  fx.floorSolid
-    .fillStyle(0x140a26, 0.25 * fade)
-    .fillEllipse(x, y + rr * 0.06, rr * 1.4, rr * 1.4 * SQ);
-  fx.glow(x, y, rr * 1.05, c, 0.25 * fade, true);
-  lensRing(fx, x, y, rr, c, 0.9 * fade, 4, SQ, true);
-  // Rings rising and spreading out: gravity letting go.
-  for (let i = 0; i < 3; i++) {
-    const k = (now / 1600 + i / 3) % 1,
-      rp = rr * (0.2 + ease(k) * 0.8);
-    fx.floor
-      .lineStyle(2.5, i % 2 ? CYAN : PINK, 0.6 * fade * Math.min(1, k * 4))
-      .strokeEllipse(x, y, rp * 2, rp * 2 * SQ);
-  }
-  glyph(fx, x, y, rr * 0.55, MOON, 0.7 * fade, -now / 900);
-  // A full moon looming low over the patch.
-  const my = y - rr * SQ - 60 - Math.sin(now / 700) * 4;
-  crescent(fx, x, my, 18 * grow, 0, 0.75 * fade, true);
-  fx.glow(x, (y + my) / 2, rr * 0.4, MOON, 0.12 * fade, false, 2.6);
-  // Moon dust slammed straight down.
-  fx.trail(`mgd${z.id}`, 0.04, () => {
-    const ang = Math.random() * TAU,
-      d = Math.sqrt(Math.random()) * rr * 0.95;
-    fx.burst({
-      x: x + Math.cos(ang) * d,
-      y: y + Math.sin(ang) * d * SQ,
-      z: 70 + Math.random() * 40,
-      count: 1,
-      kind: "mote",
-      color: [MOON, c, PINK],
-      speed: [0, 6],
-      up: [-120, -60],
-      life: [0.45, 0.7],
-      size: [1.2, 2],
-      grav: 900,
-      bounce: 0.05,
-      drag: 0.5,
-    });
-  });
-}
-function gravityCast(
-  scene: Phaser.Scene,
-  _a: Ability,
-  x: number,
-  y: number,
-  angle: number,
-  color: number,
-  shot: Shot,
-) {
-  const fx = fxFor(scene),
-    mx = x + Math.cos(angle) * 22,
-    my = y - 20 + Math.sin(angle) * 22;
-  shot(fx.reduced ? 160 : 320, (k) => {
-    crescent(fx, mx, my - k * 20, 9 * (1 - k * 0.4), angle, 1 - k, true);
-    lensRing(fx, mx, my, 6 + k * 24, color, 1 - k, 2, 1);
-  });
-}
-
 // ───────────── Full Moon ─────────────
 /** Where a blink will land: toward the aim, up to its range. */
 const landingOf = (
@@ -1167,18 +1073,18 @@ function fullMoonCrash(
 export const psychicKit: FxKit = {
   projectile: { "mind-dart": mindDart },
   beam: { "third-eye-ray": focusRay },
-  zone: { "mind-maze": thoughtstrike, "moon-gravity": moonGravity },
+  zone: { "mind-maze": thoughtstrike },
   windup: { "mind-maze": strikeWindup, "full-moon": fullMoonWindup },
   cast: {
     "mind-dart": dartCast,
     "third-eye-ray": rayCast,
-    "booming-hoot": (scene, a, x, y, _angle, color, shot) =>
+    hush: (scene, a, x, y, _angle, color, shot) =>
       repulse(scene, a, x, y, color, shot),
     "wing-cloak": ward,
     "mallet-bop": malletBop,
     "moon-hop": hopTakeoff,
     "mochi-pound": mochiPound,
-    "moon-gravity": gravityCast,
+    "sticky-mochi": dartCast,
     "full-moon": hopTakeoff,
   },
   impact: {
