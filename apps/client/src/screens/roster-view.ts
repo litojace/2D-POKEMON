@@ -354,14 +354,14 @@ function gridMarkup(view: RosterView, d: RosterData) {
   const none = !cards.length;
   const status = d.room
     ? d.room.ready
-      ? "Ready · waiting for the others"
+      ? "Ready · waiting…"
       : d.room.saving && view.focus === d.playing
         ? "Locking in…"
         : chosen
-          ? "Locked in · ready when you are"
+          ? "Locked in"
           : taken
-            ? `${taken} picked this · choose another`
-            : "Picked · lock in to play it"
+            ? `Taken by ${taken}`
+            : "Lock in to play"
     : chosen
       ? "You play as"
       : "Picked";
