@@ -19,6 +19,7 @@ export const META_KEYS = [
   "raidLook",
   "championLooks",
   "raidClears",
+  "avatar",
 ] as const;
 export type MetaKey = (typeof META_KEYS)[number];
 export type PlayerMeta = Pick<Fighter, MetaKey>;

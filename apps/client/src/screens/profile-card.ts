@@ -1,23 +1,25 @@
 /**
  * Share card (UI remodel step 7, decision 7): your player card as a picture,
  * drawn on the device the way share-card.ts draws match results: 1200×630
- * (the usual link-preview size), your fighter in the look you wear, your
- * title, name, level, rank and the four numbers. Nothing is uploaded.
+ * (the usual link-preview size), your avatar (docs/hidden-picks.md,
+ * "Avatars"), your title, name, level, rank and the four numbers. Nothing
+ * is uploaded.
  */
-import { CHARACTERS } from "../../../../packages/shared/src/index";
+import {
+  avatarUrl,
+  knownAvatar,
+} from "../../../../packages/shared/src/avatars";
 import { playerLevel } from "../../../../packages/shared/src/journey";
 import { fit, loadImage, sharePicture } from "../share-card";
 import {
   bestMastery,
   profileTiles,
   rankLine,
-  cardArt,
   type ProfileData,
 } from "./profile-view";
 
 const W = 1200,
   H = 630;
-const hex = (n: number) => `#${n.toString(16).padStart(6, "0")}`;
 const safe = (c: string | null | undefined, fallback: string) =>
   c && /^#[0-9a-f]{6}$/i.test(c) ? c : fallback;
 
@@ -37,16 +39,8 @@ export function cardSummary(d: ProfileData) {
   };
 }
 
-/** The fighter's picture as an image source (SVG or the pack's file). */
-function artSource(d: ProfileData) {
-  const art = cardArt(d.fighter, "share");
-  const img = art.match(/^<img[^>]*src="([^"]+)"/);
-  if (img) return img[1];
-  const svg = art.includes("xmlns=")
-    ? art
-    : art.replace("<svg", '<svg xmlns="http://www.w3.org/2000/svg"');
-  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
-}
+/** Your avatar's picture (same origin, so the canvas stays shareable). */
+const artSource = (d: ProfileData) => avatarUrl(knownAvatar(d.avatar));
 
 export async function drawPlayerCard(
   canvas: HTMLCanvasElement,
@@ -57,13 +51,13 @@ export async function drawPlayerCard(
   canvas.width = W;
   canvas.height = H;
   const g = canvas.getContext("2d")!;
-  const el = hex(CHARACTERS[d.fighter].color);
+  const el = "#ffd65b";
   const bg = g.createLinearGradient(0, 0, W, H);
   bg.addColorStop(0, "#12213e");
   bg.addColorStop(1, "#0b1020");
   g.fillStyle = bg;
   g.fillRect(0, 0, W, H);
-  // The fighter's panel: a glow in its element's colour.
+  // Your panel: a gold glow behind your avatar.
   g.save();
   g.beginPath();
   g.roundRect(40, 40, 420, 550, 28);
@@ -78,7 +72,17 @@ export async function drawPlayerCard(
   if (withArt) {
     try {
       const img = await loadImage(artSource(d));
-      g.drawImage(img, 60, 70, 380, 400);
+      g.save();
+      g.beginPath();
+      g.arc(250, 300, 170, 0, Math.PI * 2);
+      g.clip();
+      g.drawImage(img, 80, 130, 340, 340);
+      g.restore();
+      g.strokeStyle = el;
+      g.lineWidth = 8;
+      g.beginPath();
+      g.arc(250, 300, 172, 0, Math.PI * 2);
+      g.stroke();
     } catch {
       /* the card still works without the picture */
     }
@@ -89,10 +93,6 @@ export async function drawPlayerCard(
   g.beginPath();
   g.roundRect(40, 40, 420, 550, 28);
   g.stroke();
-  g.textAlign = "center";
-  g.fillStyle = "#ffffff";
-  g.font = "800 40px system-ui, sans-serif";
-  g.fillText(fit(g, CHARACTERS[d.fighter].name.toUpperCase(), 380), 250, 545);
   // Right: who you are and your numbers.
   g.textAlign = "left";
   g.fillStyle = "#ffd65b";

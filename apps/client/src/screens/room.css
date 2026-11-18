@@ -372,3 +372,321 @@ button.room-seat.is-open:focus-visible {
     display: none;
   }
 }
+
+/* ------------------------------------------- hidden picks (PvP lobby) */
+/* docs/hidden-picks.md: the seat is the player (frame and initial); the
+   pick sits beside it, as far as you may see it: your own and your
+   teammate's fighter, a "?" for another side's. */
+.room-seat-side {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.room-pick {
+  position: relative;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--rad-sm);
+  border: 1px solid var(--ui-line-2);
+  background: var(--fill-card);
+  overflow: hidden;
+}
+.room-pick > svg {
+  width: 100%;
+  height: 100%;
+}
+.room-pick.is-browsing {
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--ui-text) 55%, transparent);
+}
+.room-pick.is-browsing > svg {
+  opacity: 0.6;
+}
+/* Locked is gold, Ready green: the tile's edge and corner badge follow
+   the seat's state tag. */
+.room-pick.is-locked {
+  border: 2px solid var(--ui-warn);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--ui-warn) 40%, transparent);
+}
+.room-pick.is-locked.is-ready {
+  border-color: var(--ui-ok);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--ui-ok) 40%, transparent);
+}
+.room-pick.is-hidden {
+  background: repeating-linear-gradient(
+    135deg,
+    var(--ui-bg-2) 0 6px,
+    var(--ui-bg-1) 6px 12px
+  );
+  color: var(--ui-dim);
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: calc(20px * var(--text-scale, 1));
+}
+.room-pick.is-hidden.is-locked {
+  color: var(--ui-warn);
+}
+.room-pick.is-hidden.is-locked.is-ready {
+  color: var(--ui-ok);
+}
+.room-pick-tick {
+  position: absolute;
+  right: 1px;
+  bottom: 1px;
+  display: grid;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--ui-warn);
+  color: var(--ui-accent-ink);
+}
+.room-pick.is-ready .room-pick-tick {
+  background: var(--ui-ok);
+  color: var(--ui-ok-ink);
+}
+.room-pick-tick svg {
+  width: 10px;
+  height: 10px;
+  color: inherit;
+  opacity: 1;
+  stroke-width: 3.4;
+}
+/* A seat's state (room-view.ts seatState): one width, so the pick tiles
+   line up in a column whatever the word. */
+.room-state {
+  justify-content: center;
+  min-width: 86px;
+}
+/* The tag's icons take its text colour, thick enough to read at 12 px
+   (the shared .menu-option-icon would paint them gold and thin). */
+.room-seat .ui-tag svg {
+  width: 12px;
+  height: 12px;
+  flex: none;
+  color: inherit;
+  opacity: 1;
+  stroke-width: 3;
+}
+.room-state.is-locked {
+  background: var(--ui-warn);
+  color: var(--ui-accent-ink);
+}
+.room-state.is-ready {
+  background: var(--ui-ok);
+  color: var(--ui-ok-ink);
+}
+/* A narrower seats column (300 px): the state goes under the tile, so the
+   name keeps its room. */
+@media (max-width: 1300px) and (min-height: 501px) {
+  .room-seat-side {
+    flex-direction: column;
+    gap: 3px;
+    width: 86px;
+  }
+  .room-pick {
+    width: 34px;
+    height: 34px;
+  }
+}
+@media (max-height: 500px) {
+  .room-seat-side {
+    flex-direction: column;
+    gap: 1px;
+  }
+  .room-pick {
+    width: 26px;
+    height: 26px;
+    font-size: calc(15px * var(--text-scale, 1));
+  }
+  .room-pick-tick {
+    width: 11px;
+    height: 11px;
+  }
+  .room-seat-side {
+    width: 62px;
+  }
+  .room-seat.has-pick .ui-tag {
+    padding: 0 4px;
+    line-height: 1.4;
+  }
+  .room-state {
+    min-width: 0;
+    width: 100%;
+  }
+  .room-seat .ui-tag svg {
+    width: 10px;
+    height: 10px;
+  }
+}
+
+/* ------------------------------------------- a room has no top bar */
+/* docs/hidden-picks.md: in a room the top bar (coins, level, settings) is
+   hidden for more room. Chat sits in the banner's top-left corner (its
+   fixed button is placed here, from the same numbers as the seats), and the
+   ⋯ menu (Settings, How to play, Invite, Leave) in its top-right corner. */
+body:has(#menu > .room-screen) {
+  --room-top: max(8px, calc(var(--safe-top, 0px) + 8px));
+  --room-pad: var(--sp-3);
+  --room-btn: 40px;
+  --room-btn-in: 8px;
+}
+body:has(#menu > .room-screen) .topbar {
+  display: none;
+}
+.room-screen {
+  top: var(--room-top, calc(var(--lobby-top, 64px) + 8px));
+}
+body:has(#menu > .room-screen) .chat-button[data-place="room"] {
+  --chat-size: var(--room-btn);
+  /* The seats' 1 px border, then their padding, as the ⋯ button. */
+  top: calc(var(--room-top) + 1px + var(--room-pad) + var(--room-btn-in));
+  left: calc(
+    max(14px, var(--safe-left, 0px)) + 1px + var(--room-pad) +
+      var(--room-btn-in)
+  );
+}
+/* The kicker sits between the two buttons, level with them; the name and
+   its line take the banner's whole width below. */
+.room-banner.is-mode .room-banner-text {
+  align-content: start;
+  gap: 2px;
+  padding: var(--room-btn-in, 8px) 12px 8px;
+}
+.room-banner.is-mode .ui-kicker {
+  display: block;
+  height: var(--room-btn, 40px);
+  line-height: var(--room-btn, 40px);
+  padding-inline: calc(var(--room-btn, 40px) + var(--room-btn-in, 8px) - 8px);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.room-more {
+  position: absolute;
+  top: calc(var(--room-pad, 12px) + var(--room-btn-in, 8px));
+  right: calc(var(--room-pad, 12px) + var(--room-btn-in, 8px));
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: var(--room-btn, 40px);
+  height: var(--room-btn, 40px);
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(139, 174, 229, 0.25);
+  background: rgba(14, 26, 49, 0.84);
+  color: var(--ui-text);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.room-more svg {
+  width: 22px;
+  height: 22px;
+}
+.room-more:hover,
+.room-more:focus-visible,
+.room-more[aria-expanded="true"] {
+  border-color: var(--ui-accent);
+  color: var(--ui-accent);
+}
+.room-menu {
+  position: absolute;
+  top: calc(
+    var(--room-pad, 12px) + var(--room-btn-in, 8px) + var(--room-btn, 40px) +
+      6px
+  );
+  right: var(--room-pad, 12px);
+  z-index: 3;
+  display: grid;
+  min-width: 190px;
+  padding: 6px;
+  border-radius: var(--rad-md);
+  border: 1px solid var(--glass-rim);
+  background: var(--glass-solid);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+}
+.room-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--rad-sm);
+  background: none;
+  color: var(--ui-text);
+  font: inherit;
+  font-size: var(--fs-small);
+  text-align: left;
+  cursor: pointer;
+}
+.room-menu-item svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+.room-menu-item:hover,
+.room-menu-item:focus-visible {
+  background: var(--fill-card);
+}
+.room-menu-item.is-danger {
+  color: var(--ui-danger);
+}
+@media (max-height: 500px) {
+  body:has(#menu > .room-screen) {
+    --room-top: max(6px, calc(var(--safe-top, 0px) + 6px));
+    --room-pad: 6px;
+    /* 44 px touch targets, 2 px inside the banner's edges. */
+    --room-btn: 44px;
+    --room-btn-in: 2px;
+  }
+  .room-banner.is-mode {
+    height: 48px;
+  }
+  /* One line (the kicker is hidden), centred between the buttons. */
+  .room-banner.is-mode .ui-kicker {
+    display: none;
+  }
+  .room-banner.is-mode .room-banner-text {
+    align-content: center;
+    padding: 0 calc(var(--room-btn) + 2 * var(--room-btn-in));
+  }
+  .room-menu-item {
+    min-height: 36px;
+  }
+}
+
+/* The room's host: the Lobby's crown (lobby.css .lobby-crown) before the name. */
+.room-crown {
+  margin-right: 4px;
+  font-style: normal;
+  color: var(--ui-accent);
+}
+/* Phones: your seat's gold edge says it's you; "(you)" is kept for screen
+   readers only, so a host's crown doesn't cut the name short. */
+@media (max-height: 500px) {
+  .room-seat.is-me .room-seat-text b > small {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+/* Another player's own picture: a tap reports it (it asks first). */
+button.room-avatar.is-reportable {
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+button.room-avatar.is-reportable:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 2px;
+}

@@ -377,6 +377,8 @@ export const friendSchema = z.object({
   raidClears: z.record(z.string(), z.number().int().nonnegative()).optional(),
   /** Verified equipped portrait frame, when appearance is available. */
   frame: z.string().max(80).nullable().optional(),
+  /** Their library avatar (avatars.ts), their portrait; null: the default. */
+  avatar: z.string().max(40).nullable().optional(),
 });
 export const friendsSchema = z.object({
   code: z.string(),

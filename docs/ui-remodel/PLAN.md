@@ -6,9 +6,9 @@ one product, in line with the hub redesign proposal. **No game code has
 changed yet.** This file is the plan to approve; building starts on the
 owner's go.
 
-- Current screens, all four sizes: [`images/before/`](images/before/)
-  (1440×900, 1280×720, 844×390, and 852×393 with a simulated Dynamic Island
-  and home indicator).
+- Screens before the remodel, all four sizes (1440×900, 1280×720, 844×390,
+  and 852×393 with a simulated Dynamic Island and home indicator): removed in
+  Nov 2026, in git history under `docs/ui-remodel/images/before/`.
 - Mockups: [`images/mockups/`](images/mockups/), and side by side with today
   in [`images/compare/`](images/compare/).
 - The mockup page itself: [`mockup/`](mockup/). It imports the real client

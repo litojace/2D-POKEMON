@@ -276,6 +276,9 @@ export class Arena {
   private nextGem = 0;
   /** Fighter roulette: the fighter each player picked, restored in the lobby. */
   chosen = new Map<string, CharacterId>();
+  /** PvP lobby: when each player locked in (2v2: the first lock keeps a fighter). */
+  lockOrder = new Map<string, number>();
+  lockSerial = 0;
   /** Round winners in order (null = draw). */
   roundLog: (Team | null)[] = [];
   /** Seconds spent in active play this match (for "mostly idle" checks). */

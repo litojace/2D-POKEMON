@@ -1,52 +1,36 @@
 # Hub redesign: Lobby, Plaza and Elemental Farm (handoff)
 
-This folder hands a finished design prototype over to the real implementation.
+This folder handed a finished design prototype over to the real implementation.
 The prototype was built and reviewed with the owner in one long design session.
-**Nothing in `apps/`, `packages/` or `supabase/` has been changed yet.**
+**It has since been built into the game** (Journey to level 100, Daily Spark,
+Gold Leaves, the Plaza and the Farm). The prototype's build scripts, check
+scripts, lobby snapshot and screenshots were removed in Nov 2026; they are in
+git history. What is left is the ported source the code comments point to, and
+the generator for `NUMBERS.md`, which a unit test reads.
 
 - Playable prototype (private claude.ai page, owner only): https://claude.ai/artifact/H15cY4aKCr5yXrjW5Y9tYA
 - Economy report, in Vietnamese: https://claude.ai/artifact/PNGPNFVKBqxtuGzJ9FCJre
   (the source is in `economy/kinh-te.html`)
 - Every tuning number, generated from the source: [`NUMBERS.md`](NUMBERS.md)
-- How to start the next session: [`NEW-CHAT-PROMPT.md`](NEW-CHAT-PROMPT.md)
 
 ## What is in this folder
 
-| Path                                                                                  | What it is                                                                                                                                                                                                                   |
-| ------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `prototype/app/*.js, *.css, *.html`                                                   | Prototype source. The main files are `farm.js` (farm), `crops.js` (crop art), `plaza.js` (Plaza), `progress.js` (Journey and Missions), `icons.js` (shared icon set) and `art.js` (procedural buildings, trees and animals). |
-| `prototype/app/assemble.py`, `build.py`                                               | Build scripts. They patch the Lobby page in `prototype/lobby/template.html` and write `app/hub.html`, which is self-contained.                                                                                               |
-| `prototype/lobby/`                                                                    | The Lobby page the prototype builds on, plus `art.json`, the champion SVGs exported from the game.                                                                                                                           |
-| `prototype/app/doc.html`                                                              | The design notes shown under the demo, in Vietnamese.                                                                                                                                                                        |
-| `prototype/app/t*.js, f1, e1, m2-m4, al, g1, an1, an3, dk, rt1, rt2, cr1, cr2, sheet` | Playwright check scripts (see "Running it").                                                                                                                                                                                 |
-| `prototype/app/numbers.js`                                                            | Writes `NUMBERS.md` from the source.                                                                                                                                                                                         |
-| `economy/`                                                                            | Python models and the report for the XP, coin and leaf economy. Run them from that folder.                                                                                                                                   |
-| `images/`                                                                             | Reference screenshots of the approved look.                                                                                                                                                                                  |
+| Path                                | What it is                                                                                                                                                                                                                   |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `prototype/app/*.js, *.css, *.html` | Prototype source. The main files are `farm.js` (farm), `crops.js` (crop art), `plaza.js` (Plaza), `progress.js` (Journey and Missions), `icons.js` (shared icon set) and `art.js` (procedural buildings, trees and animals). |
+| `prototype/app/numbers.js`          | Writes `NUMBERS.md` from the source.                                                                                                                                                                                         |
+| `economy/`                          | Python models and the report for the XP, coin and leaf economy. Run them from that folder.                                                                                                                                   |
 
 ## Running it
 
 ```bash
 cd docs/hub-redesign/prototype/app
-python3 build.py              # writes hub.html, preview.html, preview-t.html (all git-ignored)
-node t16.js                   # any check script, run one at a time; each prints "errs []" when clean
 node numbers.js > ../../NUMBERS.md
 ```
 
-- The check scripts load `preview-t.html`, which exposes the debug handles `__FM`, `__PZ` and `__ECON`.
-- They use the repo's `playwright` package. If that version's browser is not installed, set `PW_CHROMIUM` to any Chromium binary (see `pw.js`).
-- Run them one or two at a time. Running a dozen at once starves the CPU and gives false failures.
-
-Useful checks:
-
-| Script                    | What it checks                                                                                                   |
-| ------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `t18` / `t20` / `t16`     | HUD boxes never resize; no cut-off text; no Vietnamese text in the game UI                                       |
-| `al`                      | Buttons line up                                                                                                  |
-| `m2` / `m3` / `m4` / `dk` | Phone layouts, touch, the farm menu does not cover the tool bar                                                  |
-| `g1`                      | Tap vs drag vs hold vs pinch on the farm                                                                         |
-| `an1` / `an3`             | Dog paths: obstacles and the fence gate (`an3`: 300 random trips, must print `legsThroughObstacles: 0`)          |
-| `rt1` / `rt2`             | Real-time clock, offline catch-up, fast mode and reset; growth stays on the wall clock with the CPU throttled 8x |
-| `cr1` / `cr2` / `sheet`   | Crop art in the field, the menus and a contact sheet of every stage                                              |
+`numbers.js` reads `farm.js` and `progress.js` (CommonJS, hence
+`prototype/package.json`). Its output no longer matches `NUMBERS.md` line for
+line (checked Nov 2026), so compare before overwriting it.
 
 ## What the prototype contains
 

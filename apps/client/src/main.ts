@@ -132,6 +132,7 @@ import {
   roomSeatsMarkup,
   roomWatchMarkup,
   type RoomData,
+  type RoomSeat,
   type RoomMode as RoomKind,
 } from "./screens/room-view";
 import "./screens/room.css";
@@ -265,7 +266,7 @@ import {
   leadProjectile,
 } from "./networking/timeline-lead";
 import { AccountUI } from "./accounts";
-import { framedAvatar } from "./portraits";
+import { framedAvatar, identityPortrait, portraitAvatar } from "./portraits";
 import { waitForServer, onServerStartupRetry } from "./server-connection";
 import "./ui/tokens.css";
 import "./style.css";
@@ -293,11 +294,13 @@ import { watchNotchInsets } from "./notch-insets";
 import { watchScrollRows } from "./ui/scroll-rows";
 import { watchScreenPin } from "./screen-pin";
 import { watchCosmeticPreviews } from "./cosmetic-fx-preview";
-import { openHubPanelNow } from "./ui/hub-panel";
+import { askConfirm, openHubPanelNow } from "./ui/hub-panel";
+import { photoIdOf } from "../../../packages/shared/src/avatars";
 import { createGuide } from "./getting-started-screen";
 import { createCoach } from "./battle-coach";
 import { playerLevel } from "../../../packages/shared/src/journey";
 import { openRoster, type RosterScreen } from "./screens/roster";
+import type { RosterData } from "./screens/roster-view";
 import { showRewardReveal, takeNewRewards } from "./reward-reveal";
 import {
   SKILL_ACTIONS,
@@ -1414,20 +1417,30 @@ function roomData(watch: boolean): RoomData {
     rounds: roundsNeeded(s.mutators),
     seats: players.map((p, i) => {
       const character = p.id === myId ? selected : p.character;
+      const scope = `room-${watch ? "watch" : "seat"}-${i}`;
+      // PvP: the seat shows the player (frame and initial), and their pick
+      // beside it: yours and your teammate's, never another side's
+      // (docs/hidden-picks.md).
+      const pvp = mode !== "raid";
       return {
         id: p.id,
         name: p.name,
         character,
-        avatar: framedAvatar(
-          identityOf(p, character),
-          `room-${watch ? "watch" : "seat"}-${i}`,
-        ),
+        avatar: pvp
+          ? identityPortrait(identityOf(p, character))
+          : framedAvatar(identityOf(p, character), scope),
         ready: p.ready,
         connected: p.connected,
         host: p.id === hostId,
         me: p.id === myId,
         team: mode === "teams" ? (teamOf(p) === 1 ? 1 : 0) : undefined,
-        flair: p.flair ? `★ ${p.flair}` : undefined,
+        // Mastery flair belongs to the pick: hidden with it.
+        flair: p.flair && !p.veiled ? `★ ${p.flair}` : undefined,
+        pick: pvp ? seatPick(p, scope) : undefined,
+        reportPhoto:
+          p.id !== myId && !watch
+            ? (photoIdOf(p.avatar) ?? undefined)
+            : undefined,
       };
     }),
     host: !watch && hostId === myId,
@@ -1438,9 +1451,65 @@ function roomData(watch: boolean): RoomData {
         }
       : undefined,
     teamUp:
-      mode === "teams" && me ? teamUpNote({ ...me, character: selected }) : "",
+      mode === "teams" && me
+        ? teamUpNote({ ...me, character: selected, locked: true })
+        : "",
     watchers: s.watchers ?? [],
+    menu: roomMenuOpen,
   };
+}
+/**
+ * A seat's pick in a PvP lobby: what you may see of it. Your own and your
+ * teammate's fighter (looking at, or locked in); another side's is hidden.
+ */
+function seatPick(p: Fighter, scope: string): RoomSeat["pick"] {
+  if (p.veiled) return { hidden: true, locked: !!p.locked };
+  const mine = p.id === myId;
+  const shown = mine
+    ? selected
+    : p.locked
+      ? p.character
+      : (p.browse ?? undefined);
+  const locked = mine ? myLocked() : !!p.locked;
+  if (!shown) return { locked };
+  return {
+    locked,
+    character: shown,
+    // In the skin (or Colors) they wear, as their fighter will be.
+    art: portraitAvatar(identityOf(p, shown), `${scope}-pick`),
+  };
+}
+/** Your pick in this PvP room is locked in (the server's word). */
+function myLocked() {
+  const me = state?.players.find((p) => p.id === myId);
+  return !!me?.locked && me.character === selected;
+}
+/** 2v2: your teammate's fighter (looking at, or locked in) for the picker. */
+function mateData() {
+  if (!isTeams() || state?.phase !== "lobby") return undefined;
+  const me = state.players.find((p) => p.id === myId);
+  if (!me) return undefined;
+  const out: NonNullable<NonNullable<RosterData["room"]>["mates"]> = {};
+  for (const p of state.players) {
+    if (p.id === myId || p.veiled || teamOf(p) !== teamOf(me)) continue;
+    const c = p.locked ? p.character : p.browse;
+    if (c) out[c] = { name: p.name, locked: !!p.locked };
+  }
+  return out;
+}
+/** Tell your teammate which fighter you're looking at (a short pause first:
+ * paging through cards sends only where you stop). */
+let browseTimer = 0;
+let browseSent: string | undefined;
+function browseFighter(c: CharacterId) {
+  window.clearTimeout(browseTimer);
+  browseTimer = window.setTimeout(() => {
+    const key = `${state?.code}:${c}`;
+    if (!myId || state?.phase !== "lobby" || state.raid || browseSent === key)
+      return;
+    browseSent = key;
+    void request("browse", c);
+  }, 250);
 }
 /** Draw the room (or a watched room): seats patched in place, the picker
  * opened once and refreshed after. */
@@ -1502,12 +1571,15 @@ function renderRoom(watch: boolean) {
                 saving: !!savingRoomPick,
                 ready: !!me?.ready,
                 canReady: state?.phase === "lobby" && !savingRoomPick,
+                locked: state?.raid ? undefined : myLocked(),
+                mates: mateData(),
               },
             };
           },
           choose: (c) => void lockIn(c),
           skins: () => {},
           ready: (c) => void roomReady(c),
+          browse: (c) => browseFighter(c),
           leave: () => void leave(),
           onClose: () => (roomPicker = undefined),
         },
@@ -1518,13 +1590,77 @@ function renderRoom(watch: boolean) {
     }
   }
 }
-/** Clicks on the seats column: invite, teams, shuffle. */
+/** Report another player's picture, after asking (three reporters hide it). */
+async function reportPhoto(photo: string, name: string) {
+  const sure = await askConfirm({
+    kicker: "Report a picture",
+    title: `Report ${name}'s picture?`,
+    art: identityPortrait({ avatar: `photo:${photo}` }),
+    lines: [
+      [
+        "What happens",
+        "Our team looks at it. Pictures that break the rules are removed.",
+      ],
+    ],
+    confirm: "Report",
+  });
+  if (!sure) return;
+  try {
+    await accountsUI.reportPhoto(photo);
+    toast("Thanks. The picture was reported.");
+  } catch (error) {
+    toast(
+      error instanceof Error ? error.message : "That didn't work. Try again.",
+    );
+  }
+}
+/** The room's ⋯ menu (Settings, Invite, Leave) is open. */
+let roomMenuOpen = false;
+function setRoomMenu(open: boolean) {
+  if (roomMenuOpen === open) return;
+  roomMenuOpen = open;
+  refreshRoom();
+  if (open)
+    document
+      .querySelector<HTMLElement>(".room-menu .room-menu-item")
+      ?.focus({ preventScroll: true });
+}
+// A press anywhere else, or Escape, closes the room menu.
+document.addEventListener(
+  "pointerdown",
+  (event) => {
+    if (
+      roomMenuOpen &&
+      !(event.target as Element).closest?.(".room-menu, .room-more")
+    )
+      setRoomMenu(false);
+  },
+  true,
+);
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape" || !roomMenuOpen) return;
+  setRoomMenu(false);
+  document.querySelector<HTMLElement>(".room-more")?.focus();
+});
+/** Clicks on the seats column: invite, teams, shuffle, the ⋯ menu. */
 function onRoomClick(event: MouseEvent) {
   const t = (event.target as Element).closest<HTMLElement>("button");
   if (!t || t.closest(".ui-panel-host") || (t as HTMLButtonElement).disabled)
     return;
   audio.unlock();
   const d = t.dataset;
+  if (d.roomMore !== undefined) return setRoomMenu(!roomMenuOpen);
+  if (d.roomMenu) {
+    setRoomMenu(false);
+    if (d.roomMenu === "settings") showSettings();
+    else if (d.roomMenu === "help") $("help").click();
+    else if (d.roomMenu === "invite") void accountsUI.showFriends();
+    else if (d.roomMenu === "leave") void leave();
+    else if (d.roomMenu === "stop-watching") void stopWatching();
+    return;
+  }
+  if (d.roomReportPhoto)
+    return void reportPhoto(d.roomReportPhoto, d.roomReportName ?? "");
   if (d.roomInvite !== undefined) void accountsUI.showFriends();
   else if (d.team !== undefined) void request("team", { team: Number(d.team) });
   else if (d.roomShuffle !== undefined) void request("shuffle");
@@ -1544,7 +1680,7 @@ async function lockIn(choice: CharacterId) {
   if (!state || !me) return false;
   audio.unlock();
   const roomCode = state.code;
-  if (choice === selected && me.character === choice) {
+  if (choice === selected && me.character === choice && me.locked !== false) {
     refreshRoom();
     return true;
   }
@@ -1587,7 +1723,12 @@ async function roomReady(choice: CharacterId) {
   audio.unlock();
   const me = state?.players.find((p) => p.id === myId);
   if (!me) return;
-  if (!me.ready && choice !== selected && !(await lockIn(choice))) return;
+  if (
+    !me.ready &&
+    (choice !== selected || (!state?.raid && !myLocked())) &&
+    !(await lockIn(choice))
+  )
+    return;
   void request("ready");
 }
 
@@ -1610,6 +1751,8 @@ function identityOf(p: Fighter, character = p.character): Fighter {
     ? {
         ...p,
         character,
+        // Your avatar as you just chose it (peers get it from the server).
+        avatar: accountsUI.avatar ?? p.avatar,
         raidLook: accountsUI.raidLook ?? p.raidLook,
         championLooks: looksOf(p),
         raidClears:
@@ -1770,8 +1913,18 @@ function teamUpNote(me: Fighter) {
     (p) => p.id !== me.id && teamOf(p) === teamOf(me),
   );
   if (!partner) return "";
-  const gift = giftFrom(partner.character);
-  return `<p class="teamup-note"><b>Team-up</b> ${me.id === myId ? "You get" : `${escape(me.name)} gets`} <i title="${escape(gift.text)}">${escape(gift.name)}</i> from ${escape(CHARACTERS[partner.character].name)}</p>`;
+  // Before the match: the fighter your partner has locked in or is looking at.
+  const theirs =
+    state?.phase === "lobby"
+      ? partner.veiled
+        ? undefined
+        : partner.locked
+          ? partner.character
+          : partner.browse
+      : partner.character;
+  if (!theirs) return "";
+  const gift = giftFrom(theirs);
+  return `<p class="teamup-note"><b>Team-up</b> ${me.id === myId ? "You get" : `${escape(me.name)} gets`} <i title="${escape(gift.text)}">${escape(gift.name)}</i> from ${escape(CHARACTERS[theirs].name)}</p>`;
 }
 /** Join a friend's room from the friends list. */
 async function joinByCode(code: string) {
@@ -1792,7 +1945,8 @@ async function joinByCode(code: string) {
   });
   identity(reply);
   if (reply.ok) {
-    await request("select", selected);
+    // Show your Lobby fighter in the room; Lock in (or Ready) picks it.
+    await request("browse", selected);
     $<HTMLDialogElement>("dialog").close();
     menuOpen = false;
     settingsOpen = false;
@@ -2136,7 +2290,7 @@ async function startAdventure(mode: string) {
   });
   identity(reply);
   if (!reply.ok) return;
-  await request("select", selected);
+  await request("browse", selected);
 }
 /**
  * The welcome screen: shown when signed out (with the sign-up / log-in
@@ -2337,6 +2491,8 @@ function syncChat(hub: boolean) {
   chat.sync(place, {
     party: !!party,
     room: inRoom && !state!.practice,
+    // A 2v2 room's own side (docs/hidden-picks.md).
+    team: inRoom && !state!.practice && state!.mode === "teams",
     // Nearby: the Plaza's copy, or the farm you are on.
     place:
       hub && (hubScene === "plaza" || (hubScene === "farm" && !!farmChatOwner)),
@@ -2978,8 +3134,9 @@ async function startRaid(
  */
 function syncFighterArt() {
   if (state && state.phase !== "lobby") return holdFighterPrepaint();
+  // Hidden picks are not known yet: they load at the briefing.
   const room = (state?.players ?? [])
-    .filter((p) => !p.raidBoss)
+    .filter((p) => !p.raidBoss && !p.veiled)
     .map((p) => ({
       character: p.character,
       look: p.championLooks?.[p.character] ?? null,
@@ -3160,7 +3317,7 @@ function renderMenu(revealSelection = false) {
       );
       (button as HTMLButtonElement).disabled = false;
       identity(reply);
-      if (reply.ok) await request("select", selected);
+      if (reply.ok) await request("browse", selected);
     };
     // Boss Raid goes through the Raid Hub, where the boss is chosen.
     $("play-create").onclick = () => {

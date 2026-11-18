@@ -8,6 +8,8 @@ import {
   type SnapshotMeta,
 } from "./snapshot-meta.js";
 export * from "./snapshot-meta.js";
+export * from "./pick-rules.js";
+export * from "./avatars.js";
 export const RULES = {
   width: 1600,
   height: 900,
@@ -2558,6 +2560,24 @@ export interface Fighter extends Vec {
   id: string;
   name: string;
   character: CharacterId;
+  /**
+   * PvP lobby: this player has locked in `character` (Lock in, or Ready).
+   * Until then `character` is only a default and the seat reads "Choosing".
+   */
+  locked?: boolean;
+  /**
+   * The player's avatar from the library (packages/shared/src/avatars.ts),
+   * their picture wherever they are; unset: the default.
+   */
+  avatar?: string;
+  /** PvP lobby: the fighter this player is looking at (teammates only). */
+  browse?: CharacterId;
+  /**
+   * PvP lobby: this player's pick is hidden from you (another side). The
+   * server sends no real `character` (or `browse`) for them until the match
+   * starts; `character` is a placeholder and must not be shown.
+   */
+  veiled?: boolean;
   connected: boolean;
   ready: boolean;
   hp: number;

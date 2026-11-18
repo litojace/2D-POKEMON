@@ -97,7 +97,7 @@ Portrait/selection raster files become visible in the roster independently of th
 
 ## Portrait generation
 
-The eight static portraits were generated using the built-in image tool, guided by the supplied showcase and the Voltkit style reference. Files are `apps/client/public/assets/fighters/{id}/portrait-showcase-v1.webp`. They retain alpha, use lossless WebP encoding, and are loaded lazily in selection. The exact prompt set and tool provenance are in [portrait-generation.md](portrait-generation.md). Native generated PNGs remain in the Codex generated-images directory. No portrait was stretched or bounced to impersonate a combat animation.
+The eight static portraits were generated using the built-in image tool, guided by the supplied showcase and the Voltkit style reference. Files are `apps/client/public/assets/fighters/{id}/portrait-showcase-v1.webp`. They retain alpha, use lossless WebP encoding, and are loaded lazily in selection. Those portrait files and their prompt notes have since been removed; each fighter folder now holds `portrait.svg` and `selection.svg`. Native generated PNGs remain in the Codex generated-images directory. No portrait was stretched or bounced to impersonate a combat animation.
 
 ## Artwork still required
 

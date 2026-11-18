@@ -57,6 +57,10 @@ import {
   FIGHTER_IDS,
   type Fighter,
   type Reply,
+  picksHidden,
+  pickTakenBy,
+  pickClashes,
+  veilPlayers,
 } from "../../../packages/shared/src/index.js";
 import { Arena } from "./simulation.js";
 /** Every champion's basic attack: spammed, so it never forces a snapshot. */
@@ -698,7 +702,8 @@ export function createArenaServer(
         activity,
         room: arena && !arena.practice && !arena.bots.size ? arena.code : null,
         phase: arena?.phase ?? null,
-        fighter: me?.character ?? null,
+        // A pick in a PvP lobby is secret (friends may be on the other side).
+        fighter: me && arena && !picksHidden(arena) ? me.character : null,
         opponent: arena?.practice ? null : (other?.name ?? null),
       };
       const existing = byAccount.get(account.id);
@@ -730,6 +735,9 @@ export function createArenaServer(
   );
   app.use(
     (error: unknown, req: Request, res: Response, _next: NextFunction) => {
+      // A body over its route's limit (a picture, say): the player's to fix.
+      if ((error as { type?: unknown } | null)?.type === "entity.too.large")
+        return res.status(413).json({ error: "That's too large to send." });
       // A player sees only "Account service failed" or "Invalid request.";
       // the reason goes to the log, or nobody can tell why a screen failed.
       // So does every 5xx (a refusal by the rules, a 4xx, is the player's).
@@ -861,7 +869,59 @@ export function createArenaServer(
   }
   function startArena(a: Arena) {
     if (isSpireArena(a)) return void startSpire(a);
+    const secret = picksHidden(a);
     a.start();
+    if (secret) savePicks(a);
+  }
+  /**
+   * The match has started and every pick is public: save each player's
+   * fighter as their friends' portrait (held back in the lobby, where it
+   * would have shown a hidden pick).
+   */
+  function savePicks(a: Arena) {
+    for (const session of sessions.values()) {
+      if (session.code !== a.code || !session.socketId) continue;
+      const socket = io.sockets.sockets.get(session.socketId);
+      const owner = socket?.data.account as Account | undefined;
+      const p = a.players.find((p) => p.id === session.id);
+      if (socket && owner && !owner.guest && p)
+        void portraitChoice.save(
+          owner.id,
+          socket.data.accessToken,
+          p.character,
+        );
+    }
+  }
+  /** A 2v2 side's team chat (docs/hidden-picks.md). */
+  const teamChatKey = (code: string, team: number) => `team:${code}:${team}`;
+  /** Teams changed, or the room closed: both sides' team chats go. */
+  function dropTeamChat(code: string) {
+    chat.drop(teamChatKey(code, 0));
+    chat.drop(teamChatKey(code, 1));
+  }
+  /** The 2v2 teammate who already locked in this fighter, if any. */
+  function takenBy(a: Arena, p: Fighter, character: Fighter["character"]) {
+    return pickTakenBy(a.mode, a.players, p, character, (o) => a.teamOf(o));
+  }
+  const takenMessage = (by: Fighter, character: Fighter["character"]) =>
+    `${by.name} already picked ${CHARACTERS[character].name}. Pick another fighter.`;
+  function lockPick(a: Arena, p: Fighter) {
+    p.locked = true;
+    p.browse = undefined;
+    a.lockOrder.set(p.id, ++a.lockSerial);
+  }
+  /** After a team change: teammates on the same fighter, the later lock gives way. */
+  function unlockClashes(a: Arena) {
+    for (const p of pickClashes(
+      a.mode,
+      a.players,
+      (o) => a.teamOf(o),
+      (o) => a.lockOrder.get(o.id) ?? 0,
+    )) {
+      p.locked = false;
+      p.ready = false;
+      a.lockOrder.delete(p.id);
+    }
   }
   /** Climbs being checked against storage (one at a time per room). */
   const spireChecks = new WeakSet<SpireRoom>();
@@ -1221,6 +1281,38 @@ export function createArenaServer(
           )
         : [];
     for (const session of seats) held.add(session.socketId!);
+    // A PvP lobby hides each side's picks from the others: every side (and
+    // the watchers) gets its own copy, built once per side.
+    if (picksHidden(arena)) {
+      const sideOf = (id: string | undefined) => {
+        const p = id ? arena.players.find((p) => p.id === id) : undefined;
+        return p ? arena.teamOf(p) : -1;
+      };
+      const views = new Map<number, WireSnapshot>();
+      const veil = (base: WireSnapshot, viewer: string | undefined) => ({
+        ...base,
+        players: veilPlayers(
+          base.players,
+          sideOf(viewer) < 0 ? undefined : viewer,
+          (x, y) => sideOf(x) === sideOf(y),
+        ),
+      });
+      for (const id of io.sockets.adapter.rooms.get(arena.code) ?? []) {
+        const catchUp = personal.get(id);
+        if (!catchUp && held.has(id)) continue;
+        const session = getSession(id);
+        const viewer = session?.code === arena.code ? session.id : undefined;
+        const side = sideOf(viewer);
+        let view = catchUp && veil(catchUp, viewer);
+        if (!view) {
+          view = views.get(side) ?? veil(wire, viewer);
+          views.set(side, view);
+        }
+        io.to(id).emit("state", view);
+      }
+      diagnostics.broadcast(started);
+      return;
+    }
     if (held.size)
       io.to(arena.code)
         .except([...held])
@@ -1325,6 +1417,7 @@ export function createArenaServer(
     if (![...sessions.values()].some((s) => s.code === arena.code)) {
       rooms.delete(arena.code);
       chat.drop(`room:${arena.code}`);
+      dropTeamChat(arena.code);
       // Anyone watching is told the room has closed.
       for (const [id, w] of watchers)
         if (w.code === arena.code) {
@@ -1875,18 +1968,26 @@ export function createArenaServer(
           )
         )
           continue;
+        // A PvP lobby pick is secret: the party (which may include the
+        // other side) gets the fighter it already knew, not the pick.
+        const shown = (accountId: string, p: Fighter | undefined) =>
+          (picksHidden(arena)
+            ? parties.of(accountId)?.members.find((m) => m.id === accountId)
+                ?.character
+            : p?.character) ?? "voltkit";
         const result = parties.link(
           {
             id: fromId,
             name: hostAccount.displayName,
-            character: hostFighter.character,
+            character: shown(fromId, hostFighter),
           },
           {
             id: me.id,
             name: me.displayName,
-            character:
-              arena.players.find((p) => p.id === getSession(socket.id)?.id)
-                ?.character ?? "voltkit",
+            character: shown(
+              me.id,
+              arena.players.find((p) => p.id === getSession(socket.id)?.id),
+            ),
           },
         );
         if (!result.ok) continue;
@@ -2047,6 +2148,7 @@ export function createArenaServer(
         title: `AI · ${BOT_LABELS[difficulty]}`,
         titleColor: BOT_COLORS[difficulty],
         ready: true,
+        locked: true,
       });
       a.bots.set(botId, new BotBrain(botId, difficulty, randomInt(1, 2 ** 31)));
       a.start();
@@ -2114,16 +2216,41 @@ export function createArenaServer(
         if (a.phase !== "lobby" || !result.success)
           return fail(cb, "Character selection is unavailable.");
         const p = a.players.find((p) => p.id === id)!;
+        const taken = takenBy(a, p, result.data);
+        if (taken) return fail(cb, takenMessage(taken, result.data));
         if (p.character !== result.data) p.flair = undefined;
         p.character = result.data;
+        lockPick(a, p);
+        // A PvP pick is secret until the match starts: the friends' portrait
+        // is saved then (savePicks), so a friend can't read it here.
         const owner = account();
-        if (owner && !owner.guest)
+        if (owner && !owner.guest && !picksHidden(a))
           void portraitChoice.save(
             owner.id,
             socket.data.accessToken,
             result.data,
           );
         p.ready = false;
+        reply(cb, { ok: true });
+        broadcast(a);
+      }),
+    );
+    // PvP lobby: the fighter you're looking at, for your teammate (enemies
+    // never get it). Elsewhere (a raid room) it is the pick itself.
+    socket.on("browse", (data: unknown, cb: unknown) =>
+      withRoom(cb, (a, id) => {
+        const result = characterSchema.safeParse(data);
+        if (a.phase !== "lobby" || !result.success)
+          return fail(cb, "Character selection is unavailable.");
+        const p = a.players.find((p) => p.id === id)!;
+        if (!picksHidden(a)) {
+          if (p.character !== result.data) {
+            p.flair = undefined;
+            p.character = result.data;
+            p.ready = false;
+          }
+        } else if (p.browse === result.data) return reply(cb, { ok: true });
+        else p.browse = result.data;
         reply(cb, { ok: true });
         broadcast(a);
       }),
@@ -2209,6 +2336,15 @@ export function createArenaServer(
         if (a.phase !== "lobby")
           return fail(cb, "The match has already started.");
         const p = a.players.find((p) => p.id === id)!;
+        // Ready locks in the fighter on show (a pick that was never locked).
+        if (!p.ready && picksHidden(a) && !p.locked) {
+          const pick = p.browse ?? p.character;
+          const taken = takenBy(a, p, pick);
+          if (taken) return fail(cb, takenMessage(taken, pick));
+          if (p.character !== pick) p.flair = undefined;
+          p.character = pick;
+          lockPick(a, p);
+        }
         p.ready = !p.ready;
         const half = a.size / 2;
         if (
@@ -2235,6 +2371,9 @@ export function createArenaServer(
           return fail(cb, "That team is full.");
         p.team = team;
         for (const o of a.players) o.ready = false;
+        unlockClashes(a);
+        // A new side must not read the old one's plans.
+        dropTeamChat(a.code);
         reply(cb, { ok: true });
         broadcast(a);
       }),
@@ -2250,6 +2389,8 @@ export function createArenaServer(
         order.sort((x, y) => x.k - y.k);
         order.forEach(({ p }, i) => (p.team = i % 2 === 0 ? 0 : 1));
         for (const o of a.players) o.ready = false;
+        unlockClashes(a);
+        dropTeamChat(a.code);
         reply(cb, { ok: true });
         broadcast(a);
       }),
@@ -2489,6 +2630,29 @@ export function createArenaServer(
           members,
         };
       }
+      if (channel === "team") {
+        // A 2v2 room's own side: the sender's teammates only.
+        const session = getSession(socket.id);
+        const arena = session && rooms.get(session.code);
+        const me = arena?.players.find((p) => p.id === session!.id);
+        if (!arena || !me || arena.mode !== "teams") return null;
+        const team = arena.teamOf(me);
+        const owners = fighterAccounts.get(arena);
+        const members: ChatMember[] = [];
+        for (const p of arena.players) {
+          const accountId = owners?.get(p.id);
+          if (!accountId || arena.bots.has(p.id) || arena.teamOf(p) !== team)
+            continue;
+          if (![...sessions.values()].some((s) => s.id === p.id)) continue;
+          members.push(chatMember(accountId, p.name, team));
+        }
+        return {
+          channel,
+          key: teamChatKey(arena.code, team),
+          inBattle: arena.phase !== "lobby" && arena.phase !== "finished",
+          members,
+        };
+      }
       if (channel === "place") {
         // The Plaza: everyone in the same copy.
         const copy = plaza.plazaOf(socket.id);
@@ -2567,7 +2731,7 @@ export function createArenaServer(
       );
       if (!sent.ok) return fail(cb, sent.error);
       // In a room the line names the speaker's fighter (a bubble over them).
-      if (route.channel === "room") {
+      if (route.channel === "room" || route.channel === "team") {
         const session = getSession(socket.id);
         if (session) sent.line.fighter = session.id;
       }

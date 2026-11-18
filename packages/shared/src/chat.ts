@@ -13,9 +13,14 @@
  * - in a battle: quick chat only; opponents see emotes, not phrases.
  */
 
-export type ChatChannel = "party" | "room" | "place" | "friend";
+/**
+ * team: a 2v2 room's own side only (docs/hidden-picks.md: agree on picks
+ * the other team can't read); room: everyone in the room, both teams.
+ */
+export type ChatChannel = "party" | "team" | "room" | "place" | "friend";
 export const CHAT_CHANNELS: readonly ChatChannel[] = [
   "party",
+  "team",
   "room",
   "place",
   "friend",
@@ -130,7 +135,10 @@ export function typingRefusal(c: ChatContext): string | null {
 export function quickRefusal(c: ChatContext, id: ChatQuick): string | null {
   if (c.mode === "off") return "Chat is off in your settings.";
   // Calls are for a battle (teammates in a room).
-  if (quickKind(id) === "call" && !(c.channel === "room" && c.inBattle))
+  if (
+    quickKind(id) === "call" &&
+    !((c.channel === "room" || c.channel === "team") && c.inBattle)
+  )
     return "Calls are for battles.";
   return null;
 }

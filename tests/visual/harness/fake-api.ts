@@ -263,6 +263,21 @@ window.fetch = async (input, init) => {
       }
       return Response.json({ fighter: f.__savedFighter ?? null });
     }
+    // The library avatar (migration 20261119100000): window.__avatar is
+    // what the account wears; each choice is pushed to window.__avatarSaves.
+    if (url.pathname === "/api/account/avatar") {
+      const f = window as unknown as {
+        __avatar?: string | null;
+        __avatarSaves?: string[];
+      };
+      if (init?.method === "POST") {
+        const { avatar } = JSON.parse(String(init.body));
+        f.__avatar = avatar;
+        (f.__avatarSaves ??= []).push(avatar);
+        return Response.json({ ok: true, avatar });
+      }
+      return Response.json({ avatar: f.__avatar ?? null });
+    }
     // Tests can set window.__missions (before load, or then refresh the
     // economy) to give the player today's missions, and window.__friends to
     // give them friends and requests, and window.__raids for their raid
