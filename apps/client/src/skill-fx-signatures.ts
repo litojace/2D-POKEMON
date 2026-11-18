@@ -268,13 +268,15 @@ const crestFlare: ChannelFn = (g, a, x, y, angle) => {
     tx = x + Math.cos(angle) * reach,
     ty = y + Math.sin(angle) * reach;
   // Smoke rolls off the end of the flames, embers ride the heat.
-  fx.trail(`sig-crest-${Math.round(x)}-${Math.round(y)}`, 0.06, () => {
-    smoke(fx, tx, ty, 1, undefined, [12, 20]);
+  // (One small puff every 0.2 s: at 0.06 s some 20 big puffs hung in the
+  // air at once, more soft cover than any other kit draws.)
+  fx.trail(`sig-crest-${Math.round(x)}-${Math.round(y)}`, 0.2, () => {
+    smoke(fx, tx, ty, 1, undefined, [8, 13]);
     embers(
       fx,
       x + Math.cos(angle) * reach * Math.random(),
       y + Math.sin(angle) * reach * Math.random(),
-      2,
+      4,
       40,
     );
   });
@@ -307,7 +309,7 @@ const magmaSplat: ImpactFn = (scene, a, x, y) => {
   fx.decal({ kind: "molten", x, y, r: r * 0.55, color: 0xff6a2a, life: 4 });
   splash(fx, x, y, 22, LAVA, 1.2);
   chunks(fx, x, y, 8, [0x4a2318, 0x6b5a48], [60, 200]);
-  smoke(fx, x, y, 6, undefined, [16, 26]);
+  smoke(fx, x, y, 3, undefined, [12, 18]);
   embers(fx, x, y, 10, r);
 };
 const heatCracks: ZoneFn = (g, z, progress) => {

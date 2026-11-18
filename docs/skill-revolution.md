@@ -64,13 +64,13 @@ from the thing that hunts you), and a payoff no other skill in the kit has.
 
 | Champion | Was                                                        | Now                                                                                                                                                                                                                                                                                                                       | Borrowed from                                                        |
 | -------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| Tidefin  | **Undertow**: a current along the aim that sweeps enemies  | **River Dash** (9 s): Tidefin shoots 300 px along the aim on a jet of water, **through** enemies: each one it passes takes 12 and is Soaked. Pass through anyone and the cooldown drops to 2.5 s: dash in, dash out                                                                                                       | dashes that reset on a hit (Irelia, Yasuo; Brawl Stars' Mortis)      |
+| Tidefin  | **Undertow**: a current along the aim that sweeps enemies  | **River Dash** (9 s): Tidefin shoots 300 px along the aim on a jet of water, **through** enemies: each one it passes takes 12 and is Soaked. Pass through anyone and the cooldown drops to 3 s: dash in, dash out                                                                                                         | dashes that reset on a hit (Irelia, Yasuo; Brawl Stars' Mortis)      |
 | Tidefin  | **Riptide Wave** (ult): one 42 px wave that often missed   | **Riptide Wave** (ult): a **wall of water 380 px wide** rolls from Tidefin along the aim across the whole court, over cover. Enemies it reaches take 24 and are **carried** up to half a second; carried into a wall, 12 more and stunned. Jump over it                                                                   | map-wide lines (Jinx, Ashe), Nami's Tidal Wave, Harbor's High Tide   |
-| Voltkit  | **Ball Lightning**: a slow orb that bursts                 | **Ball Lightning** (10 s): a slow orb that flies **through** enemies, zapping the nearest one within 150 px every 0.3 s (4), and bursts at the end of its flight for 16. Easy to land, keeps an area hot                                                                                                                  | Moira's Biotic Orb, chain lightning                                  |
+| Voltkit  | **Ball Lightning**: a slow orb that bursts                 | **Ball Lightning** (10 s): a slow orb that flies **through** enemies, zapping the nearest one within 150 px every 0.3 s (4), and bursts at the end of its flight for 12. Easy to land, keeps an area hot                                                                                                                  | Moira's Biotic Orb, chain lightning                                  |
 | Voltkit  | **Overcharge** (ult): a 190 px ring round Voltkit          | **Thunderstorm** (ult): a storm over the whole court. **Three bolts on the enemy nearest the aim, wherever it is**, 0.8 s apart: each marks the ground where it is heading and strikes 0.55 s later (95 px, 16 and a short paralysis). Change direction and you dodge them; run straight or stand still and eat all three | Zeus's Thundergod's Wrath (Dota), Karthus's Requiem, telegraph marks |
-| Duskveil | **Shade Crawl**: a fast ground strike, jumped 80% of casts | **Shade Crawl** (8 s): the shadow crawls out and **binds** the first enemy's shadow: 16 and **rooted** 0.7 s (it can still attack). Not a ground move any more: sidestep it. Lit targets: 25% more and 1.1 s                                                                                                              | skill-shot binds (Morgana, Lux)                                      |
-| Duskveil | **Void Orb** (ult): a big slow orb                         | **Wraith Hunt** (ult): a wraith leaves the lantern and **hunts** the nearest enemy in sight for 5 s, through walls, a little slower than anyone walks. Its touch deals 7 every 0.4 s, and **reaps** an enemy under 25% health. Run from it, or stand and be taken                                                         | executes (Pyke), being hunted (Fiddlesticks, Nocturne)               |
-| Lumoth   | **Radiant Flare** (ult): rays turning round Lumoth         | **Radiant Flare** (ult): a flare shot up to 650 px away **hangs like a little sun** for 2 s. Enemies within 300 px are **drawn to the light** (150 px a second), then it bursts: 30 and stunned 0.6 s within 140 px. Dash out of the pull                                                                                 | Graviton Surge, Orianna's Shockwave; moths drawn to a flame          |
+| Duskveil | **Shade Crawl**: a fast ground strike, jumped 80% of casts | **Shade Crawl** (8 s): the shadow crawls out and **binds** the first enemy's shadow: 14 and **rooted** 0.4 s (it can still attack). Not a ground move any more: sidestep it. Lit targets: rooted 0.9 s                                                                                                                    | skill-shot binds (Morgana, Lux)                                      |
+| Duskveil | **Void Orb** (ult): a big slow orb                         | **Wraith Hunt** (ult): a wraith leaves the lantern and **hunts** the nearest enemy in sight for 3 s, through walls, a little slower than anyone walks. Its touch deals 5 every 0.5 s, and **reaps** an enemy under 20% health. Run from it, or stand and be taken                                                         | executes (Pyke), being hunted (Fiddlesticks, Nocturne)               |
+| Lumoth   | **Radiant Flare** (ult): rays turning round Lumoth         | **Radiant Flare** (ult): a flare shot up to 650 px away **hangs like a little sun** for 2 s. Enemies within 200 px are **drawn to the light** (190 px a second), then it bursts: 24 and stunned 0.6 s within 150 px. Dash out of the pull                                                                                 | Graviton Surge, Orianna's Shockwave; moths drawn to a flame          |
 
 Kept as they were: Tidefin's Tide Needle, Gill Siphon and Tide Double;
 Voltkit's Spark Dart, Static Lance and Static Glide; Duskveil's Lantern
@@ -130,15 +130,21 @@ Why each is better:
   drift toward it at `lure.speed` (`current` again), and when it ends it
   bursts within `explosion` (damage and `status`).
 
+### Results
+
+Bot duels, every pair both ways (32 games a pair): Hard Voltkit 50%,
+Tidefin 56%, Lumoth 49%, Duskveil 55%; Normal 47%, 47%, 52%, 53% (Normal
+`dazeBy` 0.24, 0.215, 0.19 for the first three; raids keep the old values).
+
 ## Wave B: Cindrake, Pyranda, Mossloth, Mystowl, Astrabun
 
-| Champion | Was                                                           | Now                                                                                                                                                                                                                                      | Borrowed from                                   |
-| -------- | ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
-| Cindrake | **Magma Bomb**: a fireball that landed 23% of casts           | **Magma Leap** (11 s): leap up to 320 px toward the aim, **airborne** on the way (ground attacks miss), and land in an eruption: 20 and a burn within 110 px. The burst fighter's way in, and the Scorched combo's payoff                | leaps that land in a blast (Tristana, Pantheon) |
-| Pyranda  | **Chestnut Storm** (ult): one big circle far away, 31% landed | **Chestnut Storm** (ult): a storm that **creeps along the aim**, over walls: five blasts 105 px wide from 160 px out to 760 px, a fifth of a second apart, each marked 0.6 s before it lands (22, a burn, a shove). Step out of the line | creeping barrages (Brimstone, artillery)        |
-| Mossloth | **Overgrowth** (ult): vines round Mossloth only, 40% landed   | **Overgrowth** (ult): a **garden at the aim** (up to 560 px, 210 px wide) for 2.5 s: 4 every half second and a slow; whoever is still on it at the end takes 20 and is rooted 1.2 s. Seedlings bloom, moss grows full, as before         | area denial (Viper's Pit)                       |
-| Mystowl  | **Booming Hoot**: a knockback ring, rarely worth casting      | **Hush** (12 s): enemies within 200 px take 10, are pushed back a little and are **Silenced** for 1 s: no skills (they can still move, dash and attack). Sets up Mind Maze (Dazed). The only silence in the game                         | silences and lockouts (Sombra's hack)           |
-| Astrabun | **Moon Gravity**: a float patch, 1% of its damage             | **Sticky Mochi** (11 s): a ball of mochi; the first enemy hit takes 10 and is **Grounded** for 1.5 s: it can't dash or jump. A diver's answer to escapes                                                                                 | "grounded" effects (anti-mobility)              |
+| Champion | Was                                                           | Now                                                                                                                                                                                                                              | Borrowed from                                   |
+| -------- | ------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| Cindrake | **Magma Bomb**: a fireball that landed 23% of casts           | **Magma Leap** (13 s): leap up to 320 px toward the aim, **airborne** on the way (ground attacks miss), and land in an eruption: 16 and a burn within 110 px. The burst fighter's way in, and the Scorched combo's payoff        | leaps that land in a blast (Tristana, Pantheon) |
+| Pyranda  | **Chestnut Storm** (ult): one big circle far away, 31% landed | **Chestnut Storm** (ult): a storm that **creeps along the aim**, over walls: five blasts 115 px wide from 160 px out to 760 px, 0.15 s apart, each marked 0.6 s before it lands (26, a burn, a shove). Step out of the line      | creeping barrages (Brimstone, artillery)        |
+| Mossloth | **Overgrowth** (ult): vines round Mossloth only, 40% landed   | **Overgrowth** (ult): a **garden at the aim** (up to 560 px, 230 px wide) for 2.5 s: 5 every half second and a slow; whoever is still on it at the end takes 26 and is rooted 1.2 s. Seedlings bloom, moss grows full, as before | area denial (Viper's Pit)                       |
+| Mystowl  | **Booming Hoot**: a knockback ring, rarely worth casting      | **Hush** (12 s): enemies within 200 px take 10, are pushed back a little and are **Silenced** for 1.2 s: no skills (they can still move, dash and attack). Sets up Mind Maze (Dazed). The only silence in the game               | silences and lockouts (Sombra's hack)           |
+| Astrabun | **Moon Gravity**: a float patch, 1% of its damage             | **Sticky Mochi** (13 s): a ball of mochi; the first enemy hit takes 8 and is **Grounded** for 0.9 s: it can't dash or jump. A diver's answer to escapes                                                                          | "grounded" effects (anti-mobility)              |
 
 ### New mechanics
 
@@ -155,19 +161,49 @@ Why each is better:
   the client doesn't predict them.
 - **Grounded** (status): no dash and no jump (server and prediction).
 
+### Results
+
+Bot duels, every pair of champions both ways (32 games a pair), against
+the kits before the wave (wave B against wave A's):
+
+| Champion | Hard: before → after | Normal: after |
+| -------- | -------------------- | ------------- |
+| Cindrake | 51% → 54%            | 53%           |
+| Mystowl  | 43% → 51%            | 51%           |
+| Pyranda  | 49% → 46%            | 52%           |
+| Astrabun | 47% → 54%            | 52%           |
+| Mossloth | 44% → 47%            | 50%           |
+
+Normal bots play a little worse through `dazeBy` (`bot.ts`): Astrabun's
+went to 0.3 and Cindrake's to 0.44. Raids and the Spire keep the old values
+(`RAID_DAZE_BY`), so their tuning holds. Ascendant Lumiwick's fight
+(Spire floor 60) needed two fixes for the new kits: its lane keeps clear
+of the controls and the open heart can't be attacked under them.
+
+### Effect budget
+
+Cindrake was over the effect budget (`tests/visual/effect-budget.spec.ts`)
+once its ultimate was measured, and much more on a fast phone than the
+test showed here: a trail emits at most once a frame, and the harness
+ticked the arena once a frame too, so at 12 fps it saw a fifth of Crest
+Flare's flames and never saw the later casts at all (they landed in Crest
+Flare's channel and were refused). The harness now keeps the arena on real
+time and measures at High. Measured with trails at their full rate, it
+was glow 1.30 and smoke 2.39 screens (the limits are 0.6 and 1), and is
+now 0.39 and 0.67 at most: Crest Flare's flame stream is three flames every
+0.06 s (it was four every frame), its smoke a small puff every 0.2 s;
+Sunfire Pillar's column is slimmer, stops just above the top of the view,
+and its strike flash is drawn once; Heat Cracks' and Magma Leap's flames
+and smoke are lighter.
+
 ## Later waves (proposals, to be measured first)
 
-| Champion | Skill          | Problem (bots)                        | Idea                                                                                    | Borrowed from       |
-| -------- | -------------- | ------------------------------------- | --------------------------------------------------------------------------------------- | ------------------- |
-| Pyranda  | Chestnut Storm | lands 31%                             | a barrage that walks across the court in a line of strikes                              | Brimstone, Sova     |
-| Pyranda  | Ember Curtain  | 1% of damage                          | a curtain you can walk through to gain speed (allies too)                               | Lúcio, wall buffs   |
-| Mossloth | Overgrowth     | lands 40%, only up close              | a garden over a wide area that roots whoever stays on it                                | Viper's Pit         |
-| Astrabun | Moon Gravity   | lands 22%, 1% of damage               | low gravity on Astrabun: it jumps far and lands with a pound                            | Pokémon UNITE jumps |
-| Mystowl  | Booming Hoot   | rarely cast                           | Hush: a silence (no skills, 1 s) in a ring, the only one in the game                    | Sombra's hack       |
-| Cindrake | Magma Bomb     | lands 23%                             | a bomb that sticks to whoever it hits and goes off a moment later, bigger with each hit | Tristana's charge   |
-| Glacelle | Hailstone      | lands 25%                             | wider and slower, or splits on a wall                                                   | —                   |
-| Coilemur | Electromagnet  | pulls like Lumoth's new Radiant Flare | polarity: pull or push depending on the charge left on the enemy                        | magnet games        |
-| Others   | ultimates      | the melee ones already land and hurt  | checked once the waves above are in                                                     | —                   |
+| Champion | Skill         | Problem (bots)                        | Idea                                                             | Borrowed from     |
+| -------- | ------------- | ------------------------------------- | ---------------------------------------------------------------- | ----------------- |
+| Pyranda  | Ember Curtain | 1% of damage                          | a curtain you can walk through to gain speed (allies too)        | Lúcio, wall buffs |
+| Glacelle | Hailstone     | lands 25%                             | wider and slower, or splits on a wall                            | —                 |
+| Coilemur | Electromagnet | pulls like Lumoth's new Radiant Flare | polarity: pull or push depending on the charge left on the enemy | magnet games      |
+| Others   | ultimates     | the melee ones already land and hurt  | checked once the waves above are in                              | —                 |
 
 These are ideas, not decisions: each will be measured the same way before
 and after, and shipped in its own wave.

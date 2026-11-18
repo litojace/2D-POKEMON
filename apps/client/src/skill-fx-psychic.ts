@@ -242,7 +242,7 @@ function focusRay(
   });
 }
 
-// ───────────── Booming Hoot ─────────────
+// ───────────── Hush: a silent wingbeat ─────────────
 function repulse(
   scene: Phaser.Scene,
   a: Ability,
@@ -936,7 +936,6 @@ function poundThud(
   });
 }
 
-// ───────────── Moon Gravity ─────────────
 // ───────────── Full Moon ─────────────
 /** Where a blink will land: toward the aim, up to its range. */
 const landingOf = (

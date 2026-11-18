@@ -45,7 +45,7 @@ it("pins roster health (champion balance overhaul) and movement speeds", () => {
     tidefin: [146, 285],
     auralynx: [170, 235],
     lumoth: [138, 265],
-    mystowl: [134, 255],
+    mystowl: [138, 255],
     terradon: [193, 222],
     duskveil: [148, 260],
     coilemur: [144, 250],

@@ -39,7 +39,7 @@ const ROSTER: Record<
     basic: ["Cinder Snap", 455],
     skills: [
       ["Crest Flare", 8],
-      ["Magma Leap", 11],
+      ["Magma Leap", 13],
       ["Heat Cracks", 15],
       ["Sunfire Pillar", 20],
     ],
@@ -184,7 +184,7 @@ const ROSTER: Record<
     skills: [
       ["Moon Hop", 7],
       ["Mochi Pound", 12],
-      ["Sticky Mochi", 11],
+      ["Sticky Mochi", 13],
       ["Full Moon", 20],
     ],
   },

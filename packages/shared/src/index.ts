@@ -802,7 +802,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "Magma Leap",
         "leap",
         16,
-        12,
+        13,
         "Leap up to 320 px toward your aim, over ground attacks, and land in an eruption: 16 damage and a burn to every enemy within 110 px.",
         {
           range: 320,
@@ -1076,9 +1076,9 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     element: "Psychic",
     role: "High-power duelist",
     description:
-      "A floating three-eyed owl. Slow, heavy attacks; controls space with its third-eye ray, a booming hoot and its wing cloak.",
+      "A floating three-eyed owl. Slow, heavy attacks; controls space with its third-eye ray, a silencing hush and its wing cloak.",
     color: 0xff79d2,
-    health: 134,
+    health: 138,
     speed: 255,
     basic: basic(
       "mind-dart",
@@ -1764,15 +1764,15 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "Sticky Mochi",
         "projectile",
         8,
-        11,
-        "Fling a ball of sticky mochi: the first enemy hit takes 8 and is Grounded for 1.1 seconds: it can't dash or jump. Nowhere to hop away to.",
+        13,
+        "Fling a ball of sticky mochi: the first enemy hit takes 8 and is Grounded for 0.9 seconds: it can't dash or jump. Nowhere to hop away to.",
         {
           speed: 820,
           range: 560,
           radius: 16,
           knockback: 0,
           status: "grounded",
-          statusDuration: 1.1,
+          statusDuration: 0.9,
         },
       ),
       ability(
@@ -4199,8 +4199,8 @@ export const RITES: Rite[] = [
     "minor",
     "sticky-mochi",
     "Gooey Mochi",
-    "Sticky Mochi grounds for 1.7 seconds instead of 1.1.",
-    { set: { statusDuration: 1.7 } },
+    "Sticky Mochi grounds for 1.5 seconds instead of 0.9.",
+    { set: { statusDuration: 1.5 } },
   ),
   rite(
     "astrabun",

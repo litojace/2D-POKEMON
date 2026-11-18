@@ -23,6 +23,12 @@ import { openHub, openPlayPanel, pushUntilBattle, createRoom } from "./helpers";
  * fewer particles, shorter trails), or, if it really must be heavier, say
  * so in the pull request and raise the limit below on purpose.
  * EFFECT_BUDGET_MEASURE=1 prints every champion's numbers instead.
+ *
+ * A trail (fx.trail) emits at most once a frame, so a slow machine (this
+ * container renders at about 12 fps) sees less of a fast trail than a phone
+ * at 60 fps. When a kit is near a limit, measure it with fx.trail emitting
+ * every interval it missed (a local change, not committed): on 18 Nov 2026
+ * Cindrake read 1.3 glow and 2.4 smoke that way, against 0.4 and 1.3 here.
  */
 /**
  * About twice the heaviest kit seen in any run on 10 Nov 2026: glow 0.30
@@ -97,6 +103,13 @@ for (const [g, group] of GROUPS.entries())
     try {
       const page = await context.newPage();
       await instrument(page);
+      // Measure High, the heaviest level: on Auto a slow machine drops to
+      // Low (fewer particles, slower trails) and a kit's real weight hides.
+      await page.addInitScript(() => {
+        try {
+          localStorage.setItem("ea-graphics", "high");
+        } catch {}
+      });
       const errors = await openHub(page);
       await page.evaluate(() =>
         (window as any).__room("pvp", { mode: "duel", phase: "playing" }),
@@ -158,26 +171,40 @@ for (const [g, group] of GROUPS.entries())
           w.__arena = a;
           w.__pending = -2;
           let tick = 0;
+          const start = performance.now();
+          // The arena keeps real time: a slow machine runs the ticks it
+          // missed (an interval that only fires a few times a second would
+          // stretch every cast, and a later cast would land in an earlier
+          // one's channel and be refused, so it was never measured).
           w.__fight = setInterval(() => {
-            tick++;
-            me.hp = Math.max(me.hp, 500);
-            dummy.hp = Math.max(dummy.hp, 500);
-            const cast = w.__pending;
+            const before = tick,
+              due = Math.min(
+                tick + 8,
+                Math.floor((performance.now() - start) / (1000 / 30)) + 1,
+              );
+            let cast = w.__pending;
             w.__pending = -2;
-            // The ultimate is the last skill slot, cast with a full meter
-            // (an "ultimate" input field would be ignored: nothing was cast).
-            if (cast === -1) me.ult = 100;
-            a.submit(me, {
-              ...m.blankInput(),
-              seq: me.ack + 1,
-              aimX: dummy.x,
-              aimY: dummy.y,
-              skill: cast >= 0 ? cast : cast === -1 ? m.ULT_SLOT : -1,
-            });
-            // The dummy stands still and casts nothing.
-            a.submit(dummy, { ...m.blankInput(), seq: dummy.ack + 1 });
-            a.tick();
-            if (tick % 2) return;
+            while (tick < due) {
+              tick++;
+              me.hp = Math.max(me.hp, 500);
+              dummy.hp = Math.max(dummy.hp, 500);
+              // The ultimate is the last skill slot, cast with a full meter
+              // (an "ultimate" input field would be ignored: nothing was cast).
+              if (cast === -1) me.ult = 100;
+              a.submit(me, {
+                ...m.blankInput(),
+                seq: me.ack + 1,
+                aimX: dummy.x,
+                aimY: dummy.y,
+                skill: cast >= 0 ? cast : cast === -1 ? m.ULT_SLOT : -1,
+              });
+              cast = -2;
+              // The dummy stands still and casts nothing.
+              a.submit(dummy, { ...m.blankInput(), seq: dummy.ack + 1 });
+              a.tick();
+            }
+            // A snapshot every second tick, as the server sends them.
+            if (Math.floor(tick / 2) === Math.floor(before / 2)) return;
             w.__snap = m.packSnapshot(a.snapshot());
             w.__push();
           }, 1000 / 30);

@@ -76,7 +76,7 @@ const sunfire: ZoneFn = (g, z, progress, now) => {
   if (k < 0.3) {
     const b = 1 - k / 0.3;
     fx.glow(z.x, z.y - 320, r * 0.5, 0xfff4c8, 0.95 * b, false, 7);
-    fx.glow(z.x, z.y - 10, r * 1.4, WHITE, 0.6 * b);
+    fx.glow(z.x, z.y - 10, r * 1.15, WHITE, 0.7 * b);
   }
   // Heat shimmer rings lifting off the molten ground.
   for (let i = 0; i < 3; i++) {
@@ -501,10 +501,12 @@ const stormPhysics: ZoneFn = (g, z, progress) => {
   const fx = fxFor(g.scene),
     a = z.ability,
     r = z.radius,
-    strikeAt = (a.tickDelay ?? 0.35) / a.duration;
+    strikeAt = (a.tickDelay ?? 0.35) / a.duration,
+    // A creeping storm's five blasts each throw a little.
+    creep = !!a.creep;
   if (progress < strikeAt) return;
   fx.trail(`cs-land${z.id}`, 999, () => {
-    ring(7, (aa, i) => {
+    ring(creep ? 3 : 7, (aa, i) => {
       const d = r * (0.25 + hash(i * 3 + z.id) * 0.6),
         px = z.x + Math.cos(aa + i) * d,
         py = z.y + Math.sin(aa + i) * d * SQ;
@@ -512,7 +514,7 @@ const stormPhysics: ZoneFn = (g, z, progress) => {
         x: px,
         y: py,
         z: 8,
-        count: 6,
+        count: creep ? 3 : 6,
         kind: "debris",
         color: [0x7a4a24, 0x4a2c14, 0xc98b4a],
         speed: [60, 200],
@@ -526,7 +528,7 @@ const stormPhysics: ZoneFn = (g, z, progress) => {
         x: px,
         y: py,
         z: 10,
-        count: 5,
+        count: creep ? 3 : 5,
         kind: "flame",
         color: [0xff8a3d, 0xffd76a],
         speed: [20, 80],
@@ -538,7 +540,7 @@ const stormPhysics: ZoneFn = (g, z, progress) => {
     });
     fx.shake(260, 0.008);
   });
-  fx.trail(`cs-smoke${z.id}`, 0.1, () => {
+  fx.trail(`cs-smoke${z.id}`, creep ? 0.3 : 0.1, () => {
     const aa = Math.random() * TAU,
       d = Math.random() * r * 0.8;
     fx.burst({
