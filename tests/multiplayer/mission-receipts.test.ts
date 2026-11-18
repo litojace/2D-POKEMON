@@ -113,7 +113,14 @@ it.each(["teams", "ffa"])(
         (await emit(user.socket, "join", { name: "Peer", code: created.code }))
           .ok,
       ).toBe(true);
-    for (const user of users) await emit(user.socket, "ready");
+    // 2v2 teammates can't share a fighter (docs/hidden-picks.md), so each
+    // player locks in a different one; a refused ready would leave the room
+    // in the lobby.
+    const picks = ["voltkit", "cindrake", "tidefin", "lumoth"];
+    for (const [i, user] of users.entries())
+      expect((await emit(user.socket, "select", picks[i])).ok).toBe(true);
+    for (const user of users)
+      expect((await emit(user.socket, "ready")).ok).toBe(true);
     const a = server!.rooms.get(created.code!)!;
     for (const user of users) await emit(user.socket, "instructions-ready");
     for (let n = 0; n < 100; n++) server!.step();
