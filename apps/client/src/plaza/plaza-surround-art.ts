@@ -3,8 +3,8 @@
  *
  * The ground past each edge is baked once into four strips around the
  * Plaza's own ground picture (north, south, west, east; no overlap), at
- * three quarters of the Plaza's resolution (half on phones short of
- * memory): they are scenery at the edge of the screen. The strips carry
+ * the same resolution as the Plaza's own (so no seam where they meet;
+ * 0.6 on phones short of memory), painted the same way. The strips carry
  * every prop that can never be drawn over a walker. The river is a hole in
  * the north strip; its water is drawn under it every frame (ripples drifting
  * with the current, glints, ducks, a moored boat bobbing, the far bank's
@@ -108,7 +108,12 @@ function rnd(seed: number) {
   let s = seed;
   return () => (s = (s * 16807) % 2147483647) / 2147483647;
 }
-/** Painted grass over a rect, as the Plaza's own (fewer strokes per area). */
+/**
+ * Painted grass over a rect, exactly as the Plaza's own ground is painted
+ * (plaza-scene.ts paintBg: the same colours, the same number of dabs,
+ * tufts and soft patches per area), so where the Plaza's ground meets the
+ * surroundings there is no seam.
+ */
 function grass(
   g: Ctx,
   x0: number,
@@ -120,20 +125,21 @@ function grass(
 ) {
   g.fillStyle = base;
   g.fillRect(x0, y0, x1 - x0, y1 - y0);
-  const area = (x1 - x0) * (y1 - y0);
-  for (let i = 0; i < area / 9000; i++) {
+  // The Plaza's ground: 70 patches, 26000 dabs, 2200 tufts on 2700 x 1700.
+  const k = ((x1 - x0) * (y1 - y0)) / (W * H);
+  for (let i = 0; i < 70 * k; i++) {
     const x = x0 + r() * (x1 - x0),
       y = y0 + r() * (y1 - y0),
-      rr = 80 + r() * 200,
-      c = r() < 0.5 ? "150,220,110" : "60,130,60",
+      rr = 120 + r() * 320,
+      c = r() < 0.5 ? "150,220,110" : "70,150,70",
       gr = g.createRadialGradient(x, y, 0, x, y, rr);
-    gr.addColorStop(0, `rgba(${c},.22)`);
+    gr.addColorStop(0, `rgba(${c},.28)`);
     gr.addColorStop(1, `rgba(${c},0)`);
     g.fillStyle = gr;
     g.fillRect(x - rr, y - rr, rr * 2, rr * 2);
   }
   const greens = ["#6cb851", "#82cc63", "#5fae4a", "#8fd46e", "#71bd55"];
-  for (let i = 0; i < area / 260; i++) {
+  for (let i = 0; i < 26000 * k; i++) {
     g.fillStyle = greens[i % 5];
     g.beginPath();
     g.ellipse(
@@ -147,20 +153,22 @@ function grass(
     );
     g.fill();
   }
-  g.strokeStyle = "#4f9a3c";
   g.lineWidth = 1.6;
-  g.beginPath();
-  for (let i = 0; i < area / 3000; i++) {
-    const x = x0 + r() * (x1 - x0),
-      y = y0 + r() * (y1 - y0);
-    g.moveTo(x - 3, y);
-    g.lineTo(x - 4, y - 7);
-    g.moveTo(x, y);
-    g.lineTo(x, y - 9);
-    g.moveTo(x + 3, y);
-    g.lineTo(x + 5, y - 7);
+  for (const col of ["#4f9a3c", "#a6e07e"]) {
+    g.strokeStyle = col;
+    g.beginPath();
+    for (let i = 0; i < 1100 * k; i++) {
+      const x = x0 + r() * (x1 - x0),
+        y = y0 + r() * (y1 - y0);
+      g.moveTo(x - 3, y);
+      g.lineTo(x - 4, y - 7);
+      g.moveTo(x, y);
+      g.lineTo(x, y - 9);
+      g.moveTo(x + 3, y);
+      g.lineTo(x + 5, y - 7);
+    }
+    g.stroke();
   }
-  g.stroke();
 }
 /** The far bank's stone wall, the near coping, and the footbridges. */
 function paintRiverBanks(g: Ctx) {
@@ -284,7 +292,7 @@ export function paintVerge(g: Ctx) {
 function paintFarm(g: Ctx, r: () => number) {
   const y0 = H,
     y1 = H + M;
-  grass(g, -M, y0, W + M, y1, "#6db552", r);
+  grass(g, -M, y0, W + M, y1, "#77c25b", r);
   // A hedge line right past the Plaza's garden strip.
   g.fillStyle = "#3f8f3a";
   for (let x = -M; x < W + M; x += 22) {
@@ -372,13 +380,23 @@ function paintWoods(g: Ctx, side: -1 | 1, r: () => number) {
     side < 0 ? -M : W + M,
     0,
   );
+  // Darker deeper in, from nothing at the Plaza's edge (no seam there).
   gr.addColorStop(0, "rgba(30,70,30,0)");
-  gr.addColorStop(1, "rgba(30,70,30,.35)");
+  gr.addColorStop(0.3, "rgba(30,70,30,0)");
+  gr.addColorStop(1, "rgba(30,70,30,.3)");
   g.fillStyle = gr;
   g.fillRect(x0, 0, x1 - x0, H);
+  // The verge's shade along the river carries on into the woods.
+  const verge = g.createLinearGradient(0, 0, 0, 112);
+  verge.addColorStop(0, "rgba(60,90,40,.2)");
+  verge.addColorStop(1, "rgba(60,90,40,0)");
+  g.fillStyle = verge;
+  g.fillRect(x0, 0, x1 - x0, 112);
   // Fallen leaves and ferns.
   for (let i = 0; i < 260; i++) {
-    const x = x0 + r() * (x1 - x0),
+    // (Only in the woods, not at the Plaza's edge.)
+    const deep = 60 + r() * (M - 60),
+      x = side < 0 ? -deep : W + deep,
       y = r() * H;
     g.fillStyle = ["#c98a3a", "#e0a84a", "#5f9a3c", "#3f7f34"][i % 4];
     g.beginPath();
@@ -427,7 +445,7 @@ export class Surroundings {
     });
   }
   private north(g: Ctx, r: () => number) {
-    grass(g, -M, -M, W + M, RIVER.y0 - 20, "#6fba55", r);
+    grass(g, -M, -M, W + M, RIVER.y0 - 20, "#77c25b", r);
     paintRiverBanks(g);
     // The water's hole: drawn every frame under this picture.
     g.save();
