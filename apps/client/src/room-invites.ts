@@ -35,8 +35,8 @@ export class RoomInvites {
     private hooks: {
       accountId: () => string | undefined;
       canJoin: () => boolean;
-      /** A declined party invitation (room invitations just expire). */
-      decline?: (code: string) => void;
+      /** Declined: the sender's Invite button can be used again. */
+      decline?: (invite: RoomInvite) => void;
       join: (code: string, mode: RoomInvite["mode"]) => Promise<boolean>;
     },
   ) {
@@ -98,7 +98,7 @@ export class RoomInvites {
     )!.onclick = () => {
       if (this.joining) return;
       this.queue.shift();
-      if (party) this.hooks.decline?.(invite.code);
+      this.hooks.decline?.(invite);
       this.render();
     };
     this.root.querySelector<HTMLButtonElement>("[data-invite-join]")!.onclick =

@@ -665,6 +665,74 @@
     sans-serif;
 }
 
+/* In someone else's party the leader stands in the middle (lobby-screen.ts):
+   the arrows step your own fighter only, so they wait; the leader's name
+   takes the element pill's place. */
+.lobby-step[hidden] {
+  visibility: hidden;
+  pointer-events: none;
+}
+.lobby-host-name {
+  display: none;
+}
+.lobby-name.is-host .element-pill {
+  display: none;
+}
+.lobby-name.is-host .lobby-host-name {
+  display: inline-flex;
+  align-items: center;
+  max-width: 220px;
+  padding: 3px 10px;
+  overflow: hidden;
+  border: 1px solid var(--lobby-line);
+  border-radius: 999px;
+  background: var(--lobby-glass);
+  color: var(--ui-accent);
+  font:
+    700 calc(12px * var(--text-scale, 1)) / 1.2 "DM Sans",
+    sans-serif;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Your seat beside the leader: a tap opens Fighters. */
+.lobby-member-tap {
+  position: absolute;
+  inset: 8% 14% calc(var(--floor) * 0.4);
+  z-index: 2;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 40%;
+  background: none;
+  box-shadow: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.lobby-member-tap:focus-visible {
+  outline: 3px solid var(--ui-accent);
+  outline-offset: 2px;
+}
+.lobby-member.is-you figcaption {
+  color: var(--ui-accent);
+}
+/* A member reconnecting: their place is kept, drawn faded. */
+.lobby-member.is-away .lobby-member-art,
+.lobby-fighter.is-away .lobby-fighter-art {
+  opacity: 0.5;
+  filter: grayscale(0.6);
+}
+.lobby-away {
+  font-weight: 600;
+  opacity: 0.8;
+}
+.lobby-party-bar .lobby-rejoin {
+  background: var(--ui-accent);
+  color: #1b1405;
+}
+.lobby-party-bar .lobby-rejoin[hidden] {
+  display: none;
+}
+
 /* Cards on the right. */
 .lobby-cards {
   right: var(--lobby-gutter-r);
