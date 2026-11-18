@@ -45,6 +45,8 @@ export interface ProfileRow {
   id: string;
   display_name: string;
   suspended: boolean;
+  /** Their avatar (migration 20261119100000). */
+  avatar?: string | null;
 }
 export interface SocialStore {
   /** Saved ratings of these players (players who never played have none). */
@@ -97,8 +99,9 @@ export function buildFriendsBoard(o: {
     name: string;
     title?: string | null;
     titleColor?: string | null;
+    avatar?: string | null;
   };
-  friends: Pick<Friend, "id" | "name" | "title" | "titleColor">[];
+  friends: Pick<Friend, "id" | "name" | "title" | "titleColor" | "avatar">[];
   ratings: RatingRow[];
   top: string | null;
   month: MatchResultRow[];
@@ -136,6 +139,7 @@ export function buildFriendsBoard(o: {
       wins: month.wins,
       matches: month.matches,
       me: p.me,
+      avatar: p.avatar ?? null,
       rated: matches,
     };
   });
@@ -210,6 +214,7 @@ export function buildRecentPlayers(o: {
         id: row.player_id,
         name: p.display_name,
         fighter: row.character || null,
+        avatar: p.avatar ?? null,
         lastPlayed: match.played_at,
         matches: 0,
         together: 0,
@@ -355,7 +360,7 @@ export function supabaseSocialStore(): SocialStore | undefined {
       if (!ids.length) return [];
       const { data, error } = await db
         .from("arena_profiles")
-        .select("id,display_name,suspended")
+        .select("id,display_name,suspended,avatar")
         .in("id", ids);
       if (error) throw error;
       return (data ?? []) as ProfileRow[];

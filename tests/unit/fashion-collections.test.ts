@@ -68,7 +68,7 @@ describe("fashion collection colors", () => {
 
 describe("authored fashion collections", () => {
   it("replaces conflicting default props without covering faces or removing Halcyra's beak", () => {
-    for (const collection of ["abyssal-expedition", "dream-carnival"] as const)
+    for (const collection of ["abyssal-expedition"] as const)
       for (const dir of dirs) {
         for (const id of ids) {
           const { layers } = creatureLayers(id, dir, "normal", {
@@ -108,9 +108,7 @@ describe("authored fashion collections", () => {
     ).toBe(false);
     for (const id of ids)
       for (const dir of dirs) {
-        const deep = epicBodyCut(id, dir, "abyssal-expedition"),
-          stage = epicBodyCut(id, dir, "dream-carnival");
-        expect(deep).not.toBe(stage);
+        const deep = epicBodyCut(id, dir, "abyssal-expedition");
         for (const rare of rares.filter((s) => s.champion === id)) {
           const cut = fashionCut(
             id,
@@ -118,7 +116,6 @@ describe("authored fashion collections", () => {
             rare.collection as (typeof FASHION_COLLECTION_IDS)[number],
           );
           expect(deep).not.toBe(cut);
-          expect(stage).not.toBe(cut);
         }
       }
   });

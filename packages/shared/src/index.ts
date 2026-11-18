@@ -8,6 +8,8 @@ import {
   type SnapshotMeta,
 } from "./snapshot-meta.js";
 export * from "./snapshot-meta.js";
+export * from "./pick-rules.js";
+export * from "./avatars.js";
 export const RULES = {
   width: 1600,
   height: 900,
@@ -115,7 +117,7 @@ export type StatusKind =
   | "stealth"
   /** Rooted: can't move or dash (a charge stops), but can still attack, cast and jump. */
   | "root"
-  /** Inside a time bubble (Sloth Time): moves, dashes and rolls at STATUS_RULES.warpMultiplier. */
+  /** Inside a time bubble (Sloth Time, centre `tx`, `ty`, radius `amount`): walks and rolls at STATUS_RULES.warpMultiplier; dashes are not slowed. */
   | "warp"
   /** Taunted: walks toward the taunter (`tx`, `ty`), whatever its input; can still attack and cast. */
   | "taunt"
@@ -165,7 +167,7 @@ export const STATUS_RULES = {
   hasteMultiplier: 1.3,
   /** Damage multiplier while Facet Guard is active. */
   counterReduction: 0.5,
-  counterReflection: 0.3,
+  counterReflection: 0.2,
   /** Damage multiplier while Wing Cloak is active. */
   shieldReduction: 0.4,
   /** Kindle: outgoing damage multiplier and basic attack interval multiplier. */
@@ -209,16 +211,25 @@ export const MOSS = {
   reduction: 0.05,
   regen: 0.6,
 };
-/** Curl & Roll steering: time to build speed, turn rate, momentum lost turning and on walls. */
+/**
+ * Curl & Roll steering: time to build speed, turn rate (radians a second:
+ * `turnSlow` at walking speed down to `turn` at full speed, like a kart),
+ * momentum lost turning and on walls.
+ */
 export const ROLL = {
   build: 0.45,
   start: 0.9,
   turn: 3.4,
-  turnLoss: 0.35,
+  turnSlow: 7,
+  turnLoss: 0.2,
   wallLoss: 0.55,
   coast: 1.5,
   /** Ramming the same enemy again waits this long. */
   rehit: 0.6,
+  /** A ram rolls on through the enemy, keeping this share of its speed. */
+  ramKeep: 0.7,
+  /** How close (px between the two bodies) counts as a ram. */
+  ramReach: 16,
 };
 /** The passives, as players read them (the roster's overview, the tutorial). */
 export const PASSIVES: Record<
@@ -516,6 +527,17 @@ export interface Ability {
   trail?: { fade: number };
   /** Steer: how fast the zone follows the caster's aim (px/s). */
   steer?: { speed: number };
+  /**
+   * Knockback only this close (px between centres): farther away the hit
+   * pushes no more than a light 20 (Ember Lob keeps brawlers off without
+   * kiting ranged enemies out of their reach).
+   */
+  knockbackNear?: number;
+  /**
+   * Counter: the caster vaults up to this far toward the aim at `speed`
+   * (Facet Guard), predicted on the client like a rush.
+   */
+  lunge?: number;
   /** Buff: the caster is airborne for `duration` (ground attacks miss). */
   glide?: boolean;
   /** Buff: a burst around the caster on cast that pushes enemies away and slows them. */
@@ -601,7 +623,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A sugar-glider kit that stores static in its antennae. Glides over trouble and stays deadly at range.",
     color: 0xffd65b,
-    health: 153,
+    health: 157,
     speed: 270,
     basic: basic(
       "spark-dart",
@@ -617,7 +639,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "static-lance",
         "Static Lance",
         "projectile",
-        18,
+        20,
         8,
         "A powerful electric bolt toward your aim. Briefly paralyzes.",
         { speed: 1050, radius: 12, status: "paralysis", statusDuration: 0.6 },
@@ -628,8 +650,8 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "projectile",
         22,
         10,
-        "A slow electric orb that bursts on impact, shocking nearby enemies.",
-        { speed: 400, radius: 22, explosion: 100 },
+        "A slow electric orb that bursts on impact, shocking nearby enemies. 30% more damage to enemies already slowed, stunned or otherwise hindered.",
+        { speed: 400, radius: 22, explosion: 100, bonusVsStatus: 1.3 },
       ),
       ability(
         "static-glide",
@@ -677,7 +699,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
       "cinder-snap",
       "Cinder Snap",
       "melee",
-      15,
+      14,
       455,
       "A short-range burst of fire in front of Cindrake.",
       { range: 170, arc: 0.2, knockback: 10 },
@@ -705,7 +727,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "magma-bomb",
         "Magma Bomb",
         "projectile",
-        24,
+        22,
         12,
         "An explosive fireball that burns enemies caught in the blast.",
         {
@@ -835,14 +857,14 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A crystal-fisted lynx monk. Durable, patient and brutal against careless attacks.",
     color: 0x7f9cff,
-    health: 164,
+    health: 170,
     speed: 235,
     basic: basic(
       "prism-jab",
       "Prism Jab",
       "melee",
-      13,
-      335,
+      12,
+      345,
       "A close-range energy punch.",
       { range: 130, arc: 0.35, knockback: 12 },
     ),
@@ -851,10 +873,10 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "prism-shot",
         "Prism Shot",
         "projectile",
-        20,
-        8,
-        "Fling one of the orbiting crystal shards.",
-        { speed: 600, radius: 20 },
+        22,
+        6,
+        "Fling one of the orbiting crystal shards. It slows for a second, so you can close in.",
+        { speed: 700, radius: 20, status: "slow", statusDuration: 1 },
       ),
       ability(
         "shatter-paw",
@@ -877,8 +899,8 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "counter",
         0,
         15,
-        "For 1.6 seconds, the gauntlets' facets take half the damage and refract 30% back to the attacker.",
-        { duration: 1.6 },
+        "Raise the faceted gauntlets and vault up to 240 px toward your aim. For 1.6 seconds they take half the damage and refract 20% of shots, beams and blasts back to the attacker (strikes up close are only halved).",
+        { duration: 1.6, lunge: 240, speed: 900 },
       ),
       ability(
         "crystal-cage",
@@ -899,7 +921,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A fluffy moth that sheds glowing dust. Balanced at every range; Kindle turns pressure into a race.",
     color: 0x86f0c0,
-    health: 139,
+    health: 143,
     speed: 265,
     basic: basic(
       "glint",
@@ -940,7 +962,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "Kindle",
         "buff",
         0,
-        15,
+        13,
         "For 5 seconds, deal 25% more damage and basic attack 30% faster.",
         { duration: 5 },
       ),
@@ -948,9 +970,9 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "radiant-flare",
         "Radiant Flare",
         "lighthouse",
-        6,
+        7,
         20,
-        "After a charge, Lumoth glows like a lighthouse for 2 seconds: three rays of light 260 px long turn round it, and every enemy a ray sweeps takes 6.",
+        "After a charge, Lumoth glows like a lighthouse for 2 seconds: three rays of light 260 px long turn round it, and every enemy a ray sweeps takes 7.",
         {
           cast: 0.45,
           duration: 2,
@@ -987,7 +1009,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "third-eye-ray",
         "Third-Eye Ray",
         "beam",
-        18,
+        17,
         8,
         "An instant beam from the third-eye gem toward your aim. Walls block it. Slows.",
         { range: 760, radius: 16, status: "slow", statusDuration: 0.6 },
@@ -999,7 +1021,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         12,
         12,
         "A booming hoot that blasts nearby opponents far away.",
-        { radius: 180, knockback: 260 },
+        { radius: 180, knockback: 230 },
       ),
       ability(
         "wing-cloak",
@@ -1046,7 +1068,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
       "Boulder Swipe",
       "melee",
       15,
-      630,
+      600,
       "A wide melee swing in front of Terradon.",
       { range: 150, arc: 0, knockback: 25 },
     ),
@@ -1072,8 +1094,8 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "rest",
         0,
         16,
-        "Pull into your shell for 2.5 seconds: you can't move or act, but take 45% less damage and regrow 25 HP.",
-        { duration: 2.5, heal: 5, status: "shell" },
+        "Pull into your shell for 2.5 seconds: you can't move or act, but take 45% less damage and regrow 30 HP.",
+        { duration: 2.5, heal: 6, status: "shell" },
       ),
       ability(
         "mud-mire",
@@ -1110,7 +1132,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A hooded lantern wisp. Hangs its haunted lantern to hold ground, and strikes from the shadows at anything its ghostfire lights up.",
     color: 0x9c6bff,
-    health: 152,
+    health: 154,
     speed: 260,
     basic: basic(
       "lantern-wisp",
@@ -1126,7 +1148,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "shade-crawl",
         "Shade Crawl",
         "projectile",
-        20,
+        21,
         8,
         "A fast shadow strike along the ground. Jump to avoid it.",
         { speed: 1100, radius: 16, ground: true },
@@ -1145,7 +1167,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "Haunted Lantern",
         "zone",
         0,
-        18,
+        15,
         "Hang your lantern at the aim point: for 4 seconds it shoots a wisp at the nearest enemy in its light every 1.3 seconds.",
         {
           // The zone is the lantern itself; its light (turret.range) reaches much further.
@@ -1269,7 +1291,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       'A shy red panda, the "fire fox", with a flame at the tip of its tail. Lobs burning chestnuts from the back line and curls up in its tail when caught.',
     color: 0xff8a3d,
-    health: 140,
+    health: 150,
     speed: 235,
     basic: basic(
       "ember-lob",
@@ -1277,22 +1299,22 @@ export const CHARACTERS: Record<CharacterId, Character> = {
       "projectile",
       10,
       440,
-      "A long-range ember flicked from its tail.",
-      { speed: 760, range: 760, radius: 12 },
+      "A long-range ember flicked from its tail. It knocks back enemies within 260 px, keeping brawlers off Pyranda.",
+      { speed: 760, range: 760, radius: 12, knockback: 65, knockbackNear: 260 },
     ),
     skills: [
       ability(
         "chestnut-mortar",
         "Chestnut Mortar",
         "zone",
-        26,
+        22,
         8,
-        "Lob a burning chestnut over walls to the aim point. It lands 0.45 seconds later and burns.",
+        "Lob a burning chestnut over walls to the aim point. It lands 0.6 seconds later and burns.",
         {
-          radius: 110,
+          radius: 100,
           range: 720,
-          duration: 0.5,
-          tickDelay: 0.45,
+          duration: 0.65,
+          tickDelay: 0.6,
           tickInterval: 1,
           knockback: 70,
           status: "burn",
@@ -1323,10 +1345,10 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "screen",
         7,
         10,
-        "Sweep up a curtain of embers 240 px wide across your aim for 3 seconds: enemy shots that touch it burn up, and enemies on it take 7 damage every half second and catch fire.",
+        "Sweep up a curtain of embers 240 px wide across your aim for 3 seconds: enemy shots that touch it burn up, and enemies on it take 7 damage every half second, catch fire and are knocked back.",
         {
           duration: 3,
-          knockback: 0,
+          knockback: 150,
           status: "burn",
           statusDuration: 2,
           tickInterval: 0.5,
@@ -1362,7 +1384,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A floating sea angel from the ice shelf. Slows, then freezes you solid; the only champion with true Freeze.",
     color: 0x9fe8ff,
-    health: 152,
+    health: 158,
     speed: 255,
     basic: basic(
       "rime-shard",
@@ -1380,8 +1402,14 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "projectile",
         18,
         8,
-        "A heavy hailstone that slows for a second.",
-        { speed: 900, radius: 14, status: "slow", statusDuration: 1 },
+        "A heavy hailstone that slows for a second. It shatters on enemies already slowed or frozen for 35% more damage.",
+        {
+          speed: 900,
+          radius: 16,
+          status: "slow",
+          statusDuration: 1,
+          bonusVsStatus: 1.35,
+        },
       ),
       ability(
         "frost-bloom",
@@ -1407,7 +1435,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "Frost Breath",
         "cone",
         4,
-        15,
+        12,
         "Breathe a freezing cone for 1 second. Slows.",
         {
           range: 210,
@@ -1480,7 +1508,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "focus-shot",
         "Focus Shot",
         "beam",
-        26,
+        25,
         12,
         "Take aim for 0.4 seconds, then fire an instant beam across the court. Up to 50% more damage at long range. Walls block it.",
         { cast: 0.4, range: 1000, radius: 14, knockback: 60, farBonus: 0.5 },
@@ -1531,8 +1559,8 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "projectile",
         14,
         8,
-        "Toss a glowing yuzu that bursts on impact.",
-        { speed: 650, radius: 16, explosion: 80 },
+        "Toss a glowing yuzu that bursts on impact; Sunbara soaks up a fifth of the damage it deals as health.",
+        { speed: 650, radius: 16, explosion: 80, drain: 0.2 },
       ),
       ability(
         "warm-spring",
@@ -1608,8 +1636,8 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "moon-hop",
         "Moon Hop",
         "blink",
-        10,
-        8,
+        12,
+        7,
         "Teleport up to 300 px toward the aim (not through walls). A small burst where you land.",
         { range: 300, radius: 90, knockback: 40 },
       ),
@@ -1788,8 +1816,8 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "veil",
         0,
         15,
-        "Vanish in a cloud of ink: stealth for 2.5 seconds and a burst of speed. Casting or taking damage reveals you, and your first hit out of stealth deals 40% more.",
-        { duration: 2.5, statusDuration: 1.5, ambush: 1.4 },
+        "Vanish in a cloud of ink: stealth for 2.5 seconds and a burst of speed. Enemies can't see or target you at all. Casting or taking damage reveals you, and your first hit out of stealth deals 30% more.",
+        { duration: 2.5, statusDuration: 1.5, ambush: 1.3 },
       ),
       ability(
         "kraken-grasp",
@@ -1870,14 +1898,14 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "curl-roll",
         "Curl & Roll",
         "roll",
-        10,
-        11,
-        "Curl into a ball you steer for up to 3.5 seconds (cast again to uncurl). Speed builds on straight lines; ramming an enemy deals 10 to 34 damage, the faster the harder. Curled, you take 30% less damage.",
+        7,
+        12,
+        "Curl into a ball you steer for up to 3.5 seconds (cast again to uncurl). It turns tightly when slow and widely at speed; speed builds on straight lines. Ramming an enemy deals 7 to 20 damage, the faster the harder, and you roll on through for another pass. Curled, you take 30% less damage.",
         {
           duration: 3.5,
           speed: 540,
           knockback: 140,
-          roll: { bonus: 24, reduction: 0.7 },
+          roll: { bonus: 13, reduction: 0.7 },
         },
       ),
       ability(
@@ -1906,7 +1934,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A three-toed sloth with a moss garden on its back. Moss grows while it stands still; it plants seeds that grow, slows time itself, and lazily swaps places.",
     color: 0x9bd36a,
-    health: 170,
+    health: 180,
     speed: 240,
     passive: "moss",
     basic: basic(
@@ -1923,9 +1951,9 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "seedling",
         "Seedling",
         "seedling",
-        26,
+        28,
         5,
-        "Plant a seed at the aim. It grows a stage every 1.5 seconds (sprout, bud, bloom); the first enemy to step on it sets it off for 9, 17 or 26 damage and a 0.5, 0.8 or 1.3 second root. Up to 3 at once; jump over them.",
+        "Plant a seed at the aim. It grows a stage every 1.5 seconds (sprout, bud, bloom); the first enemy to step on it sets it off for 10, 18 or 28 damage and a 0.4, 0.6 or 1 second root. Up to 3 at once; jump over them.",
         {
           range: 520,
           radius: 70,
@@ -1934,7 +1962,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
           ground: true,
           knockback: 0,
           status: "root",
-          statusDuration: 1.3,
+          statusDuration: 1,
           bonusVsStatus: 1.4,
           seed: { grow: 1.5, stages: [0.36, 0.64, 1], trigger: 40 },
         },
@@ -1944,16 +1972,16 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "Sloth Time",
         "timewarp",
         0,
-        14,
-        "Slow time in a bubble at the aim for 3 seconds: enemies inside, and their shots, move at a third of their speed.",
-        { range: 520, radius: 150, duration: 3, knockback: 0, warp: 0.35 },
+        12,
+        "Slow time in a bubble at the aim for 3 seconds: enemies inside, and their shots, move at a third of their speed. Dashing isn't slowed: dash out of the bubble and you are free at once.",
+        { range: 520, radius: 165, duration: 3, knockback: 0, warp: 0.35 },
       ),
       ability(
         "lazy-swap",
         "Lazy Swap",
         "swap",
         0,
-        12,
+        11,
         "Swap places with the enemy or your own seedling nearest the aim (up to 600 px away). A swapped enemy is slowed for a second.",
         {
           range: 600,
@@ -1967,9 +1995,9 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "overgrowth",
         "Overgrowth",
         "nova",
-        28,
+        30,
         20,
-        "Vines erupt around Mossloth: 28 damage and Rooted for 1.2 seconds. Every seedling you have blooms at full growth, and your moss grows full.",
+        "Vines erupt around Mossloth: 30 damage and Rooted for 1.2 seconds. Every seedling you have blooms at full growth, and your moss grows full.",
         {
           cast: 0.3,
           radius: 230,
@@ -2098,7 +2126,7 @@ export const COMBOS: Record<CharacterId, Combo> = {
     damage: 1.4,
     status: "stun",
     statusDuration: 0.8,
-    text: "Absorb a hit with Facet Guard to prime Shatter Paw: 40% more damage and a longer stun.",
+    text: "Refract a shot with Facet Guard to prime Shatter Paw: 40% more damage and a longer stun.",
   },
   duskveil: {
     name: "Lit",
@@ -2218,24 +2246,24 @@ for (const character of Object.values(CHARACTERS))
  * champions) every factor is within 10% of 1.
  */
 export const TEAM_TUNING: Partial<Record<CharacterId, number>> = {
-  voltkit: 1.045,
-  cindrake: 0.993,
-  tidefin: 1.035,
-  auralynx: 0.95,
-  lumoth: 1,
-  mystowl: 0.985,
-  terradon: 0.993,
-  duskveil: 1.025,
-  coilemur: 0.975,
-  pyranda: 0.93,
-  glacelle: 0.963,
-  halcyra: 1,
-  sunbara: 0.966,
-  astrabun: 1.005,
-  wombolder: 1.01,
-  shadopus: 1.04,
-  pangrove: 0.98,
-  mossloth: 1.035,
+  voltkit: 1.047,
+  cindrake: 0.992,
+  tidefin: 1.068,
+  auralynx: 0.964,
+  lumoth: 0.996,
+  mystowl: 0.984,
+  terradon: 0.963,
+  duskveil: 1.002,
+  coilemur: 0.978,
+  pyranda: 0.966,
+  glacelle: 0.96,
+  halcyra: 0.991,
+  sunbara: 0.954,
+  astrabun: 1.006,
+  wombolder: 0.998,
+  shadopus: 1.018,
+  pangrove: 0.988,
+  mossloth: 1.063,
 };
 /**
  * Free-for-all tuning, for mode "ffa" only, in the same form as TEAM_TUNING
@@ -2246,24 +2274,24 @@ export const TEAM_TUNING: Partial<Record<CharacterId, number>> = {
  * with scripts/balance/tune-teams.ts --mode ffa on four-player matches.
  */
 export const FFA_TUNING: Partial<Record<CharacterId, number>> = {
-  voltkit: 0.928,
-  cindrake: 1.126,
-  tidefin: 0.82,
-  auralynx: 1.065,
-  lumoth: 0.9,
-  mystowl: 0.85,
-  terradon: 1,
-  duskveil: 0.917,
-  coilemur: 1.2,
-  pyranda: 0.876,
-  glacelle: 0.981,
-  halcyra: 0.845,
-  sunbara: 0.911,
-  astrabun: 1.09,
-  wombolder: 1.054,
-  shadopus: 1.06,
-  pangrove: 1.02,
-  mossloth: 0.94,
+  voltkit: 0.93,
+  cindrake: 1.14,
+  tidefin: 0.834,
+  auralynx: 1.041,
+  lumoth: 0.892,
+  mystowl: 0.876,
+  terradon: 0.995,
+  duskveil: 0.874,
+  coilemur: 1.189,
+  pyranda: 0.88,
+  glacelle: 0.923,
+  halcyra: 0.839,
+  sunbara: 0.887,
+  astrabun: 1.084,
+  wombolder: 1.089,
+  shadopus: 1.079,
+  pangrove: 1.021,
+  mossloth: 0.965,
 };
 /**
  * The same for a free-for-all that started with three players, tuned on
@@ -2271,24 +2299,24 @@ export const FFA_TUNING: Partial<Record<CharacterId, number>> = {
  * gap between melee and ranged champions is wider than with four.
  */
 export const FFA_THREE_TUNING: Partial<Record<CharacterId, number>> = {
-  voltkit: 0.868,
-  cindrake: 1.195,
-  tidefin: 0.83,
-  auralynx: 1.15,
-  lumoth: 0.87,
-  mystowl: 0.835,
-  terradon: 1.056,
-  duskveil: 0.864,
-  coilemur: 1.25,
-  pyranda: 0.855,
-  glacelle: 0.936,
-  halcyra: 0.78,
-  sunbara: 0.86,
+  voltkit: 0.86,
+  cindrake: 1.154,
+  tidefin: 0.838,
+  auralynx: 1.2,
+  lumoth: 0.854,
+  mystowl: 0.836,
+  terradon: 1.061,
+  duskveil: 0.85,
+  coilemur: 1.252,
+  pyranda: 0.858,
+  glacelle: 0.879,
+  halcyra: 0.786,
+  sunbara: 0.88,
   astrabun: 1.19,
-  wombolder: 1.16,
-  shadopus: 1.12,
+  wombolder: 1.18,
+  shadopus: 1.168,
   pangrove: 1.07,
-  mossloth: 0.95,
+  mossloth: 0.972,
 };
 /**
  * A champion's strength factor in this mode (1 outside 2v2 and free-for-all).
@@ -2532,6 +2560,24 @@ export interface Fighter extends Vec {
   id: string;
   name: string;
   character: CharacterId;
+  /**
+   * PvP lobby: this player has locked in `character` (Lock in, or Ready).
+   * Until then `character` is only a default and the seat reads "Choosing".
+   */
+  locked?: boolean;
+  /**
+   * The player's avatar from the library (packages/shared/src/avatars.ts),
+   * their picture wherever they are; unset: the default.
+   */
+  avatar?: string;
+  /** PvP lobby: the fighter this player is looking at (teammates only). */
+  browse?: CharacterId;
+  /**
+   * PvP lobby: this player's pick is hidden from you (another side). The
+   * server sends no real `character` (or `browse`) for them until the match
+   * starts; `character` is a placeholder and must not be shown.
+   */
+  veiled?: boolean;
   connected: boolean;
   ready: boolean;
   hp: number;
@@ -3236,7 +3282,14 @@ function stepMovement(
         modifier *= STATUS_RULES.slowMultiplier;
       if (s.kind === "haste") modifier *= STATUS_RULES.hasteMultiplier;
       if (s.kind === "root") modifier = 0;
-      if (s.kind === "warp") warp = STATUS_RULES.warpMultiplier;
+      // Sloth Time works only inside its bubble (`tx`, `ty`, radius
+      // `amount`): step out of it and you are at full speed at once.
+      if (
+        s.kind === "warp" &&
+        (s.tx === undefined ||
+          Math.hypot(p.x - s.tx, p.y - (s.ty ?? 0)) < (s.amount ?? Infinity))
+      )
+        warp = STATUS_RULES.warpMultiplier;
     }
   modifier *= warp;
   if (p.pinball && time < p.dashUntil && modifier > 0) {
@@ -3274,7 +3327,10 @@ function stepMovement(
         Math.sin(want - roll.heading),
         Math.cos(want - roll.heading),
       );
-      const turn = Math.max(-ROLL.turn * dt, Math.min(ROLL.turn * dt, diff));
+      // Tight turns when slow (after a ram, say), wide ones at full speed.
+      const fast = Math.max(0, Math.min(1, roll.speed / Math.max(1, roll.top)));
+      const rate = ROLL.turnSlow + (ROLL.turn - ROLL.turnSlow) * fast;
+      const turn = Math.max(-rate * dt, Math.min(rate * dt, diff));
       roll.heading += turn;
       roll.speed *= 1 - Math.abs(turn) * ROLL.turnLoss;
       roll.speed += (roll.top - roll.speed) * (1 - Math.exp(-dt / ROLL.build));
@@ -3296,8 +3352,10 @@ function stepMovement(
     return;
   }
   if (time < p.dashUntil) {
-    p.vx = p.dashX * warp;
-    p.vy = p.dashY * warp;
+    // Dashes and charges are not slowed by Sloth Time: dashing is how you
+    // get out of the bubble.
+    p.vx = p.dashX;
+    p.vy = p.dashY;
   } else {
     // Floating (Moon Gravity): almost no grip, so it slides and turns slowly.
     const grip = p.statuses.some((s) => s.kind === "float" && s.until > time)
@@ -3483,7 +3541,7 @@ export const RITES: Rite[] = [
     "minor",
     "cinder-snap",
     "Searing Snap",
-    "Cinder Snap deals 18 damage instead of 15.",
+    "Cinder Snap deals 18 damage instead of 14.",
     { set: { damage: 18 } },
   ),
   rite(
@@ -3579,8 +3637,8 @@ export const RITES: Rite[] = [
     "minor",
     "prism-jab",
     "Hard Jab",
-    "Prism Jab deals 15 damage instead of 13.",
-    { set: { damage: 15 } },
+    "Prism Jab deals 14 damage instead of 12.",
+    { set: { damage: 14 } },
   ),
   rite(
     "auralynx",
@@ -3707,7 +3765,7 @@ export const RITES: Rite[] = [
     "minor",
     "shell-up",
     "Thick Moss",
-    "Shell Up regrows 35 HP instead of 25.",
+    "Shell Up regrows 35 HP instead of 30.",
     { set: { heal: 7 } },
   ),
   rite("terradon", "minor", "mud-mire", "Deep Mud", "Mud Mire is 20% wider.", {
@@ -3742,7 +3800,7 @@ export const RITES: Rite[] = [
     "minor",
     "shade-crawl",
     "Deep Crawl",
-    "Shade Crawl deals 24 damage instead of 20.",
+    "Shade Crawl deals 24 damage instead of 21.",
     { set: { damage: 24 } },
   ),
   rite(
@@ -4057,7 +4115,7 @@ export const RITES: Rite[] = [
     "major",
     "moon-hop",
     "Double Hop",
-    "Moon Hop cooldown 8s → 5s.",
+    "Moon Hop cooldown 7s → 5s.",
     { set: { cooldown: 5 } },
   ),
   rite(

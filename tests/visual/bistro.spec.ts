@@ -1053,10 +1053,14 @@ test("Bistro Orders: a clock when one runs out, a ring for the closest, wanted d
 }, info) => {
   const errors = await openBistro(page);
   // The big order (12 Banh Mi, 9 Pho) runs out in a minute; nothing cooked.
+  // The small one (4 spring rolls) is a new order: a new start's 6 spring
+  // rolls could already finish the old one, and whether the board had seen
+  // that before this reset (and announced it as known) was down to timing.
   await B(
     page,
     `const S = srv.S; S.level = 30; S.counter = [null, null, null, null];
      if (srv.extras.league?.last) srv.extras.league.last.claimed = true;
+     srv.extras.orders[0].expires = b.sync().now() + 5 * 3600_000;
      srv.extras.orders[1].expires = b.sync().now() + 60_000;
      return b.load()`,
   );

@@ -30,6 +30,8 @@ import {
   rigAssets,
   rigPoint,
   skinSuffix,
+  lumeLayers,
+  type LumeKind,
   type Part,
   type RigAsset,
 } from "./assets";
@@ -37,8 +39,8 @@ import { HOVERING, paletteFor, type SkinLook } from "../creature-design";
 import { hexToNumber, wornArt } from "../skins/skin-art";
 import { drawColorsFx } from "../skins/colors-fx";
 import {
-  FX_GRAVITY,
   drawAnyParticle,
+  stepParticle,
   drawSkinFx,
   type FxShape,
 } from "../skins/skin-fx";
@@ -150,6 +152,8 @@ export class FighterRig {
   private washes?: Map<Part, Phaser.GameObjects.Image>;
   /** The facing the twins were last ordered for. */
   private washDir = "";
+  /** Light layers over glowing costume pieces, by texture key. */
+  private glows?: Map<string, Phaser.GameObjects.Image>;
   /** Auralynx's ring keeps its phase when its speed or the scene clock changes. */
   private auraRingAngle = 0;
   /** Height/width of the ground plane skin rings lie on. The fitting room's
@@ -913,6 +917,7 @@ export class FighterRig {
     if (pose.ball)
       for (const image of this.images.values()) image.setVisible(false);
     this.syncWash(pose.wash);
+    this.syncGlow(now, pose.ambient !== false, reduced);
     this.effects.clear();
     this.under.clear();
     if (pose.ball) this.drawBall(pose.ball, x, y, alpha, reduced);
@@ -992,6 +997,45 @@ export class FighterRig {
         .setAlpha(image.alpha * wash.alpha)
         .setTintFill(wash.color);
     }
+  }
+
+  /**
+   * Light on glowing costume pieces: each light layer of a part (see
+   * `lumeLayers`) rides just above it with additive blending, its strength
+   * following the way it glows. Only fighters with the ambient budget get
+   * them (none on Low): the costume's texture already shows the lit colours,
+   * so without them the pieces simply hold still. Blinks stay at one flash a
+   * second per light, far under the three-flashes-a-second safety line.
+   */
+  private syncGlow(now: number, ambient: boolean, reduced: boolean) {
+    if (!this.glows && (!this.suffix || !ambient)) return;
+    const shown = new Set<string>();
+    if (ambient && this.suffix)
+      for (const image of this.images.values()) {
+        const layers = lumeLayers.get(image.texture.key);
+        if (!layers) continue;
+        for (const l of layers) {
+          if (!this.scene.textures.exists(l.key)) continue;
+          this.glows ??= new Map();
+          let twin = this.glows.get(l.key);
+          if (!twin) {
+            twin = sizeByResolution(this.scene.add.image(0, 0, l.key)).setBlendMode("ADD");
+            this.glows.set(l.key, twin);
+            this.root.add(twin);
+          }
+          this.root.moveAbove(twin, image);
+          shown.add(l.key);
+          twin
+            .setOrigin(image.originX, image.originY)
+            .setPosition(image.x, image.y)
+            .setScale(image.scaleX, image.scaleY)
+            .setRotation(image.rotation)
+            .setFlip(image.flipX, image.flipY)
+            .setVisible(image.visible)
+            .setAlpha(image.alpha * (reduced ? 0.5 : lumeStrength(l.kind, l.phase, now / 1000)));
+        }
+      }
+    if (this.glows) for (const [key, twin] of this.glows) if (!shown.has(key)) twin.setVisible(false);
   }
 
   /** A burst of bouncing pebbles from the top of the victory rock pile. */
@@ -1653,12 +1697,7 @@ export class FighterRig {
       );
     this.fxState = state;
     // ---- Update and draw particles.
-    for (const p of this.particles) {
-      p.age += dt;
-      p.x += p.vx * dt;
-      p.y += p.vy * dt;
-      p.vy += (FX_GRAVITY[p.shape] ?? 0) * dt;
-    }
+    for (const p of this.particles) stepParticle(p, dt);
     this.particles = this.particles.filter((p) => p.age < p.life);
     for (const p of this.particles)
       drawAnyParticle(p.behind ? this.under : g, p, 1 - p.age / p.life);
@@ -1744,5 +1783,22 @@ export class FighterRig {
           x - Math.cos(pose.angle) * (i * 14 + 16),
           y - Math.sin(pose.angle) * (i * 14 + 16),
         );
+  }
+}
+
+/** How strongly a light layer shines at time `t` (seconds), 0..1. */
+export function lumeStrength(kind: LumeKind, phase: number, t: number) {
+  const TAU = Math.PI * 2;
+  switch (kind) {
+    case "pulse":
+      return 0.1 + 0.9 * (0.5 - 0.5 * Math.cos((TAU * t) / 2.2));
+    case "blink":
+      // One flash a second, the odd lights half a second after the even.
+      return (t + phase * 0.5) % 1 < 0.3 ? 1 : 0.1;
+    case "chase":
+      // Even and odd lights take turns, like marquee bulbs.
+      return 0.15 + 0.85 * (0.5 + 0.5 * Math.cos(TAU * (t / 1.2 - phase * 0.5)));
+    case "twinkle":
+      return Math.max(0, Math.cos(TAU * (t / 2.6 - phase * 0.5))) ** 8;
   }
 }

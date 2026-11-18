@@ -225,6 +225,8 @@ for (const size of [
                 const p = w.__snap.players.find((p: any) => p.id === "me");
                 p.character = data;
                 p.ready = false;
+                // As the server: the pick is locked in (hidden picks).
+                p.locked = true;
                 callback(null, { ok: true });
                 w.__push();
               };

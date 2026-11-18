@@ -200,7 +200,7 @@ test("Lock in, Ready and Leave go to the room's calls", async ({ page }) => {
   expect((await events(page, "select")).at(-1)).toBe("tidefin");
   expect(await events(page, "ready")).toHaveLength(1);
   await expect(
-    page.locator(".room-seats [data-me] .ui-tag.is-ok"),
+    page.locator(".room-seats [data-me] .room-state.is-ready"),
   ).toContainText("Ready");
   // Escape goes back from a fighter's detail to the grid, not out of the room.
   await page.click("#ready");

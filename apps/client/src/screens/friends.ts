@@ -29,6 +29,8 @@ export interface FriendsHooks {
   /** Block a player (asks first); resolves true once blocked. */
   block(id: string, name: string): Promise<boolean>;
   unblock(id: string): Promise<void>;
+  /** Report a friend's own picture (asks first); resolves with what to say. */
+  reportPhoto?(photo: string, name: string): Promise<string>;
   /** Open the chat on a conversation with this friend. */
   message?(id: string, name: string): void;
   inviteToParty(id: string): Promise<Reply>;
@@ -234,6 +236,13 @@ export function openFriends(hooks: FriendsHooks): FriendsScreen {
         view.menu = view.removing = null;
         return `${name} is blocked.`;
       });
+    } else if (d.friendReportPhoto) {
+      const photo = d.friendReportPhoto,
+        name = d.friendName ?? "this player";
+      void act(
+        photo,
+        async () => (await hooks.reportPhoto?.(photo, name)) ?? "",
+      );
     } else if (d.friendMessage) {
       const id = d.friendMessage,
         name = d.friendName ?? "";

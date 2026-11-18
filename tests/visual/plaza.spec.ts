@@ -731,6 +731,42 @@ test("a runner behind a hurdle is under it, in front of it over it", async ({
   expect(errors).toEqual([]);
 });
 
+// A click on the ground (desktop) shows where you're going, as in MOBAs:
+// a ring closing in with chevrons, then a small ring on the spot until you
+// get there.
+test("a click on the ground marks where you're going until you arrive", async ({
+  page,
+}, info) => {
+  test.setTimeout(90_000);
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const errors = await openPlaza(page);
+  await teleport(page, 1350, 1090);
+  await page.waitForTimeout(800);
+  const spot = await page.evaluate(() =>
+    (window as any).__plaza.worldClient(1640, 1130),
+  );
+  await page.mouse.click(spot.x, spot.y);
+  const mark = await page.evaluate(() => (window as any).__plaza.clickMark());
+  expect(mark?.ok).toBe(true);
+  expect(Math.hypot(mark.x - 1640, mark.y - 1130)).toBeLessThan(30);
+  await page.waitForTimeout(150);
+  await snap(page, info, "plaza-click-mark");
+  // Gone once you're there.
+  await expect
+    .poll(() => page.evaluate(() => (window as any).__plaza.clickMark()), {
+      timeout: 20_000,
+    })
+    .toBeNull();
+  const P = await page.evaluate(() => {
+    const p = (window as any).__plaza.P;
+    return { x: p.x, y: p.y };
+  });
+  // (Near it: on a busy machine the in-page server runs ahead of the
+  // drawn frames and you settle where it stopped you, a step or two on.)
+  expect(Math.hypot(P.x - 1640, P.y - 1130)).toBeLessThan(80);
+  expect(errors).toEqual([]);
+});
+
 // Zoom: the mouse wheel and + / − on a desktop, two fingers on a phone;
 // within limits (never past what is built or what the server shows), and
 // kept for the next visit.

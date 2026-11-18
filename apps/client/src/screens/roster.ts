@@ -34,6 +34,8 @@ export interface RosterHooks {
   skins(c: CharacterId): void;
   /** In a room: Ready (or Cancel ready) with the fighter shown. */
   ready?(c: CharacterId): void;
+  /** In a room: the fighter shown changed (your teammate sees it). */
+  browse?(c: CharacterId): void;
   /** In a room: the corner button leaves the room. */
   leave?(): void;
   onClose?(): void;
@@ -81,6 +83,8 @@ export function openRoster(
   let preview: ShopPreviewHandle | undefined;
   let importing = false;
   let host: Element | null = null;
+  /** The fighter last reported to hooks.browse. */
+  let browsed: CharacterId | undefined;
   const root = () => panel.root;
   const q = <T extends HTMLElement>(s: string) => root().querySelector<T>(s);
 
@@ -117,6 +121,10 @@ export function openRoster(
     template = next;
     // The Original look is inline SVG, painted once when it has shown.
     watchPictures(root());
+    if (view.focus !== browsed) {
+      browsed = view.focus;
+      hooks.browse?.(view.focus);
+    }
     if (resetScroll)
       q<HTMLElement>("[data-roster-region=body]")?.scrollTo({ top: 0 });
     // Focus stays on the control it was on (a reorder can move a card), or

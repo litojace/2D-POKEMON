@@ -2,6 +2,7 @@ import type { CharacterId } from "@arena/shared";
 import type { Facing } from "../animation/controller";
 import { proportioned, type CreaturePart } from "../creature-design";
 import { VANGUARD_DESIGNS } from "./vanguard-art";
+import { VANGUARD_LOOK } from "./modern-vanguard";
 import type { FxContext } from "./skin-fx";
 
 export interface VanguardMark {
@@ -41,7 +42,7 @@ export function vanguardMarks(
   const phase =
     (now / 2800 + (Object.keys(VANGUARD_DESIGNS).indexOf(id) % 7) * 0.13) % 1;
   const pulse = 0.2 + 0.5 * (0.5 + 0.5 * Math.sin(phase * Math.PI * 2)),
-    color = parseInt(VANGUARD_DESIGNS[id].palette.glow.slice(1), 16);
+    color = parseInt(VANGUARD_LOOK[id].glow.slice(1), 16);
   const out: VanguardMark[] = [];
   const add = (
     part: CreaturePart,

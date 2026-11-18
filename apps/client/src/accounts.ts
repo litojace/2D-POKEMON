@@ -1,10 +1,16 @@
-import { confirmAge } from "./age-gate";
+import { confirmAge, saidUnderAge } from "./age-gate";
 import { isNativeApp, PRIVACY_URL, signInWithAppleNatively } from "./native";
 import {
   nameAllowed,
   NAME_NOT_ALLOWED,
 } from "../../../packages/shared/src/name-filter";
-import { framedAvatar } from "./portraits";
+import { identityPortrait } from "./portraits";
+import {
+  AVATAR_BY_ID,
+  isAvatar,
+  photoIdOf,
+} from "../../../packages/shared/src/avatars";
+import { preparePhoto } from "./avatar-photo";
 import type { FittingRoom } from "./screens/fitting-room";
 import type { FitMode, ShopSection } from "./screens/fitting-room-view";
 import type { JourneyScreen } from "./screens/journey";
@@ -148,6 +154,8 @@ type Hooks = {
   onToken: (token: string) => void;
   beforeSignOut: () => Promise<void>;
   selectedCharacter?: () => CharacterId;
+  /** Report another player's own picture (asks first; main.ts). */
+  reportPhoto?: (photo: string, name: string) => Promise<void>;
   /** Make a fighter your Lobby fighter. */
   chooseFighter?: (id: CharacterId) => void;
   /** The fighter saved with the account (picked on another device). */
@@ -187,6 +195,8 @@ export class AccountUI {
   /** Coins, owned items, missions (undefined until loaded or before migration 010). */
   economy: Economy | undefined = undefined;
   session: Session | null = null;
+  /** Your library avatar (avatars.ts); null: none chosen (the default). */
+  avatar: string | null = null;
   /** The fighter the account has saved (undefined until asked, null: none). */
   private savedFighter: string | null | undefined = undefined;
   /** Counts this device's picks, so a slow answer never undoes a new one. */
@@ -298,6 +308,7 @@ export class AccountUI {
       this.spireProgress = null;
       this.economy = undefined;
       this.savedFighter = undefined;
+      this.avatar = null;
       this.blocked = [];
       clearTimeout(this.fighterTimer);
     }
@@ -313,6 +324,7 @@ export class AccountUI {
         // A new login: start on the fighter this account last picked, on
         // whatever device (not awaited: the rest of the profile goes on).
         if (!samePlayer) void this.loadSavedFighter(version);
+        if (!samePlayer) void this.loadAvatar(version);
         if (!samePlayer) void this.loadBlocked(version);
         try {
           const progress = (await this.api("/api/raids")) as RaidProgress;
@@ -461,6 +473,66 @@ export class AccountUI {
     if (this.friendsScreen?.isOpen) await this.loadFriendList(account);
     this.friendsScreen?.refresh();
   }
+  /** Your avatar, from the account (optional until its migration runs). */
+  private async loadAvatar(version: number) {
+    try {
+      const { avatar } = (await this.api("/api/account/avatar")) as {
+        avatar: unknown;
+      };
+      if (version !== this.generation) return;
+      this.avatar = isAvatar(avatar) ? (avatar as string) : null;
+      this.syncAvatar();
+      this.profileScreen?.refresh();
+      this.hooks.onChange();
+    } catch {
+      // The default shows.
+    }
+  }
+  /**
+   * Your own picture (13 and over, with an account): the photo made small
+   * on this device (avatar-photo.ts), stored on the account, worn at once.
+   */
+  canUsePhoto() {
+    return !!this.account && !this.account.guest && !saidUnderAge();
+  }
+  async uploadPhoto(file: File) {
+    if (!this.canUsePhoto())
+      throw new Error("Make an account to use your own picture.");
+    const blob = await preparePhoto(file);
+    const origin = import.meta.env.VITE_SERVER_URL || location.origin;
+    const response = await fetch(new URL("/api/account/avatar-photo", origin), {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${this.session?.access_token ?? ""}`,
+        "Content-Type": blob.type,
+      },
+      body: blob,
+    });
+    const reply = (await response.json().catch(() => ({}))) as {
+      avatar?: unknown;
+      error?: string;
+    };
+    if (!response.ok || !isAvatar(reply.avatar))
+      throw new Error(reply.error ?? "That picture couldn't be saved.");
+    this.avatar = reply.avatar as string;
+    this.syncAvatar();
+    this.hooks.onChange();
+  }
+  /** Report another player's picture (three reporters hide it). */
+  async reportPhoto(photoId: string) {
+    return (await this.api("/api/avatar-photo/report", { photo: photoId })) as {
+      hidden?: boolean;
+    };
+  }
+  /** Wear a library avatar: saved on the account, seen everywhere at once. */
+  async chooseAvatar(id: string) {
+    if (!AVATAR_BY_ID.has(id))
+      throw new Error("Choose an avatar from the library.");
+    await this.api("/api/account/avatar", { avatar: id });
+    this.avatar = id;
+    this.syncAvatar();
+    this.hooks.onChange();
+  }
   private async loadSavedFighter(version: number) {
     const picks = this.fighterPicks;
     let fighter: unknown;
@@ -515,24 +587,19 @@ export class AccountUI {
       "#account-profile .account-avatar",
     );
     if (!avatar || !this.account) return;
-    const character = this.hooks.selectedCharacter?.() ?? "voltkit";
+    // You, as everyone sees you: your avatar in your frame, whatever
+    // fighter you play (docs/hidden-picks.md, "Avatars").
     const key = JSON.stringify([
-      character,
-      this.economy?.looks[character] ?? null,
-      this.raidLook ?? null,
+      this.avatar,
+      this.raidLook?.frame ?? null,
       frameStars(this.raidLook?.frame, this.raidClears),
     ]);
     if (avatar.dataset.avatarLook === key) return;
-    avatar.innerHTML = framedAvatar(
-      {
-        character,
-        raidLook: this.raidLook,
-        championLooks: this.economy?.looks,
-      },
-      "account-nav",
-      frameStars(this.raidLook?.frame, this.raidClears),
-    );
-    avatar.dataset.champion = character;
+    avatar.innerHTML = identityPortrait({
+      avatar: this.avatar,
+      raidLook: this.raidLook,
+      raidClears: this.raidClears,
+    });
     avatar.dataset.avatarLook = key;
   }
   renderNav() {
@@ -1323,9 +1390,23 @@ export class AccountUI {
             role: a.isAdmin ? "Administrator" : a.guest ? "Guest" : "Player",
             email: this.session?.user.email ?? undefined,
             fighter: this.hooks.selectedCharacter?.() ?? "voltkit",
+            avatar: this.avatar,
+            canUsePhoto: this.canUsePhoto(),
+            look: this.raidLook,
+            clears: this.raidClears,
             journey: this.economy?.journey,
             canDelete: !a.isAdmin,
           };
+        },
+        photo: async (file) => {
+          if (this.account?.id !== accountId)
+            throw new Error("Your session changed. Reopen your card.");
+          await this.uploadPhoto(file);
+        },
+        avatar: async (id) => {
+          if (this.account?.id !== accountId)
+            throw new Error("Your session changed. Reopen your card.");
+          await this.chooseAvatar(id);
         },
         equip: async (titleId) => {
           if (this.account?.id !== accountId)
@@ -1510,6 +1591,23 @@ export class AccountUI {
         return text;
       },
       block: (id, name) => this.block(id, name),
+      reportPhoto: async (photo, name) => {
+        const sure = await askConfirm({
+          kicker: "Report a picture",
+          title: `Report ${name}'s picture?`,
+          art: identityPortrait({ avatar: `photo:${photo}` }),
+          lines: [
+            [
+              "What happens",
+              "Our team looks at it. Pictures that break the rules are removed.",
+            ],
+          ],
+          confirm: "Report",
+        });
+        if (!sure) return "";
+        await this.reportPhoto(photo);
+        return "Thanks. The picture was reported.";
+      },
       unblock: (id) => this.unblock(id),
       message: (id, name) => this.hooks.messageFriend?.(id, name),
       inviteToParty: async (id) => ok(await this.hooks.inviteToParty?.(id)),
@@ -1625,9 +1723,14 @@ export class AccountUI {
       this.ranksScreen = openRanks({
         data: () => ({
           ...this.ranksData,
-          me: { name: this.account?.displayName ?? "You" },
+          me: {
+            name: this.account?.displayName ?? "You",
+            avatar: this.avatar,
+          },
         }),
         load: (scope) => this.loadRanks(scope, accountId),
+        reportPhoto: (photo, name) =>
+          void this.hooks.reportPhoto?.(photo, name),
         friends: () => void this.showFriends(),
         onClose: () => (this.ranksScreen = undefined),
       });
@@ -1825,7 +1928,11 @@ export class AccountUI {
                         .map(([k, v]) => `${escape(k)}: ${escape(String(v))}`)
                         .join(" · ")}</small>`
                     : ""
-                }${chatTarget(r.context) ? `<button type="button" class="secondary" data-chat-stop="${chatTarget(r.context)}">Stop their chat for 24 h</button>` : ""}<button type="button" class="${r.status === "open" ? "secondary" : "quiet"}" data-resolve="${r.status === "open"}">${r.status === "open" ? "Mark resolved" : "Reopen"}</button></article>`,
+                }${chatTarget(r.context) ? `<button type="button" class="secondary" data-chat-stop="${chatTarget(r.context)}">Stop their chat for 24 h</button>` : ""}${
+                  photoTarget(r.context)
+                    ? `<div class="admin-photo" data-admin-photo="${photoTarget(r.context)}"><span class="admin-photo-pic" aria-label="The reported picture">Loading…</span><button type="button" class="secondary" data-photo-keep="true">Keep picture</button><button type="button" class="danger-button" data-photo-keep="false">Remove picture</button></div>`
+                    : ""
+                }<button type="button" class="${r.status === "open" ? "secondary" : "quiet"}" data-resolve="${r.status === "open"}">${r.status === "open" ? "Mark resolved" : "Reopen"}</button></article>`,
             )
             .join("") ||
           `<p>No ${view.status === "all" ? "" : view.status + " "}reports.</p>`
@@ -1888,6 +1995,51 @@ export class AccountUI {
           });
         element("report-next").onclick = () =>
           void this.showAdmin({ reportOffset: view.reportOffset + 50 });
+        // A picture report: the picture itself, then keep it or remove it.
+        document
+          .querySelectorAll<HTMLElement>("[data-admin-photo]")
+          .forEach((box) => {
+            const photo = box.dataset.adminPhoto!;
+            const pic = box.querySelector<HTMLElement>(".admin-photo-pic")!;
+            void (
+              this.api(`/api/admin/avatar-photo/${photo}`) as Promise<{
+                src: string | null;
+                hidden: boolean;
+              }>
+            ).then(
+              ({ src, hidden }) => {
+                if (!src) {
+                  pic.textContent = "Already removed.";
+                  return;
+                }
+                const img = document.createElement("img");
+                img.src = src;
+                img.alt = "The reported picture";
+                pic.replaceChildren(img);
+                if (hidden) pic.dataset.hidden = "Hidden (3 reports)";
+              },
+              () => (pic.textContent = "Couldn't load it."),
+            );
+            box
+              .querySelectorAll<HTMLButtonElement>("[data-photo-keep]")
+              .forEach((button) => {
+                button.onclick = async () => {
+                  button.disabled = true;
+                  const keep = button.dataset.photoKeep === "true";
+                  try {
+                    await this.api("/api/admin/avatar-photo", { photo, keep });
+                    await this.showAdmin({
+                      message: keep
+                        ? "Picture kept and shown again."
+                        : "Picture removed. They can add one again in 7 days.",
+                    });
+                  } catch (error) {
+                    fail(error);
+                    button.disabled = false;
+                  }
+                };
+              });
+          });
         // A chat report: stop the reported player typing for a day.
         document
           .querySelectorAll<HTMLButtonElement>("[data-chat-stop]")
@@ -2123,6 +2275,11 @@ export class AccountUI {
 }
 
 /** The reported player of a chat report ("Name (uuid)" in its context). */
+/** A picture report's photo id (a UUID, or nothing). */
+function photoTarget(context: Record<string, string> | undefined) {
+  const id = context?.avatarPhoto;
+  return typeof id === "string" && photoIdOf(`photo:${id}`) ? id : "";
+}
 function chatTarget(context: Record<string, string> | undefined) {
   if (context?.source !== "chat") return null;
   return (

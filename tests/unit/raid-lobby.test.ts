@@ -46,7 +46,10 @@ it("shows your pending fighter on your seat and your teammates' own", () => {
   const html = roomSeatsMarkup(room());
   const mine = html.split('data-room-seat="me"')[1].split("data-room-seat=")[0];
   expect(mine).toContain('aria-label="Tidefin"');
-  expect(mine).toContain("Tidefin · Host");
+  // The host wears the Lobby's crown, not the word.
+  expect(mine).toContain('class="room-crown" role="img" aria-label="Host"');
+  expect(mine).toContain(">Tidefin<");
+  expect(mine).not.toContain("· Host");
   expect(mine).toContain("(you)");
   const peer = html.split('data-room-seat="peer"')[1];
   expect(peer).toContain('aria-label="Cindrake"');

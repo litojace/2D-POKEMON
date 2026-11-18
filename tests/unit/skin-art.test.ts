@@ -77,12 +77,19 @@ describe("champion skin art", () => {
         ]);
       if (s.rarity === "epic")
         expect(
-          // An animated detail, or the new collections' own signature.
+          // An animated detail, the new collections' own signature, or
+          // costume pieces that light up in play (lume layers).
           [
             extras,
             !!art.trail,
             typeof art.skill,
-            !!(art.detail || art.signature),
+            !!(
+              art.detail ||
+              art.signature ||
+              rigAssets(s.champion, { skin: s.id, stage: 1 }, ["down"]).some(
+                (a) => a.key.includes("~lume-"),
+              )
+            ),
             art.mythic,
           ],
           s.id,
@@ -255,7 +262,14 @@ describe("champion skin art", () => {
       ];
       const base = rigAssets(s.champion).map(shape);
       for (const stage of [1, 2, 3]) {
-        const skinned = rigAssets(s.champion, { skin: s.id, stage });
+        // Light layers ride over their parts with the same crops (checked
+        // in lume-layers.test.ts); the parts themselves must not change.
+        const all = rigAssets(s.champion, { skin: s.id, stage });
+        const skinned = all.filter((a) => !a.key.includes("~lume-"));
+        for (const l of all.filter((a) => a.key.includes("~lume-")))
+          expect(shape(l), l.key).toEqual(
+            shape(skinned.find((a) => a.key === l.key.replace(/~lume-.*$/, ""))!),
+          );
         expect(skinned.map(shape), `${s.id} stage ${stage}`).toEqual(base);
         expect(new Set(skinned.map((a) => a.key)).size).toBe(skinned.length);
         expect(skinned.every((a) => a.key.includes(`~${s.id}`))).toBe(true);

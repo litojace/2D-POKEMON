@@ -120,7 +120,7 @@ describe("authoritative simulation", () => {
       source = p.hp;
     a.damage(q, 20, p.id);
     expect(q.hp).toBe(hp - 10);
-    expect(p.hp).toBe(source - 6);
+    expect(p.hp).toBe(source - 4);
     a.status(q, "slow", 1);
     a.status(q, "haste", 1);
     expect(q.statuses.map((s) => s.kind)).toContain("slow");

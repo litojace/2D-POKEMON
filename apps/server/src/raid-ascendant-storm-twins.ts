@@ -474,7 +474,7 @@ export function AscendantStormTwinsRules<B extends TwinsClass>(Base: B) {
       shapes: RaidWarning[] = this.raid.warnings,
       slack = 0,
     ) {
-      if (!this.twinsAscendant()) return super.safeSpotExists(shapes);
+      if (!this.twinsAscendant()) return super.safeSpotExists(shapes, slack);
       const live = this.twinLive(shapes);
       if (!live.length) return true;
       const first = Math.min(...live.map((w) => w.at));

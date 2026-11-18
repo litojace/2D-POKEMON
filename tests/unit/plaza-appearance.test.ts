@@ -59,6 +59,7 @@ describe("verified Plaza appearance", () => {
     });
     expect(calls.sort()).toEqual([
       "arena_journey",
+      "arena_my_avatar",
       "arena_my_looks",
       "arena_raid_progress",
     ]);
@@ -207,6 +208,7 @@ describe("verified Plaza appearance", () => {
     expect(plaza.profileOf("self")?.look).toEqual({ aura: "mountain-aura" });
     plaza.leave("self");
     await reader.refresh("self", "token");
-    expect(calls).toBe(2);
+    // Looks, raid progress and the avatar: once, none after leaving.
+    expect(calls).toBe(3);
   });
 });

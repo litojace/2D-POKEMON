@@ -39,9 +39,11 @@ export interface PlazaScreenOptions {
    * asks first) or report. Resolves true when the card should close.
    */
   onPlayer(
-    action: "friend" | "party" | "block" | "report",
+    action: "friend" | "party" | "block" | "report" | "report-photo",
     accountId: string,
     name: string,
+    /** Their avatar (report-photo reports their own picture). */
+    avatar?: string | null,
   ): Promise<boolean | void>;
   /** Players you blocked aren't shown on the Plaza (migration 110). */
   isBlocked?(accountId: string): boolean;

@@ -524,7 +524,7 @@ export function AscendantSnoozakuRules<B extends DreamClass>(Base: B) {
       shapes: RaidWarning[] = this.raid.warnings,
       slack = 0,
     ) {
-      if (!this.snoozeAscendant()) return super.safeSpotExists(shapes);
+      if (!this.snoozeAscendant()) return super.safeSpotExists(shapes, slack);
       const live = shapes.filter(
         (w) =>
           this.harmful(w) &&

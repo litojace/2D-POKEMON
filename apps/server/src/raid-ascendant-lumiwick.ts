@@ -475,7 +475,7 @@ export function AscendantLumiwickRules<B extends EmberClass>(Base: B) {
       shapes: RaidWarning[] = this.raid.warnings,
       slack = 0,
     ) {
-      if (!this.lumiAscendant()) return super.safeSpotExists(shapes);
+      if (!this.lumiAscendant()) return super.safeSpotExists(shapes, slack);
       const live = this.lumiLive(shapes);
       if (!live.length) return true;
       const first = Math.min(...live.map((w) => w.at));
@@ -571,6 +571,18 @@ export function AscendantLumiwickRules<B extends EmberClass>(Base: B) {
         (w) => w.kind === "dive-bomb" && !before.has(w),
       );
       if (!lane) return;
+      // An open heart never dives in under a phone's touch controls (where
+      // it would sit until it glided out): the lane ends short of them,
+      // pulled back along itself toward where it starts.
+      if (r.exposedUntil > this.time || r.permanentGround)
+        for (
+          let i = 0;
+          i < 30 && lumiUnderControls(lane.tx, lane.ty, A.heartClear);
+          i++
+        ) {
+          lane.tx += (lane.x - lane.tx) * 0.1;
+          lane.ty += (lane.y - lane.ty) * 0.1;
+        }
       // A dive on its own may be a feint (shown in full when it turns).
       const others = [...before].some((w) => LUMI_SPATIAL.has(w.kind));
       if (this.smart() && !lane.teach && !others && this.lumiFeintRoll()) {

@@ -57,6 +57,7 @@ import {
   move,
   normalize,
   type Ability,
+  type AbilityKind,
   type CharacterId,
   type Fighter,
   type GameEvent,
@@ -88,8 +89,28 @@ const FFA_SPAWNS = [
 const DRAIN_INTERVAL = 0.5;
 /** Preserve a discrete skill tap through a short attack recovery, never a long cast. */
 const SKILL_INPUT_BUFFER = 0.18;
+/** Knockback a point-blank shot (`knockbackNear`) keeps beyond its reach. */
+const NEAR_KNOCKBACK_FAR = 20;
 /** Seconds after a cast out of stealth in which its first hit gets the ambush bonus. */
 const AMBUSH_WINDOW = 0.8;
+/**
+ * Champion hits up close that Facet Guard only halves (it refracts the
+ * rest: shots, beams, areas, a raid boss's attacks).
+ */
+const UNREFRACTED: AbilityKind[] = [
+  "melee",
+  "pound",
+  "clamp",
+  "throw",
+  "cone",
+  "rush",
+  "roll",
+  "pinball",
+  "grapple",
+  "blink",
+  "nova",
+  "taunt",
+];
 /** A rush hits whoever it touches within this gap (px) between the two bodies. */
 const RUSH_CONTACT = 10;
 /** A pull leaves this gap (px) between the two bodies. */
@@ -255,6 +276,9 @@ export class Arena {
   private nextGem = 0;
   /** Fighter roulette: the fighter each player picked, restored in the lobby. */
   chosen = new Map<string, CharacterId>();
+  /** PvP lobby: when each player locked in (2v2: the first lock keeps a fighter). */
+  lockOrder = new Map<string, number>();
+  lockSerial = 0;
   /** Round winners in order (null = draw). */
   roundLog: (Team | null)[] = [];
   /** Seconds spent in active play this match (for "mostly idle" checks). */
@@ -1095,13 +1119,27 @@ export class Arena {
       const share = (ability?.drain ?? 0) + (this.gift(source, "Nature") ?? 0);
       if (share > 0) this.heal(source, dealt * share, ability?.id);
     }
-    if (counter && source && source !== target && source.hp > 0)
+    // Facet Guard refracts shots and beams; a strike up close is only halved.
+    // A raid boss's attacks (no champion ability) are refracted too.
+    if (
+      counter &&
+      source &&
+      source !== target &&
+      source.hp > 0 &&
+      !(ability && UNREFRACTED.includes(ability.kind))
+    )
       this.reflectDamage(source, target, amount);
     // Setup: mark the target for this fighter's payoff (or the guard for
     // Facet Guard, which primes the one who absorbed the hit).
     if (combo && !combo.self && !combo.anyDebuff && ability?.id === combo.setup)
       this.status(target, "mark", combo.window, source!.id);
-    if (counter && source && source !== target) {
+    // Facet Guard primes Shatter Paw only on what it refracts (not strikes).
+    if (
+      counter &&
+      source &&
+      source !== target &&
+      !(ability && UNREFRACTED.includes(ability.kind))
+    ) {
       const guard = COMBOS[target.character];
       if (guard.onAbsorb) this.status(target, "mark", guard.window, target.id);
     }
@@ -1139,8 +1177,15 @@ export class Arena {
           PULL_GAP,
       );
       const clamp = (push: number) => (push < 0 ? Math.max(push, -room) : push);
+      // Point-blank knockback (Ember Lob): only a light push from afar.
+      const knock =
+        ability.knockbackNear &&
+        Math.hypot(target.x - source.x, target.y - source.y) >
+          ability.knockbackNear
+          ? Math.min(ability.knockback, NEAR_KNOCKBACK_FAR)
+          : ability.knockback;
       const push = clamp(
-        clamp(ability.knockback) *
+        clamp(knock) *
           (primed ? (combo!.knockback ?? 1) : 1) *
           (this.gift(target, "Earth") ?? 1),
       );
@@ -1629,7 +1674,7 @@ export class Arena {
       type Option = { x: number; y: number; fighter?: Fighter; zone?: Zone };
       const options: Option[] = [
         ...enemies
-          .filter((e) => e.hp > 0 && !e.raidBoss)
+          .filter((e) => e.hp > 0 && !e.raidBoss && !this.has(e, "stealth"))
           .map((e): Option => ({ x: e.x, y: e.y, fighter: e })),
         ...this.zones
           .filter(
@@ -1744,6 +1789,8 @@ export class Arena {
         .filter(
           (e) =>
             e.hp > 0 &&
+            // A stealthed enemy can't be picked out (Ink Cloud).
+            !this.has(e, "stealth") &&
             Math.hypot(e.x - p.x, e.y - p.y) <= a.range + this.hitRadius(e) &&
             this.lineClear(p, e),
         )
@@ -1962,7 +2009,21 @@ export class Arena {
       this.status(p, "stealth", a.duration);
       this.status(p, "haste", a.statusDuration ?? 1.5);
     }
-    if (a.kind === "counter") this.status(p, "counter", a.duration);
+    if (a.kind === "counter") {
+      this.status(p, "counter", a.duration);
+      if (a.lunge) {
+        // Facet Guard: vault toward the aim behind the guard.
+        const distance = Math.min(
+          a.lunge,
+          Math.hypot(p.lastInput.aimX - p.x, p.lastInput.aimY - p.y),
+        );
+        const seconds = distance / Math.max(1, a.speed);
+        p.dashX = Math.cos(angle) * a.speed;
+        p.dashY = Math.sin(angle) * a.speed;
+        p.dashUntil = this.time + seconds;
+        p.recoveryUntil = Math.max(p.recoveryUntil, this.time + seconds);
+      }
+    }
     if (a.kind === "barrier") this.status(p, "shield", a.duration);
     if (a.kind === "buff") {
       // Kindle empowers; Static Glide grants haste instead.
@@ -2077,6 +2138,7 @@ export class Arena {
       .filter(
         (e) =>
           e.hp > 0 &&
+          !this.has(e, "stealth") &&
           Math.hypot(e.x - zone.x, e.y - zone.y) < t.range &&
           this.lineClear(zone, e),
       )
@@ -2175,6 +2237,8 @@ export class Arena {
       !target ||
       target.hp <= 0 ||
       target.out ||
+      // Slipping into stealth snaps the stream: it can't see its target.
+      this.has(target, "stealth") ||
       disabled ||
       this.time >= t.until ||
       Math.hypot(target.x - p.x, target.y - p.y) >
@@ -2529,7 +2593,7 @@ export class Arena {
         if (
           enemy.hp <= 0 ||
           Math.hypot(enemy.x - p.x, enemy.y - p.y) >=
-            this.hitRadius(enemy) + this.hitRadius(p) + 6 ||
+            this.hitRadius(enemy) + this.hitRadius(p) + ROLL.ramReach ||
           this.time < (hits.get(enemy.id) ?? -Infinity) + ROLL.rehit
         )
           continue;
@@ -2541,9 +2605,9 @@ export class Arena {
         this.event("burst", enemy, CHARACTERS[p.character].color, undefined, p.id, a.id);
         this.damage(enemy, a.damage + (a.roll?.bonus ?? 0) * momentum, p.id, a);
         if (!p.roll) break;
-        // Bounce off the one it rammed.
-        p.roll.heading = Math.atan2(p.y - enemy.y, p.x - enemy.x);
-        p.roll.speed *= 0.5;
+        // Roll on through the one it rammed (it doesn't bounce back), so the
+        // ball can swing round for another pass.
+        p.roll.speed *= ROLL.ramKeep;
       }
     }
   }
@@ -3086,14 +3150,23 @@ export class Arena {
         continue;
       }
       if (zone.ability.kind === "timewarp") {
-        // Sloth Time: enemies inside move at a fraction of their speed.
+        // Sloth Time: enemies inside move at a fraction of their speed. The
+        // status carries the bubble, so movement (and client prediction)
+        // stops slowing the moment a fighter dashes or walks out of it.
+        const reach = (e: Fighter) => zone.radius + this.hitRadius(e) * 0.5;
         for (const enemy of this.enemiesOfOwner(zone.owner))
           if (
             enemy.hp > 0 &&
-            Math.hypot(enemy.x - zone.x, enemy.y - zone.y) <
-              zone.radius + this.hitRadius(enemy) * 0.5
-          )
+            Math.hypot(enemy.x - zone.x, enemy.y - zone.y) < reach(enemy)
+          ) {
             this.status(enemy, "warp", 0.15, zone.owner);
+            const warp = enemy.statuses.find((s) => s.kind === "warp");
+            if (warp) {
+              warp.tx = zone.x;
+              warp.ty = zone.y;
+              warp.amount = reach(enemy);
+            }
+          }
         continue;
       }
       if (zone.ability.kind === "seedling") {

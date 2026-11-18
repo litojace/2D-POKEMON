@@ -1102,6 +1102,21 @@ for (const viewport of [
       await expect(sheet.locator(".sh-head h4")).toHaveText("Hens 3/9");
       await expect(sheet.locator(".coop-hens .hen")).toHaveCount(3);
       await expect(sheet.locator(".coop-hens .hen.hungry")).toHaveCount(3);
+      // The round in order: Feed, then Collect, right above the hens.
+      expect(
+        await sheet.locator(".sh-body").evaluate((b) => {
+          const feed = b
+              .querySelector('[data-coop-all="feed"]')!
+              .closest(".item")!,
+            collect = b
+              .querySelector('[data-coop-all="collect"]')!
+              .closest(".item")!;
+          return [
+            feed.nextElementSibling === collect,
+            collect.nextElementSibling?.classList.contains("coop-hens"),
+          ];
+        }),
+      ).toEqual([true, true]);
       await sheet.locator('[data-coop-all="feed"]').click();
       await expect(sheet.locator(".coop-hens .hen.laying")).toHaveCount(1);
       await expect(sheet.locator('[data-coop-all="feed"]')).toBeDisabled();
@@ -2956,7 +2971,17 @@ for (const view of [
       expect(sheet.t - card.b, "sheet under the card").toBeGreaterThanOrEqual(
         8,
       );
-      expect(sheet.l, "sheet on the card's left edge").toBeCloseTo(card.l, 0);
+      // A column beside the rail, not a band across the screen: the farm
+      // stays in sight on its left.
+      const rail = await rect("#fm-rail");
+      expect(rail.l - sheet.r, "sheet beside the rail").toBeGreaterThanOrEqual(
+        4,
+      );
+      expect(rail.l - sheet.r, "sheet beside the rail").toBeLessThanOrEqual(16);
+      expect(sheet.r - sheet.l, "sheet width").toBeLessThanOrEqual(440.5);
+      expect(sheet.l, "farm in sight left of the sheet").toBeGreaterThan(
+        card.l + 200,
+      );
       await expect(page.locator("#fm-badge")).toBeHidden();
       expect(errors).toEqual([]);
     } finally {

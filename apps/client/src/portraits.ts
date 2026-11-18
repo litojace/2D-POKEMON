@@ -9,6 +9,11 @@ import {
 } from "../../../packages/shared/src/raid";
 import { LOOK_ITEMS } from "../../../packages/shared/src/shop";
 import { REWARD_ITEMS } from "../../../packages/shared/src/journey";
+import {
+  avatarUrl,
+  knownAvatar,
+  photoIdOf,
+} from "../../../packages/shared/src/avatars";
 import "./portrait-frames.css";
 
 const frames = new Set(
@@ -88,5 +93,40 @@ export function framedAvatar(
     portraitAvatar(p, scope, picture),
     p.raidLook?.frame,
     stars,
+  );
+}
+
+/**
+ * An avatar's picture filling a portrait disc: a library one (avatars.ts,
+ * the client's own files) or a player's own picture (the game server's).
+ */
+export const avatarImage = (id: string | null | undefined) =>
+  `<img class="portrait-avatar" src="${avatarSrc(id)}" alt="" draggable="false" decoding="async">`;
+
+/** The address of an avatar's picture (a photo comes from the game server). */
+export function avatarSrc(id: string | null | undefined) {
+  const known = knownAvatar(id);
+  return photoIdOf(known) ? serverUrl(avatarUrl(known)) : avatarUrl(known);
+}
+/** Any player's avatar picture by account id (the server redirects to it). */
+export const avatarOfPlayer = (accountId: string) =>
+  serverUrl(`/api/avatar/of/${encodeURIComponent(accountId)}`);
+const serverUrl = (path: string) =>
+  new URL(path, import.meta.env.VITE_SERVER_URL || location.origin).href;
+
+/**
+ * A player as themselves, not as a fighter: their avatar (the default until
+ * they choose one) in their frame. Seats, the player card and Friends show
+ * this, so a seat never gives a hidden pick away (docs/hidden-picks.md).
+ */
+export function identityPortrait(
+  p: Pick<Fighter, "raidLook" | "raidClears"> & {
+    avatar?: string | null;
+  },
+) {
+  return framePortrait(
+    avatarImage(p.avatar),
+    p.raidLook?.frame,
+    frameStars(p.raidLook?.frame, p.raidClears),
   );
 }

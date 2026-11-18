@@ -722,7 +722,11 @@ it("runs a 2v2 room: four players, teams, shuffle, start and 2v1 on leave", asyn
   expect((await emit(sockets[1], "shuffle")).ok).toBe(false);
   expect((await emit(sockets[0], "shuffle")).ok).toBe(true);
   expect(arena.players.filter((p) => p.team === 0)).toHaveLength(2);
-  // Starts only when all four are ready.
+  // Starts only when all four are ready (teammates pick different fighters:
+  // a 2v2 team can't lock the same one twice).
+  const picks = ["voltkit", "cindrake", "tidefin", "lumoth"];
+  for (const [i, s] of sockets.slice(0, 4).entries())
+    expect((await emit(s, "select", picks[i])).ok).toBe(true);
   for (const s of sockets.slice(0, 3)) await emit(s, "ready");
   expect(arena.phase).toBe("lobby");
   await emit(sockets[3], "ready");

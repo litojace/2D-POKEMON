@@ -22,6 +22,8 @@ import { createRaidArena } from "../../../apps/server/src/raid-bosses";
 import {
   CHARACTERS,
   packSnapshot,
+  picksHidden,
+  veilPlayers,
   type ArenaId,
   type CharacterId,
   type RaidBossId,
@@ -240,6 +242,8 @@ function room(kind: "practice" | "raid" | "pvp" | "spire", o: RoomOptions) {
     }
     a.start();
     a.phase = o.phase ?? "lobby";
+    // The others have picked; you have just come in (Lock in is yours).
+    for (const p of a.players) p.locked = p.id !== "me";
     if (o.arena) a.arenaId = o.arena;
     if (o.pos)
       [a.players[0].x, a.players[0].y, a.players[1].x, a.players[1].y] = o.pos;
@@ -277,14 +281,29 @@ w.__room = (
   const a = room(kind, o);
   w.__reply = (ev: string, data: unknown) => {
     if (ev === "select") {
-      w.__snap.players.find((p: any) => p.id === "me").character = data;
-      w.__snap.players.find((p: any) => p.id === "me").ready = false;
+      const me = w.__snap.players.find((p: any) => p.id === "me");
+      me.character = data;
+      me.ready = false;
+      me.locked = true;
+      delete me.browse;
+      queueMicrotask(() => w.__push());
+      return { ok: true };
+    }
+    if (ev === "browse") {
+      const me = w.__snap.players.find((p: any) => p.id === "me");
+      if (w.__snap.mode === "raid" || !w.__snap.mode) me.character = data;
+      else me.browse = data;
       queueMicrotask(() => w.__push());
       return { ok: true };
     }
     if (ev === "ready") {
       const me = w.__snap.players.find((p: any) => p.id === "me");
       me.ready = !me.ready;
+      if (me.ready && !me.locked) {
+        me.character = me.browse ?? me.character;
+        me.locked = true;
+        delete me.browse;
+      }
       queueMicrotask(() => w.__push());
       return { ok: true };
     }
@@ -294,4 +313,17 @@ w.__room = (
   };
   w.__snap = packSnapshot(a.snapshot());
 };
-w.__push = () => w.__sock.fire("state", w.__snap);
+/**
+ * Like the server, a PvP lobby never shows another side's pick
+ * (docs/hidden-picks.md): the snapshot is sent veiled for "me".
+ */
+w.__push = () => {
+  const snap = w.__snap;
+  if (!snap || !picksHidden(snap)) return w.__sock.fire("state", snap);
+  const team = (id: string) =>
+    snap.players.find((p: any) => p.id === id)?.team ?? -1;
+  w.__sock.fire("state", {
+    ...snap,
+    players: veilPlayers(snap.players, "me", (x, y) => team(x) === team(y)),
+  });
+};

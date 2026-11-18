@@ -1,4 +1,8 @@
 import { z } from "zod";
+
+/** A player's avatar as other players are sent it (avatars.ts: a library
+ * id or "photo:<id>"). */
+export const avatarField = z.string().max(60).nullable().optional();
 import { nameAllowed, NAME_NOT_ALLOWED } from "./name-filter.js";
 export const titleSchema = z.object({
   id: z.string().uuid(),
@@ -260,6 +264,9 @@ export const leaderboardSchema = z.object({
       me: z.boolean(),
       rating: z.number().optional(),
       rankName: z.string().optional(),
+      /** The player and their avatar (migration 20261119120000). */
+      id: z.string().optional(),
+      avatar: avatarField,
     }),
   ),
   unranked: z
@@ -295,6 +302,7 @@ export const friendsBoardSchema = z.object({
       wins: z.number(),
       matches: z.number(),
       me: z.boolean(),
+      avatar: avatarField,
     }),
   ),
   rating: ratingSchema.optional(),
@@ -319,6 +327,7 @@ export const recentPlayerSchema = z.object({
   losses: z.number(),
   relation: z.enum(["friend", "sent", "received", "none"]),
   online: z.boolean().optional(),
+  avatar: avatarField,
 });
 export const recentPlayersSchema = z.object({
   players: z.array(recentPlayerSchema),
@@ -377,6 +386,8 @@ export const friendSchema = z.object({
   raidClears: z.record(z.string(), z.number().int().nonnegative()).optional(),
   /** Verified equipped portrait frame, when appearance is available. */
   frame: z.string().max(80).nullable().optional(),
+  /** Their avatar (avatars.ts: a library id or "photo:<id>"); null: the default. */
+  avatar: avatarField,
 });
 export const friendsSchema = z.object({
   code: z.string(),
@@ -431,6 +442,8 @@ export const partyStateSchema = z
           look: publicLookSchema.optional(),
           /** Their connection dropped: the party keeps their place a while. */
           away: z.boolean().optional(),
+          /** Their avatar (avatars.ts). */
+          avatar: avatarField,
         }),
       )
       .min(1)

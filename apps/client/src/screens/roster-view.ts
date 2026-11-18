@@ -96,6 +96,16 @@ export interface RosterData {
     ready: boolean;
     /** Ready can be pressed (the room is waiting, nothing is being saved). */
     canReady: boolean;
+    /**
+     * PvP: your pick is locked in (`playing`). Unset in a room that has no
+     * lock (a raid): the fighter you play is then locked in already.
+     */
+    locked?: boolean;
+    /**
+     * 2v2: what your teammate is looking at or has locked in. A fighter your
+     * teammate locked in is theirs (one per team; docs/hidden-picks.md).
+     */
+    mates?: Partial<Record<CharacterId, { name: string; locked: boolean }>>;
   };
 }
 export const rosterView = (
@@ -211,6 +221,22 @@ function masteryRing(c: CharacterId, d: RosterData, size?: number) {
 }
 const rangeTag = (c: CharacterId) =>
   `<span class="ui-tag roster-range">${rangeName(c)}</span>`;
+/**
+ * Ranged or close, readable at a glance on every card, in its top-right
+ * corner (where mastery was: the owner, 18 Nov; mastery stays on the
+ * fighter's detail), drawn as the element badge beside it is: a solid
+ * glyph on a tinted disc. On phones the card has no room for the words: a crosshair in sky blue, or an upright sword
+ * in ember (upright and square: a slanted line in a circle reads as "no").
+ */
+const RANGE_ICONS = {
+  long: '<circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="2.6"/><circle cx="12" cy="12" r="3.6" fill="currentColor"/>',
+  close:
+    '<path d="M12 1.5 15 5.5V15H9V5.5Z" fill="currentColor"/><rect x="5.5" y="14.5" width="13" height="3" rx="1.5" fill="currentColor"/><rect x="10.7" y="17" width="2.6" height="3.6" fill="currentColor"/><circle cx="12" cy="21.4" r="1.6" fill="currentColor"/>',
+} as const;
+export const rangeBadge = (c: CharacterId) => {
+  const r = attackRange(c) === "long" ? "long" : "close";
+  return `<span class="roster-range-badge is-${r}" role="img" aria-label="${rangeName(c)}" title="${rangeName(c)}"><svg viewBox="0 0 24 24" aria-hidden="true">${RANGE_ICONS[r]}</svg></span>`;
+};
 
 /** A card's fighter as the Wardrobe dresses it: its skin, else your Colors. */
 function cardArt(c: CharacterId, d: RosterData) {
@@ -219,11 +245,26 @@ function cardArt(c: CharacterId, d: RosterData) {
   const svg = fighterArt(c, undefined, skin);
   return palette ? scopeIds(colourPreview(svg, palette), `card-${c}`) : svg;
 }
+/** The teammate who locked in this fighter (it is theirs), if any. */
+export const takenBy = (c: CharacterId, d: RosterData) => {
+  const mate = d.room?.mates?.[c];
+  return mate?.locked ? mate.name : undefined;
+};
 function card(c: CharacterId, view: RosterView, d: RosterData) {
   const f = CHARACTERS[c];
   const looks = looksOwned(c, d.owned);
-  const playing = c === d.playing;
-  return `<button type="button" class="roster-card" data-roster-card="${c}" aria-pressed="${c === view.focus}" aria-label="${esc(`${f.name}, ${f.element}, ${rangeName(c)}, ${f.role}${playing ? ", playing" : ""}`)}" style="--el:${elVar(c)}"><span class="roster-card-top">${elementTag(f.element)}${masteryRing(c, d, 34)}</span><span class="roster-card-art">${cardArt(c, d)}</span><span class="roster-card-text"><b class="roster-card-name">${esc(f.name)}</b><small>${esc(f.role)}</small></span><span class="roster-card-foot">${rangeTag(c)}<span class="ui-note">${looks.have}/${looks.all} looks</span>${playing ? tag(d.room ? "Locked" : "Playing", "ok") : ""}</span></button>`;
+  const playing = c === d.playing && d.room?.locked !== false;
+  const mate = d.room?.mates?.[c];
+  const taken = takenBy(c, d);
+  const label = `${f.name}, ${f.element}, ${rangeName(c)}, ${f.role}${playing ? ", playing" : ""}${taken ? `, picked by ${taken}` : mate ? `, ${mate.name} is looking at it` : ""}`;
+  // Your teammate's name on the fighter they're looking at or locked in.
+  const badge = mate
+    ? `<span class="roster-mate${mate.locked ? " is-locked" : ""}">${esc(mate.name)}</span>`
+    : "";
+  const foot = taken
+    ? `${rangeTag(c)}${tag("Taken")}`
+    : `${rangeTag(c)}<span class="ui-note">${looks.have}/${looks.all} looks</span>${playing ? (d.room ? `<span class="ui-tag roster-locked">Locked</span>` : tag("Playing", "ok")) : ""}`;
+  return `<button type="button" class="roster-card${taken ? " is-taken" : ""}" data-roster-card="${c}" aria-pressed="${c === view.focus}" aria-label="${esc(label)}" style="--el:${elVar(c)}"><span class="roster-card-top">${elementTag(f.element)}${badge}${rangeBadge(c)}</span><span class="roster-card-art">${cardArt(c, d)}</span><span class="roster-card-text"><b class="roster-card-name">${esc(f.name)}</b><small>${esc(f.role)}</small></span><span class="roster-card-foot">${foot}</span></button>`;
 }
 
 function filters(view: RosterView) {
@@ -262,20 +303,31 @@ function filters(view: RosterView) {
 /** A room's two buttons for the fighter shown: Lock in, then Ready. */
 function roomButtons(c: CharacterId, d: RosterData) {
   const r = d.room!;
-  const locked = c === d.playing && !r.saving;
+  const locked = c === d.playing && !r.saving && r.locked !== false;
+  // Your teammate locked this one in: it's theirs (2v2).
+  const taken = !locked && !!takenBy(c, d);
+  const word = r.saving
+    ? "Confirming…"
+    : locked
+      ? "Locked in"
+      : taken
+        ? "Taken"
+        : "Lock in";
   return [
-    button(r.saving ? "Confirming…" : locked ? "Locked in" : "Lock in", {
-      icon: locked ? "check" : undefined,
-      disabled: locked || r.saving || r.ready,
+    button(word, {
+      // A padlock to lock in (the seat's Locked tag shows the same one),
+      // a tick once it is.
+      icon: locked ? "check" : r.saving || taken ? undefined : "lock",
+      disabled: locked || taken || r.saving || r.ready,
       attrs: {
         "data-roster-select": c,
-        "aria-label": `${r.saving ? "Confirming" : locked ? "Locked in" : "Lock in"} ${CHARACTERS[c].name}`,
+        "aria-label": `${word.replace("…", "")} ${CHARACTERS[c].name}`,
       },
     }),
     button(r.ready ? "Cancel ready" : "Ready", {
       kind: "primary",
       icon: r.ready ? undefined : "battle",
-      disabled: !r.canReady,
+      disabled: !r.canReady || (taken && !r.ready),
       attrs: { id: "ready", "data-roster-ready": c },
     }),
   ];
@@ -300,24 +352,28 @@ function gridMarkup(view: RosterView, d: RosterData) {
     ? `<div class="ui-grid roster-grid" role="group" aria-label="Fighters">${cards.map((c) => card(c, view, d)).join("")}</div>`
     : `<div class="ui-empty" role="status"><b>No fighters match</b><span>Try another element or range.</span>${button("Show all", { size: "s", attrs: { "data-roster-reset": true } })}</div>`;
   const lock = d.action === "lock";
-  const chosen = view.focus === d.playing;
+  const chosen = view.focus === d.playing && d.room?.locked !== false;
+  const taken = d.room && !chosen ? takenBy(view.focus, d) : undefined;
   // Nothing shown (a filter): nothing to act on either.
   const none = !cards.length;
   const status = d.room
     ? d.room.ready
-      ? "Ready · waiting for the others"
-      : d.room.saving && chosen
+      ? "Ready · waiting…"
+      : d.room.saving && view.focus === d.playing
         ? "Locking in…"
         : chosen
-          ? "Locked in · ready when you are"
-          : "Picked · lock in to play it"
+          ? "Locked in"
+          : taken
+            ? `Taken by ${taken}`
+            : "Lock in to play"
     : chosen
       ? "You play as"
       : "Picked";
   const foot = actionBar(
-    `${avatar(fighterAvatar(view.focus, "roster-foot", d.looks[view.focus]), { element: focus.element })}<span class="roster-foot-text"><small class="ui-note">${esc(status)}</small><b class="ui-h">${esc(focus.name)}</b></span>`,
+    `${avatar(fighterAvatar(view.focus, "roster-foot", d.looks[view.focus]), { element: focus.element })}<span class="roster-foot-text"><small class="ui-note">${esc(status)}</small><span class="roster-foot-name"><b class="ui-h">${esc(focus.name)}</b>${rangeBadge(view.focus)}<small class="roster-foot-range">${rangeName(view.focus)}</small></span></span>`,
     actions(
       button("Details", {
+        icon: "info",
         disabled: none,
         attrs: { "data-roster-details": view.focus },
       }),

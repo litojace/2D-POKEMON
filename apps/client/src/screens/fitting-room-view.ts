@@ -762,7 +762,7 @@ export function setPreview(id: string, champion: CharacterId) {
   );
   return mine ? [mine] : set.items.slice(0, 1);
 }
-function bundleRow(id: string, view: FitView, d: FitData) {
+function bundleRow(id: string, view: FitView, d: FitData, card = false) {
   const e = d.economy!;
   const set = BUNDLE_BY_ID[id];
   const have = set.items.filter((i) => e.owned.includes(i)).length;
@@ -775,7 +775,7 @@ function bundleRow(id: string, view: FitView, d: FitData) {
     .map((i) => `<span>${pictureOf(i, view, d, `fit-set-${i}`)}</span>`)
     .join(
       "",
-    )}</span><span class="fit-bundle-text"><b class="ui-h">${esc(set.name)}</b><small class="ui-note">${esc(setNote(id))} · ${have} owned</small></span><span class="fit-bundle-price">${p ? price(p.price, p.was) : `<span class="ui-tag is-ok">${menuIcon("check")}Complete</span>`}</span></button>`;
+    )}</span><span class="fit-bundle-text"><b class="ui-h">${esc(card ? set.name.replace(/ skins$/i, "") : set.name)}</b><small class="ui-note">${card ? `${have}/${set.items.length} owned` : `${esc(setNote(id))} · ${have} owned`}</small></span><span class="fit-bundle-price">${p ? price(p.price, p.was) : `<span class="ui-tag is-ok">${menuIcon("check")}Complete</span>`}</span></button>`;
 }
 function filters(view: FitView, count: number, rarity: boolean, noun: string) {
   const own = segmented(
@@ -844,20 +844,32 @@ function skinsBody(view: FitView, d: FitData) {
 }
 /**
  * Full-roster skin sets, in Collections with the other sets for every
- * fighter: one row per collection that dresses every fighter alike, shown
- * with the fighter you're trying on in its skin. Complete sets drop to the end.
+ * fighter: a compact grid of cards (two or three to a row, so eleven sets
+ * fit in a few rows on a phone instead of a long scroll), each shown with
+ * the fighter you're trying on in its skin. Highest rarity first, newest
+ * first within it; complete sets drop to the end.
  */
+const SET_RANK: Record<string, number> = {
+  legendary: 0,
+  epic: 1,
+  rare: 2,
+  common: 3,
+};
 function skinSets(view: FitView, d: FitData) {
   const e = d.economy!;
-  const rows = [...SKIN_BUNDLES]
+  const rank = (id: string) =>
+    SET_RANK[rarityOf(BUNDLE_BY_ID[id].items[0])] ?? 4;
+  const cards = SKIN_BUNDLES.map((b, i) => ({ b, i }))
     .sort(
-      (a, b) =>
-        Number(shopPrice(a.id, e.owned, null) === null) -
-        Number(shopPrice(b.id, e.owned, null) === null),
+      (x, y) =>
+        Number(shopPrice(x.b.id, e.owned, null) === null) -
+          Number(shopPrice(y.b.id, e.owned, null) === null) ||
+        rank(x.b.id) - rank(y.b.id) ||
+        y.i - x.i,
     )
-    .map((b) => bundleRow(b.id, view, d))
+    .map(({ b }) => bundleRow(b.id, view, d, true))
     .join("");
-  return `${section("Skin sets", '<small class="ui-note">Every fighter in one design · 20% off the skins you don\'t own</small>')}<div class="fit-skin-sets">${rows}</div>`;
+  return `${section("Skin sets", '<small class="ui-note">Every fighter in one design · 20% off the skins you don\'t own</small>')}<div class="fit-skin-sets">${cards}</div>`;
 }
 /** A skin collection's reward frame: how close you are, with its picture. */
 function collectionReward(

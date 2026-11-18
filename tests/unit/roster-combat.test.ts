@@ -204,7 +204,7 @@ describe("special skills", () => {
     far.arena.cast(far.p, flash);
     expect(far.q.hp).toBe(CHARACTERS.terradon.health);
   });
-  it("Shell Up heals 25 over its duration, blocks actions and takes 45% less damage", () => {
+  it("Shell Up heals 30 over its duration, blocks actions and takes 45% less damage", () => {
     const { arena, q } = duel("cindrake");
     q.hp = 100;
     arena.submit(q, input({ skill: 1 }));
@@ -220,7 +220,7 @@ describe("special skills", () => {
     arena.tick();
     expect(q.x).toBe(x);
     for (let k = 0; k < 90; k++) arena.tick();
-    expect(q.hp).toBe(115);
+    expect(q.hp).toBe(120);
     expect(q.statuses.some((s) => s.kind === "shell")).toBe(false);
   });
   it("Focus Ray is instant, synchronizes its end point and is blocked by cover", () => {

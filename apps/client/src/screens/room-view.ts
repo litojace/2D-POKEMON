@@ -39,6 +39,19 @@ export interface RoomSeat {
   team?: 0 | 1;
   /** A raid's AI stand-in, a rank flair… (short, shown after the fighter). */
   flair?: string;
+  /**
+   * PvP: the seat's pick, as far as you may see it (docs/hidden-picks.md).
+   * `hidden`: another side's (a "?"). Without `character`: nothing chosen
+   * yet. `art` is the fighter's portrait.
+   */
+  pick?: {
+    hidden?: boolean;
+    locked: boolean;
+    character?: CharacterId;
+    art?: string;
+  };
+  /** Another player's own picture (its id): a tap reports it. */
+  reportPhoto?: string;
 }
 export interface RoomData {
   mode: RoomMode;
@@ -58,6 +71,8 @@ export interface RoomData {
   /** The 2v2 team-up line (markup built by main.ts), or "". */
   teamUp: string;
   watchers: string[];
+  /** The ⋯ menu (settings, invite, leave) is open. */
+  menu?: boolean;
 }
 
 export const MODE_NAMES: Record<RoomMode, string> = {
@@ -98,20 +113,58 @@ export const readyCount = (d: RoomData) =>
 
 /* ------------------------------------------------------------ pieces */
 
+/** PvP: the pick beside a seat: the fighter, or "?" for another side's. */
+/** A small padlock (Locked: picked, not yet ready). */
+const PADLOCK =
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>';
+/**
+ * A seat's state, one colour each, so it reads at a glance: Choosing
+ * (plain), Locked (gold, a padlock), Ready (solid green, a tick).
+ */
+function seatState(s: RoomSeat) {
+  if (!s.connected) return tag("Offline");
+  if (s.ready)
+    return `<span class="ui-tag room-state is-ready">${menuIcon("check")}Ready</span>`;
+  if (s.pick?.locked)
+    return `<span class="ui-tag room-state is-locked">${PADLOCK}Locked</span>`;
+  return `<span class="ui-tag room-state">Choosing</span>`;
+}
+function pickTile(p: NonNullable<RoomSeat["pick"]>, s: RoomSeat) {
+  const name = p.character ? CHARACTERS[p.character].name : "";
+  const label = p.hidden
+    ? `${s.name}'s fighter is hidden until the match starts${p.locked ? " · locked in" : ""}`
+    : name
+      ? `${s.name} ${p.locked ? "locked in" : "is looking at"} ${name}`
+      : `${s.name} hasn't picked yet`;
+  const inner = p.hidden ? `<b aria-hidden="true">?</b>` : (p.art ?? "");
+  // No corner badge on the picture: the seat's state tag beside it already
+  // says Locked (a padlock) or Ready (a tick), on desktop and phones; the
+  // tile's gold or green edge repeats it.
+  return `<span class="room-pick${p.hidden ? " is-hidden" : ""}${p.locked ? " is-locked" : p.character ? " is-browsing" : " is-empty"}${s.ready ? " is-ready" : ""}" role="img" aria-label="${esc(label)}" title="${esc(label)}">${inner}</span>`;
+}
 function seat(s: RoomSeat) {
-  const state = !s.connected
-    ? tag("Offline")
-    : s.ready
-      ? `<span class="ui-tag is-ok">${menuIcon("check")}Ready</span>`
-      : tag("Choosing");
-  const sub = [
-    CHARACTERS[s.character].name,
-    s.host ? "Host" : "",
-    s.flair ?? "",
-  ]
-    .filter(Boolean)
-    .join(" · ");
-  return `<div class="room-seat${s.me ? " is-me" : ""}${s.connected ? "" : " is-away"}" data-room-seat="${esc(s.id)}"${s.me ? " data-me" : ""}><span class="room-avatar player-avatar" title="${esc(CHARACTERS[s.character].name)}">${s.avatar}</span><span class="room-seat-text"><b>${esc(s.name)}${s.me ? ' <small class="ui-note">(you)</small>' : ""}</b><small class="ui-note room-seat-fighter">${esc(sub)}</small></span>${state}</div>`;
+  const state = s.pick
+    ? seatState(s)
+    : !s.connected
+      ? tag("Offline")
+      : s.ready
+        ? `<span class="ui-tag is-ok">${menuIcon("check")}Ready</span>`
+        : tag("Choosing");
+  // PvP: the pick is in its own tile (and may be hidden), never in words.
+  const fighter = s.pick
+    ? s.pick.hidden
+      ? "Pick hidden"
+      : s.pick.character
+        ? CHARACTERS[s.pick.character].name
+        : ""
+    : CHARACTERS[s.character].name;
+  // The host wears the Lobby's crown before their name, not a word.
+  const sub = [fighter, s.flair ?? ""].filter(Boolean).join(" · ");
+  return `<div class="room-seat${s.me ? " is-me" : ""}${s.connected ? "" : " is-away"}${s.pick ? " has-pick" : ""}" data-room-seat="${esc(s.id)}"${s.me ? " data-me" : ""}>${
+    s.reportPhoto
+      ? `<button type="button" class="room-avatar player-avatar is-reportable" data-room-report-photo="${esc(s.reportPhoto)}" data-room-report-name="${esc(s.name)}" aria-label="${esc(`${s.name}'s picture. Report it`)}" title="Report this picture">${s.avatar}</button>`
+      : `<span class="room-avatar player-avatar"${s.pick ? "" : ` title="${esc(CHARACTERS[s.character].name)}"`}>${s.avatar}</span>`
+  }<span class="room-seat-text"><b>${s.host ? '<i class="room-crown" role="img" aria-label="Host" title="Host">♛</i>' : ""}${esc(s.name)}${s.me ? ' <small class="ui-note">(you)</small>' : ""}</b><small class="ui-note room-seat-fighter">${esc(sub || "\u00a0")}</small></span>${s.pick ? `<span class="room-seat-side">${pickTile(s.pick, s)}${state}</span>` : state}</div>`;
 }
 function openSeat(
   label: string,
@@ -136,7 +189,7 @@ function banner(d: RoomData) {
       : d.mode === "teams"
         ? "Starts when all four are ready"
         : "Everyone fights everyone · 3 or 4 players";
-  return `<div class="room-banner is-mode is-${d.mode}"><span class="room-banner-text"><span class="ui-kicker">${d.arcade ? `${esc(d.arcade.name)} · ` : "Private room · "}${firstTo(d.rounds)}</span><b class="room-banner-name">${MODE_NAMES[d.mode]}</b><small class="ui-note room-banner-line">${line}</small></span></div>`;
+  return `<div class="room-banner is-mode is-${d.mode}"><span class="room-banner-text"><span class="ui-kicker">${d.arcade ? `${esc(d.arcade.name)} · ` : ""}${firstTo(d.rounds)}</span><b class="room-banner-name">${MODE_NAMES[d.mode]}</b><small class="ui-note room-banner-line">${line}</small></span></div>`;
 }
 function head(title: string, note: string, extra = "") {
   return `<div class="room-head"><h3 class="ui-h">${esc(title)}</h3>${extra || `<small class="ui-note">${esc(note)}</small>`}</div>`;
@@ -227,9 +280,37 @@ function seats(d: RoomData) {
   return `${head(title, `${readyCount(d)}/${d.seats.length} ready · ${room}`)}<div class="room-seat-list">${d.seats.map(seat).join("")}${open}</div>`;
 }
 
+/**
+ * The ⋯ button in the banner's top-right corner, and its menu. A room has no
+ * top bar (coins, level, settings: more room for the seats and the picker);
+ * Settings, Invite and Leave live here. Chat is the button in the banner's
+ * other corner (chat/chat.css places it).
+ */
+function more(d: RoomData) {
+  const full = d.seats.length >= roomSize(d.mode).seats;
+  const item = (
+    id: string,
+    icon: Parameters<typeof menuIcon>[0],
+    label: string,
+    danger = false,
+  ) =>
+    `<button type="button" class="room-menu-item${danger ? " is-danger" : ""}" role="menuitem" data-room-menu="${id}">${menuIcon(icon)}<span>${esc(label)}</span></button>`;
+  const items = [
+    item("settings", "settings", "Settings"),
+    item("help", "help", "How to play"),
+    ...(d.watch || full
+      ? []
+      : [item("invite", "add-friend", "Invite friends")]),
+    d.watch
+      ? item("stop-watching", "stop-watching", "Stop watching", true)
+      : item("leave", "leave", "Leave the room", true),
+  ];
+  return `<button type="button" class="room-more" data-room-more aria-label="Room menu: settings, invite, leave" aria-haspopup="menu" aria-expanded="${!!d.menu}">${menuIcon("more")}</button>${d.menu ? `<div class="room-menu" role="menu" aria-label="Room menu">${items.join("")}</div>` : ""}`;
+}
+
 /** The seats column (the picker or the watch panel sits beside it). */
 export function roomSeatsMarkup(d: RoomData) {
-  return `<section class="room-seats" aria-label="${esc(MODE_NAMES[d.mode])} room" data-room-mode="${d.mode}">${banner(d)}<div class="room-seats-body">${seats(d)}${d.teamUp}${rules(d)}</div>${notes(d)}</section>`;
+  return `<section class="room-seats" aria-label="${esc(MODE_NAMES[d.mode])} room" data-room-mode="${d.mode}">${banner(d)}${more(d)}<div class="room-seats-body">${seats(d)}${d.teamUp}${rules(d)}</div>${notes(d)}</section>`;
 }
 
 /** Watching a room: the panel beside the seats (no picker, no Ready). */

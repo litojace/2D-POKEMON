@@ -59,12 +59,6 @@ export const FASHION_COLLECTIONS = {
     description:
       "Pressure suits, glass visors and individual deep-sea equipment",
   },
-  "dream-carnival": {
-    name: "Dream Carnival",
-    rarity: "epic",
-    description:
-      "Sculpted stagewear, personal masks and playful carnival headpieces",
-  },
 } as const;
 export type FashionCollection = keyof typeof FASHION_COLLECTIONS;
 export const FASHION_COLLECTION_IDS = Object.keys(
@@ -78,7 +72,6 @@ export const FASHION_ROSTER = {
     "Yuzu Tea",
     "Storm Astronomer",
     "Arc Diver",
-    "Harlequin Spark",
     "#e9b654",
   ],
   cindrake: [
@@ -86,7 +79,6 @@ export const FASHION_ROSTER = {
     "Hibiscus Tea",
     "Solar Regent",
     "Thermal Vent",
-    "Crimson Fire Dancer",
     "#e77862",
   ],
   tidefin: [
@@ -94,7 +86,6 @@ export const FASHION_ROSTER = {
     "Seafoam Tea",
     "Tidal Astrologer",
     "Reef Submariner",
-    "Pearl Masquerade",
     "#60c7c2",
   ],
   auralynx: [
@@ -102,7 +93,6 @@ export const FASHION_ROSTER = {
     "Lavender Tea",
     "Lunar Paladin",
     "Cryo Naut",
-    "Moonlight Acrobat",
     "#b6a3ef",
   ],
   lumoth: [
@@ -110,7 +100,6 @@ export const FASHION_ROSTER = {
     "Jasmine Tea",
     "Aurora Envoy",
     "Abyssal Lantern",
-    "Ribbonwing Revue",
     "#a6d9a6",
   ],
   mystowl: [
@@ -118,7 +107,6 @@ export const FASHION_ROSTER = {
     "Plum Blossom Tea",
     "Star Archivist",
     "Sonar Owl",
-    "Velvet Ringmaster",
     "#d49ac7",
   ],
   terradon: [
@@ -126,7 +114,6 @@ export const FASHION_ROSTER = {
     "Matcha Tea",
     "World Atlas",
     "Reef Bastion",
-    "Carousel Keeper",
     "#a7be73",
   ],
   duskveil: [
@@ -134,7 +121,6 @@ export const FASHION_ROSTER = {
     "Black Sesame Tea",
     "Eclipse Magister",
     "Diving Bell Wisp",
-    "Midnight Marionette",
     "#9f91d3",
   ],
   coilemur: [
@@ -142,7 +128,6 @@ export const FASHION_ROSTER = {
     "Honey Citrus Tea",
     "Comet Acrobat",
     "Cable Runner",
-    "Hoop Trickster",
     "#eac25e",
   ],
   pyranda: [
@@ -150,7 +135,6 @@ export const FASHION_ROSTER = {
     "Cinnamon Tea",
     "Ember Constellation",
     "Coral Rescuer",
-    "Scarlet Fan Dancer",
     "#de9570",
   ],
   glacelle: [
@@ -158,7 +142,6 @@ export const FASHION_ROSTER = {
     "Blue Peony Tea",
     "Polar Oracle",
     "Bathyal Bell",
-    "Glassbell Ballerina",
     "#99cae8",
   ],
   halcyra: [
@@ -166,7 +149,6 @@ export const FASHION_ROSTER = {
     "Lotus Tea",
     "Celestial Falconer",
     "Current Pilot",
-    "Opera Skydancer",
     "#79c7d8",
   ],
   sunbara: [
@@ -174,7 +156,6 @@ export const FASHION_ROSTER = {
     "Osmanthus Tea",
     "Dawn Consul",
     "Buoy Captain",
-    "Honey Parade",
     "#e8c080",
   ],
   astrabun: [
@@ -182,7 +163,6 @@ export const FASHION_ROSTER = {
     "Sakura Mochi Tea",
     "Moon Princess",
     "Lunar Aquanaut",
-    "Mochi Harlequin",
     "#e5abc9",
   ],
   wombolder: [
@@ -190,7 +170,6 @@ export const FASHION_ROSTER = {
     "Roasted Chestnut Tea",
     "Meteor Sentinel",
     "Trench Miner",
-    "Grand Drum Major",
     "#b7a385",
   ],
   shadopus: [
@@ -198,7 +177,6 @@ export const FASHION_ROSTER = {
     "Indigo Tea",
     "Nebula Illusionist",
     "Nautilus Captain",
-    "Eightfold Jester",
     "#ab91cc",
   ],
   pangrove: [
@@ -206,7 +184,6 @@ export const FASHION_ROSTER = {
     "Bamboo Tea",
     "Verdant Zodiac",
     "Kelp Bulwark",
-    "Verdant Masquerader",
     "#8ec59b",
   ],
   mossloth: [
@@ -214,12 +191,11 @@ export const FASHION_ROSTER = {
     "Chrysanthemum Tea",
     "Dreaming Equinox",
     "Coral Keeper",
-    "Dreamtime Jester",
     "#bac294",
   ],
 } as const satisfies Record<
   CharacterId,
-  readonly [string, string, string, string, string, string]
+  readonly [string, string, string, string, string]
 >;
 
 export const FASHION_SKINS: ChampionSkin[] = (
@@ -301,10 +277,164 @@ export const SKY_PIRATE_SKINS: ChampionSkin[] = (
     "A sky-pirate captain's tricorne and coat, a signature effect, an anchor-drop landing and a treasure victory",
 }));
 
+/**
+ * Hồn Việt (Legendary): Vietnamese heritage, each champion a figure of its
+ * own (Trung Thu lanterns, Thánh Gióng, quan họ, Kim Quy, hát bội...), with
+ * embroidery, lanterns and lacquer that give off light, props of its story,
+ * a drum landing, a lantern victory and a motif of its own.
+ */
+export const HON_VIET_NAMES = {
+  voltkit: "Đèn Ông Sao",
+  cindrake: "Thánh Gióng",
+  tidefin: "Hoa Đăng",
+  auralynx: "Võ Sư Vovinam",
+  lumoth: "Đèn Lồng Hội An",
+  mystowl: "Liền Chị Quan Họ",
+  terradon: "Kim Quy",
+  duskveil: "Đèn Kéo Quân",
+  coilemur: "Nghệ Nhân Đàn Bầu",
+  pyranda: "Hạt Dẻ Phố Cổ",
+  glacelle: "Sương Sa Pa",
+  halcyra: "Chim Lạc Đông Sơn",
+  sunbara: "Xuân Hoa Mai",
+  astrabun: "Thỏ Ngọc Cung Trăng",
+  wombolder: "Mùa Lúa Chín",
+  shadopus: "Tướng Hát Bội",
+  pangrove: "Đầm Sen Đồng Tháp",
+  mossloth: "Ông Đồ",
+} as const satisfies Record<CharacterId, string>;
+export const HON_VIET_SKINS: ChampionSkin[] = (
+  Object.keys(HON_VIET_NAMES) as CharacterId[]
+).map((champion) => ({
+  id: `${champion}-hon-viet`,
+  champion,
+  name: HON_VIET_NAMES[champion],
+  rarity: "legendary",
+  collection: "hon-viet",
+  description:
+    "A figure of Vietnamese heritage in full costume with props of its story, glowing embroidery, a drum landing and a lantern victory",
+}));
+
+/**
+ * Hero Squad (Epic): one squad, one language (a suit with a glowing chest
+ * emblem on a white plate, a lit buckle), and a hero of its own for every
+ * champion, drawn from its power. Every name and mark is original.
+ */
+export const HERO_SQUAD_NAMES = {
+  voltkit: "Volt Streak",
+  cindrake: "Blaze Breaker",
+  tidefin: "Tide Guardian",
+  auralynx: "Prism Fist",
+  lumoth: "Lumina",
+  mystowl: "Third Eye",
+  terradon: "Iron Bulwark",
+  duskveil: "Duskwatch",
+  coilemur: "Magnetail",
+  pyranda: "Chestnut Comet",
+  glacelle: "Frost Sentinel",
+  halcyra: "Skysight",
+  sunbara: "Solar Flare",
+  astrabun: "Moon Blink",
+  wombolder: "Bulldozer",
+  shadopus: "Inkshade",
+  pangrove: "Leaf Ranger",
+  mossloth: "Chrono Keeper",
+} as const satisfies Record<CharacterId, string>;
+export const HERO_SQUAD_SKINS: ChampionSkin[] = (
+  Object.keys(HERO_SQUAD_NAMES) as CharacterId[]
+).map((champion) => ({
+  id: `${champion}-hero-squad`,
+  champion,
+  name: HERO_SQUAD_NAMES[champion],
+  rarity: "epic",
+  collection: "hero-squad",
+  description:
+    "An original hero suit with its own powers on show, a glowing chest emblem and lit gear",
+}));
+
+/**
+ * Neon Campus (Epic): one school, and a club of its own for every champion
+ * (gaming, chemistry, swimming, the student council, photography...), its
+ * kit carrying something that lights up.
+ */
+export const NEON_CAMPUS_NAMES = {
+  voltkit: "Game Club Ace",
+  cindrake: "Lab Prodigy",
+  tidefin: "Swim Team Star",
+  auralynx: "Council President",
+  lumoth: "Photo Club Snap",
+  mystowl: "Library Prefect",
+  terradon: "Team Captain",
+  duskveil: "Drama Club Lead",
+  coilemur: "Robotics Whiz",
+  pyranda: "Bake Club Chef",
+  glacelle: "Choir Soloist",
+  halcyra: "Archery Ace",
+  sunbara: "Art Club Painter",
+  astrabun: "Stargazer",
+  wombolder: "Garden Club Keeper",
+  shadopus: "Mystery Club Sleuth",
+  pangrove: "Band Drummer",
+  mossloth: "Nap Club Captain",
+} as const satisfies Record<CharacterId, string>;
+export const NEON_CAMPUS_SKINS: ChampionSkin[] = (
+  Object.keys(NEON_CAMPUS_NAMES) as CharacterId[]
+).map((champion) => ({
+  id: `${champion}-neon-campus`,
+  champion,
+  name: NEON_CAMPUS_NAMES[champion],
+  rarity: "epic",
+  collection: "neon-campus",
+  description:
+    "A school club of its own, with its kit and something on it that lights up",
+}));
+
+/**
+ * Stars & Stripes (Legendary): American popular culture, a figure of its own
+ * for every champion (a space ranger, Lady Liberty, a sheriff, a hot-rod
+ * racer, a stage magician...), with a Walk-of-Fame landing, a fireworks
+ * victory and a motif of its own.
+ */
+export const STARS_STRIPES_NAMES = {
+  voltkit: "Space Ranger",
+  cindrake: "Hot-Rod Racer",
+  tidefin: "Malibu Surfer",
+  auralynx: "Jazz Cat",
+  lumoth: "Neon Diner",
+  mystowl: "Lady Liberty",
+  terradon: "Sheriff",
+  duskveil: "Film Noir",
+  coilemur: "Rodeo Rider",
+  pyranda: "Ace Pitcher",
+  glacelle: "Aurora Alaska",
+  halcyra: "Barnstormer",
+  sunbara: "Fourth of July",
+  astrabun: "Stage Magician",
+  wombolder: "Linebacker",
+  shadopus: "Times Square DJ",
+  pangrove: "Park Ranger",
+  mossloth: "Woodstock Folk",
+} as const satisfies Record<CharacterId, string>;
+export const STARS_STRIPES_SKINS: ChampionSkin[] = (
+  Object.keys(STARS_STRIPES_NAMES) as CharacterId[]
+).map((champion) => ({
+  id: `${champion}-stars-stripes`,
+  champion,
+  name: STARS_STRIPES_NAMES[champion],
+  rarity: "legendary",
+  collection: "stars-stripes",
+  description:
+    "An American figure in full costume with glowing pieces, a Walk-of-Fame landing and a fireworks victory",
+}));
+
 export type Collection =
   | FashionCollection
   | "nova-vanguard"
   | "sky-pirates"
+  | "hon-viet"
+  | "hero-squad"
+  | "neon-campus"
+  | "stars-stripes"
   | "winter"
   | "festival"
   | "garden"
@@ -320,6 +450,10 @@ export const COLLECTION_NAMES: Record<Collection, string> = {
   ) as Record<FashionCollection, string>),
   "nova-vanguard": "Nova Vanguard",
   "sky-pirates": "Sky Pirates",
+  "hon-viet": "Hồn Việt",
+  "hero-squad": "Hero Squad",
+  "neon-campus": "Neon Campus",
+  "stars-stripes": "Stars & Stripes",
   winter: "Winter",
   festival: "Festival",
   garden: "Garden",
@@ -360,6 +494,10 @@ export const CHAMPION_SKINS: ChampionSkin[] = [
   ...FASHION_SKINS,
   ...VANGUARD_SKINS,
   ...SKY_PIRATE_SKINS,
+  ...HON_VIET_SKINS,
+  ...HERO_SQUAD_SKINS,
+  ...NEON_CAMPUS_SKINS,
+  ...STARS_STRIPES_SKINS,
   skin("voltkit", "midnight", "Midnight", "common", "Navy fur, cyan cheeks"),
   skin("voltkit", "peach-fizz", "Peach Fizz", "common", "Peach and pink"),
   skin("voltkit", "mint-static", "Mint Static", "common", "Mint and white"),
@@ -1320,11 +1458,14 @@ const LOOK_SETS: [Collection, [string, string][]][] = [
 export const COLLECTION_TIER: Record<Collection, 0 | 1 | 2> = {
   "nova-vanguard": 1,
   "sky-pirates": 1,
+  "hon-viet": 1,
+  "hero-squad": 1,
+  "neon-campus": 1,
+  "stars-stripes": 1,
   wayfarer: 0,
   "moonlit-tea": 0,
   "astral-court": 0,
   "abyssal-expedition": 1,
-  "dream-carnival": 1,
   candy: 0,
   garden: 0,
   retro: 0,
@@ -1383,9 +1524,12 @@ export const SKIN_SET_COLLECTIONS = [
   "astral-court",
   "cyber",
   "abyssal-expedition",
-  "dream-carnival",
   "nova-vanguard",
   "sky-pirates",
+  "hon-viet",
+  "hero-squad",
+  "neon-campus",
+  "stars-stripes",
 ] as const satisfies readonly Collection[];
 export const SKIN_BUNDLES: ShopBundle[] = SKIN_SET_COLLECTIONS.map(
   (collection) => ({

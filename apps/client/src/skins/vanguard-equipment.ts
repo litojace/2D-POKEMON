@@ -214,13 +214,20 @@ export function vanguardOutfit(
         p("M-12 126L0 135L12 126L8 151L0 158L-8 151Z", ivory),
       );
       chest(p("M-7 -7L0 -11L7 -7V3L0 9L-7 3Z", glow) + l("M0 -8V6", cloth, 1));
+      // The brow band and its gem: the gem sits on the forehead, out on the
+      // face side in profile; from behind only the band shows.
       put(
         "flame",
-        l(
-          `M${hx - 25} ${hy + 17}L${hx - 8} ${hy + 12}M${hx + 8} ${hy + 12}L${hx + 25} ${hy + 17}`,
-          ivory,
-          4,
-        ) + hex(hx, hy + 15, 7, 4, glow),
+        back
+          ? l(`M${hx - 25} ${hy + 17}Q${hx} ${hy + 10} ${hx + 25} ${hy + 17}`, ivory, 4)
+          : side
+            ? l(`M${hx - side * 22} ${hy + 17}Q${hx} ${hy + 11} ${hx + side * 28} ${hy + 15}`, ivory, 4) +
+              hex(hx + side * 21, hy + 14, 5, 4, glow)
+            : l(
+                `M${hx - 25} ${hy + 17}L${hx - 8} ${hy + 12}M${hx + 8} ${hy + 12}L${hx + 25} ${hy + 17}`,
+                ivory,
+                4,
+              ) + hex(hx, hy + 15, 7, 4, glow),
       );
       for (const [part, x] of [
         ["armL", left],
