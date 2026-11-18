@@ -72,6 +72,22 @@ export const KEEP = {
     "app",
     "hz",
     "serverHz",
+    "tickLateP95",
+    "tickMsP95",
+    "arena",
+    "heldTicks",
+    "lateSteps",
+    "extraSteps",
+    "folded",
+    "queueAvg",
+    "frameP99",
+    "snapGapMax",
+    "correctionP50",
+    "holds",
+    "holdMax",
+    "inputHz",
+    "link",
+    "linkSpeed",
   ],
   "arena-disconnect": [
     "reason",
@@ -285,6 +301,26 @@ export function attention(r, newest) {
   if (typeof r.serverHz === "number" && Math.abs(r.serverHz - 30) > 0.05)
     out.push(
       `the server ran ${r.serverHz} ticks a second, not 30: phones step 30 inputs a second, so every drifted tick is a jump. See apps/server/src/tick-clock.ts and run the server with ARENA_DIAGNOSTICS=60.`,
+    );
+  if (typeof r.tickLateP95 === "number" && r.tickLateP95 >= 15)
+    out.push(
+      `the server's ticks ran up to ${r.tickLateP95} ms late (95th percentile; steps took ${cell(r.tickMsP95)} ms): the instance is busy or CPU-throttled. Run it with ARENA_DIAGNOSTICS=60.`,
+    );
+  if (
+    typeof r.inputHz === "number" &&
+    r.inputHz > 0 &&
+    Math.abs(r.inputHz - 30) > 0.5
+  )
+    out.push(
+      `the phone sent ${r.inputHz} inputs a second, not 30: its input clock (the scene's accumulator in main.ts) drifted or lost time.`,
+    );
+  if (typeof r.folded === "number" && r.folded >= 5)
+    out.push(
+      `${r.folded} of the player's inputs were folded into another's step (steps lost, each a jump): more inputs than ticks. See Arena.drainInputs and docs/network-performance.md, section 16.`,
+    );
+  if (typeof r.holds === "number" && r.holds >= 10)
+    out.push(
+      `Wi-Fi held the phone's inputs ${r.holds} times a minute (up to ${cell(r.holdMax)} ticks): the player's network. Each hold now waits rather than jumps; long ones still look like lag.`,
     );
   if (typeof r.errors === "number" && r.errors > 0)
     out.push(
