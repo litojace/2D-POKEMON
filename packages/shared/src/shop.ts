@@ -339,11 +339,49 @@ export const HON_VIET_SKINS: ChampionSkin[] = (
     "A figure of Vietnamese heritage in full costume with props of its story, glowing embroidery, a drum landing and a lantern victory",
 }));
 
+/**
+ * Hero Squad (Epic): one squad, one language (a suit with a glowing chest
+ * emblem on a white plate, a lit buckle), and a hero of its own for every
+ * champion, drawn from its power. Every name and mark is original.
+ */
+export const HERO_SQUAD_NAMES = {
+  voltkit: "Volt Streak",
+  cindrake: "Blaze Breaker",
+  tidefin: "Tide Guardian",
+  auralynx: "Prism Fist",
+  lumoth: "Lumina",
+  mystowl: "Third Eye",
+  terradon: "Iron Bulwark",
+  duskveil: "Duskwatch",
+  coilemur: "Magnetail",
+  pyranda: "Chestnut Comet",
+  glacelle: "Frost Sentinel",
+  halcyra: "Skysight",
+  sunbara: "Solar Flare",
+  astrabun: "Moon Blink",
+  wombolder: "Bulldozer",
+  shadopus: "Inkshade",
+  pangrove: "Leaf Ranger",
+  mossloth: "Chrono Keeper",
+} as const satisfies Record<CharacterId, string>;
+export const HERO_SQUAD_SKINS: ChampionSkin[] = (
+  Object.keys(HERO_SQUAD_NAMES) as CharacterId[]
+).map((champion) => ({
+  id: `${champion}-hero-squad`,
+  champion,
+  name: HERO_SQUAD_NAMES[champion],
+  rarity: "epic",
+  collection: "hero-squad",
+  description:
+    "An original hero suit with its own powers on show, a glowing chest emblem and lit gear",
+}));
+
 export type Collection =
   | FashionCollection
   | "nova-vanguard"
   | "sky-pirates"
   | "hon-viet"
+  | "hero-squad"
   | "winter"
   | "festival"
   | "garden"
@@ -360,6 +398,7 @@ export const COLLECTION_NAMES: Record<Collection, string> = {
   "nova-vanguard": "Nova Vanguard",
   "sky-pirates": "Sky Pirates",
   "hon-viet": "Hồn Việt",
+  "hero-squad": "Hero Squad",
   winter: "Winter",
   festival: "Festival",
   garden: "Garden",
@@ -401,6 +440,7 @@ export const CHAMPION_SKINS: ChampionSkin[] = [
   ...VANGUARD_SKINS,
   ...SKY_PIRATE_SKINS,
   ...HON_VIET_SKINS,
+  ...HERO_SQUAD_SKINS,
   skin("voltkit", "midnight", "Midnight", "common", "Navy fur, cyan cheeks"),
   skin("voltkit", "peach-fizz", "Peach Fizz", "common", "Peach and pink"),
   skin("voltkit", "mint-static", "Mint Static", "common", "Mint and white"),
@@ -1362,6 +1402,7 @@ export const COLLECTION_TIER: Record<Collection, 0 | 1 | 2> = {
   "nova-vanguard": 1,
   "sky-pirates": 1,
   "hon-viet": 1,
+  "hero-squad": 1,
   wayfarer: 0,
   "moonlit-tea": 0,
   "astral-court": 0,
@@ -1429,6 +1470,7 @@ export const SKIN_SET_COLLECTIONS = [
   "nova-vanguard",
   "sky-pirates",
   "hon-viet",
+  "hero-squad",
 ] as const satisfies readonly Collection[];
 export const SKIN_BUNDLES: ShopBundle[] = SKIN_SET_COLLECTIONS.map(
   (collection) => ({

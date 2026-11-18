@@ -12,6 +12,7 @@ Six collections add 108 champion skins: three Rare and three Epic for each of th
 | Abyssal Expedition | Epic / 3,500 | Independent pressure-suit construction, glass helmets, gauges, tanks and individual dive equipment; a small glass glint and bubble dash trail |
 | Dream Carnival | Epic / 3,500 | Independent stagewear, masks, personal headpieces and ruffs; a small glint and confetti dash trail |
 | Nova Vanguard | Legendary / 5,500 | Original hero suits, individual emblems and joint-mounted equipment; a signature effect, its own hero landing and victory, and a short movement trail |
+| Hero Squad | Epic / 3,500 | An original hero per champion with its own powers on show; a glowing chest emblem, lit gear, a star dash trail |
 | Hồn Việt | Legendary / 5,500 | A figure of Vietnamese heritage per champion in full costume with props of its story; glowing embroidery and lanterns, a drum landing, a lantern victory, a motif per champion and a petal trail |
 
 ## Color stories
@@ -231,6 +232,38 @@ Vietnamese: the display face loads its Vietnamese letters
 their clip for marks above and below. Migration
 `20261118140000_hon_viet.sql` adds the skins and their set.
 
+## Epic: Hero Squad
+
+Original superheroes at 3,500 coins (`HERO_SQUAD_SKINS` in `shop.ts`,
+`hero-art.ts`). The squad shares one language: a suit with a glowing chest
+emblem on a white diamond plate and a lit belt buckle. Each hero shows its
+own power (`modern-designs.ts` for five of them, `modern-hero.ts` for the
+rest). Every name and mark is original; nothing borrows a published hero's.
+
+| Champion | Hero | Its own power, and what glows |
+| --- | --- | --- |
+| Voltkit | Volt Streak | A winged visor; a lightning bolt running down the suit |
+| Cindrake | Blaze Breaker | A vented collar with magma lit in a run; its flame crest kept as the hero's hair |
+| Tidefin | Tide Guardian | A fin-crested helm lit along its edge, a trident emblem, a belt of wave lights |
+| Auralynx | Prism Fist | Crystal pauldrons, a gem emblem and a crystal on the brow |
+| Lumoth | Lumina | A lantern-core emblem, a glittering sash, a star tiara between the antennae |
+| Mystowl | Third Eye | A star-lined high collar cape, a rune amulet, a circlet with a gem |
+| Terradon | Iron Bulwark | Stone pauldrons and chest plate with lava in the cracks, a horned helm |
+| Duskveil | Duskwatch | A dark cape lit along its edge, a crescent emblem |
+| Coilemur | Magnetail | A magnet emblem, coil stripes lit in a run, arc earpieces |
+| Pyranda | Chestnut Comet | Aviator goggles with lit lenses, a launcher on the back with an ember at its mouth |
+| Glacelle | Frost Sentinel | An ice crown whose spikes light in turn, a snowflake emblem, a frosted cape |
+| Halcyra | Skysight | A targeting lens with a lit crosshair, a wing emblem, a streaming scarf |
+| Sunbara | Solar Flare | The yuzu as a solar core ringed with running rays, a sun emblem, a short cape |
+| Astrabun | Moon Blink | A crescent moon between the ears, a belt of moon phases lit in turn |
+| Wombolder | Bulldozer | A hard-hat helmet with a headlamp, a belt of hazard stripes running in light |
+| Shadopus | Inkshade | An ink-drop emblem, a ninja headband with streaming tails, smoke pellets |
+| Pangrove | Leaf Ranger | Leaf armour, a crown of leaves with lit veins |
+| Mossloth | Chrono Keeper | A clock emblem whose hand sweeps in light, a pocket-watch chain, a gear halo |
+
+A short star trail on a dash. Migration `20261118160000_hero_squad.sql` adds
+the skins and their set.
+
 ## Glowing costume pieces
 
 A costume marks pieces that give off light with
@@ -247,9 +280,10 @@ the timings.
 
 ## Full-roster skin sets
 
-Nine sets, one per collection that dresses all 18 champions in one theme at
+Ten sets, one per collection that dresses all 18 champions in one theme at
 one rarity: Wayfarer, Moonlit Tea, Astral Court, Cyber Mecha, Abyssal
-Expedition, Dream Carnival, Nova Vanguard, Sky Pirates and Hồn Việt (`SKIN_BUNDLES` in
+Expedition, Dream Carnival, Nova Vanguard, Sky Pirates, Hồn Việt and Hero
+Squad (`SKIN_BUNDLES` in
 `shop.ts`).
 Like the Look sets, a set costs 80% of the skins you don't own yet (the
 database's `arena_item_price`); buying one grants each skin, and a complete

@@ -7,6 +7,7 @@ import { cutBox, UNDER } from "./rare-fashion";
 import { DESIGNS } from "./modern-designs";
 import "./modern-viet";
 import "./modern-viet-legend";
+import "./modern-hero";
 
 /**
  * Modern collections (prototype): Neon Campus, Hero Squad, Starlight Idol,

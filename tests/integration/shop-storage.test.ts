@@ -686,3 +686,30 @@ it("sells Hồn Việt as Legendary at 5,500, keeps its Vietnamese names, and se
   await db.exec(sql);
   expect(await economy()).toEqual(bought);
 });
+
+it("sells the Hero Squad as Epic at 3,500 and its full set at 80%", async () => {
+  const sql = await readFile(
+    "supabase/migrations/20261118160000_hero_squad.sql",
+    "utf8",
+  );
+  await db.exec("reset role");
+  await db.exec(sql);
+  const rows = await db.query<{ rarity: string; price: number; n: number }>(
+    "select rarity, price, count(*)::int as n from public.arena_shop_items where collection = 'hero-squad' and kind = 'champion' group by rarity, price",
+  );
+  expect(rows.rows).toEqual([{ rarity: "epic", price: 3500, n: 18 }]);
+  await db.exec(
+    `update public.arena_wallets set balance = 100000 where player_id = '${player}'`,
+  );
+  await login();
+  await db.query("select public.arena_buy_item('hero-squad-skins')");
+  const bought = await economy();
+  expect(100000 - bought.balance).toBe(18 * 3500 * 0.8);
+  expect(
+    bought.owned.filter((id: string) => id.endsWith("-hero-squad")),
+  ).toHaveLength(18);
+  // Running the migration again changes nothing.
+  await db.exec("reset role");
+  await db.exec(sql);
+  expect(await economy()).toEqual(bought);
+});

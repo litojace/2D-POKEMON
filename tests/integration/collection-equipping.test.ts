@@ -239,6 +239,8 @@ it("keeps every champion skin equippable through its separate champion slot", as
     "20261118120000_sky_pirates.sql",
     // Hồn Việt (Epic).
     "20261118140000_hon_viet.sql",
+    // Hero Squad (Epic).
+    "20261118160000_hero_squad.sql",
   ])
     await db.exec(await readFile(`supabase/migrations/${file}`, "utf8"));
   await login(admin);
