@@ -1,230 +1,222 @@
 # Match reports
 
-Newest report: 2026-11-17 22:23 UTC. From the game server's log (`scripts/perf/export-perf-reports.mjs` on `main`). One row per player's device per match; times are UTC. No accounts or names are kept.
+Newest report: 2026-11-18 14:07 UTC. From the game server's log (`scripts/perf/export-perf-reports.mjs` on `main`). One row per player's device per match; times are UTC. No accounts or names are kept.
 
 ## Needs attention
 
-- **2026-11-17 22:23**, lumoth against wombolder (bot, normal) (match `iitdv9`):
-  - 23.3 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 27 lumoth wombolder`.
-  - 3 hit(s) landed while you were drawn over 24 px away (largest 39 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
-- **2026-11-17 22:14**, voltkit against sunbara (bot, hard) (match `4fd5ze`):
-  - drawing slow: 30.3 fps, 21.4% stutter at low graphics. Reproduce with tests/visual/effect-budget.spec.ts; ?perf=1 shows it live.
-  - 73 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 39 voltkit sunbara`.
-  - 7 hit(s) landed while you were drawn over 24 px away (largest 56 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
-- **2026-11-17 22:08**, voltkit against astrabun (bot, easy) (match `h1b0qi`):
-  - slow connection: ping 91 ms, slowest 5% 302 ms. The player's network: compare other players at the same time before changing the game.
-  - drawing slow: 30.3 fps, 20.9% stutter at low graphics. Reproduce with tests/visual/effect-budget.spec.ts; ?perf=1 shows it live.
-  - 43.2 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 46 voltkit astrabun`.
-  - 6 hit(s) landed while you were drawn over 24 px away (largest 30 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
-- **2026-11-17 22:04**, tidefin against auralynx (bot, easy) (match `y1shbz`):
-  - 44.3 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 24 tidefin auralynx`.
-  - 11 hit(s) landed while you were drawn over 24 px away (largest 42 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
-- **2026-11-17 21:58**, tidefin against glacelle (bot, easy) (match `4u0w9y`):
-  - 41.2 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 25 tidefin glacelle`.
-  - 8 hit(s) landed while you were drawn over 24 px away (largest 48 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
-- **2026-11-17 20:37**, cindrake against duskveil (bot, hard) (match `pql80z`):
-  - drawing slow: 47.6 fps, 6.4% stutter at low graphics. Reproduce with tests/visual/effect-budget.spec.ts; ?perf=1 shows it live.
-  - 31.7 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 43 cindrake duskveil`.
-  - 15 hit(s) landed while you were drawn over 24 px away (largest 107 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
-- **2026-11-17 20:36**, cindrake against duskveil (bot, hard) (match `z3o987`):
-  - slow connection: ping 93 ms, slowest 5% 184 ms. The player's network: compare other players at the same time before changing the game.
-  - drawing slow: 47.6 fps, 5.9% stutter at low graphics. Reproduce with tests/visual/effect-budget.spec.ts; ?perf=1 shows it live.
-  - 48.7 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 47 cindrake duskveil`.
-  - 29 hit(s) landed while you were drawn over 24 px away (largest 382 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
-- **2026-11-17 12:48**, auralynx against grumblecrag (raid boss) (match `620xm0`):
-  - 9 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 31 auralynx cindrake`.
-- **2026-11-17 11:42**, sunbara against shadopus (bot, easy) (match `slw136`):
-  - 38.9 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 32 sunbara shadopus`.
-  - 12 hit(s) landed while you were drawn over 24 px away (largest 36 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
-- **2026-11-17 07:12**, coilemur against grumblecrag (raid boss) (match `cpik20`):
-  - 34.6 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 32 coilemur cindrake`.
-  - 142 hit(s) landed while you were drawn over 24 px away (largest 185 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
-- **2026-11-16 03:01**, cindrake against wombolder (bot, hard) (match `6590bp`):
-  - 27.2 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 34 cindrake wombolder`.
-  - 16 hit(s) landed while you were drawn over 24 px away (largest 36 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
-- **2026-11-16 02:59**, cindrake against sunbara (bot, hard) (match `gpnefa`):
-  - 19.9 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 32 cindrake sunbara`.
-  - 44 hit(s) landed while you were drawn over 24 px away (largest 80 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
-- **2026-11-16 02:56**, cindrake against sunbara (bot, hard) (match `2upwlr`):
-  - 13 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 33 cindrake sunbara`.
-  - 47 hit(s) landed while you were drawn over 24 px away (largest 103 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
-- **2026-11-16 02:54**, cindrake against shadopus (bot, hard) (match `ic5o8s`):
-  - 56.7 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 33 cindrake shadopus`.
-  - 23 hit(s) landed while you were drawn over 24 px away (largest 374 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
-- **2026-11-16 02:53**, wombolder against mystowl (bot, hard) (match `vanv7r`):
-  - 11.8 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 32 wombolder mystowl`.
-  - 47 hit(s) landed while you were drawn over 24 px away (largest 131 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
-- **2026-11-16 02:48**, sunbara against pyranda (bot, hard) (match `4a30yu`):
-  - 15.8 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 31 sunbara pyranda`.
-  - 50 hit(s) landed while you were drawn over 24 px away (largest 99 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
-- **2026-11-16 02:45**, sunbara against auralynx (bot, hard) (match `zpn3dn`):
-  - 16.3 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 34 sunbara auralynx`.
-  - 20 hit(s) landed while you were drawn over 24 px away (largest 39 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
-- **2026-11-16 02:44**, duskveil against wombolder (bot, hard) (match `bknvd3`):
-  - 31.8 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 34 duskveil wombolder`.
-  - 23 hit(s) landed while you were drawn over 24 px away (largest 53 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
-- **2026-11-16 02:43**, duskveil against terradon (bot, hard) (match `ybb65n`):
-  - 9.4 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 36 duskveil terradon`.
-  - 16 hit(s) landed while you were drawn over 24 px away (largest 65 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
-- **2026-11-16 02:41**, glacelle against duskveil (bot, hard) (match `cr4978`):
-  - 15.7 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 34 glacelle duskveil`.
-  - 67 hit(s) landed while you were drawn over 24 px away (largest 114 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
-- **2026-11-16 02:37**, pyranda against terradon (bot, hard) (match `z1xmif`):
-  - 15.4 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 34 pyranda terradon`.
+- **2026-11-18 14:07**, wombolder against voltkit (bot, easy) (match `464s0w`):
+  - 5.7 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 31 wombolder voltkit`.
+  - 12 hit(s) landed while you were drawn over 24 px away (largest 106 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
+- **2026-11-18 02:55**, coilemur against pyranda (match `i5vb16`):
+  - 13.1 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 22 coilemur pyranda`.
+  - 31 hit(s) landed while you were drawn over 24 px away (largest 56 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
+- **2026-11-18 02:55**, pyranda against coilemur (match `i5vb16`):
+  - 17.1 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 23 pyranda coilemur`.
+  - 8 hit(s) landed while you were drawn over 24 px away (largest 45 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
+- **2026-11-18 02:54**, pyranda against coilemur (match `poelrm`):
+  - 20.9 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 23 pyranda coilemur`.
   - 15 hit(s) landed while you were drawn over 24 px away (largest 95 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
-- **2026-11-14 02:57**, astrabun against pangrove (bot, hard) (match `tbu4k1`):
-  - 35.4 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 35 astrabun pangrove`.
-  - 15 hit(s) landed while you were drawn over 24 px away (largest 49 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
-- **2026-11-14 02:48**, voltkit against lumoth (bot, easy) (match `v003a7`):
-  - 14.5 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 28 voltkit lumoth`.
-  - 25 hit(s) landed while you were drawn over 24 px away (largest 97 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
-- **2026-11-14 01:09**, pyranda against terradon (bot, hard) (match `1ic0k3`):
-  - 17 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 29 pyranda terradon`.
-  - 8 hit(s) landed while you were drawn over 24 px away (largest 52 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
-- **2026-11-14 01:08**, pyranda against terradon (bot, hard) (match `gg8fmg`):
-  - 15.2 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 30 pyranda terradon`.
-  - 15 hit(s) landed while you were drawn over 24 px away (largest 89 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
-- **2026-11-13 23:09**, pangrove against shadopus (bot, hard) (match `5l9yad`):
-  - 35.6 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 40 pangrove shadopus`.
-  - 37 hit(s) landed while you were drawn over 24 px away (largest 387 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
-- **2026-11-13 03:58**, pyranda against gloomshade (raid boss) (match `p6sg8p`):
-  - 58.3 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 36 pyranda cindrake`.
-  - 34 hit(s) landed while you were drawn over 24 px away (largest 27 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
-- **2026-11-13 02:32**, glacelle against lumoth (bot, hard) (match `yjzr6b`):
-  - 63.2 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 40 glacelle lumoth`.
-  - 41 hit(s) landed while you were drawn over 24 px away (largest 120 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
-- **2026-11-13 02:28**, lumoth against glacelle (bot, hard) (match `clf6xe`):
-  - 73.9 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 44 lumoth glacelle`.
+- **2026-11-18 02:54**, coilemur against pyranda (match `poelrm`):
+  - 13.6 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 24 coilemur pyranda`.
+  - 37 hit(s) landed while you were drawn over 24 px away (largest 99 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
+- **2026-11-18 02:50**, sunbara against coilemur, mystowl (match `gbzdq7`):
+  - 12.2 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 29 sunbara coilemur`.
+  - 30 hit(s) landed while you were drawn over 24 px away (largest 73 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
+- **2026-11-18 02:50**, mystowl against coilemur, sunbara (match `gbzdq7`):
+  - 13.7 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 24 mystowl coilemur`.
+  - 21 hit(s) landed while you were drawn over 24 px away (largest 326 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
+- **2026-11-18 02:50**, coilemur against sunbara, mystowl (match `gbzdq7`):
+  - 14.5 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 23 coilemur sunbara`.
+  - 56 hit(s) landed while you were drawn over 24 px away (largest 117 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
+- **2026-11-18 02:46**, mystowl against coilemur, sunbara (match `ffmh8v`):
+  - 18.1 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 24 mystowl coilemur`.
+  - 33 hit(s) landed while you were drawn over 24 px away (largest 97 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
+- **2026-11-18 02:46**, sunbara against coilemur, mystowl (match `ffmh8v`):
+  - 12.5 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 27 sunbara coilemur`.
+  - 40 hit(s) landed while you were drawn over 24 px away (largest 123 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
+- **2026-11-18 02:46**, coilemur against sunbara, mystowl (match `ffmh8v`):
+  - 18.9 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 22 coilemur sunbara`.
+  - 60 hit(s) landed while you were drawn over 24 px away (largest 105 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
+- **2026-11-18 02:42**, halcyra against mystowl, coilemur (match `bdsxpw`):
+  - 11.6 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 23 halcyra mystowl`.
+  - 32 hit(s) landed while you were drawn over 24 px away (largest 285 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
+- **2026-11-18 02:42**, mystowl against halcyra, coilemur (match `bdsxpw`):
+  - 17.3 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 27 mystowl halcyra`.
+  - 18 hit(s) landed while you were drawn over 24 px away (largest 40 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
+- **2026-11-18 02:42**, coilemur against halcyra, mystowl (match `bdsxpw`):
+  - 14.5 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 24 coilemur halcyra`.
+  - 43 hit(s) landed while you were drawn over 24 px away (largest 77 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
+- **2026-11-18 02:39**, coilemur against halcyra, mystowl (match `dwqsxr`):
+  - 20.4 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 24 coilemur halcyra`.
   - 28 hit(s) landed while you were drawn over 24 px away (largest 103 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
-- **2026-11-13 02:27**, tidefin against terradon (bot, hard) (match `c2h9sf`):
-  - 47.6 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 37 tidefin terradon`.
-  - 28 hit(s) landed while you were drawn over 24 px away (largest 164 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
-- **2026-11-13 02:22**, mossloth against lumoth (bot, hard) (match `lkiw92`):
-  - drawing slow: 67.1 fps, 11.6% stutter at low graphics. Reproduce with tests/visual/effect-budget.spec.ts; ?perf=1 shows it live.
-  - 67.7 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 32 mossloth lumoth`.
-  - 29 hit(s) landed while you were drawn over 24 px away (largest 122 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
-- **2026-11-13 02:21**, mossloth against shadopus (bot, hard) (match `xztudp`):
-  - 64.4 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 33 mossloth shadopus`.
-  - 13 hit(s) landed while you were drawn over 24 px away (largest 402 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
-- **2026-11-13 02:19**, mossloth against pangrove (bot, hard) (match `iaak87`):
-  - 45 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 38 mossloth pangrove`.
-  - 25 hit(s) landed while you were drawn over 24 px away (largest 167 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
-- **2026-11-13 02:18**, mossloth against terradon (bot, hard) (match `2sc0nx`):
-  - 10.1% of the server's updates came late (Wi-Fi hiccups). If every player at that time shows it, it is the server: run it with ARENA_DIAGNOSTICS=60.
-  - 28.1 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 40 mossloth terradon`.
-  - 3 hit(s) landed while you were drawn over 24 px away (largest 33 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
-- **2026-11-13 02:17**, mossloth against auralynx (bot, hard) (match `h06l5b`):
-  - 5.9% of the server's updates came late (Wi-Fi hiccups). If every player at that time shows it, it is the server: run it with ARENA_DIAGNOSTICS=60.
-  - 59 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 36 mossloth auralynx`.
-  - 18 hit(s) landed while you were drawn over 24 px away (largest 133 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
-- **2026-11-13 02:15**, mossloth against tidefin (bot, hard) (match `fi88xj`):
-  - 68.8 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 32 mossloth tidefin`.
-  - 83 hit(s) landed while you were drawn over 24 px away (largest 236 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
-- **2026-11-13 02:12**, pangrove against glacelle (bot, hard) (match `kvo4b8`):
-  - 34.9 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 30 pangrove glacelle`.
-  - 38 hit(s) landed while you were drawn over 24 px away (largest 181 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
-- **2026-11-12 08:09**, pyranda against gloomshade (raid boss) (match `02sky6`):
-  - 13.3 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 30 pyranda cindrake`.
-  - 1 hit(s) landed while you were drawn over 24 px away (largest 26 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
-- **2026-11-12 08:07**, pyranda against gloomshade (raid boss) (match `nxdi6k`):
-  - 10.5 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 29 pyranda cindrake`.
-  - 1 hit(s) landed while you were drawn over 24 px away (largest 27 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
-- **2026-11-12 08:03**, tidefin against duskveil (bot, hard) (match `z1e46k`):
-  - 11.2 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 39 tidefin duskveil`.
-  - 83 hit(s) landed while you were drawn over 24 px away (largest 99 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
-- **2026-11-11 18:43**, lumoth against pyranda (bot, hard) (match `5g05f6`):
-  - slow connection: ping 68 ms, slowest 5% 277 ms. The player's network: compare other players at the same time before changing the game.
-  - drawing slow: 61 fps, 6.1% stutter at low graphics. Reproduce with tests/visual/effect-budget.spec.ts; ?perf=1 shows it live.
-  - 27.9 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 34 lumoth pyranda`.
-  - 10 hit(s) landed while you were drawn over 24 px away (largest 172 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
-- **2026-11-11 18:39**, tidefin against pangrove (bot, hard) (match `6n3lkw`):
-  - 32.1 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 32 tidefin pangrove`.
-  - 46 hit(s) landed while you were drawn over 24 px away (largest 85 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
-- **2026-11-11 18:36**, shadopus against terradon (bot, hard) (match `lzsko7`):
-  - 34.3 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 28 shadopus terradon`.
-  - 20 hit(s) landed while you were drawn over 24 px away (largest 82 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
-- **2026-11-11 18:34**, shadopus against terradon (bot, hard) (match `uwjkl1`):
-  - 34.4 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 27 shadopus terradon`.
+- **2026-11-18 02:39**, mystowl against halcyra, coilemur (match `dwqsxr`):
+  - 11.4 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 27 mystowl halcyra`.
+  - 18 hit(s) landed while you were drawn over 24 px away (largest 60 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
+- **2026-11-18 02:39**, halcyra against mystowl, coilemur (match `dwqsxr`):
+  - 21.6 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 23 halcyra mystowl`.
+  - 16 hit(s) landed while you were drawn over 24 px away (largest 270 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
+- **2026-11-18 02:36**, pyranda against mossloth, astrabun (match `b2274j`):
+  - 17 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 25 pyranda mossloth`.
+  - 10 hit(s) landed while you were drawn over 24 px away (largest 65 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
+- **2026-11-18 02:36**, mossloth against astrabun, pyranda (match `b2274j`):
+  - 17.8 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 23 mossloth astrabun`.
+  - 51 hit(s) landed while you were drawn over 24 px away (largest 119 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
+- **2026-11-18 02:36**, astrabun against mossloth, pyranda (match `b2274j`):
+  - 9.3 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 26 astrabun mossloth`.
+  - 47 hit(s) landed while you were drawn over 24 px away (largest 197 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
+- **2026-11-18 02:32**, wombolder against mossloth, lumoth (match `r90zmf`):
+  - 18.9 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 30 wombolder mossloth`.
+  - 36 hit(s) landed while you were drawn over 24 px away (largest 124 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
+- **2026-11-18 02:32**, mossloth against wombolder, lumoth (match `r90zmf`):
+  - 20.3 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 23 mossloth wombolder`.
+  - 25 hit(s) landed while you were drawn over 24 px away (largest 36 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
+- **2026-11-18 02:32**, lumoth against mossloth, wombolder (match `r90zmf`):
+  - 11.1 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 24 lumoth mossloth`.
+  - 14 hit(s) landed while you were drawn over 24 px away (largest 43 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
+- **2026-11-18 02:29**, mossloth against wombolder, shadopus (match `ubs3bx`):
+  - 19.7 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 23 mossloth wombolder`.
+  - 31 hit(s) landed while you were drawn over 24 px away (largest 386 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
+- **2026-11-18 02:29**, shadopus against mossloth, wombolder (match `ubs3bx`):
+  - drawing slow: 58.8 fps, 5.9% stutter at low graphics. Reproduce with tests/visual/effect-budget.spec.ts; ?perf=1 shows it live.
+  - 22.2 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 24 shadopus mossloth`.
+  - 38 hit(s) landed while you were drawn over 24 px away (largest 52 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
+- **2026-11-18 02:29**, wombolder against mossloth, shadopus (match `ubs3bx`):
+  - 21.2 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 27 wombolder mossloth`.
+  - 51 hit(s) landed while you were drawn over 24 px away (largest 202 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
+- **2026-11-18 02:24**, pyranda against mossloth, voltkit (match `7ghcts`):
+  - 15.4 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 24 pyranda mossloth`.
   - 16 hit(s) landed while you were drawn over 24 px away (largest 45 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
-- **2026-11-11 18:33**, wombolder against shadopus (bot, hard) (match `660sb3`):
-  - 32.3 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 30 wombolder shadopus`.
-  - 22 hit(s) landed while you were drawn over 24 px away (largest 386 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
-- **2026-11-11 18:32**, astrabun against terradon (bot, hard) (match `avhi16`):
-  - 34.7 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 28 astrabun terradon`.
-  - 10 hit(s) landed while you were drawn over 24 px away (largest 44 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
-- **2026-11-11 18:31**, pangrove against astrabun (bot, hard) (match `q6x8b9`):
-  - 17.5 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 36 pangrove astrabun`.
-  - 20 hit(s) landed while you were drawn over 24 px away (largest 182 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
-- **2026-11-11 18:30**, pangrove against halcyra (bot, hard) (match `3m1nqg`):
-  - 8.4 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 31 pangrove halcyra`.
-  - 22 hit(s) landed while you were drawn over 24 px away (largest 211 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
-- **2026-11-11 18:28**, pangrove against cindrake (bot, hard) (match `pv0d9x`):
-  - drawing slow: 61.3 fps, 17.7% stutter at low graphics. Reproduce with tests/visual/effect-budget.spec.ts; ?perf=1 shows it live.
-  - 26.9 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 32 pangrove cindrake`.
-  - 33 hit(s) landed while you were drawn over 24 px away (largest 184 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
-- **2026-11-11 18:27**, pangrove against cindrake (bot, hard) (match `lgi8go`):
-  - 18 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 29 pangrove cindrake`.
-  - 50 hit(s) landed while you were drawn over 24 px away (largest 209 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
+- **2026-11-18 02:24**, voltkit against mossloth, pyranda (match `7ghcts`):
+  - 8.7 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 27 voltkit mossloth`.
+  - 38 hit(s) landed while you were drawn over 24 px away (largest 80 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
+- **2026-11-18 02:24**, mossloth against voltkit, pyranda (match `7ghcts`):
+  - 17.9 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 23 mossloth voltkit`.
+  - 47 hit(s) landed while you were drawn over 24 px away (largest 83 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
+- **2026-11-18 02:20**, mossloth against halcyra, pyranda (match `aehq1l`):
+  - 18.9 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 24 mossloth halcyra`.
+  - 39 hit(s) landed while you were drawn over 24 px away (largest 86 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
+- **2026-11-18 02:20**, pyranda against mossloth, halcyra (match `aehq1l`):
+  - 5.4 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 23 pyranda mossloth`.
+  - 9 hit(s) landed while you were drawn over 24 px away (largest 81 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
+- **2026-11-18 02:20**, halcyra against mossloth, pyranda (match `aehq1l`):
+  - 10 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 24 halcyra mossloth`.
+  - 36 hit(s) landed while you were drawn over 24 px away (largest 39 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
+- **2026-11-18 02:16**, pyranda against mossloth, pyranda (match `83v9fa`):
+  - 14.1 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 24 pyranda mossloth`.
+  - 12 hit(s) landed while you were drawn over 24 px away (largest 35 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
+- **2026-11-18 02:16**, mossloth against pyranda, pyranda (match `83v9fa`):
+  - 18 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 25 mossloth pyranda`.
+  - 45 hit(s) landed while you were drawn over 24 px away (largest 84 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
+- **2026-11-18 02:16**, pyranda against mossloth, pyranda (match `83v9fa`):
+  - 6.3 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 25 pyranda mossloth`.
+  - 22 hit(s) landed while you were drawn over 24 px away (largest 35 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
+- **2026-11-18 02:13**, mossloth against pyranda, pyranda (match `93bjir`):
+  - 19.5 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 25 mossloth pyranda`.
+  - 36 hit(s) landed while you were drawn over 24 px away (largest 208 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
+- **2026-11-18 02:13**, pyranda against mossloth, pyranda (match `93bjir`):
+  - drawing slow: 52.6 fps, 5.3% stutter at low graphics. Reproduce with tests/visual/effect-budget.spec.ts; ?perf=1 shows it live.
+  - 20.3 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 24 pyranda mossloth`.
+  - 11 hit(s) landed while you were drawn over 24 px away (largest 42 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
+- **2026-11-18 02:13**, pyranda against mossloth, pyranda (match `93bjir`):
+  - 13.1 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 28 pyranda mossloth`.
+  - 23 hit(s) landed while you were drawn over 24 px away (largest 59 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
+- **2026-11-18 02:10**, mossloth against wombolder, tidefin (match `k5x2go`):
+  - 18.7 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 24 mossloth wombolder`.
+  - 36 hit(s) landed while you were drawn over 24 px away (largest 126 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
+- **2026-11-18 02:10**, wombolder against mossloth, tidefin (match `k5x2go`):
+  - 10.1 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 28 wombolder mossloth`.
+  - 47 hit(s) landed while you were drawn over 24 px away (largest 155 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
+- **2026-11-18 02:10**, tidefin against mossloth, wombolder (match `k5x2go`):
+  - 10.1 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 23 tidefin mossloth`.
+  - 24 hit(s) landed while you were drawn over 24 px away (largest 46 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
+- **2026-11-18 02:05**, mystowl against halcyra, tidefin (match `lmdks1`):
+  - 15 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 24 mystowl halcyra`.
+  - 37 hit(s) landed while you were drawn over 24 px away (largest 51 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
+- **2026-11-18 02:05**, halcyra against mystowl, tidefin (match `lmdks1`):
+  - 17.3 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 24 halcyra mystowl`.
+  - 18 hit(s) landed while you were drawn over 24 px away (largest 185 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
+- **2026-11-18 02:05**, tidefin against mystowl, halcyra (match `lmdks1`):
+  - 9.8 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 30 tidefin mystowl`.
+  - 27 hit(s) landed while you were drawn over 24 px away (largest 52 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
+- **2026-11-18 02:02**, mossloth against shadopus, cindrake (match `r10v1o`):
+  - 22.2 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 26 mossloth shadopus`.
+  - 20 hit(s) landed while you were drawn over 24 px away (largest 624 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
+- **2026-11-18 02:02**, cindrake against shadopus, mossloth (match `r10v1o`):
+  - 18.8 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 23 cindrake shadopus`.
+  - 35 hit(s) landed while you were drawn over 24 px away (largest 420 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
+- **2026-11-18 02:02**, shadopus against cindrake, mossloth (match `r10v1o`):
+  - 12.4 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 26 shadopus cindrake`.
+  - 69 hit(s) landed while you were drawn over 24 px away (largest 599 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
+- **2026-11-18 01:47**, cindrake against shadopus, astrabun (match `iil2c6`):
+  - 28.9 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 28 cindrake shadopus`.
+  - 25 hit(s) landed while you were drawn over 24 px away (largest 334 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
+- **2026-11-18 01:47**, shadopus against astrabun, cindrake (match `iil2c6`):
+  - 29.8 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 26 shadopus astrabun`.
+  - 92 hit(s) landed while you were drawn over 24 px away (largest 133 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
+- **2026-11-18 01:47**, astrabun against shadopus, cindrake (match `iil2c6`):
+  - 14.3 unexplained jumps a minute: the phone's prediction disagrees with the server for no reason. Reproduce with `npx tsx scripts/perf/correction-sim.ts 120 24 astrabun shadopus`.
+  - 69 hit(s) landed while you were drawn over 24 px away (largest 331 px): "I dodged but still got hit". See docs/network-performance.md, sections 9 and 11.
 
 ## Latest matches
 
 | Time (UTC) | Match | Mode | You | Against | Ping (slowest 5%) | Lead | Late updates | Jumps | Hits off-screen | Skill confirm | FPS | Stutter | Graphics | Device | Build |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 2026-11-17 22:23 | `iitdv9` | duel vs bot | lumoth | wombolder (bot, normal) | 53 ms 🟢 (84) | 196 ms | 0.6% | 60.9/min (max 205 px), ⚠️ 23.3 unexplained | ⚠️ 3 (max 39 px) | 106 ms | 59.2 | 0.0% | low (auto) | android, 9 cores, 8 GB, 60 Hz | 10a12c9 |
-| 2026-11-17 22:14 | `4fd5ze` | duel vs bot | voltkit | sunbara (bot, hard) | 77 ms 🟢 (87) | 216 ms | 1.5% | 105.9/min (max 65 px), ⚠️ 73 unexplained | ⚠️ 7 (max 56 px) | 115 ms | 30.3 | 21.4% | low (auto) | ios app, 4 cores, 30 Hz | 10a12c9 |
-| 2026-11-17 22:08 | `h1b0qi` | duel vs bot | voltkit | astrabun (bot, easy) | 91 ms 🟡 (302) | 237 ms | 0.7% | 67.2/min (max 150 px), ⚠️ 43.2 unexplained | ⚠️ 6 (max 30 px) | 145 ms | 30.3 | 20.9% | low (auto) | ios app, 4 cores, 30 Hz | 10a12c9 |
-| 2026-11-17 22:04 | `y1shbz` | duel vs bot | tidefin | auralynx (bot, easy) | 48 ms 🟢 (81) | 204 ms | 0.5% | 74.2/min (max 202 px), ⚠️ 44.3 unexplained | ⚠️ 11 (max 42 px) | 135 ms | 58.8 | 0.0% | high (auto) | ios app, 4 cores, 59 Hz | 10a12c9 |
-| 2026-11-17 21:58 | `4u0w9y` | duel vs bot | tidefin | glacelle (bot, easy) | 49 ms 🟢 (63) | 183 ms | 0.2% | 68.4/min (max 141 px), ⚠️ 41.2 unexplained | ⚠️ 8 (max 48 px) | 91 ms | 58.8 | 0.0% | low (low) | ios app, 8 cores, 59 Hz | 10a12c9 |
-| 2026-11-17 20:37 | `pql80z` | duel vs bot | cindrake | duskveil (bot, hard) | 86 ms 🟡 (124) | 211 ms | 3.5% | 86.6/min (max 85 px), ⚠️ 31.7 unexplained | ⚠️ 15 (max 107 px) | 112 ms | 47.6 | 6.4% | low (low) | ios app, 4 cores, 34 Hz | 0bcbbf0 |
-| 2026-11-17 20:36 | `z3o987` | duel vs bot | cindrake | duskveil (bot, hard) | 93 ms 🟡 (184) | 233 ms | 4.0% | 75.5/min (max 355 px), ⚠️ 48.7 unexplained | ⚠️ 29 (max 382 px) | 125 ms | 47.6 | 5.9% | low (low) | ios app, 4 cores, 38 Hz | 0bcbbf0 |
-| 2026-11-17 12:48 | `620xm0` | raid | auralynx | grumblecrag (raid boss) | 62 ms 🟢 (100) | 178 ms | 0.0% | 13.1/min (max 14 px), ⚠️ 9 unexplained | 0 | 86 ms | 58.8 | 0.1% | high (auto) | ios app, 4 cores, 59 Hz | 71434cf |
-| 2026-11-17 11:42 | `slw136` | duel vs bot | sunbara | shadopus (bot, easy) | 64 ms 🟢 (78) | 202 ms | 0.4% | 81/min (max 65 px), ⚠️ 38.9 unexplained | ⚠️ 12 (max 36 px) | 81 ms | 58.8 | 0.0% | high (auto) | ios app, 4 cores, 59 Hz | e326a74 |
-| 2026-11-17 07:12 | `cpik20` | raid | coilemur | grumblecrag (raid boss) | 64 ms 🟢 (74) | 238 ms | 0.1% | 87/min (max 260 px), ⚠️ 34.6 unexplained | ⚠️ 142 (max 185 px) | 135 ms | 58.8 | 0.2% | high (auto) | ios app, 4 cores, 59 Hz | ce7d7d9 |
-| 2026-11-16 03:01 | `6590bp` | duel vs bot | cindrake | wombolder (bot, hard) | 67 ms 🟢 (97) | 192 ms | 1.3% | 65.8/min (max 183 px), ⚠️ 27.2 unexplained | ⚠️ 16 (max 36 px) | 87 ms | 59.9 | 0.9% | low (low) | android, 10 cores, 8 GB, 60 Hz | 090e60d |
-| 2026-11-16 02:59 | `gpnefa` | duel vs bot | cindrake | sunbara (bot, hard) | 64 ms 🟢 (73) | 202 ms | 0.3% | 41.9/min (max 107 px), ⚠️ 19.9 unexplained | ⚠️ 44 (max 80 px) | 89 ms | 59.9 | 3.1% | low (low) | android, 10 cores, 8 GB, 60 Hz | 090e60d |
-| 2026-11-16 02:56 | `2upwlr` | duel vs bot | cindrake | sunbara (bot, hard) | 66 ms 🟢 (73) | 199 ms | 0.4% | 50.9/min (max 90 px), ⚠️ 13 unexplained | ⚠️ 47 (max 103 px) | 89 ms | 59.9 | 0.3% | low (low) | android, 10 cores, 8 GB, 60 Hz | 090e60d |
-| 2026-11-16 02:54 | `ic5o8s` | duel vs bot | cindrake | shadopus (bot, hard) | 66 ms 🟢 (71) | 204 ms | 1.3% | 107.9/min (max 376 px), ⚠️ 56.7 unexplained | ⚠️ 23 (max 374 px) | 108 ms | 59.9 | 1.9% | low (low) | android, 10 cores, 8 GB, 60 Hz | 090e60d |
-| 2026-11-16 02:53 | `vanv7r` | duel vs bot | wombolder | mystowl (bot, hard) | 63 ms 🟢 (76) | 199 ms | 0.7% | 38.5/min (max 239 px), ⚠️ 11.8 unexplained | ⚠️ 47 (max 131 px) | 88 ms | 59.9 | 0.5% | low (low) | android, 10 cores, 8 GB, 60 Hz | 090e60d |
-| 2026-11-16 02:48 | `4a30yu` | duel vs bot | sunbara | pyranda (bot, hard) | 61 ms 🟢 (77) | 194 ms | 0.8% | 36.9/min (max 70 px), ⚠️ 15.8 unexplained | ⚠️ 50 (max 99 px) | 89 ms | 59.9 | 0.9% | low (low) | android, 10 cores, 8 GB, 60 Hz | cb102ec |
-| 2026-11-16 02:45 | `zpn3dn` | duel vs bot | sunbara | auralynx (bot, hard) | 68 ms 🟢 (88) | 206 ms | 0.6% | 43.8/min (max 164 px), ⚠️ 16.3 unexplained | ⚠️ 20 (max 39 px) | 89 ms | 59.9 | 0.7% | low (low) | android, 10 cores, 8 GB, 60 Hz | cb102ec |
-| 2026-11-16 02:44 | `bknvd3` | duel vs bot | duskveil | wombolder (bot, hard) | 67 ms 🟢 (74) | 199 ms | 0.2% | 78.8/min (max 161 px), ⚠️ 31.8 unexplained | ⚠️ 23 (max 53 px) | 91 ms | 59.9 | 0.5% | low (low) | android, 10 cores, 8 GB, 60 Hz | cb102ec |
-| 2026-11-16 02:43 | `ybb65n` | duel vs bot | duskveil | terradon (bot, hard) | 72 ms 🟢 (89) | 201 ms | 0.9% | 33.3/min (max 173 px), ⚠️ 9.4 unexplained | ⚠️ 16 (max 65 px) | 77 ms | 59.9 | 0.5% | low (low) | android, 10 cores, 8 GB, 60 Hz | cb102ec |
-| 2026-11-16 02:41 | `cr4978` | duel vs bot | glacelle | duskveil (bot, hard) | 68 ms 🟢 (98) | 205 ms | 1.8% | 40.8/min (max 70 px), ⚠️ 15.7 unexplained | ⚠️ 67 (max 114 px) | 97 ms | 59.9 | 0.5% | low (low) | android, 10 cores, 8 GB, 60 Hz | cb102ec |
-| 2026-11-16 02:37 | `z1xmif` | duel vs bot | pyranda | terradon (bot, hard) | 67 ms 🟢 (80) | 205 ms | 1.7% | 33.1/min (max 241 px), ⚠️ 15.4 unexplained | ⚠️ 15 (max 95 px) | 93 ms | 59.9 | 0.9% | low (low) | android, 10 cores, 8 GB, 60 Hz | cb102ec |
-| 2026-11-14 02:57 | `tbu4k1` | duel vs bot | astrabun | pangrove (bot, hard) | 70 ms 🟢 (88) | 224 ms | 0.4% | 76.4/min (max 150 px), ⚠️ 35.4 unexplained | ⚠️ 15 (max 49 px) | 107 ms | 58.8 | 0.0% | high (auto) | ios app, 4 cores | fc22d49 |
-| 2026-11-14 02:48 | `v003a7` | duel vs bot | voltkit | lumoth (bot, easy) | 56 ms 🟢 (63) | 205 ms | 0.0% | 46.8/min (max 78 px), ⚠️ 14.5 unexplained | ⚠️ 25 (max 97 px) | 95 ms | 163.9 | 0.1% | high (auto) | windows app, 28 cores, 32 GB | fc22d49 |
-| 2026-11-14 01:09 | `1ic0k3` | duel vs bot | pyranda | terradon (bot, hard) | 58 ms 🟢 (62) | 196 ms | 0.0% | 31.2/min (max 168 px), ⚠️ 17 unexplained | ⚠️ 8 (max 52 px) | 104 ms | 58.8 | 0.0% | high (auto) | ios app, 4 cores | b025a37 |
-| 2026-11-14 01:08 | `gg8fmg` | duel vs bot | pyranda | terradon (bot, hard) | 59 ms 🟢 (67) | 196 ms | 0.0% | 40.4/min (max 221 px), ⚠️ 15.2 unexplained | ⚠️ 15 (max 89 px) | 93 ms | 58.8 | 0.0% | high (auto) | ios app, 4 cores | b025a37 |
-| 2026-11-13 23:09 | `5l9yad` | duel vs bot | pangrove | shadopus (bot, hard) | 80 ms 🟡 (91) | 241 ms | 2.4% | 171.4/min (max 313 px), ⚠️ 35.6 unexplained | ⚠️ 37 (max 387 px) | 132 ms | 103.1 | 0.7% | low (low) | android, 10 cores, 8 GB | b025a37 |
-| 2026-11-13 03:58 | `p6sg8p` | raid | pyranda | gloomshade (raid boss) | 71 ms 🟢 (99) | 241 ms | 0.3% | 70.6/min (max 176 px), ⚠️ 58.3 unexplained | ⚠️ 34 (max 27 px) | 140 ms | 58.8 | 0.1% | high (high) | ios app, 4 cores | ea78f6e |
-| 2026-11-13 02:32 | `yjzr6b` | duel vs bot | glacelle | lumoth (bot, hard) | 80 ms 🟡 (118) | 250 ms | 3.0% | 118.1/min (max 73 px), ⚠️ 63.2 unexplained | ⚠️ 41 (max 120 px) | 136 ms | 66.7 | 2.7% | low (low) | android, 10 cores, 8 GB | ea78f6e |
-| 2026-11-13 02:28 | `clf6xe` | duel vs bot | lumoth | glacelle (bot, hard) | 87 ms 🟡 (99) | 254 ms | 2.4% | 136.1/min (max 109 px), ⚠️ 73.9 unexplained | ⚠️ 28 (max 103 px) | 148 ms | 65.4 | 4.1% | low (low) | android, 10 cores, 8 GB | ea78f6e |
-| 2026-11-13 02:27 | `c2h9sf` | duel vs bot | tidefin | terradon (bot, hard) | 74 ms 🟢 (90) | 252 ms | 4.0% | 82.5/min (max 232 px), ⚠️ 47.6 unexplained | ⚠️ 28 (max 164 px) | 137 ms | 63.7 | 4.1% | low (low) | android, 10 cores, 8 GB | ea78f6e |
-| 2026-11-13 02:22 | `lkiw92` | duel vs bot | mossloth | lumoth (bot, hard) | 64 ms 🟢 (81) | 238 ms | 3.4% | 142.1/min (max 457 px), ⚠️ 67.7 unexplained | ⚠️ 29 (max 122 px) | 113 ms | 67.1 | 11.6% | low (low) | android, 10 cores, 8 GB | ea78f6e |
-| 2026-11-13 02:21 | `xztudp` | duel vs bot | mossloth | shadopus (bot, hard) | 65 ms 🟢 (112) | 237 ms | 2.6% | 121.4/min (max 390 px), ⚠️ 64.4 unexplained | ⚠️ 13 (max 402 px) | 113 ms | 91.7 | 2.7% | low (low) | android, 10 cores, 8 GB | ea78f6e |
-| 2026-11-13 02:19 | `iaak87` | duel vs bot | mossloth | pangrove (bot, hard) | 76 ms 🟢 (110) | 234 ms | 3.1% | 90/min (max 201 px), ⚠️ 45 unexplained | ⚠️ 25 (max 167 px) | 122 ms | 96.2 | 1.1% | low (low) | android, 10 cores, 8 GB | ea78f6e |
-| 2026-11-13 02:18 | `2sc0nx` | duel vs bot | mossloth | terradon (bot, hard) | 79 ms 🟢 (132) | 241 ms | 10.1% | 47.2/min (max 326 px), ⚠️ 28.1 unexplained | ⚠️ 3 (max 33 px) | 122 ms | 62.9 | 4.2% | low (low) | android, 10 cores, 8 GB | ea78f6e |
-| 2026-11-13 02:17 | `h06l5b` | duel vs bot | mossloth | auralynx (bot, hard) | 72 ms 🟢 (93) | 247 ms | 5.9% | 107.9/min (max 198 px), ⚠️ 59 unexplained | ⚠️ 18 (max 133 px) | 146 ms | 76.3 | 2.5% | low (low) | android, 10 cores, 8 GB | ea78f6e |
-| 2026-11-13 02:15 | `fi88xj` | duel vs bot | mossloth | tidefin (bot, hard) | 64 ms 🟢 (77) | 237 ms | 1.5% | 125.2/min (max 559 px), ⚠️ 68.8 unexplained | ⚠️ 83 (max 236 px) | 122 ms | 97.1 | 1.3% | low (low) | android, 10 cores, 8 GB | ea78f6e |
-| 2026-11-13 02:12 | `kvo4b8` | duel vs bot | pangrove | glacelle (bot, hard) | 60 ms 🟢 (71) | 240 ms | 1.3% | 141/min (max 238 px), ⚠️ 34.9 unexplained | ⚠️ 38 (max 181 px) | 116 ms | 107.5 | 3.2% | low (low) | android, 10 cores, 8 GB | ea78f6e |
-| 2026-11-12 08:09 | `02sky6` | raid | pyranda | gloomshade (raid boss) | 59 ms 🟢 (61) | 195 ms | 0.0% | 15.6/min (max 16 px), ⚠️ 13.3 unexplained | ⚠️ 1 (max 26 px) | 91 ms | 58.8 | 0.0% | high (high) | ios app, 4 cores | eb499fe |
-| 2026-11-12 08:07 | `nxdi6k` | raid | pyranda | gloomshade (raid boss) | 58 ms 🟢 (61) | 190 ms | 0.0% | 13/min (max 8 px), ⚠️ 10.5 unexplained | ⚠️ 1 (max 27 px) | 90 ms | 58.8 | 0.0% | high (high) | ios app, 4 cores | eb499fe |
-| 2026-11-12 08:03 | `z1e46k` | duel vs bot | tidefin | duskveil (bot, hard) | 78 ms 🟢 (88) | 208 ms | 0.0% | 50.1/min (max 69 px), ⚠️ 11.2 unexplained | ⚠️ 83 (max 99 px) | 138 ms | 58.8 | 0.0% | high (high) | ios app, 4 cores | eb499fe |
-| 2026-11-11 18:43 | `5g05f6` | duel vs bot | lumoth | pyranda (bot, hard) | 68 ms 🟢 (277) | 218 ms | 2.3% | 76.8/min (max 187 px), ⚠️ 27.9 unexplained | ⚠️ 10 (max 172 px) | 114 ms | 61 | 6.1% | low (low) | android, 10 cores, 8 GB | 7c17f1d |
-| 2026-11-11 18:39 | `6n3lkw` | duel vs bot | tidefin | pangrove (bot, hard) | 64 ms 🟢 (91) | 218 ms | 1.7% | 66.3/min (max 150 px), ⚠️ 32.1 unexplained | ⚠️ 46 (max 85 px) | 108 ms | 61 | 2.0% | low (low) | android, 10 cores, 8 GB | 7c17f1d |
-| 2026-11-11 18:36 | `lzsko7` | duel vs bot | shadopus | terradon (bot, hard) | 56 ms 🟢 (66) | 222 ms | 1.5% | 62.9/min (max 232 px), ⚠️ 34.3 unexplained | ⚠️ 20 (max 82 px) | 101 ms | 77.5 | 1.6% | low (low) | android, 10 cores, 8 GB | 7c17f1d |
-| 2026-11-11 18:34 | `uwjkl1` | duel vs bot | shadopus | terradon (bot, hard) | 54 ms 🟢 (65) | 215 ms | 0.4% | 60.3/min (max 235 px), ⚠️ 34.4 unexplained | ⚠️ 16 (max 45 px) | 102 ms | 90.1 | 1.6% | low (low) | android, 10 cores, 8 GB | 7c17f1d |
-| 2026-11-11 18:33 | `660sb3` | duel vs bot | wombolder | shadopus (bot, hard) | 60 ms 🟢 (102) | 224 ms | 4.6% | 98.9/min (max 380 px), ⚠️ 32.3 unexplained | ⚠️ 22 (max 386 px) | 123 ms | 64.9 | 1.8% | low (low) | android, 10 cores, 8 GB | 7c17f1d |
-| 2026-11-11 18:32 | `avhi16` | duel vs bot | astrabun | terradon (bot, hard) | 55 ms 🟢 (73) | 220 ms | 2.0% | 68.1/min (max 283 px), ⚠️ 34.7 unexplained | ⚠️ 10 (max 44 px) | 123 ms | 82.6 | 4.1% | low (low) | android, 10 cores, 8 GB | 7c17f1d |
-| 2026-11-11 18:31 | `q6x8b9` | duel vs bot | pangrove | astrabun (bot, hard) | 71 ms 🟢 (83) | 218 ms | 2.1% | 93.6/min (max 323 px), ⚠️ 17.5 unexplained | ⚠️ 20 (max 182 px) | 98 ms | 71.4 | 3.6% | low (low) | android, 10 cores, 8 GB | 7c17f1d |
-| 2026-11-11 18:30 | `3m1nqg` | duel vs bot | pangrove | halcyra (bot, hard) | 61 ms 🟢 (87) | 217 ms | 1.8% | 97/min (max 203 px), ⚠️ 8.4 unexplained | ⚠️ 22 (max 211 px) | 89 ms | 69.4 | 1.6% | low (low) | android, 10 cores, 8 GB | 7c17f1d |
-| 2026-11-11 18:28 | `pv0d9x` | duel vs bot | pangrove | cindrake (bot, hard) | 63 ms 🟢 (92) | 223 ms | 4.8% | 107.8/min (max 173 px), ⚠️ 26.9 unexplained | ⚠️ 33 (max 184 px) | 94 ms | 61.3 | 17.7% | low (low) | android, 10 cores, 8 GB | 7c17f1d |
-| 2026-11-11 18:27 | `lgi8go` | duel vs bot | pangrove | cindrake (bot, hard) | 57 ms 🟢 (69) | 215 ms | 1.6% | 91.2/min (max 226 px), ⚠️ 18 unexplained | ⚠️ 50 (max 209 px) | 98 ms | 68 | 3.9% | low (low) | android, 10 cores, 8 GB | 7c17f1d |
+| 2026-11-18 14:07 | `464s0w` | duel vs bot | wombolder | voltkit (bot, easy) | 61 ms 🟢 (67) | 201 ms | 0.0% | 40.1/min (max 186 px), ⚠️ 5.7 unexplained | ⚠️ 12 (max 106 px) | 106 ms | 58.8 | 0.0% | high (auto) | ios app, 4 cores, 59 Hz | 931f84f |
+| 2026-11-18 02:55 | `i5vb16` | duel | coilemur | pyranda | 44 ms 🟢 (45) | 178 ms | 0.4% | 56.4/min (max 90 px), ⚠️ 13.1 unexplained | ⚠️ 31 (max 56 px) | 120 ms | 59.9 | 0.6% | high (auto) | android, 8 cores, 8 GB, 120 Hz | a65a754 |
+| 2026-11-18 02:55 | `i5vb16` | duel | pyranda | coilemur | 45 ms 🟢 (47) | 168 ms | 0.0% | 40.7/min (max 248 px), ⚠️ 17.1 unexplained | ⚠️ 8 (max 45 px) | 61 ms | 58.8 | 0.1% | low (auto) | ios app, 4 cores, 59 Hz | a65a754 |
+| 2026-11-18 02:54 | `poelrm` | duel | pyranda | coilemur | 46 ms 🟢 (80) | 172 ms | 1.5% | 49.1/min (max 70 px), ⚠️ 20.9 unexplained | ⚠️ 15 (max 95 px) | 67 ms | 58.8 | 0.1% | low (auto) | ios app, 4 cores, 59 Hz | a65a754 |
+| 2026-11-18 02:54 | `poelrm` | duel | coilemur | pyranda | 47 ms 🟢 (61) | 177 ms | 1.1% | 47.1/min (max 130 px), ⚠️ 13.6 unexplained | ⚠️ 37 (max 99 px) | 75 ms | 59.9 | 0.8% | high (auto) | android, 8 cores, 8 GB, 120 Hz | a65a754 |
+| 2026-11-18 02:50 | `gbzdq7` | ffa | sunbara | coilemur, mystowl | 57 ms 🟢 (113) | 168 ms | 1.3% | 40.5/min (max 260 px), ⚠️ 12.2 unexplained | ⚠️ 30 (max 73 px) | 78 ms | 58.8 | 0.2% | high (auto) | ios app, 4 cores, 59 Hz | a65a754 |
+| 2026-11-18 02:50 | `gbzdq7` | ffa | mystowl | coilemur, sunbara | 48 ms 🟢 (72) | 168 ms | 0.5% | 33.4/min (max 315 px), ⚠️ 13.7 unexplained | ⚠️ 21 (max 326 px) | 71 ms | 58.8 | 0.7% | low (auto) | ios app, 4 cores, 56 Hz | a65a754 |
+| 2026-11-18 02:50 | `gbzdq7` | ffa | coilemur | sunbara, mystowl | 45 ms 🟢 (52) | 171 ms | 0.9% | 43/min (max 260 px), ⚠️ 14.5 unexplained | ⚠️ 56 (max 117 px) | 86 ms | 59.9 | 0.7% | high (auto) | android, 8 cores, 8 GB, 120 Hz | a65a754 |
+| 2026-11-18 02:46 | `ffmh8v` | ffa | mystowl | coilemur, sunbara | 47 ms 🟢 (68) | 170 ms | 1.1% | 46.4/min (max 600 px), ⚠️ 18.1 unexplained | ⚠️ 33 (max 97 px) | 66 ms | 58.8 | 0.4% | low (auto) | ios app, 4 cores, 48 Hz | a65a754 |
+| 2026-11-18 02:46 | `ffmh8v` | ffa | sunbara | coilemur, mystowl | 53 ms 🟢 (79) | 167 ms | 1.1% | 40.4/min (max 116 px), ⚠️ 12.5 unexplained | ⚠️ 40 (max 123 px) | 80 ms | 58.8 | 0.1% | high (auto) | ios app, 4 cores, 59 Hz | a65a754 |
+| 2026-11-18 02:46 | `ffmh8v` | ffa | coilemur | sunbara, mystowl | 44 ms 🟢 (49) | 185 ms | 1.5% | 59.2/min (max 116 px), ⚠️ 18.9 unexplained | ⚠️ 60 (max 105 px) | 92 ms | 59.9 | 0.9% | medium (auto) | android, 8 cores, 8 GB, 120 Hz | a65a754 |
+| 2026-11-18 02:42 | `bdsxpw` | ffa | halcyra | mystowl, coilemur | 45 ms 🟢 (49) | 165 ms | 0.9% | 35.7/min (max 452 px), ⚠️ 11.6 unexplained | ⚠️ 32 (max 285 px) | 72 ms | 59.9 | 0.5% | medium (auto) | android, 8 cores, 8 GB, 60 Hz | a65a754 |
+| 2026-11-18 02:42 | `bdsxpw` | ffa | mystowl | halcyra, coilemur | 54 ms 🟢 (87) | 176 ms | 1.6% | 43.4/min (max 335 px), ⚠️ 17.3 unexplained | ⚠️ 18 (max 40 px) | 75 ms | 58.8 | 0.1% | high (auto) | ios app, 4 cores, 59 Hz | a65a754 |
+| 2026-11-18 02:42 | `bdsxpw` | ffa | coilemur | halcyra, mystowl | 48 ms 🟢 (85) | 172 ms | 1.2% | 55.4/min (max 160 px), ⚠️ 14.5 unexplained | ⚠️ 43 (max 77 px) | 63 ms | 58.8 | 0.8% | low (auto) | ios app, 4 cores, 59 Hz | a65a754 |
+| 2026-11-18 02:39 | `dwqsxr` | ffa | coilemur | halcyra, mystowl | 47 ms 🟢 (78) | 172 ms | 0.9% | 52.1/min (max 160 px), ⚠️ 20.4 unexplained | ⚠️ 28 (max 103 px) | 73 ms | 58.8 | 1.5% | low (auto) | ios app, 4 cores, 45 Hz | a65a754 |
+| 2026-11-18 02:39 | `dwqsxr` | ffa | mystowl | halcyra, coilemur | 54 ms 🟢 (87) | 171 ms | 0.8% | 29.4/min (max 160 px), ⚠️ 11.4 unexplained | ⚠️ 18 (max 60 px) | 78 ms | 58.8 | 0.1% | high (auto) | ios app, 4 cores, 59 Hz | a65a754 |
+| 2026-11-18 02:39 | `dwqsxr` | ffa | halcyra | mystowl, coilemur | 46 ms 🟢 (75) | 178 ms | 1.5% | 40.8/min (max 451 px), ⚠️ 21.6 unexplained | ⚠️ 16 (max 270 px) | 62 ms | 59.9 | 0.9% | medium (auto) | android, 8 cores, 8 GB, 120 Hz | a65a754 |
+| 2026-11-18 02:36 | `b2274j` | ffa | pyranda | mossloth, astrabun | 50 ms 🟢 (63) | 172 ms | 1.4% | 41.1/min (max 451 px), ⚠️ 17 unexplained | ⚠️ 10 (max 65 px) | 75 ms | 55.6 | 2.1% | low (auto) | ios app, 4 cores, 48 Hz | a65a754 |
+| 2026-11-18 02:36 | `b2274j` | ffa | mossloth | astrabun, pyranda | 46 ms 🟢 (73) | 181 ms | 1.1% | 43.2/min (max 447 px), ⚠️ 17.8 unexplained | ⚠️ 51 (max 119 px) | 81 ms | 59.9 | 0.9% | medium (auto) | android, 8 cores, 8 GB, 60 Hz | a65a754 |
+| 2026-11-18 02:36 | `b2274j` | ffa | astrabun | mossloth, pyranda | 52 ms 🟢 (79) | 163 ms | 1.0% | 44.1/min (max 295 px), ⚠️ 9.3 unexplained | ⚠️ 47 (max 197 px) | 104 ms | 58.8 | 0.2% | high (auto) | ios app, 4 cores, 59 Hz | a65a754 |
+| 2026-11-18 02:32 | `r90zmf` | ffa | wombolder | mossloth, lumoth | 60 ms 🟢 (89) | 176 ms | 2.1% | 60/min (max 180 px), ⚠️ 18.9 unexplained | ⚠️ 36 (max 124 px) | 76 ms | 58.8 | 0.1% | high (auto) | ios app, 4 cores, 59 Hz | a65a754 |
+| 2026-11-18 02:32 | `r90zmf` | ffa | mossloth | wombolder, lumoth | 45 ms 🟢 (47) | 181 ms | 0.6% | 51.8/min (max 460 px), ⚠️ 20.3 unexplained | ⚠️ 25 (max 36 px) | 80 ms | 59.9 | 1.1% | medium (auto) | android, 8 cores, 8 GB, 119 Hz | a65a754 |
+| 2026-11-18 02:32 | `r90zmf` | ffa | lumoth | mossloth, wombolder | 48 ms 🟢 (53) | 164 ms | 0.0% | 34.9/min (max 479 px), ⚠️ 11.1 unexplained | ⚠️ 14 (max 43 px) | 62 ms | 58.8 | 0.3% | low (auto) | ios app, 4 cores, 59 Hz | a65a754 |
+| 2026-11-18 02:29 | `ubs3bx` | ffa | mossloth | wombolder, shadopus | 45 ms 🟢 (53) | 174 ms | 0.3% | 42.2/min (max 427 px), ⚠️ 19.7 unexplained | ⚠️ 31 (max 386 px) | 74 ms | 59.9 | 0.8% | medium (auto) | android, 8 cores, 8 GB, 60 Hz | a65a754 |
+| 2026-11-18 02:29 | `ubs3bx` | ffa | shadopus | mossloth, wombolder | 48 ms 🟢 (72) | 173 ms | 1.1% | 57.1/min (max 445 px), ⚠️ 22.2 unexplained | ⚠️ 38 (max 52 px) | 71 ms | 58.8 | 5.9% | low (auto) | ios app, 4 cores, 40 Hz | a65a754 |
+| 2026-11-18 02:29 | `ubs3bx` | ffa | wombolder | mossloth, shadopus | 54 ms 🟢 (101) | 178 ms | 2.0% | 65.2/min (max 426 px), ⚠️ 21.2 unexplained | ⚠️ 51 (max 202 px) | 79 ms | 58.8 | 0.0% | high (auto) | ios app, 4 cores, 59 Hz | a65a754 |
+| 2026-11-18 02:24 | `7ghcts` | ffa | pyranda | mossloth, voltkit | 48 ms 🟢 (55) | 171 ms | 1.2% | 42.1/min (max 602 px), ⚠️ 15.4 unexplained | ⚠️ 16 (max 45 px) | 65 ms | 58.8 | 0.4% | low (auto) | ios app, 4 cores, 43 Hz | a65a754 |
+| 2026-11-18 02:24 | `7ghcts` | ffa | voltkit | mossloth, pyranda | 53 ms 🟢 (65) | 166 ms | 0.8% | 37.1/min (max 437 px), ⚠️ 8.7 unexplained | ⚠️ 38 (max 80 px) | 86 ms | 58.8 | 0.1% | high (auto) | ios app, 4 cores, 59 Hz | a65a754 |
+| 2026-11-18 02:24 | `7ghcts` | ffa | mossloth | voltkit, pyranda | 45 ms 🟢 (57) | 182 ms | 0.4% | 48.7/min (max 591 px), ⚠️ 17.9 unexplained | ⚠️ 47 (max 83 px) | 77 ms | 59.9 | 0.8% | medium (auto) | android, 8 cores, 8 GB, 120 Hz | a65a754 |
+| 2026-11-18 02:20 | `aehq1l` | ffa | mossloth | halcyra, pyranda | 48 ms 🟢 (67) | 182 ms | 1.3% | 45.6/min (max 472 px), ⚠️ 18.9 unexplained | ⚠️ 39 (max 86 px) | 77 ms | 59.9 | 1.1% | medium (auto) | android, 8 cores, 8 GB, 120 Hz | ebd7a37 |
+| 2026-11-18 02:20 | `aehq1l` | ffa | pyranda | mossloth, halcyra | 45 ms 🟢 (49) | 146 ms | 0.7% | 27/min (max 492 px), ⚠️ 5.4 unexplained | ⚠️ 9 (max 81 px) | 72 ms | 58.8 | 0.6% | low (auto) | ios app, 4 cores, 59 Hz | ebd7a37 |
+| 2026-11-18 02:20 | `aehq1l` | ffa | halcyra | mossloth, pyranda | 48 ms 🟢 (77) | 172 ms | 0.4% | 40.6/min (max 422 px), ⚠️ 10 unexplained | ⚠️ 36 (max 39 px) | 74 ms | 58.8 | 0.0% | high (auto) | ios app, 4 cores, 59 Hz | ebd7a37 |
+| 2026-11-18 02:16 | `83v9fa` | ffa | pyranda | mossloth, pyranda | 47 ms 🟢 (55) | 161 ms | 1.2% | 37.4/min (max 477 px), ⚠️ 14.1 unexplained | ⚠️ 12 (max 35 px) | 72 ms | 58.8 | 1.6% | low (auto) | ios app, 4 cores, 48 Hz | ebd7a37 |
+| 2026-11-18 02:16 | `83v9fa` | ffa | mossloth | pyranda, pyranda | 49 ms 🟢 (64) | 184 ms | 1.3% | 39.4/min (max 473 px), ⚠️ 18 unexplained | ⚠️ 45 (max 84 px) | 76 ms | 59.9 | 0.9% | medium (auto) | android, 8 cores, 8 GB, 120 Hz | ebd7a37 |
+| 2026-11-18 02:16 | `83v9fa` | ffa | pyranda | mossloth, pyranda | 49 ms 🟢 (59) | 157 ms | 0.6% | 28.7/min (max 451 px), ⚠️ 6.3 unexplained | ⚠️ 22 (max 35 px) | 83 ms | 58.8 | 0.0% | high (auto) | ios app, 4 cores, 59 Hz | ebd7a37 |
+| 2026-11-18 02:13 | `93bjir` | ffa | mossloth | pyranda, pyranda | 50 ms 🟢 (71) | 186 ms | 1.1% | 36/min (max 397 px), ⚠️ 19.5 unexplained | ⚠️ 36 (max 208 px) | 88 ms | 59.9 | 1.0% | medium (auto) | android, 8 cores, 8 GB, 120 Hz | ebd7a37 |
+| 2026-11-18 02:13 | `93bjir` | ffa | pyranda | mossloth, pyranda | 47 ms 🟢 (81) | 172 ms | 0.6% | 45.7/min (max 417 px), ⚠️ 20.3 unexplained | ⚠️ 11 (max 42 px) | 67 ms | 52.6 | 5.3% | low (auto) | ios app, 4 cores, 40 Hz | ebd7a37 |
+| 2026-11-18 02:13 | `93bjir` | ffa | pyranda | mossloth, pyranda | 55 ms 🟢 (81) | 167 ms | 1.9% | 37.7/min (max 260 px), ⚠️ 13.1 unexplained | ⚠️ 23 (max 59 px) | 120 ms | 58.8 | 0.0% | high (auto) | ios app, 4 cores, 59 Hz | ebd7a37 |
+| 2026-11-18 02:10 | `k5x2go` | ffa | mossloth | wombolder, tidefin | 47 ms 🟢 (74) | 184 ms | 0.9% | 48.6/min (max 496 px), ⚠️ 18.7 unexplained | ⚠️ 36 (max 126 px) | 78 ms | 59.9 | 0.9% | medium (auto) | android, 8 cores, 8 GB, 120 Hz | ebd7a37 |
+| 2026-11-18 02:10 | `k5x2go` | ffa | wombolder | mossloth, tidefin | 56 ms 🟢 (111) | 169 ms | 1.3% | 62.9/min (max 173 px), ⚠️ 10.1 unexplained | ⚠️ 47 (max 155 px) | 75 ms | 58.8 | 0.0% | high (auto) | ios app, 4 cores, 59 Hz | ebd7a37 |
+| 2026-11-18 02:10 | `k5x2go` | ffa | tidefin | mossloth, wombolder | 46 ms 🟢 (61) | 170 ms | 0.9% | 37.8/min (max 497 px), ⚠️ 10.1 unexplained | ⚠️ 24 (max 46 px) | 70 ms | 58.8 | 0.0% | low (auto) | ios app, 4 cores, 59 Hz | ebd7a37 |
+| 2026-11-18 02:05 | `lmdks1` | ffa | mystowl | halcyra, tidefin | 48 ms 🟢 (58) | 184 ms | 0.4% | 37.8/min (max 160 px), ⚠️ 15 unexplained | ⚠️ 37 (max 51 px) | 86 ms | 59.9 | 0.7% | medium (auto) | android, 8 cores, 8 GB, 120 Hz | ebd7a37 |
+| 2026-11-18 02:05 | `lmdks1` | ffa | halcyra | mystowl, tidefin | 48 ms 🟢 (83) | 174 ms | 1.7% | 40.1/min (max 541 px), ⚠️ 17.3 unexplained | ⚠️ 18 (max 185 px) | 66 ms | 52.6 | 2.4% | low (auto) | ios app, 4 cores, 59 Hz | ebd7a37 |
+| 2026-11-18 02:05 | `lmdks1` | ffa | tidefin | mystowl, halcyra | 59 ms 🟢 (121) | 142 ms | 1.5% | 27.5/min (max 128 px), ⚠️ 9.8 unexplained | ⚠️ 27 (max 52 px) | 121 ms | 58.8 | 0.0% | high (auto) | ios app, 4 cores, 59 Hz | ebd7a37 |
+| 2026-11-18 02:02 | `r10v1o` | ffa | mossloth | shadopus, cindrake | 52 ms 🟢 (91) | 179 ms | 1.4% | 38.7/min (max 593 px), ⚠️ 22.2 unexplained | ⚠️ 20 (max 624 px) | 75 ms | 58.8 | 0.0% | high (auto) | ios app, 4 cores, 59 Hz | ebd7a37 |
+| 2026-11-18 02:02 | `r10v1o` | ffa | cindrake | shadopus, mossloth | 46 ms 🟢 (71) | 166 ms | 0.8% | 55.2/min (max 516 px), ⚠️ 18.8 unexplained | ⚠️ 35 (max 420 px) | 63 ms | 58.8 | 1.4% | low (auto) | ios app, 4 cores, 34 Hz | ebd7a37 |
+| 2026-11-18 02:02 | `r10v1o` | ffa | shadopus | cindrake, mossloth | 51 ms 🟢 (85) | 170 ms | 0.6% | 40.9/min (max 599 px), ⚠️ 12.4 unexplained | ⚠️ 69 (max 599 px) | 77 ms | 59.9 | 1.0% | medium (auto) | android, 8 cores, 8 GB, 60 Hz | ebd7a37 |
+| 2026-11-18 01:47 | `iil2c6` | ffa | cindrake | shadopus, astrabun | 56 ms 🟢 (79) | 201 ms | 1.0% | 51.1/min (max 317 px), ⚠️ 28.9 unexplained | ⚠️ 25 (max 334 px) | 93 ms | 58.8 | 0.4% | medium (auto) | ios app, 4 cores, 56 Hz | cafb042 |
+| 2026-11-18 01:47 | `iil2c6` | ffa | shadopus | astrabun, cindrake | 51 ms 🟢 (75) | 202 ms | 1.4% | 52.4/min (max 150 px), ⚠️ 29.8 unexplained | ⚠️ 92 (max 133 px) | 98 ms | 59.9 | 1.3% | high (auto) | android, 8 cores, 8 GB, 120 Hz | cafb042 |
+| 2026-11-18 01:47 | `iil2c6` | ffa | astrabun | shadopus, cindrake | 48 ms 🟢 (53) | 169 ms | 0.5% | 30.5/min (max 380 px), ⚠️ 14.3 unexplained | ⚠️ 69 (max 331 px) | 81 ms | 58.8 | 0.0% | high (auto) | ios app, 4 cores, 59 Hz | cafb042 |
 
 ## By day
 
 | Day (UTC) | Reports | Needs attention | Ping, median | Ping, worst 10% | Lead, median | Jumps/min, median | Skill confirm, median | FPS, median | Stutter, median | Dropped connections |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 2026-11-18 | 65 | 65 | 48 ms | 56 ms | 174 ms | 44.1 | 79 ms | 58.8 | 0.4% | 3 transport close |
 | 2026-11-17 | 10 | 10 | 64 ms | 91 ms | 204 ms | 74.2 | 112 ms | 58.8 | 0.1% | 4 transport close, 1 server namespace disconnect |
 | 2026-11-16 | 11 | 11 | 67 ms | 68 ms | 201 ms | 41.9 | 89 ms | 59.9 | 0.7% | 1 ping timeout |
 | 2026-11-14 | 4 | 4 | 58 ms | 70 ms | 196 ms | 40.4 | 95 ms | 58.8 | 0.0% | 0 |
