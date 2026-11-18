@@ -105,8 +105,11 @@
   background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='-15 -15 30 30'><g transform='rotate(0)'><path d='M0 0V-13M0 -5L-3.4 -8.4M0 -5L3.4 -8.4M0 -9.4L-2.4 -11.8M0 -9.4L2.4 -11.8' stroke='%235fb4e6' stroke-width='3.2' stroke-linecap='round'/><path d='M0 0V-13M0 -5L-3.4 -8.4M0 -5L3.4 -8.4M0 -9.4L-2.4 -11.8M0 -9.4L2.4 -11.8' stroke='%23ffffff' stroke-width='1.6' stroke-linecap='round'/></g><g transform='rotate(60)'><path d='M0 0V-13M0 -5L-3.4 -8.4M0 -5L3.4 -8.4M0 -9.4L-2.4 -11.8M0 -9.4L2.4 -11.8' stroke='%235fb4e6' stroke-width='3.2' stroke-linecap='round'/><path d='M0 0V-13M0 -5L-3.4 -8.4M0 -5L3.4 -8.4M0 -9.4L-2.4 -11.8M0 -9.4L2.4 -11.8' stroke='%23ffffff' stroke-width='1.6' stroke-linecap='round'/></g><g transform='rotate(120)'><path d='M0 0V-13M0 -5L-3.4 -8.4M0 -5L3.4 -8.4M0 -9.4L-2.4 -11.8M0 -9.4L2.4 -11.8' stroke='%235fb4e6' stroke-width='3.2' stroke-linecap='round'/><path d='M0 0V-13M0 -5L-3.4 -8.4M0 -5L3.4 -8.4M0 -9.4L-2.4 -11.8M0 -9.4L2.4 -11.8' stroke='%23ffffff' stroke-width='1.6' stroke-linecap='round'/></g><g transform='rotate(180)'><path d='M0 0V-13M0 -5L-3.4 -8.4M0 -5L3.4 -8.4M0 -9.4L-2.4 -11.8M0 -9.4L2.4 -11.8' stroke='%235fb4e6' stroke-width='3.2' stroke-linecap='round'/><path d='M0 0V-13M0 -5L-3.4 -8.4M0 -5L3.4 -8.4M0 -9.4L-2.4 -11.8M0 -9.4L2.4 -11.8' stroke='%23ffffff' stroke-width='1.6' stroke-linecap='round'/></g><g transform='rotate(240)'><path d='M0 0V-13M0 -5L-3.4 -8.4M0 -5L3.4 -8.4M0 -9.4L-2.4 -11.8M0 -9.4L2.4 -11.8' stroke='%235fb4e6' stroke-width='3.2' stroke-linecap='round'/><path d='M0 0V-13M0 -5L-3.4 -8.4M0 -5L3.4 -8.4M0 -9.4L-2.4 -11.8M0 -9.4L2.4 -11.8' stroke='%23ffffff' stroke-width='1.6' stroke-linecap='round'/></g><g transform='rotate(300)'><path d='M0 0V-13M0 -5L-3.4 -8.4M0 -5L3.4 -8.4M0 -9.4L-2.4 -11.8M0 -9.4L2.4 -11.8' stroke='%235fb4e6' stroke-width='3.2' stroke-linecap='round'/><path d='M0 0V-13M0 -5L-3.4 -8.4M0 -5L3.4 -8.4M0 -9.4L-2.4 -11.8M0 -9.4L2.4 -11.8' stroke='%23ffffff' stroke-width='1.6' stroke-linecap='round'/></g><circle r='2.6' fill='%23ffffff' stroke='%235fb4e6' stroke-width='.8'/></svg>");
 }
 
-/* Both premium sets are Epic. Their rarity edge and gems take each set's
+/* Both premium sets are Epic. Their rarity edge and halo take each set's
    colours so the two frames never share the same purple trim. */
+.raid-cosmetic-preview[data-cosmetic="festival-frame"] {
+  --frame-glow: #ff5a3aaa;
+}
 .raid-cosmetic-preview[data-cosmetic="festival-frame"][data-tier="epic"]
   > .tier-fx {
   background: conic-gradient(
@@ -117,37 +120,9 @@
     #c4161c,
     var(--ui-accent)
   );
-  box-shadow:
-    0 0 12px #ff5a3aaa,
-    inset 0 0 6px color-mix(in srgb, var(--ui-accent) 53.3%, transparent);
 }
-.raid-cosmetic-preview[data-cosmetic="festival-frame"][data-tier="epic"]
-  > .tier-orbit {
-  background:
-    radial-gradient(
-      circle at 50% 8%,
-      #fff1b8 0 2.2%,
-      #ffb02e 2.6%,
-      transparent 4%
-    ),
-    radial-gradient(
-      circle at 92% 50%,
-      #fff1b8 0 2.2%,
-      #ff4a3a 2.6%,
-      transparent 4%
-    ),
-    radial-gradient(
-      circle at 50% 92%,
-      #fff1b8 0 2.2%,
-      #ffb02e 2.6%,
-      transparent 4%
-    ),
-    radial-gradient(
-      circle at 8% 50%,
-      #fff1b8 0 2.2%,
-      #ff4a3a 2.6%,
-      transparent 4%
-    );
+.raid-cosmetic-preview[data-cosmetic="winter-frame"] {
+  --frame-glow: #7fd0ffbb;
 }
 .raid-cosmetic-preview[data-cosmetic="winter-frame"][data-tier="epic"]
   > .tier-fx {
@@ -159,37 +134,6 @@
     #3d9be0,
     #ffffff
   );
-  box-shadow:
-    0 0 12px #7fd0ffbb,
-    inset 0 0 6px #e6f6ff99;
-}
-.raid-cosmetic-preview[data-cosmetic="winter-frame"][data-tier="epic"]
-  > .tier-orbit {
-  background:
-    radial-gradient(
-      circle at 50% 8%,
-      #ffffff 0 2.2%,
-      #7fd0ff 2.6%,
-      transparent 4%
-    ),
-    radial-gradient(
-      circle at 92% 50%,
-      #ffffff 0 2.2%,
-      #bfe8ff 2.6%,
-      transparent 4%
-    ),
-    radial-gradient(
-      circle at 50% 92%,
-      #ffffff 0 2.2%,
-      #7fd0ff 2.6%,
-      transparent 4%
-    ),
-    radial-gradient(
-      circle at 8% 50%,
-      #ffffff 0 2.2%,
-      #bfe8ff 2.6%,
-      transparent 4%
-    );
 }
 
 /* Void Knight (reward for all sixteen Void Knights): black steel with
@@ -205,6 +149,21 @@
   transform: translateX(-50%);
   background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='-16 -18 32 32'><g transform='rotate(-38)'><path d='M-1.6 -17 L0 -21 L1.6 -17 V6 H-1.6Z' fill='%232c3242' stroke='%2307080d' stroke-width='.8'/><path d='M0 -16V4' stroke='%23b48cff' stroke-width='1.6' opacity='.4'/><path d='M0 -16V4' stroke='%23efe6ff' stroke-width='.6'/><path d='M-5 6.4H5' stroke='%2307080d' stroke-width='2.6' stroke-linecap='round'/><path d='M-4.6 6.4H4.6' stroke='%234a4f63' stroke-width='1.4' stroke-linecap='round'/><path d='M0 7V12' stroke='%233a2c44' stroke-width='2'/><circle cy='13' r='1.4' fill='%23b48cff' stroke='%2307080d' stroke-width='.5'/></g><g transform='rotate(38)'><path d='M-1.6 -17 L0 -21 L1.6 -17 V6 H-1.6Z' fill='%232c3242' stroke='%2307080d' stroke-width='.8'/><path d='M0 -16V4' stroke='%23b48cff' stroke-width='1.6' opacity='.4'/><path d='M0 -16V4' stroke='%23efe6ff' stroke-width='.6'/><path d='M-5 6.4H5' stroke='%2307080d' stroke-width='2.6' stroke-linecap='round'/><path d='M-4.6 6.4H4.6' stroke='%234a4f63' stroke-width='1.4' stroke-linecap='round'/><path d='M0 7V12' stroke='%233a2c44' stroke-width='2'/><circle cy='13' r='1.4' fill='%23b48cff' stroke='%2307080d' stroke-width='.5'/></g><path d='M-11 3.62 L-10.6 -2.38 L-7 3.62Z' fill='%23262a37' stroke='%2307080d' stroke-width='.7' stroke-linejoin='round'/><path d='M-6.6 2.83 L-5.4 -6.67 L-2.6 2.83Z' fill='%23262a37' stroke='%2307080d' stroke-width='.7' stroke-linejoin='round'/><path d='M-2 2 L0 -12 L2 2Z' fill='%23262a37' stroke='%2307080d' stroke-width='.7' stroke-linejoin='round'/><path d='M2.6 2.83 L5.4 -6.67 L6.6 2.83Z' fill='%23262a37' stroke='%2307080d' stroke-width='.7' stroke-linejoin='round'/><path d='M7 3.62 L10.6 -2.38 L11 3.62Z' fill='%23262a37' stroke='%2307080d' stroke-width='.7' stroke-linejoin='round'/><path d='M0 -1 V-9' stroke='%23b48cff' stroke-width='1.6' opacity='.45'/><path d='M0 -1 V-9' stroke='%23efe6ff' stroke-width='.6'/><path d='M-11.5 3.4 Q0 -1.4 11.5 3.4 L11 6.4 Q0 1.8 -11 6.4Z' fill='%233b4255' stroke='%2307080d' stroke-width='.7'/><path d='M0 2 L1.8 4 L0 6 L-1.8 4Z' fill='%23b48cff' stroke='%2307080d' stroke-width='.5'/></svg>");
 }
+.raid-cosmetic-preview[data-cosmetic="void-frame"] {
+  --frame-glow: #b48cffaa;
+}
+/* Mythic, but its halo stays in the knight's violet, not the rainbow. */
+.raid-cosmetic-preview[data-cosmetic="void-frame"][data-tier="mythic"]
+  > .tier-glow {
+  background: conic-gradient(
+    from var(--tier-turn),
+    #b48cffcc,
+    #5a3a9acc,
+    #efe6ffcc,
+    #5a3a9acc,
+    #b48cffcc
+  );
+}
 .raid-cosmetic-preview[data-cosmetic="void-frame"][data-tier="mythic"]
   > .tier-fx {
   background: conic-gradient(
@@ -215,9 +174,6 @@
     #5a3a9a,
     #b48cff
   );
-  box-shadow:
-    0 0 14px #b48cffaa,
-    inset 0 0 6px #efe6ff66;
 }
 
 /* Cyber Mecha (reward for all sixteen Cyber Mechas): segmented chrome,
@@ -233,6 +189,9 @@
   transform: translateX(-50%);
   background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='-15 -11 30 22'><path d='M-1.4 6 L-14 -9 L-10 -10 L-2.4 -1 Z' fill='%23dfe6f0' stroke='%230a0e16' stroke-width='.8' stroke-linejoin='round'/><path d='M-2.6 2 L-12.6 -8.6' stroke='%233ff0ff' stroke-width='1.8' opacity='.35'/><path d='M-2.6 2 L-12.6 -8.6' stroke='%233ff0ff' stroke-width='.7'/><path d='M1.4 6 L14 -9 L10 -10 L2.4 -1 Z' fill='%23dfe6f0' stroke='%230a0e16' stroke-width='.8' stroke-linejoin='round'/><path d='M2.6 2 L12.6 -8.6' stroke='%233ff0ff' stroke-width='1.8' opacity='.35'/><path d='M2.6 2 L12.6 -8.6' stroke='%233ff0ff' stroke-width='.7'/><path d='M-4.6 7 L0 1 L4.6 7 L0 10Z' fill='%238693a8' stroke='%230a0e16' stroke-width='.7'/><circle cy='6' r='2.4' fill='%233ff0ff' opacity='.4'/><circle cy='6' r='1.5' fill='%233ff0ff' stroke='%230a0e16' stroke-width='.4'/><circle cx='-.4' cy='5.6' r='.5' fill='%23ffffff'/></svg>");
 }
+.raid-cosmetic-preview[data-cosmetic="cyber-frame"] {
+  --frame-glow: #3ff0ffaa;
+}
 .raid-cosmetic-preview[data-cosmetic="cyber-frame"][data-tier="epic"]
   > .tier-fx {
   background: conic-gradient(
@@ -243,9 +202,6 @@
     #8693a8,
     #3ff0ff
   );
-  box-shadow:
-    0 0 12px #3ff0ffaa,
-    inset 0 0 6px #dfe6f099;
 }
 
 /* Arcade (reward for all eight Arcade skins): neon tubes in magenta and
@@ -261,6 +217,9 @@
   transform: translateX(-50%);
   background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='-15 -15 30 30'><path d='M-13 6 L13 6 L11 12 L-11 12Z' fill='%232a0f4a' stroke='%230b0418' stroke-width='.9' stroke-linejoin='round'/><path d='M-12.6 6 H12.6' stroke='%232ff3ff' stroke-width='.8'/><path d='M-5 6 V-6' stroke='%230b0418' stroke-width='3.2' stroke-linecap='round'/><path d='M-5 6 V-6' stroke='%239aa3b8' stroke-width='1.6' stroke-linecap='round'/><ellipse cx='-5' cy='6' rx='3.6' ry='1.4' fill='%230b0418'/><circle cx='-5' cy='-8' r='4.6' fill='%23ff3b6a' stroke='%230b0418' stroke-width='.9'/><circle cx='-6.4' cy='-9.4' r='1.4' fill='%23ffffff' opacity='.8'/><ellipse cx='4.4' cy='4.6' rx='2.6' ry='1.5' fill='%232ff3ff' stroke='%230b0418' stroke-width='.7'/><ellipse cx='9.4' cy='4.6' rx='2.6' ry='1.5' fill='%23ffd65b' stroke='%230b0418' stroke-width='.7'/></svg>");
 }
+.raid-cosmetic-preview[data-cosmetic="arcade-frame"] {
+  --frame-glow: #ff4fd8aa;
+}
 .raid-cosmetic-preview[data-cosmetic="arcade-frame"][data-tier="epic"]
   > .tier-fx {
   background: conic-gradient(
@@ -271,7 +230,4 @@
     #7a2bd6,
     #ff4fd8
   );
-  box-shadow:
-    0 0 12px #ff4fd8aa,
-    inset 0 0 6px #2ff3ff99;
 }

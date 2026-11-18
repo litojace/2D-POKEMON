@@ -121,7 +121,7 @@ window.fetch=async(input,init)=>{
       await expect(page.locator(".fit-stars-note")).toContainText(
         "Unlock at 50 wins",
       );
-      await expect(page.locator(".fit-frame-stage .tier-rays")).toBeVisible();
+      await expect(page.locator(".fit-frame-stage .tier-glow")).toBeVisible();
       expect(await page.evaluate(() => (window as any).__equips)).toEqual([]);
       const stageBox = await box(page, ".fit-stage");
       const controlsBox = await box(page, ".fit-stars");
