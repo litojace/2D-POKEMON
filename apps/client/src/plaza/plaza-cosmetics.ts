@@ -9,8 +9,8 @@
  * - Colors (the Skin slot's palettes, unless a champion skin is worn): their
  *   motif drifting up round the fighter, and their tier's extras.
  *
- * Sized as in the Lobby: the ring spans 1.6 times the fighter's shadow
- * (48 × 18 px in the Plaza). On Low graphics an aura keeps its ring and
+ * Sized as everywhere, from the game's one aura size (aura-size.ts),
+ * against the fighter's art as the Plaza draws it. On Low graphics an aura keeps its ring and
  * items but not its rarity flourish, and Colors draw no particles; with
  * reduced motion everything holds still.
  */
@@ -22,16 +22,23 @@ import {
 import { drawColorsFx, isColors } from "../skins/colors-fx";
 import { canvasGraphics } from "../skins/fx-canvas";
 import { FX_GRAVITY, drawAnyParticle, type FxParticle } from "../skins/skin-fx";
+import { auraScale } from "../aura-size";
+import { CREATURE_VIEWBOX } from "../creature-design";
 
 type G = Phaser.GameObjects.Graphics;
 type Ctx = CanvasRenderingContext2D;
 
-/** Plaza px per aura unit: a 48-unit ring 1.6 times the 48 px shadow. */
-export const PLAZA_AURA_SCALE = 1.6;
+/** The Plaza draws a fighter's art (its 200-unit-wide frame) 84 px wide. */
+export const PLAZA_SPRITE_PX = 84;
+const ART_W = Number(CREATURE_VIEWBOX.split(" ")[2]);
+/** Plaza px per art unit. */
+export const PLAZA_PX_PER_ART = PLAZA_SPRITE_PX / ART_W;
+/** Plaza px per aura unit: the game's one aura size (aura-size.ts). */
+export const PLAZA_AURA_SCALE = auraScale(PLAZA_PX_PER_ART);
 /** The shadow's flatness (24 × 9 radii): the aura lies on the same plane. */
 export const PLAZA_AURA_FLAT = 18 / 48;
-/** Colors' scale: the Plaza's 84 px sprite against the rig's body. */
-export const PLAZA_COLORS_SCALE = 1.4;
+/** Colors' scale (Plaza px per rig unit; a rig unit is two art units). */
+export const PLAZA_COLORS_SCALE = PLAZA_PX_PER_ART * 2;
 /** At most this many Colors particles per fighter. */
 export const PLAZA_FX_CAP = 24;
 

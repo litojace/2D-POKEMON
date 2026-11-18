@@ -20,6 +20,8 @@ import {
   LANDMARKS,
   LIVE,
   MOVER_BOX,
+  bakedInFront,
+  movingBoxes,
   PLAZA_MARGIN,
   PLAZA_OUT,
   PLAZA_REACH,
@@ -172,6 +174,20 @@ describe("Plaza surroundings", () => {
     expect(coversMovers({ x0: 1700, x1: 1720, top: g + 4, foot: g + 40 })).toBe(
       false,
     );
+  });
+
+  it("nothing baked stands in front of a cow or the windmill's sails", () => {
+    const moving = movingBoxes();
+    expect(moving.length).toBe(COWS.length + 1);
+    for (const m of moving) {
+      const p = bakedInFront(m);
+      expect(p ? `${p.kind} at ${p.x},${p.y}` : null, m.name).toBeNull();
+    }
+    // The check itself: a tree just in front of the first cow is caught.
+    const c = COWS[0];
+    expect(
+      propBox({ kind: "tree", x: c.x, y: c.y + 120, s: 1, v: 0 }).top,
+    ).toBeLessThan(c.y);
   });
 
   it("each baked picture lies wholly in the strips (none cut at the Plaza's edge)", () => {

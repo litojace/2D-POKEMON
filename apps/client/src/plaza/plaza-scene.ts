@@ -92,7 +92,12 @@ import { FrameCap } from "../frame-cap";
 import { PreviewPerf } from "../preview-perf";
 import { sceneLines, setPerfSource } from "../perf-hud";
 import { depthSort, slices, spot } from "./plaza-depth";
-import { drawWornBehind, drawWornFront } from "./plaza-cosmetics";
+import { plazaPath } from "./plaza-path";
+import {
+  PLAZA_SPRITE_PX,
+  drawWornBehind,
+  drawWornFront,
+} from "./plaza-cosmetics";
 import {
   PLAZA_MARGIN,
   PLAZA_SCALE,
@@ -1366,8 +1371,19 @@ export function openPlaza(options) {
       );
     if (who) return showCard(who);
     hideCard();
-    if (e.pointerType === "mouse") target = w;
+    // A click walks you there, round whatever is in the way (plaza-path.ts).
+    if (e.pointerType === "mouse") walkTo(w);
   });
+  /** The rest of the way after `target`, and where it ends. */
+  let route = [],
+    routeEnd = null,
+    replannedAt = 0;
+  function walkTo(w) {
+    routeEnd = w;
+    route = plazaPath(P, w);
+    target = route.shift() ?? null;
+    replannedAt = performance.now();
+  }
   /** The player card: name, level, title; add friend, invite to party. */
   let cardFor = null;
   function showCard(b) {
@@ -1893,12 +1909,26 @@ export function openPlaza(options) {
       x += joy.x;
       y += joy.y;
     }
+    if (!target) route = [];
+    // Held up on the way (someone in it, a bump): find the way again.
+    if (
+      !x &&
+      !y &&
+      target &&
+      routeEnd &&
+      P.stuckT > 0.5 &&
+      performance.now() - replannedAt > 1000
+    )
+      walkTo(routeEnd);
     if (!x && !y && target) {
       const dx = target.x - P.x,
         dy = target.y - P.y,
         d = Math.hypot(dx, dy);
-      if (d < 10) target = null;
-      else {
+      // A turn on the way is passed a little early, so you round it.
+      if (d < (route.length ? 18 : 10)) {
+        target = route.shift() ?? null;
+        if (!target) routeEnd = null;
+      } else {
         x = dx / d;
         y = dy / d;
         if (P.stuckT > 0.12) {
@@ -2785,7 +2815,7 @@ export function openPlaza(options) {
       });
   }
   function drawBody(g, b, time, photo) {
-    const s = 84,
+    const s = PLAZA_SPRITE_PX,
       im = b.img;
     const sh = 1 - Math.min(0.6, b.z / 220);
     g.fillStyle = "rgba(0,0,0,.28)";

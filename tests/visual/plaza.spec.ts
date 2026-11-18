@@ -129,7 +129,7 @@ for (const viewport of [
       }
       // Today's quests, sized against their neighbours: on phones the
       // folded list is the player card's twin right under it; on desktop
-      // a compact column (it was 220 x 203).
+      // a column as wide as the card.
       const card = all.find((b) => b.name === "profile")!,
         quests = all.find((b) => b.name === "quests")!;
       if (phone) {
@@ -140,8 +140,10 @@ for (const viewport of [
         );
         expect(quests.x, "quests under the card").toBeCloseTo(card.x, 0);
       } else {
-        expect(quests.w, "quests width").toBeLessThanOrEqual(208);
-        expect(quests.h, "quests height").toBeLessThanOrEqual(175);
+        // As wide as the player card on the other side, and short enough
+        // to leave the right side of the playground open.
+        expect(quests.w, "quests as wide as the card").toBeCloseTo(card.w, 0);
+        expect(quests.h, "quests height").toBeLessThanOrEqual(215);
       }
       const clashes = all.flatMap((a, i) =>
         all
