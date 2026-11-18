@@ -307,6 +307,7 @@ export function spireMarkup(
         s.play === "solo" ? `Climb from floor ${s.from}` : "Start party climb",
         {
           kind: "primary",
+          icon: "battle",
           disabled: !s.ok,
           attrs: { "data-raid-start": s.play },
         },

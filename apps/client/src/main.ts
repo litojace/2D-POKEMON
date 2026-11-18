@@ -1609,6 +1609,7 @@ async function reportPhoto(photo: string, name: string) {
       ],
     ],
     confirm: "Report",
+    confirmIcon: "report",
   });
   if (!sure) return;
   try {

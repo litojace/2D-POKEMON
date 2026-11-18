@@ -169,6 +169,7 @@ export function openProfile(hooks: ProfileHooks): ProfileScreen {
       ],
       total: ["Next change", `in ${NAME_CHANGE_DAYS} days`],
       confirm: "Change name",
+      confirmIcon: "edit",
     });
     if (!sure || closed) return;
     view.nameBusy = true;

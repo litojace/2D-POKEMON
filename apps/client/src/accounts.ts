@@ -447,6 +447,7 @@ export class AccountUI {
       extra:
         '<p class="ui-note">They aren\'t told. You can unblock them under Friends → Recent.</p>',
       confirm: "Block",
+      confirmIcon: "block",
     });
     if (!sure) return false;
     await this.api("/api/blocks", { playerId: id, block: true });
@@ -1603,6 +1604,7 @@ export class AccountUI {
             ],
           ],
           confirm: "Report",
+          confirmIcon: "report",
         });
         if (!sure) return "";
         await this.reportPhoto(photo);

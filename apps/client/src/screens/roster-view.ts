@@ -381,6 +381,7 @@ function gridMarkup(view: RosterView, d: RosterData) {
         : [
             button(lock ? "Lock in" : chosen ? "Playing" : "Select", {
               kind: "primary",
+              icon: lock ? "lock" : "check",
               disabled: none || (!lock && chosen),
               attrs: { "data-roster-select": view.focus },
             }),
@@ -492,9 +493,13 @@ function detailMarkup(view: RosterView, d: RosterData) {
     d.room
       ? actions(...roomButtons(c, d))
       : actions(
-          button("Try skins", { attrs: { "data-roster-skins": c } }),
+          button("Try skins", {
+            icon: "wardrobe",
+            attrs: { "data-roster-skins": c },
+          }),
           button(lock ? "Lock in" : chosen ? "Playing" : "Select", {
             kind: "primary",
+            icon: lock ? "lock" : "check",
             disabled: !lock && chosen,
             attrs: { "data-roster-select": c },
           }),
