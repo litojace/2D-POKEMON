@@ -7965,8 +7965,9 @@ export function openFarm(options) {
     return (
       head("Chicken Coop", `Hens ${F.hens.length}/${COOP.maxHens}`) +
       `<div class="sh-body"><p class="sh-note">Feed a hen ${COOP.feedQty} plain <b>${wheatName}</b> from your barn and she lays a <b>${EGG.name}</b> in ${fmtDur(COOP.laySeconds)}. Tap a hen on the farm, or tend them all here.</p>` +
-      `<div class="item"><span class="ic"><img src="${icon(EGG.id)}" alt=""></span><div><b>${eggs} egg${eggs === 1 ? "" : "s"} ready</b><small>Eggs go to your barn: sell them or deliver them on orders</small></div><div class="acts"><button type="button" class="btn-s green" data-coop-all="collect" ${eggs ? "" : "disabled"}>Collect</button></div></div>` +
+      // Feed, then collect, right above the hens laying: the round in order.
       `<div class="item"><span class="ic"><img src="${icon(COOP.feedCrop)}" alt=""></span><div><b>${hungry} hungry hen${hungry === 1 ? "" : "s"}</b><small>You have ${wheat} plain ${wheatName} · ${COOP.feedQty} per hen</small></div><div class="acts"><button type="button" class="btn-s" data-coop-all="feed" ${feedable ? "" : "disabled"}>Feed</button></div></div>` +
+      `<div class="item"><span class="ic"><img src="${icon(EGG.id)}" alt=""></span><div><b>${eggs} egg${eggs === 1 ? "" : "s"} ready</b><small>Eggs go to your barn: sell them or deliver them on orders</small></div><div class="acts"><button type="button" class="btn-s green" data-coop-all="collect" ${eggs ? "" : "disabled"}>Collect</button></div></div>` +
       `<div class="coop-hens">${hens}</div>` +
       `<div class="item"><span class="ic">${I("hen")}</span><div><b>Hens ${F.hens.length}/${COOP.maxHens}</b><small>${next == null ? "Your coop is full" : henLock ? `The next hen <b style="color:#ffd65b">unlocks at Lv ${nextLv}</b>` : "One more hen, one more egg each round"}</small></div><div class="acts">${next == null ? `<button type="button" class="btn-s green" disabled>Full</button>` : `<button type="button" class="btn-s" data-buyhen ${henLock || F.leaves < next ? "disabled" : ""}>${henLock ? `Lv ${nextLv}` : `${next.toLocaleString("en-US")} ${L}`}</button>`}</div></div></div>`
     );
@@ -9575,6 +9576,8 @@ export function openFarm(options) {
         const pr = plotRect(i);
         return { x: pr.x + PW / 2, y: pr.y + PH / 2 };
       },
+      /** Open a sheet (and a tab) as a tap would (tests). */
+      openSheet: (name, tab) => openSheet(name, tab),
       /** The view (tests): its size, the zoom, how far out it may go, the fit. */
       view: () => ({ VW, VH, Z, ZMIN, fit: fitZoom(VW, VH), cam: { ...cam } }),
       /** Zoom (tests): the farm's scale, and a way to set it. */
