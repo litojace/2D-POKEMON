@@ -113,13 +113,14 @@ describe("Ink Cloud", () => {
 });
 
 describe("Facet Guard", () => {
-  it("refracts shots, only halves strikes up close, and hastes Auralynx", () => {
+  it("refracts shots, only halves strikes up close, and vaults Auralynx", () => {
     const hit = (by: CharacterId) => {
       const a = arena("auralynx", by);
       const [me, them] = a.players;
       a.cast(me, skill("auralynx", "facet-guard"));
       expect(a.has(me, "counter")).toBe(true);
-      expect(a.has(me, "haste")).toBe(true);
+      // It vaults toward the aim behind the guard.
+      expect(me.dashUntil).toBeGreaterThan(a.time);
       const before = them.hp;
       a.damage(me, 20, "them", CHARACTERS[by].basic);
       return before - them.hp;

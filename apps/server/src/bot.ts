@@ -916,6 +916,10 @@ export class BotBrain {
               (s.enemyDisabled ? 1.6 : 1);
           break;
         case "counter":
+          // Facet Guard vaults: close the gap on a kiter (or block up close).
+          if (a.lunge && s.sight && s.dist > 220 && s.dist < 460) score = 22;
+          else if (s.threatened) score = 18;
+          break;
         case "barrier":
           if (s.threatened) score = 18;
           break;

@@ -62,7 +62,7 @@ const ROSTER: Record<
     role: "Counter specialist",
     basic: ["Prism Jab", 345],
     skills: [
-      ["Prism Shot", 8],
+      ["Prism Shot", 6],
       ["Shatter Paw", 12],
       ["Facet Guard", 15],
       ["Crystal Cage", 20],

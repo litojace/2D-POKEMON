@@ -89,6 +89,8 @@ const FFA_SPAWNS = [
 const DRAIN_INTERVAL = 0.5;
 /** Preserve a discrete skill tap through a short attack recovery, never a long cast. */
 const SKILL_INPUT_BUFFER = 0.18;
+/** Knockback a point-blank shot (`knockbackNear`) keeps beyond its reach. */
+const NEAR_KNOCKBACK_FAR = 20;
 /** Seconds after a cast out of stealth in which its first hit gets the ambush bonus. */
 const AMBUSH_WINDOW = 0.8;
 /**
@@ -1035,8 +1037,15 @@ export class Arena {
           PULL_GAP,
       );
       const clamp = (push: number) => (push < 0 ? Math.max(push, -room) : push);
+      // Point-blank knockback (Ember Lob): only a light push from afar.
+      const knock =
+        ability.knockbackNear &&
+        Math.hypot(target.x - source.x, target.y - source.y) >
+          ability.knockbackNear
+          ? Math.min(ability.knockback, NEAR_KNOCKBACK_FAR)
+          : ability.knockback;
       const push = clamp(
-        clamp(ability.knockback) *
+        clamp(knock) *
           (primed ? (combo!.knockback ?? 1) : 1) *
           (this.gift(target, "Earth") ?? 1),
       );
@@ -1862,8 +1871,18 @@ export class Arena {
     }
     if (a.kind === "counter") {
       this.status(p, "counter", a.duration);
-      // Facet Guard: advance behind the guard.
-      if (a.status) this.status(p, a.status, a.statusDuration ?? a.duration);
+      if (a.lunge) {
+        // Facet Guard: vault toward the aim behind the guard.
+        const distance = Math.min(
+          a.lunge,
+          Math.hypot(p.lastInput.aimX - p.x, p.lastInput.aimY - p.y),
+        );
+        const seconds = distance / Math.max(1, a.speed);
+        p.dashX = Math.cos(angle) * a.speed;
+        p.dashY = Math.sin(angle) * a.speed;
+        p.dashUntil = this.time + seconds;
+        p.recoveryUntil = Math.max(p.recoveryUntil, this.time + seconds);
+      }
     }
     if (a.kind === "barrier") this.status(p, "shield", a.duration);
     if (a.kind === "buff") {

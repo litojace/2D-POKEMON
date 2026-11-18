@@ -525,6 +525,17 @@ export interface Ability {
   trail?: { fade: number };
   /** Steer: how fast the zone follows the caster's aim (px/s). */
   steer?: { speed: number };
+  /**
+   * Knockback only this close (px between centres): farther away the hit
+   * pushes no more than a light 20 (Ember Lob keeps brawlers off without
+   * kiting ranged enemies out of their reach).
+   */
+  knockbackNear?: number;
+  /**
+   * Counter: the caster vaults up to this far toward the aim at `speed`
+   * (Facet Guard), predicted on the client like a rush.
+   */
+  lunge?: number;
   /** Buff: the caster is airborne for `duration` (ground attacks miss). */
   glide?: boolean;
   /** Buff: a burst around the caster on cast that pushes enemies away and slows them. */
@@ -844,7 +855,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A crystal-fisted lynx monk. Durable, patient and brutal against careless attacks.",
     color: 0x7f9cff,
-    health: 178,
+    health: 170,
     speed: 235,
     basic: basic(
       "prism-jab",
@@ -861,7 +872,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "Prism Shot",
         "projectile",
         22,
-        8,
+        6,
         "Fling one of the orbiting crystal shards. It slows for a second, so you can close in.",
         { speed: 700, radius: 20, status: "slow", statusDuration: 1 },
       ),
@@ -886,8 +897,8 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "counter",
         0,
         15,
-        "For 1.6 seconds, the gauntlets' facets take half the damage, refract 20% of shots, beams and blasts back to the attacker (strikes up close are only halved), and Auralynx advances 30% faster behind them.",
-        { duration: 1.6, status: "haste", statusDuration: 1.6 },
+        "Raise the faceted gauntlets and vault up to 240 px toward your aim. For 1.6 seconds they take half the damage and refract 20% of shots, beams and blasts back to the attacker (strikes up close are only halved).",
+        { duration: 1.6, lunge: 240, speed: 900 },
       ),
       ability(
         "crystal-cage",
@@ -1278,7 +1289,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       'A shy red panda, the "fire fox", with a flame at the tip of its tail. Lobs burning chestnuts from the back line and curls up in its tail when caught.',
     color: 0xff8a3d,
-    health: 146,
+    health: 150,
     speed: 235,
     basic: basic(
       "ember-lob",
@@ -1286,8 +1297,8 @@ export const CHARACTERS: Record<CharacterId, Character> = {
       "projectile",
       10,
       440,
-      "A long-range ember flicked from its tail. It knocks enemies back, keeping brawlers off Pyranda.",
-      { speed: 760, range: 760, radius: 12, knockback: 65 },
+      "A long-range ember flicked from its tail. It knocks back enemies within 260 px, keeping brawlers off Pyranda.",
+      { speed: 760, range: 760, radius: 12, knockback: 65, knockbackNear: 260 },
     ),
     skills: [
       ability(
@@ -3598,7 +3609,7 @@ export const RITES: Rite[] = [
     "facet-guard",
     "Steady Guard",
     "Facet Guard lasts 2.2s instead of 1.6s.",
-    { set: { duration: 2.2, statusDuration: 2.2 } },
+    { set: { duration: 2.2 } },
   ),
   rite(
     "auralynx",
