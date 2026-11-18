@@ -2512,13 +2512,11 @@ let farmChatOwner: string | null = null;
 /** The chat button's place and channels (chat/chat-ui.ts). */
 function syncChat(hub: boolean) {
   const inRoom = !!myId && !!state;
-  // A PvP briefing (the Reveal) keeps the room's chat, as the server does
-  // (chatInBattle): the players are still talking it over.
   const fighting =
-    inRoom &&
-    state!.phase !== "lobby" &&
-    state!.phase !== "finished" &&
-    !(state!.phase === "briefing" && !state!.raid);
+    inRoom && state!.phase !== "lobby" && state!.phase !== "finished";
+  // The Reveal (a PvP briefing) is a few seconds' loading screen: no chat
+  // button on it, neither the room's nor quick chat (owner, 18 Nov).
+  const reveal = inRoom && state!.phase === "briefing" && !state!.raid;
   const place: ChatPlace = hub
     ? "hub"
     : inRoom && !fighting && !state!.practice
@@ -2529,6 +2527,7 @@ function syncChat(hub: boolean) {
   battleChat.sync(
     chatMode() !== "off" &&
       fighting &&
+      !reveal &&
       !state!.practice &&
       !state!.vsBot &&
       state!.players.length > 1 &&

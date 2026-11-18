@@ -221,7 +221,5 @@ battle, on the briefing, in the picker and on the Lobby's party stage
   and up) shows every card and "I'm ready" without scrolling
   (`tests/visual/reveal.spec.ts`, every mode at four sizes). With reduced
   motion the fighters show at once.
-  Chat stays the room's on the Reveal (Room, and Team in a 2v2), the same
-  button in its top-left corner: the players are still talking it over,
-  so typed lines go through until the fight starts (`chatInBattle` in
-  `server.ts`, `syncChat` in `main.ts`). A raid's briefing is a battle's.
+  No chat button on the Reveal, neither the room's nor quick chat: it is a
+  few seconds' loading screen (owner, 18 Nov; `syncChat` in `main.ts`).

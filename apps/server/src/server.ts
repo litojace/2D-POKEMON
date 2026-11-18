@@ -905,15 +905,6 @@ export function createArenaServer(
     }
   }
   /** A 2v2 side's team chat (docs/hidden-picks.md). */
-  /**
-   * Whether a room's chat is in a battle (quick lines only, calls for your
-   * side). A PvP briefing (the Reveal) isn't: the players are still talking
-   * it over, as in the room (docs/hidden-picks.md). A raid's is.
-   */
-  const chatInBattle = (arena: { phase: string }) =>
-    arena.phase !== "lobby" &&
-    arena.phase !== "finished" &&
-    !(arena.phase === "briefing" && !(arena instanceof RaidArena));
   const teamChatKey = (code: string, team: number) => `team:${code}:${team}`;
   /** Teams changed, or the room closed: both sides' team chats go. */
   function dropTeamChat(code: string) {
@@ -2647,7 +2638,7 @@ export function createArenaServer(
         return {
           channel,
           key: `room:${arena.code}`,
-          inBattle: chatInBattle(arena),
+          inBattle: arena.phase !== "lobby" && arena.phase !== "finished",
           members,
         };
       }
@@ -2670,7 +2661,7 @@ export function createArenaServer(
         return {
           channel,
           key: teamChatKey(arena.code, team),
-          inBattle: chatInBattle(arena),
+          inBattle: arena.phase !== "lobby" && arena.phase !== "finished",
           members,
         };
       }

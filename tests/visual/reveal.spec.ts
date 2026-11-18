@@ -99,9 +99,8 @@ for (const size of SIZES)
         const ready = page.locator("#instructions-ready");
         await expect(ready).toBeEnabled();
 
-        // Chat stays the room's (Room, and Team in 2v2), in the corner.
-        const chat = page.locator('#chat-button[data-place="room"]');
-        await expect(chat).toBeVisible();
+        // A loading screen: no chat button on it, neither kind.
+        await expect(page.locator("#chat-button")).toBeHidden();
         await expect(page.locator("#battle-chat")).toBeHidden();
         const problems = await page.evaluate(() => {
           const out: string[] = [];
@@ -184,34 +183,6 @@ for (const size of SIZES)
             out.push(
               `not the whole screen: ${box.left},${box.top} ${box.width}×${box.height}`,
             );
-          // Chat: in the Reveal's top-left corner, on top, clear of the
-          // kicker, the title and the cards.
-          const chat = document.getElementById("chat-button")!;
-          const cr = R(chat);
-          const pad = parseFloat(getComputedStyle(card).paddingLeft);
-          if (Math.abs(cr.left - (box.left + pad)) > 1)
-            out.push(
-              `chat is not at the panel's edge: ${cr.left} vs ${box.left + pad}`,
-            );
-          const hit = document.elementFromPoint(
-            cr.left + cr.width / 2,
-            cr.top + cr.height / 2,
-          );
-          if (!hit || !chat.contains(hit)) out.push("chat is under the Reveal");
-          for (const sel of [".eyebrow", "h2", ".rv-card"])
-            for (const e of Array.from(card.querySelectorAll(sel))) {
-              const r = R(e);
-              const range = document.createRange();
-              range.selectNodeContents(e);
-              const t = sel === ".rv-card" ? r : range.getBoundingClientRect();
-              if (
-                t.left < cr.right &&
-                t.right > cr.left &&
-                t.top < cr.bottom &&
-                t.bottom > cr.top
-              )
-                out.push(`chat overlaps ${sel}`);
-            }
           return out;
         });
         expect(problems).toEqual([]);
