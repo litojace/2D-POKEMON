@@ -36,9 +36,10 @@ export const PLAZA_PX_PER_ART = PLAZA_SPRITE_PX / ART_W;
 /** Plaza px per aura unit: the game's one aura size (aura-size.ts). */
 /**
  * The Plaza shows fighters small (a crowd on a phone), so its auras are
- * drawn this much bigger than the game's one size, to be seen.
+ * drawn this much bigger than the game's one size, to be seen (the owner
+ * chose 1.35 over 1.7, 18 Nov 2026: clear, and still tidy in a crowd).
  */
-export const PLAZA_AURA_BOOST = 1;
+export const PLAZA_AURA_BOOST = 1.35;
 export const PLAZA_AURA_SCALE = auraScale(PLAZA_PX_PER_ART) * PLAZA_AURA_BOOST;
 /** The shadow's flatness (24 × 9 radii): the aura lies on the same plane. */
 export const PLAZA_AURA_FLAT = 18 / 48;
