@@ -5,6 +5,8 @@ import {
 } from "../../apps/client/src/bistro/bistro-scenery";
 import {
   CAR_SIZE,
+  MIN_GAP,
+  STOP_GAP,
   carBox,
   carLen,
   carPose,
@@ -16,9 +18,11 @@ import {
   ROAD1,
   busBox,
   laneOf,
+  makeStreet,
   roadEnds,
   shelter,
   stopY,
+  updateStreet,
   zebraY,
 } from "../../apps/client/src/bistro/bistro-town";
 import {
@@ -110,6 +114,40 @@ describe("bistro street: traffic", () => {
     expect(slow.y - fast.y).toBeGreaterThanOrEqual(
       (carLen(slow) + carLen(fast)) / 2,
     );
+  });
+  it("no two vehicles ride bumper to bumper, the bus included, over minutes of traffic", () => {
+    const street = makeStreet(["voltkit"], false, () => 0.37);
+    let cars = updateCars([], 0.05, 1);
+    let closest = Infinity;
+    for (let i = 0; i < 12000; i++) {
+      updateStreet(street, 0.05);
+      cars = updateCars(cars, 0.05, Math.random(), { bus: street.bus, max: 8 });
+      for (const dir of [1, -1]) {
+        const lane = cars
+          .filter((c) => Math.sign(c.v) === dir)
+          .map((c) => ({ y: c.y, len: carLen(c) }));
+        if (dir < 0 && street.bus.state !== "away")
+          lane.push({ y: street.bus.y, len: BUS_LEN });
+        lane.sort((a, b) => a.y - b.y);
+        for (let k = 1; k < lane.length; k++)
+          closest = Math.min(
+            closest,
+            lane[k].y - lane[k - 1].y - (lane[k].len + lane[k - 1].len) / 2,
+          );
+      }
+    }
+    expect(closest).toBeGreaterThanOrEqual(MIN_GAP - 0.05);
+  });
+  it("a car following another at speed keeps more room than standing still", () => {
+    let cars = [
+      { y: 0, v: 2.6, col: "#fff", kind: 0 },
+      { y: -6, v: 4, col: "#fff", kind: 0 },
+    ];
+    for (let i = 0; i < 200; i++) cars = updateCars(cars, 0.05, 1);
+    const [lead, follow] = cars;
+    expect(
+      lead.y - follow.y - (carLen(lead) + carLen(follow)) / 2,
+    ).toBeGreaterThan(STOP_GAP + 1);
   });
   it("headlights at night, one per car", () => {
     const cars = [

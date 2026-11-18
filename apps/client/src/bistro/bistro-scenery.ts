@@ -52,6 +52,7 @@ import {
   quad,
   shelterGlow,
   stopY,
+  drawWaiting,
   townDrawables,
   viewRect,
   zebraY,
@@ -731,6 +732,9 @@ export function sceneryDrawables(
     all.push({
       ...p,
       draw: () => {
+        // Waiting passengers stand inside the shelter: behind its glass.
+        if (p.id === "shelter" && street && paint)
+          drawWaiting(ctx, street, l, paint);
         drawPropCached(ctx, p, l, sway);
         p.after?.(ctx, l, low);
       },

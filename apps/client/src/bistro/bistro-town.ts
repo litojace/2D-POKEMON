@@ -506,7 +506,7 @@ function spawnSitter(s: Street) {
   s.folk.push(f);
 }
 /** Where someone waits for the bus: under the shelter's roof. */
-export const waitSpot = () => ({ x: -1.75, y: stopY() + 0.35 });
+export const waitSpot = () => ({ x: -1.8, y: stopY() + 0.45 });
 function spawnWaiter(s: Street) {
   const f = mkFolk(s, "wait", [waitSpot()]);
   f.face = "left";
@@ -996,6 +996,8 @@ export function townDrawables(
 ): Drawable[] {
   const out: Drawable[] = [];
   for (const f of s.folk) {
+    // Those waiting for the bus are drawn with the shelter (drawWaiting).
+    if (f.kind === "wait") continue;
     const it = folkDrawable(ctx, f, l, paint);
     if (it) out.push(it);
   }
@@ -1009,6 +1011,20 @@ export function townDrawables(
         spot(d.x, d.y, 0.25, 10, () => drawDuck(ctx, d, l), { z: -WATER }),
       );
   return out;
+}
+
+/**
+ * Whoever waits for the bus, under the shelter's roof: drawn just before
+ * the shelter, so its frosted glass, bench and roof are in front of them.
+ */
+export function drawWaiting(
+  ctx: Ctx,
+  s: Street,
+  l: Light,
+  paint: PaintCreature,
+) {
+  for (const f of s.folk)
+    if (f.kind === "wait") folkDrawable(ctx, f, l, paint)?.draw();
 }
 
 /* ───────────── the bus ───────────── */
@@ -1222,16 +1238,6 @@ export function drawShelter(ctx: Ctx, l: Light) {
     ctx.strokeStyle = metal;
     ctx.lineWidth = 2;
     ctx.strokeRect(0, -H + 10, w, H - 22);
-    // A route map.
-    ctx.fillStyle = n > 0.35 ? "#fff6dc" : "#f4f6fa";
-    ctx.fillRect(w / 2 - 12, -H + 22, 24, 34);
-    ctx.strokeStyle = "#2a9d8f";
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(w / 2 - 8, -H + 50);
-    ctx.lineTo(w / 2 - 2, -H + 36);
-    ctx.lineTo(w / 2 + 7, -H + 30);
-    ctx.stroke();
   });
   // The back panel (seen from behind): glass with the bistro's poster, lit at night.
   onWall(ctx, "y", x1 - 0.04, y1 - 0.06, () => {
@@ -1241,7 +1247,8 @@ export function drawShelter(ctx: Ctx, l: Light) {
     ctx.strokeStyle = metal;
     ctx.lineWidth = 2;
     ctx.strokeRect(0, -H + 10, w, H - 22);
-    const px = w / 2 - 20;
+    // Toward the far end, clear of whoever waits.
+    const px = w - 46;
     ctx.fillStyle = n > 0.35 ? "#fff1cf" : "#f6e3c0";
     ctx.fillRect(px, -H + 16, 40, 56);
     ctx.fillStyle = "#c2322e";
@@ -1262,8 +1269,15 @@ export function drawShelter(ctx: Ctx, l: Light) {
     left: metal,
     right: shade("#4a5468", -0.35 * n),
   });
-  // The stop's sign on its own pole by the curb.
-  const p = iso(ROAD1 + 0.3, y0 - 0.4);
+}
+/** Where the stop's sign stands: on its own pole by the curb, before the shelter. */
+export const busSignSpot = () => ({ x: ROAD1 + 0.3, y: shelter().y0 - 0.4 });
+/** The stop's sign: a round BUS plate over a timetable. */
+export function drawBusSign(ctx: Ctx, l: Light) {
+  const n = l.night;
+  const metal = shade("#3a4458", -0.35 * n);
+  const sp = busSignSpot();
+  const p = iso(sp.x, sp.y);
   ctx.fillStyle = metal;
   ctx.fillRect(p.x - 2, p.y - 118, 4, 118);
   ctx.fillStyle = shade("#2a9d8f", -0.35 * n);

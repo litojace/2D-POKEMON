@@ -47,6 +47,8 @@ import {
   roadEnds,
   routes,
   drawShelter,
+  drawBusSign,
+  busSignSpot,
   shelter,
   stopY,
   up,
@@ -1427,6 +1429,11 @@ export function props(special: () => string = () => ""): Prop[] {
     sw: 70,
     paint: (ctx, l) => drawShelter(ctx, l),
     live: true,
+  });
+  // The stop's sign, on its own pole by the curb.
+  const bs = busSignSpot();
+  at("busSign", bs.x, bs.y, 0.1, 140, (ctx, l) => drawBusSign(ctx, l), {
+    sw: 16,
   });
   // The road bridge's parapets and the canal's railings, in short lengths.
   const by0 = c.y0 - 0.35,
