@@ -128,6 +128,31 @@ Why each is better:
   drift toward it at `lure.speed` (`current` again), and when it ends it
   bursts within `explosion` (damage and `status`).
 
+## Wave B: Cindrake, Pyranda, Mossloth, Mystowl, Astrabun
+
+| Champion | Was                                                           | Now                                                                                                                                                                                                                                      | Borrowed from                                   |
+| -------- | ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| Cindrake | **Magma Bomb**: a fireball that landed 23% of casts           | **Magma Leap** (11 s): leap up to 320 px toward the aim, **airborne** on the way (ground attacks miss), and land in an eruption: 20 and a burn within 110 px. The burst fighter's way in, and the Scorched combo's payoff                | leaps that land in a blast (Tristana, Pantheon) |
+| Pyranda  | **Chestnut Storm** (ult): one big circle far away, 31% landed | **Chestnut Storm** (ult): a storm that **creeps along the aim**, over walls: five blasts 105 px wide from 160 px out to 760 px, a fifth of a second apart, each marked 0.6 s before it lands (22, a burn, a shove). Step out of the line | creeping barrages (Brimstone, artillery)        |
+| Mossloth | **Overgrowth** (ult): vines round Mossloth only, 40% landed   | **Overgrowth** (ult): a **garden at the aim** (up to 560 px, 210 px wide) for 2.5 s: 4 every half second and a slow; whoever is still on it at the end takes 20 and is rooted 1.2 s. Seedlings bloom, moss grows full, as before         | area denial (Viper's Pit)                       |
+| Mystowl  | **Booming Hoot**: a knockback ring, rarely worth casting      | **Hush** (12 s): enemies within 200 px take 10, are pushed back a little and are **Silenced** for 1 s: no skills (they can still move, dash and attack). Sets up Mind Maze (Dazed). The only silence in the game                         | silences and lockouts (Sombra's hack)           |
+| Astrabun | **Moon Gravity**: a float patch, 1% of its damage             | **Sticky Mochi** (11 s): a ball of mochi; the first enemy hit takes 10 and is **Grounded** for 1.5 s: it can't dash or jump. A diver's answer to escapes                                                                                 | "grounded" effects (anti-mobility)              |
+
+### New mechanics
+
+- **Leap** (`kind: "leap"`): a dash to the aim (up to `range`) at `speed`
+  with `jumpUntil` set for its length; when it ends (`stepLeaps`) a burst
+  event and the eruption. Predicted on the client like a vault.
+- **Creep** (`kind: "creep"`): `count` plain zones along the aim, the first
+  `creep.start` px out and each `creep.step` farther, marked `creep.gap`
+  seconds apart and landing `tickDelay` after they are marked.
+- **Garden** (`kind: "garden"`): a zone at the aim that hurts and slows on
+  every tick and, when it ends, hits whoever is still on it with
+  `garden.burst` and `status`.
+- **Silence** (status): the server ignores the fighter's skill presses, and
+  the client doesn't predict them.
+- **Grounded** (status): no dash and no jump (server and prediction).
+
 ## Later waves (proposals, to be measured first)
 
 | Champion | Skill          | Problem (bots)                        | Idea                                                                                    | Borrowed from       |
