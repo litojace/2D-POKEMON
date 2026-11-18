@@ -150,7 +150,7 @@
   }
 
   /* ----------------------------- hit areas that run to the neighbours */
-  /* The Lobby's rail: six buttons, 44 tall and 36 wide, 4 px apart. Each
+  /* The Lobby's rail: six buttons, 44 tall and 50 wide, 4 px apart. Each
      one's hit area is 44 wide and runs half way to the next (no dead gap
      between them; an ::after is placed from inside the 1 px border). */
   :root body .lobby-rail button::after {

@@ -66,7 +66,8 @@ for (const phone of PHONES)
           },
         ),
       );
-      expect(controls.length).toBe(8);
+      // Seven buttons, the target button and the joystick.
+      expect(controls.length).toBe(9);
       const depth = phone.inset - 11;
       const top = (phone.height - phone.length) / 2;
       const bottom = top + phone.length;

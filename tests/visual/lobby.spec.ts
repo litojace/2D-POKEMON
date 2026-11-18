@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { openLobby, snap } from "./helpers";
+import { shopServer } from "./shop-server";
 
 // Hub redesign phase 2: the Lobby is the first screen after login. The UI
 // rules from the handoff: HUD boxes keep a fixed size, text is centred in its
@@ -451,6 +452,10 @@ test("a party shows friends beside you, and a party invitation joins it", async 
     await expect(page.locator("#lobby-slot-0 .lobby-member")).toContainText(
       "Pal",
     );
+    // You lead: your crown under your fighter, in the element pill's place.
+    await expect(page.locator("#lobby-host-name")).toHaveText("♛ You");
+    await expect(page.locator("#lobby-host-name")).toBeVisible();
+    await expect(page.locator("#lobby-fighter-element")).toBeHidden();
     await expect(
       page.locator("#lobby-slot-1 [data-lobby-action=invite]"),
     ).toBeVisible();
@@ -543,6 +548,380 @@ test("a party shows friends beside you, and a party invitation joins it", async 
         ),
       )
       .toBe(true);
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});
+
+test("in a friend's party the leader stands in the middle, you beside them, and Rejoin brings you back", async ({
+  browser,
+}, info) => {
+  const context = await browser.newContext({
+    viewport: { width: 844, height: 390 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  try {
+    const page = await context.newPage();
+    const errors = await openLobby(page);
+    const me = "11111111-1111-4111-8111-111111111111",
+      lead = "44444444-4444-4444-8444-444444444444",
+      pal = "33333333-3333-4333-8333-333333333333";
+    await page.evaluate(() => {
+      const w = window as any;
+      w.__requests = [];
+      w.__reply = (ev: string, data: unknown) => {
+        w.__requests.push([ev, data]);
+        return ev === "join"
+          ? { ok: false, error: "Room not found." }
+          : { ok: true };
+      };
+    });
+    const fire = (room: { code: string; mode: string } | null) =>
+      page.evaluate(
+        ([me, lead, pal, room]) =>
+          (window as any).__sock.fire("party", {
+            code: "PARTY3",
+            leader: lead,
+            members: [
+              { id: lead, name: "Leader", character: "tidefin" },
+              { id: me, name: "tester", character: "voltkit" },
+              { id: pal, name: "Pal", character: "lumoth", away: true },
+            ],
+            room,
+            invites: [],
+          }),
+        [me, lead, pal, room] as const,
+      );
+    await fire(null);
+    // The leader's fighter in the middle, with their name in the pill's place.
+    await expect(page.locator("#lobby-fighter-art")).toHaveAttribute(
+      "data-preview-champion",
+      "tidefin",
+    );
+    await expect(page.locator("#lobby-host-name")).toHaveText("♛ Leader");
+    await expect(page.locator("#lobby-host-name")).toBeVisible();
+    await expect(page.locator("#lobby-fighter-element")).toBeHidden();
+    // Your own seat first (left), then the others; your arrows wait.
+    const mine = page.locator("#lobby-slot-0 .lobby-member");
+    await expect(mine).toHaveClass(/is-you/);
+    await expect(mine.locator("figcaption")).toHaveText("You");
+    await expect(page.locator("#lobby-slot-1 .lobby-member")).toContainText(
+      "Pal",
+    );
+    await expect(page.locator("#lobby-slot-1 .lobby-member")).toHaveClass(
+      /is-away/,
+    );
+    for (const step of await page.locator(".lobby-step").all())
+      await expect(step).toHaveCSS("visibility", "hidden");
+    // The leader's name stays on the fighter's axis (the arrows keep their
+    // place in the nameplate), and no lone podium floats in an open seat.
+    const axis = await page.evaluate(() => {
+      const mid = (s: string) => {
+        const b = document.querySelector(s)!.getBoundingClientRect();
+        return b.left + b.width / 2;
+      };
+      return [mid("#lobby-fighter"), mid(".lobby-name")];
+    });
+    expect(Math.abs(axis[0] - axis[1])).toBeLessThanOrEqual(2);
+    await expect(
+      page.locator(".lobby-party .lobby-podium.is-open"),
+    ).toHaveCount(0);
+    // Only the leader invites: open seats are bare podiums here.
+    await expect(
+      page.locator(".lobby-party [data-lobby-action=invite]"),
+    ).toHaveCount(0);
+    // Nothing on the stage overlaps: seats beside the leader, all on screen.
+    const boxes = await page.evaluate(() =>
+      ["#lobby-slot-0 > *", "#lobby-fighter", "#lobby-slot-1 > *"].map((s) => {
+        const b = document.querySelector(s)!.getBoundingClientRect();
+        return { l: b.left, r: b.right, t: b.top, b: b.bottom };
+      }),
+    );
+    expect(boxes[0].r).toBeLessThanOrEqual(boxes[1].l + 1);
+    expect(boxes[2].l).toBeGreaterThanOrEqual(boxes[1].r - 1);
+    for (const b of boxes) {
+      expect(b.l).toBeGreaterThanOrEqual(0);
+      expect(b.r).toBeLessThanOrEqual(844);
+    }
+    // Tapping your seat opens Fighters, to change your fighter.
+    const tap = page.locator("#lobby-slot-0 .lobby-member-tap");
+    await expect(tap).toHaveAttribute("data-lobby-action", "fighters");
+    // No room yet: no Rejoin. The leader opens one you stepped out of...
+    await expect(page.locator("#lobby-rejoin")).toBeHidden();
+    await page.evaluate(() => {
+      (window as any).__requests = [];
+    });
+    await fire({ code: "ROOM42", mode: "teams" });
+    // ...you follow it straight from the Lobby.
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () =>
+            (window as any).__requests.filter(([ev]: [string]) => ev === "join")
+              .length,
+        ),
+      )
+      .toBe(1);
+    // The join failed (here): Rejoin waits on the party bar, tried on a tap.
+    await expect(page.locator("#lobby-rejoin")).toBeVisible();
+    await snap(page, info, "lobby-party-member-844x390");
+    await page.locator("#lobby-rejoin").click();
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () =>
+            (window as any).__requests.filter(
+              ([ev, d]: [string, any]) => ev === "join" && d?.code === "ROOM42",
+            ).length,
+        ),
+      )
+      .toBe(2);
+    expect(errors.filter((e) => !/Room not found/.test(e))).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});
+
+for (const [width, height] of [
+  [568, 320],
+  [667, 375],
+  [844, 390],
+  [932, 430],
+] as const)
+  test(`the party stage grows into the room a ${width}x${height} phone has, leaving the Plaza around it`, async ({
+    browser,
+  }, info) => {
+    const context = await browser.newContext({
+      viewport: { width, height },
+      isMobile: true,
+      hasTouch: true,
+    });
+    try {
+      const page = await context.newPage();
+      const errors = await openLobby(page);
+      const me = "11111111-1111-4111-8111-111111111111",
+        lead = "44444444-4444-4444-8444-444444444444";
+      await page.evaluate(() => {
+        const w = window as any;
+        w.__reply = () => ({ ok: false, error: "Room not found." });
+      });
+      // A member's stage at its widest: leader, you, two more, and Rejoin
+      // on the party bar.
+      await page.evaluate(
+        ([me, lead]) =>
+          (window as any).__sock.fire("party", {
+            code: "PARTY5",
+            leader: lead,
+            members: [
+              { id: lead, name: "Leader", character: "tidefin" },
+              { id: me, name: "tester", character: "voltkit" },
+              {
+                id: "66666666-6666-4666-8666-666666666666",
+                name: "Bo",
+                character: "lumoth",
+              },
+              {
+                id: "77777777-7777-4777-8777-777777777777",
+                name: "Rae",
+                character: "cindrake",
+              },
+            ],
+            room: { code: "ROOM77", mode: "ffa" },
+          }),
+        [me, lead] as const,
+      );
+      await expect(page.locator("#lobby-rejoin")).toBeVisible();
+      const box = (s: string) =>
+        page.locator(s).evaluate((e) => {
+          const b = e.getBoundingClientRect();
+          return { l: b.left, t: b.top, r: b.right, b: b.bottom, w: b.width };
+        });
+      const [bar, fighter, row, s0, s1, s2] = await Promise.all(
+        [
+          "#lobby-party-bar",
+          "#lobby-fighter",
+          ".lobby-party",
+          "#lobby-slot-0",
+          "#lobby-slot-1",
+          "#lobby-slot-2",
+        ].map(box),
+      );
+      const apart = (a: typeof bar, b: typeof bar) =>
+        a.r <= b.l + 1 || b.r <= a.l + 1 || a.b <= b.t + 1 || b.b <= a.t + 1;
+      // The seats grew past 36% of the fighter, but stay under 46% of it.
+      expect(s0.w).toBeGreaterThan(fighter.w * 0.36 + 2);
+      expect(s0.w).toBeLessThanOrEqual(fighter.w * 0.451);
+      // Nothing overlaps: the bar, the seats and the fighter beside them.
+      for (const seat of [s0, s1, s2]) {
+        expect(apart(seat, bar)).toBe(true);
+        expect(apart(seat, fighter)).toBe(true);
+        expect(seat.t).toBeGreaterThanOrEqual(row.t - 1);
+        expect(seat.l).toBeGreaterThanOrEqual(row.l - 1);
+        expect(seat.r).toBeLessThanOrEqual(row.r + 1);
+      }
+      // The bar covers only the fighter frame's empty top band (11.2%).
+      expect(bar.b).toBeLessThanOrEqual(fighter.t + fighter.w * 0.112 + 1);
+      expect(fighter.b).toBeLessThanOrEqual(row.b + 1);
+      // The Plaza still shows: the stage leaves room on both sides.
+      expect(s0.l - row.l + (row.r - s1.r)).toBeGreaterThan(0);
+      if (width === 844) await snap(page, info, "lobby-party-grown-844x390");
+      expect(errors.filter((e) => !/Room not found/.test(e))).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });
+
+test("a member's stage wears everyone's own skin, Awakening stage and look", async ({
+  browser,
+}) => {
+  const context = await browser.newContext({
+    viewport: { width: 844, height: 390 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  try {
+    const page = await context.newPage();
+    // Your own: a Shop skin on Voltkit and an aura (your account's save).
+    await shopServer(page, {
+      owned: ["voltkit-stormcrown", "galaxy-aura"],
+      loadout: { aura: "galaxy-aura" },
+      looks: { voltkit: { skin: "voltkit-stormcrown", stage: 1 } },
+    } as Parameters<typeof shopServer>[1]);
+    const errors = await openLobby(page);
+    const me = "11111111-1111-4111-8111-111111111111",
+      kai = "44444444-4444-4444-8444-444444444444",
+      bo = "66666666-6666-4666-8666-666666666666";
+    // The others' saves, as the server reads them from their accounts.
+    await page.evaluate(
+      ([me, kai, bo]) =>
+        (window as any).__sock.fire("party", {
+          code: "PARTY7",
+          leader: kai,
+          members: [
+            {
+              id: kai,
+              name: "Kai",
+              character: "tidefin",
+              skin: { skin: "tidefin-nova-vanguard", stage: 3 },
+              look: { aura: "tidal-aura" },
+            },
+            { id: me, name: "tester", character: "voltkit" },
+            {
+              id: bo,
+              name: "Bo",
+              character: "lumoth",
+              skin: { skin: "lumoth-dream-carnival", stage: 2 },
+              look: { aura: "ember-aura" },
+            },
+          ],
+          room: null,
+          invites: [],
+        }),
+      [me, kai, bo] as const,
+    );
+    const worn = (s: string) =>
+      page.locator(s).evaluate((e) => ({
+        champion: (e as HTMLElement).dataset.previewChampion,
+        item: (e as HTMLElement).dataset.previewItem,
+        stage: (e as HTMLElement).dataset.previewStage,
+        look: JSON.parse(
+          decodeURIComponent(
+            (e as HTMLElement).dataset.previewLook ?? "%7B%7D",
+          ),
+        ),
+      }));
+    // The leader in the middle, in their skin, stage and aura...
+    await expect
+      .poll(() => worn("#lobby-fighter-art"))
+      .toEqual({
+        champion: "tidefin",
+        item: "tidefin-nova-vanguard",
+        stage: "3",
+        look: { aura: "tidal-aura" },
+      });
+    // ...you beside them in yours, and the third member in theirs.
+    await expect
+      .poll(() => worn("#lobby-slot-0 .lobby-member-art"))
+      .toMatchObject({
+        champion: "voltkit",
+        item: "voltkit-stormcrown",
+        stage: "1",
+        look: { aura: "galaxy-aura" },
+      });
+    expect(await worn("#lobby-slot-1 .lobby-member-art")).toEqual({
+      champion: "lumoth",
+      item: "lumoth-dream-carnival",
+      stage: "2",
+      look: { aura: "ember-aura" },
+    });
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});
+
+test("Invite a friend says In party and Invited for friends already asked", async ({
+  browser,
+}) => {
+  const context = await browser.newContext({
+    viewport: { width: 844, height: 390 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  try {
+    const page = await context.newPage();
+    const errors = await openLobby(page);
+    const me = "11111111-1111-4111-8111-111111111111",
+      pal = "33333333-3333-4333-8333-333333333333",
+      asked = "77777777-7777-4777-8777-777777777777",
+      free = "88888888-8888-4888-8888-888888888888";
+    await page.evaluate(
+      (ids) => {
+        const fetch = window.fetch.bind(window);
+        window.fetch = async (input, init) =>
+          String(input).includes("/api/friends")
+            ? new Response(
+                JSON.stringify({
+                  code: "ABCDEF12",
+                  friends: ids.map((id, i) => ({
+                    id,
+                    name: ["Pal", "Asked", "Free"][i],
+                    online: true,
+                  })),
+                  incoming: [],
+                  outgoing: [],
+                }),
+                { headers: { "Content-Type": "application/json" } },
+              )
+            : fetch(input, init);
+      },
+      [pal, asked, free],
+    );
+    await page.evaluate(
+      ([me, pal, asked]) =>
+        (window as any).__sock.fire("party", {
+          code: "PARTY4",
+          leader: me,
+          members: [
+            { id: me, name: "tester", character: "voltkit" },
+            { id: pal, name: "Pal", character: "tidefin" },
+          ],
+          room: null,
+          invites: [{ id: asked, expiresAt: Date.now() + 60_000 }],
+        }),
+      [me, pal, asked] as const,
+    );
+    await page.locator("#lobby-slot-1 [data-lobby-action=invite]").click();
+    const row = (id: string) =>
+      page.locator(`#party-invite-list [data-party-invite="${id}"]`);
+    await expect(row(pal)).toContainText("In party");
+    await expect(row(pal)).toBeDisabled();
+    await expect(row(asked)).toContainText("Invited");
+    await expect(row(asked)).toBeDisabled();
+    await expect(row(free)).toContainText("Invite");
+    await expect(row(free)).toBeEnabled();
     expect(errors).toEqual([]);
   } finally {
     await context.close();

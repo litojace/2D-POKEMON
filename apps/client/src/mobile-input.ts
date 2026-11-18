@@ -145,6 +145,7 @@ export function mobileLayout(
       y: y * scale,
       size: size * scale,
     });
+    const attackY = short ? 47 : 51;
     return {
       compact: true,
       joystick: compactJoystick,
@@ -155,10 +156,16 @@ export function mobileLayout(
         target("1", 84, short ? 22 : 26, 44),
         target("2", 140, short ? 22 : 26, 44),
         target("3", 28, short ? 70 : 78, 44),
-        target("attack", 220, short ? 47 : 51, 88),
+        target("attack", 220, attackY, 88),
         target("dash", 84, short ? 72 : 78, 48),
         target("jump", 140, short ? 70 : 78, 44),
       ],
+      // The target button: over the basic attack, past the cluster's top.
+      aim: {
+        x: 220 * scale,
+        y: (attackY - 44 - 10 - 22) * scale,
+        size: 44 * scale,
+      },
     };
   }
   const unit = Math.max(
@@ -248,12 +255,29 @@ export function mobileLayout(
     iconSize: iconSize(action),
   }));
   const order: TouchAction[] = ["0", "1", "2", "3", "attack", "dash", "jump"];
+  // The target button: over Dash, at the cluster's right edge where the
+  // right thumb reaches up from Dash and Jump, and high enough to keep the
+  // ring's gap to the ultimate (which tops the ring, left of Dash). It may
+  // sit above the cluster's box (negative y): the court's free top-right
+  // corner.
+  const dash = targets.find((t) => t.action === "dash")!;
+  const ult = targets.find((t) => t.action === "3")!;
+  const aimSize = Math.max(44, 52 * scale);
+  const gap = GAP * scale;
+  const aimX = ring.width + 2 * margin - margin - aimSize / 2;
+  const clear = ult.size / 2 + aimSize / 2 + gap;
+  const dx = Math.abs(aimX - ult.x);
+  const aimY = Math.min(
+    dash.y - dash.size / 2 - gap - aimSize / 2,
+    dx < clear ? ult.y - Math.sqrt(clear ** 2 - dx ** 2) : Infinity,
+  );
   return {
     compact: false,
     joystick,
     width: ring.width + 2 * margin,
     height: ring.height + 2 * margin,
     targets: order.map((action) => targets.find((t) => t.action === action)!),
+    aim: { x: aimX, y: aimY, size: aimSize },
   };
 }
 

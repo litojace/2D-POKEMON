@@ -15,6 +15,9 @@ import {
 } from "./mobile-input";
 export { joystickVector } from "./mobile-input";
 type Actions = { basic: boolean; skill: number; dash: boolean; jump: boolean };
+/** The target button's crosshair. */
+const AIM_ICON =
+  '<svg class="touch-target-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2" fill="currentColor" stroke="none"/><path d="M12 1.5v4M12 18.5v4M1.5 12h4M18.5 12h4"/></svg>';
 /** What a touch on the left half may land on without starting the stick. */
 const FLOAT_BLOCKERS =
   "button, a, input, select, textarea, label, summary, [role=button], dialog, .overlay-card, .practice-panel, #practice-controls, .mobile-tools, .touch-buttons, .header-menu, .ui-panel, .ui-modal";
@@ -27,6 +30,10 @@ export class TouchControls {
   private stick: HTMLElement;
   private knob: HTMLElement;
   private buttons: HTMLButtonElement[];
+  /** The target button (by Dash): steps through the enemies on screen. */
+  private aim: HTMLButtonElement;
+  /** Called on a tap of the target button (main.ts cycles the lock). */
+  onTarget: () => void = () => {};
   private geometry = { x: 0, y: 0, radius: 1 };
   private resetActions: () => void;
   private captures = new Map<number, HTMLElement>();
@@ -86,12 +93,26 @@ export class TouchControls {
             '"></button>',
         )
         .join("") +
+      `<button type="button" class="touch-target" data-aim disabled aria-label="Target: no enemy on screen">${AIM_ICON}</button>` +
       "</div></div>";
     this.stick = root.querySelector(".joystick-area")!;
     this.knob = root.querySelector(".joystick-knob")!;
     this.buttons = Array.from(
-      root.querySelectorAll<HTMLButtonElement>(".touch-buttons button"),
+      root.querySelectorAll<HTMLButtonElement>(
+        ".touch-buttons button:not([data-aim])",
+      ),
     );
+    this.aim = root.querySelector<HTMLButtonElement>("[data-aim]")!;
+    // A tap: the next enemy on screen, then none (target-lock.ts). Not held,
+    // and never a stick touch.
+    this.aim.onpointerdown = (event) => {
+      event.stopPropagation();
+      if (!this.enabled || !canPlay() || this.aim.disabled) return;
+      event.preventDefault();
+      this.aim.classList.add("pressed");
+      setTimeout(() => this.aim.classList.remove("pressed"), 120);
+      this.onTarget();
+    };
     const toggle = root.querySelector<HTMLButtonElement>("#touch-toggle")!;
     const display = () => {
       root.classList.toggle("touch-enabled", this.enabled);
@@ -411,10 +432,20 @@ export class TouchControls {
     const cluster = this.root.querySelector<HTMLElement>(".touch-buttons")!;
     cluster.style.width = layout.width + "px";
     cluster.style.height = layout.height + "px";
+    // How high the controls reach: the cluster, and the target button where
+    // it rises over the cluster's top. Panels placed over the controls (a
+    // raid boss's own buttons) stand above both.
+    const rise = Math.max(0, layout.aim.size / 2 - layout.aim.y);
     document.body.style.setProperty(
       "--combat-cluster-height",
-      layout.height + "px",
+      layout.height + rise + "px",
     );
+    Object.assign(this.aim.style, {
+      left: layout.aim.x - layout.aim.size / 2 + "px",
+      top: layout.aim.y - layout.aim.size / 2 + "px",
+      width: layout.aim.size + "px",
+      height: layout.aim.size + "px",
+    });
     for (const target of layout.targets) {
       const button = this.buttons.find(
         (b) => (b.dataset.skill ?? b.dataset.action) === target.action,
@@ -430,6 +461,23 @@ export class TouchControls {
         height: target.size + "px",
       });
     }
+  }
+  /**
+   * The target button's state each frame: on only while an enemy is on
+   * screen (`available`), lit while a lock holds (`locked`).
+   */
+  setTarget(available: boolean, locked: boolean) {
+    if (this.aim.disabled === available) {
+      this.aim.disabled = !available;
+      this.aim.setAttribute(
+        "aria-label",
+        available
+          ? "Target: next enemy on screen"
+          : "Target: no enemy on screen",
+      );
+    }
+    if (this.aim.classList.contains("is-locked") !== locked)
+      this.aim.classList.toggle("is-locked", locked);
   }
   setPreferences(next: unknown) {
     this.preferences = controlPreferences(next);

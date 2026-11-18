@@ -116,6 +116,8 @@ export interface RaidData {
   leader: boolean;
   /** Your friends (online first), or null while loading / unavailable. */
   friends: Friend[] | null;
+  /** Friends with an invitation from you still open (any screen). */
+  invited?: readonly string[];
   /** You are in a room already (a raid can't start from here). */
   inRoom: boolean;
 }
@@ -402,7 +404,8 @@ function partyTab(view: RaidView, d: RaidData) {
             return `<p class="ui-note rh-nofriends">None of your friends are online right now. ${button("Friends", { size: "s", icon: "friends", attrs: { "data-raid-friends": true } })}</p>`;
           return list
             .map((f) => {
-              const invited = view.invited.includes(f.id);
+              const invited =
+                view.invited.includes(f.id) || !!d.invited?.includes(f.id);
               const can = canInvite(f, d) && d.leader;
               const c = (
                 f.fighter && Object.hasOwn(CHARACTERS, f.fighter)
