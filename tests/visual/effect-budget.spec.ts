@@ -164,14 +164,15 @@ for (const [g, group] of GROUPS.entries())
             dummy.hp = Math.max(dummy.hp, 500);
             const cast = w.__pending;
             w.__pending = -2;
+            // The ultimate is the last skill slot, cast with a full meter
+            // (an "ultimate" input field would be ignored: nothing was cast).
             if (cast === -1) me.ult = 100;
             a.submit(me, {
               ...m.blankInput(),
               seq: me.ack + 1,
               aimX: dummy.x,
               aimY: dummy.y,
-              skill: cast >= 0 ? cast : -1,
-              ultimate: cast === -1,
+              skill: cast >= 0 ? cast : cast === -1 ? m.ULT_SLOT : -1,
             });
             // The dummy stands still and casts nothing.
             a.submit(dummy, { ...m.blankInput(), seq: dummy.ack + 1 });
