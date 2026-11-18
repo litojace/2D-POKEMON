@@ -258,6 +258,26 @@ In 3-player free-for-all, Pangrove (42.3%), Duskveil (26.6%) and Voltkit
 (27.1%) had followed one noisy first round. Their factors went back near
 their earlier values: 1.07, 0.85 and 0.86.
 
+## After the skill revolution
+
+`docs/skill-revolution.md` changed every kit (waves A-D, PRs #201, #222 and
+#223). Afterwards the whole balance was measured again and retuned, once,
+with all four waves on `main`:
+
+- **Duels on Hard** (seed 200000, 24 games a pair): 46.1% - 55.1%, spread
+  2.7, so no kit changes.
+- **Normal handicaps** (`dazeBy`): Voltkit and Tidefin were about 10 points
+  below Hard, and Mystowl and Wombolder 6 above. After two rounds the range is
+  42.9% - 57.1% with a spread of 3.3, the size of the noise between seeds.
+  Every champion whose duel handicap moved keeps its old one in
+  `RAID_DAZE_BY`, so raids and the Spire play the same.
+- **2v2 and free-for-all**: four rounds in 2v2 and in 4-player FFA, three in
+  3-player, with the last three rounds' factors averaged. Checked on unused
+  line-ups (`FRESH_BASE=7000`): 2v2 47.0% - 53.6%, 4-player 20.9% - 31.4%,
+  3-player 27.5% - 40.5%. In 3-player Pangrove (40.5%, and 42% in the
+  previous check) goes to 1.02, Auralynx (38.5%) to 1.17 and Mossloth (27.5%)
+  to 0.98. In 4-player Mossloth (31.4%) goes to 0.94.
+
 ## Also fixed
 
 The raids' overlap rule (`spaceOverlap` in `apps/server/src/raid.ts`) now

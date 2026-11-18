@@ -35,6 +35,9 @@ for (const size of [
     browser,
     browserName,
   }, info) => {
+    // Twelve cards measured part by part: at 1440x900 with software
+    // rendering (about 12 fps) that took 1.9 minutes, over the 90 s default.
+    test.setTimeout(180_000);
     const mobile = size.width !== 1440;
     const context = await browser.newContext({
       viewport: size,
