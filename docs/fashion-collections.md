@@ -183,7 +183,8 @@ Migration `20261118120000_sky_pirates.sql` adds the 18 skins and their set.
 Vietnamese heritage at 5,500 coins (`HON_VIET_SKINS` in `shop.ts`,
 `viet-art.ts`), the third Legendary collection. Every champion is a figure of its own, chosen for who it is,
 with its own costume and accessories (`modern-designs.ts` for five of them,
-`modern-viet.ts` for the rest). Champions keep their own colours.
+`modern-viet.ts` for the rest), and a body colour of its own (see Body
+colours below).
 
 | Champion | Skin | Figure and what glows |
 | --- | --- | --- |
@@ -330,6 +331,17 @@ something that lights up (`modern-designs.ts` for five of them,
 
 A short confetti trail on a dash. Migration `20261118180000_neon_campus.sql`
 adds the skins and their set.
+
+## Body colours
+
+Hồn Việt, Stars & Stripes, Hero Squad and Neon Campus each give every
+champion a body colour chosen for its figure (`collection-colours.ts`): a
+gold Kim Quy, a lotus-pink Hoa Đăng, a candy-red hot-rod racer, a
+copper-green Lady Liberty, a magnet-red Magnetail, a velvet-red drama lead.
+`tintPalette` (`fashion-art.ts`) moves the champion's light, mid, dark and
+accent colours toward that hue and keeps their lightness, so faces, eyes,
+cheeks and markings read the same; the glow colour is kept. Within a
+collection the hues are spread so no two champions look alike.
 
 ## Glowing costume pieces
 

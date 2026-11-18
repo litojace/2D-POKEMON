@@ -2,9 +2,10 @@ import type { CharacterId } from "@arena/shared";
 import type { Tint } from "./fashion-art";
 
 /**
- * Body colours for the Legendary collections, chosen per champion for the
- * figure it plays (a gold Kim Quy, a lotus-pink Hoa Đăng, a candy-red
- * hot-rod racer, a copper-green Lady Liberty...). Each moves the champion's
+ * Body colours for the themed collections (Hồn Việt, Stars & Stripes, Hero
+ * Squad, Neon Campus), chosen per champion for the figure it plays (a gold
+ * Kim Quy, a candy-red hot-rod racer, a magnet-red Magnetail, a velvet-red
+ * drama lead...). Each moves the champion's
  * own colours toward a hue while keeping their lightness, so faces, eyes and
  * markings read the same (see `tintPalette` in fashion-art.ts).
  */
@@ -55,4 +56,46 @@ export const STARS_TINTS: Record<CharacterId, Tint> = {
   shadopus: T(310, 0.6), // Times Square DJ: neon magenta
   pangrove: T(38, 0.42, 0.06), // Park Ranger: ranger khaki
   mossloth: T(285, 0.45), // Woodstock Folk: tie-dye violet
+};
+
+export const HERO_TINTS: Record<CharacterId, Tint> = {
+  voltkit: T(275, 0.6, 0.04), // Volt Streak: electric violet
+  cindrake: T(12, 0.25, -0.14), // Blaze Breaker: charcoal ember
+  tidefin: T(225, 0.55, -0.04), // Tide Guardian: deep-sea blue
+  auralynx: T(320, 0.45, 0.06), // Prism Fist: prism pink
+  lumoth: T(50, 0.85, 0.08), // Lumina: radiant yellow
+  mystowl: T(175, 0.55), // Third Eye: psychic teal
+  terradon: T(200, 0.12, -0.1), // Iron Bulwark: gunmetal
+  duskveil: T(345, 0.45, -0.12), // Duskwatch: dusk wine
+  coilemur: T(0, 0.7), // Magnetail: magnet red
+  pyranda: T(205, 0.45, 0.04), // Chestnut Comet: comet ice blue
+  glacelle: T(205, 0.06, 0.16, 0.95), // Frost Sentinel: frost silver
+  halcyra: T(38, 0.6), // Skysight: eagle gold
+  sunbara: T(15, 0.85), // Solar Flare: flare orange-red
+  astrabun: T(205, 0.4, 0.1), // Moon Blink: moonlight blue
+  wombolder: T(70, 0.4, -0.06), // Bulldozer: army olive
+  shadopus: T(235, 0.3, -0.22), // Inkshade: ink black
+  pangrove: T(72, 0.8, 0.06), // Leaf Ranger: spring lime
+  mossloth: T(28, 0.5, -0.06), // Chrono Keeper: clockwork bronze
+};
+
+export const CAMPUS_TINTS: Record<CharacterId, Tint> = {
+  voltkit: T(315, 0.6, 0.04), // Game Club Ace: neon pink
+  cindrake: T(170, 0.5), // Lab Prodigy: chemical teal
+  tidefin: T(10, 0.6, 0.04), // Swim Team Star: sunscreen coral
+  auralynx: T(225, 0.55, -0.2), // Council President: blazer navy
+  lumoth: T(50, 0.15, 0.1), // Photo Club Snap: flash white
+  mystowl: T(285, 0.4, -0.08), // Library Prefect: late-night plum
+  terradon: T(25, 0.75), // Team Captain: basketball orange
+  duskveil: T(350, 0.65, -0.06), // Drama Club Lead: velvet curtain red
+  coilemur: T(205, 0.3, 0.02), // Robotics Whiz: steel blue
+  pyranda: T(345, 0.5, 0.08), // Bake Club Chef: strawberry frosting
+  glacelle: T(265, 0.3, 0.1), // Choir Soloist: hymn lavender
+  halcyra: T(110, 0.45, -0.02), // Archery Ace: archer green
+  sunbara: T(55, 0.75, 0.06), // Art Club Painter: paint yellow
+  astrabun: T(248, 0.65, -0.16), // Stargazer: night-sky indigo
+  wombolder: T(75, 0.45, -0.04), // Garden Club Keeper: garden moss
+  shadopus: T(220, 0.08), // Mystery Club Sleuth: detective grey
+  pangrove: T(40, 0.7, -0.02), // Band Drummer: brass gold
+  mossloth: T(150, 0.45, 0.1), // Nap Club Captain: pastel mint
 };

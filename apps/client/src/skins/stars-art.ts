@@ -3,13 +3,13 @@ import { STARS_STRIPES_NAMES } from "../../../../packages/shared/src/shop";
 import type { SkinArt } from "./skin-art";
 import { modernReplaces } from "./modern-designs";
 import { tintPalette } from "./fashion-art";
-import { STARS_TINTS } from "./legend-colours";
+import { STARS_TINTS } from "./collection-colours";
 // Registers the Stars & Stripes designs, which modernReplaces looks up.
 import "./modern-stars";
 
 /**
  * Stars & Stripes (Legendary): each champion wears a body colour chosen
- * for its figure (legend-colours.ts); its
+ * for its figure (collection-colours.ts); its
  * costume carries the theme (modern-designs.ts, modern-stars.ts) and its
  * glowing pieces light up in play (lume layers). The signature effects
  * (epic-signature-fx.ts, table `stars`) add a Walk-of-Fame landing, a

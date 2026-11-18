@@ -3,14 +3,14 @@ import { HON_VIET_NAMES } from "../../../../packages/shared/src/shop";
 import type { SkinArt } from "./skin-art";
 import { modernReplaces } from "./modern-designs";
 import { tintPalette } from "./fashion-art";
-import { VIET_TINTS } from "./legend-colours";
+import { VIET_TINTS } from "./collection-colours";
 // Registers the Hồn Việt designs, which modernReplaces looks up.
 import "./modern-viet";
 import "./modern-viet-legend";
 
 /**
  * Hồn Việt (Legendary): each champion wears a body colour chosen
- * for its figure (legend-colours.ts); its costume and
+ * for its figure (collection-colours.ts); its costume and
  * accessories carry the theme (modern-designs.ts, modern-viet.ts), with the
  * Legendary sash and prop swaps (modern-viet-legend.ts): Astrabun's mallet
  * becomes a rabbit lantern, Sunbara's yuzu a crown of hoa mai, Tidefin holds
