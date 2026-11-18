@@ -12,8 +12,8 @@ interface BeakLook {
 }
 
 export const HALCYRA_BEAKS: Record<string, BeakLook> = {
-  // Chim Lạc, terracotta body: Đông Sơn bronze.
-  "halcyra-hon-viet": { colors: ["#ffe2b8", "#b8762e", "#4a2a10"] },
+  // Chim Lạc, terracotta body: bright Đông Sơn gold-bronze.
+  "halcyra-hon-viet": { colors: ["#fff0c0", "#eaa83a", "#7a4a10"] },
   // Barnstormer, rose body under a leather cap: aviator navy steel.
   "halcyra-stars-stripes": { colors: ["#ffffff", "#9fb2d8", "#2c3e6e"] },
   // Skysight, tan body in a navy suit: hero gold.
