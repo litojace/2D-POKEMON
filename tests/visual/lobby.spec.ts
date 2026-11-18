@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { openLobby, snap } from "./helpers";
+import { shopServer } from "./shop-server";
 
 // Hub redesign phase 2: the Lobby is the first screen after login. The UI
 // rules from the handoff: HUD boxes keep a fixed size, text is centred in its
@@ -771,6 +772,95 @@ for (const [width, height] of [
       await context.close();
     }
   });
+
+test("a member's stage wears everyone's own skin, Awakening stage and look", async ({
+  browser,
+}) => {
+  const context = await browser.newContext({
+    viewport: { width: 844, height: 390 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  try {
+    const page = await context.newPage();
+    // Your own: a Shop skin on Voltkit and an aura (your account's save).
+    await shopServer(page, {
+      owned: ["voltkit-stormcrown", "galaxy-aura"],
+      loadout: { aura: "galaxy-aura" },
+      looks: { voltkit: { skin: "voltkit-stormcrown", stage: 1 } },
+    } as Parameters<typeof shopServer>[1]);
+    const errors = await openLobby(page);
+    const me = "11111111-1111-4111-8111-111111111111",
+      kai = "44444444-4444-4444-8444-444444444444",
+      bo = "66666666-6666-4666-8666-666666666666";
+    // The others' saves, as the server reads them from their accounts.
+    await page.evaluate(
+      ([me, kai, bo]) =>
+        (window as any).__sock.fire("party", {
+          code: "PARTY7",
+          leader: kai,
+          members: [
+            {
+              id: kai,
+              name: "Kai",
+              character: "tidefin",
+              skin: { skin: "tidefin-nova-vanguard", stage: 3 },
+              look: { aura: "tidal-aura" },
+            },
+            { id: me, name: "tester", character: "voltkit" },
+            {
+              id: bo,
+              name: "Bo",
+              character: "lumoth",
+              skin: { skin: "lumoth-dream-carnival", stage: 2 },
+              look: { aura: "ember-aura" },
+            },
+          ],
+          room: null,
+          invites: [],
+        }),
+      [me, kai, bo] as const,
+    );
+    const worn = (s: string) =>
+      page.locator(s).evaluate((e) => ({
+        champion: (e as HTMLElement).dataset.previewChampion,
+        item: (e as HTMLElement).dataset.previewItem,
+        stage: (e as HTMLElement).dataset.previewStage,
+        look: JSON.parse(
+          decodeURIComponent(
+            (e as HTMLElement).dataset.previewLook ?? "%7B%7D",
+          ),
+        ),
+      }));
+    // The leader in the middle, in their skin, stage and aura...
+    await expect
+      .poll(() => worn("#lobby-fighter-art"))
+      .toEqual({
+        champion: "tidefin",
+        item: "tidefin-nova-vanguard",
+        stage: "3",
+        look: { aura: "tidal-aura" },
+      });
+    // ...you beside them in yours, and the third member in theirs.
+    await expect
+      .poll(() => worn("#lobby-slot-0 .lobby-member-art"))
+      .toMatchObject({
+        champion: "voltkit",
+        item: "voltkit-stormcrown",
+        stage: "1",
+        look: { aura: "galaxy-aura" },
+      });
+    expect(await worn("#lobby-slot-1 .lobby-member-art")).toEqual({
+      champion: "lumoth",
+      item: "lumoth-dream-carnival",
+      stage: "2",
+      look: { aura: "ember-aura" },
+    });
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});
 
 test("Invite a friend says In party and Invited for friends already asked", async ({
   browser,
