@@ -349,7 +349,7 @@ function frostTarget(
   return { x: x + Math.cos(angle) * d, y: y + Math.sin(angle) * d };
 }
 
-// ───────────── Rime Shard and Hailstone ─────────────
+// ───────────── Rime Shard ─────────────
 function rimeShard(g: G, pr: Projectile, now: number) {
   const fx = fxFor(g.scene),
     r = pr.ability.radius,
@@ -387,61 +387,6 @@ function rimeShard(g: G, pr: Projectile, now: number) {
     }),
   );
 }
-function hailstone(g: G, pr: Projectile, now: number) {
-  const fx = fxFor(g.scene),
-    r = pr.ability.radius,
-    c = pr.color,
-    dir = Math.atan2(pr.vy, pr.vx),
-    hover = 16 + Math.sin(now / 110 + pr.id) * 2,
-    x = pr.x,
-    y = pr.y - hover,
-    spin = now / 90 + pr.id;
-  fx.solid
-    .fillStyle(0x000000, 0.22)
-    .fillEllipse(pr.x, pr.y + 5, r * 2, r * 0.75);
-  fx.glow(pr.x, pr.y + 5, r * 2.4, c, 0.25, true);
-  // A cold wake of mist.
-  for (let i = 1; i <= 3; i++)
-    fx.soft(
-      x - Math.cos(dir) * r * 1.4 * i,
-      y - Math.sin(dir) * r * 1.4 * i,
-      r * (1.5 - i * 0.25),
-      ICE,
-      0.35 - i * 0.08,
-    );
-  fx.glow(x, y, r * 2.8, c, 0.35);
-  // A lumpy layered hailstone: rim, body, inner layer, glint.
-  const lump = (rr: number) =>
-    Array.from({ length: 9 }, (_, i) => {
-      const a = spin + (i * TAU) / 9,
-        d = rr * (0.9 + hash(pr.id + i) * 0.18);
-      return { x: x + Math.cos(a) * d, y: y + Math.sin(a) * d };
-    });
-  fx.solid.fillStyle(RIME, 0.75).fillPoints(lump(r * 1.08), true);
-  fx.solid.fillStyle(c, 1).fillPoints(lump(r), true);
-  fx.solid.fillStyle(ICE, 0.9).fillCircle(x, y, r * 0.62);
-  fx.solid
-    .lineStyle(1.5, RIME, 0.45)
-    .strokeCircle(x + Math.cos(spin) * r * 0.08, y, r * 0.42);
-  fx.solid
-    .fillStyle(0xffffff, 1)
-    .fillCircle(x - r * 0.35, y - r * 0.38, r * 0.22);
-  fx.trail(`hs${pr.id}`, 0.04, () =>
-    fx.burst({
-      x,
-      y: pr.y,
-      z: hover,
-      count: 1,
-      kind: "smoke",
-      color: ICE,
-      speed: [5, 20],
-      up: [0, 15],
-      life: [0.35, 0.6],
-      size: [5, 8],
-      drag: 2,
-    }),
-  );
-}
 function frostImpact(
   scene: Phaser.Scene,
   a: Ability,
@@ -451,22 +396,12 @@ function frostImpact(
   shot: Shot,
 ) {
   const fx = fxFor(scene),
-    heavy = a.id === "hailstone",
-    r = a.radius * (heavy ? 3.4 : 2.4);
-  iceShards(fx, x, y, heavy ? 14 : 7, color, heavy ? 1.2 : 0.7);
-  if (heavy) {
-    fx.decal({ kind: "wet", x, y, r: r * 0.8, color: ICE, life: 3 });
-    fx.decal({ kind: "crack", x, y, r: r * 0.6, color, life: 2.5 });
-    fx.shake(80, 0.0025);
-  }
-  shot(fx.reduced ? 160 : heavy ? 420 : 280, (k) => {
+    r = a.radius * 2.4;
+  iceShards(fx, x, y, 7, color, 0.7);
+  shot(fx.reduced ? 160 : 280, (k) => {
     fx.glow(x, y - 12, r * (1 - k * 0.3), color, 0.6 * (1 - k));
     fx.glow(x, y - 12, r * 0.4, 0xffffff, Math.max(0, 1 - k * 3));
-    fx.shockwave(x, y, r * ease(k), k, ICE, heavy ? 7 : 4);
-    if (heavy) {
-      fx.floor.lineStyle(1.5, ICE, 0.8 * (1 - k));
-      snowflake(fx.floor, x, y, r * 0.7 * ease(Math.min(1, k * 3)), 0.3, SQ);
-    }
+    fx.shockwave(x, y, r * ease(k), k, ICE, 4);
   });
 }
 
@@ -851,7 +786,7 @@ function frostCast(
   const fx = fxFor(scene),
     mx = x + Math.cos(angle) * 22,
     my = y + Math.sin(angle) * 22,
-    big = a.id === "hailstone";
+    big = a.id === "black-ice";
   fx.burst({
     x: mx,
     y: my,
@@ -989,7 +924,6 @@ export const waterKit: FxKit = {
   projectile: {
     "tide-needle": tideNeedle,
     "rime-shard": rimeShard,
-    hailstone,
   },
   zone: { "frost-bloom": frostBloom, whiteout },
   windup: {
@@ -1001,7 +935,7 @@ export const waterKit: FxKit = {
     "tide-needle": waterCast,
     "gill-siphon": waterCast,
     "rime-shard": frostCast,
-    hailstone: frostCast,
+    "black-ice": frostCast,
     "tide-double": (scene, a, x, y, angle, color, shot) => {
       mirrorMist(scene, a, x, y, angle, color, shot);
       // Axolotls regrow: a little green rise as Tidefin slips away.
@@ -1024,7 +958,6 @@ export const waterKit: FxKit = {
   impact: {
     "tide-needle": needleImpact,
     "rime-shard": frostImpact,
-    hailstone: frostImpact,
   },
   hit: { water: waterHit },
 };

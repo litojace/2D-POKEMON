@@ -146,7 +146,7 @@ const ROSTER: Record<
     role: "Frost controller",
     basic: ["Rime Shard", 325],
     skills: [
-      ["Hailstone", 8],
+      ["Black Ice", 13],
       ["Frost Bloom", 12],
       ["Frost Breath", 12],
       ["Whiteout", 20],

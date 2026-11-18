@@ -196,12 +196,64 @@ Sunfire Pillar's column is slimmer, stops just above the top of the view,
 and its strike flash is drawn once; Heat Cracks' and Magma Leap's flames
 and smoke are lighter.
 
+## Wave C: Glacelle, Halcyra, Sunbara, Coilemur, Shadopus, Auralynx
+
+Bots first (seed 140000, 8 games a pair, Hard): only one skill here did
+little. Glacelle's **Hailstone** landed 26% of casts for 5 damage a cast;
+the others do their job (Electromagnet lands 95% and deals 22 a cast; it
+pulls round Coilemur, not at range like Radiant Flare, so they don't
+overlap), and Sunbara's heals and Shadopus's stealth don't show up as
+damage.
+
+| Champion | Was                                          | Now                                                                                                                                                                                                                                    | Borrowed from                     |
+| -------- | -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- |
+| Glacelle | **Hailstone**: a slow skill shot, landed 26% | **Black Ice** (13 s): glaze the ground at the aim (600 px, 120 px wide) for 2 s: enemies on it **slide**, with almost no grip (they skid on when they let go and turn slowly), and take 3 every half second. The Chilled combo's setup | ice physics, slippery-floor games |
+
+Black Ice uses the sliding status Moon Gravity had (wave B removed Moon
+Gravity, so nothing used it): the only slippery ground in the game. Its
+point is the kit around it: an enemy skidding on the ice can't step out of
+Frost Bloom's delayed freeze or Whiteout's gusts. With bots (32 games a
+pair, Hard), Frost Bloom deals 6.4 a cast with Black Ice in the kit against
+5.4 with Hailstone; a first try (150 px wide, 3.5 s) lifted it to 62% landed
+and Glacelle to 74%, so the ice is smaller and shorter now.
+
+Kept: Halcyra is the Spire's play-test raider, so any change to its kit
+moves every floor's clear rate. A wider Pinning Quill (18 px instead of 12) lifted it from 42% to 48% on Hard, but the raider then cleared floors
+31, 39, 61 and 69 less often (69: 11 → 5 in 48), so it stays as it was.
+Coilemur's Magnet Lash, wider and faster (20 px, 10 s), lifted Coilemur
+from 47% to 51% but made a Coilemur Echo harder: zone 1's floor 9 went
+from 14 to 9 clears in 48. It stays as it was too.
+
+### Results
+
+Bot duels, every pair both ways (seed 145000, 32 games a pair), before →
+after:
+
+| Champion | Hard      | Normal    |
+| -------- | --------- | --------- |
+| Glacelle | 45% → 49% | 52% → 54% |
+| Halcyra  | 44% → 43% | 47% → 50% |
+| Sunbara  | 53% → 51% | 45% → 52% |
+| Coilemur | 47% → 46% | 51% → 50% |
+| Shadopus | 46% → 46% | 51% → 51% |
+| Auralynx | 48% → 49% | 50% → 49% |
+
+Normal `dazeBy`: Glacelle 0.26 → 0.24, Halcyra 0.175 → 0.165, Sunbara
+0.225 → 0.21 (raids and the Spire keep the old ones, `RAID_DAZE_BY`).
+Halcyra stays a little under 45% on Hard, as it was before this wave; a
+buff has to be measured against the Spire's floors (see above).
+
+The Spire's floors clear as often as before (48 seeds each: floors 9, 31,
+61 the same, 11 a little more often: 40 against 36). Zone 2's play-test
+now plays 24 seeds, like the other zones: with 12, floors 11 and 19 tied
+at 9 clears each, and on the kits before this wave 24 seeds gave floor 19
+more clears than floor 11 (19 against 18), so 12 seeds had passed by luck.
+
 ## Later waves (proposals, to be measured first)
 
 | Champion | Skill         | Problem (bots)                        | Idea                                                             | Borrowed from     |
 | -------- | ------------- | ------------------------------------- | ---------------------------------------------------------------- | ----------------- |
 | Pyranda  | Ember Curtain | 1% of damage                          | a curtain you can walk through to gain speed (allies too)        | Lúcio, wall buffs |
-| Glacelle | Hailstone     | lands 25%                             | wider and slower, or splits on a wall                            | —                 |
 | Coilemur | Electromagnet | pulls like Lumoth's new Radiant Flare | polarity: pull or push depending on the charge left on the enemy | magnet games      |
 | Others   | ultimates     | the melee ones already land and hurt  | checked once the waves above are in                              | —                 |
 
