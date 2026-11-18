@@ -82,10 +82,47 @@ async function problems(page: Page, inset: number[]) {
   return [...found];
 }
 
+/**
+ * The hub's chat button over an open screen (a Lobby panel or sheet, the
+ * Farm's or the Bistro's sheet): on a 568x320 phone it sat under the player
+ * card, on the Friends sheet's "FRIENDS" tab (owner's report, Nov 2026).
+ * It is placed a frame after the screen opens (scene-switch-place.ts).
+ */
+async function chatOverScreen(page: Page) {
+  await page.waitForTimeout(100);
+  return page.evaluate(() => {
+    const chat = document.getElementById("chat-button");
+    if (!chat || chat.hidden || chat.dataset.place !== "hub") return [];
+    const b = chat.getBoundingClientRect();
+    if (!b.width) return [];
+    return Array.from(
+      document.querySelectorAll<HTMLElement>(
+        ".ui-panel-host:not([data-ui-leaving]) > .ui-panel, #fm-sheet, #bs-sheet",
+      ),
+    )
+      .filter((e) => {
+        const r = e.getBoundingClientRect();
+        return (
+          r.width > 0 &&
+          getComputedStyle(e).visibility !== "hidden" &&
+          b.left < r.right - 1 &&
+          r.left < b.right - 1 &&
+          b.top < r.bottom - 1 &&
+          r.top < b.bottom - 1
+        );
+      })
+      .map(
+        (e) =>
+          `the chat button over ${e.id ? `#${e.id}` : e.getAttribute("aria-label") || e.className}`,
+      );
+  });
+}
+
 /** What a finger and an eye would trip over on the screen as it stands. */
 async function look(page: Page, inset: number[]) {
   await settle(page);
-  return page.evaluate(([left, right, bottom]) => {
+  const chat = await chatOverScreen(page);
+  const rest = await page.evaluate(([left, right, bottom]) => {
     const out: string[] = [];
     const W = innerWidth,
       H = innerHeight;
@@ -301,6 +338,7 @@ async function look(page: Page, inset: number[]) {
       );
     return out;
   }, inset);
+  return [...chat, ...rest];
 }
 
 const rail = (action: string) => async (page: Page) => {
@@ -386,6 +424,50 @@ const HUB: [string, (page: Page) => Promise<void>][] = [
     },
   ],
 ];
+
+// The smallest phone the game supports (iPhone SE 1st gen): the chat button
+// has no room beside the player card there and drops under it, where an
+// open screen's head sits. The full audit above runs at the four sizes.
+test("phone fit at 568x320: the chat button keeps off every hub screen", async ({
+  browser,
+}) => {
+  test.setTimeout(300_000);
+  const { context, page } = await phone(browser, {
+    name: "568x320",
+    width: 568,
+    height: 320,
+    inset: [0, 0, 0],
+  });
+  try {
+    const report: Record<string, string[]> = {};
+    for (const [screen, open] of HUB) {
+      if (screen === "chat" || screen === "settings") continue;
+      await openHub(page);
+      await open(page);
+      await settle(page);
+      report[screen] = await chatOverScreen(page);
+      // Back to the Lobby: the button returns under the card, still clear.
+      if (await page.locator(".ui-panel-host .ui-panel").count()) {
+        await page.keyboard.press("Escape");
+        await settle(page);
+        report[`${screen}, closed`] = await chatOverScreen(page);
+      }
+    }
+    // The Farm's and the Bistro's sheets.
+    await fakeFarm(page);
+    await fakeBistro(page);
+    await page.evaluate(() => localStorage.setItem("ea-plaza-help", "1"));
+    await page.click('#hub-scenes [data-hub-scene="farm"]');
+    await expect(page.locator("#fm-rail")).toBeVisible({ timeout: 30_000 });
+    await page.locator('#fm-rail [data-sheet="shop"]').click({ force: true });
+    await expect(page.locator("#fm-sheet")).toBeVisible();
+    await settle(page);
+    report["farm shop"] = await chatOverScreen(page);
+    expect(Object.entries(report).filter(([, p]) => p.length)).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});
 
 for (const size of SIZES) {
   test.describe(`phone fit at ${size.name}`, () => {
