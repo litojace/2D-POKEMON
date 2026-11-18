@@ -591,7 +591,6 @@ test("in a friend's party the leader stands in the middle, you beside them, and 
             ],
             room,
             invites: [],
-            membersInvite: false,
           }),
         [me, lead, pal, room] as const,
       );
@@ -617,7 +616,7 @@ test("in a friend's party the leader stands in the middle, you beside them, and 
     for (const step of await page.locator(".lobby-step").all())
       await expect(step).toHaveCSS("visibility", "hidden");
     // The leader's name stays on the fighter's axis (the arrows keep their
-    // place in the nameplate), and no lone podium floats in an open seat.
+    // place in the nameplate).
     const axis = await page.evaluate(() => {
       const mid = (s: string) => {
         const b = document.querySelector(s)!.getBoundingClientRect();
@@ -626,13 +625,10 @@ test("in a friend's party the leader stands in the middle, you beside them, and 
       return [mid("#lobby-fighter"), mid(".lobby-name")];
     });
     expect(Math.abs(axis[0] - axis[1])).toBeLessThanOrEqual(2);
+    // A member may invite too: the open seat (above Pal) offers it.
     await expect(
-      page.locator(".lobby-party .lobby-podium.is-open"),
-    ).toHaveCount(0);
-    // The leader turned off members' invites: no open seat shows here.
-    await expect(
-      page.locator(".lobby-party [data-lobby-action=invite]"),
-    ).toHaveCount(0);
+      page.locator("#lobby-slot-2 [data-lobby-action=invite]"),
+    ).toBeVisible();
     // Nothing on the stage overlaps: seats beside the leader, all on screen.
     const boxes = await page.evaluate(() =>
       ["#lobby-slot-0 > *", "#lobby-fighter", "#lobby-slot-1 > *"].map((s) => {
@@ -863,7 +859,7 @@ test("a member's stage wears everyone's own skin, Awakening stage and look", asy
   }
 });
 
-test("the leader removes a member with Kick, and members may invite when allowed", async ({
+test("the leader removes a member with Kick, and members may invite too", async ({
   browser,
 }) => {
   const context = await browser.newContext({
@@ -885,9 +881,9 @@ test("the leader removes a member with Kick, and members may invite when allowed
         return { ok: true };
       };
     });
-    const fire = (leader: string, membersInvite: boolean) =>
+    const fire = (leader: string) =>
       page.evaluate(
-        ([me, kai, bo, leader, membersInvite]) =>
+        ([me, kai, bo, leader]) =>
           (window as any).__sock.fire("party", {
             code: "PARTY8",
             leader,
@@ -906,12 +902,11 @@ test("the leader removes a member with Kick, and members may invite when allowed
             ],
             room: null,
             invites: [],
-            membersInvite,
           }),
-        [me, kai, bo, leader, membersInvite] as const,
+        [me, kai, bo, leader] as const,
       );
     // Leading: a tap on Kai's seat swaps the name tag for Kick...
-    await fire(me, true);
+    await fire(me);
     const kaiSeat = page.locator("#lobby-slot-0 .lobby-member");
     await expect(kaiSeat).toContainText("Kai");
     const kick = kaiSeat.locator("[data-lobby-kick]");
@@ -938,24 +933,8 @@ test("the leader removes a member with Kick, and members may invite when allowed
         ),
       )
       .toEqual(["party-kick", { playerId: kai }]);
-    // The leader's Invite a friend has the members' setting.
-    await page.locator("#lobby-slot-2 [data-lobby-action=invite]").click();
-    const setting = page.locator("#party-members-invite");
-    await expect(setting).toBeChecked();
-    await setting.uncheck();
-    await expect
-      .poll(() =>
-        page.evaluate(() =>
-          (window as any).__requests.find(
-            ([ev]: [string]) => ev === "party-settings",
-          ),
-        ),
-      )
-      .toEqual(["party-settings", { membersInvite: false }]);
-    await page.keyboard.press("Escape");
-    // A member: no Kick on anyone, and an open seat to invite into while
-    // the leader allows it...
-    await fire(kai, true);
+    // A member: no Kick on anyone, and an open seat to invite into.
+    await fire(kai);
     await expect(
       page.locator("[data-lobby-kick], [data-lobby-member]"),
     ).toHaveCount(0);
@@ -963,12 +942,8 @@ test("the leader removes a member with Kick, and members may invite when allowed
     await expect(open).toHaveCount(1);
     await open.click();
     await expect(page.locator("#party-invite-list")).toBeVisible();
-    await expect(page.locator("#party-members-invite")).toHaveCount(0);
     await expect(page.locator(".party-invite")).toContainText("Kai's party");
     await page.keyboard.press("Escape");
-    // ...and none once they turn it off.
-    await fire(kai, false);
-    await expect(open).toHaveCount(0);
     // A member's invitation names whose party it is.
     await page.evaluate(
       (bo) =>

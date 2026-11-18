@@ -194,11 +194,6 @@ export interface LobbyView {
   party: LobbyPartyMember[];
   /** Your party's room is open and you're not in it: Rejoin shows. */
   partyRoom?: boolean;
-  /**
-   * You may invite friends into open seats: the leader, or a member when
-   * the leader lets members invite. Defaults to "not someone else's party".
-   */
-  canInvite?: boolean;
   /** You lead a party of two or more: "♛ You" under your fighter. */
   leading?: boolean;
   /** Party size including you (0: no party). */
@@ -251,14 +246,8 @@ const lookData = (look: RaidLoadout | undefined) =>
  * live rig as yours, laid over still artwork), or a way to invite one. Both
  * stand on a podium on the stage's floor, like your fighter.
  */
-export function slotMarkup(
-  member: LobbyPartyMember | undefined,
-  seat = 0,
-  canInvite = true,
-) {
-  // An open seat: only the party's leader invites into it; for the others
-  // it stays empty (a bare podium floated alone over the stage).
-  if (!member && !canInvite) return "";
+export function slotMarkup(member: LobbyPartyMember | undefined, seat = 0) {
+  // An open seat: anyone in the party may invite a friend into it.
   if (!member)
     return `<button type="button" class="lobby-slot" data-lobby-action="invite" aria-label="Invite a friend to your party"><span aria-hidden="true">+</span><small>Invite</small></button><span class="lobby-podium is-open" aria-hidden="true"></span>`;
   const skin = member.skin ?? null;
@@ -626,11 +615,7 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
     }
     if (!rig) mountRig();
     for (let i = 0; i < 3; i++)
-      if (
-        !seatRigs[i] &&
-        seatKeys[i] &&
-        !["null", '"open"'].includes(seatKeys[i]!)
-      )
+      if (!seatRigs[i] && seatKeys[i] && seatKeys[i] !== "null")
         mountSeatRig(i);
   };
   document.addEventListener("ea-graphics-change", syncGraphics);
@@ -770,13 +755,12 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
       // Only a seat whose friend (or look) changed is drawn again.
       for (let i = 0; i < 3; i++) {
         const member = view.party[i];
-        const canInvite = view.canInvite ?? !view.host;
-        const seatKey = JSON.stringify(member ?? (canInvite ? null : "open"));
+        const seatKey = JSON.stringify(member ?? null);
         if (seatKey === seatKeys[i]) continue;
         seatKeys[i] = seatKey;
         seatRigs[i]?.();
         seatRigs[i] = undefined;
-        $(`lobby-slot-${i}`).innerHTML = slotMarkup(member, i, canInvite);
+        $(`lobby-slot-${i}`).innerHTML = slotMarkup(member, i);
         if (member) mountSeatRig(i);
       }
       // Graphics may have changed since (Auto settling on Low elsewhere).
@@ -784,9 +768,7 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
       // One seat on each side keeps the stage even; the third seat (above
       // the right one) appears once both are taken. The server still allows
       // four players, and Friends can invite at any time.
-      $("lobby-slot-2").hidden =
-        view.party.length < 2 ||
-        (!(view.canInvite ?? !view.host) && !view.party[2]);
+      $("lobby-slot-2").hidden = view.party.length < 2;
       // Low graphics: PLAY keeps its glow but stops its light sweep.
       layer.dataset.graphics = lowGraphics() ? "low" : "auto";
       $("lobby-party-bar").hidden = view.partySize < 2;

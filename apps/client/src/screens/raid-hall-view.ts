@@ -120,8 +120,6 @@ export interface RaidData {
   invited?: readonly string[];
   /** You are in a room already (a raid can't start from here). */
   inRoom: boolean;
-  /** You may invite friends (the leader, or a member the leader lets). */
-  canInvite?: boolean;
 }
 
 export const raidView = (
@@ -408,7 +406,7 @@ function partyTab(view: RaidView, d: RaidData) {
             .map((f) => {
               const invited =
                 view.invited.includes(f.id) || !!d.invited?.includes(f.id);
-              const can = canInvite(f, d) && (d.canInvite ?? d.leader);
+              const can = canInvite(f, d);
               const c = (
                 f.fighter && Object.hasOwn(CHARACTERS, f.fighter)
                   ? f.fighter

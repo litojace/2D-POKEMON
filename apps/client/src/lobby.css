@@ -1758,22 +1758,6 @@ body:not(.hub-active) #account-leaves {
 }
 
 /* Party invitation picker (Lobby → Invite). */
-/* The leader's choice above the list: members may invite their friends. */
-.party-invite-setting {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-height: 44px;
-  margin: 10px 0 0;
-  font-weight: 700;
-  cursor: pointer;
-}
-.party-invite-setting input {
-  width: 20px;
-  height: 20px;
-  margin: 0;
-  accent-color: var(--ui-accent);
-}
 .party-invite-list {
   display: grid;
   gap: 8px;

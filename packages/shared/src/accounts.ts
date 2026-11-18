@@ -443,8 +443,6 @@ export const partyStateSchema = z
       })
       .nullable()
       .optional(),
-    /** Members may invite their own friends (the leader's choice). */
-    membersInvite: z.boolean().optional(),
     /** Friends invited to this party who haven't answered yet. */
     invites: z
       .array(

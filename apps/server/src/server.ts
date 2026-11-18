@@ -446,7 +446,6 @@ export function createArenaServer(
     }),
     // The room the party plays in (the leader's), and who was invited.
     room: party.room ?? null,
-    membersInvite: party.membersInvite !== false,
     invites: parties.pending(party.code, Date.now()),
   });
   const emitParty = (party: Party, ended = false) => {
@@ -1712,19 +1711,6 @@ export function createArenaServer(
       } else emitParty(result.party);
       reply(cb, { ok: true });
     });
-    // The leader lets members invite their friends, or not.
-    socket.on("party-settings", (data: unknown, cb: unknown) => {
-      if (!requirePlayer(cb)) return;
-      if (!allowed(10)) return fail(cb, "Too many requests.");
-      const value = (data as { membersInvite?: unknown } | null)?.membersInvite;
-      if (typeof value !== "boolean") return fail(cb, "Unknown setting.");
-      const me = account()!.id,
-        party = parties.of(me);
-      if (!party || party.leader !== me)
-        return fail(cb, "Only the party leader changes this.");
-      if (parties.setMembersInvite(me, value)) emitParty(party);
-      reply(cb, { ok: true });
-    });
     socket.on("party-character", (data: unknown) => {
       const character = (data as { character?: unknown } | null)?.character;
       if (!account() || !allowed(20) || typeof character !== "string") return;
@@ -1887,14 +1873,8 @@ export function createArenaServer(
         const hostAccount = accountSockets(fromId)[0]?.data.account as
           Account | undefined;
         if (!hostFighter || !hostAccount) continue;
-        // The inviter's party: open to members' guests, nobody blocked.
+        // Nobody joins a party with someone either of them blocked.
         const theirs = parties.of(fromId);
-        if (
-          theirs &&
-          theirs.leader !== fromId &&
-          theirs.membersInvite === false
-        )
-          continue;
         if (
           (theirs?.members ?? [{ id: fromId }]).some((m) =>
             chat.blocks(m.id, me.id),

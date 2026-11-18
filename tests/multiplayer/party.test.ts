@@ -487,7 +487,7 @@ it("caps a party at four and lets an invitation expire", () => {
   });
 });
 
-it("lets members invite their friends, unless the leader turns it off", async () => {
+it("lets members invite their friends into the leader's party", async () => {
   const f = await setup();
   await pairUp(f);
   // The pal (a member) invites the third: the invitation names the leader.
@@ -530,25 +530,6 @@ it("lets members invite their friends, unless the leader turns it off", async ()
     const party = f.a.parties.at(-1)!;
     expect(party.leader).toBe(f.lead.account.id);
     expect(party.members).toHaveLength(3);
-    expect(party.membersInvite).toBe(true);
-  });
-  // Only the leader changes the setting; turned off, members can't invite.
-  expect(
-    (await request(f.b.s, "party-settings", { membersInvite: false })).ok,
-  ).toBe(false);
-  expect(
-    (await request(f.a.s, "party-settings", { membersInvite: false })).ok,
-  ).toBe(true);
-  await vi.waitFor(() => expect(f.b.parties.at(-1)?.membersInvite).toBe(false));
-  await request(f.c.s, "party-leave");
-  await settle();
-  const refused = await request(f.b.s, "party-invite", {
-    playerId: f.third.account.id,
-    character: "tidefin",
-  });
-  expect(refused).toMatchObject({
-    ok: false,
-    error: "Your party leader has turned off invites from members.",
   });
 });
 

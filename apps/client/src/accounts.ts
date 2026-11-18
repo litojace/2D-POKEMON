@@ -167,8 +167,6 @@ type Hooks = {
     party: RaidSeat[];
     leader: boolean;
     inRoom: boolean;
-    /** You may invite friends in (the leader, or a member the leader lets). */
-    canInvite?: boolean;
   };
   /** Invite a friend to your Lobby party (the server answers). */
   inviteToParty?: (id: string) => Promise<{ ok: boolean; error?: string }>;
@@ -918,7 +916,6 @@ export class AccountUI {
               },
               party: room.party,
               leader: room.leader,
-              canInvite: room.canInvite ?? room.leader,
               inRoom: room.inRoom,
               friends: this.raidFriends,
               invited: [...(this.hooks.invitedFriends?.() ?? [])],
@@ -1466,7 +1463,6 @@ export class AccountUI {
             size: Math.max(1, party?.party.length ?? 1),
             ids: party?.party.map((s) => s.id) ?? [],
             leader: party?.leader ?? true,
-            canInvite: party?.canInvite ?? party?.leader ?? true,
           },
         };
       },
