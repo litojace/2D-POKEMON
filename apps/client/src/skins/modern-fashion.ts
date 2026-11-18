@@ -5,6 +5,7 @@ import type { Palette } from "./skin-art";
 import { fashionCut } from "./fashion-fits";
 import { cutBox, UNDER } from "./rare-fashion";
 import { DESIGNS } from "./modern-designs";
+import "./modern-viet";
 
 /**
  * Modern collections (prototype): Neon Campus, Hero Squad, Starlight Idol,

@@ -12,6 +12,7 @@ Six collections add 108 champion skins: three Rare and three Epic for each of th
 | Abyssal Expedition | Epic / 3,500 | Independent pressure-suit construction, glass helmets, gauges, tanks and individual dive equipment; a small glass glint and bubble dash trail |
 | Dream Carnival | Epic / 3,500 | Independent stagewear, masks, personal headpieces and ruffs; a small glint and confetti dash trail |
 | Nova Vanguard | Legendary / 5,500 | Original hero suits, individual emblems and joint-mounted equipment; a signature effect, its own hero landing and victory, and a short movement trail |
+| Hồn Việt | Epic / 3,500 | A figure of Vietnamese heritage per champion, its own costume and accessories; glowing embroidery and lanterns, a petal dash trail |
 
 ## Color stories
 
@@ -174,11 +175,60 @@ chest that springs open behind them, doubloons flying up off the face.
 
 Migration `20261118120000_sky_pirates.sql` adds the 18 skins and their set.
 
+## Epic: Hồn Việt
+
+Vietnamese heritage at 3,500 coins (`HON_VIET_SKINS` in `shop.ts`,
+`viet-art.ts`). Every champion is a figure of its own, chosen for who it is,
+with its own costume and accessories (`modern-designs.ts` for five of them,
+`modern-viet.ts` for the rest). Champions keep their own colours.
+
+| Champion | Skin | Figure and what glows |
+| --- | --- | --- |
+| Voltkit | Đèn Ông Sao | Trung Thu: áo bà ba, a star lantern on a pole (candle glow) |
+| Cindrake | Thánh Gióng | Iron armour scales, its flame crest kept, a golden bamboo stalk with lit nodes |
+| Tidefin | Hoa Đăng | Áo dài with carp-scale embroidery, nón lá crowned by a lotus lamp |
+| Auralynx | Võ Sư Vovinam | Blue võ phục, glowing belt knot and tails, red headband |
+| Lumoth | Đèn Lồng Hội An | Yellow áo dài with lantern embroidery, a silk lantern on each antenna |
+| Mystowl | Liền Chị Quan Họ | Nón quai thao with shimmering tassels, yếm with gold embroidery, áo tứ thân |
+| Terradon | Kim Quy | Áo dài for men with a Đông Sơn drum sun, khăn đóng, the returned sword glowing |
+| Duskveil | Đèn Kéo Quân | Áo the of dark gauze, a revolving lantern whose panes light in turn |
+| Coilemur | Nghệ Nhân Đàn Bầu | Brown áo the, the monochord on the back with a humming lit string |
+| Pyranda | Hạt Dẻ Phố Cổ | Khăn mỏ quạ, a shoulder pole with baskets of chestnuts glowing like embers |
+| Glacelle | Sương Sa Pa | Indigo H'Mông blouse with embroidered bands, a silver neck ring that shines |
+| Halcyra | Chim Lạc Đông Sơn | A crown of Lạc-bird feathers lit at the tips, a bronze drum-sun breastplate |
+| Sunbara | Xuân Hoa Mai | Red áo dài with twinkling hoa mai, khăn vấn, the yuzu kept as a Tết quất |
+| Astrabun | Thỏ Ngọc Cung Trăng | White áo dài with moon and clouds, a full moon glowing behind the head, a mooncake |
+| Wombolder | Mùa Lúa Chín | Áo nâu, a gùi of ripe rice whose grains twinkle |
+| Shadopus | Tướng Hát Bội | Pheasant plumes, four command flags with lit borders |
+| Pangrove | Đầm Sen Đồng Tháp | Pink áo bà ba, a lotus leaf worn as a hat with a glowing bud |
+| Mossloth | Ông Đồ | Black áo the, round spectacles, a calligraphy scroll whose ink glows |
+
+The glowing pieces are marked `lume` and light up in play (see Glowing costume
+pieces below); a short red-and-gold petal trail on a dash. Names are
+Vietnamese: the display face loads its Vietnamese letters
+(`barlow-condensed-vietnamese-*.woff2`), and one-line names leave room in
+their clip for marks above and below. Migration
+`20261118140000_hon_viet.sql` adds the skins and their set.
+
+## Glowing costume pieces
+
+A costume marks pieces that give off light with
+`<g class="lume" data-lume="pulse|blink|chase|twinkle" data-i="n">`. The part's
+texture shows them lit; `rigAssets` adds a light layer per way of glowing
+(chases, blinks and twinkles split into even and odd lights), the part's own
+drawing with only those pieces showing and a soft glow, at the part's crop.
+`FighterRig` lays each over its part with additive blending and fades it over
+time (`lumeStrength`): pulses breathe, chases alternate like marquee bulbs,
+twinkles glint, blinks flash once a second per light (under the
+three-flashes-a-second line). Only fighters with the ambient budget get the
+layers (none on Low). `lume-layers.test.ts` checks the layers, their crops and
+the timings.
+
 ## Full-roster skin sets
 
-Eight sets, one per collection that dresses all 18 champions in one design at
+Nine sets, one per collection that dresses all 18 champions in one theme at
 one rarity: Wayfarer, Moonlit Tea, Astral Court, Cyber Mecha, Abyssal
-Expedition, Dream Carnival, Nova Vanguard and Sky Pirates (`SKIN_BUNDLES` in
+Expedition, Dream Carnival, Nova Vanguard, Sky Pirates and Hồn Việt (`SKIN_BUNDLES` in
 `shop.ts`).
 Like the Look sets, a set costs 80% of the skins you don't own yet (the
 database's `arena_item_price`); buying one grants each skin, and a complete

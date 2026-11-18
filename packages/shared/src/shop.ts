@@ -301,10 +301,48 @@ export const SKY_PIRATE_SKINS: ChampionSkin[] = (
     "A sky-pirate captain's tricorne and coat, a signature effect, an anchor-drop landing and a treasure victory",
 }));
 
+/**
+ * Hồn Việt (Epic): Vietnamese heritage, each champion a figure of its own
+ * (Trung Thu lanterns, Thánh Gióng, quan họ, Kim Quy, hát bội...), with
+ * embroidery, lanterns and lacquer that give off light.
+ */
+export const HON_VIET_NAMES = {
+  voltkit: "Đèn Ông Sao",
+  cindrake: "Thánh Gióng",
+  tidefin: "Hoa Đăng",
+  auralynx: "Võ Sư Vovinam",
+  lumoth: "Đèn Lồng Hội An",
+  mystowl: "Liền Chị Quan Họ",
+  terradon: "Kim Quy",
+  duskveil: "Đèn Kéo Quân",
+  coilemur: "Nghệ Nhân Đàn Bầu",
+  pyranda: "Hạt Dẻ Phố Cổ",
+  glacelle: "Sương Sa Pa",
+  halcyra: "Chim Lạc Đông Sơn",
+  sunbara: "Xuân Hoa Mai",
+  astrabun: "Thỏ Ngọc Cung Trăng",
+  wombolder: "Mùa Lúa Chín",
+  shadopus: "Tướng Hát Bội",
+  pangrove: "Đầm Sen Đồng Tháp",
+  mossloth: "Ông Đồ",
+} as const satisfies Record<CharacterId, string>;
+export const HON_VIET_SKINS: ChampionSkin[] = (
+  Object.keys(HON_VIET_NAMES) as CharacterId[]
+).map((champion) => ({
+  id: `${champion}-hon-viet`,
+  champion,
+  name: HON_VIET_NAMES[champion],
+  rarity: "epic",
+  collection: "hon-viet",
+  description:
+    "A figure of Vietnamese heritage with its own costume and accessories, and embroidery and lanterns that glow",
+}));
+
 export type Collection =
   | FashionCollection
   | "nova-vanguard"
   | "sky-pirates"
+  | "hon-viet"
   | "winter"
   | "festival"
   | "garden"
@@ -320,6 +358,7 @@ export const COLLECTION_NAMES: Record<Collection, string> = {
   ) as Record<FashionCollection, string>),
   "nova-vanguard": "Nova Vanguard",
   "sky-pirates": "Sky Pirates",
+  "hon-viet": "Hồn Việt",
   winter: "Winter",
   festival: "Festival",
   garden: "Garden",
@@ -360,6 +399,7 @@ export const CHAMPION_SKINS: ChampionSkin[] = [
   ...FASHION_SKINS,
   ...VANGUARD_SKINS,
   ...SKY_PIRATE_SKINS,
+  ...HON_VIET_SKINS,
   skin("voltkit", "midnight", "Midnight", "common", "Navy fur, cyan cheeks"),
   skin("voltkit", "peach-fizz", "Peach Fizz", "common", "Peach and pink"),
   skin("voltkit", "mint-static", "Mint Static", "common", "Mint and white"),
@@ -1320,6 +1360,7 @@ const LOOK_SETS: [Collection, [string, string][]][] = [
 export const COLLECTION_TIER: Record<Collection, 0 | 1 | 2> = {
   "nova-vanguard": 1,
   "sky-pirates": 1,
+  "hon-viet": 1,
   wayfarer: 0,
   "moonlit-tea": 0,
   "astral-court": 0,
@@ -1386,6 +1427,7 @@ export const SKIN_SET_COLLECTIONS = [
   "dream-carnival",
   "nova-vanguard",
   "sky-pirates",
+  "hon-viet",
 ] as const satisfies readonly Collection[];
 export const SKIN_BUNDLES: ShopBundle[] = SKIN_SET_COLLECTIONS.map(
   (collection) => ({

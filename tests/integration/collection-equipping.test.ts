@@ -237,6 +237,8 @@ it("keeps every champion skin equippable through its separate champion slot", as
     // The Legendary rarity (Nova moves to it) and the Sky Pirates.
     "20261118100000_legendary_skins_and_skin_sets.sql",
     "20261118120000_sky_pirates.sql",
+    // Hồn Việt (Epic).
+    "20261118140000_hon_viet.sql",
   ])
     await db.exec(await readFile(`supabase/migrations/${file}`, "utf8"));
   await login(admin);

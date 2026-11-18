@@ -53,11 +53,11 @@ function lenses(k: Kit) {
 }
 
 // ---- Shared shapes.
-const torso = (k: Kit, color: string, extra = "") => k.garment(k.rect(k.L - 2, k.T - 2, k.R - k.L + 4, k.B - k.T + 6, 0, color, "none") + extra);
-const backPanel = (k: Kit, color: string, extra = "", hem = 2) =>
+export const torso = (k: Kit, color: string, extra = "") => k.garment(k.rect(k.L - 2, k.T - 2, k.R - k.L + 4, k.B - k.T + 6, 0, color, "none") + extra);
+export const backPanel = (k: Kit, color: string, extra = "", hem = 2) =>
   k.put("scarf", k.path(`M${k.C - k.W - 1} ${k.T + 1}Q${k.C} ${k.T - 4} ${k.C + k.W + 1} ${k.T + 1}L${k.C + k.W + 2} ${k.B + hem}L${k.C - k.W - 2} ${k.B + hem}Z`, color) + extra);
 /** Something carried on a pole slung across the back, shown above a shoulder. */
-function onPole(k: Kit, item: (x: number, y: number) => string) {
+export function onPole(k: Kit, item: (x: number, y: number) => string) {
   const s = k.side ? -k.side : 1;
   if (k.back) {
     const x = k.C - s * 34,
@@ -70,7 +70,7 @@ function onPole(k: Kit, item: (x: number, y: number) => string) {
   }
 }
 /** A brimmed hat crown + brim, front or side. */
-function hatShape(k: Kit, w: number, h: number, y: number, crown: string, brim: string, brimW = 1.25) {
+export function hatShape(k: Kit, w: number, h: number, y: number, crown: string, brim: string, brimW = 1.25) {
   const x = k.hx + k.side * 2;
   if (k.side)
     return k.path(`M${x - w * brimW} ${y}Q${x} ${y + 6} ${x + w * brimW} ${y - 2}Q${x} ${y - 6} ${x - w * brimW} ${y}Z`, brim) +
@@ -79,7 +79,7 @@ function hatShape(k: Kit, w: number, h: number, y: number, crown: string, brim: 
     k.path(`M${x - w * 0.62} ${y - 1}Q${x - w * 0.66} ${y - h} ${x} ${y - h}Q${x + w * 0.66} ${y - h} ${x + w * 0.62} ${y - 1}Z`, crown);
 }
 
-type Design = (k: Kit) => void;
+export type Design = (k: Kit) => void;
 
 export const DESIGNS: Partial<Record<ModernTheme, Partial<Record<CharacterId, Design>>>> = {
   // ================= Neon Campus =================
@@ -694,6 +694,6 @@ export const DESIGNS: Partial<Record<ModernTheme, Partial<Record<CharacterId, De
  * (Hồn Việt), and Cindrake's and Pyranda's flames stay where no design is drawn.
  */
 export function modernReplaces(theme: ModernTheme, id: CharacterId): CreaturePart[] {
-  const keepCrest = (id === "sunbara" && (theme === "hero" || theme === "viet")) || (!DESIGNS[theme]?.[id] && ["cindrake", "pyranda", "sunbara"].includes(id));
+  const keepCrest = (id === "sunbara" && (theme === "hero" || theme === "viet")) || (id === "cindrake" && theme === "viet") || (!DESIGNS[theme]?.[id] && ["cindrake", "pyranda", "sunbara"].includes(id));
   return keepCrest ? ["scarf"] : ["scarf", "flame"];
 }
