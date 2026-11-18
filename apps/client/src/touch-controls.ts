@@ -432,9 +432,13 @@ export class TouchControls {
     const cluster = this.root.querySelector<HTMLElement>(".touch-buttons")!;
     cluster.style.width = layout.width + "px";
     cluster.style.height = layout.height + "px";
+    // How high the controls reach: the cluster, and the target button where
+    // it rises over the cluster's top. Panels placed over the controls (a
+    // raid boss's own buttons) stand above both.
+    const rise = Math.max(0, layout.aim.size / 2 - layout.aim.y);
     document.body.style.setProperty(
       "--combat-cluster-height",
-      layout.height + "px",
+      layout.height + rise + "px",
     );
     Object.assign(this.aim.style, {
       left: layout.aim.x - layout.aim.size / 2 + "px",
