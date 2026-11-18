@@ -42,6 +42,75 @@ for (const [w, h, size] of [
     expect(errors).toEqual([]);
   });
 
+test("Bistro camera: zooms out only a little past the fit and never shows past the dressed town", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  for (const [w, h] of [
+    [844, 390],
+    [1280, 800],
+  ] as const) {
+    await page.setViewportSize({ width: w, height: h });
+    const errors = await openBistro(page);
+    type Cam = {
+      zoom: number;
+      zoomMin: number;
+      view: { x0: number; y0: number; x1: number; y1: number };
+      scene: { x0: number; y0: number; x1: number; y1: number };
+    };
+    const inside = (c: Cam) => {
+      expect(c.view.x0).toBeGreaterThanOrEqual(c.scene.x0 - 0.5);
+      expect(c.view.y0).toBeGreaterThanOrEqual(c.scene.y0 - 0.5);
+      expect(c.view.x1).toBeLessThanOrEqual(c.scene.x1 + 0.5);
+      expect(c.view.y1).toBeLessThanOrEqual(c.scene.y1 + 0.5);
+    };
+    await page.mouse.move(w / 2, h / 2);
+    for (let i = 0; i < 12; i++) await page.mouse.wheel(0, 500);
+    await page.waitForTimeout(300);
+    const out = (await B(page, "return b.camera()")) as Cam;
+    expect(out.zoom).toBeGreaterThanOrEqual(0.9);
+    expect(out.zoom).toBeCloseTo(out.zoomMin, 5);
+    inside(out);
+    // Dragged hard toward each corner: still inside.
+    for (const [dx, dy] of [
+      [2000, 2000],
+      [-4000, 0],
+      [0, -4000],
+      [4000, 0],
+    ]) {
+      await page.mouse.move(w / 2, h / 2);
+      await page.mouse.down();
+      await page.mouse.move(w / 2 + dx / 4, h / 2 + dy / 4, { steps: 4 });
+      await page.mouse.move(w / 2 + dx, h / 2 + dy, { steps: 4 });
+      await page.mouse.up();
+      inside((await B(page, "return b.camera()")) as Cam);
+    }
+    expect(errors).toEqual([]);
+  }
+});
+
+test("Bistro street: the canal's water moves (it is not a still picture)", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const errors = await openBistro(page);
+  await B(page, "b.setTod(0.5)");
+  // Look at the water left of the footbridge, the view dragged down to it.
+  await page.mouse.move(640, 400);
+  await page.mouse.down();
+  await page.mouse.move(640, 200, { steps: 6 });
+  await page.mouse.up();
+  await page.waitForTimeout(600);
+  const p = (await B(page, "return b.water()")) as { x: number; y: number };
+  const clip = { x: p.x - 60, y: p.y - 10, width: 120, height: 20 };
+  const a = await page.screenshot({ clip });
+  await page.waitForTimeout(700);
+  const b = await page.screenshot({ clip });
+  expect(Buffer.compare(a, b)).not.toBe(0);
+  expect(errors).toEqual([]);
+});
+
 test("Bistro street: the seasons follow the server's day (cherry blossom, autumn leaves, snow)", async ({
   page,
 }, info) => {

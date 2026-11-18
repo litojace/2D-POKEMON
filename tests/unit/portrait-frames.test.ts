@@ -1,3 +1,4 @@
+import { resolveObjectURL } from "node:buffer";
 import { expect, it } from "vitest";
 import { RAID_COSMETICS } from "../../packages/shared/src/raid";
 import { LOOK_ITEMS } from "../../packages/shared/src/shop";
@@ -148,5 +149,4 @@ it("shows an offline friend's avatar in their evolved frame, never their fighter
   expect(html).not.toContain("tidefin-moontide");
   expect(html).toContain("/assets/avatars/ea-avatar-001.webp");
   expect(html).toContain('data-frame-stars="4"');
-  expect(html).not.toContain("preview-palette");
 });

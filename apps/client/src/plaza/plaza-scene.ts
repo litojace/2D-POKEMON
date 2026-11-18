@@ -102,11 +102,12 @@ import {
   PLAZA_MARGIN,
   PLAZA_SCALE,
   plazaCamClamp,
-  plazaZoom,
+  plazaZoomAt,
+  plazaZoomRange,
 } from "./plaza-surround";
 import {
   RIVER_LAMPS,
-  Surroundings,
+  paintSurroundings,
   drawFarmLife,
   drawRiver,
   drawRiverLights,
@@ -282,17 +283,31 @@ export function openPlaza(options) {
     const id = setTimeout(run, 1000);
     return () => clearTimeout(id);
   };
-  bg.width = W;
-  bg.height = H;
+  /**
+   * One meadow: the Plaza's ground and the world around it (the river's
+   * banks, the woods, the farm: plaza-surround*.ts) are painted as one
+   * picture, PLAZA_MARGIN past each edge, so there is no seam where a
+   * separate picture would meet it. World (0, 0) is at (GM, GM) in it.
+   */
+  const GM = PLAZA_MARGIN,
+    GW = W + 2 * GM,
+    GH = H + 2 * GM;
+  bg.width = GW;
+  bg.height = GH;
   function paintBg() {
     const g = bg.getContext("2d");
+    g.setTransform(1, 0, 0, 1, GM, GM);
     seed = 11;
-    // grass: soft gradient, painterly dabs, tufts, clover, little flowers
+    // grass: soft gradient, painterly dabs, tufts, clover, little flowers,
+    // over the whole meadow at the same density everywhere
+    const more = (GW * GH) / (W * H),
+      gx = () => -GM + rnd() * GW,
+      gy = () => -GM + rnd() * GH;
     g.fillStyle = "#77c25b";
-    g.fillRect(0, 0, W, H);
-    for (let i = 0; i < 70; i++) {
-      const x = rnd() * W,
-        y = rnd() * H,
+    g.fillRect(-GM, -GM, GW, GH);
+    for (let i = 0; i < 70 * more; i++) {
+      const x = gx(),
+        y = gy(),
         r = 120 + rnd() * 320,
         gr = g.createRadialGradient(x, y, 0, x, y, r),
         c = rnd() < 0.5 ? "150,220,110" : "70,150,70";
@@ -302,17 +317,17 @@ export function openPlaza(options) {
       g.fillRect(x - r, y - r, r * 2, r * 2);
     }
     const greens = ["#6cb851", "#82cc63", "#5fae4a", "#8fd46e", "#71bd55"];
-    for (let i = 0; i < 26000; i++) {
-      const x = rnd() * W,
-        y = rnd() * H;
+    for (let i = 0; i < 26000 * more; i++) {
+      const x = gx(),
+        y = gy();
       g.fillStyle = greens[i % 5];
       g.beginPath();
       g.ellipse(x, y, 2.4 + rnd() * 2.6, 1.3 + rnd(), rnd() * 3, 0, 7);
       g.fill();
     }
-    for (let i = 0; i < 2200; i++) {
-      const x = rnd() * W,
-        y = rnd() * H;
+    for (let i = 0; i < 2200 * more; i++) {
+      const x = gx(),
+        y = gy();
       g.strokeStyle = rnd() < 0.5 ? "#4f9a3c" : "#a6e07e";
       g.lineWidth = 1.6;
       g.beginPath();
@@ -822,14 +837,14 @@ export function openPlaza(options) {
     g.fillRect(GATE.x + 72, GATE.y + 10, W - GATE.x - 72, 5);
     g.fillRect(0, GATE.y + 21, GATE.x - 72, 4);
     g.fillRect(GATE.x + 72, GATE.y + 21, W - GATE.x - 72, 4);
-    // The river bank's verge and railing along the north edge.
+    // The river bank's verge and railing along the north edge, and the
+    // world past the edges.
     paintVerge(g);
+    paintSurroundings(g);
+    g.setTransform(1, 0, 0, 1, 0, 0);
   }
-  /** The world past the Plaza's edges (plaza-surround*.ts). */
-  const around = new Surroundings(memoryConstrained() ? 0.5 : 0.75);
   function prep() {
     paintBg();
-    around.paint();
     ready = true;
   }
 
@@ -1178,6 +1193,70 @@ export function openPlaza(options) {
       feed(n.id, `${who} hit the runway`);
   }
 
+  /* ---------- zoom: pinch, the wheel, + and − ---------- */
+  /** The player's zoom against the usual one (kept on this device). */
+  let zoomF = 1;
+  try {
+    zoomF = Number(localStorage.getItem("ea-plaza-zoom")) || 1;
+  } catch {
+    /* no storage */
+  }
+  function setZoom(f, keep = true) {
+    const r = plazaZoomRange(NW, NH);
+    Z = plazaZoomAt(NW, NH, f);
+    // What was asked for past a limit is not kept: a wider screen later
+    // starts from what was really shown.
+    zoomF = Z / r.base;
+    // Inside at once (the camera eases after this): zooming or resizing
+    // never shows past what is painted.
+    cam = plazaCamClamp(cam.x, cam.y, NW, NH, Z);
+    if (keep)
+      try {
+        localStorage.setItem("ea-plaza-zoom", String(zoomF));
+      } catch {
+        /* no storage */
+      }
+  }
+  const onWheel = (e) => {
+    e.preventDefault();
+    start();
+    setZoom(
+      zoomF * Math.exp(-Math.max(-120, Math.min(120, e.deltaY)) * 0.0015),
+    );
+  };
+  cv.addEventListener("wheel", onWheel, { passive: false });
+  /** Two fingers on the playground: pinch to zoom. */
+  const fingers = new Map();
+  let pinchFrom = 0,
+    pinchF = 1;
+  const spread = () => {
+    const [a, b] = [...fingers.values()];
+    return Math.hypot(a.x - b.x, a.y - b.y);
+  };
+  cv.addEventListener("pointerdown", (e) => {
+    if (e.pointerType !== "touch") return;
+    fingers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (fingers.size === 2) {
+      pinchFrom = spread();
+      pinchF = zoomF;
+    }
+  });
+  const pinchMove = (e) => {
+    const f = fingers.get(e.pointerId);
+    if (!f) return;
+    f.x = e.clientX;
+    f.y = e.clientY;
+    if (fingers.size === 2 && pinchFrom > 20)
+      setZoom(pinchF * (spread() / pinchFrom));
+  };
+  const pinchEnd = (e) => {
+    fingers.delete(e.pointerId);
+    if (fingers.size < 2) pinchFrom = 0;
+  };
+  addEventListener("pointermove", pinchMove, true);
+  addEventListener("pointerup", pinchEnd, true);
+  addEventListener("pointercancel", pinchEnd, true);
+
   /* ---------- input ---------- */
   const keys = new Set();
   let joy = { x: 0, y: 0, id: null },
@@ -1214,6 +1293,11 @@ export function openPlaza(options) {
       return;
     }
     start();
+    // + and − (or =) zoom in and out.
+    if (k === "+" || k === "=" || k === "-" || k === "_") {
+      setZoom(zoomF * (k === "-" || k === "_" ? 1 / 1.15 : 1.15));
+      return;
+    }
     if (
       e.repeat &&
       ![
@@ -1372,17 +1456,109 @@ export function openPlaza(options) {
     if (who) return showCard(who);
     hideCard();
     // A click walks you there, round whatever is in the way (plaza-path.ts).
-    if (e.pointerType === "mouse") walkTo(w);
+    if (e.pointerType === "mouse") walkTo(w, true);
   });
   /** The rest of the way after `target`, and where it ends. */
   let route = [],
     routeEnd = null,
     replannedAt = 0;
-  function walkTo(w) {
+  function walkTo(w, click = false) {
     routeEnd = w;
     route = plazaPath(P, w);
+    const end = route[route.length - 1];
     target = route.shift() ?? null;
     replannedAt = performance.now();
+    // The click marker (as in MOBAs and ARPGs): where you're going, or a
+    // red cross where there is no way.
+    if (click)
+      clickMark = end
+        ? { x: end.x, y: end.y, t: 0, ok: true }
+        : { x: w.x, y: w.y, t: 0, ok: false };
+  }
+  /** The click marker: where a click sent you (drawn on the ground). */
+  let clickMark = null;
+  const MARK_BURST = 0.45;
+  function drawClickMark(g, time) {
+    const m = clickMark;
+    if (!m) return;
+    m.t = m.t ? m.t : time;
+    const age = time - m.t;
+    // Arrived (or walked off with the keys): the marker goes.
+    const going = m.ok && routeEnd && target;
+    if (age > MARK_BURST && !going) {
+      if (age > MARK_BURST + 0.25 || m.ok) clickMark = null;
+      if (!clickMark) return;
+    }
+    g.save();
+    g.translate(m.x, m.y);
+    g.scale(1, 0.42);
+    g.lineCap = "round";
+    if (!m.ok) {
+      // No way there: a red cross, fading.
+      const a = Math.max(0, 1 - age / (MARK_BURST + 0.25));
+      g.scale(1, 1 / 0.42);
+      g.strokeStyle = `rgba(20,8,12,${0.5 * a})`;
+      g.lineWidth = 7;
+      g.beginPath();
+      g.moveTo(-9, -6);
+      g.lineTo(9, 6);
+      g.moveTo(9, -6);
+      g.lineTo(-9, 6);
+      g.stroke();
+      g.strokeStyle = `rgba(255,90,100,${a})`;
+      g.lineWidth = 4;
+      g.stroke();
+      g.restore();
+      return;
+    }
+    const k = Math.min(1, age / MARK_BURST),
+      ease = 1 - (1 - k) ** 3;
+    // Gold with a dark edge and a white core, so it stands out on the
+    // grass, the stones and the track alike (pale blue sank into them).
+    const line = (a, w = 1) => {
+      g.strokeStyle = `rgba(28,18,8,${0.75 * a})`;
+      g.lineWidth = 8 * w;
+      g.stroke();
+      g.strokeStyle = `rgba(255,206,48,${a})`;
+      g.lineWidth = 4.5 * w;
+      g.stroke();
+      g.strokeStyle = `rgba(255,250,220,${0.9 * a})`;
+      g.lineWidth = 1.5 * w;
+      g.stroke();
+    };
+    if (k < 1 && !reduced) {
+      // The burst: a ring closing in and four chevrons pointing to the spot.
+      const r = 50 - 32 * ease,
+        a = 1 - k * 0.5;
+      g.beginPath();
+      g.arc(0, 0, r, 0, Math.PI * 2);
+      line(a);
+      for (let i = 0; i < 4; i++) {
+        g.save();
+        g.rotate((i * Math.PI) / 2 + Math.PI / 4);
+        g.translate(r + 14, 0);
+        g.beginPath();
+        g.moveTo(12, -12);
+        g.lineTo(0, 0);
+        g.lineTo(12, 12);
+        line(a);
+        g.restore();
+      }
+    }
+    // While you walk there: a ring pulsing on the spot, a dot in it.
+    const p = reduced ? 0.5 : 0.5 + 0.5 * Math.sin(time * 6);
+    g.beginPath();
+    g.arc(0, 0, 15 + 3 * p, 0, Math.PI * 2);
+    line(0.8 + 0.2 * p, 0.85);
+    g.beginPath();
+    g.arc(0, 0, 5.5, 0, Math.PI * 2);
+    g.fillStyle = "rgba(28,18,8,.7)";
+    g.fill();
+    g.beginPath();
+    g.arc(0, 0, 3.8, 0, Math.PI * 2);
+    g.fillStyle = "#ffce30";
+    g.fill();
+    g.restore();
   }
   /** The player card: name, level, title; add friend, invite to party. */
   let cardFor = null;
@@ -2593,7 +2769,34 @@ export function openPlaza(options) {
     );
     g.restore();
   }
-  function drawHurdle(g, [p0, p1]) {
+  /**
+   * A hurdle never moves: drawn once into its own picture (twice the
+   * resolution) and copied after, so its thin dashed bar doesn't shimmer
+   * as the camera glides a fraction of a pixel each frame.
+   */
+  const hurdlePics = new Map();
+  function drawHurdle(g, seg) {
+    const [p0, p1] = seg;
+    let pic = hurdlePics.get(seg);
+    if (!pic) {
+      const pad = 12,
+        k = 2,
+        x0 = Math.min(p0.x, p1.x) - pad,
+        y0 = Math.min(p0.y, p1.y) - PLAZA_SCALE.hurdle - pad,
+        x1 = Math.max(p0.x, p1.x) + pad,
+        y1 = Math.max(p0.y, p1.y) + pad;
+      const c = document.createElement("canvas");
+      c.width = Math.ceil((x1 - x0) * k);
+      c.height = Math.ceil((y1 - y0) * k);
+      const cg = c.getContext("2d");
+      cg.setTransform(k, 0, 0, k, -x0 * k, -y0 * k);
+      paintHurdle(cg, seg);
+      pic = { c, x0, y0, w: x1 - x0, h: y1 - y0 };
+      hurdlePics.set(seg, pic);
+    }
+    g.drawImage(pic.c, pic.x0, pic.y0, pic.w, pic.h);
+  }
+  function paintHurdle(g, [p0, p1]) {
     g.strokeStyle = "rgba(0,0,0,.3)";
     g.lineWidth = 8;
     g.beginPath();
@@ -3603,17 +3806,18 @@ export function openPlaza(options) {
       vx1 = Math.min(W + PLAZA_MARGIN, Math.ceil(c1.x) + 2),
       vy1 = Math.min(H + PLAZA_MARGIN, Math.ceil(c1.y) + 2);
     {
-      // The Plaza's own ground, then the world around it (plaza-surround*):
-      // the river's water first, under the north strip's hole.
-      const bx0 = Math.max(0, vx0),
-        by0 = Math.max(0, vy0),
-        bx1 = Math.min(W, vx1),
-        by1 = Math.min(H, vy1);
+      // The river's water first, under the meadow's hole for it; then the
+      // meadow (the Plaza and the world around it, one picture).
+      if (vy0 < 0) drawRiver(g, time, night(), low, vx0, vy0, vx1);
+      const bx0 = Math.max(-GM, vx0),
+        by0 = Math.max(-GM, vy0),
+        bx1 = Math.min(W + GM, vx1),
+        by1 = Math.min(H + GM, vy1);
       if (bx1 > bx0 && by1 > by0)
         g.drawImage(
           bg,
-          bx0,
-          by0,
+          bx0 + GM,
+          by0 + GM,
           bx1 - bx0,
           by1 - by0,
           bx0,
@@ -3621,10 +3825,10 @@ export function openPlaza(options) {
           bx1 - bx0,
           by1 - by0,
         );
-      if (vy0 < 0) drawRiver(g, time, night(), low, vx0, vy0, vx1);
-      around.draw(g, vx0, vy0, vx1, vy1);
       drawFarmLife(g, time, reduced, vx0, vy1, vx1);
     }
+    // Where a click sent you, on the ground under everyone.
+    if (!photo) drawClickMark(g, time);
     // pad glow, runway spotlight
     PADS.forEach(([x, y]) => {
       g.fillStyle = `rgba(159,208,255,${0.18 + Math.sin(time * 3 + x) * 0.1})`;
@@ -3633,7 +3837,6 @@ export function openPlaza(options) {
       g.fill();
     });
 
-    HSEG.forEach((s) => drawHurdle(g, s));
     drawPond(g, time);
     FX.filter((f) => f.ring || f.dust).forEach((f) => {
       const k = f.t / f.life;
@@ -4396,12 +4599,9 @@ export function openPlaza(options) {
     NW = nw;
     NH = nh;
     PS = ps;
-    // Never show more than is built: on a screen wider or taller than the
-    // Plaza and its surroundings (an ultrawide monitor) zoom in until it fills it.
-    Z = plazaZoom(nw, nh);
-    // Inside at once (the camera eases after this): a resize or the first
-    // frame never shows past what is painted.
-    cam = plazaCamClamp(cam.x, cam.y, nw, nh, Z);
+    // The player's zoom, within what this screen may show (never more than
+    // is built: an ultrawide monitor zooms in until it fills).
+    setZoom(zoomF, false);
     cv.width = Math.round(nw * ps);
     cv.height = Math.round(nh * ps);
     renderQuests();
@@ -4521,15 +4721,14 @@ export function openPlaza(options) {
       keys.clear();
       probe?.pause();
       layer.style.display = "none";
-      // Where memory is short (an iPhone), the painted ground (a 2700 × 1700
-      // canvas, 17.5 MB) is painted again on return instead of kept behind
+      // Where memory is short (an iPhone), the painted ground (a 3300 × 2300
+      // canvas, 30 MB, with the world around the Plaza) is painted again on return instead of kept behind
       // the Lobby, the Farm or the Bistro, as the Bistro does its room.
       // (Once the page is idle, not in the tap that switched tabs.)
       if (memoryConstrained())
         idleRelease = requestIdle(() => {
           if (!away) return;
           bg.width = bg.height = 0;
-          around.release();
         });
     },
     /** Back: drawn at once as you left it; the server's state follows. */
@@ -4539,16 +4738,13 @@ export function openPlaza(options) {
       idleRelease?.();
       idleRelease = undefined;
       if (!bg.width) {
-        bg.width = W;
-        bg.height = H;
+        bg.width = GW;
+        bg.height = GH;
         // (paintBg reseeds the scene's random numbers; the rest of the
         // scene's sequence carries on as if it had not run again.)
         const kept = seed;
         paintBg();
         seed = kept;
-      }
-      if (!around.strips.length) {
-        around.paint();
       }
       layer.style.display = "";
       running = true;
@@ -4589,6 +4785,9 @@ export function openPlaza(options) {
       socket.off("plaza-state", onState);
       socket.off("plaza-treat", onTreat);
       socket.off("plaza-treats", onTreats);
+      removeEventListener("pointermove", pinchMove, true);
+      removeEventListener("pointerup", pinchEnd, true);
+      removeEventListener("pointercancel", pinchEnd, true);
       removeEventListener("pointermove", joyMove, true);
       removeEventListener("pointerup", joyEnd, true);
       removeEventListener("pointercancel", joyEnd, true);
@@ -4606,7 +4805,7 @@ export function openPlaza(options) {
         return [
           ...bg
             .getContext("2d")
-            .getImageData(Math.round(x), Math.round(y), 1, 1).data,
+            .getImageData(Math.round(x) + GM, Math.round(y) + GM, 1, 1).data,
         ];
       },
       /** Where a world point is on the page (tests). */
@@ -4631,8 +4830,11 @@ export function openPlaza(options) {
         y1: cam.y + NH / 2 / Z,
         z: Z,
       }),
-      /** Pixels in the surroundings' strips (tests). */
-      surroundPixels: () => around.pixels,
+      /** The click marker now (tests). */
+      clickMark: () => (clickMark ? { ...clickMark } : null),
+      /** Tests: zoom to a factor of the usual (as a pinch or the wheel). */
+      setZoom: (f) => setZoom(f),
+      zoomRange: () => plazaZoomRange(NW, NH),
       /** Tests: hold the time of day (0.42 = midday). */
       setTod(t) {
         tod = t;

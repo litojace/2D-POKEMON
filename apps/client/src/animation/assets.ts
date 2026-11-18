@@ -132,6 +132,8 @@ export function rigAnchorsFor(id: CharacterId, dir: Facing) {
  * FighterRig's images and `cosmeticLayer`.
  */
 export const artWidths = new Map<string, number>();
+/** The drawing behind the asset just made (for its light layers). */
+let lastSvg = "";
 function asset(
   id: CharacterId,
   dir: Facing,
@@ -153,9 +155,11 @@ function asset(
       ? moodKey(id, dir, mood, suffix)
       : rigKey(id, dir, part, suffix);
   artWidths.set(key, b[2]);
+  const svg = render(part, b.join(" "));
+  lastSvg = svg;
   return {
     key,
-    url: "data:image/svg+xml;base64," + btoa(render(part, b.join(" "))),
+    url: "data:image/svg+xml;base64," + btoa(svg),
     width: b[2],
     height: b[3],
     originX: (q[0] - b[0]) / b[2],
@@ -163,6 +167,50 @@ function asset(
     x: (q[0] - 100) * 0.5,
     y: (q[1] - 130) * 0.5,
   };
+}
+/**
+ * Glowing pieces (`<g class="lume" data-lume=… data-i=…>` in a costume) get
+ * their own light layers, one per way of glowing: the part's texture with
+ * only those pieces showing, softened by a glow. The rig lays each over its
+ * part with additive blending and fades it in time (see FighterRig), the way
+ * games animate an emissive mask. Chases, blinks and twinkles split into two
+ * phases (even and odd lights) so neighbours light in turn.
+ */
+export type LumeKind = "pulse" | "blink" | "chase" | "twinkle";
+export interface LumeLayer {
+  key: string;
+  kind: LumeKind;
+  phase: number;
+}
+/** Light layers by the part texture they sit on. */
+export const lumeLayers = new Map<string, LumeLayer[]>();
+const LUME = /<g class="lume" data-lume="(pulse|blink|chase|twinkle)" data-i="(\d+)"/g;
+const LUME_STYLE =
+  `<defs><filter id="lume-glow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="2.6" result="b"/>` +
+  `<feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>` +
+  `<style>*{visibility:hidden}clipPath *,mask *{visibility:visible}.lume-on,.lume-on *{visibility:visible}.lume-on{filter:url(#lume-glow)}</style>`;
+function lumeAssets(base: RigAsset, svg: string): RigAsset[] {
+  if (!svg.includes('class="lume"')) return [];
+  const found = new Map<string, LumeLayer>();
+  for (const m of svg.matchAll(LUME)) {
+    const kind = m[1] as LumeKind;
+    const phase = kind === "pulse" ? 0 : +m[2] % 2;
+    const key = `${base.key}~lume-${kind}${phase}`;
+    found.set(key, { key, kind, phase });
+  }
+  const layers = [...found.values()];
+  lumeLayers.set(base.key, layers);
+  return layers.map((l) => {
+    const marked = svg.replace(LUME, (all, kind: string, i: string) =>
+      kind === l.kind && (kind === "pulse" ? 0 : +i % 2) === l.phase
+        ? all.replace('class="lume"', 'class="lume lume-on"')
+        : all,
+    );
+    const open = marked.indexOf(">", marked.indexOf("<svg")) + 1;
+    const only = marked.slice(0, open) + LUME_STYLE + marked.slice(open);
+    artWidths.set(l.key, base.width);
+    return { ...base, key: l.key, url: "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(only))) };
+  });
 }
 const DIRS: Facing[] = ["up", "down", "left", "right"];
 /**
@@ -185,9 +233,10 @@ export function rigAssets(
   );
   return [
     ...directions.flatMap((dir) =>
-      parts.map((part) =>
-        asset(id, dir, part, "normal", look, drawings.get(dir)!),
-      ),
+      parts.flatMap((part) => {
+        const a = asset(id, dir, part, "normal", look, drawings.get(dir)!);
+        return [a, ...lumeAssets(a, lastSvg)];
+      }),
     ),
     ...directions
       .filter((dir) => dir !== "up")

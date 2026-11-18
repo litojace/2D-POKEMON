@@ -19,11 +19,26 @@ export function parse(html: string) {
   return box.firstElementChild as HTMLElement;
 }
 
+/** What a child is, to find it again when its siblings change (`loose`). */
+const kind = (n: Node) =>
+  n instanceof Element
+    ? `${n.tagName} ${n.getAttribute("class") ?? ""}`
+    : `#${n.nodeType}`;
+
+/**
+ * `loose`: where a list of children grew or shrank, keep the children that
+ * are still there (same tag and class, in the same order) and patch them,
+ * rather than rebuilding the whole list. For another tab of a screen: its
+ * head, tab row and stage stay the same elements, and only what differs is
+ * built. (Removing the focused tab, the one just tapped, would make the
+ * browser restyle the whole old screen first: a quarter second on a phone.)
+ */
 export function patch(
   live: Node,
   previous: Node,
   next: Node,
   replaceWhole = REPLACE_WHOLE,
+  loose = false,
 ) {
   if (previous.isEqualNode(next)) return;
   if (
@@ -53,13 +68,39 @@ export function patch(
   const before = Array.from(previous.childNodes),
     after = Array.from(next.childNodes),
     children = Array.from(live.childNodes);
-  if (before.length !== after.length || children.length !== before.length) {
+  if (children.length !== before.length) {
     while (live.firstChild) live.removeChild(live.firstChild);
     for (const node of after) live.appendChild(node.cloneNode(true));
     return;
   }
-  for (let i = 0; i < after.length; i++)
-    patch(children[i], before[i], after[i], replaceWhole);
+  if (before.length !== after.length) {
+    if (!loose) {
+      while (live.firstChild) live.removeChild(live.firstChild);
+      for (const node of after) live.appendChild(node.cloneNode(true));
+      return;
+    }
+    // Each new child takes the first old one of its kind after the last
+    // taken (so the kept ones never move), or is built.
+    let from = 0;
+    const taken = after.map((node) => {
+      let i = from;
+      while (i < before.length && kind(before[i]) !== kind(node)) i++;
+      if (i === before.length) return -1;
+      from = i + 1;
+      return i;
+    });
+    children.forEach((node, i) => {
+      if (!taken.includes(i)) live.removeChild(node);
+    });
+    after.forEach((node, j) => {
+      const i = taken[j];
+      if (i < 0)
+        live.insertBefore(node.cloneNode(true), live.childNodes[j] ?? null);
+      else patch(children[i], before[i], node, replaceWhole, true);
+    });
+  } else
+    for (let i = 0; i < after.length; i++)
+      patch(children[i], before[i], after[i], replaceWhole, loose);
   if (live instanceof HTMLSelectElement && next instanceof HTMLSelectElement)
     live.value = next.value;
 }

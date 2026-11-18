@@ -561,9 +561,32 @@
 .ui-panel-head:has(.ui-tabs) {
   border-bottom: 1px solid var(--ui-line);
 }
+/* The selected tab's underline is its own layer (::after, over the
+   button's transparent bottom border), so a tab switch can glide it from
+   the old tab to the new one on the compositor (ui/motion.ts,
+   playTabSwitch). A press answers at once: the tab dips a touch. */
+.ui-tabs > button {
+  position: relative;
+  transition:
+    color 0.16s ease-out,
+    transform 0.12s ease-out;
+}
+.ui-tabs > button:active {
+  transform: scale(0.96);
+}
 .ui-tabs > button[aria-selected="true"] {
   color: var(--ui-accent);
-  border-bottom-color: var(--ui-accent);
+}
+.ui-tabs > button[aria-selected="true"]::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -3px;
+  height: 3px;
+  background: var(--ui-accent);
+  transform-origin: left center;
+  pointer-events: none;
 }
 @media (max-height: 500px) {
   .ui-tabs {
@@ -1256,7 +1279,7 @@
   position: relative;
   flex: none;
 }
-.ui-avatar > svg {
+.ui-avatar > :is(svg, img) {
   position: absolute;
   inset: 0;
   width: 100%;

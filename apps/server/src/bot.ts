@@ -110,24 +110,24 @@ export const BOT_PROFILES: Record<BotDifficulty, Profile> = {
     rest: 0.12,
     seeShots: true,
     dazeBy: {
-      voltkit: 0.17,
-      cindrake: 0.44,
-      tidefin: 0.15,
-      auralynx: 0.3,
+      voltkit: 0.18,
+      cindrake: 0.41,
+      tidefin: 0.155,
+      auralynx: 0.33,
       lumoth: 0.17,
-      mystowl: 0.14,
-      terradon: 0.3,
+      mystowl: 0.155,
+      terradon: 0.31,
       duskveil: 0.27,
       coilemur: 0.34,
-      pyranda: 0.38,
+      pyranda: 0.36,
       glacelle: 0.26,
-      halcyra: 0.19,
-      sunbara: 0.23,
-      astrabun: 0.35,
-      wombolder: 0.36,
+      halcyra: 0.175,
+      sunbara: 0.225,
+      astrabun: 0.33,
+      wombolder: 0.355,
       shadopus: 0.28,
-      pangrove: 0.39,
-      mossloth: 0.485,
+      pangrove: 0.405,
+      mossloth: 0.475,
     },
   },
   hard: {
@@ -570,6 +570,13 @@ export class BotBrain {
           t >= me.jumpUntil
         )
           input.jump = true;
+        // Sloth Time slows walking, not dashing: dash out of the bubble.
+        else if (
+          z.ability.kind === "timewarp" &&
+          this.profile.dodge > 0.3 &&
+          t >= me.dashAt
+        )
+          input.dash = true;
       }
     // Brawlers close the gap with a dash.
     if (
@@ -909,6 +916,10 @@ export class BotBrain {
               (s.enemyDisabled ? 1.6 : 1);
           break;
         case "counter":
+          // Facet Guard vaults: close the gap on a kiter (or block up close).
+          if (a.lunge && s.sight && s.dist > 220 && s.dist < 460) score = 22;
+          else if (s.threatened) score = 18;
+          break;
         case "barrier":
           if (s.threatened) score = 18;
           break;

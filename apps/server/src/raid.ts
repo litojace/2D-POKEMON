@@ -1479,7 +1479,9 @@ export class RaidArena extends Arena {
       if (!need) break;
       shift(need);
     }
-    if (!this.safeSpotExists([...old, ...mine]))
+    // With a little slack: raiders keep moving through the rest of the tick,
+    // so a spot only just in reach when the attack is planned may not be.
+    if (!this.safeSpotExists([...old, ...mine], 0.1))
       shift(
         Math.max(...old.map((o) => o.at)) +
           1 -
@@ -1490,9 +1492,10 @@ export class RaidArena extends Arena {
    * For every raider, is there a spot they can reach before the first of
    * these shapes lands (slowest champion, after a 0.45 s reaction) that is
    * outside every one of them? Ring and field attacks are answered by
-   * jumping or by the mechanic, so they don't block a spot.
+   * jumping or by the mechanic, so they don't block a spot. `slack` takes
+   * that many seconds off the time to get there.
    */
-  safeSpotExists(shapes: RaidWarning[] = this.raid.warnings) {
+  safeSpotExists(shapes: RaidWarning[] = this.raid.warnings, slack = 0) {
     const spatial = shapes.filter(
       (w) =>
         this.harmful(w) &&
@@ -1501,7 +1504,8 @@ export class RaidArena extends Arena {
     if (!spatial.length) return true;
     const first = Math.min(...spatial.map((w) => w.at));
     const reach =
-      RAID_SLOWEST_SPEED * Math.max(0, first - this.time - RAID_REACTION);
+      RAID_SLOWEST_SPEED *
+      Math.max(0, first - this.time - RAID_REACTION - slack);
     const clear = (x: number, y: number) =>
       x > RULES.radius &&
       x < RULES.width - RULES.radius &&

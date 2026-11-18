@@ -34,6 +34,8 @@ import {
   onWalkable,
   plazaCamClamp,
   plazaZoom,
+  plazaZoomAt,
+  plazaZoomRange,
   propBox,
 } from "../../apps/client/src/plaza/plaza-surround";
 
@@ -190,7 +192,7 @@ describe("Plaza surroundings", () => {
     ).toBeLessThan(c.y);
   });
 
-  it("each baked picture lies wholly in the strips (none cut at the Plaza's edge)", () => {
+  it("each baked picture lies outside the Plaza's own ground (never over its paths)", () => {
     for (const p of BAKED) {
       const b = propBox(p);
       const inside = b.x1 > 0 && b.x0 < W && b.foot + 12 > 0 && b.top < H;
@@ -251,6 +253,37 @@ describe("Plaza camera: never past what is built", () => {
         expect(c.y + hh).toBeLessThanOrEqual(H + PLAZA_OUT.s + 0.01);
       }
     }
+  });
+  it("a player's zoom stays inside what is built and what the server shows", () => {
+    for (const [nw, nh] of screens) {
+      const r = plazaZoomRange(nw, nh);
+      expect(r.min).toBeLessThanOrEqual(r.base);
+      expect(r.max).toBeGreaterThanOrEqual(r.base);
+      for (const f of [0.1, 0.5, 0.8, 1, 1.3, 2, 10]) {
+        const z = plazaZoomAt(nw, nh, f);
+        expect(z).toBeGreaterThanOrEqual(r.min - 1e-9);
+        expect(z).toBeLessThanOrEqual(r.max + 1e-9);
+        // Zoomed out, the view is never wider than the built world...
+        expect(nw / z).toBeLessThanOrEqual(
+          W + PLAZA_OUT.w + PLAZA_OUT.e + 0.01,
+        );
+        expect(nh / z).toBeLessThanOrEqual(
+          H + PLAZA_OUT.n + PLAZA_OUT.s + 0.01,
+        );
+        // ...nor than where the server sends other players, unless the
+        // screen is so big that even the usual zoom shows more.
+        if (z < r.base) {
+          expect(nw / z).toBeLessThanOrEqual(PLAZA.view.w + 0.01);
+          expect(nh / z).toBeLessThanOrEqual(PLAZA.view.h + 0.01);
+        }
+      }
+    }
+    // A phone can zoom out a little and in a lot; a desktop in too.
+    const phone = plazaZoomRange(844, 390);
+    expect(phone.min).toBeLessThan(0.6);
+    expect(phone.max).toBeGreaterThan(1.1);
+    expect(plazaZoomRange(1280, 800).max).toBe(1.5);
+    expect(plazaZoomAt(844, 390, NaN)).toBe(0.66);
   });
   it("phones see as much as before (zoom 0.66), desktops 1", () => {
     expect(plazaZoom(844, 390)).toBe(0.66);

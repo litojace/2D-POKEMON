@@ -151,6 +151,130 @@ export function glide(
   });
 }
 
+/* -------------------------------------------------------- tab switches */
+
+/**
+ * A tab switch, the way big games' menus do it (Genshin's and Star Rail's
+ * menus, Clash Royale's and Brawl Stars' shops, Material's "shared axis"):
+ * - the tab row and the head stay put: they are where you are;
+ * - the underline glides from the old tab to the new one (one line moving,
+ *   never one vanishing and another appearing);
+ * - the new contents slide in a short way from the side of the tab you
+ *   went to, fading up, on one shared curve, in about a quarter second;
+ * - a quick second tap retargets from where the line is, not from the start.
+ *
+ * Only `transform` and `opacity` move, on a few elements, so the
+ * compositor plays it (cheap on older phones). The screen has already drawn
+ * its new tab when this runs: nothing waits on it.
+ */
+export const TAB = { ink: 280, content: 240, shift: 18, most: 12 } as const;
+
+interface TabMark {
+  list: Element;
+  index: number;
+  /** Where the underline is drawn now (viewport px), mid-glide included. */
+  left: number;
+  width: number;
+}
+const tabsOf = (list: Element) =>
+  Array.from(list.querySelectorAll<HTMLElement>(':scope > [role="tab"]'));
+const pseudoAnimation =
+  typeof KeyframeEffect !== "undefined" &&
+  "pseudoElement" in KeyframeEffect.prototype;
+/** What is running on a screen for its last tab switch (to retarget). */
+const tabMotion = new WeakMap<Element, Animation[]>();
+
+/** Note the selected tab of each tab row in `root`, before a switch. */
+export function markTabs(root: Element): TabMark[] {
+  if (!uiMotion()) return [];
+  return Array.from(root.querySelectorAll(".ui-tabs")).flatMap((list) => {
+    const tabs = tabsOf(list);
+    const index = tabs.findIndex(
+      (t) => t.getAttribute("aria-selected") === "true",
+    );
+    if (index < 0) return [];
+    const r = tabs[index].getBoundingClientRect();
+    let left = r.left,
+      width = r.width;
+    // Still gliding: start from where the line is drawn, not where it lands.
+    if (
+      pseudoAnimation &&
+      tabs[index].getAnimations({ subtree: true }).length
+    ) {
+      const m = new DOMMatrixReadOnly(
+        getComputedStyle(tabs[index], "::after").transform.replace(
+          /^none$/,
+          "matrix(1,0,0,1,0,0)",
+        ),
+      );
+      left += m.e;
+      width *= m.a;
+    }
+    return [{ list, index, left, width }];
+  });
+}
+
+/**
+ * Play a tab switch in `root` after the screen drew the new tab: the
+ * underline glides from `before` (markTabs) and the new contents slide in
+ * from the tab's side. Nothing happens if no tab changed.
+ */
+export function playTabSwitch(root: Element, before: TabMark[]) {
+  if (!uiMotion() || !before.length) return;
+  const lists = Array.from(root.querySelectorAll(".ui-tabs"));
+  // Measure everything first, then start the animations (no layout
+  // read after a write).
+  const moves = before.flatMap((b, i) => {
+    // The same tab row, or the one in its place after a redraw.
+    const list = b.list.isConnected ? b.list : lists[i];
+    if (!list) return [];
+    const tabs = tabsOf(list);
+    const index = tabs.findIndex(
+      (t) => t.getAttribute("aria-selected") === "true",
+    );
+    if (index < 0 || index === b.index) return [];
+    const r = tabs[index].getBoundingClientRect();
+    return [{ tab: tabs[index], from: b, to: r, step: index - b.index }];
+  });
+  if (!moves.length) return;
+  for (const a of tabMotion.get(root) ?? []) a.cancel();
+  const running: Animation[] = [];
+  for (const { tab, from, to } of moves) {
+    if (!pseudoAnimation || !to.width) continue;
+    const a = animate(
+      tab,
+      [
+        {
+          transform: `translateX(${(from.left - to.left).toFixed(1)}px) scaleX(${(from.width / to.width).toFixed(3)})`,
+        },
+        { transform: "none" },
+      ],
+      { duration: TAB.ink, easing: EASE_OUT, pseudoElement: "::after" },
+    );
+    if (a) running.push(a);
+  }
+  // The new contents: the tab panel's parts, else the body's. Never the
+  // scroller itself (a scroller moved by a transform left a stale band
+  // painted over its first rows in Chromium; see the Spire's tabs).
+  const panel = root.querySelector('[role="tabpanel"]');
+  const parts = Array.from(
+    (panel ?? root.querySelector(".ui-panel-body"))?.children ?? [],
+  ).slice(0, TAB.most);
+  const side = Math.sign(moves[0].step);
+  for (const el of parts) {
+    const a = animate(
+      el,
+      [
+        { opacity: 0, transform: `translateX(${side * TAB.shift}px)` },
+        { opacity: 1, transform: "none" },
+      ],
+      { duration: TAB.content, easing: EASE_OUT },
+    );
+    if (a) running.push(a);
+  }
+  tabMotion.set(root, running);
+}
+
 /**
  * Run `fn` once `el` has finished sliding in (at once if it isn't moving).
  * A screen that redraws itself while its entry plays (fresh records that

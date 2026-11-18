@@ -125,6 +125,10 @@
   font-weight: 800;
   font-size: calc(40px * var(--text-scale, 1));
   line-height: 0.95;
+  /* Room inside the clip for Vietnamese marks above and below (Thỏ Ngọc),
+     without moving the line. */
+  padding-block: 0.14em 0.12em;
+  margin-block: -0.14em -0.12em;
   text-transform: uppercase;
   letter-spacing: 0.02em;
   white-space: nowrap;
@@ -610,6 +614,15 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+/* One-line names clip their overflow; give Vietnamese marks above and
+   below (Liền Chị Quan Họ) room inside the clip without moving the line. */
+.ui-tile-name,
+.fit-deal-name,
+.fit-slot b,
+.fit-foot-text .ui-h {
+  padding-block: 0.14em 0.12em;
+  margin-block: -0.14em -0.12em;
 }
 /* Read out, not shown: the toast shows the same message. */
 .fit-status {

@@ -10,7 +10,7 @@ import {
 import { canvasGraphics } from "./skins/fx-canvas";
 import { drawColorsFx, isColors } from "./skins/colors-fx";
 import "./cosmetic-fx.css";
-import { FX_GRAVITY, drawAnyParticle, type FxParticle } from "./skins/skin-fx";
+import { drawAnyParticle, stepParticle, type FxParticle } from "./skins/skin-fx";
 
 /**
  * Every item thumbnail (Shop, Wardrobe, Raid Hub, Journey, rewards) shows
@@ -314,12 +314,7 @@ function queueFrozen(live: Live) {
   if (!frozenFrame) frozenFrame = requestAnimationFrame(drawFrozenQueue);
 }
 function step(live: Live, dt: number) {
-  for (const p of live.particles) {
-    p.age += dt;
-    p.x += p.vx * dt;
-    p.y += p.vy * dt;
-    p.vy += (FX_GRAVITY[p.shape] ?? 0) * dt;
-  }
+  for (const p of live.particles) stepParticle(p, dt);
   live.particles = live.particles.filter((p) => p.age < p.life);
 }
 
