@@ -1302,9 +1302,11 @@ export function creatureProfile(
       profiles.eyes = eyes(80, p.glow, 8.6, 10.6);
       // The long crystal beak, the forehead gem and the visor over the near eye.
       profiles.flame =
+        '<g data-keep="beak">' +
         path("M66 89Q48 95 34 101Q48 105 66 105Z", jewel) +
         line("M62 97L40 101", "#ffffff", 1.4, 0.8) +
         line("M66 89Q60 97 66 105", p.dark, 2, 0.4) +
+        "</g>" +
         path("M84 60L89 67L84 74L79 67Z", jewel) +
         e(84, 67, 8, 8, halo, ' stroke="none" opacity=".6"') +
         e(80, 93, 17, 17, "none", ` stroke="${p.glow}" stroke-width="2.6"`) +

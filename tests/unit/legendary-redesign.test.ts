@@ -117,4 +117,22 @@ describe("Sky Pirates and Nova Vanguard, redrawn per champion", () => {
     }
     expect(close).toEqual([]);
   });
+
+  it("keeps Halcyra's own beak under every costume that takes its head-top layer", () => {
+    for (const c of [
+      "hon-viet",
+      "stars-stripes",
+      "hero-squad",
+      "neon-campus",
+      "sky-pirates",
+      "nova-vanguard",
+    ])
+      for (const view of ["down", "left", "right"] as const)
+        expect(
+          creatureSvg("halcyra", view, undefined, undefined, "normal", {
+            skin: `halcyra-${c}`,
+          } as any),
+          `${c} ${view}`,
+        ).toContain('data-keep="beak"');
+  });
 });

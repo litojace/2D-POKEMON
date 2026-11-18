@@ -500,12 +500,7 @@ export const PIRATES: Partial<Record<CharacterId, Design>> = {
       : k.side
         ? k.line(`M${x - k.side * 30} ${y - 6}Q${x} ${y - 13} ${x + k.side * 22} ${y - 8}`, "#3a2418", 3) + k.circle(x + k.side * 20, y - 8, 7.5, "#b8823a", k.ink, 0.9) + k.lume("pulse", k.circle(x + k.side * 20, y - 8, 5, lens, "none", 0), 0, lens)
         : k.line(`M${x - 38} ${y - 6}Q${x} ${y - 14} ${x + 38} ${y - 6}`, "#3a2418", 3) + [-13, 13].map((dx) => k.circle(x + dx, y - 9, 8, "#b8823a", k.ink, 0.9) + k.lume("pulse", k.circle(x + dx, y - 9, 5.4, lens, "none", 0), 0, lens)).join("") + k.line(`M${x - 5} ${y - 10}H${x + 5}`, "#b8823a", 2);
-    // Its beak lives on the head-top layer the cap takes off, so the
-    // design draws it back: down the face from the front, forward in profile.
-    const beak = k.back ? "" : k.side
-      ? profile(k, k.hx, k.path(`M${k.hx + 33} ${k.ht + 52}L${k.hx + 80} ${k.ht + 60}L${k.hx + 33} ${k.ht + 68}Z`, "#cfe6ff", k.ink, 1.1) + k.line(`M${k.hx + 36} ${k.ht + 60}L${k.hx + 74} ${k.ht + 60}`, "#9fc0e8", 1))
-      : k.path(`M${k.hx - 6} ${k.ht + 61}Q${k.hx - 7} ${k.ht + 82} ${k.hx} ${k.ht + 102}Q${k.hx + 7} ${k.ht + 82} ${k.hx + 6} ${k.ht + 61}Z`, "#cfe6ff", k.ink, 1.1) + k.line(`M${k.hx} ${k.ht + 64}V${k.ht + 96}`, "#9fc0e8", 1);
-    k.put("flame", flaps + dome(k, y, 38, 26, leather) + k.line(`M${x} ${y - 34}V${y - 2}`, "#5a321a", 1.2) + goggles + beak);
+    k.put("flame", flaps + dome(k, y, 38, 26, leather) + k.line(`M${x} ${y - 34}V${y - 2}`, "#5a321a", 1.2) + goggles);
   },
   // Moonsail Bosun: a white sailor's cap tipped over one ear with a moon
   // pin, a sailor shirt with a square navy collar and red neckerchief, and a
