@@ -221,8 +221,9 @@ function masteryRing(c: CharacterId, d: RosterData, size?: number) {
 const rangeTag = (c: CharacterId) =>
   `<span class="ui-tag roster-range">${rangeName(c)}</span>`;
 /**
- * Ranged or close, readable at a glance on every card (on phones the card
- * has no room for the words): a crosshair in sky blue, or an upright sword
+ * Ranged or close, readable at a glance on every card, in its top-right
+ * corner (where mastery was: the owner, 18 Nov; mastery stays on the
+ * fighter's detail). On phones the card has no room for the words: a crosshair in sky blue, or an upright sword
  * in ember (upright and square: a slanted line in a circle reads as "no").
  */
 const RANGE_ICONS = {
@@ -261,7 +262,7 @@ function card(c: CharacterId, view: RosterView, d: RosterData) {
   const foot = taken
     ? `${rangeTag(c)}${tag("Taken")}`
     : `${rangeTag(c)}<span class="ui-note">${looks.have}/${looks.all} looks</span>${playing ? (d.room ? `<span class="ui-tag roster-locked">Locked</span>` : tag("Playing", "ok")) : ""}`;
-  return `<button type="button" class="roster-card${taken ? " is-taken" : ""}" data-roster-card="${c}" aria-pressed="${c === view.focus}" aria-label="${esc(label)}" style="--el:${elVar(c)}"><span class="roster-card-top"><span class="roster-card-tags">${elementTag(f.element)}${rangeBadge(c)}</span>${badge}${masteryRing(c, d, 34)}</span><span class="roster-card-art">${cardArt(c, d)}</span><span class="roster-card-text"><b class="roster-card-name">${esc(f.name)}</b><small>${esc(f.role)}</small></span><span class="roster-card-foot">${foot}</span></button>`;
+  return `<button type="button" class="roster-card${taken ? " is-taken" : ""}" data-roster-card="${c}" aria-pressed="${c === view.focus}" aria-label="${esc(label)}" style="--el:${elVar(c)}"><span class="roster-card-top">${elementTag(f.element)}${badge}${rangeBadge(c)}</span><span class="roster-card-art">${cardArt(c, d)}</span><span class="roster-card-text"><b class="roster-card-name">${esc(f.name)}</b><small>${esc(f.role)}</small></span><span class="roster-card-foot">${foot}</span></button>`;
 }
 
 function filters(view: RosterView) {
