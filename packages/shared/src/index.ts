@@ -2403,7 +2403,7 @@ export const FFA_TUNING: Partial<Record<CharacterId, number>> = {
   wombolder: 1.056,
   shadopus: 1.051,
   pangrove: 0.984,
-  mossloth: 0.966,
+  mossloth: 0.94,
 };
 /**
  * The same for a free-for-all that started with three players, tuned on
@@ -2414,7 +2414,7 @@ export const FFA_THREE_TUNING: Partial<Record<CharacterId, number>> = {
   voltkit: 0.86,
   cindrake: 1.12,
   tidefin: 0.861,
-  auralynx: 1.214,
+  auralynx: 1.17,
   lumoth: 0.842,
   mystowl: 0.832,
   terradon: 1.086,
@@ -2427,8 +2427,8 @@ export const FFA_THREE_TUNING: Partial<Record<CharacterId, number>> = {
   astrabun: 1.192,
   wombolder: 1.185,
   shadopus: 1.178,
-  pangrove: 1.078,
-  mossloth: 0.958,
+  pangrove: 1.02,
+  mossloth: 0.98,
 };
 /**
  * A champion's strength factor in this mode (1 outside 2v2 and free-for-all).
