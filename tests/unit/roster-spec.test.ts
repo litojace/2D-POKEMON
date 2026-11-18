@@ -29,7 +29,7 @@ const ROSTER: Record<
       ["Static Lance", 8],
       ["Ball Lightning", 10],
       ["Static Glide", 12],
-      ["Overcharge", 20],
+      ["Thunderstorm", 20],
     ],
   },
   cindrake: {
@@ -51,7 +51,7 @@ const ROSTER: Record<
     basic: ["Tide Needle", 240],
     skills: [
       ["Gill Siphon", 10],
-      ["Undertow", 12],
+      ["River Dash", 9],
       ["Tide Double", 15],
       ["Riptide Wave", 20],
     ],
@@ -113,7 +113,7 @@ const ROSTER: Record<
       ["Shade Crawl", 8],
       ["Ghostfire", 12],
       ["Haunted Lantern", 15],
-      ["Void Orb", 20],
+      ["Wraith Hunt", 20],
     ],
   },
   coilemur: {

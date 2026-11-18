@@ -3548,11 +3548,13 @@ function renderBattle() {
                               ? "CAGED"
                               : s.kind === "current"
                                 ? "SWEPT AWAY"
-                                : s.kind === "float"
-                                  ? "FLOATING"
-                                  : s.kind === "confuse"
-                                    ? "CONFUSED"
-                                    : s.kind.toUpperCase(),
+                                : s.kind === "lure"
+                                  ? "DRAWN TO THE LIGHT"
+                                  : s.kind === "float"
+                                    ? "FLOATING"
+                                    : s.kind === "confuse"
+                                      ? "CONFUSED"
+                                      : s.kind.toUpperCase(),
         )
         .join(" · "),
     );
@@ -5702,7 +5704,9 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         "pound",
         "clamp",
         "throw",
-        "lighthouse",
+        "wave",
+        "hunt",
+        "lure",
       ].includes(ability.kind)
     ) {
       playImpact(this, ability, event.x, event.y, event.color, reducedMotion);
@@ -6377,10 +6381,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     // smoothed, and for you predicted, position), not at the last snapshot,
     // so it moves with the fighter instead of trailing in steps.
     const followed = (z: Zone) => {
-      const at =
-        z.ability.follow || z.ability.kind === "lighthouse"
-          ? this.positions.get(z.owner)
-          : undefined;
+      const at = z.ability.follow ? this.positions.get(z.owner) : undefined;
       return at ? { ...z, x: at.x, y: at.y } : z;
     };
     for (const z of state.zones)
@@ -7052,6 +7053,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
           clamp: 0x9fe8ff,
           cage: 0xbfe6ff,
           current: 0x4fc3f7,
+          lure: 0xfff3b0,
           float: 0xe8e0ff,
           confuse: 0xff9de2,
           mark: 0xffffff,

@@ -1264,7 +1264,7 @@ export const SPIRE_FLOORS: Record<number, SpireFloor> = {
   // (Voltkit, Coilemur) with their kin of the storm's mirror Auralynx,
   // plus one off-element champion per floor, each a different one: Tidefin
   // (Water), Pangrove (Nature: its curl shrugs off Polarity in the twins'
-  // raid), Glacelle (Water's frost), Duskveil (Shadow: its Void Orb drags a twin),
+  // raid), Glacelle (Water's frost), Duskveil (Shadow: its wraith drags a twin),
   // Mystowl (Psychic), Wombolder (Earth: its brace stops a Twin Rush),
   // Sunbara (Light) and Cindrake (Fire), the zone below's drake on the
   // last stair.

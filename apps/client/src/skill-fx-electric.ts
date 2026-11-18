@@ -293,139 +293,6 @@ export function stormGrid(g: G, z: Zone, progress: number, now: number) {
   });
 }
 
-// ───────────── Overcharge ─────────────
-/** Wind-up: energy pours into Voltkit while the real blast area is marked. */
-export function overchargeWindup(
-  g: G,
-  a: Ability,
-  x: number,
-  y: number,
-  color: number,
-  k: number,
-  now: number,
-) {
-  const fx = fxFor(g.scene),
-    r = a.radius,
-    cy = y - 10;
-  g.fillStyle(color, 0.06 + k * 0.1).fillEllipse(x, y, r * 2, r * 2 * 0.82);
-  g.lineStyle(2, color, 0.75).strokeEllipse(x, y, r * 2, r * 2 * 0.82);
-  fx.floor
-    .lineStyle(3, PALE, 0.4 + k * 0.5)
-    .strokeEllipse(x, y, r * 2 * (1 - k * 0.85), r * 2 * 0.82 * (1 - k * 0.85));
-  fx.glow(x, cy, 30 + k * 70, color, 0.35 + k * 0.5);
-  fx.glow(x, cy, 12 + k * 20, WHITE, 0.6 + k * 0.4);
-  const seed = Math.floor(now / 45);
-  for (let i = 0; i < 2 + Math.floor(k * 4); i++) {
-    const ang = hash(seed + i * 5) * TAU;
-    fx.bolt(
-      x + Math.cos(ang) * r * 0.95,
-      y + Math.sin(ang) * r * 0.78,
-      x,
-      cy,
-      color,
-      { width: 1.4, jag: 0.3, seed: seed + i, alpha: 0.4 + k * 0.5 },
-    );
-  }
-  fx.trail(`oc${Math.round(x)}${Math.round(y)}`, 0.02, () => {
-    for (let i = 0; i < 3; i++) {
-      const ang = Math.random() * TAU,
-        d = r * (0.7 + Math.random() * 0.3);
-      fx.burst({
-        x: x + Math.cos(ang) * d,
-        y: y + Math.sin(ang) * d * 0.82,
-        z: 10,
-        count: 1,
-        kind: "spark",
-        color: [color, PALE],
-        angle: ang + Math.PI,
-        spread: 0.05,
-        speed: [d * 2.4, d * 3],
-        life: [0.3, 0.36],
-        size: [1, 1.6],
-        drag: 0.5,
-      });
-    }
-  });
-}
-
-export function overchargeBurst(
-  scene: Phaser.Scene,
-  a: Ability,
-  x: number,
-  y: number,
-  color: number,
-  shot: (ms: number, draw: (k: number) => void) => void,
-) {
-  const fx = fxFor(scene),
-    r = a.radius,
-    cy = y - 10;
-  fx.burst({
-    x,
-    y,
-    z: 10,
-    count: 70,
-    kind: "spark",
-    color: [color, WHITE, PALE],
-    speed: [260, 720],
-    up: [80, 420],
-    life: [0.4, 0.9],
-    size: [1.2, 2.2],
-    grav: 1000,
-    drag: 1.6,
-  });
-  fx.burst({
-    x,
-    y,
-    z: 10,
-    count: 22,
-    kind: "mote",
-    color: [color, BLUE],
-    speed: [80, 260],
-    up: [20, 120],
-    life: [0.6, 1.2],
-    size: [1.2, 2.4],
-    drag: 2,
-  });
-  fx.decal({ kind: "scorch", x, y, r: r * 0.5, color, life: 5 });
-  fx.decal({ kind: "crack", x, y, r: r * 0.95, color, life: 4 });
-  fx.shake(240, 0.006);
-  shot(fx.reduced ? 200 : 620, (k) => {
-    const flash = Math.max(0, 1 - k / 0.14);
-    fx.glow(x, cy, r * 0.8, PALE, 0.6 * flash);
-    fx.glow(x, cy, r * 1.1, color, 0.6 * (1 - k));
-    fx.glow(x, y, r * 1.2, color, 0.6 * (1 - k), true);
-    fx.shockwave(x, y, r * ease(Math.min(1, k * 1.8)), k, color, 14);
-    if (k > 0.12)
-      fx.shockwave(
-        x,
-        y,
-        r * 0.75 * ease(Math.min(1, (k - 0.12) * 2)),
-        k,
-        PALE,
-        8,
-      );
-    const seed = Math.floor((k * 620) / 40);
-    for (let i = 0; i < 9; i++) {
-      const ang = (i * TAU) / 9 + hash(i + 3) * 0.5,
-        reach = r * Math.min(1, 0.3 + k * 2.4);
-      fx.bolt(
-        x,
-        cy,
-        x + Math.cos(ang) * reach,
-        y + Math.sin(ang) * reach * 0.82,
-        color,
-        {
-          width: 2.6 * (1 - k) + 0.6,
-          jag: 0.24,
-          branches: 2,
-          seed: seed * 19 + i,
-          alpha: 1 - k * 0.9,
-        },
-      );
-    }
-  });
-}
-
 // ───────────── Ball Lightning burst, casts and hits ─────────────
 export function ballLightningImpact(
   scene: Phaser.Scene,
@@ -1248,16 +1115,12 @@ export const electricKit: FxKit = {
     electromagnet,
   },
   windup: {
-    overcharge: (g, a, x, y, _angle, _ax, _ay, color, k, now) =>
-      overchargeWindup(g, a, x, y, color, k, now),
     "magnet-lash": magnetLashWindup,
   },
   cast: {
     "spark-dart": electricCast,
     "static-lance": electricCast,
     "ball-lightning": electricCast,
-    overcharge: (scene, a, x, y, _angle, color, shot) =>
-      overchargeBurst(scene, a, x, y, color, shot),
     "static-glide": staticGlide,
     "coil-swipe": coilSwipe,
     "static-clamp": staticClamp,

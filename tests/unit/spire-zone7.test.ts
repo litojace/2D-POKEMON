@@ -391,8 +391,8 @@ describe("a zone-7 room", () => {
     const hp = (foe.hp = 500);
     a.damage(foe, 40, coil.id);
     expect(hp - foe.hp).toBeCloseTo(40 * spireScale(61, 2).armour, 4);
-    // Coilemur's Electromagnet and Duskveil's Void Orb only drag a twin.
-    for (const id of ["electromagnet", "void-orb"]) {
+    // Coilemur's Electromagnet and Duskveil's Wraith Hunt only drag a twin.
+    for (const id of ["electromagnet", "wraith-hunt"]) {
       const ability = [
         ...CHARACTERS.coilemur.skills,
         ...CHARACTERS.duskveil.skills,

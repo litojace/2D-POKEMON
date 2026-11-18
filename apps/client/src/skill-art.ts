@@ -680,49 +680,37 @@ const art: Record<string, { el: Element; draw: () => string }> = {
         E.accent[2],
       ),
   },
-  Overcharge: {
+  Thunderstorm: {
     el: "electric",
     draw: () =>
-      floorGlow("electric", 64, 98, 54, 16) +
-      `<ellipse cx="64" cy="98" rx="44" ry="12" fill="none" stroke="${E.accent[2]}" stroke-width="2" opacity=".8"/>` +
-      `<ellipse cx="64" cy="98" rx="30" ry="8" fill="none" stroke="${E.accent[1]}" stroke-width="1.6" opacity=".6"/>` +
-      `<g fill="${E.accent[1]}" opacity=".75">` +
-      [0, 1, 2, 3, 4, 5, 6, 7]
-        .map((k) => {
-          const a = (k / 8) * Math.PI * 2 - Math.PI / 2,
-            a1 = a - 0.09,
-            a2 = a + 0.09;
-          return `<path d="M64 62 L${n(64 + Math.cos(a1) * 54)} ${n(62 + Math.sin(a1) * 54)} L${n(64 + Math.cos(a2) * 54)} ${n(62 + Math.sin(a2) * 54)}Z"/>`;
-        })
-        .join("") +
-      `</g>` +
-      halo("electric", 64, 62, 46) +
-      `<circle cx="64" cy="62" r="22" fill="url(#sa-core-electric)"/>` +
-      [0, 1, 2, 3, 4]
-        .map((k) => {
-          const a = (k / 5) * Math.PI * 2 - Math.PI / 2;
-          return glow(
-            bolt(
-              [
-                [64 + Math.cos(a) * 14, 62 + Math.sin(a) * 14],
-                [64 + Math.cos(a) * 46, 62 + Math.sin(a) * 46],
-              ],
-              4,
-              k + 3,
+      // A storm cloud strikes three marked spots on the ground.
+      [28, 64, 100]
+        .map(
+          (x, k) =>
+            `<ellipse cx="${x}" cy="${102 - (k % 2) * 6}" rx="16" ry="5" fill="none" stroke="${E.accent[2]}" stroke-width="2" opacity=".8"/>` +
+            glow(
+              bolt(
+                [
+                  [x + 4, 34],
+                  [x, 100 - (k % 2) * 6],
+                ],
+                5,
+                k + 2,
+              ),
+              E.hot,
+              k === 1 ? 3 : 2.2,
+              E.accent[1],
             ),
-            E.hot,
-            2.2,
-            E.accent[1],
-          );
-        })
+        )
         .join("") +
-      `<circle cx="64" cy="62" r="8" fill="#fff"/>` +
+      `<path d="M12 40 Q8 22 28 22 Q34 8 54 12 Q64 2 80 10 Q100 4 108 20 Q124 22 118 40Z" fill="#2c2852"/>` +
+      `<path d="M16 38 Q14 26 30 26 Q36 14 54 18 Q64 8 80 16 Q98 10 104 24 Q118 26 114 38" fill="none" stroke="${E.accent[1]}" stroke-width="2" opacity=".6"/>` +
+      floorGlow("electric", 64, 102, 54, 10, 0.7) +
       sparks(
         [
-          [24, 30, 1.5],
-          [104, 24, 1.4],
-          [112, 70, 1.6],
-          [16, 72, 1.4],
+          [16, 92, 1.4],
+          [112, 90, 1.5],
+          [48, 112, 1.2],
         ],
         E.accent[2],
       ),
@@ -932,32 +920,23 @@ const art: Record<string, { el: Element; draw: () => string }> = {
         W.accent[2],
       ),
   },
-  Undertow: {
+  "River Dash": {
     el: "water",
     draw: () =>
-      // A lane of racing water sweeps a little figure off to the right.
-      floorGlow("water", 64, 76, 60, 26, 0.8) +
-      `<path d="M8 58 L112 58 L112 94 L8 94Z" fill="${W.accent[0]}" opacity=".55"/>` +
-      `<path d="M8 58 H112 M8 94 H112" stroke="#f2fdff" stroke-width="2.6" opacity=".8"/>` +
-      [0, 1, 2]
-        .map(
-          (k) =>
-            `<path d="M${18 + k * 30} 64 l12 12 l-12 12" fill="none" stroke="${W.accent[2]}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" opacity="${0.55 + k * 0.2}"/>`,
-        )
-        .join("") +
-      [66, 76, 86]
-        .map(
-          (y, k) =>
-            `<path d="M${14 + k * 9} ${y} h${28 + k * 6}" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity=".7"/>`,
-        )
-        .join("") +
-      `<circle cx="104" cy="62" r="8" fill="#1b1636" opacity=".85"/><path d="M98 70 Q104 80 112 74" fill="none" stroke="#1b1636" stroke-width="6" stroke-linecap="round" opacity=".85"/>` +
-      `<path d="M116 52 l6 -4 M118 60 l7 0" stroke="${W.accent[2]}" stroke-width="2.4" stroke-linecap="round"/>` +
+      // Tidefin rides a jet of water straight through a foe, leaving spray.
+      floorGlow("water", 64, 92, 58, 18, 0.8) +
+      `<path d="M6 96 Q40 84 70 80 Q96 76 120 62" fill="none" stroke="${W.accent[0]}" stroke-width="18" stroke-linecap="round" opacity=".55"/>` +
+      glow(`M10 94 Q42 84 70 80 Q96 76 118 62`, W.hot, 4, W.accent[1]) +
+      `<g opacity=".55"><circle cx="52" cy="58" r="9" fill="#1b1636"/><path d="M44 70 Q52 80 60 70" fill="none" stroke="#1b1636" stroke-width="6" stroke-linecap="round"/></g>` +
+      `<path d="M40 48 l24 24 M64 48 l-24 24" stroke="${W.accent[2]}" stroke-width="3" stroke-linecap="round" opacity=".85"/>` +
+      `<ellipse cx="104" cy="58" rx="13" ry="9" fill="url(#sa-orb-water)" transform="rotate(-24 104 58)"/>` +
+      `<path d="M92 62 l-14 6 M94 54 l-16 0" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity=".8"/>` +
       sparks(
         [
           [24, 30, 1.4],
           [70, 22, 1.3],
           [110, 110, 1.2],
+          [84, 96, 1.6],
         ],
         W.accent[2],
       ),
@@ -1261,23 +1240,24 @@ const art: Record<string, { el: Element; draw: () => string }> = {
   "Radiant Flare": {
     el: "light",
     draw: () =>
-      // Three long rays turning round Lumoth like a lighthouse's.
-      floorGlow("light", 64, 98, 54, 16) +
-      halo("light", 64, 62, 50) +
-      `<path d="M28 34 A50 50 0 0 1 64 14" fill="none" stroke="${L.accent[2]}" stroke-width="2.6" stroke-linecap="round" stroke-dasharray="4 5"/><path d="M60 8 L66 14 L58 18" fill="none" stroke="${L.accent[2]}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>` +
-      [0, 1, 2]
+      // A flare hangs like a little sun, drawing light (and foes) inward.
+      floorGlow("light", 64, 100, 54, 14) +
+      `<ellipse cx="64" cy="100" rx="48" ry="12" fill="none" stroke="${L.accent[1]}" stroke-width="2" stroke-dasharray="4 5" opacity=".8"/>` +
+      `<ellipse cx="64" cy="100" rx="26" ry="7" fill="none" stroke="${L.accent[2]}" stroke-width="2.4"/>` +
+      `<path d="M64 60 L64 98" stroke="${L.accent[2]}" stroke-width="6" opacity=".25"/>` +
+      [0, 1, 2, 3, 4, 5]
         .map((k) => {
-          const a = -0.5 + (k / 3) * Math.PI * 2,
-            w = 0.16,
-            len = 60;
-          return (
-            `<path d="M64 62 L${n(64 + Math.cos(a - w) * len)} ${n(62 + Math.sin(a - w) * len)} L${n(64 + Math.cos(a + w) * len)} ${n(62 + Math.sin(a + w) * len)}Z" fill="${L.accent[1]}" opacity=".75"/>` +
-            `<path d="M64 62 L${n(64 + Math.cos(a - w * 0.4) * len * 0.95)} ${n(62 + Math.sin(a - w * 0.4) * len * 0.95)} L${n(64 + Math.cos(a + w * 0.4) * len * 0.95)} ${n(62 + Math.sin(a + w * 0.4) * len * 0.95)}Z" fill="#fff6d6"/>`
-          );
+          const a = (k / 6) * Math.PI * 2,
+            x0 = 64 + Math.cos(a) * 52,
+            y0 = 50 + Math.sin(a) * 40,
+            x1 = 64 + Math.cos(a) * 34,
+            y1 = 50 + Math.sin(a) * 26;
+          return `<path d="M${n(x0)} ${n(y0)} L${n(x1)} ${n(y1)}" stroke="${L.accent[2]}" stroke-width="3" stroke-linecap="round" opacity=".8"/><circle cx="${n(x1)}" cy="${n(y1)}" r="2.6" fill="${L.hot}"/>`;
         })
         .join("") +
-      `<circle cx="64" cy="62" r="16" fill="url(#sa-core-light)"/>` +
-      glint(64, 62, 12, "#fff") +
+      halo("light", 64, 50, 34) +
+      `<circle cx="64" cy="50" r="15" fill="url(#sa-core-light)"/>` +
+      glint(64, 50, 13, "#fff") +
       sparks(
         [
           [106, 20, 1.5],
@@ -1619,27 +1599,23 @@ const art: Record<string, { el: Element; draw: () => string }> = {
         S.accent[2],
       ),
   },
-  "Void Orb": {
+  "Wraith Hunt": {
     el: "shadow",
     draw: () =>
-      halo("shadow", 64, 62, 54) +
-      // A swirling void sphere with a dark core.
-      [0, 1, 2]
-        .map(
-          (k) =>
-            `<ellipse cx="64" cy="62" rx="${46 - k * 4}" ry="${14 + k * 2}" fill="none" stroke="${k ? S.accent[1] : S.accent[2]}" stroke-width="${2.6 - k * 0.6}" opacity="${0.9 - k * 0.2}" transform="rotate(${-20 + k * 40} 64 62)"/>`,
-        )
-        .join("") +
-      `<circle cx="64" cy="62" r="26" fill="url(#sa-orb-shadow)"/>` +
-      `<circle cx="64" cy="62" r="14" fill="${S.bg[2]}"/>` +
-      `<circle cx="64" cy="62" r="14" fill="none" stroke="${S.accent[2]}" stroke-width="2"/>` +
-      `<path d="M58 56 Q64 50 70 56" fill="none" stroke="${S.hot}" stroke-width="1.6" stroke-linecap="round" opacity=".7"/>` +
+      // A hooded wraith, eyes lit, sweeps after a small fleeing figure.
+      halo("shadow", 54, 56, 48) +
+      `<path d="M26 54 Q28 22 54 20 Q80 22 82 54 Q84 76 74 90 Q68 84 64 96 Q58 86 52 100 Q46 88 40 96 Q36 84 30 90 Q22 76 26 54Z" fill="#140b26"/>` +
+      `<path d="M26 54 Q28 22 54 20 Q80 22 82 54 Q84 76 74 90 Q68 84 64 96 Q58 86 52 100 Q46 88 40 96 Q36 84 30 90 Q22 76 26 54Z" fill="none" stroke="${S.accent[2]}" stroke-width="2.2"/>` +
+      `<circle cx="45" cy="50" r="5" fill="#7dffe1"/><circle cx="63" cy="50" r="5" fill="#7dffe1"/>` +
+      `<circle cx="45" cy="50" r="10" fill="#7dffe1" opacity=".2"/><circle cx="63" cy="50" r="10" fill="#7dffe1" opacity=".2"/>` +
+      `<path d="M82 56 Q96 52 104 58" fill="none" stroke="${S.accent[1]}" stroke-width="3" stroke-dasharray="3 5" stroke-linecap="round"/>` +
+      `<g opacity=".85"><circle cx="110" cy="62" r="7" fill="${S.hot}"/><path d="M104 70 Q110 80 118 72" fill="none" stroke="${S.hot}" stroke-width="5" stroke-linecap="round"/></g>` +
       sparks(
         [
-          [18, 30, 1.4],
-          [110, 24, 1.5],
-          [112, 100, 1.4],
-          [18, 100, 1.3],
+          [18, 24, 1.4],
+          [104, 24, 1.5],
+          [100, 106, 1.4],
+          [18, 104, 1.3],
         ],
         S.accent[2],
       ),

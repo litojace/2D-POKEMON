@@ -99,4 +99,13 @@ describe("predicted movement skills", () => {
     // It vaulted (well past where walking alone would take it).
     expect(path.at(-1)![0]).toBeGreaterThan(200 + 240);
   });
+  it("River Dash shoots along the same path", () => {
+    const path = compare("tidefin", 1, { x: 200, y: 150 }, { x: 900, y: 150 });
+    for (const [sx, sy, px, py] of path) {
+      expect(px).toBeCloseTo(sx, 6);
+      expect(py).toBeCloseTo(sy, 6);
+    }
+    // Its whole length, whatever the aim's distance.
+    expect(path.at(-1)![0]).toBeGreaterThan(200 + 300);
+  });
 });

@@ -110,11 +110,11 @@ export const BOT_PROFILES: Record<BotDifficulty, Profile> = {
     rest: 0.12,
     seeShots: true,
     dazeBy: {
-      voltkit: 0.18,
+      voltkit: 0.24,
       cindrake: 0.41,
-      tidefin: 0.155,
+      tidefin: 0.215,
       auralynx: 0.33,
-      lumoth: 0.17,
+      lumoth: 0.19,
       mystowl: 0.155,
       terradon: 0.31,
       duskveil: 0.27,
@@ -193,19 +193,32 @@ export function hostileZone(arena: Arena, me: Fighter, z: Zone) {
   const owner = arena.players.find((p) => p.id === z.owner);
   if (owner && arena.teamOf(owner) === arena.teamOf(me)) return false;
   const a = z.ability;
-  // A Crystal Cage is a wall, not a hazard: fight on inside it.
-  if (a.kind === "cage") return false;
+  // A Crystal Cage is a wall, not a hazard: fight on inside it. A rolling
+  // wave is jumped (see think), not walked away from; a storm's bolts are
+  // zones of their own.
+  if (a.kind === "cage" || a.kind === "wave" || a.kind === "storm")
+    return false;
   return !a.heal || a.damage > 0 || !!a.status || !!a.knockback || !!a.turret;
 }
-/** The circle a bot keeps out of: a current is a lane, so its middle and half its length. */
+/** The circle a bot keeps out of. */
 function zoneArea(z: Zone) {
-  if (z.ability.kind !== "current") return { x: z.x, y: z.y, radius: z.radius };
-  const half = z.ability.range / 2;
-  return {
-    x: z.x + Math.cos(z.angle ?? 0) * half,
-    y: z.y + Math.sin(z.angle ?? 0) * half,
-    radius: Math.max(z.radius, half * 0.6),
-  };
+  return { x: z.x, y: z.y, radius: z.radius };
+}
+/**
+ * Riptide Wave about to reach this fighter: how soon (s), or undefined if
+ * it won't (it's past, beside the wall of water, or still far off).
+ */
+export function waveComing(arena: Arena, me: Fighter, z: Zone) {
+  if (z.ability.kind !== "wave" || !arena.rivals(z.owner, me.id)) return;
+  const ux = Math.cos(z.angle ?? 0),
+    uy = Math.sin(z.angle ?? 0),
+    dx = me.x - z.x,
+    dy = me.y - z.y,
+    along = dx * ux + dy * uy,
+    across = Math.abs(-dx * uy + dy * ux),
+    front = arena.waveFront(z);
+  if (across > z.radius + RULES.radius + 20 || along < front - 30) return;
+  return (along - front) / Math.max(1, z.ability.speed);
 }
 /** Corners just outside a block: the waypoints for walking around cover. */
 const cornersOf = (o: Rect): Point[] => {
@@ -457,12 +470,7 @@ export class BotBrain {
           enemy.charge!.skill
         ];
         // A blast ring, a cage about to rise, or rays about to turn.
-        const reach =
-          a.kind === "lighthouse"
-            ? a.range
-            : RING_KINDS.includes(a.kind)
-              ? a.radius
-              : 0;
+        const reach = RING_KINDS.includes(a.kind) ? a.radius : 0;
         return reach > 0 &&
           Math.hypot(enemy.x - me.x, enemy.y - me.y) < reach + 40
           ? a
@@ -550,6 +558,16 @@ export class BotBrain {
       dx = bx / bl;
       dy = by / bl;
     }
+    // Jump a wave just before it reaches it (decided once per wave).
+    for (const zone of arena.zones) {
+      const eta = waveComing(arena, me, zone);
+      if (eta === undefined || eta > 0.22) continue;
+      const key = 1e9 + zone.id;
+      if (!this.judged.has(key))
+        this.judged.set(key, this.random() < this.profile.dodge);
+      if (this.judged.get(key) && t >= me.jumpAt && t >= me.jumpUntil)
+        input.jump = true;
+    }
     // Get out of enemy zones (jump the ground ones if it can).
     let escaping = false;
     for (const zone of arena.zones)
@@ -578,6 +596,18 @@ export class BotBrain {
         )
           input.dash = true;
       }
+    // A wraith hunting it: keep running (dash away when it is about to touch).
+    for (const zone of arena.zones) {
+      if (zone.ability.kind !== "hunt" || !arena.rivals(zone.owner, me.id))
+        continue;
+      const d = Math.hypot(me.x - zone.x, me.y - zone.y) || 1;
+      if (d > zone.radius + 100) continue;
+      escaping = true;
+      dx = (me.x - zone.x) / d;
+      dy = (me.y - zone.y) / d;
+      if (d < zone.radius + 50 && this.profile.dodge > 0.3 && t >= me.dashAt)
+        input.dash = true;
+    }
     // Brawlers close the gap with a dash.
     if (
       melee &&
@@ -817,13 +847,27 @@ export class BotBrain {
           // Crystal Cage: shut the target in with it, up close.
           if (s.sight && reach(a.radius * 0.75)) score = a.damage + 18;
           break;
-        case "lighthouse":
-          // Radiant Flare: rays turning round it while the target is near.
-          if (s.sight && reach(a.range * 0.8)) score = a.damage * 5;
+        case "surf":
+          // River Dash: through the target (and on past it).
+          if (s.sight && s.dist > 50 && reach(a.range * 0.9))
+            score = 18 + a.damage;
           break;
-        case "current":
-          // Undertow: sweep the target away (it flows along the aim).
-          if (s.sight && reach(a.range * 0.8)) score = 16;
+        case "wave":
+          // Riptide Wave crosses the court: anywhere along the aim will do.
+          score = a.damage * 1.5;
+          break;
+        case "storm":
+          // Thunderstorm finds everyone it can see.
+          if (!arena.has(enemy, "stealth"))
+            score = a.damage * (a.count ?? 3) * 0.6;
+          break;
+        case "hunt":
+          // Wraith Hunt: the wraith finds the target wherever it is.
+          if (!arena.has(enemy, "stealth")) score = 25;
+          break;
+        case "lure":
+          // Radiant Flare: hang the light on the target.
+          if (reach(a.range)) score = a.damage * 1.2;
           break;
         case "trail":
           // Spark Trail: lay it while circling a nearby target (bots strafe).

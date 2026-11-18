@@ -476,18 +476,18 @@ export class PrismatailArena extends RaidArena {
   protected override resolveWarning(w: RaidWarning, boss: Fighter) {
     this.hitBy = w.kind;
     const end = { x: w.tx, y: w.ty };
-    const voidOrb =
+    // Duskveil's wraith swallows a lance segment it floats over.
+    const wraith =
       w.kind === "prism-lance" || w.kind === "refraction"
-        ? this.projectiles.find(
-            (pr) =>
-              pr.ability.id === "void-orb" &&
-              prismDistanceToSegment(pr, w, end) <
-                (pr.ability.radius || 20) + w.radius,
+        ? this.zones.find(
+            (z) =>
+              z.ability.id === "wraith-hunt" &&
+              z.until > this.time &&
+              prismDistanceToSegment(z, w, end) < z.radius + w.radius,
           )
         : undefined;
-    if (voidOrb) {
-      this.projectiles = this.projectiles.filter((p) => p !== voidOrb);
-      this.raid.message = "Void Orb swallowed a prism lance!";
+    if (wraith) {
+      this.raid.message = "The wraith swallowed a prism lance!";
       this.hitBy = undefined;
       return;
     }

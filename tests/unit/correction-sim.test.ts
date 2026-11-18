@@ -20,19 +20,21 @@ describe("your fighter's corrections", () => {
     expect(unexplained).toEqual([]);
   });
 
-  it("do not twitch you every snapshot while you stand in an Undertow", () => {
+  it("do not twitch you every snapshot while a drift pulls you (Radiant Flare)", () => {
     const run = (noCarry: boolean) =>
       simulateCorrections({
         seconds: 60,
         me: "cindrake",
-        bot: "tidefin",
+        bot: "lumoth",
+        fullUlt: true,
         noCarry,
       }).corrections.filter(
-        (c) => c.cause === "status" && c.detail.includes("current"),
+        (c) => c.cause === "status" && c.detail.includes("lure"),
       ).length;
     const before = run(true),
       after = run(false);
-    // Measured: about 70 before, about 8 after (only entering and leaving).
+    // Measured with a Lumoth casting Radiant Flare whenever it can: about 430
+    // before, about 40 after (only entering and leaving the pull).
     expect(before).toBeGreaterThan(30);
     expect(after).toBeLessThan(before / 3);
   });

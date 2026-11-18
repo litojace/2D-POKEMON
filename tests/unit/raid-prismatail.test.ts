@@ -357,7 +357,7 @@ describe("Prismatail attack fairness and champion tricks", () => {
     run(b, 3.5);
     expect(b.raid.shieldBreaks).toBe(1);
   });
-  it("Duskveil’s Void Orb swallows a lance segment", () => {
+  it("Duskveil’s wraith swallows a lance segment", () => {
     const a = setup(1, 1, 1, ["duskveil"]),
       p = a.heroes()[0];
     p.angle = 0;
@@ -365,9 +365,9 @@ describe("Prismatail attack fairness and champion tricks", () => {
     p.lastInput.aimY = 450;
     a.cast(
       p,
-      CHARACTERS.duskveil.skills.find((a) => a.id === "void-orb")!,
+      CHARACTERS.duskveil.skills.find((a) => a.id === "wraith-hunt")!,
     );
-    expect(a.projectiles.length).toBeGreaterThan(0);
+    expect(a.zones.some((z) => z.ability.id === "wraith-hunt")).toBe(true);
     attack(a, "prism-lance");
     resolve(a);
     expect(p.hp).toBe(CHARACTERS.duskveil.health);
