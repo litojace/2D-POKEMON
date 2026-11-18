@@ -38,6 +38,7 @@ import {
 } from "../fighter-selection";
 import { stageLight } from "../stage-light";
 import { itemPicture } from "../shop-ui";
+import { originalLook } from "../skin-thumbnails";
 import {
   actionBar,
   actions,
@@ -462,7 +463,7 @@ function skinsTab(view: RosterView, d: RosterData) {
     on: boolean,
   ) =>
     `<span class="roster-look${have ? "" : " is-unowned"}"><span class="roster-look-art">${art}</span><b>${esc(name)}</b><small class="${on ? "is-on" : ""}">${on ? "Wearing" : have ? "Owned" : "In the Shop"}</small></span>`;
-  return `<p class="ui-note">${looksOwned(c, d.owned).have} of ${skins.length + 1} looks owned. Try them all on in the Shop and Wardrobe.</p><div class="roster-looks">${tile("original", "Original look", fighterAvatar(c, `roster-look-${c}`), true, !worn)}${skins.map((s) => tile(s.id, s.name, itemPicture(s.id, c, `roster-look-${s.id}`), d.owned.includes(s.id), worn === s.id)).join("")}</div>`;
+  return `<p class="ui-note">${looksOwned(c, d.owned).have} of ${skins.length + 1} looks owned. Try them all on in the Shop and Wardrobe.</p><div class="roster-looks">${tile("original", "Original look", originalLook(c, "roster-look-original"), true, !worn)}${skins.map((s) => tile(s.id, s.name, itemPicture(s.id, c, `roster-look-${s.id}`), d.owned.includes(s.id), worn === s.id)).join("")}</div>`;
 }
 function detailMarkup(view: RosterView, d: RosterData) {
   const c = view.focus;

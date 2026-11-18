@@ -67,7 +67,8 @@ const cutThumbnails = (page: Page) =>
     const out: string[] = [];
     const imgs = Array.from(
       document.querySelectorAll<HTMLImageElement>(
-        ".fit-room img[src^='data:image/svg'][width='212']",
+        // Skin thumbnails, as their SVG or their bitmap (skin-thumbnails.ts).
+        ".fit-room img[data-thumb]",
       ),
     );
     for (const img of imgs) {
