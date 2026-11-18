@@ -269,6 +269,15 @@ button.journey-tier {
 .journey-goal .journey-row {
   font-size: var(--fs-small);
 }
+/* The weekly goals' head: the heading, "+250 XP each" (phones) and the
+   countdown, none of which wrap. In a half-width column (667×375, 700×390)
+   they need about 310 px of 273: the countdown ran into "Level road" in the
+   next column, by up to 20 px for "Resets in 23 h 59 min" (CI, 18 Nov 2026).
+   When they don't fit, the countdown goes on a line of its own. */
+.journey-goals-head {
+  flex-wrap: wrap;
+  row-gap: 2px;
+}
 .journey-goal.is-done small {
   color: var(--ui-ok);
 }

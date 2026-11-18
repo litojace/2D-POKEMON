@@ -26,6 +26,14 @@ const SCREENS = [
   "profile",
   "play",
 ];
+// The server's clock for the whole sweep (window.__serverTime, sent as
+// X-Server-Time by the harness): Sunday 22 Nov 2026, 00:01 in California.
+// The countdowns (daily picks and missions, weekly goals, the arcade) are
+// then at their widest, "23 h 59 min", and this week's arcade is always the
+// same one, whatever time CI runs: at the machine's clock the weekly goals'
+// "Resets in 4 d 21 h" ran into "Level road" at 667x375 on some days only
+// (CI, 18 Nov 2026).
+const SERVER_TIME = Date.parse("2026-11-22T08:01:00Z");
 // Text painted over a picture on purpose: a fighter card's name and element
 // over its art, a raid trophy's name over its painting.
 const OVER_ART = ".roster-card-art, .pf-trophy";
@@ -305,6 +313,9 @@ for (const s of SIZES)
       hasTouch: phone,
       reducedMotion: "reduce",
     });
+    await context.addInitScript((t) => {
+      (window as any).__serverTime = t;
+    }, SERVER_TIME);
     const problems: string[] = [];
     try {
       for (const screen of SCREENS) {

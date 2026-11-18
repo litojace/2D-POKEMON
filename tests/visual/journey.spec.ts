@@ -154,8 +154,26 @@ for (const size of SIZES)
           )!;
           return s.scrollWidth <= s.clientWidth + 1;
         })(),
+        // Each section's head (heading, note, countdown) inside its own
+        // column: the weekly goals' countdown ran into "Level road" beside
+        // it at 667x375 (CI, 18 Nov 2026), and here at 700x390 it stuck
+        // out 1 px.
+        heads: Array.from(
+          document.querySelectorAll<HTMLElement>(
+            ".journey-room .journey-section > *",
+          ),
+        )
+          .filter((c) => {
+            const [r, s] = [c, c.parentElement!].map((e) =>
+              e.getBoundingClientRect(),
+            );
+            return (
+              r.width > 0 && (r.left < s.left - 0.5 || r.right > s.right + 0.5)
+            );
+          })
+          .map((c) => c.textContent),
       }));
-      expect(fit).toEqual({ page: true, spark: true });
+      expect(fit).toEqual({ page: true, spark: true, heads: [] });
       // Further down: the goals and level road, in sight, pass too.
       await room
         .locator(".journey-body")
