@@ -19,8 +19,16 @@ export function idle(timeout: number) {
   });
 }
 
-/** The SVG at the texture's size, as Phaser's SVGFile resizes it. */
-export function sizedSvg(text: string, width: number, height: number) {
+/**
+ * The SVG at the texture's size, as Phaser's SVGFile resizes it. With
+ * `viewBox`, that part of the art, stretched to fill exactly.
+ */
+export function sizedSvg(
+  text: string,
+  width: number,
+  height: number,
+  viewBox?: string,
+) {
   const xml = new DOMParser().parseFromString(text, "text/xml");
   const svg = xml.getElementsByTagName("svg")[0];
   if (!svg) return text;
@@ -28,6 +36,10 @@ export function sizedSvg(text: string, width: number, height: number) {
   const h = parseFloat(svg.getAttribute("height") ?? "");
   if (!svg.hasAttribute("viewBox") && w && h)
     svg.setAttribute("viewBox", `0  0 ${w} ${h}`);
+  if (viewBox) {
+    svg.setAttribute("viewBox", viewBox);
+    svg.setAttribute("preserveAspectRatio", "none");
+  }
   svg.setAttribute("width", `${width}px`);
   svg.setAttribute("height", `${height}px`);
   return new XMLSerializer().serializeToString(svg);

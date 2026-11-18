@@ -15,6 +15,7 @@ import {
   type RosterTab,
   type RosterView,
 } from "./roster-view";
+import { watchPictures } from "../skin-thumbnails";
 import "./roster.css";
 
 /**
@@ -114,6 +115,8 @@ export function openRoster(
         ".shop-live-stage, .raid-cosmetic-preview, .fighter-rig-stage",
       );
     template = next;
+    // The Original look is inline SVG, painted once when it has shown.
+    watchPictures(root());
     if (resetScroll)
       q<HTMLElement>("[data-roster-region=body]")?.scrollTo({ top: 0 });
     // Focus stays on the control it was on (a reorder can move a card), or
