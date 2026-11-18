@@ -2909,7 +2909,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
       out.innerHTML =
         head(
           `Popularity ${Math.round(pp.total)} · ${popTier(pp.total)}`,
-          "How wanted your bistro is, out of 50: it sets how often guests come, how many wait at the door and how many are VIPs.",
+          "How wanted your bistro is, out of 50: how often guests come, how many wait and how many are VIPs.",
         ) +
         `<div class="bs-pop">
           ${row("Service", pp.service, 30, `Rating ${S.rating.toFixed(1)} ★: quick, happy meals raise it`)}
