@@ -432,29 +432,6 @@ button.room-seat.is-open:focus-visible {
 .room-pick.is-hidden.is-locked.is-ready {
   color: var(--ui-ok);
 }
-.room-pick-tick {
-  position: absolute;
-  right: 1px;
-  bottom: 1px;
-  display: grid;
-  place-items: center;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: var(--ui-warn);
-  color: var(--ui-accent-ink);
-}
-.room-pick.is-ready .room-pick-tick {
-  background: var(--ui-ok);
-  color: var(--ui-ok-ink);
-}
-.room-pick-tick svg {
-  width: 10px;
-  height: 10px;
-  color: inherit;
-  opacity: 1;
-  stroke-width: 3.4;
-}
 /* A seat's state (room-view.ts seatState): one width, so the pick tiles
    line up in a column whatever the word. */
 .room-state {
@@ -501,10 +478,6 @@ button.room-seat.is-open:focus-visible {
     width: 26px;
     height: 26px;
     font-size: calc(15px * var(--text-scale, 1));
-  }
-  .room-pick-tick {
-    width: 11px;
-    height: 11px;
   }
   .room-seat-side {
     width: 62px;

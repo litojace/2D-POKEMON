@@ -137,12 +137,10 @@ function pickTile(p: NonNullable<RoomSeat["pick"]>, s: RoomSeat) {
       ? `${s.name} ${p.locked ? "locked in" : "is looking at"} ${name}`
       : `${s.name} hasn't picked yet`;
   const inner = p.hidden ? `<b aria-hidden="true">?</b>` : (p.art ?? "");
-  // A hidden pick's gold edge and "?" say it all: no corner badge on top.
-  const tick =
-    p.locked && !p.hidden
-      ? `<i class="room-pick-tick" aria-hidden="true">${s.ready ? menuIcon("check") : PADLOCK}</i>`
-      : "";
-  return `<span class="room-pick${p.hidden ? " is-hidden" : ""}${p.locked ? " is-locked" : p.character ? " is-browsing" : " is-empty"}${s.ready ? " is-ready" : ""}" role="img" aria-label="${esc(label)}" title="${esc(label)}">${inner}${tick}</span>`;
+  // No corner badge on the picture: the seat's state tag beside it already
+  // says Locked (a padlock) or Ready (a tick), on desktop and phones; the
+  // tile's gold or green edge repeats it.
+  return `<span class="room-pick${p.hidden ? " is-hidden" : ""}${p.locked ? " is-locked" : p.character ? " is-browsing" : " is-empty"}${s.ready ? " is-ready" : ""}" role="img" aria-label="${esc(label)}" title="${esc(label)}">${inner}</span>`;
 }
 function seat(s: RoomSeat) {
   const state = s.pick

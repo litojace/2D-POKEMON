@@ -177,6 +177,17 @@ for (const size of SIZES)
           .toBe(1);
         await page.waitForTimeout(500);
         expect(misaligned(await measure(page))).toEqual([]);
+        // One padlock per locked seat: on its state tag, none on the
+        // fighter's picture (it showed twice on desktop, owner 18 Nov).
+        const PADLOCK = 'path[d="M8 11V8a4 4 0 0 1 8 0v3"]';
+        expect(
+          await page.locator(`.room-seats .room-pick ${PADLOCK}`).count(),
+        ).toBe(0);
+        expect(
+          await page
+            .locator(`.room-seats .room-state.is-locked ${PADLOCK}`)
+            .count(),
+        ).toBeGreaterThan(0);
         expect(
           await layoutProblems(page, {
             inset: size.island ? ISLAND : undefined,
@@ -184,6 +195,23 @@ for (const size of SIZES)
           }),
         ).toEqual([]);
         await snap(page, info, `room-alignment-${mode}-${size.name}`);
+        // A teammate locked in, not ready: their fighter shows, and still
+        // one padlock (on the tag), as in the owner's screenshot.
+        if (mode === "teams") {
+          await page.evaluate(() => {
+            const w = window as any;
+            w.__snap.players.find((p: any) => p.id === "p3").ready = false;
+            w.__push();
+          });
+          const rae = page.locator('.room-seats [data-room-seat="p3"]');
+          await expect(rae.locator(".room-state.is-locked")).toBeVisible();
+          await expect(rae.locator(".room-pick.is-locked")).not.toHaveClass(
+            /is-hidden/,
+          );
+          expect(await rae.locator(`.room-pick ${PADLOCK}`).count()).toBe(0);
+          expect(await rae.locator(`.room-state ${PADLOCK}`).count()).toBe(1);
+          await snap(page, info, `room-alignment-locked-${size.name}`);
+        }
         expect(errors).toEqual([]);
       } finally {
         await context.close();
