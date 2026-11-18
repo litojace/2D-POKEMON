@@ -115,10 +115,12 @@ Why each is better:
   enemies; every `aura.tick` it zaps the nearest enemy within `aura.radius`
   in sight for `aura.damage` (a `beam` event from the orb), and explodes at
   the end of its flight.
-- **Storm** (`kind: "storm"`): `count` waves of bolts `tickInterval`
-  apart. Each wave puts a bolt zone (radius `explosion`) under every enemy
-  in sight of nothing (stealthed enemies are skipped), striking after
-  `tickDelay`.
+- **Storm** (`kind: "storm"`): `count` bolts `tickInterval` apart. Each
+  puts a bolt zone (radius `explosion`) ahead of the enemy nearest the
+  caster's aim (anywhere; a stealthed one is skipped), striking after
+  `tickDelay`. It first struck every enemy, which grew with their number:
+  in the Spire's waves a Voltkit raider cleared floor 19 23 times in 24
+  (9 before).
 - **Root** (status, already Mossloth's): Shade Crawl uses it.
 - **Hunt** (`kind: "hunt"`): a zone that moves at `hunt.speed` toward the
   nearest enemy that is not stealthed (through walls), hurting enemies it
