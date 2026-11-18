@@ -610,6 +610,19 @@ test("in a friend's party the leader stands in the middle, you beside them, and 
     );
     for (const step of await page.locator(".lobby-step").all())
       await expect(step).toHaveCSS("visibility", "hidden");
+    // The leader's name stays on the fighter's axis (the arrows keep their
+    // place in the nameplate), and no lone podium floats in an open seat.
+    const axis = await page.evaluate(() => {
+      const mid = (s: string) => {
+        const b = document.querySelector(s)!.getBoundingClientRect();
+        return b.left + b.width / 2;
+      };
+      return [mid("#lobby-fighter"), mid(".lobby-name")];
+    });
+    expect(Math.abs(axis[0] - axis[1])).toBeLessThanOrEqual(2);
+    await expect(
+      page.locator(".lobby-party .lobby-podium.is-open"),
+    ).toHaveCount(0);
     // Only the leader invites: open seats are bare podiums here.
     await expect(
       page.locator(".lobby-party [data-lobby-action=invite]"),
@@ -689,8 +702,8 @@ for (const [width, height] of [
         const w = window as any;
         w.__reply = () => ({ ok: false, error: "Room not found." });
       });
-      // A member's stage at its widest: leader, you, a third, the fourth
-      // seat open, and Rejoin on the party bar.
+      // A member's stage at its widest: leader, you, two more, and Rejoin
+      // on the party bar.
       await page.evaluate(
         ([me, lead]) =>
           (window as any).__sock.fire("party", {
@@ -703,6 +716,11 @@ for (const [width, height] of [
                 id: "66666666-6666-4666-8666-666666666666",
                 name: "Bo",
                 character: "lumoth",
+              },
+              {
+                id: "77777777-7777-4777-8777-777777777777",
+                name: "Rae",
+                character: "cindrake",
               },
             ],
             room: { code: "ROOM77", mode: "ffa" },

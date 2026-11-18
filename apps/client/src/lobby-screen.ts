@@ -243,9 +243,9 @@ export function slotMarkup(
   seat = 0,
   canInvite = true,
 ) {
-  // An open seat: only the party's leader invites into it.
-  if (!member && !canInvite)
-    return `<span class="lobby-podium is-open" aria-hidden="true"></span>`;
+  // An open seat: only the party's leader invites into it; for the others
+  // it stays empty (a bare podium floated alone over the stage).
+  if (!member && !canInvite) return "";
   if (!member)
     return `<button type="button" class="lobby-slot" data-lobby-action="invite" aria-label="Invite a friend to your party"><span aria-hidden="true">+</span><small>Invite</small></button><span class="lobby-podium is-open" aria-hidden="true"></span>`;
   const skin = member.skin ?? null;
@@ -666,11 +666,17 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
       const centreLook = host ? host.look : view.look;
       const look = lookData(centreLook);
       const key = `${host ? `host:${host.name}` : "me"}|${character}|${skin?.skin ?? ""}|${skin?.stage ?? 1}|${look}`;
-      // Only your own fighter steps through the roster from here.
+      // Only your own fighter steps through the roster from here. The
+      // arrows keep their place (not [hidden], which style.css takes out of
+      // the nameplate's grid, pulling the name off the fighter's axis).
       for (const step of Array.from(
-        layer.querySelectorAll<HTMLElement>(".lobby-step"),
-      ))
-        step.hidden = !!host;
+        layer.querySelectorAll<HTMLButtonElement>(".lobby-step"),
+      )) {
+        step.classList.toggle("is-waiting", !!host);
+        step.disabled = !!host;
+        if (host) step.setAttribute("aria-hidden", "true");
+        else step.removeAttribute("aria-hidden");
+      }
       // The leader's name takes the element pill's place (same height, so
       // the stage doesn't move on a short phone).
       $("lobby-host-name").textContent = host ? `♛ ${host.name}` : "";
@@ -725,7 +731,8 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
       // One seat on each side keeps the stage even; the third seat (above
       // the right one) appears once both are taken. The server still allows
       // four players, and Friends can invite at any time.
-      $("lobby-slot-2").hidden = view.party.length < 2;
+      $("lobby-slot-2").hidden =
+        view.party.length < 2 || (!!view.host && !view.party[2]);
       // Low graphics: PLAY keeps its glow but stops its light sweep.
       layer.dataset.graphics = lowGraphics() ? "low" : "auto";
       $("lobby-party-bar").hidden = view.partySize < 2;

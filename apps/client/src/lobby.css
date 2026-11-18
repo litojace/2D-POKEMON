@@ -699,7 +699,7 @@
 /* In someone else's party the leader stands in the middle (lobby-screen.ts):
    the arrows step your own fighter only, so they wait; the leader's name
    takes the element pill's place. */
-.lobby-step[hidden] {
+.lobby-step.is-waiting {
   visibility: hidden;
   pointer-events: none;
 }
@@ -755,6 +755,16 @@
 .lobby-away {
   font-weight: 600;
   opacity: 0.8;
+}
+/* The bar lies over the stage (no neighbour right under it): each button
+   answers a finger's height, 44 px, though it is drawn 26 px tall. */
+.lobby-party-bar button {
+  position: relative;
+}
+.lobby-party-bar button::after {
+  content: "";
+  position: absolute;
+  inset: -9px -3px;
 }
 .lobby-party-bar .lobby-rejoin {
   background: var(--ui-accent);
@@ -1257,7 +1267,7 @@
   .lobby-rail span {
     max-width: 100%;
     overflow: hidden;
-    font-size: calc(9px * var(--text-scale, 1));
+    font-size: calc(10px * var(--text-scale, 1));
     letter-spacing: 0;
     text-overflow: ellipsis;
     white-space: nowrap;
