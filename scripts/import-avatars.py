@@ -5,7 +5,7 @@ Import new library avatars (docs/avatar-prompts.md) into the game.
 Usage: python3 scripts/import-avatars.py <folder> [--check]
 
 <folder> holds the generated pictures, any of PNG, JPEG or WebP, each named
-after the avatar it replaces (ea-avatar-027.png ...). Each is cut to its
+after the avatar it replaces (ea-avatar-053.png ...). Each is cut to its
 middle square, made 256 x 256 and saved as WebP (quality lowered until it is
 at most 20 KB) over apps/client/public/assets/avatars/<id>.webp.
 
@@ -21,7 +21,7 @@ from PIL import Image
 OUT = Path(__file__).resolve().parent.parent / "apps/client/public/assets/avatars"
 SIZE = 256
 MAX_BYTES = 20 * 1024
-NAME = re.compile(r"^(ea-avatar-0(?:0[1-9]|[1-4][0-9]|5[0-2]))\.(png|jpe?g|webp)$", re.I)
+NAME = re.compile(r"^(ea-avatar-(?!000)\d{3})\.(png|jpe?g|webp)$", re.I)
 
 
 def webp(img: Image.Image) -> bytes:
@@ -67,7 +67,7 @@ def main() -> None:
         if not check:
             (OUT / f"{avatar}.webp").write_bytes(data)
     if skipped:
-        print("skipped (not named ea-avatar-001 ... 052):", ", ".join(skipped))
+        print("skipped (not named ea-avatar-NNN):", ", ".join(skipped))
     print(f"{len(found)} avatar(s) {'checked' if check else 'imported'}")
 
 

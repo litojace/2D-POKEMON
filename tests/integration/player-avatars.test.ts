@@ -1,7 +1,7 @@
 import { PGlite } from "@electric-sql/pglite";
 import { readFile, readdir } from "node:fs/promises";
 import { afterAll, beforeAll, expect, it } from "vitest";
-import { AVATAR_IDS, RETIRED_AVATARS } from "../../packages/shared/src/avatars";
+import { AVATAR_IDS } from "../../packages/shared/src/avatars";
 
 // Player avatars (migration 20261119100000): a player sets their own avatar
 // from the library, reads it back, and their friends see it.
@@ -49,16 +49,13 @@ it("starts with no avatar; a player sets and reads their own", async () => {
   expect(await mine()).toBeNull();
 });
 
-it("takes only library avatars (avatars.ts's 25 and the 27 retired)", async () => {
-  // The database keeps the first library's 52 ids: a retired one stays a
-  // valid saved value (avatars.ts shows its character's avatar now); the
-  // server lets a player choose only the 25 (avatarSchema).
-  const ids = [...AVATAR_IDS, ...RETIRED_AVATARS.keys()];
-  expect(ids).toHaveLength(52);
+it("takes only library avatars (the same 77 ids as avatars.ts)", async () => {
+  // 52 first (20261119100000), the second batch's 25 since 20261119160000.
+  expect(AVATAR_IDS).toHaveLength(77);
   await as(ana);
-  for (const id of ids)
+  for (const id of AVATAR_IDS)
     await db.query("select public.arena_set_avatar($1)", [id]);
-  for (const bad of ["ea-avatar-053", "ea-avatar-000", "x", "", null])
+  for (const bad of ["ea-avatar-078", "ea-avatar-000", "x", "", null])
     await expect(
       db.query("select public.arena_set_avatar($1)", [bad]),
     ).rejects.toThrow();

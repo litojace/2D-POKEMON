@@ -1,11 +1,11 @@
 # Avatar prompts: the next 52 library avatars
 
-> **Outcome (19 Nov):** the owner kept 25 of the batch made from this
-> page: Set 2's 001 to 025, with Set 1's front-facing Mystowl (032) as 006
-> and Halcyra (038) as 012. 025 is the Storm Twins together. The rest
-> left the library (`RETIRED_AVATARS` in `packages/shared/src/avatars.ts`
-> shows each as its character's new avatar). The prompts stay here for
-> the next batch.
+> **Outcome (19 Nov):** the owner added 25 of the batch made from this page
+> to the library as a third style, Expressions (`ea-avatar-053` … `077`):
+> Set 2's 001 to 025 in order, with Set 1's front-facing Mystowl (032) as
+> 058 and Halcyra (038) as 064; 077 is the Storm Twins together. The first
+> 52 all stay. The table ids below are the batch's own file names, not the
+> library's.
 
 The owner's brief (19 Nov): keep the anime look of the current Anime 2D set,
 but redraw the library as two anime sets of the same 26 characters (the 18

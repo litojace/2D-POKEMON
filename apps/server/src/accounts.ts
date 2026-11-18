@@ -30,9 +30,7 @@ import {
 import { JOURNEY_ITEM_BY_ID } from "../../../packages/shared/src/journey.js";
 import {
   avatarSchema,
-  avatarUrl,
   isAvatar,
-  knownAvatar,
   photoIdOf,
   DEFAULT_AVATAR,
   PHOTO_MAX_BYTES,
@@ -91,7 +89,7 @@ import {
   type OnlineList,
 } from "../../../packages/shared/src/accounts.js";
 /** The newest database migration the server expects. */
-export const LATEST_MIGRATION = "20261119150000_bistro_league_ids.sql";
+export const LATEST_MIGRATION = "20261119160000_avatar_library_77.sql";
 /** The migration that last redefined the raid appearance functions. */
 export const RAID_FUNCTIONS_MIGRATION = "018_collection_equipping.sql";
 export interface AccountProvider {
@@ -665,7 +663,9 @@ export function installAccountRoutes(
       const photo = photoIdOf(avatar);
       res.redirect(
         302,
-        photo ? `/api/avatar-photo/${photo}` : avatarUrl(knownAvatar(avatar)),
+        photo
+          ? `/api/avatar-photo/${photo}`
+          : `/assets/avatars/${isAvatar(avatar) ? avatar : DEFAULT_AVATAR}.webp`,
       );
     } catch (error) {
       next(error);
