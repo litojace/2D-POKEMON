@@ -190,22 +190,30 @@ import {
   regularReward,
 } from "./bistro-model";
 import {
+  SCENE_MARGIN,
   carGlows,
   drawRoofSign,
-  drawSceneryFront,
-  drawSceneryLive,
+  drawSceneryOver,
   drawSceneryStatic,
+  drawSceneryTop,
+  drawSceneryUnder,
   roofSignGlow,
+  sceneryDrawables,
   sceneryGlows,
   updateCars,
   type Car,
 } from "./bistro-scenery";
 import {
+  busBox,
+  canal,
+  footX,
   makeStreet,
   seasonOf,
   updateStreet,
+  zebraY,
   type PaintCreature,
 } from "./bistro-town";
+import { carBox, carPose } from "./bistro-vehicles";
 import type { Season } from "./bistro-art";
 import { serverDay } from "../ui/countdown";
 import * as Rules from "./bistro-model";
@@ -1021,8 +1029,33 @@ export function openBistro(o: BistroOptions): BistroHandle {
     hudDirty = true;
     hudMoved = true;
   };
+  /**
+   * The dressed part of the town around the room (world px): the camera
+   * never shows past it, and zooms out only a little past the fit, enough
+   * to see the street around the bistro.
+   */
+  const scene = () => ({
+    x0: BOUNDS.x0 - SCENE_MARGIN.x,
+    x1: BOUNDS.x1 + SCENE_MARGIN.x,
+    y0: BOUNDS.y0 - SCENE_MARGIN.top,
+    y1: BOUNDS.y1 + SCENE_MARGIN.bottom,
+  });
+  const ZOOM_MAX = 2.4;
+  const zoomMin = () => {
+    const sc = scene();
+    return Math.min(
+      ZOOM_MAX,
+      Math.max(
+        0.92,
+        W / ((sc.x1 - sc.x0) * fitS),
+        H / ((sc.y1 - sc.y0) * fitS),
+      ),
+    );
+  };
+  const clampZoom = (z: number) => clamp(z, zoomMin(), ZOOM_MAX);
   const applyView = () => {
     const ins = insets();
+    zoom = clampZoom(zoom);
     view.s = fitS * zoom;
     const bw = BOUNDS.x1 - BOUNDS.x0,
       bh = BOUNDS.y1 - BOUNDS.y0;
@@ -1034,6 +1067,16 @@ export function openBistro(o: BistroOptions): BistroHandle {
     pan.y = lim(pan.y, (bh * view.s) / 2);
     view.x = cx - (BOUNDS.x0 + bw / 2) * view.s + pan.x;
     view.y = cy - (BOUNDS.y0 + bh / 2) * view.s + pan.y;
+    // Never past the dressed town's edge.
+    const sc = scene();
+    const keep = (v: number, lo: number, hi: number) =>
+      lo > hi ? (lo + hi) / 2 : clamp(v, lo, hi);
+    const vx = keep(view.x, W - sc.x1 * view.s, -sc.x0 * view.s),
+      vy = keep(view.y, H - sc.y1 * view.s, -sc.y0 * view.s);
+    pan.x += vx - view.x;
+    pan.y += vy - view.y;
+    view.x = vx;
+    view.y = vy;
   };
   const toScreen = (p: Pt) => ({
     x: p.x * view.s + view.x,
@@ -1920,10 +1963,8 @@ export function openBistro(o: BistroOptions): BistroHandle {
     if (pointers.has(e.pointerId)) pointers.set(e.pointerId, p);
     if (pinch && pointers.size === 2) {
       const [a, b] = [...pointers.values()];
-      zoom = clamp(
+      zoom = clampZoom(
         (pinch.z * Math.hypot(a.x - b.x, a.y - b.y)) / Math.max(1, pinch.d),
-        0.8,
-        2.4,
       );
       return;
     }
@@ -1980,7 +2021,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
     "wheel",
     (e) => {
       e.preventDefault();
-      zoom = clamp(zoom * Math.exp(-e.deltaY * 0.0015), 0.8, 2.4);
+      zoom = clampZoom(zoom * Math.exp(-e.deltaY * 0.0015));
     },
     { passive: false },
   );
@@ -1988,8 +2029,8 @@ export function openBistro(o: BistroOptions): BistroHandle {
     const b = (e.target as HTMLElement).closest("button");
     if (!b) return;
     const z = b.dataset.z;
-    if (z === "in") zoom = clamp(zoom * 1.2, 0.8, 2.4);
-    else if (z === "out") zoom = clamp(zoom / 1.2, 0.8, 2.4);
+    if (z === "in") zoom = clampZoom(zoom * 1.2);
+    else if (z === "out") zoom = clampZoom(zoom / 1.2);
     else {
       zoom = 1;
       pan.x = pan.y = 0;
@@ -3864,10 +3905,24 @@ export function openBistro(o: BistroOptions): BistroHandle {
   /* ───────────── update ───────────── */
   const update = (dt: number) => {
     T += dt;
-    updateStreet(street, dt);
+    // People wait at the zebra until no car or bus is near it; cars stop
+    // for whoever is on it.
+    updateStreet(street, dt, (y0, y1) => {
+      for (const c of cars) {
+        const b = carBox(carPose(c), c.kind);
+        if (b.y1 > y0 && b.y0 < y1) return false;
+      }
+      const bus = street.bus;
+      if (bus.state !== "away") {
+        const b = busBox(bus);
+        if (b.y1 > y0 && b.y0 < y1) return false;
+      }
+      return true;
+    });
     cars = updateCars(cars, dt, Math.random(), {
       bus: street.bus,
-      max: low ? 2 : 4,
+      max: low ? 3 : 6,
+      zebra: street.crossing ? zebraY() : null,
     });
     // Nothing happens inside until the server has answered once.
     if (!sync.ready && !visiting) return;
@@ -4223,8 +4278,9 @@ export function openBistro(o: BistroOptions): BistroHandle {
 
   // A couple of cars already on the road when the bistro opens.
   let cars: Car[] = [
-    { y: -2, v: 2.8, col: "#3d8fd1", kind: 0 },
-    { y: 13, v: -3.1, col: "#f2c14e", kind: 1 },
+    { y: -4, v: 2.8, col: "#3d8fd1", kind: 0 },
+    { y: 3, v: 3.2, col: "#e2453a", kind: 3 },
+    { y: 22, v: -3.1, col: "#f4f1ea", kind: 1 },
   ];
   // The neighbourhood's passers-by: a handful of the roster, fewer on Low.
   const street = makeStreet(
@@ -4268,44 +4324,67 @@ export function openBistro(o: BistroOptions): BistroHandle {
       ctx.drawImage(nightOf(s), dx, dy, dw, dh);
     }
   };
+  /**
+   * The baked street: one picture of everything that never moves, a little
+   * bigger than the screen so a pan only moves it (baked again when the
+   * view leaves it, the light or the season moves on, or a zoom settles;
+   * while a pinch goes on the old picture is stretched).
+   */
   const scenery = document.createElement("canvas");
-  let sceneryKey = "";
+  const bake = { key: "", s: 0, x0: 0, y0: 0, x1: 0, y1: 0 };
+  let lastScale = 0,
+    scaleAt = 0;
   const sceneryCanvas = (L: Light) => {
     const key = [
       R.cols,
       R.rows,
-      view.s.toFixed(4),
-      view.x.toFixed(1),
-      view.y.toFixed(1),
-      R.cols,
-      R.rows,
-      W,
-      H,
       DPR,
       Math.round(L.night * 24),
       Math.round(L.gold * 24),
       L.season,
       special(),
     ].join(":");
-    if (key === sceneryKey) return scenery;
-    sceneryKey = key;
+    const s = view.s * DPR;
+    const nowMs = performance.now();
+    if (s !== lastScale) {
+      lastScale = s;
+      scaleAt = nowMs;
+    }
+    const vx0 = -view.x / view.s,
+      vy0 = -view.y / view.s,
+      vx1 = (W - view.x) / view.s,
+      vy1 = (H - view.y) / view.s;
+    const covers =
+      bake.s > 0 &&
+      vx0 >= bake.x0 &&
+      vy0 >= bake.y0 &&
+      vx1 <= bake.x1 &&
+      vy1 <= bake.y1;
+    const zooming = nowMs - scaleAt < 220;
+    if (key === bake.key && covers && (Math.abs(bake.s - s) < 1e-6 || zooming))
+      return scenery;
+    // Bake a quarter of the screen beyond each edge (within the town).
+    const sc = scene();
+    const mx = (vx1 - vx0) * 0.25,
+      my = (vy1 - vy0) * 0.25;
+    bake.x0 = Math.max(sc.x0, vx0 - mx);
+    bake.y0 = Math.max(sc.y0, vy0 - my);
+    bake.x1 = Math.min(sc.x1, vx1 + mx);
+    bake.y1 = Math.min(sc.y1, vy1 + my);
+    bake.s = s;
+    bake.key = key;
+    const w = Math.ceil((bake.x1 - bake.x0) * s),
+      h = Math.ceil((bake.y1 - bake.y0) * s);
     const g = scenery.getContext("2d")!;
-    if (scenery.width !== cv.width || scenery.height !== cv.height) {
-      scenery.width = cv.width;
-      scenery.height = cv.height;
+    if (scenery.width !== w || scenery.height !== h) {
+      scenery.width = w;
+      scenery.height = h;
     } else {
       g.setTransform(1, 0, 0, 1, 0, 0);
-      g.clearRect(0, 0, scenery.width, scenery.height);
+      g.clearRect(0, 0, w, h);
     }
-    g.setTransform(
-      view.s * DPR,
-      0,
-      0,
-      view.s * DPR,
-      view.x * DPR,
-      view.y * DPR,
-    );
-    drawSceneryStatic(g, L, DISH_BY_ID[special()].name);
+    g.setTransform(s, 0, 0, s, -bake.x0 * s, -bake.y0 * s);
+    drawSceneryStatic(g, L, DISH_BY_ID[special()].name, bake);
     return scenery;
   };
   /** The diorama's outline: the slab, the floor and the walls. */
@@ -4323,12 +4402,17 @@ export function openBistro(o: BistroOptions): BistroHandle {
     ctx.lineTo(l.x - 16, l.y - 190);
     ctx.closePath();
   };
+  /** Time spent per part of a frame (dev builds: tests and tuning). */
+  const profile: Record<string, number> = {};
   const draw = () => {
     applyView();
     const L = light();
-    // The street corner around the bistro: drawn once per view and light.
+    // The street corner around the bistro: the canal's water, then the baked
+    // street over it (a hole where the water shows), then what stands on it.
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.drawImage(sceneryCanvas(L), 0, 0);
+    const pic = sceneryCanvas(L);
+    ctx.fillStyle = "#6f9a5a";
+    ctx.fillRect(0, 0, cv.width, cv.height);
     ctx.setTransform(
       view.s * DPR,
       0,
@@ -4337,8 +4421,55 @@ export function openBistro(o: BistroOptions): BistroHandle {
       view.x * DPR,
       view.y * DPR,
     );
+    const prof = import.meta.env.DEV ? profile : null;
+    let t0 = prof ? performance.now() : 0;
+    const lap = (k: string) => {
+      if (!prof) return;
+      const t = performance.now();
+      prof[k] = (prof[k] ?? 0) + t - t0;
+      t0 = t;
+    };
+    drawSceneryUnder(ctx, L, low);
+    lap("water");
+    if (Math.abs(bake.s - view.s * DPR) < 1e-6) {
+      // At its own scale: copied pixel for pixel (no filtering).
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.drawImage(
+        pic,
+        Math.round(bake.x0 * bake.s + view.x * DPR),
+        Math.round(bake.y0 * bake.s + view.y * DPR),
+      );
+      ctx.setTransform(
+        view.s * DPR,
+        0,
+        0,
+        view.s * DPR,
+        view.x * DPR,
+        view.y * DPR,
+      );
+    } else
+      ctx.drawImage(
+        pic,
+        bake.x0,
+        bake.y0,
+        pic.width / bake.s,
+        pic.height / bake.s,
+      );
+    lap("bake");
     streetNight = L.night;
-    drawSceneryLive(ctx, L, cars, low, street, paintCreature);
+    drawSceneryOver(ctx, L, low);
+    const outside = sceneryDrawables(
+      ctx,
+      L,
+      cars,
+      street,
+      paintCreature,
+      street.crossing,
+      low,
+    );
+    lap("sort");
+    for (const d of outside.behind) d.draw();
+    lap("behind");
     drawGroundShadow(ctx);
     const sh = shellCanvas();
     ctx.drawImage(
@@ -4601,7 +4732,11 @@ export function openBistro(o: BistroOptions): BistroHandle {
       drawDish(ctx, f.dish, x, y, 13, T, false);
     }
 
-    drawSceneryFront(ctx, L, low, street, paintCreature);
+    lap("room");
+    for (const d of outside.front) d.draw();
+    lap("front");
+    drawSceneryTop(ctx, L, low);
+    lap("top");
     drawLighting(L);
     drawOverlay(now);
     placeRotate();
@@ -5685,10 +5820,38 @@ export function openBistro(o: BistroOptions): BistroHandle {
       setCars: (list: Car[]) => (cars = list),
       /** Bake the street again and say how long it took (ms; tests, tuning). */
       bakeScenery: () => {
-        sceneryKey = "";
+        bake.key = "";
         const t0 = performance.now();
         sceneryCanvas(light());
         return performance.now() - t0;
+      },
+      /** The camera: zoom (1 = fit), its least, the world shown and the town's edge. */
+      camera: () => {
+        applyView();
+        return {
+          zoom,
+          zoomMin: zoomMin(),
+          view: {
+            x0: -view.x / view.s,
+            y0: -view.y / view.s,
+            x1: (W - view.x) / view.s,
+            y1: (H - view.y) / view.s,
+          },
+          scene: scene(),
+        };
+      },
+      /** A spot on the canal's open water, on screen (tests). */
+      water: () => {
+        applyView();
+        const c = canal();
+        const p = iso(footX() - 2.2, (c.y0 + c.y1) / 2 + 0.4);
+        return toScreen({ x: p.x, y: p.y + 18 });
+      },
+      /** Time per part of the frames drawn since the last call (ms in all). */
+      profile: () => {
+        const out = { ...profile };
+        for (const k in profile) delete profile[k];
+        return out;
       },
       /** Draw `n` frames back to back and say how long one took (ms). */
       drawMs: (n = 20) => {
@@ -5793,7 +5956,8 @@ export function openBistro(o: BistroOptions): BistroHandle {
         shell = null;
         shellKey = "";
         scenery.width = scenery.height = 0;
-        sceneryKey = "";
+        bake.key = "";
+        bake.s = 0;
       }
     },
     /** Back: just as you left it, then the server's word (and any time away). */
