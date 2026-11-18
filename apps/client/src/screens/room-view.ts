@@ -8,7 +8,7 @@
  * the Lobby; leaving is the picker's corner button.
  *
  * Markup and rules only (no DOM); main.ts gathers the room's data and wires
- * the clicks (data-room-*, data-team, data-mutator).
+ * the clicks (data-room-*, data-team).
  */
 import { SOLO_NO_REVIVE, soloRevives } from "../raid-solo";
 import { CHARACTERS, type CharacterId } from "@arena/shared";
@@ -40,12 +40,6 @@ export interface RoomSeat {
   /** A raid's AI stand-in, a rank flair… (short, shown after the fighter). */
   flair?: string;
 }
-export interface RoomRule {
-  id: string;
-  name: string;
-  text: string;
-  on: boolean;
-}
 export interface RoomData {
   mode: RoomMode;
   /** Watching someone else's room: no picker, no Ready. */
@@ -57,9 +51,8 @@ export interface RoomData {
   /** Round wins needed (PvP). */
   rounds: number;
   seats: RoomSeat[];
-  /** You host the room (party rules, Shuffle). */
+  /** You host the room (Shuffle). */
   host: boolean;
-  rules: RoomRule[];
   /** This week's arcade: its rules are fixed. */
   arcade?: { name: string; text: string };
   /** The 2v2 team-up line (markup built by main.ts), or "". */
@@ -148,23 +141,10 @@ function banner(d: RoomData) {
 function head(title: string, note: string, extra = "") {
   return `<div class="room-head"><h3 class="ui-h">${esc(title)}</h3>${extra || `<small class="ui-note">${esc(note)}</small>`}</div>`;
 }
+/** This week's arcade: its fixed rules (private rooms have none). */
 function rules(d: RoomData) {
-  if (d.mode === "raid") return "";
-  if (d.arcade)
-    return `<p class="ui-note room-arcade"><b>${esc(d.arcade.name)}</b> · ${esc(d.arcade.text)} Weekly rules are fixed. PvP rating stays separate.</p>`;
-  const on = d.rules.filter((r) => r.on);
-  if (!d.host && !on.length) return "";
-  const body = d.host
-    ? `<div class="ui-chips room-rule-chips" role="group" aria-label="Party rules">${d.rules
-        .map(
-          (r) =>
-            `<button type="button" class="ui-chip" aria-pressed="${r.on}" data-mutator="${esc(r.id)}" title="${esc(r.text)}">${esc(r.name)}</button>`,
-        )
-        .join(
-          "",
-        )}</div><small class="ui-note">Only you (the host) can change these. Everyone readies up again after a change.</small>`
-    : `<ul class="room-rule-list">${on.map((r) => `<li><b>${esc(r.name)}</b> · ${esc(r.text)}</li>`).join("")}</ul>`;
-  return `<details class="room-rules"${on.length ? " open" : ""}><summary>${menuIcon("settings")}<span>Party rules${on.length ? ` · ${on.length} on` : d.host ? " · optional" : ""}</span></summary>${body}</details>`;
+  if (d.mode === "raid" || !d.arcade) return "";
+  return `<p class="ui-note room-arcade"><b>${esc(d.arcade.name)}</b> · ${esc(d.arcade.text)} Weekly rules are fixed. PvP rating stays separate.</p>`;
 }
 function notes(d: RoomData) {
   const lines = d.spire

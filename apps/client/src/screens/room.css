@@ -264,36 +264,6 @@ button.room-seat.is-open:focus-visible {
   color: var(--ui-dim);
   font-size: var(--fs-small);
 }
-.room-rules {
-  padding: 8px 10px;
-  border-radius: var(--rad-md);
-  border: 1px solid var(--ui-line);
-  background: var(--fill-card);
-  font-size: var(--fs-small);
-}
-.room-rules > summary {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 28px;
-  cursor: pointer;
-  font-weight: 600;
-}
-.room-rules > summary svg {
-  width: 16px;
-  height: 16px;
-}
-.room-rule-chips {
-  flex-wrap: wrap;
-  margin: 6px 0;
-}
-.room-rule-list {
-  display: grid;
-  gap: 4px;
-  margin-top: 6px;
-  padding-left: 16px;
-  color: var(--ui-dim);
-}
 .room-arcade {
   padding: 8px 10px;
   border-radius: var(--rad-md);

@@ -194,15 +194,10 @@
     left: min(-8px, calc(100% - 43px));
   }
   /* A finger tall: the fighter's skills, the Play drawer's quiet buttons,
-     the rules folds of Ranks and of a room. */
+     the rules fold of Ranks. */
   :root
     body
-    :is(
-      .roster-skill,
-      .home-play-drawer button.quiet,
-      .rk-rules > summary,
-      .room-rules > summary
-    ) {
+    :is(.roster-skill, .home-play-drawer button.quiet, .rk-rules > summary) {
     min-height: 44px;
   }
 

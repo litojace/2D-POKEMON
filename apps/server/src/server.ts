@@ -55,8 +55,6 @@ import {
   type WireSnapshot,
   practiceOptionsSchema,
   FIGHTER_IDS,
-  MUTATOR_IDS,
-  type MutatorId,
   type Fighter,
   type Reply,
 } from "../../../packages/shared/src/index.js";
@@ -132,11 +130,6 @@ const teamSchema = z
   .object({ team: z.union([z.literal(0), z.literal(1)]) })
   .strict();
 const riteSchema = z.object({ id: z.string().min(1).max(64) }).strict();
-const mutatorsSchema = z
-  .object({
-    ids: z.array(z.enum(MUTATOR_IDS as [MutatorId, ...MutatorId[]])).max(8),
-  })
-  .strict();
 const BOT_NAMES = [
   "Pip",
   "Nova",
@@ -2293,29 +2286,6 @@ export function createArenaServer(
         fail(cb, "Mastery couldn't be checked right now.");
       }
     });
-    // Party rules: the host switches them on or off in the lobby.
-    socket.on("mutators", (data: unknown, cb: unknown) =>
-      withRoom(cb, (a, id) => {
-        if (
-          a.phase !== "lobby" ||
-          a.bots.size ||
-          a.practice ||
-          a.mode === "raid"
-        )
-          return fail(cb, "Party rules can only be changed in a room lobby.");
-        if (a.players[0]?.id !== id)
-          return fail(cb, "Only the room host can change the party rules.");
-        if (a.arcade)
-          return fail(cb, "Weekly arcade rules are fixed for everyone.");
-        const result = mutatorsSchema.safeParse(data);
-        if (!result.success) return fail(cb, "Unknown party rule.");
-        a.mutators = new Set(result.data.ids);
-        // Everyone confirms again under the new rules.
-        for (const p of a.players) p.ready = false;
-        reply(cb, { ok: true });
-        broadcast(a);
-      }),
-    );
     socket.on("instructions-ready", (_data: unknown, cb: unknown) =>
       withRoom(cb, (a, id) => {
         if (!a.acknowledgeInstructions(id))
