@@ -12,7 +12,7 @@ Six collections add 108 champion skins: three Rare and three Epic for each of th
 | Abyssal Expedition | Epic / 3,500 | Independent pressure-suit construction, glass helmets, gauges, tanks and individual dive equipment; a small glass glint and bubble dash trail |
 | Dream Carnival | Epic / 3,500 | Independent stagewear, masks, personal headpieces and ruffs; a small glint and confetti dash trail |
 | Nova Vanguard | Legendary / 5,500 | Original hero suits, individual emblems and joint-mounted equipment; a signature effect, its own hero landing and victory, and a short movement trail |
-| Hồn Việt | Epic / 3,500 | A figure of Vietnamese heritage per champion, its own costume and accessories; glowing embroidery and lanterns, a petal dash trail |
+| Hồn Việt | Legendary / 5,500 | A figure of Vietnamese heritage per champion in full costume with props of its story; glowing embroidery and lanterns, a drum landing, a lantern victory, a motif per champion and a petal trail |
 
 ## Color stories
 
@@ -175,10 +175,10 @@ chest that springs open behind them, doubloons flying up off the face.
 
 Migration `20261118120000_sky_pirates.sql` adds the 18 skins and their set.
 
-## Epic: Hồn Việt
+## Legendary: Hồn Việt
 
-Vietnamese heritage at 3,500 coins (`HON_VIET_SKINS` in `shop.ts`,
-`viet-art.ts`). Every champion is a figure of its own, chosen for who it is,
+Vietnamese heritage at 5,500 coins (`HON_VIET_SKINS` in `shop.ts`,
+`viet-art.ts`), the third Legendary collection. Every champion is a figure of its own, chosen for who it is,
 with its own costume and accessories (`modern-designs.ts` for five of them,
 `modern-viet.ts` for the rest). Champions keep their own colours.
 
@@ -203,8 +203,29 @@ with its own costume and accessories (`modern-designs.ts` for five of them,
 | Pangrove | Đầm Sen Đồng Tháp | Pink áo bà ba, a lotus leaf worn as a hat with a glowing bud |
 | Mossloth | Ông Đồ | Black áo the, round spectacles, a calligraphy scroll whose ink glows |
 
+As a Legendary each costume also wears a gold-embroidered silk sash whose
+stitches light in a run, and some champions trade their own prop for one of
+their story (`modern-viet-legend.ts`): Astrabun's mallet becomes a Trung Thu
+rabbit lantern on a bamboo rod (its head repainted, a lantern drawn over it),
+Sunbara's yuzu a crown of hoa mai, Tidefin holds a lotus lamp, and Terradon's
+shell turns to Kim Quy's gold.
+
 The glowing pieces are marked `lume` and light up in play (see Glowing costume
-pieces below); a short red-and-gold petal trail on a dash. Names are
+pieces below). The signature effects (`epic-signature-fx.ts`, table `viet`):
+
+- Landing: the face of a Đông Sơn bronze drum (its 14-ray sun inside rings)
+  lights up under the feet, spreads and fades, with a burst of mai and đào
+  petals behind.
+- Victory: three paper lanterns rise one after another behind the champion,
+  swaying, as petals fall.
+- Ultimate: the champion's own motif pops in for 1.9 s (star lanterns
+  circling, Thánh Gióng's bamboo, floating lotus lamps, a Vovinam lotus
+  ring, a string of Hội An lanterns, a spinning nón quai thao, the returned
+  sword, revolving lantern figures, a monochord wave, chestnut embers,
+  silver rings, Lạc birds, a hoa mai in bloom, the full moon and jade pestle,
+  ripe rice, the general's flags, a lotus pond, a calligraphy stroke).
+- Moving: a trail of petals at the feet; idle, a soft gold glint at the
+  collar and, with the ambient budget, a petal now and then. Names are
 Vietnamese: the display face loads its Vietnamese letters
 (`barlow-condensed-vietnamese-*.woff2`), and one-line names leave room in
 their clip for marks above and below. Migration

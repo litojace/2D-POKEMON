@@ -785,9 +785,303 @@ const pirates: Record<CharacterId, Signature> = {
   },
 };
 
+
+// ---- Hồn Việt: each champion's figure, summoned on its ultimate. ----
+/** A paper lantern: body, gold caps and a warm glow. */
+const lanternAt = (g: G, x: number, y: number, s: number, body: number, glow = 0xffb347) => {
+  g.fillStyle(glow, 0.25).fillCircle(x, y, 9 * s);
+  g.fillStyle(body, 1).fillEllipse(x, y, 9 * s, 11 * s);
+  g.fillStyle(0xf2c14e, 1).fillRect(x - 3.4 * s, y - 6.6 * s, 6.8 * s, 1.8 * s).fillRect(x - 3.4 * s, y + 4.8 * s, 6.8 * s, 1.8 * s);
+};
+/** A five-petal flower (hoa mai, lotus seen from above). */
+const bloomAt = (g: G, x: number, y: number, r: number, petal: number, heart: number) => {
+  g.fillStyle(petal, 1);
+  for (let i = 0; i < 5; i++) {
+    const a = (i / 5) * TAU - Math.PI / 2;
+    g.fillCircle(x + Math.cos(a) * r, y + Math.sin(a) * r, r * 0.8);
+  }
+  g.fillStyle(heart, 1).fillCircle(x, y, r * 0.55);
+};
+/** A Đông Sơn sun: a star of n rays. */
+const drumSun = (g: G, x: number, y: number, r: number, c: number, a: number, squash = 1) =>
+  g.fillStyle(c, a).fillPoints(
+    Array.from({ length: 28 }, (_, i) => {
+      const ang = -Math.PI / 2 + (i * Math.PI) / 14;
+      const rr = i % 2 ? r * 0.4 : r;
+      return { x: x + Math.cos(ang) * rr, y: y + Math.sin(ang) * rr * squash };
+    }),
+    true,
+  );
+const viet: Record<CharacterId, Signature> = {
+  voltkit: {
+    name: "Star lantern ring",
+    c: 0xe8322a,
+    h: 0xffd84a,
+    burst: "star",
+    draw: (f) => {
+      // Star lanterns circle the head, each one glowing.
+      for (let i = 0; i < (f.full ? 5 : 3); i++) {
+        const o = orbit(f, i, f.full ? 5 : 3, 2600, 30, 10, -18);
+        const g = on(f, o.front);
+        g.fillStyle(f.h, 0.3).fillCircle(o.x, o.y, 6 * f.s);
+        sparkle(g, o.x, o.y, 4 * f.s * f.boost, f.c);
+      }
+    },
+  },
+  cindrake: {
+    name: "Thánh Gióng's bamboo",
+    c: 0xe6c84a,
+    h: 0xff8a3a,
+    burst: "spark",
+    draw: (f) => {
+      // A stalk of golden bamboo rises behind, a fire at its top.
+      const x = f.x - 22 * f.s,
+        top = f.headY - 18 * f.s * f.boost;
+      f.under.lineStyle(5 * f.s, f.c, 1).lineBetween(x, f.ground, x, top);
+      for (let i = 1; i < 4; i++) f.under.lineStyle(1.4 * f.s, 0xa8902a, 1).lineBetween(x - 3 * f.s, f.ground - (i * (f.ground - top)) / 4, x + 3 * f.s, f.ground - (i * (f.ground - top)) / 4);
+      f.under.fillStyle(f.h, 0.9).fillEllipse(x, top - 4 * f.s, 7 * f.s, (11 + 2 * Math.sin(f.t / 90)) * f.s);
+    },
+  },
+  tidefin: {
+    name: "Floating lotus lamps",
+    c: 0xff9ac0,
+    h: 0xffd84a,
+    burst: "bubble",
+    draw: (f) => {
+      // Lotus lamps drift on the ground round the fighter.
+      for (let i = 0; i < (f.full ? 4 : 2); i++) {
+        const o = orbit(f, i, f.full ? 4 : 2, 5200, 34, 9, 0);
+        const y = f.ground + Math.sin(o.a) * 8 * f.s;
+        const g = on(f, o.front);
+        bloomAt(g, o.x, y, 3.4 * f.s * f.boost, f.c, f.h);
+      }
+    },
+  },
+  auralynx: {
+    name: "Vovinam lotus stance",
+    c: 0x2f5fb0,
+    h: 0xffd84a,
+    burst: "ring",
+    draw: (f) => {
+      // A ring of the martial art's lotus opens on the ground beneath.
+      flatRing(f, f.x, f.ground, 34 * f.s * f.boost, 11 * f.s * f.boost, f.h, 0.85, 2 * f.s, f.full ? 12 : 6);
+      drumSun(f.under, f.x, f.ground, 22 * f.s * f.boost, f.c, 0.55, 0.32);
+    },
+  },
+  lumoth: {
+    name: "Hội An lantern string",
+    c: 0xe8322a,
+    h: 0xff8a3a,
+    burst: "dot",
+    draw: (f) => {
+      // A string of lanterns sways above the head.
+      const n = f.full ? 5 : 3;
+      const w = 34 * f.s;
+      const sway = Math.sin(f.t / 800) * 3 * f.s;
+      f.under.lineStyle(0.8 * f.s, 0x5a3a22, 1).strokePoints(curve(6, (u) => ({ x: f.headX - w + u * 2 * w, y: f.headY - 10 * f.s + Math.sin(u * Math.PI) * 6 * f.s })));
+      for (let i = 0; i < n; i++) {
+        const u = (i + 0.5) / n;
+        lanternAt(f.under, f.headX - w + u * 2 * w + sway, f.headY - 2 * f.s + Math.sin(u * Math.PI) * 6 * f.s, 0.7 * f.s * f.boost, i % 2 ? f.c : f.h);
+      }
+    },
+  },
+  mystowl: {
+    name: "Quan họ hat spin",
+    c: 0xe8c88a,
+    h: 0xffd84a,
+    burst: "confetti",
+    draw: (f) => {
+      // A great nón quai thao spins above, its tassels flying out.
+      const y = f.headY - 12 * f.s;
+      const r = 26 * f.s * f.boost;
+      f.under.fillStyle(f.c, 0.95).fillEllipse(f.headX, y, r * 2, r * 0.5);
+      for (let i = 0; i < (f.full ? 10 : 6); i++) {
+        const a = f.t / 300 + (i / (f.full ? 10 : 6)) * TAU;
+        f.under.lineStyle(1.2 * f.s, f.h, 0.9).lineBetween(f.headX + Math.cos(a) * r, y + Math.sin(a) * r * 0.25, f.headX + Math.cos(a) * r * 1.2, y + Math.sin(a) * r * 0.3 + 6 * f.s);
+      }
+    },
+  },
+  terradon: {
+    name: "The returned sword",
+    c: 0xcfe8ff,
+    h: 0xf2c14e,
+    burst: "spark",
+    draw: (f) => {
+      // The sword rises behind, point up, ringed by gold.
+      const x = f.x + 26 * f.s,
+        top = f.headY - 20 * f.s * f.boost;
+      f.under.fillStyle(f.c, 0.3).fillCircle(x, top + 20 * f.s, 12 * f.s);
+      f.under.lineStyle(3.4 * f.s, f.c, 1).lineBetween(x, top, x, f.body);
+      f.under.lineStyle(2.4 * f.s, f.h, 1).lineBetween(x - 6 * f.s, f.body, x + 6 * f.s, f.body);
+      f.under.lineStyle(3 * f.s, 0x5a3a22, 1).lineBetween(x, f.body, x, f.body + 8 * f.s);
+    },
+  },
+  duskveil: {
+    name: "Revolving lantern figures",
+    c: 0xffb347,
+    h: 0x3a2a1c,
+    burst: "puff",
+    draw: (f) => {
+      // Paper figures of the đèn kéo quân march round in silhouette.
+      for (let i = 0; i < (f.full ? 6 : 3); i++) {
+        const o = orbit(f, i, f.full ? 6 : 3, 3600, 32, 9, -8);
+        const g = on(f, o.front);
+        g.fillStyle(f.c, 0.35).fillCircle(o.x, o.y, 7 * f.s);
+        g.fillStyle(f.h, 1).fillTriangle(o.x, o.y - 6 * f.s * f.boost, o.x - 3 * f.s, o.y + 4 * f.s, o.x + 3 * f.s, o.y + 4 * f.s).fillCircle(o.x, o.y - 6 * f.s, 1.8 * f.s);
+      }
+    },
+  },
+  coilemur: {
+    name: "Monochord wave",
+    c: 0x7ff3ff,
+    h: 0xffffff,
+    burst: "spark",
+    draw: (f) => {
+      // The đàn bầu's note ripples out as a glowing wave over the head.
+      const w = 40 * f.s * f.boost;
+      for (let j = 0; j < 2; j++)
+        f.under.lineStyle((2 - j) * f.s, j ? f.h : f.c, 0.9).strokePoints(curve(f.full ? 16 : 8, (u) => ({ x: f.headX - w + u * 2 * w, y: f.headY - 12 * f.s + Math.sin(u * TAU * 2 + f.t / 120) * (5 - j * 2) * f.s * Math.sin(u * Math.PI) })));
+    },
+  },
+  pyranda: {
+    name: "Chestnut embers",
+    c: 0xff7a2a,
+    h: 0x8a4a24,
+    burst: "dot",
+    draw: (f) => {
+      // Roasting chestnuts circle, embers glowing in their split shells.
+      for (let i = 0; i < (f.full ? 5 : 3); i++) {
+        const o = orbit(f, i, f.full ? 5 : 3, 2400, 28, 9, -10);
+        const g = on(f, o.front);
+        g.fillStyle(f.h, 1).fillEllipse(o.x, o.y, 6 * f.s * f.boost, 5 * f.s * f.boost);
+        g.fillStyle(f.c, 0.6 + 0.4 * wave(f.t / 300 + i * 0.3)).fillEllipse(o.x, o.y - 1 * f.s, 3 * f.s, 1.4 * f.s);
+      }
+    },
+  },
+  glacelle: {
+    name: "Sa Pa silver rings",
+    c: 0xe8f4ff,
+    h: 0xffffff,
+    burst: "flake",
+    draw: (f) => {
+      // Silver rings of the H'Mông necklace rise round the fighter like frost.
+      for (let j = 0; j < 3; j++) {
+        const k = ((f.t / 1400 + j / 3) % 1);
+        flatRing(f, f.x, f.body + 6 * f.s - k * 30 * f.s, (18 + j * 2) * f.s * f.boost, 6 * f.s, f.c, 0.9 * (1 - k), 1.6 * f.s, f.full ? 10 : 6);
+      }
+    },
+  },
+  halcyra: {
+    name: "Lạc birds",
+    c: 0x6a4a1c,
+    h: 0xf2c14e,
+    burst: "star",
+    draw: (f) => {
+      // Lạc birds of the drum fly round in a ring, beaks forward.
+      for (let i = 0; i < (f.full ? 4 : 2); i++) {
+        const o = orbit(f, i, f.full ? 4 : 2, 3000, 34, 10, -20);
+        const g = on(f, o.front);
+        const d = Math.cos(o.a + Math.PI / 2) > 0 ? 1 : -1;
+        const s = f.s * f.boost;
+        g.fillStyle(f.h, 1).fillTriangle(o.x + d * 8 * s, o.y, o.x - d * 5 * s, o.y - 3 * s, o.x - d * 5 * s, o.y + 3 * s);
+        g.fillStyle(f.c, 1).fillTriangle(o.x - d * 2 * s, o.y, o.x - d * 6 * s, o.y - 7 * s * (0.6 + 0.4 * wave(f.t / 300)), o.x + d * 2 * s, o.y);
+      }
+    },
+  },
+  sunbara: {
+    name: "Mai in full bloom",
+    c: 0xffd84a,
+    h: 0xff8a1a,
+    burst: "leaf",
+    draw: (f) => {
+      // A great hoa mai opens behind the head.
+      bloomAt(f.under, f.headX, f.headCY - 4 * f.s, 14 * f.s * f.boost, f.c, f.h);
+    },
+  },
+  astrabun: {
+    name: "Full moon and jade pestle",
+    c: 0xffe08a,
+    h: 0xf4f1f8,
+    burst: "star",
+    draw: (f) => {
+      // The full moon rises behind, the jade rabbit's pestle beating before it.
+      const x = f.headX,
+        y = f.headY - 6 * f.s;
+      f.under.fillStyle(f.c, 0.95).fillCircle(x, y, 20 * f.s * f.boost);
+      f.under.fillStyle(0xf2c860, 1).fillCircle(x - 7 * f.s, y - 5 * f.s, 3 * f.s).fillCircle(x + 6 * f.s, y + 4 * f.s, 2.4 * f.s);
+      const beat = Math.abs(Math.sin(f.t / 220)) * 6 * f.s;
+      f.under.lineStyle(2.4 * f.s, 0x3f8a4f, 1).lineBetween(x + 14 * f.s, y - 4 * f.s - beat, x + 22 * f.s, y + 10 * f.s - beat);
+    },
+  },
+  wombolder: {
+    name: "Golden harvest",
+    c: 0xe6c84a,
+    h: 0xffe08a,
+    burst: "leaf",
+    draw: (f) => {
+      // Stalks of ripe rice spring up round the feet, grains glinting.
+      for (let i = 0; i < (f.full ? 7 : 4); i++) {
+        const u = (i + 0.5) / (f.full ? 7 : 4);
+        const x = f.x - 36 * f.s + u * 72 * f.s;
+        const h = (14 + 6 * Math.sin(i * 1.7)) * f.s * f.boost;
+        const lean = Math.sin(f.t / 700 + i) * 3 * f.s;
+        f.under.lineStyle(1.4 * f.s, f.c, 1).lineBetween(x, f.ground, x + lean, f.ground - h);
+        f.under.fillStyle(f.h, 1).fillEllipse(x + lean, f.ground - h, 3 * f.s, 6 * f.s);
+      }
+    },
+  },
+  shadopus: {
+    name: "Command flags fan",
+    c: 0xe8322a,
+    h: 0xf2c14e,
+    burst: "confetti",
+    draw: (f) => {
+      // The general's four flags fan out wide behind, gold-edged.
+      const colors = [0x3fa04f, 0xffd84a, 0x2f6fb8, f.c];
+      for (let i = 0; i < 4; i++) {
+        const a = -Math.PI / 2 + (i - 1.5) * 0.45 + Math.sin(f.t / 500) * 0.05;
+        const len = 38 * f.s * f.boost;
+        const bx = f.x,
+          by = f.body;
+        const fx = bx + Math.cos(a) * len,
+          fy = by + Math.sin(a) * len;
+        f.under.lineStyle(1.2 * f.s, 0x5a3a22, 1).lineBetween(bx, by, fx, fy);
+        f.under.fillStyle(colors[i], 1).fillTriangle(fx, fy, fx + Math.cos(a + 2.2) * 12 * f.s, fy + Math.sin(a + 2.2) * 12 * f.s, fx + Math.cos(a + Math.PI) * 14 * f.s, fy + Math.sin(a + Math.PI) * 14 * f.s);
+      }
+    },
+  },
+  pangrove: {
+    name: "Lotus pond",
+    c: 0xff9ac0,
+    h: 0x3f8a4f,
+    burst: "leaf",
+    draw: (f) => {
+      // Lotus leaves spread on the ground and a flower opens among them.
+      for (let i = 0; i < (f.full ? 4 : 2); i++) {
+        const a = (i / (f.full ? 4 : 2)) * TAU + 0.4;
+        f.under.fillStyle(f.h, 0.95).fillEllipse(f.x + Math.cos(a) * 28 * f.s, f.ground + Math.sin(a) * 7 * f.s, 18 * f.s * f.boost, 6 * f.s * f.boost);
+      }
+      bloomAt(f.under, f.x + 26 * f.s, f.ground - 6 * f.s, 4 * f.s * f.boost, f.c, 0xffd84a);
+    },
+  },
+  mossloth: {
+    name: "Calligraphy stroke",
+    c: 0x2a2a32,
+    h: 0xc8323a,
+    burst: "puff",
+    draw: (f) => {
+      // A great brushstroke of ink sweeps above, with a red seal.
+      const w = 34 * f.s * f.boost;
+      f.under.lineStyle(5 * f.s, f.c, 0.9).strokePoints(curve(f.full ? 10 : 6, (u) => ({ x: f.headX - w + u * 2 * w, y: f.headY - 14 * f.s - Math.sin(u * Math.PI * 1.4) * 8 * f.s + u * 6 * f.s })));
+      f.under.fillStyle(f.h, 1).fillRect(f.headX + w - 2 * f.s, f.headY - 12 * f.s, 6 * f.s, 6 * f.s);
+    },
+  },
+};
+
 const TABLES: [string, Record<CharacterId, Signature>][] = [
   ["nova-vanguard", vanguard],
   ["sky-pirates", pirates],
+  ["hon-viet", viet],
 ];
 /** Every signature by skin id. */
 export const EPIC_SIGNATURES: Record<string, Signature> = Object.fromEntries(
@@ -799,6 +1093,11 @@ const FLOURISH_MS = 1900;
 /** When each fighter's motif was last summoned (ultimate, landing, win). */
 const FLOURISHES = new WeakMap<object, number>();
 const isPirate = (skin: string) => skin.endsWith("-sky-pirates");
+const isViet = (skin: string) => skin.endsWith("-hon-viet");
+/** Hồn Việt's drum landing and lantern victory, drawn over time. */
+const VIET_MOMENTS = new WeakMap<object, { land?: number; win?: number }>();
+const VIET_LAND_MS = 1200,
+  VIET_WIN_MS = 1800;
 /** A Sky Pirate's anchor landing and treasure victory, drawn over time. */
 const PIRATE_MOMENTS = new WeakMap<object, { land?: number; win?: number }>();
 const LAND_MS = 1100,
@@ -852,11 +1151,25 @@ export function drawEpicSignature(ctx: FxContext, skin: string) {
   if (!sig || ctx.defeated) return;
   const { sc } = ctx;
   const ground = ctx.y + WORLD_ART.fighterFeet * sc;
-  const pirate = isPirate(skin);
+  const pirate = isPirate(skin),
+    vn = isViet(skin);
   // The motif answers the ultimate; Nova also shows it on landing and win
-  // (the pirates have their anchor and chest there instead).
-  if (ctx.ultimate || (!pirate && (ctx.greeting || ctx.celebrating))) FLOURISHES.set(ctx.g, ctx.now);
-  if (pirate && (ctx.greeting || ctx.celebrating)) {
+  // (the pirates and Hồn Việt have moments of their own there).
+  if (ctx.ultimate || (!pirate && !vn && (ctx.greeting || ctx.celebrating))) FLOURISHES.set(ctx.g, ctx.now);
+  if (vn && (ctx.greeting || ctx.celebrating)) {
+    // Hồn Việt: a Đông Sơn drum face lights up under the feet, or lanterns
+    // rise behind the champion; drawn over the next frames.
+    let m = VIET_MOMENTS.get(ctx.g);
+    if (!m) VIET_MOMENTS.set(ctx.g, (m = {}));
+    if (ctx.greeting) {
+      m.land = ctx.now;
+      // A burst of mai and đào petals off the drum.
+      for (let i = 0; i < (ctx.ambient ? 10 : 5); i++) {
+        const ang = Math.PI + ((i + 0.5) / (ctx.ambient ? 10 : 5)) * Math.PI;
+        ctx.emit({ x: ctx.x, y: ground - 4 * sc, vx: Math.cos(ang) * 120, vy: Math.sin(ang) * 90, life: 1, size: 2 * sc, color: i % 2 ? 0xffd84a : 0xff6a5a, shape: "leaf", spin: 8, behind: true, drag: 2.5, fadeIn: 0.05, sway: 2 });
+      }
+    } else m.win = ctx.now;
+  } else if (pirate && (ctx.greeting || ctx.celebrating)) {
     // Sky Pirates: an anchor drops and bites the ground, or a treasure chest
     // bursts open behind the captain; drawn over the next frames.
     let m = PIRATE_MOMENTS.get(ctx.g);
@@ -930,6 +1243,7 @@ export function drawEpicSignature(ctx: FxContext, skin: string) {
     h: sig.h,
   };
   if (pirate) pirateSuit(frame);
+  else if (vn) vietSuit(frame);
   else novaSuit(frame);
   // The champion's own motif, summoned: it pops in with a little overshoot
   // as it fades up, holds, then eases back as it fades out.
@@ -946,6 +1260,7 @@ export function drawEpicSignature(ctx: FxContext, skin: string) {
     frame.under = ctx.under;
   }
   if (pirate) pirateMoments(frame);
+  if (vn) vietMoments(frame);
 }
 
 /** Nova Vanguard: energy running along the suit's seams into its emblem. */
@@ -1093,6 +1408,66 @@ function pirateMoments(f: Frame) {
           const d = -Math.PI * (0.2 + (0.6 * i) / 11);
           ctx.emit({ x: cx, y: cy - hgt, vx: Math.cos(d) * (60 + Math.random() * 40), vy: Math.sin(d) * (150 + Math.random() * 60), life: 1.1, size: 2.6 * ctx.sc, color: i % 3 ? 0xffd65b : 0xfff3c4, shape: "coin", spin: 8 + Math.random() * 6, behind: true, fadeIn: 0.08, drag: 0.6 });
         }
+    }
+  }
+}
+
+/**
+ * Hồn Việt: its costume's pieces already glow (lume layers); the signature
+ * adds a soft gold glint at the collar, a petal now and then with the
+ * ambient budget, and a trail of mai and đào petals when moving.
+ */
+function vietSuit(f: Frame) {
+  const { ctx, s } = f;
+  f.g.fillStyle(0xffe08a, 0.25 + 0.25 * wave(f.t / 1700)).fillCircle(f.x, f.body - 5 * s, 1.6 * s);
+  const petal = (x: number, y: number, vx: number, vy: number, behind: boolean) =>
+    ctx.emit({ x, y, vx, vy, life: 1.2, size: 1.8 * ctx.sc, color: Math.random() < 0.5 ? 0xffd84a : 0xff7a8a, to: 0xffffff, shape: "leaf", spin: (Math.random() - 0.5) * 8, behind, drag: 1.2, fadeIn: 0.15, sway: 3 });
+  if (f.full && ctx.chance(0.8, ctx.dt)) petal(f.x + (Math.random() - 0.5) * 30 * s, f.headY - 6 * s, (Math.random() - 0.5) * 10, 12, Math.random() < 0.5);
+  if (ctx.dashing ? ctx.chance(24, ctx.dt) : ctx.moving && ctx.chance(f.full ? 6 : 3, ctx.dt)) {
+    const back = ctx.angle + Math.PI;
+    petal(f.x + Math.cos(back) * 8 * s + (Math.random() - 0.5) * 10 * s, f.ground - 4 * s, Math.cos(back) * 40 + (Math.random() - 0.5) * 20, -20 - Math.random() * 20, true);
+  }
+}
+
+/**
+ * Hồn Việt's landing and victory. Landing: the face of a Đông Sơn bronze
+ * drum (its 14-ray sun inside rings) lights up on the ground under the feet,
+ * spreads and fades, with a burst of petals. Victory: three paper lanterns
+ * rise one after another behind the champion, swaying, as petals fall.
+ */
+function vietMoments(f: Frame) {
+  const m = VIET_MOMENTS.get(f.ctx.g);
+  if (!m) return;
+  const { ctx } = f;
+  const s = ctx.sc * 1.35;
+  if (m.land !== undefined) {
+    const k = (ctx.now - m.land) / VIET_LAND_MS;
+    if (k < 0 || k > 1) m.land = undefined;
+    else {
+      const grow = 0.3 + 0.7 * easeOutBack(Math.min(1, k / 0.35));
+      const a = k < 0.6 ? 1 : (1 - k) / 0.4;
+      const r = 34 * s * grow;
+      f.under.lineStyle(2.4 * s, 0xf2c14e, 0.9 * a).strokeEllipse(f.x, f.ground, r * 2, r * 0.64);
+      f.under.lineStyle(1.2 * s, 0xf2c14e, 0.7 * a).strokeEllipse(f.x, f.ground, r * 1.6, r * 0.5);
+      f.under.lineStyle(1.6 * s, 0xf2c14e, 0.8 * a).strokeEllipse(f.x, f.ground, r * 1.1, r * 0.35);
+      drumSun(f.under, f.x, f.ground, r * 0.45, 0xffd84a, a, 0.32);
+    }
+  }
+  if (m.win !== undefined) {
+    const k = (ctx.now - m.win) / VIET_WIN_MS;
+    if (k < 0 || k > 1) m.win = undefined;
+    else {
+      for (let i = 0; i < 3; i++) {
+        const u = Math.max(0, Math.min(1, (k - i * 0.15) / 0.7));
+        if (u <= 0) continue;
+        const a = u < 0.15 ? u / 0.15 : u > 0.85 ? (1 - u) / 0.15 : 1;
+        const x = f.x + (i - 1) * 22 * s + Math.sin(u * 6 + i) * 3 * s;
+        const y = f.body - u * u * 80 * s;
+        const g = faded(f.under, a);
+        lanternAt(g, x, y, 0.9 * s, i === 1 ? 0xffb347 : 0xe8322a, 0xffd27a);
+      }
+      if (k - (ctx.dt * 1000) / VIET_WIN_MS < 0.3 && ctx.chance(ctx.ambient ? 12 : 5, ctx.dt))
+        ctx.emit({ x: f.x + (Math.random() - 0.5) * 50 * s, y: f.headY - 20 * s, vx: (Math.random() - 0.5) * 20, vy: 20, life: 1.3, size: 2 * ctx.sc, color: Math.random() < 0.5 ? 0xffd84a : 0xff7a8a, shape: "leaf", spin: 6, behind: true, drag: 1, fadeIn: 0.1, sway: 3 });
     }
   }
 }

@@ -656,7 +656,7 @@ it("sells the Sky Pirates captains as Legendary at 5,500 and their full set at 8
   expect(await economy()).toEqual(bought);
 });
 
-it("sells Hồn Việt as Epic at 3,500, keeps its Vietnamese names, and sells its full set at 80%", async () => {
+it("sells Hồn Việt as Legendary at 5,500, keeps its Vietnamese names, and sells its full set at 80%", async () => {
   const sql = await readFile(
     "supabase/migrations/20261118140000_hon_viet.sql",
     "utf8",
@@ -666,7 +666,7 @@ it("sells Hồn Việt as Epic at 3,500, keeps its Vietnamese names, and sells i
   const rows = await db.query<{ rarity: string; price: number; n: number }>(
     "select rarity, price, count(*)::int as n from public.arena_shop_items where collection = 'hon-viet' and kind = 'champion' group by rarity, price",
   );
-  expect(rows.rows).toEqual([{ rarity: "epic", price: 3500, n: 18 }]);
+  expect(rows.rows).toEqual([{ rarity: "legendary", price: 5500, n: 18 }]);
   const names = await db.query<{ name: string }>(
     "select name from public.arena_shop_items where id in ('terradon-hon-viet', 'hon-viet-skins') order by id",
   );
@@ -677,7 +677,7 @@ it("sells Hồn Việt as Epic at 3,500, keeps its Vietnamese names, and sells i
   await login();
   await db.query("select public.arena_buy_item('hon-viet-skins')");
   const bought = await economy();
-  expect(100000 - bought.balance).toBe(18 * 3500 * 0.8);
+  expect(100000 - bought.balance).toBe(18 * 5500 * 0.8);
   expect(
     bought.owned.filter((id: string) => id.endsWith("-hon-viet")),
   ).toHaveLength(18);

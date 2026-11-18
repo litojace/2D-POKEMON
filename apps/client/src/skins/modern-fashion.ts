@@ -6,6 +6,7 @@ import { fashionCut } from "./fashion-fits";
 import { cutBox, UNDER } from "./rare-fashion";
 import { DESIGNS } from "./modern-designs";
 import "./modern-viet";
+import "./modern-viet-legend";
 
 /**
  * Modern collections (prototype): Neon Campus, Hero Squad, Starlight Idol,
@@ -23,7 +24,7 @@ import "./modern-viet";
  *    `data-i` giving each light's place in the row;
  *  - twinkle: sparkles that glint at their own moments.
  */
-export type ModernTheme = "campus" | "hero" | "idol" | "viet" | "stars";
+export type ModernTheme = "campus" | "hero" | "idol" | "viet" | "stars" | "vietlegend";
 
 /** Per-champion colours and the emblem drawn on its costume. */
 const LOOK: Record<CharacterId, { a: string; b: string; emblem: Emblem }> = {

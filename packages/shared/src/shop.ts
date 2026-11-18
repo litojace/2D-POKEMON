@@ -302,9 +302,10 @@ export const SKY_PIRATE_SKINS: ChampionSkin[] = (
 }));
 
 /**
- * Hồn Việt (Epic): Vietnamese heritage, each champion a figure of its own
- * (Trung Thu lanterns, Thánh Gióng, quan họ, Kim Quy, hát bội...), with
- * embroidery, lanterns and lacquer that give off light.
+ * Hồn Việt (Legendary): Vietnamese heritage, each champion a figure of its
+ * own (Trung Thu lanterns, Thánh Gióng, quan họ, Kim Quy, hát bội...), with
+ * embroidery, lanterns and lacquer that give off light, props of its story,
+ * a drum landing, a lantern victory and a motif of its own.
  */
 export const HON_VIET_NAMES = {
   voltkit: "Đèn Ông Sao",
@@ -332,10 +333,10 @@ export const HON_VIET_SKINS: ChampionSkin[] = (
   id: `${champion}-hon-viet`,
   champion,
   name: HON_VIET_NAMES[champion],
-  rarity: "epic",
+  rarity: "legendary",
   collection: "hon-viet",
   description:
-    "A figure of Vietnamese heritage with its own costume and accessories, and embroidery and lanterns that glow",
+    "A figure of Vietnamese heritage in full costume with props of its story, glowing embroidery, a drum landing and a lantern victory",
 }));
 
 export type Collection =

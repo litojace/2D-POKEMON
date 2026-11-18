@@ -171,7 +171,7 @@ describe("shop catalog", () => {
       expect(missionMigration, m.metric).toContain(`'${m.metric}'`);
   });
 
-  it("has 16 skins for every champion: 3 Common, 5 Rare, 5 Epic, 2 Legendary, 1 Mythical", () => {
+  it("has 16 skins for every champion: 3 Common, 5 Rare, 4 Epic, 3 Legendary, 1 Mythical", () => {
     for (const id of Object.keys(CHARACTERS)) {
       const mine = CHAMPION_SKINS.filter((s) => s.champion === id);
       const count = (r: string) => mine.filter((s) => s.rarity === r).length;
@@ -185,7 +185,7 @@ describe("shop catalog", () => {
           count("mythical"),
         ],
         id,
-      ).toEqual([16, 3, 5, 5, 2, 1]);
+      ).toEqual([16, 3, 5, 4, 3, 1]);
     }
     expect(CHAMPION_SKINS).toHaveLength(16 * Object.keys(CHARACTERS).length);
     // Each champion has one Cyber Mecha Epic.
@@ -247,8 +247,8 @@ describe("shop catalog", () => {
         b.id,
       ).toBe(false);
     }
-    // Nova Vanguard and Sky Pirates are the Legendary sets.
-    for (const c of ["nova-vanguard", "sky-pirates"])
+    // Nova Vanguard, Sky Pirates and Hồn Việt are the Legendary sets.
+    for (const c of ["nova-vanguard", "sky-pirates", "hon-viet"])
       expect(
         SKIN_BUNDLES.find((b) => b.collection === c)!.items.every(
           (id) =>

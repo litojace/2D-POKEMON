@@ -4,22 +4,30 @@ import type { SkinArt } from "./skin-art";
 import { modernReplaces } from "./modern-designs";
 // Registers the Hồn Việt designs, which modernReplaces looks up.
 import "./modern-viet";
+import "./modern-viet-legend";
 
 /**
- * Hồn Việt (Epic): each champion keeps its own colours; its costume and
- * accessories carry the theme (see modern-viet.ts and modern-designs.ts),
- * and their glowing pieces light up in play (lume layers). A short petal
- * trail in red and gold on a dash.
+ * Hồn Việt (Legendary): each champion keeps its own colours; its costume and
+ * accessories carry the theme (modern-designs.ts, modern-viet.ts), with the
+ * Legendary sash and prop swaps (modern-viet-legend.ts): Astrabun's mallet
+ * becomes a rabbit lantern, Sunbara's yuzu a crown of hoa mai, Tidefin holds
+ * a lotus lamp, Terradon's shell turns to Kim Quy's gold. Glowing pieces
+ * light up in play (lume layers), and the signature effects add the drum
+ * landing, the lantern victory, a motif per champion and a petal trail
+ * (epic-signature-fx.ts).
  */
 export const VIET_ART: Record<string, SkinArt> = Object.fromEntries(
   (Object.keys(HON_VIET_NAMES) as CharacterId[]).map((id) => [
     `${id}-hon-viet`,
     {
       palette: {},
-      accessories: ["modern-viet"],
-      replaces: modernReplaces("viet", id),
+      accessories: ["modern-vietlegend"],
+      replaces: modernReplaces("vietlegend", id),
       trail: { kind: "petal", colors: [0xf2c14e, 0xe8322a] },
       skill: 0xf2c14e,
+      signature: `${id}-hon-viet`,
+      // Astrabun's mallet becomes a rabbit lantern on a bamboo rod.
+      ...(id === "astrabun" ? { weapon: { handle: "#3f8a4f", head: "#e8322a" } } : {}),
     } satisfies SkinArt,
   ]),
 );
