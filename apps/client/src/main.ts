@@ -274,6 +274,7 @@ import "./cosmetic-review.css";
 import "./collection-frames.css";
 import "./journey-frames.css";
 import "./boss-frames.css";
+import "./signature-frames.css";
 import "./mobile-panels.css";
 import "./match-badge.css";
 import { FollowCamera, screenToWorld, outsideView } from "./follow-camera";
@@ -3122,27 +3123,39 @@ async function leave(returnToHub = true) {
       returnToRaidHub.spire,
     );
 }
+/** The spectator bar's arrows: drawn, not the ‹ › glyphs, which some
+ * phones' fonts drew tiny and off centre in the big buttons. */
+const spectateArrow = (back: boolean) =>
+  `<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="${back ? "M15 5 8 12l7 7" : "M9 5l7 7-7 7"}"/></svg>`;
+/** What the bar last showed: rebuilt only when it changes, so a tap is
+ * never lost to a button replaced under the finger. */
+let spectateShown = "";
 function renderPvpSpectator() {
   const banner = $("spectate");
   const target = state && pvpSpectator.target(state, myId);
   banner.classList.toggle("pvp-spectator", !!target);
   banner.hidden = !target;
-  if (!state || !target) return;
+  if (!state || !target) {
+    spectateShown = "";
+    return;
+  }
   const candidates = pvpSpectator.candidates(state, myId);
   const alive = state.players.filter((p) => p.hp > 0 && !p.out).length;
-  const markup = `<button type="button" data-spectate-step="-1" aria-label="Watch previous survivor"${candidates.length < 2 ? " disabled" : ""}>‹</button><span class="spectator-copy"><small>Knocked out · ${alive} still fighting</small><b>Watching ${escape(target.name)}</b></span><button type="button" data-spectate-step="1" aria-label="Watch next survivor"${candidates.length < 2 ? " disabled" : ""}>›</button>`;
-  if (banner.innerHTML !== markup) {
-    banner.innerHTML = markup;
-    banner
-      .querySelectorAll<HTMLButtonElement>("[data-spectate-step]")
-      .forEach((button) => {
-        button.onclick = () => {
-          if (!state) return;
-          pvpSpectator.cycle(state, myId, Number(button.dataset.spectateStep));
-          renderPvpSpectator();
-        };
-      });
-  }
+  const off = candidates.length < 2 ? " disabled" : "";
+  const markup = `<button type="button" data-spectate-step="-1" aria-label="Watch previous survivor"${off}>${spectateArrow(true)}</button><span class="spectator-copy"><small>Knocked out · ${alive} still fighting</small><b>Watching ${escape(target.name)}</b></span><button type="button" data-spectate-step="1" aria-label="Watch next survivor"${off}>${spectateArrow(false)}</button>`;
+  if (spectateShown === markup && banner.querySelector(".spectator-copy"))
+    return;
+  spectateShown = markup;
+  banner.innerHTML = markup;
+  banner
+    .querySelectorAll<HTMLButtonElement>("[data-spectate-step]")
+    .forEach((button) => {
+      button.onclick = () => {
+        if (!state) return;
+        pvpSpectator.cycle(state, myId, Number(button.dataset.spectateStep));
+        renderPvpSpectator();
+      };
+    });
 }
 
 /** The first match's coach (battle-coach.ts), over the court. */
