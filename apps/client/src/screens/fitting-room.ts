@@ -429,7 +429,6 @@ export function openFittingRoom(
         ? `<p class="ui-note">20% off the ${isSkinBundle(id) ? "skins" : "pieces"} you don't own yet.</p>`
         : `<label class="fit-wear"><input type="checkbox" data-fit-wear checked> Wear it now</label>${p.unlimited ? '<p class="ui-note">Testing: purchases don\'t spend coins.</p>' : ""}`,
       confirm: "Buy",
-      confirmIcon: "coin",
       confirmAfter: price(p.price),
     });
     // The confirmation is on the page now; note the "Wear it now" box.

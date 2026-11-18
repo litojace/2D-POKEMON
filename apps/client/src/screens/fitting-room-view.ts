@@ -1189,7 +1189,6 @@ function shopFoot(view: FitView, d: FitData) {
 }
 function buyActions(id: string, p: NonNullable<ReturnType<typeof purchase>>) {
   const buy = button("Buy", {
-    icon: "coin",
     kind: "primary",
     after: price(p.price),
     disabled: p.short > 0,
