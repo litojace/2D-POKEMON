@@ -125,13 +125,18 @@ export const HALCYRA_BEAKS: Record<string, BeakLook> = {
             "#1f2f5c",
           ),
   },
-  // Archery Ace: a wooden beak with a steel arrowhead tip.
+  // Archery Ace: a wooden beak tipped with a big steel broadhead, its two
+  // barbs flaring out past the beak, bound on with a dark wrap.
   "halcyra-neon-campus": {
     colors: ["#fff3d6", "#c58a4a", "#5a3a1a"],
     detail: (v) =>
       v === "front"
-        ? tipFront(124, "#cfd6de") + bandFront(122.4, 1.6, "#5a3a1a")
-        : tipSide(46, "#cfd6de") + bandSide(47.6, 1.6, "#5a3a1a"),
+        ? bandFront(112, 3, "#5a3a1a") +
+          `<path d="M100 141L109 117L103.5 121L100 119L96.5 121L91 117Z" fill="#cfd6de" stroke="#4a5568" stroke-width="0.9" stroke-linejoin="round"/>` +
+          `<path d="M100 122L100 137" fill="none" stroke="#ffffff" stroke-width="1.1" opacity=".85"/>`
+        : bandSide(56, 3, "#5a3a1a") +
+          `<path d="M28 101L52 89L47 96L49 101L47 106L52 113Z" fill="#cfd6de" stroke="#4a5568" stroke-width="0.9" stroke-linejoin="round"/>` +
+          `<path d="M46 101L32 101" fill="none" stroke="#ffffff" stroke-width="1.1" opacity=".85"/>`,
   },
   // Crow's Nest Ace: a black crow's beak with a gold ring.
   "halcyra-sky-pirates": {
