@@ -235,6 +235,29 @@ On Normal, Auralynx's vault took it to 62.5%. Its handicap went from 0.3
 to 0.33 and Pyranda's from 0.37 to 0.36: both are now at 50% on Normal
 (48 games a pair).
 
+## 2v2 and free-for-all
+
+After the duel passes, `TEAM_TUNING`, `FFA_TUNING` and `FFA_THREE_TUNING`
+were retuned with `scripts/balance/tune-teams.ts`, one round per call so a
+container restart loses only that round. There were four rounds of 1,000
+fresh line-ups per difficulty in 2v2 and in 4-player free-for-all, and three
+in 3-player. Each factor is the average of the last three rounds. A single
+round is noisy: one champion is in about a fifth of the line-ups, and Glacelle
+went 32%, 19%, 34%, 17% in four rounds of 4-player free-for-all.
+
+Then a check on line-ups the tuning never played (`FRESH_BASE=7000`, 1,000
+per difficulty):
+
+| Mode                  | Fair  | Lowest – highest |
+| --------------------- | ----- | ---------------- |
+| 2v2                   | 50%   | 45.5% – 53.1%    |
+| 4-player free-for-all | 25%   | 19.9% – 28.7%    |
+| 3-player free-for-all | 33.3% | 26.6% – 42.3%    |
+
+In 3-player free-for-all, Pangrove (42.3%), Duskveil (26.6%) and Voltkit
+(27.1%) had followed one noisy first round. Their factors went back near
+their earlier values: 1.07, 0.85 and 0.86.
+
 ## Also fixed
 
 The raids' overlap rule (`spaceOverlap` in `apps/server/src/raid.ts`) now
