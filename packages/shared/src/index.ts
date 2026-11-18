@@ -115,7 +115,7 @@ export type StatusKind =
   | "stealth"
   /** Rooted: can't move or dash (a charge stops), but can still attack, cast and jump. */
   | "root"
-  /** Inside a time bubble (Sloth Time): moves, dashes and rolls at STATUS_RULES.warpMultiplier. */
+  /** Inside a time bubble (Sloth Time, centre `tx`, `ty`, radius `amount`): walks and rolls at STATUS_RULES.warpMultiplier; dashes are not slowed. */
   | "warp"
   /** Taunted: walks toward the taunter (`tx`, `ty`), whatever its input; can still attack and cast. */
   | "taunt"
@@ -165,7 +165,7 @@ export const STATUS_RULES = {
   hasteMultiplier: 1.3,
   /** Damage multiplier while Facet Guard is active. */
   counterReduction: 0.5,
-  counterReflection: 0.3,
+  counterReflection: 0.2,
   /** Damage multiplier while Wing Cloak is active. */
   shieldReduction: 0.4,
   /** Kindle: outgoing damage multiplier and basic attack interval multiplier. */
@@ -593,7 +593,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A sugar-glider kit that stores static in its antennae. Glides over trouble and stays deadly at range.",
     color: 0xffd65b,
-    health: 153,
+    health: 157,
     speed: 270,
     basic: basic(
       "spark-dart",
@@ -620,8 +620,8 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "projectile",
         22,
         10,
-        "A slow electric orb that bursts on impact, shocking nearby enemies.",
-        { speed: 400, radius: 22, explosion: 100 },
+        "A slow electric orb that bursts on impact, shocking nearby enemies. 30% more damage to enemies already slowed, stunned or otherwise hindered.",
+        { speed: 400, radius: 22, explosion: 100, bonusVsStatus: 1.3 },
       ),
       ability(
         "static-glide",
@@ -669,7 +669,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
       "cinder-snap",
       "Cinder Snap",
       "melee",
-      15,
+      14,
       455,
       "A short-range burst of fire in front of Cindrake.",
       { range: 170, arc: 0.2, knockback: 10 },
@@ -697,7 +697,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "magma-bomb",
         "Magma Bomb",
         "projectile",
-        24,
+        22,
         12,
         "An explosive fireball that burns enemies caught in the blast.",
         {
@@ -827,7 +827,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
       "Prism Jab",
       "melee",
       13,
-      335,
+      345,
       "A close-range energy punch.",
       { range: 130, arc: 0.35, knockback: 12 },
     ),
@@ -836,10 +836,10 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "prism-shot",
         "Prism Shot",
         "projectile",
-        20,
+        22,
         8,
         "Fling one of the orbiting crystal shards.",
-        { speed: 600, radius: 20 },
+        { speed: 700, radius: 20 },
       ),
       ability(
         "shatter-paw",
@@ -862,7 +862,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "counter",
         0,
         15,
-        "For 1.6 seconds, the gauntlets' facets take half the damage and refract 30% back to the attacker.",
+        "For 1.6 seconds, the gauntlets' facets take half the damage and refract 20% back to the attacker.",
         { duration: 1.6 },
       ),
       ability(
@@ -884,7 +884,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A fluffy moth that sheds glowing dust. Balanced at every range; Kindle turns pressure into a race.",
     color: 0x86f0c0,
-    health: 139,
+    health: 143,
     speed: 265,
     basic: basic(
       "glint",
@@ -925,7 +925,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "Kindle",
         "buff",
         0,
-        15,
+        13,
         "For 5 seconds, deal 25% more damage and basic attack 30% faster.",
         { duration: 5 },
       ),
@@ -933,9 +933,9 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "radiant-flare",
         "Radiant Flare",
         "lighthouse",
-        6,
+        7,
         20,
-        "After a charge, Lumoth glows like a lighthouse for 2 seconds: three rays of light 260 px long turn round it, and every enemy a ray sweeps takes 6.",
+        "After a charge, Lumoth glows like a lighthouse for 2 seconds: three rays of light 260 px long turn round it, and every enemy a ray sweeps takes 7.",
         {
           cast: 0.45,
           duration: 2,
@@ -972,7 +972,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "third-eye-ray",
         "Third-Eye Ray",
         "beam",
-        18,
+        17,
         8,
         "An instant beam from the third-eye gem toward your aim. Walls block it. Slows.",
         { range: 760, radius: 16, status: "slow", statusDuration: 0.6 },
@@ -984,7 +984,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         12,
         12,
         "A booming hoot that blasts nearby opponents far away.",
-        { radius: 180, knockback: 260 },
+        { radius: 180, knockback: 230 },
       ),
       ability(
         "wing-cloak",
@@ -1031,7 +1031,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
       "Boulder Swipe",
       "melee",
       15,
-      630,
+      600,
       "A wide melee swing in front of Terradon.",
       { range: 150, arc: 0, knockback: 25 },
     ),
@@ -1057,8 +1057,8 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "rest",
         0,
         16,
-        "Pull into your shell for 2.5 seconds: you can't move or act, but take 45% less damage and regrow 25 HP.",
-        { duration: 2.5, heal: 5, status: "shell" },
+        "Pull into your shell for 2.5 seconds: you can't move or act, but take 45% less damage and regrow 30 HP.",
+        { duration: 2.5, heal: 6, status: "shell" },
       ),
       ability(
         "mud-mire",
@@ -1111,7 +1111,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "shade-crawl",
         "Shade Crawl",
         "projectile",
-        20,
+        21,
         8,
         "A fast shadow strike along the ground. Jump to avoid it.",
         { speed: 1100, radius: 16, ground: true },
@@ -1130,7 +1130,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "Haunted Lantern",
         "zone",
         0,
-        18,
+        15,
         "Hang your lantern at the aim point: for 4 seconds it shoots a wisp at the nearest enemy in its light every 1.3 seconds.",
         {
           // The zone is the lantern itself; its light (turret.range) reaches much further.
@@ -1140,7 +1140,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
           knockback: 0,
           tickDelay: 0.4,
           tickInterval: 1.3,
-          turret: { damage: 4, speed: 640, radius: 10, range: 330 },
+          turret: { damage: 5, speed: 640, radius: 10, range: 330 },
         },
       ),
       ability(
@@ -1254,7 +1254,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A shy red panda, the \"fire fox\", with a flame at the tip of its tail. Lobs burning chestnuts from the back line and curls up in its tail when caught.",
     color: 0xff8a3d,
-    health: 140,
+    health: 150,
     speed: 235,
     basic: basic(
       "ember-lob",
@@ -1270,7 +1270,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "chestnut-mortar",
         "Chestnut Mortar",
         "zone",
-        26,
+        24,
         8,
         "Lob a burning chestnut over walls to the aim point. It lands 0.45 seconds later and burns.",
         {
@@ -1340,7 +1340,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A floating sea angel from the ice shelf. Slows, then freezes you solid; the only champion with true Freeze.",
     color: 0x9fe8ff,
-    health: 152,
+    health: 158,
     speed: 255,
     basic: basic(
       "rime-shard",
@@ -1358,8 +1358,8 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "projectile",
         18,
         8,
-        "A heavy hailstone that slows for a second.",
-        { speed: 900, radius: 14, status: "slow", statusDuration: 1 },
+        "A heavy hailstone that slows for a second. It shatters on enemies already slowed or frozen for 35% more damage.",
+        { speed: 900, radius: 16, status: "slow", statusDuration: 1, bonusVsStatus: 1.35 },
       ),
       ability(
         "frost-bloom",
@@ -1385,7 +1385,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "Frost Breath",
         "cone",
         4,
-        15,
+        12,
         "Breathe a freezing cone for 1 second. Slows.",
         {
           range: 210,
@@ -1452,7 +1452,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "focus-shot",
         "Focus Shot",
         "beam",
-        26,
+        25,
         12,
         "Take aim for 0.4 seconds, then fire an instant beam across the court. Up to 50% more damage at long range. Walls block it.",
         { cast: 0.4, range: 1000, radius: 14, knockback: 60, farBonus: 0.5 },
@@ -1503,8 +1503,8 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "projectile",
         14,
         8,
-        "Toss a glowing yuzu that bursts on impact.",
-        { speed: 650, radius: 16, explosion: 80 },
+        "Toss a glowing yuzu that bursts on impact; Sunbara soaks up a fifth of the damage it deals as health.",
+        { speed: 650, radius: 16, explosion: 80, drain: 0.2 },
       ),
       ability(
         "warm-spring",
@@ -1580,8 +1580,8 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "moon-hop",
         "Moon Hop",
         "blink",
-        10,
-        8,
+        12,
+        7,
         "Teleport up to 300 px toward the aim (not through walls). A small burst where you land.",
         { range: 300, radius: 90, knockback: 40 },
       ),
@@ -1748,8 +1748,8 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "veil",
         0,
         15,
-        "Vanish in a cloud of ink: stealth for 2.5 seconds and a burst of speed. Casting or taking damage reveals you, and your first hit out of stealth deals 40% more.",
-        { duration: 2.5, statusDuration: 1.5, ambush: 1.4 },
+        "Vanish in a cloud of ink: stealth for 2.5 seconds and a burst of speed. Enemies can't see or target you at all. Casting or taking damage reveals you, and your first hit out of stealth deals 30% more.",
+        { duration: 2.5, statusDuration: 1.5, ambush: 1.3 },
       ),
       ability(
         "kraken-grasp",
@@ -1781,7 +1781,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A pangolin whose scales are living leaves. Three armour plates soak up hits; it grapples in with its tongue, curls into a ball you steer, and sheds its plates as blades.",
     color: 0x7fcf6a,
-    health: 164,
+    health: 168,
     speed: 245,
     passive: "plates",
     basic: basic(
@@ -1847,7 +1847,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A three-toed sloth with a moss garden on its back. Moss grows while it stands still; it plants seeds that grow, slows time itself, and lazily swaps places.",
     color: 0x9bd36a,
-    health: 170,
+    health: 180,
     speed: 240,
     passive: "moss",
     basic: basic(
@@ -1864,9 +1864,9 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "seedling",
         "Seedling",
         "seedling",
-        26,
+        28,
         5,
-        "Plant a seed at the aim. It grows a stage every 1.5 seconds (sprout, bud, bloom); the first enemy to step on it sets it off for 9, 17 or 26 damage and a 0.5, 0.8 or 1.3 second root. Up to 3 at once; jump over them.",
+        "Plant a seed at the aim. It grows a stage every 1.5 seconds (sprout, bud, bloom); the first enemy to step on it sets it off for 10, 18 or 28 damage and a 0.5, 0.8 or 1.3 second root. Up to 3 at once; jump over them.",
         {
           range: 520,
           radius: 70,
@@ -1885,16 +1885,16 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "Sloth Time",
         "timewarp",
         0,
-        14,
-        "Slow time in a bubble at the aim for 3 seconds: enemies inside, and their shots, move at a third of their speed.",
-        { range: 520, radius: 150, duration: 3, knockback: 0, warp: 0.35 },
+        12,
+        "Slow time in a bubble at the aim for 3 seconds: enemies inside, and their shots, move at a third of their speed. Dashing isn't slowed: dash out of the bubble and you are free at once.",
+        { range: 520, radius: 165, duration: 3, knockback: 0, warp: 0.35 },
       ),
       ability(
         "lazy-swap",
         "Lazy Swap",
         "swap",
         0,
-        12,
+        11,
         "Swap places with the enemy or your own seedling nearest the aim (up to 600 px away). A swapped enemy is slowed for a second.",
         { range: 600, radius: 120, knockback: 0, status: "slow", statusDuration: 1 },
       ),
@@ -1902,9 +1902,9 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "overgrowth",
         "Overgrowth",
         "nova",
-        28,
+        30,
         20,
-        "Vines erupt around Mossloth: 28 damage and Rooted for 1.2 seconds. Every seedling you have blooms at full growth, and your moss grows full.",
+        "Vines erupt around Mossloth: 30 damage and Rooted for 1.2 seconds. Every seedling you have blooms at full growth, and your moss grows full.",
         { cast: 0.3, radius: 230, knockback: 0, status: "root", statusDuration: 1.2, bloom: true },
       ),
     ],
@@ -3110,7 +3110,14 @@ function stepMovement(p: Fighter, input: Input, dt: number, time: number): void 
         modifier *= STATUS_RULES.slowMultiplier;
       if (s.kind === "haste") modifier *= STATUS_RULES.hasteMultiplier;
       if (s.kind === "root") modifier = 0;
-      if (s.kind === "warp") warp = STATUS_RULES.warpMultiplier;
+      // Sloth Time works only inside its bubble (`tx`, `ty`, radius
+      // `amount`): step out of it and you are at full speed at once.
+      if (
+        s.kind === "warp" &&
+        (s.tx === undefined ||
+          Math.hypot(p.x - s.tx, p.y - (s.ty ?? 0)) < (s.amount ?? Infinity))
+      )
+        warp = STATUS_RULES.warpMultiplier;
     }
   modifier *= warp;
   if (p.pinball && time < p.dashUntil && modifier > 0) {
@@ -3170,8 +3177,10 @@ function stepMovement(p: Fighter, input: Input, dt: number, time: number): void 
     return;
   }
   if (time < p.dashUntil) {
-    p.vx = p.dashX * warp;
-    p.vy = p.dashY * warp;
+    // Dashes and charges are not slowed by Sloth Time: dashing is how you
+    // get out of the bubble.
+    p.vx = p.dashX;
+    p.vy = p.dashY;
   } else {
     // Floating (Moon Gravity): almost no grip, so it slides and turns slowly.
     const grip = p.statuses.some((s) => s.kind === "float" && s.until > time)
@@ -3289,7 +3298,7 @@ export const RITES: Rite[] = [
   rite("cindrake", "minor", "crest-flare", "Long Breath", "Crest Flare lasts 1.6s instead of 1.2s.", { set: { duration: 1.6 } }),
   rite("cindrake", "minor", "magma-bomb", "Wide Bomb", "Magma Bomb's blast is 30% wider.", { mul: { explosion: 1.3 } }),
   rite("cindrake", "minor", "heat-cracks", "Deep Cracks", "Heat Cracks lasts 3.5s instead of 2.5s.", { set: { duration: 3.5 } }),
-  rite("cindrake", "minor", "cinder-snap", "Searing Snap", "Cinder Snap deals 18 damage instead of 15.", { set: { damage: 18 } }),
+  rite("cindrake", "minor", "cinder-snap", "Searing Snap", "Cinder Snap deals 18 damage instead of 14.", { set: { damage: 18 } }),
   rite("cindrake", "major", "sunfire-pillar", "Solar Pillar", "Sunfire Pillar erupts instantly and is 25% wider.", { set: { cast: 0 }, mul: { radius: 1.25 } }),
   rite("cindrake", "major", "heat-cracks", "Burning Cracks", "Heat Cracks sets enemies on fire.", { set: { status: "burn", statusDuration: 1.5 } }),
   rite("tidefin", "minor", "gill-siphon", "Deep Siphon", "Gill Siphon lasts 3s instead of 2.1s.", { set: { duration: 3 } }),
@@ -3317,12 +3326,12 @@ export const RITES: Rite[] = [
   rite("mystowl", "major", "third-eye-ray", "Mind Lock", "Third-Eye Ray stuns for 0.5s instead of slowing.", { set: { status: "stun", statusDuration: 0.5 } }),
   rite("mystowl", "major", "mind-maze", "Deep Maze", "Mind Maze is 35% wider.", { mul: { radius: 1.35 } }),
   rite("terradon", "minor", "shell-bash", "Long Bash", "Shell Bash reaches 20% further.", { mul: { range: 1.2 } }),
-  rite("terradon", "minor", "shell-up", "Thick Moss", "Shell Up regrows 35 HP instead of 25.", { set: { heal: 7 } }),
+  rite("terradon", "minor", "shell-up", "Thick Moss", "Shell Up regrows 35 HP instead of 30.", { set: { heal: 7 } }),
   rite("terradon", "minor", "mud-mire", "Deep Mud", "Mud Mire is 20% wider.", { mul: { radius: 1.2 } }),
   rite("terradon", "minor", "boulder-swipe", "Heavy Swipe", "Boulder Swipe deals 18 damage instead of 15.", { set: { damage: 18 } }),
   rite("terradon", "major", "tremor", "Quick Quake", "Tremor charges in 0.25s instead of 0.5s.", { set: { cast: 0.25 } }),
   rite("terradon", "major", "mud-mire", "Sinking Mud", "Mud Mire also deals 4 damage per tick.", { set: { damage: 4 } }),
-  rite("duskveil", "minor", "shade-crawl", "Deep Crawl", "Shade Crawl deals 24 damage instead of 20.", { set: { damage: 24 } }),
+  rite("duskveil", "minor", "shade-crawl", "Deep Crawl", "Shade Crawl deals 24 damage instead of 21.", { set: { damage: 24 } }),
   rite("duskveil", "minor", "ghostfire", "Five Flames", "Ghostfire throws 5 flames instead of 3.", { set: { count: 5 } }),
   rite("duskveil", "minor", "haunted-lantern", "Long Watch", "Haunted Lantern lasts 5.5s instead of 4s.", { set: { duration: 5.5 } }),
   rite("duskveil", "minor", "lantern-wisp", "Bright Wisp", "Lantern Wisp deals 11 damage instead of 9.", { set: { damage: 11 } }),
@@ -3362,7 +3371,7 @@ export const RITES: Rite[] = [
   rite("astrabun", "minor", "mochi-pound", "Sticky Mochi", "Mochi Pound stuns for 0.7s instead of 0.45s.", { set: { statusDuration: 0.7 } }),
   rite("astrabun", "minor", "moon-gravity", "Light Moon", "Moon Gravity is 20% wider.", { mul: { radius: 1.2 } }),
   rite("astrabun", "minor", "mallet-bop", "Big Bop", "Mallet Bop deals 16 damage instead of 14.", { set: { damage: 16 } }),
-  rite("astrabun", "major", "moon-hop", "Double Hop", "Moon Hop cooldown 8s → 5s.", { set: { cooldown: 5 } }),
+  rite("astrabun", "major", "moon-hop", "Double Hop", "Moon Hop cooldown 7s → 5s.", { set: { cooldown: 5 } }),
   rite("astrabun", "major", "full-moon", "Harvest Moon", "Full Moon lands instantly and is 20% wider.", { set: { cast: 0 }, mul: { radius: 1.2 } }),
   rite("wombolder", "minor", "burrow-rush", "Long Burrow", "Burrow Rush travels 20% further.", { mul: { range: 1.2 } }),
   rite("wombolder", "minor", "bush-boomerang", "Heavy Boomerang", "Bush Boomerang deals 14 damage a pass instead of 11.", { set: { damage: 14 } }),

@@ -60,7 +60,7 @@ const ROSTER: Record<
     name: "Auralynx",
     element: "Aura",
     role: "Counter specialist",
-    basic: ["Prism Jab", 335],
+    basic: ["Prism Jab", 345],
     skills: [
       ["Prism Shot", 8],
       ["Shatter Paw", 12],
@@ -76,7 +76,7 @@ const ROSTER: Record<
     skills: [
       ["Wing Dust", 8],
       ["Eyespot Flash", 12],
-      ["Kindle", 15],
+      ["Kindle", 13],
       ["Radiant Flare", 20],
     ],
   },
@@ -96,7 +96,7 @@ const ROSTER: Record<
     name: "Terradon",
     element: "Earth",
     role: "Defensive tank",
-    basic: ["Boulder Swipe", 630],
+    basic: ["Boulder Swipe", 600],
     skills: [
       ["Shell Bash", 8],
       ["Shell Up", 16],
@@ -112,7 +112,7 @@ const ROSTER: Record<
     skills: [
       ["Shade Crawl", 8],
       ["Ghostfire", 12],
-      ["Haunted Lantern", 18],
+      ["Haunted Lantern", 15],
       ["Void Orb", 20],
     ],
   },
@@ -148,7 +148,7 @@ const ROSTER: Record<
     skills: [
       ["Hailstone", 8],
       ["Frost Bloom", 12],
-      ["Frost Breath", 15],
+      ["Frost Breath", 12],
       ["Whiteout", 20],
     ],
   },
@@ -182,7 +182,7 @@ const ROSTER: Record<
     role: "Blink duelist",
     basic: ["Mallet Bop", 410],
     skills: [
-      ["Moon Hop", 8],
+      ["Moon Hop", 7],
       ["Mochi Pound", 12],
       ["Moon Gravity", 15],
       ["Full Moon", 20],
@@ -231,8 +231,8 @@ const ROSTER: Record<
     basic: ["Seed Spit", 345],
     skills: [
       ["Seedling", 5],
-      ["Sloth Time", 14],
-      ["Lazy Swap", 12],
+      ["Sloth Time", 12],
+      ["Lazy Swap", 11],
       ["Overgrowth", 20],
     ],
   },

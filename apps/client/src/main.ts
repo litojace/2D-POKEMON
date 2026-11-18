@@ -6384,6 +6384,23 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       if (serverPlayer.raidBoss) continue;
       // A climb's Echoes fade out once it ends (not frozen over the results).
       const shown = echoShown(state, serverPlayer, sampledAt);
+      // Ink Cloud: an enemy in stealth is not drawn at all, not its shadow,
+      // ring, status markers nor nameplate (owner, 18 Nov 2026: a faint
+      // outline still gave it away). You and your allies see a ghost of it.
+      if (
+        p.id !== myId &&
+        !(
+          (isTeams() || !!state.raid) &&
+          !serverPlayer.echo &&
+          teamOf(p) === myTeam
+        ) &&
+        serverPlayer.statuses.some((s) => s.kind === "stealth")
+      ) {
+        const plate = this.labels.get(p.id);
+        if (plate) plate.hidden = true;
+        this.plates.set(p.id, { x: 0, bottom: 0, w: 0, h: 0 });
+        continue;
+      }
       const serverTime = state.time;
       const airborne = serverPlayer.jumpUntil - serverTime;
       // Static Glide keeps a fighter airborne longer than a jump: it lifts,
@@ -6586,11 +6603,8 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
           x,
           y - jump,
           this.feelClock,
-          (serverPlayer.statuses.some((s) => s.kind === "stealth")
-            ? p.id === myId
-              ? 0.5
-              : 0.12
-            : 1) * shown,
+          (serverPlayer.statuses.some((s) => s.kind === "stealth") ? 0.5 : 1) *
+            shown,
           reducedMotion,
         );
         if ((this.flashUntil.get(p.id) ?? 0) > feelNow) flashWhite(rig.root);
@@ -6631,9 +6645,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         // Its art is still loading (or failed): a plain stand-in in the
         // fighter's colour where the rig would stand, never missing textures.
         const alpha = serverPlayer.statuses.some((s) => s.kind === "stealth")
-          ? p.id === myId
-            ? 0.5
-            : 0.12
+          ? 0.5
           : 1;
         const r = 24 * giant * view.fighterX;
         g.fillStyle(c.color, 0.85 * alpha).fillEllipse(

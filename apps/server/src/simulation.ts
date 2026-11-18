@@ -1492,7 +1492,7 @@ export class Arena {
       type Option = { x: number; y: number; fighter?: Fighter; zone?: Zone };
       const options: Option[] = [
         ...enemies
-          .filter((e) => e.hp > 0 && !e.raidBoss)
+          .filter((e) => e.hp > 0 && !e.raidBoss && !this.has(e, "stealth"))
           .map((e): Option => ({ x: e.x, y: e.y, fighter: e })),
         ...this.zones
           .filter(
@@ -1607,6 +1607,8 @@ export class Arena {
         .filter(
           (e) =>
             e.hp > 0 &&
+            // A stealthed enemy can't be picked out (Ink Cloud).
+            !this.has(e, "stealth") &&
             Math.hypot(e.x - p.x, e.y - p.y) <= a.range + this.hitRadius(e) &&
             this.lineClear(p, e),
         )
@@ -1940,6 +1942,7 @@ export class Arena {
       .filter(
         (e) =>
           e.hp > 0 &&
+          !this.has(e, "stealth") &&
           Math.hypot(e.x - zone.x, e.y - zone.y) < t.range &&
           this.lineClear(zone, e),
       )
@@ -2038,6 +2041,8 @@ export class Arena {
       !target ||
       target.hp <= 0 ||
       target.out ||
+      // Slipping into stealth snaps the stream: it can't see its target.
+      this.has(target, "stealth") ||
       disabled ||
       this.time >= t.until ||
       Math.hypot(target.x - p.x, target.y - p.y) >
@@ -2937,14 +2942,23 @@ export class Arena {
         continue;
       }
       if (zone.ability.kind === "timewarp") {
-        // Sloth Time: enemies inside move at a fraction of their speed.
+        // Sloth Time: enemies inside move at a fraction of their speed. The
+        // status carries the bubble, so movement (and client prediction)
+        // stops slowing the moment a fighter dashes or walks out of it.
+        const reach = (e: Fighter) => zone.radius + this.hitRadius(e) * 0.5;
         for (const enemy of this.enemiesOfOwner(zone.owner))
           if (
             enemy.hp > 0 &&
-            Math.hypot(enemy.x - zone.x, enemy.y - zone.y) <
-              zone.radius + this.hitRadius(enemy) * 0.5
-          )
+            Math.hypot(enemy.x - zone.x, enemy.y - zone.y) < reach(enemy)
+          ) {
             this.status(enemy, "warp", 0.15, zone.owner);
+            const warp = enemy.statuses.find((s) => s.kind === "warp");
+            if (warp) {
+              warp.tx = zone.x;
+              warp.ty = zone.y;
+              warp.amount = reach(enemy);
+            }
+          }
         continue;
       }
       if (zone.ability.kind === "seedling") {

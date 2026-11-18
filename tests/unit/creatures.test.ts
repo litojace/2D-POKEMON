@@ -38,26 +38,26 @@ it("has eighteen fighters, ninety unique moves and four special skills per fight
     Object.keys(elementShapes).length,
   );
 });
-it("pins roster health (sixteen-champion balance pass) and movement speeds", () => {
+it("pins roster health (champion balance overhaul) and movement speeds", () => {
   const baseline: Record<string, [number, number]> = {
-    voltkit: [153, 270],
+    voltkit: [157, 270],
     cindrake: [151, 240],
     tidefin: [146, 285],
     auralynx: [164, 235],
-    lumoth: [139, 265],
+    lumoth: [143, 265],
     mystowl: [134, 255],
     terradon: [193, 222],
     duskveil: [152, 260],
     coilemur: [144, 250],
-    pyranda: [140, 235],
-    glacelle: [152, 255],
+    pyranda: [150, 235],
+    glacelle: [158, 255],
     halcyra: [138, 260],
     sunbara: [190, 240],
     astrabun: [134, 262],
     wombolder: [173, 232],
     shadopus: [129, 278],
-    pangrove: [164, 245],
-    mossloth: [170, 240],
+    pangrove: [168, 245],
+    mossloth: [180, 240],
   };
   for (const [id, stats] of Object.entries(baseline)) {
     const c = CHARACTERS[id as CharacterId];
@@ -221,7 +221,7 @@ it("applies counter, barrier and grounded area counterplay on the server", () =>
   guard.cast(p, CHARACTERS.auralynx.skills[2]);
   guard.damage(p, 20, "two");
   expect(p.hp).toBe(CHARACTERS.auralynx.health - 10);
-  expect(guard.players[1].hp).toBe(CHARACTERS.voltkit.health - 6);
+  expect(guard.players[1].hp).toBe(CHARACTERS.voltkit.health - 4);
   const shield = duel("mystowl"),
     m = shield.players[0];
   shield.cast(m, CHARACTERS.mystowl.skills[2]);

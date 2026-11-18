@@ -337,7 +337,7 @@ export function AscendantInkpurrRules<B extends InkClass>(Base: B) {
       shapes: RaidWarning[] = this.raid.warnings,
       slack = 0,
     ) {
-      if (!this.inkAscendant()) return super.safeSpotExists(shapes);
+      if (!this.inkAscendant()) return super.safeSpotExists(shapes, slack);
       const live = shapes.filter(
         (w) =>
           this.harmful(w) &&

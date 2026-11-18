@@ -61,7 +61,7 @@ describe("rites", () => {
     expect(kit.skills[1].explosion).toBeCloseTo(110 * 1.3);
     expect(kit.basic.damage).toBe(18);
     expect(CHARACTERS.cindrake.skills[1].explosion).toBe(110);
-    expect(CHARACTERS.cindrake.basic.damage).toBe(15);
+    expect(CHARACTERS.cindrake.basic.damage).toBe(14);
     // Another fighter's rite does nothing.
     expect(kitOf("cindrake", ["tidefin-deep-pool"]).skills).toEqual(
       CHARACTERS.cindrake.skills,
