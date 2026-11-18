@@ -241,6 +241,8 @@ it("logs how smoothly a match ran on a player's device, without their account", 
         // Who they fought, and the match's random tag (not its room code).
         opponents: [arena.players[1].character],
         match: arena.matchTag,
+        // The court (its input queue is left out: no inputs were sent).
+        arena: arena.arenaId,
       },
     },
   ]);

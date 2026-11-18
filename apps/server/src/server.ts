@@ -3009,8 +3009,13 @@ export function createArenaServer(
             .map((p) => p.character)
             .slice(0, 8),
           ...(a.matchTag ? { match: a.matchTag } : {}),
-          // The combat loop's real rate over the last minute (30 is right).
-          ...(timer?.hz() !== undefined ? { serverHz: timer.hz() } : {}),
+          // The combat loop's last minute: its real rate (30 is right), how
+          // late its ticks ran and how long they took (tick-clock.ts).
+          ...(timer?.stats() ?? {}),
+          // The court, and this player's input queue over the match
+          // (Arena.inputStats: held ticks, late and burst steps, folds).
+          arena: a.arenaId,
+          ...(a.inputStats(id) ?? {}),
         });
       }),
     );
