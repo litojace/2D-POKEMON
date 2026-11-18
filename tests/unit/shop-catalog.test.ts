@@ -45,7 +45,8 @@ const migration =
   readFileSync("supabase/migrations/20261118120000_sky_pirates.sql", "utf8") +
   readFileSync("supabase/migrations/20261118140000_hon_viet.sql", "utf8") +
   readFileSync("supabase/migrations/20261118160000_hero_squad.sql", "utf8") +
-  readFileSync("supabase/migrations/20261118180000_neon_campus.sql", "utf8");
+  readFileSync("supabase/migrations/20261118180000_neon_campus.sql", "utf8") +
+  readFileSync("supabase/migrations/20261118190000_stars_stripes.sql", "utf8");
 /** Missions are re-seeded (with the solo flag) by 014. */
 const missionMigration = readFileSync(
   "supabase/migrations/014_missions.sql",
@@ -173,7 +174,7 @@ describe("shop catalog", () => {
       expect(missionMigration, m.metric).toContain(`'${m.metric}'`);
   });
 
-  it("has 17 skins for every champion: 3 Common, 5 Rare, 5 Epic, 3 Legendary, 1 Mythical", () => {
+  it("has 18 skins for every champion: 3 Common, 5 Rare, 5 Epic, 4 Legendary, 1 Mythical", () => {
     for (const id of Object.keys(CHARACTERS)) {
       const mine = CHAMPION_SKINS.filter((s) => s.champion === id);
       const count = (r: string) => mine.filter((s) => s.rarity === r).length;
@@ -187,9 +188,9 @@ describe("shop catalog", () => {
           count("mythical"),
         ],
         id,
-      ).toEqual([17, 3, 5, 5, 3, 1]);
+      ).toEqual([18, 3, 5, 5, 4, 1]);
     }
-    expect(CHAMPION_SKINS).toHaveLength(17 * Object.keys(CHARACTERS).length);
+    expect(CHAMPION_SKINS).toHaveLength(18 * Object.keys(CHARACTERS).length);
     // Each champion has one Cyber Mecha Epic.
     for (const id of Object.keys(CHARACTERS))
       expect(
@@ -232,7 +233,7 @@ describe("shop catalog", () => {
 
   it("sells full-roster skin sets: one design, one rarity, every champion, never a Mythical", () => {
     const champions = Object.keys(CHARACTERS).sort();
-    expect(SKIN_BUNDLES).toHaveLength(10);
+    expect(SKIN_BUNDLES).toHaveLength(11);
     for (const b of SKIN_BUNDLES) {
       const skins = b.items.map((id) =>
         CHAMPION_SKINS.find((s) => s.id === id)!,
@@ -249,8 +250,8 @@ describe("shop catalog", () => {
         b.id,
       ).toBe(false);
     }
-    // Nova Vanguard, Sky Pirates and Hồn Việt are the Legendary sets.
-    for (const c of ["nova-vanguard", "sky-pirates", "hon-viet"])
+    // Nova Vanguard, Sky Pirates, Hồn Việt and Stars & Stripes are the Legendary sets.
+    for (const c of ["nova-vanguard", "sky-pirates", "hon-viet", "stars-stripes"])
       expect(
         SKIN_BUNDLES.find((b) => b.collection === c)!.items.every(
           (id) =>

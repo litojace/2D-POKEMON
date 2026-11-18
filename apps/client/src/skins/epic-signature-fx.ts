@@ -1078,10 +1078,288 @@ const viet: Record<CharacterId, Signature> = {
   },
 };
 
+// ---- Stars & Stripes: each champion's American figure, summoned on its ultimate. ----
+const RED = 0xc8323a,
+  NAVY = 0x1f2f5c,
+  CREAMY = 0xf7f1e1;
+/** A five-point star as points. */
+const starPts = (x: number, y: number, r: number, squash = 1, rot = 0) =>
+  Array.from({ length: 10 }, (_, i) => {
+    const a = -Math.PI / 2 + rot + (i * Math.PI) / 5;
+    const rr = i % 2 ? r * 0.45 : r;
+    return { x: x + Math.cos(a) * rr, y: y + Math.sin(a) * rr * squash };
+  });
+const stars: Record<CharacterId, Signature> = {
+  voltkit: {
+    name: "Rocket launch",
+    c: 0xf4f4f8,
+    h: 0xff8a3a,
+    burst: "star",
+    draw: (f) => {
+      // A small rocket climbs behind, its flame flickering.
+      const x = f.x - 26 * f.s,
+        y = f.headY - ((f.t / 8) % 30) * f.s;
+      const s = f.s * f.boost;
+      f.under.fillStyle(f.h, 0.9).fillEllipse(x, y + 12 * s, 4 * s, (8 + 2 * Math.sin(f.t / 60)) * s);
+      f.under.fillStyle(f.c, 1).fillEllipse(x, y, 6 * s, 16 * s);
+      f.under.fillStyle(RED, 1).fillTriangle(x - 3 * s, y - 6 * s, x + 3 * s, y - 6 * s, x, y - 11 * s);
+      f.under.fillStyle(NAVY, 1).fillCircle(x, y - 1 * s, 1.6 * s);
+    },
+  },
+  cindrake: {
+    name: "Checkered flag",
+    c: 0x2a2a36,
+    h: 0xffffff,
+    burst: "spark",
+    draw: (f) => {
+      // A checkered flag waves on a pole behind.
+      const x = f.x + 24 * f.s,
+        top = f.headY - 6 * f.s;
+      f.under.lineStyle(1.6 * f.s, 0x8a8a96, 1).lineBetween(x, f.body, x, top);
+      const cols = f.full ? 4 : 3;
+      for (let i = 0; i < cols; i++)
+        for (let j = 0; j < 3; j++) {
+          const w = Math.sin(f.t / 150 + i * 0.8) * 1.5 * f.s;
+          f.under.fillStyle((i + j) % 2 ? f.c : f.h, 1).fillRect(x + i * 4 * f.s * f.boost, top + j * 4 * f.s + w, 4 * f.s * f.boost, 4 * f.s);
+        }
+    },
+  },
+  tidefin: {
+    name: "Malibu wave",
+    c: 0x2f8fb0,
+    h: 0xe8f8ff,
+    burst: "bubble",
+    draw: (f) => {
+      // A curling wave rolls behind, foam on its lip.
+      const w = 40 * f.s * f.boost;
+      f.under.lineStyle(5 * f.s, f.c, 0.95).strokePoints(curve(f.full ? 12 : 6, (u) => ({ x: f.x - w + u * 2 * w, y: f.ground - 6 * f.s - Math.sin(u * Math.PI) * 18 * f.s * (0.8 + 0.2 * Math.sin(f.t / 300)) })));
+      f.under.lineStyle(2 * f.s, f.h, 0.95).strokePoints(curve(f.full ? 12 : 6, (u) => ({ x: f.x - w + u * 2 * w, y: f.ground - 9 * f.s - Math.sin(u * Math.PI) * 18 * f.s * (0.8 + 0.2 * Math.sin(f.t / 300)) })));
+    },
+  },
+  auralynx: {
+    name: "Jazz notes",
+    c: 0xffd84a,
+    h: 0x5a2f6e,
+    burst: "star",
+    draw: (f) => {
+      // Notes rise from the horn, swaying.
+      for (let i = 0; i < (f.full ? 4 : 2); i++) {
+        const k = (f.t / 1600 + i / 4) % 1;
+        const x = f.x + 18 * f.s + Math.sin(k * 6 + i) * 6 * f.s,
+          y = f.body - k * 50 * f.s;
+        const g = f.under;
+        g.fillStyle(f.c, 1 - k).fillEllipse(x, y, 4 * f.s * f.boost, 3 * f.s * f.boost);
+        g.lineStyle(1.2 * f.s, f.c, 1 - k).lineBetween(x + 2 * f.s, y, x + 2 * f.s, y - 8 * f.s);
+      }
+    },
+  },
+  lumoth: {
+    name: "Neon milkshake",
+    c: 0xff6fae,
+    h: 0x59f0ff,
+    burst: "dot",
+    draw: (f) => {
+      // A neon sign of a milkshake buzzes behind the head.
+      const x = f.headX + 26 * f.s,
+        y = f.headY;
+      const on = 0.7 + 0.3 * wave(f.t / 400);
+      const s = f.s * f.boost;
+      f.under.lineStyle(2 * f.s, f.c, on).strokePoints([{ x: x - 7 * s, y: y - 6 * s }, { x: x + 7 * s, y: y - 6 * s }, { x: x + 4 * s, y: y + 10 * s }, { x: x - 4 * s, y: y + 10 * s }], true);
+      f.under.lineStyle(1.6 * f.s, f.h, on).lineBetween(x + 2 * s, y - 6 * s, x + 5 * s, y - 15 * s);
+    },
+  },
+  mystowl: {
+    name: "Liberty's torch",
+    c: 0xffb347,
+    h: 0x5fae9a,
+    burst: "spark",
+    draw: (f) => {
+      // The torch is raised high behind, its flame burning.
+      const x = f.x + 22 * f.s,
+        top = f.headY - 14 * f.s * f.boost;
+      f.under.lineStyle(3 * f.s, f.h, 1).lineBetween(x, f.body, x, top + 8 * f.s);
+      f.under.fillStyle(f.h, 1).fillTriangle(x - 5 * f.s, top + 8 * f.s, x + 5 * f.s, top + 8 * f.s, x, top + 14 * f.s);
+      f.under.fillStyle(f.c, 0.95).fillEllipse(x, top, 8 * f.s, (14 + 2 * Math.sin(f.t / 80)) * f.s);
+      f.under.fillStyle(0xfff3a8, 1).fillEllipse(x, top + 2 * f.s, 3 * f.s, 6 * f.s);
+    },
+  },
+  terradon: {
+    name: "Sheriff's star",
+    c: 0xf2c14e,
+    h: 0xfff3a8,
+    burst: "star",
+    draw: (f) => {
+      // A great sheriff's star turns on the ground beneath.
+      f.under.fillStyle(f.c, 0.8).fillPoints(starPts(f.x, f.ground, 30 * f.s * f.boost, 0.32, f.t / 900), true);
+      f.under.fillStyle(f.h, 0.9).fillCircle(f.x, f.ground, 3 * f.s);
+    },
+  },
+  duskveil: {
+    name: "Film reel",
+    c: 0x2a2a36,
+    h: 0xfff3c4,
+    burst: "puff",
+    draw: (f) => {
+      // A film reel spins behind the head.
+      const x = f.headX,
+        y = f.headY + 2 * f.s,
+        r = 20 * f.s * f.boost;
+      f.under.fillStyle(f.c, 1).fillCircle(x, y, r);
+      for (let i = 0; i < 6; i++) {
+        const a = f.t / 400 + (i / 6) * TAU;
+        f.under.fillStyle(f.h, 0.85).fillCircle(x + Math.cos(a) * r * 0.6, y + Math.sin(a) * r * 0.6, r * 0.18);
+      }
+    },
+  },
+  coilemur: {
+    name: "Lasso loop",
+    c: 0xffe08a,
+    h: 0x6a4220,
+    burst: "ring",
+    draw: (f) => {
+      // A lasso spins overhead in a glowing loop.
+      flatRing(f, f.headX, f.headY - 10 * f.s, 26 * f.s * f.boost, 8 * f.s * f.boost, f.c, 0.95, 1.8 * f.s, f.full ? 12 : 6);
+    },
+  },
+  pyranda: {
+    name: "Fastball",
+    c: 0xffffff,
+    h: 0xc8323a,
+    burst: "dot",
+    draw: (f) => {
+      // A baseball flies round in a streak, its seams red.
+      const o = orbit(f, 0, 1, 900, 34, 10, -14);
+      const g = on(f, o.front);
+      g.lineStyle(3 * f.s, f.c, 0.4).lineBetween(o.x, o.y, o.x - Math.cos(o.a + Math.PI / 2) * 14 * f.s, o.y - Math.sin(o.a + Math.PI / 2) * 4 * f.s);
+      g.fillStyle(f.c, 1).fillCircle(o.x, o.y, 3.6 * f.s * f.boost);
+      g.lineStyle(0.8 * f.s, f.h, 1).strokeCircle(o.x, o.y, 2.2 * f.s);
+    },
+  },
+  glacelle: {
+    name: "Northern lights",
+    c: 0x7dff8a,
+    h: 0xc9a3ff,
+    burst: "flake",
+    draw: (f) => {
+      // Aurora ribbons ripple over the head.
+      const w = 40 * f.s * f.boost;
+      [f.c, 0x59f0ff, f.h].forEach((c, j) =>
+        f.under.lineStyle((3 - j * 0.6) * f.s, c, 0.75).strokePoints(curve(f.full ? 12 : 6, (u) => ({ x: f.headX - w + u * 2 * w, y: f.headY - (14 + j * 5) * f.s + Math.sin(u * TAU + f.t / 500 + j) * 4 * f.s }))),
+      );
+    },
+  },
+  halcyra: {
+    name: "Barnstormer loop",
+    c: 0xc8323a,
+    h: 0xffffff,
+    burst: "star",
+    draw: (f) => {
+      // A biplane loops round, trailing smoke.
+      const o = orbit(f, 0, 1, 2600, 38, 14, -24);
+      const g = on(f, o.front);
+      for (let i = 1; i < (f.full ? 6 : 3); i++) {
+        const p = orbit({ ...f, t: f.t - i * 90 }, 0, 1, 2600, 38, 14, -24);
+        g.fillStyle(f.h, 0.5 - i * 0.07).fillCircle(p.x, p.y, (1.6 + i * 0.4) * f.s);
+      }
+      g.fillStyle(f.c, 1).fillRect(o.x - 5 * f.s * f.boost, o.y - 1.4 * f.s, 10 * f.s * f.boost, 2.8 * f.s).fillRect(o.x - 1.4 * f.s, o.y - 5 * f.s, 2.8 * f.s, 10 * f.s);
+    },
+  },
+  sunbara: {
+    name: "Sparkler fountain",
+    c: 0xfff3a8,
+    h: 0xffb347,
+    burst: "spark",
+    draw: (f) => {
+      // A fountain of sparkler sparks bursts above the head.
+      for (let i = 0; i < (f.full ? 10 : 5); i++) {
+        const a = -Math.PI / 2 + Math.sin(i * 2.3) * 0.9;
+        const k = (f.t / 500 + i * 0.37) % 1;
+        const r = k * 30 * f.s * f.boost;
+        sparkle(f.under, f.headX + Math.cos(a) * r, f.headY - 6 * f.s + Math.sin(a) * r + k * k * 14 * f.s, 2 * f.s, i % 2 ? f.c : f.h, 1 - k);
+      }
+    },
+  },
+  astrabun: {
+    name: "Card fan",
+    c: 0xf7f1e1,
+    h: 0xc8323a,
+    burst: "confetti",
+    draw: (f) => {
+      // A fan of playing cards opens behind the hat.
+      for (let i = 0; i < (f.full ? 5 : 3); i++) {
+        const n = f.full ? 5 : 3;
+        const a = -Math.PI / 2 + (i - (n - 1) / 2) * 0.35;
+        const x = f.headX + Math.cos(a) * 26 * f.s * f.boost,
+          y = f.headY + 6 * f.s + Math.sin(a) * 26 * f.s * f.boost;
+        f.under.fillStyle(f.c, 1).fillRect(x - 4 * f.s, y - 6 * f.s, 8 * f.s, 12 * f.s);
+        f.under.fillStyle(i % 2 ? f.h : 0x2a2a36, 1).fillPoints(starPts(x, y, 2.4 * f.s), true);
+      }
+    },
+  },
+  wombolder: {
+    name: "Spiral pass",
+    c: 0x8a5a2c,
+    h: 0xffffff,
+    burst: "leaf",
+    draw: (f) => {
+      // A football spirals over in an arc.
+      const k = (f.t / 1200) % 1;
+      const x = f.x - 40 * f.s + k * 80 * f.s,
+        y = f.headY - Math.sin(k * Math.PI) * 24 * f.s;
+      f.under.fillStyle(f.c, 1).fillEllipse(x, y, 10 * f.s * f.boost, 6 * f.s * f.boost);
+      f.under.lineStyle(0.8 * f.s, f.h, 1).lineBetween(x - 2 * f.s, y, x + 2 * f.s, y);
+    },
+  },
+  shadopus: {
+    name: "Equalizer",
+    c: 0x59f0ff,
+    h: 0xff4fd8,
+    burst: "dot",
+    draw: (f) => {
+      // Equalizer bars dance behind, beat by beat.
+      const n = f.full ? 7 : 4;
+      for (let i = 0; i < n; i++) {
+        const h = (6 + 14 * Math.abs(Math.sin(f.t / 180 + i * 1.3))) * f.s * f.boost;
+        const x = f.x - 30 * f.s + (i / (n - 1)) * 60 * f.s;
+        f.under.fillStyle(i % 2 ? f.c : f.h, 0.9).fillRect(x - 2.4 * f.s, f.body - h, 4.8 * f.s, h);
+      }
+    },
+  },
+  pangrove: {
+    name: "Pine ridge",
+    c: 0x2f6a3a,
+    h: 0xffd84a,
+    burst: "leaf",
+    draw: (f) => {
+      // A ridge of pines rises behind, a campfire glow at their feet.
+      for (let i = 0; i < (f.full ? 4 : 2); i++) {
+        const x = f.x - 30 * f.s + i * 20 * f.s,
+          h = (22 + (i % 2) * 8) * f.s * f.boost;
+        f.under.fillStyle(f.c, 1).fillTriangle(x - 8 * f.s, f.body, x + 8 * f.s, f.body, x, f.body - h);
+      }
+      f.under.fillStyle(f.h, 0.4 + 0.3 * wave(f.t / 300)).fillCircle(f.x, f.body, 10 * f.s);
+    },
+  },
+  mossloth: {
+    name: "Flower power",
+    c: 0xff6fae,
+    h: 0xffd84a,
+    burst: "leaf",
+    draw: (f) => {
+      // A ring of flowers blooms round the fighter.
+      for (let i = 0; i < (f.full ? 6 : 3); i++) {
+        const o = orbit(f, i, f.full ? 6 : 3, 4200, 30, 9, -6);
+        bloomAt(on(f, o.front), o.x, o.y, 2.6 * f.s * f.boost, i % 2 ? f.c : 0xc9a3ff, f.h);
+      }
+    },
+  },
+};
+
 const TABLES: [string, Record<CharacterId, Signature>][] = [
   ["nova-vanguard", vanguard],
   ["sky-pirates", pirates],
   ["hon-viet", viet],
+  ["stars-stripes", stars],
 ];
 /** Every signature by skin id. */
 export const EPIC_SIGNATURES: Record<string, Signature> = Object.fromEntries(
@@ -1094,6 +1372,11 @@ const FLOURISH_MS = 1900;
 const FLOURISHES = new WeakMap<object, number>();
 const isPirate = (skin: string) => skin.endsWith("-sky-pirates");
 const isViet = (skin: string) => skin.endsWith("-hon-viet");
+const isStars = (skin: string) => skin.endsWith("-stars-stripes");
+/** Stars & Stripes' Walk-of-Fame landing and fireworks victory, drawn over time. */
+const STARS_MOMENTS = new WeakMap<object, { land?: number; win?: number }>();
+const STARS_LAND_MS = 1300,
+  STARS_WIN_MS = 1900;
 /** Hồn Việt's drum landing and lantern victory, drawn over time. */
 const VIET_MOMENTS = new WeakMap<object, { land?: number; win?: number }>();
 const VIET_LAND_MS = 1200,
@@ -1152,10 +1435,19 @@ export function drawEpicSignature(ctx: FxContext, skin: string) {
   const { sc } = ctx;
   const ground = ctx.y + WORLD_ART.fighterFeet * sc;
   const pirate = isPirate(skin),
-    vn = isViet(skin);
+    vn = isViet(skin),
+    us = isStars(skin);
   // The motif answers the ultimate; Nova also shows it on landing and win
   // (the pirates and Hồn Việt have moments of their own there).
-  if (ctx.ultimate || (!pirate && !vn && (ctx.greeting || ctx.celebrating))) FLOURISHES.set(ctx.g, ctx.now);
+  if (ctx.ultimate || (!pirate && !vn && !us && (ctx.greeting || ctx.celebrating))) FLOURISHES.set(ctx.g, ctx.now);
+  if (us && (ctx.greeting || ctx.celebrating)) {
+    // Stars & Stripes: a star of the Walk of Fame lights up under the feet
+    // as spotlights sweep, or fireworks burst behind; drawn over time.
+    let m = STARS_MOMENTS.get(ctx.g);
+    if (!m) STARS_MOMENTS.set(ctx.g, (m = {}));
+    if (ctx.greeting) m.land = ctx.now;
+    else m.win = ctx.now;
+  }
   if (vn && (ctx.greeting || ctx.celebrating)) {
     // Hồn Việt: a Đông Sơn drum face lights up under the feet, or lanterns
     // rise behind the champion; drawn over the next frames.
@@ -1244,6 +1536,7 @@ export function drawEpicSignature(ctx: FxContext, skin: string) {
   };
   if (pirate) pirateSuit(frame);
   else if (vn) vietSuit(frame);
+  else if (us) starsSuit(frame);
   else novaSuit(frame);
   // The champion's own motif, summoned: it pops in with a little overshoot
   // as it fades up, holds, then eases back as it fades out.
@@ -1261,6 +1554,7 @@ export function drawEpicSignature(ctx: FxContext, skin: string) {
   }
   if (pirate) pirateMoments(frame);
   if (vn) vietMoments(frame);
+  if (us) starsMoments(frame);
 }
 
 /** Nova Vanguard: energy running along the suit's seams into its emblem. */
@@ -1468,6 +1762,81 @@ function vietMoments(f: Frame) {
       }
       if (k - (ctx.dt * 1000) / VIET_WIN_MS < 0.3 && ctx.chance(ctx.ambient ? 12 : 5, ctx.dt))
         ctx.emit({ x: f.x + (Math.random() - 0.5) * 50 * s, y: f.headY - 20 * s, vx: (Math.random() - 0.5) * 20, vy: 20, life: 1.3, size: 2 * ctx.sc, color: Math.random() < 0.5 ? 0xffd84a : 0xff7a8a, shape: "leaf", spin: 6, behind: true, drag: 1, fadeIn: 0.1, sway: 3 });
+    }
+  }
+}
+
+/**
+ * Stars & Stripes: the costume's pieces glow (lume layers); the signature
+ * adds a soft gold glint at the collar and, when moving, a trail of red,
+ * white and blue star sparks.
+ */
+function starsSuit(f: Frame) {
+  const { ctx, s } = f;
+  f.g.fillStyle(0xfff3a8, 0.25 + 0.25 * wave(f.t / 1500)).fillCircle(f.x, f.body - 5 * s, 1.6 * s);
+  if (ctx.dashing ? ctx.chance(24, ctx.dt) : ctx.moving && ctx.chance(f.full ? 6 : 3, ctx.dt)) {
+    const back = ctx.angle + Math.PI;
+    const color = [RED, 0xffffff, 0x3a6ad0][Math.floor(Math.random() * 3)];
+    ctx.emit({ x: f.x + Math.cos(back) * 8 * s + (Math.random() - 0.5) * 10 * s, y: f.ground - 4 * s, vx: Math.cos(back) * 40 + (Math.random() - 0.5) * 20, vy: -30 - Math.random() * 20, life: 0.7, size: 2 * ctx.sc, color, shape: "star", glow: true, behind: true, drag: 2, grow: 0.4 });
+  }
+}
+
+/**
+ * Stars & Stripes' landing and victory. Landing: a pink terrazzo star with a
+ * gold rim lights up under the feet like one on the Walk of Fame, as two
+ * spotlights sweep across behind. Victory: three fireworks rise behind and
+ * burst one after another into rings of red, white and blue.
+ */
+function starsMoments(f: Frame) {
+  const m = STARS_MOMENTS.get(f.ctx.g);
+  if (!m) return;
+  const { ctx } = f;
+  const s = ctx.sc * 1.35;
+  if (m.land !== undefined) {
+    const k = (ctx.now - m.land) / STARS_LAND_MS;
+    if (k < 0 || k > 1) m.land = undefined;
+    else {
+      const a = k < 0.7 ? Math.min(1, k / 0.12) : (1 - k) / 0.3;
+      const grow = 0.4 + 0.6 * easeOutBack(Math.min(1, k / 0.3));
+      f.under.fillStyle(0xe8a0b0, 0.9 * a).fillPoints(starPts(f.x, f.ground, 30 * s * grow, 0.32), true);
+      f.under.lineStyle(2 * s, 0xf2c14e, a).strokePoints(starPts(f.x, f.ground, 30 * s * grow, 0.32), true);
+      for (const side of [-1, 1]) {
+        const ang = -Math.PI / 2 + side * (0.5 - Math.sin(k * Math.PI) * 0.4);
+        const len = 90 * s;
+        const bx = f.x + side * 40 * s,
+          by = f.ground;
+        const tx = bx + Math.cos(ang) * len,
+          ty = by + Math.sin(ang) * len;
+        f.under.fillStyle(0xfff6d0, 0.18 * a).fillTriangle(bx, by, tx - 10 * s, ty, tx + 10 * s, ty);
+      }
+    }
+  }
+  if (m.win !== undefined) {
+    const k = (ctx.now - m.win) / STARS_WIN_MS;
+    if (k < 0 || k > 1) m.win = undefined;
+    else {
+      const colors = [RED, 0xffffff, 0x3a6ad0];
+      for (let i = 0; i < 3; i++) {
+        const u = (k - i * 0.18) / 0.55;
+        if (u <= 0 || u >= 1) continue;
+        const x = f.x + (i - 1) * 30 * s,
+          top = f.headY - (30 + (i % 2) * 14) * s;
+        if (u < 0.35) {
+          // The rocket climbs, trailing sparks.
+          const y = f.body + (top - f.body) * (u / 0.35);
+          f.under.lineStyle(1.6 * s, 0xfff3a8, 0.9).lineBetween(x, y, x, y + 10 * s);
+        } else {
+          // The burst: a ring of sparks spreading and fading.
+          const b = (u - 0.35) / 0.65;
+          const r = 24 * s * Math.sqrt(b);
+          const a = 1 - b;
+          const n = ctx.ambient ? 12 : 8;
+          for (let j = 0; j < n; j++) {
+            const ang = (j / n) * TAU;
+            f.under.fillStyle(colors[(i + j) % 3], a).fillCircle(x + Math.cos(ang) * r, top + Math.sin(ang) * r + b * b * 8 * s, 1.6 * s);
+          }
+        }
+      }
     }
   }
 }

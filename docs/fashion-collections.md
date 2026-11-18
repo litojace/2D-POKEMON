@@ -11,6 +11,7 @@ Six collections add 108 champion skins: three Rare and three Epic for each of th
 | Astral Court | Rare / 1,500 | A long gold-trimmed velvet robe, a starry scalloped shoulder mantle with gold epaulettes, a floating star circlet; a short star trail, no idle effect |
 | Abyssal Expedition | Epic / 3,500 | Independent pressure-suit construction, glass helmets, gauges, tanks and individual dive equipment; a small glass glint and bubble dash trail |
 | Nova Vanguard | Legendary / 5,500 | Original hero suits, individual emblems and joint-mounted equipment; a signature effect, its own hero landing and victory, and a short movement trail |
+| Stars & Stripes | Legendary / 5,500 | An American figure per champion in full costume with glowing pieces; a Walk-of-Fame landing, a fireworks victory, a motif per champion and a star trail |
 | Neon Campus | Epic / 3,500 | A school club per champion with its kit; something on it lights up, a confetti dash trail |
 | Hero Squad | Epic / 3,500 | An original hero per champion with its own powers on show; a glowing chest emblem, lit gear, a star dash trail |
 | Hồn Việt | Legendary / 5,500 | A figure of Vietnamese heritage per champion in full costume with props of its story; glowing embroidery and lanterns, a drum landing, a lantern victory, a motif per champion and a petal trail |
@@ -265,6 +266,40 @@ rest). Every name and mark is original; nothing borrows a published hero's.
 A short star trail on a dash. Migration `20261118160000_hero_squad.sql` adds
 the skins and their set.
 
+## Legendary: Stars & Stripes
+
+American popular culture at 5,500 coins (`STARS_STRIPES_SKINS` in
+`shop.ts`, `stars-art.ts`), the fourth Legendary collection. Every champion
+is a figure of its own (`modern-designs.ts` for five of them,
+`modern-stars.ts` for the rest), with glowing pieces (lume layers):
+
+| Champion | Skin | Its motif on the ultimate |
+| --- | --- | --- |
+| Voltkit | Space Ranger | A rocket climbing behind |
+| Cindrake | Hot-Rod Racer | A checkered flag |
+| Tidefin | Malibu Surfer | A curling wave |
+| Auralynx | Jazz Cat | Notes rising from the saxophone |
+| Lumoth | Neon Diner | A neon milkshake sign |
+| Mystowl | Lady Liberty | The torch raised high |
+| Terradon | Sheriff | A sheriff's star turning on the ground |
+| Duskveil | Film Noir | A film reel |
+| Coilemur | Rodeo Rider | A lasso loop overhead |
+| Pyranda | Ace Pitcher | A fastball streaking round |
+| Glacelle | Aurora Alaska | Northern lights |
+| Halcyra | Barnstormer | A biplane looping with a smoke trail |
+| Sunbara | Fourth of July | A sparkler fountain |
+| Astrabun | Stage Magician | A fan of playing cards |
+| Wombolder | Linebacker | A spiral pass |
+| Shadopus | Times Square DJ | Equalizer bars |
+| Pangrove | Park Ranger | A ridge of pines round a campfire glow |
+| Mossloth | Woodstock Folk | A ring of flowers |
+
+Landing: a pink terrazzo star with a gold rim lights up under the feet like
+one on the Walk of Fame while two spotlights sweep behind. Victory: three
+fireworks rise behind and burst into rings of red, white and blue. Moving: a
+trail of red, white and blue star sparks. Migration
+`20261118190000_stars_stripes.sql` adds the skins and their set.
+
 ## Epic: Neon Campus
 
 One school at 3,500 coins (`NEON_CAMPUS_SKINS` in `shop.ts`,
@@ -312,9 +347,10 @@ the timings.
 
 ## Full-roster skin sets
 
-Ten sets, one per collection that dresses all 18 champions in one theme at
-one rarity: Wayfarer, Moonlit Tea, Astral Court, Cyber Mecha, Abyssal
-Expedition, Nova Vanguard, Sky Pirates, Hồn Việt, Hero Squad and Neon Campus (`SKIN_BUNDLES` in
+Eleven sets, one per collection that dresses all 18 champions in one theme
+at one rarity: Wayfarer, Moonlit Tea, Astral Court, Cyber Mecha, Abyssal
+Expedition, Nova Vanguard, Sky Pirates, Hồn Việt, Hero Squad, Neon Campus
+and Stars & Stripes (`SKIN_BUNDLES` in
 `shop.ts`).
 Like the Look sets, a set costs 80% of the skins you don't own yet (the
 database's `arena_item_price`); buying one grants each skin, and a complete

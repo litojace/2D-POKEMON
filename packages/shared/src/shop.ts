@@ -389,6 +389,44 @@ export const NEON_CAMPUS_SKINS: ChampionSkin[] = (
     "A school club of its own, with its kit and something on it that lights up",
 }));
 
+/**
+ * Stars & Stripes (Legendary): American popular culture, a figure of its own
+ * for every champion (a space ranger, Lady Liberty, a sheriff, a hot-rod
+ * racer, a stage magician...), with a Walk-of-Fame landing, a fireworks
+ * victory and a motif of its own.
+ */
+export const STARS_STRIPES_NAMES = {
+  voltkit: "Space Ranger",
+  cindrake: "Hot-Rod Racer",
+  tidefin: "Malibu Surfer",
+  auralynx: "Jazz Cat",
+  lumoth: "Neon Diner",
+  mystowl: "Lady Liberty",
+  terradon: "Sheriff",
+  duskveil: "Film Noir",
+  coilemur: "Rodeo Rider",
+  pyranda: "Ace Pitcher",
+  glacelle: "Aurora Alaska",
+  halcyra: "Barnstormer",
+  sunbara: "Fourth of July",
+  astrabun: "Stage Magician",
+  wombolder: "Linebacker",
+  shadopus: "Times Square DJ",
+  pangrove: "Park Ranger",
+  mossloth: "Woodstock Folk",
+} as const satisfies Record<CharacterId, string>;
+export const STARS_STRIPES_SKINS: ChampionSkin[] = (
+  Object.keys(STARS_STRIPES_NAMES) as CharacterId[]
+).map((champion) => ({
+  id: `${champion}-stars-stripes`,
+  champion,
+  name: STARS_STRIPES_NAMES[champion],
+  rarity: "legendary",
+  collection: "stars-stripes",
+  description:
+    "An American figure in full costume with glowing pieces, a Walk-of-Fame landing and a fireworks victory",
+}));
+
 export type Collection =
   | FashionCollection
   | "nova-vanguard"
@@ -396,6 +434,7 @@ export type Collection =
   | "hon-viet"
   | "hero-squad"
   | "neon-campus"
+  | "stars-stripes"
   | "winter"
   | "festival"
   | "garden"
@@ -414,6 +453,7 @@ export const COLLECTION_NAMES: Record<Collection, string> = {
   "hon-viet": "Hồn Việt",
   "hero-squad": "Hero Squad",
   "neon-campus": "Neon Campus",
+  "stars-stripes": "Stars & Stripes",
   winter: "Winter",
   festival: "Festival",
   garden: "Garden",
@@ -457,6 +497,7 @@ export const CHAMPION_SKINS: ChampionSkin[] = [
   ...HON_VIET_SKINS,
   ...HERO_SQUAD_SKINS,
   ...NEON_CAMPUS_SKINS,
+  ...STARS_STRIPES_SKINS,
   skin("voltkit", "midnight", "Midnight", "common", "Navy fur, cyan cheeks"),
   skin("voltkit", "peach-fizz", "Peach Fizz", "common", "Peach and pink"),
   skin("voltkit", "mint-static", "Mint Static", "common", "Mint and white"),
@@ -1420,6 +1461,7 @@ export const COLLECTION_TIER: Record<Collection, 0 | 1 | 2> = {
   "hon-viet": 1,
   "hero-squad": 1,
   "neon-campus": 1,
+  "stars-stripes": 1,
   wayfarer: 0,
   "moonlit-tea": 0,
   "astral-court": 0,
@@ -1487,6 +1529,7 @@ export const SKIN_SET_COLLECTIONS = [
   "hon-viet",
   "hero-squad",
   "neon-campus",
+  "stars-stripes",
 ] as const satisfies readonly Collection[];
 export const SKIN_BUNDLES: ShopBundle[] = SKIN_SET_COLLECTIONS.map(
   (collection) => ({

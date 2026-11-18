@@ -245,6 +245,8 @@ it("keeps every champion skin equippable through its separate champion slot", as
     "20261118170000_retire_dream_carnival.sql",
     // Neon Campus (Epic).
     "20261118180000_neon_campus.sql",
+    // Stars & Stripes (Legendary).
+    "20261118190000_stars_stripes.sql",
   ])
     await db.exec(await readFile(`supabase/migrations/${file}`, "utf8"));
   await login(admin);

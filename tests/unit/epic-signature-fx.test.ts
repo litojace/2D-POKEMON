@@ -72,7 +72,7 @@ const finite = (commands: unknown[][]) =>
 describe("Legendary signature effects", () => {
   it("gives each Legendary skin its own signature, and Epics only the small glint", () => {
     const legendary = CHAMPION_SKINS.filter((s) => s.rarity === "legendary");
-    expect(legendary).toHaveLength(ids.length * 3);
+    expect(legendary).toHaveLength(ids.length * 4);
     for (const s of legendary) {
       expect(SKIN_ART[s.id].signature, s.id).toBe(s.id);
       expect(EPIC_SIGNATURES[s.id], s.id).toBeDefined();
@@ -90,9 +90,9 @@ describe("Legendary signature effects", () => {
     ))
       expect(SKIN_ART[s.id].detail, s.id).toBe("glint");
     const sigs = Object.values(EPIC_SIGNATURES);
-    expect(sigs).toHaveLength(54);
-    expect(new Set(sigs.map((s) => s.name)).size).toBe(54);
-    expect(new Set(sigs.map((s) => s.draw)).size).toBe(54);
+    expect(sigs).toHaveLength(72);
+    expect(new Set(sigs.map((s) => s.name)).size).toBe(72);
+    expect(new Set(sigs.map((s) => s.draw)).size).toBe(72);
   });
 
   it("gives the new Epics no landing or victory of their own", () => {
@@ -172,7 +172,7 @@ describe("Legendary signature effects", () => {
     for (const id of Object.keys(EPIC_SIGNATURES)) {
       const legendary = id.endsWith("-nova-vanguard");
       // Sky Pirates and Hồn Việt land and win over several frames (tested below).
-      if (id.endsWith("-sky-pirates") || id.endsWith("-hon-viet")) continue;
+      if (id.endsWith("-sky-pirates") || id.endsWith("-hon-viet") || id.endsWith("-stars-stripes")) continue;
       const art = { ...SKIN_ART[id], trail: undefined };
       // Ambient off: no idle particles, so every emission is the moment's.
       const land = frame(3000, false, Math.PI / 2, { greeting: true });
@@ -326,6 +326,31 @@ describe("Legendary signature effects", () => {
               if (al !== undefined) expect(al, `${id} ${k as string}`).toBeGreaterThanOrEqual(0);
             }
         }
+    }
+  });
+
+  it("lands Stars & Stripes on a Walk-of-Fame star and wins with fireworks, then clears", () => {
+    for (const id of Object.keys(EPIC_SIGNATURES).filter((k) => k.endsWith("-stars-stripes"))) {
+      const art = { ...SKIN_ART[id], trail: undefined };
+      for (const [moment, ms] of [
+        ["greeting", 1300],
+        ["celebrating", 1900],
+      ] as const) {
+        const f = frame(1000, false, Math.PI / 2, { [moment]: true });
+        drawSkinFx(f.ctx, art, 1);
+        f.commands.length = 0;
+        drawSkinFx({ ...f.ctx, now: 1000 + ms * 0.5, [moment]: false }, art, 1);
+        const mid = f.commands.length;
+        const idle = frame(1000 + ms * 0.5, false);
+        drawSkinFx(idle.ctx, art, 1);
+        expect(mid, `${id} ${moment}`).toBeGreaterThan(idle.commands.length);
+        expect(finite(f.commands), `${id} ${moment}`).toBe(true);
+        f.commands.length = 0;
+        drawSkinFx({ ...f.ctx, now: 1000 + ms + 2000, [moment]: false }, art, 1);
+        const later = frame(1000 + ms + 2000, false);
+        drawSkinFx(later.ctx, art, 1);
+        expect(JSON.stringify(f.commands), `${id} ${moment}`).toBe(JSON.stringify(later.commands));
+      }
     }
   });
 

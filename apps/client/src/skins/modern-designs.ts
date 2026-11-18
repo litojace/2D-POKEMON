@@ -694,6 +694,6 @@ export const DESIGNS: Partial<Record<ModernTheme, Partial<Record<CharacterId, De
  * (Hồn Việt), and Cindrake's and Pyranda's flames stay where no design is drawn.
  */
 export function modernReplaces(theme: ModernTheme, id: CharacterId): CreaturePart[] {
-  const keepCrest = (id === "sunbara" && (theme === "hero" || theme === "viet")) || (id === "cindrake" && (theme === "viet" || theme === "vietlegend" || theme === "hero" || theme === "campus")) || (!DESIGNS[theme]?.[id] && ["cindrake", "pyranda", "sunbara"].includes(id));
+  const keepCrest = (id === "sunbara" && (theme === "hero" || theme === "viet")) || (id === "cindrake" && (theme === "viet" || theme === "vietlegend" || theme === "hero" || theme === "campus" || theme === "stars")) || (!DESIGNS[theme]?.[id] && ["cindrake", "pyranda", "sunbara"].includes(id));
   return keepCrest ? ["scarf"] : ["scarf", "flame"];
 }
