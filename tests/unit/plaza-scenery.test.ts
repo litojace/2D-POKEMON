@@ -192,7 +192,7 @@ describe("Plaza surroundings", () => {
     ).toBeLessThan(c.y);
   });
 
-  it("each baked picture lies wholly in the strips (none cut at the Plaza's edge)", () => {
+  it("each baked picture lies outside the Plaza's own ground (never over its paths)", () => {
     for (const p of BAKED) {
       const b = propBox(p);
       const inside = b.x1 > 0 && b.x0 < W && b.foot + 12 > 0 && b.top < H;

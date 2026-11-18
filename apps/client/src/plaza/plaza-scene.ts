@@ -107,7 +107,7 @@ import {
 } from "./plaza-surround";
 import {
   RIVER_LAMPS,
-  Surroundings,
+  paintSurroundings,
   drawFarmLife,
   drawRiver,
   drawRiverLights,
@@ -283,17 +283,31 @@ export function openPlaza(options) {
     const id = setTimeout(run, 1000);
     return () => clearTimeout(id);
   };
-  bg.width = W;
-  bg.height = H;
+  /**
+   * One meadow: the Plaza's ground and the world around it (the river's
+   * banks, the woods, the farm: plaza-surround*.ts) are painted as one
+   * picture, PLAZA_MARGIN past each edge, so there is no seam where a
+   * separate picture would meet it. World (0, 0) is at (GM, GM) in it.
+   */
+  const GM = PLAZA_MARGIN,
+    GW = W + 2 * GM,
+    GH = H + 2 * GM;
+  bg.width = GW;
+  bg.height = GH;
   function paintBg() {
     const g = bg.getContext("2d");
+    g.setTransform(1, 0, 0, 1, GM, GM);
     seed = 11;
-    // grass: soft gradient, painterly dabs, tufts, clover, little flowers
+    // grass: soft gradient, painterly dabs, tufts, clover, little flowers,
+    // over the whole meadow at the same density everywhere
+    const more = (GW * GH) / (W * H),
+      gx = () => -GM + rnd() * GW,
+      gy = () => -GM + rnd() * GH;
     g.fillStyle = "#77c25b";
-    g.fillRect(0, 0, W, H);
-    for (let i = 0; i < 70; i++) {
-      const x = rnd() * W,
-        y = rnd() * H,
+    g.fillRect(-GM, -GM, GW, GH);
+    for (let i = 0; i < 70 * more; i++) {
+      const x = gx(),
+        y = gy(),
         r = 120 + rnd() * 320,
         gr = g.createRadialGradient(x, y, 0, x, y, r),
         c = rnd() < 0.5 ? "150,220,110" : "70,150,70";
@@ -303,17 +317,17 @@ export function openPlaza(options) {
       g.fillRect(x - r, y - r, r * 2, r * 2);
     }
     const greens = ["#6cb851", "#82cc63", "#5fae4a", "#8fd46e", "#71bd55"];
-    for (let i = 0; i < 26000; i++) {
-      const x = rnd() * W,
-        y = rnd() * H;
+    for (let i = 0; i < 26000 * more; i++) {
+      const x = gx(),
+        y = gy();
       g.fillStyle = greens[i % 5];
       g.beginPath();
       g.ellipse(x, y, 2.4 + rnd() * 2.6, 1.3 + rnd(), rnd() * 3, 0, 7);
       g.fill();
     }
-    for (let i = 0; i < 2200; i++) {
-      const x = rnd() * W,
-        y = rnd() * H;
+    for (let i = 0; i < 2200 * more; i++) {
+      const x = gx(),
+        y = gy();
       g.strokeStyle = rnd() < 0.5 ? "#4f9a3c" : "#a6e07e";
       g.lineWidth = 1.6;
       g.beginPath();
@@ -823,14 +837,14 @@ export function openPlaza(options) {
     g.fillRect(GATE.x + 72, GATE.y + 10, W - GATE.x - 72, 5);
     g.fillRect(0, GATE.y + 21, GATE.x - 72, 4);
     g.fillRect(GATE.x + 72, GATE.y + 21, W - GATE.x - 72, 4);
-    // The river bank's verge and railing along the north edge.
+    // The river bank's verge and railing along the north edge, and the
+    // world past the edges.
     paintVerge(g);
+    paintSurroundings(g);
+    g.setTransform(1, 0, 0, 1, 0, 0);
   }
-  /** The world past the Plaza's edges (plaza-surround*.ts). */
-  const around = new Surroundings(memoryConstrained() ? 0.6 : 1);
   function prep() {
     paintBg();
-    around.paint();
     ready = true;
   }
 
@@ -3700,17 +3714,18 @@ export function openPlaza(options) {
       vx1 = Math.min(W + PLAZA_MARGIN, Math.ceil(c1.x) + 2),
       vy1 = Math.min(H + PLAZA_MARGIN, Math.ceil(c1.y) + 2);
     {
-      // The Plaza's own ground, then the world around it (plaza-surround*):
-      // the river's water first, under the north strip's hole.
-      const bx0 = Math.max(0, vx0),
-        by0 = Math.max(0, vy0),
-        bx1 = Math.min(W, vx1),
-        by1 = Math.min(H, vy1);
+      // The river's water first, under the meadow's hole for it; then the
+      // meadow (the Plaza and the world around it, one picture).
+      if (vy0 < 0) drawRiver(g, time, night(), low, vx0, vy0, vx1);
+      const bx0 = Math.max(-GM, vx0),
+        by0 = Math.max(-GM, vy0),
+        bx1 = Math.min(W + GM, vx1),
+        by1 = Math.min(H + GM, vy1);
       if (bx1 > bx0 && by1 > by0)
         g.drawImage(
           bg,
-          bx0,
-          by0,
+          bx0 + GM,
+          by0 + GM,
           bx1 - bx0,
           by1 - by0,
           bx0,
@@ -3718,8 +3733,6 @@ export function openPlaza(options) {
           bx1 - bx0,
           by1 - by0,
         );
-      if (vy0 < 0) drawRiver(g, time, night(), low, vx0, vy0, vx1);
-      around.draw(g, vx0, vy0, vx1, vy1);
       drawFarmLife(g, time, reduced, vx0, vy1, vx1);
     }
     // pad glow, runway spotlight
@@ -4614,15 +4627,14 @@ export function openPlaza(options) {
       keys.clear();
       probe?.pause();
       layer.style.display = "none";
-      // Where memory is short (an iPhone), the painted ground (a 2700 × 1700
-      // canvas, 17.5 MB) is painted again on return instead of kept behind
+      // Where memory is short (an iPhone), the painted ground (a 3300 × 2300
+      // canvas, 30 MB, with the world around the Plaza) is painted again on return instead of kept behind
       // the Lobby, the Farm or the Bistro, as the Bistro does its room.
       // (Once the page is idle, not in the tap that switched tabs.)
       if (memoryConstrained())
         idleRelease = requestIdle(() => {
           if (!away) return;
           bg.width = bg.height = 0;
-          around.release();
         });
     },
     /** Back: drawn at once as you left it; the server's state follows. */
@@ -4632,16 +4644,13 @@ export function openPlaza(options) {
       idleRelease?.();
       idleRelease = undefined;
       if (!bg.width) {
-        bg.width = W;
-        bg.height = H;
+        bg.width = GW;
+        bg.height = GH;
         // (paintBg reseeds the scene's random numbers; the rest of the
         // scene's sequence carries on as if it had not run again.)
         const kept = seed;
         paintBg();
         seed = kept;
-      }
-      if (!around.strips.length) {
-        around.paint();
       }
       layer.style.display = "";
       running = true;
@@ -4702,7 +4711,7 @@ export function openPlaza(options) {
         return [
           ...bg
             .getContext("2d")
-            .getImageData(Math.round(x), Math.round(y), 1, 1).data,
+            .getImageData(Math.round(x) + GM, Math.round(y) + GM, 1, 1).data,
         ];
       },
       /** Where a world point is on the page (tests). */
@@ -4730,8 +4739,6 @@ export function openPlaza(options) {
       /** Tests: zoom to a factor of the usual (as a pinch or the wheel). */
       setZoom: (f) => setZoom(f),
       zoomRange: () => plazaZoomRange(NW, NH),
-      /** Pixels in the surroundings' strips (tests). */
-      surroundPixels: () => around.pixels,
       /** Tests: hold the time of day (0.42 = midday). */
       setTod(t) {
         tod = t;

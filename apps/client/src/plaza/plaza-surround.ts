@@ -9,7 +9,7 @@
  * The camera may look a little way past the edge (PLAZA_OUT), never past
  * what is painted (PLAZA_MARGIN), and the zoom only ever shows what is built.
  *
- * Everything out there is either baked into the ground pictures (drawn
+ * Everything out there is either baked into the ground picture (drawn
  * under everyone) or drawn live in depth order. Which one is decided here,
  * not by hand: a thing may be baked only if no one who can walk the Plaza
  * could ever stand behind it with their picture under its picture
@@ -323,14 +323,14 @@ export const COWS: readonly {
 export function millHub(p: SurroundProp) {
   return { x: p.x, y: p.y - 168 * p.s };
 }
-/** Props baked into the strips (never over a walker), and those drawn live. */
+/** Props baked into the meadow (never over a walker), and those drawn live. */
 export const BAKED = SURROUND.filter((p) => !coversMovers(propBox(p)));
 export const LIVE = SURROUND.filter((p) => coversMovers(propBox(p)));
 /** The far bank's lamps (lit at night, mirrored in the river). */
 export const RIVER_LAMPS = SURROUND.filter((p) => p.kind === "lamp");
 /**
  * What moves out there but is drawn under every walker (cows, the windmill's
- * sails) is drawn after the baked strips: nothing baked may stand in front
+ * sails) is drawn after the baked meadow: nothing baked may stand in front
  * of it (a tree in front of a cow would be drawn under the cow).
  */
 export function movingBoxes(): (PropBox & { name: string })[] {

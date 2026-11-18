@@ -1,12 +1,12 @@
 /*
  * The Plaza's surroundings, drawn (plaza-surround.ts says what and where).
  *
- * The ground past each edge is baked once into four strips around the
- * Plaza's own ground picture (north, south, west, east; no overlap), at
- * the same resolution as the Plaza's own (so no seam where they meet;
- * 0.6 on phones short of memory), painted the same way. The strips carry
- * every prop that can never be drawn over a walker. The river is a hole in
- * the north strip; its water is drawn under it every frame (ripples drifting
+ * The Plaza's ground picture is one meadow reaching PLAZA_MARGIN past each
+ * edge (plaza-scene.ts paintBg), grass all over at one density, so there
+ * is no seam where the Plaza ends; the world around it is painted into it
+ * once (paintSurroundings), with every prop that can never be drawn over a
+ * walker. The river is a hole in
+ * the meadow; its water is drawn under it every frame (ripples drifting
  * with the current, glints, ducks, a moored boat bobbing, the far bank's
  * lamps trembling on it at night), so the footbridges baked over it cover
  * it as they should. Cows and the windmill's sails move, so they are drawn
@@ -107,68 +107,6 @@ export function drawProp(g: Ctx, p: SurroundProp, time = 0) {
 function rnd(seed: number) {
   let s = seed;
   return () => (s = (s * 16807) % 2147483647) / 2147483647;
-}
-/**
- * Painted grass over a rect, exactly as the Plaza's own ground is painted
- * (plaza-scene.ts paintBg: the same colours, the same number of dabs,
- * tufts and soft patches per area), so where the Plaza's ground meets the
- * surroundings there is no seam.
- */
-function grass(
-  g: Ctx,
-  x0: number,
-  y0: number,
-  x1: number,
-  y1: number,
-  base: string,
-  r: () => number,
-) {
-  g.fillStyle = base;
-  g.fillRect(x0, y0, x1 - x0, y1 - y0);
-  // The Plaza's ground: 70 patches, 26000 dabs, 2200 tufts on 2700 x 1700.
-  const k = ((x1 - x0) * (y1 - y0)) / (W * H);
-  for (let i = 0; i < 70 * k; i++) {
-    const x = x0 + r() * (x1 - x0),
-      y = y0 + r() * (y1 - y0),
-      rr = 120 + r() * 320,
-      c = r() < 0.5 ? "150,220,110" : "70,150,70",
-      gr = g.createRadialGradient(x, y, 0, x, y, rr);
-    gr.addColorStop(0, `rgba(${c},.28)`);
-    gr.addColorStop(1, `rgba(${c},0)`);
-    g.fillStyle = gr;
-    g.fillRect(x - rr, y - rr, rr * 2, rr * 2);
-  }
-  const greens = ["#6cb851", "#82cc63", "#5fae4a", "#8fd46e", "#71bd55"];
-  for (let i = 0; i < 26000 * k; i++) {
-    g.fillStyle = greens[i % 5];
-    g.beginPath();
-    g.ellipse(
-      x0 + r() * (x1 - x0),
-      y0 + r() * (y1 - y0),
-      2.4 + r() * 2.6,
-      1.3 + r(),
-      r() * 3,
-      0,
-      7,
-    );
-    g.fill();
-  }
-  g.lineWidth = 1.6;
-  for (const col of ["#4f9a3c", "#a6e07e"]) {
-    g.strokeStyle = col;
-    g.beginPath();
-    for (let i = 0; i < 1100 * k; i++) {
-      const x = x0 + r() * (x1 - x0),
-        y = y0 + r() * (y1 - y0);
-      g.moveTo(x - 3, y);
-      g.lineTo(x - 4, y - 7);
-      g.moveTo(x, y);
-      g.lineTo(x, y - 9);
-      g.moveTo(x + 3, y);
-      g.lineTo(x + 5, y - 7);
-    }
-    g.stroke();
-  }
 }
 /** The far bank's stone wall, the near coping, and the footbridges. */
 function paintRiverBanks(g: Ctx) {
@@ -292,7 +230,6 @@ export function paintVerge(g: Ctx) {
 function paintFarm(g: Ctx, r: () => number) {
   const y0 = H,
     y1 = H + M;
-  grass(g, -M, y0, W + M, y1, "#77c25b", r);
   // A hedge line right past the Plaza's garden strip.
   g.fillStyle = "#3f8f3a";
   for (let x = -M; x < W + M; x += 22) {
@@ -372,8 +309,7 @@ function paintFarm(g: Ctx, r: () => number) {
 function paintWoods(g: Ctx, side: -1 | 1, r: () => number) {
   const x0 = side < 0 ? -M : W,
     x1 = side < 0 ? 0 : W + M;
-  // The Plaza's own grass at the edge, darker deeper into the woods.
-  grass(g, x0, 0, x1, H, "#77c25b", r);
+  // The meadow's own grass, darker deeper into the woods.
   const gr = g.createLinearGradient(
     side < 0 ? 0 : W,
     0,
@@ -405,84 +341,28 @@ function paintWoods(g: Ctx, side: -1 | 1, r: () => number) {
   }
 }
 
-interface Strip {
-  cv: HTMLCanvasElement;
-  x0: number;
-  y0: number;
-  x1: number;
-  y1: number;
-}
-/** The four baked strips around the Plaza. */
-export class Surroundings {
-  strips: Strip[] = [];
-  constructor(
-    /** Resolution of the strips against the Plaza's own ground (1 px a world px). */
-    readonly k: number,
-  ) {}
-  /** Paint the strips (once, on entering). */
-  paint() {
-    const r = rnd(9001);
-    const rects: [number, number, number, number, (g: Ctx) => void][] = [
-      [-M, -M, W + M, 0, (g) => this.north(g, r)],
-      [-M, H, W + M, H + M, (g) => paintFarm(g, r)],
-      [-M, 0, 0, H, (g) => paintWoods(g, -1, r)],
-      [W, 0, W + M, H, (g) => paintWoods(g, 1, r)],
-    ];
-    const props = [...BAKED].sort((a, b) => a.y - b.y);
-    this.strips = rects.map(([x0, y0, x1, y1, ground]) => {
-      const cv = document.createElement("canvas");
-      cv.width = Math.ceil((x1 - x0) * this.k);
-      cv.height = Math.ceil((y1 - y0) * this.k);
-      const g = cv.getContext("2d")!;
-      g.setTransform(this.k, 0, 0, this.k, -x0 * this.k, -y0 * this.k);
-      ground(g);
-      for (const p of props) {
-        const b = propBox(p);
-        if (b.x1 < x0 || b.x0 > x1 || b.foot + 20 < y0 || b.top > y1) continue;
-        drawProp(g, p);
-      }
-      return { cv, x0, y0, x1, y1 };
-    });
-  }
-  private north(g: Ctx, r: () => number) {
-    grass(g, -M, -M, W + M, RIVER.y0 - 20, "#77c25b", r);
-    paintRiverBanks(g);
-    // The water's hole: drawn every frame under this picture.
-    g.save();
-    g.globalCompositeOperation = "destination-out";
-    g.fillRect(-M, RIVER.y0 + 12, W + 2 * M, RIVER.y1 - RIVER.y0 - 12);
-    g.restore();
-    for (const b of RIVER.bridges) paintBridge(g, b);
-  }
-  /** Copy the strips the view reaches. */
-  draw(g: Ctx, vx0: number, vy0: number, vx1: number, vy1: number) {
-    for (const s of this.strips) {
-      const a = Math.max(vx0, s.x0),
-        b = Math.max(vy0, s.y0),
-        c = Math.min(vx1, s.x1),
-        d = Math.min(vy1, s.y1);
-      if (c <= a || d <= b) continue;
-      g.drawImage(
-        s.cv,
-        (a - s.x0) * this.k,
-        (b - s.y0) * this.k,
-        (c - a) * this.k,
-        (d - b) * this.k,
-        a,
-        b,
-        c - a,
-        d - b,
-      );
-    }
-  }
-  /** Pixels held (tests, the perf read-out). */
-  get pixels() {
-    return this.strips.reduce((n, s) => n + s.cv.width * s.cv.height, 0);
-  }
-  release() {
-    for (const s of this.strips) s.cv.width = s.cv.height = 0;
-    this.strips = [];
-  }
+/**
+ * Paint the world around the Plaza into the meadow (the Plaza's own ground
+ * picture, which reaches PLAZA_MARGIN past each edge and is already grass
+ * everywhere): the river's banks with a hole for its water, the
+ * footbridges, the woods' shade, the farm, then every prop that is never
+ * drawn over a walker. `g` draws in world coordinates.
+ */
+export function paintSurroundings(g: Ctx) {
+  const r = rnd(9001);
+  paintRiverBanks(g);
+  // The water's hole: the water is drawn every frame under the meadow.
+  g.save();
+  g.globalCompositeOperation = "destination-out";
+  // (Opaque: a translucent fill would leave the banks' colour over it.)
+  g.fillStyle = "#000";
+  g.fillRect(-M, RIVER.y0 + 12, W + 2 * M, RIVER.y1 - RIVER.y0 - 12);
+  g.restore();
+  for (const b of RIVER.bridges) paintBridge(g, b);
+  paintWoods(g, -1, r);
+  paintWoods(g, 1, r);
+  paintFarm(g, r);
+  for (const p of [...BAKED].sort((a, b) => a.y - b.y)) drawProp(g, p);
 }
 
 /* ---------- every frame ---------- */
@@ -492,7 +372,7 @@ const DUCKS = [
   { kind: "hen", y: -100, speed: 9, off: 1400 },
 ];
 const BOAT = { x: 300, y: -40 };
-/** The river's water, under the north strip (call before drawing the strips). */
+/** The river's water, under the meadow's hole (call before drawing the meadow). */
 export function drawRiver(
   g: Ctx,
   t: number,
