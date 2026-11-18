@@ -1479,9 +1479,11 @@ export class RaidArena extends Arena {
       if (!need) break;
       shift(need);
     }
-    // With a little slack: raiders keep moving through the rest of the tick,
-    // so a spot only just in reach when the attack is planned may not be.
-    if (!this.safeSpotExists([...old, ...mine], 0.1))
+    // With some slack: raiders keep moving through the rest of the tick (and
+    // a dash or a leap carries them far), so a spot only just in reach when
+    // the attack is planned may not be. 0.1 s let Emberwing's ember rain land
+    // on three raiders bunched under a dive with no spot left to reach.
+    if (!this.safeSpotExists([...old, ...mine], 0.2))
       shift(
         Math.max(...old.map((o) => o.at)) +
           1 -

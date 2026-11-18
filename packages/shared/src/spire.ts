@@ -1478,6 +1478,10 @@ export const SPIRE_TUNING: Record<
   9: { difficulty: "normal", power: 0.5, armour: 1.35, limit: 180 },
   // The boss floor: the raid's own time limit (no extra wave for big parties).
   10: { difficulty: "hard", power: 1, armour: 1, limit: 600 },
+  // (The rates below were measured with a Voltkit raider. Since the skill
+  // revolution the play-tests use Halcyra, whose kit it left alone: Voltkit's
+  // new Thunderstorm made it a far stronger raider, while Halcyra clears
+  // every floor as often as before, within noise. docs/skill-revolution.md.)
   // Zone 2: a climb starts at 11 with no blessings, against champions far
   // deadlier per point than zone 1's Earth front-liners (casters, an
   // assassin, a controller), so the numbers start below floor 9's and each
