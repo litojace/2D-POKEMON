@@ -27,7 +27,14 @@ const SIZES = [
     phone: true,
     island: true,
   },
-  // iPhone Pro Max held sideways (the owner's phone, 19 Nov).
+  // iPhone Pro Max held sideways: the 15's, and the owner's 17 (19 Nov).
+  {
+    name: "956x440-island",
+    width: 956,
+    height: 440,
+    phone: true,
+    island: true,
+  },
   {
     name: "932x430-island",
     width: 932,
@@ -124,7 +131,11 @@ const TITLES = [
 }));
 
 /** The account, progress and raids answers; titles equip as the server does. */
-async function open(page: Page, size: Size, o: { guest?: boolean } = {}) {
+async function open(
+  page: Page,
+  size: Size,
+  o: { guest?: boolean; frame?: string } = {},
+) {
   await page.addInitScript(
     ({ raids, progress, titles, guest }) => {
       const w = window as any;
@@ -137,7 +148,12 @@ async function open(page: Page, size: Size, o: { guest?: boolean } = {}) {
         ownedTitles: titles,
       };
     },
-    { raids: RAIDS, progress: PROGRESS, titles: TITLES, guest: !!o.guest },
+    {
+      raids: o.frame ? { ...RAIDS, loadout: { frame: o.frame } } : RAIDS,
+      progress: PROGRESS,
+      titles: TITLES,
+      guest: !!o.guest,
+    },
   );
   const errors = await openLobby(page);
   // Wearing a title, answered as the server does (outermost, over the
@@ -249,6 +265,7 @@ for (const size of SIZES)
       expect(fit.inside, "the avatar is inside the card").toBe(true);
       if (size.phone)
         expect(fit.size, "the avatar's size").toBeGreaterThanOrEqual(130);
+
       // A phone shows the card's column as tabs (Overview, Titles, Mastery,
       // Trophies); a desktop shows it all in one column.
       const tab = async (t: string) => {
@@ -771,3 +788,50 @@ test("a locked name says when; a refusal says why", async ({ browser }) => {
     await context.close();
   }
 });
+
+// Wearing a frame: its art reaches 20% beyond the portrait on each side
+// (the planet frame ran off an iPhone 17 Pro Max's card and over the
+// title, owner 19 Nov). All of it stays on the card, above the title.
+for (const size of SIZES.filter((s) => s.phone))
+  for (const frame of ["galaxy-frame", "prism-frame"])
+    test(`a framed avatar fits the card at ${size.name}: ${frame}`, async ({
+      browser,
+    }, info) => {
+      const context = await browser.newContext({
+        viewport: { width: size.width, height: size.height },
+        isMobile: true,
+        hasTouch: true,
+      });
+      try {
+        const page = await context.newPage();
+        const { errors, panel } = await open(page, size, { frame });
+        await expect(
+          panel.locator(`.pf-card-avatar > [data-portrait-frame="${frame}"]`),
+        ).toHaveCount(1);
+        const room = await panel.evaluate((p) => {
+          const card = p.querySelector(".pf-card")!.getBoundingClientRect();
+          const f = p
+            .querySelector(".pf-card-avatar > .portrait-frame")!
+            .getBoundingClientRect();
+          const text = p
+            .querySelector(".pf-card-text > *")!
+            .getBoundingClientRect();
+          const m = f.width * 0.2;
+          return {
+            inside:
+              f.left - m >= card.left - 0.5 &&
+              f.right + m <= card.right + 0.5 &&
+              f.top - m >= card.top - 0.5,
+            aboveTitle: f.bottom + m <= text.top + 1,
+            size: Math.round(f.width),
+          };
+        });
+        expect(room.inside, "inside the card").toBe(true);
+        expect(room.aboveTitle, "above the title").toBe(true);
+        expect(room.size, "its portrait").toBeGreaterThanOrEqual(90);
+        await snap(page, info, `profile-frame-${frame}-${size.name}`);
+        expect(errors).toEqual([]);
+      } finally {
+        await context.close();
+      }
+    });
