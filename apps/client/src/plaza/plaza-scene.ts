@@ -14,6 +14,7 @@ import { CHAT_EMOTES } from "../../../../packages/shared/src/chat";
 import { photoIdOf } from "../../../../packages/shared/src/avatars";
 import { avatarSrc } from "../portraits";
 import { bubbleLines } from "../chat/bubble-text";
+import { iconLabel } from "../menu-icons";
 /** A chat bubble's text is at most this wide; longer lines wrap. */
 const BUBBLE_TEXT_W = 150;
 import { syncHubGraphics } from "../hub-graphics";
@@ -1571,7 +1572,7 @@ export function openPlaza(options) {
     const card = $("pz-card");
     // Who they are: their avatar (docs/hidden-picks.md, "Avatars").
     const photo = photoIdOf(p.avatar);
-    card.innerHTML = `<div class="pc-h"><img class="pc-avatar" src="${avatarSrc(p.avatar)}" alt=""><div><b>${esc(p.name)}</b><small>${p.level ? `Lv ${p.level}` : ""}${p.title ? ` · <span style="color:${esc(p.titleColor ?? "#ffd65b")}">${esc(p.title)}</span>` : ""}</small></div><button type="button" class="x" data-pc="close" aria-label="Close">✕</button></div><div class="pc-acts"><button type="button" data-pc="friend">Add friend</button><button type="button" data-pc="party">Invite to party</button></div><div class="pc-acts pc-safety">${photo ? '<button type="button" data-pc="report-photo">Report picture</button>' : ""}<button type="button" data-pc="report">Report</button><button type="button" data-pc="block" class="pc-block">Block</button></div>`;
+    card.innerHTML = `<div class="pc-h"><img class="pc-avatar" src="${avatarSrc(p.avatar)}" alt=""><div><b>${esc(p.name)}</b><small>${p.level ? `Lv ${p.level}` : ""}${p.title ? ` · <span style="color:${esc(p.titleColor ?? "#ffd65b")}">${esc(p.title)}</span>` : ""}</small></div><button type="button" class="x" data-pc="close" aria-label="Close">✕</button></div><div class="pc-acts"><button type="button" data-pc="friend">${iconLabel("add-friend", "Add friend")}</button><button type="button" data-pc="party">${iconLabel("friends", "Invite to party")}</button></div><div class="pc-acts pc-safety">${photo ? `<button type="button" data-pc="report-photo">${iconLabel("report", "Report picture")}</button>` : ""}<button type="button" data-pc="report">${iconLabel("report", "Report")}</button><button type="button" data-pc="block" class="pc-block">${iconLabel("block", "Block")}</button></div>`;
     card.hidden = false;
   }
   function hideCard() {
@@ -1868,7 +1869,7 @@ export function openPlaza(options) {
       shot = mine;
       const box = $("pz-photo");
       box.hidden = false;
-      box.innerHTML = `<div class="polaroid"><div class="print"><img src="${url}" alt="Photo taken in the Plaza"><p title="${esc(caption)}">${esc(caption)}</p><small>${esc(place)}</small></div><div class="acts"><button type="button" class="pz-main" data-ph="album">Save to album</button><a data-ph="keep" href="${url}" download="${pictureName(at)}">Save picture</a><button type="button" data-ph="close">Close</button></div></div>`;
+      box.innerHTML = `<div class="polaroid"><div class="print"><img src="${url}" alt="Photo taken in the Plaza"><p title="${esc(caption)}">${esc(caption)}</p><small>${esc(place)}</small></div><div class="acts"><button type="button" class="pz-main" data-ph="album">${iconLabel("save", "Save to album")}</button><a data-ph="keep" href="${url}" download="${pictureName(at)}">Save picture</a><button type="button" data-ph="close">${iconLabel("cancel", "Close")}</button></div></div>`;
       box.querySelector('[data-ph="album"]').onclick = (e) =>
         keepInAlbum(mine, e.currentTarget);
       box.querySelector('[data-ph="keep"]').onclick = () =>

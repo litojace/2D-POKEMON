@@ -1,5 +1,5 @@
 import { CHARACTERS, type CharacterId } from "@arena/shared";
-import { menuIcon } from "./menu-icons";
+import { iconLabel, menuIcon } from "./menu-icons";
 import "./welcome-scene.css";
 
 export type HomeMode = "duel" | "teams" | "ffa" | "raid";
@@ -57,13 +57,13 @@ export function welcomeGate(status: GateStatus, invite?: string | null) {
     `<div class="gate-wait" role="status"><span class="gate-spinner" aria-hidden="true"></span><p>${text}</p></div>`;
   const panel =
     status === "session-replaced"
-      ? `<div class="gate-wait" role="status"><h2>Playing on another device</h2><p>This account was opened on another device or tab. Only one game session can be active at a time.</p><p>Continuing here will pause the game on the other device.</p><div class="gate-actions"><button type="button" class="auth-submit" id="gate-retry">Play on this device</button><button type="button" class="auth-link" id="gate-login">Use another account</button></div></div>`
+      ? `<div class="gate-wait" role="status"><h2>Playing on another device</h2><p>This account was opened on another device or tab. Only one game session can be active at a time.</p><p>Continuing here will pause the game on the other device.</p><div class="gate-actions"><button type="button" class="auth-submit" id="gate-retry">${iconLabel("enter", "Play on this device")}</button><button type="button" class="auth-link" id="gate-login">Use another account</button></div></div>`
       : status === "loading"
         ? wait("Checking your account…")
         : status === "connecting"
           ? wait("Connecting to Elemental Plaza…")
           : status === "error"
-            ? `<div class="gate-wait" role="status"><p>We couldn't load your profile. Check your connection and try again.</p><div class="gate-actions"><button type="button" class="auth-submit" id="gate-retry">Try again</button><button type="button" class="auth-link" id="gate-login">Use another account</button></div></div>`
+            ? `<div class="gate-wait" role="status"><p>We couldn't load your profile. Check your connection and try again.</p><div class="gate-actions"><button type="button" class="auth-submit" id="gate-retry">${iconLabel("again", "Try again")}</button><button type="button" class="auth-link" id="gate-login">Use another account</button></div></div>`
             : status === "unavailable"
               ? `<div class="gate-wait" role="status"><p>Sign-in isn't available right now. Please try again later.</p></div>`
               : "";

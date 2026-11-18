@@ -28,7 +28,7 @@ import {
   type ChatQuick,
 } from "../../../../packages/shared/src/chat";
 import { filterChat } from "../../../../packages/shared/src/chat-filter";
-import { menuIcon } from "../menu-icons";
+import { iconLabel, menuIcon } from "../menu-icons";
 import { needsStamp, stampLong, stampText } from "./chat-time";
 import type { PushState } from "./push-setup";
 
@@ -144,7 +144,7 @@ export function mountChat(hooks: ChatHooks): ChatView {
     )
     .join(
       "",
-    )}</div><p class="chat-mode-note"></p><div class="chat-push" hidden><button type="button" role="switch" class="chat-push-toggle" aria-checked="false">Notify me of friends' messages</button><p class="chat-push-note"></p></div></div><div class="chat-with" hidden><button type="button" class="chat-back" aria-label="All friends">${menuIcon("back")}</button><b></b></div><ol class="chat-lines" aria-live="polite"></ol><p class="chat-empty" hidden></p><div class="chat-quick" role="group" aria-label="Quick chat">${CHIPS.map((q) => `<button type="button" class="chat-chip" data-chat-quick="${q}">${quickText(q)}</button>`).join("")}</div><form class="chat-form"><input id="chat-input" class="chat-input" type="text" enterkeyhint="send" autocomplete="off" autocapitalize="sentences" maxlength="${CHAT_LIMITS.length}" aria-label="Message"><button type="submit" class="chat-send" aria-label="Send">Send</button></form><p class="chat-note" role="status"></p>`;
+    )}</div><p class="chat-mode-note"></p><div class="chat-push" hidden><button type="button" role="switch" class="chat-push-toggle" aria-checked="false">Notify me of friends' messages</button><p class="chat-push-note"></p></div></div><div class="chat-with" hidden><button type="button" class="chat-back" aria-label="All friends">${menuIcon("back")}</button><b></b></div><ol class="chat-lines" aria-live="polite"></ol><p class="chat-empty" hidden></p><div class="chat-quick" role="group" aria-label="Quick chat">${CHIPS.map((q) => `<button type="button" class="chat-chip" data-chat-quick="${q}">${quickText(q)}</button>`).join("")}</div><form class="chat-form"><input id="chat-input" class="chat-input" type="text" enterkeyhint="send" autocomplete="off" autocapitalize="sentences" maxlength="${CHAT_LIMITS.length}" aria-label="Message"><button type="submit" class="chat-send" aria-label="Send">${iconLabel("send", "Send")}</button></form><p class="chat-note" role="status"></p>`;
   document.body.append(button, drawer);
   const tabs = drawer.querySelector<HTMLElement>(".chat-tabs")!;
   const list = drawer.querySelector<HTMLOListElement>(".chat-lines")!;
@@ -264,7 +264,7 @@ export function mountChat(hooks: ChatHooks): ChatView {
     const menu = document.createElement("li");
     menu.className = "chat-menu";
     const plain = () => {
-      menu.innerHTML = `<button type="button" data-chat-act="mute">Mute</button><button type="button" data-chat-act="block">Block</button><button type="button" data-chat-act="report">Report</button>`;
+      menu.innerHTML = `<button type="button" data-chat-act="mute">${iconLabel("sound", "Mute")}</button><button type="button" data-chat-act="block">${iconLabel("block", "Block")}</button><button type="button" data-chat-act="report">${iconLabel("report", "Report")}</button>`;
     };
     plain();
     menu.addEventListener("click", async (e) => {
@@ -284,7 +284,7 @@ export function mountChat(hooks: ChatHooks): ChatView {
           renderLines();
         }
       } else if (act === "report") {
-        menu.innerHTML = `<p>Report this message from <b></b>? The last messages go with it.</p><button type="button" data-chat-act="send">Report</button><button type="button" data-chat-act="cancel">Cancel</button>`;
+        menu.innerHTML = `<p>Report this message from <b></b>? The last messages go with it.</p><button type="button" data-chat-act="send">${iconLabel("report", "Report")}</button><button type="button" data-chat-act="cancel">${iconLabel("cancel", "Cancel")}</button>`;
         menu.querySelector("b")!.textContent = l.from.name;
       } else if (act === "cancel") menu.remove();
       else if (act === "send" && active) {

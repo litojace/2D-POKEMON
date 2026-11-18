@@ -255,6 +255,7 @@ function requestRow(
   const busy = waiting(view, r.id);
   const acts = incoming
     ? button("Decline", {
+        icon: "cancel",
         size: "s",
         disabled: busy,
         attrs: {
@@ -263,12 +264,14 @@ function requestRow(
         },
       }) +
       button("Accept", {
+        icon: "check",
         size: "s",
         kind: "ok",
         disabled: busy,
         attrs: { "data-friend-accept": r.id, "aria-label": `Accept ${r.name}` },
       })
     : button("Cancel", {
+        icon: "cancel",
         size: "s",
         disabled: busy,
         attrs: {
@@ -336,6 +339,7 @@ function actionButton(a: FriendAction | null, f: Friend, view: FriendsView) {
 /** Block a player (it asks first); a quiet red button. */
 const blockButton = (p: { id: string; name: string }, busy: boolean) =>
   button("Block", {
+    icon: "block",
     size: "s",
     kind: "danger",
     disabled: busy,
@@ -367,11 +371,13 @@ function friendRow(f: Friend, d: FriendsData, view: FriendsView, now: number) {
   const opts = `<div class="fr-opts" id="fr-opts-${esc(f.id)}" role="group" aria-label="Options for ${esc(f.name)}"${open ? "" : " hidden"}><span class="fr-opts-text">${removing ? `Remove ${esc(f.name)} from your friends?` : pinned ? "Pinned to the top" : "Keep them near the top"}</span>${
     removing
       ? button("Keep", {
+          icon: "check",
           size: "s",
           disabled: busy,
           attrs: { "data-friend-keep": f.id },
         }) +
         button("Remove", {
+          icon: "trash",
           size: "s",
           kind: "danger",
           disabled: busy,
@@ -394,6 +400,7 @@ function friendRow(f: Friend, d: FriendsData, view: FriendsView, now: number) {
           attrs: { "data-friend-pin": f.id, "aria-pressed": String(pinned) },
         }) +
         button("Remove", {
+          icon: "trash",
           size: "s",
           disabled: busy,
           attrs: { "data-friend-remove": f.id },
@@ -401,6 +408,7 @@ function friendRow(f: Friend, d: FriendsData, view: FriendsView, now: number) {
         // Their own picture (seen by everyone): report it.
         (photoIdOf(f.avatar)
           ? button("Report picture", {
+              icon: "report",
               size: "s",
               disabled: busy,
               attrs: {
@@ -439,6 +447,7 @@ function recentRow(p: RecentPlayer, view: FriendsView, now: number) {
         ? `<span class="fr-in-party">Requested</span>`
         : p.relation === "received"
           ? button("Accept", {
+              icon: "check",
               size: "s",
               kind: "ok",
               disabled: busy,
@@ -448,6 +457,7 @@ function recentRow(p: RecentPlayer, view: FriendsView, now: number) {
               },
             })
           : button("Add friend", {
+              icon: "add-friend",
               size: "s",
               disabled: busy,
               attrs: {
@@ -475,6 +485,7 @@ function blockedRow(p: { id: string; name: string }, view: FriendsView) {
     name: p.name,
     sub: "Blocked",
     acts: button("Unblock", {
+      icon: "check",
       size: "s",
       disabled: waiting(view, p.id),
       attrs: {
@@ -541,6 +552,7 @@ function recentPlayers(
           "Recent players aren't available",
           d.recentProblem,
           button("Try again", {
+            icon: "again",
             size: "s",
             attrs: { "data-friend-recent-retry": true },
           }),
@@ -602,6 +614,7 @@ export function friendsMarkup(
           "Friends aren't available",
           d.problem,
           button("Try again", {
+            icon: "again",
             size: "s",
             attrs: { "data-friend-retry": true },
           }),

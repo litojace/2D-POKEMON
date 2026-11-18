@@ -272,6 +272,7 @@ export function ranksMarkup(view: RanksView, d: RanksData) {
           "Ranks aren't available",
           d.problem,
           button("Try again", {
+            icon: "again",
             size: "s",
             attrs: { "data-ranks-retry": true },
           }),
@@ -310,6 +311,7 @@ export function ranksMarkup(view: RanksView, d: RanksData) {
             "Friends' ranks aren't available",
             d.friendsProblem,
             button("Try again", {
+              icon: "again",
               size: "s",
               attrs: { "data-ranks-retry": true },
             }),

@@ -319,8 +319,11 @@ function rewardFoot(view: JourneyView, d: JourneyData) {
     return actionBar(
       `<span class="ui-note">Pick a reward to see it.</span>`,
       actions(
-        button("Wardrobe", { attrs: { "data-journey-wardrobe": true } }),
-        button("Equip", { kind: "ok", disabled: true }),
+        button("Wardrobe", {
+          icon: "wardrobe",
+          attrs: { "data-journey-wardrobe": true },
+        }),
+        button("Equip", { kind: "ok", icon: "check", disabled: true }),
       ),
     );
   const { owned, worn } = itemState(id, d);
@@ -342,10 +345,13 @@ function rewardFoot(view: JourneyView, d: JourneyData) {
   return actionBar(
     `<span class="journey-foot-art">${picture(id, d, "journey-foot")}</span><span class="journey-foot-text"><b class="ui-h">${esc(item.name)}</b><small class="ui-note">${esc(line)}</small><small class="journey-status" role="status">${esc(view.status)}</small></span>`,
     actions(
-      button("Wardrobe", { attrs: { "data-journey-wardrobe": true } }),
+      button("Wardrobe", {
+        icon: "wardrobe",
+        attrs: { "data-journey-wardrobe": true },
+      }),
       button(label, {
         kind: owned ? "ok" : "default",
-        icon: worn ? "check" : undefined,
+        icon: owned ? "check" : "lock",
         disabled: !owned || worn || view.equipping !== null,
         attrs: { "data-journey-equip": id },
       }),
@@ -358,9 +364,16 @@ function arcadeFoot() {
   return actionBar(
     `<span class="journey-foot-text"><b class="ui-h">${esc(a.event.name)}</b><small class="ui-note">Earns XP and weekly-goal progress</small></span>`,
     actions(
-      button("Private 1v1", { attrs: { "data-journey-play": "arcade-duel" } }),
-      button("Private 2v2", { attrs: { "data-journey-play": "arcade-teams" } }),
+      button("Private 1v1", {
+        icon: "battle",
+        attrs: { "data-journey-play": "arcade-duel" },
+      }),
+      button("Private 2v2", {
+        icon: "friends",
+        attrs: { "data-journey-play": "arcade-teams" },
+      }),
       button("Play vs AI", {
+        icon: "bot",
         kind: "primary",
         attrs: { "data-journey-play": "arcade-bot" },
       }),

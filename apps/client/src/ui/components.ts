@@ -261,6 +261,8 @@ export interface ConfirmOptions {
   extra?: string;
   cancel?: string;
   confirm: string;
+  /** The confirm button's icon (Buy: a coin, Block: a struck circle…). */
+  confirmIcon?: IconName;
   /** The confirm button's extra markup (its price). */
   confirmAfter?: string;
 }
@@ -276,5 +278,5 @@ export function confirmModal(o: ConfirmOptions) {
         `<dt${o.total && i === o.lines.length ? ' class="is-total"' : ""}>${esc(k)}</dt><dd${o.total && i === o.lines.length ? ' class="is-total"' : ""}>${v}</dd>`,
     )
     .join("");
-  return `<div class="ui-scrim" data-ui-confirm><div class="ui-modal${o.art ? " has-art" : ""}" role="alertdialog" aria-modal="true" aria-label="${esc(o.title)}">${o.art ? `<div class="ui-modal-art">${o.art}</div>` : ""}<div class="ui-modal-body"><span class="ui-kicker">${esc(o.kicker)}</span><b class="ui-title">${esc(o.title)}</b>${o.sub ? `<span class="ui-modal-sub">${o.sub}</span>` : ""}<dl class="ui-ledger">${lines}</dl>${o.extra ?? ""}</div>${actions(button(o.cancel ?? "Cancel", { attrs: { "data-ui-cancel": true } }), button(o.confirm, { kind: "primary", after: o.confirmAfter, attrs: { "data-ui-confirm-ok": true } }))}</div></div>`;
+  return `<div class="ui-scrim" data-ui-confirm><div class="ui-modal${o.art ? " has-art" : ""}" role="alertdialog" aria-modal="true" aria-label="${esc(o.title)}">${o.art ? `<div class="ui-modal-art">${o.art}</div>` : ""}<div class="ui-modal-body"><span class="ui-kicker">${esc(o.kicker)}</span><b class="ui-title">${esc(o.title)}</b>${o.sub ? `<span class="ui-modal-sub">${o.sub}</span>` : ""}<dl class="ui-ledger">${lines}</dl>${o.extra ?? ""}</div>${actions(button(o.cancel ?? "Cancel", { icon: "cancel", attrs: { "data-ui-cancel": true } }), button(o.confirm, { kind: "primary", icon: o.confirmIcon, after: o.confirmAfter, attrs: { "data-ui-confirm-ok": true } }))}</div></div>`;
 }

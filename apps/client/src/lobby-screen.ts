@@ -11,7 +11,7 @@ import {
 } from "../../../packages/shared/src/journey";
 import type { Economy } from "../../../packages/shared/src/shop";
 import type { RaidLoadout } from "../../../packages/shared/src/raid";
-import { menuIcon } from "./menu-icons";
+import { iconLabel, menuIcon } from "./menu-icons";
 import { fighterStageArt, wornSkin } from "./fighter-selection";
 import { lowGraphics } from "./graphics-quality";
 import type { ShopPreviewHandle } from "./shop-preview";
@@ -324,7 +324,7 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
       `<button type="button" data-lobby-action="${id}" title="${label}" aria-label="${label}">${menuIcon(icon)}<span>${label}</span><i class="lobby-badge" data-badge-for="${id}" hidden></i></button>`,
   ).join("")}</nav>
 <section class="lobby-stage" aria-label="Your fighter">
-  <div class="lobby-party-bar" id="lobby-party-bar" hidden><span class="lobby-party-faces" id="lobby-party-faces"></span><span id="lobby-party-size"></span><button type="button" class="lobby-rejoin" id="lobby-rejoin" data-lobby-action="party-room" hidden>Rejoin room</button><button type="button" data-lobby-action="leave-party">Leave party</button></div>
+  <div class="lobby-party-bar" id="lobby-party-bar" hidden><span class="lobby-party-faces" id="lobby-party-faces"></span><span id="lobby-party-size"></span><button type="button" class="lobby-rejoin" id="lobby-rejoin" data-lobby-action="party-room" hidden>${iconLabel("enter", "Rejoin room")}</button><button type="button" data-lobby-action="leave-party">${iconLabel("leave", "Leave party")}</button></div>
   <div class="lobby-party">
     <div class="lobby-slot-wrap" id="lobby-slot-0"></div>
     <figure class="lobby-fighter" id="lobby-fighter"><div class="lobby-fighter-art fighter-rig-stage" id="lobby-fighter-art" data-preview-look="%7B%7D" data-preview-action="idle"></div><span class="lobby-floor" aria-hidden="true"></span><button type="button" class="lobby-fighter-tap" id="lobby-fighter-tap" aria-label="Poke your fighter" title="Poke your fighter"></button><output class="lobby-emote-bubble" id="lobby-emote-bubble" hidden></output></figure>

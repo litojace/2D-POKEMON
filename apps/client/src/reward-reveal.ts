@@ -7,6 +7,7 @@ import {
 } from "../../../packages/shared/src/raid";
 import { itemPicture } from "./shop-ui";
 import { tierChip } from "./tier-chip";
+import { iconLabel } from "./menu-icons";
 import "./reward-reveal.css";
 
 /**
@@ -105,7 +106,7 @@ export function showRewardReveal(
       const r = rewards[index];
       const last = index === rewards.length - 1;
       const wearable = !!wear && r.slot !== "title";
-      root.innerHTML = `<div class="reveal-stage"><p class="reveal-eyebrow">New reward unlocked${rewards.length > 1 ? ` · ${index + 1} of ${rewards.length}` : ""}</p>${rewardCard(r, champion)}<div class="reveal-actions">${wearable ? `<button type="button" class="primary reveal-wear">Wear it now</button>` : ""}<button type="button" class="${wearable ? "secondary" : "primary"} reveal-next">${last ? (wearable ? "Later" : "Awesome!") : "Next reward"}</button></div><p class="reveal-hint" role="status">${r.slot === "title" ? "Equip it from your profile." : wearable ? "Or wear it later in the Wardrobe." : "Equip it in the Wardrobe."}</p></div>`;
+      root.innerHTML = `<div class="reveal-stage"><p class="reveal-eyebrow">New reward unlocked${rewards.length > 1 ? ` · ${index + 1} of ${rewards.length}` : ""}</p>${rewardCard(r, champion)}<div class="reveal-actions">${wearable ? `<button type="button" class="primary reveal-wear">${iconLabel("wardrobe", "Wear it now")}</button>` : ""}<button type="button" class="${wearable ? "secondary" : "primary"} reveal-next">${last ? (wearable ? "Later" : "Awesome!") : "Next reward"}</button></div><p class="reveal-hint" role="status">${r.slot === "title" ? "Equip it from your profile." : wearable ? "Or wear it later in the Wardrobe." : "Equip it in the Wardrobe."}</p></div>`;
       // Flip on the next frame so the turn animates.
       requestAnimationFrame(() =>
         root.querySelector(".reveal-card")?.classList.add("is-flipped"),
