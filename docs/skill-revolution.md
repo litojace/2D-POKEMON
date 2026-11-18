@@ -249,13 +249,44 @@ now plays 24 seeds, like the other zones: with 12, floors 11 and 19 tied
 at 9 clears each, and on the kits before this wave 24 seeds gave floor 19
 more clears than floor 11 (19 against 18), so 12 seeds had passed by luck.
 
-## Later waves (proposals, to be measured first)
+## Wave D: Terradon, Wombolder, Pangrove (and Pyranda again)
 
-| Champion | Skill         | Problem (bots)                        | Idea                                                             | Borrowed from     |
-| -------- | ------------- | ------------------------------------- | ---------------------------------------------------------------- | ----------------- |
-| Pyranda  | Ember Curtain | 1% of damage                          | a curtain you can walk through to gain speed (allies too)        | Lúcio, wall buffs |
-| Coilemur | Electromagnet | pulls like Lumoth's new Radiant Flare | polarity: pull or push depending on the charge left on the enemy | magnet games      |
-| Others   | ultimates     | the melee ones already land and hurt  | checked once the waves above are in                              | —                 |
+Bots (seed 150000, 32 games a pair), Hard / Normal: Terradon 52% / 53%,
+Wombolder 46% / 51%, Pangrove 55% / 50%, Pyranda 50% / 56%. Every skill of
+the three does its job (Grudge Thump lands 93% of casts, Pinball 70%,
+Scale Shrapnel 75%; Mud Mire and Shell Up are control and defence), so
+their kits stay.
 
-These are ideas, not decisions: each will be measured the same way before
-and after, and shipped in its own wave.
+The two proposals left from the first survey were measured again and
+dropped:
+
+- **Ember Curtain** (Pyranda) deals 1% of Pyranda's damage, but its job is
+  defence: it burns up enemy shots, which the damage count doesn't see,
+  and Pyranda wins half its duels. Chestnut Mortar lands 10% of casts: its
+  0.6 s mark is what makes it fair, and it zones more than it hits.
+- **Electromagnet** (Coilemur) lands 95% of casts for 22 a cast, and pulls
+  round Coilemur rather than at range like Radiant Flare: no overlap to
+  fix.
+
+Only Pyranda's Normal bot changed: `dazeBy` 0.36 → 0.375, which took it
+from 56% and 53% (two seeds) to 50% and 49%. Raids and the Spire keep 0.36.
+
+## Where every champion ends up
+
+After the four waves every champion's skills each have a job. A round robin
+of all eighteen on the final kits (seed 160000, 16 games a pair, about 540
+duels each; one standard deviation is about 2 points):
+
+| Bots   | Lowest                                   | Highest                                   |
+| ------ | ---------------------------------------- | ----------------------------------------- |
+| Hard   | Coilemur 44%, Auralynx 45%, Mossloth 46% | Terradon 54%, Duskveil 54%, Cindrake 56%  |
+| Normal | Pangrove 44%, Voltkit 45%, Auralynx 46%  | Shadopus 56%, Wombolder 56%, Cindrake 56% |
+
+Everyone else is between 46% and 54%. Halcyra, which the per-wave runs put
+at 42%–44% on Hard, is at 50% here: the per-wave numbers are each against
+one seed, and the wave's champions' opponents changed with every wave. The
+next tuning pass should start from this table (Cindrake is the highest on
+both), and Halcyra's numbers still go through the Spire's floors first.
+
+Not covered here: the 2v2 and FFA tuning factors (`TEAM_TUNING`,
+`FFA_TUNING`) were set before the new kits and should be measured again.
