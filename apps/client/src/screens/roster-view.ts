@@ -314,7 +314,9 @@ function roomButtons(c: CharacterId, d: RosterData) {
         : "Lock in";
   return [
     button(word, {
-      icon: locked ? "check" : undefined,
+      // A padlock to lock in (the seat's Locked tag shows the same one),
+      // a tick once it is.
+      icon: locked ? "check" : r.saving || taken ? undefined : "lock",
       disabled: locked || taken || r.saving || r.ready,
       attrs: {
         "data-roster-select": c,
@@ -370,6 +372,7 @@ function gridMarkup(view: RosterView, d: RosterData) {
     `${avatar(fighterAvatar(view.focus, "roster-foot", d.looks[view.focus]), { element: focus.element })}<span class="roster-foot-text"><small class="ui-note">${esc(status)}</small><span class="roster-foot-name"><b class="ui-h">${esc(focus.name)}</b>${rangeBadge(view.focus)}<small class="roster-foot-range">${rangeName(view.focus)}</small></span></span>`,
     actions(
       button("Details", {
+        icon: "info",
         disabled: none,
         attrs: { "data-roster-details": view.focus },
       }),
