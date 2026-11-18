@@ -113,12 +113,13 @@ describe("one aura size for the whole game", () => {
   it("the Plaza, battles and the Lobby all size auras from aura-size.ts", async () => {
     const size = await import("../../apps/client/src/aura-size");
     const plaza = await import("../../apps/client/src/plaza/plaza-cosmetics");
-    // Aura units per art unit of the fighter: the same everywhere.
+    // Aura units per art unit of the fighter: the same everywhere, but for
+    // the Plaza's own boost (its fighters are small: owner, 18 Nov 2026).
     const perArt = size.AURA_ART_SCALE;
-    expect(plaza.PLAZA_AURA_SCALE / plaza.PLAZA_PX_PER_ART).toBeCloseTo(
-      perArt,
-      6,
-    );
+    expect(plaza.PLAZA_AURA_BOOST).toBe(1.35);
+    expect(
+      plaza.PLAZA_AURA_SCALE / plaza.PLAZA_PX_PER_ART / plaza.PLAZA_AURA_BOOST,
+    ).toBeCloseTo(perArt, 6);
     expect(size.battleAuraScale(0.7) / (0.7 / 2)).toBeCloseTo(perArt, 6);
     // The Lobby (the fighter select, two canvas px per art unit).
     expect(size.auraScale(2)).toBeCloseTo((32 * 2 * size.AURA_SIZE) / 48, 6);
