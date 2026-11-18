@@ -1,4 +1,5 @@
 import { WORLD_ART } from "../../../packages/shared/src/world-art";
+import { auraScale } from "./aura-size";
 /** Shared framing for the static loading art and the battle rig. */
 export const SHOP_PREVIEW = {
   width: 400,
@@ -53,25 +54,8 @@ export const SHOP_SHADOW = { width: 128, height: 26 } as const;
 /** Ground plane of the fitting room: the shadow's own flatness. */
 export const SHOP_GROUND_FLAT = SHOP_SHADOW.height / SHOP_SHADOW.width;
 
-/**
- * Art units per aura unit, as the Lobby and the roster draw an aura: their
- * ring (about 48 aura units) spans 1.6 times the menu shadow (rx 32 art
- * units; shop-preview.ts). The fitting room uses the same, so an aura is as
- * big next to the fighter in the Shop and the Wardrobe as in the Lobby (it
- * was about 1.56 times bigger there: owner, 17 Nov 2026).
- */
-export const AURA_ART_SCALE = (32 * 2 * 1.6) / 48 / 2;
-/**
- * World units per aura unit in a battle, for a fighter drawn at `rigScale`
- * (the rig root's scale): the Lobby's aura next to its fighter. A rig unit is
- * two art units (the rig draws half-size art), so an aura unit is
- * AURA_ART_SCALE / 2 rig units. Battles drew auras at 1 world unit each, about
- * 2.7 times bigger next to the fighter than in the Lobby, Shop and Wardrobe
- * (owner, 18 Nov 2026).
- */
-export function battleAuraScale(rigScale: number) {
-  return (rigScale * AURA_ART_SCALE) / 2;
-}
+// The aura's size is set in one place for the whole game (aura-size.ts).
+export { AURA_ART_SCALE, battleAuraScale } from "./aura-size";
 /**
  * Auras lie on the same plane as the shadow (SHOP_GROUND_FLAT), sized to the
  * fighter as in the Lobby (AURA_ART_SCALE), and the whole projected aura
@@ -88,7 +72,7 @@ export function previewAuraScale(
   const feet = frame.y + WORLD_ART.fighterFeet * frame.scale;
   return Math.min(
     // The rig draws its art at half the framing's scale.
-    frame.scale * 0.5 * AURA_ART_SCALE,
+    auraScale(frame.scale * 0.5),
     Math.max(0.1, ((frame.height - feet - 12) * 2) / (128 * flat)),
   );
 }

@@ -444,6 +444,12 @@ for (const size of SIZES)
       // offline with "online … ago" by the server's clock; the code below.
       const rows = sheet.locator(".fr-row");
       await expect(rows).toHaveCount(7);
+      // Portraits are shared pictures (framedAvatar's picture mode), not
+      // inline art: a long friends list stays light.
+      await expect(sheet.locator(".fr-avatar svg")).toHaveCount(0);
+      expect(
+        await sheet.locator(".fr-avatar .portrait-disc > img").count(),
+      ).toBeGreaterThan(3);
       await expect(rows.first()).toHaveClass(/is-request/);
       await expect(rows.first().locator("[data-friend-accept]")).toBeVisible();
       await expect(rows.first().locator("[data-friend-decline]")).toBeVisible();

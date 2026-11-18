@@ -40,10 +40,13 @@ describe("your fighter's corrections", () => {
   });
 
   it("do not jump when Wi-Fi holds your inputs for a moment", () => {
-    // A phone's uplink that holds 3% of its inputs for 120 ms (the match
-    // reports' "unexplained" jumps, docs/network-performance.md section 12).
-    const run = (noOwed: boolean) =>
-      simulateCorrections({
+    // A phone's uplink that holds 3% of its inputs for 120 ms while you walk
+    // and turn (the match reports' "unexplained" jumps, sections 12 and 16).
+    // The server used to run your last input again on the held ticks and
+    // fold the late ones afterwards: about 8-10 a minute were left, every
+    // one a turn during a hold. Now every input is its own step.
+    for (const seed of [11, 12, 13]) {
+      const { corrections } = simulateCorrections({
         seconds: 60,
         noBot: true,
         noSkill: true,
@@ -51,13 +54,23 @@ describe("your fighter's corrections", () => {
         jitter: 20,
         stallChance: 0.03,
         stallMs: 120,
-        noOwed,
-      }).corrections.length;
-    const before = run(true),
-      after = run(false);
-    // Measured: about 80 a minute replayed as before, 8-10 with owed steps
-    // (direction changes during a hold); the old server gave 63-73.
-    expect(before).toBeGreaterThan(40);
-    expect(after).toBeLessThan(before / 4);
+        seed,
+      });
+      expect(corrections).toEqual([]);
+    }
+  });
+
+  it("do not jump in a free-for-all over held Wi-Fi either", () => {
+    const { corrections } = simulateCorrections({
+      seconds: 60,
+      mode: "ffa",
+      bots: 2,
+      level: "hard",
+      jitter: 20,
+      stallChance: 0.03,
+      stallMs: 120,
+    });
+    expect(corrections.length).toBeGreaterThan(0);
+    expect(corrections.filter((c) => c.cause === "other")).toEqual([]);
   });
 });

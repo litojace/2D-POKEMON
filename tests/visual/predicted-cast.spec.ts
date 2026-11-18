@@ -45,27 +45,47 @@ const rig = (page: Page) =>
 
 test("a ready skill starts on the press, before the server answers", async ({ page }) => {
   await practice(page);
+  // The server's echo of the same cast must not restart the animation. It
+  // comes a round trip after the press, well inside the prediction window
+  // (300 ms here: the offline harness has no round trip). So the page
+  // answers on its own clock, 100 ms after the cast starts: answered after
+  // the test runner's own round trips instead, a busy machine took 470 ms
+  // and the echo, out of the window, counted as a new cast.
+  const echoed = page.evaluate(
+    () =>
+      new Promise<{ state: string; started: number } | null>((resolve) => {
+        const w = window as any,
+          from = performance.now();
+        const watch = () => {
+          const c = w.__castGame?.scene.getScene("arena").rigs.get("me")?.controller;
+          if (c?.state === "skill0") {
+            const before = { state: c.state as string, started: c.started as number };
+            setTimeout(() => {
+              const me = w.__snap.players.find((p: any) => p.id === "me");
+              w.__snap.events = [{ id: 90001, kind: "cast", owner: "me", abilityId: "static-lance", x: me.x, y: me.y, color: 0xffe18b }];
+              me.cooldowns = [w.__snap.time + 8, 0, 0, 0];
+              w.__push();
+              w.__snap.events = [];
+              resolve(before);
+            }, 100);
+          } else if (performance.now() - from > 2000) resolve(null);
+          else requestAnimationFrame(watch);
+        };
+        watch();
+      }),
+  );
   await page.keyboard.press("KeyQ");
-  await expect.poll(async () => (await rig(page)).state, { timeout: 2000, intervals: [16, 50, 100] }).toBe("skill0");
+  // The cast started on the press (before any echo).
+  const before = await echoed;
+  expect(before?.state).toBe("skill0");
   // The button answered at once and its cooldown runs.
   await expect(page.locator("#ability-0")).toHaveClass(/cooling/);
   // The press was sent to the server too.
   await expect
     .poll(() => page.evaluate(() => (window as any).__events.some((e: any) => e.event === "input" && e.data.skill === 0)))
     .toBe(true);
-
-  // The server's echo of the same cast does not restart the animation.
-  const before = await rig(page);
-  await page.evaluate(() => {
-    const w = window as any,
-      me = w.__snap.players.find((p: any) => p.id === "me");
-    w.__snap.events = [{ id: 90001, kind: "cast", owner: "me", abilityId: "static-lance", x: me.x, y: me.y, color: 0xffe18b }];
-    me.cooldowns = [w.__snap.time + 8, 0, 0, 0];
-    w.__push();
-    w.__snap.events = [];
-  });
   await page.waitForTimeout(100);
-  expect((await rig(page)).started).toBe(before.started);
+  expect((await rig(page)).started).toBe(before!.started);
   // The server's cooldown has taken over from the guess.
   await expect(page.locator("#ability-0")).toHaveClass(/cooling/);
 });

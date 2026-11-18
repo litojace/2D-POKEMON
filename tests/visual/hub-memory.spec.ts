@@ -101,6 +101,10 @@ test("an iPhone lets the hidden Plaza's and Farm's grounds go, and a raid's canv
   await expect
     .poll(async () => big(await liveCanvases(page)), { timeout: 20_000 })
     .toEqual([]);
+  // Nor the Plaza's surroundings (the river, woods and farm around it).
+  expect(
+    await page.evaluate(() => (window as any).__plaza.surroundPixels()),
+  ).toBe(0);
   // Back on the Plaza its ground is painted again, the same as before.
   await page.click('#hub-scenes [data-hub-scene="plaza"]');
   await expect(page.locator(".plaza-layer #pz-cv")).toBeVisible();
@@ -110,6 +114,9 @@ test("an iPhone lets the hidden Plaza's and Farm's grounds go, and a raid's canv
     )
     .toBe(255);
   expect(big(await liveCanvases(page))).toEqual(["2700x1700"]);
+  expect(
+    await page.evaluate(() => (window as any).__plaza.surroundPixels()),
+  ).toBeGreaterThan(0);
   await page.click('#hub-scenes [data-hub-scene="farm"]');
   await expect(page.locator("#fm-rail")).toBeVisible();
   await expect
