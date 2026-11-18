@@ -663,17 +663,27 @@
   grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
   gap: 8px;
 }
+/* Round on every browser: the picture is the square (aspect-ratio on an
+   <img> holds everywhere), and the button wraps it. Squaring the button
+   itself failed on iPhone and iPad Safari, which stretched it taller than
+   wide, so the round-clipped picture turned into an ellipse (owner,
+   19 Nov). */
 .pf-avatar {
-  aspect-ratio: 1;
+  display: block;
+  align-self: start;
+  height: auto;
   padding: 3px;
   border-radius: 50%;
   border: 2px solid transparent;
   background: var(--fill-card);
   cursor: pointer;
   min-width: 44px;
-  min-height: 44px;
+  line-height: 0;
 }
 .pf-avatar .portrait-avatar {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1 / 1;
   border-radius: 50%;
 }
 .pf-avatar:hover,

@@ -132,6 +132,19 @@ for (const size of SIZES)
       await expect(
         panel.locator('[data-profile-avatar="ea-avatar-077"]'),
       ).toHaveAttribute("aria-label", "Storm Twins");
+      // Round, not ellipses: each tile and its picture are square (Safari
+      // stretched the buttons taller than wide, owner 19 Nov).
+      const shapes = await tiles.evaluateAll((bs) =>
+        bs.flatMap((b) =>
+          [b, b.querySelector("img")!].map((e) => {
+            const r = e.getBoundingClientRect();
+            return Math.abs(r.width - r.height) <= 1
+              ? "round"
+              : `${r.width}x${r.height}`;
+          }),
+        ),
+      );
+      expect(new Set(shapes)).toEqual(new Set(["round"]));
       await panel.locator('[data-profile-avatar-style="anime-2d"]').click();
       await expect(tiles).toHaveCount(26);
       await panel.locator('[data-profile-avatar="ea-avatar-040"]').click();
