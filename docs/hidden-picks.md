@@ -143,13 +143,17 @@ PvP seats. It is never the fighter they play. Their fighter shows in
 battle, on the briefing, in the picker and on the Lobby's party stage
 (owner, 18 Nov: the stage shows off skins).
 
-- **The library** (`packages/shared/src/avatars.ts`): 52 avatars, the 18
-  champions and the 8 raid bosses in two styles, Soft 3D and Anime 2D.
-  They were made for the game (Nov 2026) as 256 px WebP files in
-  `apps/client/public/assets/avatars/`, about 12 KB each. All are free.
-  A new player has `ea-avatar-001` until they choose.
-- **Choosing:** the player card's **Avatar** tab shows one style at a
-  time; a tap wears an avatar and it is saved at once (`/api/account/avatar`).
+- **The library** (`packages/shared/src/avatars.ts`): 25 anime avatars,
+  the 18 champions, 6 raid bosses and the Storm Twins together, the
+  owner's pick of the second batch (19 Nov; `docs/avatar-prompts.md`,
+  imported with `scripts/import-avatars.py`). 256 px WebP files in
+  `apps/client/public/assets/avatars/`, under 20 KB each. All are free. A
+  new player has `ea-avatar-001` until they choose. The first library had
+  52 (two styles): the 27 that left (`RETIRED_AVATARS`, 026 to 052) still
+  show, as the same character's avatar now, so a player who wore one keeps
+  their character; the database keeps all 52 ids valid, the server lets a
+  player choose only the 25.
+- **Choosing:** the player card's **Avatar** tab shows all 25; a tap wears an avatar and it is saved at once (`/api/account/avatar`).
 - **Storage:** `arena_profiles.avatar`, from migration
   `20261119100000_player_avatars`. Friends get it from `arena_friends`;
   a seat gets it from the fighter's appearance, which the server reads

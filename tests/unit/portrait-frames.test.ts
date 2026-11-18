@@ -69,7 +69,7 @@ it("shows friends as their avatars, in their saved frames", () => {
           online: true,
           fighter: "auralynx",
           frame: "galaxy-frame",
-          avatar: "ea-avatar-030",
+          avatar: "ea-avatar-004",
         },
       ],
       incoming: [],
@@ -82,7 +82,7 @@ it("shows friends as their avatars, in their saved frames", () => {
   expect(html).toContain('data-portrait-frame="galaxy-frame"');
   expect(html).toContain("Mia");
   // Who they are, not what they last played (docs/hidden-picks.md).
-  expect(html).toContain("/assets/avatars/ea-avatar-030.webp");
+  expect(html).toContain("/assets/avatars/ea-avatar-004.webp");
   // No avatar chosen yet: the default one.
   expect(html).toContain("/assets/avatars/ea-avatar-001.webp");
   expect(html).not.toContain('data-fighter="auralynx"');

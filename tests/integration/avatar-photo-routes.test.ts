@@ -158,8 +158,10 @@ it("points any player's id at their avatar's picture", async () => {
     (
       await fetch(`${url}/api/avatar/of/${id}`, { redirect: "manual" })
     ).headers.get("location");
+  // A retired avatar (the first library's Anime 2D Terradon): the same
+  // character's avatar now.
   expect(await where("aaaaaaaa-0000-4000-8000-000000000001")).toBe(
-    "/assets/avatars/ea-avatar-033.webp",
+    "/assets/avatars/ea-avatar-007.webp",
   );
   expect(await where("aaaaaaaa-0000-4000-8000-000000000002")).toBe(
     `/api/avatar-photo/${ID}`,

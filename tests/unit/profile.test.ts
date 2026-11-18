@@ -256,12 +256,19 @@ describe("the rest of the profile", () => {
     expect(html(phone, { ...profileView(), tab: "titles" })).toContain(
       "pf-title-chip",
     );
-    // The avatar library: one style at a time, 26 each.
+    // The avatar library: all 25, no styles.
     const avatars = html(phone, { ...profileView(), tab: "avatar" });
-    expect(avatars.match(/data-profile-avatar="/g)).toHaveLength(26);
-    expect(
-      html(phone, { ...profileView(), tab: "avatar", avatarStyle: "anime-2d" }),
-    ).toContain('data-profile-avatar="ea-avatar-052"');
+    expect(avatars.match(/data-profile-avatar="/g)).toHaveLength(25);
+    expect(avatars).toContain('data-profile-avatar="ea-avatar-025"');
+    expect(avatars).not.toContain("data-profile-avatar-style");
+    // A retired avatar worn: its replacement is lit as worn.
+    const retired = html(
+      { ...phone, avatar: "ea-avatar-038" },
+      { ...profileView(), tab: "avatar" },
+    );
+    expect(retired).toMatch(
+      /class="pf-avatar is-on" aria-pressed="true" aria-label="Halcyra"[^>]*data-profile-avatar="ea-avatar-012"/,
+    );
   });
   it("asks a guest to save their account, and nobody else", () => {
     expect(html(data({ guest: true, role: "Guest" }))).toContain(

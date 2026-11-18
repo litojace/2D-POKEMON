@@ -655,9 +655,6 @@
   width: 100%;
   height: 100%;
 }
-.pf-avatar-styles {
-  margin-bottom: var(--sp-2);
-}
 .pf-avatars {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));

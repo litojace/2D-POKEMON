@@ -30,7 +30,9 @@ import {
 import { JOURNEY_ITEM_BY_ID } from "../../../packages/shared/src/journey.js";
 import {
   avatarSchema,
+  avatarUrl,
   isAvatar,
+  knownAvatar,
   photoIdOf,
   DEFAULT_AVATAR,
   PHOTO_MAX_BYTES,
@@ -663,9 +665,7 @@ export function installAccountRoutes(
       const photo = photoIdOf(avatar);
       res.redirect(
         302,
-        photo
-          ? `/api/avatar-photo/${photo}`
-          : `/assets/avatars/${isAvatar(avatar) ? avatar : DEFAULT_AVATAR}.webp`,
+        photo ? `/api/avatar-photo/${photo}` : avatarUrl(knownAvatar(avatar)),
       );
     } catch (error) {
       next(error);

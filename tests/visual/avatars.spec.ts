@@ -120,26 +120,24 @@ for (const size of SIZES)
       await expect(panel).toBeVisible();
       if (size.phone)
         await panel.locator('[data-ui-profile-tab="avatar"]').click();
-      // One style at a time: 26 avatars.
+      // The library: 25 avatars, one set.
       const tiles = panel.locator("[data-profile-avatar]");
-      await expect(tiles).toHaveCount(26);
+      await expect(tiles).toHaveCount(25);
       await expect(
         panel.locator('[data-profile-avatar="ea-avatar-001"]'),
       ).toHaveAttribute("aria-pressed", "true");
-      await panel.locator('[data-profile-avatar-style="anime-2d"]').click();
-      await expect(tiles).toHaveCount(26);
-      await panel.locator('[data-profile-avatar="ea-avatar-040"]').click();
+      await panel.locator('[data-profile-avatar="ea-avatar-014"]').click();
       await expect(panel.locator(".pf-avatar-status")).toContainText(
         "Avatar on",
       );
       expect(await page.evaluate(() => (window as any).__avatarSaves)).toEqual([
-        "ea-avatar-040",
+        "ea-avatar-014",
       ]);
       // Worn at once: the header and the card.
-      await expect(header).toHaveAttribute("src", /ea-avatar-040\.webp$/);
+      await expect(header).toHaveAttribute("src", /ea-avatar-014\.webp$/);
       await expect(
         panel.locator(".pf-card img.portrait-avatar"),
-      ).toHaveAttribute("src", /ea-avatar-040\.webp$/);
+      ).toHaveAttribute("src", /ea-avatar-014\.webp$/);
       // Every picture loads (no broken avatar).
       expect(
         await panel.locator("img.portrait-avatar").evaluateAll((imgs) =>

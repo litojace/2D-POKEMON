@@ -25,7 +25,7 @@ NAME = re.compile(r"^(ea-avatar-0(?:0[1-9]|[1-4][0-9]|5[0-2]))\.(png|jpe?g|webp)
 
 
 def webp(img: Image.Image) -> bytes:
-    for quality in (88, 82, 76, 70, 62, 54):
+    for quality in (88, 82, 76, 70, 62, 54, 46, 40):
         buf = io.BytesIO()
         img.save(buf, "WEBP", quality=quality, method=6)
         if buf.tell() <= MAX_BYTES:

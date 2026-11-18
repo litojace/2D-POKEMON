@@ -37,10 +37,8 @@ import type {
 } from "../../../../packages/shared/src/raid";
 import {
   AVATARS,
-  AVATAR_STYLES,
-  DEFAULT_AVATAR,
+  knownAvatar,
   photoIdOf,
-  type AvatarStyle,
 } from "../../../../packages/shared/src/avatars";
 import { avatarImage, identityPortrait } from "../portraits";
 import { fighterPortrait } from "../fighter-art";
@@ -117,8 +115,6 @@ export interface ProfileView {
   deleteMessage: string;
   /** The tab open on a phone. */
   tab: ProfileTab;
-  /** The avatar library's style shown. */
-  avatarStyle: AvatarStyle;
   /** The avatar being saved, while the server answers. */
   avatarBusy: string | null;
   /** The last avatar answer. */
@@ -144,7 +140,6 @@ export const profileView = (): ProfileView => ({
   deleteBusy: false,
   deleteMessage: "",
   tab: "overview",
-  avatarStyle: "soft-3d",
   avatarBusy: null,
   avatarStatus: "",
 });
@@ -218,23 +213,18 @@ export function rankLine(p: Progress | null) {
 /* ------------------------------------------------------------- pieces */
 
 /**
- * The avatar library: every avatar of one style (Soft 3D or Anime 2D), a
- * tap wears it, saved at once (as titles are).
+ * The avatar library: all 25 avatars, a tap wears it, saved at once (as
+ * titles are).
  */
 function avatarPicker(d: ProfileData, view: ProfileView) {
-  const current = d.avatar ?? DEFAULT_AVATAR;
-  const styles = `<div class="ui-seg pf-avatar-styles" role="group" aria-label="Avatar style">${AVATAR_STYLES.map(
-    (s) =>
-      `<button type="button" aria-pressed="${view.avatarStyle === s.id}" data-profile-avatar-style="${s.id}">${esc(s.name)}</button>`,
-  ).join("")}</div>`;
-  const tiles = AVATARS.filter((a) => a.style === view.avatarStyle)
-    .map((a) => {
-      const on = a.id === current;
-      const busy = view.avatarBusy === a.id;
-      return `<button type="button" class="pf-avatar${on ? " is-on" : ""}" aria-pressed="${on}" aria-label="${esc(a.name)}" title="${esc(a.name)}" data-profile-avatar="${a.id}"${view.avatarBusy !== null ? " disabled" : ""}${busy ? ' aria-busy="true"' : ""}>${avatarImage(a.id)}</button>`;
-    })
-    .join("");
-  return `${photoRow(d, view)}${styles}<div class="pf-avatars" role="group" aria-labelledby="pf-avatar-h">${tiles}</div><p class="ui-note pf-avatar-status" role="status">${esc(view.avatarStatus)}</p>`;
+  // A retired avatar shows as its replacement, lit as worn.
+  const current = knownAvatar(d.avatar);
+  const tiles = AVATARS.map((a) => {
+    const on = a.id === current;
+    const busy = view.avatarBusy === a.id;
+    return `<button type="button" class="pf-avatar${on ? " is-on" : ""}" aria-pressed="${on}" aria-label="${esc(a.name)}" title="${esc(a.name)}" data-profile-avatar="${a.id}"${view.avatarBusy !== null ? " disabled" : ""}${busy ? ' aria-busy="true"' : ""}>${avatarImage(a.id)}</button>`;
+  }).join("");
+  return `${photoRow(d, view)}<div class="pf-avatars" role="group" aria-labelledby="pf-avatar-h">${tiles}</div><p class="ui-note pf-avatar-status" role="status">${esc(view.avatarStatus)}</p>`;
 }
 
 /**

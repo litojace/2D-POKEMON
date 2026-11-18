@@ -247,9 +247,6 @@ export function openProfile(hooks: ProfileHooks): ProfileScreen {
         .querySelector<HTMLElement>("[data-profile-main]")
         ?.scrollTo({ top: 0 });
       focusOn(`[data-ui-profile-tab="${view.tab}"]`);
-    } else if (d.profileAvatarStyle) {
-      view.avatarStyle = d.profileAvatarStyle as ProfileView["avatarStyle"];
-      render();
     } else if (d.profileAvatar) void wearAvatar(d.profileAvatar);
     else if (d.profilePhoto !== undefined)
       root()

@@ -818,6 +818,25 @@ for (const size of SIZES.filter((s) => s.phone))
           await expect(
             panel.locator(`.pf-card-avatar > [data-portrait-frame="${frame}"]`),
           ).toHaveCount(1);
+        // Measured once the card has settled: its fonts and rank loaded
+        // (the name block's height sets the avatar's room).
+        await page.evaluate(() => document.fonts.ready);
+        await expect(panel.locator(".pf-card .pf-rank-tag")).toBeVisible();
+        await expect
+          .poll(
+            async () => {
+              const a = await panel
+                .locator(".pf-card-avatar > *")
+                .boundingBox();
+              await page.waitForTimeout(150);
+              const b = await panel
+                .locator(".pf-card-avatar > *")
+                .boundingBox();
+              return a && b && a.width === b.width && a.y === b.y;
+            },
+            { timeout: 10_000 },
+          )
+          .toBe(true);
         const room = await panel.evaluate((p) => {
           const card = p.querySelector(".pf-card")!.getBoundingClientRect();
           const f = p
