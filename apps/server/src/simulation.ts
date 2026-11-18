@@ -991,7 +991,13 @@ export class Arena {
     // Facet Guard, which primes the one who absorbed the hit).
     if (combo && !combo.self && !combo.anyDebuff && ability?.id === combo.setup)
       this.status(target, "mark", combo.window, source!.id);
-    if (counter && source && source !== target) {
+    // Facet Guard primes Shatter Paw only on what it refracts (not strikes).
+    if (
+      counter &&
+      source &&
+      source !== target &&
+      !(ability && UNREFRACTED.includes(ability.kind))
+    ) {
       const guard = COMBOS[target.character];
       if (guard.onAbsorb) this.status(target, "mark", guard.window, target.id);
     }

@@ -844,13 +844,13 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A crystal-fisted lynx monk. Durable, patient and brutal against careless attacks.",
     color: 0x7f9cff,
-    health: 167,
+    health: 178,
     speed: 235,
     basic: basic(
       "prism-jab",
       "Prism Jab",
       "melee",
-      13,
+      12,
       345,
       "A close-range energy punch.",
       { range: 130, arc: 0.35, knockback: 12 },
@@ -1119,7 +1119,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A hooded lantern wisp. Hangs its haunted lantern to hold ground, and strikes from the shadows at anything its ghostfire lights up.",
     color: 0x9c6bff,
-    health: 152,
+    health: 154,
     speed: 260,
     basic: basic(
       "lantern-wisp",
@@ -1164,7 +1164,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
           knockback: 0,
           tickDelay: 0.4,
           tickInterval: 1.3,
-          turret: { damage: 5, speed: 640, radius: 10, range: 330 },
+          turret: { damage: 4, speed: 640, radius: 10, range: 330 },
         },
       ),
       ability(
@@ -1294,7 +1294,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "chestnut-mortar",
         "Chestnut Mortar",
         "zone",
-        24,
+        22,
         8,
         "Lob a burning chestnut over walls to the aim point. It lands 0.6 seconds later and burns.",
         {
@@ -1940,7 +1940,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "seedling",
         28,
         5,
-        "Plant a seed at the aim. It grows a stage every 1.5 seconds (sprout, bud, bloom); the first enemy to step on it sets it off for 10, 18 or 28 damage and a 0.5, 0.8 or 1.3 second root. Up to 3 at once; jump over them.",
+        "Plant a seed at the aim. It grows a stage every 1.5 seconds (sprout, bud, bloom); the first enemy to step on it sets it off for 10, 18 or 28 damage and a 0.4, 0.6 or 1 second root. Up to 3 at once; jump over them.",
         {
           range: 520,
           radius: 70,
@@ -1949,7 +1949,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
           ground: true,
           knockback: 0,
           status: "root",
-          statusDuration: 1.3,
+          statusDuration: 1,
           bonusVsStatus: 1.4,
           seed: { grow: 1.5, stages: [0.36, 0.64, 1], trigger: 40 },
         },
@@ -2113,7 +2113,7 @@ export const COMBOS: Record<CharacterId, Combo> = {
     damage: 1.4,
     status: "stun",
     statusDuration: 0.8,
-    text: "Absorb a hit with Facet Guard to prime Shatter Paw: 40% more damage and a longer stun.",
+    text: "Refract a shot with Facet Guard to prime Shatter Paw: 40% more damage and a longer stun.",
   },
   duskveil: {
     name: "Lit",
@@ -3605,8 +3605,8 @@ export const RITES: Rite[] = [
     "minor",
     "prism-jab",
     "Hard Jab",
-    "Prism Jab deals 15 damage instead of 13.",
-    { set: { damage: 15 } },
+    "Prism Jab deals 14 damage instead of 12.",
+    { set: { damage: 14 } },
   ),
   rite(
     "auralynx",
