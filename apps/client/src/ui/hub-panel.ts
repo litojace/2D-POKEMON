@@ -1,7 +1,15 @@
 import { scanRows } from "./scroll-rows";
 import { lowGraphics } from "../graphics-quality";
 import { confirmModal, type ConfirmOptions } from "./components";
-import { enter, fadeIn, glide, leave, stagger } from "./motion";
+import {
+  enter,
+  fadeIn,
+  glide,
+  leave,
+  markTabs,
+  playTabSwitch,
+  stagger,
+} from "./motion";
 
 /**
  * The hub's screen shell (UI remodel rule 1): a screen opens *inside* the
@@ -138,7 +146,22 @@ export function openHubPanel(html: string, o: HubPanelOptions = {}): HubPanel {
     if (o.escape) o.escape();
     else close();
   };
+  // A tab switch, in every screen at once: note the tab rows before the
+  // screen's own click handler (on its root) draws the new tab, then play
+  // the switch once it has (ui/motion.ts). Arrow keys on a tab row click
+  // the tab too.
+  let tabMarks: ReturnType<typeof markTabs> = [];
+  const onTabPress = (event: MouseEvent) => {
+    const tab = (event.target as Element).closest('.ui-tabs > [role="tab"]');
+    tabMarks =
+      tab && tab.getAttribute("aria-selected") !== "true" ? markTabs(root) : [];
+  };
   const onClick = (event: MouseEvent) => {
+    if (tabMarks.length) {
+      const marks = tabMarks;
+      tabMarks = [];
+      if (!closed) playTabSwitch(root, marks);
+    }
     if ((event.target as Element).closest("[data-ui-close]")) close();
   };
   // A tap on the Lobby's background, outside the screen, closes it. Not on
@@ -223,6 +246,7 @@ export function openHubPanel(html: string, o: HubPanelOptions = {}): HubPanel {
   if (gone && host.parentNode)
     gone.observe(host.parentNode, { childList: true });
   railButton?.setAttribute("aria-current", "page");
+  wrap.addEventListener("click", onTabPress, true);
   wrap.addEventListener("click", onClick);
   if (!o.host && !o.escape) {
     host.addEventListener("pointerdown", press);

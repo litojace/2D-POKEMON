@@ -95,6 +95,40 @@ export function fighterAvatar(
 ) {
   return scopeIds(fighterArt(id, AVATAR_VIEWBOX, look), scope);
 }
+const pictures = new Map<string, string>();
+/**
+ * A portrait as one picture (`<img>`) instead of inline SVG, for screens
+ * that show many: the Spire's floors list 150 portraits, about 42,000 SVG
+ * elements inline, and opening that tab took seconds on a phone (every
+ * element styled and laid out). Like a game's icon sprite, each portrait
+ * (`key`) is drawn once from `svg()` and every copy shows that drawing.
+ * Where pictures can't be made from memory (tests outside a browser), the
+ * inline SVG.
+ */
+export function svgPicture(
+  key: string,
+  svg: () => string,
+  id: CharacterId,
+  inline: () => string = svg,
+) {
+  if (typeof Blob === "undefined" || typeof URL.createObjectURL !== "function")
+    return inline();
+  let url = pictures.get(key);
+  if (!url) {
+    url = URL.createObjectURL(new Blob([svg()], { type: "image/svg+xml" }));
+    pictures.set(key, url);
+  }
+  return `<img class="fighter-portrait" src="${url}" alt="${CHARACTERS[id].name}" data-fighter="${id}" draggable="false" decoding="async">`;
+}
+/** fighterAvatar's portrait as a picture (svgPicture). */
+export function fighterPortrait(id: CharacterId, look?: SkinLook | null) {
+  return svgPicture(
+    look ? `${id} ${JSON.stringify(look)}` : id,
+    () => fighterArt(id, AVATAR_VIEWBOX, look),
+    id,
+    () => fighterAvatar(id, `portrait-${id}`, look),
+  );
+}
 export function fighterTextureData(id: CharacterId) {
   return "data:image/svg+xml;base64," + btoa(fighterArt(id));
 }

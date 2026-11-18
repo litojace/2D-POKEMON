@@ -2566,11 +2566,12 @@ export interface Fighter extends Vec {
   angle: number;
   ack: number;
   /**
-   * Ticks the server ran this fighter's last input again because the next
-   * had not arrived (Arena.drainInputs); that many late inputs will be
-   * folded into one tick. Absent when none.
+   * Held ticks: the server's ticks that found none of this fighter's inputs
+   * (Wi-Fi held them) and so did not move it (Arena.drainInputs). That many
+   * of the unanswered inputs will each take a step at those ticks' times
+   * once they arrive. Absent when none.
    */
-  owed?: number;
+  held?: number;
   cooldowns: number[];
   /** Ultimate meter, 0 to RULES.ultMax. Carries over between rounds. */
   ult?: number;

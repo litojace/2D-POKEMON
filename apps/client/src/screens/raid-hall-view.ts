@@ -28,7 +28,7 @@ import {
 import { raidGoals, type RaidGoal } from "../raid-presentation";
 import { raidPortraitImage, raidSplashImage } from "../raid-splash-art";
 import snoozakuMobile from "../art/raid-splash/somnara-mobile.webp";
-import { fighterAvatar } from "../fighter-art";
+import { fighterAvatar, fighterPortrait } from "../fighter-art";
 import { friendStatus } from "./friends-view";
 import { itemPicture } from "../shop-ui";
 import { menuIcon } from "../menu-icons";
@@ -230,8 +230,8 @@ export const shownAttack = (view: RaidView) =>
 const stars = (n: number) =>
   `<span class="rh-stars" role="img" aria-label="Difficulty ${n} of 3">${"★".repeat(n)}<i aria-hidden="true">${"★".repeat(3 - n)}</i></span>`;
 const lockIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>`;
-const fighterChip = (c: CharacterId, scope: string, size = 26) =>
-  avatar(fighterAvatar(c, scope), { element: CHARACTERS[c].element, size });
+const fighterChip = (c: CharacterId, size = 26) =>
+  avatar(fighterPortrait(c), { element: CHARACTERS[c].element, size });
 const presenceOf = (f: Friend): Presence =>
   !f.online
     ? "away"
@@ -263,7 +263,7 @@ function bossCard(id: RaidBossId, d: RaidData) {
     id === "somnara"
       ? `<img class="raid-splash-image" src="${snoozakuMobile}" alt="" width="1536" height="1024" decoding="async" loading="lazy">`
       : portrait;
-  return `<button type="button" class="rh-card${locked ? " is-locked" : ""}${b.playable ? "" : " is-soon"}" style="--boss:${b.color}" data-raid-card="${id}" aria-label="${esc(label)}"><span class="rh-card-art">${art}</span><span class="rh-card-top">${corner}${stars(b.stars)}</span><span class="rh-card-text"><b class="rh-card-name">${esc(b.name)}</b><small class="ui-note rh-card-line">${esc(b.element)} · ${esc(b.signature)}</small><span class="rh-card-foot"><span class="rh-tricks" title="Fighters with a trick here">${tricks.map((t) => fighterChip(t.character, `rh-${id}-${t.character}`)).join("")}</span><span class="ui-note">${p ? `${earned} / ${total} rewards` : `${total} rewards`}</span></span></span></button>`;
+  return `<button type="button" class="rh-card${locked ? " is-locked" : ""}${b.playable ? "" : " is-soon"}" style="--boss:${b.color}" data-raid-card="${id}" aria-label="${esc(label)}"><span class="rh-card-art">${art}</span><span class="rh-card-top">${corner}${stars(b.stars)}</span><span class="rh-card-text"><b class="rh-card-name">${esc(b.name)}</b><small class="ui-note rh-card-line">${esc(b.element)} · ${esc(b.signature)}</small><span class="rh-card-foot"><span class="rh-tricks" title="Fighters with a trick here">${tricks.map((t) => fighterChip(t.character)).join("")}</span><span class="ui-note">${p ? `${earned} / ${total} rewards` : `${total} rewards`}</span></span></span></button>`;
 }
 
 /* -------------------------------------------------------------- hall */
@@ -357,7 +357,7 @@ function seat(s: RaidSeat, i: number) {
     : s.leader
       ? "Leader"
       : "In your party";
-  return `<div class="rh-seat${s.me ? " is-me" : ""}">${fighterChip(s.character, `rh-seat-${i}`, 52)}<b>${esc(s.name)}</b><small class="ui-note">${esc(sub)}</small></div>`;
+  return `<div class="rh-seat${s.me ? " is-me" : ""}">${fighterChip(s.character, 52)}<b>${esc(s.name)}</b><small class="ui-note">${esc(sub)}</small></div>`;
 }
 /**
  * A reward: its picture, name, rule and progress. A tap opens it in place
@@ -423,7 +423,7 @@ function partyTab(view: RaidView, d: RaidData) {
 <div class="rh-invites" data-raid-invites><span class="ui-kicker">Invite</span><div class="rh-friends">${friends}</div></div>
 <p class="ui-note rh-status" role="status">${esc(view.status)}</p>
 <div class="rh-section"><h3 class="ui-h">Good picks here</h3><small class="ui-note">Fighters with a trick against ${esc(b.name)}</small></div>
-<div class="rh-picks">${tricks.map((t) => `<div class="rh-pick">${fighterChip(t.character, `rh-pick-${t.character}`, 40)}<span><b>${esc(CHARACTERS[t.character].name)}</b><small class="ui-note">${esc(t.skill)}: ${esc(t.text)}</small></span></div>`).join("")}</div>
+<div class="rh-picks">${tricks.map((t) => `<div class="rh-pick">${fighterChip(t.character, 40)}<span><b>${esc(CHARACTERS[t.character].name)}</b><small class="ui-note">${esc(t.skill)}: ${esc(t.text)}</small></span></div>`).join("")}</div>
 <div class="rh-section rh-strip-head"><h3 class="ui-h">Its attacks</h3><small class="ui-note">Tap one to see how to dodge it</small></div>
 <div class="rh-strip" role="group" aria-label="${esc(b.name)} attacks">${raidAttacksOf(
     view.boss,
@@ -486,7 +486,7 @@ function guideTab(view: RaidView) {
   )
     .map(
       (t) =>
-        `<div class="rh-pick">${fighterChip(t.character, `rh-guide-${t.character}`, 40)}<span><b>${esc(CHARACTERS[t.character].name)} · ${esc(t.skill)}</b><small class="ui-note">${esc(t.text)}</small></span></div>`,
+        `<div class="rh-pick">${fighterChip(t.character, 40)}<span><b>${esc(CHARACTERS[t.character].name)} · ${esc(t.skill)}</b><small class="ui-note">${esc(t.text)}</small></span></div>`,
     )
     .join(
       "",
