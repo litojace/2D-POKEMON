@@ -840,12 +840,12 @@ function skinsBody(view: FitView, d: FitData) {
     skins.length
       ? grid(skins.map((s) => shopTile(s.id, view, d)).join(""))
       : noMatch()
-  }${skinSets(view, d)}`;
+  }`;
 }
 /**
- * Full-roster skin sets, under the fighter's skins: one row per collection
- * that dresses every fighter alike, shown with this fighter's skin from it.
- * Complete sets drop to the end.
+ * Full-roster skin sets, in Collections with the other sets for every
+ * fighter: one row per collection that dresses every fighter alike, shown
+ * with the fighter you're trying on in its skin. Complete sets drop to the end.
  */
 function skinSets(view: FitView, d: FitData) {
   const e = d.economy!;
@@ -857,7 +857,7 @@ function skinSets(view: FitView, d: FitData) {
     )
     .map((b) => bundleRow(b.id, view, d))
     .join("");
-  return `${section("Full-roster sets", '<small class="ui-note">Every fighter in one design · 20% off the skins you don\'t own</small>')}<div class="fit-skin-sets">${rows}</div>`;
+  return `${section("Skin sets", '<small class="ui-note">Every fighter in one design · 20% off the skins you don\'t own</small>')}<div class="fit-skin-sets">${rows}</div>`;
 }
 /** A skin collection's reward frame: how close you are, with its picture. */
 function collectionReward(
@@ -990,7 +990,7 @@ function collectionsBody(view: FitView, d: FitData) {
   return `<p class="ui-note">Colors and effects for every fighter · trying on ${esc(CHARACTERS[view.champion].name)}.</p>${picker}${bundleRow(set.id, view, d)}${bonus}${grid(
     set.items.map((id) => shopTile(id, view, d)).join(""),
     5,
-  )}`;
+  )}${skinSets(view, d)}`;
 }
 
 /* ----------------------------------------------------- wardrobe body */

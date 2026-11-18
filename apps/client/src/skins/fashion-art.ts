@@ -157,7 +157,9 @@ const artFor = (
           : [parseInt(festival.slice(1), 16), 0xffe6a0],
       },
       skill: deep ? 0x72dfd3 : parseInt(festival.slice(1), 16),
-      signature: `${champion}-${collection}`,
+      // The small glint every Epic has; moving signature motifs are kept
+      // for the Legendary Nova Vanguard suits.
+      detail: "glint",
       weapon: deep
         ? { handle: "#284454", head: "#79bfc5" }
         : { handle: blend(festival, "#221833", 0.55), head: festival },

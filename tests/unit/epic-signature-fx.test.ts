@@ -9,7 +9,6 @@ import { SKIN_ART } from "../../apps/client/src/skins/skin-art";
 import { EPIC_SIGNATURES } from "../../apps/client/src/skins/epic-signature-fx";
 
 const ids = Object.keys(CHARACTERS) as CharacterId[];
-const NEW_EPICS = ["abyssal-expedition", "dream-carnival", "nova-vanguard"];
 const angles = [Math.PI / 2, 0, Math.PI, -Math.PI / 2];
 
 function frame(
@@ -70,22 +69,40 @@ const finite = (commands: unknown[][]) =>
       ),
   );
 
-describe("new Epic signature effects", () => {
-  it("gives each of the 54 new Epics its own signature, and no other skin one", () => {
-    const epics = CHAMPION_SKINS.filter((s) =>
-      NEW_EPICS.includes((s as any).collection),
+describe("Legendary signature effects", () => {
+  it("gives each Legendary Nova suit its own signature, and Epics only the small glint", () => {
+    const novas = CHAMPION_SKINS.filter(
+      (s) => s.collection === "nova-vanguard",
     );
-    expect(epics).toHaveLength(ids.length * NEW_EPICS.length);
-    for (const s of epics) {
+    expect(novas).toHaveLength(ids.length);
+    for (const s of novas) {
+      expect(s.rarity, s.id).toBe("legendary");
       expect(SKIN_ART[s.id].signature, s.id).toBe(s.id);
       expect(EPIC_SIGNATURES[s.id], s.id).toBeDefined();
     }
+    // No other skin carries a moving motif: on a busy court they read as
+    // clutter, so they stay a Legendary mark.
     for (const [id, art] of Object.entries(SKIN_ART))
-      if (art.signature) expect(epics.map((s) => s.id)).toContain(id);
+      if (art.signature) expect(id.endsWith("-nova-vanguard"), id).toBe(true);
+    for (const s of CHAMPION_SKINS.filter((s) =>
+      ["abyssal-expedition", "dream-carnival"].includes(s.collection as string),
+    ))
+      expect(SKIN_ART[s.id].detail, s.id).toBe("glint");
     const sigs = Object.values(EPIC_SIGNATURES);
-    expect(sigs).toHaveLength(54);
-    expect(new Set(sigs.map((s) => s.name)).size).toBe(54);
-    expect(new Set(sigs.map((s) => s.draw)).size).toBe(54);
+    expect(sigs).toHaveLength(18);
+    expect(new Set(sigs.map((s) => s.name)).size).toBe(18);
+    expect(new Set(sigs.map((s) => s.draw)).size).toBe(18);
+  });
+
+  it("gives the new Epics no landing or victory of their own", () => {
+    for (const s of CHAMPION_SKINS.filter((s) =>
+      ["abyssal-expedition", "dream-carnival"].includes(s.collection as string),
+    ))
+      for (const moment of ["greeting", "celebrating"] as const) {
+        const f = frame(3000, false, Math.PI / 2, { [moment]: true });
+        drawSkinFx(f.ctx, { ...SKIN_ART[s.id], trail: undefined }, 1);
+        expect(f.emit, `${s.id} ${moment}`).not.toHaveBeenCalled();
+      }
   });
 
   it("stays within the drawing budget in every facing, compact when ambient is off", () => {
