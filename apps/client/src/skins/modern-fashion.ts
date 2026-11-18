@@ -8,6 +8,7 @@ import { DESIGNS } from "./modern-designs";
 import "./modern-viet";
 import "./modern-viet-legend";
 import "./modern-hero";
+import "./modern-campus";
 
 /**
  * Modern collections (prototype): Neon Campus, Hero Squad, Starlight Idol,

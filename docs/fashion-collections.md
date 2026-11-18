@@ -11,6 +11,7 @@ Six collections add 108 champion skins: three Rare and three Epic for each of th
 | Astral Court | Rare / 1,500 | A long gold-trimmed velvet robe, a starry scalloped shoulder mantle with gold epaulettes, a floating star circlet; a short star trail, no idle effect |
 | Abyssal Expedition | Epic / 3,500 | Independent pressure-suit construction, glass helmets, gauges, tanks and individual dive equipment; a small glass glint and bubble dash trail |
 | Nova Vanguard | Legendary / 5,500 | Original hero suits, individual emblems and joint-mounted equipment; a signature effect, its own hero landing and victory, and a short movement trail |
+| Neon Campus | Epic / 3,500 | A school club per champion with its kit; something on it lights up, a confetti dash trail |
 | Hero Squad | Epic / 3,500 | An original hero per champion with its own powers on show; a glowing chest emblem, lit gear, a star dash trail |
 | Hồn Việt | Legendary / 5,500 | A figure of Vietnamese heritage per champion in full costume with props of its story; glowing embroidery and lanterns, a drum landing, a lantern victory, a motif per champion and a petal trail |
 
@@ -264,6 +265,37 @@ rest). Every name and mark is original; nothing borrows a published hero's.
 A short star trail on a dash. Migration `20261118160000_hero_squad.sql` adds
 the skins and their set.
 
+## Epic: Neon Campus
+
+One school at 3,500 coins (`NEON_CAMPUS_SKINS` in `shop.ts`,
+`campus-art.ts`), and a club of its own for every champion, its kit carrying
+something that lights up (`modern-designs.ts` for five of them,
+`modern-campus.ts` for the rest).
+
+| Champion | Skin | Club, and what glows |
+| --- | --- | --- |
+| Voltkit | Game Club Ace | A hoodie with circuit traces lit in a run, a cat-ear LED headset |
+| Cindrake | Lab Prodigy | A lab coat, safety goggles, a bubbling flask; its flame crest kept |
+| Tidefin | Swim Team Star | A swim cap with goggles whose lenses glow, a track jacket and towel |
+| Auralynx | Council President | A blazer, an armband and a glowing council badge, a ribbon |
+| Lumoth | Photo Club Snap | A cardigan, a camera whose flash blinks |
+| Mystowl | Library Prefect | Round glasses that catch the light, an argyle vest, a prefect pin |
+| Terradon | Team Captain | A jersey with a lit number, a sweatband with a glowing stripe, a whistle |
+| Duskveil | Drama Club Lead | A velvet cape, a lit brooch of the two theatre masks, a beret |
+| Coilemur | Robotics Whiz | Overalls with a tool belt, a robot badge with blinking eyes, an antenna light |
+| Pyranda | Bake Club Chef | An apron and toque, a cupcake with a lit candle |
+| Glacelle | Choir Soloist | A choir robe and stole with music notes that twinkle |
+| Halcyra | Archery Ace | A chest guard, a quiver whose arrow tips glow, a sweatband |
+| Sunbara | Art Club Painter | A beret in place of the yuzu, a smock with glow-in-the-dark paint |
+| Astrabun | Stargazer | A navy pinafore with constellation pins lit in turn, a telescope |
+| Wombolder | Garden Club Keeper | Overalls, a straw hat, a seedling whose first leaves glow |
+| Shadopus | Mystery Club Sleuth | A deerstalker, a magnifying glass whose lens glints |
+| Pangrove | Band Drummer | A shako with a plume, a drum whose rim lights run round |
+| Mossloth | Nap Club Captain | Pyjamas, a nightcap with a glowing star pom, a sleep mask |
+
+A short confetti trail on a dash. Migration `20261118180000_neon_campus.sql`
+adds the skins and their set.
+
 ## Glowing costume pieces
 
 A costume marks pieces that give off light with
@@ -280,9 +312,9 @@ the timings.
 
 ## Full-roster skin sets
 
-Nine sets, one per collection that dresses all 18 champions in one theme at
+Ten sets, one per collection that dresses all 18 champions in one theme at
 one rarity: Wayfarer, Moonlit Tea, Astral Court, Cyber Mecha, Abyssal
-Expedition, Nova Vanguard, Sky Pirates, Hồn Việt and Hero Squad (`SKIN_BUNDLES` in
+Expedition, Nova Vanguard, Sky Pirates, Hồn Việt, Hero Squad and Neon Campus (`SKIN_BUNDLES` in
 `shop.ts`).
 Like the Look sets, a set costs 80% of the skins you don't own yet (the
 database's `arena_item_price`); buying one grants each skin, and a complete
