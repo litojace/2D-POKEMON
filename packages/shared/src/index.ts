@@ -2297,14 +2297,14 @@ export const FFA_TUNING: Partial<Record<CharacterId, number>> = {
  * gap between melee and ranged champions is wider than with four.
  */
 export const FFA_THREE_TUNING: Partial<Record<CharacterId, number>> = {
-  voltkit: 0.842,
+  voltkit: 0.86,
   cindrake: 1.154,
   tidefin: 0.838,
   auralynx: 1.2,
   lumoth: 0.854,
   mystowl: 0.836,
   terradon: 1.061,
-  duskveil: 0.806,
+  duskveil: 0.85,
   coilemur: 1.252,
   pyranda: 0.858,
   glacelle: 0.879,
@@ -2313,7 +2313,7 @@ export const FFA_THREE_TUNING: Partial<Record<CharacterId, number>> = {
   astrabun: 1.19,
   wombolder: 1.18,
   shadopus: 1.168,
-  pangrove: 1.111,
+  pangrove: 1.07,
   mossloth: 0.972,
 };
 /**
