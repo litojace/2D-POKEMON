@@ -1238,19 +1238,29 @@
     /* 12px under the player card (42px from max(10px, safe area)), clear
        of a frame's star row hanging below it. */
     --lobby-top: calc(var(--hub-card-h) + 22px + var(--hub-drop, 0px));
-    --lobby-rail: 36px;
+    /* Wide enough for a small label under each icon ("Missions"): the
+       stage beside it had room to spare (owner, 18 Nov). */
+    --lobby-rail: 56px;
     --lobby-rail-btn: 44px;
     --lobby-cards: 196px;
   }
   .lobby-rail {
     --rail-pad: 3px;
   }
+  .lobby-rail button {
+    gap: 1px;
+  }
   .lobby-rail svg {
     width: 18px;
     height: 18px;
   }
   .lobby-rail span {
-    display: none;
+    max-width: 100%;
+    overflow: hidden;
+    font-size: calc(9px * var(--text-scale, 1));
+    letter-spacing: 0;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .lobby-badge {
     top: -5px;
@@ -1348,6 +1358,10 @@
 @media (max-height: 340px) {
   .lobby-layer {
     --lobby-rail: 76px;
+  }
+  /* Two columns of 36 px: no room for the labels (aria-label names them). */
+  .lobby-rail span {
+    display: none;
   }
   .lobby-rail {
     display: grid;
