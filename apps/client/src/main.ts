@@ -17,6 +17,7 @@ import {
   BUILD,
   NetMeter,
   PERF_MIN_SECONDS,
+  connectionKind,
   deviceKind,
   loadPhases,
   perfMode,
@@ -215,10 +216,8 @@ import {
   rushGoals,
   EX,
   MUTATORS,
-  MUTATOR_IDS,
   MUTATOR_RULES,
   roundsNeeded,
-  type MutatorId,
   RULES,
   STATUS_RULES,
   ULT_SLOT,
@@ -686,7 +685,7 @@ let state: Snapshot | undefined,
   local: Fighter | undefined,
   pending: Input[] = [],
   scene: ArenaScene | undefined;
-/** Your late inputs the server will fold into one tick (Fighter.owed). */
+/** Ticks the server held for your late inputs (Fighter.held). */
 let owedSteps = 0;
 let raidRoomReturn:
   | { code: string; boss: RaidBossId; tab: RaidTab; spire?: SpireTab }
@@ -1404,7 +1403,6 @@ function roomData(watch: boolean): RoomData {
   const players = s.players.filter((p) => isRaider(p));
   const hostId = players[0]?.id;
   const me = players.find((p) => p.id === myId);
-  const on = new Set(s.mutators ?? []);
   return {
     mode,
     watch,
@@ -1433,12 +1431,6 @@ function roomData(watch: boolean): RoomData {
       };
     }),
     host: !watch && hostId === myId,
-    rules: MUTATOR_IDS.map((m) => ({
-      id: m,
-      name: MUTATORS[m].name,
-      text: MUTATORS[m].description,
-      on: on.has(m),
-    })),
     arcade: s.arcade
       ? {
           name: ARCADE_EVENTS[s.arcade.id].name,
@@ -1526,7 +1518,7 @@ function renderRoom(watch: boolean) {
     }
   }
 }
-/** Clicks on the seats column: invite, teams, shuffle, party rules. */
+/** Clicks on the seats column: invite, teams, shuffle. */
 function onRoomClick(event: MouseEvent) {
   const t = (event.target as Element).closest<HTMLElement>("button");
   if (!t || t.closest(".ui-panel-host") || (t as HTMLButtonElement).disabled)
@@ -1536,13 +1528,7 @@ function onRoomClick(event: MouseEvent) {
   if (d.roomInvite !== undefined) void accountsUI.showFriends();
   else if (d.team !== undefined) void request("team", { team: Number(d.team) });
   else if (d.roomShuffle !== undefined) void request("shuffle");
-  else if (d.mutator) {
-    const on = new Set(state?.mutators ?? []);
-    const id = d.mutator as MutatorId;
-    if (on.has(id)) on.delete(id);
-    else on.add(id);
-    void request("mutators", { ids: [...on] });
-  } else if (t.id === "stop-watching") void stopWatching();
+  else if (t.id === "stop-watching") void stopWatching();
 }
 /** Redraw the room's seats and picker in place. */
 function refreshRoom() {
@@ -2088,20 +2074,20 @@ async function stopWatching(notice?: string) {
   if (notice) toast(notice);
 }
 /** The side panel while watching a room's lobby. */
-/** Turbo party rule: skills recharge faster (for the cooldown displays). */
+/** Turbo (an arcade week's rule): skills recharge faster (cooldown displays). */
 function cooldownScale() {
   return state?.mutators?.includes("turbo") ? MUTATOR_RULES.turboCooldown : 1;
 }
-/** "two" / "three": round wins needed under this room's party rules. */
+/** "two" / "three": round wins needed under this room's rules (arcade). */
 function roundWord() {
   const n = roundsNeeded(state?.mutators);
   return ["zero", "one", "two", "three", "four"][n] ?? String(n);
 }
-/** Party rules on the briefing card, if any. */
+/** An arcade week's rules on the briefing card, if any. */
 function partyRulesNote() {
   const on = state?.mutators ?? [];
   return on.length
-    ? `<p class="party-note"><b>Party rules:</b> ${on.map((m) => escape(MUTATORS[m].name)).join(" · ")}</p>`
+    ? `<p class="party-note"><b>Event rules:</b> ${on.map((m) => escape(MUTATORS[m].name)).join(" · ")}</p>`
     : "";
 }
 type BotLevel = "easy" | "normal" | "hard";
@@ -2391,7 +2377,12 @@ function syncPlaza(want: boolean, hub = want) {
   if (plaza) {
     plaza.show();
     if (look !== plazaLook)
-      plaza.look(selected, skin, accountsUI.raidLook?.skin ?? null);
+      plaza.look(
+        selected,
+        skin,
+        accountsUI.raidLook?.skin ?? null,
+        accountsUI.raidLook?.aura ?? null,
+      );
     plazaLook = look;
     return;
   }
@@ -2405,6 +2396,7 @@ function syncPlaza(want: boolean, hub = want) {
     character: selected,
     skin,
     colour: accountsUI.raidLook?.skin ?? null,
+    aura: accountsUI.raidLook?.aura ?? null,
     reduced: reducedMotion,
     low: plazaLow,
     art: (character, worn, flat, colour) => {
@@ -4308,15 +4300,16 @@ socket.on("state", (snapshot: WireSnapshot) => {
     me.hp > 0
       ? { x: local.x, y: local.y }
       : undefined;
-  // Late inputs the server will fold into one tick take no step of their
-  // own (serverSteps, Fighter.owed).
-  owedSteps = me.owed ?? 0;
+  // Every unanswered input is a step; late ones for ticks the server held
+  // step at those ticks' times (serverSteps, Fighter.held).
+  owedSteps = me.held ?? 0;
+  if (state.phase === "playing" && !document.hidden) netMeter.held(owedSteps);
   const steps = serverSteps(pending, owedSteps);
-  timeline.snapshot(steps.length, receivedAt);
+  timeline.snapshot(Math.max(0, pending.length - owedSteps), receivedAt);
   local = structuredClone(me);
   carryCurrent(local, state.time);
-  for (const [i, input] of steps.entries())
-    predict(local, input, state.time + (i + 1) / RULES.tick);
+  for (const { input, tick } of steps)
+    predict(local, input, state.time + tick / RULES.tick);
   if (predicted)
     netMeter.correction(
       Math.hypot(local.x - predicted.x, local.y - predicted.y),
@@ -6291,6 +6284,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       };
       this.actions = { skill: -1, dash: false, jump: false, basic: false };
       socket.emit("input", input);
+      if (!document.hidden) netMeter.input();
       if (combatActive && coach.running) coach.note(input);
       // Show your own cast now (before this step's movement changes the
       // fighter), at the time this input is predicted to run.
@@ -7614,6 +7608,7 @@ function reportBattlePerf() {
     ...(lastPing !== undefined ? { ping: Math.round(lastPing) } : {}),
     ...(leadMs !== undefined ? { lead: leadMs } : {}),
     ...deviceKind(),
+    ...connectionKind(),
     build: BUILD,
     errors,
     ...(softwareRendering() ? { gpu: "software" as const } : {}),

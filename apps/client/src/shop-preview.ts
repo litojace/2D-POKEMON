@@ -14,6 +14,7 @@ import { FighterRig } from "./animation/rig";
 import { loadRigTextures, setRigTextureScale } from "./animation/rig-textures";
 import { SKINS } from "./animation/cosmetics";
 import { drawCollectionAura } from "./skins/collection-fx";
+import { auraScale as auraSizeFor } from "./aura-size";
 import { menuShadow } from "./fighter-art";
 import { lowGraphics } from "./graphics-quality";
 import { previewDensity } from "./render-budget";
@@ -582,10 +583,11 @@ export function mountShopPreview(
       if (selection) {
         const shadow = menuShadow(champion);
         // SVG frame (-20 -40 240 250) at two canvas pixels per art unit;
-        // the ring (about 48 aura units) spans 1.6 times the shadow.
+        // the size is the game's one aura size (aura-size.ts), against this
+        // fighter's shadow.
         auraX = (shadow.cx + 20) * 2;
         auraY = (shadow.cy + 40) * 2;
-        auraScale = (shadow.rx * 2 * 1.6) / 48;
+        auraScale = auraSizeFor(2) * (shadow.rx / 32);
         flat = shadow.ry / shadow.rx;
         lift = 0;
       }

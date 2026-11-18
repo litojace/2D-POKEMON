@@ -1,3 +1,4 @@
+import { resolveObjectURL } from "node:buffer";
 import { expect, it } from "vitest";
 import { RAID_COSMETICS } from "../../packages/shared/src/raid";
 import { LOOK_ITEMS } from "../../packages/shared/src/shop";
@@ -118,7 +119,7 @@ it("uses earned frame stars from the same saved clear counts everywhere and boun
     'data-frame-stars="5"',
   );
 });
-it("shows the saved champion skin, awakening stage and evolved frame on offline friends", () => {
+it("shows the saved champion skin, awakening stage and evolved frame on offline friends", async () => {
   const html = friendsMarkup(friendsView(), {
     recent: null,
     party: { size: 1, ids: [], leader: true },
@@ -140,7 +141,13 @@ it("shows the saved champion skin, awakening stage and evolved frame on offline 
       outgoing: [],
     },
   });
-  expect(html).toContain("tidefin-moontide");
+  // Friends' portraits are shared pictures (svgPicture): read the art the
+  // picture shows.
+  const src = html.match(/<img class="fighter-portrait" src="([^"]+)"/)?.[1];
+  expect(src).toMatch(/^blob:/);
+  const art = await resolveObjectURL(src!)!.text();
+  expect(art).toContain("tidefin-moontide");
   expect(html).toContain('data-frame-stars="4"');
-  expect(html).not.toContain("preview-palette");
+  // The worn champion skin wins over the all-fighter colours.
+  expect(art).not.toContain("preview-palette");
 });

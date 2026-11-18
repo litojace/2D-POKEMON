@@ -103,22 +103,37 @@ const PULL_GAP = 6;
  * stop for `staleTicks` mean a lost connection: the fighter stops walking
  * instead of running on its last input until the socket times out.
  *
- * A tick with nothing queued runs your last input again (the next one is
- * late, not lost: Wi-Fi often holds a phone's packets for a moment), so it
- * took a step your phone will predict for the late input. That step is
- * owed: when the late inputs arrive, that many are folded into one tick
- * (merged, as a burst is), so the server takes one step per input, as the
- * phone predicts. Without this, every hiccup left the fighter a step ahead
- * of the phone and every later catch-up a step behind: "unexplained" jumps
- * in the match reports (docs/network-performance.md, section 12).
+ * A tick with nothing queued does not move your fighter (the next input is
+ * late, not lost: Wi-Fi often holds a phone's packets for a moment). The
+ * tick is held: when the late inputs arrive, each takes its own step, in
+ * order, at the held tick's time, before the tick's own step. So the server
+ * takes one step per input, each with its own direction, exactly as the
+ * phone predicted them (Fighter.held tells it how many ticks wait).
+ * Running the last input again instead (until 18 Nov 2026) walked you on in
+ * the old direction while you had turned, and folding the late inputs
+ * afterwards could not take those steps back: every hold that met a turn
+ * was an "unexplained" jump (docs/network-performance.md, sections 12 and
+ * 16). Held ticks are paid only by late inputs, at most `staleTicks` of
+ * them, so a client cannot move faster than one step a tick.
  */
 export const INPUT_QUEUE = {
   depth: 2,
-  cap: 8,
+  /** Inputs a queue may hold: a held half second of them, and a burst. */
+  cap: 20,
+  /** Inputs past one a tick stepped at most (late ones, or on credit). */
+  catchUp: 3,
   standingTicks: 30,
   staleTicks: 15,
   /** Ticks an unpaid debt waits for the rest of a burst (see drainInputs). */
-  unpaidTicks: 2,
+  unpaidTicks: 10,
+  /** At most this many steps banked (`credit`): half a second, and a burst. */
+  credit: 17,
+  /**
+   * Credit a new queue starts with: a phone's first inputs were made for
+   * ticks the server had already run (a round trip of them), and arrive
+   * bunched, so a standing queue of a few is cut short without losing one.
+   */
+  startCredit: 5,
 };
 export class Arena {
   activityStatus?: "saving" | "saved" | "unavailable";
@@ -132,6 +147,40 @@ export class Arena {
   /** AI opponents in this room, by fighter id (solo vs bot). */
   bots = new Map<string, BotBrain>();
   private bufferedSkills = new Map<string, { slot: number; ex: boolean; until: number }>();
+  /** Fighters whose tick is held this tick (drainInputs: nothing queued). */
+  private heldNow = new Set<string>();
+  /** Late inputs paying held ticks: a step each before this tick's own. */
+  private lateSteps = new Map<string, { input: Input; time: number }[]>();
+  /**
+   * Each player's input queue over the match, for its arena-perf report:
+   * held ticks, late inputs stepped, burst inputs stepped on credit, inputs
+   * folded into another's step (a step lost: the phone jumps), and the
+   * queue's depth summed over ticks. Reset when a match starts.
+   */
+  private inputTally = new Map<
+    string,
+    { ticks: number; depth: number; held: number; late: number; extra: number; folded: number }
+  >();
+  private tally(id: string) {
+    let t = this.inputTally.get(id);
+    if (!t) {
+      t = { ticks: 0, depth: 0, held: 0, late: 0, extra: 0, folded: 0 };
+      this.inputTally.set(id, t);
+    }
+    return t;
+  }
+  /** One player's input queue over this match (arena-perf), if it had one. */
+  inputStats(id: string) {
+    const t = this.inputTally.get(id);
+    if (!t || !t.ticks) return undefined;
+    return {
+      heldTicks: t.held,
+      lateSteps: t.late,
+      extraSteps: t.extra,
+      folded: t.folded,
+      queueAvg: Math.round((t.depth / t.ticks) * 100) / 100,
+    };
+  }
   /** Charges in progress (rush skills), by fighter id, until they touch someone or run out. */
   private rushes = new Map<string, { until: number; ability: Ability }>();
   /** Armed ambush bonuses (cast out of stealth), by fighter id. */
@@ -169,8 +218,17 @@ export class Arena {
       standing: number;
       minDepth: number;
       idle: number;
-      /** Ticks that ran the last input again with nothing queued. */
+      /** Held ticks: nothing was queued, so the fighter did not move. */
       owed: number;
+      /** Each held tick's time, oldest first (its late input steps then). */
+      heldAt: number[];
+      /**
+       * Steps this fighter may still take: one more each tick, one less
+       * each step, at most `credit`. A burst of inputs steps only on
+       * credit (else it is folded, as always), so no client moves faster
+       * than one step a tick on average, however many inputs it sends.
+       */
+      credit: number;
       /** Ticks in a row a debt was left unpaid with the queue emptied. */
       unpaid: number;
     }
@@ -409,6 +467,7 @@ export class Arena {
     return true;
   }
   start() {
+    this.inputTally.clear();
     // Remember picks (rematches keep the first ones) before roulette changes them.
     for (const p of this.players)
       if (!this.chosen.has(p.id)) this.chosen.set(p.id, p.character);
@@ -584,6 +643,8 @@ export class Arena {
         minDepth: Infinity,
         idle: 0,
         owed: 0,
+        heldAt: [],
+        credit: INPUT_QUEUE.startCredit,
         unpaid: 0,
       };
       this.inputQueues.set(p.id, q);
@@ -602,13 +663,23 @@ export class Arena {
       this.engaged.add(p.id);
     q.inputs.push(input);
     // A flood can never hold more than a burst's worth.
-    if (q.inputs.length > INPUT_QUEUE.cap) this.submit(p, q.inputs.shift()!);
+    if (q.inputs.length > INPUT_QUEUE.cap) {
+      this.submit(p, q.inputs.shift()!);
+      this.tally(p.id).folded++;
+    }
   }
   /** Forget queued inputs (round reset, reconnect, leaving). */
   clearInputQueue(id?: string) {
-    if (id === undefined) this.inputQueues.clear();
-    else this.inputQueues.delete(id);
-    for (const p of this.players) if (id === undefined || p.id === id) delete p.owed;
+    if (id === undefined) {
+      this.inputQueues.clear();
+      this.heldNow.clear();
+      this.lateSteps.clear();
+    } else {
+      this.inputQueues.delete(id);
+      this.heldNow.delete(id);
+      this.lateSteps.delete(id);
+    }
+    for (const p of this.players) if (id === undefined || p.id === id) delete p.held;
   }
   /** Apply this tick's queued inputs. Call before tick(). */
   drainInputs() {
@@ -616,6 +687,8 @@ export class Arena {
       if (this.inputQueues.size) this.clearInputQueue();
       return;
     }
+    this.heldNow.clear();
+    this.lateSteps.clear();
     for (const [id, q] of this.inputQueues) {
       const p = this.players.find((f) => f.id === id);
       if (!p) {
@@ -623,13 +696,24 @@ export class Arena {
         continue;
       }
       q.minDepth = Math.min(q.minDepth, q.inputs.length);
+      q.credit = Math.min(q.credit + 1, INPUT_QUEUE.credit);
+      const tally = this.tally(id);
+      tally.ticks++;
+      tally.depth += q.inputs.length;
       if (!q.inputs.length) {
         if (++q.idle === INPUT_QUEUE.staleTicks) {
           p.lastInput = { ...p.lastInput, dx: 0, dy: 0, basic: false };
           // A pause, not a hiccup: the inputs for these ticks were never
-          // made (a hidden tab), so the next ones are not late.
+          // made (a hidden tab), so the next ones are not late. The fighter
+          // steps again (standing), so it can still be pushed and slide.
           q.owed = 0;
-        } else if (q.idle < INPUT_QUEUE.staleTicks) q.owed++;
+          q.heldAt = [];
+        }
+        if (q.idle < INPUT_QUEUE.staleTicks) {
+          q.owed++;
+          this.heldNow.add(id);
+          tally.held++;
+        } else q.credit--; // Stale: it steps, standing.
         this.showOwed(p, q.owed);
         continue;
       }
@@ -637,16 +721,35 @@ export class Arena {
       // Burst: catch up to the newest inputs now (merged as they always
       // were), keeping at most `depth` waiting.
       let apply = Math.max(1, q.inputs.length - INPUT_QUEUE.depth);
-      // Late inputs whose steps a repeated tick already took: fold them in.
+      // Late inputs for held ticks: each takes its own step.
       apply = Math.max(apply, Math.min(q.inputs.length, 1 + q.owed));
-      q.owed = Math.max(0, q.owed - (apply - 1));
+      // At most `catchUp` more than one a tick: a long hold is made up over
+      // a few ticks (others see a quick run, not a teleport). The phone
+      // replays whatever is still unanswered, so it agrees all along.
+      apply = Math.min(apply, 1 + INPUT_QUEUE.catchUp);
+      // Inputs fill the held ticks first, oldest first, then this tick's
+      // own step, in the order the phone predicts them (serverSteps). With
+      // none left for this tick, it is held too.
+      const late = Math.min(apply, q.owed);
+      q.owed -= late;
+      // Their times, before a debt forgotten below could drop them.
+      const lateAt = q.heldAt.splice(0, late);
+      if (apply <= late) {
+        q.owed++;
+        this.heldNow.add(id);
+        tally.held++;
+      }
       // The burst is used up and some of the debt is left: the rest may
-      // still be on its way (a tick later), but if the phone itself froze,
-      // its input clock skipped those ticks and no inputs are coming for
-      // them. Unpaid for `unpaidTicks` ticks, the debt is forgotten (else
-      // the phone would predict every later input a step short).
+      // still be on its way, but if the phone itself froze, its input clock
+      // skipped those ticks and no inputs are coming for them. Unpaid for
+      // `unpaidTicks` ticks, the debt is forgotten. Until then every input
+      // is still one step (the debt only dates them), so this can wait for
+      // a late burst that trickles in.
       if (q.owed > 0 && q.inputs.length <= apply) {
-        if (++q.unpaid > INPUT_QUEUE.unpaidTicks) q.owed = q.unpaid = 0;
+        if (++q.unpaid > INPUT_QUEUE.unpaidTicks) {
+          q.owed = q.unpaid = 0;
+          q.heldAt = [];
+        }
       } else q.unpaid = 0;
       this.showOwed(p, q.owed);
       // A queue that never emptied for a second adds standing latency:
@@ -656,14 +759,48 @@ export class Arena {
         q.standing = 0;
         q.minDepth = Infinity;
       }
-      for (let i = 0; i < apply && q.inputs.length; i++)
-        this.submit(p, q.inputs.shift()!);
+      // The inputs taken this tick: the late ones step at their held ticks'
+      // times; the newest is this tick's own step (unless it is held); any
+      // between (a burst, a standing queue cut short) step now while credit
+      // lasts, and are folded into this tick's step after that.
+      const taken = Math.min(apply, q.inputs.length),
+        held = this.heldNow.has(id);
+      let stepped = late + (held ? 0 : 1);
+      const steps: { input: Input; time: number }[] = [];
+      for (let i = 0; i < taken; i++) {
+        const next = q.inputs.shift()!;
+        if (i < late)
+          steps.push({
+            input: { ...next },
+            time: lateAt[i] ?? this.time + 1 / RULES.tick,
+          });
+        else if (i < taken - 1 && q.credit - stepped >= 1) {
+          steps.push({ input: { ...next }, time: this.time + 1 / RULES.tick });
+          stepped++;
+          tally.extra++;
+        } else if (i < taken - 1) tally.folded++;
+        this.submit(p, next);
+      }
+      tally.late += late;
+      q.credit -= stepped;
+      if (steps.length) this.lateSteps.set(id, steps);
     }
   }
-  /** Tell the phone how many late inputs will be folded (Fighter.owed). */
+  /** Tell the phone how many ticks wait for its late inputs (Fighter.held). */
   private showOwed(p: Fighter, owed: number) {
-    if (owed > 0) p.owed = owed;
-    else delete p.owed;
+    if (owed > 0) p.held = owed;
+    else delete p.held;
+  }
+  /** A dash press goes off at `time` (Arena.tick; late steps too). */
+  private startDash(p: Fighter, input: Input, time: number, free: boolean) {
+    // Dashing out of a charge gives the charge up.
+    this.rushes.delete(p.id);
+    const d = normalize(input.dx, input.dy);
+    p.dashX = (d.x || d.y ? d.x : Math.cos(p.angle)) * RULES.dashSpeed;
+    p.dashY = (d.x || d.y ? d.y : Math.sin(p.angle)) * RULES.dashSpeed;
+    p.dashUntil = time + RULES.dashDuration;
+    p.dashAt = free ? 0 : time + dashCooldownOf(p);
+    this.event("dash", p, CHARACTERS[p.character].color, undefined, p.id);
   }
   submit(p: Fighter, input: Input) {
     if (this.phase !== "playing" || input.seq <= p.ack) return;
@@ -2641,16 +2778,22 @@ export class Arena {
         p.dashUntil = Math.min(p.dashUntil, this.time);
       if (rooted) this.endPinball(p);
       if (p.roll && this.time >= p.roll.until) this.endRoll(p);
-      if (input.dash && !disabled && !rooted && !p.roll && this.time >= p.dashAt) {
-        // Dashing out of a charge gives the charge up.
-        this.rushes.delete(p.id);
-        const d = normalize(input.dx, input.dy);
-        p.dashX = (d.x || d.y ? d.x : Math.cos(p.angle)) * RULES.dashSpeed;
-        p.dashY = (d.x || d.y ? d.y : Math.sin(p.angle)) * RULES.dashSpeed;
-        p.dashUntil = this.time + RULES.dashDuration;
-        p.dashAt = freeCooldowns ? 0 : this.time + dashCooldownOf(p);
-        this.event("dash", p, CHARACTERS[p.character].color, undefined, p.id);
+      // Late inputs for held ticks: a step each, at the held tick's time,
+      // as the phone predicted them (drainInputs). A dash pressed in one
+      // starts at its own step.
+      const late = this.lateSteps.get(p.id);
+      if (late) {
+        this.lateSteps.delete(p.id);
+        for (const s of late) {
+          if (s.input.dash && !disabled && !rooted && !p.roll && s.time >= p.dashAt) {
+            this.startDash(p, s.input, s.time, freeCooldowns);
+            input.dash = false;
+          }
+          advanceMovement(p, s.input, dt, s.time);
+        }
       }
+      if (input.dash && !disabled && !rooted && !p.roll && this.time >= p.dashAt)
+        this.startDash(p, input, this.time, freeCooldowns);
       if (
         input.jump &&
         !disabled &&
@@ -2674,7 +2817,13 @@ export class Arena {
             s.ty = by.y;
           } else s.until = this.time;
         }
-      advanceMovement(p, input, dt, this.time);
+      // Held: nothing arrived for this tick, so it waits for the late input
+      // (drainInputs) rather than walking on in the old direction.
+      if (this.heldNow.delete(p.id)) {
+        const q = this.inputQueues.get(p.id);
+        // (A debt just forgotten dates nothing: the tick simply waits.)
+        if (q && q.heldAt.length < q.owed) q.heldAt.push(this.time);
+      } else advanceMovement(p, input, dt, this.time);
       this.stepPassive(p, dt);
       this.remember(p);
       if (p.tether) this.stepTether(p, disabled);

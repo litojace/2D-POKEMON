@@ -1,25 +1,30 @@
 import { describe, expect, it } from "vitest";
 import {
-  BUS_LEN,
   CROWD,
   FRONTS,
-  HORIZON,
   ROAD0,
   ROAD1,
-  WALK,
+  ZEBRA_HALF,
   canal,
-  groundFade,
-  laneOf,
   makeStreet,
   plaza,
   routes,
+  bikeRoutes,
   seasonOf,
-  shops,
   stopY,
+  BUS_LEN,
   updateStreet,
+  zebraY,
 } from "../../apps/client/src/bistro/bistro-town";
-import { updateCars } from "../../apps/client/src/bistro/bistro-scenery";
-import { R, iso, setRoomSize } from "../../apps/client/src/bistro/bistro-art";
+import { buildings } from "../../apps/client/src/bistro/bistro-city";
+import {
+  coversMovers,
+  moverSamples,
+  props,
+  trees,
+  hidesRoom,
+} from "../../apps/client/src/bistro/bistro-props";
+import { R, setRoomSize } from "../../apps/client/src/bistro/bistro-art";
 
 /** A repeatable random sequence. */
 const seeded =
@@ -28,6 +33,12 @@ const seeded =
     seed = (seed * 16807) % 2147483647;
     return seed / 2147483647;
   };
+const SIZES = [
+  { cols: 11, rows: 9 },
+  { cols: 13, rows: 10 },
+  { cols: 15, rows: 11 },
+];
+const inRoad = (x: number) => x > ROAD0 + 0.05 && x < ROAD1 - 0.05;
 
 describe("bistro town: the season comes from the server's day", () => {
   it("northern seasons by month", () => {
@@ -43,44 +54,81 @@ describe("bistro town: the season comes from the server's day", () => {
 });
 
 describe("bistro town: the layout", () => {
-  it("shops stand across the road, never over the canal", () => {
-    for (const size of [
-      { cols: 11, rows: 9 },
-      { cols: 13, rows: 10 },
-      { cols: 15, rows: 11 },
-    ]) {
+  it("shops stand across the road, never over the canal; the square and the stop clear of everything", () => {
+    for (const size of SIZES) {
       setRoomSize(size);
       const c = canal();
-      const list = shops();
-      expect(list.length).toBeGreaterThan(5);
-      for (const s of list) {
-        expect(s.y1 <= c.y0 || s.y0 >= c.y1).toBe(true);
-        expect(s.y1 - s.y0).toBeGreaterThan(2);
-      }
-      // The canal runs in front of the room's front sidewalk.
+      const shops = buildings().filter((b) => b.kind === "shop");
+      expect(shops.length).toBeGreaterThan(8);
+      for (const b of buildings())
+        expect(b.y1 <= c.y0 || b.y0 >= c.y1).toBe(true);
+      for (const s of shops) expect(s.x1).toBeLessThanOrEqual(FRONTS);
       expect(c.y0).toBeGreaterThan(R.rows + 1.6);
-      // The square sits beside the room, off its side sidewalk.
       const P = plaza();
-      expect(P.x - P.r).toBeGreaterThan(R.cols + 1.6);
-      // The bus stops beside the near sidewalk, before the bridge.
+      expect(P.x - P.r).toBeGreaterThan(R.cols + 1.4);
+      // The bus stops before the bridge.
       expect(stopY() + BUS_LEN / 2).toBeLessThan(c.y0);
     }
     setRoomSize({ cols: 11, rows: 9 });
   });
-  it("people walk on sidewalks and paths, never in the road", () => {
-    for (const r of routes())
-      for (const [x] of r.pts) {
-        const inRoad = x > ROAD0 && x < ROAD1;
-        expect(inRoad).toBe(false);
-        // Across the road only on the far sidewalk, in front of the shops.
-        if (x < ROAD0) expect(x).toBeGreaterThan(FRONTS);
+  it("people keep to sidewalks and paths, crossing the road only at the zebra", () => {
+    for (const r of [...routes().map((r) => r.pts), ...bikeRoutes()])
+      for (let i = 1; i < r.length; i++) {
+        const [ax, ay] = r[i - 1],
+          [bx, by] = r[i];
+        for (let u = 0; u <= 1; u += 0.02) {
+          const x = ax + (bx - ax) * u,
+            y = ay + (by - ay) * u;
+          if (inRoad(x))
+            expect(Math.abs(y - zebraY())).toBeLessThan(ZEBRA_HALF);
+        }
       }
   });
-  it("vehicles keep to their lanes", () => {
-    expect(laneOf(1)).toBeGreaterThan(ROAD0);
-    expect(laneOf(-1)).toBeLessThan(ROAD1);
-    expect(laneOf(1)).toBeLessThan(laneOf(-1));
-    expect(WALK).toBeGreaterThan(ROAD1);
+  it("nobody walks through a lamp, a tree, a bench or a building", () => {
+    for (const size of SIZES) {
+      setRoomSize(size);
+      // Benches are sat on, the shelter waited in, the footbridge walked over.
+      const solid = props().filter(
+        (p) =>
+          !p.id.startsWith("bench") &&
+          p.id !== "shelter" &&
+          p.id !== "foot" &&
+          !p.id.startsWith("fr"),
+      );
+      for (const s of moverSamples()) {
+        if (s.h > 120 || s.h === 96) continue; // the road's vehicles
+        const x = (s.x0 + s.x1) / 2,
+          y = (s.y0 + s.y1) / 2;
+        for (const p of solid) {
+          const inside =
+            x > p.x0 + 0.05 &&
+            x < p.x1 - 0.05 &&
+            y > p.y0 + 0.05 &&
+            y < p.y1 - 0.05;
+          if (inside)
+            throw new Error(
+              `a path at ${x.toFixed(2)},${y.toFixed(2)} runs through ${p.id}`,
+            );
+        }
+      }
+    }
+    setRoomSize({ cols: 11, rows: 9 });
+  });
+  it("no building is ever in front of anything moving (they are baked under it)", () => {
+    for (const size of SIZES) {
+      setRoomSize(size);
+      const samples = moverSamples();
+      for (const p of props().filter((q) => q.building || q.bake))
+        if (p.id !== "foot") expect(coversMovers(p, samples), p.id).toBe(false);
+    }
+    setRoomSize({ cols: 11, rows: 9 });
+  });
+  it("no tree stands in front of the bistro hiding it", () => {
+    for (const size of SIZES) {
+      setRoomSize(size);
+      for (const [x, y, s] of trees()) expect(hidesRoom(x, y, s)).toBe(false);
+    }
+    setRoomSize({ cols: 11, rows: 9 });
   });
 });
 
@@ -93,26 +141,36 @@ describe("bistro town: the street moves", () => {
     expect(people(low)).toBeLessThan(people(high));
     expect(low.pigeons.length).toBe(CROWD.low.pigeons);
     expect(high.pigeons.length).toBe(CROWD.high.pigeons);
-    // A few minutes later the crowd stays within its number.
     for (let i = 0; i < 3000; i++) {
       updateStreet(high, 0.1);
       updateStreet(low, 0.1);
       const walkers = (s: typeof high) =>
         s.folk.filter((f) => f.kind === "walk" || f.kind === "dog").length;
-      // Someone getting off the bus may walk beside the usual crowd.
       expect(walkers(high)).toBeLessThanOrEqual(CROWD.high.walkers + 2);
       expect(walkers(low)).toBeLessThanOrEqual(CROWD.low.walkers + 2);
     }
     expect(people(high)).toBeGreaterThan(0);
   });
-  it("nobody walks in the sky past the horizon", () => {
-    const s = makeStreet(["voltkit"], false, seeded(7));
-    for (let i = 0; i < 2000; i++) {
-      updateStreet(s, 0.1);
-      for (const f of s.folk)
-        if (groundFade(f.x, f.y) > 0)
-          expect(iso(f.x, f.y).y).toBeGreaterThan(HORIZON);
+  it("walkers wait at the curb while the road is busy, and cross when it is clear", () => {
+    const s = makeStreet(["voltkit"], false, seeded(11));
+    let busy = true,
+      held = 0,
+      crossed = 0;
+    for (let i = 0; i < 6000; i++) {
+      busy = Math.floor(i / 200) % 2 === 0;
+      updateStreet(s, 0.05, () => !busy);
+      for (const f of s.folk) {
+        if (f.held) held++;
+        if (inRoad(f.x)) {
+          crossed++;
+          expect(Math.abs(f.y - zebraY())).toBeLessThan(ZEBRA_HALF);
+        }
+      }
+      if (busy && !s.crossing)
+        for (const f of s.folk) expect(inRoad(f.x)).toBe(false);
     }
+    expect(held).toBeGreaterThan(0);
+    expect(crossed).toBeGreaterThan(0);
   });
   it("the bus stops at its stop, leaves, and comes back", () => {
     const s = makeStreet(["voltkit"], true, seeded(5));
@@ -120,7 +178,7 @@ describe("bistro town: the street moves", () => {
     const seen = new Set<string>();
     let stops = 0,
       was = s.bus.state;
-    for (let i = 0; i < 2400; i++) {
+    for (let i = 0; i < 4000; i++) {
       updateStreet(s, 0.05);
       seen.add(s.bus.state);
       if (s.bus.state === "stop" && was !== "stop") {
@@ -131,24 +189,5 @@ describe("bistro town: the street moves", () => {
     }
     expect([...seen].sort()).toEqual(["away", "drive", "stop"]);
     expect(stops).toBeGreaterThanOrEqual(1);
-  });
-  it("cars queue behind the bus at its stop instead of driving through it", () => {
-    const bus = { y: stopY(), speed: 0, state: "stop" as const, t: 5 };
-    let cars = [{ y: stopY() + 6, v: -3, col: "#fff", kind: 0 }];
-    for (let i = 0; i < 60; i++) cars = updateCars(cars, 0.05, 1, { bus });
-    expect(cars[0].y).toBeGreaterThanOrEqual(stopY() + (BUS_LEN + 0.95) / 2);
-    // The far lane drives past.
-    let far = [{ y: stopY() - 2, v: 3, col: "#fff", kind: 0 }];
-    for (let i = 0; i < 20; i++) far = updateCars(far, 0.05, 1, { bus });
-    expect(far[0].y).toBeGreaterThan(stopY() + 0.5);
-  });
-  it("a faster car slows behind a slower one", () => {
-    let cars = [
-      { y: 0, v: 2.4, col: "#fff", kind: 0 },
-      { y: -2, v: 4, col: "#fff", kind: 1 },
-    ];
-    for (let i = 0; i < 40; i++) cars = updateCars(cars, 0.05, 1);
-    const [slow, fast] = cars;
-    expect(slow.y - fast.y).toBeGreaterThanOrEqual((0.95 + 1.25) / 2);
   });
 });

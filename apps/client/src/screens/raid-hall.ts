@@ -4,7 +4,7 @@ import type {
 } from "../../../../packages/shared/src/raid";
 import { openHubPanel, type HubPanel } from "../ui/hub-panel";
 import { parse, patch } from "../ui/patch";
-import { enter, whenSettled } from "../ui/motion";
+import { enter, markTabs, playTabSwitch, whenSettled } from "../ui/motion";
 import {
   raidMarkup,
   raidView,
@@ -92,14 +92,29 @@ export function openRaids(
     const key = FOCUS_KEYS.find((k) => target.hasAttribute(k))!;
     return `[${key}="${CSS.escape(target.getAttribute(key)!)}"]`;
   };
-  function render(swap = false, direction = 1) {
+  /**
+   * `swap`: another page (hall ⇄ boss page, another boss), swapped whole
+   * and glided in from `direction`. `"tab"`: another tab of the same page,
+   * patched in (the head, the tab row and the boss's art stay as they are;
+   * the hub panel plays the tab switch) with its list back at the top.
+   */
+  function render(swap: boolean | "tab" = false, direction = 1) {
     if (closed) return;
     const key = focusKey();
     const next = parse(raidMarkup(view, hooks.data()));
-    if (swap || next.dataset.raidMode !== template.dataset.raidMode) {
+    const tab =
+      swap === "tab" && next.dataset.raidMode === template.dataset.raidMode;
+    if (tab) {
+      // Scrolled down the last tab: the next one starts at the top. (Read
+      // before the change, while the layout is still up to date.)
+      const body = q<HTMLElement>("[data-raid-region=body]");
+      const scrolled = !!body && body.scrollTop > 0;
+      patch(root(), template, next, undefined, true);
+      if (scrolled && body.isConnected) body.scrollTop = 0;
+    } else if (swap || next.dataset.raidMode !== template.dataset.raidMode) {
       for (const animation of navigation) animation.cancel();
       navigation = [];
-      // Hall ⇄ boss page, another boss or another tab: swap the insides whole.
+      // Hall ⇄ boss page or another boss: swap the insides whole.
       for (const a of Array.from(root().attributes))
         if (!["tabindex", "data-graphics"].includes(a.name))
           root().removeAttribute(a.name);
@@ -228,29 +243,10 @@ export function openRaids(
         preventScroll: true,
       });
     } else if (d.uiSpireTab) {
-      const tabs: SpireTab[] = ["climb", "floors", "blessings"];
-      const direction =
-        tabs.indexOf(d.uiSpireTab as SpireTab) <
-        tabs.indexOf(view.spireTab ?? "climb")
-          ? -1
-          : 1;
       view.spireTab = d.uiSpireTab as SpireTab;
-      // Only the tab's contents change: patch them in and glide them, not
-      // the whole column. (Gliding the column with its scroller inside left
-      // a stale band painted over the Floors tab's first rows in Chromium.)
-      render();
-      const body = q<HTMLElement>("[data-raid-region=body]");
-      body?.scrollTo({ top: 0 });
-      for (const animation of navigation) animation.cancel();
-      navigation = [];
-      for (const child of Array.from(body?.children ?? [])) {
-        const animation = enter(
-          child,
-          { opacity: 0, transform: `translateX(${direction * 24}px)` },
-          { duration: 260 },
-        );
-        if (animation) navigation.push(animation);
-      }
+      // Only the tab's contents change: patched in; the hub panel glides
+      // the tab's underline and the new contents (ui/motion.ts).
+      render("tab");
       q<HTMLElement>(`[data-ui-spire-tab="${view.spireTab}"]`)?.focus({
         preventScroll: true,
       });
@@ -271,12 +267,9 @@ export function openRaids(
       render();
     } else if (d.raidBack !== undefined) toHall();
     else if (d.uiRaidTab) {
-      const tabs: RaidTab[] = ["party", "attacks", "rewards", "guide"];
-      const direction =
-        tabs.indexOf(d.uiRaidTab as RaidTab) < tabs.indexOf(view.tab) ? -1 : 1;
       view.tab = d.uiRaidTab as RaidTab;
       view.status = "";
-      render(true, direction);
+      render("tab");
       q<HTMLElement>(`[data-ui-raid-tab="${view.tab}"]`)?.focus({
         preventScroll: true,
       });
@@ -287,7 +280,10 @@ export function openRaids(
       // The Party tab's attack strip: to the Attacks tab, that attack picked.
       view.tab = "attacks";
       view.attack = d.raidAttackGo as RaidAttack;
-      render(true);
+      // Played like a tap on the Attacks tab.
+      const marks = markTabs(root());
+      render("tab");
+      playTabSwitch(root(), marks);
       q<HTMLElement>(`[data-raid-attack="${view.attack}"]`)?.focus({
         preventScroll: true,
       });

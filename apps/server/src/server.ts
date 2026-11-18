@@ -55,8 +55,6 @@ import {
   type WireSnapshot,
   practiceOptionsSchema,
   FIGHTER_IDS,
-  MUTATOR_IDS,
-  type MutatorId,
   type Fighter,
   type Reply,
 } from "../../../packages/shared/src/index.js";
@@ -132,11 +130,6 @@ const teamSchema = z
   .object({ team: z.union([z.literal(0), z.literal(1)]) })
   .strict();
 const riteSchema = z.object({ id: z.string().min(1).max(64) }).strict();
-const mutatorsSchema = z
-  .object({
-    ids: z.array(z.enum(MUTATOR_IDS as [MutatorId, ...MutatorId[]])).max(8),
-  })
-  .strict();
 const BOT_NAMES = [
   "Pip",
   "Nova",
@@ -167,6 +160,7 @@ import {
   type OnlineList,
   type OnlinePlayer,
 } from "../../../packages/shared/src/accounts.js";
+import { TickClock } from "./tick-clock.js";
 import { z, ZodError } from "zod";
 import type { Request, Response, NextFunction } from "express";
 import {
@@ -2293,29 +2287,6 @@ export function createArenaServer(
         fail(cb, "Mastery couldn't be checked right now.");
       }
     });
-    // Party rules: the host switches them on or off in the lobby.
-    socket.on("mutators", (data: unknown, cb: unknown) =>
-      withRoom(cb, (a, id) => {
-        if (
-          a.phase !== "lobby" ||
-          a.bots.size ||
-          a.practice ||
-          a.mode === "raid"
-        )
-          return fail(cb, "Party rules can only be changed in a room lobby.");
-        if (a.players[0]?.id !== id)
-          return fail(cb, "Only the room host can change the party rules.");
-        if (a.arcade)
-          return fail(cb, "Weekly arcade rules are fixed for everyone.");
-        const result = mutatorsSchema.safeParse(data);
-        if (!result.success) return fail(cb, "Unknown party rule.");
-        a.mutators = new Set(result.data.ids);
-        // Everyone confirms again under the new rules.
-        for (const p of a.players) p.ready = false;
-        reply(cb, { ok: true });
-        broadcast(a);
-      }),
-    );
     socket.on("instructions-ready", (_data: unknown, cb: unknown) =>
       withRoom(cb, (a, id) => {
         if (!a.acknowledgeInstructions(id))
@@ -3038,6 +3009,13 @@ export function createArenaServer(
             .map((p) => p.character)
             .slice(0, 8),
           ...(a.matchTag ? { match: a.matchTag } : {}),
+          // The combat loop's last minute: its real rate (30 is right), how
+          // late its ticks ran and how long they took (tick-clock.ts).
+          ...(timer?.stats() ?? {}),
+          // The court, and this player's input queue over the match
+          // (Arena.inputStats: held ticks, late and burst steps, folds).
+          arena: a.arenaId,
+          ...(a.inputStats(id) ?? {}),
         });
       }),
     );
@@ -3144,10 +3122,10 @@ export function createArenaServer(
     }
     diagnostics.tick(started);
   };
+  // Exactly 30 ticks a second on average, as the phones' input clocks run
+  // (tick-clock.ts): setInterval drifts, and every drift is a jump.
   const timer =
-    options.autoTick === false
-      ? undefined
-      : setInterval(step, 1000 / RULES.tick);
+    options.autoTick === false ? undefined : new TickClock(step, RULES.tick);
   /**
    * Plaza events the database must see go one at a time per player, in order,
    * so caps hold and the newest progress reaches the browser last.
@@ -3244,7 +3222,7 @@ export function createArenaServer(
     plazaStep,
     diagnostics,
     close: async () => {
-      if (timer) clearInterval(timer);
+      timer?.stop();
       for (const check of partyAwayTimers) clearTimeout(check);
       if (plazaTimer) clearInterval(plazaTimer);
       if (accountTimer) clearInterval(accountTimer);

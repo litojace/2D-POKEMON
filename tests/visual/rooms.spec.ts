@@ -213,10 +213,8 @@ test("Lock in, Ready and Leave go to the room's calls", async ({ page }) => {
   );
   await page.keyboard.press("Escape");
   await expect(page.locator(".room-screen .roster-room")).toHaveCount(1);
-  // Party rules (the host) and the corner: leave the room.
-  await page.locator(".room-rules > summary").click();
-  await page.locator(".room-rules [data-mutator]").first().click();
-  expect(await events(page, "mutators")).toHaveLength(1);
+  // No party rules in a private room any more; the corner leaves it.
+  await expect(page.locator(".room-rules, [data-mutator]")).toHaveCount(0);
   await page.click("#leave");
   await expect(page.locator("#lobby-play")).toBeVisible();
   await expect(page.locator(".room-screen")).toHaveCount(0);

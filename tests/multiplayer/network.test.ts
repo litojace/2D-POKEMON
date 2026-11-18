@@ -4,10 +4,12 @@ import { createArenaServer } from "../../apps/server/src/server.js";
 import { fakeAccounts } from "../helpers/accounts";
 import {
   CHARACTERS,
+  RULES,
   blankInput,
   type Reply,
   type Snapshot,
 } from "../../packages/shared/src/index.js";
+import { INPUT_QUEUE } from "../../apps/server/src/simulation.js";
 let server: ReturnType<typeof createArenaServer>,
   clients: Socket[] = [];
 let url = "";
@@ -410,12 +412,18 @@ it("bounds spam and rejects another player ID in an input payload", async () => 
   await wait();
   server.step();
   expect(arena.players[0].stats.skills).toBe(0);
+  const x0 = arena.players[0].x;
   for (let i = 2; i < 220; i++)
     one.emit("input", { ...blankInput(), seq: i, dx: 1 });
   await wait();
   server.step();
   expect(arena.players[0].ack).toBeLessThan(100);
-  expect(arena.players[0].x).toBeLessThan(275);
+  // The flood moved the fighter no more than one tick may: a step, plus at
+  // most `catchUp` on its small credit (Arena.drainInputs), never 200.
+  const perStep = CHARACTERS[arena.players[0].character].speed / RULES.tick;
+  expect(arena.players[0].x - x0).toBeLessThanOrEqual(
+    (1 + INPUT_QUEUE.catchUp) * perStep + 1,
+  );
   expect(arena.players[1].ack).toBe(0);
 });
 it("accepts a refreshed login token for the same account only", async () => {
@@ -433,19 +441,10 @@ it("accepts a refreshed login token for the same account only", async () => {
   // The connection still plays after the refresh.
   expect((await emit(socket, "create", { name: "Fresh" })).ok).toBe(true);
 });
-it("lets only the host change party rules, in the lobby", async () => {
-  const { one, two, arena } = await lobby();
-  expect((await emit(two, "mutators", { ids: ["turbo"] })).ok).toBe(false);
-  expect((await emit(one, "mutators", { ids: ["bogus"] })).ok).toBe(false);
-  expect((await emit(one, "ready")).ok).toBe(true);
-  const set = await emit(one, "mutators", { ids: ["turbo", "quick"] });
-  expect(set.ok).toBe(true);
-  expect([...arena.mutators].sort()).toEqual(["quick", "turbo"]);
-  // A rule change asks everyone to ready up again.
-  expect(arena.players.every((p) => !p.ready)).toBe(true);
-  expect(arena.roundsToWin).toBe(2);
-  expect((await emit(one, "mutators", { ids: [] })).ok).toBe(true);
+it("plays a private room by the standard rules (party rules were removed)", async () => {
+  const { arena } = await lobby();
   expect(arena.mutators.size).toBe(0);
+  expect(arena.roundsToWin).toBe(3);
 });
 it("a full room doesn't end the watch you already have", async () => {
   const a = await lobby();

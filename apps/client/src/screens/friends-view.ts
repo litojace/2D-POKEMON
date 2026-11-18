@@ -231,6 +231,9 @@ function portrait(
           raidClears: p.raidClears,
         },
         `fr-${p.id.replace(/[^a-z0-9]/gi, "")}`,
+        undefined,
+        // One shared picture per look: a list of friends stays light.
+        true,
       )
     : framePortrait(
         `<span class="fr-initial">${esc(Array.from(p.name.trim())[0]?.toUpperCase() ?? "?")}</span>`,

@@ -10,7 +10,8 @@ import { fakeBistro } from "./bistro-fake";
 
 // An older iPhone (2–3 GB) ends a page that holds too much memory: a white
 // screen, then a reload. Canvases are the hub's biggest holdings, so on an
-// iPhone the Plaza's and the Farm's painted grounds (17.5 and 13.8 MB) are
+// iPhone the Plaza's and the Farm's painted grounds (30 and 13.8 MB; the
+// Plaza's with the world around it) are
 // let go while they wait behind another tab and painted again on return,
 // and a raid gives its canvases and WebGL context back once it closes.
 test.use({
@@ -109,7 +110,7 @@ test("an iPhone lets the hidden Plaza's and Farm's grounds go, and a raid's canv
       page.evaluate(() => (window as any).__plaza.groundAt(1350, 300)[3]),
     )
     .toBe(255);
-  expect(big(await liveCanvases(page))).toEqual(["2700x1700"]);
+  expect(big(await liveCanvases(page))).toEqual(["3300x2300"]);
   await page.click('#hub-scenes [data-hub-scene="farm"]');
   await expect(page.locator("#fm-rail")).toBeVisible();
   await expect
