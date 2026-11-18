@@ -176,6 +176,10 @@ export interface LobbyPartyMember {
   look?: RaidLoadout;
   /** Your own seat (in someone else's party): a tap changes your fighter. */
   you?: boolean;
+  /** Their account id (for Kick). */
+  id?: string;
+  /** You lead and may remove them: a tap on their seat offers Kick. */
+  kickable?: boolean;
   /** Their connection dropped; the party keeps their place a while. */
   away?: boolean;
 }
@@ -190,6 +194,11 @@ export interface LobbyView {
   party: LobbyPartyMember[];
   /** Your party's room is open and you're not in it: Rejoin shows. */
   partyRoom?: boolean;
+  /**
+   * You may invite friends into open seats: the leader, or a member when
+   * the leader lets members invite. Defaults to "not someone else's party".
+   */
+  canInvite?: boolean;
   /** You lead a party of two or more: "♛ You" under your fighter. */
   leading?: boolean;
   /** Party size including you (0: no party). */
@@ -211,6 +220,8 @@ export interface LobbyOptions {
   onPlay(mode: LobbyMode): void;
   /** Step to the previous (-1) or next (1) fighter. */
   onStep(direction: -1 | 1): void;
+  /** The leader confirmed Kick on a member's seat. */
+  onKick?(id: string): void;
   reduced: boolean;
 }
 export interface LobbyHandle {
@@ -253,9 +264,13 @@ export function slotMarkup(
   const skin = member.skin ?? null;
   const label = `${member.you ? "You" : escape(member.name)}${member.leader ? ", party leader" : ""}${member.away ? ", reconnecting" : ""}`;
   // Your own seat beside the leader: a tap opens Fighters to change it.
+  // A member's seat on the leader's stage: a tap offers Kick, a second
+  // tap on it removes them (lobby-screen.ts arms one seat at a time).
   const tap = member.you
     ? `<button type="button" class="lobby-member-tap" data-lobby-action="fighters" aria-label="Change your fighter" title="Change your fighter"></button>`
-    : "";
+    : member.kickable && member.id
+      ? `<button type="button" class="lobby-member-tap" data-lobby-member="${escape(member.id)}" aria-expanded="false" aria-label="${escape(member.name)}: party options"></button><button type="button" class="lobby-kick" data-lobby-kick="${escape(member.id)}" aria-label="Remove ${escape(member.name)} from the party">Kick</button>`
+      : "";
   return `<figure class="lobby-member${member.you ? " is-you" : ""}${member.away ? " is-away" : ""}" style="--element:${hex(CHARACTERS[member.character].color)}" aria-label="${label}"><div class="lobby-member-art fighter-rig-stage" data-preview-champion="${member.character}" data-preview-item="${escape(skin?.skin ?? "")}" data-preview-stage="${skin?.stage ?? 1}" data-preview-look="${lookData(member.look)}" data-preview-action="idle">${fighterStageArt(member.character, `lobby-seat-${seat}`, skin, member.look ?? {})}</div><span class="lobby-podium" aria-hidden="true"></span>${tap}<figcaption>${member.leader ? '<b class="lobby-crown" aria-hidden="true">♛</b>' : ""}${member.you ? "You" : escape(member.name)}${member.away ? '<small class="lobby-away">· reconnecting</small>' : ""}</figcaption></figure>`;
 }
 /** The Journey card: season tier, the next cosmetic, today's Daily Spark. */
@@ -363,6 +378,19 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
         ?.focus({ preventScroll: true });
   };
   let bubbleTimer: ReturnType<typeof setTimeout> | undefined;
+  let armTimer: ReturnType<typeof setTimeout> | undefined;
+  /** Put away a seat's Kick. */
+  const disarm = () => {
+    clearTimeout(armTimer);
+    for (const figure of Array.from(
+      layer.querySelectorAll<HTMLElement>(".lobby-member.is-armed"),
+    )) {
+      figure.classList.remove("is-armed");
+      figure
+        .querySelector("[data-lobby-member]")
+        ?.setAttribute("aria-expanded", "false");
+    }
+  };
   /** The bubble over your fighter: a line it says. */
   const say = (text: string, ms: number) => {
     const bubble = $<HTMLOutputElement>("lobby-emote-bubble");
@@ -482,6 +510,26 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
       modeToggle.focus({ preventScroll: true });
       return;
     }
+    // Kick, on the leader's stage: a tap on a member's seat shows it, a
+    // tap on Kick removes them; any other tap puts it away.
+    const kick = target.closest<HTMLElement>("[data-lobby-kick]");
+    if (kick) {
+      disarm();
+      return options.onKick?.(kick.dataset.lobbyKick!);
+    }
+    const seat = target.closest<HTMLElement>("[data-lobby-member]");
+    if (seat) {
+      const figure = seat.closest<HTMLElement>(".lobby-member")!;
+      const open = !figure.classList.contains("is-armed");
+      disarm();
+      if (open) {
+        figure.classList.add("is-armed");
+        seat.setAttribute("aria-expanded", "true");
+        armTimer = setTimeout(disarm, 4000);
+      }
+      return;
+    }
+    disarm();
     if (target.closest("#lobby-fighter-tap")) return poke();
     if (step) return options.onStep(step === "-1" ? -1 : 1);
     if (target.closest("#lobby-play")) return options.onPlay(mode);
@@ -722,12 +770,13 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
       // Only a seat whose friend (or look) changed is drawn again.
       for (let i = 0; i < 3; i++) {
         const member = view.party[i];
-        const seatKey = JSON.stringify(member ?? (view.host ? "open" : null));
+        const canInvite = view.canInvite ?? !view.host;
+        const seatKey = JSON.stringify(member ?? (canInvite ? null : "open"));
         if (seatKey === seatKeys[i]) continue;
         seatKeys[i] = seatKey;
         seatRigs[i]?.();
         seatRigs[i] = undefined;
-        $(`lobby-slot-${i}`).innerHTML = slotMarkup(member, i, !view.host);
+        $(`lobby-slot-${i}`).innerHTML = slotMarkup(member, i, canInvite);
         if (member) mountSeatRig(i);
       }
       // Graphics may have changed since (Auto settling on Low elsewhere).
@@ -736,7 +785,8 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
       // the right one) appears once both are taken. The server still allows
       // four players, and Friends can invite at any time.
       $("lobby-slot-2").hidden =
-        view.party.length < 2 || (!!view.host && !view.party[2]);
+        view.party.length < 2 ||
+        (!(view.canInvite ?? !view.host) && !view.party[2]);
       // Low graphics: PLAY keeps its glow but stops its light sweep.
       layer.dataset.graphics = lowGraphics() ? "low" : "auto";
       $("lobby-party-bar").hidden = view.partySize < 2;
@@ -794,6 +844,7 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
       for (const seat of seatRigs.splice(0)) seat?.();
       clearTimeout(bubbleTimer);
       clearTimeout(hopTimer);
+      clearTimeout(armTimer);
       coverWatch.disconnect();
       setPerfSource("lobby", undefined);
       document.removeEventListener("ea-graphics-change", syncGraphics);

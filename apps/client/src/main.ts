@@ -345,6 +345,7 @@ import {
   partyRoomSchema,
   partyStateSchema,
   inviteDeclinedSchema,
+  partyKickedSchema,
   type PartyState,
 } from "../../../packages/shared/src/accounts";
 import {
@@ -1924,6 +1925,25 @@ let partyCharacterSent = "";
 /** Your saved look as the party last saw it (see syncParty). */
 let partyLookSeen: string | undefined;
 const partyLeader = () => !!party && party.leader === accountsUI?.account?.id;
+/**
+ * You may invite friends into your party: alone, as its leader, or as a
+ * member while the leader lets members invite (most team games do).
+ */
+const partyCanInvite = () =>
+  !party ||
+  party.members.length < 2 ||
+  partyLeader() ||
+  party.membersInvite !== false;
+/** The leader removes a member (Kick on their seat). */
+async function kickFromParty(playerId: string) {
+  const name = party?.members.find((m) => m.id === playerId)?.name ?? "They";
+  const reply = await request("party-kick", { playerId });
+  toast(
+    reply.ok
+      ? `${name} was removed from the party.`
+      : (reply.error ?? "Couldn't remove them."),
+  );
+}
 async function acceptParty(code: string) {
   if (!accountsUI.ensurePlayer()) return false;
   if (myId) {
@@ -1963,11 +1983,35 @@ function syncPartyInviteDialog() {
 /** Invite a friend into your party: online friends, one tap each. */
 async function showPartyInvite() {
   if (!accountsUI.ensurePlayer()) return;
-  if (party && party.members.length > 1 && !partyLeader())
-    return toast("Your party leader invites friends.");
+  if (!partyCanInvite())
+    return toast("Your party leader has turned off invites from members.");
+  // The leader decides whether members may invite their own friends.
+  const setting =
+    party && partyLeader()
+      ? `<label class="party-invite-setting"><input type="checkbox" id="party-members-invite"${party.membersInvite !== false ? " checked" : ""}><span>Members can invite their friends</span></label>`
+      : "";
+  const lead =
+    party && !partyLeader()
+      ? party.members.find((m) => m.id === party!.leader)?.name
+      : undefined;
   dialog(
-    `<div class="party-invite"><span class="eyebrow">Party</span><h2>Invite a friend</h2><p class="muted">Friends join you on the Lobby stage. When you press PLAY, they follow you into the room, and you stay a party after the match.</p><div id="party-invite-list"><p class="muted">Loading your friends…</p></div></div>`,
+    `<div class="party-invite"><span class="eyebrow">Party</span><h2>Invite a friend</h2><p class="muted">${lead ? `Friends join ${escape(lead)}'s party on the Lobby stage and follow your leader into each room.` : "Friends join you on the Lobby stage. When you press PLAY, they follow you into the room, and you stay a party after the match."}</p>${setting}<div id="party-invite-list"><p class="muted">Loading your friends…</p></div></div>`,
   );
+  const toggle = document.getElementById(
+    "party-members-invite",
+  ) as HTMLInputElement | null;
+  if (toggle)
+    toggle.onchange = async () => {
+      toggle.disabled = true;
+      const reply = await request("party-settings", {
+        membersInvite: toggle.checked,
+      });
+      toggle.disabled = false;
+      if (!reply.ok) {
+        toggle.checked = !toggle.checked;
+        toast(reply.error ?? "Couldn't change this.");
+      }
+    };
   try {
     const list = await accountsUI.nearbyFriends();
     const members = new Set(party?.members.map((m) => m.id) ?? []);
@@ -2519,6 +2563,8 @@ async function refreshLobbyFriends() {
 function lobbyView() {
   const me = accountsUI.account?.id;
   const seat = (m: NonNullable<PartyState>["members"][number]) => ({
+    id: m.id,
+    kickable: partyLeader() && m.id !== me,
     name: m.name,
     character: (Object.hasOwn(CHARACTERS, m.character)
       ? m.character
@@ -2552,6 +2598,7 @@ function lobbyView() {
       ? [mine, ...others.map(seat)].slice(0, 3)
       : others.slice(0, 3).map(seat),
     leading: (party?.members.length ?? 0) > 1 && partyLeader(),
+    canInvite: partyCanInvite(),
     partyRoom:
       !!party?.room &&
       !partyLeader() &&
@@ -2613,6 +2660,7 @@ function syncLobby(want: boolean) {
       onAction: lobbyAction,
       onPlay: (mode) => void lobbyPlay(mode),
       onStep: stepHomeFighter,
+      onKick: (id) => void kickFromParty(id),
     });
     void refreshLobbyFriends();
     lobbyFriendsTimer = setInterval(() => void refreshLobbyFriends(), 60000);
@@ -4107,6 +4155,14 @@ socket.on("party", (data: unknown) => {
   syncHub();
   accountsUI.refreshRaids();
   invitesChanged();
+});
+socket.on("party-kicked", (data: unknown) => {
+  const parsed = partyKickedSchema.safeParse(data);
+  toast(
+    parsed.success
+      ? `${parsed.data.by} removed you from the party.`
+      : "You were removed from the party.",
+  );
 });
 socket.on("invite-declined", (data: unknown) => {
   const parsed = inviteDeclinedSchema.safeParse(data);
@@ -7781,6 +7837,7 @@ accountsUI = new AccountUI({
             }))
           : [],
       leader: !party || party.members.length < 2 || partyLeader(),
+      canInvite: partyCanInvite(),
       inRoom: !!myId,
     };
   },

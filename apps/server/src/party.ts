@@ -40,6 +40,11 @@ export interface Party {
    * on the Lobby follow it, and one who stepped out can rejoin it.
    */
   room?: { code: string; mode: PartyRoomMode };
+  /**
+   * Members may invite their own friends in (most team games allow it);
+   * the leader can turn it off. On unless set to false.
+   */
+  membersInvite?: boolean;
 }
 export type PartyRoomMode = "duel" | "teams" | "ffa" | "raid";
 interface Invite {
@@ -145,6 +150,30 @@ export class Parties {
       disbanded: previous?.disbanded,
     };
   }
+  /**
+   * The leader removes a member. Returns the party left (or ended, when
+   * only the leader remains) for broadcasting.
+   */
+  kick(
+    leaderId: string,
+    memberId: string,
+  ): Result<{ party: Party; disbanded?: Party }> | Failure {
+    const party = this.of(leaderId);
+    if (!party || party.leader !== leaderId)
+      return { ok: false, error: "Only the party leader can remove players." };
+    if (memberId === leaderId || !party.members.some((m) => m.id === memberId))
+      return { ok: false, error: "That player isn't in your party." };
+    const result = this.leave(memberId)!;
+    return { ok: true, ...result };
+  }
+  /** The leader lets members invite (or not). Returns the party when changed. */
+  setMembersInvite(leaderId: string, allowed: boolean) {
+    const party = this.of(leaderId);
+    if (!party || party.leader !== leaderId) return undefined;
+    if ((party.membersInvite !== false) === allowed) return undefined;
+    party.membersInvite = allowed;
+    return party;
+  }
   /** The leader opened a room (or closed it: `undefined`). */
   setRoom(accountId: string, room: Party["room"]) {
     const party = this.of(accountId);
@@ -166,6 +195,13 @@ export class Parties {
   ): Result<{ party: Party; created: boolean; expiresAt: number }> | Failure {
     this.prune(now);
     if (toId === from.id) return { ok: false, error: "Invite a friend." };
+    // The leader's choice first: it says why, where a cooldown wouldn't.
+    const own = this.of(from.id);
+    if (own && own.leader !== from.id && own.membersInvite === false)
+      return {
+        ok: false,
+        error: "Your party leader has turned off invites from members.",
+      };
     const key = `${from.id}:${toId}`;
     if (this.cooldowns.has(key))
       return {

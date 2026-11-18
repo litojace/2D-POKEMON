@@ -47,6 +47,8 @@ export interface FriendsParty {
   ids: readonly string[];
   /** You lead it (or have none): you can invite. */
   leader: boolean;
+  /** You may invite (the leader, or a member the leader lets); else `leader`. */
+  canInvite?: boolean;
 }
 export const PARTY_MAX = 4;
 export interface FriendsData {
@@ -162,7 +164,7 @@ export const canInviteFriend = (f: Friend, room?: FriendsRoom) =>
 /** Into your Lobby party: you lead it, it has room, they are free. */
 export const canInviteToParty = (f: Friend, party: FriendsParty) =>
   !!(
-    party.leader &&
+    (party.canInvite ?? party.leader) &&
     party.size < PARTY_MAX &&
     f.online &&
     !f.room &&
