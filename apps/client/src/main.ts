@@ -73,6 +73,9 @@ import {
   type LobbyAction,
   type LobbyHandle,
   type LobbyMode,
+  AI_LEVELS,
+  aiLevelMark,
+  type AiLevel,
 } from "./lobby-screen";
 // The Farm, the Bistro and the Plaza load when first wanted (hub-worlds.ts).
 // Their styles stay in the main stylesheet, in the same place as before.
@@ -2287,12 +2290,12 @@ function partyRulesNote() {
     ? `<p class="party-note"><b>Event rules:</b> ${on.map((m) => escape(MUTATORS[m].name)).join(" · ")}</p>`
     : "";
 }
-type BotLevel = "easy" | "normal" | "hard";
-const BOT_LEVELS: [BotLevel, string, string][] = [
-  ["easy", "Easy", "Learning"],
-  ["normal", "Normal", "A fair fight"],
-  ["hard", "Hard", "No mercy"],
-];
+type BotLevel = AiLevel;
+const BOT_LEVELS: [BotLevel, string, string][] = AI_LEVELS.map((l) => [
+  l.id,
+  aiLevelMark(l.id),
+  l.hint,
+]);
 let botLevel: BotLevel = (() => {
   try {
     const saved = localStorage.getItem("arena-bot-level");

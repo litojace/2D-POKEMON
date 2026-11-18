@@ -45,11 +45,29 @@ export type LobbyMode =
   | "bot-normal"
   | "bot-hard"
   | "practice";
+/**
+ * The bot's three levels, each with its colour (green, amber, red: the
+ * usual order, amber rather than gold, which marks what's selected) and
+ * 1 to 3 pips, so the level reads without the colour too.
+ */
+export const AI_LEVELS = [
+  { id: "easy", name: "Easy", hint: "Learning", pips: 1 },
+  { id: "normal", name: "Normal", hint: "A fair fight", pips: 2 },
+  { id: "hard", name: "Hard", hint: "No mercy", pips: 3 },
+] as const;
+export type AiLevel = (typeof AI_LEVELS)[number]["id"];
+/** A level's name in its colour, with its pips (text: just the name). */
+export const aiLevelMark = (id: AiLevel) => {
+  const l = AI_LEVELS.find((x) => x.id === id)!;
+  return `<span class="ai-level" data-ai-level="${l.id}">${l.name}<i class="ai-pips" aria-hidden="true">${[1, 2, 3].map((n) => `<i${n <= l.pips ? ' class="on"' : ""}></i>`).join("")}</i></span>`;
+};
 export const LOBBY_MODES: readonly {
   id: LobbyMode;
   label: string;
   hint: string;
   icon: Parameters<typeof menuIcon>[0];
+  /** A bot match's level: the label ends in it, coloured. */
+  ai?: AiLevel;
 }[] = [
   {
     id: "duel",
@@ -78,20 +96,23 @@ export const LOBBY_MODES: readonly {
   {
     id: "bot-easy",
     label: "Vs AI · Easy",
-    hint: "Best of five against a bot",
+    hint: "Learning · best of five",
     icon: "bot",
+    ai: "easy",
   },
   {
     id: "bot-normal",
     label: "Vs AI · Normal",
-    hint: "Best of five against a bot",
+    hint: "A fair fight · best of five",
     icon: "bot",
+    ai: "normal",
   },
   {
     id: "bot-hard",
     label: "Vs AI · Hard",
-    hint: "Best of five against a bot",
+    hint: "No mercy · best of five",
     icon: "bot",
+    ai: "hard",
   },
   {
     id: "practice",
@@ -237,9 +258,13 @@ const escape = (s: string) =>
   );
 const hex = (color: number) => `#${color.toString(16).padStart(6, "0")}`;
 
+/** A mode's name: a bot match's level in its colour, with its pips. */
+const modeLabel = (m: (typeof LOBBY_MODES)[number]) =>
+  m.ai ? `Vs AI · ${aiLevelMark(m.ai)}` : m.label;
+
 function modeButton(mode: LobbyMode) {
   const m = LOBBY_MODES.find((x) => x.id === mode)!;
-  return `<span class="lobby-mode-icon">${menuIcon(m.icon)}</span><span class="lobby-mode-text"><b>${m.label}</b><small>${m.hint}</small></span><span class="lobby-mode-caret" aria-hidden="true">▴</span>`;
+  return `<span class="lobby-mode-icon">${menuIcon(m.icon)}</span><span class="lobby-mode-text"><b>${modeLabel(m)}</b><small>${m.hint}</small></span><span class="lobby-mode-caret" aria-hidden="true">▴</span>`;
 }
 
 const lookData = (look: RaidLoadout | undefined) =>
@@ -346,7 +371,7 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
 <div class="lobby-play">
   <div class="lobby-mode-menu" id="lobby-mode-menu" role="menu" aria-label="Game mode" hidden>${LOBBY_MODES.map(
     (m) =>
-      `<button type="button" role="menuitemradio" data-lobby-mode="${m.id}" aria-checked="${m.id === mode}">${menuIcon(m.icon)}<span><b>${m.label}</b><small>${m.hint}</small></span></button>`,
+      `<button type="button" role="menuitemradio" data-lobby-mode="${m.id}" aria-checked="${m.id === mode}">${menuIcon(m.icon)}<span><b>${modeLabel(m)}</b><small>${m.hint}</small></span></button>`,
   ).join(
     "",
   )}<button type="button" role="menuitem" class="lobby-mode-more" data-lobby-action="more-play">${menuIcon("enter")}<span><b>Join or watch</b><small>Room code, name and more</small></span></button></div>

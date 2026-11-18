@@ -1866,3 +1866,37 @@ body:not(.hub-active) #account-leaves {
     height: 22px;
   }
 }
+
+/* A bot match's level (lobby-screen.ts AI_LEVELS): its name in its colour,
+   green, amber, red, and 1 to 3 pips after it, so the level reads without
+   the colour too. The name keeps its row's case and size. */
+/* Doubled: the menu's ".lobby-mode-menu button span" makes spans grids. */
+.ai-level.ai-level {
+  --ai: #5fd38a;
+  display: inline;
+  color: var(--ai);
+}
+.ai-level[data-ai-level="normal"] {
+  --ai: #ffad4a;
+}
+.ai-level[data-ai-level="hard"] {
+  --ai: #ff5d6c;
+}
+/* Inline, a line's middle: the row keeps its height. */
+.ai-pips {
+  margin-left: 5px;
+  font-size: 0;
+  line-height: 0;
+  vertical-align: middle;
+}
+.ai-pips > i {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  margin-right: 2px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--ai) 25%, transparent);
+}
+.ai-pips > i.on {
+  background: var(--ai);
+}
