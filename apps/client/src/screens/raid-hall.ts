@@ -114,7 +114,7 @@ export function openRaids(
     } else if (swap || next.dataset.raidMode !== template.dataset.raidMode) {
       for (const animation of navigation) animation.cancel();
       navigation = [];
-      // Hall ⇄ boss page, another boss or another tab: swap the insides whole.
+      // Hall ⇄ boss page or another boss: swap the insides whole.
       for (const a of Array.from(root().attributes))
         if (!["tabindex", "data-graphics"].includes(a.name))
           root().removeAttribute(a.name);
