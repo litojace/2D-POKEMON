@@ -32,16 +32,8 @@ body.lobby-active #account-profile:has(.portrait-frame) {
 }
 /* Ornaments scale with each identity portrait’s size. Candy, Garden,
    Festival and Winter ornaments are sized in collection-frames.css, boss
-   frame ornaments in boss-frames.css. */
-/* Outranks the fixed 14 px planet in style.css, so the planet is the same
-   size beside the portrait in the header, the Wardrobe badge and the Shop
-   stage. */
-.raid-cosmetic-preview.portrait-frame[data-cosmetic="galaxy-frame"]::after {
-  width: 29%;
-  height: 29%;
-  right: -14%;
-  top: -10%;
-}
+   frame ornaments in boss-frames.css; the signature frames
+   (signature-frames.css) draw theirs inside the art. */
 
 /* Boss frames grow with clears (frameStars): a small star row under the
    portrait, gold and gently glowing at five stars. */
