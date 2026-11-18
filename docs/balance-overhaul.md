@@ -184,6 +184,57 @@ Whole roster after the pass (seed 105000, before the Static Lance change):
 Hard 42.4% – 55.1%, spread 3.4, 23 hard-counter pairs; Normal 42.2% – 55.9%,
 spread 3.4, 9 pairs.
 
+## Fourth pass: hard counters with new mechanics
+
+With the owner's go-ahead to change skills, not only numbers. First a
+measurement with 48 games a pair on Hard (a pair's rate moves about ±7
+points between seeds at that size): spread 2.2–2.6 points, and 30–33 pairs
+won 80% or more one way. What they share is a rock-paper-scissors between
+play styles: divers beat artillery and pokers, Auralynx beats divers, and
+ranged champions beat Auralynx.
+
+What decided each one, found by switching parts of a kit off (one champion
+against the roster, 48 games a pair, a fixed seed):
+
+- **Auralynx against divers** (Coilemur 96%, Astrabun 92%, Wombolder 92%):
+  not its kit. With no Shatter Paw stun and knockback, or no Facet Guard,
+  it still won 85–92%. It was health: 178 against 134–144 in a melee
+  mirror, raised earlier to help it against kiters. League's split is
+  juggernauts with stats and no mobility against divers with mobility and
+  few stats, so Auralynx gets mobility instead of health:
+  - **Facet Guard vaults** up to 240 px toward the aim behind the guard
+    (`lunge`, 900 px/s), in place of the haste. Borrowed from Pantheon's
+    Shield Vault (League) and Reinhardt's Charge (Overwatch); no other
+    champion has it. Predicted on the client like a rush
+    (`tests/unit/movement-skill-prediction.test.ts`).
+  - It primes Shatter Paw only on what it refracts, not on strikes up close.
+  - Health 178 → 170, Prism Jab 13 → 12, Prism Shot cooldown 8 → 6 s.
+- **Pyranda against ranged champions** (Voltkit 92%, Lumoth 90%): Ember
+  Lob's knockback pushed them out of their own reach. It now knocks back
+  65 only within 260 px (`knockbackNear`), and a light 20 beyond that, like
+  a point-blank shot. Chestnut Mortar 24 → 22. Health 150.
+- **Mossloth** (Auralynx 96%, Terradon 90%): melee champions stood rooted
+  on its seedlings. Roots now last 0.4 / 0.6 / 1 s (were 0.5 / 0.8 / 1.3).
+- **Duskveil** (Lumoth 90%, Mossloth 90%): the lantern's wisps go back to 4
+  (they had gone to 5 in the first pass), and health 152 → 154.
+
+Tried and dropped: Spark Dart reaching 760 px (Voltkit's matchups got more
+lopsided), and Tidefin at 148–150 health. Tidefin is an enemy in the Spire's
+zone 2, so the extra health turned that play-test's order of difficulty
+around; Tidefin stays at 146.
+
+The whole roster after the pass (seed 109000; Hard with 48 games a pair,
+Normal with 24):
+
+| Difficulty | Lowest – highest | Spread (sd) | Pairs at 80%+  |
+| ---------- | ---------------- | ----------- | -------------- |
+| Hard       | 46.1% – 55.3%    | 2.4         | 24 (was 30–33) |
+| Normal     | 45.3% – 62.5%    | 3.7         | 8              |
+
+On Normal, Auralynx's vault took it to 62.5%. Its handicap went from 0.3
+to 0.33 and Pyranda's from 0.37 to 0.36: both are now at 50% on Normal
+(48 games a pair).
+
 ## Also fixed
 
 The raids' overlap rule (`spaceOverlap` in `apps/server/src/raid.ts`) now
