@@ -115,22 +115,56 @@ export function drawBanks(ctx: Ctx, l: Light) {
     quad(ctx, x0, c.y1 + 0.18, x1, c.y1 + 0.22);
     ctx.fill();
   }
-  // The road bridge's side over the water: an arch, voussoirs, a keystone.
+  // The road bridge's side over the water: stone from the road down to the
+  // water's surface (no lower: below it is water, and the near bank), a
+  // shallow arch with its shadow, voussoirs and a keystone.
   onWall(ctx, "y", BRIDGE.x1, c.y1, () => {
     const w = (c.y1 - c.y0) * TILE;
+    const ax = w / 2,
+      rx = w * 0.4,
+      ry = WATER - 4;
     ctx.fillStyle = stone;
-    ctx.fillRect(0, -2, w, WATER + 30);
-    ctx.fillStyle = lerpRgb([36, 60, 80], [10, 14, 28], n);
+    ctx.fillRect(0, -2, w, WATER + 2);
+    // Stone courses.
+    ctx.strokeStyle = "rgba(0,0,0,.12)";
+    ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.ellipse(w / 2, WATER + 30, w * 0.4, WATER + 22, 0, Math.PI, 0);
+    ctx.moveTo(0, 5);
+    ctx.lineTo(w, 5);
+    for (let x = 10; x < w; x += 20) {
+      ctx.moveTo(x, -2);
+      ctx.lineTo(x, 5);
+    }
+    ctx.stroke();
+    // The arch: the shadow under the bridge, down to the water.
+    const g = ctx.createLinearGradient(0, WATER - ry, 0, WATER);
+    g.addColorStop(0, lerpRgb([22, 36, 48], [6, 10, 20], n));
+    g.addColorStop(1, lerpRgb([40, 70, 88], [12, 18, 34], n));
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.ellipse(ax, WATER, rx, ry, 0, Math.PI, 0);
+    ctx.closePath();
     ctx.fill();
+    // Voussoirs round it, and the keystone.
     ctx.strokeStyle = stoneDark;
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.ellipse(w / 2, WATER + 30, w * 0.4 + 3, WATER + 25, 0, Math.PI, 0);
+    ctx.ellipse(ax, WATER, rx + 2, ry + 2, 0, Math.PI, 0);
+    ctx.stroke();
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let k = 1; k < 8; k++) {
+      const t = Math.PI + (k / 8) * Math.PI;
+      ctx.moveTo(ax + Math.cos(t) * (rx + 2), WATER + Math.sin(t) * (ry + 2));
+      ctx.lineTo(ax + Math.cos(t) * (rx + 6), WATER + Math.sin(t) * (ry + 5));
+    }
     ctx.stroke();
     ctx.fillStyle = coping;
-    ctx.fillRect(w / 2 - 5, -2, 10, 10);
+    ctx.fillRect(ax - 4, WATER - ry - 6, 8, 7);
+    // A wet line where it meets the water.
+    ctx.fillStyle = "rgba(30,60,50,.35)";
+    ctx.fillRect(0, WATER - 2, ax - rx, 2);
+    ctx.fillRect(ax + rx, WATER - 2, w - ax - rx, 2);
   });
 }
 

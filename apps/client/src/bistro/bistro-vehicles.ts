@@ -28,10 +28,19 @@ export type CarKind = 0 | 1 | 2 | 3;
 export interface Car {
   /** Grid y of its middle along the road; moves at `v` units a second. */
   y: number;
+  /** Its cruising speed, signed: + down the far lane, - up the near one. */
   v: number;
   col: string;
   kind: number;
+  /** Speed now (it slows behind others, stops for the zebra). */
+  s?: number;
 }
+/** Bumpers apart when standing, at the very least, and seconds of travel kept between cars. */
+export const STOP_GAP = 1.3,
+  MIN_GAP = 1.0,
+  HEADWAY = 0.9;
+const ACCEL = 1.6,
+  BRAKE = 6;
 export const CAR_SIZE: Record<number, { len: number; wid: number; h: number }> =
   {
     0: { len: 2.5, wid: 1.3, h: 66 },
@@ -336,54 +345,81 @@ export function updateCars(
     zebra?: number | null;
   } = {},
 ): Car[] {
+  // Keeping distance as drivers do: at least STOP_GAP between bumpers when
+  // standing, plus HEADWAY seconds of travel when moving. Each car has its
+  // own speed and brakes or speeds up smoothly toward what the gap allows,
+  // so cars never ride on each other's bumpers.
   type Entry = {
     y: number;
-    was: number;
     len: number;
+    /** Speed now (units a second, along its way). */
+    s: number;
+    max: number;
     fixed?: boolean;
-    set: (y: number) => void;
+    /** The bus moves itself (bistro-town.ts): only held back here. */
+    bus?: boolean;
+    car?: Car;
   };
   const bus = o.bus && o.bus.state !== "away" ? o.bus : null;
   for (const dir of [1, -1]) {
     const lane: Entry[] = [];
     for (const c of cars)
-      if (Math.sign(c.v) === dir) {
-        const was = c.y;
-        c.y += c.v * dt;
-        lane.push({ y: c.y, was, len: carLen(c), set: (y) => (c.y = y) });
-      }
+      if (Math.sign(c.v) === dir)
+        lane.push({
+          y: c.y,
+          len: carLen(c),
+          s: c.s ?? Math.abs(c.v),
+          max: Math.abs(c.v),
+          car: c,
+        });
     if (bus && dir < 0)
-      lane.push({
-        y: bus.y,
-        was: bus.y,
-        len: BUS_LEN,
-        set: (y) => (bus.y = y),
-      });
+      lane.push({ y: bus.y, len: BUS_LEN, s: bus.speed, max: 3, bus: true });
     // Someone on the zebra: a car that hasn't reached it waits (one already on it drives on).
     if (o.zebra != null)
-      lane.push({
-        y: o.zebra,
-        was: o.zebra,
-        len: 1.5,
-        fixed: true,
-        set: () => {},
-      });
+      lane.push({ y: o.zebra, len: 1.5, s: 0, max: 0, fixed: true });
     // The front of the lane first.
     lane.sort((a, b) => (dir > 0 ? b.y - a.y : a.y - b.y));
-    for (let i = 1; i < lane.length; i++) {
-      const ahead = lane[i - 1],
-        me = lane[i];
+    for (let i = 0; i < lane.length; i++) {
+      const me = lane[i];
       if (me.fixed) continue;
-      const gap = (ahead.len + me.len) / 2 + 0.5;
-      if (dir > 0 ? me.y > ahead.y - gap : me.y < ahead.y + gap) {
-        const to = dir > 0 ? ahead.y - gap : ahead.y + gap;
-        // Never pushed back past where it was: it just stops.
-        me.y =
-          dir > 0
-            ? Math.max(to, Math.min(me.was, me.y))
-            : Math.min(to, Math.max(me.was, me.y));
-        me.set(me.y);
+      const ahead = lane[i - 1];
+      // Bumper to bumper, to the one ahead.
+      const gap = ahead
+        ? dir * (ahead.y - me.y) - (ahead.len + me.len) / 2
+        : Infinity;
+      // The speed this gap allows (the one ahead's own speed helps).
+      const room = gap - STOP_GAP;
+      const allowed = Math.max(
+        0,
+        Math.min(me.max, room / HEADWAY + (ahead ? ahead.s * 0.5 : 0)),
+      );
+      const want = room <= 0 ? 0 : allowed;
+      if (me.bus) {
+        // The bus drives itself; it only never closes on the one ahead.
+        if (bus && bus.state === "drive" && bus.speed > want) bus.speed = want;
+        if (bus && gap < MIN_GAP && ahead)
+          bus.y = Math.max(bus.y, ahead.y + (ahead.len + me.len) / 2 + MIN_GAP);
+        me.s = bus?.speed ?? 0;
+        me.y = bus?.y ?? me.y;
+        continue;
       }
+      // Smooth: speed up gently, brake harder.
+      me.s =
+        want > me.s
+          ? Math.min(want, me.s + ACCEL * dt)
+          : Math.max(want, me.s - BRAKE * dt);
+      let y = me.y + dir * me.s * dt;
+      // Never closer than MIN_GAP, never pushed back.
+      if (ahead) {
+        const limit = ahead.y - dir * ((ahead.len + me.len) / 2 + MIN_GAP);
+        if (dir > 0 ? y > limit : y < limit) {
+          y = dir > 0 ? Math.max(me.y, limit) : Math.min(me.y, limit);
+          me.s = Math.min(me.s, ahead.s);
+        }
+      }
+      me.y = y;
+      me.car!.y = y;
+      me.car!.s = me.s;
     }
   }
   const ends = roadEnds();
@@ -394,9 +430,9 @@ export function updateCars(
     // Not on top of someone already coming in.
     const busy =
       out.some(
-        (c) => Math.sign(c.v) === (down ? 1 : -1) && Math.abs(c.y - y) < 4,
+        (c) => Math.sign(c.v) === (down ? 1 : -1) && Math.abs(c.y - y) < 7,
       ) ||
-      (!down && !!bus && Math.abs(bus.y - y) < 5);
+      (!down && !!bus && Math.abs(bus.y - y) < 8);
     if (!busy) {
       const r = Math.random();
       out.push({
