@@ -160,6 +160,7 @@ import {
   type OnlineList,
   type OnlinePlayer,
 } from "../../../packages/shared/src/accounts.js";
+import { TickClock } from "./tick-clock.js";
 import { z, ZodError } from "zod";
 import type { Request, Response, NextFunction } from "express";
 import {
@@ -3008,6 +3009,8 @@ export function createArenaServer(
             .map((p) => p.character)
             .slice(0, 8),
           ...(a.matchTag ? { match: a.matchTag } : {}),
+          // The combat loop's real rate over the last minute (30 is right).
+          ...(timer?.hz() !== undefined ? { serverHz: timer.hz() } : {}),
         });
       }),
     );
@@ -3114,10 +3117,10 @@ export function createArenaServer(
     }
     diagnostics.tick(started);
   };
+  // Exactly 30 ticks a second on average, as the phones' input clocks run
+  // (tick-clock.ts): setInterval drifts, and every drift is a jump.
   const timer =
-    options.autoTick === false
-      ? undefined
-      : setInterval(step, 1000 / RULES.tick);
+    options.autoTick === false ? undefined : new TickClock(step, RULES.tick);
   /**
    * Plaza events the database must see go one at a time per player, in order,
    * so caps hold and the newest progress reaches the browser last.
@@ -3214,7 +3217,7 @@ export function createArenaServer(
     plazaStep,
     diagnostics,
     close: async () => {
-      if (timer) clearInterval(timer);
+      timer?.stop();
       for (const check of partyAwayTimers) clearTimeout(check);
       if (plazaTimer) clearInterval(plazaTimer);
       if (accountTimer) clearInterval(accountTimer);

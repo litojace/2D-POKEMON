@@ -14,6 +14,9 @@
  *
  * NO_BOT=1, NO_SKILL=1, NO_BASIC=1 leave out the bot's brain, your skills or
  * your basic attacks; NO_CARRY=1 replays without carryCurrent.
+ * MODE=ffa BOTS=2 is a 3-player free-for-all, ARENA=<id> picks the court,
+ * and SERVER_HZ=<rate> runs the server's ticks at that real rate while the
+ * phone keeps its exact 30 (docs/network-performance.md, section 15).
  *
  * Measured 11 Nov 2026 (120 s, 33 ms each way, as an iPhone on school
  * Wi-Fi with a 67 ms ping): 30-50 corrections a minute, every one a
@@ -31,6 +34,7 @@ import {
   packSnapshot,
   unpackSnapshot,
   MetaCache,
+  type ArenaId,
   type CharacterId,
   type Fighter,
   type Input,
@@ -114,14 +118,33 @@ export function simulateCorrections(o: {
   stallMs?: number;
   /** The phone's frame rate (a 120 Hz Android phone draws up to 120). */
   fps?: number;
+  /** "ffa" for a free-for-all (the match reports' 3-player rooms). */
+  mode?: "duel" | "ffa";
+  /** Opponents (bots), each with a brain unless `noBot`. */
+  bots?: number;
+  /** The court (walls, hazards); default Classic. */
+  arena?: ArenaId;
+  /** How often the server really ticks (Node's setInterval: about 30.1). */
+  serverHz?: number;
 }) {
   const seconds = o.seconds ?? 120;
   const random = rng(o.seed ?? 11);
-  const arena = new Arena("CORSIM", "duel");
+  const arena = new Arena("CORSIM", o.mode ?? "duel");
   const me = arena.add("me", "Me", o.me ?? "tidefin");
-  const bot = arena.add("bot", "Bot", o.bot ?? "cindrake");
-  if (!o.noBot)
-    arena.bots.set("bot", new BotBrain("bot", o.level ?? "normal", 4242));
+  const others = Array.from({ length: Math.max(1, o.bots ?? 1) }, (_, i) => {
+    const id = i ? `bot${i}` : "bot";
+    const pick = i
+      ? (Object.keys(CHARACTERS) as CharacterId[])[
+          (i * 7) % Object.keys(CHARACTERS).length
+        ]
+      : (o.bot ?? "cindrake");
+    const f = arena.add(id, `Bot ${i}`, pick);
+    if (!o.noBot)
+      arena.bots.set(id, new BotBrain(id, o.level ?? "normal", 4242 + i));
+    return f;
+  });
+  const bot = others[0];
+  if (o.arena) arena.arenaId = o.arena;
   arena.start();
   arena.phase = "playing";
   arena.deadline = 1e9;
@@ -153,13 +176,15 @@ export function simulateCorrections(o: {
     pendingSum = 0;
   const frameMs = 1000 / (o.fps ?? 60);
   for (let now = 0; now < seconds * 1000; now += frameMs) {
-    while (serverClock + 1000 / RULES.tick <= now) {
-      serverClock += 1000 / RULES.tick;
+    const serverMs = 1000 / (o.serverHz ?? RULES.tick);
+    while (serverClock + serverMs <= now) {
+      serverClock += serverMs;
       for (const input of up.receive(serverClock)) arena.enqueue(me, input);
       arena.drainInputs();
       // Keep both alive: the point is the corrections, not who wins.
       // (A knockout would end the round and reset both to their spawns.)
-      me.hp = bot.hp = 100_000;
+      me.hp = 100_000;
+      for (const f of others) f.hp = 100_000;
       arena.tick();
       if (++ticks % Math.round(RULES.tick / RULES.snapshot) === 0) {
         const s = arena.snapshot();
@@ -260,6 +285,10 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     jitter: Number(process.env.JITTER ?? 4),
     stallChance: Number(process.env.STALL_CHANCE ?? 0),
     stallMs: Number(process.env.STALL_MS ?? 0),
+    mode: process.env.MODE === "ffa" ? "ffa" : "duel",
+    bots: Number(process.env.BOTS ?? 1),
+    arena: (process.env.ARENA as ArenaId | undefined) || undefined,
+    serverHz: Number(process.env.SERVER_HZ ?? RULES.tick),
   });
   const by = new Map<string, Correction[]>();
   for (const c of corrections) {

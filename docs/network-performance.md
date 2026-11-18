@@ -499,6 +499,48 @@ every `:has()` rule would reach 5 elements; the rest are small. A new
 or whose anchor is `body` or a dialog can bring this back: check a battle
 trace (`UpdateLayoutTree` element counts) when adding one.
 
+### 15. The server's clock: exactly 30 ticks a second
+
+The 18 Nov 2026 reports (22 matches, mostly 3-player free-for-all, two
+iPhones and an Android phone on the same Wi-Fi, about 50 minutes each)
+showed a good network (ping 45-60 ms, 1% late snapshots) and full frame
+rate, yet 12-30 unexplained corrections a minute (median 17, about 9 px:
+one step) on every phone, a lead of 165-200 ms where the round trip
+explains about 120, and the unexplained rate again following the lead
+(correlation 0.70).
+
+Phones make exactly 30 inputs a second (the scene's accumulator on the
+frame clock) and the server steps one input per tick, so the two clocks
+must run at the same rate. The server ran `setInterval(step, 1000 / 30)`,
+which does not: measured on Node 22, 30.10 ticks a second idle (timers
+fire on whole milliseconds), and 28.6 with a 120 ms hold every 2 s (a
+garbage collection, or a 0.5 CPU instance throttled), because setInterval
+never makes up a late tick. A faster server runs the queue dry and repeats
+your last input, a step the phone never predicted; a slower one piles
+inputs up until the queue's depth cap or standing trim folds two into one
+tick, a step lost, and the pile is the extra lead. `correction-sim.ts`
+with `SERVER_HZ` (free-for-all against two Hard bots, `MODE=ffa BOTS=2`):
+
+| Server  | Lead       | Unexplained a minute                       |
+| ------- | ---------- | ------------------------------------------ |
+| 28.6 Hz | 153-162 ms | 28-32                                      |
+| 29.5 Hz | 132-149 ms | 13-15                                      |
+| 30.1 Hz | 103-111 ms | 6-10                                       |
+| 30.0 Hz | 117-124 ms | 0.5-8 (the rest: uplink holds, section 12) |
+
+`TickClock` (`apps/server/src/tick-clock.ts`) runs the combat loop at
+exactly 30 on average: each tick is due a fixed period after the last was
+due, a late one is made up straight away (after `setImmediate`, so the
+inputs that arrived during the hold are queued first), and more than 10
+behind it starts afresh. Measured on Node 22 with the same holds: 30.0
+ticks a second (setInterval: 28.6). `tests/unit/tick-clock.test.ts` holds
+it with timers that fire late and on whole milliseconds, as Node's do (it
+fails with a setInterval-style schedule).
+
+Each `arena-perf` line now also carries `serverHz`, the combat loop's
+real rate over the last minute, and the match reports flag one off 30 by
+more than 0.05.
+
 ## Results
 
 All measurements were taken on one Linux container (Intel Xeon 2.8 GHz). The
