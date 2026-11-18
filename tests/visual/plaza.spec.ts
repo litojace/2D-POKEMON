@@ -846,18 +846,38 @@ test("past the north edge, the river flows", async ({ page }, info) => {
         ];
       };
       const out: number[][] = [];
-      for (let x = 520; x < 880; x += 12) out.push(px(x, -60));
+      // Across the river's rows of ripples, west of the first footbridge.
+      for (let y = -125; y < -15; y += 10)
+        for (let x = 520; x < 880; x += 24) out.push(px(x, y));
       return out;
     });
+  // One meadow: the Plaza's ground picture goes on past its edges (no
+  // second picture meeting it at a seam), with a hole where the river is.
+  const ground = (x: number, y: number) =>
+    page.evaluate(([x, y]) => (window as any).__plaza.groundAt(x, y), [x, y]);
+  for (const [x, y] of [
+    [-40, 800],
+    [2740, 800],
+    [1700, 1740],
+    [600, -200],
+  ]) {
+    const [r, g, , alpha] = await ground(x, y);
+    expect(alpha, `meadow at ${x},${y}`).toBe(255);
+    expect(g, `grass at ${x},${y}`).toBeGreaterThan(r);
+  }
+  expect((await ground(700, -60))[3], "the river's hole").toBe(0);
   const a = await water();
   // Water: bluer than it is red.
   expect(a.filter(([r, , b]) => b > r + 40).length).toBeGreaterThan(
     a.length * 0.6,
   );
-  await page.waitForTimeout(1200);
-  const b = await water();
   // Ripples drift: the same stretch of water is not the same a moment later.
-  expect(a.some((c, i) => c.join() !== b[i].join())).toBe(true);
+  const first = a.map((c) => c.join());
+  await expect
+    .poll(async () => (await water()).some((c, i) => c.join() !== first[i]), {
+      timeout: 10_000,
+    })
+    .toBe(true);
   await snap(page, info, "plaza-river");
   expect(errors).toEqual([]);
 });
