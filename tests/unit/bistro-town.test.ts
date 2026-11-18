@@ -10,6 +10,7 @@ import {
   plaza,
   routes,
   bikeRoutes,
+  bays,
   seasonOf,
   stopY,
   BUS_LEN,
@@ -122,6 +123,19 @@ describe("bistro town: the layout", () => {
         if (p.id !== "foot") expect(coversMovers(p, samples), p.id).toBe(false);
     }
     setRoomSize({ cols: 11, rows: 9 });
+  });
+  it("every parked car sits inside its bay, clear of the lines", () => {
+    const list = bays();
+    const cars = props().filter((p) => p.id.startsWith("pc"));
+    expect(cars.length).toBeGreaterThan(4);
+    for (const c of cars) {
+      const bay = list.find((b) => c.x0 >= b.x0 && c.x1 <= b.x1);
+      expect(bay, c.id).toBeTruthy();
+      expect(c.x0 - bay!.x0).toBeGreaterThan(0.2);
+      expect(bay!.x1 - c.x1).toBeGreaterThan(0.2);
+      expect(c.y0 - bay!.y0).toBeGreaterThan(0.1);
+      expect(bay!.y1 - c.y1).toBeGreaterThan(0.1);
+    }
   });
   it("no tree stands in front of the bistro hiding it", () => {
     for (const size of SIZES) {

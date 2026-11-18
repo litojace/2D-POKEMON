@@ -25,6 +25,7 @@ import {
 import { poly } from "./bistro-geom";
 import {
   BACK,
+  bays,
   BRIDGE,
   BUS_LEN,
   HOUSES,
@@ -1575,20 +1576,23 @@ export function props(special: () => string = () => ""): Prop[] {
     paint: (ctx, l) =>
       drawHedge(ctx, -0.4, HOUSES - 0.4, HOUSE_X0 - 0.2, HOUSES - 0.1, 26, l),
   });
-  // Parked cars along the back street's far curb.
+  // Parked cars in the back street's bays, each in the middle of its own
+  // (a few bays stay free).
   const parked: [number, number, string][] = [
-    [1.6, 0, "#3d8fd1"],
-    [5.0, 3, "#f4f1ea"],
-    [9.6, 0, "#e2453a"],
-    [13.0, 1, "#f4f1ea"],
-    [17.2, 0, "#4fb36b"],
-    [20.6, 3, "#ff9a5b"],
-    [24.4, 2, "#f2c14e"],
+    [0, 0, "#3d8fd1"],
+    [1, 3, "#f4f1ea"],
+    [3, 0, "#e2453a"],
+    [4, 1, "#f4f1ea"],
+    [5, 0, "#4fb36b"],
+    [6, 3, "#ff9a5b"],
+    [7, 2, "#f2c14e"],
   ];
-  for (const [i, [x, kind, col]] of parked.entries()) {
+  const bayList = bays();
+  for (const [i, [k, kind, col]] of parked.entries()) {
+    const bay = bayList[k];
     const pose: Pose = {
-      x,
-      y: BACK.y0 + 0.75,
+      x: bay.cx,
+      y: bay.cy,
       along: "x",
       dir: i % 2 ? -1 : 1,
     };
